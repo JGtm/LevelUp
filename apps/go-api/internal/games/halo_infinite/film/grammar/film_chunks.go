@@ -7,7 +7,7 @@ package grammar
 // Avant le lot 1 de PLAN_CUISSON_PERF, chaque balayage relisait et redecompressait le film
 // entier : `CountFilmChunks(dir)` pour savoir jusqu'ou aller, `ReadFilmChunk(dir, c)` pour les
 // octets, `WalkPackets(data)` pour les paquets — soit ~36-40 lectures completes du meme film pour
-// un seul artefact. Les balayages prennent desormais un `*filmsource.Film` deja charge, et ce
+// un seul artefact. Les balayages prennent desormais un `*source.Film` deja charge, et ce
 // fichier leur rend les MEMES trois choses, sans disque et sans inflate :
 //
 //	CountFilmChunks(dir)     ->  FilmChunkNumbers(film)   les numeros des chunks de donnees
@@ -20,7 +20,7 @@ package grammar
 // manifeste (`chunkStartMS[c]`). La position dans le film, elle, depend de ce qui est descendu sur
 // le disque : une bobine sans `chunk_00` (la fixture `replay/testdata/minifilm_000d5950`) a son
 // premier chunk de DONNEES a la position 0. Les deux se confondent sur un cache complet et
-// divergent partout ailleurs ; `filmsource.LoadDir` synthetise le numero dans `Meta()[i].Index`,
+// divergent partout ailleurs ; `source.LoadDir` synthetise le numero dans `Meta()[i].Index`,
 // et ce fichier ne travaille QUE par numero.
 //
 // # POURQUOI L'ARRET AU PREMIER TROU
@@ -35,7 +35,7 @@ package grammar
 import (
 	"errors"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // Les trois refus d'un film charge. Ils sont NOMMES parce que quinze balayages les rendaient
@@ -62,10 +62,10 @@ var (
 // rendent leur erreur « aucun chunk film » — un film absent traverse donc les memes portes qu'un
 // repertoire vide, sans garde supplementaire.
 //
-// FILM SANS METADONNEES (un [filmsource.Load] sur des chunks en memoire, sans manifeste) : la
+// FILM SANS METADONNEES (un [source.Load] sur des chunks en memoire, sans manifeste) : la
 // POSITION vaut le numero, convention d'une source qui commence au registre — c'est la forme d'un
 // pipeline qui vient de telecharger `chunk_00..chunk_NN`.
-func FilmChunkNumbers(f *filmsource.Film) []int {
+func FilmChunkNumbers(f *source.Film) []int {
 	if f == nil || f.NumChunks() == 0 {
 		return nil
 	}
@@ -101,10 +101,10 @@ func FilmChunkNumbers(f *filmsource.Film) []int {
 // `bipedSlotBand` demande deliberement le chunk d'apres le dernier).
 //
 // LES PAQUETS SONT CONVERTIS A CHAQUE APPEL, et c'est voulu : la conversion est un decodage
-// d'en-tetes de 16 octets deja fait par `filmsource`, sans allocation de payload (les payloads
+// d'en-tetes de 16 octets deja fait par `source`, sans allocation de payload (les payloads
 // sont des sous-tranches du chunk). Elle coute ce que coutait `WalkPackets` ; ce qui disparait,
 // c'est la lecture disque et l'inflate, qui pesaient trois ordres de grandeur de plus.
-func FilmChunkAt(f *filmsource.Film, num int) ([]byte, []FilmPacket, bool) {
+func FilmChunkAt(f *source.Film, num int) ([]byte, []FilmPacket, bool) {
 	pos := filmChunkPos(f, num)
 	if pos < 0 {
 		return nil, nil, false
@@ -120,7 +120,7 @@ func FilmChunkAt(f *filmsource.Film, num int) ([]byte, []FilmPacket, bool) {
 // 2026-09-03) ANALYSE le registre — les archetypes et leurs slots — UNE fois par film : la
 // douzaine de re-analyses par cuisson a disparu avec `filmRegistry`. [FilmMajorVersion]
 // (2026-09-12) n'en lit que les QUATRE PREMIERS OCTETS, l'u32 de version, sans rien analyser.
-func FilmRegistryChunk(f *filmsource.Film) ([]byte, bool) {
+func FilmRegistryChunk(f *source.Film) ([]byte, bool) {
 	pos := filmChunkPos(f, 0)
 	if pos < 0 {
 		return nil, false
@@ -129,7 +129,7 @@ func FilmRegistryChunk(f *filmsource.Film) ([]byte, bool) {
 }
 
 // filmChunkPos traduit un NUMERO de chunk en position dans le film, ou -1.
-func filmChunkPos(f *filmsource.Film, num int) int {
+func filmChunkPos(f *source.Film, num int) int {
 	if f == nil {
 		return -1
 	}
@@ -152,14 +152,14 @@ func filmChunkPos(f *filmsource.Film, num int) int {
 	return -1
 }
 
-// filmPacketsOf traduit les paquets de `filmsource` dans la forme historique [FilmPacket], que
+// filmPacketsOf traduit les paquets de `source` dans la forme historique [FilmPacket], que
 // toute la grammaire de records consomme (`pk.Payload(chunk)`, `pk.Size`, `pk.TimestampUS`).
 //
-// LES BORNES SE RECONSTRUISENT PAR CONTIGUITE, et c'est exact : la grammaire de `filmsource`
+// LES BORNES SE RECONSTRUISENT PAR CONTIGUITE, et c'est exact : la grammaire de `source`
 // avance de `16 + taille` a chaque paquet emis et ne SAUTE jamais d'octet — ses deux regles
 // d'arret (en-tete qui deborde, en-tete degenere) arretent la marche, elles ne la font pas
 // avancer. `TestFilmChunkAtEgaleWalkPackets` le verifie sur un vrai chunk, borne comprise.
-func filmPacketsOf(pkts []filmsource.Packet) []FilmPacket {
+func filmPacketsOf(pkts []source.Packet) []FilmPacket {
 	if len(pkts) == 0 {
 		return nil
 	}

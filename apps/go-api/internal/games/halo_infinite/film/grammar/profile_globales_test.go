@@ -26,7 +26,7 @@ import (
 	"unicode/utf16"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // TestProfilEgaleGlobales : sur chaque bobine par build, le profil resolu et les globales que la
@@ -50,7 +50,7 @@ func TestProfilEgaleGlobales(t *testing.T) {
 // DEUX CAS, ET ILS NE SE CONFONDENT PAS : une largeur POSEE doit se retrouver a l identique dans
 // le profil du contexte ; une largeur INDETERMINEE (formats 20, 21, 24, 25) doit le laisser
 // EXACTEMENT ou il etait — c est ce que la calibration attend pour decider a sa place.
-func verifierMPPEgaleGlobales(t *testing.T, b bobineIdentite, film *filmsource.Film, p Profile) {
+func verifierMPPEgaleGlobales(t *testing.T, b bobineIdentite, film *source.Film, p Profile) {
 	t.Helper()
 	fc := NewFilmContext(film)
 	avant := fc.ProfilDeBalayage().MPP

@@ -49,7 +49,7 @@ package grammar
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -97,7 +97,7 @@ func (z ZoomEvent) Scoped() bool { return z.Level > 0 }
 //
 // ScanFilmZoomEvents est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanZoomEvents].
 func ScanFilmZoomEvents(dir string) []ZoomEvent {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil // meme degradation silencieuse qu'un chunk illisible : couverture moindre
 	}
@@ -105,7 +105,7 @@ func ScanFilmZoomEvents(dir string) []ZoomEvent {
 }
 
 // ScanZoomEvents lit les bascules de lunette d'un film DEJA CHARGE, triées par instant.
-func ScanZoomEvents(film *filmsource.Film) []ZoomEvent {
+func ScanZoomEvents(film *source.Film) []ZoomEvent {
 	var out []ZoomEvent
 	for _, c := range FilmChunkNumbers(film) {
 		chunk, pks, ok := FilmChunkAt(film, c)

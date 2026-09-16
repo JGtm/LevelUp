@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // TestMarcheurDeltaBipedeEstUnique — aucune source de PRODUCTION hors `delta_biped_walk.go` ne
@@ -218,7 +218,7 @@ var comptesDeRecordsMiniBobine = map[string]int{
 // ancre exactement le nombre de records mesure. Un chevauchement, une avance trop courte ou une
 // porte deplacee change ce compte.
 func TestMarcheurDeltaBipedeCompteSesRecordsSurLaMiniBobine(t *testing.T) {
-	film, err := filmsource.LoadDir(bobineFamilles, nil)
+	film, err := source.LoadDir(bobineFamilles, nil)
 	if err != nil {
 		t.Fatalf("mini-bobine versionnee illisible (%s) : %v", bobineFamilles, err)
 	}

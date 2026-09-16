@@ -22,7 +22,7 @@ package grammar
 import (
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // HeldWeaponChangeKind qualifie un changement d'arme en main.
@@ -94,7 +94,7 @@ type HeldWeaponChangeStats struct {
 func ScanFilmHeldWeaponChanges(
 	dir string, spawnSet func(slot uint32, at uint64) (map[uint32]bool, bool),
 ) ([]HeldWeaponChange, HeldWeaponChangeStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, HeldWeaponChangeStats{}, err
 	}

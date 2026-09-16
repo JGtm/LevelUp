@@ -27,9 +27,9 @@ package killcollector
 // PLAN_CUISSON_PERF (item 1.6, 2026-09-02) : quatre écritures de fichiers, puis QUATRE relectures
 // et QUATRE décompressions du film entier.
 //
-// Le lot 1 a rendu (b) possible SANS second décodeur : `internal/analysis/filmsource` est la source
+// Le lot 1 a rendu (b) possible SANS second décodeur : `internal/games/halo_infinite/film/source` est la source
 // unique du film (une décompression, un découpage en paquets, une grammaire), et les quatre
-// balayages prennent désormais un `*filmsource.Film`. Le collecteur charge donc le film UNE fois
+// balayages prennent désormais un `*source.Film`. Le collecteur charge donc le film UNE fois
 // pour les morts (`killsource.Decode`) et le repasse tel quel ici. Plus de répertoire temporaire,
 // plus de disque plein possible — et le seul refus qui reste est celui qui protégeait d'une
 // position fausse : la séquence trouée (cf. refuserSequenceTrouee).
@@ -72,11 +72,11 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -110,7 +110,7 @@ const (
 // structurellement aucune position à offrir. Utiliser la liste pré-fusion n'est donc pas une
 // approximation, c'est la population exacte qui peut avoir une position.
 func (c *KillSourceCollector) collectPositions(
-	ctx context.Context, matchID string, film *filmsource.Film, res *killsource.Result,
+	ctx context.Context, matchID string, film *source.Film, res *killsource.Result,
 	ids MatchIdentities, deaths, fusionnees []persist.KillEventInsert,
 ) {
 	if !c.caps.Has(games.CapFilmKillPositions) {
@@ -259,7 +259,7 @@ func optionsDeBalayageDesPositions(
 // dans `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06,
 // constat B1 : aucun test ne pincait l accord entre le decalage et l instant persiste).
 func buildPositionRows(
-	film *filmsource.Film, res *killsource.Result, entry grammar.MapQuantEntry, ids MatchIdentities,
+	film *source.Film, res *killsource.Result, entry grammar.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
 ) (passePositions, materiauDIsolement, error) {
 
@@ -456,7 +456,7 @@ func toKillPositionRows(matchID string, positions []replay.KillPosition) []persi
 // (numeros 1..N), jamais sur l en-tete — c est ce que faisait `grammar.CountFilmChunks`, qui
 // comptait a partir de `chunk_01.bin`. Un film reduit au seul chunk 0, ou vide, passe donc ici
 // et se fait refuser par les balayages eux-memes (`ErrNoFilmChunk`).
-func refuserSequenceTrouee(film *filmsource.Film) error {
+func refuserSequenceTrouee(film *source.Film) error {
 	if film == nil {
 		return fmt.Errorf("film absent")
 	}

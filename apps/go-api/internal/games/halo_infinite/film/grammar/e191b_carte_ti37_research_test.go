@@ -51,7 +51,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e191bTI est l archetype mesure par ce pas : « equipment / item, objet du monde ».
@@ -129,7 +129,7 @@ func e191bControlePrefixeObjet(t *testing.T) {
 	detail := map[int][2]int{}
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-		film, err := filmsource.LoadDir(dir, nil)
+		film, err := source.LoadDir(dir, nil)
 		if err != nil {
 			t.Fatalf("LoadDir %s : %v", dir, err)
 		}
@@ -184,7 +184,7 @@ func e191bPorteLePrefixe(reg *Registry, ti int) bool {
 func e191bLogRegistre(t *testing.T, court string) {
 	t.Helper()
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}
@@ -208,7 +208,7 @@ func e191bLogRegistre(t *testing.T, court string) {
 func e191bMesurerBobine(t *testing.T, court string) *e191bBobine {
 	t.Helper()
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}

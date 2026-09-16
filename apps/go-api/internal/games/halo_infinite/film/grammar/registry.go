@@ -31,7 +31,7 @@ package grammar
 import (
 	"bytes"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -187,7 +187,7 @@ func (e registryError) Error() string { return string(e) }
 // affirmait que « la seule cuisson reelle de la CI decodait sans registre pendant quatre
 // jours », a cause des deux couches zlib du fixture `film_e2e/c0a82e88`. C'EST FAUX : le
 // telechargeur de l'ouvrier pele deja une couche (`cmd/replay-worker/job.go`, `downloadChunk`),
-// `filmsource.Load` pele la seconde — les deux couches etaient donc absorbees par deux etages
+// `source.Load` pele la seconde — les deux couches etaient donc absorbees par deux etages
 // differents et le registre arrivait INTACT. Mesure : fixture d'origine remis, l'epreuve E2E est
 // verte et rend le meme artefact de 283 260 octets. Aucun sinistre de production ni de CI n'est
 // attribuable a ce defaut ; il n'a ete observe que par une sonde jetable lisant `testdata` en
@@ -199,7 +199,7 @@ const ErrRegistryStillCompressed = registryError(
 // ParseRegistryChunk parses every fixed-size archetype block of an ALREADY-INFLATED chunk_00.
 //
 // IT NO LONGER INFLATES (lot 1 of PLAN_CUISSON_PERF, 2026-09-02). Decompression happens once per
-// film, in `filmsource`: the cooking path hands over `film.Chunk(<registre>)`, and the single-chunk
+// film, in `source`: the cooking path hands over `film.Chunk(<registre>)`, and the single-chunk
 // readers (research tools, tests) hand over `grammar.ReadFilmChunk(dir, 0)`, which inflates
 // through the same decompressor. A still-compressed buffer is REFUSED ([ErrRegistryStillCompressed])
 // — the caller must inflate first; `internal/archlint` forbids a second `zlib.NewReader` inside
@@ -216,7 +216,7 @@ func ParseRegistryChunk(data []byte) (*Registry, error) {
 
 // looksZlib dit si `data` commence par un EN-TETE ZLIB (RFC 1950), sans rien decompresser.
 //
-// LE TEST EST CELUI DE LA RFC, PAS LE SEUL PREMIER OCTET. `filmsource.inflate` se contente de
+// LE TEST EST CELUI DE LA RFC, PAS LE SEUL PREMIER OCTET. `source.inflate` se contente de
 // `raw[0] == 0x78` parce qu'un faux positif y est inoffensif (le `zlib.NewReader` echoue et le
 // tampon traverse tel quel) ; ici un faux positif REFUSERAIT un registre valide. Les deux octets
 // de l'en-tete portent donc leurs trois conditions : methode DEFLATE (CM=8, quartet bas de
@@ -378,5 +378,5 @@ func entryLevel(data []byte, off int) uint32 {
 	if p < 0 || p+4 > len(data) {
 		return 0
 	}
-	return filmsource.U32LE(data, p)
+	return source.U32LE(data, p)
 }

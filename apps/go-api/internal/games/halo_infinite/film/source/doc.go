@@ -1,4 +1,4 @@
-// Package filmsource — LA SOURCE UNIQUE DU FILM THEATER : DECOMPRESSER UNE FOIS, DECOUPER UNE FOIS.
+// Package source — LA SOURCE UNIQUE DU FILM THEATER : DECOMPRESSER UNE FOIS, DECOUPER UNE FOIS.
 //
 // Un film Theater est une suite de chunks numerotes, chacun eventuellement compresse en zlib, et
 // chaque chunk de donnees est une suite de paquets a en-tete fixe. Avant ce paquet, la chaine de
@@ -81,4 +81,4 @@
 // Les films dits « bombes » (`51101d1d`, `a349fea8`, `1c4c63c2`, `60ae07c4`) ne le sont PAS par
 // leur taille decompressee mais par l'amplification en aval (`objectives.NamedEventsFrom`) :
 // ce paquet n'est pas le lieu ou les plafonner (lot 4b du plan).
-package filmsource
+package source

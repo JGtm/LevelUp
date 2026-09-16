@@ -181,7 +181,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // bobineFamilles est la mini-bobine versionnee de `killsource`, vue depuis `filmdec`. Elle n'est
@@ -260,7 +260,7 @@ func tronquer(s string) string {
 // enveloppes `ScanFilm*(dir)` : ce sont les points d'entree que la cuisson appelle, et une
 // enveloppe qui relit le disque testerait le chargement, pas le decodage.
 func TestGoldenMiniBobineFamilles(t *testing.T) {
-	film, err := filmsource.LoadDir(bobineFamilles, nil)
+	film, err := source.LoadDir(bobineFamilles, nil)
 	if err != nil {
 		t.Fatalf("mini-bobine versionnee illisible (%s) : %v — elle est dans le depot, "+
 			"son absence est une panne, pas une condition d'execution", bobineFamilles, err)
@@ -307,7 +307,7 @@ func famillesDeltaBipede(t *testing.T, r *recueil, fc *FilmContext) {
 }
 
 // famillesObjetsDuMonde : les entites du monde (positions, projectiles, creations, zones).
-func famillesObjetsDuMonde(r *recueil, fc *FilmContext, film *filmsource.Film) {
+func famillesObjetsDuMonde(r *recueil, fc *FilmContext, film *source.Film) {
 	wr := QuantRangeCEBiped // bornes MESUREES du film 000d5950 (cf. quantize.go) — zero fixture
 
 	opt := DefaultScanFilmOptions()
@@ -354,7 +354,7 @@ func famillesObjetsDuMonde(r *recueil, fc *FilmContext, film *filmsource.Film) {
 }
 
 // famillesEvenementsEtImagesCles : la liste d'evenements en tete de paquet, et les images-cles.
-func famillesEvenementsEtImagesCles(r *recueil, fc *FilmContext, film *filmsource.Film) {
+func famillesEvenementsEtImagesCles(r *recueil, fc *FilmContext, film *source.Film) {
 	fire, err := ScanFireEvents(film)
 	ajouterSlice(r, "fireEvents", fire, err)
 	gren, err := ScanGrenadeThrows(film)
@@ -402,7 +402,7 @@ func famillesEvenementsEtImagesCles(r *recueil, fc *FilmContext, film *filmsourc
 // catalogueDuFilm rend les identifiants de famille d'arme que le film porte, tous chemins
 // confondus. Trie a la lecture par la carte, donc stable au digest (le rendu `%+v` d'une carte Go
 // est trie par cle depuis Go 1.12).
-func catalogueDuFilm(fc *FilmContext, film *filmsource.Film) map[uint32]bool {
+func catalogueDuFilm(fc *FilmContext, film *source.Film) map[uint32]bool {
 	known := map[uint32]bool{}
 	if fire, err := ScanFireEvents(film); err == nil {
 		for _, e := range fire {

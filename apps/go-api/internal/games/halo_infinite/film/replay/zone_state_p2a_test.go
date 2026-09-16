@@ -28,8 +28,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // SEUILS DE LA PHASE 2a — ecrits avant la mesure (arbitrage §Phase 2a).
@@ -133,7 +133,7 @@ type p2aEntree struct {
 	sc    *p2aScan
 	doc   ReplayDocument
 	zones []Zone
-	src   *filmsource.Film
+	src   *source.Film
 }
 
 // p2aRolesDuMode rend les roles de zone a retenir pour le film. En Strongholds, le role du mode

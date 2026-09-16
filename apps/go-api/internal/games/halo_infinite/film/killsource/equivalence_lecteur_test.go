@@ -27,7 +27,7 @@ package killsource
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // --- Copies de reference : les implantations d AVANT le lot 2.4.1 (oracles du differentiel) ---
@@ -164,19 +164,19 @@ func comparerLecture(t *testing.T, dir string, pl []byte, p, n int) {
 // source.
 func comparerPrimitives(t *testing.T, dir string, pl []byte, p int) {
 	t.Helper()
-	if a, b := refBitAt(pl, p), filmsource.BitAt(pl, p); a != b {
+	if a, b := refBitAt(pl, p), source.BitAt(pl, p); a != b {
 		t.Fatalf("%s : bitAt(%d) — reference %d contre canonique %d", dir, p, a, b)
 	}
-	if a, b := refBits32(pl, p), uint32(filmsource.BitsAt(pl, p, 32)); a != b {
+	if a, b := refBits32(pl, p), uint32(source.BitsAt(pl, p, 32)); a != b {
 		t.Fatalf("%s : bits32(%d) — reference %#x contre canonique %#x", dir, p, a, b)
 	}
 	for n := 0; n <= 8; n++ {
-		if a, b := refBitsN(pl, p, n), int(filmsource.BitsAt(pl, p, uint(n))); a != b {
+		if a, b := refBitsN(pl, p, n), int(source.BitsAt(pl, p, uint(n))); a != b {
 			t.Fatalf("%s : bitsN(%d, %d) — reference %d contre canonique %d", dir, p, n, a, b)
 		}
 	}
 	for n := 0; n <= 64; n++ {
-		if a, b := refBitsWide(pl, p, n), filmsource.BitsAt(pl, p, uint(n)); a != b {
+		if a, b := refBitsWide(pl, p, n), source.BitsAt(pl, p, uint(n)); a != b {
 			t.Fatalf("%s : bitsWide(%d, %d) — reference %#x contre canonique %#x",
 				dir, p, n, a, b)
 		}
@@ -186,7 +186,7 @@ func comparerPrimitives(t *testing.T, dir string, pl []byte, p int) {
 // payloadsAEvents : les payloads des paquets type-0 A EVENTS d une bobine.
 func payloadsAEvents(t *testing.T, dir string) [][]byte {
 	t.Helper()
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("%s : %v", dir, err)
 	}

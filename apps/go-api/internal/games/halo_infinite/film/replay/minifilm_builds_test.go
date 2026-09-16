@@ -22,7 +22,7 @@ package replay
 // stockes DECOMPRESSES (entetes `0900` / `0100`, jamais `78 9c`) : `chunk_00` pese a lui seul
 // 1,85 a 1,88 Mio, soit DEJA plus que le plafond de 1 Mio par build (arbitrage V7). Le chemin de
 // lecture du depot inflate de maniere transparente et laisse passer ce qui ne l est pas
-// (`filmsource.Inflate`, « une entree deja decompressee traverse telle quelle ») : stocker les
+// (`source.Inflate`, « une entree deja decompressee traverse telle quelle ») : stocker les
 // chunks en zlib rend donc EXACTEMENT les memes octets au decodeur, et ramene `chunk_00` a
 // 0,39-0,48 Mio. Aucun octet n est modifie, seul le conditionnement change.
 //

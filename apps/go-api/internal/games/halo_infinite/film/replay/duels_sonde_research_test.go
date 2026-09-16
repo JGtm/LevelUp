@@ -45,8 +45,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -92,7 +92,7 @@ func TestSondeDuels(t *testing.T) {
 	}
 
 	rng := duelsBornes(t, carte)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("film %s illisible : %v", dir, err)
 	}
@@ -145,7 +145,7 @@ func duelsBornes(t *testing.T, carte string) grammar.Vec3Range {
 // duelsMorts rend les fins de vie APPARIEES a une mort du fil : la population des vraies morts.
 // Compose les fonctions eprouvees de lives.go — aucune seconde lecture du fil des morts (la
 // regle « deux decodeurs du meme fait divergeraient », cf. l'en-tete de killpos_bridge.go).
-func duelsMorts(t *testing.T, film *filmsource.Film, lives []lifeSpan) []duelMort {
+func duelsMorts(t *testing.T, film *source.Film, lives []lifeSpan) []duelMort {
 	t.Helper()
 	deaths, err := ScanDeaths(film)
 	if err != nil {

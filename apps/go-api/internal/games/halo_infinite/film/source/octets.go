@@ -1,4 +1,4 @@
-package filmsource
+package source
 
 // octets.go — LES LECTURES D OCTETS DU FILM : ORDRE DES OCTETS, OFFSETS NON ALIGNES, MOTIFS.
 //

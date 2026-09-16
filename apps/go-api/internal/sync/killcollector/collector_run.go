@@ -15,9 +15,9 @@ import (
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/haloclient"
@@ -89,7 +89,7 @@ func (c *KillSourceCollector) CollectMatch(ctx context.Context, matchID string) 
 // de 91 a 53 lignes et lui rend la lecture que l en-tete du paquet annonce — telecharger,
 // decoder, ecrire, chacun a sa place.
 func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID string) (
-	[]haloclient.FilmChunk, *filmsource.Film, *killsource.Result, KillSourceOutcome, error,
+	[]haloclient.FilmChunk, *source.Film, *killsource.Result, KillSourceOutcome, error,
 ) {
 	chunks, found, err := FilmChunksForMatch(ctx, c.client, matchID)
 	if err != nil {

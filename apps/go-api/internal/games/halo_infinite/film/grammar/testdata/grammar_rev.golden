@@ -502,4 +502,14 @@
 #               d erreur `"filmdec: "` et la tranche `"filmdec"` du registre des replis GARDENT
 #               leur nom : ce sont des contrats d exploitation (ADR 0009), les renommer serait un
 #               changement de sortie. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` 60.
-grammar-2026-09-15.31	6f1d69024ab518357bf44aa6463272b98ac1104fd7cf94dc73c394958788e4bf
+#   2026-09-16  grammar-2026-09-15.32  lot 2.5.a (`.31` -> `.32`, RANG PROVISOIRE) : DEPLACEMENT
+#               PUR, SORTIE IDENTIQUE. La couche `source` rentre dans le decodeur :
+#               `internal/analysis/filmsource` -> `internal/games/halo_infinite/film/source`.
+#               Elle reste une FEUILLE sans aucun import du depot. Les SIX dernieres aretes de
+#               LIEU du ratchet des couches tombent d un coup et `paquetsHorsLieuToleres` se
+#               VIDE ; il ne reste que trois aretes vers `internal/analysis` racine, datees
+#               « 2.5.c ». CE COMMIT NE REMONTE PAS les 14 fichiers de lecture de `chunk_00` que
+#               la note §2.3 prevoyait : la mesure dit que ce n est pas un deplacement pur
+#               (76 declarations sur 159 referencees ailleurs, et `source` importerait `profile`
+#               et `grammar`). `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` 60.
+grammar-2026-09-15.32	d8a21cbc94399b71f535c51f6a7aac0773de1ec1f5c69b8a2252e0be18730983

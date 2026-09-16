@@ -1,11 +1,11 @@
 // Package objectives — extract.go : orchestration de l'extraction des
 // events objectif d'un match vers []domain.ObjectiveEvent.
 //
-// Frontière PURE/IO : Extract() prend un `*filmsource.Film` DÉJÀ CHARGÉ (chunks décompressés,
+// Frontière PURE/IO : Extract() prend un `*source.Film` DÉJÀ CHARGÉ (chunks décompressés,
 // paquets découpés, métadonnées du manifeste portées par le film) et un Roster (xuid->team_id,
 // résolu en amont depuis match_participants), et ne fait AUCUN accès DB ni FS lui-même —
 // l'appelant charge le film une fois pour toute sa chaîne (`filmcache.LoadFilm`,
-// `filmsource.LoadDir`). Le dispatch de mode se fait sur match_registry.game_variant_name
+// `source.LoadDir`). Le dispatch de mode se fait sur match_registry.game_variant_name
 // (cf. PLAN §10).
 package objectives
 
@@ -13,8 +13,8 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // Valeurs de domain.ObjectiveEvent.ObjectiveType (parent mode-agnostique).
@@ -121,7 +121,7 @@ func (c *TeamControl) note(roster Roster, xuid string, lue int) {
 // paramètre n'en est que le CONTRÔLE, rendu dans [TeamControl].
 //
 // Renvoie les events ordonnés par time_ms avec un Seq dense 0..N-1.
-func Extract(matchID, gameVariantName string, film *filmsource.Film,
+func Extract(matchID, gameVariantName string, film *source.Film,
 	roster Roster) ([]domain.ObjectiveEvent, TeamControl) {
 	var ctl TeamControl
 	switch classifyObjectiveMode(gameVariantName) {
@@ -184,7 +184,7 @@ func classifyObjectiveMode(gameVariantName string) string {
 // chunk_type 3), ou (nil,false). Le footer porte les events th=10. Si le footer
 // n'est pas en cache, l'équipe par-event manque -> dégradation gracieuse : le film chargé ne
 // porte QUE les chunks réellement présents, donc un pied manquant au cache n'a pas d'entrée.
-func footerData(film *filmsource.Film) ([]byte, bool) {
+func footerData(film *source.Film) ([]byte, bool) {
 	footerPos, footerIdx := -1, -1
 	for _, c := range manifestChunks(film) {
 		if c.meta.ChunkType == chunkTypePied && c.meta.Index > footerIdx {
@@ -201,7 +201,7 @@ func footerData(film *filmsource.Film) ([]byte, bool) {
 // sur les chunks gameplay), l'acteur est l'event th=10 de t MAX dans le cluster coïncident du
 // footer, et son ÉQUIPE est celle que ce même événement porte à l'octet 37.
 // players=[{scorer xuid}].
-func extractCTF(matchID string, film *filmsource.Film, roster Roster,
+func extractCTF(matchID string, film *source.Film, roster Roster,
 	ctl *TeamControl) []domain.ObjectiveEvent {
 	bursts := collectCaptureBursts(film)
 	th10 := FooterEvents(film)
@@ -232,7 +232,7 @@ func extractCTF(matchID string, film *filmsource.Film, roster Roster,
 
 // collectCaptureBursts parcourt tous les chunks gameplay (type 2) et concatène
 // leurs bursts de capture, ordonnés par ms.
-func collectCaptureBursts(film *filmsource.Film) []captureBurst {
+func collectCaptureBursts(film *source.Film) []captureBurst {
 	var out []captureBurst
 	for _, c := range manifestChunks(film) {
 		if c.meta.ChunkType != chunkTypeJeu {
@@ -269,7 +269,7 @@ func captureScorer(th10 []FooterEvent, burstMS int) (FooterEvent, bool) {
 // (score per-event non décodé ici ; le score-over-time est une couche séparée).
 // Footer absent -> nil.
 func extractFromTh10(
-	matchID string, film *filmsource.Film, roster Roster, ctl *TeamControl, objType, evType string,
+	matchID string, film *source.Film, roster Roster, ctl *TeamControl, objType, evType string,
 ) []domain.ObjectiveEvent {
 	var out []domain.ObjectiveEvent //nolint:prealloc // nil contractuel, cf. ci-dessus
 	for _, e := range FooterEvents(film) {
@@ -321,7 +321,7 @@ func finalize(matchID string, events []domain.ObjectiveEvent) []domain.Objective
 //
 // CE QU'IL NE DIT PAS : une partie CTF ou personne ne capture n'en produit aucun. Le rejeu
 // publie alors un calque de drapeau VIDE, et sa couverture le dit.
-func CaptureBurstTimes(film *filmsource.Film) []int {
+func CaptureBurstTimes(film *source.Film) []int {
 	bursts := collectCaptureBursts(film)
 	out := make([]int, 0, len(bursts))
 	for _, b := range bursts {

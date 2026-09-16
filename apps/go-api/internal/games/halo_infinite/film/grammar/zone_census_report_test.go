@@ -18,9 +18,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // zcArchInfo porte la grammaire d'un archetype telle que le registre du FILM la declare.
@@ -136,7 +136,7 @@ func zcOpenSource(t *testing.T, dir string) *filmcache.Source {
 }
 
 // zcOpenFilm charge le FILM du repertoire de chunks (une decompression, item 1.5).
-func zcOpenFilm(t *testing.T, dir string) *filmsource.Film {
+func zcOpenFilm(t *testing.T, dir string) *source.Film {
 	t.Helper()
 	film, ok, err := filmcache.LoadFilmDir(dir)
 	if err != nil {

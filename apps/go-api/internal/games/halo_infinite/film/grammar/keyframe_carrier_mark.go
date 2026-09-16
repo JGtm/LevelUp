@@ -1,6 +1,6 @@
 package grammar
 
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // keyframe_carrier_mark.go — LE MARQUEUR DE PORTAGE, lu dans le record de bipede des
 // images-cles.
@@ -68,7 +68,7 @@ type CarrierMarkScan struct {
 // ScanFilmCarrierMarks est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanCarrierMarks].
 func ScanFilmCarrierMarks(dir string) (CarrierMarkScan, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return CarrierMarkScan{}, err
 	}
@@ -76,7 +76,7 @@ func ScanFilmCarrierMarks(dir string) (CarrierMarkScan, error) {
 }
 
 // ScanCarrierMarks balaye les images-cles d'un film DEJA CHARGE.
-func ScanCarrierMarks(film *filmsource.Film) (CarrierMarkScan, error) {
+func ScanCarrierMarks(film *source.Film) (CarrierMarkScan, error) {
 	var out CarrierMarkScan
 	read := 0
 	for _, c := range FilmChunkNumbers(film) {

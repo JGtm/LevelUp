@@ -38,7 +38,7 @@ package grammar
 import (
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // Les étiquettes de registre des deux composants. L'index d'itérateur est résolu PAR NOM dans
@@ -100,7 +100,7 @@ type InventoryDelta struct {
 // ScanFilmInventoryDeltas est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanInventoryDeltas].
 func ScanFilmInventoryDeltas(dir string) ([]InventoryDelta, InventoryDeltaStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, InventoryDeltaStats{}, err
 	}

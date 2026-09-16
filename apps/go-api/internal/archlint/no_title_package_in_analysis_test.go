@@ -71,7 +71,7 @@ var paquetsInterTitres = map[string]bool{
 //
 // RE-MESURE DU 2026-09-16 (lot 2.5.d.2) : 427 fichiers avant la descente d'`objectiveevents`
 // sous `film/facts/objectives`, 365 après. Le plancher tient (le lot 2.5 en retirera encore
-// `weaponv3` et `filmsource`, soit ~351 à sa clôture) ; il est ré-examiné à chaque descente.
+// `weaponv3` et `source`, soit ~351 à sa clôture) ; il est ré-examiné à chaque descente.
 const plancherFichiersAnalysis = 300
 
 // franchissementsToleres : les fichiers d'`internal/analysis/` qui importent encore un paquet
@@ -89,8 +89,8 @@ var franchissementsToleres = map[string]string{
 	// `internal/games/halo_infinite/film/facts/objectives` — il est désormais une couche du
 	// décodeur, chez lui, et ouvrir un film du cache local y est légitime. La dette décrite par
 	// ces deux entrées disparaît donc avec sa cause, et non par contournement.
-	// RETIRÉE LE 2026-09-16 (lot 2.4, item 2.4.2) : `internal/analysis/filmsource/source_test.go`
-	// n'importe plus `grammar` : le test compare le marcheur canonique (`filmsource.Paquets`) à une
+	// RETIRÉE LE 2026-09-16 (lot 2.4, item 2.4.2) : `internal/games/halo_infinite/film/source/source_test.go`
+	// n'importe plus `grammar` : le test compare le marcheur canonique (`source.Paquets`) à une
 	// COPIE DE RÉFÉRENCE de l'ancienne grammaire portée par le test lui-même (738 paquets).
 	// RETIRÉE LE 2026-09-16 (item 2.5.f) : `internal/analysis/sessionusage/usage_outcomes.go`
 	// était le SEUL franchissement de PRODUCTION de cette liste. Les quatre symboles d'usage

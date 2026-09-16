@@ -35,7 +35,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // EquipmentLifeKey identifie une vie d'objet du monde : LA PAIRE (slot, génération), jamais le
@@ -229,7 +229,7 @@ func (c MPPCalibration) String() string {
 func CalibrateMPPWidths(
 	dir string, wr *Vec3Range, band map[uint32]bool, spans map[EquipmentLifeKey][]EquipmentLifeSpan,
 ) (MPPCalibration, bool) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return MPPCalibration{ByWidths: map[MPPWidths]int{}, Lives: len(spans)}, false
 	}

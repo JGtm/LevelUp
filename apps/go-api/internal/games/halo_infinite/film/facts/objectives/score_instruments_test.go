@@ -3,7 +3,7 @@ package objectives
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // score_instruments_test.go — LES COURBES QUI NE SERVENT QU AUX INSTRUMENTS DE MESURE.
@@ -25,7 +25,7 @@ import (
 // En Strongholds le composant n'est emis que par les 2 entites d'equipe ; en CTF les 8
 // entites de joueur l'emettent aussi, ou il vaut leur compte de captures. Ce que porte le
 // composant depend donc du mode — c'est une mesure, pas une supposition.
-func ScoreCurve(film *filmsource.Film) []ScorePoint {
+func ScoreCurve(film *source.Film) []ScorePoint {
 	return ScoreCurveFrom(StatRecords(film))
 }
 
@@ -68,7 +68,7 @@ func ScoreCurveFrom(recs []StatRecord) []ScorePoint {
 // Autre limite mesuree : les increments ne sont pas atomiques. Plusieurs actions tombant
 // dans le meme paquet se somment (125 = 100 + 25 observe en CTF). Un increment ne se lit
 // donc pas comme UNE action.
-func PersonalScoreCurve(film *filmsource.Film) []ScorePoint {
+func PersonalScoreCurve(film *source.Film) []ScorePoint {
 	return collectComponent(StatRecords(film), personalScoreComp, true)
 }
 

@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // bpkBaseDom2 est la base du domaine 2 etablie par TestBipedPickupRef0Base : ecart
@@ -53,7 +53,7 @@ func TestBipedPickupRef0Couverture(t *testing.T) {
 	for i := 1; i <= f.chunks; i++ {
 		chunks = append(chunks, i)
 	}
-	film, err := filmsource.LoadDir(f.dir, nil)
+	film, err := source.LoadDir(f.dir, nil)
 	if err != nil {
 		t.Fatalf("chargement du film %s : %v", f.dir, err)
 	}

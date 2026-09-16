@@ -27,8 +27,8 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // Emplacements de base du statborg, pour le seul DIAGNOSTIC des triplets ci-dessous (les
@@ -53,13 +53,13 @@ func objDeathInstants(deaths []Death) []objectives.DeathInstant {
 
 // objIdentites rend le pont slot statborg -> xuid par les INSTANTS DE MORT, tel que la
 // PRODUCTION le calcule.
-func objIdentites(film *filmsource.Film, deaths []Death) map[int]string {
+func objIdentites(film *source.Film, deaths []Death) map[int]string {
 	return objectives.SlotIdentityFromDeaths(film, objDeathInstants(deaths))
 }
 
 // objRoundIdentites rend le pont slot statborg -> xuid PAR MANCHE, tel que la production le
 // calcule desormais pour les calques d'objectifs vivants (drapeau, couronne, porteur du crane).
-func objRoundIdentites(film *filmsource.Film, deaths []Death) objectives.RoundIdentity {
+func objRoundIdentites(film *source.Film, deaths []Death) objectives.RoundIdentity {
 	return objectives.ResolveRoundIdentity(objectives.StatRecords(film), objDeathInstants(deaths))
 }
 

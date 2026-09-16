@@ -36,7 +36,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // corpusPlancher : en dessous de ce nombre de films lus, le test ne mesure rien et le dit. Le
@@ -104,7 +104,7 @@ func mesurerFilmCorpus(t *testing.T, dir string, b *bilanCorpus) {
 	if err != nil {
 		return
 	}
-	d := filmsource.Inflate(brut)
+	d := source.Inflate(brut)
 	b.lus++
 	id, err := ReadFilmIdentity(d)
 	if errors.Is(err, ErrNoFilmIdentity) {

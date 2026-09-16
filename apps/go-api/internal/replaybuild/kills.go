@@ -14,10 +14,10 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // decodeKillSource décode killsource UNE SEULE FOIS par match. neutralDeaths ET killRefs en
@@ -32,7 +32,7 @@ import (
 // balayages. `film` nil (chunks illisibles, déjà journalisé par `chargerFilm`) n'est plus une
 // lecture ratée ici mais un refus en amont — `killsource.Decode` rend alors `ErrNoChunk`, et le
 // journal en Info ci-dessous reste la SEULE trace côté cuisson, au même niveau qu'avant.
-func (b *Builder) decodeKillSource(matchID string, film *filmsource.Film) *killsource.Result {
+func (b *Builder) decodeKillSource(matchID string, film *source.Film) *killsource.Result {
 	res, err := killsource.Decode(context.Background(), matchID, film, nil)
 	if err != nil {
 		slog.Info("replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",

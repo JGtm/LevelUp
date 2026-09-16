@@ -25,7 +25,7 @@ package grammar
 import (
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // Étiquettes de registre des composants de ti=37 dont ce fichier publie la valeur. Elles
@@ -202,7 +202,7 @@ func equipmentFieldIndices(arch Archetype) [EquipmentFieldCount]int {
 // entrait en collision avec une méthode (vérifié au grep sur la liste entière — 40 noms au lot 6,
 // 43 depuis la réconciliation du 2026-09-05 qui a migré les trois balayages amont).
 func EquipmentArchetypeDir(dir string) (Archetype, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return Archetype{}, err
 	}
@@ -231,7 +231,7 @@ func (c *FilmContext) EquipmentArchetype() (Archetype, error) {
 // ScanFilmEquipmentState est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanEquipmentState].
 func ScanFilmEquipmentState(dir string) ([]EquipmentStateSample, EquipmentStateStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, EquipmentStateStats{}, err
 	}

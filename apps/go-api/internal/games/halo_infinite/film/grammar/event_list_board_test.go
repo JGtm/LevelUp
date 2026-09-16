@@ -46,7 +46,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // Seuils du gate, écrits avant mesure.
@@ -342,7 +342,7 @@ func evbPayload(dir string, e VehicleEvent) []byte {
 
 // evbBande relève la bande de slots bipèdes et sa base (min), comme ScanVehicleEvents.
 func evbBande(dir string) (uint32, SlotBand) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return 0, SlotBand{}
 	}

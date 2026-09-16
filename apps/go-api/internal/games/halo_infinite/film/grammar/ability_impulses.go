@@ -35,7 +35,7 @@ package grammar
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 // sont des globaux de paquet.
 
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // abilityImpulseTag : la valeur du tag externe qui date une impulsion. Le 3 est le grappin
 // (grapple_state.go), le 0 et le 2 sont l'état de repos (1 572 et 1 565 lectures sur
@@ -111,7 +111,7 @@ type AbilityImpulseStats struct {
 // contexte pour elle seule, puis appelle [ScanAbilityImpulses]. La cuisson, elle, passe le
 // contexte qu'elle partage entre tous ses balayages.
 func ScanFilmAbilityImpulses(dir string) ([]AbilityImpulse, AbilityImpulseStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, AbilityImpulseStats{}, err
 	}

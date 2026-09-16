@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // enTeteRegistre fabrique un en-tete de registre synthetique : version, second u32, puis le nom
@@ -47,8 +47,8 @@ func TestFilmMajorVersionFromHeader(t *testing.T) {
 // La version n'est alors PAS lisible, et le helper le dit plutot que de rendre les octets du
 // premier chunk de donnees.
 func TestFilmMajorVersionFilmSansRegistre(t *testing.T) {
-	metaAvecRegistre := []filmsource.ChunkMeta{{Index: 0}, {Index: 1}}
-	f, err := filmsource.Load(filmsource.MemoryChunks{enTeteRegistre(40, 25), {1, 2, 3}}, metaAvecRegistre)
+	metaAvecRegistre := []source.ChunkMeta{{Index: 0}, {Index: 1}}
+	f, err := source.Load(source.MemoryChunks{enTeteRegistre(40, 25), {1, 2, 3}}, metaAvecRegistre)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -56,8 +56,8 @@ func TestFilmMajorVersionFilmSansRegistre(t *testing.T) {
 		t.Fatalf("film avec registre : (%d, %v), attendu (40, true)", v, ok)
 	}
 
-	metaSansRegistre := []filmsource.ChunkMeta{{Index: 1}, {Index: 2}}
-	sans, err := filmsource.Load(filmsource.MemoryChunks{{0x28, 0, 0, 0}, {1, 2, 3}}, metaSansRegistre)
+	metaSansRegistre := []source.ChunkMeta{{Index: 1}, {Index: 2}}
+	sans, err := source.Load(source.MemoryChunks{{0x28, 0, 0, 0}, {1, 2, 3}}, metaSansRegistre)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestFilmMajorVersionCacheReel(t *testing.T) {
 			t.Errorf("%s : %v", court, err)
 			continue
 		}
-		got, ok := FilmMajorVersionFromHeader(filmsource.Inflate(raw))
+		got, ok := FilmMajorVersionFromHeader(source.Inflate(raw))
 		if !ok || got != want {
 			t.Errorf("%s : version = (%d, %v), attendu (%d, true)", court, got, ok, want)
 			continue

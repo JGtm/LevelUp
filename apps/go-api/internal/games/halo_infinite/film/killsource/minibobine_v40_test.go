@@ -36,7 +36,7 @@ package killsource
 //
 // Le cache de films local stocke desormais les chunks DECOMPRESSES (mesure du 2026-09-12 : 0
 // registre compresse sur 1 351). Les recopier tels quels pesait 3,0 Mio ; recompresses en zlib
-// ils pesent 876 Kio, et `filmsource` les inflate au chargement exactement comme il inflate ceux
+// ils pesent 876 Kio, et `source` les inflate au chargement exactement comme il inflate ceux
 // de `minibobine_000d5950`, qui sont zlib eux aussi. Aucun octet DECOMPRESSE ne change.
 //
 // # REGENERATION DE LA BOBINE (fixture requise, jamais d edition a la main)
@@ -53,8 +53,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // miniBobineV40Dir : la bobine de version 40, relative au paquet.
@@ -134,9 +134,9 @@ a analysis.ParseHighlightEvents.`,
 
 // chargerMiniBobineV40 : la bobine, avec le message qu il faut quand elle manque. Elle est
 // VERSIONNEE — son absence est une erreur, jamais une raison de se skipper.
-func chargerMiniBobineV40(t *testing.T) *filmsource.Film {
+func chargerMiniBobineV40(t *testing.T) *source.Film {
 	t.Helper()
-	src, err := filmsource.LoadDir(miniBobineV40Dir, nil)
+	src, err := source.LoadDir(miniBobineV40Dir, nil)
 	if err != nil {
 		t.Fatalf("bobine v40 illisible sous %s : %v", miniBobineV40Dir, err)
 	}
@@ -156,8 +156,8 @@ func TestMiniBobineV40Regenerer(t *testing.T) {
 		t.Skip("regeneration de la bobine v40 : exige KILLSOURCE_FIXTURES et -update (elle " +
 			"ecrase des octets versionnes)")
 	}
-	source := filepath.Join(dir, miniBobineV40Film)
-	src, err := filmsource.LoadDir(source, nil)
+	cheminSource := filepath.Join(dir, miniBobineV40Film)
+	src, err := source.LoadDir(cheminSource, nil)
 	if err != nil {
 		t.Fatalf("film source illisible : %v", err)
 	}
@@ -170,7 +170,7 @@ func TestMiniBobineV40Regenerer(t *testing.T) {
 		t.Fatalf("creation de %s : %v", miniBobineV40Dir, err)
 	}
 	for i, from := range []int{0, 1, hi} {
-		copierChunkCompresse(t, source, from, i)
+		copierChunkCompresse(t, cheminSource, from, i)
 	}
 	ecrireProvenanceV40(t, hi)
 	t.Logf("bobine v40 regeneree : registre + chunk 01 + chunk HIGHLIGHT (n%d du film)", hi)
@@ -180,12 +180,12 @@ func TestMiniBobineV40Regenerer(t *testing.T) {
 //
 // L INFLATE PRECEDE LA COMPRESSION, et il le faut : le cache local stocke aujourd hui des chunks
 // DECOMPRESSES, mais rien ne garantit qu une racine de fixture plus ancienne ne porte pas encore
-// les octets zlib du CDN. `filmsource.Inflate` rend le tampon inchange quand il n est pas zlib :
+// les octets zlib du CDN. `source.Inflate` rend le tampon inchange quand il n est pas zlib :
 // la bobine est donc la meme dans les deux cas.
-func copierChunkCompresse(t *testing.T, source string, from, to int) {
+func copierChunkCompresse(t *testing.T, cheminSource string, from, to int) {
 	t.Helper()
 	name := fmt.Sprintf("chunk_%02d.bin", from)
-	raw, err := os.ReadFile(filepath.Join(source, name)) //nolint:gosec // chemin construit d un index
+	raw, err := os.ReadFile(filepath.Join(cheminSource, name)) //nolint:gosec // chemin construit d un index
 	if err != nil {
 		t.Fatalf("lecture de %s : %v", name, err)
 	}
@@ -194,7 +194,7 @@ func copierChunkCompresse(t *testing.T, source string, from, to int) {
 	if err != nil {
 		t.Fatalf("compresseur zlib : %v", err)
 	}
-	if _, err := w.Write(filmsource.Inflate(raw)); err != nil {
+	if _, err := w.Write(source.Inflate(raw)); err != nil {
 		t.Fatalf("compression de %s : %v", name, err)
 	}
 	if err := w.Close(); err != nil {

@@ -22,7 +22,7 @@ package replay
 //
 // # LA FONCTION EST PURE, ET C'EST UNE CONTRAINTE D'ARCHITECTURE (decision D11)
 //
-// Aucune I/O, aucune base, aucun `filmsource.Film` : l'entree est ce que le DECODAGE a deja
+// Aucune I/O, aucune base, aucun `source.Film` : l'entree est ce que le DECODAGE a deja
 // rendu. C'est ce qui permet aux DEUX producteurs de l'appeler — `replaybuild` a la cuisson, et
 // `sync/killcollector` au sync, ou les donnees d'un match sont deja completes. Une seule
 // fonction, donc un seul nommage : deux tables du meme film ne peuvent plus diverger.

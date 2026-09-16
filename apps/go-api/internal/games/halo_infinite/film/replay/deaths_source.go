@@ -5,8 +5,8 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // deaths_source.go — LE FIL DES MORTS, LU DANS LE FILM.
@@ -33,7 +33,7 @@ import (
 // ENVELOPPE D2, HORS PRODUCTION (lot 1, 2026-09-02) : la cuisson appelle [ScanDeaths] sur un
 // film déjà chargé.
 func ScanFilmDeaths(filmDir string) ([]Death, error) {
-	film, err := filmsource.LoadDir(filmDir, nil)
+	film, err := source.LoadDir(filmDir, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func ScanFilmDeaths(filmDir string) ([]Death, error) {
 // 39-40 (mars a novembre 2025). Les `Death.Gamertag` publies dans l artefact de rejeu en
 // dependent — cf. .ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md. Film sans registre : version 0,
 // decoupage historique, et c est L APPELANT qui consigne la degradation (voir le corps).
-func ScanDeaths(film *filmsource.Film) ([]Death, error) {
+func ScanDeaths(film *source.Film) ([]Death, error) {
 	nums := grammar.FilmChunkNumbers(film)
 	if len(nums) == 0 {
 		return nil, grammar.ErrNoReadableFilmChunk

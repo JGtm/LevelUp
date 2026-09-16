@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // statborg.go — le decodage des ENREGISTREMENTS D'ENTITE des paquets FRAME, d'ou sortent
@@ -198,7 +198,7 @@ func IsTeamSlot(slot int) bool { return slot <= statTeamSlotMax }
 // [StatRecordsCtx] et JETTE le drapeau de troncature. Tout appelant qui publie ce qu'il lit
 // doit utiliser [StatRecordsCtx] et propager `truncated` — publier un score tronque sans le
 // dire serait un mensonge silencieux.
-func StatRecords(film *filmsource.Film) []StatRecord {
+func StatRecords(film *source.Film) []StatRecord {
 	recs, _ := StatRecordsCtx(context.Background(), film, "")
 	return recs
 }
@@ -210,7 +210,7 @@ func StatRecords(film *filmsource.Film) []StatRecord {
 // matchID n'est utilise que pour le journal ; il peut etre vide.
 //
 // LE FILM ARRIVE DEJA CHARGE, et seuls les chunks du MANIFESTE sont balayes (cf. [manifestChunks]).
-func StatRecordsCtx(ctx context.Context, film *filmsource.Film, matchID string) (recs []StatRecord, truncated bool) {
+func StatRecordsCtx(ctx context.Context, film *source.Film, matchID string) (recs []StatRecord, truncated bool) {
 	var out []StatRecord
 	for _, c := range chunksDatables(ctx, film, matchID) {
 		frames := framesOf(film, c.pos)
@@ -282,25 +282,25 @@ func statCountersInDomain(comps map[int]StatValue) bool {
 // matchRecordHeader teste l'en-tete d'enregistrement d'entite a la position b. Il rend le
 // slot, la liste creuse d'index de composants et la position du premier composant.
 func matchRecordHeader(pay []byte, b int) (slot int, idx []int, compAt int, ok bool) {
-	if filmsource.BitsTronques(pay, b-1, 1) != 1 {
+	if source.BitsTronques(pay, b-1, 1) != 1 {
 		return 0, nil, 0, false
 	}
-	slot = int(filmsource.BitsTronques(pay, b, statIDBits))
+	slot = int(source.BitsTronques(pay, b, statIDBits))
 	if slot < statSlotMin || slot > statSlotMax || slot%2 != 0 {
 		return 0, nil, 0, false
 	}
-	if filmsource.BitsTronques(pay, b+statIDBits, statGenBits) != statGenValue {
+	if source.BitsTronques(pay, b+statIDBits, statGenBits) != statGenValue {
 		return 0, nil, 0, false
 	}
 	m := b + statIDBits + statGenBits
 	// Le moteur a DEUX formes de liste de composants (FUN_1406d7610) : creuse quand un
 	// enregistrement change au plus sept composants, DENSE au-dela — typiquement a la fin
 	// d'une manche, quand les 28 compteurs se figent et que les 28 suivants repartent.
-	if filmsource.BitsTronques(pay, m, 1) != 0 {
+	if source.BitsTronques(pay, m, 1) != 0 {
 		idx, ok = denseComponentList(pay, m+1)
 		return slot, idx, m + 1 + statDenseMaskBits, ok
 	}
-	n := int(filmsource.BitsTronques(pay, m+1, 3))
+	n := int(source.BitsTronques(pay, m+1, 3))
 	if n < 1 || n > statMaxCompPerRecord {
 		return 0, nil, 0, false
 	}
@@ -309,7 +309,7 @@ func matchRecordHeader(pay []byte, b int) (slot int, idx []int, compAt int, ok b
 	idx = make([]int, n)
 	prev := -1
 	for i := 0; i < n; i++ {
-		idx[i] = int(filmsource.BitsTronques(pay, m+4+statCompIndexBits*i, statCompIndexBits))
+		idx[i] = int(source.BitsTronques(pay, m+4+statCompIndexBits*i, statCompIndexBits))
 		if idx[i] >= statMaxComp || idx[i] <= prev {
 			return 0, nil, 0, false
 		}
@@ -325,7 +325,7 @@ func denseComponentList(pay []byte, p int) ([]int, bool) {
 	if p+statDenseMaskBits > len(pay)*8 {
 		return nil, false
 	}
-	mask := filmsource.BitsTronques(pay, p, statDenseMaskBits)
+	mask := source.BitsTronques(pay, p, statDenseMaskBits)
 	if mask == 0 || mask>>statMaxComp != 0 {
 		return nil, false
 	}
@@ -351,8 +351,8 @@ func denseComponentList(pay []byte, p int) ([]int, bool) {
 // Les composants suivants ne sont pas re-contraints — leurs largeurs sont chainees, une lecture
 // qui derape s'arrete d'elle-meme.
 func decodeComponents(pay []byte, at int, idx []int) (map[int]StatValue, int) {
-	h1 := int(filmsource.BitsTronques(pay, at, statHdrBits))
-	h2 := int(filmsource.BitsTronques(pay, at+statHdrBits, statHdrBits))
+	h1 := int(source.BitsTronques(pay, at, statHdrBits))
+	h2 := int(source.BitsTronques(pay, at+statHdrBits, statHdrBits))
 	if h1 != h2 || h1 > statMaxRound {
 		return nil, 0
 	}
@@ -386,7 +386,7 @@ func decodeStatComponent(pay []byte, p int) (StatValue, int, bool) {
 	if q+2 > len(pay)*8 {
 		return StatValue{}, 0, false
 	}
-	flags := [2]uint64{filmsource.BitsTronques(pay, q, 1), filmsource.BitsTronques(pay, q+1, 1)}
+	flags := [2]uint64{source.BitsTronques(pay, q, 1), source.BitsTronques(pay, q+1, 1)}
 	q += 2
 	// LES DEUX CANAUX CONDITIONNELS SONT DESORMAIS GARDES (2026-08-31). Ils etaient lus pour
 	// avancer le curseur, puis JETES — 56 emplacements que rien n'avait jamais regardes (cf.
@@ -417,11 +417,11 @@ func readStatVarWidth(pay []byte, p int) (int64, int, bool) {
 	if p < 0 || p+2 > len(pay)*8 {
 		return 0, 0, false
 	}
-	w := 8 << uint(filmsource.BitsTronques(pay, p, 2))
+	w := 8 << uint(source.BitsTronques(pay, p, 2))
 	if w > 32 || p+2+w > len(pay)*8 {
 		return 0, 0, false
 	}
-	v := filmsource.BitsTronques(pay, p+2, w)
+	v := source.BitsTronques(pay, p+2, w)
 	iv := int64(v)
 	if w < 32 && v&(1<<uint(w-1)) != 0 {
 		iv = int64(v) - (1 << uint(w))

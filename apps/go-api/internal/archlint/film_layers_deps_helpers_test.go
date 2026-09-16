@@ -153,15 +153,6 @@ func indexDesAretesTolerees() map[string]areteToleree {
 	return out
 }
 
-// indexDesPaquetsHorsLieu indexe l allowlist de lieu par paquet.
-func indexDesPaquetsHorsLieu() map[string]paquetHorsLieuTolere {
-	out := make(map[string]paquetHorsLieuTolere, len(paquetsHorsLieuToleres))
-	for _, p := range paquetsHorsLieuToleres {
-		out[p.paquet] = p
-	}
-	return out
-}
-
 // clesTrieesFilm rend les cles d une map a cles chaines, triees.
 func clesTrieesFilm[V any](m map[string]V) []string {
 	out := make([]string, 0, len(m))

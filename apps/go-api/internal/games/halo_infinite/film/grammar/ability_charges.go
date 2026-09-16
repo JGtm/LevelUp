@@ -43,7 +43,7 @@ package grammar
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 // un global de paquet.
 
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // abilityEnergyName / abilityEnergyNameAlt : les deux étiquettes de registre d'i56 — les
 // films portent l'une OU l'autre (avec ou sans le suffixe `-component`, même dualité que
@@ -120,7 +120,7 @@ type AbilityChargeStats struct {
 // contexte pour elle seule, puis appelle [ScanAbilityCharges]. La cuisson, elle, passe le
 // contexte qu'elle partage entre tous ses balayages.
 func ScanFilmAbilityCharges(dir string) ([]AbilityCharge, AbilityChargeStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, AbilityChargeStats{}, err
 	}

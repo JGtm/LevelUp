@@ -26,8 +26,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // miniBobineV40 : la bobine de version 40, relative a CE paquet.
@@ -43,7 +43,7 @@ const miniBobineV40NomsPlancher = 20
 // TestScanDeathsSuitLaVersionDuFilm — LE GARDE. Sans variable d environnement et sans fixture hors
 // depot : il tourne en CI.
 func TestScanDeathsSuitLaVersionDuFilm(t *testing.T) {
-	film, err := filmsource.LoadDir(miniBobineV40, nil)
+	film, err := source.LoadDir(miniBobineV40, nil)
 	if err != nil {
 		t.Fatalf("bobine v40 illisible sous %s : %v — elle est VERSIONNEE, son absence est une "+
 			"erreur, pas une raison d ignorer le test", miniBobineV40, err)

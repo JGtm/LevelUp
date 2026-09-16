@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // packetHeaderSize est la taille de l'en-tête d'un paquet de chunk film :
@@ -39,25 +39,25 @@ func (p FilmPacket) Payload(chunk []byte) []byte { return chunk[p.Start : p.Star
 // sont stockés en zlib brut ; certains dumps sont déjà décompressés).
 //
 // ENVELOPPE D2, HORS PRODUCTION (lot 1 de PLAN_CUISSON_PERF, 2026-09-02). Le chemin de cuisson
-// charge le film UNE fois par `filmsource.LoadDir` et lit ses chunks par [FilmChunkAt] : plus
+// charge le film UNE fois par `source.LoadDir` et lit ses chunks par [FilmChunkAt] : plus
 // aucune relecture disque par balayage. Cette fonction ne survit que pour les LECTEURS D'UN SEUL
 // CHUNK — instruments de recherche et tests de `filmdec`, `replay`, `objectives` — et pour
 // `FindPackets`, qui balaye une RACINE de films et n'a pas de film a charger. L'inflate lui-meme
-// vit desormais dans `filmsource` : un seul decompresseur dans le depot.
+// vit desormais dans `source` : un seul decompresseur dans le depot.
 func ReadFilmChunk(dir string, chunk int) ([]byte, error) {
 	path := filepath.Join(dir, fmt.Sprintf("chunk_%02d.bin", chunk))
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	return filmsource.Inflate(raw), nil
+	return source.Inflate(raw), nil
 }
 
 // WalkPackets énumère les paquets d'un chunk décompressé, dans la forme [FilmPacket].
 //
 // IL N Y A PLUS QU UN MARCHEUR DE PAQUETS (lot 2.4.2). Celui-ci recopiait l'en-tête de seize
 // octets — `[u16 type][2 o][u32 taille][u64 horodatage]` — avec ses PROPRES conditions d'arrêt,
-// à côté de celui de `filmsource` ; il n'est plus qu'une TRADUCTION de [filmsource.Paquets]
+// à côté de celui de `source` ; il n'est plus qu'une TRADUCTION de [source.Paquets]
 // dans la forme de ce paquet. Les bornes `Start` / `Size` se reconstituent en suivant l'offset :
 // le découpage est contigu par construction (chaque paquet commence là où le précédent finit).
 //
@@ -65,12 +65,12 @@ func ReadFilmChunk(dir string, chunk int) ([]byte, error) {
 // la chaîne de cuisson, elle, charge le film une fois et lit [FilmChunkAt].
 //
 // LES DEUX GRAMMAIRES SONT OPPOSÉES SUR DES CHUNKS RÉELS par
-// `filmsource.TestDeuxMarcheursDePaquetsSAccordent` : le marcheur de `filmsource` ÉMET le
+// `source.TestDeuxMarcheursDePaquetsSAccordent` : le marcheur de `source` ÉMET le
 // terminateur CHUNK_END puis s'arrête (règle 3 de D3 révisée) et refuse un en-tête dégénéré
 // (règle 4), là où celui-ci continuait — deux règles que la mesure sur 1 378 films a établies,
 // et dont le témoin vérifie qu'elles ne changent aucun paquet d'un chunk de données.
 func WalkPackets(chunk []byte) []FilmPacket {
-	pks := filmsource.Paquets(chunk, 0)
+	pks := source.Paquets(chunk, 0)
 	out := make([]FilmPacket, 0, len(pks))
 	off := 0
 	for i := range pks {

@@ -50,8 +50,8 @@ import (
 	"errors"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/observability"
 )
 
@@ -124,7 +124,7 @@ func (t FilmPlayerTable) Lue() bool {
 // ELLE NE REND JAMAIS D'ERREUR, et ce n'est pas une erreur avalee : chaque cause d'echec est
 // TYPEE chez `grammar`, traduite ici en [FilmTableRefusal] NOMMEE, journalisee, et publiee dans
 // la couverture de l'artefact. Un refus se compte ; il ne se tait pas.
-func ScanFilmPlayerTable(film *filmsource.Film, matchID string) FilmPlayerTable {
+func ScanFilmPlayerTable(film *source.Film, matchID string) FilmPlayerTable {
 	chunk0, ok := grammar.FilmRegistryChunk(film)
 	if !ok {
 		return refusTable(matchID, "", FilmTableNoRegistry, nil)

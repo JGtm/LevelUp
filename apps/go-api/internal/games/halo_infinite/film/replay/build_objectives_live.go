@@ -42,9 +42,9 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // FlagInput est CE QUE L'APPELANT FOURNIT du drapeau, plus ce que `BuildFromFilm` y depose.
@@ -114,7 +114,7 @@ type FlagInput struct {
 // silence ici laisserait croire que les images-cles ne portaient rien.
 //
 // HORS LIGNE — appelee par BuildFromFilm.
-func decodeFilmCarrierMarks(film *filmsource.Film, matchID string, in FlagInput) grammar.CarrierMarkScan {
+func decodeFilmCarrierMarks(film *source.Film, matchID string, in FlagInput) grammar.CarrierMarkScan {
 	if !in.Scanned || !flagFilmSignalsOf(in).IsFlagFilm() {
 		return grammar.CarrierMarkScan{}
 	}

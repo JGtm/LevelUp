@@ -1,4 +1,4 @@
-package filmsource
+package source
 
 // film.go — LE FILM CHARGE : CHUNKS DECOMPRESSES UNE FOIS, PAQUETS DECOUPES UNE FOIS.
 //
@@ -111,7 +111,7 @@ func (f *Film) AllPackets() []Packet { return f.all }
 func (f *Film) Meta() []ChunkMeta { return f.meta }
 
 // errNoChunk : une source sans chunk n'est pas un film.
-var errNoChunk = errors.New("filmsource: aucun chunk dans la source")
+var errNoChunk = errors.New("source: aucun chunk dans la source")
 
 // Load : decompresse tous les chunks de `src` et decoupe leurs paquets, une seule lecture de la
 // source. `meta` est POSITIONNEL (`meta[i]` decrit le chunk `i` de `src`) et LICITE A NIL
@@ -121,7 +121,7 @@ var errNoChunk = errors.New("filmsource: aucun chunk dans la source")
 // [LoadDir], qui construit cet alignement lui-meme depuis les noms de fichiers.
 func Load(src Source, meta []ChunkMeta) (*Film, error) {
 	if src == nil {
-		return nil, errors.New("filmsource: source nulle")
+		return nil, errors.New("source: source nulle")
 	}
 	n := src.NumChunks()
 	if n <= 0 {
@@ -131,7 +131,7 @@ func Load(src Source, meta []ChunkMeta) (*Film, error) {
 	for ch := 0; ch < n; ch++ {
 		raw, err := src.Chunk(ch)
 		if err != nil {
-			return nil, fmt.Errorf("filmsource: chunk %d: %w", ch, err)
+			return nil, fmt.Errorf("source: chunk %d: %w", ch, err)
 		}
 		d := inflate(raw)
 		f.chunks[ch] = d
@@ -202,12 +202,12 @@ func alignMetaOnNumbers(nums []int, meta []ChunkMeta) []ChunkMeta {
 func Decompresser(raw []byte) ([]byte, error) {
 	zr, err := zlib.NewReader(bytes.NewReader(raw))
 	if err != nil {
-		return nil, fmt.Errorf("filmsource: en-tete zlib: %w", err)
+		return nil, fmt.Errorf("source: en-tete zlib: %w", err)
 	}
 	defer func() { _ = zr.Close() }()
 	out, err := io.ReadAll(zr)
 	if err != nil {
-		return nil, fmt.Errorf("filmsource: decompression zlib: %w", err)
+		return nil, fmt.Errorf("source: decompression zlib: %w", err)
 	}
 	return out, nil
 }

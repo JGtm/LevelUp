@@ -41,7 +41,7 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const vehicleCreationFilmEnv = "VEHICLE_CREATION_FILM"
@@ -75,7 +75,7 @@ func TestVehicleCreationIdentity(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", vehicleCreationFilmEnv)
 	}
 
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("film illisible : %v", err)
 	}

@@ -49,7 +49,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 var updateGolden = flag.Bool("update", false, "reecrire les fichiers golden de testdata/")
@@ -94,7 +94,7 @@ func TestGoldenFilms(t *testing.T) {
 // decoderFixture : le decodage, plus le controle negatif qui exige de relire les paquets.
 func decoderFixture(t *testing.T, dir string) (*Result, negControle) {
 	t.Helper()
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Skipf("film absent : %v", err)
 	}
@@ -117,7 +117,7 @@ type negControle struct {
 	candidats int
 }
 
-func controleNegatif(t *testing.T, src *filmsource.Film, nPlay int) negControle {
+func controleNegatif(t *testing.T, src *source.Film, nPlay int) negControle {
 	t.Helper()
 	f, err := loadFilm(src)
 	if err != nil {

@@ -42,7 +42,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // cheminGoldenChaines : l oracle, relatif au paquet.
@@ -114,7 +114,7 @@ func premiereDifference(attendu, obtenu string) string {
 // lignesDeBobine : une ligne par paquet type-0 a events.
 func lignesDeBobine(t *testing.T, dir string) []string {
 	t.Helper()
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("%s : %v", dir, err)
 	}
@@ -143,7 +143,7 @@ func chaineDepuis(pl []byte, depart int, g15 bool) string {
 	var b strings.Builder
 	for n := 0; n < 4096; n++ {
 		debut := r.pos()
-		code := int(filmsource.BitsAt(pl, debut+1, 7))
+		code := int(source.BitsAt(pl, debut+1, 7))
 		fin, ok := evStep(r, g15)
 		if fin {
 			fmt.Fprintf(&b, "|FIN@%d", debut)

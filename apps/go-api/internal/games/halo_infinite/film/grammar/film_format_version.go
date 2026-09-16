@@ -75,7 +75,7 @@ package grammar
 import (
 	"strconv"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // FilmFormatVersionUnknown : la valeur rendue quand l en-tete est trop court pour la porter.
@@ -95,7 +95,7 @@ func FilmFormatVersionFromHeader(chunk0 []byte) (int, bool) {
 	if len(chunk0) < filmFormatVersionOffset+4 {
 		return FilmFormatVersionUnknown, false
 	}
-	return int(filmsource.U32LE(chunk0, filmFormatVersionOffset)), true
+	return int(source.U32LE(chunk0, filmFormatVersionOffset)), true
 }
 
 // FilmFormatVersion rend la version de format d un film DEJA CHARGE, lue dans son registre.
@@ -105,7 +105,7 @@ func FilmFormatVersionFromHeader(chunk0 []byte) (int, bool) {
 //
 // ELLE NE DEPEND PAS DE LA SECTION D IDENTIFICATION : c est tout l interet de cette lecture.
 // Les cinq films du cache qui n en portent pas rendent quand meme leur version (20).
-func FilmFormatVersion(f *filmsource.Film) (int, bool) {
+func FilmFormatVersion(f *source.Film) (int, bool) {
 	reg, ok := FilmRegistryChunk(f)
 	if !ok {
 		return FilmFormatVersionUnknown, false
@@ -173,7 +173,7 @@ func (r ResolutionMPP) Relue() bool { return r.Widths.Valid() }
 // ELLE PASSE PAR [MPPWidthsForFormat] et non par la table brute : c'est cette fonction qui porte
 // la frontière entre les deux « pas de profil », et la dédoubler ici les ferait diverger au
 // premier format ajouté — le défaut même que ce type existe pour fermer.
-func MPPWidthsForFilm(f *filmsource.Film) ResolutionMPP {
+func MPPWidthsForFilm(f *source.Film) ResolutionMPP {
 	format, ok := FilmFormatVersion(f)
 	if !ok {
 		return ResolutionMPP{FormatVersion: FilmFormatVersionUnknown, FormatInconnu: true}

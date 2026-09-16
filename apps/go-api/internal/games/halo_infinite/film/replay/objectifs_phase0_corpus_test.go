@@ -45,10 +45,10 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // objFilmEnv — la garde d'environnement de toute la phase 0.
@@ -135,10 +135,10 @@ var objCTFFilms = []string{"64e8adfa", "530820e5", "53ce4390"}
 const objBallFilm = "24dbb67d"
 
 // objDiskFilm est LE FILM CHARGE depuis le cache disque : chunks decompresses et paquets
-// decoupes une fois (`filmsource`), c'est ce que prennent les points d'entree d'`objectives`
+// decoupes une fois (`source`), c'est ce que prennent les points d'entree d'`objectives`
 // depuis l'item 1.5 de PLAN_CUISSON_PERF. Il valait `filmcache.Source` — la source BRUTE — tant
 // que ces points d'entree decompressaient eux-memes, a chaque appel.
-type objDiskFilm = filmsource.Film
+type objDiskFilm = source.Film
 
 // objChunkDir rend le repertoire des chunks d'un film.
 func objChunkDir(root, id string) string { return filepath.Join(root, "film_chunks", id) }

@@ -48,7 +48,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e193Verdict : ce que le kill-event 85 dit d un instant du kill-feed, confronte a ce que la
@@ -333,7 +333,7 @@ func e193MortAuVoisinage(kf *killFeed, i int, victime string) bool {
 // e193Mesurer : un film.
 func e193Mesurer(dir string) e193Ligne {
 	l := e193Ligne{Film: e193Nom(dir)}
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		l.Err = err
 		return l

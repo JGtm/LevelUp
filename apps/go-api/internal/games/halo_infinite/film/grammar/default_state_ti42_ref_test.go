@@ -20,7 +20,7 @@ package grammar
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // bobineTI42RefsTransmises / bobineTI42Creations : la mesure de la mini-bobine (2026-09-10).
@@ -33,7 +33,7 @@ const (
 const entityRefIndex5Max = 31
 
 func TestTI42_PointSixPublieSaReference(t *testing.T) {
-	film, err := filmsource.LoadDir(bobineFamilles, nil)
+	film, err := source.LoadDir(bobineFamilles, nil)
 	if err != nil {
 		t.Fatalf("mini-bobine illisible : %v", err)
 	}

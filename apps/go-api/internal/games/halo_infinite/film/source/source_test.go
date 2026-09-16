@@ -1,4 +1,4 @@
-package filmsource_test
+package source_test
 
 // source_test.go — LA SOURCE, ET LA CONFRONTATION AU FILM REEL.
 //
@@ -9,7 +9,7 @@ package filmsource_test
 //
 // DEPUIS LE LOT 2.4.2, CE TEST N IMPORTE PLUS `grammar` DU TOUT : il portait la comparaison des
 // deux marcheurs de paquets, et le second marcheur n existe plus — son ORACLE est recopie ici
-// ([refWalkPackets]). `filmsource` est une FEUILLE, et `internal/archlint/filmsource_leaf_test.go`
+// ([refWalkPackets]). `source` est une FEUILLE, et `internal/archlint/filmsource_leaf_test.go`
 // le verifie sur les fichiers non-test.
 
 import (
@@ -21,20 +21,20 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // miniBobine : la mini-bobine du film 000d5950 (Cliffhanger, Fiesta), fixture de `replay` avec sa
 // PROVENANCE.txt. Trois chunks : chunk_01 (735 paquets reels), chunk_02 (table d'identite) et
 // chunk_03, le chunk HIGHLIGHT du film, octet pour octet.
-const miniBobine = "../../games/halo_infinite/film/replay/testdata/minifilm_000d5950"
+const miniBobine = "../replay/testdata/minifilm_000d5950"
 
 // chunkHighlight : l'indice du chunk highlight DANS LA SOURCE. Les fichiers sont tries par nom et
 // la bobine n'a pas de chunk_00 : chunk_03.bin y est le troisieme, donc l'indice 2.
 const chunkHighlight = 2
 
 func TestMemoryChunksHorsBornes(t *testing.T) {
-	m := filmsource.MemoryChunks{{1, 2, 3}}
+	m := source.MemoryChunks{{1, 2, 3}}
 	if m.NumChunks() != 1 {
 		t.Fatalf("NumChunks = %d, attendu 1", m.NumChunks())
 	}
@@ -65,7 +65,7 @@ func TestDirSourceSansBorneHaute(t *testing.T) {
 		t.Fatalf("ecriture du manifeste : %v", err)
 	}
 
-	src, err := filmsource.DirSource(dir)
+	src, err := source.DirSource(dir)
 	if err != nil {
 		t.Fatalf("DirSource : %v", err)
 	}
@@ -84,10 +84,10 @@ func TestDirSourceSansBorneHaute(t *testing.T) {
 }
 
 func TestDirSourceRepertoireSansChunk(t *testing.T) {
-	if _, err := filmsource.DirSource(t.TempDir()); err == nil {
+	if _, err := source.DirSource(t.TempDir()); err == nil {
 		t.Fatal("repertoire sans chunk : erreur attendue")
 	}
-	if _, err := filmsource.LoadDir(filepath.Join(t.TempDir(), "absent"), nil); err == nil {
+	if _, err := source.LoadDir(filepath.Join(t.TempDir(), "absent"), nil); err == nil {
 		t.Fatal("repertoire absent : erreur attendue")
 	}
 }
@@ -98,7 +98,7 @@ func TestLoadDirMiniBobine(t *testing.T) {
 	if _, err := os.Stat(miniBobine); err != nil {
 		t.Fatalf("mini-bobine absente (%s) : %v", miniBobine, err)
 	}
-	film, err := filmsource.LoadDir(miniBobine, nil)
+	film, err := source.LoadDir(miniBobine, nil)
 	if err != nil {
 		t.Fatalf("LoadDir : %v", err)
 	}
@@ -146,15 +146,15 @@ func TestLoadDirMiniBobine(t *testing.T) {
 // « taille 0 » et « CHUNK_END » y sont le MEME paquet, en derniere position, mesure sur 1 378
 // films (cf. l en-tete de paquet). C est cette mesure que le temoin re-joue a chaque CI, sur
 // tous les chunks de la bobine.
-func refWalkPackets(chunk []byte) []filmsource.Packet {
-	var out []filmsource.Packet
+func refWalkPackets(chunk []byte) []source.Packet {
+	var out []source.Packet
 	off := 0
 	for off+16 <= len(chunk) {
 		taille := int(binary.LittleEndian.Uint32(chunk[off+4:]))
 		if taille < 0 || off+16+taille > len(chunk) {
 			break
 		}
-		out = append(out, filmsource.Packet{
+		out = append(out, source.Packet{
 			Index:   len(out),
 			Type:    int(binary.LittleEndian.Uint16(chunk[off:])),
 			TS:      binary.LittleEndian.Uint64(chunk[off+8:]),
@@ -168,7 +168,7 @@ func refWalkPackets(chunk []byte) []filmsource.Packet {
 // TestDeuxMarcheursDePaquetsSAccordent : sur TOUS les chunks de la mini-bobine, le marcheur
 // unique et l ancien second marcheur rendent le meme jeu de paquets.
 func TestDeuxMarcheursDePaquetsSAccordent(t *testing.T) {
-	film, err := filmsource.LoadDir(miniBobine, nil)
+	film, err := source.LoadDir(miniBobine, nil)
 	if err != nil {
 		t.Fatalf("LoadDir : %v", err)
 	}
@@ -185,7 +185,7 @@ func TestDeuxMarcheursDePaquetsSAccordent(t *testing.T) {
 }
 
 // comparerAuxDeuxMarcheurs oppose le decoupage obtenu a celui de [refWalkPackets].
-func comparerAuxDeuxMarcheurs(t *testing.T, chunk []byte, obtenus []filmsource.Packet) {
+func comparerAuxDeuxMarcheurs(t *testing.T, chunk []byte, obtenus []source.Packet) {
 	t.Helper()
 	attendus := refWalkPackets(chunk)
 	if len(attendus) == 0 {
@@ -234,7 +234,7 @@ func TestLoadDirIndexeParNumeroDeFichier(t *testing.T) {
 			t.Fatalf("ecriture de %s : %v", n, err)
 		}
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir : %v", err)
 	}
@@ -261,12 +261,12 @@ func TestLoadDirFusionneLeManifestePARNUMERO(t *testing.T) {
 		}
 	}
 	// Le manifeste decrit TROIS chunks ; le 01 n'est pas descendu.
-	manifeste := []filmsource.ChunkMeta{
+	manifeste := []source.ChunkMeta{
 		{Index: 0, ChunkType: 1, StartMS: 0},
 		{Index: 1, ChunkType: 2, StartMS: 1000},
 		{Index: 2, ChunkType: 2, StartMS: 2000},
 	}
-	film, err := filmsource.LoadDir(dir, manifeste)
+	film, err := source.LoadDir(dir, manifeste)
 	if err != nil {
 		t.Fatalf("LoadDir : %v", err)
 	}
@@ -274,10 +274,10 @@ func TestLoadDirFusionneLeManifestePARNUMERO(t *testing.T) {
 	if len(meta) != 2 {
 		t.Fatalf("Meta = %d entrees, attendu 2 (une par FICHIER, pas par entree de manifeste)", len(meta))
 	}
-	if meta[0] != (filmsource.ChunkMeta{Index: 0, ChunkType: 1, StartMS: 0}) {
+	if meta[0] != (source.ChunkMeta{Index: 0, ChunkType: 1, StartMS: 0}) {
 		t.Fatalf("Meta[0] = %+v, attendu l'entree de manifeste du chunk 0", meta[0])
 	}
-	if meta[1] != (filmsource.ChunkMeta{Index: 2, ChunkType: 2, StartMS: 2000}) {
+	if meta[1] != (source.ChunkMeta{Index: 2, ChunkType: 2, StartMS: 2000}) {
 		t.Fatalf("Meta[1] = %+v — un alignement PAR POSITION aurait rendu l'entree du chunk 1", meta[1])
 	}
 }
@@ -292,7 +292,7 @@ func TestLoadDirTriNumerique(t *testing.T) {
 			t.Fatalf("ecriture de %s : %v", n, err)
 		}
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir : %v", err)
 	}

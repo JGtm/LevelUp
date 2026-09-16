@@ -1,6 +1,6 @@
 package killsource
 
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // eventchain.go — LA LISTE D EVENEMENTS EN TETE DE PAQUET.
 //
@@ -103,14 +103,14 @@ var evFixed = map[int]int{5: 111, 6: 93, 7: 118, 9: 36, 12: 94, 21: 2, 34: 59, 3
 // curseurEv : LE CURSEUR MEFIANT DE LA CHAINE D EVENEMENTS.
 //
 // Il ne lit AUCUN octet lui-meme (lot 2.4.1, ADR 0034 D-2) : il porte le lecteur de bits
-// canonique de la couche source ([filmsource.Bits]) et lui ajoute la seule chose que le moteur
+// canonique de la couche source ([source.Bits]) et lui ajoute la seule chose que le moteur
 // n a pas — LE REFUS DE LIRE AU-DELA DU PAQUET. Le drapeau est indispensable : le lecteur du
 // moteur bourre a zero, et sans ce refus une chaine desynchronisee << lit >> des evenements
 // parfaitement valides apres la fin du paquet.
 //
 // LE DRAPEAU EST ICI, ET PAS DANS LE LECTEUR (arbitrage V15 (3)). La mefiance appartient au
 // MARCHEUR de chaine, pas au moteur : le lecteur canonique garde la semantique du jeu
-// (bourrage a zero), et le refus se teste par [filmsource.Bits.Remaining] AVANT chaque lecture.
+// (bourrage a zero), et le refus se teste par [source.Bits.Remaining] AVANT chaque lecture.
 // Aucune valeur lue ne change — `bp+n > len(pl)*8` et `Remaining() < n` sont la meme condition,
 // et l equivalence bit a bit est prouvee par `equivalence_lecteur_test.go`.
 //
@@ -118,13 +118,13 @@ var evFixed = map[int]int{5: 111, 6: 93, 7: 118, 9: 36, 12: 94, 21: 2, 34: 59, 3
 // avec sa propre boucle bit a bit (`bitsWide`) : c etait le DEUXIEME des sept lecteurs de bits
 // du depot.
 type curseurEv struct {
-	b    *filmsource.Bits
+	b    *source.Bits
 	over bool
 }
 
 // nouveauCurseurEv ouvre un curseur sur `pl`, positionne au bit `bp`.
 func nouveauCurseurEv(pl []byte, bp int) *curseurEv {
-	b := filmsource.NewBits(pl)
+	b := source.NewBits(pl)
 	b.SetBitPos(bp)
 	return &curseurEv{b: b}
 }
@@ -175,8 +175,8 @@ func (r *curseurEv) skip(n int) {
 // qui doive rester sans allocation : elle passe par les primitives de position de la couche
 // source, pas par un curseur construit par position essayee.
 func estAncreDeKillEvent(pl []byte, x int) bool {
-	return filmsource.BitAt(pl, x-1) == 1 &&
-		int(filmsource.BitsAt(pl, x, 7)) == killEventCode
+	return source.BitAt(pl, x-1) == 1 &&
+		int(source.BitsAt(pl, x, 7)) == killEventCode
 }
 
 // evPresence : la boucle de presence, 3 emplacements FIXES. Rend faux quand un emplacement

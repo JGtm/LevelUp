@@ -1,4 +1,4 @@
-package filmsource
+package source
 
 // source.go — L'ENTREE DU PAQUET : LES CHUNKS BRUTS, ET RIEN D'AUTRE.
 //
@@ -45,7 +45,7 @@ func (m MemoryChunks) NumChunks() int { return len(m) }
 // Chunk implemente [Source].
 func (m MemoryChunks) Chunk(i int) ([]byte, error) {
 	if i < 0 || i >= len(m) {
-		return nil, fmt.Errorf("filmsource: chunk %d hors bornes (%d chunks)", i, len(m))
+		return nil, fmt.Errorf("source: chunk %d hors bornes (%d chunks)", i, len(m))
 	}
 	return m[i], nil
 }
@@ -85,10 +85,10 @@ func DirSource(dir string) (Source, error) { return newDirSource(dir) }
 func newDirSource(dir string) (*dirSource, error) {
 	names, err := filepath.Glob(filepath.Join(dir, "chunk_*.bin"))
 	if err != nil {
-		return nil, fmt.Errorf("filmsource: lecture de %s: %w", dir, err)
+		return nil, fmt.Errorf("source: lecture de %s: %w", dir, err)
 	}
 	if len(names) == 0 {
-		return nil, fmt.Errorf("filmsource: aucun chunk_NN.bin dans %s", dir)
+		return nil, fmt.Errorf("source: aucun chunk_NN.bin dans %s", dir)
 	}
 	sort.Slice(names, func(i, j int) bool {
 		ni, nj := chunkNumberOf(names[i]), chunkNumberOf(names[j])
@@ -135,11 +135,11 @@ func (d *dirSource) NumChunks() int { return len(d.files) }
 // Chunk implemente [Source].
 func (d *dirSource) Chunk(i int) ([]byte, error) {
 	if i < 0 || i >= len(d.files) {
-		return nil, fmt.Errorf("filmsource: chunk %d hors bornes (%d chunks)", i, len(d.files))
+		return nil, fmt.Errorf("source: chunk %d hors bornes (%d chunks)", i, len(d.files))
 	}
 	b, err := os.ReadFile(d.files[i])
 	if err != nil {
-		return nil, fmt.Errorf("filmsource: %s: %w", d.files[i], err)
+		return nil, fmt.Errorf("source: %s: %w", d.files[i], err)
 	}
 	return b, nil
 }

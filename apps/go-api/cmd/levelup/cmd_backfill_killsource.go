@@ -60,7 +60,7 @@ package main
 //	   qu il avait apres un seul. `replaybuild` n en avait pas davantage — mais SON APPELANT
 //	   chargeait les faits de TOUT le lot dans une map vivante toute la passe (supprime).
 //	2. LE PIC EST UNE FONCTION DES OCTETS DU FILM, BORNEE ET MESUREE. Le pic vaut le film brut
-//	   (garde vivant, `FilmOf` l aliase) plus le film decompresse (`filmsource.Load`, un tampon
+//	   (garde vivant, `FilmOf` l aliase) plus le film decompresse (`source.Load`, un tampon
 //	   par chunk). Mesure du cache au 2026-08-24, 951 films : le PLUS GROS
 //	   du corpus est `1c4c63c2` a 88 Mio sur disque (69 chunks), la moyenne est a 24 Mio. Le
 //	   pire cas tient donc largement sous le gibioctet.

@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // phrasesParFilm : ce que le golden d un film doit dire, et pas seulement chiffrer.
@@ -202,7 +202,7 @@ func TestLigneDiscriminanteEstServieParLaMarche(t *testing.T) {
 	if dir == "" {
 		t.Skip("KILLSOURCE_FIXTURES non defini : l A/B sur film reel est ignore")
 	}
-	src, err := filmsource.LoadDir(filepath.Join(dir, "fccc61cd"), nil)
+	src, err := source.LoadDir(filepath.Join(dir, "fccc61cd"), nil)
 	if err != nil {
 		t.Skipf("film absent : %v", err)
 	}

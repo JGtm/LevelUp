@@ -46,7 +46,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e197Temps : le temps de l hybride qui a decide l appariement. Domaine FERME.
@@ -294,7 +294,7 @@ func e197TableauDetail(t *testing.T, lignes []e197Ligne) {
 // e197Mesurer : un film. La passe complete, puis la confrontation.
 func e197Mesurer(dir string) e197Ligne {
 	l := e197Ligne{Film: e193Nom(dir)}
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		l.Err = err
 		return l
@@ -571,7 +571,7 @@ func e197CoupleAssist(c *decodeCtx, k *Kill, r killEventRec) bool {
 // e197MesurerAssist : un film.
 func e197MesurerAssist(dir string) e197AssistLigne {
 	l := e197AssistLigne{Film: e193Nom(dir)}
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		l.Err = err
 		return l

@@ -41,8 +41,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -77,7 +77,7 @@ func TestVersionEvenements(t *testing.T) {
 		if id == "" {
 			continue
 		}
-		src, err := filmsource.LoadDir(filepath.Join(root, id), nil)
+		src, err := source.LoadDir(filepath.Join(root, id), nil)
 		if err != nil {
 			t.Errorf("%s : film illisible : %v", id, err)
 			continue
@@ -216,7 +216,7 @@ func TestVersionIndexJoueur(t *testing.T) {
 		if id == "" {
 			continue
 		}
-		src, err := filmsource.LoadDir(filepath.Join(root, id), nil)
+		src, err := source.LoadDir(filepath.Join(root, id), nil)
 		if err != nil {
 			t.Errorf("%s : film illisible : %v", id, err)
 			continue

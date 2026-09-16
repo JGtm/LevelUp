@@ -150,8 +150,8 @@ package killcollector
 // (c est ce que ce garde-rail exige quand l empreinte bouge sans la revision).
 // `killsource/` change de LECTEUR, pas de contenu : `evReader` — son type, sa boucle `bitsWide`
 // et les trois primitives de position du paquet `bitAt` / `bits32` / `bitsN` — est SUPPRIME au
-// profit du lecteur de bits canonique de la couche source (`filmsource.Bits`,
-// `filmsource.BitsAt`, `filmsource.BitAt`). Le REFUS de lire au-dela du paquet, sans lequel une
+// profit du lecteur de bits canonique de la couche source (`source.Bits`,
+// `source.BitsAt`, `source.BitAt`). Le REFUS de lire au-dela du paquet, sans lequel une
 // chaine desynchronisee lit des evenements valides apres la fin du paquet, reste entier : il
 // passe du lecteur au MARCHEUR (`killsource.curseurEv`), qui teste `Remaining()` avant chaque
 // lecture — `bp+n > len(pl)*8` et `Remaining() < n` sont la meme condition.
@@ -169,8 +169,8 @@ package killcollector
 // Aucun match deja decode n est candidat au backlog.
 // 2026-09-18, LOT 2.4.2 — REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE, ET LE CHOIX EST ECRIT.
 // `killsource/` cesse de garder une COPIE des chunks du film : le type `film` portait
-// `chunks [][]byte`, il porte desormais le `*filmsource.Film` lui-meme et lit par
-// `src.Chunk(i)`. MEME tranche d octets — `filmsource.Film.Chunk` rend la tranche interne, sans
+// `chunks [][]byte`, il porte desormais le `*source.Film` lui-meme et lit par
+// `src.Chunk(i)`. MEME tranche d octets — `source.Film.Chunk` rend la tranche interne, sans
 // copie, et c est deja elle que la copie recopiait. `walk.go` construit son lecteur par
 // `grammar.LecteurSur` (l ancien `NewBitReader`, renomme parce que le type ne lit plus, il
 // decore). Aucune largeur, aucun ordre de bits, aucune borne ne change : les lignes produites

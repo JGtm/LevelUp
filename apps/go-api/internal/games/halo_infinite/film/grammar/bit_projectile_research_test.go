@@ -39,7 +39,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -107,7 +107,7 @@ func bitProjMesureFilm(t *testing.T, parc string, cat *MapQuantCatalog, f bitPro
 	if err != nil {
 		t.Fatalf("bornes de %q : %v", f.carte, err)
 	}
-	film, err := filmsource.LoadDir(filepath.Join(parc, "data", "cache", "film_chunks", f.id), nil)
+	film, err := source.LoadDir(filepath.Join(parc, "data", "cache", "film_chunks", f.id), nil)
 	if err != nil {
 		t.Skipf("film %s absent : %v", f.id, err)
 	}
@@ -148,7 +148,7 @@ func bitProjMesureFilm(t *testing.T, parc string, cat *MapQuantCatalog, f bitPro
 // bitProjBalaye rejoue `scanProjectileRecords` avec une porte de largeur LIBRE, et garde les
 // bits. Aucune I/O : le film est déjà chargé.
 func bitProjBalaye(
-	film *filmsource.Film, band map[uint32]bool, w [3]uint, rng Vec3Range,
+	film *source.Film, band map[uint32]bool, w [3]uint, rng Vec3Range,
 	porte int, attendue uint64,
 ) []bpEchantillon {
 	posBits := porte + int(w[0]+w[1]+w[2]) + 2

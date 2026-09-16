@@ -37,7 +37,7 @@ package grammar
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // EquipmentChangeKind qualifie un changement d'équipement porté.
@@ -149,7 +149,7 @@ const equipmentFirstCounter = 5
 func ScanFilmEquipmentChanges(
 	dir string, bornAt func(slot uint32) (uint64, bool),
 ) ([]EquipmentChange, EquipmentChangeStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, EquipmentChangeStats{}, err
 	}

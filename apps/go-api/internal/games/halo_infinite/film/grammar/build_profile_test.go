@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // TestBuildProfileTable fige la table et son refus.
@@ -98,7 +98,7 @@ func TestBuildProfileMPPMutationRougit(t *testing.T) {
 	bal := ContexteParDefaut()
 
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_fb1a1a72")
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("bobine fb1a1a72 : %v", err)
 	}

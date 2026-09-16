@@ -34,7 +34,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e191cEchantillon : combien de records par (bobine, archetype) le journal detaille.
@@ -86,7 +86,7 @@ func TestE191cPremierBitFaux(t *testing.T) {
 func e191cJournalBobine(t *testing.T, court string, ti int) {
 	t.Helper()
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}

@@ -49,8 +49,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // paCorpus : les neuf films d'Assaut, le temoin Oddball, et trois temoins de modes a pied connu.
@@ -117,7 +117,7 @@ func paReleve(data []byte) paBilan {
 	b := paBilan{taille: len(data), couples: map[[2]byte]int{}, thParTag: map[int]int{}}
 	seen := map[int]bool{}
 	for pos := 0; pos+64+16 <= total; pos++ {
-		x := filmsource.U64LEAuBit(data, pos)
+		x := source.U64LEAuBit(data, pos)
 		if x <= minXUID || x >= maxXUID {
 			continue
 		}
@@ -129,8 +129,8 @@ func paReleve(data []byte) paBilan {
 		}
 		seen[pos] = true
 		b.xuids++
-		p1 := filmsource.OctetAuBit(data, pos+64)
-		p2 := filmsource.OctetAuBit(data, pos+64+8)
+		p1 := source.OctetAuBit(data, pos+64)
+		p2 := source.OctetAuBit(data, pos+64+8)
 		b.couples[[2]byte{p1, p2}]++
 		if (p1 == 0x2d || p1 == 0x25) && p2 == 0xc0 {
 			b.ancres++
@@ -150,13 +150,13 @@ func paBlocTh(data []byte, xstart, total int) (int, bool) {
 		win = total
 	}
 	for p := xstart; p <= win-32; p++ {
-		if filmsource.OctetAuBit(data, p) == 0 && filmsource.OctetAuBit(data, p+8) == 0 &&
-			filmsource.OctetAuBit(data, p+16) == 0x2e && filmsource.OctetAuBit(data, p+24) == 0xe0 {
+		if source.OctetAuBit(data, p) == 0 && source.OctetAuBit(data, p+8) == 0 &&
+			source.OctetAuBit(data, p+16) == 0x2e && source.OctetAuBit(data, p+24) == 0xe0 {
 			ebs := p - 60*8
 			if ebs < xstart {
 				return 0, false
 			}
-			return int(filmsource.OctetAuBit(data, ebs+47*8)), true
+			return int(source.OctetAuBit(data, ebs+47*8)), true
 		}
 	}
 	return 0, false
@@ -341,21 +341,21 @@ func paBlocs(data []byte) []paBloc {
 	total := len(data) * 8
 	var out []paBloc
 	for p := 60 * 8; p+32 <= total; p++ {
-		if filmsource.OctetAuBit(data, p) != 0 || filmsource.OctetAuBit(data, p+8) != 0 ||
-			filmsource.OctetAuBit(data, p+16) != 0x2e || filmsource.OctetAuBit(data, p+24) != 0xe0 {
+		if source.OctetAuBit(data, p) != 0 || source.OctetAuBit(data, p+8) != 0 ||
+			source.OctetAuBit(data, p+16) != 0x2e || source.OctetAuBit(data, p+24) != 0xe0 {
 			continue
 		}
 		ebs := p - 60*8
-		th := int(filmsource.OctetAuBit(data, ebs+47*8))
+		th := int(source.OctetAuBit(data, ebs+47*8))
 		if th == 0 || th > 250 {
 			continue
 		}
-		t := int(filmsource.OctetAuBit(data, ebs+48*8))<<24 | int(filmsource.OctetAuBit(data, ebs+49*8))<<16 |
-			int(filmsource.OctetAuBit(data, ebs+50*8))<<8 | int(filmsource.OctetAuBit(data, ebs+51*8))
+		t := int(source.OctetAuBit(data, ebs+48*8))<<24 | int(source.OctetAuBit(data, ebs+49*8))<<16 |
+			int(source.OctetAuBit(data, ebs+50*8))<<8 | int(source.OctetAuBit(data, ebs+51*8))
 		if t < 0 || t > 4*3600*1000 {
 			continue
 		}
-		out = append(out, paBloc{th: th, t: t, slot: int(filmsource.OctetAuBit(data, ebs+36*8))})
+		out = append(out, paBloc{th: th, t: t, slot: int(source.OctetAuBit(data, ebs+36*8))})
 	}
 	return out
 }
@@ -436,24 +436,24 @@ func paBlocsOctets(data []byte) []paBlocOctets {
 	total := len(data) * 8
 	var out []paBlocOctets
 	for p := 60 * 8; p+32 <= total; p++ {
-		if filmsource.OctetAuBit(data, p) != 0 || filmsource.OctetAuBit(data, p+8) != 0 ||
-			filmsource.OctetAuBit(data, p+16) != 0x2e || filmsource.OctetAuBit(data, p+24) != 0xe0 {
+		if source.OctetAuBit(data, p) != 0 || source.OctetAuBit(data, p+8) != 0 ||
+			source.OctetAuBit(data, p+16) != 0x2e || source.OctetAuBit(data, p+24) != 0xe0 {
 			continue
 		}
 		ebs := p - 60*8
-		th := int(filmsource.OctetAuBit(data, ebs+47*8))
+		th := int(source.OctetAuBit(data, ebs+47*8))
 		if th == 0 || th > 250 {
 			continue
 		}
-		t := int(filmsource.OctetAuBit(data, ebs+48*8))<<24 | int(filmsource.OctetAuBit(data, ebs+49*8))<<16 |
-			int(filmsource.OctetAuBit(data, ebs+50*8))<<8 | int(filmsource.OctetAuBit(data, ebs+51*8))
+		t := int(source.OctetAuBit(data, ebs+48*8))<<24 | int(source.OctetAuBit(data, ebs+49*8))<<16 |
+			int(source.OctetAuBit(data, ebs+50*8))<<8 | int(source.OctetAuBit(data, ebs+51*8))
 		if t < 0 || t > 4*3600*1000 {
 			continue
 		}
 		var b paBlocOctets
 		b.t = t
 		for i := 0; i < 60; i++ {
-			b.oct[i] = filmsource.OctetAuBit(data, ebs+i*8)
+			b.oct[i] = source.OctetAuBit(data, ebs+i*8)
 		}
 		out = append(out, b)
 	}

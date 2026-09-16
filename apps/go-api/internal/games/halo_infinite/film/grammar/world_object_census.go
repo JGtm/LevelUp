@@ -3,7 +3,7 @@ package grammar
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // world_object_census.go — LE RECENSEMENT des OBJETS DU MONDE aux images-clés, et la BANDE de
@@ -68,7 +68,7 @@ func (k WorldObjectKeyframes) LastTimeUS() uint64 {
 // ScanFilmWorldObjectKeyframes est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanWorldObjectKeyframes].
 func ScanFilmWorldObjectKeyframes(dir string, ti int) WorldObjectKeyframes {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return WorldObjectKeyframes{SeenUS: map[EquipmentLifeKey][]uint64{}}
 	}
@@ -76,7 +76,7 @@ func ScanFilmWorldObjectKeyframes(dir string, ti int) WorldObjectKeyframes {
 }
 
 // ScanWorldObjectKeyframes marche les images-clés d'un film DEJA CHARGE.
-func ScanWorldObjectKeyframes(film *filmsource.Film, ti int) WorldObjectKeyframes {
+func ScanWorldObjectKeyframes(film *source.Film, ti int) WorldObjectKeyframes {
 	out := WorldObjectKeyframes{SeenUS: map[EquipmentLifeKey][]uint64{}}
 	seen, others := map[uint32]bool{}, map[uint32]bool{}
 	for _, c := range FilmChunkNumbers(film) {

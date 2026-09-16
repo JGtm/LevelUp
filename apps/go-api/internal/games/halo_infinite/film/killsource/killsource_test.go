@@ -18,8 +18,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -346,7 +346,7 @@ func TestReferenceFilms(t *testing.T) {
 
 func checkFilm(t *testing.T, dir string, ref reference) {
 	t.Helper()
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Skipf("film absent : %v", err)
 	}

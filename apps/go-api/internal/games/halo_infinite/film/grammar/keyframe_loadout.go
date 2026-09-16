@@ -3,7 +3,7 @@ package grammar
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // keyframe_loadout.go — ARMES PORTÉES par chaque biped, lues dans les keyframes type-2.
@@ -70,7 +70,7 @@ func ScanFilmKeyframeLoadouts(dir string, known map[uint32]bool) ([]KeyframeLoad
 	if len(known) == 0 {
 		return nil, nil // catalogue vide : rien a chercher, et rien a charger
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func ScanFilmKeyframeLoadouts(dir string, known map[uint32]bool) ([]KeyframeLoad
 }
 
 // ScanKeyframeLoadouts décode les armes portées aux images-clés d'un film DEJA CHARGE.
-func ScanKeyframeLoadouts(film *filmsource.Film, known map[uint32]bool) ([]KeyframeLoadout, error) {
+func ScanKeyframeLoadouts(film *source.Film, known map[uint32]bool) ([]KeyframeLoadout, error) {
 	if len(known) == 0 {
 		return nil, nil
 	}

@@ -41,7 +41,7 @@ package killsource
 // exclure ce regime du scan, seulement refuser de melanger les deux dans une mesure.
 
 // deadStateBits : longueur du gabarit balaye, en bits.
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 const deadStateBits = 58
 
@@ -62,10 +62,10 @@ func scanPayload(pl []byte, nParticipants int) []candidate {
 	var out []candidate
 	nb := len(pl) * 8
 	for p := 0; p+deadStateBits <= nb; p++ {
-		if filmsource.BitAt(pl, p) == 0 || filmsource.BitAt(pl, p+1) == 0 { // Mort + gate du tag
+		if source.BitAt(pl, p) == 0 || source.BitAt(pl, p+1) == 0 { // Mort + gate du tag
 			continue
 		}
-		tag := uint32(filmsource.BitsAt(pl, p+2, 32))
+		tag := uint32(source.BitsAt(pl, p+2, 32))
 		if !isCatalogued(tag) { // T4
 			continue
 		}
@@ -84,21 +84,21 @@ func scanPayload(pl []byte, nParticipants int) []candidate {
 // divergerait en silence, et la sonde cesserait de mesurer ce qu elle croit mesurer.
 func readIndices(pl []byte, p, nParticipants int) (candidate, bool) {
 	q := p + 42
-	if filmsource.BitAt(pl, q) != 0 { // gate victime
+	if source.BitAt(pl, q) != 0 { // gate victime
 		return candidate{}, false
 	}
-	vic := int(filmsource.BitsAt(pl, q+1, 5))
+	vic := int(source.BitsAt(pl, q+1, 5))
 	if vic >= nParticipants { // T1
 		return candidate{}, false
 	}
-	if filmsource.BitAt(pl, q+6) != 0 { // gate tueur
+	if source.BitAt(pl, q+6) != 0 { // gate tueur
 		return candidate{}, false
 	}
-	kil := int(filmsource.BitsAt(pl, q+7, 5))
+	kil := int(source.BitsAt(pl, q+7, 5))
 	if kil >= nParticipants { // T2
 		return candidate{}, false
 	}
-	cat := int(filmsource.BitsAt(pl, q+12, 4))
+	cat := int(source.BitsAt(pl, q+12, 4))
 	if cat > 9 { // T3
 		return candidate{}, false
 	}
@@ -185,14 +185,14 @@ func scanRelaxedPayload(pl []byte, nParticipants int) []candidate {
 	var out []candidate
 	nb := len(pl) * 8
 	for p := 0; p+deadStateBits <= nb; p++ {
-		if filmsource.BitAt(pl, p) == 0 || filmsource.BitAt(pl, p+1) == 0 {
+		if source.BitAt(pl, p) == 0 || source.BitAt(pl, p+1) == 0 {
 			continue
 		}
 		c, ok := readIndices(pl, p, nParticipants)
 		if !ok {
 			continue
 		}
-		c.tag = uint32(filmsource.BitsAt(pl, p+2, 32))
+		c.tag = uint32(source.BitsAt(pl, p+2, 32))
 		out = append(out, c)
 	}
 	return out

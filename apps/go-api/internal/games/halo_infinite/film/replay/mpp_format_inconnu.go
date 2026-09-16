@@ -43,8 +43,8 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/observability"
 )
 
@@ -68,14 +68,14 @@ func publierFormatSansProfil(format int) {
 // decoupage MPP se fait a UN SEUL endroit, celui que les deux sites de cuisson employent. Une
 // seconde lecture de la meme valeur ici aurait diverge au premier format ajoute — c est
 // exactement ce qui etait arrive entre ce fichier et `gwWidthsForFilm`.
-func formatSansProfil(film *filmsource.Film) (int, bool) {
+func formatSansProfil(film *source.Film) (int, bool) {
 	res := grammar.MPPWidthsForFilm(film)
 	return res.FormatVersion, res.FormatInconnu
 }
 
 // avertirFormatSansProfil emet L UNIQUE avertissement par film. Appele par [BuildFromFilm],
 // avant tout balayage, pour que la ligne precede les consequences qu elle explique.
-func avertirFormatSansProfil(film *filmsource.Film, matchID string) {
+func avertirFormatSansProfil(film *source.Film, matchID string) {
 	format, sansProfil := formatSansProfil(film)
 	if !sansProfil {
 		return

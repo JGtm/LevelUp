@@ -97,7 +97,7 @@ package grammar
 import (
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // ObjectiveRead est UNE valeur de champ d'objectif lue dans un paquet.
@@ -168,7 +168,7 @@ type ObjectiveScan struct {
 //
 // ScanFilmObjectives est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanObjectives].
 func ScanFilmObjectives(dir string) (ObjectiveScan, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return ObjectiveScan{}, err
 	}

@@ -1,6 +1,6 @@
 package grammar
 
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // grenade_events.go — LANCERS DE GRENADE, lus par balayage d'un marqueur dans les paquets
 // delta (type-0).
@@ -141,7 +141,7 @@ func (g GrenadeThrow) Rank() (int, bool) { return GrenadeRankOf(g.TypeID) }
 // ScanFilmGrenadeThrows est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanGrenadeThrows].
 func ScanFilmGrenadeThrows(dir string) ([]GrenadeThrow, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func ScanFilmGrenadeThrows(dir string) ([]GrenadeThrow, error) {
 }
 
 // ScanGrenadeThrows décode les lancers de grenade d'un film DEJA CHARGE.
-func ScanGrenadeThrows(film *filmsource.Film) ([]GrenadeThrow, error) {
+func ScanGrenadeThrows(film *source.Film) ([]GrenadeThrow, error) {
 	var out []GrenadeThrow
 	read := 0
 	for _, c := range FilmChunkNumbers(film) {
@@ -209,13 +209,13 @@ func scanGrenadeThrows(pay []byte) []GrenadeThrow {
 // EXPORTÉ pour les sondes qui balayent un payload à la recherche d'un motif (marqueurs de
 // mêlée, de tir, de lancer) sans dérouler la chaîne de composants.
 //
-// Lecture par mot ([filmsource.BitsAt]) des que la position de depart est positive et la
+// Lecture par mot ([source.BitsAt]) des que la position de depart est positive et la
 // largeur tient sur 64 bits : la primitive rend deja des zeros au-dela de la fin du tampon.
 // Un depart NEGATIF ou une largeur > 64 retombent sur la boucle d'origine, seule a porter
 // ces deux conventions.
 func PeekBits(d []byte, bp, n int) uint64 {
 	if bp >= 0 && n >= 0 && n <= 64 {
-		return filmsource.BitsAt(d, bp, uint(n))
+		return source.BitsAt(d, bp, uint(n))
 	}
 	var v uint64
 	for i := 0; i < n; i++ {

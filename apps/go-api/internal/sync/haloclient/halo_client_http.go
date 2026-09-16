@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/netguard"
 )
@@ -131,7 +131,7 @@ func (c *HaloAPIClient) fetchBlobOnce(ctx context.Context, blobURL string, reval
 // inflateBlob décompresse le corps zlib d'un blob (le CDN Azure des films Halo
 // Infinite renvoie du zlib brut).
 func inflateBlob(raw []byte) ([]byte, error) {
-	out, err := filmsource.Decompresser(raw)
+	out, err := source.Decompresser(raw)
 	if err != nil {
 		return nil, fmt.Errorf("downloadBlob: %w", err)
 	}

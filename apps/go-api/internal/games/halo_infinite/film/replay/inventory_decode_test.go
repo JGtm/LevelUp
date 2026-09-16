@@ -15,7 +15,7 @@ import (
 // compteur, réclamé par l'audit pour que la fraction se voie.
 //
 // DEPUIS LE LOT 1 (PLAN_CUISSON_PERF item 1.2, 2026-09-02), le film est chargé UNE fois par
-// `filmsource.LoadDir` avant tout balayage, et un chunk illisible fait ÉCHOUER CE CHARGEMENT.
+// `source.LoadDir` avant tout balayage, et un chunk illisible fait ÉCHOUER CE CHARGEMENT.
 // La dégradation silencieuse devient donc un REFUS EXPLICITE : la cuisson ne produit plus un
 // artefact amputé qui se lirait comme un film pauvre, elle s'arrête et le dit. `ChunksUnread`
 // reste publié (il entre dans l'empreinte de l'étape `inventory.stats`) et vaut désormais zéro
@@ -24,7 +24,7 @@ import (
 // `TestMiniFilmDecodesTheKeyframes` (minifilm_test.go) couvre le cas nominal.
 
 // filmDirWithBadChunk construit un répertoire de film minimal portant UN chunk illisible :
-// `chunk_%02d.bin` est un RÉPERTOIRE, pas un fichier. Le glob de `filmsource.DirSource` le voit
+// `chunk_%02d.bin` est un RÉPERTOIRE, pas un fichier. Le glob de `source.DirSource` le voit
 // (c'est bien un `chunk_NN.bin`), mais `os.ReadFile` échoue dessus sur toutes les plateformes —
 // c'est le geste le plus portable pour simuler une lecture disque qui échoue sans dépendre de
 // permissions.

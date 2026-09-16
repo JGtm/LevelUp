@@ -40,8 +40,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // vehicleTypeIndex : l'archetype VEHICULE du registre film.
@@ -80,7 +80,7 @@ func TestV10DeadStateVehicules(t *testing.T) {
 }
 
 func v10RunFilm(t *testing.T, dir, short8 string) {
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("%s : chunks illisibles : %v", short8, err)
 	}

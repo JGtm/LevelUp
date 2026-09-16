@@ -52,7 +52,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // EquipmentPlacement est UNE pose d'objet d'équipement, telle que le film la porte.
@@ -130,7 +130,7 @@ type EquipmentPlacementStats struct {
 func ScanFilmEquipmentPlacements(
 	dir string, wr *Vec3Range,
 ) ([]EquipmentPlacement, EquipmentPlacementStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, EquipmentPlacementStats{ByID: map[uint32]int{}}, err
 	}

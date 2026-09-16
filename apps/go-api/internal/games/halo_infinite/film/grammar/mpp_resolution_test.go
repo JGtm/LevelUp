@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // buildInconnuTemoin : le nom de build force dans le `chunk_00` du temoin. Il fait EXACTEMENT la
@@ -36,7 +36,7 @@ const buildInconnuTemoin = "HI_9_99_9"
 // 2026-09-15, `TestMPPResolutionCorpus` : 6 films au build hors table, tous a un format dont la
 // largeur est indeterminee ou inconnue). Le cas arrivera au prochain patch du jeu qui garde le
 // format 27, et c est precisement celui que la correction tient.
-func filmAuFormat27SansBuildConnu(t *testing.T) *filmsource.Film {
+func filmAuFormat27SansBuildConnu(t *testing.T) *source.Film {
 	t.Helper()
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_bcb6d393")
 	_, d0 := readChunk00(t, dir)
@@ -44,7 +44,7 @@ func filmAuFormat27SansBuildConnu(t *testing.T) *filmsource.Film {
 	if !remplacerBuild(patche, buildHI1120, buildInconnuTemoin) {
 		t.Fatalf("le nom de build %q est introuvable dans le chunk_00 du temoin", buildHI1120)
 	}
-	f, err := filmsource.Load(filmsource.MemoryChunks{patche}, nil)
+	f, err := source.Load(source.MemoryChunks{patche}, nil)
 	if err != nil {
 		t.Fatalf("chargement du temoin : %v", err)
 	}
@@ -109,7 +109,7 @@ func TestMPPWidthsForFilmNeConsultePasLeBuild(t *testing.T) {
 // compte sous `filmdec_unknown_format_0`, et sa largeur n est PAS posee.
 func TestMPPWidthsForFilmSurEntreeTronquee(t *testing.T) {
 	for n := 0; n < 8; n++ {
-		f, err := filmsource.Load(filmsource.MemoryChunks{make([]byte, n)}, nil)
+		f, err := source.Load(source.MemoryChunks{make([]byte, n)}, nil)
 		if err != nil {
 			t.Fatalf("chunk de %d octets : chargement %v", n, err)
 		}
@@ -130,7 +130,7 @@ func TestMPPWidthsForFilmSurLesBobines(t *testing.T) {
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
 		_, d0 := readChunk00(t, dir)
-		f, err := filmsource.Load(filmsource.MemoryChunks{d0}, nil)
+		f, err := source.Load(source.MemoryChunks{d0}, nil)
 		if err != nil {
 			t.Fatalf("%s : chargement %v", court, err)
 		}
@@ -147,7 +147,7 @@ func TestMPPWidthsForFilmSurLesBobines(t *testing.T) {
 }
 
 // mustRegistryChunk rend le chunk de registre d un film, ou echoue.
-func mustRegistryChunk(t *testing.T, f *filmsource.Film) []byte {
+func mustRegistryChunk(t *testing.T, f *source.Film) []byte {
 	t.Helper()
 	reg, ok := FilmRegistryChunk(f)
 	if !ok {

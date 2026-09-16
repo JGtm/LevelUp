@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // bobineMarcheDir : la bobine a paquets delta, chez `killsource`.
@@ -30,7 +30,7 @@ func bobineMarcheDir() string {
 // fait du corpus) ; la seconde est le TEMOIN NEGATIF du gate G2 du lot V13 — un instrument qui
 // fabrique des vehicules la ou le film n en declare pas est un instrument faux.
 func TestScanObjectDeathsSurBobineReelle(t *testing.T) {
-	film, err := filmsource.LoadDir(bobineMarcheDir(), nil)
+	film, err := source.LoadDir(bobineMarcheDir(), nil)
 	if err != nil {
 		t.Fatalf("bobine illisible : %v", err)
 	}
@@ -69,7 +69,7 @@ func TestScanObjectDeathsSurBobineReelle(t *testing.T) {
 // rend une liste VIDE et AUCUNE erreur — « rien a derouler » n est pas une panne.
 func TestScanObjectDeathsSansPaquetDelta(t *testing.T) {
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_e5adf7b2")
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("mini-bobine illisible : %v", err)
 	}
@@ -91,7 +91,7 @@ func TestScanObjectDeathsSansPaquetDelta(t *testing.T) {
 // un chunk coupe, un paquet dont l en-tete ment — doit rendre un resultat, jamais paniquer. Le
 // test coupe un payload REEL a toutes les longueurs d une grille, y compris zero et un octet.
 func TestMarcheSurPayloadTronque(t *testing.T) {
-	film, err := filmsource.LoadDir(bobineMarcheDir(), nil)
+	film, err := source.LoadDir(bobineMarcheDir(), nil)
 	if err != nil {
 		t.Fatalf("bobine illisible : %v", err)
 	}
@@ -215,7 +215,7 @@ func TestProfilDuCadreEstDomineOuDeclare(t *testing.T) {
 		{filepath.Join("..", "killsource", "testdata", "minibobine_e5adf7b2"), true,
 			"profil PLAT mesure le 2026-09-16 : les six largeurs localisent 0 paquet sur 54"},
 	} {
-		film, err := filmsource.LoadDir(cas.dir, nil)
+		film, err := source.LoadDir(cas.dir, nil)
 		if err != nil {
 			t.Fatalf("%s : bobine illisible : %v", filepath.Base(cas.dir), err)
 		}

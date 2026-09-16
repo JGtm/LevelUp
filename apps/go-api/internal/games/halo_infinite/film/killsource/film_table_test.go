@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // maxReplicationIndexKS : la borne du champ d indice du dead-state (5 bits). Nommee ici parce que
@@ -209,9 +209,9 @@ func TestRefusDeTableNommeEtRepliComplet(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			// Le film mute passe par la SOURCE, comme le film reel : `filmsource.MemoryChunks`
+			// Le film mute passe par la SOURCE, comme le film reel : `source.MemoryChunks`
 			// est l implantation en memoire de la porte aux octets (lot 2.4.2).
-			src, err := filmsource.Load(filmsource.MemoryChunks{c.chunk0}, nil)
+			src, err := source.Load(source.MemoryChunks{c.chunk0}, nil)
 			if err != nil {
 				t.Fatalf("chargement du chunk mute : %v", err)
 			}
@@ -340,9 +340,9 @@ func TestPorteDePublicationNeSOuvrePasSurUnResultatVide(t *testing.T) {
 	}
 }
 
-func chargerSourceKS(t *testing.T, dir string) *filmsource.Film {
+func chargerSourceKS(t *testing.T, dir string) *source.Film {
 	t.Helper()
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("bobine illisible sous %s : %v — elle est VERSIONNEE", dir, err)
 	}

@@ -1,9 +1,9 @@
 package replay
 
 import (
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // inventory_decode.go — L'INVENTAIRE COMPLET d'un biped à une image-clé : grenades portées
@@ -174,7 +174,7 @@ func ScanFilmKeyframeInventory(
 	if len(known) == 0 {
 		return nil, KeyframeInventoryStats{}, nil // catalogue vide : rien a chercher
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, KeyframeInventoryStats{}, err
 	}
@@ -183,7 +183,7 @@ func ScanFilmKeyframeInventory(
 
 // ScanKeyframeInventory décode l'inventaire des images-clés d'un film DEJA CHARGE.
 func ScanKeyframeInventory(
-	film *filmsource.Film, known map[uint32]bool, grenMax uint32, fb *fallback.Compteur,
+	film *source.Film, known map[uint32]bool, grenMax uint32, fb *fallback.Compteur,
 ) ([]KeyframeInventory, KeyframeInventoryStats, error) {
 	var st KeyframeInventoryStats
 	if len(known) == 0 {
