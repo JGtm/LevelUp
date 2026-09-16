@@ -8,9 +8,9 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/port"
 )
 
@@ -128,7 +128,7 @@ func (s *TeammatesService) buildSquadIntensityProfile(
 				if e.MatchID != mid {
 					continue
 				}
-				if e.EventType != analysis.EventTypeKill {
+				if e.EventType != highlightevent.EventTypeKill {
 					continue
 				}
 				if e.TimeMS < 0 {

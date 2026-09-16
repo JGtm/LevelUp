@@ -18,8 +18,8 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 const botRazzle = "343 Razzle [bot]"
@@ -115,7 +115,7 @@ func TestVictimsByKill_VictimeSansIdentiteEcartee(t *testing.T) {
 // rien d'autre. Un `VictimXUID` de chaîne vide donnerait au front un identifiant qui
 // ressemble à un joueur ; une équipe résolue sur la clé "" serait celle du premier venu.
 func TestDecorateVictim_BotNiXuidNiEquipe(t *testing.T) {
-	e := &domain.MatchHighlightEvent{EventType: analysis.EventTypeKill}
+	e := &domain.MatchHighlightEvent{EventType: highlightevent.EventTypeKill}
 	// Le scoreboard porte volontairement une entrée à xuid vide : si decorateVictim
 	// interrogeait la map avec "", il lui collerait cette équipe-là.
 	teams := map[string]int{"": 7, "B": 1}
@@ -138,8 +138,8 @@ func TestDecorateVictim_BotNiXuidNiEquipe(t *testing.T) {
 // xuid, pendant que le kill humain→humain garde son identité complète.
 func TestDecorateKillFeed_KillSurBotNommeAuFil(t *testing.T) {
 	events := []domain.MatchHighlightEvent{
-		{EventType: analysis.EventTypeKill, EventTimeMS: ptrI64k(1000), ActorXUID: ptrS("A")},
-		{EventType: analysis.EventTypeKill, EventTimeMS: ptrI64k(2000), ActorXUID: ptrS("A")},
+		{EventType: highlightevent.EventTypeKill, EventTimeMS: ptrI64k(1000), ActorXUID: ptrS("A")},
+		{EventType: highlightevent.EventTypeKill, EventTimeMS: ptrI64k(2000), ActorXUID: ptrS("A")},
 	}
 	victims := []domain.KVPairRaw{
 		{KillerXUID: "A", VictimXUID: "", VictimGT: botRazzle, TimeMS: 1000},

@@ -16,8 +16,8 @@ import (
 	"context"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
@@ -36,7 +36,7 @@ func decorateMedalEvents(
 ) {
 	names := make([]string, 0, 8)
 	for i := range events {
-		if events[i].EventType == analysis.EventTypeMedal && events[i].MedalName != "" {
+		if events[i].EventType == highlightevent.EventTypeMedal && events[i].MedalName != "" {
 			names = append(names, events[i].MedalName)
 		}
 	}
@@ -52,7 +52,7 @@ func decorateMedalEvents(
 	resolved := 0
 	for i := range events {
 		e := &events[i]
-		if e.EventType != analysis.EventTypeMedal || e.MedalName == "" {
+		if e.EventType != highlightevent.EventTypeMedal || e.MedalName == "" {
 			continue
 		}
 		m, ok := metas[e.MedalName]

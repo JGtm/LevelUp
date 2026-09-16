@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/halo_infinite/film/medalname"
 	"levelup/go-api/internal/persist"
 )
@@ -133,7 +134,7 @@ func buildBatchFromFetchedMatchCtx(
 			// legacy InsertKillerVictimPairsFromEvents pour comportement identique).
 			raw := make([]analysis.RawEvent, 0, len(events))
 			for _, ev := range events {
-				if ev.EventType != analysis.EventTypeKill && ev.EventType != analysis.EventTypeDeath {
+				if ev.EventType != highlightevent.EventTypeKill && ev.EventType != highlightevent.EventTypeDeath {
 					continue
 				}
 				raw = append(raw, analysis.RawEvent{
@@ -265,7 +266,7 @@ func buildBatchFromFetchedMatchCtx(
 // `sync` racine porte déjà des imports du même ordre (career.go →
 // halo_infinite/rankedplaylists). Aucune comparaison de slug n'entre ici.
 func highlightEventInserts(
-	ctx context.Context, matchID string, events []analysis.HighlightEvent,
+	ctx context.Context, matchID string, events []highlightevent.HighlightEvent,
 ) (inserts []persist.HighlightEventInsert, medaillesSansNom int) {
 	inserts = make([]persist.HighlightEventInsert, 0, len(events))
 	for _, ev := range events {
@@ -278,7 +279,7 @@ func highlightEventInserts(
 			TimeMS:    ev.TimeMS,
 			TypeHint:  &typeHint,
 		}
-		if ev.EventType == analysis.EventTypeMedal {
+		if ev.EventType == highlightevent.EventTypeMedal {
 			if raw, ok := rawJSONMedaille(ctx, ev); ok {
 				row.RawJSON = &raw
 			} else {
@@ -293,7 +294,7 @@ func highlightEventInserts(
 // rawJSONMedaille rend le document `raw_json` d'un event medal, ou false si son
 // couple est inconnu de la table mesurée. L'échec de sérialisation est loggé puis
 // dégradé en « sans identité » — jamais avalé, jamais fatal pour le match.
-func rawJSONMedaille(ctx context.Context, ev analysis.HighlightEvent) (string, bool) {
+func rawJSONMedaille(ctx context.Context, ev highlightevent.HighlightEvent) (string, bool) {
 	nom, connu := medalname.Lookup(ev.TypeHint, ev.MedalType)
 	if !connu {
 		return "", false

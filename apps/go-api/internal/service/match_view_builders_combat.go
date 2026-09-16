@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
@@ -234,7 +235,7 @@ func buildTugEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.TugOfW
 		events = append(events, analysis.TugOfWarEvent{
 			TimeMS:    kv.TimeMS,
 			IsAlly:    isAlly,
-			EventType: analysis.EventTypeKill,
+			EventType: highlightevent.EventTypeKill,
 		})
 	}
 	return events
@@ -264,7 +265,7 @@ func buildImpactInput(events []domain.EventRaw, scoreboard []domain.ScoreboardRa
 			continue
 		}
 		et := ev.EventType
-		if et != analysis.EventTypeKill && et != analysis.EventTypeDeath {
+		if et != highlightevent.EventTypeKill && et != highlightevent.EventTypeDeath {
 			continue
 		}
 		impactEvents = append(impactEvents, analysis.ImpactEvent{
@@ -336,7 +337,7 @@ func buildKDEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.KDEvent
 // (titres dont highlight_events ne porte que des médailles, ex. Halo 5).
 func eventsHaveKillOrDeath(events []domain.EventRaw) bool {
 	for _, e := range events {
-		if e.EventType == analysis.EventTypeKill || e.EventType == analysis.EventTypeDeath {
+		if e.EventType == highlightevent.EventTypeKill || e.EventType == highlightevent.EventTypeDeath {
 			return true
 		}
 	}

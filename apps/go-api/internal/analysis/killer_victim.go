@@ -12,7 +12,11 @@
 // Ce package est stateless (aucune DB, aucune dépendance platform/).
 package analysis
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/domain/highlightevent"
+)
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,9 +61,9 @@ func ComputeKillerVictimPairs(events []RawEvent, toleranceMS int64) []KVPair {
 	var kills, deaths []timedEvent
 	for _, e := range events {
 		switch e.EventType {
-		case EventTypeKill:
+		case highlightevent.EventTypeKill:
 			kills = append(kills, timedEvent{e.TimeMS, e})
-		case EventTypeDeath:
+		case highlightevent.EventTypeDeath:
 			deaths = append(deaths, timedEvent{e.TimeMS, e})
 		}
 	}

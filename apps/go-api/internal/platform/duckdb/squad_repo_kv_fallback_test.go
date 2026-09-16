@@ -13,7 +13,7 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 // recreateKVPairsWithTimeMS recrée shared.killer_victim_pairs + sa vue root-level
@@ -87,10 +87,10 @@ func TestSquadRepo_LoadImpactEvents_KVFallback_Synthesized(t *testing.T) {
 	deathByTime := map[int64]string{}
 	for _, e := range got {
 		switch e.EventType {
-		case analysis.EventTypeKill:
+		case highlightevent.EventTypeKill:
 			kills++
 			killByTime[e.TimeMS] = e.XUID
-		case analysis.EventTypeDeath:
+		case highlightevent.EventTypeDeath:
 			deaths++
 			deathByTime[e.TimeMS] = e.XUID
 		case "medal":
@@ -145,7 +145,7 @@ func TestSquadRepo_LoadImpactEvents_NativeKills_NoFallback(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("NO-OP Infinite attendu (1 event natif), obtenu %d : %#v", len(got), got)
 	}
-	if got[0].EventType != analysis.EventTypeKill {
+	if got[0].EventType != highlightevent.EventTypeKill {
 		t.Errorf("event = %q, want kill", got[0].EventType)
 	}
 }

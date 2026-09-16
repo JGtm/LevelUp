@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -17,10 +17,10 @@ func ptrIk(v int) *int       { return &v }
 // feedFixture : deux tueurs de deux équipes, trois kills et un event non-kill.
 func feedFixture() []domain.MatchHighlightEvent {
 	return []domain.MatchHighlightEvent{
-		{EventType: analysis.EventTypeKill, EventTimeMS: ptrI64k(1000), ActorXUID: ptrS("A")},
-		{EventType: analysis.EventTypeKill, EventTimeMS: ptrI64k(2000), ActorXUID: ptrS("B")},
-		{EventType: analysis.EventTypeKill, EventTimeMS: ptrI64k(3000), ActorXUID: ptrS("A")},
-		{EventType: analysis.EventTypeMedal, EventTimeMS: ptrI64k(4000), ActorXUID: ptrS("A")},
+		{EventType: highlightevent.EventTypeKill, EventTimeMS: ptrI64k(1000), ActorXUID: ptrS("A")},
+		{EventType: highlightevent.EventTypeKill, EventTimeMS: ptrI64k(2000), ActorXUID: ptrS("B")},
+		{EventType: highlightevent.EventTypeKill, EventTimeMS: ptrI64k(3000), ActorXUID: ptrS("A")},
+		{EventType: highlightevent.EventTypeMedal, EventTimeMS: ptrI64k(4000), ActorXUID: ptrS("A")},
 	}
 }
 
@@ -76,7 +76,7 @@ func TestDecorateKillFeed_PoseArmeEtEquipe(t *testing.T) {
 // cet instant précis.
 func TestDecorateKillFeed_AucuneArmeSurUnEventNonKill(t *testing.T) {
 	events := []domain.MatchHighlightEvent{
-		{EventType: analysis.EventTypeMedal, EventTimeMS: ptrI64k(1000), ActorXUID: ptrS("A")},
+		{EventType: highlightevent.EventTypeMedal, EventTimeMS: ptrI64k(1000), ActorXUID: ptrS("A")},
 	}
 	sources := []domain.KillSourceRaw{{XUID: "A", TimeMS: 1000, SourceTag: 0x11}}
 	adapter := &stubAssetURL{killIcons: map[uint32]canonical.KillSourceIcon{
@@ -199,7 +199,7 @@ func TestDecorateKillFeed_DegradationsGracieuses(t *testing.T) {
 // Valeurs du match réel 000d5950 : T0 = 18465 ms, premier kill 35306 → 16841.
 func TestCorrectMatchViewEventsT0_RecaleAussiLesTranchesDuKillFeed(t *testing.T) {
 	d := matchViewData{
-		events:      []domain.EventRaw{{EventType: analysis.EventTypeKill, TimeMS: ptrI64k(35306), XUID: ptrS("A")}},
+		events:      []domain.EventRaw{{EventType: highlightevent.EventTypeKill, TimeMS: ptrI64k(35306), XUID: ptrS("A")}},
 		killSources: []domain.KillSourceRaw{{XUID: "A", TimeMS: 35306, SourceTag: 0x11}},
 		killAssists: []domain.KillAssistRaw{{XUID: "A", TimeMS: 35306, KillerDamagePct: ptrIk(100)}},
 		kvPairs:     []domain.KVPairRaw{{KillerXUID: "A", VictimXUID: "B", VictimGT: "Bob", TimeMS: 35306}},
@@ -224,7 +224,7 @@ func TestCorrectMatchViewEventsT0_RecaleAussiLesTranchesDuKillFeed(t *testing.T)
 
 	// Preuve de bout en bout : après correction, la décoration apparie.
 	events := []domain.MatchHighlightEvent{
-		{EventType: analysis.EventTypeKill, EventTimeMS: ptrI64k(16841), ActorXUID: ptrS("A")},
+		{EventType: highlightevent.EventTypeKill, EventTimeMS: ptrI64k(16841), ActorXUID: ptrS("A")},
 	}
 	adapter := &stubAssetURL{killIcons: map[uint32]canonical.KillSourceIcon{
 		0x11: {WeaponKey: "hinf_br75", Label: "BR75", ImageURL: "/static/x/killfeed-00.png"},
@@ -285,12 +285,12 @@ func TestDecorateKillFeed_VictimeTroisEtats(t *testing.T) {
 // (le front l'écrit en toutes lettres) ; un kill n'est jamais touché.
 func TestDecorateMedalEvents_ResolutionEtRepli(t *testing.T) {
 	events := []domain.MatchHighlightEvent{
-		{EventType: analysis.EventTypeKill, EventTimeMS: ptrI64k(1000), ActorXUID: ptrS("A")},
-		{EventType: analysis.EventTypeMedal, EventTimeMS: ptrI64k(2000), ActorXUID: ptrS("A"),
+		{EventType: highlightevent.EventTypeKill, EventTimeMS: ptrI64k(1000), ActorXUID: ptrS("A")},
+		{EventType: highlightevent.EventTypeMedal, EventTimeMS: ptrI64k(2000), ActorXUID: ptrS("A"),
 			MedalName: "Odin's Raven"},
-		{EventType: analysis.EventTypeMedal, EventTimeMS: ptrI64k(3000), ActorXUID: ptrS("B"),
+		{EventType: highlightevent.EventTypeMedal, EventTimeMS: ptrI64k(3000), ActorXUID: ptrS("B"),
 			MedalName: "Inconnue Totale"},
-		{EventType: analysis.EventTypeMedal, EventTimeMS: ptrI64k(4000), ActorXUID: ptrS("B")},
+		{EventType: highlightevent.EventTypeMedal, EventTimeMS: ptrI64k(4000), ActorXUID: ptrS("B")},
 	}
 	repo := &mockMatchViewRepo{medalMetasByName: map[string]domain.MedalNameMeta{
 		"Odin's Raven": {MedalNameID: 1512363953, Label: "Corbeau d'Odin", Description: "Desc"},

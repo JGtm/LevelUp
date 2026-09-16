@@ -26,7 +26,7 @@ import (
 	"testing"
 	"unicode/utf16"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
@@ -97,7 +97,7 @@ func TestEventsDuFilmSuitLaVersionDeclaree(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("%d event(s) decode(s), 1 attendu — le chunk synthetique a change", len(events))
 	}
-	if events[0].EventType != analysis.EventTypeMedal {
+	if events[0].EventType != highlightevent.EventTypeMedal {
 		t.Fatalf("type d event %q, medaille attendue", events[0].EventType)
 	}
 	if events[0].Gamertag != gamertagTemoin {

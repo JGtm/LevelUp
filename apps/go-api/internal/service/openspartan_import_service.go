@@ -23,8 +23,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/openspartan"
 	"levelup/go-api/internal/openspartan/mapper"
@@ -400,7 +400,7 @@ func (s *OpenSpartanImportService) importHighlights(
 			continue
 		}
 		event := toAnalysisEvent(row)
-		n, err := sync.InsertHighlightEvents(ctx, sharedDB, row.MatchID, []analysis.HighlightEvent{event})
+		n, err := sync.InsertHighlightEvents(ctx, sharedDB, row.MatchID, []highlightevent.HighlightEvent{event})
 		if err != nil {
 			result.Errors = append(result.Errors, ImportError{MatchID: hl.MatchID, Stage: "insert_highlight", Err: err.Error()})
 			continue
