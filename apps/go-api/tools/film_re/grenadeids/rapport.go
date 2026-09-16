@@ -43,6 +43,25 @@ func EcrireReleve(w io.Writer, r *Releve, top int) {
 	ecrirePasseB(w, r)
 	ecrirePasseC(w, "passe C  apres le marqueur de production", r.Famille, top)
 	ecrirePasseC(w, "passe C  apres le marqueur du registre", r.FamilleRegistre, top)
+	ecrirePasseCParArchetype(w, r, top)
+}
+
+// ecrirePasseCParArchetype separe les DEUX populations que le marqueur confond (decouverte D2
+// (3.3r)) : sur le marqueur de production, `ti=41` (projectile) et `ti=9` (`managed-player`)
+// portent les MEMES vingt-quatre bits. Ce qui suit une naissance de `managed-player` n a rien a
+// faire dans la famille des grenades, et jusqu ici rien ne les separait.
+func ecrirePasseCParArchetype(w io.Writer, r *Releve, top int) {
+	if len(r.ParTypeIndex) == 0 && r.TiIndetermines == 0 {
+		return
+	}
+	fmt.Fprint(w, "   passe C  marqueurs par ARCHETYPE reel (sixieme bit d index lu a marqueur-1) :")
+	for _, ti := range clesTriees(r.ParTypeIndex) {
+		fmt.Fprintf(w, " ti=%d:%d", ti, r.ParTypeIndex[ti])
+	}
+	fmt.Fprintf(w, " indetermines=%d\n", r.TiIndetermines)
+	for _, ti := range clesTriees(r.FamilleParTi) {
+		ecrirePasseC(w, fmt.Sprintf("passe C  ti=%d SEUL", ti), r.FamilleParTi[ti], top)
+	}
 }
 
 // ecrirePasseA publie, decalage par decalage, les identifiants actuels reconnus.

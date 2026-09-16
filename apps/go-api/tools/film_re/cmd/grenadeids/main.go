@@ -41,6 +41,7 @@ func main() {
 	apparier := flag.Bool("apparier", false, "jouer la passe D : appariement aux decrements i22 (question 2)")
 	toleranceMS := flag.Int("tolerance-ms", 0, "tolerance temporelle, en millisecondes, autour de chaque intervalle de decrement")
 	temoinMS := flag.Int("temoin-ms", 0, "temoin de hasard : rejoue la passe D avec les instants decales de N millisecondes ; 0 = pas de temoin")
+	ti := flag.Int("ti", -1, "restreint la passe D aux naissances de cet archetype (41 = projectile, 9 = managed-player) ; -1 = toutes")
 	plafond := flag.Int("plafond-gib", plafondParDefautGiB, "plafond memoire du banc ; 0 desarme")
 	flag.Parse()
 
@@ -67,6 +68,7 @@ func main() {
 			apparier:    *apparier,
 			toleranceUS: uint64(*toleranceMS) * 1000,
 			temoinUS:    uint64(*temoinMS) * 1000,
+			ti:          *ti,
 		}); err != nil {
 			fmt.Fprintf(os.Stderr, "%s : %v\n", id, err)
 			echecs++
@@ -85,6 +87,7 @@ type reglages struct {
 	apparier    bool
 	toleranceUS uint64
 	temoinUS    uint64
+	ti          int
 }
 
 // traiter ouvre UN film, le mesure, publie, et le laisse partir avant le suivant.
@@ -103,12 +106,13 @@ func traiter(racine, id string, opt grenadeids.Options, rg reglages) error {
 	if err != nil {
 		return fmt.Errorf("inventaire i22 : %w", err)
 	}
-	app := grenadeids.Apparier(rel.Occurrences, dec, rg.toleranceUS)
+	occ := grenadeids.FiltrerParTi(rel.Occurrences, rg.ti)
+	app := grenadeids.Apparier(occ, dec, rg.toleranceUS)
 	grenadeids.EcrireAppariement(os.Stdout, st, app, rg.top)
 	if rg.temoinUS == 0 {
 		return nil
 	}
-	decales := grenadeids.Decaler(rel.Occurrences, rg.temoinUS)
+	decales := grenadeids.Decaler(occ, rg.temoinUS)
 	fmt.Printf("   passe D  TEMOIN DE HASARD (instants decales de %d us)\n", rg.temoinUS)
 	grenadeids.EcrireAppariement(os.Stdout, st,
 		grenadeids.Apparier(decales, dec, rg.toleranceUS), rg.top)

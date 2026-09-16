@@ -51,6 +51,11 @@ type Occurrence struct {
 	// blanche. Index est le champ de 5 bits a `BitPos+103`.
 	ID    uint32
 	Index int
+	// TypeIndex est l archetype REELLEMENT en train de naitre, les six bits du record (le bit
+	// de poids fort est juste avant le marqueur — cf. typeindex.go). TiIndetermine dit que ce
+	// bit etait hors du payload : seul `TypeIndex mod 32` est alors connu.
+	TypeIndex     int
+	TiIndetermine bool
 }
 
 // Candidat est une valeur observee derriere un marqueur, et ce qu on en sait.
@@ -84,6 +89,14 @@ type Releve struct {
 	// FamilleRegistre : le meme histogramme pour le marqueur derive du registre, quand il
 	// differe de celui de production.
 	FamilleRegistre []Candidat
+	// ParTypeIndex[ti] : combien de marqueurs appartiennent REELLEMENT a l archetype ti. Sur le
+	// marqueur de production, `41` et `9` s y separent (decouverte D2 (3.3r)).
+	ParTypeIndex map[int]int
+	// FamilleParTi[ti] : l histogramme de la passe C restreint aux naissances de ti — ce qui
+	// suit une naissance de `managed-player` n a rien a faire dans la famille des grenades.
+	FamilleParTi map[int][]Candidat
+	// TiIndetermines : marqueurs en tete de payload, dont le sixieme bit d index manque.
+	TiIndetermines int
 	// Occurrences : les marqueurs, conserves pour la passe D (appariement a i22).
 	Occurrences []Occurrence
 	// PaquetsDelta et OctetsDelta disent la matiere balayee.
@@ -103,9 +116,14 @@ func Balayer(b *Bobine, opt Options) *Releve {
 		Absolus:            map[uint32]int{},
 		DistanceAuMarqueur: map[uint32]map[int]int{},
 		HorsMarqueur:       map[uint32]int{},
+		ParTypeIndex:       map[int]int{},
+		FamilleParTi:       map[int][]Candidat{},
 	}
-	famille := map[uint32]*Candidat{}
-	familleReg := map[uint32]*Candidat{}
+	f := familles{
+		prod:     map[uint32]*Candidat{},
+		registre: map[uint32]*Candidat{},
+		parTi:    map[int]map[uint32]*Candidat{},
+	}
 	for _, c := range grammar.FilmChunkNumbers(b.Film()) {
 		chunk, pks, ok := grammar.FilmChunkAt(b.Film(), c)
 		if !ok {
@@ -118,26 +136,50 @@ func Balayer(b *Bobine, opt Options) *Releve {
 			pay := p.Payload(chunk)
 			r.PaquetsDelta++
 			r.OctetsDelta += len(pay)
-			balayerPayload(pay, b, c, p, r, opt, famille, familleReg)
+			balayerPayload(pay, b, c, p, r, opt, f)
 		}
 	}
-	r.Famille = trierFamille(famille)
-	r.FamilleRegistre = trierFamille(familleReg)
+	r.Famille = trierFamille(f.prod)
+	r.FamilleRegistre = trierFamille(f.registre)
+	for ti, compte := range f.parTi {
+		r.FamilleParTi[ti] = trierFamille(compte)
+	}
 	return r
 }
 
-// familles porte les deux histogrammes de la passe C, pour tenir la regle des cinq parametres.
+// familles porte les histogrammes de la passe C, pour tenir la regle des cinq parametres : les
+// deux par SOURCE de marqueur, et celui par ARCHETYPE reellement en train de naitre.
 type familles struct {
 	prod, registre map[uint32]*Candidat
+	parTi          map[int]map[uint32]*Candidat
+}
+
+// noterTypeIndex compte le marqueur sous l archetype qui nait VRAIMENT derriere lui, et
+// accumule l histogramme de la passe C restreint a cet archetype.
+//
+// Une occurrence dont le sixieme bit d index manque est comptee a part et n entre dans AUCUN
+// histogramme par archetype : elle vaudrait `ti mod 32`, c est-a-dire le mauvais archetype une
+// fois sur deux.
+func noterTypeIndex(r *Releve, f familles, o Occurrence) {
+	if o.TiIndetermine {
+		r.TiIndetermines++
+		return
+	}
+	r.ParTypeIndex[o.TypeIndex]++
+	compte := f.parTi[o.TypeIndex]
+	if compte == nil {
+		compte = map[uint32]*Candidat{}
+		f.parTi[o.TypeIndex] = compte
+	}
+	noterCandidat(compte, o)
 }
 
 // balayerPayload traite UN payload de paquet delta : une lecture de 32 bits par position, puis
 // les deux post-traitements (decalages autour de chaque marqueur, rattachement des occurrences
 // absolues).
 func balayerPayload(pay []byte, b *Bobine, chunk int, p grammar.FilmPacket, r *Releve,
-	opt Options, famille, familleReg map[uint32]*Candidat) {
-	marqueurs, absolus := lireLesDeuxSignaux(pay, b, chunk, p, r,
-		familles{prod: famille, registre: familleReg})
+	opt Options, f familles) {
+	marqueurs, absolus := lireLesDeuxSignaux(pay, b, chunk, p, r, f)
 	for _, m := range marqueurs {
 		compterDecalages(pay, m, opt.Fenetre, r)
 	}
@@ -167,11 +209,13 @@ func lireLesDeuxSignaux(pay []byte, b *Bobine, chunk int, p grammar.FilmPacket, 
 			o := occurrenceAu(pay, bp, chunk, p, MarqueurProduction)
 			r.Marqueurs[MarqueurProduction]++
 			noterCandidat(f.prod, o)
+			noterTypeIndex(r, f, o)
 			marqueurs = append(marqueurs, o)
 		case m == b.Marqueur:
 			o := occurrenceAu(pay, bp, chunk, p, MarqueurRegistre)
 			r.Marqueurs[MarqueurRegistre]++
 			noterCandidat(f.registre, o)
+			noterTypeIndex(r, f, o)
 			marqueurs = append(marqueurs, o)
 		}
 	}
@@ -188,14 +232,17 @@ type occAbsolue struct {
 
 // occurrenceAu lit, a la position d un marqueur, ce que la grammaire de production y lit.
 func occurrenceAu(pay []byte, bp, chunk int, p grammar.FilmPacket, src SourceMarqueur) Occurrence {
+	ti, indetermine := typeIndexDuRecord(pay, bp)
 	return Occurrence{
-		Source:      src,
-		Chunk:       chunk,
-		Paquet:      p.Index,
-		BitPos:      bp,
-		TimestampUS: p.TimestampUS,
-		ID:          uint32(grammar.PeekBits(pay, bp+24, 32)),
-		Index:       int(grammar.PeekBits(pay, bp+24+32+47, 5)),
+		Source:        src,
+		Chunk:         chunk,
+		Paquet:        p.Index,
+		BitPos:        bp,
+		TimestampUS:   p.TimestampUS,
+		ID:            uint32(grammar.PeekBits(pay, bp+24, 32)),
+		Index:         int(grammar.PeekBits(pay, bp+24+32+47, 5)),
+		TypeIndex:     ti,
+		TiIndetermine: indetermine,
 	}
 }
 
