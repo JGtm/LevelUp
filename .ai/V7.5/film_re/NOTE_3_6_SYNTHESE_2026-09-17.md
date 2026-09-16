@@ -66,6 +66,8 @@ fournissent les comptes de table et de golden ; la grammaire de ti=9 `i4` vient 
 
 ## 2. Table par archetype
 
+> **Perimee depuis la seconde passe du 2026-09-17 : voir §10.4.**
+
 Comptes colles des notes (`ecs_table.tsv` ; `keyframe_closure.golden`, 7 bobines du ratchet
 0.A.3 — `ti=40` n'y figure que sur 5).
 
@@ -80,6 +82,8 @@ Comptes colles des notes (`ecs_table.tsv` ; `keyframe_closure.golden`, 7 bobines
 | **ti=43** device | 41 (18 portes, 1 partiel, 22 non portes) ; **0/4 106**, bloquant `i19` | 22 (+1) | 22 (`i19`..`i40`) | **12** — `i19`..`i29` (11, note A) + `i2` (grammaire entiere, note B §13) ; + 8 recontroles `i11`..`i18` (concordance Go 8/8) | 6 (`i19`, `i20`, `i21` ; `i11`, `i12`, `i13` : 2 discordants, tranches, notes corrigees) | `i2 object-forward-and-up-dynamic-precision` : partiel de CONTEXTE (branche `param_5 > 1` tabulee a 2 ; branche `DAT_145121140 == 1` non modelisee dans `decodeObjectForwardAndUpDynPrec`) ; doc et table « mode C=1 NON porte » en retard sur le code | **`i30`..`i40` (11)** : ecrivains nommes, grammaires NON relevees — aucun lecteur n'a pris ce groupe (la note B a lu les indices 11..21 de la table, pas les rangs 11..21 de la liste `device-*`) |
 
 ## 3. Totaux
+
+> **Perimee depuis la seconde passe du 2026-09-17 : voir §10.5.**
 
 - **Population du lot 3.6** : **74 lignes** (66 non portees + 8 partielles) sur 246 composants
   des sept archetypes utiles (10 + 34 + 28 + 64 + 48 + 21 + 41).
@@ -264,6 +268,8 @@ Comptes colles des notes (`ecs_table.tsv` ; `keyframe_closure.golden`, 7 bobines
 
 ## 7. Ce qui reste non elucide, nomme
 
+> **Perimee depuis la seconde passe du 2026-09-17 : voir §10.6.**
+
 | Ou | Quoi | Ce qui le leve |
 |---|---|---|
 | ti=35 `i63` | corps d'etiquette 17 (2 largeurs), 20 (1 largeur), 18, 19, 21, 23, `>= 24` (`FUN_142eefd08`, `FUN_14319c6f8`, `FUN_142eefe1c`, `FUN_142ef0388` inline, `FUN_142eeff18`, `FUN_142ef004c`, `FUN_142ef0494`) | decompile sans film ; ou `ported = false` tant qu'un corpus ne les fait pas apparaitre |
@@ -355,3 +361,173 @@ Sept appels HTTP en lecture, aucune ecriture : `list_open_programs` (un seul pro
 `decompile_function 0x1406d84b4` ; `decompile_function 0x140c1dd44` ; `disassemble_function
 0x140c1dd44` (189 Mo : le serveur a deroule bien au-dela de la fonction, plage utile extraite par
 `grep` sur les adresses, fichier purge) ; `decompile_function 0x140c1e3f0` et `0x140c1e9d4`.
+
+---
+
+## 10. Addendum (seconde passe, 2026-09-17)
+
+> Section demandee sous le nom « 8. Addendum (seconde passe) » ; numerotee **10** parce que §8
+> (les deux discordances de la premiere passe) et §9 (journal Ghidra) existaient deja. Elle
+> REMPLACE, pour les comptes, les tables §2, §3 et §7 : au 2026-09-17 apres seconde passe, ce
+> sont les tables §10.4, §10.5 et §10.6 qui font foi.
+>
+> Instrument / Ghidra lecture seule (HTTP direct `127.0.0.1:8089`, programme `HaloInfinite.exe`,
+> base `0x140000000` : `list_open_programs`, `read_memory`, `get_function_by_address`,
+> `disassemble_function` ; aucune ecriture, aucun renommage, aucun commentaire, aucun tag).
+> Archetypes touches : `ti=9`, `ti=35`, `ti=43`. Groupe : synthese, seconde passe.
+> Aucun film decode, aucun test Go, aucun fichier de production touche.
+
+### 10.1 Les trois sources de la seconde passe
+
+| Note du lecteur | Perimetre du lecteur | Perimetre du verificateur | Points | Concordants | Discordants |
+|---|---|---|---|---|---|
+| `NOTE_3_6_TI43_GRAMMAIRES_C_2026-09-17.md` | `ti=43` `i30`..`i35` (6 grammaires) | `i30`, `i31`, `i32` (granularite composant) | 3 | 3 | 0 |
+| `NOTE_3_6_TI43_GRAMMAIRES_D_2026-09-17.md` | `ti=43` `i36`..`i40` (5 grammaires) | `i36`, `i37`, `i38` (granularite champ : 11 champs, 3 constantes, 3 structures) | 17 | 17 | 0 |
+| `NOTE_3_6_TI9_TI35_RESTES_2026-09-17.md` | `ti=9` `i9` (grammaire entiere) + `ti=35` `i63` corps d'etiquette 17..31 | `ti=9` `i9` et `ti=35` `i63` integralement (60 adresses de « preuve » rejouees) | 20 | 19 | 1 (3 adresses de slots au §1.1) — **tranche : note corrigee** |
+| **Total seconde passe** | **13 grammaires** (11 nouvelles `ti=43`, 1 nouvelle `ti=9`, 1 partielle `ti=35` achevee) | **8 composants** | **40** | **39** | **1** |
+
+Granularite heterogene assumee : le verificateur C compte au composant, le verificateur D au
+champ, le verificateur ti9ti35 au champ et a l'adresse. Les totaux cumules de §10.5 additionnent
+ces points tels que rendus, sans les renormaliser.
+
+### 10.2 La discordance de la seconde passe, tranchee sur pieces — le verificateur a raison
+
+Objet : `NOTE_3_6_TI9_TI35_RESTES_2026-09-17.md` §1.1, ligne « descripteur » du tableau de la
+chaine des quatre pas — trois adresses de slots du descripteur `ti=9 i9` `0x143d08930`.
+
+Ghidra rouvert (lecture seule), `read_memory address=0x143d08930 length=96`, hex colle :
+
+```
+b01a1941 01000000   +0x00 -> 0x141191ab0
+d0ce7640 01000000   +0x08 -> 0x14076ced0
+a0b41741 01000000   +0x10 -> 0x14117b4a0
+400cfd41 01000000   +0x18 -> 0x141fd0c40   (accesseur de nom)
+00b64a40 01000000   +0x20 -> 0x1404ab600   (la note ecrivait 0x14049b600)
+7000fd41 01000000   +0x28 -> 0x141fd0070   (compagnon)
+808f1c41 01000000   +0x30 -> 0x1411c8f80   (la note ecrivait 0x141c8f880)
+9cce7640 01000000   +0x38 -> 0x14076ce9c
+60f1fc41 01000000   +0x40 -> 0x141fcf160   (ecrivain)
+00b64a40 01000000   +0x48 -> 0x1404ab600   (la note ecrivait 0x14049b600)
+```
+
+Resolution des quatre adresses en jeu (`get_function_by_address`, colle) :
+
+```
+0x1404ab600 -> Function: Reserve at 1404ab600        (entree, corps 1404ab600 - 1404ab602)
+0x1411c8f80 -> Function: FUN_1411c8f80 at 1411c8f80  (entree, corps 1411c8f80 - 1411c8f80)
+0x14049b600 -> Function: FUN_14049b57c at 14049b57c  (milieu de corps, PAS une entree)
+0x141c8f880 -> Function: FUN_141c8f3b0 at 141c8f3b0  (milieu de corps, PAS une entree)
+```
+
+**Verdict : verificateur confirme.** Corrige dans `NOTE_3_6_TI9_TI35_RESTES_2026-09-17.md`
+§1.1, avertissement « corrige apres verification independante » en tete de section. Portee de
+l'erreur : NULLE sur la grammaire — aucun champ du flux, aucune largeur, aucune condition ; les
+deux slots qui portent la demonstration (`+0x18` = accesseur de nom, `+0x40` = ecrivain) etaient
+exacts. **Cause racine, deja au registre** : ce sont les constantes de signature de famille de
+`NOTE_3_6_METHODE_DESCRIPTEURS_2026-09-16.md` §2 (l. 42, 44, 47, 49-50), que la note ti9ti35 a
+recopiees telles quelles ; quatre notes du 17/09 (`_TI11` l. 61, `_TI12_A` l. 398, `_TI12_B`
+l. 51, `_TI43_D` l. 59 et §8.8) les avaient deja signalees. La correction de la note de methode
+reste inscrite au §4.6 (« a corriger dans le commit qui porte », zero fix ici).
+
+### 10.3 Un residu leve au passage — `FUN_1406d84b4` preserve `XMM2` et `XMM3`
+
+Le verificateur D affirme, sans contredire sa note, que `FUN_1406d84b4` ne fait que LIRE
+`XMM2`/`XMM3` — ce qui est exactement la question laissee ouverte par
+`NOTE_3_6_TI9_TI35_RESTES_2026-09-17.md` §4 (residu 2 : bornes du second `R(15)` du corps
+`t = 17` d'`i63`, non rechargees apres le premier appel). Verifie ici sur pieces
+(`disassemble_function 0x1406d84b4`, 129 instructions, fonction entiere) :
+
+- toutes les occurrences de `XMM2` / `XMM3` sont en position SOURCE :
+  `1406d8529 MOVAPS XMM1,XMM3` ; `1406d852f SUBSS XMM1,XMM2` ; `1406d854b ADDSS XMM0,XMM2` ;
+  `1406d858f MOVAPS XMM1,XMM3` ; `1406d8592 SUBSS XMM1,XMM2` ; `1406d85b8 ADDSS XMM1,XMM2` ;
+  `1406d85c4 CVTSS2SD XMM1,XMM2` ; `1406d85c8 CVTSS2SD XMM0,XMM3` ; `1406d863c MOVAPS XMM0,XMM3` ;
+  `1406d8644 MOVAPS XMM0,XMM2` ;
+- les seules destinations XMM de toute la fonction sont `XMM0` et `XMM1` (`MOVD`, `MOVAPS`,
+  `CVTDQ2PS`, `CVTPD2PS`, `CVTSS2SD`, `ADDSS`, `SUBSS`, `MULSS`, `DIVSS`, `XORPS`) ;
+- **aucune instruction `CALL`** dans la fonction (les seuls transferts sont six `JMP` internes :
+  `1406d85bc`, `1406d85dc`, `1406d8637`, `1406d863f`, `1406d8647`, `1406d8673`), donc aucun appele
+  ne peut les ecraser.
+
+**Consequence** : les bornes posees en `XMM2`/`XMM3` avant le premier `Q(n)` survivent aux
+appels suivants tant que l'appelant ne les recharge pas. Cela leve le residu `t = 17` d'`i63`
+(le second `R(15)` se dequantifie sur les memes bornes `[0 ; 60,0]`, `DAT_143cd84e4`) ET
+confirme la lecture du groupe D pour `i37` (borne `600,0f`, `DAT_143d13304`, tenue sur les
+trois `Q(10)`). Rappel : **0 bit en jeu** — c'est une question de VALEUR, jamais de largeur.
+
+### 10.4 Table par archetype — mise a jour (remplace §2)
+
+| Archetype | Composants (table) ; fermeture | A porter (+ partiels) | Ecrivains nommes | Grammaires relevees | Verifiees par sceptique | Partiels apres releve | Non elucides |
+|---|---|---|---|---|---|---|---|
+| **ti=9** joueur | 10 ; **0/1 717**, bloquant `i4` | 1 (+1) | 2 | **2** — `i4` (note du 16/09) et **`i9` (seconde passe, note ti9ti35 §1)** | 1 (`i9` : 20 points, 19 concordants) | **0** (`i9` etait partiel : leve) | 0 |
+| **ti=11** objectif | 34 ; **0/325**, bloquant `i4` | 1 | 1 | **1** (en-tete + 15 etiquettes) | 1 (`i4` : 21 points) | 0 | 0 |
+| **ti=12** navpoint | 28 ; **5/879**, bloquant `i1` | 26 | 26 | **26** (25 completes + `i18` partiel) | 6 | `i18 position-offset` (branche `g == 1`, levee par `NOTE_3_6_TI35` §2.1 sous reserve du remplisseur) | 0 |
+| **ti=35** bipede | 64 ; **6/1 364**, bloquant `i60` | 0 (+4) | 4 | **4** — `i57`, `i59`, `i60` et **`i63` desormais COMPLET** (32/32 etiquettes, note ti9ti35 §2) | 4 (`i57`, `i59`, `i60` : 51 points ; `i63` : part des 20 points ti9ti35) | **0** (`i63` etait partiel : leve) | **0** (les corps 18, 19, 21, 23, `>= 24` sont ouverts) |
+| **ti=40** vehicule | 48 ; **0/777** sur 5 bobines, **bloquant VIDE** | 16 (+2) | 16 | **0** — inchange ; `i43` = ti=35 `i60`, `i2` = ti=43 `i2` (ricochet) | 0 | `i2`, `i43` | **16 grammaires** ; **bloquant non etabli** (preuve bornante = un film) |
+| **ti=42** arme au sol | 21 ; **10/2 087**, **bloquant VIDE** | 0 | — | — (negatif MESURE) | — | — | `[~]` instruction de cadre (D8 du 1.9.1 bis) |
+| **ti=43** device | 41 ; **0/4 106**, bloquant `i19` | 22 (+1) | 22 | **23** — `i19`..`i29` (11, note A), `i2` (note B §13), **`i30`..`i35` (6, note C)** et **`i36`..`i40` (5, note D)** | 12 (`i19`, `i20`, `i21`, `i11`, `i12`, `i13` premiere passe ; `i30`, `i31`, `i32`, `i36`, `i37`, `i38` seconde passe) | `i2` (partiel de CONTEXTE : branche `DAT_145121140 == 1` non modelisee) | **0** (`i30`..`i40` releves) |
+
+### 10.5 Totaux — mise a jour (remplace §3)
+
+- **Population du lot 3.6** : **74 lignes** (66 non portees + 8 partielles) sur 246 composants —
+  inchange.
+- **Ecrivains nommes** : **74 / 74** — inchange.
+- **Grammaires relevees a l'ecrivain** : **44 -> 56 / 74** = **54 completes + 2 partielles**
+  (`ti=12 i18`, `ti=43 i2`). Par archetype : ti=9 **2**, ti=11 1, ti=12 26, ti=35 4,
+  ti=43 **23**. Les neuf notes de grammaires du 17/09 portent **66 grammaires** : 53 (premiere
+  passe, dont 10 recontroles) + 13 (seconde passe).
+- **Verifiees par sceptique** : **16 -> 24 composants** ; **169 -> 209 points de controle**,
+  **167 -> 206 concordants**, **2 -> 3 discordances**, toutes tranchees, **toutes les trois en
+  faveur du verificateur**, notes corrigees en tete de section touchee.
+- **Restent sans grammaire** : **30 -> 18 lignes**, **toutes `ti=40`** (16 ecrivains nommes +
+  `i2` et `i43` couverts par ricochet) ; soit **16 a relever reellement** (28 avant).
+- **Non elucide au sens strict** (ouvert dans le binaire et non ferme) : **2 entrees** (3
+  avant) — le bloquant de `ti=40` (exige un film) et le remplisseur `FUN_140be9a14` de la table
+  de largeurs par defaut. Les corps d'etiquette `>= 18` d'`i63` sont fermes.
+- **Partiels restants** : **2** (`ti=12 i18`, `ti=43 i2`) au lieu de 3.
+
+### 10.6 Ce qui reste non elucide — table §7 mise a jour
+
+| Ou | Quoi | Statut apres seconde passe | Ce qui le leve / l'a leve |
+|---|---|---|---|
+| ti=35 `i63` | corps d'etiquette 17, 18, 19, 20, 21, 22, 23, 24, 25..31 | **LEVE** | `NOTE_3_6_TI9_TI35_RESTES_2026-09-17.md` §2.1..§2.10 : les 32 valeurs de `t = R(5)` ont un corps a largeurs LITTERALES (17 = 32/40, 18 = 61/69, 19 = 41/49, 20 = 15, 21 = 37/45, 22 = 1/9, 23 = 34/42, 24 = 35/43, 25..31 = 90/98) ; plus aucune branche « 0 bit » |
+| ti=43 `i30`..`i40` | 11 grammaires (ecrivains nommes) | **LEVE** | notes `_GRAMMAIRES_C` (`i30`..`i35`, 6) et `_GRAMMAIRES_D` (`i36`..`i40`, 5) ; 6 composants verifies par sceptique, 0 discordant |
+| ti=9 `i9` | boucle a etiquette de `FUN_141fcf160` | **LEVE** | `NOTE_3_6_TI9_TI35_RESTES_2026-09-17.md` §1 : descripteur `0x143d08930`, `R(1)`[1 -> `R(2)` + `R(1)`[1 -> `R(32)` + `n = R(3)` + `n x (R(3)` + corps)]] ; 5 corps a largeurs litterales ; **0 dependance de configuration** |
+| ti=35 `i63`, `t = 17` | bornes du second `R(15)` (`XMM2`/`XMM3` non recharges) | **LEVE** | §10.3 : `FUN_1406d84b4` ne fait que LIRE `XMM2`/`XMM3` et ne contient aucun `CALL` — les bornes survivent a l'appel (question de valeur, 0 bit) |
+| ti=40 | le bloquant (golden muet) ; 16 grammaires | **RESTE** | preuve bornante sur film (hors perimetre d'une preparation sans decodage), puis decompile |
+| ti=12 `i18`, ti=35 position absolue | remplisseur `FUN_140be9a14` de la table de largeurs par defaut (`3 x R(22)` deduit de la loi, pas lu) | **RESTE** | decompile ; ou `DesyncAt` au port |
+| ti=12 / ti=43 | site d'appel exact `+0x10 -> param_4` (calibration 4/4, pas de lecture du site) | **RESTE** (residu de preuve, pas de largeur) | `get_xrefs_to` sur les descripteurs, si le pilote l'exige |
+| ti=12 `i13` / `i14` / `i15` | code 255 d'un `R(8)` en `f6 = 1` (hors plage) | **RESTE** (decision de port) | saturer ou invalider — a trancher au commit qui porte |
+| ti=43 `i2` | partiel de CONTEXTE (branche `DAT_145121140 == 1` non modelisee ; doc et table en retard sur le code) | **RESTE** | re-statuer au lot qui porte les 22 `device-*` |
+| ti=35 `i63`, `t = 26..31` | semantique (le jeu leur applique le corps de `t = 25` et range l'etiquette `0x19`) | **RESTE** (semantique, jamais une largeur) | rien a lever : le lecteur reproduit le comportement du jeu et peut signaler `t > 25` |
+| ti=9 `i9`, corps `k = 1` | valeur rangee dans l'emplacement (tables runtime `FUN_14049746c`, `FUN_140e958c4`) | **RESTE** (semantique) | rien a lever : ces fonctions ne recoivent pas le flux ; le port publie l'index brut `R(5)` |
+
+### 10.7 Ce que la seconde passe change pour le port
+
+1. **`ti=43` se porte desormais en UN lot de 22** sans releve prealable : la ligne « apres
+   releve de `i30`..`i40` » de l'ordre conseille (§6.5) tombe. Ordre interne inchange ; les
+   notes C §9 et D §8 donnent les pieges, notamment que `i36` n'est PAS `i24` / `i29` (porte
+   externe puis porte interne, categorie 0 sans sonde, `R(3)` de queue inconditionnel — un
+   copier-coller desynchronise de 1 + 3 bits par entree).
+2. **`ti=9` se ferme d'un seul lot** (`i4` + `i9`) : `dispatch_player.go:298` rend
+   `ported = false` des que `n > 0`, c'est la seule ligne a remplacer.
+3. **`ti=35 i63` n'a plus d'etiquette non ouverte** : supprimer toute branche « 0 bit »
+   (`consumeBipedActionTag`, `default` « tag >= 6 -> 0 bit, verite EXE 2026-06-13 ») — le
+   commentaire est de la doc inversee (anti-pattern 9) et se reecrit dans le meme commit.
+4. **Aucune entree de profil nouvelle** sur les 13 grammaires de la seconde passe. Les deux
+   seules dependances de configuration rencontrees sont deja modelisees : plage de la
+   categorie 1 pour `ti=43 i31` et plage de la categorie 0 pour `ti=43 i36`
+   (`varWidthBits`, `IDLowBits`, garde `DAT_144706104`) — **ne jamais figer 13**.
+5. **Une seule fonction commune de dequantification** reste le prealable transverse (§4.3) :
+   les groupes C et D ajoutent onze `Q(n; a..b)` en mode `b7 = 1` ; `dequantMidpoint`
+   (`components_managed_object.go:198`) n'est toujours pas ce contrat.
+6. **`ti=40` est le seul reste de releve** — et il n'est pas relevable sans film (preuve
+   bornante). C'est la frontiere de ce qu'une preparation sans production peut donner.
+
+### 10.8 Journal des appels Ghidra de l'addendum
+
+Sept appels HTTP en lecture, **aucune ecriture**, aucun echec : 1 lecture du catalogue
+`/mcp/schema` ; `list_open_programs` (un seul programme, `HaloInfinite.exe`, base
+`0x140000000`, 311 103 fonctions) ; `read_memory address=0x143d08930 length=96` (les 10 slots
+du descripteur `ti=9 i9`) ; `get_function_by_address` x 4 (`0x1404ab600`, `0x1411c8f80`,
+`0x14049b600`, `0x141c8f880`) ; `disassemble_function 0x1406d84b4` (129 instructions, 3 919
+octets, restees dans les bornes de la fonction).
