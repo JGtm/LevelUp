@@ -34,6 +34,7 @@ import (
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/sync/historyretry"
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/replayartifacts"
 
@@ -235,17 +236,16 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 		}
 
 		slog.DebugContext(ctx, "sync: requête historique API",
-			"gamertag", e.gamertag, "xuid", e.xuid, "start", start, "page_size", historyPageSize,
-		)
-		// Rejeu borné du 429 / du parc en cooldown et format xuid(NNN) exigé par
-		// l'endpoint : engine_history_retry.go. Une page perdue arrête la pagination,
-		// donc la passe est INCOMPLÈTE : AddError (et non AddWarning) pour que Status()
-		// rende partial_success/failure (D1, robustesse 2026-09-16 — avant : "OK ... success inserted=0").
-		entries, err := e.fetchHistoryPage(ctx, &in, start)
+			"gamertag", e.gamertag, "xuid", e.xuid, "start", start, "page_size", historyPageSize)
+		// Rejeu borné du 429 / du parc en cooldown : sync/historyretry. Format xuid(NNN) exigé
+		// Une page perdue arrête la pagination : AddError (et non AddWarning) pour que Status()
+		// rende partial_success/failure (D1, robustesse 2026-09-16).
+		entries, err := historyretry.Page(ctx, e.gamertag, start, func() ([]MatchHistoryEntry, error) {
+			return in.client.GetMatchHistory(ctx, fmt.Sprintf("xuid(%s)", e.xuid), in.opts.MatchType, start, historyPageSize)
+		})
 		if err != nil {
 			slog.ErrorContext(ctx, "sync: historique interrompu",
-				"gamertag", e.gamertag, "start", start, "err", err,
-			)
+				"gamertag", e.gamertag, "start", start, "err", err)
 			result.AddError(fmt.Sprintf("historique interrompu à start=%d: %v", start, err))
 			break
 		}
