@@ -10,8 +10,10 @@ package persist
 //	les trois etats de l assistant survivent   defauter `assist_known` a TRUE
 //	les orphelins sont conserves               retirer l ajout des orphelins
 //	la clef est EXACTE                         elargir l appariement a une tolerance
-//	l identite est un CONTROLE                 retirer la verification de concordance
-//	l instant ambigu ne choisit pas            relacher `n == 1` en `n >= 1`
+//	l identite est le CRITERE (lot 2.9)        apparier par l instant seul quand les deux
+//	                                           victimes sont resolues et differentes
+//	l identite garde les paires formees        retirer la verification de concordance
+//	l instant ambigu ne choisit pas            apparier la premiere ligne de film venue
 //
 // Le fusionneur est PUR : ces tests n ouvrent aucune base et ne touchent a aucun compteur.
 
@@ -218,22 +220,39 @@ func TestFusionNAppariePasHorsDeLInstantExact(t *testing.T) {
 	}
 }
 
-// TestFusionRejetteUneIdentiteDivergente — L IDENTITE EST UN CONTROLE.
+// TestFusionNApparieJamaisDeuxVictimesDifferentes — L IDENTITE EST LE CRITERE (lot 2.9).
 //
-// 0 divergence sur 73 589 lignes appariees. Une divergence signifierait que la clef
-// `(match_id, time_ms)` a apparie DEUX MORTS DIFFERENTES — c est-a-dire que la propriete sur
-// laquelle repose toute la fusion est fausse. Elle doit echouer bruyamment, pas s ecarter.
-func TestFusionRejetteUneIdentiteDivergente(t *testing.T) {
+// Deux victimes RESOLUES et differentes au meme instant ne sont pas une mort vue deux fois : ce
+// sont DEUX MORTS. Jusqu au lot 2.9 la clef `(match_id, time_ms)` les appariait et le controle
+// d identite rendait l erreur, ce qui faisait tomber LE FILM ENTIER (temoin `9f9b19e5@63757`).
+//
+// La mort de credit garde donc son etat credit, et la ligne de film se conserve en ORPHELINE —
+// comptee a part, parce que son instant est partage.
+func TestFusionNApparieJamaisDeuxVictimesDifferentes(t *testing.T) {
 	film := mortFilm(1000)
 	film.VictimXUID = "xuid(999)"
 
-	if _, _, err := MergeCreditAndFilm(batchCredit(mortCredit(1000)), batchFilm(film)); err == nil {
-		t.Fatal("aucune erreur sur une victime divergente — la fusion aurait attribue a une mort " +
-			"l arme mesuree sur la mort d un AUTRE joueur, sans rien signaler")
+	out, st, err := MergeCreditAndFilm(batchCredit(mortCredit(1000)), batchFilm(film))
+	if err != nil {
+		t.Fatalf("MergeCreditAndFilm: %v — deux morts a la meme milliseconde ne sont pas une "+
+			"erreur d appariement, elles sont deux morts", err)
+	}
+	if st.Enriched != 0 {
+		t.Errorf("%d enrichissement(s) — la fusion a attribue a une mort l arme mesuree sur la "+
+			"mort d un AUTRE joueur", st.Enriched)
+	}
+	if len(out.Deaths) != 2 || st.Orphans != 1 || st.OrphansSharedInstant != 1 {
+		t.Errorf("%d morts / %d orphelins / %d a instant partage, attendu 2 / 1 / 1 — la mort que "+
+			"le film est seul a voir doit se conserver ET se compter",
+			len(out.Deaths), st.Orphans, st.OrphansSharedInstant)
+	}
+	if out.Deaths[0].SourceTag != 0 {
+		t.Error("la mort de credit a recu la source mesuree sur la mort d un AUTRE joueur")
 	}
 
 	// L ABSENCE n est pas une divergence : c est le cas normal des 631 victimes et 754 tueurs
-	// que le film ne resout pas, et c est la population que la clef courte existe pour garder.
+	// que le film ne resout pas, et c est la population que le repli sur l instant existe pour
+	// garder.
 	if _, st, err := MergeCreditAndFilm(batchCredit(mortCredit(1000)),
 		batchFilm(mortFilm(1000))); err != nil || st.Enriched != 1 {
 		t.Errorf("un xuid ABSENT cote film a ete traite comme une divergence (err=%v, enrichies=%d)",
