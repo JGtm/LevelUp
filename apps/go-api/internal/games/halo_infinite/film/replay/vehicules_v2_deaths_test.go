@@ -50,6 +50,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // SEUILS, ecrits AVANT toute mesure.
@@ -300,7 +301,7 @@ func v2dReport(t *testing.T, mapKey string, ag *v2dMapAgg) {
 
 // ------------------------------------------------------------------ helpers
 
-func v2dPlayerPositions(dir string, wr grammar.Vec3Range, lay grammar.I0Layout) ([]grammar.BipedPosition, error) {
+func v2dPlayerPositions(dir string, wr profile.Vec3Range, lay profile.I0Layout) ([]grammar.BipedPosition, error) {
 	scan := grammar.DefaultScanFilmOptions()
 	scan.WorldRange = &wr
 	if lay.Valid() {
@@ -310,7 +311,7 @@ func v2dPlayerPositions(dir string, wr grammar.Vec3Range, lay grammar.I0Layout) 
 	return grammar.ScanFilmBipedPositions(dir, scan)
 }
 
-func v2dVehicleTracks(dir string, band map[uint32]bool, wr grammar.Vec3Range, lay grammar.I0Layout) map[uint32]slotTrack {
+func v2dVehicleTracks(dir string, band map[uint32]bool, wr profile.Vec3Range, lay profile.I0Layout) map[uint32]slotTrack {
 	opt := grammar.ScanFilmOptions{WorldRange: &wr, RequireTag1: false, DropSaturated: true}
 	if lay.Valid() {
 		opt.Layout = &lay

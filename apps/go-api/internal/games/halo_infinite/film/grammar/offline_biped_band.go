@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -118,20 +119,20 @@ func bipedScanChunks(film *source.Film, opt ScanFilmOptions) ([]int, error) {
 }
 
 // bipedI0Layout rend le découpage d'i0 : celui que l'appelant force, sinon celui lu dans le film.
-func bipedI0Layout(film *source.Film, opt ScanFilmOptions) (I0Layout, error) {
+func bipedI0Layout(film *source.Film, opt ScanFilmOptions) (profile.I0Layout, error) {
 	if opt.Layout != nil {
 		return *opt.Layout, nil
 	}
 	lay, _, err := DetectI0LayoutOf(film)
 	if err != nil {
-		return I0Layout{}, fmt.Errorf("découpage i0 illisible : %w", err)
+		return profile.I0Layout{}, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
 	return lay, nil
 }
 
 // scanBipedChunks déroule le balayage sur les chunks demandés et rend les positions ainsi que
 // le nombre de chunks effectivement LUS — un film partiel est licite, un film illisible non.
-func scanBipedChunks(film *source.Film, chunks []int, band SlotBand, lay I0Layout,
+func scanBipedChunks(film *source.Film, chunks []int, band SlotBand, lay profile.I0Layout,
 	opt ScanFilmOptions, ctx ContexteDeLecture) ([]BipedPosition, int) {
 	var out []BipedPosition
 	read := 0

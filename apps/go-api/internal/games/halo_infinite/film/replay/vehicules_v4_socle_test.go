@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // Gardes d environnement du lot V4.
@@ -151,7 +152,7 @@ func v4Decode(t *testing.T, root string, f v0Film) (v4Ctx, bool) {
 // v4Bipedes lit le nuage bipede aux MEMES reglages que la production (cap capture, decoupage
 // d axe du catalogue), TRIE par instant comme `BuildFromPositions` le fait.
 func v4Bipedes(
-	t *testing.T, dir string, entry grammar.MapQuantEntry, wr *grammar.Vec3Range,
+	t *testing.T, dir string, entry grammar.MapQuantEntry, wr *profile.Vec3Range,
 ) ([]grammar.BipedPosition, bool) {
 	t.Helper()
 	opt := grammar.DefaultScanFilmOptions()

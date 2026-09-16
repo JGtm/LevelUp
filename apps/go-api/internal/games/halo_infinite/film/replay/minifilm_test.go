@@ -52,6 +52,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // MiniFilmDir est le repertoire de la mini-bobine, relatif au paquet.
@@ -453,10 +454,9 @@ func TestMiniFilmDecodesTheGrenadeThrows(t *testing.T) {
 
 // TestMiniFilmDecodesProjectileFlights : des VOLS ENTIERS, pas des fragments.
 //
-// La fenetre de deux secondes est la seule partie de la bobine ou la continuite des paquets est
-// preservee ; c est donc la seule ou le decoupage en vies (`splitLives`) se mesure.
+// La fenetre de deux secondes est la seule partie de la bobine ou la continuite des paquets est preservee ; c est donc la seule ou le decoupage en vies (`splitLives`) se mesure.
 func TestMiniFilmDecodesProjectileFlights(t *testing.T) {
-	wr := grammar.Vec3Range{{Min: -100, Max: 100}, {Min: -100, Max: 100}, {Min: -100, Max: 100}}
+	wr := profile.Vec3Range{{Min: -100, Max: 100}, {Min: -100, Max: 100}, {Min: -100, Max: 100}}
 	tr, err := grammar.ScanFilmProjectiles(MiniFilmDir, &wr)
 	if err != nil {
 		t.Fatalf("ScanFilmProjectiles : %v", err)

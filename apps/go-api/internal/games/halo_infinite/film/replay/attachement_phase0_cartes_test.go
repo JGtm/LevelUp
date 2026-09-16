@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
@@ -88,12 +89,12 @@ func attRefDir(root string) string {
 //
 // global de paquet, et le correctif du 2026-08-15 a mesuré ce que coûte de l'oublier (tous
 // les objets déquantifiés aux largeurs de la carte précédente).
-func attBornes(t *testing.T, root, id string) (grammar.Vec3Range, grammar.I0Layout, bool) {
+func attBornes(t *testing.T, root, id string) (profile.Vec3Range, profile.I0Layout, bool) {
 	t.Helper()
 	c, ok := attCartes[id]
 	if !ok {
 		t.Logf("%s : carte inconnue du fixture — bornes indisponibles", id)
-		return grammar.Vec3Range{}, grammar.I0Layout{}, false
+		return profile.Vec3Range{}, profile.I0Layout{}, false
 	}
 	cat, err := grammar.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
 	if err != nil {
@@ -102,7 +103,7 @@ func attBornes(t *testing.T, root, id string) (grammar.Vec3Range, grammar.I0Layo
 	e, err := cat.Lookup(c.Nom)
 	if err != nil {
 		t.Logf("%s : carte %q absente du catalogue de bornes (%v)", id, c.Nom, err)
-		return grammar.Vec3Range{}, grammar.I0Layout{}, false
+		return profile.Vec3Range{}, profile.I0Layout{}, false
 	}
 	// e.Layout() porte largeurs d'axe, largeur d'index de région et région attendue —
 	// trois constantes par carte du MÊME catalogue (Live Fire : région 1 sur 2 bits, lot C

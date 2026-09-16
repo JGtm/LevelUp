@@ -51,6 +51,7 @@ import (
 	"strings"
 	"unicode"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -272,7 +273,7 @@ func erreurFormatInconnu(format int) error {
 // phrase d avant disait « la cle est le BUILD » : c etait le reste du regime d avant le lot
 // 1.9.1 ter, et elle contredisait tout ce qui la precede — revue de jalon M1, lentille L4. Ce
 // qui reste keye par le BUILD est la largeur du bloc de PERSONNALISATION, pas celle-ci.)
-func mppWidthsPourFormat(format int) (MPPWidths, bool) {
+func mppWidthsPourFormat(format int) (profile.MPPWidths, bool) {
 	switch format {
 	case formatHI1120Et1130:
 		// RELU — c est le format de l executable desassemble (`HI_1_13_0`, format 27, et
@@ -282,10 +283,10 @@ func mppWidthsPourFormat(format int) (MPPWidths, bool) {
 		// d index est un `R(5)` inline de `FUN_14080cfe8`. Aucune branche de version dans le
 		// bloc : son seul `if` runtime (`DAT_145121140 == 1`) ne consomme aucun bit.
 		// L oracle `n2` le confirme independamment : part modale 1,000 sur les trois archetypes.
-		return MPPWidths{Lead: 9, Index: 5}, true
+		return profile.MPPWidths{Lead: 9, Index: 5}, true
 	case formatAnciens20, formatAnciens21, formatAnciens24, formatAnciens25:
 		// INDETERMINE, ET LES DEUX ORACLES SE CONTREDISENT — voir l en-tete de section
-		// ci-dessous. La largeur N EST PAS POSEE : `MPPWidths{}` n est pas valide, donc
+		// ci-dessous. La largeur N EST PAS POSEE : `profile.MPPWidths{}` n est pas valide, donc
 		// [InstallFilmFormatMPP] n installe RIEN et le decodeur garde son defaut. Le FORMAT
 		// est CONNU (ce n est pas [ErrUnknownFormat]), c est sa largeur MPP qui ne l est pas.
 		//
@@ -293,16 +294,16 @@ func mppWidthsPourFormat(format int) (MPPWidths, bool) {
 		// cinq films sans section d identification y entrent par la porte principale au lieu
 		// d etre refuses pour build vide. Leur largeur reste indeterminee — comme les quatre
 		// autres formats anciens — donc aucun bit lu ne change.
-		return MPPWidths{}, true
+		return profile.MPPWidths{}, true
 	}
-	return MPPWidths{}, false
+	return profile.MPPWidths{}, false
 }
 
 // BuildProfile porte TOUT ce qui varie d un film a l autre sans etre dans le flux. Il se resout
 // UNE FOIS, a partir de DEUX cles lues dans `chunk_00` — la version de format (`+4`) et le nom
 // de build (section 2) — et il est IMMUABLE (D-3 d ADR 0034).
 type BuildProfile struct {
-	// Build est la cle de CONTENU : le nom en clair, tel que `FilmIdentity.Build` le rend.
+	// Build est la cle de CONTENU : le nom en clair, tel que `profile.FilmIdentity.Build` le rend.
 	Build string
 	// FormatVersion est la cle de FORMAT : le u32 de `chunk_00+4`. Les deux cles ne disent pas
 	// la meme chose et ne se deduisent pas l une de l autre (le format 24 porte trois builds).
@@ -310,7 +311,7 @@ type BuildProfile struct {
 	// PersoBytes est la largeur du bloc de personnalisation (lot 1.5.2) — cle BUILD.
 	PersoBytes int
 	// MPP est le decoupage du bloc `object-multiplayer-properties` — cle FORMAT (1.9.1 ter).
-	MPP MPPWidths
+	MPP profile.MPPWidths
 }
 
 // BuildProfileFor rend le profil d un build, ou [ErrUnknownBuild] enveloppe avec son nom.

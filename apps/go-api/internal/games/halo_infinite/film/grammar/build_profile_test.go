@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -124,7 +125,7 @@ func TestBuildProfileMPPMutationRougit(t *testing.T) {
 		t.Fatalf("au decoupage du profil (%s), `n2` n'est constant que sur %.3f des records — "+
 			"la ligne HI_1_13_0 du profil ne tient plus", prof.MPP, juste)
 	}
-	for _, m := range []MPPWidths{
+	for _, m := range []profile.MPPWidths{
 		{Lead: prof.MPP.Lead - 1, Index: prof.MPP.Index},
 		{Lead: prof.MPP.Lead + 1, Index: prof.MPP.Index},
 		{Lead: prof.MPP.Lead, Index: prof.MPP.Index - 1},

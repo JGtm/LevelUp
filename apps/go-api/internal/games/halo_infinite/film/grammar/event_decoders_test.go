@@ -16,7 +16,10 @@ package grammar
 // casse un decodeur qui marchait. Un test par offset est ce qui rend ces corrections
 // irreversibles.
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"testing"
+)
 
 // bitw ecrit un flux MSB-first, comme le format du film.
 type bitw struct {
@@ -232,8 +235,8 @@ func buildProjectileRecord(slot, gen uint32, comps []int, q [3]uint64) []byte {
 	return w.buf
 }
 
-func projTestRange() Vec3Range {
-	return Vec3Range{{Min: -100, Max: 100}, {Min: -100, Max: 100}, {Min: -100, Max: 100}}
+func projTestRange() profile.Vec3Range {
+	return profile.Vec3Range{{Min: -100, Max: 100}, {Min: -100, Max: 100}, {Min: -100, Max: 100}}
 }
 
 // TestProjectileRecordLayout : slot, generation, composants et position.

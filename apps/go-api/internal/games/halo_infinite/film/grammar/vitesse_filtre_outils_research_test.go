@@ -9,6 +9,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"strings"
@@ -24,7 +25,7 @@ type vitfCtx struct {
 	cat     *MapQuantCatalog
 	entree  *MapQuantEntry
 	nom     string
-	lay     I0Layout
+	lay     profile.I0Layout
 }
 
 // vitfSetup lit l'environnement : catalogue OBLIGATOIRE (le piège des bornes d'affichage
@@ -208,7 +209,7 @@ func vitfChunksCommuns(a, b []int) bool {
 // vitesse ni d'isolement), sur les SEULS chunks donnés (le balayage sans filtre d'un film
 // entier tue le process — mesure du 2026-08-18, cf. translocateur_test.go). La
 // déquantification est faite ensuite, avec l'entrée de catalogue choisie.
-func vitfDecodeQuanta(t *testing.T, dir string, lay *I0Layout, chunks []int) []BipedPosition {
+func vitfDecodeQuanta(t *testing.T, dir string, lay *profile.I0Layout, chunks []int) []BipedPosition {
 	t.Helper()
 	opt := DefaultScanFilmOptions()
 	opt.MaxSpeedMPS = 0
@@ -225,7 +226,7 @@ func vitfDecodeQuanta(t *testing.T, dir string, lay *I0Layout, chunks []int) []B
 
 // vitfDequantTous convertit les quanta en coordonnées monde avec les bornes de l'entrée de
 // catalogue — le même DequantBipedAxis que la production.
-func vitfDequantTous(qs []BipedPosition, lay I0Layout, wr Vec3Range) []BipedPosition {
+func vitfDequantTous(qs []BipedPosition, lay profile.I0Layout, wr profile.Vec3Range) []BipedPosition {
 	out := append([]BipedPosition(nil), qs...)
 	for i := range out {
 		out[i].X = DequantBipedAxis(out[i].Q[0], 0, lay, wr)
@@ -289,7 +290,7 @@ func vitfChoisirEntree(t *testing.T, ctx *vitfCtx, qs []BipedPosition, g vitfGro
 // vitfScoreCalibration apparie les points publiés des slots des événements (frames d'avant
 // saut, de -30 à -1) à l'échantillon brut le plus proche en temps (<= 60 ms) et rend
 // l'écart médian 2D après déquantification par wr, et le nombre de paires.
-func vitfScoreCalibration(ctx *vitfCtx, qs []BipedPosition, g vitfGroupe, wr Vec3Range) (float64, int) {
+func vitfScoreCalibration(ctx *vitfCtx, qs []BipedPosition, g vitfGroupe, wr profile.Vec3Range) (float64, int) {
 	var ecarts []float64
 	for _, ev := range g.evs {
 		filmMS := (int64(ev.ts) - int64(ctx.origine)) / 1000

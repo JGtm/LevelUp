@@ -56,6 +56,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -178,7 +179,7 @@ func eqUsesOracles(t *testing.T, dir string, lives []eqLife, sig [2][]eqSignal) 
 // eqUsesPositions rend le nuage des bipedes TRIE, ou nil quand les bornes ne sont pas en
 // metres — la distance du poseur n'a alors aucun sens (cf. eqUsesOwners).
 func eqUsesPositions(
-	t *testing.T, dir string, wr grammar.Vec3Range, metres bool,
+	t *testing.T, dir string, wr profile.Vec3Range, metres bool,
 ) []grammar.BipedPosition {
 	t.Helper()
 	if !metres {

@@ -16,6 +16,11 @@ package fallback
 
 const pkgFilmdec = "internal/games/halo_infinite/film/grammar/"
 
+// pkgProfile : la couche `profile`, nee au lot 2.5.b. Un repli de ce registre a son site dans la
+// DONNEE et non dans le lecteur — le decoupage MPP par defaut — et son ancre a suivi le SYMBOLE,
+// pas le fichier d origine : c est la constante qui dit le repli, ou qu elle vive.
+const pkgProfile = "internal/games/halo_infinite/film/profile/"
+
 // comptageParFilmContext : la raison, écrite une fois, du câblage différé des replis `grammar`.
 const comptageParFilmContext = "pas 2 de M2 (les lecteurs recoivent le profil via FilmContext : le seul porteur par film sans variable de paquet, cf. S1)"
 
@@ -99,7 +104,7 @@ var registreFilmdec = []Repli{
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "i0_layout.go",
-			Ancre:   "GateBits: DefaultI0GateBits,",
+			Ancre:   "GateBits: profile.DefaultI0GateBits,",
 		}},
 		DatePose: dateAudit0E,
 		// RETROGRADE AU LOT 1.9.2 (2026-09-15), `inconditionnel / devant_la_lecture` ->
@@ -192,7 +197,7 @@ var registreFilmdec = []Repli{
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "profil_balayage.go",
-			Ancre:   "if l.GateBits > i0SpineBits+i0UseDefaultBits {",
+			Ancre:   "if l.GateBits > profile.I0SpineBits+profile.I0UseDefaultBits {",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 3.4",
@@ -228,7 +233,7 @@ var registreFilmdec = []Repli{
 		Condition: CondInconditionnel,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgFilmdec + "mpp_widths.go",
+			Fichier: pkgProfile + "mpp_widths.go",
 			Ancre:   "const mppLeadParDefaut = 9",
 		}},
 		DatePose:     dateAudit0E,

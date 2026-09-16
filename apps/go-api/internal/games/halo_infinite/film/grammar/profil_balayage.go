@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/profile"
+
 // profil_balayage.go — CE QU UN BALAYAGE POSE SUR LES LECTEURS DE BITS QU IL CONSTRUIT
 // (lot 2.3 du PLAN_DECODEUR_FILM ; remplace `profil_herite.go`, l heritage PAR L ETAT DU
 // PROCESSUS que les lots 2.2.a, 2.2.b et 2.2.e avaient regroupe en attendant ce lot).
@@ -40,7 +42,7 @@ type ProfilDeBalayage struct {
 	Cadre KeyframeProfile
 	// MPP : le decoupage des deux champs de largeur variable du bloc
 	// `object-multiplayer-properties`, pose par la VERSION DE FORMAT du film.
-	MPP MPPWidths
+	MPP profile.MPPWidths
 	// ParamEtat / ParamEtatImpose : le `param_4` du moteur qu un harnais de balayage a force,
 	// et le drapeau qui dit qu il l a force. Hors balayage, la table par composant decide seule.
 	ParamEtat       uint32
@@ -54,15 +56,17 @@ type ProfilDeBalayage struct {
 // [ResolveProfile] : il n existe pas de seconde table de valeurs.
 func ProfilDeBalayageParDefaut() ProfilDeBalayage {
 	return ProfilDeBalayage{Mouvement: mouvementDuProfil(), Cadre: cadreDuProfil(),
-		MPP: mppDuProfil(), Grammaire: grammaireDuProfil()}
+		MPP: profile.MPPParDefaut(), Grammaire: grammaireDuProfil()}
 }
 
 // LargeursObjetDuMonde rend les largeurs d axe du chemin world-object de ce profil.
-func (p ProfilDeBalayage) LargeursObjetDuMonde() PrecisionDescriptor { return p.Mouvement.WorldObject }
+func (p ProfilDeBalayage) LargeursObjetDuMonde() profile.PrecisionDescriptor {
+	return p.Mouvement.WorldObject
+}
 
 // PoserLargeursObjetDuMonde installe des largeurs world-object brutes. Les instruments et les
 // garde-rails qui sauvent puis restaurent un profil passent par la.
-func (p *ProfilDeBalayage) PoserLargeursObjetDuMonde(d PrecisionDescriptor) {
+func (p *ProfilDeBalayage) PoserLargeursObjetDuMonde(d profile.PrecisionDescriptor) {
 	p.Mouvement.WorldObject = d
 }
 
@@ -74,7 +78,7 @@ func (p *ProfilDeBalayage) PoserLargeursObjetDuMonde(d PrecisionDescriptor) {
 // SOURCE ATTENDUE : `MapQuantEntry.AxisWidths`, deduit des bornes par la loi du moteur. Le
 // decoupage lu dans le film (`DetectI0Layout`) sert de controle : s il contredit le catalogue,
 // ce sont les BORNES qui sont fausses.
-func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l I0Layout) {
+func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0Layout) {
 	if l.AxisW[0] == 0 || l.AxisW[1] == 0 || l.AxisW[2] == 0 {
 		return // decoupage non detecte : garder le defaut plutot qu installer des zeros
 	}
@@ -86,8 +90,8 @@ func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l I0Layout) 
 	// de LA region cataloguee ; un record d une autre region (rarissime — l ordre des
 	// 3/291 288 de Cliffhanger) consommerait des largeurs differentes et desalignerait
 	// SON record.
-	if l.GateBits > i0SpineBits+i0UseDefaultBits {
-		p.Mouvement.WorldObject.IndexW = uint(l.GateBits - i0SpineBits - i0UseDefaultBits)
+	if l.GateBits > profile.I0SpineBits+profile.I0UseDefaultBits {
+		p.Mouvement.WorldObject.IndexW = uint(l.GateBits - profile.I0SpineBits - profile.I0UseDefaultBits)
 	}
 	// LA REGION ATTENDUE SUIT LES LARGEURS, par le meme chemin et dans le meme appel
 	// (lot B-bis, 2026-09-12). Sans elle, le lecteur world-object exigeait un index de region

@@ -30,7 +30,7 @@ package grammar
 //
 // Aucune écriture, aucune base, aucun artefact : il charge des films en lecture seule et compte.
 // Les TIRS (`ScanFilmWeaponShots`) et les DÉGÂTS (`ScanFilmWeaponDamages`) ne sont pas mesurés
-// ici parce qu'ils ne lisent PAS i0 — vérifié par grep (`I0Layout` / `DetectI0` absents de
+// ici parce qu'ils ne lisent PAS i0 — vérifié par grep (`profile.I0Layout` / `DetectI0` absents de
 // `weapon_hits.go`), consigné au §5 du plan.
 //
 // GARDE `CHUNK00_FILMS` (répertoires de film absolus séparés par `;`). Les cartes viennent d'une
@@ -48,6 +48,7 @@ import (
 	"sort"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -83,8 +84,8 @@ var e192CarteDuFilm = map[string]string{
 type e192Ligne struct {
 	Film, Carte, Build string
 	Version            int
-	Impose             I0Layout
-	Detecte            I0Layout
+	Impose             profile.I0Layout
+	Detecte            profile.I0Layout
 	DetecteErr         error
 	IndexBitUns        int
 	Records            int

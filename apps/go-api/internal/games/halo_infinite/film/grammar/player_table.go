@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/profile"
+
 // player_table.go — LA TABLE DES 32 JOUEURS DU MATCH, LUE DANS `chunk_00` (lot 1.5.2 et 1.5.3).
 //
 // # D'OU VIENT CETTE GRAMMAIRE : DU DESASSEMBLAGE, PAS DES OCTETS
@@ -240,7 +242,7 @@ type PlayerTableReport struct {
 // Erreurs typees : [ErrUnknownBuild] enveloppe avec le nom du build (D-4 : le film est mis de
 // cote, JAMAIS lu au profil du build voisin ; publier [UnknownBuildExpvarPairs] au meme
 // endroit), [ErrChunk00Truncated], [ErrPlayerTableNotFound].
-func ReadPlayerTable(chunk0 []byte, ident FilmIdentity) ([]PlayerSlot, PlayerTableReport, error) {
+func ReadPlayerTable(chunk0 []byte, ident profile.FilmIdentity) ([]PlayerSlot, PlayerTableReport, error) {
 	rep := PlayerTableReport{Build: ident.Build}
 	octets, connu := personnalisationOctets(ident.Build)
 	if !connu {

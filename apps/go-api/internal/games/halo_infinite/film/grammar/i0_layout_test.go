@@ -1,6 +1,9 @@
 package grammar
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"testing"
+)
 
 // synthFlipProfile fabrique un profil de bascule conforme au modèle physique : gate à zéro,
 // puis pour chaque champ une chaîne géométrique du MSB (plancher) vers le LSB (saturation
@@ -39,7 +42,7 @@ func TestI0Boundaries_ReadsFieldStarts(t *testing.T) {
 		{"illusion", []int{18, 18, 17}, []int{23, 41, 58}},
 	}
 	for _, c := range cases {
-		prof := synthFlipProfile(DefaultI0GateBits, c.widths, 4)
+		prof := synthFlipProfile(profile.DefaultI0GateBits, c.widths, 4)
 		got := i0Boundaries(prof)
 		if len(got) != len(c.want) {
 			t.Fatalf("%s : %d frontière(s) %v, attendu %v", c.name, len(got), got, c.want)
@@ -67,7 +70,7 @@ func TestI0Boundaries_NoFieldNoBoundary(t *testing.T) {
 
 // TestI0LayoutGeometry : offsets, longueur totale et validation des largeurs.
 func TestI0LayoutGeometry(t *testing.T) {
-	lay := I0Layout{GateBits: DefaultI0GateBits, AxisW: [3]uint{15, 15, 15}}
+	lay := profile.I0Layout{GateBits: profile.DefaultI0GateBits, AxisW: [3]uint{15, 15, 15}}
 	if got := lay.TotalBits(); got != 50 {
 		t.Errorf("TotalBits = %d, attendu 50", got)
 	}
@@ -79,10 +82,10 @@ func TestI0LayoutGeometry(t *testing.T) {
 	if !lay.Valid() {
 		t.Error("15/15/15 devrait être valide")
 	}
-	if (I0Layout{GateBits: 5, AxisW: [3]uint{15, 27, 15}}).Valid() {
+	if (profile.I0Layout{GateBits: 5, AxisW: [3]uint{15, 27, 15}}).Valid() {
 		t.Error("une largeur > 26 (cap moteur) devrait être rejetée")
 	}
-	if (I0Layout{GateBits: 2, AxisW: [3]uint{13, 13, 14}}).Valid() {
+	if (profile.I0Layout{GateBits: 2, AxisW: [3]uint{13, 13, 14}}).Valid() {
 		t.Error("un gate plus court que spine+useDefault devrait être rejeté")
 	}
 }

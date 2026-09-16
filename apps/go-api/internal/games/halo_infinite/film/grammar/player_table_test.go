@@ -20,6 +20,7 @@ package grammar
 
 import (
 	"errors"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"strings"
 	"testing"
 )
@@ -74,7 +75,7 @@ func TestReadPlayerTableSurLesBobines(t *testing.T) {
 }
 
 // verifierTable confronte une lecture a l'oracle des instruments et aux invariants.
-func verifierTable(t *testing.T, b bobineTable, id FilmIdentity, slots []PlayerSlot,
+func verifierTable(t *testing.T, b bobineTable, id profile.FilmIdentity, slots []PlayerSlot,
 	rep PlayerTableReport) {
 	t.Helper()
 	if rep.Occupied != b.occupes || rep.Vacant != b.vacants {

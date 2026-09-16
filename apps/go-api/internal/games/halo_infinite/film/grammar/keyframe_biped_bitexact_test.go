@@ -29,6 +29,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestKF35B' -timeout 60m -v
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"strings"
@@ -63,12 +64,12 @@ func kf35bDir(name string) string {
 // PROFIL que chaque lecteur de bits porte. Ce harnais pose donc le profil DU HARNAIS
 // ([profilDInstrument]) — le seul canal qui atteigne les lecteurs que ces mesures construisent
 // au fil de la marche, et il est borne aux fichiers de test.
-func kf35bInstallPrecision(t *testing.T, name string) (I0Layout, func()) {
+func kf35bInstallPrecision(t *testing.T, name string) (profile.I0Layout, func()) {
 	t.Helper()
 	lay, rep, err := detectI0Layout(kf35bDir(name))
 	if err != nil {
 		t.Logf("      [%s] decoupage i0 NON detecte (%v) — largeurs par defaut conservees", name, err)
-		return I0Layout{}, func() {}
+		return profile.I0Layout{}, func() {}
 	}
 	t.Logf("      [%s] decoupage i0 lu dans le film : %s (%d paires, frontieres %v)",
 		name, lay, rep.Pairs, rep.Boundaries)

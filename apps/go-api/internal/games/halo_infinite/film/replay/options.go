@@ -354,7 +354,7 @@ type Options struct {
 	// les bornes de Cliffhanger étaient appliquées à toutes les cartes, et le filtre de
 	// téléportation en m/s décalibré d'autant).
 	//
-	// POURQUOI L'ENTRÉE ENTIÈRE ET NON `*grammar.Vec3Range` (correctif du 2026-08-15) : les
+	// POURQUOI L'ENTRÉE ENTIÈRE ET NON `*profile.Vec3Range` (correctif du 2026-08-15) : les
 	// BORNES et les LARGEURS D'AXE sont deux faces de la même entrée de catalogue, et jusqu'ici
 	// seules les bornes descendaient. Les largeurs restaient au défaut de paquet — celles de
 	// Cliffhanger — sur toutes les autres cartes. Les porter dans un second champ aurait laissé

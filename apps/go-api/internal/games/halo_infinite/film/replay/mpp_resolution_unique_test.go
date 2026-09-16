@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -34,7 +35,7 @@ import (
 // build, il les rendrait.
 func TestGwWidthsForFilmSuitLaVersionDeFormat(t *testing.T) {
 	film := filmFormat27BuildInconnu(t)
-	calibrees := grammar.MPPWidths{Lead: 8, Index: 3}
+	calibrees := profile.MPPWidths{Lead: 8, Index: 3}
 	got := gwWidthsForFilm(grammar.NewFilmContext(film), calibrees)
 	if got.Lead != 9 || got.Index != 5 {
 		t.Fatalf("largeurs installees = %d/%d, 9/5 attendues (les relues du format 27) — le site "+
@@ -49,7 +50,7 @@ func TestGwWidthsForFilmSuitLaVersionDeFormat(t *testing.T) {
 func TestGwWidthsForFilmSeReplieQuandLaLargeurEstIndeterminee(t *testing.T) {
 	d0 := chunk00Brut(t, "11de8353") // HI_1_9_0, format 24
 	film := filmDUnChunk(t, d0)
-	calibrees := grammar.MPPWidths{Lead: 8, Index: 3}
+	calibrees := profile.MPPWidths{Lead: 8, Index: 3}
 	got := gwWidthsForFilm(grammar.NewFilmContext(film), calibrees)
 	if got != calibrees {
 		t.Fatalf("largeurs installees = %d/%d, les calibrees %d/%d attendues : le format 24 n a "+

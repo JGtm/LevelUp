@@ -38,6 +38,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestV2SpawnsCooldowns$' -v -timeout 180m
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -176,7 +177,7 @@ func v2ProcessFilm(t *testing.T, dir, short8 string, entry MapQuantEntry) *v2Fil
 }
 
 // v2BirthsPerLife dedup les creations a UNE naissance par vie (slot, gen) : la plus precoce.
-func v2BirthsPerLife(cre []EquipmentCreation, film string, rng Vec3Range) []v2Birth {
+func v2BirthsPerLife(cre []EquipmentCreation, film string, rng profile.Vec3Range) []v2Birth {
 	best := map[[2]uint32]v2Birth{}
 	for _, c := range cre {
 		key := [2]uint32{c.Slot, c.Gen}
@@ -200,7 +201,7 @@ func v2BirthsPerLife(cre []EquipmentCreation, film string, rng Vec3Range) []v2Bi
 }
 
 // v2ToMeters projette une coordonnee unite [0,1] en metres par les bornes de la carte.
-func v2ToMeters(u [3]float32, rng Vec3Range) [3]float64 {
+func v2ToMeters(u [3]float32, rng profile.Vec3Range) [3]float64 {
 	var m [3]float64
 	for ax := 0; ax < 3; ax++ {
 		lo, hi := float64(rng[ax].Min), float64(rng[ax].Max)
@@ -234,7 +235,7 @@ func v2ScanI14(dir string, band map[uint32]bool) (ev []v2Ev, withI14, total int)
 	n := CountFilmChunks(dir)
 	lg := ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 	posBits := projPosBits(lg)
-	wr := Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
+	wr := profile.Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)
 		if err != nil {

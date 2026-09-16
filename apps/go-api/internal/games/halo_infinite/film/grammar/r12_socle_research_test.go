@@ -10,7 +10,7 @@ package grammar
 //
 // CE QUE L'ABSENCE DE BORNES NE COUTE PAS, ET C'EST LE POINT.
 // `SetWorldObjectPrecisionFromLayout` (traverse.go:183) ne lit que `AxisW` et `GateBits` de
-// l'`I0Layout`, et `detectI0Layout(dir)` les rend DEPUIS LE FILM. Les bornes metriques ne
+// l'`profile.I0Layout`, et `detectI0Layout(dir)` les rend DEPUIS LE FILM. Les bornes metriques ne
 // servent qu'a DEQUANTIFIER une position en metres. Aucun canal vise par R12 (i48, i56,
 // i57/i59, masque, evenements, ti=37) n'a besoin de metres : seules les POSITIONS en
 // auraient besoin, et R12 n'en publie aucune.
@@ -34,6 +34,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"sort"
@@ -57,7 +58,7 @@ type r12Setup struct {
 	dir    string
 	chunks []int
 	slots  SlotBand
-	lay    I0Layout
+	lay    profile.I0Layout
 	arch   Archetype
 	origin uint64
 }

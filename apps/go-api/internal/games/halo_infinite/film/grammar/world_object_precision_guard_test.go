@@ -74,10 +74,12 @@ var worldObjectPrecisionReaders = map[string]string{
 		"maillons par déplacement pur — même contrat d'installation qu'avant",
 	"internal/games/halo_infinite/film/grammar/projectiles.go": "longueur du champ (`projPosBits`) et " +
 		"déquantification (`decodeWorldObjectPos`) — le balayage des objets du monde",
-	"internal/games/halo_infinite/film/grammar/components_movement.go": "CITATION en commentaire (2026-09-12, " +
+	"internal/games/halo_infinite/film/profile/precision.go": "CITATION en commentaire (2026-09-12, " +
 		"lot B-bis) : le champ `Region` de `PrecisionDescriptor` documente qu'il ne vaut que " +
 		"pour le descripteur world-object et pourquoi il vit DANS la structure (restauration " +
-		"par valeur par l'installateur) — aucune lecture de la valeur ici",
+		"par valeur par l'installateur) — aucune lecture de la valeur ici. LE TYPE A CHANGE DE " +
+		"COUCHE AU LOT 2.5.b (2026-09-16) : il descend de `grammar/components_movement.go` dans " +
+		"`profile/`, ou il est de la DONNEE ; le commentaire l'a suivi, pas la lecture",
 	"internal/games/halo_infinite/film/grammar/position_capture.go": "repli d'`absAxisW`, INATTEIGNABLE en " +
 		"l'état : il est gardé par `br.absoluteAxisW() > 0`, dont le défaut vaut 14 et dont le " +
 		"seul écrivain (killsource/calibrate.go) balaie 6..26 — depuis le lot 2.2.a il le fait " +

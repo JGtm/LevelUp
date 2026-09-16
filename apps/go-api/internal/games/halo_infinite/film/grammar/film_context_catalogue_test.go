@@ -25,6 +25,7 @@ package grammar
 // le meme chemin relatif que `replay/golden_inputs_test.go` : ce test tourne donc en CI.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"path/filepath"
 	"testing"
 )
@@ -75,7 +76,7 @@ func TestRegleDuCatalogueSurLeVraiCatalogue(t *testing.T) {
 	} {
 		t.Run(c.carte, func(t *testing.T) {
 			entry := entreeCatalogue(t, c.carte)
-			attendu := I0Layout{GateBits: c.gate, AxisW: c.axes, Region: c.region}
+			attendu := profile.I0Layout{GateBits: c.gate, AxisW: c.axes, Region: c.region}
 			if lay := entry.Layout(); lay != attendu {
 				t.Fatalf("catalogue %s : %s, attendu %s (%s)", c.carte, lay, attendu, c.note)
 			}
@@ -141,7 +142,7 @@ func TestRegleDuCatalogueRepliAutoDetection(t *testing.T) {
 func TestRegleDuCatalogueDecoupageForceMaitre(t *testing.T) {
 	film := chargerMiniBobine(t)
 	entry := entreeCatalogue(t, "Live Fire")
-	force := I0Layout{GateBits: 7, AxisW: [3]uint{9, 10, 11}, Region: 3}
+	force := profile.I0Layout{GateBits: 7, AxisW: [3]uint{9, 10, 11}, Region: 3}
 	if force == entry.Layout() {
 		t.Fatal("le decoupage force EGALE celui du catalogue : la precedence ne serait pas mesuree")
 	}

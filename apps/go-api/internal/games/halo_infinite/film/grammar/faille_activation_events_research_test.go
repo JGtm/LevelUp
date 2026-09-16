@@ -32,6 +32,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"sort"
 	"testing"
@@ -176,7 +177,7 @@ func failleRapportGlobal(t *testing.T, global map[int]int, total, vides int) {
 
 // failleRapportFenetres détaille les occurrences fenêtrées : les types suspects un par un
 // (avec distance temporelle au saut), les autres en volume.
-func failleRapportFenetres(t *testing.T, occs []failleEvOcc, ancres []failleAncre, origine uint64, wr Vec3Range) {
+func failleRapportFenetres(t *testing.T, occs []failleEvOcc, ancres []failleAncre, origine uint64, wr profile.Vec3Range) {
 	t.Helper()
 	for ai, a := range ancres {
 		volume := map[int]int{}
@@ -268,7 +269,7 @@ func failleRefsHypotheses(t *testing.T, o failleEvOcc, a failleAncre) {
 // <= failleProcheM (2D) de l'ancre. Le décalage de départ est BALAYE (l'en-tête exact des
 // références de ces types n'est pas encore sourcé de l'exe) : un rapport localise donc un
 // CANDIDAT de position, pas une grammaire — le dire à cette hauteur, pas plus.
-func failleSondePosition(t *testing.T, o failleEvOcc, a failleAncre, wr Vec3Range) {
+func failleSondePosition(t *testing.T, o failleEvOcc, a failleAncre, wr profile.Vec3Range) {
 	t.Helper()
 	deq := func(q uint64, axe int) float64 {
 		lo, hi := float64(wr[axe].Min), float64(wr[axe].Max)

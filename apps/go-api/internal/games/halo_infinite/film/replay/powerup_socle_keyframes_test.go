@@ -33,6 +33,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // psTIRecenses — les archetypes dont on suit le recensement. Memes que la phase 2 : un
@@ -133,7 +134,7 @@ func psProfils(kfs []psKF, ti int) []psPresence {
 // psSlotsAvecDelta rend les slots d'un archetype qui ont AU MOINS une position dans les
 // paquets delta. Le complementaire — recense aux images-cles, jamais vu en delta — est la
 // population « invisible » : la forme meme de H1.
-func psSlotsAvecDelta(dir string, wr *grammar.Vec3Range, ti int) map[uint32]bool {
+func psSlotsAvecDelta(dir string, wr *profile.Vec3Range, ti int) map[uint32]bool {
 	out := map[uint32]bool{}
 	tracks, err := grammar.ScanFilmWorldObjects(dir, wr, ti)
 	if err != nil {
@@ -174,7 +175,7 @@ func TestPowerupSocleImagesCles(t *testing.T) {
 
 // psRapportTI ecrit le recensement d'UN archetype : ses denominateurs, sa population
 // invisible, et les slots a trou interieur.
-func psRapportTI(t *testing.T, kfs []psKF, dir string, wr *grammar.Vec3Range, ti int, t0 uint64) {
+func psRapportTI(t *testing.T, kfs []psKF, dir string, wr *profile.Vec3Range, ti int, t0 uint64) {
 	t.Helper()
 	profils := psProfils(kfs, ti)
 	if len(profils) == 0 {

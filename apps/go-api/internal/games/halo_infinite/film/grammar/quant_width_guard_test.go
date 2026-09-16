@@ -15,7 +15,7 @@ import (
 //
 // PÉRIMÈTRE : ce garde-rail ne couvre QUE la table par défaut. La largeur de la position
 // d'objet (i0) vient de la table PAR RÉGION (AABB du BSP de la carte) et n'a rien à voir
-// avec 6+L ; elle est détenue par I0Layout / DetectI0Layout et vérifiée contre les bornes
+// avec 6+L ; elle est détenue par profile.I0Layout / DetectI0Layout et vérifiée contre les bornes
 // du module par cmd/tmp_boundstest. Confondre les deux est l'erreur que ce commentaire
 // existe pour empêcher.
 func TestQuantAxisWidthCentralized(t *testing.T) {

@@ -5,6 +5,7 @@ package grammar
 // de ce fichier-la pour le contexte, les seuils et les 7 mesures.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"os"
 	"path/filepath"
@@ -94,7 +95,7 @@ func sondeScanFireArme(t *testing.T, dir string, n int) (map[uint64]int, int, in
 // sondeBipedTracks decode les positions monde des bipeds et les indexe par slot, triees par
 // temps. Filtres teleport/isolation desactives pour MAXIMISER la couverture (on veut savoir
 // combien de degats sont resolubles, pas lisser une trajectoire).
-func sondeBipedTracks(t *testing.T, dir string, wr *Vec3Range, n int) map[uint32][]sondeSample {
+func sondeBipedTracks(t *testing.T, dir string, wr *profile.Vec3Range, n int) map[uint32][]sondeSample {
 	t.Helper()
 	opt := DefaultScanFilmOptions()
 	opt.MaxSpeedMPS = 0
@@ -150,7 +151,7 @@ func sondeLookup(track []sondeSample, T, tol uint64) (sondeSample, bool) {
 // sondeWorldRange auto-detecte les bornes monde de la carte par la signature de largeurs
 // d'axe (controle de coherence du catalogue). Rend nil si la carte est absente/ambigue
 // (les distances sont alors desactivees et l'instrument le signale).
-func sondeWorldRange(t *testing.T, dir string) *Vec3Range {
+func sondeWorldRange(t *testing.T, dir string) *profile.Vec3Range {
 	t.Helper()
 	lay, _, err := detectI0Layout(dir)
 	if err != nil {

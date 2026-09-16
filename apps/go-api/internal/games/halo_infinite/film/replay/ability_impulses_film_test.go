@@ -43,6 +43,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -263,7 +264,7 @@ func mapEntryFromCatalog(t *testing.T, dir, path string) grammar.MapQuantEntry {
 	return got[0]
 }
 
-func p3hasRange(all []grammar.MapQuantEntry, r grammar.Vec3Range) bool {
+func p3hasRange(all []grammar.MapQuantEntry, r profile.Vec3Range) bool {
 	for _, x := range all {
 		if x.Range() == r {
 			return true

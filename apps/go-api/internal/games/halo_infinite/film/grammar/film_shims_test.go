@@ -18,7 +18,10 @@ package grammar
 // restent inchanges, et le film charge enumere lui-meme ses chunks de donnees. C'est ce qui a
 // permis une migration purement mecanique de ces sites.
 
-import "levelup/go-api/internal/games/halo_infinite/film/source"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
+)
 
 // filmDeDir charge le film d'un repertoire, ou rend nil. Les helpers ci-dessous rendent alors
 // leur resultat vide ou leur erreur habituelle — exactement ce que faisait un repertoire
@@ -71,7 +74,7 @@ func vehicleArchetypeDir(dir string) (Archetype, error) {
 // C'est bien l'auto-detection ici, et non la regle du catalogue : ces instruments de mesure ne
 // disposent d'aucune entree de carte, et c'est exactement ce que faisait `vehicleI0Layout(dir)`
 // avant la migration.
-func vehicleI0LayoutDir(dir string) (I0Layout, error) {
+func vehicleI0LayoutDir(dir string) (profile.I0Layout, error) {
 	return NewFilmContext(filmDeDir(dir)).I0Layout()
 }
 

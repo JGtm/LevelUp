@@ -41,6 +41,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"testing"
@@ -136,7 +137,7 @@ type i48Stats struct {
 // i48Walk porte ce que la marche d'un record doit connaître. Regroupé en structure pour
 // tenir la règle des cinq paramètres.
 type i48Walk struct {
-	lay  I0Layout
+	lay  profile.I0Layout
 	arch Archetype
 	hook *i48HookCapture
 }

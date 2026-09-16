@@ -519,4 +519,13 @@
 #               changent pas, seuls les chemins. L empreinte monte parce qu elle hache le chemin
 #               relatif a cote du contenu. `KillSourceDecoderRev` ne bouge PAS (sortie identique a
 #               l octet, ancre de racine suivie, golden refige) ; `SchemaVersion` 60.
-grammar-2026-09-15.33	6b60980b451b8bca06f6bdd8eb5d60c33c216b5823d58c820ce115973695a458
+#   2026-09-16  grammar-2026-09-15.34  lot 2.5.b (`.33` -> `.34`) : EXTRACTION DE LA COUCHE
+#               `profile`, SORTIE IDENTIQUE. Ce n est PAS un deplacement pur : la DONNEE (types de
+#               valeur, table de profil, table par build et par format, catalogue de bornes par
+#               carte) descend dans `film/profile` ; la LECTURE reste en `grammar` et rend un type
+#               de `profile`. `ResolveProfile` lit les trois cles du film ici et appelle
+#               `profile.Resoudre` avec elles. Aucune largeur, aucun cadre, aucune valeur de table
+#               ne change. L empreinte monte deux fois : les octets de source de `grammar` bougent,
+#               et la racine `film/profile` ENTRE dans l empreinte — la donnee du decodeur est
+#               desormais hachee. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` 60.
+grammar-2026-09-15.34	26b4db8c6eb59b1e39bfc3a260be66989552d3bd1a4bb781ab2e742ce6ac0543

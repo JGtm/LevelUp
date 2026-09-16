@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/profile"
+
 // traverse_precision.go — LES DESCRIPTEURS DE QUANTIFICATION DE POSITION.
 //
 // Sorti de `traverse.go` par deplacement pur au lot 2.7 (scission des fichiers de plus de
@@ -37,7 +39,7 @@ package grammar
 // désormais du PROFIL que le lecteur porte ([Lecteur.poserMouvement]), et son défaut est
 // l'invariant de [mouvementDuProfil]. Le seul écrivain de production — la calibration de
 // `killsource` — le passe maintenant par `FrameConfig.Mouvement`.
-func (b *Lecteur) traversal() PrecisionDescriptor { return b.p.Mouvement.Traversal }
+func (b *Lecteur) traversal() profile.PrecisionDescriptor { return b.p.Mouvement.Traversal }
 
 // WorldObjectPrecision est le descripteur du chemin WORLD-OBJECT d'i0
 // (`object-position-component`) : projectiles ti=41, armes au sol ti=42, équipement ti=37,
@@ -73,4 +75,6 @@ func (b *Lecteur) traversal() PrecisionDescriptor { return b.p.Mouvement.Travers
 // de `replay` la pose sur le PROFIL DE BALAYAGE DU CONTEXTE du film — le canal qui atteint les
 // quarante balayages de la cuisson du rejeu, chacun construisant ses lecteurs par
 // [FilmContext.NouveauLecteur].
-func (b *Lecteur) worldObjectPrecision() PrecisionDescriptor { return b.p.Mouvement.WorldObject }
+func (b *Lecteur) worldObjectPrecision() profile.PrecisionDescriptor {
+	return b.p.Mouvement.WorldObject
+}

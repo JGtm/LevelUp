@@ -21,6 +21,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run HeldWeapon -v -timeout 30m
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"testing"
@@ -58,7 +59,7 @@ type hwSetup struct {
 	dir       string
 	chunks    []int
 	slots     SlotBand
-	lay       I0Layout
+	lay       profile.I0Layout
 	arch      Archetype
 	weaponIdx map[int]bool
 	selIdx    int

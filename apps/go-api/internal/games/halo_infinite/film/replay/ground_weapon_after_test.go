@@ -36,6 +36,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 func TestGroundWeaponAfter(t *testing.T) {
@@ -87,7 +88,7 @@ func TestGroundWeaponAfter(t *testing.T) {
 // du décodage. L'AVANT ne pouvait pas faire autrement : sans record de création, rien ne disait
 // quelles générations étaient des armes au sol. Le record de création les nomme.
 func gwLogLifeDispersion(
-	t *testing.T, dir string, wr *grammar.Vec3Range, band map[uint32]bool,
+	t *testing.T, dir string, wr *profile.Vec3Range, band map[uint32]bool,
 	cre []grammar.EquipmentCreation,
 ) {
 	t.Helper()
@@ -139,7 +140,7 @@ func gwConfirmedSlots(cre []grammar.EquipmentCreation) map[uint32]bool {
 // gwLogDispersions publie la dispersion des trois bandes : présumée (l'AVANT), confirmée
 // (l'APRÈS) et fantôme recalibré à la cardinalité de la confirmée.
 func gwLogDispersions(
-	t *testing.T, dir string, wr *grammar.Vec3Range, band, confirmed map[uint32]bool,
+	t *testing.T, dir string, wr *profile.Vec3Range, band, confirmed map[uint32]bool,
 ) {
 	t.Helper()
 	full := grammar.WorldObjectPositionsForBand(dir, wr, band)

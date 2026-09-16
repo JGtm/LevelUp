@@ -40,6 +40,7 @@ package grammar
 //	go test ./internal/games/halo_infinite/film/filmdec/ -run I0Catalogue -v -count=1
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"testing"
 )
 
@@ -50,7 +51,7 @@ import (
 // les relit sous un découpage qui peut être le bon ou le muté.
 type recordBipedSynthetique struct {
 	// Lay est le découpage sous lequel les bits sont ÉCRITS.
-	Lay I0Layout
+	Lay profile.I0Layout
 	// Region est la valeur écrite dans le champ d'index de région (largeur `GateBits - 4`).
 	Region uint64
 	Slot   uint32
@@ -64,7 +65,7 @@ type recordBipedSynthetique struct {
 // ecrire pose l'en-tête, le masque et le composant i0 de cet enregistrement.
 func (r recordBipedSynthetique) ecrire(w *bitWriter) {
 	writeBipedHeaderEtMasque(w, r.Slot, r.Tag, r.MaskCount)
-	const preGate = i0SpineBits + i0UseDefaultBits
+	const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
 	w.bits(0, preGate) // i0 absolu : spine + useDefault nuls
 	w.bits(r.Region, r.Lay.GateBits-preGate)
 	for ax := 0; ax < 3; ax++ {
@@ -80,7 +81,7 @@ func (r recordBipedSynthetique) ecrire(w *bitWriter) {
 // catalogue venait à dire autre chose pour cette carte, `TestI0CatalogueEstLaSourceDuDecoupage`
 // rougit — et c'est le comportement voulu : un changement de découpage de carte est une décision,
 // pas un effet de bord.
-var decoupageDeReferenceLiveFire = I0Layout{GateBits: 6, AxisW: [3]uint{12, 12, 11}, Region: 1}
+var decoupageDeReferenceLiveFire = profile.I0Layout{GateBits: 6, AxisW: [3]uint{12, 12, 11}, Region: 1}
 
 // liveFireEntry rend l'entrée de catalogue de Live Fire, LUE DANS LE CATALOGUE VERSIONNÉ.
 func liveFireEntry(t *testing.T) MapQuantEntry {
@@ -121,7 +122,7 @@ func payloadTemoin() []byte {
 
 // lireSousDecoupage rejoue le balayage PUR du dépôt (`ScanBipedRecords`) sur le témoin de bits,
 // sous le découpage `lu`.
-func lireSousDecoupage(lu I0Layout, rng Vec3Range) []BipedPosition {
+func lireSousDecoupage(lu profile.I0Layout, rng profile.Vec3Range) []BipedPosition {
 	opt := DefaultScanFilmOptions()
 	opt.WorldRange = &rng
 	return ScanBipedRecords(payloadTemoin(), NewSlotBand(map[uint32]bool{slotTemoin: true}), lu, opt,
@@ -168,7 +169,7 @@ func TestI0CatalogueEcarteLesAutresRegions(t *testing.T) {
 	// LE DÉCOUPAGE QUE L'AUTO-DÉTECTION REND SUR CETTE CARTE : même longueur totale d'i0, porte
 	// d'un seul bit, région attendue 0 (cf. i0_layout.go). Écrit ici comme TÉMOIN DE MESURE, pas
 	// comme une valeur de production.
-	detecte := I0Layout{GateBits: DefaultI0GateBits, AxisW: [3]uint{
+	detecte := profile.I0Layout{GateBits: profile.DefaultI0GateBits, AxisW: [3]uint{
 		decoupageDeReferenceLiveFire.AxisW[0] + 1,
 		decoupageDeReferenceLiveFire.AxisW[1],
 		decoupageDeReferenceLiveFire.AxisW[2]}}

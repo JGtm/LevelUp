@@ -25,6 +25,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // padArchetype dit CE QUI CHANGE d'un archétype d'objet du monde à l'autre : son typeIndex, le
@@ -35,7 +36,7 @@ import (
 type padArchetype struct {
 	ti    int
 	label string
-	scan  func(fc *grammar.FilmContext, wr *grammar.Vec3Range, band map[uint32]bool) (
+	scan  func(fc *grammar.FilmContext, wr *profile.Vec3Range, band map[uint32]bool) (
 		[]grammar.EquipmentCreation, grammar.EquipmentCreationStats, error)
 }
 
@@ -63,7 +64,7 @@ func worldEquipmentArchetype() padArchetype {
 //
 // HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmPadScans(
-	fc *grammar.FilmContext, matchID string, wr *grammar.Vec3Range, mpp grammar.MPPWidths,
+	fc *grammar.FilmContext, matchID string, wr *profile.Vec3Range, mpp profile.MPPWidths,
 ) PadScans {
 	return PadScans{
 		Weapons:  decodeFilmPadScan(fc, matchID, wr, mpp, groundWeaponArchetype()),
@@ -91,7 +92,7 @@ func decodeFilmPadScans(
 //
 // HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmPadScan(
-	fc *grammar.FilmContext, matchID string, wr *grammar.Vec3Range, mpp grammar.MPPWidths,
+	fc *grammar.FilmContext, matchID string, wr *profile.Vec3Range, mpp profile.MPPWidths,
 	arch padArchetype,
 ) WorldObjectScan {
 	defer gwInstallMPPWidths(fc, gwWidthsForFilm(fc, mpp))()
@@ -147,7 +148,7 @@ func decodeFilmPadScan(
 // format 23) et AUCUN d eux n est a un format dont la largeur est relue — zero octet cuit ne
 // change sur ce cache. Le gain est de tenir le parc NEUF : au prochain build hors table au
 // format 27, la lecture decide au lieu de la calibration.
-func gwWidthsForFilm(fc *grammar.FilmContext, calibrees grammar.MPPWidths) grammar.MPPWidths {
+func gwWidthsForFilm(fc *grammar.FilmContext, calibrees profile.MPPWidths) profile.MPPWidths {
 	res := grammar.MPPWidthsForFilm(fc.Film())
 	if res.Relue() {
 		return res.Widths
@@ -161,7 +162,7 @@ func gwWidthsForFilm(fc *grammar.FilmContext, calibrees grammar.MPPWidths) gramm
 	return calibrees
 }
 
-func gwInstallMPPWidths(fc *grammar.FilmContext, w grammar.MPPWidths) func() {
+func gwInstallMPPWidths(fc *grammar.FilmContext, w profile.MPPWidths) func() {
 	if !w.Valid() {
 		return func() {}
 	}

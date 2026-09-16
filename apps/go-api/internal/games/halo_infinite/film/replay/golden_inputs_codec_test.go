@@ -11,6 +11,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const cmScale = 100
@@ -189,7 +190,7 @@ func encodePositionSection(w *gwriter, pos []grammar.BipedPosition) {
 	}
 }
 
-func decodePositionSection(r *greader, lay grammar.I0Layout, world grammar.Vec3Range) []grammar.BipedPosition {
+func decodePositionSection(r *greader, lay profile.I0Layout, world profile.Vec3Range) []grammar.BipedPosition {
 	nSlots := int(r.u())
 	slots := make([]uint32, 0, nSlots)
 	for k := 0; k < nSlots && r.err == nil; k++ {

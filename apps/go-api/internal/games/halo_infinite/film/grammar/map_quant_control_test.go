@@ -16,7 +16,7 @@ package grammar
 // (film, carte) est une DONNÉE, produite depuis le registre, et le verdict est agrégé par
 // carte — une carte sans film le dit, elle ne disparaît pas du compte.
 //
-// CE QU'IL NE PEUT PAS DIRE, dit d'avance : `DetectI0Layout` suppose `DefaultI0GateBits`
+// CE QU'IL NE PEUT PAS DIRE, dit d'avance : `DetectI0Layout` suppose `profile.DefaultI0GateBits`
 // (5 bits d'en-tête = 3 spine + 1 useDefault + 1 index de région). Une carte à plus de deux
 // BSP valides porte un index plus large et décale la PREMIÈRE largeur d'autant ; les
 // deux autres, lues comme des écarts entre frontières, restent justes. CE CAS EXISTE depuis
@@ -73,7 +73,7 @@ func TestControleBornesFilms(t *testing.T) {
 			sansEntree = append(sansEntree, p.carte+" ("+p.film+")")
 			continue
 		}
-		// Le détecteur lit avec un gate fixe de DefaultI0GateBits : sur une carte dont
+		// Le détecteur lit avec un gate fixe de profile.DefaultI0GateBits : sur une carte dont
 		// l'index de région est plus large (regionIndexBits > 1, donnée du catalogue),
 		// l'excédent d'index est lu comme des bits de X. L'attendu du contrôle intègre cet
 		// écart — il vient du catalogue, jamais du film.

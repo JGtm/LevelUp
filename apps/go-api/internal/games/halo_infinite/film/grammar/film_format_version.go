@@ -75,6 +75,7 @@ package grammar
 import (
 	"strconv"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -117,15 +118,15 @@ func FilmFormatVersion(f *source.Film) (int, bool) {
 // format, ou [ErrUnknownFormat] enveloppe avec la version refusee.
 //
 // ELLE EXISTE POUR QUE LE CONSOMMATEUR PUISSE DISTINGUER LES DEUX « PAS DE PROFIL ». Un format
-// CONNU dont la largeur est indeterminee (20, 21, 24, 25) rend `MPPWidths{}` et une erreur NULLE
+// CONNU dont la largeur est indeterminee (20, 21, 24, 25) rend `profile.MPPWidths{}` et une erreur NULLE
 // — c est l etat normal du parc ancien, et le repli calibre s y applique depuis le 1.9.1 bis. Un
 // format INCONNU rend l erreur — c est l evenement « patch du jeu », et il se compte
 // ([UnknownFormatExpvarPairs]). Sans cette frontiere, les deux se liraient pareil et un format
 // neuf basculerait tout le parc sur la calibration sans que rien ne le dise.
-func MPPWidthsForFormat(format int) (MPPWidths, error) {
+func MPPWidthsForFormat(format int) (profile.MPPWidths, error) {
 	w, ok := mppWidthsPourFormat(format)
 	if !ok {
-		return MPPWidths{}, erreurFormatInconnu(format)
+		return profile.MPPWidths{}, erreurFormatInconnu(format)
 	}
 	return w, nil
 }
@@ -150,7 +151,7 @@ type ResolutionMPP struct {
 	FormatVersion int
 	// Widths : le découpage que porte cette version de format. Non valide quand la version est
 	// connue mais sa largeur INDÉTERMINÉE (formats 20, 21, 24, 25), ou quand elle est inconnue.
-	Widths MPPWidths
+	Widths profile.MPPWidths
 	// FormatInconnu : la version de format n'est PAS dans la table. C'est l'événement « patch du
 	// jeu », et lui seul se compte ([UnknownFormatExpvarPairs]) — un format connu sans largeur
 	// relue est l'état normal du parc ancien.

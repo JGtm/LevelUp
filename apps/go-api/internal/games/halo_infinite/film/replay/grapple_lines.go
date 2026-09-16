@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // grapple_lines.go — LA TRACTION DE GRAPPIN, datée PAR VIE sur l'axe du rejeu, avec son
@@ -178,7 +179,7 @@ func grappleLinesOfLife(list []grammar.GrappleRead, entry grammar.MapQuantEntry,
 // qui atteste la traction, et c'est sur elle que le calque est daté.
 func grappleLine(r grammar.GrappleRead, startUS uint64, entry grammar.MapQuantEntry,
 	origin, step uint64, vies []*Track) (GrappleLine, bool) {
-	lay := grammar.I0Layout{AxisW: entry.AxisWidths}
+	lay := profile.I0Layout{AxisW: entry.AxisWidths}
 	wr := entry.Range()
 	ax := grammar.DequantBipedAxis(r.PosQ[0], 0, lay, wr)
 	ay := grammar.DequantBipedAxis(r.PosQ[1], 1, lay, wr)

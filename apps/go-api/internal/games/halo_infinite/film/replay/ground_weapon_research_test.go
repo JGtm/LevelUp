@@ -54,6 +54,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -349,10 +350,10 @@ func gwTopNames(named map[string]int, max int) []gwNameCount {
 
 // gwWorldRange lit les bornes de la carte dans le catalogue versionné. Absentes, la mesure de
 // position est simplement sautée : un quantum sans bornes n'est pas une position.
-func gwWorldRange(t *testing.T) (grammar.Vec3Range, bool) {
+func gwWorldRange(t *testing.T) (profile.Vec3Range, bool) {
 	boundsPath, mapName := os.Getenv(gwBoundsEnv), os.Getenv(gwMapEnv)
 	if boundsPath == "" || mapName == "" {
-		return grammar.Vec3Range{}, false
+		return profile.Vec3Range{}, false
 	}
 	cat, err := grammar.LoadMapQuantCatalog(boundsPath)
 	if err != nil {

@@ -39,6 +39,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -148,7 +149,7 @@ func bitProjMesureFilm(t *testing.T, parc string, cat *MapQuantCatalog, f bitPro
 // bitProjBalaye rejoue `scanProjectileRecords` avec une porte de largeur LIBRE, et garde les
 // bits. Aucune I/O : le film est déjà chargé.
 func bitProjBalaye(
-	film *source.Film, band map[uint32]bool, w [3]uint, rng Vec3Range,
+	film *source.Film, band map[uint32]bool, w [3]uint, rng profile.Vec3Range,
 	porte int, attendue uint64,
 ) []bpEchantillon {
 	posBits := porte + int(w[0]+w[1]+w[2]) + 2
@@ -185,7 +186,7 @@ func bitProjBalaye(
 // bitProjLis lit un i0 d'objet du monde à une porte donnée et rend l'échantillon AVEC ses bits.
 // Mêmes règles de rejet que la production : porte nulle, quanta saturés écartés.
 func bitProjLis(
-	pay []byte, rec WorldObjectRecord, w [3]uint, rng Vec3Range, porte int, attendue uint64,
+	pay []byte, rec WorldObjectRecord, w [3]uint, rng profile.Vec3Range, porte int, attendue uint64,
 ) (bpEchantillon, bool) {
 	var e bpEchantillon
 	e.porte = PeekBits(pay, rec.After, porte)
