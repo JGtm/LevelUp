@@ -58,7 +58,7 @@ var tablesDuProfil = []struct {
 	{"tableProfilFormat", 2},
 	{"tableProfilBuild", 7},
 	{"tableProfilMajeure", 3},
-	{"tableProfilInvariants", 11},
+	{"tableProfilInvariants", 12}, // 12 depuis la fusion du lot 2.2 (2026-09-17) : `Movement.WorldObject` entre dans la table
 }
 
 // lignesAttenduesParTable : le total des quatre, calcule une fois.
