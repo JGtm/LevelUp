@@ -6,10 +6,12 @@ package archlint
 // # POURQUOI CE RATCHET EXISTE, ET POURQUOI AVANT LE LOT 2.4
 //
 // ADR 0034 D-2 : seule la couche `source` touche les octets d un film. Tout le reste recoit
-// des valeurs deja lues. Aujourd hui c est faux — SIX lecteurs de bits distincts vivent dans
-// NEUF paquets, et chacun repose sur sa propre idee du bourrage, du debordement et de
-// l ordre des bits. Le lot 2.4 les ramene a une facade unique (`film.Source`, qui nait dans
-// `internal/analysis/filmsource/`, decision V15 (1)).
+// des valeurs deja lues. A la pose de ce ratchet c etait faux — SEPT lecteurs de bits distincts
+// vivaient dans NEUF paquets, et chacun reposait sur sa propre idee du bourrage, du
+// debordement et de l ordre des bits. Le lot 2.4 les ramene a une facade unique (`film.Source`,
+// qui nait dans `internal/analysis/filmsource/`, decision V15 (1)) : le lot 2.4.1 en a supprime
+// DEUX (`killsource.evReader` et les primitives de position de `killsource`), et la lecture par
+// mot de `filmdec` est descendue dans la couche source avec eux.
 //
 // Ce ratchet est pose AVANT ce lot, et il vaut DEJA : son allowlist EST la liste de travail de
 // 2.4, elle se vide a mesure, et elle rougit des qu une entree devient perimee. Pose apres, il
@@ -78,21 +80,33 @@ package archlint
 //
 // Trois faux positifs de la note, mecaniquement ecartes ici et non par une exception :
 // `filmcache.go:116` (`s.chunks[i]` est un `[]ChunkMeta`), `offline_biped_band.go:163`
-// (`chunks []int`), `registre_killsource.go:259` (`"func evBody(r *evReader"` est une CHAINE).
+// (`chunks []int`), `registre_killsource.go:259` (`"func evBody(r *curseurEv"` est une CHAINE).
 //
 // # L ALLOWLIST, ET COMMENT ELLE SE VIDE
 //
-// 78 entrees : 77 posees le 2026-09-17, une par couple (fichier, motif), plus une le 2026-09-18
-// a la fusion du lot 2.3 (`filmdec/film_context.go`, datee sur sa ligne), chacune avec le lot
-// qui la retire. La case 2.4.3 du plan ne se coche que quand cette table est VIDE.
+// 78 entrees a la pose : 77 le 2026-09-17, une par couple (fichier, motif), plus une le
+// 2026-09-18 a la fusion du lot 2.3 (`filmdec/film_context.go`, datee sur sa ligne), chacune
+// avec le lot qui la retire. La case 2.4.3 du plan ne se coche que quand il ne reste que les
+// neuf entrees du lot 2.5.c (V15 (2) et (4) : elles descendent au pas 5).
 //
-//	2.4.1 (6)   absorption de `killsource.evReader` par le lecteur canonique : le type, sa
-//	            structure, et les primitives `bitAt` / `bits32` / `bitsN` / `bitsWide`.
-//	2.4.2 (63)  la facade `film.Source` : `filmdec` (declaration du lecteur, 33 sites de
+//	2.4.1 (6)   VIDEE le 2026-09-18. `killsource.evReader` est absorbe par le lecteur canonique
+//	            de la couche source ([filmsource.Bits]) ; le type, sa structure et les
+//	            primitives `bitAt` / `bits32` / `bitsN` / `bitsWide` sont SUPPRIMES. Ce que le
+//	            drapeau `over` gardait reste au marcheur de chaine (`killsource.curseurEv`), qui
+//	            teste `Remaining()` avant chaque lecture. Equivalence bit a bit prouvee appel
+//	            par appel sur 109 168 positions reelles des dix bobines versionnees
+//	            (`killsource/equivalence_lecteur_test.go`) et de bout en bout par le golden des
+//	            triplets fige AVANT l absorption (`chaines_evenements_test.go`).
+//	2.4.2 (59)  la facade `film.Source` : `filmdec` (declaration du lecteur, 33 sites de
 //	            construction, quatre sections de `chunk_00`, second marcheur de paquets),
 //	            `killsource` (chunks, feed, table de joueurs, monde, walk), `objectiveevents`
 //	            (film.go, statborg.go), `weaponv3` (pi_resolver, bits_word, timing),
-//	            `sync/haloclient` (inflate du blob CDN) et les cinq outils `cmd/`.
+//	            `sync/haloclient` (inflate du blob CDN) et les cinq outils `cmd/`. QUATRE de ses
+//	            63 entrees sont deja tombees au 2.4.1, parce que le lecteur canonique ne
+//	            pouvait pas naitre sans elles : `filmdec/bits_word.go` (la lecture par mot, qui
+//	            descend en `source` sous le nom [filmsource.BitsAt] — une seule implantation,
+//	            jamais deux) et ses deux derniers appelants directs, `grenade_events.go` et
+//	            `keyframe_world.go`.
 //	2.5.c (9)   descente de la grammaire de film posee dans `internal/analysis` racine
 //	            (V15 (2) et V15 (4)) : `highlight_event_parser.go`, `weapon_scanner.go`,
 //	            `weapon_data.go`, `positions/positions.go`, plus leurs deux consommateurs
@@ -220,8 +234,9 @@ type lectureToleree struct {
 }
 
 // lecturesTolerees — LES 77 COUPLES MESURES LE 2026-09-17 sur `24b67e339`, plus le couple ne de la
-// fusion du lot 2.3 (2026-09-18). Chacun disparait
-// dans le commit qui fait le portage ; la case 2.4.3 du plan se coche quand la table est vide.
+// fusion du lot 2.3 (2026-09-18), MOINS les DIX retires par le lot 2.4.1 (2026-09-18) : il en
+// reste 68. Chacun disparait dans le commit qui fait le portage ; la case 2.4.3 du plan se coche
+// quand il ne reste que les neuf entrees du lot 2.5.c.
 var lecturesTolerees = []lectureToleree{
 	{fichier: "cmd/diag_film/main.go", motif: motifBinaire, lot: "2.5.c"},
 	{fichier: "cmd/diag_weapons_v3/positions.go", motif: motifInflate, lot: "2.4.2"},
@@ -248,8 +263,6 @@ var lecturesTolerees = []lectureToleree{
 	{fichier: "internal/games/halo_infinite/film/filmdec/biped_creation.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/biped_pickups.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/bitreader.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/bits_word.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/bits_word.go", motif: motifBinaire, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/default_state.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/equipment_creation.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/equipment_state.go", motif: motifLecteur, lot: "2.4.2"},
@@ -271,12 +284,10 @@ var lecturesTolerees = []lectureToleree{
 	{fichier: "internal/games/halo_infinite/film/filmdec/frame_harvest.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/frame_infer.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/frame_records.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/grenade_events.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/ground_weapon_ammo.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/keyframe_entity_queue.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/keyframe_fullstate_loop.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/keyframe_record_walk.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/keyframe_world.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/navpoint_radial_scan.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/object_deaths_march.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/objective_scan.go", motif: motifLecteur, lot: "2.4.2"},
@@ -291,17 +302,11 @@ var lecturesTolerees = []lectureToleree{
 	{fichier: "internal/games/halo_infinite/film/filmdec/weapon_hits.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/zone_state_scan.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/zoom_events.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/killsource/assist.go", motif: motifLecteur, lot: "2.4.1"},
 	{fichier: "internal/games/halo_infinite/film/killsource/chunks.go", motif: motifChunk, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/killsource/chunks.go", motif: motifLecteur, lot: "2.4.1"},
-	{fichier: "internal/games/halo_infinite/film/killsource/eventchain.go", motif: motifLecteur, lot: "2.4.1"},
-	{fichier: "internal/games/halo_infinite/film/killsource/eventchain.go", motif: motifTypeLecteur, lot: "2.4.1"},
 	{fichier: "internal/games/halo_infinite/film/killsource/feed.go", motif: motifChunk, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/killsource/film_table.go", motif: motifChunk, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/killsource/scan.go", motif: motifLecteur, lot: "2.4.1"},
 	{fichier: "internal/games/halo_infinite/film/killsource/walk.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/killsource/world.go", motif: motifChunk, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/killsource/world.go", motif: motifLecteur, lot: "2.4.1"},
 	{fichier: "internal/sync/haloclient/halo_client_http.go", motif: motifInflate, lot: "2.4.2"},
 	{fichier: "internal/sync/killcollector/shots.go", motif: motifBinaire, lot: "2.5.c"},
 }

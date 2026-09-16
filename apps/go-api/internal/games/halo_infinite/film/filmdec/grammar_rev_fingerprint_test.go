@@ -14,14 +14,21 @@ package filmdec
 //
 // # CE QUE CE TEST FAIT
 //
-// Il hache toutes les sources `.go` hors `_test.go` des TROIS paquets qui lisent les octets du
-// film — `filmdec/`, `killsource/` et `analysis/objectiveevents/` — et compare au golden
+// Il hache toutes les sources `.go` hors `_test.go` des QUATRE paquets qui lisent les octets du
+// film — `analysis/filmsource/`, `filmdec/`, `killsource/` et `analysis/objectiveevents/` — et
+// compare au golden
 // `testdata/grammar_rev.golden`, qui fige le couple (revision, empreinte) avec son
 // historique. Toucher l'une ou l'autre le fait rougir ; le remettre au vert oblige a rouvrir la
 // ligne de revision — donc a DECIDER si la grammaire a change, et si les deux autres etages
 // doivent monter aussi.
 //
-// # POURQUOI CES TROIS PAQUETS DANS UNE SEULE EMPREINTE
+// # POURQUOI CES QUATRE PAQUETS DANS UNE SEULE EMPREINTE
+//
+// `analysis/filmsource` est ENTRE LE 2026-09-18 (lot 2.4.1), et il y est entre DANS LE COMMIT QUI
+// L A RENDU NECESSAIRE : c est ce lot qui a fait descendre LE lecteur de bits du depot dans la
+// couche `source` (`filmsource.Bits`, `filmsource.BitsAt`, `filmsource.BitAt`, avec le marcheur
+// de paquets et l inflate qui y vivaient deja). Sans cette racine, la lecture de bits aurait pu
+// changer sans que `GrammarRev` bouge — le lot aurait ouvert le trou qu il pretend fermer.
 //
 // `killsource` lit les MEMES octets que `filmdec`, avec son propre lecteur de bits (le lot 4 de
 // la trajectoire les fusionne). Tant qu ils sont deux, une largeur corrigee d un cote et pas de
@@ -82,13 +89,20 @@ const cheminGoldenGrammarRev = "testdata/grammar_rev.golden"
 var updateGrammarRev = flag.Bool("update-grammar-rev", false,
 	"reecrire testdata/grammar_rev.golden (lot 0.A.4) — CE golden seulement")
 
-// fichierHorsGrammaire : le fichier qui PORTE la revision n'est pas de la grammaire.
+// fichiersHorsGrammaire : les DEUX fichiers qui PORTENT la revision et sa chronique ne sont pas
+// de la grammaire — ils la DECRIVENT. `grammar_rev_chronique.go` est ne le 2026-09-18 (lot
+// 2.4.1) du seuil de 500 lignes : une chronique qui ne peut plus grandir cesse d etre tenue.
 //
 // L EXCLURE REND LA SECONDE BRANCHE DU TEST ATTEIGNABLE (revue R1, P2-3). Tant que
 // `grammar_rev.go` etait hache, faire monter `GrammarRev` SEULE changeait aussi l empreinte :
 // le cas « la revision a change sans que la grammaire bouge » ne pouvait jamais se produire, et
 // son message etait du code mort. La constante decrit la grammaire, elle n en fait pas partie.
-const fichierHorsGrammaire = "grammar_rev.go"
+var fichiersHorsGrammaire = map[string]bool{
+	"grammar_rev.go": true, "grammar_rev_chronique.go": true,
+}
+
+// fichierChroniqueGrammarRev : celui des deux qui porte les ENTREES de chronique.
+const fichierChroniqueGrammarRev = "grammar_rev_chronique.go"
 
 // TestGrammarRevSuitLaGrammaire : une source de grammaire qui change sans montee de
 // [GrammarRev] fait rougir ce test.
@@ -167,7 +181,7 @@ func TestChroniqueCouvreLaRevisionCourante(t *testing.T) {
 		forme   *regexp.Regexp
 		exemple string
 	}{
-		{"le godoc de grammar_rev.go", cheminGodocGrammarRev(t), entreeChroniqueGodoc,
+		{"la chronique de grammar_rev_chronique.go", cheminGodocGrammarRev(t), entreeChroniqueGodoc,
 			"// ENTREE `" + GrammarRev + "` (AAAA-MM-JJ, lot) : ..."},
 		{"l'HISTORIQUE du golden", cheminGoldenGrammarRev, entreeChroniqueGolden,
 			"#   AAAA-MM-JJ  " + GrammarRev + "  lot : ..."},
@@ -193,7 +207,7 @@ func TestChroniqueCouvreLaRevisionCourante(t *testing.T) {
 	}
 }
 
-// cheminGodocGrammarRev : le fichier qui porte la constante et sa chronique, resolu par
+// cheminGodocGrammarRev : le fichier qui porte la chronique de la revision, resolu par
 // `runtime.Caller` — jamais un chemin relatif au repertoire courant (meme raison que
 // [racinesGrammaire]).
 func cheminGodocGrammarRev(t *testing.T) string {
@@ -202,10 +216,10 @@ func cheminGodocGrammarRev(t *testing.T) string {
 	if !ok {
 		t.Fatal("runtime.Caller a echoue")
 	}
-	return filepath.Join(filepath.Dir(ici), fichierHorsGrammaire)
+	return filepath.Join(filepath.Dir(ici), fichierChroniqueGrammarRev)
 }
 
-// empreinteGrammaire hache les sources non-test de `filmdec` ET de `killsource`.
+// empreinteGrammaire hache les sources non-test des quatre racines de grammaire.
 func empreinteGrammaire(t *testing.T) (string, int) {
 	t.Helper()
 	h := sha256.New()
@@ -224,7 +238,7 @@ func empreinteGrammaire(t *testing.T) (string, int) {
 	return hex.EncodeToString(h.Sum(nil)), total
 }
 
-// racinesGrammaire rend les TROIS paquets haches, resolus par `runtime.Caller`.
+// racinesGrammaire rend les QUATRE paquets haches, resolus par `runtime.Caller`.
 //
 // PAS un chemin relatif au repertoire courant : le jour ou un paquet demenage (ADR 0012), ce
 // test doit echouer bruyamment plutot que hacher un dossier vide.
@@ -238,6 +252,7 @@ func racinesGrammaire(t *testing.T) []string {
 	internalDir := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(ici)))))
 	filmDir := filepath.Join(internalDir, "games", "halo_infinite", "film")
 	return []string{
+		filepath.Join(internalDir, "analysis", "filmsource"),
 		filepath.Join(filmDir, "filmdec"),
 		filepath.Join(filmDir, "killsource"),
 		filepath.Join(internalDir, "analysis", "objectiveevents"),
@@ -269,7 +284,7 @@ func hacherSourcesGrammaire(h interface{ Write([]byte) (int, error) }, racine st
 		}
 		nom := d.Name()
 		if !strings.HasSuffix(nom, ".go") || strings.HasSuffix(nom, "_test.go") ||
-			nom == fichierHorsGrammaire {
+			fichiersHorsGrammaire[nom] {
 			return nil
 		}
 		blob, errLire := os.ReadFile(chemin) //nolint:gosec // chemin construit depuis la racine du module

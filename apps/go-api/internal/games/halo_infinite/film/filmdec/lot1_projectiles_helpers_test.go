@@ -132,10 +132,10 @@ func projVariantAfterGate(br *BitReader) (variant uint64, has bool, witness uint
 // peekBits3 lit n bits a partir de 3 bits APRES la position courante, sans avancer — le temoin
 // d'offset (+3) de l'oracle de tag. Prend les 32 bits de poids faible.
 func (b *BitReader) peekBits3(n uint) uint64 {
-	save := b.pos
-	b.pos += 3
+	save := b.BitPos()
+	b.SetBitPos(save + 3)
 	v := b.ReadBits(n - 3)
-	b.pos = save
+	b.SetBitPos(save)
 	return v & 0xffffffff
 }
 

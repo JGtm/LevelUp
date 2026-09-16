@@ -1,5 +1,7 @@
 package filmdec
 
+import "levelup/go-api/internal/analysis/filmsource"
+
 // selectorBits is the width of the leading selector in a signed variable-width
 // integer; the selector value sel gives the field width w = 8 << sel.
 const selectorBits = 2
@@ -10,12 +12,21 @@ const selectorBits = 2
 // FUN_140c18a1c.
 const signExtendMaxWidth = 32
 
-// BitReader is a sequential MSB-first big-endian bit reader over a byte buffer.
-// It is the behavioral equivalent of the Halo replication reader: the i-th bit
-// consumed is bit (7-(i mod 8)) of byte (i div 8).
+// BitReader est LE LECTEUR DE LA GRAMMAIRE : le lecteur de bits canonique de la couche
+// `source` ([filmsource.Bits]), plus ce qui appartient au decodeur — un profil de largeurs, un
+// etat de capture, un observateur.
+//
+// # IL NE LIT PLUS AUCUN OCTET LUI-MEME (lot 2.4.1, ADR 0034 D-2)
+//
+// Jusqu au lot 2.4 il portait son propre `buf []byte` et sa propre position en bits, et c etait
+// l un des sept lecteurs du depot. Les methodes de lecture — `ReadBits`, `ReadBit`, `Skip`,
+// `BitPos`, `SetBitPos`, `Remaining` — sont desormais celles de [filmsource.Bits], PROMUES par
+// l embarquement : une seule implantation, une seule convention de bourrage de queue. Ce qui
+// reste ici est la grammaire : [BitReader.ReadSignedVarWidth], le codec du moteur, et les trois
+// champs prives ci-dessous.
 type BitReader struct {
-	buf []byte
-	pos int // bit offset of the next bit to read
+	// Bits : le lecteur canonique. Embarque, donc ses methodes sont celles de ce type.
+	*filmsource.Bits
 	// p est le PROFIL DE BALAYAGE que ce lecteur porte (lot 2.3 du PLAN_DECODEUR_FILM ;
 	// les lots 2.2.a a 2.2.e l avaient assemble valeur par valeur). Il decide des largeurs :
 	// descripteur de traversee et largeur d axe absolue, cadre d image-cle, decoupage MPP,
@@ -40,7 +51,7 @@ type BitReader struct {
 // [FrameConfig], le contexte du film ([FilmContext.NouveauLecteur]) et les marches qui
 // recoivent leur profil de leur appelant.
 func NewBitReader(buf []byte) *BitReader {
-	return &BitReader{buf: buf, p: ProfilDeBalayageParDefaut()}
+	return &BitReader{Bits: filmsource.NewBits(buf), p: ProfilDeBalayageParDefaut()}
 }
 
 // PoserProfil installe le profil de balayage de ce lecteur et rend le precedent. C est la
@@ -107,54 +118,6 @@ func (b *BitReader) cadre() KeyframeProfile { return b.p.Cadre }
 // `DecodeFrameViews`, `DecodeFrameResync`, `DecodeFrameInfer`, `ScanFrameTargets`), avec
 // `cfg.Profil`. Partout ailleurs, l invariant pose par [NewBitReader] fait foi.
 func (b *BitReader) poserMouvement(m MovementProfile) { b.p.Mouvement = m }
-
-// BitPos returns the bit offset of the next bit to read.
-func (b *BitReader) BitPos() int { return b.pos }
-
-// Remaining returns the number of unread bits in the buffer.
-func (b *BitReader) Remaining() int { return len(b.buf)*8 - b.pos }
-
-// ReadBits reads n bits (0..64) MSB-first and returns them right-aligned in the
-// low n bits. Bits past the end of the buffer read as zero, matching the engine's
-// tail padding.
-// Lecture par mot de 64 bits (cf. bits_word.go) sur le domaine ou elle coincide avec la
-// boucle d'origine : position courante non negative et largeur <= 64. Hors de ce domaine
-// — position negative (l'indexation panique, comme avant) ou largeur > 64 (le resultat ne
-// garde que les 64 DERNIERS bits lus, et le curseur avance quand meme de n) — la boucle
-// d'origine reste seule maitresse.
-func (b *BitReader) ReadBits(n uint) uint64 {
-	if b.pos >= 0 && n <= 64 {
-		r := wordBitsAt(b.buf, b.pos, n)
-		b.pos += int(n)
-		return r
-	}
-	return b.readBitsLoop(n)
-}
-
-// readBitsLoop est la lecture bit a bit d'origine : elle porte les conventions de bord que
-// le chemin par mot ne couvre pas.
-func (b *BitReader) readBitsLoop(n uint) uint64 {
-	var r uint64
-	for i := uint(0); i < n; i++ {
-		var bit uint64
-		if idx := b.pos >> 3; idx < len(b.buf) {
-			bit = uint64(b.buf[idx]>>(7-(uint(b.pos)&7))) & 1
-		}
-		r = r<<1 | bit
-		b.pos++
-	}
-	return r
-}
-
-// ReadBit reads a single bit MSB-first.
-func (b *BitReader) ReadBit() bool { return b.ReadBits(1) != 0 }
-
-// Skip advances the read position by n bits without decoding them.
-func (b *BitReader) Skip(n int) { b.pos += n }
-
-// SetBitPos moves the read position to an absolute bit offset (used to resync a
-// shared reader across replication views without allocating a new BitReader).
-func (b *BitReader) SetBitPos(p int) { b.pos = p }
 
 // ReadSignedVarWidth decodes the engine's signed variable-width integer: a 2-bit
 // selector sel sets the field width w = 8 << sel (8, 16, 32 or 64); w bits follow
