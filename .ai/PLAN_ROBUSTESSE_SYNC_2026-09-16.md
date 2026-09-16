@@ -606,3 +606,18 @@ leases ; `applySharedMigrationsForTitle` dans les quatre runners via `PathResolv
 - **P2 (corrigé)** : commentaire de la carte gelée « 25 fichiers » → 30 (compte réel).
 - Non recevable, noté : le plafond de hot-add `pool.go` (`AddOrUpdateSource`) compte tous les
   slots, sains ou non — sans appelant à `MaxSize > 0` aujourd'hui.
+
+### Revue adversariale, ronde 2 — 2026-09-16 ~23:20 — pilote — CLOSE
+
+Relecture des seules corrections (`4aeb76d68..b970648e0`) par un contexte frais : **0 P0, 0 P1**,
+1 P2 — le capteur de journal du test `TestLoadMedalExploitMap_SousHandleRW…` ne retenait que
+`Warn+` : un retour de l'ancien bloc AVEC son `Debug` d'origine le laissait vert. Corrigé : tous
+les niveaux retenus, mutation exacte du relecteur rejouée (OpenReadOnly + Debug → rouge).
+C1..C3 fermés ; 15 conditions vérifiées, dont : aucun autre `OpenReadOnly(e.metadataDBPath)`
+atteignable pendant `run()` (les six appelants de `loadMedalExploitMap` couverts ; les trois
+sites de `citations_*` ne sont atteints que par les `backfill` et le serveur, hors run) ;
+`Sleep` par défaut rend `ctx.Err()` immédiatement sur contexte déjà annulé ; aucun `t.Parallel()`
+ne chevauche le `slog.SetDefault` du test. P0+P1 : 1 → 0. Boucle close (borne du skill).
+- Gates complets après les deux rondes (2026-09-16 ~23:50) : `go build ./...` → 0 ; `go vet ./...` → 0 ;
+  `gofmt -l` → vide ; `go test ./... -count=1 -timeout 30m` → 0, aucun `--- FAIL:` ;
+  `go test -tags=integration -p 1 ./... -timeout 30m` → 0.

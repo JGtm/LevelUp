@@ -110522,3 +110522,39 @@ la `feat/v75` locale (b4de1fc16, SchemaVersion 54) est 33 commits devant / 192 d
 `origin/feat/v75` (da258bf76, jalon M1, SchemaVersion 60) ; à `local`, une simple ouverture de
 match dans l'UI aurait recuit un artefact au schéma 54 par-dessus le parc au schéma 60. Aucune
 cuisson entre 17:51 et 17:58. Fusion d'`origin/feat/v75` dans le local = décision utilisateur.
+
+## [2026-09-16] Robustesse du sync par le pool — revue adversariale deux rondes, correctifs, mesure /careerranks — Complété
+
+**Statut** : Complété (revue + correctifs). Branche `wt/sync-robustesse`, base `feat/v75` @
+ab7fc5695, 10 commits, ni poussée ni fusionnée. Aucune base sous `data/` ouverte.
+
+**Décision technique principale** : (1) mesure avant décision — `/careerranks` lu pour un xuid
+tiers avec trois prêteurs distincts (JGtm, DankerGlue, Trimbutton) rend rang ET XP identiques à
+l'appel du propriétaire (JGtm 202/2 555 ; Nuzzles 272/0, 272 = rang maximal) : l'endpoint est
+public, `PolicyPinnedPlayer` retiré de `GetCareerRank` avec son épinglage (D4). (2) Plan écrit
+puis relu par un contexte frais (8 P1 / 7 P2 intégrés avant exécution : rejeu du 429 qui ratait
+le cas « pool entier en pause », sommeils réels dans les tests, variante 4.2 qui aurait éteint
+quatre étapes en silence, gate G3 inatteignable, ratchet des fixtures contredisant le test de
+l'élargissement). (3) Exécution par un agent (8 commits), puis revue adversariale : ronde 1 →
+1 P1 (`loadMedalExploitMap` ouvrait metadata en `ro:` alors que le moteur le tient désormais en
+`rw:` → `medal_exploit = 0` en silence ; corrigé par `OpenReadForQuery`, test sous handle `rw:`
+prouvé par mutation) + 2 P2 (attente non annulable → seam `Sleep(ctx, d)` ; commentaire) ;
+ronde 2 → 0 P0/P1, 1 P2 (capteur de journal filtré sur Warn → tous niveaux, mutation exacte
+rejouée). Règle de baseline appliquée : 2 paires retirées (`TestPooledHaloClientGetCareerRank_
+{PinnedToken,NoPinnedToken}`), vérifiées par `comm`.
+
+**Résultats observés** : un `sync-full` interrompu par une erreur d'historique n'est plus
+`success` (statut `partial_success`/`failure`, code de sortie ≠ 0, `Errors` exposé au
+monitoring serveur sans basculer de job) ; rejeu borné d'une page sur 429 / pool sans slot sain ;
+`--token-pool-size` plafonne les slots sains ; `sync-full`/`sync-delta` appliquent les migrations
+shared ; un seul handle metadata par run ; plus d'ERROR pour un profil sans token propre aux
+succès Xbox Live ; ratchets DDL (carte gelée de 45 divergences dans 30 fichiers) et titleseams
+(transitif) durcis. Gates : build, vet, gofmt → 0 ; `go test ./...` → 0 ; intégration `-p 1`
+→ voir le commit de clôture. Un test d'intégration qui figeait le défaut (warnings ≥ 1 +
+success sur historique échoué) a été retourné, pas supprimé.
+
+**Conclusion / prochaine étape** : décision de fusion dans `feat/v75` et push par l'utilisateur.
+Découvertes consignées au plan §10 : le serveur ne bascule jamais un job de sync en échec
+(décision produit) ; `PolicyPinnedPlayer` du live-sync Halo 5 non instruit ; trois sites
+`citations_*` ouvrent metadata en `ro:` hors run (préexistant) ; plafond de hot-add du pool
+compte tous les slots (sans appelant à `MaxSize > 0`).
