@@ -707,7 +707,8 @@ cd apps/go-api && go run ./cmd/replay-corpus-gate \
 **Coverage floor (2026-09-07, CORPUS-R1 C3)**: by default, **every** witness in the manifest
 must be baked and compared — a purged or partial film cache used to leave every witness
 ABSENT, and the gate silently exited 0 having compared nothing (`codeSortie` skips ABSENT
-lines). One or more ABSENT witnesses now exit 4, naming which ones and why; pass
+lines). One or more ABSENT witnesses now exit 4 when nothing else is wrong, naming which ones
+and why (see the priority rule below); pass
 `--allow-missing` to restore the old behavior (a `slog` warning only, never a failure) for a
 deliberate partial run.
 
@@ -733,7 +734,18 @@ was indistinguishable from a loss under `1`.
 | 1 | `codePerte` | at least one compared witness carries a blocking `PERTE` or `CHANGEMENT` — the gate's verdict |
 | 2 | `codeUsage` | the gate never started (invalid flag, unreadable manifest, missing root or capability, base worktree impossible); nothing was measured of the diff under review |
 | 3 | `codeErreurCuisson` | the gate started, but a BAKED witness failed to bake or to diff — distinct from 1: the question could not be put, the answer is not "it lost" |
-| 4 | `codeCouvertureIncomplete` | at least one ABSENT witness without `--allow-missing` (CORPUS-R1 C3) — distinct from both 1 and 2: the manifest is valid, nothing lost, something is missing |
+| 4 | `codeCouvertureIncomplete` | at least one ABSENT witness without `--allow-missing` (CORPUS-R1 C3), **and nothing else to report** — distinct from both 1 and 2: the manifest is valid, every witness that WAS compared is at zero, some are missing |
+
+**The verdict of the present witnesses wins over coverage (2026-09-16)**: coverage used to be
+checked BEFORE the verdict, so a single ABSENT witness — the facts-export race below, a partial
+film cache — made the gate exit 4 and MASKED a loss, a change or a bake error on all the
+others. The gate now settles the witnesses it did compare first: a loss or a change exits 1 and
+is printed in the table and the JSON, with the coverage warning logged on top; a bake error
+exits 3 the same way. Code 4 is left for the one case where "some are missing" is all there is
+to say. The JSON report carries both facts — `couverture_incomplete` at the root, next to the
+per-witness counters under `temoins` — so an automatic reader never mistakes "everything is at
+zero" for "everything that was compared is at zero". `--allow-missing` is unchanged: it turns
+the coverage check off, never the verdict.
 
 **Robust facts export (2026-09-17, D2)**: `levelup replay-facts-export` opens the shared DB
 read-only, and fails when the local server happens to hold it for writing at that exact second
@@ -742,7 +754,8 @@ fourteen — `2/14 absent(s)` for a few seconds of bad luck, with the run replay
 manifest cut down to those two. The gate now **retries a held-DB failure 3 times, 2 s apart**,
 and never retries a permanent failure (id unknown to the registry, empty facts): re-asking a
 question whose answer cannot change only lengthens a 25-minute gate. A witness still missing
-afterwards is `ABSENT` and exits 4, distinct from a loss; `--temoins a,b` replays just those.
+afterwards is `ABSENT` and exits 4 when the compared witnesses are clean, distinct from a
+loss; `--temoins a,b` replays just those.
 
 **Named changes in the JSON report (2026-09-17, D5)**: the JSON now carries
 `changementsDetail` (axis, metric, old, new) symmetric to `pertesDetail`, plus a `statut` and

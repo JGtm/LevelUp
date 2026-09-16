@@ -345,25 +345,45 @@ func cuireEtComparerTousLesTemoins(ctx context.Context, manifest Manifest, tc te
 }
 
 // finaliser imprime le tableau et LES DEUX sections de detail, ecrit le rapport JSON optionnel,
-// verifie la couverture (CORPUS-R1 C3) puis rend le code de sortie.
+// puis rend le code de sortie.
 //
-// L'ECRITURE DU JSON PRECEDE LA VERIFICATION DE COUVERTURE, et c'est voulu : un run a temoins
-// absents rend `codeCouvertureIncomplete`, et son rapport doit exister quand meme — c'est lui
-// qui dit LESQUELS relancer.
+// LE VERDICT DES TEMOINS PRESENTS PRIME SUR LA COUVERTURE (revue M2, 2026-09-16). Jusque-la
+// `verifierCouverture` rendait `codeCouvertureIncomplete` AVANT que `codeSortie` ne soit
+// calcule : UN SEUL temoin ABSENT — l'alea d'export D2, un cache de film partiel — masquait
+// donc une perte, un changement ou une erreur de cuisson sur TOUS LES AUTRES. Le gate sortait
+// « couverture incomplete », l'appelant relancait les temoins manquants, et personne ne voyait
+// la perte. Desormais le verdict des lignes PRESENTES est calcule d'abord : s'il n'est pas
+// `codeOK`, c'est LUI qui sort, l'avertissement de couverture etant journalise EN PLUS.
+// `codeCouvertureIncomplete` ne sort plus que quand les lignes presentes sont toutes a zero —
+// la seule situation ou « il en manque » est bien tout ce qu'il y a a dire.
+//
+// L'ECRITURE DU JSON PRECEDE LES DEUX VERDICTS, et c'est voulu : un run a temoins absents doit
+// laisser son rapport — c'est lui qui dit LESQUELS relancer. Il porte donc les DEUX
+// informations, `couverture_incomplete` a la racine et les compteurs par temoin, pour qu'un
+// lecteur automatique ne confonde jamais « tout est a zero » avec « ce qui a ete compare est a
+// zero ».
 func finaliser(lignes []ligneRapport, refLabel string, o executerOptions) (int, error) {
 	imprimerTableau(os.Stdout, lignes, refLabel)
 	imprimerDetailPertes(os.Stdout, lignes)
 	imprimerDetailChangements(os.Stdout, lignes)
+	errCouverture := verifierCouverture(lignes, o.AllowMissing)
 	if o.SortieJSON != "" {
-		if err := ecrireRapportJSON(o.SortieJSON, lignes); err != nil {
+		if err := ecrireRapportJSON(o.SortieJSON, lignes, errCouverture != nil); err != nil {
 			return codeUsage, err
 		}
 	}
-	if err := verifierCouverture(lignes, o.AllowMissing); err != nil {
-		return codeCouvertureIncomplete, err
-	}
 	pertesBloquent := o.Reference == referenceBase || o.Strict
-	return codeSortie(lignes, pertesBloquent), nil
+	code := codeSortie(lignes, pertesBloquent)
+	if errCouverture == nil {
+		return code, nil
+	}
+	if code == codeOK {
+		return codeCouvertureIncomplete, errCouverture
+	}
+	slog.Warn("replay-corpus-gate: couverture incomplete EN PLUS du verdict des temoins "+
+		"presents — le code de sortie est celui du verdict, pas celui de la couverture",
+		"code", code, "err", errCouverture)
+	return code, nil
 }
 
 // exeSuffix rend ".exe" sur Windows, "" ailleurs — le seul endroit qui le sait, pour ne pas
@@ -444,12 +464,26 @@ func detailsVersJSON(diffs []replaydiff.Difference) []detailJSON {
 	return out
 }
 
-// ecrireRapportJSON depose le detail des lignes, pour un consommateur automatique (CI, un
-// futur tableau de bord) — le tableau texte reste la sortie lisible par un operateur.
-func ecrireRapportJSON(path string, lignes []ligneRapport) error {
+// rapportJSON est LA RACINE du rapport — un objet depuis la revue M2 (2026-09-16), la ou le
+// fichier ne portait que le tableau nu des temoins. Un lecteur automatique qui ne voyait que
+// les lignes lisait « 12 temoins a zero » sans pouvoir savoir que 2 autres n'avaient JAMAIS ete
+// compares : le fanion de couverture est donc a la racine, a cote des temoins, jamais deduit de
+// leur nombre.
+type rapportJSON struct {
+	CouvertureIncomplete bool        `json:"couverture_incomplete"`
+	Temoins              []ligneJSON `json:"temoins"`
+}
+
+// ecrireRapportJSON depose le detail des lignes ET l'etat de la couverture, pour un
+// consommateur automatique (CI, un futur tableau de bord) — le tableau texte reste la sortie
+// lisible par un operateur.
+func ecrireRapportJSON(path string, lignes []ligneRapport, couvertureIncomplete bool) error {
 	out := make([]ligneJSON, len(lignes))
 	for i, l := range lignes {
 		out[i] = ligneVersJSON(l)
 	}
-	return ecrireJSONGenerique(path, out)
+	return ecrireJSONGenerique(path, rapportJSON{
+		CouvertureIncomplete: couvertureIncomplete,
+		Temoins:              out,
+	})
 }

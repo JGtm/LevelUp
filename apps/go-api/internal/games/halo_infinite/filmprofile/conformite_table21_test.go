@@ -30,12 +30,18 @@ package filmprofile_test
 // bornee par [lignesAttenduesParTable] : une analyse qui rendrait moins de lignes que la table
 // n en porte serait VERTE sans rien avoir compare — c est le defaut classique de ce genre de
 // garde, et le plancher est ce qui le ferme.
+//
+// Le plancher ne couvre que les LIGNES. La LISTE des sous-tables, elle, derive du code :
+// [verifierTablesConcatenees] enumere les `append(out, xxx()...)` du corps de `TableProfil` et
+// exige que [tablesDuProfil] les porte toutes, dans le meme ordre. Sans cette derivation, une
+// cinquieme sous-table ajoutee a `TableProfil()` laissait ce test vert.
 
 import (
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -48,9 +54,11 @@ import (
 var cheminTableProfil = filepath.Join("apps", "go-api", "internal", "games", "halo_infinite",
 	"film", "filmdec", "profile_table.go")
 
-// tablesDuProfil : les quatre fonctions de la table, DANS L ORDRE ou `TableProfil()` les
-// concatene, avec le nombre de lignes mesure le 2026-09-16. Le compte est ecrit pour que
-// l ajout d une ligne a la table oblige a passer par ici — c est-a-dire par le catalogue.
+// tablesDuProfil : les sous-tables de la table, DANS L ORDRE ou `TableProfil()` les concatene,
+// avec le nombre de lignes mesure le 2026-09-16. Le compte est ecrit pour que l ajout d une
+// ligne a la table oblige a passer par ici — c est-a-dire par le catalogue. La LISTE elle-meme
+// est confrontee au corps de `TableProfil` par [verifierTablesConcatenees] : elle ne peut plus
+// prendre du retard en silence.
 var tablesDuProfil = []struct {
 	fonction string
 	lignes   int
@@ -119,6 +127,7 @@ func lireTableProfil(t *testing.T, chemin string) []filmprofile.Entree {
 			corps[fn.Name.Name] = fn
 		}
 	}
+	verifierTablesConcatenees(t, chemin, corps)
 	var out []filmprofile.Entree
 	for _, tbl := range tablesDuProfil {
 		fn, ok := corps[tbl.fonction]
@@ -241,4 +250,84 @@ func evaluerChaine(e ast.Expr, constantes map[string]string) (string, bool) {
 		return evaluerChaine(x.X, constantes)
 	}
 	return "", false
+}
+
+// verifierTablesConcatenees : LA LISTE DES SOUS-TABLES DERIVE DU CODE, ELLE N EST PAS RECOPIEE.
+//
+// Le defaut que cette verification ferme : [tablesDuProfil] codait en dur les QUATRE noms que
+// `TableProfil()` concatene. Une CINQUIEME sous-table ajoutee a `TableProfil()` laissait ce test
+// VERT — la table du lot 2.1 gagnait des lignes que le catalogue commis ne portait pas, et la
+// divergence que tout ce fichier existe pour interdire passait inapercue. La liste attendue se
+// lit desormais dans le corps de `TableProfil`, par la MEME analyse syntaxique que les lignes
+// (raisons du §2 de l en-tete : pas d import de `filmdec`).
+//
+// L ORDRE compte autant que l appartenance : c est lui qui fait l ordre des entrees du
+// catalogue, compare rang par rang par [TestCatalogueConformeALaTableDuLot21].
+//
+// Mutation qui doit le faire rougir : ajouter un `out = append(out, tableProfilXxx()...)` a
+// `TableProfil()` sans ajouter sa ligne a [tablesDuProfil] (jouee le 2026-09-16 sur une copie).
+func verifierTablesConcatenees(t *testing.T, chemin string, corps map[string]*ast.FuncDecl) {
+	t.Helper()
+	fn, ok := corps["TableProfil"]
+	if !ok {
+		t.Fatalf("%s : fonction TableProfil introuvable — la table du lot 2.1 a ete "+
+			"restructuree, ce test doit suivre", chemin)
+	}
+	concatenees := fonctionsConcatenees(fn)
+	if len(concatenees) == 0 {
+		t.Fatalf("%s : aucun `append(out, xxx()...)` lu dans le corps de TableProfil — "+
+			"l analyse syntaxique s est cassee, ou la table se compose autrement", chemin)
+	}
+	declarees := make([]string, 0, len(tablesDuProfil))
+	for _, tbl := range tablesDuProfil {
+		declarees = append(declarees, tbl.fonction)
+	}
+	if slices.Equal(concatenees, declarees) {
+		return
+	}
+	membresOk := true
+	for _, nom := range concatenees {
+		if !slices.Contains(declarees, nom) {
+			membresOk = false
+			t.Errorf("TableProfil concatene %s, absente de tablesDuProfil : ajouter la ligne "+
+				"et les entrees du catalogue", nom)
+		}
+	}
+	for _, nom := range declarees {
+		if !slices.Contains(concatenees, nom) {
+			membresOk = false
+			t.Errorf("tablesDuProfil declare %s, que TableProfil ne concatene plus : retirer "+
+				"la ligne et les entrees du catalogue qu elle apportait", nom)
+		}
+	}
+	if membresOk {
+		t.Errorf("l ordre des sous-tables diverge, et il fait l ordre du catalogue : "+
+			"TableProfil concatene %v, tablesDuProfil declare %v", concatenees, declarees)
+	}
+}
+
+// fonctionsConcatenees rend, DANS L ORDRE, le nom des fonctions que le corps de `fn` concatene
+// par `append(out, xxx()...)` — la forme exacte de `TableProfil()`. Tout autre appel est ignore
+// plutot que devine ; une forme inconnue rend une liste vide ou courte, que
+// [verifierTablesConcatenees] refuse au lieu de la prendre pour un accord.
+func fonctionsConcatenees(fn *ast.FuncDecl) []string {
+	var out []string
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		appel, ok := n.(*ast.CallExpr)
+		if !ok || appel.Ellipsis == token.NoPos || len(appel.Args) != 2 {
+			return true
+		}
+		if nom, ok := appel.Fun.(*ast.Ident); !ok || nom.Name != "append" {
+			return true
+		}
+		interne, ok := appel.Args[1].(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		if nom, ok := interne.Fun.(*ast.Ident); ok {
+			out = append(out, nom.Name)
+		}
+		return true
+	})
+	return out
 }

@@ -738,7 +738,8 @@ cd apps/go-api && go run ./cmd/replay-corpus-gate \
 manifeste doivent être cuits et comparés — un cache de film purgé ou partiel rendait
 auparavant tous les témoins ABSENT, et le gate sortait silencieusement en 0 sans rien comparer
 (`codeSortie` saute les lignes ABSENT). Un ou plusieurs témoins ABSENT sortent désormais en
-code 4, en nommant lesquels et pourquoi ; `--allow-missing` restaure l'ancien comportement (un
+code 4 quand rien d'autre n'est à signaler, en nommant lesquels et pourquoi (voir la règle de
+priorité ci-dessous) ; `--allow-missing` restaure l'ancien comportement (un
 avertissement `slog` seul, jamais un échec) pour une exécution partielle délibérée.
 
 **Statut par témoin, et sa règle de priorité (2026-09-17)** : un témoin porte UN SEUL statut,
@@ -763,7 +764,19 @@ et une erreur de cuisson se confondait avec une perte sous le `1`.
 | 1 | `codePerte` | au moins un témoin comparé porte une `PERTE` ou un `CHANGEMENT` bloquant — le verdict de ce gate |
 | 2 | `codeUsage` | le gate n'a pas DÉMARRÉ (drapeau invalide, manifeste illisible, racine ou capability absente, worktree de base impossible) ; rien n'a été mesuré du diff sous revue |
 | 3 | `codeErreurCuisson` | le gate a démarré, mais un témoin CUIT a échoué à la cuisson ou à la comparaison — distinct du 1 : la question n'a pas pu être posée, la réponse n'est pas « il a perdu » |
-| 4 | `codeCouvertureIncomplete` | au moins un témoin ABSENT sans `--allow-missing` (CORPUS-R1 C3) — distinct du 1 ET du 2 : le manifeste est valide, aucun témoin n'a perdu, il en manque |
+| 4 | `codeCouvertureIncomplete` | au moins un témoin ABSENT sans `--allow-missing` (CORPUS-R1 C3), **et rien d'autre à signaler** — distinct du 1 ET du 2 : le manifeste est valide, tout témoin qui A ÉTÉ comparé est à zéro, il en manque |
+
+**Le verdict des témoins présents prime sur la couverture (2026-09-16)** : la couverture était
+vérifiée AVANT le verdict, si bien qu'un seul témoin ABSENT — l'aléa d'export des faits
+ci-dessous, un cache de film partiel — faisait sortir le gate en 4 et MASQUAIT une perte, un
+changement ou une erreur de cuisson sur tous les autres. Le gate tranche désormais d'abord sur
+les témoins qu'il a comparés : une perte ou un changement sort en 1 et figure dans le tableau
+et le JSON, l'avertissement de couverture étant journalisé en plus ; une erreur de cuisson sort
+en 3 de la même façon. Le code 4 reste pour le seul cas où « il en manque » est tout ce qu'il y
+a à dire. Le rapport JSON porte les deux informations — `couverture_incomplete` à la racine, à
+côté des compteurs par témoin sous `temoins` — pour qu'un lecteur automatique ne confonde
+jamais « tout est à zéro » avec « tout ce qui a été comparé est à zéro ». `--allow-missing` est
+inchangé : il éteint la vérification de couverture, jamais le verdict.
 
 **Export des faits robuste (2026-09-17, D2)** : `levelup replay-facts-export` ouvre la base
 partagée en lecture seule, et échoue quand le serveur local la tient en écriture à cette
@@ -773,7 +786,8 @@ avec un manifeste réduit à ces deux-là. Le gate **réessaie désormais 3 fois
 un échec qui porte le marqueur de base tenue, et ne réessaie JAMAIS un échec permanent (id
 inconnu du registre, faits vides) : re-poser une question dont la réponse ne peut pas changer
 ne fait qu'allonger un gate de 25 min. Un témoin toujours manquant ensuite sort `ABSENT` en
-code 4, distinct d'une perte ; `--temoins a,b` rejoue les seuls concernés.
+code 4 si les témoins comparés sont propres, distinct d'une perte ; `--temoins a,b` rejoue les
+seuls concernés.
 
 **Changements nommés dans le rapport JSON (2026-09-17, D5)** : le JSON porte désormais un
 `changementsDetail` (axe, métrique, ancien, nouveau) symétrique de `pertesDetail`, plus un

@@ -91,7 +91,7 @@ func TestRapportDuGateSurUnePaireReelle(t *testing.T) {
 func TestRapportJSONDuGateSurUnePaireReelle(t *testing.T) {
 	l := ligneDepuisLaPaireReelle(t)
 	path := filepath.Join(t.TempDir(), "gate.json")
-	if err := ecrireRapportJSON(path, []ligneRapport{l}); err != nil {
+	if err := ecrireRapportJSON(path, []ligneRapport{l}, false); err != nil {
 		t.Fatalf("ecriture du rapport JSON : %v", err)
 	}
 	raw, err := os.ReadFile(path) //nolint:gosec // chemin construit par le test
@@ -102,10 +102,14 @@ func TestRapportJSONDuGateSurUnePaireReelle(t *testing.T) {
 	// et c'est elle qui a change le 2026-09-17 (`statut`, `changementsDetail`).
 	t.Logf("tete du rapport JSON :\n%s", tete(string(raw), 14))
 
-	var relu []ligneJSON
-	if err := json.Unmarshal(raw, &relu); err != nil {
+	var rap rapportJSON
+	if err := json.Unmarshal(raw, &rap); err != nil {
 		t.Fatalf("le rapport JSON n'est pas relisible : %v", err)
 	}
+	if rap.CouvertureIncomplete {
+		t.Errorf("couverture_incomplete = true, false attendu : aucun temoin absent ici")
+	}
+	relu := rap.Temoins
 	if len(relu) != 1 {
 		t.Fatalf("%d ligne(s), 1 attendue", len(relu))
 	}
