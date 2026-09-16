@@ -67,7 +67,7 @@ export interface VehicleTime {
  * `naturalWidthPx` a rejoint `naturalHeightPx` le 2026-09-03 : ce calque n'en avait besoin que
  * pour la longueur (l'axe de mise à l'échelle), mais `vehicleWeaponMounts.vehicleShotPlacement`
  * a besoin des DEUX pour placer une ancre latérale (`ax`) dans le repère du sprite — même
- * source (`img.naturalWidth`), zéro requête de plus.
+ * source, zéro requête de plus. Boîte du véhicule, bordure exclue (`vehicleBodyPx`, 2026-09-16).
  */
 export interface VehicleSpriteSize {
   naturalWidthPx: number

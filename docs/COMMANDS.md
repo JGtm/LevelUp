@@ -402,7 +402,7 @@ v4tool.exe render -variant=any -cote=256 -out=<dir> \
   -curate="0x00002705:warthog,0x000025aa:mongoose,0x0000d3db:scorpion,0xb65b3b4a:wasp"
 ```
 
-- Output: `static/vehicles-assets/halo_infinite/replay/` — 20 files (18 PNG + `index.json` +
+- Output: `static/vehicles-assets/halo_infinite/replay/` — 38 files (18 sprites + 18 `*_outline.png` + `index.json` +
   `files_list.txt`), consumed by `useReplayVehicles.ts`. None of it goes through
   `PathResolver` — paths are plain `-out`/`-curate` flags.
 - Prereq: game installed, cgo/GPLv3 (never linked into `cmd/server`) ; no network.
