@@ -47,8 +47,6 @@ func TestStatborgRoundsDiag(t *testing.T) {
 	if dir == "" {
 		t.Skipf("diagnostic des manches non arme (%s vide)", roundsFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	split := roundsDefaultSplitMS
 	if v := os.Getenv(roundsSplitEnv); v != "" {
@@ -272,8 +270,6 @@ func TestStatborgRoundsValues(t *testing.T) {
 	if dir == "" {
 		t.Skipf("suivi des valeurs non arme (%s vide)", roundsFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	comp := 0
 	if v := os.Getenv("ROUNDS_COMP"); v != "" {

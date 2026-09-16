@@ -231,8 +231,6 @@ func e191MesureUnFilm(t *testing.T, root string, f e191Film) ([]e191Pose, bool) 
 // production garde la seule forme qu elle emploie (`ScanEquipmentSpawnEvents(fc)`, sur un
 // contexte deja ouvert, qui ne recharge rien).
 func e191Spawns(dir string) ([]filmdec.EquipmentSpawnEvent, filmdec.EquipmentSpawnStats, error) {
-	release := filmdec.LockProcessDecode()
-	defer release()
 	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		return nil, filmdec.EquipmentSpawnStats{}, err

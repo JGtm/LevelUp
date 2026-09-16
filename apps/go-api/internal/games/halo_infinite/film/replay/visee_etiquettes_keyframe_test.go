@@ -64,7 +64,6 @@ type vgKFStat struct {
 // vgCollecteKF deroule les images-cles du film et rend les records bipedes des slots etiquetes,
 // decoupes en composants — meme forme que la collecte delta, donc meme suite de mesure.
 //
-// L'appelant detient `LockProcessDecode` : la marche joue les deserialiseurs de production, dont
 // les bascules de grammaire sont globales au process.
 func vgCollecteKF(dir string, reg *filmdec.Registry, cibles map[uint32]bool) ([]vfRecord, vgKFStat) {
 	st := vgKFStat{detArrets: map[string]int{}, recMin: -1}

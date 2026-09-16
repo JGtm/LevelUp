@@ -62,8 +62,6 @@ func TestI26HandlesAppartenance(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	t.Log("CRITERE (enonce avant lecture) : si les handles d i26 designent des entites " +
 		"d equipement, la part de leurs valeurs dans la bande ti=37 ECRASE les temoins " +
@@ -130,8 +128,6 @@ func TestI26FilDuRamassage(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	t.Log("CRITERE (enonce avant lecture) : a une prise i48 d un slot, la liste i26 du MEME " +
 		"slot doit gagner un handle NOUVEAU dans [-1 s, +1 s]. Seuil >= 70 % des prises, " +

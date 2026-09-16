@@ -83,8 +83,6 @@ func TestI59TagsCrossI48Rank(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i59xFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	s := eaSetupBiped(t, dir)
 	idx59 := s.arch.indicesOfFirst("biped-spartan-ability-non-predicted-state")

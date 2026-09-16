@@ -247,8 +247,6 @@ func v6TopIntHist(h map[int]int, n int) string {
 // TestV6Ancrage : le score de trame designe-t-il le VRAI debut de trame ?
 func TestV6Ancrage(t *testing.T) {
 	dirs := v6FilmDirs(t)
-	release := LockProcessDecode()
-	defer release()
 	cfg := DefaultFrameConfig()
 	a := newV6Ancrage()
 	for _, d := range dirs {

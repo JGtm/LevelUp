@@ -58,8 +58,6 @@ func TestGroundWeaponCreationOffset(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", gwCreationFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	_, lay := contexteDuFilm(t, dir)
 	t.Logf("FILM %s · largeurs %v", dir, lay.AxisW)

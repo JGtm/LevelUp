@@ -51,7 +51,6 @@ import "levelup/go-api/internal/analysis/filmsource"
 //     c'est une borne INFÉRIEURE du rappel, et elle est mesurée (`Stats.MultiEvent`).
 //
 // HORS LIGNE par construction (I/O disque sur tout le film) — jamais depuis un chemin de requête.
-// UN SEUL décodage filmdec à la fois par process (verrou partagé, cf. LockProcessDecode).
 
 const (
 	// bipedPickupPacketByte est l'octet de tête d'un paquet dont la liste d'événements

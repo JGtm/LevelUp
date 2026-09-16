@@ -43,8 +43,6 @@ func TestEquipmentCreationOffset(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", equipCreationFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	_, lay := contexteDuFilm(t, dir)
 

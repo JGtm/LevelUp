@@ -25,8 +25,6 @@ func TestLoadoutPopulation(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	s := hwResolve(t, dir)
 	ev := hwIdentities(hwScanEvents(s))

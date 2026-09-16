@@ -43,9 +43,6 @@ func TestV13DeadStateMarche(t *testing.T) {
 	films := v13ParseFilms(t)
 	root := v13Root()
 
-	release := LockProcessDecode()
-	defer release()
-
 	for _, short8 := range films {
 		t.Run(short8, func(t *testing.T) { v13MeasureFilm(t, root, short8) })
 	}

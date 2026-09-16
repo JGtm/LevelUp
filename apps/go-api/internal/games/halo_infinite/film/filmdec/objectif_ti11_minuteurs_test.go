@@ -79,7 +79,6 @@ package filmdec
 // `objectif_ti11_minuteurs_verdict_test.go`, a cote des portes qui les produisent.
 //
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee, UN SEUL
-// decodage a la fois (`LockProcessDecode`).
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
 //	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11Minuteurs -v -timeout 90m
@@ -243,8 +242,6 @@ func TestObjectifTi11Minuteurs(t *testing.T) {
 		t.Logf("pic memoire observe : %.2f Gio (plafond souple %d Gio)",
 			float64(g.Peak())/(1<<30), filmproc.MeasureLimitGiB)
 	}()
-	release := LockProcessDecode()
-	defer release()
 
 	bilans := make([]*mntBilan, 0, len(ti11Corpus))
 	for _, f := range ti11Corpus {

@@ -104,8 +104,6 @@ func f1PosesEtPositions(t *testing.T, dir string, e *filmdec.MapQuantEntry) (
 	if !ok {
 		return nil, nil, false
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 	wr := e.Range()
 	raw, st, err := filmdec.ScanFilmEquipmentPlacements(dir, &wr)
 	if err != nil || !st.Calibration.Widths.Valid() {

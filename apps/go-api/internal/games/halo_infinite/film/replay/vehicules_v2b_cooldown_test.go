@@ -28,7 +28,6 @@ package replay
 // ScanFilmWorldObjectKeyframes (census), ScanFilmBipedPositionsForBand (trace de position),
 // indexBySlot/slotTrack (shots.go), gwPadsCycleFromGaps + gwPadCycleMaxCV (ground_weapon_rules.go).
 //
-// UN SEUL decodage filmdec par process (LockProcessDecode).
 //
 // USAGE (depuis apps/go-api, cache Go ISOLE) :
 //
@@ -81,9 +80,6 @@ func TestV2bCooldown(t *testing.T) {
 	films := v2cParseFilms(t)
 	root := v2cRoot()
 	cat := v2cLoadBounds(t)
-
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	aggs := map[string]*v2cMapAgg{}
 	for _, f := range films {

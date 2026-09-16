@@ -93,8 +93,6 @@ func r7MesureLargeurs(t *testing.T, root string, ids []string,
 func TestR7Largeur(t *testing.T) {
 	root, ids := r7Films(t)
 	cartes := r7Cartes(t)
-	release := LockProcessDecode()
-	defer release()
 	juste, temoin := r7MesureLargeurs(t, root, ids, cartes)
 	// Mediane des profondeurs des types suffisamment observes : la reference du seuil.
 	var profs []float64
@@ -146,8 +144,6 @@ var r7T5Candidats = []int{8, 10, 15, 19, 24}
 func TestR7CalibreType5(t *testing.T) {
 	root, ids := r7Films(t)
 	cartes := r7Cartes(t)
-	release := LockProcessDecode()
-	defer release()
 	origA, origB := r7T5DirA, r7T5DirB
 	defer func() { r7T5DirA, r7T5DirB = origA, origB }()
 	type res struct {

@@ -27,8 +27,6 @@ func zoneVecBits(t *testing.T, b ...byte) *BitReader {
 
 // TestNavpointRadialProgressVecteurs : ti=12 i14, R(8) sur [-1, +1].
 func TestNavpointRadialProgressVecteurs(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 
 	cas := []struct {
 		nom     string
@@ -74,8 +72,6 @@ func TestNavpointRadialProgressVecteurs(t *testing.T) {
 
 // TestManagedObjectBoundaryColorVecteurs : ti=10 i1, 4 x R(8) sur [0, 1].
 func TestManagedObjectBoundaryColorVecteurs(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 
 	cas := []struct {
 		nom    string
@@ -123,8 +119,6 @@ func TestManagedObjectBoundaryColorVecteurs(t *testing.T) {
 
 // TestManagedObjectRTPCVecteurs : ti=10 i26..i29, R(32) id puis R(22) si l'id est non nul.
 func TestManagedObjectRTPCVecteurs(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 
 	cas := []struct {
 		nom     string
@@ -191,8 +185,6 @@ func TestManagedObjectRTPCVecteurs(t *testing.T) {
 // sur les records SINGLETON du meme composant, l'identifiant de 32 bits est le MEME d'un paquet a
 // l'autre et d'un film a l'autre. Un decalage de cadrage, meme d'un bit, le ferait varier.
 func TestManagedObjectRTPCIdentifiantConstant(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 
 	// i26 sur `7344d24f` (paquets 1656, 1716, 1776) puis sur `696a9d7c` (paquet 1680).
 	vecteurs := [][]byte{
@@ -239,8 +231,6 @@ func TestManagedObjectRTPCIdentifiantConstant(t *testing.T) {
 // Modele : `TestHooksConsumeSameBitsWithoutHook` (components_hooks_test.go). Un fichier a part
 // parce que celui-la fait deja 600 lignes.
 func TestZoneHooksConsommentLesMemesBitsSansHook(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 
 	octets := []byte{0x06, 0x85, 0x45, 0x40, 0x80, 0x00, 0x0C, 0x40, 0x35, 0x8B, 0x4A, 0x2B}
 	cas := []struct {

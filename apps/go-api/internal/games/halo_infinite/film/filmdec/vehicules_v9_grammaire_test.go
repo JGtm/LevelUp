@@ -78,8 +78,6 @@ func TestV9Grammaire(t *testing.T) {
 	if root == "" {
 		t.Skip("V9_FILM_ROOT absent")
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	for _, f := range films {
 		t.Run(f, func(t *testing.T) { v9Film(t, root+"/film_chunks/"+f, f) })

@@ -44,8 +44,6 @@ func TestI22DeltaResearch(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s non defini : sonde de recherche sautee", i22FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	n := CountFilmChunks(dir)
 	if n == 0 {
@@ -168,8 +166,6 @@ func TestInventoryComponentsDeltaCensus(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s non defini : sonde de recherche sautee", i22FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	n := CountFilmChunks(dir)
 	chunks := make([]int, 0, n)
@@ -267,8 +263,6 @@ func TestInventoryValuesDeltaProbe(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s non defini", i22FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	n := CountFilmChunks(dir)
 	chunks := make([]int, 0, n)

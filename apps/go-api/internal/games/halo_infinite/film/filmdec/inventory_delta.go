@@ -33,7 +33,6 @@ package filmdec
 // rafraîchit un inventaire dont l'arme est nommée ailleurs.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
-// L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : les hooks installés
 // sont des globaux de paquet.
 
 import (
@@ -97,10 +96,6 @@ type InventoryDelta struct {
 
 // ScanFilmInventoryDeltas décode les transmissions d'inventaire de grenades (i22 compteurs,
 // i47 masque et sélection) dans les paquets delta du film de dir.
-//
-// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `observateur.GrenadeCountsHook`
-// et `observateur.GrenadeSetHook`, qui sont des globaux de paquet. L'appelant doit détenir
-// LockProcessDecode (BuildFromFilm le fait). Les hooks sont restaurés à la sortie.
 //
 // ScanFilmInventoryDeltas est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanInventoryDeltas].

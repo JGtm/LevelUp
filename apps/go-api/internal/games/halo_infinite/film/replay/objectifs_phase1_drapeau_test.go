@@ -426,8 +426,6 @@ func objMax(v []int) int {
 func objGroundWeapons(t *testing.T, root, id string, quant *filmdec.MapQuantEntry) WorldObjectScan {
 	t.Helper()
 	dir := objChunkDir(root, id)
-	release := filmdec.LockProcessDecode()
-	defer release()
 	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks du film %s illisibles : %v", id, err)

@@ -153,8 +153,6 @@ func TestKFGramChain(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", kfGramFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	reg, pays := kfGramPayloads(t, dir)
 	t.Logf("== %s : %d images-cles ==", dir, len(pays))
@@ -284,8 +282,6 @@ func TestKFGramOffset(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", kfGramFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	reg, pays := kfGramPayloads(t, dir)
 	for _, ti := range kfGramTargets {
@@ -364,8 +360,6 @@ func TestKFGramGlobal(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", kfGramFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	reg, pays := kfGramPayloads(t, dir)
 	for k, lay := range kfGramLayouts {
@@ -415,8 +409,6 @@ func TestKFGramVariant(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", kfGramFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	reg, pays := kfGramPayloads(t, dir)
 	for _, ti := range kfGramTargets {

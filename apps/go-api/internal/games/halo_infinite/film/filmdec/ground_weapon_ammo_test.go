@@ -62,8 +62,6 @@ func munAmmoPayload(mag, res, troisieme uint64) []byte {
 }
 
 func TestReadGroundWeaponAmmoLitLesDeuxChamps(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 	pay := munAmmoPayload(27, 114, 4095)
 	got, ok := readGroundWeaponAmmo(pay, 0, []int{0, 18, 20}, munAmmoArch(), ContexteParDefaut())
 	if !ok {
@@ -75,8 +73,6 @@ func TestReadGroundWeaponAmmoLitLesDeuxChamps(t *testing.T) {
 }
 
 func TestReadGroundWeaponAmmoRefuse(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 	arch := munAmmoArch()
 	pay := munAmmoPayload(27, 114, 0)
 	cas := []struct {
@@ -124,8 +120,6 @@ func munI9Bloc(w *bitWriter) {
 
 // TestReadGroundWeaponAmmoTraverseI9 — LE GARDE-RAIL DE LA TRAVERSEE.
 func TestReadGroundWeaponAmmoTraverseI9(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 
 	w := &bitWriter{}
 	munI0(w)

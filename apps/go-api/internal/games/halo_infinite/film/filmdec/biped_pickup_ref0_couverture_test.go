@@ -44,8 +44,6 @@ func TestBipedPickupRef0Couverture(t *testing.T) {
 	if !ok {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	evs := bpkCollecte(t, f)
 	if len(evs) == 0 {
@@ -131,8 +129,6 @@ func TestBipedPickupRef0Equipement(t *testing.T) {
 	if !ok {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	evs := bpkCollecte(t, f)
 	if len(evs) == 0 {
@@ -219,8 +215,6 @@ func TestBipedPickupRef0HypotheseB(t *testing.T) {
 	if !ok {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	evs := bpkCollecte(t, f)
 	ref := hwKeyframeRef(t, f.dir)

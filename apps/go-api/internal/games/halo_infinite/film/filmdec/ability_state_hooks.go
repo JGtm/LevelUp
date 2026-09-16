@@ -14,7 +14,8 @@ package filmdec
 // LA RÈGLE QUI GOUVERNE (décision n°4 du plan PLAN_ETAT_ACTIF_EQUIPEMENT) : c'est le
 // DÉSERIALISEUR qui publie, jamais un second lecteur posé à côté de lui. Aucune largeur ne
 // change : les hooks ne font que publier ce que les désers lisaient déjà. Les hooks sont des
-// globaux de paquet : un seul décodage filmdec par process (cf. decode_gate.go).
+// champs de l'[Observation] que le balayage pose sur son lecteur (lot 2.3) : ils appartiennent
+// à UN balayage, pas au processus.
 
 // CamoState est UNE lecture du composant i28 `unit-active-camo-state` (FUN_142ed3ae0).
 // La grammaire, dans l'ordre du flux : R(3) ; R(1) flag0 ; si flag0==0 : R(1) flag1 ; si

@@ -367,8 +367,6 @@ func r9CreneauxOneFilm(t *testing.T, dir string) {
 	art := r9LoadArt(t, id)
 	entry := r8MapEntry(t, dir)
 	wr := entry.Range()
-	release := LockProcessDecode()
-	defer release()
 
 	origin, ok := r9FirstPacketUS(dir, 1)
 	if !ok {

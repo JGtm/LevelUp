@@ -34,8 +34,6 @@ func TestLiveFireRegionIndex(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : sonde sautee", liveFireIdxEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	n := CountFilmChunks(dir)
 	if n == 0 {

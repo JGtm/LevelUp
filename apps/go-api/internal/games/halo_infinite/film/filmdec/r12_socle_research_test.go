@@ -66,7 +66,7 @@ type r12Setup struct {
 // film). Meme convention que `r11Setup.ms` et que `killsource.Kill.TimeMS`.
 func (s r12Setup) ms(ts uint64) int64 { return (int64(ts) - int64(s.origin)) / 1000 }
 
-// r12Prepare resout un film. L'appelant DOIT detenir `LockProcessDecode` et restaurer
+// r12Prepare resout un film. L appelant restaure
 // `WorldObjectPrecision` en sortie.
 func r12Prepare(t *testing.T, dir string) r12Setup {
 	t.Helper()
@@ -212,7 +212,6 @@ var (
 
 // r12Collect fait UN passage sur les paquets delta et recolte les quatre canaux de capacite
 // par les hooks des desers de PRODUCTION. Aucune relecture posee a cote d'eux.
-// L'appelant detient `LockProcessDecode` : les hooks sont des globaux de paquet.
 func r12Collect(s r12Setup) r12Reads {
 	idx := map[string]int{
 		"i48": r8IndexOfAny(s.arch, r12I48Names),
@@ -334,8 +333,6 @@ func TestR12Ancrage(t *testing.T) {
 
 func r12AncrageOneFilm(t *testing.T, dir string) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
 	s := r12Prepare(t, dir)
 	rd := r12Collect(s)
 

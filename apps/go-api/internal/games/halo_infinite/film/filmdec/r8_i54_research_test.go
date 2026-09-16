@@ -19,7 +19,7 @@ package filmdec
 // CONTROLE (`r8BodyBits`, la largeur totale consommee, comparee a celle du deser de
 // production sur le meme record).
 //
-// GARDES : `R8_FILMS`, `R8_BOUNDS`, `R8_IDS`. `LockProcessDecode`, CGO_ENABLED=0.
+// GARDES : `R8_FILMS`, `R8_BOUNDS`, `R8_IDS`. CGO_ENABLED=0.
 
 import (
 	"sort"
@@ -172,7 +172,6 @@ func r8MirrorBody(br *BitReader, ev *r8MobEvent) {
 }
 
 // r8ScanMobility balaye le film et rend toutes les emissions d'i54, triees par instant.
-// L'appelant doit detenir LockProcessDecode.
 func r8ScanMobility(t *testing.T, s r8MobSetup) ([]r8MobEvent, int, int) {
 	t.Helper()
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + s.lay.TotalBits()

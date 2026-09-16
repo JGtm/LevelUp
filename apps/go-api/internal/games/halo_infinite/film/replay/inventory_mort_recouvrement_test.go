@@ -216,8 +216,6 @@ func invMortAccumulate(dst, src *invMortStat) {
 // les seules entrees que la mesure consomme.
 func invMortFilm(t *testing.T, dir string) (*invMortStat, *invMortStat, IdentityRegistry) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
 	scan := filmdec.DefaultScanFilmOptions()
 	// QUANTA SEULS, et c'est suffisant : la mesure ne lit d'une position que son SLOT et son
 	// HORODATAGE (indexBySlot, buildLifeSpans). Exiger les bornes de carte n'ajouterait aucune

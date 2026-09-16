@@ -72,8 +72,6 @@ type v10Couverture struct {
 func TestV10DeadStateVehicules(t *testing.T) {
 	films := v10Films(t)
 	root := v10Root()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	for _, short8 := range films {
 		dir := filepath.Join(root, "film_chunks", short8)

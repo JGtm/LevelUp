@@ -146,7 +146,6 @@ func r11EnergyTxt(mask uint32, ch [AbilityEnergyCharges]int) string {
 
 // r11Collect est LE SEUL balayage de ce lot (regle des <= 2 copies) : le journal et la mesure
 // des charges le partagent. Un passage, quatre composants, les desers de PRODUCTION.
-// L'appelant detient LockProcessDecode : les hooks sont des globaux de paquet.
 func r11Collect(s r8MobSetup) r11Reads {
 	idx := map[string]int{
 		"i48": r8IndexOfAny(s.arch, r11I48Names),
@@ -282,8 +281,6 @@ type r11JLine struct {
 
 func r11JournalOneFilm(t *testing.T, dir string) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
 	s := r11Prepare(t, dir)
 	rd := r11Collect(s.scan)
 	xuid, all := r11XUID(), os.Getenv(r11AllEnv) == "1"

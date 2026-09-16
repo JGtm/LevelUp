@@ -25,8 +25,6 @@ import (
 // residus — un XUID de la base absent du flux, un enregistrement du flux inconnu de la base.
 // Sans cette ventilation, un ecart de compte reste ambigu.
 func TestProfilRosterBilan(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	oracle := equipeOracleXuid(t)
 	if len(oracle) == 0 {
 		t.Skip("CHUNK00_XUID_EQUIPES absent : bilan saute")
@@ -98,8 +96,6 @@ func profilRosterLireChamps(d []byte, bit int) profilRosterChamps {
 // Un XUID absent du flux est une chose ; un XUID present mais rejete par un critere en est une
 // autre, et seule cette sonde les distingue.
 func TestProfilRosterXuidIntrouvable(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	oracle := equipeOracleXuid(t)
 	if len(oracle) == 0 {
 		t.Skip("CHUNK00_XUID_EQUIPES absent : sonde sautee")

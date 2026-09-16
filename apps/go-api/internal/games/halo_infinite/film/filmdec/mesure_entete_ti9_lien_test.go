@@ -107,7 +107,6 @@ func mesureIndexJoueurs(f mesureFilm, roster mesureRoster) (map[uint64]int, int,
 func TestMesureLienTI9(t *testing.T) {
 	films := mesureOuvre(t)
 	rosters := mesureLitRosters(t)
-	defer LockProcessDecode()()
 
 	t.Logf("")
 	t.Logf("=== G. INDEX DE JOUEUR DU FILM CONFRONTES AUX EQUIPES DE LA BASE ===")

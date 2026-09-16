@@ -18,7 +18,7 @@ package filmdec
 //
 // GARDES : `R8_FILMS` (dossier des `film_chunks`), `R8_ARTIFACTS` (artefacts, pour le
 // temoin), `R8_IDS` (identifiants a balayer — OBLIGATOIRE ici, un film coute cher).
-// `LockProcessDecode` tenu pendant tout le decodage d'un film : les hooks sont des globaux
+// l observateur du harnais est pose sur les lecteurs : les crochets ne sont plus des globaux
 // de paquet.
 //
 // USAGE (depuis apps/go-api) :
@@ -141,13 +141,11 @@ type r8LifeStat struct {
 }
 
 // r8ScanFilm decode UN film et rend, par vie ti=37, ce que le canal des composants dit.
-// Detient `LockProcessDecode` pendant tout le decodage.
+// Pose son observateur sur ses lecteurs.
 func r8ScanFilm(t *testing.T, dir string) map[EquipmentLifeKey]*r8LifeStat {
 	t.Helper()
 	entry := r8MapEntry(t, dir)
 	wr := entry.Range()
-	release := LockProcessDecode()
-	defer release()
 	// LES LARGEURS D'AXE SONT UN GLOBAL DE PAQUET, et sans elles le lecteur world-object
 	// dequantifie tout aux largeurs de Cliffhanger : mesure a l'appui, `00ba2e1c` rend
 	// 13 poses au defaut contre 537 avec les siennes. Restauration a la sortie.

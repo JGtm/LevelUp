@@ -98,8 +98,6 @@ func profilBuildSlots(d []byte, l *profilBuildLigne) {
 
 // TestProfilBuildsTrame est le releve par build : une ligne par film, tout mesure.
 func TestProfilBuildsTrame(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	var lignes []profilBuildLigne
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
 		l, ok := profilBuildMesure(t, dir)
@@ -173,8 +171,6 @@ func profilBuildsBilan(t *testing.T, lignes []profilBuildLigne) {
 // `chunk_00`, le vecteur lu a 186 a l'oracle `match_participants.team_id`. C'est la meme
 // confrontation que la phase 3, rejouee sur les builds anciens.
 func TestProfilBuildsOracle(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	oracle := equipeOracleXuid(t)
 	if len(oracle) == 0 {
 		t.Skip("CHUNK00_XUID_EQUIPES absent : instrument saute")
@@ -222,8 +218,6 @@ func TestProfilBuildsOracle(t *testing.T) {
 // compter a part, et l'ordre reste celui du flux : les enregistrements sont rendus par
 // positions de bit croissantes, rien n'est reordonne.
 func TestProfilBuildsOracleCorrige(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	oracle := equipeOracleXuid(t)
 	if len(oracle) == 0 {
 		t.Skip("CHUNK00_XUID_EQUIPES absent : instrument saute")

@@ -21,7 +21,6 @@ package filmdec
 // coordonnée monde (règle map_bounds.go).
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
-// L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : le hook installé
 // est un global de paquet.
 
 import (
@@ -75,11 +74,6 @@ type GrappleStats struct {
 
 // ScanFilmGrappleReads décode les événements de grappin (corps tag==3 d'i59) dans les
 // paquets delta du film de dir.
-//
-// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe
-// `observateur.AbilityNonPredictedHook`, qui est un global de paquet. L'appelant doit détenir
-// LockProcessDecode (BuildFromFilm le fait). Le hook est restauré à la sortie, y compris
-// en cas d'erreur.
 //
 // ScanFilmGrappleReads est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanGrappleReads].

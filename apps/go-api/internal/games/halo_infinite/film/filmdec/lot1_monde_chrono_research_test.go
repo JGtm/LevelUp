@@ -70,8 +70,6 @@ func TestLot1MondeChrono(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("chunk_00 illisible : %v", err)

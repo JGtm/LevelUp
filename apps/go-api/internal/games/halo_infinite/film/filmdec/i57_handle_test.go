@@ -61,8 +61,6 @@ func TestI57HandleAndDeployables(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i57hFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	s := eaSetupBiped(t, dir)
 	idx57 := s.arch.indicesOfFirst("biped-spartan-ability-component")

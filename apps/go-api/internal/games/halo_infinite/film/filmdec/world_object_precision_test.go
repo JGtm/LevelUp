@@ -77,8 +77,6 @@ func TestWorldObjectPrecisionLayout(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", worldPrecFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	lay, rep, err := detectI0Layout(dir)
 	if err != nil {
@@ -98,8 +96,6 @@ func TestWorldObjectPrecisionImpact(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", worldPrecFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	prev := ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 

@@ -66,7 +66,6 @@ func nouvelleIdentite() *mesureIdentiteEntite {
 
 func TestMesureIdentiteTI9(t *testing.T) {
 	films := mesureOuvre(t)
-	defer LockProcessDecode()()
 
 	for _, f := range films {
 		ents := map[int]*mesureIdentiteEntite{}

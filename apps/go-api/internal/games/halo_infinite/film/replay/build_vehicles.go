@@ -36,7 +36,7 @@ package replay
 // `object-dead-state` de l entite elle-meme ; le detail vit dans `vehicle_end.go`.
 //
 // HORS LIGNE : `decodeFilmVehicleScan` consomme le film DEJA CHARGE et n est appelee que
-// par `BuildFromFilm`, sous `LockProcessDecode`. `attachVehicles` est PUR.
+// par `BuildFromFilm`. `attachVehicles` est PUR.
 
 import (
 	"log/slog"
@@ -89,7 +89,7 @@ type VehicleScan struct {
 // les creations sont illisibles, et ni l un ni l autre n est un film dont le nuage de positions
 // manque. Le calque se tait entierement plutot que de publier des vehicules sans trajectoire.
 //
-// HORS LIGNE — appelee par BuildFromFilm, sous LockProcessDecode. Elle ne TOUCHE PAS le disque :
+// HORS LIGNE — appelee par BuildFromFilm. Elle ne TOUCHE PAS le disque :
 // le film est deja charge et le contexte deja ouvert (lots 1 et 2 de PLAN_CUISSON_PERF), et
 // c'est lui qui porte la bande bipede, le decoupage d'i0 et le registre que les cinq lectures
 // ci-dessous partagent.

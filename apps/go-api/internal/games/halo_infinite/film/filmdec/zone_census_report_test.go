@@ -163,9 +163,6 @@ func TestZoneCensusLotC(t *testing.T) {
 	dir := zcDir(t)
 	out := zcOutDir(t)
 	short := filepath.Base(dir)
-	release := LockProcessDecode() // les bascules de grammaire sont des globaux de paquet
-	defer release()
-
 	gram, reg := zcLoadGrammar(t, dir)
 	c := zcKeyframeCensus(dir)
 	t.Logf("FILM %s — %d chunks · %d tables d'image-cle · %d records d'image-cle · %d archetypes distincts",

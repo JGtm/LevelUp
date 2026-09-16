@@ -304,8 +304,6 @@ func eps3CompteUTF16(sec []byte, s string) int {
 // identifiants dont on SAIT que ce match les a joués.
 func eps3FamillesArme(t *testing.T, dir string) []uint32 {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
 	pickups, _, err := ScanFilmBipedPickups(dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)

@@ -76,7 +76,6 @@ type AbilityRankStats struct {
 // qu'un seul lecteur.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `observateur.AbilitySetHook`,
-// qui est un global de paquet. L'appelant doit détenir LockProcessDecode (BuildFromFilm le
 // fait). Le hook est restauré à la sortie, y compris en cas d'erreur.
 //
 // ScanFilmAbilityRanks est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film, ouvre un

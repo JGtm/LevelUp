@@ -44,8 +44,6 @@ func TestLot1EnteteParPaquet(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("chunk_00 illisible : %v", err)
@@ -166,8 +164,6 @@ func TestLot1PremierRecordSousK(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("chunk_00 illisible : %v", err)
@@ -283,8 +279,6 @@ func TestLot1InferenceParFamille(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("chunk_00 illisible : %v", err)

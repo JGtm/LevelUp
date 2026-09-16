@@ -77,9 +77,6 @@ func TestV2VehicleDeathDating(t *testing.T) {
 	films := v2dParseFilms(t)
 	boundsCat := v2dLoadBounds(t)
 
-	release := filmdec.LockProcessDecode()
-	defer release()
-
 	aggs := map[string]*v2dMapAgg{}
 	for _, f := range films {
 		entry, err := boundsCat.Lookup(f.mapKey)

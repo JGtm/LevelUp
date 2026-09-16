@@ -38,7 +38,7 @@ package killsource
 //	                                   et c est un negatif STRUCTUREL, pas une coincidence.
 //
 // LECTURE SEULE, garde par KSPREC_FILM, saute partout ailleurs (CI comprise). UN SEUL FILM PAR
-// PROCESS : `Decode` prend `filmdec.LockProcessDecode` et remet les globaux de replication a
+// PROCESS : `Decode` part de son propre profil de balayage et ne remet plus de globaux a
 // leur valeur d origine, mais la comparabilite entre films n est pas l objet ici.
 //
 // USAGE (depuis apps/go-api) :
@@ -145,8 +145,6 @@ func TestKillSourceWalkArchetypes(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", ksPrecFilmEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 	prev := filmdec.ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 
 	src, err := filmsource.LoadDir(dir, nil)

@@ -75,8 +75,6 @@ func TestViseeChronologie(t *testing.T) {
 	if filepath.Base(dir) != "00162144" {
 		t.Fatalf("la chronologie relevee est celle de 00162144 ; film fourni : %s", filepath.Base(dir))
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	xuid := chronoXUID(t, dir, chronoGT)
 	xuidV := chronoXUID(t, dir, chronoGTVictime)

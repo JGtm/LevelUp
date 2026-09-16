@@ -54,8 +54,6 @@ func TestEquipmentEntityState(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", equipFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	arch := equipLogArchetype(t, dir)
 	lay := equipSetPrecision(t, dir)

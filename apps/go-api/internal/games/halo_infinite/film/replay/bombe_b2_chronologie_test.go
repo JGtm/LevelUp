@@ -207,8 +207,6 @@ func TestBombeB2Assaut(t *testing.T) {
 		t.Skip("mesure non demandée : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestBombeB2Assaut")()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	films := make([]string, 0, len(a5Explosions))
 	for id := range a5Explosions {
@@ -382,8 +380,6 @@ func TestBombeB2TemoinOddball(t *testing.T) {
 		t.Skip("mesure non demandée : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestBombeB2TemoinOddball")()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	evs, slotXUID, deaths := b2Timeline(t, cache, b1Temoin, b1Crane)
 	periodes := b2Periodes(evs, slotXUID, deaths)

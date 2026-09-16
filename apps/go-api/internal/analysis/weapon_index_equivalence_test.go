@@ -74,8 +74,6 @@ func TestWeaponIndexNumDenomEquivalence(t *testing.T) {
 	if base == "" {
 		t.Skip("PRECISION_CORPUS absent : preuve d'equivalence sautee")
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	for _, f := range idxEqCorpus {
 		dir := filepath.Join(base, f.id)

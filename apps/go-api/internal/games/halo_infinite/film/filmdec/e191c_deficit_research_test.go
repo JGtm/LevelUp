@@ -60,8 +60,6 @@ func e191cN2AvecDelta(ancres []e191cAncre, ti int, delta int) (float64, uint64) 
 // TestE191cDeficit colle, par bobine et par archetype, la part modale de `n2` pour chaque
 // decalage du voisinage.
 func TestE191cDeficit(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	t.Logf("######## PAS 3 QUATER (B) — LE DEFICIT EN BITS DE L ETAT PAR DEFAUT ########")
 	t.Logf("  part des records dont `n2` prend la valeur modale, par decalage depuis la fin portee")
 	for _, court := range closureMiniFilms() {

@@ -44,8 +44,6 @@ const e191cN2Max = 16
 
 // TestE191cOracleN2 balaye les deux largeurs MPP et publie la part modale de `n2`.
 func TestE191cOracleN2(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	t.Logf("######## PAS 2 QUATER — `n2` CONTRE LES LARGEURS DU BLOC MPP ########")
 	t.Logf("  largeurs de l ecrivain : lead=9 (141fd72de), index=5 (inline FUN_14080cfe8)")
 	parTI := map[int][]e191cAncre{}
@@ -137,8 +135,6 @@ func e191cBalayerMPP(t *testing.T, ancres []e191cAncre, ti int) {
 // pour les sept builds — c est le profil par build de l ADR (D-3). Si la meme paire gagne
 // partout, la grammaire est commune et les trois bits sont ailleurs.
 func TestE191cOracleN2ParBuild(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	t.Logf("######## PAS 2 QUINQUIES — LE BALAYAGE MPP, BOBINE PAR BOBINE ########")
 	t.Logf("  %-10s %-5s %7s   %-18s   %-18s", "bobine", "ti", "records", "meilleure paire", "l ecrivain 9/5")
 	for _, court := range closureMiniFilms() {

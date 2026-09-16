@@ -249,8 +249,6 @@ func kf7eCases() []kf7eCase {
 // films du corpus ferme, largeurs de la carte installees et trous neutralises.
 func TestKF7EFullStateLoop(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	defer poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })()
 
@@ -305,8 +303,6 @@ func kf7eLogBreaks(t *testing.T, hist map[string]int, n int) {
 // la largeur PREDITE par le decoupage de la carte. Sans lui, « (e) ameliore » ne se verifie pas.
 func TestKF7EProfileI0(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	defer poserBasculeDInstrument(func(g *GrammaireBalayage) {
 		g.SimStateComplet = true

@@ -125,9 +125,6 @@ func attNewStat() attStat {
 }
 
 // attScanI10 déroule la marche stateful sur tout le film et rend chaque lecture d'i10.
-//
-// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : la sonde est un global de paquet. Elle
-// est posée et retirée ici, sous `LockProcessDecode`.
 func attScanI10(dir string) ([]attI10, attStat, error) {
 	st := attNewStat()
 	brut, err := filmdec.ReadFilmChunk(dir, 0)
@@ -138,8 +135,6 @@ func attScanI10(dir string) ([]attI10, attStat, error) {
 	if err != nil {
 		return nil, st, fmt.Errorf("registre illisible : %w", err)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	// La sonde écrit dans `vues`, indexée PAR POSITION DE BIT : une position réécrite est
 	// un record re-décodé (réparation de composant non porté), et c'est la DERNIÈRE lecture

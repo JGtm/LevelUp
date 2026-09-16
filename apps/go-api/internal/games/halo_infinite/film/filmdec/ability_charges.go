@@ -41,7 +41,6 @@ package filmdec
 // exact de `ScanFilmAbilityImpulses` — même contexte partagé, autre composant.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
-// L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : le hook installé est
 // un global de paquet.
 
 import "levelup/go-api/internal/analysis/filmsource"
@@ -116,11 +115,6 @@ type AbilityChargeStats struct {
 // ARMÉS du composant i56) dans les paquets delta du film de dir. Les lectures sortent
 // TRIÉES par instant, puis par slot, puis par emplacement — un ordre total, pour que deux
 // exécutions rendent le même artefact.
-//
-// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe
-// `observateur.AbilityEnergyHook`, qui est un global de paquet. L'appelant doit détenir
-// LockProcessDecode (BuildFromFilm le fait). Le hook est restauré à la sortie, y compris
-// en cas d'erreur.
 //
 // ScanFilmAbilityCharges est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film, ouvre un
 // contexte pour elle seule, puis appelle [ScanAbilityCharges]. La cuisson, elle, passe le

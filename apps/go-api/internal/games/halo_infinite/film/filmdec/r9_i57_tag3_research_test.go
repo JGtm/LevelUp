@@ -83,7 +83,6 @@ func r9Label(r r9Read) string {
 }
 
 // r9Scan balaye le film et rend les lectures d'i57 (tag + issue de marche) et celles d'i59
-// (le temoin positif du grappin). L'appelant doit detenir LockProcessDecode.
 func r9Scan(s r8MobSetup) (i57 []r9Read, i59 []r8TagRead, masked int) {
 	idx57 := r8IndexOfAny(s.arch, r8I57Names)
 	idx59 := r8IndexOfAny(s.arch, r8I59Names)
@@ -153,8 +152,6 @@ func r9OneFilm(t *testing.T, dir string) {
 	t.Helper()
 	entry := r8MapEntry(t, dir)
 	wr := entry.Range()
-	release := LockProcessDecode()
-	defer release()
 
 	s := r8MobResolve(t, dir)
 	opt := DefaultScanFilmOptions()

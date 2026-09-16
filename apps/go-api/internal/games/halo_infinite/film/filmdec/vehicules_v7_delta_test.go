@@ -132,8 +132,6 @@ func v7DeltaOne(acc map[int]*v7DeltaAcc, ty int, slot uint32, at uint64, lives [
 // TestV7Delta — LA TABLE DES ECARTS.
 func TestV7Delta(t *testing.T) {
 	dirs := v7FilmDirs(t)
-	release := LockProcessDecode()
-	defer release()
 	list := v7LetalTypes
 	if s := os.Getenv("V7_TYPES"); s != "" {
 		list = nil

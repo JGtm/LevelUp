@@ -5,13 +5,17 @@ package archlint
 //
 // # POURQUOI CE RATCHET EXISTE
 //
-// `filmdec` porte son etat de reglage dans des VARIABLES DE PAQUET (largeurs d'axe, crochets de
-// deserialisation, compteurs d'observation). C'est ce qui oblige tout le decodage a passer sous
-// `LockProcessDecode()` : deux films decodes en parallele dans le meme processus se voleraient
-// leurs largeurs. La decision D10 du plan est de NE PAS de-globaliser pendant ce chantier — le
-// perimetre est deja lourd, et une de-globalisation touche 28 crochets. Mais ne pas corriger
-// n'autorise pas a AGGRAVER : ce test gele le compte au niveau mesure, pour que le chantier de
-// performance ne laisse pas derriere lui dix globaux de plus que ce qu'il a trouve.
+// `filmdec` PORTAIT son etat de reglage dans des VARIABLES DE PAQUET (largeurs d'axe, crochets
+// de deserialisation, compteurs d'observation). C'est ce qui obligeait tout le decodage a passer
+// sous un verrou de paquet : deux films decodes en parallele dans le meme processus se seraient
+// vole leurs largeurs. Ce ratchet a d'abord GELE le compte (2026-09-03, decision D10 de
+// PLAN_CUISSON_PERF : ne pas aggraver tant que la de-globalisation n'etait pas au programme),
+// puis il l'a fait DESCENDRE, lot par lot, jusqu'a ZERO VARIABLE ECRITE au lot 2.3.
+//
+// LE COMPTE QUI FAIT FOI EST DESORMAIS CELUI DES VARIABLES ECRITES, et il vaut ZERO — c'est le
+// critere que `profil_herite.go` et `observateur.go` avaient ecrit, et ce que
+// `TestAucunVarDePaquetEcriteDansFilmdec` mesure plus bas. Le compte TOTAL reste gele en second
+// garde-fou : une table de grammaire de plus doit rester un geste conscient.
 //
 // # CE QUI EST COMPTE, EXACTEMENT
 //
@@ -107,8 +111,9 @@ package archlint
 // production de `posCaptureHook`. C est une suppression de FONCTIONNALITE, pas un pliage de
 // constante : elle se decide, elle ne se glisse pas dans un lot a comportement identique.
 //
-// RETRAIT CIBLE : le jour ou `filmdec` est de-globalise (hors de ce plan, cf. §7). Critere
-// mesurable de ce jour-la : `LockProcessDecode` n'a plus de raison d'etre.
+// CE JOUR EST ARRIVE AU LOT 2.3 : le verrou de paquet n'a plus de raison d'etre, et il a ete
+// retire. Le ratchet, lui, RESTE — il interdit desormais la resurrection, avec son ratchet
+// frere `decode_lock_interdit_test.go`.
 
 import (
 	"fmt"
@@ -202,7 +207,7 @@ import (
 //
 // LES VINGT-DEUX QUI RESTENT NE SONT ECRITES PAR PERSONNE : quatre erreurs sentinelles (Go n a
 // pas de `const` d erreur), seize tables de grammaire deguisees en `var` (Go n a pas de `const`
-// composite), le verrou de processus — qui part au pas suivant de ce lot — et le dedoublonneur
+// composite) et le dedoublonneur
 // d avertissement de registre (`sync.Map`, qu aucun decodage ne lit). C est ce que le ratchet
 // mesure desormais, et c est le critere que `profil_herite.go` et `observateur.go` avaient
 // ecrit : « `filmdecVarsGeles` tombe a 0 variable mutable ».
@@ -216,9 +221,10 @@ func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {
 	case compte > filmdecVarsGeles:
 		t.Fatalf("l'etat global de `filmdec` a CRU : %d variables de paquet, gelees a %d "+
 			"(D10 de PLAN_CUISSON_PERF, mesure du 2026-09-03).\n%s\n"+
-			"Un nouveau reglage de decodage se passe en PARAMETRE (ScanFilmOptions, FilmContext), "+
-			"pas en variable de paquet : chaque global de plus est un verrou process de plus a "+
-			"tenir, et c'est deja `LockProcessDecode` qui serialise toute la cuisson.",
+			"Un nouveau reglage de decodage se passe en PARAMETRE (`filmdec.ContexteDeLecture`, "+
+			"`ScanFilmOptions`, `FilmContext`), pas en variable de paquet : deux films se decodent "+
+			"en parallele depuis le lot 2.3, et une variable de paquet ecrite les remettrait a la "+
+			"queue leu leu.",
 			compte, filmdecVarsGeles, detailParFichier(parFichier))
 	case compte < filmdecVarsGeles:
 		t.Logf("l'etat global de `filmdec` a BAISSE : %d variables de paquet au lieu de %d — "+
@@ -288,4 +294,151 @@ func detailParFichier(parFichier map[string]int) string {
 		fmt.Fprintf(&b, "    %s : %d\n", nom, parFichier[nom])
 	}
 	return b.String()
+}
+
+// TestAucunVarDePaquetEcriteDansFilmdec — LE RATCHET QUI COMPTE, depuis le lot 2.3.
+//
+// # CE QU IL MESURE, EXACTEMENT
+//
+// Une variable de paquet est dite ECRITE si un fichier du paquet (TESTS COMPRIS) lui affecte une
+// valeur ailleurs qu a sa declaration : affectation simple ou multiple, increment, ecriture par
+// index, ou prise d adresse. Le compte doit valoir ZERO.
+//
+// POURQUOI « ECRITE » ET NON « DECLAREE ». Ce qui obligeait le decodage a se serialiser n etait
+// pas l existence d une variable de paquet, c etait son ECRITURE pendant un balayage. Une table
+// de grammaire que personne n ecrit est une constante que Go ne sait pas exprimer ; une erreur
+// sentinelle aussi. Les distinguer est ce qui rend le critere vrai plutot que decoratif.
+//
+// LES TESTS SONT DANS LE PERIMETRE, et c est delibere : un harnais qui ecrirait une variable de
+// PRODUCTION la rendrait partagee de fait. Les harnais de ce paquet portent leur propre etat
+// dans des fichiers `_test.go` (`harnais_profil_test.go`, `harnais_observation_test.go`), que le
+// comptage des DECLARATIONS ignore — mais dont les ecritures ne visent que ces memes fichiers.
+//
+// ANGLE MORT ASSUME : une table passee en ARGUMENT a une fonction qui la mute ne serait pas vue.
+// Aucune des vingt-deux restantes n est dans ce cas (elles sont lues par indexation ou par
+// `range`), et le compte TOTAL gele plus haut interdit d en ajouter sans le dire.
+func TestAucunVarDePaquetEcriteDansFilmdec(t *testing.T) {
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/filmdec"))
+	ecrites := varsDePaquetEcrites(t, pkgDir)
+	if len(ecrites) == 0 {
+		return
+	}
+	sort.Strings(ecrites)
+	t.Fatalf("UNE VARIABLE DE PAQUET DE `filmdec` EST ECRITE (%d) :\n  %s\n\n"+
+		"Le decodeur n'en a plus AUCUNE depuis le lot 2.3 : c'est ce qui permet a deux films de\n"+
+		"se decoder en parallele, et ce qui a permis de retirer le verrou de paquet.\n"+
+		"Ce qu'il faut a la place : porter la valeur dans `filmdec.ProfilDeBalayage` (si elle\n"+
+		"DECIDE d'une largeur) ou dans `filmdec.Observation` (si elle ne fait que RECEVOIR), et\n"+
+		"la passer par `filmdec.ContexteDeLecture`.",
+		len(ecrites), strings.Join(ecrites, "\n  "))
+}
+
+// varsDePaquetEcrites rend les noms des variables de paquet auxquelles un fichier du paquet
+// affecte une valeur hors de leur declaration.
+func varsDePaquetEcrites(t *testing.T, pkgDir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(pkgDir)
+	if err != nil {
+		t.Fatalf("paquet %s introuvable : %v", pkgDir, err)
+	}
+	fset := token.NewFileSet()
+	fichiers := map[string]*ast.File{}
+	declarees := map[string]bool{}
+	for _, e := range entries {
+		nom := e.Name()
+		if e.IsDir() || !strings.HasSuffix(nom, ".go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, filepath.Join(pkgDir, nom), nil, 0)
+		if err != nil {
+			t.Fatalf("analyse de %s : %v", nom, err)
+		}
+		fichiers[nom] = f
+		if strings.HasSuffix(nom, "_test.go") {
+			continue // les harnais declarent leur propre etat, hors mesure
+		}
+		for _, d := range f.Decls {
+			gd, ok := d.(*ast.GenDecl)
+			if !ok || gd.Tok != token.VAR {
+				continue
+			}
+			for _, sp := range gd.Specs {
+				vs, ok := sp.(*ast.ValueSpec)
+				if !ok {
+					continue
+				}
+				for _, id := range vs.Names {
+					if id.Name != "_" {
+						declarees[id.Name] = true
+					}
+				}
+			}
+		}
+	}
+	return ecrituresVers(fset, fichiers, declarees)
+}
+
+// ecrituresVers balaie les fichiers et rend, pour chaque ecriture vers une variable declaree, une
+// ligne « nom (fichier:ligne, nature) ».
+func ecrituresVers(fset *token.FileSet, fichiers map[string]*ast.File, declarees map[string]bool) []string {
+	vues := map[string]bool{}
+	var out []string
+	for nom, f := range fichiers {
+		noter := func(x ast.Expr, nature string, pos token.Pos) {
+			id := racineDIdentifiant(x)
+			if id == nil || !declarees[id.Name] {
+				return
+			}
+			cle := fmt.Sprintf("%s (%s:%d, %s)", id.Name, nom, fset.Position(pos).Line, nature)
+			if !vues[cle] {
+				vues[cle] = true
+				out = append(out, cle)
+			}
+		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			switch s := n.(type) {
+			case *ast.GenDecl:
+				if s.Tok == token.VAR {
+					return false // la declaration elle-meme n'est pas une ecriture
+				}
+			case *ast.AssignStmt:
+				if s.Tok == token.DEFINE {
+					return true
+				}
+				for _, lhs := range s.Lhs {
+					noter(lhs, "affectation", s.Pos())
+				}
+			case *ast.IncDecStmt:
+				noter(s.X, "increment", s.Pos())
+			case *ast.UnaryExpr:
+				if s.Op == token.AND {
+					noter(s.X, "prise d'adresse", s.Pos())
+				}
+			}
+			return true
+		})
+	}
+	return out
+}
+
+// racineDIdentifiant rend l'identifiant a la racine d'une expression d'affectation, ou nil.
+func racineDIdentifiant(x ast.Expr) *ast.Ident {
+	for {
+		switch e := x.(type) {
+		case *ast.Ident:
+			return e
+		case *ast.IndexExpr:
+			x = e.X
+		case *ast.SelectorExpr:
+			x = e.X
+		case *ast.StarExpr:
+			x = e.X
+		case *ast.ParenExpr:
+			x = e.X
+		case *ast.SliceExpr:
+			x = e.X
+		default:
+			return nil
+		}
+	}
 }

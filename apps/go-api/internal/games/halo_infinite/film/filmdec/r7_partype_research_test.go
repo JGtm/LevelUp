@@ -46,8 +46,6 @@ func r7TypesDemandes() map[int]bool {
 func TestR7ParType(t *testing.T) {
 	root, ids := r7Films(t)
 	cartes := r7Cartes(t)
-	release := LockProcessDecode()
-	defer release()
 	filtre := r7TypesDemandes()
 	type mesure struct{ avec, sans r7TrameStat }
 	agg := map[int]*mesure{}
@@ -131,8 +129,6 @@ var r7Tranches = [][2]int{{1, 1}, {2, 3}, {4, 7}, {8, 15}, {16, 31}, {32, 1 << 3
 func TestR7ParLongueur(t *testing.T) {
 	root, ids := r7Films(t)
 	cartes := r7Cartes(t)
-	release := LockProcessDecode()
-	defer release()
 	stats := make([]r7TrameStat, len(r7Tranches))
 	for _, id := range ids {
 		reg, chunks, err := r7Chargements(filepath.Join(root, id))

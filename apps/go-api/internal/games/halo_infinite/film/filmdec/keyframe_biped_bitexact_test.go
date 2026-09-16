@@ -22,7 +22,6 @@ package filmdec
 // disjointe du catalogue) et le pose pour la duree de la passe, avec son A/B.
 //
 // LECTURE SEULE, garde par KF35_ROOT (meme garde que R7-a) : saute partout ailleurs, CI
-// comprise. Bascules globales restaurees en defer ; LockProcessDecode tenu tout du long.
 //
 // USAGE (depuis apps/go-api) :
 //
@@ -101,8 +100,6 @@ var kf35bVariants = []kf35Variant{
 // memes largeurs d'axe — donc que la mesure R7-a en lisait deux sur trois a cote.
 func TestKF35BInventory(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	// i60 est PORTÉ EN ENTIER depuis R7-b (queue FUN_14076e494 incluse) ; seul le défaut de
 	// production reste à false, faute de largeurs d'axe de carte sur le chemin absolu. Les
@@ -130,8 +127,6 @@ func TestKF35BInventory(t *testing.T) {
 // corruption-check du mode film eteint puis allume, sur les deux lectures encore debout.
 func TestKF35BBitExact(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	// i60 est PORTÉ EN ENTIER depuis R7-b (queue FUN_14076e494 incluse) ; seul le défaut de
 	// production reste à false, faute de largeurs d'axe de carte sur le chemin absolu. Les
@@ -216,8 +211,6 @@ func kf35bAccumulate(tr EntityTrace, b kf35Bound, stats []kf35bCompStat) {
 // de carte installees : c'est la piece qui ORDONNE la suite du plan (quel deser corriger).
 func TestKF35BProfile(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	// i60 est PORTÉ EN ENTIER depuis R7-b (queue FUN_14076e494 incluse) ; seul le défaut de
 	// production reste à false, faute de largeurs d'axe de carte sur le chemin absolu. Les
@@ -290,8 +283,6 @@ func kf35bQuantile(xs []int, q float64) int {
 // corruption-check du mode film ETEINT (allume est desormais pire, cf. plan R7-b).
 func TestKF35BDispersion(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
 	defer prevSim()

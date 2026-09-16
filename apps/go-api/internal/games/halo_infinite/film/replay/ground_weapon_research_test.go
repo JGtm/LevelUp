@@ -79,8 +79,6 @@ func TestGroundWeaponCoverage(t *testing.T) {
 	// (`filmdec.WorldObjectPrecision`) : sans verrou ni restauration, un second test du même
 	// binaire déquantifierait aux largeurs du film précédent — le défaut même que le correctif
 	// du 2026-08-15 a mesuré sur la production.
-	release := filmdec.LockProcessDecode()
-	defer release()
 	known := loadoutFamilies()
 
 	// --- IDENTITÉ -----------------------------------------------------------------------

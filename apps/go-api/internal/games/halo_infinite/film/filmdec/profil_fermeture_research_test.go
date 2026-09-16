@@ -95,8 +95,6 @@ func profilLireEtatComplet(pay []byte, anchor, ti int) profilEtatComplet {
 // TestProfilFermeture186 est le controle F1 : la somme des largeurs lues dans l'executable
 // vaut EXACTEMENT 186 sur chaque record ti=9, sans ajustement.
 func TestProfilFermeture186(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	dirs := chunk00Films(t, "CHUNK00_FILMS")
 	positions := map[int]int{}
 	n1s, n2s, ds := map[int]int{}, map[int]int{}, map[int]int{}
@@ -154,8 +152,6 @@ type profilCleTI struct {
 // tombent sur les DEUX TAILLES DE TAMPON de l'archetype, donc constantes par ti sur tout le
 // corpus. C'est un controle a zero a priori : rien ici ne connait ti=9.
 func TestProfilFermetureTousArchetypes(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	parTI := map[int]*profilCleTI{}
 	films := 0
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {

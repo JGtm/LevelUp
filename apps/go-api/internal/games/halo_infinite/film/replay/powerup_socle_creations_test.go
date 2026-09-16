@@ -119,8 +119,6 @@ func TestPowerupSocleCreations(t *testing.T) {
 			if filmdec.CountFilmChunks(dir) == 0 {
 				t.Skipf("aucun chunk dans %s", dir)
 			}
-			release := filmdec.LockProcessDecode()
-			defer release()
 			wr := entry.Range()
 			c := psCible{P: socleP, Z: socleZ, T0Film: psPremierPaquetUS(dir)}
 			psMesureCreations(t, dir, &wr, familles, c)

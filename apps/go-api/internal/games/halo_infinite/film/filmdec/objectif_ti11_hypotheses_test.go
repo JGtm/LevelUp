@@ -40,15 +40,12 @@ import (
 // seul de l'archetype. Sur un record ou la presence vaut zero, il consomme un bit la ou les autres
 // n'en consomment aucun — exactement le bit que le garde reclamerait.
 //
-// LES BASCULES SONT GLOBALES AU PROCESS : ce test detient `LockProcessDecode` et les restaure.
-//
 //	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11DeltaGarde -v -timeout 40m
 func TestObjectifTi11DeltaGarde(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	defer LockProcessDecode()()
 	g := filmproc.Arm("TestObjectifTi11DeltaGarde", filmproc.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})

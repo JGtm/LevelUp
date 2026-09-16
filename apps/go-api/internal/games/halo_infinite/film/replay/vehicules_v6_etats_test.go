@@ -32,8 +32,6 @@ func TestV6EtatsOccupation(t *testing.T) {
 
 func v6EtatsUnFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
 	ctx, ok := v4Decode(t, root, f)
 	if !ok {
 		return

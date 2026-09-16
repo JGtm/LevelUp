@@ -88,8 +88,6 @@ func TestViseeCameraPOV(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", camFilmEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	scan := filmdec.DefaultScanFilmOptions()
 	scan.CaptureDirs = true

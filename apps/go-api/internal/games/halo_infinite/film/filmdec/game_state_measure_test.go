@@ -52,8 +52,6 @@ func TestGameEntitiesPhase0(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", gameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	sc, err := ScanFilmGameEntities(dir)
 	if err != nil {

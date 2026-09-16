@@ -85,8 +85,6 @@ type r12MarcheBilan struct {
 
 func r12CadrageOneFilm(t *testing.T, dir string) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
 	s := r12Prepare(t, dir)
 	ctx := r12CtxDeLayout(s.lay)
 	r12VerifieCtx(t, s.lay, ctx)
@@ -210,8 +208,6 @@ func TestR12Evenements(t *testing.T) {
 
 func r12EvenementsOneFilm(t *testing.T, dir string) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
 	s := r12Prepare(t, dir)
 	ctx := r12CtxDeLayout(s.lay)
 	r12VerifieCtx(t, s.lay, ctx)

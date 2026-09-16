@@ -43,8 +43,6 @@ func TestGroundWeaponAfter(t *testing.T) {
 	if filmDir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", gwFilmEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	wr, ok := gwWorldRange(t)
 	if !ok {

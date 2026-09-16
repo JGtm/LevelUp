@@ -73,8 +73,6 @@ func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*g
 	// verrou de decodage, puis les largeurs d axe du chemin world-object installees DEPUIS
 	// L ENTREE DE CATALOGUE — largeurs, largeur d index de region ET region, que seule
 	// `MapQuantEntry.Layout()` porte toutes les trois.
-	release := filmdec.LockProcessDecode()
-	defer release()
 	roster, err := rosterDeLaFeuille(film)
 	if err != nil {
 		return nil, err

@@ -282,8 +282,6 @@ func TestTi13IdentifiantsPartagesEntreFilms(t *testing.T) {
 // choses que le test precedent ne couvre pas : ce que le hook PUBLIE, et combien de bits le
 // lecteur a reellement consommes. C'est le test du port, pas de la table de largeurs.
 func TestTi13VecteursPortDeser(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 	prev := observateur.ManagedPropertyHook
 	defer SetManagedPropertyHook(prev)
 
@@ -354,8 +352,6 @@ func ti13VerifiePublication(t *testing.T, ref string, v ti13VecteurFige, vals []
 // consommation de bits, sinon un artefact construit avec sonde et un artefact construit sans
 // divergeraient en silence. Meme garde qu'au lot C (`TestZoneHooksConsommentLesMemesBitsSansHook`).
 func TestTi13HookConsommeLesMemesBitsSansHook(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 	prev := observateur.ManagedPropertyHook
 	defer SetManagedPropertyHook(prev)
 

@@ -122,8 +122,6 @@ func profilRosterXuids(hs []s3rTouche) []uint64 {
 
 // TestProfilRosterCause est la mesure differentielle : un critere releve a la fois.
 func TestProfilRosterCause(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	variantes := []struct {
 		nom string
 		c   profilRosterCrit
@@ -177,8 +175,6 @@ func TestProfilRosterCause(t *testing.T) {
 // consecutives du balayage sans regroupement. C'est la mesure qui dit si D3 (la grappe
 // terminale) est la cause : un ecart au-dela du seuil coupe la tete de la table.
 func TestProfilRosterEcarts(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	c := profilRosterCritCorrigee()
 	c.EcartMax = 0
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
@@ -269,8 +265,6 @@ func profilRosterFermeture(d []byte, hs []s3rTouche) (conformes, aberrants, cons
 //	   differer (arrivee en cours de partie, depart). La ventilation est dans
 //	   `TestProfilRosterBilan`.
 func TestProfilRosterCorrige(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	bons, vus, gros, grosBons, defauts := 0, 0, 0, 0, 0
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
 		_, d := readChunk00(t, dir)
@@ -359,8 +353,6 @@ func TestProfilRosterCorpus(t *testing.T) {
 // trouves et ceux des entites ti=9 de la trame. C'est la mesure qui dit si la reattribution de
 // slot en cours de match se voit dans `chunk_00`.
 func TestProfilRosterSlots(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
 		v, err := equipePrepare(dir)
 		if err != nil || !v.Longueur || v.Card <= 16 {

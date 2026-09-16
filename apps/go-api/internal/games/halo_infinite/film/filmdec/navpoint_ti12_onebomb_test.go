@@ -31,7 +31,6 @@ package filmdec
 //	                      explosions : One Bomb n'expose pas l'armement par ce canal.
 //
 // REGIME : garde ASSAUT_CACHE. Aucune base, aucun reseau, sentinelle memoire armee, un seul
-// decodage a la fois (LockProcessDecode).
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
 //	go test ./internal/games/halo_infinite/film/filmdec/ -run NavpointTi12OneBombInspection -v -timeout 30m
@@ -79,8 +78,6 @@ func TestNavpointTi12OneBombInspection(t *testing.T) {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
 	defer tpSentinelle(t)()
-	release := LockProcessDecode()
-	defer release()
 
 	for _, f := range obFilms {
 		series, ok := obCharger(t, cache, f.id)

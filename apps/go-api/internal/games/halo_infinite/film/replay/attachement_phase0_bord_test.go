@@ -89,8 +89,6 @@ func attVehiculesFilm(t *testing.T, root, id string) {
 // attNuages décode les deux nuages de positions d'un film, aux bornes de sa carte.
 func attNuages(t *testing.T, root, id string) ([]filmdec.ProjectileTrack, []filmdec.BipedPosition, bool) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
 	wr, _, ok := attBornes(t, root, id)
 	if !ok {
 		t.Logf("%s : bornes de carte indisponibles — item 0.3 non mesurable sur ce film", id)
@@ -375,8 +373,6 @@ func attControleNuage(t *testing.T, root, id string, veh []filmdec.ProjectileTra
 		t.Logf("%s : aucun slot libre pour une bande fantome — controle temoin impossible", id)
 		return
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 	wr, _, ok := attBornes(t, root, id)
 	if !ok {
 		return

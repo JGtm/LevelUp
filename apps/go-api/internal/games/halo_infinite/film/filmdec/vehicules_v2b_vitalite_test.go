@@ -92,9 +92,6 @@ func TestV2bVitalite(t *testing.T) {
 	root := v2bRoot()
 	cat := v2bLoadBounds(t)
 
-	release := LockProcessDecode()
-	defer release()
-
 	aggs := map[string]*v2bMapAgg{}
 	for _, f := range films {
 		entry, err := cat.Lookup(f.mapKey)

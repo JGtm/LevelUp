@@ -63,8 +63,6 @@ func TestOrigineIdentifiantsMuets(t *testing.T) {
 	if dir == "" {
 		t.Skip("ORIGINE_FILM absent : instrument de mesure sauté")
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	pickups, _, err := filmdec.ScanFilmBipedPickups(dir)
 	if err != nil {

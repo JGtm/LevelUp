@@ -55,7 +55,7 @@ package filmdec
 // # PAS DE VERROU DE DECODAGE
 //
 // Ces lecteurs sont des fonctions pures de (octets) : aucune variable de paquet, aucun crochet,
-// aucun etat de reglage. Ils n'ont donc pas besoin de `LockProcessDecode` (D-5 d'ADR 0034), et
+// aucun etat de reglage (D-5 d'ADR 0034), et
 // le ratchet `archlint/decode_lock_held_test.go` ne les vise pas (il porte sur les familles
 // `Scan*`, `DecodeFrame*`, `TraverseEntity*`).
 

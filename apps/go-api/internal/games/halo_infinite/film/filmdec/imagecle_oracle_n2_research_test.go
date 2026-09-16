@@ -375,8 +375,6 @@ func (l imcoLigne) imcoZonesTexte() string {
 // TestImageCleOracleN2 EST LA MESURE : par build et par archetype, `n1`, la largeur portee, la
 // constance de `n2`, les largeurs que le balayage designe et ce que la fermeture en dit.
 func TestImageCleOracleN2(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	groupes := map[imcoCle]*imcoGroupe{}
 	regs := map[string]*Registry{}
 	films := 0

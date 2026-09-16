@@ -138,8 +138,6 @@ func TestZoneWidthLotC1a(t *testing.T) {
 	dir := zcDir(t)
 	out := zcOutDir(t)
 	short := filepath.Base(dir)
-	release := LockProcessDecode()
-	defer release()
 
 	gram, reg := zcLoadGrammar(t, dir)
 	grammarLen := map[int]int{}

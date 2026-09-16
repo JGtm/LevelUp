@@ -333,8 +333,6 @@ func kf35ApplyStubs(f kf35Film, v kf35Variant) (stubbed []string, restore func()
 // composants sont tous portes ».
 func TestKF35Inventory(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	arch, ok := films[0].Reg.Archetype(bipedDefaultStateTypeIndex)
 	if !ok {
@@ -375,8 +373,6 @@ func TestKF35Inventory(t *testing.T) {
 // du mode film eteint puis allume, sur les trois films du corpus.
 func TestKF35FullState(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	for _, corr := range []bool{false, true} {
 		prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = corr })

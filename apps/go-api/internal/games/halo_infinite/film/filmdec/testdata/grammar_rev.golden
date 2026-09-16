@@ -453,4 +453,4 @@
 #               Ratchet 43 -> 22, et ZERO variable de paquet ECRITE.
 #               AUCUN OCTET N EST LU AUTREMENT.
 #               `KillSourceDecoderRev` ne bouge PAS (golden refige) ; `SchemaVersion` reste 60.
-grammar-2026-09-15.27	27dd338c5c10254ad393ce3e50cb5103b120659af604bc1aba3fc5971f9cf5b3
+grammar-2026-09-15.27	3a3f92099268218ccfcfba57d03065a5aaa0596d33058cc9ac3c4f634e6a8387

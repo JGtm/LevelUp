@@ -211,8 +211,6 @@ func TestViseeLunetteBalayage(t *testing.T) {
 // du bon xuid qui CONTIENT l'instant. Un slot migre aux respawns ; une table slot -> xuid globale
 // aurait melange deux vies d'un meme slot.
 func adsBalayeFilm(dir string, f adsMedailleFilm, b *adsSweepBilan) {
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	scan := filmdec.DefaultScanFilmOptions()
 	scan.CaptureDirs = true

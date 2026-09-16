@@ -160,8 +160,6 @@ func TestDeltaWalkWitness(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : temoin de marche delta saute", deltaWitnessFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	got, parTI := deltaWitnessMeasure(t, dir)
 	id := filepath.Base(filepath.Clean(dir))

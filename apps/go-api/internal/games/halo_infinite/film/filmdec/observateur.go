@@ -9,7 +9,7 @@ package filmdec
 // position, le masque de record et la sonde de references d unite — et HUIT compteurs
 // d observation de l inference de chaine. Chacune vivait a cote du deserialiseur qu elle
 // observait, chacune avait son reglage, et chacune avait sa propre duree de vie a gerer a la
-// main : trente-sept etats de processus, tous nuls en production, que `LockProcessDecode`
+// main : trente-sept etats de processus, tous nuls en production, qu un verrou de paquet
 // devait serialiser parce qu on ne pouvait rien dire de leur ensemble.
 //
 // # CE QUE L OBSERVATEUR EST, ET CE QU IL N EST PAS
@@ -32,7 +32,7 @@ package filmdec
 //
 // LA VARIABLE `observateur` ET SON RESTAURATEUR `poserObservateur` ONT DISPARU. C etait la
 // DERNIERE variable de paquet ECRITE de `filmdec` — et l une des deux raisons pour lesquelles
-// tout decodage passait sous `LockProcessDecode`.
+// tout decodage passait.
 
 // Observation porte tout ce qui regarde un decodage sans le changer. Ses champs de fonction
 // sont NULS en production.
@@ -91,19 +91,16 @@ type Observation struct {
 	//	         suivi. Une porte fermee n'est PAS une valeur nulle, et les confondre
 	//	         fabriquerait des transitions qui n'existent pas.
 	//
-	// PRE-REQUIS : l'appelant detient `LockProcessDecode` — le hook est un global de paquet.
 	GameEngineHook func(f GameEngineField, values []uint64, present bool)
 
 	// (depuis `components_managed_object.go`)
 	// ManagedObjectHook, si non nil, recoit chaque lecture d'un champ de ti=10.
 	//
 	// PAS DE `present` ICI : aucun de ces composants n'a de porte de tete. Global de paquet :
-	// l'appelant detient `LockProcessDecode`.
 	ManagedObjectHook func(f ManagedObjectField, values []uint64)
 
 	// (depuis `components_managed_object.go`)
 	// NavpointHook, si non nil, recoit chaque lecture d'un champ de ti=12. Pas de `present` : le
-	// composant n'a pas de porte de tete. Global de paquet : l'appelant detient `LockProcessDecode`.
 	NavpointHook func(f NavpointField, values []uint64)
 
 	// (depuis `components_managed_objective.go`)
@@ -111,14 +108,12 @@ type Observation struct {
 	//
 	// PAS DE `present` ICI : aucun de ces composants n'a de porte de tete — leur presence est le bit
 	// de MASQUE, que l'appelant connait deja. Global de paquet : l'appelant detient
-	// `LockProcessDecode`.
 	ObjectiveHook func(f ObjectiveField, values []uint64)
 
 	// (depuis `components_managed_property.go`)
 	// ManagedPropertyHook, si non nil, recoit chaque lecture d'un champ de ti=13.
 	//
 	// PAS DE `present` ICI : aucun des deux composants n'a de porte de tete — le tag EST la valeur de
-	// tete, et il est publie. Global de paquet : l'appelant detient `LockProcessDecode`.
 	//
 	// FORME DES VALEURS : `values[0]` est toujours le TAG ; `values[1]`, present seulement quand la
 	// branche lit, est le quantum BRUT. Une branche muette publie donc un seul element — et c'est une
@@ -156,24 +151,20 @@ type Observation struct {
 	// HeldWeaponHook, si non nil, reçoit CHAQUE lecture d'i43..i46 (l'arme portée), y compris
 	// les lectures d'emplacement ABSENT (variant == noVariant) : c'est la transition
 	// présent/absent qui porte le lâcher, la retirer rendrait le signal borgne. Global de
-	// paquet, donc UN SEUL décodage filmdec à la fois par process — même règle que les autres
 	// sondes (SetAbilitySetHook, SetObjectParentStateHook, SetGrenadeCountsHook).
 	HeldWeaponHook func(idHigh, idLow uint32)
 
 	// (depuis `components_object_state.go`)
 	// ObjectParentStateHook, si non nil, reçoit CHAQUE lecture d'i10. Global de paquet, donc
-	// UN SEUL décodage filmdec à la fois par process (même règle que les autres sondes).
 	ObjectParentStateHook func(ObjectParentState)
 
 	// (depuis `components_player.go`)
 	// PlayerStateHook, si non nil, recoit CHAQUE lecture d'un des onze composants. Meme contrat de
 	// `values` / `present` que `GameEngineHook` (cf. son commentaire). Global de paquet : l'appelant
-	// detient `LockProcessDecode`.
 	PlayerStateHook func(f PlayerStateField, values []uint64, present bool)
 
 	// (depuis `components_probe.go`)
 	// ProbeHook, si non nil, recoit les valeurs des composants sondes. Global de paquet :
-	// l'appelant detient `LockProcessDecode`.
 	//
 	// PAS DE `present` ICI, a la difference des trois autres hooks : aucun des quatre composants
 	// n'a de porte de tete. Ajouter un booleen toujours vrai serait un champ qui mentirait le jour
@@ -187,7 +178,7 @@ type Observation struct {
 
 	// (depuis `emp_timer.go`)
 	// EmpTimerHook, si non nil, reçoit le quantum R(8) de CHAQUE lecture d'i51 par le déser de
-	// production. Global de paquet : un seul décodage filmdec par process (cf. decode_gate.go).
+	// production. Champ de l'observation d'UN balayage, jamais du processus (lot 2.3).
 	EmpTimerHook func(quant uint32)
 
 	// (depuis `equipment_creation.go`)
@@ -265,16 +256,16 @@ type Observation struct {
 
 	// (depuis `unit_weaponstate.go`)
 	// GroundWeaponAmmoHook, si non nil, reçoit chaque lecture d'i20 sur l'archétype ARME AU SOL.
-	// Global de paquet, donc UN SEUL décodage filmdec à la fois par process — même règle que les
 	// autres sondes.
 	GroundWeaponAmmoHook func(a, b, c uint32)
 	// CompWidths enregistre, par nom de composant, les largeurs de bouchon qui ont produit la
 	// reconstruction gagnante — l histogramme dont un portage lit la largeur a porter.
 	//
-	// C EST « LA TABLE SANS VERROU » QUE L EN-TETE DE `decode_gate.go` NOMME : elle etait ecrite
-	// pendant un balayage sans qu aucun verrou ne la protege, et c etait l une des deux raisons
-	// pour lesquelles tout le decodage passait sous `LockProcessDecode`. Elle est desormais un
-	// CHAMP de l observateur, donc une chose qu un appelant possede (item 2.2.f).
+	// C EST « LA TABLE SANS VERROU » QUE L EN-TETE DU VERROU DE DECODAGE NOMMAIT : elle etait
+	// ecrite pendant un balayage sans qu aucun verrou ne la protege, et c etait l une des deux
+	// raisons pour lesquelles tout le decodage passait par un verrou de processus. Elle est
+	// desormais un CHAMP de l observateur, donc une chose qu un appelant possede (item 2.2.f) —
+	// et le verrou, prive de ses deux raisons, est parti au lot 2.3.
 	CompWidths map[string]map[int]int
 	// ChaineReparees compte les records sauves par l inference de largeur de composant.
 	ChaineReparees int

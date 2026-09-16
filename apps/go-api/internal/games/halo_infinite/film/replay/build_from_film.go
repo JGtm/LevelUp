@@ -55,8 +55,6 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// filmdec (dont compWidthObs, sans verrou propre). Tenu jusqu'au retour : l'assemblage
 	// pur qui suit est negligeable devant le decodage, et relacher plus tot inviterait un
 	// entrelacement entre deux sous-balayages du MEME film.
-	release := filmdec.LockProcessDecode()
-	defer release()
 	// LE COMPTEUR DE REPLIS NAIT ICI, AVANT LE PREMIER BALAYAGE (lot 1.9.0, D14) : les replis du
 	// BALAYAGE (largeurs par defaut, plafond de grenades) et ceux de l'ASSEMBLAGE tombent dans le
 	// meme compte, celui de cette cuisson, publie dans `coverage.fallbacks`.
@@ -133,7 +131,7 @@ func decoupageForce(opt Options) *filmdec.I0Layout {
 
 // scanFilmInputs EST L'ETAGE DE BALAYAGE : il lit le film et rend ce que l'assemblage consomme.
 //
-// PRE-REQUIS : l'appelant detient `filmdec.LockProcessDecode` et a installe les largeurs d'axe
+// PRE-REQUIS : l'appelant a pose les largeurs d'axe
 // de la carte (`installWorldObjectPrecision`). Les deux sont des globaux de paquet, et
 // `BuildFromFilm` — l'unique appelant de production — les tient pour toute la duree du decodage.
 // Le ratchet `archlint/decode_lock_held_test.go` verifie cette couverture par point fixe.

@@ -116,9 +116,6 @@ type NavpointRadialScan struct {
 // Une bande vide n'est pas une erreur : c'est le negatif « aucun navpoint dans ce film », et le
 // scan rendu le dit (SlotsObserved == 0).
 //
-// UN SEUL DECODAGE filmdec A LA FOIS PAR PROCESS : le balayage installe un hook global de
-// paquet. L'appelant detient `LockProcessDecode` (BuildFromFilm le fait).
-//
 // ScanFilmNavpointRadial est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanNavpointRadial].
 func ScanFilmNavpointRadial(dir string, chunkStartMS map[int]int) (*NavpointRadialScan, error) {

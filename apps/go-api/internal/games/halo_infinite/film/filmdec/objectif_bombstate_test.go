@@ -146,7 +146,6 @@ func TestObjectifBombState(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	defer LockProcessDecode()()
 	g := filmproc.Arm("TestObjectifBombState", filmproc.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — balayage interrompu", float64(peak)/(1<<30))
 	})

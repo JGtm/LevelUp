@@ -58,8 +58,6 @@ func TestZoneStateLotC1b(t *testing.T) {
 	dir := zcDir(t)
 	out := zcOutDir(t)
 	short := filepath.Base(dir)
-	release := LockProcessDecode()
-	defer release()
 
 	gram, reg := zcLoadGrammar(t, dir)
 	c := zcKeyframeCensus(dir)

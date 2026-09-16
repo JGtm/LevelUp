@@ -86,8 +86,6 @@ func TestV3BoardOccupant(t *testing.T) {
 	if root == "" || os.Getenv("V3_BOARD_FILMS") == "" {
 		t.Skipf("mesure non demandee : V3_BOARD_ROOT / V3_BOARD_FILMS vides")
 	}
-	release := LockProcessDecode()
-	defer release()
 	tot := evbTotaux{parLargeur: map[[3]int]*evbCompte{}, ecartsBase: map[int64]int{}}
 	for _, f := range films {
 		f = strings.TrimSpace(f)

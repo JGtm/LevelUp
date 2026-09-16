@@ -60,8 +60,6 @@ type e191bComptesMasque struct {
 
 func TestE191bMasqueTI37(t *testing.T) {
 	sources := chunk00Films(t, "CHUNK00_FILMS")
-	release := LockProcessDecode()
-	defer release()
 	t.Logf("######## PAS 1 — PRESENCE AU MASQUE DES RECORDS ti=%d (NEW et DELTA) ########", e191bTI)
 	neufs := &e191bComptesMasque{ParIdx: map[int]int{}}
 	deltas := &e191bComptesMasque{ParIdx: map[int]int{}}

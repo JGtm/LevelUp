@@ -68,8 +68,6 @@ func TestR12Knockback(t *testing.T) {
 
 func r12KnockOneFilm(t *testing.T, dir string, corpus bool) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
 	s := r12Prepare(t, dir)
 	ctx := r12CtxDeLayout(s.lay)
 	r12VerifieCtx(t, s.lay, ctx)

@@ -196,8 +196,6 @@ func TestV1aNonRegressionBipede(t *testing.T) {
 	if CountFilmChunks(dir) == 0 {
 		t.Fatalf("aucun chunk film dans %s", dir)
 	}
-	release := LockProcessDecode()
-	defer release()
 	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible dans %s : %v", dir, err)

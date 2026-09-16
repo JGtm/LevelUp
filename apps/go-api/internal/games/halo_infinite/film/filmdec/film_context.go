@@ -90,7 +90,7 @@ package filmdec
 //
 // Ni un cache global (aucun `var` de paquet — le ratchet `archlint/filmdec_package_vars_test.go`
 // gele leur compte), ni un objet partageable entre goroutines : il n'est ni verrouille ni
-// atomique, et il vit sous le meme `LockProcessDecode` que le decodage qu'il sert.
+// atomique : il appartient au balayage qui l a ouvert, et a lui seul.
 
 import (
 	"log/slog"

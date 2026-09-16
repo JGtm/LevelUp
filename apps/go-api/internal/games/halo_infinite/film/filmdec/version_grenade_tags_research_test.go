@@ -77,8 +77,6 @@ func TestVersionGrenadeTags(t *testing.T) {
 	if v, err := strconv.Atoi(os.Getenv(hgrenTopEnv)); err == nil && v > 0 {
 		top = v
 	}
-	release := LockProcessDecode()
-	defer release()
 	for _, id := range ids {
 		id = strings.TrimSpace(id)
 		if id == "" {
