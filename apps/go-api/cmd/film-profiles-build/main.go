@@ -8,10 +8,11 @@
 //	DERIVEE  le bloc `derived` : l empreinte du catalogue des bornes de carte
 //	         (`map_quant_bounds.json`), qui dit de quelle derivation des fichiers du jeu ce
 //	         profil est solidaire. C EST TOUT CE QUE CET OUTIL ECRIT.
-//	SAISIE   le bloc `entries` : ce qui vient de l executable ou d un film temoin, avec sa
-//	         provenance. Cet outil le RECOPIE tel quel, il ne le fabrique jamais — une valeur
-//	         de profil se relit chez l ecrivain ou se mesure sur un temoin, elle ne se
-//	         regenere pas depuis du code (D3 du plan decodeur, docs/RUNBOOK_FILM_PROFILES.md).
+//	SAISIE   les blocs `entries` et `registryFingerprints` : ce qui vient de l executable ou
+//	         d un film temoin, avec sa provenance. Cet outil les RECOPIE tels quels, il ne les
+//	         fabrique jamais — une valeur de profil se relit chez l ecrivain ou se mesure sur un
+//	         temoin, elle ne se regenere pas depuis du code (D3 du plan decodeur,
+//	         docs/RUNBOOK_FILM_PROFILES.md).
 //
 // LES BORNES NE SONT PAS RECOPIEES. Elles ont deja leur catalogue, produit par
 // `cmd/mapquant-build` depuis les .module du jeu ; le profil n en porte que l empreinte. Une
@@ -46,7 +47,10 @@ const aProposParDefaut = "Catalogue des profils de film : ce que le depot sait d
 	"d un film, indexe par les TROIS clefs que le film ECRIT (format chunk_00+4, build de la " +
 	"section 2, version majeure chunk_00+0). `derived` est fabrique par " +
 	"`go run ./cmd/film-profiles-build` ; `entries` est SAISI, chaque ligne avec sa provenance " +
-	"(relue / mesuree / presumee), sa preuve et sa date. Procedure : docs/RUNBOOK_FILM_PROFILES.md."
+	"(relue / mesuree / presumee), sa preuve et sa date ; `registryFingerprints` est SAISI lui " +
+	"aussi — une empreinte de registre ECS par clef ecrite (le build, ou la version majeure pour " +
+	"les films sans section d identification), avec ses films temoins et son statut " +
+	"(connue / presumee). Procedure : docs/RUNBOOK_FILM_PROFILES.md."
 
 func main() {
 	titleSlug := flag.String("title", title.DefaultSlug, "slug du titre")
