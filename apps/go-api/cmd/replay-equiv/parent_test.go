@@ -76,21 +76,101 @@ func TestVerifierEtapesNommeCeQuiManque(t *testing.T) {
 	}
 }
 
-func TestComparerNommeLaPremiereEtapeQuiDiffere(t *testing.T) {
+// TestComparerNommeTOUTESLesEtapesQuiDiffERENT — D2 (pilote), 2026-09-17 : le harnais rendait
+// la PREMIERE divergence et s'arretait la, ce qui imposait un decodage complet du film (une a
+// trois minutes) PAR etape divergente. Les deux fichiers sont en memoire : la liste complete ne
+// coute rien, et elle dit du premier coup si la divergence est locale ou generale.
+//
+// LA MUTATION QUI LE FAIT ROUGIR : remettre un `return` dans la boucle de `comparer` a la place
+// de l'accumulation dans `ecarts`.
+func TestComparerNommeTOUTESLesEtapesQuiDiffERENT(t *testing.T) {
 	ref := []string{ligne("score", 1, "aaa"), ligne("fire", 2, "bbb"), ligne("artifact", 3, "ccc")}
 	obtenu := []string{ligne("score", 1, "aaa"), ligne("fire", 2, "XXX"), ligne("artifact", 3, "YYY")}
 	err := comparer(ref, obtenu)
 	if err == nil {
 		t.Fatal("aucun ecart rendu alors que deux etapes different")
 	}
-	if !strings.Contains(err.Error(), `"fire"`) {
-		t.Errorf("l'ecart doit nommer la PREMIERE etape qui differe, message : %v", err)
+	msg := err.Error()
+	// Le message est le PRODUIT de ce harnais : `go test -v` l'affiche tel quel, pour que la
+	// forme rendue se relise sans decoder un film.
+	t.Logf("message rendu :\n%s", msg)
+	for _, veut := range []string{"fire", "artifact", "2 etape(s) sur 3"} {
+		if !strings.Contains(msg, veut) {
+			t.Errorf("le message doit contenir %q — toutes les etapes divergentes, avec leur compte :\n%s",
+				veut, msg)
+		}
 	}
-	if strings.Contains(err.Error(), "artifact") {
-		t.Errorf("l'ecart ne doit nommer QUE la premiere etape, message : %v", err)
+	if strings.Contains(msg, "score") {
+		t.Errorf("une etape IDENTIQUE ne doit pas etre listee :\n%s", msg)
+	}
+	// Le compte ET le sha des deux cotes, par etape : sans eux, « fire differe » n'apprend rien.
+	for _, veut := range []string{"compte=2", "sha=bbb", "sha=XXX", "sha=ccc", "sha=YYY"} {
+		if !strings.Contains(msg, veut) {
+			t.Errorf("le message doit porter %q (compte et sha attendus/obtenus par etape) :\n%s", veut, msg)
+		}
 	}
 	if err := comparer(ref, ref); err != nil {
 		t.Errorf("deux listes identiques ne doivent rien rendre : %v", err)
+	}
+}
+
+// TestComparerNommeLesEtapesManquantesEtEnTrop — les deux asymetries, elles aussi listees
+// toutes, et jamais confondues l'une avec l'autre.
+func TestComparerNommeLesEtapesManquantesEtEnTrop(t *testing.T) {
+	ref := []string{ligne("score", 1, "aaa"), ligne("fire", 2, "bbb"), ligne("artifact", 3, "ccc")}
+	court := []string{ligne("score", 1, "aaa")}
+	err := comparer(ref, court)
+	if err == nil {
+		t.Fatal("deux etapes de la reference non produites : un ecart est attendu")
+	}
+	for _, veut := range []string{"fire", "artifact", "n'a pas ete produite", "2 etape(s) sur 3"} {
+		if !strings.Contains(err.Error(), veut) {
+			t.Errorf("le message doit contenir %q :\n%v", veut, err)
+		}
+	}
+	err = comparer(court, ref)
+	if err == nil {
+		t.Fatal("deux etapes produites en trop : un ecart est attendu")
+	}
+	if !strings.Contains(err.Error(), "produite en trop") {
+		t.Errorf("une etape en trop doit etre nommee comme telle, pas comme manquante :\n%v", err)
+	}
+}
+
+// TestDossierDesDigestsConserveCeQuOnLuiDemande — `-out-dir` : les TSV des enfants survivent a
+// la passe, pour instruire une divergence sans re-decoder le film.
+func TestDossierDesDigestsConserveCeQuOnLuiDemande(t *testing.T) {
+	demande := filepath.Join(t.TempDir(), "digests", "lot28")
+	dir, nettoyer, err := dossierDesDigests(demande)
+	if err != nil {
+		t.Fatalf("creation du dossier demande : %v", err)
+	}
+	if dir != demande {
+		t.Errorf("dossier = %q, %q attendu", dir, demande)
+	}
+	temoin := filepath.Join(dir, "000d5950.tsv")
+	if err := os.WriteFile(temoin, []byte("x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	nettoyer()
+	if _, err := os.Stat(temoin); err != nil {
+		t.Fatalf("le TSV de l'enfant devait etre CONSERVE sous --out-dir : %v", err)
+	}
+}
+
+// TestDossierDesDigestsEffaceLeTemporaire — sans `-out-dir`, rien ne traine : le regime normal
+// reste un dossier jetable.
+func TestDossierDesDigestsEffaceLeTemporaire(t *testing.T) {
+	dir, nettoyer, err := dossierDesDigests("")
+	if err != nil {
+		t.Fatalf("creation du dossier temporaire : %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "000d5950.tsv"), []byte("x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	nettoyer()
+	if _, err := os.Stat(dir); err == nil {
+		t.Fatalf("le dossier temporaire %s devait etre efface", dir)
 	}
 }
 

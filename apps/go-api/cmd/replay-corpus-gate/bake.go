@@ -32,6 +32,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"levelup/go-api/internal/domain/title"
@@ -51,6 +52,25 @@ const outilNom = "replay-corpus-gate"
 // l'attente bornee elimine.
 const attenteVerrouGate = 10 * time.Minute
 
+// plafondMemoireGate : le plafond SOUPLE, en gibioctets, que ce gate arme sur CHACUNE de ses
+// cuissons enfants (`--mem-gib`, transmis par `cuireUneCarte`).
+//
+// # POURQUOI IL N'EST PAS `filmproc.DefaultLimitGiB` (D6 (1.9.9), 2026-09-16)
+//
+// Avant le 2026-09-17, `bake.go` construisait les arguments de `replay-build` EN DUR (`--map`,
+// `--title`, `--facts`, matchID) : aucun plafond n'etait transmis, l'enfant gardait donc
+// toujours `filmproc.DefaultLimitGiB` = 3 Gio souple, soit 3,75 Gio dur (`hardMargin`, +25 %).
+// Or le gate a MESURE deux temoins BTB juste au-dessus : `e5adf7b2` culmine a 3,779 Gio et
+// `4f77afc1` a 3,807 Gio COTE BASE. Ils echouent donc par marge de quelques dizaines de
+// mebioctets — de facon INSTABLE d'un run a l'autre (le meme gate les avait conclus la veille).
+// Un gate dont deux temoins tombent au hasard de la pression memoire ne gate rien.
+//
+// 4 Gio souple = 5 Gio dur : les deux pics mesures passent avec 1,19 Gio de marge, et un film
+// qui depasserait CE plafond-la reste arrete — ce n'est pas un desarmement, c'est un plafond
+// pose sur la mesure au lieu de l'etre sur une valeur de production. Les passes de PRODUCTION
+// gardent `filmproc.DefaultLimitGiB` ; `--mem-gib 0` desarme, echappatoire de l'operateur.
+const plafondMemoireGate = 4
+
 // resultatCuisson porte l'artefact produit et le temps qu'il a coute.
 type resultatCuisson struct {
 	ArtifactPath string
@@ -64,6 +84,10 @@ type cuissonParams struct {
 	WorkRoot  string
 	LockRoot  string
 	TitleSlug string
+	// MemGiB : le plafond souple arme sur l'enfant (`--mem-gib`). Il vaut le meme des DEUX
+	// cotes, HEAD et base : un plafond asymetrique ferait echouer une cuisson et pas l'autre,
+	// et la comparaison ne dirait plus rien du diff (D6 (1.9.9)).
+	MemGiB int
 }
 
 // bakeTemoin cuit UN temoin dans `p.WorkRoot`, avec le binaire `p.BinPath`. Essaie chaque carte
@@ -128,7 +152,7 @@ func ecrireFaitsTemp(workRoot string, facts replaybuild.FactsFile) (string, erro
 // faut lui laisser resoudre lui-meme — le repeter ici serait une deuxieme ecriture de la meme
 // regle de disposition (filmcache est deja LE point unique, cf. son en-tete).
 func cuireUneCarte(ctx context.Context, p cuissonParams, mapName, factsPath, matchID string) error {
-	cmd := exec.CommandContext(ctx, p.BinPath, "--map", mapName, "--title", p.TitleSlug, "--facts", factsPath, matchID) //nolint:gosec // binaire et args construits par ce gate
+	cmd := exec.CommandContext(ctx, p.BinPath, argsCuisson(p, mapName, factsPath, matchID)...) //nolint:gosec // binaire et args construits par ce gate
 	cmd.Env = append(os.Environ(), "LEVELUP_REPO_ROOT="+p.WorkRoot)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -136,4 +160,20 @@ func cuireUneCarte(ctx context.Context, p cuissonParams, mapName, factsPath, mat
 		return fmt.Errorf("%s --map %q : %w\n%s", filepath.Base(p.BinPath), mapName, err, stderr.String())
 	}
 	return nil
+}
+
+// argsCuisson construit LA LIGNE DE COMMANDE de l'enfant `replay-build`, en un seul endroit
+// pour que le test la lise telle quelle (`TestArgsCuissonTransmetLePlafondMemoire`).
+//
+// LE DOSSIER DE CHUNKS N'Y EST JAMAIS PASSE : `stageFilm` les a deja places au chemin que le
+// binaire deduit par defaut depuis LEVELUP_REPO_ROOT (`filmcache.ChunkDir`) — le repeter ici
+// serait une deuxieme ecriture de la meme regle de disposition.
+func argsCuisson(p cuissonParams, mapName, factsPath, matchID string) []string {
+	return []string{
+		"--map", mapName,
+		"--title", p.TitleSlug,
+		"--facts", factsPath,
+		"--mem-gib", strconv.Itoa(p.MemGiB),
+		matchID,
+	}
 }
