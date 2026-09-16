@@ -60,6 +60,8 @@ const TOL_VIBRANT_ORANGE = '#EE7733'
 // Tol Dark Cyan (schéma « dark ») : narrative-sabordage, couleur PROPRE — Muted Indigo
 // #332288 est déjà frag-vehicle ; assez sombre pour ne pas rappeler TOL_CYAN.
 const TOL_DARK_CYAN = '#225555'
+// Tol Muted Olive : narrative-abnegation, couleur PROPRE (TOL_YELLOW est outcome-draw / warning).
+const TOL_MUTED_OLIVE = '#999933'
 
 export const tolBrightPalette: Palette = {
   // ── Perf tiers — Tol Sunset (séquentielle CVD-safe) ───────────────────────
@@ -146,7 +148,7 @@ export const tolBrightPalette: Palette = {
   'narrative-contre-remontada-text': '#000000',
   'narrative-sabordage':             TOL_DARK_CYAN,
   'narrative-sabordage-text':        '#FFFFFF',
-  'narrative-abnegation':            TOL_YELLOW,
+  'narrative-abnegation':            TOL_MUTED_OLIVE,
   'narrative-abnegation-text':       '#000000',
 
   // ── Badges encounter ───────────────────────────────────────────────────────
