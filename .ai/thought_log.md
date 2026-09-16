@@ -1,3 +1,13 @@
+## [2026-09-17] Chantier décodeur — fusion du lot 3.2 volet données et témoins (M3 en parallèle de M2), mesure 0 de la recherche 3.3
+
+**Statut** : Complété (fusion 3.2 données) / En cours (2.5.e, 3.3 recherche).
+
+**Décision technique principale.** Première production de M3 fusionnée pendant M2, sans toucher au décodeur : la section `registryFingerprints` du catalogue des profils porte 9 clefs pour 5 empreintes de registre distinctes (7 builds mesurés sur les mini-bobines commises, `majeure=33` et `majeure=31` mesurés sur les `chunk_00` des films sans section), avec statut `connue` / `presumee` (jusqu'où la mesure porte) distinct de la provenance ; `filmprofile` la lit et la valide (22 cas de refus, accesseur build > majeure, faux sur inconnu). Écart assumé avec le brief : « 8 empreintes sur 1 351 films » (rapport H) était mesuré dans un domaine de hachage mort avant le 14/09 ; le résultat vrai est 9 clefs / 5 empreintes. Le corpus gate passe de 14 à 17 témoins — un témoin par clef de registre (`a521164d` HI_1_4_1, `11de8353` HI_1_9_0, `50247b26` majeure 31) ; le critère « artefact pré-cuit dans le parc » n'est pas un prérequis de gate (un seul témoin sur 14 en portait un) : les vrais prérequis sont chunks, manifeste et faits exportables, écrits au runbook. Gate 17/17 `ok`, 60 -> 60, 0/0/0, exit 0 (31 min). Découverte D2 (3.2) : l'empreinte de registre ne sépare PAS les builds (8_0 = 9_0, 12_0 = 13_0, 4_1 = majeure 33) — pas de clef de substitution pour 3.3 / 3.4 ; D4 : `ReadFilmIdentity` calcule l'empreinte puis la jette (le volet code de 3.2.1 la publiera dans `coverage.decoder`, après 2.6.3).
+
+**Recherche 3.3, mesure 0** (sans film du cache) : `ti` projectile = 41 sur les sept builds, marqueur `0x4C0C00` identique — le marqueur n'a pas bougé, l'hypothèse de l'utilisateur se réduit à la position ou au champ lu après lui (passes A à D sur six films, voie donnée à 00:20). Le registre passe de 49 à 50 blocs exactement à la frontière HI_1_11_0 / HI_1_12_0 où les lancers publiés apparaissent (corrélation, bloc après le rang 41). Le sixième bit du typeIndex, lu à `marqueur-1`, sépare `ti=41` de `ti=9` — un correctif de 3.3.1 qui l'ignorerait laisserait passer les naissances de joueur.
+
+**Prochaine étape** : verdict de la recherche 3.3 ; fusion 2.5.e + 2.5.g ; 2.6 volet grammar/profile/replay ; 2.6.3 ; clôture M2 (fusion de origin/feat/v75 = 3858eae59 dans l'intégration d'abord ; recuisson du parc à demander).
+
 ## [2026-09-16] Chantier décodeur — fusion du volet facts + source de 2.6, gates à zéro, trois tranches M3 en parallèle
 
 **Statut** : Complété (fusion 2.6 facts, 3.4 prep) / En cours (2.5.e, 3.2 données, 3.3 recherche).
