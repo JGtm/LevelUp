@@ -138,6 +138,27 @@ Selectors (one or more required):
 
 Backfill is also exposed over HTTP (`POST /backfill/start`); the CLI is the local, server-free path.
 
+#### Film decoder revisions and the killsource backlog
+
+The film decoder is five layers (ADR 0034, D-1), and four of them carry a revision of their own (D-6). A revision is a string frozen in a golden beside the fingerprint of that layer's non-test sources: a source that changes without its revision reddens the fingerprint test, and a revision that changes without its source reddens it too.
+
+| Revision | What it hashes | It rises when |
+|---|---|---|
+| `source.Rev` | the source layer: loading, decompression, chunk and packet cutting, the canonical bit reader | the way the bytes are reached changes |
+| `profile.Rev` | the profile layer: the table per build and per map | one row of the profile table changes |
+| `grammar.Rev` | the grammar layer, plus the two revisions above | a width, a frame, a component order, a new reader |
+| `facts.Rev` | the facts layer, plus the **value** of `grammar.Rev` | the facts output can change |
+
+`facts.Rev` hashes the value of `grammar.Rev` on purpose, and that is the one link that does not go without saying. The defect it closes is measured: a grammar fix can change the kill-source output without touching a byte of the facts layer, the revision then stood still, and the rows already written carried the running revision — excluded from the backlog for good. A false positive costs one re-decode; a false negative costs a fleet of wrong rows.
+
+**What the backlog is.** Every row of `match_kill_events` carries in `decoder_rev` the revision that produced it. A match whose current pass — read through the `match_kill_events_latest` view, never the raw table (ADR 0026) — does not carry the running revision becomes a candidate again (`conditionBacklog`, `internal/sync/killcollector/postsync.go`). The post-sync step catches up at a bounded pace (8 films per cycle, a five-minute budget) and publishes what is left in the expvar `killsource_postsync_backlog_restant`; `levelup backfill-killsource --online` drains it deliberately. A re-cook of the whole park stays a separate gesture, taken on user signal, never per lot.
+
+**What does not open a backlog.** Moving a file, splitting one, passing a value by parameter instead of through a package variable: the fingerprints see the sources, so the revisions rise, but a rise opens the backlog only when the *output* can change — and a structural step is closed at zero difference of content, proven by the corpus gate. At its birth `facts.Rev` **takes over the value of `KillSourceDecoderRev`** instead of starting a new series, precisely because nothing in the decoding changed: there is nothing to re-decode, and no backlog opens. The rule "a rise of `facts.Rev` opens the killsource backlog" holds from the first change of output that follows.
+
+**Reading the revisions off an artifact.** From schema 61 on, a cooked replay document carries `coverage.decoder.{grammarRev, factsRev, build}` (`GET /players/{player_slug}/matches/{match_id}/replay`): the artifact says under which revisions it was cooked, instead of being guessed from its schema version. `build` is the profile key, read in clear text in `chunk_00` (D-3); on an unknown build (`ErrUnknownBuild`) it is the empty string and the block stays present. The **absence** of the block means "artifact cooked before schema 61", never "unknown build".
+
+References: [adr/0034-film-decoder-profile-and-layers.md](adr/0034-film-decoder-profile-and-layers.md) — D-1 (the five layers and their one-way dependency), D-6 (one revision per thing that can change), D-10 and D-10 bis (grammar decides, a fallback is named, counted and retired) — and the fallback registry itself, `internal/games/halo_infinite/film/replay/fallback`, which carries for each fallback its typed trigger, its date posted, its target and its retirement criterion.
+
 ## Auth
 
 Tokens are the single source described in [adr/0023-auth-tokens-single-source.md](adr/0023-auth-tokens-single-source.md): `data/auth/watcher_tokens/{xuid}.json` via `MultiUserTokenStore`. The player must be declared in `db_profiles.json` (with `xuid`) first.
