@@ -8,7 +8,7 @@
 // des `.module` du jeu installé par `cmd/mapquant-build`. Son champ `source` citait le chemin
 // ABSOLU du poste de fabrication :
 //
-//	"… lus dans D:\SteamLibrary\steamapps\common\Halo Infinite\deploy\ds\levels\multi"
+//	"… lus dans D:\<bibliotheque>\<jeux>\common\Halo Infinite\deploy\ds\levels\multi"
 //
 // Conséquence : deux postes qui régénèrent LE MÊME catalogue produisent deux fichiers
 // différents alors qu'aucune borne n'a bougé. Tout gate « commis = régénéré » à l'octet — le
@@ -60,7 +60,7 @@ var extensionsTexteCatalogue = map[string]bool{
 //
 //   - data/titles/halo_infinite/reference/map_backgrounds/sgh_interlock.json : le champ de
 //     diagnostic d'un module ABSENT recopie le message d'erreur de Windows, chemin compris
-//     (`GetFileAttributesEx D:\SteamLibrary\…`). Producteur : `cmd/mapfond-build`.
+//     (`GetFileAttributesEx D:\<bibliotheque>\…`). Producteur : `cmd/mapfond-build`.
 //   - data/titles/halo_infinite/reference/map_callouts.json : le champ `source` cite
 //     `C:\Program Files (x86)\Steam\…` — le même défaut que `map_quant_bounds.json`, sur un
 //     autre poste. Producteur : la chaîne des zones (`cmd/callouts-*`).

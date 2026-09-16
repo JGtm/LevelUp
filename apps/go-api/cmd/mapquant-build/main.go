@@ -306,7 +306,7 @@ const methodeDesBornes = "world bounds x/y/z du tag sbsp de la RÉGION 0 " +
 //
 // POURQUOI RELATIF (découverte D2 (3.1.2), 2026-09-16) : le fichier est VERSIONNÉ, et il portait
 // le chemin d'installation ABSOLU du poste qui l'a produit
-// (`D:\SteamLibrary\steamapps\common\Halo Infinite\deploy\ds\levels\multi`). Deux postes qui
+// (`D:\<bibliotheque>\<jeux>\common\Halo Infinite\deploy\ds\levels\multi`). Deux postes qui
 // régénèrent le MÊME catalogue rendaient donc deux fichiers différents alors qu'aucune borne
 // n'avait bougé — un gate « commis = régénéré » à l'octet rougissait pour une trace de
 // fabrication. Le lot 3.1.2 l'avait contourné en excluant `source` de l'empreinte du profil
