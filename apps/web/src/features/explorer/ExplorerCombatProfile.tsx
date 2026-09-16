@@ -33,8 +33,11 @@ export interface ExplorerCombatProfileProps {
   localMatches: ExplorerTargetRecentMatch[]
   locale: string
   t: (key: ExplorerManifestKey) => string
-  /** Top médailles lifetime de la cible — rendu à droite du donut modes. */
+  /** Top médailles lifetime de la cible (source "En direct") — à droite du donut modes. */
   topMedals?: MedalDigestItem[]
+  /** Top médailles agrégées sur `localMatches` (source "Local") — même bloc, mêmes
+   *  libellés/images, mais calculées sur l'échantillon local et non sur la carrière. */
+  topMedalsLocal?: MedalDigestItem[]
   /** Statut de la source LIVE (Lot A3) — badge discret dans l'en-tête quand
    *  != "ok" (explique pourquoi le tab "En direct" est vide/désactivé). */
   combatLiveStatus?: ExplorerLiveSectionStatus | null
@@ -54,6 +57,7 @@ export function ExplorerCombatProfile({
   locale,
   t,
   topMedals = [],
+  topMedalsLocal = [],
   combatLiveStatus,
 }: ExplorerCombatProfileProps) {
   const hasLive = liveMatches.length > 0
@@ -62,6 +66,10 @@ export function ExplorerCombatProfile({
   // le live est vide (pas d'auth), on démarre sur le local pour montrer quelque chose.
   const [source, setSource] = useState<'live' | 'local'>(hasLive ? 'live' : 'local')
   const matches = source === 'live' ? liveMatches : localMatches
+  // Les médailles suivent le toggle : "En direct" = lifetime (service record),
+  // "Local" = agrégat sur exactement les matchs de `localMatches`. Bloc masqué si
+  // la source retenue n'en a aucune (cf. rendu conditionnel plus bas).
+  const medals = source === 'live' ? topMedals : topMedalsLocal
 
   const { data: fieldMappings } = useFieldMappings()
   const fld = (key: string, fallback: string) =>
@@ -273,7 +281,7 @@ export function ExplorerCombatProfile({
             showLegend={false}
             height={CHART_HEIGHT}
           />
-          {topMedals.length > 0 && <ExplorerTargetMedals medals={topMedals} />}
+          {medals.length > 0 && <ExplorerTargetMedals medals={medals} />}
         </div>
       </div>
       )}
