@@ -9,7 +9,7 @@ package sessionusage
 // Rien du remplissage de barre n'est recalculé ici : les trois issues et les deux
 // taux de référence viennent de [computeOutcomes] (usage_outcomes.go), la même
 // fonction que la page Sessions, et la liste des familles du bilan vient de
-// [equipmentBilanFamilies] — donc de `replay.EquipmentOutcomeFamilies`, source
+// [equipmentBilanFamilies] — donc de `equipmentusage.EquipmentOutcomeFamilies`, source
 // unique qui garantit que le répulseur n'a pas de ligne (décision P4).
 //
 // Ce fichier ne pose que ce que le grain PÉRIODE ajoute :

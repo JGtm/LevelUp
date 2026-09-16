@@ -127,7 +127,7 @@ func TestOutcomes_FamilleSansAucunDeploiement(t *testing.T) {
 // TestOutcomes_UnDeployableSansPieceSeLitSurSesConsommations — CORRECTION C1
 // (revue de la vague 5, 2026-09-10). Le cas exact du constat : un capteur
 // `taken=3, spent=2, dropped=1, deployed=0`. Le capteur n'engendre aucune pièce
-// (replay.UsageFamilySpawnsPiece), son « utilisé » se lit donc sur les CHARGES
+// (equipmentusage.UsageFamilySpawnsPiece), son « utilisé » se lit donc sur les CHARGES
 // CONSOMMÉES, comme le fait le résumé depuis `us6`.
 //
 // AVANT LA CORRECTION, l'agrégat lisait `deployed` pour toutes les familles : la
