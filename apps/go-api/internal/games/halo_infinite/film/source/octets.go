@@ -45,6 +45,11 @@ func U32LE(d []byte, off int) uint32 { return binary.LittleEndian.Uint32(d[off:]
 // U64LE : cf. [U16LE].
 func U64LE(d []byte, off int) uint64 { return binary.LittleEndian.Uint64(d[off:]) }
 
+// U32BE : le seul entier BIG-endian du film, et il a un lecteur unique — l horodatage du bloc
+// d evenement du chunk des temps forts (`highlight_events.go`), que le format Python d origine
+// lisait en `uint:32` big-endian. Meme absence de garde de bornes que [U16LE].
+func U32BE(d []byte, off int) uint32 { return binary.BigEndian.Uint32(d[off:]) }
+
 // OctetAuBit lit UN octet a un offset exprime en BITS, alignement quelconque. ZERO quand
 // l octet ne tient pas entierement dans le tampon — c est la garde du lecteur du pied de film,
 // et elle differe de [BitsAt], qui bourrerait a zero les bits manquants et rendrait donc une

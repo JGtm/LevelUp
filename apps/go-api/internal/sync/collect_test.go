@@ -195,7 +195,7 @@ func TestBuildBatchFromFetchedMatch_NoHighlightData_NoEvents(t *testing.T) {
 
 // ─── Test 6 : HighlightData "garbage" → batch sans events, pas de panic ───
 
-// Note : analysis.ParseHighlightEvents est volontairement tolérant (cf.
+// Note : grammar.ParseHighlightEvents est volontairement tolérant (cf.
 // commentaire dans highlight_event_parser.go : double-tolérance zlib /
 // cleartext). Un blob garbage retourne typiquement 0 events sans erreur.
 // Ce test vérifie surtout l'absence de panic et l'intégrité du batch

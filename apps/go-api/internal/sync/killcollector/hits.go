@@ -33,7 +33,7 @@ package killcollector
 // resolvePlayerIndices indexe (5 bits). VERDICT MESURE (TestWeaponIndexNumDenomEquivalence, package
 // analysis) : le 4 bits n etait que la MOITIE BASSE du champ. La cle est desormais
 // grammar.FireEvent.ShooterIndex5 (bits 35-39, R(5)), ALIGNEE au bit pres sur
-// analysis.FireEvent.PlayerIndex5 (le denominateur match_weapon_shots) : mismatch 0 sur 4342 records
+// weaponscan.FireEvent.FilmIndex5 (le denominateur match_weapon_shots) : mismatch 0 sur 4342 records
 // BTB correles + tous les records arene. Num et denom keyent DESORMAIS IDENTIQUE. Sous 17 joueurs les
 // deux lectures coincidaient deja (arene) ; au-dela (BTB 4f77afc1, lobby 24), le 4 bits saturait a 15
 // et fusionnait 8 paires de joueurs — d ou une precision fausse. Corrige au Lot 3 (ScanFilmWeaponShots

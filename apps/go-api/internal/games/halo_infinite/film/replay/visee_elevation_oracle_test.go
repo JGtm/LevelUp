@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
@@ -42,7 +42,7 @@ func aimCouples(t *testing.T, dir string) ([]aimCouple, int, int) {
 	if err != nil {
 		t.Fatalf("chunk highlight (%d) : %v", n, err)
 	}
-	evs, err := analysis.ParseHighlightEvents(raw, 0)
+	evs, err := grammar.ParseHighlightEvents(raw, 0)
 	if err != nil {
 		t.Fatalf("chunk highlight (%d) : %v", n, err)
 	}
@@ -50,9 +50,9 @@ func aimCouples(t *testing.T, dir string) ([]aimCouple, int, int) {
 	deaths := map[int][]uint64{}
 	for _, e := range evs {
 		switch e.EventType {
-		case analysis.EventTypeKill:
+		case highlightevent.EventTypeKill:
 			kills[e.TimeMS] = append(kills[e.TimeMS], e.XUID)
-		case analysis.EventTypeDeath:
+		case highlightevent.EventTypeDeath:
 			deaths[e.TimeMS] = append(deaths[e.TimeMS], e.XUID)
 		}
 	}

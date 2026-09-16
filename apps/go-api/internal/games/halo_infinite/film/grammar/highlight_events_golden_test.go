@@ -1,4 +1,4 @@
-package analysis
+package grammar
 
 import (
 	"crypto/sha256"
@@ -15,7 +15,7 @@ import (
 
 // Golden de NON-REGRESSION du temps fort (item 2.5.h du PLAN_DECODEUR_FILM_2026-09-13).
 //
-// POURQUOI. Le type `analysis.HighlightEvent` et le vocabulaire `EventType*` quittent
+// POURQUOI. Le type `highlightevent.HighlightEvent` et le vocabulaire `EventType*` quittent
 // `internal/analysis` pour `internal/domain/highlightevent` : un deplacement PUR de
 // declarations. « Pur » n'est pas une intention, cela se PROUVE — ce golden fige AVANT le
 // mouvement les deux seules choses qu'un deplacement pourrait abimer :

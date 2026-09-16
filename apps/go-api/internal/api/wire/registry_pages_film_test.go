@@ -23,9 +23,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
@@ -55,7 +55,7 @@ func (l loaderTemoin) LoadMatch(context.Context, string) ([]domain.ObjectiveEven
 
 type loaderPositionsTemoin struct{ appele *bool }
 
-func (l loaderPositionsTemoin) LoadMatch(context.Context, string) ([]positions.PlayerPosition, error) {
+func (l loaderPositionsTemoin) LoadMatch(context.Context, string) ([]playerposition.PlayerPosition, error) {
 	*l.appele = true
 	return nil, nil
 }

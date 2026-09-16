@@ -9,14 +9,36 @@ package archlint
 // des valeurs deja lues. A la pose de ce ratchet c etait faux — SEPT lecteurs de bits distincts
 // vivaient dans NEUF paquets, et chacun reposait sur sa propre idee du bourrage, du
 // debordement et de l ordre des bits. Le lot 2.4 les a ramenes a une facade unique
-// (`film.Source`, nee dans `internal/games/halo_infinite/film/source/`, decision V15 (1)). IL EN RESTE DEUX
-// AU 2026-09-18, tous deux dans `internal/analysis` racine (`scanEvents` du parseur de temps
-// forts, la copie de `bitAt` d `analysis/positions`) : ils descendent au pas 5, et leurs neuf
-// entrees sont tout ce que l allowlist porte encore.
+// (`film.Source`, nee dans `internal/games/halo_infinite/film/source/`, decision V15 (1)).
 //
-// Ce ratchet est pose AVANT ce lot, et il vaut DEJA : son allowlist EST la liste de travail de
-// 2.4, elle se vide a mesure, et elle rougit des qu une entree devient perimee. Pose apres, il
-// n aurait rien garde pendant le seul moment ou l on casse des choses.
+// # L ALLOWLIST N EXISTE PLUS (lot 2.5.e, 2026-09-16)
+//
+// Les NEUF dernieres entrees etaient les deux lecteurs restes dans `internal/analysis` racine
+// — `scanEvents` du parseur de temps forts, la copie de `bitAt` d `analysis/positions` — et
+// leurs consommateurs d octets. Le lot 2.5.e les a fait DESCENDRE (decision V15 (4)) :
+//
+//	`analysis/highlight_event_parser.go`  -> `film/grammar/highlight_events.go`, zlib par
+//	                                         [source.Decompresser], octet au bit par
+//	                                         [source.OctetAuBit], entiers par [source.U16LE] /
+//	                                         [source.U32BE]
+//	`analysis/weapon_scanner.go`          -> `film/grammar/weaponscan`
+//	`analysis/positions/`                 -> `film/grammar/positions`, `bitAt` par
+//	                                         [source.BitAt], en-tete de bloc par [source.U16LE]
+//	`analysis/weapon_data.go`             -> `games/weapons/filmshell` (hors des racines : il
+//	                                         NOMME les armes, il ne lit aucun octet)
+//	`sync/killcollector/shots.go`         -> `filmshell.IDFromBytes` et `bits.ReverseBytes64`
+//	`cmd/diag_film`                       -> `filmshell.IDFromBytes`
+//
+// L allowlist s est donc videe, et LE MECANISME QUI LA PORTAIT EST PARTI AVEC ELLE — meme
+// geste qu au lot 2.5.a pour la tolerance de lieu du ratchet des couches, et pour la meme
+// raison : une table vide qu on garde « au cas ou » invite a la remplir, alors qu une
+// tolerance neuve doit etre une DECISION ecrite. Il ne reste que les EXCLUSIONS, qui disent
+// « ces octets ne sont pas ceux d un film », pas « cette violation attend son portage ».
+//
+// Ce ratchet avait ete pose AVANT le lot 2.4, et c est ce qui l a rendu utile : son allowlist
+// ETAIT la liste de travail, elle s est videe a mesure, et elle rougissait des qu une entree
+// devenait perimee. Pose apres, il n aurait rien garde pendant le seul moment ou l on casse
+// des choses.
 //
 // # CE QU EST UNE « LECTURE D OCTETS BRUTS », MECANIQUEMENT (cinq motifs)
 //
@@ -49,8 +71,8 @@ package archlint
 //
 // La couche `source` — aujourd hui `internal/games/halo_infinite/film/source/`, demain
 // `film/internal/source` (lot 2.5.a) — est le SEUL lieu autorise. Elle est exclue du balayage.
-// Tout autre site des racines surveillees est une violation, toleree seulement par une entree
-// datee de `lecturesTolerees` qui nomme le lot qui la retire.
+// Tout autre site des racines surveillees est une violation, sans exception : l allowlist
+// datee a ete supprimee avec sa derniere entree au lot 2.5.e.
 //
 // # POURQUOI LES FICHIERS DE PRODUCTION SEULS (PAS LES `_test.go`)
 //
@@ -60,15 +82,15 @@ package archlint
 // compare les deux marcheurs de paquets, les tests de `grammar` batissent des `BitReader` sur
 // des chaines forgees pour prouver une largeur, et les 23 fichiers `//go:build research` des
 // racines (TOUS des `_test.go`, mesure du 2026-09-17) mesurent la grammaire sur des films
-// reels. Interdire ces lectures interdirait les preuves, et remplirait l allowlist de
-// centaines d entrees que 2.4 ne viderait jamais. La regle de D9 est l inverse (elle parse les
+// reels. Interdire ces lectures interdirait les preuves, et aurait rempli l allowlist de
+// centaines d entrees que 2.4 n aurait jamais videes. La regle de D9 est l inverse (elle parse les
 // tests) parce qu elle garde un GRAPHE D IMPORTS, que les tests ferment aussi surement.
 //
 // # L INVENTAIRE RE-MESURE, ET L ECART AVEC LA NOTE DE PREPARATION
 //
 // `.ai/PREPARATION_M2_PAS_4_A_6_2026-09-17.md` §1.1 annonce 6 lecteurs de bits, 9 paquets et
 // environ 120 sites. Re-mesure du 2026-09-17 sur `24b67e339`, par ce balayage : **77 couples
-// (fichier, motif) de production**, tous en allowlist ci-dessous. Les deux comptes ne mesurent
+// (fichier, motif) de production**, tous mis en allowlist ce jour-la. Les deux comptes ne mesurent
 // pas la meme chose (la note compte les SITES, ce ratchet compte les couples fichier x motif,
 // et il ne compte pas la circulation d un lecteur deja construit), mais deux ecarts sont
 // REELS :
@@ -83,12 +105,13 @@ package archlint
 // `filmcache.go:116` (`s.chunks[i]` est un `[]ChunkMeta`), `offline_biped_band.go:163`
 // (`chunks []int`), `registre_killsource.go:259` (`"func evBody(r *curseurEv"` est une CHAINE).
 //
-// # L ALLOWLIST, ET COMMENT ELLE SE VIDE
+// # L ALLOWLIST QU IL A EUE, ET COMMENT ELLE S EST VIDEE
 //
 // 78 entrees a la pose : 77 le 2026-09-17, une par couple (fichier, motif), plus une le
-// 2026-09-18 a la fusion du lot 2.3 (`filmdec/film_context.go`). IL EN RESTE NEUF — celles du
-// lot 2.5.c, que V15 (2) et (4) font descendre au pas 5. Les soixante-neuf autres sont tombees
-// aux lots 2.4.1 et 2.4.2, chacune dans le commit qui a fait son portage.
+// 2026-09-18 a la fusion du lot 2.3 (`filmdec/film_context.go`). IL N EN RESTE AUCUNE :
+// soixante-neuf sont tombees aux lots 2.4.1 et 2.4.2, les NEUF dernieres au lot 2.5.e, chacune
+// dans le commit qui a fait son portage. L historique qui suit reste ecrit parce qu il dit
+// CE QUI A ETE DEPLACE, et ou le chercher.
 //
 //	2.4.1 (6)   VIDEE le 2026-09-18. `killsource.evReader` est absorbe par le lecteur canonique
 //	            de la couche source ([source.Bits]) ; le type, sa structure et les
@@ -117,35 +140,38 @@ package archlint
 //	            il EMBARQUE `*source.Bits` et n ajoute que la grammaire (profil, capture,
 //	            observateur, `ReadSignedVarWidth`). Les deux anciens noms restent listes
 //	            ci-dessous, en RATCHET ANTI-RESURRECTION.
-//	2.5.c (9)   descente de la grammaire de film posee dans `internal/analysis` racine
-//	            (V15 (2) et V15 (4)) : `highlight_event_parser.go`, `weapon_scanner.go`,
-//	            `weapon_data.go`, `positions/positions.go`, plus leurs deux consommateurs
-//	            d octets `sync/killcollector/shots.go` et `cmd/diag_film`.
+//	2.5.e (9)   VIDEE le 2026-09-16, et le MECANISME retire avec elle (cf. l en-tete). Descente
+//	            de la grammaire de film posee dans `internal/analysis` racine (V15 (2) et
+//	            V15 (4)) : `highlight_event_parser.go`, `weapon_scanner.go`, `weapon_data.go`,
+//	            `positions/positions.go`, plus leurs deux consommateurs d octets
+//	            `sync/killcollector/shots.go` et `cmd/diag_film`.
 //
-// V15 (2) porte ces trois-la — `highlight_event_parser.go`, `weapon_scanner.go`,
-// `killcollector/shots.go` — avec la cible « pas 5 ». Ils restent DANS les racines
-// surveillees : un perimetre declare qui les rendrait invisibles ne garderait rien contre leur
-// croissance, alors qu une entree datee dit ce qu il reste a faire et rougit quand c est fait.
+// V15 (2) avait envisage un PERIMETRE DECLARE qui aurait rendu trois de ces fichiers
+// invisibles au ratchet ; ils sont au contraire restes DANS les racines surveillees jusqu a
+// leur portage. C etait le bon choix : un perimetre declare n aurait rien garde contre leur
+// croissance, alors qu une entree datee disait ce qu il restait a faire et rougissait le jour
+// ou c etait fait.
 //
 // # MUTATIONS QUI DOIVENT LE FAIRE ROUGIR
 //
 // Les trois suivantes ont ete JOUEES le 2026-09-17, rouges, puis retirees :
 //
 //   - un fichier jetable `internal/replaybuild/mutation_jetable.go` (paquet surveille, zero
-//     entree d allowlist) portant `func bitAt(d []byte, p int) int` ET
+//     entree d allowlist a l epoque) portant `func bitAt(d []byte, p int) int` ET
 //     `type lecteurNeuf struct{ pl []byte; bp int }` : DEUX violations, `lecteur-de-bits` et
 //     `type-lecteur-de-bits`. La seconde est la preuve que le motif structurel attrape un
 //     lecteur invente sous un nom que personne n a liste ;
 //   - une entree d allowlist sans violation reelle
 //     (`internal/replaybuild/facts_file.go | lecteur-de-bits`) : « entree perimee, la
-//     retirer », par `TestAllowlistDesLecturesBrutesNEstPasPerimee` ;
+//     retirer », par le test de peremption de l allowlist ;
 //   - retirer une entree d allowlist sans faire le portage : la violation correspondante
 //     rougit (c est le meme chemin de code que la premiere mutation).
 //
 // LES TROIS ONT ETE REJOUEES LE 2026-09-18 A LA CLOTURE DU LOT 2.4 (rouges, retirees), sur la
-// table REDUITE a ses neuf entrees : un ratchet qui vient de perdre 69 entrees doit prouver
-// qu il mord encore, sans quoi « allowlist vide » ne voudrait rien dire. La troisieme a ete
-// jouee sur `analysis/positions/positions.go`, l une des neuf.
+// table REDUITE a ses neuf entrees. Les deux dernieres n ont plus d objet depuis le lot 2.5.e,
+// qui a retire l allowlist ET son mecanisme : LA MUTATION QUI VAUT DESORMAIS EST LA PREMIERE,
+// et elle a ete REJOUEE le 2026-09-16 sur l arborescence sans allowlist — le fichier jetable
+// rougit sur ses DEUX motifs, et plus aucune ligne ne peut le taire.
 
 import (
 	"sort"
@@ -153,7 +179,7 @@ import (
 	"testing"
 )
 
-// Les cinq motifs. Ce sont les valeurs du champ `motif` de l allowlist.
+// Les cinq motifs. Ce sont les cles sous lesquelles une violation est rapportee.
 const (
 	motifLecteur     = "lecteur-de-bits"
 	motifTypeLecteur = "type-lecteur-de-bits"
@@ -167,12 +193,6 @@ const (
 // 78 %) : assez serre pour qu un parcours casse echoue, assez lache pour ne pas devenir un
 // compteur a maintenir. Un ratchet qui ne balaye rien passe en silence.
 const plancherFichiersOctets = 850
-
-// poseDesLecturesTolerees : la date d inscription de TOUTES les entrees de `lecturesTolerees`
-// (elles ont ete mesurees d un seul coup). Une entree ajoutee plus tard porte sa propre date,
-// en commentaire sur sa ligne — et doit se justifier : cette table ne grossit pas, elle se
-// vide.
-const poseDesLecturesTolerees = "2026-09-17"
 
 // racinesOctetsBruts : les racines surveillees, relatives a `apps/go-api`. Ce sont les
 // arborescences ou un octet de film peut apparaitre — mesure du 2026-09-17, aucun paquet hors
@@ -239,34 +259,6 @@ var ordresDOctets = map[string]bool{"LittleEndian": true, "BigEndian": true}
 
 var paquetsDeDecompression = map[string]bool{"compress/zlib": true, "compress/flate": true}
 
-// lectureToleree : un couple (fichier, motif) qui viole la regle AUJOURD HUI, avec le lot qui
-// le retire. Posee le `poseDesLecturesTolerees`. C est la liste de travail de 2.4, pas un
-// blanc-seing : le test refuse toute entree devenue sans objet.
-type lectureToleree struct {
-	fichier string
-	motif   string
-	lot     string
-}
-
-// lecturesTolerees — LES 77 COUPLES MESURES LE 2026-09-17 sur `24b67e339`, plus le couple ne de
-// la fusion du lot 2.3 (2026-09-18), MOINS les SOIXANTE-NEUF portes par les lots 2.4.1 et 2.4.2
-// (2026-09-18) : IL EN RESTE NEUF, tous du lot 2.5.c. La case 2.4.3 du plan est cochee. Chaque
-// entree restante disparait dans le commit qui fera son portage.
-var lecturesTolerees = []lectureToleree{
-	{fichier: "cmd/diag_film/main.go", motif: motifBinaire, lot: "2.5.c"},
-	{fichier: "internal/analysis/highlight_event_parser.go", motif: motifInflate, lot: "2.5.c"},
-	{fichier: "internal/analysis/highlight_event_parser.go", motif: motifLecteur, lot: "2.5.c"},
-	{fichier: "internal/analysis/highlight_event_parser.go", motif: motifBinaire, lot: "2.5.c"},
-	{fichier: "internal/analysis/positions/positions.go", motif: motifLecteur, lot: "2.5.c"},
-	{fichier: "internal/analysis/positions/positions.go", motif: motifBinaire, lot: "2.5.c"},
-	{fichier: "internal/analysis/weapon_data.go", motif: motifBinaire, lot: "2.5.c"},
-	{fichier: "internal/analysis/weapon_scanner.go", motif: motifBinaire, lot: "2.5.c"},
-	// 2026-09-18, fusion du lot 2.3 : `FilmContext.NouveauLecteur` construit LE lecteur qui porte le
-	// profil du contexte (plus de variable de paquet). C est la forme que la facade 2.4.2 absorbe :
-	// le lecteur canonique naitra dans `film.Source`, contexte compris, et ce site disparait avec lui.
-	{fichier: "internal/sync/killcollector/shots.go", motif: motifBinaire, lot: "2.5.c"},
-}
-
 // TestAucuneLectureDOctetsBrutsHorsDeLaSource : hors de la couche `source`, aucun site des
 // racines surveillees ne lit d octets de film — sauf les couples dates ci-dessus.
 func TestAucuneLectureDOctetsBrutsHorsDeLaSource(t *testing.T) {
@@ -276,11 +268,10 @@ func TestAucuneLectureDOctetsBrutsHorsDeLaSource(t *testing.T) {
 			"racines ont bouge ou un filtre est casse — ce ratchet ne garde plus rien et doit "+
 			"echouer bruyamment.", fichiers, plancherFichiersOctets)
 	}
-	tolerees := indexDesLecturesTolerees()
 	violations := map[string]string{}
 	for _, s := range sites {
 		cle := cleLectureBrute(s.fichier, s.motif)
-		if tolerees[cle] || violations[cle] != "" {
+		if violations[cle] != "" {
 			continue
 		}
 		violations[cle] = s.detail
@@ -298,37 +289,20 @@ func TestAucuneLectureDOctetsBrutsHorsDeLaSource(t *testing.T) {
 		"QUOI FAIRE : passer par la facade `film.Source` — elle ouvre le film, decompresse, "+
 		"decoupe les paquets et rend LE lecteur de bits canonique ; le code appelant recoit "+
 		"des valeurs deja lues, jamais un `[]byte` de chunk. Ecrire un lecteur de plus (ou "+
-		"recopier `bitAt`) est exactement ce que le lot 2.4 supprime.\n"+
-		"Ajouter une entree a `lecturesTolerees` N EST PAS une reponse : cette table est datee "+
-		"du %s, elle recense le travail que 2.4 doit faire, et elle se VIDE.",
-		len(lignes), strings.Join(lignes, "\n  "), poseDesLecturesTolerees)
+		"recopier `bitAt`) est exactement ce que les lots 2.4 et 2.5.e ont supprime.\n"+
+		"IL N Y A PLUS D ALLOWLIST : elle s est videe au lot 2.5.e avec sa derniere entree, et "+
+		"le mecanisme qui la portait est parti avec elle. Une tolerance re-devient une "+
+		"DECISION a ecrire, pas une ligne a remplir.",
+		len(lignes), strings.Join(lignes, "\n  "))
 }
 
-// TestAllowlistDesLecturesBrutesNEstPasPerimee : une entree qui ne decrit plus une violation
-// reelle se RETIRE, dans le commit meme qui la resout. Une allowlist perimee finit par
-// autoriser autre chose que ce qu elle nommait.
-func TestAllowlistDesLecturesBrutesNEstPasPerimee(t *testing.T) {
-	sites, _ := balayerLecturesBrutes(t)
-	vivantes := map[string]bool{}
-	for _, s := range sites {
-		vivantes[cleLectureBrute(s.fichier, s.motif)] = true
-	}
-	vues := map[string]bool{}
-	for _, l := range lecturesTolerees {
-		cle := cleLectureBrute(l.fichier, l.motif)
-		if vues[cle] {
-			t.Errorf("`lecturesTolerees` cite deux fois %s : doublon, en retirer un.", cle)
-		}
-		vues[cle] = true
-		if l.lot == "" {
-			t.Errorf("`lecturesTolerees` cite %s sans lot de retrait : une tolerance sans "+
-				"cible est une dette anonyme.", cle)
-		}
-		if !vivantes[cle] {
-			t.Errorf("`lecturesTolerees` cite %s (pose %s, lot %s), qui ne lit plus d octets "+
-				"bruts : entree perimee, la retirer.", cle, poseDesLecturesTolerees, l.lot)
-		}
-	}
+// TestExclusionsDesLecturesBrutesSontMotiveesEtVivantes : ce ratchet N A PLUS D ALLOWLIST
+// depuis le lot 2.5.e. Il ne lui reste que ses EXCLUSIONS, qui ne disent pas « cette violation
+// attend son portage » mais « ces octets ne sont pas ceux d un film » — et celles-la doivent
+// quand meme designer un repertoire qui EXISTE et porter leur raison : une exclusion muette,
+// ou qui pointe un paquet deplace, ouvrirait une arborescence entiere sans que personne le
+// voie.
+func TestExclusionsDesLecturesBrutesSontMotiveesEtVivantes(t *testing.T) {
 	verifierExclusionsDOctets(t)
 }
 
@@ -347,13 +321,4 @@ func verifierExclusionsDOctets(t *testing.T) {
 				"`source`).", ex.chemin)
 		}
 	}
-}
-
-// indexDesLecturesTolerees rend l allowlist indexee par cle (fichier, motif).
-func indexDesLecturesTolerees() map[string]bool {
-	out := map[string]bool{}
-	for _, l := range lecturesTolerees {
-		out[cleLectureBrute(l.fichier, l.motif)] = true
-	}
-	return out
 }

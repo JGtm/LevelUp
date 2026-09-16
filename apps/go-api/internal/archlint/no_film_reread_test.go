@@ -390,12 +390,16 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 var sitesZlibAutorises = map[string]string{
 	"internal/games/halo_infinite/film/source/film.go": "L'UNIQUE inflate de la chaine de cuisson (D1). " +
 		"Rend le PARTIEL sur flux tronque : un film Theater se termine parfois net.",
-	"internal/analysis/highlight_event_parser.go": "Parseur autonome du fil des morts, appele " +
-		"sur des blobs BRUTS ou zlib (sync/collect.go, engine_highlight_events.go, " +
-		"convergence_backfill_events.go) : sa double tolerance date de l'incident du 2026-05-22.",
 	"internal/hinavmesh/conteneur.go": "AUTRE DOMAINE (conteneurs de navmesh du jeu), " +
 		"aucun rapport avec les chunks de film.",
 }
+
+// UNE ENTREE EST TOMBEE LE 2026-09-16 (lot 2.5.e) : `internal/analysis/highlight_event_parser.go`.
+// Le parseur du fil des morts est descendu en `film/grammar/highlight_events.go` et n'importe
+// PLUS `compress/zlib` : sa double tolerance (blob brut ou zlib, nee de l'incident du
+// 2026-05-22) est desormais celle de la couche source, qui distingue les deux echecs par
+// `source.ErrEnTeteZlib` — en-tete qui n'est pas du zlib = donnee deja claire, on traverse ;
+// flux valide qui casse en cours = erreur remontee. Il n'y a plus qu'UN decompresseur.
 
 // CINQ ENTREES SONT TOMBEES LE 2026-09-18 (lot 2.4.2) : `sync/haloclient/halo_client_http.go`,
 // `cmd/replay-worker/job.go`, `cmd/fetch_film_chunks/main.go`, `cmd/diag_weapons_v3/positions.go`

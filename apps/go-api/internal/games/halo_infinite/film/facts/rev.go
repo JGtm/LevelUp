@@ -59,6 +59,26 @@ package facts
 // constante. La regle « montee de `facts.Rev` = backlog killsource » vaudra a partir du premier
 // changement de SORTIE qui suivra.
 //
+// ENTREE `killsource-2026-09-16.3` (2026-09-16, lot 2.5.e-a) : L AMONT A BOUGE, LA SORTIE NON —
+// AUCUN BACKLOG.
+//
+// C est la PREMIERE montee mecanique de cette revision, et elle fait exactement ce pour quoi le
+// perimetre a ete elargi au lot 2.6.1 : `source.Rev` (`source-2026-09-16` -> `.2`) et
+// `GrammarRev` (`.35` -> `.36`) montent avec la descente de la grammaire restee dans
+// `internal/analysis` (decision V15 (4)), et comme leurs VALEURS sont hachees ici (V15 (12)),
+// les faits montent SANS que personne ait eu a y penser. C est le comportement voulu.
+//
+// L arbre `facts/` lui-meme change d un seul geste : `killsource/feed.go` lit
+// `domain/highlightevent` et `grammar.ParseHighlightEvents` en direct, la ou il passait par le
+// pont transitoire `internal/analysis/highlight_event_pont_film.go` pose au lot 2.5.h. Le pont
+// etait cinq renvois sans logique ; il est supprime, et le ratchet qui annoncait sa peremption
+// avec lui.
+//
+// LA SORTIE EST IDENTIQUE A L OCTET : le lecteur des temps forts rend les memes evenements (son
+// golden versionne est inchange), et aucune largeur ni aucun ordre de la couche ne bouge. AUCUN
+// BACKLOG DE REDECODAGE N EST OUVERT — la regle « montee de `facts.Rev` = backlog killsource »
+// vaut a partir du premier changement de SORTIE, et ce n en est pas un.
+//
 // # L HISTORIQUE DE LA SERIE `killsource-...`, REPRIS SANS RENUMEROTATION
 //
 // Ce qui suit est la chronique telle qu elle a ete ecrite rang par rang, du temps ou la constante
@@ -211,7 +231,7 @@ package facts
 // `grammar.LecteurSur` (l ancien `NewBitReader`, renomme parce que le type ne lit plus, il
 // decore). Aucune largeur, aucun ordre de bits, aucune borne ne change : les lignes produites
 // sont identiques a l octet, et aucun match deja decode n est candidat au backlog.
-const Rev = "killsource-2026-09-16.2"
+const Rev = "killsource-2026-09-16.3"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/facts_rev.golden` porte le couple (revision, empreinte) avec son historique, et

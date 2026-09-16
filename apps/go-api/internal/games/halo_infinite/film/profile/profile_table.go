@@ -350,7 +350,7 @@ const (
 // decalage en octets.
 //
 // LA VERSION INCONNUE (`0`, film sans registre) TOMBE EN TETE, et c est le comportement
-// historique que `analysis.ParseHighlightEvents` lui applique deja : le profil le NOMME au lieu
+// historique que `grammar.ParseHighlightEvents` lui applique deja : le profil le NOMME au lieu
 // de le laisser implicite, et [HighlightProfile.Lue] dit que la cle n a pas ete lue.
 func implantationDuGamertag(majeure int) (ImplantationGamertag, int) {
 	if majeure >= majeureDecalageBascule && majeure <= majeureDecalageFin {

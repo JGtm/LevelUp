@@ -8,7 +8,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // exploShot : un tir 0xD2 t36 LONG horodate (attaquant ref0 dom1 + WeaponID + lourd?).
@@ -70,7 +70,7 @@ func exploResolve(w *World, base, idx int) (bool, int) {
 
 // exploWeaponName : nom d'arme par WeaponID (table statique) ou l'hexa.
 func exploWeaponName(wid uint64) string {
-	if nm, ok := analysis.WeaponIDToName[wid]; ok {
+	if nm, ok := filmshell.WeaponIDToName[wid]; ok {
 		return nm
 	}
 	return attribWeaponName(wid)

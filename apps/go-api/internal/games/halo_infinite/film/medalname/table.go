@@ -46,7 +46,7 @@ package medalname
 
 // medalKey est le couple d octets qui identifie une medaille dans le bloc event du
 // chunk highlight : type_hint = b[47], medalType = b[59] (cf.
-// analysis.HighlightEvent.TypeHint / .MedalType).
+// highlightevent.HighlightEvent.TypeHint / .MedalType).
 type medalKey struct {
 	typeHint  int
 	medalType int

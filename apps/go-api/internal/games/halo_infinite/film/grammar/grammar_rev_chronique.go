@@ -362,3 +362,47 @@ package grammar
 // restent, dans l ordre ou les merges sont tombes — renumeroter la leur serait reecrire une
 // chronique deja figee dans un golden. L empreinte de ce rang inclut la racine `film/profile`,
 // entree au rang precedent.
+//
+// ENTREE `grammar-2026-09-15.36` (2026-09-16, lot 2.5.e-a) : `.35` -> `.36`.
+// LA GRAMMAIRE RESTEE DANS `internal/analysis` DESCEND ICI. SORTIE IDENTIQUE.
+//
+// C est la derniere descente du pas 5 (decision V15 (4)) : trois lecteurs de film vivaient
+// encore dans le paquet TITLE-AGNOSTIC, et le ratchet des lectures brutes les comptait depuis
+// le 2026-09-17 comme les neuf dernieres portes aux octets a fermer.
+//
+//	`analysis/highlight_event_parser.go`  -> `grammar/highlight_events.go`. Le decompresseur
+//	                                         local devient [source.Decompresser] + la
+//	                                         sentinelle `source.ErrEnTeteZlib` (meme partage
+//	                                         entre « deja clair » et « flux casse ») ; la copie
+//	                                         de `readByteAtBit` devient [source.OctetAuBit], a
+//	                                         la convention de bord IDENTIQUE ; les deux entiers
+//	                                         deviennent `source.U32BE` et `source.U16LE`.
+//	`analysis/weapon_scanner.go`          -> `grammar/weaponscan/scanner.go` (sous-paquet :
+//	                                         `grammar.FireEvent` designe deja un AUTRE record).
+//	                                         `binary.BigEndian.PutUint64` devient
+//	                                         `filmshell.BytesFromID`.
+//	`analysis/positions/`                 -> `grammar/positions/`. `bitAt` devient
+//	                                         [source.BitAt] (memes zeros des deux cotes), l
+//	                                         en-tete de bloc `source.U16LE` / `source.U32LE`.
+//	`analysis/weapon_data.go`             -> `games/weapons/filmshell`, FEUILLE hors des racines
+//	                                         hachees : ce catalogue NOMME les armes, il ne lit
+//	                                         aucun octet.
+//
+// DEUX TYPES REMONTENT EN `domain/` LE MEME JOUR, sur le modele du lot 2.5.h : le pont
+// transitoire `analysis/highlight_event_pont_film.go` est SUPPRIME (les onze fichiers de `film/`
+// lisent `domain/highlightevent` en direct), et `PlayerPosition` / `TeamUnknown` naissent en
+// `domain/playerposition` — leurs lecteurs sont les ports, le service de vue de match, la couche
+// DuckDB et un corps HTTP, qui n ont rien a savoir d un titre.
+//
+// DEUX CHANGEMENTS DE FORME, ET AUCUN DE SORTIE. (1) `FireEvent.PlayerIndex` / `PlayerIndex5` et
+// `FormulaAResult.PlayerIndex` deviennent `FilmIndex` / `FilmIndex5` : le ratchet
+// `archlint/no_player_index_identity_test.go` interdit ce nom dans le perimetre du film, SANS
+// allowlist, et le champ homologue de `grammar` s appelle deja `FilmIndex`. (2)
+// `decodeFireEventAt` est extraite de `ScanFireEventsB5`, qui passait le seuil de 80 lignes une
+// fois descendue — corps deplace sans une ligne de logique changee.
+//
+// AUCUN OCTET N EST LU AUTREMENT : chaque substitution est une fonction dont la convention de
+// bord a ete verifiee identique a celle qu elle remplace, et les goldens des temps forts
+// (`testdata/highlight_event_golden.txt`, 275 evenements, sha256 fige au lot 2.5.h) sont
+// INCHANGES. `SchemaVersion` reste 60 ; aucun match deja decode n est candidat au backlog.
+//

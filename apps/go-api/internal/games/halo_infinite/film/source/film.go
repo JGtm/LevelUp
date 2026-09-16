@@ -88,6 +88,11 @@ func (f *Film) Meta() []ChunkMeta { return f.meta }
 // errNoChunk : une source sans chunk n'est pas un film.
 var errNoChunk = errors.New("source: aucun chunk dans la source")
 
+// ErrEnTeteZlib : le tampon ne COMMENCE pas par un en-tete zlib valide. [Decompresser] la rend
+// enveloppee, et c est la SEULE erreur qu un appelant tolerant doit traverser : un flux dont
+// l en-tete est bon mais qui casse ensuite est une donnee abimee, pas une donnee deja claire.
+var ErrEnTeteZlib = errors.New("source: en-tete zlib")
+
 // Load : decompresse tous les chunks de `src` et decoupe leurs paquets, une seule lecture de la
 // source. `meta` est POSITIONNEL (`meta[i]` decrit le chunk `i` de `src`) et LICITE A NIL
 // (enveloppes de compatibilite, tests) : le film est alors charge sans metadonnees, et c'est au
@@ -174,10 +179,14 @@ func alignMetaOnNumbers(nums []int, meta []ChunkMeta) []ChunkMeta {
 // UN SEUL DECOMPRESSEUR DANS LE DEPOT (lot 2.4.2) : le ratchet
 // `archlint/no_raw_film_bytes_outside_source_test.go` refuse `compress/zlib` dans les racines
 // du film.
+//
+// LES DEUX ECHECS SE DISTINGUENT PAR [ErrEnTeteZlib] (lot 2.5.e) : un appelant qui accepte les
+// DEUX formes — le lecteur des temps forts, dont le chunk arrive clair du CDN et compresse du
+// cache — traverse sur l en-tete et remonte l erreur sur la casse EN COURS de flux.
 func Decompresser(raw []byte) ([]byte, error) {
 	zr, err := zlib.NewReader(bytes.NewReader(raw))
 	if err != nil {
-		return nil, fmt.Errorf("source: en-tete zlib: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrEnTeteZlib, err)
 	}
 	defer func() { _ = zr.Close() }()
 	out, err := io.ReadAll(zr)

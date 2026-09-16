@@ -69,7 +69,7 @@ const (
 	// `fireAttackerBit` >>1 ne rend que les bits 36..39 (4 bits) : il TRONQUE l'indice à sa
 	// moitié basse et sature à 15 au-delà de 16 joueurs (BTB), FUSIONNANT deux tireurs distincts.
 	// L'indice complet inclut le bit 35 en tête : readBitsAt(pay, 35, 5) = bits 35..39. C'est
-	// EXACTEMENT le champ que lit `analysis.FireEvent.PlayerIndex5` (event_start+31, 5 bits) —
+	// EXACTEMENT le champ que lit `weaponscan.FireEvent.FilmIndex5` (event_start+31, 5 bits) —
 	// donc l'indice qu'écrit `shared.match_weapon_shots` (le DÉNOMINATEUR de la précision). La
 	// relation est algébrique : ShooterIndex5 & 0x0F == FilmIndex (l'ancien 4 bits). Prouvée sur
 	// pièces par TestWeaponIndexNumDenomEquivalence (paquets 0xD2 arène + BTB 4f77afc1).
@@ -119,14 +119,14 @@ type FireEvent struct {
 	// plus de 16 joueurs. Pour PONTER vers un xuid (précision par arme), utiliser ShooterIndex5.
 	FilmIndex int
 	// ShooterIndex5 est le MÊME indice de tireur sur sa largeur RÉELLE (5 bits, bit 35) : bits
-	// 35..39, sans troncature. C'est le champ ALIGNÉ sur `analysis.FireEvent.PlayerIndex5` et donc
+	// 35..39, sans troncature. C'est le champ ALIGNÉ sur `weaponscan.FireEvent.FilmIndex5` et donc
 	// sur l'indice de `shared.match_weapon_shots` (le dénominateur de la précision). Le pont
 	// FilmIndex->xuid (resolvePlayerIndices, killcollector) est keyé sur ce 5 bits : le
 	// NUMÉRATEUR de la précision DOIT keyer identique, sinon num et dénom pointent des joueurs
 	// différents au-delà de 16 (bug corrigé Lot 3). Invariant : ShooterIndex5 & 0x0F == FilmIndex.
 	ShooterIndex5 int
 	// WeaponID est l'identifiant global 64 bits de l'arme : clé directe de
-	// metadata.weapon_labels.weapon_id et de analysis.WeaponIDToName.
+	// metadata.weapon_labels.weapon_id et de filmshell.WeaponIDToName.
 	WeaponID uint64
 	// Flags porte les bits 108..112 (diagnostic).
 	Flags [fireFlagsCount]uint8
@@ -202,7 +202,7 @@ func ReadAttackerIndex(pay []byte) int {
 //
 // EXPORTÉ POUR LA MESURE : c'est la clé de tireur du NUMÉRATEUR de précision, et l'instrument
 // d'équivalence (TestWeaponIndexNumDenomEquivalence, package analysis) confronte cette valeur à
-// `analysis.FireEvent.PlayerIndex5` sur les mêmes records 0xD2. Un seul endroit déclare l'offset
+// `weaponscan.FireEvent.FilmIndex5` sur les mêmes records 0xD2. Un seul endroit déclare l'offset
 // du champ (fireShooterBit), et c'est ce fichier — comme ReadAttackerIndex pour le 4 bits.
 func ReadShooterIndex5(pay []byte) int {
 	if len(pay)*8 < fireShooterBit+fireShooterW {

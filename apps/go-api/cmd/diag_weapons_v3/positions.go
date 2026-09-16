@@ -18,8 +18,9 @@ import (
 	"fmt"
 	"math"
 
-	"levelup/go-api/internal/analysis/positions"
+	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar/positions"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -91,7 +92,7 @@ func decompressZlib(raw []byte) []byte { return source.Inflate(raw) }
 
 // printPositionsSummary affiche le résumé d'un match : nb positions, bornes
 // x/y/z, split équipe best-effort.
-func printPositionsSummary(m matchRef, pos []positions.PlayerPosition) {
+func printPositionsSummary(m matchRef, pos []playerposition.PlayerPosition) {
 	fmt.Printf("[%s] %s — %d position(s) full-state décodées\n", m.short, m.full, len(pos))
 	if len(pos) == 0 {
 		fmt.Println("  Aucune position décodée (mode non filmé, footer absent, ou chunks TYPE_2 vides).")
@@ -110,7 +111,7 @@ type posBounds struct {
 }
 
 // boundsOf calcule les bornes min/max sur x/y/z. pos est supposé non vide.
-func boundsOf(pos []positions.PlayerPosition) posBounds {
+func boundsOf(pos []playerposition.PlayerPosition) posBounds {
 	b := posBounds{
 		xmin: pos[0].X, xmax: pos[0].X,
 		ymin: pos[0].Y, ymax: pos[0].Y,
@@ -125,7 +126,7 @@ func boundsOf(pos []positions.PlayerPosition) posBounds {
 }
 
 // positionTeamSplit compte les positions par team (0/1/inconnu).
-func positionTeamSplit(pos []positions.PlayerPosition) (t0, t1, unknown int) {
+func positionTeamSplit(pos []playerposition.PlayerPosition) (t0, t1, unknown int) {
 	for _, p := range pos {
 		switch p.Team {
 		case 0:

@@ -17,9 +17,9 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 const cache = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950`
@@ -88,7 +88,7 @@ func bitsAt(d []byte, bp, n int) uint64 {
 }
 
 func knownHigh32(v uint32) (string, bool) {
-	for id, n := range analysis.WeaponIDToName {
+	for id, n := range filmshell.WeaponIDToName {
 		if uint32(id>>32) == v {
 			return n, true
 		}
@@ -145,7 +145,7 @@ func litScan(chunkIdx int) {
 			}
 			lo := uint32(bitsAt(p.payload, bp+32, 32))
 			id64 := (uint64(hi) << 32) | uint64(lo)
-			if real, ok := analysis.WeaponIDToName[id64]; ok {
+			if real, ok := filmshell.WeaponIDToName[id64]; ok {
 				hitsByType[p.typ]++
 				hitsByWeapon[real]++
 				totalLits++
@@ -232,7 +232,7 @@ func litLoc(reg *grammar.Registry, worldPath string, chunkIdx, maxPkts int) {
 			}
 			lo := uint32(bitsAt(p.payload, bp+32, 32))
 			id64 := (uint64(hi) << 32) | uint64(lo)
-			if nm, ok := analysis.WeaponIDToName[id64]; ok {
+			if nm, ok := filmshell.WeaponIDToName[id64]; ok {
 				litBits = append(litBits, bp)
 				litNames = append(litNames, nm)
 			}
@@ -340,7 +340,7 @@ func upstreamScan(chunkIdx int) {
 				continue
 			}
 			lo := uint32(bitsAt(p.payload, bp+32, 32))
-			if _, ok := analysis.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; !ok {
+			if _, ok := filmshell.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; !ok {
 				continue
 			}
 			totalWST++
@@ -432,7 +432,7 @@ func litPlayer(chunkIdx int) {
 				continue
 			}
 			lo := uint32(bitsAt(p.payload, b+32, 32))
-			if nm, ok := analysis.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
+			if nm, ok := filmshell.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
 				hits = append(hits, hit{pktIdx, p.ts, slot, bipedSlot[slot], nm, b})
 			}
 		}
@@ -500,7 +500,7 @@ func litPattern(chunks []int) {
 					continue
 				}
 				lo := uint32(bitsAt(p.payload, bp+32, 32))
-				if _, ok := analysis.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
+				if _, ok := filmshell.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
 					lits = append(lits, bp)
 				}
 			}
@@ -557,7 +557,7 @@ func sizesMode(chunkIdx int) {
 				continue
 			}
 			lo := uint32(bitsAt(p.payload, bp+32, 32))
-			if nm, ok := analysis.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
+			if nm, ok := filmshell.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
 				armes = append(armes, nm)
 			}
 		}
@@ -651,7 +651,7 @@ func litCtx(reg *grammar.Registry, chunkIdx, pktIdx int) {
 		}
 		lo := uint32(bitsAt(p.payload, bp+32, 32))
 		id64 := (uint64(hi) << 32) | uint64(lo)
-		nm, ok := analysis.WeaponIDToName[id64]
+		nm, ok := filmshell.WeaponIDToName[id64]
 		if !ok {
 			continue
 		}

@@ -75,7 +75,7 @@ rend ici 2 noms pour 199 morts : l artefact de rejeu nomme alors ses vies avec d
 (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md).
 
 Verifier que ScanDeaths passe la version lue par grammar.FilmMajorVersion a
-analysis.ParseHighlightEvents.`,
+grammar.ParseHighlightEvents.`,
 			miniBobineV40, version, len(deaths), len(noms), miniBobineV40NomsPlancher)
 	}
 }

@@ -184,6 +184,14 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// remonte en `games/weapons` — c est la seule chose qui fermera l arete `weaponv3 -> analysis`
 	// ci-dessous.
 	"internal/games/halo_infinite/film/grammar/weaponv3": coucheGrammar,
+	// DESCENDUS LE 2026-09-16 (lot 2.5.e, decision V15 (4)) d `internal/analysis` racine : c est
+	// de la grammaire de film qui vivait dans le paquet title-agnostic. `weaponscan` porte les
+	// deux balayages d armes du flux de replication (Formula A, evenement de tir au marqueur
+	// universel) ; `positions` decode les positions joueurs des cadres d etat complet. Les deux
+	// LISENT des bits, donc ils sont de la couche `grammar` ; ce sont des SOUS-PAQUETS parce que
+	// `grammar.FireEvent` et le `FireEvent` de `weaponscan` designent deux records differents.
+	"internal/games/halo_infinite/film/grammar/weaponscan": coucheGrammar,
+	"internal/games/halo_infinite/film/grammar/positions":  coucheGrammar,
 
 	// --- facts : de la chronologie brute aux faits du match (vies, identite, tirs, morts,
 	// objectifs, equipement, vehicules), chacun avec ses compteurs de couverture.
@@ -253,27 +261,23 @@ type areteToleree struct {
 // AUCUNE ne viole R1 (le sens) — a l interieur du decodeur, tout descend deja. Chaque entree
 // disparait dans le commit qui fait le deplacement : une entree qui survit a sa violation fait
 // rougir `TestAllowlistsDesCouchesNeSontPasPerimees`.
-var aretesTolerees = []areteToleree{
-	{
-		de: "internal/games/halo_infinite/film/facts/killsource", vers: "internal/analysis",
-		pose: "2026-09-17", lot: "2.5.c",
-		coupe: "4 symboles (`EventTypeDeath`, `EventTypeKill`, `HighlightEvent`, " +
-			"`ParseHighlightEvents`) : `ParseHighlightEvents` est de la grammaire de film posee " +
-			"dans un paquet title-agnostic ; elle descend en `grammar` avec son type",
-	},
-	{
-		de: "internal/games/halo_infinite/film/replay", vers: "internal/analysis",
-		pose: "2026-09-17", lot: "2.5.c",
-		coupe: "4 usages (`ParseHighlightEvents` x3, `WeaponIDToName`, `HighlightEvent`, " +
-			"`EventTypeDeath`) : ils suivent la descente de l arete 3",
-	},
-	{
-		de: "internal/games/halo_infinite/film/grammar/weaponv3", vers: "internal/analysis",
-		pose: "2026-09-17", lot: "2.5.c",
-		coupe: "le catalogue d armes (3 symboles) remonte en `games/weapons` ; apres quoi " +
-			"`weaponv3` se dissout et l entree n a plus d objet",
-	},
-}
+// LES TROIS DERNIERES SONT TOMBEES LE 2026-09-16 (lot 2.5.e, decision V15 (4)), chacune par le
+// deplacement qu elle annoncait :
+//
+//	killsource -> analysis   `ParseHighlightEvents` est descendue en `film/grammar`
+//	                         (`highlight_events.go`) et les quatre symboles du temps fort sont
+//	                         lus chez `domain/highlightevent` — le pont transitoire de 2.5.h est
+//	                         supprime ;
+//	replay -> analysis       mêmes symboles, meme coupe ;
+//	weaponv3 -> analysis     le catalogue d armes a quitte `internal/analysis/weapon_data.go`
+//	                         pour `games/weapons/filmshell`, feuille sans aucun import du depot
+//	                         (et non `games/weapons` lui-meme, qui tire `database/sql` et
+//	                         `internal/migration` — les mettre dans les dependances du decodeur
+//	                         aurait ete un autre import a rebours).
+//
+// La table reste VIDE : le mecanisme part au commit du ratchet STRICT, comme la tolerance de
+// lieu au 2.5.a et celle de couche vide au 2.5.b.
+var aretesTolerees = []areteToleree{}
 
 // LA TOLERANCE DE LIEU A ETE SUPPRIMEE LE 2026-09-16 (lot 2.5.a), AVEC SA DERNIERE ENTREE.
 // `paquetHorsLieuTolere` / `paquetsHorsLieuToleres` dataient le sursis d un paquet de couche

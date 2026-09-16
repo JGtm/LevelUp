@@ -45,7 +45,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // TestLot1Projectiles : grammaire (oracle de tag), en-tete (ref0), et attribution des armes
@@ -314,7 +314,7 @@ func projVariantWeapons(t *testing.T, evs []projEvt, fireVar map[uint64]uint64) 
 
 // projWeaponLabel nomme une arme par WeaponID, ou l'hexa a defaut.
 func projWeaponLabel(wid uint64) string {
-	if n, ok := analysis.WeaponIDToName[wid]; ok {
+	if n, ok := filmshell.WeaponIDToName[wid]; ok {
 		return n
 	}
 	return attribWeaponName(wid)

@@ -38,7 +38,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
@@ -174,14 +174,14 @@ func ctfWriteKillPositions(b *strings.Builder, pos []grammar.BipedPosition,
 
 // ctfHighlightEvents lit TOUS les événements du chunk highlight (morts ET frags), là où
 // ScanFilmDeaths ne garde que les morts.
-func ctfHighlightEvents(t *testing.T, filmDir string) []analysis.HighlightEvent {
+func ctfHighlightEvents(t *testing.T, filmDir string) []highlightevent.HighlightEvent {
 	t.Helper()
 	n := grammar.CountFilmChunks(filmDir)
 	raw, err := os.ReadFile(filepath.Join(filmDir, fmt.Sprintf("chunk_%02d.bin", n)))
 	if err != nil {
 		t.Fatalf("chunk highlight : %v", err)
 	}
-	evs, err := analysis.ParseHighlightEvents(raw, 0)
+	evs, err := grammar.ParseHighlightEvents(raw, 0)
 	if err != nil {
 		t.Fatalf("parse highlight : %v", err)
 	}
@@ -191,13 +191,13 @@ func ctfHighlightEvents(t *testing.T, filmDir string) []analysis.HighlightEvent 
 // ctfPairKills apparie chaque FRAG à la MORT du même instant — la reconstruction établie par le
 // chantier voisin (93/93 sur le film de référence, 0 erreur). Rend aussi le nombre de frags
 // qu'aucune mort n'accompagne, parce qu'un appariement sans son reste ne se juge pas.
-func ctfPairKills(evs []analysis.HighlightEvent, off int64) ([]ctfKillPair, int, int) {
-	var kills, deaths []analysis.HighlightEvent
+func ctfPairKills(evs []highlightevent.HighlightEvent, off int64) ([]ctfKillPair, int, int) {
+	var kills, deaths []highlightevent.HighlightEvent
 	for _, e := range evs {
 		switch e.EventType {
-		case analysis.EventTypeKill:
+		case highlightevent.EventTypeKill:
 			kills = append(kills, e)
-		case analysis.EventTypeDeath:
+		case highlightevent.EventTypeDeath:
 			deaths = append(deaths, e)
 		}
 	}

@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"time"
 
-	"levelup/go-api/internal/analysis/positions"
+	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games"
 )
 
@@ -45,7 +45,7 @@ func NewPlayerPositionsRepo(pdb *PlayerDB) *PlayerPositionsRepo {
 // LoadMatch relit toutes les positions d'un match, ordonnées par time_ms puis
 // par ordre d'insertion (rowid). Retourne games.ErrCapabilityNotSupported si la
 // table n'existe pas.
-func (r *PlayerPositionsRepo) LoadMatch(ctx context.Context, matchID string) ([]positions.PlayerPosition, error) {
+func (r *PlayerPositionsRepo) LoadMatch(ctx context.Context, matchID string) ([]playerposition.PlayerPosition, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -69,7 +69,7 @@ func (r *PlayerPositionsRepo) LoadMatch(ctx context.Context, matchID string) ([]
 //
 // ⚠ LA VUE `_latest`, JAMAIS LA TABLE (ADR 0026, règle ART n°2) : la table empile une génération
 // par projection d'artefact, et une lecture brute servirait toutes les passes superposées.
-func loadPlayerPositionRows(ctx context.Context, db *sql.DB, matchID string) ([]positions.PlayerPosition, error) {
+func loadPlayerPositionRows(ctx context.Context, db *sql.DB, matchID string) ([]playerposition.PlayerPosition, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT time_ms, x, y, z, team
 		FROM match_player_positions_latest
@@ -80,10 +80,10 @@ func loadPlayerPositionRows(ctx context.Context, db *sql.DB, matchID string) ([]
 	}
 	defer rows.Close()
 
-	var out []positions.PlayerPosition
+	var out []playerposition.PlayerPosition
 	for rows.Next() {
 		var (
-			p            positions.PlayerPosition
+			p            playerposition.PlayerPosition
 			timeMS, team sql.NullInt64
 			x, y, z      sql.NullFloat64
 		)
@@ -97,7 +97,7 @@ func loadPlayerPositionRows(ctx context.Context, db *sql.DB, matchID string) ([]
 		if team.Valid {
 			p.Team = int(team.Int64)
 		} else {
-			p.Team = positions.TeamUnknown
+			p.Team = playerposition.TeamUnknown
 		}
 		out = append(out, p)
 	}

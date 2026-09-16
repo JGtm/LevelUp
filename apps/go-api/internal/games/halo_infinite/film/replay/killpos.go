@@ -57,7 +57,7 @@ type KillRef struct {
 //
 // C'est le point qui décidait de tout ce lot, et il se lit sur pièces plutôt qu'il ne s'estime :
 // `killsource.Kill.TimeMS` et `Death.TimeMS` sont LE MÊME CHAMP DU MÊME ENREGISTREMENT du chunk
-// highlight (`analysis.HighlightEvent.TimeMS`), lu par `ScanDeaths` d'un côté
+// highlight (`highlightevent.HighlightEvent.TimeMS`), lu par `ScanDeaths` d'un côté
 // (deaths_source.go) et par `killsource.buildFeed` de l'autre. Or « l'horloge du match » de ce
 // paquet EST celle du fil des morts, par définition — c'est elle que `deathOffsetMS` sert à
 // rejoindre depuis les horodatages de paquet (`matchMS = TimestampUS/1000 − deathOffsetMS`,
