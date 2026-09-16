@@ -373,4 +373,15 @@
 #               prennent l heritage par une fonction nommee. Le garde-rail d allowlist est
 #               re-cle sur les TROIS formes d acces. Ratchet 90 -> 86. AUCUN OCTET N EST LU
 #               AUTREMENT. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
-grammar-2026-09-15.21	f2958a6895f62feba8c35e657a64998843e4652e7c84435cc7616e628910ecd5
+#   2026-09-17  grammar-2026-09-15.22  lot 2.2.c (`.21` -> `.22`, RANG PROVISOIRE) : LES MARCHES
+#               D IMAGE-CLE PRENNENT LEUR CADRE AU PROFIL. Les trois lecteurs d etat complet
+#               (marche, bloc d etat par defaut, lecture d equipe du record) lisaient les DEUX
+#               constantes du paquet ; ils les prennent au lecteur, qui les tient de
+#               `cadreDuProfil` — la meme fonction que le profil. Les constantes n ont plus
+#               qu UN lecteur. Le ratchet NE BOUGE PAS (86) et c est mesure : la famille ne
+#               portait aucune variable de paquet, `keyframeBodyVariants` ayant quitte la
+#               production a la revue de jalon M1. Le gain est ailleurs — une valeur faussee
+#               dans le profil rougit desormais `TestKeyframeClosureRatchet` sur les sept
+#               bobines. AUCUN OCTET N EST LU AUTREMENT. `KillSourceDecoderRev` ne bouge PAS ;
+#               `SchemaVersion` reste 60.
+grammar-2026-09-15.22	94baf8a0e8fc025feb2639eadcda0a83bc17c1aec5b74957ee3d3e2ff3842648

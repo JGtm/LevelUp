@@ -205,10 +205,7 @@ func (p Profile) Err() error { return p.err }
 // et [Profile.Err] porte les cles manquantes.
 func ResolveProfile(film *filmsource.Film, entry *MapQuantEntry) Profile {
 	p := Profile{
-		keyframe: KeyframeProfile{
-			EnTeteBits:      keyframeFullStateHeaderBits,
-			MotDeTailleBits: keyframeFullStateSizeBits,
-		},
+		keyframe: cadreDuProfil(),
 		movement: mouvementDuProfil(),
 		format:   FilmFormatVersionUnknown,
 	}
@@ -285,6 +282,19 @@ func highlightDuProfil(majeure int, lue bool) HighlightProfile {
 		Lue:                 lue,
 		Implantation:        impl,
 		GamertagOffsetBytes: off,
+	}
+}
+
+// cadreDuProfil rend le CADRE d un record d image-cle d etat complet.
+//
+// C est la SOURCE UNIQUE des deux largeurs, et elle sert aux DEUX bouts depuis le lot 2.2.c :
+// [ResolveProfile] la pose dans le profil, et [NewBitReader] la pose sur le lecteur — les
+// lecteurs d etat complet ne lisent donc plus les constantes du paquet, ils lisent le profil.
+// La regle reste `172 + etat(ti)`, jamais un nombre : les 172 se composent ici.
+func cadreDuProfil() KeyframeProfile {
+	return KeyframeProfile{
+		EnTeteBits:      keyframeFullStateHeaderBits,
+		MotDeTailleBits: keyframeFullStateSizeBits,
 	}
 }
 
