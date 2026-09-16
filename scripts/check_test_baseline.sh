@@ -57,6 +57,15 @@
 # helper supprimé. 13 lignes JSONL, exactement 3 paires (Package, Test), vérifié par
 # différence avant/après. Compte PARTIEL d absences volontaires → remède prescrit ici même.
 #
+# RETRAIT DU 2026-09-16 (lots amis/invitations et sync par le pool) : 2 tests RENOMMÉS parce que
+# leur assertion s est inversée — `internal/service::TestXboxSSOLinkStrategy_LegacyInviteNoGroup_Locked_Rejected`
+# (une invitation sans groupe LÈVE désormais le verrou d instance : remplacé par
+# `..._InviteWithoutGroup_Locked_CreatesUserAndGrant`) et
+# `internal/scheduler::TestRunOnce_PlayerNotInPool_Skipped` (un joueur hors pool est désormais
+# synchronisé par le pool : remplacé par `TestPreconditions_JoueurHorsPoolAccepte`). Les deux
+# remplaçants sont dans le run courant. Exactement 2 paires (Package, Test), vérifié par
+# différence avant/après.
+#
 # Le contrôle 2 a été ajouté le 2026-07-26 : le `|| true` sur le `go test -json`
 # (nécessaire pour pouvoir analyser le JSONL même quand la suite échoue) rendait
 # le gate MENTEUR — un test FAIL était compté comme « présent » par le contrôle 1
