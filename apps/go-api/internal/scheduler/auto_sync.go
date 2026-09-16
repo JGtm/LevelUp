@@ -5,8 +5,9 @@
 //   - adapter l'intervalle si spnkr_auto_sync_interval_(minutes|hours) a changé
 //
 // Pour chaque joueur configuré dans db_profiles.json, le cycle :
-//  1. Vérifie que le joueur est présent dans le pool de tokens (Pool.HasPlayer).
-//  2. Crée un PooledHaloClient pinné sur ce joueur.
+//  1. Vérifie que le pool de tokens existe (aucun token propre exigé : D1, plan 2026-09-16 —
+//     les endpoints du sync sont publics, servis par n importe quel token du parc).
+//  2. Crée un PooledHaloClient pinné sur ce joueur (le pin ne sert qu aux endpoints privés).
 //  3. Lance SyncEngine.RunDelta avec ce client (fetches parallèles internes).
 //
 // L'auth est entièrement déléguée au Pool/Resolver, qui :

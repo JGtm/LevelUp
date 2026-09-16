@@ -5,8 +5,9 @@ package main
 // DOCTRINE (D1, plan 2026-09-16). Un profil suivi se synchronise par le POOL, qu'il ait ou non
 // son propre refresh token : l'historique, les stats, les films et les CSR sont des endpoints
 // PUBLICS que n'importe quel token du parc sert (PolicyAnyPublic). Seuls les endpoints soumis
-// à la vie privée exigent le token du joueur (PolicyPinnedPlayer) et se dégradent SEULS : rang
-// de carrière sauté avec un WARN, personnalisation Spartan sautée par son cron.
+// à la vie privée exigent le token du joueur (PolicyPinnedPlayer) : la personnalisation Spartan
+// (sautée par son cron) et GetCareerRank (ErrNoPinnedToken — qu aucune étape du sync n appelle :
+// le rang de carrière est servi par service.CareerLiveService, hors sync).
 //
 // Avant le 2026-09-16, la CLI mono-joueur exigeait le refresh token du joueur visé
 // (haloTokensForPlayer) et la CLI `--all` sautait en bloc tout joueur absent du pool

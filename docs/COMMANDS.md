@@ -65,10 +65,12 @@ through the token pool: match history, match stats, films and CSR are PUBLIC end
 token in the fleet can serve (`PolicyAnyPublic`). A followed profile that never signed in via
 Xbox SSO is synced like any other. The pool must simply hold at least one healthy token.
 
-The single exception is the **career rank**, which is privacy-gated to its owner
-(`PolicyPinnedPlayer`). Without the player's own token it is skipped with one WARN per pass and
-the run reports `career_synced=false` — the sync itself still succeeds. Same rule for the
-Spartan customization cron, which keeps its own `HasPlayer` guard for that reason.
+The career rank is NOT part of the sync at all: it is served by the separate live career flow
+(`service.CareerLiveService`), and `career_synced` is always `false` in the sync summary, token
+or no token. The pooled client still keeps `PolicyPinnedPlayer` on `GetCareerRank` and returns
+`sync.ErrNoPinnedToken` for a player without their own token; no sync step calls it today. The
+Spartan customization cron is the one caller that needs the player s own token, and keeps its
+`HasPlayer` guard for that reason.
 
 The `backfill --csr` / `--shared-csr` passes and the film commands (`archive-films`,
 `backfill-killsource --online`, `replay-events`) follow the same doctrine: `--gamertag` names the

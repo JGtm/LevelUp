@@ -18,8 +18,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-
-	"levelup/go-api/internal/domain"
 )
 
 // clientSansTokenPropre : un HaloClient dont le seul comportement utile est de rendre
@@ -59,14 +57,5 @@ func TestSyncCareerRank_AutreErreur_Remontee(t *testing.T) {
 
 	if _, err := syncCareerRank(context.Background(), client, "2533274800000000"); !errors.Is(err, panne) {
 		t.Errorf("erreur = %v, attendu la panne d'origine (pas d'avalement)", err)
-	}
-}
-
-// TestPostSyncResult_CareerSyncedResteFaux — le contrat observé par la CLI : sans token
-// propre, `career_synced=false`, et c'est une information, pas un échec.
-func TestPostSyncResult_CareerSyncedResteFaux(t *testing.T) {
-	var r domain.PostSyncResult
-	if r.CareerSynced {
-		t.Error("CareerSynced doit valoir false par défaut")
 	}
 }
