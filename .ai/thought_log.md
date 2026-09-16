@@ -1,3 +1,13 @@
+## [2026-09-16 — date VRAIE] Chantier décodeur — ERRATUM DE DATES, fusions 2.6.0 et revue-M2, revue adversariale anticipée
+
+**Statut** : Complété.
+
+**Erratum.** L'horloge NTP du poste et les dates de commit git font foi : nous sommes le 2026-09-16. Les entrées de ce journal et du plan étiquetées « 2026-09-17 » et « 2026-09-18 » (M1 clos, lots 2.1 à 2.10, V15 à V17, fusions 2.3 et 2.5.f) datent toutes du 2026-09-16 (ou de la nuit du 15 au 16) ; l'ordre des entrées est juste. Pas de réécriture de masse : les noms `*_2026-09-17.md`, le tag `parc-schema54-avant-M1-2026-09-17` et la sauvegarde `replays_schema54_avant_M1_2026-09-17` restent, avec cette note (plan §1.4 V18). Règle appliquée désormais : `date +%F` avant toute date écrite.
+
+**Décisions et résultats.** (1) Revue adversariale ANTICIPÉE des lots M2 déjà fusionnés (workflow Opus, 4 lentilles, 2 sceptiques par constat, 34 agents) : 15 constats bruts, 8 confirmés (1 P1 : `docs/SYNC_GUIDE` décrivait au présent les quatre révisions du lot 2.6 ; 7 P2), 7 réfutés dont un cluster de quatre lentilles sur `replay-corpus-gate/finaliser` réfuté pour pré-existence seulement. (2) Lot correctif `revue-M2` fusionné (2fbc6cbf2) : SYNC_GUIDE daté et mis au futur, ratchet 2.10.2 avec test de péremption, godocs de `collect`/`decodeFilmForMatch` remises en place, conformité table 2.1 x catalogue dérivée du corps de `TableProfil` par go/parser, corpus gate : le verdict des témoins présents prime sur la couverture incomplète. Les trois constats `filmdec` (doc inversée) attendent 2.5.c (§4 D1 (revue M2)). (3) Lot 2.6.0 fusionné (73502aec8) : `film/revision`, mécanisme d'empreinte partagé, égal aux deux goldens existants du premier coup, arbitrage chemin relatif à la racine, garde-rail contre toute copie du motif. (4) Lot 2.4 livré (ccf6f3a88, 248 fichiers, GrammarRev .29) : équivalence 20/20 à zéro différence sur la branche ; corpus gate en attente de la base partagée, tenue par un backfill killsource lancé par une AUTRE session Claude de l'utilisateur (PID 39636) — la règle « un décodage à la fois » n'est pas tenue par la machine quand deux sessions décodent ; consigné, pas d'action sur ce processus.
+
+**Prochaine étape** : corpus gate 2.4 dès la libération de la base, fusion 2.4 (`merge_24.sh`), lancement 2.5 (brief prêt), puis 2.6 (brief prêt) ; recuisson du parc à la clôture M2 à demander à l'utilisateur (D3 (validation)).
+
 ## [2026-09-18] Chantier décodeur — fusion du lot 2.3 (plus de globale, plus de verrou), correctif CI himap, lancement 2.4 / 2.5.f / mesure D1 (validation)
 
 **Statut** : Complété (fusion) / En cours (lots lancés).
