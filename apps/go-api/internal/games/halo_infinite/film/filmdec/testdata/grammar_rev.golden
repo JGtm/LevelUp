@@ -443,6 +443,10 @@
 #               `GrammaireBalayage`, un champ du profil. La generation stricte etait le second
 #               heritage silencieux de `killsource` vers la cuisson : elle est ecrite.
 #               Un cadre de trame se prend au contexte (`FilmContext.CadreDeBalayage`).
-#               Ratchet 43 -> 30. AUCUN OCTET N EST LU AUTREMENT.
+#               La CAPTURE DE POSITION (six variables decrivant UN record en cours) devient
+#               `captureDePosition`, un champ du LECTEUR ; l histogramme des index absolus
+#               rejoint `Observation` ; `lastRepVersion` et `LastRepVersion()` sont supprimes
+#               (aucun appelant). Ratchet 43 -> 23, dont UNE seule encore ecrite.
+#               AUCUN OCTET N EST LU AUTREMENT.
 #               `KillSourceDecoderRev` ne bouge PAS (golden refige) ; `SchemaVersion` reste 60.
-grammar-2026-09-15.27	e6e75c400a800cd4a7d08470f0ef78509b595bf857d30763341ef00a0d3d81b4
+grammar-2026-09-15.27	27eef947eafb123f3db6462692d2af9bb1755affc42c9c70f38b6b651227acb0

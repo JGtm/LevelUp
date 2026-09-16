@@ -18,8 +18,8 @@ package filmdec
 // from the runtime PrecisionDescriptor (pd); `BitReader.fullPrecision` = the
 // FUN_14076f91c runtime gate (received, not read from the stream).
 func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescriptor) {
-	posCaptureStartBit = br.BitPos() // entry bit (== component StartBit) for sample attribution
-	posCaptureSlot = accumSlot       // slot du record courant (attribution multi-entités)
+	br.cap.startBit = br.BitPos()  // bit d entree (== StartBit du composant) pour l attribution
+	br.cap.slot = br.cap.accumSlot // slot du record courant (attribution multi-entites)
 	if br.calibratedSkip() {
 		skipCalibratedPosition(br)
 		return
@@ -31,7 +31,7 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 	if bUsePred {
 		bHandle := br.ReadBit()                    // FUN_1406cf008 R(1)
 		readRawVec3(br)                            // FUN_1406d676c(...,0x60) = R(96) : AVANCE le curseur
-		keepBaseline()                             // réutilisation baseline : ré-émet prev, JAMAIS les 96 bits bruts
+		br.keepBaseline()                          // réutilisation baseline : ré-émet prev, JAMAIS les 96 bits bruts
 		consumePositionHandleTail(br, bHandle, pd) // same tail whether bDelta 0 or 1
 		return
 	}
@@ -74,7 +74,7 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 		// sienne dans FUN_14076e4ec).
 		if fullPrecisionGate(br) {
 			readRawVec3(br) // FUN_1406d676c(...,0x60) = R(96) : AVANCE le curseur (keep, pas une coord)
-			keepBaseline()
+			br.keepBaseline()
 		} else {
 			consumePredictedDelta(br, pd) // FUN_14076f3ec
 		}
@@ -149,7 +149,7 @@ func consumePredictedAbsolute(br *BitReader, pd PrecisionDescriptor) {
 			w := absAxisWFor(br, pidx, i)                     // largeur par index (7ter.54) ou uniforme
 			v[i] = dequantWorldAxis(br, br.ReadBits(w), w, i) // FUN_140cc5128 axe i
 		}
-		seedAbsolute(PosKindAbsolute, v) // predFlag==1 = position absolue = seed d'accumulation
+		br.seedAbsolute(PosKindAbsolute, v) // predFlag==1 = position absolue = seed d'accumulation
 	}
 }
 
@@ -158,9 +158,9 @@ func consumePredictedAbsolute(br *BitReader, pd PrecisionDescriptor) {
 // deltas (dominant) OR 3 axis-width words, OR an absolute fallback.
 func consumePredictedDelta(br *BitReader, pd PrecisionDescriptor) {
 	if br.ReadBit() { // FUN_14076f3ec R(1); set => predicted absent -> absolute fallback
-		absViaFallback = true
+		br.cap.viaRepli = true
 		consumeAbsoluteWithGate(br, pd)
-		absViaFallback = false
+		br.cap.viaRepli = false
 		return
 	}
 	if br.ReadBit() { // FUN_14076f550 mask; set => fixed signed 8-bit deltas (dominant)
@@ -171,7 +171,7 @@ func consumePredictedDelta(br *BitReader, pd PrecisionDescriptor) {
 			n := signed8(br.ReadBits(8))
 			d[i] = float32(n) * br.deltaQuantum()
 		}
-		applyDelta(PosKindDelta8, d)
+		br.applyDelta(PosKindDelta8, d)
 		return
 	}
 	// mask clear => FUN_1424cbed4 -> FUN_140cc5128 : delta axis-width. C'est un delta SIGNÉ
@@ -185,7 +185,7 @@ func consumePredictedDelta(br *BitReader, pd PrecisionDescriptor) {
 		half := float32(uint64(1) << (w - 1))
 		d[i] = (float32(q) - half) * br.deltaQuantum() // multiple ENTIER de Q, centré (q==half -> 0)
 	}
-	applyDelta(PosKindDeltaAxis, d)
+	br.applyDelta(PosKindDeltaAxis, d)
 }
 
 // consumeQuantVec3WithGate porte l'epine de FUN_14076e524 (lecteur de vec3 quantifie
@@ -298,10 +298,10 @@ func consumeAbsolutePayload(br *BitReader, pd PrecisionDescriptor) {
 		return
 	}
 	kind := PosKindAbsolute
-	if absViaFallback {
+	if br.cap.viaRepli {
 		kind = PosKindAbsFallback
 	}
-	seedAbsolute(kind, v) // absolue in-map = seed d'accumulation pour les deltas ultérieurs
+	br.seedAbsolute(kind, v) // absolue in-map = seed d'accumulation pour les deltas ultérieurs
 }
 
 // consumePositionHandleTail mirrors the bHandle-gated tail shared by FUN_1406cfe44

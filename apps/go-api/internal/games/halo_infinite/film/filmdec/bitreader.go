@@ -22,6 +22,10 @@ type BitReader struct {
 	// `param_4` force. Cf. [ProfilDeBalayage] pour ce qu il porte et [BitReader.poserProfil]
 	// pour qui l installe.
 	p ProfilDeBalayage
+	// cap est l ETAT DE CAPTURE de ce lecteur (lot 2.3) : ou le composant i0 courant a
+	// commence, a quel slot il appartient, et le monde sur lequel les positions
+	// s accumulent. Cf. [captureDePosition] — six variables de paquet jusqu au lot 2.3.
+	cap captureDePosition
 }
 
 // NewBitReader returns a reader positioned at the first bit of buf.

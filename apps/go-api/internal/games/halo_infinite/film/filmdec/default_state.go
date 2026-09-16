@@ -90,11 +90,10 @@ const bipedDefaultStateTailBits = 0
 // neuf appels ne pouvaient rien emettre. La divergence de largeur du rep qu'il servait a
 // localiser (166 contre 198 bits) est close depuis, et ecrite dans la grammaire ci-dessus.
 
-// lastRepVersion (DEBUG) = la valeur uVar10 (version) lue au dernier appel du rep.
-var lastRepVersion uint32
-
-// LastRepVersion retourne la version du dernier rep décodé.
-func LastRepVersion() uint32 { return lastRepVersion }
+// `lastRepVersion` ET `LastRepVersion()` ONT DISPARU AU LOT 2.3 : une variable de paquet
+// « DEBUG » qui gardait la version du dernier rep decode, et son accesseur exporte — SANS
+// AUCUN APPELANT dans le depot, tests compris. Ce n etait pas un reglage a deplacer, c etait
+// du code mort (regle 7).
 
 // BipedDefaultStateEndBit runs the FUN_140F44C38 grammar (consumeBipedDefaultState)
 // starting at absolute bit offset stateBit over buf and returns the bit position
@@ -140,7 +139,6 @@ func consumeBipedDefaultState(br *BitReader) {
 	if br.ReadBit() { // g0 = FUN_1406cf008
 		uVar10 = uint32(br.ReadBits(8)) // FUN_140F44C38 inlined R(8)
 	}
-	lastRepVersion = uVar10
 
 	// Player-representation-name: R(1) gate; if bit==1 -> R(32) (FUN_14080dec4).
 	// Polarity: bVar16 = (bit==0); the body runs on !bVar16 == (bit==1).
@@ -233,7 +231,7 @@ func consumeBipedDefaultStateMovement(br *BitReader) {
 	consumePresenceMask(br) // [M1] FUN_1406d7610 : masque de présence
 	// i0 object-position (FUN_1406cfe44 chemin absolu / FUN_14076e29c spawn convergent sur
 	// FUN_14076e524) : precHigh R(1) + idxSel R(1) + idx R(IndexW) + 3×R(axisW).
-	posCaptureStartBit = br.BitPos()
+	br.cap.startBit = br.BitPos()
 	consumeAbsoluteWithGate(br, br.traversal()) // FUN_14076e524 : vec3 quantifié absolu (emitPos)
 }
 

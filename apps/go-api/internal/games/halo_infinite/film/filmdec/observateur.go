@@ -285,6 +285,30 @@ type Observation struct {
 	ChaineImmediat, ChaineProfond, ChaineAmbigu, ChaineAucun, ChaineBudget int
 	// ResyncValides compte les reprises par resynchronisation validee (diagnostic).
 	ResyncValides int
+	// IndexAbsolus : histogramme des index de plage rencontres sur les chemins ABSOLUS de i0
+	// (7ter.54 axe 3). Purement observationnel — incremente sur l axe 0 de chaque lecture, ne
+	// change AUCUNE consommation de bits. C est la mesure qui dit si l index dominant est 0
+	// (bornes de la carte) ou pas, donc quelle ligne de la table de largeurs pese reellement.
+	// C etait la variable de paquet `absIdxHist` jusqu au lot 2.3.
+	IndexAbsolus map[int]int
+}
+
+// compterIndexAbsolu incremente l histogramme des index de plage absolus.
+func (o *Observation) compterIndexAbsolu(idx int) {
+	if o.IndexAbsolus == nil {
+		o.IndexAbsolus = map[int]int{}
+	}
+	o.IndexAbsolus[idx]++
+}
+
+// prendreIndexAbsolus rend l histogramme et le remet a zero.
+func (o *Observation) prendreIndexAbsolus() map[int]int {
+	out := make(map[int]int, len(o.IndexAbsolus))
+	for k, v := range o.IndexAbsolus {
+		out[k] = v
+	}
+	o.IndexAbsolus = map[int]int{}
+	return out
 }
 
 // observateur : l observateur DU PROCESSUS. Jamais nil — ce sont ses CHAMPS qui sont nuls en
