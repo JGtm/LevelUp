@@ -109340,3 +109340,44 @@ par mutation. Quatre P2 consignés au plan §8.
 annexe A du plan : reprise du sync de Nuzzles (6 500, post-sync complet), backfills de rattrapage,
 films des 200 plus récents, cuisson, `replay_build_location` → `local`, serveur relancé — quand
 la base sera libre.
+
+## [2026-09-16] Nuzzles — sync complet par le pool, rattrapages, films ; rejeux différés — Complété (opérations)
+
+**Statut** : Complété. Aucun code touché (opérations sur les bases locales avec la CLI bâtie sur
+`feat/v75` @ b4de1fc16, après fusion de `wt/sync-pool`).
+
+**Décision technique principale** : première exécution réelle du chemin « profil sans token propre
+synchronisé par le pool ». Quatre passes : (1) 6 slots × 3 req/s → un seul `HTTP 429` sur
+`GetMatchHistory` (start=225) a mis fin à la pagination et la passe s'est déclarée `success,
+inserted=0` — défaut de robustesse du moteur (`paginateAndPersistHistory` casse sur la première
+erreur d'historique), consigné ; (2) `--token-pool-size 1` → « aucun slot créé » : le plafond
+compte les sources tentées, pas les slots sains (Chocoboflor, révoqué, pris en premier),
+consigné ; (3) 6 slots × 1 req/s → 5 140 matchs en 83 min sans 429, post-sync complet (perf
+4 874, citations 5 161, dominance 5 140, sessions 7 163, 0 erreur fatale) ; (4) re-parcours après
+application de la migration d'élargissement (`backfill … --dry-run` applique les migrations
+shared sans appel API ; `sync-full` ne le fait pas) → les 2 matchs à gros score insérés.
+Rattrapages : perf 0 (déjà couvert), citations +146, LUSR +2 581, CSR +3 917 (154 sans
+récapitulatif), CSR partagé 4 037 matchs fetchés / 30 041 lignes. Films : `backfill-killsource
+--online --limit 200 --gamertag Nuzzles` → les 200 matchs les plus récents de Nuzzles (15/09 →
+20/08), 200/200 films au cache, 1 match en échec de fusion crédit/film (victime divergente,
+`0458aba1-65c8-474e-bfe8-a4bcc96ba95f`). Rejeux : NON cuits (décision utilisateur) — le chantier
+décodeur a changé le schéma cette nuit, `backfill-replay --dry-run` voit 1 586 films à
+construire et 0 à jour ; la recuisson du parc revient à ce chantier.
+
+**Résultats observés** : Nuzzles = 7 165 matchs distincts en base (API : 6 818 — l'historique
+`matchmaking` renvoie plus que le compteur affiché ; pas un doublon), liste d'amis vide, aucun
+groupe. `match_registry.team_{0,1}_score` = INTEGER sur la base réelle, 7 index intacts.
+`replay_build_location` remis à `local`, serveur relancé 17:51 (`match_count=9132`). Le pool
+tourne sur 6 slots (JGtm + 5 `auth_only`) ; 3 RT révoqués inchangés.
+
+**Conclusion / prochaine étape** : découvertes consignées au plan §8 (429 → arrêt silencieux,
+plafond de pool, aide du drapeau `--gamertag`, `snapshot ready DE FORCE`, metadata RO/RW dans le
+même process, token propre encore résolu au post-sync). Nuzzles peut se connecter (SSO Xbox ;
+instance non verrouillée en local) ; en prod, `instance_locked` à basculer côté admin si
+l'early access doit être fermé.
+
+Addendum 17:58 : `replay_build_location` REMIS À `off` sur alerte de la session pilote du décodeur —
+la `feat/v75` locale (b4de1fc16, SchemaVersion 54) est 33 commits devant / 192 derrière
+`origin/feat/v75` (da258bf76, jalon M1, SchemaVersion 60) ; à `local`, une simple ouverture de
+match dans l'UI aurait recuit un artefact au schéma 54 par-dessus le parc au schéma 60. Aucune
+cuisson entre 17:51 et 17:58. Fusion d'`origin/feat/v75` dans le local = décision utilisateur.
