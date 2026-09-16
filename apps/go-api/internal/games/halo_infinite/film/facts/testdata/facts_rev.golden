@@ -130,4 +130,12 @@
 #               (16)) : les lignes en base portent ces valeurs dans `decoder_rev`, et renommer la
 #               serie les rendrait toutes candidates pour un changement de vocabulaire. Aucun
 #               octet n est lu autrement, aucun backlog ne s ouvre.
-killsource-2026-09-16.2	d4c061e86cce6a258d201aa83c6bfc98485f5e13b103de4794c3cadecf77097b
+
+#   2026-09-16  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.6.2). Les types de DONNEES
+#               purs qui traversent une frontiere de couche ont DESCENDU dans `film/types`
+#               (feuille sans import du depot) ; la couche n en garde que des ALIAS DATES, et un
+#               alias de type est LE MEME type pour le compilateur. Aucune lecture, aucune
+#               largeur, aucune borne ne change : la sortie est identique a l octet et aucun
+#               match deja decode n est candidat au backlog. La FORME de ces types est desormais
+#               figee par `film/types/testdata/shapes.golden`, a cote de cette revision.
+killsource-2026-09-16.2	88896267214e3c78dd51fea246f823c746f519f42bfb411713ed7a527b1342b3

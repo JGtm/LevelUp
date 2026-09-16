@@ -69,40 +69,6 @@ const (
 	FlagSpanHome = "home"
 )
 
-// FlagSpan est UN intervalle d etat d un drapeau, borne en millisecondes.
-type FlagSpan struct {
-	// State : l une des quatre constantes ci-dessus. Une valeur inconnue est IGNOREE — elle
-	// n est ni un portage ni un retour au socle, et l inventer serait pire que la taire.
-	State string
-	// StartMS / EndMS bornent l intervalle. EndMS est INCLUS.
-	StartMS, EndMS int
-	// XUID est le porteur, en decimal. Vide pour les etats non portes — et pour un portage
-	// que le pont n a pas nomme : une prise sans proprietaire ne se compte a personne.
-	XUID string
-}
-
-// FlagTrack est LA VIE D UN DRAPEAU sur toute la partie. Le regroupement est par OBJET : en CTF
-// il y a deux drapeaux, donc au plus deux pistes. C est LUI qui porte l identite « meme
-// drapeau » de la definition — deux prises de deux drapeaux differents ne se replient jamais
-// l une l autre, meme a une milliseconde d ecart.
-type FlagTrack struct {
-	// Team est l equipe PROPRIETAIRE du drapeau (-1 = inconnue). Publiee pour se lire ; la
-	// regle n en depend pas, c est la piste qui fait l identite.
-	Team int
-	// Spans est la vie du drapeau. L ordre d entree n a pas d importance : la fonction trie.
-	Spans []FlagSpan
-}
-
-// FlagGrabsNetPlayer porte les deux comptes d UN joueur sur UN match.
-type FlagGrabsNetPlayer struct {
-	// XUID du joueur, en decimal.
-	XUID string
-	// Raw : les prises BRUTES lues sur les pistes — le compteur officiel, jonglage compris.
-	Raw int
-	// Net : les prises NETTES, jonglage replie.
-	Net int
-}
-
 // FlagGrabsNetResult est le resultat d un match.
 type FlagGrabsNetResult struct {
 	// Measured dit si la grandeur est PUBLIABLE. Faux quand la fenetre n est pas declaree :
