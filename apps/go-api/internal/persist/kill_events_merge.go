@@ -279,20 +279,25 @@ func MergeCreditAndFilm(base, film KillSourceBatch) (KillSourceBatch, MergeStats
 // `(match_id, time_ms)` a apparie deux morts differentes, c est-a-dire que la propriete sur
 // laquelle repose l appariement est fausse a cet instant.
 //
-// CE QU IL VOIT ENCORE, ET CE QU IL NE VOIT PLUS (lot 2.9). Il ne s applique qu aux paires que
-// [apparier] a FORMEES, et l appariement se fait desormais par la VICTIME quand les deux cotes la
-// portent. Deux consequences :
+// LES DEUX SEULES FACONS D ARRIVER ICI (lot 2.9, corrige a la revue adversariale du 2026-09-16).
+// La fonction ne voit QUE des paires deja formees par [apparier], et il n en existe que deux
+// sortes :
 //
-//	victimes divergentes    n atteint plus cette fonction par [MergeCreditAndFilm] : deux victimes
-//	                        resolues et differentes ne sont plus une paire, mais DEUX MORTS
-//	                        (temoin `9f9b19e5@63757`, en-tete du fichier). Le test reste, comme
-//	                        INVARIANT de l appariement : s il rougit un jour, c est que la paire
-//	                        a ete formee sur autre chose que l identite, et il vaut mieux perdre
-//	                        une passe que de recopier l arme d une mort sur une autre.
-//	tueurs divergents       ATTEIGNABLE, et c est le garde-fou vivant : la paire porte la MEME
-//	                        victime au MEME instant — donc la meme mort, une victime ne mourant
-//	                        pas deux fois dans la meme milliseconde — et deux tueurs differents.
-//	                        Les deux cotes se contredisent : la passe tombe, bruyamment.
+//	passe 1, par la victime          les deux cotes portent la MEME victime resolue.
+//	passe 3, repli sur l instant     l instant porte UNE mort de credit et UNE ligne de film EN
+//	                                 TOUT, et l une des deux victimes au moins est absente.
+//
+// LA VICTIME DIVERGENTE EST DONC IMPOSSIBLE PAR CONSTRUCTION DE CES DEUX PASSES : en passe 1 les
+// victimes sont egales, en passe 3 l une est vide — et une absence n est pas une divergence. Le
+// test reste, comme INVARIANT : le jour ou une paire serait formee sur autre chose que l identite,
+// il vaut mieux perdre une passe que recopier l arme d une mort sur une autre. (Il n est PAS
+// garde au nom d une unicite mesuree cote film : cette unicite-la n est pas mesurable en base,
+// cf. §4 D2 (2.9) du plan — c est la construction de l appariement qui le fonde, pas un chiffre.)
+//
+// LE TUEUR DIVERGENT, LUI, EST ATTEIGNABLE, et c est le garde-fou vivant : la paire porte la MEME
+// victime au MEME instant — donc la meme mort, une victime ne mourant pas deux fois dans la meme
+// milliseconde — et deux tueurs resolus differents. Les deux cotes se contredisent sur QUI a tue :
+// la passe tombe, bruyamment.
 //
 // L ABSENCE N EST PAS UNE DIVERGENCE : le film ne resout pas toujours un xuid (631 victimes,
 // 754 tueurs). C est le cas normal d un nom que le roster n a pas su rattacher, et c est la

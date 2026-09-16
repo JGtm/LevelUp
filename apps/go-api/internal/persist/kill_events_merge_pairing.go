@@ -29,10 +29,12 @@ package persist
 //	                            les morts de credit de l instant portent une victime resolue.
 //	                            C est une AUTRE MORT, prouvee telle : elle se conserve et se
 //	                            compte, elle ne se rend plus en erreur.
-//	refusee                     tout le reste : l identite manque d un cote et le repli sur
-//	                            l instant ne tranche pas. Rien n est enrichi, rien n est ajoute
-//	                            (la mort est peut-etre deja dans la base : l ajouter la
-//	                            compterait deux fois), et l instant se COMPTE.
+//	refusee                     tout le reste, et notamment TOUT RESIDU D UN INSTANT A
+//	                            MULTIPLICITE (deux morts ou plus d un cote) que les deux passes
+//	                            precedentes n ont pas tranche. Rien n est enrichi, rien n est
+//	                            ajoute (la mort est peut-etre deja dans la base : l ajouter la
+//	                            compterait deux fois), et l instant se COMPTE. Refuser plutot
+//	                            que tirer au sort : cf. [appariement.repliSurLInstantClassique].
 //
 // CE QUI N EST JAMAIS DECLARE « AUTRE MORT » : une ligne de film sans `victim_xuid`, et une ligne
 // de film dont l instant porte une mort de credit elle-meme sans `victim_xuid`. Sans les deux
@@ -121,22 +123,54 @@ func (ap *appariement) apparierInstant(base, film []KillEventInsert, b, f []int)
 		prisF[x] = true
 	}
 
-	// 3. LE REPLI SUR L INSTANT, quand il ne reste qu une mort de chaque cote. Il sert la
-	// population que le film ne resout pas (1 252 lignes sans `victim_xuid` au 2026-09-16) : sans
-	// lui, ces morts perdraient leur arme.
-	resteB, nB := seulIndiceLibre(prisB)
-	resteF, nF := seulIndiceLibre(prisF)
-	if nB == 1 && nF == 1 {
-		ap.filmPourCredit[b[resteB]] = f[resteF]
-		ap.verdict[f[resteF]] = filmApparie
+	// 3. LE REPLI SUR L INSTANT — ET SEULEMENT SUR L INSTANT CLASSIQUE.
+	if ap.repliSurLInstantClassique(base, film, b, f, prisB, prisF) {
 		return
 	}
 	// UNE LIGNE DE FILM REFUSEE COMPTE L INSTANT. Une mort de credit sans ligne de film en face,
 	// elle, est le cas ordinaire des 25,6 % de morts que le film ne publie pas : elle ne compte
 	// rien.
-	if nF > 0 {
+	if nbLibres(prisF) > 0 {
 		ap.instantsAmbigus++
 	}
+}
+
+// repliSurLInstantClassique : LE SEUL CAS OU L INSTANT SEUL APPARIE ENCORE — une mort de credit et
+// une ligne de film, EN TOUT, a cet instant, dont l une au moins n a pas de victime resolue.
+//
+// ─── POURQUOI IL SE COMPTE SUR LE TOTAL DE L INSTANT, ET JAMAIS SUR LES RESIDUS ────────────
+//
+// La premiere version appariait « ce qu il reste des deux cotes quand il n en reste qu un de
+// chaque » : un repli PAR ELIMINATION. Il apparie alors deux lignes qui n ont AUCUNE identite
+// commune, et la revue adversariale du lot (2026-09-16, deux relecteurs, sondes rejouees) a
+// montre qu il suffit d un instant a deux morts de credit pour qu il se trompe :
+//
+//	credit [A, B] + film [A, A]    A s apparie, le second A n est ni apparie ni « autre mort »
+//	                               (A == A), et l elimination l apparie a B -> victime
+//	                               divergente -> LE FILM ENTIER REFUSE, la regression meme que
+//	                               ce lot ferme
+//	credit [A, B] + film [A, ""]   l elimination donne a B l arme, les parts et l assistant
+//	                               d une AUTRE mort — ecrits en base, servis par `_latest`,
+//	                               et `AmbiguousInstants` tombe a 0 : RIEN ne le signale
+//
+// Des que l instant porte une multiplicite d un cote, un residu que les passes 1 et 2 n ont pas
+// tranche est donc REFUSE : c est « refuser plutot que tirer au sort », applique a la lettre.
+//
+// LES DEUX VICTIMES RESOLUES NE PASSENT JAMAIS ICI, et le test le dit explicitement plutot que de
+// s en remettre aux passes precedentes : egales, la passe 1 les a appariees ; differentes, la
+// passe 2 en a fait une orpheline d instant partage (c est le temoin `9f9b19e5@63757`).
+func (ap *appariement) repliSurLInstantClassique(
+	base, film []KillEventInsert, b, f []int, prisB, prisF []bool,
+) bool {
+	if len(b) != 1 || len(f) != 1 || prisB[0] || prisF[0] {
+		return false
+	}
+	if base[b[0]].VictimXUID != "" && film[f[0]].VictimXUID != "" {
+		return false
+	}
+	ap.filmPourCredit[b[0]] = f[0]
+	ap.verdict[f[0]] = filmApparie
+	return true
 }
 
 // seuleMortDeLaVictime : l indice, DANS `b`, de la seule mort de credit libre dont la victime est
@@ -176,20 +210,16 @@ func autreMortProuvee(base []KillEventInsert, b []int, ligne KillEventInsert) bo
 	return true
 }
 
-// seulIndiceLibre : le premier indice non pris, et COMBIEN il y en a. Le compte est ce qui
-// permet de dire « il n en reste qu un de chaque cote » sans allouer.
-func seulIndiceLibre(pris []bool) (int, int) {
-	premier, n := -1, 0
-	for i, p := range pris {
-		if p {
-			continue
+// nbLibres : combien d entrees ne sont pas prises. C est le compte qui dit « au moins une ligne de
+// film est restee sans reponse », donc que l instant se compte ambigu.
+func nbLibres(pris []bool) int {
+	n := 0
+	for _, p := range pris {
+		if !p {
+			n++
 		}
-		if premier < 0 {
-			premier = i
-		}
-		n++
 	}
-	return premier, n
+	return n
 }
 
 // indexerParInstant : `time_ms -> indices`, dans l ordre d entree. L instant reste le CADRE de
