@@ -40,6 +40,13 @@ func newIdentityBuilder() *identityBuilder {
 // fallbackKey sert aux comptes sans identité Xbox (ni xuid ni gamertag) : ils
 // restent visibles sous leur nom d'utilisateur plutôt que d'être perdus. Rend
 // nil seulement si les trois entrées sont vides.
+//
+// Clé d'identité = xuid (ADR 0035 D1). Le gamertag n'est un repli de fusion que
+// pour les sources qui N'ONT PAS de xuid (profil legacy sans `xuid`, dossier
+// joueur orphelin) : une source qui porte un xuid ne fusionne par gamertag
+// qu'avec un enregistrement encore SANS xuid, jamais avec un xuid différent.
+// Deux personnes distinctes ne peuvent donc être confondues que si l'une
+// d'elles n'a de xuid nulle part (R3, revue du 2026-09-16).
 func (b *identityBuilder) resolve(xuid, gamertag, fallbackKey string) *domain.IdentityRecord {
 	if xuid != "" {
 		key := "xuid:" + xuid
@@ -196,17 +203,38 @@ func (d *Directory) addAccounts(ctx context.Context, b *identityBuilder) error {
 		slog.ErrorContext(ctx, "player_directory: lecture des comptes impossible", "err", err)
 		return err
 	}
+	// userstore.List itère une map : sans ordre imposé ici, « le premier compte
+	// lu » d'un xuid changerait à chaque appel et le compte principal affiché
+	// alternerait (revue adversariale ronde 2, 2026-09-16). Ordre total : date de
+	// création puis nom — le plus ancien compte est le principal.
+	sort.SliceStable(accounts, func(i, j int) bool {
+		if accounts[i].CreatedAt != accounts[j].CreatedAt {
+			return accounts[i].CreatedAt < accounts[j].CreatedAt
+		}
+		return strings.ToLower(accounts[i].Username) < strings.ToLower(accounts[j].Username)
+	})
 	for _, u := range accounts {
 		rec := b.resolve(u.XUID, u.Gamertag, "user:"+strings.ToLower(u.Username))
 		if rec == nil {
 			continue
 		}
-		rec.Account = &domain.AccountRef{
+		account := domain.AccountRef{
 			Username:    u.Username,
 			Role:        u.Role,
 			CreatedAt:   u.CreatedAt,
 			LastLoginAt: u.LastLoginAt,
 		}
+		if rec.Account != nil {
+			// Deux comptes pour un même xuid (cas réel : compte mot de passe +
+			// compte SSO liés à la même identité Xbox). Le premier lu reste le
+			// compte principal, les suivants sont portés tels quels : rien n'est
+			// écrasé, et computeAnomalies pose account_duplicate (R1, 2026-09-16).
+			slog.WarnContext(ctx, "player_directory: plusieurs comptes pour un même xuid",
+				"xuid", u.XUID, "username", u.Username, "principal", rec.Account.Username)
+			rec.DuplicateAccounts = append(rec.DuplicateAccounts, account)
+			continue
+		}
+		rec.Account = &account
 		if rec.Gamertag == "" {
 			rec.Gamertag = u.Gamertag
 		}

@@ -9,7 +9,13 @@ import type { AdminIdentitiesResponse } from '@/lib/api/types'
 import { IdentitiesSection } from './IdentitiesSection'
 
 const dataRef: { current: AdminIdentitiesResponse | undefined } = { current: undefined }
-const lockRef = { locked: false, isPending: false, isError: false, setLocked: vi.fn() }
+const lockRef: {
+  locked: boolean
+  isPending: boolean
+  isError: boolean
+  errorCode: string | null
+  setLocked: ReturnType<typeof vi.fn>
+} = { locked: false, isPending: false, isError: false, errorCode: null, setLocked: vi.fn() }
 
 vi.mock('../management/identitiesQueries', () => ({
   useAdminIdentities: () => ({
@@ -22,6 +28,7 @@ vi.mock('../management/identitiesQueries', () => ({
 }))
 
 vi.mock('../management/useInstanceLock', () => ({
+  LOCK_FORCED_CODE: 'instance_lock_forced',
   useInstanceLock: () => lockRef,
 }))
 
@@ -149,7 +156,18 @@ describe('IdentitiesSection — interrupteur « Instance fermée »', () => {
   it('échec de la bascule : message visible, jamais un silence', () => {
     dataRef.current = makeData()
     lockRef.isError = true
+    lockRef.errorCode = null
     render(<IdentitiesSection />)
     expect(screen.getByText("Le verrou n'a pas pu être modifié.")).toBeTruthy()
+  })
+
+  it('verrou forcé par l environnement (409) : message spécifique, pas l échec générique', () => {
+    dataRef.current = makeData()
+    lockRef.isError = true
+    lockRef.errorCode = 'instance_lock_forced'
+    render(<IdentitiesSection />)
+    expect(screen.getByText(/forcé par l'environnement du serveur/)).toBeTruthy()
+    expect(screen.queryByText("Le verrou n'a pas pu être modifié.")).toBeNull()
+    lockRef.errorCode = null
   })
 })

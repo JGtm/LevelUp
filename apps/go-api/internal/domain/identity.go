@@ -91,8 +91,10 @@ const (
 	// déclare (données écrites pour un joueur que l'app ne connaît pas).
 	AnomalyPlayerDirOrphan = "player_dir_orphan"
 	// AnomalyWatchedWithoutProfile : le daemon watcher suit en live un couple
-	// (joueur, titre) sans profil suivi. Depuis les portes de l'ADR 0035 D3 c'est
-	// devenu impossible à créer ; l'anomalie reste la preuve que la porte tient.
+	// (joueur, titre) sans profil suivi. Les portes de l'ADR 0035 D3 empêchent de
+	// le créer (SSO, onboarding), et la pause ou la purge d'un titre retire le
+	// couple du watcher (revue du 2026-09-16) ; l'anomalie reste la preuve que
+	// tout cela tient.
 	AnomalyWatchedWithoutProfile = "watched_without_profile"
 	// AnomalyProfileWithoutAccount : un profil sans compte de connexion. SITUATION
 	// NORMALE — c'est le cas de tous les amis suivis par l'administrateur.
@@ -100,6 +102,11 @@ const (
 	// AnomalyProfileWithoutToken : un profil sans credentials propres. SITUATION
 	// NORMALE — le pool d'auth prête les credentials d'un autre joueur.
 	AnomalyProfileWithoutToken = "profile_without_token"
+	// AnomalyAccountDuplicate : plusieurs comptes users.json portent le même xuid
+	// (cas réel : un compte mot de passe et un compte SSO liés à la même identité
+	// Xbox). Le premier lu est porté par Account, les autres par DuplicateAccounts
+	// — aucun n'est caché, aucun n'est écrasé. Revue du 2026-09-16 (R1).
+	AnomalyAccountDuplicate = "account_duplicate"
 )
 
 // Sévérités d'anomalie. `warning` = à regarder (une incohérence entre registres) ;
@@ -127,14 +134,17 @@ type IdentityAnomaly struct {
 // plus aucun registre ne réclame. Les masquer reviendrait à reproduire le trou
 // que cet annuaire existe pour fermer.
 type IdentityRecord struct {
-	XUID       string            `json:"xuid,omitempty"`
-	Gamertag   string            `json:"gamertag,omitempty"`
-	Profiles   []ProfileRef      `json:"profiles"`
-	Account    *AccountRef       `json:"account,omitempty"`
-	Token      *TokenRef         `json:"token,omitempty"`
-	Watched    []string          `json:"watched"`
-	OrphanDirs []OrphanDirRef    `json:"orphan_dirs,omitempty"`
-	Anomalies  []IdentityAnomaly `json:"anomalies"`
+	XUID     string       `json:"xuid,omitempty"`
+	Gamertag string       `json:"gamertag,omitempty"`
+	Profiles []ProfileRef `json:"profiles"`
+	Account  *AccountRef  `json:"account,omitempty"`
+	// DuplicateAccounts : autres comptes portant le même xuid (voir
+	// AnomalyAccountDuplicate). Vide dans le cas nominal.
+	DuplicateAccounts []AccountRef      `json:"duplicate_accounts,omitempty"`
+	Token             *TokenRef         `json:"token,omitempty"`
+	Watched           []string          `json:"watched"`
+	OrphanDirs        []OrphanDirRef    `json:"orphan_dirs,omitempty"`
+	Anomalies         []IdentityAnomaly `json:"anomalies"`
 }
 
 // WatchedPlayerRef est un couple (joueur, titre) actuellement suivi en live par

@@ -7275,6 +7275,7 @@ export interface components {
         IdentityRecord: {
             account?: components["schemas"]["AccountRef"];
             anomalies: components["schemas"]["IdentityAnomaly"][] | null;
+            duplicate_accounts?: components["schemas"]["AccountRef"][] | null;
             gamertag?: string;
             orphan_dirs?: components["schemas"]["OrphanDirRef"][] | null;
             profiles: components["schemas"]["ProfileRef"][] | null;

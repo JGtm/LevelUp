@@ -40,19 +40,6 @@ func (f *fakeProfiles) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummar
 	return out, nil
 }
 
-func (f *fakeProfiles) HasTrackedProfile(titleSlug, xuid string) (bool, error) {
-	players, err := f.LoadPlayers(titleSlug)
-	if err != nil {
-		return false, err
-	}
-	for _, p := range domain.SyncablePlayers(players) {
-		if p.XUID == xuid {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 type fakeAccounts struct {
 	users []domain.AdminUserSummary
 	err   error
@@ -259,6 +246,50 @@ func TestList_CompteSansProfil(t *testing.T) {
 		t.Fatalf("dossiers orphelins = %+v", rec.OrphanDirs)
 	}
 	if resp.Counts[domain.AnomalyAccountWithoutProfile] != 1 || resp.Counts[countWarnings] != 2 {
+		t.Fatalf("compteurs = %v", resp.Counts)
+	}
+}
+
+// TestList_DeuxComptesMemeXuid (R1, revue du 2026-09-16) : un compte mot de
+// passe et un compte SSO liés au même xuid — cas réel en production. Le premier
+// lu reste le compte principal, le second est porté en doublon et signalé ;
+// aucun des deux n'est écrasé ni caché.
+func TestList_DeuxComptesMemeXuid(t *testing.T) {
+	d := newTestDirectory(t, Deps{
+		Profiles: &fakeProfiles{players: []domain.PlayerSummary{
+			{PlayerSlug: "JGtm", Gamertag: "JGtm", XUID: "1", TitleSlug: testTitle, SyncEnabled: true},
+		}},
+		Accounts: &fakeAccounts{users: []domain.AdminUserSummary{
+			{Username: "JGtm", Role: domain.RoleAdmin, Gamertag: "JGtm", XUID: "1"},
+			{Username: "jgtm_xbox", Role: domain.RoleAdmin, Gamertag: "JGtm", XUID: "1"},
+		}},
+		Tokens: &fakeTokens{tokens: map[string]*auth.UserTokens{
+			"1": {XUID: "1", Gamertag: "JGtm", OAuthRefreshToken: "rt"},
+		}},
+		FS: &fakeFS{},
+	})
+
+	resp, err := d.List(context.Background())
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(resp.Identities) != 1 {
+		t.Fatalf("identités = %d, attendu 1 (un seul xuid)", len(resp.Identities))
+	}
+	rec := recordFor(t, resp, "1")
+	if rec.Account == nil || rec.Account.Username != "JGtm" {
+		t.Fatalf("compte principal = %+v, attendu le premier lu (JGtm)", rec.Account)
+	}
+	if len(rec.DuplicateAccounts) != 1 || rec.DuplicateAccounts[0].Username != "jgtm_xbox" {
+		t.Fatalf("doublons = %+v, attendu [jgtm_xbox]", rec.DuplicateAccounts)
+	}
+	if !hasCode(rec, domain.AnomalyAccountDuplicate) {
+		t.Fatalf("anomalies = %v, want %s", codes(rec), domain.AnomalyAccountDuplicate)
+	}
+	if hasCode(rec, domain.AnomalyAccountWithoutProfile) {
+		t.Fatalf("un doublon ne doit pas produire account_without_profile : %v", codes(rec))
+	}
+	if resp.Counts[domain.AnomalyAccountDuplicate] != 1 || resp.Counts[countWarnings] != 1 {
 		t.Fatalf("compteurs = %v", resp.Counts)
 	}
 }
@@ -506,34 +537,81 @@ func TestGet(t *testing.T) {
 	}
 }
 
-// TestHasTrackedProfile_Delegue : l'annuaire ne re-filtre pas — il pose la
-// question au lecteur de profils (une seule définition de « suivi »).
-func TestHasTrackedProfile_Delegue(t *testing.T) {
-	profiles := &fakeProfiles{players: []domain.PlayerSummary{
-		trackedProfile("Spartan", "111", testTitle),
-		{PlayerSlug: "Pause", Gamertag: "Pause", XUID: "222", TitleSlug: testTitle, SyncEnabled: false},
-	}}
-	d := newTestDirectory(t, Deps{Profiles: profiles})
+// TestGet_ParGamertagSeulementSansXuid (revue du 2026-09-16) : une identité
+// SANS xuid (dossier orphelin seul) se désigne par son gamertag ; une identité
+// qui a un xuid ne se désigne que par lui — jamais par gamertag.
+func TestGet_ParGamertagSeulementSansXuid(t *testing.T) {
+	d := newTestDirectory(t, Deps{
+		Profiles: &fakeProfiles{players: []domain.PlayerSummary{trackedProfile("Spartan", "111", testTitle)}},
+		FS:       &fakeFS{dirs: map[string][]string{testTitle: {"Spartan", "Fantome"}}},
+	})
 
-	for _, tc := range []struct {
-		name  string
-		xuid  string
-		title string
-		want  bool
-	}{
-		{"profil suivi", "111", testTitle, true},
-		{"profil en pause", "222", testTitle, false},
-		{"autre titre", "111", testOtherTitle, false},
-		{"xuid inconnu", "000", testTitle, false},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := d.HasTrackedProfile(context.Background(), tc.title, tc.xuid)
-			if err != nil {
-				t.Fatalf("HasTrackedProfile: %v", err)
-			}
-			if got != tc.want {
-				t.Fatalf("got %v, want %v", got, tc.want)
-			}
-		})
+	rec, err := d.Get(context.Background(), "fantome")
+	if err != nil {
+		t.Fatalf("Get par gamertag (insensible a la casse): %v", err)
+	}
+	if rec.XUID != "" || len(rec.OrphanDirs) != 1 || rec.OrphanDirs[0].Name != "Fantome" {
+		t.Fatalf("identite = %+v", rec)
+	}
+	if _, err := d.Get(context.Background(), "Spartan"); !errors.Is(err, port.ErrIdentityNotFound) {
+		t.Fatalf("une identite AVEC xuid ne se designe pas par gamertag : err = %v", err)
+	}
+	if _, err := d.Get(context.Background(), "111"); err != nil {
+		t.Fatalf("Get par xuid: %v", err)
+	}
+}
+
+// TestList_OrdreStable_ComptesSansIdentiteXbox (revue du 2026-09-16) : deux
+// comptes sans gamertag ni xuid arrivent dans un ordre différent (map du store)
+// — le tableau ne doit pas danser.
+func TestList_OrdreStable_ComptesSansIdentiteXbox(t *testing.T) {
+	a := domain.AdminUserSummary{Username: "zoe", Role: domain.RoleUser}
+	b := domain.AdminUserSummary{Username: "adam", Role: domain.RoleUser}
+	order := func(users ...domain.AdminUserSummary) []string {
+		d := newTestDirectory(t, Deps{Profiles: &fakeProfiles{}, Accounts: &fakeAccounts{users: users}, FS: &fakeFS{}})
+		resp, err := d.List(context.Background())
+		if err != nil {
+			t.Fatalf("List: %v", err)
+		}
+		out := make([]string, 0, len(resp.Identities))
+		for _, rec := range resp.Identities {
+			out = append(out, rec.Account.Username)
+		}
+		return out
+	}
+	first, second := order(a, b), order(b, a)
+	if len(first) != 2 || first[0] != "adam" || first[1] != "zoe" {
+		t.Fatalf("ordre = %v, attendu [adam zoe]", first)
+	}
+	if first[0] != second[0] || first[1] != second[1] {
+		t.Fatalf("ordre instable : %v puis %v", first, second)
+	}
+}
+
+// TestList_DeuxComptesMemeXuid_PrincipalDeterministe (revue ronde 2, 2026-09-16) :
+// le vrai store rend les comptes dans l'ordre d'une map. Quel que soit l'ordre
+// d'arrivée, le compte principal est le plus ANCIEN (created_at), puis le nom.
+func TestList_DeuxComptesMemeXuid_PrincipalDeterministe(t *testing.T) {
+	older := domain.AdminUserSummary{Username: "jgtm_xbox", Role: domain.RoleAdmin, Gamertag: "JGtm", XUID: "1", CreatedAt: "2026-06-03T20:01:58Z"}
+	newer := domain.AdminUserSummary{Username: "JGtm", Role: domain.RoleUser, Gamertag: "JGtm", XUID: "1", CreatedAt: "2026-06-12T21:04:30Z"}
+	principal := func(users ...domain.AdminUserSummary) (string, string) {
+		d := newTestDirectory(t, Deps{Profiles: &fakeProfiles{}, Accounts: &fakeAccounts{users: users}, FS: &fakeFS{}})
+		resp, err := d.List(context.Background())
+		if err != nil {
+			t.Fatalf("List: %v", err)
+		}
+		rec := recordFor(t, resp, "1")
+		if rec.Account == nil || len(rec.DuplicateAccounts) != 1 {
+			t.Fatalf("identite = %+v", rec)
+		}
+		return rec.Account.Username, rec.DuplicateAccounts[0].Username
+	}
+	p1, d1 := principal(older, newer)
+	p2, d2 := principal(newer, older)
+	if p1 != "jgtm_xbox" || d1 != "JGtm" {
+		t.Fatalf("principal = %q, doublon = %q, attendu le plus ancien (jgtm_xbox)", p1, d1)
+	}
+	if p1 != p2 || d1 != d2 {
+		t.Fatalf("le principal depend de l'ordre d'arrivee : %q/%q puis %q/%q", p1, d1, p2, d2)
 	}
 }

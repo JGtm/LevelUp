@@ -673,7 +673,31 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		titleOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/profiles/{player_slug}/titles/{slug}")
 		r.Use(middleware.TitleSlugFromPath("slug"))
 		r.Use(ownershipMW)
-		handlers.NewTitleSyncHandler(profileService).Mount(r, titleOpt)
+		// Le suivi live suit le profil : pause/purge retirent le couple du watcher,
+		// réactivation le remet (revue adversariale du 2026-09-16, P1).
+		handlers.NewTitleSyncHandler(profileService).
+			WithWatcher(func() handlers.TitleWatcher {
+				// DaemonController ne porte pas RemovePlayerTitle : même assertion
+				// que buildPlayerDirectory pour WatchedReader. nil si pas de daemon.
+				if tw, ok := daemon.(handlers.TitleWatcher); ok {
+					return tw
+				}
+				return nil
+			}).
+			WithPlayerLookup(func(titleSlug, playerSlug string) (domain.PlayerSummary, bool) {
+				players, err := cfg.LoadPlayers(titleSlug)
+				if err != nil {
+					slog.Warn("title sync: profils illisibles pour aligner le suivi live", "err", err, "titleSlug", titleSlug)
+					return domain.PlayerSummary{}, false
+				}
+				for _, p := range players {
+					if p.PlayerSlug == playerSlug {
+						return p, true
+					}
+				}
+				return domain.PlayerSummary{}, false
+			}).
+			Mount(r, titleOpt)
 	})
 
 	// Endpoints P1 : pages par joueur (Sprint 37 — DI via wire.ServiceRegistry)

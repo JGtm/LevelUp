@@ -43,7 +43,7 @@ describe('anomalySeverityToken', () => {
 })
 
 describe('anomalyLabelKey', () => {
-  it('traduit les six codes du serveur', () => {
+  it('traduit les sept codes du serveur', () => {
     for (const code of [
       'account_without_profile',
       'token_orphan',
@@ -51,6 +51,7 @@ describe('anomalyLabelKey', () => {
       'watched_without_profile',
       'profile_without_account',
       'profile_without_token',
+      'account_duplicate',
     ]) {
       expect(anomalyLabelKey(code)).toBe(`admin.identities.anomaly_${code}`)
     }

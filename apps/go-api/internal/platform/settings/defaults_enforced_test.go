@@ -112,3 +112,25 @@ func TestResolveForTitle_EnforcedDefaults(t *testing.T) {
 			cfg.InstanceLocked, cfg.CanSelfProvision)
 	}
 }
+
+// TestLoad_EnforcedDefaults_PermissiveKeysAlreadyPresent — fichier portant DÉJÀ
+// `instance_locked:false` et `can_self_provision:true` (c'est le cas de toute
+// instance existante : Save réécrit la struct complète) + mode appliqué : rien ne
+// change. C'est la décision de l'ADR 0035 D5 — une instance existante est
+// verrouillée par son administrateur, jamais par un déploiement — figée ici pour
+// qu'on ne la prenne pas pour un oubli (revue adversariale ronde 2, 2026-09-16).
+func TestLoad_EnforcedDefaults_PermissiveKeysAlreadyPresent(t *testing.T) {
+	path := writeSettings(t, map[string]any{
+		"lang": "fr", "instance_locked": false, "can_self_provision": true,
+	})
+	cfg, err := settings.NewStore(path).WithEnforcedDefaults(true).Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.InstanceLocked {
+		t.Error("valeur explicite false : le mode appliqué ne doit PAS la renverser")
+	}
+	if !cfg.CanSelfProvision {
+		t.Error("valeur explicite true : le mode appliqué ne doit PAS la renverser")
+	}
+}

@@ -30,6 +30,9 @@ func computeAnomalies(rec domain.IdentityRecord) []domain.IdentityAnomaly {
 	if rec.Token != nil && rec.Account == nil && !hasProfile {
 		out = append(out, warning(domain.AnomalyTokenOrphan, rec.XUID))
 	}
+	for _, dup := range rec.DuplicateAccounts {
+		out = append(out, warning(domain.AnomalyAccountDuplicate, dup.Username))
+	}
 	for _, dir := range rec.OrphanDirs {
 		out = append(out, warning(domain.AnomalyPlayerDirOrphan, dir.TitleSlug+"/"+dir.Name))
 	}

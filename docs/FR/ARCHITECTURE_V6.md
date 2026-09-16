@@ -23,6 +23,30 @@ data/
       stats.duckdb
 ```
 
+## Registres d'identité des joueurs (ADR 0035)
+
+Un joueur est connu de quatre registres aux cycles de vie et à la sensibilité différents :
+
+| Registre | Fichier | Clé | Contenu |
+|---|---|---|---|
+| Profils suivis | `db_profiles.json` | slug/gamertag par titre | `db_path`, `sync_enabled`, `initial_max_matches`, `auth_only` |
+| Comptes | `data/auth/users.json` | username | rôle, empreinte du mot de passe, xuid/gamertag liés |
+| Credentials | `data/auth/watcher_tokens/{xuid}.json` | xuid | tokens refresh/access/XSTS (ADR 0023) |
+| Suivi live | watcher daemon (en mémoire) | gamertag x titre | pollers, reconstruits depuis les profils au démarrage |
+
+Le **xuid est la seule clé de jointure** entre eux ; gamertag et slug sont des valeurs
+d'affichage et le composant de chemin sur disque. Le port `PlayerDirectory`
+(`internal/service/playerdirectory/`) est l'unique modèle de lecture composite
+(`GET /admin/identities`, section admin « Identités », `levelup identity list`) et l'unique
+chemin d'écriture pour l'onboarding (`Onboard`, seul appelant de
+`ProfileService.CreatePlayer`) et la purge (`Purge`, qui ne touche jamais la base partagée).
+Trois invariants sont tenus par des ratchets dans `internal/archlint/` : aucun sync ni suivi
+live sans profil suivi (`domain.ProfileGate` sur le coordinateur de sync, le daemon du watcher
+et le SSO Xbox), le verrou d'instance se lit uniquement via `authz.InstanceLocked`, et
+`playerdirectory` n'importe jamais DuckDB. Quand l'auth est appliquée et que
+`app_settings.json` n'a pas les clés, les défauts sont `instance_locked=true` et
+`can_self_provision=false` ; un admin est exempté des deux sur `POST /setup/players`.
+
 ## Tables clés (vue d'ensemble)
 
 ### metadata.duckdb

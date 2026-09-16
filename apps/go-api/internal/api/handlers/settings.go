@@ -236,6 +236,15 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 		}
 		slog.InfoContext(ctx, "settings: verrou d'instance modifié", "locked", *req.InstanceLocked)
 	}
+	// Verrou forcé par l'environnement (LEVELUP_INSTANCE_LOCKED) : le fichier ne
+	// peut pas l'ouvrir — écrire `false` réussirait sur disque alors que l'instance
+	// resterait fermée, et l'interrupteur admin se recocherait seul (revue
+	// adversariale du 2026-09-16). Refus explicite, quel que soit le mode d'auth.
+	if req.InstanceLocked != nil && !*req.InstanceLocked && h.cfg.InstanceLocked {
+		slog.WarnContext(ctx, "settings: déverrouillage refusé — verrou forcé par l'environnement")
+		return nil, humacore.NewError(http.StatusConflict, "instance_lock_forced",
+			"Le verrou est force par l'environnement (LEVELUP_INSTANCE_LOCKED) et ne peut pas etre leve depuis les reglages.")
+	}
 
 	// Validation des champs analyse.
 	if req.SessionGapMinutes != nil && *req.SessionGapMinutes < 0 {

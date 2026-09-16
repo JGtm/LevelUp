@@ -41,7 +41,7 @@ import {
   TOKEN_STATE_KEY,
   warningCount,
 } from '../management/identitiesDisplay'
-import { useInstanceLock } from '../management/useInstanceLock'
+import { LOCK_FORCED_CODE, useInstanceLock } from '../management/useInstanceLock'
 import { useAdminT, type TAdmin } from '../useAdminText'
 
 const EMPTY = '—'
@@ -142,7 +142,13 @@ function AnomalyBadges({ anomalies, tA }: { anomalies?: IdentityAnomaly[] | null
 
 /** Interrupteur « Instance fermée » — le verrou n'avait aucune interface. */
 function InstanceLockToggle({ tA }: { tA: TAdmin }) {
-  const { locked, isPending, isError, setLocked } = useInstanceLock()
+  const { locked, isPending, isError, errorCode, setLocked } = useInstanceLock()
+  // 409 instance_lock_forced : le verrou vient de l'environnement, pas du fichier —
+  // le dire, plutôt qu'un échec générique et une case qui se recoche seule.
+  const errorKey =
+    errorCode === LOCK_FORCED_CODE
+      ? 'admin.identities.lock_forced'
+      : 'admin.identities.lock_failed'
   return (
     <div className="space-y-1">
       <label className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -160,7 +166,7 @@ function InstanceLockToggle({ tA }: { tA: TAdmin }) {
         )}
       </label>
       <p className="max-w-xl text-xs text-muted-foreground">{tA('admin.identities.lock_help')}</p>
-      {isError && <p className="text-xs text-destructive">{tA('admin.identities.lock_failed')}</p>}
+      {isError && <p className="text-xs text-destructive">{tA(errorKey)}</p>}
     </div>
   )
 }

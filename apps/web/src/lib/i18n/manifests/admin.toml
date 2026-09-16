@@ -2336,6 +2336,10 @@ en = "Profile without an account"
 fr = "Profil sans identifiants"
 en = "Profile without credentials"
 
+[admin.identities.anomaly_account_duplicate]
+fr = "Plusieurs comptes pour ce joueur"
+en = "Several accounts for this player"
+
 [admin.identities.lock_label]
 fr = "Instance fermée"
 en = "Closed instance"
@@ -2351,3 +2355,7 @@ en = "Saving…"
 [admin.identities.lock_failed]
 fr = "Le verrou n'a pas pu être modifié."
 en = "The lock could not be changed."
+
+[admin.identities.lock_forced]
+fr = "Le verrou est forcé par l'environnement du serveur (LEVELUP_INSTANCE_LOCKED) : il ne peut pas être levé depuis cette page."
+en = "The lock is forced by the server environment (LEVELUP_INSTANCE_LOCKED): it cannot be lifted from this page."

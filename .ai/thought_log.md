@@ -108989,3 +108989,53 @@ compte du 2026-07-23. Cinq découvertes consignées en §10 du plan, dont deux �
 groupe dont l'identité purgée est PROPRIÉTAIRE ne se quitte pas (l'étape est rendue en échec
 plutôt que de supprimer le groupe d'autrui), et les 3 fixtures `token_orphan` locales qui
 attendent une décision.
+
+## [2026-09-16] Annuaire des joueurs (ADR 0035) — clôture : revues adversariales, correctifs, gates complets
+
+**Statut** : Complété (code + tests + docs ; commit de clôture en attente du feu vert utilisateur ;
+ni push ni merge).
+
+**Décision technique principale** : clôture du plan `.ai/PLAN_ANNUAIRE_JOUEURS_2026-09-15.md`
+(étapes 0-6 livrées par trois agents, un à la fois ; étape 7 par le pilote). Deux rondes de revue
+adversariale à contexte frais (skill `adversarial-review`, contrat écrit, deux relecteurs
+enchaînés) : ronde 1 (accès / anti-patterns / multi-titre) → 5 constats recevables, tous P1, tous
+corrigés ; ronde 2 (tests / front + re-vérification des 8 corrections) → 0 P0/P1, 2 P2 + 3
+réserves, corrigés ou acceptés avec test. Boucle convergente (5 → 0), pas de ronde 3. Registre
+daté : `.ai/REVUE_ANNUAIRE_JOUEURS_2026-09-15.md` (R1-R6 pilote, A1-A8 ronde 1, B1-B5 ronde 2).
+Correctifs notables : (1) pause/purge d'un titre retirent le couple du watcher et la réactivation
+le remet (`Daemon.RemovePlayerTitle`, `TitleSyncHandler.WithWatcher/WithPlayerLookup`) — sans
+cela un poller fantôme faisait grimper `sync_refused_no_profile`, le signal d'intrusion ; (2)
+deux comptes sur un même xuid (cas réel prod `JGtm`/`jgtm_xbox`) : `DuplicateAccounts` + anomalie
+`account_duplicate`, principal = le plus ancien (tri total avant lecture, le store itère une map),
+purge de tous les comptes, refus si l'un est admin ; (3) verrou forcé par l'environnement :
+`PATCH /settings {instance_locked:false}` → 409 `instance_lock_forced`, message spécifique côté
+web ; (4) `HasTrackedProfile` retiré du port (code mort : les portes lisent
+`config.AppConfig.HasTrackedProfile`, définition unique) ; (5) `identity purge` accepte le gamertag
+d'une identité SANS xuid (dossier orphelin) ; (6) littéral `users.json` centralisé
+(`config.UsersFilePath[In]`) + ratchet, qui a attrapé une 4e copie (`cmd/admin`) ; (7) ordre stable
+des comptes sans identité Xbox ; (8) branche d'échec de `PurgeIdentityData` journalisée ET testée
+(seam `WithRemoveAll`) ; (9) assertions de compilation sur les interfaces résolues par assertion de
+type au câblage. ADR 0035 amendée (D2, D3, D5, D6 + Outcome). CLAUDE.md (registres d'identité,
+ADR 0035), ARCHITECTURE_V6 EN + FR (section « registres d'identité »).
+
+**Résultats observés** : machine au repos — `go test ./...` vert (3 min 34 s à chaud ; à froid
+`internal/sync` exige `-timeout 30m`, 501 s) ; `go test -tags=integration ./internal/sync/...
+./internal/persist/...` vert ; `golangci-lint --new-from-merge-base=origin/main` 0 issue ; `tsc`
+propre ; vitest complet 717 fichiers / 7 707 tests, 0 échec (`--testTimeout=60000` nécessaire au
+premier passage d'un arbre neuf) ; `openapi-check` OK ; lint couleurs 0 violation ; eslint 0
+erreur (26 avertissements préexistants). Le flake d'`internal/service` observé par l'agent A sous
+contention ne s'est pas reproduit.
+
+**Action prod (2026-09-15 19:44 UTC, feu vert explicite)** : `instance_locked=true` écrit EN PLACE
+dans `/opt/levelup/app_settings.json` (inode 263613 conservé — `sed -i` aurait laissé le conteneur
+sur l'ancien inode), sauvegarde `app_settings.json.bak-20260915194349`, vérifié hôte + conteneur +
+`GET /bootstrap`. Origine : intrusion SSO du 2026-07-23 17:44 UTC (`XxGdakilla187xX`, xuid
+`2533274796795729`), instance jamais verrouillée depuis la livraison du verrou (2026-06-08).
+
+**Conclusion / prochaine étape** : (a) commit de clôture sur `wt/player-directory` après feu vert
+(44 fichiers, 9 nouveaux) ; (b) merge dans `feat/v75` et déploiement = décision utilisateur ;
+(c) après déploiement : `levelup identity purge 2533274796795729 --yes` sur le VPS puis
+`GET /admin/identities` → 0 warning ; (d) décisions produit ouvertes : groupe dont l'identité
+purgée est propriétaire, 3 fixtures `token_orphan` locales, toggle `settings.go` qui fait confiance
+à `sess.Role` (plan §10) ; (e) le plan frère « amis / invitations » doit utiliser
+`authz.InstanceLocked` et `PlayerDirectory.Onboard` (étape 5.3/5.4).

@@ -17,7 +17,6 @@ package playerdirectory
 
 import (
 	"context"
-	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -37,12 +36,12 @@ const (
 )
 
 // ProfilesReader lit les profils de suivi (`db_profiles.json`). Implémenté par
-// *config.AppConfig. HasTrackedProfile en fait partie pour qu'il n'existe qu'UNE
-// définition de « suivi » dans le dépôt (ADR 0035 D3) : l'annuaire délègue, il
-// ne re-filtre pas.
+// *config.AppConfig. La définition de « suivi » (domain.SyncablePlayers via
+// config.AppConfig.HasTrackedProfile) est celle que lisent les portes de l'ADR
+// 0035 D3 ; l'annuaire ne la redéfinit pas et ne la ré-expose pas (revue du
+// 2026-09-16 : une délégation sans appelant était du code mort).
 type ProfilesReader interface {
 	LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, error)
-	HasTrackedProfile(titleSlug, xuid string) (bool, error)
 }
 
 // AccountsReader lit les comptes de connexion. Implémenté par *userstore.Store.
@@ -186,18 +185,16 @@ func (d *Directory) Get(ctx context.Context, xuid string) (domain.IdentityRecord
 			return rec, nil
 		}
 	}
-	return domain.IdentityRecord{}, port.ErrIdentityNotFound
-}
-
-// HasTrackedProfile délègue au lecteur de profils : une seule définition de
-// « suivi » (ADR 0035 D3), celle de domain.SyncablePlayers.
-func (d *Directory) HasTrackedProfile(ctx context.Context, titleSlug, xuid string) (bool, error) {
-	if d.profiles == nil {
-		slog.ErrorContext(ctx, "player_directory: lecteur de profils absent — profil suivi refusé",
-			"title_slug", titleSlug, "xuid", xuid)
-		return false, nil
+	// Repli : une identité SANS xuid (dossier joueur orphelin, profil legacy) se
+	// désigne par son gamertag — sinon `identity purge` ne saurait pas retirer le
+	// résidu que `identity list` signale (revue adversariale du 2026-09-16). Une
+	// identité qui a un xuid ne se désigne que par lui : pas d'ambiguïté possible.
+	for _, rec := range resp.Identities {
+		if rec.XUID == "" && strings.EqualFold(rec.Gamertag, xuid) {
+			return rec, nil
+		}
 	}
-	return d.profiles.HasTrackedProfile(titleSlug, xuid)
+	return domain.IdentityRecord{}, port.ErrIdentityNotFound
 }
 
 // sortRecords impose l'ordre total documenté sur List.
@@ -211,8 +208,23 @@ func sortRecords(records []domain.IdentityRecord) {
 		if gi != gj {
 			return gi < gj
 		}
-		return records[i].XUID < records[j].XUID
+		if records[i].XUID != records[j].XUID {
+			return records[i].XUID < records[j].XUID
+		}
+		// Comptes sans identité Xbox (ni gamertag ni xuid) : l'ordre de
+		// userstore.List est celui d'une map, donc aléatoire — sans ce dernier
+		// critère, ces lignes permutaient à chaque rafraîchissement (revue
+		// adversariale du 2026-09-16).
+		return accountName(records[i]) < accountName(records[j])
 	})
+}
+
+// accountName rend le nom du compte principal en minuscules, "" sans compte.
+func accountName(rec domain.IdentityRecord) string {
+	if rec.Account == nil {
+		return ""
+	}
+	return strings.ToLower(rec.Account.Username)
 }
 
 func hasWarning(rec domain.IdentityRecord) bool {
