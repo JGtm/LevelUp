@@ -1,33 +1,69 @@
-package killcollector
+// Package facts PORTE LA REVISION DE LA COUCHE DES FAITS, ET RIEN D AUTRE.
+//
+// La couche `facts` est un ARBRE de paquets (`killsource`, `objectives`, `fallback`) : aucun
+// d eux n est « la couche ». La revision, elle, en designe UNE seule — celle que chaque ligne de
+// kill porte en base et qui commande le backlog de redecodage. Elle vit donc a la RACINE de
+// l arbre, dans un paquet qui ne declare que cela : lui donner du code le rendrait importable
+// pour autre chose, et un import de commodite finirait par ramener une dependance dans le
+// paquet que tout le monde lit pour une chaine de caracteres.
+package facts
 
-// killsource_decoder_rev.go — LA REVISION DU DECODEUR DE SOURCE DE KILL, ET SON HISTORIQUE.
+// rev.go — LA REVISION DE LA COUCHE DES FAITS, ET SA CHRONIQUE.
 //
-// # POURQUOI UN FICHIER A ELLE SEULE (revue de jalon M1, ronde 2, constat F4)
+// # D OU ELLE VIENT (lot 2.6.1, 2026-09-16)
 //
-// DEPLACEMENT PUR depuis `collector.go` le 2026-09-16 : pas une ligne de code n a change, pas un
-// commentaire n a ete reecrit. `collector.go` etait a 816 lignes — au-dessus du seuil de 500 du
-// depot et en dette gelee —, et 97 de ces lignes etaient l HISTORIQUE d une constante, pas
-// l enchainement telechargement / decodage / ecriture que ce fichier declare etre « TOUT ce
-// qu il fait ». L historique grossit d un paragraphe a chaque lot de decodage ; le laisser la
-// faisait grossir le collecteur pour une raison qui ne le concerne pas.
+// Elle est L HERITIERE DIRECTE de `killcollector.KillSourceDecoderRev` : meme serie, meme
+// valeur, meme historique — le fichier qui suit EST celui de la constante d avant, deplace par
+// `git mv`, et sa chronique n a pas ete renumerotee (decision V15 (16) du
+// PLAN_DECODEUR_FILM_2026-09-13 : M2 est un jalon a ZERO difference de contenu, il n ouvre aucun
+// backlog). La constante ne vit plus dans `sync/killcollector` : ce paquet la LIT et l ecrit sur
+// chaque ligne produite, il ne la PORTE plus.
 //
-// # CE QUI N A PAS BOUGE, ET POURQUOI
+// POURQUOI CE DEPLACEMENT EST LE CORRECTIF D UN TROU, ET PAS UN RANGEMENT. Tant que la constante
+// vivait hors de l arbre hache, un deplacement pur de la constante elle-meme laissait l empreinte
+// verte sans regeneration (mesure du 2026-09-16) — et surtout l empreinte ne hachait que
+// `killsource/`, alors que la sortie des faits depend aussi d `objectives/`, de `fallback/`, de
+// la GRAMMAIRE et de la facon dont les octets sont atteints. Le defaut etait ecrit noir sur blanc
+// dans l en-tete d avant (« le gate couvre le decodeur, pas son amont ») : une correction de
+// grammaire qui change la sortie de `killsource` sans toucher un octet de `killsource/` ne
+// faisait sonner personne, et les lignes deja en base portaient la revision courante — exclues A
+// VIE du backlog.
 //
-// `metricBijAmbigue` reste dans `collector.go` : ce n est pas un bloc autonome, c est UNE ligne
-// du groupe `const` des compteurs de sante, a cote des quatre autres compteurs de provenance de
-// la bijection. L en sortir aurait scinde un groupe qui se lit ensemble — ce ne serait plus un
-// deplacement pur.
+// # CE QUE L EMPREINTE HACHE DESORMAIS
 //
-// L EMPREINTE NE BOUGE PAS NON PLUS. `decoder_rev_fingerprint_test.go` hache les sources
-// non-test de `internal/games/halo_infinite/film/facts/killsource/` — jamais ce paquet-ci. Ce
-// deplacement laisse donc le ratchet vert SANS regeneration du golden, et c est verifie.
-
-// KillSourceDecoderRev — la version du decodeur, ecrite sur CHAQUE ligne produite.
+//	TOUT L ARBRE `film/facts/`   killsource, objectives, fallback ; CE fichier exclu (il DECRIT
+//	                             la couche, il n en fait pas partie).
+//	LA VALEUR DE `source.Rev`    la porte aux octets (V15 (12)).
+//	LA VALEUR DE `GrammarRev`    la grammaire, tant que `grammar.Rev` n existe pas (volet
+//	                             grammaire du lot 2.6, apres 2.5.e).
 //
-// Elle ne sert pas a faire joli : c est elle qui permettra de savoir QUELS matchs redecoder
-// apres un changement de decodage, au lieu de tout reprendre (1 325 films a 8-30 s = 3 a 11 h).
-// LA FAIRE EVOLUER a chaque changement de decodage qui change les lignes produites.
+// Hacher des VALEURS amont et pas leurs sources est ce qui rend la regle mecanique : une montee
+// d une couche du dessous fait monter les faits sans que personne ait a y penser. C est plus
+// strict qu avant, et c est le comportement voulu — un faux positif coute une ligne, un faux
+// negatif coute un parc de lignes fausses en base.
 //
+// # CE QU UNE MONTEE COMMANDE : LE BACKLOG, ET IL PART SUR SIGNAL
+//
+// Chaque ligne de `match_kill_events` porte dans `decoder_rev` la revision qui l a produite. Une
+// montee rend candidates au redecodage toutes les lignes portant une revision anterieure
+// (`conditionBacklog`, `sync/killcollector/postsync.go`). Le redecodage du parc est un geste de
+// PRODUCTION, reserve au pilote SUR SIGNAL UTILISATEUR (decision D6 du plan), JAMAIS automatique.
+//
+// # LA CHRONIQUE — UNE ENTREE PAR RANG, ET RIEN QU UNE
+//
+// ENTREE `killsource-2026-09-16.2` (2026-09-16, lot 2.6.1) : LA CONSTANTE DESCEND DANS LA COUCHE,
+// SA VALEUR NE BOUGE PAS. Le rang est celui de la fusion du lot 1.9.7 (l appariement par identite
+// de paquet) et il est repris TEL QUEL : rien dans le decodage n a change, il n y a rien a
+// redecoder, et aucun backlog ne s ouvre. Ce qui change est le PERIMETRE de l empreinte (tout
+// l arbre des faits, plus les valeurs de `source.Rev` et de `GrammarRev`) et le LIEU de la
+// constante. La regle « montee de `facts.Rev` = backlog killsource » vaudra a partir du premier
+// changement de SORTIE qui suivra.
+//
+// # L HISTORIQUE DE LA SERIE `killsource-...`, REPRIS SANS RENUMEROTATION
+//
+// Ce qui suit est la chronique telle qu elle a ete ecrite rang par rang, du temps ou la constante
+// s appelait `KillSourceDecoderRev` et vivait dans `sync/killcollector`. Elle n a pas ete
+// reecrite : une chronique reecrite ne dit plus ce qui s est passe.
 // 2026-09-05 : `killsource-2026-07-31` -> `killsource-2026-09-05`. LE CONTRAT CI-DESSUS N AVAIT
 // PAS ETE TENU : 14 commits ont touche `games/halo_infinite/film/facts/killsource/` depuis v7.3.0 sans
 // un seul bump (le seul commit qui touchait cette ligne etait un deplacement de paquet). Les
@@ -175,15 +211,15 @@ package killcollector
 // `grammar.LecteurSur` (l ancien `NewBitReader`, renomme parce que le type ne lit plus, il
 // decore). Aucune largeur, aucun ordre de bits, aucune borne ne change : les lignes produites
 // sont identiques a l octet, et aucun match deja decode n est candidat au backlog.
-const KillSourceDecoderRev = "killsource-2026-09-16.2"
+const Rev = "killsource-2026-09-16.2"
 
-// L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
-// `testdata/killsource_decoder_rev.golden` porte le couple (revision, empreinte) et
-// `decoder_rev_fingerprint_test.go` le compare aux sources NON-TEST de
-// `internal/games/halo_infinite/film/facts/killsource/`.
+// L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
+// `testdata/facts_rev.golden` porte le couple (revision, empreinte) avec son historique, et
+// `rev_test.go` le compare aux sources NON-TEST de tout l arbre `film/facts/` et aux valeurs
+// amont.
 //
 // POURQUOI UN GOLDEN ET PLUS UNE CONSTANTE (revue adversariale du 2026-09-12, constat P1-4).
 // Tant que le test ne comparait que l EMPREINTE a une constante, remettre la revision ci-dessus a
 // sa valeur d avant — en gardant la nouvelle empreinte — restait VERT : le gate ne tenait qu un
 // des deux gestes qu il pretendait tenir. Le golden porte les DEUX, et le test distingue les deux
-// echecs : « le decodeur a change » et « la revision a change sans le decodeur ».
+// echecs : « les sources de la couche ont change » et « la revision a change sans la couche ».

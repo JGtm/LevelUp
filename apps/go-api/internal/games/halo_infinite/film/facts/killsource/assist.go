@@ -54,45 +54,6 @@ package killsource
 
 import "sort"
 
-// Assist : ce que le kill-event declare a cote du tueur.
-//
-// UN SEUL ASSISTANT — ET LA PORTEE DE CE CONSTAT EST PLUS ETROITE QU IL N Y PARAIT. La grammaire
-// n expose qu un emplacement d assistant PAR KILL-EVENT ; le seul surplus qu on sache observer est
-// donc celui de DEUX KILL-EVENTS ATTACHES A LA MEME MORT et nommant des assistants differents.
-// Ce que `Extra == 0` etablit est exactement cela, et rien de plus : *aucune mort n a recu deux
-// ENREGISTREMENTS nommant des assistants distincts*. Ce n est PAS << aucune mort ne porte deux
-// assistants >> — cette seconde affirmation-la n est mesuree par personne (voir la RESERVE
-// ARITHMETIQUE sur `9b191a7f`, plus bas).
-type Assist struct {
-	// Name : l assistant. Vide quand le kill-event n en declare pas, ou quand il en declare un
-	// que l on refuse (voir `Rejected`).
-	Name string
-	// Index : l indice de replication brut, -1 quand le champ est absent. C est la quantite qui
-	// ne depend d aucune bijection — a citer si un nom surprend.
-	Index int
-	// Rejected : le motif de refus, vide quand il n y en a pas. `AssistRejectSelf` ou
-	// `AssistRejectRoster`.
-	Rejected string
-	// Known : un kill-event a-t-il ete attache a cette mort ? FAUX ne veut pas dire << pas
-	// d assistant >> : cela veut dire QU ON NE SAIT PAS. La distinction est la raison d etre de
-	// ce champ, et elle doit survivre jusqu en base.
-	Known bool
-	// Extra : nombre d assistants DISTINCTS EN SURPLUS observes sur cette mort, au-dela de celui
-	// qui est publie dans `Name`.
-	//
-	// C EST LE GARDE-FOU DE L HYPOTHESE << UN SEUL ASSISTANT >>, ET IL DOIT ETRE PORTE PAR LA
-	// LIGNE, PAS SEULEMENT PAR L AGREGAT. Tant que ce champ n existait pas, la colonne
-	// `assist_extra_count` de `match_kill_events` n etait alimentable par personne :
-	// `SELECT SUM(assist_extra_count)` — que la documentation presente comme LE DECLENCHEUR DE
-	// MIGRATION vers une table fille — valait zero PAR CONSTRUCTION, jamais par mesure. Un
-	// garde-fou muet est pire que pas de garde-fou : il rassure.
-	//
-	// PORTEE : voir le commentaire du type. Ce compteur ne voit qu un surplus porte par un SECOND
-	// KILL-EVENT ATTACHE ; il est structurellement aveugle a un second assistant qui serait
-	// declare autrement.
-	Extra int
-}
-
 // DamageShare : une part de degats en POURCENTAGE ENTIER, avec son etat de mesure.
 //
 // TROIS ETATS, JAMAIS DEUX — exactement comme [Assist.Known], et pour la meme raison : NULL n est

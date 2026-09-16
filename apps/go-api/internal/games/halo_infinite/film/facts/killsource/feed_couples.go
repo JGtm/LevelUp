@@ -60,40 +60,6 @@ type killDeBot struct {
 	victime int
 }
 
-// CoupleStats : d ou vient le couple (tueur, victime) de chaque instant du kill-feed.
-//
-// AUCUN RATIO — les taux se calculent chez le lecteur, avec le denominateur qu il nomme. Les
-// trois premiers champs se somment exactement aux kills du feed que la structure a classes.
-type CoupleStats struct {
-	// MemeInstant : le kill-feed porte le kill ET la mort au meme instant. Le couple est ECRIT
-	// par le feed ; aucune lecture ni aucun repli n intervient.
-	MemeInstant int
-	// Lus : couples dont le KILL-EVENT 85 a decide la victime. C est la part de la publication
-	// qui vient d une LECTURE et non d une reconstruction.
-	Lus int
-	// Recolles : LE REPLI (`repli_couple_recolle_sur_le_voisin`) — la victime vient de la mort
-	// d un instant voisin parce que le film s est tu. Tant qu il monte, des couples sont encore
-	// DEVINES : c est lui qui dira quand le repli pourra etre retire (D14 d).
-	Recolles int
-	// Perdus : kills que ni la lecture ni le repli n ont su appareiller (`orphK`). La victime
-	// n est pas au feed et le film ne la nomme pas : c est le dead-state qui tranchera.
-	Perdus int
-	// VictimesBotLues : kills dont le film NOMME un bot en victime. Population qui n entre dans
-	// aucun couple ; avant ce lot elle etait RECOLLEE sur la mort d un humain.
-	VictimesBotLues int
-	// Muet : instants ou la lecture s est tue — aucun kill-event de la fenetre ne nomme ce tueur
-	// par deux indices EPINGLES. C est le diagnostic typé qui ouvre le repli (D14 b).
-	Muet int
-	// Ambigu : instants ou DEUX kill-events non consommes nomment ce tueur et DES VICTIMES
-	// DIFFERENTES. La lecture ne tranche pas ; le repli reprend, et le compteur le dit.
-	Ambigu int
-	// Accord / Contradiction : LE CONTROLE de la lecture par le recollage, jamais l inverse
-	// (D14 b). `Accord` = le voisin immediat porte bien la mort du joueur que le film nomme ;
-	// `Contradiction` = le film nomme un joueur dont AUCUN voisin immediat ne porte la mort. La
-	// valeur publiee ne bouge pas — la lecture prime —, la contradiction se compte.
-	Accord, Contradiction int
-}
-
 // resoudreCouples : LA DECOMPOSITION DU KILL-FEED, sous la decision du kill-event 85.
 //
 // Elle remplit `pairs`, `real`, `lus`, `fab`, `botLus`, `orphK` et `orphD`, et rend ses

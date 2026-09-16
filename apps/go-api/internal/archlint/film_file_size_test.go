@@ -99,13 +99,15 @@ var plafondsParFichier = map[string]int{
 	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1569,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
+	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
+	// dans `film/types`, le fichier est passe de 531 a 492 lignes — sous le seuil de 500, donc la
+	// table n a plus a le connaitre (c est ce que `TestPlafondsDeTailleNeSontPasPerimes` exige).
 	// --- entres en table A LA FUSION DU LOT 2.7g DANS L INTEGRATION (2026-09-17) : ces sept
 	// fichiers etaient sous le seuil (ou n existaient pas) a la base du lot et l ont depasse par la
 	// vague 2 de la famille 1.9 et le schema 60, avant que le ratchet n existe ici. Meme regle :
 	// chaque valeur ne peut que descendre. `document_vehicles.go` et `score_timeline.go` sont dans
 	// le perimetre du volet 2.7p (scission en cours) et sortiront de la table a sa fusion.
 	"internal/games/halo_infinite/film/facts/fallback/registre_killsource.go":                         555,
-	"internal/games/halo_infinite/film/facts/killsource/assist.go":                                    531,
 	"internal/games/halo_infinite/film/replay/document_shape_test.go":                                 511,
 	"internal/games/halo_infinite/film/facts/killsource/e197_identite_paquet_mesure_research_test.go": 654,
 	"internal/games/halo_infinite/film/facts/objectives/e1911_manches_mesure_research_test.go":        523,

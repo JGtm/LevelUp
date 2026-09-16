@@ -1,0 +1,107 @@
+# GOLDEN — LA FORME PUBLIQUE DES TYPES DE CONTRAT DU DECODEUR DE FILM. Ne PAS editer a la main.
+#
+# UN SEUL FICHIER POUR TOUS LES TYPES (decision V15 (13) du PLAN_DECODEUR_FILM_2026-09-13) : un
+# golden par type ferait autant de fichiers que de types pour UNE seule question. Modele :
+# film/replay/testdata/document_shape.golden, qui fige un arbre entier de 989 lignes.
+#
+# CE QU IL PORTE
+#
+#   ligne 1 de donnees   les REVISIONS des couches qui produisent ces types, au moment ou la
+#                        forme a ete figee : `revisions<TAB>source=...<TAB>facts=...`.
+#   une section par type `## <Nom> (<couche>)`, puis une ligne par champ :
+#                        `<Nom><TAB><type Go><TAB><tag JSON, ou - quand il n y en a pas>`.
+#
+# L ORDRE DES CHAMPS FAIT PARTIE DE LA FORME : il fixe la lecture d un litteral non nomme et
+# l ordre de serialisation. Un champ ajoute, retire, renomme ou retype est VISIBLE depuis les
+# autres couches — c est une rupture de contrat, pas un detail interne.
+#
+# CE QU IL NE GARDE PAS : ni le comportement, ni les commentaires. Un godoc reformule fait rougir
+# le gate d EMPREINTE de la couche (qui hache les octets), pas celui-ci. Les deux sont
+# complementaires : l empreinte dit « quelque chose a bouge », ce golden dit QUOI.
+#
+# REGENERATION (formes ET revisions a la fois) :
+#
+#   LEVELUP_UPDATE_TYPES_SHAPES=1 go test ./internal/games/halo_infinite/film/types/ \
+#     -run TestFormesDesTypesEgalentLeGolden -update-types-shapes
+revisions	source=source-2026-09-16	facts=killsource-2026-09-16.2
+
+## ChunkMeta (source)
+Index	int	-
+ChunkType	int	-
+StartMS	int	-
+
+## Packet (source)
+Chunk	int	-
+Index	int	-
+Type	int	-
+TS	uint64	-
+Payload	[]uint8	-
+
+## ApparStats (facts/killsource)
+Identite	int	-
+Fenetre	int	-
+BotFenetre	int	-
+NonRevendiqueeFenetre	int	-
+CouplesSansIdentite	int	-
+
+## Assist (facts/killsource)
+Name	string	-
+Index	int	-
+Rejected	string	-
+Known	bool	-
+Extra	int	-
+
+## CoupleStats (facts/killsource)
+MemeInstant	int	-
+Lus	int	-
+Recolles	int	-
+Perdus	int	-
+VictimesBotLues	int	-
+Muet	int	-
+Ambigu	int	-
+Accord	int	-
+Contradiction	int	-
+
+## DeathInstant (facts/objectives)
+XUID	string	-
+TimeMS	int	-
+
+## FlagGrabsNetPlayer (facts/objectives)
+XUID	string	-
+Raw	int	-
+Net	int	-
+
+## FlagSpan (facts/objectives)
+State	string	-
+StartMS	int	-
+EndMS	int	-
+XUID	string	-
+
+## FlagTrack (facts/objectives)
+Team	int	-
+Spans	[]types.FlagSpan	-
+
+## PlayerLine (facts/objectives)
+XUID	string	-
+Kills	int	-
+Deaths	int	-
+Assists	int	-
+
+## ScorePoint (facts/objectives)
+TimeMS	int	-
+Slot	int	-
+Value	int64	-
+
+## StatRecord (facts/objectives)
+TimeMS	int	-
+Slot	int	-
+Round	int	-
+Comps	map[int]types.StatValue	-
+
+## StatValue (facts/objectives)
+A	int64	-
+B	int64	-
+C	int64	-
+D	int64	-
+HasC	bool	-
+HasD	bool	-

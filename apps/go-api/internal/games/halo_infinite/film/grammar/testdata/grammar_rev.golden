@@ -519,7 +519,6 @@
 #               changent pas, seuls les chemins. L empreinte monte parce qu elle hache le chemin
 #               relatif a cote du contenu. `KillSourceDecoderRev` ne bouge PAS (sortie identique a
 #               l octet, ancre de racine suivie, golden refige) ; `SchemaVersion` 60.
-#   2026-09-16  grammar-2026-09-15.34  lot 2.5.b (`.33` -> `.34`) : EXTRACTION DE LA COUCHE
 #               `profile`, SORTIE IDENTIQUE. Ce n est PAS un deplacement pur : la DONNEE (types de
 #               valeur, table de profil, table par build et par format, catalogue de bornes par
 #               carte) descend dans `film/profile` ; la LECTURE reste en `grammar` et rend un type
@@ -528,4 +527,15 @@
 #               ne change. L empreinte monte deux fois : les octets de source de `grammar` bougent,
 #               et la racine `film/profile` ENTRE dans l empreinte — la donnee du decodeur est
 #               desormais hachee. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` 60.
-grammar-2026-09-15.34	18cbf01d85d819ff1370873a4e9b0c5880b4e0460e3b68b13e7a5c21581284b8
+#   2026-09-16  grammar-2026-09-15.35  lot 2.6 volet facts + source (`.34` -> `.35`, RANG DE
+#               FUSION) : REVISIONS PAR COUCHE ET TYPES DE CONTRAT, SORTIE IDENTIQUE. `source.Rev`
+#               et `facts.Rev` naissent sur le mecanisme central `film/revision` (la seconde
+#               REPREND la valeur de `KillSourceDecoderRev`, qui quitte `sync/killcollector` :
+#               V15 (16), aucun backlog ouvert) ; `film/types` nait, feuille sans import du depot,
+#               et recoit les types de DONNEES purs qui traversent une frontiere de couche depuis
+#               `source` et `facts`, les paquets d origine gardant un ALIAS DATE. L empreinte monte
+#               parce que les racines hachees portent des fichiers neufs et des alias a la place
+#               des declarations, et parce que la racine `film/profile` du rang precedent y est
+#               desormais. AUCUN OCTET N EST LU AUTREMENT ; `SchemaVersion` reste 60, aucun match
+#               deja decode n est candidat au backlog.
+grammar-2026-09-15.35	4732afb0c45bbbdf4ea8855777c03aa5f27c2e58052dab0da65f34788f6e9d5e
