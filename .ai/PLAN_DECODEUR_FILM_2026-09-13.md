@@ -4590,6 +4590,18 @@ défont par `git revert` ; avant la recuisson, tag git du binaire précédent et
 
 #### Lot 3.3 (P2) — La liste blanche des grenades par build — M, high
 
+> **VOLET RECHERCHE OUVERT LE 2026-09-16** (V17 : ordre de preuve imposé, l'hypothèse de
+> l'utilisateur se teste AVANT toute liste blanche « ancienne »). Branche `feat/decfilm-33r`,
+> instrument `apps/go-api/tools/film_re/grenadeids/` + `tools/film_re/cmd/grenadeids/` (tag
+> `research`, jamais compilé par `go build ./...`), note
+> `.ai/V7.5/film_re/NOTE_3_3_IDENTIFIANTS_GRENADE_2026-09-16.md`. L'instrument est écrit,
+> compilé et vérifié sur ses invariants ; les mesures attendent la « voie libre » du pilote (un
+> seul décodage à la fois). **Les deux cases ci-dessous restent `[ ]` : le volet recherche ne
+> code aucune production.** Ce qu'il changera au libellé de 3.3.1 selon son verdict : une
+> position ou un marqueur par build (grammaire) plutôt qu'une liste blanche par build
+> (identifiants) — les trois verdicts et leurs critères sont écrits dans la note, §5, AVANT la
+> mesure.
+
 - [ ] 3.3.1 `GrenadeTypeIDsByRank` (`grenade_events.go:95`) devient une entrée de profil par
       build ; identifiants des builds antérieurs à `HI_1_12_0` établis par la méthode d'origine
       (stabilité par rang sur le corpus, marqueur `0x4C0C00`), statut `présumé` jusqu'au témoin.
@@ -5030,6 +5042,8 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-16 | 2.6.2 | **D2 (2.6) — SORTIR UN TYPE DE SON PAQUET TRANSFORME UN LITTÉRAL NON NOMMÉ EN ERREUR `go vet`.** `PlayerLine{"z16", 16, 13, 4}` compile tant que le type est déclaré dans le paquet ; dès qu'il vient d'ailleurs, l'analyse `composites` de `go vet` le refuse. Mesure sur ce volet : **16 littéraux**, tous dans `film/facts/objectives/named_test.go`, corrigés en champs nommés (le lot ne pouvait pas les laisser : `go vet ./...` est un gate). Aucun autre paquet n'en portait pour les 13 types déplacés. | **À prévoir au volet grammaire / rejeu**, qui déplace 49 types consommés par `replay` (246 citations) et `replaybuild` (74) : le coût n'est pas le déplacement, ce sont les littéraux positionnels des tests. À mesurer AVANT d'ouvrir le lot (`go vet ./...` après un déplacement d'essai) |
 | 2026-09-16 | 2.6.2 | **D3 (2.6) — LES TROIS ALIAS DATÉS ONT 79 FICHIERS DERRIÈRE EUX, ET C'EST LA LISTE DE TRAVAIL DU VOLET SUIVANT.** Mesure du 2026-09-16 (`grep` des 13 types qualifiés, hors `facts/` et `source/`) : **79 fichiers** hors des couches d'origine citent un type déplacé par son ancien nom de paquet — `film/replay` 246 citations, `internal/replaybuild` 74, `internal/sync/killcollector` 5, `film/filmcache` 4, `film/grammar` 3, `cmd/` 21. Tous compilent par les alias de `types_alias.go`, et chacun de ces fichiers appartient à un paquet que le brief interdisait à ce lot. | **Volet grammaire / rejeu du lot 2.6** : re-pointer, puis SUPPRIMER les trois `types_alias.go`. Le critère de retrait est écrit dans chacun d'eux, et il est mesurable au `grep` |
 | 2026-09-16 | 2.6 (docs) | **D4 (2.6) — LES DEUX `SYNC_GUIDE` CITENT UN CHEMIN DE REPLI QUI N'EXISTE PLUS.** La ligne « Renvois / References » de la sous-section des révisions nomme `internal/games/halo_infinite/film/replay/fallback` ; le registre des replis a descendu en `film/facts/fallback` au lot 2.5.d.1. La phrase reste vraie sur le fond, le chemin est faux, dans les DEUX fichiers. NON TRAITÉ : le brief borne la mise à jour documentaire à la sous-section des révisions, et cette ligne parle du registre des replis. | Même famille que D7 (2.5) : au premier lot qui rouvre ces deux guides — ou au volet grammaire du 2.6, qui y reviendra pour `grammar.Rev` |
+| 2026-09-16 | 3.3 (recherche) | **D1 (3.3r) — LES SEPT MINI-BOBINES NE PORTENT AUCUN PAQUET DELTA, donc elles ne peuvent PAS servir le lot 3.3.** La note `PREPARATION_M3_3_2_A_3_4` §0.3 les présente comme « la ressource la plus sous-utilisée du chantier : les sept builds connus sont dans l'arbre git, avec leur registre, sans toucher au cache de films ni au verrou solo ». C'est vrai pour un REGISTRE et faux pour un LANCER : leur `PROVENANCE.txt` (lu le 2026-09-16 sur `minifilm_111fa685`) dit `chunk_00` = registre (type 1), `chunk_01` = images-clés (type 2), `chunk_02` = pied (type 3) — **zéro paquet de type 0**, alors que le marqueur de lancer ne vit que dans les paquets DELTA (`ScanGrenadeThrows` filtre sur `PacketTypeDelta`). Les passes de mesure de 3.3 exigent donc les films du cache, un à la fois, à la voie libre. Les mini-bobines restent utiles à la seule « mesure 0 » (registre → `ti` projectile → marqueur dérivé), qui coûte des secondes. | Constat. À reporter dans la note M3 §0.3 si elle est reprise, et à garder en tête pour tout lot qui espérerait mesurer un DELTA sur les mini-bobines (3.4, 3.6) |
+| 2026-09-16 | 3.3 (recherche) | **D2 (3.3r) — LE « MARQUEUR » NE PORTE QUE CINQ BITS D'INDEX : `ti=41` ET `ti=9` PRODUISENT LE MÊME.** La dérivation `marqueur(ti) = ((ti & 31) << 19) | 0x40C00` est vérifiée sur le build courant (`marqueur(41) = 0x4C0C00`, la constante `grenadeMarker`). Elle implique que sur un registre de 49 ou 50 blocs, tout `ti` congru à 9 modulo 32 rend le même marqueur — et `ti=9` est `managed-player` (`grammar/player_teams.go:61`). Le balayage de production ne reconnaît donc pas « une naissance de projectile » mais « une naissance d'une entité dont l'index vaut 9 modulo 32 » : la sélectivité vient ENTIÈREMENT de la liste blanche des quatre identifiants, ce que la note M3 §2.1 dit déjà — mais la cause est plus profonde que « le marqueur est dérivé du registre ». NON TRAITÉ (règle 7) : l'instrument publie l'ambiguïté film par film. | 3.3.1 s'il conclut à une entrée `Grenade.Marqueur`, et 3.2 (le registre par build) dont c'est la même matière. Aucune correction dans le volet recherche |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -6638,3 +6652,28 @@ les deux gates existants sont LUS, jamais modifiés.
 | 2026-09-17 | 2.6.0 (morsure de l'empreinte) | `(ce commit)` | `go test -count=1 -v -run TestEmpreinte ./internal/games/halo_infinite/film/revision/` | **PASS** — un fichier ajouté, un octet changé, un fichier renommé et une valeur amont différente font bouger l'empreinte ; un `_test.go`, une fixture `testdata/` et des fins de ligne CRLF ne la font PAS bouger ; une liste d'amonts VIDE n'écrit AUCUN octet (c'est cette propriété qui rend l'héritage possible) ; une racine sans source de production rend `ErrRacineSansSource` |
 | 2026-09-17 | 2.6.0 (piège relevé et corrigé) | `87b7b0e9f` | première version du garde-rail | **le ratchet se dénonçait lui-même** : `runtime.Caller` rend un chemin à séparateurs `/` même sous Windows, `filepath.WalkDir` rend des `\`, et l'auto-exclusion par comparaison brute n'excluait rien. Corrigé par comparaison sur le chemin RELATIF en slash ; aucun autre ratchet du dépôt ne porte ce motif (grep `== thisFile` : 0 occurrence) |
 | 2026-09-17 | 2.6.0 (frontière de fichiers) | `(ce commit)` | `git diff --name-only 26cf32399..HEAD` | **13 fichiers** : 10 sous `film/revision/`, 2 sous `internal/archlint/`, plus ce plan. Aucun paquet du film muté par un autre exécuteur, rien sous `data/`, aucun `cmd/` |
+
+
+### Lot 3.3 (M3, P2) — volet RECHERCHE, gates SANS AUCUN DÉCODAGE, 2026-09-16
+
+Worktree `LevelUp-wt-decfilm-33r`, branche `feat/decfilm-33r`, base `e7b9bd48e`. Aucun film
+ouvert, aucune jonction vers le cache, aucune écriture dans `data/`. Frontière tenue :
+`apps/go-api/tools/film_re/` (fichiers neufs, tous `//go:build research`),
+`.ai/V7.5/film_re/NOTE_3_3_IDENTIFIANTS_GRENADE_2026-09-16.md`, et les lignes de ce plan
+(§3 lot 3.3, §4, §5). Aucun fichier de `internal/`, `cmd/`, `config/` ni `data/` touché.
+
+| Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
+|---|---|---|---|---|
+| 2026-09-16 | 3.3r (mesure AVANT) | `e7b9bd48e` | `go build ./...` | vert, 4 min 13 s (cache froid) — base saine avant le premier fichier |
+| 2026-09-16 | 3.3r (mesure AVANT) | `e7b9bd48e` | `go vet -tags=research ./tools/film_re/` | sortie vide — le paquet de relevé du lot 3.6 compile déjà sous le tag |
+| 2026-09-16 | 3.3r | ce commit | `gofmt -l ./tools` | sortie vide |
+| 2026-09-16 | 3.3r | ce commit | `go vet -tags=research ./tools/film_re/...` | sortie vide (2 paquets neufs : `grenadeids`, `cmd/grenadeids`) |
+| 2026-09-16 | 3.3r (GATE, non-intrusion) | ce commit | `go build ./...` | **vert** — les fichiers du tag `research` ne sont pas vus |
+| 2026-09-16 | 3.3r (GATE, non-intrusion) | ce commit | `go vet ./...` | **sortie vide** sur tout le module |
+| 2026-09-16 | 3.3r (GATE, non-intrusion) | ce commit | `go test ./internal/games/halo_infinite/film/grammar/ -run TestGrammarRevSuitLaGrammaire -v` | `--- PASS (0.02s)` — `GrammarRev` NE BOUGE PAS, aucun paquet haché touché |
+| 2026-09-16 | 3.3r (GATE, ratchets) | ce commit | `go test ./internal/archlint/` | `ok … 22.955s` — les 74 ratchets passent avec les fichiers neufs sous `tools/` (vérifié sur pièces : `no_hardcoded_film_cache_dirs` walk tout `apps/go-api` — l'instrument prend sa racine en paramètre et n'écrit aucun nom de sous-dossier de cache ; `no_unbounded_film_loop` ne surveille que `BuildMatch(`/`BuildBytes(`/`BuildFromFilm(`, qu'il n'appelle pas ; `film_layers_deps` et `film_file_size` ne couvrent que `internal/games/halo_infinite/film`) |
+| 2026-09-16 | 3.3r (invariant de l'instrument) | ce commit | `go run -tags=research ./tools/film_re/cmd/grenadeids -racine <inexistant> -films zz` | `VerifierMarqueurDeProduction` **passe** (aucune erreur) : `MarqueurDe(41) == 0x4C0C00`, la dérivation `((ti & 31) << 19) | 0x40C00` est donc exacte sur le build courant. Puis `film illisible : source: aucun chunk_NN.bin` — le refus est propre, **aucun film ouvert** |
+| 2026-09-16 | 3.3r (seuils, règle 5) | ce commit | `wc -l tools/film_re/grenadeids/*.go tools/film_re/cmd/grenadeids/*.go` | `balayage.go` 317, `appariement.go` 245, `rapport.go` 163, `bobine.go` 159, `main.go` 127, `doc.go` 58 — **tous sous 500 L**, aucune fonction au-delà de 80 L |
+| 2026-09-16 | 3.3r (frontière de fichiers) | ce commit | `git diff --name-only e7b9bd48e..HEAD` | 6 fichiers sous `apps/go-api/tools/film_re/`, 1 sous `.ai/V7.5/film_re/`, 1 = ce plan. **Zéro fichier de `internal/`, `cmd/`, `config/`, `data/`** |
+| 2026-09-16 | 3.3r (mesure 0, non jouée) | ce commit | — | Les sept mini-bobines ne portent **aucun paquet delta** (découverte D1 (3.3r)) : elles ne servent que l'entête (registre → `ti` projectile → marqueur). Les passes A à D exigent les films du cache, à la voie libre |
+| 2026-09-16 | 3.3r (passes A à D) | ce commit | — | **NON JOUÉES** : un seul décodage à la fois sur ce poste. Plan de mesure, ordre des six films et critères de verdict écrits AVANT la mesure dans la note §4 et §5 |
