@@ -24,7 +24,7 @@ import (
 	"fmt"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/port"
 )
 
@@ -33,7 +33,7 @@ import (
 // quelles bornes chercher.
 type DepsCapture struct {
 	MapNames port.ReplayMapNameRepo
-	Bounds   *profile.MapQuantCatalog
+	Bounds   *decfilm.MapQuantCatalog
 }
 
 // Cablee dit si les deux dependances sont la.
@@ -55,7 +55,7 @@ func CaptureDepuisCatalogue(repoRoot, titleSlug string, mapNames port.ReplayMapN
 		return DepsCapture{}, fmt.Errorf("capture positions %s: aucun resolveur de carte", titleSlug)
 	}
 	chemin := titlePkg.NewPathResolver(repoRoot).MapQuantBoundsPath(titleSlug)
-	catalogue, err := profile.LoadMapQuantCatalog(chemin)
+	catalogue, err := decfilm.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		return DepsCapture{}, fmt.Errorf("capture positions %s: catalogue de bornes (%s): %w",
 			titleSlug, chemin, err)

@@ -11,7 +11,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vehClock : origine 1 s, pas 100 ms, 1 200 frames (2 minutes) — les frames attendues se lisent

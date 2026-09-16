@@ -109,7 +109,7 @@ const (
 	// DU DÉGÂT FATAL (lue dans le dead-state de la victime). Gouverne le
 	// collecteur `internal/sync` qui remplit `shared.match_kill_events`.
 	//
-	// Halo Infinite : supported (décodeur `games/halo_infinite/film/facts/killsource`).
+	// Halo Infinite : supported (décodeur `games/halo_infinite/film/internal/facts/killsource`).
 	// Halo 5 : ABSENTE — son format de film est différent ET ses mécaniques de
 	// kill sont natives dans le carnage (CapNativeKillMechanics), donc il n'a
 	// aucun besoin d'un décodeur de film pour la même information.
@@ -270,7 +270,7 @@ const (
 	// (`film.usage_summary`, `film.bomb_stats`, la timeline d'objectif et les positions
 	// keyframe servies à la Match View) sont les projections.
 	//
-	// Halo Infinite : supported (décodeur `games/halo_infinite/film/grammar` + `replaybuild`). Halo 5 :
+	// Halo Infinite : supported (décodeur `games/halo_infinite/film/internal/grammar` + `replaybuild`). Halo 5 :
 	// not_exposed — autre format de film, aucun décodeur, donc aucun artefact possible.
 	//
 	// ⚠ ELLE GOUVERNE LA PRODUCTION, ET L'AFFICHAGE SUIT (décision utilisateur du

@@ -121,7 +121,7 @@ func (c *slowEventsClient) GetHighlightEventsChunk(_ context.Context, matchID st
 // loadHighlightFixture charge le chunk film de référence (v41). Skip si absent.
 func loadHighlightFixture(t *testing.T) []byte {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join("..", "games", "halo_infinite", "film", "grammar", "testdata", "v41_chunk_he.bin"))
+	data, err := os.ReadFile(filepath.Join("..", "games", "halo_infinite", "film", "internal", "grammar", "testdata", "v41_chunk_he.bin"))
 	if err != nil {
 		t.Skipf("fixture film absente: %v", err)
 	}

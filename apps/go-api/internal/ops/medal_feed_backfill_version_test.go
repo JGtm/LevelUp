@@ -27,7 +27,7 @@ import (
 	"unicode/utf16"
 
 	"levelup/go-api/internal/domain/highlightevent"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // gamertagTemoin : le nom pose dans le bloc synthetique. Il n a rien de special, sinon d etre
@@ -87,7 +87,7 @@ func TestEventsDuFilmSuitLaVersionDeclaree(t *testing.T) {
 	if err != nil || !trouve {
 		t.Fatalf("doublure de source : trouve=%v err=%v", trouve, err)
 	}
-	if film.MajorVersion == grammar.FilmMajorVersionUnknown {
+	if film.MajorVersion == decfilm.FilmMajorVersionUnknown {
 		t.Fatal("la doublure declare une version inconnue : le test ne prouverait rien")
 	}
 	events, err := eventsDuFilm(film)
@@ -110,7 +110,7 @@ func TestEventsDuFilmSuitLaVersionDeclaree(t *testing.T) {
 Sur les versions 39-40 le gamertag vit a l octet 12 du bloc d event. Parser avec 0 le lit a
 l octet 0 et rend du rembourrage (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md).
 
-Verifier que eventsDuFilm passe film.MajorVersion a grammar.ParseHighlightEvents, et que la
+Verifier que eventsDuFilm passe film.MajorVersion a decfilm.ParseHighlightEvents, et que la
 source du CLI (cmd/levelup/cmd_backfill_medailles_feed.go) lit bien la version du registre.`,
 			film.MajorVersion, events[0].Gamertag, gamertagTemoin)
 	}
@@ -123,7 +123,7 @@ func TestEventsDuFilmVersionInconnue(t *testing.T) {
 	ev := evenementFilm{xuid: 2535400000000001, typeHint: 50, timeMS: 12_345, isMedal: true, medalType: 26}
 	film := FilmHighlight{
 		Chunk:        chunkSynthetiqueV40(ev, gamertagTemoin),
-		MajorVersion: grammar.FilmMajorVersionUnknown,
+		MajorVersion: decfilm.FilmMajorVersionUnknown,
 	}
 	events, err := eventsDuFilm(film)
 	if err != nil {

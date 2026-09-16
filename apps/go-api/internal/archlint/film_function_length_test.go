@@ -144,14 +144,14 @@ const plancherFonctionsBalayees = 2300
 //     d equivalence (zero difference au corpus gate), jamais au fil de l eau ;
 //   - `tableProfilInvariants`, qui est une table litterale d invariants par build.
 var plafondsParFonction = map[string]int{
-	"internal/games/halo_infinite/film/grammar/dispatch_player.go:consumeCrewFlockAndMusicComponent":       146,
-	"internal/games/halo_infinite/film/grammar/dispatch_biped.go:consumeManagedAndObjectiveComponent":      143,
-	"internal/games/halo_infinite/film/grammar/dispatch_item.go:consumeItemAndTacmapComponent":             139,
-	"internal/games/halo_infinite/film/grammar/dispatch_player.go:consumePlayerTailAndGameEngineComponent": 122,
-	"internal/games/halo_infinite/film/grammar/dispatch_object.go:consumeByName":                           118,
-	"internal/games/halo_infinite/film/grammar/frame_infer.go:decodeInferLoop":                             114,
-	"internal/games/halo_infinite/film/grammar/dispatch_biped.go:consumeCaptureAndBipedComponent":          112,
-	"internal/games/halo_infinite/film/profile/profile_table.go:tableProfilInvariants":                     89,
+	"internal/games/halo_infinite/film/internal/grammar/dispatch_player.go:consumeCrewFlockAndMusicComponent":       146,
+	"internal/games/halo_infinite/film/internal/grammar/dispatch_biped.go:consumeManagedAndObjectiveComponent":      143,
+	"internal/games/halo_infinite/film/internal/grammar/dispatch_item.go:consumeItemAndTacmapComponent":             139,
+	"internal/games/halo_infinite/film/internal/grammar/dispatch_player.go:consumePlayerTailAndGameEngineComponent": 122,
+	"internal/games/halo_infinite/film/internal/grammar/dispatch_object.go:consumeByName":                           118,
+	"internal/games/halo_infinite/film/internal/grammar/frame_infer.go:decodeInferLoop":                             114,
+	"internal/games/halo_infinite/film/internal/grammar/dispatch_biped.go:consumeCaptureAndBipedComponent":          112,
+	"internal/games/halo_infinite/film/internal/profile/profile_table.go:tableProfilInvariants":                     89,
 }
 
 // TestLongueurDesFonctionsDuFilmNeCroitPas : aucune fonction des racines surveillees ne depasse

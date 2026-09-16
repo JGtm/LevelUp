@@ -47,7 +47,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // fsJoueur est la ligne d'oracle d'un joueur : ce que l'API dit de ses securisations, le

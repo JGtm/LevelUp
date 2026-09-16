@@ -18,7 +18,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // flagTestClosedScan monte un portage FERME PAR UN FAIT : une prise a 1 000 ms, puis la mort du

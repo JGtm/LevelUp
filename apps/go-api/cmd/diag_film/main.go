@@ -22,7 +22,7 @@ import (
 	"os"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponscan"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/weapons/filmshell"
 	"levelup/go-api/internal/platform/auth"
 	gosync "levelup/go-api/internal/sync"
@@ -92,7 +92,7 @@ func main() {
 		}
 
 		// Frame markers
-		frames := weaponscan.FindFramePositions(data)
+		frames := decfilm.FindFramePositions(data)
 		fmt.Printf("  Frame markers [A0 7B 42]  : %d\n", len(frames))
 
 		// Formula A patterns [20 00 02]
@@ -101,16 +101,16 @@ func main() {
 		fmt.Printf("  FormulaA patterns [20 00 02] : %d occurrences\n", faCount)
 
 		// Formula A results (parsed)
-		faResults := weaponscan.ScanFormulaA(data)
+		faResults := decfilm.ScanFormulaA(data)
 		fmt.Printf("  ScanFormulaA results      : %d\n", len(faResults))
 
 		// Formula A NS results
-		faNS := weaponscan.ScanFormulaANS(data)
+		faNS := decfilm.ScanFormulaANS(data)
 		fmt.Printf("  ScanFormulaANS results    : %d\n", len(faNS))
 
 		// Fire events via ScanFireEventsAll
-		estimateTS := weaponscan.TimestampEstimator(data, fc.StartMS, fc.DurationMS)
-		fireEvents := weaponscan.ScanFireEventsB5(data, estimateTS)
+		estimateTS := decfilm.TimestampEstimator(data, fc.StartMS, fc.DurationMS)
+		fireEvents := decfilm.ScanFireEventsB5(data, estimateTS)
 		fmt.Printf("  ScanFireEventsB5 events   : %d\n", len(fireEvents))
 
 		// Check if universal marker bits appear at all (raw search)

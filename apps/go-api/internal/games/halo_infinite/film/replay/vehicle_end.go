@@ -27,7 +27,7 @@ package replay
 //
 // CE FICHIER EST PUR : il ne lit pas le film, il range ce que `VehicleScan.Deaths` a rendu.
 
-import "levelup/go-api/internal/games/halo_infinite/film/grammar"
+import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 
 // vehicleDeathTally est le bilan de l attribution des morts ecrites aux vies recensees.
 type vehicleDeathTally struct {

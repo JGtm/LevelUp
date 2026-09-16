@@ -2,8 +2,8 @@
 //
 // `bomb_stats_persister.go` recopie quatre chaines qui appartiennent a `analysis` : les deux
 // types de fait date (`replay.BombEventArmed` / `replay.BombEventDetonated`) et les deux valeurs
-// de vocabulaire de `match_objective_events` (`objectives.ObjectiveTypeBomb` /
-// `objectives.RoleScorer`). La recopie est volontaire — faire dependre `persist` du
+// de vocabulaire de `match_objective_events` (`decfilm.ObjectiveTypeBomb` /
+// `decfilm.RoleScorer`). La recopie est volontaire — faire dependre `persist` du
 // decodeur de film pour quatre chaines serait un couplage disproportionne — mais une recopie
 // sans garde-rail RE-DIVERGE (regle n6 du depot). Ce test EST le garde-rail : il echoue le jour
 // ou l'une des quatre change de valeur la-bas sans changer ici, et une divergence silencieuse
@@ -16,7 +16,7 @@ package persist
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
@@ -29,8 +29,8 @@ func TestVocabulaireBombeAligne(t *testing.T) {
 	}{
 		{"event_type arme", BombEventArmed, replay.BombEventArmed, "replay.BombEventArmed"},
 		{"event_type explose", BombEventDetonated, replay.BombEventDetonated, "replay.BombEventDetonated"},
-		{"objective_type", bombObjectiveType, objectives.ObjectiveTypeBomb, "objectives.ObjectiveTypeBomb"},
-		{"role de l acteur", bombEventRoleScorer, objectives.RoleScorer, "objectives.RoleScorer"},
+		{"objective_type", bombObjectiveType, decfilm.ObjectiveTypeBomb, "decfilm.ObjectiveTypeBomb"},
+		{"role de l acteur", bombEventRoleScorer, decfilm.RoleScorer, "decfilm.RoleScorer"},
 	}
 	for _, c := range cas {
 		if c.ici != c.la {

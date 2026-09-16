@@ -4,7 +4,7 @@ package killcollector
 //
 // Les voies de lecture d un decodage de film ont DEUX domiciles, et c est structurel :
 //
-//	games/halo_infinite/film/facts/killsource   `Path` — le TYPE, chez le decodeur qui les produit.
+//	games/halo_infinite/film/internal/facts/killsource   `Path` — le TYPE, chez le decodeur qui les produit.
 //	                                      Paquet title-specific : ni `persist` ni `migration`
 //	                                      ne peuvent l importer.
 //	domain/killscope                      les CHAINES, dans une feuille sans import, lisibles
@@ -32,17 +32,17 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/killscope"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
 )
 
 func TestFilmReadPathsEgalesAuDecodeur(t *testing.T) {
-	if got, want := killscope.ReadPathFilmWalk, string(killsource.PathWalk); got != want {
+	if got, want := killscope.ReadPathFilmWalk, string(decfilm.PathWalk); got != want {
 		t.Errorf("killscope.ReadPathFilmWalk = %q, decodeur = %q — la detection d un "+
 			"enrichissement de film cesserait de voir la voie MARCHE, sans erreur ni compteur",
 			got, want)
 	}
-	if got, want := killscope.ReadPathFilmScan, string(killsource.PathScan); got != want {
+	if got, want := killscope.ReadPathFilmScan, string(decfilm.PathScan); got != want {
 		t.Errorf("killscope.ReadPathFilmScan = %q, decodeur = %q — la detection d un "+
 			"enrichissement de film cesserait de voir la voie SCAN, sans erreur ni compteur",
 			got, want)
@@ -78,7 +78,7 @@ func TestFilmReadPathsCouvrentToutesLesVoiesDuDecodeur(t *testing.T) {
 	// Temoin d auto-verification : les deux voies historiques DOIVENT etre retrouvees par le
 	// scan. Sans ce controle, un scan qui ne trouverait plus rien de pertinent passerait pour
 	// un decodeur sans voie.
-	for _, attendue := range []killsource.Path{killsource.PathWalk, killsource.PathScan} {
+	for _, attendue := range []decfilm.Path{decfilm.PathWalk, decfilm.PathScan} {
 		if _, ok := duDecodeur[string(attendue)]; !ok {
 			t.Fatalf("la voie %q existe dans le decodeur mais le scan du source ne la voit pas — "+
 				"c est le SCAN qui est casse, pas le decodeur", attendue)
@@ -195,7 +195,7 @@ func nomsDe(vs *ast.ValueSpec) []string {
 const nomDuTypeVoie = "Path"
 
 // cheminSourceDecodeur : le paquet du decodeur, RELATIF a ce fichier de test.
-const cheminSourceDecodeur = "../../games/halo_infinite/film/facts/killsource"
+const cheminSourceDecodeur = "../../games/halo_infinite/film/internal/facts/killsource"
 
 // sourceDuDecodeur : le repertoire du source de `killsource`, resolu depuis l emplacement de
 // CE fichier — pas depuis le repertoire de travail, qui varie selon l invocation.

@@ -15,7 +15,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // FallbackHit est un repli et son nombre de declenchements sur CETTE cuisson.

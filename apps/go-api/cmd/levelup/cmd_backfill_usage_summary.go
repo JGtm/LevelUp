@@ -55,7 +55,7 @@ import (
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
@@ -88,7 +88,7 @@ type bilanUsageBackfill struct {
 	// replis : LES REPLIS QUE LA PROJECTION A DECLENCHES sur le corpus, cumules (D14 c).
 	// Cf. [journaliserReplisUsageCorpus] pour la raison — c est le seul instrument qui
 	// mesure ces replis-la sur le parc, le corpus gate ne pouvant pas les voir.
-	replis         *fallback.Compteur
+	replis         *decfilm.Compteur
 	replisConcerne int
 	// projetes : les matchs REELLEMENT projetes (ni sautes, ni en echec). C est le
 	// denominateur du compte de replis — `ecrits` vaut zero sous `--dry-run`.
@@ -172,16 +172,16 @@ func runBackfillUsageSummary(cfg *config.AppConfig, args []string) error {
 // ne peut pas les voir. Trois entrees du registre nommaient pourtant ce gate comme critere de
 // retrait. C est CETTE passe qui les mesure sur le parc — un par un a l echelle du corpus.
 //
-// LA LIGNE DE PASSE S ECRIT TOUJOURS, MEME A ZERO (cf. `fallback.Texte`, qui rend « aucun ») :
+// LA LIGNE DE PASSE S ECRIT TOUJOURS, MEME A ZERO (cf. `decfilm.Texte`, qui rend « aucun ») :
 // un silence rendrait « jamais declenche » indiscernable de « jamais instrumente », et D14 (d)
 // ferait alors supprimer un repli actif.
 func journaliserReplisUsageCorpus(ctx context.Context, b bilanUsageBackfill) {
 	rapport := b.replis.Rapport()
 	slog.InfoContext(ctx, "backfill usage : replis declenches par la projection (corpus)",
 		"matchs", b.projetes, "matchsConcernes", b.replisConcerne,
-		"replis", fallback.Texte(rapport))
+		"replis", decfilm.Texte(rapport))
 	fmt.Printf("replis de la projection : %s (%d match(s) concerne(s))\n",
-		fallback.Texte(rapport), b.replisConcerne)
+		decfilm.Texte(rapport), b.replisConcerne)
 }
 
 // journaliserCouvertureUsageCorpus dit ce que le canal des ramassages n a pas su rattacher
@@ -239,7 +239,7 @@ func resumerCorpus(
 	ctx context.Context, db *sql.DB, pr *titlePkg.PathResolver, o usageSummaryOptions,
 	candidats []string, dejaResumes map[string]passeCouranteUsage,
 ) bilanUsageBackfill {
-	b := bilanUsageBackfill{totalPowerups: map[string]int{}, replis: fallback.NouveauCompteur()}
+	b := bilanUsageBackfill{totalPowerups: map[string]int{}, replis: decfilm.NouveauCompteur()}
 	p := persist.NewUsageSummaryPersister(db)
 	projetes := 0
 	for _, id := range candidats {
@@ -270,7 +270,7 @@ func resumerCorpus(
 			b.replisConcerne++
 			b.replis.Cumuler(r)
 			slog.InfoContext(ctx, "backfill usage : replis declenches par la projection",
-				"match_id", id, "replis", fallback.Texte(r))
+				"match_id", id, "replis", decfilm.Texte(r))
 		}
 		b.totalNommees += s.Match.PadNamed
 		b.totalAnonymes += s.Match.PadUnnamed

@@ -15,7 +15,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
@@ -232,7 +232,7 @@ func TestResolutionRefuseDeTrancherEntreDeuxXuids(t *testing.T) {
 
 // TestRechercheDeMotifsEquivautALaVersionNaive — LE test qui autorise l optimisation.
 //
-// La recherche en une passe (fenetre glissante + prefiltre) remplace `weaponv3.ResolveBest`,
+// La recherche en une passe (fenetre glissante + prefiltre) remplace `decfilm.ResolveBest`,
 // qui balaie le film une fois PAR XUID. Le remplacement n est legitime que s il rend EXACTEMENT
 // la meme chose : chunks dans l ordre, positions croissantes, premiere occurrence gagnante. Ce
 // test confronte les deux implementations sur des flux ou les motifs sont places a des positions
@@ -281,7 +281,7 @@ func TestRechercheDeMotifsEquivautALaVersionNaive(t *testing.T) {
 		back[v] = s
 	}
 	naive := map[int]string{}
-	for x, pi := range weaponv3.ResolveBest(numeriques, chunks) {
+	for x, pi := range decfilm.ResolveBest(numeriques, chunks) {
 		if _, deja := naive[pi]; deja {
 			naive[pi] = ""
 			continue

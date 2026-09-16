@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // gwiClock : origine 1 s, pas 100 ms, 100 frames — les frames attendues se lisent de tête.

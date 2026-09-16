@@ -46,7 +46,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // holdTicksComponent est l'emplacement du compteur de garde : composant 23, valeur A.

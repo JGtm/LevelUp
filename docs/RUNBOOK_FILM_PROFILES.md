@@ -19,8 +19,8 @@ Related files:
   a build.
 - `apps/go-api/cmd/film-profiles-build/` — the fabrication chain for the **derived** block, and
   its `gamefiles` gate.
-- `apps/go-api/internal/games/halo_infinite/film/filmdec/profile_table.go` — the lot 2.1 table,
-  still the source of truth for the **content** while both coexist (lot 3.1.1 makes `filmdec`
+- `apps/go-api/internal/games/halo_infinite/film/internal/profile/profile_table.go` — the lot 2.1 table,
+  still the source of truth for the **content** while both coexist (lot 3.1.1 makes the decoder
   read the file and removes the copy). `TestCatalogueConformeALaTableDuLot21` keeps them equal,
   line for line.
 - `config/replay_corpus.toml` — the witness corpus (one `[[temoin]]` per grammar family).
@@ -90,7 +90,7 @@ no per-build measurement"). A presumed line is legitimate — it is the honest s
 knowledge — as long as it is *named* as such. What is not legitimate is a value with no line.
 
 While the lot 2.1 table and the catalogue coexist, the same line must be added to
-`filmdec/profile_table.go` in the **same commit**: `TestCatalogueConformeALaTableDuLot21` fails
+`profile/profile_table.go` in the **same commit**: `TestCatalogueConformeALaTableDuLot21` fails
 otherwise, on purpose (two truths for one profile is worse than one gap).
 
 ### 4.3 Promote it to `relue` or `mesuree`

@@ -29,7 +29,7 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // eqcGrenadeWindowUS : la fenêtre dans laquelle un ramassage de grenade doit se voir sur le

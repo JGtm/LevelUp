@@ -4,7 +4,7 @@ package killcollector
 // et c est TOUT ce qu il fait. Chacune des trois responsabilites vit ailleurs et n a pas le
 // droit de migrer ici :
 //
-//	decoder un film        games/halo_infinite/film/facts/killsource   ne touche ni base ni reseau
+//	decoder un film        games/halo_infinite/film/internal/facts/killsource   ne touche ni base ni reseau
 //	telecharger les chunks killsource_bridge.go                  ne decode pas
 //	ecrire les lignes      persist.KillSourcePersister           ne decide pas QUOI ecrire
 //	enchainer les trois    CE FICHIER                            ne contient aucune logique de decodage
@@ -46,7 +46,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
 )
@@ -106,7 +106,7 @@ type KillSourceCollector struct {
 	// degradation journalisee PAR MATCH (configuration, pas panne). DEUX passes les partagent
 	// depuis le lot 1.9.4 : les positions (G.2bis) ET les distances de touche (`map_identity.go`).
 	mapNames  port.ReplayMapNameRepo
-	mapBounds *profile.MapQuantCatalog
+	mapBounds *decfilm.MapQuantCatalog
 	// filmDir : la CONFIGURATION du numerateur film (precision par arme + distance, collectHits
 	// — acquis du chantier precision remis le 2026-09-01, exposition API retiree). nil = passe
 	// non configuree (chemin live sans cache) -> precision ignoree. Voir ConfigureFilmAccuracy.
@@ -178,13 +178,13 @@ func (c *KillSourceCollector) WithBudget(d time.Duration) *KillSourceCollector {
 // LES DEUX ARGUMENTS SONT NECESSAIRES ENSEMBLE. `mapNames` resout les identites de carte
 // candidates d un match (meme port que le rejeu 2D, `port.ReplayMapNameRepo` — implemente par
 // `platform/duckdb.ReplayMapRepo`) ; `mapBounds` est le catalogue de bornes de dequantification
-// (`profile.LoadMapQuantCatalog`, meme fichier que replaybuild). Passer l un sans l autre revient
+// (`decfilm.LoadMapQuantCatalog`, meme fichier que replaybuild). Passer l un sans l autre revient
 // a ne rien cabler : [collectPositions] verifie les deux et degrade proprement (Debug, pas
 // d erreur) si l un des deux manque.
 //
 // nil, nil DESACTIVE explicitement la capture (retour a l etat par defaut du constructeur).
 func (c *KillSourceCollector) WithPositionCapture(
-	mapNames port.ReplayMapNameRepo, mapBounds *profile.MapQuantCatalog,
+	mapNames port.ReplayMapNameRepo, mapBounds *decfilm.MapQuantCatalog,
 ) *KillSourceCollector {
 	c.mapNames, c.mapBounds = mapNames, mapBounds
 	return c

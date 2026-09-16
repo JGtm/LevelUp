@@ -1,6 +1,6 @@
 package replay
 
-import "levelup/go-api/internal/games/halo_infinite/film/grammar"
+import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 
 // pickup_origin.go — D'OU VIENT L'OBJET QU'UN JOUEUR RAMASSE.
 //

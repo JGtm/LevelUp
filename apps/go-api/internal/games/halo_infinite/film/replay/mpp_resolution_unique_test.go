@@ -23,9 +23,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // TestGwWidthsForFilmSuitLaVersionDeFormat — LE TEMOIN DU CONSTAT 2, COTE SOCLES.
@@ -66,7 +66,7 @@ func TestGwWidthsForFilmSeReplieQuandLaLargeurEstIndeterminee(t *testing.T) {
 // defaut — et il ne se verrait pas, puisqu il ne change rien sur les builds connus.
 func TestAucuneResolutionMPPParLeProfilComplet(t *testing.T) {
 	fichiersVus := 0
-	for _, dir := range []string{".", filepath.Join("..", "grammar")} {
+	for _, dir := range []string{".", filepath.Join("..", "internal", "grammar")} {
 		parcourirProductionGo(t, dir, func(rel string, appels []string) {
 			fichiersVus++
 			for _, a := range appels {

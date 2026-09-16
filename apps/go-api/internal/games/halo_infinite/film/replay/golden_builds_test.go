@@ -62,7 +62,7 @@ import (
 	"compress/gzip"
 	"flag"
 	"fmt"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"os"
 	"path/filepath"
 	"strings"

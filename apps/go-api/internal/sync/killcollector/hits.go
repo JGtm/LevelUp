@@ -23,16 +23,16 @@ package killcollector
 // l oracle killsource).
 //
 // ⚠ CE RESOLVEUR EST UNE INFERENCE, ET LE FILM ECRIT LA REPONSE. `chunk_00` porte la table des
-// joueurs (`grammar.ReadPlayerTable`, lot 1.5) : le lien `FilmIndex -> XUID` s y lit directement,
+// joueurs (`decfilm.ReadPlayerTable`, lot 1.5) : le lien `FilmIndex -> XUID` s y lit directement,
 // la ou `resolvePlayerIndices` le CHERCHE (motif du xuid dans le flux, 5 bits qui precedent).
 // Le lot 1.8 a bascule le decodeur de morts sur cette lecture ; les TIRS et les TOUCHES ne l ont
 // PAS ete — ils portent deux revisions distinctes (`WeaponShotsDecoderRev`,
 // `migration.WeaponHitDistanceDecoderRev`), donc deux backlogs de redecodage separes, hors du
-// perimetre de ce lot. Decouverte D4 (1.8) du PLAN_DECODEUR_FILM, §4. La RESERVE historique etait que grammar.WeaponHitStats.FilmIndex venait d un
+// perimetre de ce lot. Decouverte D4 (1.8) du PLAN_DECODEUR_FILM, §4. La RESERVE historique etait que decfilm.WeaponHitStats.FilmIndex venait d un
 // AUTRE champ du record de tir (decodeFireEvent, bits 36-40 >>1 = 4 bits) que l indice que
 // resolvePlayerIndices indexe (5 bits). VERDICT MESURE (TestWeaponIndexNumDenomEquivalence, package
 // analysis) : le 4 bits n etait que la MOITIE BASSE du champ. La cle est desormais
-// grammar.FireEvent.ShooterIndex5 (bits 35-39, R(5)), ALIGNEE au bit pres sur
+// decfilm.FireEvent.ShooterIndex5 (bits 35-39, R(5)), ALIGNEE au bit pres sur
 // weaponscan.FireEvent.FilmIndex5 (le denominateur match_weapon_shots) : mismatch 0 sur 4342 records
 // BTB correles + tous les records arene. Num et denom keyent DESORMAIS IDENTIQUE. Sous 17 joueurs les
 // deux lectures coincidaient deja (arene) ; au-dela (BTB 4f77afc1, lobby 24), le 4 bits saturait a 15
@@ -48,8 +48,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/ingest"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
@@ -126,20 +125,20 @@ func (c *KillSourceCollector) buildHitsBatches(
 	ctx context.Context, matchID, dir string, chunks []haloclient.FilmChunk, parts MatchIdentities,
 ) ([]persist.WeaponAccuracyInsert, persist.WeaponHitDistanceBatch, bool) {
 
-	raw, err := grammar.ReadFilmChunk(dir, 0)
+	raw, err := decfilm.ReadFilmChunk(dir, 0)
 	if err != nil {
 		return c.hitsScanFailed(ctx, matchID, "chunk_00 illisible", err)
 	}
-	reg, err := grammar.ParseRegistryChunk(raw)
+	reg, err := decfilm.ParseRegistryChunk(raw)
 	if err != nil {
 		return c.hitsScanFailed(ctx, matchID, "registre illisible", err)
 	}
-	n := grammar.CountFilmChunks(dir)
-	shots, err := grammar.ScanFilmWeaponShots(dir, n)
+	n := decfilm.CountFilmChunks(dir)
+	shots, err := decfilm.ScanFilmWeaponShots(dir, n)
 	if err != nil {
 		return c.hitsScanFailed(ctx, matchID, "collecte des tirs", err)
 	}
-	damages, _, err := grammar.ScanFilmWeaponDamages(dir, reg, n)
+	damages, _, err := decfilm.ScanFilmWeaponDamages(dir, reg, n)
 	if err != nil {
 		return c.hitsScanFailed(ctx, matchID, "collecte des degats", err)
 	}
@@ -148,7 +147,7 @@ func (c *KillSourceCollector) buildHitsBatches(
 	// comptees (reserve #5 du plan) ; pas un echec de passe.
 	distFn := c.resolveHitDistanceFunc(ctx, matchID, dir, damages, n)
 
-	stats := grammar.PairWeaponHits(shots, damages, grammar.WeaponHitPairWindowUS, distFn)
+	stats := decfilm.PairWeaponHits(shots, damages, decfilm.WeaponHitPairWindowUS, distFn)
 
 	// LE PONT FilmIndex -> xuid : le resolveur EXISTANT (indice de replication -> xuid), sur les
 	// memes chunks de replication que la ventilation des tirs. Voir la reserve en tete de fichier.
@@ -165,15 +164,15 @@ func (c *KillSourceCollector) buildHitsBatches(
 //
 // L ENTREE ENTIERE, PAS SES SEULES BORNES (lot 1.9.2) : elle porte AUSSI le decoupage d i0 de la
 // carte, que le balayage impose desormais au lieu de le laisser detecter
-// (`grammar.BuildBipedTracks`). D-3 d ADR 0034.
+// (`decfilm.BuildBipedTracks`). D-3 d ADR 0034.
 func (c *KillSourceCollector) resolveHitDistanceFunc(
-	ctx context.Context, matchID, dir string, damages []grammar.WeaponDamage, n int,
-) grammar.WeaponHitDistanceFunc {
+	ctx context.Context, matchID, dir string, damages []decfilm.WeaponDamage, n int,
+) decfilm.WeaponHitDistanceFunc {
 	entry, ok := c.entreeDeCarteDesTouches(ctx, matchID)
 	if !ok {
 		return nil
 	}
-	distFn, base, err := grammar.FilmWeaponHitDistance(dir, entry, damages, n)
+	distFn, base, err := decfilm.FilmWeaponHitDistance(dir, entry, damages, n)
 	if err != nil {
 		slog.DebugContext(ctx, "killsource: precision par arme — positions bipedes indisponibles, distances desactivees",
 			"match_id", matchID, "err", err)
@@ -210,26 +209,26 @@ func (c *KillSourceCollector) resolveHitDistanceFunc(
 // en silence, ce que D-4 d ADR 0034 interdit.
 func (c *KillSourceCollector) entreeDeCarteDesTouches(
 	ctx context.Context, matchID string,
-) (profile.MapQuantEntry, bool) {
+) (decfilm.MapQuantEntry, bool) {
 	if c.mapNames == nil || c.mapBounds == nil {
 		observability.AddInt(metricHitsNoMapWiring, 1)
 		slog.WarnContext(ctx, "killsource: precision par arme — collecteur sans resolution de carte "+
 			"(WithPositionCapture absent), distances desactivees", "match_id", matchID)
-		return profile.MapQuantEntry{}, false
+		return decfilm.MapQuantEntry{}, false
 	}
 	noms, err := c.nomsDeCarteDuMatch(ctx, matchID)
 	if err != nil {
 		observability.AddInt(metricHitsNoMapName, 1)
 		slog.InfoContext(ctx, "killsource: precision par arme — match sans nom de carte, distances desactivees",
 			"match_id", matchID, "err", err)
-		return profile.MapQuantEntry{}, false
+		return decfilm.MapQuantEntry{}, false
 	}
 	entry, err := c.entreeDeCatalogueParNom(noms)
 	if err != nil {
 		observability.AddInt(metricHitsNoMapEntry, 1)
 		slog.InfoContext(ctx, "killsource: precision par arme — carte hors catalogue de bornes, distances desactivees",
 			"match_id", matchID, "err", err)
-		return profile.MapQuantEntry{}, false
+		return decfilm.MapQuantEntry{}, false
 	}
 	return entry, true
 }

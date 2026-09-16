@@ -28,7 +28,7 @@ package replay
 
 import (
 	"encoding/json"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"math"
 	"os"
 	"path/filepath"

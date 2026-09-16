@@ -27,8 +27,8 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // Emplacements de base du statborg, pour le seul DIAGNOSTIC des triplets ci-dessous (les

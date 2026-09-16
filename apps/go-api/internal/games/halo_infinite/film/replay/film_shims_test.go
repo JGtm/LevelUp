@@ -17,9 +17,9 @@ package replay
 // `start_ms` par chunk, et son instrument de mesure charge le film lui-meme.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // filmDeDir charge le film d'un repertoire, ou rend nil. Les decodeurs rendent alors leur

@@ -22,7 +22,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // lettreDe rend la lettre publiee d'une zone, ou "-" quand elle n'en porte pas.

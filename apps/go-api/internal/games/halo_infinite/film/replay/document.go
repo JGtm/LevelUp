@@ -1,7 +1,7 @@
 // Package replay assemble l'artefact de rejeu 2D (vue du dessus) d'un match à partir
 // des données décodées du film : trajectoires des joueurs (Étape A) et géométrie de
 // carte (Étape B) ; le kill feed (Étape C) reste à faire. Assemblage pur — aucun accès
-// DB ni HTTP ; le décodage lourd est délégué à internal/games/halo_infinite/film/grammar.
+// DB ni HTTP ; le décodage lourd est délégué à internal/games/halo_infinite/film/internal/grammar.
 //
 // Le document (ReplayDocument) est produit HORS LIGNE par cmd/replay-build à partir des
 // SEULS chunks du film (zéro capture Cheat Engine) et servi tel quel par l'API. C'est

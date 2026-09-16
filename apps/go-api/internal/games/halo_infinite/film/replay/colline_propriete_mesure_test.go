@@ -16,7 +16,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // ctEtatSlot est un slot d'une lecture : ses bascules, et l'instant a partir duquel il « porte »

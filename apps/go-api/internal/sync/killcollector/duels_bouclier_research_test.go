@@ -59,10 +59,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -303,14 +301,14 @@ func duelsBLireEquipes(t *testing.T, db *sql.DB, matchID string) map[uint64]int6
 // exactement l'option que le lot 7 devrait activer en production s'il s'ouvre.
 func duelsBLireFilm(
 	t *testing.T, root, matchID, carte, bornesPath string,
-) (*source.Film, []grammar.BipedPosition, uint64) {
+) (*decfilm.Film, []decfilm.BipedPosition, uint64) {
 	t.Helper()
 	dir := duelsBFilmDir(root, matchID)
-	film, err := source.LoadDir(dir, nil)
+	film, err := decfilm.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("film %s illisible : %v", dir, err)
 	}
-	cat, err := profile.LoadMapQuantCatalog(bornesPath)
+	cat, err := decfilm.LoadMapQuantCatalog(bornesPath)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", bornesPath, err)
 	}
@@ -318,11 +316,11 @@ func duelsBLireFilm(
 	if err != nil {
 		t.Fatalf("carte %q absente du catalogue : %v", carte, err)
 	}
-	opt := grammar.DefaultScanFilmOptions()
+	opt := decfilm.DefaultScanFilmOptions()
 	rng := entry.Range()
 	opt.WorldRange = &rng
 	opt.CaptureDirs = true
-	positions, err := grammar.ScanBipedPositions(grammar.NewFilmContext(film), opt)
+	positions, err := decfilm.ScanBipedPositions(decfilm.NewFilmContext(film), opt)
 	if err != nil {
 		t.Fatalf("positions bipeds : %v", err)
 	}
@@ -351,7 +349,7 @@ func duelsBFilmDir(root, matchID string) string {
 // decodeurs du meme fait divergeraient » (killpos_bridge.go). Le roster fourni a l'index de
 // joueur est celui de `match_participants`, comme en production (rosterUint64 dans positions.go).
 func duelsBPontIdentite(
-	t *testing.T, film *source.Film, positions []grammar.BipedPosition, equipes map[uint64]int64,
+	t *testing.T, film *decfilm.Film, positions []decfilm.BipedPosition, equipes map[uint64]int64,
 ) (map[uint32]uint64, replay.IdentityRegistry) {
 	t.Helper()
 	deaths, err := replay.ScanDeaths(film)

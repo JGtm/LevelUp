@@ -24,8 +24,8 @@ import (
 	"sort"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // objRecord est un record de bipede d'image-cle, reduit a ce que la mesure consomme :

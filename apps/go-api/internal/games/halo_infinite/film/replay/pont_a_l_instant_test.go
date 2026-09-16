@@ -32,7 +32,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // Les instants du siege 900, en microsecondes de l'horloge du film. Le pas de grille des tests

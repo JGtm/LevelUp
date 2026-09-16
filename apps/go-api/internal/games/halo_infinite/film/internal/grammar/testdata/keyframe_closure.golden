@@ -1,0 +1,272 @@
+# FERMETURE DES RECORDS D'IMAGE-CLE PAR ARCHETYPE — golden du lot 0.A.3.
+# Une colonne par mesure : film, archetype, fermes, total, bloquant le plus frequent.
+# Le ratchet rougit sur une BAISSE de `fermes`. Regeneration :
+#   go test ./internal/games/halo_infinite/film/internal/grammar/ -run KeyframeClosureRatchet -update-keyframe-closure
+#
+# HISTORIQUE DES REGENERATIONS — une ligne par lot, avec CE QUI MONTE ET POURQUOI.
+# Un golden de couverture qu'on refige sans dire ce qu'il gagne ne garde plus rien.
+#
+#   2026-09-13 lot 0.A.3 : creation, 7 bobines par build, 217 lignes de mesure.
+#   2026-09-14 lot 1.3   : les CINQ etats par defaut manquants relus chez l'ecrivain
+#     (ti14 `V ; R(5)` FUN_140FED6F4 · ti17 `V ; R(7)` FUN_14101A0A4 · ti21 `R(18)`
+#     FUN_141133C24 · ti29 `V` seul FUN_14116F514 · ti47 `V ; R(5)` FUN_1410F44F8).
+#     21 lignes MONTENT, 0 descend, aucune ne disparait, aucun total ne bouge :
+#       ti=14    0/3520 -> 3520/3520 (100 %, les 7 bobines)
+#       ti=17    0/3729 -> 3729/3729 (100 %, les 7 bobines)
+#       ti=29    0/110  ->  102/110  (100 % sur 6 bobines, 22/30 sur 60ae07c4)
+#     ti=21 (0/357) et ti=47 (0/1716) ne bougent PAS, et c'etait prevu : leur largeur
+#     est prouvee par deux chaines, mais un composant reste faux — ti=47 bute sur
+#     `i2 personal-ai-data-component`, ti=21 sous-lit. Une largeur juste ne remplace
+#     pas un deserialiseur manquant (lot 3.6).
+#     Meme geste sur les 6 films de recherche : 8 796/62 686 (14,0 %) -> 19 337/62 686
+#     (30,8 %), delta = 5 024 + 5 379 + 138, et le plancher de hasard DESCEND de
+#     529 a 391. Mesure rejouable : `TestImageCleFermetureParArchetype` sous CHUNK00_FILMS.
+#
+#   2026-09-15  lot 1.9.1 bis, pas 2 bis + 2 quater : LES DEUX MOTS DE TAILLE SONT DES GARDES,
+#     ET LA TABLE DE PLAGES DE FUN_1406d3140 A NEUF CATEGORIES.
+#     NET : 26 lignes MONTENT (+89 records), 2 DESCENDENT (-21), soit +68 records.
+#     Les cinq archetypes objet passent de 184/21 698 (0,85 %) a 246/21 698 (1,13 %) ;
+#     ti=41 passe de 0/110 a 34/110 (30,9 %), ti=42 de 1/2 087 a 10, ti=37 de 3/3 331 a 15.
+#     Des archetypes HORS prefixe objet montent aussi : ti=35 (bipede) 0 -> 6, ti=10 0 -> 3,
+#     ti=12 0 -> 1.
+#     CE QUI A CHANGE, RELU CHEZ L ECRIVAIN :
+#       (a) FUN_142e2bfd0 porte DEUX fois `if (0 < (int)uVar7)` : le premier garde
+#           `vtable[0x60]` (l etat par defaut), le second `vtable[0x88]` PUIS la boucle de
+#           composants. `n1 == 0` -> aucun etat par defaut ; `n2 == 0` -> aucun composant.
+#           Comparaison SIGNEE. Le depot lisait les deux inconditionnellement.
+#       (b) FUN_140d10bb0 remplit neuf entrees de plages (constantes du binaire) et
+#           FUN_1406d3140 y indexe par `param_3` : W vaut 13 pour 0/1/7/8, 8 pour 2/3/5,
+#           9 pour 4/6, et la categorie 1 bascule sur l entree 4 quand sa sonde rend 1.
+#           Quatre sites de ti=37 corriges (i10, i21, i22, i28).
+#     LES DEUX DESCENTES, DOCUMENTEES RECORD PAR RECORD (condition posee par le pilote) :
+#       `a521164d` ti=13 8 -> 0. MESURE : `n1` vaut 136 sur les 454 records mesures — une
+#         taille de tampon CONSTANTE, donc l en-tete de 108 bits est juste — tandis que `n2`,
+#         lu juste apres l etat par defaut, prend -1 (48 fois), 2147483392 (24), 32768 (20),
+#         98304 (20), 0 (20), 68, 422710486, 2073479726, 1239369857, 4, 3, 2... C est du BRUIT :
+#         la marche est deja desalignee AVANT le mot de taille, donc dans l etat par defaut de
+#         ti=13. Les huit fermetures perdues etaient des fermetures obtenues APRES desalignement ;
+#         la garde ne les casse pas, elle les revele.
+#       `60ae07c4` ti=38 43 -> 30. Meme nature, et la meme mesure le montre : `n1` vaut 100 sur
+#         les 2 098 records, `n2` rend 0, 110, 14112, 14113, 14114, 3528, 3612672, 451709...
+#     L ORACLE QUE CETTE MESURE OUVRE, ET QUI VAUT POUR LA SUITE : sur les archetypes qui
+#     FERMENT, `n1` ET `n2` sont constants et plausibles (ti=14 4/28, ti=17 4/432, ti=22 12/12,
+#     ti=29 1/256, ti=6 4/7896) ; sur ceux qui echouent, `n1` est constant et `n2` est du bruit.
+#     `n2` est donc un oracle GRATUIT de justesse de l ETAT PAR DEFAUT, et il designe la cause :
+#     le premier bit faux de ti=13, 37 et 38 est DANS LEUR ETAT PAR DEFAUT, avant tout composant.
+a521164d	ti=0	0	1	
+a521164d	ti=2	0	11	i11 game-engine-soft-ceilings-component
+a521164d	ti=4	10	10	
+a521164d	ti=5	0	352	i22 player-aim-assist-component
+a521164d	ti=6	0	528	
+a521164d	ti=9	0	262	i4 managed-player-forge-weather-effect-overrides-component
+a521164d	ti=10	0	573	i2 managed-object-navpoint-component
+a521164d	ti=11	0	18	i4 managed-objective-interaction-filter-component
+a521164d	ti=12	0	298	i1 managed-navpoint-flags-component
+a521164d	ti=13	0	220	
+a521164d	ti=14	352	352	
+a521164d	ti=15	11	11	
+a521164d	ti=17	363	363	
+a521164d	ti=18	11	11	
+a521164d	ti=19	0	11	i0 sound-placement-state-data-component
+a521164d	ti=21	0	50	
+a521164d	ti=22	11	11	
+a521164d	ti=25	0	11	i0 powerframe-player-selection-data-component
+a521164d	ti=26	0	11	i0 supply-lines-blocked-status-component
+a521164d	ti=27	0	11	i0 supply-lines-item-unlocked-component
+a521164d	ti=29	11	11	
+a521164d	ti=34	0	11	i10 tacmap-mapdismissallock
+a521164d	ti=35	0	205	i60 simulation-state-component
+a521164d	ti=37	4	762	
+a521164d	ti=38	33	1303	
+a521164d	ti=40	0	335	
+a521164d	ti=41	23	35	
+a521164d	ti=42	2	698	
+a521164d	ti=43	0	1559	i19 device-position-animation-name-component
+a521164d	ti=45	0	11	i0 matchflow-sequence-data-component
+a521164d	ti=47	0	262	i2 personal-ai-data-component
+60ae07c4	ti=1	0	1	i11 game-engine-soft-ceilings-component
+60ae07c4	ti=2	0	30	i11 game-engine-soft-ceilings-component
+60ae07c4	ti=4	21	29	
+60ae07c4	ti=5	0	960	i22 player-aim-assist-component
+60ae07c4	ti=6	1438	1439	
+60ae07c4	ti=9	0	240	i4 managed-player-forge-weather-effect-overrides-component
+60ae07c4	ti=10	1	376	i2 managed-object-navpoint-component
+60ae07c4	ti=11	0	135	i4 managed-objective-interaction-filter-component
+60ae07c4	ti=12	0	204	i1 managed-navpoint-flags-component
+60ae07c4	ti=13	0	454	
+60ae07c4	ti=14	960	960	
+60ae07c4	ti=15	30	30	
+60ae07c4	ti=17	990	990	
+60ae07c4	ti=18	30	30	
+60ae07c4	ti=19	0	30	i0 sound-placement-state-data-component
+60ae07c4	ti=20	0	2	
+60ae07c4	ti=21	0	87	
+60ae07c4	ti=22	30	30	
+60ae07c4	ti=25	0	30	i0 powerframe-player-selection-data-component
+60ae07c4	ti=26	0	30	i0 supply-lines-blocked-status-component
+60ae07c4	ti=27	0	30	i0 supply-lines-item-unlocked-component
+60ae07c4	ti=29	22	30	
+60ae07c4	ti=34	0	30	i10 tacmap-mapdismissallock
+60ae07c4	ti=35	1	236	i60 simulation-state-component
+60ae07c4	ti=37	3	425	
+60ae07c4	ti=38	30	2099	
+60ae07c4	ti=40	0	32	
+60ae07c4	ti=41	0	19	
+60ae07c4	ti=42	2	253	
+60ae07c4	ti=43	0	569	i19 device-position-animation-name-component
+60ae07c4	ti=45	0	30	i0 matchflow-sequence-data-component
+60ae07c4	ti=47	0	240	i2 personal-ai-data-component
+11de8353	ti=2	0	16	i11 game-engine-soft-ceilings-component
+11de8353	ti=4	13	14	
+11de8353	ti=5	0	512	i22 player-aim-assist-component
+11de8353	ti=6	764	766	
+11de8353	ti=8	0	2	
+11de8353	ti=9	0	393	i4 managed-player-forge-weather-effect-overrides-component
+11de8353	ti=10	0	95	i2 managed-object-navpoint-component
+11de8353	ti=11	0	14	i4 managed-objective-interaction-filter-component
+11de8353	ti=12	0	31	i1 managed-navpoint-flags-component
+11de8353	ti=13	0	112	
+11de8353	ti=14	512	512	
+11de8353	ti=15	16	16	
+11de8353	ti=17	528	528	
+11de8353	ti=18	16	16	
+11de8353	ti=19	0	16	i0 sound-placement-state-data-component
+11de8353	ti=20	0	1	
+11de8353	ti=21	0	26	
+11de8353	ti=22	16	16	
+11de8353	ti=25	0	16	i0 powerframe-player-selection-data-component
+11de8353	ti=26	0	16	i0 supply-lines-blocked-status-component
+11de8353	ti=27	0	16	i0 supply-lines-item-unlocked-component
+11de8353	ti=29	16	16	
+11de8353	ti=34	0	16	i10 tacmap-mapdismissallock
+11de8353	ti=35	1	255	i60 simulation-state-component
+11de8353	ti=37	1	514	
+11de8353	ti=38	48	2262	
+11de8353	ti=40	0	220	
+11de8353	ti=41	5	19	
+11de8353	ti=42	1	155	
+11de8353	ti=43	0	380	i19 device-position-animation-name-component
+11de8353	ti=45	0	16	i0 matchflow-sequence-data-component
+11de8353	ti=47	0	393	i2 personal-ai-data-component
+111fa685	ti=2	0	14	i11 game-engine-soft-ceilings-component
+111fa685	ti=4	0	13	
+111fa685	ti=5	0	448	i22 player-aim-assist-component
+111fa685	ti=6	670	671	
+111fa685	ti=9	0	337	i4 managed-player-forge-weather-effect-overrides-component
+111fa685	ti=10	0	103	i2 managed-object-navpoint-component
+111fa685	ti=11	0	13	i4 managed-objective-interaction-filter-component
+111fa685	ti=12	1	15	i1 managed-navpoint-flags-component
+111fa685	ti=13	0	104	
+111fa685	ti=14	448	448	
+111fa685	ti=15	14	14	
+111fa685	ti=17	462	462	
+111fa685	ti=18	14	14	
+111fa685	ti=19	0	14	i0 sound-placement-state-data-component
+111fa685	ti=20	0	13	i2 spawn-filter-filters-component
+111fa685	ti=22	14	14	
+111fa685	ti=25	0	14	i0 powerframe-player-selection-data-component
+111fa685	ti=26	0	14	i0 supply-lines-blocked-status-component
+111fa685	ti=27	0	14	i0 supply-lines-item-unlocked-component
+111fa685	ti=29	14	14	
+111fa685	ti=34	0	14	i10 tacmap-mapdismissallock
+111fa685	ti=35	1	214	i60 simulation-state-component
+111fa685	ti=37	1	569	
+111fa685	ti=38	30	1366	
+111fa685	ti=40	0	58	
+111fa685	ti=41	4	20	
+111fa685	ti=42	0	141	
+111fa685	ti=43	0	260	i19 device-position-animation-name-component
+111fa685	ti=45	0	14	i0 matchflow-sequence-data-component
+111fa685	ti=47	0	336	i2 personal-ai-data-component
+e5adf7b2	ti=2	0	11	i11 game-engine-soft-ceilings-component
+e5adf7b2	ti=4	10	10	
+e5adf7b2	ti=5	0	352	i22 player-aim-assist-component
+e5adf7b2	ti=6	528	528	
+e5adf7b2	ti=9	0	261	i4 managed-player-forge-weather-effect-overrides-component
+e5adf7b2	ti=10	0	262	i2 managed-object-navpoint-component
+e5adf7b2	ti=11	0	10	i4 managed-objective-interaction-filter-component
+e5adf7b2	ti=12	0	60	i1 managed-navpoint-flags-component
+e5adf7b2	ti=13	0	80	
+e5adf7b2	ti=14	352	352	
+e5adf7b2	ti=15	11	11	
+e5adf7b2	ti=17	363	363	
+e5adf7b2	ti=18	11	11	
+e5adf7b2	ti=19	0	11	i0 sound-placement-state-data-component
+e5adf7b2	ti=20	0	12	i2 spawn-filter-filters-component
+e5adf7b2	ti=21	0	50	
+e5adf7b2	ti=22	11	11	
+e5adf7b2	ti=25	0	11	i0 powerframe-player-selection-data-component
+e5adf7b2	ti=26	0	11	i0 supply-lines-blocked-status-component
+e5adf7b2	ti=27	0	11	i0 supply-lines-item-unlocked-component
+e5adf7b2	ti=29	11	11	
+e5adf7b2	ti=34	0	11	i10 tacmap-mapdismissallock
+e5adf7b2	ti=35	0	237	i60 simulation-state-component
+e5adf7b2	ti=37	0	489	
+e5adf7b2	ti=38	12	1046	
+e5adf7b2	ti=40	0	132	
+e5adf7b2	ti=41	1	6	
+e5adf7b2	ti=42	1	187	
+e5adf7b2	ti=43	0	414	i19 device-position-animation-name-component
+e5adf7b2	ti=45	0	11	i0 matchflow-sequence-data-component
+e5adf7b2	ti=47	0	261	i2 personal-ai-data-component
+bcb6d393	ti=0	0	1	
+bcb6d393	ti=2	0	19	i11 game-engine-soft-ceilings-component
+bcb6d393	ti=3	0	1	i0 low-frequency
+bcb6d393	ti=4	18	18	
+bcb6d393	ti=5	0	608	i22 player-aim-assist-component
+bcb6d393	ti=6	910	911	
+bcb6d393	ti=9	0	144	i4 managed-player-forge-weather-effect-overrides-component
+bcb6d393	ti=10	2	419	i2 managed-object-navpoint-component
+bcb6d393	ti=11	0	85	i4 managed-objective-interaction-filter-component
+bcb6d393	ti=12	4	160	i1 managed-navpoint-flags-component
+bcb6d393	ti=13	0	331	
+bcb6d393	ti=14	576	576	
+bcb6d393	ti=15	19	19	
+bcb6d393	ti=17	627	627	
+bcb6d393	ti=18	19	19	
+bcb6d393	ti=19	0	19	i0 sound-placement-state-data-component
+bcb6d393	ti=21	0	144	
+bcb6d393	ti=22	19	19	
+bcb6d393	ti=25	0	19	i0 powerframe-player-selection-data-component
+bcb6d393	ti=26	0	19	i0 supply-lines-blocked-status-component
+bcb6d393	ti=27	0	19	i0 supply-lines-item-unlocked-component
+bcb6d393	ti=29	18	18	
+bcb6d393	ti=34	0	19	i10 tacmap-mapdismissallock
+bcb6d393	ti=35	3	137	i60 simulation-state-component
+bcb6d393	ti=37	5	352	
+bcb6d393	ti=38	24	1841	
+bcb6d393	ti=41	0	5	
+bcb6d393	ti=42	4	437	
+bcb6d393	ti=43	0	594	i19 device-position-animation-name-component
+bcb6d393	ti=45	0	18	i0 matchflow-sequence-data-component
+bcb6d393	ti=47	0	144	i2 personal-ai-data-component
+fb1a1a72	ti=1	0	1	i11 game-engine-soft-ceilings-component
+fb1a1a72	ti=2	0	12	i11 game-engine-soft-ceilings-component
+fb1a1a72	ti=3	0	25	i0 low-frequency
+fb1a1a72	ti=4	0	11	
+fb1a1a72	ti=5	0	384	i22 player-aim-assist-component
+fb1a1a72	ti=6	574	575	
+fb1a1a72	ti=9	0	80	i4 managed-player-forge-weather-effect-overrides-component
+fb1a1a72	ti=10	0	433	i2 managed-object-navpoint-component
+fb1a1a72	ti=11	0	50	i4 managed-objective-interaction-filter-component
+fb1a1a72	ti=12	0	111	i1 managed-navpoint-flags-component
+fb1a1a72	ti=13	0	190	
+fb1a1a72	ti=14	320	320	
+fb1a1a72	ti=15	12	12	
+fb1a1a72	ti=17	396	396	
+fb1a1a72	ti=18	12	12	
+fb1a1a72	ti=19	0	12	i0 sound-placement-state-data-component
+fb1a1a72	ti=22	12	12	
+fb1a1a72	ti=25	0	12	i0 powerframe-player-selection-data-component
+fb1a1a72	ti=26	0	12	i0 supply-lines-blocked-status-component
+fb1a1a72	ti=27	0	12	i0 supply-lines-item-unlocked-component
+fb1a1a72	ti=29	10	10	
+fb1a1a72	ti=34	0	12	i10 tacmap-mapdismissallock
+fb1a1a72	ti=35	0	80	i60 simulation-state-component
+fb1a1a72	ti=37	1	220	
+fb1a1a72	ti=38	10	2147	
+fb1a1a72	ti=41	1	6	
+fb1a1a72	ti=42	0	216	
+fb1a1a72	ti=43	0	330	i19 device-position-animation-name-component
+fb1a1a72	ti=45	0	11	i0 matchflow-sequence-data-component
+fb1a1a72	ti=47	0	80	i2 personal-ai-data-component

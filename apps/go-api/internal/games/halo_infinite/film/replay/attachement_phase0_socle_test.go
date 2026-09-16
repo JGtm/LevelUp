@@ -40,7 +40,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // attFilmEnv — la garde d'environnement de toute la phase 0 attachement.

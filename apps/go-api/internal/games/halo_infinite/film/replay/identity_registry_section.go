@@ -27,7 +27,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // IdentitySection est la section `identity` du document de rejeu.

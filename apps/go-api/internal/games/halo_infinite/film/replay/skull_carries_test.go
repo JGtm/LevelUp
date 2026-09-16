@@ -4,7 +4,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // skull_carries_test.go — LE PORTEUR DU CRANE, sur des enregistrements synthetiques (CI, sans

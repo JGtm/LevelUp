@@ -35,13 +35,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // ErrSansNomDeCarte : ce match n'a AUCUNE identité de carte exploitable — la base ne le connaît
 // pas, ou sa ligne de registre ne porte aucun nom.
 //
-// ELLE EST DISTINCTE DE [profile.ErrUnknownMapBounds], et la distinction est le point : « je ne
+// ELLE EST DISTINCTE DE [decfilm.ErrUnknownMapBounds], et la distinction est le point : « je ne
 // sais pas quelle carte » et « je sais quelle carte, elle n'est pas au catalogue » appellent deux
 // gestes différents — instruire le registre du match d'un côté, étendre le catalogue de bornes de
 // l'autre. Les confondre ferait chercher la correction du mauvais côté de la frontière.
@@ -54,10 +55,10 @@ var ErrSansNomDeCarte = errors.New("killcollector: aucun nom de carte pour ce ma
 //
 // LE COLLECTEUR DOIT AVOIR REÇU `WithPositionCapture` : `mapNames` et `mapBounds` sont vérifiés
 // par les appelants (positions et touches), chacun avec son propre compteur de câblage.
-func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID string) (profile.MapQuantEntry, error) {
+func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID string) (decfilm.MapQuantEntry, error) {
 	noms, err := c.nomsDeCarteDuMatch(ctx, matchID)
 	if err != nil {
-		return profile.MapQuantEntry{}, err
+		return decfilm.MapQuantEntry{}, err
 	}
 	return c.entreeDeCatalogueParNom(noms)
 }
@@ -82,18 +83,18 @@ func (c *KillSourceCollector) nomsDeCarteDuMatch(ctx context.Context, matchID st
 }
 
 // entreeDeCatalogueParNom rend l'entrée de la PREMIÈRE identité candidate qui résout au
-// catalogue. [profile.ErrUnknownMapBounds] quand aucune ne résout : le nom est connu, la carte
+// catalogue. [decfilm.ErrUnknownMapBounds] quand aucune ne résout : le nom est connu, la carte
 // n'est pas au catalogue (D-4 d'ADR 0034 — elle se COMPTE, elle ne se devine pas).
 //
 // `repli_carte_premier_nom_resolu` (registre des replis) : les candidats sont essayés DANS
 // L'ORDRE et le premier qui résout gagne, sans arbitrage. Ce n'est pas un ordre arbitraire —
 // `MapKeysForMatch` les rend « du plus fiable au moins fiable » et documente pourquoi il y en a
 // plusieurs (nom d'asset canonique contre libellé brut, l'un ou l'autre pouvant manquer).
-func (c *KillSourceCollector) entreeDeCatalogueParNom(noms []string) (profile.MapQuantEntry, error) {
+func (c *KillSourceCollector) entreeDeCatalogueParNom(noms []string) (decfilm.MapQuantEntry, error) {
 	for _, name := range noms {
 		if entry, err := c.mapBounds.Lookup(name); err == nil {
 			return entry, nil
 		}
 	}
-	return profile.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", profile.ErrUnknownMapBounds, noms)
+	return decfilm.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", decfilm.ErrUnknownMapBounds, noms)
 }

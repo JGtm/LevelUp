@@ -23,7 +23,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // EquipmentChangeKind qualifie un changement d'équipement, tel que le document le publie.

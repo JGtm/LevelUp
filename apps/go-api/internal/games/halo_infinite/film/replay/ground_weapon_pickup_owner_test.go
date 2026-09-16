@@ -57,7 +57,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // gwPickup25Tally compte l'oracle par joueur sur les ramassages de socle d'un film. Chaque

@@ -160,17 +160,27 @@ var (
 // classe fait rougir `TestCouchesDuDecodeurSontPeupleesEtALeurPlace`, ce qui est le bon sens de
 // la faute (classer un paquet coute une ligne, l oublier ouvrirait un trou).
 var couchesDuDecodeur = map[string]coucheFilm{
-	// --- LA FACADE, a la RACINE de l arborescence (lot 2.5.e-b, 2026-09-16). Elle RE-EXPORTE
-	// la surface que les paquets hors du decodeur citaient, et elle ne decode pas une ligne :
-	// elle se classe donc HORS COUCHE, comme les catalogues de libelles et l outillage
-	// d empreinte. Elle importe les CINQ couches — c est son travail — et R1 ne la contraint
-	// pas (rang -1) ; R2 si, et elle la tient : aucun import d `internal/analysis`.
-	"internal/games/halo_infinite/film": horsCoucheFilm,
+	// --- LA FACADE (lot 2.5.e, 2026-09-16). Elle RE-EXPORTE la surface que les paquets hors du
+	// decodeur citaient, et elle ne decode pas une ligne : elle se classe donc HORS COUCHE,
+	// comme les catalogues de libelles et l outillage d empreinte. Elle importe les quatre
+	// couches internes — c est son travail — et R1 ne la contraint pas (rang -1) ; R2 si, et
+	// elle la tient : aucun import d `internal/analysis`.
+	//
+	// ELLE VIT DANS SON PROPRE REPERTOIRE, ET C EST MESURE : le brief du lot la voulait a la
+	// RACINE de `film/`, donc en `package film`. Mesure du 2026-09-17 a la compilation :
+	// l identifiant `film` est LE nom du film charge dans 45 fichiers consommateurs
+	// (`film *source.Film`, `film.Chunk(i)`, `film.Meta()`) — un paquet du meme nom y est
+	// SHADOWE, et les 30 fichiers qui ont besoin des deux ne compilent pas. Renommer la variable
+	// du domaine partout serait un changement de contenu massif dans un lot de deplacements ;
+	// aliaser l import dans la moitie des fichiers laisserait deux orthographes pour un meme
+	// paquet. Le repertoire `decfilm/` fait coincider le nom du paquet et celui du dossier, sans
+	// alias et sans collision.
+	"internal/games/halo_infinite/film/decfilm": horsCoucheFilm,
 
 	// --- source : charger, decompresser, decouper, lire l en-tete, tenir le lecteur de bits.
 	// `source` est une FEUILLE sans aucun import du depot (ratchet `filmsource_leaf_test.go`)
 	// et passe sous `film/internal/source` au lot 2.5.a (decision V5 du plan).
-	"internal/games/halo_infinite/film/source": coucheSource,
+	"internal/games/halo_infinite/film/internal/source": coucheSource,
 
 	// --- profile : la table de profil, les catalogues et les types de VALEUR. PEUPLEE LE
 	// 2026-09-16 (lot 2.5.b) : le paquet `film/profile` porte desormais ce qui vivait dans
@@ -179,10 +189,10 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// DETECTION (le balayage qui PRODUIT un decoupage i0, la resolution depuis un film, le
 	// controle du calibrage) est restee en `grammar` et rend un type de `profile` — c est
 	// l inversion de dependance qui a leve le blocage mesure au §4 D2 du plan.
-	"internal/games/halo_infinite/film/profile": coucheProfile,
+	"internal/games/halo_infinite/film/internal/profile": coucheProfile,
 
 	// --- grammar : decodeurs de records et de composants, fonctions pures de (profil, bits).
-	"internal/games/halo_infinite/film/grammar": coucheGrammar,
+	"internal/games/halo_infinite/film/internal/grammar": coucheGrammar,
 	// `weaponv3` etait un QUATRIEME lecteur de bits, pose sous `analysis/` : `ResolveXuidToPI` est
 	// de la grammaire de film. DESCENDU LE 2026-09-16 (lot 2.5.c) sous `film/grammar/weaponv3`,
 	// par `git mv` PUR — il DEVAIT quitter `internal/analysis/` avant que la couche `source` n y
@@ -190,31 +200,31 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// `grammar`, le catalogue d armes (3 symboles, toujours dans `internal/analysis/weapon_data.go`)
 	// remonte en `games/weapons` — c est la seule chose qui fermera l arete `weaponv3 -> analysis`
 	// ci-dessous.
-	"internal/games/halo_infinite/film/grammar/weaponv3": coucheGrammar,
+	"internal/games/halo_infinite/film/internal/grammar/weaponv3": coucheGrammar,
 	// DESCENDUS LE 2026-09-16 (lot 2.5.e, decision V15 (4)) d `internal/analysis` racine : c est
 	// de la grammaire de film qui vivait dans le paquet title-agnostic. `weaponscan` porte les
 	// deux balayages d armes du flux de replication (Formula A, evenement de tir au marqueur
 	// universel) ; `positions` decode les positions joueurs des cadres d etat complet. Les deux
 	// LISENT des bits, donc ils sont de la couche `grammar` ; ce sont des SOUS-PAQUETS parce que
 	// `grammar.FireEvent` et le `FireEvent` de `weaponscan` designent deux records differents.
-	"internal/games/halo_infinite/film/grammar/weaponscan": coucheGrammar,
-	"internal/games/halo_infinite/film/grammar/positions":  coucheGrammar,
+	"internal/games/halo_infinite/film/internal/grammar/weaponscan": coucheGrammar,
+	"internal/games/halo_infinite/film/internal/grammar/positions":  coucheGrammar,
 
 	// --- facts : de la chronologie brute aux faits du match (vies, identite, tirs, morts,
 	// objectifs, equipement, vehicules), chacun avec ses compteurs de couverture.
 	// La RACINE de l arbre des faits ne porte qu une chose : `facts.Rev`, la revision de la
 	// couche (lot 2.6.1, descendue de `sync/killcollector`). Elle se classe `facts` — c est la
 	// couche qu elle date — et n importe rien : une constante n a pas de dependance.
-	"internal/games/halo_infinite/film/facts":            coucheFacts,
-	"internal/games/halo_infinite/film/facts/killsource": coucheFacts,
+	"internal/games/halo_infinite/film/internal/facts":            coucheFacts,
+	"internal/games/halo_infinite/film/internal/facts/killsource": coucheFacts,
 	// `fallback` (le REGISTRE des replis, D10 bis) etait une feuille de `replay` ; il descend en
 	// `facts/fallback` au lot 2.5.d.1 (2026-09-16) et se classe DESORMAIS `facts`, avec son
 	// arborescence. Le reclassement ne change aucune arete : la feuille n importe rien du depot,
 	// et `replay -> facts` reste descendant.
-	"internal/games/halo_infinite/film/facts/fallback": coucheFacts,
+	"internal/games/halo_infinite/film/internal/facts/fallback": coucheFacts,
 	// DESCENDU LE 2026-09-16 (lot 2.5.d.2) d `internal/analysis/objectiveevents` : le paquet vit
 	// desormais sous `film/facts/`, et passera sous `film/internal/facts/` au dernier commit du lot.
-	"internal/games/halo_infinite/film/facts/objectives": coucheFacts,
+	"internal/games/halo_infinite/film/internal/facts/objectives": coucheFacts,
 
 	// --- replay : publie le document versionne. NE DECODE RIEN (ADR 0034 D-1).
 	"internal/games/halo_infinite/film/replay": coucheReplay,

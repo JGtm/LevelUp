@@ -3,7 +3,7 @@ package replaybuild
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // pontresidu_test.go — LA QUATRIEME VOIE DU PONT DESCEND JUSQU'AU CALQUE.
@@ -21,22 +21,22 @@ import (
 //	manche 1  les quatre slots meurent au moins trois fois -> tous nommes par les morts ;
 //	manche 0  les slots 14 et 16 meurent moins de trois fois -> DEUX muets, DEUX libres, donc
 //	          l'elimination se tait ; leurs segments sont distincts, donc le residu tranche.
-func deuxManchesDeuxMuets() ([]objectives.StatRecord, []objectives.DeathInstant,
-	[]objectives.PlayerLine) {
-	tueMort := func(t, slot, round int, kills, deaths int64) objectives.StatRecord {
-		return objectives.StatRecord{TimeMS: t, Slot: slot, Round: round,
-			Comps: map[int]objectives.StatValue{2: {A: kills, B: deaths}}}
+func deuxManchesDeuxMuets() ([]decfilm.StatRecord, []decfilm.DeathInstant,
+	[]decfilm.PlayerLine) {
+	tueMort := func(t, slot, round int, kills, deaths int64) decfilm.StatRecord {
+		return decfilm.StatRecord{TimeMS: t, Slot: slot, Round: round,
+			Comps: map[int]decfilm.StatValue{2: {A: kills, B: deaths}}}
 	}
-	assist := func(t, slot, round int, v int64) objectives.StatRecord {
-		return objectives.StatRecord{TimeMS: t, Slot: slot, Round: round,
-			Comps: map[int]objectives.StatValue{3: {A: v}}}
+	assist := func(t, slot, round int, v int64) decfilm.StatRecord {
+		return decfilm.StatRecord{TimeMS: t, Slot: slot, Round: round,
+			Comps: map[int]decfilm.StatValue{3: {A: v}}}
 	}
-	mode := func(t, slot, round int, v int64) objectives.StatRecord {
-		return objectives.StatRecord{TimeMS: t, Slot: slot, Round: round,
-			Comps: map[int]objectives.StatValue{0: {A: v}}}
+	mode := func(t, slot, round int, v int64) decfilm.StatRecord {
+		return decfilm.StatRecord{TimeMS: t, Slot: slot, Round: round,
+			Comps: map[int]decfilm.StatValue{0: {A: v}}}
 	}
-	var recs []objectives.StatRecord
-	var deaths []objectives.DeathInstant
+	var recs []decfilm.StatRecord
+	var deaths []decfilm.DeathInstant
 	slots := []int{10, 12, 14, 16}
 	// Segments par manche : (frags, morts, assistances). Manche 0 : les slots 14 et 16 meurent
 	// 1 et 2 fois, sous `deathInstantMin` = 3 — hors de portee du pont par morts.
@@ -66,7 +66,7 @@ func deuxManchesDeuxMuets() ([]objectives.StatRecord, []objectives.DeathInstant,
 				}
 				if pas <= s[1] {
 					deaths = append(deaths,
-						objectives.DeathInstant{XUID: porteur[round][slot], TimeMS: t})
+						decfilm.DeathInstant{XUID: porteur[round][slot], TimeMS: t})
 				}
 				recs = append(recs, tueMort(t, slot, round, k, d), assist(t, slot, round, min(pas, s[2])))
 			}
@@ -76,7 +76,7 @@ func deuxManchesDeuxMuets() ([]objectives.StatRecord, []objectives.DeathInstant,
 			recs = append(recs, mode(base+int(n)*4000+200, 10, round, n))
 		}
 	}
-	lines := []objectives.PlayerLine{
+	lines := []decfilm.PlayerLine{
 		{XUID: "aaa", Kills: 3 + 4, Deaths: 3 + 3, Assists: 1 + 1},
 		{XUID: "bbb", Kills: 4 + 3, Deaths: 3 + 3, Assists: 2 + 1},
 		{XUID: "ccc", Kills: 5 + 2, Deaths: 1 + 3, Assists: 3 + 1},
@@ -92,12 +92,12 @@ func deuxManchesDeuxMuets() ([]objectives.StatRecord, []objectives.DeathInstant,
 // deja nommer ces slots-la.
 func TestPontParMancheNommeParResiduCeQueLEliminationLaisse(t *testing.T) {
 	recs, deaths, lines := deuxManchesDeuxMuets()
-	if n := len(objectives.RealRounds(recs)); n != 2 {
+	if n := len(decfilm.RealRounds(recs)); n != 2 {
 		t.Fatalf("le film synthetique porte %d manche(s) reelle(s), attendu 2", n)
 	}
 
 	// MUTATION : la chaine d'AVANT ce lot (trois voies) laisse les deux slots muets.
-	avant := objectives.ResolveRoundIdentity(recs, deaths).
+	avant := decfilm.ResolveRoundIdentity(recs, deaths).
 		CompletedByLines(recs, lines).
 		CompletedByElimination(recs, lines)
 	if x := avant.AtRound(0, 14); x != "" {
@@ -115,8 +115,8 @@ func TestPontParMancheNommeParResiduCeQueLEliminationLaisse(t *testing.T) {
 	if x := got.AtRound(0, 16); x != "ddd" {
 		t.Errorf("manche 0 slot 16 = %q, attendu \"ddd\" (residu de manche)", x)
 	}
-	if o := got.Origin(0, 14); o != objectives.OriginRoundResidue {
-		t.Errorf("provenance du slot 14 = %q, attendue %q", o, objectives.OriginRoundResidue)
+	if o := got.Origin(0, 14); o != decfilm.OriginRoundResidue {
+		t.Errorf("provenance du slot 14 = %q, attendue %q", o, decfilm.OriginRoundResidue)
 	}
 	if x := got.AtRound(0, 10); x != "aaa" {
 		t.Errorf("manche 0 slot 10 = %q, attendu \"aaa\" : le residu COMPLETE, il ne contredit pas", x)

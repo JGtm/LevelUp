@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // identity_registry_creation_test.go — LES PROPRIETES DU LIEN DIRECT CORPS -> JOUEUR.

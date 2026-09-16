@@ -3,7 +3,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // build_score.go — LE CABLAGE DU CALQUE DE SCORE DANS L'ASSEMBLAGE.

@@ -12,7 +12,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // La fixture partagee ([skullFixture]) cadence ses tics a 1 000 ms ; l'axe des tests vaut

@@ -13,7 +13,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // aimClockTest : origine zero, une frame = 100 ms, 1 000 frames — la grille du document.

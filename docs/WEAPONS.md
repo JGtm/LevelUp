@@ -69,7 +69,7 @@ surfaced in the match view and the favorite-weapon home KPI.
 |---------|----------|
 | Pipeline orchestration (per match / all participants / batch) | `internal/sync/backfill_weapons.go` |
 | DB write (append-only INSERT) | `internal/sync/writes.go` — `InsertWeaponKills`, `MarkWeaponKillsDone` |
-| Chunk scan (fire events, held-weapon timeline) | `internal/games/halo_infinite/film/grammar/weaponscan/scanner.go`, `internal/analysis/weapon_parser.go` |
+| Chunk scan (fire events, held-weapon timeline) | `internal/games/halo_infinite/film/internal/grammar/weaponscan/scanner.go`, `internal/analysis/weapon_parser.go` |
 | Weapon ID map, timings, fusions, sentinels | `internal/games/weapons/filmshell/catalogue.go` |
 | Kill -> weapon correlation | `internal/analysis/weapon_correlation.go` |
 | API reconciliation | `internal/analysis/weapon_reconciliation.go` |

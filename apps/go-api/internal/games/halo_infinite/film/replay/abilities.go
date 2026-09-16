@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // abilities.go — LA CAPACITÉ D'ARMURE PORTÉE, portée à la grille du rejeu.

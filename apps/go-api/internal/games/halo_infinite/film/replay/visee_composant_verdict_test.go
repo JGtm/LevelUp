@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vfCalibChunks : nombre de chunks deroules par largeur candidate pendant la calibration.

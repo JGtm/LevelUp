@@ -31,7 +31,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vfPropagationUS : ecart maximal entre deux fragments de meme slot consideres comme la meme

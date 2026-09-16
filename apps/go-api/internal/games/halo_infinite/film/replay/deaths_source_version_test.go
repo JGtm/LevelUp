@@ -26,12 +26,12 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // miniBobineV40 : la bobine de version 40, relative a CE paquet.
-const miniBobineV40 = "../facts/killsource/testdata/minibobine_e5adf7b2"
+const miniBobineV40 = "../internal/facts/killsource/testdata/minibobine_e5adf7b2"
 
 // miniBobineV40Version : la version que son registre declare.
 const miniBobineV40Version = 40
