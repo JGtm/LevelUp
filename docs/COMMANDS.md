@@ -495,11 +495,17 @@ a server that holds the shared DB in write.
 go run ./cmd/replay-equiv                            # whole corpus (CORPUS.txt), compare only
 go run ./cmd/replay-equiv -films 000d5950 -update    # (re-)freeze the references of one film
 # flags: -corpus F  -films a,b (replaces the corpus)  -update  -mem-gib N (default 3, 0 = off)
-#        -title slug
+#        -title slug  -out-dir D (keep the child TSVs instead of a wiped temp dir)
 ```
 
 The equivalence harness of the build chain: it hashes the output of **every** scan, not just the
-final artifact, so a divergence is located down to the scan. Parent and child share one binary —
+final artifact, so a divergence is located down to the scan. **Since 2026-09-17 it names EVERY
+divergent scan of a film, not just the first** (D2), with the expected and obtained count and sha
+per scan and a header line `ECART sur N etape(s) sur M`: three divergent scans used to mean three
+full film decodes (one to three minutes each) to discover them one at a time, and a single
+divergence could not be told apart from a general one. `-out-dir D` keeps the child TSVs instead
+of wiping a temp dir, so the obtained digests can be diffed against the references without
+re-decoding. `-update` and the TSV reference format are unchanged. Parent and child share one binary —
 the parent plans and decodes nothing, each film is born in a bounded child (solo lock with bounded
 wait, sentinel) and dies with its RAM. References live in
 `internal/games/halo_infinite/film/replay/testdata/equivalence/<short8>.tsv`, each opening with its
@@ -643,7 +649,7 @@ gates nothing):
   diff under review, never from the parc's age.
 - `--reference=parc`: diffs HEAD against the artifact already baked in the local parc (the
   original, historical method — a release-time sweep). **Informative by default** (prints the
-  table, exits 0) — pass `--strict` to make it exit 1 on loss too.
+  table, exits 0) — pass `--strict` to make it exit 1 on loss or change too.
 
 In both modes the working root is disposable (copied inputs only, config/catalogs from the
 checked-out branch or the base worktree, film chunks from the dev parc — **never writes into
@@ -661,9 +667,50 @@ cd apps/go-api && go run ./cmd/replay-corpus-gate \
 **Coverage floor (2026-09-07, CORPUS-R1 C3)**: by default, **every** witness in the manifest
 must be baked and compared — a purged or partial film cache used to leave every witness
 ABSENT, and the gate silently exited 0 having compared nothing (`codeSortie` skips ABSENT
-lines). One or more ABSENT witnesses now exit 2, naming which ones and why; pass
+lines). One or more ABSENT witnesses now exit 4, naming which ones and why; pass
 `--allow-missing` to restore the old behavior (a `slog` warning only, never a failure) for a
 deliberate partial run.
+
+**Per-witness status, and its priority rule (2026-09-17)**: each witness carries exactly one
+status, in the rightmost table column and in the JSON `statut` field. The first rule that
+applies wins:
+
+| Status | Meaning |
+|---|---|
+| `ABSENT` / `ERREUR` | nothing was measured: film, facts or reference artifact missing (`ABSENT`, with its cause), or the bake/diff failed (`ERREUR`, with its cause). Mutually exclusive by construction. |
+| `PERTE` | at least one measure went down or vanished. **Wins over `CHANGEMENT`**: a witness carrying both is a witness in loss, and the loss is what gets investigated. |
+| `CHANGEMENT` | no loss, but at least one published value MOVED (a re-attribution, a naming path yielding to another — `replaydiff/polarite.go`). A status of its own since 2026-09-17: until then a change printed `PERTE`, which sent people hunting a regression where a value had only changed hands. Still **blocking** — a change is either justified (proven divergence) or fixed, never silent. |
+| `ok` | neither loss nor change. GAINS may be present: a gain is never a failure. |
+
+**Exit codes (named constants, 2026-09-17)**: each says exactly one thing. Before that date
+`2` meant both "invalid manifest" and "a witness is missing", so a caller could not tell "this
+gate never started" from "this gate started but did not compare everything"; and a bake error
+was indistinguishable from a loss under `1`.
+
+| Code | Constant | Meaning |
+|---|---|---|
+| 0 | `codeOK` | the whole manifest was compared, no blocking witness |
+| 1 | `codePerte` | at least one compared witness carries a blocking `PERTE` or `CHANGEMENT` — the gate's verdict |
+| 2 | `codeUsage` | the gate never started (invalid flag, unreadable manifest, missing root or capability, base worktree impossible); nothing was measured of the diff under review |
+| 3 | `codeErreurCuisson` | the gate started, but a BAKED witness failed to bake or to diff — distinct from 1: the question could not be put, the answer is not "it lost" |
+| 4 | `codeCouvertureIncomplete` | at least one ABSENT witness without `--allow-missing` (CORPUS-R1 C3) — distinct from both 1 and 2: the manifest is valid, nothing lost, something is missing |
+
+**Robust facts export (2026-09-17, D2)**: `levelup replay-facts-export` opens the shared DB
+read-only, and fails when the local server happens to hold it for writing at that exact second
+("`… serveur en ecriture ? reessayer`"). On the lot 2.1 gate that cost two witnesses out of
+fourteen — `2/14 absent(s)` for a few seconds of bad luck, with the run replayed by hand from a
+manifest cut down to those two. The gate now **retries a held-DB failure 3 times, 2 s apart**,
+and never retries a permanent failure (id unknown to the registry, empty facts): re-asking a
+question whose answer cannot change only lengthens a 25-minute gate. A witness still missing
+afterwards is `ABSENT` and exits 4, distinct from a loss; `--temoins a,b` replays just those.
+
+**Named changes in the JSON report (2026-09-17, D5)**: the JSON now carries
+`changementsDetail` (axis, metric, old, new) symmetric to `pertesDetail`, plus a `statut` and
+an `absentCause` on every line, and the printed table gains a `DETAIL DES CHANGEMENTS` section
+next to `DETAIL DES PERTES`. Until then the report said "2 changes" without ever saying WHICH,
+and the M1 closure had to re-run `replay-diff` by hand on the kept artifacts to name them —
+while a witness in ERROR was written as `{"gains":0,"pertes":0,"changements":0}`, i.e. read
+from the JSON alone, as a clean witness.
 
 **All flags** (`cd apps/go-api && go run ./cmd/replay-corpus-gate -h` for the live list):
 
@@ -671,9 +718,11 @@ deliberate partial run.
 |---|---|---|
 | `--reference` | `base` | `base` (fresh bake vs. a base revision) or `parc` (vs. the already-baked parc artifact) |
 | `--base` | auto (see above) | explicit base revision in `--reference=base` mode |
-| `--strict` | `false` | in `--reference=parc` mode, a loss also exits 1 (no effect in base mode, already blocking) |
-| `--allow-missing` | `false` | tolerate an ABSENT witness (warning only) instead of exiting 2 |
+| `--strict` | `false` | in `--reference=parc` mode, a loss or a change also exits 1 (no effect in base mode, already blocking) |
+| `--allow-missing` | `false` | tolerate an ABSENT witness (warning only) instead of exiting 4 |
 | `--manifest` | `<source-root>/config/replay_corpus.toml` | manifest path |
+| `--temoins` | (none) | replay ONLY the named witnesses (comma-separated ids) — the versioned manifest stays the corpus, no reduced manifest to write. An unknown id is an error (exit 2), never a silently truncated run. |
+| `--mem-gib` | `4` | soft memory ceiling (GiB) armed on EVERY child bake, HEAD and base alike (`0` disarms). The gate default sits ABOVE production's `filmproc.DefaultLimitGiB` = 3 on purpose (D6): two BTB witnesses were measured at 3.779 and 3.807 GiB on the base side, i.e. just over the 3.75 GiB hard limit, and were failing at random from one run to the next. |
 | `--source-root` | `git rev-parse --show-toplevel` | repo whose HEAD code/config is under test — **not** `db_profiles.json`-based: works from any worktree, including one without a local copy of that file |
 | `--parc-root` | `source-root` if it already carries the title's shared DB, else auto-detected via the common `.git` | the dev parc (film chunks, `--reference=parc` artifacts) |
 | `--lock-root` | `CacheRootDir()` of the parc | where the shared decode lock lives |

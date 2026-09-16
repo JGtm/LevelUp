@@ -516,11 +516,18 @@ franchement au lieu d'écrire des faits vides — arrêter un serveur qui tient 
 go run ./cmd/replay-equiv                          # tout le corpus (CORPUS.txt), comparaison seule
 go run ./cmd/replay-equiv -films 000d5950 -update  # (re)fige les références d'un seul film
 # flags : -corpus F  -films a,b (remplace le corpus)  -update  -mem-gib N (défaut 3, 0 = désarmé)
-#         -title slug
+#         -title slug  -out-dir D (conserve les TSV des enfants au lieu d'un temporaire effacé)
 ```
 
 Le harnais d'équivalence de la construction : il hache la sortie de **chaque** balayage, pas
-seulement l'artefact final, ce qui localise une divergence au balayage près. Parent et enfant vivent
+seulement l'artefact final, ce qui localise une divergence au balayage près. **Depuis le
+2026-09-17, il nomme TOUTES les étapes divergentes d'un film, pas seulement la première** (D2),
+avec le compte et le sha attendus / obtenus par étape et une ligne d'en-tête
+`ECART sur N etape(s) sur M` : trois étapes divergentes valaient jusque-là trois décodages
+complets (une à trois minutes chacun) pour les découvrir une à une, et une divergence locale ne
+se distinguait pas d'une divergence générale. `-out-dir D` conserve les TSV des enfants au lieu
+d'effacer un temporaire, pour comparer les digests obtenus aux références sans re-décoder.
+`-update` et le format des TSV de référence sont inchangés. Parent et enfant vivent
 dans le même binaire — le parent planifie et ne décode rien, chaque film naît dans un enfant borné
 (verrou solo en attente bornée, sentinelle) et meurt avec sa RAM. Les références vivent dans
 `internal/games/halo_infinite/film/replay/testdata/equivalence/<short8>.tsv`, chacune ouverte par son marqueur
@@ -691,8 +698,50 @@ cd apps/go-api && go run ./cmd/replay-corpus-gate \
 manifeste doivent être cuits et comparés — un cache de film purgé ou partiel rendait
 auparavant tous les témoins ABSENT, et le gate sortait silencieusement en 0 sans rien comparer
 (`codeSortie` saute les lignes ABSENT). Un ou plusieurs témoins ABSENT sortent désormais en
-code 2, en nommant lesquels et pourquoi ; `--allow-missing` restaure l'ancien comportement (un
+code 4, en nommant lesquels et pourquoi ; `--allow-missing` restaure l'ancien comportement (un
 avertissement `slog` seul, jamais un échec) pour une exécution partielle délibérée.
+
+**Statut par témoin, et sa règle de priorité (2026-09-17)** : un témoin porte UN SEUL statut,
+dans la dernière colonne du tableau et dans le champ `statut` du JSON. La première règle qui
+s'applique gagne :
+
+| Statut | Signification |
+|---|---|
+| `ABSENT` / `ERREUR` | rien n'a été mesuré : film, faits ou artefact de référence manquants (`ABSENT`, avec sa cause), ou cuisson/comparaison en échec (`ERREUR`, avec sa cause). Exclusifs l'un de l'autre par construction. |
+| `PERTE` | au moins une mesure a baissé ou disparu. **Prime sur `CHANGEMENT`** : un témoin qui porte les deux est un témoin en perte, et c'est la perte qu'on instruit. |
+| `CHANGEMENT` | aucune perte, mais au moins une valeur publiée a BOUGÉ (réattribution, voie de nommage qui cède à une autre — `replaydiff/polarite.go`). Statut à lui depuis le 2026-09-17 : jusque-là un changement sortait `PERTE`, ce qui envoyait chercher une régression là où une valeur avait seulement changé de main. Il reste **bloquant** : un changement se justifie (divergence prouvée) ou il se corrige, jamais il ne se tait. |
+| `ok` | ni perte ni changement. Des GAINS peuvent s'y trouver : un gain n'est jamais un échec. |
+
+**Codes de sortie (constantes nommées, 2026-09-17)** : chacun dit UNE chose. Avant cette date,
+le `2` disait à la fois « manifeste invalide » et « témoin absent » — un appelant ne pouvait
+pas distinguer « ce gate n'a pas démarré » de « ce gate a démarré mais n'a pas tout comparé » —
+et une erreur de cuisson se confondait avec une perte sous le `1`.
+
+| Code | Constante | Signification |
+|---|---|---|
+| 0 | `codeOK` | tout le manifeste a été comparé, aucun témoin bloquant |
+| 1 | `codePerte` | au moins un témoin comparé porte une `PERTE` ou un `CHANGEMENT` bloquant — le verdict de ce gate |
+| 2 | `codeUsage` | le gate n'a pas DÉMARRÉ (drapeau invalide, manifeste illisible, racine ou capability absente, worktree de base impossible) ; rien n'a été mesuré du diff sous revue |
+| 3 | `codeErreurCuisson` | le gate a démarré, mais un témoin CUIT a échoué à la cuisson ou à la comparaison — distinct du 1 : la question n'a pas pu être posée, la réponse n'est pas « il a perdu » |
+| 4 | `codeCouvertureIncomplete` | au moins un témoin ABSENT sans `--allow-missing` (CORPUS-R1 C3) — distinct du 1 ET du 2 : le manifeste est valide, aucun témoin n'a perdu, il en manque |
+
+**Export des faits robuste (2026-09-17, D2)** : `levelup replay-facts-export` ouvre la base
+partagée en lecture seule, et échoue quand le serveur local la tient en écriture à cette
+seconde-là (« `… serveur en ecriture ? reessayer` »). Au gate du lot 2.1, cela a coûté deux
+témoins sur quatorze — `2/14 absent(s)` pour un aléa de quelques secondes, rejoué à la main
+avec un manifeste réduit à ces deux-là. Le gate **réessaie désormais 3 fois, à 2 s d'écart**,
+un échec qui porte le marqueur de base tenue, et ne réessaie JAMAIS un échec permanent (id
+inconnu du registre, faits vides) : re-poser une question dont la réponse ne peut pas changer
+ne fait qu'allonger un gate de 25 min. Un témoin toujours manquant ensuite sort `ABSENT` en
+code 4, distinct d'une perte ; `--temoins a,b` rejoue les seuls concernés.
+
+**Changements nommés dans le rapport JSON (2026-09-17, D5)** : le JSON porte désormais un
+`changementsDetail` (axe, métrique, ancien, nouveau) symétrique de `pertesDetail`, plus un
+`statut` et un `absentCause` sur chaque ligne, et le tableau imprimé gagne une section
+`DETAIL DES CHANGEMENTS` à côté de `DETAIL DES PERTES`. Jusque-là le rapport disait
+« 2 changements » sans jamais dire LESQUELS — la clôture M1 a dû relancer `replay-diff` à la
+main sur les artefacts conservés pour les nommer — pendant qu'un témoin en ERREUR s'écrivait
+`{"gains":0,"pertes":0,"changements":0}`, donc, lu du seul JSON, comme un témoin propre.
 
 **Tous les drapeaux** (`cd apps/go-api && go run ./cmd/replay-corpus-gate -h` pour la liste à
 jour) :
@@ -701,9 +750,11 @@ jour) :
 |---|---|---|
 | `--reference` | `base` | `base` (cuisson fraîche contre une révision de base) ou `parc` (contre l'artefact déjà cuit) |
 | `--base` | auto (voir plus haut) | révision de base explicite, en mode `--reference=base` |
-| `--strict` | `false` | en mode `--reference=parc`, une perte sort aussi en code 1 (sans effet en mode base, déjà bloquant) |
-| `--allow-missing` | `false` | tolérer un témoin ABSENT (avertissement seul) au lieu de sortir en code 2 |
+| `--strict` | `false` | en mode `--reference=parc`, une perte ou un changement sort aussi en code 1 (sans effet en mode base, déjà bloquant) |
+| `--allow-missing` | `false` | tolérer un témoin ABSENT (avertissement seul) au lieu de sortir en code 4 |
 | `--manifest` | `<source-root>/config/replay_corpus.toml` | chemin du manifeste |
+| `--temoins` | (aucun) | rejouer les SEULS témoins nommés (ids séparés par des virgules) — le manifeste versionné reste le corpus, aucun manifeste réduit à écrire. Un id inconnu est une erreur (code 2), jamais une exécution tronquée en silence. |
+| `--mem-gib` | `4` | plafond mémoire souple (Gio) armé sur CHAQUE cuisson enfant, HEAD et base (`0` désarme). Le défaut du gate est volontairement AU-DESSUS de celui de production (`filmproc.DefaultLimitGiB` = 3) : D6 a mesuré deux témoins BTB à 3,779 et 3,807 Gio côté base, soit juste au-dessus du plafond dur de 3,75 Gio — ils échouaient au hasard d'un run à l'autre. |
 | `--source-root` | `git rev-parse --show-toplevel` | dépôt dont le code/la config AU HEAD est testé — **pas** basé sur `db_profiles.json` : fonctionne depuis n'importe quel worktree, y compris un sans copie locale de ce fichier |
 | `--parc-root` | `source-root` s'il porte déjà la base partagée du titre, sinon auto-détecté via le `.git` commun | le parc de développement (chunks de film, artefacts `--reference=parc`) |
 | `--lock-root` | `CacheRootDir()` du parc | où vit le verrou de décodage partagé |

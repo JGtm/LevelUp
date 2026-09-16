@@ -29,14 +29,99 @@ package main
 // ERREUR), et `verifierCouverture` (report.go, C3) en fait un plancher de couverture explicite
 // plutot qu'un silence.
 
+// # LA BASE TENUE EN ECRITURE N'EST PAS UNE ABSENCE (D2 (cloture M1), 2026-09-17)
+//
+// Au gate du lot 2.1, `levelup replay-facts-export` a echoue sur DEUX temoins (`c75f33b8`,
+// `111fa685`) avec « open shared RO … utilise par un autre processus (serveur en ecriture ?
+// reessayer) » — le serveur local, relance 16 min plus tot, tenait le fichier a cet instant
+// precis ; les douze autres exports, quelques secondes avant ou apres, ont reussi. Le gate a
+// fini « 2/14 absent(s) » sur un alea de quelques secondes, et le pilote a du le rejouer avec
+// un manifeste REDUIT ecrit a la main.
+//
+// Deux reponses, ici et dans manifest.go :
+//
+//	LE REESSAI     un echec qui porte le marqueur de base tenue est RETENTE, 3 fois, 2 s
+//	               d'ecart. Un echec PERMANENT (id inconnu du registre, faits vides) n'est
+//	               JAMAIS retente : attendre six secondes pour re-poser une question dont la
+//	               reponse ne peut pas changer ne fait que rallonger un gate de 25 min.
+//	LE REJEU CIBLE `--temoins a,b` rejoue les seuls temoins nommes (manifest.go), sans
+//	               fabriquer un manifeste reduit dont personne ne sait plus, ensuite, qu'il
+//	               n'etait pas le corpus.
+
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
+	"strings"
+	"time"
 )
+
+// marqueurBaseTenue : LE marqueur d'un echec TRANSITOIRE de l'export. Il est ecrit par
+// `cmd/levelup` (`cmd_replay_facts_export.go`, message de `OpenReadForQuery`) et dit
+// litteralement de reessayer. Ce paquet ne peut pas importer cette constante (`package main`
+// chez le voisin) : `facts_marqueur_test.go` verifie donc que le litteral existe TOUJOURS
+// dans ce fichier-la — sans ce garde-rail, un reformulage du message desarmerait le reessai
+// en silence, et le gate reperdrait des temoins sur un alea de quelques secondes.
+const marqueurBaseTenue = "serveur en ecriture"
+
+// reessaisExport / delaiEntreReessais : le reessai BORNE — trois tentatives, deux secondes
+// d'ecart (D2 (cloture M1)). Borne, parce qu'un serveur qu'on vient de relancer tient la base
+// quelques secondes, pas quelques minutes : au-dela, le temoin est ABSENT et le dire vite vaut
+// mieux que retarder un gate de 25 min.
+const (
+	reessaisExport     = 3
+	delaiEntreReessais = 2 * time.Second
+)
+
+// dormeur attend, ou rend l'erreur d'annulation du contexte. Injecte pour que le test du
+// reessai ne dorme pas six secondes.
+type dormeur func(ctx context.Context, d time.Duration) error
+
+// dormirContexte est LE dormeur reel : il rend la main tout de suite si le gate est interrompu
+// (Ctrl-C sur une passe de 25 min) au lieu de laisser courir l'attente.
+func dormirContexte(ctx context.Context, d time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(d):
+		return nil
+	}
+}
+
+// estBaseTenue dit si l'erreur d'export est celle d'une base momentanement tenue en ecriture —
+// le SEUL cas qui merite un reessai.
+func estBaseTenue(err error) bool {
+	return err != nil && strings.Contains(err.Error(), marqueurBaseTenue)
+}
+
+// exporterAvecReessai appelle `tenter` jusqu'a `reessaisExport` fois, et n'attend QU'ENTRE deux
+// tentatives d'un echec transitoire. Un echec permanent rend tout de suite ; un contexte annule
+// rend la derniere erreur sans attendre de plus.
+func exporterAvecReessai(ctx context.Context, tenter func() error, dormir dormeur) error {
+	var dernier error
+	for essai := 1; essai <= reessaisExport; essai++ {
+		dernier = tenter()
+		if dernier == nil {
+			return nil
+		}
+		if !estBaseTenue(dernier) {
+			return dernier
+		}
+		if essai == reessaisExport {
+			break
+		}
+		slog.Warn("replay-corpus-gate: base partagee tenue en ecriture — nouvel essai de l'export",
+			"essai", essai, "essais", reessaisExport, "attente", delaiEntreReessais, "err", dernier)
+		if err := dormir(ctx, delaiEntreReessais); err != nil {
+			return errors.Join(dernier, err)
+		}
+	}
+	return dernier
+}
 
 // exporterUnFait exporte les faits d'UN match — extrait en type nommé pour permettre un test
 // unitaire de la boucle de continuation (exportFactsAvec) SANS vrai sous-processus CGO.
@@ -61,7 +146,7 @@ func exportFacts(ctx context.Context, p exportParams, ids []string) error {
 		return fmt.Errorf("dossier des faits : %w", err)
 	}
 	exportFactsAvec(func(id string) error {
-		return exportUnFait(ctx, p, id)
+		return exporterAvecReessai(ctx, func() error { return exportUnFait(ctx, p, id) }, dormirContexte)
 	}, ids)
 	return nil
 }
