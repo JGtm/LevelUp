@@ -519,4 +519,13 @@
 #               changent pas, seuls les chemins. L empreinte monte parce qu elle hache le chemin
 #               relatif a cote du contenu. `KillSourceDecoderRev` ne bouge PAS (sortie identique a
 #               l octet, ancre de racine suivie, golden refige) ; `SchemaVersion` 60.
-grammar-2026-09-15.33	6b60980b451b8bca06f6bdd8eb5d60c33c216b5823d58c820ce115973695a458
+#   2026-09-16  grammar-2026-09-15.34  lot 2.6 volet facts + source (`.33` -> `.34`) : REVISIONS
+#               PAR COUCHE ET TYPES DE CONTRAT, SORTIE IDENTIQUE. `source.Rev` et `facts.Rev`
+#               naissent sur le mecanisme central `film/revision` (la seconde REPREND la valeur de
+#               `KillSourceDecoderRev`, qui quitte `sync/killcollector` : V15 (16), aucun backlog
+#               ouvert) ; `film/types` nait, feuille sans import du depot, et recoit les types de
+#               DONNEES purs qui traversent une frontiere de couche depuis `source` et `facts`,
+#               les paquets d origine gardant un ALIAS DATE. L empreinte monte parce que les
+#               racines hachees portent des fichiers neufs et des alias a la place des
+#               declarations. AUCUN OCTET N EST LU AUTREMENT ; `SchemaVersion` reste 60.
+grammar-2026-09-15.34	9d2b81bae71eeab82ad1a58fafdd0db935ecbb324ad03ff50d8f6a5851969c3e
