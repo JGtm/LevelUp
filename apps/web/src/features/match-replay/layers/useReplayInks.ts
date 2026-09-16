@@ -24,6 +24,7 @@ import { resolveToken } from '@/lib/accessibility/resolveToken'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
 import { readInk } from './canvasInk'
+import { useExportActive } from '../export/exportLayoutStore'
 import { readFxInk, type FxInk } from './fxInk'
 import type { RiftInk } from './placementRift'
 import type { PadFamily } from '../model/weaponPadFamilies'
@@ -202,8 +203,13 @@ export interface ReplayInks {
  * style pour la page, et rend la dépendance visible à la lecture.
  */
 export function useReplayInks(paletteVersion: number): ReplayInks {
+  // L'EXPORT PEINT DANS LE THÈME SOMBRE (décision D9) : `readInk` et `readFxInk` le savent, mais
+  // ce mémo doit se RECALCULER à l'entrée et à la sortie de l'export — et, avec lui, tout ce qui
+  // dépend d'une encre (calques cuits, vignettes teintes).
+  const exporting = useExportActive()
   return useMemo(() => {
     void paletteVersion
+    void exporting
     const ally = resolveToken('team-ally')
     const enemy = resolveToken('team-enemy')
     return {
@@ -227,5 +233,5 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       rift: { rim: resolveToken(RIFT_RIM_TOKEN), core: resolveToken(RIFT_CORE_TOKEN) },
       mark: { fill: readInk('--foreground'), outline: readInk('--background') },
     }
-  }, [paletteVersion])
+  }, [paletteVersion, exporting])
 }

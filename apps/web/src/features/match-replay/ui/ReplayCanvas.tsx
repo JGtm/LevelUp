@@ -95,7 +95,8 @@ import type { ReplayWindowBounds } from '../model/replayWindow'
 import { drawProjectilesLayer } from '../layers/replayProjectiles'
 import { drawTracksLayer } from '../layers/replayMarkers'
 import { useReplayTiming } from '../hooks/useReplayTiming'
-import { CANVAS_PAD, exportRenderScale, useReplayView, type ReplayMapBackgroundLayer } from '../hooks/useReplayView'
+import { CANVAS_PAD, useReplayView, type ReplayMapBackgroundLayer } from '../hooks/useReplayView'
+import { canvasPixelRatio } from '../export/exportLayoutStore'
 import { useReplayViewport } from '../hooks/useReplayViewport'
 import { useReplayWheelZoom } from '../hooks/useReplayWheelZoom'
 import { useReplayDrag } from '../hooks/useReplayDrag'
@@ -275,7 +276,7 @@ export function ReplayCanvas({
   // verticale, projection partagée et trame d'altitudes : une seule chaîne de décision, qui
   // vit dans `useReplayView` (neuvième extraction imposée par le cliquet de taille). Les noms
   // sortent inchangés : le dessin en dessous lit exactement les mêmes valeurs qu'avant.
-  const { mapImage, bounds, renderWidth, renderHeight: viewH, zRange, canvasView, zoom } = useReplayView({
+  const { mapImage, bounds, renderWidth, renderHeight: viewH, screen, zRange, canvasView, zoom } = useReplayView({
     doc, background, width, freeHeight,
   })
 
@@ -606,7 +607,7 @@ export function ReplayCanvas({
     if (!canvas || renderWidth === 0) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    const dpr = (window.devicePixelRatio || 1) * exportRenderScale.current
+    const dpr = canvasPixelRatio() // celle du FORMAT pendant un export, celle de l'écran sinon
     const pw = Math.round(renderWidth * dpr)
     const ph = Math.round(viewH * dpr)
     if (canvas.width !== pw || canvas.height !== ph) {
@@ -673,7 +674,7 @@ export function ReplayCanvas({
   const capture = useReplayCapture({
     canvasRef, doc, frameRef, playing: playback.playing, play: playback.togglePlay,
     audioTrack: sound.recordingTrack, soundTrack: sound.exportTrack, soundVolume: sound.volume,
-    redraw, playWindow, scoreboard, xuidMeta, outcome, viewpoint, locale,
+    redraw, playWindow, scoreboard, xuidMeta, outcome, viewpoint, locale, zoomLevel: zoom.level,
   })
 
   return (
@@ -697,11 +698,13 @@ export function ReplayCanvas({
             {/* QUATRE CALQUES SURVOLABLES SUR UNE SEULE BALISE (poses, emplacements d'arme,
                 drapeaux, armes au sol depuis le lot 6.5 du 2026-09-10) : chacun rejoue le
                 survol sur SA donnée, le canvas passe le geste. */}
-            <div className="relative mx-auto" style={{ width: renderWidth || '100%' }}>
+            <div className="relative mx-auto" style={{ width: screen.width || '100%' }}>
               <canvas
                 ref={canvasRef}
                 className="block"
-                style={{ width: renderWidth || '100%', height: viewH }}
+                // LA BOÎTE D'ÉCRAN, PAS LA TAILLE DE DESSIN : pendant un export la toile se dessine en
+                // 16:9 et `contain` l'y inscrit sans la déformer (cf. `ReplayView.screen`).
+                style={{ width: screen.width || '100%', height: screen.height, objectFit: 'contain' }}
                 {...hoverHandlers([placements.hover, weaponPads, flags, groundWeapons], drag)}
               />
               {/* Les infobulles des quatre calques survolables (cf. ReplayCanvasTips). */}

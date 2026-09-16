@@ -7,16 +7,15 @@
  *    une carte servie à 480 px gaspille de la résolution qu'on a déjà téléchargée (les fonds
  *    de carte pèsent jusqu'à 1,4 Mio). Un test échoue si l'offre replafonne à l'ancienne
  *    constante.
- * 2. QUE L'EXPORT NE SUIT PAS. `exportScaleFor` vise une hauteur de sortie stable : une toile
- *    plus grande donne un facteur plus petit, donc la MÊME vidéo. Sans quoi la taille de la
- *    fenêtre de qui exporte déciderait du poids du fichier.
- * 3. LE PLANCHER, sous lequel on laisse la page défiler plutôt que rendre une carte illisible.
- * 4. LA QUANTIFICATION ET LE DÉLAI, qui ne sont pas du confort : sans eux, un glissement de bord
+ *    (L'export, lui, ne suit plus la toile du tout depuis le 2026-09-16 : il sort au format
+ *    choisi, cf. `export/exportFormats.test.ts`.)
+ * 2. LE PLANCHER, sous lequel on laisse la page défiler plutôt que rendre une carte illisible.
+ * 3. LA QUANTIFICATION ET LE DÉLAI, qui ne sont pas du confort : sans eux, un glissement de bord
  *    de fenêtre recuirait les quatre calques statiques à chaque image.
- * 5. LA CONVERGENCE. Ajuster la hauteur change la hauteur du conteneur, donc réveille le
+ * 4. LA CONVERGENCE. Ajuster la hauteur change la hauteur du conteneur, donc réveille le
  *    `ResizeObserver` : si la seconde mesure ne retombait pas sur la première, la boucle ne
  *    s'arrêterait jamais.
- * 6. LES DEUX SOURCES D'ÉVÉNEMENTS. Rétrécir une fenêtre en HAUTEUR seulement ne change pas la
+ * 5. LES DEUX SOURCES D'ÉVÉNEMENTS. Rétrécir une fenêtre en HAUTEUR seulement ne change pas la
  *    largeur du conteneur : sans l'écoute de `resize`, rien ne se passerait.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -26,9 +25,6 @@ import {
   CANVAS_HEIGHT_CEILING,
   CANVAS_HEIGHT_DEFAULT,
   CANVAS_HEIGHT_MIN,
-  EXPORT_SUPERSAMPLE,
-  EXPORT_TARGET_HEIGHT,
-  exportScaleFor,
 } from './useReplayView'
 import {
   fitCanvasHeight,
@@ -63,23 +59,6 @@ describe('fitCanvasHeight — quantifier, puis borner', () => {
     for (let d = 0; d < VIEWPORT_HEIGHT_STEP; d += 1) {
       expect(fitCanvasHeight(base + d)).toBe(fitCanvasHeight(base))
     }
-  })
-})
-
-describe('exportScaleFor — la vidéo ne change pas de format avec la fenêtre', () => {
-  it('à l ancienne hauteur, c est exactement le comportement d avant', () => {
-    expect(exportScaleFor(CANVAS_HEIGHT_DEFAULT)).toBe(EXPORT_SUPERSAMPLE)
-  })
-
-  it('sort la MÊME hauteur de vidéo quelle que soit la toile', () => {
-    for (const h of [CANVAS_HEIGHT_DEFAULT, 560, 640, CANVAS_HEIGHT_CEILING]) {
-      expect(h * exportScaleFor(h)).toBeCloseTo(EXPORT_TARGET_HEIGHT, 6)
-    }
-  })
-
-  it('ne suréchantillonne jamais plus qu avant, même sur une petite toile', () => {
-    expect(exportScaleFor(CANVAS_HEIGHT_MIN)).toBe(EXPORT_SUPERSAMPLE)
-    expect(exportScaleFor(0)).toBe(EXPORT_SUPERSAMPLE)
   })
 })
 

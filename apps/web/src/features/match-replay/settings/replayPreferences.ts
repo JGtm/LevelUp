@@ -10,6 +10,7 @@
  * useReplaySound et useReplaySettings l'importent tous les deux plutôt que de le
  * recopier une troisième fois chacun de leur côté.
  */
+import { DEFAULT_EXPORT_FORMAT_ID, EXPORT_FORMAT_IDS, type ExportFormatId } from '../export/exportFormats'
 
 /** Lit un booléen persisté ; absent ou storage indisponible -> `fallback`. */
 export function readStoredFlag(key: string, fallback: boolean): boolean {
@@ -95,4 +96,21 @@ export function persistPreference(key: string, value: string): void {
   // Les abonnés sont prévenus MÊME si le stockage a refusé : le réglage doit marcher dans
   // la session, c'est sa survie au rechargement qui est perdue, pas son effet.
   for (const fn of abonnes.get(key) ?? []) fn(value)
+}
+
+/**
+ * LE FORMAT DE L'EXPORT VIDÉO (plan « formats vidéo standard », décision D4, 2026-09-16) :
+ * retenu dans CE navigateur, jamais côté serveur. La lecture est VALIDÉE contre le catalogue
+ * (`export/exportFormats.ts`) : absente, inconnue ou écrite par une autre version -> 1080p.
+ */
+export const EXPORT_FORMAT_KEY = 'replay-export-format'
+
+/** Le format retenu, ou le défaut du catalogue. */
+export function readExportFormat(): ExportFormatId {
+  return readStoredChoice(EXPORT_FORMAT_KEY, DEFAULT_EXPORT_FORMAT_ID, EXPORT_FORMAT_IDS)
+}
+
+/** Retient le format choisi. Stockage refusé : le choix vaut pour la session, sans erreur. */
+export function persistExportFormat(id: ExportFormatId): void {
+  persistPreference(EXPORT_FORMAT_KEY, id)
 }

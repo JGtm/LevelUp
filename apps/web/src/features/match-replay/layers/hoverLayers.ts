@@ -22,6 +22,8 @@
  */
 import type { PointerEvent } from 'react'
 
+import { isExportActive } from '../export/exportLayoutStore'
+
 /** Ce qu'un calque doit savoir faire pour recevoir le geste. */
 export interface HoverLayer {
   onPointerMove: (e: PointerEvent<HTMLCanvasElement>) => void
@@ -58,6 +60,13 @@ export function hoverHandlers(
 ): HoverHandlers {
   return {
     onPointerMove: (e) => {
+      // PENDANT UN EXPORT, LE SURVOL SE TAIT ET S'EFFACE (décision D7, 2026-09-16) : la toile est
+      // dessinée au cadre du format et affichée en `contain`, la projection du pointeur viserait
+      // à côté. Le glisser, lui, est déjà éteint par `lockedZoom`.
+      if (isExportActive()) {
+        for (const l of layers) l.onPointerLeave()
+        return
+      }
       for (const l of layers) l.onPointerMove(e)
       pan?.onPointerMove(e)
     },

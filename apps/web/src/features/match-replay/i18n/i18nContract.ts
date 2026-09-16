@@ -1042,6 +1042,20 @@ export interface ReplayText {
   exportFrom: string
   exportTo: string
   exportWithSound: string
+  /**
+   * LE FORMAT DU FICHIER (2026-09-16) : le libellé du choix, et chaque option — son nom court
+   * suivi de ses dimensions (« 1080p (1920 × 1080) »), pour qu'on sache ce qu'on dépose avant
+   * de le déposer. Le choix est retenu dans le navigateur.
+   */
+  exportFormat: string
+  exportFormatOptionFmt: (name: string, width: number, height: number) => string
+  /**
+   * LE CADRAGE DU CLIP (2026-09-16, décision D6) — proposé SEULEMENT sur une carte zoomée :
+   * la carte entière (défaut), ou le cadrage de l'écran avec son palier (« Cadrage actuel (2x) »).
+   */
+  exportFraming: string
+  exportFramingWhole: string
+  exportFramingCurrentFmt: (zoom: number) => string
   exportStart: string
   exportCancel: string
   exportClose: string

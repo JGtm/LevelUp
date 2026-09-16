@@ -31,6 +31,21 @@
  * pendant l'export — ce n'est pas un défaut mais la seule preuve visible que quelque chose se
  * passe, et cela évite une seconde toile de la taille de la première. À la fin, quoi qu'il
  * arrive, l'image d'avant l'export est reposée et repeinte.
+ *
+ * # LE CLIP A TOUJOURS LA MÊME APPARENCE (2026-09-16, décisions D8/D9)
+ *
+ * Fond noir pur, et TOUTES les encres — scène, calques cuits, vignettes, panneaux — lues dans le
+ * thème SOMBRE (`layers/themeInk.ts`), sans toucher au thème de la page. La toile VISIBLE montre
+ * donc le rendu sombre pendant l'export (y compris en thème clair) : c'est accepté, et tout
+ * revient aux encres de la page à la fin, sur tous les chemins.
+ *
+ * # LE FICHIER SORT AU FORMAT CHOISI, PAS À LA TAILLE DE L'ÉCRAN (2026-09-16)
+ *
+ * Pendant l'export, la toile se MET EN PAGE dans le cadre 16:9 du format (`exportFormats.ts`,
+ * `exportLayoutStore.ts`) et se rend à sa densité : 1920x1080 ou 1280x720, quels que soient la
+ * fenêtre et le `devicePixelRatio`. À l'écran, la boîte de la toile ne change pas de taille :
+ * l'image 16:9 y est inscrite sans déformation (`object-fit: contain`, cf. `ReplayView.screen`),
+ * et la page retrouve sa mise en page d'écran à la fin, sur tous les chemins.
  */
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 
@@ -66,7 +81,8 @@ import {
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { EXPORT_FPS, canExportVideo, openVideoExport, type VideoExportSink } from './replayVideoEncoder'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
-import { exportRenderScale, exportScaleFor } from '../hooks/useReplayView'
+import { exportFormatOf, exportLayoutFor, type ExportFormatId, type ExportFraming } from './exportFormats'
+import { canvasPixelRatio, requestExportLayout, waitForExportLayout } from './exportLayoutStore'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplaySoundEvent } from '../sound/replaySoundVariants'
 import type { EnginePlan } from '../sound/vehicleEngineSound'
@@ -122,11 +138,20 @@ export interface ReplayExportOptions {
   }
   /** Le volume réglé dans la page. Le mixage le suit, même haut-parleurs coupés (décision D6). */
   soundVolume?: number
+  /**
+   * LE PALIER DE ZOOM À L'ÉCRAN (1 = carte entière). Il ne sert qu'au DIALOGUE, qui ne propose le
+   * choix du cadrage que sur une carte zoomée (décision D6 du plan « formats vidéo »). Absent : 1.
+   */
+  zoomLevel?: number
 }
 
 /** Ce que l'appelant choisit au moment de lancer. Le son est INCLUS par défaut (décision D6). */
 export interface ExportRunOptions {
   sound?: boolean
+  /** Le format du fichier ; absent -> le défaut du catalogue (1080p, décision D2). */
+  format?: ExportFormatId
+  /** Le cadrage de la carte ; absent -> « carte entière » (décision D6). */
+  framing?: ExportFraming
 }
 
 /** L'état que le dialogue affiche. `total` vaut 0 tant qu'aucun export n'a démarré. */
@@ -173,6 +198,8 @@ export interface ReplayExport {
   /** La plage proposée par défaut : la fenêtre de gameplay entière. */
   defaultBounds: () => ExportBounds
   run: (bounds: ExportBounds, options?: ExportRunOptions) => Promise<void>
+  /** Le palier de zoom de l'écran, relayé pour le dialogue (cf. `ReplayExportOptions.zoomLevel`). */
+  zoomLevel: number
   cancel: () => void
   /**
    * L'HORLOGE DE MATCH d'une image, prête à afficher. Portée par l'export et non par le
@@ -251,7 +278,15 @@ async function buildSource(o: ReplayExportOptions, ink: OverlayInk): Promise<Ove
   })
 }
 
-/** Peint UNE image de l'export : le terrain, puis la surimpression s'il y en a une. */
+/**
+ * Peint UNE image de l'export : le terrain, la surimpression s'il y en a une, puis le FOND.
+ *
+ * LE FOND SE POSE EN DERNIER, DESSOUS (`destination-over`). Le cadre 16:9 déborde la carte dès
+ * que ses proportions diffèrent, et la toile y est TRANSPARENTE : H.264 n'a pas de canal alpha,
+ * et ce que devient un pixel transparent dans une `VideoFrame` dépend du navigateur. Le fond est
+ * donc PEINT, et il est NOIR PUR quel que soit le thème (`--replay-export-backdrop`, décision
+ * D8) : un fichier ne change pas d'apparence selon la préférence d'interface de qui l'exporte.
+ */
 function paintExportFrame(
   canvas: HTMLCanvasElement,
   o: ReplayExportOptions,
@@ -261,17 +296,20 @@ function paintExportFrame(
 ): void {
   o.frameRef.current = frame
   o.redraw()
-  const panel = source.panelAt(frame)
-  if (!panel) return
   const ctx = canvas.getContext('2d')
   if (!ctx) return
+  const panel = source.panelAt(frame)
   // LA MISE À L'ÉCHELLE SE REPOSE ICI, elle ne se suppose pas : `draw()` la pose au début de
-  // son tracé, mais rien ne garantit dans quel état ses calques la laissent.
-  // MEME ECHELLE QUE LE TRACE, surechantillonnage compris : une surimpression posee a
-  // l'echelle de l'ecran serait deux fois trop petite dans un export sureechantillonne.
-  const dpr = (window.devicePixelRatio || 1) * exportRenderScale.current
+  // son tracé, mais rien ne garantit dans quel état ses calques la laissent. MÊME DENSITÉ QUE LE
+  // TRACÉ — celle du format : la surimpression se met en page dans le même cadre logique.
+  const dpr = canvasPixelRatio()
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  paintOverlayPanel(ctx, { width: canvas.width / dpr, height: canvas.height / dpr }, panel, paint.fonts, paint.ink)
+  if (panel) paintOverlayPanel(ctx, { width: canvas.width / dpr, height: canvas.height / dpr }, panel, paint.fonts, paint.ink)
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.globalCompositeOperation = 'destination-over'
+  ctx.fillStyle = paint.backdrop
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.globalCompositeOperation = 'source-over'
 }
 
 export function useReplayExport(o: ReplayExportOptions): ReplayExport {
@@ -316,36 +354,38 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
       // PHASE 1 : la preparation. La barre n'affiche pas « image 0 » — elle dit ce qu'on fait.
       setState({ phase: 'prepare', done: 0, total: plan.frames.length, pct: 0 })
       let sink: VideoExportSink | null = null
+      const format = exportFormatOf(options?.format)
       try {
+        // LA TOILE EST TENUE DÈS LE DÉBUT DE LA PRÉPARATION (décision D7) : la demande éteint les
+        // gestes de cadrage et le survol tout de suite, pas seulement une fois les sons décodés —
+        // un zoom glissé pendant la préparation changerait sinon le cadrage du clip.
+        requestExportLayout(exportLayoutFor(format, options?.framing))
         // Les polices AVANT la première image : sans cette attente, le début du clip écrirait
         // les surimpressions dans une police de repli, et le reste dans la bonne.
         await document.fonts.ready
+        // LES ENCRES SE LISENT APRÈS LA DEMANDE : elles sont alors celles du THÈME SOMBRE (décision
+        // D9, cf. `themeInk.ts`), comme celles de la scène que React re-résout au même moment.
         const ink = readOverlayInk()
         const fonts = readOverlayFonts()
+        const backdrop = readInk('--replay-export-backdrop')
         const source = await buildSource(o, ink)
         // LE SON SE MIXE AVANT D'OUVRIR LE CONTENEUR : le MP4 annonce ses pistes une fois pour
         // toutes, donc il faut savoir AVANT s'il y en aura une. Le mixage hors ligne est rapide
         // (il ne joue rien, il calcule), et il rend `null` s'il n'y a rien a mixer.
-        // LA TOILE EST RENDUE PLUS GRANDE LE TEMPS DE L'EXPORT (cf. `exportRenderScale`) : la
-        // perte de nettete d'un clip vient du sous-echantillonnage chroma de H.264, qu'aucun
-        // debit ne rachete. Le redessin suivant applique la nouvelle taille au backing store,
-        // et c'est ELLE que l'encodeur doit recevoir — d'ou l'ordre : echelle, trace, ouverture.
-        //
-        // LE FACTEUR SE CALCULE, IL N'EST PLUS CONSTANT (2026-09-02) : depuis que la toile
-        // s'adapte a l'ecran, un facteur fixe ferait dependre le format du fichier de la taille
-        // de la fenetre de qui exporte. `exportScaleFor` vise une hauteur de sortie STABLE — une
-        // toile de 480 est doublee (le comportement d'avant, au pixel pres), une toile de 720
-        // multipliee par 1,33, et les deux sortent la meme video.
-        exportRenderScale.current = exportScaleFor(canvas.clientHeight)
-        o.redraw()
+        // LA TOILE PASSE AU FORMAT DU FICHIER (2026-09-16) : mise en page dans le cadre 16:9 du
+        // format et rendu a sa densite (`exportLayoutFor`), l'ecran et son `devicePixelRatio`
+        // n'entrent plus nulle part. La mise en page (demandee en tete du `try`) passe par un rendu
+        // React : on ATTEND que la toile soit reellement au format avant d'ouvrir l'encodeur —
+        // d'ou l'ordre : demande, attente, ouverture.
+        await waitForExportLayout(canvas, format, o.redraw)
         const mix = options?.sound === false ? null : await mixExportAudio(o, bounds, plan)
         // LE MAINTIEN SE CALCULE UNE FOIS LE SON CONNU (cf. `holdMsFor`), et le plan se refait :
         // la derniere image doit tenir assez longtemps pour qu'on lise le verdict, et au moins
         // aussi longtemps que le son continue.
         plan = buildExportPlan(bounds, o.doc, EXPORT_FPS, holdMsFor(o, bounds, plan, mix))
         sink = await openVideoExport({
-          width: canvas.width,
-          height: canvas.height,
+          width: format.width,
+          height: format.height,
           audioTracks: mix ? trackNames(mix, o.locale) : undefined,
         })
         if (!sink) {
@@ -366,7 +406,7 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
         const total = plan.frames.length
         const debut = performance.now()
         setState({ phase: 'encode', done: 0, total, pct: 0 })
-        const ok = await encodeAll(canvas, o, source, { ink, fonts }, plan.frames, {
+        const ok = await encodeAll(canvas, o, source, { ink, fonts, backdrop }, plan.frames, {
           cancelled: () => cancelRef.current,
           progress: (done) =>
             setState({
@@ -398,9 +438,10 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
         console.error('[replay-export] export interrompu', err)
         fail(setState, err instanceof Error ? err.message : String(err))
       } finally {
-        // L'ECHELLE REDESCEND AVANT LE DERNIER TRACE, sur TOUS les chemins : la laisser levee
-        // rendrait la page entiere en double resolution jusqu'au prochain remontage.
-        exportRenderScale.current = 1
+        // LA MISE EN PAGE D'ECRAN REVIENT, sur TOUS les chemins : laissee en place, la page
+        // resterait dessinee au cadre du format jusqu'au prochain remontage. Le trace ci-dessous
+        // repose l'image d'avant ; le rendu React qui suit la repeint a la taille de l'ecran.
+        requestExportLayout(null)
         // L'ENCODEUR SE REFERME SUR TOUS LES CHEMINS : `sink` n'est remis à `null` qu'une fois
         // le fichier assemblé. S'il est encore là, c'est qu'on sort par une erreur ou une
         // annulation, et il retient un muxeur entier en mémoire.
@@ -422,7 +463,8 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
     [o.doc],
   )
 
-  return { supported: canExportVideo(), state, defaultBounds, run, cancel, clockOf, lengthClock }
+  const zoomLevel = o.zoomLevel ?? 1
+  return { supported: canExportVideo(), state, defaultBounds, run, cancel, clockOf, lengthClock, zoomLevel }
 }
 
 /**
@@ -452,6 +494,8 @@ function etaFor(done: number, total: number, elapsedMs: number): number | undefi
 interface OverlayPaintContext {
   ink: OverlayInk
   fonts: OverlayFonts
+  /** Le fond de la vidéo, sous toute l'image (cf. `paintExportFrame`). */
+  backdrop: string
 }
 
 /** Ce dont la boucle a besoin en plus des images : où pousser, et quand s'arrêter. */

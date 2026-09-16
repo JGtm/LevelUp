@@ -336,6 +336,7 @@ function makeExport(over: Partial<ReplayExport> = {}): ReplayExport {
     cancel: vi.fn(),
     clockOf: (f) => `0:0${f % 10}`,
     lengthClock: () => '1:40',
+    zoomLevel: 1,
     ...over,
   }
 }
