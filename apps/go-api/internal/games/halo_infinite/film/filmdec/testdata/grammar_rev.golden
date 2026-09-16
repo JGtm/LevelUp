@@ -384,4 +384,17 @@
 #               dans le profil rougit desormais `TestKeyframeClosureRatchet` sur les sept
 #               bobines. AUCUN OCTET N EST LU AUTREMENT. `KillSourceDecoderRev` ne bouge PAS ;
 #               `SchemaVersion` reste 60.
-grammar-2026-09-15.22	94baf8a0e8fc025feb2639eadcda0a83bc17c1aec5b74957ee3d3e2ff3842648
+#   2026-09-17  grammar-2026-09-15.23  lot 2.2.d (`.22` -> `.23`, RANG PROVISOIRE) : LA VERSION DU
+#               FILM VIENT DU PROFIL DU CONTEXTE. La phase de positions du rejeu rouvrait le
+#               registre pour son compte alors que le contexte avait deja resolu le profil (D1) ;
+#               elle prend `Profile.Highlight()`, meme valeur par le meme chemin, une
+#               localisation de `chunk_00` en moins par cuisson. La BRANCHE d implantation du
+#               gamertag et les offsets du PIED restent sous `internal/analysis/`, a qui le
+#               ratchet interdit d importer un paquet de titre : statue `[!]`, leve au pas 5
+#               (V5), garde en attendant par `TestProfilHighlightEgaleLeParseur`. Le ratchet ne
+#               bouge pas (86) : la famille ne portait aucune variable de paquet. L EMPREINTE
+#               NE BOUGE PAS NON PLUS — meme sha qu au rang `.22` — parce que le changement vit
+#               entierement hors des deux paquets haches ; la revision monte quand meme, elle
+#               nomme la grammaire sous laquelle un artefact a ete cuit. AUCUN OCTET N EST LU
+#               AUTREMENT. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` 60.
+grammar-2026-09-15.23	94baf8a0e8fc025feb2639eadcda0a83bc17c1aec5b74957ee3d3e2ff3842648
