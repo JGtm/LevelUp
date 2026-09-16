@@ -109,7 +109,7 @@ func ScanFilmObjectDeaths(dir string) ([]ObjectDeath, ObjectDeathStats, error) {
 	if err != nil {
 		return nil, newObjectDeathStats(), err
 	}
-	return ScanObjectDeaths(NewFilmContext(film))
+	return ScanObjectDeaths(contexteDeBobine(film))
 }
 
 // ScanObjectDeaths marche les paquets delta d'un film DÉJÀ CHARGÉ et rend toutes les morts

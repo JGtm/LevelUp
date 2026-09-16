@@ -121,7 +121,6 @@ func TestPowerupSocleCreations(t *testing.T) {
 			}
 			release := filmdec.LockProcessDecode()
 			defer release()
-			defer installWorldObjectPrecisionDeCarte(entry, dir, nil)()
 			wr := entry.Range()
 			c := psCible{P: socleP, Z: socleZ, T0Film: psPremierPaquetUS(dir)}
 			psMesureCreations(t, dir, &wr, familles, c)
@@ -146,8 +145,13 @@ func psMesureCreations(
 		pst.Calibration.Widths, pst.Calibration.Widths.Valid(), pst.Lives, pst.Anchors,
 		pst.Accepted, pst.Confirmed, pst.Placements)
 
-	defer gwInstallMPPWidths(pst.Calibration.Widths)()
-	cre, cst, err := filmdec.ScanFilmEquipmentCreations(dir, wr)
+	fc, _, err := filmdec.ContexteDeFilm(dir)
+	if err != nil {
+		t.Logf("=== 3.3 contexte du film : %v", err)
+		return
+	}
+	fc.PoserMPP(pst.Calibration.Widths)
+	cre, cst, err := filmdec.ScanEquipmentCreations(fc, wr)
 	if err != nil {
 		t.Logf("=== 3.3 balayage brut : %v", err)
 		return

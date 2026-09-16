@@ -226,7 +226,7 @@ func buildProjectileRecord(slot, gen uint32, comps []int, q [3]uint64) []byte {
 	}
 	w.put(0, 3) // porte de position : precHigh, index-sel, region tous nuls
 	for a := 0; a < 3; a++ {
-		w.put(q[a], int(WorldObjectPrecisionActuelle().AxisW[a]))
+		w.put(q[a], int(ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW[a]))
 	}
 	w.pad(64)
 	return w.buf
@@ -242,7 +242,7 @@ func TestProjectileRecordLayout(t *testing.T) {
 	band := map[uint32]bool{1500: true}
 	got := scanProjectileRecords(
 		buildProjectileRecord(1500, 2, []int{0, 3, projectileRestComponent}, [3]uint64{4096, 4096, 8192}),
-		band, &wr)
+		band, &wr, ProfilDeBalayageParDefaut().LargeursObjetDuMonde())
 	if len(got) != 1 {
 		t.Fatalf("%d record(s) accepte(s), attendu 1", len(got))
 	}
@@ -279,7 +279,7 @@ func TestProjectileRecordRejections(t *testing.T) {
 			buildProjectileRecord(1500, 0, []int{0, 3}, [3]uint64{8191, 4096, 8192})},
 	}
 	for _, c := range cas {
-		if got := scanProjectileRecords(c.pay, band, &wr); len(got) != 0 {
+		if got := scanProjectileRecords(c.pay, band, &wr, ProfilDeBalayageParDefaut().LargeursObjetDuMonde()); len(got) != 0 {
 			t.Errorf("%s : %d record(s) accepte(s), attendu 0", c.nom, len(got))
 		}
 	}
@@ -353,14 +353,14 @@ func TestWorldObjectPositionRejectsSaturatedAxes(t *testing.T) {
 	w := &bitw{}
 	w.put(0, 3)
 	for a := 0; a < 3; a++ {
-		w.put(4096, int(WorldObjectPrecisionActuelle().AxisW[a]))
+		w.put(4096, int(ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW[a]))
 	}
 	w.pad(16)
-	if _, ok := decodeWorldObjectPos(w.buf, 0, &wr); !ok {
+	if _, ok := decodeWorldObjectPos(w.buf, 0, &wr, ProfilDeBalayageParDefaut().LargeursObjetDuMonde()); !ok {
 		t.Fatal("une position valide a ete refusee")
 	}
 	for a := 0; a < 3; a++ {
-		for _, q := range []uint64{0, (1 << WorldObjectPrecisionActuelle().AxisW[a]) - 1} {
+		for _, q := range []uint64{0, (1 << ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW[a]) - 1} {
 			g := &bitw{}
 			g.put(0, 3)
 			for b := 0; b < 3; b++ {
@@ -368,10 +368,10 @@ func TestWorldObjectPositionRejectsSaturatedAxes(t *testing.T) {
 				if b == a {
 					v = q
 				}
-				g.put(v, int(WorldObjectPrecisionActuelle().AxisW[b]))
+				g.put(v, int(ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW[b]))
 			}
 			g.pad(16)
-			if _, ok := decodeWorldObjectPos(g.buf, 0, &wr); ok {
+			if _, ok := decodeWorldObjectPos(g.buf, 0, &wr, ProfilDeBalayageParDefaut().LargeursObjetDuMonde()); ok {
 				t.Errorf("axe %d, quantum %d : accepte alors qu il est sature", a, q)
 			}
 		}
@@ -385,10 +385,10 @@ func TestWorldObjectPositionGateIsClosedUnlessAllThreeAreZero(t *testing.T) {
 		w := &bitw{}
 		w.put(gate, 3)
 		for a := 0; a < 3; a++ {
-			w.put(4096, int(WorldObjectPrecisionActuelle().AxisW[a]))
+			w.put(4096, int(ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW[a]))
 		}
 		w.pad(16)
-		if _, ok := decodeWorldObjectPos(w.buf, 0, &wr); ok {
+		if _, ok := decodeWorldObjectPos(w.buf, 0, &wr, ProfilDeBalayageParDefaut().LargeursObjetDuMonde()); ok {
 			t.Errorf("porte %03b : la position a ete lue hors du chemin dominant", gate)
 		}
 	}
@@ -400,9 +400,9 @@ func TestWorldObjectPositionGateIsClosedUnlessAllThreeAreZero(t *testing.T) {
 // largeurs d axe viennent du descripteur de precision (qui est lu dans le film). Un chiffre
 // ecrit en dur se serait desynchronise du jour ou une carte a d autres largeurs.
 func TestProjectilePositionWidthFollowsThePrecisionDescriptor(t *testing.T) {
-	p := WorldObjectPrecisionActuelle()
+	p := ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 	want := 3 + int(p.AxisW[0]+p.AxisW[1]+p.AxisW[2]) + 2
-	if got := projPosBits(); got != want {
+	if got := projPosBits(p); got != want {
 		t.Errorf("projPosBits() = %d, attendu %d — la longueur ne suit plus le descripteur",
 			got, want)
 	}

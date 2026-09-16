@@ -249,9 +249,8 @@ func f0Charge(t *testing.T, root, id string, e MapQuantEntry) f0Film {
 	}
 	release := LockProcessDecode()
 	defer release()
-	prevPrec := WorldObjectPrecisionActuelle()
-	SetWorldObjectPrecisionFromLayout(e.Layout())
-	defer func() { PoserWorldObjectPrecision(prevPrec) }()
+	fc, _ := contexteDuFilm(t, dir)
+	fc.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout())
 
 	f := f0Film{ID: id, Dir: dir, Entry: e, BaseUS: f0BaseUS(t, dir)}
 	f.Ev103, f.Listes, f.ListesPropres = f0Marche103(t, id, dir, f0Ctx(e))
@@ -261,14 +260,13 @@ func f0Charge(t *testing.T, root, id string, e MapQuantEntry) f0Film {
 		}
 	}
 	wr := e.Range()
-	pl, pst, err := ScanFilmEquipmentPlacements(dir, &wr)
+	pl, pst, err := ScanEquipmentPlacements(fc, &wr)
 	if err != nil {
 		t.Fatalf("film %s : poses illisibles : %v", id, err)
 	}
 	f.Places, f.PlaceStats = pl, pst
-	prevMPP := SetMPPWidths(pst.Calibration.Widths)
-	defer SetMPPWidths(prevMPP)
-	cre, cst, err := ScanFilmEquipmentCreations(dir, &wr)
+	fc.PoserMPP(pst.Calibration.Widths)
+	cre, cst, err := ScanEquipmentCreations(fc, &wr)
 	if err != nil {
 		t.Fatalf("film %s : creations illisibles : %v", id, err)
 	}

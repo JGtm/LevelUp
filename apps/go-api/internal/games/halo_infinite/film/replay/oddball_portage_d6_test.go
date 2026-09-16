@@ -218,8 +218,6 @@ func d6Bornes(t *testing.T, root, id string) (filmdec.Vec3Range, filmdec.I0Layou
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	return attBornes(t, root, id)
 }
 

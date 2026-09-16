@@ -73,7 +73,7 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 	frameLen := len(buf) * 8
 	redecode := func() EntityTrace {
 		br := NewBitReader(buf)
-		br.poserMouvement(cfg.Mouvement)
+		br.PoserProfil(cfg.Profil)
 		br.Skip(bodyStart)
 		if recType == recNew {
 			return TraverseEntity(br, w.Reg, cfg.NewDefaultStateBits)
@@ -153,8 +153,10 @@ func ResetChainStats() {
 // was tried and dropped: it measurably rejected TRUE alignments (tmp_chaindbg: 717 of
 // 902 single-step wins lost to it). traverseComponentLoop already ignores mask bits
 // beyond len(arch.Components), so an over-wide mask is harmless, not a misparse tell.
-func deltaBodyTrial(buf []byte, bitpos int, arch Archetype, ti uint32, frameLen int) (end, comps int, ok bool) {
+func deltaBodyTrial(buf []byte, bitpos int, arch Archetype, ti uint32, frameLen int,
+	prof ProfilDeBalayage) (end, comps int, ok bool) {
 	br := NewBitReader(buf)
+	br.PoserProfil(prof)
 	br.Skip(bitpos)
 	t := EntityTrace{DesyncAt: -1, TypeIndex: ti}
 	t.Mask = consumeMask(br)
@@ -196,7 +198,8 @@ func (c *chainCtx) cleanBodyEnds(body int) []int {
 			break
 		}
 		c.budget--
-		end, _, ok := deltaBodyTrial(c.buf, body, c.w.Reg.Archetypes[ti], uint32(ti), c.frameLen)
+		end, _, ok := deltaBodyTrial(c.buf, body, c.w.Reg.Archetypes[ti], uint32(ti), c.frameLen,
+			c.cfg.Profil)
 		if ok && !seen[end] {
 			seen[end] = true
 			ends = append(ends, end)
@@ -214,7 +217,7 @@ func (c *chainCtx) confirmChainAt(pos, depth, recs int) bool {
 		return false
 	}
 	br := NewBitReader(c.buf)
-	br.poserMouvement(c.cfg.Mouvement) // EN TETE (lot 2.2.a)
+	br.PoserProfil(c.cfg.Profil) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(pos)
 	if c.cfg.HasExtraFields {
 		br.Skip(32)
@@ -301,7 +304,7 @@ func (c *chainCtx) chainDelta(br *BitReader, depth, recs int) bool {
 			return false
 		}
 		c.budget--
-		end, comps, clean := deltaBodyTrial(c.buf, body, arch, ti, c.frameLen)
+		end, comps, clean := deltaBodyTrial(c.buf, body, arch, ti, c.frameLen, c.cfg.Profil)
 		if !clean {
 			return false
 		}
@@ -352,7 +355,8 @@ func inferChainArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (ti 
 	byEnd := map[int][]uint32{}
 	var order []int
 	for i := range w.Reg.Archetypes {
-		e, _, clean := deltaBodyTrial(buf, bitpos, w.Reg.Archetypes[i], uint32(i), frameLen)
+		e, _, clean := deltaBodyTrial(buf, bitpos, w.Reg.Archetypes[i], uint32(i), frameLen,
+			cfg.Profil)
 		if !clean {
 			continue
 		}

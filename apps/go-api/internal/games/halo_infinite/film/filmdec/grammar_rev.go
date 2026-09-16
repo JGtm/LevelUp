@@ -410,4 +410,40 @@ package filmdec
 // declarations a deplace des fonctions, et le garde-rail G1 lit ces ancres sur pieces.
 //
 // `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
-const GrammarRev = "grammar-2026-09-15.26"
+// ENTREE `grammar-2026-09-15.27` (2026-09-17, lot 2.3 — RANG PROVISOIRE) : `.26` -> `.27`.
+// AUCUN OCTET N EST LU AUTREMENT.
+//
+// LE PROFIL DE BALAYAGE REMPLACE L HERITAGE PAR L ETAT DU PROCESSUS. La variable `herite`
+// (`profil_herite.go`, lots 2.2.a/b/e) — descripteur de traversee, largeur d axe absolue,
+// largeurs d axe des objets du monde, decoupage MPP, `param_4` force — disparait. Ce qu elle
+// portait devient [ProfilDeBalayage], une VALEUR : le lecteur de bits en tient une copie
+// (`BitReader.p`), le contexte du film en tient celle du decodage courant
+// ([FilmContext.ProfilDeBalayage]), et `FrameConfig.Profil` la passe aux portes de balayage.
+//
+// LA CALIBRATION DE `killsource` VOYAGE DESORMAIS PAR LES OPTIONS, ET C EST LA CONDITION D1 DU
+// PILOTE. `replaybuild.BuildBytes` decode `killsource` PUIS appelle `replay.BuildFromFilm` dans
+// le MEME processus ; jusqu ici la cuisson du rejeu heritait des largeurs calibrees sur le
+// kill-feed par l ETAT DU PROCESSUS — heritage REEL et VOULU (la grammaire mesuree prime sur le
+// defaut), mais invisible et incompatible avec deux decodages en parallele. Le chemin est
+// desormais explicite : `killsource.Result.ProfilCalibre` -> `replay.Options.ProfilDeBalayage`
+// -> `FilmContext`. Quand le kill-feed ne se decode pas, `replaybuild` passe
+// `killsource.ProfilDeDepart()` — l invariant plus le `param_4` force a zero, exactement ce que
+// `Decode` laissait derriere lui meme en echec. Le pas reste donc STRUCTUREL.
+//
+// LA DOUBLE ECRITURE DATEE EST RETIREE A SA DATE CIBLE : `replay.doubleEcritureGlobales`
+// (bascule 2026-09-17, cible « lot 2.3 », critere « 0 variable de paquet mutable ») disparait
+// avec la variable qu elle alimentait ; `installWorldObjectPrecision` pose sur le CONTEXTE et
+// n a plus rien a restaurer.
+//
+// LES ENVELOPPES D2 (`ScanFilm*(dir)`) POSENT LE DECOUPAGE LU DANS LE FILM sur leur propre
+// contexte. C est le geste que chaque instrument repetait a la main — leurs propres
+// commentaires disaient « un instrument qui oublie `SetWorldObjectPrecisionFromLayout`
+// desaligne les desers sans lever d erreur » —, et l oubli n existe plus. La CUISSON, elle,
+// prend les largeurs du CATALOGUE de la carte, jamais l auto-detection.
+//
+// `KillSourceDecoderRev` ne bouge PAS : `killsource/` change de FORME (la calibration rend un
+// profil au lieu d ecrire dans le processus) mais les lignes PRODUITES sont identiques a
+// l octet — meme espace balaye, meme critere, meme vainqueur. Son golden est regenere pour
+// refiger le couple (revision, empreinte). `SchemaVersion` reste 60 : aucun champ publie ne
+// bouge.
+const GrammarRev = "grammar-2026-09-15.27"

@@ -52,6 +52,7 @@ const (
 // r12Setup porte un film prepare : le decoupage, l'archetype, la bande de slots, l'origine
 // d'horloge. AUCUN artefact, AUCUNE borne metrique.
 type r12Setup struct {
+	gram   grammaireRecord
 	id     string
 	dir    string
 	chunks []int
@@ -82,11 +83,7 @@ func r12Prepare(t *testing.T, dir string) r12Setup {
 	if slots.Count() == 0 {
 		t.Fatalf("%s : aucun slot biped dans les keyframes", id)
 	}
-	lay, _, err := detectI0Layout(dir)
-	if err != nil {
-		t.Fatalf("%s : decoupage i0 illisible : %v", id, err)
-	}
-	SetWorldObjectPrecisionFromLayout(lay)
+	_, lay := contexteDuFilm(t, dir)
 	arch, err := bipedArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("%s : archetype biped illisible : %v", id, err)
@@ -95,7 +92,8 @@ func r12Prepare(t *testing.T, dir string) r12Setup {
 	if !ok {
 		t.Fatalf("%s : chunk 1 illisible, aucune origine d'horloge", id)
 	}
-	return r12Setup{id: id, dir: dir, chunks: chunks, slots: slots, lay: lay,
+	return r12Setup{gram: grammaireRecord{lay: lay, arch: arch, prof: profilDeCarte(lay)},
+		id: id, dir: dir, chunks: chunks, slots: slots, lay: lay,
 		arch: arch, origin: origin}
 }
 
@@ -290,7 +288,7 @@ func r12Walk(s r12Setup, want func(slot uint32, ms int64, ids []int) bool) {
 					continue
 				}
 				if want(slot, ms, ids) {
-					walkRecordComponents(pay, i0, total, ids, s.lay, s.arch,
+					walkRecordComponents(pay, i0, total, ids, s.gram,
 						func(int) bool { return true })
 				}
 				p = i0 + s.lay.TotalBits()
@@ -338,8 +336,6 @@ func r12AncrageOneFilm(t *testing.T, dir string) {
 	t.Helper()
 	release := LockProcessDecode()
 	defer release()
-	saved := WorldObjectPrecisionActuelle()
-	defer func() { PoserWorldObjectPrecision(saved) }()
 	s := r12Prepare(t, dir)
 	rd := r12Collect(s)
 

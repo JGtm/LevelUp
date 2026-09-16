@@ -121,7 +121,7 @@ func r9Scan(s r8MobSetup) (i57 []r9Read, i59 []r8TagRead, masked int) {
 				}
 				if idx59 >= 0 && maskHas(ids, idx59) {
 					got59 = false
-					walkRecordTo(pay, i0, total, ids, s.lay, s.arch, idx59)
+					walkRecordTo(pay, i0, total, ids, s.gram, idx59)
 					if got59 {
 						i59 = append(i59, r8TagRead{Slot: slot, TSUS: pk.TimestampUS,
 							Tag: last59.Tag, Inner: last59.Inner})
@@ -130,7 +130,7 @@ func r9Scan(s r8MobSetup) (i57 []r9Read, i59 []r8TagRead, masked int) {
 				if idx57 >= 0 && maskHas(ids, idx57) {
 					masked++
 					got57 = false
-					ported := walkRecordTo(pay, i0, total, ids, s.lay, s.arch, idx57)
+					ported := walkRecordTo(pay, i0, total, ids, s.gram, idx57)
 					if got57 {
 						last57.Slot, last57.TSUS, last57.Ported = slot, pk.TimestampUS, ported
 						i57 = append(i57, last57)
@@ -155,9 +155,6 @@ func r9OneFilm(t *testing.T, dir string) {
 	wr := entry.Range()
 	release := LockProcessDecode()
 	defer release()
-	saved := WorldObjectPrecisionActuelle()
-	SetWorldObjectPrecisionFromLayout(entry.Layout())
-	defer func() { PoserWorldObjectPrecision(saved) }()
 
 	s := r8MobResolve(t, dir)
 	opt := DefaultScanFilmOptions()

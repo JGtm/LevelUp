@@ -179,9 +179,9 @@ func e192Balayages(film *filmsource.Film, entry MapQuantEntry, l *e192Ligne) {
 
 	pos := DefaultScanFilmOptions()
 	pos.WorldRange = &rng
-	a, errA := ScanBipedPositions(film, pos)
+	a, errA := ScanBipedPositions(NewFilmContext(film), pos)
 	pos.Layout = &impose
-	b, errB := ScanBipedPositions(film, pos)
+	b, errB := ScanBipedPositions(NewFilmContext(film), pos)
 	l.PosAuto, l.PosCat, l.ErrAuto, l.ErrCat = len(a), len(b), errA, errB
 
 	// Réglages des TOUCHES : `BuildBipedTracks` désarme les deux filtres et énumère les chunks.
@@ -189,17 +189,17 @@ func e192Balayages(film *filmsource.Film, entry MapQuantEntry, l *e192Ligne) {
 	tr.MaxSpeedMPS, tr.IsolationGapMS = 0, 0
 	tr.WorldRange = &rng
 	tr.Chunks = FilmChunkNumbers(film)
-	c, _ := ScanBipedPositions(film, tr)
+	c, _ := ScanBipedPositions(NewFilmContext(film), tr)
 	tr.Layout = &impose
-	d, _ := ScanBipedPositions(film, tr)
+	d, _ := ScanBipedPositions(NewFilmContext(film), tr)
 	l.TrackAuto, l.TrackCat = len(c), len(d)
 
 	// BRUT : tous filtres désarmés, saturation comprise. C'est la population d'ENREGISTREMENTS
 	// que la porte de région accepte ou écarte, sans qu'aucun post-traitement ne la retouche.
 	br := ScanFilmOptions{RequireTag1: true, WorldRange: &rng}
-	e, _ := ScanBipedPositions(film, br)
+	e, _ := ScanBipedPositions(NewFilmContext(film), br)
 	br.Layout = &impose
-	f, _ := ScanBipedPositions(film, br)
+	f, _ := ScanBipedPositions(NewFilmContext(film), br)
 	l.BrutAuto, l.BrutCat = len(e), len(f)
 	if !l.Difference() {
 		return
@@ -208,9 +208,9 @@ func e192Balayages(film *filmsource.Film, entry MapQuantEntry, l *e192Ligne) {
 	// population est alors TOUT ce que la marche reconnaît. C'est la variante la plus large, celle
 	// qui borne par le haut ce que la porte de région écarte.
 	br.RequireTag1, br.Layout = false, nil
-	g, _ := ScanBipedPositions(film, br)
+	g, _ := ScanBipedPositions(NewFilmContext(film), br)
 	br.Layout = &impose
-	h, _ := ScanBipedPositions(film, br)
+	h, _ := ScanBipedPositions(NewFilmContext(film), br)
 	l.LibreAuto, l.LibreCat = len(g), len(h)
 }
 

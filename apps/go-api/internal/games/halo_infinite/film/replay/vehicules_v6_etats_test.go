@@ -34,8 +34,6 @@ func v6EtatsUnFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	ctx, ok := v4Decode(t, root, f)
 	if !ok {
 		return

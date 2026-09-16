@@ -35,15 +35,7 @@ func TestEquipmentCreationWidth(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
 
-	lay, _, err := detectI0Layout(dir)
-	if err != nil {
-		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
-	}
-	prev := WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-	SetWorldObjectPrecisionFromLayout(lay)
-	prevW := CurrentMPPWidths()
-	t.Cleanup(func() { SetMPPWidths(prevW) })
+	fc, lay := contexteDuFilm(t, dir)
 
 	n := CountFilmChunks(dir)
 	band := worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)
@@ -51,13 +43,13 @@ func TestEquipmentCreationWidth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("archétype ti=%d illisible : %v", EquipmentTypeIndex, err)
 	}
-	tracks, err := ScanFilmWorldObjects(dir, &equipCreationUnitRange, EquipmentTypeIndex)
+	tracks, err := ScanWorldObjects(fc, &equipCreationUnitRange, EquipmentTypeIndex)
 	if err != nil {
 		t.Fatalf("trajectoires ti=%d illisibles : %v", EquipmentTypeIndex, err)
 	}
 	spans := EquipmentLifeSpans(tracks)
 
-	cal, ok := CalibrateMPPWidths(dir, &equipCreationUnitRange, band, spans)
+	cal, ok := CalibrateMPPWidthsOf(fc, &equipCreationUnitRange, band, spans)
 	t.Logf("FILM %s", dir)
 	t.Logf("   LARGEUR : %s", cal)
 	t.Logf("   accords par découpage candidat (lead/index) : %s", equipWidthScores(cal.ByWidths))
@@ -70,9 +62,9 @@ func TestEquipmentCreationWidth(t *testing.T) {
 		t.Logf("   VERDICT : la calibration NE TRANCHE PAS — ce film ne publierait aucune pose")
 		return
 	}
-	SetMPPWidths(cal.Widths)
-	equipWidthConfirm(t, dir, band)
-	equipWidthPlacements(t, dir)
+	fc.PoserMPP(cal.Widths)
+	equipWidthConfirm(t, fc, band)
+	equipWidthPlacements(t, fc)
 }
 
 // equipWidthConfirm rejoue le balayage complet à la largeur retenue et publie la largeur du
@@ -83,9 +75,9 @@ func TestEquipmentCreationWidth(t *testing.T) {
 // ATTENTION À LA LECTURE : cette distribution porte le BRUIT de l'ancre, qui domine sur les
 // films à grande bande de slots. C'est la cohorte confirmée par l'oracle (equipWidthPlacements)
 // qui est la mesure ; celle-ci sert à voir si la grammaire tient sur les records réels.
-func equipWidthConfirm(t *testing.T, dir string, band map[uint32]bool) {
+func equipWidthConfirm(t *testing.T, fc *FilmContext, band map[uint32]bool) {
 	t.Helper()
-	cre, st, err := ScanFilmEquipmentCreationsForBand(dir, &equipCreationUnitRange, band)
+	cre, st, err := ScanEquipmentCreationsForBand(fc, &equipCreationUnitRange, band)
 	if err != nil {
 		t.Fatalf("balayage à la largeur retenue impossible : %v", err)
 	}
@@ -95,7 +87,7 @@ func equipWidthConfirm(t *testing.T, dir string, band map[uint32]bool) {
 		widths[uint32(c.DefaultStateBits)]++
 		ids[uint32(c.MPPVal[MPPWord32])]++
 	}
-	w := CurrentMPPWidths()
+	w := fc.ProfilDeBalayage().MPP
 	t.Logf("   BRUT à %s : %d ancres · %d records acceptés · %d identifiants `eqip` distincts",
 		w, st.Anchors, st.Accepted, len(ids))
 	t.Logf("      largeurs du default-state (attendu : %d dominant) :%s",
@@ -104,9 +96,9 @@ func equipWidthConfirm(t *testing.T, dir string, band map[uint32]bool) {
 
 // equipWidthPlacements publie la cohorte CONFIRMÉE par l'oracle : les poses que la production
 // publierait. C'est le seul chiffre qui compte pour le gate — le reste est du dénominateur.
-func equipWidthPlacements(t *testing.T, dir string) {
+func equipWidthPlacements(t *testing.T, fc *FilmContext) {
 	t.Helper()
-	pl, st, err := ScanFilmEquipmentPlacements(dir, &equipCreationUnitRange)
+	pl, st, err := ScanEquipmentPlacements(fc, &equipCreationUnitRange)
 	if err != nil {
 		t.Fatalf("balayage des poses impossible : %v", err)
 	}

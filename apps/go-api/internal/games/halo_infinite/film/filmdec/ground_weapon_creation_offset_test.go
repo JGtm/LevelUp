@@ -61,13 +61,7 @@ func TestGroundWeaponCreationOffset(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
 
-	lay, _, err := detectI0Layout(dir)
-	if err != nil {
-		t.Fatalf("decoupage i0 illisible dans %s : %v", dir, err)
-	}
-	prev := WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-	SetWorldObjectPrecisionFromLayout(lay)
+	_, lay := contexteDuFilm(t, dir)
 	t.Logf("FILM %s · largeurs %v", dir, lay.AxisW)
 
 	// MESURE puis CONTROLE, dans cet ordre : le controle ne sert qu'a juger la mesure.

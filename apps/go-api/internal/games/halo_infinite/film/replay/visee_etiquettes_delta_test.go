@@ -72,7 +72,7 @@ func vgCollecte(dir string, s vfSource, cibles map[uint32]bool) ([]vfRecord, vfS
 			st.paquets++
 			pay := p.Payload(data)
 			ancres = ancres[:0]
-			recs := filmdec.ScanBipedRecords(pay, filmdec.NewSlotBand(cibles), s.lay, opt)
+			recs := filmdec.ScanBipedRecords(pay, filmdec.NewSlotBand(cibles), s.lay, opt, filmdec.ProfilDeBalayageParDefaut())
 			out = append(out, vgVersePaquet(&st, recs, ancres, pay, p, s)...)
 		}
 	}

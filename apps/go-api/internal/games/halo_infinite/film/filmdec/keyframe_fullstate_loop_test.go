@@ -157,7 +157,7 @@ func (k kf7eTally) rate() float64 {
 
 // kf7eWalkOne rejoue le corps d'UN record sous la configuration donnee, puis mesure.
 func kf7eWalkOne(f kf35Film, pay []byte, b kf35Bound, c kf7eCase, tal *kf7eTally) {
-	tr := WalkKeyframeFullState(pay, b.Rec.Bit, f.Reg)
+	tr := WalkKeyframeFullState(pay, b.Rec.Bit, f.Reg, profilDInstrument)
 	if tr.DesyncAt >= 0 {
 		tal.desync++
 		return
@@ -198,7 +198,7 @@ func kf7eChain(f kf35Film, pay []byte, from int, b kf35Bound) bool {
 		if !ok || h.Slot <= prev {
 			return false
 		}
-		tr := WalkKeyframeFullState(pay, pos, f.Reg)
+		tr := WalkKeyframeFullState(pay, pos, f.Reg, profilDInstrument)
 		if tr.DesyncAt >= 0 {
 			return false
 		}

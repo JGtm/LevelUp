@@ -220,6 +220,8 @@ type eaLife struct {
 // masque du dernier record suffisent aux phases C et E.
 func eaScanTi37Lives(t *testing.T, dir string) map[eaLifeKey]*eaLife {
 	t.Helper()
+	_, lay := contexteDuFilm(t, dir)
+	lg := profilDeCarte(lay).LargeursObjetDuMonde()
 	n := CountFilmChunks(dir)
 	if n == 0 {
 		t.Fatalf("aucun chunk film dans %s", dir)
@@ -240,7 +242,7 @@ func eaScanTi37Lives(t *testing.T, dir string) map[eaLifeKey]*eaLife {
 			}
 			pay := pk.Payload(data)
 			total := len(pay) * 8
-			limit := total - (worldObjectHeaderBits + worldObjectIndexBits + projPosBits())
+			limit := total - (worldObjectHeaderBits + worldObjectIndexBits + projPosBits(lg))
 			for p := 0; p <= limit; p++ {
 				rec, ok := matchWorldObjectRecord(pay, p, band)
 				if !ok || rec.Idx[0] != 0 {

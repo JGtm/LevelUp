@@ -234,7 +234,7 @@ func kfGramOne(reg *Registry, pay []byte, r KeyframeRec, want int, tal *kfGramTa
 	if _, ok := readKeyframeHeader(pay, tr.EndBit, len(pay)*8); ok {
 		tal.landedHdr++
 	}
-	ch := ChainKeyframeRecords(pay, reg, tr.EndBit, want, r.Slot)
+	ch := ChainKeyframeRecords(pay, reg, tr.EndBit, want, r.Slot, profilDInstrument)
 	if !ch.Reached {
 		tal.lost++
 		tal.stops[ch.Stop]++
@@ -390,7 +390,7 @@ func TestKFGramGlobal(t *testing.T) {
 // compte les frontieres de l'oracle retrouvees, plus les causes d'arret.
 func kfGramGlobalPass(reg *Registry, pays [][]byte) (parsed, hit, oracle int, stops [5]int) {
 	for _, pay := range pays {
-		recs, stop := WalkKeyframeRecords(pay, reg)
+		recs, stop := WalkKeyframeRecords(pay, reg, profilDInstrument)
 		stops[stop]++
 		parsed += len(recs)
 		at := make(map[int]bool, len(recs))

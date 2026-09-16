@@ -234,7 +234,7 @@ func consumeQuantVec3WithGate(br *BitReader, axisW uint) {
 //
 // deltaAxisW retourne la largeur d'axe du chemin delta (celle du profil si > 0, sinon pd).
 func deltaAxisW(br *BitReader, pd PrecisionDescriptor, i int) uint {
-	if w := br.mv.DeltaAxisWidth; w > 0 {
+	if w := br.p.Mouvement.DeltaAxisWidth; w > 0 {
 		return w
 	}
 	return pd.AxisW[i]

@@ -151,9 +151,6 @@ func r8ScanFilm(t *testing.T, dir string) map[EquipmentLifeKey]*r8LifeStat {
 	// LES LARGEURS D'AXE SONT UN GLOBAL DE PAQUET, et sans elles le lecteur world-object
 	// dequantifie tout aux largeurs de Cliffhanger : mesure a l'appui, `00ba2e1c` rend
 	// 13 poses au defaut contre 537 avec les siennes. Restauration a la sortie.
-	saved := WorldObjectPrecisionActuelle()
-	SetWorldObjectPrecisionFromLayout(entry.Layout())
-	defer func() { PoserWorldObjectPrecision(saved) }()
 	pl, pst, err := ScanFilmEquipmentPlacements(dir, &wr)
 	if err != nil {
 		t.Fatalf("poses ti=37 illisibles dans %s : %v", dir, err)

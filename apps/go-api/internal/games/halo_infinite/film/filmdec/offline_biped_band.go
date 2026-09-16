@@ -43,7 +43,7 @@ func ScanFilmBipedPositionsForBand(dir string, band SlotBand, opt ScanFilmOption
 	if err != nil {
 		return nil, err
 	}
-	return ScanBipedPositionsForBand(film, band, opt)
+	return ScanBipedPositionsForBand(contexteDeBobine(film), band, opt)
 }
 
 // ScanBipedPositionsForBand décode les positions absolues des records dont le SLOT tombe
@@ -74,8 +74,9 @@ func ScanFilmBipedPositionsForBand(dir string, band SlotBand, opt ScanFilmOption
 // Ce qui ne bouge pas : l'en-tête, le masque, l'exigence d'un i0 absolu de la région attendue,
 // et bipedMinMaskCnt — le masque nominal d'un véhicule porte cinq composants (i0/i1/i2/i3/i25),
 // donc le minimum de deux est franchi sans réglage.
-func ScanBipedPositionsForBand(film *filmsource.Film, band SlotBand, opt ScanFilmOptions) (
+func ScanBipedPositionsForBand(fc *FilmContext, band SlotBand, opt ScanFilmOptions) (
 	[]BipedPosition, error) {
+	film := fc.Film()
 	chunks, err := bipedScanChunks(film, opt)
 	if err != nil {
 		return nil, err
@@ -88,7 +89,7 @@ func ScanBipedPositionsForBand(film *filmsource.Film, band SlotBand, opt ScanFil
 	if err != nil {
 		return nil, err
 	}
-	out, read := scanBipedChunks(film, chunks, band, lay, opt)
+	out, read := scanBipedChunks(film, chunks, band, lay, opt, fc.ProfilDeBalayage())
 	if read == 0 {
 		return nil, ErrNoReadableFilmChunk
 	}
@@ -131,7 +132,7 @@ func bipedI0Layout(film *filmsource.Film, opt ScanFilmOptions) (I0Layout, error)
 // scanBipedChunks déroule le balayage sur les chunks demandés et rend les positions ainsi que
 // le nombre de chunks effectivement LUS — un film partiel est licite, un film illisible non.
 func scanBipedChunks(film *filmsource.Film, chunks []int, band SlotBand, lay I0Layout,
-	opt ScanFilmOptions) ([]BipedPosition, int) {
+	opt ScanFilmOptions, prof ProfilDeBalayage) ([]BipedPosition, int) {
 	var out []BipedPosition
 	read := 0
 	for _, c := range chunks {
@@ -144,7 +145,7 @@ func scanBipedChunks(film *filmsource.Film, chunks []int, band SlotBand, lay I0L
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
-			for _, r := range ScanBipedRecords(pk.Payload(data), band, lay, opt) {
+			for _, r := range ScanBipedRecords(pk.Payload(data), band, lay, opt, prof) {
 				r.Chunk, r.PacketIndex, r.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, r)
 			}

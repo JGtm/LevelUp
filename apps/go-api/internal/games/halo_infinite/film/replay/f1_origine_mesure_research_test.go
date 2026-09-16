@@ -329,7 +329,6 @@ func f1Positions(t *testing.T, dir string, e filmdec.MapQuantEntry) ([]filmdec.B
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecisionDeCarte(e, dir, nil)()
 	scan := filmdec.DefaultScanFilmOptions()
 	wr := e.Range()
 	scan.WorldRange = &wr

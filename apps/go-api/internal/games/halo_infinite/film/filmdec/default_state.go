@@ -103,8 +103,9 @@ func LastRepVersion() uint32 { return lastRepVersion }
 // (bipedDefaultStateDecodeMovement) is intentionally left OFF so the returned cursor
 // is the raw i0 anchor. This is the offset a caller localises i0 at (per-biped: the
 // end varies with the record's name/ref gate bits — expected).
-func BipedDefaultStateEndBit(buf []byte, stateBit int) int {
+func BipedDefaultStateEndBit(buf []byte, stateBit int, prof ProfilDeBalayage) int {
 	br := NewBitReader(buf)
+	br.PoserProfil(prof)
 	br.SetBitPos(stateBit)
 	consumeBipedDefaultState(br)
 	return br.BitPos()
@@ -116,8 +117,9 @@ func BipedDefaultStateEndBit(buf []byte, stateBit int) int {
 // decodes the spawn position at). It also returns the has-components gate bit and the
 // number of bits the presence mask consumed, for diagnostics. r-b (media-frame quat) is
 // closed as 0-bit on a fresh keyframe decode (bipedMediaFramePresent stays false).
-func BipedMovementI0Bit(buf []byte, stateBit int) (i0Bit, hasComp, maskBits int) {
+func BipedMovementI0Bit(buf []byte, stateBit int, prof ProfilDeBalayage) (i0Bit, hasComp, maskBits int) {
 	br := NewBitReader(buf)
+	br.PoserProfil(prof)
 	br.SetBitPos(stateBit)
 	consumeBipedDefaultState(br) // rep (movement decode left OFF here)
 	hasComp = b2i(br.ReadBit())

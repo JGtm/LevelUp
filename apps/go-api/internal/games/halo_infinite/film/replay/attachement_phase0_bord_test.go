@@ -91,8 +91,6 @@ func attNuages(t *testing.T, root, id string) ([]filmdec.ProjectileTrack, []film
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	wr, _, ok := attBornes(t, root, id)
 	if !ok {
 		t.Logf("%s : bornes de carte indisponibles — item 0.3 non mesurable sur ce film", id)
@@ -379,8 +377,6 @@ func attControleNuage(t *testing.T, root, id string, veh []filmdec.ProjectileTra
 	}
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	wr, _, ok := attBornes(t, root, id)
 	if !ok {
 		return

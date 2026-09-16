@@ -90,7 +90,7 @@ func ScanFilmCamoStates(dir string) ([]CamoRead, CamoStateStats, error) {
 	if err != nil {
 		return nil, CamoStateStats{}, err
 	}
-	return ScanCamoStates(NewFilmContext(film))
+	return ScanCamoStates(contexteDeBobine(film))
 }
 
 // ScanCamoStates décode les transmissions de la voie d'état du camouflage d'un film DEJA CHARGE.
@@ -135,6 +135,7 @@ func ScanCamoStates(fc *FilmContext) ([]CamoRead, CamoStateStats, error) {
 	defer SetCamoStateHook(prev)
 
 	var out []CamoRead
+	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage()}
 	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
 		st.Records++
 		if !maskHas(r.Mask, i28idx) {
@@ -143,7 +144,7 @@ func ScanCamoStates(fc *FilmContext) ([]CamoRead, CamoStateStats, error) {
 		st.WithI28++
 		last.got = false
 		switch {
-		case !walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, lay, arch, i28idx) || !last.got:
+		case !walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, gram, i28idx) || !last.got:
 			st.Unread++
 		case !last.channel:
 			st.Read++

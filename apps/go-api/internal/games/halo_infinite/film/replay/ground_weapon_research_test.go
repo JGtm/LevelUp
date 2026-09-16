@@ -81,8 +81,6 @@ func TestGroundWeaponCoverage(t *testing.T) {
 	// du 2026-08-15 a mesuré sur la production.
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prevPrec := filmdec.WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { filmdec.PoserWorldObjectPrecision(prevPrec) })
 	known := loadoutFamilies()
 
 	// --- IDENTITÉ -----------------------------------------------------------------------
@@ -366,7 +364,5 @@ func gwWorldRange(t *testing.T) (filmdec.Vec3Range, bool) {
 	if err != nil {
 		t.Fatalf("carte %s absente du catalogue : %v", mapName, err)
 	}
-	filmdec.SetWorldObjectPrecisionFromLayout(filmdec.I0Layout{AxisW: [3]uint{
-		uint(entry.AxisWidths[0]), uint(entry.AxisWidths[1]), uint(entry.AxisWidths[2])}})
 	return entry.Range(), true
 }

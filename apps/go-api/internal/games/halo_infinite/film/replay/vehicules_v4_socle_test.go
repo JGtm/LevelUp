@@ -112,7 +112,6 @@ func v4Decode(t *testing.T, root string, f v0Film) (v4Ctx, bool) {
 	if !ok {
 		return ctx, false
 	}
-	filmdec.SetWorldObjectPrecisionFromLayout(entry.Layout())
 	wr := entry.Range()
 	bip, ok := v4Bipedes(t, ctx.dir, entry, &wr)
 	if !ok {

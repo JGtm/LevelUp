@@ -123,8 +123,6 @@ func d4ViesLibres(t *testing.T, root, id string) ([]flagFreeLife, bool) {
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 
 	wr, _, ok := attBornes(t, root, id)
 	if !ok {

@@ -239,7 +239,7 @@ func ScanFilmEquipmentState(dir string) ([]EquipmentStateSample, EquipmentStateS
 	if err != nil {
 		return nil, EquipmentStateStats{}, err
 	}
-	return ScanEquipmentState(NewFilmContext(film))
+	return ScanEquipmentState(contexteDeBobine(film))
 }
 
 // ScanEquipmentState décode l'état des objets d'équipement d'un film DEJA CHARGE.
@@ -259,7 +259,7 @@ func ScanEquipmentState(fc *FilmContext) ([]EquipmentStateSample, EquipmentState
 	if err != nil {
 		return nil, st, err
 	}
-	w := equipmentWalk{arch: arch, want: equipmentFieldIndices(arch)}
+	w := equipmentWalk{prof: fc.ProfilDeBalayage(), arch: arch, want: equipmentFieldIndices(arch)}
 
 	var cur EquipmentStateSample
 	prev := observateur.EquipmentStateHook
@@ -287,6 +287,8 @@ func ScanEquipmentState(fc *FilmContext) ([]EquipmentStateSample, EquipmentState
 
 // equipmentWalk porte ce que la marche d'un record doit connaître (règle des 5 paramètres).
 type equipmentWalk struct {
+	// prof est le PROFIL DE BALAYAGE pose sur chaque lecteur de cette marche (lot 2.3).
+	prof ProfilDeBalayage
 	arch Archetype
 	// want[f] est l'index d'itérateur du champ f dans l'archétype, ou -1 s'il en est absent.
 	want [EquipmentFieldCount]int
@@ -299,7 +301,7 @@ func (w equipmentWalk) scanPayload(
 ) []EquipmentStateSample {
 	var out []EquipmentStateSample
 	total := len(pay) * 8
-	limit := total - (worldObjectHeaderBits + worldObjectIndexBits + projPosBits())
+	limit := total - (worldObjectHeaderBits + worldObjectIndexBits + projPosBits(w.prof.LargeursObjetDuMonde()))
 	for p := 0; p <= limit; p++ {
 		rec, ok := matchWorldObjectRecord(pay, p, band)
 		if !ok || rec.Idx[0] != 0 { // i0 doit ouvrir le masque : c'est la position
@@ -386,6 +388,7 @@ func (w equipmentWalk) walk(pay []byte, at, total int, idx []int, last int) bool
 			return false
 		}
 		br := NewBitReader(pay)
+		br.PoserProfil(w.prof)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(EquipmentTypeIndex), w.arch.Level(id))
 		if !ported || br.BitPos() > total {

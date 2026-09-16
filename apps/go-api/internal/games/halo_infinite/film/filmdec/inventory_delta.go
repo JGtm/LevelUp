@@ -109,7 +109,7 @@ func ScanFilmInventoryDeltas(dir string) ([]InventoryDelta, InventoryDeltaStats,
 	if err != nil {
 		return nil, InventoryDeltaStats{}, err
 	}
-	return ScanInventoryDeltas(NewFilmContext(film))
+	return ScanInventoryDeltas(contexteDeBobine(film))
 }
 
 // ScanInventoryDeltas décode l'inventaire suivi dans les paquets delta d'un film DEJA CHARGE.
@@ -121,7 +121,7 @@ func ScanInventoryDeltas(fc *FilmContext) ([]InventoryDelta, InventoryDeltaStats
 	restore := sc.installHooks()
 	defer restore()
 
-	walkDeltaBipedRecords(fc, sc.chunks, sc.slots, sc.lay, func(r deltaBipedRecord) {
+	walkDeltaBipedRecords(fc, sc.chunks, sc.slots, sc.gram.lay, func(r deltaBipedRecord) {
 		sc.st.Records++
 		sc.readRecord(r.Chunk, r.Packet, r.Payload, r.I0, r.Total, r.Slot, r.Mask)
 	})
@@ -134,8 +134,7 @@ func ScanInventoryDeltas(fc *FilmContext) ([]InventoryDelta, InventoryDeltaStats
 type invDeltaScanner struct {
 	chunks []int
 	slots  SlotBand
-	lay    I0Layout
-	arch   Archetype
+	gram   grammaireRecord
 	// role dit, pour un index de composant du masque, CE QU'IL EST pour l'inventaire — et,
 	// pour les munitions, DE QUEL emplacement d'arme il parle. C'est la seule table câblée du
 	// balayage, et elle est construite depuis les NOMS du registre du film, jamais depuis des
@@ -209,7 +208,8 @@ func newInvDeltaScanner(fc *FilmContext) (*invDeltaScanner, error) {
 		return nil, err
 	}
 	sc := &invDeltaScanner{
-		chunks: chunks, slots: slots, lay: lay, arch: arch,
+		chunks: chunks, slots: slots,
+		gram: grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage()},
 		role: invDeltaRoles(arch),
 	}
 	if len(sc.role) == 0 {
@@ -306,7 +306,7 @@ func (sc *invDeltaScanner) readRecord(
 	sc.resetRecord()
 	sc.countAnnounced(idx)
 	seen := 0
-	walkRecordComponents(pay, i0, total, idx, sc.lay, sc.arch, func(id int) bool {
+	walkRecordComponents(pay, i0, total, idx, sc.gram, func(id int) bool {
 		if r, ok := sc.role[id]; ok {
 			sc.capture(r)
 			seen++

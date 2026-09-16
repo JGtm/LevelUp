@@ -7,10 +7,11 @@ package killsource
 // l ORDRE EST LE RESULTAT (la marche decide, le scan rattrape, l auto-infligee ne comble que les
 // trous, la mort de bot est une population a part).
 //
-// SERIALISATION OBLIGATOIRE. Les parametres de replication du decodeur de bits sont des GLOBAUX
-// DE PAQUET. Deux decodages simultanes dans le meme process se contamineraient, et deux
-// decodages successifs aussi si les globaux n etaient pas remis a leur valeur d origine. Le
-// verrou et la remise a zero sont donc a l entree, pas a la charge de l appelant.
+// LE PROFIL DE BALAYAGE EST RENDU, PLUS LAISSE DANS LE PROCESSUS (lot 2.3). La calibration
+// map-dependante retient des largeurs — descripteur de traversee, largeur d axe absolue,
+// `param_4` — dont la cuisson du rejeu heritait par l etat du processus (decouverte D1 du lot
+// 2.2.a). [Result.ProfilCalibre] les PORTE : `replaybuild` le passe a `replay.BuildFromFilm`,
+// qui le pose sur le contexte du film.
 
 import (
 	"context"
@@ -93,18 +94,25 @@ func Decode(ctx context.Context, name string, film *filmsource.Film, opts *Optio
 	return c.finish(), nil
 }
 
-// resetGlobals : remet les parametres de replication du decodeur de bits a leur valeur d origine.
-// SANS CELA, enchainer deux films dans le meme process fait demarrer la calibration du second
-// depuis les valeurs du premier — mesure : le score d un film passe de 1111 a 1214 selon l ordre
-// d appel.
+// ProfilDeDepart rend le PROFIL DE BALAYAGE dont ce paquet part, avant toute calibration :
+// l invariant du profil, plus le `param_4` du moteur FORCE A ZERO.
 //
-// LES DEUX LARGEURS DE POSITION SONT REGROUPEES DEPUIS LE LOT 2.2.a (`SetAbsoluteAxisW` et
-// `TraversalPrecision`, disparues) : elles voyagent avec le lecteur de bits, et la seule chose
-// qui survit a une passe est le PROFIL HERITE (`filmdec/mouvement_herite.go`) — remis a
-// l invariant ici, exactement comme les deux variables l etaient.
+// LE ZERO EST UNE VALEUR, PAS UNE ABSENCE, et c est pourquoi il est nomme ici. Hors forcage, la
+// table par composant (`filmdec.paramByComponent`) rend 1 aux composants qu elle ne liste pas ;
+// forcer 0 les met tous a la forme conservatrice. C est ce que `SetRecordStateParam(0)` faisait
+// en tete de [Decode] jusqu au lot 2.3, pour tout le processus — y compris pour la cuisson du
+// rejeu qui suivait. Il est desormais porte par le profil, et `replaybuild` le passe
+// explicitement quand le decodage n a rien pu calibrer.
+func ProfilDeDepart() filmdec.ProfilDeBalayage {
+	p := filmdec.ProfilDeBalayageParDefaut()
+	p.PoserParamEtat(0)
+	return p
+}
+
+// resetGlobals : remet les bascules de grammaire encore portees par le processus a la valeur
+// que ce paquet exige. Les largeurs, elles, ne sont plus la : elles voyagent avec le profil de
+// balayage ([ProfilDeDepart]) depuis le lot 2.3.
 func resetGlobals() {
-	filmdec.ReinitialiserMouvementHerite()
-	filmdec.SetRecordStateParam(0)
 	filmdec.SetStrictGeneration(true)
 	filmdec.SetMobilityActionBodyPorted(true)
 }
@@ -154,7 +162,7 @@ func (c *decodeCtx) prepare(ctx context.Context, src *filmsource.Film) error {
 	if err = ctx.Err(); err != nil {
 		return err
 	}
-	c.walkRes = runWalk(c.film, tl, c.roster, c.opts.Views, c.calib.Mouvement)
+	c.walkRes = runWalk(c.film, tl, c.roster, c.opts.Views, c.calib.Profil)
 	c.scanCands = scanFilm(c.film, c.roster.nPlay)
 	if err = ctx.Err(); err != nil {
 		return err
@@ -185,6 +193,7 @@ func (c *decodeCtx) finish() *Result {
 		Stats:           stats,
 		Roster:          c.roster.public(),
 		Calibration:     c.calib.String(),
+		ProfilCalibre:   c.calib.Profil,
 		BijectionMargin: bijectionMargin(c.roster, c.feed.pairs, c.scanCands, c.bijScore),
 		// DETERMINEE quand l inference n avait qu UNE SEULE affectation a rendre — ce que
 		// `Inferred <= 1` ne suffisait pas a dire des lors qu il peut rester plus de noms libres

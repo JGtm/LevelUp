@@ -117,7 +117,7 @@ func ScanFilmAbilityImpulses(dir string) ([]AbilityImpulse, AbilityImpulseStats,
 	if err != nil {
 		return nil, AbilityImpulseStats{}, err
 	}
-	return ScanAbilityImpulses(NewFilmContext(film))
+	return ScanAbilityImpulses(contexteDeBobine(film))
 }
 
 // ScanAbilityImpulses décode les impulsions de capacité d'un film DEJA CHARGE. Cf.
@@ -128,9 +128,9 @@ func ScanAbilityImpulses(fc *FilmContext) ([]AbilityImpulse, AbilityImpulseStats
 	if err != nil {
 		return nil, st, err
 	}
-	sc := &abilityImpulseScanner{st: &st, lay: s.lay, arch: s.arch,
-		i57idx: componentIndexOfAny(s.arch, abilityPredictedName, abilityPredictedNameAlt),
-		i59idx: componentIndexOfAny(s.arch, grappleComponentName, grappleComponentNameAlt),
+	sc := &abilityImpulseScanner{st: &st, gram: s.gram,
+		i57idx: componentIndexOfAny(s.gram.arch, abilityPredictedName, abilityPredictedNameAlt),
+		i59idx: componentIndexOfAny(s.gram.arch, grappleComponentName, grappleComponentNameAlt),
 	}
 	if sc.i57idx < 0 && sc.i59idx < 0 {
 		// AUCUNE ERREUR ICI, et c'est délibéré : `ScanFilmGrappleReads` refuse un film sans
@@ -151,7 +151,7 @@ func ScanAbilityImpulses(fc *FilmContext) ([]AbilityImpulse, AbilityImpulseStats
 		SetAbilityNonPredictedHook(prev59)
 	}()
 
-	walkDeltaBipedRecords(s.fc, s.chunks, s.slots, s.lay, func(r deltaBipedRecord) {
+	walkDeltaBipedRecords(s.fc, s.chunks, s.slots, s.gram.lay, func(r deltaBipedRecord) {
 		st.Records++
 		sc.account(r.Payload, r.I0, r.Total, r.Mask, r.Slot, r.Chunk, r.Packet)
 	})
@@ -176,8 +176,7 @@ func componentIndexOfAny(arch Archetype, names ...string) int {
 type abilityImpulseScanner struct {
 	st             *AbilityImpulseStats
 	out            []AbilityImpulse
-	lay            I0Layout
-	arch           Archetype
+	gram           grammaireRecord
 	i57idx, i59idx int
 	tag57, tag59   uint64
 	got57, got59   bool
@@ -204,7 +203,7 @@ func (sc *abilityImpulseScanner) account(pay []byte, i0, total int, idx []int,
 	if !has57 || (has59 && sc.i59idx > target) {
 		target = sc.i59idx
 	}
-	walkRecordTo(pay, i0, total, idx, sc.lay, sc.arch, target)
+	walkRecordTo(pay, i0, total, idx, sc.gram, target)
 	sc.emit(has57, has59, slot, chunk, pk)
 }
 

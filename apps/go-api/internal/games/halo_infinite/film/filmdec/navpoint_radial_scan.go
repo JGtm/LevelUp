@@ -126,7 +126,7 @@ func ScanFilmNavpointRadial(dir string, chunkStartMS map[int]int) (*NavpointRadi
 	if err != nil {
 		return &NavpointRadialScan{Blocked: map[int]int{}}, err
 	}
-	return ScanNavpointRadial(NewFilmContext(film), chunkStartMS)
+	return ScanNavpointRadial(contexteDeBobine(film), chunkStartMS)
 }
 
 // ScanNavpointRadial balaye l'anneau ti=12 d'un film DEJA CHARGE.
@@ -146,7 +146,7 @@ func ScanNavpointRadial(fc *FilmContext, chunkStartMS map[int]int) (*NavpointRad
 	if err != nil {
 		return sc, err
 	}
-	w := navpointRadialWalk{arch: arch, reg: reg, sc: sc}
+	w := navpointRadialWalk{prof: fc.ProfilDeBalayage(), arch: arch, reg: reg, sc: sc}
 	defer w.install()()
 	for _, c := range nums {
 		data, pks, ok := fc.ChunkAt(c)
@@ -193,6 +193,9 @@ func (c *FilmContext) filmArchetype(ti int) (Archetype, *Registry, error) {
 // navpointRadialWalk porte ce que la marche d'un record doit connaitre, et l'etat que le hook
 // y depose (regle des 5 parametres).
 type navpointRadialWalk struct {
+	// prof est le PROFIL DE BALAYAGE du contexte, pose sur chaque lecteur de cette marche
+	// (lot 2.3) : c est par lui que les largeurs de la carte et du format atteignent les feuilles.
+	prof ProfilDeBalayage
 	arch Archetype
 	reg  *Registry
 	cur  NavpointRadialRead
@@ -310,6 +313,7 @@ func (w *navpointRadialWalk) walk(pay []byte, rec WorldObjectRecord, ms int32) (
 			return at, false
 		}
 		br := NewBitReader(pay)
+		br.PoserProfil(w.prof)
 		br.SetBitPos(at)
 		w.got, w.key = false, false
 		_, _, ported := consumeByName(br, name, navpointRadialArchIndex, w.arch.Level(id))
@@ -354,7 +358,7 @@ func (w *navpointRadialWalk) scanKeyframe(pay []byte, ms int32) {
 		}
 		first := len(sc.Reads)
 		w.cur.Slot, w.cur.TMS = uint32(b.Slot), ms //nolint:gosec // Slot vient d'un id de 30 bits
-		tr := WalkKeyframeFullState(pay, b.Bit, w.reg)
+		tr := WalkKeyframeFullState(pay, b.Bit, w.reg, w.prof)
 		if tr.DesyncAt >= 0 || tr.EndBit > total {
 			sc.KeyBroken++
 			sc.Blocked[tr.DesyncAt]++

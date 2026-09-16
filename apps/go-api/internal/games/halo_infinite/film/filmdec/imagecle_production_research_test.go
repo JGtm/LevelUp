@@ -87,7 +87,7 @@ func imcpEtatComplet(f imcFilm, ti int) imcpCompteurs {
 			}
 			c.Records++
 			c.Bornes++
-			tr := WalkKeyframeFullState(pay, b.Bit, f.Reg)
+			tr := WalkKeyframeFullState(pay, b.Bit, f.Reg, profilDInstrument)
 			if tr.DesyncAt >= 0 || tr.EndBit > total {
 				c.Broken++
 				continue
@@ -121,7 +121,7 @@ func imcpProduction(f imcFilm, ti int) imcpCompteurs {
 				c.Broken++
 				continue
 			}
-			rec, _, _ := walkOneKeyframeRecord(pay, f.Reg, b.Bit, h)
+			rec, _, _ := walkOneKeyframeRecord(pay, f.Reg, b.Bit, h, profilDInstrument)
 			if rec.DesyncAt >= 0 || rec.BitEnd > total {
 				c.Broken++
 				continue

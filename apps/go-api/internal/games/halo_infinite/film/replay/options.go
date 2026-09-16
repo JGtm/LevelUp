@@ -330,6 +330,19 @@ type Options struct {
 	FilmClockOriginUS uint64
 	// Scan : réglages du décodage offline ; zéro -> filmdec.DefaultScanFilmOptions().
 	Scan *filmdec.ScanFilmOptions
+	// ProfilDeBalayage est le PROFIL que les lecteurs de bits de cette cuisson porteront —
+	// largeurs calibrées et `param_4` que la passe précédente a retenus SUR CE FILM (lot 2.3).
+	//
+	// POURQUOI IL EST UN PARAMÈTRE. `replaybuild.BuildBytes` décode `killsource` PUIS appelle
+	// `BuildFromFilm` dans le MÊME processus ; jusqu'au lot 2.3 la calibration du kill-feed
+	// FUYAIT sur la cuisson par l'état du processus (découverte D1 du lot 2.2.a) — l'héritage
+	// était réel et voulu, mais invisible et incompatible avec deux décodages en parallèle. Il
+	// arrive désormais par ici : `killsource.Result.ProfilCalibre` quand le décodage a abouti,
+	// `killsource.ProfilDeDepart()` sinon.
+	//
+	// nil = l'invariant du profil ([filmdec.ProfilDeBalayageParDefaut]) : c'est le cas des
+	// instruments et des tests, qui ne décodent pas de kill-feed avant la cuisson.
+	ProfilDeBalayage *filmdec.ProfilDeBalayage
 	// Labels : le catalogue de libellés DU TITRE (armes, grenades, capacités), chargé
 	// depuis config/titles/{slug}/mappings/ par l'appelant hors ligne (cf. catalog.go).
 	// Absent = document sans table de libellés : le client affiche les identifiants

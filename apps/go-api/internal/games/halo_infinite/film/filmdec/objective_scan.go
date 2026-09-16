@@ -172,7 +172,7 @@ func ScanFilmObjectives(dir string) (ObjectiveScan, error) {
 	if err != nil {
 		return ObjectiveScan{}, err
 	}
-	return ScanObjectives(NewFilmContext(film))
+	return ScanObjectives(contexteDeBobine(film))
 }
 
 // ScanObjectives décode les champs publiés de ti=11 d'un film DEJA CHARGE.
@@ -192,7 +192,7 @@ func ScanObjectives(fc *FilmContext) (ObjectiveScan, error) {
 	if err != nil {
 		return sc, err
 	}
-	w := objectiveWalk{arch: arch, reg: reg, sc: &sc}
+	w := objectiveWalk{prof: fc.ProfilDeBalayage(), arch: arch, reg: reg, sc: &sc}
 	defer w.install()()
 	for _, c := range nums {
 		data, pks, ok := fc.ChunkAt(c)
@@ -238,6 +238,9 @@ func (c *FilmContext) objectiveArchetype() (Archetype, *Registry, error) {
 // objectiveWalk porte ce que la marche d'un record doit connaitre, et l'etat que le hook y
 // depose (regle des 5 parametres).
 type objectiveWalk struct {
+	// prof est le PROFIL DE BALAYAGE du contexte, pose sur chaque lecteur de cette marche
+	// (lot 2.3) : c est par lui que les largeurs de la carte et du format atteignent les feuilles.
+	prof ProfilDeBalayage
 	arch Archetype
 	// reg est le registre du film : la voie IMAGE-CLE rejoue `TraverseEntity`, qui le demande.
 	reg *Registry
@@ -339,6 +342,7 @@ func (w *objectiveWalk) walk(pay []byte, rec WorldObjectRecord, ts uint64,
 			return at, false
 		}
 		br := NewBitReader(pay)
+		br.PoserProfil(w.prof)
 		br.SetBitPos(at)
 		w.got = false
 		_, _, ported := consumeByName(br, name, ObjectiveTypeIndex, w.arch.Level(id))
@@ -379,7 +383,7 @@ func (w *objectiveWalk) scanKeyframe(pay []byte, ts uint64, sc *ObjectiveScan) {
 		}
 		first := len(sc.Reads)
 		w.cur.Slot, w.cur.TimestampUS = uint32(b.Slot), ts //nolint:gosec // Slot : id de 30 bits
-		tr := WalkKeyframeFullState(pay, b.Bit, w.reg)
+		tr := WalkKeyframeFullState(pay, b.Bit, w.reg, w.prof)
 		if tr.DesyncAt >= 0 || tr.EndBit > total {
 			sc.KeyBroken++
 			sc.Reads = sc.Reads[:first] // une marche cassee ne laisse aucune lecture

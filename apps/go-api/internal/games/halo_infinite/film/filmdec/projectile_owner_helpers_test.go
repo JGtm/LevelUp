@@ -251,7 +251,11 @@ func projOwnerMaskCensus(t *testing.T, dir string, n int) (int, map[int]int) {
 	if len(band) == 0 {
 		return 0, hist
 	}
-	posBits := projPosBits()
+	lg := ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
+	if lay, _, err := detectI0Layout(dir); err == nil {
+		lg = profilDeCarte(lay).LargeursObjetDuMonde()
+	}
+	posBits := projPosBits(lg)
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)
 		if err != nil {
@@ -268,7 +272,7 @@ func projOwnerMaskCensus(t *testing.T, dir string, n int) (int, map[int]int) {
 				if !ok || rec.Idx[0] != 0 {
 					continue
 				}
-				if _, ok := decodeWorldObjectPos(pay, rec.After, &projOwnerCensusRange); !ok {
+				if _, ok := decodeWorldObjectPos(pay, rec.After, &projOwnerCensusRange, lg); !ok {
 					continue
 				}
 				total++

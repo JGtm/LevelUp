@@ -63,7 +63,7 @@ func (s *filmScan) balayerPositions() error {
 		slog.Info("translocateur : teleportations lues", "evenements", len(s.in.Translocations))
 	}
 	s.opt.observe("translocations", s.in.Translocations)
-	positions, err := filmdec.ScanBipedPositions(s.film, s.scan)
+	positions, err := filmdec.ScanBipedPositions(s.fc, s.scan)
 	if err != nil {
 		return err
 	}
@@ -387,7 +387,7 @@ func (s *filmScan) balayerPont() {
 	s.in.Grenades = grenades
 	s.opt.observe("grenades", s.in.Grenades)
 	// Trajectoires de projectile : memes chunks, meme horloge. Absence non fatale.
-	proj, err := filmdec.ScanProjectiles(s.film, &s.world)
+	proj, err := filmdec.ScanProjectiles(s.fc, &s.world)
 	if err != nil {
 		slog.Warn("projectiles illisibles — rejeu sans trajectoires", "err", err, "match_id", s.matchID)
 		proj = nil

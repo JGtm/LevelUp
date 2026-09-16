@@ -124,7 +124,7 @@ func consumeObjectAngularVelocity(br *BitReader) {
 //
 // C'ÉTAIT LA VARIABLE DE PAQUET `PositionFullPrecision` JUSQU'AU LOT 2.2.a : elle vient
 // désormais du PROFIL que le lecteur porte ([BitReader.poserMouvement]).
-func (b *BitReader) fullPrecision() bool { return b.mv.FullPrecision }
+func (b *BitReader) fullPrecision() bool { return b.p.Mouvement.FullPrecision }
 
 // keyframeBaselineScope mirroite `DAT_144e61ea0` : une PORTÉE, pas un réglage. Les huit
 // lecteurs d'état complet du groupe `142e2*`/`142e3*` (dont `FUN_142e2bfd0`) le lèvent à 1
@@ -162,14 +162,14 @@ func fullPrecisionGate(br *BitReader) bool { return keyframeBaselineScope || br.
 // precIndex==-1 case (no tail). The CE delta capture confirms whether it ever fires.
 //
 // C'ÉTAIT LA VARIABLE DE PAQUET `PositionDeltaHasHandleTail` JUSQU'AU LOT 2.2.a.
-func (b *BitReader) deltaHasHandleTail() bool { return b.mv.DeltaHasHandleTail }
+func (b *BitReader) deltaHasHandleTail() bool { return b.p.Mouvement.DeltaHasHandleTail }
 
 // calibratedSkip active la calibration intelligente d'i0 (saut au total CE 47/101 selon
 // bUsePred) au lieu du deser dont la précision d'axe runtime n'est pas sourcée statiquement.
 // Harness de validation map-spécifique (Cliffhanger). Default false.
 //
 // C'ÉTAIT LA VARIABLE DE PAQUET `PositionCalibratedSkip` JUSQU'AU LOT 2.2.a.
-func (b *BitReader) calibratedSkip() bool { return b.mv.CalibratedSkip }
+func (b *BitReader) calibratedSkip() bool { return b.p.Mouvement.CalibratedSkip }
 
 // DeltaQuantum est le pas (unité monde) d'UN cran de position répliqué en DELTA par i0. La
 // famille delta (signed-8 ou axis-width) code un NOMBRE DE CRANS signé ; le pas physique est ce
@@ -181,7 +181,7 @@ func (b *BitReader) calibratedSkip() bool { return b.mv.CalibratedSkip }
 // (centree 0).
 // C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : le quantum vit dans le PROFIL que le
 // lecteur porte (`Movement.DeltaQuantum`).
-func (b *BitReader) deltaQuantum() float32 { return b.mv.DeltaQuantum }
+func (b *BitReader) deltaQuantum() float32 { return b.p.Mouvement.DeltaQuantum }
 
 // keyframeWriterI0Grammar route le chemin ABSOLU d'i0 sur la grammaire que l'ECRIVAIN d'état
 // complet du jeu pose, et que le lecteur du jeu relit — les deux disent la même chose CONTRE

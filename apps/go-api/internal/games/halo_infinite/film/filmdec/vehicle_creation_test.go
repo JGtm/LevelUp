@@ -88,10 +88,8 @@ func TestVehicleCreationIdentity(t *testing.T) {
 	}
 	t.Logf("FILM %s · decoupage i0 %s", dir, lay)
 
-	prevW := CurrentMPPWidths()
-	t.Cleanup(func() { SetMPPWidths(prevW) })
-	vehicleCalibrateMPP(t, dir, lay)
-	t.Logf("decoupage MPP employe : %s", CurrentMPPWidths())
+	vehicleCalibrateMPP(t, fc, dir, lay)
+	t.Logf("decoupage MPP employe : %s", fc.ProfilDeBalayage().MPP)
 
 	n := CountFilmChunks(dir)
 	band := worldObjectSlotBandDir(dir, n, VehicleTypeIndex)
@@ -127,6 +125,7 @@ func (pr vehProbe) scan(band map[uint32]bool, deser func(*BitReader)) (
 	[]EquipmentCreation, EquipmentCreationStats, error) {
 	var cur equipCreationRead
 	w := equipCreationWalk{
+		prof:  profilDeCarte(pr.lay),
 		comps: pr.comps, wr: &equipCreationUnitRange, band: band, cur: &cur,
 		ti: VehicleTypeIndex, deser: deser,
 		posDecode: func(pay []byte, at int) ([3]float32, bool) {
@@ -180,31 +179,28 @@ func vehicleCloudNear(cloud map[[3]int32]bool, v [3]float32) bool {
 
 // vehicleCalibrateMPP calibre le decoupage du bloc MPP (film-wide) sur `ti=37` et l'applique ; en
 // cas d'echec, le defaut (9/5) est conserve. VEHICLE_MPP_LEAD force le champ de tete a la main.
-func vehicleCalibrateMPP(t *testing.T, dir string, lay I0Layout) {
+func vehicleCalibrateMPP(t *testing.T, fc *FilmContext, dir string, lay I0Layout) {
 	t.Helper()
 	if forced := os.Getenv("VEHICLE_MPP_LEAD"); forced != "" {
 		w, err := strconv.Atoi(forced)
 		if err != nil {
 			t.Fatalf("VEHICLE_MPP_LEAD=%q illisible : %v", forced, err)
 		}
-		SetMPPWidths(MPPWidths{Lead: w, Index: CurrentMPPWidths().Index})
+		fc.PoserMPP(MPPWidths{Lead: w, Index: fc.ProfilDeBalayage().MPP.Index})
 		t.Logf("champ de tete MPP FORCE : %d bits", w)
 		return
 	}
-	prevPrec := WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { PoserWorldObjectPrecision(prevPrec) })
-	SetWorldObjectPrecisionFromLayout(lay)
 	n := CountFilmChunks(dir)
 	band37 := worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)
 	tracks, err := ScanFilmWorldObjects(dir, &equipCreationUnitRange, EquipmentTypeIndex)
 	if err != nil || len(band37) == 0 {
-		t.Logf("calibration MPP impossible (ti=37 : %v) — defaut %s conserve", err, CurrentMPPWidths())
+		t.Logf("calibration MPP impossible (ti=37 : %v) — defaut %s conserve", err, fc.ProfilDeBalayage().MPP)
 		return
 	}
 	cal, ok := CalibrateMPPWidths(dir, &equipCreationUnitRange, band37, EquipmentLifeSpans(tracks))
 	t.Logf("calibration MPP (via ti=37) : %s", cal)
 	if ok {
-		SetMPPWidths(cal.Widths)
+		fc.PoserMPP(cal.Widths)
 	}
 }
 

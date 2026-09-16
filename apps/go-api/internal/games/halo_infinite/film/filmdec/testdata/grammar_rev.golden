@@ -425,4 +425,17 @@
 #               raison est ecrite. Les 85 ancres `fichier:ligne` de la table ECS suivent le
 #               deplacement des fonctions. Ratchet 79 -> 43. AUCUN OCTET N EST LU AUTREMENT.
 #               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
-grammar-2026-09-15.26	ee09b3833c3f2264d5d08f46b4c2651c290724e75470b6fe74c04b581057b289
+#   2026-09-17  grammar-2026-09-15.27  lot 2.3 (`.26` -> `.27`, RANG PROVISOIRE) : LE PROFIL DE
+#               BALAYAGE REMPLACE L HERITAGE PAR L ETAT DU PROCESSUS. `herite` disparait ; ce
+#               qu elle portait (traversee, largeur d axe absolue, largeurs d axe des objets du
+#               monde, decoupage MPP, `param_4` force) devient `ProfilDeBalayage`, une VALEUR
+#               que le lecteur de bits, le contexte du film et `FrameConfig.Profil` portent.
+#               La calibration de `killsource` voyage par `Result.ProfilCalibre` ->
+#               `replay.Options.ProfilDeBalayage` -> `FilmContext` (condition D1 du pilote) ;
+#               un kill-feed non decode passe `killsource.ProfilDeDepart()`, ce que `Decode`
+#               laissait derriere lui meme en echec. La double ecriture datee
+#               (`replay.doubleEcritureGlobales`) est retiree a sa date cible. Les enveloppes
+#               D2 posent le decoupage LU DANS LE FILM sur leur propre contexte ; la cuisson
+#               prend celui du CATALOGUE. AUCUN OCTET N EST LU AUTREMENT.
+#               `KillSourceDecoderRev` ne bouge PAS (golden refige) ; `SchemaVersion` reste 60.
+grammar-2026-09-15.27	504c2678cae58a73bc7e7efd851b7880170eee213b7e09e7027133b1e7ea9046

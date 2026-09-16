@@ -104,7 +104,7 @@ func TestSondeDuels(t *testing.T) {
 	// CaptureDirs poursuit le MEME record de deux composants de plus (i4 vie, i5 bouclier) :
 	// c'est ce qui donne M5, et ca ne change aucune position emise (cf. ScanFilmOptions).
 	opt.CaptureDirs = true
-	positions, err := filmdec.ScanBipedPositions(film, opt)
+	positions, err := filmdec.ScanBipedPositions(filmdec.NewFilmContext(film), opt)
 	if err != nil {
 		t.Fatalf("positions bipeds : %v", err)
 	}

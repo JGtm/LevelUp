@@ -78,7 +78,6 @@ func v0Bornes(t *testing.T, root, carte string) (filmdec.Vec3Range, bool) {
 		t.Logf("carte %q absente du catalogue de bornes (%v)", carte, err)
 		return filmdec.Vec3Range{}, false
 	}
-	filmdec.SetWorldObjectPrecisionFromLayout(e.Layout())
 	return e.Range(), true
 }
 
@@ -209,8 +208,6 @@ func v0NuageDeltaFilm(t *testing.T, root string, f v0Film) {
 	}
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return
@@ -285,8 +282,6 @@ func v0GrammaireUnFilm(t *testing.T, root string, f v0Film) {
 	}
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return
@@ -379,7 +374,7 @@ func v0ScanBipedeSurBande(dir string, bande map[uint32]bool, lay filmdec.I0Layou
 			if pk.Type != filmdec.PacketTypeDelta {
 				continue
 			}
-			for _, r := range filmdec.ScanBipedRecords(pk.Payload(data), filmdec.NewSlotBand(bande), lay, opt) {
+			for _, r := range filmdec.ScanBipedRecords(pk.Payload(data), filmdec.NewSlotBand(bande), lay, opt, filmdec.ProfilDeBalayageParDefaut()) {
 				r.Chunk, r.PacketIndex, r.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, r)
 			}

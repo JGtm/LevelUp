@@ -165,7 +165,17 @@ import (
 // deviennent les CHAMPS d un seul objet, `filmdec.Observation`. Un observateur ne change aucune
 // consommation de bits : c est la propriete qui le distingue du profil, et elle est ecrite en
 // tete de `observateur.go`. Bilan net : -36 = 43.
-const filmdecVarsGeles = 43
+// RESSERRE A 42 LE 2026-09-17 (lot 2.3, famille « le profil de balayage remplace l heritage ») :
+// `herite` — la DERNIERE variable que les lots 2.2.a/b/e avaient regroupee, « ce qu une passe
+// laisse a la suivante dans le processus » — disparait. Ce qu elle portait (descripteur de
+// traversee, largeur d axe absolue, largeurs d axe des objets du monde, decoupage MPP,
+// `param_4` force) devient [filmdec.ProfilDeBalayage], une VALEUR : le lecteur de bits en tient
+// une copie, le contexte du film celle du decodage courant, et `FrameConfig.Profil` la passe aux
+// portes de balayage. La calibration de `killsource` la REND desormais
+// (`Result.ProfilCalibre`), et `replaybuild` la passe explicitement a `replay.BuildFromFilm` —
+// l heritage par l etat du processus, nomme par la decouverte D1 du lot 2.2.a, n existe plus.
+// Bilan net : -1 = 42.
+const filmdecVarsGeles = 42
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

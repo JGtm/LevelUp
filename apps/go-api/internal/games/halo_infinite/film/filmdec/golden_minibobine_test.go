@@ -314,12 +314,12 @@ func famillesObjetsDuMonde(r *recueil, fc *FilmContext, film *filmsource.Film) {
 
 	opt := DefaultScanFilmOptions()
 	opt.WorldRange = &wr
-	pos, err := ScanBipedPositions(film, opt)
+	pos, err := ScanBipedPositions(NewFilmContext(film), opt)
 	ajouterSlice(r, "bipedPositions", pos, err)
 
-	proj, err := ScanProjectiles(film, &wr)
+	proj, err := ScanProjectiles(NewFilmContext(film), &wr)
 	ajouterSlice(r, "projectiles", proj, err)
-	objets, err := ScanWorldObjects(film, &wr, GroundWeaponTypeIndex)
+	objets, err := ScanWorldObjects(NewFilmContext(film), &wr, GroundWeaponTypeIndex)
 	ajouterSlice(r, "worldObjects_ti42", objets, err)
 	eqCre, _, err := ScanEquipmentCreations(fc, &wr)
 	ajouterSlice(r, "equipmentCreations", eqCre, err)

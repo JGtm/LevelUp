@@ -88,7 +88,7 @@ func ScanFilmGrappleReads(dir string) ([]GrappleRead, GrappleStats, error) {
 	if err != nil {
 		return nil, GrappleStats{}, err
 	}
-	return ScanGrappleReads(NewFilmContext(film))
+	return ScanGrappleReads(contexteDeBobine(film))
 }
 
 // ScanGrappleReads décode les événements de grappin d'un film DEJA CHARGE.
@@ -123,7 +123,8 @@ func ScanGrappleReads(fc *FilmContext) ([]GrappleRead, GrappleStats, error) {
 
 	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit
 	// pas les bits à côté de lui (même règle que ScanFilmAbilityRanks et ScanFilmCamoStates).
-	sc := &grappleScanner{st: &st, lay: lay, arch: arch, i59idx: i59idx}
+	sc := &grappleScanner{st: &st, gram: grammaireRecord{lay: lay, arch: arch,
+		prof: fc.ProfilDeBalayage()}, i59idx: i59idx}
 	prev := observateur.AbilityNonPredictedHook
 	SetAbilityNonPredictedHook(func(s AbilityNonPredictedState) { sc.last, sc.got = s, true })
 	defer SetAbilityNonPredictedHook(prev)
@@ -141,8 +142,7 @@ func ScanGrappleReads(fc *FilmContext) ([]GrappleRead, GrappleStats, error) {
 type grappleScanner struct {
 	st     *GrappleStats
 	out    []GrappleRead
-	lay    I0Layout
-	arch   Archetype
+	gram   grammaireRecord
 	i59idx int
 	last   AbilityNonPredictedState
 	got    bool
@@ -155,7 +155,7 @@ func (sc *grappleScanner) account(pay []byte, i0, total int, idx []int,
 	slot uint32, chunk int, pk FilmPacket) {
 	sc.st.WithI59++
 	sc.got = false
-	walkRecordTo(pay, i0, total, idx, sc.lay, sc.arch, sc.i59idx)
+	walkRecordTo(pay, i0, total, idx, sc.gram, sc.i59idx)
 	if !sc.got {
 		sc.st.Unread++
 		return
