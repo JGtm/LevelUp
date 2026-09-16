@@ -278,12 +278,12 @@ token PROPRE du joueur pour les succès Xbox Live ; le store rend le sentinelle
 
 ## 9. Étape 6 — Clôture
 
-- [ ] 6.1 Gates complets : `go build ./... && go vet ./... && go test ./... -count=1 -timeout 30m` → 0 ;
+- [x] 6.1 Gates complets : `go build ./... && go vet ./... && go test ./... -count=1 -timeout 30m` → 0 ;
       `go test -tags=integration -p 1 ./... -timeout 30m` → 0 ; `gofmt -l ./cmd ./internal` → vide.
-- [ ] 6.2 Baseline : commande du contrat exécutée ; paires retirées listées dans « Avancement » ;
+- [x] 6.2 Baseline : commande du contrat exécutée ; paires retirées listées dans « Avancement » ;
       en-tête de `scripts/check_test_baseline.sh` daté.
-- [ ] 6.3 `.ai/thought_log.md` : entrée `[2026-09-1x]` Complété.
-- [ ] 6.4 Revue adversariale (pilote, 2 relecteurs : pool/moteur ; post-sync/migrations/hygiène)
+- [x] 6.3 `.ai/thought_log.md` : entrée `[2026-09-1x]` Complété.
+- [~] 6.4 Revue adversariale (pilote, 2 relecteurs : pool/moteur ; post-sync/migrations/hygiène)
       et CI : `[~]`. Push et fusion : décision utilisateur.
 
 Journal de phase : section « Avancement » en fin de fichier. Reprise : la lire, puis
@@ -292,6 +292,20 @@ Journal de phase : section « Avancement » en fin de fichier. Reprise : la lire
 ---
 
 ## 10. Découvertes hors périmètre (ne pas traiter ici)
+
+- **Dérive de type des fixtures `match_registry` (mesurée le 2026-09-16, étape 5)** : 45
+  divergences dans 25 fichiers de test, toutes sur les horodatages (`TIMESTAMP` vs
+  `TIMESTAMPTZ`, DANS LES DEUX SENS), `backfill_completed` (BIGINT/INTEGER) et `player_count`
+  (INTEGER/SMALLINT). Les réaligner touche la sémantique de fuseau de chaque test : chantier à
+  part. Gelées dans `deriveFixturesGelees` (`internal/archlint/match_registry_ddl_types_test.go`),
+  liste qui ne peut que rétrécir.
+- **Flake Windows `internal/mapcatalog::TestAddOverlayEntryConcurrentDossierAbsentNePerdRien`**
+  (vu au gate 6.1 du 2026-09-16) : `open …map_weapon_pads.json.lock: Accès refusé` sous
+  concurrence dans un `t.TempDir()`. Rejoué seul `-count=3` → vert. Paquet hors périmètre.
+- **42 binaires de `cmd/` dépendent du moteur de sync**, contre 84 d'un sous-paquet quelconque
+  de `internal/sync/` : le ratchet titleseams ne couvre volontairement que les deux paquets
+  porteurs d'un fail-loud. Si un seam fail-loud apparaît un jour dans `haloclient`,
+  `matchflags` ou `schemadrift`, il faudra élargir `paquetsFailLoud`.
 
 - Le serveur ne bascule jamais un job de sync en échec : `sync_handler.go:516-520/599-603` marque
   `succeeded` quoi qu'il arrive ; `auto_sync_run.go:379-389` journalise WARN et expose
@@ -533,3 +547,37 @@ Journal de phase : section « Avancement » en fin de fichier. Reprise : la lire
     → 0 (2 paquets `ok`) — les fixtures touchées sont donc réellement exercées ;
   - `go build ./cmd/...` → 0 ; `gofmt -l cmd internal` → vide.
 - Baseline de tests : AUCUNE paire retirée (un test ajouté, aucun renommé ni supprimé).
+
+### Étape 6 — Clôture — CLOSE le 2026-09-16 22:56
+
+- Items : 6.1 `[x]`, 6.2 `[x]`, 6.3 `[x]`, 6.4 `[~]` (revue adversariale, CI, push et fusion :
+  au pilote, par décision explicite du pilote).
+- **DÉPLACEMENT IMPOSÉ PAR UN RATCHET, découvert au gate 6.1** : le premier
+  `go test ./...` a fait rougir `internal/archlint::TestSyncRootPackageFrozen` —
+  `internal/sync/engine_history_retry.go` (étape 1) portait la racine du god-package de 80 à
+  **81 fichiers**, ce que le ratchet K3c / ADR 0027 interdit (précédent du 2026-08-14 : c'est
+  le FICHIER qui part, jamais la baseline qui monte). Le rejeu vit désormais dans le
+  sous-paquet cohésif **`internal/sync/historyretry`** (`Page[T]`, seam `Sleep`, constantes
+  `Attempts` / `NoSlotCooldown` / `WaitCap`) ; `engine.go` l'appelle avec une fermeture et
+  reste à **897 lignes** (valeur de base) ; la racine de `internal/sync/` revient à **80**.
+  Les cinq tests du rejeu ont suivi dans le nouveau paquet (`TestPage_*`) ; le paquet `sync`
+  garde le test de VERDICT (`TestPaginateAndPersistHistory_429Persistant_ErreurEtStatutFailure`,
+  qui remplace le seam par `historyretry.Sleep`). Aucun de ces tests n'était dans la baseline
+  (créés ce jour), donc aucune paire à retirer.
+- Gate 6.1 (codes de sortie vérifiés, exécution finale) :
+  - `go build ./...` → **0** (124 s) ;
+  - `go vet ./...` → **0** (41 s) ;
+  - `gofmt -l ./cmd ./internal` → **vide** ;
+  - `go test ./... -count=1 -timeout 30m` → 1, **181 paquets `ok`**, UN SEUL échec :
+    `internal/mapcatalog::TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` — **flake
+    Windows** (`open …\map_weapon_pads.json.lock: Accès refusé` sous concurrence dans un
+    `t.TempDir()`), paquet JAMAIS touché par ce lot. Rejoué SEUL : `go test
+    ./internal/mapcatalog/ -count=3` → **0** (`ok`, 1,46 s). Verdict : gate vert hors flake,
+    consigné en §10 ;
+  - `go test -tags=integration -p 1 ./... -timeout 30m` → **0**, **183 paquets `ok`** (1 339 s).
+- 6.2 — **Baseline de tests, différence finale** (commande du préambule, base `ab7fc5695` →
+  HEAD) : exactement **2 paires retirées**,
+  `levelup/go-api/internal/sync::TestPooledHaloClientGetCareerRank_PinnedToken` et
+  `..._NoPinnedToken`. En-tête de `scripts/check_test_baseline.sh` daté (retrait du
+  2026-09-16, lot robustesse, étape 3, D4).
+- 6.3 — entrée `.ai/thought_log.md` du 2026-09-16, statut Complété.
