@@ -62,6 +62,12 @@ func TestWidenMatchRegistryTeamScores(t *testing.T) {
 	if _, err := db.ExecContext(ctx, ddlLegacyMatchRegistry); err != nil {
 		t.Fatalf("DDL legacy : %v", err)
 	}
+	// La FORME REELLE de la table : un index secondaire (add_shared_performance_indexes pose
+	// idx_mr_start_time). Sans lui ce test etait vert alors que l'ALTER echouait en prod
+	// (revue adversariale du 2026-09-16, P0).
+	if _, err := db.ExecContext(ctx, "CREATE INDEX idx_mr_start_time ON match_registry(start_time)"); err != nil {
+		t.Fatalf("index secondaire : %v", err)
+	}
 	for _, id := range []string{"match-a", "match-b", "match-c"} {
 		if _, err := db.ExecContext(ctx,
 			"INSERT INTO match_registry (match_id, team_0_score, team_1_score) VALUES (?, ?, ?)",
@@ -85,6 +91,13 @@ func TestWidenMatchRegistryTeamScores(t *testing.T) {
 		if got := typeColonne(t, db, "match_registry", colonne); got != "INTEGER" {
 			t.Errorf("%s = %s après migration, attendu INTEGER", colonne, got)
 		}
+	}
+
+	var nbIndex int
+	if err := db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM duckdb_indexes() WHERE table_name = 'match_registry' AND index_name = 'idx_mr_start_time'").
+		Scan(&nbIndex); err != nil || nbIndex != 1 {
+		t.Fatalf("idx_mr_start_time absent apres migration (n=%d, err=%v) : l'index doit etre recree", nbIndex, err)
 	}
 
 	var lignes int

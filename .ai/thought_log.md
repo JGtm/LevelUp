@@ -109307,3 +109307,36 @@ avant de conclure au rouge sur un worktree qui vient d'etre cree.
 Reserve unique : les deux listes ne sont pas comparables (carriere vs echantillon local) et l'UI
 ne le dit pas — le titre du bloc reste « Top medailles » dans les deux cas, conformement a la
 demande. Si l'ambiguite gene a l'usage, la suite naturelle est un sous-titre porte par le toggle.
+
+## [2026-09-16] Sync par le pool, seams title-owned, dérive de schéma — revue adversariale deux rondes, correctifs — Complété
+
+**Statut** : Complété (revue + correctifs). Branche `wt/sync-pool`, 6 commits au-dessus de
+`feat/v75` @ e4a313311, ni poussée ni fusionnée. Aucune base sous `data/` ouverte (autre session
+sur le chantier du décodeur) : tout prouvé par tests `:memory:`/`t.TempDir()`, build, vet, grep.
+
+**Décision technique principale** : revue conforme au skill — deux relecteurs aveugles (pool/CLI ;
+seams/migration), contrat, filtre de recevabilité, ronde 2 sur les seules corrections. Neuf
+constats recevables, zéro jeté. Deux P0 : (1) `RunBackfillCSR`/`RunBackfillSharedCSR` exigeaient
+les tokens du joueur AVANT de regarder le client poolé → `backfill --csr`/`--shared-csr` cassés
+pour tous depuis le passage de la CLI au pool ; garde extraite `requireTokensUnlessCustomClient`
+(3 tests), message sans « re-login ». (2) `ALTER COLUMN … SET DATA TYPE` échoue en DuckDB 1.5.5
+dès qu'un index SECONDAIRE existe sur la table (mesuré par sonde) : la migration
+`widen_match_registry_team_scores` aurait échoué à chaque boot et bloqué pve/social ; le helper
+dépose les index secondaires (DDL relevée dans `duckdb_indexes()`), élargit, recrée — le tout dans
+une transaction (ronde 2 : un arrêt entre dépose et recréation perdait les index à jamais). Cinq
+P1 : dry-run `--shared-csr` sans pool (un dry-run faisait tourner les RT de tout le parc) ; cinq
+docs qui décrivaient une dégradation carrière inexistante (étape carrière hors du sync depuis le
+2026-05-14) ; trois tests vides supprimés ; `steps_shared_core.go` ramené à 633 L (étape dans
+`steps_shared_widen_scores.go`), runners CSR dans `cmd_backfill_csr.go`. Ronde 2 : la fixture
+« index secondaire » n'avait pas été appliquée (script du pilote interrompu) — corrigée et prouvée
+par mutation. Quatre P2 consignés au plan §8.
+
+**Résultats observés** : gates ciblés → 0 (vet 6 paquets ; unitaires `cmd/levelup`, `migration`,
+`scheduler`, `archlint`, `halo_infinite/migrations`, `titleseams`, `sync` ; intégration `-p 1`
+`migration`, `halo_infinite/migrations`, `persist`). Gates complets (build, vet, `go test ./...`,
+`-tags=integration -p 1 ./...`) : voir le commit de clôture.
+
+**Conclusion / prochaine étape** : décision de fusion dans `feat/v75` par l'utilisateur. Puis
+annexe A du plan : reprise du sync de Nuzzles (6 500, post-sync complet), backfills de rattrapage,
+films des 200 plus récents, cuisson, `replay_build_location` → `local`, serveur relancé — quand
+la base sera libre.

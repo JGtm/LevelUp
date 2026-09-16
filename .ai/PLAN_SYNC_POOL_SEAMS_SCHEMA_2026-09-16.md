@@ -476,3 +476,20 @@ Deux relecteurs aveugles (pool/CLI ; seams/migration), contrat écrit, filtre de
 - Gates rejoués : `go vet` (6 paquets) → 0 ; unitaires `cmd/levelup`, `migration`, `scheduler`,
   `archlint`, `halo_infinite/migrations`, `titleseams`, `sync` → 0 ; intégration `-p 1`
   `migration`, `halo_infinite/migrations`, `persist` → 0.
+
+### Revue adversariale, ronde 2 — 2026-09-16 ~14:40 — pilote — CLOSE
+
+Relecture des seules corrections (`40154bb25..9fc2c8feb`) par un contexte frais, avec sonde
+DuckDB `:memory:` (PK + deux index secondaires, double passage) : **0 P0**, 1 P1, 1 P2.
+- P1 : la fixture « index secondaire » annoncée n'était PAS dans le commit (le script du pilote
+  s'était arrêté avant de l'appliquer) — le P0 migration n'avait donc aucun garde-rail. Corrigé :
+  fixture avec `idx_mr_start_time`, vérification de l'index après migration, et **preuve par
+  mutation** (sans la dépose d'index, `TestWidenMatchRegistryTeamScores` rougit).
+- P2 (corrigé, même helper) : dépose / ALTER / recréation en statements autocommit séparés — un
+  arrêt entre les deux perdait les index pour toujours (leurs étapes de création ne rejouent
+  jamais). Désormais dans UNE transaction (`alterColumnTypeInTx`), rollback sur erreur.
+- Sonde du relecteur : la PK n'est pas dans `duckdb_indexes()` ; index sur la colonne élargie
+  elle-même, index UNIQUE, table sans index : tous OK ; `(true,nil)` puis `(false,nil)`.
+- C1..C5 fermés ; P0+P1 : 7 → 1 → 0 après correction locale. Boucle close (borne du skill).
+- Gates complets après les deux rondes (2026-09-16 ~15:05) : `go build ./...` → 0 ; `go vet ./...` → 0 ;
+  `go test ./... -count=1 -timeout 30m` → 0, aucun `--- FAIL:` ; `go test -tags=integration -p 1 ./...` → 0.
