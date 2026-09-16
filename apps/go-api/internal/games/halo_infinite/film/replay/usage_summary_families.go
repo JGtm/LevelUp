@@ -25,21 +25,29 @@ package replay
 // « cette valeur est-elle une famille d'arme » du dépôt. Les tables ci-dessous ne
 // servent que les POSES d'équipement (`equipmentPlacements`), jamais les socles.
 
+import "levelup/go-api/internal/domain/equipmentusage"
+
 // Clés de famille du manifeste dupliquées 4 fois ou plus dans le paquet (corpus de
 // test compris) : golangci-lint (goconst, min-occurrences: 4) exige une constante
 // nommée plutôt que le littéral répété. Les autres membres des mêmes maps
 // (grenade_plasma, grenade_dynamo, grenade_spike, repulsor) restent en littéral :
 // sous le seuil, aucune obligation.
+//
+// LES QUATRE CLÉS DU BILAN VIENNENT DE LEUR MAISON (item 2.5.f, 2026-09-17) : mur,
+// capteur et les deux bonus portent une ligne d'issue, et ce périmètre a quitté le
+// paquet pour `internal/domain/equipmentusage` — l'agrégat de session le lit sans
+// importer un titre (D9). Elles sont RELUES ici plutôt que réécrites : deux
+// orthographes de la même famille finiraient par diverger.
 const (
 	usageFamilyGrenadeFrag       = "grenade_frag"
 	usageFamilyGrapple           = "grapple"
 	usageFamilyThruster          = "thruster"
-	usageFamilyPowerupCamo       = "powerup_camo"
-	usageFamilyPowerupOvershield = "powerup_overshield"
-	usageFamilyWall              = "wall"
-	// Ajoutées le 2026-09-09 (étape E3) : la table de reconnaissance des issues et
-	// ses tests franchissent le seuil de goconst pour ces deux clés à leur tour.
-	usageFamilySensor   = "sensor"
+	usageFamilyPowerupCamo       = equipmentusage.EquipmentFamilyPowerupCamo
+	usageFamilyPowerupOvershield = equipmentusage.EquipmentFamilyPowerupOvershield
+	usageFamilyWall              = equipmentusage.EquipmentFamilyWall
+	usageFamilySensor            = equipmentusage.EquipmentFamilySensor
+	// Ajoutée le 2026-09-09 (étape E3) : la table de reconnaissance des issues et
+	// ses tests font franchir le seuil de goconst à cette clé à son tour.
 	usageFamilyRepulsor = "repulsor"
 )
 
@@ -163,50 +171,9 @@ func usageDeployedCounts(p *EquipmentPlacement) bool {
 	return true
 }
 
-// usageFamiliesWithSpawnedPiece — LES FAMILLES QUI ENGENDRENT UNE PIÈCE DISTINCTE,
-// et donc les seules dont le canal des POSES voit le déploiement.
-//
-// Cette liste est la transcription d'une DONNÉE ÉCRITE : les familles dont le
-// manifeste (`config/titles/halo_infinite/mappings/replay_labels.toml`) porte au
-// moins un objet `kind = "deployed"` — la nature « n'existe qu'une fois déployé »,
-// que le valideur n'autorise qu'avec la provenance `sofa_parent` (l'`eqip` engendré
-// par un autre équipement). Le manifeste n'en désigne aujourd'hui que DEUX, les deux
-// panneaux du mur, donc UNE famille. Le résumé ne peut pas lire le manifeste
-// lui-même — [BuildUsageSummary] est une fonction PURE DU DOCUMENT CUIT, c'est ce
-// qui permet au backfill de re-projeter sans re-décoder un film — d'où la
-// transcription ; le garde-rail usage_summary_families_guard_test.go la RECOLLE au
-// manifeste à chaque test, une famille ajoutée là-bas échoue ici.
-//
-// CE QUE LA FRONTIÈRE DÉCIDE (rapport E0 du 2026-09-10, question 5). Une pose
-// `origin: deployed` sur un objet PORTÉ ne mesure pas un déploiement : elle mesure un
-// LÂCHER VOLONTAIRE à mi-vie (l'objet qui tombe parce que son porteur en ramasse un
-// autre). Mesure décisive : sur 202 consommations de charge annoncées par les films,
-// ZÉRO n'est couverte par une pose de la même famille du même joueur à moins de 2 s —
-// contre 84 % pour le mur, dont le `spent` tombe sur la pose de PANNEAU (149 sur 242)
-// et JAMAIS sur la création de l'appareil porté (0 sur 31).
-var usageFamiliesWithSpawnedPiece = map[string]bool{
-	usageFamilyWall: true,
-}
-
-// usageFamilySpawnsPiece dit si le canal des POSES voit le déploiement de cette
-// famille — donc si son côté « utilisé » se lit sur `deployed` (mur) ou sur les
-// CONSOMMATIONS (tout le reste : capteur, traqueur, écran, champ, balise).
-func usageFamilySpawnsPiece(family string) bool {
-	return usageFamiliesWithSpawnedPiece[family]
-}
-
-// UsageFamilySpawnsPiece — LA MÊME QUESTION, POUR L'AGRÉGAT DE SESSION.
-//
-// Exportée le 2026-09-10 (correction C1 de la revue de la vague 5) : l'agrégat de
-// session décide du même côté « utilisé » sur une ligne de BASE et non sur une
-// ligne de projection ([sessionusage.equipmentUsedOf]). Il ne peut donc pas
-// appeler [usageUsedOf], mais il ne doit pas non plus RECOPIER la liste des
-// familles à pièce engendrée : cette liste est recollée au manifeste par un
-// garde-rail (usage_summary_families_guard_test.go) et une deuxième écriture
-// re-divergerait au premier objet `kind = "deployed"` ajouté là-bas — c'est
-// exactement ce qui s'est produit avec le passage de `us5` à `us6`, où seul le
-// résumé avait suivi. Garde-rail du côté appelant :
-// sessionusage/usage_outcomes_guard_test.go.
-func UsageFamilySpawnsPiece(family string) bool {
-	return usageFamilySpawnsPiece(family)
-}
+// LES FAMILLES QUI ENGENDRENT UNE PIÈCE DISTINCTE — celles dont le canal des POSES
+// voit le déploiement — ONT QUITTÉ CE FICHIER le 2026-09-17 (item 2.5.f) pour
+// `internal/domain/equipmentusage` : leur lecteur n'est pas que le résumé, c'est
+// aussi l'agrégat de session, qui ne peut pas importer un paquet de titre (D9). La
+// table y est inchangée, et son RECOLLEMENT au manifeste reste ici
+// (usage_summary_families_guard_test.go), là où le manifeste du titre est.
