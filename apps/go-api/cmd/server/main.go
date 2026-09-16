@@ -45,9 +45,8 @@ import (
 	"levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
-	halo5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/notifications/external"
@@ -1703,36 +1702,12 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 		halomigrations.RegisterMilestonesSeedMigration(configTitlesRoot)
 	}
 
-	// Phase 1.5.1 B (ADR 0025) : enregistre les migrations title-owned (Halo
-	// Infinite) auprès du runner, avant tout RunForDB. Vide tant qu'aucun step
-	// n'a été déplacé hors du package migration (no-op) ; se remplit en b3.
-	migration.SetTitleStepsProvider(halomigrations.StepsFor)
-	// ROOT FIX assets Halo 5 : enregistre le set de migrations h5 (metadata ISOLÉE
-	// — référentiels h5 propres, zéro pollution HINF ; shared/player/… hérités du
-	// fallback HINF via OwnsTarget). DOIT précéder provisionAdditionalTitle(halo_5).
-	// Le set h5 possède SON milestone_catalog (schéma + seed) — il ne retombe pas
-	// sur le seed global multi-titres ; on injecte la racine config/titles/ AVANT
-	// Register pour que le seed h5 trouve config/titles/halo_5/milestones/catalog.toml.
-	if prestigeConfigDir != "" {
-		halo5migrations.SetMilestonesSeedRoot(filepath.Dir(prestigeConfigDir))
-	}
-	halo5migrations.Register()
-	// MT-07 : source title-owned des libellés de rangs de carrière (seed offline).
-	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)
-	// MT-15 : classifier LUSR title-owned (pair_name → chaîne TrueSkill). GetLUSRChain
-	// panique si non posé (fail-loud) — protège le chemin de scoring live.
-	syncpkg.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
-	// MT-15+ : classifier LUSR title-aware pour Halo 5 (pas de pair_name → chaîne
-	// unique h5_arena). Le seam GetLUSRChainForTitle route h5 vers ce classifier ;
-	// les autres titres gardent le défaut Infinite. Sans ça, h5 collapserait tous
-	// ses modes dans arena_slayer (classifier Infinite sur pair_name vide).
-	syncpkg.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
-	// Scission ranked par famille (D-A) : classifier title-owned de la famille
-	// objectif, consommé par GetPerformanceChain pour trancher entre les chaînes
-	// de performance ranked_slayer et ranked_objectif. h5 n'a pas de pair_name →
-	// classifier dédié qui répond false (tout son classé va en ranked_slayer).
-	syncpkg.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
-	syncpkg.SetObjectiveFamilyClassifierForTitle(halo5.TitleSlug, halo5.IsObjectiveSubMode)
+	// Seams title-owned (provider d'étapes, racine des jalons h5, traductions de
+	// rangs, classifiers LUSR + famille objectif) : câblage UNIQUE, partagé avec
+	// toutes les CLI depuis le 2026-09-16 (cf. internal/games/titleseams — les
+	// commentaires MT-07 / MT-15 / D-A y ont déménagé). Sans ce câblage, un sync
+	// hors serveur panique à l'étape LUSR du post-sync.
+	titleseams.RegisterAll(prestigeConfigDir)
 	// Lot B (audit robustesse) : fail-fast au boot si le classifier LUSR par
 	// défaut n'a pas été posé, au lieu du panic tardif au 1er match live.
 	if err := syncpkg.ValidateLUSRChainClassifierWired(); err != nil {

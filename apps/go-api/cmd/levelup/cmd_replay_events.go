@@ -78,14 +78,16 @@ func runReplayEvents(cfg *config.AppConfig, args []string) error {
 		return nil
 	}
 
-	// 4. Tokens Halo depuis le MultiUserTokenStore (source unique ADR 0023).
-	tokens, err := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
+	// 4. Client Halo servi par le POOL (source unique ADR 0023 ; D1 du plan 2026-09-16) :
+	// le rejeu ne lit que des endpoints publics (film, chunks d'evenements), donc le
+	// joueur vise n'a pas besoin de son propre refresh token.
+	client, closePool, err := newPooledClient(ctx, cfg, player.Gamertag, *rps)
 	if err != nil {
 		return err
 	}
+	defer closePool()
 
-	// 5. Client + replay.
-	client := go_sync.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, *rps)
+	// 5. Replay.
 	beforeAnomaly := observability.LoadCounter("highlight_events_parse_anomaly_total")
 
 	progress := func(done, total int, matchID, status string) {

@@ -284,23 +284,29 @@ func (pc *PooledHaloClient) GetHighlightEventsChunk(ctx context.Context, matchID
 	return result, ver, ok, err
 }
 
+// ErrNoPinnedToken — le SEUL endpoint privacy-gated du client poolé (rang de carrière)
+// n'a pas le token propre du joueur. Ce n'est PAS une panne : un profil suivi se
+// synchronise par le pool (D1, plan 2026-09-16) et seul cet endpoint se dégrade. L'étape
+// carrière le journalise UNE fois en WARN et laisse `career_synced=false` ; le sync reste
+// en succès. Erreur typée plutôt que `(nil, nil)` : un skip muet est indistinguable d'un
+// joueur sans progression, et c'est précisément ce qui a caché le trou de Nuzzles.
+var ErrNoPinnedToken = errors.New("sync: aucun token propre pour ce joueur (endpoint privacy-gated)")
+
 // GetCareerRank implémente HaloClient.GetCareerRank() avec PolicyPinnedPlayer.
-// Retourne (nil, nil) si le token pinned est absent ou si la requête est 401/403 (privacy-gated).
-// Note : HaloAPIClient.GetCareerRank gère déjà le silent-skip 401/403 en interne.
+// Retourne ErrNoPinnedToken si le joueur n'a pas son propre token (ou s'il est malsain) :
+// l'appelant dégrade, il n'échoue pas. Un 401/403 reste géré en interne par
+// HaloAPIClient.GetCareerRank (silent-skip privacy).
 func (pc *PooledHaloClient) GetCareerRank(ctx context.Context, xuid string) (*CareerRankData, error) {
-	// Si pas de token pinned, silent-skip.
 	if pc.pinnedGamertag == "" {
-		slog.DebugContext(ctx, "pooled: GetCareerRank skipped (no pinned token)",
-			"xuid", xuid)
-		return nil, nil
+		return nil, ErrNoPinnedToken
 	}
 
 	lease, err := pc.p.Acquire(ctx, pool.PolicyPinnedPlayer, pc.pinnedGamertag)
 	if err != nil {
-		// Token malsain ou absent → silent-skip (comportement identique à halo_client.go:434).
-		slog.DebugContext(ctx, "pooled: GetCareerRank skipped (token unavailable)",
+		// Token absent ou malsain : même dégradation, l'appelant décide.
+		slog.DebugContext(ctx, "pooled: GetCareerRank sans token pinné",
 			"xuid", xuid, "gamertag", pc.pinnedGamertag, "err", err)
-		return nil, nil
+		return nil, ErrNoPinnedToken
 	}
 	defer lease.Release()
 

@@ -163,11 +163,13 @@ func runArchiveFilms(cfg *config.AppConfig, args []string) error {
 		return nil
 	}
 
-	tokens, err := haloTokensForPlayer(ctx, cfg.RepoRoot, o.gamertag)
+	// Les chunks de film sont un endpoint PUBLIC : n'importe quel token du parc les sert
+	// (PolicyAnyPublic, D1 du plan 2026-09-16). Le gamertag n'est plus un preteur de token.
+	client, closePool, err := newPooledClient(ctx, cfg, o.gamertag, o.rps)
 	if err != nil {
 		return fmt.Errorf("archive-films (%s): %w", o.gamertag, err)
 	}
-	client := go_sync.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, o.rps)
+	defer closePool()
 
 	debut := time.Now()
 	var sauves, expires, erreurs, chunks int
@@ -209,7 +211,13 @@ func runArchiveFilms(cfg *config.AppConfig, args []string) error {
 // ⚠ `GetFilmChunks` et non `GetMatchFilm` : le second ne rend que la REPLICATION_DATA. Archiver
 // un film sans son kill-feed le rendrait inutilisable pour la source du kill — c est-a-dire
 // archiver a moitie une donnee irremplacable.
-func archiverUnFilm(ctx context.Context, client *go_sync.HaloAPIClient, cacheRoot, matchID string) (int, string) {
+// telechargeurDeFilm : la seule capacite dont archiverUnFilm a besoin. Interface locale pour
+// accepter indifferemment le client poole (parc entier) et un client direct.
+type telechargeurDeFilm interface {
+	GetFilmChunks(ctx context.Context, matchID string) ([]go_sync.FilmChunk, bool, error)
+}
+
+func archiverUnFilm(ctx context.Context, client telechargeurDeFilm, cacheRoot, matchID string) (int, string) {
 	chunks, found, err := client.GetFilmChunks(ctx, matchID)
 	if err != nil {
 		slog.ErrorContext(ctx, "archive-films: telechargement echoue", "match_id", matchID, "err", err)

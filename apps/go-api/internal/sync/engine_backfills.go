@@ -224,8 +224,8 @@ func (e *SyncEngine) RecomputeLUSRCanonical(ctx context.Context) (int, error) {
 // Retourne le résumé d'exécution (matchs traités, restaurés, skippés, etc.).
 func (e *SyncEngine) RunBackfillCSR(ctx context.Context, force bool) (CSRBackfillResult, error) {
 	var empty CSRBackfillResult
-	if e.tokens == nil || e.tokens.SpartanToken == "" {
-		return empty, fmt.Errorf("RunBackfillCSR: tokens Halo absents (re-login requis)")
+	if err := e.requireTokensUnlessCustomClient("RunBackfillCSR"); err != nil {
+		return empty, err
 	}
 
 	slog.InfoContext(ctx, "RunBackfillCSR: démarrage",
@@ -289,9 +289,12 @@ func (e *SyncEngine) RunBackfillSharedCSR(ctx context.Context, opts SharedCSRBac
 	var empty SharedCSRBackfillResult
 	empty.DryRun = opts.DryRun
 
-	// En non-dry-run, les tokens Halo sont indispensables pour appeler /skill.
-	if !opts.DryRun && (e.tokens == nil || e.tokens.SpartanToken == "") {
-		return empty, fmt.Errorf("RunBackfillSharedCSR: tokens Halo absents (re-login requis) — utiliser --dry-run sinon")
+	// En non-dry-run, un client Halo est indispensable pour appeler /skill : le client
+	// poolé posé par SetCustomClient, sinon les tokens du joueur.
+	if !opts.DryRun {
+		if err := e.requireTokensUnlessCustomClient("RunBackfillSharedCSR"); err != nil {
+			return empty, err
+		}
 	}
 
 	slog.InfoContext(ctx, "RunBackfillSharedCSR: démarrage",
@@ -517,4 +520,21 @@ func loadFlaggedMatchIDs(ctx context.Context, playerDB *sql.DB) ([]string, error
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
+}
+
+// requireTokensUnlessCustomClient : les passes qui appellent l API Halo ont besoin SOIT du
+// client personnalisé posé par SetCustomClient (client poolé : les tokens vivent dans le
+// pool), SOIT des tokens Halo du joueur. Exiger les tokens du joueur alors qu un client
+// poolé est posé cassait `backfill --csr` / `--shared-csr` pour TOUS les joueurs depuis que
+// la CLI construit ses moteurs par le pool (revue adversariale du 2026-09-16, P0). Le
+// message ne parle plus de « re-login » : un token absent ne se répare pas par une
+// re-capture (ADR 0023).
+func (e *SyncEngine) requireTokensUnlessCustomClient(op string) error {
+	if e.customClient != nil {
+		return nil
+	}
+	if e.tokens == nil || e.tokens.SpartanToken == "" {
+		return fmt.Errorf("%s: aucun client Halo — ni client poolé (SetCustomClient), ni tokens du joueur", op)
+	}
+	return nil
 }

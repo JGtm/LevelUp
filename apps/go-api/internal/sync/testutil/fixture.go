@@ -50,8 +50,10 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			duration_seconds INTEGER,
 			playable_duration_seconds INTEGER,
 			real_start_time TIMESTAMP,
-			team_0_score SMALLINT,
-			team_1_score SMALLINT,
+			-- INTEGER : meme type que la DDL de production (cf. schema.go). Une fixture
+			-- qui garde SMALLINT rend la derive de schema indetectable par les tests.
+			team_0_score INTEGER,
+			team_1_score INTEGER,
 			team_0_ps_score INTEGER,
 			team_1_ps_score INTEGER,
 			first_sync_by VARCHAR,

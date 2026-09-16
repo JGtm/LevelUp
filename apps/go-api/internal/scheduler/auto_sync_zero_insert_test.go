@@ -5,13 +5,15 @@
 //   - reste à 0 tant qu'au moins 1 match est inséré
 //   - incrémente cycle après cycle quand inserted=0
 //   - se reset à 0 dès qu'un cycle réussit à insérer >=1 match
-//   - préserve la valeur précédente sur outcome=skipped (joueur absent du pool, etc.)
+//   - préserve la valeur précédente sur outcome=skipped (player DB absente, watcher actif)
 //   - log WarnContext au franchissement de ConsecutiveZeroInsertWarnThreshold
 
 package scheduler_test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -74,9 +76,15 @@ func TestConsecutiveZeroInserts_PreservedOnSkipped(t *testing.T) {
 		t.Fatalf("setup: ConsecutiveZeroInserts = %d, want 2", got)
 	}
 
-	// Cycle 3 : joueur retiré du pool → outcome=skipped, compteur préservé à 2.
-	p.hasPlayerMap = map[string]bool{}
-	p.size = 0
+	// Cycle 3 : player DB retirée → outcome=skipped, compteur préservé à 2.
+	//
+	// Le déclencheur de skip était « joueur retiré du pool » jusqu'au 2026-09-16 : depuis la
+	// décision D1, un profil suivi sans token propre est synchronisé PAR le pool et n'est
+	// plus sauté. Ce qui est testé ici — la préservation du compteur sur outcome=skipped —
+	// est inchangé ; seul le moyen de provoquer le skip a changé.
+	if err := os.Remove(filepath.Join(repoRoot, "data", "titles", "halo_infinite", "players", "Player1", "stats.duckdb")); err != nil {
+		t.Fatalf("suppression de la player DB: %v", err)
+	}
 	s.RunOnce(context.Background())
 	snap := s.Snapshot()
 	if snap.Players[0].Outcome != "skipped" {
