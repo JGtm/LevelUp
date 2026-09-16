@@ -41,9 +41,10 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 	if err != nil {
 		return err
 	}
-	// Le joueur visé n a PAS besoin de son propre token : ses endpoints sont publics et
-	// servis par n importe quel token du pool (D1, plan 2026-09-16). Le rang de carrière
-	// n est pas synchronisé ici (flux CareerLiveService) : career_synced vaut false pour tous.
+	// Le joueur visé n a PAS besoin de son propre token : TOUS ses endpoints sont publics et
+	// servis par n importe quel token du pool (D1 du plan 2026-09-16, étendu au rang de
+	// carrière par D4 du plan robustesse). Le rang de carrière n est pas synchronisé ici
+	// (flux CareerLiveService) : career_synced vaut false pour tous.
 	engine, closePool, err := newPooledEngineForPlayer(ctx, cfg, *player, *tokenPoolSize, *rps)
 	if err != nil {
 		return err
@@ -164,9 +165,10 @@ func runSyncFull(cfg *config.AppConfig, args []string) error {
 	if err != nil {
 		return err
 	}
-	// Le joueur visé n a PAS besoin de son propre token : ses endpoints sont publics et
-	// servis par n importe quel token du pool (D1, plan 2026-09-16). Le rang de carrière
-	// n est pas synchronisé ici (flux CareerLiveService) : career_synced vaut false pour tous.
+	// Le joueur visé n a PAS besoin de son propre token : TOUS ses endpoints sont publics et
+	// servis par n importe quel token du pool (D1 du plan 2026-09-16, étendu au rang de
+	// carrière par D4 du plan robustesse). Le rang de carrière n est pas synchronisé ici
+	// (flux CareerLiveService) : career_synced vaut false pour tous.
 	engine, closePool, err := newPooledEngineForPlayer(ctx, cfg, *player, *tokenPoolSize, *rps)
 	if err != nil {
 		return err

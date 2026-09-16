@@ -165,7 +165,7 @@ func runArchiveFilms(cfg *config.AppConfig, args []string) error {
 
 	// Les chunks de film sont un endpoint PUBLIC : n'importe quel token du parc les sert
 	// (PolicyAnyPublic, D1 du plan 2026-09-16). Le gamertag n'est plus un preteur de token.
-	client, closePool, err := newPooledClient(ctx, cfg, o.gamertag, o.rps)
+	client, closePool, err := newPooledClient(ctx, cfg, o.rps)
 	if err != nil {
 		return fmt.Errorf("archive-films (%s): %w", o.gamertag, err)
 	}

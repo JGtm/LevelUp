@@ -190,19 +190,19 @@ token PROPRE du joueur pour les succès Xbox Live ; le store rend le sentinelle
 
 ## 6. Étape 3 — Rang de carrière public (C-D, D4 ; moyen)
 
-- [ ] 3.1 `internal/sync/pooled_client.go` : `GetCareerRank` via `doPublic` (`PolicyAnyPublic`) ;
+- [x] 3.1 `internal/sync/pooled_client.go` : `GetCareerRank` via `doPublic` (`PolicyAnyPublic`) ;
       supprimer `ErrNoPinnedToken` (`:287-293`), les champs `pinnedGamertag` / `pinnedXUID`
       (`:33-35`), les paramètres correspondants de `NewPooledHaloClient` (`:50-59`) et le
       commentaire `:24`. `grep -rn "ErrNoPinnedToken\|pinnedGamertag\|pinnedXUID" apps/go-api` → vide.
-- [ ] 3.2 Appelants de `NewPooledHaloClient` retouchés (signature sans pin) : `cmd/levelup/pool_engine.go:96,162`,
+- [x] 3.2 Appelants de `NewPooledHaloClient` retouchés (signature sans pin) : `cmd/levelup/pool_engine.go:96,162`,
       `cmd/server/main.go:2179`, `cmd/server/sync_v2_wiring.go:135,337`,
       `internal/scheduler/auto_sync_engine.go:67` ; mocks `mockPool` (`pooled_client_test.go`),
       `poolUnSlot` (`cmd/levelup/pool_engine_test.go`) ; doc de `newPooledEngine`
       (`pool_engine.go`, « ne sert qu'à épingler ») réécrite ; `cmd/server/main.go:753`
       commentaire mis à jour. Vérifier par `go build ./...` qu'aucun autre appelant n'existe.
-- [ ] 3.3 `internal/sync/career.go:25-60` : retirer la branche `errors.Is(err, ErrNoPinnedToken)`
+- [x] 3.3 `internal/sync/career.go:25-60` : retirer la branche `errors.Is(err, ErrNoPinnedToken)`
       et la doc « seul endpoint privacy-gated » ; la validation du xuid reste.
-- [ ] 3.4 Tests : supprimer `career_no_pinned_token_test.go` (`TestSyncCareerRank_SansTokenPropre_DegradeSansEchouer`,
+- [x] 3.4 Tests : supprimer `career_no_pinned_token_test.go` (`TestSyncCareerRank_SansTokenPropre_DegradeSansEchouer`,
       `TestSyncCareerRank_AutreErreur_Remontee` — le second déplacé dans `career_integration_test.go`
       s'il teste encore quelque chose) et `pool_engine_test.go TestRangDeCarriereSeDegradeSeul` ;
       `pooled_client_test.go` : `_PinnedToken` et `_NoPinnedToken` remplacés par
@@ -211,7 +211,7 @@ token PROPRE du joueur pour les succès Xbox Live ; le store rend le sentinelle
       conservé. **Baseline** : paires supprimées/renommées retirées (`_PinnedToken`,
       `_NoPinnedToken`, `_PoolError` si renommé, `TestSyncCareerRank_*` supprimés — ceux du
       16/09 n'y sont pas), en-tête daté.
-- [ ] 3.5 Docs : `internal/platform/auth/pool/README.md` (tableau des appelants : `GetCareerRank`
+- [x] 3.5 Docs : `internal/platform/auth/pool/README.md` (tableau des appelants : `GetCareerRank`
       → `PolicyAnyPublic` ; pinned = cron Spartan + live-sync H5 ; mesure du 2026-09-16 consignée :
       trois prêteurs, rang et XP identiques à l'appel du propriétaire, Nuzzles `272/0` = rang
       max), `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` (paragraphe carrière), `cmd/levelup/pool_engine.go:5-10`,
@@ -377,3 +377,54 @@ Journal de phase : section « Avancement » en fin de fichier. Reprise : la lire
 - Vérification par MUTATION : retour à `sources[:capacity]` sans tri → trois des cinq tests
   FAIL (`_MaxSize1_`, `_MaxSize2_`, `_MemeParcQuelQueSoitLOrdreDEntree`), restauré ensuite.
 - Écart : aucun. Baseline de tests : aucune paire retirée (5 tests ajoutés, aucun renommé).
+
+### Étape 3 — Rang de carrière public — CLOSE le 2026-09-16 23:05
+
+- Items : 3.1 `[x]`, 3.2 `[x]`, 3.3 `[x]`, 3.4 `[x]`, 3.5 `[x]`.
+- 3.1 : `GetCareerRank` passe par `doPublic` ; `ErrNoPinnedToken`, `pinnedGamertag`,
+  `pinnedXUID` et les deux paramètres de `NewPooledHaloClient` supprimés (signature
+  `NewPooledHaloClient(p pool.Pool, requestsPerSecond int)`).
+- 3.2 : six appelants de production retouchés (`cmd/levelup/pool_engine.go:96,153`,
+  `cmd/server/main.go:2179`, `cmd/server/sync_v2_wiring.go:135,337`,
+  `internal/scheduler/auto_sync_engine.go:67`). **Code mort découvert et supprimé dans la
+  foulée** (règle 7 de CLAUDE.md, conséquence directe du retrait du pin) : `newPooledClient`
+  perdait l'usage de son paramètre `gamertag` et de la boucle de résolution du xuid — les
+  deux sont partis, avec les trois appels (`cmd_archive_films.go`,
+  `cmd_backfill_killsource_online.go`, `cmd_replay_events.go`) ; dans ce dernier,
+  `loadPlayerSummary` reste appelée comme PRÉCONDITION (profil suivi) sans capturer sa valeur.
+- 3.3 : branche `errors.Is(err, ErrNoPinnedToken)` retirée de `syncCareerRank` (la validation
+  du xuid reste) ; doc réécrite.
+- 3.4 : `internal/sync/career_no_pinned_token_test.go` et `cmd/levelup/pool_engine_test.go`
+  SUPPRIMÉS (le second en entier : il ne portait que ce test et sa fixture `poolUnSlot`, qui
+  serait devenue du code mort) ; `TestSyncCareerRank_AutreErreur_Remontee` déplacé dans
+  `career_integration_test.go` (il prouve encore que syncCareerRank n'avale rien) ;
+  `_PinnedToken` / `_NoPinnedToken` remplacés par
+  `TestPooledHaloClientGetCareerRank_AcquiertEnPublic` (le `mockPool` gagne `lastPolicies`) ;
+  `_PoolError` CONSERVÉ sous son nom, assertion alignée sur `pool.ErrNoHealthySlot`.
+- 3.5 : `internal/platform/auth/pool/README.md` (couches, deux politiques, tableau des
+  appelants, mesure du 2026-09-16 consignée, exemple `NewPooledHaloClient` corrigé),
+  `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` (paragraphe carrière), `cmd/levelup/pool_engine.go`
+  (doctrine en tête), `cmd/levelup/cmd_sync.go` (les deux commentaires),
+  `.ai/PLAN_SYNC_POOL_SEAMS_SCHEMA_2026-09-16.md` §8 (« prémisse contredite » → tranchée par
+  mesure, D4).
+- Gate G3 (codes de sortie vérifiés) :
+  - grep `PolicyPinnedPlayer` … `Acquire(` → EXACTEMENT `halo_5/livesync/acquire.go:41` et
+    `scheduler/spartan_customization_cron.go:338`, comme prescrit ;
+  - `go build ./...` → 0 ; `go test ./internal/sync/ ./cmd/levelup/ ./internal/scheduler/
+    -count=1 -timeout 30m` → 0 (3 paquets `ok`) ; `gofmt -l cmd internal` → vide ;
+    `go vet` (dont `-tags=integration ./internal/sync/`) → 0.
+  - grep `ErrNoPinnedToken|pinnedGamertag|pinnedXUID` hors paquet `pool` : **6 lignes
+    restantes, toutes légitimes** — `ErrNoPinnedToken` et `pinnedXUID` sont à ZÉRO ;
+    les 6 occurrences de `pinnedGamertag` sont le nom du PARAMÈTRE de l'interface
+    `pool.Pool.Acquire`, implémentée par `mockPool` (5) plus un commentaire qui le cite (1).
+    D4 ne supprime pas `PolicyPinnedPlayer` — le cron Spartan et le live-sync H5 la gardent —
+    donc ce paramètre d'interface reste. Écart assumé et documenté ici.
+- Vérification par MUTATION : `GetCareerRank` remis en `PolicyPinnedPlayer` →
+  `TestPooledHaloClientGetCareerRank_AcquiertEnPublic` FAIL ; restauré.
+- **Baseline de tests — 2 paires retirées** (8 lignes JSONL, 60 980 → 60 972) :
+  `levelup/go-api/internal/sync::TestPooledHaloClientGetCareerRank_PinnedToken` et
+  `levelup/go-api/internal/sync::TestPooledHaloClientGetCareerRank_NoPinnedToken`.
+  Commande du préambule exécutée, sortie recopiée ci-dessus. En-tête de
+  `scripts/check_test_baseline.sh` daté du 2026-09-16 (lot robustesse, étape 3, D4).
+  Les tests supprimés des deux fichiers effacés n'étaient PAS dans la baseline (créés le
+  2026-09-16, vérifié : 0 ligne chacun).

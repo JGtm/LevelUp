@@ -67,10 +67,11 @@ Xbox SSO is synced like any other. The pool must simply hold at least one health
 
 The career rank is NOT part of the sync at all: it is served by the separate live career flow
 (`service.CareerLiveService`), and `career_synced` is always `false` in the sync summary, token
-or no token. The pooled client still keeps `PolicyPinnedPlayer` on `GetCareerRank` and returns
-`sync.ErrNoPinnedToken` for a player without their own token; no sync step calls it today. The
-Spartan customization cron is the one caller that needs the player s own token, and keeps its
-`HasPlayer` guard for that reason.
+or no token. `/careerranks` itself is PUBLIC: measured on 2026-09-16 with three different lender
+tokens on a third-party xuid, it returns the same rank and XP as the owner own call, so the
+pooled client acquires it in `PolicyAnyPublic` like everything else (D4, sync robustness plan).
+The Spartan customization cron is the one caller that needs the player s own token (403 for a
+third party, measured), and keeps its `HasPlayer` guard for that reason.
 
 The `backfill --csr` / `--shared-csr` passes and the film commands (`archive-films`,
 `backfill-killsource --online`, `replay-events`) follow the same doctrine: `--gamertag` names the

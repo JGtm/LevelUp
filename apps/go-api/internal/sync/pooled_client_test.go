@@ -23,9 +23,13 @@ type mockPool struct {
 	slotLimiter      *rate.Limiter // Si non-nil, populé dans Lease.Limiter (Option 2)
 	markUnhealthy    []string      // gamertags passés à MarkUnhealthy (RC-1 401/403)
 	on429Gamertags   []string      // gamertags passés à On429ForToken (429 per-token)
+	// lastPolicies : politiques observées par Acquire, dans l'ordre. Sert à prouver
+	// qu'un endpoint est acquis en PolicyAnyPublic (D4, plan robustesse 2026-09-16).
+	lastPolicies []pool.AcquirePolicy
 }
 
 func (m *mockPool) Acquire(ctx context.Context, policy pool.AcquirePolicy, pinnedGamertag string) (*pool.Lease, error) {
+	m.lastPolicies = append(m.lastPolicies, policy)
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -111,7 +115,7 @@ func TestPooledHaloClientGetMatchHistory(t *testing.T) {
 			"Alice": testTokens("Alice"),
 		},
 	}
-	client := NewPooledHaloClient(mp, "", "", 0)
+	client := NewPooledHaloClient(mp, 0)
 
 	// Hermétique : contexte DÉJÀ ANNULÉ. Acquire (PolicyAnyPublic → token "Alice")
 	// réussit, puis la couche HTTP échoue IMMÉDIATEMENT sur ctx annulé → aucun
@@ -136,7 +140,7 @@ func TestPooledHaloClientGetMatchStats(t *testing.T) {
 			"Bob": testTokens("Bob"),
 		},
 	}
-	client := NewPooledHaloClient(mp, "", "", 0)
+	client := NewPooledHaloClient(mp, 0)
 
 	ctx := context.Background()
 	_, err := client.GetMatchStats(ctx, "match-id-123")
@@ -148,51 +152,36 @@ func TestPooledHaloClientGetMatchStats(t *testing.T) {
 	}
 }
 
-// TestPooledHaloClientGetCareerRank_PinnedToken vérifie que la branche pinned
-// est bien empruntée (Acquire avec PolicyPinnedPlayer + gamertag) sans faire
-// d'I/O réelle vers economy.svc.halowaypoint.com. On utilise un context déjà
-// annulé pour court-circuiter doGet : l'erreur attendue est une erreur réseau
-// (context canceled) — surtout PAS une erreur du pool, ce qui confirme que
-// Acquire a réussi et que la requête HTTP a été tentée.
-func TestPooledHaloClientGetCareerRank_PinnedToken(t *testing.T) {
+// TestPooledHaloClientGetCareerRank_AcquiertEnPublic : le rang de carrière est acquis en
+// PolicyAnyPublic, comme tout le reste.
+//
+// MESURE DU 2026-09-16 (D4, plan robustesse) : `/careerranks` interrogé pour un xuid TIERS
+// avec trois prêteurs rend 200, avec le MÊME rang et la MÊME XP que l'appel du propriétaire.
+// L'endpoint n'est pas soumis au joueur ; la politique épinglée reposait sur une prémisse
+// fausse. Ce test rougit si GetCareerRank redevient PolicyPinnedPlayer.
+func TestPooledHaloClientGetCareerRank_AcquiertEnPublic(t *testing.T) {
 	mp := &mockPool{
 		tokens: map[string]*domain.HaloTokens{
 			"Alice": testTokens("Alice"),
 		},
 	}
-	client := NewPooledHaloClient(mp, "Alice", "xuid_alice", 0)
+	client := NewPooledHaloClient(mp, 0)
 
+	// Contexte DÉJÀ ANNULÉ : Acquire réussit, la couche HTTP échoue immédiatement — aucune
+	// I/O réelle vers economy.svc.halowaypoint.com. Seule la politique est assertée.
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, err := client.GetCareerRank(ctx, "xuid_alice")
+	_, err := client.GetCareerRank(ctx, "xuid_dun_tiers")
 	if err == nil {
-		t.Fatal("expected network error (context canceled), got nil")
+		t.Fatal("attendu une erreur réseau (context canceled), obtenu nil")
 	}
-	if err.Error() == "pooled: Acquire failed: no tokens available" {
-		t.Fatalf("unexpected pool error (Acquire devait réussir): %v", err)
+	if len(mp.lastPolicies) == 0 {
+		t.Fatal("aucune acquisition observée : le pool n'a pas été sollicité")
 	}
-}
-
-// TestPooledHaloClientGetCareerRank_NoPinnedToken teste GetCareerRank sans pinned token.
-func TestPooledHaloClientGetCareerRank_NoPinnedToken(t *testing.T) {
-	mp := &mockPool{
-		tokens: map[string]*domain.HaloTokens{
-			"Alice": testTokens("Alice"),
-		},
-	}
-	// Pas de pinned token.
-	client := NewPooledHaloClient(mp, "", "", 0)
-
-	ctx := context.Background()
-	result, err := client.GetCareerRank(ctx, "xuid_alice")
-	// Doit rendre ErrNoPinnedToken sans appeler le pool : l'appelant dégrade (WARN +
-	// career_synced=false), il n'échoue pas. Un `(nil, nil)` muet est indistinguable d'un
-	// joueur sans progression — c'est ce qui a caché le trou (2026-09-16).
-	if result != nil {
-		t.Errorf("expected nil result, got %v", result)
-	}
-	if !errors.Is(err, ErrNoPinnedToken) {
-		t.Errorf("expected ErrNoPinnedToken, got %v", err)
+	for _, p := range mp.lastPolicies {
+		if p != pool.PolicyAnyPublic {
+			t.Errorf("politique = %v, attendu PolicyAnyPublic", p)
+		}
 	}
 }
 
@@ -200,18 +189,17 @@ func TestPooledHaloClientGetCareerRank_NoPinnedToken(t *testing.T) {
 func TestPooledHaloClientGetCareerRank_PoolError(t *testing.T) {
 	mp := &mockPool{
 		tokens: make(map[string]*domain.HaloTokens),
-		err:    errors.New("no healthy tokens"),
+		err:    pool.ErrNoHealthySlot,
 	}
-	client := NewPooledHaloClient(mp, "Alice", "xuid_alice", 0)
+	client := NewPooledHaloClient(mp, 0)
 
-	ctx := context.Background()
-	result, err := client.GetCareerRank(ctx, "xuid_alice")
-	// Pool en échec sur l'acquisition épinglée = même dégradation typée.
+	result, err := client.GetCareerRank(context.Background(), "xuid_alice")
+	// Un pool sans slot sain n'est plus une dégradation muette : l'erreur remonte, typée.
 	if result != nil {
-		t.Errorf("expected nil result, got %v", result)
+		t.Errorf("résultat attendu nil, obtenu %v", result)
 	}
-	if !errors.Is(err, ErrNoPinnedToken) {
-		t.Errorf("expected ErrNoPinnedToken on pool failure, got %v", err)
+	if !errors.Is(err, pool.ErrNoHealthySlot) {
+		t.Errorf("attendu pool.ErrNoHealthySlot, obtenu %v", err)
 	}
 }
 
@@ -221,7 +209,7 @@ func TestPooledHaloClientAcquireFailure(t *testing.T) {
 		tokens: make(map[string]*domain.HaloTokens),
 		err:    errors.New("no tokens available"),
 	}
-	client := NewPooledHaloClient(mp, "", "", 0)
+	client := NewPooledHaloClient(mp, 0)
 
 	ctx := context.Background()
 	_, err := client.GetMatchHistory(ctx, "Bob", "all", 0, 25)
@@ -243,7 +231,7 @@ func TestPooledHaloClientAcquireFailure_SentinelleSlotSainTraverse(t *testing.T)
 		tokens: make(map[string]*domain.HaloTokens),
 		err:    pool.ErrNoHealthySlot,
 	}
-	client := NewPooledHaloClient(mp, "", "", 0)
+	client := NewPooledHaloClient(mp, 0)
 
 	_, err := client.GetMatchHistory(context.Background(), "Bob", "all", 0, 25)
 	if !errors.Is(err, pool.ErrNoHealthySlot) {
@@ -258,7 +246,7 @@ func TestPooledHaloClientInterface(t *testing.T) {
 			"test": testTokens("test"),
 		},
 	}
-	client := NewPooledHaloClient(mp, "", "", 0)
+	client := NewPooledHaloClient(mp, 0)
 
 	// Vérifier que client implémente HaloClient.
 	var _ HaloClient = client
@@ -274,7 +262,7 @@ func TestPooledHaloClientNotifyHTTPError_429(t *testing.T) {
 		},
 		onHTTPErrorCalls: []int{},
 	}
-	client := NewPooledHaloClient(mp, "test", "xuid_test", 0)
+	client := NewPooledHaloClient(mp, 0)
 
 	// Simuler un 429 HTTP error sur le token "Alice".
 	err := &HTTPError{
@@ -301,7 +289,7 @@ func TestPooledHaloClientNotifyHTTPError_503(t *testing.T) {
 		},
 		onHTTPErrorCalls: []int{},
 	}
-	client := NewPooledHaloClient(mp, "", "", 0)
+	client := NewPooledHaloClient(mp, 0)
 
 	// Simuler un 503 HTTP error.
 	err := &HTTPError{
@@ -328,7 +316,7 @@ func TestPooledHaloClientNotifyHTTPError_OtherStatus(t *testing.T) {
 		},
 		onHTTPErrorCalls: []int{},
 	}
-	client := NewPooledHaloClient(mp, "", "", 0)
+	client := NewPooledHaloClient(mp, 0)
 
 	// Simuler un 500 HTTP error (non-429/503).
 	err := &HTTPError{
@@ -361,7 +349,7 @@ func TestPooledHaloClient_FallbackLimiter(t *testing.T) {
 	mp := &mockPool{tokens: map[string]*domain.HaloTokens{"alice": testTokens("alice")}}
 	const rps = 20
 	const n = 10
-	pc := NewPooledHaloClient(mp, "", "", rps)
+	pc := NewPooledHaloClient(mp, rps)
 
 	// Sanity : Lease.Limiter nil → newAPIClient retombe sur fallbackLimiter.
 	leaseNil := makeLease("s1", "c1", nil)
@@ -403,7 +391,7 @@ func TestPooledHaloClient_LeaseLimiterPriority(t *testing.T) {
 		tokens:      map[string]*domain.HaloTokens{"alice": testTokens("alice")},
 		slotLimiter: slotLim,
 	}
-	pc := NewPooledHaloClient(mp, "", "", 100) // fallback 100 RPS - doit NE PAS être utilisé
+	pc := NewPooledHaloClient(mp, 100) // fallback 100 RPS - doit NE PAS être utilisé
 
 	// Sanity : Lease.Limiter prend le pas sur fallbackLimiter.
 	lease, err := mp.Acquire(context.Background(), pool.PolicyAnyPublic, "")
@@ -450,7 +438,7 @@ func TestPooledHaloClientNotifyHTTPError_NilError(t *testing.T) {
 		},
 		onHTTPErrorCalls: []int{},
 	}
-	client := NewPooledHaloClient(mp, "", "", 0)
+	client := NewPooledHaloClient(mp, 0)
 
 	// Passer nil comme erreur.
 	client.notifyPoolOnError(nil, nil)
@@ -470,7 +458,7 @@ func TestPooledHaloClientNotifyError_401_MarksUnhealthy(t *testing.T) {
 			tokens:           map[string]*domain.HaloTokens{"slotA": testTokens("slotA")},
 			onHTTPErrorCalls: []int{},
 		}
-		client := NewPooledHaloClient(mp, "", "", 0)
+		client := NewPooledHaloClient(mp, 0)
 		lease := &pool.Lease{Gamertag: "slotA", Tokens: testTokens("slotA"), Release: func() {}}
 		err := &HTTPError{StatusCode: code, URL: "https://example.com/api", Err: errors.New("auth refused")}
 
@@ -501,7 +489,7 @@ func TestPooledHaloClientNotifyError_BlobHTTPError_NePoisonnePasLePool(t *testin
 			tokens:           map[string]*domain.HaloTokens{"slotA": testTokens("slotA")},
 			onHTTPErrorCalls: []int{},
 		}
-		client := NewPooledHaloClient(mp, "", "", 0)
+		client := NewPooledHaloClient(mp, 0)
 		lease := &pool.Lease{Gamertag: "slotA", Tokens: testTokens("slotA"), Release: func() {}}
 		err := &haloclient.BlobHTTPError{StatusCode: code, URL: blobURL, Attempts: 1}
 
