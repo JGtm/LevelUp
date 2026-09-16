@@ -24,15 +24,19 @@
 //
 // Tout fichier TEXTE sous `data/titles/*/reference/` (hors `generated/`, non versionné) ne
 // contient aucune forme de chemin absolu de poste : lettre de lecteur (`D:\`, `C:/`), chemin
-// MSYS (`/c/Users/`), foyer POSIX (`/home/`, `/Users/`). L'allowlist est DATÉE et nommée.
+// MSYS (`/c/Users/`), foyer POSIX (`/home/`, `/Users/`). L'allowlist est DATÉE et nommée, et
+// `TestAllowlistDesCheminsAbsolusNEstPasPerimee` la fait rougir dès qu'une de ses entrées n'a
+// plus d'objet — catalogue disparu, ou redevenu propre.
 package archlint
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -104,14 +108,11 @@ func TestCatalogueVersionneSansCheminAbsolu(t *testing.T) {
 			if rerr != nil {
 				return rerr
 			}
-			for _, re := range cheminsAbsolusDePoste {
-				if m := re.Find(buf); m != nil {
-					t.Errorf("%s porte un chemin absolu de poste (%q) — un fichier VERSIONNÉ ne "+
-						"doit citer que la MÉTHODE et un chemin relatif ; sinon deux postes "+
-						"régénèrent deux fichiers différents pour les mêmes données",
-						rel, strings.TrimSpace(string(m)))
-					return nil
-				}
+			if m := premierCheminAbsolu(buf); m != nil {
+				t.Errorf("%s porte un chemin absolu de poste (%q) — un fichier VERSIONNÉ ne "+
+					"doit citer que la MÉTHODE et un chemin relatif ; sinon deux postes "+
+					"régénèrent deux fichiers différents pour les mêmes données",
+					rel, strings.TrimSpace(string(m)))
 			}
 			return nil
 		})
@@ -123,6 +124,54 @@ func TestCatalogueVersionneSansCheminAbsolu(t *testing.T) {
 		t.Fatal("aucun catalogue texte balayé — le balayage s'est cassé")
 	}
 	t.Logf("%d catalogue(s) texte balayé(s), %d toléré(s)", vus, len(catalogesAvecCheminAbsoluTolere))
+}
+
+// TestAllowlistDesCheminsAbsolusNEstPasPerimee : une entrée de `catalogesAvecCheminAbsoluTolere`
+// qui désigne un fichier disparu, ou un catalogue qui ne porte PLUS de chemin absolu, se RETIRE
+// — dans le commit même qui la résout. Une allowlist périmée finit par autoriser autre chose que
+// ce qu'elle a été posée pour tolérer (même règle que les autres ratchets de ce paquet :
+// `TestPlafondsDeTailleNeSontPasPerimes`, `TestAllowlistsDesCouchesNeSontPasPerimees`).
+//
+// Mutation qui doit le faire rougir : ajouter à la table une entrée sans objet — un catalogue
+// propre, ou un chemin qui n'existe pas (jouée le 2026-09-16).
+func TestAllowlistDesCheminsAbsolusNEstPasPerimee(t *testing.T) {
+	racine := racineDuDepot(t)
+	entrees := make([]string, 0, len(catalogesAvecCheminAbsoluTolere))
+	for rel := range catalogesAvecCheminAbsoluTolere {
+		entrees = append(entrees, rel)
+	}
+	sort.Strings(entrees)
+	for _, rel := range entrees {
+		buf, err := os.ReadFile(filepath.Join(racine, filepath.FromSlash(rel))) //nolint:gosec // chemin de test, lecture seule
+		if errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%s est toléré mais n'existe plus (renommé, déplacé ou supprimé) : retirer "+
+				"l'entrée de catalogesAvecCheminAbsoluTolere, ou la réécrire au nouveau chemin.",
+				rel)
+			continue
+		}
+		if err != nil {
+			t.Fatalf("lecture de %s : %v", rel, err)
+		}
+		if premierCheminAbsolu(buf) == nil {
+			t.Errorf("%s ne porte plus de chemin absolu de poste — retirer l'entrée de "+
+				"catalogesAvecCheminAbsoluTolere. Le catalogue est rentré dans la règle, la "+
+				"table n'a plus à le connaître.", rel)
+		}
+	}
+	t.Logf("%d entrée(s) tolérée(s) vérifiée(s)", len(entrees))
+}
+
+// premierCheminAbsolu rend la première forme de chemin absolu de poste trouvée dans le contenu,
+// ou nil. UNE seule lecture des motifs pour les deux tests du fichier : le ratchet et son test
+// de péremption doivent juger sur EXACTEMENT le même critère, sans quoi une entrée pourrait être
+// « périmée » pour l'un et nécessaire pour l'autre.
+func premierCheminAbsolu(contenu []byte) []byte {
+	for _, re := range cheminsAbsolusDePoste {
+		if m := re.Find(contenu); m != nil {
+			return m
+		}
+	}
+	return nil
 }
 
 // racineDuDepot rend la racine du dépôt, déduite de l'emplacement de ce fichier.

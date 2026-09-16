@@ -75,12 +75,6 @@ func (c *KillSourceCollector) CollectMatch(ctx context.Context, matchID string) 
 	return outcome, deaths, nil
 }
 
-// collect : le corps, sans la journalisation ni la mesure de duree.
-//
-// UN FILM TELECHARGE UNE FOIS, DEUX TABLES ECRITES. Les morts (`match_kill_events`) et les tirs
-// (`match_weapon_shots`) sortent de la MEME passe : re-decoder un film pour la seconde table
-// couterait une seconde fois la passe chere du chantier, et donnerait deux occasions de sortir
-// deux etats differents de la meme base.
 // decodeFilmForMatch telecharge les chunks du match, en reconstitue le film et le decode.
 // Il rend un outcome AUTRE que [OutcomeWritten] quand la passe n a RIEN a publier — film
 // absent, film expire, film sans kill-feed — et l appelante s arrete alors la.
@@ -148,6 +142,12 @@ func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID st
 	return chunks, film, res, OutcomeWritten, nil
 }
 
+// collect : le corps, sans la journalisation ni la mesure de duree.
+//
+// UN FILM TELECHARGE UNE FOIS, DEUX TABLES ECRITES. Les morts (`match_kill_events`) et les tirs
+// (`match_weapon_shots`) sortent de la MEME passe : re-decoder un film pour la seconde table
+// couterait une seconde fois la passe chere du chantier, et donnerait deux occasions de sortir
+// deux etats differents de la meme base.
 func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (KillSourceOutcome, int, error) {
 	chunks, film, res, outcome, err := c.decodeFilmForMatch(ctx, matchID)
 	if outcome != OutcomeWritten {
