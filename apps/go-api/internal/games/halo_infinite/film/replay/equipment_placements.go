@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // equipment_placements.go — LES POSES d'équipement sur la carte : le mur de protection, le

@@ -27,7 +27,7 @@ package grammar
 // CE FICHIER NE DÉCIDE RIEN DU SENS DES RECORDS : il rend des `FrameRecord`. La lecture d'un
 // fait (une mort d'objet) vit dans `object_deaths.go`.
 //
-// UNE SECONDE COPIE DE CETTE MARCHE EXISTE DANS LE DÉPÔT, `film/killsource/walk.go` — elle y
+// UNE SECONDE COPIE DE CETTE MARCHE EXISTE DANS LE DÉPÔT, `film/facts/killsource/walk.go` — elle y
 // porte son filtre de crédibilité de roster, ses golden et ses ancres Theater, et son
 // changement casserait des empreintes gelées. Les deux se rejoignent au pas 4 de M2 (« une
 // seule porte aux octets ») ; la découverte est consignée au plan § 4 (D1 (1.9.10)).

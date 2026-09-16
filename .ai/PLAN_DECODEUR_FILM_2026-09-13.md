@@ -4031,18 +4031,49 @@ couche. Critère d'entrée re-mesuré (zéro branche filmdec en vol).
       ecrit dans l en-tete : « personne hors `source` ne lit `chunk[i][j]` » est le ratchet 2.4.3,
       et les quatre franchissements de la note qui partent d `analysis/` relevent de D9
       (`no_title_package_in_analysis_test.go`) — les doubler serait une copie de garde-rail.
-- [ ] 2.5.a `film/internal/source` ← `analysis/filmsource` (V5) + lecture des quatre sections de
-      `chunk_00` (1.5.1) ; `Film` porte `Identity`.
-- [ ] 2.5.b `film/internal/profile` ← `Profile`, `profile_table.go`, `MapQuantCatalog`,
-      `player_table_profile.go`.
-- [ ] 2.5.c `film/internal/grammar` ← `filmdec` (lecteurs, `FilmContext`, inférence de chaînes).
-- [ ] 2.5.d `film/internal/facts` ← `killsource`, `analysis/objectiveevents`, registre d'identité,
-      équipement, véhicules, projectiles, grenades (inventaire sur pièces, consigné).
-- [ ] 2.5.e Façades exportées pour les consommateurs hors `film/` (`sync/killcollector`,
-      `replaybuild`, `service`, `ops`, `haloclient`, `ingest`, 7 outils `cmd/`) : compilation seule
-      garantit la frontière (principe 11) ; allowlist `no_title_package_in_analysis_test.go`
-      vidée (D9) ; `no_film_reread_test`, `decode_lock_held_test` (inversé), `gamefiles_tag_test`
-      re-pointés.
+- [x] 2.5.a `film/source` ← `analysis/filmsource` (V5) — **FAIT le 2026-09-16, `96f93e92e`**
+      (branche `feat/decfilm-25`, base `7d6ecfaf6`). `git mv` PUR : le paquet change de nom et de
+      chemin, rien d'autre ; il reste une FEUILLE sans aucun import du dépôt. Les SIX dernières
+      arêtes de LIEU du ratchet 2.5.0 tombent d'un coup, `paquetsHorsLieuToleres` se VIDE et **le
+      mécanisme de tolérance de lieu est SUPPRIMÉ avec sa dernière entrée** (le linter l'a dit :
+      `field pose is unused`) — premier des trois axes du ratchet qui passe de tolérant à STRICT.
+      `GrammarRev` `.31` → `.32`. Équivalence courte 10/10 identiques.
+      **[!] LA PART « lecture des quatre sections de `chunk_00` » N'EST PAS FAITE** : la mesure dit
+      que ce n'est pas un déplacement pur (§4 D3 — 76 des 159 déclarations des 14 fichiers sont
+      référencées ailleurs, `ReadFilmChunk` 293 fois dans 179 fichiers, et `lecteur.go` importerait
+      `profile` ET `grammar`, deux imports vers le HAUT). `Film` ne porte donc pas encore
+      `Identity`. À rouvrir comme une EXTRACTION avec inversion de dépendance, pas un `git mv`.
+- [!] 2.5.b `film/profile` — **NON TRAITÉ, et la mesure dit pourquoi** (§4 D2). Extraire les sept
+      fichiers de profil de `filmdec` demande d'exporter douze symboles privés, de requalifier
+      ~200 sites (`I0Layout` 96 références dans 44 fichiers, `SlotBand` 51/30, `MapQuantEntry`
+      59/22) et surtout d'INVERSER la détection du découpage i0, qui balaye le film : en l'état,
+      `profile` importerait `grammar`, ce que R1 refuse. Ce n'est pas un déplacement pur ; c'est un
+      lot à part entière. La couche reste déclarée VIDE et datée dans `couchesVidesTolerees`.
+- [x] 2.5.c `film/grammar` ← `filmdec` — **FAIT le 2026-09-16, `61a4c86a4`**. `git mv` PUR de 554
+      fichiers (142 de production) ; `internal/analysis/weaponv3` descend AVEC la couche sous
+      `film/grammar/weaponv3` (7 fichiers), parce qu'il devait quitter `internal/analysis/` avant
+      la couche `source` (§4 D1). `Makefile` et `ci.yml` re-pointés (quatre listes de paquets
+      citaient un chemin qui n'existe plus). `GrammarRev` `.30` → `.31`. Équivalence 10/10.
+      **[!] DEUX PARTS RESTENT** : la DISSOLUTION de `weaponv3` (le résolveur dans le corps de
+      `grammar`, le catalogue d'armes en `games/weapons`) et la descente des symboles de grammaire
+      posés dans `internal/analysis` RACINE (V15 (4)), qui exige d'abord de remonter le TYPE
+      `analysis.HighlightEvent` en `domain/` — une soixantaine de fichiers title-agnostic le
+      consomment (§4 D4). Les trois dernières arêtes du ratchet 2.5.0 et les neuf entrées du
+      ratchet 2.4.3 restent en place, datées, pour ces deux parts.
+- [x] 2.5.d `film/facts` ← `killsource`, `analysis/objectiveevents`, `replay/fallback` — **FAIT le
+      2026-09-16** : `d5b71fb8b` (2.5.d.2, `objectiveevents` → `film/facts/objectives`, `.29` →
+      `.30`) et le commit de clôture (2.5.d.1, `killsource` → `film/facts/killsource` et
+      `replay/fallback` → `film/facts/fallback`, `.32` → `.33`). Deux `git mv` PURS ; les NOMS de
+      paquet ne changent pas pour 2.5.d.1, seuls les chemins. Le registre des replis se classe
+      désormais `facts`, là où il est produit. Équivalence 10/10 aux deux commits.
+      Les deux entrées D9 d'`objectiveevents` tombent PAR le déplacement ; il en reste UNE.
+- [!] 2.5.e Façades exportées + bascule `film/<couche>` → `film/internal/<couche>` — **NON
+      TRAITÉ**, et il ne l'aurait pas été proprement : il DÉPEND de 2.5.b (le ratchet ne peut
+      passer strict tant que la couche `profile` est vide et datée) et du portage de
+      `weapon_index_equivalence_test.go`, dernière entrée D9, qui ne tombe qu'avec la dissolution
+      de `weaponv3`. Mesure de la surface à re-exporter, refaite le 2026-09-16 par `grep` des
+      qualifieurs hors `film/` : ~78 (`grammar`) + 38 (`killsource`) + 47 (`objectives`) + 14
+      (`source`) symboles exportés, à arbitrer selon V15 (7).
 - [x] 2.5.f (V15 (5)) Portage de `sessionusage/usage_outcomes.go` : ses 4 symboles de `replay`
       remontent en `domain/` ou `games/canonical/` ; l'entrée D9 correspondante tombe ; test de
       non-régression sur les issues d'usage.
@@ -4066,9 +4097,13 @@ couche. Critère d'entrée re-mesuré (zéro branche filmdec en vol).
       ré-ajoutée). Non-régression : golden `usage_outcomes_golden_test.go` figé AVANT le
       déplacement (huit familles, canal lu par valeur sentinelle), INCHANGÉ après. `GrammarRev`
       ne bouge pas (aucun paquet haché touché).
-- [ ] 2.5.g (V15 (10), après les déplacements purs) Les 29 crochets d'observation (`Set*Hook`,
+- [!] 2.5.g (V15 (10), après les déplacements purs) Les 29 crochets d'observation (`Set*Hook`,
       `unitRefHook`) reçoivent leur paramètre `Observer` (suite de 2.2.f) ; `filmdecVarsGeles`
       descend d'autant ; item distinct pour que 2.5.a-e restent des déplacements purs.
+      **NON TRAITÉ le 2026-09-16** : l'item est explicitement « APRÈS les déplacements purs », et
+      deux de ceux-ci (2.5.b, la part restante de 2.5.c) ne sont pas faits — le traiter ici aurait
+      mêlé un changement de signature à un lot qui doit rester à sortie identique. Statut à revoir
+      avec 2.5.b et 2.5.e.
 
 Preuve par couche : `go build ./...` ; `replay-equiv` zéro différence ; corpus gate zéro
 différence ; `git diff --stat -M` ne montre que des renommages.
@@ -4589,6 +4624,13 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-17 | 2.2.f | **D3 — les 29 crochets de désérialiseur ne peuvent pas devenir un paramètre avant le pas 5, pour la même raison que le profil.** Ils sont installés par des balayages (`ScanFilm*`) qui appellent des marcheurs construisant leurs PROPRES lecteurs de bits : leur passer un observateur en paramètre exige la même descente que le profil des familles a et b. NON TRAITÉ au-delà du regroupement : les 37 variables deviennent UN objet (`filmdec.Observation`), et `FrameConfig.Obs` ouvre la forme « paramètre » pour la SEULE famille dont les compteurs sont écrits là où le cadre est en portée (l'inférence de chaîne, dont « la table sans verrou »). Donner un paramètre aux 29 autres alors que les feuilles ne le liraient pas serait un mensonge, pas une étape. | lot 2.3 puis pas 5 ; critère écrit dans `filmdec/observateur.go` |
 | 2026-09-17 | 2.3.1 | **D1 (2.3) — `killcollector.ScanFilmWeaponShots` / `ScanFilmWeaponDamages` HERITAIENT, EUX AUSSI, DE LA CALIBRATION DU DECODAGE PRECEDENT — et ils sont desormais deterministes.** `internal/sync/killcollector/hits.go` appelait les enveloppes `ScanFilm*(dir)` de `filmdec` : elles construisaient leur lecteur sur les variables de paquet, donc sur ce qu'un `killsource.Decode` anterieur du MEME processus y avait laisse. Depuis ce lot elles partent de l'invariant du profil, plus le decoupage d'i0 LU DANS LE FILM. C'est sans doute une correction — l'heritage etait un effet de bord, pas une intention — mais c'est un CHANGEMENT DE COMPORTEMENT possible sur les postes qui enchainaient les deux passes, et seul un gate de decodage peut le mesurer. NON TRAITE au-dela du constat (regle 7). **PRECISE LE 2026-09-17 PAR LECTURE DE CODE, ET AUCUN DES DEUX GATES N'Y REPOND** (constat du pilote : ces fonctions ecrivent EN BASE — `weapon_accuracy`, `match_weapon_hit_distance` — pas dans l'artefact ; ni `replay-equiv` ni le corpus gate ne les voient). Le perimetre du risque se borne a la lecture : (1) `ScanFilmWeaponShots` est INSENSIBLE au profil — `lot1RefDom1` lit 13 ou 9 bits en dur, `decodeFireEvent` lit a offsets fixes (`readBitsAt`) ; (2) dans `ScanFilmWeaponDamages`, les DEGATS eux-memes sont a largeurs fixes, et le monde `w` — seul consommateur de `cfg := DefaultFrameConfig()` via `DecodeFrameRecords` — ne sert QU'A `lot1chIsBiped`, donc a l'histogramme `hit`, donc a LA BASE d'atterrissage bipede (canal 1) ; (3) `ScanFilmBipedPositions`, l'autre enveloppe D2 de la passe (appelee par `FilmWeaponHitDistance`), DECODE des positions et prenait ses largeurs a l'heritage (canal 2). **Attendu, a verifier : `weapon_accuracy` ne peut PAS bouger ; `match_weapon_hit_distance` le peut.** | **A mesurer a la « voie libre » du pilote, par une TROISIEME mesure** (les deux gates ne la couvrent pas) : instrument jetable non commis qui rejoue l'enchainement de production (`killsource.Decode` PUIS les deux scans dans le meme processus) et rend digest + comptes (tirs, tirs appariables, degats, base bipede, ventilation par arme, positions), joue a la tete ET sur un worktree detache a `39190ae2f`. Si les sorties different : nommer les films (ceux a largeurs calibrees 17/2, 16/2, 17/1 ?) et proposer que les scans recoivent le `ProfilDeBalayage` CALIBRE du `Result`, comme `BuildFromFilm` — la grammaire MESUREE prime sur le defaut, un scan qui perdrait la calibration serait une REGRESSION, pas une correction |
 | 2026-09-17 | 2.3.1 | **D2 (2.3) — `BipedDefaultStateEndBit` et `BipedMovementI0Bit` n'ont AUCUN appelant dans le depot, tests compris.** Les deux fonctions ont survecu a la de-globalisation parce qu'elles ne lisaient rien de global ; elles sont du code mort au sens de la regle 7. NON TRAITE : les supprimer ferait monter l'empreinte de grammaire pour un geste qui n'appartient pas a ce lot. | Lot 2.4 ou 2.5, qui rouvre la facade de lecture |
+| 2026-09-16 | 2.5 (entree) | **D1 (2.5) — L'ORDRE DE COMMITS DE LA NOTE DE PREPARATION (§2.7) NE COMPILE PAS SES RATCHETS.** Descendre `filmsource` en PREMIER fait rougir D9 (`no_title_package_in_analysis_test.go`) sur DIX-SEPT fichiers : `objectiveevents` (6 de production, 10 de test) et `weaponv3` (2 + 1) vivent sous `internal/analysis/` et importent `filmsource` ; le jour ou la cible passe sous `film/`, ces imports deviennent « `internal/analysis/` importe un paquet de titre ». La facade de 2.4 etait nee la PRECISEMENT pour l'eviter (V15 (1)) — la note ne l'a pas reporte sur l'ordre des commits. Essai fait, mesure relevee, essai annule. | **TRAITE dans le lot** : ordre inverse (2.5.d.2, 2.5.c, 2.5.a, 2.5.d.1), ecrit dans l'en-tete de `archlint/film_layers_deps_test.go`. La note §2.7 est perimee sur ce point |
+| 2026-09-16 | 2.5.b | **D2 (2.5) — LA COUCHE `profile` NE S'EXTRAIT PAS PAR `git mv`.** Sonde `go/parser` sur les sept fichiers de profil de `filmdec` : 43 de leurs declarations sont referencees par le RESTE du paquet, dont **12 privees** (a exporter) — `I0Layout` 96 references dans 44 fichiers, `MapQuantEntry` 59/22, `SlotBand` 51/30, `MPPWidths` 26/10 ; et 31 declarations du reste du paquet sont utilisees PAR eux, dont `i0_layout.go` et `profile.go` qui lisent `offline_biped.go`, `keyframe_fullstate_loop.go`, `default_state_arch.go`, `quantize.go`, `components_movement.go` — de la GRAMMAIRE. Extraire sans inverser produirait `profile -> grammar`, un import VERS LE HAUT que R1 refuse. La detection du decoupage i0 BALAYE le film : elle est grammaire, la TABLE qui en resulte est profil. | NON TRAITE (case `[!]`). Lot a part entiere : exporter, requalifier ~200 sites, inverser la detection. Tant qu'il n'est pas fait, `couchesVidesTolerees` garde la couche `profile` datee et le ratchet 2.5.0 ne peut pas passer STRICT sur l'axe R3 |
+| 2026-09-16 | 2.5.a | **D3 (2.5) — LES 14 FICHIERS `filmdec -> source` DE LA NOTE (§2.3) NON PLUS.** Meme sonde : 76 de leurs 159 declarations sont referencees par le reste du paquet — `ReadFilmChunk` 293 fois dans 179 fichiers, `Lecteur` 344/81, `PacketTypeDelta` 222/161, `WalkPackets` 217/160, `Archetype` 177/85, `Registry` 158/77, `ParseRegistryChunk` 80/65 — et `lecteur.go` lit `Profile`, `MovementProfile`, `KeyframeProfile`, `Observation`, `FrameConfig`, `ProfilDeBalayage` : `source` importerait `profile` ET `grammar`. La note le dit d'ailleurs a demi-mot (« le lecteur canonique, MOINS ses cinq champs de profil »). | NON TRAITE (case `[!]` dans 2.5.a). `Film` ne porte donc pas `Identity`. A rouvrir comme EXTRACTION avec inversion de dependance, avec 2.5.b — les deux ont la meme cause |
+| 2026-09-16 | 2.5.c | **D4 (2.5) — V15 (4) EXIGE D'ABORD UN PORTAGE DE TYPE.** `analysis.ParseHighlightEvents` rend `[]analysis.HighlightEvent`, et ce TYPE est consomme par `analysis/temporal`, `analysis/narrative`, `analysis/timeline`, `service/`, `platform/duckdb/`, `sync/` — une soixantaine de fichiers, tous title-agnostic. Faire descendre la FONCTION dans `grammar` sans remonter le TYPE ferait importer un paquet de titre a tout `analysis/` (D9), ou importer `analysis` par le decodeur (R2). Le chemin est celui du lot 2.5.f (`domain/equipmentusage`) : le type remonte en `domain/`, PUIS le lecteur descend. | NON TRAITE. Les neuf entrees du ratchet 2.4.3 restent datees « 2.5.c », et trois aretes du ratchet 2.5.0 avec elles. Item a ouvrir : « `HighlightEvent` remonte en `domain/` » AVANT la descente |
+| 2026-09-16 | 2.5.c | **D5 (2.5) — CE QUI NE SE RENOMME PAS AVEC LE PAQUET.** Les compteurs expvar `filmdec_unknown_build_*`, `filmdec_unknown_format_*`, `filmdec_keyframe_ti*`, les prefixes d'erreur `"filmdec: ..."` et la tranche `"filmdec"` du registre des replis gardent leur nom apres `filmdec -> grammar`. Un compteur est un CONTRAT D'EXPLOITATION (ADR 0009) : le renommer serait un changement de SORTIE, ce qu'un deplacement pur s'interdit. | NON TRAITE, et c'est un choix. Leur renommage se decide avec les consommateurs (tableaux de bord, registre des replis), pas dans un lot a sortie identique |
+| 2026-09-16 | 2.5.a | **D6 (2.5) — `replay` CHARGE TOUJOURS LE FILM LUI-MEME, ET LE RATCHET DE COUCHES NE LE VOIT PAS.** `deaths_source.go:36`, `inventory_decode.go:177`, `origin.go:82`, `player_index.go:56` appellent `LoadDir`. L'arete `replay -> source` est un saut de DEUX couches vers le BAS ; R1 n'interdit que le HAUT, donc l'entree d'allowlist qui nommait ce defaut est devenue « perimee » et a du etre retiree ALORS QUE LE DEFAUT DEMEURE (ADR 0034 D-1 : « replay ne decode rien »). | NON TRAITE (regle 7). Pour que le defaut sonne, il faut AJOUTER une regle au ratchet 2.5.0 : interdire un saut de plus d'une couche, meme vers le bas. A arbitrer — c'est une regle neuve, pas un re-pointage |
+| 2026-09-16 | 2.5 | **D7 (2.5) — DOCS PERIMEES PAR LE DEPLACEMENT.** `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` citent `internal/analysis/filmsource` et `analysis/objectiveevents`, chemins qui n'existent plus. | NON TRAITE : le brief du lot borne la mise a jour documentaire au plan (« cases, §4, §5, RIEN d'autre »). A reprendre au lot qui rouvre COMMANDS |
 | 2026-09-17 | 2.3.2 | **D3 (2.3) — le ratchet de taille de fichier portait DEUX entrees perimees, et la table le dit elle-meme.** `imagecle_oracle_n2_research_test.go` et `visee_chronologie_research_test.go` etaient repasses a 500 lignes (plafond 502) : `TestPlafondsDeTailleNeSontPasPerimes` rougissait des l'entree du lot, sur une cause ANTERIEURE a lui. TRAITE dans le lot (les deux entrees retirees), consigne ici parce que la cause n'est pas mienne : c'est la vague de scission 2.7 qui les a fait descendre. | Aucune suite — constat |
 | 2026-09-17 | 2.3 (gate) | **D4 (2.3) — LA BASE D'ATTERRISSAGE BIPÈDE DE `c75f33b8` PASSE DE 512 À 508, ET C'EST UN CHANGEMENT DE COMPORTEMENT RÉEL.** Mesuré à la voie libre, 14 témoins, tête contre `39190ae2f` : un seul écart sur 14 films x 15 colonnes. La cause n'est pas la largeur calibrée (15/3, partagée par sept témoins qui ne bougent pas) mais le `param_4` : `killsource.resetGlobals` reposait `SetRecordStateParam(0)`, donc les scans héritaient d'un `param_4` FORCÉ À ZÉRO ; l'invariant, lui, n'impose rien et laisse la table par composant décider. `weapon_accuracy` est INTACTE (tirs, dégâts, appariement, ventilation par arme identiques à l'octet sur les 14) ; seule `match_weapon_hit_distance` est exposée, par la résolution de position que cette base commande. NON TRAITÉ dans 2.3 (règle 7 : le corriger est un changement de comportement à mesurer, pas un pas structurel). | **ROUTE PROPOSÉE, à trancher par le pilote** : les deux scans reçoivent le `ProfilDeBalayage` CALIBRÉ du `Result`, comme `BuildFromFilm` le reçoit déjà — la grammaire MESURÉE sur le film prime sur le défaut. Cela va PLUS LOIN que la base (qui n'héritait que de `param_4=0` et des largeurs) et demande donc son propre lot, avec re-décodage du parc pour `match_weapon_hit_distance` |
 | 2026-09-17 | 2.3 (instrument) | **D5 (2.3) — LE CANAL 2 N'A PAS ÉTÉ MESURÉ : `ScanFilmBipedPositions(dir, ScanFilmOptions{})` refuse sans bornes de carte.** « bornes de quantification inconnues pour cette carte : renseigner `ScanFilmOptions.WorldRange`, ou `QuantaOnly` » sur les 14 films, des DEUX côtés (colonne `positions` à -1). L'écart éventuel du décodage de position reste donc NON MESURÉ ; en production `FilmWeaponHitDistance` passe l'entrée de catalogue et ce canal vit. | À reprendre avec `QuantaOnly: true` — dans le lot qui traitera D4 (2.3), dont c'est la même question |
@@ -4874,6 +4916,42 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-17 | 2.6.0 | **D2 (2.6.0) — LA CHRONIQUE RÉELLE DE `GrammarRev` PORTE DES TROUS DE RANG, ET UNE VÉRIFICATION « SANS TROU » SUR TOUT L'HISTORIQUE SERAIT ROUGE.** Mesure sur l'HISTORIQUE de `grammar_rev.golden` (39 entrées) : la série du 2026-09-15 passe de `.6` à `.8`, puis de `.8` à `.12` — `.7` et `.9` à `.11` n'existent pas. Cause lisible dans les entrées voisines (« RANG PROVISOIRE », « RANG DE FUSION ») : des lots parallèles réservent un rang, et la fusion qui n'a pas eu lieu le laisse vacant. Le contrôle de continuité de `revision.Chronique.VerifierRangs` prend donc un PLANCHER explicite (`depuis`), et le test qui lit les artefacts réels de `filmdec` ne l'applique PAS — poser une continuité sur la chronique d'une autre couche rendrait le paquet `revision` rouge à la prochaine fusion à rang provisoire, pour une décision qui ne lui appartient pas. NON TRAITÉ : renuméroter le passé obligerait à régénérer des goldens déjà écrits, c'est-à-dire à ouvrir des backlogs pour de la comptabilité. | lot 2.6.1 : chaque couche déclare le rang à partir duquel elle tient la continuité (le premier de sa propre série, les quatre séries naissant à ce lot) ; le passé de `grammar` reste tel quel, avec ses trous, et la chronique en dit la raison |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Lot 2.5 (M2, pas 5) — les couches par déplacements purs, 2026-09-16
+
+Base `7d6ecfaf6` (branche `feat/decfilm-25`, worktree `LevelUp-wt-decfilm-25`). Quatre commits :
+`d5b71fb8b` (2.5.d.2), `61a4c86a4` (2.5.c), `96f93e92e` (2.5.a), et le commit de clôture
+(2.5.d.1). **Ordre INVERSE par rapport à la note §2.7** — mesure D1 (2.5) du §4.
+**Corpus gate final (14 témoins) : PAS JOUÉ, en attente du signal explicite du pilote.**
+
+| Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
+|---|---|---|---|---|
+| 2026-09-16 | 2.5 (entrée) | base `7d6ecfaf6` | sonde `go/parser` (déclarations + références croisées) sur les 7 fichiers de profil et les 12 fichiers de lecture de `filmdec` | **2.5.b et la remontée `filmdec → source` NE SONT PAS des déplacements purs** : 43 et 76 déclarations référencées par le reste du paquet, 12 privées à exporter, et des imports VERS LE HAUT (`profile → grammar`, `source → profile/grammar`). §4 D2 et D3 |
+| 2026-09-16 | 2.5 (entrée) | base `7d6ecfaf6` | `go test ./internal/archlint/ -run Analysis` après un `git mv` d'essai de `filmsource` | **ROUGE, 17 fichiers** — l'ordre de la note §2.7 ne compile pas ses ratchets. Essai annulé, ordre inversé. §4 D1 |
+| 2026-09-16 | 2.5.d.2 | `d5b71fb8b` | `gofmt -l ./internal ./cmd` puis `go build ./... && go vet ./...` | sortie vide, 0 diagnostic |
+| 2026-09-16 | 2.5.d.2 | `d5b71fb8b` | `go test -count=1` sur film/…, archlint, replaybuild, analysis/…, sync/…, ops/…, cmd/…, api, persist, himap | tout vert. `archlint` 18,5 s |
+| 2026-09-16 | 2.5.d.2 | `d5b71fb8b` | `git diff --cached -M --name-status` | **64 renommages** (R086 à R100) + 159 modifiés (ratchets, imports, mentions du nom). Deux seuls changements de corps, tous deux conséquence du déplacement : profondeur relative de `.ai/refs/` dans `named_test.go`, `//nolint:prealloc` daté dans `extract.go` (le nil y est contractuel) |
+| 2026-09-16 | 2.5.d.2 | `d5b71fb8b` | `golangci-lint run --new-from-merge-base=origin/main` | **0 issues** |
+| 2026-09-16 | 2.5.d.2 | `d5b71fb8b` | `-update-grammar-rev` puis relecture | `grammar-2026-09-15.30` / `0a9615ea…`, entrée de chronique des deux côtés, `TestChroniqueCouvreLaRevisionCourante` vert |
+| 2026-09-16 | 2.5.d.2 | `d5b71fb8b` | `replay-equiv` COURT, 10 films | **BILAN : 10 identiques, 0 différents, 0 écartés, 0 échecs** |
+| 2026-09-16 | 2.5.c | `61a4c86a4` | `gofmt -l` puis `go build ./... && go vet ./...` | sortie vide, 0 diagnostic |
+| 2026-09-16 | 2.5.c | `61a4c86a4` | `git diff --cached -M --name-status` | **572 renommages**, dont 558 à similarité ≥ 98 % |
+| 2026-09-16 | 2.5.c | `61a4c86a4` | `go test -count=1` (même périmètre) | tout vert. `archlint` 18,9 s |
+| 2026-09-16 | 2.5.c | `61a4c86a4` | `golangci-lint run --new-from-merge-base=origin/main` | **0 issues** |
+| 2026-09-16 | 2.5.c | `61a4c86a4` | `-update-grammar-rev` puis relecture | `grammar-2026-09-15.31` / `6f1d6902…` |
+| 2026-09-16 | 2.5.c | `61a4c86a4` | `replay-equiv` COURT, 10 films | **BILAN : 10 identiques, 0 différents, 0 écartés, 0 échecs** |
+| 2026-09-16 | 2.5.a | `96f93e92e` | `go test ./internal/archlint/ -count=1` | **ok 13,7 s** — `aretesTolerees` 9 → 3, `paquetsHorsLieuToleres` VIDÉE puis **supprimée avec son mécanisme** (le linter l'a dit : `field pose is unused`, `field coupe is unused`) |
+| 2026-09-16 | 2.5.a | `96f93e92e` | `golangci-lint run --new-from-merge-base=origin/main` | **0 issues** |
+| 2026-09-16 | 2.5.a | `96f93e92e` | `-update-grammar-rev` puis relecture | `grammar-2026-09-15.32` / `d8a21cbc…` |
+| 2026-09-16 | 2.5.a | `96f93e92e` | `replay-equiv` COURT, 10 films | **BILAN : 10 identiques, 0 différents, 0 écartés, 0 échecs** |
+| 2026-09-16 | 2.5.d.1 | ce commit | `gofmt -l` puis `go build ./... && go vet ./...` | sortie vide, 0 diagnostic |
+| 2026-09-16 | 2.5.d.1 | ce commit | `go test -count=1` (même périmètre) | tout vert après correction des chemins relatifs de fixtures : le paquet a gagné un niveau de profondeur, `../replay/testdata` devient `../../replay/testdata` (killsource) et `../killsource/testdata` devient `../facts/killsource/testdata` (grammar, replay) |
+| 2026-09-16 | 2.5.d.1 | ce commit | `golangci-lint run --new-from-merge-base=origin/main` | **0 issues** |
+| 2026-09-16 | 2.5.d.1 | ce commit | `-update-grammar-rev` puis relecture | `grammar-2026-09-15.33` / `6b60980b…` |
+| 2026-09-16 | 2.5.a puis 2.5.d.1 | les deux | `go test ./internal/sync/killcollector/ -run TestKillSourceDecoderRevSuitLeDecodeur -update` puis relecture | **RÉVISION INCHANGÉE** (`killsource-2026-09-16.2`) : la sortie de `killsource` est identique à l'octet ; l'ancre de racine suit le paquet (`film/facts/killsource`), l'empreinte seule est refigée |
+| 2026-09-16 | 2.5.d.2 | `d5b71fb8b` | `.ai/baselines/tests_pre_migration.jsonl` | **86 lignes re-pointées** sur le nouveau chemin de paquet ; les 86 NOMS de test sont inchangés (vérifié par différence des paires (Package, Test) avant/après). Seul `objectiveevents` figurait dans la baseline — `filmdec`, `killsource`, `filmsource`, `weaponv3` et `replay/fallback` n'y ont AUCUNE entrée (capture du 2026-06-26, antérieure) |
+| 2026-09-16 | 2.5.c | `61a4c86a4` | `Makefile` + `.github/workflows/ci.yml` | **quatre listes de paquets re-pointées** (`film/filmdec/…` n'existe plus : un `go vet` / `go test` sur un chemin absent aurait rougi la CI) et `film/facts/…` AJOUTÉ, sans quoi la couche descendue au commit précédent sortait silencieusement du job unitaire et du job de couverture |
+| 2026-09-16 | 2.5.d.1 | ce commit | `CGO_ENABLED=0 go test ./internal/games/halo_infinite/film/grammar/ -count=1` | **ok 18,03 s** — budget écrit 30 s pour le paquet ex-`filmdec` (§2.3), tenu. Avec CGO : 18,08 s |
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
 |---|---|---|---|---|

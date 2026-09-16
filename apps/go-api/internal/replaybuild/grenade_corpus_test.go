@@ -7,7 +7,7 @@ package replaybuild
 //
 // # LES DEUX SOURCES, ET POURQUOI ELLES SE RENCONTRENT ICI
 //
-// Le TAG de la mort se lit dans le film (`film/killsource`, dead-state de la victime) ; le
+// Le TAG de la mort se lit dans le film (`film/facts/killsource`, dead-state de la victime) ; le
 // LANCER se lit dans l'artefact de rejeu (`games/halo_infinite/film/replay`, `doc.grenades`). `replaybuild` est
 // la seule couche qui compose deja les deux — c'est la meme raison qui y a mis le typage des
 // morts neutres.
@@ -42,7 +42,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )

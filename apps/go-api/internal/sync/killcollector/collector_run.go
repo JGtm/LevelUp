@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"

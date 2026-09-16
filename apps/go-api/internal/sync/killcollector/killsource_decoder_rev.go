@@ -19,7 +19,7 @@ package killcollector
 // deplacement pur.
 //
 // L EMPREINTE NE BOUGE PAS NON PLUS. `decoder_rev_fingerprint_test.go` hache les sources
-// non-test de `internal/games/halo_infinite/film/killsource/` — jamais ce paquet-ci. Ce
+// non-test de `internal/games/halo_infinite/film/facts/killsource/` — jamais ce paquet-ci. Ce
 // deplacement laisse donc le ratchet vert SANS regeneration du golden, et c est verifie.
 
 // KillSourceDecoderRev — la version du decodeur, ecrite sur CHAQUE ligne produite.
@@ -29,7 +29,7 @@ package killcollector
 // LA FAIRE EVOLUER a chaque changement de decodage qui change les lignes produites.
 //
 // 2026-09-05 : `killsource-2026-07-31` -> `killsource-2026-09-05`. LE CONTRAT CI-DESSUS N AVAIT
-// PAS ETE TENU : 14 commits ont touche `games/halo_infinite/film/killsource/` depuis v7.3.0 sans
+// PAS ETE TENU : 14 commits ont touche `games/halo_infinite/film/facts/killsource/` depuis v7.3.0 sans
 // un seul bump (le seul commit qui touchait cette ligne etait un deplacement de paquet). Les
 // lignes deja en base portaient donc la revision courante et etaient exclues A VIE du backlog
 // (`conditionBacklog`, postsync.go) — source du degat, categorie et assistant servis avec le
@@ -180,7 +180,7 @@ const KillSourceDecoderRev = "killsource-2026-09-16.2"
 // L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/killsource_decoder_rev.golden` porte le couple (revision, empreinte) et
 // `decoder_rev_fingerprint_test.go` le compare aux sources NON-TEST de
-// `internal/games/halo_infinite/film/killsource/`.
+// `internal/games/halo_infinite/film/facts/killsource/`.
 //
 // POURQUOI UN GOLDEN ET PLUS UNE CONSTANTE (revue adversariale du 2026-09-12, constat P1-4).
 // Tant que le test ne comparait que l EMPREINTE a une constante, remettre la revision ci-dessus a

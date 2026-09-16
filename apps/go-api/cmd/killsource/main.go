@@ -1,7 +1,7 @@
 // Commande killsource — exercer le decodeur de la SOURCE DE DEGAT sur un film Theater, seul.
 //
 // A QUOI ELLE SERT. AUCUN CHEMIN D EXECUTION DE L APPLICATION ne passe encore par le paquet
-// `internal/games/halo_infinite/film/killsource` : son unique importeur cote application est le
+// `internal/games/halo_infinite/film/facts/killsource` : son unique importeur cote application est le
 // pont `internal/sync/killsource_bridge.go`, ecrit d avance et lui-meme sans appelant. Le paquet
 // est donc autonome, et il doit pouvoir etre teste a fond avant d etre branche. Cette commande est
 // ce moyen. Elle ne touche ni la base, ni le reseau, ni les fichiers du jeu : elle lit des chunks
@@ -40,8 +40,8 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 

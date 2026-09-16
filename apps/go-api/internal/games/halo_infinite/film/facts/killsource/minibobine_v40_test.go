@@ -42,7 +42,7 @@ package killsource
 // # REGENERATION DE LA BOBINE (fixture requise, jamais d edition a la main)
 //
 //	KILLSOURCE_FIXTURES=<racine des films> \
-//	  go test ./internal/games/halo_infinite/film/killsource/ -run TestMiniBobineV40Regenerer -update
+//	  go test ./internal/games/halo_infinite/film/facts/killsource/ -run TestMiniBobineV40Regenerer -update
 
 import (
 	"bytes"

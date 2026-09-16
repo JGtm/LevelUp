@@ -79,7 +79,7 @@ import (
 	"testing"
 	"unicode"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 )
 
 // perimetreReplis : les répertoires où un repli de production peut vivre — ceux de l'audit 0.E,
@@ -168,7 +168,7 @@ func TestToutReplinNommeEstAuRegistre(t *testing.T) {
 	sort.Strings(orphelins)
 	t.Errorf("REPLI HORS REGISTRE (%d) :\n  %s\n\n"+
 		"Un repli est NOMMÉ, ordonné, compté, daté, et il porte son critère de retrait (D14).\n"+
-		"Ajouter son entrée dans `internal/games/halo_infinite/film/replay/fallback/registre_*.go`,\n"+
+		"Ajouter son entrée dans `internal/games/halo_infinite/film/facts/fallback/registre_*.go`,\n"+
 		"avec une ancre qui cite ce site. Si l'identifiant nomme une branche de la grammaire DU JEU\n"+
 		"et non une décision de LevelUp, l'inscrire dans `replisDeLEcrivainDuJeu` avec sa date.",
 		len(orphelins), strings.Join(orphelins, "\n  "))

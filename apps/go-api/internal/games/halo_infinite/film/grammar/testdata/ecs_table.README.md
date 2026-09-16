@@ -26,7 +26,7 @@ ont ete recalculees depuis le film ; les annotations ont disparu avec l'ecart.
 MISE A JOUR : la table se corrige a la main, ligne par ligne — SAUF la colonne `level`, qui est
 une donnee du film et se regenere par une porte nommee :
 
-    ECS_TABLE_FILM=../killsource/testdata/minibobine_000d5950 \
+    ECS_TABLE_FILM=../facts/killsource/testdata/minibobine_000d5950 \
       go test ./internal/games/halo_infinite/film/filmdec/ -run G2 -update-ecs-table-level
 
 (elle reecrit puis ECHOUE : relancer sans le drapeau pour verifier). Porter un composant =

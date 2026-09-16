@@ -102,7 +102,7 @@ var paquetsSansInflate = []string{
 	"internal/games/halo_infinite/film/grammar",
 	"internal/games/halo_infinite/film/facts/objectives",
 	"internal/games/halo_infinite/film/replay",
-	"internal/games/halo_infinite/film/killsource",
+	"internal/games/halo_infinite/film/facts/killsource",
 }
 
 // TestPasDeZlibDansLaChaineDeCuisson — REGLE 1.
@@ -282,7 +282,7 @@ var enveloppesInterditesEnProduction = []string{
 //	internal/games/halo_infinite/film/replay        BuildFromFilm et les balayages du document
 //	internal/replaybuild            la cuisson (BuildBytes / BuildMatch)
 //	internal/games/halo_infinite/film/facts/objectives  ses neuf points d'entree prennent un *source.Film
-//	internal/games/halo_infinite/film/killsource  Decode recoit le film deja charge
+//	internal/games/halo_infinite/film/facts/killsource  Decode recoit le film deja charge
 //	internal/sync/killcollector     positions.go : le pont disque a disparu a l'item 1.6
 //	internal/api/wire               registry_replay_build.go : le cablage de l'API
 //	cmd/zone-attribution            measure.go : charge le film UNE fois (item 1.6)
@@ -290,7 +290,7 @@ var paquetsDeProduction = []string{
 	"internal/games/halo_infinite/film/replay",
 	"internal/replaybuild",
 	"internal/games/halo_infinite/film/facts/objectives",
-	"internal/games/halo_infinite/film/killsource",
+	"internal/games/halo_infinite/film/facts/killsource",
 	"internal/sync/killcollector",
 	"internal/api/wire",
 	"cmd/zone-attribution",

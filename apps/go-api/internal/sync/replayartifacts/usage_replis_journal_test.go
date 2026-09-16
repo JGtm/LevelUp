@@ -27,8 +27,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // resumeAvecReplis forge une projection dont le rapport de replis porte ces declenchements.

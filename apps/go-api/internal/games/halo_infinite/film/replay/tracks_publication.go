@@ -14,8 +14,8 @@ import (
 	"log/slog"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // DefaultMinPoints est le nombre minimal de points pour qu'une vie soit publiée.

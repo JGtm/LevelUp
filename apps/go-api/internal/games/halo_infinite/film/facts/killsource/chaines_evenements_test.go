@@ -53,7 +53,7 @@ const cheminGoldenChaines = "testdata/chaines_evenements.golden"
 func bobinesVersionnees(t *testing.T) []string {
 	t.Helper()
 	var out []string
-	for _, motif := range []string{"../replay/testdata/minifilm_*", "testdata/minibobine_*"} {
+	for _, motif := range []string{"../../replay/testdata/minifilm_*", "testdata/minibobine_*"} {
 		m, err := filepath.Glob(motif)
 		if err != nil {
 			t.Fatalf("glob %s : %v", motif, err)

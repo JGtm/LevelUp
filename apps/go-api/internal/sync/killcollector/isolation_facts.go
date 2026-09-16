@@ -199,7 +199,7 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // réécriront une passe au contenu identique.
 //
 // POURQUOI PAS [KillSourceDecoderRev]. Le journal des morts ne change pas d'un octet, et
-// `internal/games/halo_infinite/film/killsource/` n'a pas bougé : la faire monter rouvrirait un
+// `internal/games/halo_infinite/film/facts/killsource/` n'a pas bougé : la faire monter rouvrirait un
 // backlog de redécodage complet pour rien, et `decoder_rev_fingerprint_test.go` rougirait à juste
 // titre (« la revision a change sans le decodeur »). `kill_positions` ne porte pas de
 // `decoder_rev` : cette révision-ci est la seule que `matchsAJour` consulte pour ces tables.

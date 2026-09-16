@@ -3,7 +3,7 @@ package killcollector
 // bridge.go — PONT ENTRE LE TELECHARGEMENT DE FILM ET LE DECODEUR `killsource`.
 //
 // Il fait UNE chose : rendre, pour un match, la SEQUENCE de chunks que le decodeur attend. Il ne
-// decode pas (c est `games/halo_infinite/film/killsource`), il n ecrit pas (c est
+// decode pas (c est `games/halo_infinite/film/facts/killsource`), il n ecrit pas (c est
 // `internal/persist`), et il ne decide pas QUAND telecharger (c est le collecteur).
 //
 // # QUELS CHUNKS, ET POURQUOI LA SYNCHRO NE SUFFISAIT PAS TELLE QUELLE

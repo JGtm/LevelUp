@@ -399,7 +399,7 @@ type Coverage struct {
 	// Fallbacks dit QUELLE PART DE CE DOCUMENT VIENT D'UN REPLI (schéma 58, décision D14 du plan
 	// du décodeur, ADR 0034). Un repli est une décision de secours prise quand la lecture du film
 	// ne tranche pas ; chacun porte un nom stable, une condition et un critère de retrait, tous
-	// déclarés dans `film/replay/fallback`.
+	// déclarés dans `film/facts/fallback`.
 	//
 	// UNE LISTE PLATE, ET PAS UN BLOC PAR FAIT. Les replis ne se répartissent pas sur les calques
 	// existants — `repli_largeurs_axe_par_defaut_conservees` touche TOUT le décodage, et les

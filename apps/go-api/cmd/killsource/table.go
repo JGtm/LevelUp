@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 )
 
 // marqueurDivergence : le signe qui dit que les deux verites ne designent pas le meme responsable.

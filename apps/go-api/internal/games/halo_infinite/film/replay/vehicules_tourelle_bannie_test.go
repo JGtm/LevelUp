@@ -23,8 +23,8 @@ package replay
 import (
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // tourelleBannieChassis : le mot d identite lu dans le default-state des records `ti=40` de

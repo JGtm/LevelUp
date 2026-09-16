@@ -49,7 +49,7 @@ import (
 // de reference — celle sur laquelle `KnownRegistryFingerprint` est calculee.
 func registreDeReference(t *testing.T) []byte {
 	t.Helper()
-	d, err := ReadFilmChunk(filepath.Join("..", "killsource", "testdata", "minibobine_000d5950"), 0)
+	d, err := ReadFilmChunk(filepath.Join("..", "facts", "killsource", "testdata", "minibobine_000d5950"), 0)
 	if err != nil {
 		t.Fatalf("chunk_00 de la bobine de reference illisible : %v", err)
 	}

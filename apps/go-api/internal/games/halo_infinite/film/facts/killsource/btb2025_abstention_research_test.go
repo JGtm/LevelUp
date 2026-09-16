@@ -12,7 +12,7 @@ package killsource
 // IL NE TOURNE PAS EN CI ET N ASSERTE RIEN : c est un instrument de mesure, pas un garde-rail.
 //
 //	KS_BTB2025_FILMS=<racine>/<id8>[,<id8>...]   (ou KS_BTB2025_ROOT + KS_BTB2025_IDS)
-//	go test ./internal/games/halo_infinite/film/killsource/ -run TestBTB2025Abstention -v
+//	go test ./internal/games/halo_infinite/film/facts/killsource/ -run TestBTB2025Abstention -v
 
 import (
 	"context"
@@ -195,7 +195,7 @@ func statsNoms(evs []analysis.HighlightEvent) (xuids, tags, vides int) {
 // decoupage << gamertag en tete >>) le ferait echouer immediatement.
 //
 //	KS_BTB2025_ROOT=<cache>/film_chunks KS_BTB2025_NONREG=111fa685 \
-//	  go test ./internal/games/halo_infinite/film/killsource/ -run TestBTB2025NonRegression
+//	  go test ./internal/games/halo_infinite/film/facts/killsource/ -run TestBTB2025NonRegression
 func TestBTB2025NonRegression(t *testing.T) {
 	root, id := os.Getenv(btb2025RootEnv), os.Getenv("KS_BTB2025_NONREG")
 	if root == "" || id == "" {

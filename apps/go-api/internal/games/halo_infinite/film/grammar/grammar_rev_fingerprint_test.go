@@ -255,7 +255,7 @@ func racinesGrammaire(t *testing.T) []string {
 	return []string{
 		filepath.Join(filmDir, "source"),
 		filepath.Join(filmDir, "grammar"),
-		filepath.Join(filmDir, "killsource"),
+		filepath.Join(filmDir, "facts", "killsource"),
 		filepath.Join(filmDir, "facts", "objectives"),
 	}
 }

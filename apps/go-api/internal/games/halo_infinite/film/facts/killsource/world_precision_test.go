@@ -46,7 +46,7 @@ package killsource
 //	CGO_ENABLED=0 KSPREC_FILM=<repo>/data/cache/film_chunks/00502e52 \
 //	  KSPREC_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  KSPREC_MAP=Bazaar \
-//	  go test ./internal/games/halo_infinite/film/killsource/ \
+//	  go test ./internal/games/halo_infinite/film/facts/killsource/ \
 //	  -run '^TestKillSourceWorldPrecisionImpact$' -timeout 60m -v
 
 import (

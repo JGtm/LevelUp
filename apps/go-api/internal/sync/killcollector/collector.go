@@ -4,7 +4,7 @@ package killcollector
 // et c est TOUT ce qu il fait. Chacune des trois responsabilites vit ailleurs et n a pas le
 // droit de migrer ici :
 //
-//	decoder un film        games/halo_infinite/film/killsource   ne touche ni base ni reseau
+//	decoder un film        games/halo_infinite/film/facts/killsource   ne touche ni base ni reseau
 //	telecharger les chunks killsource_bridge.go                  ne decode pas
 //	ecrire les lignes      persist.KillSourcePersister           ne decide pas QUOI ecrire
 //	enchainer les trois    CE FICHIER                            ne contient aucune logique de decodage

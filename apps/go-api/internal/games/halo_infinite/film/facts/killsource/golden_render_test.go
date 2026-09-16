@@ -23,7 +23,7 @@ const enteteGolden = `# GOLDEN killsource — %s
 #   1. les films de reference sont des repertoires chunk_NN.bin sous data/cache/film_chunks/ ;
 #      ils se retelechargent avec  go run ./cmd/fetch_film_chunks/
 #   2. KILLSOURCE_FIXTURES=<racine des films> \
-#        go test ./internal/games/halo_infinite/film/killsource/ -run Golden -update
+#        go test ./internal/games/halo_infinite/film/facts/killsource/ -run Golden -update
 #
 # CHAQUE CHIFFRE PORTE LE NOM DE SON DENOMINATEUR. Un taux nu ne veut rien dire ici : trois
 # denominateurs coexistent hors ligne et ne donnent pas le meme resultat.

@@ -3,8 +3,8 @@ package replay
 import (
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // score_timeline.go — L'ASSEMBLAGE DE LA COURBE DE SCORE, PUR.

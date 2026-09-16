@@ -302,7 +302,7 @@ func parseRegistry(data []byte) *Registry {
 // grep -v _test.go` :
 //
 //	internal/games/halo_infinite/film/filmdec/film_context.go:254
-//	internal/games/halo_infinite/film/killsource/world.go:58   (via killsource/decode.go:123,
+//	internal/games/halo_infinite/film/facts/killsource/world.go:58   (via killsource/decode.go:123,
 //	                                                            paquet importe par killcollector
 //	                                                            et par replaybuild)
 //	internal/sync/killcollector/hits.go:113

@@ -37,7 +37,7 @@ package killsource
 // la bobine versionnee testdata/minibobine_000d5950 est mesuree sans garde.
 //
 //	CHUNK00_FILMS=<dir1>;<dir2> CGO_ENABLED=0 \
-//	  go test -tags research ./internal/games/halo_infinite/film/killsource/ \
+//	  go test -tags research ./internal/games/halo_infinite/film/facts/killsource/ \
 //	  -run TestE197IdentiteDePaquetContreFenetre -v -count=1 -timeout 3600s
 
 import (

@@ -23,7 +23,7 @@ package killsource
 //
 // REGENERATION :
 //
-//	KILLSOURCE_FIXTURES=<dir> go test ./internal/games/halo_infinite/film/killsource/ \
+//	KILLSOURCE_FIXTURES=<dir> go test ./internal/games/halo_infinite/film/facts/killsource/ \
 //	    -run Golden -update
 //
 // CE QUE LES GOLDEN FIGENT, ET POURQUOI CHACUN :

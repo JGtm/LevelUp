@@ -45,7 +45,7 @@ import (
 // qui annexait les sections suivantes de chunk_00 au registre).
 //
 // RECALCULEE LE 2026-09-14 (lot 1.2) SUR LE CADRAGE DU JEU, et non recopiee : elle est la
-// somme des entrees de `../killsource/testdata/minibobine_000d5950` sur le domaine
+// somme des entrees de `../facts/killsource/testdata/minibobine_000d5950` sur le domaine
 // `niveau | nom`. La valeur precedente (`0x61e492dd4de7fd4e`, lot 0 du 2026-08-17) hachait
 // `kind | flags | nom`, et celle que citait l'ancien commentaire de `registry.go`
 // (`0xa413610cd08e4355`) hachait « noms + flags » : trois domaines, trois valeurs — aucune

@@ -15,9 +15,9 @@ package replay
 // cinq arguments du depot — c'est ecrit champ par champ, a chaque fois que le cas se pose.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // Options règle l'assemblage du document de rejeu.
@@ -219,7 +219,7 @@ type Options struct {
 	// voie, et le registre le publie (cf. identity_registry_scoreboard.go).
 	Participants []Participant
 	// Bots : les bots que le film DÉCLARE (BOT_METADATA, paquet type 12), fournis par
-	// l'assembleur — le décodage vit chez son propriétaire unique (film/killsource), et ce
+	// l'assembleur — le décodage vit chez son propriétaire unique (film/facts/killsource), et ce
 	// paquet-ci est title-agnostic. FilmIndex est le slot de roster déclaré, Name porte le
 	// suffixe « [bot] ». Vide = film sans bot, ou décodage killsource indisponible.
 	Bots []BotIdentity

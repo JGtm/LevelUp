@@ -4,9 +4,9 @@ import (
 	"sort"
 	"strconv"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // flag_carries.go — LA REGLE : de quoi est faite la vie d'un drapeau, et ou elle s'arrete.

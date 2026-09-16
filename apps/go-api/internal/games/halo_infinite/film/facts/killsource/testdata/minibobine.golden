@@ -15,7 +15,7 @@
 # balayage. Seul TestGoldenFilms verrouille le balayage, sur les films entiers.
 #
 # REGENERATION :
-#   go test ./internal/games/halo_infinite/film/killsource/ -run TestGoldenMiniBobine -update
+#   go test ./internal/games/halo_infinite/film/facts/killsource/ -run TestGoldenMiniBobine -update
 
 ## COUVERTURE — chaque taux porte le nom de son denominateur
 10 / 93 couples REELS (couples reconstruits moins les couples FABRIQUES)

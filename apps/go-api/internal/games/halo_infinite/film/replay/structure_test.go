@@ -1106,7 +1106,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	// - v58 (lot 1.9.0) : L'ARTEFACT DIT QUELLE PART DE LUI VIENT D'UN REPLI. `coverage.fallbacks`
 	//   est NEUF : la liste `{name, hits}` des replis DÉCLENCHÉS pendant la cuisson, triée par
 	//   nom, absente quand aucun ne s'est déclenché. Un repli est une décision de secours prise
-	//   quand la lecture du film ne tranche pas ; le REGISTRE (`film/replay/fallback`) porte pour
+	//   quand la lecture du film ne tranche pas ; le REGISTRE (`film/facts/fallback`) porte pour
 	//   chacun sa condition typée, sa date de pose, sa cible et son critère de retrait (D14).
 	//   POURQUOI LA VERSION MONTE alors que le champ est optionnel : un artefact 57 ne peut pas
 	//   dire qu'il ne doit RIEN à un repli — il peut seulement ne rien en dire, et les deux se
