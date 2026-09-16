@@ -134,7 +134,8 @@ func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 			continue
 		}
 		rec, _, ok := TryDeltaAt(pay, s, w, cfg)
-		if !ok || rec.Slot != marchSignatureSlot || !w.GenerationMatches(rec.ID) {
+		if !ok || rec.Slot != marchSignatureSlot ||
+			!w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
 			continue
 		}
 		return s
@@ -149,7 +150,8 @@ func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 // meurt aussitôt (mesure : 3 morts perdues sur un film, dont un double kill).
 func marchLocate(pay []byte, w *World, cfg FrameConfig) int {
 	if s := marchLocateStrict(pay, w, cfg); s >= 0 {
-		if rec, _, ok := TryDeltaAt(pay, s, w, cfg); ok && w.GenerationMatches(rec.ID) {
+		if rec, _, ok := TryDeltaAt(pay, s, w, cfg); ok &&
+			w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
 			return s
 		}
 	}
@@ -163,6 +165,7 @@ func marchLocate(pay []byte, w *World, cfg FrameConfig) int {
 func marchRecordsOf(pay []byte, w *World, cfg FrameConfig, start int) []FrameRecord {
 	snap := w.Snapshot()
 	br := NewBitReader(pay)
+	br.PoserProfil(cfg.Profil)
 	br.Skip(start)
 	var recs []FrameRecord
 	for v := 0; v < marchViews && br.Remaining() >= 8; v++ {

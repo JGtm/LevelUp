@@ -441,9 +441,28 @@ package filmdec
 // desaligne les desers sans lever d erreur » —, et l oubli n existe plus. La CUISSON, elle,
 // prend les largeurs du CATALOGUE de la carte, jamais l auto-detection.
 //
+// LES DOUZE BASCULES DE GRAMMAIRE SUIVENT LE MEME CHEMIN (famille 2 du lot). Les A/B de
+// retro-ingenierie — controle de corruption per-composant, queue terminale d un record NEW,
+// deserialiseur d etat par archetype, `simulation-state` complet, portee baseline, grammaire
+// d ECRIVAIN du chemin absolu d i0, corps d action de mobilite (i54), corps d ancrage de
+// capacite (i59), inference de chaine, generation stricte, et les DEUX tables de largeurs
+// (calibrees, bouchon) — etaient DOUZE variables de paquet avec leurs douze reglages publics.
+// Elles deviennent [GrammaireBalayage], un champ du profil que le lecteur porte : un instrument
+// qui en pose une la pose pour SON balayage. Ratchet : 42 -> 30.
+//
+// LA GENERATION STRICTE ETAIT LE SECOND HERITAGE SILENCIEUX, et il est desormais ecrit :
+// `killsource.resetGlobals` levait `SetStrictGeneration(true)` pour tout le PROCESSUS et ne le
+// rabaissait jamais — la cuisson du rejeu qui suivait decodait donc, elle aussi, en generation
+// stricte. [killsource.ProfilDeDepart] le porte, et `replaybuild` le passe comme le reste.
+//
+// UN CADRE DE TRAME SE PREND AU CONTEXTE ([FilmContext.CadreDeBalayage]), plus a
+// `DefaultFrameConfig()` seul : ce dernier rend l INVARIANT du profil, et un balayage qui s en
+// contenterait decoderait aux largeurs d une carte qui n est pas celle de son film. C est ce
+// que l heritage de processus masquait ; `ScanObjectDeaths` est le site de production concerne.
+//
 // `KillSourceDecoderRev` ne bouge PAS : `killsource/` change de FORME (la calibration rend un
-// profil au lieu d ecrire dans le processus) mais les lignes PRODUITES sont identiques a
-// l octet — meme espace balaye, meme critere, meme vainqueur. Son golden est regenere pour
+// profil au lieu d ecrire dans le processus, `resetGlobals` disparait) mais les lignes
+// PRODUITES sont identiques a l octet — meme espace balaye, meme critere, meme vainqueur. Son golden est regenere pour
 // refiger le couple (revision, empreinte). `SchemaVersion` reste 60 : aucun champ publie ne
 // bouge.
 const GrammarRev = "grammar-2026-09-15.27"

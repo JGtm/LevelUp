@@ -40,7 +40,7 @@ func consumeBipedSpartanAbilityNonPredictedState(br *BitReader, rsp uint32) bool
 	st := AbilityNonPredictedState{Inner: -1}
 	st.Tag = uint32(br.ReadBits(2)) // FUN_142f2679c: FUN_1406d310c(4)=2 -> flat R(2) tag.
 	ok := true
-	if st.Tag == 3 && abilityAnchorBodyPorted {
+	if st.Tag == 3 && br.p.Grammaire.CorpsAncrageCapacite {
 		st.BodyWalked = true
 		ok = consumeAbilityAnchorBody(br, &st) // FUN_142f25e90
 		st.BodyOK = ok

@@ -125,6 +125,19 @@ package killcollector
 // balaye (21 largeurs d axe x 3 largeurs d index), meme critere, meme vainqueur, memes largeurs
 // pour toutes les passes qui suivent, y compris l heritage vers la cuisson du rejeu
 // (`filmdec/mouvement_herite.go`). Aucun match deja decode n est candidat au backlog.
+// 2026-09-17, LOT 2.3 — LA REVISION NE BOUGE TOUJOURS PAS, MEME RAISON, ET LE CHOIX EST ECRIT.
+// `killsource/` change encore de FORME, plus de contenu :
+//
+//	`calibration.Mouvement` devient `calibration.Profil` ([filmdec.ProfilDeBalayage]) et porte
+//	AUSSI le `param_4` retenu ; `resetGlobals` disparait au profit de [ProfilDeDepart], qui
+//	NOMME ce que `Decode` posait dans le processus (`param_4` force a zero, generation stricte
+//	levee) ; le resultat sort par [Result.ProfilCalibre], que `replaybuild` passe a
+//	`replay.BuildFromFilm`.
+//
+// LES LIGNES PRODUITES SONT IDENTIQUES A L OCTET : meme espace balaye, meme critere, meme
+// vainqueur, memes valeurs pour les passes suivantes — y compris l heritage vers la cuisson du
+// rejeu, qui passe desormais par un parametre au lieu de l etat du processus. Aucun match deja
+// decode n est candidat au backlog.
 const KillSourceDecoderRev = "killsource-2026-09-16.2"
 
 // L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :

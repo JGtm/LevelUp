@@ -56,3 +56,30 @@ func poserProfilDInstrument(p ProfilDeBalayage) func() {
 	profilDInstrument = p
 	return func() { profilDInstrument = prev }
 }
+
+// poserBasculeDInstrument pose une ou plusieurs bascules de grammaire sur le profil du harnais
+// et rend sa restauration. C est ce que les douze reglages publics de `filmdec` faisaient avant
+// le lot 2.3, mais borne aux fichiers de test.
+func poserBasculeDInstrument(f func(*GrammaireBalayage)) func() {
+	prev := profilDInstrument
+	f(&profilDInstrument.Grammaire)
+	return func() { profilDInstrument = prev }
+}
+
+// poserLargeurDInstrument pose (largeur >= 0) ou retire (largeur < 0) une largeur de saut sur le
+// profil du harnais : `calibree` remplace le deserialiseur d un composant, `bouchon` donne une
+// largeur provisoire a un composant non porte.
+func poserLargeurDInstrument(genre, nom string, largeur int) {
+	table := &profilDInstrument.Grammaire.LargeursCalibrees
+	if genre == "bouchon" {
+		table = &profilDInstrument.Grammaire.LargeursBouchon
+	}
+	if largeur < 0 {
+		delete(*table, nom)
+		return
+	}
+	if *table == nil {
+		*table = map[string]int{}
+	}
+	(*table)[nom] = largeur
+}

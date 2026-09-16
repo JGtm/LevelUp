@@ -49,8 +49,8 @@ package filmdec
 // LES PLUS SIMPLES plafonnent a 25 % dit que le probleme n'est pas (seulement) dans les
 // composants : il est EN AMONT — prologue de record, ou faux ancrages rendus par le balayeur.
 //
-// La calibration a balaye les deux bascules disponibles (`filmComponentCorruptionCheck` x
-// `newRecordTailBits`) : AUCUNE combinaison ne depasse 25 % / 13,6 %. Negatif net, critere ecrit
+// La calibration a balaye les deux bascules disponibles (`profilDInstrument.Grammaire.ControleDeCorruption` x
+// `profilDInstrument.Grammaire.BitsDeQueueRecordNew`) : AUCUNE combinaison ne depasse 25 % / 13,6 %. Negatif net, critere ecrit
 // avant la mesure (60 % sur les records a plusieurs composants).
 //
 // **NE PAS EXPLOITER LES VALEURS DE ti=11 AVANT QUE CE CHAINAGE NE MONTE.**

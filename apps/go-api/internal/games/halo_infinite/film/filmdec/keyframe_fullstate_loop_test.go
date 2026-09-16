@@ -209,15 +209,11 @@ func kf7eChain(f kf35Film, pay []byte, from int, b kf35Bound) bool {
 
 // kf7ePass mesure UNE configuration sur UN film, bascules globales installees et restaurees.
 func kf7ePass(f kf35Film, c kf7eCase) kf7eTally {
-	prevCorr, prevI0 := filmComponentCorruptionCheck, keyframeWriterI0Grammar
-	prevScope := SetKeyframeBaselineScope(c.Scope)
-	SetFilmComponentCorruptionCheck(c.Corr)
-	SetKeyframeWriterI0Grammar(c.I0)
-	defer func() {
-		SetFilmComponentCorruptionCheck(prevCorr)
-		SetKeyframeWriterI0Grammar(prevI0)
-		SetKeyframeBaselineScope(prevScope)
-	}()
+	defer poserBasculeDInstrument(func(g *GrammaireBalayage) {
+		g.PorteeBaseline = c.Scope
+		g.ControleDeCorruption = c.Corr
+		g.GrammaireEcrivainI0 = c.I0
+	})()
 	tal := newKF7ETally()
 	for _, pay := range f.Pays {
 		for _, b := range kf35BoundedRecs(pay) {
@@ -256,9 +252,7 @@ func TestKF7EFullStateLoop(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
 
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
+	defer poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })()
 
 	for _, f := range films {
 		kf7eOneFilm(t, f)
@@ -314,12 +308,10 @@ func TestKF7EProfileI0(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
 
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
-	prevCorr := filmComponentCorruptionCheck
-	SetFilmComponentCorruptionCheck(false)
-	defer SetFilmComponentCorruptionCheck(prevCorr)
+	defer poserBasculeDInstrument(func(g *GrammaireBalayage) {
+		g.SimStateComplet = true
+		g.ControleDeCorruption = false
+	})()
 
 	for _, f := range films {
 		kf7eProfileOne(t, f)
@@ -334,10 +326,9 @@ func kf7eProfileOne(t *testing.T, f kf35Film) {
 	defer restoreStubs()
 
 	for _, on := range []bool{false, true} {
-		prev := keyframeWriterI0Grammar
-		SetKeyframeWriterI0Grammar(on)
+		prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.GrammaireEcrivainI0 = on })
 		stats := kf35bProfile(f, kf7dVariant)
-		SetKeyframeWriterI0Grammar(prev)
+		prev()
 		for _, s := range stats {
 			if s.Name != kf7dI0 {
 				continue

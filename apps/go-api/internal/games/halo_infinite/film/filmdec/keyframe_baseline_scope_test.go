@@ -40,14 +40,10 @@ var kf35cScopes = []struct {
 // kf35cSetup installe les reglages communs aux deux branches de l'A/B et rend leur
 // restauration. Un seul endroit, pour qu'aucune passe ne parte d'un etat different.
 func kf35cSetup() func() {
-	prevSim := simStateComplete
-	prevCorr := filmComponentCorruptionCheck
-	SetSimStateComplete(true)
-	SetFilmComponentCorruptionCheck(false)
-	return func() {
-		SetSimStateComplete(prevSim)
-		SetFilmComponentCorruptionCheck(prevCorr)
-	}
+	return poserBasculeDInstrument(func(g *GrammaireBalayage) {
+		g.SimStateComplet = true
+		g.ControleDeCorruption = false
+	})
 }
 
 // TestKF35CBaselineScope est LA MESURE du lot : atterrissage bit-exact, longueurs et
@@ -59,7 +55,7 @@ func TestKF35CBaselineScope(t *testing.T) {
 	defer kf35cSetup()()
 
 	for _, s := range kf35cScopes {
-		prev := SetKeyframeBaselineScope(s.Baseline)
+		prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.PorteeBaseline = s.Baseline })
 		t.Logf("======== %s ========", s.Label)
 		for _, f := range films {
 			_, restore := kf35bInstallPrecision(t, f.Name)
@@ -68,7 +64,7 @@ func TestKF35CBaselineScope(t *testing.T) {
 			}
 			restore()
 		}
-		SetKeyframeBaselineScope(prev)
+		prev()
 	}
 }
 
@@ -82,7 +78,7 @@ func TestKF35CDispersion(t *testing.T) {
 	defer kf35cSetup()()
 
 	for _, s := range kf35cScopes {
-		prev := SetKeyframeBaselineScope(s.Baseline)
+		prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.PorteeBaseline = s.Baseline })
 		t.Logf("======== dispersion · %s ========", s.Label)
 		for _, f := range films {
 			_, restore := kf35bInstallPrecision(t, f.Name)
@@ -91,7 +87,7 @@ func TestKF35CDispersion(t *testing.T) {
 			}
 			restore()
 		}
-		SetKeyframeBaselineScope(prev)
+		prev()
 	}
 }
 
@@ -104,11 +100,11 @@ func TestKF35CProfile(t *testing.T) {
 	defer kf35cSetup()()
 
 	for _, s := range kf35cScopes {
-		prev := SetKeyframeBaselineScope(s.Baseline)
+		prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.PorteeBaseline = s.Baseline })
 		t.Logf("======== profil par composant · %s ========", s.Label)
 		for _, f := range films {
 			kf35bProfileOne(t, f, false)
 		}
-		SetKeyframeBaselineScope(prev)
+		prev()
 	}
 }

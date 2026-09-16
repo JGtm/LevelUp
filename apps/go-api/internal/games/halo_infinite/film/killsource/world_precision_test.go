@@ -147,7 +147,6 @@ func TestKillSourceWalkArchetypes(t *testing.T) {
 	}
 	release := filmdec.LockProcessDecode()
 	defer release()
-	resetGlobals()
 	prev := filmdec.ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 
 	src, err := filmsource.LoadDir(dir, nil)

@@ -63,13 +63,17 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 		return tr, 0, false
 	}
 	name := tr.Comps[len(tr.Comps)-1].Name
-	if _, preset := unportedStubWidth[name]; preset {
+	if _, preset := cfg.Profil.Grammaire.largeurBouchon(name); preset {
 		return tr, 0, false // an external harness already stubs it; do not fight it
 	}
 	savedPos, savedRef := observateur.PosCaptureHook, observateur.UnitRefHook
 	observateur.PosCaptureHook, observateur.UnitRefHook = nil, nil
 	defer func() { observateur.PosCaptureHook, observateur.UnitRefHook = savedPos, savedRef }()
 
+	// LA TABLE DE BOUCHONS EST CELLE DE CE BALAYAGE (lot 2.3) : `repairUnportedComponent`
+	// essaie des largeurs sur SON cadre, et ce cadre meurt avec lui. Avant, la table etait une
+	// variable de paquet que chaque essai ecrivait — donc un etat que tout le processus voyait.
+	cfg.Profil.Grammaire.LargeursBouchon = map[string]int{}
 	frameLen := len(buf) * 8
 	redecode := func() EntityTrace {
 		br := NewBitReader(buf)
@@ -84,7 +88,7 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 	byEnd := map[int][]int{}
 	var order []int
 	for stub := 0; stub <= chainCompMaxStub; stub++ {
-		unportedStubWidth[name] = stub
+		cfg.Profil.Grammaire.LargeursBouchon[name] = stub
 		t := redecode()
 		if t.DesyncAt != -1 || t.EndBit > frameLen {
 			continue
@@ -94,7 +98,7 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 		}
 		byEnd[t.EndBit] = append(byEnd[t.EndBit], stub)
 	}
-	delete(unportedStubWidth, name)
+	delete(cfg.Profil.Grammaire.LargeursBouchon, name)
 	sort.Ints(order)
 	if len(order) == 0 {
 		return tr, 0, false
@@ -107,9 +111,9 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 		return tr, 0, false
 	}
 	stub := byEnd[winEnd][0]
-	unportedStubWidth[name] = stub
+	cfg.Profil.Grammaire.LargeursBouchon[name] = stub
 	t := redecode()
-	delete(unportedStubWidth, name)
+	delete(cfg.Profil.Grammaire.LargeursBouchon, name)
 	if t.DesyncAt != -1 || t.EndBit != winEnd {
 		return tr, 0, false
 	}

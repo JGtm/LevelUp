@@ -307,7 +307,7 @@ func kf35ApplyStubs(f kf35Film, v kf35Variant) (stubbed []string, restore func()
 				if !seen[name] {
 					seen[name] = true
 					stubbed = append(stubbed, fmt.Sprintf("i%d %s", tr.DesyncAt, name))
-					SetUnportedStubWidth(name, 0)
+					poserLargeurDInstrument("bouchon", name, 0)
 					added = true
 				}
 			}
@@ -322,7 +322,7 @@ func kf35ApplyStubs(f kf35Film, v kf35Variant) (stubbed []string, restore func()
 	}
 	return stubbed, func() {
 		for _, n := range names {
-			SetUnportedStubWidth(n, -1)
+			poserLargeurDInstrument("bouchon", n, -1)
 		}
 	}
 }
@@ -379,15 +379,14 @@ func TestKF35FullState(t *testing.T) {
 	defer release()
 
 	for _, corr := range []bool{false, true} {
-		prev := filmComponentCorruptionCheck
-		SetFilmComponentCorruptionCheck(corr)
+		prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = corr })
 		t.Logf("======== corruption-check du mode film = %v ========", corr)
 		for _, v := range kf35Variants {
 			for _, f := range films {
 				kf35Report(t, f, v)
 			}
 		}
-		SetFilmComponentCorruptionCheck(prev)
+		prev()
 	}
 }
 

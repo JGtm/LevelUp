@@ -39,7 +39,7 @@ package filmdec
 // LE MOT DE CONTROLE EST ABSENT, ET C'EST UNE PREDICTION VERIFIEE : s'il etait ecrit, i0
 // tomberait a 218 et l'oracle d'equipe de la phase 3 (16 films en accord exact, 1 seul
 // decalage retenu sur 456) aurait designe 218. Le depot portait deja cette mesure par une
-// autre voie : `filmComponentCorruptionCheck` est a `false` par defaut.
+// autre voie : `profilDInstrument.Grammaire.ControleDeCorruption` est a `false` par defaut.
 //
 // LES CONTROLES DE CE FICHIER, ECRITS AVANT LA MESURE :
 //

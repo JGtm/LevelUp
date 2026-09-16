@@ -145,7 +145,7 @@ func consumeFullStateDefaultBlock(br *BitReader, ti uint32, sansEtatParDefaut bo
 	n1 := int32(br.ReadBits(mot))           //nolint:gosec // 32 bits lus, compares SIGNES
 	if !sansEtatParDefaut && n1 > 0 {       // FUN_142e2bfd0 : `if (0 < (int)uVar7)`, comparaison SIGNEE
 		consumeKeyframeDefaultState(br, ti)
-		if filmComponentCorruptionCheck {
+		if br.p.Grammaire.ControleDeCorruption {
 			// FUN_142e2bfd0 : mot de controle INCONDITIONNEL (pas de R(1) de garde ici,
 			// contrairement au controle PAR COMPOSANT de FUN_142e2c690).
 			br.ReadBits(mot)

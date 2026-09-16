@@ -225,7 +225,7 @@ func lireEquipeDuRecord(pay []byte, recBit int, reg *Registry, prof ProfilDeBala
 	br.SetBitPos(recBit + cadre.EnTeteBits + cadre.MotDeTailleBits)
 	idx = readManagedPlayerDefaultState(br)
 	attendu := br.BitPos() + cadre.MotDeTailleBits
-	if filmComponentCorruptionCheck {
+	if prof.Grammaire.ControleDeCorruption {
 		attendu += cadre.MotDeTailleBits
 	}
 	if attendu != i0 || i0+teamDesignatorBits > len(pay)*8 {

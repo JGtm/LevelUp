@@ -218,8 +218,7 @@ func litLoc(reg *filmdec.Registry, worldPath string, chunkIdx, maxPkts int) {
 		Profil: filmdec.ProfilDeBalayageParDefaut()}
 	cfg.Profil.PoserParamEtat(2)
 	// stub i63 pour franchir le dernier composant biped et enchaîner les records.
-	filmdec.SetUnportedStubWidth("biped-action-component", 48)
-	defer filmdec.SetUnportedStubWidth("biped-action-component", -1)
+	cfg.Profil.Grammaire.LargeursBouchon = map[string]int{"biped-action-component": 48}
 
 	var t0 []packet
 	for _, p := range pkts {

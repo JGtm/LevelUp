@@ -45,13 +45,16 @@ type ProfilDeBalayage struct {
 	// et le drapeau qui dit qu il l a force. Hors balayage, la table par composant decide seule.
 	ParamEtat       uint32
 	ParamEtatImpose bool
+	// Grammaire : les bascules A/B de retro-ingenierie, chacune a son defaut de production.
+	Grammaire GrammaireBalayage
 }
 
 // ProfilDeBalayageParDefaut rend l INVARIANT — la valeur qu un lecteur porte quand aucun
 // balayage ne lui a rien pose. Ses trois composantes viennent des MEMES fonctions que
 // [ResolveProfile] : il n existe pas de seconde table de valeurs.
 func ProfilDeBalayageParDefaut() ProfilDeBalayage {
-	return ProfilDeBalayage{Mouvement: mouvementDuProfil(), Cadre: cadreDuProfil(), MPP: mppDuProfil()}
+	return ProfilDeBalayage{Mouvement: mouvementDuProfil(), Cadre: cadreDuProfil(),
+		MPP: mppDuProfil(), Grammaire: grammaireDuProfil()}
 }
 
 // LargeursObjetDuMonde rend les largeurs d axe du chemin world-object de ce profil.
@@ -99,3 +102,102 @@ func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l I0Layout) 
 // descripteur d un composant rend a FUN_14076cb60) pour les balayages qui prennent ce profil.
 // Cf. [paramForComponent] : le repli n est consulte que HORS de la table par composant.
 func (p *ProfilDeBalayage) PoserParamEtat(v uint32) { p.ParamEtat, p.ParamEtatImpose = v, true }
+
+// GrammaireBalayage porte les BASCULES DE GRAMMAIRE d un balayage : les choix de lecture qui
+// changent la consommation de bits sans venir du flux.
+//
+// # CE QU ELLES SONT, ET POURQUOI ELLES VIVENT ICI
+//
+// Ce ne sont ni des largeurs mesurees (le profil du film) ni des observations (l observateur) :
+// ce sont des A/B de RETRO-INGENIERIE — « le corps de ce composant est-il porte ? », « la
+// portee baseline est-elle levee ? », « ce composant est-il saute a une largeur de bouchon ? ».
+// Chacune a son defaut de PRODUCTION, et chacune n a d autre ecrivain qu un instrument de
+// mesure ou un harnais de calibration.
+//
+// ELLES ETAIENT DOUZE VARIABLES DE PAQUET jusqu au lot 2.3, avec leurs douze reglages publics :
+// tout instrument qui en posait une la posait pour le PROCESSUS, et c est l une des deux
+// raisons pour lesquelles tout decodage passait sous un verrou. Elles voyagent desormais avec
+// le lecteur de bits, comme les largeurs.
+type GrammaireBalayage struct {
+	// ControleDeCorruption : en mode FILM/replay (FUN_1404f2b4c()==2), FUN_14076cb60 lit APRES
+	// chaque composant present un R(1) garde ; si le bit vaut 1, un R(32) sentinelle (marqueur
+	// 0xbcddcba « entity component corrupt »). Defaut false — le decodeur sautait ces bits, et
+	// la mesure live (record NEW bipede a 1924 bits contre 1863 lus) a etabli la grammaire.
+	ControleDeCorruption bool
+	// BitsDeQueueRecordNew : bits terminaux consommes APRES la boucle de composants d un record
+	// NEW (candidat : la queue de FUN_1408f1aa4, non identifiee bit-exact). Defaut 0 =
+	// comportement historique ; le chemin delta n appelle pas `TraverseEntity`, donc il n est
+	// pas affecte.
+	BitsDeQueueRecordNew int
+	// DeserEtatParArchetype route les archetypes non-bipede vers leur deserialiseur
+	// vtable[0x60] porte (`default_state_arch.go`) au lieu du Skip(0) historique. Defaut TRUE ;
+	// le passer a false rejoue la ligne de base d avant le portage.
+	DeserEtatParArchetype bool
+	// SimStateComplet : si vrai, i60 (simulation-state) est declare ENTIEREMENT decode et la
+	// traversee continue vers i61-63. Defaut false — la grammaire de la queue est etablie
+	// (`consumeSimStateHandleTail`, lot R7-b), ce qui manque est la SOURCE DES LARGEURS D AXE
+	// de cette queue sur le chemin de production. Critere de bascule du defaut : que le chemin
+	// absolu d i0 tire ses trois largeurs de la carte du match.
+	SimStateComplet bool
+	// PorteeBaseline mirroite `DAT_144e61ea0` : une PORTEE, pas un reglage. Les lecteurs d etat
+	// complet du groupe `142e2*`/`142e3*` la levent juste AVANT l appel vtable[0x60] et la
+	// rabaissent juste apres ; pendant cette portee, tous les lecteurs de position passent du
+	// quantifie au BRUT 96 bits. Defaut false depuis le 2026-08-17 ; critere de bascule :
+	// l atterrissage bit-exact des 591 records `ti=35` bornes au-dessus de 50 %.
+	PorteeBaseline bool
+	// GrammaireEcrivainI0 route le chemin ABSOLU d i0 sur la grammaire que l ECRIVAIN d etat
+	// complet du jeu pose (lot R7-d) : le 3e bit ne supprime pas la charge utile, il choisit la
+	// table de plage et ouvre la queue de handle ; le champ de 2 bits vient EN DERNIER. Defaut
+	// false depuis le 2026-08-17 (R7-e) : la correction n est pas prouvee bit-exacte sur
+	// l oracle de frontiere, et ce chemin sert la trajectoire de PRODUCTION du rejeu 2D.
+	// Retrait de la bascule vise a la cloture du chantier image-cle, au plus tard le 2026-10-31.
+	GrammaireEcrivainI0 bool
+	// CorpsActionMobilite : le corps de FUN_1408f02c8 (i54) est-il decode ? Defaut TRUE.
+	CorpsActionMobilite bool
+	// CorpsAncrageCapacite : le corps tag==3 d i59 est-il decode ? Defaut TRUE.
+	CorpsAncrageCapacite bool
+	// InferenceChaine route l inference de slot non lie par le resolveur RECURSIF
+	// (`frame_chain_infer.go`), qui voit a travers des suites de transitoires que la
+	// confirmation a un pas ne franchit pas. Defaut false (comportement historique).
+	InferenceChaine bool
+	// LargeursCalibrees remplace le deserialiseur d un composant par un SAUT de largeur fixe,
+	// pour un harnais de calibration keye sur un film et une carte. Vide par defaut. Le
+	// composant dead-state ne doit PAS y entrer (il est decode pour lire l index de participant
+	// du tueur absolu).
+	LargeursCalibrees map[string]int
+	// GenerationStricte exige que l eid COMPLET d un delta (tag de generation inclus)
+	// corresponde a celui pose au binding, comme le fait `FUN_1406caad8` (`entry[0] != eid` ->
+	// return 3, corps NON lu, boucle abandonnee). Defaut false : les liaisons issues des
+	// images-cles portent une generation qui peut avoir change depuis.
+	//
+	// `killsource` LE LEVE POUR TOUT SON DECODAGE ([killsource.ProfilDeDepart]) — et il le
+	// levait jusqu au lot 2.3 pour tout le PROCESSUS, donc aussi pour la cuisson du rejeu qui
+	// suivait. Ce fait est desormais porte par le profil, comme les largeurs calibrees.
+	GenerationStricte bool
+	// LargeursBouchon donne une largeur PROVISOIRE a un composant dont le deserialiseur n est
+	// pas encore porte, pour que la traversee continue au-dela (recherche de la largeur d une
+	// queue manquante par chainage de records). Vide par defaut : un composant non porte
+	// desynchronise. N est PAS un chemin de decodage de production.
+	LargeursBouchon map[string]int
+}
+
+// grammaireDuProfil rend l INVARIANT des bascules — les valeurs de PRODUCTION.
+func grammaireDuProfil() GrammaireBalayage {
+	return GrammaireBalayage{
+		DeserEtatParArchetype: true,
+		CorpsActionMobilite:   true,
+		CorpsAncrageCapacite:  true,
+	}
+}
+
+// largeurCalibree rend la largeur de saut calibree d un composant, si un harnais en a pose une.
+func (g GrammaireBalayage) largeurCalibree(nom string) (int, bool) {
+	w, ok := g.LargeursCalibrees[nom]
+	return w, ok
+}
+
+// largeurBouchon rend la largeur provisoire d un composant non porte, si un harnais en a pose une.
+func (g GrammaireBalayage) largeurBouchon(nom string) (int, bool) {
+	w, ok := g.LargeursBouchon[nom]
+	return w, ok
+}
