@@ -151,42 +151,6 @@ const (
 	statMaxCounter = 1 << 20
 )
 
-// StatValue porte les valeurs d'un composant. Le sens de chaque canal depend du composant :
-// le score de mode est en A, le score personnel en B (cf. score.go).
-//
-// # QUATRE CANAUX, PAS DEUX — et les deux derniers n'ont jamais ete lus (2026-08-31)
-//
-// La grammaire du composant porte DEUX valeurs inconditionnelles (A, B) puis DEUX DRAPEAUX,
-// chacun commandant une valeur CONDITIONNELLE. Jusqu'ici [decodeStatComponent] lisait ces deux
-// dernieres pour AVANCER le curseur, et les jetait. A 28 composants et 2 canaux perdus, ce sont
-// **56 emplacements que rien dans le depot n'avait jamais regardes** — et la question ouverte
-// de l'Assaut (« ou est l'ARMEMENT de la bombe ? », dont le releve A0.3 dit qu'il n'a aucun
-// increment dans les canaux A et B) tombe exactement dans cet angle mort.
-//
-// C et D ne sont donc pas une commodite : ce sont les deux tiroirs qu'on n'avait pas ouverts.
-// `HasC` / `HasD` disent si le drapeau etait pose — un canal ABSENT et un canal a ZERO sont
-// deux choses differentes, et les confondre ferait lire un compteur la ou il n'y a rien.
-type StatValue struct {
-	A, B       int64
-	C, D       int64
-	HasC, HasD bool
-}
-
-// StatRecord est un enregistrement d'entite decode d'un paquet FRAME.
-type StatRecord struct {
-	// TimeMS est l'instant de l'emission sur l'horloge du film (meme base que le
-	// TimeMS des ObjectiveEvent).
-	TimeMS int
-	// Slot identifie l'entite : 6 et 8 sont les deux equipes, 10..24 les huit joueurs.
-	Slot int
-	// Round est la MANCHE que decrit cet enregistrement, 0-based (0 = premiere manche). Elle
-	// est lue dans les en-tetes de 5 bits du premier composant. Un compteur repart de zero a
-	// chaque manche : le total d'un match est la SOMME des manches, jamais la derniere valeur.
-	Round int
-	// Comps porte les composants effectivement transportes par cet enregistrement.
-	Comps map[int]StatValue
-}
-
 // IsTeamSlot dit si un slot designe une entite d'equipe (par opposition a un joueur).
 func IsTeamSlot(slot int) bool { return slot <= statTeamSlotMax }
 

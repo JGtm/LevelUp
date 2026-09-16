@@ -10,6 +10,7 @@ package killcollector
 import (
 	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 	"levelup/go-api/internal/persist"
 )
@@ -37,7 +38,7 @@ import (
 func BuildKillSourceBatch(matchID string, res *killsource.Result, ids MatchIdentities) persist.KillSourceBatch {
 	batch := persist.KillSourceBatch{
 		MatchID:     matchID,
-		DecoderRev:  KillSourceDecoderRev,
+		DecoderRev:  facts.Rev,
 		Publishable: res.LineByLinePublishable(),
 		Deaths:      make([]persist.KillEventInsert, 0, len(res.Kills)),
 	}

@@ -42,7 +42,7 @@ import (
 
 // WeaponShotsDecoderRev — la version du producteur de tirs, ecrite sur CHAQUE ligne.
 //
-// Elle est DISTINCTE de [KillSourceDecoderRev] bien que les deux passes soient simultanees :
+// Elle est DISTINCTE de [facts.Rev] bien que les deux passes soient simultanees :
 // les deux lectures n ont ni le meme code, ni le meme espace d identifiants (filmshell 64 bits
 // ici, tag jpt! 32 bits la-bas), et un changement de l une ne demande pas de redecoder l autre.
 // Les confondre couterait un redecodage complet a chaque changement de l un des deux.

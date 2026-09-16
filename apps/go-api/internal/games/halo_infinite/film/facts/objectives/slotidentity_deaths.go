@@ -50,17 +50,6 @@ const (
 	deathInstantMin = 3
 )
 
-// DeathInstant est une mort DATEE ET NOMMEE, telle que le fil des morts du film la donne.
-// L'appelant la fournit : ce paquet ne decode pas le fil des morts (il a un seul proprietaire
-// dans le depot, `games/halo_infinite/film/replay`) et n'ouvre aucune base.
-type DeathInstant struct {
-	// XUID de la victime, en decimal — meme ecriture que [PlayerLine.XUID].
-	XUID string
-	// TimeMS est l'instant de la mort sur l'horloge du MATCH, la meme que celle des
-	// [StatRecord].
-	TimeMS int
-}
-
 // IdentityStats porte les denominateurs du pont resolu : combien de slots chaque voie nomme,
 // laquelle a ete retenue, et combien de slots ont ete ECARTES parce que les deux se
 // contredisaient.

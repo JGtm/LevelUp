@@ -449,33 +449,6 @@ type Stats struct {
 	Appariement ApparStats
 }
 
-// ApparStats : D OU VIENT L APPARIEMENT `dead-state <-> kill-feed` de chaque ligne PUBLIEE
-// (lot 1.9.7).
-//
-// AUCUN RATIO — les taux se calculent chez le lecteur, avec le denominateur qu il nomme. Les
-// quatre premiers champs se somment exactement aux lignes publiees par les temps 1 a 6 de
-// l hybride ; le cinquieme est un DIAGNOSTIC et n en fait pas partie.
-type ApparStats struct {
-	// Identite : l appariement a ete decide par l IDENTITE DE PAQUET — le film a ecrit le
-	// dead-state et le kill-event 85 dans le MEME paquet. C est la part LUE de la publication.
-	Identite int
-	// Fenetre : LE REPLI `repli_appariement_par_fenetre_temporelle` aux temps 1 a 3 (couple
-	// exact et source auto-infligee). Tant qu il monte, des lignes sont encore appariees par une
-	// coincidence temporelle de 2,5 s : c est lui qui dira quand le repli pourra etre retire
-	// (D14 d).
-	Fenetre int
-	// BotFenetre : LE REPLI `repli_mort_de_bot_premier_candidat` aux temps 4 et 5. Le kill-feed
-	// etant humain-seul, ces instants ne portent presque jamais d identite : le repli y est la
-	// voie NORMALE, et son compte le mesure au lieu de le supposer.
-	BotFenetre int
-	// NonRevendiqueeFenetre : LE REPLI `repli_mort_non_revendiquee_la_plus_proche` au temps 6.
-	NonRevendiqueeFenetre int
-	// CouplesSansIdentite : couples publies du kill-feed auxquels AUCUN kill-event 85 ne s est
-	// attache. C est le diagnostic typé qui OUVRE le repli de la fenetre (D14 b) — sans lui, un
-	// compte de replis ne designerait aucune correction.
-	CouplesSansIdentite int
-}
-
 // PathStats : le gate (b) d une voie. `Population` est ce qu elle a propose, `Matched` ce dont
 // le couple exact existe au kill-feed dans la fenetre, `Published` ce qui a effectivement ete
 // publie (une mort deja couverte par une voie plus contrainte ne l est pas deux fois).
