@@ -225,29 +225,29 @@ token PROPRE du joueur pour les succès Xbox Live ; le store rend le sentinelle
 
 ## 7. Étape 4 — Cohérence CLI / serveur (C-C, C-E, D3, D5 ; moyen)
 
-- [ ] 4.1 `cmd/levelup/migrations_cli.go` : `applyMigrationsOnDB` déplacé depuis
+- [x] 4.1 `cmd/levelup/migrations_cli.go` : `applyMigrationsOnDB` déplacé depuis
       `cmd_backfill.go:375` (un seul exemplaire) ; nouveau `applySharedMigrationsForTitle(cfg, titleSlug) error`
       = ouverture identique + `migration.RunForTitleDB(db, titleSlug, migration.TargetShared)`
       (pas `RunForDB`, qui force `DefaultSlug`) ; chemin via `PathResolver.SharedDBPath(titleSlug)`.
       Appelé en tête des quatre runners de sync, `slog.InfoContext` « migrations shared : N
       appliquées » (0 = à jour).
-- [ ] 4.2 `internal/sync/engine.go:482-503` : `OpenReadForQuery` → `duckdbpkg.OpenReadWriteShared`
+- [x] 4.2 `internal/sync/engine.go:482-503` : `OpenReadForQuery` → `duckdbpkg.OpenReadWriteShared`
       (même durée de vie, même `defer`) ; `engine_postsync_csr.go:295-312` (seed de catalogue) et
       `runAchievementsSync:170` : utiliser `e.metaDB` s'il est non nil, sinon ouvrir comme avant.
       Le WARN « metadata inaccessible » ne doit plus apparaître sur une passe CLI normale.
       Vérifier sur pièces que les quatre lecteurs de `e.metaDB` (C-E) ne posent pas de
       contrainte RO.
-- [ ] 4.3 `internal/platform/auth/access_token_store_first.go:50-60` : `errors.Is(err, ErrUserTokensNotFound)`
+- [x] 4.3 `internal/platform/auth/access_token_store_first.go:50-60` : `errors.Is(err, ErrUserTokensNotFound)`
       → retour sans `ErrorContext` ; `internal/sync/engine_postsync_csr.go:133-138` : Debug →
       `slog.InfoContext(ctx, "post-sync: succès Xbox Live sautés — aucun token propre pour ce profil", "gamertag", …)`.
       Un seul journal par passe.
-- [ ] 4.4 Tests : `migrations_cli_test.go` — `applySharedMigrationsForTitle` sur une base
+- [x] 4.4 Tests : `migrations_cli_test.go` — `applySharedMigrationsForTitle` sur une base
       temporaire (`t.TempDir()`) crée `match_registry` avec `team_0_score INTEGER` (preuve que
       les steps title-owned jouent : `cmd/levelup/main.go:55` câble `titleseams.RegisterAll`) ;
       l'ORDRE « migrations avant `RunFull` » est vérifié sur pièces et noté `[~]` (pas de seam
       de moteur à inventer). `access_token_store_first_test.go` — store vide → `("", nil)` et
       aucune ligne ERROR capturée (handler slog de test). 4.2 : `go test -tags=integration -p 1 ./internal/sync/ -run 'Catalog|Achievements|PostSync'`.
-- [ ] 4.5 Baseline : paires renommées/supprimées retirées si besoin.
+- [x] 4.5 Baseline : paires renommées/supprimées retirées si besoin.
 
 **Gate G4** : `go test ./cmd/levelup/ ./internal/sync/ ./internal/platform/auth/ -count=1 -timeout 30m` → 0 ;
 `go test -tags=integration -p 1 ./internal/sync/ -timeout 30m` → 0 ; `grep -rn "func applyMigrationsOnDB" cmd/`
@@ -428,3 +428,58 @@ Journal de phase : section « Avancement » en fin de fichier. Reprise : la lire
   `scripts/check_test_baseline.sh` daté du 2026-09-16 (lot robustesse, étape 3, D4).
   Les tests supprimés des deux fichiers effacés n'étaient PAS dans la baseline (créés le
   2026-09-16, vérifié : 0 ligne chacun).
+
+### Étape 4 — Cohérence CLI / serveur — CLOSE le 2026-09-16 22:12
+
+- Items : 4.1 `[x]`, 4.2 `[x]`, 4.3 `[x]`, 4.4 `[x]` (avec le sous-point « ordre » en `[~]`,
+  cf. ci-dessous, comme le plan le prescrit lui-même), 4.5 `[x]`.
+- 4.1 : `cmd/levelup/migrations_cli.go` — `applyMigrationsOnDB` déplacé depuis
+  `cmd_backfill.go` (UN seul exemplaire, 13 appelants inchangés) + `applySharedMigrationsForTitle`
+  (`PathResolver.SharedDBPath`, `migration.RunForTitleDB(db, slug, TargetShared)`, jamais
+  `RunForDB` qui force `DefaultSlug`). Appelée en tête des QUATRE runners, AVANT la création du
+  pool (échec = on ne touche pas au réseau). Journal
+  `slog.InfoContext("migrations shared appliquées", title_slug, appliquees, db)` : le compte
+  vient d'un `count(*)` sur `schema_migrations` avant/après — `RunForTitleDB` ne rend PAS de
+  compteur (vérifié sur pièces, `registry.go:223`) ; le compteur est best-effort et ne peut pas
+  faire échouer une passe.
+- 4.2 : `engine.go` ouvre metadata par `OpenReadWriteShared` (clé `rw:`), même durée de vie,
+  `Close()` refcompté (erreur journalisée, jamais avalée) ; `engine_postsync_csr.go` — le seed de
+  catalogue ET `runAchievementsSync` réutilisent `e.metaDB` quand il est non nil, sinon ouvrent
+  comme avant. Les leases `KindPlayer` / `KindMetadata` ne bougent pas.
+  **Vérification sur pièces des lecteurs de `e.metaDB`** : `engine_batch_path.go:53`
+  (EnrichRegistryFromMetadata), `assetnames_wiring.go:59`, `citations_backfill.go:423`,
+  `convergence.go:657`, `engine_postsync.go:342` — aucun n'exige la lecture seule, et deux
+  ÉCRIVENT (asset_translations, `ops.CatalogRefreshFromRegistry`) : le handle RW est la bonne
+  ouverture, l'ancienne clé `ro:` était le vrai défaut.
+- 4.3 : `access_token_store_first.go` rend `("", nil)` SANS `ErrorContext` sur
+  `errors.Is(err, ErrUserTokensNotFound)` (la branche AU3 « store illisible » reste pour les
+  autres erreurs) ; `engine_postsync_csr.go` journalise UNE fois en Info « post-sync : succès
+  Xbox Live sautés — aucun token propre pour ce profil ».
+- 4.4 : `cmd/levelup/migrations_cli_test.go` (2 tests, `t.TempDir()`, aucune base sous `data/`) —
+  la passe crée `match_registry` avec `team_0_score` / `team_1_score` en **INTEGER** (preuve que
+  les étapes title-owned jouent : le test câble `wireStartupSeams`, comme `main()`), et elle est
+  idempotente ; slug vide → titre par défaut. `access_token_store_first_test.go` — store sans
+  fichier → `("", nil)` et AUCUNE ligne `"level":"ERROR"` (handler slog de test).
+  **Sous-point `[~]`** : l'ORDRE « migrations avant `RunFull` » est vérifié SUR PIÈCES (les
+  quatre appels sont en tête de runner, avant `newPooledEngine*`) et non par un test — il
+  faudrait inventer un seam de moteur, ce que le plan exclut explicitement.
+- **RÉGRESSION RÉELLE ATTRAPÉE PAR LE GATE** : `TestE2E_SyncEngine_MockClientError_ProviderRecovers_integration`
+  (`engine_provider_resilience_test.go`) exigeait `warnings ≥ 1` et un statut `success` sur un
+  échec d'historique — c'est EXACTEMENT le défaut C-A. Test **RETOURNÉ** (nom inchangé, donc
+  aucune paire de baseline touchée : il y figure et y reste) : il exige désormais
+  `errors ≥ 1` ET `Status() == "failure"`, en-tête daté expliquant l'inversion. La résilience du
+  Provider (StateRO, readers) reste assertée à l'identique.
+- Gate G4 (codes de sortie vérifiés) :
+  - `go test ./cmd/levelup/ ./internal/sync/ ./internal/platform/auth/ -count=1 -timeout 30m`
+    → 0 (3 paquets `ok`) ;
+  - `go test -tags=integration -p 1 ./internal/sync/ -timeout 30m` → 0 (`ok`, 140,8 s) — la
+    première exécution avait rendu 1 avec le test ci-dessus, réparé puis rejoué en entier ;
+  - `grep -rn "func applyMigrationsOnDB" cmd/` → UNE seule définition
+    (`cmd/levelup/migrations_cli.go:32`) ;
+  - `grep -rn "OpenReadForQuery" internal/sync/engine.go` → VIDE ;
+  - `go build ./...`, `go vet`, `gofmt -l cmd internal` → 0 / vide.
+- Vérifications par MUTATION : la sentinelle `ErrUserTokensNotFound` remise dans la branche AU3
+  → `..._StoreSansFichier_AucunError` FAIL (et `..._StoreLoadError_Logged` reste vert) ;
+  restaurée. Le retrait des quatre appels de migration compile (aucun test ne le voit) — c'est
+  le sous-point `[~]` ci-dessus, consigné tel quel.
+- Baseline de tests : AUCUNE paire retirée à cette étape (aucun test renommé ni supprimé).

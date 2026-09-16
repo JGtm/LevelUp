@@ -480,25 +480,25 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// les UUIDs bruts en noms canoniques EN avant l'INSERT match_registry.
 	// Échec d'ouverture → enrichissement désactivé pour ce run, sync continue.
 	if e.metadataDBPath != "" {
-		// OpenReadForQuery RÉUTILISE le handle metadata déjà en cache (RW tenu par
-		// main.go via OpenReadWriteShared, sinon RO) au lieu d'ouvrir un 2e handle.
-		// Forcer OpenReadOnly ("ro:"+path) ici ouvrait une SECONDE instance DuckDB
-		// alors que le serveur tient déjà metadata en RW ("rw:"+path) → échec
-		// "Can't open ... with a different configuration" → e.metaDB nil →
-		// EnrichRegistryFromMetadata ET la résolution des noms d'assets désactivés
-		// silencieusement (cf. ADR 0016, thought_log "different configuration").
-		// Le handle ainsi obtenu est RW en prod : il sert la LECTURE (enrich) ET
-		// l'écriture basse-fréquence (asset_translations via ops.UpsertAssetTranslation,
-		// SELECT-then-write ART-safe). En CLI/test sans handle partagé, retombe sur un
-		// OpenReadOnly propre (lecture OK ; l'écriture résolution reste best-effort).
-		metaSQL, releaseMeta, metaErr := duckdbpkg.OpenReadForQuery(e.metadataDBPath)
+		// UNE SEULE clé de cache pour tout le run : "rw:"+path (OpenReadWriteShared).
+		// Dans le serveur, c'est le handle que main.go tient déjà ; en CLI, c'est une
+		// instance unique que le post-sync réutilise. L'ancienne ouverture « pour requete » prenait
+		// la clé "ro:" quand personne ne tenait la base (cas CLI), et le post-sync
+		// rouvrait ensuite en "rw:" → « Can't open ... with a different configuration »,
+		// donc « catalog seed désactivé (metadata inaccessible) » en CLI (C-E, 2026-09-16).
+		// Le handle sert la LECTURE (enrich registry, noms d'assets, citations, convergence)
+		// ET l'écriture basse-fréquence (asset_translations, SELECT-then-write ART-safe) :
+		// aucun de ses lecteurs n'exige la lecture seule. Close() est refcompté.
+		metaHandle, metaErr := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
 		if metaErr != nil {
 			slog.WarnContext(ctx, "sync: ouverture metadata DB échouée — enrich registry désactivé",
 				"db", e.metadataDBPath, "err", metaErr)
 		} else {
-			e.metaDB = metaSQL
+			e.metaDB = metaHandle.SQLDb()
 			defer func() {
-				releaseMeta()
+				if cerr := metaHandle.Close(); cerr != nil {
+					slog.WarnContext(ctx, "sync: fermeture metadata DB échouée", "err", cerr)
+				}
 				e.metaDB = nil
 			}()
 		}
