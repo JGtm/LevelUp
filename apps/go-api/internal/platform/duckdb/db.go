@@ -342,7 +342,7 @@ func openCachedDB(
 			slog.ErrorContext(context.Background(),
 				"duckdb: cache ping fail + reopen échoué — handle perdue, caller doit retry",
 				"path", oldDB.path, "op", oldDB.op, "err", err)
-			return nil, err
+			return nil, marqueBaseTenue(err)
 		}
 		applyConnLimits(newSQLDB, oldDB.maxOpenConns, oldDB.maxIdleConns)
 		// Fermer l'ancien sqlDB en best-effort puis swap atomique.
@@ -364,7 +364,7 @@ func openCachedDB(
 		// 11 lignes ERROR pour 1 boot réussi.
 		slog.Debug("duckdb: ouverture DB échouée",
 			"path", path, "op", op, "dsn", dsn, "err", err)
-		return nil, err
+		return nil, marqueBaseTenue(err)
 	}
 	if timezone != "" {
 		slog.Debug("duckdb: timezone appliquée", "timezone", timezone, "path", path)
