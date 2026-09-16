@@ -4689,20 +4689,86 @@ défont par `git revert` ; avant la recuisson, tag git du binaire précédent et
 
 #### Lot 3.2 (P1) — Le registre par build — M, high
 
-- [ ] 3.2.1 Table des empreintes de registre connues PAR BUILD (8 empreintes mesurées sur 1 351
+- [~] 3.2.1 Table des empreintes de registre connues PAR BUILD (8 empreintes mesurées sur 1 351
       films) dans le profil ; `warnUnknownRegistry` devient une classification typée (connue /
       présumée / inconnue) publiée dans `coverage.decoder`.
+      **VOLET DONNÉES FAIT (2026-09-16, `66b63772e`).** La parenthèse de cet item est FAUSSE et
+      reste écrite pour mémoire : les « 8 empreintes » du lot H portaient sur 16 cuissons dans un
+      domaine de hachage MORT (F1/F2 de la note M3) ; les 1 351 sont l'inventaire du parc. Ce qui
+      est au catalogue est MESURÉ dans le domaine courant : **9 clefs, 5 empreintes distinctes**,
+      section `registryFingerprints` de `data/titles/halo_infinite/reference/film_profiles.json`
+      — les 7 builds, lus sur les 7 mini-bobines commises, plus les DEUX familles de films sans
+      section d'identification (`majeure=31`, `majeure=33`), lues sur `50247b26` et `a349fea8`.
+      Aucun film décodé : `chunk_00` seul. Lecture hors du film :
+      `filmprofile.EmpreinteRegistre` + `EmpreinteRegistrePour` (clef la plus spécifique),
+      validation (empreinte `0x`+16 hex minuscules, sorte de clef, build présent dans la table
+      des builds, unicité de la CLEF, témoin obligatoire) et 22 cas de refus, 2 mutations
+      vérifiées. Section à part et non lignes d'`entries` : Q3 (des grandeurs, pas une phrase) et
+      `TestCatalogueConformeALaTableDuLot21`, qui exigerait de toucher
+      `film/profile/profile_table.go` — hors périmètre de ce lot.
+      **VOLET CODE NON FAIT, et c'est le `[~]`** : la classification typée
+      (connue / présumée / inconnue) vit dans le décodeur et attend **2.6.3**, qui crée
+      `coverage.decoder` (il n'existe pas : mesure §1.5 de la note M3). La table de données que
+      ce volet-là consommera est en place.
 - [ ] 3.2.2 Audit des 17 sites qui adressent un composant par index littéral (`indicesOf`,
       `component(i)`) : par NOM, jamais par rang ; ratchet grep.
-- [ ] 3.2.3 Témoin par build au corpus gate (déjà fait pour 4 ; compléter à 7).
+- [x] 3.2.3 Témoin par build au corpus gate (déjà fait pour 4 ; compléter à 7).
+      **FAIT (2026-09-16, `a7a1d8c95`) — et l'énoncé était faux.** Mesure à l'entrée : CINQ des
+      sept builds avaient déjà un témoin, deux manquaient (`HI_1_4_1`, `HI_1_9_0`), et une
+      NEUVIÈME famille existait que personne n'avait nommée — la majeure 31 sans section
+      d'identification. La règle écrite au manifeste est désormais **un témoin par clef de
+      registre** (les 9 clefs de 3.2.1) : `a521164d` (`version_33_build_1_4_1`), `11de8353`
+      (`version_38_build_1_9_0`), `50247b26` (`version_31_sans_identification`) — corpus gate
+      **14 → 17**. Les trois conditions du gate vérifiées sur pièces avant l'ajout : chunks au
+      cache, manifeste de chunks, faits exportables par `levelup replay-facts-export` (27 / 27 /
+      30 joueurs). **Gate avec décodage joué le 2026-09-17 sur « voie libre » du pilote : 17/17
+      `ok`, 0 gain / 0 perte / 0 changement, schéma 60 des deux côtés, zéro `ABSENT`** (§5).
 
 #### Lot 3.3 (P2) — La liste blanche des grenades par build — M, high
+
+> **VOLET RECHERCHE — CLOS LE 2026-09-17, VERDICT RENDU.** Branche `feat/decfilm-33r`,
+> instrument `apps/go-api/tools/film_re/grenadeids/` + `tools/film_re/cmd/grenadeids/` (tag
+> `research`, jamais compilé par `go build ./...`), note
+> `.ai/V7.5/film_re/NOTE_3_3_IDENTIFIANTS_GRENADE_2026-09-16.md`. Ordre de preuve de V17 tenu,
+> critères de verdict écrits AVANT la mesure.
+>
+> **RÉSULTAT — l'hypothèse de l'utilisateur est CONFIRMÉE : la GRAMMAIRE a bougé d'UN BIT, les
+> identifiants n'ont pas bougé.** Jusqu'à `HI_1_11_0` l'amorce du record de création fait
+> **23 bits** (`0x260600`) et l'identifiant se lit à **+23** ; à partir de `HI_1_12_0`, 24 bits
+> (`0x4C0C00`) et **+24**. La production compare 24 bits : son 24ᵉ bit est, sur les builds
+> anciens, le bit de poids fort de l'identifiant — elle ne reconnaît donc un lancer que si ce
+> bit vaut 0 (un seul des quatre) et lit alors `identifiant << 1`, jamais dans la liste blanche.
+> Mesure : **1 282 lancers récupérés sur les cinq témoins anciens**, les quatre rangs présents ;
+> témoin positif `bcb6d393` reproduit à l'unité (55 = son `grenades.available`). Détail et
+> preuves : découvertes **D3 / D4 / D5 (3.3r)** en §4, gates en §5.
+>
+> **Les deux cases ci-dessous restent `[ ]`** : le volet recherche ne code aucune production.
+> Leur libellé est amendé par le résultat — 3.3.1 code une POSITION par build, **pas** une liste
+> blanche par build ; `GrenadeTypeIDsByRank` reste une constante du titre et la ligne de profil
+> esquissée par la note M3 §2.4 ne doit PAS être écrite.
 
 - [ ] 3.3.1 `GrenadeTypeIDsByRank` (`grenade_events.go:95`) devient une entrée de profil par
       build ; identifiants des builds antérieurs à `HI_1_12_0` établis par la méthode d'origine
       (stabilité par rang sur le corpus, marqueur `0x4C0C00`), statut `présumé` jusqu'au témoin.
+      **LIBELLÉ AMENDÉ LE 2026-09-17 PAR LE VOLET RECHERCHE (D3 (3.3r))** : il n'y a PAS de liste
+      blanche par build à établir, et la « méthode d'origine » n'a pas à être refaite. Ce que
+      3.3.1 code : (a) une entrée de profil par build portant la LARGEUR DE L'AMORCE (23 bits
+      `0x260600` jusqu'à `HI_1_11_0`, 24 bits `0x4C0C00` à partir de `HI_1_12_0`) et la position
+      solidaire de l'identifiant (+23 / +24), clé `build=`, provenance `mesuree`, preuve = la
+      note du lot ; (b) `grenadeMarker` dérivé du `ti` projectile LU DANS LE FILM
+      (`((ti & 31) << 19) | 0x40C00`) et tronqué à cette largeur, plus la lecture du sixième bit
+      d'index à `marqueur - 1` pour écarter `ti=9` (D2 (3.3r)) ; (c) `GrenadeTypeIDsByRank`
+      INCHANGÉE, constante du titre ; (d) `grenadeThrowsUnranked` reste à zéro, aucun rang
+      présumé. Reste à mesurer DANS le lot : la position du champ d'index auteur sur les builds
+      anciens (D5 (3.3r)).
 - [ ] 3.3.2 Gain attendu au corpus gate : lancers > 0 sur `111fa685`, `e5adf7b2`, `60ae07c4`
       (5 000 à 10 000 lancers sur 82 films) ; zéro perte.
+      **CHIFFRES MESURÉS LE 2026-09-17 (D3 (3.3r))** : le gain porte sur CINQ témoins, pas trois
+      — `e5adf7b2` **138**, `111fa685` **159**, `084a804d` **289**, `60ae07c4` **310**,
+      `a349fea8` **386**, soit **1 282 lancers** là où l'artefact en publie zéro. Zéro perte
+      attendue sur les neuf autres témoins (la grammaire à 24 bits est inchangée, contrôle
+      négatif joué sur `bcb6d393`). Rapporté aux 82 films de builds anciens du parc, l'ordre de
+      grandeur est de **20 000 lancers**, au-delà des « 5 000 à 10 000 » écrits ci-dessus.
 
 #### Lot 3.4 (P4) — La marche des morts calibrée par la carte et le build — M, high
 
@@ -5146,6 +5212,20 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-17 | 2.5.e-d | **D6 (2.5.e) — LA FORME LARGE DE V19 (3) N'EST PAS PRENABLE : `replay` IMPORTE `grammar` DANS 59 FICHIERS DE PRODUCTION.** V19 (3) demandait « une couche n'importe que la couche IMMÉDIATEMENT inférieure (et `source` pour la lecture) », c'est-à-dire l'interdiction du saut de plus d'une couche, y compris vers le bas. Mesure du 2026-09-17 : `replay` (rang 4) importe `grammar` (rang 2) dans **59 fichiers de production** et `profile` (rang 1) dans plusieurs autres ; `facts` (rang 3) importe `profile` (rang 1). La règle telle qu'écrite rougirait sur ces trois arêtes, pas sur « 4 sites » — le brief anticipait 4, et les 4 sont ceux du CHARGEMENT. R4 pose donc la moitié mesurable : « `replay` ne CHARGE pas le film », qui rougit sur exactement les quatre `source.LoadDir` des enveloppes D2. Couper les 59 demanderait de faire transiter par `facts` tout ce que `replay` lit de la grammaire : un chantier de contenu. NON TRAITÉ (règle 7). | M4 ou un lot d'architecture dédié : mesurer ce que `replay` lit VRAIMENT de `grammar` (types de record, tables de composants ?) avant de décider si la coupe a un sens, ou si `grammar` est la lingua franca légitime du décodeur |
 | 2026-09-17 | 2.5.e-d | **D7 (2.5.e) — LE HARNAIS D'OBSERVATION DES INSTRUMENTS GARDE UN OBSERVATEUR DE PAQUET, ET C'EST LE DERNIER ÉTAT PARTAGÉ DU DÉCODEUR.** `grammar/harnais_observation_test.go` déclare `var observateur = NouvelleObservation()` et **28 setters `Set*Hook`** qui écrivent dedans. La production n'en a plus un seul (lots 2.2.f et 2.3, `filmdecVarsGeles` 79 → 21 et ZÉRO variable écrite), et le fichier est un `_test.go`, donc hors du périmètre du ratchet — c'est écrit dans son en-tête depuis le lot 2.3. Reste que deux instruments du même paquet qui tourneraient en parallèle partageraient cet observateur. Le convertir en paramètre demande de toucher **163 sites d'appel dans 39 fichiers**, pour un compte de ratchet qui ne peut pas bouger. NON TRAITÉ : c'est ce qui rend l'item 2.5.g `[~]` et non `[x]`. | un lot de TEST à part (pas M2) : `Set*Hook(o *Observation, h ...)` ou un harnais par test, avec un ratchet qui interdit la résurrection du `var observateur` |
 | 2026-09-17 | 2.5.e-c | **D8 (2.5.e) — LA BASELINE DE TESTS SUIT LES PAQUETS PAR SON CHAMP `Package`, ET AUCUN LOT DE DÉPLACEMENT NE L'AVAIT DIT.** `.ai/baselines/tests_pre_migration.jsonl` apparie sur le couple (Package, Test) : tout `git mv` de paquet fait donc disparaître d'un coup TOUS les tests concernés du contrôle de présence, et le script diagnostique alors « compilation impossible » — un faux positif qui masque les vrais. Le remède est écrit dans le script lui-même (« ajouter les nouvelles entrées dans le même commit », jamais une re-capture), mais aucun des lots 2.5.a à 2.5.d ne l'a consigné, alors que tous ont déplacé des paquets de la baseline. Ce lot a re-pointé 271 événements (185 d'`internal/analysis` vers `grammar` et `weaponscan`, 86 de `film/facts/objectives`) et vérifié statiquement que les **8 355** paires de la baseline désignent toutes une fonction de test EXISTANTE au chemin déclaré. | sans objet — traité ici. **À ajouter à la clôture de lot du §2.4 du plan** : « un lot qui déplace un paquet re-pointe le champ `Package` de la baseline dans le même commit », pour que le prochain n'ait pas à le redécouvrir |
+| 2026-09-16 | 3.4 (préparation Ghidra) | **D1 (3.4) — `consumeAbsolutePayload` JETTE LES POSITIONS VALIDES DE LIVE FIRE.** Le commentaire de `film/grammar/components_position_i0.go` dit « index 1 / no-index = ±20000 (off-map) » et le code en tire `if idx != 0 { return }`. La décompilation de `FUN_14076e524` (note 3.4 §1.3) ne donne les bornes `±20000` (`DAT_1445cc9c8`, copie de `DAT_143b8c6b8`) **que pour `index == -1`**, c'est-à-dire quand le bit de porte est posé ; tout `index >= 0` adresse `DAT_14462cbe0 + index*0x18`, une plage RÉELLE de la carte. Le catalogue le dit déjà de son côté : `live fire` porte `region = 1` et `regionIndexBits = 2` (4 régions déclarées par `ds/globals/common`, l'arène est la 1). Sur cette carte le filtre garde donc exactement ce qu'il faudrait jeter et jette ce qu'il faudrait garder. NON TRAITÉ (règle 7 : lot de préparation, aucune ligne de production touchée). | **lot 3.4.1**, qui réécrit `absAxisWFor` et la range de `dequantWorldAxis` : la range et la largeur suivent l'index, exactement comme chez `FUN_14076e524`. Témoins : les deux films Live Fire du corpus |
+| 2026-09-16 | 3.4 (préparation Ghidra) | **D2 (3.4) — LA LOI DU MOTEUR PORTE DEUX GARDES QUE `himap` NE MODÉLISE PAS.** `FUN_140be9b88` borne le compte de casiers à `2^22` (`DAT_143cd975c`) avant le `ceilLog2`, et rend `26/26/26` sans regarder les bornes quand le pas est sous `1e-4` (`DAT_143cd837c`, donc dès le niveau 23). `internal/himap/sbsp.go` (`Bounds.AxisWidths`) n'a ni l'un ni l'autre. **Sans effet mesurable aujourd'hui** : au niveau 16 le premier garde se déclenche à une étendue de 69 905,1 unités monde, quand la plus grande du catalogue est 2 707,4 (`recharge`) — c'est pourquoi l'accord loi / catalogue est de 79 sur 79 ; le second ne concerne que des niveaux que le composant de position n'utilise pas. NON TRAITÉ. | **lot 3.4.1**, avec les autres corrections de `himap` : compléter la loi pendant qu'on y est, un canevas Forge plus grand la ferait diverger en silence |
+| 2026-09-16 | 3.4 (préparation Ghidra) | **D3 (3.4) — DEUX ÉNONCÉS DU DÉPÔT SONT VRAIS ET TROMPEURS.** (a) `film/profile/i0_layout.go` écrit « `DAT_144632be0` = ceilLog2(nb de BSP **valides**) » ; le désassemblage relit le compte BRUT (`MOV ECX,dword ptr [RSI + 0x7bc]` en `140be9afb`) et le champ de bits des plages valides (`DAT_1445ccb60`) n'alimente pas cette largeur — sans conséquence tant que toute plage déclarée a une AABB valide, mais l'énoncé doit être exact. (b) `film/grammar/position_capture.go` justifie l'uniforme `AbsoluteAxisW = 14` par « 14 est une entrée RÉELLE de la table du .exe » : exact, mais au **niveau 8** de la table DÉFAUT, alors que le composant de position lit au **niveau 16**, où la table défaut vaut `22/22/22` et la table par index vaut les largeurs de la carte. 14 n'est donc l'entrée d'aucune des deux cases réellement lues. NON TRAITÉ. | **lot 3.4.1** : les deux commentaires se réécrivent dans le commit qui fait lire les largeurs au catalogue — une doc qui survit à la valeur qu'elle justifiait est le « doc inversée » du diagnostic |
+| 2026-09-16 | 3.4 (préparation Ghidra) | **D4 (3.4) — LA TABLE `DAT_143b8c6f0` A TROIS ENTRÉES, PAS CINQ.** Le plan (item 2.5.b, « `Vec3Range` + les cinq plages de `DAT_143b8c6f0` ») laisse croire que les cinq variables de `film/profile/plages_quant.go` viennent de cette table. Octets relus (stride `0x18`) : `143b8c6f0` = `±3`, `143b8c708` = `±0,7`, `143b8c720` = `±100`, et `143b8c738` n'est plus une plage (valeurs aberrantes). L'ordre `QuantRangeUnit3` / `QuantRangeNorm` / `QuantRangeWorld100` du dépôt est donc JUSTE ; les deux autres variables (`QuantRangeCliffhanger`, `QuantRangeCEBiped`) sont des captures de CARTE, pas des entrées de cette table — et `QuantRangeCliffhanger` est d'ailleurs documentée comme fausse. Constat de vocabulaire, aucun défaut de code. | Ligne à corriger dans le plan (item 2.5.b) au premier lot qui le rouvre ; `plages_quant.go` n'a rien à changer |
+| 2026-09-16 | 3.2.1 | **D1 (3.2) — LA MAJEURE 31 SANS SECTION A UN REGISTRE QUE PERSONNE N'AVAIT JAMAIS MESURÉ.** `50247b26` (majeure 31, format 20, 3 films au cache) rend `0xba34fa35f781d1a7`, **49 blocs, 1 029 slots nommés** — le plus petit registre connu, et une neuvième grammaire qui n'apparaît dans aucune note. Les cinq empreintes distinctes du dépôt sont donc : `0xba34fa35f781d1a7` (majeure 31), `0x40531a0d86ce90ce` (HI_1_4_1 et majeure 33, 1 033 slots), `0x33c7e724716d8cc5` (HI_1_8_0 et HI_1_9_0), `0x9b6397b3ad58e258` (HI_1_10_0), `0x8879e2b6746ba047` (HI_1_11_0), `0x36ca8c3d2a2f9b88` (HI_1_12_0 et HI_1_13_0). CONSIGNÉE et TRAITÉE dans ce lot (elle EST la donnée de 3.2.1) | — |
+| 2026-09-16 | 3.2.1 | **D2 (3.2) — L'EMPREINTE DE REGISTRE NE SÉPARE PAS LES BUILDS : TROIS PAIRES PARTAGENT LA LEUR.** `HI_1_8_0` = `HI_1_9_0` ; `HI_1_12_0` = `HI_1_13_0` (déjà vu par la note M3, confirmé sur la mini-bobine) ; et **`HI_1_4_1` = la majeure 33 sans section** — ce qui NOMME enfin la grammaire de composants des films sans identification de cette version. Conséquence directe : l'unicité validée au catalogue porte sur la CLEF, jamais sur l'empreinte ; et une empreinte égale n'autorise AUCUNE conclusion sur les tailles de structures, qui diffèrent entre ces mêmes builds (`Slots.PersoBytes` 1 312 pour 8_0 et 9_0, mais 2 052 pour 4_1 contre 1 033 slots partagés avec la majeure 33) | lots 3.3 et 3.4 : le registre ne peut pas servir de clef de substitution au build |
+| 2026-09-16 | 3.2.3 | **D3 (3.2) — « UN TÉMOIN SANS ARTEFACT DANS LE PARC NE PEUT PAS ÊTRE GATÉ » EST FAUX.** Mesure du 2026-09-16 : `data/cache/replays/halo_infinite/` porte l'artefact d'UN SEUL des 14 témoins en place (`fb1a1a72`). Le gate en régime `--reference base` cuit les DEUX côtés lui-même ; ce qu'il exige d'un témoin est (1) les chunks au cache, (2) le manifeste de chunks — sans lui `replaybuild` rend un score NUL sans erreur — et (3) des faits exportables par `levelup replay-facts-export`. Écrit dans `docs/RUNBOOK_FILM_PROFILES.md` §4.1 | — (correction de doctrine, faite dans ce lot) |
+| 2026-09-16 | 3.2.1 | **D4 (3.2) — `ReadFilmIdentity` CALCULE L'EMPREINTE DU REGISTRE PUIS LA JETTE.** `grammar/film_identity.go` re-parse le registre entier pour trouver l'ancre de la chaîne de build : `reg.fingerprint` est sous la main et n'est pas rendu. Lui ajouter un champ `RegistryFingerprint` ne coûte pas un cycle et donne au volet code sa valeur sans seconde passe. NON TRAITÉ : `film/` est hors du périmètre de ce lot (un autre exécuteur y travaille) | volet CODE de 3.2.1 (après 2.6.3) |
+| 2026-09-16 | 3.2 (docs) | **D5 (3.2) — LE RUNBOOK DES PROFILS CITAIT `filmdec/profile_table.go`, CHEMIN MORT DEPUIS 2.5.b.** La table du lot 2.1 vit en `film/profile/profile_table.go` depuis l'extraction de la couche `profile`. Corrigé DANS ce lot (le runbook est dans son périmètre), avec la précision que `TestCatalogueConformeALaTableDuLot21` ne couvre PAS la section neuve `registryFingerprints` — elle n'a aucune copie dans le décodeur | — |
+| 2026-09-16 | 3.3 (recherche) | **D1 (3.3r) — LES SEPT MINI-BOBINES NE PORTENT AUCUN PAQUET DELTA, donc elles ne peuvent PAS servir le lot 3.3.** La note `PREPARATION_M3_3_2_A_3_4` §0.3 les présente comme « la ressource la plus sous-utilisée du chantier : les sept builds connus sont dans l'arbre git, avec leur registre, sans toucher au cache de films ni au verrou solo ». C'est vrai pour un REGISTRE et faux pour un LANCER : leur `PROVENANCE.txt` (lu le 2026-09-16 sur `minifilm_111fa685`) dit `chunk_00` = registre (type 1), `chunk_01` = images-clés (type 2), `chunk_02` = pied (type 3) — **zéro paquet de type 0**, alors que le marqueur de lancer ne vit que dans les paquets DELTA (`ScanGrenadeThrows` filtre sur `PacketTypeDelta`). Les passes de mesure de 3.3 exigent donc les films du cache, un à la fois, à la voie libre. Les mini-bobines restent utiles à la seule « mesure 0 » (registre → `ti` projectile → marqueur dérivé), qui coûte des secondes. | Constat. À reporter dans la note M3 §0.3 si elle est reprise, et à garder en tête pour tout lot qui espérerait mesurer un DELTA sur les mini-bobines (3.4, 3.6) |
+| 2026-09-16 | 3.3 (recherche) | **D2 (3.3r) — LE « MARQUEUR » NE PORTE QUE CINQ BITS D'INDEX : `ti=41` ET `ti=9` PRODUISENT LE MÊME.** La dérivation `marqueur(ti) = ((ti & 31) << 19) | 0x40C00` est vérifiée sur le build courant (`marqueur(41) = 0x4C0C00`, la constante `grenadeMarker`). Elle implique que sur un registre de 49 ou 50 blocs, tout `ti` congru à 9 modulo 32 rend le même marqueur — et `ti=9` est `managed-player` (`grammar/player_teams.go:61`). Le balayage de production ne reconnaît donc pas « une naissance de projectile » mais « une naissance d'une entité dont l'index vaut 9 modulo 32 » : la sélectivité vient ENTIÈREMENT de la liste blanche des quatre identifiants, ce que la note M3 §2.1 dit déjà — mais la cause est plus profonde que « le marqueur est dérivé du registre ». **L'AMBIGUÏTÉ SE LÈVE PAR UNE LECTURE, ET ELLE EST FAITE** (instruction du pilote, même jour) : le typeIndex d'un record fait SIX bits (`grammar/traverse.go:94`, `keyframe_fullstate_loop.go:88`) et le marqueur commence au deuxième — le bit de poids fort est donc à `marqueur - 1` (`41 = 0b101001` → 1 ; `9 = 0b001001` → 0). L'instrument le lit (`tools/film_re/grenadeids/typeindex.go`), compte les marqueurs PAR ARCHÉTYPE RÉEL et publie l'histogramme de la passe C **restreint à chaque archétype** ; la seule position où le bit manque (`marqueur = 0`) est comptée à part et n'entre dans aucun histogramme. La passe D accepte le même filtre (`-ti 41`). | Constat + lecture outillée. **Ce que le lot 3.3.1 devra en retenir** : la sélectivité de `scanGrenadeThrows` vient entièrement de la liste blanche, et le marqueur seul ramasse deux archétypes — un correctif qui toucherait la liste blanche sans lire ce sixième bit laisserait passer les naissances de `managed-player`. Aucune correction de production dans le volet recherche |
+| 2026-09-17 | 3.3 (recherche) | **D3 (3.3r) — VERDICT DU VOLET RECHERCHE : LA GRAMMAIRE A BOUGÉ D'UN BIT, LES IDENTIFIANTS N'ONT PAS BOUGÉ.** Mesuré sur six films à la voie libre du pilote (note `.ai/V7.5/film_re/NOTE_3_3_IDENTIFIANTS_GRENADE_2026-09-16.md` §6 bis et §8). Jusqu'à `HI_1_11_0` inclus, l'amorce du record de création fait **23 bits** (`0x260600`) et l'identifiant se lit à **+23** ; à partir de `HI_1_12_0`, 24 bits (`0x4C0C00`) et **+24**. La production compare 24 bits : son vingt-quatrième bit n'est pas de l'amorce sur les builds anciens, c'est **le bit de poids fort de l'identifiant** — elle ne reconnaît donc un lancer que si ce bit vaut 0 (un seul des quatre : `0x3B2567D4`) et lit alors `identifiant << 1`, jamais dans la liste blanche. D'où le zéro absolu. Prédiction posée puis vérifiée : les trois autres portent le motif `0x4C0C01`, et à +23 on lit les quatre identifiants ACTUELS. Comptes collés (frag/plasma/dynamo/spike) : `e5adf7b2` 27/39/42/30 = **138** ; `111fa685` 37/26/66/30 = **159** ; `084a804d` 207/28/41/13 = **289** ; `60ae07c4` 270/18/0/22 = **310** ; `a349fea8` 287/56/5/38 = **386** — **1 282 lancers sur cinq films qui en publiaient ZÉRO**. Témoin positif `bcb6d393` : 37/7/7/4 = **55**, exactement le `grenades.available` de son artefact, et le motif `0x4C0C01` n'y porte aucun identifiant (contrôle négatif). | **CE QUE 3.3.1 DOIT CODER** : (a) `GrenadeTypeIDsByRank` **reste une constante du titre** — la ligne de profil esquissée par la note M3 §2.4 ne doit PAS être écrite, aucun rang deviné ; (b) l'entrée de profil est la LARGEUR DE L'AMORCE (23 ou 24 bits) et la position solidaire de l'identifiant, clé `build=`, provenance `mesuree` ; (c) `grenadeMarker` se dérive du `ti` projectile lu dans le film, tronqué à 23 ou 24 bits ; (d) `grenadeThrowsUnranked` (M3-Q5) reste à **zéro** ; (e) le sixième bit d'index doit être lu (D2). Item 3.3.2 : gain attendu **1 282 lancers** sur cinq témoins, zéro perte sur les neuf autres |
+| 2026-09-17 | 3.3 (recherche) | **D4 (3.3r) — L'APPARIEMENT AUX DÉCRÉMENTS D'i22 NE DISCRIMINE RIEN, ET PAS SEULEMENT SUR LES BUILDS ANCIENS.** La note M3 §2.3 en fait « la voie praticable » et §2.5 présente `111fa685` comme « exactement le matériau d'appariement dont la méthode d'origine a besoin ». Mesure avec témoin de hasard (mêmes appariements, instants décalés de 37 s) : sur le TÉMOIN POSITIF `bcb6d393`, dont les 55 lancers et leurs rangs sont connus, `0xB0171062` (frag, rang 0) s'apparie 24/25 au rang 0 — mais le témoin le fait 13/13, et `0x3B2567D4` (dynamo, rang 2) s'apparie **zéro** fois au rang 2. Cause mesurée : le canal i22 des paquets DELTA rend **87 lectures sur 1 481 records** (`bcb6d393`) et **265 sur 5 982** (`111fa685`), soit 4 à 6 % ; avec 25 à 121 porteurs, les intervalles entre deux lectures d'un même porteur durent des dizaines de secondes et tout instant tombe dans plusieurs décréments. Les « 476 images-clés » que §2.5 invoque sont des lectures d'IMAGE-CLÉ (`replay/inventory_decode.go`), pas le canal delta. | Constat. La note M3 §2.3 et §2.5 sont **périmées sur ce point** ; l'ordre des rangs n'a de toute façon pas besoin d'être rétabli (D3 : il n'a jamais bougé). Si un lot futur veut rejouer cet appariement, il devra d'abord expliquer le taux de lecture d'i22 en delta — c'est une question de `grammar`, pas de grenades |
+| 2026-09-17 | 3.3 (recherche) | **D5 (3.3r) — LA POSITION DU CHAMP D'INDEX AUTEUR SUR LES BUILDS ANCIENS N'EST PAS ÉTABLIE, et le décalage d'un bit ne s'y propage PAS mécaniquement.** Les 47 bits qui séparent l'identifiant de l'index sont un TOTAL mesuré, pas une suite de champs lue (`grammar/grenade_events.go` le dit lui-même : « la source de référence décrit sauter 47 bits sans dire depuis quoi »). Mesure : à +103, `bcb6d393` rend **54 index sur 55** dans 0..7 (position juste) et `111fa685` **49 sur 159** (position fausse) ; à +102, ni l'un ni l'autre n'est propre. Le critère « toutes les valeurs dans 0..7 » ne tranche pas : **18 décalages sur 49** le satisfont sur les deux films. NON TRAITÉ (règle 7). | **Lot 3.3.1**, avec un critère plus fort que « dans 0..7 » : recoupement avec la table des joueurs du film (lot 1.5) ou avec le pont index / slot de `replay`. Ne bloque pas la livraison : les lancers anciens sont publiables avec leur TYPE et sans auteur, ce que la couverture distingue déjà (`grenadesDisponibles` contre `grenadesRattachees`) — et M3-Q5 = B porte sur le TYPE |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -5232,6 +5312,101 @@ remplacé, dans du code de production, la copie locale `readByteAtBit` par [sour
 le `bitAt` d'`analysis/positions` par [source.BitAt], en affirmant que les conventions de bord
 étaient identiques. Cette affirmation était une lecture de code ; ces vingt films la MESURENT, à
 l'octet, sur les 53 étapes de chaque cuisson. C'est la seule preuve qui valait.
+
+### Lot 3.2 (M3) — volet DONNÉES (3.2.1 données et 3.2.3), SANS AUCUN DÉCODAGE, 2026-09-16
+
+Worktree `LevelUp-wt-decfilm-32d`, branche `feat/decfilm-32d`, base `e7b9bd48e`. Aucune
+jonction, aucun film décodé, aucune écriture dans `data/cache/`. Frontière tenue :
+`data/titles/halo_infinite/reference/film_profiles.json`,
+`internal/games/halo_infinite/filmprofile/` (+ tests), `cmd/film-profiles-build/main.go`
+(godoc et `about` seulement), `config/replay_corpus.toml`, `docs/RUNBOOK_FILM_PROFILES.md`,
+`docs/COMMANDS.md` FR/EN. **`film/`, `replaybuild/`, `sync/`, `persist/`, `cmd/levelup/` :
+non touchés** (2.5.e mute `film/`).
+
+MESURE, et comment elle a été prise sans décoder : `chunk_00` seul, par un instrument NON
+SUIVI (supprimé à la clôture) qui appelle `grammar.ReadFilmChunk(dir, 0)` →
+`ParseRegistryChunk` → `RegistryFingerprint` + `ReadFilmIdentity` +
+`FilmMajorVersionFromHeader` / `FilmFormatVersionFromHeader`. Sept mini-bobines COMMISES
+(`film/replay/testdata/minifilm_<id8>/chunk_00.bin`) et quatre `chunk_00` du cache lus en
+place (`a521164d`, `11de8353`, `50247b26`, `a349fea8`) — les deux premiers pour vérifier que
+la mini-bobine rend bien le registre de son film complet, les deux derniers parce qu'aucune
+mini-bobine ne couvre les films sans section d'identification.
+
+```
+minifilm_a521164d  majeure=33 format=21 build=HI_1_4_1   empreinte=0x40531a0d86ce90ce blocs=49 slots=1033
+minifilm_60ae07c4  majeure=37 format=24 build=HI_1_8_0   empreinte=0x33c7e724716d8cc5 blocs=49 slots=1031
+minifilm_11de8353  majeure=38 format=24 build=HI_1_9_0   empreinte=0x33c7e724716d8cc5 blocs=49 slots=1031
+minifilm_111fa685  majeure=39 format=24 build=HI_1_10_0  empreinte=0x9b6397b3ad58e258 blocs=49 slots=1031
+minifilm_e5adf7b2  majeure=40 format=25 build=HI_1_11_0  empreinte=0x8879e2b6746ba047 blocs=49 slots=1031
+minifilm_bcb6d393  majeure=40 format=27 build=HI_1_12_0  empreinte=0x36ca8c3d2a2f9b88 blocs=50 slots=1067
+minifilm_fb1a1a72  majeure=41 format=27 build=HI_1_13_0  empreinte=0x36ca8c3d2a2f9b88 blocs=50 slots=1067
+cache/a521164d     majeure=33 format=21 build=HI_1_4_1   empreinte=0x40531a0d86ce90ce blocs=49 slots=1033
+cache/11de8353     majeure=38 format=24 build=HI_1_9_0   empreinte=0x33c7e724716d8cc5 blocs=49 slots=1031
+cache/50247b26     majeure=31 format=20 SANS SECTION     empreinte=0xba34fa35f781d1a7 blocs=49 slots=1029
+cache/a349fea8     majeure=33 format=20 SANS SECTION     empreinte=0x40531a0d86ce90ce blocs=49 slots=1033
+```
+
+Corroboration par le journal de cuisson du corpus gate des 14 témoins du 2026-09-16
+(`work_m1_cloture/logs/general.log`, conservé hors dépôt) : quatre valeurs d'alerte, toutes
+égales aux mesures ci-dessus (`0x33c7e724716d8cc5` sur `60ae07c4`, `0x9b6397b3ad58e258`
+DEUX fois — un processus par témoin, donc `111fa685` et `084a804d` —, `0x8879e2b6746ba047`
+sur `e5adf7b2`, `0x40531a0d86ce90ce` sur `a349fea8`), et SILENCE sur les neuf autres
+témoins, dont les huit `HI_1_13_0` et `bcb6d393` : leur registre est celui de la référence.
+
+| Date | Lot | Commit | Commande | Résultat |
+|---|---|---|---|---|
+| 2026-09-16 | 3.2.1 | `66b63772e` | `gofmt -l ./internal ./cmd` | **vide** |
+| 2026-09-16 | 3.2.1 | `66b63772e` | `CGO_ENABLED=1 go build ./... && go vet ./...` | **0 diagnostic** |
+| 2026-09-16 | 3.2.1 | `66b63772e` | `go test -count=1 ./internal/games/halo_infinite/filmprofile/ ./internal/archlint/ ./cmd/replay-corpus-gate/ ./cmd/film-profiles-build/` | **ok 0,25 s / ok 25,4 s / ok 1,3 s / no test files** |
+| 2026-09-16 | 3.2.1 (MUTATION 1 — `fingerprint` de `HI_1_11_0` tronquée à `0x8879e2b6`) | `66b63772e` | `go test -count=1 ./…/filmprofile/` | **ROUGE** : `fingerprint "0x8879e2b6" : 8 chiffre(s) après "0x", 16 attendus` sur les quatre tests qui chargent le catalogue commis |
+| 2026-09-16 | 3.2.1 (MUTATION 2 — la clef `build=HI_1_9_0` retirée de `registryFingerprints`) | `66b63772e` | `go test -count=1 -run TestEmpreintesCommises ./…/filmprofile/` | **ROUGE** : `le catalogue connait le build "HI_1_9_0" (entree "Slots.PersoBytes") mais pas son registre` |
+| 2026-09-16 | 3.2.1 | `66b63772e` | `LEVELUP_REPO_ROOT=<worktree> go run ./cmd/film-profiles-build --check` | **conforme** (79 cartes, empreinte de bornes `e77e4ffc…` inchangée) |
+| 2026-09-16 | 3.2.1 | `66b63772e` | `golangci-lint run ./…/filmprofile/... ./cmd/film-profiles-build/... ./cmd/replay-corpus-gate/...` | **0 issues** |
+| 2026-09-16 | 3.2.3 | `a7a1d8c95` | `CGO_ENABLED=1 LEVELUP_REPO_ROOT=<parc> go run ./cmd/levelup replay-facts-export --out <tmp> --title halo_infinite <id>` (×3) | **3 `.facts.json` écrits** : `a521164d` 27 joueurs / BTB Heavies:Total Control / Fragmentation Heavies ; `11de8353` 27 / BTB:Fiesta Slayer / Thunderhead ; `50247b26` 30 / BTB:Slayer / Oasis |
+| 2026-09-16 | 3.2.3 | `a7a1d8c95` | `go test -count=1 ./cmd/replay-corpus-gate/` | **ok** — `TestLoadManifestValide` relit le manifeste réel : 17 témoins, ids uniques, chaque entrée justifiée |
+| 2026-09-16 | 3.2 | `a7a1d8c95` | `go test -count=1 -run 'TestGrammarRevSuitLaGrammaire\|TestChronique' ./…/film/grammar/ -v` | **2 PASS** — `GrammarRev` n'a pas bougé (aucun octet de `film/` touché) |
+
+**Gate AVEC décodage JOUÉ** (« voie libre » du pilote, lancé le 2026-09-16 à 23:45, terminé le
+2026-09-17 à 00:16 — 31 min de bout en bout, 16,3 min de cuisson cumulée sur les 17 témoins,
+un seul décodage à la fois, verrou `data/cache/film_decode.lock` du parc pris et rendu à
+chaque film) :
+
+```
+go run ./cmd/replay-corpus-gate --base=e7b9bd48e \
+  --parc-root C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
+  --source-root C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-32d \
+  --json <scratch>/rapport.json --work-root <scratch>/work --keep-work
+                                                    (sans --allow-missing)
+
+temoin       famille                            base(e7b9bd48e)  HEAD  gains  pertes  chang.     duree  statut
+bcb6d393     ctf_mono_manche                         60     60       0       0       0     12.51s  ok
+fb1a1a72     ctf_multi_manche                        60     60       0       0       0    1m1.39s  ok
+d9781168     oddball                                 60     60       0       0       0     27.46s  ok
+c75f33b8     assaut_bombe                            60     60       0       0       0     15.99s  ok
+bf15f7ab     slayer                                  60     60       0       0       0     14.28s  ok
+51ebbc0f     deux_manches                            60     60       0       0       0     21.33s  ok
+084a804d     vehicules                               60     60       0       0       0   2m17.28s  ok
+0797ce72     region_index_2_bits                     60     60       0       0       0     14.49s  ok
+111fa685     version_39                              60     60       0       0       0     41.81s  ok
+e5adf7b2     version_40_build_1_11                   60     60       0       0       0     46.96s  ok
+60ae07c4     version_37                              60     60       0       0       0    1m3.18s  ok
+a349fea8     version_33_sans_identification          60     60       0       0       0   2m39.98s  ok
+a521164d     version_33_build_1_4_1                  60     60       0       0       0    1m5.78s  ok
+11de8353     version_38_build_1_9_0                  60     60       0       0       0     56.02s  ok
+50247b26     version_31_sans_identification          60     60       0       0       0   1m33.61s  ok
+bfecd02b     vehicules_v41_utilisateur               60     60       0       0       0     22.12s  ok
+4f77afc1     equipement_origine_utilisateur          60     60       0       0       0    2m2.85s  ok
+EXIT=0
+```
+
+**17/17 `ok`, 0 gain / 0 perte / 0 changement, schéma 60 des deux côtés**, `couverture_incomplete:
+false` et zéro `ABSENT` / `ERREUR` dans le rapport JSON. C'est exactement ce que ce gate-ci devait
+prouver : le lot ne touche aucun octet du décodeur, donc **le manifeste grossi de trois entrées ne
+change rien à ce qui est cuit**, et les trois grammaires neuves (`HI_1_4_1`, `HI_1_9_0`, majeure 31
+sans section) sont désormais gardées contre toute régression future. Les trois nouveaux témoins
+sont aussi les plus lents de leur classe sur la cuisson de base (`a521164d` 1m05, `11de8353` 56 s,
+`50247b26` 1m33) — le corpus passe de ~14 min à ~16 min de cuisson cumulée, à retenir pour le
+budget des gates de 3.3 et 3.4.
 
 ### Lot 2.6 (M2, pas 6) — volet FACTS + SOURCE, SANS AUCUN DÉCODAGE, 2026-09-16
 
@@ -6267,6 +6442,7 @@ matériels du corpus de verdict sont déclarés par les DIX slots, part 100 %.
 | 2026-09-18 | pilote (FUSION 2.3 — corpus gate, 14 témoins) | intégration 88f1a1115 | `replay-corpus-gate --base=52e8997e7 --parc-root <parc> --source-root <intégration> --json --work-root --keep-work` (base = tête d'AVANT la fusion, après le correctif himap) | **14/14 témoins `ok`, schéma 60 -> 60, 0 gain, 0 perte, 0 changement, aucun témoin absent, exit 0 (JSON `gate_23.json`) ; la tête gatée est 6fee1e5b4 + V17 (2.5.f fusionné entre-temps, sans effet sur le décodage : aucun paquet haché touché, `GrammarRev` .27 inchangée). Le lot 2.3 est une révision à ZÉRO différence de contenu sur les 14 témoins (D4) — et ce gate ne peut PAS voir le bruit d état de processus que 2.3 supprime (processus isolés) : cf. D3 (validation)** | 26 min (dont compilation) ; témoins de 12 s à 2 min 40 |
 | 2026-09-18 | pilote (FUSION 2.3 — ratchet des lectures brutes, né APRÈS la base de 2.3) | intégration 88f1a1115 | `go test ./internal/archlint/ -run TestAucuneLectureDOctetsBrutsHorsDeLaSource` | **ROUGE à la fusion, puis vert** : `filmdec/film_context.go` porte `FilmContext.NouveauLecteur` (le lecteur qui PORTE le profil du contexte — ce que 2.3 substitue à la variable de paquet), site absent de la mesure du 17/09 (`24b67e339`). Résolution : entrée DATÉE du 18/09 ciblée 2.4.2 (77 -> 78 couples, 62 -> 63 pour 2.4.2), pas un élargissement : c'est exactement la forme que la façade 2.4.2 absorbe. Le brief du lot 2.4 est mis à jour (69 entrées à vider). | 13 s |
 | 2026-09-18 | pilote (correctif CI — ratchet `himap` du chemin du jeu) | intégration 52e8997e7 | `go test ./internal/himap/ -run TestAucuneAutreCopieDuCheminDuJeu` ; `go test ./internal/archlint/` | **vert** — trois commentaires du lot 2.10 (`cmd/mapquant-build/main.go:309`, `archlint/no_absolute_path_in_versioned_catalog_test.go:11,63`) citaient la bibliothèque du jeu en clair ; runs rouges 07d1bbefc / 6f87a2780 / ffe22579f / f7cf56a74. Leçon : `./internal/himap/` (sans tag, 0,4 s) entre dans la batterie de fusion. | 0,4 s + 13 s |
+| 2026-09-16 (date vraie) | pilote (FUSION 2.6 volet facts + source — gates avec décodage sur la tête fusionnée) | intégration e7b9bd48e | `replay-equiv -repo-root <intégration>` (20 films, 53 étapes) puis `replay-corpus-gate --base=3f1e7ed21 --parc-root <parc> --source-root <intégration> --json --work-root --keep-work` | **Équivalence : 20 identiques, 0 différent** (les types déplacés vers `film/types` ne changent aucun digest : `digest` hache les noms de champs, pas les noms de types). **Corpus gate : 14/14 `ok`, 60 -> 60, 0 gain, 0 perte, 0 changement, exit 0.** Les révisions `source.Rev` / `facts.Rev` et le golden des formes sont passés tels quels à la réconciliation (aucune régénération hors `GrammarRev` .35 et l'empreinte de `facts` qui hache sa valeur). Incident de pilotage consigné : une première chaîne fusion + gates lancée sous un délai de dix minutes a laissé un décodage orphelin à son arrêt — tué à la main, verrou et worktree temporaire nettoyés, gates rejoués sous une surveillance d'une heure ; règle : les gates avec décodage se lancent par un moniteur sans délai court. | équivalence 18 min ; gate 37 min |
 | 2026-09-16 (date vraie, V18) | pilote (REVUE ADVERSARIALE ANTICIPÉE des lots M2 fusionnés — workflow Opus, contexte frais) | intégration 26cf32399 (diff `da258bf76...26cf32399`, hors 2.3 et 2.9 déjà revus, hors périmètre 2.4 en vol) | 4 lentilles (L3 anti-patterns, L6 tests, ADR 0034 + décisions, L1/L4 données) puis 2 sceptiques par constat (angles : reproductibilité / pré-existence et périmètre), 34 agents | **15 constats bruts, 8 confirmés (1 P1, 7 P2), 7 réfutés** (dont un cluster de 4 sur `replay-corpus-gate/main.go:finaliser`, réfuté pour PRÉ-EXISTENCE seulement : défaut réel antérieur au jalon, repris au lot correctif). Le P1 : `docs/SYNC_GUIDE` EN/FR décrivait au présent les quatre révisions de 2.6 (doc en avance, fusionnée sans son code). Les 5 constats hors `filmdec` sont CORRIGÉS par le lot `feat/decfilm-revm2` (fusionné 2fbc6cbf2, ci-dessous) ; les 3 constats `filmdec` (doc inversée `profile.go:21-28,94-96`, `observateur.go:99-163` « Global de paquet » ×7, `mpp_widths.go:23-24` phrase tronquée et fausse depuis 2.3) sont consignés en §4 pour 2.5.c — tout octet de `filmdec` fait monter `GrammarRev`. Ce que la revue de clôture M2 devra encore relire : 2.4, 2.5, 2.6 seulement. | 23 min, 3,9 M jetons |
 | 2026-09-16 (date vraie) | pilote (FUSION revue-M2 — corrections) | intégration 2fbc6cbf2 | `merge_revm2.sh` : batterie 42 paquets + lint sur les 4 paquets touchés | **42/42 ok, 0 conflit, lint 0 issue nouvelle** (1 `prealloc` antérieur dans `objectiveevents/extract.go:274`, hors diff). Corpus gate : `finaliser` rend désormais le VERDICT des témoins présents avant la couverture (exit 1 prime sur 4 ; JSON `{couverture_incomplete, temoins}`) — le script pilote `gate_23_only.sh` lit le tableau texte, inchangé. | 2 min |
 | 2026-09-16 (date vraie) | pilote (FUSION 2.6.0 — mécanisme d'empreinte partagé) | intégration 73502aec8 | `merge_260.sh` : batterie 42 paquets + lint | **42/42 ok, 0 conflit** ; `film/revision` égal aux deux goldens existants du premier coup (killsource `7d9ef1af…`, grammaire `0323a9d0…`, 183 fichiers) ; arbitrage chemin relatif à la racine (survit au `git mv` de 2.5), cadre hérité daté (retrait 2.6.1) ; garde-rail `no_ad_hoc_source_fingerprint_test` (allowlist datée, 2 entrées). | 2 min |
@@ -6838,3 +7014,74 @@ les deux gates existants sont LUS, jamais modifiés.
 | 2026-09-17 | 2.6.0 (morsure de l'empreinte) | `(ce commit)` | `go test -count=1 -v -run TestEmpreinte ./internal/games/halo_infinite/film/revision/` | **PASS** — un fichier ajouté, un octet changé, un fichier renommé et une valeur amont différente font bouger l'empreinte ; un `_test.go`, une fixture `testdata/` et des fins de ligne CRLF ne la font PAS bouger ; une liste d'amonts VIDE n'écrit AUCUN octet (c'est cette propriété qui rend l'héritage possible) ; une racine sans source de production rend `ErrRacineSansSource` |
 | 2026-09-17 | 2.6.0 (piège relevé et corrigé) | `87b7b0e9f` | première version du garde-rail | **le ratchet se dénonçait lui-même** : `runtime.Caller` rend un chemin à séparateurs `/` même sous Windows, `filepath.WalkDir` rend des `\`, et l'auto-exclusion par comparaison brute n'excluait rien. Corrigé par comparaison sur le chemin RELATIF en slash ; aucun autre ratchet du dépôt ne porte ce motif (grep `== thisFile` : 0 occurrence) |
 | 2026-09-17 | 2.6.0 (frontière de fichiers) | `(ce commit)` | `git diff --name-only 26cf32399..HEAD` | **13 fichiers** : 10 sous `film/revision/`, 2 sous `internal/archlint/`, plus ce plan. Aucun paquet du film muté par un autre exécuteur, rien sous `data/`, aucun `cmd/` |
+
+
+### Lot 3.4 (M3) — volet PRÉPARATION GHIDRA (Q7 puis Q6), SANS AUCUN DÉCODAGE, 2026-09-16
+
+Base `e7b9bd48e` (branche `feat/decfilm-34g`, worktree `LevelUp-wt-decfilm-34g`). Aucune ligne de
+production : la frontière est `.ai/V7.5/film_re/`, `apps/go-api/tools/film_re/` (tag `research`)
+et les lignes de ce plan. La case 3.4.1 reste `[ ]` — l'item n'est pas exécuté, il est INSTRUIT.
+Note complète : `.ai/V7.5/film_re/NOTE_3_4_REMPLISSEUR_LARGEURS_2026-09-16.md`.
+
+| Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
+|---|---|---|---|---|
+| 2026-09-16 | 3.4 (Q7, lecture) | ce commit | Ghidra HTTP `127.0.0.1:8089` (lecture seule) : `decompile_function` sur `140be9a14`, `140be9b88`, `140be9c78`, `140be9d1c`, `1406d310c`, `14076e524`, `1406cf008`, `140cc5128` | **`FUN_140be9a14` OUVERT** (il était au registre des non-élucidés). Loi lue : `W = min(26, ceilLog2(min(ceil(étendue/(2·pas(L))), 2^22)))`, `pas(L) = 2^(16−L)/120`, et `26/26/26` si `pas(L) < 1e-4`. Deux tables, deux sources de bornes : DÉFAUT depuis `DAT_143b8c6b8` (`±20000`, `.rdata` = donnée de BUILD), PAR INDEX depuis `*(DAT_144976b60+0x7ac)[i]+0x44` (pas `0xdc` = donnée de CARTE) |
+| 2026-09-16 | 3.4 (Q7, adressage) | ce commit | `disassemble_function` / `disassemble_bytes` sur `140be9a14` et les 23 sites d'appel de `14076e524` | Adressage confirmé au shift près : `DAT_1445ccbe0 + (idx*0x20 + L)*0xc` (`LEA R15,[RAX+RAX*2]` + `SHL R15,0x7`), bornes `DAT_14462cbe0 + idx*0x18`, bitset des plages valides `DAT_1445ccb60`. **`DAT_144632be0` (indexW) = `1` si une seule plage, sinon `ceilLog2(compte BRUT)`** (`CMP ECX,0x1` en `140be9b16`) — la première lecture sur pièces de cette largeur |
+| 2026-09-16 | 3.4 (Q7, le NIVEAU) | ce commit | immédiats `R9D` relevés aux 23 sites d'appel de `FUN_14076e524` | **NIVEAU = IMMÉDIAT DE SITE D'APPEL, jamais une donnée du film.** `0x10` sur les **neuf** sites de position (`1406d008a`, `140f04dd5`, `140f04f32`, `140f04f80`, `140f04fe5`, `140f05018`, `140fb8b33`, `140ee7288`, `14226a6b8`) ; `0xc` sur deux autres composants, `0xf` sur un troisième ; deux enveloppes génériques héritent. Donc `axisW` est **par CARTE**, pas « par carte × niveau » |
+| 2026-09-16 | 3.4 (constantes `.rdata`) | ce commit | `read_memory` sur `143cd9750`, `143cd8378`, `143b8c6b0`, `143cd84b0` | Octets collés : `143cd9758 = 89 88 08 3c` = 1/120 ; `143cd975c = 00 00 80 4a` = 2^22 ; `143cd837c = 17 b7 d1 38` = 1e-4 ; `143b8c6b8 = 00 40 9c c6 / 00 40 9c 46` ×3 = `±20000` ; `143cd84b0 = 00 00 00 3f` = 0,5 (le centre de casier de `dequantWorldAxis`) |
+| 2026-09-16 | 3.4 (Q6, confrontation) | ce commit | `go test -tags=research ./tools/film_re/ -count=1 -v` | **`accord loi / catalogue : 79 cartes sur 79`**, 4 tests PASS, `ok … 0,301 s`. Les `axisWidths` de `map_quant_bounds.json` SONT ce que la table du moteur donnerait au niveau 16. **3.4.1 n'a aucune valeur à saisir** |
+| 2026-09-16 | 3.4 (Q6, relevés mémoire) | ce commit | mêmes tests : `TestTableDefautEgaleLeReleveMemoire`, `TestTableParIndexEgaleBazaar` | La table DÉFAUT calculée depuis `±20000` rend `6/6/6`, `7/7/7`, `8/8/8` aux niveaux 0-2 = **le relevé Cheat Engine de `DAT_1445cc9e0`** (journal du 2026-06-11). Le relevé de `DAT_1445ccbe0` (`1/1/0`, `2/2/1`, `3/3/2`) est **celui de BAZAAR** — jamais rattaché à une carte jusqu'ici ; la loi appliquée aux bornes `bazaar` le rend, puis `17/17/16` au niveau 16 |
+| 2026-09-16 | 3.4 (MORSURE 1) | ce commit | `C = 1/120` → `1/121` dans `tools/film_re/loi_largeurs_axe.go`, puis les tests | **ROUGE** : `1 carte(s) en desaccord sur 79 : [streets : catalogue [12 12 12], loi [12 12 13]]`. Fichier restauré, tests au vert |
+| 2026-09-16 | 3.4 (MORSURE 2) | ce commit | `NiveauPosition = 16` → `15`, puis les tests | **ROUGE sur les deux relevés mémoire**, quatre lignes nommées (`niveau 0 : [7 7 7], attendu [6 6 6]`, …) et Bazaar avec. Fichier restauré, `git status` propre |
+| 2026-09-16 | 3.4 (gates de non-intrusion) | ce commit | `gofmt -l ./tools` ; `go vet -tags=research ./tools/film_re/` ; `go build ./...` ; `go vet ./...` | sortie vide ; 0 diagnostic ; **`go build` et `go vet` INCHANGÉS** — le tag `research` les tient hors du chemin par construction |
+| 2026-09-16 | 3.4 (frontière de fichiers) | ce commit | `git diff --name-only e7b9bd48e..HEAD` | **3 fichiers** : `.ai/V7.5/film_re/NOTE_3_4_REMPLISSEUR_LARGEURS_2026-09-16.md`, `apps/go-api/tools/film_re/loi_largeurs_axe.go`, `…/loi_largeurs_axe_research_test.go` — plus ce plan. Rien sous `internal/`, `cmd/`, `config/`, `data/` |
+### Lot 3.3 (M3, P2) — volet RECHERCHE, gates SANS AUCUN DÉCODAGE, 2026-09-16
+
+Worktree `LevelUp-wt-decfilm-33r`, branche `feat/decfilm-33r`, base `e7b9bd48e`. Aucun film
+ouvert, aucune jonction vers le cache, aucune écriture dans `data/`. Frontière tenue :
+`apps/go-api/tools/film_re/` (fichiers neufs, tous `//go:build research`),
+`.ai/V7.5/film_re/NOTE_3_3_IDENTIFIANTS_GRENADE_2026-09-16.md`, et les lignes de ce plan
+(§3 lot 3.3, §4, §5). Aucun fichier de `internal/`, `cmd/`, `config/` ni `data/` touché.
+
+| Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
+|---|---|---|---|---|
+| 2026-09-16 | 3.3r (mesure AVANT) | `e7b9bd48e` | `go build ./...` | vert, 4 min 13 s (cache froid) — base saine avant le premier fichier |
+| 2026-09-16 | 3.3r (mesure AVANT) | `e7b9bd48e` | `go vet -tags=research ./tools/film_re/` | sortie vide — le paquet de relevé du lot 3.6 compile déjà sous le tag |
+| 2026-09-16 | 3.3r | ce commit | `gofmt -l ./tools` | sortie vide |
+| 2026-09-16 | 3.3r | ce commit | `go vet -tags=research ./tools/film_re/...` | sortie vide (2 paquets neufs : `grenadeids`, `cmd/grenadeids`) |
+| 2026-09-16 | 3.3r (GATE, non-intrusion) | ce commit | `go build ./...` | **vert** — les fichiers du tag `research` ne sont pas vus |
+| 2026-09-16 | 3.3r (GATE, non-intrusion) | ce commit | `go vet ./...` | **sortie vide** sur tout le module |
+| 2026-09-16 | 3.3r (GATE, non-intrusion) | ce commit | `go test ./internal/games/halo_infinite/film/grammar/ -run TestGrammarRevSuitLaGrammaire -v` | `--- PASS (0.02s)` — `GrammarRev` NE BOUGE PAS, aucun paquet haché touché |
+| 2026-09-16 | 3.3r (GATE, ratchets) | ce commit | `go test ./internal/archlint/` | `ok … 22.955s` — les 74 ratchets passent avec les fichiers neufs sous `tools/` (vérifié sur pièces : `no_hardcoded_film_cache_dirs` walk tout `apps/go-api` — l'instrument prend sa racine en paramètre et n'écrit aucun nom de sous-dossier de cache ; `no_unbounded_film_loop` ne surveille que `BuildMatch(`/`BuildBytes(`/`BuildFromFilm(`, qu'il n'appelle pas ; `film_layers_deps` et `film_file_size` ne couvrent que `internal/games/halo_infinite/film`) |
+| 2026-09-16 | 3.3r (invariant de l'instrument) | ce commit | `go run -tags=research ./tools/film_re/cmd/grenadeids -racine <inexistant> -films zz` | `VerifierMarqueurDeProduction` **passe** (aucune erreur) : `MarqueurDe(41) == 0x4C0C00`, la dérivation `((ti & 31) << 19) | 0x40C00` est donc exacte sur le build courant. Puis `film illisible : source: aucun chunk_NN.bin` — le refus est propre, **aucun film ouvert** |
+| 2026-09-16 | 3.3r (seuils, règle 5) | ce commit | `wc -l tools/film_re/grenadeids/*.go tools/film_re/cmd/grenadeids/*.go` | `balayage.go` 317, `appariement.go` 245, `rapport.go` 163, `bobine.go` 159, `main.go` 127, `doc.go` 58 — **tous sous 500 L**, aucune fonction au-delà de 80 L |
+| 2026-09-16 | 3.3r (frontière de fichiers) | ce commit | `git diff --name-only e7b9bd48e..HEAD` | 6 fichiers sous `apps/go-api/tools/film_re/`, 1 sous `.ai/V7.5/film_re/`, 1 = ce plan. **Zéro fichier de `internal/`, `cmd/`, `config/`, `data/`** |
+| 2026-09-16 | 3.3r (MESURE 0, jouée — autorisation du pilote) | ce commit | `go run -tags=research ./tools/film_re/cmd/grenadeids -fenetre 0 -voisinage 0 -racine …/replay/testdata -films minifilm_a521164d,minifilm_60ae07c4,minifilm_11de8353,minifilm_111fa685,minifilm_e5adf7b2,minifilm_bcb6d393,minifilm_fb1a1a72` | **0,52 s, aucun film du cache.** `ti` projectile = **41 sur les SEPT builds**, résolu par **4/4 noms** de composant à chaque fois, marqueur dérivé `0x4C0C00` partout, `ambiguites=[9]` partout. **LE MARQUEUR N'A PAS BOUGÉ → critère (1b) ÉCARTÉ** ; la question (1) se réduit à la POSITION et au CHAMP. Deux observations de bord : le cardinal du registre passe de **49 à 50 blocs** exactement entre `HI_1_11_0` et `HI_1_12_0`, soit la même frontière que les lancers publiés (corrélation, pas cause : `ti=41` des deux côtés, le bloc gagné est après le rang 41) ; et quatre bobines font sonner `warnUnknownRegistry` avec des empreintes mesurées sur le domaine de hachage COURANT (`4635077086892953806` HI_1_4_1, `3731204960007589061` HI_1_8_0, `11196959896536408664` HI_1_9_0, `9834140534605324359` HI_1_10_0, connue `3948122217672317832`) — matière de l'item 3.2.1, que les 8 empreintes du rapport H ne peuvent pas fournir (F2) |
+| 2026-09-16 | 3.3r (D2 outillée) | ce commit | `go vet -tags=research ./tools/film_re/...` ; `go build ./...` ; `go vet ./...` ; `TestGrammarRevSuitLaGrammaire` ; `go test ./internal/archlint/` | sortie vide ; vert ; sortie vide ; `ok … 0.070s` ; `ok … 19.979s` — après l'ajout de `typeindex.go` (séparation `ti=41` / `ti=9` par le sixième bit d'index) et du filtre `-ti` de la passe D. Fichiers : `balayage.go` 364, `appariement.go` 245, `rapport.go` 182, `bobine.go` 159, `main.go` 131, `typeindex.go` 55, `doc.go` 58 — tous sous 500 L |
+| 2026-09-16 | 3.3r (passes A à D) | ce commit | — | **NON JOUÉES** : un seul décodage à la fois sur ce poste ; la voie vient après le corpus gate 2.6-facts puis le gate 17 témoins de 3.2. Ordre imposé par le pilote : `bcb6d393` (témoin positif d'abord), `e5adf7b2`, `111fa685`, `60ae07c4`, `a349fea8`, `084a804d`. Critères de verdict écrits AVANT la mesure dans la note §5 |
+
+
+### Lot 3.3 (M3, P2) — volet RECHERCHE, gates AVEC DÉCODAGE, 2026-09-17 (« voie libre » du pilote)
+
+Six films du cache, **UN À LA FOIS**, dans l'ordre imposé par le pilote (témoin positif d'abord).
+Lecture en place, aucune écriture sous `data/`, verrou de décodage non pris (il écrirait sous la
+racine du cache) — la sérialisation est celle de l'opérateur. Sentinelle mémoire armée à 4 Gio.
+Durées : 0,26 s à 2,2 s par film ; aucun décodage d'artefact.
+
+| Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
+|---|---|---|---|---|
+| 2026-09-17 | 3.3r (film 1, TÉMOIN POSITIF) | ce commit | `grenadeids -films bcb6d393 -top 16` | 0,26 s. 21 864 paquets delta, 4 232 645 o, **312 marqueurs**. Passe A : les quatre identifiants au décalage **+0** — `0xB0171062` 37, `0xC0E34C44` 7, `0x3B2567D4` 7, `0x9212E428` 4 = **55**, soit EXACTEMENT le `grenades.available = 55` de l'artefact cuit. **L'instrument reproduit la production au lancer près.** Passe B : 0 occurrence hors marqueur. D2 sur données réelles : `ti=9:3 ti=41:309`, aucun des 3 records `managed-player` ne porte un identifiant de la liste blanche |
+| 2026-09-17 | 3.3r (film 2) | ce commit | `grenadeids -films e5adf7b2 -fenetre 512 -voisinage 16384` | 1,20 s. 1 082 marqueurs. **Aucun identifiant au décalage 0.** Un seul à un décalage STABLE : `0x3B2567D4` au **-1**, n=**42**, `hors_marqueur=0`. Les trois autres : aucun décalage stable dans ±512 (1 à 3 occurrences éparses à -426, +341, +817, +1165), mais **27 / 39 / 30 occurrences** ailleurs dans le flux contre **0,08** attendue par hasard. **9 identifiants sur 9 de la famille ti=41 ont leur bit de poids faible à 0** (build récent : 6 pairs / 5 impairs) |
+| 2026-09-17 | 3.3r (film 3) | ce commit | `grenadeids -films 111fa685 -fenetre 512 -voisinage 16384` | 0,93 s. Même signature, autre build : `0x3B2567D4` au **-1**, n=**66**, `hors_marqueur=0` ; les trois autres 37 / 26 / 30 fois hors marqueur. Le décalage -1 est donc **reproductible d'un build à l'autre** |
+| 2026-09-17 | 3.3r (BITS) | ce commit | `grenadeids -films bcb6d393 -dump 0xB0171062` puis `-films 111fa685 -dump 0x764ACFA8` | Tranches de 256 bits alignées sur le marqueur. Le bloc de 32 bits qui SUIT l'identifiant vaut `0x42C9679F` (récent) et `0x8592CF3E` (ancien) = **`0x42C9679F << 1`** au bit près. **`ancien[23..] == recent[24..]`** : tout ce qui suit l'amorce est décalé d'UN BIT |
+| 2026-09-17 | 3.3r (PRÉDICTION, posée avant la mesure) | ce commit | conséquence écrite : l'amorce ancienne fait 23 bits, donc les trois identifiants à bit de poids fort 1 portent le motif `0x4C0C01` et se lisent à +23 | Prédiction falsifiable, consignée note §6 bis.3 |
+| 2026-09-17 | 3.3r (VÉRIFICATION, film 3) | ce commit | `grenadeids -films 111fa685 -fenetre 64` | **VÉRIFIÉE.** 998 marqueurs `0x4C0C01` ; au décalage -1 : `0xB0171062` **37**, `0xC0E34C44` **26**, `0x9212E428` **30**. Avec `0x3B2567D4` 66 sur le marqueur pair : **159 lancers, les quatre rangs**, sur un film qui en publiait zéro |
+| 2026-09-17 | 3.3r (films 2, 4, 5, 6 + contrôle) | ce commit | `grenadeids -films <id> -fenetre 64` sur `bcb6d393`, `e5adf7b2`, `60ae07c4`, `a349fea8`, `084a804d` | `e5adf7b2` 27/39/42/30 = **138** ; `084a804d` 207/28/41/13 = **289** ; `60ae07c4` 270/18/0/22 = **310** ; `a349fea8` 287/56/5/38 = **386**. **Total 1 282 lancers sur cinq films à zéro.** **CONTRÔLE NÉGATIF** : sur `bcb6d393` (build récent), le motif `0x4C0C01` compte 67 occurrences et **aucun identifiant reconnu** — la grammaire à 24 bits y est bien la bonne |
+| 2026-09-17 | 3.3r (contrôle croisé) | ce commit | passe C derrière le marqueur impair de `111fa685`, lecture à +24 | `0x602E20C4` 37, `0x2425C850` 30, `0x81C69888` 26 = exactement `frag << 1`, `spike << 1`, `plasma << 1`, **aux mêmes comptes** que la lecture à +23. Les deux lectures décrivent le même événement |
+| 2026-09-17 | 3.3r (passe D + TÉMOIN DE HASARD) | ce commit | `grenadeids -films 111fa685 -apparier -ti 41 -temoin-ms 37000` puis idem sur `bcb6d393` | **LA MÉTHODE NE DISCRIMINE PAS, Y COMPRIS SUR LE TÉMOIN POSITIF.** `bcb6d393` : `0xB0171062` (frag, rang 0) 24/25 au rang 0, **témoin 13/13** ; `0x3B2567D4` (dynamo, rang 2) **0** appariement au rang 2. Cause mesurée : i22 delta rend **87 lectures / 1 481 records** (`bcb6d393`) et **265 / 5 982** (`111fa685`), soit 4 à 6 % — intervalles de dizaines de secondes. Critère (2 bis), et il vise la MÉTHODE, pas les builds anciens |
+| 2026-09-17 | 3.3r (index auteur, NON CONCLUANT) | ce commit | `grenadeids -fenetre-index 24` sur `bcb6d393`, `111fa685`, `084a804d` | À +103 : `bcb6d393` **54/55** dans 0..7 (position juste), `111fa685` **49/159** (position fausse). Mais **18 décalages sur 49** rendent 100 % sur les deux films : le critère « dans 0..7 » ne tranche pas. Position NON ÉTABLIE sur les builds anciens — découverte D5 (3.3r), à traiter en 3.3.1 |
+| 2026-09-17 | 3.3r (GATE, non-intrusion) | ce commit | `gofmt -l ./tools` ; `go vet -tags=research ./tools/film_re/...` ; `go build ./...` ; `go vet ./...` | sortie vide ; sortie vide ; **vert** ; **sortie vide** — les fichiers du tag `research` restent invisibles du module |
+| 2026-09-17 | 3.3r (GATE, non-intrusion) | ce commit | `go test ./…/film/grammar/ -run TestGrammarRevSuitLaGrammaire -count=1` | `ok … 0.084s` — **`GrammarRev` NE BOUGE PAS** : aucun octet de `film/` touché de tout le lot |
+| 2026-09-17 | 3.3r (GATE, ratchets) | ce commit | `go test ./internal/archlint/ -count=1` | `ok … 22.229s` — les 74 ratchets passent avec les 9 fichiers de `tools/film_re/` |
+| 2026-09-17 | 3.3r (seuils, règle 5) | ce commit | `wc -l tools/film_re/grenadeids/*.go tools/film_re/cmd/grenadeids/*.go` | `balayage.go` 418, `appariement.go` 245, `rapport.go` 186, `bobine.go` 159, `main.go` 148, `index_auteur.go` 101, `dump.go` 85, `doc.go` 58, `typeindex.go` 55 — **tous sous 500 L** |
+| 2026-09-17 | 3.3r (frontière de fichiers) | ce commit | `git diff --name-only e7b9bd48e..HEAD` | 9 fichiers sous `apps/go-api/tools/film_re/`, 1 note `.ai/V7.5/film_re/`, 1 = ce plan. **Zéro fichier de `internal/`, `cmd/`, `config/`, `data/`** |

@@ -171,6 +171,24 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// paquet. Le repertoire `decfilm/` fait coincider le nom du paquet et celui du dossier, sans
 	// alias et sans collision.
 	"internal/games/halo_infinite/film/decfilm": horsCoucheFilm,
+	// --- LES INSTRUMENTS DE RETRO-INGENIERIE (lot 3.2 / 3.3, rentres sous le decodeur a la
+	// reconciliation du lot 2.5.e, 2026-09-17). Ils vivaient dans `apps/go-api/tools/film_re/` et
+	// LISAIENT la grammaire (`grammar`, `source`, `profile`) : le jour ou les couches sont passees
+	// sous `film/internal/`, le compilateur les a refuses — ce qui est exactement ce que la
+	// frontiere existe pour dire. Ils rentrent donc DANS le decodeur plutot que de faire ouvrir
+	// une porte pour eux.
+	//
+	// ILS SE CLASSENT HORS COUCHE, comme la facade et les catalogues de libelles : ils ne
+	// decodent rien POUR LA PRODUCTION et ne publient rien. Tous leurs fichiers portent
+	// `//go:build research`, donc ils ne sont ni compiles ni executes par defaut ; le lecteur
+	// d imports de ce ratchet, lui, n honore pas les tags de build et les voit — c est voulu, un
+	// instrument qui remonterait vers `internal/analysis` doit rougir comme le reste.
+	//
+	// CE QUI EST RESTE DANS `tools/film_re/` : `doc.go` et `ecrivains_bloquants.go`, qui
+	// n importent RIEN du decodeur. La coupe suit la dependance, pas le repertoire d origine.
+	"internal/games/halo_infinite/film/research/grenadeids":     horsCoucheFilm,
+	"internal/games/halo_infinite/film/research/cmd_grenadeids": horsCoucheFilm,
+	"internal/games/halo_infinite/film/research/largeursaxe":    horsCoucheFilm,
 
 	// --- source : charger, decompresser, decouper, lire l en-tete, tenir le lecteur de bits.
 	// `source` est une FEUILLE sans aucun import du depot (ratchet `filmsource_leaf_test.go`)
