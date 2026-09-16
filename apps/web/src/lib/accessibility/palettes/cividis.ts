@@ -127,8 +127,10 @@ export const cividisPalette: Palette = {
   'narrative-debacle-text':          '#FFFFFF',            // blanc sur vermillion sombre (6.2)
   'narrative-contre-remontada':      CIVIDIS_T75,      // ocre
   'narrative-contre-remontada-text': '#000000',
-  'narrative-sabordage':             SAFE_REDDISH_PURPLE,
-  'narrative-sabordage-text':        '#000000',
+  // Couleur PROPRE (le Reddish Purple brut sert déjà extreme / frag-equipment) :
+  // Reddish Purple × 0.60, même valeur que sur Okabe-Ito.
+  'narrative-sabordage':             '#7A4964',
+  'narrative-sabordage-text':        '#FFFFFF',
   'narrative-abnegation':            CIVIDIS_T90,      // jaune doré
   'narrative-abnegation-text':       '#000000',
 

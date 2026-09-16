@@ -126,7 +126,11 @@ export const okabePalette: Palette = {
   'narrative-debacle-text':          '#FFFFFF', // blanc sur vermillion sombre (6.2) — noir tombe à 3.40
   'narrative-contre-remontada':      '#E69F00', // Orange (remplace cyan #33D6FF trop proche)
   'narrative-contre-remontada-text': '#000000', // noir sur orange
-  'narrative-sabordage':             '#0072B2', // Blue (seule teinte Okabe-Ito libre avec le jaune)
+  // Blue BRUT est outcome-win : un badge de défaite ne peut pas porter la couleur de
+  // la victoire. Les 8 teintes étant affectées, même technique que narrative-debacle :
+  // teinte gardée, luminosité baissée. Reddish Purple × 0.60 — assez sombre pour ne
+  // pas se confondre avec narrative-humiliation (Reddish Purple brut).
+  'narrative-sabordage':             '#7A4964', // Reddish Purple assombri (× 0.60)
   'narrative-sabordage-text':        '#FFFFFF',
   'narrative-abnegation':            '#F0E442', // Yellow
   'narrative-abnegation-text':       '#000000',
