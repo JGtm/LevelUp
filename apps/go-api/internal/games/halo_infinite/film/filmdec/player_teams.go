@@ -216,11 +216,16 @@ func lireEquipeDuRecord(pay []byte, recBit int, reg *Registry) (idx, brut int, o
 	}
 	i0 := tr.Comps[0].StartBit
 	br := NewBitReader(pay)
-	br.SetBitPos(recBit + keyframeFullStateHeaderBits + keyframeFullStateSizeBits)
+	// LE CADRE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c) : cette lecture REJOUE le cadre
+	// d'`walkKeyframeFullState` pour retrouver le premier composant, et les deux doivent donc
+	// tenir leur en-tete et leur mot de taille du MEME endroit — sinon la garde ci-dessous
+	// refuserait des records valides le jour ou l'un des deux bouge.
+	cadre := br.cadre()
+	br.SetBitPos(recBit + cadre.EnTeteBits + cadre.MotDeTailleBits)
 	idx = readManagedPlayerDefaultState(br)
-	attendu := br.BitPos() + keyframeFullStateSizeBits
+	attendu := br.BitPos() + cadre.MotDeTailleBits
 	if filmComponentCorruptionCheck {
-		attendu += keyframeFullStateSizeBits
+		attendu += cadre.MotDeTailleBits
 	}
 	if attendu != i0 || i0+teamDesignatorBits > len(pay)*8 {
 		return 0, 0, false

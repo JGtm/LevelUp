@@ -20,6 +20,12 @@ type BitReader struct {
 	// Cf. l en-tete de [BitReader.poserMouvement] pour ce qu il remplace et pourquoi il vit
 	// ici plutot qu en variable de paquet.
 	mv MovementProfile
+	// kf est le CADRE d image-cle que ce lecteur porte (lot 2.2.c). Il ne se pose jamais : ses
+	// deux largeurs sont des INVARIANTS du format, relus chez l ecrivain, que rien n installe
+	// par film. Il voyage quand meme avec le lecteur pour que les marches d etat complet
+	// prennent leur cadre AU PROFIL et non a une constante du paquet — c est la seule forme
+	// sous laquelle « fausser la valeur dans le profil » rougit leur lecture.
+	kf KeyframeProfile
 }
 
 // NewBitReader returns a reader positioned at the first bit of buf.
@@ -30,8 +36,12 @@ type BitReader struct {
 // variables de paquet du chemin de position portaient avant le lot 2.2.a. Un balayage qui tient
 // son propre profil l installe EN TETE ([BitReader.poserMouvement]) et n en depend plus.
 func NewBitReader(buf []byte) *BitReader {
-	return &BitReader{buf: buf, mv: mouvementHerite}
+	return &BitReader{buf: buf, mv: mouvementHerite, kf: cadreDuProfil()}
 }
+
+// cadre rend le CADRE d image-cle d etat complet que ce lecteur porte : l en-tete par entite,
+// la largeur d un mot de taille, et la regle `172 + etat(ti)` ([KeyframeProfile.CadreBits]).
+func (b *BitReader) cadre() KeyframeProfile { return b.kf }
 
 // poserMouvement installe le profil de mouvement du balayage, EN TETE de celui-ci.
 //

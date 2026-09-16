@@ -290,4 +290,27 @@ package filmdec
 // TROIS formes d acces, plus sur un seul nom.
 //
 // `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
-const GrammarRev = "grammar-2026-09-15.21"
+// ENTREE `grammar-2026-09-15.22` (2026-09-17, lot 2.2.c — RANG PROVISOIRE) : `.21` -> `.22`.
+// AUCUN OCTET N EST LU AUTREMENT.
+//
+// LES MARCHES D IMAGE-CLE PRENNENT LEUR CADRE AU PROFIL. `walkKeyframeFullState`,
+// `consumeFullStateDefaultBlock` et la lecture d equipe du pied de record lisaient les DEUX
+// constantes du paquet (en-tete de 108 bits, mot de taille de 32) ; elles les prennent
+// desormais au lecteur, qui les porte depuis une source unique — `cadreDuProfil`, la meme
+// fonction que [ResolveProfile] emploie pour poser `Profile.Keyframe`. Les deux constantes
+// n ont plus qu UN lecteur dans le paquet : cette fonction.
+//
+// POURQUOI CELA COMPTE ALORS QUE LE RATCHET NE BOUGE PAS. La famille des images-cles ne portait
+// AUCUNE variable de paquet : `keyframeBodyVariants` avait deja quitte la production a la revue
+// de jalon M1 (constat C4, avec `walkKeyframeBody`), et les largeurs etaient des `const`. Le
+// compte reste donc a 86 — et le gain n est pas la : il est qu une valeur faussee DANS LE
+// PROFIL rougit desormais la lecture (`TestKeyframeClosureRatchet`, sur les sept bobines), au
+// lieu de ne rougir qu une constante que personne ne relie au profil.
+//
+// LE BOUTON DES TEMOINS NEGATIFS SURVIT, ET IL EST INTACT : quand il est pose, il remplace le
+// cadre du profil — c est sa seule raison d etre (mesure du plancher de faux positifs, regle 4
+// de METHODE_RETRO_INGENIERIE_FILM). Il n est pas un reglage de production : non exporte, sans
+// appelant hors instruments, et son propre garde-rail interdit meme de le NOMMER ici.
+//
+// `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
+const GrammarRev = "grammar-2026-09-15.22"
