@@ -37,6 +37,12 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 		return runSyncDeltaAll(ctx, cfg, *maxMatches, *matchType, *rps, *tokenPoolSize)
 	}
 
+	// Les migrations shared AVANT de synchroniser : une passe qui insère sur un schéma
+	// périmé rejette des matchs pour TOUS les joueurs (C-C, 2026-09-16).
+	if err := applySharedMigrationsForTitle(cfg, titlePkg.DefaultSlug); err != nil {
+		return err
+	}
+
 	player, err := loadPlayerSummary(cfg, *gamertag)
 	if err != nil {
 		return err
@@ -75,6 +81,11 @@ func runSyncDeltaAll(
 	}
 	if len(players) == 0 {
 		return fmt.Errorf("aucun joueur configuré")
+	}
+
+	// Idem mono-joueur : le schéma partagé est mis à niveau avant la première insertion.
+	if err := applySharedMigrationsForTitle(cfg, titlePkg.DefaultSlug); err != nil {
+		return err
 	}
 
 	provider := auth_platform.NewSISUProvider()
@@ -161,6 +172,12 @@ func runSyncFull(cfg *config.AppConfig, args []string) error {
 		return runSyncFullAll(ctx, cfg, *maxMatches, *matchType, *rps, *tokenPoolSize)
 	}
 
+	// Les migrations shared AVANT de synchroniser : une passe qui insère sur un schéma
+	// périmé rejette des matchs pour TOUS les joueurs (C-C, 2026-09-16).
+	if err := applySharedMigrationsForTitle(cfg, titlePkg.DefaultSlug); err != nil {
+		return err
+	}
+
 	player, err := loadPlayerSummary(cfg, *gamertag)
 	if err != nil {
 		return err
@@ -199,6 +216,11 @@ func runSyncFullAll(
 	}
 	if len(players) == 0 {
 		return fmt.Errorf("aucun joueur configuré")
+	}
+
+	// Idem mono-joueur : le schéma partagé est mis à niveau avant la première insertion.
+	if err := applySharedMigrationsForTitle(cfg, titlePkg.DefaultSlug); err != nil {
+		return err
 	}
 
 	provider := auth_platform.NewSISUProvider()
