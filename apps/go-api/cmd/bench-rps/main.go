@@ -50,6 +50,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/platform/auth"
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -69,6 +70,12 @@ func (rt *redirectTransport) RoundTrip(req *http.Request) (*http.Response, error
 }
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	mode := flag.String("mode", "sim", "Mode : 'sim' | 'real' (1 token) | 'real-multi' (N tokens concurrents).")
 	xuid := flag.String("xuid", "", "XUID joueur (mode real uniquement). Sans 'xuid()'.")
 	gamertagsRaw := flag.String("gamertags", "",

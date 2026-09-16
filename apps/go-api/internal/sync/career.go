@@ -26,7 +26,11 @@ import (
 type CareerRankData = domain.CareerRankSnapshot
 
 // syncCareerRank récupère la progression du rang carrière via le client Halo.
-// Si le token joueur est absent, la sync est sautée proprement (nil, nil).
+// Si le token joueur est absent, la sync est sautée proprement (nil, nil) — avec UN
+// WarnContext, pas un silence : le rang de carrière est le seul endpoint privacy-gated
+// du sync (PolicyPinnedPlayer), et un profil suivi sans token propre le perd alors que
+// tout le reste passe par le pool (D1, plan 2026-09-16). `career_synced` reste false et
+// le sync reste en succès.
 // Utilisée uniquement par career_integration_test.go (-tags=integration) ;
 // le code prod passe par syncEngine.fetchCareerRank — preserve pour les
 // tests d'intégration sans modification d'API.
@@ -49,7 +53,13 @@ func syncCareerRank(
 	if len(xuid) < 12 || len(xuid) > 20 {
 		return nil, fmt.Errorf("syncCareerRank: longueur xuid inattendue %d (attendu 12-20 chiffres)", len(xuid))
 	}
-	return client.GetCareerRank(ctx, xuid)
+	rank, err := client.GetCareerRank(ctx, xuid)
+	if errors.Is(err, ErrNoPinnedToken) {
+		slog.WarnContext(ctx, "career: rang non synchronisé — aucun token propre pour ce joueur",
+			"xuid", xuid)
+		return nil, nil
+	}
+	return rank, err
 }
 
 // parseCareerRank extrait les données de rang depuis la réponse API.

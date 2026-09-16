@@ -38,9 +38,22 @@ import (
 	"os"
 
 	"levelup/go-api/internal/config"
-	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/games/titleseams"
 )
+
+// wireStartupSeams pose les seams title-owned de la CLI — MÊME câblage que le
+// serveur (2026-09-16). Couvre MT-07 (libellés de rangs, dont dépend
+// `seed rank-translations`), les steps de migration title-owned (sans eux les
+// racines shared_social ne sont pas exécutées par RunForDB → seed-demo média
+// échoue) ET les classifiers LUSR / famille objectif : sans eux, le post-sync de
+// `sync-delta` / `sync-full` panique (fail-loud MT-15) et rend perf_scores=0
+// lusr=0 citations=0 dominance=0 sur toute la passe.
+//
+// Extrait de main() pour être exerçable par main_seams_test.go : un test qui
+// n'invoquerait pas ce chemin passerait avec ET sans le câblage.
+func wireStartupSeams(cfg *config.AppConfig) {
+	titleseams.RegisterAll(titleseams.PrestigeConfigDir(cfg.RepoRoot))
+}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -54,15 +67,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// MT-07 : source title-owned des libellés de rangs (le sous-commande
-	// `seed rank-translations` via ops.SeedRankTranslations en dépend).
-	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)
-
-	// Steps de migration title-owned (parité cmd/server). SANS ça, les RACINES
-	// shared_social (create_base_shared_social_schema → table media_files / associations)
-	// ne sont PAS exécutées par RunForDB/RunForTitleDB dans la CLI → seed-demo média
-	// échoue (media_files absente). index-media et seed-demo en dépendent.
-	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+	wireStartupSeams(cfg)
 
 	subcmd := os.Args[1]
 	args := os.Args[2:]
