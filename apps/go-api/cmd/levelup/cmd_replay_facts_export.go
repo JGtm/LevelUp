@@ -74,7 +74,12 @@ func runReplayFactsExport(cfg *config.AppConfig, args []string) error {
 	}
 	db, release, err := duckdb.OpenReadForQuery(pr.SharedDBPath(*titleSlug))
 	if err != nil {
-		return fmt.Errorf("open shared RO : %w (serveur en ecriture ? l'arreter le temps de l'export)", err)
+		// L'INSTRUCTION PROPRE A L'EXPORT, et elle seule : la sentinelle dit déjà « base tenue,
+		// reessayer » ; ici on peut faire mieux que réessayer, on peut arrêter le serveur.
+		if errors.Is(err, duckdb.ErrBaseTenueEnEcriture) {
+			return fmt.Errorf("open shared RO : %w (l'arreter le temps de l'export)", err)
+		}
+		return fmt.Errorf("open shared RO : %w", err)
 	}
 	defer release()
 	var repo port.ReplayFactsRepo = duckdb.NewReplayFactsRepo(db)

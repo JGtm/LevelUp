@@ -60,12 +60,21 @@ import (
 	"time"
 )
 
-// marqueurBaseTenue : LE marqueur d'un echec TRANSITOIRE de l'export. Il est ecrit par
-// `cmd/levelup` (`cmd_replay_facts_export.go`, message de `OpenReadForQuery`) et dit
-// litteralement de reessayer. Ce paquet ne peut pas importer cette constante (`package main`
-// chez le voisin) : `facts_marqueur_test.go` verifie donc que le litteral existe TOUJOURS
-// dans ce fichier-la — sans ce garde-rail, un reformulage du message desarmerait le reessai
-// en silence, et le gate reperdrait des temoins sur un alea de quelques secondes.
+// marqueurBaseTenue : LE marqueur d'un echec TRANSITOIRE de l'export, MIROIR DU TEXTE DE
+// `duckdb.ErrBaseTenueEnEcriture` (lot 2.10.4).
+//
+// Depuis ce lot, l'indication n'est plus collee a la main par `cmd/levelup` : elle vient de la
+// SENTINELLE que rend `internal/platform/duckdb` quand une ouverture echoue sur un verrou d'un
+// autre processus — donc seulement quand la base est VRAIMENT tenue, jamais sur un fichier
+// absent. En processus, un appelant ecrit `errors.Is(err, duckdb.ErrBaseTenueEnEcriture)`.
+//
+// CE GATE N'EST PAS DANS CE PROCESSUS : il EXECUTE `levelup` et lit son `stderr`, ou
+// `errors.Is` n'a aucun sens — il ne lui reste que le texte. Il le MIROITE ici plutot que
+// d'importer `internal/platform/duckdb`, qui embarquerait le pilote DuckDB (CGO) dans un
+// binaire de gate qui n'ouvre aucune base. L'egalite des deux est tenue par
+// `archlint.TestMarqueurDuGateEgaleLaSentinelleBaseTenue`, qui lit la definition de la
+// sentinelle : sans ce garde-rail, un reformulage desarmerait le reessai en silence, et le
+// gate reperdrait des temoins sur un alea de quelques secondes.
 const marqueurBaseTenue = "serveur en ecriture"
 
 // reessaisExport / delaiEntreReessais : le reessai BORNE — trois tentatives, deux secondes

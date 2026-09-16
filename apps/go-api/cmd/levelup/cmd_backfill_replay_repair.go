@@ -135,7 +135,7 @@ func passeReparation(
 	sharedPath := pr.SharedDBPath(o.titleSlug)
 	db, release, err := duckdb.OpenReadForQuery(sharedPath)
 	if err != nil {
-		return nil, fmt.Errorf("mode reparation : open shared RO (%s): %w (serveur en ecriture ? reessayer)", sharedPath, err)
+		return nil, fmt.Errorf("mode reparation : open shared RO (%s): %w", sharedPath, err)
 	}
 	defer release()
 
