@@ -808,6 +808,23 @@ func (p *PathResolver) MapQuantBoundsPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_quant_bounds.json")
 }
 
+// FilmProfilesPath retourne le chemin du CATALOGUE DES PROFILS DE FILM d'un titre : ce que
+// le dépôt sait de la grammaire d'un film, indexé par les TROIS clés que le film ÉCRIT
+// (version de format `chunk_00+4`, build de la section 2, version majeure `chunk_00+0`).
+//
+// Donnée de RÉFÉRENCE versionnée, jamais écrite à l'exécution (D12 du plan décodeur,
+// ratchet archlint TestRuntimeNEcritPasLeCatalogueVersionne) : le décodeur la LIT, la
+// chaîne de fabrication (`cmd/film-profiles-build` pour la part dérivée, la main pour les
+// valeurs relues dans l'exécutable) l'ÉCRIT hors serveur, et la revue la relit.
+//
+// Elle ne duplique PAS les bornes de carte : celles-ci restent dans leur propre catalogue
+// (MapQuantBoundsPath) et le profil n'en porte que l'empreinte, pour dire de quelle
+// dérivation il est solidaire.
+// Ex: data/titles/halo_infinite/reference/film_profiles.json
+func (p *PathResolver) FilmProfilesPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "film_profiles.json")
+}
+
 // MapFondReglagesPath retourne le chemin des RÉGLAGES DE CUISSON PAR CARTE des fonds de
 // rejeu 2D (habillage, échelle).
 //
