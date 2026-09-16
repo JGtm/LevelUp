@@ -30,8 +30,24 @@ import type { ReplayDocument } from '@/lib/api/types'
 import { normalizeReplayDocument, type ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { goFixtureSchemaVersion } from './goFixtures'
 
+type RosterEntry = NonNullable<ReplayDocument['roster']>[number]
+
+/**
+ * Entrée de roster de test : `seat` est OPTIONNEL ici et vaut l'index de film par défaut — c'est
+ * sa définition depuis le schéma 60 (lot 1.9.14 : le siège d'un joueur EST l'index que le film
+ * écrit ; le document ne l'omet jamais). Les tests qui veulent un siège apparié (différent de
+ * l'index) le posent explicitement.
+ */
+export type TestRosterEntry = Omit<RosterEntry, 'seat'> & { seat?: number }
+
+/** Surcharges acceptées par [testReplayDoc] : le document, avec un roster de test. */
+export type TestReplayDocOverrides = Omit<Partial<ReplayDocument>, 'roster'> & {
+  roster?: TestRosterEntry[]
+}
+
 /** Document de rejeu minimal valide, normalisé — surcharger ce que le test veut voir. */
-export function testReplayDoc(over: Partial<ReplayDocument> = {}): ReplayDocumentReady {
+export function testReplayDoc(over: Partial<ReplayDocument> | TestReplayDocOverrides = {}): ReplayDocumentReady {
+  const { roster, ...rest } = over as TestReplayDocOverrides
   return normalizeReplayDocument({
     schemaVersion: goFixtureSchemaVersion(),
     matchId: 'm',
@@ -39,6 +55,7 @@ export function testReplayDoc(over: Partial<ReplayDocument> = {}): ReplayDocumen
     frameCount: 200,
     bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 },
     tracks: [],
-    ...over,
+    ...rest,
+    ...(roster ? { roster: roster.map((r) => ({ ...r, seat: r.seat ?? r.filmIndex })) } : {}),
   })
 }

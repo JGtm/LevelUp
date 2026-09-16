@@ -44,32 +44,56 @@ const (
 	// CES CHIFFRES NE SE COMPARENT PAS COMME LES ETAPES D UN MEME PROGRES. 496 venait d un CHOIX
 	// (4 desaccords entre sources) ; 483 vient d une DEDUCTION qui s abstient des qu il reste
 	// deux candidats, et dont les refus sont comptes et publies.
-	wantShotsAttached  = 483
+	//
+	// 504/519 = 97,1 % DEPUIS LE 2026-09-14 (lot 1.0), ET CE N EST PAS UN ELARGISSEMENT. Le
+	// fixture d entrees ne portait PAS les records de creation de bipede — le lien DIRECT
+	// corps -> joueur que le film ECRIT (lot E2) — parce que son chemin recopiait la sequence de
+	// balayages de `BuildFromFilm` et que ce canal n y figurait pas (decouverte D7). Le golden
+	// decrivait donc un pont bati SANS sa source premiere. La production, elle, le lit depuis le
+	// 2026-09-08 : ce fixture rattrape le document servi, il ne change pas de regle. Mesure du
+	// meme geste : les rejets « slot introuvable » passent de 36 a 15.
+	wantShotsAttached  = 504
 	wantShotsAvailable = 519
 	// wantClosedByShot / wantClosedByRespawn : ce que les fermetures ajoutent sur ce film.
-	// La fermeture A n y ferme RIEN (ses candidates sont contestees) ; c est B qui porte les
-	// 3 entrees — 5 avant la ronde de correction du 2026-08-09, dont DEUX revendiquaient la meme
-	// mort qu une autre vie. Sur d autres films le partage s inverse : cf. §7.5 du verdict.
+	// La fermeture A n y ferme RIEN (ses candidates sont contestees) ; B en portait 3 — 5 avant
+	// la ronde de correction du 2026-08-09, dont DEUX revendiquaient la meme mort qu une autre
+	// vie. Sur d autres films le partage s inverse : cf. §7.5 du verdict.
+	//
+	// LES DEUX SONT A ZERO DEPUIS LE 2026-09-14 (lot 1.0), ET C EST LA BONNE NOUVELLE : les
+	// fermetures sont des DEDUCTIONS PAR ELIMINATION, employees quand la lecture ne dit rien.
+	// Le fixture porte desormais le lien direct corps -> joueur, donc les 99 entrees du pont
+	// viennent TOUTES de la lecture (99/99, contre 90/93) et il ne reste rien a deduire. Zero
+	// fermeture sur un pont complet n est pas une fermeture cassee : c est une fermeture inutile.
 	wantClosedByShot    = 0
-	wantClosedByRespawn = 3
-	// wantLivesNamed / wantLivesTotal : 90 vies nommees sur 105. Les 15 restantes sont 4 vies
-	// anterieures au debut reel du match et 6 survivants de fin de partie, que le film ne clot
-	// par aucun evenement.
+	wantClosedByRespawn = 0
+	// wantLivesNamed / wantLivesTotal : 90 vies nommees sur 99.
+	//
+	// LE DENOMINATEUR EST PASSE DE 105 A 99 AU LOT 1.9.13 (2026-09-15), ET LE NUMERATEUR N'A PAS
+	// BOUGE. Les six vies disparues n'etaient pas des vies : c'etaient les deux moities de six
+	// sejours que le seuil de trou (`lifeGapUS`) coupait sans qu'AUCUN fait du film ne les ferme
+	// — ni mort ecrite, ni apparition de corps, ni fin de manche (mesure : 6 coupures sur
+	// `000d5950`, 6 « RIEN »). Elles sont redevenues des lacunes de leur vie. Que les 90 nommees
+	// restent 90 est le controle : la conversion n'a retire aucune vie NOMMEE, elle a recolle des
+	// morceaux.
+	//
+	// Les 9 restantes sont des vies que le film ne clot par aucun evenement — anterieures au
+	// debut reel du match, ou survivants de fin de partie.
 	wantLivesNamed = 90
-	wantLivesTotal = 105
-	// wantGrenades : 69 lancers situes sur 70 — 63 par la naissance de leur projectile, 6 par le
-	// biped de leur auteur (65 / 5 avant le 2026-09-11).
+	wantLivesTotal = 99
+	// wantGrenades : 70 lancers situes sur 70 — 65 par la naissance de leur projectile, 5 par le
+	// biped de leur auteur.
 	//
-	// C ETAIT 70 JUSQU AU 2026-09-11, ET LE LANCER PERDU EST UN GAIN. Le choix de la naissance
-	// revient desormais au biped de l auteur (cf. locateThrow) ; celui-la n a PAS d auteur ponte
-	// et sa fenetre de 200 ms porte DIX naissances, dont huit au meme instant a moins d un metre
-	// les unes des autres — une rafale de sous-projectiles. L ancien code en prenait une par
-	// proximite temporelle, soit un tirage au sort sur dix. On s abstient.
+	// CE FUT 69 DU 2026-09-11 AU 2026-09-14, ET LE LANCER RETROUVE EST LE MEME GAIN QUE LES
+	// TIRS. Le choix de la naissance revient au biped de l auteur (cf. locateThrow) ; ce
+	// lancer-la n avait PAS d auteur ponte dans le fixture, et sa fenetre de 200 ms portait DIX
+	// naissances — le calque s abstenait, a raison. Il a un auteur depuis que le fixture porte
+	// le lien direct corps -> joueur (lot 1.0) : la regle n a pas bouge, c est l entree qui est
+	// enfin celle de la production. L abstention reste armee et reste comptee.
 	//
-	// LES 64 RESTANTS SONT MESURES : distance mediane du lancer au biped de son lanceur 0,44 m,
-	// pire cas 0,56 m (contre 14,46 m avant), 0 lancer au-dela de 4 m (contre 2) — banc
-	// `grenade_ecart_research_test.go`, 2026-09-11.
-	wantGrenades = 69
+	// LA MESURE DE JUSTESSE TIENT : distance mediane du lancer au biped de son lanceur 0,44 m,
+	// pire cas 0,56 m (contre 14,46 m avant le 2026-09-11), 0 lancer au-dela de 4 m — banc
+	// `grenade_ecart_research_test.go`.
+	wantGrenades = 70
 	// wantGrenadesAvailable : 70 lancers decodes — le DENOMINATEUR, et il ne bouge pas. Un
 	// rattachement qui s abstient se compte ; il ne se retire pas du disponible.
 	wantGrenadesAvailable = 70
@@ -127,8 +151,11 @@ func TestGoldenAssembly(t *testing.T) {
 		if err := os.WriteFile(path, []byte(got), 0o600); err != nil {
 			t.Fatalf("ecriture de %s : %v", path, err)
 		}
-		t.Logf("golden reecrit : %s", path)
-		return
+		// UNE PORTE DE REGENERATION NE REND JAMAIS `ok` (revue R1, constat R1-8) : `go test` jette
+		// la sortie d un paquet qui PASSE, donc un `t.Logf` est invisible avec la commande
+		// documentee. Meme motif que les CINQ autres portes du paquet (fixture d entrees, goldens
+		// par build, fixtures de contrat, forme du document, et celle-ci).
+		t.Fatalf("golden d assemblage reecrit : %s ; relancer sans -update pour verifier", path)
 	}
 	want, err := os.ReadFile(path) //nolint:gosec // chemin fige dans le code
 	if err != nil {
@@ -166,12 +193,13 @@ func ligneAssembly(ls []string, i int) string {
 // Les tests NOMMES : un chiffre du chantier, une phrase, un test.
 // ---------------------------------------------------------------------------
 
-// TestShotsCoverageIsFourEightyThreeOfFiveNineteen : LE CHIFFRE CENTRAL DU CHANTIER.
+// TestShotsCoverageIsFiveHundredFourOfFiveNineteen : LE CHIFFRE CENTRAL DU CHANTIER.
 //
-// 483 tirs rattaches sur 519 disponibles. Le denominateur compte autant que le numerateur :
-// publier 483 sans dire 519 laisserait croire a l exhaustivite. Le rapport et la ventilation
-// des rejets sont donc verifies ensemble.
-func TestShotsCoverageIsFourEightyThreeOfFiveNineteen(t *testing.T) {
+// 504 tirs rattaches sur 519 disponibles. Le denominateur compte autant que le numerateur :
+// publier 504 sans dire 519 laisserait croire a l exhaustivite. Le rapport et la ventilation
+// des rejets sont donc verifies ensemble. (483/519 jusqu au lot 1.0 du 2026-09-14, qui fait
+// entrer au fixture le lien direct corps -> joueur : cf. wantShotsAttached.)
+func TestShotsCoverageIsFiveHundredFourOfFiveNineteen(t *testing.T) {
 	doc := buildGolden(t)
 	c := doc.Coverage.Shots
 	if c.Attached != wantShotsAttached || c.Available != wantShotsAvailable {
@@ -194,7 +222,7 @@ func TestShotsCoverageIsFourEightyThreeOfFiveNineteen(t *testing.T) {
 
 // TestBridgeNamesNinetyLivesOfHundredFive : LE PONT, ET SON DENOMINATEUR.
 //
-// 90 vies nommees sur 105. Les 15 restantes ne sont pas un echec du decodage : ce sont des vies
+// 90 vies nommees sur 99. Les 9 restantes ne sont pas un echec du decodage : ce sont des vies
 // que le film ne clot par AUCUN evenement (debut de film, survivants de fin de partie). Un
 // rapport publie sans son denominateur ne se juge pas.
 func TestBridgeNamesNinetyLivesOfHundredFive(t *testing.T) {
@@ -239,9 +267,11 @@ func TestBridgeNamesNinetyLivesOfHundredFive(t *testing.T) {
 // source est verifie parce qu un basculement silencieux de l une vers l autre changerait la
 // signification du calque sans changer son total.
 //
-// LE DENOMINATEUR ET LE PUBLIE SE SONT SEPARES LE 2026-09-11 : 70 lancers decodes, 69 poses.
-// Le soixante-dixieme n a pas d auteur ponte et sa fenetre porte DIX naissances — l abstention
-// est le correctif, pas la perte (cf. wantGrenades).
+// LE DENOMINATEUR ET LE PUBLIE S ETAIENT SEPARES LE 2026-09-11 (70 decodes, 69 poses) : le
+// soixante-dixieme n avait pas d auteur ponte et sa fenetre portait DIX naissances —
+// l abstention etait le correctif, pas la perte. Ils coincident de nouveau depuis le lot 1.0 du
+// 2026-09-14, ou le fixture porte le lien direct corps -> joueur et rend son auteur a ce lancer
+// (cf. wantGrenades). L abstention, elle, reste armee.
 func TestSeventyGrenadeThrowsAreAllPlaced(t *testing.T) {
 	doc := buildGolden(t)
 	c := doc.Coverage.Grenades
@@ -332,6 +362,14 @@ func renderAssembly(doc ReplayDocument) string {
 	p("## AXE DE TEMPS")
 	p("%d frames · intervalle %d ms · duree %d ms", doc.FrameCount, doc.FrameIntervalMS, doc.DurationMS)
 	p("schema %d · titre %s", doc.SchemaVersion, doc.TitleSlug)
+	// LA VERSION MAJEURE DU FILM EST UNE COUVERTURE PUBLIEE (`coverage.filmMajorVersion`), donc
+	// elle appartient au golden (revue R2, constat R2-1). Sans cette ligne, un fixture regenere
+	// SANS version recuisait les huit documents web sans le champ, toutes portes vertes.
+	if v := doc.Coverage.FilmMajorVersion; v != nil {
+		p("version majeure du film : %d", *v)
+	} else {
+		p("version majeure du film : NON LUE (le fil des morts retombe sur le decoupage historique)")
+	}
 	if doc.OriginMs != nil {
 		p("origine de la frame 0 sur l horloge du fil : %d ms", *doc.OriginMs)
 	} else {
@@ -360,9 +398,52 @@ func renderAssembly(doc ReplayDocument) string {
 	renderGroundWeapons(p, doc)
 	renderLoadouts(p, doc)
 	renderBridge(p, doc)
+	renderIdentite(p, doc)
+	renderSieges(p, doc)
+	renderReplis(p, doc)
 	renderLabels(p, doc)
 	renderBounds(p, doc)
 	return b.String()
+}
+
+// renderSieges fige LA POSE DES SIEGES (lot 1.9.14) : combien de fiches ce document porte, et
+// combien d occupants le film y met AU PLUS en meme temps.
+//
+// IL APPARTIENT AU GOLDEN POUR LA MEME RAISON QUE LE BLOC DES REPLIS : l ecart entre `entrees`
+// et `occupantsMax` est le defaut que le lot corrige, et le figer par build est ce qui rend une
+// regression de la pose visible sans relancer d instrument.
+func renderSieges(p func(string, ...any), doc ReplayDocument) {
+	p("## SIEGES — la fiche d un occupant, et la part qui vient d un appariement")
+	if doc.Coverage == nil || doc.Coverage.Seats == nil {
+		p("aucun : ce document ne publie pas de roster")
+		p("")
+		return
+	}
+	s := *doc.Coverage.Seats
+	p("entrees %d · sieges %d · lus %d · apparies %d · reprises ecrites %d",
+		s.Entrees, s.Sieges, s.Lus, s.Apparies, s.ReprisesEcrites)
+	p("arrivants %d · presences closes %d · sans presence %d · occupants au plus %d · sans table %v",
+		s.Arrivants, s.PresencesCloses, s.SansPresence, s.OccupantsMax, s.SansTableDuFilm)
+	p("")
+}
+
+// renderReplis fige CE QUE CET ASSEMBLAGE DOIT A UN REPLI (schema 58, decision D14).
+//
+// IL APPARTIENT AU GOLDEN, ET C EST LE POINT : les huit goldens de build deviennent la table
+// des declenchements par build, versionnee et relue a chaque lot. Un repli qui se met a mordre —
+// ou qui cesse de mordre parce qu une conversion a porte la lecture — fait bouger ce bloc, et la
+// revue le voit sans relancer d instrument.
+func renderReplis(p func(string, ...any), doc ReplayDocument) {
+	p("## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film")
+	if doc.Coverage == nil || len(doc.Coverage.Fallbacks) == 0 {
+		p("aucun : chaque fait publie vient d une lecture (ou d un repli dont le compteur n est pas encore cable)")
+		p("")
+		return
+	}
+	for _, h := range doc.Coverage.Fallbacks {
+		p("%-48s %d", h.Name, h.Hits)
+	}
+	p("")
 }
 
 // renderT0Film fige LE COUP D ENVOI et son verdict (cf. t0_film.go). Le refus est rendu AVEC
@@ -394,6 +475,23 @@ func renderTracks(p func(string, ...any), doc ReplayDocument) {
 	}
 	p("## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)")
 	p("%d trace(s) · %d point(s) de grille", len(doc.Tracks), points)
+	// LE REFUS DU SEUIL EST DANS LE GOLDEN (schema 55) : il etait MUET, et un compteur qu on
+	// publie sans le figer redevient muet au premier refacto. Le seuil par defaut vaut 1 depuis
+	// le lot 1.6.5 : ce compte est donc a ZERO sur toute cuisson qui ne le regle pas, et c est
+	// precisement ce qu il doit montrer.
+	if tc := doc.Coverage.Tracks; tc != nil {
+		p("seuil de publication %d point(s) : %d vie(s) REFUSEE(S) portant %d point(s) — "+
+			"si le film ecrit une position, elle se publie",
+			tc.MinPoints, tc.RefusedMinPoints, tc.RefusedPoints)
+		// LES LACUNES SONT DANS LE GOLDEN (lot 1.9.13) : elles DECOUPAIENT les vies avant ce lot
+		// et ne se comptaient nulle part — une vie coupee en quatre etait indistinguable de
+		// quatre vies. Un silence de replication n'est pas une mort : la vie continue, la piste
+		// ne s'y interpole pas (`Point.G`), et le compte dit combien de fois le film se tait.
+		p("%d lacune(s) de replication DANS une vie, %d ms au total — un trou n'est pas une fin "+
+			"de vie, la piste ne s'y interpole simplement pas", tc.Gaps, tc.GapMS)
+	} else {
+		p("seuil de publication : NON APPLIQUE (le film ne porte aucune position)")
+	}
 	p("%d trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis",
 		named)
 	p("occupation du slot dans le TEMPS) · %d sans identite — un DEFAUT de nommage a instruire,",
@@ -411,9 +509,59 @@ func renderTracks(p func(string, ...any), doc ReplayDocument) {
 	p("### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables")
 	p("%d joueur(s)", len(doc.Roster))
 	for _, r := range doc.Roster {
-		p("  %s  idx=%d  %q", r.XUID, r.FilmIndex, r.Name)
+		p("  %s  idx=%d  equipe=%s  %q", r.XUID, r.FilmIndex, equipeTexte(r.Team), r.Name)
 	}
 	p("")
+	renderTeams(p, doc)
+}
+
+// renderTeams rend L EQUIPE LUE DANS LE FILM (schema 57, lot 1.7) : c est ce qui rend le critere
+// S5 du PLAN_DECODEUR_FILM verifiable sur piece — « `Track.Team != -1` sur une cuisson HORS
+// LIGNE ». Les goldens ne lisent AUCUNE base : si une equipe y apparait, elle vient du film.
+func renderTeams(p func(string, ...any), doc ReplayDocument) {
+	p("### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)")
+	c := doc.Coverage.Teams
+	if c == nil {
+		p("aucune couverture d equipes publiee")
+		p("")
+		return
+	}
+	p("lue=%v refus=%q · %d record(s) ti=9, %d rejete(s), %d divergence(s)",
+		c.Read, c.Refusal, c.Records, c.Rejected, c.Divergences)
+	p("roster : %d joueur(s) dont le film donne l equipe (%d sans equipe) · %d non lu(s)",
+		c.Film, c.NoTeam, c.Unread)
+	p("controle (feuille de match) : accord=%d contradiction=%d silence=%d",
+		c.Accord, c.Contradiction, c.Silence)
+	p("vies : %d/%d portent une equipe du film", c.TracksNamed, c.Tracks)
+	p("repartition des vies par designateur : %s", repartitionEquipes(doc.Tracks))
+	p("")
+}
+
+// equipeTexte rend le designateur d une entree de roster, ou « absente » quand le film ne nomme
+// pas cet index. Les deux ne sont pas la meme chose, et le golden doit les distinguer.
+func equipeTexte(t *int) string {
+	if t == nil {
+		return "absente"
+	}
+	return strconv.Itoa(*t)
+}
+
+// repartitionEquipes rend l histogramme des designateurs portes par les vies publiees, trie.
+func repartitionEquipes(tracks []Track) string {
+	comptes := map[int]int{}
+	for _, t := range tracks {
+		comptes[t.Team]++
+	}
+	cles := make([]int, 0, len(comptes))
+	for k := range comptes {
+		cles = append(cles, k)
+	}
+	sort.Ints(cles)
+	parts := make([]string, 0, len(cles))
+	for _, k := range cles {
+		parts = append(parts, fmt.Sprintf("%d x%d", k, comptes[k]))
+	}
+	return strings.Join(parts, " · ")
 }
 
 func renderLayerCoverage(p func(string, ...any), titre string, c LayerCoverage, verdict string) {
@@ -754,8 +902,21 @@ func renderPlacements(p func(string, ...any), doc ReplayDocument) {
 		c.WithHeading)
 	// L ORIGINE EST LA LIGNE QUI DECIDE DU RENDU : seuls les DEPLOYES decrivent un geste. Les
 	// trois comptes sont figes ensemble, et leur somme doit valoir le total (invariant teste).
-	p("origine mesuree : %d deployee(s) · %d lachee(s) a la fin de la vie du poseur · "+
-		"%d sans poseur", c.Deployed, c.Dropped, c.Unknown)
+	//
+	// LE LIBELLE SUIT LE VOCABULAIRE TRANCHE LE 2026-09-15 : un `dropped` est un LACHER, sans
+	// dire lequel (mort du porteur ou echange) — c'est `byCause` qui le dit —, et un `unknown`
+	// couvre DEUX silences (aucun poseur mesure, ou un poseur connu dont le film ne dit rien).
+	p("origine lue : %d deployee(s) (piece engendree) · %d lachee(s) · %d inconnue(s)",
+		c.Deployed, c.Dropped, c.Unknown)
+	// LA PROVENANCE DE CHAQUE ORIGINE (schema 59, lot 1.9.1) : ce que le film a DIT contre ce
+	// qu'un repli a decide. Elle est figee ici parce que c'est la seule grandeur du calque qui
+	// puisse se degrader SANS QUE RIEN D'AUTRE NE BOUGE — une lecture qui cesse de trancher rend
+	// exactement les memes origines, par le repli, et l'ancien golden ne le voyait pas.
+	p("provenance : %d evenement(s) 103 lu(s) sur %d liste(s) d evenements non vides",
+		c.SpawnEvents, c.SpawnLists)
+	for _, k := range clesTrieesDeCarte(c.ByCause) {
+		p("  par cause %-16s %d", k, c.ByCause[k])
+	}
 	for _, f := range clesTrieesDeCarte(c.ByFamily) {
 		p("  famille %-8s %d", f, c.ByFamily[f])
 	}
@@ -885,6 +1046,53 @@ func renderBridge(p func(string, ...any), doc ReplayDocument) {
 		b.IndexReadings, b.IndexDisagreements, b.SlotCollisions)
 	p("verdict : %s", doc.Coverage.Verdict["bridge"])
 	p("")
+}
+
+// renderIdentite montre D OU vient chaque lien d identite, et ce que la table du film a couvert.
+//
+// POURQUOI ELLE ENTRE AU GOLDEN (lot 1.6.1). Le golden montrait le PONT et le ROSTER, jamais la
+// PROVENANCE des liens : un lien qui passerait de `direct` a `deduit`, ou de la table du film au
+// repli par les chunks, ne se voyait nulle part dans les huit references. C est precisement ce
+// que ce lot deplace, et un deplacement qu on ne voit pas ne se juge pas.
+func renderIdentite(p func(string, ...any), doc ReplayDocument) {
+	if doc.Identity == nil {
+		return
+	}
+	c := doc.Identity.Coverage
+	p("## REGISTRE D IDENTITE — la PROVENANCE de chaque lien, et ce que la table du film couvre")
+	p("index de joueur : %d direct · %d externe · %d deduit · %d non resolu",
+		c.FilmIndex.Direct, c.FilmIndex.External, c.FilmIndex.Inferred, c.FilmIndex.Unresolved)
+	p("slot de bipede : %d direct (dont %d propages) · %d deduit · %d non resolu "+
+		"(index hors table=%d · sans record=%d · lectures divergentes=%d)",
+		c.BipedSlot.Direct, c.BipedSlot.DirectPropagated, c.BipedSlot.Inferred,
+		c.BipedSlot.Unresolved, c.BipedSlot.UnresolvedByCause.IndexOutOfTable,
+		c.BipedSlot.UnresolvedByCause.NoCreationRecord,
+		c.BipedSlot.UnresolvedByCause.DivergentReadings)
+	f := c.FilmTable
+	p("table du film : lue=%v refus=%q · %d siege(s) · %d lien(s) direct(s) · %d par repli",
+		f.Read, f.Refusal, f.Seats, f.Direct, f.Fallback)
+	p("controle (lecture des chunks) : %d accord · %d contradiction · %d silence — la table du "+
+		"film fait foi, l ecart se compte", f.Accord, f.Contradiction, f.Silence)
+	p("voies des liens d index : %s", voiesDIndex(doc))
+	p("")
+}
+
+// voiesDIndex resume la voie de chaque lien `identity.players`, triee, pour que le golden dise
+// COMBIEN de liens viennent de la table du film et combien du repli.
+func voiesDIndex(doc ReplayDocument) string {
+	parVoie := map[string]int{}
+	for _, pl := range doc.Identity.Players {
+		parVoie[string(pl.Link.Method)]++
+	}
+	voies := make([]string, 0, len(parVoie))
+	for _, k := range sortedKeys(parVoie) {
+		nom := k
+		if nom == "" {
+			nom = "(aucune)"
+		}
+		voies = append(voies, fmt.Sprintf("%s=%d", nom, parVoie[k]))
+	}
+	return strings.Join(voies, " · ")
 }
 
 func renderLabels(p func(string, ...any), doc ReplayDocument) {

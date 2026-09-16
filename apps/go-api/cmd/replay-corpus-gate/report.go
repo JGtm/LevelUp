@@ -37,52 +37,61 @@ type ligneRapport struct {
 	SchemaHEAD      int
 	Gains           int
 	Pertes          int
-	Duree           time.Duration
+	// Changements : les valeurs publiees qui BOUGENT sans etre ni un gain ni une perte.
+	// AJOUTE LE 2026-09-16 (lot 1.9.1 bis, cloture) : `replaydiff.BilanAxe` les compte depuis
+	// toujours, et ce rapport les jetait — ni le tableau ni le JSON ne les montraient. Un gate
+	// aveugle a une valeur qui bouge est exactement le compteur lu a l envers que le depot
+	// interdit : un changement se classe comme une perte (divergence prouvee ou regression).
+	Changements int
+	Duree       time.Duration
 	// PertesDetail : les differences de sens PERTE ou DISPARU seulement (jamais les gains ni
 	// les changements) — c'est LE FAIT a rapporter, jamais a resumer en un seul compte.
 	PertesDetail []replaydiff.Difference
 }
 
 // aUnePerte dit si CE temoin porte au moins une perte sur un axe quelconque.
-func (l ligneRapport) aUnePerte() bool { return l.Pertes > 0 }
+// aUnePerte dit si CE temoin porte au moins une perte OU un changement : une valeur publiee qui
+// bouge sans etre un gain se classe comme une perte (2026-09-16).
+func (l ligneRapport) aUnePerte() bool { return l.Pertes > 0 || l.Changements > 0 }
 
 // bilanDepuisRapport peuple gains/pertes/schemas depuis un replaydiff.Rapport, et extrait le
 // DETAIL des pertes (sens Perte ou Disparu uniquement).
-func bilanDepuisRapport(rap replaydiff.Rapport) (schemaReference, schemaHEAD, gains, pertes int, detail []replaydiff.Difference) {
+func bilanDepuisRapport(rap replaydiff.Rapport) (schemaReference, schemaHEAD, gains, pertes, changements int, detail []replaydiff.Difference) {
 	for _, b := range rap.Bilans {
 		gains += b.Gains
 		pertes += b.Pertes
+		changements += b.Changements
 	}
 	for _, d := range rap.Differences {
 		if d.Sens == replaydiff.SensPerte || d.Sens == replaydiff.SensDisparu {
 			detail = append(detail, d)
 		}
 	}
-	return rap.SchemaAncien, rap.SchemaNouveau, gains, pertes, detail
+	return rap.SchemaAncien, rap.SchemaNouveau, gains, pertes, changements, detail
 }
 
 // imprimerTableau ecrit le recapitulatif — un temoin par ligne, dans l'ordre du manifeste.
 // `refLabel` nomme la colonne de reference ("base" ou "parc") — c'est la SEULE chose qui
 // distingue l'affichage des deux modes, la structure de ligneRapport est commune aux deux.
 func imprimerTableau(w io.Writer, lignes []ligneRapport, refLabel string) {
-	_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %10s  %s\n",
-		"temoin", "famille", refLabel, "HEAD", "gains", "pertes", "duree", "statut")
+	_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s  %s\n",
+		"temoin", "famille", refLabel, "HEAD", "gains", "pertes", "chang.", "duree", "statut")
 	for _, l := range lignes {
 		switch {
 		case l.Absent:
-			_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %10s  ABSENT (%s)\n",
-				l.Temoin.ID, l.Temoin.Famille, "-", "-", "-", "-", "-", l.AbsentCause)
+			_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s  ABSENT (%s)\n",
+				l.Temoin.ID, l.Temoin.Famille, "-", "-", "-", "-", "-", "-", l.AbsentCause)
 		case l.Erreur != nil:
-			_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %10s  ERREUR : %v\n",
-				l.Temoin.ID, l.Temoin.Famille, "-", "-", "-", "-", "-", l.Erreur)
+			_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s  ERREUR : %v\n",
+				l.Temoin.ID, l.Temoin.Famille, "-", "-", "-", "-", "-", "-", l.Erreur)
 		default:
 			statut := "ok"
 			if l.aUnePerte() {
 				statut = "PERTE"
 			}
-			_, _ = fmt.Fprintf(w, "%-12s %-16s %6d %6d %8d %8d %10s  %s\n",
+			_, _ = fmt.Fprintf(w, "%-12s %-16s %6d %6d %8d %8d %8d %10s  %s\n",
 				l.Temoin.ID, l.Temoin.Famille, l.SchemaReference, l.SchemaHEAD,
-				l.Gains, l.Pertes, l.Duree.Round(10*time.Millisecond), statut)
+				l.Gains, l.Pertes, l.Changements, l.Duree.Round(10*time.Millisecond), statut)
 		}
 	}
 }

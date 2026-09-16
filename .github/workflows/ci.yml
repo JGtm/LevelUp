@@ -230,8 +230,32 @@ jobs:
         env:
           CGO_ENABLED: "1"
 
+      # INSTRUMENTS `research` (2026-09-16, chantier du decodeur de film). Les instruments de
+      # recherche qui REBALAYENT les 7 bobines versionnees (`e191b_carte_ti37_*`, `e191c_*` dans
+      # `filmdec`) sont derriere `//go:build research` : ils tournent a la demande
+      # (`go test -tags research ./internal/games/halo_infinite/film/filmdec/ -run TestE191`),
+      # jamais en CI. Chiffres du jour : le paquet `filmdec` valait 26,1 s avant le lot 1.9.1 bis,
+      # 89,9 s apres (dont 72 s pour ces instruments), et le job de couverture Linux — atomic,
+      # coverpkg ./... — a rougi a `-timeout 600s` (run 34978931976 : `FAIL filmdec 600.236s`,
+      # aucun test en echec, un paquet entier sans verdict) alors qu'il dure deja 33 min sur 45.
+      # Meme logique que `gamefiles` : un tag sans vet est un fichier qui pourrit en silence,
+      # donc la CI COMPILE ces instruments ici. Regle ecrite au plan du decodeur (§2.3).
+      - name: go vet (instruments research — compilation seule, jamais executes en CI)
+        if: runner.os == 'Linux'
+        run: go vet -tags=research ./internal/games/halo_infinite/film/filmdec/
+        env:
+          CGO_ENABLED: "0"
+
+      # BUDGET 600 s (2026-09-16, run 34968331540 sur 4abf6f466) : le paquet `filmdec` a
+      # depasse les 60 s sur le runner Windows (`panic: test timed out after 1m0s` dans
+      # `kfScanNext`, ubuntu vert). Mesure locale, CGO_ENABLED=0, -count=1 : 26,1 s pour le
+      # paquet, dont sept tests de 2,5 a 5,3 s qui rebalayent chacun les images-cle des
+      # 7 bobines versionnees ; le runner Windows est deux a trois fois plus lent. 300 s est
+      # le budget que tenait l'ancien job baseline (cf. plus bas), porte a 600 s (celui du job
+      # de couverture) a la fusion du lot 1.9.1 bis, puis les instruments lourds sont passes
+      # sous le tag `research` (etape ci-dessus) : le budget reste, il n'est plus la defense.
       - name: go test (unit, no CGo DB)
-        run: go test ./internal/domain/... ./internal/analysis/... ./internal/games/halo_infinite/film/filmdec/... ./internal/games/halo_infinite/film/replay/... ./contracttest/... -timeout 60s -count=1
+        run: go test ./internal/domain/... ./internal/analysis/... ./internal/games/halo_infinite/film/filmdec/... ./internal/games/halo_infinite/film/replay/... ./contracttest/... -timeout 600s -count=1
         env:
           CGO_ENABLED: "0"
           LEVELUP_DEMO_MODE: "true"

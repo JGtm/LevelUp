@@ -12,7 +12,12 @@ package replaybuild
 // LA LISTE DES VERSIONS N'EST PAS ECRITE ICI, ET C'EST LE POINT. Elle est DERIVEE de
 // `document_chronicle.go` (helper `testutil.ReplayChronicleVersions`) : la prochaine montee
 // entre donc dans ces tests sans que personne n'y pense, et une version sautee a la
-// renumerotation (32 et 51 le sont) n'y entre pas par erreur.
+// renumerotation (la 32 l'est) n'y entre pas par erreur.
+//
+// LA 51 N'ETAIT PAS SAUTEE, contrairement a ce que ce fichier affirmait (corrige le 2026-09-14,
+// lot 1.0 revue R2) : `2fb53db4e` la pose, `b6b198baf` la remplace par 52 le lendemain. Elle
+// manquait simplement a la chronique, donc a cette liste — une version REELLEMENT cuite que ces
+// trois tests ne rejouaient pas. Son entree restauree, elle y entre d'elle-meme.
 //
 // CE QUE LA MESURE A TROUVE, ET QUI CONTREDIT LE DOCUMENT D'ARCHITECTURE (2026-09-13, lot
 // 0.B). §12 point 5 affirme que « le point d'ecriture unique (`writeArtifactBytes`) refuse

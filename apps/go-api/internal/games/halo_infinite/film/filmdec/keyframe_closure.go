@@ -13,11 +13,18 @@ package filmdec
 //
 // # POURQUOI C'EST LA MESURE QUI COMPTE
 //
-// La production ne ferme AUCUN record aujourd'hui (mesure du 2026-09-12 : 62 686 records, 6 films,
-// 3 builds) parce qu'elle lit l'image-cle avec le cadre du delta. Le cadre juste existe depuis
-// R7-d — `WalkKeyframeFullState` — et n'est branche nulle part : c'est le lot 1.4. Ce fichier ne
-// branche rien non plus ; il MESURE, pour que le port des composants manquants (lot 3.6) sache
-// par ou commencer et pour qu'un ratchet interdise a la couverture de redescendre.
+// La production ne fermait AUCUN record jusqu'au 2026-09-14 (mesure du 2026-09-12 : 0 sur
+// 62 686 records, 6 films, 3 builds) parce qu'elle lisait l'image-cle avec le cadre du delta.
+// LE LOT 1.4 A BRANCHE LE CADRE JUSTE : les deux balayages qui parsent le corps d'un record
+// d'image-cle (`navpoint_radial_scan.go`, `objective_scan.go`) appellent desormais
+// `WalkKeyframeFullState`, c'est-a-dire EXACTEMENT ce que ce fichier mesure.
+//
+// CONSEQUENCE POUR LE RATCHET : il ne bouge PAS au lot 1.4, et c'est le resultat attendu. Ce
+// golden a toujours mesure le cadre d'etat complet (lot 0.A.3) ; ce qui change au lot 1.4, c'est
+// que la PRODUCTION le rejoint. Le plan prevoyait « 0 -> 14 % » ici : c'etait une erreur de
+// citation — ce 0 etait celui des compteurs de production, pas celui de ce golden, qui vaut
+// 30,8 % depuis le lot 1.3. Le ratchet continue de servir a ce pour quoi il existe : interdire a
+// la couverture de redescendre quand le lot 3.6 portera les composants manquants.
 //
 // # LE BLOQUANT
 //
@@ -49,29 +56,58 @@ type KeyframeClosureStat struct {
 	Blocking string
 }
 
-// keyframeClosureOpt : LA FORME JUSTE, celle de `FUN_142e2bfd0`, et rien d'autre.
+// keyframeBorne est un record d'image-cle BORNE : celui dont le balayeur d'ancres rend un
+// voisin suivant, donc le seul dont la question « ferme-t-il ? » ait un sens.
+type keyframeBorne struct {
+	// Bit est le premier bit du record ; Want la frontiere visee (premier bit du suivant).
+	Bit, Want int
+	// Slot et TI identifient le record.
+	Slot, TI int
+	// Voisin restreint aux paires de slots CONSECUTIFS (`slotSuivant == slot + 1`), ou le
+	// balayeur ne peut avoir saute aucun record entre les deux ancres.
+	Voisin bool
+}
+
+// keyframeBornesToutes rend TOUS les records d'un payload d'image-cle, tries par bit, chacun
+// avec la frontiere visee — SAUF LE DERNIER, qui rend `Want = -1` : sans record suivant il n'a
+// pas de frontiere, donc la question « ferme-t-il ? » ne se pose pas pour lui. Il est rendu
+// quand meme parce qu'un balayage de production doit le LIRE : il porte des donnees comme les
+// autres, et l'ecarter serait perdre une lecture en silence.
 //
-// En-tete de 108 bits, les deux mots de taille autour de l'etat par defaut, et l'etat par defaut
-// joue par le deserialiseur de l'archetype. `LevelShift` reste FAUX : c'est une variable de
-// recherche encore ouverte (plan R7-e), et une mesure de reference ne se prend pas sous une
-// option non tranchee. Ce sont EXACTEMENT les options de l'instrument de recherche
-// (`imagecle_fermeture_research_test.go`, `imcOptEtatComplet`) : la mesure de production et
-// l'oracle de recherche doivent dire la meme chose du meme film, sinon aucun des deux ne prouve
-// rien.
-func keyframeClosureOpt() KeyframeFullStateOpt {
-	return KeyframeFullStateOpt{
-		HeaderBits:   keyframeFullStateHeaderBits,
-		SizeWords:    true,
-		DefaultState: true,
+// UNE SEULE COPIE DE L'APPARIEMENT, ET C'EST LA REGLE 6 DU DEPOT. Le meme « record i,
+// frontiere i+1 » etait ecrit dans `accumulerFermeture` (mesure) et dans l'instrument de
+// recherche (`imcBornes`), et il en fallait deux de plus dans les balayages de production au
+// lot 1.4 : a la troisieme copie on centralise. La mesure, l'oracle et la production comptent
+// desormais sur la MEME population — sans quoi aucun des trois ne prouve rien des deux autres.
+func keyframeBornesToutes(pay []byte) []keyframeBorne {
+	recs := WalkKeyframeWorld(pay)
+	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
+	out := make([]keyframeBorne, 0, len(recs))
+	for i := range recs {
+		b := keyframeBorne{Bit: recs[i].Bit, Want: -1, Slot: recs[i].Slot, TI: recs[i].TI}
+		if i+1 < len(recs) {
+			b.Want = recs[i+1].Bit
+			b.Voisin = recs[i+1].Slot == recs[i].Slot+1
+		}
+		out = append(out, b)
 	}
+	return out
+}
+
+// keyframeBornes rend les seuls records BORNES : le denominateur de toute mesure de fermeture.
+func keyframeBornes(pay []byte) []keyframeBorne {
+	toutes := keyframeBornesToutes(pay)
+	out := make([]keyframeBorne, 0, len(toutes))
+	for _, b := range toutes {
+		if b.Want >= 0 {
+			out = append(out, b)
+		}
+	}
+	return out
 }
 
 // KeyframeClosure mesure, archetype par archetype, la fermeture des records d'image-cle d'un
-// film, sous le cadre d'etat complet.
-//
-// Elle ne change RIEN au chemin de production des images-cles (`navpoint_radial_scan.go` et
-// `objective_scan.go` restent sur `TraverseEntity`) : c'est une mesure, et son branchement est le
-// lot 1.4.
+// film, sous le cadre d'etat complet — celui que la production lit depuis le lot 1.4.
 func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	if fc == nil {
 		return nil, fmt.Errorf("filmdec: contexte de film nil — aucune fermeture a mesurer")
@@ -80,7 +116,15 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	if err != nil {
 		return nil, fmt.Errorf("filmdec: registre illisible, la fermeture n'a pas de grammaire: %w", err)
 	}
-	opt := keyframeClosureOpt()
+	// LE PROFIL DU BUILD EST INSTALLE POUR LA DUREE DE LA MESURE (lot 1.9.1 bis, pas 3).
+	// Les largeurs du bloc MPP varient par build et vivent dans `build_profile.go` ; sans
+	// elles, la fermeture des archetypes qui portent ce bloc (ti=36, 37, 38, 39, 42, 43) est
+	// mesuree au decoupage d un AUTRE build. Un build inconnu ne change rien et n est pas une
+	// erreur ICI : la mesure continue au defaut de paquet, et c est la PRODUCTION qui doit
+	// mettre le film de cote (D-4). L appelant detient `LockProcessDecode`.
+	if restore, err := InstallFilmFormatMPP(fc.Film()); err == nil {
+		defer restore()
+	}
 	stats := map[uint32]KeyframeClosureStat{}
 	// bloquants compte, par archetype, combien de records chaque composant non porte a arretes.
 	bloquants := map[uint32]map[string]int{}
@@ -93,7 +137,7 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}
-			accumulerFermeture(pk.Payload(data), reg, opt, stats, bloquants)
+			accumulerFermeture(pk.Payload(data), reg, stats, bloquants)
 		}
 	}
 	for ti, parComposant := range bloquants {
@@ -109,24 +153,22 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 // Le dernier record d'un payload est ecarte : sans record suivant il n'a pas de frontiere visee,
 // donc la question « ferme-t-il ? » ne se pose pas. Le compter en echec gonflerait le
 // denominateur d'un record par payload sans qu'aucun port ne puisse jamais le fermer.
-func accumulerFermeture(pay []byte, reg *Registry, opt KeyframeFullStateOpt,
+func accumulerFermeture(pay []byte, reg *Registry,
 	stats map[uint32]KeyframeClosureStat, bloquants map[uint32]map[string]int,
 ) {
-	recs := WalkKeyframeWorld(pay)
-	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
-	for i := 0; i+1 < len(recs); i++ {
-		ti := uint32(recs[i].TI) //nolint:gosec // TI est un index d'archetype, jamais negatif
-		tr := WalkKeyframeFullState(pay, recs[i].Bit, reg, opt)
+	for _, b := range keyframeBornes(pay) {
+		ti := uint32(b.TI) //nolint:gosec // TI est un index d'archetype, jamais negatif
+		tr := WalkKeyframeFullState(pay, b.Bit, reg)
 		s := stats[ti]
 		s.Total++
 		switch {
 		case tr.DesyncAt >= 0:
-			nom := nomComposantBloquant(reg, recs[i].TI, tr.DesyncAt)
+			nom := nomComposantBloquant(reg, b.TI, tr.DesyncAt)
 			if bloquants[ti] == nil {
 				bloquants[ti] = map[string]int{}
 			}
 			bloquants[ti][nom]++
-		case tr.EndBit == recs[i+1].Bit:
+		case tr.EndBit == b.Want:
 			s.Closed++
 		}
 		stats[ti] = s

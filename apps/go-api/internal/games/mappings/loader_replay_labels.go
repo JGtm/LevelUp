@@ -87,6 +87,11 @@ type ReplayLabelSet struct {
 	// flagZone : la regle de retour du drapeau (cf. loader_replay_labels_flagzone.go). Zero quand
 	// le titre ne la declare pas — le rejeu ne dessine alors ni cercle ni jauge.
 	flagZone FlagReturnZone
+	// vehicleFamilies : les familles de chassis que le titre QUALIFIE (libelle bilingue + nature
+	// + asset servi ou non). Table PARTIELLE par nature : un nom de vehicule est un nom propre du
+	// jeu, seules les familles qui n en sont pas y entrent (cf.
+	// loader_replay_labels_vehicles.go).
+	vehicleFamilies map[string]VehicleFamily
 }
 
 // replayLabelsTOML — projection brute du fichier.
@@ -99,6 +104,7 @@ type replayLabelsTOML struct {
 	EquipObjects []equipmentObjectEntry `toml:"equipment_objects"`
 	ObjObjects   []objectiveObjectEntry `toml:"objective_objects"`
 	FlagZone     *flagReturnZoneTOML    `toml:"flag_return_zone"`
+	VehFamilies  []vehicleFamilyEntry   `toml:"vehicle_families"`
 	Impulses     *abilityImpulsesEntry  `toml:"ability_impulses"`
 	Charges      *abilityImpulsesEntry  `toml:"ability_charges"`
 }
@@ -357,6 +363,10 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 	if err != nil {
 		return nil, err
 	}
+	vehFams, err := parseVehicleFamilies(path, doc.VehFamilies)
+	if err != nil {
+		return nil, err
+	}
 	return &ReplayLabelSet{
 		titleSlug:       doc.Meta.TitleSlug,
 		schemaVersion:   doc.Meta.SchemaVersion,
@@ -369,6 +379,7 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 		chargeFamilies:  charges,
 		objObjects:      objs,
 		flagZone:        zone,
+		vehicleFamilies: vehFams,
 	}, nil
 }
 

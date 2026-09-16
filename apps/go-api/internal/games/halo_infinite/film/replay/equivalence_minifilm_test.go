@@ -147,7 +147,7 @@ func digestsMiniBobine() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("armes portees : %w", err)
 	}
-	inventory, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0)
+	inventory, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0, nil)
 	if err != nil {
 		return nil, fmt.Errorf("inventaire d'image-cle : %w", err)
 	}

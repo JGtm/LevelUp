@@ -1,5 +1,20 @@
 package replay
 
+// document_chronicle.go — LA CHRONIQUE DU SCHEMA : une entree par version, ce qu elle change
+// et pourquoi elle monte.
+//
+// EXEMPTION ECRITE AU SEUIL DES 500 LIGNES (CLAUDE.md regle 5, posee le 2026-09-14, lot 1.0
+// revue R1 constat R1-4). Ce fichier est APPEND-ONLY PAR CONSTRUCTION : une entree de chronique
+// decrit une montee de schema DEJA CUITE dans le parc, elle ne se reecrit pas et ne se supprime
+// pas — la relire est precisement ce qui permet de savoir ce qu un artefact ancien porte. Le
+// scinder par tranches de versions rendrait la lecture chronologique impossible et casserait
+// l extracteur unique (`testutil.ReplayChronicleVersions`, qui lit CE fichier et dont un
+// resultat vide rend inerte le garde-rail `document_shape_test.go`). Sa croissance est donc
+// attendue, bornee par le rythme des montees de schema, et n est pas de la dette.
+//
+// RETRAIT DE L EXEMPTION : le jour ou la chronique deviendrait une donnee (fichier versionne
+// hors source Go) lue par le meme extracteur — pas avant.
+
 //
 // v2 (2026-08-02, lot 3.1/3.2) : les trois tables de libellés deviennent BILINGUES
 // (`{en, fr}` au lieu d'une chaîne) et le type d'un lancer de grenade devient son RANG
@@ -1062,6 +1077,36 @@ package replay
 //	n'a pas fait    K/D/A 16 inchangé) NI l'équipe d'un joueur (elle vit dans la base). Détail,
 //	                mesures et instruction du résidu : `.ai/V7.5/v2/RESTES_E2_2026-09-08.md`.
 
+// v51 (2026-09-10, lot 4.3 — LE TABLEAU DE L'API NOMME LES CORPS HORS TABLE).
+//
+// ENTRÉE RESTAURÉE LE 2026-09-14 (lot 1.0, revue R2, constat R2-1). Elle n'avait JAMAIS été
+// écrite ici : la seule description de cette montée vivait dans les notes par version de
+// `document.go`, que le lot 1.0 a supprimées comme doublon — et le doublon était, pour v51, la
+// SOURCE UNIQUE. La chronique affirmait par ailleurs que 51 avait été SAUTÉE à une
+// renumérotation ; l'historique la contredit : `2fb53db4e` pose `SchemaVersion = 51` le
+// 2026-09-10 et `b6b198baf` la remplace par 52 le lendemain. Des artefacts ont donc été cuits
+// sous ce numéro, et un lecteur qui ne trouvait pas d'entrée ne pouvait pas dire ce qu'ils
+// portent. (32, elle, a bien été prise sur une branche puis renumérotée 33/34 au merge du
+// 2026-09-01 — cf. l'entrée v33 — donc aucun artefact intégré ne la porte.)
+//
+//	ce qui change   DEUX changements de CONTENU CUIT.
+//	                (1) `identity.bipedSlots[].bid` NAÎT : le tableau de l'API nomme les corps
+//	                dont l'index de participant est LU mais absent de `PlayerIndexTable`, et la
+//	                couverture bascule de `non_resolu/index_hors_table` vers `externe`. Mesuré
+//	                sur `4f77afc1` : 18 vies non résolues, dont 10 sur des index que
+//	                `BOT_METADATA` déclare. Au passage `roster[].bid` cesse d'être vide sur tout
+//	                le parc.
+//	                (2) `abilityLabels[].family` NAÎT : la table porte la FAMILLE du manifeste,
+//	                et le résumé d'usage joint dessus au lieu de reconstruire la famille par la
+//	                racine du libellé — d'où `UsageSummaryRev` us4 -> us5.
+//
+//	POURQUOI LA     Un artefact < 51 porte des vies de bot non résolues, un `bid` vide et aucune
+//	VERSION MONTE   famille d'équipement : le résumé d'usage ne peut pas être re-projeté sans
+//	                recuisson. La reprise du backfill se faisant par SchemaVersion, sans montée
+//	                rien ne le rattraperait.
+//
+//	détail          `structure_test.go` (paragraphe v51), qui porte les mêmes chiffres.
+//
 // v52 (2026-09-11, lot B — LES CORRECTIFS DU DÉCODEUR REPRIS DU FORK). Trois changements de
 // CONTENU CUIT, indépendants l'un de l'autre, et un compteur qui s'ajoute.
 //
@@ -1228,3 +1273,269 @@ package replay
 //	ce que le lot   le REDECODAGE lui-meme (`backfill-replay --only-existing` et le backlog
 //	n'a pas fait    killsource par `KillSourceDecoderRev`) : consigne du lot, il reste a lancer.
 //	                Detail : `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
+
+// v55 (2026-09-14, lot 1.0.4 du PLAN_DECODEUR_FILM) : LE REFUS DE PUBLICATION D'UNE VIE CESSE
+// D'ETRE MUET.
+//
+//	le defaut       `decimateTracks` ecarte toute vie dont la trajectoire decimee porte moins de
+//	                `MinPoints` echantillons (defaut 2 : une vie d'un seul point n'est pas une
+//	                trajectoire). Depuis l'origine du calque, ce refus ne se comptait NULLE PART
+//	                — ni dans l'artefact, ni au journal. Un document publiant 90 traces la ou le
+//	                film en porte 95 etait indistinguable d'un film a 90 vies, et tout lecteur
+//	                qui rapporte un compte de vies au film travaillait sur un denominateur
+//	                ampute sans le savoir.
+//
+//	le champ ajoute `coverage.tracks` : `published` / `publishedPoints` (le DENOMINATEUR, sans
+//	                lequel un compte de refus ne se juge pas), `refusedMinPoints` (les VIES
+//	                ecartees), `refusedPoints` (les points qu'elles portaient) et `minPoints`
+//	                (le seuil APPLIQUE — un compte de refus ne se relit pas sans savoir contre
+//	                quoi il a ete mesure). Les deux comptes de refus disent des choses
+//	                differentes : dix vies d'un point sont un pool de slots qui s'ouvre et se
+//	                referme ; une vie de dix points refusee serait un seuil mal regle.
+//
+//	ce qui NE       le seuil. `DefaultMinPoints` vaut 2 et le reste : ce lot PUBLIE le refus, il
+//	change PAS      ne le rediscute pas — la question appartient a l'utilisateur, et ces
+//	                compteurs sont exactement ce qui permet de la lui poser avec un chiffre.
+//	                Aucune trace publiee ne bouge, aucun autre calque ne bouge : le regime court
+//	                d'equivalence ne montre QUE ce champ.
+//
+//	POURQUOI LA     Le champ est optionnel, mais il decrit le document ENTIER, pas un calque
+//	VERSION MONTE   secondaire : un artefact 54 ne peut pas dire ce qu'il a refuse, et rien ne
+//	                permet de le deduire apres coup. La reprise du backfill se faisant par
+//	                SchemaVersion, sans montee aucune recuisson ne le rattraperait.
+
+// v56 (2026-09-14, lot 1.6 du PLAN_DECODEUR_FILM) : LE REGISTRE D'IDENTITE PREND LA TABLE DU
+// FILM COMME LIEN DIRECT, ET LA VIE D'UN SEUL ECHANTILLON EST PUBLIEE.
+//
+//	la doctrine     « l'index c'est l'index » (decision utilisateur du 2026-09-07) : quand le film
+//	                ECRIT le lien `index <-> xuid <-> gamertag`, c'est lui qu'on lit. La table des
+//	                32 slots du corps de `chunk_00` (lot 1.5) devient donc la source PREMIERE du
+//	                registre ; la lecture des 5 bits des chunks de replication reste, mais en
+//	                COMPLEMENT — pour les seuls joueurs dont la table est muette.
+//
+//	pourquoi un     la table du film est ecrite au DEBUT du film : un joueur qui rejoint en cours
+//	complement      de partie n'y a pas de siege. Mesure du 2026-09-14 sur les huit builds : 0 a 5
+//	                par film, 13 au total. Remplacer une lecture par l'autre PERDRAIT ces joueurs ;
+//	                les composer n'en perd aucun. La ou les deux parlent du meme joueur, elles
+//	                disent la meme chose : 125 accords, 0 contradiction.
+//
+//	les champs      `identity.players[].link.method` prend la valeur `film_table` pour un lien
+//	ajoutes         que la table du film pose (et garde `PlayerIndexTable` pour un lien de repli) ;
+//	                `identity.coverage.filmTable` publie l'etat de la source — `lu`, `refus`
+//	                (`sans_registre` / `sans_section` / `build_inconnu` / `tronque` /
+//	                `table_introuvable` / `vacant_intercale`), `sieges` (la taille reelle de
+//	                l'escouade, publiee comme DONNEE), `direct`, `repli`, et le controle
+//	                `accord` / `contradiction` / `silence`.
+//
+//	ce que le       le ROSTER gagne les joueurs que la table du film assoit et que la lecture des
+//	document gagne  chunks ne trouvait pas (+1 sur `a521164d` et `11de8353`), et les GAMERTAGS que
+//	                le film ecrit pour des joueurs a zero mort — le fil des morts ne nomme que ceux
+//	                qui meurent (`111fa685` idx=10 « FlukiestGolf », `e5adf7b2` idx=13
+//	                « MarshallG6443 » etaient publies sans nom).
+//
+//	le seuil de     `DefaultMinPoints` passe de 2 a 1 (lot 1.6.5, decision utilisateur du
+//	publication     2026-09-14 : « si le film le dit, on publie »). Une vie d'un seul echantillon
+//	                — une position que le film ECRIT pour un joueur a un instant — etait refusee
+//	                depuis l'origine du calque sous la phrase « ce n'est pas une trajectoire »,
+//	                qui decrivait un RENDU et non une donnee. Le compteur
+//	                `coverage.tracks.refusedMinPoints`, pose au schema 55 pour poser la question
+//	                avec un chiffre, tombe a 0. VINGT vies entrent sur les huit builds.
+//
+//	l'oracle de     impose par l'utilisateur avec la decision, et MESURE
+//	ces vingt vies  (`vies_un_echantillon_test.go`) : UNE porte une mort ECRITE a son instant
+//	                (ecart 72 ms), CINQ sont la derniere image d'un slot que la replication n'a
+//	                plus jamais repris, QUATORZE sont ORPHELINES — leur vie se ferme sur un trou
+//	                de replication et la mort la plus proche du meme joueur est a 0,95 s a 300 s.
+//	                Un orphelin n'est pas un cas a filtrer : c'est un DEFAUT DE LECTURE nomme, et
+//	                le publier est ce qui le rend visible. Consigne au plan §4.
+//
+//	POURQUOI LA     la provenance d'un lien devient une donnee du document, le roster change de
+//	VERSION MONTE   contenu et les traces publiees aussi : un artefact 55 ne peut dire ni d'ou
+//	                vient son index de joueur, ni porter les vies d'un echantillon. La reprise du
+//	                backfill se fait par SchemaVersion — sans montee aucune recuisson ne le
+//	                rattraperait.
+
+// v57 (2026-09-14, lot 1.7 du PLAN_DECODEUR_FILM) : L'EQUIPE DE CHAQUE JOUEUR EST DANS LE FILM,
+// ET C'EST DE LA QU'ELLE VIENT.
+//
+//	ce qui etait   `Track.Team` valait -1 sur TOUTES les vies de TOUS les artefacts, et le
+//	faux           document le documentait ainsi : « l'equipe n'est PAS dans le film, elle vit
+//	               dans la base et le client la joint par XUID ». C'est refute :
+//	               `.ai/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md` etablit par DEUX chaines
+//	               sans etape commune — le desassemblage du lecteur `0x140f581e8` et 160 slots
+//	               sur 176 en accord exact avec `match_participants.team_id`, dont deux Grandes
+//	               batailles a 24/24 — que la trame d'etat la porte, par joueur, sur 4 bits.
+//
+//	d'ou elle      du composant i0 de l'archetype ti=9 (`managed-player-team-designator-component`),
+//	se lit         a une position DERIVEE de la grammaire (en-tete par entite 108 + mot de taille
+//	               32 + etat par defaut de ti=9 + 32), jamais cablee. La valeur ecrite vaut le
+//	               designateur PLUS UN : le document publie le designateur du jeu, `0..8` pour
+//	               les huit camps de `mp_team_designator`, `-1` pour « aucune equipe » (FFA).
+//
+//	l'appariement  le premier `R(6)` de l'etat par defaut de ti=9 EST l'index de joueur de
+//	entite ->      l'entite (mesure du 2026-09-14, 18 films et 7 builds). Il n'y a donc aucun
+//	joueur         appariement ordinal a faire, et les joueurs ARRIVES EN COURS DE PARTIE — qui
+//	               n'ont pas de siege dans la table du DEBUT du film (lot 1.6) — portent leur
+//	               equipe comme les autres : 34 arrivees mesurees, toutes a designateur stable.
+//
+//	les champs     `tracks[].team` cesse d'etre constant a -1 ; `roster[].team` est NEUF (par
+//	ajoutes        `filmIndex`, donc valable aussi pour un joueur sans vie publiee et pour un
+//	               bot) ; `coverage.teams` publie ce que la lecture a couvert — `read`,
+//	               `refusal`, `records`, `rejected`, `divergences`, `film`, `noTeam`, `unread` —
+//	               et les trois compteurs du CONTROLE, `accord` / `contradiction` / `silence`.
+//
+//	la base ne     decision utilisateur du 2026-09-13 (V4) : « si le decodeur est fiable, pas
+//	pose plus      besoin du repli ». `FlagInput.TeamOf` DISPARAIT : l'equipe du porteur de
+//	rien           drapeau vient desormais du film, donc l'invariant « jamais son propre
+//	               drapeau » tient sur une cuisson HORS LIGNE, ou il se taisait faute de lignes
+//	               de match. La feuille de match arrive par `Options.ScoreboardTeams` et
+//	               n'alimente QUE les trois compteurs de controle.
+//
+//	POURQUOI LA    le contenu cuit change sur toutes les vies et tout le roster, et un champ
+//	VERSION MONTE  apparait. Un artefact 56 porte `team: -1` partout : il ne se distingue d'un
+//	               artefact 57 de mode FFA que par `coverage.teams`, qui n'y est pas. La reprise
+//	               du backfill se fait par SchemaVersion.
+
+// v58 (2026-09-14, lot 1.9.0 du PLAN_DECODEUR_FILM) : L'ARTEFACT DIT QUELLE PART DE LUI VIENT
+// D'UN REPLI.
+//
+//	ce qui etait   un REPLI — une decision de secours prise quand la lecture du film ne tranche
+//	muet           pas — ne laissait aucune trace. L'audit du lot 0.E en a recense 62 dans le
+//	               decodeur, dont neuf portaient un defaut DEJA MESURE (jusqu'a 95 % des poses
+//	               d'un film creditees au mauvais joueur, 213 s d'attribution fausse sur une
+//	               manche, 27 faux enregistrements sur Live Fire). Aucun n'etait lisible d'un
+//	               artefact : deux documents, l'un lu et l'autre repli, etaient identiques.
+//
+//	le champ       `coverage.fallbacks` est NEUF : une liste `{name, hits}`, triee par nom, des
+//	ajoute         seuls replis DECLENCHES pendant cette cuisson. Absente quand aucun ne s'est
+//	               declenche. Le nom est stable et se joint au REGISTRE DES REPLIS
+//	               (`film/replay/fallback`), qui porte pour chacun sa condition typee, sa date de
+//	               pose, sa cible et son critere de retrait (decision D14, ADR 0034).
+//
+//	une liste      les replis ne se repartissent pas sur les calques existants — celui des
+//	plate, et      largeurs d'axe par defaut touche TOUT le decodage, et les trois quarts des
+//	pas un bloc    faits replies n'ont pas de bloc de couverture a eux. Une liste plate se lit
+//	par calque     sans connaitre la carte des calques et n'oblige aucun des vingt blocs
+//	               existants a changer de forme.
+//
+//	AUCUNE AUTRE   le lot 1.9.0 DECLARE et COMPTE ; il ne change aucune decision. Les conversions
+//	DIFFERENCE     (la lecture du film qui remplace l'heuristique) sont les lots 1.9.1 a 1.9.14.
+//	               L'equivalence est a zero difference hors la seule etape `artifact`, ou ce
+//	               champ apparait.
+//
+//	POURQUOI LA    un champ apparait dans le document, donc la FORME change (garde-rail
+//	VERSION MONTE  `document_shape_test.go`, qui refuse la regeneration sans montee). Un artefact
+//	               57 ne peut pas dire qu'il ne doit rien a un repli : il peut seulement ne rien
+//	               en dire. La reprise du backfill se fait par SchemaVersion.
+
+// v59 (2026-09-15, lot 1.9.1 du PLAN_DECODEUR_FILM) : L'ORIGINE D'UNE POSE SE LIT DANS LE FILM,
+// ET CE QUE LE FILM NE DIT PAS RESTE INCONNU.
+//
+//	ce qui etait   l'origine d'une pose d'equipement (`deployed` / `dropped` / `unknown`) se
+//	decide par     decidait par deux regles de SECOURS : le manifeste du titre
+//	une heuristique (`kind = "deployed"` -> `deployed` sans mesure, item H.2 des finitions) puis
+//	               une FENETRE TEMPORELLE de 200 ms entre la creation de l'objet et la fin de la
+//	               vie de son poseur. Aucune des deux ne lisait ce que le film ECRIT (D13).
+//
+//	les trois      (1) l'evenement de liste type 103 `EquipmentSpawnedObject` — « une PIECE a ete
+//	lectures       engendree » — dont la deuxieme reference DESIGNE la vie de l'objet cree ;
+//	               (2) la MORT ECRITE du poseur, que le registre d'identite apparie au siege ;
+//	               (3) sa PRISE ECRITE (`equipmentChanges.taken`), qui dit qu'il a ECHANGE.
+//
+//	LE VOCABULAIRE `deployed` est desormais RESERVE a ce qu'un 103 designe — les panneaux de mur,
+//	TRANCHE PAR    et eux seuls : c'est le seul geste de deploiement que le film ecrive.
+//	L'UTILISATEUR  Un appareil PORTE qui tombe sort `dropped`, que la cause soit la mort de son
+//	(2026-09-15)   porteur ou un echange : les deux sont des lachers, et l'etiquette ne les
+//	               distingue pas. Une pose dont le film ne dit RIEN sort `unknown`.
+//
+//	le champ       `coverage.placements.byCause` est NEUF : la PROVENANCE de l'origine de chaque
+//	ajoute         pose — `spawn_event`, `death_written`, `taken_written`, `both` (lectures),
+//	               `manifest_piece` (le seul repli restant, registre `fallback`), `none` et
+//	               `no_owner` (les deux silences). Sa somme vaut `placements`, exactement.
+//	               `coverage.placements.spawnEvents` et `.spawnLists` publient les DENOMINATEURS
+//	               de la premiere lecture : les evenements 103 lus, et les listes d'evenements
+//	               non vides traversees. Les deux, parce qu'un `spawnEvents: 0` sur 7 850 listes
+//	               dit « aucune piece engendree » quand le meme zero sur zero liste dirait « le
+//	               lecteur n'a rien pu lire ».
+//
+//	les tolerances MESUREES, jamais choisies (13 films, 4 583 poses, 2026-09-15) : mort 200 ms
+//	               (max 171,7 ms cote lachers, min 205,3 ms cote deploiements — un intervalle
+//	               VIDE de 33,6 ms) ; prise 50 ms (103 des 108 prises retenues sont a moins
+//	               d'UNE ms) ; designation 103 dans [0, +200] ms apres la creation (les 115 poses
+//	               de panneau designees le sont entre +32,2 et +70,2 ms, toutes positives).
+//
+//	CE QUI BOUGE   le contenu cuit change, et c'est le but. Deux populations perdent une
+//	DANS LE PARC   etiquette qu'elles n'avaient pas gagnee : les lachers a mi-vie, qui sortaient
+//	               `deployed` et faisaient dessiner un geste qui n'a pas eu lieu ; et les poses
+//	               dont le film ne dit rien, que la fenetre classait par correlation. Les comptes
+//	               exacts sont au journal du lot (§5 du plan).
+//
+//	POURQUOI LA    deux champs apparaissent dans le document ET les origines publiees changent.
+//	VERSION MONTE  Un artefact 58 ne peut ni dire d'ou vient l'origine de ses poses, ni distinguer
+//	               un `deployed` lu d'un `deployed` devine. La reprise du backfill se fait par
+//	               SchemaVersion.
+
+// v60 (2026-09-17, vague 2 de la famille 1.9 du PLAN_DECODEUR_FILM — lots 1.9.13, 1.9.10, 1.9.9,
+// 1.9.11, 1.9.7, 1.9.14 et les corrections de la revue de jalon M1, fusionnes ensemble, UNE montee
+// pour la vague) : CE QUE LE FILM ECRIT DECIDE, ET
+// CE QU'IL NE DIT PAS EST COMPTE.
+//
+//	ce qui etait   quatre faits publies se decidaient par une heuristique (D13) : la FIN D'UNE VIE
+//	decide par     de joueur au trou de replication de 5 s (`lifeGapUS`) ; la FIN D'UNE VIE DE
+//	une heuristique VEHICULE a une borne de recensement (« 5 s apres le dernier echantillon »,
+//	               `VehicleTrack.End` toujours `unknown`) ; la FAMILLE D'UN VEHICULE au marqueur
+//	               neutre des qu'un chassis manquait a la table (les occupants JETES avec) ; la
+//	               MANCHE a une garde d'ordre muette (`contiguousRounds`) qui jetait un designateur
+//	               ecrit sans le dire.
+//
+//	les lectures   (1) une vie de joueur finit a une MORT ECRITE du joueur (kill-feed / dead-state,
+//	               liees par le registre d'identite), a une APPARITION ecrite (slot recycle), a une
+//	               fin de manche ou a la fin du film ; un trou de replication est une LACUNE de la
+//	               meme vie (lot 1.9.13 : 212 coupures par trou -> 4, 208 lacunes, 14 vies
+//	               orphelines -> 0 sur les 8 builds) ; (2) une vie de vehicule finit au DEAD-STATE
+//	               ecrit (`ti=40`, marche de `filmdec.ScanObjectDeaths`), a la fin du film sinon
+//	               (lot 1.9.10 : sur `084a804d`, 19 fins lues sur 97, dead-states a 87 ms et 406 ms
+//	               des medailles datees) ; (3) un chassis est NOMME par sa piece ecrite (manifeste
+//	               de la chaine de destruction : un meme vehicule porte un identifiant PAR MODULE du
+//	               jeu — `0xae845375` = wraith, `0xf6f54e56` = scorpion, confirme par la killsource :
+//	               37 kills de Wraith sur 40 dans les vies du chassis ; `0x038df01a` = tourelle
+//	               automatique bannie, element de carte, non jouable) (lot 1.9.9) ; (4) le
+//	               designateur de manche est publie tel qu'ecrit, et la garde d'ordre devient une
+//	               CONTRADICTION publiee (lot 1.9.11 : 14 vraies prolongations en designateur 1
+//	               contigu, 13/14 a egalite ; 24 films a designateur 2 sans manche 1 = artefact de
+//	               lecture, bit 23 du paquet, non tranche).
+//
+//	les champs     `coverage.tracks.gaps`, `coverage.tracks.gapMs` (lacunes) ; `Point.G` = duree en
+//	ajoutes        ms de la lacune qui PRECEDE le point, portee par le point qui rouvre la piste
+//	               (le web ne trace pas de segment a travers) ;
+//	               `vehicles[].end` ∈ {`destroyed`, `film_end`, `unknown`} (etait `unknown` seul),
+//	               `vehicles[].tEnd` (optionnel, `destroyed` seulement) ;
+//	               `coverage.vehicles.{deathsRead, deathsMatched, deathsUnmatched, deathsTailDesync,
+//	               endDestroyed, endFilmEnd, endUnknown, samplesAfterEnd}` ;
+//	               `vehicles[].family` prend les valeurs `wraith`, `scorpion`, `tourelle_auto_bannie`
+//	               (et les chassis secondaires de ghost, banshee, warthog resolvent) ;
+//	               `VehicleLabel.{kind, en, fr}` (servi a la requete : `kind = "map_element"` pour
+//	               la tourelle) ;
+//	               `coverage.score.{roundsWritten, roundsContradicted, roundsContradictedRecords,
+//	               roundsDecreed}` (lot 1.9.11) ;
+//	               `roster[].seat` (toujours emis : l INDEX DE FILM est le siege), `roster[].seatSource`
+//	               (`lu` / `apparie`, optionnel), `coverage.seats.*` (dix compteurs) (lot 1.9.14) ;
+//	               `coverage.teams.tracksSlotAmbiguous`, `coverage.identity.filmTable.collisionsIndex`
+//	               (revue de jalon M1, lentille L4 : une vie sur un siege recycle ne prend plus l equipe
+//	               du premier occupant, un index porte par deux xuids n est pose pour personne) ;
+//	               `coverage.fallbacks[]` gagne `repli_chassis_vehicule_marqueur_neutre`,
+//	               `repli_cadre_de_marche_par_defaut_conserve`, `repli_manche_zero_decretee`,
+//	               `repli_appariement_par_fenetre_temporelle` (killsource : compte en expvar, pas
+//	               encore dans le document — D7 (1.9.7)), `repli_siege_du_remplacant_par_appariement_ordinal`
+//	               (lot 1.9.14) ; `repli_fin_de_vie_vehicule_par_recensement`
+//	               SORT du registre.
+//
+//	CE QUI BOUGE   le contenu cuit change, et c'est le but : moins de vies de joueur, plus longues
+//	DANS LE PARC   (335 vies fusionnees sur les 14 temoins, aucune perte de point, de borne, de tir,
+//	               de kill ni d'objectif) ; les fins de vehicule lues ; les occupants des Wraith
+//	               publies (ils etaient jetes) et leurs tirs rattaches ; le ratchet des replis
+//	               `devant_la_lecture` passe de 6 a 3.
+//
+//	POURQUOI LA    la FORME change (champs neufs, `end` a trois valeurs) et le CONTENU change sur
+//	VERSION MONTE  tout le parc. Un artefact 59 ne peut ni porter une lacune, ni une fin de vehicule
+//	               lue, ni nommer un Wraith. La reprise du backfill se fait par SchemaVersion.

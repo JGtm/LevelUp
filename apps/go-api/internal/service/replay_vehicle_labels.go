@@ -19,6 +19,14 @@ package service
 // dont le dossier d assets ne porte pas ces sprites servira des URLs qui n aboutissent pas — le
 // client garde alors son marqueur neutre, exactement comme pour une famille inconnue. Aucune clef
 // de capability `replay.*` n existe : exemption assumee, documentee au plan d integration.
+//
+// DEPUIS LE LOT 1.9.9 (2026-09-16), CETTE TABLE PORTE AUSSI CE QUE LA FAMILLE *EST*. Une famille
+// de chassis peut ne pas etre un vehicule : la TOURELLE AUTOMATIQUE BANNIE (`tourelle_auto_bannie`,
+// chassis `0x038df01a`) est un ELEMENT DE CARTE — decision utilisateur du 2026-09-14. Le manifeste
+// du titre (`replay_labels.toml`, `[[vehicle_families]]`) la QUALIFIE : nature (`kind`), libelle
+// bilingue, et si un asset est servi pour elle. Les libelles ne sont JAMAIS ecrits en Go (regle 1
+// du depot) ; la nature traverse jusqu au client, qui lui reserve un pictogramme dedie au lieu du
+// marqueur neutre des chassis non resolus.
 
 import (
 	"context"
@@ -27,6 +35,7 @@ import (
 
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 )
 
 // vehicleSpriteDir est le sous-dossier des sprites de vehicule sous
@@ -57,15 +66,14 @@ func (s *replayService) resolveVehicleLabels(ctx context.Context, doc *replay.Re
 			"vies", len(doc.Vehicles), "titleSlug", s.titleSlug)
 		return
 	}
+	qualifiees := s.vehicleFamiliesQualifiees(ctx)
 	labels := make(map[string]replay.VehicleLabel, len(families))
 	for _, f := range families {
-		url := static.URL(static.KindVehicle, s.titleSlug, vehicleSpriteDir+f, ".png")
-		if url == "" {
-			// Composition refusee (titre vide, Kind invalide) : la famille garde son nom et
-			// perd sa vignette. Jamais l URL d un voisin.
+		lbl, ok := vehicleLabelOf(f, qualifiees[f], s.titleSlug)
+		if !ok {
 			continue
 		}
-		labels[f] = replay.VehicleLabel{Img: url, Tinted: true}
+		labels[f] = lbl
 	}
 	if len(labels) == 0 {
 		slog.WarnContext(ctx, "rejeu 2D : aucune URL de sprite de vehicule composee",
@@ -77,6 +85,51 @@ func (s *replayService) resolveVehicleLabels(ctx context.Context, doc *replay.Re
 		slog.InfoContext(ctx, "rejeu 2D : vies de vehicule sans famille resolue",
 			"sansFamille", unnamed, "familles", len(labels), "titleSlug", s.titleSlug)
 	}
+}
+
+// vehicleLabelOf compose le libelle d UNE famille : son URL de sprite quand un asset est servi,
+// et ce que le TITRE dit d elle quand il la qualifie (nature, libelle bilingue).
+//
+// Rend faux quand il n y a RIEN a publier pour cette famille : ni URL composable, ni
+// qualification. Une entree vide dans la table dirait au client « cette famille existe et n a
+// rien », ce qui est indistinguable d une famille qu il ne connait pas.
+//
+// L ORDRE DES DEUX REFUS COMPTE. Une famille QUALIFIEE SANS asset (`Sprite` faux) est publiee
+// avec sa nature et son libelle, SANS URL : c est exactement ce qui permet au client de dessiner
+// son pictogramme dedie plutot que le marqueur neutre des chassis non resolus. Composer une URL
+// morte a la place ferait un 404 par match et laisserait le client incapable de distinguer
+// « pas encore charge » de « aucun asset a ce jour ».
+func vehicleLabelOf(famille string, info replay.VehicleFamilyInfo, titleSlug string) (replay.VehicleLabel, bool) {
+	lbl := replay.VehicleLabel{Kind: info.Kind, En: info.En, Fr: info.Fr}
+	// Une famille NON qualifiee par le titre (le cas de dix-huit sur dix-neuf : les noms propres
+	// du jeu) a toujours son asset servi — c est le regime d avant le lot 1.9.9, inchange.
+	if info.Kind == "" || info.Sprite {
+		url := static.URL(static.KindVehicle, titleSlug, vehicleSpriteDir+famille, ".png")
+		if url == "" {
+			// Composition refusee (titre vide, Kind invalide) : la famille garde son nom et
+			// perd sa vignette. Jamais l URL d un voisin.
+			return lbl, lbl.Kind != ""
+		}
+		lbl.Img, lbl.Tinted = url, true
+	}
+	return lbl, lbl.Img != "" || lbl.Kind != ""
+}
+
+// vehicleFamiliesQualifiees rend ce que le TITRE declare des familles de chassis (nature,
+// libelle bilingue, asset servi ou non), ou nil.
+//
+// MEME PATRON ET MEME RAISON QUE `resolveWeaponLabels` : le catalogue est charge POUR LE TITRE du
+// service, a la requete, parce qu une qualification qui peut s ameliorer ne se fige pas dans un
+// artefact deja cuit. Best-effort ET DIT : un catalogue illisible est une erreur de
+// configuration, pas un document sans vehicules.
+func (s *replayService) vehicleFamiliesQualifiees(ctx context.Context) map[string]replay.VehicleFamilyInfo {
+	cat, err := replaylabels.Load(s.repoRoot, s.titleSlug)
+	if err != nil {
+		slog.WarnContext(ctx, "rejeu 2D : manifeste du titre illisible — familles de chassis non"+
+			" qualifiees (ni nature, ni libelle)", "err", err, "titleSlug", s.titleSlug)
+		return nil
+	}
+	return cat.VehicleFamilies
 }
 
 // vehicleFamiliesUsed releve les familles employees par les vies, TRIEES (l ordre d une map ne

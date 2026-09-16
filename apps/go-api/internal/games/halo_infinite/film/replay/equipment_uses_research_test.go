@@ -97,7 +97,7 @@ func TestEquipmentUsesPhase0(t *testing.T) {
 	defer release()
 
 	entry, metres := eqUsesEntry(t, dir)
-	defer installWorldObjectPrecision(entry, dir)()
+	defer installWorldObjectPrecision(entry, dir, nil)()
 	wr := entry.Range()
 	t.Logf("FILM %s · largeurs d'axe %v · bornes %s", short, entry.AxisWidths,
 		map[bool]string{true: "MONDE (metres)", false: "NORMALISEES [0,1]"}[metres])
@@ -244,7 +244,7 @@ func eqUsesRawTransitions(t *testing.T, samples []filmdec.EquipmentStateSample) 
 // tout ce qui exige des metres est alors declare non mesurable.
 func eqUsesEntry(t *testing.T, dir string) (filmdec.MapQuantEntry, bool) {
 	t.Helper()
-	lay, _, err := filmdec.DetectI0Layout(dir)
+	lay, _, err := detecterI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible dans %s : %v", dir, err)
 	}

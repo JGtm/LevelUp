@@ -21,7 +21,22 @@ package filmdec
 // reellement 0 bit : pour eux le decodeur avait deja raison, et leurs deraillements de
 // record NEW viennent des COMPOSANTS, pas du default-state.
 // Stubs mesures : ti0, ti1, ti2, ti4, ti7, ti15, ti16, ti18, ti19, ti22, ti25, ti26, ti27,
-// ti30, ti31, ti32, ti33, ti34, ti45, ti46 (+ ti14 = FUN_140467a20, un `return;` partage).
+// ti30, ti31, ti32, ti33, ti34, ti45, ti46.
+//
+// TI14 N'EST PAS UN STUB — correction du 2026-09-14 (lot 1.3). Cette liste portait
+// « + ti14 = FUN_140467a20, un `return;` partage », et c'etait FAUX de deux facons :
+//
+//	(a) `vtable[0x60]` de ti14 vaut `0x140FED6F4` (KEYFRAME_ARCHETYPE_DEFAULTSTATE_TABLE.md,
+//	    classe REAL), et ce descripteur decompile en `V ; R(5)` — 6 bits, pas 0 ;
+//	(b) `FUN_140467a20` n'est pas le deserialiseur de ti14 : c'est un `return;` PARTAGE par
+//	    treize symboles exportes sans rapport (`AK::MemoryMgr::GetCategoryStats`,
+//	    `ManagedDebug_LogError`, `Variant_InitializeStaticScriptComponents`, ...). Une
+//	    resolution qui atterrit sur ce thunk n'a pas trouve un stub : elle s'est trompee
+//	    de table.
+//
+// Les deux chaines de la mesure (releve B.2 de `NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md`) le
+// confirment : `n2` devient constant (28) a 6 bits, et la fermeture passe de 0 a 5 024 records
+// sur 5 024, sur trois builds. Relu chez l'ecrivain le 2026-09-14 (Ghidra, base 0x140000000).
 //
 // PREFIXE COMMUN « version » (note V ci-dessous), present en tete de la quasi-totalite des
 // deserialiseurs : `R(1) gate ; si 1 -> R(8)`. C'est exactement le prologue du biped
@@ -39,8 +54,26 @@ func consumeVersionPrefix(br *BitReader) {
 }
 
 // defaultStateDeserByTI : deserialiseur du default-state par typeIndex d'archetype.
-// Absent = 0 bit (stub FUN_1408d8220 mesure, ou grammaire non entierement resolue).
 // ti35 (biped) est traite a part dans TraverseEntity (consumeBipedDefaultState).
+//
+// ABSENT = 0 BIT, ET C'EST UN REPLI NOMME (D14 du PLAN_DECODEUR_FILM, ADR 0034 D-10).
+// Deux populations tres differentes tombent dans la meme branche « pas d'entree » :
+//
+//	(a) les STUBS mesures (liste en tete de fichier) : leur `vtable[0x60]` est
+//	    `FUN_1408d8220`, qui consomme reellement 0 bit. Ce n'est PAS un repli, c'est la
+//	    grammaire du jeu ;
+//	(b) les archetypes dont la grammaire n'est pas entierement resolue — au 2026-09-14 :
+//	    ti23 (`0x142EEA440`), ti40 (`0x1410A5A74`, cf. default_state_ti40.go), ti41
+//	    (`0x1408EFB58`), ti44 (`0x142EEA020`). Pour eux, 0 bit est un REPLI : il decale tout
+//	    ce qui suit dans le record, et il ne se defend que parce qu'un skip faux se mesure
+//	    mieux qu'un skip invente (cf. « on ne devine pas », en tete de ce fichier).
+//
+// POSE : 2026-07-31 (`3f0ec70b3`, premiere version du fichier — la phrase « absent = 0 bit »
+// y est deja). CRITERE DE RETRAIT : un archetype sort du repli des que son `vtable[0x60]` est
+// relu chez l'ecrivain — la table n'admet pas une largeur devinee. COMPTAGE : la fermeture par
+// archetype (`testdata/keyframe_closure.golden`, lot 0.A.3) dit, bobine par bobine, ce que
+// chaque repli coute ; le repli est retire quand la grammaire est lue, pas quand le compte est
+// bas.
 var defaultStateDeserByTI = map[uint32]func(*BitReader){
 	3:  consumeDefaultStateTI3,
 	5:  consumeDefaultStateTI5,
@@ -51,15 +84,20 @@ var defaultStateDeserByTI = map[uint32]func(*BitReader){
 	11: consumeVersionPrefix, // FUN_14110d4d8 : V seul
 	12: consumeVersionPrefix, // FUN_1410ed0e8 : V seul
 	13: consumeDefaultStateTI13,
-	20: consumeVersionPrefix, // FUN_142eea600 : V seul
+	14: consumeDefaultStateTI14, // FUN_140fed6f4 : V ; R(5) — relu 2026-09-14 (lot 1.3)
+	17: consumeDefaultStateTI17, // FUN_14101a0a4 : V ; R(7) — relu 2026-09-14 (lot 1.3)
+	20: consumeVersionPrefix,    // FUN_142eea600 : V seul
+	21: consumeDefaultStateTI21, // FUN_141133c24 : R(18) SEC — relu 2026-09-14 (lot 1.3)
 	24: consumeDefaultStateTI24,
 	28: consumeDefaultStateTI28,
+	29: consumeVersionPrefix, // FUN_14116f514 : V seul — relu 2026-09-14 (lot 1.3)
 	36: consumeDefaultStateTI36,
 	37: consumeDefaultStateTI37,
 	38: consumeDefaultStateTI38,
 	39: consumeDefaultStateTI38, // meme deser FUN_1408f0b48 que ti38
 	42: consumeDefaultStateTI42, // FUN_1407f0c68 (default_state_ti42.go) — VALIDE PAR ORACLE
 	43: consumeDefaultStateTI36, // FUN_140fe7630 : meme forme V + MPP que ti36
+	47: consumeDefaultStateTI14, // FUN_1410f44f8 : meme forme V + R(5) que ti14 (lot 1.3)
 	48: consumeDefaultStateTI48,
 	49: consumeVersionPrefix, // FUN_141fd39c0 : V seul
 }
@@ -70,10 +108,10 @@ var defaultStateDeserByTI = map[uint32]func(*BitReader){
 //	FUN_142af28d8 [R(1)] ; R(8)
 func consumeDefaultStateTI3(br *BitReader) {
 	consumeVersionPrefix(br)
-	consume1408f0ac4(br) // FUN_1408f0ac4(param_3, param_4, 0)
-	consumeGateR(br, 8)  // FUN_1407f08bc -> FUN_1407f08f8 = R(8)
-	br.ReadBit()         // FUN_142af28d8 = R(1)
-	br.ReadBits(8)       // R(8) terminal -> dst+0xb
+	consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0) @142eea359
+	consumeGateR(br, 8)     // FUN_1407f08bc -> FUN_1407f08f8 = R(8)
+	br.ReadBit()            // FUN_142af28d8 = R(1)
+	br.ReadBits(8)          // R(8) terminal -> dst+0xb
 }
 
 // consumeDefaultStateTI5 porte FUN_140fed600 (archetype 5, « player-waypoint ») :
@@ -103,19 +141,35 @@ func consumeDefaultStateTI8(br *BitReader) {
 }
 
 // consumeDefaultStateTI9 porte FUN_1410d7540 (archetype 9, « managed-player ») :
-// V ; R(6) ; R(6) ; R(1).
-func consumeDefaultStateTI9(br *BitReader) {
+// V ; R(6) ; R(6) ; R(1). Elle JETTE ce que [readManagedPlayerDefaultState] publie : la table
+// `defaultStateDeserByTI` n'a qu'une signature, et le seul lecteur qui ait besoin de la valeur
+// (l'equipe, lot 1.7) appelle l'autre.
+func consumeDefaultStateTI9(br *BitReader) { readManagedPlayerDefaultState(br) }
+
+// readManagedPlayerDefaultState porte la MEME grammaire et REND le premier `R(6)`.
+//
+// CE PREMIER CHAMP EST L'INDEX DE JOUEUR DE L'ENTITE, et c'est MESURE, pas suppose (lot 1.7,
+// 2026-09-14, 18 films et 7 builds) : il vaut exactement le rang du siege de la table de
+// `chunk_00` pour chaque entite presente au premier paquet d'image-cle (8/8, 23/23, 24/24 selon
+// le film), il est CONSTANT sur toute la vie de l'entite, et il continue au-dela des sieges pour
+// les joueurs arrives en cours de partie. Le controle qui interdit d'y lire un simple ORDINAL :
+// sur `50247b26` la suite lue est `0 1 3 4 ... 22 24` — trouee, donc pas un rang de parcours.
+// Meme forme que le `R(6)` de ti=5 (`player-waypoint`), que l'executable borne a `< 0x20`.
+//
+// La largeur du champ n'est pas devinee : elle vient de `FUN_1410d7540`, comme les deux autres.
+func readManagedPlayerDefaultState(br *BitReader) (playerIndex int) {
 	consumeVersionPrefix(br)
-	br.ReadBits(6)
+	playerIndex = int(br.ReadBits(6))
 	br.ReadBits(6)
 	br.ReadBit()
+	return playerIndex
 }
 
 // consumeDefaultStateTI10 porte FUN_141020244 (archetype 10, « managed-object ») :
 // V ; FUN_1408f0ac4(dst, br, 0).
 func consumeDefaultStateTI10(br *BitReader) {
 	consumeVersionPrefix(br)
-	consume1408f0ac4(br)
+	consume1408f0ac4(br, 0)
 }
 
 // consumeDefaultStateTI13 porte FUN_140ce55e8 (archetype 13, « managed-object-property-name ») :
@@ -133,6 +187,29 @@ func consumeDefaultStateTI13(br *BitReader) {
 		br.ReadBits(4) // FUN_140ce59bc = R(4)
 	}
 }
+
+// consumeDefaultStateTI14 porte FUN_140fed6f4 (archetype 14, `crew-order-component` en i0) :
+// V ; R(5). Le prefixe de version y est le MEME appel qu'ailleurs (`FUN_1406cf008`, relu le
+// 2026-09-14 : R(1) sec), et la feuille terminale fait `*(reader+0x2c) += 5`, validee
+// `< 0x20` par la valeur de retour — exactement la forme de ti5, a la largeur pres.
+//
+// FUN_1410f44f8 (ti47) a la meme forme, au bit pres, et partage donc ce porteur.
+func consumeDefaultStateTI14(br *BitReader) {
+	consumeVersionPrefix(br)
+	br.ReadBits(5)
+}
+
+// consumeDefaultStateTI17 porte FUN_14101a0a4 (archetype 17) : V ; R(7).
+// La feuille fait `*(reader+0x2c) += 7` et la fonction rend 1 sans borner la valeur.
+func consumeDefaultStateTI17(br *BitReader) {
+	consumeVersionPrefix(br)
+	br.ReadBits(7)
+}
+
+// consumeDefaultStateTI21 porte FUN_141133c24 (archetype 21, `flock-*-component`) :
+// un unique `R(0x12)` = R(18), SANS prefixe de version. C'est le seul des cinq etats du lot
+// 1.3 a ne pas commencer par `FUN_1406cf008` : le decompile n'appelle rien avant sa feuille.
+func consumeDefaultStateTI21(br *BitReader) { br.ReadBits(18) }
 
 // consumeDefaultStateTI24 porte FUN_142eea5b4 (archetype 24, « state-checksum ») :
 // FUN_1406d00ec [R(1) ; si 0 -> R(2)] ; FUN_140c1e31c [R(3)]. Pas de prefixe de version.
@@ -185,7 +262,7 @@ func consumeDefaultStateTI37(br *BitReader) {
 func consumeDefaultStateTI38(br *BitReader) {
 	consumeVersionPrefix(br)
 	consumeMultiplayerPropertiesBlock(br)
-	consume1408f0ac4(br)
+	consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0) @1408f0bae
 }
 
 // consumeDefaultStateTI48 porte FUN_142f14668 (archetype 48, « forge-player-data ») :

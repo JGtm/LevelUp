@@ -99,7 +99,12 @@ const (
 	valeurFrameCount   = 781
 	valeurIntervalleMS = 100
 	valeurDureeMS      = 78100
-	valeurNbTracks     = 22
+	// valeurNbTracks : 22 -> 21 au schema 60 (lot 1.9.13, fusionne le 2026-09-17) : une vie finit a une
+	// MORT ECRITE, une fin de manche ou la fin du film — plus a un trou de replication de 5 s. Sur ce
+	// fixture, une des 22 pistes etait la seconde moitie d une vie coupee par un tel trou sans mort
+	// entre les deux ; elle est recollee a la premiere, le trou devient une LACUNE comptee
+	// (`coverage.tracks.gaps`). Le joueur concerne est `2533275001554469` (cf. valeurViesParXUID).
+	valeurNbTracks = 21
 	// valeurNbAnonymes : les vies que MEME le nommage final ne resout pas.
 	//
 	// 2 -> 1 au schema 47 (2026-09-07). Depuis la decision produit « les vies anonymes
@@ -139,7 +144,10 @@ const (
 var valeurViesParXUID = map[string]int{
 	"2533274823110022": 3,
 	"2535458702376288": 1,
-	"2533275001554469": 5,
+	// 5 -> 4 au schema 60 (lot 1.9.13, 2026-09-17) : ce joueur a 4 morts a l API (oracle ci-dessus),
+	// donc au plus 5 vies ; sa 5e « vie » etait le morceau d une vie coupee par un trou de
+	// replication SANS mort ecrite — recollee, avec sa lacune, a la vie qui la precede.
+	"2533275001554469": 4,
 	"2535429692041611": 3,
 	"2535432531943478": 2,
 	"2535463878425995": 3,

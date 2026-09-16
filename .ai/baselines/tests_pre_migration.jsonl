@@ -60858,9 +60858,6 @@
 {"Time":"2026-09-05T23:46:26.288211+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestOriginBirthRecurrenceClusters","Elapsed":0}
 {"Time":"2026-09-05T23:46:26.288211+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestEquipmentLivesDecoupeSurLeTrouDeCinqSecondes","Elapsed":0}
 {"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestEquipmentLivesIgnoreLesQuantaSansBornes","Elapsed":0}
-{"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestEquipmentOriginSepareLacherDuDeploiement","Elapsed":0}
-{"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestEquipmentOriginSansVieEstInconnue","Elapsed":0}
-{"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestEquipmentOriginChoisitLaVieQuiContientLInstant","Elapsed":0}
 {"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestPlacementCoverageEquilibreLesOrigines","Elapsed":0}
 {"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildEquipmentPlacementsPublieUneOrigineToujours","Elapsed":0}
 {"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestEquipmentOwnerDepartageDeuxBipedesEquidistants","Elapsed":0}
@@ -60913,7 +60910,7 @@
 {"Time":"2026-09-05T23:46:28.4614407+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestDist3MesureLaDistanceEuclidienne","Elapsed":0}
 {"Time":"2026-09-05T23:46:28.5014337+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestUneSeuleFormuleDeDistance3D","Elapsed":0.04}
 {"Time":"2026-09-05T23:46:29.6077395+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGoldenAssembly","Elapsed":1.11}
-{"Time":"2026-09-05T23:46:30.4603828+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestShotsCoverageIsFourEightyThreeOfFiveNineteen","Elapsed":0.85}
+{"Time":"2026-09-05T23:46:30.4603828+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestShotsCoverageIsFiveHundredFourOfFiveNineteen","Elapsed":0.85}
 {"Time":"2026-09-05T23:46:31.1484685+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBridgeNamesNinetyLivesOfHundredFive","Elapsed":0.69}
 {"Time":"2026-09-05T23:46:31.8224188+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestSeventyGrenadeThrowsAreAllPlaced","Elapsed":0.67}
 {"Time":"2026-09-05T23:46:32.5268802+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestProjectilesAndInventoryCounts","Elapsed":0.7}

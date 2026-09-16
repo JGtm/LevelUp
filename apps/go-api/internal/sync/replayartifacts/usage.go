@@ -55,6 +55,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
@@ -99,6 +100,7 @@ func persisterResumesUsage(ctx context.Context, d Deps, b *bilanDerivations, lus
 		return
 	}
 	journaliserCouvertureUsage(ctx, d, prets)
+	journaliserReplisUsage(ctx, d, prets)
 	if d.AcquireWriter == nil {
 		// DÉGRADATION VOULUE, PAS UN SILENCE : même cas que le report du T0 — un chemin
 		// de sync sans writer câblé cuit ses artefacts mais ne résume rien.
@@ -175,6 +177,47 @@ func journaliserCouvertureUsage(ctx context.Context, d Deps, prets []resumeUsage
 		"prisesSansFamille", cov.UnnamedRankTaken,
 		"slotsNonRattaches", cov.UnattributedSlot,
 		"consommationsChaineTrouee", cov.SpentUnreliableFrom)
+}
+
+// journaliserReplisUsage dit QUELS REPLIS LA PROJECTION A DÉCLENCHÉS sur ce lot, et combien
+// de fois (D14 c ; câblage du 2026-09-16, revue de jalon M1 ronde 2, constat F2).
+//
+// # IL EXISTE PARCE QUE LE CORPUS GATE NE PEUT PAS MESURER CES REPLIS-LÀ
+//
+// Les replis de `BuildUsageSummary` se déclenchent APRÈS la cuisson, sur un document déjà cuit :
+// ils n'entrent donc JAMAIS dans `coverage.fallbacks[]` de l'artefact, et `replay-corpus-gate`,
+// qui lit les artefacts, ne les voit pas. Trois entrées du registre portaient pourtant une
+// cible de retrait nommant ce gate — un instrument qui ne peut pas produire la mesure qu'on lui
+// demande. Le journal des passes EST cet instrument : il tourne sur le parc réel, à chaque
+// cycle, et son compte vaut pour D14 (d).
+//
+// # DEUX GRAINS, ET POURQUOI LES DEUX
+//
+//	PAR MATCH    seulement quand quelque chose s'est déclenché. C'est ce qui permet de RETROUVER
+//	             le film — un compte de lot ne dit pas lequel. Un lot entièrement lu n'écrit
+//	             aucune de ces lignes, donc rien à noyer.
+//	PAR LOT      TOUJOURS, même à zéro, et c'est délibéré : « aucun » est l'information qui
+//	             distingue « jamais déclenché » de « jamais instrumenté ». Sans elle, un retrait
+//	             sec au titre de D14 (d) reposerait sur une absence de trace.
+//
+// INFO et non WARN : un repli nommé qui se déclenche est le régime PRÉVU (D14), pas une
+// dégradation — contrairement aux ramassages non rattachés de [journaliserCouvertureUsage].
+func journaliserReplisUsage(ctx context.Context, d Deps, prets []resumeUsagePret) {
+	cumul := fallback.NouveauCompteur()
+	films := 0
+	for i := range prets {
+		r := prets[i].summary.Match.Fallbacks
+		if len(r) == 0 {
+			continue
+		}
+		films++
+		cumul.Cumuler(r)
+		slog.InfoContext(ctx, "post-sync: résumé d'usage — replis déclenchés par la projection",
+			"match_id", prets[i].matchID, "replis", fallback.Texte(r))
+	}
+	slog.InfoContext(ctx, "post-sync: résumé d'usage — replis de la passe",
+		"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "matchs", len(prets),
+		"matchsConcernes", films, "replis", fallback.Texte(cumul.Rapport()))
 }
 
 // projeterResumesUsage projette tous les documents du lot, AVANT tout writer.

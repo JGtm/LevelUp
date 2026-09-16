@@ -121,7 +121,7 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 		objectives:        objectifs,
 		objectivesUnnamed: nonNommes,
 		objectivesRefused: refuses,
-		flag:              flagInput(recs, film, pont, facts),
+		flag:              flagInput(recs, film, pont),
 		vip:               vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:             skullInput(recs, isSkullVariant(facts.GameVariantName), pont),
 		bomb:              bombInput(film, isBombVariant(facts.GameVariantName)),
@@ -246,33 +246,12 @@ func vipInput(recs []objectiveevents.StatRecord, isVip bool) replay.VipInput {
 // lignes de match, `CompletedByLines` rend le pont par morts inchange et l'artefact reste
 // exactement celui d'avant — la propriete « publiable hors ligne » est conservee.
 func flagInput(recs []objectiveevents.StatRecord, film *filmsource.Film,
-	pont *pontParManche, facts port.MatchFacts) replay.FlagInput {
+	pont *pontParManche) replay.FlagInput {
 	return withFlagIdentity(replay.FlagInput{
 		Scanned: true,
 		Records: recs,
 		Bursts:  objectiveevents.CaptureBurstTimes(film),
-		TeamOf:  equipesParXUID(facts),
 	}, pont)
-}
-
-// equipesParXUID rend la table xuid -> equipe des lignes de match, pour l'invariant « jamais son
-// propre drapeau » du calque du drapeau (revue DRAPEAUX-R1, C1).
-//
-// UNE EQUIPE INCONNUE N'ENTRE PAS : la base ecrit -1 quand elle ne la porte pas, et l'invariant
-// ne doit refuser que sur une equipe LUE. Sans lignes de match, la table est nil et l'invariant
-// se tait — la meme degradation que le pont d'identite.
-func equipesParXUID(facts port.MatchFacts) map[string]int {
-	var out map[string]int
-	for _, p := range facts.Players {
-		if p.XUID == "" || p.TeamID < 0 {
-			continue
-		}
-		if out == nil {
-			out = make(map[string]int, len(facts.Players))
-		}
-		out[p.XUID] = p.TeamID
-	}
-	return out
 }
 
 // withFlagIdentity pose le pont COMPLETE sur l'entree du calque — et SEULEMENT sur un film que
@@ -438,27 +417,19 @@ func playerLines(facts port.MatchFacts) []objectiveevents.PlayerLine {
 	return out
 }
 
-// rosterXUIDs rend les joueurs de la feuille de match, en decimal, pour COMPLETER le roster
-// que le fil des morts donne au rejeu (cf. replay.Options.RosterXUIDs).
+// rosterXUIDs projette la feuille de match vers le roster d'appoint du rejeu.
 //
-// UN JOUEUR QUI NE MEURT JAMAIS N'EST DANS AUCUNE MORT, donc dans aucun roster deduit du fil
-// — et il disparait de toute la chaine : pas d'index de joueur, pas de pont, pas d'entree au
-// roster publie. Mesure du 2026-09-07 sur `3372e7eb` : 6 joueurs publies pour 8 a la feuille,
-// les deux manquants a 0 mort.
-//
-// Un xuid que la feuille ne donne pas en decimal (un bot, `bid(N.0)`) est ignore : le pont des
-// bots passe par BOT_METADATA et les relais, pas par l'index de joueur.
+// LA REGLE N'EST PLUS ICI (lot 1.0, revue R1, constat R1-1) : elle vit dans
+// `replay.RosterXUIDsOf`, avec le champ qu'elle remplit, pour que le FIXTURE d'entrees puisse
+// l'appeler lui aussi — il passait `nil`, et un joueur a zero mort manquait alors a la table
+// d'index du golden sans que rien ne le dise. Cette fonction-ci n'est plus que l'adaptateur du
+// type de la base vers celui de la regle.
 func rosterXUIDs(facts port.MatchFacts) []uint64 {
-	out := make([]uint64, 0, len(facts.Players))
+	xuids := make([]string, 0, len(facts.Players))
 	for _, p := range facts.Players {
-		if x, err := strconv.ParseUint(p.XUID, 10, 64); err == nil && x != 0 {
-			out = append(out, x)
-		}
+		xuids = append(xuids, p.XUID)
 	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
+	return replay.RosterXUIDsOf(xuids)
 }
 
 // participantsDuTableau projette la feuille de match vers le TABLEAU que le registre d'identite

@@ -115,7 +115,7 @@ func TestH3AquariusReperes(t *testing.T) {
 func h3UnFilm(t *testing.T, cat *filmdec.MapQuantCatalog, refEntry filmdec.MapQuantEntry,
 	dir, id string) {
 	t.Helper()
-	lay, _, err := filmdec.DetectI0Layout(dir)
+	lay, _, err := detecterI0Layout(dir)
 	if err != nil || !lay.Valid() {
 		t.Errorf("film %s : decoupage i0 illisible (%v)", id, err)
 		return
@@ -329,7 +329,7 @@ func h3PositionsImposees(t *testing.T, dir string, e filmdec.MapQuantEntry) (
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecision(e, dir)()
+	defer installWorldObjectPrecision(e, dir, nil)()
 	scan := filmdec.DefaultScanFilmOptions()
 	wr := e.Range()
 	scan.WorldRange = &wr

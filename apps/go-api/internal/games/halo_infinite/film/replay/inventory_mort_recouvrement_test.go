@@ -101,7 +101,7 @@ func invMortMeasure(
 // s'effondrer, l'etiquette devient un mensonge a l'ecran : ce test tombe AVANT.
 func TestInventaireRecordVideRecouvrementMorts(t *testing.T) {
 	g := loadGoldenInputs(t)
-	vide, plein, own := invMortMeasure(g.Positions, g.Fire, g.Inventory, g.Deaths, g.Indices)
+	vide, plein, own := invMortMeasure(g.Positions, g.Fire, g.Inventory, g.Deaths, g.PlayerIndices)
 	t.Log(invMortReport(g.Film, vide, plein, own))
 	if vide.total == 0 {
 		t.Fatal("aucune lecture vide dans le fixture : la mesure n'a plus de sujet")
@@ -238,7 +238,7 @@ func invMortFilm(t *testing.T, dir string) (*invMortStat, *invMortStat, Identity
 			"denominateur du taux affaibli", dir, err)
 		fire = nil
 	}
-	inv, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0)
+	inv, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0, nil)
 	if err != nil {
 		t.Logf("%s : inventaire illisible : %v", dir, err)
 		return nil, nil, IdentityRegistry{}

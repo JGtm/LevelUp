@@ -199,7 +199,7 @@ describe('chaque document produit par Go traverse la frontière du web', () => {
         expect(groupByTeam(players).length).toBeGreaterThan(0)
         expect(buildSlotOwnership(players)).toBeDefined()
         expect(vitalityPresence(doc)).toBeDefined()
-        expect(buildSeats(players, null, doc).length).toBeGreaterThan(0)
+        expect(buildSeats(players, doc).length).toBeGreaterThan(0)
       })
 
       it('nourrit les logiques de calque, chacune sans lever', () => {

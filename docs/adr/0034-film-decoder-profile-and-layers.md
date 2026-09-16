@@ -250,6 +250,54 @@ Before a fact is declared "not in the film", the measured negative (report, note
 cited; otherwise the question is *open*, which is a research item, not a licence for a heuristic.
 The inventory of today's heuristics is the plan's lot 0.E; conversions are its family 1.9.
 
+#### D-10 bis — The fallback registry (lot 1.9.0, 2026-09-14)
+
+The registry named in rule 1 above exists: package
+`internal/games/halo_infinite/film/replay/fallback`. It is a **leaf** (no repository imports), so
+step 5 of milestone M2 moves it to `film/facts/fallback` by a pure move.
+
+**What an entry carries.** `Nom` (stable id, `repli_<fact>_<mechanism>`, published in artifacts
+and never renamed), `Fait` (what is decided), `Mecanisme` (how, with its exact parameters),
+`Condition` (typed: `film_muet`, `section_absente`, `lecture_non_portee`, `contradiction`,
+`non_resolu`, `inconditionnel`), `Ordre` (`apres_lecture`, `sans_lecture`, or
+`devant_la_lecture` — the last being rule 2's *violation*, recorded to be counted and removed,
+never tolerated), one or more `Site{Fichier, Ancre}`, `DatePose`, `CibleRetrait`,
+`CritereRetrait`, and `CompteurBranche` with `CibleComptage`.
+
+**Why `CompteurBranche` exists.** Rule 4 deletes a fallback whose count is zero. Confusing "never
+fired" with "never instrumented" would delete a live fallback, so an entry states whether its
+counter is wired, and if not, which lot wires it. A zero is only a zero when the counter is
+wired.
+
+**Counting is per cooking, never per package.** `fallback.Compteur` is created by
+`replay.BuildFromFilm` before the first scan (so scan-time and assembly-time fallbacks land in
+the same count) and by `BuildFromPositions` when the caller supplies none. A nil counter is
+valid and counts nothing, which is what makes instrumenting a site risk-free. A package-level
+counter would mix two films decoded in parallel and would contradict D-5.
+
+**How it is published.** `coverage.fallbacks[]` — a flat `{name, hits}` list, sorted by name,
+carrying only the fallbacks that *fired* (schema 58). This is the shape rule 3 takes in
+practice: fallbacks do not distribute over the existing layers (the default-axis-widths fallback
+touches the whole decode, and most fallen-back facts have no coverage block of their own), a
+flat list joins the registry by name alone, and no existing coverage block changes shape.
+Per-fact `coverage.<fact>.{grammar, fallback, contradiction}` triples remain the right form for a
+fact that already owns a coverage block, and each conversion lot may add one.
+
+**The ratchet has two directions** (`archlint/no_unregistered_fallback_test.go`). Code -> registry:
+every declared Go identifier in the decoder whose name carries `repli`/`Repli`/`fallback`/
+`Fallback` at a camelCase word boundary must be covered by the registry. The boundary *is* the
+convention: without it the scan would catch `replication`, `replique`, `replier`, `repliement` —
+ordinary French words of the decoder's vocabulary. Registry -> code: every entry's site must
+exist and still carry its anchor. That second direction makes rule 4 mechanical — when a
+conversion lot removes a fallback, its anchor disappears, the ratchet reddens, and the entry must
+leave the registry in the same commit. Anchors are literals, not line numbers: the lot 0.E audit
+cited `file:line` references that had already drifted eight days later.
+
+**Exemptions are two, dated and justified**, in `replisDeLEcrivainDuJeu`: identifiers that name a
+fallback path of *the game's own writer* (grammar read from the executable, not a LevelUp
+decision), plus the registry's own publication machinery. A LevelUp fallback never goes there; it
+goes into the registry.
+
 ## Corrections to statements made elsewhere
 
 Found on the tree during lot 0.B (2026-09-13), written here so the wrong sentence is not repeated:
@@ -260,12 +308,20 @@ Found on the tree during lot 0.B (2026-09-13), written here so the wrong sentenc
    refusal lives upstream, in `validateArtifact` (`replaybuild/artifact_store.go`), on the only
    writer that can carry another version (`StoreArtifact`) — the others serialize a document from
    the current producer. The behaviour is correct; only the sentence was wrong.
-2. **The chronicle has three header forms, and two numbers do not exist.** `document_chronicle.go`
+2. **The chronicle has three header forms, and one number does not exist.** `document_chronicle.go`
    carries three forms, born in different months (`// v<N> (`, `// SCHEMA <N> `,
-   `// CE QUE LA VERSION <N> `). Versions **32 and 51 were skipped** at the renumbering of two
-   parallel lots, and v1 predates the chronicle. Any guard rail deriving the list from a `1..N`
-   range would assert versions that were never cooked; the shared extractor
+   `// CE QUE LA VERSION <N> `). Version **32 was skipped** at the renumbering of two parallel
+   lots, and v1 predates the chronicle. Any guard rail deriving the list from a `1..N` range would
+   assert versions that were never cooked; the shared extractor
    (`testutil/replay_chronicle.go`) recognizes the three forms and fills no gaps.
+   **Corrected on 2026-09-14 (lot 1.0, review round 2).** This point, lot 0.B and
+   `testutil/replay_chronicle.go` all said "32 **and 51** were skipped". Git contradicts it for
+   51: `2fb53db4e` sets `SchemaVersion = 51` on 2026-09-10 and `b6b198baf` replaces it with 52
+   the next day, so artifacts *were* cooked under that number. What was actually missing was its
+   chronicle entry — never written, and therefore invisible to the extractor and to every guard
+   rail derived from it. The entry was restored on 2026-09-14. The lesson belongs here: a gap in
+   the chronicle reads exactly like a skipped number, and nothing distinguishes the two. A
+   chronicle entry is written **in the commit that raises the version**, never afterwards.
 3. **`internal/domain/replaydoc` has no tests of its own.** The served document package is a leaf
    with no `_test.go` file. Its shape is guarded from `film/replay` (the shape fingerprint, D-8.4)
    and its field-by-field parity from `service/replayview/parity_test.go`. That is enough while

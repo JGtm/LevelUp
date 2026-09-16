@@ -66,62 +66,48 @@ func consumeID2(br *BitReader) {
 	}
 }
 
-// readVarWidthInt mirrors FUN_1406d3140 (signed variable-width int). probe==true
-// only when the caller passes param_3==1. The field width is W = bitLen(range)
-// (FUN_1406d310c) bits, followed by 2 trailing bits. The default replication range
-// is DAT_144706100 = 0x1FFF -> W = bitLen(0x1FFF) = 13, so the common cost is
-// R(13)+R(2) = 15 bits; per-slot ranges (DAT_1451f98d0 table, all-zero in retail)
-// would shorten W. range is supplied by the caller's descriptor.
-// LES RETOURS ONT ÉTÉ AJOUTÉS LE 2026-08-30 (sonde i26) SANS CHANGER UN BIT : la valeur et
-// les deux bits de queue étaient consommés puis jetés. Avec le rangeMax par défaut (0x1FFF),
-// la valeur fait 13 bits et la queue 2 — les largeurs EXACTES d'un slot d'entité et d'une
-// génération : c'est ce que la sonde d'i26 va vérifier. (La branche precision-arme rendait
-// la valeur seule pour consumeObjectParentState : la signature à deux retours la couvre,
-// l'appelant ignore `tail`.)
-func readVarWidthInt(br *BitReader, rangeMax uint32, probe bool) (val uint64, tail uint64) {
-	if probe {
-		br.ReadBit() // FUN_1406cf008 probe bit (param_3==1 only)
+// readVarWidthInt porte FUN_1406d3140 : l entier a largeur variable du flux.
+//
+// `param3` est le `param_3` du jeu — la CATEGORIE, qui choisit la plage dans la table de
+// `FUN_140d10bb0` et donc la largeur du champ de valeur (cf. `varwidth.go`). Cout en bits :
+// [sonde R(1) quand param3 == 1] + `varWidthBits(param3)` bits de valeur + R(2) de queue.
+//
+// LA SONDE BASCULE LA CATEGORIE, elle ne fait pas que couter un bit : quand param3 vaut 1 et
+// que le bit lu vaut 1, le jeu prend l entree 4 de la table (9 bits au lieu de 13). C est la
+// correction du 2026-09-15 ; le portage precedent lisait 13 bits dans les deux cas.
+//
+// LES RETOURS ONT ETE AJOUTES LE 2026-08-30 (sonde i26) SANS CHANGER UN BIT : la valeur et
+// les deux bits de queue etaient consommes puis jetes.
+func readVarWidthInt(br *BitReader, param3 int) (val uint64, tail uint64) {
+	if param3 == varWidthProbeCategory && br.ReadBit() { // FUN_1406cf008, param_3 == 1 SEULEMENT
+		param3 = varWidthProbeSlot
 	}
-	w := bitLen(rangeMax) // FUN_1406d310c
-	if w > 0 {
-		val = br.ReadBits(uint(w))
+	if w := varWidthBits(param3); w > 0 {
+		val = br.ReadBits(w)
 	}
-	tail = br.ReadBits(2) // 2 trailing bits (génération du handle)
+	tail = br.ReadBits(2) // 2 bits de queue (generation du handle)
 	return val, tail
 }
 
-// defaultReplRange : DAT_144706100, la plage de config du header film. Le réglage public
-// `SetDefaultReplRange` a été supprimé le 2026-09-05 (lot E, item E.2) : aucun appelant.
-// La valeur reste 0x1FFF, celle qui donne W = bitLen(0x1FFF) = 13 sur tous les films mesurés.
-var defaultReplRange uint32 = 0x1FFF
-
-// consume1408f0ac4 mirrors FUN_1408f0ac4 (a gated variable-width id field used by
-// unit-low-frequency / unit-command-tick / unit-actor-state slot loops). These
-// call sites pass param_3 == 0, so FUN_1406d3140's probe bit is NOT read.
-// R(1) gate; if set: readVarWidthInt (FUN_1406d3140) [+ FUN_1406cb0cc = 0 bits].
+// consume1408f0ac4 porte FUN_1408f0ac4 : une porte R(1), puis l entier a largeur variable de
+// `FUN_1406d3140` dans la CATEGORIE `param3` que l appelant du jeu pousse dans R8D.
 //
-// CONFIRMED (asm): FUN_140f72e48 / FUN_1409685d8 / FUN_14058c058 all call
-// FUN_1408f0ac4(...,0). FUN_1406d3140 reads its probe R(1) only when param_3==1.
-// consume1408f0ac4 rend (présent, id) où id est l'index R(W) lu quand la porte est ouverte.
-// La quasi-totalité des appelants l'appellent comme instruction et jettent ces valeurs
-// (aucun bit lu ne change) ; seul consumeObjectParentState les garde, pour sonder si l'id
-// d'un projectile en vol pointe son tireur (index dom1, même espace que les bipèdes).
-func consume1408f0ac4(br *BitReader) (bool, uint64) {
-	val, _, present := consume1408f0ac4Probe(br, false)
+// LE PARAMETRE EST LE `param_3` DU JEU, ET IL EST OBLIGATOIRE DEPUIS LE 2026-09-15 : chaque
+// site d appel porte le sien, relu sur le desassemblage (tableau au §4 du plan). Un defaut
+// implicite remettrait 13 bits partout, c est-a-dire le defaut que ce lot corrige.
+// `FUN_1406cb0cc`, appele ensuite par le jeu, ne consomme AUCUN bit (controle de config).
+func consume1408f0ac4(br *BitReader, param3 int) (bool, uint64) {
+	val, _, present := consume1408f0ac4Probe(br, param3)
 	return present, val
 }
 
-// consume1408f0ac4Probe is FUN_1408f0ac4 with the FUN_1406d3140 param_3 made
-// explicit. unit-actor-control's two slot calls pass param_3 == 1 (probe present);
-// all other call sites pass 0. CONFIRMED by disassembly of the call sites
-// (FUN_1408f0778 @1408f0948/1408f0962 push R8D=1; others push 0).
-//
-// Les retours (valeur, queue, présence) existent pour la sonde d'i26 — mêmes bits, rien de
-// plus lu ni de moins.
-func consume1408f0ac4Probe(br *BitReader, probe bool) (val, tail uint64, present bool) {
+// consume1408f0ac4Probe est FUN_1408f0ac4 avec sa CATEGORIE explicite, et rend les trois
+// valeurs que la sonde d i26 lit. Memes bits que `consume1408f0ac4`, rien de plus ni de moins.
+func consume1408f0ac4Probe(br *BitReader, param3 int) (val, tail uint64, present bool) {
+	probe := param3 == varWidthProbeCategory
 	at := br.BitPos()
 	if br.ReadBit() {
-		val, tail = readVarWidthInt(br, defaultReplRange, probe) // FUN_1406d3140 probe iff param_3==1
+		val, tail = readVarWidthInt(br, param3) // FUN_1406d3140
 		// FUN_1406cb0cc consumes 0 bits (config check).
 		publishUnitRef(UnitRefRead{
 			Kind: UnitRefVarWidth, StartBit: at, EndBit: br.BitPos(), Present: true,
@@ -196,10 +182,10 @@ func consumeUnitActorControl(br *BitReader, recordStateParam uint32) {
 	if !br.ReadBit() {   // f2; if 0: dequant
 		br.ReadBits(9) // FUN_1406d84b4 dequant width 9 (stack const)
 	}
-	consume1406d025c(br)            // orientation/matrix block
-	consume1408f0ac4Probe(br, true) // slot 0 (FUN_1408f0ac4(...,1) -> probe present)
+	consume1406d025c(br)         // orientation/matrix block
+	consume1408f0ac4Probe(br, 1) // slot 0 : FUN_1408f0ac4(...,1) @1408f0948
 	if recordStateParam > 1 {
-		consume1408f0ac4Probe(br, true) // slot 1
+		consume1408f0ac4Probe(br, 1) // slot 1 : @1408f0962
 	}
 }
 
@@ -341,12 +327,12 @@ func consume140c9e990(br *BitReader) {
 	mode := br.ReadBits(2) // FUN_1407f0278 = R(2)
 	switch mode {
 	case 1:
-		readVarWidthInt(br, defaultReplRange, false) // FUN_1406d3140 (no probe)
-		if br.ReadBit() {                            // FUN_1406cf008 gate
+		readVarWidthInt(br, 0) // FUN_1406d3140 : categorie NON RELUE (R8D variable @140c9e9cd), repli 0
+		if br.ReadBit() {      // FUN_1406cf008 gate
 			br.ReadBits(6) // R(6)
 		}
 	case 2:
-		readVarWidthInt(br, defaultReplRange, false) // FUN_1406d3140 (no probe)
+		readVarWidthInt(br, 0) // FUN_1406d3140 : categorie NON RELUE (R8D variable @140c9e9cd), repli 0
 	}
 	// mode 0/3: no further bits.
 }
@@ -445,18 +431,18 @@ func consume14058c058(br *BitReader) {
 		consume141d0f344(br) // FUN_141d0f344 = R(32)
 		switch {
 		case !a && b:
-			br.ReadBit()         // c
-			br.ReadBits(2)       // R(2) ushort
-			br.ReadBits(10)      // FUN_1406d84b4 dequant (width 0xa)
-			br.ReadBits(10)      // FUN_1406d84b4 dequant (width 0xa)
-			consumeQuat16(br)    // FUN_14076e494 quat (width 0x10=16)
-			consumeOpt32(br)     // FUN_14080d69c
-			consume141d0f344(br) // FUN_141d0f344 = R(32)
-			consume1408f0ac4(br) // FUN_1408f0ac4(...,0)
+			br.ReadBit()            // c
+			br.ReadBits(2)          // R(2) ushort
+			br.ReadBits(10)         // FUN_1406d84b4 dequant (width 0xa)
+			br.ReadBits(10)         // FUN_1406d84b4 dequant (width 0xa)
+			consumeQuat16(br)       // FUN_14076e494 quat (width 0x10=16)
+			consumeOpt32(br)        // FUN_14080d69c
+			consume141d0f344(br)    // FUN_141d0f344 = R(32)
+			consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
 		case !a:
 			consumeQuat16(br) // FUN_14076e494 quat (width 0x10=16)
 		default:
-			consume1408f0ac4(br) // FUN_1408f0ac4(...,0)
+			consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
 		}
 		if !b {
 			br.ReadBits(8) // tail R(8)
@@ -598,12 +584,12 @@ func consume1407eee40(br *BitReader, p uint32) {
 //	FUN_140f72efc = R(2).
 func consumeUnitLowFrequency(br *BitReader) {
 	br.ReadBit()            // comp+0x724 bit2
-	consume1408f0ac4(br)    // comp+0x780
+	consume1408f0ac4(br, 0) // comp+0x780
 	br.ReadBits(3)          // FUN_1424d9a30
 	br.ReadBit()            // comp+0x7d4
 	count := br.ReadBits(4) // FUN_1424e1d48
 	for i := uint64(0); i < count; i++ {
-		consume1408f0ac4(br)
+		consume1408f0ac4(br, 0)
 	}
 	br.ReadBits(2) // FUN_140f72efc
 }
@@ -694,7 +680,7 @@ func consumeUnitEquipment(br *BitReader) {
 	st.Head = uint32(br.ReadBits(3)) // FUN_1406d0f20
 	count := br.ReadBits(3)          // FUN_1424d0f48
 	for i := uint64(0); i < count; i++ {
-		val, tail, present := consume1408f0ac4Probe(br, false)
+		val, tail, present := consume1408f0ac4Probe(br, 0)
 		st.Entries = append(st.Entries, UnitEquipmentEntry{
 			Val: uint32(val), Tail: uint32(tail), Present: present,
 		})

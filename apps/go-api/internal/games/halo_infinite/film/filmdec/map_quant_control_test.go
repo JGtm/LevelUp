@@ -86,7 +86,7 @@ func TestControleBornesFilms(t *testing.T) {
 			b = &ctrlBilan{attendu: attendu, lus: map[[3]uint]int{}}
 			bilans[p.carte] = b
 		}
-		lay, rep, err := DetectI0Layout(filepath.Join(root, p.film))
+		lay, rep, err := detectI0Layout(filepath.Join(root, p.film))
 		if err != nil {
 			b.illisible++
 			t.Logf("  %-38s %-10s DÉCOUPAGE ILLISIBLE (%v · %d paires · frontières %v)",

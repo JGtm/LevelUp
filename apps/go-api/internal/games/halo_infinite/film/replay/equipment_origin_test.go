@@ -69,72 +69,13 @@ func TestEquipmentLivesIgnoreLesQuantaSansBornes(t *testing.T) {
 	}
 }
 
-// TestEquipmentOriginSeparelLacherDuDeploiement — les deux cas que la mesure du corpus separe
-// par trois ordres de grandeur (lachers a 20-40 ms, deploiements a 14-42 s).
-//
-// LE CAS « au bon instant mais trop loin » A CHANGE DE VERDICT LE 2026-09-13 (item F.1) : il
-// rend desormais `dropped`. C'est le but du lot — la clause de DISTANCE promouvait `deployed`
-// des lachers a la mort dont le corps avait glisse de plus d'un metre et demi avant que sa
-// derniere position ne soit repliquee. Ce test est donc la MUTATION de la regle : remettre la
-// clause de distance le fait echouer.
-func TestEquipmentOriginSepareLacherDuDeploiement(t *testing.T) {
-	// Une vie de 0 a la frame 100, qui s'acheve en (10, 10, 0).
-	pos := []filmdec.BipedPosition{
-		origPos(512, 0, 0, 0, 0),
-		origPos(512, 50, 5, 5, 0),
-		origPos(512, 100, 10, 10, 0),
-	}
-	lives := equipmentLives(pos)[512]
-	cas := []struct {
-		nom  string
-		pose filmdec.EquipmentPlacement
-		want string
-	}{
-		{"lache a la mort, au meme endroit", origPose(100, 10, 10, 0), OriginDropped},
-		{"lache 1 frame apres le dernier point", origPose(101, 10.2, 10, 0), OriginDropped},
-		{"deploye au milieu de la vie", origPose(50, 5, 5, 0), OriginDeployed},
-		// LA FENETRE : 3 frames apres la fin de vie, c'est au-dela des 2 frames du seuil.
-		{"trop tard apres la fin de vie", origPose(103, 10, 10, 0), OriginDeployed},
-		// LA DISTANCE NE COMPTE PLUS (F.1, 2026-09-13) : a l'instant de la fin de vie, une
-		// creation est un lacher, qu'elle tombe aux pieds du mort ou cinq metres plus loin.
-		{"au bon instant, a 5 m", origPose(100, 15, 10, 0), OriginDropped},
-		// ... et le controle qui borne la portee du changement : LOIN ET TARD reste `deployed`.
-		{"loin ET apres la fenetre", origPose(103, 15, 10, 0), OriginDeployed},
-	}
-	for _, c := range cas {
-		if got := equipmentOrigin(lives, c.pose); got != c.want {
-			t.Errorf("%s : origine %q, attendu %q", c.nom, got, c.want)
-		}
-	}
-}
-
-// TestEquipmentOriginSansVieEstInconnue — pas de vie, pas d'origine. La deviner serait
-// exactement ce que ce lot a supprime.
-func TestEquipmentOriginSansVieEstInconnue(t *testing.T) {
-	if got := equipmentOrigin(nil, origPose(10, 0, 0, 0)); got != OriginUnknown {
-		t.Errorf("origine %q sans vie de poseur, attendu %q", got, OriginUnknown)
-	}
-}
-
-// TestEquipmentOriginChoisitLaVieQuiContientLInstant — un slot a plusieurs vies ; la pose
-// appartient a celle qui couvre son instant, jamais a la plus recente.
-func TestEquipmentOriginChoisitLaVieQuiContientLInstant(t *testing.T) {
-	pos := []filmdec.BipedPosition{
-		origPos(512, 0, 0, 0, 0),
-		origPos(512, 30, 3, 0, 0), // fin de la 1re vie, en (3,0,0)
-		origPos(512, 90, 40, 0, 0),
-		origPos(512, 120, 44, 0, 0), // fin de la 2e vie
-	}
-	lives := equipmentLives(pos)[512]
-	if len(lives) != 2 {
-		t.Fatalf("%d vie(s), attendu 2", len(lives))
-	}
-	// Lache a la fin de la PREMIERE vie : si la machine prenait la derniere vie, elle
-	// classerait `deployed` (90 frames d'ecart, tres au-dela de la fenetre).
-	if got := equipmentOrigin(lives, origPose(30, 3, 0, 0)); got != OriginDropped {
-		t.Errorf("lacher de la 1re vie classe %q, attendu %q", got, OriginDropped)
-	}
-}
+// LES TROIS TESTS DE LA FENETRE TEMPORELLE ONT ETE RETIRES LE 2026-09-15 (lot 1.9.1, decision
+// utilisateur) AVEC LA REGLE QU'ILS VERROUILLAIENT : `TestEquipmentOriginSepareLacherDuDeploiement`,
+// `TestEquipmentOriginSansVieEstInconnue` et `TestEquipmentOriginChoisitLaVieQuiContientLInstant`.
+// La fenetre ne classe plus aucune pose d'equipement — une pose dont le film ne dit rien sort
+// `unknown`. Ce que la LECTURE decide est verrouille par `equipment_origin_lecture_test.go`, et
+// la regle retiree survit comme TEMOIN de mesure (`f1OrigineParFenetre`, fichier de recherche).
+// `.ai/baselines/tests_pre_migration.jsonl` est mis a jour dans le meme commit.
 
 // TestPlacementCoverageEquilibreLesOrigines — L'INVARIANT : tout ce qui est publie porte une
 // origine, et les trois comptes somment au total. Un ecart signale une origine non comptee,
@@ -147,9 +88,11 @@ func TestPlacementCoverageEquilibreLesOrigines(t *testing.T) {
 		{Family: equipmentFamilyOther, Origin: OriginUnknown, Owner: -1},
 	}
 	cov := &EquipmentPlacementCoverage{
-		ByFamily: map[string]int{}, ByFamilyOrigin: map[string]int{},
+		ByFamily: map[string]int{}, ByFamilyOrigin: map[string]int{}, ByCause: map[string]int{},
 	}
-	tallyEquipmentPlacements(out, cov)
+	tallyEquipmentPlacements(out, []string{
+		CausePoseEvenementEngendre, CausePoseMortEcrite, CausePoseMortEcrite, CausePoseSansPoseur,
+	}, cov)
 	if cov.Deployed+cov.Dropped+cov.Unknown != cov.Placements {
 		t.Errorf("%d deployees + %d lachees + %d inconnues != %d poses",
 			cov.Deployed, cov.Dropped, cov.Unknown, cov.Placements)
@@ -180,7 +123,8 @@ func TestBuildEquipmentPlacementsPublieUneOrigineToujours(t *testing.T) {
 	st.Calibration.Widths = filmdec.CurrentMPPWidths()
 	clock := replayClock{origin: eqOrigin, step: eqStep, frames: 200,
 		families: map[uint32]string{0x2974c233: "wall"}}
-	out, cov := buildEquipmentPlacements(raw, st, pos, clock, filmdec.WorldObjectKeyframes{})
+	out, cov := buildEquipmentPlacements(
+		equipmentInputs{Raw: raw, Stats: st, Positions: pos}, clock)
 	if len(out) != 2 {
 		t.Fatalf("%d pose(s) publiee(s), attendu 2", len(out))
 	}
@@ -209,22 +153,30 @@ const wallPanelGlobalID uint32 = 0x528fce46
 // lui, la question temporelle garde tout son sens et la regle ne doit RIEN changer.
 const wallDeviceGlobalID uint32 = 0x8e2dc574
 
-// TestPieceEngendreeEstToujoursDeployee — H.2, D-F1 : une PIECE ENGENDREE ne peut etre ni
-// lachee a la mort ni d'origine inconnue.
+// TestPieceEngendreeEstToujoursDeployee — H.2, D-F1 : une PIECE ENGENDREE ne peut etre ni lachee
+// ni d'origine inconnue, meme quand aucun evenement 103 ne la designe.
 //
 // LES DEUX CAS QUE LE PARC PORTE (rapport F.0 §2.3, 7 panneaux sur 216) :
 //   - un panneau ne A L'INSTANT EXACT de la fin d'une vie — le mur deploye au dernier souffle.
 //     La fenetre de 200 ms le classait `dropped` (3 cas du parc) ;
-//   - un panneau SANS POSEUR mesure — aucun bipede a moins de 3 m. L'origine restait
-//     `unknown` (4 cas du parc).
+//   - un panneau SANS POSEUR mesure — aucun bipede a moins de 3 m. L'origine restait `unknown`
+//     (4 cas du parc).
 //
-// Dans les deux cas le film DIT que la piece a ete engendree (l'evenement 103 designe 216 des
-// 216 poses de panneau publiees, dans les trois origines). Un panneau n'existe qu'une fois
-// deploye : il n'entre jamais dans un inventaire, donc il ne tombe jamais a la mort.
+// Un panneau n'existe qu'une fois deploye : il n'entre jamais dans un inventaire, donc il ne
+// tombe jamais. Le manifeste du titre le DIT (`kind = "deployed"`), et c'est une donnee ecrite.
+//
+// CE TEST EXERCE LE REPLI, PAS LA LECTURE (lot 1.9.1) : aucun evenement 103 n'est fourni ici,
+// donc la promotion vient de `repli_piece_engendree_sans_evenement` — le cas MESURE des deux
+// films de build les plus anciens du corpus. La LECTURE est verrouillee par
+// `equipment_origin_lecture_test.go`.
+//
+// LES DEUX TEMOINS NEGATIFS SUIVENT LA DECISION UTILISATEUR DU 2026-09-15 : l'appareil PORTE que
+// le film dit mort sort `dropped` ; celui dont le film ne dit RIEN sort `unknown`. Aucun des deux
+// ne sort `deployed` — ce mot est reserve a ce qu'un 103 designe, ou a une piece engendree.
 func TestPieceEngendreeEstToujoursDeployee(t *testing.T) {
-	// Une vie de 0 a la frame 40, qui s'acheve en (4, 0, 0). L'echantillon de la frame 20 est
-	// ce qui donne un POSEUR aux poses de mi-vie : sans lui elles sortiraient toutes sans
-	// poseur, et le temoin negatif ne temoignerait de rien.
+	// Une vie de 0 a la frame 40, qui s'acheve en (4, 0, 0). L'echantillon de la frame 20 est ce
+	// qui donne un POSEUR aux poses de mi-vie : sans lui elles sortiraient toutes sans poseur, et
+	// le temoin negatif ne temoignerait de rien.
 	pos := []filmdec.BipedPosition{
 		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
 	}
@@ -233,10 +185,11 @@ func TestPieceEngendreeEstToujoursDeployee(t *testing.T) {
 		origPoseOf(40, wallPanelGlobalID, 4, 0, 0),
 		// 2. PANNEAU sans poseur mesure (300 m de tout bipede) : `unknown` avant H.2.
 		origPoseOf(20, wallPanelGlobalID, 300, 0, 0),
-		// 3. TEMOIN NEGATIF : l'appareil PORTE, meme instant, memes pieds. Il reste `dropped`
-		//    — c'est bien un objet que le mort laisse tomber.
+		// 3. TEMOIN NEGATIF : l'appareil PORTE, a l'instant de la mort ECRITE de son porteur.
+		//    `dropped` — c'est bien un objet que le mort laisse tomber.
 		origPoseOf(40, wallDeviceGlobalID, 4, 0, 0),
-		// 4. TEMOIN NEGATIF : l'appareil porte, deploye au milieu de la vie. Inchange.
+		// 4. TEMOIN NEGATIF : l'appareil porte, a mi-vie, et le film ne dit RIEN de cette pose.
+		//    `unknown` depuis le 2026-09-15 : la fenetre qui la classait ne classe plus.
 		origPoseOf(20, wallDeviceGlobalID, 2, 0, 0),
 	}
 	st := filmdec.EquipmentPlacementStats{Lives: 4, Anchors: 12, Confirmed: 4}
@@ -244,7 +197,12 @@ func TestPieceEngendreeEstToujoursDeployee(t *testing.T) {
 	clock := replayClock{origin: eqOrigin, step: eqStep, frames: 200, families: map[uint32]string{
 		wallPanelGlobalID: usageFamilyWall, wallDeviceGlobalID: usageFamilyWall,
 	}}
-	out, cov := buildEquipmentPlacements(raw, st, pos, clock, filmdec.WorldObjectKeyframes{})
+	out, cov := buildEquipmentPlacements(equipmentInputs{
+		Raw: raw, Stats: st, Positions: pos,
+		Lives: []lifeSpan{{
+			slot: 512, from: int64(eqTS(0)), to: int64(eqTS(40)), cause: CauseVieMort,
+		}},
+	}, clock)
 	if len(out) != 4 {
 		t.Fatalf("%d pose(s) publiee(s), attendu 4", len(out))
 	}
@@ -262,18 +220,22 @@ func TestPieceEngendreeEstToujoursDeployee(t *testing.T) {
 			panneau, OriginDeployed)
 	}
 	appareil := origines["0x8e2dc574"]
-	if appareil[OriginDropped] != 1 || appareil[OriginDeployed] != 1 {
-		t.Errorf("origines de l'APPAREIL PORTE : %v, attendu 1 %q et 1 %q — la regle des "+
-			"pieces engendrees a deborde sur un objet porte",
-			appareil, OriginDropped, OriginDeployed)
+	if appareil[OriginDropped] != 1 || appareil[OriginUnknown] != 1 {
+		t.Errorf("origines de l'APPAREIL PORTE : %v, attendu 1 %q (mort ecrite) et 1 %q "+
+			"(le film ne dit rien) — la regle des pieces engendrees a deborde sur un objet porte",
+			appareil, OriginDropped, OriginUnknown)
+	}
+	if appareil[OriginDeployed] != 0 {
+		t.Errorf("un appareil PORTE sort %q : ce mot est reserve a ce qu'un 103 designe "+
+			"(decision utilisateur du 2026-09-15)", OriginDeployed)
 	}
 	// L'invariant de couverture tient : la promotion passe par le meme comptage.
 	if cov.Deployed+cov.Dropped+cov.Unknown != cov.Placements {
 		t.Errorf("couverture desequilibree : %+v", cov)
 	}
-	if cov.Unknown != 0 {
-		t.Errorf("%d pose(s) d'origine inconnue, attendu 0 — le panneau sans poseur doit "+
-			"sortir en %q", cov.Unknown, OriginDeployed)
+	if cov.Unknown != 1 {
+		t.Errorf("%d pose(s) d'origine inconnue, attendu 1 — le panneau sans poseur sort %q, "+
+			"l'appareil porte dont le film se tait sort %q", cov.Unknown, OriginDeployed, OriginUnknown)
 	}
 }
 

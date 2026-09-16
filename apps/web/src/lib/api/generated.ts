@@ -5779,6 +5779,7 @@ export interface components {
             bridge: components["schemas"]["BridgeHealth"];
             equipment?: components["schemas"]["EquipmentCoverage"];
             equipmentChanges?: components["schemas"]["EquipmentChangeCoverage"];
+            fallbacks?: components["schemas"]["FallbackHit"][] | null;
             /** Format: int64 */
             filmMajorVersion?: number;
             flagCarries?: components["schemas"]["FlagCarriesCoverage"];
@@ -5796,9 +5797,12 @@ export interface components {
             placements?: components["schemas"]["EquipmentPlacementCoverage"];
             projectiles?: components["schemas"]["ProjectileCoverage"];
             score?: components["schemas"]["ScoreCoverage"];
+            seats?: components["schemas"]["SeatCoverage"];
             shots: components["schemas"]["LayerCoverage"];
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
             t0Film?: components["schemas"]["T0FilmCoverage"];
+            teams?: components["schemas"]["TeamCoverage"];
+            tracks?: components["schemas"]["TrackCoverage"];
             translocations?: components["schemas"]["TranslocationCoverage"];
             vehicles?: components["schemas"]["VehicleCoverage"];
             verdict?: {
@@ -6199,6 +6203,9 @@ export interface components {
         EquipmentPlacementCoverage: {
             /** Format: int64 */
             anchors: number;
+            byCause?: {
+                [key: string]: number;
+            };
             byFamily?: {
                 [key: string]: number;
             };
@@ -6225,6 +6232,10 @@ export interface components {
             /** Format: int64 */
             placements: number;
             scanned: boolean;
+            /** Format: int64 */
+            spawnEvents: number;
+            /** Format: int64 */
+            spawnLists: number;
             /** Format: int64 */
             unknown: number;
             widths?: string;
@@ -6738,6 +6749,11 @@ export interface components {
             file_name: string;
             token: string | null;
         };
+        FallbackHit: {
+            /** Format: int64 */
+            hits: number;
+            name: string;
+        };
         FeatureFlags: {
             demo_mode: boolean;
             discord_configured: boolean;
@@ -6768,6 +6784,24 @@ export interface components {
             expires_at: string;
             file_name: string;
             file_token: string;
+        };
+        FilmTableCounts: {
+            /** Format: int64 */
+            accord: number;
+            /** Format: int64 */
+            collisionsIndex?: number;
+            /** Format: int64 */
+            contradiction: number;
+            /** Format: int64 */
+            direct: number;
+            lu: boolean;
+            refus?: string;
+            /** Format: int64 */
+            repli: number;
+            /** Format: int64 */
+            sieges: number;
+            /** Format: int64 */
+            silence: number;
         };
         FilterContextInput: {
             cascade: components["schemas"]["CascadeFilter"];
@@ -7281,6 +7315,7 @@ export interface components {
         IdentityCoverage: {
             bipedSlot: components["schemas"]["BipedLinkCounts"];
             filmIndex: components["schemas"]["LinkCounts"];
+            filmTable: components["schemas"]["FilmTableCounts"];
             statborgSlot: components["schemas"]["LinkCounts"];
         };
         IdentityPlayer: {
@@ -9942,6 +9977,8 @@ export interface components {
             revision_key?: string | null;
         };
         Point: {
+            /** Format: int64 */
+            g?: number;
             /** Format: float */
             h?: number;
             /** Format: float */
@@ -10409,6 +10446,11 @@ export interface components {
             /** Format: int64 */
             filmIndex: number;
             name?: string;
+            /** Format: int64 */
+            seat: number;
+            seatSource?: string;
+            /** Format: int64 */
+            team?: number;
             xuid: string;
         };
         RunOnceResult: {
@@ -10442,6 +10484,11 @@ export interface components {
             points: number;
             /** Format: int64 */
             rounds: number;
+            roundsContradicted?: number[] | null;
+            /** Format: int64 */
+            roundsContradictedRecords?: number;
+            roundsDecreed?: boolean;
+            roundsWritten?: number[] | null;
             teamIdentity: string;
             truncated: boolean;
         };
@@ -10584,6 +10631,27 @@ export interface components {
             season_id: string;
             /** Format: date-time */
             start_date: string;
+        };
+        SeatCoverage: {
+            /** Format: int64 */
+            apparies: number;
+            /** Format: int64 */
+            arrivants: number;
+            /** Format: int64 */
+            entrees: number;
+            /** Format: int64 */
+            lus: number;
+            /** Format: int64 */
+            occupantsMax: number;
+            /** Format: int64 */
+            presencesCloses: number;
+            /** Format: int64 */
+            reprisesEcrites: number;
+            /** Format: int64 */
+            sansPresence: number;
+            sansTableDuFilm?: boolean;
+            /** Format: int64 */
+            sieges: number;
         };
         SelectedTeammateData: {
             gamertag: string;
@@ -12363,6 +12431,34 @@ export interface components {
             /** @description Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction. */
             spawn?: string;
         };
+        TeamCoverage: {
+            /** Format: int64 */
+            accord: number;
+            /** Format: int64 */
+            contradiction: number;
+            /** Format: int64 */
+            divergences: number;
+            /** Format: int64 */
+            film: number;
+            /** Format: int64 */
+            noTeam: number;
+            read: boolean;
+            /** Format: int64 */
+            records: number;
+            refusal?: string;
+            /** Format: int64 */
+            rejected: number;
+            /** Format: int64 */
+            silence: number;
+            /** Format: int64 */
+            tracks: number;
+            /** Format: int64 */
+            tracksNamed: number;
+            /** Format: int64 */
+            tracksSlotAmbiguous?: number;
+            /** Format: int64 */
+            unread: number;
+        };
         TeamHold: {
             /** Format: int64 */
             teamId?: number;
@@ -12820,6 +12916,22 @@ export interface components {
             team: number;
             xuid?: string;
         };
+        TrackCoverage: {
+            /** Format: int64 */
+            gapMs: number;
+            /** Format: int64 */
+            gaps: number;
+            /** Format: int64 */
+            minPoints: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            publishedPoints: number;
+            /** Format: int64 */
+            refusedMinPoints: number;
+            /** Format: int64 */
+            refusedPoints: number;
+        };
         Translocation: {
             /** Format: float */
             fx?: number;
@@ -12904,6 +13016,20 @@ export interface components {
             /** Format: int64 */
             ambiguous: number;
             /** Format: int64 */
+            deathsMatched: number;
+            /** Format: int64 */
+            deathsRead: number;
+            /** Format: int64 */
+            deathsTailDesync: number;
+            /** Format: int64 */
+            deathsUnmatched: number;
+            /** Format: int64 */
+            endDestroyed: number;
+            /** Format: int64 */
+            endFilmEnd: number;
+            /** Format: int64 */
+            endUnknown: number;
+            /** Format: int64 */
             familyResolved: number;
             /** Format: int64 */
             familyUnknown: number;
@@ -12931,6 +13057,8 @@ export interface components {
             ridesWithSeat: number;
             /** Format: int64 */
             samples: number;
+            /** Format: int64 */
+            samplesAfterEnd: number;
             scanned: boolean;
             /** Format: int64 */
             shots: number;
@@ -12955,7 +13083,10 @@ export interface components {
             withSpawn: number;
         };
         VehicleLabel: {
+            en?: string;
+            fr?: string;
             img?: string;
+            kind?: string;
             tinted?: boolean;
         };
         VehicleRide: {
@@ -13010,6 +13141,8 @@ export interface components {
             t1: number;
             /** Format: int64 */
             t1max: number;
+            /** Format: int64 */
+            tEnd?: number;
         };
         VipCrownCoverage: {
             /** Format: int64 */

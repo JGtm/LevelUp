@@ -99,7 +99,7 @@ func TestBuildEquipmentPlacementsPublieLesFins(t *testing.T) {
 		SeenUS:  map[filmdec.EquipmentLifeKey][]uint64{life: {5_000_000}},
 	}
 	st := filmdec.EquipmentPlacementStats{Scanned: true}
-	out, cov := buildEquipmentPlacements(raw, st, nil, peClock(), census)
+	out, cov := buildEquipmentPlacements(equipmentInputs{Raw: raw, Stats: st, Census: census}, peClock())
 	if len(out) != 1 {
 		t.Fatalf("poses publiees = %d, attendu 1", len(out))
 	}

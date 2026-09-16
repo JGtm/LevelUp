@@ -61,6 +61,1070 @@ sync/migration) et la CI. Ensuite seulement, la reprise du sync de Nuzzles (anne
 cuisson ; les deux matchs rejetés rentreront d'eux-mêmes grâce à l'étape 3. Aucune base sous
 `data/` n'a été ouverte pendant tout le chantier.
 
+## [2026-09-17] Chantier decodeur — CLOTURE M1, gate de jalon en regime complet (equivalence 20 films + corpus gate vs base de fusion feat/v75), re-figeage unique des references — Complete (intégration 170ecaab5)
+
+**Decision technique principale.** Le gate de jalon se joue contre la BASE DE FUSION avec feat/v75
+(`8f35efb72`, M0 fusionne) et non contre le `783ae680d` du bloc « Cloture M1 » : c est ce que
+feat/v75 produit aujourd hui, et la comparaison englobe ainsi les lots 1.0 a 1.2. La voie de
+decodage a ete prise pour ce gate AVANT les gates du lot 2.7g (chemin critique : fusion, recuisson
+et backlog attendent derriere la cloture ; la fusion de 2.7g attend de toute facon la cloture, V11).
+Les 7 `changements` du corpus gate, que son JSON ne detaille pas (D5 (1.9.9)), sont NOMMES par
+`replay-diff` sur les artefacts conserves (`--keep-work`) — la lecture des changements fait partie
+du regime complet.
+
+**Resultats observes.** Equivalence : 10 identiques, 10 differents = les 10 films dont la reference
+datait du lot 1.2 ; apres `-update`, le diff des tsv nomme 8 etapes sur les 10 films (flag,
+killsource, placements.stats, spawnEvents, vehicles, filmTable, playerTeams, artifact) et 5 etapes
+propres aux films hors regime court (inventoryDeltas, camoStates, pads, equipmentChanges :
+grammaire de l equipement ; bombReads : lot 1.4), aucune autre des 53. Corpus gate : 14/14 PERTE,
+schema 54 -> 60, 979 gains, 496 pertes, 7 changements ; les 496 pertes tombent toutes dans sept
+familles deja consignees par leur lot (vies recollees 1.9.13 = 300 lignes ; poses relues 1.9.1 ;
+compteurs de defaut en baisse ; bornes elargies 1.6 ; vies sans nom visibles D4 (1.6) ; les DEUX
+pertes attendues de c75f33b8 `bombArmings.reads/rises` retrouvees telles quelles ; trajet de
+vehicule arrete a la destruction ecrite 1.9.10). Aucune perte sur points, tirs, grenades, kills,
+objectifs, drapeaux, score, projectiles. Changements : reattribution d une vie sur bcb6d393, voies
+de nommage par vie voisine sur 084a804d et 4f77afc1, duree de trajet reattribuee sur 4f77afc1.
+Lot 2.1 rendu (5 commits, tip 1d6fc4a5a) : corpus gate 0/0/0 sur 14 temoins ; equivalence 10 ecarts
+a `killsource` seul, prouves IDENTIQUES a sa base sur worktree detache (reference de sa base
+perimee, non re-figee par lui — bonne decision) ; fusion apres la cloture (V11).
+
+**Prochaine etape.** Fusion de feat/v75 dans l integration (un conflit attendu : golden de forme,
+regenere par son port), passe d equivalence 20/20 apres fusion, CI, fusion dans feat/v75 (fenetre
+5 min aux sessions voisines), recuisson des 76 artefacts du parc (schema 54 -> 60, artefacts
+precedents mis de cote, tag git du binaire precedent), backlog killsource par tranches entre les
+gates de M2 ; puis voie au 2.7g, fusions 2.1 et 2.7g.
+
+---
+
+## [2026-09-17] Chantier decodeur — vague 2 de la famille 1.9 fusionnee (1.9.10, 1.9.7, 1.9.11, 1.9.14, 1.9.9), schema 59 -> 60, gate unique de l integration — Complete (feat/recherche-decodeur-film d8d63461e)
+
+**Decision technique principale.** Regime de fusion groupe (feedback utilisateur : ne pas serialiser
+les gates, des items attendent derriere) : apres les gates individuels de 1.9.10 et 1.9.9 (corpus
+gate 14 temoins a 0 changement chacun, equivalence classee puis 10/10), les lots 1.9.7, 1.9.11 et
+1.9.14 ont ete fusionnes SANS gate individuel, et UN gate unique (equivalence 10 films + corpus
+gate 14 temoins, `--json`, `--keep-work`) a ete joue sur l arbre fusionne apres la montee de schema,
+classe lot par lot a partir des effets attendus ecrits par chaque executeur : equivalence : 0 identique, 10 differents, QUATRE etapes sur 53 — `killsource` 10/10 (1.9.7 + porte L4), `placements.stats` 10/10 (FORME, `placements` identique), `vehicles` 6/10 (FORME, 1.9.10), `artifact` 10/10 (contenu, schema 60) ; aucune autre etape ; re-figeage puis 10/10.
+Montee UNIQUE `SchemaVersion` 59 -> 60 (entree de chronique v60 : lacunes de piste, fin de vie de
+vehicule lue, familles nommees dont wraith / scorpion / tourelle, designateur de manche ecrit et
+contradiction publiee, siege = index de film, champs de la revue L4), golden de forme et 8 fixtures
+web regeneres par leurs ports nommes, `openapi.yaml` + `generated.ts` regeneres (regle corrigee :
+openapi se regenere PAR LOT, il ne depend pas de SchemaVersion). Revisions a la tete :
+`GrammarRev` .17 (chronique lineaire .11 -> .17, une entree par rang, ratchet
+`TestChroniqueCouvreLaRevisionCourante`), `KillSourceDecoderRev` `killsource-2026-09-16.2` (deux
+mouvements le meme jour : porte de publication de la revue, appariement par identite de paquet),
+ratchet des replis `devant_la_lecture` 6 -> 3, registre 96 -> 99 entrees.
+
+**Resultats observes.** A chaque fusion, les deux ratchets neufs de la revue M1 ont mordu et ont ete
+servis : `TestToutDeclenchementEstAUnSiteDuRegistre` (1.9.10, 1.9.11 : le compte est emis dans
+`replay/` alors que l entree ne citait que le site de decision -> second site inscrit avec sa
+condition), `TestAucuneCibleDeRepliNeNommeUnLotClos` (1.9.10, 1.9.9 : cibles visant un lot qui
+vient de se cocher -> reecrites vers 2.2 avec date et raison), `TestToutReplinNommeEstAuRegistre`
+(1.9.7 : variable locale `repli` -> `parLaFenetre`, couverture par fichier). Conflits resolus par
+script (plan : les deux cotes ; grammar_rev : chronique + rang suivant ; goldens d assemblage :
+regeneres par leur port ; references d equivalence : PROVISOIRES jusqu au gate unique). Gate
+unique : corpus gate 14 temoins `--base=6db15a9bc`, schema 59 -> 60 partout, 456 gains, 515 pertes classees (toutes : moins de vies et plus longues — `tracks/*`, `coverage.*tracks*`, `bridge.livesTotal` sur 13 temoins ; compteurs de defaut en baisse — `vehicles/par-end/unknown` 97 -> 92, `familyUnknown`, `placements.unknown`, `grapple.pullLives`, `ability*.noIdentity` ; 7 `disparu` = les chassis nommes `unknownChassis.{038df01a, ae845375, f6f54e56, 0001530a}` et `par-end/unknown` 11 -> 0 sur bfecd02b), AUCUNE perte sur points, bornes, tirs, grenades, kills, objectifs, drapeaux, score ni projectiles ; 3 changements (d9781168, 60ae07c4, 4f77afc1 : un chacun) de la categorie « compteur de methode ou reattribution » de `polarite.go` (ni gain ni perte par definition), NON nommes par le JSON du gate (D5 (1.9.9) : pas de detail des changements — durcissement M2), artefacts gardes sous `scratchpad/work_integ_v60`. Faits produits par la vague : le ghost 777 de `bfecd02b` est ECRIT detruit a
+274,0 s (8 s d epave repliquee) ; 20 morts de vehicule orphelines et 683 echantillons apres une
+fin ecrite comptes, non masques ; 92 vies sur 97 restent `unknown` sur `4f77afc1` (le film ne
+l ecrit pas) ; un vehicule porte un identifiant par module du jeu (wraith `0xae845375`, scorpion
+`0xf6f54e56`, confirmes par la killsource 37/40 et 4/4) ; 12 index ecrits pour 8 occupants sur
+`bcb6d393` = le defaut de roster constate par l utilisateur ; 14 prolongations reelles en
+designateur 1 contigu (13/14 a egalite) et 24 films a designateur 2 sans manche 1 (artefact de
+lecture, bit 23, M3) ; 2 205 appariements a identite egale, 0 desaccord, 692 sans identite (repli).
+
+**Prochaine etape.** Push + CI ; cloture M1 (V9) : regime complet (equivalence 20 films + corpus
+gate), fusion dans `feat/v75` (prevenir les sessions voisines), recuisson du parc, backlog
+killsource (1 384 matchs) ; puis fusion des lots M2 (2.1, 2.7g) en cours.
+
+---
+
+## [2026-09-16] Chantier decodeur — revue de jalon M1 (deux rondes) et fusion du lot 1.9.10 — Complete (integration locale 2e8e62596, NON POUSSEE : montee de schema de la vague en attente)
+
+**Decision technique principale.** Revue adversariale de fin de jalon lancee EN PARALLELE des
+gates de la vague 2 (decision utilisateur : ne pas laisser le gate humain ralentir, criteres
+inchanges) : cinq relecteurs aveugles, un par lentille (L3 anti-patterns, L4 donnees, L6 tests,
+D13 grammaire / registre, architecture + ecritures), sur `783ae680d..34fa53da5` (303 fichiers,
++26 169 / -2 574), contrat ecrit (`scratchpad/revue_m1_contrat.md`). Ronde 1 : 1 P0, 10 P1,
+~10 P2, 54 conditions tenues. Corrections en quatre lots paralleles (worktrees dedies, fichiers de
+production disjoints) fusionnes 944e7c691 (L6, tests seuls), 99644996e (L4), 1f478d5c3 (D13),
+29c5d6c85 (L3). Ronde 2 (relecteur aveugle sur les seules corrections) : 2 P1, 3 P2, 12 conditions
+tenues — le compte des bloquants decroit strictement (11 -> 2), corrections en un lot
+(6c9917c14, fusion 2e8e62596), pas de ronde 3 (borne du skill). Lot 1.9.10 fusionne (3b5e1b465)
+entre les deux : ratchet des replis `devant_la_lecture` 6 -> 4 (deux baisses reunies), deux
+ratchets neufs de la revue ont mordu au merge et ont ete servis (cible perimee reecrite vers 2.2,
+second site de declenchement inscrit). `GrammarRev` .11 -> .15 (chronique lineaire reecrite par
+la ronde 2, ratchet `TestChroniqueCouvreLaRevisionCourante` : une entree par rang, dans le godoc
+ET le golden), `KillSourceDecoderRev` -> `killsource-2026-09-16`.
+
+**Resultats observes.** Le P0 : `LineByLinePublishable` s'ouvrait sur `Inferred <= 1` alors qu'un
+indice libre peut faire face a >= 2 noms libres (excedent `len(names) - nPlay` cree par
+`pinUnSiege`) — affectation arbitraire publiee ; `AffectationUnique` compte les deux cotes, la porte
+ne fait que se fermer. Les P1 : `equipeDuSlot` sans garde d'ambiguite (`tracksSlotAmbiguous`),
+table d'index composee non injective (`collisionsIndex`, determinisme sur 50 recompositions), 8 + 1
+cibles du registre visant des lots deja coches (ratchet `no_stale_fallback_target_test.go` lit les
+cases du plan), 3 compteurs du resume d'usage jamais cables (cables, journalises par les deux
+producteurs de passes — le corpus gate ne peut pas les voir, dit tel quel), second site de
+`repli_vie_coupee_au_trou_de_replication` hors registre (site par fichier et par condition,
+`DeclencheN` par coupure), `gwWidthsForFilm` ET `equipment_placements.go` resolvaient le bloc MPP
+par le BUILD et non par la VERSION DE FORMAT (porte unique `MPPWidthsForFilm`, ratchet AST ; mesure
+au cache : 6 films a build hors table, 0 a largeur relue -> 0 octet cuit ne change), couverture
+du ratchet des replis par (fichier, identifiant) (temoin `locateFallback` dans `filmdec/varwidth.go`
+qui passait vert), quatre predicats de production sans test (couple victime, garde de divergence
+d'equipe, ordre des noms de carte, ordre xuid / pont), openapi non regenere depuis 1.9.1 (MA regle
+de vague etait trop large : `openapi-gen` ne depend pas de SchemaVersion ; regeneration a la
+montee). Ecartes : la tautologie des tranches (F1, ronde 2 : liste nommee des six familles),
+`UsageMatchSummary.Fallbacks` lu par personne (F2), compteur noms-libres qui surcomptait (F3),
+`collector.go` 773 -> 816 -> 718 (deplacement pur de `KillSourceDecoderRev`), chronique de grammaire
+arretee a `.12` pour une valeur `.14` (F5, mon omission de fusion). Code musee sorti du binaire
+(`DetectI0Layout`, `walkKeyframeBody`, `ScanFilmEquipmentSpawnEvents`), `filmdecVarsGeles` 96 -> 94.
+Deux goldens (`DocumentShape`, `ContractFixtures`) rouges par construction jusqu'a la montee 59 -> 60.
+INCIDENT du soir (18:51) : cache de films vide par un `git worktree remove --force` parti avant le
+retrait des jonctions (appels paralleles) ; restaure a 1 386 films (> 1 351) par la sauvegarde de
+l'autre PC (951, chunk_00 en zlib, le lecteur inflate) + l'API (375) ; regle absolue en memoire
+(retrait des jonctions = un tour seul, verification 0 lien + cache principal, puis remove sans
+--force). Harnais `replay-equiv` : une seule etape affichee par film et TSV supprimes en sortie
+(D2 (pilote) au §4, M2).
+
+**Prochaine etape.** Gates puis fusions 1.9.9 (en cours), 1.9.7, 1.9.11, 1.9.14 ; montee
+`SchemaVersion` 59 -> 60 avec entree de chronique (brouillon `scratchpad/chronique_v60.txt`),
+`REPLAY_CONTRACT_UPDATE=1`, `make openapi-gen`, `make generate-types` ; equivalence + corpus gate
+UNIQUES sur l'arbre fusionne (references provisoires re-figees apres classification) ; push, CI ;
+cloture M1 (V9).
+
+---
+
+## [2026-09-16] Chantier decodeur — lot 1.9.1 ter (la condition versionnee des films anciens : la cle est la VERSION DE FORMAT ecrite dans le film) — Complete (feat/decfilm-191t fusionnee dans feat/recherche-decodeur-film, 8d7350dac)
+
+**Decision technique principale.** Le chargeur de la section 2 de `chunk_00` est trouve chez
+l'ecrivain : `FUN_14299ab50` (lecture) lit le registre et la table par type a des largeurs derivees
+du SECOND u32 de `chunk_00` (`film+4`), par deux `std::map` relues (`FUN_141cfff30`,
+`FUN_141cffe20` : blocs {13:47, 17:48, 18:49, 25:25} defaut 50 ; entrees {13:110, 16:113, 17:114,
+21:117, 22:118, 24:121, 25:122} defaut 123) — la forme mecanique du fait utilisateur : la grammaire
+des formats anciens EST dans l'executable courant, indexee par cette version de format. Porte :
+`filmdec/film_format_version.go`, `FilmIdentity.FormatVersion`, `mppWidthsPourFormat` remplace
+`mppWidthsPourBuild` (format 20 = les 5 films sans section ; 21..25 anciens 8/3 ; 27 recents 9/5,
+seuil ]25, 27]), `ErrUnknownFormat` ; le repli sur format inconnu est NOMME par sa vraie cle
+(`format_sans_profil_relu`, ex-`build_sans_profil_relu`), COMPTE (`filmdec.UnknownFormatExpvarPairs`
+-> `filmdec_unknown_format_<n>`, cable dans `replay/mpp_format_inconnu.go` aux deux sites du registre)
+et signale par un `slog.Warn` par film — un patch du jeu n'eteint pas le decodeur (largeurs
+calibrees) et se voit en prod. La personnalisation de la table des joueurs reste keyee par le
+BUILD (format 24 = HI_1_10_0 1492 o ET HI_1_9_0 / HI_1_8_0 1312 o : la mesure l'impose).
+`GrammarRev` .8 (1.9.4) + .9 (191t) -> .10 a la fusion ; `SchemaVersion` 59.
+
+**Resultats observes.** Les TROIS BITS des films anciens ne sont PAS une branche de version : les
+six sites de branche de `FUN_1428e1c0c` ont pour seuils 4 / 7 / 12 / 13-14 / 16, aucun dans la
+chaine de ti=37 ; la table par type ne discrimine pas (24 index varient, 0 separe) ; l'executable lit
+l'etat par defaut de ti=37 a l'identique pour un format 21 et un format 27. La seule condition de
+version sur le chemin du record : `FUN_142e2bfd0` @142e2c020, `si (7 < version) DAT_144706104 = R(1)`
+— un BIT DU FILM qui commande la table de plages de `FUN_1406d3140` (i10/i21/i22/i28), valeur non
+mesuree (D2 (1.9.1 ter), A TRAITER avant tout re-figeage du golden de fermeture). Distribution sur
+1 351 chunks : (41,27)x1123, (40,27)x146, (40,25)x39, (39,24)x26, (37,24)x10, (31,20)x3, (33,20)x2,
+(38,24)x1, (33,21)x1 — reproduit a l'unite la partition 1269/39/37/1 de `film_identity.go`. La table
+par type est alignee PAR LE DEBUT : le point de reprise du 1.9.1 bis (« douze positions par la fin »)
+est caduc (D4). Aucun bit lu ne change (les deux cles rendent le meme decoupage sur les 1 351
+films). Equivalence : classification avant tout `-update` : 0 identique, 10 differents, UNE seule
+etape sur 53 (`placements.stats` : `film_scan.go:329` hache la struct entiere, deux champs ajoutes,
+projections cuites inchangees — motif D4 (1.8)) ; `-update` sur les 10, `git diff` = 10 fichiers,
+10 lignes `placements.stats` et rien d'autre ; passe finale 10/10. Mutations : refus de format
+inconnu ; frontiere 8/3 - 9/5 deplacee -> rouge ; branche de production (bobine au format 28 ->
+largeurs calibrees + compteur +1 ; format 21 -> rien compte), refus sec force -> rouge, compteur
+retire -> rouge ; restaurees par nom. Gates : gofmt vide, vet 0 sans et avec `-tags research`, lint
+0 alerte ; arbre fusionne : build CGO, 14 paquets verts, vet research 0 ; `filmdec` sans tag 18,2 s.
+Verification du pilote (V8) : 3 commits, 32 fichiers, aucun > 500 L, aucune `var` de paquet dans
+`filmdec`, le comportement production sur format inconnu relu sur pieces
+(`filmdec/equipment_placements.go`, `replay/build_ground_weapons.go`). Six decouvertes au §4.
+
+**Prochaine etape.** Push + CI ; vague 2 (1.9.13 en gates de decodage ; 1.9.7, 1.9.9, 1.9.10,
+1.9.11 en cours) ; montee de schema 59 -> 60 UNE fois a la fusion de la vague ; 1.9.14 ; revue de
+jalon ; cloture M1.
+
+---
+
+## [2026-09-16] Chantier decodeur — lot 1.9.4 (la carte du film vient du nom de match, plus d'une signature de largeurs) — Complete (feat/decfilm-194 fusionnee dans feat/recherche-decodeur-film, 83e6d9a29)
+
+**Decision technique principale.** Le NOM DE MATCH decide, en un seul site pour les deux passes :
+`killcollector/map_identity.go` (neuf), qui separe `ErrSansNomDeCarte` de `ErrUnknownMapBounds` (D-4),
+trois sorties, trois compteurs ; `positions.go` 508 -> 494 L. La signature de largeurs n'est PAS
+retrogradee en repli (ecart au brief, accepte par le pilote, D3 (1.9.4)) : elle est SUPPRIMEE, parce
+que la mesure la montre juste 2 fois sur 17 et FAUSSE sur Live Fire — le repli bancal que D14 (d)
+interdit. `DetectFilmMapEntry` supprimee, `DetectI0Layout` sans appelant de production (gardee
+pour ~45 appelants d'instruments, allowlist de `no_recomputed_film_context_test.go` retiree). Le
+ratchet des six ne descend pas (les six sont les cibles de 1.9.8, 1.9.10, 1.9.11, 1.9.13). Registre
+96 entrees, 3 mises a jour ; `registre_killsource.go` scinde (492 -> 456 + `registre_killsource_carte.go`
+92) apres que la verification du pilote l'a trouve a 523 L ; `collector.go` 773 -> 773 (7 lignes de
+prose rendues). `GrammarRev` .7 -> .8 ; `KillSourceDecoderRev`, `IsolationDecoderRev` (0 match :
+passe des touches eteinte) et `SchemaVersion` 59 inchanges ; openapi intact.
+
+**Resultats observes.** Mesure avant de coder : `DetectFilmMapEntry` 1 appelant (`hits.go`, nom de
+carte deja connu a cote), `DetectI0LayoutOf` 2 appelants (repli « aucune entree de catalogue »,
+hors lot) ; cartes jumelles : 68 sur 79 partagent une signature (classe `15/15/17` = 59 cartes),
+11 seulement sont uniques — cause : `W = min(26, ceilLog2(ceil(60·etendue)))` quantifie au
+facteur 2 ; sur 17 films : 2 accords, 13 ambigues, 2 DESACCORDS — sur Live Fire la signature
+`13/12/11` retrouvait exactement UNE entree, `aquarius` : les distances y etaient calculees dans
+l'AABB d'une autre carte, D2 (1.9.2) est fausse et corrigee (D1 (1.9.4)). Gain de production nul
+aujourd'hui (D5 (1.9.4) : la passe est eteinte, `match.weapon.accuracy = not_exposed`) ; ce que le
+lot apporte : une auto-detection de moins, un site de resolution au lieu de deux, une erreur
+typee comptee. Mutation : `Behemoth` donne pour `Fragmentation` -> rouge sur les bornes. Gates :
+gofmt vide, vet 0 (sans et avec `-tags research`), 7 paquets verts, integration killcollector
+`-p 1` ok, lint 0 issue ; equivalence regime court 10/10 identiques sans `-update` (la cuisson
+imposait deja le catalogue) ; corpus gate `--base=d71282e09 --json` : 14 temoins, 0 perte, 0 gain,
+0 changement, schema 59 -> 59. Verification du pilote sur l'arbre fusionne : build CGO, gofmt,
+13 paquets verts, integration killcollector ok, vet research 0. Cinq decouvertes au §4.
+
+**Prochaine etape.** Push + CI ; fusion 1.9.1 ter (re-figeage `placements.stats`, forme pas
+contenu) ; vague 2 (1.9.7, 1.9.9, 1.9.10, 1.9.11, 1.9.13) puis 1.9.14 ; revue de jalon ; cloture M1.
+
+---
+
+## [2026-09-16] Chantier decodeur — V10 : la famille 1.9 resserree (decision utilisateur) — Complete (feat/recherche-decodeur-film)
+
+**Decision technique principale.** Question de l'utilisateur (« j'ai l'impression qu'on part
+loin ») ; constat du pilote : 1.9.1 bis / ter = retro-ingenierie longue (etat par defaut des films
+anciens), 1.9.4 = gain de production nul aujourd'hui. Decision « vas y continue » sur la
+recommandation : 1.9.1 ter borne a une seule passe (le reste va a M3) ; M1 garde 1.9.7 et 1.9.9 a
+1.9.14 ; 1.9.5, 1.9.6, 1.9.8 reportes a M2 en `[!]` (leurs replis ne sont pas cables au registre,
+la frequence sur le corpus n'est pas mesuree, elle le sera au cablage). Plan §1.4 V10, items statues.
+
+**Resultats observes.** Poids des builds anciens au cache, lu dans `chunk_00.bin` de chaque film
+(`grep -a -o -m1 "HI_1_[0-9]*_[0-9]*"`, 1 351 films) : HI_1_13_0 1 123, HI_1_12_0 146, HI_1_11_0 39,
+HI_1_10_0 26, HI_1_8_0 10, HI_1_9_0 1, HI_1_4_1 1, sans section 5 — les builds anciens (jusqu'a
+HI_1_11_0, plus les 5 sans section) pesent 82 films sur 1 351 (6 %). Le 1.9.1 ter a rendu son compte
+rendu dans l'heure : le chargeur de la section 2 est trouve (`FUN_14299ab50`, deux cartes de
+tailles indexees par le second u32 de `chunk_00` = la VERSION DE FORMAT), les trois bits ne sont PAS
+une branche de version (releve exhaustif), un bit du film (`DAT_144706104`, `FUN_142e2bfd0`
+@142e2c020, `si (7 < version)`) commande la table de plages — sa valeur reste a mesurer avant tout
+re-figeage du golden de fermeture (D2 (1.9.1 ter)) ; fusion apres son regime court d'equivalence.
+
+**Prochaine etape.** Fusion 1.9.4 (corpus gate en cours) puis 1.9.1 ter (equivalence courte des
+que la voie est libre) ; lots 1.9.7, 1.9.9 a 1.9.14 ; revue de jalon ; cloture M1 (V9).
+
+---
+
+## [2026-09-16] Chantier decodeur — CI rouge apres la fusion du lot 1.9.1 bis : les instruments lourds passent sous le tag `research` — Complete (feat/recherche-decodeur-film)
+
+**Decision technique principale.** Les instruments de recherche qui rebalayent les 7 bobines
+(`filmdec/e191b_carte_ti37_{research,carte,masque}_test.go`, `filmdec/e191c_*_research_test.go`,
+14 fichiers, 17 tests) portent `//go:build research` : joues a la demande (`go test -tags research
+./internal/games/halo_infinite/film/filmdec/ -run TestE191`), COMPILES en CI par un pas
+`go vet -tags=research` (job unitaire Linux, modele `gamefiles`), jamais executes en CI. Les quatre
+symboles que des tests du build par defaut employaient (`e191cAncre`, `e191cN2Part`,
+`e191cPayloads` pour `build_profile_test.go` ; `e191bCatalogue` pour `i0_catalogue_mutation_test.go`
+et `e192_i0_catalogue_mesure_research_test.go`) sont deplaces sans modification dans
+`filmdec/e191_helpers_test.go`, non tague. Regle ecrite au plan §2.3 : budget `filmdec` < 30 s en
+local, duree citee dans chaque compte rendu de lot, helper partage = fichier non tague.
+
+**Resultats observes.** Run 34978931976 sur d71282e09 : job « Coverage + Baseline » rouge,
+`FAIL filmdec 600.236s`, aucun test en echec (paquet sans verdict) ; le job dure 33 min sur 45, relever
+le budget ne tenait pas. Mesures locales (CGO_ENABLED=0, `-count=1`) : `filmdec` 26,1 s avant le lot,
+89,9 s apres (E191b + E191c = 72 s), **15,0 s** apres le tag ; les cinq tests restants au-dessus de
+2 s sont des gates (ratchet de fermeture, oracle n2, equipes sur bobines, golden). ECARTE : taguer
+TOUS les `*_research_test.go` du module (223 fichiers, 6 paquets) — essaye, le build par defaut
+cascade sur 97 satellites dont de vrais gates (`build_profile_test.go`, `i0_catalogue_mutation_test.go`,
+`delta_biped_walk_guard_test.go`, `assaut_*_gate_test.go`, `bombe_portage_gate_test.go`,
+`visee_zoom_gate_test.go`...) parce que les helpers vivent dans les instruments ; le demeler est un
+lot (M2, durcissement), pas une reparation de CI. Le ratchet par nom (modele
+`gamefiles_tag_test.go`) attend ce demelage. Vet sans tag et avec tag : 0 ; instrument tague
+execute avec le tag : ok.
+
+**Prochaine etape.** Push + CI ; les executeurs 1.9.1 ter et 1.9.4 taguent leurs instruments neufs
+avant cloture.
+
+---
+
+## [2026-09-16] Chantier decodeur — lot 1.9.1 bis (la grammaire de l'equipement comme fondation : prefixe objet relu, gardes n1/n2, profil par build, condition versionnee des films anciens bornee) — Complete (feat/decfilm-191c fusionnee dans feat/recherche-decodeur-film, 31421611f)
+
+**Decision technique principale.** Douze commits (`462480085..7b9aa67f6`, 57 fichiers, +4 044 / -482).
+Les deux mots de taille de `FUN_142e2bfd0` sont des GARDES (`n == 0` -> rien a lire, signees), portees
+dans `keyframe_fullstate_loop.go` / `default_state.go` : +68 records fermes, les cinq archetypes objet
+passent de 184 a 246 / 21 698 et ti=41 de 0 a 34 / 110. Quatre sites de ti=37 lisaient trop de bits
+(table de NEUF categories de largeur, `varwidth.go`, le decodeur en lisait une) — corriges chez
+l'ecrivain. Le prefixe objet (quinze composants) est relu en entier, chacun avec sa fonction,
+bit-exact. Le profil par build tient en UN lieu (`build_profile.go`, provenance par ligne RELU /
+MESURE, `player_table_profile.go` supprime) et passe DEVANT la calibration `CalibrateMPPWidths` pour
+les builds relus ; repli nomme au registre (condition neuve `build_sans_profil_relu`, 95 -> 96
+entrees) pour les autres. Le corpus gate JETAIT `BilanAxe.Changements` (`report.go:52-54`, D5
+(1.9.3) etait donc plus grave que decrit) : la categorie traverse maintenant tableau, JSON et statut,
+un changement classe le temoin en PERTE ; garde-rail `changements_guard_test.go` (mutation : somme
+retiree -> rouge, restauree par nom -> vert). `GrammarRev` : `.3` (integration) et `.6` (branche)
+reunis au rang `.7`, golden regenere par son port nomme. `SchemaVersion` 59 INCHANGE (schema 59 -> 59
+sur les 14 temoins ET zero changement de valeur publiee) : pas de chaine openapi.
+
+**Resultats observes.** Corpus gate (14 temoins, avec la colonne `chang.`) : schema 59 -> 59,
+changements 0, 31 gains (c75f33b8 +7, a349fea8 +12, 4f77afc1 +12), 3 « pertes » sur 2 temoins qui
+sont des compteurs de defauts en baisse (`coverage.equipmentChanges.missedEstimate` 17 -> 16 ;
+`coverage.teams.divergences` 4 -> 2 ; `coverage.teams.unread` 4 -> 3), classees divergences (les
+gardes suppriment des lectures de bruit). Equivalence sur la branche : classification avant tout
+`-update`, 7 differents sur 10, une seule etape (`killsource`), re-figes, 10/10. Equivalence A LA
+FUSION (les deux lots 1.9.3 et 1.9.1 bis touchent la meme etape sur les memes sept films) :
+classification avant tout `-update` : 3 identiques, 7 differents, sur les sept UNE SEULE etape des 53 (`killsource`) ; re-figeage des sept, puis 7/7 et 10/10 identiques, 0 ecarte, 0 echec (bloc consigne dans `CORPUS.txt`). Ouvert et borne : la condition versionnee de l'etat par defaut des films anciens (HI_1_4_1 ..
+HI_1_11_0) — elimines par la mesure : prefixe V (7/7), seuil de version majeure (v=40 des deux
+cotes), bloc MPP (invariant), offset constant (-6..+2), `lVar3 + 0x145008` (0 instruction) ; la cle
+est la table PAR TYPE de la section 2, alignee par la fin, douze positions -> lot 1.9.1 ter (chargeur
+de la section 2 par ses ecritures). Verification du pilote (V8) : commits, fichiers hors test relus,
+aucune `var` de paquet hors fichiers de recherche, fichiers > 500 L tous pre-existants (baseline
+lint, 0 issue), registre + ratchet coherents, gates rejoues sur l'arbre fusionne (build CGO, gofmt,
+filmdec 89,9 s, replay, fallback, killsource, archlint, replay-corpus-gate, replay-equiv : tous ok).
+Cout : `filmdec` passe de 26,1 s a 89,9 s en local, dont dix instruments `TestE191c*` pour 62 s
+(`TestE191cEtatParDefaut` seul 24,5 s) ; budget CI du pas unitaire porte a 600 s (D1 (CI) au §4) — la
+decision structurelle (balayage partage des bobines ou tag `research`) doit tomber AVANT le prochain
+lot qui ajoute des instruments. 25 decouvertes au §4 (D1 a D25 (1.9.1 bis)).
+
+**Prochaine etape.** Push + CI ; lots 1.9.1 ter (executeur frais, Ghidra HTTP, chargeur de la
+section 2) et 1.9.4 (carte par nom de match) en parallele sous le protocole « voie libre » ; puis
+1.9.5 a 1.9.14 ; revue de jalon ; cloture M1 (go V9).
+
+---
+
+## [2026-09-16] Chantier decodeur — CI rouge apres le lot 1.9.3 : budget du job unitaire Windows — Complete (feat/recherche-decodeur-film)
+
+**Decision technique principale.** Le pas `go test (unit, no CGo DB)` du workflow passe de
+`-timeout 60s` a `-timeout 300s` (budget que tenait l'ancien job baseline), avec commentaire
+date ; aucun test touche, aucun test desactive.
+
+**Resultats observes.** Run 34968331540 sur 4abf6f466 : `Go Build + Test (windows-latest)` rouge
+sur `panic: test timed out after 1m0s` dans `filmdec` (`kfScanNext`, `keyframe_world.go:170`),
+les huit autres jobs verts (ubuntu compris). Mesure locale, CGO_ENABLED=0, `-count=1` : le
+paquet `filmdec` vaut 26,1 s, dont sept tests de 2,5 a 5,3 s qui rebalayent chacun les
+images-cle des 7 bobines (`TestE191bCarteTI37` 5,25 s, `TestE191bFermetureAvecCarte` 5,17 s,
+`TestEtatParDefautN2Constant` 2,65 s, `TestKeyframeClosureRatchet` 2,63 s,
+`TestScanPlayerTeamsSurLesBobines` 2,55 s, `TestScanPlayerTeamsTemoinDUnBit` 2,54 s,
+`TestGoldenMiniBobineFamilles` 2,52 s) ; 137 fichiers `*_research_test.go` dans le paquet.
+Consigne au plan (§4, D1 (CI, apres 1.9.3)) : balayage partage des bobines ou tag `research`
+avec `go vet -tags research`, a trancher a la revue du jalon M1.
+
+**Prochaine etape.** Push + CI ; fusion du lot 1.9.1 bis des ses gates rendus.
+
+---
+
+## [2026-09-16] Chantier decodeur — lot 1.9.3 (le couple tueur / victime lu au kill-event 85, plus recolle sur le voisin) — Complete (feat/decfilm-193 fusionnee dans feat/recherche-decodeur-film, 79657ef1e)
+
+**Decision technique principale.** `killFeed.resoudreCouples` (`killsource/feed_couples.go`)
+lit tueur et victime dans l'enregistrement de type 85 (`readKillEvent`, deja porte pour le seul
+assistant) et remplace `reconstructPairs` (fenetre de 2 instants) + `killFeed.split`, tous deux
+SUPPRIMES ; regime d'assignation : les couples que le feed ecrit au meme instant consomment
+d'abord leur kill-event (sans ce premier temps, 13 ambigus et 3 desaccords apparents, qui etaient
+des enregistrements d'une autre mort) ; le lien indice -> joueur employe est la part EPINGLEE
+(`roster.nomEpingle`, table du film 1.5 / 1.8 + BOT_METADATA), jamais la bijection (circulaire) ;
+la fabrication d'un couple sur une victime bot est supprimee (`resolveBotDeaths` accepte les
+victimes de bot NOMMEES) ; repli `repli_couple_recolle_sur_le_voisin` (`section_absente`,
+`apres_lecture`) CREE au registre (94 -> 95 ; il venait de la table A de l'audit, pas de la table
+E : le ratchet des `devant_la_lecture` reste a 6, verifie) ; compteurs de provenance
+`CoupleStats` en expvar. `KillSourceDecoderRev` `killsource-2026-09-14 -> killsource-2026-09-15`
+(convention : date du mouvement), ratchet d'empreinte rougi de lui-meme ; `GrammarRev` `.2 -> .3` ;
+`SchemaVersion` 59 INCHANGE — tranche par comparaison octet a octet des deux artefacts cuits de
+`4f77afc1` (10 526 185 octets, meme sha256), parce que le bilan du corpus gate ne montre pas la
+categorie `changements` (D5).
+
+**Resultats observes.** Mesure avant de coder (21 films entiers, instrument versionne
+`e193_couple_evenement_mesure_research_test.go`) : les 64 sur 372 du plan se rejouent a l'unite ;
+281 kills sans mort en face : 198 decides par la lecture, 198 accords sur 198 avec l'ancien
+recollage, 0 desaccord, 1 victime bot fabriquee (`4f77afc1`, la seule ligne qui bouge), 1 ambigu,
+81 muets (dont 46 sur trois films sans table exploitable ; `a521164d` a ses 24 indices epingles
+mais ne rend que 30 kill-events pour 101 kills : la chaine d'evenements s'arrete, pas l'identite —
+3.1 / 3.6). Le gain est de nature (la victime est nommee par le film au lieu d'etre devinee, la
+mort du voisin n'est plus consommee a tort), pas de couverture — ecrit tel quel. Mutations :
+tueur / victime echanges dans la fixture -> rouge ; lecture debranchee -> 4 tests rouges dont le
+golden ; restaurees par nom. Golden `minibobine.golden` : une ligne (morts de bot proposees
+17 -> 16), attribuee. Gates : gofmt vide, vet 0, 13 paquets ok, integration killcollector `-p 1`
+ok, lint 0 issue ; equivalence : classification avant tout `-update` en mode enfant, 10/10 une
+seule etape `killsource` (forme du `Result`, `Stats.Couples` neuf ; `artifact`, `killRefs`,
+`neutralDeaths`, `deaths` identiques a l'octet), re-figee, 10/10 identiques ; corpus gate
+`--base 9848b7387` : 14/14, 0 perte, 0 gain, schema 59, exit 0. Parc : 1 384 matchs a redecoder
+(backlog du 1.8, non elargi). Verification du pilote (V8) : fonctions, revisions, registre, aucun
+test de la baseline touche (killsource n'y figure pas), openapi et web intacts.
+Decouvertes §4 : D1 les 81 muets ; D2 la fenetre de 2,5 s survit cote lecture (1.9.7) ; D3
+`Contradiction` = 0, branche exercee par un test seul ; D4 backlog non elargi ; **D5 le bilan du
+corpus gate MASQUE la categorie `changements` de `replaydiff.BilanAxe`** (un lot qui deplace une
+valeur publiee sortirait « 0 / 0 ») : verification ajoutee au bloc « Cloture M1 » (gate `--json`,
+`changements` classes) et candidat au durcissement des oracles en M2.
+
+**Prochaine etape.** Push + CI ; fusion du lot 1.9.1 bis (gardes n1/n2, profil relu, registre)
+des ses gates rendus, puis lot 1.9.1 ter (executeur frais : la condition versionnee de l'etat par
+defaut, chargeur de la section 2) et 1.9.4 ; revue de jalon ; cloture M1 (go V9).
+
+---
+
+## [2026-09-16] Chantier decodeur — lot 1.9.2 (le decoupage d'i0 vient du catalogue de carte, plus de l'auto-detection) — Complete (feat/decfilm-192 fusionnee dans feat/recherche-decodeur-film, 9848b7387)
+
+**Decision technique principale.** Les QUATRE sites de production de `DefaultScanFilmOptions()`
+(grep colle ; la citation `hits.go:157` du plan avait derive vers
+`filmdec/weapon_hit_distance_resolver.go`) posent `Layout` depuis `MapQuantEntry.Layout()`
+(catalogue `map_quant_bounds.json`) comme le chemin de cuisson le faisait deja ; `NewFilmContext`
+(contexte sans catalogue) n'a plus aucun appelant de production hors `filmdec` ;
+`DetectI0Layout` garde UN appelant, `DetectFilmMapEntry`, ou elle decide l'IDENTITE de la carte
+(lot 1.9.4), pas son decoupage. Registre des replis : `repli_i0_porte_et_region_par_defaut`
+RETROGRADE de `inconditionnel / devant_la_lecture` a `carte_absente_du_catalogue /
+apres_lecture` (condition neuve, domaine ferme ; l'ancre vit encore, donc pas retire) : le
+ratchet des sept `devant_la_lecture` DESCEND A SIX ; 94 entrees. `GrammarRev`
+`grammar-2026-09-15.1 -> .2`. `KillSourceDecoderRev` NE monte PAS (le journal des morts ne
+change pas d'un octet, `killsource/` n'a pas bouge, son ratchet d'empreinte l'interdirait) :
+c'est `IsolationDecoderRev` qui porte le redecodage (`isolement-2026-09-15-decoupage-du-catalogue`,
+comme le lot 6.1 pour ces memes tables `kill_positions` / `kill_openings`) : 70 matchs Live Fire
+au registre sur 1 967, dont 52 avec film en cache — backlog a la cloture de M1. `SchemaVersion`
+59 inchange.
+
+**Resultats observes.** Mesure avant de coder (17 films = 14 temoins + 3 pour couvrir les 8
+builds, instrument `e192_i0_catalogue_mesure_research_test.go`, 214 s) : catalogue et
+auto-detection identiques sur 15 films, divergents sur les DEUX Live Fire (`gate=6 region=1
+12/12/11` au catalogue contre `gate=5 region=0 13/12/11` detecte, meme longueur d'i0) ;
+`60ae07c4` positions 267 368 -> 267 365, pistes de touche 267 390 -> 267 374, bruts 267 400 ->
+267 374 (-26 ; le plan disait 27 : D4, aucune decision n'en depend) ; `0797ce72` -4 / -4 / -11 ;
+tirs et degats ne lisent pas i0. Mutations : catalogue fausse d'un bit -> ROUGE dans filmdec et
+killcollector (cette mutation a demasque une premiere redaction fausse du temoin, qui ecrivait
+les bits sous le catalogue mute : refait sur un decoupage fige) ; cablage retire -> rouge sur
+les 79 cartes. Gates : gofmt vide, vet 0, 14 paquets ok, integration `-p 1` killcollector exit
+0, lint 0 issue (un goconst corrige par `fallback.lot194`), equivalence 10/10 identiques,
+corpus gate `--base ec74685ed` 0 perte 0 gain sur 14 temoins, exit 0. Verification du pilote
+(V8) : sites, revisions, entree du registre, ratchet 6, baseline intacte, schema.
+`[~]` justifies : le controle « accord / contradiction » de la detection devient un ORACLE DE
+TEST (le compter en production couterait la seconde passe de detection, c'est-a-dire le gain
+du lot ; D2 du plan le prescrit) ; regle openapi sans objet.
+Decouvertes §4 : D1 le chemin des touches est ETEINT en production pour Infinite
+(`match.weapon.accuracy = not_exposed`, `ConfigureFilmAccuracy` sans appelant) ; D2 sur Live Fire
+la signature de largeurs ne retrouve aucune entree du catalogue, les distances de touche y sont
+DEJA desactivees (matiere du 1.9.4) ; D3 controle = oracle de test ; D4 26 et non 27.
+
+**Prochaine etape.** Push + CI ; lot 1.9.3 (le couple tueur / victime lu au kill-event 85) ;
+en parallele le lot 1.9.1 bis poursuit sur la table des largeurs de handles par carte (D3
+(1.9.1 bis pas 2)), voie libre donnee pour ses gates ; a sa fusion, `GrammarRev` monte a `.3`.
+
+---
+
+## [2026-09-15] Chantier decodeur — lot 1.9.1 bis, pas 1 (la carte du travail : le defaut de fermeture de l'equipement est le PREFIXE OBJET) — En cours (pas 1 fusionne ec74685ed ; pas 2 a 5 BLOQUES : Ghidra indisponible)
+
+**Decision technique principale.** Mesure avant de coder, sans aucun code de production touche
+(3 instruments versionnes `e191b_carte_ti37_*`, rejouables en 13 s sans film externe). Le brief
+disait « 7 composants lus sur 31 » : c'etait un ARTEFACT DE GREP — huit composants entrent dans le
+dispatch par une constante (i4, i9, i20, i21, i23, i24, i26, i27) ; **les 31 composants de
+ti=37 sont tous dispatches, 0 desynchronisation sur 3 331 records**. Le defaut qui empeche
+l'archetype 37 de fermer n'est PAS dans l'equipement : sur les 7 bobines, les archetypes qui
+portent `object-position-component` ferment a **0,85 %** (184/21 698 : ti=37 3/3 331, ti=38
+180/12 064, ti=41 0/110, ti=42 1/2 087 — l'archetype « repute complet » —, ti=43 0/4 106) contre
+44,29 % pour les autres ; le composant qui fait franchir la frontiere est, par ordre : **i15
+`object-low-frequency` (655 cas, 570 bits en moyenne), i6 `object-region-state` (341, 664), i14
+`object-dissolver` (305, 113), i9 `object-multiplayer-properties` (296, 1,5 M bits), i17
+`object-frame-configuration` (266, 87), i7 `object-damage-sections` (188, 317)** — six composants
+du PREFIXE OBJET partage par tous les objets du monde, aucun composant d'equipement (i18-i30) ne
+depasse 71 ; 12 composants de la table ECS n'ont AUCUNE adresse d'ecrivain (i2, i4, i5, i6, i7,
+i8, i10, i12, i13, i16, i17, i21 : grammaire « boucle de regions / de sections / inconnue »), quatre
+des six coupables en font partie. Les largeurs d'axe de la carte ne sont pas la cause (3/3 331
+au defaut comme au catalogue). Registre par build : 31 composants dans le meme ordre sur 6 builds,
+30 sur HI_1_4_1 (`i30 equipment-has-infinite-uses` absent).
+
+**Resultats observes.** (a) `[!]` double blocage : Ghidra INDISPONIBLE dans la session (aucune
+instance, connexion refusee sur 127.0.0.1:8089) et D13 interdit de poser une grammaire ailleurs
+que chez l'ecrivain ; la cible « ti=37 a 100 % » passe par le prefixe objet partage par cinq
+archetypes (37/38/41/42/43), perimetre que l'item n'enoncait pas. (b) `[!]` publier createur /
+porteur / deploye / active / energie / charges exige que la marche ferme ; le tableau « famille x
+ce que le jeu ecrit » N'EST PAS PRODUIT : sur films entiers la marche generique rend 92 records
+NEW / 70 DELTA de ti=37 avec une presence au masque plate (10,9 a 34,3 % sur 31 index) = du bruit ;
+les bobines ne portent AUCUN paquet delta (D4). (c) `[!]` : l'oracle des 1 095 `unknown` n'a pas
+bouge, registre 94, ratchet des sept a 7. (d) `[~]` : aucun octet cuit ne change, schema 59 et
+GrammarRev inchanges. Gates : gofmt vide, vet 0, paquets ok, lint 0 issue, `TestOpenAPIYAMLIsUpToDate`
+repare par regeneration (identique a la correction du pilote sur l'integration), equivalence
+10/10, corpus gate 14 temoins 0 gain 0 perte (18 min 46). Correction de commande : `--manifest`
+exige une valeur, son defaut est le bon (brief corrige). Fermeture ti=37 avant = apres.
+Decouvertes §4 : D1 le defaut est le prefixe objet ; D2 `KeyframeClosure` mesure les archetypes
+objet aux largeurs d'axe d'une autre carte (a corriger avec la montee de fermeture) ; D3 les 31
+composants sont dispatches ; D4 bobines sans delta, masques bruites sur films entiers ; D5 Ghidra
+indisponible.
+
+**Prochaine etape.** OUVRIR L'INSTANCE GHIDRA (`HaloInfinite.exe`, base 0x140000000, MCP sur
+127.0.0.1:8089) — demande a l'utilisateur ; puis reprise du lot 1.9.1 bis re-cadre : relire chez
+l'ecrivain i15, i6, i14, i9, i17, i7 (et les 12 sans adresse), re-mesurer la fermeture des CINQ
+archetypes objet ensemble, puis seulement publier les etats d'equipement. En attendant : lots de
+conversion sans Ghidra (1.9.2 catalogue d'axe, 1.9.3 kill-event 85, 1.9.4 carte par nom, 1.9.6,
+1.9.7, 1.9.8, 1.9.10, 1.9.11, 1.9.13, 1.9.14).
+
+---
+
+## [2026-09-15] Chantier decodeur — lot 1.9.1 (l'origine d'une pose d'equipement se lit dans le film ; schema 59) — Complete (feat/decfilm-191 fusionnee dans feat/recherche-decodeur-film, deba3261f)
+
+**Decision technique principale.** Decisions utilisateur du 15/09 appliquees : « deploye » =
+une pose qu'un record 103 `EquipmentSpawnedObject` DESIGNE ; « lache » = l'objet quitte son
+porteur, a la mort ecrite (kill feed / dead-state) ou a l'echange ecrit (`taken`), les deux
+confondus dans l'etiquette, la cause dans `coverage.placements.byCause` ; « inconnu » = le film
+se tait ; la notion de « volontaire » est retiree (un echange est volontaire aussi) au profit du
+vocabulaire du JEU (composants de ti=37 : deployed / activated / at rest). Les tolerances sont
+LUES sur la mesure, pas choisies : mort ecrite a 200 ms (dropped max 171,7 ms, deployed min
+205,3 ms, intervalle vide de 33,6 ms), prise ecrite a 50 ms (103 poses sur 108 a moins d'une ms),
+designation 103 dans [0, +200] ms (dt +32 a +70 ms, tous positifs). La fenetre de 200 ms est
+RETIREE du decodeur ; deux replis sortent du registre (`repli_origine_pose_fenetre_temporelle`,
+`repli_origine_pose_vie_la_plus_proche`), un entre : `repli_piece_engendree_sans_evenement`
+(9 panneaux sur 124 publies `deployed` par le manifeste `kind = deployed` sans 103, tous sur les
+deux builds les plus anciens ou le type 103 n'existe pas : 0 evenement sur `a521164d` et
+`60ae07c4`) ; registre 95 -> 94 ; le ratchet des sept `devant_la_lecture` reste a 7 (aucune des
+deux entrees retirees n'en etait, verifie sur pieces). `equipment_placements.go` (652 L) scinde
+en trois ; `4f77afc1` entre au manifeste du corpus gate (14 temoins). `SchemaVersion` 58 -> 59
+(chaine complete, 8 fixtures 59 = 2 567 505 o), `GrammarRev` `grammar-2026-09-15.1`.
+
+**Resultats observes.** Mesure avant de coder (13 films, 4 583 poses, 345,9 s, instrument
+versionne `e191_origine_*`) : le 103 designe 47/47 (`0x528fce46`) et 68/77 (`0x686b40c9`) panneaux
+et 0 sur 4 459 autres objets ; la cle (slot, gen) seule ne suffit pas (3 evenements «
+designaient » 83 poses de `d9781168`). Le vocabulaire du jeu MESURE : sur 4 583 poses appariees a
+leur record de creation (0 orpheline), AUCUN des six composants d'etat (i10, i11, i18, i20
+`equipment-deployed`, i21, i23) n'est au masque a l'instant de la pose — ils ne tranchent pas la
+pose, ils vivent ailleurs (grammaire entiere de ti=37 = lot 1.9.1 bis). Bascule : 757 poses sur
+4 583 (16,5 %) — 108 deployed -> dropped, 188 deployed -> unknown, 461 dropped -> unknown ;
+totaux deployed 420 -> 124, dropped 3 717 -> 3 364, unknown 446 -> 1 095 (le film se tait sur
+24 % des poses : les 461 anciens « laches » n'ont pas de mort ecrite du porteur a moins de
+200 ms — vies coupees sur un trou, identite, fin de manche : matiere pour 1.9.1 bis et 1.9.13).
+Les poses de F.1 rejugees : 18 accords sur 18 (17 par mort ecrite, 1 par le 103 : H.2 confirmee
+par le film ; le brief en annoncait 22, compte de F.1 sur 21 films). Gates : gofmt vide, vet 0,
+7 paquets ok, killcollector CGO ok, lint 0 issue, `tsc -b` 0, vitest 7 629 verts ; equivalence
+classee contre 3718228c9 (1 etape neuve `spawnEvents`, 0 perdue, seul `artifact` bouge), re-figee
+et rejouee 10/10 ; corpus gate 14 temoins, exit 1, toutes les pertes classees en trois familles
+(le deplacement voulu deployed / dropped -> unknown, `coverage.fallbacks/n` 3 -> 2, un effet
+aval nomme : `pickup_origin.go` reutilise `Origin == dropped`, `coverage.pickups.originUnknown`
+BAISSE sur 9 temoins, `originGround` baisse sur un seul, 21 -> 18). Verification du pilote (V8) :
+schema 59 et chaine, fixtures, GrammarRev, fenetre retiree, registre, fichiers scindes <= 500 L,
+3 tests supprimes ET baseline JSONL mise a jour dans le meme commit, manifeste.
+DEUX ARBITRAGES UTILISATEUR ouverts : (1) `repli_piece_engendree_sans_evenement` — garder
+`deployed` par le manifeste sur les builds sans type 103 (un panneau n'existe que deploye ;
+recommandation du pilote : garder, condition `type_103_absent_du_build`) ou passer `unknown` ;
+(2) l'effet aval sur l'origine des ramassages (direction favorable, calque non annonce).
+
+**Prochaine etape.** Push + CI ; lot 1.9.1 bis (la grammaire de l'equipement entiere : ti=37
+ferme a 100 %, 31 composants relus chez l'ecrivain, etats par famille publies, canaux
+re-derives) ; puis 1.9.2 .. 1.9.14 ; revue de jalon `783ae680d..HEAD` ; cloture M1 (go V9).
+
+---
+
+## [2026-09-15] Chantier decodeur — lot 1.9.0 (le registre des replis et son ratchet ; schema 58) — Complete (feat/decfilm-190 fusionnee dans feat/recherche-decodeur-film, 3718228c9)
+
+**Decision technique principale.** Paquet feuille
+`internal/games/halo_infinite/film/replay/fallback` (aucun import du depot : deplacement pur vers
+`facts/` au pas 5 de M2) : `Repli{Nom, Fait, Mecanisme, Condition, Ordre, Sites[]{Fichier,
+Ancre}, DatePose, CibleRetrait, CritereRetrait, CompteurBranche, CibleComptage}`, **95 entrees**
+(replay 37, killsource 18, objectiveevents 12, filmdec 10, replaybuild 9, killcollector 9 ;
+conditions : non_resolu 53, section_absente 17, film_muet 11, inconditionnel 7, contradiction 4,
+lecture_non_portee 3 ; ordre : apres_lecture 77, sans_lecture 11, **devant_la_lecture 7** — la
+violation de D14 b, gelee par un ratchet qui ne peut que descendre : chaque conversion 1.9.x le
+baisse). Ratchet `archlint/no_unregistered_fallback_test.go` a DEUX directions : code -> registre
+(tout identifiant du decodeur portant `repli` / `fallback` a une frontiere camelCase doit etre
+declare ; 351 fichiers scannes, plancher 250) et registre -> code (chaque entree cite une ancre
+que le test RELIT : quand une conversion supprime un repli, l'ancre disparait, le test rougit,
+l'entree doit sortir — D14 d rendu mecanique) ; deux exemptions datees ; mutations jouees
+(`repliBidon` -> rouge A ; ancre faussee -> rouge B), restaurees par nom. Compteur par cuisson :
+10 replis cables sur 95 par les porteurs existants (`replayClock`, `flagCarryCtx`, `zoneCtx`,
+`Options`), les 85 autres portent leur `CibleComptage` (la limite de 5 parametres borne le
+cablage ; le porteur generique arrive au pas 2 de M2), `CompteurBranche` distingue « jamais
+declenche » de « jamais instrumente ». `coverage.fallbacks` publie ; `SchemaVersion` 57 -> 58
+(chronique, empreinte de forme `cd9d54d2ef218027`, jumeau replaydoc, replayview, openapi,
+generated.ts, 8 fixtures 58 = 2 567 380 o, jeu 57 retire, 8 goldens d'assemblage avec un bloc
+« REPLIS DECLENCHES » par build). `GrammarRev` inchangee (aucun lecteur ne bouge). ADR 0034 :
+section « registre des replis ».
+
+**Resultats observes.** Recensement sur pieces des 98 sites de la table (E) de l'audit 0.E :
+59 des 60 lignes existent encore, 1 convertie (`build.go:580` `Team: -1` par le lot 1.7), 1 site
+disparu (`ParseUint` de `matchfacts.go` demenage dans `replay.RosterXUIDsOf` au lot 1.0) ; l'ecart
+60 lignes / 98 sites / « 62 replis » vient du regroupement par fait (D1). Premiere mesure sur 10
+films : `origine_pose_vie_la_plus_proche` 41 a 506 sur 10/10 (la fenetre des poses, 1.9.1) ;
+`plafond_grenade_par_defaut` **1 sur 10/10** (la cuisson appelle toujours `ScanKeyframeInventory`
+sans plafond : defaut de 2 grenades quel que soit le mode — piste pour 3.3) ;
+`fin_de_vie_vehicule_par_recensement` 2 a 38 sur six films (1.9.10) ;
+`piste_drapeau_sans_pont_ecartee` 4 ; `position_lacher_prend_la_prise` 2 ; cinq a 0. Gates :
+gofmt vide, vet 0, tous paquets ok, `CGO_ENABLED=1 go test ./...` exit 0 sur 326 paquets, lint
+0 issue (2 goconst + 1 prealloc corriges), `tsc -b` propre, vitest 7 629 verts ; regime court
+10/10 : SEULE l'etape `artifact` bouge, les 51 autres identiques, et les 10 deltas valent
+EXACTEMENT le bloc `fallbacks` recalcule depuis les journaux (classification a l'octet), puis
+re-figeage et 10/10 identiques ; corpus gate `--base d473cbd79` : ZERO perte 13/13, exit 0,
+3 gains par temoin tous nommes (`schemaVersion` 57 -> 58, `coverage/n` 28 -> 29,
+`coverage.fallbacks/n`). Verification du pilote (V8) : paquet et ratchet presents, schema 58 et
+chaine, 8 fixtures 58 / 0 x 57 sous le plafond, GrammarRev et golden inchanges, aucun test
+renomme, baseline intacte.
+Decouvertes §4 : D1 regroupement 60/98/62 ; D2 la ligne convertie et le site disparu ; D3 la
+limite de 5 parametres borne le cablage ; D4 les sept replis `devant_la_lecture` ; **D5 les 38
+lignes nommees de la table (C) ne sont PAS au registre** (choix argumente de l'executeur : ce ne
+sont pas des replis au sens D14 — a trancher a la revue de jalon, lentille grammaire / replis) ;
+D6 trois garde-rails du depot ont mordu sur le registre lui-meme (litteraux FR accentues ->
+chaines sans accent, allowlist non agrandie ; `.SlotXUID` dans une ancre ; mention du global de
+precision) ; D7 le chemin du fixture ne declenche que 2 des 10 compteurs.
+
+**Prochaine etape.** Push + CI ; lot 1.9.1 (origine d'une pose d'equipement : mur par le 103,
+appareils portes par la mort ecrite ou le `taken` du porteur, fenetre 200 ms = controle + repli
+declare ; question de vocabulaire posee au user) ; puis 1.9.2 .. 1.9.14 ; revue de jalon
+`783ae680d..HEAD` (lentilles : grammaire / replis dont D5, entrees tronquees, textes et chiffres,
+tests) ; cloture M1 (fusion feat/v75, recuisson, backlog killsource 1 384 matchs, re-figeage
+unique) selon le go V9.
+
+---
+
+## [2026-09-15] Chantier decodeur — lot 1.8 (le kill feed prend la table du film) — Complete (feat/decfilm-18 fusionnee dans feat/recherche-decodeur-film, d473cbd79)
+
+**Decision technique principale.** Dans `killsource`, la table des joueurs de `chunk_00`
+(`filmdec.ReadFilmIdentity` + `ReadPlayerTable`, lot 1.5) devient la SOURCE du lien
+indice -> joueur ; la voie d'inference — qui n'etait PAS `resolvePlayerIndices` (voie des tirs et
+des touches, sous deux revisions distinctes, D3 (1.8)) mais `killsource/bijection.go` (matrice de
+votes du kill feed resolue par l'algorithme hongrois puis une montee locale) — devient le REPLI
+nomme et compte (5 films sans section, films en contradiction), `BijectionDetermined` publie
+ligne par ligne un film entierement lu ; compteurs de provenance dans les stats de collecte.
+`KillSourceDecoderRev` `killsource-2026-09-12` -> `killsource-2026-09-14` (le garde-rail avait
+rougi de lui-meme) ; 1 384 matchs du parc portent une revision anterieure (oracle base en lecture
+seule) : backlog HORS LOT, `[!]` renvoye au bloc « Cloture M1 » (go V9). `GrammarRev` INCHANGEE
+(`.6`) avec justification ecrite dans le golden : aucune grammaire ne bouge (pas une largeur, pas
+un cadre, pas un lecteur d'octets), seul le CONSOMMATEUR change et `KillSourceDecoderRev` porte ce
+changement (150 -> 158 fichiers haches, `film_table.go` neuf) ; accepte par le pilote.
+`SchemaVersion` 57 inchange (aucun octet cuit ne change).
+
+**Resultats observes.** Mesure avant / apres (30 films, 8 builds) : 314 accords sur 322 sieges
+entre la table et la bijection inferee ; les 8 ecarts en deux familles, aucune contradiction
+entre deux lectures fiables : 6 gamertags ABSENTS du kill feed (le feed ne nomme que qui tue ou
+meurt ; l'inference mettait un autre joueur sur leur indice — `FlukiestGolf` 111fa685 i10,
+`MarshallG6443` e5adf7b2 i13, `manistoff` a521164d i18, `Iskra 20252993` 11de8353 i23,
+`probablybxllets` 1c5c10cc i22, `Alpha122092` 23ffd885 i4) et 2 sur des films a marge de
+bijection nulle (l'inference se declarait elle-meme ambigue). Les 13 films a vacant intercale
+rendent 119/123 : c'est le RANG ABSOLU que le dead-state emploie (D3 (1.5) fermee a moitie).
+Defaut trouve par la mesure : `isBotIndex` lisait « present dans `pin` », que la table remplit
+desormais aussi -> les 8 joueurs passaient pour des bots, la mini-bobine tombait de 10 lignes
+publiees a 2 ; garde-rail pose. Gates : gofmt vide, vet 0, 13 paquets ok, integration
+`-tags=integration -p 1 ./internal/sync/killcollector/` exit 0 (12,97 s), lint 0 issue ; regime
+court : 10/10 differents a la SEULE etape `killsource` (510 lignes sur 520 identiques a l'octet),
+classees puis re-figees, 10/10 identiques ; corpus gate `--base c6a3b751c` : 0 perte sur 13/13,
+exit 0, schema 57 -> 57 — et 0 gain, ecrit plutot que tu : la ou l'inference se trompait, les
+joueurs n'ont aucune ligne au kill feed ; le benefice de `BijectionDetermined` est demontre par
+construction et par test unitaire, pas par le corpus (les deux films qui l'auraient montre ne
+sont dans aucun des deux corpus). Verification du pilote (V8) : revision, table en source,
+`BijectionDetermined`, schema et GrammarRev, aucun test renomme, golden killsource +7 lignes,
+justification du golden de grammaire lue.
+Decouvertes §4 : D1 (1.8) rang absolu confirme ; D2 deuxieme copie de la traduction erreur ->
+cause (la troisieme impose la centralisation) ; D3 `resolvePlayerIndices` rend 143/143 face a la
+table (son « 77 % » mesurait son accord avec la bijection, pas sa lecture ; report des tirs /
+touches maintenu) ; D4 l'observateur d'equivalence hache le `Result` entier : un champ ajoute
+fait rougir 10 films sans qu'un octet publie ne bouge (a traiter avec D2 (1.3) dans M2).
+
+**Prochaine etape.** Push + CI ; famille 1.9 : 1.9.0 (registre des replis + ratchet, zero
+difference) puis les conversions dans l'ordre du plan (1.9.1 .. 1.9.14) ; revue de jalon a la
+cloture de M1 sur `783ae680d..HEAD`, fusion feat/v75, recuisson du parc, backlog killsource
+(1 384 matchs), re-figeage unique du corpus (go V9).
+
+---
+
+## [2026-09-15] Chantier decodeur — lot 1.7 (l'equipe reelle dans l'artefact, sans base ; le film ecrit aussi l'index de joueur) — Complete (feat/decfilm-17 fusionnee dans feat/recherche-decodeur-film, c6a3b751c)
+
+**Decision technique principale.** `filmdec.ScanPlayerTeams(fc)` lit, dans les records
+d'image-cle ti=9 par la boucle d'etat complet (1.4), le designateur d'equipe du composant i0
+(4 bits a une position DERIVEE de la grammaire, valeur = designateur + 1, 0 = aucune) ET l'index
+de joueur : la mesure avant de coder a etabli que le premier `R(6)` de l'etat par defaut de ti=9
+vaut le rang du siege, constant sur la vie de l'entite, sur 18 films et 7 builds, y compris sur
+les films sans section d'identification (controle decisif : sur `50247b26` la suite d'index est
+TROUEE `0 1 3 4 .. 22 24`, un ordinal serait contigu). `ScanPlayerTeams` n'apparie donc RIEN, il
+LIT ; l'appariement ordinal de la note devient un controle permanent. Regle V4 appliquee : le
+film est la SEULE source — `Track.Team`, `roster[].team` (pointeur a trois etats : absent /
+-1 aucune equipe / 0..8, impose par le contrat web : un entier nu aurait servi « tout le monde
+camp 0 » aux artefacts < 57), `TeamOf` des drapeaux ; la base n'entre que dans
+`coverage.teams.{film, accord, contradiction, silence}` ; les evenements d'objectif prennent
+l'equipe de l'octet 37 du pied (1.1) avec controle contre l'equipe du porteur ; les commentaires
+« l'equipe n'est pas dans le film » corriges (deux restes historiques assumes). `SchemaVersion`
+56 -> 57 (chronique, empreinte de forme `1344869006f05f16`, jumeau replaydoc `RosterEntry.Team` +
+`TeamCoverage`, replayview, openapi, generated.ts, 8 fixtures 57 = 2 566 758 o, jeu 56 retire,
+codec du fixture d'entrees v20 -> v21, `MIN_RENDERABLE_SCHEMA_VERSION = 27`), `GrammarRev`
+`grammar-2026-09-14.6`. Le web ne change pas (§1.2) : `rosterLogic.ts` colore toujours par
+`team_side` de la feuille ; D5 (1.7) dit ce qu'il devra faire (lire `roster[].team` quand present,
+ne jamais confondre -1 et absent).
+
+**Resultats observes.** La note se rejoue a l'identique (22 films, 16/18 en accord total,
+160/176 slots, 0 touche sur 576 decalages voisins ; `03af54c3` et `213a87dc` 24/24 ; les deux FFA
+lisent `[0 0 0 0 0 0 0 0]`). Equipes publiees contre la feuille : 8/8 x3, 10/10, 11/11, 25/25,
+28/28, 28/27 x2 (un siege dont le xuid est absent de la feuille), `50247b26` 680 records lus
+et aucun roster ; **0 contradiction sur 36 cuissons** ; S5 tenu sur les 8 builds hors ligne
+(105/105 .. 256/256 vies avec une equipe du film, 0 non lu, 0 divergence ; section `EQUIPES` neuve
+au golden). **D-remplacants (1.7), demande utilisateur du 15/09** : 35 arrivees reelles mesurees,
+chaque remplacant porte son index dans son record ti=9 ; 33 index NEUFS, 2 REUTILISES
+(`11de8353` index 23, `51101d1d` index 6 : partant et arrivant du meme camp) ; l'entite n'est
+jamais reutilisee ; designateur stable 35/35 -> le film DONNE le siege directement, ce qu'il ne
+donne pas c'est le lien `index -> xuid` d'un arrivant (1.9.14). Gates : gofmt vide, vet 0,
+13 paquets ok, ratchet vars 96, lint 0 issue, `tsc -b` propre, vitest 7 629 verts ; regime court :
+3 lignes sur 52 changent sur les 10 films (`flag` = forme d'entree sans `TeamOf`, `playerTeams`
+etape neuve, `artifact` +63 a +237 o), 49 identiques, classees AVANT re-figeage, puis 10/10 ;
+corpus gate `--base 943d8cf4b` : 13/13, 0 perte, gains nommes (`teams.*`), schema 56 -> 57
+partout, exit 0 — premier lot de M1 vert au sens litteral ; `CarrierTeamUnknown` sans perte.
+Decouvertes §4 : D1 (1.7) l'index dans ti=9 (traitee) ; D2 le record d'index 59 de `111fa685` ;
+D3 `ZoneInput.TeamByXUID` prend toujours la base (hors perimetre, a convertir) ; D4
+`objectiveevents.Extract` n'a AUCUN appelant de production (grep colle) : le basculement 1.7.3 est
+juste mais sans effet en base aujourd'hui ; D5 ce que le web devra faire ; D4 (1.1) fermee.
+Verification du pilote (V8) : schema 57 et chaine, 8 fixtures 57 / 0 x 56 sous le plafond,
+`ScanPlayerTeams`, `TeamOf` des drapeaux depuis le film, `roster[].team` pointeur, deux tests
+supprimes NES APRES la baseline (0 dans le JSONL), web = `generated.ts` + constantes de schema
+des tests.
+
+**Prochaine etape.** Push + CI ; lot 1.8 (le kill feed prend la table du film, `KillSourceDecoderRev`
+montee, backlog hors lot) ; puis famille 1.9 (1.9.0 registre des replis en premier ; 1.9.13 vies
+aux morts ecrites ; 1.9.14 roster a l'instant T, remplacant dans le siege du partant — le film
+donne le siege) ; revue de jalon a la cloture de M1, fusion feat/v75, recuisson, backlog (go V9).
+
+---
+
+## [2026-09-14] Chantier decodeur — lot 1.6 (le registre d'identite prend la table du film comme lien direct ; la vie d'un seul echantillon publiee ; schema 56) — Complete (feat/decfilm-16 fusionnee dans feat/recherche-decodeur-film, 943d8cf4b)
+
+**Decision technique principale.** La table des joueurs de `chunk_00` (lot 1.5) est lue en
+production et devient le lien direct `index <-> xuid <-> gamertag` du registre d'identite
+(`link.method = film_table`), la base devient un CONTROLE (`identity.coverage.filmTable` : lu,
+refus, sieges, direct, repli, accord / contradiction / silence) ; le compteur
+`filmdec_unknown_build_<build>` est CABLE (0 sur les 13 temoins). CHANGEMENT DE CONCEPTION impose
+par la mesure avant de coder (D2 (1.6)) : la table du film est le roster du DEBUT du film, pas
+celui du match — 13 joueurs arrives en cours de partie sur les 8 builds n'y ont pas de siege
+(`e5adf7b2` 23 sieges contre 28 joueurs connus, `a521164d` / `11de8353` 24 contre 27, `bcb6d393`
+8 contre 11) ; la remplacer par la table aurait PERDU 13 joueurs : la table PRECEDE le repli par
+les morts, qui reste nomme et compte sur son diagnostic propre (D14). 125 accords, 0
+contradiction, 0 vacant intercale sur les 8 builds (D3 (1.5) ne se pose sur aucun). Roster : sieges
+et gamertags du film (`a521164d`, `11de8353` 27 -> 28 ; deux joueurs a 0 mort publies sans nom
+prennent le leur) ; cuisson HORS LIGNE complete (26 -> 27 x3, 24 -> 25, 0 siege absent sur 8/8).
+Decision utilisateur du 14/09 appliquee (1.9.12 -> 1.6.5) : `DefaultMinPoints` 2 -> 1
+(deplace dans `tracks_publication.go`), `refusedMinPoints` 0 sur 8/8, +20 traces. `SchemaVersion`
+55 -> 56, chaine complete (chronique, empreinte de forme `2c1ea5c7b555c95f`, jumeau replaydoc,
+replayview, openapi, generated.ts, 8 fixtures 56 = 2 565 193 o sous le plafond de 3 145 728,
+jeu 55 retire), `MIN_RENDERABLE_SCHEMA_VERSION = 27` inchange ; `GrammarRev` .5 et
+`KillSourceDecoderRev` inchangees (filmdec et killsource non touches).
+
+**Resultats observes.** Gates : gofmt vide, vet 0, 14 paquets ok, lint 0 issue, `tsc -b`
+propre, vitest 7 629 verts ; regime court 10/10 re-figes, DEUX lignes changent par film
+(`filmTable`, etape neuve, et `artifact` +49 a +987 o), les 49 autres balayages identiques ;
+comparateur positionnel (D3 (1.6)) : classification faite sur le `git diff` des references avant
+acceptation. Corpus gate `--base 06530e63d` (16 min 33) : 13 temoins, schema 55 -> 56, 267 gains,
+39 « pertes », exit 1 ; CONTROLE DECISIF `--base 444d0b7c6` (la table du film SANS le seuil) :
+le MEME ensemble de 39 pertes, metrique par metrique et valeur par valeur -> la table du film
+coute ZERO perte sur 13/13, les 39 viennent toutes du seuil a 1. ORACLE des 20 vies d'un
+echantillon (instrument permanent `vies_un_echantillon_test.go`) : 1 mort ecrite (`e5adf7b2`
+slot 689, 72 ms), 5 fins de film, **14 ORPHELINES**, toutes fermees sur un TROU DE REPLICATION
+(mort la plus proche du meme joueur a 0,95 s .. 300 s) — D1 (1.6), defaut de LECTURE : la regle
+qui ouvre une vie a chaque trou > `lifeGapUS` (5 s) est une heuristique au sens de D13, la
+grammaire dit qu'une vie finit a une mort ecrite (ou fin de manche / de film) -> conversion
+1.9.13 proposee. DEUX EFFETS A TRANCHER PAR L'UTILISATEUR AVANT LA RECUISSON (D4, D5 (1.6)) : le
+seuil a 2 CACHAIT quatre vies SANS NOM, desormais visibles (`unnamedLives` `084a804d` 0 -> 1,
+`a349fea8` 334 -> 337), ce qui heurte « les vies anonymes n'existent pas » (06/09) — c'est un
+defaut d'identite rendu visible, pas cree ; et une vie d'un point a -216 m sur `084a804d` elargit
+`bounds.minX` de 184 m (le rejeu dezoomera), idem `e5adf7b2` en Z. Verification du pilote (V8) :
+constantes, fixtures (8 x 56, 0 x 55, taille), GrammarRev, baseline (aucun test renomme),
+controle decisif lu en §5.
+
+**Prochaine etape.** Push + CI ; lot 1.7 (equipe reelle depuis le film, sans base) ; question a
+l'utilisateur : garder la publication des vies d'un echantillon avec les 4 vies sans nom visibles
+et les bornes elargies, ou revenir au seuil 2 jusqu'a la conversion 1.9.13 ; recuisson du parc
+seulement apres sa reponse (cloture M1).
+
+---
+
+## [2026-09-14] Chantier decodeur — lot 1.5 (l'identite du film et la table des 32 joueurs lues dans chunk_00, lecteurs purs) — Complete (feat/decfilm-15 fusionnee dans feat/recherche-decodeur-film, 06530e63d)
+
+**Decision technique principale.** `filmdec.ReadFilmIdentity(chunk0)` lit la section 2 (table
+par type, version en clair, build, saveur, identifiant de build, changelist, horodatage 32 bits)
+avec `ErrNoFilmIdentity` type pour les 5 films sans section (`03af54c3`, `13b00e35`, `47d20b5d`,
+`50247b26`, `a349fea8`) ; `filmdec.ReadPlayerTable(chunk0, ident)` lit les 32 slots (16 champs,
+decalage d'un bit `0x0CB45C`), la largeur du bloc de personnalisation est une DONNEE DE PROFIL PAR
+BUILD (`player_table_profile.go` : 1 852 o HI_1_13_0/HI_1_12_0 lu chez l'ecrivain
+`FUN_1407edea8`, 1 492 HI_1_11_0/HI_1_10_0 = -10 x 0x24, 1 312 HI_1_9_0/HI_1_8_0 = -15 x 0x24,
+2 052 HI_1_4_1 mesuree, cause non etablie), aucun offset absolu (le cardinal de la table par type
+se derive et ferme sans reste : 123/122/121/116 entrees, la ou l'heuristique `lireEntete` en
+comptait 124), `ErrUnknownBuild` type, compteur `filmdec_unknown_build_<build>` NOMME mais sans
+consommateur (a cabler au lot 1.6), le rapport porte le calibrage lu sur le film comme CONTROLE
+(0 contradiction sur 1 346). Champs publies : `FilmIndex` = rang ABSOLU (vacants compris ;
+`InterleavedVacant` au rapport ; 13 films ou cela diverge du rang parmi les occupes, aucun n'a de
+document de rejeu : non tranchable ici, D3 (1.5)), `XUID`, `Gamertag`, champs courts. Aucun
+consommateur (1.6, 1.7, 1.8) ; `GrammarRev` `grammar-2026-09-14.5` ; `SchemaVersion` 55 inchange.
+
+**Resultats observes.** Oracle des instruments sur 1 351 films (152 s) : delta unique par build,
+32 slots sur 1 351/1 351. Production : 1 346 films a 32 slots (12 080 occupes + 30 992 vacants),
+5 mis de cote, 0 build inconnu, 0 contradiction ; sur NEUF films (`19ef6b04`, `23ffd885`,
+`3104391d`, `3b1cfde3`, `59b8abb9`, `652907bb`, `92f7c713`, `a92bab93`, `d4ddf054`) la production
+lit 7 ou 8 enregistrements la ou l'instrument en lisait 1 a 6 : cause mesuree, deux ecarts de
+balayage > 40 000 bits (un vacant intercale ajoute 16 499 bits), le regroupement terminal de
+l'instrument perdait la tete de la table ; le lecteur n'a aucun seuil ; le test corpus exige cette
+explication film par film et refuse que la production lise moins que l'instrument (controle
+independant `TestProfilRosterEcarts` : 8 entites ti=9 sur 9/9). Mutation 1 852 -> 1 848 : ROUGE
+sur `bcb6d393` et `fb1a1a72` (« aucune table de 32 slots ») ; rejouee par le pilote (V8) : vert,
+rouge, restauree par nom md5 identique, vert. Entree tronquee : 8 coupes d'identite (dont une sur
+frontiere de bloc) + 2 de table, aucune panique, erreurs typees. Gates : gofmt vide, vet 0,
+13 paquets ok, lint 0 issue, `filmdecVarsGeles` a 96 ; corpus `CHUNK00_CORPUS` (une racine, pas
+la liste `CHUNK00_FILMS` : 1 351 chemins depassent la borne d'une variable d'environnement
+Windows) 1 346 films a 32 slots, 77 s ; regime court 10/10 identiques ; corpus gate 13/13 a zero
+gain zero perte, schema 55 -> 55, exit 0.
+Decouvertes §4 : D1 (1.5) l'oracle « 32 slots » est satisfait par le bourrage de queue et ne prouve
+pas la tete de table ; D2 `rsChaine` perd la tete sur 9 films ; D3 rang absolu non tranche ; D4 le
+balayage est aveugle a un enregistrement reel sur `d4ddf054` (XUID hors plage Xbox ou jeton nul,
+a savoir avant de faire confiance a cette borne ailleurs) ; D5 `lireEntete` compte une entree de
+trop (residu G.2 ferme).
+
+**Prochaine etape.** Push + CI ; lot 1.6 (le registre d'identite prend la table du film comme lien
+direct ; `DefaultMinPoints = 1` avec l'oracle des morts, schema 56 ; cabler
+`filmdec_unknown_build` ; traiter `InterleavedVacant` comme contradiction nommee) ; puis 1.7, 1.8,
+famille 1.9 ; revue de jalon a la cloture de M1.
+
+---
+
+## [2026-09-14] Chantier decodeur — lot 1.4 (le cadre d'image-cle d'etat complet en production ; le temoin de marche delta attribue) — Complete (feat/decfilm-14 fusionnee dans feat/recherche-decodeur-film, 15bc6c82f)
+
+**Decision technique principale.** Les deux consommateurs de records d'image-cle
+(`navpoint_radial_scan.go`, `objective_scan.go`) lisent `WalkKeyframeFullState(pay, bit, reg)` —
+en-tete 108, mots de taille, etat par defaut — a la place de `TraverseEntity(br, reg, 0)` ;
+`KeyframeFullStateOpt` disparait (D8 : le cadre est CE QUE LE JEU LIT, pas une option), la boucle
+historique `WalkKeyframeBody` (en-tete 64 + masque) est supprimee (0 appelant de production,
+grep colle) ; `walkOneKeyframeRecord` reste `[~]` : 0 appelant de production, il porte la
+colonne « production » du comparateur archetype x modele qui mesure ce que le lot gagne.
+Compteur expvar `filmdec_keyframe_ti<N>_{closed,total}` (ADR 0009) par le mecanisme existant.
+`GrammarRev` `grammar-2026-09-14.4`, `SchemaVersion` 55 inchange (aucun octet cuit ne change).
+**Item 1.4.0 (ajoute par le pilote, D1 (1.3)) : le temoin fige de la marche delta est ATTRIBUE et
+re-fige.** Bisection sur la chaine premier-parent (690 points, worktrees detaches jetables,
+cache principal verifie intact) : M0, 0.D, 1.0, 1.1 ne bougent RIEN ; la derive est anterieure
+au chantier, en QUATRE marches : `62ba098b8` (01/09, bombe-visuel, +2/+2), `8f309ce86` (02/09,
+precision-arme, -5/-7), `736ccf3c3` (05/09, cuisson-perf + vehicules, 0/-8), `ffb27238c` (11/09,
+grammaire d'i9, +17/+10) ; puis 1.2 et 1.3 (lectures ajoutees). Le « sens que le contrat refuse »
+(records +16, aboutis -3) etait un artefact d'agregation : pris un a un, les six mouvements sont
+coherents. VERDICT DIVERGENCE sur les quatre : sur le point le plus suspect (`8f309ce86`), une
+seule ligne change de verdict, ti=49 7/7 -> 0/7, et la sonde du registre montre que
+`06dfe6d9` resolvait 64 archetypes dont ti=49..63 a ZERO composant (du bourrage : la traversee
+« aboutissait » sans rien lire) contre 49 apres — les 7 traversees perdues ne lisaient rien.
+Temoin re-fige avec l'attribution ecrite dans le fichier (edition datee), 3/3 conforme.
+
+**Resultats observes.** Mesure avant / apres : ti=11 sur 6 films de recherche 27 marches
+« abouties », 0 fermee -> 27 cassees (100 %) ; ti=11 sur 7 bobines 326 marches, 47 chainees,
+0 fermee -> 326 cassees ; ti=12 sur le temoin d'Assaut `c75f33b8` (569 records) 242 marches,
+7 chainees -> 0 marche, 569 cassees ; fermeture par archetype 19 337/62 686 = 30,8 % inchangee
+(ce golden mesure la MESURE, que 1.4 ne change pas : il fait rejoindre la production a la
+mesure). Correction d'une affirmation de la note 5a (D5 (1.4)) : le « 0 record ti=12 » de sa
+section C.2 venait de l'INSTRUMENT (horloge vide, `scanChunk` saute tout paquet sans
+`start_ms`), pas du corpus. Gates : gofmt vide, vet 0, 7 paquets ok (killcollector exige
+`CGO_ENABLED=1` + msys64/ucrt64 en tete du PATH), lint 0 issue ; regime court 9 identiques + 1
+different (`50247b26`, etape `killsource`) — controle decisif : la meme commande au commit de
+base rend la MEME empreinte, ecart HERITE du lot 1.3 (reference non re-figee, D4 (1.4)) : ce lot
+produit zero difference d'equivalence ; le pilote a re-fige `50247b26` sur la branche du lot
+(une ligne, empreinte identique a celle mesuree a la base, comparaison 1/1 identique). Corpus
+gate `--base 15309e89e` (17 min 16) : 12 temoins sur 13 a zero gain / zero perte ; `c75f33b8`
+(seul temoin d'Assaut, le seul ou le chemin de production s'engage) perd DEUX axes de
+COUVERTURE, `coverage.bombArmings.reads` 1 169 -> 1 148 et `.rises` 94 -> 73, le calque publie
+`bombArmings` (axe mesure du gate) ne bouge PAS ; -21 lectures pour -21 montees = une montee par
+lecture = des points isoles, signature du bruit que l'ancien cadre (en-tete 64 + masque)
+produisait sur des records mal cadres ; rejoue par le pilote sur ce seul temoin (manifeste
+reduit, 14,8 s) : exactement ces deux axes, exit 1. VERDICT PILOTE : divergence attendue,
+consignee au bloc « Cloture M1 » (le gate de jalon la remontrera contre une base anterieure a
+1.4). Verification du pilote (V8) : consommateurs, suppression, compteur, temoin, GrammarRev,
+baseline (aucun test renomme) lus sur pieces.
+Decouvertes §4 : D1 (1.4) le temoin de marche delta vit hors CI et rien n'oblige a le jouer
+(-> le porter sur les bobines versionnees, comme « n2 constant ») ; D2 (1.4) le « ratchet 0.A.3
+regenere 0 -> 14 % » du plan etait une erreur de citation (corrigee) ; D3 (1.4)
+`WalkKeyframeRecords` / `ChainKeyframeRecords` restent exportes et lisent le cadre delta sur une
+table d'image-cle ; D4 (1.4) reference `50247b26` (fermee par le pilote) ; D5 (1.4) l'artefact
+d'horloge vide de l'instrument de production.
+
+**Prochaine etape.** Push + CI ; lot 1.5 (identite et table des joueurs lues dans `chunk_00`,
+lecteurs purs) ; puis 1.6, 1.7, 1.8, famille 1.9 ; revue de jalon a la cloture de M1 sur
+`783ae680d..HEAD`, puis fusion feat/v75 + recuisson + backlog (go V9).
+
+---
+
+## [2026-09-14] Chantier decodeur — lot 1.3 (les cinq etats par defaut manquants, relus chez l'ecrivain) — Complete (feat/decfilm-13 fusionnee dans feat/recherche-decodeur-film, 15309e89e ; premier lot sans revue par lot, V8)
+
+**Decision technique principale.** `defaultStateDeserByTI` recoit ti=14 `V ; R(5)`
+(FUN_140fed6f4), ti=17 `V ; R(7)` (FUN_14101a0a4), ti=21 `R(18)` (FUN_141133c24), ti=29 `V` seul
+(FUN_14116f514), ti=47 `V ; R(5)` (FUN_1410f44f8), chacune datee ; les cinq largeurs viennent d'un
+`*(reader+0x2c) += N` du decompile (Ghidra lecture seule) ; le commentaire STUB de ti=14 est
+corrige avec sa cause (FUN_140467a20 est un `return` partage par treize symboles sans rapport).
+Test permanent `TestEtatParDefautN2Constant` sur les 7 bobines : pour tout archetype a etat
+fixe, le second mot de taille est constant ; ratchet de couverture regenere avec l'historique des
+regenerations ECRIT DANS le golden (21 lignes montent, 0 descend) ; `GrammarRev`
+`grammar-2026-09-14.3`. `SchemaVersion` 55 inchange (aucun octet cuit ne change, 0 gain au corpus
+gate : ce lot livre la grammaire et sa mesure, la valeur produit arrive au lot 1.4 qui branche le
+cadre d'etat complet en production). `KillSourceDecoderRev` toujours non montee (D2 (1.2)).
+
+**Resultats observes.** Mesure avant de coder : `defaultStateDeserByTI` n'a qu'un lecteur de
+production (`TraverseEntity`, records NEW), `WalkKeyframeFullState` / `KeyframeClosure` n'ont
+aucun appelant hors `filmdec` ; la mesure predisait, contrairement au lot 1.2, que l'equivalence
+ne rendrait pas 20/20. Fermeture : ti14 0/3 520 -> 3 520/3 520, ti17 0/3 729 -> 3 729/3 729, ti29
+0/110 -> 102/110 ; ti21 (0/357) et ti47 (0/1 716) ne bougent pas, largeur prouvee mais un
+composant reste faux ; 6 films de recherche 14,0 % -> 30,8 % (la projection du plan, mesuree).
+Gates : gofmt vide, vet 0, 12 paquets ok, lint 0 issue ; regime court 9 identiques + 1 different
+(`50247b26`, etape `killsource` seule : 228 800 octets identiques sauf UNE valeur de la chaine de
+diagnostic `calibration`, mediane 77 -> 76 ; lignes de kill identiques a l'octet ; divergence
+attendue) ; corpus gate 13 temoins 0 perte 0 gain (19 min 33). Verification du pilote (V8, pas de
+relecteur) : table et fonctions relues, mutation ti21 R(18) -> R(17) rejouee (vert, ROUGE, restaure
+par nom md5 identique, vert), golden du ratchet lu, aucun test renomme, baseline intacte.
+Decouvertes §4 : **D1 (1.3) — le temoin fige de la marche delta (`delta_walk_witness_test.go`,
+garde `DELTA_WITNESS_FILM`, invisible en CI) est PERIME AVANT ce lot** : a 783ae680d les trois
+films s'ecartent du fige, et sur `06dfe6d9` les records montent (+16) mais les traversees
+abouties DESCENDENT (-3), sens que le contrat du fichier refuse ; la derive a traverse 0.A a 1.3
+sans etre consignee -> attribution par bisection AVANT le lot 1.4 (item 1.4.0 ajoute par le
+pilote, le temoin est dans le perimetre du cadre d'image-cle) ; D2 (1.3) une chaine de diagnostic
+entre dans l'empreinte d'equivalence de `killsource` (un gate peut rougir pour une phrase de
+journal) ; D3 (1.3) D4 (1.2) etait formulee trop largement (le corpus porte des records de ces
+archetypes ; ce qui n'est pas mesure, c'est l'exercice des composants qui consomment le niveau).
+Trois citations perimees du plan corrigees (table lignes 44-66, STUB ligne 24, section B.2 de la
+note, pas de « 8.5 »).
+
+**Prochaine etape.** Push + CI ; lot 1.4 (cadre d'image-cle d'etat complet en production, avec
+1.4.0 = bisection du temoin) ; regime V8 : pas de revue par lot, revue de jalon a la cloture de
+M1 sur `783ae680d..HEAD`, puis fusion feat/v75 + recuisson + backlog (go V9).
+
+---
+
+## [2026-09-14] Chantier decodeur — lot 1.2 (le registre commence a l'octet 8 : l'entree du jeu, niveau compris) — Complete (feat/decfilm-12 fusionnee dans feat/recherche-decodeur-film, 783ae680d)
+
+**Decision technique principale.** Le registre des archetypes (chunk_00) se lit comme le jeu le
+lit : des entrees de 0x104 octets a partir de l'octet 8, nom a +0, niveau u32 a +0x100 ;
+`Archetype.Levels[i]` est le niveau du composant `i` (l'ancien `Flags[i]` etait celui de `i-1`,
+et le faux « kind » la queue du nom voisin) ; `entryName` prend l'octet de l'ENTREE ; le decalage
+compensatoire (`shiftArchetypeLevels`, `KeyframeFullStateOpt.LevelShift`) est supprime, pas
+laisse a faux. La colonne `level` de `testdata/ecs_table.tsv` se regenere DEPUIS LE FILM par la
+porte nommee `-update-ecs-table-level` (les annotations a la main etaient incompletes : 178 pour
+189 reellement decalees, mesure G2 rouge sur 11 cles) ; empreinte du registre recalculee ;
+`GrammarRev` = `grammar-2026-09-14.2` (forme `.N` par lot : deux lots du meme jour partageant une
+revision auraient fait taire le ratchet dans le cas precis qui le justifie). Seul golden qui
+bouge : `killsource/testdata/minibobine.golden`, une ligne sur 76, le ratio de calibration
+`x1.002 -> x1.001` (`calibrate.go`, `RSPRatio`), classe divergence attendue avec pre-image.
+DECISION PILOTE : `KillSourceDecoderRev` NON montee (lignes de kill identiques sur 20 + 13 films ;
+un bump rouvre un backlog de redecodage en base, reserve a la cloture de M1 sur signal).
+
+**Resultats observes.** Mesure AVANT de coder (1.2.1) : 1 031 a 1 067 composants par bobine,
+173 a 189 niveaux changent (16,7 a 18,2 %), mais SEPT etiquettes seulement consomment le niveau
+(crew-order, tacmap-poiiconoffset, tacmap-poiicon, flock-destination,
+player-desired-respawn-location, flock-position, asset-transform) : 16 instances au registre,
+4 changent, identiquement sur les 7 builds (ti=14 i0 L0->L1, ti=21 i2 L1->L2, ti=30 i0 L0->L1,
+ti=44 i0 L0->L1), aucune en ti=9/11/12/35/40/42/43 — c'est cette mesure qui a predit le 20/20.
+Gates : gofmt vide, vet 0, 13 paquets ok, lint 0 issue, lot3 corpus 1 351 chunk_00 (C1/C2'/C3
+tenus), G1-G4 ECS sur 1 067 lignes ; equivalence 20/20 identiques (19 min 47, pic 0,77 Gio) ;
+corpus gate 13 temoins 0 perte 0 gain (23 min 10) ; schema 55 inchange, aucune recuisson due.
+Revue R1 : 2 P1 + 2 P2, 29 conditions tiennent. P1-1 : la nouvelle borne de boucle de
+`parseRegistry` entrait dans un bloc INCOMPLET et `zeroTail` PANIQUAIT sur un chunk_00 tronque
+(reproduit : 13 octets synthetiques `[268:13]`, registre reel coupe `[110768:110510]`), non
+rattrape, appelants de production `killcollector/hits.go:113` (sync VPS) et
+`film_context.go:254` — le recadrage a l'octet 8 n'exigeait pas ce changement de borne ;
+correction : blocs ENTIERS (`registryWholeBlocks`) + `Registry.TruncatedBytes` (compte SEULEMENT
+quand le parse epuise le tampon sans fin structurelle : nominal 0, sinon un chunk_00 sain aurait
+declare ses sections 2 et 3 « tronquees ») + test des deux reproductions sur la bobine VERSIONNEE
+`minibobine_000d5950` (sans dependance au cache), rouge sous la borne fautive. P1-2 : doc inversee
+sur l'une des quatre instances que le lot corrige (`traverse.go`, asset-transform ti44 i0 passe
+L1 = 7 bits/axe : budget ~100 -> ~115, commentaire et `ecs_table.tsv`) ; G4 ne controle que les
+`bits_typ` ENTIERS (D5 (1.2), consigne). P2 : 13 cellules du tableau 1.2.1 recopiees a la main
+(reecrit depuis la sortie brute de l'instrument, collee en §5) ; « 77 lignes » = 76.
+Revue R2 (corrections seules) : 0 P0/P1, 2 P2, 23 conditions tiennent, 1 non retenu — la
+boucle converge (2 P1 -> 0). P2-1 : `TruncatedBytes` rendait un FAUX ZERO sur une coupe alignee
+exactement sur une frontiere de bloc (mesure sur 53ce4390 a 99 848 octets, k=6 ; aussi 8, 16 648,
+416 008, 815 368) : la troncature est le fait d'EPUISER le tampon sans fin structurelle, pas la
+queue -> `Registry.Truncated bool` ajoute, sous-test (C) coupe alignee, `TruncatedBytes` garde la
+queue (peut valoir 0) ; le WARN d'empreinte inconnue devra dire « tronque » (1.9.0). P2-2 : « les
+DEUX appelants de production » = TROIS (`film_context.go:254`, `killcollector/hits.go:113`,
+`killsource/world.go:58`) — deuxieme denombrement d'appelants faux du chantier : tout compte
+d'appelants ecrit s'accompagne desormais du grep qui le produit. Les deux corriges dans le lot,
+verifies par le pilote (tests de troncature rejoues, grep des trois appelants).
+Decouvertes §4 : D1 forme `.N` de `GrammarRev` (traitee) ; D2 `KillSourceDecoderRev` (decision
+pilote) ; D3 annotations ECS incompletes (traitee par la porte) ; D4 le corpus ne porte AUCUN
+temoin de ti=14/21/30/44 (PvE ou Forge) : le gate prouve l'absence de regression, pas le gain ;
+D5 budgets approximatifs sans garde-rail ; D6 `TruncatedBytes` a compter au registre des replis
+(1.9.0). Lecon de pilotage (1.1 R2, 1.2 R1) : tout tableau de mesures ecrit par l'executeur se
+COLLE depuis la sortie brute de l'instrument ; toute borne de decoupage changee s'exerce sur une
+entree TRONQUEE — les deux sont dans les briefs a partir du lot 1.3.
+
+**Prochaine etape.** Push + CI ; lot 1.3 (les cinq etats par defaut manquants, regime court +
+corpus gate) ; les quatre decisions utilisateur du 14/09 sont ecrites en 1.9.9-1.9.12 (tourelles
+bannies dessinees comme elements de carte, fin de vie vehicule au dead-state avec oracles kills /
+medailles / PSA, designateur de manche avec l'hypothese egalite -> prolongation, vie d'un
+echantillon publiee avec les morts ecrites pour oracle).
+
+---
+
+## [2026-09-14] Chantier decodeur — lot 1.1 (l'octet 37 du pied, l'empreinte de grammaire etendue au pied, references re-figees au schema 55) — Complete (feat/decfilm-11 fusionnee dans feat/recherche-decodeur-film, 191933992)
+
+**Decision technique principale.** L'equipe d'un evenement du pied de film se lit a l'octet 37
+du bloc (`footerByteTeam = 37`, constantes nommees `36 / 47 / 48 / 60`), plus jamais a l'octet 55
+(qui vaut 0 partout : 84/173 lisibles, une seule valeur) ; `FooterEvent` exporte (`TimeMS`,
+`Slot`, `Team`, `XUID`), `Team` TOUJOURS lu, sans sentinelle (D14 : un « absent » code en dur
+serait un repli anonyme) ; point d'entree unique `FooterEvents(film)` qui remplace les deux
+copies de `footerData` + `scanTh10Events` ; aucun consommateur de `Team` avant 1.7.3, rien ne
+traverse une frontiere serialisee (schema inchange). Fixture `pied_bloc_53ce4390.bin` (1 930 o,
+bloc t=133033 de `chunk_40` type 3, slot 2 / equipe 1 : discriminante contre 36, 55 ET 37 lu
+comme slot) avec provenance datee, porte `PIED_BLOC_UPDATE=1` qui verifie le type de chunk au
+MANIFESTE (grammaire, pas « le dernier chunk ») et sort en echec apres reecriture. Empreinte de
+`GrammarRev` : TROIS racines (`filmdec`, `killsource`, `analysis/objectiveevents`), 131 -> 150
+fichiers ; `grammar-2026-09-14`. References d'equivalence re-figees a `a752403da` apres le
+schema 55 du lot 1.0 (20 films : une seule ligne `artifact` par fichier, deltas +102..+106 = la
+longueur de `coverage.tracks`), attribution par graphe d'appels (la cuisson `replaybuild` n'appelle
+que `StatRecordsCtx` et `CaptureBurstTimes`, jamais le lecteur du pied) confirmee par mutation.
+
+**Resultats observes.** Oracle avant tout changement : 173/173 evenements lisibles a l'octet 37
+sur trois films, 4 lectures en accord parfait sur 180 ; l'octet 38 est egal a l'octet 37 sur 190
+blocs de 4 films et 2 builds (d'ou une mutation 37 -> 38 verte, mesuree, pas ignoree) ; le XUID
+est a 14 926 bits du bloc sur 190/190 (D5). Decouvertes D1..D5 (1.1) consignees au plan §4 :
+l'empreinte ne couvrait pas le pied (fermee par 1.1.5 ; premiere alerte reelle des la revue R1,
+sur le retrait de la sentinelle) ; la mini-bobine `000d5950` n'a aucun evenement th=10 ;
+`NamedEvent` / `IdentifiedEvent` viennent du statborg, pas du pied ; doc inversee residuelle
+`domain/objective_events.go:12-13` (hors perimetre, non traitee). Revue R1 : 1 P1 (la fixture ne
+discriminait que contre 55 : fausse preuve) + 5 P2, 6 corriges ; R2 (corrections seules) :
+0 P0/P1, 4 P2 (trois chiffres faux dans les textes ecrits par le lot — motif « chunks apres le
+pied » inexistant sur 1 351/1 351, comptes de mutations 2 -> 3 et 1 -> 2, « un appelant » -> six
+dont cinq en test — et une porte qui accusait le manifeste sur un separateur final), 1 jete,
+4 corriges, 37 conditions tiennent ; la boucle converge (1 P1 -> 0). Gates : gofmt vide, vet 0,
+13 paquets ok, suite complete 325 paquets exit 0, lint 0 issue, regime court 10/10 identiques
+hors `artifact` avant re-figeage puis 20/20 identiques apres ; baseline JSONL intacte (aucun test
+renomme). Pilote : verification par grep des 4 corrections, `objectiveevents` rejoue ok,
+fusion sans conflit, worktrees 1.1 retires apres deliaison PowerShell des jonctions (0 reste,
+cache principal 1 351 manifestes).
+
+**Prochaine etape.** Push + CI ; lot 1.2 (le registre commence a l'octet 8 — regime complet,
+corpus gate a `--base 191933992`), worktree `LevelUp-wt-decfilm-12` ; decisions utilisateur
+toujours ouvertes (tourelle fixe, dead-state vehicules, manches, vie d'un echantillon).
+
+---
+
+## [2026-09-14] Chantier decodeur — lot 1.0 (l'etage de balayage partage production / fixture, schema 55) — Complete (feat/decfilm-10 fusionnee dans feat/recherche-decodeur-film)
+
+**Decision technique principale.** `BuildFromFilm` = verrou + largeurs + `scanFilmInputs`
+(UNE fonction, UN type `FilmInputs` de 35 champs) + `BuildFromPositions` ; `build_from_film.go`
+442 -> 149 L, `film_scan.go` 421 L, `film_inputs.go` 176 L ; le fixture d'entrees APPELLE cet
+etage (la copie disparait) avec les MEMES options que la production (roster de la feuille par
+`replay.RosterXUIDsOf`, regle descendue de replaybuild ; largeurs installees par
+`installWorldObjectPrecision` : le fixture lisait Live Fire un bit trop tot) ; 6 canaux entrent au
+codec (`BipedCreations`, `WeaponChanges`, `Pickups`, `EquipmentChanges`, `Vehicles`,
+`ZoomEvents`), `TestCodecCouvreFilmInputs` (reflexion, 35 sous-tests, CI) tient la couverture ;
+schema 55 : `coverage.tracks` (refus `minPoints` comptes ; TOUTES les vies refusees ont
+exactement 1 point, 0 a 6 par film), chaine complete (chronique, empreinte de forme, jumeau
+replaydoc, replayview, openapi, generated.ts, fixtures de contrat) ; plafond 12 Mio sur les
+`inputs_*.bin.gz` (10,53 Mio mesure).
+
+**Resultats observes.** Pas structurel prouve : regime court 10/10 identiques avant le schema,
+puis ecart a la SEULE etape `artifact` (+104 o = les 5 champs + le schema), 49 etapes de balayage
+identiques a l'octet sur 4 films ; corpus gate d9781168 0 perte ; fidelite 8/8. Goldens : gains du
+fixture tous attribues (lien direct corps -> joueur : traces sans identite 46 -> 1, 6/35/24/20/3
+-> 0 ; Live Fire poses 57 -> 190, projectiles 236 -> 417 ; joueurs a 0 mort nommes : 24 -> 25,
+26 -> 27, 26 -> 27, 26 -> 28). Revue R1 : 0 P1 + 5 P2 (roster nul au fixture = 5e divergence ;
+marcheur d'ordre memoise ; garde d'ordre incomplete ; 3 fichiers > 500 L grossis ; commentaire),
+5 corriges + plafond ; R2 : 1 P1 INTRODUIT par R1-4 (la suppression des notes par version de
+`document.go` faisait disparaitre la seule description de la v51 : CORRECTION D'UN FAIT — la v51 A
+ETE CUITE (`2fb53db4e` -> `b6b198baf`), seule la 32 est sautee ; entree v51 restauree, ADR 0034 et
+testutil corriges, `schema_51` entre dans les 3 tests de replaybuild) + 1 P2 (chiffres du
+budget), 2 corriges ; pilote : grep (v51, ADR, budget unique), 6 paquets verts.
+
+**Prochaine etape.** Push + CI ; lot 1.1 (octet 37 du pied) ; recuisson du parc a la cloture de
+M1 sur signal ; decisions utilisateur toujours ouvertes (tourelle fixe, dead-state vehicules,
+manches, vie d'un echantillon).
+
+---
+
+## [2026-09-14] Chantier decodeur — lot 0.D clos (0.D.1 bis, 0.D.3/0.D.3 bis, 0.D.4, 0.D.6, 0.D.7, revues R1/R2) — Complete (feat/decfilm-0D fusionnee dans feat/recherche-decodeur-film)
+
+**Decision technique principale.** Instructions bornees des constats de regression, zero code de
+production touche : 0.D.1 bis `[!]` (le film ECRIT des manches finalisees sur les 148 records
+« 2 » de fb1a1a72, bimodal 60-180 s / 720-840 s ; correlation prolongation non etablie ; garde
+`contiguousRounds` NOMMEE au registre des replis ; regulation.toml « mi-temps » corrige) ;
+0.D.4 divergence voulue pinee par bissection a 8 points (`48cf4905d`, schema 36 ; residu = refus
+`minPoints` silencieux -> lot 1.0.4) ; 0.D.6 aucun bump ne perd de vehicule (chassis 0x038df01a
+= tourelles automatiques bannies hors table ; ghost slot 777 efface 5,3 s apres son dernier
+echantillon par une fin INFEREE alors que le film ecrit le dead-state ti=40) ; 0.D.3 + 0.D.3 bis
+codec des entrees COMPLET (rang de grenade -1, stats de balayage `AmmoRefused` + version majeure,
+coordonnees EXACTES en QUANTA + 3 largeurs, 9,845 Mio < 10,35, fidelite fraiches == relues 8/8,
+erreurs typees carte / decoupage dans les deux sens, blob lourd de 17,8 Mio jamais entre dans
+l'historique) ; 0.D.7 le fixture impose le decoupage d'i0 par la fonction de production (seul
+60ae07c4 change : gate=6 region=1 12/12/11, 174 -> 173 pistes). Revue R1 : 1 P1 (stat de
+balayage jetee : « canal munitions refuse » MENTAIT sur 5 goldens sur 8) + 6 P2, 7 corriges ;
+R2 : 0 P1 + 3 P2 (version majeure imprimee au golden et recoupee avec le corpus, sixieme porte
+en echec nomme, journal v15 corrige), 3 corriges. Pilote : verifie par grep (8/8 goldens, 5/5
+portes, tailles), tests replay + archlint verts, diff .go de production vide.
+
+**Decouvertes -> plan.** Lot 1.0 en tete de M1 : le chemin du fixture est une COPIE de la
+sequence de balayages de `BuildFromFilm` et cinq canaux manquent (WeaponChanges, Pickups,
+EquipmentChanges, Vehicles, BipedCreations) : la production expose son etage de balayage, le
+fixture l'appelle, + compteur de refus minPoints. Decisions utilisateur en attente : tourelle
+fixe au calque vehicules ; fin de vie des vehicules lue dans le dead-state (1.9.x) ; seconde
+session sur le designateur de manche ; vie d'un seul echantillon.
+
+**Prochaine etape.** Push + CI ; lot 1.0 ; puis 1.1 (octet 37).
 ## [2026-09-14] Captures README prises (21 pages, anglais, données réelles) + corrections SPNKr et remerciements — Complété (feat/v75, non commité)
 
 **Le mur d'authentification n'en était pas un.** Premier diagnostic erroné de ma part : j'avais conclu qu'une capture headless exigeait un `storageState` produit par l'utilisateur. La vraie cause est une seule variable. `__root.tsx` éjecte vers `/login` quand `auth_mode` vaut `password` ou `xbox` et que `current_username` est nul — or un contexte Playwright neuf n'a pas de cookie. **`LEVELUP_AUTH_MODE=none`** (le défaut du code, mais pas de ce poste) supprime la redirection, et `middleware.RequireAuth` laisse déjà passer en conséquence. Deux autres pièges franchis avant d'y arriver : l'origine CSRF est comparée en **égalité stricte** (`isAllowedOrigin`) — `http://127.0.0.1:8010` est refusée là où `http://localhost:8010` passe — et le mode démo seul ne suffit pas (`LEVELUP_WEB_DIST` sert le front en même origine, comme le service `levelup-demo` de docker-compose).

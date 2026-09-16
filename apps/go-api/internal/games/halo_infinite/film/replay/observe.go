@@ -55,9 +55,9 @@ var BuildFromFilmSteps = []string{
 	"grappleReads", "grappleReads.stats",
 	"abilityImpulses", "abilityCharges",
 	"zoomEvents",
-	"placements", "placements.stats",
+	"placements", "placements.stats", "spawnEvents",
 	"pads", "vehicles", "carrierMarks", "zoneReads", "bombReads",
-	"grenades", "projectiles", "deaths", "playerIndices", "clockOrigin",
+	"grenades", "projectiles", "deaths", "filmTable", "playerTeams", "playerIndices", "clockOrigin",
 }
 
 // stepClock date la FIN du balayage precedent. C'est tout ce qu'il faut pour chronometrer les

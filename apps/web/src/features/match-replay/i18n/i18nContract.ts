@@ -659,6 +659,14 @@ export interface ReplayText {
   heatLegendHint: string
   /** Fiches joueur : ce qui est lu, et ce qui ne l'est pas. */
   rosterEmpty: string
+  /**
+   * Siège entre deux occupants (lot 1.9.14) : `seatLeft` est ce que la tuile AFFICHE — le
+   * titulaire est sorti —, `seatSubstitute` sa description accessible : la place est tenue pour
+   * le remplaçant qui arrive. Les deux ne se confondent pas : l'une dit un fait passé, l'autre
+   * dit à quoi sert la tuile.
+   */
+  seatLeft: string
+  seatSubstitute: string
   bridgeDiag: (named: number, total: number, collisions: number) => string
   teamUnknown: string
   /** Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). */

@@ -375,7 +375,7 @@ func TestFermetureBNommeLaVieDesigneeQuandLeSlotEnPorteDeux(t *testing.T) {
 	}
 	// Bout en bout : la piste de la vie désignée porte le nom, l'autre non.
 	trs := []Track{{Slot: 2, StartFrame: 200, EndFrame: 210}, {Slot: 2, StartFrame: 300, EndFrame: 310}}
-	nameTracksByLives(trs, lives, 0, 100_000)
+	nameTracksByLives(trs, lives, 0, 100_000, nil)
 	if trs[0].XUID != "222" || trs[1].XUID != "" {
 		t.Fatalf("la piste de la vie désignée devait être nommée et l'autre rester anonyme, "+
 			"obtenu %q puis %q", trs[0].XUID, trs[1].XUID)

@@ -14,18 +14,32 @@ package filmdec
 //
 // # CE QUE CE TEST FAIT
 //
-// Il hache toutes les sources `.go` hors `_test.go` de `filmdec/` ET de `killsource/`, et compare
-// au golden `testdata/grammar_rev.golden`, qui fige le couple (revision, empreinte) avec son
+// Il hache toutes les sources `.go` hors `_test.go` des TROIS paquets qui lisent les octets du
+// film — `filmdec/`, `killsource/` et `analysis/objectiveevents/` — et compare au golden
+// `testdata/grammar_rev.golden`, qui fige le couple (revision, empreinte) avec son
 // historique. Toucher l'une ou l'autre le fait rougir ; le remettre au vert oblige a rouvrir la
 // ligne de revision — donc a DECIDER si la grammaire a change, et si les deux autres etages
 // doivent monter aussi.
 //
-// # POURQUOI LES DEUX PAQUETS DANS UNE SEULE EMPREINTE
+// # POURQUOI CES TROIS PAQUETS DANS UNE SEULE EMPREINTE
 //
 // `killsource` lit les MEMES octets que `filmdec`, avec son propre lecteur de bits (le lot 4 de
-// la trajectoire les fusionne). Tant qu'ils sont deux, une largeur corrigee d'un cote et pas de
-// l'autre est exactement le genre de divergence silencieuse que ce chantier cherche a rendre
+// la trajectoire les fusionne). Tant qu ils sont deux, une largeur corrigee d un cote et pas de
+// l autre est exactement le genre de divergence silencieuse que ce chantier cherche a rendre
 // impossible. Une empreinte commune la fait sonner.
+//
+// `analysis/objectiveevents` est ENTRE LE 2026-09-14 (lot 1.1.5), et il a fallu un faux negatif
+// pour le voir : ce paquet porte le lecteur du PIED DE FILM (`scanTh10Events`,
+// `decodeTh10Block`) — des offsets d octets dans un bloc de 60, c est-a-dire de la grammaire au
+// sens exact de la ligne `GrammarRev` ci-dessus (« une largeur, un cadre, un ordre de
+// composants, un lecteur »). Le lot 1.1 a deplace l equipe d un evenement de l octet 55 a
+// l octet 37 et CE TEST EST RESTE VERT : la revision a du etre montee a la main. Un garde-rail
+// qui laisse passer le changement qu il existe pour attraper n en est pas un.
+//
+// Ce paquet DEMENAGERA sous `film/` au pas 5 de la revision (decision V5 du
+// PLAN_DECODEUR_FILM : `analysis/filmsource` et ses voisins passent sous `film/internal/`). Le
+// jour ou il bougera, `racinesGrammaire` echouera bruyamment sur un dossier vide — ce qui est
+// exactement le comportement voulu, et non une regression a contourner.
 //
 // # CE QU'IL NE FAIT PAS, ET C'EST ASSUME
 //
@@ -49,6 +63,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -113,6 +128,83 @@ func TestGrammarRevSuitLaGrammaire(t *testing.T) {
 	}
 }
 
+// entreeChroniqueGodoc / entreeChroniqueGolden : les deux formes d'une ENTREE de chronique.
+//
+// Le godoc de `grammar_rev.go` ouvre chaque entree neuve sur le mot `ENTREE` suivi de la
+// revision entre accents graves ; le golden porte la sienne dans sa colonne « revision » de
+// l'HISTORIQUE (`#   <date>  <revision>  <texte>`). Les deux formes sont DIFFERENTES parce que
+// les deux fichiers le sont — l'un est du Go, l'autre une table lisible — et il n'y a rien a
+// unifier : ce qui compte est qu'aucun des deux ne puisse s'arreter a un rang depasse.
+var (
+	entreeChroniqueGodoc  = regexp.MustCompile("(?m)^// ENTREE `(grammar-[0-9]{4}-[0-9]{2}-[0-9]{2}(?:\\.[0-9]+)?)`")
+	entreeChroniqueGolden = regexp.MustCompile(`(?m)^#\s+[0-9]{4}-[0-9]{2}-[0-9]{2}\s+(grammar-[0-9]{4}-[0-9]{2}-[0-9]{2}(?:\.[0-9]+)?)\s`)
+)
+
+// TestChroniqueCouvreLaRevisionCourante : [GrammarRev] a-t-elle son entree, des DEUX cotes ?
+//
+// # LE DEFAUT QUE CE TEST FERME (revue de jalon M1, ronde 2, constat F5)
+//
+// Trois lots de corrections partis de la meme base `.11` ont empile trois blocs annoncant
+// chacun « `.11` -> `.12` », suivis de lignes « FUSION ... au rang suivant » qui racontaient une
+// renumerotation que l'integration n'a jamais faite. Resultat : la chronique s'arretait a `.12`
+// pendant que la constante valait `.14`, et les changements de COMPORTEMENT portes par `.13`
+// (porte unique `MPPWidthsForFilm`) et `.14` n'avaient AUCUNE entree. Rien ne rougissait — le
+// ratchet d'empreinte ne tient que le couple (revision, empreinte), jamais ce que la revision
+// RACONTE.
+//
+// Modele : `replay/document_shape_test.go`, `TestDocumentShapeSchemaHasChronicleEntry`, qui
+// pose la meme exigence sur `SchemaVersion`.
+//
+// # CE QU'IL NE FAIT PAS
+//
+// Il ne relit pas les entrees ANTERIEURES au 2026-09-16 : elles ont trois formes de prose nees
+// a des jours differents, et normaliser le passe n'ajouterait rien. Il ne mord que sur la
+// valeur COURANTE — la seule qu'une montee puisse laisser sans entree.
+func TestChroniqueCouvreLaRevisionCourante(t *testing.T) {
+	for _, src := range []struct {
+		quoi    string
+		chemin  string
+		forme   *regexp.Regexp
+		exemple string
+	}{
+		{"le godoc de grammar_rev.go", cheminGodocGrammarRev(t), entreeChroniqueGodoc,
+			"// ENTREE `" + GrammarRev + "` (AAAA-MM-JJ, lot) : ..."},
+		{"l'HISTORIQUE du golden", cheminGoldenGrammarRev, entreeChroniqueGolden,
+			"#   AAAA-MM-JJ  " + GrammarRev + "  lot : ..."},
+	} {
+		blob, err := os.ReadFile(src.chemin) //nolint:gosec // chemins deduits du paquet
+		if err != nil {
+			t.Fatalf("%s illisible (%s) : %v", src.quoi, src.chemin, err)
+		}
+		var vues []string
+		trouvee := false
+		for _, m := range src.forme.FindAllStringSubmatch(string(blob), -1) {
+			vues = append(vues, m[1])
+			if m[1] == GrammarRev {
+				trouvee = true
+			}
+		}
+		if !trouvee {
+			t.Errorf("GrammarRev = %s n'a AUCUNE entree dans %s (entrees declarees : %v).\n"+
+				"Une montee sans entree ne dit pas ce qu'elle change, et la chronique s'arrete "+
+				"a un rang que la constante a depasse (constat F5).\nForme attendue :\n  %s",
+				GrammarRev, src.quoi, vues, src.exemple)
+		}
+	}
+}
+
+// cheminGodocGrammarRev : le fichier qui porte la constante et sa chronique, resolu par
+// `runtime.Caller` — jamais un chemin relatif au repertoire courant (meme raison que
+// [racinesGrammaire]).
+func cheminGodocGrammarRev(t *testing.T) string {
+	t.Helper()
+	_, ici, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a echoue")
+	}
+	return filepath.Join(filepath.Dir(ici), fichierHorsGrammaire)
+}
+
 // empreinteGrammaire hache les sources non-test de `filmdec` ET de `killsource`.
 func empreinteGrammaire(t *testing.T) (string, int) {
 	t.Helper()
@@ -132,7 +224,7 @@ func empreinteGrammaire(t *testing.T) (string, int) {
 	return hex.EncodeToString(h.Sum(nil)), total
 }
 
-// racinesGrammaire rend les deux paquets haches, resolus par `runtime.Caller`.
+// racinesGrammaire rend les TROIS paquets haches, resolus par `runtime.Caller`.
 //
 // PAS un chemin relatif au repertoire courant : le jour ou un paquet demenage (ADR 0012), ce
 // test doit echouer bruyamment plutot que hacher un dossier vide.
@@ -142,10 +234,13 @@ func racinesGrammaire(t *testing.T) []string {
 	if !ok {
 		t.Fatal("runtime.Caller a echoue")
 	}
-	filmDir := filepath.Dir(filepath.Dir(ici)) // .../film/filmdec -> .../film
+	// .../internal/games/halo_infinite/film/filmdec -> .../internal
+	internalDir := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(ici)))))
+	filmDir := filepath.Join(internalDir, "games", "halo_infinite", "film")
 	return []string{
 		filepath.Join(filmDir, "filmdec"),
 		filepath.Join(filmDir, "killsource"),
+		filepath.Join(internalDir, "analysis", "objectiveevents"),
 	}
 }
 

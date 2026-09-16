@@ -121,7 +121,7 @@ func TestViseeElevation(t *testing.T) {
 	// catalogue deduit des bornes. S'ils different, les bornes ne sont pas celles de cette
 	// carte et tout dz en metres serait faux — on refuse de mesurer plutot que de publier un
 	// chiffre dans une unite inconnue.
-	lay, _, err := filmdec.DetectI0Layout(dir)
+	lay, _, err := detecterI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage d'i0 illisible : %v", err)
 	}

@@ -13,6 +13,9 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		Shots:             toLayerCoverage(v.Shots),
 		Grenades:          toLayerCoverage(v.Grenades),
 		Objectives:        toLayerCoverage(v.Objectives),
+		Tracks:            ptrOf(v.Tracks, toTrackCoverage),
+		Teams:             ptrOf(v.Teams, toTeamCoverage),
+		Seats:             ptrOf(v.Seats, toSeatCoverage),
 		Projectiles:       ptrOf(v.Projectiles, toProjectileCoverage),
 		Equipment:         ptrOf(v.Equipment, toEquipmentCoverage),
 		Grapple:           ptrOf(v.Grapple, toGrappleCoverage),
@@ -43,7 +46,21 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		T0Film:            ptrOf(v.T0Film, toT0FilmCoverage),
 		Verdict:           v.Verdict,
 		Bridge:            toBridgeHealth(v.Bridge),
+		Fallbacks:         toFallbackHits(v.Fallbacks),
 	}
+}
+
+// toFallbackHits projette les replis declenches. Nil reste nil : `omitempty` fait alors
+// disparaitre le champ, et un document sans repli ne porte pas de liste vide.
+func toFallbackHits(v []replay.FallbackHit) []replaydoc.FallbackHit {
+	if len(v) == 0 {
+		return nil
+	}
+	out := make([]replaydoc.FallbackHit, 0, len(v))
+	for _, h := range v {
+		out = append(out, replaydoc.FallbackHit{Name: h.Name, Hits: h.Hits})
+	}
+	return out
 }
 
 func toLayerCoverage(v replay.LayerCoverage) replaydoc.LayerCoverage {
@@ -55,6 +72,54 @@ func toLayerCoverage(v replay.LayerCoverage) replaydoc.LayerCoverage {
 		OutOfWindow:     v.OutOfWindow,
 		Unpublished:     v.Unpublished,
 		RefusedByRoster: v.RefusedByRoster,
+	}
+}
+
+func toTrackCoverage(v replay.TrackCoverage) replaydoc.TrackCoverage {
+	return replaydoc.TrackCoverage{
+		Published:        v.Published,
+		PublishedPoints:  v.PublishedPoints,
+		RefusedMinPoints: v.RefusedMinPoints,
+		RefusedPoints:    v.RefusedPoints,
+		MinPoints:        v.MinPoints,
+		Gaps:             v.Gaps,
+		GapMS:            v.GapMS,
+	}
+}
+
+func toTeamCoverage(v replay.TeamCoverage) replaydoc.TeamCoverage {
+	return replaydoc.TeamCoverage{
+		Read:          v.Read,
+		Refusal:       v.Refusal,
+		Records:       v.Records,
+		Rejected:      v.Rejected,
+		Divergences:   v.Divergences,
+		Film:          v.Film,
+		NoTeam:        v.NoTeam,
+		Unread:        v.Unread,
+		Accord:        v.Accord,
+		Contradiction: v.Contradiction,
+		Silence:       v.Silence,
+		Tracks:        v.Tracks,
+		TracksNamed:   v.TracksNamed,
+
+		TracksSlotAmbiguous: v.TracksSlotAmbiguous,
+	}
+}
+
+// toSeatCoverage : la couverture des sieges (lot 1.9.14).
+func toSeatCoverage(v replay.SeatCoverage) replaydoc.SeatCoverage {
+	return replaydoc.SeatCoverage{
+		Entrees:         v.Entrees,
+		Sieges:          v.Sieges,
+		Lus:             v.Lus,
+		Apparies:        v.Apparies,
+		ReprisesEcrites: v.ReprisesEcrites,
+		Arrivants:       v.Arrivants,
+		PresencesCloses: v.PresencesCloses,
+		SansPresence:    v.SansPresence,
+		OccupantsMax:    v.OccupantsMax,
+		SansTableDuFilm: v.SansTableDuFilm,
 	}
 }
 
@@ -170,12 +235,16 @@ func toGrappleCoverage(v replay.GrappleCoverage) replaydoc.GrappleCoverage {
 
 func toScoreCoverage(v replay.ScoreCoverage) replaydoc.ScoreCoverage {
 	return replaydoc.ScoreCoverage{
-		TeamIdentity:  v.TeamIdentity,
-		Rounds:        v.Rounds,
-		ModeSupported: v.ModeSupported,
-		Truncated:     v.Truncated,
-		Oracle:        v.Oracle,
-		Points:        v.Points,
+		TeamIdentity:              v.TeamIdentity,
+		Rounds:                    v.Rounds,
+		ModeSupported:             v.ModeSupported,
+		Truncated:                 v.Truncated,
+		Oracle:                    v.Oracle,
+		Points:                    v.Points,
+		RoundsWritten:             v.RoundsWritten,
+		RoundsContradicted:        v.RoundsContradicted,
+		RoundsContradictedRecords: v.RoundsContradictedRecords,
+		RoundsDecreed:             v.RoundsDecreed,
 	}
 }
 

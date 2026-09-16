@@ -19,6 +19,171 @@
 # compresses), a ne pas comparer colonne a colonne avec les lignes de 2026-09-02.
 #
 #
+#
+#
+#
+# REFERENCES RE-FIGEES AU LOT 1.9.10, SCHEMA 59, LE 2026-09-16 (la fin de vie d un vehicule lue
+# au dead-state ecrit). DEUX ETAPES bougent sur les 10 films du regime court, `vehicles` et
+# `artifact` ; les 51 autres sont IDENTIQUES A L OCTET sur les dix — aucun balayage d image-cle,
+# de positions, de killsource, de drapeau, de zone ni d objectif ne diverge.
+#
+# CLASSIFICATION FAITE AVANT TOUT `-update`, film par film, par un enfant PAR PROCESSUS
+# (`replay-equiv -child -film <short8> -out <fichier>`) puis `diff` du `.tsv` produit contre sa
+# reference. Le harnais parent ne nomme que la PREMIERE ligne differente (`comparer`,
+# `parent.go:250`) : conclure « une seule etape » de sa sortie aurait ete faux.
+#
+# POURQUOI LES DEUX ETAPES BOUGENT, ET POURQUOI C EST VOULU.
+#   (1) `vehicles` est l objet `VehicleScan` OBSERVE. Il gagne DEUX CHAMPS — `Deaths` (les morts
+#       ecrites que la marche lit dans `object-dead-state` de `ti=40`) et `DeathStats` (leurs
+#       denominateurs). C est la FORME de l objet observe qui change, comme au lot 1.9.3 ou
+#       `Stats.Couples` avait fait bouger l etape `killsource` sur les dix films.
+#   (2) `artifact` est le document cuit. `VehicleTrack.End` cesse de valoir `unknown` pour tout
+#       le monde et prend `destroyed` (date par `TEnd`) ou `film_end` ; `coverage.vehicles`
+#       gagne huit compteurs, et l entree du repli RETIRE disparait de `coverage.fallbacks`.
+#       Le delta d octets est petit et entierement explique : +141 EXACTEMENT sur les quatre
+#       films qui ne portaient PAS l entree de repli (`bcb6d393`, `51101d1d`, `d9781168`,
+#       `fb1a1a72`) — les huit compteurs, et rien d autre ; +79 a +113 sur les six autres, ou
+#       les octets de l entree retiree et des episodes d occupation raccourcis se soustraient
+#       de ces memes +141. Detail par film : 60ae07c4 +79, 11de8353 +88, 50247b26 +91,
+#       111fa685 +101, a521164d +112, e5adf7b2 +113.
+#
+# CE QUI N EST PAS UNE REGRESSION, ET LE CORPUS GATE LE DIT : 14 temoins, schema 59 -> 59
+# partout, colonne `changements` A ZERO sur les quatorze. Les seules « pertes » rapportees sont
+# des compteurs qui BAISSENT — `coverage.fallbacks/n` (le repli retire) et
+# `vehicles/par-end/unknown` (les vies qui quittent l ignorance pour une cause LUE : 97 -> 78 sur
+# `084a804d`, 15 -> 7 sur `111fa685`, 53 -> 46 sur `e5adf7b2`, 109 -> 103 sur `a349fea8`, et
+# 11 -> ZERO sur `bfecd02b`) — plus un episode d occupation qui cessait de survivre a son
+# vehicule (`084a804d` slot 793, -184 frames ; `4f77afc1`, -157).
+#
+# HISTORIQUE — le bloc precedent :
+# REFERENCES RE-FIGEES AU COMMIT d8a0c50dd, SCHEMA 59, LE 2026-09-16 (lot 1.9.9). CINQ des dix films
+# du regime court ont bouge : `50247b26`, `a521164d`, `11de8353`, `111fa685`, `e5adf7b2`. Cinq
+# sont restes IDENTIQUES : `60ae07c4`, `bcb6d393`, `51101d1d`, `d9781168`, `fb1a1a72`.
+#
+# LA LIGNE DE PARTAGE EST CELLE DES VEHICULES, et elle est nette : les cinq films qui bougent
+# sont les cinq BTB / Heavies (Oasis, Fragmentation Heavies, Thunderhead, Command,
+# Fragmentation) ; les cinq identiques sont les cinq ARENES (Live Fire Ranked Oddball,
+# Cliffhanger CTF, Fortress CTF, Dredge Oddball, Banished Narrows CTF), ou aucun vehicule ne
+# naît. Un lot qui ne touche qu a la table des chassis ne peut pas produire une autre carte.
+#
+# UNE SEULE ETAPE BOUGE SUR LES 53, `artifact`, et c est la DERNIERE (le contrat le fige :
+# `cmd/replay-equiv/parent_test.go`, « derniere etape attendue artifact »). C est ce qui rend la
+# lecture COMPLETE : `comparer()` s arrete au PREMIER ecart, donc un ecart rapporte a l etape 53
+# prouve que les 52 precedentes sont identiques. Le `git diff` des cinq `.tsv` le confirme
+# mecaniquement — cinq lignes, toutes `artifact`, sur 530 lignes d etapes.
+#
+# AUCUNE ETAPE DE DECODAGE NE BOUGE, y compris `vehicles` (etape 42). C est exact et c est le
+# point : `s.opt.observe("vehicles", s.in.Vehicles)` (`film_scan.go`) digere le BALAYAGE du film
+# — images-cles, creations, positions, evenements, visees —, pas les vies publiees. La table des
+# chassis s applique plus tard, a l assemblage. Le decodeur lit donc les memes octets ; seul le
+# document publie change.
+#
+# LES CINQ DOCUMENTS GROSSISSENT, et le delta est proportionnel a ce que le lot rend :
+#   50247b26  5 600 811 -> 5 675 668  (+74 857)
+#   a521164d  3 406 910 -> 3 460 827  (+53 917)
+#   e5adf7b2  5 836 251 -> 5 868 332  (+32 081)
+#   11de8353  5 347 685 -> 5 356 149  ( +8 464)
+#   111fa685  5 935 757 -> 5 935 816  (    +59)
+# Le `+59` de `111fa685` est la taille d une entree `coverage.fallbacks[]` et RIEN d autre :
+# aucun de ses chassis n est parmi les sept nommes, son golden d assemblage n a pas bouge non
+# plus. Les quatre autres portent en plus des familles resolues, les occupants qui reviennent et
+# les tirs qui se rattachent.
+#
+# POURQUOI ON PEUT RE-FIGER ICI — TROIS CHAINES INDEPENDANTES, ET ELLES CONCORDENT.
+#   (1) LA PIECE ECRITE. Les sept chassis entres viennent tous de
+#       `.ai/V7.5/film_re/sons_v3_reconstruits/manifeste_v3.json` (section `par_vehicule`),
+#       celle que la table citait deja pour `fe32c0f4`. Un meme vehicule est declare dans
+#       PLUSIEURS modules du jeu sous un GlobalID par module — le manifeste l ecrit :
+#       « f6f54e56 (any/globals) = chassis 0000d3db (pc/globals), meme hlmt ».
+#   (2) LA MESURE. Sur 76 artefacts du parc, AUCUN identifiant de base d une famille
+#       Covenant/UNSC n est jamais observe ; seul le second l est. Le Wraith et le Scorpion, qui
+#       n avaient QUE leur base, ne se resolvaient donc jamais.
+#   (3) LA KILLSOURCE, seconde source independante de la chaine de destruction : 37 kills sur 40
+#       au tag `sb_010_veh_cv_wraith` tombent DANS une vie de `ae845375`, et 4 sur 4 au tag
+#       `sb_010_veh_un_scorpion` dans la vie de `f6f54e56`. Les 3 restants sont du MEME tueur,
+#       6,5 s et 22,8 s apres la fin publiee de la vie ou il tuait deja — le defaut de borne de
+#       recensement que le lot 1.9.10 corrige, pas une refutation.
+#
+# CE QUE LES CINQ FILMS IDENTIQUES ETABLISSENT : le lot ne touche rien hors du calque des
+# vehicules. Cinq arenes, cinq modes differents, 53 etapes chacune : zero difference.
+#
+# MESURE APRES RE-FIGEAGE : 10 films, 10 identiques, 0 different, 0 ecarte, 0 echec.
+#
+# REFERENCES RE-FIGEES AU COMMIT 76d36b911, SCHEMA 59, LE 2026-09-16 (lot 1.9.1 bis). Sept des
+# dix films du regime court ont bouge : `60ae07c4`, `111fa685`, `e5adf7b2`, `bcb6d393`,
+# `51101d1d`, `d9781168`, `fb1a1a72`. Trois sont restes IDENTIQUES : `50247b26`, `a521164d`,
+# `11de8353`.
+#
+# UNE SEULE ETAPE BOUGE SUR LES 53, `killsource`, sur les sept films — aucune etape d image-cle,
+# de positions ni d `artifact` ne diverge. Le `git diff` des sept `.tsv` ne porte que sept
+# lignes, toutes `killsource`.
+#
+# POURQUOI ON PEUT RE-FIGER ICI. Le lot porte deux corrections relues CHEZ L ECRIVAIN.
+#   (1) LES DEUX MOTS DE TAILLE SONT DES GARDES. `FUN_142e2bfd0` porte deux fois
+#       `if (0 < (int)uVar7)` : le premier garde `vtable[0x60]` (l etat par defaut), le second
+#       `vtable[0x88]` puis `FUN_1428e2b68`, qui mene a la boucle de composants. Donc `n1 == 0`
+#       -> aucun etat par defaut n est ecrit, `n2 == 0` -> aucun composant, et la comparaison
+#       est SIGNEE. Le depot lisait les deux inconditionnellement : un record a `n2 == 0` se
+#       voyait deroule, et ce qu on y lisait etait du bruit. `killsource` lit ces records : son
+#       digest change, et c est la correction qui le fait changer.
+#   (2) LE PROFIL DU BUILD PASSE DEVANT LA CALIBRATION pour les builds dont la largeur du bloc
+#       MPP est RELUE (`HI_1_12_0`, `HI_1_13_0` : 9/5, `FUN_141fd72c0` litteral `141fd72de`).
+#       Ailleurs la calibration decide encore, et c est desormais un repli NOMME au registre
+#       (`repli_largeurs_mpp_calibrees_sur_le_film`, condition `build_sans_profil_relu`).
+#
+# CE QUE LES TROIS FILMS IDENTIQUES ETABLISSENT : ils ne portent aucun record a `n2 == 0` sur le
+# chemin de `killsource`. La correction ne touche donc que ce qu elle doit toucher.
+#
+# LE CORPUS GATE DU MEME JOUR, QUI EST L AUTRE CHAINE : 14 temoins, **schema 59 -> 59 partout**,
+# **0 changement** (la colonne `chang.` a ete ajoutee au gate ce jour-la : `bilanDepuisRapport`
+# JETAIT `BilanAxe.Changements`, donc un temoin dont une valeur publiee bougeait sortait `ok`),
+# 31 gains, et 3 « pertes » qui sont TOUTES des compteurs de defauts en baisse :
+# `coverage.equipmentChanges.missedEstimate` 17 -> 16 sur `a349fea8`, `coverage.teams.divergences`
+# 4 -> 2 et `coverage.teams.unread` 4 -> 3 sur `4f77afc1`. Aucune regression, et `SchemaVersion`
+# reste 59 : aucun octet cuit ne change de forme.
+#
+# MESURE APRES RE-FIGEAGE : 10 films, 10 identiques, 0 different.
+#
+# REFERENCES RE-FIGEES AU COMMIT a752403da, SCHEMA 55, LE 2026-09-14 (lot 1.1.6). Les references
+# precedentes dataient du schema 54 : depuis le lot 1.0.4 — qui publie `coverage.tracks`
+# (`published`, `publishedPoints`, `refusedMinPoints`, `refusedPoints`, `minPoints`) et monte
+# `SchemaVersion` de 54 a 55 — CHAQUE lot voyait le meme ecart a l etape `artifact` sur les vingt
+# films, un rouge permanent qui masque le prochain vrai.
+#
+# UNE SEULE ETAPE BOUGE, `artifact`, sur les 20 films ; les 49 autres sont IDENTIQUES partout —
+# aucun balayage n a change. Delta d octets = la longueur exacte du champ neuf (94 o fixes plus
+# les chiffres) : +102 (x1), +103 (x2), +104 (x14), +105 (x2), +106 (x1). Le `git diff` des
+# vingt `.tsv` ne porte que vingt lignes, toutes `artifact`.
+#
+# POURQUOI ON PEUT RE-FIGER ICI, ET CE QUI L ETABLIT. Le lot 1.1 (equipe d un evenement du pied
+# lue a l octet 37 et non 55) ne peut pas changer le document cuit, et ce n est pas une opinion :
+# LA CHAINE DE CUISSON N APPELLE JAMAIS LE LECTEUR DU PIED. Ses points d entree dans
+# `objectiveevents` sont `StatRecordsCtx` (`replaybuild/matchfacts.go:98`) et `CaptureBurstTimes`
+# (`:253`) — plus les fonctions pures qui travaillent sur les enregistrements deja decodes
+# (`NamedEventsFrom`, `IdentifyNamedEventsByRound`, `ResolveRoundIdentity`, `ObjectiveTypeOf`).
+# `CaptureBurstTimes` ne lit que les chunks de type 2, jamais le pied.
+#
+# LE COMPTE EXACT DES APPELANTS (re-mesure de la ronde 2, constat C3 — la phrase precedente en
+# annoncait UN et il y en a SIX). `grep -rn "objectiveevents\.Extract(" --include=*.go apps/go-api/`
+# rend six lignes : UNE hors test, `cmd/diag_weapons_v3/process.go:37` (un diagnostic, pas la
+# cuisson), et CINQ dans des fichiers `_test.go` de `internal/games/halo_infinite/film/replay/`
+# (`bombe_b2_chronologie_test.go:402`, `colline_proprietaire_d2bis_test.go:170`,
+# `objectifs_phase0_nommage_test.go:229`, `oddball_crane_d4_test.go:174`,
+# `oddball_th10_d10_test.go:122`). Aucun binaire de production ne passe par la.
+# `FooterEvents`, lui, n a que DEUX appelants de production — `extract.go:168` (`extractCTF`) et
+# `extract.go:236` (`extractFromTh10`) — tous deux sous `Extract`. La conclusion tient donc,
+# mais elle repose sur six lignes, pas sur une.
+#
+# CE QUE LA MESURE AJOUTE A CE GRAPHE : une seule etape bouge (`artifact`), et son delta est
+# EXACTEMENT celui du champ publie par le lot 1.0.4 — pas un octet de plus, pas un de moins, sur
+# les vingt films. Deux faits independants, une seule conclusion. (Un controle complementaire a
+# ete joue le 2026-09-14 — les deux fichiers de production remis a HEAD, re-mesure sur
+# `51101d1d` et `bcb6d393`, memes empreintes et memes comptes — mais il ne pouvait pas rougir,
+# justement parce que la chaine n appelle pas ce code : il confirme, il ne prouve pas.)
+#
+# Les references de 2dad8d6df restent lisibles par `git show 2dad8d6df:<chemin du .tsv>`.
+#
+# HISTORIQUE — le bloc precedent (schema 54) :
 # REFERENCES RE-FIGEES AU COMMIT 2dad8d6df, SCHEMA 54, LE 2026-09-13 (lot 0.D.5, seconde fusion
 # de feat/v75 — c28f7da59, 55 commits de finitions et d'ajustements). DEUX ETAPES bougent sur les
 # 20 films, `flag` et `artifact` ; les 48 autres sont identiques partout. Attribution faite PAR
@@ -117,3 +282,82 @@ a521164d | 33 / HI_1_4_1 | Fragmentation Heavies | BTB Heavies:Total Control | 2
 e5adf7b2 | 40 / HI_1_11_0 | Fragmentation | BTB:Fiesta Slayer | 31 | 34.3 | lot 0.A.1 : seul temoin HI_1_11_0 ; echantillon court
 bcb6d393 | 40 / HI_1_12_0 | Cliffhanger | CTF:Arena | 21 | 18.1 | lot 0.A.1 : seul temoin HI_1_12_0 ; le plus leger du corpus ; echantillon court
 fb1a1a72 | 41 / HI_1_13_0 | Banished Narrows | CTF:Arena multi-manche | 43 | 38.9 | lot 0.A.1 : CTF MULTI-MANCHE (manches negatives du lot P1) ; echantillon court
+#
+# REFERENCES RE-FIGEES A LA FUSION DU LOT 1.9.1 bis DANS L INTEGRATION, SCHEMA 59, LE 2026-09-16
+# (pilote). Les lots 1.9.3 (couple tueur / victime lu au kill-event 85) et 1.9.1 bis (gardes n1/n2)
+# touchent la MEME etape `killsource` sur les MEMES sept films du regime court (`60ae07c4`,
+# `111fa685`, `e5adf7b2`, `bcb6d393`, `51101d1d`, `d9781168`, `fb1a1a72`) : chaque branche avait
+# re-fige ses references contre SON code, aucune des deux ne valait pour l arbre reuni.
+# Classification AVANT tout `-update`, sur l arbre fusionne : 3 identiques (`50247b26`, `a521164d`,
+# `11de8353`), 7 differents, et sur les sept UNE SEULE etape des 53, `killsource` — aucune autre.
+# Re-figeage des sept, puis passe de comparaison : 7/7 puis 10/10 identiques, 0 ecarte, 0 echec.
+#
+# REFERENCES RE-FIGEES AU LOT 1.9.1 ter, SCHEMA 59, LE 2026-09-15 (feu vert du pilote apres
+# classification). CAUSE : DIVERGENCE DE FORME DE L OBJET OBSERVE, PAS DU CONTENU DECODE.
+# Le lot 1.9.1 ter a ajoute deux champs a `filmdec.EquipmentPlacementStats` — `FormatVersion` et
+# `FormatSansProfil` — pour que `replay` puisse cabler le compteur `filmdec_unknown_format_<n>`
+# (un format de `chunk_00` inconnu bascule sur le repli calibre, et ce repli doit se VOIR).
+# `replay/film_scan.go:329` fait `observe("placements.stats", s.in.PlacementStats)` : il hache la
+# STRUCT ENTIERE, donc son sha bouge sur les dix films alors qu aucun bit decode ne change.
+#
+# CE QUI ETABLIT QUE C EST UNE DIVERGENCE ET NON UNE REGRESSION, DANS CET ORDRE :
+#   1. STRUCTUREL — `buildEquipmentPlacements` (`replay/equipment_placements.go`) construit
+#      `EquipmentPlacementCoverage` a partir de champs NOMMES (`Scanned`, `Calibration`, `Lives`,
+#      `Anchors`, `Confirmed`, `ByFamily`, ...), jamais par recopie de la struct : les deux champs
+#      neufs n atteignent PAS le document cuit. Ce n est pas une mesure, c est une lecture du code.
+#   2. MESURE — classification AVANT tout `-update`, sortie complete capturee : 10 films,
+#      10 ecarts, et `ECART a l etape "placements.stats"` sur les DIX, aucune autre etape des 53.
+#      Ni `placements`, ni `artifact`, ni `killsource`, ni aucune etape d image-cle ne diverge.
+#   3. CONTROLE — `fb1a1a72` : `poses=341` et `bytes=3016354` au journal du run, identiques a la
+#      reference (`placements 341`, `artifact 3016354`).
+#   4. GIT — apres `-update` : 10 fichiers, 10 insertions, 10 suppressions, TOUTES sur la ligne
+#      `placements.stats`. Une seule ligne par fichier, et c est exactement celle attendue.
+# Motif identique a D4 (1.8) et au lot 1.9.3 (`killsource`) : la FORME de l objet observe change,
+# ses projections ne bougent pas d un bit. `SchemaVersion` reste 59.
+# REFERENCES RE-FIGEES AU LOT 1.9.13, SCHEMA 59, LE 2026-09-15 (une vie finit a une mort ECRITE).
+# Classification AVANT tout `-update`, echantillon court, 10 films : 0 identique, 10 differents —
+# et sur les dix UNE SEULE etape des 53, `artifact`. Les 52 etapes de DECODAGE sont identiques a
+# l octet sur les dix films : le lot ne lit aucun octet autrement, il change l ASSEMBLAGE (la
+# decoupe des vies passe du seuil de trou a ce que le film ECRIT). Le `git diff` des dix
+# references le confirme : 1 insertion + 1 suppression par fichier, toutes `artifact`.
+#
+# LE DELTA D OCTETS S EXPLIQUE FILM PAR FILM PAR LE NOMBRE DE LACUNES (une lacune = une vie qui
+# ne se coupe plus, soit ~195 octets d en-tete de piste en moins) :
+#   50247b26    0 lacune   +79 o    le registre ne rend AUCUNE vie (`viesTotal=0`, film sans
+#                                   section d identification) : le REPLI reproduit l ancienne
+#                                   decoupe a l identique, et les +79 o sont les deux champs neufs
+#                                   (`gaps`, `gapMs`) plus l entree neuve de `coverage.fallbacks[]`
+#   bcb6d393    1 lacune     -186 o        51101d1d    5 lacunes    -970 o
+#   60ae07c4    8 lacunes  -1 557 o        fb1a1a72    3 lacunes    -600 o
+#   d9781168   16 lacunes  -3 251 o        111fa685   33 lacunes  -6 174 o
+#   e5adf7b2   38 lacunes  -7 353 o        a521164d   55 lacunes -11 227 o
+#   11de8353   64 lacunes -12 769 o
+# Re-figeage des dix, puis passe de comparaison : 5/5 + 5/5 puis 10/10 identiques, 0 ecarte,
+# 0 echec. `repli_vie_coupee_au_trou_de_replication` : 1 declenchement sur `50247b26`, 0 sur les
+# neuf autres.
+#
+# REFERENCES RE-FIGEES AU GATE UNIQUE DE LA VAGUE 2 (integration, schema 60, 2026-09-17, pilote).
+# Les references portees par les branches 1.9.10 / 1.9.13 / 1.9.9 etaient PROVISOIRES (chacune
+# figee contre son propre code) ; sur l arbre fusionne (vague 2 + corrections de la revue M1 +
+# montee 59 -> 60), classification AVANT tout `-update` : 0 identique, 10 differents ; etapes
+# divergentes par film (diff des 10 tsv apres re-figeage, 35 lignes sur 530) :
+#   killsource       10/10 — lot 1.9.7 (appariement par identite de paquet) + revue M1 L4 (porte
+#                    de publication AffectationUnique) ; `KillSourceDecoderRev` killsource-2026-09-16.2
+#   placements.stats 10/10 — FORME de l objet observe (`EquipmentPlacementStats`, porte unique
+#                    MPPWidthsForFilm de la revue D13) ; l etape `placements` (la projection) est
+#                    IDENTIQUE sur les 10 : motif D4 (1.8), aucun octet de pose ne bouge
+#   vehicles          6/10 — FORME de `VehicleScan` (lot 1.9.10 : Deaths, DeathStats), sur les six
+#                    films a vehicules ; les quatre arenes n y touchent pas
+#   artifact         10/10 — le CONTENU cuit : schema 60, fins de vie de vehicule lues, familles
+#                    nommees, lacunes de piste, sieges, designateurs de manche, champs de la revue
+# AUCUNE autre etape des 53 ne diverge (positions, images-cle, drapeaux, zones, objectifs, tirs :
+# identiques a l octet). Passe de comparaison apres re-figeage : 10 identiques, 0 different.
+#
+# 2026-09-17 — CLOTURE M1, re-figeage UNIQUE (V9, point 5) a la tete d integration 170ecaab5 :
+# regime complet sur les 20 films. 10 identiques (re-figes au gate unique de la vague 2), 10 a
+# reference du lot 1.2 (08d01d791) re-figes ici apres classification (diff des tsv, 90 lignes sur
+# 530) : flag, killsource, placements.stats, spawnEvents, vehicles, filmTable, playerTeams,
+# artifact sur les 10 (lots 1.6 a 1.9.13, revue M1, schema 55 -> 60) ; inventoryDeltas (01e1f945,
+# 9f57c612), camoStates + pads (9f57c612), equipmentChanges (a349fea8) — grammaire de l equipement
+# 1.9.1 bis/ter ; bombReads (9f57c612) — lot 1.4. Aucune autre etape. Ces 20 references sont
+# l ORACLE de M2 : zero difference attendue a chaque lot (D4).

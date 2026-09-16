@@ -310,7 +310,7 @@ func v0GrammaireUnFilm(t *testing.T, root string, f v0Film) {
 	// monde en emploient les quatre (regle etablie par matchWorldObjectRecord).
 	opt := filmdec.DefaultScanFilmOptions()
 	opt.WorldRange, opt.RequireTag1 = &wr, false
-	lay, _, err := filmdec.DetectI0Layout(dir)
+	lay, _, err := detecterI0Layout(dir)
 	if err != nil {
 		t.Logf("V0 %s : decoupage i0 illisible : %v", f.ID, err)
 		return

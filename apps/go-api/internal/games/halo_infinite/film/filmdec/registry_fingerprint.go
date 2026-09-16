@@ -4,30 +4,31 @@ package filmdec
 //
 // LE PROBLEME QU'ELLE RESOUT. Toute la grammaire de ce decodeur est indexee par le registre
 // du film (`chunk_00`) : les noms de composants routent le dispatch, leur ORDRE est l'index de
-// bit du masque de presence. Le registre est bit-a-bit IDENTIQUE sur tous les films mesures a
-// ce jour — trois films, trois cartes differentes (lot table ECS, 2026-08-18). Cette stabilite
-// est une propriete du BUILD DU JEU, pas du format : une mise a jour de Halo Infinite peut
-// reordonner, ajouter ou renommer des composants, et rien dans le decodeur ne le dirait. Les
-// symptomes seraient des desalignements silencieux, attribues a une mauvaise grammaire de
-// composant pendant des jours.
+// bit du masque de presence. Le registre est bit-a-bit IDENTIQUE d'un film a l'autre DANS UN
+// MEME BUILD — trois films, trois cartes differentes (lot table ECS, 2026-08-18) — et il CHANGE
+// d'un build a l'autre (49 blocs / 1 031 entrees avant HI_1_12_0, 50 / 1 067 ensuite ; mesure du
+// lot 1.2 sur les sept bobines par build). Cette stabilite est une propriete du BUILD DU JEU,
+// pas du format : une mise a jour de Halo Infinite peut reordonner, ajouter ou renommer des
+// composants, et rien dans le decodeur ne le dirait. Les symptomes seraient des desalignements
+// silencieux, attribues a une mauvaise grammaire de composant pendant des jours.
 //
 // CE QUE L'EMPREINTE EST. Un FNV-1a 64 bits sur la concatenation, DANS L'ORDRE DU CHUNK, des
-// slots NON VIDES : les quatre octets `kind` (u32 LE, slot+0), les quatre octets `flags`
-// (u32 LE, slot+4), puis les octets du NOM. Les slots de bourrage — nom vide — n'y entrent
-// pas : ce sont eux qui portent le reste du bloc de 64 slots et ils ne disent rien de la
-// grammaire.
+// ENTREES NOMMEES : les quatre octets du NIVEAU (u32 LE, entree+0x100) puis les octets du NOM.
+// Les entrees de bourrage — nom vide — n'y entrent pas : ce sont elles qui portent le reste du
+// bloc de 64 entrees et elles ne disent rien de la grammaire.
 //
-// POURQUOI ELLE EST CALCULEE A LA LECTURE et pas recalculee a la demande : `kind` n'est PAS
-// retenu par `parseRegistry` (aucun deser ne le lit — R7-e a etabli que le premier `u32` d'un
-// slot est la queue de bourrage du nom precedent, pas un champ). Le garder dans `Archetype`
-// serait un champ sans lecteur ; l'empreinte se calcule donc pendant l'unique passe qui voit
-// les octets, et `RegistryFingerprint` la rend.
+// LE DOMAINE A CHANGE AU LOT 1.2 (2026-09-14), ET C'EST LE POINT. Il hachait auparavant
+// `kind | flags | nom` — deux champs qui n'existent pas : le « kind » etait la queue de
+// bourrage du nom voisin et le « flags » le niveau du composant PRECEDENT. Une empreinte qui
+// hache un decalage fige le decalage. Elle hache desormais exactement ce que le jeu lit.
 //
-// CE QU'ELLE NE FAIT PAS. Elle ne refuse aucun film et ne change aucune largeur. Le decalage
-// `Flags[k]` / `Flags[k+1]` (le jeu lit le niveau un cran plus loin, mesure au lot R7-e,
-// inerte a ce jour) n'est PAS corrige ici : l'empreinte fige le binaire TEL QU'IL EST LU. La
-// corriger sans temoin deplacerait un bug silencieux — decision consignee au registre des
-// reports.
+// POURQUOI ELLE EST CALCULEE A LA LECTURE et pas recalculee a la demande : elle travaille sur
+// les OCTETS du chunk, dans les memes bornes que le parse, et `Archetype` ne retient pas les
+// octets. L'empreinte se calcule donc pendant l'unique passe qui les voit, et
+// `RegistryFingerprint` la rend.
+//
+// CE QU'ELLE NE FAIT PAS. Elle ne refuse aucun film et ne change aucune largeur : c'est un
+// signal, pas une porte.
 
 import (
 	"context"
@@ -43,40 +44,40 @@ import (
 // lot 3 du plan « percer la trame » etait `len(fichier)/taille_bloc`, un artefact de division
 // qui annexait les sections suivantes de chunk_00 au registre).
 //
-// RECALCULEE LE 2026-08-17 (lot 0, item 0.3) et NON RECOPIEE. Elle ne vaut pas le
-// `0xa413610cd08e4355` cite par le commentaire de `registry.go`, et l'ecart est explique :
-// cette valeur-la est un FNV sur « noms + flags » (deux champs), celle-ci sur
-// `kind | flags | nom` (trois champs, `kind` inclus). Deux domaines, deux valeurs — la
-// documentee n'etait pas transposable.
+// RECALCULEE LE 2026-09-14 (lot 1.2) SUR LE CADRAGE DU JEU, et non recopiee : elle est la
+// somme des entrees de `../killsource/testdata/minibobine_000d5950` sur le domaine
+// `niveau | nom`. La valeur precedente (`0x61e492dd4de7fd4e`, lot 0 du 2026-08-17) hachait
+// `kind | flags | nom`, et celle que citait l'ancien commentaire de `registry.go`
+// (`0xa413610cd08e4355`) hachait « noms + flags » : trois domaines, trois valeurs — aucune
+// n'est transposable dans une autre.
 //
-// CE QUE LA MESURE A TROUVE DU PREMIER COUP, ET QUI CHANGE UNE CROYANCE DU DEPOT : le registre
-// N'EST PAS identique sur tous les films. `000d5950` et `64e8adfa` rendent bien la meme valeur
-// (50 blocs / 1 067 slots), mais `06dfe6d9` rend `0x5827362c37d2adb3` sur **49 blocs et
-// 1 031 slots non vides** — 1 bloc, 1 porteur et 36 composants de moins (compte de blocs
-// re-mesure au lot 3 apres la borne structurelle ; l'empreinte de ce film n'a pas bouge, il
-// ne portait aucun slot fantome). La stabilite mesuree au
-// lot table ECS (« bit-a-bit identique sur 000d5950, 00502e52, 07aa428d ») vaut DANS UN BUILD,
-// pas entre builds. C'est exactement ce que cette empreinte est faite de dire, et l'alerte se
-// declenche a bon droit sur ce film : sa grammaire n'est pas celle que la table decrit.
-const KnownRegistryFingerprint uint64 = 0x61e492dd4de7fd4e
+// CE QUE LA MESURE DU LOT 0 AVAIT TROUVE, ET QUI RESTE VRAI : le registre n'est PAS identique
+// sur tous les films. `000d5950` et `64e8adfa` rendent la meme valeur (50 blocs / 1 067
+// entrees), mais `06dfe6d9` en rend une autre sur **49 blocs et 1 031 entrees nommees** — 1
+// bloc, 1 porteur et 36 composants de moins. La stabilite mesuree au lot table ECS
+// (« bit-a-bit identique sur 000d5950, 00502e52, 07aa428d ») vaut DANS UN BUILD, pas entre
+// builds. C'est exactement ce que cette empreinte est faite de dire, et l'alerte se declenche
+// a bon droit sur ces films : leur grammaire n'est pas celle que la table decrit.
+const KnownRegistryFingerprint uint64 = 0x36ca8c3d2a2f9b88
 
 // registryFNV accumule l'empreinte pendant la passe de lecture des blocs. Il travaille sur le
-// buffer INFLATE et sur les memes bornes que `parseRegistry` : un slot tronque en fin de
-// buffer est ignore plutot que hache a moitie.
+// buffer INFLATE et sur les memes bornes que `parseRegistry` : une entree tronquee en fin de
+// buffer est ignoree plutot que hachee a moitie.
 type registryFNV struct {
 	h     hash.Hash64
-	slots int // slots non vides haches — le denominateur de l'alerte
+	slots int // entrees nommees hachees — le denominateur de l'alerte
 }
 
 // registryHasher construit l'accumulateur de l'empreinte.
 func registryHasher() *registryFNV { return &registryFNV{h: fnv.New64a()} }
 
-// addSlot ajoute `kind | flags | nom` d'un slot non vide.
-func (f *registryFNV) addSlot(data []byte, off int, name string) {
-	if off+8 > len(data) {
+// addEntry ajoute `niveau | nom` d'une entree nommee. `off` est l'octet de l'ENTREE.
+func (f *registryFNV) addEntry(data []byte, off int, name string) {
+	lv := off + registryEntryLevelOffset
+	if lv+4 > len(data) {
 		return
 	}
-	_, _ = f.h.Write(data[off : off+8]) // kind (u32 LE) | flags (u32 LE), octets du fichier
+	_, _ = f.h.Write(data[lv : lv+4]) // u32 niveau LE, octets du fichier
 	_, _ = f.h.Write([]byte(name))
 	f.slots++
 }

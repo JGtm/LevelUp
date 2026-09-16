@@ -137,9 +137,9 @@ func comparerRegistres(t *testing.T, got, want *Registry) {
 				i, len(a.Components), len(b.Components))
 		}
 		for k := range b.Components {
-			if a.Components[k] != b.Components[k] || a.Flags[k] != b.Flags[k] {
+			if a.Components[k] != b.Components[k] || a.Levels[k] != b.Levels[k] {
 				t.Fatalf("archetype %d, composant %d : %q/%d, le recalcul direct dit %q/%d",
-					i, k, a.Components[k], a.Flags[k], b.Components[k], b.Flags[k])
+					i, k, a.Components[k], a.Levels[k], b.Components[k], b.Levels[k])
 			}
 		}
 	}

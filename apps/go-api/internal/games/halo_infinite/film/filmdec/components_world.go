@@ -9,11 +9,11 @@ package filmdec
 // Retrait 2026-08-01 (lot C, PLAN_DETTE_AVANT_MERGE) de six ports orphelins de ce fichier
 // (`effect-state-data`, `music-state`, `tacmap-poiicon`, `crew-marked-objects`, `crew-order`,
 // `state-broker`). Les cinq premiers sont SUPPLANTÉS par le port INLINE de traverse.go, qui
-// est le port CORRIGÉ : il lit les vec3 en quantification 6+level (flags du registre) là où
-// ceux d'ici employaient les largeurs fixes de TraversalPrecision, et il DÉSYNCHRONISE
-// proprement sur les branches de largeur runtime au lieu de deviner des bits (décision de
-// méthode inscrite en tête du bloc `crew-order` de traverse.go). Les rebrancher, ce serait
-// réintroduire l'approche écartée. `state-broker` visait ti=46, ni décodé ni planifié.
+// est le port CORRIGÉ : il lit les vec3 en quantification 6+level (le niveau de l'entrée du
+// registre) là où ceux d'ici employaient les largeurs fixes de TraversalPrecision, et il
+// DÉSYNCHRONISE proprement sur les branches de largeur runtime au lieu de deviner des bits
+// (décision de méthode inscrite en tête du bloc `crew-order` de traverse.go). Les rebrancher,
+// ce serait réintroduire l'approche écartée. `state-broker` visait ti=46, ni décodé ni planifié.
 
 // change-scene-component (FUN_142ed3fcc): R(6) + R(12)=N + N-bit blob (N self-describing).
 func consumeChangeScene(br *BitReader) {
@@ -40,7 +40,7 @@ func consumeSpawnFilterType(br *BitReader) {
 			br.ReadBits(5)
 		}
 	case 2:
-		br.readQuantStat(1, 13)
+		br.readQuantStat(1)
 		br.ReadBits(6)
 	default:
 		br.ReadBits(32)

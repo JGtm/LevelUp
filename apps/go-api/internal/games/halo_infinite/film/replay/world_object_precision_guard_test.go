@@ -39,7 +39,7 @@ func TestInstallWorldObjectPrecision(t *testing.T) {
 	if entry.AxisWidths == prev.AxisW {
 		t.Fatal("le cas de test doit différer du défaut de paquet, sinon il ne mesure rien")
 	}
-	restore := installWorldObjectPrecision(entry, "testdata")
+	restore := installWorldObjectPrecision(entry, "testdata", nil)
 	if got := filmdec.WorldObjectPrecision.AxisW; got != entry.AxisWidths {
 		t.Fatalf("largeurs NON INSTALLÉES : %v, attendu %v (celles de la carte du match)",
 			got, entry.AxisWidths)
@@ -59,7 +59,7 @@ func TestInstallWorldObjectPrecisionKeepsDefaultWithoutWidths(t *testing.T) {
 	prev := filmdec.WorldObjectPrecision
 	t.Cleanup(func() { filmdec.WorldObjectPrecision = prev })
 
-	restore := installWorldObjectPrecision(filmdec.MapQuantEntry{Module: "sans_largeurs"}, "testdata")
+	restore := installWorldObjectPrecision(filmdec.MapQuantEntry{Module: "sans_largeurs"}, "testdata", nil)
 	if filmdec.WorldObjectPrecision != prev {
 		t.Fatalf("largeurs à zéro installées (%v) : le décodeur lirait des champs de 0 bit",
 			filmdec.WorldObjectPrecision.AxisW)
@@ -86,9 +86,9 @@ func TestBuildFromFilmRefusesWithoutMapQuant(t *testing.T) {
 }
 
 // TestBuildFromFilmWiresWorldObjectPrecision : le branchement. `BuildFromFilm` doit installer
-// les largeurs DEPUIS `opt.MapQuant`, en DIFFÉRÉ (donc restaurer), et APRÈS avoir pris le verrou
+// les largeurs DEPUIS `opt.MapQuant`, en DIFFÉRÉ (donc restaurer), APRÈS avoir pris le verrou
 // de décodage — le descripteur est un global, deux films décodés en parallèle se voleraient
-// leurs largeurs.
+// leurs largeurs — et AVANT l'étage de balayage, qui les consomme.
 func TestBuildFromFilmWiresWorldObjectPrecision(t *testing.T) {
 	src, err := os.ReadFile("build_from_film.go")
 	if err != nil {
@@ -105,10 +105,27 @@ func TestBuildFromFilmWiresWorldObjectPrecision(t *testing.T) {
 			"Cliffhanger (défaut de paquet). Mesuré le 2026-08-15 : la part d'échantillons de " +
 			"projectile dans l'emprise des bipèdes tombe de ~99 % à 0,09-65 % hors Cliffhanger")
 	}
+	poseInstall := install.FindStringIndex(body)[0]
 	lock := strings.Index(body, "filmdec.LockProcessDecode()")
-	if lock < 0 || lock > install.FindStringIndex(body)[0] {
+	if lock < 0 || lock > poseInstall {
 		t.Fatal("l'installation des largeurs précède la prise du verrou de décodage : le " +
 			"descripteur est un global de paquet, il ne s'écrit que sous le verrou")
+	}
+	// L'ORDRE AVEC L'ÉTAGE DE BALAYAGE (revue R1, constat R1-3). Le garde ne vérifiait que
+	// « verrou puis installation » : déplacer `installWorldObjectPrecision` d'une SEULE ligne
+	// après `scanFilmInputs` laissait `replay` ET `archlint` verts, alors que les ~27 balayages
+	// se seraient faits aux largeurs par défaut. C'est l'ORDRE des trois symboles qui est
+	// l'invariant, pas la présence de chacun.
+	balayage := strings.Index(body, "scanFilmInputs(")
+	if balayage < 0 {
+		t.Fatal("BuildFromFilm n'appelle plus scanFilmInputs : l'étage de balayage a été " +
+			"renommé ou remis en ligne — déplacer ce garde-rail avec lui")
+	}
+	if poseInstall > balayage {
+		t.Fatal("les largeurs d'axe sont installées APRÈS l'étage de balayage : les ~27 " +
+			"balayages déquantifient alors leurs objets du monde aux largeurs par DÉFAUT " +
+			"(celles de Cliffhanger), et sur une carte à plus de deux régions ils lisent " +
+			"leurs trois axes un bit trop tôt (cf. lot B-bis, 2026-09-12)")
 	}
 }
 

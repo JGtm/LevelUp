@@ -15,12 +15,22 @@ data-dependant ou garde par un drapeau : desync propre possible) · `non_porte` 
 la traversee s'arrete, 0 bit consomme) · `deser_non_cable` (grammaire ecrite, aucun appelant) ·
 `alias` (autre orthographe acceptee par le dispatch, `ti = -1`).
 
-NIVEAU : colonne `level` = `Flags[k]`, ce que `registry.go` sert et ce que le traverseur passe
-aux desers. Le JEU lit `Flags[k+1]` (decalage mesure au lot R7-e, 178 lignes concernees) :
-quand les deux different, `notes` porte `niveau_jeu=N`. L'ecart est consigne, non traite.
+NIVEAU : colonne `level` = le u32 que le film porte en queue de l'entree du composant
+(`entree + 0x100`), c'est-a-dire exactement ce que `registry.go` sert et ce que le traverseur
+passe aux desers. IL N'Y A PLUS D'ECART A CONSIGNER depuis le lot 1.2 (2026-09-14) : la colonne
+portait jusque-la le niveau du composant PRECEDENT — un cadrage de registre decale de huit
+octets — et les 178 annotations `notes = niveau_jeu=N` disaient la valeur du jeu sans la servir.
+Les 189 lignes reellement concernees (11 de plus que les annotations, qui etaient incompletes)
+ont ete recalculees depuis le film ; les annotations ont disparu avec l'ecart.
 
-MISE A JOUR : la table se corrige a la main, ligne par ligne. Porter un composant = editer sa
-ligne (`status`, `deser_addr`, `code_source`) dans le meme commit que le code — les
+MISE A JOUR : la table se corrige a la main, ligne par ligne — SAUF la colonne `level`, qui est
+une donnee du film et se regenere par une porte nommee :
+
+    ECS_TABLE_FILM=../killsource/testdata/minibobine_000d5950 \
+      go test ./internal/games/halo_infinite/film/filmdec/ -run G2 -update-ecs-table-level
+
+(elle reecrit puis ECHOUE : relancer sans le drapeau pour verifier). Porter un composant =
+editer sa ligne (`status`, `deser_addr`, `code_source`) dans le meme commit que le code — les
 garde-rails de `ecs_table_guard_test.go` echouent sinon.
 
 GARDE-RAILS : **G1** code <-> table (sans film, toujours joue) · **G2** film <-> table (garde

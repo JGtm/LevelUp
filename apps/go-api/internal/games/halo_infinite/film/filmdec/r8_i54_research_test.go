@@ -72,7 +72,7 @@ func r8MobResolve(t *testing.T, dir string) r8MobSetup {
 	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped dans les keyframes de %s", dir)
 	}
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible : %v", err)
 	}
@@ -131,7 +131,7 @@ func r8ReadMobility(pay []byte, at, total int) (r8MobEvent, bool) {
 	if !ev.Flag1 {
 		return ev, true
 	}
-	consume1408f0ac4(br)
+	consume1408f0ac4(br, 0)
 	start := br.BitPos()
 	r8MirrorBody(br, &ev)
 	if br.BitPos() > total {

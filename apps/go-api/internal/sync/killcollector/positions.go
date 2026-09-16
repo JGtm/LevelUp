@@ -203,23 +203,42 @@ type passePositions struct {
 	openRows []persist.KillOpeningInsert
 }
 
-// resolveMapBounds : les identites de carte candidates du match (base), puis leurs bornes de
-// dequantification (catalogue). Deux echecs distincts, une seule cause utile a l appelant :
-// « pas de bornes », qu il vienne de la base ou du catalogue.
-func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID string) (filmdec.MapQuantEntry, error) {
-	keys, err := c.mapNames.MapKeysForMatch(ctx, matchID)
-	if err != nil {
-		return filmdec.MapQuantEntry{}, fmt.Errorf("identite de carte: %w", err)
-	}
-	for _, name := range keys.Names {
-		if name == "" {
-			continue
-		}
-		if entry, err := c.mapBounds.Lookup(name); err == nil {
-			return entry, nil
-		}
-	}
-	return filmdec.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", filmdec.ErrUnknownMapBounds, keys.Names)
+// La résolution de la carte du match — son NOM par la base, puis son entrée au catalogue de
+// bornes — vit dans `map_identity.go` depuis le lot 1.9.4 : les DEUX passes du collecteur (les
+// positions et les touches) la partagent désormais, là où la passe des touches devinait la carte
+// par une signature de largeurs d'axe. Voir [KillSourceCollector.resolveMapBounds].
+
+// optionsDeBalayageDesPositions : les réglages du balayage des positions pour UNE carte — ses
+// bornes monde ET son découpage d'i0, tous deux pris au CATALOGUE.
+//
+// # CE QUE CETTE FONCTION FERME (lot 1.9.2, D-3 d'ADR 0034)
+//
+// Le collecteur partait de `DefaultScanFilmOptions()` et ne posait QUE les bornes ; `Layout`
+// restait nil, donc `DetectI0LayoutOf` DÉCIDAIT du découpage en lisant le film
+// (`filmdec/offline_biped_band.go`, `bipedI0Layout`) — alors que l'entrée de carte était déjà
+// entre les mains de l'appelant et que le chemin de CUISSON, lui, imposait le catalogue depuis le
+// 2026-09-03 (`replay/build_from_film.go`). Deux producteurs du même fait, deux règles.
+//
+// Le découpage d'axe est une DONNÉE DE PROFIL : il ne se devine pas sur le film. L'auto-détection
+// ne sait pas voir un index de région de plus d'un bit (cf. `filmdec/i0_layout.go`) ; sur Live
+// Fire elle rend `gate=5 region=0 13/12/11` là où le catalogue dit `gate=6 region=1 12/12/11`,
+// et sa porte acceptait donc des enregistrements d'une AUTRE région de compression, exprimés
+// dans une autre AABB. Mesure du lot 1.9.2 sur les 14 témoins du corpus gate et les 8 builds :
+// les deux découpages coïncident sur 15 films sur 17 ; sur les DEUX films Live Fire ils
+// diffèrent, et imposer le catalogue retire 3 positions sur 267 368 (`60ae07c4`) et 4 sur
+// 146 811 (`0797ce72`) — 26 enregistrements bruts sur 267 400 pour le premier.
+//
+// `entry` est passée PAR VALEUR et le contexte la lit à la construction : la règle du catalogue
+// est écrite UNE fois, dans `filmdec.NewFilmContextForMap`, et ce site la lit par
+// `ImposedLayout()` — le même endroit que la cuisson.
+func optionsDeBalayageDesPositions(
+	fc *filmdec.FilmContext, entry filmdec.MapQuantEntry,
+) filmdec.ScanFilmOptions {
+	opt := filmdec.DefaultScanFilmOptions()
+	rng := entry.Range()
+	opt.WorldRange = &rng
+	opt.Layout = fc.ImposedLayout()
+	return opt
 }
 
 // buildPositionRows : les QUATRE lectures du film + la composition pure. Découpée de
@@ -250,10 +269,8 @@ func buildPositionRows(
 	release := filmdec.LockProcessDecode()
 	defer release()
 
-	bipedOpt := filmdec.DefaultScanFilmOptions()
-	rng := entry.Range()
-	bipedOpt.WorldRange = &rng
-	positions, err := filmdec.ScanBipedPositions(film, bipedOpt)
+	fc := filmdec.NewFilmContextForMap(film, &entry, nil)
+	positions, err := filmdec.ScanBipedPositions(film, optionsDeBalayageDesPositions(fc, entry))
 	if err != nil {
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf("positions bipeds: %w", err)
 	}
@@ -291,7 +308,7 @@ func buildPositionRows(
 	// sous le MEME verrou de decodage que les positions ; sans lui, `match_lives` retomberait
 	// sur le pont par morts alors que la cuisson, elle, lit le film. Deux producteurs, un seul
 	// nommage : c'est toute la decision D11. Absence NON fatale — le registre degrade et le dit.
-	creations, cStats, err := filmdec.ScanBipedCreations(filmdec.NewFilmContext(film))
+	creations, cStats, err := filmdec.ScanBipedCreations(fc)
 	if err != nil {
 		slog.Warn("killsource: creations de bipede illisibles — degradation sur le pont par morts",
 			"err", err, "match_id", matchID)

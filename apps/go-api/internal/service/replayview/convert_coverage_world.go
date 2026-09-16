@@ -28,6 +28,9 @@ func toEquipmentPlacementCoverage(v replay.EquipmentPlacementCoverage) replaydoc
 		EndSeen:        v.EndSeen,
 		EndOpen:        v.EndOpen,
 		ByFamilyOrigin: v.ByFamilyOrigin,
+		SpawnEvents:    v.SpawnEvents,
+		SpawnLists:     v.SpawnLists,
+		ByCause:        v.ByCause,
 	}
 }
 
@@ -106,6 +109,14 @@ func toVehicleCoverage(v replay.VehicleCoverage) replaydoc.VehicleCoverage {
 		UnknownChassis:     v.UnknownChassis,
 		Samples:            v.Samples,
 		WithHeading:        v.WithHeading,
+		DeathsRead:         v.DeathsRead,
+		DeathsMatched:      v.DeathsMatched,
+		DeathsUnmatched:    v.DeathsUnmatched,
+		DeathsTailDesync:   v.DeathsTailDesync,
+		EndDestroyed:       v.EndDestroyed,
+		EndFilmEnd:         v.EndFilmEnd,
+		EndUnknown:         v.EndUnknown,
+		SamplesAfterEnd:    v.SamplesAfterEnd,
 		Rides:              v.Rides,
 		VehiclesRidden:     v.VehiclesRidden,
 		RidesNamed:         v.RidesNamed,

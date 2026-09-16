@@ -171,7 +171,8 @@ func d4EvenementsCrane(t *testing.T, root, id string) []int64 {
 		t.Fatalf("%s : film absent du cache", id)
 	}
 	var out []int64
-	for _, ev := range objectiveevents.Extract(id, d4VariantOddball, src, objectiveevents.MapRoster{}) {
+	evenements, _ := objectiveevents.Extract(id, d4VariantOddball, src, objectiveevents.MapRoster{})
+	for _, ev := range evenements {
 		if ev.EventType != objectiveevents.EventTypeSkullCarry || ev.TimeMS == nil {
 			continue
 		}

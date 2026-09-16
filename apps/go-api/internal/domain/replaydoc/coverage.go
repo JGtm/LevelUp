@@ -9,6 +9,9 @@ type Coverage struct {
 	Shots             LayerCoverage               `json:"shots"`
 	Grenades          LayerCoverage               `json:"grenades"`
 	Objectives        LayerCoverage               `json:"objectives"`
+	Tracks            *TrackCoverage              `json:"tracks,omitempty"`
+	Teams             *TeamCoverage               `json:"teams,omitempty"`
+	Seats             *SeatCoverage               `json:"seats,omitempty"`
 	Projectiles       *ProjectileCoverage         `json:"projectiles,omitempty"`
 	Equipment         *EquipmentCoverage          `json:"equipment,omitempty"`
 	Grapple           *GrappleCoverage            `json:"grapple,omitempty"`
@@ -39,6 +42,17 @@ type Coverage struct {
 	T0Film            *T0FilmCoverage             `json:"t0Film,omitempty"`
 	Verdict           map[string]string           `json:"verdict,omitempty"`
 	Bridge            BridgeHealth                `json:"bridge"`
+	// Fallbacks dit QUELLE PART DE CE DOCUMENT VIENT D'UN REPLI (schéma 58) : les replis
+	// déclenchés pendant la cuisson, triés par nom. Absente quand aucun ne s'est déclenché.
+	// Le nom est stable et se joint au registre des replis du décodeur.
+	Fallbacks []FallbackHit `json:"fallbacks,omitempty"`
+}
+
+// FallbackHit est un repli du décodeur et son nombre de déclenchements sur la cuisson qui a
+// produit ce document.
+type FallbackHit struct {
+	Name string `json:"name"`
+	Hits int    `json:"hits"`
 }
 
 // LayerCoverage est la couverture d'un calque : combien il a rattaché, sur combien
@@ -145,6 +159,69 @@ type InventoryCoverage struct {
 	Published           int `json:"published"`
 }
 
+// TeamCoverage est ce que la lecture de l'EQUIPE a couvert, et ce que la feuille de match en
+// pense (schema 57). Elle publie les deux moities separement : `film` dit ce que l'artefact
+// tient du FILM, `accord` / `contradiction` / `silence` disent ce qu'une source EXTERIEURE en
+// pense — la base ne pose aucune equipe, elle controle.
+//
+// C'EST LA SEULE FACON DE LIRE UN `team: -1` : `noTeam` (le mode n'a pas de camps) et `unread`
+// (le film n'a pas nomme ce joueur) distinguent ce que le champ ne distingue pas.
+type TeamCoverage struct {
+	Read          bool   `json:"read"`
+	Refusal       string `json:"refusal,omitempty"`
+	Records       int    `json:"records"`
+	Rejected      int    `json:"rejected"`
+	Divergences   int    `json:"divergences"`
+	Film          int    `json:"film"`
+	NoTeam        int    `json:"noTeam"`
+	Unread        int    `json:"unread"`
+	Accord        int    `json:"accord"`
+	Contradiction int    `json:"contradiction"`
+	Silence       int    `json:"silence"`
+	Tracks        int    `json:"tracks"`
+	TracksNamed   int    `json:"tracksNamed"`
+	// TracksSlotAmbiguous : les vies sans xuid dont le SLOT a porte deux joueurs nommes
+	// d'equipes differentes. Le pont slot -> index s'y ABSTIENT (revue de jalon M1, lentille
+	// L4) plutot que de publier l'equipe du PREMIER occupant sur la vie du SECOND. Absent du
+	// document quand il vaut zero.
+	TracksSlotAmbiguous int `json:"tracksSlotAmbiguous,omitempty"`
+}
+
+// SeatCoverage est ce que la pose des SIEGES a lu et ce qu elle a APPARIE (lot 1.9.14).
+//
+// SON COUPLE CENTRAL EST `entrees` / `occupantsMax` : leur ECART est le nombre de fiches qu un
+// client retire de l ecran en n affichant que les occupants PRESENTS a l instant lu. `lus` et
+// `apparies` disent, eux, quelle part des sieges vient du film et quelle part d un repli.
+type SeatCoverage struct {
+	Entrees         int  `json:"entrees"`
+	Sieges          int  `json:"sieges"`
+	Lus             int  `json:"lus"`
+	Apparies        int  `json:"apparies"`
+	ReprisesEcrites int  `json:"reprisesEcrites"`
+	Arrivants       int  `json:"arrivants"`
+	PresencesCloses int  `json:"presencesCloses"`
+	SansPresence    int  `json:"sansPresence"`
+	OccupantsMax    int  `json:"occupantsMax"`
+	SansTableDuFilm bool `json:"sansTableDuFilm,omitempty"`
+}
+
+// TrackCoverage est ce que le SEUIL DE PUBLICATION des traces retient et refuse. Le refus était
+// MUET avant le schéma 55 : un document publiant 90 traces là où le film en porte 95 était
+// indistinguable d'un film à 90 vies. `minPoints` voyage avec ses conséquences — un compte de
+// refus ne se relit pas sans savoir contre quoi il a été mesuré.
+type TrackCoverage struct {
+	Published        int `json:"published"`
+	PublishedPoints  int `json:"publishedPoints"`
+	RefusedMinPoints int `json:"refusedMinPoints"`
+	RefusedPoints    int `json:"refusedPoints"`
+	MinPoints        int `json:"minPoints"`
+	// Gaps est le nombre de LACUNES des traces publiees, GapMS leur duree totale en
+	// millisecondes : un silence de replication de plus de 5 s A L INTERIEUR d une vie, que le
+	// film ne ferme pas. Cf. `replay.TrackCoverage` (lot 1.9.13).
+	Gaps  int `json:"gaps"`
+	GapMS int `json:"gapMs"`
+}
+
 // ProjectileCoverage est la couverture des TRAJECTOIRES DE PROJECTILE : pistes décodées,
 // trajectoires publiées, et celles qu'un PAS IMPOSSIBLE a coupées. Tant que `truncated` n'est
 // pas nul, l'artefact porte des vols dont la fin est INCONNUE — la coupure protège le rendu,
@@ -201,6 +278,16 @@ type GrappleCoverage struct {
 }
 
 // ScoreCoverage dit ce que vaut le calque du score — et ce qu'il ne vaut pas.
+//
+// LES QUATRE CHAMPS DE MANCHE (lot 1.9.11, 2026-09-16) DISENT LE FAIT « quelles manches sont
+// RÉELLES » sous les trois formes que la décision D14 (c) du PLAN_DECODEUR_FILM exige :
+// la GRAMMAIRE (`roundsWritten`, ce que le film écrit), la CONTRADICTION
+// (`roundsContradicted` / `roundsContradictedRecords`, un désignateur matériel que l'ordre des
+// manches refuse) et le REPLI (`roundsDecreed`, la manche 0 décrétée quand le film est muet).
+// `rounds` reste le COMPTE des manches retenues — la grandeur que le rejeu consomme.
+//
+// TOUS OPTIONNELS : un film mono-manche sans contradiction ni repli ne les porte pas, et le
+// document garde la forme qu'il avait.
 type ScoreCoverage struct {
 	TeamIdentity  string `json:"teamIdentity"`
 	Rounds        int    `json:"rounds"`
@@ -208,6 +295,20 @@ type ScoreCoverage struct {
 	Truncated     bool   `json:"truncated"`
 	Oracle        string `json:"oracle"`
 	Points        int    `json:"points"`
+	// RoundsWritten : les désignateurs de manche que le film ÉCRIT, triés — le dénominateur
+	// sans lequel « N manches » ne se juge pas. Publié dès qu'il y en a plus d'un (un film
+	// mono-manche n'apprendrait rien).
+	RoundsWritten []int `json:"roundsWritten,omitempty"`
+	// RoundsContradicted : les désignateurs MATÉRIELS que l'ordre des manches refuse, triés.
+	// Un désignateur y figure parce que le film ne déclare aucune des manches qui le précèdent
+	// — mesuré sur 24 films du cache, dont 23 ont fini dans leur temps réglementaire sur un
+	// mode sans manche (lot 1.9.11).
+	RoundsContradicted []int `json:"roundsContradicted,omitempty"`
+	// RoundsContradictedRecords : les enregistrements que ces désignateurs portent.
+	RoundsContradictedRecords int `json:"roundsContradictedRecords,omitempty"`
+	// RoundsDecreed : aucune manche n'a été admise et la manche 0 a été DÉCRÉTÉE pour que le
+	// film reste lisible (repli `repli_manche_zero_decretee`).
+	RoundsDecreed bool `json:"roundsDecreed,omitempty"`
 }
 
 // WeaponChangeCoverage dit ce que le calque a vu et ce qu'il a écarté, pour qu'un lecteur

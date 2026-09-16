@@ -187,7 +187,7 @@ func TestRegistreBorneChaqueLienDeSlot(t *testing.T) {
 func TestBidDuBotEstPublie(t *testing.T) {
 	bots := []BotIdentity{{FilmIndex: 8, Name: "343 Aloysius [bot]", BotID: 39}}
 	roster := buildRoster(PlayerIndexTable{ByXUID: map[uint64]int{111: 0}},
-		map[uint64]string{111: "HUMAIN"}, bots)
+		map[uint64]string{111: "HUMAIN"}, bots, teamPublication{})
 	var vu bool
 	for _, e := range roster {
 		if !e.Bot {

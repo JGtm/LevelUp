@@ -97,10 +97,14 @@ type Track struct {
 // Point est une position echantillonnee au pas de temps T. X/Y = plan horizontal de la
 // carte ; Z (optionnel) = altitude, pour l'indication d'etage — non critique au rendu 2D.
 type Point struct {
-	T  int      `json:"t"`
-	X  float32  `json:"x"`
-	Y  float32  `json:"y"`
-	Z  float32  `json:"z,omitempty"`
+	T int     `json:"t"`
+	X float32 `json:"x"`
+	Y float32 `json:"y"`
+	Z float32 `json:"z,omitempty"`
+	// G (optionnel) est la DUREE DE LA LACUNE qui precede ce point, en millisecondes ; absent
+	// ou 0 = le point suit le precedent sans interruption. La piste ne s'interpole PAS au
+	// travers. Cf. `replay.Point.G` pour la decision complete (lot 1.9.13).
+	G  int      `json:"g,omitempty"`
 	H  float32  `json:"h,omitempty"`
 	P  float32  `json:"p,omitempty"`
 	Sh *float32 `json:"sh,omitempty"`
@@ -113,11 +117,30 @@ type RosterEntry struct {
 	XUID      string `json:"xuid"`
 	FilmIndex int    `json:"filmIndex"`
 	Name      string `json:"name,omitempty"`
-	Bot       bool   `json:"bot,omitempty"`
+	// Team est le DESIGNATEUR D'EQUIPE que le film ecrit, par index de joueur (schema 57) :
+	// `0..8` pour les huit camps de `mp_team_designator`, `-1` pour « aucune equipe ». Il vaut
+	// aussi pour un BOT, que le film assoit au meme index.
+	//
+	// POINTEUR, parce que TROIS etats existent : absent (le film n'a pas nomme ce joueur, ou
+	// l'artefact precede le schema 57), `-1` (aucune equipe), `0..8` (le camp). Un entier nu
+	// ferait dire `0` — le camp 0 — a tout artefact ancien.
+	Team *int `json:"team,omitempty"`
+	Bot  bool `json:"bot,omitempty"`
 	// Bid est l identifiant STABLE d un bot, forme `bid(N.0)` — la meme que la base emploie
 	// (schema 50). Vide pour un humain, et vide pour un bot dont la declaration ne portait pas
 	// d identifiant : un `bid(0.0)` invente joindrait deux bots distincts.
 	Bid string `json:"bid,omitempty"`
+	// Seat est LE SIEGE : la fiche que cette entree occupe a l ecran (lot 1.9.14). Il vaut
+	// `filmIndex` sauf quand l entree CONTINUE le siege d un partant ; `seatSource` dit alors si
+	// le film a ECRIT la reprise (`lu`) ou si un appariement ordinal l a deduite (`apparie`).
+	// Deux entrees de meme `seat` sont deux occupants SUCCESSIFS d une meme fiche, et leurs
+	// presences — les vies de `tracks[]` — ne se recouvrent pas.
+	//
+	// TOUJOURS EMIS : le siege 0 est un siege comme un autre, et `omitempty` l effacerait.
+	Seat int `json:"seat"`
+	// SeatSource : `lu` (l index que le film ecrit) ou `apparie` (l appariement ordinal par
+	// camp, un repli nomme et compte). Vide sur un artefact anterieur au lot 1.9.14.
+	SeatSource string `json:"seatSource,omitempty"`
 }
 
 // Shot est un tir décodé, placé à la position de son tireur.
@@ -195,9 +218,21 @@ type WeaponLabel struct {
 	Tinted bool   `json:"tinted,omitempty"`
 }
 
-// VehicleLabel est ce qu il faut pour DESSINER une famille de chassis : sa vignette, et le fait
-// qu elle se teigne.
+// VehicleLabel est ce qu il faut pour DESSINER une famille de chassis : sa vignette, le fait
+// qu elle se teigne, et — depuis le lot 1.9.9 — ce qu elle EST quand ce n est pas un vehicule.
+//
+// `Kind`, `En` et `Fr` sont OPTIONNELS et presque toujours vides : le nom d une famille de
+// vehicule est un nom propre du jeu, qui ne se traduit pas, et la cle de la table EST ce nom. Ils
+// ne se remplissent que pour les familles que le titre QUALIFIE dans son manifeste — la tourelle
+// automatique bannie (`kind = "map_element"`), aujourd hui la seule.
 type VehicleLabel struct {
 	Img    string `json:"img,omitempty"`
 	Tinted bool   `json:"tinted,omitempty"`
+	// Kind : la NATURE de la famille quand elle n est pas un vehicule de la partie. Vide = un
+	// vehicule. Le client s en sert pour lui reserver un pictogramme dedie plutot que le
+	// marqueur neutre des chassis non resolus.
+	Kind string `json:"kind,omitempty"`
+	// En / Fr : le libelle de la famille, vide pour un nom propre du jeu.
+	En string `json:"en,omitempty"`
+	Fr string `json:"fr,omitempty"`
 }

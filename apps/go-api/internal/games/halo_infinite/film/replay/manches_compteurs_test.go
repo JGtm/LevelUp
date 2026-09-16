@@ -168,7 +168,7 @@ func TestEchantillonEgareNAlimentePasSaMancheDeclaree(t *testing.T) {
 // MUTATION : retirer `bornes.Excludes(r)` de `rawSeriesByRound` porte le total a 18.
 func TestEchantillonEgareNeGonflePasLeTotalDuJoueur(t *testing.T) {
 	tl, cov := buildScoreTimeline(&ScoreInput{Records: deuxManchesFixture(true)},
-		manchesMorts(), multiRoundClock())
+		manchesMorts(), multiRoundClock(), nil)
 	if tl == nil || cov == nil {
 		t.Fatal("aucun calque publie")
 	}

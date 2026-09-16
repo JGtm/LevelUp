@@ -47,7 +47,14 @@ import (
 )
 
 // calculsDuContexteFilm : les trois derivations que `filmdec.FilmContext` memorise, plus
-// l'enveloppe D2 du decoupage (`DetectI0Layout(dir)`, qui charge un film entier pour le detecter).
+// l'enveloppe D2 du decoupage (`DetectI0Layout(dir)`, qui chargeait un film entier pour le
+// detecter).
+//
+// `DetectI0Layout` RESTE DANS CETTE TABLE ALORS QU'ELLE N'EXISTE PLUS EN PRODUCTION (revue de
+// jalon M1, 2026-09-16 : elle est devenue `detectI0Layout` dans un fichier de test de `filmdec`,
+// faute d'appelant de production depuis le lot 1.9.4). C'est voulu : le scan ne lit que les
+// fichiers NON-test, donc l'entree ne coute rien, et elle rougirait immediatement si quelqu'un
+// reintroduisait l'enveloppe en production — ce qui est exactement le ratchet qu'on veut.
 var calculsDuContexteFilm = map[string]bool{
 	"bipedSlotBand":      true,
 	"DetectI0LayoutOf":   true,
@@ -64,8 +71,11 @@ var calculsDuContexteFilm = map[string]bool{
 //	i0_layout.go          `DetectI0LayoutOf` releve SA PROPRE bande, sur les SIX PREMIERS chunks
 //	                      seulement (`detectMaxChunks`) : ce n'est PAS la bande du contexte, qui
 //	                      couvre tous les chunks de donnees — deux valeurs differentes, deux
-//	                      calculs, et les partager changerait la detection. `DetectI0Layout(dir)`
-//	                      est l'enveloppe D2, hors production (regle 3 de no_film_reread_test.go).
+//	                      calculs, et les partager changerait la detection. L'enveloppe D2
+//	                      `DetectI0Layout(dir)` A QUITTE LA PRODUCTION le 2026-09-16 (revue de
+//	                      jalon M1, constat C4) : elle vit en `detectI0Layout` dans
+//	                      `filmdec/i0_layout_instrument_helpers_test.go`, d'ou la disparition de
+//	                      son entree d'allowlist ci-dessous.
 //	offline_biped[_band].go
 //	                      DEUX SITES depuis le 2026-09-05 (arrivee du chantier vehicules) :
 //	                      `ScanBipedPositions` releve sa bande, `bipedI0Layout` detecte le
@@ -87,28 +97,24 @@ var calculsDuContexteFilm = map[string]bool{
 //	                      change de representation (tableau indexe, item 4.1).
 //
 //	weapon_hit_distance_resolver.go
-//	                      ARRIVE PAR L'AMONT (merge de `feat/v75` du 2026-09-03, chantier
-//	                      « precision par arme » remise le 2026-09-01). `DetectFilmWorldRange`
-//	                      resout les bornes monde d'une carte par la SIGNATURE de largeurs d'axe
-//	                      du decoupage i0 : il n'a ni film charge ni contexte, seulement un
-//	                      repertoire, et son unique appelant (`sync/killcollector/hits.go`) est
-//	                      une passe DESACTIVEE en production (capability `match.weapon.accuracy`
-//	                      NON declaree par Infinite depuis la remise, et `ConfigureFilmAccuracy`
-//	                      sans appelant de production). Entree posee par la RECONCILIATION, pas
-//	                      par un lot : la migrer vers la forme film demande des formes
-//	                      `Scan*(film)` pour trois balayages neufs de l'amont — hors perimetre du
-//	                      merge, consigne au registre des reports. RETRAIT CIBLE : le lot qui
-//	                      rallume la precision par arme, ou celui qui migre `hits.go`.
+//	                      L'ENTREE A ETE RETIREE AU LOT 1.9.4 (2026-09-15), ET LE RATCHET EST LA.
+//	                      `DetectFilmMapEntry` resolvait l'IDENTITE d'une carte par la SIGNATURE
+//	                      de ses largeurs d'axe (`DetectI0Layout` depuis un repertoire), alors que
+//	                      son unique appelant — `sync/killcollector/hits.go` — tenait deja le nom
+//	                      de carte du match. Mesure du lot : 68 des 79 cartes du catalogue
+//	                      partagent leur signature avec une autre (une classe en compte 59), et
+//	                      sur 17 films la signature rend 2 accords, 13 ambiguites et 2 DESACCORDS
+//	                      (Live Fire designe `aquarius`). La fonction est SUPPRIMEE, la carte vient
+//	                      du nom (`killcollector/map_identity.go`), et `DetectI0Layout` n'a plus
+//	                      AUCUN appelant de production : toute reapparition d'un appel dans
+//	                      `filmdec` rougit ici, faute d'entree d'allowlist.
 var appelsAutorisesDuContexte = map[string]string{
 	"film_context.go/(*FilmContext).BipedSlots -> bipedSlotBand":    "le releve unique de la bande du film",
 	"film_context.go/(*FilmContext).I0Layout -> DetectI0LayoutOf":   "la detection unique du decoupage d'i0",
 	"film_context.go/(*FilmContext).Registry -> ParseRegistryChunk": "l'analyse unique du registre chunk_00",
 	"i0_layout.go/DetectI0LayoutOf -> bipedSlotBand":                "bande REDUITE aux 6 premiers chunks : autre valeur",
-	"i0_layout.go/DetectI0Layout -> DetectI0LayoutOf":               "enveloppe D2, hors production",
 	"offline_biped.go/ScanBipedPositions -> bipedSlotBand":          "bande sur opt.Chunks : hors perimetre du lot 2",
 	"offline_biped_band.go/bipedI0Layout -> DetectI0LayoutOf":       "repli quand opt.Layout est nil : hors perimetre du lot 2 (le site a change de nom le 2026-09-05 quand `ScanBipedPositionsForBand` a extrait le helper partage par les deux entrees, puis de FICHIER le meme jour — offline_biped.go franchissait les 500 lignes, la plomberie de balayage a ete deplacee dans offline_biped_band.go, sans changement de logique)",
-	"weapon_hit_distance_resolver.go/DetectFilmWorldRange -> DetectI0Layout": "amont 2026-09-03 : " +
-		"signature de largeurs d'axe depuis un repertoire, passe de precision par arme desactivee",
 }
 
 // TestContexteFilmCalculeUneFois — REGLE 1.

@@ -12,9 +12,15 @@ package killsource
 // neuvieme nom. Un bot n a pas de XUID : sa mort ne produit aucun event. (RE_LOG 7ter.59.)
 //
 // CONSEQUENCE, ET C EST LA PLUS COUTEUSE DU CHANTIER : quand un humain tue un bot, le film
-// porte le KILL mais pas la MORT. La reconstruction de couples recolle alors le kill au `death`
-// du voisin et FABRIQUE un couple qui n existe pas. Ce couple doit sortir du denominateur, pas
-// etre compte comme une mort manquee (RE_LOG 7ter.66, verifie en Theater).
+// porte le KILL mais pas la MORT.
+//
+// DEPUIS LE LOT 1.9.3, CE N EST PLUS LE VOISINAGE QUI TRANCHE : le kill-event de code 85 ecrit
+// victime ET tueur dans le meme enregistrement, et c est LUI qui decide le couple d un kill sans
+// mort en face ([killFeed.resoudreCouples], `feed_couples.go`). Le recollage sur le voisin — qui
+// FABRIQUAIT un couple quand la vraie victime etait un bot — n est plus qu un REPLI NOMME, sur
+// les seuls instants ou le film se tait. Les couples qu il produit encore (`fab`) restent des
+// candidats a la mort de bot, et sortent du denominateur comme avant (RE_LOG 7ter.66, verifie en
+// Theater).
 
 import (
 	"fmt"
@@ -34,18 +40,34 @@ type feedEvent struct {
 	// PUBLICATION : un consommateur qui joint des pistes de film joint par xuid, jamais par
 	// pseudo (le pseudo change, le xuid non). Zero quand l instant ne porte pas de mort.
 	victimXUID uint64
+	// paquet : L IDENTITE DE PAQUET DE CET INSTANT (lot 1.9.7), prise au KILL-EVENT 85 que
+	// [killFeed.resoudreCouples] lui a associe. C est elle qui apparie le dead-state, la fenetre
+	// de 2,5 s n etant plus qu un repli. Absente quand aucun kill-event ne s est attache : le
+	// kill-feed ne localise rien par lui-meme, il n horodate.
+	paquet paquetID
 }
 
 // killFeed : la decomposition HONNETE du kill-feed. Chaque champ est un denominateur potentiel,
 // et c est pour cela qu ils sont separes au lieu d etre additionnes.
+//
+// TOUT CE QUI SUIT `names` EST REMPLI PAR [killFeed.resoudreCouples], jamais par [loadKillFeed] :
+// la decomposition exige le ROSTER EPINGLE et les KILL-EVENTS, que l appelant construit apres le
+// chargement (cf. `feed_couples.go` et [decodeCtx.prepare]).
 type killFeed struct {
 	events []feedEvent // instants, tries
-	pairs  []feedEvent // couples reconstruits (reels + recolles)
+	pairs  []feedEvent // couples publies (meme instant + lus au kill-event + recolles)
 	names  []string    // roster HUMAIN, trie
+	// xuidDe : le xuid que le kill-feed porte pour chaque gamertag. Il sert quand un couple LU
+	// au kill-event nomme une victime dont aucun instant voisin ne porte la mort.
+	xuidDe map[string]uint64
 
-	real  []feedEvent // couples portant kill ET death au meme instant
-	fab   []feedEvent // couples RECOLLES sur le voisin : candidats a la mort de bot
-	orphK []feedEvent // kills sans aucun voisin a consommer : la victime n est pas humaine
+	real []feedEvent // couples portant kill ET death au meme instant
+	// lus : couples dont le KILL-EVENT 85 a decide la victime — la part LUE de la publication.
+	lus []feedEvent
+	fab []feedEvent // couples RECOLLES sur le voisin (REPLI) : candidats a la mort de bot
+	// botLus : kills dont le film NOMME un bot en victime. Ils n entrent dans AUCUN couple.
+	botLus []killDeBot
+	orphK  []feedEvent // kills sans aucun voisin a consommer : la victime n est pas humaine
 	// orphD : morts que la reconstruction n a JAMAIS consommees — ni au meme instant, ni
 	// recollees sur un kill voisin. Le kill-feed porte la MORT, il ne porte AUCUN kill en face :
 	// LE TUEUR N EST PAS HUMAIN. C est la population symetrique de `orphK`, et elle n avait
@@ -87,9 +109,7 @@ func loadKillFeed(f *film) (*killFeed, error) {
 		return nil, ErrNoKillFeed
 	}
 	kf := buildFeed(best)
-	kf.pairs = reconstructPairs(kf.events)
 	kf.names = rosterNames(kf.events)
-	kf.split()
 	return kf, nil
 }
 
@@ -111,7 +131,7 @@ func buildFeed(evs []analysis.HighlightEvent) *killFeed {
 			gt[e.XUID] = e.Gamertag
 		}
 	}
-	kf := &killFeed{}
+	kf := &killFeed{xuidDe: map[string]uint64{}}
 	byTime := map[int]*feedEvent{}
 	at := func(ms int) *feedEvent {
 		if byTime[ms] == nil {
@@ -133,6 +153,7 @@ func buildFeed(evs []analysis.HighlightEvent) *killFeed {
 			ev := at(e.TimeMS)
 			ev.victim = name
 			ev.victimXUID = e.XUID
+			kf.xuidDe[name] = e.XUID
 		}
 	}
 	for _, v := range byTime {
@@ -140,85 +161,6 @@ func buildFeed(evs []analysis.HighlightEvent) *killFeed {
 	}
 	sort.Slice(kf.events, func(i, j int) bool { return kf.events[i].timeMS < kf.events[j].timeMS })
 	return kf
-}
-
-// reconstructPairs : les couples (tueur, victime) horodates. Un instant portant les deux champs
-// est un couple REEL ; un kill orphelin est recolle au `death` d un voisin immediat (deux morts
-// a la meme seconde n arrivent pas toujours dans le meme instant).
-//
-// CE RECOLLAGE EST LEGITIME ET IL EST MESURE : les couples recolles echouent MOINS que les
-// autres (5/64 = 7.8 % contre 42/372 = 11.3 %, p = 0.886, RE_LOG 7ter.52 A2). Mais il FABRIQUE
-// un couple quand la vraie victime est un bot — d ou [killFeed.split].
-func reconstructPairs(feed []feedEvent) []feedEvent {
-	var out []feedEvent
-	for i := range feed {
-		if feed[i].killer != "" && feed[i].victim != "" {
-			out = append(out, feed[i])
-			continue
-		}
-		if feed[i].killer == "" {
-			continue
-		}
-		for d := 1; d <= 2 && i+d < len(feed); d++ {
-			o := feed[i+d]
-			if o.victim != "" && o.killer == "" {
-				out = append(out, feedEvent{timeMS: feed[i].timeMS, killer: feed[i].killer,
-					victim: o.victim, victimXUID: o.victimXUID})
-				break
-			}
-		}
-	}
-	return out
-}
-
-// split : rejoue EXACTEMENT [reconstructPairs] pour savoir ce qu il consomme, et separe les
-// couples reels des couples recolles, des kills perdus et des MORTS PERDUES.
-//
-// HYPOTHESE MESUREE COMME FAUSSE, a ne pas reintroduire : << un kill sans death au meme instant
-// est une mort de bot >>. Elle rend 13 candidats pour 3 morts de bot reelles. Ce qui reste vrai,
-// et c est ce qui est mesure ici : un kill qui ne trouve AUCUN voisin a consommer est un kill
-// dont la victime n est pas au feed. C est le DEAD-STATE qui tranche, jamais cette structure.
-//
-// LA SYMETRIE VAUT DANS L AUTRE SENS, ET ELLE N AVAIT JAMAIS ETE TIREE : une MORT que personne ne
-// consomme est une mort dont le TUEUR n est pas au feed. Ici encore la structure ne fait que
-// DESIGNER une population — c est le dead-state, plus le kill-event, qui tranchent (voir
-// [decodeCtx.resolveBotKillerDeaths]).
-//
-// LA MARQUE DE CONSOMMATION NE CHANGE RIEN AU RESULTAT DE [reconstructPairs] : elle est posee
-// APRES coup et n intervient dans aucune condition de la boucle. Deux kills orphelins qui
-// convoitent la meme mort la consomment tous les deux, exactement comme avant.
-func (kf *killFeed) split() {
-	feed := kf.events
-	pris := make([]bool, len(feed))
-	for i := range feed {
-		if feed[i].killer != "" && feed[i].victim != "" {
-			kf.real = append(kf.real, feed[i])
-			pris[i] = true
-			continue
-		}
-		if feed[i].killer == "" {
-			continue
-		}
-		matched := false
-		for d := 1; d <= 2 && i+d < len(feed); d++ {
-			o := feed[i+d]
-			if o.victim != "" && o.killer == "" {
-				kf.fab = append(kf.fab, feedEvent{timeMS: feed[i].timeMS, killer: feed[i].killer,
-					victim: o.victim, victimXUID: o.victimXUID})
-				pris[i+d] = true
-				matched = true
-				break
-			}
-		}
-		if !matched {
-			kf.orphK = append(kf.orphK, feed[i])
-		}
-	}
-	for i := range feed {
-		if feed[i].victim != "" && !pris[i] {
-			kf.orphD = append(kf.orphD, feed[i])
-		}
-	}
 }
 
 // rosterNames : les joueurs distincts nommes par le kill-feed, tries.

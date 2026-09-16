@@ -17,14 +17,15 @@ package replay
 // avec le catalogue de libelles reel du titre et l'entree de catalogue de SA carte). ZERO OCTET
 // DE FILM n'est lu.
 //
-// CE QUE CES DOCUMENTS DECRIVENT, ET CE QU'ILS NE DECRIVENT PAS (decouverte D9 du plan). Sur
-// les sept builds, l'assemblage bati sur les entrees RELUES depuis le fixture differe de celui
-// bati sur les entrees fraichement decodees : le codec ne porte ni les rangs de capacite ni les
-// origines de pose. Ces documents decrivent donc le sous-ensemble d'entrees que le codec
-// transporte, PAS la sortie de production — ce qui suffit exactement a ce qu'on leur demande
-// ici : un contrat de FORME (les clefs, les types, la nullabilite, ce que les logiques pures
-// savent traverser), jamais un contrat de VALEURS. Les valeurs, elles, sont figees cote Go par
-// les goldens d'assemblage.
+// CE QUE CES DOCUMENTS DECRIVENT (decouverte D9 du plan, COMBLEE au lot 0.D.3). Ils decrivent
+// la sortie de production : `TestGoldenInputsFidelite` prouve sur les HUIT builds que
+// l'assemblage bati sur les entrees relues egale celui bati sur les entrees fraichement
+// decodees. Avant le 2026-09-14 ce n'etait pas vrai — le codec ne portait ni le rang de grenade
+// SELECTIONNE, ni les munitions des deltas, ni des coordonnees exactes — et ces documents
+// decrivaient alors un sous-ensemble. Ce qu'on leur demande n'a pas change pour autant : un
+// contrat de FORME (les clefs, les types, la nullabilite, ce que les logiques pures savent
+// traverser), jamais un contrat de VALEURS. Les valeurs, elles, sont figees cote Go par les
+// goldens d'assemblage.
 //
 // D'OU LA COUPE DES POINTS DE PISTE (arbitrage du pilote, 2026-09-13). Mesure du lot 0.B.7 :
 // les huit documents PLEINS pesent 5,86 Mio compresses, pour un plafond de 3 Mio — et

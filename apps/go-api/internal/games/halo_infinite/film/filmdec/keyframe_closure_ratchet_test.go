@@ -75,6 +75,9 @@ func closureMiniFilms() []string {
 
 // TestKeyframeClosureRatchet : la couverture par archetype ne descend jamais.
 func TestKeyframeClosureRatchet(t *testing.T) {
+	// `KeyframeClosure` installe le profil MPP du build : globaux de paquet, donc verrou.
+	relVerrou := LockProcessDecode()
+	defer relVerrou()
 	got := mesurerFermetureBobines(t)
 	if *updateFermeture {
 		if err := os.MkdirAll(filepath.Dir(closureGoldenPath), 0o750); err != nil {
@@ -173,6 +176,25 @@ func mesurerFermetureBobines(t *testing.T) string {
 	b.WriteString("# Une colonne par mesure : film, archetype, fermes, total, bloquant le plus frequent.\n")
 	b.WriteString("# Le ratchet rougit sur une BAISSE de `fermes`. Regeneration :\n")
 	b.WriteString("#   go test ./internal/games/halo_infinite/film/filmdec/ -run KeyframeClosureRatchet -update-keyframe-closure\n")
+	b.WriteString("#\n")
+	b.WriteString("# HISTORIQUE DES REGENERATIONS — une ligne par lot, avec CE QUI MONTE ET POURQUOI.\n")
+	b.WriteString("# Un golden de couverture qu'on refige sans dire ce qu'il gagne ne garde plus rien.\n")
+	b.WriteString("#\n")
+	b.WriteString("#   2026-09-13 lot 0.A.3 : creation, 7 bobines par build, 217 lignes de mesure.\n")
+	b.WriteString("#   2026-09-14 lot 1.3   : les CINQ etats par defaut manquants relus chez l'ecrivain\n")
+	b.WriteString("#     (ti14 `V ; R(5)` FUN_140FED6F4 · ti17 `V ; R(7)` FUN_14101A0A4 · ti21 `R(18)`\n")
+	b.WriteString("#     FUN_141133C24 · ti29 `V` seul FUN_14116F514 · ti47 `V ; R(5)` FUN_1410F44F8).\n")
+	b.WriteString("#     21 lignes MONTENT, 0 descend, aucune ne disparait, aucun total ne bouge :\n")
+	b.WriteString("#       ti=14    0/3520 -> 3520/3520 (100 %, les 7 bobines)\n")
+	b.WriteString("#       ti=17    0/3729 -> 3729/3729 (100 %, les 7 bobines)\n")
+	b.WriteString("#       ti=29    0/110  ->  102/110  (100 % sur 6 bobines, 22/30 sur 60ae07c4)\n")
+	b.WriteString("#     ti=21 (0/357) et ti=47 (0/1716) ne bougent PAS, et c'etait prevu : leur largeur\n")
+	b.WriteString("#     est prouvee par deux chaines, mais un composant reste faux — ti=47 bute sur\n")
+	b.WriteString("#     `i2 personal-ai-data-component`, ti=21 sous-lit. Une largeur juste ne remplace\n")
+	b.WriteString("#     pas un deserialiseur manquant (lot 3.6).\n")
+	b.WriteString("#     Meme geste sur les 6 films de recherche : 8 796/62 686 (14,0 %) -> 19 337/62 686\n")
+	b.WriteString("#     (30,8 %), delta = 5 024 + 5 379 + 138, et le plancher de hasard DESCEND de\n")
+	b.WriteString("#     529 a 391. Mesure rejouable : `TestImageCleFermetureParArchetype` sous CHUNK00_FILMS.\n")
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
 		stats := fermetureDUneBobine(t, dir)

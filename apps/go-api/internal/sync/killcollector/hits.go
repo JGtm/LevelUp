@@ -18,9 +18,17 @@ package killcollector
 //
 // # LE PONT FilmIndex -> xuid, RESERVE LEVEE (mesuree 2026-09-01)
 //
-// Le film ne porte aucun xuid cote replication : l identite se resout par l indice. On REUTILISE le
-// resolveur des tirs (resolvePlayerIndices : indice de replication -> xuid, valide a 77 % contre
-// l oracle killsource). La RESERVE historique etait que filmdec.WeaponHitStats.FilmIndex venait d un
+// Les chunks de replication ne portent aucun xuid : l identite se resout par l indice. On REUTILISE
+// le resolveur des tirs (resolvePlayerIndices : indice de replication -> xuid, valide a 77 % contre
+// l oracle killsource).
+//
+// ⚠ CE RESOLVEUR EST UNE INFERENCE, ET LE FILM ECRIT LA REPONSE. `chunk_00` porte la table des
+// joueurs (`filmdec.ReadPlayerTable`, lot 1.5) : le lien `FilmIndex -> XUID` s y lit directement,
+// la ou `resolvePlayerIndices` le CHERCHE (motif du xuid dans le flux, 5 bits qui precedent).
+// Le lot 1.8 a bascule le decodeur de morts sur cette lecture ; les TIRS et les TOUCHES ne l ont
+// PAS ete — ils portent deux revisions distinctes (`WeaponShotsDecoderRev`,
+// `migration.WeaponHitDistanceDecoderRev`), donc deux backlogs de redecodage separes, hors du
+// perimetre de ce lot. Decouverte D4 (1.8) du PLAN_DECODEUR_FILM, §4. La RESERVE historique etait que filmdec.WeaponHitStats.FilmIndex venait d un
 // AUTRE champ du record de tir (decodeFireEvent, bits 36-40 >>1 = 4 bits) que l indice que
 // resolvePlayerIndices indexe (5 bits). VERDICT MESURE (TestWeaponIndexNumDenomEquivalence, package
 // analysis) : le 4 bits n etait que la MOITIE BASSE du champ. La cle est desormais
@@ -55,6 +63,19 @@ const (
 	metricHitsDistanceRow = "killsource_hits_distance_lignes"
 	metricHitsNoIndex     = "killsource_hits_indices_non_resolus"
 	metricHitsNoFilmDir   = "killsource_hits_films_absents_disque"
+	// metricHitsNoMapEntry : la carte du film n a pas d entree au catalogue de bornes — donc ni
+	// bornes monde ni decoupage d i0. D-4 d ADR 0034 : une carte inconnue se COMPTE, elle ne se
+	// devine pas. Les touches restent comptees, seule leur distance manque.
+	metricHitsNoMapEntry = "killsource_hits_cartes_hors_catalogue"
+	// metricHitsNoMapName : le match n a AUCUN nom de carte (base muette sur ce match) — donc
+	// aucune identite de carte, donc aucune borne. DISTINCT du precedent (lot 1.9.4) : « je ne
+	// sais pas quelle carte » et « je sais quelle carte, elle n est pas au catalogue » appellent
+	// deux gestes differents, et un seul compteur pour les deux les rendrait indiscernables.
+	metricHitsNoMapName = "killsource_hits_matchs_sans_nom_de_carte"
+	// metricHitsNoMapWiring : la capability est la, mais le collecteur n a pas recu
+	// `WithPositionCapture` — il n a donc ni resolveur de nom ni catalogue. Regression de
+	// CABLAGE, pas etat des donnees : meme motif que `metricPositionsNotWired`.
+	metricHitsNoMapWiring = "killsource_hits_carte_non_cablee"
 	metricHitsScanFail    = "killsource_hits_erreurs_scan"
 	metricHitsWriteFail   = "killsource_hits_erreurs_ecriture"
 )
@@ -139,22 +160,21 @@ func (c *KillSourceCollector) buildHitsBatches(
 	return accuracy, distance, true
 }
 
-// resolveHitDistanceFunc construit la WeaponHitDistanceFunc (distance tireur<->victime) si les
-// bornes de la carte se resolvent ; nil sinon (distances desactivees, touches comptees). Le
-// catalogue de bornes non configure (mapBoundsPath vide) est un cas NORMAL, pas une erreur.
+// resolveHitDistanceFunc construit la WeaponHitDistanceFunc (distance tireur<->victime) si
+// L ENTREE DE CATALOGUE de la carte se resout ; nil sinon (distances desactivees, touches
+// comptees — `repli_distances_de_touche_desactivees` au registre).
+//
+// L ENTREE ENTIERE, PAS SES SEULES BORNES (lot 1.9.2) : elle porte AUSSI le decoupage d i0 de la
+// carte, que le balayage impose desormais au lieu de le laisser detecter
+// (`filmdec.BuildBipedTracks`). D-3 d ADR 0034.
 func (c *KillSourceCollector) resolveHitDistanceFunc(
 	ctx context.Context, matchID, dir string, damages []filmdec.WeaponDamage, n int,
 ) filmdec.WeaponHitDistanceFunc {
-	if c.mapBoundsPath == "" {
+	entry, ok := c.entreeDeCarteDesTouches(ctx, matchID)
+	if !ok {
 		return nil
 	}
-	wr, err := filmdec.DetectFilmWorldRange(dir, c.mapBoundsPath, "")
-	if err != nil {
-		slog.DebugContext(ctx, "killsource: precision par arme — bornes de carte inconnues, distances desactivees",
-			"match_id", matchID, "err", err)
-		return nil
-	}
-	distFn, base, err := filmdec.FilmWeaponHitDistance(dir, wr, damages, n)
+	distFn, base, err := filmdec.FilmWeaponHitDistance(dir, entry, damages, n)
 	if err != nil {
 		slog.DebugContext(ctx, "killsource: precision par arme — positions bipedes indisponibles, distances desactivees",
 			"match_id", matchID, "err", err)
@@ -163,6 +183,56 @@ func (c *KillSourceCollector) resolveHitDistanceFunc(
 	slog.DebugContext(ctx, "killsource: precision par arme — distances actives",
 		"match_id", matchID, "base_positions", base)
 	return distFn
+}
+
+// entreeDeCarteDesTouches rend l entree de catalogue de la carte du match — LUE A SON NOM, JAMAIS
+// DEVINEE (lot 1.9.4, D13). ok=false desactive les distances ; les touches restent comptees.
+//
+// # CE QUE CE LOT A RETIRE, ET CE QUE LA MESURE EN DIT
+//
+// Ce site appelait `filmdec.DetectFilmMapEntry(dir, c.mapBoundsPath, "")` : la carte s y
+// reconnaissait a la SIGNATURE des largeurs d axe du decoupage d i0, lu dans le film, croisee au
+// catalogue — alors que le MEME collecteur resolvait deja le nom de carte du match par la base
+// pour la passe des positions, et que le parametre `mapNameOverride` existait et etait passe VIDE.
+//
+// La signature n est pas seulement ambigue, elle est FAUSSE (mesure du lot, §5 du plan) : sur les
+// 79 cartes du catalogue, 68 tombent dans 5 classes de meme signature dont une de 59 cartes, et
+// sur les 17 films mesures la signature rend 2 accords, 13 ambiguites et 2 DESACCORDS — les deux
+// films Live Fire, ou elle designe `aquarius` avec un seul candidat. Les distances y auraient ete
+// calculees dans l AABB d une autre carte, sans un mot. Elle n a donc pas ete retrogradee en
+// repli : un repli qui se declenche a tort corrompt un fait que la lecture aurait donne juste
+// (D14 d).
+//
+// # TROIS SORTIES, TROIS COMPTEURS, ET C EST VOULU
+//
+// Le CABLAGE absent (pas de resolveur de nom), le NOM absent (base muette sur ce match) et la
+// carte HORS CATALOGUE sont trois causes distinctes qui appellent trois gestes distincts. Un
+// compteur unique les rendrait indiscernables — et un titre entier pourrait perdre ses distances
+// en silence, ce que D-4 d ADR 0034 interdit.
+func (c *KillSourceCollector) entreeDeCarteDesTouches(
+	ctx context.Context, matchID string,
+) (filmdec.MapQuantEntry, bool) {
+	if c.mapNames == nil || c.mapBounds == nil {
+		observability.AddInt(metricHitsNoMapWiring, 1)
+		slog.WarnContext(ctx, "killsource: precision par arme — collecteur sans resolution de carte "+
+			"(WithPositionCapture absent), distances desactivees", "match_id", matchID)
+		return filmdec.MapQuantEntry{}, false
+	}
+	noms, err := c.nomsDeCarteDuMatch(ctx, matchID)
+	if err != nil {
+		observability.AddInt(metricHitsNoMapName, 1)
+		slog.InfoContext(ctx, "killsource: precision par arme — match sans nom de carte, distances desactivees",
+			"match_id", matchID, "err", err)
+		return filmdec.MapQuantEntry{}, false
+	}
+	entry, err := c.entreeDeCatalogueParNom(noms)
+	if err != nil {
+		observability.AddInt(metricHitsNoMapEntry, 1)
+		slog.InfoContext(ctx, "killsource: precision par arme — carte hors catalogue de bornes, distances desactivees",
+			"match_id", matchID, "err", err)
+		return filmdec.MapQuantEntry{}, false
+	}
+	return entry, true
 }
 
 // hitsScanFailed compte et journalise un echec de scan, et rend le triplet d abandon (best-effort).

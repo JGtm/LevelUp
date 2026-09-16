@@ -33,8 +33,11 @@ package filmdec
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestDeltaWalkWitness -v
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -54,13 +57,21 @@ type deltaWitnessCounts struct {
 
 // deltaWitnessFrozen : les comptes FIGES, par identifiant de film (nom du repertoire).
 //
-// MESURES LE 2026-08-17 (lot 0, item 0.1), sur les trois films de reference du corpus. Ces
-// valeurs ne se « rafraichissent » pas : si l'une bouge, c'est la GRAMMAIRE qui a bouge, et
-// c'est ce qu'il faut expliquer avant de reecrire le chiffre.
+// MESURES LE 2026-08-17 (lot 0, item 0.1), RE-FIGEES LE 2026-09-14 (item 1.4.0) sur les trois
+// films de reference du corpus. Ces valeurs ne se « rafraichissent » pas : si l'une bouge,
+// c'est la GRAMMAIRE qui a bouge, et c'est ce qu'il faut expliquer avant de reecrire le
+// chiffre — l'attribution des quatre marches du 2026-08-18 au 2026-09-14 est ecrite plus bas,
+// et c'est la SEULE forme acceptable d'un re-figeage de ce fichier.
+//
+// CE FICHIER EST SOUS GARDE D'ENVIRONNEMENT (`DELTA_WITNESS_FILM`) : la CI ne le joue JAMAIS.
+// Un lot qui touche la traversee doit donc le jouer A LA MAIN sur les trois films, et
+// consigner ce qu'il y voit. Ne pas le jouer, c'est laisser la derive s'accumuler jusqu'a ce
+// qu'elle ne soit plus attribuable — c'est exactement ce qui s'est produit entre le
+// 2026-08-18 et le 2026-09-14, et ce que l'item 1.4.0 a du defaire par bisection.
 var deltaWitnessFrozen = map[string]deltaWitnessCounts{
-	"000d5950": {packets: 14350, records: 38878, walked: 30080}, // 77,370 % aboutis
-	"06dfe6d9": {packets: 6606, records: 10613, walked: 8502},   // 80,109 % aboutis
-	"64e8adfa": {packets: 14357, records: 39806, walked: 31973}, // 80,322 % aboutis
+	"000d5950": {packets: 14350, records: 38945, walked: 30118}, // 77,335 % aboutis
+	"06dfe6d9": {packets: 6606, records: 10636, walked: 8505},   // 79,964 % aboutis
+	"64e8adfa": {packets: 14357, records: 39936, walked: 31933}, // 79,960 % aboutis
 }
 
 // POURQUOI CES COMPTES ONT BOUGE LE 2026-08-18, PREMIERE FOIS (lot C phase 1b, item C.1b.1) — la
@@ -94,6 +105,54 @@ var deltaWitnessFrozen = map[string]deltaWitnessCounts{
 // bipede. Ce qui est neuf, c est que le gain touche LES DOUZE films, y compris le temoin Slayer ou
 // ti=13 est pourtant quasi muet — signe que les records concernes ne sont pas seulement ceux de la
 // bande ti=13 mais aussi ceux qui la SUIVENT dans le paquet.
+//
+// POURQUOI CES COMPTES ONT BOUGE ENTRE LE 2026-08-18 ET LE 2026-09-14 (item 1.4.0 du
+// PLAN_DECODEUR_FILM, attribution exigee par la decouverte D1 (1.3)) — QUATRE fois, par QUATRE
+// lots, dont AUCUN n'a tenu le contrat ci-dessus. Le temoin est sous garde d'environnement :
+// la CI ne le joue jamais, et c'est pour cela que la derive a pu traverser 0.A a 1.3 sans etre
+// consignee. Les comptes sont re-figes ici a l'etat du commit d'integration `15309e89e`
+// (cloture du lot 1.3), APRES attribution de chaque marche.
+//
+// LA BISECTION (chaine premier-parent 4ad72a4a1..8f35efb72, 690 points, temoin `06dfe6d9`) —
+// records rendus / traversees abouties :
+//
+//	4ad72a4a1 2026-08-18  10 613 / 8 502   le fige d'origine, CONFORME
+//	62ba098b8 2026-09-01  10 615 / 8 504   merge wt/bombe-visuel (la bombe d'Assaut au rejeu)
+//	8f309ce86 2026-09-02  10 610 / 8 497   merge feat/precision-arme (acquis backend)
+//	736ccf3c3 2026-09-05  10 610 / 8 489   merge cuisson-perf + vehicules (schema 39)
+//	ffb27238c 2026-09-11  10 627 / 8 499   merge wt/munitions-objet (grammaire d'i9 retablie)
+//	8f35efb72 .. 191933992               10 627 / 8 499   M0, 0.D, 1.0, 1.1 : AUCUN mouvement
+//	783ae680d 2026-09-14  10 629 / 8 499   lot 1.2 (le registre a l'octet 8)
+//	15309e89e 2026-09-14  10 636 / 8 505   lot 1.3 (les cinq etats par defaut)
+//
+// LE « SENS QUE LE CONTRAT REFUSE » EST UN ARTEFACT D'AGREGATION, ET C'EST LE RESULTAT DE
+// L'ITEM. D1 (1.3) relevait que sur `06dfe6d9` les records MONTAIENT (+16) pendant que les
+// traversees abouties DESCENDAIENT (-3). Aucune marche ne fait cela : pris un a un, chaque
+// point est coherent (+2/+2, -5/-7, 0/-8, +17/+10, +2/0, +7/+6). Ce n'est pas un lot qui a
+// produit un sens impossible, c'est un temoin fige laisse en place pendant QUATRE lots.
+//
+// CHAQUE MARCHE EST UNE DIVERGENCE (une lecture du jeu ajoutee ou corrigee), AUCUNE N'EST UNE
+// REGRESSION, et le point le plus suspect est celui qui le prouve le mieux :
+//
+//	8f309ce86 (-7 aboutis) — la sonde par archetype ne laisse QU'UNE ligne changer de verdict :
+//	  `ti=49` passe de 0/7 non portes a 7/7. Cause mesuree : avant ce merge, `parseRegistry`
+//	  decoupait le chunk_00 par « taille du fichier / taille d'un bloc » et resolvait 64
+//	  archetypes sur `06dfe6d9`, dont ti=49 a 63 avec ZERO composant — du bourrage. Une
+//	  traversee sur un archetype a zero composant se termine sans rien lire, donc ELLE
+//	  ABOUTISSAIT. Depuis, le registre s'arrete a sa fin STRUCTURELLE : 49 archetypes sur ce
+//	  film, ti=49 ABSENT. Les 7 traversees perdues ne lisaient rien — les perdre est le
+//	  correctif, pas la regression.
+//	62ba098b8 (+2/+2) et ffb27238c (+17/+10) — des composants portes en plus (objectif/bombe,
+//	  puis la grammaire d'i9 relue au desassemblage) : l'espece de derive que le contrat accepte.
+//	736ccf3c3 (-8 aboutis) — les largeurs mesurees du chantier vehicules (dont l'etat par defaut
+//	  de ti=40) et les bandes de slots ; la perte se concentre sur ti=0 (-6), ti=33 (-1) et
+//	  ti=38 (-1), aucune ligne ne bascule en bloc.
+//	783ae680d (lot 1.2, +2/0) et 15309e89e (lot 1.3, +7/+6) — les deux lots du chantier, dont
+//	  l'effet etait attendu et deja chiffre dans leur propre journal.
+//
+// AUCUN DE CES QUATRE POINTS N'EST DANS LE PERIMETRE DU CADRE D'IMAGE-CLE (lot 1.4) : ils
+// vivent tous dans la marche DELTA et dans le registre. Le report est consigne au plan (§4 et
+// bloc « Cloture M1 »).
 
 // TestDeltaWalkWitness : la mesure, confrontee au fige quand le film est connu.
 func TestDeltaWalkWitness(t *testing.T) {
@@ -104,13 +163,15 @@ func TestDeltaWalkWitness(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
 
-	got := deltaWitnessMeasure(t, dir)
+	got, parTI := deltaWitnessMeasure(t, dir)
 	id := filepath.Base(filepath.Clean(dir))
 	t.Logf("== FILM %s (%d premier(s) chunk(s) de replication) ==", id, deltaWitnessChunks)
 	t.Logf("  paquets delta lus : %d", got.packets)
 	t.Logf("  records rendus : %d · traversee ABOUTIE (DesyncAt == -1) : %d (%.3f %%) · "+
 		"ported=false : %d", got.records, got.walked,
 		deltaWitnessPct(got.walked, got.records), got.records-got.walked)
+	t.Logf("  records NEW par archetype (ceux qui jouent l'etat par defaut) : %s",
+		deltaWitnessHisto(parTI))
 
 	want, ok := deltaWitnessFrozen[id]
 	if !ok {
@@ -127,7 +188,14 @@ func TestDeltaWalkWitness(t *testing.T) {
 
 // deltaWitnessMeasure parcourt les chunks et agrege. Le monde est amorce par les images-cles
 // du chunk courant avant que ses paquets delta ne soient lus.
-func deltaWitnessMeasure(t *testing.T, dir string) deltaWitnessCounts {
+//
+// LE SECOND RENDU EST L'HISTOGRAMME DES RECORDS `recNew` PAR ARCHETYPE (lot 1.3, 2026-09-14).
+// C'est la POPULATION EXACTE qu'une entree de `defaultStateDeserByTI` change : `TraverseEntity`
+// est le seul lecteur de production qui consulte cette table, et il ne la consulte que sur un
+// record NEW. L'histogramme dit donc, film par film, combien de records un etat par defaut neuf
+// touche — avant d'ecrire la moindre ligne. Il n'est PAS fige (il depend du film) : ce sont les
+// trois comptes de `deltaWitnessFrozen` qui gardent la marche.
+func deltaWitnessMeasure(t *testing.T, dir string) (deltaWitnessCounts, map[uint32]int) {
 	t.Helper()
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
@@ -143,6 +211,7 @@ func deltaWitnessMeasure(t *testing.T, dir string) deltaWitnessCounts {
 	}
 	cfg := DefaultFrameConfig()
 	var out deltaWitnessCounts
+	parTI := map[uint32]int{}
 	for c := 1; c <= deltaWitnessChunks; c++ {
 		data, err := ReadFilmChunk(dir, c)
 		if err != nil {
@@ -167,13 +236,34 @@ func deltaWitnessMeasure(t *testing.T, dir string) deltaWitnessCounts {
 			recs, _ := DecodeFrameRecords(br, w, cfg)
 			for i := range recs {
 				out.records++
+				if recs[i].Type == recNew {
+					parTI[recs[i].TypeIndex]++
+				}
 				if recs[i].DesyncAt == -1 {
 					out.walked++
 				}
 			}
 		}
 	}
-	return out
+	return out, parTI
+}
+
+// deltaWitnessHisto rend l'histogramme par archetype, trie, avec son total — la forme est faite
+// pour etre COLLEE telle quelle dans un journal de lot.
+func deltaWitnessHisto(parTI map[uint32]int) string {
+	tis := make([]int, 0, len(parTI))
+	total := 0
+	for ti, n := range parTI {
+		tis = append(tis, int(ti)) //nolint:gosec // TypeIndex tient sur 6 bits (0..63)
+		total += n
+	}
+	sort.Ints(tis)
+	var b strings.Builder
+	for _, ti := range tis {
+		fmt.Fprintf(&b, "ti=%d:%d ", ti, parTI[uint32(ti)]) //nolint:gosec // ti vient d'une cle uint32
+	}
+	fmt.Fprintf(&b, "| total NEW %d", total)
+	return b.String()
 }
 
 // deltaWitnessPct : pourcentage a denominateur jamais nul.

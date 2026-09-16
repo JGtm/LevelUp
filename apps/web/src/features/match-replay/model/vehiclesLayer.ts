@@ -110,6 +110,63 @@ export function vehicleIsDecor(family: string | undefined): boolean {
   return family !== undefined && FAMILLES_NON_JOUABLES.has(family)
 }
 
+// --- ÉLÉMENTS DE CARTE (schéma 1.9.9 — EN AVANCE DE PHASE, cf. ReplayVehicleLabel) ------------
+
+/**
+ * VEHICLE_KIND_MAP_ELEMENT — LA SEULE valeur de `vehicleLabels[famille].kind` que ce calque
+ * traite, et elle veut dire : **ce n'est pas un véhicule de la partie, c'est un objet de la
+ * carte**. Nommée plutôt que semée en littéral, même raison que `VEHICLE_END_DESTROYED`.
+ *
+ * ELLE NE SE CONFOND PAS AVEC `FAMILLES_NON_JOUABLES`, ET LA DIFFÉRENCE EST LE POINT DU LOT.
+ * Le décor (Falcon, Pelican…) ne se dessine PAS : c'est la plainte de l'utilisateur du
+ * 2026-09-02, des transports scriptés qui passaient pour des véhicules de la partie. Un élément
+ * de carte, LUI, SE DESSINE — décision utilisateur du 2026-09-14 : « ce sont des éléments de la
+ * map ». Ce qu'il ne fait pas, c'est porter un occupant ou passer pour un châssis non résolu.
+ */
+export const VEHICLE_KIND_MAP_ELEMENT = 'map_element'
+
+/**
+ * VehicleMapElementGlyph — LE PICTOGRAMME d'un élément de carte. Une famille, une forme : le
+ * dessin doit dire CE QUE l'objet est, pas seulement « quelque chose est là » (c'est tout ce que
+ * disait le losange neutre, et c'est ce que l'utilisateur a vu comme une image manquante).
+ */
+export type VehicleMapElementGlyph = 'turret'
+
+/**
+ * VEHICLE_MAP_ELEMENT_RENDER — LA TABLE PAR FAMILLE, unique porte d'entrée du rendu des éléments
+ * de carte. Mêmes conventions que `PLACEMENT_RENDER` (equipmentPlacementsLayer.ts) : les clés
+ * sont les identifiants STABLES publiés par le document (`family`), jamais des libellés.
+ *
+ * UNE FAMILLE ABSENTE N'A PAS DE FORME DÉCIDÉE : le calque retombe alors sur le marqueur neutre,
+ * qui reste honnête (« un objet est là, on ne sait pas lequel »). Ce qui est interdit, c'est le
+ * marqueur neutre sur une famille que le titre A qualifiée et que cette table nomme.
+ */
+export const VEHICLE_MAP_ELEMENT_RENDER: Readonly<Record<string, VehicleMapElementGlyph>> = {
+  // LA TOURELLE AUTOMATIQUE BANNIE (châssis `0x038df01a`) : neuf exemplaires immobiles sur
+  // `bfecd02b`, un par entrée de la zone de jeu, vivants tout le match. L'utilisateur veut les
+  // voir (« ce sont des éléments de la map ») et ne possède aucun asset pour elles : le
+  // pictogramme tient la place jusqu'au jour où il en fournira un, et ce jour-là seule la table
+  // d'assets change (`static/vehicles-assets/{slug}/replay/index.json` + `sprite = true` dans
+  // `replay_labels.toml`) — pas une ligne d'ici.
+  tourelle_auto_bannie: 'turret',
+}
+
+/**
+ * vehicleMapElementGlyph — le pictogramme à dessiner pour cette famille, ou `null`.
+ *
+ * DEUX CONDITIONS, LES DEUX NÉCESSAIRES : le DOCUMENT doit dire que la famille est un élément de
+ * carte (`kind`, posé par le serveur depuis le manifeste du titre) ET cette table doit lui
+ * connaître une forme. Le document seul ne suffit pas — il ne sait pas dessiner ; la table seule
+ * non plus — elle affirmerait une nature que le serveur n'a pas publiée.
+ */
+export function vehicleMapElementGlyph(
+  family: string | undefined,
+  kind: string | undefined,
+): VehicleMapElementGlyph | null {
+  if (family === undefined || kind !== VEHICLE_KIND_MAP_ELEMENT) return null
+  return VEHICLE_MAP_ELEMENT_RENDER[family] ?? null
+}
+
 // --- DESTRUCTION (schéma 39 — EN AVANCE DE PHASE, cf. ReplayVehicleTrack dans types.ts) --------
 
 /**
@@ -200,8 +257,15 @@ export function vehicleExplosionKindOf(family: string | undefined): VehicleExplo
  * de l'erreur (un joueur effacé) est plus lourd que celui de l'abstention (un pion de trop
  * pendant qu'il conduit).
  */
-export function vehicleCanEmbark(track: ReplayVehicleTrackReady): boolean {
-  return track.family !== undefined && track.family !== '' && !vehicleIsDecor(track.family)
+export function vehicleCanEmbark(track: ReplayVehicleTrackReady, kind?: string): boolean {
+  if (track.family === undefined || track.family === '' || vehicleIsDecor(track.family)) return false
+  // UN TROISIÈME REFUS DEPUIS LE 2026-09-16 (lot 1.9.9), pour la MÊME raison que les deux
+  // autres : un ÉLÉMENT DE CARTE ne porte personne. Le serveur ne lui attribue déjà aucun
+  // épisode (`vehicleFamillesNonPilotables`, côté Go) ; la garde est ici AUSSI parce que le prix
+  // de l'erreur est un joueur réel effacé de la carte — exactement ce qu'ont produit les trois
+  // faux épisodes du prop Falcon de `0d76e8f1`, et on ne laisse pas un seul verrou sur ce
+  // chemin-là.
+  return kind !== VEHICLE_KIND_MAP_ELEMENT
 }
 
 // --- ORIENTATION ----------------------------------------------------------------------------
@@ -501,10 +565,12 @@ export function vehicleColorAt(
  */
 export function buildEmbarkedPredicate(
   tracks: readonly ReplayVehicleTrackReady[],
+  /** NATURE d'une famille (`vehicleLabels[famille].kind`) : un élément de carte n'embarque pas. */
+  kindOf?: (family: string) => string | undefined,
 ): (slot: number, frame: number) => boolean {
   const bySlot = new Map<number, ReplayVehicleRide[]>()
   for (const track of tracks) {
-    if (!vehicleCanEmbark(track)) continue
+    if (!vehicleCanEmbark(track, track.family ? kindOf?.(track.family) : undefined)) continue
     for (const ride of track.rides) {
       const list = bySlot.get(ride.slot)
       if (list) list.push(ride)

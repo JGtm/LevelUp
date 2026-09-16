@@ -57,48 +57,6 @@ import (
 	"levelup/go-api/internal/sync/haloclient"
 )
 
-// KillSourceDecoderRev — la version du decodeur, ecrite sur CHAQUE ligne produite.
-//
-// Elle ne sert pas a faire joli : c est elle qui permettra de savoir QUELS matchs redecoder
-// apres un changement de decodage, au lieu de tout reprendre (1 325 films a 8-30 s = 3 a 11 h).
-// LA FAIRE EVOLUER a chaque changement de decodage qui change les lignes produites.
-//
-// 2026-09-05 : `killsource-2026-07-31` -> `killsource-2026-09-05`. LE CONTRAT CI-DESSUS N AVAIT
-// PAS ETE TENU : 14 commits ont touche `games/halo_infinite/film/killsource/` depuis v7.3.0 sans
-// un seul bump (le seul commit qui touchait cette ligne etait un deplacement de paquet). Les
-// lignes deja en base portaient donc la revision courante et etaient exclues A VIE du backlog
-// (`conditionBacklog`, postsync.go) — source du degat, categorie et assistant servis avec le
-// decodage d avant les vehicules. Le bump les rend a nouveau candidates.
-//
-// 2026-09-12 : `killsource-2026-09-05` -> `killsource-2026-09-12`. LA VERSION DU FILM EST
-// DESORMAIS LUE. `loadKillFeed` passait `filmMajorVersion = 0` en dur au parseur d events, donc
-// le decoupage « gamertag en tete » pour tous les films ; sur les 211 films de version 39-40 du
-// cache (mars a novembre 2025) le gamertag vit 12 octets plus loin, le roster s effondrait a
-// 2 noms distincts pour 24 a 27 joueurs et les portes `indice < nPlay` rejetaient les trois
-// quarts des dead-states. `loadFilm` lit maintenant cette version dans l en-tete du registre du
-// film (`filmdec.FilmMajorVersion`, u32 LE en tete de `chunk_00`). Couverture mesuree sur cinq
-// films Big Team Battle 2025 : 15.0 -> 97.1, 11.2 -> 100.0, 6.8 -> 94.8, 5.1 -> 97.0,
-// 17.3 -> 82.4 % ; temoins 2024 et 2026 inchanges au dixieme
-// (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Les lignes en base doivent etre redecodees :
-// d ou ce bump.
-//
-// DECOUVERTE, NON TRAITEE : l empreinte ci-dessous ne hache que `killsource/`. Ce correctif a
-// commence dans `internal/analysis/` (parseur) et dans `filmdec` — il n aurait PAS fait sonner
-// le gate si `loadFilm`/`loadKillFeed` n avaient pas bouge aussi. Le gate couvre le decodeur,
-// pas son amont.
-const KillSourceDecoderRev = "killsource-2026-09-12"
-
-// L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
-// `testdata/killsource_decoder_rev.golden` porte le couple (revision, empreinte) et
-// `decoder_rev_fingerprint_test.go` le compare aux sources NON-TEST de
-// `internal/games/halo_infinite/film/killsource/`.
-//
-// POURQUOI UN GOLDEN ET PLUS UNE CONSTANTE (revue adversariale du 2026-09-12, constat P1-4).
-// Tant que le test ne comparait que l EMPREINTE a une constante, remettre la revision ci-dessus a
-// sa valeur d avant — en gardant la nouvelle empreinte — restait VERT : le gate ne tenait qu un
-// des deux gestes qu il pretendait tenir. Le golden porte les DEUX, et le test distingue les deux
-// echecs : « le decodeur a change » et « la revision a change sans le decodeur ».
-
 // defaultKillSourceTimeout — la limite de temps PAR MATCH.
 //
 // CALIBRAGE SUR MESURE, PAS SUR INTUITION. Les deux colonnes disent l histoire :
@@ -136,13 +94,93 @@ const (
 	metricDeaths      = "killsource_morts_ecrites"
 	metricNotPublish  = "killsource_passes_non_publiables"
 	metricAssistExtra = "killsource_assist_extra_count"
+	// LES QUATRE COMPTEURS DE PROVENANCE DU LIEN `indice -> joueur` (lot 1.8). Ils disent, en
+	// exploitation et pas seulement dans le journal du jour, quelle part de chaque passe vient
+	// d une LECTURE et quelle part d un REPLI (D14 c du chantier, D-10 d ADR 0034) :
+	//
+	//	table_film     indices lus dans la table des joueurs de `chunk_00`
+	//	inference      indices laisses a la bijection inferee des votes du kill-feed
+	//	silence        indices lus que le kill-feed ne confirme ni n infirme (le joueur n a ni
+	//	               tue ni n est mort dans la fenetre d appariement) — un silence n est PAS
+	//	               un desaccord
+	//	contradiction  indices lus que les votes du kill-feed designent autrement. La valeur
+	//	               publiee NE BOUGE PAS : la lecture prime, la contradiction se compte.
+	//
+	// UN CINQUIEME COMPTEUR NOMME LE REFUS DE LA TABLE ENTIERE, par cause : sans lui un film
+	// tombe au repli complet sans que rien ne le dise en dehors d une ligne de WARN.
+	metricBijTableFilm    = "killsource_bijection_table_film"
+	metricBijInference    = "killsource_bijection_inference"
+	metricBijSilence      = "killsource_bijection_silence"
+	metricBijContradict   = "killsource_bijection_contradiction"
+	metricBijTableRefusee = "killsource_bijection_table_refusee_"
+	// metricBijAmbigue : LES FILMS QUI BASCULENT, ET EUX SEULS.
+	//
+	// Incremente d UN PAR FILM sur `Inferred == 1 && FreeNames >= 2` : UN indice a inferer pour
+	// AU MOINS DEUX noms libres. C est exactement la population que la porte corrigee refuse et
+	// que l ancienne (`Inferred <= 1`) publiait — un choix arbitraire entre deux noms, tranche
+	// par des votes nuls des deux cotes.
+	//
+	// IL A SURCOMPTE JUSQU AU 2026-09-16 (revue de jalon M1, RONDE 2, constat F3). La condition
+	// etait `Inferred > 0 && FreeNames > Inferred`, donc elle mordait AUSSI sur `Inferred >= 2`
+	// — un regime ou l ancienne porte refusait DEJA (`Inferred <= 1` faux) et ou rien ne
+	// bascule. Le compteur gonflait ainsi d une population qui ne perd aucune publication, et
+	// la phrase qu il porte (« tant qu il est au-dessus de zero, des films sont refuses par le
+	// critere corrige ») etait fausse d autant.
+	//
+	// CE QU IL MESURE, DONC : tant qu il est au-dessus de zero, des films sont refuses ligne
+	// par ligne parce que le film ne nomme pas assez d indices — pas parce que le decodage a
+	// echoue. `Inferred >= 2` reste hors de ce compte : il est couvert par
+	// `killsource_bijection_inference`, qui dit combien d indices sont devines en tout.
+	metricBijAmbigue = "killsource_bijection_noms_libres_en_trop"
+	// LES SIX COMPTEURS DE PROVENANCE DU COUPLE `(tueur, victime)` (lot 1.9.3). Le kill-feed
+	// ecrit le couple lui-meme la plupart du temps ; quand il ne porte que le kill, c est le
+	// KILL-EVENT 85 qui le decide, et le recollage sur un instant voisin n est plus qu un repli :
+	//
+	//	meme_instant   le feed porte le kill ET la mort : aucun arbitrage
+	//	lu             le film ECRIT le couple (kill-event 85) et c est lui qui decide
+	//	recolle        LE REPLI (`repli_couple_recolle_sur_le_voisin`) — tant qu il monte, des
+	//	               couples sont encore DEVINES, et c est lui qui dira quand le retirer (D14 d)
+	//	muet           la lecture s est tue : le diagnostic typé qui OUVRE le repli
+	//	ambigu         deux enregistrements nomment le meme tueur et des victimes differentes
+	//	contradiction  le film nomme une victime dont aucun instant voisin ne porte la mort. La
+	//	               valeur publiee ne bouge pas — la lecture prime —, l ecart se compte.
+	//
+	// Une SEPTIEME quantite se compte a part parce qu elle n est pas un couple : les kills dont
+	// le film NOMME un bot en victime. Avant ce lot, ils etaient RECOLLES sur la mort d un
+	// humain et fabriquaient un couple qui n a jamais eu lieu.
+	metricCoupleMemeInstant = "killsource_couple_meme_instant"
+	metricCoupleLu          = "killsource_couple_lu"
+	metricCoupleRecolle     = "killsource_couple_recolle"
+	metricCoupleMuet        = "killsource_couple_muet"
+	metricCoupleAmbigu      = "killsource_couple_ambigu"
+	metricCoupleContradict  = "killsource_couple_contradiction"
+	metricVictimeBotLue     = "killsource_victime_bot_lue"
+
+	// D OU VIENT L APPARIEMENT `dead-state <-> kill-feed` de chaque ligne publiee (lot 1.9.7).
+	// L IDENTITE DE PAQUET decide ; la fenetre de 2,5 s n entre que sur son silence, et elle est
+	// alors un REPLI NOMME au registre. Les trois compteurs de repli sont SEPARES parce que leurs
+	// criteres de retrait le sont : `_fenetre` doit tomber a zero (le film ecrit le lien), les
+	// deux autres mesurent un negatif (le kill feed est humain-seul, il ne nomme ni la mort d un
+	// bot ni une mort que personne ne revendique).
+	metricApparIdentite    = "killsource_appariement_identite"
+	metricApparFenetre     = "killsource_appariement_fenetre"
+	metricApparBotFenetre  = "killsource_appariement_bot_fenetre"
+	metricApparNonRevFen   = "killsource_appariement_non_revendiquee_fenetre"
+	metricCoupleSansPaquet = "killsource_couple_sans_identite_de_paquet"
+	metricAssistFenetre    = "killsource_assistant_fenetre"
 )
 
 // KillSourceRoster : la resolution `gamertag -> xuid` pour UN match.
 //
-// Elle est ICI et pas dans le decodeur parce que le film ne porte AUCUN xuid cote replication :
-// il ne rend que des noms. Un nom non resolu n est pas une erreur — c est le cas normal d un BOT
-// (qui n a pas de xuid) et le cas honnete d un nom que le roster n a pas su rattacher.
+// Elle est ICI et pas dans le decodeur parce que les CHUNKS DE REPLICATION ne portent aucun
+// xuid : ils ne rendent que des noms. Un nom non resolu n est pas une erreur — c est le cas
+// normal d un BOT (qui n a pas de xuid) et le cas honnete d un nom que le roster n a pas su
+// rattacher.
+//
+// ⚠ « LE FILM NE PORTE AUCUN XUID » ETAIT ECRIT ICI, ET C EST FAUX DEPUIS LE LOT 1.5 : `chunk_00`
+// porte les trente-deux enregistrements de slot, XUID et gamertag compris, et le lot 1.8 les
+// emploie dans le decodeur (`killsource/film_table.go`). Ce qui reste vrai : la table est celle du
+// DEBUT du film et elle ignore les bots, donc la base garde la resolution de PUBLICATION.
 type KillSourceRoster interface {
 	// IdentitiesForMatch rend tout ce que la passe doit savoir des participants : leurs deux
 	// tables de noms et la reference `shots_fired` de l API.
@@ -159,18 +197,16 @@ type KillSourceCollector struct {
 	// Verifie ENTRE deux matchs, jamais au milieu d une ecriture.
 	budget  time.Duration
 	timeout time.Duration
-	// mapNames / mapBounds : cablage OPTIONNEL de la capture des positions
-	// (`shared.kill_positions`, G.2bis). Les deux sont necessaires ensemble — cf.
-	// WithPositionCapture. nil = positions desactivees, degradation journalisee
-	// PAR MATCH en Debug (jamais une erreur : c est une configuration, pas une panne).
+	// mapNames / mapBounds : cablage OPTIONNEL de la RESOLUTION DE CARTE du collecteur — cf.
+	// WithPositionCapture. Les deux sont necessaires ensemble ; nil = positions desactivees,
+	// degradation journalisee PAR MATCH (configuration, pas panne). DEUX passes les partagent
+	// depuis le lot 1.9.4 : les positions (G.2bis) ET les distances de touche (`map_identity.go`).
 	mapNames  port.ReplayMapNameRepo
 	mapBounds *filmdec.MapQuantCatalog
-	// filmDir / mapBoundsPath : la CONFIGURATION du numerateur film (precision par arme +
-	// distance, collectHits — acquis du chantier precision remis le 2026-09-01, exposition
-	// API retiree). filmDir nil = passe non configuree (chemin live sans cache disque)
-	// -> la precision par arme est ignoree, best-effort. Voir ConfigureFilmAccuracy.
-	filmDir       FilmDirResolver
-	mapBoundsPath string
+	// filmDir : la CONFIGURATION du numerateur film (precision par arme + distance, collectHits
+	// — acquis du chantier precision remis le 2026-09-01, exposition API retiree). nil = passe
+	// non configuree (chemin live sans cache) -> precision ignoree. Voir ConfigureFilmAccuracy.
+	filmDir FilmDirResolver
 }
 
 // FilmDirResolver rend le repertoire disque des chunks d un film (chunk_NN.bin, format
@@ -182,12 +218,14 @@ type KillSourceCollector struct {
 type FilmDirResolver func(matchID string) string
 
 // ConfigureFilmAccuracy branche le numerateur film (collectHits). `dir` resout le repertoire de
-// chunks d un match ; `mapBoundsPath` est le catalogue de bornes de carte (map_quant_bounds.json)
-// pour la distance — vide desactive la distance (les touches restent comptees). Sans cet appel, la
-// passe de precision par arme ne tourne pas (dégradation gracieuse).
-func (c *KillSourceCollector) ConfigureFilmAccuracy(dir FilmDirResolver, mapBoundsPath string) {
+// chunks d un match. Sans cet appel, la passe de precision par arme ne tourne pas (degradation
+// gracieuse).
+//
+// ELLE NE PREND PLUS DE CHEMIN DE CATALOGUE DEPUIS LE LOT 1.9.4 : le collecteur n en a qu UN,
+// celui de [KillSourceCollector.WithPositionCapture]. Deux configurations du meme catalogue, ce
+// seraient deux verites possibles pour la meme carte (`map_identity.go`).
+func (c *KillSourceCollector) ConfigureFilmAccuracy(dir FilmDirResolver) {
 	c.filmDir = dir
-	c.mapBoundsPath = mapBoundsPath
 }
 
 // NewKillSourceCollector construit le collecteur.
@@ -631,5 +669,91 @@ func publishKillSourceMetrics(res *killsource.Result, batch persist.KillSourceBa
 	}
 	for _, p := range res.Health.ExpvarPairs() {
 		observability.AddInt(p.Name, p.Value)
+	}
+	publishBijectionProvenance(res.Roster.FilmTable)
+	publishCoupleProvenance(res.Stats.Couples)
+	publishApparProvenance(res.Stats.Appariement)
+	if n := res.Stats.Assist.ParLaFenetre; n > 0 {
+		observability.AddInt(metricAssistFenetre, int64(n))
+	}
+}
+
+// publishApparProvenance : D OU VIENT L APPARIEMENT `dead-state <-> kill-feed`, en exploitation
+// (lot 1.9.7).
+//
+// LE COMPTEUR QUI INFORME EST `killsource_appariement_fenetre` : c est le REPLI
+// `repli_appariement_par_fenetre_temporelle`, et son critere de retrait est ecrit au registre.
+// `killsource_couple_sans_identite_de_paquet` dit POURQUOI il a fallu se replier — sans lui, un
+// compte de replis ne designe aucune correction.
+func publishApparProvenance(a killsource.ApparStats) {
+	for _, p := range []struct {
+		nom string
+		val int
+	}{
+		{metricApparIdentite, a.Identite},
+		{metricApparFenetre, a.Fenetre},
+		{metricApparBotFenetre, a.BotFenetre},
+		{metricApparNonRevFen, a.NonRevendiqueeFenetre},
+		{metricCoupleSansPaquet, a.CouplesSansIdentite},
+	} {
+		if p.val > 0 {
+			observability.AddInt(p.nom, int64(p.val))
+		}
+	}
+}
+
+// publishCoupleProvenance : D OU VIENT LE COUPLE `(tueur, victime)`, en exploitation (lot 1.9.3).
+//
+// LE COMPTEUR QUI INFORME EST `killsource_couple_recolle` : c est le REPLI, et son critere de
+// retrait est ecrit au registre (`repli_couple_recolle_sur_le_voisin`). Les trois compteurs de
+// diagnostic (`_muet`, `_ambigu`, `_contradiction`) disent POURQUOI il a fallu se replier — sans
+// eux, un compte de replis ne designe aucune correction.
+func publishCoupleProvenance(c killsource.CoupleStats) {
+	for _, p := range []struct {
+		nom string
+		val int
+	}{
+		{metricCoupleMemeInstant, c.MemeInstant},
+		{metricCoupleLu, c.Lus},
+		{metricCoupleRecolle, c.Recolles},
+		{metricCoupleMuet, c.Muet},
+		{metricCoupleAmbigu, c.Ambigu},
+		{metricCoupleContradict, c.Contradiction},
+		{metricVictimeBotLue, c.VictimesBotLues},
+	} {
+		if p.val > 0 {
+			observability.AddInt(p.nom, int64(p.val))
+		}
+	}
+}
+
+// publishBijectionProvenance : D OU VIENT LE LIEN `indice -> joueur`, en exploitation (lot 1.8).
+//
+// LE COMPTEUR QUI INFORME EST `killsource_bijection_inference` : tant qu il monte, des indices
+// sont encore DEVINES au lieu d etre lus, et c est ce qui dira quand le repli pourra etre retire
+// (D14 d : un repli dont le compte est a zero sur un jalon se supprime au suivant). Les cinq
+// films du cache sans section d identification (`03af54c3`, `13b00e35`, `47d20b5d`, `50247b26`,
+// `a349fea8`) le tiennent au-dessus de zero, et c est la raison ECRITE pour laquelle l inference
+// reste.
+func publishBijectionProvenance(t killsource.FilmTablePinning) {
+	observability.AddInt(metricBijTableFilm, int64(t.Pinned))
+	observability.AddInt(metricBijInference, int64(t.Inferred))
+	observability.AddInt(metricBijSilence, int64(t.Silent))
+	observability.AddInt(metricBijContradict, int64(t.Contradict))
+	if t.Inferred == 1 && t.FreeNames >= 2 {
+		observability.AddInt(metricBijAmbigue, 1)
+	}
+	if t.Refusal == killsource.FilmTableRead {
+		return
+	}
+	// La cause entre dans le NOM du compteur : « la table a ete refusee » sans dire pourquoi
+	// n oriente aucun diagnostic. Meme forme que `filmdec_unknown_build_<build>` (ADR 0009).
+	observability.AddInt(metricBijTableRefusee+string(t.Refusal), 1)
+	if t.Refusal == killsource.FilmTableUnknownBuild {
+		// D-4 d ADR 0034 : un build hors profil est mis de cote AVEC son compteur nomme, pour
+		// que le refus se voie en production et pas seulement au journal.
+		for _, p := range filmdec.UnknownBuildExpvarPairs(t.Build) {
+			observability.AddInt(p.Name, p.Value)
+		}
 	}
 }

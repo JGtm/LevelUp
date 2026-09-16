@@ -60,6 +60,15 @@ type Kill struct {
 	//
 	// AUCUN PLAFOND A 100 n est impose ici ni sur `KillerDamage` : voir [DamageShare].
 	AssistDamage DamageShare
+
+	// paquet : L IDENTITE DE PAQUET DU DEAD-STATE qui a produit cette ligne (lot 1.9.7). Elle
+	// apparie le KILL-EVENT 85 de cette mort — celui qui porte l assistant et les deux parts de
+	// degats ([decodeCtx.killEventsFor]) — sans passer par la fenetre de 2,5 s.
+	//
+	// NON EXPORTEE, ET C EST DELIBERE : c est une coordonnee INTERNE au decodeur (ou l octet a ete
+	// lu), pas un fait du match. La publier obligerait tout consommateur a la transporter sans
+	// jamais pouvoir s en servir, et ferait entrer une adresse de lecture dans un contrat.
+	paquet paquetID
 }
 
 // FeedTruth : ce que le JEU affiche. Se suffit a elle-meme.
@@ -323,6 +332,23 @@ type Result struct {
 	// BijectionMargin : ecart de score entre la meilleure bijection et la meilleure a UNE
 	// transposition pres. ZERO = au moins deux joueurs sont interchangeables.
 	BijectionMargin int
+	// BijectionDetermined : la bijection est-elle DETERMINEE, c est-a-dire sans aucune ambiguite
+	// restante ? Vrai quand l inference n avait qu UNE SEULE affectation possible a rendre :
+	// rien n est alors interchangeable, et la marge est SANS OBJET plutot que nulle
+	// (cf. [Result.LineByLinePublishable]).
+	//
+	// « AU PLUS UN INDICE LIBRE » NE SUFFIT PAS A DIRE CELA, et c est le correctif de la revue
+	// de jalon M1 (lentille L4) : depuis le lot 1.8 il peut rester PLUS de noms libres que
+	// d indices libres, donc un indice libre pour deux noms libres — que le hongrois tranche
+	// alors par les votes, tous nuls pour un joueur qui n a ni tue ni ete tue. Le critere est
+	// donc [FilmTablePinning.AffectationUnique], qui compte les DEUX cotes.
+	//
+	// C EST UN BOOLEEN POSE PAR LE DECODEUR, ET PAS UNE DERIVATION DU ROSTER, pour une raison
+	// mesuree : deriver le critere sur place rendrait VRAI sur un [Result] a zero — un resultat
+	// construit a la main, un test, un appelant qui n a pas decode. Le zero-value doit valoir le
+	// comportement d avant le lot, jamais le plus permissif (meme lecon que `roster[].team` en
+	// pointeur au lot 1.7).
+	BijectionDetermined bool
 	// Probe : la sonde a porte de catalogue RELACHEE. NIL quand la couverture est complete —
 	// c est le seul regime ou elle porterait de l information, et elle coute cher.
 	Probe *RelaxedProbe
@@ -330,10 +356,29 @@ type Result struct {
 
 // LineByLinePublishable : les attributions ligne par ligne sont-elles publiables ?
 //
-// DEUX CONDITIONS, et la seconde est celle qui a interdit le BTB : la bijection doit avoir une
-// MARGE STRICTEMENT POSITIVE (marge nulle = deux joueurs interchangeables, donc les lignes sont
-// exactes en AGREGAT et fausses individuellement, RE_LOG 7ter.53), et la sante ne doit pas etre
-// en ALERTE. Un `false` ne dit pas que le decodage est faux : il dit que seul l agregat l est.
+// DEUX CONDITIONS, et la seconde est celle qui a interdit le BTB : la bijection ne doit pas etre
+// AMBIGUE, et la sante ne doit pas etre en ALERTE. Un `false` ne dit pas que le decodage est faux :
+// il dit que seul l agregat l est.
+//
+// CE QUE « NON AMBIGUE » VEUT DIRE A CHANGE AU LOT 1.8, ET LA RAISON EST STRUCTURELLE.
+// La marge de bijection mesure l ecart entre la meilleure INFERENCE et la deuxieme meilleure : une
+// marge nulle dit que deux joueurs sont interchangeables AUX YEUX DE L INFERENCE (RE_LOG 7ter.53).
+// Depuis que la table du film epingle les indices qu elle LIT (film_table.go), cette question ne
+// se pose plus que sur ce qui RESTE a l inference : quand il ne lui reste qu une seule affectation
+// a rendre, il n y a rien d interchangeable — la marge est alors SANS OBJET, pas nulle. Confondre
+// les deux ferait refuser toutes les lignes d un film entierement lu, ce qui serait exactement
+// l inverse de ce que la lecture apporte.
+//
+// « CE QUI RESTE » A DEUX COTES, ET LE LOT 1.8 N EN COMPTAIT QU UN (revue de jalon M1, lentille
+// L4). Le critere etait « au plus un INDICE libre » ; il lui manquait « au plus un NOM libre ».
+// Un indice libre pour deux noms libres n a rien de determine : le hongrois le tranche par les
+// votes du kill-feed, nuls pour un joueur qui n a ni tue ni ete tue, donc arbitrairement — et
+// c est TOUT ce que la ligne porte qui partait alors sur un occupant tire au sort. Le critere est
+// desormais [FilmTablePinning.AffectationUnique].
+//
+// [Roster.FilmTable] dit toujours laquelle des deux voies a decide, indice par indice
+// (`Pinned` / `Inferred`), et [Result.BijectionMargin] garde son sens d origine : le verdict de
+// l INFERENCE sur sa propre part.
 //
 // CETTE PORTE VAUT POUR TOUT CE QUE LA LIGNE PORTE — la source du degat, LE CREDIT, L ASSISTANT et
 // LES DEUX PARTS DE DEGATS. C est une DECISION, et elle refuse deliberement une porte separee par
@@ -341,7 +386,10 @@ type Result struct {
 // donc exactement au meme endroit. La mesure BTB le confirme sans ambiguite — 62 assistants nommes
 // pour 122 a l API (51 %), contre 17/17 et 29/29 en Arena.
 func (r *Result) LineByLinePublishable() bool {
-	return r.BijectionMargin > 0 && len(r.Health.Alerts()) == 0
+	if len(r.Health.Alerts()) != 0 {
+		return false
+	}
+	return r.BijectionMargin > 0 || r.BijectionDetermined
 }
 
 // Stats : les quantites qui permettent de PONDERER une sortie, et de verifier les proprietes sur
@@ -383,6 +431,39 @@ type Stats struct {
 	// Assist : les denominateurs de la passe d assistants. Elle est INDEPENDANTE de la source du
 	// degat : elle lit la liste d evenements, pas la boucle de records.
 	Assist AssistStats
+	// Couples : D OU VIENT LE COUPLE (tueur, victime) de chaque instant du kill-feed — ecrit au
+	// meme instant, LU au kill-event 85, ou RECOLLE sur le voisin (le repli). Lot 1.9.3.
+	Couples CoupleStats
+	// Appariement : D OU VIENT L APPARIEMENT dead-state <-> kill-feed de chaque ligne publiee —
+	// l identite de paquet, ou la fenetre de 2,5 s (le repli). Lot 1.9.7.
+	Appariement ApparStats
+}
+
+// ApparStats : D OU VIENT L APPARIEMENT `dead-state <-> kill-feed` de chaque ligne PUBLIEE
+// (lot 1.9.7).
+//
+// AUCUN RATIO — les taux se calculent chez le lecteur, avec le denominateur qu il nomme. Les
+// quatre premiers champs se somment exactement aux lignes publiees par les temps 1 a 6 de
+// l hybride ; le cinquieme est un DIAGNOSTIC et n en fait pas partie.
+type ApparStats struct {
+	// Identite : l appariement a ete decide par l IDENTITE DE PAQUET — le film a ecrit le
+	// dead-state et le kill-event 85 dans le MEME paquet. C est la part LUE de la publication.
+	Identite int
+	// Fenetre : LE REPLI `repli_appariement_par_fenetre_temporelle` aux temps 1 a 3 (couple
+	// exact et source auto-infligee). Tant qu il monte, des lignes sont encore appariees par une
+	// coincidence temporelle de 2,5 s : c est lui qui dira quand le repli pourra etre retire
+	// (D14 d).
+	Fenetre int
+	// BotFenetre : LE REPLI `repli_mort_de_bot_premier_candidat` aux temps 4 et 5. Le kill-feed
+	// etant humain-seul, ces instants ne portent presque jamais d identite : le repli y est la
+	// voie NORMALE, et son compte le mesure au lieu de le supposer.
+	BotFenetre int
+	// NonRevendiqueeFenetre : LE REPLI `repli_mort_non_revendiquee_la_plus_proche` au temps 6.
+	NonRevendiqueeFenetre int
+	// CouplesSansIdentite : couples publies du kill-feed auxquels AUCUN kill-event 85 ne s est
+	// attache. C est le diagnostic typé qui OUVRE le repli de la fenetre (D14 b) — sans lui, un
+	// compte de replis ne designerait aucune correction.
+	CouplesSansIdentite int
 }
 
 // PathStats : le gate (b) d une voie. `Population` est ce qu elle a propose, `Matched` ce dont
