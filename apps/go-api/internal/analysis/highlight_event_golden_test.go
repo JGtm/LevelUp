@@ -9,11 +9,13 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 // Golden de NON-REGRESSION du temps fort (item 2.5.h du PLAN_DECODEUR_FILM_2026-09-13).
 //
-// POURQUOI. Le type `HighlightEvent` et le vocabulaire `EventType*` quittent
+// POURQUOI. Le type `analysis.HighlightEvent` et le vocabulaire `EventType*` quittent
 // `internal/analysis` pour `internal/domain/highlightevent` : un deplacement PUR de
 // declarations. « Pur » n'est pas une intention, cela se PROUVE — ce golden fige AVANT le
 // mouvement les deux seules choses qu'un deplacement pourrait abimer :
@@ -49,7 +51,7 @@ func goldenHighlightEventContent(t *testing.T) string {
 
 	var b strings.Builder
 	b.WriteString("# forme du type (ordre, nom, type, tag)\n")
-	rt := reflect.TypeOf(HighlightEvent{})
+	rt := reflect.TypeOf(highlightevent.HighlightEvent{})
 	fmt.Fprintf(&b, "champs=%d\n", rt.NumField())
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
@@ -58,10 +60,10 @@ func goldenHighlightEventContent(t *testing.T) string {
 
 	b.WriteString("# vocabulaire des types d'evenement\n")
 	for _, kv := range [][2]string{
-		{"EventTypeKill", EventTypeKill},
-		{"EventTypeDeath", EventTypeDeath},
-		{"EventTypeMedal", EventTypeMedal},
-		{"EventTypeMode", EventTypeMode},
+		{"EventTypeKill", highlightevent.EventTypeKill},
+		{"EventTypeDeath", highlightevent.EventTypeDeath},
+		{"EventTypeMedal", highlightevent.EventTypeMedal},
+		{"EventTypeMode", highlightevent.EventTypeMode},
 	} {
 		fmt.Fprintf(&b, "%s=%s\n", kv[0], kv[1])
 	}
