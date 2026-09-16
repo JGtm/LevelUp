@@ -1,3 +1,28 @@
+## [2026-09-17] Chantier decodeur — lot 2.1 (M2, pas 1 : le profil resolu une fois) FUSIONNE a zero difference — Complete (intégration 1f7e48652)
+
+**Decision technique principale.** Fusion manuelle (pas le script) pour conserver l entree de
+chronique integrale de l executeur : `grammar_rev.go` garde les blocs ENTREE .16 et .17 de la tete
+ET le bloc .18 du lot, une seule constante `GrammarRev = .18` (l executeur avait renumerote .16 -> .18
+lui-meme dans son worktree, transition « .17 -> .18 », avant la fusion) ; golden de grammaire : les
+deux chroniques, une seule ligne de valeur, empreinte regeneree par le port ; golden killsource :
+tete conservee (`killsource-2026-09-16.2`, la revision ne bouge pas — choix explicite du lot,
+lignes produites identiques), empreinte regeneree par son port ; plan : les deux cotes. Gates de
+M2 joues sur la tete fusionnee, pas sur la branche seule.
+
+**Resultats observes.** Batterie film + satellites + archlint + api verte ; CI verte au niveau
+job ; equivalence 20/20 identiques ; corpus gate 14/14 a 0 / 0 / 0 (deux temoins rejoues avec un
+manifeste reduit apres l alea d export des faits, D2 (cloture M1) : le serveur local tenait la
+base en ecriture a cet instant, le gate ne reessaie pas). Le lot livre `filmdec.Profile` immuable
+resolu une fois a partir des trois cles ECRITES par le film, table par cle a provenance
+(relue / mesuree / presumee, six presumees gelees par test), double ecriture datee vers les
+globales (retrait cible 2.3), trois sites de `ParseHighlightEvents` au profil ; `SchemaVersion`
+60 inchangee, `filmdecVarsGeles` 94 inchange.
+
+**Prochaine etape.** 2.7g : gates avec la voie puis renumerotation .19 et fusion ; 2.7p ; 2.2-2.6 ;
+tranches killsource entre les gates.
+
+---
+
 ## [2026-09-17] Chantier decodeur — M1 CLOS : feat/v75 avance a da258bf76, parc recuit au schema 60, backlog killsource tranche 1 — Complete
 
 **Decision technique principale.** Fusion en deux temps : `origin/feat/v75` d abord DANS l integration
