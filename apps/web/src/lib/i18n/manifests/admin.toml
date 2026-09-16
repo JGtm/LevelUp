@@ -156,6 +156,62 @@ en = "Users"
 fr = "Titres"
 en = "Titles"
 
+[admin.management.section_invites]
+fr = "Inviter un joueur"
+en = "Invite a player"
+
+[admin.invites.intro]
+fr = "Un lien d'invitation crée un compte même quand l'instance est fermée, et autorise l'invité à créer SON profil joueur — une seule fois. Il ne rejoint aucun groupe et ne voit que lui-même."
+en = "An invite link creates an account even while the instance is closed, and lets the guest create THEIR OWN player profile — once. They join no group and see only themselves."
+
+[admin.invites.generate]
+fr = "Générer un lien"
+en = "Generate a link"
+
+[admin.invites.copy]
+fr = "Copier"
+en = "Copy"
+
+[admin.invites.copied]
+fr = "Lien copié"
+en = "Link copied"
+
+[admin.invites.generate_error]
+fr = "Impossible de générer l'invitation."
+en = "Unable to generate the invitation."
+
+[admin.invites.revoke]
+fr = "Révoquer"
+en = "Revoke"
+
+[admin.invites.revoke_error]
+fr = "Impossible de révoquer l'invitation."
+en = "Unable to revoke the invitation."
+
+[admin.invites.list_title]
+fr = "Invitations en cours"
+en = "Active invitations"
+
+[admin.invites.empty]
+fr = "Aucune invitation."
+en = "No invitations."
+
+[admin.invites.loading]
+fr = "Chargement des invitations…"
+en = "Loading invitations…"
+
+[admin.invites.expires_at]
+fr = "Expire le"
+en = "Expires on"
+
+[admin.invites.used_by]
+fr = "Utilisée par"
+en = "Used by"
+
+[admin.invites.expired]
+fr = "Expirée"
+en = "Expired"
+
 # ─── Section logs de l'onglet Système (A3) ──────────────────────────────────
 
 [admin.system.section_logs]

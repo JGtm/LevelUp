@@ -52,11 +52,12 @@ import { finalScoreFromHeader, type FinalScoreReading } from './victoryLogic'
 import { replayClock, type ReplayClock } from './replayClock'
 
 /**
- * Ce que le modèle lit des RÉGLAGES : la liste d'amis du compte connecté, et rien d'autre.
- * Décrit structurellement, pour que ce module ne dépende pas de la feature des réglages.
+ * Ce que le modèle lit du contexte joueur : la liste d'amis DU JOUEUR consulté,
+ * et rien d'autre. Décrit structurellement, pour que ce module ne dépende pas de
+ * la feature des amis.
  */
 export interface ReplayModelSettings {
-  friend_gamertags?: string[] | null
+  friendGamertags?: readonly string[] | null
 }
 
 /** La page de rejeu, jointe. Tous les champs sont dérivés — rien n'est mutable ici. */
@@ -136,7 +137,7 @@ export function buildReplayModel(
   // Quand le sujet EST le joueur de la page, la table rendue est identique à celle d'avant le
   // chantier — c'est ce que fixe `replayModel.test.ts`.
   const identity = resolveXuidMeta(scoreboard, subject, subject)
-  const marks = buildPlayerMarks(scoreboard, settings?.friend_gamertags ?? [], subject)
+  const marks = buildPlayerMarks(scoreboard, settings?.friendGamertags ?? [], subject)
 
   // LES DEUX HORLOGES NE COÏNCIDENT PAS : cf. `killFeedLogic` et `header.t0_ms`.
   const t0Ms = header?.t0_ms ?? 0

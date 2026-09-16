@@ -1,5 +1,5 @@
-// settings_friends_diff_test.go : tests purs pour la détection de diff
-// friend_gamertags (§4 plan Squad/Sessions). Indépendant de DuckDB.
+// friends_diff_test.go : tests purs pour la détection de diff d'une liste
+// d'amis (§4 plan Squad/Sessions). Indépendant de DuckDB.
 package handlers
 
 import "testing"

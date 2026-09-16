@@ -2,7 +2,7 @@
 //
 // Un groupe est un ensemble nommé de membres qui partagent l'accès à leurs profils
 // joueur respectifs (cf. authz : deux users ont accès mutuel s'ils partagent ≥1 groupe).
-// Distinct de `friend_gamertags` (settings) qui ne pilote QUE l'affichage Escouade.
+// Distinct de la liste d'amis d'un joueur, qui ne pilote QUE l'affichage Escouade.
 package domain
 
 // GroupRole représente le rôle d'un membre dans un groupe.

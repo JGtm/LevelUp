@@ -439,7 +439,7 @@ défi legacy).
 ```bash
 go run ./cmd/levelup rebuild-pme-art --all | --gamertag X   # reconstruit l'index ART player_match_enrichment
 go run ./cmd/levelup consolidate-aliases                    # merge xbox_aliases dans shared.xuid_aliases
-go run ./cmd/levelup recompute-friends [--dry-run]          # recompute is_with_friends sur les player DBs
+go run ./cmd/levelup recompute-friends [--dry-run]          # recompute is_with_friends, chaque joueur avec SES amis
 go run ./cmd/levelup replay-events --gamertag X             # re-parse les highlight events
 go run ./cmd/levelup reset-bitmasks                         # reset des bits de backfill skill/participants/PVE
 go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute des coefficients d'engagement

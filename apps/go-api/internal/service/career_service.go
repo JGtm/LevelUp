@@ -61,7 +61,7 @@ type CareerService struct {
 	dataAdapter   games.TitleDataAdapter
 	rankCatalog   *mappings.RankCatalog // optionnel — nil = pas de nom prochain rang
 	rankImageURLs map[int]*string       // optionnel — nil = pas d'images de rang
-	// friendGamertags : resolver des gamertags amis (cf. settings.FriendGamertags).
+	// friendGamertags : resolver des gamertags amis DU joueur consulté.
 	// Utilisé par GetTopEncounters pour exclure les amis du tableau "joueurs les
 	// plus croisés (hors amis)". Si nil, aucune exclusion (équivalent à 0 ami).
 	friendGamertags teammates.FriendGamertagsResolver
@@ -127,8 +127,8 @@ func (s *CareerService) WithRankImageURLs(imgs map[int]*string) *CareerService {
 	return s
 }
 
-// WithFriendGamertagsResolver injecte le resolver d'amis configurés (lit
-// app_settings.friend_gamertags). Quand nil, GetTopEncounters n'exclut aucun
+// WithFriendGamertagsResolver injecte le resolver d'amis du joueur consulté
+// (data/global/player_friends.json). Quand nil, GetTopEncounters n'exclut aucun
 // joueur (le tableau "hors amis" affichera tous les plus croisés).
 func (s *CareerService) WithFriendGamertagsResolver(r teammates.FriendGamertagsResolver) *CareerService {
 	s.friendGamertags = r

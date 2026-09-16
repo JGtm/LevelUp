@@ -503,7 +503,7 @@ type TeammatesPageResponse struct {
 	Teammates     []TeammateRow     `json:"teammates"`
 	TotalMatches  int               `json:"total_matches"`
 	SessionLabels SessionLabelsList `json:"session_labels"`
-	// FriendsCount : nombre total d'amis configurés (settings.friend_gamertags).
+	// FriendsCount : nombre total d'amis configurés pour le joueur consulté.
 	// Le label UI "parmi N amis" s'appuie dessus.
 	FriendsCount int `json:"friends_count"`
 	// Sprint N : données graphiques par coéquipier sélectionné

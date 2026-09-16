@@ -61,6 +61,7 @@ import (
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/platform/netguard"
@@ -695,6 +696,9 @@ func main() {
 	// Groupes/familles (accès mutuel aux données, ADR 0029 multi-groupes). Le set
 	// co-membres pilote le filtrage ownership (available_players) et le switch de BDD.
 	groupStore := groupstore.NewGroupStore(filepath.Join(cfg.AuthDir, "groups.json"))
+	// Amis PAR PROFIL JOUEUR (data/global/player_friends.json) : remplace l'ancien
+	// réglage global des amis dans app_settings. Migré une fois au boot.
+	friendStore := friendstore.NewFriendStore(title.NewPathResolver(cfg.RepoRoot).PlayerFriendsPath())
 	bootSvc = bootSvc.WithCoMemberResolver(func(xuid string) map[string]bool {
 		co, _ := groupStore.CoMemberXUIDs(xuid)
 		return co
@@ -727,9 +731,15 @@ func main() {
 	}
 	tokenProvider := buildTokenProvider(settingsStore, title.DefaultHaloAuthDescriptor())
 
-	// Migration boot-time : crée un groupe par défaut "Mon foyer" depuis l'ancienne
-	// liste friend_gamertags (continuité d'accès au passage multi-groupes). Idempotent.
-	migrateDefaultGroupAtBoot(ctx, cfg, settingsStore, groupStore)
+	// Migration boot-time : dote chaque profil configuré de sa propre liste d'amis,
+	// héritée de l'ancienne liste globale des amis d'app_settings. Idempotente
+	// (no-op si player_friends.json existe). S'exécute AVANT la migration de groupe,
+	// qui lit désormais le store d'amis.
+	migratePlayerFriendsAtBoot(ctx, cfg, friendStore)
+
+	// Migration boot-time : crée un groupe par défaut "Mon foyer" depuis la liste
+	// d'amis de l'admin (continuité d'accès au passage multi-groupes). Idempotent.
+	migrateDefaultGroupAtBoot(ctx, cfg, friendStore, groupStore)
 
 	// ADR 0023 Phase 2 — Migration boot-time des tokens legacy vers MultiUserTokenStore.
 	// Discovery + Resolver + Pool : tous les appels API Halo passent par là.
@@ -752,7 +762,8 @@ func main() {
 		)
 	}
 
-	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool)
+	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool).
+		WithFriendStore(friendStore)
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
 
 	// Lot C1/C2 — persistance JSON légère (HORS DuckDB) de l'état runtime admin,
@@ -1298,6 +1309,7 @@ func main() {
 			SharedDB:       sharedSQLDB,
 			TokenProvider:  tokenProvider,
 			Settings:       settingsStore,
+			Friends:        friendStore,
 			PostSyncRunner: v2PostSyncRunner,
 			PrestigeHook:   prestigePostSyncHook,
 			ReplayEnqueue:  reg.EnqueueReplayBuildJob,
@@ -2332,12 +2344,37 @@ func resolveXUIDForRotation(ctx context.Context, cfg *config.AppConfig, store *a
 	return capturecli.ResolveXUIDForRotation(ctx, store, players, gamertag)
 }
 
-// migrateDefaultGroupAtBoot crée un groupe par défaut "Mon foyer" depuis l'ancienne
-// liste globale friend_gamertags, pour préserver la continuité d'accès au passage au
-// modèle multi-groupes. Best-effort + idempotent (no-op si un groupe existe déjà).
-// Le propriétaire est l'admin de db_profiles.json ; les amis résolus en xuid via les
-// profils connus deviennent membres.
-func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, settingsStore *settings.Store, gs *groupstore.GroupStore) {
+// migratePlayerFriendsAtBoot dote chaque profil configuré de sa propre liste
+// d'amis, héritée de l'ancienne liste globale des amis d'app_settings
+// (moins son propre gamertag). Best-effort + idempotent : no-op si le fichier
+// data/global/player_friends.json existe déjà.
+func migratePlayerFriendsAtBoot(ctx context.Context, cfg *config.AppConfig, fs *friendstore.FriendStore) {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		slog.WarnContext(ctx, "friends: migration ignorée — lecture des profils impossible", "err", err)
+		return
+	}
+	created, err := friendstore.MigrateFromAppSettings(fs, cfg.AppSettingsPath, players)
+	if err != nil {
+		slog.WarnContext(ctx, "friends: migration des amis par joueur échouée (non bloquant)", "err", err)
+		return
+	}
+	if created > 0 {
+		slog.InfoContext(ctx, "friends: listes d'amis par joueur créées depuis l'ancienne liste globale",
+			"created", created)
+	}
+}
+
+// migrateDefaultGroupAtBoot crée un groupe par défaut "Mon foyer" depuis la liste
+// d'amis de l'admin, pour préserver la continuité d'accès au passage au modèle
+// multi-groupes. Best-effort + idempotent (no-op si un groupe existe déjà).
+// Le propriétaire est l'admin de db_profiles.json ; ses amis résolus en xuid via
+// les profils connus deviennent membres.
+//
+// Source des membres : le store d'amis PAR JOUEUR (2026-09-15), lui-même migré
+// juste avant depuis l'ancienne liste globale des amis d'app_settings —
+// d'où l'ordre imposé des deux migrations au boot.
+func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, fs *friendstore.FriendStore, gs *groupstore.GroupStore) {
 	adminGT := cfg.AdminPlayer()
 	if adminGT == "" {
 		return // aucun admin désigné → migration impossible
@@ -2358,12 +2395,14 @@ func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, setti
 		return
 	}
 
-	s, err := settingsStore.Load()
-	if err != nil || s == nil {
+	adminFriends, err := fs.Get(ownerXUID)
+	if err != nil {
+		slog.WarnContext(ctx, "groups: migration ignorée — lecture des amis de l'admin impossible",
+			"admin", adminGT, "err", err)
 		return
 	}
 	var members []domain.GroupMember
-	for _, gt := range s.FriendGamertags {
+	for _, gt := range adminFriends {
 		if xuid := byGamertag[strings.ToLower(gt)]; xuid != "" {
 			members = append(members, domain.GroupMember{XUID: xuid, Gamertag: gt})
 		}
@@ -2375,7 +2414,7 @@ func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, setti
 		return
 	}
 	if created {
-		slog.InfoContext(ctx, "groups: groupe par défaut créé depuis friend_gamertags",
+		slog.InfoContext(ctx, "groups: groupe par défaut créé depuis les amis de l'admin",
 			"owner", adminGT, "members", len(members)+1)
 	}
 }

@@ -88,6 +88,42 @@ Le frontend mappe ces codes (`ApiError.code`) vers une page « Indisponible » a
 - Squad V2 (`resolveByGT`, coéquipiers par gamertag) n'est pas gardé : c'est de la donnée de
   match partagée consultée depuis la page du joueur requérant (déjà autorisé). Hors scope.
 
+## Extensions
+
+### Invitation without a group + one-shot provisioning grant (2026-09-15)
+
+A locked instance (`instance_locked`, early access) refuses any unknown XUID at SSO
+login. Until 2026-09-15 the ONLY invitation that lifted that lock was a **group**
+invitation: `resolvePendingInvite` discarded an invite with an empty `GroupID` as
+"legacy password flow", which made `POST /admin/invites` inoperative under Xbox SSO —
+the admin handed out a link that created nothing.
+
+Two changes, both required for an invited player to become usable:
+
+1. **Any valid invitation lifts the lock.** `XboxSSOLinkStrategy` now redeems an
+   invitation with or without a group: the code is always consumed, the group is joined
+   only when `GroupID != ""`.
+2. **A newly created account carries `User.ProvisionGrant`** (`users.json`), the code of
+   the invitation that created it. It grants the right to create **its own** player
+   profile once, even while the instance is locked — otherwise the guest lands on Setup
+   and takes a 403 `instance_locked`, with no way forward.
+
+The grant is carried by the ACCOUNT, not by the session: it survives a sign-out between
+the SSO login and the Setup step. `POST /setup/players` accepts it only when the account
+holds a non-empty grant AND no profile in `db_profiles.json` already carries its XUID;
+the grant is cleared right after a successful creation, so it is not replayable. The
+pre-existing check "requested gamertag/XUID == linked Halo identity" remains the real
+barrier: the grant never lets anyone create someone else's profile.
+
+An account that already exists gets no grant, even when it presents a valid invitation.
+
+### Per-player friends (2026-09-15)
+
+The friends list moved from the instance-wide `app_settings.friend_gamertags` to a
+per-profile list keyed by XUID (`data/global/player_friends.json`). Read access follows
+Layer A (owner, group co-member or admin); write access is narrower — **direct owner or
+admin only**: a group co-member reads a friends list but does not change it.
+
 ## Extensions différées
 
 - **Alts multiples par utilisateur** : `User.XUID` est singulier (1 user ↔ 1 xuid). Le support
