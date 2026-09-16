@@ -107,9 +107,8 @@ func TestKF35BInventory(t *testing.T) {
 	// i60 est PORTÉ EN ENTIER depuis R7-b (queue FUN_14076e494 incluse) ; seul le défaut de
 	// production reste à false, faute de largeurs d'axe de carte sur le chemin absolu. Les
 	// mesures d'image-clé, elles, INSTALLENT ces largeurs : elles l'activent donc.
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
+	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
+	defer prevSim()
 
 	for _, f := range films {
 		lay, restore := kf35bInstallPrecision(t, f.Name)
@@ -137,20 +136,18 @@ func TestKF35BBitExact(t *testing.T) {
 	// i60 est PORTÉ EN ENTIER depuis R7-b (queue FUN_14076e494 incluse) ; seul le défaut de
 	// production reste à false, faute de largeurs d'axe de carte sur le chemin absolu. Les
 	// mesures d'image-clé, elles, INSTALLENT ces largeurs : elles l'activent donc.
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
+	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
+	defer prevSim()
 
 	for _, corr := range []bool{false, true} {
-		prev := filmComponentCorruptionCheck
-		SetFilmComponentCorruptionCheck(corr)
+		prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = corr })
 		for _, p := range kf35bPrecisions {
 			t.Logf("======== corruption-check=%v · %s ========", corr, p.Label)
 			for _, f := range films {
 				kf35bOnePass(t, f, p)
 			}
 		}
-		SetFilmComponentCorruptionCheck(prev)
+		prev()
 	}
 }
 
@@ -225,14 +222,12 @@ func TestKF35BProfile(t *testing.T) {
 	// i60 est PORTÉ EN ENTIER depuis R7-b (queue FUN_14076e494 incluse) ; seul le défaut de
 	// production reste à false, faute de largeurs d'axe de carte sur le chemin absolu. Les
 	// mesures d'image-clé, elles, INSTALLENT ces largeurs : elles l'activent donc.
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
+	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
+	defer prevSim()
 
-	prev := filmComponentCorruptionCheck
-	defer SetFilmComponentCorruptionCheck(prev)
 	for _, corr := range []bool{false, true} {
-		SetFilmComponentCorruptionCheck(corr)
+		prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = corr })
+		defer prev()
 		t.Logf("======== profil par composant · corruption-check=%v ========", corr)
 		for _, f := range films {
 			kf35bProfileOne(t, f, corr)
@@ -298,12 +293,10 @@ func TestKF35BDispersion(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
 
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
-	prevCorr := filmComponentCorruptionCheck
-	SetFilmComponentCorruptionCheck(false)
-	defer SetFilmComponentCorruptionCheck(prevCorr)
+	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
+	defer prevSim()
+	prevCorr := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = false })
+	defer prevCorr()
 
 	for _, f := range films {
 		_, restore := kf35bInstallPrecision(t, f.Name)

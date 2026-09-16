@@ -46,12 +46,16 @@ func twoEmptyArchReg() *Registry {
 	}}
 }
 
-var emptyCfg = FrameConfig{HasExtraFields: false, IDLowBits: 11}
+var emptyCfg = FrameConfig{HasExtraFields: false, IDLowBits: 11,
+	Profil: ProfilDeBalayageParDefaut()}
 
+// withChain joue `f` avec l inference de chaine levee SUR LE CADRE des tests de ce fichier.
+// Depuis le lot 2.3 c est une bascule du PROFIL, plus une variable de paquet — mais elle vit
+// dans le cadre partage par ces tests, qui sont sequentiels.
 func withChain(on bool, f func()) {
-	prev := inferChain
-	inferChain = on
-	defer func() { inferChain = prev }()
+	prev := emptyCfg.Profil.Grammaire.InferenceChaine
+	emptyCfg.Profil.Grammaire.InferenceChaine = on
+	defer func() { emptyCfg.Profil.Grammaire.InferenceChaine = prev }()
 	f()
 }
 

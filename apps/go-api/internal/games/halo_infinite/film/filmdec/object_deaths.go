@@ -130,7 +130,7 @@ func ScanObjectDeaths(fc *FilmContext) ([]ObjectDeath, ObjectDeathStats, error) 
 	if len(deltas) == 0 {
 		return nil, st, nil
 	}
-	cfg, parDefaut, meilleur, dauphin := calibrateFrameConfig(reg, kfs, deltas)
+	cfg, parDefaut, meilleur, dauphin := calibrateFrameConfig(reg, kfs, deltas, fc.CadreDeBalayage())
 	st.Config, st.CadreParDefaut = cfg, parDefaut
 	st.CadreLocalises, st.CadreDauphin, st.CadreEvenements = meilleur.located, dauphin.located, meilleur.events
 	h := &objectDeathHarvest{reg: reg, idx: map[uint32]int{}, st: &st}

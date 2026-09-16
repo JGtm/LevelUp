@@ -102,7 +102,7 @@ func locateFallback(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 			continue
 		}
 		rec, _, ok := filmdec.TryDeltaAt(pl, s, w, cfg)
-		if !ok || rec.Slot != 123 || !w.GenerationMatches(rec.ID) {
+		if !ok || rec.Slot != 123 || !w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
 			continue
 		}
 		return s
@@ -113,7 +113,8 @@ func locateFallback(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 // locateRecords : le localisateur complet — signature stricte, puis repli. -1 si aucune position.
 func locateRecords(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 	if s := locateStrict(pl, w, cfg); s >= 0 {
-		if rec, _, ok := filmdec.TryDeltaAt(pl, s, w, cfg); ok && w.GenerationMatches(rec.ID) {
+		if rec, _, ok := filmdec.TryDeltaAt(pl, s, w, cfg); ok &&
+			w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
 			return s
 		}
 	}

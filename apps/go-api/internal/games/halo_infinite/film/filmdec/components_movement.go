@@ -136,23 +136,18 @@ func (b *BitReader) fullPrecision() bool { return b.p.Mouvement.FullPrecision }
 // à UN critère mesurable : que la lecture d'un corps d'image-clé sous cette portée fasse
 // remonter l'atterrissage bit-exact des 591 records `ti=35` bornés au-dessus de 50 %
 // (mesure `TestKF35CBaselineScope`). Retrait cible du drapeau : à la bascule.
-var keyframeBaselineScope = false
-
-// SetKeyframeBaselineScope (dé)active la portée baseline et rend l'ancienne valeur
-// (instruments de mesure ; défaut off, restauration en `defer`).
-func SetKeyframeBaselineScope(v bool) bool {
-	prev := keyframeBaselineScope
-	keyframeBaselineScope = v
-	return prev
-}
+// C'ÉTAIT LA VARIABLE DE PAQUET `keyframeBaselineScope` JUSQU'AU LOT 2.3 : la portée vit dans
+// [GrammaireBalayage.PorteeBaseline], que le lecteur porte.
 
 // fullPrecisionGate porte `FUN_14076f91c` : `DAT_144e61ea0 != 0 || DAT_145121140 == 1`.
 // Zéro bit consommé — c'est un prédicat de CONTEXTE, jamais un bit du flux.
 //
-// LA PORTÉE (`keyframeBaselineScope`) RESTE UNE VARIABLE DE PAQUET : c'est un état de
-// balayage que les lecteurs d'état complet lèvent et rabaissent autour d'un appel, pas une
-// valeur de profil. Seul le RÉGLAGE (`DAT_145121140`) a rejoint le profil au lot 2.2.a.
-func fullPrecisionGate(br *BitReader) bool { return keyframeBaselineScope || br.fullPrecision() }
+// LA PORTÉE ET LE RÉGLAGE VIENNENT DE DEUX ENDROITS DU PROFIL, et c'est voulu : la portée
+// (`DAT_144e61ea0`) est une BASCULE DE GRAMMAIRE que les lecteurs d'état complet lèvent autour
+// d'un appel ; le réglage (`DAT_145121140`) est une valeur de MOUVEMENT, arrivée au lot 2.2.a.
+func fullPrecisionGate(br *BitReader) bool {
+	return br.p.Grammaire.PorteeBaseline || br.fullPrecision()
+}
 
 // deltaHasHandleTail mirrors the runtime field bVar16 = (precIndex != -1)
 // that gates the i0 predicted-delta handle tail in FUN_1406cfe44. It is NOT a
@@ -203,7 +198,5 @@ func (b *BitReader) deltaQuantum() float32 { return b.p.Mouvement.DeltaQuantum }
 // seule grammaire, celle du jeu) visé à la clôture du chantier image-clé, au plus tard le
 // 2026-10-31 — si le critère n'est pas tenu d'ici là, c'est le port qu'il faut rouvrir, pas la
 // bascule qu'il faut prolonger.
-var keyframeWriterI0Grammar = false
-
-// SetKeyframeWriterI0Grammar (dé)active la grammaire d'écrivain du chemin absolu d'i0.
-func SetKeyframeWriterI0Grammar(v bool) { keyframeWriterI0Grammar = v }
+// C'ÉTAIT LA VARIABLE DE PAQUET `keyframeWriterI0Grammar` JUSQU'AU LOT 2.3 : la bascule vit
+// dans [GrammaireBalayage.GrammaireEcrivainI0], que le lecteur porte.

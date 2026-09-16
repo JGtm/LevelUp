@@ -225,7 +225,7 @@ func TestProfilDuCadreEstDomineOuDeclare(t *testing.T) {
 			t.Fatalf("%s : registre illisible : %v", filepath.Base(cas.dir), err)
 		}
 		kfs, deltas := marchPacketsOf(fc)
-		cfg, parDefaut, meilleur, dauphin := calibrateFrameConfig(reg, kfs, deltas)
+		cfg, parDefaut, meilleur, dauphin := calibrateFrameConfig(reg, kfs, deltas, fc.CadreDeBalayage())
 		t.Logf("%s : %d paquets delta · retenu idLow=%d amorce=%d · localises %d/%d · dauphin %d"+
 			" · cadre par defaut : %v", filepath.Base(cas.dir), len(deltas), cfg.IDLowBits,
 			cfg.PacketPreambleBits, meilleur.located, meilleur.events, dauphin.located, parDefaut)

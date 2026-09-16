@@ -251,7 +251,7 @@ func consumeBipedMobilityAction(br *BitReader) {
 	}
 	if flag1 {
 		consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
-		if MobilityActionBodyPorted {
+		if br.p.Grammaire.CorpsActionMobilite {
 			consumeMobilityActionBody(br) // FUN_1408f02c8, corps
 		} else if extra := br.p.Mouvement.MobilityActionExtraBits; extra > 0 {
 			br.Skip(extra)
@@ -330,12 +330,8 @@ func consumeE494Position(br *BitReader) {
 	consumeE524PositionBody(br)
 }
 
-// MobilityActionBodyPorted : le corps de FUN_1408f02c8 est-il decode ? Bascule A/B
-// (`DS_I54BODY=0` cote harnais) pour rejouer la ligne de base d avant 7ter.60.
-var MobilityActionBodyPorted = true
-
-// SetMobilityActionBodyPorted bascule le portage du corps de i54.
-func SetMobilityActionBodyPorted(b bool) { MobilityActionBodyPorted = b }
+// C ETAIT LA VARIABLE DE PAQUET EXPORTEE `MobilityActionBodyPorted` JUSQU AU LOT 2.3 : la
+// bascule A/B du corps de FUN_1408f02c8 vit dans [GrammaireBalayage.CorpsActionMobilite].
 
 // MobilityActionExtraBits : ancien harnais de balayage de largeur (7ter.40, mode `cvmob`).
 // Conserve pour rejouer cette mesure ; sans effet quand le corps est porte.

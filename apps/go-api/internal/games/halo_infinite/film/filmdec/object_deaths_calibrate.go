@@ -70,15 +70,17 @@ type frameConfigScore struct {
 
 // calibrateFrameConfig balaye les largeurs candidates et rend le cadre retenu.
 //
-// `parDefaut` vrai = le profil est PLAT et le cadre rendu est `DefaultFrameConfig()` : la marche
+// `parDefaut` vrai = le profil est PLAT et le cadre rendu est celui du contexte : la marche
 // tourne, mais sur une largeur que rien n a confirmee — l appelant DOIT le publier.
+// `base` est le cadre PAR DEFAUT DU CONTEXTE ([FilmContext.CadreDeBalayage]) : il porte le
+// profil du film, donc les largeurs de sa carte. Seule `IDLowBits` est balayee.
 func calibrateFrameConfig(
-	reg *Registry, kfs []marchKeyframe, deltas []marchDelta,
+	reg *Registry, kfs []marchKeyframe, deltas []marchDelta, base FrameConfig,
 ) (cfg FrameConfig, parDefaut bool, meilleur, dauphin frameConfigScore) {
-	defautLow := DefaultFrameConfig().IDLowBits
+	defautLow := base.IDLowBits
 	scores := make([]frameConfigScore, 0, calibIDLowMax-calibIDLowMin+1)
 	for low := calibIDLowMin; low <= calibIDLowMax; low++ {
-		c := DefaultFrameConfig()
+		c := base
 		c.IDLowBits = low
 		scores = append(scores, trialFrameConfig(reg, kfs, deltas, c))
 	}
@@ -98,7 +100,7 @@ func calibrateFrameConfig(
 	})
 	meilleur, dauphin = scores[0], scores[1]
 	if meilleur.located < calibDominationMin*max(dauphin.located, 1) {
-		return DefaultFrameConfig(), true, meilleur, dauphin
+		return base, true, meilleur, dauphin
 	}
 	return meilleur.cfg, false, meilleur, dauphin
 }

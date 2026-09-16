@@ -275,7 +275,7 @@ func rbLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 			continue
 		}
 		rec, _, ok := TryDeltaAt(pay, s, w, cfg)
-		if !ok || rec.Slot != 123 || !w.GenerationMatches(rec.ID) {
+		if !ok || rec.Slot != 123 || !w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
 			continue
 		}
 		return s
@@ -286,7 +286,7 @@ func rbLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 // rbLocate : localisateur complet — signature stricte (avec controle de generation), puis repli.
 func rbLocate(pay []byte, w *World, cfg FrameConfig) int {
 	if s := rbLocateStrict(pay, w, cfg); s >= 0 {
-		if rec, _, ok := TryDeltaAt(pay, s, w, cfg); ok && w.GenerationMatches(rec.ID) {
+		if rec, _, ok := TryDeltaAt(pay, s, w, cfg); ok && w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
 			return s
 		}
 	}

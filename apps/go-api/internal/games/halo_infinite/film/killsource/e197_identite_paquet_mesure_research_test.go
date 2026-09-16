@@ -302,7 +302,6 @@ func e197Mesurer(dir string) e197Ligne {
 	}
 	release := filmdec.LockProcessDecode()
 	defer release()
-	resetGlobals()
 	o := DefaultOptions()
 	c := &decodeCtx{name: l.Film, opts: o}
 	if err := c.prepare(context.Background(), src); err != nil {
@@ -582,7 +581,6 @@ func e197MesurerAssist(dir string) e197AssistLigne {
 	}
 	release := filmdec.LockProcessDecode()
 	defer release()
-	resetGlobals()
 	c := &decodeCtx{name: l.Film, opts: DefaultOptions()}
 	if err := c.prepare(context.Background(), src); err != nil {
 		l.Err = err

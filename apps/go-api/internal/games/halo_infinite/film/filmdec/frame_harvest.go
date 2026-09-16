@@ -138,7 +138,7 @@ func harvestNextBoundClean(buf []byte, pos int, w *World, cfg FrameConfig) bool 
 // record loops (one per replication "view"), each terminated by its own end marker.
 // The offline decoder previously read only ONE loop from bit 0 — potentially missing
 // views 1..N (where other players may live) and mis-framing the leading bit. Records
-// from all views are concatenated. Uses chain inference per view when inferChain is on.
+// from all views are concatenated. Uses chain inference per view when `Grammaire.InferenceChaine` is on.
 // Returns the records and the number of views that decoded before a desync stopped it.
 func DecodeFrameViews(buf []byte, w *World, cfg FrameConfig, nViews int, skipLeadBits int) ([]FrameRecord, int) {
 	br := NewBitReader(buf)

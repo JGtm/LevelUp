@@ -76,7 +76,7 @@ func decodeInferLoop(br *BitReader, buf []byte, w *World, cfg FrameConfig) ([]Fr
 			rec.Trace = TraverseEntity(br, w.Reg, cfg.NewDefaultStateBits)
 			rec.TypeIndex, rec.DesyncAt = rec.Trace.TypeIndex, rec.Trace.DesyncAt
 			repaired := false
-			if rec.DesyncAt != -1 && inferChain && inferRepair {
+			if rec.DesyncAt != -1 && cfg.Profil.Grammaire.InferenceChaine && inferRepair {
 				if t, end, ok := repairUnportedComponent(buf, bodyStart, recNew, slot, rec.Trace, w, cfg); ok {
 					rec.Trace, rec.TypeIndex, rec.DesyncAt, repaired = t, t.TypeIndex, -1, true
 					br.SetBitPos(end)
@@ -101,7 +101,7 @@ func decodeInferLoop(br *BitReader, buf []byte, w *World, cfg FrameConfig) ([]Fr
 				bodyStart := br.BitPos()
 				rec.Trace = decodeDelta(br, w, slot)
 				rec.TypeIndex, rec.DesyncAt = rec.Trace.TypeIndex, rec.Trace.DesyncAt
-				if rec.DesyncAt != -1 && inferChain && inferRepair {
+				if rec.DesyncAt != -1 && cfg.Profil.Grammaire.InferenceChaine && inferRepair {
 					if t, end, ok := repairUnportedComponent(buf, bodyStart, recDelta, slot, rec.Trace, w, cfg); ok {
 						rec.Trace, rec.DesyncAt = t, -1
 						br.SetBitPos(end)
@@ -120,7 +120,7 @@ func decodeInferLoop(br *BitReader, buf []byte, w *World, cfg FrameConfig) ([]Fr
 					uniq bool
 					ok   bool
 				)
-				if inferChain {
+				if cfg.Profil.Grammaire.InferenceChaine {
 					ti, end, uniq, ok = inferChainArchetype(buf, br.BitPos(), w, cfg)
 				} else {
 					ti, end, ok = inferUnboundArchetype(buf, br.BitPos(), w, cfg)
@@ -132,7 +132,7 @@ func decodeInferLoop(br *BitReader, buf []byte, w *World, cfg FrameConfig) ([]Fr
 					}
 					continue
 				}
-				if inferChain && uniq {
+				if cfg.Profil.Grammaire.InferenceChaine && uniq {
 					w.BindSoft(id, ti)
 				}
 				rec.TypeIndex = ti
@@ -216,18 +216,13 @@ func validatedResync(buf []byte, from int, w *World, cfg FrameConfig) (int, bool
 // Constante depuis le 2026-09-06 (lot E, item E.8).
 const inferRequireBoundSuccessor = true
 
-// inferChain routes unbound-slot inference through the recursive CHAIN resolver
-// (frame_chain_infer.go), which sees through sequences of transients that block the
-// single-step confirmation. Default false (single-step, historical behaviour).
-var inferChain = false
-
-// SetInferChain toggles recursive chain inference for unbound-slot deltas.
-func SetInferChain(v bool) { inferChain = v }
+// C'ÉTAIT LA VARIABLE DE PAQUET `inferChain` JUSQU'AU LOT 2.3 : l'aiguillage vers le resolveur
+// RECURSIF vit dans [GrammaireBalayage.InferenceChaine], que le cadre du balayage porte.
 
 // inferRepair enables component-width inference (repairUnportedComponent) on records
 // that desync on an un-ported component. Off by default: it is expensive and mostly
 // rescues non-biped transients (its true value is the per-component width observations
-// it accumulates for porting). Requires inferChain. Le reglage public `SetInferRepair` a ete
+// it accumulates for porting). Requires cfg.Profil.Grammaire.InferenceChaine. Le reglage public `SetInferRepair` a ete
 // supprime le 2026-09-05 (lot E, item E.2) : aucun appelant. La reparation reste desactivee.
 // JAMAIS ACTIVE : aucun chemin ne l a jamais mis a vrai. Constante depuis le 2026-09-06
 // (lot E, item E.8).

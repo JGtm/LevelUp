@@ -432,7 +432,6 @@ func prepareForAssist(t *testing.T, root, id string) (*decodeCtx, *assistScan) {
 	if err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}
-	resetGlobals()
 	c := &decodeCtx{name: id, opts: DefaultOptions()}
 	if err := c.prepare(context.Background(), src); err != nil {
 		t.Fatalf("%s: %v", id, err)

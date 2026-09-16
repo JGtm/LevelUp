@@ -247,9 +247,6 @@ func TestLot1VuesMultiples(t *testing.T) {
 		n = deltaWitnessChunks
 	}
 	cfg := DefaultFrameConfig()
-	prev := inferChain
-	SetInferChain(true)
-	defer SetInferChain(prev)
 	type agg struct {
 		packets, recs, viewsSum, ge2, avecRecs int
 		covSum                                 float64

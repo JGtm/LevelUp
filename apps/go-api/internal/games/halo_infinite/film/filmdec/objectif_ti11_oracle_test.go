@@ -148,14 +148,14 @@ func reg0(cache string) (Archetype, bool) {
 // traverseur ne consomme pas.
 //
 // La seconde a un candidat nomme, et il est deja dans le depot :
-// `filmComponentCorruptionCheck`. Le commentaire de `traverseComponentLoop` le decrit : en mode
+// `profilDInstrument.Grammaire.ControleDeCorruption`. Le commentaire de `traverseComponentLoop` le decrit : en mode
 // FILM, `FUN_14076cb60` lit APRES CHAQUE COMPOSANT PRESENT un `R(1)` de garde, et un `R(32)`
 // sentinelle si ce bit vaut 1. Le drapeau vaut `false` par defaut. Un cout par composant explique
 // exactement la forme observee : plus il y a de composants, plus l'ecart s'accumule.
 //
 // # LE BALAYAGE, ET POURQUOI IL EST HONNETE
 //
-// Deux bascules croisees (`filmComponentCorruptionCheck` x `newRecordTailBits`), le meme corpus,
+// Deux bascules croisees (`profilDInstrument.Grammaire.ControleDeCorruption` x `profilDInstrument.Grammaire.BitsDeQueueRecordNew`), le meme corpus,
 // le meme oracle. La combinaison qui fait monter le chainage GAGNE ; si aucune ne le fait monter,
 // c'est un negatif net et il faudra chercher ailleurs. Le critere est ecrit avant la mesure : une
 // combinaison n'est retenue que si elle depasse 60 % de chainage sur les records A PLUSIEURS
@@ -175,11 +175,6 @@ func TestObjectifTi11Calibration(t *testing.T) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — calibration interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
-	corrAvant, tailAvant := filmComponentCorruptionCheck, newRecordTailBits
-	defer func() {
-		SetFilmComponentCorruptionCheck(corrAvant)
-		SetNewRecordTailBits(tailAvant)
-	}()
 
 	// Trois films d'Assaut riches en records ti=11, charges UNE fois puis rejoues.
 	type film struct {
@@ -214,8 +209,8 @@ func TestObjectifTi11Calibration(t *testing.T) {
 
 	for _, corr := range []bool{false, true} {
 		for _, tail := range []int{0, 1, 2} {
-			SetFilmComponentCorruptionCheck(corr)
-			SetNewRecordTailBits(tail)
+			poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = corr })
+			poserBasculeDInstrument(func(g *GrammaireBalayage) { g.BitsDeQueueRecordNew = tail })
 			var un, unC, plus, plusC int
 			for _, f := range films {
 				for _, pay := range f.pays {

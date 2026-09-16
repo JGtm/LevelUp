@@ -186,6 +186,18 @@ func (c *FilmContext) PoserLargeursObjetDuMondeDepuisDecoupage(l I0Layout) {
 // PoserParamEtat force le `param_4` du moteur pour les lecteurs de ce contexte.
 func (c *FilmContext) PoserParamEtat(v uint32) { c.bal.PoserParamEtat(v) }
 
+// CadreDeBalayage rend le cadre de trame PAR DEFAUT, PORTANT LE PROFIL DE CE CONTEXTE.
+//
+// TOUT BALAYAGE QUI CONSTRUIT UN CADRE PASSE PAR LA. `DefaultFrameConfig()` seul rend
+// l INVARIANT du profil : un balayage qui s en contenterait decoderait aux largeurs d une carte
+// qui n est pas celle de son film — precisement ce que l heritage de processus masquait avant le
+// lot 2.3.
+func (c *FilmContext) CadreDeBalayage() FrameConfig {
+	cfg := DefaultFrameConfig()
+	cfg.Profil = c.ProfilDeBalayage()
+	return cfg
+}
+
 // NouveauLecteur construit un lecteur de bits PORTANT LE PROFIL DE CE CONTEXTE. Tout balayage
 // qui lit les octets d un film sous un contexte passe par la : c est ce qui fait descendre les
 // largeurs de la carte et du format jusqu aux feuilles, sans variable de paquet.

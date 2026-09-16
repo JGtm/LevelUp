@@ -85,7 +85,6 @@ func Decode(ctx context.Context, name string, film *filmsource.Film, opts *Optio
 
 	release := filmdec.LockProcessDecode()
 	defer release()
-	resetGlobals()
 
 	c := &decodeCtx{name: name, opts: o}
 	if err := c.prepare(ctx, film); err != nil {
@@ -103,18 +102,18 @@ func Decode(ctx context.Context, name string, film *filmsource.Film, opts *Optio
 // en tete de [Decode] jusqu au lot 2.3, pour tout le processus — y compris pour la cuisson du
 // rejeu qui suivait. Il est desormais porte par le profil, et `replaybuild` le passe
 // explicitement quand le decodage n a rien pu calibrer.
+// LA GENERATION STRICTE EN FAIT PARTIE, et c est le second fait de production que ce lot rend
+// explicite : `resetGlobals` levait `SetStrictGeneration(true)` pour tout le PROCESSUS et ne le
+// rabaissait jamais — la cuisson du rejeu qui suivait decodait donc, elle aussi, en generation
+// stricte. Le profil le porte desormais, et `replaybuild` le passe comme le reste.
+//
+// `SetMobilityActionBodyPorted(true)` a disparu sans rien changer : c etait deja le defaut, et
+// le seul ecrivain contraire est un instrument de mesure qui pose desormais SON profil.
 func ProfilDeDepart() filmdec.ProfilDeBalayage {
 	p := filmdec.ProfilDeBalayageParDefaut()
 	p.PoserParamEtat(0)
+	p.Grammaire.GenerationStricte = true
 	return p
-}
-
-// resetGlobals : remet les bascules de grammaire encore portees par le processus a la valeur
-// que ce paquet exige. Les largeurs, elles, ne sont plus la : elles voyagent avec le profil de
-// balayage ([ProfilDeDepart]) depuis le lot 2.3.
-func resetGlobals() {
-	filmdec.SetStrictGeneration(true)
-	filmdec.SetMobilityActionBodyPorted(true)
 }
 
 // prepare : les cinq etapes qui precedent la publication. Aucune ne consulte l arme.

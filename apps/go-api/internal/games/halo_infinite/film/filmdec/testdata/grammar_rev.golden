@@ -436,6 +436,13 @@
 #               laissait derriere lui meme en echec. La double ecriture datee
 #               (`replay.doubleEcritureGlobales`) est retiree a sa date cible. Les enveloppes
 #               D2 posent le decoupage LU DANS LE FILM sur leur propre contexte ; la cuisson
-#               prend celui du CATALOGUE. AUCUN OCTET N EST LU AUTREMENT.
+#               prend celui du CATALOGUE. Les DOUZE bascules de grammaire (controle de
+#               corruption, queue de record NEW, deser d etat par archetype, sim-state complet,
+#               portee baseline, grammaire d ecrivain d i0, corps i54, corps i59, inference de
+#               chaine, generation stricte, largeurs calibrees et bouchon) deviennent
+#               `GrammaireBalayage`, un champ du profil. La generation stricte etait le second
+#               heritage silencieux de `killsource` vers la cuisson : elle est ecrite.
+#               Un cadre de trame se prend au contexte (`FilmContext.CadreDeBalayage`).
+#               Ratchet 43 -> 30. AUCUN OCTET N EST LU AUTREMENT.
 #               `KillSourceDecoderRev` ne bouge PAS (golden refige) ; `SchemaVersion` reste 60.
-grammar-2026-09-15.27	504c2678cae58a73bc7e7efd851b7880170eee213b7e09e7027133b1e7ea9046
+grammar-2026-09-15.27	e6e75c400a800cd4a7d08470f0ef78509b595bf857d30763341ef00a0d3d81b4

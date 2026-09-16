@@ -41,7 +41,7 @@ const kfGramFilmEnv = "KF_GRAM_FILM"
 // il reste TEST-ONLY parce qu'aucun chemin de production ne balaye la matrice.
 type kfGramLayout struct {
 	// Corruption : corruption-check per-composant du mode film (R(1) apres chaque composant
-	// present, cf. filmComponentCorruptionCheck).
+	// present, cf. profilDInstrument.Grammaire.ControleDeCorruption).
 	Corruption bool
 	// TailBits : bits terminaux consommes apres la boucle de composants d'un record NEW.
 	TailBits int
@@ -72,14 +72,14 @@ func (l kfGramLayout) String() string {
 
 // apply installe la combinaison et rend la fonction qui restaure l'etat precedent.
 func (l kfGramLayout) apply() func() {
-	oc, ot, oa := filmComponentCorruptionCheck, newRecordTailBits, useArchDefaultStateDeser
-	SetFilmComponentCorruptionCheck(l.Corruption)
-	SetNewRecordTailBits(l.TailBits)
-	SetUseArchDefaultStateDeser(l.ArchDefaultState)
+	oc, ot, oa := profilDInstrument.Grammaire.ControleDeCorruption, profilDInstrument.Grammaire.BitsDeQueueRecordNew, profilDInstrument.Grammaire.DeserEtatParArchetype
+	poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = l.Corruption })
+	poserBasculeDInstrument(func(g *GrammaireBalayage) { g.BitsDeQueueRecordNew = l.TailBits })
+	poserBasculeDInstrument(func(g *GrammaireBalayage) { g.DeserEtatParArchetype = l.ArchDefaultState })
 	return func() {
-		SetFilmComponentCorruptionCheck(oc)
-		SetNewRecordTailBits(ot)
-		SetUseArchDefaultStateDeser(oa)
+		poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = oc })
+		poserBasculeDInstrument(func(g *GrammaireBalayage) { g.BitsDeQueueRecordNew = ot })
+		poserBasculeDInstrument(func(g *GrammaireBalayage) { g.DeserEtatParArchetype = oa })
 	}
 }
 
@@ -422,15 +422,14 @@ func TestKFGramVariant(t *testing.T) {
 	for _, ti := range kfGramTargets {
 		t.Logf("---- ti=%d ----", ti)
 		for _, corr := range []bool{false, true} {
-			prev := filmComponentCorruptionCheck
-			SetFilmComponentCorruptionCheck(corr)
+			prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = corr })
 			for k, v := range keyframeBodyVariants {
 				ex, ds, bd, gaps := kfGramVariantPass(reg, pays, ti, v)
 				t.Logf("  corruption=%-5v [%d] %s | bornes %4d · exactes %4d · desync %4d",
 					corr, k, v, bd, ex, ds)
 				kfGramLogTop(t, "    ecart want-EndBit", gaps, 3)
 			}
-			SetFilmComponentCorruptionCheck(prev)
+			prev()
 		}
 	}
 }

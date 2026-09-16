@@ -175,7 +175,16 @@ import (
 // (`Result.ProfilCalibre`), et `replaybuild` la passe explicitement a `replay.BuildFromFilm` —
 // l heritage par l etat du processus, nomme par la decouverte D1 du lot 2.2.a, n existe plus.
 // Bilan net : -1 = 42.
-const filmdecVarsGeles = 42
+//
+// RESSERRE A 30 LE 2026-09-17 (lot 2.3, famille « les bascules de grammaire ») : DOUZE de
+// moins, avec leurs douze reglages publics. Les A/B de retro-ingenierie — controle de
+// corruption, queue de record NEW, deserialiseur d etat par archetype, `simulation-state`
+// complet, portee baseline, grammaire d ecrivain d i0, corps d action de mobilite, corps
+// d ancrage de capacite, inference de chaine, generation stricte, et les DEUX tables de
+// largeurs (calibrees, bouchon) — deviennent [filmdec.GrammaireBalayage], un champ du profil
+// que le lecteur de bits porte. Un instrument qui en pose une la pose pour SON balayage.
+// Bilan net : -12 = 30.
+const filmdecVarsGeles = 30
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

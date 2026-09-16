@@ -202,9 +202,6 @@ func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
 func TestProfilDeMobiliteChangeLaConsommationDeBits(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
-	precedent := MobilityActionBodyPorted
-	SetMobilityActionBodyPorted(false)
-	defer SetMobilityActionBodyPorted(precedent)
 
 	// flag1=1 (le corps suit), flag2=0, puis la queue de poignee `FUN_1408f0ac4(...,0)` sur des
 	// bits nuls. Le compte exact importe peu : ce qui compte est l ECART entre deux profils.
@@ -213,6 +210,11 @@ func TestProfilDeMobiliteChangeLaConsommationDeBits(t *testing.T) {
 		mv := ResolveProfile(nil, nil).Movement()
 		mv.MobilityActionExtraBits = extra
 		br := NewBitReader(flux)
+		// LE HARNAIS EST DANS LE PROFIL DU LECTEUR (lot 2.3) : eteindre le portage du corps
+		// d i54 ne touche que CE balayage.
+		p := br.Profil()
+		p.Grammaire.CorpsActionMobilite = false
+		br.PoserProfil(p)
 		br.poserMouvement(mv)
 		consumeBipedMobilityAction(br)
 		return br.BitPos()

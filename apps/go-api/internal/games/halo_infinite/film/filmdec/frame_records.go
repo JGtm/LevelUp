@@ -283,7 +283,7 @@ func DecodeFrameRecords(br *BitReader, w *World, cfg FrameConfig) ([]FrameRecord
 			// FUN_1406caad8 compare entry[+0x00] a l'eid ENTIER et renvoie 3 sans lire le corps,
 			// ce qui fait `break` a FUN_1406cd128. Un delta qui echoue ce test est donc la preuve
 			// d'une lecture fausse, pas un record a decoder.
-			if !w.GenerationMatches(id) {
+			if !w.GenerationMatches(id, cfg.Profil.Grammaire.GenerationStricte) {
 				rec.Trace = EntityTrace{DesyncAt: 0, EndBit: br.BitPos()}
 				rec.DesyncAt = 0
 				break

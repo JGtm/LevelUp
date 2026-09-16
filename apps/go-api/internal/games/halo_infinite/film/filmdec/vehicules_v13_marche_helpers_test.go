@@ -222,7 +222,7 @@ func v13LocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 			continue
 		}
 		rec, _, ok := TryDeltaAt(pay, s, w, cfg)
-		if !ok || rec.Slot != 123 || !w.GenerationMatches(rec.ID) {
+		if !ok || rec.Slot != 123 || !w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
 			continue
 		}
 		return s
@@ -233,7 +233,7 @@ func v13LocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 // v13Locate : localisateur complet — signature stricte (avec controle de generation), puis repli.
 func v13Locate(pay []byte, w *World, cfg FrameConfig) int {
 	if s := v13LocateStrict(pay, w, cfg); s >= 0 {
-		if rec, _, ok := TryDeltaAt(pay, s, w, cfg); ok && w.GenerationMatches(rec.ID) {
+		if rec, _, ok := TryDeltaAt(pay, s, w, cfg); ok && w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
 			return s
 		}
 	}

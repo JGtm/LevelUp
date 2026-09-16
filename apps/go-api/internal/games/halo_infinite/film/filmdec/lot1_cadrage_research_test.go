@@ -297,9 +297,6 @@ func TestLot1InferenceParFamille(t *testing.T) {
 	if n > deltaWitnessChunks {
 		n = deltaWitnessChunks
 	}
-	prev := inferChain
-	SetInferChain(true)
-	defer SetInferChain(prev)
 
 	amorces := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12}
 	cibles := map[byte]bool{0xA0: true, 0xC0: true, 0xC2: true, 0xC3: true, 0xC7: true,

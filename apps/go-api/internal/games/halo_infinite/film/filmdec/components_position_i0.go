@@ -38,7 +38,7 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 
 	// bUsePred==0, bDelta==0: ABSOLUTE -> FUN_14076e524, then tail (no fresh handle bit).
 	if !bDelta {
-		if keyframeWriterI0Grammar {
+		if br.p.Grammaire.GrammaireEcrivainI0 {
 			// Grammaire de l'ÉCRIVAIN d'état complet (FUN_14320696c / FUN_14076e420) : le
 			// bit h ne supprime rien, il garde la QUEUE, et le champ de 2 bits vient APRÈS.
 			h := br.ReadBit()
