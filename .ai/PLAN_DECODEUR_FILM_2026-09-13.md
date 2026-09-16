@@ -4241,7 +4241,7 @@ paquet du film, `replaybuild`, `killcollector`, `persist`. Aucun décodage.
       CLAUDE.md n'est gardé par aucun instrument, mais basculer l'option rougirait la baseline lint
       sur tout le dépôt ; décision utilisateur (bascule + baseline datée, ou instrument dédié à la
       taille physique des fonctions dans `archlint`).
-      **FAIT** : 332 lignes, mêmes racines que le ratchet de taille de fichier — lues par
+      **FAIT** : 347 lignes, mêmes racines que le ratchet de taille de fichier — lues par
       RÉFÉRENCE à `racinesSurveilleesTaille` et non recopiées, pour qu'un périmètre ajouté là-bas
       tombe sous les deux règles. Mesure `go/parser` + `go/token` (position du `func`, position de
       l'accolade fermante) du 2026-09-16 : **8 fonctions de production > 80 L** (toutes dans
