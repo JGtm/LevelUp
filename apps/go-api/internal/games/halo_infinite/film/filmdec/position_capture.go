@@ -66,85 +66,85 @@ type PositionSample struct {
 	Slot   uint32 // slot du record en cours de décodage (attribution multi-entités)
 }
 
-// posCaptureStartBit is the stream bit position at which the currently-decoding i0
-// component began, set by consumeObjectPositionDynamicPrecisionD on entry so emitPos
-// can stamp the sample for record attribution by the probe.
-var posCaptureStartBit int
-
-// posCaptureSlot est le slot du record en cours (== accumSlot au moment où i0 décode), estampillé
-// sur chaque PositionSample pour l'attribution par slot côté probe/outil de trajectoire.
-var posCaptureSlot uint32
-
-// accumWorld / accumSlot : contexte d'ACCUMULATION de position. Quand accumWorld != nil, le deser
-// i0 RÉSOUT chaque frame en position absolue : les chemins absolus posent le seed (SetPos), les
-// chemins delta lisent prev (PosOf) + delta et réécrivent (SetPos), le keep-baseline ré-émet prev.
-// accumSlot est renseigné par le décodeur de record (decodeDelta / DecodeFrameRecords) AVANT la
-// boucle de composants. accumWorld == nil (défaut) = pas d'accumulation : le fix SÉMANTIQUE reste
-// actif (jamais d'émission des 96 bits keep-baseline bruts = fin de l'aberrant ~1e28) mais les
-// deltas sont émis bruts (bornés).
+// captureDePosition : L ETAT DE CAPTURE D UN BALAYAGE, porte par le lecteur de bits.
 //
-// PLUS AUCUN INSTALLATEUR depuis le 2026-09-05 (lot E, item E.2) : `SetPositionAccumulator`
-// n'avait aucun appelant et a été supprimé avec les 21 autres réglages inatteignables.
-// accumWorld reste donc nil sur tous les chemins ; la variable est conservée parce que
-// l'accumulation par World est la sémantique portée du deser i0, et qu'un harnais interne au
-// paquet la rétablirait en une ligne — pas par une surface publique que personne n'appelle.
-var (
-	accumWorld *World
-	accumSlot  uint32
-)
+// C ETAIENT SIX VARIABLES DE PAQUET JUSQU AU LOT 2.3 (`posCaptureStartBit`, `posCaptureSlot`,
+// `accumWorld`, `accumSlot`, `absViaFallback`, plus la portee de `setAccumSlot`). Elles
+// decrivent UN record en cours de decodage : deux balayages simultanes n ont rien a partager
+// la-dedans, et c est l une des raisons pour lesquelles le decodage passait sous un verrou.
+type captureDePosition struct {
+	// startBit : position de bit ou le composant i0 EN COURS a commence — estampillee sur
+	// chaque echantillon pour que la sonde l attribue au bon record.
+	startBit int
+	// slot : le slot du record en cours (== accumSlot au moment ou i0 decode).
+	slot uint32
+	// accum / accumSlot : contexte d ACCUMULATION. Quand `accum` n est pas nil, le deser i0
+	// RESOUT chaque image en position absolue : les chemins absolus posent le seed (SetPos),
+	// les chemins delta lisent prev (PosOf) + delta et reecrivent, le keep-baseline re-emet
+	// prev. `accum` nil (le defaut) = pas d accumulation : le correctif SEMANTIQUE reste actif
+	// (jamais d emission des 96 bits keep-baseline bruts = fin de l aberrant ~1e28) mais les
+	// deltas sont emis bruts (bornes).
+	//
+	// PLUS AUCUN INSTALLATEUR depuis le 2026-09-05 (lot E, item E.2) : `SetPositionAccumulator`
+	// n avait aucun appelant. Le champ est conserve parce que l accumulation par World est la
+	// semantique PORTEE du deser i0, et qu un harnais interne au paquet la retablirait en une
+	// ligne — sur SON lecteur desormais, pas sur le processus.
+	accum     *World
+	accumSlot uint32
+	// viaRepli dit que la lecture absolue en cours est atteinte par le REPLI du delta predit
+	// absent (et non par le chemin absolu direct), pour que l echantillon soit etiquete
+	// `PosKindAbsFallback`. Les deux chemins n ont pas la meme fiabilite en pratique.
+	viaRepli bool
+}
 
-// setAccumSlot fixe le slot cible d'accumulation pour le record courant (appelé par les décodeurs).
-func setAccumSlot(slot uint32) { accumSlot = slot }
-
-// absViaFallback marks that the current absolute read is reached via the predicted-
-// delta absent fallback (vs the direct absolute path), so emitPos can tag the sample
-// PosKindAbsFallback. The two paths have very different reliability in practice.
-var absViaFallback bool
+// poserSlotDeCapture fixe le slot cible pour le record courant (appele par les decodeurs).
+func (b *BitReader) poserSlotDeCapture(slot uint32) { b.cap.accumSlot = slot }
 
 // emitPos reports a decoded i0 sample to the hook if one is installed.
-func emitPos(kind PosKind, v [3]float32) {
+func (b *BitReader) emitPos(kind PosKind, v [3]float32) {
 	if observateur.PosCaptureHook != nil {
-		observateur.PosCaptureHook(PositionSample{Kind: kind, Vec: v, BitPos: posCaptureStartBit, Slot: posCaptureSlot})
+		observateur.PosCaptureHook(PositionSample{
+			Kind: kind, Vec: v, BitPos: b.cap.startBit, Slot: b.cap.slot})
 	}
 }
 
 // seedAbsolute pose une position ABSOLUE fraîche (keyframe / predFlag==1 / fallback) : c'est le
 // point d'ancrage à partir duquel les deltas ultérieurs s'accumulent. Écrit dans le World
 // accumulateur si présent, puis émet.
-func seedAbsolute(kind PosKind, v [3]float32) {
-	if accumWorld != nil {
-		accumWorld.SetPos(accumSlot, v)
+func (b *BitReader) seedAbsolute(kind PosKind, v [3]float32) {
+	if b.cap.accum != nil {
+		b.cap.accum.SetPos(b.cap.accumSlot, v)
 	}
-	emitPos(kind, v)
+	b.emitPos(kind, v)
 }
 
 // applyDelta accumule un delta signé (centré-zéro) sur la dernière position résolue du slot.
 // Sans World accumulateur : émet le delta brut (borné, PAS une coordonnée). Avec World mais sans
 // seed préalable : n'émet RIEN (trou attendu — deltas antérieurs à la 1re absolue d'un slot).
-func applyDelta(kind PosKind, d [3]float32) {
-	if accumWorld == nil {
-		emitPos(kind, d)
+func (b *BitReader) applyDelta(kind PosKind, d [3]float32) {
+	if b.cap.accum == nil {
+		b.emitPos(kind, d)
 		return
 	}
-	prev, ok := accumWorld.PosOf(accumSlot)
+	prev, ok := b.cap.accum.PosOf(b.cap.accumSlot)
 	if !ok {
 		return // delta sans seed : pas encore de position pour ce slot
 	}
 	np := [3]float32{prev[0] + d[0], prev[1] + d[1], prev[2] + d[2]}
-	accumWorld.SetPos(accumSlot, np)
-	emitPos(kind, np)
+	b.cap.accum.SetPos(b.cap.accumSlot, np)
+	b.emitPos(kind, np)
 }
 
 // keepBaseline traite le chemin KEEP-BASELINE (bUsePred==1) et le keep pleine-précision : les
 // 96 bits lus NE SONT PAS une coordonnée (réutilisation de la baseline, cf FUN_1406cfe44). On
 // ré-émet la position courante résolue du slot (si connue) au lieu du float garbage (fin de
 // l'aberrant ~1e28). Sans World accumulateur : rien à ré-émettre.
-func keepBaseline() {
-	if accumWorld == nil {
+func (b *BitReader) keepBaseline() {
+	if b.cap.accum == nil {
 		return
 	}
-	if prev, ok := accumWorld.PosOf(accumSlot); ok {
-		emitPos(PosKindRaw, prev)
+	if prev, ok := b.cap.accum.PosOf(b.cap.accumSlot); ok {
+		b.emitPos(PosKindRaw, prev)
 	}
 }
 
@@ -260,26 +260,16 @@ func absAxisW(br *BitReader, i int) uint {
 // futur portage viendra le lire. La largeur rendue est celle du chemin uniforme, comme avant.
 func absAxisWFor(br *BitReader, idx, i int) uint {
 	if i == 0 {
-		absIdxHist[idx]++
+		observateur.compterIndexAbsolu(idx)
 	}
 	return absAxisW(br, i)
 }
 
-// absIdxHist : histogramme des index de plage rencontres sur les chemins ABSOLUS de i0 (7ter.54
-// axe 3). Purement observationnel : incremente sur l'axe 0 de chaque lecture, ne change AUCUNE
-// consommation de bits. C'est la mesure qui dit si l'index dominant est 0 (bornes de la map) ou
-// pas — donc quelle ligne de la table de largeurs pese reellement.
-var absIdxHist = map[int]int{}
-
 // AbsIndexHistogram rend (et remet a zero) l'histogramme des index de plage absolus.
-func AbsIndexHistogram() map[int]int {
-	out := make(map[int]int, len(absIdxHist))
-	for k, v := range absIdxHist {
-		out[k] = v
-	}
-	absIdxHist = map[int]int{}
-	return out
-}
+//
+// C ETAIT UNE VARIABLE DE PAQUET (`absIdxHist`) JUSQU AU LOT 2.3 : un histogramme est un
+// COMPTEUR D OBSERVATION, il vit donc dans [Observation] avec les autres.
+func AbsIndexHistogram() map[int]int { return observateur.prendreIndexAbsolus() }
 
 // dequantWorldAxis dequantizes one absolute quantized axis word (width bits). Deux formes :
 //   - AbsDequantRange (défaut) : min + step*(q+0.5) via WorldPositionRange (FUN_140c1e978).

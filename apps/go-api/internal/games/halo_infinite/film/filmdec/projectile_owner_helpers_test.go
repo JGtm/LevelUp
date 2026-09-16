@@ -44,6 +44,9 @@ func projOwnerCollect(t *testing.T, dir string, reg *Registry, n int) projOwnerC
 	cfg := DefaultFrameConfig()
 	var out projOwnerColl
 	var curTS uint64
+	// LE SLOT DU RECORD EN COURS SE LIT SUR LE LECTEUR (lot 2.3) : il vivait dans la variable
+	// de paquet `accumSlot`, que ce crochet consultait comme un canal lateral.
+	var curBR *BitReader
 	prev := observateur.ObjectParentStateHook
 	SetObjectParentStateHook(func(st ObjectParentState) {
 		if st.TypeIndex != ProjectileTypeIndex {
@@ -51,7 +54,7 @@ func projOwnerCollect(t *testing.T, dir string, reg *Registry, n int) projOwnerC
 		}
 		out.ti41Records++
 		out.reads = append(out.reads, projOwnerRead{
-			slot: accumSlot, ts: curTS, attached: st.Attached,
+			slot: curBR.cap.accumSlot, ts: curTS, attached: st.Attached,
 			hasFreeID: st.HasFreeID, freeID: st.FreeID, word16: st.Word16,
 		})
 	})
@@ -81,6 +84,7 @@ func projOwnerCollect(t *testing.T, dir string, reg *Registry, n int) projOwnerC
 			switch {
 			case pay[0]&0x40 == 0:
 				br := NewBitReader(pay)
+				curBR = br
 				recs, _ := DecodeFrameRecords(br, w, cfg)
 				projOwnerHarvestKills(recs, pk.TimestampUS, &out)
 			case pk.Size >= 2 && pay[0] == 0xC0:

@@ -175,7 +175,7 @@ func readRecordID(br *BitReader, idLowBits int, idBase uint32) uint32 {
 // (mode `oracle` de cmd/tmp_ecsschema) : eid + indices du masque + position de fin d'en-tete
 // concordent 54760/54760 AVEC ce bit, et le bit vaut 0 sur 54760/54760 (jamais le R(7)).
 func decodeDelta(br *BitReader, w *World, slot uint32) EntityTrace {
-	setAccumSlot(slot) // cible d'accumulation i0 pour ce record (no-op si pas de World accumulateur)
+	br.poserSlotDeCapture(slot) // cible d'accumulation i0 pour ce record (no-op sans World accumulateur)
 	t := EntityTrace{DesyncAt: -1}
 	if br.ReadBit() { // baseline selector
 		br.Skip(7)
@@ -249,7 +249,7 @@ func DecodeFrameRecords(br *BitReader, w *World, cfg FrameConfig) ([]FrameRecord
 		}
 		id := readRecordID(br, cfg.IDLowBits, cfg.IDBase)
 		slot := id & 0x3fffffff
-		setAccumSlot(slot) // attribue les samples i0 (et l'accumulation) au slot du record courant
+		br.poserSlotDeCapture(slot) // attribue les samples i0 (et l accumulation) au slot du record
 		rec := FrameRecord{Type: typ, ID: id, Slot: slot, DesyncAt: -1, HeaderBit: hdrBit}
 
 		switch typ {

@@ -460,6 +460,14 @@ package filmdec
 // contenterait decoderait aux largeurs d une carte qui n est pas celle de son film. C est ce
 // que l heritage de processus masquait ; `ScanObjectDeaths` est le site de production concerne.
 //
+// LA CAPTURE DE POSITION SUIT (famille 3 du lot). Six variables de paquet decrivaient UN record
+// en cours de decodage — ou le composant i0 a commence, a quel slot il appartient, le monde
+// d accumulation et son slot, le repli d absolue : elles deviennent `captureDePosition`, un
+// champ du LECTEUR de bits. La septieme, l histogramme des index de plage absolus, est un
+// COMPTEUR d observation et rejoint `Observation`. `lastRepVersion` et `LastRepVersion()` sont
+// SUPPRIMES : aucun appelant dans le depot, tests compris. Ratchet : 30 -> 23, dont UNE SEULE
+// encore ecrite (`observateur`).
+//
 // `KillSourceDecoderRev` ne bouge PAS : `killsource/` change de FORME (la calibration rend un
 // profil au lieu d ecrire dans le processus, `resetGlobals` disparait) mais les lignes
 // PRODUITES sont identiques a l octet — meme espace balaye, meme critere, meme vainqueur. Son golden est regenere pour

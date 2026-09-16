@@ -75,8 +75,10 @@ func ScanFrameTargets(buf []byte, w *World, cfg FrameConfig, targets map[uint32]
 		// Suppress hooks AND position accumulation during the trial; re-decode the accepted
 		// record with hooks + accumulation live (so only accepted records seed/accumulate the
 		// persistent World, not the thousands of speculative trial decodes).
-		savedPos, savedAcc := observateur.PosCaptureHook, accumWorld
-		observateur.PosCaptureHook, accumWorld = nil, nil
+		// L ACCUMULATEUR N EST PLUS A SAUVER (lot 2.3) : il vit sur le LECTEUR, et chaque essai
+		// construit le sien. Seul le crochet d observation reste un etat de processus.
+		savedPos := observateur.PosCaptureHook
+		observateur.PosCaptureHook = nil
 		rec, after, ok := TryDeltaAt(buf, b, w, cfg)
 		confirmed := false
 		if ok && targets[rec.Slot] && len(rec.Trace.Comps) >= 1 {
@@ -87,7 +89,7 @@ func ScanFrameTargets(buf []byte, w *World, cfg FrameConfig, targets map[uint32]
 				confirmed = harvestNextBoundClean(buf, after, w, cfg)
 			}
 		}
-		observateur.PosCaptureHook, accumWorld = savedPos, savedAcc
+		observateur.PosCaptureHook = savedPos
 		if confirmed {
 			rec2, end, _ := TryDeltaAt(buf, b, w, cfg) // re-decode with hooks live -> real samples
 			out = append(out, rec2)

@@ -184,7 +184,16 @@ import (
 // largeurs (calibrees, bouchon) — deviennent [filmdec.GrammaireBalayage], un champ du profil
 // que le lecteur de bits porte. Un instrument qui en pose une la pose pour SON balayage.
 // Bilan net : -12 = 30.
-const filmdecVarsGeles = 30
+//
+// RESSERRE A 23 LE 2026-09-17 (lot 2.3, famille « la capture de position ») : SEPT de moins.
+// SIX decrivaient UN record en cours de decodage (`posCaptureStartBit`, `posCaptureSlot`,
+// `accumWorld`, `accumSlot`, `absViaFallback`, et la portee de `setAccumSlot`) : elles
+// deviennent [filmdec.captureDePosition], un champ du LECTEUR de bits — deux balayages
+// simultanes n ont rien a partager la-dedans. La septieme, `absIdxHist`, est un COMPTEUR
+// D OBSERVATION : elle rejoint [filmdec.Observation]. `lastRepVersion` et son accesseur
+// exporte `LastRepVersion()` sont SUPPRIMES — aucun appelant dans le depot, tests compris
+// (regle 7). Bilan net : -7 = 23, dont UNE SEULE encore ecrite : `observateur`.
+const filmdecVarsGeles = 23
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {
