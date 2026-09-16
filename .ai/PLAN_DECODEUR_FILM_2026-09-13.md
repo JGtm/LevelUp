@@ -3874,8 +3874,12 @@ valeur faussée DANS LE PROFIL rougit désormais la lecture.
       feuilles ne liraient pas serait un mensonge, pas une étape. Consigné en §4 (D3 du lot).
 
 Preuve par famille : `replay-equiv` zéro différence ; ratchet descendu ; mutation rouge.
-GATES SANS DÉCODAGE : verts à chaque commit (§5). GATES AVEC DÉCODAGE : EN ATTENTE de la « voie
-libre » du pilote — aucun décodage joué, contrainte machine d'un seul décodage à la fois.
+GATES SANS DÉCODAGE : verts à chaque commit (§5). GATES AVEC DÉCODAGE : **JOUÉS le 2026-09-17**
+sur la tête renumérotée `7508af3c0` (§5, bloc « gates AVEC décodage ») — corpus gate **14/14 à
+0 gain / 0 perte / 0 changement**, schéma 60 des deux côtés ; les vingt écarts d'équivalence sont
+une référence périmée héritée de la base, à **une seule étape des 53** (`vehicles`), établie sans
+redécoder : le pas observé y est la valeur ZÉRO de `VehicleScan`, dont le digest ne dépend que de
+la FORME, et le diff du lot ne change AUCUN champ de struct. `-update` non joué.
 
 #### Lot 2.3 (pas 3) — Plus de globale, plus de verrou — M, high
 
@@ -5308,6 +5312,28 @@ machine d'un seul décodage à la fois, en attente de la « voie libre » du pil
 | 2026-09-17 | 2.2 | a → f | `GrammarRev` | `.20` → **`.26`**, un rang de fusion par famille, chacun avec son entrée intégrale en godoc et sa ligne de chronique au golden ; empreinte régénérée par `-update-grammar-rev` puis test rejoué SANS le port à chaque fois |
 | 2026-09-17 | 2.2 | `c6abf8bff` | `go test ./internal/sync/killcollector/ -run TestKillSourceDecoderRevSuitLeDecodeur -update` puis sans | **`KillSourceDecoderRev` INCHANGÉE** (`killsource-2026-09-16.2`), golden d'empreinte régénéré, CHOIX ÉCRIT dans sa godoc : `killsource/` change de forme (la calibration rend son résultat au lieu de l'écrire dans le processus), les lignes PRODUITES sont identiques à l'octet — même espace balayé, même critère, même vainqueur |
 | 2026-09-17 | 2.2 | a → f | `SchemaVersion` | **60, inchangée** ; `openapi.yaml`, `generated.ts` et les fixtures web NON régénérés |
+
+### Lot 2.2 (M2, pas 2) — gates AVEC décodage, 2026-09-17 (« voie libre » du pilote)
+
+**VERDICT : le lot a ZÉRO différence propre.** Les vingt écarts de l'équivalence sont une
+RÉFÉRENCE PÉRIMÉE HÉRITÉE DE LA BASE, à **une seule étape des 53**, et le corpus gate — qui ne
+dépend d'AUCUNE référence versionnée, puisqu'il cuit les deux côtés et les compare entre eux —
+rend **zéro gain, zéro perte, zéro changement sur les 14 témoins**, schéma 60 des deux côtés.
+Les deux gates disent la même chose par deux chemins indépendants.
+
+| Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
+|---|---|---|---|---|
+| 2026-09-17 | 2.2 (régime complet) | `7508af3c0` | `go run ./cmd/replay-equiv -repo-root …-decfilm-22` (corpus entier, 20 films) | **0 identique, 20 différents**, 0 écarté, 0 échec, 0 illisible ; ~16 min. Rejoué une seconde fois avec la sortie INTÉGRALE capturée (le premier passage était tronqué par un `tail`) : **20 films, 20 écarts, TOUS à l'étape `vehicles`** — aucune des 52 autres étapes ne bouge sur aucun film |
+| 2026-09-17 | 2.2 (classement) | — | forme des écarts | **10 films sur 20 partagent le MÊME sha attendu** (`5d65f534…`) **et le MÊME sha obtenu** (`354dfab5…`) : sur ces dix-là le calque est une CONSTANTE. Les dix autres (films À véhicules) ont des shas distincts des deux côtés. Un changement de FORME du type observé change les vingt, vides ou non — c'est la signature attendue |
+| 2026-09-17 | 2.2 (classement) | — | `digest.Of(replay.VehicleScan{})` calculé à MA TÊTE, sans décoder | **`compte=1 sha=354dfab5b53eeee9562cc7c82ce7f797ffd63d930bcdde71114a774475db3bc6`** — EXACTEMENT le sha OBTENU sur les dix films sans `ti=40`. Le pas observé y est donc la VALEUR ZÉRO de `VehicleScan` : aucun octet décodé n'y entre, et son digest ne dépend que de la FORME du type |
+| 2026-09-17 | 2.2 (classement) | — | trois variantes de plus (`Scanned=true`, tranches vides, les deux) | `598ebc5b…`, `fe85ab06…`, `caba5e15…` — **aucune n'égale la référence** `5d65f534…`. Le drapeau `Scanned` n'a donc PAS basculé : c'est bien la forme du type qui a changé depuis le figeage, pas une valeur décodée |
+| 2026-09-17 | 2.2 (classement) | — | `git diff 8d05aa6b7..HEAD -- film/ ':(exclude)*_test.go'`, filtré sur les champs de struct | **ZÉRO champ ajouté, zéro champ retiré, zéro type changé.** Le seul `type` neuf du lot est `filmdec.Observation` (l'observateur, hors de la chaîne du calque) et `MPPWidths` n'apparaît en `±` que parce que le lot 2.2.e l'a DÉPLACÉ dans `mpp_widths.go`, corps identique. Mon diff ne peut donc pas avoir changé le digest de `VehicleScan{}` |
+| 2026-09-17 | 2.2 (classement) | — | `VehicleScan` et ses sept types imbriqués, `d8d63461e` contre HEAD | `VehicleScan`, `EquipmentCreationStats`, `EquipmentCreation`, `WorldObjectKeyframes`, `VehicleEvent`, `BipedAim`, `BipedPosition`, `SlotBand` : **tous identiques**. Le paquet `analysis/digest` est INCHANGÉ depuis la vague 2, et la ligne de grammaire des références (`# digest-grammar: 2`) est celle de la tête — le rendu du digest n'est pas en cause non plus |
+| 2026-09-17 | 2.2 (cause) | — | historique de la ligne `vehicles` de `bcb6d393.tsv`, commit par commit | Dernière écriture : **`d8d63461e` (vague 2, 2026-09-16 00:19)**, « références re-figées au gate unique de l'intégration — killsource, placements.stats (forme), **vehicles (forme)**, artifact (contenu, schéma 60) ; **10/10** après re-figeage ». La clôture M1 (`536f9b61f`, 02:49) a re-figé DIX références du lot 1.2 et **n'a pas retouché cette ligne**. Entre cette date et ma base, l'intégration a bougé de **76 fichiers / 5 539 insertions** dans `filmdec/` + `replay/` (dont le merge `da258bf76` de `feat/v75`, « golden de forme régénéré par son port ») sans re-figer `vehicles` sur les vingt |
+| 2026-09-17 | 2.2 | — | **`-update` NON JOUÉ**, délibérément | Trois raisons, les mêmes qu'au lot 2.1 : (1) la divergence n'est pas produite par ce lot — la re-figer absorberait le changement d'un AUTRE lot dans mon commit ; (2) le re-figeage est un geste UNIQUE du pilote, au gate de fin de vague ; (3) le brief l'interdit explicitement. D4 dit « une différence arrête le pas, elle ne se justifie pas » : ici il n'y en a aucune qui soit mienne, et c'est PROUVÉ, pas affirmé |
+| 2026-09-17 | 2.2 (régime complet) | `7508af3c0` | `go run ./cmd/replay-corpus-gate --base=8d05aa6b7 --parc-root …LevelUp-go-migration --source-root …-decfilm-22 --json … --work-root <hors dépôt> --keep-work` | **code 0. 14 témoins sur 14 `ok` : 0 gain, 0 perte, 0 changement**, `schemaReference` 60 et `schemaHead` 60 partout. **Aucun témoin ABSENT** (l'aléa D2 ne s'est pas produit). Vérifié au JSON et pas seulement au tableau : 14 entrées, sommes `gains`/`pertes`/`changements` = 0 / 0 / 0, aucune entrée hors 0/0/0 ni hors 60/60 |
+| 2026-09-17 | 2.2 (corpus gate) | — | les 14 familles et leurs durées | `ctf_mono_manche` 12,28 s · `ctf_multi_manche` 31,17 s · `oddball` 58,15 s · `assaut_bombe` 14,81 s · `slayer` 13,64 s · `deux_manches` 17,98 s · `vehicules` 2 min 2,36 s · `region_index_2_bits` 16,72 s · `version_39` 38,61 s · `version_40_build_1_11` 44,72 s · `version_37` 29,08 s · `version_33_sans_identification` 3 min 6,42 s · `vehicules_v41_utilisateur` 21,03 s · `equipement_origine_utilisateur` 2 min 27,91 s |
+| 2026-09-17 | 2.2 | — | contrôle de cohérence des deux gates | **LE TÉMOIN QUI TRANCHE EST `vehicules` (084a804d, 2 min 2 s) — et il rend 0 changement.** Si le lot touchait le calque des véhicules, c'est lui qui le montrerait, puisque le corpus gate cuit la base ET la tête et les compare entre elles sans référence figée. Son zéro et l'unicité de l'étape en écart à l'équivalence disent la MÊME chose : **le lot ne change aucun octet cuit**, et l'écart de l'étape `vehicles` est imputable à la référence, à elle seule |
 
 ### Lot 2.1 (M2, pas 1) — gates SANS décodage, 2026-09-17
 
