@@ -53,6 +53,8 @@ type hwEvent struct {
 
 // hwSetup porte la configuration resolue une fois pour un film.
 type hwSetup struct {
+	// gram porte le decoupage d i0, l archetype et le profil de balayage du film (lot 2.3).
+	gram      grammaireRecord
 	dir       string
 	chunks    []int
 	slots     SlotBand
@@ -79,10 +81,7 @@ func hwResolve(t *testing.T, dir string) hwSetup {
 	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped dans les keyframes de %s", dir)
 	}
-	lay, _, err := detectI0Layout(dir)
-	if err != nil {
-		t.Fatalf("decoupage i0 illisible : %v", err)
-	}
+	_, lay := contexteDuFilm(t, dir)
 	arch, err := bipedArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archetype biped illisible : %v", err)
@@ -100,7 +99,8 @@ func hwResolve(t *testing.T, dir string) hwSetup {
 		t.Fatalf("aucun %s dans l archetype biped du registre", compWeaponStateTypeInfo)
 	}
 	return hwSetup{
-		dir: dir, chunks: chunks, slots: slots, lay: lay, arch: arch,
+		gram: grammaireRecord{lay: lay, arch: arch, prof: profilDeCarte(lay)},
+		dir:  dir, chunks: chunks, slots: slots, lay: lay, arch: arch,
 		weaponIdx: widx, selIdx: sel,
 		minRecord: bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits(),
 	}
@@ -167,7 +167,7 @@ func hwWalk(
 	chunk int, slot uint32, ts uint64,
 ) []hwEvent {
 	var out []hwEvent
-	walkRecordComponents(pay, i0, total, idx, s.lay, s.arch, func(id int) bool {
+	walkRecordComponents(pay, i0, total, idx, s.gram, func(id int) bool {
 		switch {
 		case s.weaponIdx[id] && cap.gotWeapon:
 			out = append(out, hwEvent{
@@ -201,8 +201,6 @@ func TestHeldWeaponDeltaCensus(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	s := hwResolve(t, dir)
 	t.Logf("film=%s chunks=%d slots_biped=%d emplacements_arme=%d index_i42=%d",
 		dir, len(s.chunks), s.slots.Count(), len(s.weaponIdx), s.selIdx)
@@ -254,8 +252,6 @@ func TestHeldWeaponChangesProduction(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	s := hwResolve(t, dir)
 	ref := hwKeyframeRef(t, dir)

@@ -35,7 +35,7 @@ package replay
 // # CE QU'IL NE FAIT PAS
 //
 // Aucune base, aucun roster, aucune cuisson d'artefact, aucun réseau. Un film par process
-// (verrou `filmdec.LockProcessDecode`), comme la sonde n°1 dont il réutilise TOUS les
+// comme la sonde n°1 dont il réutilise TOUS les
 // helpers — la population de morts, la calibration de base, la distance : deux lectures
 // différentes des mêmes films ne se compareraient pas.
 //
@@ -86,9 +86,6 @@ func TestSondeDuelsOuverture(t *testing.T) {
 		t.Skipf("sonde desactivee : %s et %s requis", duelsFilmEnv, duelsMapEnv)
 	}
 
-	release := filmdec.LockProcessDecode()
-	defer release()
-
 	rng := duelsBornes(t, carte)
 	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
@@ -96,7 +93,7 @@ func TestSondeDuelsOuverture(t *testing.T) {
 	}
 	opt := filmdec.DefaultScanFilmOptions()
 	opt.WorldRange = &rng
-	positions, err := filmdec.ScanBipedPositions(film, opt)
+	positions, err := filmdec.ScanBipedPositions(filmdec.NewFilmContext(film), opt)
 	if err != nil {
 		t.Fatalf("positions bipeds : %v", err)
 	}

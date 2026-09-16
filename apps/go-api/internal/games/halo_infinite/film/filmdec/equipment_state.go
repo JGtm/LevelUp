@@ -83,20 +83,16 @@ func (f EquipmentField) String() string {
 	return fmt.Sprintf("champ inconnu (%d)", int(f))
 }
 
-// SetEquipmentStateHook installe (ou retire, avec nil) la sonde des composants d'équipement.
-func SetEquipmentStateHook(h func(f EquipmentField, value uint64, present bool)) {
-	observateur.EquipmentStateHook = h
-}
-
-func publishEquipment(f EquipmentField, value uint64, present bool) {
-	if observateur.EquipmentStateHook != nil {
-		observateur.EquipmentStateHook(f, value, present)
+func (o *Observation) publishEquipment(f EquipmentField, value uint64, present bool) {
+	if o == nil || o.EquipmentStateHook == nil {
+		return
 	}
+	o.EquipmentStateHook(f, value, present)
 }
 
 // consumeEquipmentDeployed mirroite FUN_142ed4618 (ti=37 i20) : R(1), sans porte.
 func consumeEquipmentDeployed(br *BitReader) {
-	publishEquipment(EquipDeployed, br.ReadBits(1), true)
+	br.obs.publishEquipment(EquipDeployed, br.ReadBits(1), true)
 }
 
 // consumeEquipmentActivated mirroite le déser de ti=37 i21 : R(1) porte de polarité INVERSÉE
@@ -104,37 +100,37 @@ func consumeEquipmentDeployed(br *BitReader) {
 // Coût : 4 bits (porte à 0) ou 1 + celui de FUN_1408f0ac4 (porte à 1) — inchangé.
 func consumeEquipmentActivated(br *BitReader) {
 	if !br.ReadBit() {
-		publishEquipment(EquipActivated, br.ReadBits(3), true)
+		br.obs.publishEquipment(EquipActivated, br.ReadBits(3), true)
 		return
 	}
 	consume1408f0ac4(br, 4) // FUN_1408f0ac4(...,4) @140c1dcbb : PAS de sonde, 9 + 2
-	publishEquipment(EquipActivated, 0, false)
+	br.obs.publishEquipment(EquipActivated, 0, false)
 }
 
 // consumeEquipmentCreator mirroite FUN_142ed45f4 (ti=37 i23) : R(1) porte INVERSÉE, puis R(5).
 func consumeEquipmentCreator(br *BitReader) {
 	if !br.ReadBit() {
-		publishEquipment(EquipCreator, br.ReadBits(5), true)
+		br.obs.publishEquipment(EquipCreator, br.ReadBits(5), true)
 		return
 	}
-	publishEquipment(EquipCreator, 0, false)
+	br.obs.publishEquipment(EquipCreator, 0, false)
 }
 
 // consumeEquipmentEnergy mirroite FUN_141087bec (ti=37 i24) : R(14), sans porte.
 func consumeEquipmentEnergy(br *BitReader) {
-	publishEquipment(EquipEnergy, br.ReadBits(14), true)
+	br.obs.publishEquipment(EquipEnergy, br.ReadBits(14), true)
 }
 
 // consumeEquipmentEnergyDelay mirroite FUN_140dda128 (ti=37 i26) : R(10), sans porte — le délai
 // de tics avant que l'énergie ne reparte. Lu-jeté en ligne dans `traverse.go` jusqu'au lot 0.
 func consumeEquipmentEnergyDelay(br *BitReader) {
-	publishEquipment(EquipEnergyDelay, br.ReadBits(10), true)
+	br.obs.publishEquipment(EquipEnergyDelay, br.ReadBits(10), true)
 }
 
 // consumeEquipmentCharges mirroite FUN_142ed4518 (ti=37 i27) : R(8), sans porte — les charges
 // restantes. C'est le canal que le lot D veut : une charge qui décroît DATE un usage.
 func consumeEquipmentCharges(br *BitReader) {
-	publishEquipment(EquipCharges, br.ReadBits(8), true)
+	br.obs.publishEquipment(EquipCharges, br.ReadBits(8), true)
 }
 
 // EquipmentStateSample est UN record delta de ti=37 dont la marche des composants a abouti
@@ -239,7 +235,7 @@ func ScanFilmEquipmentState(dir string) ([]EquipmentStateSample, EquipmentStateS
 	if err != nil {
 		return nil, EquipmentStateStats{}, err
 	}
-	return ScanEquipmentState(NewFilmContext(film))
+	return ScanEquipmentState(contexteDeBobine(film))
 }
 
 // ScanEquipmentState décode l'état des objets d'équipement d'un film DEJA CHARGE.
@@ -259,14 +255,13 @@ func ScanEquipmentState(fc *FilmContext) ([]EquipmentStateSample, EquipmentState
 	if err != nil {
 		return nil, st, err
 	}
-	w := equipmentWalk{arch: arch, want: equipmentFieldIndices(arch)}
-
 	var cur EquipmentStateSample
-	prev := observateur.EquipmentStateHook
-	SetEquipmentStateHook(func(f EquipmentField, value uint64, present bool) {
+	obs := NouvelleObservation()
+	obs.EquipmentStateHook = func(f EquipmentField, value uint64, present bool) {
 		cur.Seen[f], cur.Present[f], cur.Val[f] = true, present, value
-	})
-	defer SetEquipmentStateHook(prev)
+	}
+	w := equipmentWalk{obs: obs, prof: fc.ProfilDeBalayage(), arch: arch,
+		want: equipmentFieldIndices(arch)}
 
 	var out []EquipmentStateSample
 	for _, c := range nums {
@@ -287,19 +282,28 @@ func ScanEquipmentState(fc *FilmContext) ([]EquipmentStateSample, EquipmentState
 
 // equipmentWalk porte ce que la marche d'un record doit connaître (règle des 5 paramètres).
 type equipmentWalk struct {
+	// obs est l OBSERVATEUR de ce balayage (lot 2.3), pose sur chaque lecteur construit.
+	obs *Observation
+	// prof est le PROFIL DE BALAYAGE pose sur chaque lecteur de cette marche (lot 2.3).
+	prof ProfilDeBalayage
 	arch Archetype
 	// want[f] est l'index d'itérateur du champ f dans l'archétype, ou -1 s'il en est absent.
 	want [EquipmentFieldCount]int
 }
 
 // scanPayload balaye UN payload delta et rend les records de ti=37 dont la marche a abouti.
+// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
+func (w equipmentWalk) contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: w.prof, Obs: w.obs}
+}
+
 func (w equipmentWalk) scanPayload(
 	pay []byte, band map[uint32]bool, st *EquipmentStateStats,
 	cur *EquipmentStateSample, pk FilmPacket, chunk int,
 ) []EquipmentStateSample {
 	var out []EquipmentStateSample
 	total := len(pay) * 8
-	limit := total - (worldObjectHeaderBits + worldObjectIndexBits + projPosBits())
+	limit := total - (worldObjectHeaderBits + worldObjectIndexBits + projPosBits(w.prof.LargeursObjetDuMonde()))
 	for p := 0; p <= limit; p++ {
 		rec, ok := matchWorldObjectRecord(pay, p, band)
 		if !ok || rec.Idx[0] != 0 { // i0 doit ouvrir le masque : c'est la position
@@ -386,6 +390,7 @@ func (w equipmentWalk) walk(pay []byte, at, total int, idx []int, last int) bool
 			return false
 		}
 		br := NewBitReader(pay)
+		br.PoserContexte(w.contexte())
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(EquipmentTypeIndex), w.arch.Level(id))
 		if !ported || br.BitPos() > total {

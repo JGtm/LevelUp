@@ -28,7 +28,7 @@ package filmdec
 // de borner la fenêtre à l'aveugle et de ne rien conclure quand elle est trop pauvre.
 //
 // HORS LIGNE (I/O disque) — jamais depuis un chemin de requête. L'APPELANT DOIT DÉTENIR
-// LockProcessDecode : la calibration écrit le global `mppLeadBits` ; elle le restaure à la
+// La calibration pose le decoupage MPP sur SON profil ; elle le restaure a la
 // sortie, et c'est à l'appelant d'installer la largeur retenue pour son propre décodage.
 
 import (
@@ -233,7 +233,7 @@ func CalibrateMPPWidths(
 	if err != nil {
 		return MPPCalibration{ByWidths: map[MPPWidths]int{}, Lives: len(spans)}, false
 	}
-	return CalibrateMPPWidthsOf(NewFilmContext(film), wr, band, spans)
+	return CalibrateMPPWidthsOf(contexteDeBobine(film), wr, band, spans)
 }
 
 // CalibrateMPPWidthsOf mesure le découpage du bloc MPP sur un film DEJA CHARGE.
@@ -253,12 +253,12 @@ func CalibrateMPPWidthsOf(
 	if len(nums) == 0 {
 		return cal, false
 	}
-	defer SetMPPWidths(CurrentMPPWidths())
+	defer fc.PoserMPP(fc.ProfilDeBalayage().MPP)
 	var cur equipCreationRead
-	defer installCreationHooks(&cur)()
+	obs := installCreationHooks(&cur)
 
 	pr := mppCalibProbe{
-		walk:  equipCreationWalk{comps: len(arch.Components), wr: wr, band: band, cur: &cur},
+		walk:  equipCreationWalk{obs: obs, prof: fc.ProfilDeBalayage(), comps: len(arch.Components), wr: wr, band: band, cur: &cur},
 		spans: spans,
 		eps:   EquipmentPosEps(wr),
 		cal:   &cal,
@@ -317,7 +317,7 @@ func (pr *mppCalibProbe) scanPayload(pay []byte, atUS uint64) {
 		}
 		pr.cal.Anchors++
 		for _, w := range cands {
-			SetMPPWidths(w)
+			pr.walk.prof.MPP = w
 			cre, ok := pr.walk.readCreation(pay, p, total, &st)
 			if !ok {
 				continue

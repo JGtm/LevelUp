@@ -323,7 +323,7 @@ func imcoEprouverZones(zones []int, anc []imcoAncre, reg *Registry) (map[int]int
 			// L'ORACLE `n2` : l'etat par defaut REMPLACE par un decalage de `w` bits, pour
 			// mesurer une largeur qu'aucun deserialiseur ne porte encore. C'est l'un des deux
 			// temoins nommes de `keyframeFullStateTemoin` — jamais une lecture de production.
-			tr := walkKeyframeFullState(a.Pay, a.Bit, reg, keyframeFullStateTemoin{
+			tr := walkKeyframeFullState(a.Pay, a.Bit, reg, contexteDInstrument(), keyframeFullStateTemoin{
 				EnTeteBits: keyframeFullStateHeaderBits + w, SansEtatParDefaut: true,
 			})
 			if tr.DesyncAt < 0 && tr.EndBit == a.Want {
@@ -375,8 +375,6 @@ func (l imcoLigne) imcoZonesTexte() string {
 // TestImageCleOracleN2 EST LA MESURE : par build et par archetype, `n1`, la largeur portee, la
 // constance de `n2`, les largeurs que le balayage designe et ce que la fermeture en dit.
 func TestImageCleOracleN2(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	groupes := map[imcoCle]*imcoGroupe{}
 	regs := map[string]*Registry{}
 	films := 0

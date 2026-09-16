@@ -107,7 +107,7 @@ func consumeCaptureAndBipedComponent(br *BitReader, name string, typeIndex uint3
 		// Le drapeau `simStateComplete` reste la porte : ce n'est plus la GRAMMAIRE qui manque,
 		// c'est la SOURCE DES LARGEURS D'AXE de la queue en production (cf. simStateComplete).
 		consumeSimulationState(br)
-		return variant, nil, simStateComplete
+		return variant, nil, br.p.Grammaire.SimStateComplet
 	case "simulation-state-playback", "simulation-state-playback-component": // i61 (thunk 142f02454 -> FUN_142ed6d20, vérifié live)
 		consumeSimulationStatePlayback(br)
 		return variant, nil, true

@@ -114,8 +114,6 @@ func TestViseeElevation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("carte %q absente du catalogue de bornes : %v", mapName, err)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	// CONTROLE AVANT MESURE : le decoupage d'i0 lu dans le film doit egaler celui que le
 	// catalogue deduit des bornes. S'ils different, les bornes ne sont pas celles de cette

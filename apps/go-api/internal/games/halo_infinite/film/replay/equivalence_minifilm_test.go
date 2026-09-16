@@ -126,12 +126,11 @@ func digestsMiniBobine() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	// MEME GESTE QUE LA PRODUCTION (cf. installWorldObjectPrecision) : les largeurs d'axe du
-	// chemin world-object viennent de l'entree de catalogue. Sans ce reglage, le digest des
-	// projectiles dependrait de l'etat laisse par le test precedent.
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
-	filmdec.SetWorldObjectPrecisionFromLayout(filmdec.I0Layout{AxisW: entry.AxisWidths})
+	// LES LARGEURS D'AXE DU CHEMIN WORLD-OBJECT viennent de l'entree de catalogue, comme en
+	// production (cf. installWorldObjectPrecision). Depuis le lot 2.3 elles voyagent avec le
+	// contexte du film, pose ci-dessous — rien ne subsiste d'un test a l'autre.
+	profilCarte := filmdec.ProfilDeBalayageParDefaut()
+	profilCarte.PoserLargeursObjetDuMondeDepuisDecoupage(filmdec.I0Layout{AxisW: entry.AxisWidths})
 	wr := entry.Range()
 	dir := MiniFilmDir
 

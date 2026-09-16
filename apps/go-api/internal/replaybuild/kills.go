@@ -15,13 +15,15 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // decodeKillSource décode killsource UNE SEULE FOIS par match. neutralDeaths ET killRefs en
 // dérivent tous les deux — avant le lot F.1, seul neutralDeaths décodait ; lui ajouter un
-// second appel aurait payé une DEUXIÈME fois le verrou filmdec partagé pour le même fait.
+// second appel aurait payé une DEUXIÈME fois le décodage du film pour le même fait (le verrou
+// de paquet qui le rendait coûteux a disparu au lot 2.3 ; le décodage, lui, coûte toujours).
 // nil = décodage impossible (film absent ou source non décodable), déjà journalisé ici :
 // les deux appelants n'ont qu'à tester le nil.
 //
@@ -38,6 +40,30 @@ func (b *Builder) decodeKillSource(matchID string, film *filmsource.Film) *kills
 		return nil
 	}
 	return res
+}
+
+// profilDeBalayageDeLaCuisson rend le PROFIL que la cuisson du rejeu doit porter apres le
+// decodage du kill-feed.
+//
+// DEUX CAS, ET LES DEUX SONT LE COMPORTEMENT DE PRODUCTION D AVANT LE LOT 2.3, rendu explicite :
+//
+//	DECODAGE ABOUTI  le profil CALIBRE sur ce film (descripteur de traversee, largeur d axe
+//	                 absolue, `param_4`). C est l heritage que la decouverte D1 du lot 2.2.a a
+//	                 nomme : reel, voulu (la grammaire mesuree prime sur le defaut), mais qui
+//	                 passait par l etat du processus.
+//	DECODAGE REFUSE  le profil DE DEPART de `killsource` ([killsource.ProfilDeDepart]) —
+//	                 l invariant plus le `param_4` force a zero. `killsource.Decode` posait ce
+//	                 zero AVANT de lire quoi que ce soit, et ne le retirait jamais : un film
+//	                 dont le kill-feed ne se decode pas laissait donc lui aussi sa trace sur la
+//	                 cuisson. Le reproduire ici est ce qui rend le pas STRUCTUREL (zero
+//	                 difference d octet, critere D4 du jalon).
+func profilDeBalayageDeLaCuisson(res *killsource.Result) *filmdec.ProfilDeBalayage {
+	if res != nil {
+		p := res.ProfilCalibre
+		return &p
+	}
+	p := killsource.ProfilDeDepart()
+	return &p
 }
 
 // killRefs résout, pour chaque frag publié par killsource, l'identité du TUEUR, de l'ASSISTANT

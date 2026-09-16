@@ -65,8 +65,6 @@ func TestPlayerChannelsPhase0(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", bridgeFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	in := pbLoad(t, dir)
 	pbLogInputs(t, in)

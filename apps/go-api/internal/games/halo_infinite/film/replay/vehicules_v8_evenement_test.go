@@ -108,10 +108,6 @@ func v8FamillesTriees(m map[string][2]int) []string {
 // v8UnFilm depouille un film.
 func v8UnFilm(t *testing.T, root string, f v0Film, tot *v8Bilan) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	ctx, ok := v4Decode(t, root, f)
 	if !ok {
 		return

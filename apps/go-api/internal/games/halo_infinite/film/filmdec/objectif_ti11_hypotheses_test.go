@@ -30,7 +30,7 @@ import (
 //
 // Les largeurs sont donc justes. Ce qui manque est un COUT PAR COMPOSANT, et le depot en a un
 // candidat nomme : `FUN_14076cb60` lit, APRES chaque composant present, un `R(1)` de garde suivi
-// d'un `R(32)` sentinelle si ce bit vaut 1. Le drapeau `filmComponentCorruptionCheck` le porte, et
+// d'un `R(32)` sentinelle si ce bit vaut 1. Le drapeau `profilDInstrument.Grammaire.ControleDeCorruption` le porte, et
 // il vaut `false` par defaut.
 //
 // CE COUT N'A JAMAIS ETE TESTE SUR LE CHEMIN DELTA. Le balayage precedent l'avait teste sur les
@@ -40,21 +40,16 @@ import (
 // seul de l'archetype. Sur un record ou la presence vaut zero, il consomme un bit la ou les autres
 // n'en consomment aucun — exactement le bit que le garde reclamerait.
 //
-// LES BASCULES SONT GLOBALES AU PROCESS : ce test detient `LockProcessDecode` et les restaure.
-//
 //	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11DeltaGarde -v -timeout 40m
 func TestObjectifTi11DeltaGarde(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	defer LockProcessDecode()()
 	g := filmproc.Arm("TestObjectifTi11DeltaGarde", filmproc.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — mesure interrompue", float64(peak)/(1<<30))
 	})
 	defer func() { g.Disarm() }()
-	avant := filmComponentCorruptionCheck
-	defer SetFilmComponentCorruptionCheck(avant)
 
 	type film struct {
 		arch Archetype
@@ -93,7 +88,7 @@ func TestObjectifTi11DeltaGarde(t *testing.T) {
 	t.Logf("corpus : %d film(s) charges", len(films))
 
 	for _, garde := range []bool{false, true} {
-		SetFilmComponentCorruptionCheck(garde)
+		poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = garde })
 		var b ti11DeltaBilan
 		for _, x := range films {
 			for _, pay := range x.pays {

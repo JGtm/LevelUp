@@ -131,14 +131,15 @@ func TestTotalControlLargeursMPP(t *testing.T) {
 
 // d3tScanSousLargeurs installe un decoupage MPP, balaye `ti=13`, et RESTAURE.
 //
-// LE VERROU DE PROCESSUS ET LA RESTAURATION SONT OBLIGATOIRES : ce sont des globaux de paquet, et
-// une sonde qui les laisserait poses contaminerait tout ce qui suit dans le meme processus.
+// LES LARGEURS SE POSENT SUR LE CONTEXTE DU FILM (lot 2.3) : rien n'est installe dans le
+// processus, donc rien n'est a restaurer, et deux sondes peuvent tourner cote a cote.
 func d3tScanSousLargeurs(dir string, w filmdec.MPPWidths) (filmdec.ManagedPropertyScan, error) {
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.SetMPPWidths(w)
-	defer filmdec.SetMPPWidths(prev)
-	return filmdec.ScanFilmManagedProperties(dir)
+	fc, _, err := filmdec.ContexteDeFilm(dir)
+	if err != nil {
+		return filmdec.ManagedPropertyScan{}, err
+	}
+	fc.PoserMPP(w)
+	return filmdec.ScanManagedProperties(fc)
 }
 
 // d3tDiagnostic publie la CONCENTRATION du sous-ensemble chaine : le discriminant entre vrais

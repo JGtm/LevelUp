@@ -156,9 +156,6 @@ func TestPowerupSocleImagesCles(t *testing.T) {
 			if filmdec.CountFilmChunks(dir) == 0 {
 				t.Skipf("aucun chunk dans %s", dir)
 			}
-			release := filmdec.LockProcessDecode()
-			defer release()
-			defer installWorldObjectPrecisionDeCarte(entry, dir, nil)()
 			wr := entry.Range()
 
 			kfs := psRecenseKF(dir)

@@ -171,8 +171,6 @@ func TestViseeLunette(t *testing.T) {
 	// notre propre section verrouillee, jamais dedans (le verrou n'est pas reentrant).
 	armes := adsArmesParInstant(t, dir)
 
-	release := filmdec.LockProcessDecode()
-	defer release()
 	pos, tracks, own := adsBalayage(t, dir)
 	couples, nKills, ambigus := aimCouples(t, dir)
 	t.Logf("FIL — %d instants de kill, %d couples retenus, %d ambigus ecartes", nKills, len(couples), ambigus)

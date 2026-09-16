@@ -82,12 +82,13 @@ package archlint
 //
 // # L ALLOWLIST, ET COMMENT ELLE SE VIDE
 //
-// 77 entrees, toutes posees le 2026-09-17, une par couple (fichier, motif), chacune avec le
-// lot qui la retire. La case 2.4.3 du plan ne se coche que quand cette table est VIDE.
+// 78 entrees : 77 posees le 2026-09-17, une par couple (fichier, motif), plus une le 2026-09-18
+// a la fusion du lot 2.3 (`filmdec/film_context.go`, datee sur sa ligne), chacune avec le lot
+// qui la retire. La case 2.4.3 du plan ne se coche que quand cette table est VIDE.
 //
 //	2.4.1 (6)   absorption de `killsource.evReader` par le lecteur canonique : le type, sa
 //	            structure, et les primitives `bitAt` / `bits32` / `bitsN` / `bitsWide`.
-//	2.4.2 (62)  la facade `film.Source` : `filmdec` (declaration du lecteur, 33 sites de
+//	2.4.2 (63)  la facade `film.Source` : `filmdec` (declaration du lecteur, 33 sites de
 //	            construction, quatre sections de `chunk_00`, second marcheur de paquets),
 //	            `killsource` (chunks, feed, table de joueurs, monde, walk), `objectiveevents`
 //	            (film.go, statborg.go), `weaponv3` (pi_resolver, bits_word, timing),
@@ -218,7 +219,8 @@ type lectureToleree struct {
 	lot     string
 }
 
-// lecturesTolerees — LES 77 COUPLES MESURES LE 2026-09-17 sur `24b67e339`. Chacun disparait
+// lecturesTolerees — LES 77 COUPLES MESURES LE 2026-09-17 sur `24b67e339`, plus le couple ne de la
+// fusion du lot 2.3 (2026-09-18). Chacun disparait
 // dans le commit qui fait le portage ; la case 2.4.3 du plan se coche quand la table est vide.
 var lecturesTolerees = []lectureToleree{
 	{fichier: "cmd/diag_film/main.go", motif: motifBinaire, lot: "2.5.c"},
@@ -252,6 +254,10 @@ var lecturesTolerees = []lectureToleree{
 	{fichier: "internal/games/halo_infinite/film/filmdec/equipment_creation.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/equipment_state.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/event_list.go", motif: motifLecteur, lot: "2.4.2"},
+	// 2026-09-18, fusion du lot 2.3 : `FilmContext.NouveauLecteur` construit LE lecteur qui porte le
+	// profil du contexte (plus de variable de paquet). C est la forme que la facade 2.4.2 absorbe :
+	// le lecteur canonique naitra dans `film.Source`, contexte compris, et ce site disparait avec lui.
+	{fichier: "internal/games/halo_infinite/film/filmdec/film_context.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/film_format_version.go", motif: motifChunk, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/film_format_version.go", motif: motifBinaire, lot: "2.4.2"},
 	{fichier: "internal/games/halo_infinite/film/filmdec/film_identity.go", motif: motifChunk, lot: "2.4.2"},

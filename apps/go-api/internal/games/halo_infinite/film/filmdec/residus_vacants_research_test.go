@@ -100,8 +100,6 @@ func rsVacant(d []byte, p int) bool {
 // par champ, ce que la decoupe du bloc de queue en dit, et si un enregistrement SUPPLEMENTAIRE
 // se lit dans l'intervalle (ce qui signerait un slot que le balayage ne voit pas).
 func TestResidusSlotAberrants(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
 		_, d := readChunk00(t, dir)
 		build, _ := s3bBuild(d)
@@ -182,8 +180,6 @@ func rsIntervalle(t *testing.T, d []byte, a, b, delta int) {
 //
 // La phase 4 fermait 1 890 ecarts sur 1 892. Le critere de ce test, ecrit d'avance : 1 892/1 892.
 func TestResidusSlotFermeture(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	conf, aberr, vacTot, films, filmsBons := 0, 0, 0, 0, 0
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
 		_, d := readChunk00(t, dir)

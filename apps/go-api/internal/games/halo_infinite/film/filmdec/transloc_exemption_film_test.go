@@ -63,8 +63,6 @@ func TestP1ExemptionVitesseDynasty(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : validation sur pièces sautée", p1FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	evts := ScanFilmTranslocatorTeleports(dir, nil)
 	for _, e := range evts {
 		t.Logf("EVENEMENT 117 slot %d @%dus", e.Slot, e.TimestampUS)
@@ -116,8 +114,6 @@ func TestP1InvarianceSansTete117(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : invariance sur pièces sautée", p1FilmSans117Env)
 	}
-	release := LockProcessDecode()
-	defer release()
 	evts := ScanFilmTranslocatorTeleports(dir, nil)
 	if len(evts) != 0 {
 		t.Fatalf("%d tête(s) 117 sur le film témoin — choisir un film SANS translocateur"+

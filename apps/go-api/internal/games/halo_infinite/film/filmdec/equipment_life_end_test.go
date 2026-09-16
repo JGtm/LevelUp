@@ -34,18 +34,9 @@ func TestEquipmentLifeEnd(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", equipCreationFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
-	lay, _, err := detectI0Layout(dir)
-	if err != nil {
-		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
-	}
-	prev := WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-	SetWorldObjectPrecisionFromLayout(lay)
-	prevW := CurrentMPPWidths()
-	t.Cleanup(func() { SetMPPWidths(prevW) })
+	fc, lay := contexteDuFilm(t, dir)
+	lg := profilDeCarte(lay).LargeursObjetDuMonde()
 
 	t.Logf("FILM %s", dir)
 	lifeEndRegistry(t, dir)
@@ -55,23 +46,23 @@ func TestEquipmentLifeEnd(t *testing.T) {
 	if len(band) == 0 {
 		t.Fatalf("aucun slot ti=%d", EquipmentTypeIndex)
 	}
-	raw := lifeEndRawSamples(dir, n, band)
-	tracks, err := ScanFilmWorldObjects(dir, &equipCreationUnitRange, EquipmentTypeIndex)
+	raw := lifeEndRawSamples(dir, n, band, lg)
+	tracks, err := ScanWorldObjects(fc, &equipCreationUnitRange, EquipmentTypeIndex)
 	if err != nil {
 		t.Fatalf("trajectoires ti=%d illisibles : %v", EquipmentTypeIndex, err)
 	}
 	spans := EquipmentLifeSpans(tracks)
-	cal, ok := CalibrateMPPWidths(dir, &equipCreationUnitRange, band, spans)
+	cal, ok := CalibrateMPPWidthsOf(fc, &equipCreationUnitRange, band, spans)
 	t.Logf("   LARGEUR : %s", cal)
 	if !ok {
 		t.Logf("   VERDICT : calibration non tranchée — aucune pose, rien à mesurer")
 		return
 	}
-	SetMPPWidths(cal.Widths)
-	confirmed := lifeEndDurations(t, dir, band, spans, raw)
+	fc.PoserMPP(cal.Widths)
+	confirmed := lifeEndDurations(t, fc, band, spans, raw)
 	lifeEndKeyframeCensus(t, dir, n, confirmed)
-	lifeEndTailProbe(t, dir, n, band, raw, confirmed)
-	lifeEndDelSelectivity(t, dir, n, band, len(tracks))
+	lifeEndTailProbe(t, dir, n, band, raw, confirmed, lg)
+	lifeEndDelSelectivity(t, dir, n, band, len(tracks), lg)
 }
 
 // lifeEndRegistry publie le nom du composant i18 dans les deux archétypes. C'est LA PIÈCE : si
@@ -102,7 +93,7 @@ func lifeEndRegistry(t *testing.T, dir string) {
 // lifeEndRawSamples rejoue le balayage de ScanFilmWorldObjects SANS découper en vies : c'est la
 // matière commune aux deux règles comparées.
 func lifeEndRawSamples(
-	dir string, n int, band map[uint32]bool,
+	dir string, n int, band map[uint32]bool, lg PrecisionDescriptor,
 ) map[EquipmentLifeKey][]ProjectileSample {
 	out := map[EquipmentLifeKey][]ProjectileSample{}
 	for c := 1; c <= n; c++ {
@@ -115,7 +106,7 @@ func lifeEndRawSamples(
 				continue
 			}
 			pay := p.Payload(chunk)
-			for _, s := range scanProjectileRecords(pay, band, &equipCreationUnitRange) {
+			for _, s := range scanProjectileRecords(pay, band, &equipCreationUnitRange, lg) {
 				s.TimestampUS, s.Chunk = p.TimestampUS, c
 				k := EquipmentLifeKey{s.slot, s.gen}
 				out[k] = append(out[k], s.ProjectileSample)
@@ -160,12 +151,12 @@ type lifeEndConfirmed struct {
 // lifeEndDurations compare les deux règles sur la cohorte CONFIRMÉE (les poses que la
 // production publie), identifiant par identifiant.
 func lifeEndDurations(
-	t *testing.T, dir string, band map[uint32]bool,
+	t *testing.T, fc *FilmContext, band map[uint32]bool,
 	spans map[EquipmentLifeKey][]EquipmentLifeSpan, raw map[EquipmentLifeKey][]ProjectileSample,
 ) []lifeEndConfirmed {
 	t.Helper()
 	var out []lifeEndConfirmed
-	cre, _, err := ScanFilmEquipmentCreationsForBand(dir, &equipCreationUnitRange, band)
+	cre, _, err := ScanEquipmentCreationsForBand(fc, &equipCreationUnitRange, band)
 	if err != nil {
 		t.Fatalf("balayage des créations impossible : %v", err)
 	}
@@ -325,13 +316,14 @@ func lifeEndKeyframeCensus(t *testing.T, dir string, n int, confirmed []lifeEndC
 func lifeEndTailProbe(
 	t *testing.T, dir string, n int, band map[uint32]bool,
 	raw map[EquipmentLifeKey][]ProjectileSample, confirmed []lifeEndConfirmed,
+	lg PrecisionDescriptor,
 ) {
 	t.Helper()
 	if len(confirmed) == 0 {
 		t.Logf("   QUEUE : aucune pose confirmée — rien à sonder")
 		return
 	}
-	all := lifeEndAllRecords(dir, n, band)
+	all := lifeEndAllRecords(dir, n, band, lg)
 
 	// Fenêtre de sondage : 30 s après la dernière position. Au-delà, un match ordinaire a
 	// recyclé le slot.
@@ -377,9 +369,9 @@ func lifeEndTailProbe(
 
 // lifeEndAllRecords collecte les instants de TOUS les records d'objet du monde de la bande,
 // SANS exiger la position (i0) : c'est le balayage le plus large possible sur cet archétype.
-func lifeEndAllRecords(dir string, n int, band map[uint32]bool) map[EquipmentLifeKey][]uint64 {
+func lifeEndAllRecords(dir string, n int, band map[uint32]bool, lg PrecisionDescriptor) map[EquipmentLifeKey][]uint64 {
 	out := map[EquipmentLifeKey][]uint64{}
-	posBits := projPosBits()
+	posBits := projPosBits(lg)
 	for c := 1; c <= n; c++ {
 		chunk, err := ReadFilmChunk(dir, c)
 		if err != nil {
@@ -419,7 +411,8 @@ func lifeEndQuantile(v []float64, q float64) float64 {
 // la bande, aucune contrainte sur les 32 bits de corps. La question n'est pas « existe-t-il ? »
 // mais « combien de faux ? » — si la densité de candidats dépasse de plusieurs ordres le nombre
 // de vies, aucune fin explicite n'en sort.
-func lifeEndDelSelectivity(t *testing.T, dir string, n int, band map[uint32]bool, lives int) {
+func lifeEndDelSelectivity(t *testing.T, dir string, n int, band map[uint32]bool, lives int,
+	lg PrecisionDescriptor) {
 	t.Helper()
 	cands, payloads := 0, 0
 	limit := n

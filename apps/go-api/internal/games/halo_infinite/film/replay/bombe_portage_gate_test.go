@@ -37,7 +37,7 @@ package replay
 // la fenêtre jugée.
 //
 // RÉGIME : garde `ASSAUT_CACHE`. Aucune base, aucun réseau, sentinelle mémoire armée, UN
-// SEUL décodage à la fois (`filmdec.LockProcessDecode`). Jamais `cmd/replay-build` :
+// SEUL décodage à la fois sur la machine (verrou INTER-PROCESSUS `filmproc.AcquireSolo`). Jamais `cmd/replay-build` :
 // l'extraction est en processus.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
@@ -69,8 +69,6 @@ func TestBombePortageGate(t *testing.T) {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestBombePortageGate")()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	for _, f := range bpFilms {
 		periodes, carries, cov, _ := bpExtraire(t, cache, f.id)

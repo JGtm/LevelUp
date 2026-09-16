@@ -41,8 +41,6 @@ func TestViseeZoomBoutEnBout(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : gate saute", zoomFilmEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	evts := filmdec.ScanFilmZoomEvents(dir)
 	if len(evts) == 0 {
@@ -188,8 +186,6 @@ func TestViseeZoomEntreesOrphelines(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : mesure sautee", zoomFilmEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	evts := filmdec.ScanFilmZoomEvents(dir)
 	scan := filmdec.DefaultScanFilmOptions()

@@ -31,7 +31,7 @@ func consumeManagedObjectBoundaryVisibility(br *BitReader) {
 			flags |= 1 << uint(i)
 		}
 	}
-	publishManagedObject(ManagedObjectBoundaryVisibility, flags)
+	br.obs.publishManagedObject(ManagedObjectBoundaryVisibility, flags)
 }
 
 // consumeDevicePosition (ti43) — deser FUN_140bef320 :

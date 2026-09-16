@@ -111,9 +111,6 @@ func TestSondeDuelsBouclier(t *testing.T) {
 		t.Skipf("sonde desactivee : %s, %s et %s requis", duelsBMatchEnv, duelsBMapEnv, duelsBRootEnv)
 	}
 
-	release := filmdec.LockProcessDecode()
-	defer release()
-
 	paths := title.NewPathResolver(root)
 	db, closeDB := duelsBOuvrirBase(t, paths.SharedDBPath(duelsBSlug))
 	defer closeDB()
@@ -324,7 +321,7 @@ func duelsBLireFilm(
 	rng := entry.Range()
 	opt.WorldRange = &rng
 	opt.CaptureDirs = true
-	positions, err := filmdec.ScanBipedPositions(film, opt)
+	positions, err := filmdec.ScanBipedPositions(filmdec.NewFilmContext(film), opt)
 	if err != nil {
 		t.Fatalf("positions bipeds : %v", err)
 	}

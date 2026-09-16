@@ -16,8 +16,6 @@ func TestScanFilmBipedPickupsMatchesInstrument(t *testing.T) {
 	if !ok {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	want := bpkCollecte(t, f)
 	got, st, err := ScanFilmBipedPickups(f.dir)

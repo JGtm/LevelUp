@@ -359,12 +359,12 @@ func BuildProfileFromFilm(f *filmsource.Film) (BuildProfile, error) {
 // buter sur un build vide — leur largeur reste INDETERMINEE, donc rien n est installe et aucun
 // bit lu ne change : c est exactement le comportement qu ils avaient, avec une cause nommee.
 //
-// L APPELANT DOIT DETENIR [LockProcessDecode] : `SetMPPWidths` ecrit des globaux de paquet, le
-// meme contrat que `replay.installWorldObjectPrecision`. Un film dont le FORMAT est inconnu ne
-// change RIEN — le defaut de paquet reste en place et l erreur est rendue a l appelant, qui
-// decide (mettre le film de cote, ou compter un repli nomme).
-func InstallFilmFormatMPP(f *filmsource.Film) (func(), error) {
-	format, ok := FilmFormatVersion(f)
+// ELLE POSE SUR LE CONTEXTE, PLUS SUR LE PROCESSUS (lot 2.3) : le decoupage voyage avec les
+// lecteurs que ce contexte construit. Un film dont le FORMAT est inconnu ne change RIEN — le
+// profil garde son invariant et l erreur est rendue a l appelant, qui decide (mettre le film de
+// cote, ou compter un repli nomme).
+func InstallFilmFormatMPP(fc *FilmContext) (func(), error) {
+	format, ok := FilmFormatVersion(fc.Film())
 	if !ok {
 		return func() {}, erreurFormatInconnu(FilmFormatVersionUnknown)
 	}
@@ -377,8 +377,8 @@ func InstallFilmFormatMPP(f *filmsource.Film) (func(), error) {
 		// rien plutot qu un decoupage nul, qui ne lirait aucune identite du tout.
 		return func() {}, nil
 	}
-	prev := SetMPPWidths(w)
-	return func() { SetMPPWidths(prev) }, nil
+	prev := fc.PoserMPP(w)
+	return func() { fc.PoserMPP(prev) }, nil
 }
 
 // POURQUOI LES CINQ BUILDS ANCIENS N ONT PAS DE LARGEUR MPP POSEE (2026-09-15).

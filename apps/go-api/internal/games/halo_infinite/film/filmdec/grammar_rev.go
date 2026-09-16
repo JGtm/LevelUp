@@ -379,6 +379,16 @@ package filmdec
 // 503 lignes ; le decoupage du bloc MPP en sort dans `mpp_widths.go`, sans qu une ligne de
 // logique change. Ratchet des variables de paquet : 86 -> 79.
 //
+// LA REVUE ADVERSARIALE DU LOT (2.3.5) N A CHANGE AUCUN OCTET LU : 27 constats, 3 P1 et 19 P2
+// confirmes, 5 refuses, zero P0. Cote `filmdec` — ratchet des variables resserre de 22 a 21 (le
+// compte REEL ; 22 laissait une place libre), six blocs de doc INVERSEE reecrits, godoc de trois
+// symboles disparus retirees, et `BitReader.Observation` / `BitReader.Contexte`, ajoutes par ce
+// lot sans aucun appelant hors test, SUPPRIMES (regle 7). Cote `replay`, la pose du profil puis
+// de la carte devient `poserProfilPuisCarte`, qu epingle
+// `TestRouteDuProfilCalibreJusquAuContexte` : la route de D1 n avait aucun test qui rougisse, ni
+// sur des options ignorees, ni sur l ordre inverse — qui effacait les largeurs de la carte en
+// silence, `PoserProfilDeBalayage` remplacant le profil ENTIER.
+//
 // `KillSourceDecoderRev` ne bouge PAS : `killsource/` est INTACT — le balayage de `param_4`
 // passe toujours par `SetRecordStateParam`, meme espace, meme critere, memes lignes produites.
 // `SchemaVersion` reste 60.
@@ -410,4 +420,81 @@ package filmdec
 // declarations a deplace des fonctions, et le garde-rail G1 lit ces ancres sur pieces.
 //
 // `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
-const GrammarRev = "grammar-2026-09-15.26"
+// ENTREE `grammar-2026-09-15.27` (2026-09-17, lot 2.3 — RANG PROVISOIRE) : `.26` -> `.27`.
+// AUCUN OCTET N EST LU AUTREMENT.
+//
+// LE PROFIL DE BALAYAGE REMPLACE L HERITAGE PAR L ETAT DU PROCESSUS. La variable `herite`
+// (`profil_herite.go`, lots 2.2.a/b/e) — traversee, largeur d axe absolue, largeurs des objets
+// du monde, decoupage MPP, `param_4` force — disparait. Ce qu elle portait devient
+// [ProfilDeBalayage], une VALEUR : le lecteur en tient une copie (`BitReader.p`), le contexte du
+// film celle du decodage courant, et `FrameConfig.Profil` la passe aux portes de balayage.
+//
+// LA CALIBRATION DE `killsource` VOYAGE DESORMAIS PAR LES OPTIONS (condition D1 du pilote).
+// `replaybuild.BuildBytes` decode `killsource` PUIS appelle `replay.BuildFromFilm` dans le MEME
+// processus ; jusqu ici la cuisson heritait des largeurs calibrees par l ETAT DU PROCESSUS —
+// heritage REEL et VOULU, mais invisible et incompatible avec deux decodages en parallele. Le
+// chemin est explicite : `killsource.Result.ProfilCalibre` -> `replay.Options.ProfilDeBalayage`
+// -> `FilmContext`. Kill-feed non decode : `killsource.ProfilDeDepart()` — l invariant plus le
+// `param_4` force a zero, ce que `Decode` laissait derriere lui meme en echec. Pas STRUCTUREL.
+//
+// LA DOUBLE ECRITURE DATEE EST RETIREE A SA DATE CIBLE : `replay.doubleEcritureGlobales`
+// (bascule 2026-09-17, cible « lot 2.3 », critere « 0 variable mutable ») disparait avec la
+// variable qu elle alimentait ; `installWorldObjectPrecision` pose sur le CONTEXTE.
+//
+// LES ENVELOPPES D2 (`ScanFilm*(dir)`) POSENT LE DECOUPAGE LU DANS LE FILM sur leur propre
+// contexte — le geste que chaque instrument repetait a la main, et dont l oubli « desalignait les
+// desers sans lever d erreur ». La CUISSON prend les largeurs du CATALOGUE, jamais l auto-detection.
+//
+// LES DOUZE BASCULES DE GRAMMAIRE SUIVENT LE MEME CHEMIN (famille 2 du lot) : les A/B de
+// retro-ingenierie — corruption per-composant, queue d un record NEW, deser d etat par
+// archetype, `simulation-state` complet, portee baseline, grammaire d ECRIVAIN du chemin absolu
+// d i0, corps i54 et i59, inference de chaine, generation stricte, et les DEUX tables de
+// largeurs — deviennent [GrammaireBalayage], un champ du profil. Ratchet : 42 -> 30.
+//
+// LA GENERATION STRICTE ETAIT LE SECOND HERITAGE SILENCIEUX, desormais ecrit :
+// `killsource.resetGlobals` levait `SetStrictGeneration(true)` pour tout le PROCESSUS sans
+// jamais le rabaisser. [killsource.ProfilDeDepart] le porte, `replaybuild` le passe.
+//
+// UN CADRE DE TRAME SE PREND AU CONTEXTE ([FilmContext.CadreDeBalayage]), plus a
+// `DefaultFrameConfig()` seul, qui rend l INVARIANT : s en contenter decoderait aux largeurs
+// d une autre carte — ce que l heritage masquait (`ScanObjectDeaths`).
+//
+// LA CAPTURE DE POSITION SUIT (famille 3 du lot). Six variables de paquet decrivaient UN record
+// en cours de decodage — ou le composant i0 a commence, son slot, le monde d accumulation et son
+// slot, le repli d absolue : elles deviennent `captureDePosition`, un champ du LECTEUR. La
+// septieme, l histogramme des index de plage absolus, est un COMPTEUR et rejoint `Observation`.
+// `lastRepVersion` / `LastRepVersion()` : SUPPRIMES (aucun appelant). Ratchet 30 -> 23, dont
+// UNE SEULE encore ecrite (`observateur`).
+//
+// L OBSERVATEUR EST LA DERNIERE A PARTIR (famille 4 du lot), avec les VINGT-HUIT reglages
+// publics qui l ecrivaient. Chaque balayage construit le SIEN et le pose AVEC son profil par un
+// porteur unique — `ContexteDeLecture{Profil, Obs}` — dont les deux champs ont une nature
+// OPPOSEE : le profil DECIDE des largeurs, l observateur ne fait que RECEVOIR. Les onze
+// `publishXxx` et les compteurs d issue de chaine deviennent des methodes nil-safe
+// d `Observation` ; `ChainStats`, `ResetChainStats`, `ChainRepairedCount`, `InferResyncCount`
+// (accesseurs DE PROCESSUS sans appelant) sont supprimes.
+//
+// RATCHET : 23 -> 22 puis 21 (resserre a la revue), et surtout **ZERO variable de paquet
+// ECRITE** : quatre erreurs sentinelles, seize tables de grammaire, un dedoublonneur.
+//
+// LE VERROU DE PROCESSUS DISPARAIT (famille 5, item 2.3.1) : `LockProcessDecode` et son fichier
+// `decode_gate.go` sont SUPPRIMES, avec les 373 sites d appel (276 fichiers) qui le prenaient.
+// Son en-tete nommait DEUX raisons d exister — l etat de paquet du decodeur, et « la table sans
+// verrou » des largeurs de bouchon ; les quatre familles precedentes ont retire l une (devenue
+// VALEUR du lecteur) et l autre (CHAMP de l observation). Un verrou prive de ses deux raisons
+// n est plus une protection mais une serialisation. Le verrou INTER-PROCESSUS
+// `filmproc.AcquireSolo` n est PAS concerne : il garde la RAM de la machine, et il reste.
+//
+// DEUX RATCHETS FIGENT LE RESULTAT (item 2.3.2). `TestAucunVarDePaquetEcriteDansFilmdec` refuse
+// par AST toute ecriture visant une variable de paquet de `filmdec`.
+// `TestAucunVerrouDeDecodageDePaquet` remplace l ancien ratchet INVERSE qui EXIGEAIT le verrou :
+// il interdit `LockProcessDecode`, `processDecodeMu` et un fichier nomme `decode_gate.go`.
+//
+// DEUX FILMS SE DECODENT EN PARALLELE (item 2.3.3) : `TestDeuxFilmsEnParallele` decode
+// `a521164d` (HI_1_4_1) et `fb1a1a72` (HI_1_13_0) en serie puis dans deux goroutines ;
+// empreintes identiques a l octet, sous `-race`.
+//
+// `KillSourceDecoderRev` ne bouge PAS : `killsource/` change de FORME (la calibration rend un
+// profil, `resetGlobals` disparait) mais les lignes PRODUITES sont identiques a l octet. Son
+// golden est regenere pour refiger le couple (revision, empreinte). `SchemaVersion` reste 60.
+const GrammarRev = "grammar-2026-09-15.27"

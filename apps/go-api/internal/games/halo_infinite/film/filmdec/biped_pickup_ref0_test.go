@@ -91,8 +91,6 @@ func TestBipedPickupRef0Base(t *testing.T) {
 	if !ok {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	evs := bpkCollecte(t, f)
 	if len(evs) == 0 {

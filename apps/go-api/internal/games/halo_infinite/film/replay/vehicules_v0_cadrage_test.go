@@ -65,8 +65,6 @@ func v0Corpus(t *testing.T) []v0Film {
 // v0Bornes rend les bornes monde d'une carte NOMMEE et installe ses largeurs d'axe pour le
 // chemin objet du monde. Il double `attBornes` parce que celui-ci passe par un fixture
 // film -> carte (`attCartes`) que le corpus de ce lot ne peuple pas : ici la carte est donnee.
-//
-// L'APPELANT DOIT DETENIR LockProcessDecode ET RESTAURER WorldObjectPrecisionActuelle().
 func v0Bornes(t *testing.T, root, carte string) (filmdec.Vec3Range, bool) {
 	t.Helper()
 	cat, err := filmdec.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
@@ -78,7 +76,6 @@ func v0Bornes(t *testing.T, root, carte string) (filmdec.Vec3Range, bool) {
 		t.Logf("carte %q absente du catalogue de bornes (%v)", carte, err)
 		return filmdec.Vec3Range{}, false
 	}
-	filmdec.SetWorldObjectPrecisionFromLayout(e.Layout())
 	return e.Range(), true
 }
 
@@ -207,10 +204,6 @@ func v0NuageDeltaFilm(t *testing.T, root string, f v0Film) {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return
@@ -283,10 +276,6 @@ func v0GrammaireUnFilm(t *testing.T, root string, f v0Film) {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return
@@ -379,7 +368,7 @@ func v0ScanBipedeSurBande(dir string, bande map[uint32]bool, lay filmdec.I0Layou
 			if pk.Type != filmdec.PacketTypeDelta {
 				continue
 			}
-			for _, r := range filmdec.ScanBipedRecords(pk.Payload(data), filmdec.NewSlotBand(bande), lay, opt) {
+			for _, r := range filmdec.ScanBipedRecords(pk.Payload(data), filmdec.NewSlotBand(bande), lay, opt, filmdec.ContexteParDefaut()) {
 				r.Chunk, r.PacketIndex, r.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, r)
 			}

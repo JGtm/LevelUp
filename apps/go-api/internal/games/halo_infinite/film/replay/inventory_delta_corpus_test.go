@@ -205,8 +205,6 @@ func TestInventoryDeltaConfrontationCorpus(t *testing.T) {
 // invConfrontOneFilm décode les deux canaux d'un film et les confronte.
 func invConfrontOneFilm(dir string) (invConfrontation, []float64, []float64, error) {
 	var c invConfrontation
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	kf, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0, nil)
 	if err != nil {

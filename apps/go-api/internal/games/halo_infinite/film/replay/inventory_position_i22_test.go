@@ -177,8 +177,6 @@ func TestPositionI22(t *testing.T) {
 // controlee nulle part).
 func invPosFilm(t *testing.T, dir string) (entr, cible, ancreZero []invPosObs) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
 	known := loadoutFamilies()
 	nom := invPosBase(dir)
 	n := filmdec.CountFilmChunks(dir)
@@ -694,8 +692,6 @@ func (b *invPosBilan) log(t *testing.T) {
 }
 
 func invPosBilanFilm(dir string) invPosBilan {
-	release := filmdec.LockProcessDecode()
-	defer release()
 	known := loadoutFamilies()
 	var b invPosBilan
 	n := filmdec.CountFilmChunks(dir)
@@ -795,7 +791,6 @@ func TestOracleTypesPortesEtLances(t *testing.T) {
 // invPosTypes rend, pour un film, les rangs de grenade PORTES (compteur i22 non nul, decodeur de
 // production) et les rangs LANCES (canal delta, totalement disjoint).
 func invPosTypes(dir string) (porte, lance [invGrenadeSlots]bool, err error) {
-	release := filmdec.LockProcessDecode()
 	known := loadoutFamilies()
 	n := filmdec.CountFilmChunks(dir)
 	for ch := 1; ch <= n; ch++ {
@@ -819,7 +814,6 @@ func invPosTypes(dir string) (porte, lance [invGrenadeSlots]bool, err error) {
 			}
 		}
 	}
-	release()
 	throws, err := filmdec.ScanFilmGrenadeThrows(dir)
 	if err != nil {
 		return porte, lance, err

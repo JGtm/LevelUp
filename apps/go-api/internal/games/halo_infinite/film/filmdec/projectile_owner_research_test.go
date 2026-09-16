@@ -45,8 +45,6 @@ func TestProjectileOwner(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
@@ -55,13 +53,6 @@ func TestProjectileOwner(t *testing.T) {
 	reg, err := ParseRegistryChunk(raw)
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
-	}
-	// Precision des objets du monde (largeurs de position ti=41) : sans elle les records
-	// projectile desynchronisent plus tot et la sonde i10 rend moins.
-	if lay, _, err := detectI0Layout(dir); err == nil {
-		prev := WorldObjectPrecisionActuelle()
-		t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-		SetWorldObjectPrecisionFromLayout(lay)
 	}
 
 	n := CountFilmChunks(dir)

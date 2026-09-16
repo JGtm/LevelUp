@@ -24,13 +24,18 @@ func scanForTargetDelta(buf []byte, from int, w *World, cfg FrameConfig, targets
 	frameLen := len(buf) * 8
 	var capPos [3]float32
 	var capHas bool
-	prevHook := observateur.PosCaptureHook
-	observateur.PosCaptureHook = func(s PositionSample) {
+	prev := cfg.Obs
+	capture := NouvelleObservation()
+	if prev != nil {
+		*capture = *prev
+	}
+	capture.PosCaptureHook = func(s PositionSample) {
 		if !capHas {
 			capPos, capHas = s.Vec, true // first (i0) position of the trial record
 		}
 	}
-	defer func() { observateur.PosCaptureHook = prevHook }()
+	cfg.Obs = capture
+	defer func() { cfg.Obs = prev }()
 	for b := from; b < frameLen-24; b++ {
 		capHas = false
 		rec, _, ok := TryDeltaAt(buf, b, w, cfg)
@@ -75,8 +80,9 @@ func ScanFrameTargets(buf []byte, w *World, cfg FrameConfig, targets map[uint32]
 		// Suppress hooks AND position accumulation during the trial; re-decode the accepted
 		// record with hooks + accumulation live (so only accepted records seed/accumulate the
 		// persistent World, not the thousands of speculative trial decodes).
-		savedPos, savedAcc := observateur.PosCaptureHook, accumWorld
-		observateur.PosCaptureHook, accumWorld = nil, nil
+		// L ACCUMULATEUR N EST PLUS A SAUVER (lot 2.3) : il vit sur le LECTEUR, et chaque essai
+		// construit le sien. Seul le crochet d observation reste un etat de processus.
+		restaure := cfg.Obs.neutraliserCapturePosition()
 		rec, after, ok := TryDeltaAt(buf, b, w, cfg)
 		confirmed := false
 		if ok && targets[rec.Slot] && len(rec.Trace.Comps) >= 1 {
@@ -87,7 +93,7 @@ func ScanFrameTargets(buf []byte, w *World, cfg FrameConfig, targets map[uint32]
 				confirmed = harvestNextBoundClean(buf, after, w, cfg)
 			}
 		}
-		observateur.PosCaptureHook, accumWorld = savedPos, savedAcc
+		restaure()
 		if confirmed {
 			rec2, end, _ := TryDeltaAt(buf, b, w, cfg) // re-decode with hooks live -> real samples
 			out = append(out, rec2)
@@ -105,7 +111,7 @@ func ScanFrameTargets(buf []byte, w *World, cfg FrameConfig, targets map[uint32]
 func harvestNextBoundClean(buf []byte, pos int, w *World, cfg FrameConfig) bool {
 	frameLen := len(buf) * 8
 	br := NewBitReader(buf)
-	br.poserMouvement(cfg.Mouvement) // EN TETE (lot 2.2.a)
+	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(pos)
 	if br.Remaining() < 24 {
 		rem := frameLen - pos
@@ -138,11 +144,11 @@ func harvestNextBoundClean(buf []byte, pos int, w *World, cfg FrameConfig) bool 
 // record loops (one per replication "view"), each terminated by its own end marker.
 // The offline decoder previously read only ONE loop from bit 0 — potentially missing
 // views 1..N (where other players may live) and mis-framing the leading bit. Records
-// from all views are concatenated. Uses chain inference per view when inferChain is on.
+// from all views are concatenated. Uses chain inference per view when `Grammaire.InferenceChaine` is on.
 // Returns the records and the number of views that decoded before a desync stopped it.
 func DecodeFrameViews(buf []byte, w *World, cfg FrameConfig, nViews int, skipLeadBits int) ([]FrameRecord, int) {
 	br := NewBitReader(buf)
-	br.poserMouvement(cfg.Mouvement) // EN TETE (lot 2.2.a)
+	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(skipLeadBits)
 	frameLen := len(buf) * 8
 	var all []FrameRecord
@@ -176,7 +182,7 @@ func DecodeFrameResync(buf []byte, w *World, cfg FrameConfig, targets map[uint32
 	var out []FrameRecord
 	frameLen := len(buf) * 8
 	br := NewBitReader(buf)
-	br.poserMouvement(cfg.Mouvement) // EN TETE (lot 2.2.a)
+	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	guard := 0
 	for br.BitPos() < frameLen {
 		guard++
@@ -225,17 +231,16 @@ func DecodeFrameResync(buf []byte, w *World, cfg FrameConfig, targets map[uint32
 		// DESYNC — scan forward for the next clean target delta and resync there. The scan
 		// trial-decodes every candidate bit, so SUPPRESS the position-capture hook during it
 		// (only the accepted record must emit a sample), then restore it.
-		savedHook := observateur.PosCaptureHook
-		observateur.PosCaptureHook = nil
+		restaureHook := cfg.Obs.neutraliserCapturePosition()
 		next := scanForTargetDelta(buf, startPos+1, w, cfg, targets, accept)
-		observateur.PosCaptureHook = savedHook
+		restaureHook()
 		if next < 0 {
 			return out
 		}
 		rec2, endPos, _ := TryDeltaAt(buf, next, w, cfg) // re-decodes with capture on -> real sample
 		out = append(out, rec2)
 		br = NewBitReader(buf)
-		br.poserMouvement(cfg.Mouvement)
+		br.poserCadre(cfg)
 		br.Skip(endPos)
 	}
 	return out
@@ -257,7 +262,7 @@ func decodeDeltaWithArch(br *BitReader, arch Archetype, typeIndex uint32) Entity
 // aligned the stream (a real bound entity, e.g. a biped, follows the transient).
 func boundDeltaCleanAt(buf []byte, p int, w *World, cfg FrameConfig) bool {
 	br := NewBitReader(buf)
-	br.poserMouvement(cfg.Mouvement) // EN TETE (lot 2.2.a)
+	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(p)
 	if br.Remaining() < 24 {
 		return false

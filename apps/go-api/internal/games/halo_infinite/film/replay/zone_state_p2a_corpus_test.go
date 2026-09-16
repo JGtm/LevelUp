@@ -265,8 +265,6 @@ func p2aZones(t *testing.T, mapID string, roles ...mapvar.Role) []Zone {
 // l'utilisateur paie chaque balayage — on ne decode pas ce qu'on ne mesure pas.
 func p2aDoc(t *testing.T, dir, short string, quant *filmdec.MapQuantEntry) ReplayDocument {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
 	worldRange := quant.Range()
 	scan := filmdec.DefaultScanFilmOptions()
 	scan.WorldRange = &worldRange

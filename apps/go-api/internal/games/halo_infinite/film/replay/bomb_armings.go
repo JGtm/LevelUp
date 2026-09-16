@@ -149,7 +149,7 @@ type bombFuseVerdict struct {
 // film, et hors Assaut le calque est vide de toute façon. L'échec n'est pas fatal : le rejeu
 // sort sans compte à rebours, jamais avec un compte à rebours deviné.
 //
-// HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
+// HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmBombReads(fc *filmdec.FilmContext, matchID string, in BombInput) []filmdec.NavpointRadialRead {
 	if !in.Scanned {
 		return nil

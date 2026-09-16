@@ -69,7 +69,6 @@ package filmdec
 // soit choisi apres coup.
 //
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee, UN SEUL
-// decodage a la fois (`LockProcessDecode`).
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
 //	go test ./internal/games/halo_infinite/film/filmdec/ -run NavpointTi12Radial -v -timeout 90m
@@ -155,8 +154,6 @@ func TestNavpointTi12RadialAssaut(t *testing.T) {
 		t.Logf("pic memoire observe : %.2f Gio (plafond souple %d Gio)",
 			float64(g.Peak())/(1<<30), filmproc.MeasureLimitGiB)
 	}()
-	release := LockProcessDecode()
-	defer release()
 
 	bilans := make([]*ti12FilmBilan, 0, len(ti11Corpus))
 	for _, f := range ti11Corpus {

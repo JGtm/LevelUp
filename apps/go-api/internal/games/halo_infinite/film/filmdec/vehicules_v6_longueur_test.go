@@ -107,8 +107,6 @@ var v6ProfileTypes = []int{8, 22, 36, 0, 82, 5, 15, 21, 38, 7, 9, 75, 76, 1}
 // TestV6Longueur : profil agrege de profondeur par type de tete.
 func TestV6Longueur(t *testing.T) {
 	dirs := v6FilmDirs(t)
-	release := LockProcessDecode()
-	defer release()
 	cfg := DefaultFrameConfig()
 	types := v6ProfileTypes
 	if l := os.Getenv("V6_TYPES"); l != "" {

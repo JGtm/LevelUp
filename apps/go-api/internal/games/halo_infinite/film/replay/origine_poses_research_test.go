@@ -24,7 +24,6 @@ package replay
 // (5 s) = nouvelle vie. Le seuil n'est pas invente pour l'occasion, c'est celui de lives.go.
 //
 // LECTURE SEULE. Aucune base, aucun artefact ecrit. UN SEUL decodage filmdec par process
-// (LockProcessDecode, comme BuildFromFilm).
 //
 // USAGE (depuis apps/go-api) :
 //
@@ -88,9 +87,6 @@ func TestOriginePosesDistribution(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", origineFilmEnv)
 	}
 	entry := origineMapEntry(t)
-	release := filmdec.LockProcessDecode()
-	defer release()
-	defer installWorldObjectPrecisionDeCarte(entry, dir, nil)()
 
 	worldRange := entry.Range()
 	scan := filmdec.DefaultScanFilmOptions()

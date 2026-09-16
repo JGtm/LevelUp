@@ -81,8 +81,6 @@ func TestOriginMeasure(t *testing.T) {
 // mesureOrigine rend l'origine par lecture et l'origine par temoin, en millisecondes.
 func mesureOrigine(t *testing.T, dir, short string) (int64, int64) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
 	// Sans bornes de carte les coordonnees restent des quanta — sans importance ici : seuls
 	// les HORODATAGES sont mesures.
 	scan := filmdec.DefaultScanFilmOptions()

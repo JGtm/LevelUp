@@ -63,8 +63,6 @@ func TestRespawnCoveragePhase1(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", gameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	obs, rawBand, rawChain := respawnCollect(t, dir)
 	nChain := 0

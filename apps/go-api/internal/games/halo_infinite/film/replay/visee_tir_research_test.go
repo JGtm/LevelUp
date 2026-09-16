@@ -41,7 +41,7 @@ package replay
 //
 // PARALLELISME SANS VERROU, ET POURQUOI C'EST PERMIS : ce fichier n'appelle AUCUN Scan* de
 // filmdec — seulement ReadFilmChunk/WalkPackets/ReadBitsAtForDiag, purs, sans etat global de
-// decodage. Le verrou de process (LockProcessDecode) protege les globaux des decodeurs ;
+// decodage.
 // aucun n'est touche ici.
 //
 // SOUS GARDE D'ENVIRONNEMENT (TIR_FILMS_DIR), saute partout ailleurs, CI comprise.

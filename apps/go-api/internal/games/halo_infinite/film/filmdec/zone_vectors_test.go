@@ -90,8 +90,6 @@ func TestZoneVectorsLotC1a(t *testing.T) {
 	dir := zcDir(t)
 	out := zcOutDir(t)
 	short := filepath.Base(dir)
-	release := LockProcessDecode()
-	defer release()
 
 	c := zcKeyframeCensus(dir)
 	bands := zcBuildBands(c)

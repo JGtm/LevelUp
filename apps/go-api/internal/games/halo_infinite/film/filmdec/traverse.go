@@ -109,7 +109,7 @@ func TraverseEntity(br *BitReader, reg *Registry, defaultStateBits int) EntityTr
 		// LA SURCHARGE DE CALIBRATION `defaultStateBitsByTI` A DISPARU ICI le 2026-09-05
 		// (lot E, item E.2) : la table n'etait peuplee que par `SetDefaultStateBitsForTI`,
 		// un reglage sans appelant. Elle restait vide, la branche etait inatteignable.
-	} else if fn, ok := defaultStateDeserByTI[t.TypeIndex]; ok && useArchDefaultStateDeser {
+	} else if fn, ok := defaultStateDeserByTI[t.TypeIndex]; ok && br.p.Grammaire.DeserEtatParArchetype {
 		fn(br) // deser vtable[0x60] porté bit-exact (cf. default_state_arch.go)
 	} else {
 		br.Skip(defaultStateBits) // fallback : stub 0-bit (défaut) ou largeur globale de calibration
@@ -127,8 +127,8 @@ func TraverseEntity(br *BitReader, reg *Registry, defaultStateBits int) EntityTr
 		return t
 	}
 	traverseComponentLoop(br, arch, &t)
-	if t.DesyncAt == -1 && newRecordTailBits > 0 {
-		br.Skip(newRecordTailBits) // tail terminal per-record NEW (calibration keyframe)
+	if t.DesyncAt == -1 && br.p.Grammaire.BitsDeQueueRecordNew > 0 {
+		br.Skip(br.p.Grammaire.BitsDeQueueRecordNew) // queue terminale d un record NEW (calibration image-cle)
 	}
 	t.EndBit = br.BitPos()
 	return t
@@ -140,26 +140,12 @@ func TraverseEntity(br *BitReader, reg *Registry, defaultStateBits int) EntityTr
 // R6 typeIndex + default-state + gate header) and the FRAME delta path (decodeDelta,
 // which has NO header — just mask + components). Stops cleanly at the first un-ported
 // present component (DesyncAt) and captures the held-weapon variant when reached.
-// filmComponentCorruptionCheck : en mode FILM/replay (FUN_1404f2b4c()==2, actif quand on
-// décode un film), FUN_14076cb60 lit APRÈS chaque composant présent un R(1) garde ; si le
-// bit ==1, un R(32) sentinel (marqueur 0xbcddcba "entity component corrupt"). Le décodeur
-// supposait ce mode OFF → il sautait tous ces bits (validé live CE : le record NEW biped
-// fait 1924 bits ; sans ce check mon décodeur en consommait 1863 = -61). Découverte workflow
-// biped-record-61bit-gap (agents FUN_1408f1aa4 + FUN_14076cb60 convergents).
-var filmComponentCorruptionCheck = false
-
-// SetFilmComponentCorruptionCheck (dé)active le corruption-check per-composant du mode film.
-func SetFilmComponentCorruptionCheck(v bool) { filmComponentCorruptionCheck = v }
-
-// newRecordTailBits : bits terminaux consommés APRÈS la boucle de composants d'un record NEW
-// (candidat : le tail de FUN_1408f1aa4 après FUN_14076cb60, non encore identifié bit-exact).
-// Toggle de calibration keyframe (cmd/tmp_kfdecode) : l'agent Ghidra a mesuré que record0
-// (ti=22, default-state 0 bit) doit finir 1 bit plus loin pour aligner record1 = NEW slot1.
-// Défaut 0 = comportement historique (le path delta n'appelle pas TraverseEntity, non affecté).
-var newRecordTailBits = 0
-
-// SetNewRecordTailBits fixe le tail terminal per-record NEW (calibration keyframe).
-func SetNewRecordTailBits(n int) { newRecordTailBits = n }
+// LES SIX BASCULES DE GRAMMAIRE DE CE FICHIER ONT QUITTE LE PAQUET AU LOT 2.3
+// (`filmComponentCorruptionCheck`, `newRecordTailBits`, `useArchDefaultStateDeser`,
+// `simStateComplete`, `calibratedWidth`, `unportedStubWidth`, avec leurs six reglages publics).
+// Elles vivent dans [GrammaireBalayage], que le lecteur de bits porte : un instrument qui en
+// pose une la pose pour SON balayage, plus pour le processus. Leur provenance et leur defaut
+// sont ecrits a leur champ.
 
 // LA SURCHARGE DE CALIBRATION `defaultStateBitsByTI` A DISPARU le 2026-09-05 (lot E, item E.2),
 // avec son enregistreur `SetDefaultStateBitsForTI` et les deux branches qu'elle gardait
@@ -168,41 +154,12 @@ func SetNewRecordTailBits(n int) { newRecordTailBits = n }
 // non-biped passent, comme avant, par leur déserialiseur porté (`defaultStateDeserByTI`) ou par
 // le repli `br.Skip(defaultStateBits)`.
 
-// useArchDefaultStateDeser route les archétypes non-biped vers leur déserialiseur
-// vtable[0x60] porté (default_state_arch.go) au lieu du Skip(0) historique. Défaut true ;
-// le passer à false rend le comportement d'avant le portage pour un A/B mesuré.
-var useArchDefaultStateDeser = true
-
-// SetUseArchDefaultStateDeser (dé)active les desers de default-state par archétype.
-func SetUseArchDefaultStateDeser(v bool) { useArchDefaultStateDeser = v }
-
 // consumeCorruptionCheck lit le sentinel per-composant du mode film : R(1) garde ; si 1, R(32).
 func consumeCorruptionCheck(br *BitReader) {
-	if filmComponentCorruptionCheck && br.ReadBit() {
+	if br.p.Grammaire.ControleDeCorruption && br.ReadBit() {
 		br.ReadBits(32) // sentinel attendu 0xbcddcba
 	}
 }
-
-// simStateComplete : si true, i60 (simulation-state) est déclaré ENTIÈREMENT décodé et la
-// traversée continue vers i61-63. DÉFAUT false — et depuis le 2026-08-17 ce n'est PLUS pour
-// la raison historique (« grammaire de la queue non résoluble offline ») : la grammaire est
-// établie (consumeSimStateHandleTail, lot R7-b, décompile + prédicat prouvé vrai par
-// construction). Ce qui manque est la SOURCE DES LARGEURS D'AXE de cette queue sur le chemin
-// de production : `absAxisWFor` retombe sur `AbsoluteAxisW`, un UNIFORME 14 qui n'est la
-// largeur d'aucune carte (Cliffhanger 13/13/14, Bazaar 17/17/16, Illusion 18/18/17 —
-// mesurés par DetectI0Layout le 2026-08-17). Continuer la marche avec une queue mal
-// dimensionnée propagerait un désalignement au lieu d'un désync propre.
-//
-// KILL-SWITCH — bascule du défaut à `true` conditionnée à UN critère mesurable : que le
-// chemin absolu d'i0 tire ses trois largeurs de la carte du match (comme
-// `replay.installWorldObjectPrecision` le fait déjà pour `WorldObjectPrecision`) au lieu de
-// l'uniforme `AbsoluteAxisW`. Retrait cible du drapeau : à la bascule. Témoin de détection
-// connu : `TestGoldenMiniBobine` (killsource) passe de 0 à 2 « source appartenant à la
-// victime » PROPOSÉES, 0 publiée dans les deux cas — mesuré le 2026-08-17.
-var simStateComplete = false
-
-// SetSimStateComplete (dé)active le mode « i60 complet » (instruments de mesure ; défaut off).
-func SetSimStateComplete(v bool) { simStateComplete = v }
 
 // consumeSimStateHandleTail porte FUN_14076e494(br, dst, LEVEL=0x10, 0, 0, param_6=0) — la
 // QUEUE d'i60, RÉSOLUE le 2026-08-17 (lot R7-b) après avoir été longtemps portée « largeur
@@ -302,7 +259,7 @@ func traverseComponentLoopFrom(br *BitReader, arch Archetype, t *EntityTrace, fr
 		// i5 object-shield-vitality était cité ici À TORT (corrigé le 2026-07-26) :
 		// FUN_140d50cbc n'utilise que des largeurs littérales 8/16/12 et des bornes
 		// .rdata constantes — il ne dépend d'aucune précision runtime.
-		if w, ok := calibratedWidth[arch.Components[i]]; ok {
+		if w, ok := br.p.Grammaire.largeurCalibree(arch.Components[i]); ok {
 			br.Skip(w)
 			consumeCorruptionCheck(br)
 			t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Ported: true, StartBit: start})
@@ -319,7 +276,7 @@ func traverseComponentLoopFrom(br *BitReader, arch Archetype, t *EntityTrace, fr
 			// going — lets a harness brute-force a missing tail deser's width by record-
 			// chaining (the only un-ported component on the delta-biped path is i63
 			// biped-action-component, the LAST component, AFTER the weapon). Default: off.
-			if w, ok := unportedStubWidth[arch.Components[i]]; ok {
+			if w, ok := br.p.Grammaire.largeurBouchon(arch.Components[i]); ok {
 				br.Skip(w)
 				consumeCorruptionCheck(br)
 				t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant, Ported: true, StartBit: start})
@@ -333,45 +290,6 @@ func traverseComponentLoopFrom(br *BitReader, arch Archetype, t *EntityTrace, fr
 		t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant,
 			Ported: ported, StartBit: start, Payload: payload})
 	}
-}
-
-// calibratedWidth overrides a component's deser with a fixed bit-skip, for the
-// runtime-precision components whose per-axis widths are map-load runtime values
-// absent from the static .exe (i0 object-position, i21 unit-desired-aiming-vector,
-// ...). i5 object-shield-vitality figurait ici À TORT : ses largeurs sont des
-// littéraux 8/16/12 dans FUN_140d50cbc (corrigé le 2026-07-26, cf.
-// consumeObjectShieldVitality). Widths come from a Cheat Engine delta
-// capture (tools/ce/filmdec_delta_capture.lua, processed by cmd/tmp_deltacal) and
-// are CONSTANT per map. This is a CALIBRATION harness keyed to a specific film/map,
-// NOT a general decode path. Empty by default. The dead-state component must NOT be
-// added here (it is decoded to read killer-absolute-participant-index).
-var calibratedWidth = map[string]int{}
-
-// SetCalibratedWidth sets (w>=0) or clears (w<0) the calibrated skip width for a
-// component name. Takes precedence over consumeByName in traverseComponentLoop.
-func SetCalibratedWidth(name string, w int) {
-	if w < 0 {
-		delete(calibratedWidth, name)
-		return
-	}
-	calibratedWidth[name] = w
-}
-
-// unportedStubWidth lets a calibration harness assign a provisional bit width to a
-// component whose deser is not yet ported, so the traversal can continue past it
-// (used to brute-force a missing tail deser's width via record-chaining). Keyed by
-// component name; empty by default (un-ported components desync). NOT a decode path
-// for production — only the probe sets it (SetUnportedStubWidth).
-var unportedStubWidth = map[string]int{}
-
-// SetUnportedStubWidth sets (width>=0) or clears (width<0) the provisional stub width
-// for an un-ported component name. Returns nothing; affects subsequent traversals.
-func SetUnportedStubWidth(name string, width int) {
-	if width < 0 {
-		delete(unportedStubWidth, name)
-		return
-	}
-	unportedStubWidth[name] = width
 }
 
 // consumeMask mirrors FUN_1406d7610: R(1) gate ; if 0 -> R(3) count + count×R(6)

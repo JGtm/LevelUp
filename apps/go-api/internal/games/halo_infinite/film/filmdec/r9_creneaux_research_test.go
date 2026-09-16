@@ -367,11 +367,6 @@ func r9CreneauxOneFilm(t *testing.T, dir string) {
 	art := r9LoadArt(t, id)
 	entry := r8MapEntry(t, dir)
 	wr := entry.Range()
-	release := LockProcessDecode()
-	defer release()
-	saved := WorldObjectPrecisionActuelle()
-	SetWorldObjectPrecisionFromLayout(entry.Layout())
-	defer func() { PoserWorldObjectPrecision(saved) }()
 
 	origin, ok := r9FirstPacketUS(dir, 1)
 	if !ok {

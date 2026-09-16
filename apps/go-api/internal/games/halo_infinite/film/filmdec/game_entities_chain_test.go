@@ -24,7 +24,6 @@ package filmdec
 // champs suivis. Aucune heuristique d'appariement : c'est le meme ordre, lu deux fois.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requete. Installe et
-// restaure les hooks de paquet ; l'appelant detient `LockProcessDecode`.
 
 import "fmt"
 
@@ -174,7 +173,7 @@ func (c *chainScan) scanChunk(data []byte, ch int, st *GameChainStats) []GameEnt
 		}
 		st.Packets++
 		c.events = c.events[:0]
-		br := NewBitReader(pk.Payload(data))
+		br := lecteurDInstrument(pk.Payload(data))
 		recs, err := DecodeFrameRecords(br, w, c.cfg)
 		if err == nil {
 			st.PacketsClean++

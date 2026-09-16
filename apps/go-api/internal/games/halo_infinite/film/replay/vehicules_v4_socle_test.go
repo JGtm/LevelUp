@@ -98,7 +98,7 @@ func v4Carte(t *testing.T, root, carte string) (filmdec.MapQuantEntry, bool) {
 	return e, true
 }
 
-// v4Decode reproduit le contexte de production d un film. L APPELANT DETIENT LockProcessDecode
+// v4Decode reproduit le contexte de production d un film. L APPELANT
 // et restaure `filmdec.WorldObjectPrecision` — c est la discipline de tous les instruments du
 // dossier, et elle n est pas negociable (les largeurs d axe sont un global de paquet).
 func v4Decode(t *testing.T, root string, f v0Film) (v4Ctx, bool) {
@@ -112,7 +112,6 @@ func v4Decode(t *testing.T, root string, f v0Film) (v4Ctx, bool) {
 	if !ok {
 		return ctx, false
 	}
-	filmdec.SetWorldObjectPrecisionFromLayout(entry.Layout())
 	wr := entry.Range()
 	bip, ok := v4Bipedes(t, ctx.dir, entry, &wr)
 	if !ok {

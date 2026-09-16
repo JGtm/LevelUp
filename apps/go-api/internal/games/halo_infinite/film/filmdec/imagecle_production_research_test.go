@@ -87,7 +87,7 @@ func imcpEtatComplet(f imcFilm, ti int) imcpCompteurs {
 			}
 			c.Records++
 			c.Bornes++
-			tr := WalkKeyframeFullState(pay, b.Bit, f.Reg)
+			tr := WalkKeyframeFullState(pay, b.Bit, f.Reg, contexteDInstrument())
 			if tr.DesyncAt >= 0 || tr.EndBit > total {
 				c.Broken++
 				continue
@@ -121,7 +121,7 @@ func imcpProduction(f imcFilm, ti int) imcpCompteurs {
 				c.Broken++
 				continue
 			}
-			rec, _, _ := walkOneKeyframeRecord(pay, f.Reg, b.Bit, h)
+			rec, _, _ := walkOneKeyframeRecord(pay, f.Reg, b.Bit, h, contexteDInstrument())
 			if rec.DesyncAt >= 0 || rec.BitEnd > total {
 				c.Broken++
 				continue
@@ -145,8 +145,6 @@ func imcpArchetypesScannes() []int { return []int{navpointRadialArchIndex, Objec
 // TestImageCleProductionCompteurs publie les compteurs de PRODUCTION tels quels, puis les
 // memes compteurs sous la bonne forme.
 func TestImageCleProductionCompteurs(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	dirs := chunk00Films(t, "CHUNK00_FILMS")
 	cumul := map[string]map[int]*imcpCompteurs{
 		imcProduction:  {},
@@ -205,8 +203,6 @@ func imcpCumuler(m map[int]*imcpCompteurs, ti int, c imcpCompteurs) {
 // C'est la version « compteur de production utilise tel quel » demandee par le lot : les
 // chiffres ci-dessous sont ceux que la cuisson elle-meme produirait sur ces films.
 func TestImageCleProductionBalayagesReels(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	var nr, nw, nb, nc int
 	var or, ow, ob, oc int
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {

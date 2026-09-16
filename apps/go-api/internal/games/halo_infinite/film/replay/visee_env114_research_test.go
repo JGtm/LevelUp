@@ -41,7 +41,7 @@ package replay
 // STABLE si les memes positions sortent constantes, avec les memes valeurs, sur les trois
 // films. Tout ecart est publie, pas lisse.
 //
-// SOUS GARDE (ENV114_FILM). Balayage de paquets purs : ni Scan* ni LockProcessDecode.
+// SOUS GARDE (ENV114_FILM). Balayage de paquets purs : aucun Scan*.
 //
 // USAGE (depuis apps/go-api) :
 //

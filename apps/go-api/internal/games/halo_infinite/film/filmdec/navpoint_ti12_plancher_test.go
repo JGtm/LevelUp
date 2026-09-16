@@ -87,8 +87,6 @@ func TestNavpointTi12Plancher(t *testing.T) {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
 	defer tpSentinelle(t)()
-	release := LockProcessDecode()
-	defer release()
 
 	var films []tpFilmDonnees
 	for _, f := range tpFilms {
@@ -294,8 +292,6 @@ func TestNavpointTi12PlancherVariantes(t *testing.T) {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
 	defer tpSentinelle(t)()
-	release := LockProcessDecode()
-	defer release()
 
 	groupes := []struct {
 		nom   string

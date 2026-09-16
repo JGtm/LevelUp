@@ -17,7 +17,7 @@ package filmdec
 // successor. Falls back to a desync (returns) when inference is ambiguous/none.
 func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int) {
 	br := NewBitReader(buf)
-	br.poserMouvement(cfg.Mouvement) // EN TETE (lot 2.2.a)
+	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	out, inferred, _ := decodeInferLoop(br, buf, w, cfg)
 	return out, inferred
 }
@@ -76,7 +76,7 @@ func decodeInferLoop(br *BitReader, buf []byte, w *World, cfg FrameConfig) ([]Fr
 			rec.Trace = TraverseEntity(br, w.Reg, cfg.NewDefaultStateBits)
 			rec.TypeIndex, rec.DesyncAt = rec.Trace.TypeIndex, rec.Trace.DesyncAt
 			repaired := false
-			if rec.DesyncAt != -1 && inferChain && inferRepair {
+			if rec.DesyncAt != -1 && cfg.Profil.Grammaire.InferenceChaine && inferRepair {
 				if t, end, ok := repairUnportedComponent(buf, bodyStart, recNew, slot, rec.Trace, w, cfg); ok {
 					rec.Trace, rec.TypeIndex, rec.DesyncAt, repaired = t, t.TypeIndex, -1, true
 					br.SetBitPos(end)
@@ -101,7 +101,7 @@ func decodeInferLoop(br *BitReader, buf []byte, w *World, cfg FrameConfig) ([]Fr
 				bodyStart := br.BitPos()
 				rec.Trace = decodeDelta(br, w, slot)
 				rec.TypeIndex, rec.DesyncAt = rec.Trace.TypeIndex, rec.Trace.DesyncAt
-				if rec.DesyncAt != -1 && inferChain && inferRepair {
+				if rec.DesyncAt != -1 && cfg.Profil.Grammaire.InferenceChaine && inferRepair {
 					if t, end, ok := repairUnportedComponent(buf, bodyStart, recDelta, slot, rec.Trace, w, cfg); ok {
 						rec.Trace, rec.DesyncAt = t, -1
 						br.SetBitPos(end)
@@ -120,7 +120,7 @@ func decodeInferLoop(br *BitReader, buf []byte, w *World, cfg FrameConfig) ([]Fr
 					uniq bool
 					ok   bool
 				)
-				if inferChain {
+				if cfg.Profil.Grammaire.InferenceChaine {
 					ti, end, uniq, ok = inferChainArchetype(buf, br.BitPos(), w, cfg)
 				} else {
 					ti, end, ok = inferUnboundArchetype(buf, br.BitPos(), w, cfg)
@@ -132,7 +132,7 @@ func decodeInferLoop(br *BitReader, buf []byte, w *World, cfg FrameConfig) ([]Fr
 					}
 					continue
 				}
-				if inferChain && uniq {
+				if cfg.Profil.Grammaire.InferenceChaine && uniq {
 					w.BindSoft(id, ti)
 				}
 				rec.TypeIndex = ti
@@ -161,10 +161,6 @@ func decodeInferLoop(br *BitReader, buf []byte, w *World, cfg FrameConfig) ([]Fr
 // aucun appelant. La table reste nil, c est-a-dire pas de recuperation par resync valide.
 var inferResyncTargets map[uint32]bool
 
-// InferResyncCount returns the number of validated-resync recoveries performed. Compteur de
-// l OBSERVATEUR depuis le lot 2.2.f.
-func InferResyncCount() int { return observateur.ResyncValides }
-
 // validatedResync scans buf forward from bit `from` for the first landing where a
 // clean delta on a target slot decodes AND the chain walker confirms that decoding
 // continues cleanly from just after it (reaching a hard-bound clean delta or a flush
@@ -174,9 +170,7 @@ func InferResyncCount() int { return observateur.ResyncValides }
 // coincidental target-slot delta that does not lead to sustained clean decode is
 // rejected — the discriminator raw resync lacked.
 func validatedResync(buf []byte, from int, w *World, cfg FrameConfig) (int, bool) {
-	savedPos, savedRef := observateur.PosCaptureHook, observateur.UnitRefHook
-	observateur.PosCaptureHook, observateur.UnitRefHook = nil, nil
-	defer func() { observateur.PosCaptureHook, observateur.UnitRefHook = savedPos, savedRef }()
+	defer cfg.Obs.neutraliserCaptures()()
 
 	frameLen := len(buf) * 8
 	c := &chainCtx{buf: buf, frameLen: frameLen, w: w, cfg: cfg,
@@ -193,7 +187,7 @@ func validatedResync(buf []byte, from int, w *World, cfg FrameConfig) (int, bool
 			return 0, false
 		}
 		if c.confirmChainAt(after, chainMaxDepth-1, chainMaxRecords) {
-			obsDuCadre(cfg).ResyncValides++
+			cfg.Obs.compterResyncValide()
 			return b, true
 		}
 	}
@@ -216,40 +210,32 @@ func validatedResync(buf []byte, from int, w *World, cfg FrameConfig) (int, bool
 // Constante depuis le 2026-09-06 (lot E, item E.8).
 const inferRequireBoundSuccessor = true
 
-// inferChain routes unbound-slot inference through the recursive CHAIN resolver
-// (frame_chain_infer.go), which sees through sequences of transients that block the
-// single-step confirmation. Default false (single-step, historical behaviour).
-var inferChain = false
-
-// SetInferChain toggles recursive chain inference for unbound-slot deltas.
-func SetInferChain(v bool) { inferChain = v }
+// C'ÉTAIT LA VARIABLE DE PAQUET `inferChain` JUSQU'AU LOT 2.3 : l'aiguillage vers le resolveur
+// RECURSIF vit dans [GrammaireBalayage.InferenceChaine], que le cadre du balayage porte.
 
 // inferRepair enables component-width inference (repairUnportedComponent) on records
 // that desync on an un-ported component. Off by default: it is expensive and mostly
 // rescues non-biped transients (its true value is the per-component width observations
-// it accumulates for porting). Requires inferChain. Le reglage public `SetInferRepair` a ete
+// it accumulates for porting). Requires cfg.Profil.Grammaire.InferenceChaine. Le reglage public `SetInferRepair` a ete
 // supprime le 2026-09-05 (lot E, item E.2) : aucun appelant. La reparation reste desactivee.
 // JAMAIS ACTIVE : aucun chemin ne l a jamais mis a vrai. Constante depuis le 2026-09-06
 // (lot E, item E.8).
 const inferRepair = false
 
 func inferUnboundArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (uint32, int, bool) {
-	saved := observateur.PosCaptureHook
-	// `observateur.UnitRefHook` rejoint la liste POUR LA MÊME RAISON que `observateur.PosCaptureHook` : ce qui suit
-	// est une lecture SPÉCULATIVE (chaque archétype du registre est essayé sur les mêmes
-	// bits), et une lecture spéculative n'est pas une lecture. Sans cette mise à nil, les
-	// tentatives abandonnées déposent des valeurs à des positions que la traversée retenue
-	// ne lit jamais — elles seraient attribuées à un composant au hasard.
-	savedRef := observateur.UnitRefHook
-	observateur.PosCaptureHook, observateur.UnitRefHook = nil, nil
-	defer func() { observateur.PosCaptureHook, observateur.UnitRefHook = saved, savedRef }()
+	// LES DEUX CROCHETS SONT NEUTRALISES POUR LA DUREE DES ESSAIS : ce qui suit est une lecture
+	// SPECULATIVE (chaque archetype du registre est essaye sur les memes bits), et une lecture
+	// speculative n est pas une lecture. Sans cette neutralisation, les tentatives abandonnees
+	// deposent des valeurs a des positions que la traversee retenue ne lit jamais — elles
+	// seraient attribuees a un composant au hasard.
+	defer cfg.Obs.neutraliserCaptures()()
 
 	var winTi uint32
 	winEnd, matches := -1, 0
 	for ti := range w.Reg.Archetypes {
 		arch := w.Reg.Archetypes[ti]
 		br := NewBitReader(buf)
-		br.poserMouvement(cfg.Mouvement)
+		br.poserCadre(cfg)
 		br.Skip(bitpos) // bitpos = delta body start (mask), already past type+id
 		t := decodeDeltaWithArch(br, arch, uint32(ti))
 		if t.DesyncAt != -1 {

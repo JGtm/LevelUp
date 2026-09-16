@@ -46,25 +46,15 @@ func TestEquipmentCreationOwner(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", equipCreationFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
-	lay, _, err := detectI0Layout(dir)
-	if err != nil {
-		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
-	}
-	prev := WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-	SetWorldObjectPrecisionFromLayout(lay)
+	fc, lay := contexteDuFilm(t, dir)
 
 	wr, unite := equipOwnerRange(t)
-	prevW := CurrentMPPWidths()
-	t.Cleanup(func() { SetMPPWidths(prevW) })
 	// LA COHORTE EST CELLE DE LA PRODUCTION, pas le balayage brut. L'ancre NEW n'est pas
 	// sélective (des dizaines de milliers de faux positifs sur les films BTB) : croiser le
 	// brut avec les rangs mesurerait le bruit autant que la pose. ScanFilmEquipmentPlacements
 	// applique l'oracle de position, calibre le découpage du bloc MPP, et rend UNE pose par vie.
-	pl, st, err := ScanFilmEquipmentPlacements(dir, &wr)
+	pl, st, err := ScanEquipmentPlacements(fc, &wr)
 	if err != nil {
 		t.Fatalf("balayage des poses impossible : %v", err)
 	}

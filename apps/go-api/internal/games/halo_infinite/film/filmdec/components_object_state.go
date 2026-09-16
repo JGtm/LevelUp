@@ -119,18 +119,13 @@ type ObjectParentState struct {
 	Tail3    uint32
 }
 
-// SetObjectParentStateHook installe (ou retire, avec nil) la sonde d'i10. L'appelant
-// restaure la sonde précédente. Aucune conséquence sur les bits lus : la sonde n'est
-// appelée qu'après coup, et le déser ne branche jamais sur elle.
-func SetObjectParentStateHook(h func(ObjectParentState)) { observateur.ObjectParentStateHook = h }
-
 // publishObjectParentState transmet la lecture à la sonde, si elle est posée.
 func publishObjectParentState(br *BitReader, st *ObjectParentState) {
-	if observateur.ObjectParentStateHook == nil {
+	if br.obs == nil || br.obs.ObjectParentStateHook == nil {
 		return
 	}
 	st.EndBit = br.BitPos()
-	observateur.ObjectParentStateHook(*st)
+	br.obs.ObjectParentStateHook(*st)
 }
 
 // consumeObjectParentState (i10) mirrors FUN_140c1e4d0. recordStateParam == param_4

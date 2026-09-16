@@ -44,6 +44,9 @@ func projOwnerCollect(t *testing.T, dir string, reg *Registry, n int) projOwnerC
 	cfg := DefaultFrameConfig()
 	var out projOwnerColl
 	var curTS uint64
+	// LE SLOT DU RECORD EN COURS SE LIT SUR LE LECTEUR (lot 2.3) : il vivait dans la variable
+	// de paquet `accumSlot`, que ce crochet consultait comme un canal lateral.
+	var curBR *BitReader
 	prev := observateur.ObjectParentStateHook
 	SetObjectParentStateHook(func(st ObjectParentState) {
 		if st.TypeIndex != ProjectileTypeIndex {
@@ -51,7 +54,7 @@ func projOwnerCollect(t *testing.T, dir string, reg *Registry, n int) projOwnerC
 		}
 		out.ti41Records++
 		out.reads = append(out.reads, projOwnerRead{
-			slot: accumSlot, ts: curTS, attached: st.Attached,
+			slot: curBR.cap.accumSlot, ts: curTS, attached: st.Attached,
 			hasFreeID: st.HasFreeID, freeID: st.FreeID, word16: st.Word16,
 		})
 	})
@@ -80,7 +83,8 @@ func projOwnerCollect(t *testing.T, dir string, reg *Registry, n int) projOwnerC
 			curTS = pk.TimestampUS
 			switch {
 			case pay[0]&0x40 == 0:
-				br := NewBitReader(pay)
+				br := lecteurDInstrument(pay)
+				curBR = br
 				recs, _ := DecodeFrameRecords(br, w, cfg)
 				projOwnerHarvestKills(recs, pk.TimestampUS, &out)
 			case pk.Size >= 2 && pay[0] == 0xC0:
@@ -110,7 +114,7 @@ func projOwnerHarvestKills(recs []FrameRecord, ts uint64, out *projOwnerColl) {
 // projOwnerHarvestDamage compte les damage_aftermath a responsable non-bipede (candidat
 // explosif) et, parmi eux, ceux dont ref1 resout a un slot ti=41 vivant (pont M3).
 func projOwnerHarvestDamage(pay []byte, w *World, out *projOwnerColl) {
-	br := NewBitReader(pay)
+	br := lecteurDInstrument(pay)
 	br.Skip(2)
 	if br.ReadBits(7) != 0 {
 		return
@@ -251,7 +255,11 @@ func projOwnerMaskCensus(t *testing.T, dir string, n int) (int, map[int]int) {
 	if len(band) == 0 {
 		return 0, hist
 	}
-	posBits := projPosBits()
+	lg := ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
+	if lay, _, err := detectI0Layout(dir); err == nil {
+		lg = profilDeCarte(lay).LargeursObjetDuMonde()
+	}
+	posBits := projPosBits(lg)
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)
 		if err != nil {
@@ -268,7 +276,7 @@ func projOwnerMaskCensus(t *testing.T, dir string, n int) (int, map[int]int) {
 				if !ok || rec.Idx[0] != 0 {
 					continue
 				}
-				if _, ok := decodeWorldObjectPos(pay, rec.After, &projOwnerCensusRange); !ok {
+				if _, ok := decodeWorldObjectPos(pay, rec.After, &projOwnerCensusRange, lg); !ok {
 					continue
 				}
 				total++

@@ -62,7 +62,6 @@ type r8TagRead struct {
 }
 
 // r8ScanTags balaye le film et rend toutes les lectures d'i57 et d'i59, tag compris.
-// L'appelant doit detenir LockProcessDecode : les hooks sont des globaux de paquet.
 func r8ScanTags(s r8MobSetup) (i57, i59 []r8TagRead) {
 	idx57 := r8IndexOfAny(s.arch, r8I57Names)
 	idx59 := r8IndexOfAny(s.arch, r8I59Names)
@@ -100,7 +99,7 @@ func r8ScanTags(s r8MobSetup) (i57, i59 []r8TagRead) {
 				}
 				if idx59 >= 0 && maskHas(ids, idx59) {
 					got59 = false
-					walkRecordTo(pay, i0, total, ids, s.lay, s.arch, idx59)
+					walkRecordTo(pay, i0, total, ids, s.gram, idx59)
 					if got59 {
 						i59 = append(i59, r8TagRead{Slot: slot, TSUS: pk.TimestampUS,
 							Tag: last59.Tag, Inner: last59.Inner})
@@ -108,7 +107,7 @@ func r8ScanTags(s r8MobSetup) (i57, i59 []r8TagRead) {
 				}
 				if idx57 >= 0 && maskHas(ids, idx57) {
 					got57 = false
-					walkRecordTo(pay, i0, total, ids, s.lay, s.arch, idx57)
+					walkRecordTo(pay, i0, total, ids, s.gram, idx57)
 					if got57 {
 						last57.Slot, last57.TSUS = slot, pk.TimestampUS
 						i57 = append(i57, last57)
@@ -205,11 +204,6 @@ func r8I59TagsOneFilm(t *testing.T, dir string) {
 	t.Helper()
 	entry := r8MapEntry(t, dir)
 	wr := entry.Range()
-	release := LockProcessDecode()
-	defer release()
-	saved := WorldObjectPrecisionActuelle()
-	SetWorldObjectPrecisionFromLayout(entry.Layout())
-	defer func() { PoserWorldObjectPrecision(saved) }()
 
 	s := r8MobResolve(t, dir)
 	opt := DefaultScanFilmOptions()

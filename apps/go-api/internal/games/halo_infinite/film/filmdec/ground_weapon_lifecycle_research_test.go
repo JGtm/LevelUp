@@ -134,8 +134,6 @@ func TestGroundWeaponLifecycleVsHeldWeapon(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	t.Log("CRITERE (enonce avant lecture) : un LACHER doit coincider avec une NAISSANCE " +
 		"d'arme au sol a moins de 2 s ; une PRISE avec une MORT. Seuil de retenue : >= 70 % " +
@@ -220,8 +218,6 @@ func TestGroundWeaponNearestDelta(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	life := gwScanLifecycle(t, dir)
 	s := hwResolve(t, dir)
@@ -315,8 +311,6 @@ func TestGroundWeaponDespawn(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	life := gwScanLifecycle(t, dir)
 	open := map[uint32]uint64{} // cle = ID COMPLET, pas le slot
@@ -425,8 +419,6 @@ func TestGroundWeaponLastSeen(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	born, last := gwLastSeen(t, dir)
 	var d []int64
@@ -476,8 +468,6 @@ func TestGroundWeaponAmmo(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	var last struct {
 		a, b, c uint32

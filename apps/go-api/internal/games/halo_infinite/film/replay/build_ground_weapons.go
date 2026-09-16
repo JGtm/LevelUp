@@ -19,7 +19,7 @@ package replay
 // et celui du 2026-08-17 (largeurs MPP a reinstaller) montre que ce correctif arrive.
 //
 // HORS LIGNE : `decodeFilmPadScans` fait de l I/O disque sur tout le film et n est appelee que
-// par `BuildFromFilm`, sous `LockProcessDecode`. `attachWeaponPads` est PUR.
+// par `BuildFromFilm`. `attachWeaponPads` est PUR.
 
 import (
 	"log/slog"
@@ -61,7 +61,7 @@ func worldEquipmentArchetype() padArchetype {
 // deux natures se publient dans le MÊME `weaponPads`, et une voie décodée sans l'autre
 // laisserait l'artefact affirmer « aucun socle de power-up » là où il faudrait dire « pas lu ».
 //
-// HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
+// HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmPadScans(
 	fc *filmdec.FilmContext, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
 ) PadScans {
@@ -89,12 +89,12 @@ func decodeFilmPadScans(
 // dit (découverte 8 du plan des armes au sol). Largeurs non mesurées (calibration refusée) : on
 // garde le défaut, et le compteur `kept` de la couverture reste le témoin.
 //
-// HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
+// HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmPadScan(
 	fc *filmdec.FilmContext, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
 	arch padArchetype,
 ) WorldObjectScan {
-	defer gwInstallMPPWidths(gwWidthsForFilm(fc, mpp))()
+	defer gwInstallMPPWidths(fc, gwWidthsForFilm(fc, mpp))()
 	kf := filmdec.ScanWorldObjectKeyframes(fc.Film(), arch.ti)
 	if len(kf.Band) == 0 {
 		slog.Warn("socles : aucun slot de l archetype aux images-cles — rejeu sans ce calque",
@@ -107,7 +107,7 @@ func decodeFilmPadScan(
 			"archetype", arch.label, "err", err, "match_id", matchID)
 		return WorldObjectScan{}
 	}
-	tracks, err := filmdec.ScanWorldObjectsForBand(fc.Film(), wr, kf.Band)
+	tracks, err := filmdec.ScanWorldObjectsForBand(fc, wr, kf.Band)
 	if err != nil {
 		slog.Warn("socles : pistes delta illisibles — AUCUN socle publie (sans elles, toute"+
 			" apparition passerait pour un objet apparu au repos)",
@@ -120,12 +120,9 @@ func decodeFilmPadScan(
 	return WorldObjectScan{Scanned: true, Creations: cre, Stats: st, Keyframes: kf, Tracks: tracks}
 }
 
-// gwInstallMPPWidths installe les largeurs du bloc MPP MESURÉES sur ce film et rend leur
-// restauration. Largeurs non renseignées (calibration refusée) : rien n'est installé — le défaut
-// de paquet vaut mieux qu'un découpage nul, qui ne lirait aucune identité du tout.
-//
-// L'APPELANT DOIT DÉTENIR LockProcessDecode : ce sont des globaux de paquet (même contrat que
-// `installWorldObjectPrecision`).
+// gwInstallMPPWidths installe les largeurs du bloc MPP MESURÉES sur ce film SUR LE CONTEXTE, et
+// rend leur restauration. Largeurs non renseignées (calibration refusée) : rien n'est installé —
+// l'invariant du profil vaut mieux qu'un découpage nul, qui ne lirait aucune identité du tout.
 // gwWidthsForFilm rend les largeurs MPP a INSTALLER pour ce film : celles que porte sa VERSION
 // DE FORMAT quand la grammaire les a relues chez l ecrivain (format 27), sinon les largeurs
 // CALIBREES sur le film.
@@ -164,12 +161,12 @@ func gwWidthsForFilm(fc *filmdec.FilmContext, calibrees filmdec.MPPWidths) filmd
 	return calibrees
 }
 
-func gwInstallMPPWidths(w filmdec.MPPWidths) func() {
+func gwInstallMPPWidths(fc *filmdec.FilmContext, w filmdec.MPPWidths) func() {
 	if !w.Valid() {
 		return func() {}
 	}
-	prev := filmdec.SetMPPWidths(w)
-	return func() { filmdec.SetMPPWidths(prev) }
+	prev := fc.PoserMPP(w)
+	return func() { fc.PoserMPP(prev) }
 }
 
 // attachWeaponPads pose le calque des SOCLES sur le document : les socles des DEUX natures,

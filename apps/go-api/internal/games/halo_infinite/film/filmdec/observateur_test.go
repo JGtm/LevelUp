@@ -14,8 +14,6 @@ import "testing"
 //
 // Le jour ou ce test rougit, un champ de [Observation] est une valeur de PROFIL mal rangee.
 func TestObservateurNeChangeAucunBit(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 
 	// Les quatre chemins que les crochets traversent le plus, sur des flux figes.
 	cas := []struct {
@@ -32,13 +30,13 @@ func TestObservateurNeChangeAucunBit(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			br := NewBitReader(c.flux)
+			br := lecteurDInstrument(c.flux)
 			c.lire(br)
 			muet := br.BitPos()
 
 			prev := poserObservateur(observateurBavard())
 			defer poserObservateur(prev)
-			br2 := NewBitReader(c.flux)
+			br2 := lecteurDInstrument(c.flux)
 			c.lire(br2)
 			if br2.BitPos() != muet {
 				t.Errorf("sous observation, %s consomme %d bits au lieu de %d — un champ de "+

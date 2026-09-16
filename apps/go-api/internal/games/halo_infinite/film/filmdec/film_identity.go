@@ -52,12 +52,11 @@ package filmdec
 // Lot 1.5 : lecteurs purs. Les consommateurs viennent aux lots 1.6 (registre d'identite),
 // 1.7 (equipe) et 1.8 (kill feed). Aucun octet cuit ne change tant qu'ils ne sont pas branches.
 //
-// # PAS DE VERROU DE DECODAGE
+// # DES FONCTIONS PURES
 //
 // Ces lecteurs sont des fonctions pures de (octets) : aucune variable de paquet, aucun crochet,
-// aucun etat de reglage. Ils n'ont donc pas besoin de `LockProcessDecode` (D-5 d'ADR 0034), et
-// le ratchet `archlint/decode_lock_held_test.go` ne les vise pas (il porte sur les familles
-// `Scan*`, `DecodeFrame*`, `TraverseEntity*`).
+// aucun etat de reglage (D-5 d'ADR 0034). Depuis le lot 2.3 c'est vrai de TOUT `filmdec` — le
+// paquet n'a plus aucune variable ecrite — mais ces lecteurs-la l'etaient deja des le lot 1.5.
 
 import (
 	"encoding/binary"

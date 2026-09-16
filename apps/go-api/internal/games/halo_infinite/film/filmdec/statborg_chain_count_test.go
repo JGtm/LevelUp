@@ -45,8 +45,6 @@ func TestD1StatborgChainCount(t *testing.T) {
 	if dir == "" {
 		t.Skipf("controle D1 non arme (%s vide)", d1FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	n := CountFilmChunks(dir)
 	if n == 0 {

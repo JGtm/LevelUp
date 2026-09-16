@@ -32,7 +32,6 @@ type UnitEquipmentEmission struct {
 // ScanFilmUnitEquipment décode toutes les émissions d'i26 des paquets delta du film de dir.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `observateur.UnitEquipmentHook`,
-// un global de paquet. L'appelant doit détenir LockProcessDecode ; le hook est restauré à la
 // sortie, y compris en cas d'erreur.
 //
 // ScanFilmUnitEquipment est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
@@ -42,7 +41,7 @@ func ScanFilmUnitEquipment(dir string) ([]UnitEquipmentEmission, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanUnitEquipment(NewFilmContext(film))
+	return ScanUnitEquipment(contexteDeBobine(film))
 }
 
 // ScanUnitEquipment décode les émissions d'i26 d'un film DEJA CHARGE.
@@ -78,17 +77,17 @@ func ScanUnitEquipment(fc *FilmContext) ([]UnitEquipmentEmission, error) {
 		read UnitEquipmentRead
 		got  bool
 	}
-	prev := observateur.UnitEquipmentHook
-	SetUnitEquipmentHook(func(r UnitEquipmentRead) { last.read, last.got = r, true })
-	defer SetUnitEquipmentHook(prev)
+	obs := NouvelleObservation()
+	obs.UnitEquipmentHook = func(r UnitEquipmentRead) { last.read, last.got = r, true }
 
 	var out []UnitEquipmentEmission
+	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage(), obs: obs}
 	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
 		if !maskHas(r.Mask, idx26) {
 			return
 		}
 		last.got = false
-		if walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, lay, arch, idx26) && last.got {
+		if walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, gram, idx26) && last.got {
 			out = append(out, UnitEquipmentEmission{
 				Slot: r.Slot, TimestampUS: r.Packet.TimestampUS, Read: last.read,
 			})

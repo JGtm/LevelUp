@@ -40,7 +40,7 @@ func consumeBipedSpartanAbilityNonPredictedState(br *BitReader, rsp uint32) bool
 	st := AbilityNonPredictedState{Inner: -1}
 	st.Tag = uint32(br.ReadBits(2)) // FUN_142f2679c: FUN_1406d310c(4)=2 -> flat R(2) tag.
 	ok := true
-	if st.Tag == 3 && abilityAnchorBodyPorted {
+	if st.Tag == 3 && br.p.Grammaire.CorpsAncrageCapacite {
 		st.BodyWalked = true
 		ok = consumeAbilityAnchorBody(br, &st) // FUN_142f25e90
 		st.BodyOK = ok
@@ -48,8 +48,8 @@ func consumeBipedSpartanAbilityNonPredictedState(br *BitReader, rsp uint32) bool
 	if ok && rsp > 1 {
 		br.ReadBits(3) // FUN_140fc147c flat R(3), gated on param_4>1.
 	}
-	if observateur.AbilityNonPredictedHook != nil {
-		observateur.AbilityNonPredictedHook(st) // publication seule, aucune largeur ne change
+	if br.obs != nil && br.obs.AbilityNonPredictedHook != nil {
+		br.obs.AbilityNonPredictedHook(st) // publication seule, aucune largeur ne change
 	}
 	return ok
 }
@@ -314,7 +314,7 @@ func consumeBipedAction(br *BitReader) (ported bool) {
 // Largeurs : v=0 -> 2 | v=1 -> 28 | v=2 -> 2 | v=3 -> inconnue (desync propre).
 //
 // LA BRANCHE v==1 N'EST PLUS JETÉE (2026-08-16, plan PLAN_ETAT_ACTIF_EQUIPEMENT phase C) :
-// le R(2) interne et le R(24) partent vers observateur.SpartanAbilityHook, le parcours de bits est
+// le R(2) interne et le R(24) partent vers br.obs.SpartanAbilityHook, le parcours de bits est
 // INCHANGÉ (cf. ability_state_hooks.go).
 func consumeBipedSpartanAbility(br *BitReader) bool {
 	tag := br.ReadBits(2)
@@ -322,19 +322,19 @@ func consumeBipedSpartanAbility(br *BitReader) bool {
 	case 1:
 		sub := br.ReadBits(2)  // FUN_142f25d78 : FUN_1406d310c(4) = 2 bits
 		ref := br.ReadBits(24) // FUN_14076dc04(..., 0x18)
-		if observateur.SpartanAbilityHook != nil {
-			observateur.SpartanAbilityHook(tag, sub, ref, true)
+		if br.obs != nil && br.obs.SpartanAbilityHook != nil {
+			br.obs.SpartanAbilityHook(tag, sub, ref, true)
 		}
 		return true
 	case 3:
 		ok := consumeSpartanAbilityTag3(br)
-		if observateur.SpartanAbilityHook != nil {
-			observateur.SpartanAbilityHook(tag, 0, 0, false)
+		if br.obs != nil && br.obs.SpartanAbilityHook != nil {
+			br.obs.SpartanAbilityHook(tag, 0, 0, false)
 		}
 		return ok
 	}
-	if observateur.SpartanAbilityHook != nil {
-		observateur.SpartanAbilityHook(tag, 0, 0, false)
+	if br.obs != nil && br.obs.SpartanAbilityHook != nil {
+		br.obs.SpartanAbilityHook(tag, 0, 0, false)
 	}
 	return true
 }

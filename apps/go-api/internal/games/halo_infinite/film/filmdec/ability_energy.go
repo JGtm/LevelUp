@@ -48,8 +48,8 @@ func consumeBipedSpartanAbilityEnergy(br *BitReader) {
 			ch[i] = int(br.ReadBits(7)) // bloc froid 0x14246a410
 		}
 	}
-	if observateur.AbilityEnergyHook != nil {
-		observateur.AbilityEnergyHook(uint32(mask), ch)
+	if br.obs != nil && br.obs.AbilityEnergyHook != nil {
+		br.obs.AbilityEnergyHook(uint32(mask), ch)
 	}
 }
 
@@ -60,8 +60,3 @@ const AbilityEnergyCharges = 3
 // ne transmet RIEN pour cet emplacement. Ce n'est pas la valeur 0, et ce n'est pas non plus
 // 0x7F — le moteur pose 0x7F en RAM, mais l'assimiler à une lecture fabriquerait des chutes.
 const AbilityEnergyUnarmed = -1
-
-// SetAbilityEnergyHook installe (ou retire, avec nil) la sonde de lecture d'i56.
-func SetAbilityEnergyHook(h func(mask uint32, ch [AbilityEnergyCharges]int)) {
-	observateur.AbilityEnergyHook = h
-}

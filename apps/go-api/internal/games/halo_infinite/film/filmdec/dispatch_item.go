@@ -120,7 +120,7 @@ func consumeItemAndTacmapComponent(br *BitReader, name string, typeIndex uint32,
 		br.ReadBits(32)
 		return variant, nil, true
 	case compHighFrequency: // ti=4 i0 — variante FRAME (FUN_14076d034) = R(8), sonde
-		publishProbe(typeIndex, ProbeHighFrequency, br.ReadBits(8))
+		br.obs.publishProbe(typeIndex, ProbeHighFrequency, br.ReadBits(8))
 		return variant, nil, true
 	case "animated-mesh-dynamic-state-component": // ti=38 i19 (FUN_142f0258c) — R(8)+R(1)+R(16)
 		br.ReadBits(8)

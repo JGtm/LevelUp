@@ -39,7 +39,7 @@ package filmdec
 // LE MOT DE CONTROLE EST ABSENT, ET C'EST UNE PREDICTION VERIFIEE : s'il etait ecrit, i0
 // tomberait a 218 et l'oracle d'equipe de la phase 3 (16 films en accord exact, 1 seul
 // decalage retenu sur 456) aurait designe 218. Le depot portait deja cette mesure par une
-// autre voie : `filmComponentCorruptionCheck` est a `false` par defaut.
+// autre voie : `profilDInstrument.Grammaire.ControleDeCorruption` est a `false` par defaut.
 //
 // LES CONTROLES DE CE FICHIER, ECRITS AVANT LA MESURE :
 //
@@ -95,8 +95,6 @@ func profilLireEtatComplet(pay []byte, anchor, ti int) profilEtatComplet {
 // TestProfilFermeture186 est le controle F1 : la somme des largeurs lues dans l'executable
 // vaut EXACTEMENT 186 sur chaque record ti=9, sans ajustement.
 func TestProfilFermeture186(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	dirs := chunk00Films(t, "CHUNK00_FILMS")
 	positions := map[int]int{}
 	n1s, n2s, ds := map[int]int{}, map[int]int{}, map[int]int{}
@@ -154,8 +152,6 @@ type profilCleTI struct {
 // tombent sur les DEUX TAILLES DE TAMPON de l'archetype, donc constantes par ti sur tout le
 // corpus. C'est un controle a zero a priori : rien ici ne connait ti=9.
 func TestProfilFermetureTousArchetypes(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	parTI := map[int]*profilCleTI{}
 	films := 0
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {

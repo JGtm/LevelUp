@@ -146,8 +146,6 @@ func TestBombeB1Temoin(t *testing.T) {
 		t.Skip("mesure non demandée : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestBombeB1Temoin")()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	fams, stats := b1ScanFilm(t, cache, b1Temoin)
 	t.Logf("%s : records=%d masque=%d emissions=%d repeats=%d, %d familles vues",
@@ -184,8 +182,6 @@ func TestBombeB1Assaut(t *testing.T) {
 		t.Skip("mesure non demandée : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestBombeB1Assaut")()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	// parFilm[film] = agrégat ; présence[fam] = films où la famille émet (VERS et DEPUIS).
 	parFilm := map[string]map[uint32]*b1FamStat{}

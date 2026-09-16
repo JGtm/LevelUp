@@ -18,11 +18,10 @@ package filmdec
 
 import "testing"
 
-// wogInstalle pose un descripteur world-object et rend sa restauration.
-func wogInstalle(indexW uint, region uint32, axisW [3]uint) func() {
-	prev := WorldObjectPrecisionActuelle()
-	PoserWorldObjectPrecision(PrecisionDescriptor{IndexW: indexW, Region: region, AxisW: axisW})
-	return func() { PoserWorldObjectPrecision(prev) }
+// wogDescripteur rend un descripteur world-object. Depuis le lot 2.3 il n'y a plus rien a
+// installer ni a restaurer : le descripteur se passe au lecteur, il ne vit plus dans le paquet.
+func wogDescripteur(indexW uint, region uint32, axisW [3]uint) PrecisionDescriptor {
+	return PrecisionDescriptor{IndexW: indexW, Region: region, AxisW: axisW}
 }
 
 // wogRecord écrit un i0 d'objet du monde : porte (precHigh, index-sel, index de région) puis
@@ -42,15 +41,15 @@ func wogRecord(region uint32, indexW int, axisW [3]uint, q [3]uint64) []byte {
 // la porte fait 4 bits et les axes commencent APRÈS elle.
 func TestPorteWorldObjectSuitLaLargeurDIndexDeRegion(t *testing.T) {
 	axisW := [3]uint{12, 12, 11}
-	defer wogInstalle(2, 1, axisW)()
+	lg := wogDescripteur(2, 1, axisW)
 
-	if got, want := projPosBits(), 4+12+12+11+2; got != want {
+	if got, want := projPosBits(lg), 4+12+12+11+2; got != want {
 		t.Fatalf("projPosBits() = %d, attendu %d : la porte ne suit pas l'index de région", got, want)
 	}
 	wr := Vec3Range{{Min: 0, Max: 4096}, {Min: 0, Max: 4096}, {Min: 0, Max: 2048}}
 	q := [3]uint64{1000, 2000, 500}
 	pay := wogRecord(1, 2, axisW, q)
-	v, ok := decodeWorldObjectPos(pay, 0, &wr)
+	v, ok := decodeWorldObjectPos(pay, 0, &wr, lg)
 	if !ok {
 		t.Fatal("un record de la région JOUÉE a été refusé")
 	}
@@ -68,11 +67,11 @@ func TestPorteWorldObjectSuitLaLargeurDIndexDeRegion(t *testing.T) {
 // silencieuse — le pire des résultats.
 func TestPorteWorldObjectRefuseUneAutreRegion(t *testing.T) {
 	axisW := [3]uint{12, 12, 11}
-	defer wogInstalle(2, 1, axisW)()
+	lg := wogDescripteur(2, 1, axisW)
 	wr := Vec3Range{{Min: 0, Max: 4096}, {Min: 0, Max: 4096}, {Min: 0, Max: 2048}}
 	for _, region := range []uint32{0, 2, 3} {
 		pay := wogRecord(region, 2, axisW, [3]uint64{1000, 2000, 500})
-		if _, ok := decodeWorldObjectPos(pay, 0, &wr); ok {
+		if _, ok := decodeWorldObjectPos(pay, 0, &wr, lg); ok {
 			t.Errorf("région %d acceptée alors que la carte joue la région 1", region)
 		}
 	}
@@ -83,13 +82,13 @@ func TestPorteWorldObjectRefuseUneAutreRegion(t *testing.T) {
 // rien déplacer là où il n'y avait rien à corriger.
 func TestPorteWorldObjectResteTroisBitsQuandLIndexEnFaitUn(t *testing.T) {
 	axisW := [3]uint{13, 13, 14}
-	defer wogInstalle(1, 0, axisW)()
-	if got, want := projPosBits(), 3+13+13+14+2; got != want {
+	lg := wogDescripteur(1, 0, axisW)
+	if got, want := projPosBits(lg), 3+13+13+14+2; got != want {
 		t.Fatalf("projPosBits() = %d, attendu %d", got, want)
 	}
 	wr := Vec3Range{{Min: 0, Max: 8192}, {Min: 0, Max: 8192}, {Min: 0, Max: 16384}}
 	pay := wogRecord(0, 1, axisW, [3]uint64{100, 200, 300})
-	v, ok := decodeWorldObjectPos(pay, 0, &wr)
+	v, ok := decodeWorldObjectPos(pay, 0, &wr, lg)
 	if !ok {
 		t.Fatal("le chemin historique (porte 000) a été refusé")
 	}
@@ -103,19 +102,19 @@ func TestPorteWorldObjectResteTroisBitsQuandLIndexEnFaitUn(t *testing.T) {
 // TestSetWorldObjectPrecisionInstalleLaRegion : la région attendue vient du CATALOGUE, par le
 // même chemin que les largeurs d'axe — jamais d'un second réglage à armer à part.
 func TestSetWorldObjectPrecisionInstalleLaRegion(t *testing.T) {
-	defer wogInstalle(1, 0, [3]uint{13, 13, 14})()
 	e := MapQuantEntry{
 		Module:          "sgh_interlock",
 		AxisWidths:      [3]uint{12, 12, 11},
 		Region:          1,
 		RegionIndexBits: 2,
 	}
-	SetWorldObjectPrecisionFromLayout(e.Layout())
-	if WorldObjectPrecisionActuelle().IndexW != 2 {
-		t.Errorf("IndexW = %d, attendu 2", WorldObjectPrecisionActuelle().IndexW)
+	p := ProfilDeBalayageParDefaut()
+	p.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout())
+	if p.LargeursObjetDuMonde().IndexW != 2 {
+		t.Errorf("IndexW = %d, attendu 2", p.LargeursObjetDuMonde().IndexW)
 	}
-	if WorldObjectPrecisionActuelle().Region != 1 {
+	if p.LargeursObjetDuMonde().Region != 1 {
 		t.Errorf("Region = %d, attendue 1 — la région du catalogue n'est pas installée",
-			WorldObjectPrecisionActuelle().Region)
+			p.LargeursObjetDuMonde().Region)
 	}
 }

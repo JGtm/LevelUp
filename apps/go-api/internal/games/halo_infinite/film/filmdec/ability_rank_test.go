@@ -55,7 +55,7 @@ func TestConsumeBipedDesiredAbilitySetPublieLeRang(t *testing.T) {
 			})
 			defer SetAbilitySetHook(prev)
 
-			br := NewBitReader(abilityBits(c.counter, c.gate, c.rank))
+			br := lecteurDInstrument(abilityBits(c.counter, c.gate, c.rank))
 			consumeBipedDesiredAbilitySet(br)
 
 			if got.calls != 1 {
@@ -90,7 +90,7 @@ func TestConsumeBipedDesiredAbilitySetSansHook(t *testing.T) {
 		gate uint64
 		want int
 	}{{0, 10}, {1, 4}} {
-		br := NewBitReader(abilityBits(2, c.gate, 19))
+		br := lecteurDInstrument(abilityBits(2, c.gate, 19))
 		consumeBipedDesiredAbilitySet(br)
 		if br.BitPos() != c.want {
 			t.Errorf("porte %d : %d bits consommés, attendu %d", c.gate, br.BitPos(), c.want)

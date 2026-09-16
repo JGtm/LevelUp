@@ -258,15 +258,6 @@ func (k failleKF) bande(ti int) map[uint32]bool {
 // TestFailleActivationEntites balaye les trois canaux d'entités dans les fenêtres des ancres.
 func TestFailleActivationEntites(t *testing.T) {
 	dir, wr, ancres, origine := failleSetup(t)
-	release := LockProcessDecode()
-	defer release()
-	lay, _, err := detectI0Layout(dir)
-	if err != nil {
-		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
-	}
-	prev := WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-	SetWorldObjectPrecisionFromLayout(lay)
 
 	n := CountFilmChunks(dir)
 	if n == 0 {
@@ -319,7 +310,8 @@ func failleCreations(t *testing.T, dir string, wr *Vec3Range, kf failleKF, ancre
 		t.Fatalf("registre illisible : %v", err)
 	}
 	var cur equipCreationRead
-	defer installCreationHooks(&cur)()
+	obs := installCreationHooks(&cur)
+	_, lay := contexteDuFilm(t, dir)
 	for _, ti := range failleCreationTIs {
 		arch, ok := reg.Archetype(int(ti))
 		if !ok {
@@ -332,7 +324,8 @@ func failleCreations(t *testing.T, dir string, wr *Vec3Range, kf failleKF, ancre
 			t.Logf("ti=%d : deser=%v bande=%d slots : sauté", ti, deser != nil, len(band))
 			continue
 		}
-		w := equipCreationWalk{comps: len(arch.Components), wr: wr, band: band, cur: &cur, ti: ti, deser: deser}
+		w := equipCreationWalk{obs: obs, prof: profilDeCarte(lay), comps: len(arch.Components), wr: wr,
+			band: band, cur: &cur, ti: ti, deser: deser}
 		failleCreationsPourTI(t, dir, w, ancres, n, ti, origine)
 	}
 }
@@ -406,7 +399,8 @@ func failleDeltas(t *testing.T, dir string, wr *Vec3Range, kf failleKF, ancres [
 				continue
 			}
 			paquets++
-			for _, s := range scanProjectileRecords(pk.Payload(data), union, wr) {
+			for _, s := range scanProjectileRecords(pk.Payload(data), union, wr,
+				ProfilDeBalayageParDefaut().LargeursObjetDuMonde()) {
 				echantillons++
 				for _, ai := range failleFenetres(pk.TimestampUS, ancres) {
 					d := failleDist2D(s.X, s.Y, ancres[ai])

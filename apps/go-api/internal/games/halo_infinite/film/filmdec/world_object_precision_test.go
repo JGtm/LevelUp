@@ -77,8 +77,6 @@ func TestWorldObjectPrecisionLayout(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", worldPrecFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	lay, rep, err := detectI0Layout(dir)
 	if err != nil {
@@ -98,11 +96,8 @@ func TestWorldObjectPrecisionImpact(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", worldPrecFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
-	prev := WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
+	prev := ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 
 	t.Logf("== FILM %s ==", dir)
 	entry, ok := worldPrecCatalogEntry(t)
@@ -225,19 +220,20 @@ type worldPrecWalk struct {
 	accepted int
 }
 
-// worldPrecRun installe des largeurs, balaie l'archétype, et mesure.
+// worldPrecRun pose des largeurs SUR SON CONTEXTE, balaie l'archétype, et mesure. Depuis le lot
+// 2.3 les largeurs voyagent avec le contexte : c'est ce qui permet de mesurer DEUX jeux de
+// largeurs sur le même film sans rien installer dans le processus.
 func worldPrecRun(t *testing.T, dir string, ti int, axisW [3]uint, bip equipBox) worldPrecMeasure {
 	t.Helper()
-	{
-		wop := WorldObjectPrecisionActuelle()
-		wop.AxisW = axisW
-		PoserWorldObjectPrecision(wop)
-	}
-	m := worldPrecMeasure{axisW: axisW, posBits: projPosBits(), sigs: map[worldPrecKey]worldPrecSig{}}
-	m.walk = worldPrecWalkStats(dir, ti)
+	lg := ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
+	lg.AxisW = axisW
+	fc, _ := contexteDuFilm(t, dir)
+	fc.PoserLargeursObjetDuMonde(lg)
+	m := worldPrecMeasure{axisW: axisW, posBits: projPosBits(lg), sigs: map[worldPrecKey]worldPrecSig{}}
+	m.walk = worldPrecWalkStats(dir, ti, lg)
 
 	unit := Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
-	tracks, err := ScanFilmWorldObjects(dir, &unit, ti)
+	tracks, err := ScanWorldObjects(fc, &unit, ti)
 	if err != nil {
 		t.Logf("  balayage ti=%d aux largeurs %v impossible : %v", ti, axisW, err)
 		return m
@@ -269,7 +265,7 @@ func worldPrecRun(t *testing.T, dir string, ti int, axisW [3]uint, bip equipBox)
 }
 
 // worldPrecWalkStats compte les issues de la marche sur tout le film.
-func worldPrecWalkStats(dir string, typeIndex int) worldPrecWalk {
+func worldPrecWalkStats(dir string, typeIndex int, lg PrecisionDescriptor) worldPrecWalk {
 	var w worldPrecWalk
 	n := CountFilmChunks(dir)
 	if n == 0 {
@@ -288,7 +284,7 @@ func worldPrecWalkStats(dir string, typeIndex int) worldPrecWalk {
 			if p.Type != PacketTypeDelta {
 				continue
 			}
-			worldPrecWalkPayload(p.Payload(chunk), band, &w)
+			worldPrecWalkPayload(p.Payload(chunk), band, &w, lg)
 		}
 	}
 	return w
@@ -296,9 +292,10 @@ func worldPrecWalkStats(dir string, typeIndex int) worldPrecWalk {
 
 // worldPrecWalkPayload reproduit le parcours de `scanProjectileRecords` sur un payload, en
 // séparant les deux causes d'échec de la marche.
-func worldPrecWalkPayload(pay []byte, band map[uint32]bool, w *worldPrecWalk) {
+func worldPrecWalkPayload(pay []byte, band map[uint32]bool, w *worldPrecWalk,
+	lg PrecisionDescriptor) {
 	unit := Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
-	posBits := projPosBits()
+	posBits := projPosBits(lg)
 	limit := len(pay)*8 - (worldObjectHeaderBits + worldObjectIndexBits + posBits)
 	for p := 0; p <= limit; p++ {
 		rec, ok := matchWorldObjectRecord(pay, p, band)
@@ -310,7 +307,7 @@ func worldPrecWalkPayload(pay []byte, band map[uint32]bool, w *worldPrecWalk) {
 			w.gated++
 			continue
 		}
-		if _, ok := decodeWorldObjectPos(pay, rec.After, &unit); !ok {
+		if _, ok := decodeWorldObjectPos(pay, rec.After, &unit, lg); !ok {
 			w.sat++
 			continue
 		}

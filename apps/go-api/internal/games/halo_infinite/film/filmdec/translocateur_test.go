@@ -80,20 +80,12 @@ func TestTranslocateur(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", translocFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	wr, err := translocBounds()
 	if err != nil {
 		t.Fatalf("%s : %v", translocBoundsEnv, err)
 	}
-	lay, _, err := detectI0Layout(dir)
-	if err != nil {
-		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
-	}
-	prev := WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-	SetWorldObjectPrecisionFromLayout(lay)
+	_, lay := contexteDuFilm(t, dir)
 
 	pl, st, err := ScanFilmEquipmentPlacements(dir, &wr)
 	if err != nil {

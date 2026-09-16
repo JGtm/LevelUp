@@ -63,7 +63,7 @@ package replay
 //	    VERDICT POSITIF EXIGE p(max) < 1 %. Aucune conclusion positive sans ce controle.
 //
 // SOUS GARDE (ONDE_FILM, qui doit pointer 00162144 — la chronologie est celle de CE film).
-// Lecture de paquets pure : ni Scan*, ni LockProcessDecode, aucun etat global touche.
+// Lecture de paquets pure : aucun Scan*, aucun etat global touche.
 //
 // USAGE (depuis apps/go-api) :
 //

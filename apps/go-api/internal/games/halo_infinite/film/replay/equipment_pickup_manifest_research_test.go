@@ -83,8 +83,6 @@ func TestEquipmentPickupManifestNaming(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", pickupsBridgeEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	pickups, stats, err := filmdec.ScanFilmBipedPickups(dir)
 	if err != nil {
@@ -224,8 +222,6 @@ func TestEquipmentPickupClassByManifest(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", pickupsBridgeEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	pickups, _, err := filmdec.ScanFilmBipedPickups(dir)
 	if err != nil {
@@ -343,8 +339,6 @@ func TestBuildPickupsFamilyCoverageOnRealFilms(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", pickupsBridgeEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	pickups, st, err := filmdec.ScanFilmBipedPickups(dir)
 	if err != nil {

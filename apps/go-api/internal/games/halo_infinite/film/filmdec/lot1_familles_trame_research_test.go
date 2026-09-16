@@ -61,8 +61,6 @@ func TestLot1FamillesTrame(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
@@ -232,8 +230,6 @@ func TestLot1VuesMultiples(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("chunk_00 illisible : %v", err)
@@ -247,9 +243,6 @@ func TestLot1VuesMultiples(t *testing.T) {
 		n = deltaWitnessChunks
 	}
 	cfg := DefaultFrameConfig()
-	prev := inferChain
-	SetInferChain(true)
-	defer SetInferChain(prev)
 	type agg struct {
 		packets, recs, viewsSum, ge2, avecRecs int
 		covSum                                 float64
@@ -340,8 +333,6 @@ func TestLot1AmorceParFamille(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("chunk_00 illisible : %v", err)

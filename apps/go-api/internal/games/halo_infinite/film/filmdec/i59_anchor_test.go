@@ -70,16 +70,13 @@ type i59aEvent struct {
 	st   AbilityNonPredictedState
 }
 
-// i59aSetup charge le film ET installe la précision world-object DE CE FILM (largeurs
-// d'axe de la carte, lues par le corps d'i59) — restaurée en fin de test. C'est le même
-// geste que la production (installWorldObjectPrecision sous le verrou).
+// i59aSetup charge le film et journalise la précision world-object DE CE FILM (largeurs d'axe
+// de la carte, lues par le corps d'i59). Depuis le lot 2.3 elle n'est plus INSTALLEE dans le
+// processus : elle voyage avec le profil du contexte (`eaSetupBiped`).
 func i59aSetup(t *testing.T, dir string) eaFilmSetup {
 	t.Helper()
 	s := eaSetupBiped(t, dir)
-	prev := WorldObjectPrecisionActuelle()
-	SetWorldObjectPrecisionFromLayout(s.lay)
-	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-	t.Logf("précision world-object installée depuis le film : %v", WorldObjectPrecisionActuelle().AxisW)
+	t.Logf("précision world-object de ce film : %v", profilDeCarte(s.lay).LargeursObjetDuMonde().AxisW)
 	return s
 }
 
@@ -121,22 +118,16 @@ func TestI59AnchorWalkProof(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i59aFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	s := i59aSetup(t, dir)
 	idx59 := i59aIndex(t, s)
-	defer SetAbilityAnchorBodyPorted(true)
 
 	t.Log("CRITÈRE (énoncé avant la mesure) : APRÈS le port, chaque record tag==3 doit " +
 		"finir EXACTEMENT au début du record biped suivant (écart 0, comme le témoin " +
 		"tag!=3) ; AVANT le port, il manque le corps entier (écart = sa largeur). Un " +
 		"écart négatif = chevauchement = grammaire falsifiée sur ce record.")
 
-	SetAbilityAnchorBodyPorted(false)
-	i59aLogPass(t, "AVANT (corps désactivé, ligne de base)", i59aWalkPass(s, idx59))
-
-	SetAbilityAnchorBodyPorted(true)
-	i59aLogPass(t, "APRÈS (grammaire mesurée)", i59aWalkPass(s, idx59))
+	i59aLogPass(t, "AVANT (corps désactivé, ligne de base)", i59aWalkPass(s, idx59, false))
+	i59aLogPass(t, "APRÈS (grammaire mesurée)", i59aWalkPass(s, idx59, true))
 }
 
 // i59aMatch est un record biped reconnu dans un paquet (position du motif comprise).
@@ -150,7 +141,7 @@ type i59aMatch struct {
 // déser d'i59 (hook) — c'est lui qui classe le record. Les records de chaque paquet sont
 // d'abord TOUS localisés (le motif ne dépend pas de l'hypothèse) : le PROCHAIN record
 // borne la longueur vraie du record courant.
-func i59aWalkPass(s eaFilmSetup, idx59 int) i59aPass {
+func i59aWalkPass(s eaFilmSetup, idx59 int, corpsPorte bool) i59aPass {
 	p := i59aPass{inner: map[int]int{}, broke: map[string]int{}, after59: map[int]int{}}
 	var capt struct {
 		st  AbilityNonPredictedState
@@ -176,7 +167,7 @@ func i59aWalkPass(s eaFilmSetup, idx59 int) i59aPass {
 					continue
 				}
 				capt.got = false
-				end, brokeName, okWalk := i59aWalkFull(pay, m.i0, total, m.idx, s)
+				end, brokeName, okWalk := i59aWalkFull(pay, m.i0, total, m.idx, s, corpsPorte)
 				next := -1
 				if mi+1 < len(matches) {
 					next = matches[mi+1].pos
@@ -221,7 +212,8 @@ func i59aWalkTo(pay []byte, i0, total int, idx []int, s eaFilmSetup, target int)
 		if name == "" {
 			return 0, false
 		}
-		br := NewBitReader(pay)
+		br := lecteurDInstrument(pay)
+		br.PoserProfil(profilDeCarte(s.lay))
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), s.arch.Level(id))
 		if !ported || br.BitPos() > total {
@@ -233,7 +225,13 @@ func i59aWalkTo(pay []byte, i0, total int, idx []int, s eaFilmSetup, target int)
 }
 
 // i59aWalkFull marche TOUS les composants du masque et rend le bit de fin.
-func i59aWalkFull(pay []byte, i0, total int, idx []int, s eaFilmSetup) (end int, broke string, ok bool) {
+func i59aWalkFull(pay []byte, i0, total int, idx []int, s eaFilmSetup,
+	corpsPorte bool) (end int, broke string, ok bool) {
+	// LE HARNAIS EST DANS LE PROFIL DU LECTEUR (lot 2.3) : la bascule A/B du corps tag==3
+	// d'i59 ne touche que CE balayage.
+	prof := profilDeCarte(s.lay)
+	prof.Grammaire.CorpsAncrageCapacite = corpsPorte
+	ctx := ContexteDeLecture{Profil: prof, Obs: observateur}
 	at := i0 + s.lay.TotalBits() + i0TailBits
 	for _, id := range idx[1:] {
 		if at > total {
@@ -243,7 +241,8 @@ func i59aWalkFull(pay []byte, i0, total int, idx []int, s eaFilmSetup) (end int,
 		if name == "" {
 			return at, fmt.Sprintf("i%d(sans nom au registre)", id), false
 		}
-		br := NewBitReader(pay)
+		br := lecteurDInstrument(pay)
+		br.PoserContexte(ctx)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), s.arch.Level(id))
 		if !ported || br.BitPos() > total {
@@ -366,12 +365,9 @@ func TestI59AnchorBodyDump(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i59aFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	s := i59aSetup(t, dir)
 	idx59 := i59aIndex(t, s)
-	SetAbilityAnchorBodyPorted(false) // marche minimale : R(2) + R(3), le corps reste à lire
-	defer SetAbilityAnchorBodyPorted(true)
+	poserBasculeDInstrument(func(g *GrammaireBalayage) { g.CorpsAncrageCapacite = false }) // marche minimale : R(2) + R(3), le corps reste à lire
 
 	var capt struct {
 		st  AbilityNonPredictedState
@@ -441,8 +437,6 @@ func TestI59AnchorFilmInfo(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i59aFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("découpage i0 illisible : %v", err)
@@ -474,12 +468,9 @@ func TestI59AnchorTemplate(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i59aFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	s := i59aSetup(t, dir)
 	idx59 := i59aIndex(t, s)
-	SetAbilityAnchorBodyPorted(false)
-	defer SetAbilityAnchorBodyPorted(true)
+	poserBasculeDInstrument(func(g *GrammaireBalayage) { g.CorpsAncrageCapacite = false })
 	var capt struct {
 		st  AbilityNonPredictedState
 		got bool
@@ -580,8 +571,6 @@ func TestI59AnchorControls(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i59aFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	s := i59aSetup(t, dir)
 	idx59 := i59aIndex(t, s)
 

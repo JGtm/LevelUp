@@ -47,13 +47,10 @@ const GrenadeSetNoSelection = 0
 func consumeBipedDesiredGrenadeSet(br *BitReader) {
 	mask := br.ReadBits(i47MaskBits) // FUN_140c6a638 flat R(6)
 	sel := br.ReadBits(i47SelBits)   // FUN_1424d9a30 flat R(3)
-	if observateur.GrenadeSetHook != nil {
-		observateur.GrenadeSetHook(uint32(mask), int(sel))
+	if br.obs != nil && br.obs.GrenadeSetHook != nil {
+		br.obs.GrenadeSetHook(uint32(mask), int(sel))
 	}
 }
-
-// SetGrenadeSetHook installe (ou retire, avec nil) la sonde de lecture d'i47.
-func SetGrenadeSetHook(h func(mask uint32, sel int)) { observateur.GrenadeSetHook = h }
 
 // ---------------------------------------------------------------------------
 // i48 biped-desired-ability-set-component  (deser FUN_1406d0ff0)
@@ -98,13 +95,10 @@ func consumeBipedDesiredAbilitySet(br *BitReader) {
 	if !br.ReadBit() { // FUN_1406d1024 = R(1) porte, polarité INVERSÉE
 		rank = int(br.ReadBits(i48RankBits)) // R(6) = identité (rang de palette)
 	}
-	if observateur.AbilitySetHook != nil {
-		observateur.AbilitySetHook(counter, rank, br.BitPos()-start+i48CounterBits)
+	if br.obs != nil && br.obs.AbilitySetHook != nil {
+		br.obs.AbilitySetHook(counter, rank, br.BitPos()-start+i48CounterBits)
 	}
 }
-
-// SetAbilitySetHook installe (ou retire, avec nil) la sonde de lecture d'i48.
-func SetAbilitySetHook(h func(counter uint64, rank int, width int)) { observateur.AbilitySetHook = h }
 
 // ---------------------------------------------------------------------------
 // i49 biped-control-context-component  (deser FUN_14107166c)
@@ -246,14 +240,14 @@ func consumeBipedMalleableProperty(br *BitReader) {
 func consumeBipedMobilityAction(br *BitReader) {
 	flag1 := br.ReadBit() // FUN_1406cf008 -> [0x1295] = le gate `+0x9d` de FUN_1408f02c8
 	flag2 := br.ReadBit() // FUN_1406cf008 -> [0x1296] (flag2)
-	if observateur.MobilityActionHook != nil {
-		observateur.MobilityActionHook(flag1, flag2) // publication seule, aucune largeur ne change
+	if br.obs != nil && br.obs.MobilityActionHook != nil {
+		br.obs.MobilityActionHook(flag1, flag2) // publication seule, aucune largeur ne change
 	}
 	if flag1 {
 		consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
-		if MobilityActionBodyPorted {
+		if br.p.Grammaire.CorpsActionMobilite {
 			consumeMobilityActionBody(br) // FUN_1408f02c8, corps
-		} else if extra := br.mv.MobilityActionExtraBits; extra > 0 {
+		} else if extra := br.p.Mouvement.MobilityActionExtraBits; extra > 0 {
 			br.Skip(extra)
 		}
 	}
@@ -330,12 +324,8 @@ func consumeE494Position(br *BitReader) {
 	consumeE524PositionBody(br)
 }
 
-// MobilityActionBodyPorted : le corps de FUN_1408f02c8 est-il decode ? Bascule A/B
-// (`DS_I54BODY=0` cote harnais) pour rejouer la ligne de base d avant 7ter.60.
-var MobilityActionBodyPorted = true
-
-// SetMobilityActionBodyPorted bascule le portage du corps de i54.
-func SetMobilityActionBodyPorted(b bool) { MobilityActionBodyPorted = b }
+// C ETAIT LA VARIABLE DE PAQUET EXPORTEE `MobilityActionBodyPorted` JUSQU AU LOT 2.3 : la
+// bascule A/B du corps de FUN_1408f02c8 vit dans [GrammaireBalayage.CorpsActionMobilite].
 
 // MobilityActionExtraBits : ancien harnais de balayage de largeur (7ter.40, mode `cvmob`).
 // Conserve pour rejouer cette mesure ; sans effet quand le corps est porte.

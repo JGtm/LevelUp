@@ -22,7 +22,7 @@ package main
 //     RELACHE son handle de lecture AVANT de decoder. Il n'existe jamais deux lecteurs, et
 //     jamais un lecteur pendant un decodage.
 //   - « un exec perdrait le verrou process filmdec » : ce verrou
-//     (filmdec.LockProcessDecode) protege des GLOBAUX DE PAQUET contre deux decodages
+//     (`filmproc.AcquireSolo`, INTER-PROCESSUS) borne la machine a un decodage
 //     simultanes DANS UN MEME PROCESSUS. Deux processus ne partagent pas ces globaux : un
 //     film par processus est une isolation STRICTEMENT PLUS FORTE que le verrou, pas sa
 //     perte. Elle remet meme a zero, a chaque film, la table d'observation compWidthObs que

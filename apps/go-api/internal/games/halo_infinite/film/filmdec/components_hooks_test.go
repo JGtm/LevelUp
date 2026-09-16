@@ -77,12 +77,12 @@ func TestHooksConsumeSameBitsWithoutHook(t *testing.T) {
 			level := uint32(iter % 12)
 
 			clearAllHooks(t)
-			sans := NewBitReader(buf)
+			sans := lecteurDInstrument(buf)
 			_, _, portedSans := consumeByName(sans, name, BipedTypeIndex, level)
 
 			appels := 0
 			installCountingHooks(&appels)
-			avec := NewBitReader(buf)
+			avec := lecteurDInstrument(buf)
 			_, _, portedAvec := consumeByName(avec, name, BipedTypeIndex, level)
 
 			if sans.BitPos() != avec.BitPos() {
@@ -131,7 +131,7 @@ func TestHookedNamesCoversMovedCases(t *testing.T) {
 	for _, n := range hookedNames {
 		appels := 0
 		installCountingHooks(&appels)
-		br := NewBitReader(make([]byte, 64))
+		br := lecteurDInstrument(make([]byte, 64))
 		if _, _, ported := consumeByName(br, n, BipedTypeIndex, 0); !ported {
 			t.Errorf("%s : le dispatch rend ported=false sur un tampon nul", n)
 		}
@@ -164,7 +164,7 @@ func runHookCases(t *testing.T, cas []hookCase, capture func(*[]uint64, *bool, *
 
 		w := &bitw{}
 		c.ecr(w)
-		br := NewBitReader(append(w.buf, make([]byte, 32)...))
+		br := lecteurDInstrument(append(w.buf, make([]byte, 32)...))
 		if _, _, ported := consumeByName(br, c.comp, BipedTypeIndex, c.level); !ported {
 			t.Errorf("%s : ported=false", c.nom)
 		}
@@ -364,7 +364,7 @@ func TestPlayerMalleablePropertiesHook(t *testing.T) {
 	for i := 0; i < 9; i++ {
 		w.put(uint64(i%2), 1)
 	}
-	br := NewBitReader(append(w.buf, make([]byte, 8)...))
+	br := lecteurDInstrument(append(w.buf, make([]byte, 8)...))
 	consumeByName(br, compPlayerMalleableProperties, BipedTypeIndex, 0)
 
 	if appels != 1 {
@@ -406,7 +406,7 @@ func TestEquipmentHookNewFields(t *testing.T) {
 		}
 		w := &bitw{}
 		w.put(c.val, c.bits)
-		br := NewBitReader(append(w.buf, make([]byte, 8)...))
+		br := lecteurDInstrument(append(w.buf, make([]byte, 8)...))
 		consumeByName(br, c.comp, EquipmentTypeIndex, 0)
 		switch {
 		case appels != 1:
@@ -448,7 +448,7 @@ func TestManagedObjectHookFlagOrder(t *testing.T) {
 		w.put(0, 1)
 	}
 	w.put(1, 1) // iteration 31 -> rang 31
-	br := NewBitReader(append(w.buf, make([]byte, 8)...))
+	br := lecteurDInstrument(append(w.buf, make([]byte, 8)...))
 	consumeByName(br, compManagedObjectBoundaryVisibility, 10, 0)
 
 	if appels != 1 {
@@ -492,7 +492,7 @@ func TestProbeHookPassesRegistryTypeIndex(t *testing.T) {
 			}
 			w := &bitw{}
 			w.put(c.val, c.bits)
-			br := NewBitReader(append(w.buf, make([]byte, 8)...))
+			br := lecteurDInstrument(append(w.buf, make([]byte, 8)...))
 			consumeByName(br, c.comp, ti, 0)
 			switch {
 			case appels != 1:
@@ -551,7 +551,7 @@ func TestProbeSplashStaticPublishesUnconditionalField(t *testing.T) {
 		}
 		w := &bitw{}
 		f.ecr(w)
-		br := NewBitReader(append(w.buf, make([]byte, 16)...))
+		br := lecteurDInstrument(append(w.buf, make([]byte, 16)...))
 		consumeByName(br, compSplashMessageStatic, 47, 0)
 		if appels != 1 {
 			t.Errorf("%s : %d appel(s), 1 attendu", f.nom, appels)

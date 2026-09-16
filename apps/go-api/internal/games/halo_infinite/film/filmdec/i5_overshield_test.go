@@ -57,8 +57,6 @@ func TestI5OvershieldDiscriminability(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i5FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	slotRanks := eaSlotRanks(t, dir)
 

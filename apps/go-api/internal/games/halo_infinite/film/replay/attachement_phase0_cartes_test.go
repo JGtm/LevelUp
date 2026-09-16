@@ -86,7 +86,6 @@ func attRefDir(root string) string {
 // attBornes rend les bornes monde de la carte d'un film ET installe les largeurs d'axe de
 // cette carte pour le chemin objet du monde.
 //
-// L'APPELANT DOIT DÉTENIR `LockProcessDecode` ET RESTAURER `WorldObjectPrecision` : c'est un
 // global de paquet, et le correctif du 2026-08-15 a mesuré ce que coûte de l'oublier (tous
 // les objets déquantifiés aux largeurs de la carte précédente).
 func attBornes(t *testing.T, root, id string) (filmdec.Vec3Range, filmdec.I0Layout, bool) {
@@ -107,9 +106,8 @@ func attBornes(t *testing.T, root, id string) (filmdec.Vec3Range, filmdec.I0Layo
 	}
 	// e.Layout() porte largeurs d'axe, largeur d'index de région et région attendue —
 	// trois constantes par carte du MÊME catalogue (Live Fire : région 1 sur 2 bits, lot C
-	// catalogues 2026-08-27). Il est rendu à l'appelant pour le chemin BIPÈDE, et installé
-	// ici pour le chemin WORLD-OBJECT, comme avant.
-	filmdec.SetWorldObjectPrecisionFromLayout(e.Layout())
+	// catalogues 2026-08-27). Il est rendu à l'appelant, qui le pose sur SON contexte
+	// (lot 2.3 : plus rien ne s'installe dans le processus).
 	return e.Range(), e.Layout(), true
 }
 

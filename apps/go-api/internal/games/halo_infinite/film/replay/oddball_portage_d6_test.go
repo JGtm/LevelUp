@@ -199,8 +199,6 @@ func d6ViesEtSocles(t *testing.T, root, id string) ([]flagFreeLife, []PointObjec
 // instants — comparerait des metres a des quanta et rendrait des distances sans aucun sens, sans
 // que rien ne le signale. La proximite exige LA MEME echelle des deux cotes.
 func d6Positions(dir string, wr filmdec.Vec3Range, lay filmdec.I0Layout) ([]filmdec.BipedPosition, error) {
-	release := filmdec.LockProcessDecode()
-	defer release()
 	opt := filmdec.DefaultScanFilmOptions()
 	opt.WorldRange = &wr
 	// Le découpage d'i0 vient du CATALOGUE quand il est complet (même doctrine que le
@@ -216,10 +214,6 @@ func d6Positions(dir string, wr filmdec.Vec3Range, lay filmdec.I0Layout) ([]film
 // processus.
 func d6Bornes(t *testing.T, root, id string) (filmdec.Vec3Range, filmdec.I0Layout, bool) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	return attBornes(t, root, id)
 }
 

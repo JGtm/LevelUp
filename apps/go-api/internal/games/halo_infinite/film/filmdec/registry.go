@@ -164,7 +164,7 @@ func (r *Registry) Archetype(idx int) (Archetype, bool) {
 // POURQUOI UN `const` ET PAS UN `var errors.New(...)`. Le ratchet
 // `archlint/TestFilmdecPackageVarsNeCroitPas` gele l'etat global de `filmdec` : ce paquet porte
 // son etat de reglage dans des variables de paquet, et c'est ce qui oblige tout le decodage a
-// passer sous `LockProcessDecode`. Le ratchet vise cet etat MUTABLE — une valeur constante n'en
+// passer. Le ratchet vise cet etat MUTABLE — une valeur constante n'en
 // est pas, elle ne peut ni etre reassignee ni etre partagee entre deux decodages. La sentinelle
 // est donc posee en `const` : l'intention du ratchet est respectee, pas contournee, et
 // `errors.Is` fonctionne (la valeur est comparable et unique).

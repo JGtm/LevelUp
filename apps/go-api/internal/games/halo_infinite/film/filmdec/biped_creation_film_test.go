@@ -56,8 +56,6 @@ func TestCreationBipedeSurFilm(t *testing.T) {
 	if err != nil {
 		t.Fatalf("chargement du film %s : %v", dir, err)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	fc := NewFilmContext(film)
 	recs, st, err := ScanBipedCreations(fc)

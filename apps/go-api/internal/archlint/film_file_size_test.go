@@ -132,8 +132,6 @@ var plafondsParFichier = map[string]int{
 	"internal/games/halo_infinite/film/filmdec/vehicules_v2_items_test.go":               533,
 	"internal/games/halo_infinite/film/replay/attachement_phase0_bord_test.go":           529,
 	"internal/sync/killcollector/collector_test.go":                                      527,
-	"internal/games/halo_infinite/film/replay/visee_chronologie_research_test.go":        502,
-	"internal/games/halo_infinite/film/filmdec/imagecle_oracle_n2_research_test.go":      502,
 }
 
 // TestTailleDesFichiersDuFilmNeCroitPas : aucun fichier des racines surveillees ne depasse son

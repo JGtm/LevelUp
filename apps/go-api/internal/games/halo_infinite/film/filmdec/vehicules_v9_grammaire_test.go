@@ -78,8 +78,6 @@ func TestV9Grammaire(t *testing.T) {
 	if root == "" {
 		t.Skip("V9_FILM_ROOT absent")
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	for _, f := range films {
 		t.Run(f, func(t *testing.T) { v9Film(t, root+"/film_chunks/"+f, f) })
@@ -136,7 +134,7 @@ func v9Replay(name string, recs []v9Record, g dirsGrammar) v9Verdict {
 		if declares {
 			v.declaredI4++
 		}
-		dirs, vit := scanRecordDirs(NewBitReader(r.pay), r.at, len(r.pay)*8, r.idx, g)
+		dirs, vit := scanRecordDirs(lecteurDInstrument(r.pay), r.at, len(r.pay)*8, r.idx, g)
 		if dirs.HasAim {
 			v.dirs++
 		}

@@ -85,7 +85,7 @@ func TestV1aQualificationCorpus(t *testing.T) {
 	root, films := v1aCorpus(t)
 	t.Logf("V1.1 — seuil ecrit avant mesure : %d records delta ti=%d acceptes ; largeurs d'axe "+
 		"du chemin objet du monde laissees au defaut %v (cf. reserve en tete de fichier)",
-		v1aSeuilRecords, v0VehiculeTI, WorldObjectPrecisionActuelle().AxisW)
+		v1aSeuilRecords, v0VehiculeTI, ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW)
 	retenus, horsSeuil, vides, absents := 0, 0, 0, 0
 	for _, f := range films {
 		dir := filepath.Join(root, "film_chunks", f.ID)
@@ -196,8 +196,6 @@ func TestV1aNonRegressionBipede(t *testing.T) {
 	if CountFilmChunks(dir) == 0 {
 		t.Fatalf("aucun chunk film dans %s", dir)
 	}
-	release := LockProcessDecode()
-	defer release()
 	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible dans %s : %v", dir, err)

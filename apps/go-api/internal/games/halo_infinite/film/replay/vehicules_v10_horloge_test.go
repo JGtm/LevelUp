@@ -125,16 +125,11 @@ func v10DernierPaquetUS(dir string) uint64 {
 // position moins premier paquet du chunk 1. C est le repere de validation.
 func v10OriginMs(t *testing.T, root string, f v0Film) (float64, int, bool) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	dir := objChunkDir(root, f.ID)
 	entry, ok := v4Carte(t, root, f.Carte)
 	if !ok {
 		return 0, 0, false
 	}
-	filmdec.SetWorldObjectPrecisionFromLayout(entry.Layout())
 	wr := entry.Range()
 	bip, ok := v4Bipedes(t, dir, entry, &wr)
 	if !ok || len(bip) == 0 {

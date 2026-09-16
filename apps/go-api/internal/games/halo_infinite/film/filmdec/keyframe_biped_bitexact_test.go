@@ -14,7 +14,7 @@ package filmdec
 //
 //	AbsoluteAxisW = 14 UNIFORME (position_capture.go) ; la capture CE donne
 //	  3 + 1 + 1 + (13+13+14) + 2 = 47 bits sur Cliffhanger, l'uniforme en rend 49 ;
-//	WorldObjectPrecisionActuelle() (traverse.go), defaut {13,13,14} = l'entree `cliffhanger` du
+//	profilDInstrument.LargeursObjetDuMonde() (traverse.go), defaut {13,13,14} = l'entree `cliffhanger` du
 //	  catalogue — donc FAUSSE sur toute autre carte, et lue aussi par le corps tag==3 d'i59.
 //
 // i0 est le PREMIER composant de 100 % des records : une largeur fausse la plafonne toute
@@ -22,7 +22,6 @@ package filmdec
 // disjointe du catalogue) et le pose pour la duree de la passe, avec son A/B.
 //
 // LECTURE SEULE, garde par KF35_ROOT (meme garde que R7-a) : saute partout ailleurs, CI
-// comprise. Bascules globales restaurees en defer ; LockProcessDecode tenu tout du long.
 //
 // USAGE (depuis apps/go-api) :
 //
@@ -60,26 +59,23 @@ func kf35bDir(name string) string {
 // qu'`absAxisW` retombe sur les largeurs de la carte au lieu de son uniforme 14). Rend la
 // restauration.
 //
-// DEPUIS LE LOT 2.2.a, la largeur absolue n'est plus une variable de paquet : elle vit dans le
-// PROFIL DE MOUVEMENT que chaque lecteur de bits porte, seme par l'HERITAGE du processus. Ce
-// harnais pose donc l'heritage — c'est exactement le geste de la calibration de `killsource`,
-// et le seul qui atteigne les lecteurs que ces mesures construisent au fil de la marche.
+// DEPUIS LE LOT 2.3, aucune de ces largeurs n'est une variable de paquet : elles vivent dans le
+// PROFIL que chaque lecteur de bits porte. Ce harnais pose donc le profil DU HARNAIS
+// ([profilDInstrument]) — le seul canal qui atteigne les lecteurs que ces mesures construisent
+// au fil de la marche, et il est borne aux fichiers de test.
 func kf35bInstallPrecision(t *testing.T, name string) (I0Layout, func()) {
 	t.Helper()
-	prevW, prevMv := WorldObjectPrecisionActuelle(), MouvementHerite()
-	restore := func() { PoserWorldObjectPrecision(prevW); PoserMouvementHerite(prevMv) }
 	lay, rep, err := detectI0Layout(kf35bDir(name))
 	if err != nil {
 		t.Logf("      [%s] decoupage i0 NON detecte (%v) — largeurs par defaut conservees", name, err)
-		return I0Layout{}, restore
+		return I0Layout{}, func() {}
 	}
 	t.Logf("      [%s] decoupage i0 lu dans le film : %s (%d paires, frontieres %v)",
 		name, lay, rep.Pairs, rep.Boundaries)
-	SetWorldObjectPrecisionFromLayout(lay)
-	mv := prevMv
-	mv.AbsoluteAxisW = 0 // 0 => absAxisW retombe sur WorldObjectPrecisionActuelle().AxisW
-	PoserMouvementHerite(mv)
-	return lay, restore
+	p := profilDeCarte(lay)
+	// 0 => absAxisW retombe sur les largeurs world-object de la carte, celles qu'on vient de poser.
+	p.Mouvement.AbsoluteAxisW = 0
+	return lay, poserProfilDInstrument(p)
 }
 
 // kf35bVariants : le temoin « record NEW », l'etat complet nu, et — REMISES AU PROGRAMME —
@@ -104,15 +100,12 @@ var kf35bVariants = []kf35Variant{
 // memes largeurs d'axe — donc que la mesure R7-a en lisait deux sur trois a cote.
 func TestKF35BInventory(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	// i60 est PORTÉ EN ENTIER depuis R7-b (queue FUN_14076e494 incluse) ; seul le défaut de
 	// production reste à false, faute de largeurs d'axe de carte sur le chemin absolu. Les
 	// mesures d'image-clé, elles, INSTALLENT ces largeurs : elles l'activent donc.
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
+	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
+	defer prevSim()
 
 	for _, f := range films {
 		lay, restore := kf35bInstallPrecision(t, f.Name)
@@ -134,26 +127,22 @@ func TestKF35BInventory(t *testing.T) {
 // corruption-check du mode film eteint puis allume, sur les deux lectures encore debout.
 func TestKF35BBitExact(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	// i60 est PORTÉ EN ENTIER depuis R7-b (queue FUN_14076e494 incluse) ; seul le défaut de
 	// production reste à false, faute de largeurs d'axe de carte sur le chemin absolu. Les
 	// mesures d'image-clé, elles, INSTALLENT ces largeurs : elles l'activent donc.
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
+	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
+	defer prevSim()
 
 	for _, corr := range []bool{false, true} {
-		prev := filmComponentCorruptionCheck
-		SetFilmComponentCorruptionCheck(corr)
+		prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = corr })
 		for _, p := range kf35bPrecisions {
 			t.Logf("======== corruption-check=%v · %s ========", corr, p.Label)
 			for _, f := range films {
 				kf35bOnePass(t, f, p)
 			}
 		}
-		SetFilmComponentCorruptionCheck(prev)
+		prev()
 	}
 }
 
@@ -222,20 +211,16 @@ func kf35bAccumulate(tr EntityTrace, b kf35Bound, stats []kf35bCompStat) {
 // de carte installees : c'est la piece qui ORDONNE la suite du plan (quel deser corriger).
 func TestKF35BProfile(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	// i60 est PORTÉ EN ENTIER depuis R7-b (queue FUN_14076e494 incluse) ; seul le défaut de
 	// production reste à false, faute de largeurs d'axe de carte sur le chemin absolu. Les
 	// mesures d'image-clé, elles, INSTALLENT ces largeurs : elles l'activent donc.
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
+	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
+	defer prevSim()
 
-	prev := filmComponentCorruptionCheck
-	defer SetFilmComponentCorruptionCheck(prev)
 	for _, corr := range []bool{false, true} {
-		SetFilmComponentCorruptionCheck(corr)
+		prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = corr })
+		defer prev()
 		t.Logf("======== profil par composant · corruption-check=%v ========", corr)
 		for _, f := range films {
 			kf35bProfileOne(t, f, corr)
@@ -298,15 +283,11 @@ func kf35bQuantile(xs []int, q float64) int {
 // corruption-check du mode film ETEINT (allume est desormais pire, cf. plan R7-b).
 func TestKF35BDispersion(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
-	prevCorr := filmComponentCorruptionCheck
-	SetFilmComponentCorruptionCheck(false)
-	defer SetFilmComponentCorruptionCheck(prevCorr)
+	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
+	defer prevSim()
+	prevCorr := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = false })
+	defer prevCorr()
 
 	for _, f := range films {
 		_, restore := kf35bInstallPrecision(t, f.Name)

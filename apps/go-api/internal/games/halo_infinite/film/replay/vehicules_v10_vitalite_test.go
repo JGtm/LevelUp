@@ -114,10 +114,6 @@ func TestV10VitaliteTerminale(t *testing.T) {
 
 func v10VitaliteUnFilm(t *testing.T, root string, f v0Film) []v10Vie {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	ctx, ok := v4Decode(t, root, f)
 	if !ok {
 		return nil

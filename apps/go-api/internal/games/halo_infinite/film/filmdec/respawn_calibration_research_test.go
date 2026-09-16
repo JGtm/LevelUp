@@ -50,8 +50,6 @@ func TestRespawnTimerCalibration(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de calibration saute", gameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	recs, _, _, err := ScanFilmGameEntitiesChain(dir)
 	if err != nil {

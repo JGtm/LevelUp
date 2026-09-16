@@ -113,7 +113,7 @@ type FlagInput struct {
 // le calque est publie SANS son controle independant (`markerObserved` a zero), pas ampute. Un
 // silence ici laisserait croire que les images-cles ne portaient rien.
 //
-// HORS LIGNE — appelee par BuildFromFilm, sous LockProcessDecode.
+// HORS LIGNE — appelee par BuildFromFilm.
 func decodeFilmCarrierMarks(film *filmsource.Film, matchID string, in FlagInput) filmdec.CarrierMarkScan {
 	if !in.Scanned || !flagFilmSignalsOf(in).IsFlagFilm() {
 		return filmdec.CarrierMarkScan{}

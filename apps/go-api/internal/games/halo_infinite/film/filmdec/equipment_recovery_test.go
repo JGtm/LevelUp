@@ -189,8 +189,7 @@ func TestRecuperationBorneEnQueueDePaquet(t *testing.T) {
 	ecrisBits(pay, 1, 13, 535) // slot
 	ecrisBits(pay, 14, 2, 1)   // tag = 1 ; bits 16-17 restent 0 (bit16 nul, forme « sans i0 »)
 	ecrisBits(pay, 18, 3, 7)   // comptage 7 : la lecture des indices irait jusqu'au bit 62
-	last, restore := equipRecoveryHook()
-	defer restore()
+	last, _ := equipRecoveryHook()
 	if _, _, ok := walkEquipRecoveryAt(abilityScanSetup{}, pay, 0, len(pay)*8, last); ok {
 		t.Fatal("un record tronqué en queue de paquet a été accepté")
 	}

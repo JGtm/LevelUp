@@ -37,8 +37,6 @@ const formatHorsTable = 28
 // Un film presente sous un format inconnu doit (a) garder les largeurs CALIBREES, donc rester
 // decodable, et (b) incrementer `filmdec_unknown_format_28`, donc rester VISIBLE.
 func TestFormatInconnuTombeSurLesLargeursCalibrees(t *testing.T) {
-	rel := filmdec.LockProcessDecode()
-	defer rel()
 	film := bobineAuFormat(t, "fb1a1a72", formatHorsTable)
 	fc := filmdec.NewFilmContext(film)
 
@@ -67,8 +65,6 @@ func TestFormatInconnuTombeSurLesLargeursCalibrees(t *testing.T) {
 // tombe sur le meme repli mais N EST PAS un evenement, et ne doit RIEN compter. Un compteur qui
 // s incremente sur tout le parc ancien ne signalerait plus aucun patch.
 func TestFormatConnuNeCompteRien(t *testing.T) {
-	rel := filmdec.LockProcessDecode()
-	defer rel()
 	// La bobine INTACTE : `a521164d` (HI_1_4_1) porte le format 21 — connu de la table, sans
 	// largeur relue. C'est le parc ancien tel qu'il est, aucune reecriture.
 	film, err := filmsource.LoadDir(filepath.Join("testdata", "minifilm_a521164d"), nil)

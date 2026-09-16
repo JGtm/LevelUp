@@ -65,8 +65,6 @@ func glResolve(t *testing.T) glSetup {
 	// les largeurs d'axe DE LA CARTE pour le chemin world-object. La troisieme version de cette
 	// mesure tournait aux largeurs par defaut (13/13/14) : toutes les positions ti=42 etaient
 	// dequantifiees faux — mediane 42 m, temoin egal, zero verdict.
-	t.Cleanup(filmdec.LockProcessDecode())
-	t.Cleanup(installWorldObjectPrecisionDeCarte(entry, dir, nil))
 	wr := entry.Range()
 	raw, err := filmdec.ScanFilmBipedPositions(dir, filmdec.ScanFilmOptions{WorldRange: &wr})
 	if err != nil {
@@ -709,8 +707,6 @@ func TestI26HandleVersCreation(t *testing.T) {
 	if !pst.Calibration.Widths.Valid() {
 		t.Fatal("calibration MPP non tranchee : la mesure ne peut pas lire les identites")
 	}
-	restore := gwInstallMPPWidths(pst.Calibration.Widths)
-	defer restore()
 	kf := filmdec.ScanFilmWorldObjectKeyframes(s.dir, filmdec.EquipmentTypeIndex)
 	cre, _, err := filmdec.ScanFilmEquipmentCreationsForBand(s.dir, &s.wr, kf.Band)
 	if err != nil {

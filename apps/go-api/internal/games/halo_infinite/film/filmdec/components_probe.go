@@ -55,13 +55,11 @@ func (p ProbeComponent) String() string {
 	return fmt.Sprintf("sonde inconnue (%d)", int(p))
 }
 
-// SetProbeHook installe (ou retire, avec nil) la sonde generique.
-func SetProbeHook(h func(ti uint32, comp ProbeComponent, values []uint64)) { observateur.ProbeHook = h }
-
-func publishProbe(ti uint32, comp ProbeComponent, values ...uint64) {
-	if observateur.ProbeHook != nil {
-		observateur.ProbeHook(ti, comp, values)
+func (o *Observation) publishProbe(ti uint32, comp ProbeComponent, values ...uint64) {
+	if o == nil || o.ProbeHook == nil {
+		return
 	}
+	o.ProbeHook(ti, comp, values)
 }
 
 // bit2u convertit un bit lu en valeur publiable.

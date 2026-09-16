@@ -68,8 +68,8 @@ type kf7dResult struct {
 // kf7dPass joue la variante de reference sur un film avec une largeur imposee a `i0`
 // (w < 0 = pas de calibration, c'est-a-dire le lecteur porte tel quel).
 func kf7dPass(f kf35Film, w int) kf7dResult {
-	SetCalibratedWidth(kf7dI0, w)
-	defer SetCalibratedWidth(kf7dI0, -1)
+	poserLargeurDInstrument("calibree", kf7dI0, w)
+	defer poserLargeurDInstrument("calibree", kf7dI0, -1)
 	tal := kf35Pass(f, kf7dVariant)
 	return kf7dResult{
 		Width: w, Exact: tal.exact, Chained: tal.chained, Desync: tal.desync,
@@ -100,15 +100,11 @@ func kf7dLog(t *testing.T, name, tag string, r kf7dResult) {
 // PREDITE par l'ecrivain. C'est la mesure de la phase 2 du plan R7-d.
 func TestKF7DWriterI0(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
-	prevCorr := filmComponentCorruptionCheck
-	SetFilmComponentCorruptionCheck(false) // la meilleure configuration mesuree par R7-b
-	defer SetFilmComponentCorruptionCheck(prevCorr)
+	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
+	defer prevSim()
+	prevCorr := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = false }) // la meilleure configuration mesuree par R7-b
+	defer prevCorr()
 
 	for _, f := range films {
 		kf7dOneFilm(t, f)
@@ -151,15 +147,11 @@ func kf7dOneFilm(t *testing.T, f kf35Film) {
 // « 46 contre 117 » ne se verifie pas.
 func TestKF7DWriterI0Profile(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
-	prevCorr := filmComponentCorruptionCheck
-	SetFilmComponentCorruptionCheck(false)
-	defer SetFilmComponentCorruptionCheck(prevCorr)
+	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
+	defer prevSim()
+	prevCorr := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = false })
+	defer prevCorr()
 
 	for _, f := range films {
 		kf7dProfileOne(t, f)

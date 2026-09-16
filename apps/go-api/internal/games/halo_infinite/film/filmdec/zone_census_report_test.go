@@ -163,9 +163,6 @@ func TestZoneCensusLotC(t *testing.T) {
 	dir := zcDir(t)
 	out := zcOutDir(t)
 	short := filepath.Base(dir)
-	release := LockProcessDecode() // les bascules de grammaire sont des globaux de paquet
-	defer release()
-
 	gram, reg := zcLoadGrammar(t, dir)
 	c := zcKeyframeCensus(dir)
 	t.Logf("FILM %s — %d chunks · %d tables d'image-cle · %d records d'image-cle · %d archetypes distincts",
@@ -251,7 +248,7 @@ func zcReportKeyframeWalk(t *testing.T, c zcCensus, reg *Registry, out, short st
 				continue
 			}
 			tables++
-			recs, stop := WalkKeyframeRecords(pk.Payload(data), reg)
+			recs, stop := WalkKeyframeRecords(pk.Payload(data), reg, ContexteParDefaut())
 			stops[stop.String()]++
 			total += len(recs)
 			for _, r := range recs {

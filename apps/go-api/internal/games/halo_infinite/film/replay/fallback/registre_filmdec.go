@@ -28,7 +28,7 @@ var registreFilmdec = []Repli{
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "object_deaths_calibrate.go",
-			Ancre:   "return DefaultFrameConfig(), true, meilleur, dauphin",
+			Ancre:   "return base, true, meilleur, dauphin",
 		}, {
 			// Le COMPTE est emis par le calque des vehicules, qui recoit le verdict de la
 			// calibration (site inscrit a la fusion du lot 1.9.10, 2026-09-16 : le ratchet des
@@ -175,7 +175,7 @@ var registreFilmdec = []Repli{
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgFilmdec + "traverse_precision.go",
+			Fichier: pkgFilmdec + "profil_balayage.go",
 			Ancre:   "if l.AxisW[0] == 0 || l.AxisW[1] == 0 || l.AxisW[2] == 0 {",
 		}},
 		DatePose:        dateAudit0E,
@@ -191,7 +191,7 @@ var registreFilmdec = []Repli{
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgFilmdec + "traverse_precision.go",
+			Fichier: pkgFilmdec + "profil_balayage.go",
 			Ancre:   "if l.GateBits > i0SpineBits+i0UseDefaultBits {",
 		}},
 		DatePose:        dateAudit0E,

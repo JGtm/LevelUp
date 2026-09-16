@@ -146,7 +146,6 @@ func TestObjectifBombState(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	defer LockProcessDecode()()
 	g := filmproc.Arm("TestObjectifBombState", filmproc.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — balayage interrompu", float64(peak)/(1<<30))
 	})
@@ -280,7 +279,7 @@ func (w *bsWalk) payload(pay []byte, band map[uint32]bool, ts uint64) {
 				done = false
 				break
 			}
-			br := NewBitReader(pay)
+			br := lecteurDInstrument(pay)
 			br.SetBitPos(at)
 			_, _, ported := consumeByName(br, name, uint32(ManagedPropertyTypeIndex), w.arch.Level(id))
 			if !ported || br.BitPos() > total {

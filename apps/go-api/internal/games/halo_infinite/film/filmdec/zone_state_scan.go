@@ -152,7 +152,7 @@ func ScanFilmManagedProperties(dir string) (ManagedPropertyScan, error) {
 	if err != nil {
 		return ManagedPropertyScan{}, err
 	}
-	return ScanManagedProperties(NewFilmContext(film))
+	return ScanManagedProperties(contexteDeBobine(film))
 }
 
 // ScanManagedProperties décode les propriétés réseau ti=13 d'un film DEJA CHARGE.
@@ -172,8 +172,8 @@ func ScanManagedProperties(fc *FilmContext) (ManagedPropertyScan, error) {
 	if err != nil {
 		return sc, err
 	}
-	w := managedPropertyWalk{arch: arch}
-	defer w.install()()
+	w := managedPropertyWalk{prof: fc.ProfilDeBalayage(), arch: arch}
+	w.obs = w.install()
 	for _, c := range nums {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
@@ -208,6 +208,11 @@ func (c *FilmContext) managedPropertyArchetype() (Archetype, error) {
 // managedPropertyWalk porte ce que la marche d'un record doit connaitre, et l'etat que le hook
 // y depose (regle des 5 parametres).
 type managedPropertyWalk struct {
+	// obs est l OBSERVATEUR de ce balayage (lot 2.3), pose sur chaque lecteur construit.
+	obs *Observation
+	// prof est le PROFIL DE BALAYAGE du contexte, pose sur chaque lecteur de cette marche
+	// (lot 2.3) : c est par lui que les largeurs de la carte et du format atteignent les feuilles.
+	prof ProfilDeBalayage
 	arch Archetype
 	// cur est la lecture en cours : le hook n'a pas le contexte du record, l'appelant si.
 	cur ManagedPropertyRead
@@ -215,10 +220,15 @@ type managedPropertyWalk struct {
 	got bool
 }
 
+// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
+func (w *managedPropertyWalk) contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: w.prof, Obs: w.obs}
+}
+
 // install pose le hook du variant et rend sa restauration (defer).
-func (w *managedPropertyWalk) install() func() {
-	prev := observateur.ManagedPropertyHook
-	SetManagedPropertyHook(func(f ManagedPropertyField, values []uint64) {
+func (w *managedPropertyWalk) install() *Observation {
+	obs := NouvelleObservation()
+	obs.ManagedPropertyHook = func(f ManagedPropertyField, values []uint64) {
 		if len(values) == 0 {
 			return
 		}
@@ -228,8 +238,8 @@ func (w *managedPropertyWalk) install() func() {
 			w.cur.Value, w.cur.HasValue = values[1], true
 		}
 		w.got = true
-	})
-	return func() { SetManagedPropertyHook(prev) }
+	}
+	return obs
 }
 
 // scanPayload balaye UN payload delta : ancre les records de la bande, marche leur masque, et
@@ -279,6 +289,7 @@ func (w *managedPropertyWalk) walk(pay []byte, rec WorldObjectRecord, ts uint64,
 			return at, false
 		}
 		br := NewBitReader(pay)
+		br.PoserContexte(w.contexte())
 		br.SetBitPos(at)
 		w.got = false
 		_, _, ported := consumeByName(br, name, ManagedPropertyTypeIndex, w.arch.Level(id))
