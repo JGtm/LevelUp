@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const ctfBridgeFilmsEnv = "CTF_BRIDGE_FILMS"
@@ -61,7 +62,7 @@ func TestCTFBridgeAnatomy(t *testing.T) {
 	}
 }
 
-func ctfBridgeReport(t *testing.T, cat *grammar.MapQuantCatalog, dir, short, mapName string) string {
+func ctfBridgeReport(t *testing.T, cat *profile.MapQuantCatalog, dir, short, mapName string) string {
 	t.Helper()
 	entry, err := cat.Lookup(mapName)
 	if err != nil {

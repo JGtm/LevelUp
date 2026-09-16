@@ -35,7 +35,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/platform/duckdb"
@@ -121,7 +121,7 @@ func run(slug, cacheDir, matchArg string, tune runTuning) (int, error) {
 	}
 	paths := title.NewPathResolver(repoRoot)
 
-	bounds, err := grammar.LoadMapQuantCatalog(paths.MapQuantBoundsPath(slug))
+	bounds, err := profile.LoadMapQuantCatalog(paths.MapQuantBoundsPath(slug))
 	if err != nil {
 		return 0, err
 	}

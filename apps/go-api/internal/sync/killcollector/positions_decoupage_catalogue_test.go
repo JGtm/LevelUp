@@ -38,7 +38,7 @@ import (
 // VERSIONNÉE (`data/titles/halo_infinite/reference/map_quant_bounds.json`, commitée), pas une
 // sortie de sync : elle est disponible même dans un worktree sans `data/` de travail. Chemin
 // résolu par `PathResolver` (CLAUDE.md : jamais de `filepath.Join(..., "data", ...)` à la main).
-func catalogueDeBornesVersionne(t *testing.T) *grammar.MapQuantCatalog {
+func catalogueDeBornesVersionne(t *testing.T) *profile.MapQuantCatalog {
 	t.Helper()
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -46,7 +46,7 @@ func catalogueDeBornesVersionne(t *testing.T) *grammar.MapQuantCatalog {
 	}
 	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "..")
 	pr := titlePkg.NewPathResolver(repoRoot)
-	cat, err := grammar.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titlePkg.DefaultSlug))
+	cat, err := profile.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titlePkg.DefaultSlug))
 	if err != nil {
 		t.Skipf("catalogue de bornes indisponible (%v) — positions non testables sans lui", err)
 	}
@@ -56,7 +56,7 @@ func catalogueDeBornesVersionne(t *testing.T) *grammar.MapQuantCatalog {
 // optionsPourEntree rejoue le câblage de production : le contexte de film sous la règle du
 // catalogue, puis les réglages de balayage qu'il en tire. Le film est nil — `NewFilmContextForMap`
 // l'accepte, et le découpage imposé ne dépend que de l'entrée de carte.
-func optionsPourEntree(entry grammar.MapQuantEntry) grammar.ScanFilmOptions {
+func optionsPourEntree(entry profile.MapQuantEntry) grammar.ScanFilmOptions {
 	return optionsDeBalayageDesPositions(grammar.NewFilmContextForMap(nil, &entry, nil), entry)
 }
 
@@ -117,12 +117,12 @@ func TestMutationDuCatalogueChangeLeDecoupageDesPositions(t *testing.T) {
 	}
 	for _, cas := range []struct {
 		nom   string
-		muter func(*grammar.MapQuantEntry)
+		muter func(*profile.MapQuantEntry)
 	}{
-		{"axisWidths X decale d un bit", func(m *grammar.MapQuantEntry) { m.AxisWidths[0]++ }},
-		{"axisWidths Z decale d un bit", func(m *grammar.MapQuantEntry) { m.AxisWidths[2]-- }},
-		{"regionIndexBits rabaissee a 1", func(m *grammar.MapQuantEntry) { m.RegionIndexBits = 1 }},
-		{"region attendue remise a 0", func(m *grammar.MapQuantEntry) { m.Region = 0 }},
+		{"axisWidths X decale d un bit", func(m *profile.MapQuantEntry) { m.AxisWidths[0]++ }},
+		{"axisWidths Z decale d un bit", func(m *profile.MapQuantEntry) { m.AxisWidths[2]-- }},
+		{"regionIndexBits rabaissee a 1", func(m *profile.MapQuantEntry) { m.RegionIndexBits = 1 }},
+		{"region attendue remise a 0", func(m *profile.MapQuantEntry) { m.Region = 0 }},
 	} {
 		mute := entry
 		cas.muter(&mute)

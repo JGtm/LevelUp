@@ -129,7 +129,7 @@ const DefaultPacketPreambleBits = 2
 // une porte de balayage qui reconstruit un cadre par defaut APRES la calibration de
 // `killsource` heritait, avant ce lot, des largeurs calibrees par les variables de paquet du
 // processus. Le cadre par defaut dit donc la meme chose qu elles disaient. Au repos, l heritage
-// VAUT l invariant [mouvementDuProfil].
+// VAUT l invariant [profile.MouvementParDefaut].
 func DefaultFrameConfig() FrameConfig {
 	return FrameConfig{HasExtraFields: false, IDLowBits: 13, IDBase: 0, NewDefaultStateBits: 0,
 		PacketPreambleBits: DefaultPacketPreambleBits, Profil: ProfilDeBalayageParDefaut()}

@@ -528,4 +528,4 @@
 #               ne change. L empreinte monte deux fois : les octets de source de `grammar` bougent,
 #               et la racine `film/profile` ENTRE dans l empreinte — la donnee du decodeur est
 #               desormais hachee. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` 60.
-grammar-2026-09-15.34	26b4db8c6eb59b1e39bfc3a260be66989552d3bd1a4bb781ab2e742ce6ac0543
+grammar-2026-09-15.34	18cbf01d85d819ff1370873a4e9b0c5880b4e0460e3b68b13e7a5c21581284b8

@@ -38,6 +38,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -55,7 +56,7 @@ var e191bCarteDeBobine = map[string]string{
 }
 
 func TestE191bFermetureAvecCarte(t *testing.T) {
-	cat, err := LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -74,7 +75,7 @@ func TestE191bFermetureAvecCarte(t *testing.T) {
 }
 
 // e191bLargeurCarte rend la signature lisible du decoupage impose par le catalogue.
-func e191bLargeurCarte(e MapQuantEntry) string {
+func e191bLargeurCarte(e profile.MapQuantEntry) string {
 	l := e.Layout()
 	return sprintfLargeur(l.AxisW[0], l.AxisW[1], l.AxisW[2], e.EffectiveRegionIndexBits(), e.Region)
 }
@@ -102,7 +103,7 @@ func e191bItoa(v uint) string {
 
 // e191bDeuxMesures mesure la fermeture ti=37 d une bobine deux fois : au descripteur par
 // defaut du paquet, puis aux largeurs de la carte jouee. Le descripteur global est restaure.
-func e191bDeuxMesures(t *testing.T, cat *MapQuantCatalog, court string) (a, b KeyframeClosureStat, e MapQuantEntry) {
+func e191bDeuxMesures(t *testing.T, cat *profile.MapQuantCatalog, court string) (a, b KeyframeClosureStat, e profile.MapQuantEntry) {
 	t.Helper()
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
 	film, err := source.LoadDir(dir, nil)
@@ -120,7 +121,7 @@ func e191bDeuxMesures(t *testing.T, cat *MapQuantCatalog, court string) (a, b Ke
 
 // e191bFermetureTI37 rend la fermeture de l archetype 37 pour un film charge.
 func e191bFermetureTI37(t *testing.T, film *source.Film, court string,
-	carte *MapQuantEntry) KeyframeClosureStat {
+	carte *profile.MapQuantEntry) KeyframeClosureStat {
 	t.Helper()
 	fc := NewFilmContext(film)
 	if carte != nil {

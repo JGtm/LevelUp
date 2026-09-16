@@ -38,7 +38,7 @@ import (
 	"errors"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/port"
 )
 
@@ -122,7 +122,7 @@ func TestCarteDesTouchesRefuseUnNomHorsCatalogue(t *testing.T) {
 		t.Fatal("une carte hors catalogue a produit une entree : la signature a-t-elle repris la main ?")
 	}
 	_, err := c.entreeDeCatalogueParNom([]string{carteAbsenteDuCatalogue})
-	if !errors.Is(err, grammar.ErrUnknownMapBounds) {
+	if !errors.Is(err, profile.ErrUnknownMapBounds) {
 		t.Errorf("erreur %v, attendue ErrUnknownMapBounds", err)
 	}
 }

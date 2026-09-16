@@ -43,7 +43,7 @@ package grammar
 //
 // # LE PROFIL, LUI, EST RESOLU AU CONSTRUCTEUR (lot 2.1, D1 du PLAN_DECODEUR_FILM)
 //
-// [FilmContext.Profile] fait EXCEPTION a la paresse decrite ci-dessous, et l exception est
+// [FilmContext.profile.Profile] fait EXCEPTION a la paresse decrite ci-dessous, et l exception est
 // bornee a `NewFilmContextForMap` — le constructeur de la CUISSON. Trois raisons, mesurees :
 //
 //	D1 L EXIGE. « Un seul objet par film, le profil resolu a la construction, les memos
@@ -131,7 +131,7 @@ type FilmContext struct {
 	// prof est le PROFIL du film, resolu UNE fois (cf. l en-tete) et immuable. `profLu` dit
 	// s il l a ete : `NewFilmContextForMap` le pose a la construction, `NewFilmContext` au
 	// premier acces.
-	prof   Profile
+	prof   profile.Profile
 	profLu bool
 
 	// bal est le PROFIL DE BALAYAGE de ce decodage (lot 2.3) : ce que les lecteurs de bits
@@ -253,7 +253,7 @@ func NewFilmContext(film *source.Film) *FilmContext {
 // C'est le constructeur de la CUISSON : `replay.BuildFromFilm` le construit une fois, lit le
 // decoupage tranche par [FilmContext.ImposedLayout] pour en armer les positions, et passe le
 // contexte aux six canaux delta et aux ramassages natifs — un seul decoupage pour tout le film.
-func NewFilmContextForMap(film *source.Film, entry *MapQuantEntry, forced *profile.I0Layout) *FilmContext {
+func NewFilmContextForMap(film *source.Film, entry *profile.MapQuantEntry, forced *profile.I0Layout) *FilmContext {
 	c := &FilmContext{film: film, impose: resolveI0Layout(forced, entry),
 		bal: ProfilDeBalayageParDefaut()}
 	c.prof, c.profLu = ResolveProfile(film, entry), true
@@ -275,7 +275,7 @@ func NewFilmContextForMap(film *source.Film, entry *MapQuantEntry, forced *profi
 // RECOUVREMENT ASSUME avec `avertirFormatSansProfil` sur le seul cas « format inconnu » : cette
 // ligne-ci nomme le PROFIL et ses deux cles, et elle couvre aussi le chemin `killcollector`, ou
 // aucun autre avertissement n existe.
-func journaliserProfilIncomplet(film *source.Film, p Profile) {
+func journaliserProfilIncomplet(film *source.Film, p profile.Profile) {
 	if p.Err() == nil {
 		return
 	}
@@ -293,7 +293,7 @@ func journaliserProfilIncomplet(film *source.Film, p Profile) {
 // Le repli sur nil n'est pas une tolerance : une entree de catalogue anterieure au champ des
 // largeurs (`axisWidths` absent, donc `Valid()` faux) doit laisser lire le film plutot
 // qu'imposer des largeurs nulles, exactement comme le chemin world-object garde son defaut.
-func resolveI0Layout(forced *profile.I0Layout, entry *MapQuantEntry) *profile.I0Layout {
+func resolveI0Layout(forced *profile.I0Layout, entry *profile.MapQuantEntry) *profile.I0Layout {
 	if forced != nil {
 		lay := *forced
 		return &lay
@@ -323,7 +323,7 @@ func (c *FilmContext) ImposedLayout() *profile.I0Layout {
 // Contexte nil = le profil des INVARIANTS, sans cle et sans carte : c est ce que rend
 // [ResolveProfile] sur un film nul, et un appelant qui le lit sans verifier [FilmContext.ProfileErr]
 // obtient donc le cadre d image-cle et les quantums, jamais une largeur inventee.
-func (c *FilmContext) Profile() Profile {
+func (c *FilmContext) Profile() profile.Profile {
 	if c == nil {
 		return ResolveProfile(nil, nil)
 	}
@@ -333,8 +333,8 @@ func (c *FilmContext) Profile() Profile {
 	return c.prof
 }
 
-// ProfileErr rend l erreur TYPEE des cles absentes de la table de profil ([ErrUnknownFormat],
-// [ErrUnknownBuild]), ou nil. C est par elle que l erreur REMONTE A L APPELANT : le constructeur
+// ProfileErr rend l erreur TYPEE des cles absentes de la table de profil ([profile.ErrUnknownFormat],
+// [profile.ErrUnknownBuild]), ou nil. C est par elle que l erreur REMONTE A L APPELANT : le constructeur
 // n en rend pas (cf. l en-tete), il la journalise.
 func (c *FilmContext) ProfileErr() error { return c.Profile().Err() }
 

@@ -23,7 +23,7 @@ package grammar
 // change — la porte ne fait que se fermer, aucun film ne gagne la publication ligne par ligne.
 // `SchemaVersion` reste 59 : le document du rejeu ne porte pas cette porte.
 //
-// LE MEME RANG PORTE AUSSI LA CORRECTION DE DOC de `mppWidthsPourFormat` (son bloc finissait par
+// LE MEME RANG PORTE AUSSI LA CORRECTION DE DOC de `profile.MPPPourFormat` (son bloc finissait par
 // « la cle est le BUILD » alors que la fonction commute sur le FORMAT depuis le lot 1.9.1 ter) :
 // l empreinte hache les OCTETS des trois paquets, commentaires compris, donc une reformulation la
 // fait bouger. Un LOT partage sa revision (regle de la forme `.N` ci-dessus) — ces deux
@@ -108,7 +108,7 @@ package grammar
 //
 // CE QUI CHANGE, ET C EST DE LA STRUCTURE :
 //
-//	`grammar.Profile` NAIT (`profile.go`, `profile_table.go`). Il porte ce qui ne se lit pas
+//	`grammar.profile.Profile` NAIT (`profile.go`, `profile_table.go`). Il porte ce qui ne se lit pas
 //	    dans le flux — identite, carte, implantation du gamertag, cadre d image-cle, mouvement,
 //	    slots, MPP — resolu UNE fois a partir des TROIS cles que le film ECRIT (version de
 //	    format, build, version majeure) et de l entree de catalogue de la carte. Champs prives,
@@ -175,7 +175,7 @@ package grammar
 // saut calibre) — etaient des VARIABLES DE PAQUET de `filmdec`. Elles voyagent desormais avec
 // le LECTEUR DE BITS (`Lecteur.mv`, pose par [Lecteur.poserMouvement]), seul objet deja
 // passe a tous les deserialiseurs : une copie par lecteur construit, jamais une lecture par bit
-// lu (budget 0.A.5). Leur source est [mouvementDuProfil], la MEME fonction que [ResolveProfile]
+// lu (budget 0.A.5). Leur source est [profile.MouvementParDefaut], la MEME fonction que [ResolveProfile]
 // emploie — il n y a plus deux tables de valeurs.
 //
 // LE SEUL ECRIVAIN DE PRODUCTION PASSE PAR LE CADRE. La calibration de `killsource`
@@ -226,8 +226,8 @@ package grammar
 // LES MARCHES D IMAGE-CLE PRENNENT LEUR CADRE AU PROFIL. `walkKeyframeFullState`,
 // `consumeFullStateDefaultBlock` et la lecture d equipe du pied de record lisaient les DEUX
 // constantes du paquet (en-tete de 108 bits, mot de taille de 32) ; elles les prennent
-// desormais au lecteur, qui les porte depuis une source unique — `cadreDuProfil`, la meme
-// fonction que [ResolveProfile] emploie pour poser `Profile.Keyframe`. Les deux constantes
+// desormais au lecteur, qui les porte depuis une source unique — `profile.CadreParDefaut`, la meme
+// fonction que [ResolveProfile] emploie pour poser `profile.Profile.Keyframe`. Les deux constantes
 // n ont plus qu UN lecteur dans le paquet : cette fonction.
 //
 // POURQUOI CELA COMPTE ALORS QUE LE RATCHET NE BOUGE PAS. La famille des images-cles ne portait
@@ -249,7 +249,7 @@ package grammar
 // LA VERSION DU FILM VIENT DU PROFIL DU CONTEXTE. La phase de balayage des positions du rejeu
 // rouvrait le registre pour son propre compte (`FilmMajorVersion(s.film)`) alors que le
 // contexte avait deja resolu le profil a sa construction (D1). Elle prend desormais
-// `Profile.Highlight()` — MEME valeur par le MEME chemin (les deux composent depuis
+// `profile.Profile.Highlight()` — MEME valeur par le MEME chemin (les deux composent depuis
 // `FilmMajorVersionFromHeader`), une localisation de `chunk_00` en moins par cuisson, et le
 // drapeau `Lue` a la place d un second booleen qui disait la meme chose.
 //

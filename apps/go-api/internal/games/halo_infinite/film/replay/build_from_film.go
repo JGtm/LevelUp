@@ -49,7 +49,7 @@ import (
 func BuildFromFilm(matchID, titleSlug string, film *source.Film, opt Options) (ReplayDocument, error) {
 	if opt.MapQuant == nil {
 		return ReplayDocument{}, fmt.Errorf("%w (match %s) : le document de rejeu exige l'entrée de catalogue de la carte",
-			grammar.ErrUnknownMapBounds, matchID)
+			profile.ErrUnknownMapBounds, matchID)
 	}
 	// PLUS DE VERROU DE PAQUET ICI (lot 2.3) : `grammar` n'a plus aucune variable de paquet
 	// ecrite, et cette cuisson porte son propre etat de decodage — le profil de balayage et

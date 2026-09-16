@@ -1,7 +1,6 @@
 package grammar
 
-// imagecle_oracle_n2_research_test.go — PHASE 5a, OBJECTIF 3 : `n2` COMME ORACLE DE LARGEUR
-// D'ETAT PAR DEFAUT.
+// imagecle_oracle_n2_research_test.go — PHASE 5a, OBJECTIF 3 : `n2` COMME ORACLE DE LARGEUR D'ETAT PAR DEFAUT.
 //
 // # L'IDEE, ET POURQUOI ELLE EST GRATUITE
 //
@@ -41,6 +40,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"sort"
 	"testing"
 )
@@ -48,9 +48,9 @@ import (
 const (
 	// imcoDebutN1 est la position de `n1` depuis le debut du record : la fin de l'en-tete
 	// par entite de `FUN_142e2bfd0`.
-	imcoDebutN1 = keyframeFullStateHeaderBits
+	imcoDebutN1 = profile.KeyframeEnTeteBits
 	// imcoDebutEtat est la position ou commence l'etat par defaut : juste apres `n1`.
-	imcoDebutEtat = keyframeFullStateHeaderBits + keyframeFullStateSizeBits
+	imcoDebutEtat = profile.KeyframeEnTeteBits + profile.KeyframeMotDeTailleBits
 	// imcoBalayageMax borne le balayage de largeur. Le plus large etat par defaut connu du
 	// dossier est celui du bipede (198 bits mesures en live) ; 1 024 laisse quatre fois la
 	// place sans faire exploser le cout.
@@ -105,7 +105,7 @@ func imcoCollecter(f imcFilm, groupes map[imcoCle]*imcoGroupe) {
 				want = -1 // dernier record du payload : aucune frontiere annoncee
 			}
 			g.Ancres = append(g.Ancres, imcoAncre{Pay: pay, Bit: s.BitStart, Want: want})
-			g.N1[kfReadBits(pay, s.BitStart+imcoDebutN1, keyframeFullStateSizeBits)]++
+			g.N1[kfReadBits(pay, s.BitStart+imcoDebutN1, profile.KeyframeMotDeTailleBits)]++
 			e := profilLireEtatComplet(pay, s.BitStart, s.TI)
 			g.Portee[e.DSBits]++
 			g.N2Porte[e.N2]++
@@ -141,7 +141,7 @@ func (g *imcoGroupe) imcoRetenues() []imcoAncre {
 	}
 	out := make([]imcoAncre, 0, len(g.Ancres))
 	for _, a := range g.Ancres {
-		if kfReadBits(a.Pay, a.Bit+imcoDebutN1, keyframeFullStateSizeBits) == modal {
+		if kfReadBits(a.Pay, a.Bit+imcoDebutN1, profile.KeyframeMotDeTailleBits) == modal {
 			out = append(out, a)
 		}
 	}
@@ -157,13 +157,13 @@ func (g *imcoGroupe) imcoBalayer(ancres []imcoAncre) (ws []int, vals map[int]uin
 	}
 	for w := 0; w <= imcoBalayageMax; w++ {
 		p := imcoDebutEtat + w
-		v := kfReadBits(ancres[0].Pay, ancres[0].Bit+p, keyframeFullStateSizeBits)
+		v := kfReadBits(ancres[0].Pay, ancres[0].Bit+p, profile.KeyframeMotDeTailleBits)
 		if v == 0 || v > imcoTailleMax {
 			continue
 		}
 		bon := true
 		for _, a := range ancres[1:] {
-			if kfReadBits(a.Pay, a.Bit+p, keyframeFullStateSizeBits) != v {
+			if kfReadBits(a.Pay, a.Bit+p, profile.KeyframeMotDeTailleBits) != v {
 				bon = false
 				break
 			}
@@ -324,7 +324,7 @@ func imcoEprouverZones(zones []int, anc []imcoAncre, reg *Registry) (map[int]int
 			// mesurer une largeur qu'aucun deserialiseur ne porte encore. C'est l'un des deux
 			// temoins nommes de `keyframeFullStateTemoin` — jamais une lecture de production.
 			tr := walkKeyframeFullState(a.Pay, a.Bit, reg, contexteDInstrument(), keyframeFullStateTemoin{
-				EnTeteBits: keyframeFullStateHeaderBits + w, SansEtatParDefaut: true,
+				EnTeteBits: profile.KeyframeEnTeteBits + w, SansEtatParDefaut: true,
 			})
 			if tr.DesyncAt < 0 && tr.EndBit == a.Want {
 				out[w]++

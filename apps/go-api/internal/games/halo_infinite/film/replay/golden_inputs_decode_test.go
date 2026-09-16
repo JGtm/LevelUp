@@ -11,7 +11,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
-func decodeGoldenInputs(blob []byte, entry grammar.MapQuantEntry) (*goldenInputs, error) {
+func decodeGoldenInputs(blob []byte, entry profile.MapQuantEntry) (*goldenInputs, error) {
 	g, r, lay, world, err := decodeGoldenEntete(blob, entry)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func decodeGoldenInputs(blob []byte, entry grammar.MapQuantEntry) (*goldenInputs
 }
 
 // decodeGoldenEntete relit l en-tete, verifie carte et decoupage, et rend le lecteur arme.
-func decodeGoldenEntete(blob []byte, entry grammar.MapQuantEntry) (
+func decodeGoldenEntete(blob []byte, entry profile.MapQuantEntry) (
 	*goldenInputs, *greader, profile.I0Layout, profile.Vec3Range, error,
 ) {
 	if len(blob) < len(goldenInputsMagic) || string(blob[:len(goldenInputsMagic)]) != goldenInputsMagic {

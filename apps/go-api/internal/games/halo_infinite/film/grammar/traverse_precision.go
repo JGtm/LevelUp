@@ -37,7 +37,7 @@ import "levelup/go-api/internal/games/halo_infinite/film/profile"
 //
 // C'ÉTAIT UNE VARIABLE DE PAQUET (`TraversalPrecision`) JUSQU'AU LOT 2.2.a : elle vient
 // désormais du PROFIL que le lecteur porte ([Lecteur.poserMouvement]), et son défaut est
-// l'invariant de [mouvementDuProfil]. Le seul écrivain de production — la calibration de
+// l'invariant de [profile.MouvementParDefaut]. Le seul écrivain de production — la calibration de
 // `killsource` — le passe maintenant par `FrameConfig.Mouvement`.
 func (b *Lecteur) traversal() profile.PrecisionDescriptor { return b.p.Mouvement.Traversal }
 
@@ -57,7 +57,7 @@ func (b *Lecteur) traversal() profile.PrecisionDescriptor { return b.p.Mouvement
 //
 // QUI L'INSTALLE, ET DEPUIS QUAND (2026-08-15). `replay.BuildFromFilm` installe les largeurs de
 // la carte du match sur le profil de balayage du contexte, pour toute la durée du décodage
-// (`replay.installWorldObjectPrecision`). Elles viennent de `MapQuantEntry.AxisWidths`
+// (`replay.installWorldObjectPrecision`). Elles viennent de `profile.MapQuantEntry.AxisWidths`
 // — la MÊME entrée de catalogue qui fournit les bornes, jamais un second réglage à armer à part.
 //
 // AVANT cette date, AUCUN chemin de production ne l'écrasait : toutes les cartes autres que

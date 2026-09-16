@@ -85,16 +85,16 @@ func v4Root(t *testing.T) string {
 }
 
 // v4Carte rend l entree de catalogue d une carte NOMMEE (bornes + decoupage d axe).
-func v4Carte(t *testing.T, root, carte string) (grammar.MapQuantEntry, bool) {
+func v4Carte(t *testing.T, root, carte string) (profile.MapQuantEntry, bool) {
 	t.Helper()
-	cat, err := grammar.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
 	e, err := cat.Lookup(carte)
 	if err != nil {
 		t.Logf("carte %q absente du catalogue de bornes (%v)", carte, err)
-		return grammar.MapQuantEntry{}, false
+		return profile.MapQuantEntry{}, false
 	}
 	return e, true
 }
@@ -152,7 +152,7 @@ func v4Decode(t *testing.T, root string, f v0Film) (v4Ctx, bool) {
 // v4Bipedes lit le nuage bipede aux MEMES reglages que la production (cap capture, decoupage
 // d axe du catalogue), TRIE par instant comme `BuildFromPositions` le fait.
 func v4Bipedes(
-	t *testing.T, dir string, entry grammar.MapQuantEntry, wr *profile.Vec3Range,
+	t *testing.T, dir string, entry profile.MapQuantEntry, wr *profile.Vec3Range,
 ) ([]grammar.BipedPosition, bool) {
 	t.Helper()
 	opt := grammar.DefaultScanFilmOptions()

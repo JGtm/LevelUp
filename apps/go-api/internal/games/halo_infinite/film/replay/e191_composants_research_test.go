@@ -48,6 +48,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // Les composants d etat de l archetype 37 que cette mesure regarde, avec le nom que LE JEU leur
@@ -171,7 +172,7 @@ func e191ComposantsDUnFilm(t *testing.T, root string, f e191Film) (map[string]in
 
 // e191Creations balaie les records de CREATION ti=37 du film, aux memes largeurs MPP que la
 // chaine de production vient de mesurer — sans elles, aucune identite ne se resout.
-func e191Creations(dir string, e grammar.MapQuantEntry, g *goldenInputs,
+func e191Creations(dir string, e profile.MapQuantEntry, g *goldenInputs,
 ) ([]grammar.EquipmentCreation, grammar.EquipmentCreationStats, bool) {
 	fc, _, err := grammar.ContexteDeFilm(dir)
 	if err != nil {

@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
@@ -96,7 +95,7 @@ func attBornes(t *testing.T, root, id string) (profile.Vec3Range, profile.I0Layo
 		t.Logf("%s : carte inconnue du fixture — bornes indisponibles", id)
 		return profile.Vec3Range{}, profile.I0Layout{}, false
 	}
-	cat, err := grammar.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

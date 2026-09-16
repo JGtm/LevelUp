@@ -34,6 +34,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -113,11 +114,11 @@ func e191cJournalBobine(t *testing.T, court string, ti int) {
 // e191cJournalRecord colle UN record : ses deux mots de taille, puis chaque composant.
 func e191cJournalRecord(t *testing.T, pay []byte, reg *Registry, b keyframeBorne, n int) {
 	t.Helper()
-	n1 := kfReadBits(pay, b.Bit+keyframeFullStateHeaderBits, 32)
+	n1 := kfReadBits(pay, b.Bit+profile.KeyframeEnTeteBits, 32)
 	// n2 se lit APRES l etat par defaut : on rejoue le bloc pour le localiser.
 	br2 := LecteurSur(pay)
-	br2.SetBitPos(b.Bit + keyframeFullStateHeaderBits)
-	br2.ReadBits(keyframeFullStateSizeBits)
+	br2.SetBitPos(b.Bit + profile.KeyframeEnTeteBits)
+	br2.ReadBits(profile.KeyframeMotDeTailleBits)
 	if int32(n1) > 0 { //nolint:gosec // 32 bits
 		consumeKeyframeDefaultState(br2, uint32(kfReadBits(pay, b.Bit+keyframeRecordTIBit, 6))) //nolint:gosec // 6 bits
 	}

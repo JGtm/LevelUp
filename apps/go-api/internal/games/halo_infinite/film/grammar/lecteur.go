@@ -1,6 +1,9 @@
 package grammar
 
-import "levelup/go-api/internal/games/halo_infinite/film/source"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
+)
 
 // selectorBits is the width of the leading selector in a signed variable-width
 // integer; the selector value sel gives the field width w = 8 << sel.
@@ -97,8 +100,8 @@ func (b *Lecteur) poserCadre(cfg FrameConfig) {
 }
 
 // cadre rend le CADRE d image-cle d etat complet que ce lecteur porte : l en-tete par entite,
-// la largeur d un mot de taille, et la regle `172 + etat(ti)` ([KeyframeProfile.CadreBits]).
-func (b *Lecteur) cadre() KeyframeProfile { return b.p.Cadre }
+// la largeur d un mot de taille, et la regle `172 + etat(ti)` ([profile.KeyframeProfile.CadreBits]).
+func (b *Lecteur) cadre() profile.KeyframeProfile { return b.p.Cadre }
 
 // poserMouvement installe le profil de MOUVEMENT du balayage, EN TETE de celui-ci, sans
 // toucher au reste du profil que le lecteur porte deja.
@@ -124,7 +127,7 @@ func (b *Lecteur) cadre() KeyframeProfile { return b.p.Cadre }
 // Les portes de balayage qui tiennent un [FrameConfig] (`DecodeFrameRecords`, `TryDeltaAt`,
 // `DecodeFrameViews`, `DecodeFrameResync`, `DecodeFrameInfer`, `ScanFrameTargets`), avec
 // `cfg.Profil`. Partout ailleurs, l invariant pose par [LecteurSur] fait foi.
-func (b *Lecteur) poserMouvement(m MovementProfile) { b.p.Mouvement = m }
+func (b *Lecteur) poserMouvement(m profile.MovementProfile) { b.p.Mouvement = m }
 
 // ReadSignedVarWidth decodes the engine's signed variable-width integer: a 2-bit
 // selector sel sets the field width w = 8 << sel (8, 16, 32 or 64); w bits follow

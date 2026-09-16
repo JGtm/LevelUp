@@ -68,7 +68,7 @@ func v0Corpus(t *testing.T) []v0Film {
 // film -> carte (`attCartes`) que le corpus de ce lot ne peuple pas : ici la carte est donnee.
 func v0Bornes(t *testing.T, root, carte string) (profile.Vec3Range, bool) {
 	t.Helper()
-	cat, err := grammar.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

@@ -103,7 +103,7 @@ func TestV2VehicleDeathDating(t *testing.T) {
 	}
 }
 
-func v2dProcessFilm(t *testing.T, dir string, entry grammar.MapQuantEntry, ag *v2dMapAgg) {
+func v2dProcessFilm(t *testing.T, dir string, entry profile.MapQuantEntry, ag *v2dMapAgg) {
 	worldRange := entry.Range()
 	lay := entry.Layout()
 
@@ -382,12 +382,12 @@ func v2dDir(short8 string) string {
 	return root + `\film_chunks\` + short8
 }
 
-func v2dLoadBounds(t *testing.T) *grammar.MapQuantCatalog {
+func v2dLoadBounds(t *testing.T) *profile.MapQuantCatalog {
 	path := os.Getenv("V2D_BOUNDS")
 	if path == "" {
 		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
 	}
-	cat, err := grammar.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}

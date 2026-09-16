@@ -22,8 +22,8 @@ type vitfCtx struct {
 	dir     string
 	origine uint64
 	art     *vitfArt
-	cat     *MapQuantCatalog
-	entree  *MapQuantEntry
+	cat     *profile.MapQuantCatalog
+	entree  *profile.MapQuantEntry
 	nom     string
 	lay     profile.I0Layout
 }
@@ -43,7 +43,7 @@ func vitfSetup(t *testing.T, dir string) *vitfCtx {
 	if catPath == "" {
 		t.Fatalf("%s absent : les bornes de déquantification viennent du catalogue de production (map_quant_bounds.json), jamais du champ bounds de l'artefact (cadrage d'affichage)", vitfCatalogueEnv)
 	}
-	ctx.cat, err = LoadMapQuantCatalog(catPath)
+	ctx.cat, err = profile.LoadMapQuantCatalog(catPath)
 	if err != nil {
 		t.Fatalf("%s : %v", vitfCatalogueEnv, err)
 	}
@@ -52,7 +52,7 @@ func vitfSetup(t *testing.T, dir string) *vitfCtx {
 		if err != nil {
 			t.Fatalf("%s=%q : %v", vitfCarteEnv, nom, err)
 		}
-		ctx.entree, ctx.nom = &e, NormalizeMapName(nom)
+		ctx.entree, ctx.nom = &e, profile.NormalizeMapName(nom)
 		t.Logf("== CARTE (donnée) : %s · bornes %v -> %v · largeurs %v ==", ctx.nom, e.Min, e.Max, e.AxisWidths)
 	}
 	ctx.art = vitfChargerArtefact(t)
@@ -246,7 +246,7 @@ func vitfChoisirEntree(t *testing.T, ctx *vitfCtx, qs []BipedPosition, g vitfGro
 	t.Helper()
 	type cand struct {
 		nom   string
-		e     MapQuantEntry
+		e     profile.MapQuantEntry
 		score float64
 		n     int
 	}

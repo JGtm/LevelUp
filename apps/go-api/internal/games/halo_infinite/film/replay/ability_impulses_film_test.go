@@ -42,7 +42,6 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
@@ -222,7 +221,7 @@ func p3FilmClockOffsetMS(t *testing.T, doc ReplayDocument) int64 {
 // les portent (la même clé que les instruments R8/R9). Le corps est partagé avec le test
 // d'acceptation du lot P5 (`mapEntryFromCatalog`) : deux résolutions divergeraient au
 // premier changement de catalogue.
-func p3MapEntry(t *testing.T, dir string) grammar.MapQuantEntry {
+func p3MapEntry(t *testing.T, dir string) profile.MapQuantEntry {
 	t.Helper()
 	path := os.Getenv(p3BoundsEnv)
 	if path == "" {
@@ -233,9 +232,9 @@ func p3MapEntry(t *testing.T, dir string) grammar.MapQuantEntry {
 
 // mapEntryFromCatalog est le corps de la résolution : les largeurs d'axe lues dans le film
 // contre le catalogue versionné.
-func mapEntryFromCatalog(t *testing.T, dir, path string) grammar.MapQuantEntry {
+func mapEntryFromCatalog(t *testing.T, dir, path string) profile.MapQuantEntry {
 	t.Helper()
-	cat, err := grammar.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}
@@ -244,7 +243,7 @@ func mapEntryFromCatalog(t *testing.T, dir, path string) grammar.MapQuantEntry {
 		t.Fatalf("decoupage i0 illisible dans %s : %v", dir, err)
 	}
 	var names []string
-	var got []grammar.MapQuantEntry
+	var got []profile.MapQuantEntry
 	for name, e := range cat.Maps {
 		if e.AxisWidths != lay.AxisW || e.Region != lay.Region {
 			continue
@@ -264,7 +263,7 @@ func mapEntryFromCatalog(t *testing.T, dir, path string) grammar.MapQuantEntry {
 	return got[0]
 }
 
-func p3hasRange(all []grammar.MapQuantEntry, r profile.Vec3Range) bool {
+func p3hasRange(all []profile.MapQuantEntry, r profile.Vec3Range) bool {
 	for _, x := range all {
 		if x.Range() == r {
 			return true

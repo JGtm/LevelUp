@@ -105,7 +105,7 @@ func TestPorteWorldObjectResteTroisBitsQuandLIndexEnFaitUn(t *testing.T) {
 // TestSetWorldObjectPrecisionInstalleLaRegion : la région attendue vient du CATALOGUE, par le
 // même chemin que les largeurs d'axe — jamais d'un second réglage à armer à part.
 func TestSetWorldObjectPrecisionInstalleLaRegion(t *testing.T) {
-	e := MapQuantEntry{
+	e := profile.MapQuantEntry{
 		Module:          "sgh_interlock",
 		AxisWidths:      [3]uint{12, 12, 11},
 		Region:          1,

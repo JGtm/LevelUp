@@ -184,7 +184,7 @@ const (
 // 22 reglages morts, et c est la valeur que la production decode.
 const absDequantMode = AbsDequantRange
 
-// `MovementProfile.AbsoluteAxisW`, si > 0, OVERRIDE la largeur d'axe des CHEMINS ABSOLUS i0 (consumeAbsoluteWithGate
+// `profile.MovementProfile.AbsoluteAxisW`, si > 0, OVERRIDE la largeur d'axe des CHEMINS ABSOLUS i0 (consumeAbsoluteWithGate
 // + predFlag==1) — distincte de pd.AxisW (qui garde 6/6/6 pour le default-state et le delta
 // axis-width). La capture CE mesure 3×14 sur predFlag==1 (total i0 predicted = 47 bits). 0 =
 // utilise pd.AxisW[i] (comportement historique). Changer cette largeur CHANGE la consommation de

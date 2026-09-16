@@ -28,6 +28,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"sort"
 )
@@ -60,11 +61,11 @@ type hitPosSample struct {
 //
 // UNE ENTREE SANS DECOUPAGE EXPLOITABLE EST UNE ERREUR TYPEE (D-4), pas un repli silencieux sur
 // la detection : sans largeurs d axe, aucune coordonnee monde ne peut etre produite juste.
-func BuildBipedTracks(dir string, entry MapQuantEntry, n int) (map[uint32][]hitPosSample, error) {
+func BuildBipedTracks(dir string, entry profile.MapQuantEntry, n int) (map[uint32][]hitPosSample, error) {
 	lay := entry.Layout()
 	if !lay.Valid() {
 		return nil, fmt.Errorf("%w (film %s) : l entree de catalogue ne porte pas de decoupage d axe exploitable",
-			ErrUnknownMapBounds, dir)
+			profile.ErrUnknownMapBounds, dir)
 	}
 	wr := entry.Range()
 	opt := DefaultScanFilmOptions()
@@ -142,7 +143,7 @@ func NewWeaponHitDistanceFunc(tracks map[uint32][]hitPosSample, base int) Weapon
 // la WeaponHitDistanceFunc prete a injecter, plus la base retenue. Une entree de catalogue sans
 // decoupage exploitable rend (nil, 0, err) : l appelant traite l absence de distance comme un cas
 // normal (hits comptes sans distance), il ne fait pas echouer la passe.
-func FilmWeaponHitDistance(dir string, entry MapQuantEntry, damages []WeaponDamage, n int) (WeaponHitDistanceFunc, int, error) {
+func FilmWeaponHitDistance(dir string, entry profile.MapQuantEntry, damages []WeaponDamage, n int) (WeaponHitDistanceFunc, int, error) {
 	tracks, err := BuildBipedTracks(dir, entry, n)
 	if err != nil {
 		return nil, 0, err

@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // f1Change est UNE pose dont l'origine bascule.
@@ -97,7 +98,7 @@ func TestF1OrigineAvantApres(t *testing.T) {
 
 // f1PosesEtPositions rend les poses de production du film et le nuage TRIE des bipedes — les
 // deux entrees exactes de `buildEquipmentPlacements`.
-func f1PosesEtPositions(t *testing.T, dir string, e *grammar.MapQuantEntry) (
+func f1PosesEtPositions(t *testing.T, dir string, e *profile.MapQuantEntry) (
 	[]grammar.EquipmentPlacement, []grammar.BipedPosition, bool) {
 	t.Helper()
 	pos, ok := f1Positions(t, dir, *e)

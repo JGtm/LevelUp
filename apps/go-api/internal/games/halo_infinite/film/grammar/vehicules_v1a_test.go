@@ -228,7 +228,7 @@ func v1aBornesTemoin(t *testing.T) (profile.Vec3Range, bool) {
 			v1aBornesEnv, v1aCarteEnv)
 		return profile.Vec3Range{}, false
 	}
-	cat, err := LoadMapQuantCatalog(chemin)
+	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

@@ -26,7 +26,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/himap"
 )
 
@@ -262,27 +262,27 @@ func avertitSiEcarte(name, mod string, q himap.BSP, candidats []himap.BSP) {
 // `ds/globals` (module sans sbsp, région jouée déclarée). La largeur de l'index d'i0 est
 // ceilLog2(nb de régions), jamais moins de 1 — la loi du moteur (himap.BSPQuantification,
 // i0RegionIndexBits).
-func entreeRegionExterne(name, mod, modulePath, levels string, region uint32) (grammar.MapQuantEntry, error) {
+func entreeRegionExterne(name, mod, modulePath, levels string, region uint32) (profile.MapQuantEntry, error) {
 	globals, err := filepath.Glob(filepath.Join(levels, "..", "..", "globals", "*.module"))
 	if err != nil || len(globals) == 0 {
-		return grammar.MapQuantEntry{}, fmt.Errorf("globals introuvables sous %s (%w)", levels, err)
+		return profile.MapQuantEntry{}, fmt.Errorf("globals introuvables sous %s (%w)", levels, err)
 	}
 	regions, err := himap.RegionsBSPExternes(modulePath, globals)
 	if err != nil {
-		return grammar.MapQuantEntry{}, err
+		return profile.MapQuantEntry{}, err
 	}
 	if int(region) >= len(regions) {
-		return grammar.MapQuantEntry{}, fmt.Errorf("région déclarée %d hors des %d régions résolues", region, len(regions))
+		return profile.MapQuantEntry{}, fmt.Errorf("région déclarée %d hors des %d régions résolues", region, len(regions))
 	}
 	b := regions[region].BSP
 	if !b.Bounds.Valid() {
-		return grammar.MapQuantEntry{}, fmt.Errorf("AABB dégénérée (région %d)", region)
+		return profile.MapQuantEntry{}, fmt.Errorf("AABB dégénérée (région %d)", region)
 	}
 	bits := uint(1)
 	for (1 << bits) < len(regions) {
 		bits++
 	}
-	e := grammar.MapQuantEntry{Module: mod, Region: region, RegionIndexBits: bits}
+	e := profile.MapQuantEntry{Module: mod, Region: region, RegionIndexBits: bits}
 	w := b.Bounds.AxisWidths()
 	for ax := 0; ax < 3; ax++ {
 		e.Min[ax] = float32(b.Bounds.Min[ax])
@@ -353,10 +353,10 @@ func main() {
 		outPath = title.NewPathResolver(root).MapQuantBoundsPath(*titleSlug)
 	}
 
-	cat := grammar.MapQuantCatalog{
-		SchemaVersion: grammar.MapQuantSchemaVersion,
+	cat := profile.MapQuantCatalog{
+		SchemaVersion: profile.MapQuantSchemaVersion,
 		Source:        sourceDuCatalogue(*levels),
-		Maps:          map[string]grammar.MapQuantEntry{},
+		Maps:          map[string]profile.MapQuantEntry{},
 	}
 	names := make([]string, 0, len(mapModule))
 	for n := range mapModule {
@@ -391,7 +391,7 @@ func main() {
 				missing++
 				continue
 			}
-			cat.Maps[grammar.NormalizeMapName(name)] = e
+			cat.Maps[profile.NormalizeMapName(name)] = e
 			continue
 		}
 		if !q.Bounds.Valid() {
@@ -400,14 +400,14 @@ func main() {
 			continue
 		}
 		avertitSiEcarte(name, mod, q, candidats)
-		e := grammar.MapQuantEntry{Module: mod}
+		e := profile.MapQuantEntry{Module: mod}
 		w := q.Bounds.AxisWidths()
 		for ax := 0; ax < 3; ax++ {
 			e.Min[ax] = float32(q.Bounds.Min[ax])
 			e.Max[ax] = float32(q.Bounds.Max[ax])
 			e.AxisWidths[ax] = uint(w[ax])
 		}
-		cat.Maps[grammar.NormalizeMapName(name)] = e
+		cat.Maps[profile.NormalizeMapName(name)] = e
 		slog.Info("bornes lues", "carte", name, "module", mod,
 			"W", fmt.Sprintf("%d/%d/%d", w[0], w[1], w[2]),
 			"extent", fmt.Sprintf("%.3f/%.3f/%.3f", q.Bounds.Extent(0), q.Bounds.Extent(1), q.Bounds.Extent(2)))

@@ -6,6 +6,7 @@ package grammar
 // transloc_positions_film_test.go) et par la validation R6 (18/18 sur 5 films).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"testing"
 )
@@ -38,7 +39,7 @@ const (
 
 // translocVecBits rend la largeur d'un vecteur quantifié sous la porte de région : la porte,
 // l'index de région, puis les trois axes de la carte.
-func translocVecBits(e MapQuantEntry) int {
+func translocVecBits(e profile.MapQuantEntry) int {
 	n := 1 + int(e.EffectiveRegionIndexBits())
 	for ax := 0; ax < 3; ax++ {
 		n += int(e.AxisWidths[ax])
@@ -74,8 +75,8 @@ func translocPacket(idx uint32) []byte {
 // LA MAIN : 10 bits par axe sur [0, 1024] donnent un pas de 1 m, donc une position de
 // q + 0,5 exactement (déquantification à mi-quantum). Aucun chiffre du corpus ici : ce test
 // verrouille l'ORDRE DES CHAMPS, pas la loi de quantification (map_quant_control_test.go).
-func translocTestEntry() MapQuantEntry {
-	return MapQuantEntry{
+func translocTestEntry() profile.MapQuantEntry {
+	return profile.MapQuantEntry{
 		Module:     "essai",
 		Min:        [3]float32{0, 0, 0},
 		Max:        [3]float32{1024, 1024, 1024},
@@ -85,7 +86,7 @@ func translocTestEntry() MapQuantEntry {
 
 // translocJumpPacket fabrique un paquet 117 COMPLET : en-tête, mot d'effet gardé, puis les
 // deux positions quantifiées sous la porte de région (bit à 0 — la porte INVERSÉE).
-func translocJumpPacket(idx uint32, e MapQuantEntry, region uint64, qa, qb [3]uint32) []byte {
+func translocJumpPacket(idx uint32, e profile.MapQuantEntry, region uint64, qa, qb [3]uint32) []byte {
 	w := translocHead(idx)
 	w.put(1, 0) // porte de ref1
 	w.put(1, 0) // porte de ref2
@@ -207,7 +208,7 @@ func TestDecodeTranslocJumpDegradation(t *testing.T) {
 		}
 	})
 	t.Run("entree sans largeurs", func(t *testing.T) {
-		vide := MapQuantEntry{Min: e.Min, Max: e.Max}
+		vide := profile.MapQuantEntry{Min: e.Min, Max: e.Max}
 		if ev, _ := decodeTranslocHead(pay, 0, &vide); ev.HasPositions {
 			t.Fatalf("une entrée sans largeurs d'axe a rendu des positions : %+v", ev)
 		}

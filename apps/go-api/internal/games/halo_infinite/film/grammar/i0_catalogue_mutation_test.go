@@ -5,7 +5,7 @@ package grammar
 // # CE QUE CE FICHIER TIENT
 //
 // Le découpage d'i0 est une DONNÉE DE PROFIL (D-3 d'ADR 0034) : il vient du catalogue de carte
-// (`MapQuantEntry.Layout`), jamais d'une mesure sur le film. Un test de non-régression qui se
+// (`profile.MapQuantEntry.Layout`), jamais d'une mesure sur le film. Un test de non-régression qui se
 // contenterait de compter des positions ne dirait PAS d'où vient le découpage : tant que
 // l'auto-détection décide, fausser le catalogue ne change rien et le vert ne prouve rien.
 //
@@ -84,9 +84,9 @@ func (r recordBipedSynthetique) ecrire(w *bitWriter) {
 var decoupageDeReferenceLiveFire = profile.I0Layout{GateBits: 6, AxisW: [3]uint{12, 12, 11}, Region: 1}
 
 // liveFireEntry rend l'entrée de catalogue de Live Fire, LUE DANS LE CATALOGUE VERSIONNÉ.
-func liveFireEntry(t *testing.T) MapQuantEntry {
+func liveFireEntry(t *testing.T) profile.MapQuantEntry {
 	t.Helper()
-	cat, err := LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -198,16 +198,16 @@ func TestI0CatalogueMutationDUnBitFaitRougir(t *testing.T) {
 
 	for _, cas := range []struct {
 		nom    string
-		muter  func(*MapQuantEntry)
+		muter  func(*profile.MapQuantEntry)
 		raison string
 	}{
-		{"axisWidths X decale d'un bit", func(m *MapQuantEntry) { m.AxisWidths[0]++ },
+		{"axisWidths X decale d'un bit", func(m *profile.MapQuantEntry) { m.AxisWidths[0]++ },
 			"un bit de plus sur X double le pas de quantification et decale les deux autres axes"},
-		{"axisWidths Z decale d'un bit", func(m *MapQuantEntry) { m.AxisWidths[2]-- },
+		{"axisWidths Z decale d'un bit", func(m *profile.MapQuantEntry) { m.AxisWidths[2]-- },
 			"la longueur totale d'i0 change : la marche n'avance plus au meme endroit"},
-		{"regionIndexBits rabaissee a 1", func(m *MapQuantEntry) { m.RegionIndexBits = 1 },
+		{"regionIndexBits rabaissee a 1", func(m *profile.MapQuantEntry) { m.RegionIndexBits = 1 },
 			"la porte de region ne teste plus qu'un bit : elle laisse passer une autre region"},
-		{"region attendue remise a 0", func(m *MapQuantEntry) { m.Region = 0 },
+		{"region attendue remise a 0", func(m *profile.MapQuantEntry) { m.Region = 0 },
 			"la porte attend la region 0 : elle ecarte l'arene et garde ce qui n'en est pas"},
 	} {
 		mute := e

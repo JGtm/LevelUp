@@ -51,6 +51,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/observability"
 )
@@ -142,7 +143,7 @@ func lireTableDeChunk0(chunk0 []byte, matchID string) FilmPlayerTable {
 	}
 	slots, rep, err := grammar.ReadPlayerTable(chunk0, ident)
 	if err != nil {
-		if errors.Is(err, grammar.ErrUnknownBuild) {
+		if errors.Is(err, profile.ErrUnknownBuild) {
 			// D-4 : le film est mis de cote AVEC son compteur, pour que le refus se voie en
 			// production et non seulement dans le journal du jour de la cuisson.
 			publierBuildInconnu(ident.Build)
@@ -186,7 +187,7 @@ func causeIdentite(err error) FilmTableRefusal {
 // causeTable traduit l'erreur de [grammar.ReadPlayerTable] en cause nommee.
 func causeTable(err error) FilmTableRefusal {
 	switch {
-	case errors.Is(err, grammar.ErrUnknownBuild):
+	case errors.Is(err, profile.ErrUnknownBuild):
 		return FilmTableUnknownBuild
 	case errors.Is(err, grammar.ErrPlayerTableNotFound):
 		return FilmTableNotFound

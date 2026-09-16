@@ -72,7 +72,7 @@ func TestBancBitProjectile(t *testing.T) {
 	if parc == "" || len(films) == 0 {
 		t.Skipf("banc désactivé : %s et %s requis", bitProjParcEnv, bitProjFilmsEnv)
 	}
-	cat, err := LoadMapQuantCatalog(filepath.Join(
+	cat, err := profile.LoadMapQuantCatalog(filepath.Join(
 		parc, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
@@ -102,7 +102,7 @@ func bitProjDetail() int {
 }
 
 // bitProjMesureFilm cuit un film sous DEUX portes et publie le verdict chiffré.
-func bitProjMesureFilm(t *testing.T, parc string, cat *MapQuantCatalog, f bitProjFilm) {
+func bitProjMesureFilm(t *testing.T, parc string, cat *profile.MapQuantCatalog, f bitProjFilm) {
 	t.Helper()
 	entry, err := cat.Lookup(f.carte)
 	if err != nil {
@@ -262,7 +262,7 @@ func bitProjPart(ps []bpPas) float64 {
 
 // bitProjDetaille publie, pour les premiers pas impossibles de la lecture de PRODUCTION, les
 // quanta bruts des deux points et le bit qui les sépare. C'est la pièce de la preuve.
-func bitProjDetaille(t *testing.T, e MapQuantEntry, prod []bpEchantillon, porteAncienne, porteCat int) {
+func bitProjDetaille(t *testing.T, e profile.MapQuantEntry, prod []bpEchantillon, porteAncienne, porteCat int) {
 	t.Helper()
 	ps := bitProjPas(prod)
 	sort.Slice(ps, func(i, j int) bool {
