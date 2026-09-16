@@ -716,6 +716,7 @@ from the JSON alone, as a clean witness.
 | `--allow-missing` | `false` | tolerate an ABSENT witness (warning only) instead of exiting 4 |
 | `--manifest` | `<source-root>/config/replay_corpus.toml` | manifest path |
 | `--temoins` | (none) | replay ONLY the named witnesses (comma-separated ids) — the versioned manifest stays the corpus, no reduced manifest to write. An unknown id is an error (exit 2), never a silently truncated run. |
+| `--mem-gib` | `4` | soft memory ceiling (GiB) armed on EVERY child bake, HEAD and base alike (`0` disarms). The gate default sits ABOVE production's `filmproc.DefaultLimitGiB` = 3 on purpose (D6): two BTB witnesses were measured at 3.779 and 3.807 GiB on the base side, i.e. just over the 3.75 GiB hard limit, and were failing at random from one run to the next. |
 | `--source-root` | `git rev-parse --show-toplevel` | repo whose HEAD code/config is under test — **not** `db_profiles.json`-based: works from any worktree, including one without a local copy of that file |
 | `--parc-root` | `source-root` if it already carries the title's shared DB, else auto-detected via the common `.git` | the dev parc (film chunks, `--reference=parc` artifacts) |
 | `--lock-root` | `CacheRootDir()` of the parc | where the shared decode lock lives |

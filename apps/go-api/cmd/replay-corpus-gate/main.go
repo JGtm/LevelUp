@@ -114,6 +114,9 @@ func main() {
 	keepWork := flag.Bool("keep-work", false, "conserver la racine de travail apres l'execution (debug)")
 	sortieJSON := flag.String("json", "", "fichier ou ecrire le rapport JSON complet (vide = aucun)")
 	allowMissing := flag.Bool("allow-missing", false, "tolerer un temoin ABSENT (avertissement seul, code 0 possible) au lieu de refuser la couverture incomplete (code 4, defaut)")
+	memGiB := flag.Int("mem-gib", plafondMemoireGate,
+		"plafond memoire souple (Gio) arme sur CHAQUE cuisson enfant, HEAD et base (0 = desarme) ; le "+
+			"defaut du gate depasse celui de production, deux temoins BTB etant mesures a 3,8 Gio (D6)")
 	temoinsFlag := flag.String("temoins", "", "rejouer les SEULS temoins nommes (ids separes par des virgules) — le manifeste versionne reste le corpus, aucun manifeste reduit a ecrire ; un id inconnu est une erreur")
 	flag.Parse()
 
@@ -121,7 +124,7 @@ func main() {
 		Reference: *reference, Base: *baseFlag, Strict: *strict, AllowMissing: *allowMissing,
 		ManifestPath: *manifestPath, ParcRootFlag: *parcRootFlag, LockRootFlag: *lockRootFlag,
 		SourceRootFlag: *sourceRootFlag, WorkRootFlag: *workRootFlag, KeepWork: *keepWork,
-		SortieJSON: *sortieJSON, Temoins: *temoinsFlag,
+		SortieJSON: *sortieJSON, Temoins: *temoinsFlag, MemGiB: *memGiB,
 	}
 
 	// signal.NotifyContext, PAS un handler qui appellerait os.Exit lui-meme : ce gate dure 13 a
@@ -148,6 +151,8 @@ type executerOptions struct {
 	// Temoins : la valeur brute de --temoins (ids separes par des virgules, vide = tout le
 	// manifeste). Decoupee par NomsDemandes, appliquee par FiltrerTemoins.
 	Temoins string
+	// MemGiB : le plafond souple arme sur chaque cuisson enfant (--mem-gib).
+	MemGiB int
 }
 
 // environnementGate regroupe la resolution des racines et du manifeste — un struct plutot
@@ -193,6 +198,7 @@ func executer(ctx context.Context, o executerOptions) (int, error) {
 	tc := temoinContexte{
 		ParcRoot: env.ParcRoot, WorkRoot: workRoot, BinHead: binHead,
 		LockRoot: env.LockRoot, TitleSlug: env.TitleSlug, Reference: o.Reference,
+		MemGiB: o.MemGiB,
 	}
 	refLabel := referenceParc
 	if o.Reference == referenceBase {
