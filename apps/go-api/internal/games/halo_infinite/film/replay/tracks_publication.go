@@ -125,40 +125,8 @@ func decimateTracks(sorted []filmdec.BipedPosition, in decoupeDesTraces) ([]Trac
 			continue
 		}
 		a.lastFrame = frame
-		pt := Point{T: frame, X: round2(p.X), Y: round2(p.Y), Z: round2(p.Z), G: a.lacuneMS}
+		pt := pointPublie(p, frame, a.lacuneMS, in.scoped)
 		a.lacuneMS = 0
-		if h, ok := p.AimHeadingDeg(); ok { // cap de visée du MÊME record (i21), si répliqué
-			pt.H = headingForJSON(h)
-		}
-		// ÉLÉVATION du MÊME record et du MÊME composant que le cap (le R(11) qui suit le
-		// R(12) d'i21) : les deux angles arrivent ensemble ou pas du tout, `AimPitchDeg`
-		// partageant la validité `HasYaw` avec `AimHeadingDeg`. Publier l'un sans l'autre
-		// n'a donc aucun sens — et l'absence de `p` sur un point qui porte `h` dit « à
-		// plat », pas « inconnu » (cf. Point.P).
-		if pitch, ok := p.AimPitchDeg(); ok {
-			pt.P = pitchForJSON(pitch)
-		}
-		// LUNETTE : etat a bascule, d'une AUTRE source que les deux angles ci-dessus — on le
-		// consulte a l'instant du point au lieu de le lire dedans (cf. Point.S, zoom_state.go).
-		if in.scoped != nil {
-			pt.S = in.scoped(p.Slot, p.TimestampUS)
-		}
-		// Vitalité du MÊME record que la position (i4 / i5). La décimation garde le PREMIER
-		// échantillon de chaque frame : si deux records du même slot tombent dans la même
-		// frame de 100 ms et que seul le second porte le bouclier, il est perdu. Cela
-		// n'invente rien — c'est une perte, pas une erreur — et le témoin publié est mesuré
-		// sur les positions NON décimées.
-		// Témoin : P(bouclier nul | 500 ms avant une mort connue) = 50,49 % contre 38,18 %
-		// chez un vivant à plus de 5 s d'une mort, soit un rapport de 1,32x — FAIBLE, et
-		// c'est normal : le film ne réplique le bouclier que lorsqu'il CHANGE, donc une
-		// mesure de bouclier est déjà une mesure de combat. Ce qui porte le rendu est le
-		// témoin de FORME (27 404/27 404 quanta dans [0,64]), pas ce rapport.
-		if sh, ok := p.ShieldAt(); ok {
-			pt.Sh = fractionForJSON(sh)
-		}
-		if hp, ok := p.HealthAt(); ok {
-			pt.Hp = fractionForJSON(hp)
-		}
 		a.pts = append(a.pts, pt)
 	}
 	tracks := make([]Track, 0, len(order))
@@ -351,4 +319,50 @@ func logTrackCoverage(matchID string, c TrackCoverage) {
 	slog.Info("rejeu : vies refusees par le seuil de publication",
 		"match_id", matchID, "vies", c.RefusedMinPoints, "points", c.RefusedPoints,
 		"seuil", c.MinPoints, "viesPubliees", c.Published)
+}
+
+// pointPublie compose le point d'une frame : la position arrondie, la lacune que ce point
+// PORTE (cf. Point.G), et les quatre grandeurs du MEME record que la position quand elles y
+// sont — cap de visee, elevation, bouclier, vitalite — plus la lunette, qui vient d'ailleurs.
+//
+// EXTRAIT DE `decimateTracks` (lot 2.7 volet publication, 2026-09-16), qui passait 80 lignes.
+// Aucune condition n'a change : la fonction est le bloc de composition du point, mot pour mot,
+// et `scoped` y entre parce que c'est la SEULE des cinq grandeurs qui ne vienne pas de `p`.
+func pointPublie(p filmdec.BipedPosition, frame, lacuneMS int,
+	scoped func(slot uint32, tsUS uint64) int,
+) Point {
+	pt := Point{T: frame, X: round2(p.X), Y: round2(p.Y), Z: round2(p.Z), G: lacuneMS}
+	if h, ok := p.AimHeadingDeg(); ok { // cap de visée du MÊME record (i21), si répliqué
+		pt.H = headingForJSON(h)
+	}
+	// ÉLÉVATION du MÊME record et du MÊME composant que le cap (le R(11) qui suit le
+	// R(12) d'i21) : les deux angles arrivent ensemble ou pas du tout, `AimPitchDeg`
+	// partageant la validité `HasYaw` avec `AimHeadingDeg`. Publier l'un sans l'autre
+	// n'a donc aucun sens — et l'absence de `p` sur un point qui porte `h` dit « à
+	// plat », pas « inconnu » (cf. Point.P).
+	if pitch, ok := p.AimPitchDeg(); ok {
+		pt.P = pitchForJSON(pitch)
+	}
+	// LUNETTE : etat a bascule, d'une AUTRE source que les deux angles ci-dessus — on le
+	// consulte a l'instant du point au lieu de le lire dedans (cf. Point.S, zoom_state.go).
+	if scoped != nil {
+		pt.S = scoped(p.Slot, p.TimestampUS)
+	}
+	// Vitalité du MÊME record que la position (i4 / i5). La décimation garde le PREMIER
+	// échantillon de chaque frame : si deux records du même slot tombent dans la même
+	// frame de 100 ms et que seul le second porte le bouclier, il est perdu. Cela
+	// n'invente rien — c'est une perte, pas une erreur — et le témoin publié est mesuré
+	// sur les positions NON décimées.
+	// Témoin : P(bouclier nul | 500 ms avant une mort connue) = 50,49 % contre 38,18 %
+	// chez un vivant à plus de 5 s d'une mort, soit un rapport de 1,32x — FAIBLE, et
+	// c'est normal : le film ne réplique le bouclier que lorsqu'il CHANGE, donc une
+	// mesure de bouclier est déjà une mesure de combat. Ce qui porte le rendu est le
+	// témoin de FORME (27 404/27 404 quanta dans [0,64]), pas ce rapport.
+	if sh, ok := p.ShieldAt(); ok {
+		pt.Sh = fractionForJSON(sh)
+	}
+	if hp, ok := p.HealthAt(); ok {
+		pt.Hp = fractionForJSON(hp)
+	}
+	return pt
 }
