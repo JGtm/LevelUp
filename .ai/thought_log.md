@@ -1,3 +1,30 @@
+## [2026-09-17] Chantier decodeur — preparation 3.6 par WORKFLOW ultracode : 53 grammaires relevees par six lecteurs Ghidra en parallele, 169 elements re-derives par six sceptiques, 2 discordances tranchees — Complete (intégration d432a4913)
+
+**Decision technique principale.** Premier usage du mode ultracode sur le chantier : un script
+deterministe (sonde de concurrence du pont Ghidra -> six lecteurs par groupe de composants, une note
+par lecteur -> un sceptique par note qui re-derive trois grammaires SANS lire la note d abord -> une
+synthese qui tranche les discordances et commet une fois). Frontiere de fichiers : notes
+`.ai/V7.5/film_re/` et plan seulement, Ghidra en lecture seule, aucun decodage de film. Le pont HTTP
+Ghidra supporte la lecture concurrente (deux decompilations en ~280 ms chacune ; 12 agents l ont
+sollicite en parallele sans erreur).
+
+**Resultats observes.** 15 agents, 0 erreur, 50 min, ~2,9 M jetons. 53 grammaires (43 a porter ou
+partielles + 10 recontroles) ; ti=12 : les 26 composants couverts, les 8 instances
+`visual-state-groups` resolues (descripteur commun `0x143d081b0`, lecteur `FUN_140dbe1bc`) ; ti=35 :
+les 4 partiels releves (`i63` garde des corps d etiquette non elucides, nommes) ; ti=43 : 12 / 22
+grammaires (les 11 restantes sont nommees, decompile sans film) ; ti=40 : rien sans preuve sur film
+(bloquant vide au golden) ; ti=42 : negatif mesure, pas un port. Verification : 169 elements, 167
+concordants, 2 discordances (formule `b7 = 1` sur ti=43 i19-i21 ; enumeration du bloc lourd de
+ti=43 i11), les deux tranchees en corrigeant la note. Le plan disait 52 composants pour ti=35 : 64.
+`NOTE_3_6_SYNTHESE_2026-09-17.md` : table par archetype, ce que chaque port demandera (3.6.a-e),
+ordre conseille, non-elucides nommes avec ce qui les leve ; 3.6.0 dimensionne au plan.
+
+**Prochaine etape.** Les ports 3.6.a-e sont des lots M3 (apres M2) : ils deviennent un report de
+grammaires deja relevees. Reste a relever sans film : ti=43 i30-i40, ti=9 i9, les corps d etiquette de
+ti=35 i63 ; ti=40 attend une preuve sur film.
+
+---
+
 ## [2026-09-17] Chantier decodeur — lot 2.2 (M2, pas 2 : les lecteurs recoivent le profil) FUSIONNE ; V14 (D4 = zero difference de CONTENU) ; lots paralleles 2.8, 2.9, 3.1-donnees, preparation M3 fusionnes ; ultracode active — Complete (intégration 39190ae2f + refs)
 
 **Decision technique principale.** V14 : l equivalence hache aussi la FORME des structures observees
