@@ -21,7 +21,7 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 	maxMatches := fs.Int("max-matches", 25, "Nombre max de nouveaux matchs à insérer")
 	matchType := fs.String("match-type", "matchmaking", "Type de match: all|matchmaking|custom|local")
 	rps := fs.Int("rps", 1, "Nombre max de requêtes API par seconde")
-	tokenPoolSize := fs.Int("token-pool-size", 0, "Taille du pool de tokens (0=auto-detect, 1=désactiver)")
+	tokenPoolSize := fs.Int("token-pool-size", 0, "Nombre maximal de slots SAINS du pool de tokens (0=tous les jetons sains du parc)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func runSyncFull(cfg *config.AppConfig, args []string) error {
 	maxMatches := fs.Int("max-matches", 150, "Nombre de matchs API à parcourir (défaut 150 = 6 pages)")
 	matchType := fs.String("match-type", "matchmaking", "Type de match: all|matchmaking|custom|local")
 	rps := fs.Int("rps", 1, "Nombre max de requêtes API par seconde")
-	tokenPoolSize := fs.Int("token-pool-size", 0, "Taille du pool de tokens (0=auto-detect)")
+	tokenPoolSize := fs.Int("token-pool-size", 0, "Nombre maximal de slots SAINS du pool de tokens (0=tous les jetons sains du parc)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
