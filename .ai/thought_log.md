@@ -1,3 +1,36 @@
+## [2026-09-17] Chantier decodeur — lot 2.7 (M2, pas 7 : scission des fichiers > 500 L) FUSIONNE en deux volets paralleles, gate groupe a zero difference — Complete (intégration c6305127b)
+
+**Decision technique principale.** Le lot 2.7 a ete execute par DEUX executeurs en parallele avec une
+frontiere de fichiers ecrite : 2.7g (grammaire : `filmdec/` + `sync/killcollector/`, ratchet de taille,
+benchstat) et 2.7p (publication : paquet `replay`, `BuildFromPositions` 474 L -> 14 passes sur un
+assemblage prive, plus aucune fonction > 80 L). UN SEUL gate de decodage a la fin, sur la tete fusionnee,
+base = la tete d avant la premiere fusion (chemin critique : pas de gate par fusion quand un gate
+groupe protege la meme chose). Les executeurs renumerotent eux-memes leur `GrammarRev` au rang de
+fusion dans leur worktree avant que je fusionne (2.1 -> .18, 2.7g -> .19), en gardant leur entree de
+chronique integrale.
+
+**Resultats observes.** Equivalence 20/20 identiques ; corpus gate 14/14 a 0 / 0 / 0, schema 60,
+aucun temoin absent. A la fusion, trois rouges attendus et servis : (1) `collector.go` scinde par
+2.7g alors que le lot 1.9.7 y avait ajoute 41 lignes -> portees dans `collector_metrics.go` ;
+(2) le ratchet de taille fige sur la base du lot a rougi sur 11 fichiers grossis cote integration
+(vague 2, schema 60) -> plafonds re-mesures a la date d entree du ratchet dans l integration,
+commentaire date ; puis six fichiers `replay` sortis de la table a la fusion 2.7p ; (3) deux `unparam`
+sortis de la baseline lint par la scission -> `//nolint` dates (le lot 2.2 porte ces largeurs au
+profil), ce qui a fait bouger l empreinte de `filmdec/` -> GrammarRev .20 avec son entree. Deux
+erreurs de pilotage consignees en memoire : un commit de fusion parti avec un test rouge (sortie
+filtree par un grep trop etroit, commit non conditionne au verdict du paquet) et un golden abime par
+un `sed i\` mal adresse (restaure depuis git). CI verte au niveau job sur c6305127b ; les trois
+commits intermediaires (1ab915cfd, 8d05aa6b7, e2b389c07) ont une CI rouge, chacun corrige par le
+suivant. Decouvertes des executeurs au §4 : `funlen` ignore les commentaires (le seuil 80 L n est
+garde par aucun instrument), le registre des replis epingle le nom de fichier des sites (2.5),
+`ecs_table.tsv` aux trois quarts faux avant le lot, `replayClock{...}` ecrit 10 fois.
+Worktrees 21 / 27g / 27p retires (jonctions deliees et verifiees d abord, cache 1 386 / 1 386).
+
+**Prochaine etape.** Lot 2.2 en cours (six familles, rang de fusion .21) ; tranche 2 du backlog
+killsource pendant que la voie est libre ; puis 2.3 a 2.6 et la cloture M2.
+
+---
+
 ## [2026-09-17] Chantier decodeur — lot 2.1 (M2, pas 1 : le profil resolu une fois) FUSIONNE a zero difference — Complete (intégration 1f7e48652)
 
 **Decision technique principale.** Fusion manuelle (pas le script) pour conserver l entree de
