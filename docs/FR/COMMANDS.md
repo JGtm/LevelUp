@@ -747,6 +747,7 @@ jour) :
 | `--allow-missing` | `false` | tolérer un témoin ABSENT (avertissement seul) au lieu de sortir en code 4 |
 | `--manifest` | `<source-root>/config/replay_corpus.toml` | chemin du manifeste |
 | `--temoins` | (aucun) | rejouer les SEULS témoins nommés (ids séparés par des virgules) — le manifeste versionné reste le corpus, aucun manifeste réduit à écrire. Un id inconnu est une erreur (code 2), jamais une exécution tronquée en silence. |
+| `--mem-gib` | `4` | plafond mémoire souple (Gio) armé sur CHAQUE cuisson enfant, HEAD et base (`0` désarme). Le défaut du gate est volontairement AU-DESSUS de celui de production (`filmproc.DefaultLimitGiB` = 3) : D6 a mesuré deux témoins BTB à 3,779 et 3,807 Gio côté base, soit juste au-dessus du plafond dur de 3,75 Gio — ils échouaient au hasard d'un run à l'autre. |
 | `--source-root` | `git rev-parse --show-toplevel` | dépôt dont le code/la config AU HEAD est testé — **pas** basé sur `db_profiles.json` : fonctionne depuis n'importe quel worktree, y compris un sans copie locale de ce fichier |
 | `--parc-root` | `source-root` s'il porte déjà la base partagée du titre, sinon auto-détecté via le `.git` commun | le parc de développement (chunks de film, artefacts `--reference=parc`) |
 | `--lock-root` | `CacheRootDir()` du parc | où vit le verrou de décodage partagé |
