@@ -5,7 +5,7 @@
 #   make dev           # Lance l'API Go (air) + frontend Vite (http://localhost:5173)
 #   make go-api-build  # Compile le binaire Go
 #   make go-api-test   # Lance les tests Go
-#   make go-api-test-gamefiles # Corpus cartes (exige Halo installe, ~6 min)
+#   make go-api-test-gamefiles # Corpus gamefiles : cartes + catalogues commis (exige Halo installe, ~6 min)
 #   make replay-corpus-gate # Non-regression rejeu sur corpus temoin (exige le parc local)
 #   make install-web   # Installe les dépendances npm
 #   make test-web      # Tests Vitest frontend
@@ -198,19 +198,31 @@ go-api-test:
 			./contracttest/... \
 		-v -timeout 60s -count=1
 
-## Go API: corpus de retro-ingenierie des cartes (EXIGE Halo Infinite installe, ~6 min)
+## Go API: corpus gamefiles du module — retro-ingenierie des cartes ET catalogues commis
+## (EXIGE Halo Infinite installe, ~6 min)
+##
+## Joue TOUS les paquets qui portent des `*_gamefiles_test.go`, pas seulement internal/himap/
+## (decouverte D1 (3.1.2) du 2026-09-16 : les tags hors himap n'etaient joues par AUCUNE
+## commande du depot). La liste est EXPLICITE et non `./cmd/...` : sous le tag, un paquet sans
+## fichier gamefiles n'apporte que du temps de compilation. Le ratchet
+## `archlint.TestCibleMakefileGamefilesCouvreLeCorpus` rougit si un paquet entre au corpus
+## sans entrer ici.
 ##
 ## Les 59 fichiers `*_gamefiles_test.go` de internal/himap/ decodent les modules du JEU
 ## et balaient les 26 cartes du catalogue. Mesure du 2026-09-05 : `TestBalayageCoquille`
 ## seul prend 1 246 s (20 min 47 s) et passe — ce n'est pas un blocage, c'est le prix du
 ## balayage. Ils sont derriere `//go:build gamefiles` pour que `go test ./internal/himap/`
-## reste utilisable (22 s au lieu d'interminable).
+## reste utilisable (22 s au lieu d'interminable). Les trois paquets `cmd/` verifient qu'un
+## catalogue COMMIS est bien celui que son outil regenere depuis l'installation (mesure du
+## 2026-09-17 : 9,0 s a eux trois).
 ##
 ## Sans installation du jeu, chaque test prend son `t.Skip` et la cible est vide en 1 s.
 ## Cibler une carte : BALAYAGE_CARTES=aquarius_map ; installation ailleurs :
 ## LEVELUP_HALO_DEPLOY=<chemin>.
 go-api-test-gamefiles:
-	cd $(GO_API_DIR) && go test -tags=gamefiles -count=1 -timeout 3600s ./internal/himap/ -v
+	cd $(GO_API_DIR) && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
+		./internal/himap/ \
+		./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
 
 ## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin. DEFAUT
 ## (--reference=base) : cuit chaque temoin DEUX FOIS (code du HEAD, code d'une revision de
