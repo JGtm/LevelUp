@@ -98,8 +98,7 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 		base.Erreur = fmt.Errorf("comparaison : %w", err)
 		return base
 	}
-	base.SchemaReference, base.SchemaHEAD, base.Gains, base.Pertes, base.Changements,
-		base.PertesDetail = bilanDepuisRapport(rap)
+	base.remplirBilan(rap)
 	return base
 }
 

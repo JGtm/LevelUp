@@ -643,7 +643,7 @@ gates nothing):
   diff under review, never from the parc's age.
 - `--reference=parc`: diffs HEAD against the artifact already baked in the local parc (the
   original, historical method — a release-time sweep). **Informative by default** (prints the
-  table, exits 0) — pass `--strict` to make it exit 1 on loss too.
+  table, exits 0) — pass `--strict` to make it exit 1 on loss or change too.
 
 In both modes the working root is disposable (copied inputs only, config/catalogs from the
 checked-out branch or the base worktree, film chunks from the dev parc — **never writes into
@@ -661,9 +661,41 @@ cd apps/go-api && go run ./cmd/replay-corpus-gate \
 **Coverage floor (2026-09-07, CORPUS-R1 C3)**: by default, **every** witness in the manifest
 must be baked and compared — a purged or partial film cache used to leave every witness
 ABSENT, and the gate silently exited 0 having compared nothing (`codeSortie` skips ABSENT
-lines). One or more ABSENT witnesses now exit 2, naming which ones and why; pass
+lines). One or more ABSENT witnesses now exit 4, naming which ones and why; pass
 `--allow-missing` to restore the old behavior (a `slog` warning only, never a failure) for a
 deliberate partial run.
+
+**Per-witness status, and its priority rule (2026-09-17)**: each witness carries exactly one
+status, in the rightmost table column and in the JSON `statut` field. The first rule that
+applies wins:
+
+| Status | Meaning |
+|---|---|
+| `ABSENT` / `ERREUR` | nothing was measured: film, facts or reference artifact missing (`ABSENT`, with its cause), or the bake/diff failed (`ERREUR`, with its cause). Mutually exclusive by construction. |
+| `PERTE` | at least one measure went down or vanished. **Wins over `CHANGEMENT`**: a witness carrying both is a witness in loss, and the loss is what gets investigated. |
+| `CHANGEMENT` | no loss, but at least one published value MOVED (a re-attribution, a naming path yielding to another — `replaydiff/polarite.go`). A status of its own since 2026-09-17: until then a change printed `PERTE`, which sent people hunting a regression where a value had only changed hands. Still **blocking** — a change is either justified (proven divergence) or fixed, never silent. |
+| `ok` | neither loss nor change. GAINS may be present: a gain is never a failure. |
+
+**Exit codes (named constants, 2026-09-17)**: each says exactly one thing. Before that date
+`2` meant both "invalid manifest" and "a witness is missing", so a caller could not tell "this
+gate never started" from "this gate started but did not compare everything"; and a bake error
+was indistinguishable from a loss under `1`.
+
+| Code | Constant | Meaning |
+|---|---|---|
+| 0 | `codeOK` | the whole manifest was compared, no blocking witness |
+| 1 | `codePerte` | at least one compared witness carries a blocking `PERTE` or `CHANGEMENT` — the gate's verdict |
+| 2 | `codeUsage` | the gate never started (invalid flag, unreadable manifest, missing root or capability, base worktree impossible); nothing was measured of the diff under review |
+| 3 | `codeErreurCuisson` | the gate started, but a BAKED witness failed to bake or to diff — distinct from 1: the question could not be put, the answer is not "it lost" |
+| 4 | `codeCouvertureIncomplete` | at least one ABSENT witness without `--allow-missing` (CORPUS-R1 C3) — distinct from both 1 and 2: the manifest is valid, nothing lost, something is missing |
+
+**Named changes in the JSON report (2026-09-17, D5)**: the JSON now carries
+`changementsDetail` (axis, metric, old, new) symmetric to `pertesDetail`, plus a `statut` and
+an `absentCause` on every line, and the printed table gains a `DETAIL DES CHANGEMENTS` section
+next to `DETAIL DES PERTES`. Until then the report said "2 changes" without ever saying WHICH,
+and the M1 closure had to re-run `replay-diff` by hand on the kept artifacts to name them —
+while a witness in ERROR was written as `{"gains":0,"pertes":0,"changements":0}`, i.e. read
+from the JSON alone, as a clean witness.
 
 **All flags** (`cd apps/go-api && go run ./cmd/replay-corpus-gate -h` for the live list):
 
@@ -671,8 +703,8 @@ deliberate partial run.
 |---|---|---|
 | `--reference` | `base` | `base` (fresh bake vs. a base revision) or `parc` (vs. the already-baked parc artifact) |
 | `--base` | auto (see above) | explicit base revision in `--reference=base` mode |
-| `--strict` | `false` | in `--reference=parc` mode, a loss also exits 1 (no effect in base mode, already blocking) |
-| `--allow-missing` | `false` | tolerate an ABSENT witness (warning only) instead of exiting 2 |
+| `--strict` | `false` | in `--reference=parc` mode, a loss or a change also exits 1 (no effect in base mode, already blocking) |
+| `--allow-missing` | `false` | tolerate an ABSENT witness (warning only) instead of exiting 4 |
 | `--manifest` | `<source-root>/config/replay_corpus.toml` | manifest path |
 | `--source-root` | `git rev-parse --show-toplevel` | repo whose HEAD code/config is under test — **not** `db_profiles.json`-based: works from any worktree, including one without a local copy of that file |
 | `--parc-root` | `source-root` if it already carries the title's shared DB, else auto-detected via the common `.git` | the dev parc (film chunks, `--reference=parc` artifacts) |
