@@ -5,7 +5,7 @@ package grammar
 // Deux choses sont gardees ici, et une seule d'entre elles est un compte :
 //
 //	LA TABLE   chaque couple (build, version de format) connu rend ses deux valeurs ; un build
-//	           inconnu rend `ErrUnknownBuild`, un FORMAT inconnu rend `ErrUnknownFormat`, et
+//	           inconnu rend `profile.ErrUnknownBuild`, un FORMAT inconnu rend `profile.ErrUnknownFormat`, et
 //	           JAMAIS le profil du voisin le plus proche (D-4 d'ADR 0034).
 //	DEUX CLES  depuis le lot 1.9.1 ter, la largeur MPP est keyee par la VERSION DE FORMAT
 //	           (`chunk_00+4`) et la personnalisation par le BUILD. Le cas `HI_1_10_0` /
@@ -45,7 +45,7 @@ func TestBuildProfileTable(t *testing.T) {
 		{build: "HI_1_4_1", format: 21, perso: 2052, mppIndetermine: true},
 	}
 	for _, c := range cas {
-		p, err := BuildProfileFor(c.build, c.format)
+		p, err := profile.BuildProfileFor(c.build, c.format)
 		if err != nil {
 			t.Errorf("%s : profil refuse (%v)", c.build, err)
 			continue
@@ -73,8 +73,8 @@ func TestBuildProfileTable(t *testing.T) {
 // TestBuildProfileRefuseUnBuildInconnu — D-4 : jamais le profil du plus proche.
 func TestBuildProfileRefuseUnBuildInconnu(t *testing.T) {
 	for _, b := range []string{"HI_1_14_0", "HI_1_7_0", "", "HI_1_13_1"} {
-		if _, err := BuildProfileFor(b, 27); !errors.Is(err, ErrUnknownBuild) {
-			t.Errorf("build %q : erreur %v, ErrUnknownBuild attendue", b, err)
+		if _, err := profile.BuildProfileFor(b, 27); !errors.Is(err, profile.ErrUnknownBuild) {
+			t.Errorf("build %q : erreur %v, profile.ErrUnknownBuild attendue", b, err)
 		}
 	}
 }
@@ -84,8 +84,8 @@ func TestBuildProfileRefuseUnBuildInconnu(t *testing.T) {
 // est ENTRE deux formats connus — c'est exactement le cas ou l'interpolation serait tentante.
 func TestBuildProfileRefuseUnFormatInconnu(t *testing.T) {
 	for _, f := range []int{0, 19, 22, 23, 26, 28, 40} {
-		if _, err := BuildProfileFor("HI_1_13_0", f); !errors.Is(err, ErrUnknownFormat) {
-			t.Errorf("format %d : erreur %v, ErrUnknownFormat attendue", f, err)
+		if _, err := profile.BuildProfileFor("HI_1_13_0", f); !errors.Is(err, profile.ErrUnknownFormat) {
+			t.Errorf("format %d : erreur %v, profile.ErrUnknownFormat attendue", f, err)
 		}
 	}
 }
@@ -115,7 +115,7 @@ func TestBuildProfileMPPMutationRougit(t *testing.T) {
 	if len(ancres) < 100 {
 		t.Fatalf("fb1a1a72 : %d records ti=37, au moins 100 attendus — bobine a regenerer", len(ancres))
 	}
-	prof, err := BuildProfileFor("HI_1_13_0", 27)
+	prof, err := profile.BuildProfileFor("HI_1_13_0", 27)
 	if err != nil {
 		t.Fatalf("profil HI_1_13_0 : %v", err)
 	}

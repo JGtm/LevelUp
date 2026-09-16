@@ -43,7 +43,7 @@ package replay
 //	                       termine chaque vie (cf. lives.go). C'est lui aussi qui rend le
 //	                       decalage d'horloge entre le fil (horloge du match) et les positions
 //	                       (horloge du film).
-//	bornes de la carte     `grammar.MapQuantCatalog` — le nom de carte est FOURNI par
+//	bornes de la carte     `profile.MapQuantCatalog` — le nom de carte est FOURNI par
 //	                       l'operateur (AIM_MAP), jamais devine, et le catalogue est CONTROLE
 //	                       contre le decoupage lu dans le film (`DetectI0Layout`) : sans ce
 //	                       controle, un dz en metres serait un dz dans une autre unite.
@@ -70,6 +70,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -148,7 +149,7 @@ func TestViseeElevation(t *testing.T) {
 }
 
 // aimEntrees resout les trois entrees de l'instrument, ou declare le test saute.
-func aimEntrees(t *testing.T) (string, string, *grammar.MapQuantCatalog) {
+func aimEntrees(t *testing.T) (string, string, *profile.MapQuantCatalog) {
 	t.Helper()
 	dir := os.Getenv(aimFilmEnv)
 	if dir == "" {
@@ -162,7 +163,7 @@ func aimEntrees(t *testing.T) (string, string, *grammar.MapQuantCatalog) {
 	if boundsPath == "" {
 		t.Skipf("%s absent : sans bornes, un quantum n'est pas une altitude — mesure sautee", aimBoundsEnv)
 	}
-	cat, err := grammar.LoadMapQuantCatalog(boundsPath)
+	cat, err := profile.LoadMapQuantCatalog(boundsPath)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

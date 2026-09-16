@@ -341,7 +341,7 @@ func gwPadsPart(k, n int) string {
 //
 // LE CHEMIN PASSE PAR `PathResolver`, jamais par un `filepath.Join(..., "data", ...)` a la main
 // (regle du depot). `boundsEnv` ne sert qu'a pointer un catalogue de rechange.
-func mapQuantEntryFromEnv(t *testing.T, mapEnv, boundsEnv string) grammar.MapQuantEntry {
+func mapQuantEntryFromEnv(t *testing.T, mapEnv, boundsEnv string) profile.MapQuantEntry {
 	t.Helper()
 	nom := os.Getenv(mapEnv)
 	if nom == "" {
@@ -352,7 +352,7 @@ func mapQuantEntryFromEnv(t *testing.T, mapEnv, boundsEnv string) grammar.MapQua
 	if chemin == "" {
 		chemin = title.NewPathResolver(repoRootForTest(t)).MapQuantBoundsPath(title.DefaultSlug)
 	}
-	cat, err := grammar.LoadMapQuantCatalog(chemin)
+	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible (%s) : %v", chemin, err)
 	}

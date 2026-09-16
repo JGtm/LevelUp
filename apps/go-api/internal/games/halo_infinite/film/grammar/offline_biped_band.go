@@ -33,7 +33,7 @@ import (
 func ScanFilmBipedPositionsForBand(dir string, band SlotBand, opt ScanFilmOptions) (
 	[]BipedPosition, error) {
 	if opt.WorldRange == nil && !opt.QuantaOnly {
-		return nil, fmt.Errorf("%w (film %s) : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", ErrUnknownMapBounds, dir)
+		return nil, fmt.Errorf("%w (film %s) : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", profile.ErrUnknownMapBounds, dir)
 	}
 	// LES DEUX REFUS D'ENTREE PRECEDENT LE CHARGEMENT, et c'est l'ordre d'origine : un appelant
 	// sans bornes ou sans bande doit recevoir SON erreur, pas une erreur de lecture de repertoire.
@@ -106,7 +106,7 @@ func ScanBipedPositionsForBand(fc *FilmContext, band SlotBand, opt ScanFilmOptio
 // erreur, dans le même ordre, sur des options incomplètes ou un film sans chunk.
 func bipedScanChunks(film *source.Film, opt ScanFilmOptions) ([]int, error) {
 	if opt.WorldRange == nil && !opt.QuantaOnly {
-		return nil, fmt.Errorf("%w : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", ErrUnknownMapBounds)
+		return nil, fmt.Errorf("%w : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", profile.ErrUnknownMapBounds)
 	}
 	chunks := opt.Chunks
 	if len(chunks) == 0 {

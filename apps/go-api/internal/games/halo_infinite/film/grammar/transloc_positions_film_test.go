@@ -16,6 +16,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestP1bisPositionsDynasty$' -v -timeout 30m
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"os"
 	"path/filepath"
@@ -50,11 +51,11 @@ var p1bisDynasty = []p1bisAncre{
 }
 
 // p1bisCatalogue charge le catalogue de bornes versionné du titre et rend l'entrée demandée.
-func p1bisCatalogue(t *testing.T, key string) MapQuantEntry {
+func p1bisCatalogue(t *testing.T, key string) profile.MapQuantEntry {
 	t.Helper()
 	path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")
-	cat, err := LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", path, err)
 	}

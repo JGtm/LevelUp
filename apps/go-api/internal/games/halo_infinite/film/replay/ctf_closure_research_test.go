@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const ctfClosureFilmsEnv = "CTF_CLOSURE_FILMS"
@@ -57,7 +58,7 @@ func TestCTFExclusionClosure(t *testing.T) {
 	}
 }
 
-func ctfClosureReport(t *testing.T, cat *grammar.MapQuantCatalog, dir, short, mapName string) string {
+func ctfClosureReport(t *testing.T, cat *profile.MapQuantCatalog, dir, short, mapName string) string {
 	t.Helper()
 	pos, fire, deaths, table := ctfDecodeFilm(t, cat, dir, mapName)
 	sort.SliceStable(pos, func(i, j int) bool { return pos[i].TimestampUS < pos[j].TimestampUS })
@@ -88,7 +89,7 @@ func ctfClosureReport(t *testing.T, cat *grammar.MapQuantCatalog, dir, short, ma
 
 // ctfDecodeFilm est le préambule commun des instruments : décoder un film et lire son pont.
 // Factorisé au TROISIÈME exemplaire, comme l'exige la règle du dépôt.
-func ctfDecodeFilm(t *testing.T, cat *grammar.MapQuantCatalog, dir, mapName string) (
+func ctfDecodeFilm(t *testing.T, cat *profile.MapQuantCatalog, dir, mapName string) (
 	[]grammar.BipedPosition, []grammar.FireEvent, []Death, PlayerIndexTable) {
 	t.Helper()
 	entry, err := cat.Lookup(mapName)

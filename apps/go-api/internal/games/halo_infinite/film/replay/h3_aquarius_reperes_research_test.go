@@ -73,6 +73,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -112,7 +113,7 @@ func TestH3AquariusReperes(t *testing.T) {
 }
 
 // h3UnFilm joue les deux temps sur un film.
-func h3UnFilm(t *testing.T, cat *grammar.MapQuantCatalog, refEntry grammar.MapQuantEntry,
+func h3UnFilm(t *testing.T, cat *profile.MapQuantCatalog, refEntry profile.MapQuantEntry,
 	dir, id string) {
 	t.Helper()
 	lay, _, err := detecterI0Layout(dir)
@@ -131,7 +132,7 @@ func h3UnFilm(t *testing.T, cat *grammar.MapQuantCatalog, refEntry grammar.MapQu
 	// TEMPS 1 — toutes les bornes du catalogue, aux largeurs DU FILM.
 	type score struct {
 		nom   string
-		e     grammar.MapQuantEntry
+		e     profile.MapQuantEntry
 		ecart float64
 	}
 	var scores []score
@@ -188,13 +189,13 @@ func h3UnFilm(t *testing.T, cat *grammar.MapQuantCatalog, refEntry grammar.MapQu
 // h3Borne est une AABB du catalogue, ramenee aux largeurs d'axe du film.
 type h3Borne struct {
 	nom string
-	e   grammar.MapQuantEntry
+	e   profile.MapQuantEntry
 }
 
 // h3BornesDistinctes rend les AABB distinctes du catalogue, chacune montee aux largeurs
 // d'axe LUES DANS LE FILM. Le catalogue porte une quarantaine de canevas de Forge qui
 // partagent les memes bornes : les essayer un par un rebalaierait le film pour rien.
-func h3BornesDistinctes(cat *grammar.MapQuantCatalog, widths [3]uint) []h3Borne {
+func h3BornesDistinctes(cat *profile.MapQuantCatalog, widths [3]uint) []h3Borne {
 	noms := make([]string, 0, len(cat.Maps))
 	for n := range cat.Maps {
 		noms = append(noms, n)
@@ -216,7 +217,7 @@ func h3BornesDistinctes(cat *grammar.MapQuantCatalog, widths [3]uint) []h3Borne 
 
 // h3RetrouveBornes retrouve, par regression affine sur les reperes de piste, les bornes qui
 // ont produit les coordonnees PUBLIEES.
-func h3RetrouveBornes(t *testing.T, dir, id string, refEntry grammar.MapQuantEntry,
+func h3RetrouveBornes(t *testing.T, dir, id string, refEntry profile.MapQuantEntry,
 	widths [3]uint, vues f1Repere) {
 	t.Helper()
 	e := refEntry
@@ -292,7 +293,7 @@ func h3Regression(x, y []float64) (pente, origine, residuMax float64) {
 
 // h3EntreesDistinctes rend les entrees distinctes du catalogue par (bornes, largeurs,
 // region) — a l'identique, sans rien forcer.
-func h3EntreesDistinctes(cat *grammar.MapQuantCatalog) []h3Borne {
+func h3EntreesDistinctes(cat *profile.MapQuantCatalog) []h3Borne {
 	noms := make([]string, 0, len(cat.Maps))
 	for n := range cat.Maps {
 		noms = append(noms, n)
@@ -314,7 +315,7 @@ func h3EntreesDistinctes(cat *grammar.MapQuantCatalog) []h3Borne {
 
 // h3EcartImpose mesure l'ecart aux reperes publies en IMPOSANT le decoupage de l'entree —
 // le chemin de la production, et non celui du decoupage lu dans le film.
-func h3EcartImpose(t *testing.T, dir string, e grammar.MapQuantEntry, vues f1Repere) float64 {
+func h3EcartImpose(t *testing.T, dir string, e profile.MapQuantEntry, vues f1Repere) float64 {
 	t.Helper()
 	pos, ok := h3PositionsImposees(t, dir, e)
 	if !ok || len(pos) == 0 {
@@ -324,7 +325,7 @@ func h3EcartImpose(t *testing.T, dir string, e grammar.MapQuantEntry, vues f1Rep
 }
 
 // h3PositionsImposees balaie les positions de bipede en imposant le decoupage de l'entree.
-func h3PositionsImposees(t *testing.T, dir string, e grammar.MapQuantEntry) (
+func h3PositionsImposees(t *testing.T, dir string, e profile.MapQuantEntry) (
 	[]grammar.BipedPosition, bool) {
 	t.Helper()
 	scan := grammar.DefaultScanFilmOptions()

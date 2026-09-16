@@ -32,6 +32,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
@@ -70,7 +71,7 @@ var objCTFMapIDs = map[string]string{
 }
 
 // objCTFCarteNom — le NOM AFFICHE de la carte de chaque film, la cle du catalogue de bornes de
-// quantification (`grammar.MapQuantCatalog.Lookup`, qui normalise lui-meme).
+// quantification (`profile.MapQuantCatalog.Lookup`, qui normalise lui-meme).
 var objCTFCarteNom = map[string]string{
 	"64e8adfa": "Catalyst", "530820e5": "Catalyst", "53ce4390": "Behemoth",
 	"bcb6d393": "Cliffhanger", "000d5950": "Cliffhanger",
@@ -196,13 +197,13 @@ func objDocumentDe(t *testing.T, root, id string, b objBridge, src *objDiskFilm)
 
 // objMapQuant rend les bornes de quantification de la carte du film, lues dans le catalogue
 // VERSIONNE. nil si la racine du depot n'est pas fournie ou la carte hors catalogue.
-func objMapQuant(t *testing.T, id string) *grammar.MapQuantEntry {
+func objMapQuant(t *testing.T, id string) *profile.MapQuantEntry {
 	t.Helper()
 	repo, carte := os.Getenv(objRepoEnv), objCTFCarteNom[id]
 	if repo == "" || carte == "" {
 		return nil
 	}
-	cat, err := grammar.LoadMapQuantCatalog(
+	cat, err := profile.LoadMapQuantCatalog(
 		filepath.Join(repo, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json"))
 	if err != nil {
 		t.Logf("%s : catalogue de bornes illisible (%v)", id, err)
@@ -423,7 +424,7 @@ func objMax(v []int) int {
 // LA CALIBRATION VIENT DES POSES `ti=37`, comme en production : le mot d'identite de 32 bits se
 // lit derriere deux champs de largeur VARIABLE, mesures sur CE film. Balayer aux largeurs par
 // defaut d'un film calibre autrement ne rend pas une mesure fausse, il rend du bruit.
-func objGroundWeapons(t *testing.T, root, id string, quant *grammar.MapQuantEntry) WorldObjectScan {
+func objGroundWeapons(t *testing.T, root, id string, quant *profile.MapQuantEntry) WorldObjectScan {
 	t.Helper()
 	dir := objChunkDir(root, id)
 	film, err := source.LoadDir(dir, nil)

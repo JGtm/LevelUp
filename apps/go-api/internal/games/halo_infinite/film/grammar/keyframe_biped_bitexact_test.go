@@ -56,7 +56,7 @@ func kf35bDir(name string) string {
 
 // kf35bInstallPrecision lit le decoupage d'i0 dans le film et l'installe sur LES DEUX
 // chemins qui en dependent : `WorldObjectPrecision` (chemin world-object et corps d'i59) et
-// la largeur des chemins ABSOLUS d'i0 (`MovementProfile.AbsoluteAxisW`, remise a 0 pour
+// la largeur des chemins ABSOLUS d'i0 (`profile.MovementProfile.AbsoluteAxisW`, remise a 0 pour
 // qu'`absAxisW` retombe sur les largeurs de la carte au lieu de son uniforme 14). Rend la
 // restauration.
 //

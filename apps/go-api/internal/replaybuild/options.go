@@ -1,7 +1,7 @@
 package replaybuild
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 )
@@ -10,7 +10,7 @@ import (
 // (catalogue d'entrees, faits du match, entrees de catalogue, statistiques du film) — extrait
 // de BuildBytes (lot restes R0, deplacement pur des champs, aucun changement de sortie).
 func (b *Builder) buildReplayOptions(
-	entry grammar.MapQuantEntry, facts port.MatchFacts, cat entreesCatalogue, stats *filmStats,
+	entry profile.MapQuantEntry, facts port.MatchFacts, cat entreesCatalogue, stats *filmStats,
 ) replay.Options {
 	return replay.Options{
 		FrameIntervalMS: b.interval,

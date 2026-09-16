@@ -36,7 +36,7 @@ const equipeDesignatorBits = 4
 
 // equipeEntetesCandidates sont les largeurs d'en-tete par entite que le dossier connait :
 // 64 = la lecture historique du depot (`keyframeHeaderBits`), 108 = celle de `FUN_142e2bfd0`
-// (`keyframeFullStateHeaderBits`), 47 = la valeur que le fork chasewoodhams annonce pour ti=9.
+// (`profile.KeyframeEnTeteBits`), 47 = la valeur que le fork chasewoodhams annonce pour ti=9.
 // Ce sont des CANDIDATS a departager par la mesure, pas des faits.
 func equipeEntetesCandidates() []int { return []int{47, 64, 108} }
 

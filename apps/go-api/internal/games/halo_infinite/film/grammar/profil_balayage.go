@@ -24,7 +24,7 @@ import "levelup/go-api/internal/games/halo_infinite/film/profile"
 //
 // # CE QUE LE PROFIL DE BALAYAGE N EST PAS
 //
-// Ce n est pas [Profile] — le profil du FILM, resolu une fois a la construction du contexte et
+// Ce n est pas [profile.Profile] — le profil du FILM, resolu une fois a la construction du contexte et
 // IMMUABLE. Le profil de balayage est ce qu un balayage POSE : l invariant du profil par
 // defaut, puis ce que la carte du match (largeurs d axe objets du monde), la version de format
 // (decoupage MPP) ou une calibration (descripteur de traversee, largeur d axe absolue,
@@ -36,10 +36,10 @@ import "levelup/go-api/internal/games/halo_infinite/film/profile"
 type ProfilDeBalayage struct {
 	// Mouvement : descripteur de traversee, largeur d axe absolue, descripteur world-object,
 	// range de dequantification, quantum et largeur du delta, drapeaux de contexte.
-	Mouvement MovementProfile
+	Mouvement profile.MovementProfile
 	// Cadre : l en-tete par entite et la largeur d un mot de taille des images-cles d etat
 	// complet. Invariants du format, relus chez l ecrivain — rien ne les installe par film.
-	Cadre KeyframeProfile
+	Cadre profile.KeyframeProfile
 	// MPP : le decoupage des deux champs de largeur variable du bloc
 	// `object-multiplayer-properties`, pose par la VERSION DE FORMAT du film.
 	MPP profile.MPPWidths
@@ -55,7 +55,7 @@ type ProfilDeBalayage struct {
 // balayage ne lui a rien pose. Ses trois composantes viennent des MEMES fonctions que
 // [ResolveProfile] : il n existe pas de seconde table de valeurs.
 func ProfilDeBalayageParDefaut() ProfilDeBalayage {
-	return ProfilDeBalayage{Mouvement: mouvementDuProfil(), Cadre: cadreDuProfil(),
+	return ProfilDeBalayage{Mouvement: profile.MouvementParDefaut(), Cadre: profile.CadreParDefaut(),
 		MPP: profile.MPPParDefaut(), Grammaire: grammaireDuProfil()}
 }
 
@@ -75,7 +75,7 @@ func (p *ProfilDeBalayage) PoserLargeursObjetDuMonde(d profile.PrecisionDescript
 // BSP qui les fixe — hypothese verifiee par ses consequences le 2026-08-15 (cf.
 // [Lecteur.worldObjectPrecision]).
 //
-// SOURCE ATTENDUE : `MapQuantEntry.AxisWidths`, deduit des bornes par la loi du moteur. Le
+// SOURCE ATTENDUE : `profile.MapQuantEntry.AxisWidths`, deduit des bornes par la loi du moteur. Le
 // decoupage lu dans le film (`DetectI0Layout`) sert de controle : s il contredit le catalogue,
 // ce sont les BORNES qui sont fausses.
 func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0Layout) {

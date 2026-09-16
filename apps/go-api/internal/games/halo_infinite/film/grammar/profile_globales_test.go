@@ -26,6 +26,7 @@ import (
 	"unicode/utf16"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -45,12 +46,12 @@ func TestProfilEgaleGlobales(t *testing.T) {
 	}
 }
 
-// verifierMPPEgaleGlobales confronte `Profile.MPP` a ce que [InstallFilmFormatMPP] pose.
+// verifierMPPEgaleGlobales confronte `profile.Profile.MPP` a ce que [InstallFilmFormatMPP] pose.
 //
 // DEUX CAS, ET ILS NE SE CONFONDENT PAS : une largeur POSEE doit se retrouver a l identique dans
 // le profil du contexte ; une largeur INDETERMINEE (formats 20, 21, 24, 25) doit le laisser
 // EXACTEMENT ou il etait — c est ce que la calibration attend pour decider a sa place.
-func verifierMPPEgaleGlobales(t *testing.T, b bobineIdentite, film *source.Film, p Profile) {
+func verifierMPPEgaleGlobales(t *testing.T, b bobineIdentite, film *source.Film, p profile.Profile) {
 	t.Helper()
 	fc := NewFilmContext(film)
 	avant := fc.ProfilDeBalayage().MPP
@@ -70,9 +71,9 @@ func verifierMPPEgaleGlobales(t *testing.T, b bobineIdentite, film *source.Film,
 	}
 }
 
-// verifierSlotsEgaleRapport confronte `Profile.Slots` au rapport de [ReadPlayerTable], qui porte
+// verifierSlotsEgaleRapport confronte `profile.Profile.Slots` au rapport de [ReadPlayerTable], qui porte
 // aujourd hui la seule lecture de production de la largeur de personnalisation.
-func verifierSlotsEgaleRapport(t *testing.T, b bobineIdentite, p Profile) {
+func verifierSlotsEgaleRapport(t *testing.T, b bobineIdentite, p profile.Profile) {
 	t.Helper()
 	chunk0 := bobineChunk00(t, b.film)
 	id, err := ReadFilmIdentity(chunk0)
@@ -89,15 +90,15 @@ func verifierSlotsEgaleRapport(t *testing.T, b bobineIdentite, p Profile) {
 	}
 }
 
-// verifierCadreEgaleConstantes confronte `Profile.Keyframe` aux constantes que
+// verifierCadreEgaleConstantes confronte `profile.Profile.Keyframe` aux constantes que
 // `walkKeyframeFullState` lit. La regle est `172 + etat(ti)`, jamais un nombre : les 172 sont
 // verifies ici, et `EtatParDefautPorte` est confronte a la table des deserialiseurs.
 func verifierCadreEgaleConstantes(t *testing.T) {
 	t.Helper()
 	k := ResolveProfile(nil, nil).Keyframe()
-	if k.EnTeteBits != keyframeFullStateHeaderBits || k.MotDeTailleBits != keyframeFullStateSizeBits {
+	if k.EnTeteBits != profile.KeyframeEnTeteBits || k.MotDeTailleBits != profile.KeyframeMotDeTailleBits {
 		t.Errorf("cadre du profil {%d, %d}, constantes de la marche {%d, %d}", k.EnTeteBits,
-			k.MotDeTailleBits, keyframeFullStateHeaderBits, keyframeFullStateSizeBits)
+			k.MotDeTailleBits, profile.KeyframeEnTeteBits, profile.KeyframeMotDeTailleBits)
 	}
 	if got := k.CadreBits(); got != 172 {
 		t.Errorf("cadre de %d bits, attendu 172 (108 + 2 x 32)", got)
@@ -105,9 +106,9 @@ func verifierCadreEgaleConstantes(t *testing.T) {
 	for ti := uint32(0); ti < objectArchetypeCount; ti++ {
 		_, table := defaultStateDeserByTI[ti]
 		attendu := table || ti == BipedTypeIndex
-		if k.EtatParDefautPorte(ti) != attendu {
+		if EtatParDefautPorte(ti) != attendu {
 			t.Errorf("ti=%d : EtatParDefautPorte=%v, table des deserialiseurs %v", ti,
-				k.EtatParDefautPorte(ti), attendu)
+				EtatParDefautPorte(ti), attendu)
 		}
 	}
 }
@@ -120,7 +121,7 @@ func verifierCadreEgaleConstantes(t *testing.T) {
 // le profil annonce, et verifie que le parseur le retrouve.
 func TestProfilHighlightEgaleLeParseur(t *testing.T) {
 	for _, majeure := range []int{0, 37, 38, 39, 40, 41, 42} {
-		h := highlightDuProfil(majeure, majeure != 0)
+		h := profile.HighlightDepuisMajeure(majeure, majeure != 0)
 		const tag = "TemoinDuProfil"
 		chunk := chunkTempsFortTemoin(tag, h.GamertagOffsetBytes)
 		evs, err := analysis.ParseHighlightEvents(chunk, majeure)

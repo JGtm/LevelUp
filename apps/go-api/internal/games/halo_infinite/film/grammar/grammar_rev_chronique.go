@@ -271,7 +271,7 @@ package grammar
 // sections de `chunk_00`, le registre, la table des joueurs). Ce n est PAS un deplacement pur :
 // 76 de leurs 159 declarations sont referencees par le reste du paquet (`ReadFilmChunk` 293 fois
 // dans 179 fichiers, `Lecteur` 344 fois, `WalkPackets` 217, `Archetype` 177, `Registry` 158), et
-// `lecteur.go` lit `Profile`, `Observation`, `FrameConfig`, `ProfilDeBalayage` — c est-a-dire que
+// `lecteur.go` lit `profile.Profile`, `Observation`, `FrameConfig`, `ProfilDeBalayage` — c est-a-dire que
 // `source` importerait `profile` et `grammar`, deux imports VERS LE HAUT. La couche `source` du
 // lot est donc `filmsource` seul ; la remontee reste a faire, et elle n est pas un `git mv`.
 //

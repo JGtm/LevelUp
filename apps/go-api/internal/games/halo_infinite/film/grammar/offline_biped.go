@@ -138,7 +138,7 @@ type ScanFilmOptions struct {
 	Layout *profile.I0Layout
 	// WorldRange porte les BORNES DE LA CARTE (AABB du BSP principal). Obligatoire pour
 	// produire des coordonnées monde : nil -> ScanFilmBipedPositions échoue avec
-	// ErrUnknownMapBounds, sauf si QuantaOnly. Cf. MapQuantCatalog.
+	// profile.ErrUnknownMapBounds, sauf si QuantaOnly. Cf. profile.MapQuantCatalog.
 	WorldRange *profile.Vec3Range
 	// DynPrecOrientation choisit la grammaire d'i2/i3 sous CaptureDirs. false (défaut) =
 	// celle du BIPÈDE. true = celle des archétypes qui portent les variantes
@@ -182,10 +182,10 @@ func DefaultScanFilmOptions() ScanFilmOptions {
 // [ScanBipedPositions]. La cuisson passe un film deja charge (une seule decompression).
 func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, error) {
 	// LE REFUS DE BORNES PRECEDE LE CHARGEMENT, et c'est l'ordre d'origine : un appelant sans
-	// bornes doit recevoir ErrUnknownMapBounds, pas une erreur de lecture de repertoire. Le
+	// bornes doit recevoir profile.ErrUnknownMapBounds, pas une erreur de lecture de repertoire. Le
 	// message garde le chemin du film, que la forme `Scan*(film)` n'a plus.
 	if opt.WorldRange == nil && !opt.QuantaOnly {
-		return nil, fmt.Errorf("%w (film %s) : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", ErrUnknownMapBounds, dir)
+		return nil, fmt.Errorf("%w (film %s) : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", profile.ErrUnknownMapBounds, dir)
 	}
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -354,7 +354,7 @@ func saturatedQuantum(q [3]uint32, lay profile.I0Layout) bool {
 // les largeurs du découpage lay et les BORNES DE LA CARTE world. Calcul en float64 pour ne
 // pas décaler l'indice de quantum sur les arrondis float32.
 //
-// world DOIT être l'AABB du BSP de la carte du film (cf. MapQuantCatalog) : appliquer les
+// world DOIT être l'AABB du BSP de la carte du film (cf. profile.MapQuantCatalog) : appliquer les
 // bornes d'une autre carte produit une coordonnée fausse, pas approximative.
 func DequantBipedAxis(q uint32, ax int, lay profile.I0Layout, world profile.Vec3Range) float32 {
 	rng := world[ax]

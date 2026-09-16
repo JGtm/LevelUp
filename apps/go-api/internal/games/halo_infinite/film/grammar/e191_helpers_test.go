@@ -1,6 +1,9 @@
 package grammar
 
-import "path/filepath"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"path/filepath"
+)
 
 // e191_helpers_test.go — les helpers des instruments E191b / E191c que des tests du build PAR
 // DEFAUT emploient aussi (`build_profile_test.go`, `i0_catalogue_mutation_test.go`).
@@ -30,12 +33,12 @@ func e191cN2Part(ancres []e191cAncre, ti int, ctx ContexteDeLecture) (float64, u
 			total++
 			br := LecteurSur(p)
 			br.PoserContexte(ctx)
-			br.SetBitPos(b.Bit + keyframeFullStateHeaderBits)
-			n1 := int32(br.ReadBits(keyframeFullStateSizeBits)) //nolint:gosec // 32 bits
+			br.SetBitPos(b.Bit + profile.KeyframeEnTeteBits)
+			n1 := int32(br.ReadBits(profile.KeyframeMotDeTailleBits)) //nolint:gosec // 32 bits
 			if n1 > 0 {
 				consumeKeyframeDefaultState(br, uint32(ti)) //nolint:gosec // index d archetype
 			}
-			hist[br.ReadBits(keyframeFullStateSizeBits)]++
+			hist[br.ReadBits(profile.KeyframeMotDeTailleBits)]++
 		}
 	}
 	meilleure, n := uint64(0), 0

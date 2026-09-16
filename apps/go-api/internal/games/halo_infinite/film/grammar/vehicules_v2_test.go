@@ -93,7 +93,7 @@ type v2FilmData struct {
 // v2MapAgg agrege tous les films d'une carte.
 type v2MapAgg struct {
 	mapKey string
-	bounds MapQuantEntry
+	bounds profile.MapQuantEntry
 	films  []*v2FilmData
 }
 
@@ -138,7 +138,7 @@ func TestV2SpawnsCooldowns(t *testing.T) {
 }
 
 // v2ProcessFilm lit un film : naissances (metres + chassis), recensement, i14.
-func v2ProcessFilm(t *testing.T, dir, short8 string, entry MapQuantEntry) *v2FilmData {
+func v2ProcessFilm(t *testing.T, dir, short8 string, entry profile.MapQuantEntry) *v2FilmData {
 	lay, err := vehicleI0LayoutDir(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible : %v", err)

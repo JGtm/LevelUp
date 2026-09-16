@@ -40,6 +40,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"sort"
@@ -65,9 +66,9 @@ const (
 )
 
 // mesureEnteteCandidats : les largeurs d'en-tete confrontees. 47 = la these du fork ; 64 =
-// `keyframeHeaderBits`, la lecture historique ; 108 = `keyframeFullStateHeaderBits`, celle de
+// `keyframeHeaderBits`, la lecture historique ; 108 = `profile.KeyframeEnTeteBits`, celle de
 // FUN_142e2bfd0 (cf. keyframe_fullstate_loop.go).
-var mesureEnteteCandidats = []int{mesureTI9These, keyframeHeaderBits, keyframeFullStateHeaderBits}
+var mesureEnteteCandidats = []int{mesureTI9These, keyframeHeaderBits, profile.KeyframeEnTeteBits}
 
 // mesureEnteteTypes : les deux types confrontes. 9 porte le designateur d'equipe ; 35 est le
 // biped, dont l'effondrement a 47 bits serait la contre-epreuve de la these « par type ».

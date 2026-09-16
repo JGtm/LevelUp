@@ -90,7 +90,7 @@ func equipOwnerRange(t *testing.T) (profile.Vec3Range, string) {
 	if nom == "" || chemin == "" {
 		return equipCreationUnitRange, "fraction de l'AABB (EQUIP_MAP/EQUIP_BOUNDS absents)"
 	}
-	cat, err := LoadMapQuantCatalog(chemin)
+	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible (%s) : %v", chemin, err)
 	}

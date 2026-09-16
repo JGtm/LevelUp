@@ -29,7 +29,7 @@ package grammar
 //	[R(3) drapeaux]  000 sur 202 des 210 records du corpus ; les 8 restants (drapeaux
 //	                 001/100/110) changent la forme de la suite -> désync propre
 //	[R(Wx)][R(Wy)][R(Wz)]  POSITION ABSOLUE quantifiée aux largeurs d'axe de la CARTE
-//	                 (WorldObjectPrecision.AxisW — l'entrée MapQuantEntry du match,
+//	                 (WorldObjectPrecision.AxisW — l'entrée profile.MapQuantEntry du match,
 //	                 JAMAIS le défaut Cliffhanger ; les bits hauts de Z sont ~constants
 //	                 sur un film, la signature d'une coordonnée verticale bornée)
 //	[R(7)]           petit champ (observé 0000xy0)
@@ -52,7 +52,7 @@ package grammar
 // La MAGNITUDE (R(12)) des vecteurs du corps lourd dépend d'une plage (min, max) que ni
 // le décompilé ni le flux seul ne donnent : les QUANTA BRUTS sont publiés ; la direction
 // se déquantifie sans plage (DecodeAimVectorChecked) ; la position, elle, se déquantifie
-// avec les BORNES de la carte (MapQuantEntry.Range) — côté lecteur, jamais ici.
+// avec les BORNES de la carte (profile.MapQuantEntry.Range) — côté lecteur, jamais ici.
 
 // Largeurs fixes du corps tag==3 (mesurées ; feuilles confirmées contre le décompilé).
 const (

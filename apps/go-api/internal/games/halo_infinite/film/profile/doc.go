@@ -26,7 +26,7 @@
 //
 // # CE QU ELLE NE PORTE PAS, ET POURQUOI
 //
-// La RESOLUTION DEPUIS UN FILM (`grammar.ResolveProfile`) reste en `grammar` : elle ouvre le
+// La RESOLUTION DEPUIS UN FILM (`profile.ResolveProfile`) reste en `grammar` : elle ouvre le
 // `chunk_00`, lit le registre, la version de format et la section d identification — trois
 // lectures d octets. Elle appelle [Resoudre] avec ce qu elle a lu. Le profil ne sait pas ouvrir
 // un film, et c est la propriete qui garde la couche honnete.

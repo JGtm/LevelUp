@@ -14,7 +14,7 @@ package grammar
 //	T-MUT    Fausser la largeur du bloc de personnalisation — de 4 octets, ou en prenant celle
 //	         d'un autre build — empeche la table de fermer. Sans cela, « 32 slots » ne prouverait
 //	         pas la largeur.
-//	T-BUILD  Un build absent du profil rend [ErrUnknownBuild] et NOMME son compteur. Jamais une
+//	T-BUILD  Un build absent du profil rend [profile.ErrUnknownBuild] et NOMME son compteur. Jamais une
 //	         lecture au profil du build le plus proche (D-4).
 //	T-COUPE  Un `chunk_00` coupe dans la table rend une erreur typee, sans panique.
 
@@ -193,8 +193,8 @@ func TestReadPlayerTableBuildInconnu(t *testing.T) {
 		faux := id
 		faux.Build = build
 		slots, rep, err := ReadPlayerTable(d, faux)
-		if !errors.Is(err, ErrUnknownBuild) {
-			t.Errorf("build %q : erreur %v, attendue %v", build, err, ErrUnknownBuild)
+		if !errors.Is(err, profile.ErrUnknownBuild) {
+			t.Errorf("build %q : erreur %v, attendue %v", build, err, profile.ErrUnknownBuild)
 		}
 		if slots != nil || rep.Occupied != 0 {
 			t.Errorf("build %q : %d slot(s) rendus malgre le refus", build, len(slots))
@@ -244,17 +244,17 @@ func TestPersonnalisationOctetsProfil(t *testing.T) {
 		"HI_1_4_1":  {2052, +1600},
 	}
 	for build, veut := range attendu {
-		octets, ok := personnalisationOctets(build)
+		octets, ok := profile.PersonnalisationOctets(build)
 		if !ok {
 			t.Errorf("%s absent du profil", build)
 			continue
 		}
-		if octets != veut[0] || persoDeltaBits(octets) != veut[1] {
+		if octets != veut[0] || profile.PersoDeltaBits(octets) != veut[1] {
 			t.Errorf("%s : %d octets (%+d bits), attendu %d (%+d bits)", build, octets,
-				persoDeltaBits(octets), veut[0], veut[1])
+				profile.PersoDeltaBits(octets), veut[0], veut[1])
 		}
 	}
-	if _, ok := personnalisationOctets("HI_1_14_0"); ok {
+	if _, ok := profile.PersonnalisationOctets("HI_1_14_0"); ok {
 		t.Error("un build jamais mesure ne doit PAS avoir de largeur de profil (D-4)")
 	}
 }

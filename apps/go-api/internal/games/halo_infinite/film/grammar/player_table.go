@@ -239,16 +239,16 @@ type PlayerTableReport struct {
 // les lectures sur la zone ecrite ferait echouer la marche sur les slots vacants de queue,
 // c'est-a-dire sur 24 des 32 slots d'une partie d'arene (constate a l'ecriture de ce lot).
 //
-// Erreurs typees : [ErrUnknownBuild] enveloppe avec le nom du build (D-4 : le film est mis de
+// Erreurs typees : [profile.ErrUnknownBuild] enveloppe avec le nom du build (D-4 : le film est mis de
 // cote, JAMAIS lu au profil du build voisin ; publier [UnknownBuildExpvarPairs] au meme
 // endroit), [ErrChunk00Truncated], [ErrPlayerTableNotFound].
 func ReadPlayerTable(chunk0 []byte, ident profile.FilmIdentity) ([]PlayerSlot, PlayerTableReport, error) {
 	rep := PlayerTableReport{Build: ident.Build}
-	octets, connu := personnalisationOctets(ident.Build)
+	octets, connu := profile.PersonnalisationOctets(ident.Build)
 	if !connu {
-		return nil, rep, erreurBuildInconnu(ident.Build)
+		return nil, rep, profile.ErreurBuildInconnu(ident.Build)
 	}
-	rep.PersoBytes, rep.ProfileDeltaBits = octets, persoDeltaBits(octets)
+	rep.PersoBytes, rep.ProfileDeltaBits = octets, profile.PersoDeltaBits(octets)
 	persoBits := octets * 8
 	finEcrit, finTampon := (dernierOctetNonNul(chunk0)+1)*8, len(chunk0)*8
 	if ident.BodyBit <= 0 || finEcrit <= ident.BodyBit {

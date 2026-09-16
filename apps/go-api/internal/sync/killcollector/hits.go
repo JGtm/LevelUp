@@ -49,6 +49,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/ingest"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
@@ -209,26 +210,26 @@ func (c *KillSourceCollector) resolveHitDistanceFunc(
 // en silence, ce que D-4 d ADR 0034 interdit.
 func (c *KillSourceCollector) entreeDeCarteDesTouches(
 	ctx context.Context, matchID string,
-) (grammar.MapQuantEntry, bool) {
+) (profile.MapQuantEntry, bool) {
 	if c.mapNames == nil || c.mapBounds == nil {
 		observability.AddInt(metricHitsNoMapWiring, 1)
 		slog.WarnContext(ctx, "killsource: precision par arme — collecteur sans resolution de carte "+
 			"(WithPositionCapture absent), distances desactivees", "match_id", matchID)
-		return grammar.MapQuantEntry{}, false
+		return profile.MapQuantEntry{}, false
 	}
 	noms, err := c.nomsDeCarteDuMatch(ctx, matchID)
 	if err != nil {
 		observability.AddInt(metricHitsNoMapName, 1)
 		slog.InfoContext(ctx, "killsource: precision par arme — match sans nom de carte, distances desactivees",
 			"match_id", matchID, "err", err)
-		return grammar.MapQuantEntry{}, false
+		return profile.MapQuantEntry{}, false
 	}
 	entry, err := c.entreeDeCatalogueParNom(noms)
 	if err != nil {
 		observability.AddInt(metricHitsNoMapEntry, 1)
 		slog.InfoContext(ctx, "killsource: precision par arme — carte hors catalogue de bornes, distances desactivees",
 			"match_id", matchID, "err", err)
-		return grammar.MapQuantEntry{}, false
+		return profile.MapQuantEntry{}, false
 	}
 	return entry, true
 }

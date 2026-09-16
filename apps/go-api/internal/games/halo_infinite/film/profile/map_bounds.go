@@ -1,4 +1,4 @@
-package grammar
+package profile
 
 // BORNES DE DÉQUANTIFICATION PAR CARTE.
 //
@@ -11,12 +11,17 @@ package grammar
 // qu'une erreur : jusqu'ici toutes les cartes étaient déquantifiées avec les bornes de
 // Cliffhanger, ce qui multipliait l'échelle par un facteur arbitraire (0,38 sur Catalyst)
 // et décalibrait d'autant le filtre de téléportation en m/s.
+//
+// DESCENDU DE `grammar` AU LOT 2.5.b : un catalogue versionne produit hors ligne et charge en
+// lecture seule EST la definition de la couche `profile` (ADR 0034 D-1 et D-3, « what is derived
+// from the game is a versioned catalog under `data/titles/halo_infinite/reference/`, never
+// written at run time »). Aucune ligne de logique ne change ; ce qui change est le paquet, donc
+// la couche.
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"strings"
 )
@@ -67,19 +72,19 @@ func (e MapQuantEntry) EffectiveRegionIndexBits() uint {
 // largeurs d'axe déduites des bornes. C'est la source d'autorité du décodage — le découpage
 // lu dans le film (DetectI0Layout) reste le CONTRÔLE, jamais l'entrée (la même doctrine que
 // celle du descripteur world-object, traverse.go).
-func (e MapQuantEntry) Layout() profile.I0Layout {
-	return profile.I0Layout{
-		GateBits: profile.I0SpineBits + profile.I0UseDefaultBits + int(e.EffectiveRegionIndexBits()),
+func (e MapQuantEntry) Layout() I0Layout {
+	return I0Layout{
+		GateBits: I0SpineBits + I0UseDefaultBits + int(e.EffectiveRegionIndexBits()),
 		AxisW:    e.AxisWidths,
 		Region:   e.Region,
 	}
 }
 
 // Range convertit l'entrée en plage de déquantification.
-func (e MapQuantEntry) Range() profile.Vec3Range {
-	var r profile.Vec3Range
+func (e MapQuantEntry) Range() Vec3Range {
+	var r Vec3Range
 	for ax := 0; ax < 3; ax++ {
-		r[ax] = profile.AxisRange{Min: e.Min[ax], Max: e.Max[ax]}
+		r[ax] = AxisRange{Min: e.Min[ax], Max: e.Max[ax]}
 	}
 	return r
 }

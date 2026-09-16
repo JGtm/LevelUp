@@ -40,6 +40,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const ctfFatalFilmsEnv = "CTF_FATAL_FILMS"
@@ -85,7 +86,7 @@ func TestCTFFatalShots(t *testing.T) {
 	}
 }
 
-func ctfFatalReport(t *testing.T, cat *grammar.MapQuantCatalog, dir, short, mapName string) string {
+func ctfFatalReport(t *testing.T, cat *profile.MapQuantCatalog, dir, short, mapName string) string {
 	t.Helper()
 	entry, err := cat.Lookup(mapName)
 	if err != nil {

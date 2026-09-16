@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -155,9 +156,8 @@ func TestRefuserSequenceTrouee_ChunkVideEstUnTrou(t *testing.T) {
 }
 
 // TestRefuserSequenceTrouee_AucunChunkDeDonneesPasse — le contrôle ne juge pas l'absence de
-// contenu (0 chunk de données = 0 trou) ; c'est aux LECTEURS (ScanBipedPositions, etc.) de
-// refuser un film vide. Verrouille la frontière entre les deux responsabilités, comme le faisait
-// le pont disque avant lui.
+// contenu (0 chunk de données = 0 trou) ; c'est aux LECTEURS (ScanBipedPositions, etc.) de refuser
+// un film vide. Verrouille la frontière entre les deux responsabilités, comme le pont disque avant lui.
 func TestRefuserSequenceTrouee_AucunChunkDeDonneesPasse(t *testing.T) {
 	film, err := FilmOf(nil)
 	if err != nil {
@@ -259,10 +259,10 @@ func (f fakeMapNames) MapKeysForMap(context.Context, string) (port.MatchMapKeys,
 	return f.keys, f.err
 }
 
-func testMapQuantCatalog() *grammar.MapQuantCatalog {
-	return &grammar.MapQuantCatalog{
-		SchemaVersion: grammar.MapQuantSchemaVersion,
-		Maps: map[string]grammar.MapQuantEntry{
+func testMapQuantCatalog() *profile.MapQuantCatalog {
+	return &profile.MapQuantCatalog{
+		SchemaVersion: profile.MapQuantSchemaVersion,
+		Maps: map[string]profile.MapQuantEntry{
 			"catalyst": {
 				Min: [3]float32{-100, -100, -100},
 				Max: [3]float32{100, 100, 100},

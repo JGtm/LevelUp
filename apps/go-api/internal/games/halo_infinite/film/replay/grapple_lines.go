@@ -77,7 +77,7 @@ type GrappleCoverage struct {
 
 // buildGrappleLines assemble les tractions : appariement tir->accroche par vie, ancre
 // déquantifiée aux bornes de la carte, arrivée mesurée sur la trajectoire PUBLIÉE.
-func buildGrappleLines(reads []grammar.GrappleRead, entry grammar.MapQuantEntry,
+func buildGrappleLines(reads []grammar.GrappleRead, entry profile.MapQuantEntry,
 	origin, step uint64, tracks []Track) ([]GrappleLine, *GrappleCoverage) {
 	cov := &GrappleCoverage{}
 	if len(reads) == 0 || step == 0 {
@@ -138,7 +138,7 @@ func buildGrappleLines(reads []grammar.GrappleRead, entry grammar.MapQuantEntry,
 // grappleLinesOfLife déroule les lectures TRIÉES d'une vie : chaque accroche clôt une
 // traction (fenêtre ouverte au tir apparié, sinon à l'accroche), chaque tir resté sans
 // accroche est un raté compté.
-func grappleLinesOfLife(list []grammar.GrappleRead, entry grammar.MapQuantEntry,
+func grappleLinesOfLife(list []grammar.GrappleRead, entry profile.MapQuantEntry,
 	origin, step uint64, vies []*Track, cov *GrappleCoverage) []GrappleLine {
 	var out []GrappleLine
 	pendingFire := -1
@@ -177,7 +177,7 @@ func grappleLinesOfLife(list []grammar.GrappleRead, entry grammar.MapQuantEntry,
 // plusieurs depuis le schéma 36, et prendre la dernière jetait toutes les tractions des
 // précédentes (cf. buildGrappleLines). L'accroche fait foi plutôt que le tir : c'est elle
 // qui atteste la traction, et c'est sur elle que le calque est daté.
-func grappleLine(r grammar.GrappleRead, startUS uint64, entry grammar.MapQuantEntry,
+func grappleLine(r grammar.GrappleRead, startUS uint64, entry profile.MapQuantEntry,
 	origin, step uint64, vies []*Track) (GrappleLine, bool) {
 	lay := profile.I0Layout{AxisW: entry.AxisWidths}
 	wr := entry.Range()

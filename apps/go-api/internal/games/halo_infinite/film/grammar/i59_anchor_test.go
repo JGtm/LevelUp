@@ -446,7 +446,7 @@ func TestI59AnchorFilmInfo(t *testing.T) {
 		lay.AxisW, lay.AxisW[0]+lay.AxisW[1]+lay.AxisW[2], lay.GateBits)
 	path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")
-	cat, err := LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}
@@ -786,7 +786,7 @@ func i59aWorldRange(t *testing.T, s eaFilmSetup) profile.Vec3Range {
 	t.Helper()
 	path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")
-	cat, err := LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}
@@ -803,7 +803,7 @@ func i59aWorldRange(t *testing.T, s eaFilmSetup) profile.Vec3Range {
 		return e.Range()
 	}
 	var hits []string
-	var found MapQuantEntry
+	var found profile.MapQuantEntry
 	for name, e := range cat.Maps {
 		if e.AxisWidths == s.lay.AxisW {
 			hits = append(hits, name)

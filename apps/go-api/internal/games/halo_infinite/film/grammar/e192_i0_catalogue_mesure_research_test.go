@@ -6,7 +6,7 @@ package grammar
 //
 // Le découpage d'i0 (porte, index de région attendu, largeurs d'axe) est une DONNÉE DE PROFIL :
 // le catalogue de carte l'écrit (`data/titles/halo_infinite/reference/map_quant_bounds.json`,
-// `MapQuantEntry.Layout`). Le chemin de cuisson l'impose déjà (`replay/build_from_film.go`) ;
+// `profile.MapQuantEntry.Layout`). Le chemin de cuisson l'impose déjà (`replay/build_from_film.go`) ;
 // les chemins de `sync/killcollector` ne l'imposaient pas : ils partaient de
 // `DefaultScanFilmOptions()` avec `Layout` nil, ce qui laisse `DetectI0LayoutOf` DÉCIDER
 // (`offline_biped_band.go/bipedI0Layout`).
@@ -57,7 +57,7 @@ import (
 // SOURCE VERSIONNÉE, PAS UNE DEVINETTE : les quatorze premiers sont les témoins du corpus gate
 // (`config/replay_corpus.toml`, champ `carte`), les trois derniers complètent les huit builds de
 // l'échantillon court (`replay/testdata/equivalence/CORPUS.txt`). Les noms sont les `map_name`
-// BRUTS ; `NormalizeMapName` retire les suffixes de variante au `Lookup`.
+// BRUTS ; `profile.NormalizeMapName` retire les suffixes de variante au `Lookup`.
 var e192CarteDuFilm = map[string]string{
 	// Corpus gate (14 témoins).
 	"bcb6d393": "Cliffhanger",
@@ -114,7 +114,7 @@ func (l e192Ligne) Difference() bool {
 
 func TestE192CatalogueContreDetection(t *testing.T) {
 	dirs := chunk00Films(t, "CHUNK00_FILMS")
-	cat, err := LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -131,7 +131,7 @@ func TestE192CatalogueContreDetection(t *testing.T) {
 }
 
 // e192Mesure remplit la ligne d'un film : identité, découpages rivaux, et les quatre balayages.
-func e192Mesure(t *testing.T, cat *MapQuantCatalog, dir string) (e192Ligne, bool) {
+func e192Mesure(t *testing.T, cat *profile.MapQuantCatalog, dir string) (e192Ligne, bool) {
 	t.Helper()
 	l := e192Ligne{Film: filepath.Base(dir)}
 	carte, ok := e192CarteDuFilm[l.Film]
@@ -174,7 +174,7 @@ func e192Identite(film *source.Film) (int, string) {
 
 // e192Balayages joue les QUATRE balayages : positions et pistes de touche, découpage auto-détecté
 // puis imposé par le catalogue. Les réglages sont ceux des DEUX chemins de `killcollector`.
-func e192Balayages(film *source.Film, entry MapQuantEntry, l *e192Ligne) {
+func e192Balayages(film *source.Film, entry profile.MapQuantEntry, l *e192Ligne) {
 	rng := entry.Range()
 	impose := l.Impose
 

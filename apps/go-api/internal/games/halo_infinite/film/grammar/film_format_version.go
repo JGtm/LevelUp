@@ -115,7 +115,7 @@ func FilmFormatVersion(f *source.Film) (int, bool) {
 }
 
 // MPPWidthsForFormat rend le decoupage du bloc `object-multiplayer-properties` d une version de
-// format, ou [ErrUnknownFormat] enveloppe avec la version refusee.
+// format, ou [profile.ErrUnknownFormat] enveloppe avec la version refusee.
 //
 // ELLE EXISTE POUR QUE LE CONSOMMATEUR PUISSE DISTINGUER LES DEUX « PAS DE PROFIL ». Un format
 // CONNU dont la largeur est indeterminee (20, 21, 24, 25) rend `profile.MPPWidths{}` et une erreur NULLE
@@ -124,9 +124,9 @@ func FilmFormatVersion(f *source.Film) (int, bool) {
 // ([UnknownFormatExpvarPairs]). Sans cette frontiere, les deux se liraient pareil et un format
 // neuf basculerait tout le parc sur la calibration sans que rien ne le dise.
 func MPPWidthsForFormat(format int) (profile.MPPWidths, error) {
-	w, ok := mppWidthsPourFormat(format)
+	w, ok := profile.MPPPourFormat(format)
 	if !ok {
-		return profile.MPPWidths{}, erreurFormatInconnu(format)
+		return profile.MPPWidths{}, profile.ErreurFormatInconnu(format)
 	}
 	return w, nil
 }
@@ -194,7 +194,7 @@ func unknownFormatCounterName(format int) string {
 }
 
 // UnknownFormatExpvarPairs rend le compteur a publier quand la version de format d un film est
-// absente de la table de profil ([ErrUnknownFormat]).
+// absente de la table de profil ([profile.ErrUnknownFormat]).
 //
 // # POURQUOI CE COMPTEUR EXISTE, ET POURQUOI IL N ATTEND PAS LE COMPTAGE DU REGISTRE
 //

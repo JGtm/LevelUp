@@ -80,7 +80,7 @@ type e194Classe struct {
 // ne les consulte pas. Les afficher dit si une clé PLUS FINE séparerait la classe — elle ne le
 // ferait que si le découpage détecté portait la bonne porte, ce que la mesure (b) réfute sur
 // Live Fire.
-func e194ClassesDeSignature(cat *MapQuantCatalog) []e194Classe {
+func e194ClassesDeSignature(cat *profile.MapQuantCatalog) []e194Classe {
 	par := map[[3]uint][]string{}
 	bits := map[[3]uint]map[uint]bool{}
 	for nom, e := range cat.Maps {
@@ -111,7 +111,7 @@ func e194ClassesDeSignature(cat *MapQuantCatalog) []e194Classe {
 
 // TestE194CartesJumellesDuCatalogue — MESURE (c) : les cartes qu'une signature ne distingue pas.
 func TestE194CartesJumellesDuCatalogue(t *testing.T) {
-	cat, err := LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -142,7 +142,7 @@ func TestE194CartesJumellesDuCatalogue(t *testing.T) {
 type e194Ligne struct {
 	Film, Carte string
 	// ParNom : l'entrée que le NOM DE MATCH donne, et son erreur.
-	ParNom    MapQuantEntry
+	ParNom    profile.MapQuantEntry
 	ErrNom    error
 	Detecte   profile.I0Layout
 	ErrDetect error
@@ -161,7 +161,7 @@ func (l e194Ligne) Verdict() string {
 		return "ambigue"
 	case l.ErrNom != nil:
 		return "nom hors catalogue"
-	case NormalizeMapName(l.Candidats[0]) == NormalizeMapName(l.Carte):
+	case profile.NormalizeMapName(l.Candidats[0]) == profile.NormalizeMapName(l.Carte):
 		return "accord"
 	default:
 		return "desaccord"
@@ -172,7 +172,7 @@ func (l e194Ligne) Verdict() string {
 // que le nom de match donne, film par film.
 func TestE194SignatureContreNomDeMatch(t *testing.T) {
 	dirs := chunk00Films(t, "CHUNK00_FILMS")
-	cat, err := LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -190,7 +190,7 @@ func TestE194SignatureContreNomDeMatch(t *testing.T) {
 
 // e194Mesure remplit la ligne d'un film : carte nommée, entrée du catalogue, signature détectée
 // et candidats de cette signature.
-func e194Mesure(t *testing.T, cat *MapQuantCatalog, dir string) (e194Ligne, bool) {
+func e194Mesure(t *testing.T, cat *profile.MapQuantCatalog, dir string) (e194Ligne, bool) {
 	t.Helper()
 	l := e194Ligne{Film: filepath.Base(dir)}
 	carte, ok := e192CarteDuFilm[l.Film]

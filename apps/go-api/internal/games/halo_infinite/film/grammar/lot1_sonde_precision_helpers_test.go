@@ -160,7 +160,7 @@ func sondeWorldRange(t *testing.T, dir string) *profile.Vec3Range {
 	}
 	path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")
-	cat, err := LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Logf("catalogue de bornes illisible (%v) : distances desactivees", err)
 		return nil
@@ -176,7 +176,7 @@ func sondeWorldRange(t *testing.T, dir string) *profile.Vec3Range {
 		return &r
 	}
 	var hits []string
-	var found MapQuantEntry
+	var found profile.MapQuantEntry
 	for name, e := range cat.Maps {
 		if e.AxisWidths == lay.AxisW {
 			hits = append(hits, name)

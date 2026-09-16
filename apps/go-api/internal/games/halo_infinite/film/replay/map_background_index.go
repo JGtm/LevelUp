@@ -63,7 +63,7 @@ const suffixeIdentiteModule = "_map"
 // blancs resserrés puis remplacés par des soulignés, suffixe `_map` retiré.
 //
 // POURQUOI ELLE N'ENLÈVE NI « - Ranked » NI « Heavies », contrairement à
-// grammar.NormalizeMapName. Ce rabotage est JUSTE pour les bornes de déquantification (même
+// profile.NormalizeMapName. Ce rabotage est JUSTE pour les bornes de déquantification (même
 // niveau, mêmes bornes monde) et FAUX ici : sur les 84 fonds publiés, « Insolence » et
 // « Insolence Heavies » sont deux assets Forge distincts avec deux fonds distincts — idem
 // Fortitude, Thunderhead, Refuge, Obituary (Heavies) et Origin, Solitude (- Ranked). Raboter le

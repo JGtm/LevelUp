@@ -186,8 +186,8 @@ func TestScanFilmBipedPositionsDelegue(t *testing.T) {
 			}
 		})
 	}
-	if _, err := ScanFilmBipedPositions(dir, DefaultScanFilmOptions()); !errors.Is(err, ErrUnknownMapBounds) {
-		t.Fatalf("sans bornes de carte, l'erreur doit envelopper ErrUnknownMapBounds : %v", err)
+	if _, err := ScanFilmBipedPositions(dir, DefaultScanFilmOptions()); !errors.Is(err, profile.ErrUnknownMapBounds) {
+		t.Fatalf("sans bornes de carte, l'erreur doit envelopper profile.ErrUnknownMapBounds : %v", err)
 	}
 }
 

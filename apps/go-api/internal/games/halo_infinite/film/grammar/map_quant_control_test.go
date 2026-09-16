@@ -2,7 +2,7 @@ package grammar
 
 // map_quant_control_test.go — LE CONTRÔLE DU CATALOGUE DE BORNES, FILM PAR FILM.
 //
-// CE QU'IL CONTRÔLE. `MapQuantEntry.AxisWidths` est DÉDUIT des bornes par la loi du moteur
+// CE QU'IL CONTRÔLE. `profile.MapQuantEntry.AxisWidths` est DÉDUIT des bornes par la loi du moteur
 // (W = min(26, ceilLog2(ceil(60*extent)))) ; `DetectI0Layout` LIT le découpage réel dans le
 // bitstream du film, sans aucun a priori de largeur. Les deux doivent coïncider. Un désaccord
 // dit que les BORNES sont fausses — c'est écrit depuis toujours dans le commentaire
@@ -39,6 +39,7 @@ package grammar
 import (
 	"encoding/csv"
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"sort"
@@ -104,7 +105,7 @@ func TestControleBornesFilms(t *testing.T) {
 }
 
 // ctrlEntrees résout les trois entrées de l'instrument, ou déclare le test sauté.
-func ctrlEntrees(t *testing.T) ([]ctrlPaire, string, *MapQuantCatalog) {
+func ctrlEntrees(t *testing.T) ([]ctrlPaire, string, *profile.MapQuantCatalog) {
 	t.Helper()
 	pairesPath := os.Getenv(ctrlPairesEnv)
 	if pairesPath == "" {
@@ -114,7 +115,7 @@ func ctrlEntrees(t *testing.T) ([]ctrlPaire, string, *MapQuantCatalog) {
 	if root == "" || boundsPath == "" {
 		t.Fatalf("%s et %s sont requis avec %s", ctrlRootEnv, ctrlBoundsEnv, ctrlPairesEnv)
 	}
-	cat, err := LoadMapQuantCatalog(boundsPath)
+	cat, err := profile.LoadMapQuantCatalog(boundsPath)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", boundsPath, err)
 	}

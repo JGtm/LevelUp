@@ -44,20 +44,20 @@ const (
 // r8MapRange rend les BORNES DE DEQUANTIFICATION du film, identifiees SANS base de donnees :
 // `DetectI0Layout` lit dans le film les largeurs d'axe et l'index de region, et le catalogue
 // versionne (`map_quant_bounds.json`) dit quelles cartes portent ces largeurs. Le catalogue
-// documente lui-meme cette egalite comme un CONTROLE (`MapQuantEntry.AxisWidths`) : on s'en
+// documente lui-meme cette egalite comme un CONTROLE (`profile.MapQuantEntry.AxisWidths`) : on s'en
 // sert ici a l'envers, comme d'une cle — et l'ambiguite est benigne, plusieurs cartes
 // partageant les memes largeurs partagent aussi la meme AABB (canevas de Forge).
 //
 // SANS BORNES JUSTES, RIEN NE MARCHE : la largeur de quantification par axe en depend, donc
 // la position decodee, donc l'oracle qui CONFIRME les records de creation. Mesure a l'appui
 // — avec un cube unite, `00ba2e1c` rend 13 poses la ou la production en rend 537.
-func r8MapEntry(t *testing.T, dir string) MapQuantEntry {
+func r8MapEntry(t *testing.T, dir string) profile.MapQuantEntry {
 	t.Helper()
 	path := os.Getenv(r8BoundsEnv)
 	if path == "" {
 		t.Skipf("%s absent : sans bornes de carte le decodage ne rend que des quanta", r8BoundsEnv)
 	}
-	cat, err := LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}
@@ -65,7 +65,7 @@ func r8MapEntry(t *testing.T, dir string) MapQuantEntry {
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible dans %s : %v", dir, err)
 	}
-	var got []MapQuantEntry
+	var got []profile.MapQuantEntry
 	var names []string
 	for name, e := range cat.Maps {
 		if e.AxisWidths != lay.AxisW || e.Region != lay.Region {
@@ -86,7 +86,7 @@ func r8MapEntry(t *testing.T, dir string) MapQuantEntry {
 	return got[0]
 }
 
-func r8HasRange(all []MapQuantEntry, r profile.Vec3Range) bool {
+func r8HasRange(all []profile.MapQuantEntry, r profile.Vec3Range) bool {
 	for _, x := range all {
 		if x.Range() == r {
 			return true

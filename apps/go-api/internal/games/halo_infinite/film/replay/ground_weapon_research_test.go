@@ -355,7 +355,7 @@ func gwWorldRange(t *testing.T) (profile.Vec3Range, bool) {
 	if boundsPath == "" || mapName == "" {
 		return profile.Vec3Range{}, false
 	}
-	cat, err := grammar.LoadMapQuantCatalog(boundsPath)
+	cat, err := profile.LoadMapQuantCatalog(boundsPath)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", boundsPath, err)
 	}
