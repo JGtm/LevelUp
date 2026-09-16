@@ -40,15 +40,15 @@
  *     court, pas d'où il vient. La réserve est en infobulle, portée par le NOM DE LA FAMILLE
  *     dans la vue 2 (une famille y a exactement une ligne, donc exactement un endroit où sa
  *     réserve se lit) ;
- *   - les socles de bonus vidés sont ANONYMES par mesure : une ligne au niveau du MATCH, jamais
- *     une colonne de joueur ;
- *   - répulseur et propulseur n'ont aucune colonne, et c'est écrit dans la réserve du groupe
- *     « Équipement » (`groupEquipmentHint`) et non plus en pied de carte : le PARAGRAPHE qui
- *     l'expliquait a été retiré le 2026-09-13 sur demande de l'utilisateur (« je veux pas du
- *     texte "Socles de bonus de puissance vidés : … Le propulseur … le geste dure une
- *     demi-seconde" »). La raison n'a pas changé — le répulseur n'a aucun canal d'activation
- *     dans le film, le propulseur dure une demi-seconde et se lit sur la carte du rejeu — elle
- *     se dit juste au survol du groupe concerné.
+ *   - les gestes que le film mesure sans en nommer l'auteur ou l'origine ne comptent dans
+ *     aucune des deux vues : ils se disent en UNE PHRASE dans l'infobulle du TITRE de la carte.
+ *     AUCUN TEXTE DE PIED (2026-09-14, décision utilisateur) — le pied de carte a porté
+ *     successivement le paragraphe répulseur/propulseur (retiré le 2026-09-13), la ligne des
+ *     socles de bonus vidés, les dénominateurs de couverture et les deux réserves ; il ne porte
+ *     plus rien du tout. Les réserves qui survivent vivent au survol : celle des états actifs
+ *     sur le nom de famille (vue 2), celle du répulseur et du propulseur dans
+ *     `groupEquipmentHint`, celle des gestes hors vues sur le titre. Les socles de bonus vidés
+ *     se lisent dans le bloc « Contrôle des socles », juste en dessous dans l'onglet ;
  *
  * COULEURS. Les familles de geste prennent la table d'encres de `equipmentUsageChart` (jetons
  * sémantiques, jamais un hex) ; les camps prennent `teamTokenCssVar` — les jetons `team-ally` /
@@ -77,7 +77,6 @@ import {
   type UsageShareRow,
 } from './model/equipmentUsageChart'
 import {
-  equipmentFamilyLabel,
   partitionUsageGroups,
   uniqueUsageGroups,
   usageColumnGroups,
@@ -105,12 +104,13 @@ export function MatchEquipmentUsageSection({
   locale,
 }: Props) {
   const t = REPLAY_TEXT[locale]
+  const u = t.equipmentUsage
   const { data } = useMatchReplay(playerSlug, matchId, replayAvailable)
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const usage = useMemo(() => (data ? buildEquipmentUsage(data, board) : null), [data, board])
   // REPLIÉ PAR DÉFAUT (plan 2026-09-05, décision D3) : état posé AU MONTAGE, jamais persisté.
   // SAUF QUAND LE REPLI NE LAISSE RIEN À VOIR (2026-09-13) : zéro colonne élue = une carte qui
-  // n'affiche que ses notes de pied, exactement le défaut que l'utilisateur a nommé sur le bloc
+  // n'affiche plus rien du tout, exactement le défaut que l'utilisateur a nommé sur le bloc
   // voisin (« pourquoi il est constamment replié et n'affiche jamais rien par défaut ? »). Le
   // cas est devenu courant depuis le retrait des grenades, qui étaient les seules colonnes hors
   // vote donc toujours visibles. Le bouton reste, il sert alors à REPLIER.
@@ -118,6 +118,7 @@ export function MatchEquipmentUsageSection({
   const partition = useUsagePartition(usage, t)
   const deplie = expanded ?? partition.forward.length === 0
   const { groups, familles } = useUsageGroups(partition, deplie)
+  const reserve = useMemo(() => usageReserve(usage), [usage])
   const meRow = useMemo(() => board.find((r) => r.is_me), [board])
   const meSide = meRow?.team_side ?? null
 
@@ -167,7 +168,14 @@ export function MatchEquipmentUsageSection({
         // Le bouton du repli vit dans l'EN-TÊTE de la carte (plan 2026-09-05, G1.2) : visible
         // sans dérouler les deux vues. Zéro colonne repliée = pas de bouton.
         <span className="flex items-center justify-between gap-2">
-          <span>{label}</span>
+          {/* LA RÉSERVE EST AU SURVOL DU TITRE, et nulle part ailleurs : sans réserve à dire,
+              `HeaderLabelTooltip` rend le libellé nu (aucun nœud superflu). */}
+          <HeaderLabelTooltip
+            text={reserve > 0 ? u.coverageReserveFmt(reserve) : undefined}
+            focusable
+          >
+            <span>{label}</span>
+          </HeaderLabelTooltip>
           <CollapsedItemsToggle
             expanded={deplie}
             count={partition.collapsedColumnCount}
@@ -178,7 +186,6 @@ export function MatchEquipmentUsageSection({
           />
         </span>
       )}
-      footer={<UsageFootnotes usage={usage} t={t} />}
     >
       <UsageViews grid={grid} groups={groups} familles={familles} shares={shares} t={t} />
     </SectionCard>
@@ -338,11 +345,10 @@ function UsageTeamShares({ rows, t }: { rows: UsageShareRow[]; t: ReplayText }) 
 }
 
 /**
- * unknownOriginPlacements — LA RÉSERVE DE COUVERTURE DES POSES (P13, première moitié) : la
- * somme des poses `famille/unknown` de `coverage.placements.byFamilyOrigin` — ~5 % du parc
- * mesurés par E0 (681/11 438). `origin: 'unknown'` n'est ni un déploiement ni un lâcher
- * (schéma antérieur au 10, ou pose sans poseur mesuré) : elle ne doit être comptée dans
- * AUCUNE des deux vues, et pourtant elle a eu lieu — elle se montre ici plutôt que se taire.
+ * unknownOriginPlacements — LES POSES D'ORIGINE INCONNUE : la somme des poses `famille/unknown`
+ * de `coverage.placements.byFamilyOrigin` — ~5 % du parc mesurés par E0 (681/11 438).
+ * `origin: 'unknown'` n'est ni un déploiement ni un lâcher (schéma antérieur au 10, ou pose sans
+ * poseur mesuré) : elle n'est comptée dans AUCUNE des deux vues, et pourtant elle a eu lieu.
  */
 function unknownOriginPlacements(cov: EquipmentUsage['coverage']): number {
   let total = 0
@@ -353,51 +359,20 @@ function unknownOriginPlacements(cov: EquipmentUsage['coverage']): number {
 }
 
 /**
- * UsageFootnotes — la ligne ANONYME du match, les dénominateurs, et ce qui n'est pas mesuré.
+ * usageReserve — CE QUE LES DEUX VUES NE COMPTENT PAS, en un seul nombre.
  *
- * La ligne des socles de bonus est HORS DES DEUX VUES, et ce n'est pas une question de place :
- * le ramasseur n'est pas AFFICHÉ ici (`padPickups[].xuid` est publié depuis le schéma 30, mais
- * cet écran n'a pas été repensé pour l'exploiter — il l'est par `MatchPadControlSection`, juste
- * en dessous dans l'onglet). Une colonne, même intitulée « anonyme », finirait par se lire comme
- * une grandeur de joueur.
+ * Deux mesures, une seule réserve : les gestes sans propriétaire (slot n'appartenant à aucun
+ * joueur, ou poseur non mesuré) et les poses d'origine inconnue. Elles ont eu lieu, le film ne
+ * les rattache à personne, elles ne peuvent donc entrer ni dans la grille par joueur ni dans la
+ * part par équipe. La réserve NE SE CACHE PAS (décision utilisateur 2026-09-09) : depuis le
+ * 2026-09-14 elle se dit dans l'INFOBULLE DU TITRE, en une phrase, et non plus en pied de carte
+ * (l'utilisateur ne veut aucun texte de pied sous ce bloc).
  *
- * LES DEUX RÉSERVES DE COUVERTURE (P13, E2.6) FERMENT LA LISTE : la
- * réserve NE SE CACHE PAS (amendement du 2026-09-09 à la sortie de E0 — décision utilisateur,
- * cf. journal du plan). `unknownOriginPlacements` existait déjà en germe dans `coverage` ;
- * `unnamedTaken` (E2, `equipmentUsageLogic.ts`) compte les objets pris dont le rang n'a pas de
- * famille connue ; il N'EST PAS RENDU (décision utilisateur 2026-09-09 : ces objets ne
- * s'affichent pas dans l'interface, ils seront identifiés par un relevé Theater guidé). Le
- * compteur reste publié par la logique pour l'outillage d'investigation.
+ * `unnamedTaken` (objets pris dont le rang n'a pas de famille connue) n'y entre PAS : décision
+ * utilisateur du 2026-09-09, ces objets ne s'affichent pas dans l'interface — le compteur reste
+ * publié par la logique pour l'outillage d'investigation.
  */
-function UsageFootnotes({ usage, t }: { usage: EquipmentUsage; t: ReplayText }) {
-  const u = t.equipmentUsage
-  const cov = usage.coverage
-  const orphelins = tallyTotal(usage.unattributed)
-  const detail = Object.entries(usage.powerupPickups)
-    .map(([family, n]) => `${equipmentFamilyLabel(family, t)} ${n}`)
-    .join(' · ')
-  const posesInconnues = unknownOriginPlacements(cov)
-  return (
-    <div className="space-y-1 border-t border-border px-3 pb-2 pt-2 text-[11px] text-muted-foreground">
-      {usage.powerupPickupsTotal > 0 && (
-        <p className="text-foreground">
-          <HeaderLabelTooltip text={u.powerupPadsHint} focusable>
-            <span>{u.powerupPads}</span>
-          </HeaderLabelTooltip>
-          {' : '}
-          <span className="font-semibold tabular-nums">{usage.powerupPickupsTotal}</span>
-          {detail ? ` (${detail})` : ''}
-          {cov.powerupPads > 0 ? ` — ${u.powerupPadsDenomFmt(cov.powerupPads)}` : ''}
-        </p>
-      )}
-      {usage.columns.episodes.length > 0 && cov.tracksTotal > 0 && (
-        <p>{u.coverageActiveFmt(cov.tracksTotal)}</p>
-      )}
-      {usage.columns.grapple && cov.grapplePulls > 0 && (
-        <p>{u.coverageGrappleFmt(cov.grapplePulls, cov.grapplePullLives)}</p>
-      )}
-      {orphelins > 0 && <p>{u.unattributedFmt(orphelins)}</p>}
-      {posesInconnues > 0 && <p>{u.coverageUnknownOriginFmt(posesInconnues)}</p>}
-    </div>
-  )
+function usageReserve(usage: EquipmentUsage | null): number {
+  if (!usage) return 0
+  return tallyTotal(usage.unattributed) + unknownOriginPlacements(usage.coverage)
 }

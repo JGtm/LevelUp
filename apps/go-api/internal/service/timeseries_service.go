@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/analysis/timeline"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -67,6 +68,10 @@ type TimeseriesService struct {
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
 	gamertag          string
+	// repoRoot : racine du depot, pour le SEUL catalogue d'armes du titre (nommage du
+	// detail par niveau du bloc usage, cf. squadagg.NommerArmesDesNiveaux). Vide = les armes
+	// s'affichent sous leur cle, jamais un nom approchant.
+	repoRoot string
 	// weaponKillsRepo (chart .04 Top weapons) : optionnel, degradation gracieuse.
 	// Si nil, TopWeapons reste vide.
 	weaponKillsRepo port.WeaponKillsRepository
@@ -341,7 +346,7 @@ func (s *TimeseriesService) GetPage(
 	// Portée des engagements (onglet Résumé) + Usages d'équipement (onglet Progression) :
 	// sections migrées depuis la Synthèse, MÊME producteur, MÊME scope filtré.
 	filteredCanon := filterCanonicalByMatchIDs(canonicalRows, matches)
-	s.attachMigratedSections(ctx, &resp, filteredCanon)
+	s.attachMigratedSections(ctx, &resp, filteredCanon, ctxkeys.Locale(ctx))
 
 	// BriefingKPIs : KPIs sur les rows canoniques filtres (memes match_ids que
 	// matches). Alimente le composant <SessionBriefing> en mode solo. Reutilise

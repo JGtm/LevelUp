@@ -116,6 +116,16 @@ go run ./cmd/levelup backfill-bomb-stats [--force] [--match ID] [--limit N] [--t
 go run ./cmd/levelup backfill-flag-grabs-net --dry-run
 go run ./cmd/levelup backfill-flag-grabs-net [--force] [--match ID] [--limit N] [--title S]
 
+# 4 bis. NIVEAUX D ARME des prises de socle -> match_pad_pickups_by_tier (append-only).
+#    Meme motif que (4) : elle LIT les artefacts TELS QU ILS SONT, sans decodage, SANS
+#    RECUISSON. Le niveau vient de la CARTE (l emplacement Forge que le socle du match
+#    confirme, reference map_weapon_pads.json) et des equipements de depart du film ; jamais
+#    du nom de l arme. AJOUTER UNE CARTE A LA REFERENCE EXIGE --force : les lignes deja
+#    ecrites portent l ANCIEN croisement (des prises restees en `non_classe` qui deviendraient
+#    `terrain` ou `puissance`), et la reprise ne les reverrait jamais.
+go run ./cmd/levelup backfill-pad-tiers --dry-run
+go run ./cmd/levelup backfill-pad-tiers [--force] [--match ID] [--limit N] [--title S]
+
 # 5. Rasters d'occupation tactique -> fichiers sidecar JSON sous
 #    data/cache/replays/{slug}/rasters/. AUCUNE base n'est ouverte, pas même en lecture :
 #    le sidecar est par match et anonyme, il n'y a rien à demander à DuckDB.
@@ -151,6 +161,35 @@ go run ./cmd/levelup seed-demo            # génère les données démo anonymis
 go run ./cmd/levelup migrate              # migre les données vers le namespace multi-titres
 go run ./cmd/levelup add-title --name "Halo MCC" [--slug s] [--capabilities matchmaking,media] [--xbox-id X] [--steam-id S]
 ```
+
+#### Référentiel d'icônes de médailles (`static/medals/{slug}/{medal_id}.png`)
+
+La page Médailles sert un PNG par identifiant de médaille. `refresh-metadata medal-images`
+compare le catalogue officiel GameCMS (`hi/Waypoint/file/medals/metadata.json`) aux icônes
+versionnées et découpe les manquantes dans la feuille de sprites officielle
+(`hi/Waypoint/file/medals/images/medal_sheet_xl.png`, 4096×4096, tuiles de 256 px,
+16 colonnes). Les jetons viennent du store watcher (ADR 0023 — jamais de re-capture) ;
+**aucun fichier DuckDB n'est ouvert**, la commande se lance donc serveur allumé.
+
+```bash
+cd apps/go-api
+# rapport seul (défaut) : décomptes et les deux listes d'écart
+go run ./cmd/refresh-metadata medal-images --player JGtm
+# découpe toutes les médailles du catalogue dont l'icône manque
+go run ./cmd/refresh-metadata medal-images --player JGtm --download
+# la feuille DEVANCE le catalogue : l'auditer tuile par tuile, puis ancrer un id à la main
+go run ./cmd/refresh-metadata medal-images --player JGtm --audit-sheet
+go run ./cmd/refresh-metadata medal-images --player JGtm --extract-tiles 55,56 --extract-dir /tmp/tuiles
+go run ./cmd/refresh-metadata medal-images --player JGtm --pin 1053114074:55
+# options : --title-id  --out-dir  --dump-raw FICHIER  --metadata-path  --sprite-sheet-path  --tile PX
+```
+
+Référence des points d'accès et de la disposition des `spriteIndex` : den.dev, *Halo Infinite
+Medal API: Infection, VIP, Extraction* (2023-10-11) —
+<https://den.dev/blog/halo-infinite-medals-api/>. La feuille contient des tuiles que le JSON
+ne liste pas : le JSON reste la référence, `--pin` est la porte de sortie, et le garde-rail
+`internal/games/halo_infinite/medal_icons_test.go` échoue dès qu'une médaille de la taxonomie
+n'a pas d'icône.
 
 ### Chaînes de fabrication des assets versionnés
 

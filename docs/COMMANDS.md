@@ -113,6 +113,16 @@ go run ./cmd/levelup backfill-bomb-stats [--force] [--match ID] [--limit N] [--t
 go run ./cmd/levelup backfill-flag-grabs-net --dry-run
 go run ./cmd/levelup backfill-flag-grabs-net [--force] [--match ID] [--limit N] [--title S]
 
+# 4 bis. Weapon TIERS of pad pickups -> match_pad_pickups_by_tier (append-only). Same motif
+#    as (4): it reads the artifacts AS THEY ARE, no decoding, NO RE-COOK. The tier comes
+#    from the MAP (the Forge spot confirming the match pad, reference map_weapon_pads.json)
+#    and from the film spawn loadouts; never from the weapon name. ADDING A MAP TO THE
+#    REFERENCE REQUIRES --force: rows already written carry the previous join (pickups left
+#    as `non_classe` that would become `terrain` or `puissance`), and resume would never
+#    revisit them.
+go run ./cmd/levelup backfill-pad-tiers --dry-run
+go run ./cmd/levelup backfill-pad-tiers [--force] [--match ID] [--limit N] [--title S]
+
 # 5. Tactical occupation rasters -> sidecar JSON files under
 #    data/cache/replays/{slug}/rasters/. NO database is opened, not even read-only: the
 #    sidecar is per-match and anonymous, so nothing has to be asked of DuckDB.
@@ -148,6 +158,35 @@ go run ./cmd/levelup seed-demo            # generate anonymized demo data (data/
 go run ./cmd/levelup migrate              # migrate data into the multi-title namespace
 go run ./cmd/levelup add-title --name "Halo MCC" [--slug s] [--capabilities matchmaking,media] [--xbox-id X] [--steam-id S]
 ```
+
+#### Medal icon reference (`static/medals/{slug}/{medal_id}.png`)
+
+The medals page serves one PNG per medal id. `refresh-metadata medal-images` compares the
+official GameCMS catalogue (`hi/Waypoint/file/medals/metadata.json`) with the versioned
+icons and cuts the missing ones out of the official sprite sheet
+(`hi/Waypoint/file/medals/images/medal_sheet_xl.png`, 4096×4096, 256 px tiles, 16 columns).
+Tokens come from the watcher store (ADR 0023 — never re-capture one); **no DuckDB file is
+opened**, so it is safe to run while the server holds the databases.
+
+```bash
+cd apps/go-api
+# report only (default): counts and both gap lists
+go run ./cmd/refresh-metadata medal-images --player JGtm
+# cut every catalogued medal whose icon is missing
+go run ./cmd/refresh-metadata medal-images --player JGtm --download
+# the sheet runs AHEAD of the catalogue: audit it tile by tile, then pin an id by hand
+go run ./cmd/refresh-metadata medal-images --player JGtm --audit-sheet
+go run ./cmd/refresh-metadata medal-images --player JGtm --extract-tiles 55,56 --extract-dir /tmp/tiles
+go run ./cmd/refresh-metadata medal-images --player JGtm --pin 1053114074:55
+# flags: --title-id  --out-dir  --dump-raw FILE  --metadata-path  --sprite-sheet-path  --tile PX
+```
+
+Reference for the endpoints and the sprite-index layout: den.dev, *Halo Infinite Medal API:
+Infection, VIP, Extraction* (2023-10-11) — <https://den.dev/blog/halo-infinite-medals-api/>.
+The sheet holds tiles that the JSON does not list: the JSON is the reference, `--pin` is the
+escape hatch, and the guard-rail
+`internal/games/halo_infinite/medal_icons_test.go` fails when a medal of the taxonomy has no
+icon.
 
 ### Asset production chains (versioned outputs)
 

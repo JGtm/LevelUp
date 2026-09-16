@@ -56,6 +56,7 @@ import { buildGaugeRow } from '@/features/_shared/usage/usageGaugeModel'
 import { buildObjectiveFamilyGrid, buildSquadRoleGrid } from '@/features/_shared/usage/usageGrids'
 import { USAGE_TEXT, powerupLabel, roleLabel, type UsageText } from '@/features/_shared/usage/usageI18n'
 import { buildLobbyTrack } from '@/features/_shared/usage/usageLobbyTrackModel'
+import { buildPadTierGaugeRows, padTiersNotes } from '@/features/_shared/usage/usagePadTiersModel'
 import { metricLabel, padMetric, roleToken } from '@/features/_shared/usage/usageMetricKinds'
 import {
   formatUsageCount,
@@ -180,8 +181,23 @@ function PadControlCard({ usage, meLabel, t, locale, compact }: CardProps) {
         : null,
     [pad, meLabel, squadPlayers, t, locale],
   )
+  // LES NIVEAUX D'ARME (2026-09-14) : les MÊMES prises, rangées par niveau — base, terrain,
+  // puissance. Section à part DANS LA MÊME CARTE : c'est une seconde lecture des mêmes socles,
+  // pas une seconde grandeur ; une carte de plus l'aurait fait passer pour un autre sujet.
+  const tierRows = useMemo(
+    // LES PARITÉS DU BLOC viennent du bloc lui-même : celles de la carte portent sur le
+    // périmètre du résumé d'usage, qui n'est pas le sien (revue du 2026-09-14).
+    () => buildPadTierGaugeRows(usage.pad_tiers, { t, locale }),
+    [usage.pad_tiers, t, locale],
+  )
+  const tierNotes = useMemo(() => padTiersNotes(usage.pad_tiers, t), [usage.pad_tiers, t])
   const powerups = usage.powerup_pickups ?? []
-  if (pad == null && gaugeRows.length === 0 && powerups.length === 0) return null
+  // LES NIVEAUX COMPTENT DANS LA PORTE (revue du 2026-09-14) : ils viennent d'une AUTRE passe,
+  // sur d'autres matchs. Sans eux dans cette condition, une session dont seuls les niveaux sont
+  // mesures ne rendait RIEN — une mesure existante avalee par la porte de sa voisine.
+  if (pad == null && gaugeRows.length === 0 && powerups.length === 0 && tierRows.length === 0) {
+    return null
+  }
 
   return (
     <SectionCard
@@ -197,6 +213,17 @@ function PadControlCard({ usage, meLabel, t, locale, compact }: CardProps) {
         {gaugeRows.length > 0 && (
           <section aria-label={t.viewShares}>
             <UsageGaugeGrid rows={gaugeRows} t={t} dense={compact} />
+          </section>
+        )}
+        {tierRows.length > 0 && (
+          <section aria-label={t.blockPadTiers}>
+            <ViewTitle>{t.blockPadTiers}</ViewTitle>
+            <UsageGaugeGrid rows={tierRows} t={t} dense={compact} />
+            {tierNotes.map((note) => (
+              <p key={note} className="pt-2 text-3xs text-muted-foreground">
+                {note}
+              </p>
+            ))}
           </section>
         )}
         {track && (

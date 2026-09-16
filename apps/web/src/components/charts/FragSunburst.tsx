@@ -56,6 +56,8 @@ function useSunburstLabels(): FragSunburstBaseLabels {
     classLabel: (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale),
     roleLabel: (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale),
     formatValue: (n: number) => n.toLocaleString(numLoc),
+    othersLabel: (n: number) =>
+      formatMessage(fragsManifest, 'frags.charts.others_slice', appLocale, { n }),
     locale: appLocale,
   }
 }

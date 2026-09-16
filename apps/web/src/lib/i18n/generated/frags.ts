@@ -6,6 +6,7 @@ export const fragsManifest = {
   "frags.authority.exact": { fr: "exact", en: "exact" },
   "frags.charts.center_total_label": { fr: "Frags", en: "Kills" },
   "frags.charts.detail_title": { fr: "Outils de destruction", en: "Tools of destruction" },
+  "frags.charts.others_slice": { fr: "Autres ({n, plural, one {# arme} other {# armes}})", en: "Others ({n, plural, one {# weapon} other {# weapons}})" },
   "frags.charts.sunburst_title": { fr: "Répartition des frags", en: "Frag distribution" },
   "frags.charts.weapon_breakdown_title": { fr: "Frags par arme", en: "Kills by weapon" },
   "frags.class.environmental": { fr: "Environnement", en: "Environment" },

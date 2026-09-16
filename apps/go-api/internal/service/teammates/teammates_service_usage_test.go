@@ -23,6 +23,8 @@ type mockTeammatesUsageRepo struct {
 	films        map[string]sessionusage.FilmRow
 	players      []sessionusage.PlayerRow
 	participants []sessionusage.ParticipantRow
+	padTiers     []sessionusage.PadTierRow
+	padTiersErr  error
 }
 
 func (m *mockTeammatesUsageRepo) LoadUsageFilms(_ context.Context, _ []string) (map[string]sessionusage.FilmRow, error) {
@@ -109,4 +111,10 @@ func TestTeammatesService_GetPage_SansRepoLeBlocDitPourquoi(t *testing.T) {
 		resp.EquipmentUsage.UnavailableReason != domain.SessionUsageUnsupported {
 		t.Errorf("bloc = %+v, attendu indisponible/unsupported", resp.EquipmentUsage)
 	}
+}
+
+// LoadPadTiers — les PRISES DE SOCLE PAR NIVEAU D'ARME. `padTiers` nil = aucune ligne, donc
+// « non mesure » : c'est l'etat par defaut de tous les temoins qui n'en parlent pas.
+func (m *mockTeammatesUsageRepo) LoadPadTiers(_ context.Context, _ []string) ([]sessionusage.PadTierRow, error) {
+	return m.padTiers, m.padTiersErr
 }

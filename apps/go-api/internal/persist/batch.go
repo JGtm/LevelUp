@@ -160,6 +160,16 @@ type SharedBatch struct {
 	// compte CHAQUE ramassage, jonglage compris. Les deux coexistent sans se recouvrir :
 	// l'API garde son compteur, le film porte la grandeur nette.
 	FlagGrabsNet *FlagGrabsNetBatch `json:"flag_grabs_net,omitempty"`
+
+	// PadTiers : LES PRISES DE SOCLE VENTILEES PAR NIVEAU D'ARME (base / terrain /
+	// puissance / non classe / bonus), lues de l'artefact range et croisees a la reference
+	// des emplacements de la carte. Meme regime que FlagGrabsNet : produite par l'etape
+	// post-sync (`sync/replayartifacts/padtiers.go`), jamais au sync primaire — le film
+	// arrive un cycle plus tard.
+	//
+	// Table cible `match_pad_pickups_by_tier` : append-only, lecture par la vue
+	// `match_pad_pickups_by_tier_latest` UNIQUEMENT (ADR 0026).
+	PadTiers *PadTiersBatch `json:"pad_tiers,omitempty"`
 }
 
 // PlayerBatch contient les écritures pour stats.duckdb (du joueur Player).

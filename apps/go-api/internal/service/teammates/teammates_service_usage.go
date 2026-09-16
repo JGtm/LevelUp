@@ -43,13 +43,20 @@ func (s *TeammatesService) WithEquipmentUsage(repo port.SessionUsageRepository) 
 // coéquipiers sélectionnés dans l'UI, qui deviennent les « amis » du bloc.
 func (s *TeammatesService) loadEquipmentUsage(
 	ctx context.Context, playerXUID string,
-	filteredMatches []legacymatch.SynthesisMatchRow, selectedGamertags []string,
+	filteredMatches []legacymatch.SynthesisMatchRow, selectedGamertags []string, locale string,
 ) *domain.EquipmentUsageBlock {
 	return squadagg.BuildEquipmentUsageBlock(ctx, squadagg.EquipmentUsageQuery{
 		Repo:            s.sessionUsageRepo,
 		PlayerXUID:      playerXUID,
 		MatchIDs:        teammatesMatchIDs(filteredMatches),
 		FriendGamertags: selectedGamertags,
+		// De quoi NOMMER les armes du detail par niveau, DANS LA LANGUE DE LA REQUETE. La
+		// locale etait oubliee (revue 2026-09-14) : sans elle, `q.Locale != "en"` rendait vrai
+		// par accident sur la chaine vide — le FR sortait, mais par hasard, et un titre dont le
+		// defaut serait l anglais aurait recu du francais.
+		RepoRoot:  s.repoRoot,
+		TitleSlug: s.titleSlug,
+		Locale:    locale,
 	})
 }
 
