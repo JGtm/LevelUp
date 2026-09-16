@@ -273,7 +273,11 @@ var registreKillsource = []Repli{
 		Ordre:     OrdreDevantLaLecture,
 		Sites: []Site{{
 			Fichier: pkgKillsource + "chunks.go",
-			Ancre:   "f.majorVersion, f.versionLue = filmdec.FilmMajorVersion(src)",
+			// L ANCRE EST LA TRADUCTION ELLE-MEME depuis le lot 2.1.4 : c est LA ligne ou
+			// `Meta()` est perdu, donc celle que ce repli decrit. Elle pointait jusque-la sur
+			// la lecture de la version majeure, voisine de hasard, qui a bouge quand cette
+			// version est passee au profil du film.
+			Ancre: "f := &film{chunks: make([][]byte, n), packets: packetsOf(src)}",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "lot 1.9.8 (cause racine de l'argmax du pied)",

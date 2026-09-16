@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // world_object_precision_guard_test.go — GARDE-RAIL du correctif du 2026-08-15.
@@ -39,7 +40,7 @@ func TestInstallWorldObjectPrecision(t *testing.T) {
 	if entry.AxisWidths == prev.AxisW {
 		t.Fatal("le cas de test doit différer du défaut de paquet, sinon il ne mesure rien")
 	}
-	restore := installWorldObjectPrecision(entry, "testdata", nil)
+	restore := installWorldObjectPrecision(filmdec.ResolveProfile(nil, &entry), "testdata", nil)
 	if got := filmdec.WorldObjectPrecision.AxisW; got != entry.AxisWidths {
 		t.Fatalf("largeurs NON INSTALLÉES : %v, attendu %v (celles de la carte du match)",
 			got, entry.AxisWidths)
@@ -59,7 +60,8 @@ func TestInstallWorldObjectPrecisionKeepsDefaultWithoutWidths(t *testing.T) {
 	prev := filmdec.WorldObjectPrecision
 	t.Cleanup(func() { filmdec.WorldObjectPrecision = prev })
 
-	restore := installWorldObjectPrecision(filmdec.MapQuantEntry{Module: "sans_largeurs"}, "testdata", nil)
+	sansLargeurs := filmdec.MapQuantEntry{Module: "sans_largeurs"}
+	restore := installWorldObjectPrecision(filmdec.ResolveProfile(nil, &sansLargeurs), "testdata", nil)
 	if filmdec.WorldObjectPrecision != prev {
 		t.Fatalf("largeurs à zéro installées (%v) : le décodeur lirait des champs de 0 bit",
 			filmdec.WorldObjectPrecision.AxisW)
@@ -98,9 +100,13 @@ func TestBuildFromFilmWiresWorldObjectPrecision(t *testing.T) {
 	if !ok {
 		t.Fatal("BuildFromFilm introuvable dans build_from_film.go : ce garde-rail ne garde plus rien")
 	}
-	install := regexp.MustCompile(`defer\s+installWorldObjectPrecision\(\*opt\.MapQuant\b`)
+	// LA SOURCE DES LARGEURS EST LE PROFIL DEPUIS LE LOT 2.1 (item 2.1.3), et c'est la MEME
+	// valeur : `fc.Profile().Map()` est l'entree `opt.MapQuant` que `NewFilmContextForMap` a
+	// recue deux lignes plus haut. Ce que le garde exige n'a pas change de nature — que les
+	// largeurs viennent de la CARTE DU MATCH et pas du defaut de paquet —, seulement de chemin.
+	install := regexp.MustCompile(`defer\s+installWorldObjectPrecision\(fc\.Profile\(\)`)
 	if !install.MatchString(body) {
-		t.Fatal("BuildFromFilm n'installe plus les largeurs d'axe depuis opt.MapQuant : les " +
+		t.Fatal("BuildFromFilm n'installe plus les largeurs d'axe depuis le profil du film : les " +
 			"objets du monde de TOUTES les cartes repassent en silence aux largeurs de " +
 			"Cliffhanger (défaut de paquet). Mesuré le 2026-08-15 : la part d'échantillons de " +
 			"projectile dans l'emprise des bipèdes tombe de ~99 % à 0,09-65 % hors Cliffhanger")
@@ -141,4 +147,79 @@ func funcBody(src, head string) (string, bool) {
 		return rest[:end], true
 	}
 	return rest, true
+}
+
+// installWorldObjectPrecisionDeCarte est L'ENVELOPPE DES INSTRUMENTS : elle prend une entrée de
+// catalogue et résout autour d'elle le profil des invariants.
+//
+// Elle existe parce que la production, depuis le lot 2.1, passe un [filmdec.Profile] et non plus
+// une entrée de carte : les quatorze instruments de ce paquet qui installent des largeurs pour
+// balayer un film n'ont, eux, aucune raison de résoudre un profil complet. Le film est nil — les
+// trois clés ne servent pas ici, seule la CARTE est lue par l'installateur.
+func installWorldObjectPrecisionDeCarte(e filmdec.MapQuantEntry, matchID string,
+	fb *fallback.Compteur) func() {
+	return installWorldObjectPrecision(filmdec.ResolveProfile(nil, &e), matchID, fb)
+}
+
+// TestDecoupageForceSuitLesOptions : `decoupageForce` — que `BuildFromFilm` passe au constructeur
+// du contexte — rend EXACTEMENT le champ `Layout` que `scanFilmInputs` compose pour son compte.
+//
+// LES DEUX SE SONT SÉPARÉS AU LOT 2.1 : le contexte est désormais ouvert dans `BuildFromFilm`,
+// donc avant que `scanFilmInputs` n'ait composé ses `ScanFilmOptions`. Une divergence entre les
+// deux ferait décoder le film sous un découpage que l'appelant croyait avoir forcé, en silence.
+func TestDecoupageForceSuitLesOptions(t *testing.T) {
+	force := filmdec.I0Layout{GateBits: 7, AxisW: [3]uint{12, 12, 11}, Region: 1}
+	cas := []struct {
+		nom     string
+		opt     Options
+		attendu *filmdec.I0Layout
+	}{
+		{"sans options de balayage", Options{}, filmdec.DefaultScanFilmOptions().Layout},
+		{"options sans découpage", Options{Scan: &filmdec.ScanFilmOptions{}}, nil},
+		{"découpage forcé", Options{Scan: &filmdec.ScanFilmOptions{Layout: &force}}, &force},
+	}
+	for _, c := range cas {
+		// On rejoue EXACTEMENT les deux lignes par lesquelles `scanFilmInputs` compose `s.scan` :
+		// le défaut du paquet, écrasé par `*opt.Scan` quand l'appelant en fournit un.
+		attendu := filmdec.DefaultScanFilmOptions()
+		if c.opt.Scan != nil {
+			attendu = *c.opt.Scan
+		}
+		got := decoupageForce(c.opt)
+		if got != attendu.Layout || got != c.attendu {
+			t.Errorf("%s : decoupageForce rend %v, `scanFilmInputs` composerait %v (attendu %v)",
+				c.nom, got, attendu.Layout, c.attendu)
+		}
+	}
+}
+
+// TestProfilEgaleGlobalesWorldObject : LE VOLET WORLD-OBJECT DE LA DOUBLE ÉCRITURE (item 2.1.3).
+//
+// Le profil du film porte la carte du match ; la globale de paquet porte ce que le décodeur
+// applique. Tant que [doubleEcritureGlobales] est vrai, les deux doivent rendre les MÊMES
+// largeurs pendant tout le décodage — c'est ce qui autorisera le lot 2.2 à basculer les lecteurs
+// sur le profil sans changer un seul bit lu.
+func TestProfilEgaleGlobalesWorldObject(t *testing.T) {
+	if !doubleEcritureGlobales {
+		t.Skip("double écriture retirée (lot 2.3) : ce test devient le critère « 0 globale »")
+	}
+	prev := filmdec.WorldObjectPrecision
+	t.Cleanup(func() { filmdec.WorldObjectPrecision = prev })
+	cartes := []filmdec.MapQuantEntry{
+		{Module: "ctf_bazaar", AxisWidths: [3]uint{17, 17, 16}},
+		{Module: "live_fire", AxisWidths: [3]uint{12, 12, 11}, Region: 1, RegionIndexBits: 2},
+		{Module: "cliffhanger", AxisWidths: [3]uint{13, 13, 14}},
+	}
+	for _, e := range cartes {
+		entry := e
+		prof := filmdec.ResolveProfile(nil, &entry)
+		restore := installWorldObjectPrecision(prof, "testdata", nil)
+		attendu, got := prof.Map().Layout(), filmdec.WorldObjectPrecision
+		restore()
+		if got.AxisW != attendu.AxisW || got.Region != attendu.Region {
+			t.Errorf("%s : le profil dit {axes %v région %d}, la globale installée dit "+
+				"{axes %v région %d}", entry.Module, attendu.AxisW, attendu.Region,
+				got.AxisW, got.Region)
+		}
+	}
 }
