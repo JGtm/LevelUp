@@ -66,7 +66,7 @@ const vehicleMediaFrameBits = 0
 // ATTENTION : la feuille 4 (quaternion, porte bVar14) n'est pas etablie statiquement ; ce port la
 // modelise absente (vehicleMediaFrameBits = 0). Le deser est donc bit-exact sur le CHEMIN NOMINAL
 // (bVar14 == 0) et NON inscrit dans defaultStateDeserByTI (cf. l'en-tete de fichier).
-func consumeDefaultStateTI40(br *BitReader) {
+func consumeDefaultStateTI40(br *Lecteur) {
 	consumeVersionPrefix(br)              // 1. V : R(1) ; si 1 -> R(8)
 	consumeMultiplayerPropertiesBlock(br) // 2. FUN_14080cfe8 : bloc MPP (publie MPPWord32)
 	if br.ReadBit() {                     // 3. porte bVar14 -> DST+0x60 (R(1) inconditionnel)
@@ -87,7 +87,7 @@ func consumeDefaultStateTI40(br *BitReader) {
 // `FUN_14076e494` (-> DST+0x64) puis `FUN_140c1e79c`. Sa largeur reelle depend de globaux de config
 // runtime (cf. § 3 du dossier RE), donc elle est modelisee par vehicleMediaFrameBits (defaut 0 ->
 // bloc absent). Le meme motif que consumeBipedDefaultStateTail (default_state.go:494).
-func consumeVehicleMediaFrame(br *BitReader) {
+func consumeVehicleMediaFrame(br *Lecteur) {
 	if vehicleMediaFrameBits > 0 {
 		br.Skip(vehicleMediaFrameBits)
 	}

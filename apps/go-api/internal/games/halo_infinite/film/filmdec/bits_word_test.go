@@ -3,7 +3,7 @@ package filmdec
 // bits_word_test.go — TEST DIFFERENTIEL DES PRIMITIVES DE LECTURE DE BITS (decision D6 du
 // plan `.ai/V7.5/PLAN_CUISSON_PERF.md`).
 //
-// LA METHODE. Les quatre primitives reecrites par mot (`BitReader.ReadBits`, `kfReadBits`,
+// LA METHODE. Les quatre primitives reecrites par mot (`Lecteur.ReadBits`, `kfReadBits`,
 // `readBitsAt`, `PeekBits`) sont opposees a une COPIE DE REFERENCE de leur implementation
 // d'AVANT, recopiee ici et nulle part ailleurs — le code de production n'en garde aucune.
 // Chaque cas est joue sur les deux et les resultats doivent coincider bit pour bit.
@@ -23,7 +23,7 @@ import (
 
 // --- Copies de reference (implementations d'AVANT le lot 4, oracles du differentiel) ---
 
-// refReadBitsSeq est `BitReader.ReadBits` d'avant : lecture bit a bit, zero hors tampon,
+// refReadBitsSeq est `Lecteur.ReadBits` d'avant : lecture bit a bit, zero hors tampon,
 // curseur avance de n quoi qu'il arrive.
 func refReadBitsSeq(buf []byte, pos int, n uint) (uint64, int) {
 	var r uint64
@@ -130,7 +130,7 @@ func TestReadBitsWordMatchesReference(t *testing.T) {
 		for _, pos := range bitsFuzzPositions(len(buf)) {
 			for n := uint(0); n <= 64; n++ {
 				wantV, wantPos := refReadBitsSeq(buf, pos, n)
-				br := NewBitReader(buf)
+				br := LecteurSur(buf)
 				br.SetBitPos(pos)
 				gotV := br.ReadBits(n)
 				if gotV != wantV || br.BitPos() != wantPos {
@@ -154,7 +154,7 @@ func TestReadBitsWordWideMatchesReference(t *testing.T) {
 			}
 			for _, n := range []uint{65, 66, 96, 127, 128, 129, 200} {
 				wantV, wantPos := refReadBitsSeq(buf, pos, n)
-				br := NewBitReader(buf)
+				br := LecteurSur(buf)
 				br.SetBitPos(pos)
 				gotV := br.ReadBits(n)
 				if gotV != wantV || br.BitPos() != wantPos {
@@ -252,7 +252,7 @@ func TestReadBitsZeroPadsOutOfBuffer(t *testing.T) {
 	if got := PeekBits(buf, total, 64); got != 0 {
 		t.Fatalf("PeekBits entierement hors tampon = %#x, attendu 0", got)
 	}
-	br := NewBitReader(buf)
+	br := LecteurSur(buf)
 	br.SetBitPos(total)
 	if got := br.ReadBits(64); got != 0 {
 		t.Fatalf("ReadBits entierement hors tampon = %#x, attendu 0", got)

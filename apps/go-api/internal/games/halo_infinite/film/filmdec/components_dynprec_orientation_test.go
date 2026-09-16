@@ -2,7 +2,7 @@ package filmdec
 
 import "testing"
 
-// bitWriterMSB écrit des champs MSB-first, comme les lit BitReader. Local au test : il
+// bitWriterMSB écrit des champs MSB-first, comme les lit Lecteur. Local au test : il
 // n'existe que pour fabriquer les chemins de FUN_140c5f7ec sans film.
 type bitWriterMSB struct {
 	buf []byte
@@ -90,7 +90,7 @@ func TestFwdUpDynPrecBitCost(t *testing.T) {
 			for len(w.buf) < 64 { // marge : les chemins longs lisent au-delà des bits posés
 				w.buf = append(w.buf, 0)
 			}
-			br := NewBitReader(w.buf)
+			br := LecteurSur(w.buf)
 			if !consumeObjectForwardAndUpDynPrec(br, c.param) {
 				t.Fatalf("%s : le porteur rend non-porte", c.name)
 			}
@@ -124,12 +124,12 @@ func TestAngVelDynPrecBitCost(t *testing.T) {
 			for len(w.buf) < 32 {
 				w.buf = append(w.buf, 0)
 			}
-			br := NewBitReader(w.buf)
+			br := LecteurSur(w.buf)
 			consumeObjectAngularVelocityDynPrec(br)
 			if got := br.BitPos(); got != c.wantDyn {
 				t.Errorf("dyn.-prec. : %d bits, attendu %d", got, c.wantDyn)
 			}
-			br2 := NewBitReader(w.buf)
+			br2 := LecteurSur(w.buf)
 			consumeDynPrecVec3(br2, angularMagBits, angularScaleBits)
 			if got := br2.BitPos(); got != c.wantPlat {
 				t.Errorf("sans dyn.-prec. : %d bits, attendu %d", got, c.wantPlat)

@@ -61,7 +61,7 @@ func r7MesureLargeurs(t *testing.T, root string, ids []string,
 					continue
 				}
 				if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-					_, _ = DecodeFrameRecords(NewBitReader(pay), wBase, cfg)
+					_, _ = DecodeFrameRecords(LecteurSur(pay), wBase, cfg)
 				}
 			}
 			snap := wBase.Snapshot()

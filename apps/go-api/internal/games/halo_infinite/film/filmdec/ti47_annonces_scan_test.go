@@ -405,7 +405,7 @@ func (m *ti47Moisson) lit(pay []byte, rec WorldObjectRecord, chunk, tMS, width i
 		if name == "" {
 			return
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(at)
 		if _, _, ported := consumeByName(br, name, uint32(b.ti), b.arch.Level(id)); !ported {
 			return

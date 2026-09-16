@@ -16,7 +16,7 @@ package filmdec
 // ce serait réintroduire l'approche écartée. `state-broker` visait ti=46, ni décodé ni planifié.
 
 // change-scene-component (FUN_142ed3fcc): R(6) + R(12)=N + N-bit blob (N self-describing).
-func consumeChangeScene(br *BitReader) {
+func consumeChangeScene(br *Lecteur) {
 	br.ReadBits(6)
 	n := uint(br.ReadBits(12))
 	for rem := n; rem > 0; {
@@ -31,7 +31,7 @@ func consumeChangeScene(br *BitReader) {
 
 // spawn-filter-type-component (FUN_142ed708c -> FUN_142ecf744): 2-bit tag dispatch.
 // version-gated tag1 (confident=false) modeled as v<2 handle path.
-func consumeSpawnFilterType(br *BitReader) {
+func consumeSpawnFilterType(br *Lecteur) {
 	switch br.ReadBits(2) {
 	case 0:
 		// none
@@ -58,7 +58,7 @@ func consumeSpawnFilterType(br *BitReader) {
 
 // statborg-current-round-value-stat-component (FUN_140c18794): 2x R(5) header +
 // 2x var-width signed + 2x R(1) flag + conditional var-width.
-func consumeStatborgValueStat(br *BitReader) {
+func consumeStatborgValueStat(br *Lecteur) {
 	br.ReadBits(5)
 	br.ReadBits(5)
 	br.ReadSignedVarWidth()
@@ -74,7 +74,7 @@ func consumeStatborgValueStat(br *BitReader) {
 }
 
 // tacmap-areaofinterest (FUN_142ed3c50): R(32)+R(3)+pos+R(12).
-func consumeTacmapAreaOfInterest(br *BitReader) {
+func consumeTacmapAreaOfInterest(br *Lecteur) {
 	br.ReadBits(32)
 	br.ReadBits(3)
 	consumeE524PositionBody(br)
@@ -82,7 +82,7 @@ func consumeTacmapAreaOfInterest(br *BitReader) {
 }
 
 // tacmap-displayasset (FUN_142ed433c): R(32)+R(32)+R(2)+pos+R(96)+R(96)+R(1).
-func consumeTacmapDisplayAsset(br *BitReader) {
+func consumeTacmapDisplayAsset(br *Lecteur) {
 	br.ReadBits(32)
 	br.ReadBits(32)
 	br.ReadBits(2)
@@ -105,7 +105,7 @@ func consumeTacmapDisplayAsset(br *BitReader) {
 // l'état des zones par images-clés + footer type-3).
 //
 //nolint:unused // grammaire d'un composant de ti=23 — voir la condition de retrait ci-dessus.
-func consumeSelectableZoneData(br *BitReader) {
+func consumeSelectableZoneData(br *Lecteur) {
 	br.ReadBits(32)
 	consumeE524PositionBody(br)
 	if br.ReadBits(1) == 0 {
@@ -114,7 +114,7 @@ func consumeSelectableZoneData(br *BitReader) {
 }
 
 // managed-object-participant-respawn-block-component (FUN_142ed6a20): R(32)+R(1)[+R(5)].
-func consumeRespawnBlock(br *BitReader) {
+func consumeRespawnBlock(br *Lecteur) {
 	br.ReadBits(32)
 	if br.ReadBits(1) == 0 {
 		br.ReadBits(5)
@@ -122,7 +122,7 @@ func consumeRespawnBlock(br *BitReader) {
 }
 
 // item-ignore-player-component (FUN_141101120): R(1)[+R(5)].
-func consumeItemIgnorePlayer(br *BitReader) {
+func consumeItemIgnorePlayer(br *Lecteur) {
 	if br.ReadBits(1) == 0 {
 		br.ReadBits(5)
 	}
@@ -130,7 +130,7 @@ func consumeItemIgnorePlayer(br *BitReader) {
 
 // consumeGameEngineSharedTeamLives mirrors FUN_142f03600 (ti=0 i1): 8x R(8) = 64 bits
 // (one lives byte per team, unconditional).
-func consumeGameEngineSharedTeamLives(br *BitReader) {
+func consumeGameEngineSharedTeamLives(br *Lecteur) {
 	for i := 0; i < 8; i++ {
 		br.ReadBits(8)
 	}
@@ -138,8 +138,8 @@ func consumeGameEngineSharedTeamLives(br *BitReader) {
 
 // consumeE524PositionBody mirrors the FUN_14076e524 absolute-position read WITHOUT a
 // leading gate (the caller supplies its own gate): R(1) index-select; if 0 -> R(idxW)
-// index; then 3 axes of R(axisW). Widths from `BitReader.traversal` (runtime, derivable).
-func consumeE524PositionBody(br *BitReader) {
+// index; then 3 axes of R(axisW). Widths from `Lecteur.traversal` (runtime, derivable).
+func consumeE524PositionBody(br *Lecteur) {
 	if !br.ReadBit() { // FUN_14076e524 index-present select
 		br.ReadBits(br.traversal().IndexW)
 	}
@@ -150,7 +150,7 @@ func consumeE524PositionBody(br *BitReader) {
 
 // consumeCompressedDir140c1e79c mirrors FUN_140c1e79c: R(1) sign; if 0 -> R(19) packed
 // magnitude (FUN_1406d8288); then R(8) scale (FUN_1406d84b4 width 0x8 @140c1e80f).
-func consumeCompressedDir140c1e79c(br *BitReader) {
+func consumeCompressedDir140c1e79c(br *Lecteur) {
 	if !br.ReadBit() { // sign==0 -> packed magnitude present
 		br.ReadBits(19) // FUN_1406d8288 (0x13)
 	}
@@ -162,7 +162,7 @@ func consumeCompressedDir140c1e79c(br *BitReader) {
 //
 //	mask = R(8) ; for each set bit (0..7): FUN_140c1e79c (compressed dir) +
 //	FUN_1404fdcb4 (local float, 0 bits) + FUN_14076e494 (e524 absolute position).
-func consumeGenericRigidBodyTransforms(br *BitReader) {
+func consumeGenericRigidBodyTransforms(br *Lecteur) {
 	mask := br.ReadBits(8)
 	for i := uint(0); i < 8; i++ {
 		if mask&(1<<i) != 0 {

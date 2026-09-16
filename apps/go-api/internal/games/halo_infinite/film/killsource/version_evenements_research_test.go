@@ -87,7 +87,7 @@ func TestVersionEvenements(t *testing.T) {
 			t.Errorf("%s : chargement : %v", id, err)
 			continue
 		}
-		t.Logf("%-8s version=%d (lue=%v) chunks=%d", id, f.majorVersion, f.versionLue, len(f.chunks))
+		t.Logf("%-8s version=%d (lue=%v) chunks=%d", id, f.majorVersion, f.versionLue, f.src.NumChunks())
 		for _, decoupage := range []int{versionGamertagEnTeteTest, versionGamertagDecaleTest} {
 			s := hverMesure(f, decoupage)
 			marque := " "
@@ -118,8 +118,8 @@ func hverMemeDecoupage(decoupage, version int) bool {
 func hverMesure(f *film, decoupage int) hverStats {
 	var best hverStats
 	best.chunk = -1
-	for ch := range f.chunks {
-		evs, err := analysis.ParseHighlightEvents(f.chunks[ch], decoupage)
+	for ch := 0; ch < f.src.NumChunks(); ch++ {
+		evs, err := analysis.ParseHighlightEvents(f.src.Chunk(ch), decoupage)
 		if err != nil || len(evs) == 0 {
 			continue
 		}
@@ -243,8 +243,8 @@ func hverRosterDuFilm(f *film) []uint64 {
 		decoupage = versionGamertagDecaleTest
 	}
 	var best []analysis.HighlightEvent
-	for ch := range f.chunks {
-		evs, err := analysis.ParseHighlightEvents(f.chunks[ch], decoupage)
+	for ch := 0; ch < f.src.NumChunks(); ch++ {
+		evs, err := analysis.ParseHighlightEvents(f.src.Chunk(ch), decoupage)
 		if err != nil || len(evs) <= len(best) {
 			continue
 		}
@@ -268,13 +268,13 @@ func hverRosterDuFilm(f *film) []uint64 {
 // que `replay.ScanPlayerIndices` : le premier est le registre, le dernier le pied de film.
 func hverCherche(f *film, roster []uint64) (chunks, avecMotif int, indices map[int]bool) {
 	indices = map[int]bool{}
-	if len(f.chunks) < 2 || len(roster) == 0 {
+	if f.src.NumChunks() < 2 || len(roster) == 0 {
 		return 0, 0, indices
 	}
 	distincts := map[uint64]bool{}
-	for c := 1; c < len(f.chunks)-1; c++ {
+	for c := 1; c < f.src.NumChunks()-1; c++ {
 		chunks++
-		got := weaponv3.ResolveXuidToPI(roster, f.chunks[c])
+		got := weaponv3.ResolveXuidToPI(roster, f.src.Chunk(c))
 		if len(got) == 0 {
 			continue
 		}

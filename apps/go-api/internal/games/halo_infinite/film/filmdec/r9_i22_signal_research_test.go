@@ -115,7 +115,7 @@ func r9SigPayload(pay []byte, band map[uint32]bool, arch Archetype, idx22 int,
 		}
 		if maskHas(rec.Idx, idx22) {
 			if at := r9SigOffset(pay, rec, total, arch, idx22); at >= 0 && at+5 <= total {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				br.SetBitPos(at)
 				out = append(out, r9Signal{Ent: r9Ent{Slot: rec.Slot, Gen: rec.Gen},
 					TSUS: pk.TimestampUS, Sig: uint32(br.ReadBits(4)), Bit: br.ReadBit()})
@@ -141,7 +141,7 @@ func r9SigOffset(pay []byte, rec WorldObjectRecord, total int, arch Archetype, t
 		if name == "" {
 			return -1
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(EquipmentTypeIndex), arch.Level(id))
 		if !ported || br.BitPos() > total {

@@ -179,7 +179,7 @@ func (pr *equipOffsetProbe) scan(pay []byte) {
 // body dit si un masque valide ouvrant sur i0 commence au bit b et si la position qui le suit
 // tombe à moins d'equipCreationPosEps du premier point d'une vie delta connue.
 func (pr *equipOffsetProbe) body(pay []byte, b, total int) (equipCreationLifeKey, bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.SetBitPos(b)
 	idx, _, valid := readMaskIndices(br, pr.comps)
 	if !valid || br.BitPos() > total || idx[0] != 0 {

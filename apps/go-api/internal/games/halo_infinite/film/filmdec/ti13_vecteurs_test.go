@@ -357,7 +357,7 @@ func TestTi13HookConsommeLesMemesBitsSansHook(t *testing.T) {
 
 	cas := []struct {
 		nom   string
-		deser func(*BitReader)
+		deser func(*Lecteur)
 	}{
 		{compManagedObjectProperty, consumeManagedObjectProperty},
 		{compManagedObjectPlayerMaskedProperty, consumeManagedObjectPlayerMaskedProperty},

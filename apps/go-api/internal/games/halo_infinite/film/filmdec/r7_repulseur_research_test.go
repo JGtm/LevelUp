@@ -51,7 +51,7 @@ type r7Knock struct {
 
 // r7DecodeKnock lit l'en-tete et la charge d'un evenement 104 a partir du bit du R(7) de type.
 func r7DecodeKnock(pay []byte, bitType int) (r7Knock, bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(bitType + 7)
 	var k r7Knock
 	// refs : domaines {0, 0, 7} — 13 bits chacune.

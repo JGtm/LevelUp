@@ -61,7 +61,7 @@ const (
 // horodatage bloc non resolu hors ligne. Contrairement a modalPostCountsBit, N'ECARTE PAS
 // les records non-modaux : on en a besoin ici.
 func nmHeaderCounts(pay []byte) (pos, nComp, nTargets int, ok bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(2)
 	if br.ReadBits(7) != 36 {
 		return 0, 0, 0, false
@@ -119,11 +119,11 @@ func nmHeaderCounts(pay []byte) (pos, nComp, nTargets int, ok bool) {
 	return br.BitPos(), int(nComps), int(nCibles), true
 }
 
-// nmLoopBits place un BitReader a postCounts et le fait avancer, au bit pres, a travers la
+// nmLoopBits place un Lecteur a postCounts et le fait avancer, au bit pres, a travers la
 // boucle composantes (nComp * 35 bits) puis la boucle cibles (grammaire Ghidra ci-dessus),
 // et rend la position de bit APRES les deux boucles.
 func nmLoopBits(pay []byte, postCounts, nComp, nTargets int) int {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(postCounts)
 	var comp [16]uint64 // R(2) memorise par composante (idx 0..15 : R(4) max)
 	for i := 0; i < nComp; i++ {
@@ -166,7 +166,7 @@ func nmLoopBits(pay []byte, postCounts, nComp, nTargets int) int {
 // nmAfterComposites part de la position apres les boucles et consomme les deux composites
 // (cd5b8 + eff64, bit-exact) pour rendre le debut de la visee.
 func nmAfterComposites(pay []byte, afterLoops int) int {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(afterLoops)
 	lot1SkipCd5b8(br)
 	lot1SkipEff64(br)

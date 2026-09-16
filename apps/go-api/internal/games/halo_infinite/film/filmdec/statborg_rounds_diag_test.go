@@ -142,7 +142,7 @@ func (d *roundsDiag) keyframe(pay []byte, tMS int) {
 
 // delta marche un paquet delta et releve les records statborg des marches PROPRES.
 func (d *roundsDiag) delta(pay []byte, tMS int) {
-	recs, err := DecodeFrameRecords(NewBitReader(pay), d.world, DefaultFrameConfig())
+	recs, err := DecodeFrameRecords(LecteurSur(pay), d.world, DefaultFrameConfig())
 	if err != nil {
 		return // les records d'un paquet desynchronise sont du bruit (mesure de la phase 0)
 	}
@@ -247,7 +247,7 @@ func statValueAt(pay []byte, startBit int) (int64, bool) {
 	if startBit < 0 || startBit+2*statHdrWidth+4 > len(pay)*8 {
 		return 0, false
 	}
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(startBit)
 	// Les deux en-tetes sont PUBLIES au lieu d etre exiges nuls : c est la mesure qui doit dire
 	// si la chaine et l ancrage cadrent le composant au meme bit.
@@ -318,7 +318,7 @@ func TestStatborgRoundsValues(t *testing.T) {
 
 // valueLines rend une ligne par valeur de compteur relue dans un paquet delta PROPRE.
 func valueLines(pay []byte, w *World, ti uint32, comp, tMS int) []string {
-	recs, err := DecodeFrameRecords(NewBitReader(pay), w, DefaultFrameConfig())
+	recs, err := DecodeFrameRecords(LecteurSur(pay), w, DefaultFrameConfig())
 	if err != nil {
 		return nil // paquet desynchronise : ses records sont du bruit
 	}

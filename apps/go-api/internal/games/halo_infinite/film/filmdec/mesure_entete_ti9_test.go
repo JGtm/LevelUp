@@ -136,7 +136,7 @@ func mesureMarche(pay []byte, r KeyframeRec, reg *Registry, hdr int) (EntityTrac
 	if !ok {
 		return EntityTrace{DesyncAt: -1}, nil, false
 	}
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.SetBitPos(r.Bit + hdr)
 	consumeKeyframeDefaultState(br, uint32(r.TI))
 	br.ReadBit() // porte has-components

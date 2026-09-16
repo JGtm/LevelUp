@@ -176,7 +176,7 @@ func (o *Observation) publishObjective(f ObjectiveField, values ...uint64) {
 // consumeObjectiveTimers (i0) — FUN_142edbac8 : boucle sur huit octets par pas de quatre, donc
 // DEUX appels a FUN_142ed15a0, qui ecrit `valeur + 1` sur SEPT bits. La valeur zero du flux
 // signifie donc « pas de minuteur » (cf. ObjectiveTimerValue).
-func consumeObjectiveTimers(br *BitReader) {
+func consumeObjectiveTimers(br *Lecteur) {
 	vals := make([]uint64, 0, objectiveTimerCount)
 	for i := 0; i < objectiveTimerCount; i++ {
 		vals = append(vals, br.ReadBits(objectiveTimerBits))
@@ -187,7 +187,7 @@ func consumeObjectiveTimers(br *BitReader) {
 // consumeObjectiveColor (i1) — FUN_142edb548 : quatre canaux quantifies sur huit bits
 // (FUN_142ed1a78 -> FUN_140dc6248, 0x100 niveaux). Consomme sans publier : le camp d'un objectif
 // se lit deja par des voies mesurees, et une couleur brute n'aurait pas de consommateur.
-func consumeObjectiveColor(br *BitReader) {
+func consumeObjectiveColor(br *Lecteur) {
 	for i := 0; i < objectiveColorChannels; i++ {
 		br.ReadBits(objectiveColorChannelBits)
 	}
@@ -196,13 +196,13 @@ func consumeObjectiveColor(br *BitReader) {
 // consumeObjectiveObjectReference (i3) — FUN_142edb6a4 : R(32) plat. C'est la reference vers
 // l'objet physique de l'objectif (le drapeau, le crane, la bombe) : la cle qui relierait la jauge
 // a une entite du monde.
-func consumeObjectiveObjectReference(br *BitReader) {
+func consumeObjectiveObjectReference(br *Lecteur) {
 	br.obs.publishObjective(ObjectiveFieldObjectReference, br.ReadBits(objectiveHandleBits))
 }
 
 // consumeObjectiveType (i5) — FUN_142edbb00 -> FUN_1407edaf4 : R(32) plat, un enumere que le jeu
 // nomme « objective-type ».
-func consumeObjectiveType(br *BitReader) {
+func consumeObjectiveType(br *Lecteur) {
 	br.obs.publishObjective(ObjectiveFieldType, br.ReadBits(objectiveTypeBits))
 }
 
@@ -210,29 +210,29 @@ func consumeObjectiveType(br *BitReader) {
 // i10 `is-new-and-unseen`, i11 `is-only-one-item-unlocked`, i33 `forced-update` — tous
 // FUN_1406d49c4, R(1). Un seul deserialiseur pour quatre composants : la grammaire est
 // identique, et la dupliquer ne dirait rien de plus.
-func consumeObjectiveBool(br *BitReader) { br.ReadBit() }
+func consumeObjectiveBool(br *Lecteur) { br.ReadBit() }
 
 // consumeObjectivePriority (i7) — FUN_142edb820 : R(8) plat.
-func consumeObjectivePriority(br *BitReader) { br.ReadBits(objectivePriorityBits) }
+func consumeObjectivePriority(br *Lecteur) { br.ReadBits(objectivePriorityBits) }
 
 // consumeObjectiveMessageType (i8) — FUN_142edb604 : R(4) plat.
-func consumeObjectiveMessageType(br *BitReader) { br.ReadBits(objectiveMessageTypeBits) }
+func consumeObjectiveMessageType(br *Lecteur) { br.ReadBits(objectiveMessageTypeBits) }
 
 // consumeObjectiveProgress (i12) — FUN_142edb8c0 : R(32) plat, sans porte. LA JAUGE.
-func consumeObjectiveProgress(br *BitReader) {
+func consumeObjectiveProgress(br *Lecteur) {
 	br.obs.publishObjective(ObjectiveFieldProgress, br.ReadBits(objectiveProgressBits))
 }
 
 // consumeObjectiveRequiredProgress (i13) — FUN_142edb960 : R(32) plat. LE SEUIL. Avec i12 il
 // donne la FRACTION de capture ; seul, il ne dit rien.
-func consumeObjectiveRequiredProgress(br *BitReader) {
+func consumeObjectiveRequiredProgress(br *Lecteur) {
 	br.obs.publishObjective(ObjectiveFieldRequiredProgress, br.ReadBits(objectiveProgressBits))
 }
 
 // consumeObjectiveState (i14) — FUN_142edba10 -> FUN_1424d121c : R(3) plat. L'etat vivant de
 // l'objectif (huit valeurs possibles) ; leur semantique n'est PAS etablie et n'est pas devinee
 // ici.
-func consumeObjectiveState(br *BitReader) {
+func consumeObjectiveState(br *Lecteur) {
 	br.obs.publishObjective(ObjectiveFieldState, br.ReadBits(objectiveStateBits))
 }
 
@@ -240,11 +240,11 @@ func consumeObjectiveState(br *BitReader) {
 // de i16..i31 `sub-objective-entities` (FUN_142edba24) : R(32) plat dans les deux cas. Consomme
 // sans publier — l'identite de zone que ces seize emplacements porteraient est un chantier a
 // part, et publier seize handles bruts que personne ne lit serait une sortie morte.
-func consumeObjectiveEntityRef(br *BitReader) { br.ReadBits(objectiveHandleBits) }
+func consumeObjectiveEntityRef(br *Lecteur) { br.ReadBits(objectiveHandleBits) }
 
 // consumeObjectiveOutroPhaseDuration (i32) — FUN_142edb740 -> FUN_1406d22c0 : R(8) quantifie sur
 // [0, DAT_143cd84b8] avec les drapeaux (signe=0, inclusif=1). Consomme sans publier.
-func consumeObjectiveOutroPhaseDuration(br *BitReader) { br.ReadBits(objectiveOutroBits) }
+func consumeObjectiveOutroPhaseDuration(br *Lecteur) { br.ReadBits(objectiveOutroBits) }
 
 // ObjectiveTimerValue rend la valeur d'un minuteur : FUN_142ed15a0 ecrit `valeur + 1`, donc zero
 // signifie « absent » et vaut -1.

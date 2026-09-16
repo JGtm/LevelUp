@@ -99,7 +99,7 @@ var keyframeBodyVariants = []keyframeBodyVariant{
 // composants), quand ces cinq instruments seront rebases sur le cadre d'etat complet ; critere
 // mesurable = zero fichier citant `walkKeyframeBody` en dehors de ce fichier.
 func walkKeyframeBody(pay []byte, recBit int, reg *Registry, v keyframeBodyVariant) EntityTrace {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.SetBitPos(recBit + keyframeRecordTIBit)
 	t := EntityTrace{DesyncAt: -1}
 	t.TypeIndex = uint32(br.ReadBits(6))

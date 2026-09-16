@@ -34,7 +34,7 @@ func bpkCollecte(t *testing.T, f bpkFilm) []bpkEvent {
 		if typ != bpkTypePickup {
 			return
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.Skip(bpkHeaderBits)
 		e := bpkDecode(br)
 		e.TimestampUS = tsUS

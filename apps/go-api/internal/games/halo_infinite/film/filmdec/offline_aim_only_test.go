@@ -107,7 +107,7 @@ func TestScanBipedAimRecordsPrecede(t *testing.T) {
 	// on la mesure ici plutot que de la recopier.
 	deb := w.pos
 	w.put(0, shieldVitalityMinBits+32)
-	br := NewBitReader(w.b)
+	br := LecteurSur(w.b)
 	br.SetBitPos(deb)
 	decodeObjectShieldVitality(br)
 	fin := br.BitPos()

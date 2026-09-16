@@ -31,6 +31,7 @@ package killsource
 import (
 	"sort"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
@@ -52,10 +53,10 @@ type timeline struct {
 
 // newTimeline : registre depuis le chunk 0 + keyframes tries par horodatage.
 func newTimeline(f *film) (*timeline, error) {
-	if len(f.chunks) == 0 {
+	if f.src.NumChunks() == 0 {
 		return nil, ErrNoChunk
 	}
-	reg, err := filmdec.ParseRegistryChunk(f.chunks[0])
+	reg, err := filmdec.ParseRegistryChunk(f.src.Chunk(0))
 	if err != nil {
 		return nil, errRegistry(err)
 	}
@@ -251,15 +252,15 @@ func sweepKeyframe(buf []byte, onlyTI int) []anchor {
 	total := len(buf) * 8
 	var out []anchor
 	for q := 0; q+64 <= total; q++ {
-		id := bits32(buf, q)
+		id := uint32(filmsource.BitsAt(buf, q, 32))
 		if id == 0xFFFFFFFF || id>>30 == 0 {
 			continue
 		}
 		slot := int(id & 0x3FFFFFFF)
-		if slot >= 8192 || bits32(buf, q+32) >= 50 {
+		if slot >= 8192 || uint32(filmsource.BitsAt(buf, q+32, 32)) >= 50 {
 			continue
 		}
-		ti := bitsN(buf, q+58, 6)
+		ti := int(filmsource.BitsAt(buf, q+58, 6))
 		if onlyTI >= 0 && ti != onlyTI {
 			continue
 		}

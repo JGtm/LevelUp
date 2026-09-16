@@ -37,7 +37,7 @@ var e191cDeltas = []int{-6, -5, -4, -3, -2, -1, 0, 1, 2}
 func e191cN2AvecDelta(ancres []e191cAncre, ti int, delta int) (float64, uint64) {
 	hist := map[uint64]int{}
 	for _, a := range ancres {
-		br := NewBitReader(a.Pay)
+		br := LecteurSur(a.Pay)
 		br.SetBitPos(a.Bit + keyframeFullStateHeaderBits)
 		n1 := int32(br.ReadBits(keyframeFullStateSizeBits)) //nolint:gosec // 32 bits
 		if n1 > 0 {

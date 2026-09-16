@@ -16,13 +16,13 @@ package filmdec
 // only advances when the inference is unambiguous AND confirmed by a clean bound
 // successor. Falls back to a desync (returns) when inference is ambiguous/none.
 func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int) {
-	br := NewBitReader(buf)
+	br := LecteurSur(buf)
 	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	out, inferred, _ := decodeInferLoop(br, buf, w, cfg)
 	return out, inferred
 }
 
-// decodeInferLoop is the core of DecodeFrameInfer operating on a SUPPLIED BitReader,
+// decodeInferLoop is the core of DecodeFrameInfer operating on a SUPPLIED Lecteur,
 // so several replication "views" of one packet (frame-processor FUN_142987460 = a
 // leading config bit then 3 view record-loops) can be decoded in sequence sharing one
 // reader. Returns the records, the number of inferred transients, and hitEnd = whether
@@ -36,7 +36,7 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 // SIGNAL de controle a re-interpreter — un aiguillage de plus la ou il y en a deja trois, et
 // une reecriture de la logique, pas un deplacement. Le lot 2.7 est un lot de deplacement pur :
 // il ne touche pas a cette boucle. Reexamen au lot 3.6 (ports de composants), qui la rouvre.
-func decodeInferLoop(br *BitReader, buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int, bool) {
+func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int, bool) {
 	var out []FrameRecord
 	inferred := 0
 	frameLen := len(buf) * 8
@@ -234,7 +234,7 @@ func inferUnboundArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (u
 	winEnd, matches := -1, 0
 	for ti := range w.Reg.Archetypes {
 		arch := w.Reg.Archetypes[ti]
-		br := NewBitReader(buf)
+		br := LecteurSur(buf)
 		br.poserCadre(cfg)
 		br.Skip(bitpos) // bitpos = delta body start (mask), already past type+id
 		t := decodeDeltaWithArch(br, arch, uint32(ti))

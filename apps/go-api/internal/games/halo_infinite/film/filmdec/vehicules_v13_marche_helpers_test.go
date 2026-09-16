@@ -246,7 +246,7 @@ func v13Locate(pay []byte, w *World, cfg FrameConfig) int {
 func v13HarvestPacket(pay []byte, w *World, cfg FrameConfig, start int, ts uint64,
 	st *v13Stats, out []v13Dead) []v13Dead {
 	snap := w.Snapshot()
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(start)
 	var recs []FrameRecord
 	for v := 0; v < v13Views && br.Remaining() >= 8; v++ {

@@ -68,7 +68,7 @@ func BenchmarkBitReaderReadBits(b *testing.B) {
 	b.SetBytes(int64(len(buf)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		br := NewBitReader(buf)
+		br := LecteurSur(buf)
 		for j := 0; ; j++ {
 			w := widths[j%len(widths)]
 			if br.BitPos()+int(w) > len(buf)*8 {
@@ -86,7 +86,7 @@ func BenchmarkTraverseEntity(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, pay := range pays {
 			for _, rec := range WalkKeyframeWorld(pay) {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				br.SetBitPos(rec.Bit)
 				_ = TraverseEntity(br, reg, 0)
 			}

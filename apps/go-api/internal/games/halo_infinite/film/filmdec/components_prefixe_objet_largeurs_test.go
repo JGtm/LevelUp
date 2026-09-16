@@ -57,7 +57,7 @@ func TestConsumeObjectRegionStateLargeurs(t *testing.T) {
 		w := &bitw{}
 		w.put(c.present, 1)
 		w.put(c.compte, 6)
-		br := NewBitReader(append(w.buf, make([]byte, 256)...))
+		br := LecteurSur(append(w.buf, make([]byte, 256)...))
 		consumeObjectRegionState(br)
 		if br.BitPos() != c.bits {
 			t.Errorf("i6 %s : %d bits consommes, %d attendus (%s)", c.nom, br.BitPos(), c.bits, c.commentaireFin)
@@ -92,7 +92,7 @@ func TestConsumeObjectDamageSectionsLargeurs(t *testing.T) {
 				w.put(0, 16)
 			}
 		}
-		br := NewBitReader(append(w.buf, make([]byte, 64)...))
+		br := LecteurSur(append(w.buf, make([]byte, 64)...))
 		consumeObjectDamageSections(br)
 		if br.BitPos() != c.bits {
 			t.Errorf("i7 %s : %d bits consommes, %d attendus", c.nom, br.BitPos(), c.bits)
@@ -129,7 +129,7 @@ func TestConsumeObjectLowFrequencyLargeurs(t *testing.T) {
 	w.put(0, 1) // 1407ef6d4 : bit a 0 -> rien
 	w.put(0, 3) // 1407ef520 : mot de drapeaux nul
 	w.put(0, 1) // 1407ef4c8 : bit a 0 -> rien
-	br := NewBitReader(append(w.buf, make([]byte, 64)...))
+	br := LecteurSur(append(w.buf, make([]byte, 64)...))
 	consumeObjectLowFrequency(br)
 	if br.BitPos() != 31 {
 		t.Errorf("i15 cas minimal : %d bits consommes, 31 attendus", br.BitPos())
@@ -147,7 +147,7 @@ func TestConsumeObjectLowFrequencyLargeurs(t *testing.T) {
 	w2.put(0, 1)
 	w2.put(0, 3)
 	w2.put(0, 1)
-	br2 := NewBitReader(append(w2.buf, make([]byte, 64)...))
+	br2 := LecteurSur(append(w2.buf, make([]byte, 64)...))
 	consumeObjectLowFrequency(br2)
 	if br2.BitPos() != 56 {
 		t.Errorf("i15 une image-cle quantifiee : %d bits consommes, 56 attendus", br2.BitPos())
@@ -168,7 +168,7 @@ func TestConsumeObjectLowFrequencyTeteBasse(t *testing.T) {
 	w.put(0, 1)
 	w.put(0, 3)
 	w.put(0, 1)
-	br := NewBitReader(append(w.buf, make([]byte, 64)...))
+	br := LecteurSur(append(w.buf, make([]byte, 64)...))
 	consumeObjectLowFrequency(br)
 	if br.BitPos() != 46 {
 		t.Errorf("i15 tete basse : %d bits consommes, 46 attendus (31 + 7 + 8)", br.BitPos())
@@ -195,7 +195,7 @@ func TestConsumeObjectFrameConfigurationLargeurs(t *testing.T) {
 		w.put(0, 1) // pas de R(12)
 		w.put(0, 1) // pas de R(12)
 	}
-	br := NewBitReader(append(w.buf, make([]byte, 64)...))
+	br := LecteurSur(append(w.buf, make([]byte, 64)...))
 	consume1407f0550(br)
 	if br.BitPos() != 10 {
 		t.Errorf("i17 cas minimal : %d bits consommes, 10 attendus", br.BitPos())
@@ -212,7 +212,7 @@ func TestConsumeObjectFrameConfigurationLargeurs(t *testing.T) {
 		w2.put(0, 1)
 		w2.put(0, 1)
 	}
-	br2 := NewBitReader(append(w2.buf, make([]byte, 64)...))
+	br2 := LecteurSur(append(w2.buf, make([]byte, 64)...))
 	consume1407f0550(br2)
 	if br2.BitPos() != 49 {
 		t.Errorf("i17 porte ouverte : %d bits consommes, 49 attendus", br2.BitPos())

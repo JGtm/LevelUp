@@ -76,7 +76,7 @@ func TestLot1BalayageMondePropre(t *testing.T) {
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, wBase, cfg2)
 			}
 		}
@@ -95,7 +95,7 @@ func TestLot1BalayageMondePropre(t *testing.T) {
 					if pay[0] != fam {
 						continue
 					}
-					br := NewBitReader(pay)
+					br := LecteurSur(pay)
 					recs, _ := DecodeFrameRecords(br, w, cfg)
 					if mesure[fam] == nil {
 						mesure[fam] = map[int]*cell{}
@@ -212,7 +212,7 @@ func TestLot1LargeurEnTete(t *testing.T) {
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, wBase, cfg2)
 			}
 		}
@@ -231,7 +231,7 @@ func TestLot1LargeurEnTete(t *testing.T) {
 				cfg.PacketPreambleBits = k
 				w := NewWorld(reg)
 				w.Restore(snap)
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				recs, _ := DecodeFrameRecords(br, w, cfg)
 				s := 0
 				for i := range recs {
@@ -343,7 +343,7 @@ func TestLot1CarteComposants(t *testing.T) {
 			}
 			cfg := DefaultFrameConfig()
 			cfg.PacketPreambleBits = k
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			recs, _ := DecodeFrameRecords(br, w, cfg)
 			if !vise {
 				continue // les 0xA0 ne sont decodees que pour leurs liaisons

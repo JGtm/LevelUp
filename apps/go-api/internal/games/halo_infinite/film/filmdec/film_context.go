@@ -223,8 +223,8 @@ func (c *FilmContext) CadreDeBalayage() FrameConfig {
 // NouveauLecteur construit un lecteur de bits PORTANT LE PROFIL DE CE CONTEXTE. Tout balayage
 // qui lit les octets d un film sous un contexte passe par la : c est ce qui fait descendre les
 // largeurs de la carte et du format jusqu aux feuilles, sans variable de paquet.
-func (c *FilmContext) NouveauLecteur(buf []byte) *BitReader {
-	br := NewBitReader(buf)
+func (c *FilmContext) NouveauLecteur(buf []byte) *Lecteur {
+	br := LecteurSur(buf)
 	br.PoserContexte(c.ContexteDeLecture())
 	return br
 }

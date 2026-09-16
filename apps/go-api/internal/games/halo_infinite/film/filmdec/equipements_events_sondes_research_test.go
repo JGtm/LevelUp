@@ -122,7 +122,7 @@ func equipEvMatchTemps(tsMS int64, prefixes []string, truths []equipEvTruth) (st
 // ou -1 (porte fermee / tete trop courte). Une valeur n'est PAS une preuve : c'est une piste
 // a re-sourcer cote exe (vtable+0x58 du descripteur du type).
 func equipEvChaine(tete []byte, w0 uint) int {
-	br := NewBitReader(tete)
+	br := LecteurSur(tete)
 	br.Skip(9)
 	if br.Remaining() < 1 || !br.ReadBit() {
 		return -1
@@ -150,7 +150,7 @@ func equipEvSonde103(t *testing.T, occs []equipEvOcc, agg map[string]int) {
 		if o.typ != 103 {
 			continue
 		}
-		br := NewBitReader(o.tete)
+		br := LecteurSur(o.tete)
 		br.Skip(9)
 		if br.Remaining() < 1 || !br.ReadBit() {
 			agg["ref0_fermee"]++

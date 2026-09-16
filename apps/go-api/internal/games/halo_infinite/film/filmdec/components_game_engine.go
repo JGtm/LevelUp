@@ -81,13 +81,13 @@ func (o *Observation) publishGameEngine(f GameEngineField, present bool, values 
 }
 
 // consumeGameEngineCurrentState porte ti=0 i2 (FUN_14116d1d0) : R(3), sans porte.
-func consumeGameEngineCurrentState(br *BitReader) {
+func consumeGameEngineCurrentState(br *Lecteur) {
 	br.obs.publishGameEngine(GameEngineState, true, br.ReadBits(3))
 }
 
 // consumeGameEngineCurrentRound porte ti=0 i4 (FUN_14116fc70) : R(1) porte de polarite
 // INVERSEE — la manche n'est transmise que si le bit vaut 0.
-func consumeGameEngineCurrentRound(br *BitReader) {
+func consumeGameEngineCurrentRound(br *Lecteur) {
 	if !br.ReadBit() {
 		br.obs.publishGameEngine(GameEngineRound, true, br.ReadBits(5))
 		return
@@ -100,7 +100,7 @@ func consumeGameEngineCurrentRound(br *BitReader) {
 // Les trois lectures sont des VARIABLES et non des arguments : l'ordre d'evaluation des
 // arguments est bien garanti a gauche-droite par le langage, mais l'ordre des bits est ce que
 // ce paquet a de plus fragile et il doit se LIRE, pas se deduire d'une regle du spec.
-func consumeGameEngineSuddenDeath(br *BitReader) {
+func consumeGameEngineSuddenDeath(br *Lecteur) {
 	a := br.ReadBits(16)
 	b := br.ReadBits(16)
 	c := br.ReadBits(5)
@@ -109,7 +109,7 @@ func consumeGameEngineSuddenDeath(br *BitReader) {
 
 // consumeGameEngineGracePeriod porte ti=0 i7 (FUN_141165d24) : R(16)+R(16)+R(5), meme forme
 // que i6 et que le round-timer i5.
-func consumeGameEngineGracePeriod(br *BitReader) {
+func consumeGameEngineGracePeriod(br *Lecteur) {
 	a := br.ReadBits(16)
 	b := br.ReadBits(16)
 	c := br.ReadBits(5)
@@ -117,6 +117,6 @@ func consumeGameEngineGracePeriod(br *BitReader) {
 }
 
 // consumeGameEngineRoundConditionFlags porte ti=0 i8 (FUN_141132dc0) : R(10), sans porte.
-func consumeGameEngineRoundConditionFlags(br *BitReader) {
+func consumeGameEngineRoundConditionFlags(br *Lecteur) {
 	br.obs.publishGameEngine(GameEngineRoundConditions, true, br.ReadBits(10))
 }

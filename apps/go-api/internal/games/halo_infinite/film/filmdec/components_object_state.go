@@ -17,7 +17,7 @@ package filmdec
 // AUCUNE LARGEUR N A CHANGE ; largeurs figees par TestConsumeObjectRegionStateLargeurs.
 // Le maximum theorique (compte = 63) vaut 826 bits, exactement le maximum observe au pas 1 —
 // le jeu, lui, marque ses comptes > 32 comme INVALIDES (140e1bfa0 : bVar14 = bVar10 < 0x21).
-func consumeObjectRegionState(br *BitReader) {
+func consumeObjectRegionState(br *Lecteur) {
 	present := br.ReadBit()
 	count := br.ReadBits(6)
 	for i := uint64(0); i < count; i++ {
@@ -37,7 +37,7 @@ func consumeObjectRegionState(br *BitReader) {
 // GRAMMAIRE RELUE : R(6) compte -> [dst+0x168] ; compte x { R(1) ; si 1 : R(7) dequantifie
 // (142f03dac : MOV dword ptr [RSP + 0x20],0x7) puis R(16) (142f03dd0) }.
 // AUCUNE LARGEUR N A CHANGE ; largeurs figees par TestConsumeObjectDamageSectionsLargeurs.
-func consumeObjectDamageSections(br *BitReader) {
+func consumeObjectDamageSections(br *Lecteur) {
 	count := br.ReadBits(6)
 	for i := uint64(0); i < count; i++ {
 		if br.ReadBit() {
@@ -48,7 +48,7 @@ func consumeObjectDamageSections(br *BitReader) {
 }
 
 // consumeObjectConstraint (i8) mirrors FUN_142f039cc.
-func consumeObjectConstraint(br *BitReader) {
+func consumeObjectConstraint(br *Lecteur) {
 	n := uint(br.ReadBits(5))
 	if n != 0 {
 		br.ReadBits(n)
@@ -120,7 +120,7 @@ type ObjectParentState struct {
 }
 
 // publishObjectParentState transmet la lecture à la sonde, si elle est posée.
-func publishObjectParentState(br *BitReader, st *ObjectParentState) {
+func publishObjectParentState(br *Lecteur, st *ObjectParentState) {
 	if br.obs == nil || br.obs.ObjectParentStateHook == nil {
 		return
 	}
@@ -134,7 +134,7 @@ func publishObjectParentState(br *BitReader, st *ObjectParentState) {
 //
 // Les affectations vers `st` ne changent AUCUN bit lu : l'ordre et la largeur des
 // lectures sont ceux d'avant la sonde, seules les valeurs jetées sont désormais gardées.
-func consumeObjectParentState(br *BitReader, recordStateParam uint32, typeIndex uint32) {
+func consumeObjectParentState(br *Lecteur, recordStateParam uint32, typeIndex uint32) {
 	st := ObjectParentState{TypeIndex: typeIndex, Param: recordStateParam, StartBit: br.BitPos()}
 	defer publishObjectParentState(br, &st)
 	gate := br.ReadBit()
@@ -185,7 +185,7 @@ func consumeObjectParentState(br *BitReader, recordStateParam uint32, typeIndex 
 }
 
 // consumeObjectScale (i12) mirrors FUN_1407dc6e4 (widths 15/15/12).
-func consumeObjectScale(br *BitReader) {
+func consumeObjectScale(br *Lecteur) {
 	if !br.ReadBit() {
 		br.ReadBits(15)
 		if br.ReadBit() {
@@ -197,7 +197,7 @@ func consumeObjectScale(br *BitReader) {
 }
 
 // consumeObjectMaximumVitalities (i13) mirrors FUN_1407ee054 -> FUN_1407eef08.
-func consumeObjectMaximumVitalities(br *BitReader) {
+func consumeObjectMaximumVitalities(br *Lecteur) {
 	f := br.ReadBits(5)
 	if f&0x4 != 0 {
 		consume1411b1ac0(br)
@@ -259,7 +259,7 @@ func consumeObjectMaximumVitalities(br *BitReader) {
 // CE QUI RESTE A TENTER, SI LA QUESTION REVIENT : i14 dans les paquets DELTA, pas dans le record
 // de creation. Le film ne date la disparition d'aucun objet pose (acquis du 2026-08-17) et le
 // calque publie un INTERVALLE `[t1, t1max]` ; c'est toujours la meilleure reponse disponible.
-func consumeObjectDissolver(br *BitReader) {
+func consumeObjectDissolver(br *Lecteur) {
 	v := br.ReadBits(uint(bitLen(objectDissolverEtatMax))) // R(4)
 	if v != objectDissolverEtatNeutre {
 		br.ReadBits(objectDissolverCorpsBits) // R(96) bruts -> [dst+0x3ac]
@@ -283,7 +283,7 @@ const (
 )
 
 // consumeObjectPhysicsFlags (i16) mirrors FUN_1407ee070: 5 x R(1).
-func consumeObjectPhysicsFlags(br *BitReader) {
+func consumeObjectPhysicsFlags(br *Lecteur) {
 	br.ReadBit()
 	br.ReadBit()
 	br.ReadBit()
@@ -302,7 +302,7 @@ func consumeObjectPhysicsFlags(br *BitReader) {
 // R(1) ; puis TROIS iterations, et c est la BORNE DU TABLEAU qui le dit (la boucle part de
 // param_1+0x10 par pas de 12 octets et s arrete quand puVar4+2 atteint param_1+0x30).
 // AUCUNE LARGEUR N A CHANGE ; largeurs figees par TestConsumeObjectFrameConfigurationLargeurs.
-func consumeObjectFrameConfiguration(br *BitReader) {
+func consumeObjectFrameConfiguration(br *Lecteur) {
 	consume1407f0550(br)
 }
 
@@ -326,7 +326,7 @@ func consumeObjectFrameConfiguration(br *BitReader) {
 // count n=R(6) + boucle {R(1); si 1 R(1); si 0 2×R(12)} ; trailer 7×R(1) ;
 // ef9684dc R(1)[si0:R(4)] ; ef6d4 R(1)[si1: cd060 R(1) + b1ac0 R(1)[R12] + cd060 R(1)] ;
 // ef520 R(3)f [si bit0&1: R(2)+R(5) [si bit2: 3×R(8)]] ; ef4c8 R(1)[si1: R(3)+R(32)+R(1)[R32]+R(14)].
-func consumeObjectLowFrequency(br *BitReader) {
+func consumeObjectLowFrequency(br *Lecteur) {
 	f := br.ReadBits(2) // R(2) head -> +0x3c4
 	if f < 2 {
 		br.ReadBits(7) // FUN_141fd7cf8 = R(7)

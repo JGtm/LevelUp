@@ -66,7 +66,7 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 	cfg.Profil.Grammaire.LargeursBouchon = map[string]int{}
 	frameLen := len(buf) * 8
 	redecode := func() EntityTrace {
-		br := NewBitReader(buf)
+		br := LecteurSur(buf)
 		br.poserCadre(cfg)
 		br.Skip(bodyStart)
 		if recType == recNew {
@@ -130,7 +130,7 @@ const chainTombstone = ^uint32(0)
 // beyond len(arch.Components), so an over-wide mask is harmless, not a misparse tell.
 func deltaBodyTrial(buf []byte, bitpos int, arch Archetype, ti uint32, frameLen int,
 	ctx ContexteDeLecture) (end, comps int, ok bool) {
-	br := NewBitReader(buf)
+	br := LecteurSur(buf)
 	br.PoserContexte(ctx)
 	br.Skip(bitpos)
 	t := EntityTrace{DesyncAt: -1, TypeIndex: ti}
@@ -191,7 +191,7 @@ func (c *chainCtx) confirmChainAt(pos, depth, recs int) bool {
 	if recs <= 0 || c.budget <= 0 || pos >= c.frameLen {
 		return false
 	}
-	br := NewBitReader(c.buf)
+	br := LecteurSur(c.buf)
 	br.poserCadre(c.cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(pos)
 	if c.cfg.HasExtraFields {
@@ -235,7 +235,7 @@ func (c *chainCtx) endOfFrameConfirms(pos int) bool {
 	if rem < 0 || rem > 15 {
 		return false
 	}
-	br := NewBitReader(c.buf)
+	br := LecteurSur(c.buf)
 	br.Skip(pos)
 	for i := 0; i < rem; i++ {
 		if br.ReadBit() {
@@ -261,7 +261,7 @@ func (c *chainCtx) withOverlay(slot, v uint32, pos, depth, recs int) bool {
 // chainDelta handles a DELTA record inside a chain walk: confirmation on a clean
 // HARD-bound delta, neutral continuation on overlay/soft-bound slots, recursion (fork
 // by distinct body end) on unbound slots.
-func (c *chainCtx) chainDelta(br *BitReader, depth, recs int) bool {
+func (c *chainCtx) chainDelta(br *Lecteur, depth, recs int) bool {
 	slot := readRecordID(br, c.cfg.IDLowBits, c.cfg.IDBase) & 0x3fffffff
 	body := br.BitPos()
 	ti, bound := uint32(0), false

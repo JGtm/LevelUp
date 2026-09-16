@@ -182,7 +182,7 @@ func r6Marchable(typ int, entry *r6CatEntry) bool {
 // Chaque evenement suivant est compte par position ; la marche s'arrete sur un type non
 // ferme (opaque), une ref non sourcee, la fin de liste, ou la fin du buffer copie.
 func r6Marche(pay []byte, tete int, entry *r6CatEntry, st *r6Stats) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(2) // bit config + bit de continuation de la tete
 	typ := tete
 	br.Skip(7) // R(7) de la tete
@@ -216,7 +216,7 @@ func r6Marche(pay []byte, tete int, entry *r6CatEntry, st *r6Stats) {
 
 // r6SauteEvenement consomme les refs et la charge du type courant (grammaires fermees
 // seulement). Rend false si une ref d'un type 0-bit non source porte 1 (indecodable).
-func r6SauteEvenement(br *BitReader, typ int, entry *r6CatEntry) bool {
+func r6SauteEvenement(br *Lecteur, typ int, entry *r6CatEntry) bool {
 	saute13 := func() { br.Skip(13 + 2) } // index 13 bits + generation 2 bits
 	switch {
 	case typ == 103: // refs {7,0,7} — 13 bits chacune, pas de sonde

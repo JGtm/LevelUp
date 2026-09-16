@@ -14,6 +14,8 @@ package filmdec
 // WorldFromKeyframe binde chaque record via World.BindFull(fullID, ti). Aucun input CE :
 // seul le payload de frame type-2 du chunk (pay) est lu.
 
+import "levelup/go-api/internal/analysis/filmsource"
+
 const (
 	kfSent     = 0xFFFFFFFF // id sentinelle
 	kfTableCap = 8192       // borne haute de slot
@@ -38,13 +40,13 @@ type KeyframeRec struct {
 
 // kfReadBits lit n bits big-endian à partir de la position bit pos (0-safe hors borne).
 //
-// Lecture par mot (cf. bits_word.go) sur le domaine ou elle coincide avec la boucle
+// Lecture par mot ([filmsource.BitsAt]) sur le domaine ou elle coincide avec la boucle
 // d'origine : `pos >= 0` et `0 <= n <= 64`. C'est la primitive la plus chaude de toute la
 // cuisson (58 a 61 % du CPU au profil du 2026-09-02) : `kfScanNext` l'appelle pour CHAQUE
 // position de bit du payload d'image-cle.
 func kfReadBits(buf []byte, pos, n int) uint64 {
 	if pos >= 0 && n >= 0 && n <= 64 {
-		return wordBitsAt(buf, pos, uint(n))
+		return filmsource.BitsAt(buf, pos, uint(n))
 	}
 	return kfReadBitsLoop(buf, pos, n)
 }
@@ -81,7 +83,7 @@ func kfBitAt(buf []byte, p int) uint64 {
 // (field26==0 au spawn -> le mot 32-bit vaut ti), et aucun appelant ne l'a jamais lu.
 func kfValidAnchor(buf []byte, q, prevSlot, total int) (slot, ti, gen int, ok bool) {
 	// La garde est ICI AUSSI parce qu'elle protege la LECTURE qui suit : `kfReadBits` a une
-	// position negative panique (convention preservee, cf. bits_word.go). [kfAnchorFromID] la
+	// position negative panique (convention preservee, cf. `filmsource.BitsAt`). [kfAnchorFromID] la
 	// rejoue pour son autre appelant, qui lui a deja lu l'identifiant.
 	if q < 0 || q+64 > total {
 		return

@@ -74,7 +74,7 @@ func TestLot1Degats(t *testing.T) {
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, wBase, cfg2)
 			}
 		}
@@ -88,7 +88,7 @@ func TestLot1Degats(t *testing.T) {
 				continue
 			}
 			paquets++
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(2) // config + continuation
 			if br.ReadBits(7) != 0 {
 				continue // type 1 (damage_section_response), pas type 0
@@ -140,7 +140,7 @@ func TestLot1Degats(t *testing.T) {
 			if p := pos + 3; p+16 < len(pay)*8 {
 				w2 := NewWorld(reg)
 				w2.Restore(snap)
-				cbr := NewBitReader(pay)
+				cbr := LecteurSur(pay)
 				cbr.Skip(p)
 				crecs, cerr := DecodeFrameRecords(cbr, w2, DefaultFrameConfig())
 				ctrlDeltas += len(crecs)

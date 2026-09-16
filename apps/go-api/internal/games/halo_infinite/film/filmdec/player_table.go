@@ -400,7 +400,7 @@ func marcherTable(d []byte, depart, finBit, persoBits int) (slots []PlayerSlot, 
 // TOUTE LA TETE de la table (11 enregistrements lus au lieu de 24 sur `1c4c63c2`).
 func balayerCandidats(d []byte, debutBit, finBit int) []int {
 	var out []int
-	br := NewBitReader(d)
+	br := LecteurSur(d)
 	for p := debutBit; p+slotHeaderBits+slotXUIDBits <= finBit; p++ {
 		br.SetBitPos(p)
 		if br.ReadBits(3) != slotBooleensTete || br.ReadBits(32) != 0 {

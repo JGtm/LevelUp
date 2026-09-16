@@ -80,7 +80,7 @@ func profilLireEtatComplet(pay []byte, anchor, ti int) profilEtatComplet {
 	e.N1 = kfReadBits(pay, p, keyframeFullStateSizeBits)
 	p += keyframeFullStateSizeBits
 	if e.N1 > 0 { // FUN_142e2bfd0 : `if (0 < (int)uVar7)` — sans taille, pas d'etat par defaut
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(p)
 		consumeKeyframeDefaultState(br, uint32(ti))
 		e.DSBits = br.BitPos() - p

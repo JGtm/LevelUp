@@ -101,7 +101,7 @@ func TestAuditGrammaireEquipementParLeRegistre(t *testing.T) {
 	t.Logf("== ADDENDUM A — AUDIT DE COMPLÉTUDE PAR LE REGISTRE · %s ==", dir)
 
 	// A3 d'abord : un instrument qui ne sait pas dire non ne mesure rien.
-	if _, _, ported := consumeByName(NewBitReader(make([]byte, egaBits)),
+	if _, _, ported := consumeByName(LecteurSur(make([]byte, egaBits)),
 		"composant-qui-n-existe-pas-component", 37, 0); ported {
 		t.Fatal("CONTRÔLE NÉGATIF EN ÉCHEC : le dispatcheur accepte un composant inventé — l'audit ne prouverait rien")
 	}
@@ -126,7 +126,7 @@ func TestAuditGrammaireEquipementParLeRegistre(t *testing.T) {
 			if name == egaIdentite {
 				b.identite = true
 			}
-			_, _, ported := consumeByName(NewBitReader(make([]byte, egaBits)), name, uint32(a.TI), arch.Level(i))
+			_, _, ported := consumeByName(LecteurSur(make([]byte, egaBits)), name, uint32(a.TI), arch.Level(i))
 			if ported {
 				b.consommes++
 				continue
@@ -190,7 +190,7 @@ func TestAuditRegistreComposantsEquipement(t *testing.T) {
 			}
 			total++
 			vus[name] = append(vus[name], porteur{arch.Index, i})
-			if _, _, ported := consumeByName(NewBitReader(make([]byte, egaBits)),
+			if _, _, ported := consumeByName(LecteurSur(make([]byte, egaBits)),
 				name, uint32(arch.Index), arch.Level(i)); !ported {
 				refuses++
 				listeRefuses = append(listeRefuses, name)

@@ -321,7 +321,7 @@ func walkComponentsAt(pay []byte, at, total int, ids []int, g grammaireRecord, v
 		if name == "" {
 			return
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.PoserContexte(g.contexte())
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), g.arch.Level(id))
