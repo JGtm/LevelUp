@@ -34,8 +34,8 @@ import (
 	"context"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games"
 )
 
@@ -166,7 +166,7 @@ func decorateKillFeed(ctx context.Context, events []domain.MatchHighlightEvent, 
 			t := team
 			e.ActorTeamID = &t
 		}
-		if e.EventType != analysis.EventTypeKill || e.EventTimeMS == nil {
+		if e.EventType != highlightevent.EventTypeKill || e.EventTimeMS == nil {
 			continue
 		}
 		key := killFeedKey{xuid: *e.ActorXUID, timeMS: *e.EventTimeMS}
@@ -255,7 +255,7 @@ func decorateAssist(e *domain.MatchHighlightEvent, a *domain.KillAssistRaw, team
 // source est non ambiguë, sans dépendre de la résolution d'icône (cf. decorateKillFeed).
 func killFeedWeaponCoverage(events []domain.MatchHighlightEvent) (avecIcone, avecHeadshot, total int) {
 	for _, e := range events {
-		if e.EventType != analysis.EventTypeKill {
+		if e.EventType != highlightevent.EventTypeKill {
 			continue
 		}
 		total++

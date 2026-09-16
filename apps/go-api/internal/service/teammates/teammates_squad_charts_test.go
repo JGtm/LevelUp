@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -478,7 +478,7 @@ func TestBuildSquadFirstBlood_AppliesT0Shift(t *testing.T) {
 	mainXUID := "x_main"
 	repo := &mockSquadRepo{
 		impactRows: []domain.ImpactEventRow{
-			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 50000},
+			{MatchID: "m1", XUID: mainXUID, EventType: highlightevent.EventTypeKill, TimeMS: 50000},
 		},
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
@@ -511,8 +511,8 @@ func TestBuildSquadFirstBlood_SkipsPreGameplayEvents(t *testing.T) {
 	mainXUID := "x_main"
 	repo := &mockSquadRepo{
 		impactRows: []domain.ImpactEventRow{
-			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 10000}, // countdown → -18s
-			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 40000}, // gameplay → 12s
+			{MatchID: "m1", XUID: mainXUID, EventType: highlightevent.EventTypeKill, TimeMS: 10000}, // countdown → -18s
+			{MatchID: "m1", XUID: mainXUID, EventType: highlightevent.EventTypeKill, TimeMS: 40000}, // gameplay → 12s
 		},
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
@@ -539,7 +539,7 @@ func TestBuildSquadFirstBlood_PopulatesMatchMeta(t *testing.T) {
 	mainXUID := "x_main"
 	repo := &mockSquadRepo{
 		impactRows: []domain.ImpactEventRow{
-			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 5000},
+			{MatchID: "m1", XUID: mainXUID, EventType: highlightevent.EventTypeKill, TimeMS: 5000},
 		},
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
@@ -572,8 +572,8 @@ func TestBuildSquadIntensityProfile_AppliesT0AndSkipsCountdown(t *testing.T) {
 	mainXUID := "x_main"
 	repo := &mockSquadRepo{
 		impactRows: []domain.ImpactEventRow{
-			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 10000},  // countdown → -18s → exclu
-			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 300000}, // gameplay → 272s
+			{MatchID: "m1", XUID: mainXUID, EventType: highlightevent.EventTypeKill, TimeMS: 10000},  // countdown → -18s → exclu
+			{MatchID: "m1", XUID: mainXUID, EventType: highlightevent.EventTypeKill, TimeMS: 300000}, // gameplay → 272s
 		},
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}

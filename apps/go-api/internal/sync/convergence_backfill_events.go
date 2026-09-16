@@ -33,6 +33,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
@@ -261,7 +262,7 @@ type chunkFetch struct {
 	matchID string
 	found   bool
 	err     error
-	events  []analysis.HighlightEvent
+	events  []highlightevent.HighlightEvent
 }
 
 // processChunk fetche tout le lot HORS lease, puis persiste le lot en UNE fenêtre

@@ -6,6 +6,8 @@ import (
 	_ "embed"
 	"encoding/binary"
 	"testing"
+
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 //go:embed testdata/v41_chunk_he.bin
@@ -181,8 +183,8 @@ func TestParseHighlightEvents_KillEvent(t *testing.T) {
 	if ev.XUID != xuid {
 		t.Errorf("XUID: got %d, want %d", ev.XUID, xuid)
 	}
-	if ev.EventType != EventTypeKill {
-		t.Errorf("EventType: got %q, want %q", ev.EventType, EventTypeKill)
+	if ev.EventType != highlightevent.EventTypeKill {
+		t.Errorf("EventType: got %q, want %q", ev.EventType, highlightevent.EventTypeKill)
 	}
 	if ev.TimeMS != timeMS {
 		t.Errorf("TimeMS: got %d, want %d", ev.TimeMS, timeMS)
@@ -205,8 +207,8 @@ func TestParseHighlightEvents_DeathEvent(t *testing.T) {
 	if len(events) == 0 {
 		t.Fatal("expected at least 1 event, got 0")
 	}
-	if events[0].EventType != EventTypeDeath {
-		t.Errorf("EventType: got %q, want %q", events[0].EventType, EventTypeDeath)
+	if events[0].EventType != highlightevent.EventTypeDeath {
+		t.Errorf("EventType: got %q, want %q", events[0].EventType, highlightevent.EventTypeDeath)
 	}
 }
 
@@ -285,7 +287,7 @@ func TestParseHighlightEvents_MultipleEvents(t *testing.T) {
 	for _, ev := range events {
 		types[ev.EventType] = true
 	}
-	if !types[EventTypeKill] || !types[EventTypeDeath] {
+	if !types[highlightevent.EventTypeKill] || !types[highlightevent.EventTypeDeath] {
 		t.Errorf("expected both kill and death events, got types=%v", types)
 	}
 }
@@ -311,8 +313,8 @@ func TestParseHighlightEvents_VersionLayout39(t *testing.T) {
 		t.Fatal("expected at least 1 event, got 0")
 	}
 	ev := events[0]
-	if ev.EventType != EventTypeKill {
-		t.Errorf("EventType: got %q, want %q", ev.EventType, EventTypeKill)
+	if ev.EventType != highlightevent.EventTypeKill {
+		t.Errorf("EventType: got %q, want %q", ev.EventType, highlightevent.EventTypeKill)
 	}
 	if ev.Gamertag != gamertag {
 		t.Errorf("Gamertag v39: got %q, want %q", ev.Gamertag, gamertag)
@@ -367,14 +369,14 @@ func TestDecodeUTF16LE_Empty(t *testing.T) {
 
 func TestInferEventType_Kill(t *testing.T) {
 	ev, err := inferEventType(typeHintKill, false)
-	if err != nil || ev != EventTypeKill {
+	if err != nil || ev != highlightevent.EventTypeKill {
 		t.Errorf("inferEventType kill: got %q, %v", ev, err)
 	}
 }
 
 func TestInferEventType_Death(t *testing.T) {
 	ev, err := inferEventType(typeHintDeath, false)
-	if err != nil || ev != EventTypeDeath {
+	if err != nil || ev != highlightevent.EventTypeDeath {
 		t.Errorf("inferEventType death: got %q, %v", ev, err)
 	}
 }
@@ -397,7 +399,7 @@ func TestInferEventType_Medal(t *testing.T) {
 func TestInferEventType_MedalNotInWeights_Kill(t *testing.T) {
 	// typeHint=50 mais isMedal=false → kill (50 == typeHintKill)
 	ev, err := inferEventType(50, false)
-	if err != nil || ev != EventTypeKill {
+	if err != nil || ev != highlightevent.EventTypeKill {
 		t.Errorf("inferEventType type50 not medal: got %q, %v", ev, err)
 	}
 }
@@ -551,8 +553,8 @@ func TestParseHighlightEvents_BitOffset_AllAlignments(t *testing.T) {
 			if ev.XUID != xuid {
 				t.Errorf("shift=%d XUID: got %d want %d", shift, ev.XUID, xuid)
 			}
-			if ev.EventType != EventTypeKill {
-				t.Errorf("shift=%d EventType: got %q want %q", shift, ev.EventType, EventTypeKill)
+			if ev.EventType != highlightevent.EventTypeKill {
+				t.Errorf("shift=%d EventType: got %q want %q", shift, ev.EventType, highlightevent.EventTypeKill)
 			}
 			if ev.TimeMS != timeMS {
 				t.Errorf("shift=%d TimeMS: got %d want %d", shift, ev.TimeMS, timeMS)
@@ -601,8 +603,8 @@ func TestParseHighlightEvents_FalsePositiveEndMarker_FallsThrough(t *testing.T) 
 	if len(events) == 0 {
 		t.Fatal("expected the parser to skip false-positive end-markers and find the real one")
 	}
-	if events[0].EventType != EventTypeKill {
-		t.Errorf("EventType: got %q want %q", events[0].EventType, EventTypeKill)
+	if events[0].EventType != highlightevent.EventTypeKill {
+		t.Errorf("EventType: got %q want %q", events[0].EventType, highlightevent.EventTypeKill)
 	}
 }
 
@@ -646,15 +648,15 @@ func TestParseHighlightEvents_RealV41Fixture(t *testing.T) {
 	}
 
 	// Le match doit avoir au moins un kill et une death (matchmaking standard).
-	if typeCount[EventTypeKill] == 0 {
+	if typeCount[highlightevent.EventTypeKill] == 0 {
 		t.Errorf("aucun event 'kill' parsé — parser cassé ou match anormal")
 	}
-	if typeCount[EventTypeDeath] == 0 {
+	if typeCount[highlightevent.EventTypeDeath] == 0 {
 		t.Errorf("aucun event 'death' parsé — parser cassé ou match anormal")
 	}
 
 	t.Logf("v41 fixture parsed: %d events, %d distinct XUIDs, kills=%d deaths=%d medals=%d mode=%d",
 		len(events), len(xuids),
-		typeCount[EventTypeKill], typeCount[EventTypeDeath],
-		typeCount[EventTypeMedal], typeCount[EventTypeMode])
+		typeCount[highlightevent.EventTypeKill], typeCount[highlightevent.EventTypeDeath],
+		typeCount[highlightevent.EventTypeMedal], typeCount[highlightevent.EventTypeMode])
 }

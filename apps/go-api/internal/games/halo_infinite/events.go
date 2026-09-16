@@ -22,6 +22,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -116,9 +117,9 @@ func toRawEvents(raw []canonical.HighlightEvent) []analysis.RawEvent {
 // → ok=false ici ; type inconnu → ok=false (skip).
 func infiniteHighlightTypeToCanonical(eventType string) (canonical.MatchEventType, bool) {
 	switch eventType {
-	case analysis.EventTypeMedal:
+	case highlightevent.EventTypeMedal:
 		return canonical.MatchEventMedal, true
-	case analysis.EventTypeMode:
+	case highlightevent.EventTypeMode:
 		return canonical.MatchEventImpulse, true
 	}
 	return "", false

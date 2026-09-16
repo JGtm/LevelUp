@@ -19,7 +19,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 // ─── Doublures et fabriques ───────────────────────────────────────────────────
@@ -177,9 +177,9 @@ const xuidB = uint64(2535467890123456)
 func TestBackfillMedailles_RendLIdentite(t *testing.T) {
 	db := ouvrirSharedMedailles(t)
 	const matchID = "m-nominal"
-	insererEvent(t, db, matchID, analysis.EventTypeMedal, "2533274792574872", 1000)
-	insererEvent(t, db, matchID, analysis.EventTypeMedal, "2535467890123456", 2000)
-	insererEvent(t, db, matchID, analysis.EventTypeKill, "2533274792574872", 1000)
+	insererEvent(t, db, matchID, highlightevent.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, matchID, highlightevent.EventTypeMedal, "2535467890123456", 2000)
+	insererEvent(t, db, matchID, highlightevent.EventTypeKill, "2533274792574872", 1000)
 
 	films := filmSynthetique{parMatch: map[string][]byte{matchID: chunkSynthetique(
 		evenementFilm{xuid: xuidA, typeHint: 50, timeMS: 1000, isMedal: true, medalType: 26},
@@ -222,7 +222,7 @@ func TestBackfillMedailles_RendLIdentite(t *testing.T) {
 func TestBackfillMedailles_FilmAbsentEstConsigneEtSaute(t *testing.T) {
 	db := ouvrirSharedMedailles(t)
 	const matchID = "m-sans-film"
-	insererEvent(t, db, matchID, analysis.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, matchID, highlightevent.EventTypeMedal, "2533274792574872", 1000)
 
 	bilan, err := BackfillIdentiteMedailles(context.Background(), db,
 		filmSynthetique{parMatch: map[string][]byte{}}, tableMedailles, OptionsBackfillMedailles{})
@@ -241,7 +241,7 @@ func TestBackfillMedailles_FilmAbsentEstConsigneEtSaute(t *testing.T) {
 func TestBackfillMedailles_DryRunNEcritRien(t *testing.T) {
 	db := ouvrirSharedMedailles(t)
 	const matchID = "m-dry"
-	insererEvent(t, db, matchID, analysis.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, matchID, highlightevent.EventTypeMedal, "2533274792574872", 1000)
 	films := filmSynthetique{parMatch: map[string][]byte{matchID: chunkSynthetique(
 		evenementFilm{xuid: xuidA, typeHint: 50, timeMS: 1000, isMedal: true, medalType: 26},
 	)}}
@@ -264,7 +264,7 @@ func TestBackfillMedailles_DryRunNEcritRien(t *testing.T) {
 func TestBackfillMedailles_CoupleInconnuGardeLeTypeHintSansNom(t *testing.T) {
 	db := ouvrirSharedMedailles(t)
 	const matchID = "m-inconnu"
-	insererEvent(t, db, matchID, analysis.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, matchID, highlightevent.EventTypeMedal, "2533274792574872", 1000)
 	films := filmSynthetique{parMatch: map[string][]byte{matchID: chunkSynthetique(
 		evenementFilm{xuid: xuidA, typeHint: 200, timeMS: 1000, isMedal: true, medalType: 44},
 	)}}
@@ -291,8 +291,8 @@ func TestBackfillMedailles_CoupleInconnuGardeLeTypeHintSansNom(t *testing.T) {
 // TRAITES, pas les events : un match commence est un match fini.
 func TestBackfillMedailles_PlafondBorneLesMatchsTraites(t *testing.T) {
 	db := ouvrirSharedMedailles(t)
-	insererEvent(t, db, "m-a", analysis.EventTypeMedal, "2533274792574872", 1000)
-	insererEvent(t, db, "m-b", analysis.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, "m-a", highlightevent.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, "m-b", highlightevent.EventTypeMedal, "2533274792574872", 1000)
 	chunk := chunkSynthetique(
 		evenementFilm{xuid: xuidA, typeHint: 50, timeMS: 1000, isMedal: true, medalType: 26})
 	films := filmSynthetique{parMatch: map[string][]byte{"m-a": chunk, "m-b": chunk}}
@@ -320,9 +320,9 @@ func TestBackfillMedailles_PlafondNEstPasEpuiseParLesSansFilm(t *testing.T) {
 	db := ouvrirSharedMedailles(t)
 	// m-a et m-b n ont pas de film ; seul m-c en a un. En ordre alphabetique, les
 	// deux sans-film sont EN TETE.
-	insererEvent(t, db, "m-a", analysis.EventTypeMedal, "2533274792574872", 1000)
-	insererEvent(t, db, "m-b", analysis.EventTypeMedal, "2533274792574872", 1000)
-	insererEvent(t, db, "m-c", analysis.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, "m-a", highlightevent.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, "m-b", highlightevent.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, "m-c", highlightevent.EventTypeMedal, "2533274792574872", 1000)
 	films := filmSynthetique{parMatch: map[string][]byte{"m-c": chunkSynthetique(
 		evenementFilm{xuid: xuidA, typeHint: 50, timeMS: 1000, isMedal: true, medalType: 26},
 	)}}
@@ -346,7 +346,7 @@ func TestBackfillMedailles_PlafondNEstPasEpuiseParLesSansFilm(t *testing.T) {
 func TestBackfillMedailles_DeuxiemePasseNeRefaitPasLeTravail(t *testing.T) {
 	db := ouvrirSharedMedailles(t)
 	const matchID = "m-reprise"
-	insererEvent(t, db, matchID, analysis.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, matchID, highlightevent.EventTypeMedal, "2533274792574872", 1000)
 	films := filmSynthetique{parMatch: map[string][]byte{matchID: chunkSynthetique(
 		evenementFilm{xuid: xuidA, typeHint: 50, timeMS: 1000, isMedal: true, medalType: 26},
 	)}}
@@ -375,10 +375,10 @@ func TestBackfillMedailles_MatchPartiellementIdentifie(t *testing.T) {
 	if _, err := db.Exec(
 		`INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, raw_json)
 		 VALUES (?, ?, ?, ?, ?)`,
-		matchID, analysis.EventTypeMedal, 5000, "2533274792574872", `{"medal_name":"Killjoy"}`); err != nil {
+		matchID, highlightevent.EventTypeMedal, 5000, "2533274792574872", `{"medal_name":"Killjoy"}`); err != nil {
 		t.Fatalf("insert identifiee: %v", err)
 	}
-	insererEvent(t, db, matchID, analysis.EventTypeMedal, "2533274792574872", 5000)
+	insererEvent(t, db, matchID, highlightevent.EventTypeMedal, "2533274792574872", 5000)
 
 	films := filmSynthetique{parMatch: map[string][]byte{matchID: chunkSynthetique(
 		evenementFilm{xuid: xuidA, typeHint: 50, timeMS: 5000, isMedal: true, medalType: 26},
@@ -408,8 +408,8 @@ func TestBackfillMedailles_MatchPartiellementIdentifie(t *testing.T) {
 // intacte, et la passe CONTINUE sur les suivants.
 func TestBackfillMedailles_ChunkIndecodableEstConsigneEtSaute(t *testing.T) {
 	db := ouvrirSharedMedailles(t)
-	insererEvent(t, db, "m-casse", analysis.EventTypeMedal, "2533274792574872", 1000)
-	insererEvent(t, db, "m-sain", analysis.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, "m-casse", highlightevent.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, "m-sain", highlightevent.EventTypeMedal, "2533274792574872", 1000)
 
 	// Un flux zlib annonce (0x78 0x9c) mais tronque : le decodeur echoue au lieu de
 	// rendre zero event. C est le cas « chunk corrompu », distinct du « film absent ».
@@ -446,8 +446,8 @@ func TestBackfillMedailles_ChunkIndecodableEstConsigneEtSaute(t *testing.T) {
 // 415 matchs en echouant sur chacun.
 func TestBackfillMedailles_ErreurDeSourceInterromptLaPasse(t *testing.T) {
 	db := ouvrirSharedMedailles(t)
-	insererEvent(t, db, "m-a", analysis.EventTypeMedal, "2533274792574872", 1000)
-	insererEvent(t, db, "m-b", analysis.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, "m-a", highlightevent.EventTypeMedal, "2533274792574872", 1000)
+	insererEvent(t, db, "m-b", highlightevent.EventTypeMedal, "2533274792574872", 1000)
 
 	films := filmSynthetique{erreur: errors.New("disque illisible")}
 	bilan, err := BackfillIdentiteMedailles(context.Background(), db, films, tableMedailles,
@@ -477,9 +477,9 @@ func TestApparier_OrdreDansLeGroupe(t *testing.T) {
 		{id: 10, xuid: "2533274792574872", timeMS: 5000},
 		{id: 11, xuid: "2533274792574872", timeMS: 5000},
 	}
-	events := []analysis.HighlightEvent{
-		{XUID: xuidA, EventType: analysis.EventTypeMedal, TypeHint: 50, TimeMS: 5000, MedalType: 26},
-		{XUID: xuidA, EventType: analysis.EventTypeMedal, TypeHint: 100, TimeMS: 5000, MedalType: 109},
+	events := []highlightevent.HighlightEvent{
+		{XUID: xuidA, EventType: highlightevent.EventTypeMedal, TypeHint: 50, TimeMS: 5000, MedalType: 26},
+		{XUID: xuidA, EventType: highlightevent.EventTypeMedal, TypeHint: 100, TimeMS: 5000, MedalType: 109},
 	}
 	var bilan BilanBackfillMedailles
 	corrections := apparier(context.Background(), enBase, events, tableMedailles, &bilan)
@@ -504,8 +504,8 @@ func TestApparier_GroupeDesaccordeNEstPasDevine(t *testing.T) {
 		{id: 10, xuid: "2533274792574872", timeMS: 5000},
 		{id: 11, xuid: "2533274792574872", timeMS: 5000},
 	}
-	events := []analysis.HighlightEvent{
-		{XUID: xuidA, EventType: analysis.EventTypeMedal, TypeHint: 50, TimeMS: 5000, MedalType: 26},
+	events := []highlightevent.HighlightEvent{
+		{XUID: xuidA, EventType: highlightevent.EventTypeMedal, TypeHint: 50, TimeMS: 5000, MedalType: 26},
 	}
 	var bilan BilanBackfillMedailles
 	if corrections := apparier(context.Background(), enBase, events, tableMedailles, &bilan); len(corrections) != 0 {
@@ -520,9 +520,9 @@ func TestApparier_GroupeDesaccordeNEstPasDevine(t *testing.T) {
 // n entrent jamais dans l appariement.
 func TestApparier_IgnoreLesEventsNonMedal(t *testing.T) {
 	enBase := []evenementBase{{id: 10, xuid: "2533274792574872", timeMS: 5000}}
-	events := []analysis.HighlightEvent{
-		{XUID: xuidA, EventType: analysis.EventTypeKill, TypeHint: 50, TimeMS: 5000},
-		{XUID: xuidA, EventType: analysis.EventTypeMedal, TypeHint: 50, TimeMS: 5000, MedalType: 26},
+	events := []highlightevent.HighlightEvent{
+		{XUID: xuidA, EventType: highlightevent.EventTypeKill, TypeHint: 50, TimeMS: 5000},
+		{XUID: xuidA, EventType: highlightevent.EventTypeMedal, TypeHint: 50, TimeMS: 5000, MedalType: 26},
 	}
 	var bilan BilanBackfillMedailles
 	corrections := apparier(context.Background(), enBase, events, tableMedailles, &bilan)
