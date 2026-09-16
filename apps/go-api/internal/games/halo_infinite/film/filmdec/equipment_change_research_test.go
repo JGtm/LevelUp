@@ -100,7 +100,7 @@ func eqScan(t *testing.T, s hwSetup) []eqEmission {
 				}
 				if maskHas(idx, idx48) {
 					last.got = false
-					if walkRecordTo(pay, i0, total, idx, s.lay, s.arch, idx48) && last.got {
+					if walkRecordTo(pay, i0, total, idx, s.gram, idx48) && last.got {
 						out = append(out, eqEmission{
 							Slot: slot, Chunk: c, TimestampUS: pk.TimestampUS,
 							Counter: last.counter, Rank: last.rank,

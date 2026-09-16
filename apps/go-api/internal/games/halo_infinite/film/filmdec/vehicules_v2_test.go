@@ -145,9 +145,8 @@ func v2ProcessFilm(t *testing.T, dir, short8 string, entry MapQuantEntry) *v2Fil
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible : %v", err)
 	}
-	prevW := CurrentMPPWidths()
-	t.Cleanup(func() { SetMPPWidths(prevW) })
-	vehicleCalibrateMPP(t, dir, lay)
+	fc, _ := contexteDuFilm(t, dir)
+	vehicleCalibrateMPP(t, fc, dir, lay)
 
 	n := CountFilmChunks(dir)
 	band := worldObjectSlotBandDir(dir, n, VehicleTypeIndex)
@@ -236,7 +235,8 @@ func v2LivesFromCensus(kf WorldObjectKeyframes) map[[2]uint32]v2Life {
 // acceptation que le cadrage V0 (matchWorldObjectRecord + i0 present + position dequantifiee valide).
 func v2ScanI14(dir string, band map[uint32]bool) (ev []v2Ev, withI14, total int) {
 	n := CountFilmChunks(dir)
-	posBits := projPosBits()
+	lg := ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
+	posBits := projPosBits(lg)
 	wr := Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)
@@ -254,7 +254,7 @@ func v2ScanI14(dir string, band map[uint32]bool) (ev []v2Ev, withI14, total int)
 				if !ok || rec.Idx[0] != 0 {
 					continue
 				}
-				if _, ok := decodeWorldObjectPos(pay, rec.After, &wr); !ok {
+				if _, ok := decodeWorldObjectPos(pay, rec.After, &wr, lg); !ok {
 					continue
 				}
 				total++

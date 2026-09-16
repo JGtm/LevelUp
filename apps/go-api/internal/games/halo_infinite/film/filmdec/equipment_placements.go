@@ -135,7 +135,7 @@ func ScanFilmEquipmentPlacements(
 	if err != nil {
 		return nil, EquipmentPlacementStats{ByID: map[uint32]int{}}, err
 	}
-	return ScanEquipmentPlacements(NewFilmContext(film), wr)
+	return ScanEquipmentPlacements(contexteDeBobine(film), wr)
 }
 
 // ScanEquipmentPlacements décode les POSES d'objets d'équipement d'un film DEJA CHARGE. Cf.
@@ -163,14 +163,14 @@ func ScanEquipmentPlacements(
 			EquipmentTypeIndex)
 	}
 	st.Slots = len(band)
-	tracks, err := ScanWorldObjectsForBand(fc.Film(), wr, band)
+	tracks, err := ScanWorldObjectsForBand(fc, wr, band)
 	if err != nil {
 		return nil, st, err
 	}
 	spans := EquipmentLifeSpans(tracks)
 	st.Lives = len(spans)
 
-	defer SetMPPWidths(CurrentMPPWidths())
+	defer fc.PoserMPP(fc.ProfilDeBalayage().MPP)
 	// LE PROFIL PASSE DEVANT LA CALIBRATION (lot 1.9.1 bis, pas 3, arbitrage du pilote).
 	// Quand la VERSION DE FORMAT du film porte sa largeur MPP RELUE chez l ecrivain (format 27),
 	// elle EST la grammaire et la calibration ne decide plus rien : elle reste jouee, mais comme
@@ -196,11 +196,11 @@ func ScanEquipmentPlacements(
 	st.Calibration, st.Scanned = cal, true // le film a été lu ; reste à savoir s il a tranché
 	switch {
 	case res.Relue():
-		SetMPPWidths(res.Widths)
+		fc.PoserMPP(res.Widths)
 	case !ok:
 		return nil, st, nil // ni profil relu ni calibration : aucune pose, et les stats le disent
 	default:
-		SetMPPWidths(cal.Widths)
+		fc.PoserMPP(cal.Widths)
 	}
 
 	cre, cst, err := ScanEquipmentCreationsForBand(fc, wr, band)

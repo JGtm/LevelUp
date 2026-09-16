@@ -24,8 +24,8 @@ import "fmt"
 // pas tant qu'un appelant ne l'a pas mesuré. L'appelant doit détenir LockProcessDecode et
 // restaurer la valeur précédente — c'est un état de processus (le profil hérité).
 //
-// C'ÉTAIT LA VARIABLE DE PAQUET `mppLeadBits` JUSQU'AU LOT 2.2.e : la largeur vit dans le
-// PROFIL que le lecteur porte, et `InstallFilmFormatMPP` la pose sur l'héritage.
+// C'ÉTAIT LA VARIABLE DE PAQUET `mppLeadBits` JUSQU'AU LOT 2.2.e, puis l'héritage de
+// processus jusqu'au lot 2.3 : la largeur vit dans le PROFIL que le lecteur porte.
 const mppLeadParDefaut = 9
 
 // mppIndexBits est la largeur du champ inline `R(5) -> DST+0x1a`, qui suit l'identifiant de
@@ -47,7 +47,7 @@ const mppIndexParDefaut = 5
 func mppDuProfil() MPPWidths { return MPPWidths{Lead: mppLeadParDefaut, Index: mppIndexParDefaut} }
 
 // mppWidths rend le découpage du bloc MPP que ce lecteur porte.
-func (b *BitReader) mppWidths() MPPWidths { return b.mpp }
+func (b *BitReader) mppWidths() MPPWidths { return b.p.MPP }
 
 // MPPWidths est le découpage des deux champs de largeur variable du bloc MPP.
 type MPPWidths struct {
@@ -62,14 +62,3 @@ func (w MPPWidths) String() string { return fmt.Sprintf("%d/%d", w.Lead, w.Index
 
 // Valid dit si le découpage est renseigné.
 func (w MPPWidths) Valid() bool { return w.Lead > 0 && w.Index > 0 }
-
-// SetMPPWidths installe le découpage complet et rend le précédent — l'appelant le restaure.
-// L'APPELANT DOIT DÉTENIR LockProcessDecode : ce sont des globaux de paquet.
-func SetMPPWidths(w MPPWidths) MPPWidths {
-	prev := herite.mpp
-	herite.mpp = w
-	return prev
-}
-
-// CurrentMPPWidths rend le découpage courant.
-func CurrentMPPWidths() MPPWidths { return herite.mpp }

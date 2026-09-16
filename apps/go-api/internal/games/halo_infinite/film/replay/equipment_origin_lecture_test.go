@@ -69,7 +69,7 @@ func lecClock(fb *fallback.Compteur) replayClock {
 func lecCuisson(in equipmentInputs) ([]EquipmentPlacement, *EquipmentPlacementCoverage, *fallback.Compteur) {
 	fb := fallback.NouveauCompteur()
 	in.Stats = filmdec.EquipmentPlacementStats{Lives: len(in.Raw), Anchors: 12, Confirmed: len(in.Raw)}
-	in.Stats.Calibration.Widths = filmdec.CurrentMPPWidths()
+	in.Stats.Calibration.Widths = filmdec.ProfilDeBalayageParDefaut().MPP
 	// LES DENOMINATEURS DU BALAYAGE, comme la production les fournit : sans eux `spawnLists`
 	// resterait a zero et le test ne dirait rien du cas « le film porte des listes mais aucun
 	// evenement », qui est precisement la question ouverte D2 (1.9.1).

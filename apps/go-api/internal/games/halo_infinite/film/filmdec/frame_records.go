@@ -53,18 +53,19 @@ type FrameConfig struct {
 	// donc ce bit est bien le bit 0 du payload. N'est applique que si le lecteur est au
 	// bit 0 (un appel en cours de flux n'est pas un debut de paquet).
 	PacketPreambleBits int
-	// Mouvement est le PROFIL DE MOUVEMENT que les portes de balayage posent sur leur lecteur
-	// de bits, EN TETE (lot 2.2.a). Il porte ce que les variables de paquet du chemin de
-	// position portaient : descripteur de traversee, largeur d'axe absolue, drapeaux de queue.
+	// Profil est le PROFIL DE BALAYAGE que les portes de balayage posent sur leur lecteur de
+	// bits, EN TETE (lot 2.2.a pour le mouvement, elargi a tout le profil au lot 2.3). Il
+	// porte ce que les variables de paquet portaient : descripteur de traversee, largeur
+	// d'axe absolue, drapeaux de queue, cadre d'image-cle, decoupage MPP, `param_4` force.
 	//
 	// IL EST DANS `FrameConfig` POUR UNE RAISON PRECISE : `FrameConfig` est deja le seul objet
 	// que le SEUL ecrivain de production de ces valeurs — la calibration de `killsource` —
 	// passe a toutes ses portes. Les y mettre lui rend sa calibration sans qu'elle ecrive dans
-	// le processus PENDANT son balayage. Son defaut ([DefaultFrameConfig]) est le profil
-	// herite, dont la valeur au repos est l'invariant de [mouvementDuProfil].
-	Mouvement MovementProfile
+	// le processus PENDANT son balayage. Son defaut ([DefaultFrameConfig]) est l'invariant de
+	// [ProfilDeBalayageParDefaut].
+	Profil ProfilDeBalayage
 	// Obs est l OBSERVATEUR que les portes de balayage posent sur leur lecteur, EN TETE
-	// (lot 2.2.f). `nil` — le cas de la production — laisse celui du processus.
+	// (lot 2.2.f). `nil` — le cas de la production — n observe rien.
 	//
 	// C EST LA FORME « PASSE EN PARAMETRE » QUE L ITEM 2.2.f DEMANDE, et elle est disponible
 	// des maintenant pour la famille de l inference de chaine : un instrument passe SON
@@ -126,7 +127,7 @@ const DefaultPacketPreambleBits = 2
 // VAUT l invariant [mouvementDuProfil].
 func DefaultFrameConfig() FrameConfig {
 	return FrameConfig{HasExtraFields: false, IDLowBits: 13, IDBase: 0, NewDefaultStateBits: 0,
-		PacketPreambleBits: DefaultPacketPreambleBits, Mouvement: herite.mouvement}
+		PacketPreambleBits: DefaultPacketPreambleBits, Profil: ProfilDeBalayageParDefaut()}
 }
 
 // FrameRecord is one decoded record of a type-0 FRAME packet.
@@ -206,7 +207,7 @@ func decodeDelta(br *BitReader, w *World, slot uint32) EntityTrace {
 // reader is created so the caller's stream position is untouched.
 func TryDeltaAt(buf []byte, bitpos int, w *World, cfg FrameConfig) (FrameRecord, int, bool) {
 	br := NewBitReader(buf)
-	br.poserMouvement(cfg.Mouvement) // EN TETE (lot 2.2.a)
+	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(bitpos)
 	if br.Remaining() < 24 {
 		return FrameRecord{}, bitpos, false
@@ -232,7 +233,7 @@ func TryDeltaAt(buf []byte, bitpos int, w *World, cfg FrameConfig) (FrameRecord,
 // on a component desync it returns the records so far plus an error (the bit position
 // of the next record can no longer be trusted).
 func DecodeFrameRecords(br *BitReader, w *World, cfg FrameConfig) ([]FrameRecord, error) {
-	br.poserMouvement(cfg.Mouvement) // EN TETE (lot 2.2.a) : le lecteur vient de l'appelant
+	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3) : le lecteur vient de l'appelant
 	var out []FrameRecord
 	if cfg.PacketPreambleBits > 0 && br.BitPos() == 0 {
 		br.Skip(cfg.PacketPreambleBits) // amorce de paquet (cf. FrameConfig.PacketPreambleBits)

@@ -113,18 +113,22 @@ func e191bDeuxMesures(t *testing.T, cat *MapQuantCatalog, court string) (a, b Ke
 	if err != nil {
 		t.Fatalf("carte %q de la bobine %s hors catalogue : %v", e191bCarteDeBobine[court], court, err)
 	}
-	a = e191bFermetureTI37(t, film, court)
-	prev := WorldObjectPrecisionActuelle()
-	defer func() { PoserWorldObjectPrecision(prev) }()
-	SetWorldObjectPrecisionFromLayout(e.Layout())
-	b = e191bFermetureTI37(t, film, court)
+	a = e191bFermetureTI37(t, film, court, nil)
+	b = e191bFermetureTI37(t, film, court, &e)
 	return a, b, e
 }
 
 // e191bFermetureTI37 rend la fermeture de l archetype 37 pour un film charge.
-func e191bFermetureTI37(t *testing.T, film *filmsource.Film, court string) KeyframeClosureStat {
+func e191bFermetureTI37(t *testing.T, film *filmsource.Film, court string,
+	carte *MapQuantEntry) KeyframeClosureStat {
 	t.Helper()
-	stats, err := KeyframeClosure(NewFilmContext(film))
+	fc := NewFilmContext(film)
+	if carte != nil {
+		// LES LARGEURS DE LA CARTE, posees sur CE contexte (lot 2.3) : c est la seule
+		// difference entre les deux mesures, et elle ne sort pas d ici.
+		fc.PoserLargeursObjetDuMondeDepuisDecoupage(carte.Layout())
+	}
+	stats, err := KeyframeClosure(fc)
 	if err != nil {
 		t.Fatalf("KeyframeClosure %s : %v", court, err)
 	}

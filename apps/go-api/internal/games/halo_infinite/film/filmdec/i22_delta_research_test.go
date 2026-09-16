@@ -106,7 +106,8 @@ func TestI22DeltaResearch(t *testing.T) {
 				if maskHas(idx, i22Index) {
 					withI22++
 					last.got = false
-					if walkRecordTo(pay, i0, total, idx, lay, arch, i22Index) && last.got {
+					if walkRecordTo(pay, i0, total, idx,
+						grammaireRecord{lay: lay, arch: arch, prof: profilDeCarte(lay)}, i22Index) && last.got {
 						read++
 						countHist[last.count]++
 						ok := last.count == 4
@@ -213,7 +214,8 @@ func TestInventoryComponentsDeltaCensus(t *testing.T) {
 						continue
 					}
 					announced[tg]++
-					if walkRecordTo(pay, i0, total, idx, lay, arch, tg) {
+					if walkRecordTo(pay, i0, total, idx,
+						grammaireRecord{lay: lay, arch: arch, prof: profilDeCarte(lay)}, tg) {
 						walked[tg]++
 					}
 				}

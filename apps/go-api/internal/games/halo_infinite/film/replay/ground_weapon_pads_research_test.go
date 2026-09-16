@@ -79,7 +79,6 @@ func TestGroundWeaponPads(t *testing.T) {
 	entry := mapQuantEntryFromEnv(t, gwPadsMapEnv, gwPadsBoundsEnv)
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecisionDeCarte(entry, dir, nil)()
 
 	wr := entry.Range()
 	film, mapName := filepath.Base(dir), os.Getenv(gwPadsMapEnv)

@@ -155,7 +155,7 @@ func ScanFilmBipedPickups(dir string) ([]BipedPickup, BipedPickupStats, error) {
 	if err != nil {
 		return nil, BipedPickupStats{}, err
 	}
-	return ScanBipedPickups(NewFilmContext(film))
+	return ScanBipedPickups(contexteDeBobine(film))
 }
 
 // ScanBipedPickups décode les ramassages natifs d'un film DEJA CHARGE.

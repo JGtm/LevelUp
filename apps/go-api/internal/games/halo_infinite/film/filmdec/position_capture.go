@@ -158,7 +158,7 @@ func keepBaseline() {
 // C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : la range vit dans le PROFIL que le
 // lecteur porte (`Movement.Range`), et l'A/B de sonde se fait en posant un profil sur le
 // lecteur, plus en écrivant dans le processus.
-func (b *BitReader) worldPositionRange() Vec3Range { return b.mv.Range }
+func (b *BitReader) worldPositionRange() Vec3Range { return b.p.Mouvement.Range }
 
 // AbsDequantMode sélectionne la FORME de déquantification d'un axe absolu i0.
 type AbsDequantMode int
@@ -201,7 +201,7 @@ const absDequantMode = AbsDequantRange
 // JUSQU'AU LOT 2.2.a : la largeur vient désormais du PROFIL que le lecteur porte
 // ([BitReader.poserMouvement]), et le balayage de calibration de `killsource` la passe par
 // `FrameConfig.Mouvement` au lieu de l'écrire dans le processus entier.
-func (b *BitReader) absoluteAxisW() uint { return b.mv.AbsoluteAxisW }
+func (b *BitReader) absoluteAxisW() uint { return b.p.Mouvement.AbsoluteAxisW }
 
 // absAxisW retourne la largeur d'axe effective d'un chemin ABSOLU i0.
 //

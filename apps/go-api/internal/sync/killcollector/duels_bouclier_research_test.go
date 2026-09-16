@@ -324,7 +324,7 @@ func duelsBLireFilm(
 	rng := entry.Range()
 	opt.WorldRange = &rng
 	opt.CaptureDirs = true
-	positions, err := filmdec.ScanBipedPositions(film, opt)
+	positions, err := filmdec.ScanBipedPositions(filmdec.NewFilmContext(film), opt)
 	if err != nil {
 		t.Fatalf("positions bipeds : %v", err)
 	}

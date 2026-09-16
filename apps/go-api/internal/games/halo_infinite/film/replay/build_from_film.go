@@ -75,9 +75,18 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// d i0, registre) restent PARESSEUSES, donc calculees au premier balayage qui les demande,
 	// donc apres l installation ci-dessous et apres le demarrage de l horloge des etapes.
 	fc := filmdec.NewFilmContextForMap(film, opt.MapQuant, decoupageForce(opt))
-	// Les largeurs d'axe du chemin WORLD-OBJECT sont un global de paquet : installées ici,
-	// sous le verrou, pour TOUT le decodage du film, et restaurees au retour.
-	defer installWorldObjectPrecision(fc.Profile(), matchID, opt.Fallbacks)()
+	// LE PROFIL DE LA PASSE PRECEDENTE ARRIVE PAR LES OPTIONS (lot 2.3, condition D1 du lot
+	// 2.2.a) : `killsource` calibre sur CE film un descripteur de traversee, une largeur d'axe
+	// absolue et un `param_4`, dont la cuisson heritait jusqu'ici par l'etat du processus. Il
+	// se pose AVANT les largeurs de la carte, qui n'ecrasent que le descripteur world-object —
+	// exactement l'ordre qu'avaient les deux ecritures de processus qu'il remplace.
+	if opt.ProfilDeBalayage != nil {
+		fc.PoserProfilDeBalayage(*opt.ProfilDeBalayage)
+	}
+	// Les largeurs d'axe du chemin WORLD-OBJECT sont posées SUR LE CONTEXTE, ici, pour TOUT le
+	// décodage du film (lot 2.3 : elles ne vivent plus dans le processus, donc il n'y a rien à
+	// restaurer — le contexte meurt avec la cuisson).
+	installWorldObjectPrecision(fc, matchID, opt.Fallbacks)
 	in, err := scanFilmInputs(matchID, film, fc, opt)
 	if err != nil {
 		return ReplayDocument{}, err

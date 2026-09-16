@@ -153,7 +153,7 @@ func ScanFilmEquipmentChanges(
 	if err != nil {
 		return nil, EquipmentChangeStats{}, err
 	}
-	return ScanEquipmentChanges(NewFilmContext(film), bornAt)
+	return ScanEquipmentChanges(contexteDeBobine(film), bornAt)
 }
 
 // ScanEquipmentChanges décode les changements d'équipement porté d'un film DEJA CHARGE. Cf.

@@ -186,14 +186,14 @@ func imcMarcher(modele string, pay []byte, reg *Registry, bit int) (end, desync 
 		if !ok {
 			return bit, 0
 		}
-		rec, _, _ := walkOneKeyframeRecord(pay, reg, bit, h)
+		rec, _, _ := walkOneKeyframeRecord(pay, reg, bit, h, profilDInstrument)
 		return rec.BitEnd, rec.DesyncAt
 	case imcEtatDecale:
-		tr := walkKeyframeFullState(pay, bit, reg,
+		tr := walkKeyframeFullState(pay, bit, reg, profilDInstrument,
 			keyframeFullStateTemoin{EnTeteBits: keyframeFullStateHeaderBits + 1})
 		return tr.EndBit, tr.DesyncAt
 	}
-	tr := WalkKeyframeFullState(pay, bit, reg)
+	tr := WalkKeyframeFullState(pay, bit, reg, profilDInstrument)
 	return tr.EndBit, tr.DesyncAt
 }
 

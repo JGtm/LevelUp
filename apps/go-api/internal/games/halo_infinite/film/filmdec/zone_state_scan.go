@@ -152,7 +152,7 @@ func ScanFilmManagedProperties(dir string) (ManagedPropertyScan, error) {
 	if err != nil {
 		return ManagedPropertyScan{}, err
 	}
-	return ScanManagedProperties(NewFilmContext(film))
+	return ScanManagedProperties(contexteDeBobine(film))
 }
 
 // ScanManagedProperties décode les propriétés réseau ti=13 d'un film DEJA CHARGE.
@@ -172,7 +172,7 @@ func ScanManagedProperties(fc *FilmContext) (ManagedPropertyScan, error) {
 	if err != nil {
 		return sc, err
 	}
-	w := managedPropertyWalk{arch: arch}
+	w := managedPropertyWalk{prof: fc.ProfilDeBalayage(), arch: arch}
 	defer w.install()()
 	for _, c := range nums {
 		data, pks, ok := fc.ChunkAt(c)
@@ -208,6 +208,9 @@ func (c *FilmContext) managedPropertyArchetype() (Archetype, error) {
 // managedPropertyWalk porte ce que la marche d'un record doit connaitre, et l'etat que le hook
 // y depose (regle des 5 parametres).
 type managedPropertyWalk struct {
+	// prof est le PROFIL DE BALAYAGE du contexte, pose sur chaque lecteur de cette marche
+	// (lot 2.3) : c est par lui que les largeurs de la carte et du format atteignent les feuilles.
+	prof ProfilDeBalayage
 	arch Archetype
 	// cur est la lecture en cours : le hook n'a pas le contexte du record, l'appelant si.
 	cur ManagedPropertyRead
@@ -279,6 +282,7 @@ func (w *managedPropertyWalk) walk(pay []byte, rec WorldObjectRecord, ts uint64,
 			return at, false
 		}
 		br := NewBitReader(pay)
+		br.PoserProfil(w.prof)
 		br.SetBitPos(at)
 		w.got = false
 		_, _, ported := consumeByName(br, name, ManagedPropertyTypeIndex, w.arch.Level(id))

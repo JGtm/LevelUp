@@ -45,8 +45,6 @@ var (
 func TestE191cFermetureMPP(t *testing.T) {
 	rel := LockProcessDecode()
 	defer rel()
-	prev := CurrentMPPWidths()
-	defer SetMPPWidths(prev)
 	t.Logf("######## PAS 3 — LA FERMETURE CONTRE LES DECOUPAGES MPP, BOBINE PAR BOBINE ########")
 	t.Logf("  (somme des archetypes qui portent le bloc MPP : ti=36, 37, 38, 39, 42, 43)")
 	for _, court := range closureMiniFilms() {
@@ -90,10 +88,11 @@ func e191cFermetureBobine(t *testing.T, court string) {
 	ligne := ""
 	for _, l := range e191cLeads {
 		for _, i := range e191cIndexes {
-			SetMPPWidths(MPPWidths{Lead: l, Index: i})
+			p := profilDInstrument
+			p.MPP = MPPWidths{Lead: l, Index: i}
 			n := 0
 			for _, b := range bornes {
-				tr := WalkKeyframeFullState(b.Pay, b.Bit, reg)
+				tr := WalkKeyframeFullState(b.Pay, b.Bit, reg, p)
 				if tr.DesyncAt < 0 && tr.EndBit == b.Want {
 					n++
 				}

@@ -122,7 +122,7 @@ func e191cJournalRecord(t *testing.T, pay []byte, reg *Registry, b keyframeBorne
 		consumeKeyframeDefaultState(br2, uint32(kfReadBits(pay, b.Bit+keyframeRecordTIBit, 6))) //nolint:gosec // 6 bits
 	}
 	n2 := kfReadBits(pay, br2.BitPos(), 32)
-	tr := WalkKeyframeFullState(pay, b.Bit, reg)
+	tr := WalkKeyframeFullState(pay, b.Bit, reg, profilDInstrument)
 	taille := b.Want - b.Bit
 	t.Logf("  -- record %d slot=%d bit=%d taille=%d bits, fin lue=%d, ecart=%+d, n1=%d, n2=%d",
 		n, b.Slot, b.Bit, taille, tr.EndBit, tr.EndBit-b.Want, n1, int32(n2)) //nolint:gosec // 32 bits

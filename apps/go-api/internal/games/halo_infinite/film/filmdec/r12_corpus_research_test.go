@@ -123,8 +123,6 @@ func r12CorpusOneFilm(t *testing.T, dir string) (rep, gra, repDec r12Ecarts,
 	t.Helper()
 	release := LockProcessDecode()
 	defer release()
-	saved := WorldObjectPrecisionActuelle()
-	defer func() { PoserWorldObjectPrecision(saved) }()
 	s := r12Prepare(t, dir)
 	rd := r12Collect(s)
 	pal := r12ClassifyPalette(rd.Ranks)

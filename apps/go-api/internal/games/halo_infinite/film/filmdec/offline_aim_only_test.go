@@ -49,7 +49,7 @@ func aimRecord(slot uint32, tag, zeros uint32, idx []int, yaw, pitch uint32) []b
 func TestScanBipedAimRecordsGrammaire(t *testing.T) {
 	const slot = 517
 	bande := NewSlotBand(map[uint32]bool{slot: true})
-	got := ScanBipedAimRecords(aimRecord(slot, 1, 0, []int{21, 25}, 1234, 1100), bande)
+	got := ScanBipedAimRecords(aimRecord(slot, 1, 0, []int{21, 25}, 1234, 1100), bande, ProfilDeBalayageParDefaut())
 	if len(got) != 1 {
 		t.Fatalf("masque i21,i25 : %d lecture(s), attendu 1", len(got))
 	}
@@ -84,7 +84,7 @@ func TestScanBipedAimRecordsTemoins(t *testing.T) {
 		{"masque sans i21", aimRecord(slot, 1, 0, []int{22, 25}, 1234, 1100), bande},
 		{"composant non modelise avant i21", aimRecord(slot, 1, 0, []int{9, 21}, 1234, 1100), bande},
 	} {
-		if got := ScanBipedAimRecords(cas.pay, cas.band); len(got) != 0 {
+		if got := ScanBipedAimRecords(cas.pay, cas.band, ProfilDeBalayageParDefaut()); len(got) != 0 {
 			t.Errorf("temoin %q : %d lecture(s), attendu 0 (%+v)", cas.nom, len(got), got)
 		}
 	}
@@ -116,7 +116,7 @@ func TestScanBipedAimRecordsPrecede(t *testing.T) {
 	w2.put(777, aimYawBits)
 	w2.put(1024, aimPitchBits)
 	w2.put(0, 64)
-	got := ScanBipedAimRecords(w2.b, NewSlotBand(map[uint32]bool{slot: true}))
+	got := ScanBipedAimRecords(w2.b, NewSlotBand(map[uint32]bool{slot: true}), ProfilDeBalayageParDefaut())
 	if len(got) != 1 || got[0].YawRaw != 777 || got[0].PitchRaw != 1024 {
 		t.Fatalf("masque i5,i21 : %+v, attendu une lecture yaw=777 pitch=1024", got)
 	}

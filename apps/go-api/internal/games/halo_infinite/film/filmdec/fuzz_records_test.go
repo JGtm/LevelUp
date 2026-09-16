@@ -84,7 +84,7 @@ func FuzzFilmRecordReaders(f *testing.F) {
 		}
 		_ = WalkPackets(payload)
 		_ = scanGrenadeThrows(payload)
-		_ = scanProjectileRecords(payload, band, &wr)
+		_ = scanProjectileRecords(payload, band, &wr, ProfilDeBalayageParDefaut().LargeursObjetDuMonde())
 		_ = WalkKeyframeWorld(payload)
 		// Lecture DELIBEREMENT a cheval sur les DEUX bouts du buffer : c est la tolerance que
 		// PeekBits documente. Le depart negatif n est pas un caprice du harnais — jusqu au

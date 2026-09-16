@@ -87,7 +87,7 @@ func ScanFilmAbilityRanks(dir string) ([]AbilityRank, AbilityRankStats, error) {
 	if err != nil {
 		return nil, AbilityRankStats{}, err
 	}
-	return ScanAbilityRanks(NewFilmContext(film))
+	return ScanAbilityRanks(contexteDeBobine(film))
 }
 
 // ScanAbilityRanks decode les identites de capacite d'un film DEJA CHARGE. Cf.
@@ -138,8 +138,9 @@ type abilityScanSetup struct {
 	fc     *FilmContext
 	chunks []int
 	slots  SlotBand
-	lay    I0Layout
-	arch   Archetype
+	// gram porte le decoupage d i0, l archetype du film et le PROFIL DE BALAYAGE du contexte
+	// (lot 2.3) : les trois valeurs que toute marche de record bipede doit recevoir ensemble.
+	gram grammaireRecord
 }
 
 // resolveAbilityScan résout le contexte du balayage i48 d'un film DEJA CHARGE. Les messages
@@ -158,8 +159,8 @@ func resolveAbilityScan(fc *FilmContext) (abilityScanSetup, error) {
 	if err != nil {
 		return s, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
-	s.lay = lay
-	if s.arch, err = fc.bipedArchetype(); err != nil {
+	s.gram = grammaireRecord{lay: lay, prof: fc.ProfilDeBalayage()}
+	if s.gram.arch, err = fc.bipedArchetype(); err != nil {
 		return s, err
 	}
 	return s, nil
@@ -184,7 +185,7 @@ func walkAbilityEmissions(fc *FilmContext, visit func(abilityEmission)) (Ability
 // (balayage strict, puis récupération gatée des fenêtres de saut).
 func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) AbilityRankStats {
 	var st AbilityRankStats
-	chunks, slots, lay, arch := s.chunks, s.slots, s.lay, s.arch
+	chunks, slots, gram := s.chunks, s.slots, s.gram
 
 	var last struct {
 		counter uint32
@@ -197,14 +198,14 @@ func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) A
 	})
 	defer SetAbilitySetHook(prev)
 
-	walkDeltaBipedRecords(s.fc, chunks, slots, lay, func(r deltaBipedRecord) {
+	walkDeltaBipedRecords(s.fc, chunks, slots, gram.lay, func(r deltaBipedRecord) {
 		st.Records++
 		if !maskHas(r.Mask, i48Index) {
 			return
 		}
 		st.WithI48++
 		last.got = false
-		if !walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, lay, arch, i48Index) || !last.got {
+		if !walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, gram, i48Index) || !last.got {
 			st.Unread++
 			return
 		}
@@ -244,6 +245,20 @@ func maskHas(idx []int, target int) bool {
 	return false
 }
 
+// grammaireRecord porte ce qu une marche de record bipede doit connaitre DU FILM : le
+// decoupage d i0, l archetype lu dans son registre, et le PROFIL DE BALAYAGE pose sur chaque
+// lecteur qu elle construit (lot 2.3 — c est par lui que les largeurs de la carte, le
+// decoupage MPP et le `param_4` force atteignent les feuilles, sans variable de paquet).
+//
+// LES TROIS VOYAGENT ENSEMBLE parce qu ils viennent du MEME contexte de film : les separer
+// laisserait un appelant en passer deux sur trois, et une marche au profil par defaut lit des
+// largeurs qui ne sont pas celles de ce film — sans rien dire.
+type grammaireRecord struct {
+	lay  I0Layout
+	arch Archetype
+	prof ProfilDeBalayage
+}
+
 // walkRecordTo marche les composants du masque avec les désers de PRODUCTION jusqu'à
 // consommer celui d'index target — c'est cette consommation qui déclenche le hook. Rend
 // false dès qu'un composant intermédiaire n'est pas porté ou que la marche déborde du
@@ -252,9 +267,9 @@ func maskHas(idx []int, target int) bool {
 //
 // walkRecordTo s'exprime en UNE ligne de walkRecordComponents : la marche elle-même n'existe
 // qu'à un seul exemplaire (règle des <= 2 copies, CLAUDE.md n°6).
-func walkRecordTo(pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype, target int) bool {
+func walkRecordTo(pay []byte, i0, total int, idx []int, g grammaireRecord, target int) bool {
 	found := false
-	walkRecordComponents(pay, i0, total, idx, lay, arch, func(id int) bool {
+	walkRecordComponents(pay, i0, total, idx, g, func(id int) bool {
 		if id == target {
 			found = true
 			return false
@@ -283,9 +298,9 @@ func walkRecordTo(pay []byte, i0, total int, idx []int, lay I0Layout, arch Arche
 // relirait le record autant de fois ; l'inventaire en veut six (i22, i30, i31, i33, i34,
 // i47) et paierait six fois le même travail.
 func walkRecordComponents(
-	pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype, visit func(id int) bool,
+	pay []byte, i0, total int, idx []int, g grammaireRecord, visit func(id int) bool,
 ) {
-	walkComponentsAt(pay, i0+lay.TotalBits()+i0TailBits, total, idx[1:], arch, visit)
+	walkComponentsAt(pay, i0+g.lay.TotalBits()+i0TailBits, total, idx[1:], g, visit)
 }
 
 // walkComponentsAt marche une liste de composants à partir d'une position de bit donnée —
@@ -293,15 +308,16 @@ func walkRecordComponents(
 // (equipment_recovery.go) doit marcher des records SANS i0 : les composants y commencent
 // juste après les indices du masque, sans vec3 de position devant. Même marche, même
 // exemplaire (règle des <= 2 copies).
-func walkComponentsAt(pay []byte, at, total int, ids []int, arch Archetype, visit func(id int) bool) {
+func walkComponentsAt(pay []byte, at, total int, ids []int, g grammaireRecord, visit func(id int) bool) {
 	for _, id := range ids {
-		name := arch.component(id)
+		name := g.arch.component(id)
 		if name == "" {
 			return
 		}
 		br := NewBitReader(pay)
+		br.PoserProfil(g.prof)
 		br.SetBitPos(at)
-		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), arch.Level(id))
+		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), g.arch.Level(id))
 		if !ported || br.BitPos() > total {
 			return
 		}

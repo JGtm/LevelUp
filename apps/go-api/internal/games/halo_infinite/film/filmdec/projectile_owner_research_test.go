@@ -56,13 +56,6 @@ func TestProjectileOwner(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	// Precision des objets du monde (largeurs de position ti=41) : sans elle les records
-	// projectile desynchronisent plus tot et la sonde i10 rend moins.
-	if lay, _, err := detectI0Layout(dir); err == nil {
-		prev := WorldObjectPrecisionActuelle()
-		t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-		SetWorldObjectPrecisionFromLayout(lay)
-	}
 
 	n := CountFilmChunks(dir)
 	if n > deltaWitnessChunks {

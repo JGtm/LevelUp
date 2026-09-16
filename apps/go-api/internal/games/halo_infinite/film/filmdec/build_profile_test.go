@@ -97,8 +97,7 @@ func TestBuildProfileRefuseUnFormatInconnu(t *testing.T) {
 func TestBuildProfileMPPMutationRougit(t *testing.T) {
 	rel := LockProcessDecode()
 	defer rel()
-	prev := CurrentMPPWidths()
-	defer SetMPPWidths(prev)
+	bal := ProfilDeBalayageParDefaut()
 
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_fb1a1a72")
 	film, err := filmsource.LoadDir(dir, nil)
@@ -121,8 +120,8 @@ func TestBuildProfileMPPMutationRougit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("profil HI_1_13_0 : %v", err)
 	}
-	SetMPPWidths(prof.MPP)
-	juste, _, _ := e191cN2Part(ancres, 37)
+	bal.MPP = prof.MPP
+	juste, _, _ := e191cN2Part(ancres, 37, bal)
 	if juste < 0.95 {
 		t.Fatalf("au decoupage du profil (%s), `n2` n'est constant que sur %.3f des records — "+
 			"la ligne HI_1_13_0 du profil ne tient plus", prof.MPP, juste)
@@ -133,8 +132,8 @@ func TestBuildProfileMPPMutationRougit(t *testing.T) {
 		{Lead: prof.MPP.Lead, Index: prof.MPP.Index - 1},
 		{Lead: prof.MPP.Lead, Index: prof.MPP.Index + 1},
 	} {
-		SetMPPWidths(m)
-		part, _, _ := e191cN2Part(ancres, 37)
+		bal.MPP = m
+		part, _, _ := e191cN2Part(ancres, 37, bal)
 		if part >= juste {
 			t.Errorf("decoupage %s : `n2` constant sur %.3f des records, soit autant que le profil "+
 				"(%.3f) — la mutation ne rougit pas, l'oracle ne garde rien", m, part, juste)

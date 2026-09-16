@@ -120,7 +120,7 @@ func TestBuildEquipmentPlacementsPublieUneOrigineToujours(t *testing.T) {
 		origPose(20, 300, 0, 0), // aucun bipede a moins de 3 m -> sans poseur
 	}
 	st := filmdec.EquipmentPlacementStats{Lives: 2, Anchors: 9, Confirmed: 2}
-	st.Calibration.Widths = filmdec.CurrentMPPWidths()
+	st.Calibration.Widths = filmdec.ProfilDeBalayageParDefaut().MPP
 	clock := replayClock{origin: eqOrigin, step: eqStep, frames: 200,
 		families: map[uint32]string{0x2974c233: "wall"}}
 	out, cov := buildEquipmentPlacements(
@@ -193,7 +193,7 @@ func TestPieceEngendreeEstToujoursDeployee(t *testing.T) {
 		origPoseOf(20, wallDeviceGlobalID, 2, 0, 0),
 	}
 	st := filmdec.EquipmentPlacementStats{Lives: 4, Anchors: 12, Confirmed: 4}
-	st.Calibration.Widths = filmdec.CurrentMPPWidths()
+	st.Calibration.Widths = filmdec.ProfilDeBalayageParDefaut().MPP
 	clock := replayClock{origin: eqOrigin, step: eqStep, frames: 200, families: map[uint32]string{
 		wallPanelGlobalID: usageFamilyWall, wallDeviceGlobalID: usageFamilyWall,
 	}}

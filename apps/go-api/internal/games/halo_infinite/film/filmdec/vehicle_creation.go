@@ -101,7 +101,7 @@ func ScanFilmVehicleCreations(
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}
-	return ScanVehicleCreations(NewFilmContext(film), wr)
+	return ScanVehicleCreations(contexteDeBobine(film), wr)
 }
 
 // ScanVehicleCreations decode les records de creation des VEHICULES d'un film DEJA CHARGE, sur la
@@ -152,6 +152,7 @@ func ScanVehicleCreationsForBand(
 	var cur equipCreationRead
 	defer installCreationHooks(&cur)()
 	w := equipCreationWalk{
+		prof:  fc.ProfilDeBalayage(),
 		comps: len(arch.Components), wr: wr, band: band, cur: &cur,
 		ti: VehicleTypeIndex, deser: consumeDefaultStateTI40,
 		posDecode: func(pay []byte, at int) ([3]float32, bool) {

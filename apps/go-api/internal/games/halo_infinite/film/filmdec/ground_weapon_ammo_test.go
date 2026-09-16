@@ -39,11 +39,11 @@ func munAmmoArch() Archetype {
 // munI0 ecrit le composant i0 par le chemin objet du monde, porte a zero. UNE SEULE copie : les
 // deux payloads de ce fichier le partagent.
 func munI0(w *bitWriter) {
-	w.bit(0)                                              // i0 precHigh = 0
-	w.bit(0)                                              // i0 index-sel = 0 -> lit l'index de region
-	w.bits(0, int(WorldObjectPrecisionActuelle().IndexW)) // index de region
-	for a := 0; a < 3; a++ {                              // les trois axes
-		w.bits(0, int(WorldObjectPrecisionActuelle().AxisW[a]))
+	w.bit(0)                                                                  // i0 precHigh = 0
+	w.bit(0)                                                                  // i0 index-sel = 0 -> lit l'index de region
+	w.bits(0, int(ProfilDeBalayageParDefaut().LargeursObjetDuMonde().IndexW)) // index de region
+	for a := 0; a < 3; a++ {                                                  // les trois axes
+		w.bits(0, int(ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW[a]))
 	}
 	w.bits(0, 2) // i0 queue R(2)
 }
@@ -65,7 +65,7 @@ func TestReadGroundWeaponAmmoLitLesDeuxChamps(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
 	pay := munAmmoPayload(27, 114, 4095)
-	got, ok := readGroundWeaponAmmo(pay, 0, []int{0, 18, 20}, munAmmoArch())
+	got, ok := readGroundWeaponAmmo(pay, 0, []int{0, 18, 20}, munAmmoArch(), ProfilDeBalayageParDefaut())
 	if !ok {
 		t.Fatal("lecture refusee alors que le masque porte i20 et pas i9")
 	}
@@ -93,7 +93,7 @@ func TestReadGroundWeaponAmmoRefuse(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			if _, ok := readGroundWeaponAmmo(pay, 0, c.mask, c.arch); ok {
+			if _, ok := readGroundWeaponAmmo(pay, 0, c.mask, c.arch, ProfilDeBalayageParDefaut()); ok {
 				t.Fatal("lecture acceptee alors qu'elle devait etre refusee")
 			}
 		})
@@ -136,7 +136,7 @@ func TestReadGroundWeaponAmmoTraverseI9(t *testing.T) {
 	w.bits(4095, 12) // i20 champ C
 	w.bits(0, 64)    // marge
 
-	got, ok := readGroundWeaponAmmo(w.buf, 0, []int{0, 9, 18, 20}, munAmmoArch())
+	got, ok := readGroundWeaponAmmo(w.buf, 0, []int{0, 9, 18, 20}, munAmmoArch(), ProfilDeBalayageParDefaut())
 	if !ok {
 		t.Fatal("lecture refusee alors que le masque porte i9 ET i20 : la marche doit traverser i9")
 	}

@@ -37,7 +37,7 @@ package filmdec
 // désormais du PROFIL que le lecteur porte ([BitReader.poserMouvement]), et son défaut est
 // l'invariant de [mouvementDuProfil]. Le seul écrivain de production — la calibration de
 // `killsource` — le passe maintenant par `FrameConfig.Mouvement`.
-func (b *BitReader) traversal() PrecisionDescriptor { return b.mv.Traversal }
+func (b *BitReader) traversal() PrecisionDescriptor { return b.p.Mouvement.Traversal }
 
 // WorldObjectPrecision est le descripteur du chemin WORLD-OBJECT d'i0
 // (`object-position-component`) : projectiles ti=41, armes au sol ti=42, équipement ti=37,
@@ -54,8 +54,8 @@ func (b *BitReader) traversal() PrecisionDescriptor { return b.mv.Traversal }
 // `map_bounds_test.go` vérifie. Le défaut n'est donc pas un repli neutre : c'est UNE carte.
 //
 // QUI L'INSTALLE, ET DEPUIS QUAND (2026-08-15). `replay.BuildFromFilm` installe les largeurs de
-// la carte du match pour toute la durée du décodage, sous `LockProcessDecode`, et les restaure
-// au retour (`replay.installWorldObjectPrecision`). Elles viennent de `MapQuantEntry.AxisWidths`
+// la carte du match sur le profil de balayage du contexte, pour toute la durée du décodage
+// (`replay.installWorldObjectPrecision`). Elles viennent de `MapQuantEntry.AxisWidths`
 // — la MÊME entrée de catalogue qui fournit les bornes, jamais un second réglage à armer à part.
 //
 // AVANT cette date, AUCUN chemin de production ne l'écrasait : toutes les cartes autres que
@@ -68,62 +68,9 @@ func (b *BitReader) traversal() PrecisionDescriptor { return b.mv.Traversal }
 // `DetectI0Layout` n'est PAS la source de ces largeurs : c'est le CONTRÔLE que réclame le
 // commentaire d'`AxisWidths`. Accord catalogue <-> découpage lu dans le film : 7 films sur 7.
 //
-// C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : elle vient désormais du PROFIL que le
-// lecteur porte (`Movement.WorldObject`), et l'installateur de `replay` la pose sur le profil
-// HÉRITÉ du processus — le seul canal qui atteigne les quarante balayages de la cuisson du
-// rejeu, dont aucun ne reçoit encore le profil du film (retrait cible : lot 2.5).
-func (b *BitReader) worldObjectPrecision() PrecisionDescriptor { return b.mv.WorldObject }
-
-// largeursObjetDuMonde rend les mêmes largeurs aux lecteurs QUI N'ONT PAS DE LECTEUR DE BITS.
-//
-// TROIS SITES, ET ILS SONT D'UNE AUTRE NATURE (`projectiles.go`) : ils lisent par DÉCALAGE
-// D'OCTET (`PeekBits`) sur un payload, pas par curseur — c'est le balayage qui localise un
-// record avant de le décoder. N'ayant aucun lecteur à porter le profil, ils le prennent à
-// l'héritage de processus, qui est l'endroit où l'installateur de la carte l'a posé. Ils
-// partiront du même coup que l'héritage, au lot 2.5, quand le profil descendra aux balayages.
-func largeursObjetDuMonde() PrecisionDescriptor { return herite.mouvement.WorldObject }
-
-// WorldObjectPrecisionActuelle rend les largeurs installées. Lecture seule, pour les instruments
-// et les garde-rails qui sauvent puis restaurent l'état (voir [PoserWorldObjectPrecision]).
-func WorldObjectPrecisionActuelle() PrecisionDescriptor { return herite.mouvement.WorldObject }
-
-// PoserWorldObjectPrecision installe des largeurs world-object sur le profil hérité. L'appelant
-// doit détenir `LockProcessDecode` et restaurer la valeur précédente : c'est un état de
-// processus. Le seul appelant de production est `replay.installWorldObjectPrecision`.
-func PoserWorldObjectPrecision(p PrecisionDescriptor) { herite.mouvement.WorldObject = p }
-
-// SetWorldObjectPrecisionFromLayout installe les largeurs d'axe de la CARTE pour le chemin
-// world-object. Les axes sont partagés avec l'absolu du bipède : c'est le même AABB de BSP qui
-// les fixe — hypothèse enfin vérifiée par ses conséquences le 2026-08-15 (cf. ci-dessus).
-//
-// SOURCE ATTENDUE : `MapQuantEntry.AxisWidths`, déduit des bornes par la loi du moteur. Le
-// découpage lu dans le film (`DetectI0Layout`) sert de contrôle : s'il contredit le catalogue,
-// ce sont les BORNES qui sont fausses.
-//
-// L'APPELANT DOIT DÉTENIR `LockProcessDecode` et restaurer la valeur précédente : c'est un
-// état de processus (le profil hérité). Le seul appelant de production est
-// `replay.installWorldObjectPrecision`.
-func SetWorldObjectPrecisionFromLayout(l I0Layout) {
-	if l.AxisW[0] == 0 || l.AxisW[1] == 0 || l.AxisW[2] == 0 {
-		return // layout non détecté : garder le défaut plutôt qu'installer des zéros
-	}
-	herite.mouvement.WorldObject.AxisW = l.AxisW
-	// La largeur de l'INDEX DE RÉGION est elle aussi une constante par carte
-	// (ceilLog2(nb de régions) — 2 bits sur Live Fire, lot C catalogues 2026-08-27). Un
-	// layout sans gate (appels historiques qui ne posent que AxisW) laisse le défaut.
-	// LIMITE ASSUMÉE : le lecteur world-object déquantifie tous les records aux largeurs
-	// de LA région cataloguée ; un record d'une autre région (rarissime — l'ordre des
-	// 3/291 288 de Cliffhanger) consommerait des largeurs différentes et désalignerait
-	// SON record. La table par région (SetAbsPerIndexAxisW) existe pour le chemin
-	// sim-state ; l'y étendre ici attendra une carte où le cas pèse.
-	if l.GateBits > i0SpineBits+i0UseDefaultBits {
-		herite.mouvement.WorldObject.IndexW = uint(l.GateBits - i0SpineBits - i0UseDefaultBits)
-	}
-	// LA RÉGION ATTENDUE SUIT LES LARGEURS, par le même chemin et dans le même appel
-	// (lot B-bis, 2026-09-12). Sans elle, le lecteur world-object exigeait un index de région
-	// NUL — vrai partout sauf sur Live Fire, dont la région jouée est la 1 sur 2 bits. Il y
-	// lisait donc ses trois axes un bit trop tôt, et le bit de poids fort de chaque axe
-	// devenait le bit de poids faible du champ précédent : un pas de la moitié de l'étendue
-	// de l'axe à chaque bascule (31,89 m sur Y, mesuré sur quatre films).
-	herite.mouvement.WorldObject.Region = l.Region
-}
+// C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b, puis l'héritage de processus jusqu'au lot
+// 2.3 : elle vient du PROFIL que le lecteur porte (`Movement.WorldObject`), et l'installateur
+// de `replay` la pose sur le PROFIL DE BALAYAGE DU CONTEXTE du film — le canal qui atteint les
+// quarante balayages de la cuisson du rejeu, chacun construisant ses lecteurs par
+// [FilmContext.NouveauLecteur].
+func (b *BitReader) worldObjectPrecision() PrecisionDescriptor { return b.p.Mouvement.WorldObject }

@@ -186,7 +186,6 @@ func TestPowerupSocleArchetypes(t *testing.T) {
 			}
 			release := filmdec.LockProcessDecode()
 			defer release()
-			defer installWorldObjectPrecisionDeCarte(entry, dir, nil)()
 			wr := entry.Range()
 			c := psCible{P: socle, Z: socleZ, T0Film: psPremierPaquetUS(dir)}
 

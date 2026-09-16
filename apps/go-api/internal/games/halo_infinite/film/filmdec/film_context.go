@@ -132,6 +132,67 @@ type FilmContext struct {
 	// premier acces.
 	prof   Profile
 	profLu bool
+
+	// bal est le PROFIL DE BALAYAGE de ce decodage (lot 2.3) : ce que les lecteurs de bits
+	// construits sous ce contexte portent. Il nait a l INVARIANT ; la carte du match
+	// (largeurs d axe objets du monde), la version de format (decoupage MPP) et la
+	// calibration de `killsource` y substituent leurs valeurs, par
+	// [FilmContext.PoserProfilDeBalayage]. C est ce qui a remplace l heritage par l etat du
+	// processus : rien ici n est partage entre deux films.
+	bal ProfilDeBalayage
+}
+
+// ProfilDeBalayage rend le profil que les lecteurs de ce contexte portent. PAR VALEUR : un
+// appelant qui modifie ce qu il recoit ne modifie pas celui du contexte.
+func (c *FilmContext) ProfilDeBalayage() ProfilDeBalayage {
+	if c == nil {
+		return ProfilDeBalayageParDefaut()
+	}
+	return c.bal
+}
+
+// PoserProfilDeBalayage installe le profil que les lecteurs SUIVANTS de ce contexte porteront,
+// et rend le precedent — l appelant le restaure s il ne voulait le poser que le temps d un
+// balayage. C est la SEULE porte : un balayage ne pose plus rien dans le processus.
+func (c *FilmContext) PoserProfilDeBalayage(p ProfilDeBalayage) ProfilDeBalayage {
+	prev := c.bal
+	c.bal = p
+	return prev
+}
+
+// PoserMPP installe le decoupage MPP du contexte et rend le precedent.
+func (c *FilmContext) PoserMPP(w MPPWidths) MPPWidths {
+	prev := c.bal.MPP
+	c.bal.MPP = w
+	return prev
+}
+
+// LargeursObjetDuMonde rend les largeurs d axe du chemin world-object de ce contexte.
+func (c *FilmContext) LargeursObjetDuMonde() PrecisionDescriptor {
+	return c.ProfilDeBalayage().LargeursObjetDuMonde()
+}
+
+// PoserLargeursObjetDuMonde installe des largeurs world-object brutes sur ce contexte.
+func (c *FilmContext) PoserLargeursObjetDuMonde(d PrecisionDescriptor) {
+	c.bal.PoserLargeursObjetDuMonde(d)
+}
+
+// PoserLargeursObjetDuMondeDepuisDecoupage installe les largeurs d axe de la CARTE sur ce
+// contexte. C est la porte de `replay.installWorldObjectPrecision` et des instruments.
+func (c *FilmContext) PoserLargeursObjetDuMondeDepuisDecoupage(l I0Layout) {
+	c.bal.PoserLargeursObjetDuMondeDepuisDecoupage(l)
+}
+
+// PoserParamEtat force le `param_4` du moteur pour les lecteurs de ce contexte.
+func (c *FilmContext) PoserParamEtat(v uint32) { c.bal.PoserParamEtat(v) }
+
+// NouveauLecteur construit un lecteur de bits PORTANT LE PROFIL DE CE CONTEXTE. Tout balayage
+// qui lit les octets d un film sous un contexte passe par la : c est ce qui fait descendre les
+// largeurs de la carte et du format jusqu aux feuilles, sans variable de paquet.
+func (c *FilmContext) NouveauLecteur(buf []byte) *BitReader {
+	br := NewBitReader(buf)
+	br.PoserProfil(c.ProfilDeBalayage())
+	return br
 }
 
 // NewFilmContext ouvre le contexte d'un film DEJA CHARGE, SANS catalogue : le decoupage d'i0 est
@@ -146,7 +207,7 @@ type FilmContext struct {
 // sont illisibles (`replaybuild.chargerFilm`), et chaque balayage rend alors son
 // [ErrNoFilmChunk] a sa place — exactement comme un repertoire vide avant le lot 1.
 func NewFilmContext(film *filmsource.Film) *FilmContext {
-	return &FilmContext{film: film}
+	return &FilmContext{film: film, bal: ProfilDeBalayageParDefaut()}
 }
 
 // NewFilmContextForMap ouvre le contexte d'un film DEJA CHARGE sous LA REGLE DU CATALOGUE (cf.
@@ -158,7 +219,8 @@ func NewFilmContext(film *filmsource.Film) *FilmContext {
 // decoupage tranche par [FilmContext.ImposedLayout] pour en armer les positions, et passe le
 // contexte aux six canaux delta et aux ramassages natifs — un seul decoupage pour tout le film.
 func NewFilmContextForMap(film *filmsource.Film, entry *MapQuantEntry, forced *I0Layout) *FilmContext {
-	c := &FilmContext{film: film, impose: resolveI0Layout(forced, entry)}
+	c := &FilmContext{film: film, impose: resolveI0Layout(forced, entry),
+		bal: ProfilDeBalayageParDefaut()}
 	c.prof, c.profLu = ResolveProfile(film, entry), true
 	journaliserProfilIncomplet(film, c.prof)
 	return c
@@ -349,4 +411,47 @@ func (c *FilmContext) archetype(ti int) (Archetype, *Registry, bool, error) {
 	}
 	arch, ok := reg.Archetype(ti)
 	return arch, reg, ok, nil
+}
+
+// contexteDeBobine ouvre le contexte d un film DEJA CHARGE et y pose les largeurs d axe LUES
+// DANS LE FILM.
+//
+// C EST LE CONTEXTE DES ENVELOPPES D2 (`ScanFilm*(dir)`), et la raison est ecrite dans leurs
+// propres commentaires : « un instrument qui oublie `SetWorldObjectPrecisionFromLayout`
+// desaligne les desers sans lever d erreur » (r11_journal, r12_socle, r9_creneaux). Jusqu au
+// lot 2.3, chaque instrument devait detecter le decoupage puis l installer a la main dans une
+// variable de paquet ; l enveloppe le fait desormais, DEPUIS LA MEME SOURCE (le film), et
+// l oubli n existe plus.
+//
+// LA CUISSON NE PASSE PAS PAR LA : elle prend les largeurs du CATALOGUE de la carte
+// (`replay.installWorldObjectPrecision`), jamais de l auto-detection — cf. la regle du
+// catalogue en tete de ce fichier. Un decoupage illisible laisse l invariant, sans erreur :
+// c est ce que le defaut de paquet faisait avant.
+func contexteDeBobine(film *filmsource.Film) *FilmContext {
+	fc := NewFilmContext(film)
+	if lay, _, err := DetectI0LayoutOf(film); err == nil {
+		fc.PoserLargeursObjetDuMondeDepuisDecoupage(lay)
+	}
+	return fc
+}
+
+// ContexteDeFilm ouvre le contexte d un film DEPUIS SON REPERTOIRE et y pose les largeurs d axe
+// LUES DANS LE FILM (`DetectI0LayoutOf`). Rend aussi le decoupage, dont les appelants se servent
+// pour journaliser.
+//
+// ENVELOPPE D2, HORS PRODUCTION — meme nature que les `ScanFilm*(dir)`. C est le geste que les
+// instruments repetaient a la main avant le lot 2.3 : detecter le decoupage, puis l installer
+// dans une variable de paquet que tout le processus prenait. La cuisson, elle, prend les
+// largeurs du CATALOGUE de la carte (`replay.installWorldObjectPrecision`), jamais de
+// l auto-detection : cf. la regle du catalogue en tete de ce fichier.
+func ContexteDeFilm(dir string) (*FilmContext, I0Layout, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, I0Layout{}, err
+	}
+	lay, _, err := DetectI0LayoutOf(film)
+	if err != nil {
+		return NewFilmContext(film), I0Layout{}, err
+	}
+	return contexteDeBobine(film), lay, nil
 }

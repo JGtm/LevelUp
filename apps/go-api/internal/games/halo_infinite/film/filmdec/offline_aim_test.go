@@ -45,7 +45,7 @@ func TestScanBipedRecords_CaptureDirs(t *testing.T) {
 
 	opt := scanOptWorld()
 	opt.CaptureDirs = true
-	got := ScanBipedRecords(w.buf, NewSlotBand(map[uint32]bool{slot: true}), cliffLayout, opt)
+	got := ScanBipedRecords(w.buf, NewSlotBand(map[uint32]bool{slot: true}), cliffLayout, opt, ProfilDeBalayageParDefaut())
 	if len(got) != 1 {
 		t.Fatalf("attendu 1 record, obtenu %d", len(got))
 	}
@@ -67,7 +67,7 @@ func TestScanBipedRecords_CaptureDirs(t *testing.T) {
 
 	// CaptureDirs désactivé : mêmes positions, aucune direction (non-régression).
 	off := scanOptWorld()
-	plain := ScanBipedRecords(w.buf, NewSlotBand(map[uint32]bool{slot: true}), cliffLayout, off)
+	plain := ScanBipedRecords(w.buf, NewSlotBand(map[uint32]bool{slot: true}), cliffLayout, off, ProfilDeBalayageParDefaut())
 	if len(plain) != 1 || plain[0].X != r.X || plain[0].Y != r.Y || plain[0].Z != r.Z {
 		t.Fatalf("les positions diffèrent selon CaptureDirs : %+v vs %+v", plain, got)
 	}

@@ -214,8 +214,9 @@ func litScan(chunkIdx int) {
 func litLoc(reg *filmdec.Registry, worldPath string, chunkIdx, maxPkts int) {
 	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
 	pkts := listPackets(d)
-	cfg := filmdec.FrameConfig{HasExtraFields: false, IDLowBits: 11}
-	filmdec.SetRecordStateParam(2)
+	cfg := filmdec.FrameConfig{HasExtraFields: false, IDLowBits: 11,
+		Profil: filmdec.ProfilDeBalayageParDefaut()}
+	cfg.Profil.PoserParamEtat(2)
 	// stub i63 pour franchir le dernier composant biped et enchaîner les records.
 	filmdec.SetUnportedStubWidth("biped-action-component", 48)
 	defer filmdec.SetUnportedStubWidth("biped-action-component", -1)

@@ -46,8 +46,6 @@ const e191cN2Max = 16
 func TestE191cOracleN2(t *testing.T) {
 	rel := LockProcessDecode()
 	defer rel()
-	prev := CurrentMPPWidths()
-	defer SetMPPWidths(prev)
 	t.Logf("######## PAS 2 QUATER — `n2` CONTRE LES LARGEURS DU BLOC MPP ########")
 	t.Logf("  largeurs de l ecrivain : lead=9 (141fd72de), index=5 (inline FUN_14080cfe8)")
 	parTI := map[int][]e191cAncre{}
@@ -82,8 +80,9 @@ func e191cBalayerMPP(t *testing.T, ancres []e191cAncre, ti int) {
 	total := 0
 	for l := 1; l <= e191cN2Max; l++ {
 		for i := 1; i <= e191cN2Max; i++ {
-			SetMPPWidths(MPPWidths{Lead: l, Index: i})
-			part, modal, n := e191cN2Part(ancres, ti)
+			bal := profilDInstrument
+			bal.MPP = MPPWidths{Lead: l, Index: i}
+			part, modal, n := e191cN2Part(ancres, ti, bal)
 			total = n
 			res = append(res, e191cResultatMPP{Lead: l, Index: i, Part: part, Modal: modal})
 		}
@@ -140,8 +139,6 @@ func e191cBalayerMPP(t *testing.T, ancres []e191cAncre, ti int) {
 func TestE191cOracleN2ParBuild(t *testing.T) {
 	rel := LockProcessDecode()
 	defer rel()
-	prev := CurrentMPPWidths()
-	defer SetMPPWidths(prev)
 	t.Logf("######## PAS 2 QUINQUIES — LE BALAYAGE MPP, BOBINE PAR BOBINE ########")
 	t.Logf("  %-10s %-5s %7s   %-18s   %-18s", "bobine", "ti", "records", "meilleure paire", "l ecrivain 9/5")
 	for _, court := range closureMiniFilms() {
@@ -179,8 +176,9 @@ func e191cLigneParBuild(t *testing.T, court string, ti int, ancres []e191cAncre,
 	var ref e191cResultatMPP
 	for l := 1; l <= e191cN2Max; l++ {
 		for i := 1; i <= e191cN2Max; i++ {
-			SetMPPWidths(MPPWidths{Lead: l, Index: i})
-			part, modal, _ := e191cN2Part(ancres, ti)
+			bal := profilDInstrument
+			bal.MPP = MPPWidths{Lead: l, Index: i}
+			part, modal, _ := e191cN2Part(ancres, ti, bal)
 			r := e191cResultatMPP{Lead: l, Index: i, Part: part, Modal: modal}
 			if part > meilleur.Part {
 				meilleur = r

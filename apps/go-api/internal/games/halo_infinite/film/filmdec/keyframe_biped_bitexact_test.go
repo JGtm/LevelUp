@@ -14,7 +14,7 @@ package filmdec
 //
 //	AbsoluteAxisW = 14 UNIFORME (position_capture.go) ; la capture CE donne
 //	  3 + 1 + 1 + (13+13+14) + 2 = 47 bits sur Cliffhanger, l'uniforme en rend 49 ;
-//	WorldObjectPrecisionActuelle() (traverse.go), defaut {13,13,14} = l'entree `cliffhanger` du
+//	profilDInstrument.LargeursObjetDuMonde() (traverse.go), defaut {13,13,14} = l'entree `cliffhanger` du
 //	  catalogue — donc FAUSSE sur toute autre carte, et lue aussi par le corps tag==3 d'i59.
 //
 // i0 est le PREMIER composant de 100 % des records : une largeur fausse la plafonne toute
@@ -60,26 +60,23 @@ func kf35bDir(name string) string {
 // qu'`absAxisW` retombe sur les largeurs de la carte au lieu de son uniforme 14). Rend la
 // restauration.
 //
-// DEPUIS LE LOT 2.2.a, la largeur absolue n'est plus une variable de paquet : elle vit dans le
-// PROFIL DE MOUVEMENT que chaque lecteur de bits porte, seme par l'HERITAGE du processus. Ce
-// harnais pose donc l'heritage — c'est exactement le geste de la calibration de `killsource`,
-// et le seul qui atteigne les lecteurs que ces mesures construisent au fil de la marche.
+// DEPUIS LE LOT 2.3, aucune de ces largeurs n'est une variable de paquet : elles vivent dans le
+// PROFIL que chaque lecteur de bits porte. Ce harnais pose donc le profil DU HARNAIS
+// ([profilDInstrument]) — le seul canal qui atteigne les lecteurs que ces mesures construisent
+// au fil de la marche, et il est borne aux fichiers de test.
 func kf35bInstallPrecision(t *testing.T, name string) (I0Layout, func()) {
 	t.Helper()
-	prevW, prevMv := WorldObjectPrecisionActuelle(), MouvementHerite()
-	restore := func() { PoserWorldObjectPrecision(prevW); PoserMouvementHerite(prevMv) }
 	lay, rep, err := detectI0Layout(kf35bDir(name))
 	if err != nil {
 		t.Logf("      [%s] decoupage i0 NON detecte (%v) — largeurs par defaut conservees", name, err)
-		return I0Layout{}, restore
+		return I0Layout{}, func() {}
 	}
 	t.Logf("      [%s] decoupage i0 lu dans le film : %s (%d paires, frontieres %v)",
 		name, lay, rep.Pairs, rep.Boundaries)
-	SetWorldObjectPrecisionFromLayout(lay)
-	mv := prevMv
-	mv.AbsoluteAxisW = 0 // 0 => absAxisW retombe sur WorldObjectPrecisionActuelle().AxisW
-	PoserMouvementHerite(mv)
-	return lay, restore
+	p := profilDeCarte(lay)
+	// 0 => absAxisW retombe sur les largeurs world-object de la carte, celles qu'on vient de poser.
+	p.Mouvement.AbsoluteAxisW = 0
+	return lay, poserProfilDInstrument(p)
 }
 
 // kf35bVariants : le temoin « record NEW », l'etat complet nu, et — REMISES AU PROGRAMME —

@@ -43,7 +43,7 @@ func ScanFilmGroundWeaponCreations(
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}
-	return ScanGroundWeaponCreations(NewFilmContext(film), wr)
+	return ScanGroundWeaponCreations(contexteDeBobine(film), wr)
 }
 
 // ScanGroundWeaponCreations décode les records de création des armes au sol d'un film DEJA CHARGE.
@@ -76,7 +76,7 @@ func ScanFilmGroundWeaponCreationsForBand(
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}
-	return ScanGroundWeaponCreationsForBand(NewFilmContext(film), wr, band)
+	return ScanGroundWeaponCreationsForBand(contexteDeBobine(film), wr, band)
 }
 
 // ScanGroundWeaponCreationsForBand balaye une bande de slots donnée dans un film DEJA CHARGE.
@@ -101,6 +101,7 @@ func ScanGroundWeaponCreationsForBand(
 	defer installCreationHooks(&cur)()
 
 	w := equipCreationWalk{
+		prof:  fc.ProfilDeBalayage(),
 		comps: len(arch.Components), wr: wr, band: band, cur: &cur,
 		ti: GroundWeaponTypeIndex, deser: consumeDefaultStateTI42, ammoArch: &arch,
 	}

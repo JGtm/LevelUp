@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
@@ -30,6 +31,30 @@ import (
 // balayages. `film` nil (chunks illisibles, déjà journalisé par `chargerFilm`) n'est plus une
 // lecture ratée ici mais un refus en amont — `killsource.Decode` rend alors `ErrNoChunk`, et le
 // journal en Info ci-dessous reste la SEULE trace côté cuisson, au même niveau qu'avant.
+// profilDeBalayageDeLaCuisson rend le PROFIL que la cuisson du rejeu doit porter apres le
+// decodage du kill-feed.
+//
+// DEUX CAS, ET LES DEUX SONT LE COMPORTEMENT DE PRODUCTION D AVANT LE LOT 2.3, rendu explicite :
+//
+//	DECODAGE ABOUTI  le profil CALIBRE sur ce film (descripteur de traversee, largeur d axe
+//	                 absolue, `param_4`). C est l heritage que la decouverte D1 du lot 2.2.a a
+//	                 nomme : reel, voulu (la grammaire mesuree prime sur le defaut), mais qui
+//	                 passait par l etat du processus.
+//	DECODAGE REFUSE  le profil DE DEPART de `killsource` ([killsource.ProfilDeDepart]) —
+//	                 l invariant plus le `param_4` force a zero. `killsource.Decode` posait ce
+//	                 zero AVANT de lire quoi que ce soit, et ne le retirait jamais : un film
+//	                 dont le kill-feed ne se decode pas laissait donc lui aussi sa trace sur la
+//	                 cuisson. Le reproduire ici est ce qui rend le pas STRUCTUREL (zero
+//	                 difference d octet, critere D4 du jalon).
+func profilDeBalayageDeLaCuisson(res *killsource.Result) *filmdec.ProfilDeBalayage {
+	if res != nil {
+		p := res.ProfilCalibre
+		return &p
+	}
+	p := killsource.ProfilDeDepart()
+	return &p
+}
+
 func (b *Builder) decodeKillSource(matchID string, film *filmsource.Film) *killsource.Result {
 	res, err := killsource.Decode(context.Background(), matchID, film, nil)
 	if err != nil {

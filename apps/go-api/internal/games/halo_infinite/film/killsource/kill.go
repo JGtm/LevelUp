@@ -329,6 +329,16 @@ type Result struct {
 	// n est a fournir a la main : les quatre films de reference rendent quatre couples
 	// DISTINCTS (RE_LOG 7ter.40).
 	Calibration string
+	// ProfilCalibre : la MEME calibration, sous la forme que les passes SUIVANTES consomment
+	// (lot 2.3, condition D1 du lot 2.2.a).
+	//
+	// POURQUOI CE CHAMP EXISTE. `replaybuild.BuildBytes` decode `killsource` PUIS appelle
+	// `replay.BuildFromFilm` dans le MEME processus. Jusqu au lot 2.3, la calibration ECRIVAIT
+	// ses largeurs dans des variables de paquet de `filmdec` que la cuisson du rejeu relisait
+	// sans rien demander : l heritage etait REEL et VOULU (la grammaire mesuree sur le film
+	// prime sur le defaut), mais il passait par l ETAT DU PROCESSUS, ce qui interdisait deux
+	// decodages en parallele et n etait ecrit nulle part. Il passe desormais par ce champ.
+	ProfilCalibre filmdec.ProfilDeBalayage
 	// BijectionMargin : ecart de score entre la meilleure bijection et la meilleure a UNE
 	// transposition pres. ZERO = au moins deux joueurs sont interchangeables.
 	BijectionMargin int

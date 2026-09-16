@@ -175,11 +175,14 @@ func e191Creations(dir string, e filmdec.MapQuantEntry, g *goldenInputs,
 ) ([]filmdec.EquipmentCreation, filmdec.EquipmentCreationStats, bool) {
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecisionDeCarte(e, g.Film, nil)()
-	prev := filmdec.SetMPPWidths(g.PlacementStats.Calibration.Widths)
-	defer filmdec.SetMPPWidths(prev)
+	fc, _, err := filmdec.ContexteDeFilm(dir)
+	if err != nil {
+		return nil, filmdec.EquipmentCreationStats{}, false
+	}
+	fc.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout())
+	fc.PoserMPP(g.PlacementStats.Calibration.Widths)
 	wr := e.Range()
-	cre, st, err := filmdec.ScanFilmEquipmentCreations(dir, &wr)
+	cre, st, err := filmdec.ScanEquipmentCreations(fc, &wr)
 	if err != nil {
 		return nil, st, false
 	}

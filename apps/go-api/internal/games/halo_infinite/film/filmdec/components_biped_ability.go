@@ -253,7 +253,7 @@ func consumeBipedMobilityAction(br *BitReader) {
 		consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
 		if MobilityActionBodyPorted {
 			consumeMobilityActionBody(br) // FUN_1408f02c8, corps
-		} else if extra := br.mv.MobilityActionExtraBits; extra > 0 {
+		} else if extra := br.p.Mouvement.MobilityActionExtraBits; extra > 0 {
 			br.Skip(extra)
 		}
 	}

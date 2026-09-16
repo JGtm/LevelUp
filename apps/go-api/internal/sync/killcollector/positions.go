@@ -270,7 +270,7 @@ func buildPositionRows(
 	defer release()
 
 	fc := filmdec.NewFilmContextForMap(film, &entry, nil)
-	positions, err := filmdec.ScanBipedPositions(film, optionsDeBalayageDesPositions(fc, entry))
+	positions, err := filmdec.ScanBipedPositions(fc, optionsDeBalayageDesPositions(fc, entry))
 	if err != nil {
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf("positions bipeds: %w", err)
 	}

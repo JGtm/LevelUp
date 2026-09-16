@@ -63,45 +63,38 @@ func TestEquipmentCreationRecord(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
 
-	lay, _, err := detectI0Layout(dir)
-	if err != nil {
-		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
-	}
-	prev := WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-	SetWorldObjectPrecisionFromLayout(lay)
+	fc, lay := contexteDuFilm(t, dir)
 	t.Logf("FILM %s · largeurs d'axe lues dans le film %v", dir, lay.AxisW)
 
 	real, phantom := equipCreationBands(t, dir)
-	prevW := CurrentMPPWidths()
-	t.Cleanup(func() { SetMPPWidths(prevW) })
+	prevW := fc.ProfilDeBalayage().MPP
 	if forced := os.Getenv("EQUIP_MPP_LEAD"); forced != "" {
 		w, err := strconv.Atoi(forced)
 		if err != nil {
 			t.Fatalf("EQUIP_MPP_LEAD=%q illisible : %v", forced, err)
 		}
-		SetMPPWidths(MPPWidths{Lead: w, Index: prevW.Index})
+		fc.PoserMPP(MPPWidths{Lead: w, Index: prevW.Index})
 		t.Logf("largeur du premier champ MPP FORCÉE par l'environnement : %d bits", w)
 	} else {
-		tracks, err := ScanFilmWorldObjects(dir, &equipCreationUnitRange, EquipmentTypeIndex)
+		tracks, err := ScanWorldObjects(fc, &equipCreationUnitRange, EquipmentTypeIndex)
 		if err != nil {
 			t.Fatalf("trajectoires ti=%d illisibles (oracle de calibration) : %v",
 				EquipmentTypeIndex, err)
 		}
-		cal, ok := CalibrateMPPWidths(dir, &equipCreationUnitRange, real, EquipmentLifeSpans(tracks))
+		cal, ok := CalibrateMPPWidthsOf(fc, &equipCreationUnitRange, real, EquipmentLifeSpans(tracks))
 		t.Logf("découpage du bloc MPP — calibration : %s", cal)
 		if !ok {
 			t.Logf("calibration NON concluante : défaut %s conservé", prevW)
 		} else {
-			SetMPPWidths(cal.Widths)
+			fc.PoserMPP(cal.Widths)
 		}
 	}
-	cre, st, err := ScanFilmEquipmentCreationsForBand(dir, &equipCreationUnitRange, real)
+	cre, st, err := ScanEquipmentCreationsForBand(fc, &equipCreationUnitRange, real)
 	if err != nil {
 		t.Fatalf("balayage des créations impossible : %v", err)
 	}
 	equipCreationLogStats(t, "BANDE RÉELLE", st)
-	_, pst, err := ScanFilmEquipmentCreationsForBand(dir, &equipCreationUnitRange, phantom)
+	_, pst, err := ScanEquipmentCreationsForBand(fc, &equipCreationUnitRange, phantom)
 	if err != nil {
 		t.Fatalf("balayage témoin impossible : %v", err)
 	}
@@ -114,7 +107,7 @@ func TestEquipmentCreationRecord(t *testing.T) {
 	equipCreationLogFields(t, "TOUS", cre)
 	equipCreationLogFields(t, "COHORTE PROPRE (masque plein + i0)", clean)
 	equipCreationLogLives(t, clean)
-	equipCreationCrossCheck(t, dir, cre)
+	equipCreationCrossCheck(t, fc, cre)
 }
 
 // equipCreationBands rend la bande RÉELLE de ti=37 et une bande FANTÔME de même cardinalité,
@@ -277,9 +270,9 @@ func equipCreationLogLives(t *testing.T, cre []EquipmentCreation) {
 // (ScanFilmWorldObjects) : une création dont le couple (slot, génération) n'existe dans aucune
 // trajectoire, ou dont la position ne retombe pas sur le premier point de la vie, est un faux
 // positif. C'est la chaîne indépendante qui juge l'ancre.
-func equipCreationCrossCheck(t *testing.T, dir string, cre []EquipmentCreation) {
+func equipCreationCrossCheck(t *testing.T, fc *FilmContext, cre []EquipmentCreation) {
 	t.Helper()
-	tracks, err := ScanFilmWorldObjects(dir, &equipCreationUnitRange, EquipmentTypeIndex)
+	tracks, err := ScanWorldObjects(fc, &equipCreationUnitRange, EquipmentTypeIndex)
 	if err != nil {
 		t.Logf("CONTRÔLE CROISÉ non calculable : %v", err)
 		return

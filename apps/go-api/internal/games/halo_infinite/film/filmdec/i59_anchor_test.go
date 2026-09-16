@@ -70,16 +70,13 @@ type i59aEvent struct {
 	st   AbilityNonPredictedState
 }
 
-// i59aSetup charge le film ET installe la précision world-object DE CE FILM (largeurs
-// d'axe de la carte, lues par le corps d'i59) — restaurée en fin de test. C'est le même
-// geste que la production (installWorldObjectPrecision sous le verrou).
+// i59aSetup charge le film et journalise la précision world-object DE CE FILM (largeurs d'axe
+// de la carte, lues par le corps d'i59). Depuis le lot 2.3 elle n'est plus INSTALLEE dans le
+// processus : elle voyage avec le profil du contexte (`eaSetupBiped`).
 func i59aSetup(t *testing.T, dir string) eaFilmSetup {
 	t.Helper()
 	s := eaSetupBiped(t, dir)
-	prev := WorldObjectPrecisionActuelle()
-	SetWorldObjectPrecisionFromLayout(s.lay)
-	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-	t.Logf("précision world-object installée depuis le film : %v", WorldObjectPrecisionActuelle().AxisW)
+	t.Logf("précision world-object de ce film : %v", profilDeCarte(s.lay).LargeursObjetDuMonde().AxisW)
 	return s
 }
 

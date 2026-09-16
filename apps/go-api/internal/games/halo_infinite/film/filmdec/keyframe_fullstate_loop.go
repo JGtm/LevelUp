@@ -78,17 +78,19 @@ type keyframeFullStateTemoin struct {
 // deserialiseurs d'etat par defaut : rien n'est recopie, seul le CADRE change par rapport au
 // record NEW du chemin delta.
 //
-// Les bascules globales de grammaire (`filmComponentCorruptionCheck`, `simStateComplete`,
-// `keyframeWriterI0Grammar`, ...) sont celles du process : l'appelant les regle et detient
-// `LockProcessDecode`.
-func WalkKeyframeFullState(pay []byte, recBit int, reg *Registry) EntityTrace {
-	return walkKeyframeFullState(pay, recBit, reg, keyframeFullStateTemoin{})
+// LE PROFIL DE BALAYAGE EST UN PARAMETRE (lot 2.3) : le cadre d'image-cle, le decoupage MPP et
+// les largeurs d'axe de la carte descendent par lui jusqu'aux feuilles. L'appelant le tient du
+// contexte de son film ([FilmContext.ProfilDeBalayage]).
+func WalkKeyframeFullState(pay []byte, recBit int, reg *Registry, prof ProfilDeBalayage) EntityTrace {
+	return walkKeyframeFullState(pay, recBit, reg, prof, keyframeFullStateTemoin{})
 }
 
 // walkKeyframeFullState est la marche, avec le bouton des temoins. Les instruments l'appellent
 // avec un temoin nomme ; la production passe par `WalkKeyframeFullState`, donc par le temoin nul.
-func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, tem keyframeFullStateTemoin) EntityTrace {
+func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, prof ProfilDeBalayage,
+	tem keyframeFullStateTemoin) EntityTrace {
 	br := NewBitReader(pay)
+	br.PoserProfil(prof)
 	// L EN-TETE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c) ; le temoin negatif, quand il
 	// est pose, le remplace — c est sa seule raison d etre (cf. `keyframeFullStateTemoin`).
 	hdr := tem.EnTeteBits

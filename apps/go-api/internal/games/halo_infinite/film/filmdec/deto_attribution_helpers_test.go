@@ -87,12 +87,12 @@ func detoScanProjectiles(t *testing.T, dir string, wr *Vec3Range, n int) []detoD
 		return nil
 	}
 	// Les largeurs d'axe des objets du monde (ti=41) sont celles de la CARTE, pas le defaut
-	// 13/13/14 (arene Cliffhanger). Sans cette installation, un projectile de carte a signature
-	// differente (Forge [15,15,17]) se decode a la mauvaise echelle. Verrou tenu par l'appelant.
+	// 13/13/14 (arene Cliffhanger). Sans elles, un projectile de carte a signature differente
+	// (Forge [15,15,17]) se decode a la mauvaise echelle. Elles voyagent avec le profil depuis
+	// le lot 2.3, plus par une variable de paquet.
+	lg := ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 	if lay, _, err := detectI0Layout(dir); err == nil {
-		saved := WorldObjectPrecisionActuelle()
-		SetWorldObjectPrecisionFromLayout(lay)
-		defer func() { PoserWorldObjectPrecision(saved) }()
+		lg = profilDeCarte(lay).LargeursObjetDuMonde()
 	}
 	type key struct{ slot, gen uint32 }
 	lives := map[key][]ProjectileSample{}
@@ -106,7 +106,7 @@ func detoScanProjectiles(t *testing.T, dir string, wr *Vec3Range, n int) []detoD
 				continue
 			}
 			pay := p.Payload(data)
-			for _, s := range scanProjectileRecords(pay, band, wr) {
+			for _, s := range scanProjectileRecords(pay, band, wr, lg) {
 				s.TimestampUS, s.Chunk = p.TimestampUS, c
 				k := key{s.slot, s.gen}
 				lives[k] = append(lives[k], s.ProjectileSample)

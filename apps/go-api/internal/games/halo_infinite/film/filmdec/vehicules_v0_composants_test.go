@@ -175,7 +175,8 @@ func v0NomsComposants(dir string) []string {
 func v0ScanPayload(pay []byte, band map[uint32]bool) (int, map[int]int) {
 	hist := map[int]int{}
 	records := 0
-	posBits := projPosBits()
+	lg := ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
+	posBits := projPosBits(lg)
 	// Bornes du monde neutres : la position ne sert ici qu'au filtre de porte / quantum sature,
 	// pas a une coordonnee publiee. Un intervalle [0,1] par axe suffit et ne change aucun rejet.
 	wr := Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
@@ -185,7 +186,7 @@ func v0ScanPayload(pay []byte, band map[uint32]bool) (int, map[int]int) {
 		if !ok || rec.Idx[0] != 0 {
 			continue
 		}
-		if _, ok := decodeWorldObjectPos(pay, rec.After, &wr); !ok {
+		if _, ok := decodeWorldObjectPos(pay, rec.After, &wr, lg); !ok {
 			continue
 		}
 		records++

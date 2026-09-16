@@ -388,7 +388,7 @@ func ScanFilmVehicleEvents(dir string) ([]VehicleEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanVehicleEvents(NewFilmContext(film))
+	return ScanVehicleEvents(contexteDeBobine(film))
 }
 
 // ScanVehicleEvents décode tous les événements d'embarquement / sortie de véhicule des chunks

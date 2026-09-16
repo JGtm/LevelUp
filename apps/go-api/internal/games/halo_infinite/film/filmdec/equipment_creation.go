@@ -180,7 +180,7 @@ func ScanFilmEquipmentCreations(dir string, wr *Vec3Range) ([]EquipmentCreation,
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}
-	return ScanEquipmentCreations(NewFilmContext(film), wr)
+	return ScanEquipmentCreations(contexteDeBobine(film), wr)
 }
 
 // ScanEquipmentCreations décode les records de création d'équipement d'un film DEJA CHARGE.
@@ -212,7 +212,7 @@ func ScanFilmEquipmentCreationsForBand(
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}
-	return ScanEquipmentCreationsForBand(NewFilmContext(film), wr, band)
+	return ScanEquipmentCreationsForBand(contexteDeBobine(film), wr, band)
 }
 
 // ScanEquipmentCreationsForBand balaye une bande de slots donnée dans un film DEJA CHARGE.
@@ -236,7 +236,7 @@ func ScanEquipmentCreationsForBand(
 	var cur equipCreationRead
 	defer installCreationHooks(&cur)()
 
-	w := equipCreationWalk{comps: len(arch.Components), wr: wr, band: band, cur: &cur}
+	w := equipCreationWalk{prof: fc.ProfilDeBalayage(), comps: len(arch.Components), wr: wr, band: band, cur: &cur}
 	return runCreationWalk(fc, w, &st), st, nil
 }
 
@@ -276,6 +276,10 @@ type equipCreationRead struct {
 // ARMES AU SOL (`ti=42`, ground_weapon_creation.go) empruntent donc ce code au lieu d'en
 // recopier une seconde version qui re-divergerait au premier correctif.
 type equipCreationWalk struct {
+	// prof est le PROFIL DE BALAYAGE que cette marche pose sur chaque lecteur qu elle
+	// construit (lot 2.3) : largeurs d axe de la carte, decoupage MPP, `param_4` force. Il
+	// vient du contexte du film, ou d un candidat quand la calibration MPP balaie.
+	prof  ProfilDeBalayage
 	comps int
 	wr    *Vec3Range
 	band  map[uint32]bool
@@ -322,7 +326,7 @@ func (w equipCreationWalk) decodePos(pay []byte, at int) ([3]float32, bool) {
 	if w.posDecode != nil {
 		return w.posDecode(pay, at)
 	}
-	return decodeWorldObjectPos(pay, at, w.wr)
+	return decodeWorldObjectPos(pay, at, w.wr, w.prof.LargeursObjetDuMonde())
 }
 
 // posAdvance rend la largeur d'i0 pour avancer le curseur après un record accepté.
@@ -330,7 +334,7 @@ func (w equipCreationWalk) posAdvance() int {
 	if w.posBits > 0 {
 		return w.posBits
 	}
-	return projPosBits()
+	return projPosBits(w.prof.LargeursObjetDuMonde())
 }
 
 // scanPayload balaye UN payload delta et rend les records de création reconnus.
@@ -428,6 +432,7 @@ func (w equipCreationWalk) readCreation(
 	var cre EquipmentCreation
 	*w.cur = equipCreationRead{}
 	br := NewBitReader(pay)
+	br.PoserProfil(w.prof)
 	start := p + woNewHeaderBits
 	br.SetBitPos(start)
 	w.defaultState()(br)
@@ -449,7 +454,7 @@ func (w equipCreationWalk) readCreation(
 		return cre, false
 	}
 	if w.ammoArch != nil {
-		cre.Ammo, cre.HasAmmo = readGroundWeaponAmmo(pay, compStart, idx, *w.ammoArch)
+		cre.Ammo, cre.HasAmmo = readGroundWeaponAmmo(pay, compStart, idx, *w.ammoArch, w.prof)
 	}
 	cre.HasRef, cre.Ref = w.cur.present[EquipCreationRef], uint32(w.cur.val[EquipCreationRef])
 	cre.HasID, cre.AbilityID = w.cur.present[EquipCreationAbilityID], uint32(w.cur.val[EquipCreationAbilityID])

@@ -105,7 +105,7 @@ func ScanFrameTargets(buf []byte, w *World, cfg FrameConfig, targets map[uint32]
 func harvestNextBoundClean(buf []byte, pos int, w *World, cfg FrameConfig) bool {
 	frameLen := len(buf) * 8
 	br := NewBitReader(buf)
-	br.poserMouvement(cfg.Mouvement) // EN TETE (lot 2.2.a)
+	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(pos)
 	if br.Remaining() < 24 {
 		rem := frameLen - pos
@@ -142,7 +142,7 @@ func harvestNextBoundClean(buf []byte, pos int, w *World, cfg FrameConfig) bool 
 // Returns the records and the number of views that decoded before a desync stopped it.
 func DecodeFrameViews(buf []byte, w *World, cfg FrameConfig, nViews int, skipLeadBits int) ([]FrameRecord, int) {
 	br := NewBitReader(buf)
-	br.poserMouvement(cfg.Mouvement) // EN TETE (lot 2.2.a)
+	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(skipLeadBits)
 	frameLen := len(buf) * 8
 	var all []FrameRecord
@@ -176,7 +176,7 @@ func DecodeFrameResync(buf []byte, w *World, cfg FrameConfig, targets map[uint32
 	var out []FrameRecord
 	frameLen := len(buf) * 8
 	br := NewBitReader(buf)
-	br.poserMouvement(cfg.Mouvement) // EN TETE (lot 2.2.a)
+	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3)
 	guard := 0
 	for br.BitPos() < frameLen {
 		guard++
@@ -235,7 +235,7 @@ func DecodeFrameResync(buf []byte, w *World, cfg FrameConfig, targets map[uint32
 		rec2, endPos, _ := TryDeltaAt(buf, next, w, cfg) // re-decodes with capture on -> real sample
 		out = append(out, rec2)
 		br = NewBitReader(buf)
-		br.poserMouvement(cfg.Mouvement)
+		br.PoserProfil(cfg.Profil)
 		br.Skip(endPos)
 	}
 	return out
@@ -257,7 +257,7 @@ func decodeDeltaWithArch(br *BitReader, arch Archetype, typeIndex uint32) Entity
 // aligned the stream (a real bound entity, e.g. a biped, follows the transient).
 func boundDeltaCleanAt(buf []byte, p int, w *World, cfg FrameConfig) bool {
 	br := NewBitReader(buf)
-	br.poserMouvement(cfg.Mouvement) // EN TETE (lot 2.2.a)
+	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(p)
 	if br.Remaining() < 24 {
 		return false

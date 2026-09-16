@@ -42,7 +42,7 @@ func ScanFilmUnitEquipment(dir string) ([]UnitEquipmentEmission, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanUnitEquipment(NewFilmContext(film))
+	return ScanUnitEquipment(contexteDeBobine(film))
 }
 
 // ScanUnitEquipment décode les émissions d'i26 d'un film DEJA CHARGE.
@@ -83,12 +83,13 @@ func ScanUnitEquipment(fc *FilmContext) ([]UnitEquipmentEmission, error) {
 	defer SetUnitEquipmentHook(prev)
 
 	var out []UnitEquipmentEmission
+	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage()}
 	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
 		if !maskHas(r.Mask, idx26) {
 			return
 		}
 		last.got = false
-		if walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, lay, arch, idx26) && last.got {
+		if walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, gram, idx26) && last.got {
 			out = append(out, UnitEquipmentEmission{
 				Slot: r.Slot, TimestampUS: r.Packet.TimestampUS, Read: last.read,
 			})

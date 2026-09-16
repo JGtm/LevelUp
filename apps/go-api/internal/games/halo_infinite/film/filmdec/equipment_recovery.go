@@ -284,12 +284,12 @@ func walkEquipRecoveryAt(
 		if !ok || idx[0] == 0 || !maskHas(idx, i48Index) {
 			return 0, 0, false
 		}
-		walkComponentsAt(pay, p+bipedHeaderBits+bipedIndexBits*mc, total, idx, s.arch, stop)
+		walkComponentsAt(pay, p+bipedHeaderBits+bipedIndexBits*mc, total, idx, s.gram, stop)
 	} else {
 		// FORME DENSE R(64), ordre FIGÉ par P1.0 : bit k du flux = composant 63−k. Le record
 		// porte un i0 absolu de la bonne région — l'ancre anti-bruit du balayage strict.
 		i0 := p + 18 + 64 // [1 préfixe][14 id][2 tag][1 porte=1] puis R(64), i0 ensuite
-		if i0+s.lay.TotalBits() > total {
+		if i0+s.gram.lay.TotalBits() > total {
 			return 0, 0, false
 		}
 		idx := denseMaskIndices(pay, p+18)
@@ -299,10 +299,10 @@ func walkEquipRecoveryAt(
 		}
 		const preGate = i0SpineBits + i0UseDefaultBits
 		if readBitsAt(pay, i0, preGate) != 0 ||
-			readBitsAt(pay, i0+preGate, s.lay.GateBits-preGate) != s.lay.Region {
+			readBitsAt(pay, i0+preGate, s.gram.lay.GateBits-preGate) != s.gram.lay.Region {
 			return 0, 0, false
 		}
-		walkRecordComponents(pay, i0, total, idx, s.lay, s.arch, stop)
+		walkRecordComponents(pay, i0, total, idx, s.gram, stop)
 	}
 	if !reached || !last.got {
 		return 0, 0, false

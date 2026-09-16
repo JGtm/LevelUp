@@ -175,7 +175,7 @@ var registreFilmdec = []Repli{
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgFilmdec + "traverse_precision.go",
+			Fichier: pkgFilmdec + "profil_balayage.go",
 			Ancre:   "if l.AxisW[0] == 0 || l.AxisW[1] == 0 || l.AxisW[2] == 0 {",
 		}},
 		DatePose:        dateAudit0E,
@@ -191,7 +191,7 @@ var registreFilmdec = []Repli{
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgFilmdec + "traverse_precision.go",
+			Fichier: pkgFilmdec + "profil_balayage.go",
 			Ancre:   "if l.GateBits > i0SpineBits+i0UseDefaultBits {",
 		}},
 		DatePose:        dateAudit0E,

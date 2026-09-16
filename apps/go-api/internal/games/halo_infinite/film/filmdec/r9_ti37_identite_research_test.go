@@ -202,9 +202,6 @@ func r9Ti37OneFilm(t *testing.T, dir string) {
 	wr := entry.Range()
 	release := LockProcessDecode()
 	defer release()
-	saved := WorldObjectPrecisionActuelle()
-	SetWorldObjectPrecisionFromLayout(entry.Layout())
-	defer func() { PoserWorldObjectPrecision(saved) }()
 
 	opt := DefaultScanFilmOptions()
 	opt.WorldRange = &wr

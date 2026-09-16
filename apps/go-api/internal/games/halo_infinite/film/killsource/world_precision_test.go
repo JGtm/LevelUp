@@ -73,7 +73,7 @@ func TestKillSourceWorldPrecisionImpact(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", ksPrecFilmEnv)
 	}
 	entry := ksPrecEntry(t)
-	def := filmdec.WorldObjectPrecisionActuelle().AxisW
+	def := filmdec.ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW
 	t.Logf("== FILM %s ==", dir)
 	t.Logf("  largeurs par DEFAUT du paquet : %v · largeurs DU CATALOGUE : %v (module %s)",
 		def, entry.AxisWidths, entry.Module)
@@ -148,8 +148,7 @@ func TestKillSourceWalkArchetypes(t *testing.T) {
 	release := filmdec.LockProcessDecode()
 	defer release()
 	resetGlobals()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { filmdec.PoserWorldObjectPrecision(prev) })
+	prev := filmdec.ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 
 	src, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
@@ -176,12 +175,9 @@ func TestKillSourceWalkArchetypes(t *testing.T) {
 
 	hs := make([]ksPrecHist, 0, len(largeurs))
 	for _, w := range largeurs {
-		{
-			wop := filmdec.WorldObjectPrecisionActuelle()
-			wop.AxisW = w
-			filmdec.PoserWorldObjectPrecision(wop)
-		}
-		h := ksPrecWalkHistogram(f, tl, DefaultOptions().Views)
+		profil := filmdec.ProfilDeBalayageParDefaut()
+		profil.Mouvement.WorldObject.AxisW = w
+		h := ksPrecWalkHistogram(f, tl, DefaultOptions().Views, profil)
 		hs = append(hs, h)
 		t.Logf("  -- largeurs %v --", w)
 		t.Logf("    records atteints par la MARCHE : %d · dont porteurs d un composant de "+
@@ -238,9 +234,11 @@ const worldObjectPositionComponent = "object-position-component"
 
 // ksPrecWalkHistogram rejoue EXACTEMENT le parcours de `runWalk` — meme localisateur, meme
 // restauration du monde — mais compte au lieu de filtrer.
-func ksPrecWalkHistogram(f *film, tl *timeline, views int) ksPrecHist {
+func ksPrecWalkHistogram(f *film, tl *timeline, views int,
+	profil filmdec.ProfilDeBalayage) ksPrecHist {
 	tl.rewind()
 	cfg := filmdec.DefaultFrameConfig()
+	cfg.Profil = profil
 	h := ksPrecHist{byType: map[uint32]int{}}
 	for i := range f.t0 {
 		p := &f.t0[i]
@@ -334,17 +332,12 @@ type ksPrecLine struct {
 	diverges bool
 }
 
-// ksPrecRun installe des largeurs et decode. `Decode` prend le verrou de process lui-meme :
-// l installation se fait AVANT l appel, et le test est le seul decodeur du process.
+// ksPrecRun decode a des largeurs donnees. Depuis le lot 2.3 elles ne s installent plus dans le
+// processus : `Decode` part de son propre profil, et ce harnais mesure donc l effet des largeurs
+// par la SEULE voie qui reste — celle de la marche (ksPrecWalkHistogram).
 func ksPrecRun(t *testing.T, dir string, axisW [3]uint) ksPrecMeasure {
 	t.Helper()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { filmdec.PoserWorldObjectPrecision(prev) })
-	{
-		wop := filmdec.WorldObjectPrecisionActuelle()
-		wop.AxisW = axisW
-		filmdec.PoserWorldObjectPrecision(wop)
-	}
+	_ = axisW
 
 	src, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
