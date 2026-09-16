@@ -125,7 +125,7 @@ type chainScan struct {
 // install branche les deux hooks sur la file d'evenements. Le hook de sonde n'est pas touche :
 // la voie sequentielle n'a rien a dire de ti=4.
 func (c *chainScan) install() func() {
-	prevEngine, prevPlayer := gameEngineHook, playerStateHook
+	prevEngine, prevPlayer := observateur.GameEngineHook, observateur.PlayerStateHook
 	SetGameEngineHook(func(f GameEngineField, values []uint64, present bool) {
 		c.events = append(c.events, chainEvent{
 			engine: true, field: int(f), values: append([]uint64(nil), values...), present: present,

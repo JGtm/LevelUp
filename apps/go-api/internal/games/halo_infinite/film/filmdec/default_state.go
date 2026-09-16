@@ -393,16 +393,14 @@ func (f MPPField) String() string {
 	return "mpp-champ-inconnu"
 }
 
-// mppHook, si non nil, reçoit chaque lecture d'un champ du bloc. `present` est faux quand la
-// porte s'est fermée sans transmettre de valeur — une porte fermée n'est pas une valeur nulle.
-var mppHook func(f MPPField, value uint64, present bool)
-
 // SetMultiplayerPropertiesHook installe (ou retire, avec nil) la sonde du bloc MPP.
-func SetMultiplayerPropertiesHook(h func(f MPPField, value uint64, present bool)) { mppHook = h }
+func SetMultiplayerPropertiesHook(h func(f MPPField, value uint64, present bool)) {
+	observateur.MppHook = h
+}
 
 func publishMPP(f MPPField, value uint64, present bool) {
-	if mppHook != nil {
-		mppHook(f, value, present)
+	if observateur.MppHook != nil {
+		observateur.MppHook(f, value, present)
 	}
 }
 

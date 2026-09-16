@@ -157,7 +157,15 @@ import (
 // geste qu au lot E.3 du 2026-09-05). Aucune variable neuve : l heritage du lot 2.2.a les
 // accueille toutes, et c est desormais UNE structure (`filmdec.profilHerite`) au lieu d une
 // valeur. Bilan net : -7 = 79.
-const filmdecVarsGeles = 79
+//
+// RESSERRE A 43 LE 2026-09-17 (lot 2.2.f, famille « crochets d observation ») : TRENTE-SIX de
+// moins, la plus grosse baisse de la serie. Les VINGT-NEUF crochets de deserialiseur et les
+// HUIT compteurs de l inference de chaine — dont `compWidthObs`, « la table sans verrou » que
+// l en-tete de `decode_gate.go` nomme comme l une des deux raisons du verrou de processus —
+// deviennent les CHAMPS d un seul objet, `filmdec.Observation`. Un observateur ne change aucune
+// consommation de bits : c est la propriete qui le distingue du profil, et elle est ecrite en
+// tete de `observateur.go`. Bilan net : -36 = 43.
+const filmdecVarsGeles = 43
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

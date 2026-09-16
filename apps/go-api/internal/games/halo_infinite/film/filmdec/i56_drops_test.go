@@ -63,7 +63,7 @@ func TestI56DropsAreEvents(t *testing.T) {
 	env := i56dPrepare(t, dir)
 	var hook i56dSample
 	got := false
-	prev := abilityEnergyHook
+	prev := observateur.AbilityEnergyHook
 	SetAbilityEnergyHook(func(mask uint32, ch [AbilityEnergyCharges]int) {
 		hook.mask, hook.ch, got = mask, ch, true
 	})

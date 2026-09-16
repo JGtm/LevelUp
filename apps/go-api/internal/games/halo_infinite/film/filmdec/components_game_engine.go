@@ -73,28 +73,14 @@ func (f GameEngineField) String() string {
 	return fmt.Sprintf("champ inconnu (%d)", int(f))
 }
 
-// gameEngineHook, si non nil, recoit CHAQUE lecture d'un des cinq composants.
-//
-// CONTRAT DE `values` ET DE `present`, commun aux quatre hooks de ce lot :
-//
-//	values   les champs lus par le deser, DANS L'ORDRE DU FLUX, bits de porte compris.
-//	         Jamais de dequantification, jamais de mise a l'echelle : c'est le lot qui
-//	         mesure qui decide du sens, pas la plomberie.
-//	present  faux quand la porte de TETE du composant s'est fermee et qu'aucun champ n'a
-//	         suivi. Une porte fermee n'est PAS une valeur nulle, et les confondre
-//	         fabriquerait des transitions qui n'existent pas.
-//
-// PRE-REQUIS : l'appelant detient `LockProcessDecode` — le hook est un global de paquet.
-var gameEngineHook func(f GameEngineField, values []uint64, present bool)
-
 // SetGameEngineHook installe (ou retire, avec nil) la sonde des composants de ti=0.
 func SetGameEngineHook(h func(f GameEngineField, values []uint64, present bool)) {
-	gameEngineHook = h
+	observateur.GameEngineHook = h
 }
 
 func publishGameEngine(f GameEngineField, present bool, values ...uint64) {
-	if gameEngineHook != nil {
-		gameEngineHook(f, values, present)
+	if observateur.GameEngineHook != nil {
+		observateur.GameEngineHook(f, values, present)
 	}
 }
 

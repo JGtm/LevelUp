@@ -139,7 +139,7 @@ func v2bProcessFilm(t *testing.T, dir, short8 string, entry MapQuantEntry, ag *v
 	}
 	var masks [][]int
 	if os.Getenv("V2B_MASK") != "" {
-		prev := recordMaskHook
+		prev := observateur.RecordMaskHook
 		SetRecordMaskHook(func(idx []int, _ []byte, _ int) { masks = append(masks, append([]int{}, idx...)) })
 		defer SetRecordMaskHook(prev)
 	}

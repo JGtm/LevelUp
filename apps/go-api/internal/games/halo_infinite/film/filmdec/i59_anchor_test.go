@@ -156,7 +156,7 @@ func i59aWalkPass(s eaFilmSetup, idx59 int) i59aPass {
 		st  AbilityNonPredictedState
 		got bool
 	}
-	prev := abilityNonPredictedHook
+	prev := observateur.AbilityNonPredictedHook
 	SetAbilityNonPredictedHook(func(st AbilityNonPredictedState) { capt.st, capt.got = st, true })
 	defer SetAbilityNonPredictedHook(prev)
 	for _, c := range s.chunks {
@@ -377,7 +377,7 @@ func TestI59AnchorBodyDump(t *testing.T) {
 		st  AbilityNonPredictedState
 		got bool
 	}
-	prev := abilityNonPredictedHook
+	prev := observateur.AbilityNonPredictedHook
 	SetAbilityNonPredictedHook(func(st AbilityNonPredictedState) { capt.st, capt.got = st, true })
 	defer SetAbilityNonPredictedHook(prev)
 
@@ -484,7 +484,7 @@ func TestI59AnchorTemplate(t *testing.T) {
 		st  AbilityNonPredictedState
 		got bool
 	}
-	prev := abilityNonPredictedHook
+	prev := observateur.AbilityNonPredictedHook
 	SetAbilityNonPredictedHook(func(st AbilityNonPredictedState) { capt.st, capt.got = st, true })
 	defer SetAbilityNonPredictedHook(prev)
 
@@ -749,7 +749,7 @@ func i59aCollect(s eaFilmSetup, idx59 int) (events []i59aEvent, read, unread int
 		st  AbilityNonPredictedState
 		got bool
 	}
-	prev := abilityNonPredictedHook
+	prev := observateur.AbilityNonPredictedHook
 	SetAbilityNonPredictedHook(func(st AbilityNonPredictedState) { capt.st, capt.got = st, true })
 	defer SetAbilityNonPredictedHook(prev)
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + s.lay.TotalBits()

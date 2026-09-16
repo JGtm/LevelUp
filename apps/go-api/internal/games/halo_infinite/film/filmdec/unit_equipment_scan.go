@@ -31,7 +31,7 @@ type UnitEquipmentEmission struct {
 
 // ScanFilmUnitEquipment décode toutes les émissions d'i26 des paquets delta du film de dir.
 //
-// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `unitEquipmentHook`,
+// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `observateur.UnitEquipmentHook`,
 // un global de paquet. L'appelant doit détenir LockProcessDecode ; le hook est restauré à la
 // sortie, y compris en cas d'erreur.
 //
@@ -78,7 +78,7 @@ func ScanUnitEquipment(fc *FilmContext) ([]UnitEquipmentEmission, error) {
 		read UnitEquipmentRead
 		got  bool
 	}
-	prev := unitEquipmentHook
+	prev := observateur.UnitEquipmentHook
 	SetUnitEquipmentHook(func(r UnitEquipmentRead) { last.read, last.got = r, true })
 	defer SetUnitEquipmentHook(prev)
 

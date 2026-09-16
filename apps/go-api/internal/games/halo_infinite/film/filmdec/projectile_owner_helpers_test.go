@@ -44,7 +44,7 @@ func projOwnerCollect(t *testing.T, dir string, reg *Registry, n int) projOwnerC
 	cfg := DefaultFrameConfig()
 	var out projOwnerColl
 	var curTS uint64
-	prev := objectParentStateHook
+	prev := observateur.ObjectParentStateHook
 	SetObjectParentStateHook(func(st ObjectParentState) {
 		if st.TypeIndex != ProjectileTypeIndex {
 			return

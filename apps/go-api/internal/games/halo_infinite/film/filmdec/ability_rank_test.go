@@ -49,7 +49,7 @@ func TestConsumeBipedDesiredAbilitySetPublieLeRang(t *testing.T) {
 				width   int
 				calls   int
 			}
-			prev := abilitySetHook
+			prev := observateur.AbilitySetHook
 			SetAbilitySetHook(func(counter uint64, rank, width int) {
 				got.counter, got.rank, got.width, got.calls = counter, rank, width, got.calls+1
 			})
@@ -82,7 +82,7 @@ func TestConsumeBipedDesiredAbilitySetPublieLeRang(t *testing.T) {
 // nombre de bits quand aucune sonde n'est installée : la publication ne doit pas être ce qui
 // fait avancer le curseur.
 func TestConsumeBipedDesiredAbilitySetSansHook(t *testing.T) {
-	prev := abilitySetHook
+	prev := observateur.AbilitySetHook
 	SetAbilitySetHook(nil)
 	defer SetAbilitySetHook(prev)
 

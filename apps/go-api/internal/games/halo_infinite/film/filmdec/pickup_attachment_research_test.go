@@ -47,7 +47,7 @@ func paScanAttachments(t *testing.T, dir string, want map[uint32]bool) []paTrans
 		t.Fatalf("registre illisible : %v", err)
 	}
 	vues := map[int]ObjectParentState{}
-	prev := objectParentStateHook
+	prev := observateur.ObjectParentStateHook
 	SetObjectParentStateHook(func(s ObjectParentState) { vues[s.StartBit] = s })
 	defer SetObjectParentStateHook(prev)
 

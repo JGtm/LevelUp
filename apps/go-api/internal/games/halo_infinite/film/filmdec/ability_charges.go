@@ -37,7 +37,7 @@ package filmdec
 // capacités dont le client PRÉDIT le mouvement du porteur (R11 §8.2).
 //
 // AUCUNE GRAMMAIRE NOUVELLE N'EST PORTÉE ICI : le désérialiseur publie déjà le masque et
-// les trois valeurs depuis le 2026-08-15 (`abilityEnergyHook`). Ce balayage est le patron
+// les trois valeurs depuis le 2026-08-15 (`observateur.AbilityEnergyHook`). Ce balayage est le patron
 // exact de `ScanFilmAbilityImpulses` — même contexte partagé, autre composant.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
@@ -118,7 +118,7 @@ type AbilityChargeStats struct {
 // exécutions rendent le même artefact.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe
-// `abilityEnergyHook`, qui est un global de paquet. L'appelant doit détenir
+// `observateur.AbilityEnergyHook`, qui est un global de paquet. L'appelant doit détenir
 // LockProcessDecode (BuildFromFilm le fait). Le hook est restauré à la sortie, y compris
 // en cas d'erreur.
 //
@@ -153,7 +153,7 @@ func ScanAbilityCharges(fc *FilmContext) ([]AbilityCharge, AbilityChargeStats, e
 
 	// Le hook est LA grammaire : c'est le désérialiseur lui-même qui publie, on ne relit
 	// pas les bits à côté de lui (même règle que ScanFilmAbilityImpulses).
-	prev := abilityEnergyHook
+	prev := observateur.AbilityEnergyHook
 	SetAbilityEnergyHook(func(mask uint32, ch [AbilityEnergyCharges]int) {
 		sc.mask, sc.ch, sc.got = mask, ch, true
 	})

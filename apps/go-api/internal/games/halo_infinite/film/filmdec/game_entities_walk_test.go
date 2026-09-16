@@ -80,7 +80,7 @@ func newGameEntityWalk(
 
 // install pose les trois hooks du lot 0 et rend la fonction de restauration.
 func (w *gameEntityWalk) install() func() {
-	prevEngine, prevPlayer, prevProbe := gameEngineHook, playerStateHook, probeHook
+	prevEngine, prevPlayer, prevProbe := observateur.GameEngineHook, observateur.PlayerStateHook, observateur.ProbeHook
 	SetGameEngineHook(func(f GameEngineField, values []uint64, present bool) {
 		w.cur.EngineSeen[f], w.cur.EnginePresent[f] = true, present
 		w.cur.EngineVal[f] = append(w.cur.EngineVal[f][:0], values...)

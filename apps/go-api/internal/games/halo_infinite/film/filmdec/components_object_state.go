@@ -119,22 +119,18 @@ type ObjectParentState struct {
 	Tail3    uint32
 }
 
-// objectParentStateHook, si non nil, reçoit CHAQUE lecture d'i10. Global de paquet, donc
-// UN SEUL décodage filmdec à la fois par process (même règle que les autres sondes).
-var objectParentStateHook func(ObjectParentState)
-
 // SetObjectParentStateHook installe (ou retire, avec nil) la sonde d'i10. L'appelant
 // restaure la sonde précédente. Aucune conséquence sur les bits lus : la sonde n'est
 // appelée qu'après coup, et le déser ne branche jamais sur elle.
-func SetObjectParentStateHook(h func(ObjectParentState)) { objectParentStateHook = h }
+func SetObjectParentStateHook(h func(ObjectParentState)) { observateur.ObjectParentStateHook = h }
 
 // publishObjectParentState transmet la lecture à la sonde, si elle est posée.
 func publishObjectParentState(br *BitReader, st *ObjectParentState) {
-	if objectParentStateHook == nil {
+	if observateur.ObjectParentStateHook == nil {
 		return
 	}
 	st.EndBit = br.BitPos()
-	objectParentStateHook(*st)
+	observateur.ObjectParentStateHook(*st)
 }
 
 // consumeObjectParentState (i10) mirrors FUN_140c1e4d0. recordStateParam == param_4

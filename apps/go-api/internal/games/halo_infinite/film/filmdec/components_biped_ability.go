@@ -47,18 +47,13 @@ const GrenadeSetNoSelection = 0
 func consumeBipedDesiredGrenadeSet(br *BitReader) {
 	mask := br.ReadBits(i47MaskBits) // FUN_140c6a638 flat R(6)
 	sel := br.ReadBits(i47SelBits)   // FUN_1424d9a30 flat R(3)
-	if grenadeSetHook != nil {
-		grenadeSetHook(uint32(mask), int(sel))
+	if observateur.GrenadeSetHook != nil {
+		observateur.GrenadeSetHook(uint32(mask), int(sel))
 	}
 }
 
-// grenadeSetHook, si non nil, reçoit d'i47 : le masque R(6) des types portés et la sélection
-// R(3) — GrenadeSetNoSelection quand aucun type n'est désigné. Le déser reste inchangé bit
-// pour bit.
-var grenadeSetHook func(mask uint32, sel int)
-
 // SetGrenadeSetHook installe (ou retire, avec nil) la sonde de lecture d'i47.
-func SetGrenadeSetHook(h func(mask uint32, sel int)) { grenadeSetHook = h }
+func SetGrenadeSetHook(h func(mask uint32, sel int)) { observateur.GrenadeSetHook = h }
 
 // ---------------------------------------------------------------------------
 // i48 biped-desired-ability-set-component  (deser FUN_1406d0ff0)
@@ -103,18 +98,13 @@ func consumeBipedDesiredAbilitySet(br *BitReader) {
 	if !br.ReadBit() { // FUN_1406d1024 = R(1) porte, polarité INVERSÉE
 		rank = int(br.ReadBits(i48RankBits)) // R(6) = identité (rang de palette)
 	}
-	if abilitySetHook != nil {
-		abilitySetHook(counter, rank, br.BitPos()-start+i48CounterBits)
+	if observateur.AbilitySetHook != nil {
+		observateur.AbilitySetHook(counter, rank, br.BitPos()-start+i48CounterBits)
 	}
 }
 
-// abilitySetHook, si non nil, reçoit d'i48 : la valeur R(3) (compteur de rotation), le RANG
-// de palette R(6) — ou AbilitySetNoRank quand la porte est fermée — et la largeur totale
-// consommée. Le déser reste inchangé bit pour bit : le hook ne fait que publier.
-var abilitySetHook func(counter uint64, rank int, width int)
-
 // SetAbilitySetHook installe (ou retire, avec nil) la sonde de lecture d'i48.
-func SetAbilitySetHook(h func(counter uint64, rank int, width int)) { abilitySetHook = h }
+func SetAbilitySetHook(h func(counter uint64, rank int, width int)) { observateur.AbilitySetHook = h }
 
 // ---------------------------------------------------------------------------
 // i49 biped-control-context-component  (deser FUN_14107166c)
@@ -256,8 +246,8 @@ func consumeBipedMalleableProperty(br *BitReader) {
 func consumeBipedMobilityAction(br *BitReader) {
 	flag1 := br.ReadBit() // FUN_1406cf008 -> [0x1295] = le gate `+0x9d` de FUN_1408f02c8
 	flag2 := br.ReadBit() // FUN_1406cf008 -> [0x1296] (flag2)
-	if mobilityActionHook != nil {
-		mobilityActionHook(flag1, flag2) // publication seule, aucune largeur ne change
+	if observateur.MobilityActionHook != nil {
+		observateur.MobilityActionHook(flag1, flag2) // publication seule, aucune largeur ne change
 	}
 	if flag1 {
 		consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)

@@ -109,7 +109,7 @@ func v9Collect(t *testing.T, dir string, ti int) []v9Record {
 		t.Fatalf("aucun slot ti=%d aux images-cles (%s)", ti, dir)
 	}
 	var recs []v9Record
-	prev := recordMaskHook
+	prev := observateur.RecordMaskHook
 	SetRecordMaskHook(func(idx []int, pay []byte, at int) {
 		recs = append(recs, v9Record{idx: append([]int{}, idx...), pay: pay, at: at})
 	})

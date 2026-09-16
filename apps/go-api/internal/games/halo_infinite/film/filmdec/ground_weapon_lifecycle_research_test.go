@@ -483,7 +483,7 @@ func TestGroundWeaponAmmo(t *testing.T) {
 		a, b, c uint32
 		got     bool
 	}
-	prev := groundWeaponAmmoHook
+	prev := observateur.GroundWeaponAmmoHook
 	SetGroundWeaponAmmoHook(func(a, b, c uint32) { last.a, last.b, last.c, last.got = a, b, c, true })
 	defer SetGroundWeaponAmmoHook(prev)
 

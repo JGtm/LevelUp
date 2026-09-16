@@ -29,7 +29,7 @@ package filmdec
 // les vies. Ce fichier ne rend que QUI et QUAND.
 //
 // AUCUNE GRAMMAIRE NOUVELLE N'EST PORTÉE ICI : les deux désérialiseurs publient déjà le
-// tag depuis le 2026-08-16 (`spartanAbilityHook`, `abilityNonPredictedHook`). Ce balayage
+// tag depuis le 2026-08-16 (`observateur.SpartanAbilityHook`, `observateur.AbilityNonPredictedHook`). Ce balayage
 // est le patron exact de `ScanFilmGrappleReads` — même composant, tag 1 au lieu de 3.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
@@ -105,7 +105,7 @@ type AbilityImpulseStats struct {
 // slot — un ordre total, pour que deux exécutions rendent le même artefact.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe
-// `spartanAbilityHook` et `abilityNonPredictedHook`, qui sont des globaux de paquet.
+// `observateur.SpartanAbilityHook` et `observateur.AbilityNonPredictedHook`, qui sont des globaux de paquet.
 // L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait). Les hooks sont
 // restaurés à la sortie, y compris en cas d'erreur.
 //
@@ -143,7 +143,7 @@ func ScanAbilityImpulses(fc *FilmContext) ([]AbilityImpulse, AbilityImpulseStats
 
 	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit pas
 	// les bits à côté de lui (même règle que ScanFilmGrappleReads et ScanFilmAbilityRanks).
-	prev57, prev59 := spartanAbilityHook, abilityNonPredictedHook
+	prev57, prev59 := observateur.SpartanAbilityHook, observateur.AbilityNonPredictedHook
 	SetSpartanAbilityHook(func(tag, _, _ uint64, _ bool) { sc.tag57, sc.got57 = tag, true })
 	SetAbilityNonPredictedHook(func(s AbilityNonPredictedState) { sc.tag59, sc.got59 = uint64(s.Tag), true })
 	defer func() {

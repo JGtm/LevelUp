@@ -63,6 +63,13 @@ type FrameConfig struct {
 	// le processus PENDANT son balayage. Son defaut ([DefaultFrameConfig]) est le profil
 	// herite, dont la valeur au repos est l'invariant de [mouvementDuProfil].
 	Mouvement MovementProfile
+	// Obs est l OBSERVATEUR que les portes de balayage posent sur leur lecteur, EN TETE
+	// (lot 2.2.f). `nil` — le cas de la production — laisse celui du processus.
+	//
+	// C EST LA FORME « PASSE EN PARAMETRE » QUE L ITEM 2.2.f DEMANDE, et elle est disponible
+	// des maintenant pour la famille de l inference de chaine : un instrument passe SON
+	// observateur ici et lit ses compteurs sans jamais ecrire dans le processus.
+	Obs *Observation
 }
 
 // DefaultPacketPreambleBits est l'amorce de paquet consommee avant le premier record.
