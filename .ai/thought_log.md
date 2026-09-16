@@ -1,3 +1,38 @@
+## [2026-09-17] Chantier decodeur — CLOTURE M1, gate de jalon en regime complet (equivalence 20 films + corpus gate vs base de fusion feat/v75), re-figeage unique des references — Complete (intégration 170ecaab5)
+
+**Decision technique principale.** Le gate de jalon se joue contre la BASE DE FUSION avec feat/v75
+(`8f35efb72`, M0 fusionne) et non contre le `783ae680d` du bloc « Cloture M1 » : c est ce que
+feat/v75 produit aujourd hui, et la comparaison englobe ainsi les lots 1.0 a 1.2. La voie de
+decodage a ete prise pour ce gate AVANT les gates du lot 2.7g (chemin critique : fusion, recuisson
+et backlog attendent derriere la cloture ; la fusion de 2.7g attend de toute facon la cloture, V11).
+Les 7 `changements` du corpus gate, que son JSON ne detaille pas (D5 (1.9.9)), sont NOMMES par
+`replay-diff` sur les artefacts conserves (`--keep-work`) — la lecture des changements fait partie
+du regime complet.
+
+**Resultats observes.** Equivalence : 10 identiques, 10 differents = les 10 films dont la reference
+datait du lot 1.2 ; apres `-update`, le diff des tsv nomme 8 etapes sur les 10 films (flag,
+killsource, placements.stats, spawnEvents, vehicles, filmTable, playerTeams, artifact) et 5 etapes
+propres aux films hors regime court (inventoryDeltas, camoStates, pads, equipmentChanges :
+grammaire de l equipement ; bombReads : lot 1.4), aucune autre des 53. Corpus gate : 14/14 PERTE,
+schema 54 -> 60, 979 gains, 496 pertes, 7 changements ; les 496 pertes tombent toutes dans sept
+familles deja consignees par leur lot (vies recollees 1.9.13 = 300 lignes ; poses relues 1.9.1 ;
+compteurs de defaut en baisse ; bornes elargies 1.6 ; vies sans nom visibles D4 (1.6) ; les DEUX
+pertes attendues de c75f33b8 `bombArmings.reads/rises` retrouvees telles quelles ; trajet de
+vehicule arrete a la destruction ecrite 1.9.10). Aucune perte sur points, tirs, grenades, kills,
+objectifs, drapeaux, score, projectiles. Changements : reattribution d une vie sur bcb6d393, voies
+de nommage par vie voisine sur 084a804d et 4f77afc1, duree de trajet reattribuee sur 4f77afc1.
+Lot 2.1 rendu (5 commits, tip 1d6fc4a5a) : corpus gate 0/0/0 sur 14 temoins ; equivalence 10 ecarts
+a `killsource` seul, prouves IDENTIQUES a sa base sur worktree detache (reference de sa base
+perimee, non re-figee par lui — bonne decision) ; fusion apres la cloture (V11).
+
+**Prochaine etape.** Fusion de feat/v75 dans l integration (un conflit attendu : golden de forme,
+regenere par son port), passe d equivalence 20/20 apres fusion, CI, fusion dans feat/v75 (fenetre
+5 min aux sessions voisines), recuisson des 76 artefacts du parc (schema 54 -> 60, artefacts
+precedents mis de cote, tag git du binaire precedent), backlog killsource par tranches entre les
+gates de M2 ; puis voie au 2.7g, fusions 2.1 et 2.7g.
+
+---
+
 ## [2026-09-17] Chantier decodeur — vague 2 de la famille 1.9 fusionnee (1.9.10, 1.9.7, 1.9.11, 1.9.14, 1.9.9), schema 59 -> 60, gate unique de l integration — Complete (feat/recherche-decodeur-film d8d63461e)
 
 **Decision technique principale.** Regime de fusion groupe (feedback utilisateur : ne pas serialiser
