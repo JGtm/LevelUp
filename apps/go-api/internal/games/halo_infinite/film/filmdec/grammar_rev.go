@@ -236,8 +236,14 @@ package filmdec
 // `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` non plus (aucun
 // octet cuit ne change, et `replay-equiv` doit rendre ZERO difference — une difference serait
 // une regression, pas une divergence).
-// ENTREE `grammar-2026-09-15.20` (2026-09-17, lot 2.2.a — RANG PROVISOIRE, a renumeroter au
-// rang de fusion) : `.19` -> `.20`. AUCUN OCTET N EST LU AUTREMENT.
+// ENTREE `grammar-2026-09-15.21` (2026-09-17, lot 2.2.a — RANG DE FUSION) : `.20` -> `.21`.
+// AUCUN OCTET N EST LU AUTREMENT.
+//
+// LES SIX RANGS DU LOT 2.2 ONT ETE DECALES DE +1 (`.20`-`.25` -> `.21`-`.26`) : ils avaient ete
+// poses a titre PROVISOIRE sur une base ou l integration valait `.19`, et celle-ci est passee a
+// `.20` (fusion 2.7g + 2.7p + correctif lint). Ce sont donc les rangs de FUSION. Le decalage ne
+// touche AUCUNE source hachee : `grammar_rev.go` est hors de l ensemble d empreinte depuis la
+// revue R1 (P2-3), et l empreinte des six rangs est inchangee a l octet.
 //
 // LES LECTEURS DU CHEMIN DE POSITION PRENNENT LEUR VALEUR AU PROFIL. Les cinq valeurs de la
 // famille 2.2.a — le descripteur de quantification de TRAVERSEE, la largeur d axe des chemins
@@ -267,7 +273,7 @@ package filmdec
 // resultat au lieu de l ecrire dans le processus) mais les lignes PRODUITES sont identiques a
 // l octet — meme espace balaye, meme critere, meme vainqueur, memes largeurs pour les passes
 // qui suivent. `SchemaVersion` reste 60 : aucun champ publie ne bouge.
-// ENTREE `grammar-2026-09-15.21` (2026-09-17, lot 2.2.b — RANG PROVISOIRE) : `.20` -> `.21`.
+// ENTREE `grammar-2026-09-15.22` (2026-09-17, lot 2.2.b — RANG DE FUSION) : `.21` -> `.22`.
 // AUCUN OCTET N EST LU AUTREMENT.
 //
 // LES LECTEURS DES OBJETS DU MONDE PRENNENT LEUR VALEUR AU PROFIL. Quatre variables de paquet
@@ -290,7 +296,7 @@ package filmdec
 // TROIS formes d acces, plus sur un seul nom.
 //
 // `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
-// ENTREE `grammar-2026-09-15.22` (2026-09-17, lot 2.2.c — RANG PROVISOIRE) : `.21` -> `.22`.
+// ENTREE `grammar-2026-09-15.23` (2026-09-17, lot 2.2.c — RANG DE FUSION) : `.22` -> `.23`.
 // AUCUN OCTET N EST LU AUTREMENT.
 //
 // LES MARCHES D IMAGE-CLE PRENNENT LEUR CADRE AU PROFIL. `walkKeyframeFullState`,
@@ -313,7 +319,7 @@ package filmdec
 // appelant hors instruments, et son propre garde-rail interdit meme de le NOMMER ici.
 //
 // `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
-// ENTREE `grammar-2026-09-15.23` (2026-09-17, lot 2.2.d — RANG PROVISOIRE) : `.22` -> `.23`.
+// ENTREE `grammar-2026-09-15.24` (2026-09-17, lot 2.2.d — RANG DE FUSION) : `.23` -> `.24`.
 // AUCUN OCTET N EST LU AUTREMENT.
 //
 // LA VERSION DU FILM VIENT DU PROFIL DU CONTEXTE. La phase de balayage des positions du rejeu
@@ -340,7 +346,7 @@ package filmdec
 // le golden porte donc le meme sha sur deux rangs, ce qui se lit et ne se devine pas.
 //
 // `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
-// ENTREE `grammar-2026-09-15.24` (2026-09-17, lot 2.2.e — RANG PROVISOIRE) : `.23` -> `.24`.
+// ENTREE `grammar-2026-09-15.25` (2026-09-17, lot 2.2.e — RANG DE FUSION) : `.24` -> `.25`.
 // AUCUN OCTET N EST LU AUTREMENT.
 //
 // EQUIPEMENT ET MOBILITE AU PROFIL, ET L HERITAGE DEVIENT UNE STRUCTURE. Cinq valeurs de plus
@@ -367,7 +373,7 @@ package filmdec
 // `KillSourceDecoderRev` ne bouge PAS : `killsource/` est INTACT — le balayage de `param_4`
 // passe toujours par `SetRecordStateParam`, meme espace, meme critere, memes lignes produites.
 // `SchemaVersion` reste 60.
-// ENTREE `grammar-2026-09-15.25` (2026-09-17, lot 2.2.f — RANG PROVISOIRE) : `.24` -> `.25`.
+// ENTREE `grammar-2026-09-15.26` (2026-09-17, lot 2.2.f — RANG DE FUSION) : `.25` -> `.26`.
 // AUCUN OCTET N EST LU AUTREMENT.
 //
 // L OBSERVATEUR : TRENTE-SEPT VARIABLES DE PAQUET DEVIENNENT LES CHAMPS D UN SEUL OBJET. Les
@@ -395,4 +401,4 @@ package filmdec
 // declarations a deplace des fonctions, et le garde-rail G1 lit ces ancres sur pieces.
 //
 // `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
-const GrammarRev = "grammar-2026-09-15.25"
+const GrammarRev = "grammar-2026-09-15.26"
