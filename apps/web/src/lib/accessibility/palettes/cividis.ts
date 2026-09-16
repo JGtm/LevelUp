@@ -127,6 +127,10 @@ export const cividisPalette: Palette = {
   'narrative-debacle-text':          '#FFFFFF',            // blanc sur vermillion sombre (6.2)
   'narrative-contre-remontada':      CIVIDIS_T75,      // ocre
   'narrative-contre-remontada-text': '#000000',
+  'narrative-sabordage':             SAFE_REDDISH_PURPLE,
+  'narrative-sabordage-text':        '#000000',
+  'narrative-abnegation':            CIVIDIS_T90,      // jaune doré
+  'narrative-abnegation-text':       '#000000',
 
   // ── Badges encounter — axe blue/vermillion ────────────────────────────────
   // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts ;

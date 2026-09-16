@@ -27,6 +27,8 @@ const (
 	homeDominanceRemontada        = 3
 	homeDominanceDebacle          = 4
 	homeDominanceCounterRemontada = 5
+	homeDominanceSabordage        = 6
+	homeDominanceAbnegation       = 7
 )
 
 // Codes couleur sémantiques utilisés dans les blocs JSON du Home (highlights).
@@ -124,6 +126,10 @@ func buildHomeNarrativeBadges(dominanceFlag int) []string {
 		return []string{"debacle"}
 	case homeDominanceCounterRemontada:
 		return []string{"contre_remontada"}
+	case homeDominanceSabordage:
+		return []string{"sabordage"}
+	case homeDominanceAbnegation:
+		return []string{"abnegation"}
 	default:
 		return nil
 	}

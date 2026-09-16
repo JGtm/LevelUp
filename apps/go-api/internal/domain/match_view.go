@@ -181,7 +181,7 @@ type MatchViewRank struct {
 // MatchViewDominanceBadge : badge narratif typé exposé dans le header.
 // Mirror frontend du narrative.DominanceBadge Go (LabelKey + ColorToken).
 type MatchViewDominanceBadge struct {
-	// Flag : valeur numérique de canonical.DominanceFlag (1..5 pour les 5
+	// Flag : valeur numérique de canonical.DominanceFlag (1..7 pour les 7
 	// badges narratifs ; 0 ou inconnu n'est pas exposé — le pointeur est nil).
 	Flag int `json:"flag"`
 	// LabelKey : clé i18n (ex. "narrative.dominance.domination").

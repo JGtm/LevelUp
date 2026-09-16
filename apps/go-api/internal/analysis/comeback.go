@@ -1,7 +1,7 @@
 // Package analysis — comeback.go : détection des badges narratifs de match.
 //
 // Port Go de src/analysis/comeback_analysis.py.
-// Calcule le dominance_flag (0–5) depuis la courbe de score reconstruite
+// Calcule le dominance_flag (0–7) depuis la courbe de score reconstruite
 // à partir des kill-events de highlight_events.
 //
 // Valeurs de dominance_flag :
@@ -12,6 +12,8 @@
 //	3 — REMONTADA    : victoire après avoir été mené ≥ seuil
 //	4 — DÉBÂCLE      : défaite après avoir mené ≥ seuil
 //	5 — CONTRE-REMONTADA : victoire malgré un second retard adverse
+//	6 — SABORDAGE : défaite au score (mode à objectifs) en dominant aux frags
+//	7 — ABNÉGATION : victoire au score (mode à objectifs) en étant écrasé aux frags
 package analysis
 
 import (
@@ -28,6 +30,8 @@ const (
 	DominanceFlagRemontada       = 3
 	DominanceFlagDebacle         = 4
 	DominanceFlagContreRemontada = 5
+	DominanceFlagSabordage       = 6
+	DominanceFlagAbnegation      = 7
 )
 
 // MedalSteaktacularID est l'ID de la médaille Steaktacular (5+ kills de suite).

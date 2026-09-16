@@ -12753,6 +12753,9 @@ components:
     ExplorerBriefingDominance:
       additionalProperties: false
       properties:
+        abnegations:
+          format: int64
+          type: integer
         contre_remontadas:
           format: int64
           type: integer
@@ -12766,6 +12769,9 @@ components:
           format: int64
           type: integer
         remontadas:
+          format: int64
+          type: integer
+        sabordages:
           format: int64
           type: integer
       type: object

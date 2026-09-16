@@ -44,6 +44,8 @@ const NARRATIVE_LABELS: Record<string, string> = {
   remontada:        'REMONTADA',
   debacle:          'DÉBÂCLE',
   contre_remontada: 'CONTRE-REMONTADA',
+  sabordage:        'SABORDAGE',
+  abnegation:       'ABNÉGATION',
 }
 
 export function getMatchNarrativeBadgeMeta(type: string | null | undefined): MatchNarrativeBadgeMeta | null {

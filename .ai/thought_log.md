@@ -109806,3 +109806,41 @@ l'utilisateur. Lot 1 (`feat/quantum-projectiles`) et lot 2 (`feat/mapquant-forge
 indépendants et parallélisables en worktrees dédiés. Le sous-lot 1C décide du sort de la précision
 par arme pour les armes à projectile : succès vers un plan séparé, échec vers le registre des
 reports, la remise du 01/09 restant en l'état.
+
+## [2026-09-16] Bouton « copier le code » à la connexion Xbox + badges Sabordage / Abnégation — Complété
+
+**Décision technique principale** : (1) écran de connexion par code (`XboxLoginPage`) : bouton
+icône sans texte à droite du code (`features/auth/CopyCodeButton.tsx`, 36 px, libellé porté par
+aria-label/title, coche 2 s après copie). (2) Deux nouveaux `dominance_flag` pour les modes à
+objectifs : 6 SABORDAGE (EN « Scuttled » : défaite au score en dominant aux frags) et
+7 ABNÉGATION (EN « Selfless » : victoire au score en étant écrasé aux frags) — les deux faces d'un
+même match. Règle pure `analysis.ComputeFragContrastDominance` (fichier `comeback_frag_contrast.go`),
+critère MIXTE sur la timeline de frags dédoublonnée : l'équipe dominante mène aux frags ≥ 75 % du
+temps de match ET finit avec ≥ 15 % de frags de plus ET totalise ≥ 10 frags. Seuils choisis par
+l'utilisateur sur MESURE (base locale Halo Infinite au 30/08, 349 matchs à objectifs avec timeline) :
+10 matchs retenus, ≈ 1 sur 35. Critères écartés par la mesure : écart final seul (perdant ≤ 40 % des
+frags → 0 match ; même à 70 % → 1), écart absolu en frags (biaisé BTB : 164 contre 157 = 4 %).
+Sans timeline (305 matchs à objectifs sur 654, et Halo 5 en entier) : pas de badge. Doublons exacts
+relevés dans `highlight_events` (jusqu'à 2x SUM(kills)) : la nouvelle lecture dédoublonne sur
+(xuid, time_ms) ; `loadKillEventsWithTeam` (courbe Remontada Slayer) ne dédoublonne PAS — relevé,
+non traité (hors périmètre, à ouvrir séparément). Appliquée dans `sync.computeMatchDominanceFlag` en dernier
+recours : mode à objectifs (`objectiveevents.ObjectiveTypeOf != ""`), 2 équipes, et SEULEMENT si
+aucun autre badge ne s'applique (priorité aux badges existants, décision utilisateur).
+Historique : migration player `player_dominance_flag_reset_none_v1` — INSERT append-only d'une row
+`stage='dominance'` à NULL pour chaque flag courant à 0 ; le post-sync suivant les recalcule.
+Les flags non nuls ne sont pas touchés (ils resteraient prioritaires de toute façon).
+Front : tokens `narrative-sabordage`/`narrative-abnegation` (+ `-text`) dans les 4 palettes et
+`globals.css`, contraste AA vérifié par `wcagContrast.test.ts` ; tables `lib/narrative/dominance.ts`,
+`narrativeScale`, libellés des cartes, compteurs du briefing Explorateur (`sabordages`,
+`abnegations`, openapi régénéré).
+
+**Résultats observés** : tests Go des paquets touchés verts (analysis, narrative, canonical,
+service, sync dont `TestBackfillDominanceFlags_FragContrast` 6 cas (dont un qui échoue sans le DISTINCT), migration avec
+`-tags=integration` `TestResetDominanceNone`) ; golangci-lint 0 issue sur le diff ; web : tsc,
+eslint, 241 fichiers vitest verts (snapshots de palette mis à jour : +16 lignes, les seuls
+ajouts). Le mode d'un match vit dans la shared DB : la migration remet à blanc TOUS les flags 0
+(Slayer compris, recalcul identique à 0) — coût unique d'une row par match non badgé.
+
+**Conclusion / prochaine étape** : branche `feat/login-copie-code-sabordage` (base `feat/v75`),
+worktree `LevelUp-wt-copie-sabordage`. Reste : gate visuel utilisateur (bouton de copie, badges
+sur un match à objectifs après sync), puis intégration dans `feat/v75`.

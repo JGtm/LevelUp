@@ -8,7 +8,7 @@
 # Combat / Team / Citations / Media seront enrichies dans des chunks ultérieurs
 # (MV2/MV3) au fur et à mesure de la migration ECharts + LoadHighlightEvents.
 
-# ─── Header — badges dominance (5 narratifs) ────────────────────────────────
+# ─── Header — badges dominance (7 narratifs) ────────────────────────────────
 
 [narrative.dominance.domination]
 fr = "Domination"
@@ -29,6 +29,15 @@ en = "Collapse"
 [narrative.dominance.contre_remontada]
 fr = "Contre-remontada"
 en = "Counter-comeback"
+
+# Modes à objectifs : le score et les frags racontent deux matchs opposés.
+[narrative.dominance.sabordage]
+fr = "Sabordage"
+en = "Scuttled"
+
+[narrative.dominance.abnegation]
+fr = "Abnégation"
+en = "Selfless"
 
 # ─── Header — badge prolongation (overtime) ─────────────────────────────────
 # Source unique côté front : lib/narrative/overtime.ts. Deux surfaces le
