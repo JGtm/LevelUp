@@ -12,15 +12,12 @@ package main
 //   - remplacer `estBaseTenue(dernier)` par `true` dans `exporterAvecReessai` : un id inconnu
 //     du registre serait retente trois fois pour rien (TestReessaiNeRetenteJamaisUnEchecPermanent) ;
 //   - remplacer `reessaisExport` par 1 : plus aucun reessai (TestReessaiRetenteJusquAuSucces) ;
-//   - reformuler le message de `cmd/levelup` : TestMarqueurBaseTenueExisteChezLevelup.
+//   - reformuler le texte de `duckdb.ErrBaseTenueEnEcriture` sans miroiter le nouveau marqueur
+//     ici : archlint.TestMarqueurDuGateEgaleLaSentinelleBaseTenue (paquet `archlint`).
 
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 	"time"
 )
@@ -119,26 +116,5 @@ func TestReessaiSArreteSurContexteAnnule(t *testing.T) {
 	}
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("l'erreur doit porter l'annulation : %v", err)
-	}
-}
-
-// TestMarqueurBaseTenueExisteChezLevelup — LE GARDE-RAIL DU MARQUEUR. `marqueurBaseTenue` est
-// un litteral que ce paquet ne peut pas importer (`package main` chez le voisin). Si
-// `cmd/levelup` reformule son message, le reessai se desarme EN SILENCE et le gate reperd des
-// temoins sur l'alea D2. Ce test lit le fichier voisin et exige le litteral.
-func TestMarqueurBaseTenueExisteChezLevelup(t *testing.T) {
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("impossible de localiser ce fichier de test")
-	}
-	cible := filepath.Join(filepath.Dir(filepath.Dir(ici)), "levelup", "cmd_replay_facts_export.go")
-	raw, err := os.ReadFile(cible) //nolint:gosec // chemin derive de runtime.Caller, pas d'une entree
-	if err != nil {
-		t.Fatalf("fichier voisin illisible (%s) : %v", cible, err)
-	}
-	if !strings.Contains(string(raw), marqueurBaseTenue) {
-		t.Fatalf("le litteral %q a disparu de %s — le reessai borne de l'export (D2 (cloture M1)) "+
-			"est desarme : soit y remettre le marqueur, soit reecrire estBaseTenue sur le nouveau",
-			marqueurBaseTenue, cible)
 	}
 }

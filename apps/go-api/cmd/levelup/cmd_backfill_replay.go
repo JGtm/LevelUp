@@ -290,7 +290,7 @@ func registreParShort(ctx context.Context, pr *titlePkg.PathResolver, titleSlug 
 	sharedPath := pr.SharedDBPath(titleSlug)
 	db, release, err := duckdb.OpenReadForQuery(sharedPath)
 	if err != nil {
-		return nil, fmt.Errorf("open shared RO (%s): %w (serveur en ecriture ? reessayer)", sharedPath, err)
+		return nil, fmt.Errorf("open shared RO (%s): %w", sharedPath, err)
 	}
 	defer release()
 

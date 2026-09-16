@@ -643,18 +643,35 @@ make go-api-coverage   # rapport de couverture
 make go-api-lint       # go vet
 ```
 
-#### Corpus de rétro-ingénierie des cartes (tag de build `gamefiles`)
+#### Corpus du tag de build `gamefiles` (cartes **et** catalogues commis)
 
-Les 59 fichiers `*_gamefiles_test.go` de `internal/himap/` décodent les modules du **jeu
-installé** et balaient les 26 cartes du catalogue. Ils sont longs par nature — mesuré le
-2026-09-05, `TestBalayageCoquille` prend à lui seul **203 s** pour 26 cartes (1 246 s avant
-le passage du lecteur de modules en projection mémoire, le même jour).
-Ils vivent derrière `//go:build gamefiles` pour qu'un `go test ./internal/himap/` nu reste
-utilisable (2,8 s).
+Deux familles de tests lisent le **jeu installé**, toutes deux derrière `//go:build gamefiles` :
+
+- les 59 fichiers `*_gamefiles_test.go` de `internal/himap/` décodent les modules du jeu et
+  balaient les 26 cartes du catalogue. Ils sont longs par nature — mesuré le 2026-09-05,
+  `TestBalayageCoquille` prend à lui seul **203 s** pour 26 cartes (1 246 s avant le passage du
+  lecteur de modules en projection mémoire, le même jour). Le tag garde un `go test
+  ./internal/himap/` nu utilisable (2,8 s) ;
+- trois fabricants de catalogues sous `cmd/` re-dérivent leur catalogue **commis** depuis le jeu
+  installé et le comparent à l'octet : `cmd/film-profiles-build/`, `cmd/mapfond-build/`,
+  `cmd/mapstruct-build/` (9,0 s à eux trois, mesuré le 2026-09-17).
+
+`make go-api-test-gamefiles` joue **les quatre paquets**. Jusqu'au 2026-09-17 la cible ne jouait
+que `./internal/himap/` : les trois tests `cmd/` n'étaient joués par AUCUNE commande du dépôt
+(découverte D1 (3.1.2) ; le plus ancien est tagué depuis le 2026-09-05). La liste des paquets est
+explicite et non `./cmd/...` : sous le tag, un paquet sans fichier `gamefiles` n'apporte que du
+temps de compilation. `archlint.TestCibleMakefileGamefilesCouvreLeCorpus` rougit si un paquet
+entre au corpus sans entrer dans la cible.
 
 ```bash
 make go-api-test-gamefiles                       # corpus entier (~6 min, exige le jeu)
-cd apps/go-api && go test -tags=gamefiles -count=1 -timeout 3600s ./internal/himap/ -v
+cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
+  ./internal/himap/ \
+  ./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
+
+# Les catalogues commis seuls (des secondes, pas des minutes) :
+cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 \
+  ./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
 
 # Une seule carte (beaucoup plus rapide) :
 BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
@@ -667,8 +684,8 @@ LEVELUP_HALO_DEPLOY=/chemin/vers/Halo Infinite/deploy go test -tags=gamefiles ./
 Sans installation du jeu, chaque test prend son `t.Skip` et le corpus est vide en une
 seconde — c'est exactement ce qui se passe en CI. La CI se contente donc de le **compiler**
 (`go vet -tags=gamefiles ./internal/himap/`, job `go-test`) ; elle ne l'exécute jamais. Le
-tag lui-même est tenu par `internal/himap/corpus_tag_test.go`, qui tourne dans le build par
-défaut.
+tag lui-même est tenu sur tout le module par `internal/archlint/gamefiles_tag_test.go`, qui
+tourne dans le build par défaut.
 
 **Test rouge connu** : `TestBancCliffhanger` échoue (accord 64,4 % contre une référence
 re-basée à 64,7 %). Il est *préexistant*, pas une régression — vérifié le 2026-09-05 en le

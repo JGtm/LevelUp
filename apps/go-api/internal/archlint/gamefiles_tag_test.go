@@ -38,6 +38,7 @@ package archlint
 import (
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -184,4 +185,71 @@ func balayerTests(t *testing.T, visiter func(rel, texte string)) {
 	if err != nil {
 		t.Fatalf("parcours du module (%s) : %v", goAPIRoot, err)
 	}
+}
+
+// cibleMakefileGamefiles : le nom de la cible du `Makefile` qui joue le corpus.
+const cibleMakefileGamefiles = "go-api-test-gamefiles:"
+
+// TestCibleMakefileGamefilesCouvreLeCorpus — la cible `make go-api-test-gamefiles` nomme TOUS
+// les paquets qui portent un `*_gamefiles_test.go`.
+//
+// POURQUOI (découverte D1 (3.1.2), 2026-09-16) : `TestCorpusGamefilesEstTague` garantit que ces
+// tests portent le tag, donc qu'ils ne coûtent rien au build par défaut. Personne ne garantissait
+// qu'ils TOURNENT : la cible ne citait que `./internal/himap/`, et les trois paquets `cmd/` tagués
+// (le plus ancien depuis le 2026-09-05) n'étaient joués par AUCUNE commande du dépôt. Un tag posé
+// sans entrée dans la cible, c'est un test qui existe et ne s'exécute jamais — pire qu'absent,
+// puisqu'il donne l'illusion d'un gate.
+//
+// Mutation qui doit le faire rougir : retirer `./cmd/film-profiles-build/` de la recette.
+func TestCibleMakefileGamefilesCouvreLeCorpus(t *testing.T) {
+	paquets := map[string]bool{}
+	balayerTests(t, func(rel, _ string) {
+		if strings.HasSuffix(rel, "_gamefiles_test.go") {
+			paquets[path.Dir(rel)] = true
+		}
+	})
+	if len(paquets) == 0 {
+		t.Fatal("aucun *_gamefiles_test.go balayé — le balayage s'est cassé")
+	}
+
+	recette := recetteMakefile(t, cibleMakefileGamefiles)
+	for paquet := range paquets {
+		if !strings.Contains(recette, "./"+paquet+"/") {
+			t.Errorf("le paquet %s porte des *_gamefiles_test.go mais la cible %s ne le nomme pas "+
+				"— ces tests ne tournent nulle part ; ajouter `./%s/` à la recette",
+				paquet, cibleMakefileGamefiles, paquet)
+		}
+	}
+}
+
+// recetteMakefile rend le corps (lignes indentées par une tabulation, continuations comprises) de
+// la cible `nomCible` du `Makefile` de la racine du dépôt, lu depuis `apps/go-api`.
+func recetteMakefile(t *testing.T, nomCible string) string {
+	t.Helper()
+	_, ici, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a échoué")
+	}
+	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici)))                 // .../apps/go-api
+	chemin := filepath.Join(filepath.Dir(filepath.Dir(goAPIRoot)), "Makefile") // .../Makefile
+	buf, err := os.ReadFile(chemin)                                            //nolint:gosec // chemin de test, lecture seule
+	if err != nil {
+		t.Fatalf("lecture du Makefile (%s) : %v", chemin, err)
+	}
+	var corps []string
+	dedans := false
+	for _, ligne := range strings.Split(string(buf), "\n") {
+		switch {
+		case strings.HasPrefix(ligne, nomCible):
+			dedans = true
+		case dedans && strings.HasPrefix(ligne, "\t"):
+			corps = append(corps, ligne)
+		case dedans:
+			dedans = false
+		}
+	}
+	if len(corps) == 0 {
+		t.Fatalf("cible %s introuvable (ou recette vide) dans %s", nomCible, chemin)
+	}
+	return strings.Join(corps, "\n")
 }

@@ -76,6 +76,42 @@ func IsFileLockError(err error) bool {
 			"process cannot access the file because it is being used by another process")
 }
 
+// ErrBaseTenueEnEcriture — LA SENTINELLE DE LA BASE TENUE PAR UN AUTRE PROCESSUS (D3 (2.8),
+// 2026-09-17).
+//
+// AVANT : rien de typé ne disait « cette base est tenue ». Quatre appelants CLI collaient
+// l'indication à la main dans leur message (`cmd_backfill_replay.go`,
+// `cmd_backfill_replay_repair.go`, `cmd_replay_facts_export.go`), et `cmd/replay-corpus-gate`
+// armait son réessai en cherchant le LITTÉRAL « serveur en ecriture » dans la sortie d'erreur
+// du sous-processus. Deux défauts : un reformulage désarmait le réessai EN SILENCE, et
+// l'indication était collée à TOUTE erreur d'ouverture — un fichier absent s'annonçait
+// « serveur en ecriture ? » et se faisait réessayer trois fois pour rien.
+//
+// APRÈS : le modèle mono-writer (ADR 0013) n'a plus qu'un seul point de nomination. Toute
+// ouverture qui échoue sur un verrou d'un AUTRE processus — `OpenReadForQuery`,
+// `OpenReadOnly`, `OpenReadWrite`, `OpenReadWriteShared`, qui passent toutes par
+// `openCachedDB` — rend une erreur qui satisfait `errors.Is(err, ErrBaseTenueEnEcriture)`,
+// sans rien perdre du message d'origine de DuckDB.
+//
+// LE TEXTE DE LA SENTINELLE EST UN CONTRAT, pas une décoration : `cmd/replay-corpus-gate`
+// tourne dans un AUTRE PROCESSUS que `levelup` (il l'exécute et lit son `stderr`), où
+// `errors.Is` n'a aucun sens — il ne lui reste que le texte. Il en miroite le marqueur dans
+// `facts.go` plutôt que d'importer ce paquet, qui embarquerait le pilote DuckDB (CGO) dans un
+// binaire de gate qui n'ouvre aucune base ; l'égalité des deux est tenue par
+// `archlint.TestMarqueurDuGateEgaleLaSentinelleBaseTenue`.
+var ErrBaseTenueEnEcriture = errors.New(
+	"serveur en ecriture ? base tenue par un autre processus, reessayer")
+
+// marqueBaseTenue enveloppe `err` de la sentinelle quand DuckDB dit que le fichier est tenu
+// par un autre processus, et la rend telle quelle sinon. Le message d'origine est CONSERVÉ :
+// c'est lui qui nomme le détenteur (`File is already open in <exe> (PID N)`).
+func marqueBaseTenue(err error) error {
+	if err == nil || !IsFileLockError(err) || errors.Is(err, ErrBaseTenueEnEcriture) {
+		return err
+	}
+	return fmt.Errorf("%w : %w", ErrBaseTenueEnEcriture, err)
+}
+
 // Reopen ferme la connexion actuelle et en ouvre une nouvelle avec les
 // mêmes paramètres (DSN, max conns, timezone). Permet de récupérer d'une
 // invalidation fatale sans redémarrer le serveur.
