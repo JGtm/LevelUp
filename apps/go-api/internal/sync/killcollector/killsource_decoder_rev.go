@@ -116,6 +116,15 @@ package killcollector
 // divergent, et le decodeur choisit desormais l instant que le film ECRIT. Le suffixe `.2` : deux
 // mouvements du decodeur le meme jour (la porte de publication de la revue M1, puis celui-ci),
 // chacun avec son empreinte. Les lignes en base sont candidates au backlog (D6).
+// 2026-09-17, LOT 2.2.a — LA REVISION NE BOUGE PAS, ET LE CHOIX EST EXPLICITE (c est ce que le
+// garde-rail exige quand l empreinte change sans la revision). `killsource/` change de FORME :
+// la calibration ne pose plus les deux largeurs de position dans des variables de paquet de
+// `filmdec` mais les passe par `FrameConfig.Mouvement`, RESSORT son resultat
+// (`calibration.Mouvement`) et le donne explicitement a `runWalk` et a `calibrateRSP` — qui en
+// heritaient par effet de bord. Les LIGNES PRODUITES sont identiques a l octet : meme espace
+// balaye (21 largeurs d axe x 3 largeurs d index), meme critere, meme vainqueur, memes largeurs
+// pour toutes les passes qui suivent, y compris l heritage vers la cuisson du rejeu
+// (`filmdec/mouvement_herite.go`). Aucun match deja decode n est candidat au backlog.
 const KillSourceDecoderRev = "killsource-2026-09-16.2"
 
 // L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :

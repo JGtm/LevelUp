@@ -47,21 +47,21 @@ var hookedNames = []string{
 // clearAllHooks retire les quatre hooks et le hook d'equipement, et les restaure a la sortie.
 func clearAllHooks(t *testing.T) {
 	t.Helper()
-	ge, ps, mo, pr, eq := gameEngineHook, playerStateHook, managedObjectHook, probeHook, equipmentStateHook
+	ge, ps, mo, pr, eq := observateur.GameEngineHook, observateur.PlayerStateHook, observateur.ManagedObjectHook, observateur.ProbeHook, observateur.EquipmentStateHook
 	t.Cleanup(func() {
-		gameEngineHook, playerStateHook, managedObjectHook = ge, ps, mo
-		probeHook, equipmentStateHook = pr, eq
+		observateur.GameEngineHook, observateur.PlayerStateHook, observateur.ManagedObjectHook = ge, ps, mo
+		observateur.ProbeHook, observateur.EquipmentStateHook = pr, eq
 	})
-	gameEngineHook, playerStateHook, managedObjectHook, probeHook, equipmentStateHook = nil, nil, nil, nil, nil
+	observateur.GameEngineHook, observateur.PlayerStateHook, observateur.ManagedObjectHook, observateur.ProbeHook, observateur.EquipmentStateHook = nil, nil, nil, nil, nil
 }
 
 // installCountingHooks installe des hooks qui comptent leurs appels, sur les cinq familles.
 func installCountingHooks(appels *int) {
-	gameEngineHook = func(GameEngineField, []uint64, bool) { *appels++ }
-	playerStateHook = func(PlayerStateField, []uint64, bool) { *appels++ }
-	managedObjectHook = func(ManagedObjectField, []uint64) { *appels++ }
-	probeHook = func(uint32, ProbeComponent, []uint64) { *appels++ }
-	equipmentStateHook = func(EquipmentField, uint64, bool) { *appels++ }
+	observateur.GameEngineHook = func(GameEngineField, []uint64, bool) { *appels++ }
+	observateur.PlayerStateHook = func(PlayerStateField, []uint64, bool) { *appels++ }
+	observateur.ManagedObjectHook = func(ManagedObjectField, []uint64) { *appels++ }
+	observateur.ProbeHook = func(uint32, ProbeComponent, []uint64) { *appels++ }
+	observateur.EquipmentStateHook = func(EquipmentField, uint64, bool) { *appels++ }
 }
 
 // TestHooksConsumeSameBitsWithoutHook — LA MOITIE « aucun bit ne bouge » DE LA PROMESSE.
@@ -217,7 +217,7 @@ func TestGameEngineHookValues(t *testing.T) {
 		},
 	}
 	runHookCases(t, cas, func(got *[]uint64, present *bool, appels *int) {
-		gameEngineHook = func(_ GameEngineField, v []uint64, p bool) {
+		observateur.GameEngineHook = func(_ GameEngineField, v []uint64, p bool) {
 			*got, *present, *appels = v, p, *appels+1
 		}
 	})
@@ -271,7 +271,7 @@ func TestPlayerStateHookValues(t *testing.T) {
 		},
 	}
 	runHookCases(t, cas, func(got *[]uint64, present *bool, appels *int) {
-		playerStateHook = func(_ PlayerStateField, v []uint64, p bool) {
+		observateur.PlayerStateHook = func(_ PlayerStateField, v []uint64, p bool) {
 			*got, *present, *appels = v, p, *appels+1
 		}
 	})
@@ -333,7 +333,7 @@ func TestPlayerDesiredRespawnLocationHook(t *testing.T) {
 		},
 	}
 	runHookCases(t, cas, func(got *[]uint64, present *bool, appels *int) {
-		playerStateHook = func(_ PlayerStateField, v []uint64, p bool) {
+		observateur.PlayerStateHook = func(_ PlayerStateField, v []uint64, p bool) {
 			*got, *present, *appels = v, p, *appels+1
 		}
 	})
@@ -347,7 +347,7 @@ func TestPlayerMalleablePropertiesHook(t *testing.T) {
 	clearAllHooks(t)
 	var got []uint64
 	var appels int
-	playerStateHook = func(_ PlayerStateField, v []uint64, _ bool) { got, appels = v, appels+1 }
+	observateur.PlayerStateHook = func(_ PlayerStateField, v []uint64, _ bool) { got, appels = v, appels+1 }
 
 	w := &bitw{}
 	w.put(1, 1)
@@ -401,7 +401,7 @@ func TestEquipmentHookNewFields(t *testing.T) {
 		var gotV uint64
 		var gotP bool
 		appels := 0
-		equipmentStateHook = func(f EquipmentField, v uint64, p bool) {
+		observateur.EquipmentStateHook = func(f EquipmentField, v uint64, p bool) {
 			gotF, gotV, gotP, appels = f, v, p, appels+1
 		}
 		w := &bitw{}
@@ -440,7 +440,7 @@ func TestManagedObjectHookFlagOrder(t *testing.T) {
 	clearAllHooks(t)
 	var got []uint64
 	appels := 0
-	managedObjectHook = func(_ ManagedObjectField, v []uint64) { got, appels = v, appels+1 }
+	observateur.ManagedObjectHook = func(_ ManagedObjectField, v []uint64) { got, appels = v, appels+1 }
 
 	w := &bitw{}
 	w.put(1, 1) // iteration 0 -> rang 0
@@ -487,7 +487,7 @@ func TestProbeHookPassesRegistryTypeIndex(t *testing.T) {
 			var gotComp ProbeComponent
 			var gotVals []uint64
 			appels := 0
-			probeHook = func(ti uint32, comp ProbeComponent, v []uint64) {
+			observateur.ProbeHook = func(ti uint32, comp ProbeComponent, v []uint64) {
 				gotTI, gotComp, gotVals, appels = ti, comp, v, appels+1
 			}
 			w := &bitw{}
@@ -543,7 +543,7 @@ func TestProbeSplashStaticPublishesUnconditionalField(t *testing.T) {
 		clearAllHooks(t)
 		var gotVals []uint64
 		appels := 0
-		probeHook = func(_ uint32, comp ProbeComponent, v []uint64) {
+		observateur.ProbeHook = func(_ uint32, comp ProbeComponent, v []uint64) {
 			if comp != ProbeSplashStatic {
 				t.Errorf("%s : composant %v au lieu de ProbeSplashStatic", f.nom, comp)
 			}

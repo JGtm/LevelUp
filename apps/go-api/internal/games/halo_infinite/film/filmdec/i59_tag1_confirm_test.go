@@ -116,7 +116,7 @@ func i59t1Scan(s eaFilmSetup, idx59 int) (reads []i59t1Read, slotFirst map[uint3
 		tag uint32
 		got bool
 	}
-	prev := abilityNonPredictedHook
+	prev := observateur.AbilityNonPredictedHook
 	SetAbilityNonPredictedHook(func(st AbilityNonPredictedState) { capt.tag, capt.got = st.Tag, true })
 	defer SetAbilityNonPredictedHook(prev)
 

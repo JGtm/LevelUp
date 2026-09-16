@@ -7,7 +7,7 @@ package filmdec
 // l'IDENTITÉ de la capacité d'armure du joueur : R(3) compteur de rotation, R(1) porte,
 // puis — porte fermée — R(6) le rang dans la palette `sofd` du match. Le déserialiseur
 // consommait ces six bits pour rester aligné et les JETAIT ; ils sont désormais publiés par
-// `abilitySetHook`, et ce fichier est ce qui les fait sortir du film.
+// `observateur.AbilitySetHook`, et ce fichier est ce qui les fait sortir du film.
 //
 // POURQUOI CE CANAL PLUTÔT QUE CELUI DES IMAGES-CLÉS. Le décodeur d'inventaire lit un champ
 // de 3 bits ancré dans les images-clés (replay/inventory_decode.go, règle R1). Son motif
@@ -75,7 +75,7 @@ type AbilityRankStats struct {
 // l'événement. Les deux vues partagent le balayage `walkAbilityEmissions` : le composant n'a
 // qu'un seul lecteur.
 //
-// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `abilitySetHook`,
+// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `observateur.AbilitySetHook`,
 // qui est un global de paquet. L'appelant doit détenir LockProcessDecode (BuildFromFilm le
 // fait). Le hook est restauré à la sortie, y compris en cas d'erreur.
 //
@@ -191,7 +191,7 @@ func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) A
 		rank    int
 		got     bool
 	}
-	prev := abilitySetHook
+	prev := observateur.AbilitySetHook
 	SetAbilitySetHook(func(counter uint64, rank, _ int) {
 		last.counter, last.rank, last.got = uint32(counter), rank, true
 	})

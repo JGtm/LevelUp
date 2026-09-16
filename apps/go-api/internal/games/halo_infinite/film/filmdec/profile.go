@@ -96,6 +96,12 @@ func (k KeyframeProfile) EtatParDefautPorte(ti uint32) bool {
 type MovementProfile struct {
 	// Traversal est le descripteur de quantification du chemin de TRAVERSEE.
 	Traversal PrecisionDescriptor
+	// WorldObject est le descripteur du chemin WORLD-OBJECT (projectiles, armes au sol,
+	// equipement, corps rigides), dont les largeurs sont celles de la CARTE du match. Son
+	// defaut n est pas un repli neutre : c est l entree `cliffhanger` du catalogue.
+	// L installateur de `replay` y pose les largeurs de la carte jouee (lot 2.2.b).
+	// Provenance et preuve : ligne `Movement.WorldObject` de [TableProfil].
+	WorldObject PrecisionDescriptor
 	// AbsoluteAxisW est la largeur d axe uniforme du chemin ABSOLU, a defaut de table par
 	// index de plage.
 	AbsoluteAxisW uint
@@ -199,10 +205,7 @@ func (p Profile) Err() error { return p.err }
 // et [Profile.Err] porte les cles manquantes.
 func ResolveProfile(film *filmsource.Film, entry *MapQuantEntry) Profile {
 	p := Profile{
-		keyframe: KeyframeProfile{
-			EnTeteBits:      keyframeFullStateHeaderBits,
-			MotDeTailleBits: keyframeFullStateSizeBits,
-		},
+		keyframe: cadreDuProfil(),
 		movement: mouvementDuProfil(),
 		format:   FilmFormatVersionUnknown,
 	}
@@ -282,6 +285,19 @@ func highlightDuProfil(majeure int, lue bool) HighlightProfile {
 	}
 }
 
+// cadreDuProfil rend le CADRE d un record d image-cle d etat complet.
+//
+// C est la SOURCE UNIQUE des deux largeurs, et elle sert aux DEUX bouts depuis le lot 2.2.c :
+// [ResolveProfile] la pose dans le profil, et [NewBitReader] la pose sur le lecteur — les
+// lecteurs d etat complet ne lisent donc plus les constantes du paquet, ils lisent le profil.
+// La regle reste `172 + etat(ti)`, jamais un nombre : les 172 se composent ici.
+func cadreDuProfil() KeyframeProfile {
+	return KeyframeProfile{
+		EnTeteBits:      keyframeFullStateHeaderBits,
+		MotDeTailleBits: keyframeFullStateSizeBits,
+	}
+}
+
 // mouvementDuProfil rend les quantums, la largeur d axe absolue et les drapeaux de queue.
 //
 // LES VALEURS SONT DES LITTERAUX, PAS UNE LECTURE DES GLOBALES, et c est le point du lot : un
@@ -292,6 +308,7 @@ func highlightDuProfil(majeure int, lue bool) HighlightProfile {
 func mouvementDuProfil() MovementProfile {
 	return MovementProfile{
 		Traversal:               PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{6, 6, 6}},
+		WorldObject:             PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{13, 13, 14}},
 		AbsoluteAxisW:           14,
 		DeltaQuantum:            0.01383,
 		DeltaAxisWidth:          14,

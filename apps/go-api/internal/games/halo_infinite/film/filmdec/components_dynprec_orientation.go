@@ -63,7 +63,7 @@ const fwdUpDynPrecMode2Bits = 2 * rawVec3Bits // 0xc0 = 192
 //
 // Les deux corps ont la MÊME sélection de charge utile par `mode` (désassemblage
 // `@0x140c5f947..0x140c5f9b1` et `@0x140c5f8b7..0x140c5f920`), gouvernée par le
-// global de configuration `DAT_145121140` (déjà modélisé par PositionFullPrecision,
+// global de configuration `DAT_145121140` (déjà modélisé par `BitReader.fullPrecision`,
 // components_movement.go — faux en retail) :
 //
 //	mode == 2                      : R(96) + R(96)                    (192 bits)

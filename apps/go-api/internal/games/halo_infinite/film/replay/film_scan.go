@@ -33,7 +33,14 @@ func (s *filmScan) balayerPositions() error {
 	// applique le decoupage historique dans ce cas, recoit un film deja charge et est appelee
 	// deux fois par cuisson (revue adversariale du 2026-09-12, constat P2-4 : le WARN y etait
 	// sans match et en double).
-	if v, lue := filmdec.FilmMajorVersion(s.film); lue {
+	//
+	// ELLE VIENT DU PROFIL DU CONTEXTE, PAS D'UNE RELECTURE (lot 2.2.d) : le contexte a resolu
+	// le profil du film UNE fois, a sa construction (D1), et `Highlight` porte la version avec
+	// le drapeau qui dit si elle a ete LUE. Rouvrir le registre ici rendrait la MEME valeur par
+	// le MEME chemin — `HighlightProfileOfFilm` et `ResolveProfile` composent l'une comme
+	// l'autre depuis `FilmMajorVersionFromHeader` — pour une seconde localisation de `chunk_00`.
+	if hl := s.fc.Profile().Highlight(); hl.Lue {
+		v := hl.MajorVersion
 		s.in.FilmMajorVersion = &v
 	} else {
 		slog.Warn("rejeu : version de film illisible — le fil des morts retombe sur le decoupage "+

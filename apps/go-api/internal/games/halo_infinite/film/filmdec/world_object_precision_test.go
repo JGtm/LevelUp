@@ -101,8 +101,8 @@ func TestWorldObjectPrecisionImpact(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
 
-	prev := WorldObjectPrecision
-	t.Cleanup(func() { WorldObjectPrecision = prev })
+	prev := WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
 
 	t.Logf("== FILM %s ==", dir)
 	entry, ok := worldPrecCatalogEntry(t)
@@ -228,7 +228,11 @@ type worldPrecWalk struct {
 // worldPrecRun installe des largeurs, balaie l'archétype, et mesure.
 func worldPrecRun(t *testing.T, dir string, ti int, axisW [3]uint, bip equipBox) worldPrecMeasure {
 	t.Helper()
-	WorldObjectPrecision.AxisW = axisW
+	{
+		wop := WorldObjectPrecisionActuelle()
+		wop.AxisW = axisW
+		PoserWorldObjectPrecision(wop)
+	}
 	m := worldPrecMeasure{axisW: axisW, posBits: projPosBits(), sigs: map[worldPrecKey]worldPrecSig{}}
 	m.walk = worldPrecWalkStats(dir, ti)
 

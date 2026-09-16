@@ -12,9 +12,9 @@ package filmdec
 // LARGEURS D'AXE DE LA CARTE. Le chemin ABSOLU d'i0 — celui que joue une image-cle — lit
 // sa largeur dans deux globaux de paquet que R7-a n'installait pas :
 //
-//	absoluteAxisW = 14 UNIFORME (position_capture.go) ; la capture CE donne
+//	AbsoluteAxisW = 14 UNIFORME (position_capture.go) ; la capture CE donne
 //	  3 + 1 + 1 + (13+13+14) + 2 = 47 bits sur Cliffhanger, l'uniforme en rend 49 ;
-//	WorldObjectPrecision (traverse.go), defaut {13,13,14} = l'entree `cliffhanger` du
+//	WorldObjectPrecisionActuelle() (traverse.go), defaut {13,13,14} = l'entree `cliffhanger` du
 //	  catalogue — donc FAUSSE sur toute autre carte, et lue aussi par le corps tag==3 d'i59.
 //
 // i0 est le PREMIER composant de 100 % des records : une largeur fausse la plafonne toute
@@ -45,7 +45,7 @@ type kf35bPrecision struct {
 }
 
 var kf35bPrecisions = []kf35bPrecision{
-	{Label: "TEMOIN largeurs par defaut (absoluteAxisW=14 uniforme, Cliffhanger)"},
+	{Label: "TEMOIN largeurs par defaut (AbsoluteAxisW=14 uniforme, Cliffhanger)"},
 	{Label: "largeurs de la CARTE lues dans le film (DetectI0Layout)", FromFilm: true},
 }
 
@@ -56,12 +56,18 @@ func kf35bDir(name string) string {
 
 // kf35bInstallPrecision lit le decoupage d'i0 dans le film et l'installe sur LES DEUX
 // chemins qui en dependent : `WorldObjectPrecision` (chemin world-object et corps d'i59) et
-// la largeur des chemins ABSOLUS d'i0 (`absoluteAxisW`, remise a 0 pour qu'`absAxisW`
-// retombe sur les largeurs de la carte au lieu de son uniforme 14). Rend la restauration.
+// la largeur des chemins ABSOLUS d'i0 (`MovementProfile.AbsoluteAxisW`, remise a 0 pour
+// qu'`absAxisW` retombe sur les largeurs de la carte au lieu de son uniforme 14). Rend la
+// restauration.
+//
+// DEPUIS LE LOT 2.2.a, la largeur absolue n'est plus une variable de paquet : elle vit dans le
+// PROFIL DE MOUVEMENT que chaque lecteur de bits porte, seme par l'HERITAGE du processus. Ce
+// harnais pose donc l'heritage — c'est exactement le geste de la calibration de `killsource`,
+// et le seul qui atteigne les lecteurs que ces mesures construisent au fil de la marche.
 func kf35bInstallPrecision(t *testing.T, name string) (I0Layout, func()) {
 	t.Helper()
-	prevW, prevAbs := WorldObjectPrecision, absoluteAxisW
-	restore := func() { WorldObjectPrecision = prevW; SetAbsoluteAxisW(prevAbs) }
+	prevW, prevMv := WorldObjectPrecisionActuelle(), MouvementHerite()
+	restore := func() { PoserWorldObjectPrecision(prevW); PoserMouvementHerite(prevMv) }
 	lay, rep, err := detectI0Layout(kf35bDir(name))
 	if err != nil {
 		t.Logf("      [%s] decoupage i0 NON detecte (%v) — largeurs par defaut conservees", name, err)
@@ -70,7 +76,9 @@ func kf35bInstallPrecision(t *testing.T, name string) (I0Layout, func()) {
 	t.Logf("      [%s] decoupage i0 lu dans le film : %s (%d paires, frontieres %v)",
 		name, lay, rep.Pairs, rep.Boundaries)
 	SetWorldObjectPrecisionFromLayout(lay)
-	SetAbsoluteAxisW(0) // 0 => absAxisW retombe sur WorldObjectPrecision.AxisW
+	mv := prevMv
+	mv.AbsoluteAxisW = 0 // 0 => absAxisW retombe sur WorldObjectPrecisionActuelle().AxisW
+	PoserMouvementHerite(mv)
 	return lay, restore
 }
 

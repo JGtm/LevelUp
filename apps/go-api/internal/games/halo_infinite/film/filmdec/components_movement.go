@@ -53,7 +53,7 @@ type PrecisionDescriptor struct {
 	// Region est la VALEUR d'index de région attendue sur les records, sur `IndexW` bits.
 	// N'a de sens que pour le descripteur WORLD-OBJECT (`WorldObjectPrecision`), dont le
 	// lecteur compare l'index lu à cette valeur — un record d'une AUTRE région exprime ses
-	// quanta dans une autre AABB. Le chemin de TRAVERSÉE (`TraversalPrecision`) ne la lit
+	// quanta dans une autre AABB. Le chemin de TRAVERSÉE (`BitReader.traversal`) ne la lit
 	// pas : il consomme l'index sans le juger, parce qu'il ne déquantifie pas.
 	//
 	// ELLE VIT DANS LE DESCRIPTEUR, et pas à côté, pour une raison précise :
@@ -111,7 +111,7 @@ func consumeObjectAngularVelocity(br *BitReader) {
 	consumeDynPrecVec3(br, angularMagBits, angularScaleBits)
 }
 
-// PositionFullPrecision mirroite le SEUL global `DAT_145121140` : la configuration
+// fullPrecision mirroite le SEUL global `DAT_145121140` : la configuration
 // « réplication haute précision » du process. NOT a bitstream bit. Default false
 // (retail high-prec path inactive).
 //
@@ -121,7 +121,10 @@ func consumeObjectAngularVelocity(br *BitReader) {
 // ne gardent PAS les mêmes lecteurs. Sous la seule portée baseline, `i49`
 // (`FUN_14107166c`), `i2 forward-and-up` (`FUN_140c5f938`) et le bloc MPP
 // (`FUN_14080cfe8`) — qui lisent `DAT_145121140` SEUL — ne bougent pas.
-var PositionFullPrecision = false
+//
+// C'ÉTAIT LA VARIABLE DE PAQUET `PositionFullPrecision` JUSQU'AU LOT 2.2.a : elle vient
+// désormais du PROFIL que le lecteur porte ([BitReader.poserMouvement]).
+func (b *BitReader) fullPrecision() bool { return b.mv.FullPrecision }
 
 // keyframeBaselineScope mirroite `DAT_144e61ea0` : une PORTÉE, pas un réglage. Les huit
 // lecteurs d'état complet du groupe `142e2*`/`142e3*` (dont `FUN_142e2bfd0`) le lèvent à 1
@@ -145,20 +148,28 @@ func SetKeyframeBaselineScope(v bool) bool {
 
 // fullPrecisionGate porte `FUN_14076f91c` : `DAT_144e61ea0 != 0 || DAT_145121140 == 1`.
 // Zéro bit consommé — c'est un prédicat de CONTEXTE, jamais un bit du flux.
-func fullPrecisionGate() bool { return keyframeBaselineScope || PositionFullPrecision }
+//
+// LA PORTÉE (`keyframeBaselineScope`) RESTE UNE VARIABLE DE PAQUET : c'est un état de
+// balayage que les lecteurs d'état complet lèvent et rabaissent autour d'un appel, pas une
+// valeur de profil. Seul le RÉGLAGE (`DAT_145121140`) a rejoint le profil au lot 2.2.a.
+func fullPrecisionGate(br *BitReader) bool { return keyframeBaselineScope || br.fullPrecision() }
 
-// PositionDeltaHasHandleTail mirrors the runtime field bVar16 = (precIndex != -1)
+// deltaHasHandleTail mirrors the runtime field bVar16 = (precIndex != -1)
 // that gates the i0 predicted-delta handle tail in FUN_1406cfe44. It is NOT a
 // bitstream bit: precIndex lives at precDesc+0x10 in the entity's previous position
 // state (RAM), populated at map load from the film's replication config (reads 0/-1
-// statically — same limitation as TraversalPrecision). Default false = the dominant
+// statically — same limitation as the traversal descriptor). Default false = the dominant
 // precIndex==-1 case (no tail). The CE delta capture confirms whether it ever fires.
-var PositionDeltaHasHandleTail = false
+//
+// C'ÉTAIT LA VARIABLE DE PAQUET `PositionDeltaHasHandleTail` JUSQU'AU LOT 2.2.a.
+func (b *BitReader) deltaHasHandleTail() bool { return b.mv.DeltaHasHandleTail }
 
-// PositionCalibratedSkip active la calibration intelligente d'i0 (saut au total CE 47/101 selon
+// calibratedSkip active la calibration intelligente d'i0 (saut au total CE 47/101 selon
 // bUsePred) au lieu du deser dont la précision d'axe runtime n'est pas sourcée statiquement.
 // Harness de validation map-spécifique (Cliffhanger). Default false.
-var PositionCalibratedSkip = false
+//
+// C'ÉTAIT LA VARIABLE DE PAQUET `PositionCalibratedSkip` JUSQU'AU LOT 2.2.a.
+func (b *BitReader) calibratedSkip() bool { return b.mv.CalibratedSkip }
 
 // DeltaQuantum est le pas (unité monde) d'UN cran de position répliqué en DELTA par i0. La
 // famille delta (signed-8 ou axis-width) code un NOMBRE DE CRANS signé ; le pas physique est ce
@@ -168,7 +179,9 @@ var PositionCalibratedSkip = false
 // slots). Le reglage public `SetDeltaQuantum` a ete supprime le 2026-09-05 (lot E, item E.2) :
 // aucun appelant. La range delta pour le chemin axis-width vaut DeltaQuantum * 2^AxisW
 // (centree 0).
-var DeltaQuantum float32 = 0.01383
+// C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : le quantum vit dans le PROFIL que le
+// lecteur porte (`Movement.DeltaQuantum`).
+func (b *BitReader) deltaQuantum() float32 { return b.mv.DeltaQuantum }
 
 // keyframeWriterI0Grammar route le chemin ABSOLU d'i0 sur la grammaire que l'ECRIVAIN d'état
 // complet du jeu pose, et que le lecteur du jeu relit — les deux disent la même chose CONTRE

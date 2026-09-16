@@ -34,8 +34,8 @@ package filmdec
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requete.
 //
-// UN SEUL DECODAGE filmdec A LA FOIS PAR PROCESS : ce balayage installe `gameEngineHook`,
-// `playerStateHook` et `probeHook`, qui sont des globaux de paquet. Les trois sont restaures
+// UN SEUL DECODAGE filmdec A LA FOIS PAR PROCESS : ce balayage installe `observateur.GameEngineHook`,
+// `observateur.PlayerStateHook` et `observateur.ProbeHook`, qui sont des globaux de paquet. Les trois sont restaures
 // a la sortie, y compris en cas d'erreur.
 
 import (
@@ -126,7 +126,7 @@ type GameEntityRecord struct {
 	Idx []int
 	// Engine* : les cinq champs de ti=0. Seen = le composant etait au masque ET la marche
 	// l'a consomme ; Present = la porte de tete etait ouverte ; Val = les champs lus, dans
-	// l'ordre du flux (contrat de `gameEngineHook`).
+	// l'ordre du flux (contrat de `observateur.GameEngineHook`).
 	EngineSeen, EnginePresent [GameEngineFieldCount]bool
 	EngineVal                 [GameEngineFieldCount][]uint64
 	// Player* : idem pour les onze champs de ti=5.
@@ -236,7 +236,7 @@ type GameEntityScan struct {
 	// FilmClockUS est l'horodatage du PREMIER paquet du chunk 1, c'est-a-dire le zero de
 	// l'horloge du film (meme definition que `replay.ScanFilmClockOrigin`).
 	FilmClockUS uint64
-	// ProbeWitness compte les annonces du composant sonde de ti=4 recues par `probeHook`
+	// ProbeWitness compte les annonces du composant sonde de ti=4 recues par `observateur.ProbeHook`
 	// pendant ce balayage — le temoin de periodicite demande au lot B.
 	ProbeWitness int
 	// KeyframeTICensus[ti] = nombre de SLOTS DISTINCTS vus porter cet archetype dans les

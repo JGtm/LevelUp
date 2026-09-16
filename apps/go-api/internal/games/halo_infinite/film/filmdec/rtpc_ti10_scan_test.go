@@ -160,7 +160,7 @@ type ti10Walk struct {
 // composant a bien ete consomme — une lecture publiee par un composant qui deborde ensuite ne
 // vaut rien.
 func (w *ti10Walk) install() func() {
-	prev := managedObjectHook
+	prev := observateur.ManagedObjectHook
 	SetManagedObjectHook(func(f ManagedObjectField, values []uint64) {
 		if f != ManagedObjectRTPC || len(values) == 0 {
 			return

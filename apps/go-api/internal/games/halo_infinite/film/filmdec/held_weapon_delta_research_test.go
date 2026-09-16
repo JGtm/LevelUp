@@ -116,7 +116,7 @@ type hwCapture struct {
 
 // hwInstall pose les deux sondes et rend la fonction de restauration.
 func hwInstall(c *hwCapture) func() {
-	prevW, prevS := heldWeaponHook, desiredWeaponSetHook
+	prevW, prevS := observateur.HeldWeaponHook, observateur.DesiredWeaponSetHook
 	SetHeldWeaponHook(func(h, l uint32) { c.high, c.low, c.gotWeapon = h, l, true })
 	SetDesiredWeaponSetHook(func(s uint32) { c.sel, c.gotSel = s, true })
 	return func() {

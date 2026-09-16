@@ -255,7 +255,7 @@ type objectiveWalk struct {
 
 // install pose le hook des champs d'objectif et rend sa restauration (defer).
 func (w *objectiveWalk) install() func() {
-	prev := objectiveHook
+	prev := observateur.ObjectiveHook
 	SetObjectiveHook(func(f ObjectiveField, values []uint64) {
 		if len(values) == 0 {
 			return

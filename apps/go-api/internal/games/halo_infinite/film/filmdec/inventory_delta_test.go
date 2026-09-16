@@ -43,7 +43,7 @@ func TestConsumeBipedDesiredGrenadeSetPublieEtNeDecalePas(t *testing.T) {
 				sel   int
 				calls int
 			}
-			prev := grenadeSetHook
+			prev := observateur.GrenadeSetHook
 			SetGrenadeSetHook(func(mask uint32, sel int) {
 				got.mask, got.sel, got.calls = mask, sel, got.calls+1
 			})
@@ -68,7 +68,7 @@ func TestConsumeBipedDesiredGrenadeSetPublieEtNeDecalePas(t *testing.T) {
 }
 
 func TestConsumeBipedDesiredGrenadeSetSansHookConsommeAutant(t *testing.T) {
-	prev := grenadeSetHook
+	prev := observateur.GrenadeSetHook
 	SetGrenadeSetHook(nil)
 	defer SetGrenadeSetHook(prev)
 
@@ -204,7 +204,7 @@ func TestConsumeWeaponStateAmmoPublieEtNeDecalePas(t *testing.T) {
 				mag, frac       uint32
 				calls           int
 			}
-			prev := weaponAmmoHook
+			prev := observateur.WeaponAmmoHook
 			SetWeaponAmmoHook(func(hasMag bool, mag uint32, hasFrac bool, fracQ uint32) {
 				got.hasMag, got.mag, got.hasFrac, got.frac = hasMag, mag, hasFrac, fracQ
 				got.calls++
@@ -240,7 +240,7 @@ func TestConsumeWeaponStateRoundsInventoryPublieEtNeDecalePas(t *testing.T) {
 			rounds uint32
 			calls  int
 		}
-		prev := weaponRoundsHook
+		prev := observateur.WeaponRoundsHook
 		SetWeaponRoundsHook(func(r uint32) { got.rounds, got.calls = r, got.calls+1 })
 
 		w := &bitWriter{}

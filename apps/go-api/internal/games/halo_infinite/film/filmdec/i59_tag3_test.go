@@ -114,7 +114,7 @@ func i59Scan(s eaFilmSetup, idx59 int) (samples []i59Sample, records, with59, re
 		tag uint64
 		got bool
 	}
-	prev := abilityNonPredictedHook
+	prev := observateur.AbilityNonPredictedHook
 	SetAbilityNonPredictedHook(func(st AbilityNonPredictedState) {
 		capt.tag, capt.got = uint64(st.Tag), true
 	})

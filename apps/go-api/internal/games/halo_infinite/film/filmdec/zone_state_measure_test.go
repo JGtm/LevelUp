@@ -91,7 +91,7 @@ func zsScan(t *testing.T, c zcCensus, b zcBands, reg *Registry, clk zcClock) *zs
 	col := &zsCollect{}
 	var curT int
 	var curSlot uint32
-	prevM, prevN := managedObjectHook, navpointHook
+	prevM, prevN := observateur.ManagedObjectHook, observateur.NavpointHook
 	SetManagedObjectHook(func(f ManagedObjectField, values []uint64) {
 		s := zsSample{tMS: curT, slot: curSlot, vals: append([]uint64(nil), values...)}
 		switch f {

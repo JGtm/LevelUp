@@ -15,12 +15,12 @@ package filmdec
 //	bUsePred = R(1) ; bDelta = R(1)  (header)
 //
 // Three mutually-exclusive payload paths + the shared bHandle tail. AxisW/IndexW
-// from the runtime PrecisionDescriptor (pd); PositionFullPrecision = the
+// from the runtime PrecisionDescriptor (pd); `BitReader.fullPrecision` = the
 // FUN_14076f91c runtime gate (received, not read from the stream).
 func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescriptor) {
 	posCaptureStartBit = br.BitPos() // entry bit (== component StartBit) for sample attribution
 	posCaptureSlot = accumSlot       // slot du record courant (attribution multi-entités)
-	if PositionCalibratedSkip {
+	if br.calibratedSkip() {
 		skipCalibratedPosition(br)
 		return
 	}
@@ -42,7 +42,7 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 			// Grammaire de l'ÉCRIVAIN d'état complet (FUN_14320696c / FUN_14076e420) : le
 			// bit h ne supprime rien, il garde la QUEUE, et le champ de 2 bits vient APRÈS.
 			h := br.ReadBit()
-			if fullPrecisionGate() {
+			if fullPrecisionGate(br) {
 				br.ReadBits(rawVec3Bits) // FUN_1407eb61c sous DAT_144e61ea0 : vec3 BRUT
 			} else {
 				consumeAbsolutePayload(br, pd)
@@ -63,7 +63,7 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 	//   predFlag==0 (dominant): read FUN_14076f3ec (== consumePredictedDelta).
 	//   predFlag==1 (rare): FUN_140f7ea14 special path, width unmodeled.
 	// The handle tail is gated by the RUNTIME descriptor field bVar16 = (precIndex !=
-	// -1), NOT a bitstream bit (PositionDeltaHasHandleTail; default false = the
+	// -1), NOT a bitstream bit (`BitReader.deltaHasHandleTail`; default false = the
 	// dominant precIndex==-1 case). FUN_14076f91c full-precision gate =
 	// `fullPrecisionGate` (DAT_144e61ea0 OU DAT_145121140). Both runtime gates are confirmed
 	// via the CE delta capture.
@@ -72,7 +72,7 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 		// LAB_1406cff18 : la garde de contexte est ICI, sur ce seul chemin (relu le
 		// 2026-08-17, lot R7-c — elle ne couvre PAS la branche predFlag==1, qui porte la
 		// sienne dans FUN_14076e4ec).
-		if fullPrecisionGate() {
+		if fullPrecisionGate(br) {
 			readRawVec3(br) // FUN_1406d676c(...,0x60) = R(96) : AVANCE le curseur (keep, pas une coord)
 			keepBaseline()
 		} else {
@@ -81,7 +81,7 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 	} else {
 		consumePredictedAbsolute(br, pd) // FUN_140f7ea14
 	}
-	if PositionDeltaHasHandleTail { // runtime bVar16 = (precIndex != -1)
+	if br.deltaHasHandleTail() { // runtime bVar16 = (precIndex != -1)
 		if br.ReadBit() { // FUN_1406cf008 -> FUN_1408f0ac4 handle resolve
 			consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
 		}
@@ -137,7 +137,7 @@ func consumePredictedAbsolute(br *BitReader, pd PrecisionDescriptor) {
 	// choisit R(96) brut (pleine précision), le vecteur par défaut (cVar1 != 0, 0 bit) ou le
 	// lecteur quantifié. Ajouté le 2026-08-17 (lot R7-c) : ce site ignorait la garde.
 	cVar1 := br.ReadBit() // FUN_140f7ea14 cVar1 (FUN_1406cf008)
-	if fullPrecisionGate() {
+	if fullPrecisionGate(br) {
 		br.ReadBits(rawVec3Bits) // FUN_14076e4ec -> FUN_1411b259c
 	} else if !cVar1 { // 0 -> lit la position absolue quantifiée
 		pidx := -1
@@ -146,8 +146,8 @@ func consumePredictedAbsolute(br *BitReader, pd PrecisionDescriptor) {
 		}
 		var v [3]float32
 		for i := 0; i < 3; i++ {
-			w := absAxisWFor(pidx, i)                     // largeur par index (7ter.54) ou uniforme
-			v[i] = dequantWorldAxis(br.ReadBits(w), w, i) // FUN_140cc5128 axe i
+			w := absAxisWFor(br, pidx, i)                     // largeur par index (7ter.54) ou uniforme
+			v[i] = dequantWorldAxis(br, br.ReadBits(w), w, i) // FUN_140cc5128 axe i
 		}
 		seedAbsolute(PosKindAbsolute, v) // predFlag==1 = position absolue = seed d'accumulation
 	}
@@ -169,7 +169,7 @@ func consumePredictedDelta(br *BitReader, pd PrecisionDescriptor) {
 		var d [3]float32
 		for i := 0; i < 3; i++ {
 			n := signed8(br.ReadBits(8))
-			d[i] = float32(n) * DeltaQuantum
+			d[i] = float32(n) * br.deltaQuantum()
 		}
 		applyDelta(PosKindDelta8, d)
 		return
@@ -180,10 +180,10 @@ func consumePredictedDelta(br *BitReader, pd PrecisionDescriptor) {
 	// DeltaQuantum*2^AxisW). AxisW = pd.AxisW[i] (6 par défaut ; ambiguïté 6 vs 14 sweepable).
 	var d [3]float32
 	for i := 0; i < 3; i++ {
-		w := deltaAxisW(pd, i)
+		w := deltaAxisW(br, pd, i)
 		q := br.ReadBits(w)
 		half := float32(uint64(1) << (w - 1))
-		d[i] = (float32(q) - half) * DeltaQuantum // multiple ENTIER de Q, centré (q==half -> 0)
+		d[i] = (float32(q) - half) * br.deltaQuantum() // multiple ENTIER de Q, centré (q==half -> 0)
 	}
 	applyDelta(PosKindDeltaAxis, d)
 }
@@ -216,7 +216,7 @@ func consumeQuantVec3WithGate(br *BitReader, axisW uint) {
 // (FUN_1424cbed4 -> FUN_140cc5128). Elle ne vient PAS du niveau de précision du
 // registre chunk_00 (i0 y est L0) mais du descripteur de précision RUNTIME installé
 // au chargement de map (FUN_140be9a14 -> DAT_1445cc9e0), qui lit 0 statiquement dans
-// l'.exe — même limitation que TraversalPrecision.
+// l'.exe — même limitation que le descripteur de traversée.
 //
 // SOURCE : la table DAT_1445cc9e0 dumpée en mémoire vive
 // (.ai/V7.5/dumps/ce_prec_widths_1445cc9e0.bin) est un tableau [niveau][3 axes] de
@@ -229,12 +229,13 @@ func consumeQuantVec3WithGate(br *BitReader, axisW uint) {
 // différence de masques) est **47 bits = 2+1+1+1+3x14** : i1 tombe juste sur 100.0% des
 // records et i21 sur 100.0%. Toute autre largeur retombe à 0-52%. 47 recoupe en outre la
 // mesure Cheat Engine indépendante de §7ter.27 (i0=47, 134767/134767).
-var DeltaAxisWidth uint = 14
-
-// deltaAxisW retourne la largeur d'axe du chemin delta (DeltaAxisWidth si > 0, sinon pd).
-func deltaAxisW(pd PrecisionDescriptor, i int) uint {
-	if DeltaAxisWidth > 0 {
-		return DeltaAxisWidth
+// C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : la largeur vit dans le PROFIL que le
+// lecteur porte (`Movement.DeltaAxisWidth`).
+//
+// deltaAxisW retourne la largeur d'axe du chemin delta (celle du profil si > 0, sinon pd).
+func deltaAxisW(br *BitReader, pd PrecisionDescriptor, i int) uint {
+	if w := br.mv.DeltaAxisWidth; w > 0 {
+		return w
 	}
 	return pd.AxisW[i]
 }
@@ -243,7 +244,7 @@ func deltaAxisW(pd PrecisionDescriptor, i int) uint {
 // FUN_14076f91c runtime gate, then FUN_14076e524 index+vec3).
 func consumeAbsoluteWithGate(br *BitReader, pd PrecisionDescriptor) {
 	precHigh := br.ReadBit() // FUN_1406cf008
-	if fullPrecisionGate() {
+	if fullPrecisionGate(br) {
 		// FUN_1411b259c = FUN_1406d676c(br, br, dst, 0x60) : R(96) BRUT, pas 0 bit.
 		// L'ancien commentaire (« NaN/keep fill, 0 payload bits ») lisait le RÉSULTAT
 		// (le vecteur écrit est un NaN de conservation) et non le CURSEUR — corrigé
@@ -288,8 +289,8 @@ func consumeAbsolutePayload(br *BitReader, pd PrecisionDescriptor) {
 		// la table de région 13/13/14 qui ferme le compte à 47 bits — quand aucune table
 		// par index n'est installée, ce qui est le défaut. La mesure du rejeu est donc
 		// préservée telle quelle, et le chemin par index reste disponible.
-		w := absAxisWFor(idx, i)                      // par index (7ter.54), sinon région 13/13/14
-		v[i] = dequantWorldAxis(br.ReadBits(w), w, i) // FUN_140cc5128 axis i
+		w := absAxisWFor(br, idx, i)                      // par index (7ter.54), sinon région 13/13/14
+		v[i] = dequantWorldAxis(br, br.ReadBits(w), w, i) // FUN_140cc5128 axis i
 	}
 	// Only index-0 positions are in the map bounds (real player positions). index!=0
 	// dequantizes against ±20000 (off-map) and is noise for a trajectory -> don't emit.

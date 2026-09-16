@@ -94,7 +94,7 @@ func i51xScan(t *testing.T, s eaFilmSetup, idx51 int) (out []i51xSample, records
 		quant uint32
 		got   bool
 	)
-	prev := empTimerHook
+	prev := observateur.EmpTimerHook
 	SetEmpTimerHook(func(q uint32) { quant, got = q, true })
 	defer SetEmpTimerHook(prev)
 

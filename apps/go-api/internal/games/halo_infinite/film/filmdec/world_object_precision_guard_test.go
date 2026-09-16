@@ -16,9 +16,18 @@ import (
 // silence sur toutes les autres cartes — exactement le défaut corrigé le 2026-08-15, qui avait
 // survécu des mois précisément parce que rien ne le signalait.
 //
-// LA GARDE : tout fichier de PRODUCTION qui mentionne `WorldObjectPrecision` doit figurer dans
-// l'allowlist datée ci-dessous, avec la raison de sa présence. Ajouter une entrée est un acte
-// délibéré, qui oblige à répondre « d'où ce lecteur tient-il les largeurs de la carte ? ».
+// LA GARDE : tout fichier de PRODUCTION qui mentionne les largeurs world-object doit figurer
+// dans l'allowlist datée ci-dessous, avec la raison de sa présence. Ajouter une entrée est un
+// acte délibéré, qui oblige à répondre « d'où ce lecteur tient-il les largeurs de la carte ? ».
+//
+// LES MARQUEURS SONT TROIS DEPUIS LE LOT 2.2.b, parce que la valeur a trois formes d'accès et
+// qu'une garde qui n'en verrait qu'une laisserait passer les deux autres :
+//
+//	`orldObjectPrecision`    le champ du profil, son accesseur de lecteur
+//	                         (`BitReader.worldObjectPrecision`) et l'installateur ;
+//	`largeursObjetDuMonde`   l'accès des trois lecteurs PAR DÉCALAGE D'OCTET (`projectiles.go`),
+//	                         qui n'ont pas de lecteur de bits à porter le profil ;
+//	`Movement.WorldObject`   la ligne de table du profil et sa godoc.
 //
 // Les fichiers `_test.go` sont hors périmètre : les instruments de mesure installent et
 // restaurent leurs propres largeurs, c'est leur objet même.
@@ -36,6 +45,13 @@ var worldObjectPrecisionReaders = map[string]string{
 		"Depuis le lot 2.7 (2026-09-16) c'est la SEULE mention restée dans ce fichier : la " +
 		"déclaration, le setter et les deux lectures du chemin de traversée en sont sortis " +
 		"par déplacement pur, vers `traverse_precision.go` et `dispatch_object.go`",
+	"internal/games/halo_infinite/film/filmdec/profile.go": "le CHAMP `Movement.WorldObject` et " +
+		"son invariant (2026-09-17, lot 2.2.b) : l'entrée `cliffhanger` du catalogue, que " +
+		"l'installateur de `replay` remplace par la carte du match. Aucune lecture de décodage ici",
+	"internal/games/halo_infinite/film/filmdec/profile_table.go": "la LIGNE DE TABLE de " +
+		"`Movement.WorldObject` (2026-09-17, lot 2.2.b) : sa provenance, sa preuve et sa date, " +
+		"comme toute valeur de profil. Elle DIT d'où viennent les largeurs — l'entrée de " +
+		"catalogue de la carte — au lieu d'en lire une",
 	"internal/games/halo_infinite/film/filmdec/traverse_precision.go": "déclaration du global et son setter. " +
 		"Vivait dans `traverse.go` jusqu'au lot 2.7 (2026-09-16), qui l'en a sorti par " +
 		"déplacement pur — la scission des fichiers de plus de 500 lignes",
@@ -50,8 +66,9 @@ var worldObjectPrecisionReaders = map[string]string{
 		"pour le descripteur world-object et pourquoi il vit DANS la structure (restauration " +
 		"par valeur par l'installateur) — aucune lecture de la valeur ici",
 	"internal/games/halo_infinite/film/filmdec/position_capture.go": "repli d'`absAxisW`, INATTEIGNABLE en " +
-		"l'état : il est gardé par `absoluteAxisW > 0`, dont le défaut vaut 14 et dont le seul " +
-		"écrivain (killsource/calibrate.go) balaie 6..26",
+		"l'état : il est gardé par `br.absoluteAxisW() > 0`, dont le défaut vaut 14 et dont le " +
+		"seul écrivain (killsource/calibrate.go) balaie 6..26 — depuis le lot 2.2.a il le fait " +
+		"par `FrameConfig.Mouvement` et par l'héritage de processus, plus par une variable de paquet",
 	"internal/games/halo_infinite/film/filmdec/keyframe_ground_weapons.go": "CITATION en commentaire " +
 		"(parenté des archétypes d'objet du monde) — aucune lecture de la valeur",
 	"internal/games/halo_infinite/film/filmdec/components_biped_anchor.go": "le corps tag==3 d'i59 (ancre du " +
@@ -81,14 +98,14 @@ func TestWorldObjectPrecisionReadersAreAllowlisted(t *testing.T) {
 	found := map[string]bool{}
 	for _, dir := range []string{"internal", "cmd"} {
 		walkGoSources(t, root, dir, func(rel string, src []byte) {
-			if strings.Contains(string(src), "WorldObjectPrecision") {
+			if mentionneLargeursObjetDuMonde(string(src)) {
 				found[rel] = true
 			}
 		})
 	}
 	for rel := range found {
 		if _, ok := worldObjectPrecisionReaders[rel]; !ok {
-			t.Errorf("%s mentionne WorldObjectPrecision hors allowlist. Ce global ne vaut que "+
+			t.Errorf("%s mentionne les largeurs world-object hors allowlist. Elles ne valent que "+
 				"si l'appelant a installé les largeurs de la carte du match "+
 				"(replay.installWorldObjectPrecision) ; sinon il rend celles de Cliffhanger, en "+
 				"silence, sur toutes les autres cartes. Dire d'où ce lecteur tient ses largeurs, "+
@@ -97,10 +114,25 @@ func TestWorldObjectPrecisionReadersAreAllowlisted(t *testing.T) {
 	}
 	for rel := range worldObjectPrecisionReaders {
 		if !found[rel] {
-			t.Errorf("%s est dans l'allowlist mais ne mentionne plus WorldObjectPrecision : "+
+			t.Errorf("%s est dans l'allowlist mais ne mentionne plus les largeurs world-object : "+
 				"retirer l'entrée (une allowlist périmée finit par autoriser n'importe quoi)", rel)
 		}
 	}
+}
+
+// marqueursLargeursObjetDuMonde : les trois formes d'accès (cf. l'en-tête).
+var marqueursLargeursObjetDuMonde = []string{
+	"orldObjectPrecision", "largeursObjetDuMonde", "Movement.WorldObject",
+}
+
+// mentionneLargeursObjetDuMonde dit si une source touche aux largeurs world-object.
+func mentionneLargeursObjetDuMonde(src string) bool {
+	for _, m := range marqueursLargeursObjetDuMonde {
+		if strings.Contains(src, m) {
+			return true
+		}
+	}
+	return false
 }
 
 // walkGoSources applique fn à chaque .go de production (hors _test.go) sous root/dir, avec un

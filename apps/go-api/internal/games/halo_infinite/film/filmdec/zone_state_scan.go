@@ -217,7 +217,7 @@ type managedPropertyWalk struct {
 
 // install pose le hook du variant et rend sa restauration (defer).
 func (w *managedPropertyWalk) install() func() {
-	prev := managedPropertyHook
+	prev := observateur.ManagedPropertyHook
 	SetManagedPropertyHook(func(f ManagedPropertyField, values []uint64) {
 		if len(values) == 0 {
 			return

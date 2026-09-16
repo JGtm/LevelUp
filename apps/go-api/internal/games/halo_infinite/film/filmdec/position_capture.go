@@ -16,7 +16,7 @@ package filmdec
 //     the per-slot baseline.
 //
 // WORLD RANGE for the absolute/keyframe quantized path: the i0 axis widths come from
-// TraversalPrecision (IndexW=1, AxisW=6/6/6, measured via Cheat Engine). The dequant
+// le descripteur de traversée (IndexW=1, AxisW=6/6/6, measured via Cheat Engine). The dequant
 // RANGE is the engine world-position range DAT_143b8c6f0 precision-2 = +/-100 per axis
 // (QuantRangeWorld100, validated by quantize_test.go::TestReadQuantizedVec3_World100).
 // Halo Infinite ships maps inside a normalized [-100,100]^3 replication box for the
@@ -101,20 +101,10 @@ func setAccumSlot(slot uint32) { accumSlot = slot }
 // PosKindAbsFallback. The two paths have very different reliability in practice.
 var absViaFallback bool
 
-// posCaptureHook, when non-nil, receives every i0 position payload the deser decodes.
-// Nil by default (no-op, no behaviour change). Not safe for concurrent use across
-// goroutines (single-frame decode is sequential).
-//
-// INSTALLÉ DEPUIS LE PAQUET, PLUS DE L'EXTÉRIEUR : le seul installateur est
-// `scanForTargetDelta` (frame_records.go), qui capture la position i0 de chaque record
-// d'essai. Le réglage public `SetPositionCaptureHook` a été supprimé le 2026-09-05
-// (lot E, item E.2) : il n'avait aucun appelant.
-var posCaptureHook func(PositionSample)
-
 // emitPos reports a decoded i0 sample to the hook if one is installed.
 func emitPos(kind PosKind, v [3]float32) {
-	if posCaptureHook != nil {
-		posCaptureHook(PositionSample{Kind: kind, Vec: v, BitPos: posCaptureStartBit, Slot: posCaptureSlot})
+	if observateur.PosCaptureHook != nil {
+		observateur.PosCaptureHook(PositionSample{Kind: kind, Vec: v, BitPos: posCaptureStartBit, Slot: posCaptureSlot})
 	}
 }
 
@@ -165,7 +155,10 @@ func keepBaseline() {
 // X~113 => 0.0138 oracle quantum). The old QuantRangeCliffhanger [-974,179]... scattered
 // absolutes hundreds of units off-box (the range WAS the bug); it stays selectable for
 // the before/after proof.
-var WorldPositionRange = QuantRangeCEBiped
+// C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : la range vit dans le PROFIL que le
+// lecteur porte (`Movement.Range`), et l'A/B de sonde se fait en posant un profil sur le
+// lecteur, plus en écrivant dans le processus.
+func (b *BitReader) worldPositionRange() Vec3Range { return b.mv.Range }
 
 // AbsDequantMode sélectionne la FORME de déquantification d'un axe absolu i0.
 type AbsDequantMode int
@@ -189,7 +182,7 @@ const (
 // 22 reglages morts, et c est la valeur que la production decode.
 const absDequantMode = AbsDequantRange
 
-// absoluteAxisW, si > 0, OVERRIDE la largeur d'axe des CHEMINS ABSOLUS i0 (consumeAbsoluteWithGate
+// `MovementProfile.AbsoluteAxisW`, si > 0, OVERRIDE la largeur d'axe des CHEMINS ABSOLUS i0 (consumeAbsoluteWithGate
 // + predFlag==1) — distincte de pd.AxisW (qui garde 6/6/6 pour le default-state et le delta
 // axis-width). La capture CE mesure 3×14 sur predFlag==1 (total i0 predicted = 47 bits). 0 =
 // utilise pd.AxisW[i] (comportement historique). Changer cette largeur CHANGE la consommation de
@@ -204,10 +197,11 @@ const absDequantMode = AbsDequantRange
 // pas une constante ad hoc. Verification croisee : a i0=47, les desers PORTES de i1 et i21
 // consomment exactement leurs largeurs vraies sur 100.0% de 15 529 records, et le deser
 // porte de i25 finit exactement a la fin vraie sur 100.0% de 3 090 records.
-var absoluteAxisW uint = 14
-
-// SetAbsoluteAxisW règle la largeur d'axe des chemins absolus i0 (0 = pd.AxisW). Harness de sweep.
-func SetAbsoluteAxisW(w uint) { absoluteAxisW = w }
+// C'ÉTAIT LA VARIABLE DE PAQUET `absoluteAxisW` (et son réglage public `SetAbsoluteAxisW`)
+// JUSQU'AU LOT 2.2.a : la largeur vient désormais du PROFIL que le lecteur porte
+// ([BitReader.poserMouvement]), et le balayage de calibration de `killsource` la passe par
+// `FrameConfig.Mouvement` au lieu de l'écrire dans le processus entier.
+func (b *BitReader) absoluteAxisW() uint { return b.mv.AbsoluteAxisW }
 
 // absAxisW retourne la largeur d'axe effective d'un chemin ABSOLU i0.
 //
@@ -230,17 +224,17 @@ func SetAbsoluteAxisW(w uint) { absoluteAxisW = w }
 // souvent. Chercher la faute dans les grammaires de composants ne pouvait rien donner :
 // elles étaient justes.
 //
-// POURQUOI L'ESSAI PRÉCÉDENT AVAIT ÉCHOUÉ : régler `TraversalPrecision.AxisW` à 13/13/14
+// POURQUOI L'ESSAI PRÉCÉDENT AVAIT ÉCHOUÉ : régler `Traversal.AxisW` à 13/13/14
 // changeait AUSSI la largeur du delta — le chemin dominant — et dégradait la mesure. Le
 // commentaire de traverse.go le disait déjà : « le vrai correctif doit distinguer les deux
 // largeurs le long de chaque branche, et non régler une globale. »
 // (Le descripteur de précision n'entre PAS dans ce choix : la largeur absolue vient soit
 // du réglage global, soit de WorldObjectPrecision — jamais du descripteur de l'appelant.)
-func absAxisW(i int) uint {
-	if absoluteAxisW > 0 {
-		return absoluteAxisW
+func absAxisW(br *BitReader, i int) uint {
+	if w := br.absoluteAxisW(); w > 0 {
+		return w
 	}
-	return WorldObjectPrecision.AxisW[i]
+	return br.worldObjectPrecision().AxisW[i]
 }
 
 // absAxisWFor retourne la largeur de l axe i pour l index de plage idx.
@@ -257,18 +251,18 @@ func absAxisW(i int) uint {
 // position (`MOV R9D,0x10` a 1406d008a dans FUN_1406cfe44 ; `MOV R8D,0x10` a 140f7ea50 dans
 // FUN_140f7ea14, que FUN_14076e4ec deplace en R9 a 14076e505 ; 14226a6b8 dans FUN_14076f3ec).
 // Les trois largeurs ne sont donc PAS uniformes et PAS les memes pour tous les index — ce que
-// l'override uniforme `absoluteAxisW` suppose.
+// l'override uniforme `AbsoluteAxisW` suppose.
 //
 // LA TABLE `absPerIndexAxisW` QUI PORTAIT CE MODELE A ETE SUPPRIMEE le 2026-09-06 (lot E, item
 // E.8) : elle etait nil et le restait — son unique installateur, le reglage public
 // `SetAbsPerIndexAxisW`, n avait aucun appelant et est parti au lot E.2. Elle ne portait AUCUNE
 // valeur mesuree, seulement le modele ci-dessus, qui reste donc ecrit ici, a l endroit ou un
 // futur portage viendra le lire. La largeur rendue est celle du chemin uniforme, comme avant.
-func absAxisWFor(idx, i int) uint {
+func absAxisWFor(br *BitReader, idx, i int) uint {
 	if i == 0 {
 		absIdxHist[idx]++
 	}
-	return absAxisW(i)
+	return absAxisW(br, i)
 }
 
 // absIdxHist : histogramme des index de plage rencontres sur les chemins ABSOLUS de i0 (7ter.54
@@ -290,14 +284,15 @@ func AbsIndexHistogram() map[int]int {
 // dequantWorldAxis dequantizes one absolute quantized axis word (width bits). Deux formes :
 //   - AbsDequantRange (défaut) : min + step*(q+0.5) via WorldPositionRange (FUN_140c1e978).
 //   - AbsDequantCenteredQuantum : (q - 2^(bits-1)) * DeltaQuantum — grille fine centrée sur 0.
-func dequantWorldAxis(q uint64, bits uint, axis int) float32 {
+func dequantWorldAxis(br *BitReader, q uint64, bits uint, axis int) float32 {
 	if absDequantMode == AbsDequantCenteredQuantum {
 		half := float32(uint64(1) << (bits - 1))
-		return (float32(q) - half) * DeltaQuantum
+		return (float32(q) - half) * br.deltaQuantum()
 	}
+	wr := br.worldPositionRange()
 	scale := float32(uint64(1) << bits)
-	step := (WorldPositionRange[axis].Max - WorldPositionRange[axis].Min) / scale
-	return float32(q)*step + WorldPositionRange[axis].Min + step*quantCenter
+	step := (wr[axis].Max - wr[axis].Min) / scale
+	return float32(q)*step + wr[axis].Min + step*quantCenter
 }
 
 // signed8 reinterprets an 8-bit field as a signed delta count.

@@ -37,7 +37,7 @@ package filmdec
 // 0x7F est la valeur par defaut (charge pleine) quand le bit du masque est a 0.
 // LES VALEURS NE SONT PLUS JETÉES (2026-08-15) : comme i48 le 14/08 et comme les quatre
 // composants de ti=37 (equipment_state.go), ce déser consommait ses bits pour rester aligné
-// et abandonnait ce qu'il lisait. `abilityEnergyHook` les publie ; le parcours de bits est
+// et abandonnait ce qu'il lisait. `observateur.AbilityEnergyHook` les publie ; le parcours de bits est
 // inchangé, et 0x7F reste la valeur par défaut NON transmise d'un emplacement non armé.
 func consumeBipedSpartanAbilityEnergy(br *BitReader) {
 	mask := br.ReadBits(3) // FUN_140fc147c
@@ -48,8 +48,8 @@ func consumeBipedSpartanAbilityEnergy(br *BitReader) {
 			ch[i] = int(br.ReadBits(7)) // bloc froid 0x14246a410
 		}
 	}
-	if abilityEnergyHook != nil {
-		abilityEnergyHook(uint32(mask), ch)
+	if observateur.AbilityEnergyHook != nil {
+		observateur.AbilityEnergyHook(uint32(mask), ch)
 	}
 }
 
@@ -61,11 +61,7 @@ const AbilityEnergyCharges = 3
 // 0x7F — le moteur pose 0x7F en RAM, mais l'assimiler à une lecture fabriquerait des chutes.
 const AbilityEnergyUnarmed = -1
 
-// abilityEnergyHook, si non nil, reçoit d'i56 le masque R(3) et les trois valeurs 7 bits
-// (AbilityEnergyUnarmed pour un emplacement non armé). Le déser reste inchangé bit pour bit.
-var abilityEnergyHook func(mask uint32, ch [AbilityEnergyCharges]int)
-
 // SetAbilityEnergyHook installe (ou retire, avec nil) la sonde de lecture d'i56.
 func SetAbilityEnergyHook(h func(mask uint32, ch [AbilityEnergyCharges]int)) {
-	abilityEnergyHook = h
+	observateur.AbilityEnergyHook = h
 }

@@ -209,8 +209,8 @@ func v3dUnFilm(t *testing.T, root string, f v0Film, ag *v3dAgg) {
 	}
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
+	prev := filmdec.WorldObjectPrecisionActuelle()
+	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return

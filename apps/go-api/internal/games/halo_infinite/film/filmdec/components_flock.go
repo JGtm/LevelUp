@@ -54,7 +54,7 @@ func consumeFlockFleeing(br *BitReader) {
 // c'est `FUN_1406d676c(br, br, dst, 0x60)` = R(96). L'ancien commentaire lisait le RESULTAT
 // (un NaN de conservation) et non le CURSEUR.
 func consumeFlockPosition(br *BitReader, level uint) {
-	if fullPrecisionGate() {
+	if fullPrecisionGate(br) {
 		br.ReadBits(rawVec3Bits) // FUN_1411b259c -> FUN_1406d676c(..., 0x60)
 		return
 	}

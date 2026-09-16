@@ -166,22 +166,15 @@ func (f ObjectiveField) String() string {
 	return champInconnu
 }
 
-// objectiveHook, si non nil, recoit chaque lecture d'un champ publie de ti=11.
-//
-// PAS DE `present` ICI : aucun de ces composants n'a de porte de tete — leur presence est le bit
-// de MASQUE, que l'appelant connait deja. Global de paquet : l'appelant detient
-// `LockProcessDecode`.
-var objectiveHook func(f ObjectiveField, values []uint64)
-
 // SetObjectiveHook installe (ou retire, avec nil) la sonde des composants de ti=11.
 //
 // UN HOOK SEPARE de ceux de ti=10, ti=12 et ti=13, pour la meme raison qui les separait entre
 // eux : les archetypes sont distincts et leurs slots disjoints.
-func SetObjectiveHook(h func(f ObjectiveField, values []uint64)) { objectiveHook = h }
+func SetObjectiveHook(h func(f ObjectiveField, values []uint64)) { observateur.ObjectiveHook = h }
 
 func publishObjective(f ObjectiveField, values ...uint64) {
-	if objectiveHook != nil {
-		objectiveHook(f, values)
+	if observateur.ObjectiveHook != nil {
+		observateur.ObjectiveHook(f, values)
 	}
 }
 

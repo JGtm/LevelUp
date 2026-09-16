@@ -88,15 +88,17 @@ func WalkKeyframeFullState(pay []byte, recBit int, reg *Registry) EntityTrace {
 // walkKeyframeFullState est la marche, avec le bouton des temoins. Les instruments l'appellent
 // avec un temoin nomme ; la production passe par `WalkKeyframeFullState`, donc par le temoin nul.
 func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, tem keyframeFullStateTemoin) EntityTrace {
+	br := NewBitReader(pay)
+	// L EN-TETE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c) ; le temoin negatif, quand il
+	// est pose, le remplace — c est sa seule raison d etre (cf. `keyframeFullStateTemoin`).
 	hdr := tem.EnTeteBits
 	if hdr <= 0 {
-		hdr = keyframeFullStateHeaderBits
+		hdr = br.cadre().EnTeteBits
 	}
 	t := EntityTrace{DesyncAt: -1}
 	// Le typeIndex se lit aux 6 bits de queue du deuxieme mot de 32 bits, position
 	// commune aux deux lectures d'en-tete (cf. `keyframeFullStateHeaderBits`).
 	t.TypeIndex = uint32(kfReadBits(pay, recBit+keyframeRecordTIBit, 6))
-	br := NewBitReader(pay)
 	br.SetBitPos(recBit + hdr)
 	if t.TypeIndex >= objectArchetypeCount {
 		t.DesyncAt, t.EndBit = 0, br.BitPos()
@@ -136,15 +138,17 @@ func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, tem keyframeFu
 // s'ecarte du modal (en pratique 0) » en les appelant des ANCRES FORTUITES. L'ecrivain dit
 // qu'un `n1` nul est un record LEGITIME sans etat par defaut.
 func consumeFullStateDefaultBlock(br *BitReader, ti uint32, sansEtatParDefaut bool) bool {
-	n1 := int32(br.ReadBits(keyframeFullStateSizeBits)) //nolint:gosec // 32 bits lus, compares SIGNES
-	if !sansEtatParDefaut && n1 > 0 {                   // FUN_142e2bfd0 : `if (0 < (int)uVar7)`, comparaison SIGNEE
+	// LA LARGEUR DU MOT DE TAILLE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c).
+	mot := uint(br.cadre().MotDeTailleBits) //nolint:gosec // largeur de profil, bornee a 32
+	n1 := int32(br.ReadBits(mot))           //nolint:gosec // 32 bits lus, compares SIGNES
+	if !sansEtatParDefaut && n1 > 0 {       // FUN_142e2bfd0 : `if (0 < (int)uVar7)`, comparaison SIGNEE
 		consumeKeyframeDefaultState(br, ti)
 		if filmComponentCorruptionCheck {
 			// FUN_142e2bfd0 : mot de controle INCONDITIONNEL (pas de R(1) de garde ici,
 			// contrairement au controle PAR COMPOSANT de FUN_142e2c690).
-			br.ReadBits(keyframeFullStateSizeBits)
+			br.ReadBits(mot)
 		}
 	}
 	// n2 : meme comparaison SIGNEE ; > 0 => vtable[0x88] puis la boucle de composants.
-	return int32(br.ReadBits(keyframeFullStateSizeBits)) > 0 //nolint:gosec // idem
+	return int32(br.ReadBits(mot)) > 0 //nolint:gosec // idem
 }

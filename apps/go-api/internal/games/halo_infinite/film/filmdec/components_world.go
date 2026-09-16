@@ -10,7 +10,7 @@ package filmdec
 // (`effect-state-data`, `music-state`, `tacmap-poiicon`, `crew-marked-objects`, `crew-order`,
 // `state-broker`). Les cinq premiers sont SUPPLANTÉS par le port INLINE de traverse.go, qui
 // est le port CORRIGÉ : il lit les vec3 en quantification 6+level (le niveau de l'entrée du
-// registre) là où ceux d'ici employaient les largeurs fixes de TraversalPrecision, et il
+// registre) là où ceux d'ici employaient les largeurs fixes du descripteur de traversée, et il
 // DÉSYNCHRONISE proprement sur les branches de largeur runtime au lieu de deviner des bits
 // (décision de méthode inscrite en tête du bloc `crew-order` de traverse.go). Les rebrancher,
 // ce serait réintroduire l'approche écartée. `state-broker` visait ti=46, ni décodé ni planifié.
@@ -138,13 +138,13 @@ func consumeGameEngineSharedTeamLives(br *BitReader) {
 
 // consumeE524PositionBody mirrors the FUN_14076e524 absolute-position read WITHOUT a
 // leading gate (the caller supplies its own gate): R(1) index-select; if 0 -> R(idxW)
-// index; then 3 axes of R(axisW). Widths from TraversalPrecision (runtime, derivable).
+// index; then 3 axes of R(axisW). Widths from `BitReader.traversal` (runtime, derivable).
 func consumeE524PositionBody(br *BitReader) {
 	if !br.ReadBit() { // FUN_14076e524 index-present select
-		br.ReadBits(TraversalPrecision.IndexW)
+		br.ReadBits(br.traversal().IndexW)
 	}
 	for i := 0; i < 3; i++ {
-		br.ReadBits(TraversalPrecision.AxisW[i]) // FUN_140cc5128 axis i
+		br.ReadBits(br.traversal().AxisW[i]) // FUN_140cc5128 axis i
 	}
 }
 

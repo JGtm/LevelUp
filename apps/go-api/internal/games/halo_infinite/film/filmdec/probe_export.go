@@ -18,9 +18,9 @@ package filmdec
 // width to the Rosetta position oracle in isolation, without decoding a whole record.
 // Read-only: no World, no capture hooks touched.
 func ConsumeComponentAt(buf []byte, start int, name string, typeIndex, level uint32) (end int, ported bool) {
-	saved := posCaptureHook
-	posCaptureHook = nil
-	defer func() { posCaptureHook = saved }()
+	saved := observateur.PosCaptureHook
+	observateur.PosCaptureHook = nil
+	defer func() { observateur.PosCaptureHook = saved }()
 	br := NewBitReader(buf)
 	br.Skip(start)
 	_, _, ok := consumeByName(br, name, typeIndex, level)

@@ -47,7 +47,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	variant = noVariant
 	switch name {
 	case "object-position-dynamic-precision-component": // i0
-		consumeObjectPositionDynamicPrecisionD(br, TraversalPrecision)
+		consumeObjectPositionDynamicPrecisionD(br, br.traversal())
 		return variant, nil, true
 	case "object-translational-velocity-dynamic-precision-component": // i1
 		consumeObjectTranslationalVelocity(br)
@@ -85,7 +85,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		consumeObjectConstraint(br)
 		return variant, nil, true
 	case "object-parent-state-component": // i10 (1st desync on typeIndex=40)
-		consumeObjectParentState(br, paramForComponent(name), typeIndex)
+		consumeObjectParentState(br, paramForComponent(br, name), typeIndex)
 		return variant, nil, true
 	case "object-scale-component": // i12
 		consumeObjectScale(br)
@@ -106,13 +106,13 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		consumeObjectFrameConfiguration(br)
 		return variant, nil, true
 	case "unit-actor-control-component":
-		consumeUnitActorControl(br, paramForComponent(name))
+		consumeUnitActorControl(br, paramForComponent(br, name))
 		return variant, nil, true
 	case "unit-actor-state-component":
-		consumeUnitActorState(br, paramForComponent(name))
+		consumeUnitActorState(br, paramForComponent(br, name))
 		return variant, nil, true
 	case "unit-malleable-property-component":
-		consumeUnitMalleableProperty(br, paramForComponent(name))
+		consumeUnitMalleableProperty(br, paramForComponent(br, name))
 		return variant, nil, true
 	case "biped-spartan-ability-malleable-property-component": // i58 (FUN_140fea4c0)
 		consumeBipedSpartanAbilityMalleableProperty(br)
@@ -139,10 +139,10 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 			br.ReadBits(59) // precHigh=1 : FUN_141f85880 AABB + handle-tail + R(2) (total 60 mesuré)
 		} else {
 			if !br.ReadBit() { // FUN_14076e524 index-sel ; si 0 -> lit l'index de région
-				br.ReadBits(WorldObjectPrecision.IndexW)
+				br.ReadBits(br.worldObjectPrecision().IndexW)
 			}
 			for a := 0; a < 3; a++ {
-				br.ReadBits(WorldObjectPrecision.AxisW[a]) // FUN_140cc5128 axe a
+				br.ReadBits(br.worldObjectPrecision().AxisW[a]) // FUN_140cc5128 axe a
 			}
 			br.ReadBits(2) // FUN_14076e304 R(2) finite (handle-tail = 0 bit quand precHigh=0)
 		}
@@ -156,7 +156,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		// FUN_14076e278). Le « reuse biped i2 deser » qui tenait ici était une
 		// réutilisation héritée de ti=38, jamais mesurée (CADRAGE_VEHICULES § 2), et
 		// elle amputait i2 de son ou ses bits de tête sur TOUS les records ti=40.
-		return variant, nil, consumeObjectForwardAndUpDynPrec(br, paramForComponent(name))
+		return variant, nil, consumeObjectForwardAndUpDynPrec(br, paramForComponent(br, name))
 	default:
 		return consumeItemAndTacmapComponent(br, name, typeIndex, level)
 	}

@@ -226,7 +226,7 @@ func buildProjectileRecord(slot, gen uint32, comps []int, q [3]uint64) []byte {
 	}
 	w.put(0, 3) // porte de position : precHigh, index-sel, region tous nuls
 	for a := 0; a < 3; a++ {
-		w.put(q[a], int(WorldObjectPrecision.AxisW[a]))
+		w.put(q[a], int(WorldObjectPrecisionActuelle().AxisW[a]))
 	}
 	w.pad(64)
 	return w.buf
@@ -353,14 +353,14 @@ func TestWorldObjectPositionRejectsSaturatedAxes(t *testing.T) {
 	w := &bitw{}
 	w.put(0, 3)
 	for a := 0; a < 3; a++ {
-		w.put(4096, int(WorldObjectPrecision.AxisW[a]))
+		w.put(4096, int(WorldObjectPrecisionActuelle().AxisW[a]))
 	}
 	w.pad(16)
 	if _, ok := decodeWorldObjectPos(w.buf, 0, &wr); !ok {
 		t.Fatal("une position valide a ete refusee")
 	}
 	for a := 0; a < 3; a++ {
-		for _, q := range []uint64{0, (1 << WorldObjectPrecision.AxisW[a]) - 1} {
+		for _, q := range []uint64{0, (1 << WorldObjectPrecisionActuelle().AxisW[a]) - 1} {
 			g := &bitw{}
 			g.put(0, 3)
 			for b := 0; b < 3; b++ {
@@ -368,7 +368,7 @@ func TestWorldObjectPositionRejectsSaturatedAxes(t *testing.T) {
 				if b == a {
 					v = q
 				}
-				g.put(v, int(WorldObjectPrecision.AxisW[b]))
+				g.put(v, int(WorldObjectPrecisionActuelle().AxisW[b]))
 			}
 			g.pad(16)
 			if _, ok := decodeWorldObjectPos(g.buf, 0, &wr); ok {
@@ -385,7 +385,7 @@ func TestWorldObjectPositionGateIsClosedUnlessAllThreeAreZero(t *testing.T) {
 		w := &bitw{}
 		w.put(gate, 3)
 		for a := 0; a < 3; a++ {
-			w.put(4096, int(WorldObjectPrecision.AxisW[a]))
+			w.put(4096, int(WorldObjectPrecisionActuelle().AxisW[a]))
 		}
 		w.pad(16)
 		if _, ok := decodeWorldObjectPos(w.buf, 0, &wr); ok {
@@ -400,7 +400,7 @@ func TestWorldObjectPositionGateIsClosedUnlessAllThreeAreZero(t *testing.T) {
 // largeurs d axe viennent du descripteur de precision (qui est lu dans le film). Un chiffre
 // ecrit en dur se serait desynchronise du jour ou une carte a d autres largeurs.
 func TestProjectilePositionWidthFollowsThePrecisionDescriptor(t *testing.T) {
-	p := WorldObjectPrecision
+	p := WorldObjectPrecisionActuelle()
 	want := 3 + int(p.AxisW[0]+p.AxisW[1]+p.AxisW[2]) + 2
 	if got := projPosBits(); got != want {
 		t.Errorf("projPosBits() = %d, attendu %d — la longueur ne suit plus le descripteur",
