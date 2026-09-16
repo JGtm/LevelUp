@@ -145,16 +145,19 @@ func EquipmentPosEps(wr *Vec3Range) [3]float32 {
 // l'expliquer (l'identifiant de 32 bits ne bouge pas, le compte de 3 bits non plus). Les plages
 // encadrent le décompile avec de la marge, sans jamais permettre une largeur absurde. L'ordre
 // place les valeurs du décompile en tête : à égalité d'accords, c'est la première qui gagne.
-var (
-	mppLeadCandidates  = []int{9, 6, 5, 7, 8, 10, 11, 12, 13}
-	mppIndexCandidates = []int{5, 2, 3, 4, 6, 7, 8}
-)
+//
+// CE SONT DES TABLES DE GRAMMAIRE, PAS UN ETAT : elles etaient deux variables de paquet que rien
+// n'ecrivait, et le lot 2.2.e les rend a ce qu'elles sont — du code (meme geste qu'au lot E.3 du
+// 2026-09-05, quand la table des largeurs de reference par domaine est redevenue une fonction).
+func mppLeadCandidates() []int  { return []int{9, 6, 5, 7, 8, 10, 11, 12, 13} }
+func mppIndexCandidates() []int { return []int{5, 2, 3, 4, 6, 7, 8} }
 
 // mppCandidates énumère les découpages testés, dans l'ordre de préférence.
 func mppCandidates() []MPPWidths {
-	out := make([]MPPWidths, 0, len(mppLeadCandidates)*len(mppIndexCandidates))
-	for _, idx := range mppIndexCandidates {
-		for _, lead := range mppLeadCandidates {
+	leads, idxs := mppLeadCandidates(), mppIndexCandidates()
+	out := make([]MPPWidths, 0, len(leads)*len(idxs))
+	for _, idx := range idxs {
+		for _, lead := range leads {
 			out = append(out, MPPWidths{Lead: lead, Index: idx})
 		}
 	}

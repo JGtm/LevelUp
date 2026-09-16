@@ -185,3 +185,48 @@ func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
 		t.Errorf("quantum double : delta %v, attendu le double de %v", apres, avant)
 	}
 }
+
+// TestProfilDeMobiliteChangeLaConsommationDeBits — LE TEMOIN DES BITS SUPPLEMENTAIRES D UNE
+// ACTION DE MOBILITE.
+//
+// CE QUE LA MUTATION DU LOT 2.2.e A REVELE, ET QUI EST CONSIGNE AU PLAN : fausser
+// `Movement.MobilityActionExtraBits` ne rougissait AUCUN test, et la cause n est pas un manque
+// de couverture — c est que la valeur est INATTEIGNABLE en production. Elle ne se lit que sur
+// la branche `else` du corps porte, et le corps EST porte par defaut
+// (`MobilityActionBodyPorted`, vrai, remis a vrai par `killsource.resetGlobals`). Le chemin
+// n existe donc que sous le harnais qui eteint le portage, pour rejouer la ligne de base
+// d avant le portage du corps.
+//
+// CE TEST JOUE CE HARNAIS, et c est la seule facon honnete de donner un temoin a cette valeur :
+// mesurer le chemin ou elle sert, en le nommant comme un harnais.
+func TestProfilDeMobiliteChangeLaConsommationDeBits(t *testing.T) {
+	release := LockProcessDecode()
+	defer release()
+	precedent := MobilityActionBodyPorted
+	SetMobilityActionBodyPorted(false)
+	defer SetMobilityActionBodyPorted(precedent)
+
+	// flag1=1 (le corps suit), flag2=0, puis la queue de poignee `FUN_1408f0ac4(...,0)` sur des
+	// bits nuls. Le compte exact importe peu : ce qui compte est l ECART entre deux profils.
+	flux := bitsDe("10", 32)
+	consommation := func(extra int) int {
+		mv := ResolveProfile(nil, nil).Movement()
+		mv.MobilityActionExtraBits = extra
+		br := NewBitReader(flux)
+		br.poserMouvement(mv)
+		consumeBipedMobilityAction(br)
+		return br.BitPos()
+	}
+	// LA VALEUR DU PROFIL EST EPINGLEE, comme au temoin du quantum de delta : sans cela, fausser
+	// la table ferait bouger les deux cotes de la comparaison et le temoin ne mordrait pas.
+	// `0` est la ligne `Movement.MobilityActionExtraBits` de [TableProfil], provenance PRESUMEE.
+	const extraDeLaTable = 0
+	if got := ResolveProfile(nil, nil).Movement().MobilityActionExtraBits; got != extraDeLaTable {
+		t.Errorf("le profil annonce %d bits supplementaires, la table %d", got, extraDeLaTable)
+	}
+	sansExtra := consommation(extraDeLaTable)
+	if got := consommation(extraDeLaTable + 3); got != sansExtra+3 {
+		t.Errorf("trois bits supplementaires au profil font consommer %d bits au lieu de %d — le "+
+			"deserialiseur ne lit donc PAS cette valeur au profil", got, sansExtra+3)
+	}
+}

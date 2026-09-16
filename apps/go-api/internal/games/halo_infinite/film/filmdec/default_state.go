@@ -55,8 +55,6 @@ package filmdec
 // FUN_140F44C38 leaf paths whose widths come from the film replication/precision
 // config (map-load globals, 0 statically) — see traverse.go for the analysis.
 
-import "fmt"
-
 // bipedMediaFramePresent toggles the DST-state-gated quat block inside
 // FUN_140F44C38 (iVar15 != -1 path). Default false: a fresh keyframe decode runs
 // against a memset(0) DST, so the block is absent. Exposed as a package var so a
@@ -322,8 +320,8 @@ func consumeBipedDefaultStateMediaFrame(br *BitReader) {
 // FUN_140cc5128 per-axis position block du chemin i0 movement (hors de ce bloc) garde sa
 // dépendance runtime (DAT_1445cc9e0 axis widths) non sourçable statiquement.
 func consumeMultiplayerPropertiesBlock(br *BitReader) {
-	publishMPP(MPPWord9, br.ReadBits(uint(mppLeadBits)), true) // FUN_141fd72c0 R(9)
-	publishMPP(MPPWord32, br.ReadBits(32), true)               // FUN_14080d6f0 R(32)
+	publishMPP(MPPWord9, br.ReadBits(uint(br.mppWidths().Lead)), true) // FUN_141fd72c0 R(9)
+	publishMPP(MPPWord32, br.ReadBits(32), true)                       // FUN_14080d6f0 R(32)
 	if !br.ReadBit() {
 		publishMPP(MPPVariantName, br.ReadBits(32), true) // FUN_14080dec4 "variant-name" R(32)
 	} else { // FUN_14080d7cc: DST lookup, 0 bits
@@ -332,9 +330,9 @@ func consumeMultiplayerPropertiesBlock(br *BitReader) {
 	if br.ReadBit() { // FUN_1406cf008 gate; if set -> R(18)
 		br.ReadBits(18)
 	}
-	consumeMppD524(br)              // FUN_14080d524: R(1)+opt R(13)
-	br.ReadBits(2)                  // inline R(2)
-	br.ReadBits(uint(mppIndexBits)) // inline R(5) -> DST+0x1a
+	consumeMppD524(br)                      // FUN_14080d524: R(1)+opt R(13)
+	br.ReadBits(2)                          // inline R(2)
+	br.ReadBits(uint(br.mppWidths().Index)) // inline R(5) -> DST+0x1a
 	count := uint32(br.ReadBits(3))
 	if count <= 4 {
 		for i := uint32(0); i < count; i++ {
@@ -356,57 +354,6 @@ func consumeMultiplayerPropertiesBlock(br *BitReader) {
 		publishMPP(MPPTailName, 0, false)
 	}
 }
-
-// mppLeadBits est la largeur du PREMIER champ du bloc MPP (FUN_141fd72c0). Le décompile la
-// donne à 9, et 9 est bit-exact sur les films d'arène — mais elle VARIE d'un film à l'autre :
-// mesuré le 2026-08-17, le default-state de ti=37 fait 60 bits sur `000d5950` et `00162144`
-// (largeur 9) contre 57 sur `06dfe6d9` et `00ba2e1c`. C'est le même genre de largeur de
-// configuration de réplication que les largeurs d axe du chemin world-object (mais PAS que
-// la plage de `FUN_1406d3140` : celle-la est une CONSTANTE du binaire, cf. `varwidth.go`,
-// releve du 2026-09-15) : posée au chargement de la carte, absente de l exécutable, et donc
-// DÉTECTÉE dans le film (cf. CalibrateMPPWidths) plutôt que devinée.
-//
-// Le défaut 9 est celui du chemin bipède, validé en live (rep = 166 ou 198 bits) : il ne bouge
-// pas tant qu'un appelant ne l'a pas mesuré. L'appelant doit détenir LockProcessDecode et
-// restaurer la valeur précédente — c'est un global de paquet.
-var mppLeadBits = 9
-
-// mppIndexBits est la largeur du champ inline `R(5) -> DST+0x1a`, qui suit l'identifiant de
-// 32 bits. Le décompile la donne à 5.
-//
-// POURQUOI ELLE EST PARAMÉTRABLE, ET CE QUE ÇA CHANGE : le default-state de ti=37 perd 3 bits
-// sur certains films, et DEUX champs inconditionnels du chemin minimal peuvent le porter — le
-// premier du bloc (mppLeadBits) et celui-ci. Les deux donnent le même TOTAL, mais pas la même
-// lecture : rétrécir le premier décale l'identifiant de 32 bits de 3 bits et rend un identifiant
-// FAUX, rétrécir celui-ci le laisse en place. Seule la mesure tranche, et elle le fait sur le
-// nombre de records que chaque découpage fait tomber sur l'oracle de position
-// (cf. CalibrateMPPWidths) — jamais sur une préférence d'écriture.
-var mppIndexBits = 5
-
-// MPPWidths est le découpage des deux champs de largeur variable du bloc MPP.
-type MPPWidths struct {
-	// Lead est la largeur du premier champ du bloc (FUN_141fd72c0).
-	Lead int
-	// Index est la largeur du champ inline qui suit l'identifiant de 32 bits.
-	Index int
-}
-
-// String rend le découpage sous la forme « lead/index ».
-func (w MPPWidths) String() string { return fmt.Sprintf("%d/%d", w.Lead, w.Index) }
-
-// Valid dit si le découpage est renseigné.
-func (w MPPWidths) Valid() bool { return w.Lead > 0 && w.Index > 0 }
-
-// SetMPPWidths installe le découpage complet et rend le précédent — l'appelant le restaure.
-// L'APPELANT DOIT DÉTENIR LockProcessDecode : ce sont des globaux de paquet.
-func SetMPPWidths(w MPPWidths) MPPWidths {
-	prev := MPPWidths{Lead: mppLeadBits, Index: mppIndexBits}
-	mppLeadBits, mppIndexBits = w.Lead, w.Index
-	return prev
-}
-
-// CurrentMPPWidths rend le découpage courant.
-func CurrentMPPWidths() MPPWidths { return MPPWidths{Lead: mppLeadBits, Index: mppIndexBits} }
 
 // MPPField désigne l'un des champs du bloc `object-multiplayer-properties` (FUN_14080cfe8)
 // dont ce port consommait la valeur pour rester aligné, et qui la PUBLIENT désormais — même

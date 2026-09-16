@@ -26,6 +26,14 @@ type BitReader struct {
 	// prennent leur cadre AU PROFIL et non a une constante du paquet — c est la seule forme
 	// sous laquelle « fausser la valeur dans le profil » rougit leur lecture.
 	kf KeyframeProfile
+	// mpp est le decoupage du bloc `object-multiplayer-properties` que ce lecteur porte
+	// (lot 2.2.e). Il vient de la VERSION DE FORMAT du film, posee par `InstallFilmFormatMPP`.
+	mpp MPPWidths
+	// rsp / rspImpose : le `param_4` du moteur qu un harnais de balayage a force, et le
+	// drapeau qui dit qu il l a force (lot 2.2.e). Hors balayage, la table par composant
+	// (`paramByComponent`) decide seule et ces deux champs ne sont jamais consultes.
+	rsp       uint32
+	rspImpose bool
 }
 
 // NewBitReader returns a reader positioned at the first bit of buf.
@@ -36,7 +44,8 @@ type BitReader struct {
 // variables de paquet du chemin de position portaient avant le lot 2.2.a. Un balayage qui tient
 // son propre profil l installe EN TETE ([BitReader.poserMouvement]) et n en depend plus.
 func NewBitReader(buf []byte) *BitReader {
-	return &BitReader{buf: buf, mv: mouvementHerite, kf: cadreDuProfil()}
+	return &BitReader{buf: buf, mv: herite.mouvement, kf: cadreDuProfil(),
+		mpp: herite.mpp, rsp: herite.rsp, rspImpose: herite.rspImpose}
 }
 
 // cadre rend le CADRE d image-cle d etat complet que ce lecteur porte : l en-tete par entite,

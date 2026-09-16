@@ -81,16 +81,16 @@ func (b *BitReader) worldObjectPrecision() PrecisionDescriptor { return b.mv.Wor
 // record avant de le décoder. N'ayant aucun lecteur à porter le profil, ils le prennent à
 // l'héritage de processus, qui est l'endroit où l'installateur de la carte l'a posé. Ils
 // partiront du même coup que l'héritage, au lot 2.5, quand le profil descendra aux balayages.
-func largeursObjetDuMonde() PrecisionDescriptor { return mouvementHerite.WorldObject }
+func largeursObjetDuMonde() PrecisionDescriptor { return herite.mouvement.WorldObject }
 
 // WorldObjectPrecisionActuelle rend les largeurs installées. Lecture seule, pour les instruments
 // et les garde-rails qui sauvent puis restaurent l'état (voir [PoserWorldObjectPrecision]).
-func WorldObjectPrecisionActuelle() PrecisionDescriptor { return mouvementHerite.WorldObject }
+func WorldObjectPrecisionActuelle() PrecisionDescriptor { return herite.mouvement.WorldObject }
 
 // PoserWorldObjectPrecision installe des largeurs world-object sur le profil hérité. L'appelant
 // doit détenir `LockProcessDecode` et restaurer la valeur précédente : c'est un état de
 // processus. Le seul appelant de production est `replay.installWorldObjectPrecision`.
-func PoserWorldObjectPrecision(p PrecisionDescriptor) { mouvementHerite.WorldObject = p }
+func PoserWorldObjectPrecision(p PrecisionDescriptor) { herite.mouvement.WorldObject = p }
 
 // SetWorldObjectPrecisionFromLayout installe les largeurs d'axe de la CARTE pour le chemin
 // world-object. Les axes sont partagés avec l'absolu du bipède : c'est le même AABB de BSP qui
@@ -107,7 +107,7 @@ func SetWorldObjectPrecisionFromLayout(l I0Layout) {
 	if l.AxisW[0] == 0 || l.AxisW[1] == 0 || l.AxisW[2] == 0 {
 		return // layout non détecté : garder le défaut plutôt qu'installer des zéros
 	}
-	mouvementHerite.WorldObject.AxisW = l.AxisW
+	herite.mouvement.WorldObject.AxisW = l.AxisW
 	// La largeur de l'INDEX DE RÉGION est elle aussi une constante par carte
 	// (ceilLog2(nb de régions) — 2 bits sur Live Fire, lot C catalogues 2026-08-27). Un
 	// layout sans gate (appels historiques qui ne posent que AxisW) laisse le défaut.
@@ -117,7 +117,7 @@ func SetWorldObjectPrecisionFromLayout(l I0Layout) {
 	// SON record. La table par région (SetAbsPerIndexAxisW) existe pour le chemin
 	// sim-state ; l'y étendre ici attendra une carte où le cas pèse.
 	if l.GateBits > i0SpineBits+i0UseDefaultBits {
-		mouvementHerite.WorldObject.IndexW = uint(l.GateBits - i0SpineBits - i0UseDefaultBits)
+		herite.mouvement.WorldObject.IndexW = uint(l.GateBits - i0SpineBits - i0UseDefaultBits)
 	}
 	// LA RÉGION ATTENDUE SUIT LES LARGEURS, par le même chemin et dans le même appel
 	// (lot B-bis, 2026-09-12). Sans elle, le lecteur world-object exigeait un index de région
@@ -125,5 +125,5 @@ func SetWorldObjectPrecisionFromLayout(l I0Layout) {
 	// lisait donc ses trois axes un bit trop tôt, et le bit de poids fort de chaque axe
 	// devenait le bit de poids faible du champ précédent : un pas de la moitié de l'étendue
 	// de l'axe à chaque bascule (31,89 m sur Y, mesuré sur quatre films).
-	mouvementHerite.WorldObject.Region = l.Region
+	herite.mouvement.WorldObject.Region = l.Region
 }

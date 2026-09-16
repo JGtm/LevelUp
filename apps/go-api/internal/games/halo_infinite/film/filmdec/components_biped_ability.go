@@ -220,7 +220,7 @@ func consumeBipedMalleablePropertyBlock(br *BitReader, recordStateParam uint32) 
 // CONFIRMED bit-exact: FUN_1424e2f20 is a flat 5-bit reader returning the width n;
 // the subsequent inline read consumes exactly n bits (0 when n==0).
 func consumeBipedMalleableProperty(br *BitReader) {
-	consumeBipedMalleablePropertyBlock(br, recordStateParam)
+	consumeBipedMalleablePropertyBlock(br, br.recordStateParam())
 	n := uint(br.ReadBits(5)) // FUN_1424e2f20 = R(5) -> width n
 	if n > 0 {
 		br.ReadBits(n) // R(n) malleable field
@@ -263,8 +263,8 @@ func consumeBipedMobilityAction(br *BitReader) {
 		consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
 		if MobilityActionBodyPorted {
 			consumeMobilityActionBody(br) // FUN_1408f02c8, corps
-		} else if MobilityActionExtraBits > 0 {
-			br.Skip(MobilityActionExtraBits)
+		} else if extra := br.mv.MobilityActionExtraBits; extra > 0 {
+			br.Skip(extra)
 		}
 	}
 }
@@ -349,4 +349,6 @@ func SetMobilityActionBodyPorted(b bool) { MobilityActionBodyPorted = b }
 
 // MobilityActionExtraBits : ancien harnais de balayage de largeur (7ter.40, mode `cvmob`).
 // Conserve pour rejouer cette mesure ; sans effet quand le corps est porte.
-var MobilityActionExtraBits int
+// C'ETAIT LA VARIABLE DE PAQUET `MobilityActionExtraBits` JUSQU'AU LOT 2.2.e : le nombre de
+// bits supplementaires d'une action de mobilite vit dans le PROFIL que le lecteur porte
+// (`Movement.MobilityActionExtraBits`, ligne de [TableProfil], provenance PRESUMEE).

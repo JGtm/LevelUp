@@ -127,7 +127,7 @@ func consumeBipedSlide(br *BitReader) {
 	if br.ReadBit() { // FUN_1406cf008 = R(1) gate
 		consumeBipedSlideQuantNormal(br) // FUN_14076d4d0 -> FUN_14076d528
 		br.ReadBits(8)                   // FUN_1406d84b4(w=8) = R(8)
-		if recordStateParam >= 1 {
+		if br.recordStateParam() >= 1 {
 			br.ReadBits(8) // FUN_1406d84b4(w=8) = R(8), gated on param_4>=1
 		}
 		br.ReadBits(8) // inline R(8) -> [dst+2]

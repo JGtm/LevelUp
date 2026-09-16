@@ -119,7 +119,7 @@ const DefaultPacketPreambleBits = 2
 // VAUT l invariant [mouvementDuProfil].
 func DefaultFrameConfig() FrameConfig {
 	return FrameConfig{HasExtraFields: false, IDLowBits: 13, IDBase: 0, NewDefaultStateBits: 0,
-		PacketPreambleBits: DefaultPacketPreambleBits, Mouvement: mouvementHerite}
+		PacketPreambleBits: DefaultPacketPreambleBits, Mouvement: herite.mouvement}
 }
 
 // FrameRecord is one decoded record of a type-0 FRAME packet.
