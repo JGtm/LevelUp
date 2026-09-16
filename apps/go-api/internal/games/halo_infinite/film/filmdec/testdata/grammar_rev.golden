@@ -348,7 +348,7 @@
 #               chainage. Faux positif d empreinte, meme nature que `.13` et `.14`.
 #               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` non plus : le corpus gate
 #               rend schema 59 -> 59 et 0 gain / 0 perte / 0 changement sur les 14 temoins.
-#   2026-09-17  grammar-2026-09-15.20  lot 2.2.a (`.19` -> `.20`, RANG PROVISOIRE) : LES LECTEURS
+#   2026-09-17  grammar-2026-09-15.21  lot 2.2.a (`.20` -> `.21`, RANG DE FUSION) : LES LECTEURS
 #               DU CHEMIN DE POSITION PRENNENT LEUR VALEUR AU PROFIL. Les cinq variables de
 #               paquet de la famille (descripteur de traversee, largeur d axe absolue, pleine
 #               precision, queue de poignee du delta, saut calibre) voyagent desormais avec le
@@ -361,7 +361,7 @@
 #               `killsource` PUIS `replay.BuildFromFilm`, sans restauration), avec date de
 #               bascule, cible de retrait (lot 2.3) et critere. Ratchet 94 -> 90. AUCUN OCTET
 #               N EST LU AUTREMENT. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
-#   2026-09-17  grammar-2026-09-15.21  lot 2.2.b (`.20` -> `.21`, RANG PROVISOIRE) : LES LECTEURS
+#   2026-09-17  grammar-2026-09-15.22  lot 2.2.b (`.21` -> `.22`, RANG DE FUSION) : LES LECTEURS
 #               DES OBJETS DU MONDE PRENNENT LEUR VALEUR AU PROFIL. Quatre variables de paquet
 #               de plus le rejoignent — descripteur world-object (largeurs d axe, largeur
 #               d index de region, region attendue), range de dequantification absolue, quantum
@@ -373,7 +373,7 @@
 #               prennent l heritage par une fonction nommee. Le garde-rail d allowlist est
 #               re-cle sur les TROIS formes d acces. Ratchet 90 -> 86. AUCUN OCTET N EST LU
 #               AUTREMENT. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
-#   2026-09-17  grammar-2026-09-15.22  lot 2.2.c (`.21` -> `.22`, RANG PROVISOIRE) : LES MARCHES
+#   2026-09-17  grammar-2026-09-15.23  lot 2.2.c (`.22` -> `.23`, RANG DE FUSION) : LES MARCHES
 #               D IMAGE-CLE PRENNENT LEUR CADRE AU PROFIL. Les trois lecteurs d etat complet
 #               (marche, bloc d etat par defaut, lecture d equipe du record) lisaient les DEUX
 #               constantes du paquet ; ils les prennent au lecteur, qui les tient de
@@ -384,7 +384,7 @@
 #               dans le profil rougit desormais `TestKeyframeClosureRatchet` sur les sept
 #               bobines. AUCUN OCTET N EST LU AUTREMENT. `KillSourceDecoderRev` ne bouge PAS ;
 #               `SchemaVersion` reste 60.
-#   2026-09-17  grammar-2026-09-15.23  lot 2.2.d (`.22` -> `.23`, RANG PROVISOIRE) : LA VERSION DU
+#   2026-09-17  grammar-2026-09-15.24  lot 2.2.d (`.23` -> `.24`, RANG DE FUSION) : LA VERSION DU
 #               FILM VIENT DU PROFIL DU CONTEXTE. La phase de positions du rejeu rouvrait le
 #               registre pour son compte alors que le contexte avait deja resolu le profil (D1) ;
 #               elle prend `Profile.Highlight()`, meme valeur par le meme chemin, une
@@ -393,11 +393,11 @@
 #               ratchet interdit d importer un paquet de titre : statue `[!]`, leve au pas 5
 #               (V5), garde en attendant par `TestProfilHighlightEgaleLeParseur`. Le ratchet ne
 #               bouge pas (86) : la famille ne portait aucune variable de paquet. L EMPREINTE
-#               NE BOUGE PAS NON PLUS — meme sha qu au rang `.22` — parce que le changement vit
+#               NE BOUGE PAS NON PLUS — meme sha qu au rang `.23` — parce que le changement vit
 #               entierement hors des deux paquets haches ; la revision monte quand meme, elle
 #               nomme la grammaire sous laquelle un artefact a ete cuit. AUCUN OCTET N EST LU
 #               AUTREMENT. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` 60.
-#   2026-09-17  grammar-2026-09-15.24  lot 2.2.e (`.23` -> `.24`, RANG PROVISOIRE) : EQUIPEMENT ET
+#   2026-09-17  grammar-2026-09-15.25  lot 2.2.e (`.24` -> `.25`, RANG DE FUSION) : EQUIPEMENT ET
 #               MOBILITE AU PROFIL, ET L HERITAGE DEVIENT UNE STRUCTURE. Les deux largeurs du
 #               bloc `object-multiplayer-properties` (dont depend la lecture de tout l etat par
 #               defaut), le `param_4` force par un harnais et son drapeau, et les bits
@@ -410,7 +410,7 @@
 #               prime : `mpp_widths.go` sort de `default_state.go` (503 lignes). Ratchet 86 ->
 #               79. AUCUN OCTET N EST LU AUTREMENT. `KillSourceDecoderRev` ne bouge PAS
 #               (`killsource/` intact) ; `SchemaVersion` reste 60.
-#   2026-09-17  grammar-2026-09-15.25  lot 2.2.f (`.24` -> `.25`, RANG PROVISOIRE) : L OBSERVATEUR.
+#   2026-09-17  grammar-2026-09-15.26  lot 2.2.f (`.25` -> `.26`, RANG DE FUSION) : L OBSERVATEUR.
 #               Trente-sept variables de paquet deviennent les CHAMPS d un seul objet — les 29
 #               crochets de deserialiseur et les 8 compteurs de l inference de chaine, dont
 #               `compWidthObs`, « la table sans verrou » que l en-tete de `decode_gate.go` nomme
@@ -422,4 +422,4 @@
 #               raison est ecrite. Les 85 ancres `fichier:ligne` de la table ECS suivent le
 #               deplacement des fonctions. Ratchet 79 -> 43. AUCUN OCTET N EST LU AUTREMENT.
 #               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
-grammar-2026-09-15.25	2a19dde6b735fe71e18c33f71439a462e60f98f2d21034479fd5e31f5ba41660
+grammar-2026-09-15.26	2a19dde6b735fe71e18c33f71439a462e60f98f2d21034479fd5e31f5ba41660
