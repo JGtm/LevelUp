@@ -322,6 +322,19 @@
   --replay-label-stroke: rgb(8 12 18 / 0.92);
 }
 
+/* ─── Fond de la VIDÉO EXPORTÉE du rejeu 2D (--replay-export-backdrop) ────────── */
+/*
+   Décision utilisateur du 2026-09-16 (plan « formats vidéo », D8) : autour d'une carte qui
+   n'est pas en 16:9, le clip est NOIR PUR, quel que soit le thème de qui exporte — un fichier
+   ne doit pas changer d'apparence selon une préférence d'interface. Même valeur dans les deux
+   thèmes. Encre de mise en page, lue par canvasInk.ts, jamais écrite dans `features/`.
+*/
+:root,
+:root[data-theme='dark'],
+:root[data-theme='light'] {
+  --replay-export-backdrop: rgb(0 0 0);
+}
+
 /* ─── Base styles ───────────────────────────────────────────────────────────── */
 @layer base {
   * {

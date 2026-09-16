@@ -26,6 +26,7 @@ import { staticAssetURL } from '@/lib/staticAssets'
 import { useTitleSlug } from '@/lib/title-routing'
 
 import type { FxInk } from './fxInk'
+import { withLoadedImage } from './loadedImage'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
@@ -196,12 +197,10 @@ export function useReplayVehicles({
       // qui évite un 404 par match — et le calque a déjà son pictogramme pour elle.
       const url = labels?.[family]?.img
       if (!url) continue
-      const im = new Image()
-      im.onload = () => {
+      withLoadedImage(url, (im) => {
         map.set(family, im)
         redraw()
-      }
-      im.src = url
+      })
     }
   }, [enabled, labels, redraw])
 

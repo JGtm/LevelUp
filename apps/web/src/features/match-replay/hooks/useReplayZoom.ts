@@ -76,6 +76,32 @@ export interface ReplayZoom {
   panBy: (dx: number, dy: number) => void
 }
 
+const inert = () => {}
+
+/**
+ * lockedZoom — le MÊME état (palier, centre), SANS aucun geste (décision D7, 2026-09-16).
+ *
+ * Pendant un export, le cadrage ne doit pas bouger sous le calcul. Les quatre gestes — croix,
+ * molette, clavier, glisser — passent TOUS par cet objet (cf. l'en-tête, « trois gestes, un seul
+ * chemin », et `useReplayDrag` qui lit `canPan`) : le neutraliser ici les éteint tous d'un coup,
+ * et les boutons de la croix se désactivent d'eux-mêmes. L'état n'est pas touché : il est intact
+ * quand l'export rend la main.
+ */
+export function lockedZoom(zoom: ReplayZoom): ReplayZoom {
+  return {
+    ...zoom,
+    canZoomIn: false,
+    canZoomOut: false,
+    canPan: false,
+    zoomIn: inert,
+    zoomOut: inert,
+    reset: inert,
+    panStep: inert,
+    zoomAt: inert,
+    panBy: inert,
+  }
+}
+
 export function useReplayZoom(scene: ReplayBounds): ReplayZoom {
   const [index, setIndex] = useState(0)
   // LE CENTRE N'EST PAS INITIALISÉ DEPUIS `scene` PAR UN EFFET, mais par `null` puis résolu à la

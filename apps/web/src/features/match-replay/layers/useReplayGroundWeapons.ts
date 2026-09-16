@@ -44,6 +44,7 @@ import type { ReplayGroundWeapon } from '@/lib/api/types'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { tintedIconCanvas } from './replayDraw'
+import { withLoadedImage } from './loadedImage'
 import {
   drawGroundWeaponsLayer,
   groundWeaponAt,
@@ -236,8 +237,7 @@ export function useReplayGroundWeapons({
       seen.add(item.w)
       const { url, tinted, mirrored } = ref
       const weapon = item.w
-      const im = new Image()
-      im.onload = () => {
+      withLoadedImage(url, (im) => {
         map.set(weapon, {
           // Une image FINIE garde ses couleurs (`tinted` faux) sauf si le miroir l'oblige à
           // repasser par le canvas hors écran — exactement la règle des socles.
@@ -247,8 +247,7 @@ export function useReplayGroundWeapons({
           outline: tintedIconCanvas(im, ink.outline, { mirrored }),
         })
         redraw()
-      }
-      im.src = url
+      })
     }
   }, [items, labels, titleSlug, ink.fill, ink.outline, redraw])
 
