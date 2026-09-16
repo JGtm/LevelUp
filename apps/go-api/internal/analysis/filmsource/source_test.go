@@ -3,11 +3,11 @@ package filmsource_test
 // source_test.go — LA SOURCE, ET LA CONFRONTATION AU FILM REEL.
 //
 // Le test qui compte ici est le DERNIER : sur la mini-bobine reelle, la grammaire retenue doit
-// rendre EXACTEMENT le jeu de paquets de `filmdec.WalkPackets`, le marcheur de production que le
+// rendre EXACTEMENT le jeu de paquets de `grammar.WalkPackets`, le marcheur de production que le
 // lot 1 remplace. C'est l'engagement de D3 (« sur les chunks de donnees, la vue est
 // bit-identique »), verifie ici sur les octets d'un vrai film et non sur une construction.
 //
-// DEPUIS LE LOT 2.4.2, CE TEST N IMPORTE PLUS `filmdec` DU TOUT : il portait la comparaison des
+// DEPUIS LE LOT 2.4.2, CE TEST N IMPORTE PLUS `grammar` DU TOUT : il portait la comparaison des
 // deux marcheurs de paquets, et le second marcheur n existe plus — son ORACLE est recopie ici
 // ([refWalkPackets]). `filmsource` est une FEUILLE, et `internal/archlint/filmsource_leaf_test.go`
 // le verifie sur les fichiers non-test.
@@ -93,7 +93,7 @@ func TestDirSourceRepertoireSansChunk(t *testing.T) {
 }
 
 // TestLoadDirMiniBobine — le film reel : trois chunks, des paquets dans chacun, et le chunk
-// highlight decoupe EXACTEMENT comme `filmdec.WalkPackets` le decoupe.
+// highlight decoupe EXACTEMENT comme `grammar.WalkPackets` le decoupe.
 func TestLoadDirMiniBobine(t *testing.T) {
 	if _, err := os.Stat(miniBobine); err != nil {
 		t.Fatalf("mini-bobine absente (%s) : %v", miniBobine, err)
@@ -137,7 +137,7 @@ func TestLoadDirMiniBobine(t *testing.T) {
 	comparerAuxDeuxMarcheurs(t, clair, film.Packets(chunkHighlight))
 }
 
-// refWalkPackets : LE SECOND MARCHEUR DE PAQUETS, tel que `filmdec.WalkPackets` le portait
+// refWalkPackets : LE SECOND MARCHEUR DE PAQUETS, tel que `grammar.WalkPackets` le portait
 // jusqu au lot 2.4.2 — recopie ici, et nulle part ailleurs, comme oracle differentiel.
 //
 // SES DEUX ECARTS AVEC LA GRAMMAIRE DE D3 REVISEE, et c est ce que le temoin mesure : il ne

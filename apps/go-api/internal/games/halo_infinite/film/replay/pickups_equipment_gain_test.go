@@ -24,7 +24,7 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 func TestPickupsEquipmentGain(t *testing.T) {
@@ -33,7 +33,7 @@ func TestPickupsEquipmentGain(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", pickupsBridgeEnv)
 	}
 
-	pickups, _, err := filmdec.ScanFilmBipedPickups(dir)
+	pickups, _, err := grammar.ScanFilmBipedPickups(dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
@@ -43,7 +43,7 @@ func TestPickupsEquipmentGain(t *testing.T) {
 	// SANS témoin de naissance : on n'utilise pas la NATURE du changement (`taken` / `spent`),
 	// seulement le couple (instant, slot) — et celui-là est lu, pas déduit. Le sur-classement
 	// des premières émissions n'a donc aucun effet sur cette mesure.
-	equip, eStats, err := filmdec.ScanFilmEquipmentChanges(dir, nil)
+	equip, eStats, err := grammar.ScanFilmEquipmentChanges(dir, nil)
 	if err != nil {
 		t.Fatalf("changements d equipement illisibles : %v", err)
 	}
@@ -66,7 +66,7 @@ func TestPickupsEquipmentGain(t *testing.T) {
 	items, gain := 0, 0
 	weapons, weaponsCovered := 0, 0
 	for _, p := range pickups {
-		if filmdec.BipedPickupIsWeaponClass(p.Class) {
+		if grammar.BipedPickupIsWeaponClass(p.Class) {
 			weapons++
 			if covered(p.Slot, p.TimestampUS, 0) {
 				weaponsCovered++
@@ -83,7 +83,7 @@ func TestPickupsEquipmentGain(t *testing.T) {
 	// voudrait dire que la couverture ne mesure rien.
 	temoinCouvert := 0
 	for _, p := range pickups {
-		if filmdec.BipedPickupIsWeaponClass(p.Class) {
+		if grammar.BipedPickupIsWeaponClass(p.Class) {
 			continue
 		}
 		if covered(p.Slot, p.TimestampUS, 37_000_000) {

@@ -5,7 +5,7 @@ package replay
 // Trois entrees se rejoignent ici, et chacune vient d'une source DISTINCTE :
 //
 //	les FORMES     `data/titles/halo_infinite/reference/map_objectives.json` (donnee versionnee) ;
-//	les POSITIONS  le film, decode par `filmdec` puis assemble par `BuildFromPositions` ;
+//	les POSITIONS  le film, decode par `grammar` puis assemble par `BuildFromPositions` ;
 //	les INSTANTS   les evenements nommes du statborg (`objectives`), identifies par xuid.
 //
 // AUCUNE BASE N'EST OUVERTE. Le pont slot statborg -> xuid exige les lignes de match (frags,
@@ -32,7 +32,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
@@ -209,9 +209,9 @@ func p2aRefDir(t *testing.T) string {
 
 // p2aQuant rend l'entree de bornes de quantification de la carte. Sans elle, les positions
 // restent des quanta et aucune distance n'a de sens : la mesure s'arrete.
-func p2aQuant(t *testing.T, carte string) *filmdec.MapQuantEntry {
+func p2aQuant(t *testing.T, carte string) *grammar.MapQuantEntry {
 	t.Helper()
-	cat, err := filmdec.LoadMapQuantCatalog(filepath.Join(p2aRefDir(t), "map_quant_bounds.json"))
+	cat, err := grammar.LoadMapQuantCatalog(filepath.Join(p2aRefDir(t), "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}
@@ -263,12 +263,12 @@ func p2aZones(t *testing.T, mapID string, roles ...mapvar.Role) []Zone {
 // C'est le chemin de `BuildFromFilm` reduit a ce que la phase 2a consomme (positions, fil des
 // morts, index de joueur, origine d'horloge) : ni tirs, ni armes, ni projectiles. La machine de
 // l'utilisateur paie chaque balayage — on ne decode pas ce qu'on ne mesure pas.
-func p2aDoc(t *testing.T, dir, short string, quant *filmdec.MapQuantEntry) ReplayDocument {
+func p2aDoc(t *testing.T, dir, short string, quant *grammar.MapQuantEntry) ReplayDocument {
 	t.Helper()
 	worldRange := quant.Range()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.WorldRange = &worldRange
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("positions illisibles (%s) : %v", dir, err)
 	}

@@ -31,7 +31,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
@@ -48,9 +48,9 @@ import (
 func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options) (ReplayDocument, error) {
 	if opt.MapQuant == nil {
 		return ReplayDocument{}, fmt.Errorf("%w (match %s) : le document de rejeu exige l'entrée de catalogue de la carte",
-			filmdec.ErrUnknownMapBounds, matchID)
+			grammar.ErrUnknownMapBounds, matchID)
 	}
-	// PLUS DE VERROU DE PAQUET ICI (lot 2.3) : `filmdec` n'a plus aucune variable de paquet
+	// PLUS DE VERROU DE PAQUET ICI (lot 2.3) : `grammar` n'a plus aucune variable de paquet
 	// ecrite, et cette cuisson porte son propre etat de decodage — le profil de balayage et
 	// l'observation vivent dans le `FilmContext` construit ci-dessous, donc dans CET appel. Deux
 	// films peuvent se cuire en parallele dans le meme processus ; le verrou INTER-PROCESSUS
@@ -72,7 +72,7 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// fois ». Rien d autre ne bouge : les trois derivations memorisees (bande de slots, decoupage
 	// d i0, registre) restent PARESSEUSES, donc calculees au premier balayage qui les demande,
 	// donc apres l installation ci-dessous et apres le demarrage de l horloge des etapes.
-	fc := filmdec.NewFilmContextForMap(film, opt.MapQuant, decoupageForce(opt))
+	fc := grammar.NewFilmContextForMap(film, opt.MapQuant, decoupageForce(opt))
 	poserProfilPuisCarte(fc, matchID, opt)
 	in, err := scanFilmInputs(matchID, film, fc, opt)
 	if err != nil {
@@ -87,7 +87,7 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 //
 // # L ORDRE EST LA REGLE, ET IL N EST PAS COMMUTATIF
 //
-// [filmdec.FilmContext.PoserProfilDeBalayage] remplace le profil ENTIER. Poser les largeurs de la
+// [grammar.FilmContext.PoserProfilDeBalayage] remplace le profil ENTIER. Poser les largeurs de la
 // carte d'abord et le profil ensuite les EFFACERAIT sans un mot : les objets du monde seraient
 // dequantifies aux largeurs par defaut — celles d'UNE carte, `cliffhanger` — sur toutes les
 // autres. Dans le bon ordre, `installWorldObjectPrecision` n'ecrase que le descripteur
@@ -103,7 +103,7 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 //
 // Garde-rail : `TestRouteDuProfilCalibreJusquAuContexte` epingle les deux — le profil calibre
 // ARRIVE, et les largeurs de carte SURVIVENT. Intervertir les deux appels le fait rougir.
-func poserProfilPuisCarte(fc *filmdec.FilmContext, matchID string, opt Options) {
+func poserProfilPuisCarte(fc *grammar.FilmContext, matchID string, opt Options) {
 	if opt.ProfilDeBalayage != nil {
 		fc.PoserProfilDeBalayage(*opt.ProfilDeBalayage)
 	}
@@ -120,9 +120,9 @@ func poserProfilPuisCarte(fc *filmdec.FilmContext, matchID string, opt Options) 
 type filmScan struct {
 	matchID string
 	film    *filmsource.Film
-	fc      *filmdec.FilmContext
-	scan    filmdec.ScanFilmOptions
-	world   filmdec.Vec3Range
+	fc      *grammar.FilmContext
+	scan    grammar.ScanFilmOptions
+	world   grammar.Vec3Range
 	// opt porte ce que l'APPELANT a fourni : l'observateur, son horloge, et les gardes de mode
 	// des trois calques qui ne se balaient que sur demande (drapeau, zones, bombe). Les
 	// balayages n'y ECRIVENT jamais — leurs sorties vont dans `in`.
@@ -132,16 +132,16 @@ type filmScan struct {
 
 // decoupageForce rend le decoupage d'i0 que l'APPELANT impose, ou nil.
 //
-// C'est la seule partie de `filmdec.DefaultScanFilmOptions()` / `*opt.Scan` dont le CONSTRUCTEUR
+// C'est la seule partie de `grammar.DefaultScanFilmOptions()` / `*opt.Scan` dont le CONSTRUCTEUR
 // du contexte a besoin (`NewFilmContextForMap` la prend en troisieme parametre). Le defaut du
 // paquet ne force aucun decoupage — c'est le sens de la regle du catalogue —, donc l'absence
 // d'`opt.Scan` rend nil, exactement comme `DefaultScanFilmOptions().Layout`.
 //
 // GARDE-RAIL : `TestDecoupageForceSuitLesOptions` compare cette fonction au champ que
 // `scanFilmInputs` calcule pour son propre compte ; les deux ne peuvent pas diverger en silence.
-func decoupageForce(opt Options) *filmdec.I0Layout {
+func decoupageForce(opt Options) *grammar.I0Layout {
 	if opt.Scan == nil {
-		return filmdec.DefaultScanFilmOptions().Layout
+		return grammar.DefaultScanFilmOptions().Layout
 	}
 	return opt.Scan.Layout
 }
@@ -157,10 +157,10 @@ func decoupageForce(opt Options) *filmdec.I0Layout {
 // filtre de vitesse aux teleportations, les changements d'arme se qualifient sur les loadouts
 // deja lus, les changements d'equipement sur les naissances lues dans les positions, et les
 // socles comme les vehicules heritent des largeurs MPP calibrees par les poses.
-func scanFilmInputs(matchID string, film *filmsource.Film, fc *filmdec.FilmContext,
+func scanFilmInputs(matchID string, film *filmsource.Film, fc *grammar.FilmContext,
 	opt Options) (FilmInputs, error) {
 	s := &filmScan{matchID: matchID, film: film, fc: fc, opt: opt, world: opt.MapQuant.Range()}
-	s.scan = filmdec.DefaultScanFilmOptions()
+	s.scan = grammar.DefaultScanFilmOptions()
 	if opt.Scan != nil {
 		s.scan = *opt.Scan
 	}
@@ -187,7 +187,7 @@ func scanFilmInputs(matchID string, film *filmsource.Film, fc *filmdec.FilmConte
 	// world-object laisse son défaut — jamais des largeurs nulles.
 	//
 	// CETTE REGLE EST DESORMAIS CELLE DU CONTEXTE, ET DONC CELLE DE TOUS LES BALAYAGES (lot 3,
-	// 2026-09-03) : elle est écrite une seule fois, dans `filmdec.NewFilmContextForMap`, et les
+	// 2026-09-03) : elle est écrite une seule fois, dans `grammar.NewFilmContextForMap`, et les
 	// positions la lisent au MEME endroit que les six canaux delta. Avant, les positions seules
 	// l'appliquaient et les canaux delta re-detectaient — sur Live Fire, 27 enregistrements
 	// d'une AUTRE region de compression passaient leur porte (mesure du 2026-09-03, item 3.2).

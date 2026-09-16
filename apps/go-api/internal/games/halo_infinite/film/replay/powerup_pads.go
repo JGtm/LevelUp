@@ -3,7 +3,7 @@ package replay
 // powerup_pads.go — LES SOCLES DE POWER-UP : la voie `ti=37` de la chaîne des socles.
 //
 // CE QUE CETTE VOIE AJOUTE, ET CE QU'ELLE NE REMPLACE PAS. La chaîne `ti=37` de production
-// (`filmdec.ScanFilmEquipmentPlacements` -> `equipmentPlacements`) ne retient un record de
+// (`grammar.ScanFilmEquipmentPlacements` -> `equipmentPlacements`) ne retient un record de
 // création que si sa position retombe sur le PREMIER POINT d'une vie décodée des paquets DELTA
 // (`confirmPlacements` -> `MatchEquipmentLife`). Cet oracle reste, et il doit rester : c'est lui
 // qui rend publiables les POSES d'un joueur (mur, capteur, grenades lâchées). Mais il est

@@ -74,7 +74,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -96,7 +96,7 @@ const (
 func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, map[uint32]uint64, []Death) {
 	t.Helper()
 	dir := filepath.Join(cache, "film_chunks", id)
-	changes, _, err := filmdec.ScanFilmHeldWeaponChanges(dir, nil)
+	changes, _, err := grammar.ScanFilmHeldWeaponChanges(dir, nil)
 	if err != nil {
 		t.Fatalf("%s : canal des armes tenues illisible : %v", id, err)
 	}
@@ -130,9 +130,9 @@ func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, 
 	}
 	sort.Slice(xuids, func(i, j int) bool { return xuids[i] < xuids[j] })
 
-	opt := filmdec.DefaultScanFilmOptions()
+	opt := grammar.DefaultScanFilmOptions()
 	opt.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, opt)
+	pos, err := grammar.ScanFilmBipedPositions(dir, opt)
 	if err != nil {
 		t.Fatalf("%s : positions bipeds illisibles : %v", id, err)
 	}
@@ -327,7 +327,7 @@ func b2JugeExplosion(t *testing.T, id string, tE int, evs []HeldObjectEvent,
 func b2Kills(t *testing.T, cache, id string) []analysishl {
 	t.Helper()
 	dir := filepath.Join(cache, "film_chunks", id)
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	raw, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("chunk_%02d.bin", n)))
 	if err != nil {
 		t.Fatalf("%s : chunk highlight illisible : %v", id, err)

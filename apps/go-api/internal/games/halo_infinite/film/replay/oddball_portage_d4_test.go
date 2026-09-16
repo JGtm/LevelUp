@@ -38,7 +38,7 @@ import (
 
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -128,19 +128,19 @@ func d4ViesLibres(t *testing.T, root, id string) ([]flagFreeLife, bool) {
 		return nil, false
 	}
 	dir := objChunkDir(root, id)
-	kf := filmdec.ScanFilmWorldObjectKeyframes(dir, filmdec.GroundWeaponTypeIndex)
+	kf := grammar.ScanFilmWorldObjectKeyframes(dir, grammar.GroundWeaponTypeIndex)
 	if len(kf.Band) == 0 {
 		t.Logf("NON EXPLOITABLE %s : aucun slot `ti=42` aux images-cles. NI POUR NI CONTRE.", id)
 		return nil, false
 	}
-	cre, st, err := filmdec.ScanFilmGroundWeaponCreationsForBand(dir, &wr, kf.Band)
+	cre, st, err := grammar.ScanFilmGroundWeaponCreationsForBand(dir, &wr, kf.Band)
 	if err != nil {
 		t.Logf("NON EXPLOITABLE %s : creations `ti=42` illisibles : %v. NI POUR NI CONTRE.", id, err)
 		return nil, false
 	}
 	// LES PISTES DELTA SONT LA PIECE INDISPENSABLE, et leur absence est le cas TRAITRE : sans
 	// elles toute vie paraitrait reduite a un point, donc le film n'aurait QUE des trous.
-	tracks, err := filmdec.ScanFilmWorldObjectsForBand(dir, &wr, kf.Band)
+	tracks, err := grammar.ScanFilmWorldObjectsForBand(dir, &wr, kf.Band)
 	if err != nil {
 		t.Logf("NON EXPLOITABLE %s : pistes delta illisibles : %v — sans elles toute vie paraitrait "+
 			"reduite a un point et le film n'aurait que des trous. NI POUR NI CONTRE.", id, err)

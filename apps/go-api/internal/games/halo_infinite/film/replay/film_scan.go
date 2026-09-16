@@ -17,7 +17,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // balayerPositions lit la version du film, les teleportations, les positions, les creations de
@@ -57,13 +57,13 @@ func (s *filmScan) balayerPositions() error {
 	// positions du va-et-vient, quantifiées aux bornes de la carte (R6 §1, validé 18/18) :
 	// sans elle le scanner rendrait des quanta invérifiables, donc rien. Elle est garantie
 	// non nulle ici (refus en tête de BuildFromFilm).
-	s.in.Translocations = filmdec.ScanTranslocatorTeleports(s.film, s.opt.MapQuant)
-	s.scan.TeleportExemptions = filmdec.TeleportExemptionsOf(s.in.Translocations)
+	s.in.Translocations = grammar.ScanTranslocatorTeleports(s.film, s.opt.MapQuant)
+	s.scan.TeleportExemptions = grammar.TeleportExemptionsOf(s.in.Translocations)
 	if len(s.in.Translocations) > 0 {
 		slog.Info("translocateur : teleportations lues", "evenements", len(s.in.Translocations))
 	}
 	s.opt.observe("translocations", s.in.Translocations)
-	positions, err := filmdec.ScanBipedPositions(s.fc, s.scan)
+	positions, err := grammar.ScanBipedPositions(s.fc, s.scan)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (s *filmScan) balayerPositions() error {
 	s.balayerCreations()
 	// Les tirs sont décodés du MÊME film et sur la MÊME horloge que les positions ; leur
 	// absence n'est pas fatale (un film sans event de tir reste un rejeu valide).
-	shots, err := filmdec.ScanFireEvents(s.film)
+	shots, err := grammar.ScanFireEvents(s.film)
 	if err != nil {
 		slog.Warn("events de tir illisibles — rejeu sans tirs", "err", err, "match_id", s.matchID)
 		shots = nil
@@ -81,7 +81,7 @@ func (s *filmScan) balayerPositions() error {
 	s.opt.observe("fire", s.in.Fire)
 	// Armes portées : lues dans les keyframes du MÊME film, sur la MÊME horloge. Leur
 	// absence n'est pas fatale (un rejeu sans armes reste un rejeu valide).
-	loadouts, err := filmdec.ScanKeyframeLoadouts(s.film, loadoutFamilies())
+	loadouts, err := grammar.ScanKeyframeLoadouts(s.film, loadoutFamilies())
 	if err != nil {
 		slog.Warn("keyframes illisibles — rejeu sans armes portées", "err", err, "match_id", s.matchID)
 		loadouts = nil
@@ -97,11 +97,11 @@ func (s *filmScan) balayerPositions() error {
 // registre dégrade alors sur le pont par morts et le PUBLIE
 // (`coverage.bridge.bridgeNamedLives`).
 func (s *filmScan) balayerCreations() {
-	creations, creaStats, err := filmdec.ScanBipedCreations(s.fc)
+	creations, creaStats, err := grammar.ScanBipedCreations(s.fc)
 	if err != nil {
 		slog.Warn("creations de bipede illisibles — le registre degrade sur le pont par morts",
 			"err", err, "match_id", s.matchID)
-		creations, creaStats = nil, filmdec.BipedCreationStats{}
+		creations, creaStats = nil, grammar.BipedCreationStats{}
 	} else {
 		slog.Info("creation de bipede : records lus",
 			"corps", creaStats.Slots, "ancres", creaStats.Anchors, "acceptes", creaStats.Accepted,
@@ -131,7 +131,7 @@ func (s *filmScan) balayerPortage() {
 	// emission d'un emplacement serait comptee comme une prise alors qu'elle peut n'etre que
 	// la re-annonce d'une arme deja portee. Absence non fatale — le rejeu sort sans
 	// ramassages, jamais avec des ramassages devines.
-	weaponChanges, wStats, err := filmdec.ScanHeldWeaponChanges(s.fc, spawnSetFrom(s.in.Loadouts))
+	weaponChanges, wStats, err := grammar.ScanHeldWeaponChanges(s.fc, spawnSetFrom(s.in.Loadouts))
 	if err != nil {
 		slog.Warn("changements d arme illisibles — rejeu sans ramassages", "err", err, "match_id", s.matchID)
 		weaponChanges = nil
@@ -147,10 +147,10 @@ func (s *filmScan) balayerPortage() {
 	// paquets delta. AUTRE SOURCE que le canal ci-dessus (qui lit un composant du bipede
 	// PENDANT la traversee d'un record) : celui-ci lit des bits que personne d'autre ne lit,
 	// avant la trame. Il date a la milliseconde ET nomme le ramasseur. Absence non fatale.
-	pickups, pStats, err := filmdec.ScanBipedPickups(s.fc)
+	pickups, pStats, err := grammar.ScanBipedPickups(s.fc)
 	if err != nil {
 		slog.Warn("ramassages natifs illisibles — rejeu sans ramassages natifs", "err", err, "match_id", s.matchID)
-		pickups, pStats = nil, filmdec.BipedPickupStats{}
+		pickups, pStats = nil, grammar.BipedPickupStats{}
 	} else {
 		slog.Info("ramassage natif : evenements lus",
 			"paquets", pStats.Packets, "type9", pStats.Type9, "type8", pStats.Type8,
@@ -184,7 +184,7 @@ func (s *filmScan) balayerInventaire() {
 	// Inventaire suivi dans les paquets DELTA : les compteurs de grenades (i22) et le jeu
 	// selectionne (i47), transmis AU CHANGEMENT donc places la ou l'etat bouge. Absence non
 	// fatale — l'axe des grenades retombe sur les seules images-cles.
-	invDeltas, dStats, err := filmdec.ScanInventoryDeltas(s.fc)
+	invDeltas, dStats, err := grammar.ScanInventoryDeltas(s.fc)
 	if err != nil {
 		slog.Warn("inventaire delta illisible — grenades sans rafraichissement entre images-cles",
 			"err", err, "match_id", s.matchID)
@@ -209,7 +209,7 @@ func (s *filmScan) balayerCapacites() {
 	// Identite de la capacite portee : lue dans les paquets DELTA, sur la MEME horloge. Rare
 	// (une transmission par vie environ) mais elle porte le rang COMPLET, la ou les images-cles
 	// ne voient que 16..23. Absence non fatale — le rejeu retombe sur cette seule fenetre.
-	abilityRanks, aStats, err := filmdec.ScanAbilityRanks(s.fc)
+	abilityRanks, aStats, err := grammar.ScanAbilityRanks(s.fc)
 	if err != nil {
 		slog.Warn("identites de capacite illisibles — rejeu sans rang complet", "err", err, "match_id", s.matchID)
 		abilityRanks = nil
@@ -226,11 +226,11 @@ func (s *filmScan) balayerCapacites() {
 	// Le temoin de NAISSANCE vient des positions BRUTES lues plus haut : sans lui, une
 	// reapparition equipee serait comptee comme un ramassage, ce qui double le decompte sur
 	// les modes ou les joueurs renaissent equipes. Absence non fatale.
-	equipChanges, eStats, err := filmdec.ScanEquipmentChanges(s.fc, birthOfLives(s.in.Positions))
+	equipChanges, eStats, err := grammar.ScanEquipmentChanges(s.fc, birthOfLives(s.in.Positions))
 	if err != nil {
 		slog.Warn("changements d equipement illisibles — rejeu sans ramassages d equipement",
 			"err", err, "match_id", s.matchID)
-		equipChanges, eStats = nil, filmdec.EquipmentChangeStats{}
+		equipChanges, eStats = nil, grammar.EquipmentChangeStats{}
 	} else {
 		slog.Info("equipement : changements lus",
 			"emissions", eStats.Walk.Read, "vies", eStats.Lives,
@@ -249,7 +249,7 @@ func (s *filmScan) balayerCapacites() {
 func (s *filmScan) balayerEtatsActifs() {
 	// Etat du camouflage : la voie i28 queue[1] (cf. filmdec/camo_state.go). Absence non fatale
 	// — le rejeu sort sans episodes de camouflage, jamais avec des episodes devines.
-	camoStates, cStats, err := filmdec.ScanCamoStates(s.fc)
+	camoStates, cStats, err := grammar.ScanCamoStates(s.fc)
 	if err != nil {
 		slog.Warn("etat de camouflage illisible — rejeu sans episodes de camo", "err", err, "match_id", s.matchID)
 		camoStates = nil
@@ -263,7 +263,7 @@ func (s *filmScan) balayerEtatsActifs() {
 	s.opt.observe("camoStates.stats", cStats)
 	// Evenements de grappin : le corps tag==3 d'i59 (cf. filmdec/grapple_state.go). Absence non
 	// fatale — le rejeu sort sans tractions de grappin, jamais avec des tractions devinees.
-	grappleReads, gStats, err := filmdec.ScanGrappleReads(s.fc)
+	grappleReads, gStats, err := grammar.ScanGrappleReads(s.fc)
 	if err != nil {
 		slog.Warn("evenements de grappin illisibles — rejeu sans tractions", "err", err, "match_id", s.matchID)
 		grappleReads = nil
@@ -285,10 +285,10 @@ func (s *filmScan) balayerImpulsionsEtCharges() {
 	// predit i59), lu dans les paquets DELTA sur la MEME horloge (cf.
 	// filmdec/ability_impulses.go). C'est le canal d'usage du PROPULSEUR, mesure au lot R8.
 	// Absence non fatale — le rejeu sort sans impulsions, jamais avec des impulsions devinees.
-	impulses, iStats, err := filmdec.ScanAbilityImpulses(s.fc)
+	impulses, iStats, err := grammar.ScanAbilityImpulses(s.fc)
 	if err != nil {
 		slog.Warn("impulsions de capacite illisibles — rejeu sans impulsions", "err", err, "match_id", s.matchID)
-		impulses, iStats = nil, filmdec.AbilityImpulseStats{}
+		impulses, iStats = nil, grammar.AbilityImpulseStats{}
 	} else {
 		slog.Info("capacites : lectures de tag d i57/i59",
 			"recordsDelta", iStats.Records, "masqueAvecI57", iStats.WithI57,
@@ -301,10 +301,10 @@ func (s *filmScan) balayerImpulsionsEtCharges() {
 	// paquets DELTA sur la MEME horloge (cf. filmdec/ability_charges.go). C'est le canal des
 	// charges mesure au lot R11. Absence non fatale — le rejeu sort sans releve de charges,
 	// jamais avec des charges devinees.
-	charges, chStats, err := filmdec.ScanAbilityCharges(s.fc)
+	charges, chStats, err := grammar.ScanAbilityCharges(s.fc)
 	if err != nil {
 		slog.Warn("charges d equipement illisibles — rejeu sans releve de charges", "err", err, "match_id", s.matchID)
-		charges, chStats = nil, filmdec.AbilityChargeStats{}
+		charges, chStats = nil, grammar.AbilityChargeStats{}
 	} else {
 		slog.Info("capacites : lectures d i56",
 			"recordsDelta", chStats.Records, "masqueAvecI56", chStats.WithI56,
@@ -321,13 +321,13 @@ func (s *filmScan) balayerMonde() {
 	// LA LUNETTE (schema 24) : les bascules vivent dans la liste d'evenements en tete de
 	// paquet, pas dans les records — un balayage separe, sans verrou (il ne touche aucun etat
 	// global de decodage). Le maintien est borne : au-dela, on cesse d'affirmer plutot que de
-	// prolonger une entree dont la sortie n'a pas ete lue (cf. filmdec.ZoomStateAt).
+	// prolonger une entree dont la sortie n'a pas ete lue (cf. grammar.ZoomStateAt).
 	//
 	// LA RECONSTRUCTION (`buildScopedLookup`) VIT DESORMAIS DANS `FilmInputs.applyTo` (lot 1.0) :
 	// elle est PURE, et la porter la permet au fixture de figer une LISTE d'evenements plutot
 	// qu'une fermeture. Son cout — un O(n) sur les evenements qu'on vient de balayer — quitte
 	// donc la mesure de l'etape `zoomEvents` ; il ne lit aucun octet de film.
-	s.in.ZoomEvents = filmdec.ScanZoomEvents(s.film)
+	s.in.ZoomEvents = grammar.ScanZoomEvents(s.film)
 	s.opt.observe("zoomEvents", s.in.ZoomEvents)
 	// POSES d'equipement : records de CREATION de l'archetype 37, sur la MEME horloge
 	// (cf. equipment_placements.go — decodage, journal et refus y vivent ensemble).
@@ -379,7 +379,7 @@ func (s *filmScan) balayerCalquesGardes() {
 func (s *filmScan) balayerPont() {
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
-	grenades, err := filmdec.ScanGrenadeThrows(s.film)
+	grenades, err := grammar.ScanGrenadeThrows(s.film)
 	if err != nil {
 		slog.Warn("paquets delta illisibles — rejeu sans lancers de grenade", "err", err, "match_id", s.matchID)
 		grenades = nil
@@ -387,7 +387,7 @@ func (s *filmScan) balayerPont() {
 	s.in.Grenades = grenades
 	s.opt.observe("grenades", s.in.Grenades)
 	// Trajectoires de projectile : memes chunks, meme horloge. Absence non fatale.
-	proj, err := filmdec.ScanProjectiles(s.fc, &s.world)
+	proj, err := grammar.ScanProjectiles(s.fc, &s.world)
 	if err != nil {
 		slog.Warn("projectiles illisibles — rejeu sans trajectoires", "err", err, "match_id", s.matchID)
 		proj = nil
@@ -413,7 +413,7 @@ func (s *filmScan) balayerPont() {
 	// L'EQUIPE DE CHAQUE JOUEUR (lot 1.7) : le composant i0 de ti=9 de la trame d'etat, a une
 	// position DERIVEE de la grammaire. C'est la SEULE source d'equipe du document (V4) ; la
 	// base ne fait que controler. Un refus est NOMME et publie (`coverage.teams.refusal`).
-	s.in.PlayerTeams, s.in.TeamScan = filmdec.ScanPlayerTeams(s.fc)
+	s.in.PlayerTeams, s.in.TeamScan = grammar.ScanPlayerTeams(s.fc)
 	s.opt.observe("playerTeams", s.in.PlayerTeams)
 	// L'index de joueur SE LIT dans le film (cf. player_index.go) : le roster vient du fil des
 	// morts, et les 5 bits qui précèdent chaque xuid donnent son index. Sans cette table, aucun

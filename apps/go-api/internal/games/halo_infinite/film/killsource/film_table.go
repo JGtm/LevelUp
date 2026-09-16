@@ -49,12 +49,12 @@ package killsource
 //
 // `film/replay/film_player_table.go` (lot 1.6.0) fait la meme traduction erreur -> cause nommee
 // pour l assembleur du rejeu. C est la DEUXIEME copie et la derniere tolerable (CLAUDE.md regle
-// 6) : une troisieme impose la centralisation chez `filmdec`. Consigne en §4 du plan.
+// 6) : une troisieme impose la centralisation chez `grammar`. Consigne en §4 du plan.
 
 import (
 	"errors"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // FilmTableRefusal nomme la cause pour laquelle la table du film n a PAS ete lue. Liste FERMEE :
@@ -102,18 +102,18 @@ func (t FilmTable) Lue() bool { return t.Refusal == FilmTableRead && len(t.Seats
 // `newTimeline` lit comme registre ECS (cf. l en-tete de chunks.go sur « le chunk 0 est le
 // premier de la source »).
 //
-// ELLE NE REND JAMAIS D ERREUR : chaque cause d echec est TYPEE chez `filmdec` et traduite ici en
+// ELLE NE REND JAMAIS D ERREUR : chaque cause d echec est TYPEE chez `grammar` et traduite ici en
 // cause NOMMEE, portee par le resultat et journalisee par l appelant. Un refus se compte.
 func readFilmTable(f *film) FilmTable {
 	if f == nil || f.src.NumChunks() == 0 || len(f.src.Chunk(0)) == 0 {
 		return FilmTable{Refusal: FilmTableNoRegistry}
 	}
 	registre := f.src.Chunk(0)
-	ident, err := filmdec.ReadFilmIdentity(registre)
+	ident, err := grammar.ReadFilmIdentity(registre)
 	if err != nil {
 		return FilmTable{Refusal: causeIdentite(err)}
 	}
-	slots, rep, err := filmdec.ReadPlayerTable(registre, ident)
+	slots, rep, err := grammar.ReadPlayerTable(registre, ident)
 	if err != nil {
 		return FilmTable{Build: ident.Build, Refusal: causeTable(err)}
 	}
@@ -130,20 +130,20 @@ func readFilmTable(f *film) FilmTable {
 	return t
 }
 
-// causeIdentite traduit l erreur de [filmdec.ReadFilmIdentity] en cause nommee.
+// causeIdentite traduit l erreur de [grammar.ReadFilmIdentity] en cause nommee.
 func causeIdentite(err error) FilmTableRefusal {
-	if errors.Is(err, filmdec.ErrNoFilmIdentity) {
+	if errors.Is(err, grammar.ErrNoFilmIdentity) {
 		return FilmTableNoSection
 	}
 	return FilmTableTruncated
 }
 
-// causeTable traduit l erreur de [filmdec.ReadPlayerTable] en cause nommee.
+// causeTable traduit l erreur de [grammar.ReadPlayerTable] en cause nommee.
 func causeTable(err error) FilmTableRefusal {
 	switch {
-	case errors.Is(err, filmdec.ErrUnknownBuild):
+	case errors.Is(err, grammar.ErrUnknownBuild):
 		return FilmTableUnknownBuild
-	case errors.Is(err, filmdec.ErrPlayerTableNotFound):
+	case errors.Is(err, grammar.ErrPlayerTableNotFound):
 		return FilmTableNotFound
 	default:
 		return FilmTableTruncated

@@ -17,7 +17,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // hillOwnerCase monte un cas a designateur avec un canal de propriete SUR MESURE.
@@ -25,10 +25,10 @@ import (
 // Le designateur vit au slot 40 (deux bascules : frames 200 et 400, donc trois periodes
 // [50 ; 199], [200 ; 399], [400 ; 599] une fois le premier contact pris a 50), le canal de
 // propriete au slot 41. Les positions localisent les trois periodes.
-func hillOwnerCase(owner []filmdec.ManagedPropertyRead) (ZoneInput, zoneCtx) {
-	var reads []filmdec.ManagedPropertyRead
-	reads = append(reads, zoneChainedReadAt(40, 200, filmdec.ManagedPropertyTagStringID, 0x78F81557))
-	reads = append(reads, zoneChainedReadAt(40, 400, filmdec.ManagedPropertyTagStringID, 0x8727C0FF))
+func hillOwnerCase(owner []grammar.ManagedPropertyRead) (ZoneInput, zoneCtx) {
+	var reads []grammar.ManagedPropertyRead
+	reads = append(reads, zoneChainedReadAt(40, 200, grammar.ManagedPropertyTagStringID, 0x78F81557))
+	reads = append(reads, zoneChainedReadAt(40, 400, grammar.ManagedPropertyTagStringID, 0x8727C0FF))
 	reads = append(reads, owner...)
 	in := zoneTestInput(reads)
 	in.Hill = true
@@ -62,9 +62,9 @@ func spansTries(states []ZoneState) []ZoneSpan {
 // TestCollineProprietaireSubdiviseLaPeriode — la colline change de main PENDANT une periode :
 // l'intervalle se coupe a la bascule, et chaque morceau porte SON camp.
 func TestCollineProprietaireSubdiviseLaPeriode(t *testing.T) {
-	in, c := hillOwnerCase([]filmdec.ManagedPropertyRead{
-		zoneReadAt(41, 60, filmdec.ManagedPropertyTagU32, 0),
-		zoneReadAt(41, 300, filmdec.ManagedPropertyTagU32, 1),
+	in, c := hillOwnerCase([]grammar.ManagedPropertyRead{
+		zoneReadAt(41, 60, grammar.ManagedPropertyTagU32, 0),
+		zoneReadAt(41, 300, grammar.ManagedPropertyTagU32, 1),
 	})
 	states, cov := buildZoneStates(in, c)
 	if cov.Method != ZoneMethodDesignator {
@@ -102,9 +102,9 @@ func TestCollineProprietaireSubdiviseLaPeriode(t *testing.T) {
 // TestCollineProprietaireNeutreEstUneMesure — la valeur neutre du canal publie un intervalle
 // SANS camp. « Personne ne la tient » n'est pas « on ne sait pas » : le premier se dessine.
 func TestCollineProprietaireNeutreEstUneMesure(t *testing.T) {
-	in, c := hillOwnerCase([]filmdec.ManagedPropertyRead{
-		zoneReadAt(41, 60, filmdec.ManagedPropertyTagU32, zoneNeutralOwner),
-		zoneReadAt(41, 250, filmdec.ManagedPropertyTagU32, 1),
+	in, c := hillOwnerCase([]grammar.ManagedPropertyRead{
+		zoneReadAt(41, 60, grammar.ManagedPropertyTagU32, zoneNeutralOwner),
+		zoneReadAt(41, 250, grammar.ManagedPropertyTagU32, 1),
 	})
 	states, _ := buildZoneStates(in, c)
 	got := spansTries(states)
@@ -131,15 +131,15 @@ func TestCollineProprietaireNeutreEstUneMesure(t *testing.T) {
 // replique qu'UN camp sur le canal. Ce qui precede la premiere emission n'a PAS de camp, et le
 // producteur ne le devine pas.
 func TestCollineProprietaireUnSeulCampEmis(t *testing.T) {
-	in, c := hillOwnerCase([]filmdec.ManagedPropertyRead{
+	in, c := hillOwnerCase([]grammar.ManagedPropertyRead{
 		// DEUX emissions, UN SEUL camp — et la distinction compte : l'election du designateur
 		// EXIGE que son voisin porte au moins deux emissions (`hillDesignatorMinOwnerSamples`).
 		// Un canal qui ne parlerait qu'une fois n'elirait aucun designateur et retomberait sur
 		// les rampes ; ce n'est pas le cas mesure sur `606d9844` (13 emissions) ni sur
 		// `8076f97f` (35). Les deux emissions valent le MEME camp : `mergeZoneRuns` n'en fait
 		// qu'un seul intervalle, ouvert a 300 — tout ce qui precede reste sans camp.
-		zoneReadAt(41, 300, filmdec.ManagedPropertyTagU32, 1),
-		zoneReadAt(41, 500, filmdec.ManagedPropertyTagU32, 1),
+		zoneReadAt(41, 300, grammar.ManagedPropertyTagU32, 1),
+		zoneReadAt(41, 500, grammar.ManagedPropertyTagU32, 1),
 	})
 	states, _ := buildZoneStates(in, c)
 	got := spansTries(states)
@@ -180,9 +180,9 @@ func TestCollineProprietaireUnSeulCampEmis(t *testing.T) {
 // connu n'ouvre AUCUN intervalle et se COMPTE. Publier un camp qu'aucun joueur n'occupe serait
 // une invention ; le taire empecherait de le voir arriver.
 func TestCollineProprietaireValeurInconnueNOuvreRien(t *testing.T) {
-	in, c := hillOwnerCase([]filmdec.ManagedPropertyRead{
-		zoneReadAt(41, 60, filmdec.ManagedPropertyTagU32, 7),
-		zoneReadAt(41, 300, filmdec.ManagedPropertyTagU32, 0),
+	in, c := hillOwnerCase([]grammar.ManagedPropertyRead{
+		zoneReadAt(41, 60, grammar.ManagedPropertyTagU32, 7),
+		zoneReadAt(41, 300, grammar.ManagedPropertyTagU32, 0),
 	})
 	states, cov := buildZoneStates(in, c)
 	if cov.UnknownOwner != 1 {

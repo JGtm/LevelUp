@@ -38,7 +38,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // filmPreuveChunks rend le dossier des morceaux du mini-film versionné, résolu PAR LE PAQUET.
@@ -98,14 +98,14 @@ func TestFixtureFilmRegistreECSLisible(t *testing.T) {
 	if err != nil {
 		t.Fatalf("morceau du registre illisible : %v", err)
 	}
-	reg, err := filmdec.ParseRegistryChunk(filmsource.Inflate(brut))
+	reg, err := grammar.ParseRegistryChunk(filmsource.Inflate(brut))
 	if err != nil {
 		t.Fatalf("registre ECS du fixture illisible : %v", err)
 	}
-	if fp := filmdec.RegistryFingerprint(reg); fp != filmdec.KnownRegistryFingerprint {
+	if fp := grammar.RegistryFingerprint(reg); fp != grammar.KnownRegistryFingerprint {
 		t.Fatalf("empreinte du registre = %d, attendu %d (le build de référence) — le décodage "+
 			"tournerait sur une grammaire de composants qui n'est pas celle que la table décrit",
-			fp, filmdec.KnownRegistryFingerprint)
+			fp, grammar.KnownRegistryFingerprint)
 	}
 	// Les quatre archétypes que la cuisson interroge nommément. Leur absence est exactement ce
 	// que le registre vide produisait, sous le message trompeur « archétype N absent du registre ».

@@ -34,8 +34,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/weaponv3"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
 )
 
 func TestGroundWeaponAfter(t *testing.T) {
@@ -49,15 +49,15 @@ func TestGroundWeaponAfter(t *testing.T) {
 		t.Skipf("%s/%s absents : sans bornes, un quantum n'est pas une position", gwBoundsEnv, gwMapEnv)
 	}
 	census := gwKeyframeCensus(t, filmDir)
-	band := filmdec.GroundWeaponSlotBand(filmDir)
+	band := grammar.GroundWeaponSlotBand(filmDir)
 
 	// CRÉATIONS : la bande réelle, puis le témoin fantôme de MÊME cardinalité par le MÊME code.
-	cre, st, err := filmdec.ScanFilmGroundWeaponCreationsForBand(filmDir, &wr, band)
+	cre, st, err := grammar.ScanFilmGroundWeaponCreationsForBand(filmDir, &wr, band)
 	if err != nil {
 		t.Fatalf("créations ti=42 : %v", err)
 	}
 	phantomBand := gwPhantomBand(band, census.allSlots)
-	pcre, pst, err := filmdec.ScanFilmGroundWeaponCreationsForBand(filmDir, &wr, phantomBand)
+	pcre, pst, err := grammar.ScanFilmGroundWeaponCreationsForBand(filmDir, &wr, phantomBand)
 	if err != nil {
 		t.Fatalf("créations ti=42 (fantôme) : %v", err)
 	}
@@ -69,7 +69,7 @@ func TestGroundWeaponAfter(t *testing.T) {
 	confirmed := gwConfirmedSlots(cre)
 	t.Logf("BANDE CONFIRMÉE — %d slots prouvés ti=42 par un record de création, sur %d slots de"+
 		" la bande présumée (%d slots vus ti=42 en image-clé)",
-		len(confirmed), len(band), len(census.slotsTI[filmdec.GroundWeaponTypeIndex]))
+		len(confirmed), len(band), len(census.slotsTI[grammar.GroundWeaponTypeIndex]))
 
 	gwLogDispersions(t, filmDir, &wr, band, confirmed)
 	gwLogLifeDispersion(t, filmDir, &wr, band, cre)
@@ -87,8 +87,8 @@ func TestGroundWeaponAfter(t *testing.T) {
 // du décodage. L'AVANT ne pouvait pas faire autrement : sans record de création, rien ne disait
 // quelles générations étaient des armes au sol. Le record de création les nomme.
 func gwLogLifeDispersion(
-	t *testing.T, dir string, wr *filmdec.Vec3Range, band map[uint32]bool,
-	cre []filmdec.EquipmentCreation,
+	t *testing.T, dir string, wr *grammar.Vec3Range, band map[uint32]bool,
+	cre []grammar.EquipmentCreation,
 ) {
 	t.Helper()
 	lives := map[[2]uint32]bool{}
@@ -97,7 +97,7 @@ func gwLogLifeDispersion(
 		lives[[2]uint32{c.Slot, c.Gen}] = true
 		slots[c.Slot] = true
 	}
-	samples := filmdec.WorldObjectPositionsForBand(dir, wr, slots)
+	samples := grammar.WorldObjectPositionsForBand(dir, wr, slots)
 	real := gwSplitByLife(samples, lives)
 	// TÉMOIN : les MÊMES slots, mais les générations que la création n'a PAS confirmées. Même
 	// code, même film, même bande — seule la confirmation change.
@@ -112,9 +112,9 @@ func gwLogLifeDispersion(
 // gwSplitByLife regroupe les échantillons par couple (slot, génération). `keep` nil garde tout.
 // La clé de sortie encode le couple : `gwDispersion` ne s'intéresse qu'aux groupes, pas au nom.
 func gwSplitByLife(
-	m map[uint32][]filmdec.WorldObjectSample, keep map[[2]uint32]bool,
-) map[uint32][]filmdec.WorldObjectSample {
-	out := map[uint32][]filmdec.WorldObjectSample{}
+	m map[uint32][]grammar.WorldObjectSample, keep map[[2]uint32]bool,
+) map[uint32][]grammar.WorldObjectSample {
+	out := map[uint32][]grammar.WorldObjectSample{}
 	for slot, pts := range m {
 		for _, p := range pts {
 			if keep != nil && !keep[[2]uint32{slot, p.Gen}] {
@@ -128,7 +128,7 @@ func gwSplitByLife(
 }
 
 // gwConfirmedSlots rend les slots dont AU MOINS un record de création ti=42 a été accepté.
-func gwConfirmedSlots(cre []filmdec.EquipmentCreation) map[uint32]bool {
+func gwConfirmedSlots(cre []grammar.EquipmentCreation) map[uint32]bool {
 	out := map[uint32]bool{}
 	for _, c := range cre {
 		out[c.Slot] = true
@@ -139,12 +139,12 @@ func gwConfirmedSlots(cre []filmdec.EquipmentCreation) map[uint32]bool {
 // gwLogDispersions publie la dispersion des trois bandes : présumée (l'AVANT), confirmée
 // (l'APRÈS) et fantôme recalibré à la cardinalité de la confirmée.
 func gwLogDispersions(
-	t *testing.T, dir string, wr *filmdec.Vec3Range, band, confirmed map[uint32]bool,
+	t *testing.T, dir string, wr *grammar.Vec3Range, band, confirmed map[uint32]bool,
 ) {
 	t.Helper()
-	full := filmdec.WorldObjectPositionsForBand(dir, wr, band)
-	conf := filmdec.WorldObjectPositionsForBand(dir, wr, confirmed)
-	ghost := filmdec.WorldObjectPositionsForBand(dir, wr, gwGhostOfSize(band, len(confirmed)))
+	full := grammar.WorldObjectPositionsForBand(dir, wr, band)
+	conf := grammar.WorldObjectPositionsForBand(dir, wr, confirmed)
+	ghost := grammar.WorldObjectPositionsForBand(dir, wr, gwGhostOfSize(band, len(confirmed)))
 	t.Logf("DISPERSION bande PRÉSUMÉE (AVANT) — %s", gwDispersion(full))
 	t.Logf("DISPERSION bande CONFIRMÉE (APRÈS) — %s", gwDispersion(conf))
 	t.Logf("DISPERSION fantôme recalibré      — %s", gwDispersion(ghost))
@@ -169,10 +169,10 @@ func gwGhostOfSize(band map[uint32]bool, n int) map[uint32]bool {
 // DEUX CHAÎNES INDÉPENDANTES : le mot MPP vient du default-state d'un record delta, la famille
 // d'un balayage de motifs dans le payload d'image-clé. Leur accord ne peut pas être un artefact
 // commun — et leur DÉSACCORD dirait que le mot de 32 bits n'est pas ce qu'on croit.
-func gwLogIdentity(t *testing.T, dir string, cre []filmdec.EquipmentCreation) {
+func gwLogIdentity(t *testing.T, dir string, cre []grammar.EquipmentCreation) {
 	t.Helper()
 	known := loadoutFamilies()
-	kf, err := filmdec.ScanFilmKeyframeGroundWeapons(dir, known)
+	kf, err := grammar.ScanFilmKeyframeGroundWeapons(dir, known)
 	if err != nil {
 		t.Logf("IDENTITÉ — armes au sol d'image-clé illisibles : %v", err)
 		return
@@ -185,10 +185,10 @@ func gwLogIdentity(t *testing.T, dir string, cre []filmdec.EquipmentCreation) {
 	}
 	pairs, agree, inCatalog, words := 0, 0, 0, map[uint32]int{}
 	for _, c := range cre {
-		if !c.MPPPresent[filmdec.MPPWord32] {
+		if !c.MPPPresent[grammar.MPPWord32] {
 			continue
 		}
-		w := uint32(c.MPPVal[filmdec.MPPWord32])
+		w := uint32(c.MPPVal[grammar.MPPWord32])
 		words[w]++
 		if known[w] {
 			inCatalog++

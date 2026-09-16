@@ -37,7 +37,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // Les quatre classes d'une coupure, et rien d'autre.
@@ -180,7 +180,7 @@ func classerLesCoupures(reg IdentityRegistry, opt Options) bilanCoupures {
 // parametres : le depot en borne cinq.
 type coupureEntrees struct {
 	deaths    []Death
-	creations []filmdec.BipedCreation
+	creations []grammar.BipedCreation
 	offUS     int64
 	manches   []int64
 	finDuFilm int64

@@ -16,7 +16,7 @@ package objectives
 // donc les DEUX cotes, slot par slot, et rejoue la decision de [contiguousRounds] manche par
 // manche pour nommer le critere qui tranche.
 //
-// # POURQUOI ICI, ET PAS DANS `filmdec` SOUS `CHUNK00_FILMS`
+// # POURQUOI ICI, ET PAS DANS `grammar` SOUS `CHUNK00_FILMS`
 //
 // Les enregistrements statborg ne sont lus que dans les chunks DECRITS PAR LE MANIFESTE
 // ([manifestChunks], `film.go`) : un film charge par `filmsource.LoadDir(dir, nil)` — la forme

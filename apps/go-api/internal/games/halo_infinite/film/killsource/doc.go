@@ -196,7 +196,7 @@
 //
 // # CONTRAINTE D EXECUTION — UN SEUL DECODAGE A LA FOIS DANS UN PROCESS
 //
-// Les parametres de replication de `filmdec` sont des GLOBAUX DE PAQUET. Enchainer deux films
+// Les parametres de replication de `grammar` sont des GLOBAUX DE PAQUET. Enchainer deux films
 // dans le meme process contamine la calibration du second (mesure : le score de fccc61cd passe
 // de 1111 a 1214 selon l ordre d appel, RE_LOG 7ter.52). [Decode] serialise donc les passes par
 // un verrou de paquet et remet les globaux a leur valeur d origine a chaque entree. Le cout est

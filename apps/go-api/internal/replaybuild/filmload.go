@@ -78,7 +78,7 @@ func chargerFilm(ctx context.Context, matchID, filmDir string, src *filmcache.So
 // metaDuManifeste rend l'index du manifeste, ou nil s'il n'y en a pas.
 //
 // MANIFESTE ABSENT N'EST PAS FATAL : `filmsource.LoadDir` synthetise alors les NUMEROS de chunk
-// depuis les noms de fichiers, ce qui suffit aux balayages de `filmdec`. Ce qui manque, ce sont
+// depuis les noms de fichiers, ce qui suffit aux balayages de `grammar`. Ce qui manque, ce sont
 // le TYPE et le DEBUT de chaque chunk — donc les enregistrements d'entite (`objectives`
 // ne balaie que les chunks decrits par le manifeste) et l'horloge de l'armement de la bombe.
 // `readFilmStats` le dit et le journalise plutot que de publier une courbe vide.

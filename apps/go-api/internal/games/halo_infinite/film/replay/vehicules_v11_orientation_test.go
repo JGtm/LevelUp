@@ -25,7 +25,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // v11Regime nomme une des deux grammaires d'i2/i3 confrontees.
@@ -61,7 +61,7 @@ func TestV11OrientationChassis(t *testing.T) {
 func v11ChassisUnFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
 	dir := objChunkDir(root, f.ID)
-	if filmdec.CountFilmChunks(dir) == 0 {
+	if grammar.CountFilmChunks(dir) == 0 {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
@@ -77,7 +77,7 @@ func v11ChassisUnFilm(t *testing.T, root string, f v0Film) {
 	for _, rg := range v11Regimes {
 		opt := v1aOptions(&wr, false)
 		opt.CaptureDirs, opt.DynPrecOrientation = true, rg.DynPrec
-		pos, err := filmdec.ScanFilmBipedPositionsForBand(dir, filmdec.NewSlotBand(bande), opt)
+		pos, err := grammar.ScanFilmBipedPositionsForBand(dir, grammar.NewSlotBand(bande), opt)
 		if err != nil {
 			t.Logf("V11 %s [%s] : %v", f.ID, rg.Nom, err)
 			continue

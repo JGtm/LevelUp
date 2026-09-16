@@ -9,7 +9,7 @@ package killcollector
 // OBSERVE.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -185,7 +185,7 @@ func publishBijectionProvenance(t killsource.FilmTablePinning) {
 	if t.Refusal == killsource.FilmTableUnknownBuild {
 		// D-4 d ADR 0034 : un build hors profil est mis de cote AVEC son compteur nomme, pour
 		// que le refus se voie en production et pas seulement au journal.
-		for _, p := range filmdec.UnknownBuildExpvarPairs(t.Build) {
+		for _, p := range grammar.UnknownBuildExpvarPairs(t.Build) {
 			observability.AddInt(p.Name, p.Value)
 		}
 	}

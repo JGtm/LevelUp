@@ -41,7 +41,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // miniFilmBuildBudget : le plafond par bobine, arbitrage V7 du plan (1 Mio).
@@ -112,15 +112,15 @@ func TestMiniFilmBuildsRegenerate(t *testing.T) {
 // l erreur porte la taille mesuree. Depasser en silence ferait grossir le depot sans que
 // personne ne l ait decide.
 func writeBuildMiniFilm(b buildMiniFilm, src string) (int, error) {
-	registre, err := filmdec.ReadFilmChunk(src, 0)
+	registre, err := grammar.ReadFilmChunk(src, 0)
 	if err != nil {
 		return 0, fmt.Errorf("chunk_00 (registre) : %w", err)
 	}
-	pied := filmdec.CountFilmChunks(src)
+	pied := grammar.CountFilmChunks(src)
 	if pied < 2 {
 		return 0, fmt.Errorf("film a %d chunk(s) : ni replication ni pied", pied)
 	}
-	brutPied, err := filmdec.ReadFilmChunk(src, pied)
+	brutPied, err := grammar.ReadFilmChunk(src, pied)
 	if err != nil {
 		return 0, fmt.Errorf("chunk %d (pied) : %w", pied, err)
 	}
@@ -188,13 +188,13 @@ type keyframeSelection struct {
 // au paquet produirait une derniere image tronquee, c est-a-dire un record que le decodeur lirait
 // jusqu au bout d un tampon qui s arrete.
 //
-// Le critere de selection est celui du decodeur (`filmdec.PacketTypeKeyframe`), pas une
+// Le critere de selection est celui du decodeur (`grammar.PacketTypeKeyframe`), pas une
 // heuristique : la meme porte que `miniPacketKind` applique a la bobine historique.
 func keyframePacketsOf(src string, pied, reserve int) (keyframeSelection, []byte, error) {
 	var sel keyframeSelection
 	var retenu []byte
 	for c := 1; c < pied; c++ {
-		chunk, err := filmdec.ReadFilmChunk(src, c)
+		chunk, err := grammar.ReadFilmChunk(src, c)
 		if err != nil {
 			continue
 		}
@@ -231,8 +231,8 @@ func keyframePacketsOf(src string, pied, reserve int) (keyframeSelection, []byte
 func keyframesDuChunk(chunk []byte) ([]byte, int) {
 	var out []byte
 	n := 0
-	for _, p := range filmdec.WalkPackets(chunk) {
-		if p.Type != filmdec.PacketTypeKeyframe {
+	for _, p := range grammar.WalkPackets(chunk) {
+		if p.Type != grammar.PacketTypeKeyframe {
 			continue
 		}
 		start := p.Start - packetHeaderSizeMini

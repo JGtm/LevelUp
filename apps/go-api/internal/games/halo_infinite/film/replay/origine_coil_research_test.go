@@ -42,7 +42,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // coilID est l'identifiant sous test.
@@ -60,9 +60,9 @@ const coilSpawnUS = 1_000_000
 // vie rattachable ». C'est exactement ce que la première mesure a affiché (7/7 et 8/8), et
 // c'est un défaut d'instrument, pas un résultat. Le découpage ci-dessous garde le MÊME seuil
 // (`lifeGapUS`) et ne regarde que slot et instant, ce dont la scission a besoin.
-func coilVies(pos []filmdec.BipedPosition) map[uint32][]equipLife {
+func coilVies(pos []grammar.BipedPosition) map[uint32][]equipLife {
 	out := map[uint32][]equipLife{}
-	tri := append([]filmdec.BipedPosition(nil), pos...)
+	tri := append([]grammar.BipedPosition(nil), pos...)
 	sort.Slice(tri, func(i, j int) bool { return tri[i].TimestampUS < tri[j].TimestampUS })
 	for _, p := range tri {
 		v := out[p.Slot]
@@ -100,25 +100,25 @@ func TestCoilCohortes(t *testing.T) {
 		t.Skip("ORIGINE_FILM absent : instrument de mesure sauté")
 	}
 
-	pickups, _, err := filmdec.ScanFilmBipedPickups(dir)
+	pickups, _, err := grammar.ScanFilmBipedPickups(dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
 	// QuantaOnly : la scission n'a besoin que des SLOTS et des INSTANTS. Exiger les bornes de
 	// carte ferait dépendre cette mesure d'un catalogue sans rien lui apporter — et le film 2
 	// n'a pas de carte connue.
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("positions illisibles : %v", err)
 	}
 	lives := coilVies(pos)
-	kf, err := filmdec.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
+	kf, err := grammar.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("images-clés illisibles : %v", err)
 	}
-	chg, _, err := filmdec.ScanFilmHeldWeaponChanges(dir, spawnSetFrom(kf))
+	chg, _, err := grammar.ScanFilmHeldWeaponChanges(dir, spawnSetFrom(kf))
 	if err != nil {
 		t.Fatalf("changements d'arme illisibles : %v", err)
 	}
@@ -198,7 +198,7 @@ func coilSecondes(us []uint64) []float64 {
 // l'objet est du décor. Si elles sont éparpillées, l'hypothèse perd son meilleur appui.
 func TestCoilPositionsEnMatch(t *testing.T) {
 	s := glResolve(t)
-	pickups, _, err := filmdec.ScanFilmBipedPickups(s.dir)
+	pickups, _, err := grammar.ScanFilmBipedPickups(s.dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
@@ -290,35 +290,35 @@ func TestCoilCandidatsAutres(t *testing.T) {
 		t.Skip("ORIGINE_FILM absent : instrument de mesure sauté")
 	}
 
-	pickups, _, err := filmdec.ScanFilmBipedPickups(dir)
+	pickups, _, err := grammar.ScanFilmBipedPickups(dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("positions illisibles : %v", err)
 	}
 	lives := coilVies(pos)
-	kf, err := filmdec.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
+	kf, err := grammar.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("images-clés illisibles : %v", err)
 	}
-	chg, _, err := filmdec.ScanFilmHeldWeaponChanges(dir, spawnSetFrom(kf))
+	chg, _, err := grammar.ScanFilmHeldWeaponChanges(dir, spawnSetFrom(kf))
 	if err != nil {
 		t.Fatalf("changements d'arme illisibles : %v", err)
 	}
 	vues := map[uint32]bool{}
 	for _, c := range chg {
-		if c.Family != filmdec.NoWeaponVariant {
+		if c.Family != grammar.NoWeaponVariant {
 			vues[c.Family] = true
 		}
 	}
 	type stat struct{ total, enMatch, avantPos int }
 	par := map[uint32]*stat{}
 	for _, p := range pickups {
-		if !filmdec.BipedPickupIsWeaponClass(p.Class) {
+		if !grammar.BipedPickupIsWeaponClass(p.Class) {
 			continue
 		}
 		e := par[p.CatalogID]

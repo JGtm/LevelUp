@@ -5,7 +5,7 @@
 // admin_actions : conflit DuckDB mono-process, et un exec échapperait au verrou process
 // filmdec partagé avec killsource). Single-flight : le décodage d'un film sature un
 // coeur pendant des secondes à minutes ; deux jobs simultanés s'entasseraient de toute
-// façon derrière le verrou filmdec.
+// façon derrière le verrou grammar.
 package wire
 
 import (

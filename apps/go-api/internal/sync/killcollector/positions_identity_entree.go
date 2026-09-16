@@ -8,7 +8,7 @@ package killcollector
 // PHYSIQUE — aucun changement de comportement.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
@@ -55,8 +55,8 @@ func entreeDuRegistre(
 // registre. Une structure plutot que quatre parametres de plus : le depot borne a cinq, et un
 // appelant qui ajoute une lecture ne doit pas reecrire la signature de la couture.
 type lecturesDuFilm struct {
-	positions []filmdec.BipedPosition
-	creations []filmdec.BipedCreation
+	positions []grammar.BipedPosition
+	creations []grammar.BipedCreation
 	deaths    []replay.Death
 	idx       replay.PlayerIndexTable
 }

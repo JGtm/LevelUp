@@ -24,7 +24,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // padArchetype dit CE QUI CHANGE d'un archétype d'objet du monde à l'autre : son typeIndex, le
@@ -35,22 +35,22 @@ import (
 type padArchetype struct {
 	ti    int
 	label string
-	scan  func(fc *filmdec.FilmContext, wr *filmdec.Vec3Range, band map[uint32]bool) (
-		[]filmdec.EquipmentCreation, filmdec.EquipmentCreationStats, error)
+	scan  func(fc *grammar.FilmContext, wr *grammar.Vec3Range, band map[uint32]bool) (
+		[]grammar.EquipmentCreation, grammar.EquipmentCreationStats, error)
 }
 
 // groundWeaponArchetype / worldEquipmentArchetype : les deux voies de la chaîne des socles.
 func groundWeaponArchetype() padArchetype {
 	return padArchetype{
-		ti: filmdec.GroundWeaponTypeIndex, label: "armes au sol (ti=42)",
-		scan: filmdec.ScanGroundWeaponCreationsForBand,
+		ti: grammar.GroundWeaponTypeIndex, label: "armes au sol (ti=42)",
+		scan: grammar.ScanGroundWeaponCreationsForBand,
 	}
 }
 
 func worldEquipmentArchetype() padArchetype {
 	return padArchetype{
-		ti: filmdec.EquipmentTypeIndex, label: "power-ups de socle (ti=37)",
-		scan: filmdec.ScanEquipmentCreationsForBand,
+		ti: grammar.EquipmentTypeIndex, label: "power-ups de socle (ti=37)",
+		scan: grammar.ScanEquipmentCreationsForBand,
 	}
 }
 
@@ -63,7 +63,7 @@ func worldEquipmentArchetype() padArchetype {
 //
 // HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmPadScans(
-	fc *filmdec.FilmContext, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
+	fc *grammar.FilmContext, matchID string, wr *grammar.Vec3Range, mpp grammar.MPPWidths,
 ) PadScans {
 	return PadScans{
 		Weapons:  decodeFilmPadScan(fc, matchID, wr, mpp, groundWeaponArchetype()),
@@ -91,11 +91,11 @@ func decodeFilmPadScans(
 //
 // HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmPadScan(
-	fc *filmdec.FilmContext, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
+	fc *grammar.FilmContext, matchID string, wr *grammar.Vec3Range, mpp grammar.MPPWidths,
 	arch padArchetype,
 ) WorldObjectScan {
 	defer gwInstallMPPWidths(fc, gwWidthsForFilm(fc, mpp))()
-	kf := filmdec.ScanWorldObjectKeyframes(fc.Film(), arch.ti)
+	kf := grammar.ScanWorldObjectKeyframes(fc.Film(), arch.ti)
 	if len(kf.Band) == 0 {
 		slog.Warn("socles : aucun slot de l archetype aux images-cles — rejeu sans ce calque",
 			"archetype", arch.label, "match_id", matchID, "imagesCles", len(kf.TimesUS))
@@ -107,7 +107,7 @@ func decodeFilmPadScan(
 			"archetype", arch.label, "err", err, "match_id", matchID)
 		return WorldObjectScan{}
 	}
-	tracks, err := filmdec.ScanWorldObjectsForBand(fc, wr, kf.Band)
+	tracks, err := grammar.ScanWorldObjectsForBand(fc, wr, kf.Band)
 	if err != nil {
 		slog.Warn("socles : pistes delta illisibles — AUCUN socle publie (sans elles, toute"+
 			" apparition passerait pour un objet apparu au repos)",
@@ -140,15 +140,15 @@ func decodeFilmPadScan(
 // rendait faux, donc ni compteur ni avertissement. Le repli tournait DEVANT une lecture (D14 b),
 // et dans la meme cuisson les socles se decoupaient aux largeurs calibrees pendant que les poses
 // d equipement se decoupaient aux largeurs relues. Les deux sites partagent desormais
-// [filmdec.MPPWidthsForFilm].
+// [grammar.MPPWidthsForFilm].
 //
 // MESURE AVANT LA BASCULE (cache, 657 films au 2026-09-15, `TestMPPResolutionCorpus`) : 6 films
 // portent un build hors table (5 sans section d identification au format 20, 1 `HI_1_5_1` au
 // format 23) et AUCUN d eux n est a un format dont la largeur est relue — zero octet cuit ne
 // change sur ce cache. Le gain est de tenir le parc NEUF : au prochain build hors table au
 // format 27, la lecture decide au lieu de la calibration.
-func gwWidthsForFilm(fc *filmdec.FilmContext, calibrees filmdec.MPPWidths) filmdec.MPPWidths {
-	res := filmdec.MPPWidthsForFilm(fc.Film())
+func gwWidthsForFilm(fc *grammar.FilmContext, calibrees grammar.MPPWidths) grammar.MPPWidths {
+	res := grammar.MPPWidthsForFilm(fc.Film())
 	if res.Relue() {
 		return res.Widths
 	}
@@ -161,7 +161,7 @@ func gwWidthsForFilm(fc *filmdec.FilmContext, calibrees filmdec.MPPWidths) filmd
 	return calibrees
 }
 
-func gwInstallMPPWidths(fc *filmdec.FilmContext, w filmdec.MPPWidths) func() {
+func gwInstallMPPWidths(fc *grammar.FilmContext, w grammar.MPPWidths) func() {
 	if !w.Valid() {
 		return func() {}
 	}
@@ -184,7 +184,7 @@ func gwInstallMPPWidths(fc *filmdec.FilmContext, w filmdec.MPPWidths) func() {
 // Le retour est la liste des OBJETS INDIVIDUELS de la voie des armes : le calque des armes au
 // sol (schéma 27) les consomme après coup — même chaîne, deux publications.
 func attachWeaponPads(
-	doc *ReplayDocument, scans PadScans, positions []filmdec.BipedPosition, clock replayClock,
+	doc *ReplayDocument, scans PadScans, positions []grammar.BipedPosition, clock replayClock,
 	cat LabelCatalog,
 ) []gwPickupObject {
 	// L ADAPTATION DU CATALOGUE SE FAIT ICI, PAS DANS L ASSEMBLAGE : `buildWeaponPads` est PUR

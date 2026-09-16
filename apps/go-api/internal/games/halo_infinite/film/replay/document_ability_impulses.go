@@ -7,7 +7,7 @@ package replay
 // CE QUE C'EST. Le corps de tag externe `R(2) == 1` des composants bipède
 // `biped-spartan-ability` (i57) et `-non-predicted-state` (i59) date une IMPULSION — le
 // même composant dont le tag 3 porte déjà le grappin, désérialisé depuis le 2026-08-16.
-// `filmdec.ScanFilmAbilityImpulses` en rend les lectures ; ce fichier les replie en
+// `grammar.ScanFilmAbilityImpulses` en rend les lectures ; ce fichier les replie en
 // épisodes et leur donne une IDENTITÉ.
 //
 // L'IDENTITÉ NE VIENT PAS DU COMPOSANT — elle vient du canal i48, rang lu DANS LA MÊME VIE
@@ -36,7 +36,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // abilityImpulseEpisodeGapUS : deux lectures du même slot séparées de moins d'une seconde
@@ -112,11 +112,11 @@ type AbilityImpulseCoverage struct {
 // portait ce joueur quand il a fait ce geste ? »).
 type abilityImpulseInputs struct {
 	// reads : les lectures brutes du film (filmdec).
-	reads []filmdec.AbilityImpulse
+	reads []grammar.AbilityImpulse
 	// stats : les dénominateurs du balayage — c'est d'eux que vient `ComponentAbsent`.
-	stats filmdec.AbilityImpulseStats
+	stats grammar.AbilityImpulseStats
 	// ranks : les identités de capacité transmises par i48, le SEUL canal d'identité.
-	ranks []filmdec.AbilityRank
+	ranks []grammar.AbilityRank
 	// lives : le découpage des vies, tel que le pont l'a déjà fait sur les positions BRUTES.
 	lives []lifeSpan
 	// palette : la palette du match, qui nomme le rang. Nil = film non classé -> aucune
@@ -219,8 +219,8 @@ type abilityImpulseEpisode struct {
 // foldAbilityImpulses replie les lectures en gestes : deux lectures du même slot à moins
 // d'abilityImpulseEpisodeGapUS l'une de l'autre n'en font qu'un. La sortie est TRIÉE par
 // instant puis par slot — l'ordre du document, déterministe.
-func foldAbilityImpulses(reads []filmdec.AbilityImpulse) []abilityImpulseEpisode {
-	ordered := make([]filmdec.AbilityImpulse, len(reads))
+func foldAbilityImpulses(reads []grammar.AbilityImpulse) []abilityImpulseEpisode {
+	ordered := make([]grammar.AbilityImpulse, len(reads))
 	copy(ordered, reads)
 	sort.SliceStable(ordered, func(i, j int) bool {
 		if ordered[i].Slot != ordered[j].Slot {
@@ -253,13 +253,13 @@ func foldAbilityImpulses(reads []filmdec.AbilityImpulse) []abilityImpulseEpisode
 // abilityRankIndex répond à « quel rang ce slot portait-il à cet instant, dans CETTE vie ? ».
 // Il indexe une fois ce que la question relirait pour chaque impulsion.
 type abilityRankIndex struct {
-	ranks map[uint32][]filmdec.AbilityRank
+	ranks map[uint32][]grammar.AbilityRank
 	lives map[uint32][]lifeSpan
 }
 
-func newAbilityRankIndex(ranks []filmdec.AbilityRank, lives []lifeSpan) *abilityRankIndex {
+func newAbilityRankIndex(ranks []grammar.AbilityRank, lives []lifeSpan) *abilityRankIndex {
 	idx := &abilityRankIndex{
-		ranks: make(map[uint32][]filmdec.AbilityRank, len(ranks)),
+		ranks: make(map[uint32][]grammar.AbilityRank, len(ranks)),
 		lives: make(map[uint32][]lifeSpan, len(lives)),
 	}
 	for _, r := range ranks {

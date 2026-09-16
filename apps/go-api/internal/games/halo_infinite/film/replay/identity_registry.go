@@ -31,7 +31,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
@@ -56,16 +56,16 @@ type IdentityClock struct {
 // Une structure unique parce que le depot borne a cinq parametres, et parce qu'un appelant qui
 // ajoute une source ne doit pas casser les autres.
 type IdentityInput struct {
-	// Positions : les positions de bipede DEJA decodees (`filmdec.ScanBipedPositions`).
-	Positions []filmdec.BipedPosition
+	// Positions : les positions de bipede DEJA decodees (`grammar.ScanBipedPositions`).
+	Positions []grammar.BipedPosition
 	// BipedCreations : les records de CREATION de bipede deja decodes
-	// (`filmdec.ScanBipedCreations`). C'est le lien DIRECT corps -> joueur : le film ECRIT
+	// (`grammar.ScanBipedCreations`). C'est le lien DIRECT corps -> joueur : le film ECRIT
 	// l'index de participant du proprietaire dans le default-state du record.
 	//
 	// VIDE = LE REGISTRE N'A AUCUNE LECTURE DIRECTE, et il le publie
 	// (`BridgeHealth.BridgeNamedLives` non nul). Ce n'est pas une option : c'est la degradation
 	// declaree d'un producteur qui ne porte pas encore ce canal.
-	BipedCreations []filmdec.BipedCreation
+	BipedCreations []grammar.BipedCreation
 	// Deaths : le fil des morts du film — il nomme chaque vie par sa victime.
 	Deaths []Death
 	// PlayerIndices : le lien DIRECT identite -> index de joueur, lu dans les chunks de

@@ -44,7 +44,7 @@ import (
 
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // FlagInput est CE QUE L'APPELANT FOURNIT du drapeau, plus ce que `BuildFromFilm` y depose.
@@ -74,7 +74,7 @@ type FlagInput struct {
 	// Marks est le CONTROLE independant, depose par `BuildFromFilm` : les records de bipede
 	// d'image-cle portant le marqueur de portage, et l'instant de toutes les images-cles.
 	// L'appelant ne le remplit pas.
-	Marks filmdec.CarrierMarkScan
+	Marks grammar.CarrierMarkScan
 	// Identity est le pont slot statborg -> xuid PAR MANCHE, DEJA RESOLU par l'appelant.
 	// FACULTATIF : laisse a zero, ce paquet le resout lui-meme par les seuls INSTANTS DE MORT
 	// (cf. [flagIdentityOf]), et le calque reste publiable hors ligne, sans base.
@@ -114,15 +114,15 @@ type FlagInput struct {
 // silence ici laisserait croire que les images-cles ne portaient rien.
 //
 // HORS LIGNE — appelee par BuildFromFilm.
-func decodeFilmCarrierMarks(film *filmsource.Film, matchID string, in FlagInput) filmdec.CarrierMarkScan {
+func decodeFilmCarrierMarks(film *filmsource.Film, matchID string, in FlagInput) grammar.CarrierMarkScan {
 	if !in.Scanned || !flagFilmSignalsOf(in).IsFlagFilm() {
-		return filmdec.CarrierMarkScan{}
+		return grammar.CarrierMarkScan{}
 	}
-	marks, err := filmdec.ScanCarrierMarks(film)
+	marks, err := grammar.ScanCarrierMarks(film)
 	if err != nil {
 		slog.Warn("drapeau : marqueur de portage illisible — calque publie sans son controle",
 			"err", err, "match_id", matchID)
-		return filmdec.CarrierMarkScan{}
+		return grammar.CarrierMarkScan{}
 	}
 	return marks
 }

@@ -14,7 +14,7 @@ import (
 //
 // `matchRecordHeader` (statborg.go) n'accepte qu'UNE forme de liste de composants : le bit qui
 // suit les 2 bits de generation doit valoir 0, puis vient un compte sur 3 bits et autant
-// d'index de 6 bits. Or le moteur en a DEUX (`filmdec.consumeMask`, FUN_1406d7610) :
+// d'index de 6 bits. Or le moteur en a DEUX (`grammar.consumeMask`, FUN_1406d7610) :
 //
 //	gate = 0 : R(3) compte + compte x R(6) index   — la liste CREUSE, seule connue de l'ancrage
 //	gate = 1 : R(64) masque DENSE                  — REJETEE par l'ancrage
@@ -306,7 +306,7 @@ func decodeCompsExt(pay []byte, at int, idx []int, tMS, slot int) (map[int]curVa
 // R(32) masque de manches, puis par bit a 1 deux valeurs conditionnelles
 // `R(1)[si 0 : varW]`. Rend la valeur A par manche (la valeur B suit la meme forme).
 //
-// Grammaire reprise de `filmdec.consumeStatborgFinalized` (`components_batch3.go`), qui la
+// Grammaire reprise de `grammar.consumeStatborgFinalized` (`components_batch3.go`), qui la
 // tient de FUN_142ed3c50 — elle n'est pas devinee ici.
 func decodeFinalizedComponent(pay []byte, p int) (map[int]int64, int, bool) {
 	if p+statRoundMaskBits > len(pay)*8 {

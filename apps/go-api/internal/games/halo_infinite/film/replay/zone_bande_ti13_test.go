@@ -4,7 +4,7 @@ package replay
 //
 // # POURQUOI CET INSTRUMENT EXISTE
 //
-// `filmdec.ScanFilmManagedProperties` ancre ses records delta sur une BANDE DE SLOTS relevee aux
+// `grammar.ScanFilmManagedProperties` ancre ses records delta sur une BANDE DE SLOTS relevee aux
 // images-cles. Deux regles de bande se disputent cet ancrage :
 //
 //	COMBLEE    la plage [min, max] des slots vus, trous compris, moins les slots vus porter un
@@ -15,7 +15,7 @@ package replay
 //	           DURABLE, qui apparait a chaque image-cle, le comblement n'a rien a rattraper.
 //
 // Le chainage des records delta de `ti=13` passe de 6,3 % (bande comblee) a 43,7 % (bande
-// observee) sur 13 films — mesure du 2026-09-01, `filmdec.TestObjectifTi11DeltaControleTi13`.
+// observee) sur 13 films — mesure du 2026-09-01, `grammar.TestObjectifTi11DeltaControleTi13`.
 // MAIS UN TAUX DE CHAINAGE N'EST PAS UN LIVRABLE : le seul juge est ce que le CONSOMMATEUR
 // publie. Une bande plus etroite peut faire perdre des lectures REELLES, donc des etats de zone.
 //
@@ -45,7 +45,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
@@ -120,7 +120,7 @@ func TestZoneBandeTi13Consommateur(t *testing.T) {
 
 // bandeEntree regroupe ce que l'assemblage ajoute au film (regle des 5 parametres).
 type bandeEntree struct {
-	sc    filmdec.ManagedPropertyScan
+	sc    grammar.ManagedPropertyScan
 	zones []Zone
 	role  mapvar.Role
 }
@@ -147,7 +147,7 @@ func bandeDoc(t *testing.T, dir, short string, film p2aFilm,
 
 // bandeSeries publie les series que `zoneSeriesOf` tire des lectures, et le designateur de
 // colline que l'election en retire — les deux entrees dont depend tout ce qui se publie ensuite.
-func bandeSeries(t *testing.T, short string, sc filmdec.ManagedPropertyScan, doc ReplayDocument,
+func bandeSeries(t *testing.T, short string, sc grammar.ManagedPropertyScan, doc ReplayDocument,
 	origin uint64,
 ) {
 	t.Helper()

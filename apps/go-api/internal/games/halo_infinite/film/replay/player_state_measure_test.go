@@ -6,7 +6,7 @@ package replay
 //
 // POURQUOI CET INSTRUMENT EST SCINDE EN DEUX PAQUETS. Il portait aussi P.0.3 (l'arme en main)
 // et P.0.4 (la seconde source de visee). Ces deux-la consomment la CHAINE SEQUENTIELLE, et la
-// regle « 0 code mort » a fait des trois scanners des fichiers `_test.go` de `filmdec` — donc
+// regle « 0 code mort » a fait des trois scanners des fichiers `_test.go` de `grammar` — donc
 // invisibles depuis ici. Les mesures qui consomment la chaine ont suivi la chaine
 // (`filmdec/player_bridge_measure_test.go`) ; celles qui consomment le fil des morts et le pont
 // des vies sont restees. Le partage est fait PAR DEPENDANCE, et aucun decodage n'est en double.
@@ -35,7 +35,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const playerFilmEnv = "PLAYER_FILM"
@@ -54,8 +54,8 @@ func TestPlayerBridgePhase0(t *testing.T) {
 // psInputs porte tout ce que le film a rendu, une seule lecture par flux.
 type psInputs struct {
 	dir, short string
-	pos        []filmdec.BipedPosition
-	shots      []filmdec.FireEvent
+	pos        []grammar.BipedPosition
+	shots      []grammar.FireEvent
 	deaths     []Death
 	lives      []lifeSpan
 	// own porte le pont slot de bipede -> joueur, construit par le chemin de PRODUCTION.
@@ -66,7 +66,7 @@ type psInputs struct {
 func psLoad(t *testing.T, dir string) psInputs {
 	t.Helper()
 	in := psInputs{dir: dir, short: filepath.Base(strings.TrimRight(filepath.Clean(dir), string(filepath.Separator)))}
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.CaptureDirs = true
 	// AUCUNE BORNE DE CARTE N EST DEMANDEE, et c est un choix : ce qui est mesure ici ne compare
 	// que des INSTANTS et des SLOTS. Exiger les bornes du BSP obligerait a resoudre le catalogue
@@ -75,17 +75,17 @@ func psLoad(t *testing.T, dir string) psInputs {
 	// donc une position aberrante n est plus ecartee — elle peut allonger une vie, jamais en
 	// fabriquer une.
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("positions de bipede illisibles : %v", err)
 	}
-	if in.shots, err = filmdec.ScanFilmFireEvents(dir); err != nil {
+	if in.shots, err = grammar.ScanFilmFireEvents(dir); err != nil {
 		t.Logf("tirs illisibles : %v", err)
 	}
 	if in.deaths, err = ScanFilmDeaths(dir); err != nil {
 		t.Logf("fil des morts illisible : %v", err)
 	}
-	sorted := append([]filmdec.BipedPosition(nil), pos...)
+	sorted := append([]grammar.BipedPosition(nil), pos...)
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].TimestampUS < sorted[j].TimestampUS })
 	in.pos = sorted
 	tracks := indexBySlot(sorted)

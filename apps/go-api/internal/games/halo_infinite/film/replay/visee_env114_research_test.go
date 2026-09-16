@@ -57,7 +57,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -83,14 +83,14 @@ func env114Collecte(dir string) []env114Paquet { return env114CollecteType(dir, 
 // env114CollecteType rassemble les paquets delta dont l'octet de tete porte le type demande.
 func env114CollecteType(dir string, typ int) []env114Paquet {
 	var out []env114Paquet
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 2 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 2 {
 				continue
 			}
 			pay := p.Payload(chunk)
@@ -147,7 +147,7 @@ func env114Entropies(pk []env114Paquet, nb int) []float64 {
 	for b := 0; b < nb; b++ {
 		var uns int
 		for _, p := range pk {
-			uns += int(filmdec.ReadBitsAtForDiag(p.pay, b, 1))
+			uns += int(grammar.ReadBitsAtForDiag(p.pay, b, 1))
 		}
 		frac[b] = float64(uns) / float64(len(pk))
 	}
@@ -167,7 +167,7 @@ func env114Cardinalites(pk []env114Paquet, nb, w int) []int {
 	for b := 0; b+w <= nb; b++ {
 		vus := map[uint32]bool{}
 		for _, p := range pk {
-			vus[filmdec.ReadBitsAtForDiag(p.pay, b, w)] = true
+			vus[grammar.ReadBitsAtForDiag(p.pay, b, w)] = true
 		}
 		card = append(card, len(vus))
 	}
@@ -263,7 +263,7 @@ func env114Cle(p env114Paquet, depuis, long int) string {
 			sb.WriteByte('_')
 			continue
 		}
-		sb.WriteByte('0' + byte(filmdec.ReadBitsAtForDiag(p.pay, b, 1)))
+		sb.WriteByte('0' + byte(grammar.ReadBitsAtForDiag(p.pay, b, 1)))
 	}
 	return sb.String()
 }

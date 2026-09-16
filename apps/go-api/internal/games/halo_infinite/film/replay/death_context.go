@@ -40,7 +40,7 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // DecimalesDeDistance : la précision à laquelle une distance en mètres est publiée.
@@ -90,7 +90,7 @@ type MortDuJournal struct {
 type EntreeContexteMorts struct {
 	// Positions : les positions bipeds du film, avec leurs coordonnées MONDE (l'appelant a
 	// fourni les bornes de la carte à `ScanBipedPositions`). Sans monde, aucune distance.
-	Positions []filmdec.BipedPosition
+	Positions []grammar.BipedPosition
 	// Registre est LE REGISTRE D IDENTITE du film. Il porte les vies nommees (slot, bornes,
 	// occupant) et le calage d'horloge.
 	//

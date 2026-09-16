@@ -32,7 +32,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // vfPropagationUS : ecart maximal entre deux fragments de meme slot consideres comme la meme
@@ -79,7 +79,7 @@ func (p vfPont) contient(slot uint32, tMS int64) bool {
 
 // vfXUID resout un gamertag en xuid par le fil d'evenements du film.
 func vfXUID(dir, gt string) (uint64, error) {
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	raw, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("chunk_%02d.bin", n)))
 	if err != nil {
 		return 0, fmt.Errorf("chunk d'evenements : %w", err)
@@ -245,10 +245,10 @@ func vfBatPont(dir, gt string) (vfPont, error) {
 		return p, err
 	}
 	p.xuid = xuid
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.CaptureDirs = true
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		return p, fmt.Errorf("balayage des positions : %w", err)
 	}
@@ -320,16 +320,16 @@ type vfCalib struct {
 // rendement de ce chemin, dont l'echec est ce qui justifie le chemin ancre.
 func vfSequentiel(dir string, cibles map[uint32]bool, maxChunks int) []vfCalib {
 	var table []vfCalib
-	brut, err := filmdec.ReadFilmChunk(dir, 0)
+	brut, err := grammar.ReadFilmChunk(dir, 0)
 	if err != nil {
 		return nil
 	}
-	reg, err := filmdec.ParseRegistryChunk(brut)
+	reg, err := grammar.ParseRegistryChunk(brut)
 	if err != nil {
 		return nil
 	}
 	for _, n := range vfIDLowBitsCandidats {
-		cfg := filmdec.DefaultFrameConfig()
+		cfg := grammar.DefaultFrameConfig()
 		cfg.IDLowBits = n
 		table = append(table, vfSequentielUn(dir, reg, cfg, cibles, maxChunks))
 	}
@@ -337,32 +337,32 @@ func vfSequentiel(dir string, cibles map[uint32]bool, maxChunks int) []vfCalib {
 }
 
 // vfSequentielUn compte les records d'UNE largeur candidate.
-func vfSequentielUn(dir string, reg *filmdec.Registry, cfg filmdec.FrameConfig,
+func vfSequentielUn(dir string, reg *grammar.Registry, cfg grammar.FrameConfig,
 	cibles map[uint32]bool, maxChunks int,
 ) vfCalib {
 	l := vfCalib{idLowBits: cfg.IDLowBits}
-	w := filmdec.NewWorld(reg)
-	fin := filmdec.CountFilmChunks(dir)
+	w := grammar.NewWorld(reg)
+	fin := grammar.CountFilmChunks(dir)
 	if maxChunks > 0 && maxChunks < fin {
 		fin = maxChunks
 	}
 	for c := 1; c <= fin; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(data) {
+		for _, p := range grammar.WalkPackets(data) {
 			pay := p.Payload(data)
-			if p.Type == filmdec.PacketTypeKeyframe {
-				w = filmdec.WorldFromKeyframe(reg, pay)
+			if p.Type == grammar.PacketTypeKeyframe {
+				w = grammar.WorldFromKeyframe(reg, pay)
 				continue
 			}
-			if p.Type != filmdec.PacketTypeDelta {
+			if p.Type != grammar.PacketTypeDelta {
 				continue
 			}
-			recs, _ := filmdec.DecodeFrameViews(pay, w, cfg, vfVuesParPaquet, cfg.PacketPreambleBits)
+			recs, _ := grammar.DecodeFrameViews(pay, w, cfg, vfVuesParPaquet, cfg.PacketPreambleBits)
 			for _, r := range recs {
-				if r.TypeIndex != filmdec.BipedTypeIndex {
+				if r.TypeIndex != grammar.BipedTypeIndex {
 					continue
 				}
 				l.bipeds++

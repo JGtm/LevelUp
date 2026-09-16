@@ -9,13 +9,13 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // grappleEntry : une carte de test aux largeurs 10/10/10 et bornes [0, 102.4] — le pas de
 // déquantification vaut exactement 0,1 u, les quanta se lisent donc en décimètres.
-func grappleEntry() filmdec.MapQuantEntry {
-	return filmdec.MapQuantEntry{
+func grappleEntry() grammar.MapQuantEntry {
+	return grammar.MapQuantEntry{
 		Min:        [3]float32{0, 0, 0},
 		Max:        [3]float32{102.4, 102.4, 102.4},
 		AxisWidths: [3]uint{10, 10, 10},
@@ -38,8 +38,8 @@ func grappleTrack(slot uint32) Track {
 
 // read fabrique une lecture : ts en microsecondes sur une grille origin=0, step=100ms ;
 // q1000 = quantum 1000 -> 100,05 u par axe (l'ancre du scénario).
-func grappleRead(slot uint32, tsUS uint64, heavy bool) filmdec.GrappleRead {
-	return filmdec.GrappleRead{
+func grappleRead(slot uint32, tsUS uint64, heavy bool) grammar.GrappleRead {
+	return grammar.GrappleRead{
 		Slot: slot, TimestampUS: tsUS, Heavy: heavy, PosQ: [3]uint32{1000, 1000, 0},
 	}
 }
@@ -48,7 +48,7 @@ const grappleStep = uint64(100_000) // 100 ms par frame, origine 0
 
 func TestBuildGrappleLines_PairsFireToAttachAndMeasuresArrival(t *testing.T) {
 	tracks := []Track{grappleTrack(5)}
-	reads := []filmdec.GrappleRead{
+	reads := []grammar.GrappleRead{
 		grappleRead(5, 500_000, false),   // tir à la frame 5
 		grappleRead(5, 650_000, true),    // accroche 0,15 s après (frame 6)
 		grappleRead(5, 3_000_000, false), // tir SANS accroche : un raté
@@ -76,7 +76,7 @@ func TestBuildGrappleLines_PairsFireToAttachAndMeasuresArrival(t *testing.T) {
 
 func TestBuildGrappleLines_AttachWithoutFireOpensAtAttach(t *testing.T) {
 	tracks := []Track{grappleTrack(5)}
-	reads := []filmdec.GrappleRead{grappleRead(5, 800_000, true)} // accroche seule (frame 8)
+	reads := []grammar.GrappleRead{grappleRead(5, 800_000, true)} // accroche seule (frame 8)
 	lines, _ := buildGrappleLines(reads, grappleEntry(), 0, grappleStep, tracks)
 	if len(lines) != 1 || lines[0].T0 != 8 {
 		t.Fatalf("lines=%v : une accroche sans tir lu doit ouvrir la fenêtre à l'ACCROCHE, "+
@@ -86,7 +86,7 @@ func TestBuildGrappleLines_AttachWithoutFireOpensAtAttach(t *testing.T) {
 
 func TestBuildGrappleLines_StaleFireIsNotPaired(t *testing.T) {
 	tracks := []Track{grappleTrack(5)}
-	reads := []filmdec.GrappleRead{
+	reads := []grammar.GrappleRead{
 		grappleRead(5, 100_000, false), // tir à la frame 1...
 		grappleRead(5, 800_000, true),  // ... accroche 0,7 s après : PAS une paire (> 0,5 s)
 	}
@@ -101,7 +101,7 @@ func TestBuildGrappleLines_StaleFireIsNotPaired(t *testing.T) {
 
 func TestBuildGrappleLines_UnpublishedLifeAndDeathAtAttachDrawNothing(t *testing.T) {
 	tracks := []Track{grappleTrack(5)}
-	reads := []filmdec.GrappleRead{
+	reads := []grammar.GrappleRead{
 		grappleRead(99, 650_000, true),  // vie non publiée : aucune fiche
 		grappleRead(5, 4_000_000, true), // accroche à la frame 40 = fin de vie : fenêtre vide
 	}
@@ -134,7 +134,7 @@ func TestBuildGrappleLines_UneTractionDUneVieAnterieureEstPubliee(t *testing.T) 
 		Points: []Point{{T: 100, X: 10, Y: 10}, {T: 115, X: 99, Y: 99}, {T: 140, X: 10, Y: 10}},
 	}
 	tracks := []Track{premiere, seconde}
-	reads := []filmdec.GrappleRead{
+	reads := []grammar.GrappleRead{
 		grappleRead(5, 500_000, false), grappleRead(5, 650_000, true), // vie 1 : frames 5 / 6
 		grappleRead(5, 10_500_000, false), grappleRead(5, 10_650_000, true), // vie 2 : frames 105 / 106
 	}
@@ -195,7 +195,7 @@ func TestBuildGrappleLines_AucuneFenetreCouvranteRattacheALaVieLaPlusProche(t *t
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			reads := []filmdec.GrappleRead{
+			reads := []grammar.GrappleRead{
 				grappleRead(7, c.tirUS, false), grappleRead(7, c.accroUS, true),
 			}
 			lines, cov := buildGrappleLines(reads, grappleEntry(), 0, grappleStep, []Track{c.track})

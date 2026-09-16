@@ -9,7 +9,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // duelsPct formate un taux en gardant le couple brut visible — un pourcentage seul ne
@@ -189,7 +189,7 @@ func duelsMesureDistance(t *testing.T, morts []duelMort, dmg []duelDmg, tracks m
 	const w = 3_000_000
 	var duels, elims []float64
 	tentees, resolues, denivele, hauteurs := 0, 0, 0, make([]float64, 0, len(morts))
-	buckets := make([]int, len(filmdec.WeaponHitDistanceEdges)+1)
+	buckets := make([]int, len(grammar.WeaponHitDistanceEdges)+1)
 	for _, m := range morts {
 		f, ok := duelsFatal(dmg, m.slot, m.ts)
 		if !ok {
@@ -213,7 +213,7 @@ func duelsMesureDistance(t *testing.T, morts []duelMort, dmg []duelDmg, tracks m
 		}
 		if estDuel {
 			duels = append(duels, d3)
-			buckets[filmdec.WeaponHitBucket(d3)]++
+			buckets[grammar.WeaponHitBucket(d3)]++
 		} else {
 			elims = append(elims, d3)
 		}
@@ -224,7 +224,7 @@ func duelsMesureDistance(t *testing.T, morts []duelMort, dmg []duelDmg, tracks m
 		"engagements a plus d'1 m de denivele %s",
 		duelsMediane(duels), duelsMediane(elims), duelsMediane(hauteurs),
 		duelsPct(denivele, resolues))
-	t.Logf("M3 histogramme des duels sur %v m : %v", filmdec.WeaponHitDistanceEdges, buckets)
+	t.Logf("M3 histogramme des duels sur %v m : %v", grammar.WeaponHitDistanceEdges, buckets)
 }
 
 // duelsMediane rend la mediane formatee, ou « n.d. » sur un echantillon vide.
@@ -315,16 +315,16 @@ func duelsClesTriees(m map[int]int) []int {
 // simplement pas chaque coup au but, et aucune amelioration de decodage n'y changera rien.
 func duelsRecensementC0(t *testing.T, dir string) {
 	t.Helper()
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	parType := map[uint64]int{}
 	deltas, c0 := 0, 0
 	for c := 1; c <= n; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, pk := range filmdec.WalkPackets(data) {
-			if pk.Type != filmdec.PacketTypeDelta {
+		for _, pk := range grammar.WalkPackets(data) {
+			if pk.Type != grammar.PacketTypeDelta {
 				continue
 			}
 			deltas++
@@ -336,7 +336,7 @@ func duelsRecensementC0(t *testing.T, dir string) {
 				continue
 			}
 			c0++
-			br := filmdec.LecteurSur(pay)
+			br := grammar.LecteurSur(pay)
 			br.Skip(2)
 			parType[br.ReadBits(7)]++
 		}
@@ -377,9 +377,9 @@ type duelChute struct {
 // QUI l'a inflige, mais elle dit QUE le joueur en a pris, et c'est la moitie manquante de la
 // reciprocite. La question que M5 tranche : cette voie est-elle assez dense et assez fiable ?
 func duelsChutesBouclier(
-	positions []filmdec.BipedPosition, vies map[uint32][]lifeSpan,
+	positions []grammar.BipedPosition, vies map[uint32][]lifeSpan,
 ) ([]duelChute, int) {
-	parSlot := map[uint32][]filmdec.BipedPosition{}
+	parSlot := map[uint32][]grammar.BipedPosition{}
 	for _, p := range positions {
 		if _, ok := p.ShieldAt(); ok {
 			parSlot[p.Slot] = append(parSlot[p.Slot], p)

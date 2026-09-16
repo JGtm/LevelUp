@@ -18,7 +18,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // objContexteMotif porte ce que le motif a autour de lui.
@@ -45,19 +45,19 @@ const objSuffixeArme uint32 = 0x42c9679f
 
 // objMotifContexte re-balaye les images-cles et rend le contexte binaire du motif.
 func objMotifContexte(dir string, val uint32) (objContexte, error) {
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	var offsets []int
 	avant, apres := map[uint32]int{}, map[uint32]int{}
 	ctx := objContexte{}
 	lus := 0
 	for c := 1; c <= n; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
 		lus++
-		for _, p := range filmdec.WalkPackets(data) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(data) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			objContexteDePayload(p.Payload(data), val, &ctx, &offsets, avant, apres)
@@ -83,7 +83,7 @@ func (e errChunk) Error() string { return string(e) }
 // objContexteDePayload accumule le contexte du motif pour un payload d'image-cle.
 func objContexteDePayload(pay []byte, val uint32, ctx *objContexte, offsets *[]int,
 	avant, apres map[uint32]int) {
-	recs := filmdec.WalkKeyframeWorld(pay)
+	recs := grammar.WalkKeyframeWorld(pay)
 	if len(recs) == 0 {
 		return
 	}

@@ -81,7 +81,7 @@ type killFeed struct {
 // kills) et en tire les instants. Aucune borne de chunk : un BTB a son HIGHLIGHT en n62.
 //
 // LA VERSION DU FILM EST LUE, PLUS DEVINEE (2026-09-12). Elle vient du PROFIL du film depuis le
-// lot 2.1.4 (`filmdec.HighlightProfileOfFilm`, pose par `loadFilm` : meme lecture de l en-tete du
+// lot 2.1.4 (`grammar.HighlightProfileOfFilm`, pose par `loadFilm` : meme lecture de l en-tete du
 // registre, mais c est le profil qui en est la source unique) et commande le decoupage du
 // gamertag dans le bloc d event. Le 0 qui trainait ici designait « gamertag en tete » pour TOUS les films, y
 // compris les versions 39-40 ou il vit douze octets plus loin — d ou 68 a 96 % de morts sans

@@ -35,7 +35,7 @@ import (
 // MISE A JOUR DU 2026-08-18 (plan PLAN_POSES_EQUIPEMENT_PUBLICATION, phase 1) : le corpus passe
 // de 2 films a 11 (le douzieme, `0014603f`, ne porte aucune pose mesurable et se refuse), et la
 // cohorte n'est plus le balayage BRUT mais les poses CONFIRMEES par l'oracle de position
-// (filmdec.ScanFilmEquipmentPlacements). Les effectifs changent donc de definition autant que
+// (grammar.ScanFilmEquipmentPlacements). Les effectifs changent donc de definition autant que
 // de valeur : les anciens comptaient des records dont une bonne part etait du bruit d'ancre.
 func ti37Observes() map[uint32]string {
 	return map[uint32]string{

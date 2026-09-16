@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // identity_registry_bridge_test.go — LE PONT PAR MORTS EN TEMOIN, ET LA PAIRE ECHANGEE.
@@ -28,7 +28,7 @@ import (
 // sans en heriter l'indetermination : quand deux fins tombent au meme instant, l'ordre des
 // candidats de meme ecart n'est pas garanti, et un test ne se batit pas sur cela.
 func filmPaireEchangee() IdentityInput {
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	corps := []struct {
 		slot  uint32
 		finUS uint64
@@ -36,7 +36,7 @@ func filmPaireEchangee() IdentityInput {
 	}{
 		{100, 5_000_000, 0}, {200, 9_000_000, 1}, {300, 3_000_000, 0},
 	}
-	var creations []filmdec.BipedCreation
+	var creations []grammar.BipedCreation
 	for _, c := range corps {
 		for t := uint64(1_000_000); t < c.finUS; t += 500_000 {
 			pos = append(pos, posAt(c.slot, t, 1, 1, 1))

@@ -15,8 +15,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/weaponv3"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
 )
 
 // gwTestClock est l'axe de temps des tests : 100 ms de pas, 801 frames (80 s de film).
@@ -40,10 +40,10 @@ func gwTestFamily(t *testing.T, rank int) uint32 {
 }
 
 // gwTestCreation fabrique un record de creation porteur d'une identite d'arme.
-func gwTestCreation(slot, gen uint32, atUS uint64, fam uint32, x, y float32) filmdec.EquipmentCreation {
-	c := filmdec.EquipmentCreation{Slot: slot, Gen: gen, TimestampUS: atUS, X: x, Y: y}
-	c.MPPPresent[filmdec.MPPWord32] = true
-	c.MPPVal[filmdec.MPPWord32] = uint64(fam)
+func gwTestCreation(slot, gen uint32, atUS uint64, fam uint32, x, y float32) grammar.EquipmentCreation {
+	c := grammar.EquipmentCreation{Slot: slot, Gen: gen, TimestampUS: atUS, X: x, Y: y}
+	c.MPPPresent[grammar.MPPWord32] = true
+	c.MPPVal[grammar.MPPWord32] = uint64(fam)
 	return c
 }
 
@@ -55,13 +55,13 @@ func gwTestCreation(slot, gen uint32, atUS uint64, fam uint32, x, y float32) fil
 // dernier instant qu'une des trois sources porte, et le recensement d'une vie est restreint a
 // [creation, fin). Un nuage qui s'arreterait PILE a la derniere image-cle exclurait celle-ci du
 // recensement, et l'objet encore present a la fin ne se verrait plus comme tel.
-func gwTestPositions(passes []uint64, px, py float32) []filmdec.BipedPosition {
-	var out []filmdec.BipedPosition
+func gwTestPositions(passes []uint64, px, py float32) []grammar.BipedPosition {
+	var out []grammar.BipedPosition
 	for t := uint64(0); t <= 85_000_000; t += 1_000_000 {
-		out = append(out, filmdec.BipedPosition{Slot: 1, TimestampUS: t, X: 100, Y: 100, HasWorld: true})
+		out = append(out, grammar.BipedPosition{Slot: 1, TimestampUS: t, X: 100, Y: 100, HasWorld: true})
 	}
 	for _, t := range passes {
-		out = append(out, filmdec.BipedPosition{Slot: 2, TimestampUS: t, X: px, Y: py, HasWorld: true})
+		out = append(out, grammar.BipedPosition{Slot: 2, TimestampUS: t, X: px, Y: py, HasWorld: true})
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].TimestampUS < out[j].TimestampUS })
 	return out
@@ -70,22 +70,22 @@ func gwTestPositions(passes []uint64, px, py float32) []filmdec.BipedPosition {
 // gwTestPadScan monte le cas de reference : QUATRE apparitions au meme endroit, recensees une
 // image-cle chacune, dont trois suivies d'un passage de joueur. La quatrieme est encore recensee
 // a la derniere image-cle : le socle ne s'est pas vide.
-func gwTestPadScan(t *testing.T) (WorldObjectScan, []filmdec.BipedPosition) {
+func gwTestPadScan(t *testing.T) (WorldObjectScan, []grammar.BipedPosition) {
 	t.Helper()
 	fam := gwTestFamily(t, 0)
 	kf := []uint64{0, 20_000_000, 40_000_000, 60_000_000, 80_000_000}
 	scan := WorldObjectScan{
 		Scanned: true,
-		Stats:   filmdec.EquipmentCreationStats{Slots: 8, Anchors: 40, Accepted: 4},
-		Creations: []filmdec.EquipmentCreation{
+		Stats:   grammar.EquipmentCreationStats{Slots: 8, Anchors: 40, Accepted: 4},
+		Creations: []grammar.EquipmentCreation{
 			gwTestCreation(10, 0, 1_000_000, fam, 10, 10),
 			gwTestCreation(11, 0, 31_000_000, fam, 10.2, 10.1),
 			gwTestCreation(12, 0, 51_000_000, fam, 9.9, 10.2),
 			gwTestCreation(13, 0, 71_000_000, fam, 10.1, 9.8),
 		},
-		Keyframes: filmdec.WorldObjectKeyframes{
+		Keyframes: grammar.WorldObjectKeyframes{
 			TimesUS: kf,
-			SeenUS: map[filmdec.EquipmentLifeKey][]uint64{
+			SeenUS: map[grammar.EquipmentLifeKey][]uint64{
 				{Slot: 10}: {20_000_000},
 				{Slot: 11}: {40_000_000},
 				{Slot: 12}: {60_000_000},
@@ -220,8 +220,8 @@ func TestBuildWeaponPadsEcarteLesLachersEtLesObjetsQuiOntBouge(t *testing.T) {
 	kf := []uint64{0, 20_000_000, 40_000_000, 60_000_000, 80_000_000}
 	scan := WorldObjectScan{
 		Scanned: true,
-		Stats:   filmdec.EquipmentCreationStats{Accepted: 4},
-		Creations: []filmdec.EquipmentCreation{
+		Stats:   grammar.EquipmentCreationStats{Accepted: 4},
+		Creations: []grammar.EquipmentCreation{
 			// Deux apparitions au meme endroit, mais LACHEES : une vie de joueur s'acheve la.
 			gwTestCreation(20, 0, 10_000_000, fam, 30, 30),
 			gwTestCreation(21, 0, 50_000_000, fam, 30.1, 30),
@@ -229,15 +229,15 @@ func TestBuildWeaponPadsEcarteLesLachersEtLesObjetsQuiOntBouge(t *testing.T) {
 			gwTestCreation(22, 0, 10_000_000, fam, 60, 60),
 			gwTestCreation(23, 0, 50_000_000, fam, 60.1, 60),
 		},
-		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: kf},
-		Tracks: []filmdec.ProjectileTrack{
-			{Slot: 22, Pts: []filmdec.ProjectileSample{{TimestampUS: 10_000_000, X: 60, Y: 60}}},
-			{Slot: 23, Pts: []filmdec.ProjectileSample{{TimestampUS: 50_000_000, X: 60.1, Y: 60}}},
+		Keyframes: grammar.WorldObjectKeyframes{TimesUS: kf},
+		Tracks: []grammar.ProjectileTrack{
+			{Slot: 22, Pts: []grammar.ProjectileSample{{TimestampUS: 10_000_000, X: 60, Y: 60}}},
+			{Slot: 23, Pts: []grammar.ProjectileSample{{TimestampUS: 50_000_000, X: 60.1, Y: 60}}},
 		},
 	}
 	// Deux vies de joueur qui S'ACHEVENT sur la premiere position, aux deux instants voulus :
 	// des echantillons isoles, separes par plus de `lifeGapUS`.
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		{Slot: 3, TimestampUS: 9_950_000, X: 30, Y: 30, HasWorld: true},
 		{Slot: 3, TimestampUS: 49_950_000, X: 30.1, Y: 30, HasWorld: true},
 	}
@@ -263,16 +263,16 @@ func TestBuildWeaponPadsEcarteLesLachersEtLesObjetsQuiOntBouge(t *testing.T) {
 func TestGroundWeaponObjectsEcarteLesCreationsSansIdentite(t *testing.T) {
 	fam := gwTestFamily(t, 0)
 	sansMPP := gwTestCreation(30, 0, 1_000_000, fam, 0, 0)
-	sansMPP.MPPPresent[filmdec.MPPWord32] = false
+	sansMPP.MPPPresent[grammar.MPPWord32] = false
 	scan := WorldObjectScan{
 		Scanned: true,
-		Stats:   filmdec.EquipmentCreationStats{Accepted: 3},
-		Creations: []filmdec.EquipmentCreation{
+		Stats:   grammar.EquipmentCreationStats{Accepted: 3},
+		Creations: []grammar.EquipmentCreation{
 			gwTestCreation(31, 0, 2_000_000, fam, 1, 1),
 			gwTestCreation(32, 0, 3_000_000, 0xDEADBEEF, 2, 2), // identite hors catalogue
 			sansMPP,
 		},
-		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
+		Keyframes: grammar.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
 	objs, _ := padObjects(scan, weaponPadRule(nil), nil, nil)
 	if len(objs) != 1 {
@@ -294,19 +294,19 @@ func TestGroundWeaponObjectsBorneParLaRepriseDeCle(t *testing.T) {
 	fam := gwTestFamily(t, 0)
 	scan := WorldObjectScan{
 		Scanned: true,
-		Stats:   filmdec.EquipmentCreationStats{Accepted: 2},
-		Creations: []filmdec.EquipmentCreation{
+		Stats:   grammar.EquipmentCreationStats{Accepted: 2},
+		Creations: []grammar.EquipmentCreation{
 			gwTestCreation(40, 1, 5_000_000, fam, 0, 0),
 			gwTestCreation(40, 1, 25_000_000, fam, 0, 0),
 		},
-		Keyframes: filmdec.WorldObjectKeyframes{
+		Keyframes: grammar.WorldObjectKeyframes{
 			TimesUS: []uint64{0, 20_000_000, 40_000_000},
-			SeenUS:  map[filmdec.EquipmentLifeKey][]uint64{{Slot: 40, Gen: 1}: {20_000_000, 40_000_000}},
+			SeenUS:  map[grammar.EquipmentLifeKey][]uint64{{Slot: 40, Gen: 1}: {20_000_000, 40_000_000}},
 		},
 	}
 	// Le nuage deborde la derniere image-cle : sans cela la fin du film tomberait dessus et
 	// l'exclurait du recensement (la vie est restreinte a [creation, fin)).
-	pos := []filmdec.BipedPosition{{Slot: 1, TimestampUS: 45_000_000, X: 100, Y: 100, HasWorld: true}}
+	pos := []grammar.BipedPosition{{Slot: 1, TimestampUS: 45_000_000, X: 100, Y: 100, HasWorld: true}}
 	objs, _ := padObjects(scan, weaponPadRule(nil), nil, pos)
 	if len(objs) != 2 {
 		t.Fatalf("2 objets attendus sur la meme cle, %d", len(objs))
@@ -335,14 +335,14 @@ func TestCouvertureDesequilibreeQuandUneCreationSePerd(t *testing.T) {
 	fuite := WorldObjectScan{
 		Scanned: true,
 		// CINQ acceptees annoncees par le balayage...
-		Stats: filmdec.EquipmentCreationStats{Accepted: 5},
+		Stats: grammar.EquipmentCreationStats{Accepted: 5},
 		// ... et TROIS transmises a l'assemblage.
-		Creations: []filmdec.EquipmentCreation{
+		Creations: []grammar.EquipmentCreation{
 			gwTestCreation(80, 0, 1_000_000, fam, 1, 1),
 			gwTestCreation(81, 0, 2_000_000, fam, 2, 2),
 			gwTestCreation(82, 0, 3_000_000, 0xDEADBEEF, 3, 3),
 		},
-		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
+		Keyframes: grammar.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
 	_, _, cov, _ := buildWeaponPads(PadScans{Weapons: fuite}, nil, gwTestClock(), padCatalogs{})
 	if cov.Kept != 2 || cov.Rejected != 1 {
@@ -364,14 +364,14 @@ func TestGroundWeaponObjectsSansImageCleSuivanteEstNever(t *testing.T) {
 	fam := gwTestFamily(t, 0)
 	scan := WorldObjectScan{
 		Scanned:   true,
-		Stats:     filmdec.EquipmentCreationStats{Accepted: 1},
-		Creations: []filmdec.EquipmentCreation{gwTestCreation(70, 0, 45_000_000, fam, 12, 12)},
+		Stats:     grammar.EquipmentCreationStats{Accepted: 1},
+		Creations: []grammar.EquipmentCreation{gwTestCreation(70, 0, 45_000_000, fam, 12, 12)},
 		// La derniere image-cle est a 40 s : l'objet nait APRES elle.
-		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000}},
+		Keyframes: grammar.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000}},
 	}
 	// Un joueur passe PILE sur l'objet apres sa naissance : sans le correctif, ce passage
 	// datait une disparition que rien ne prouve.
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		{Slot: 2, TimestampUS: 47_000_000, X: 12, Y: 12, HasWorld: true},
 		{Slot: 1, TimestampUS: 60_000_000, X: 200, Y: 200, HasWorld: true},
 	}
@@ -398,20 +398,20 @@ func TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle(t *testing.T) {
 	fam := gwTestFamily(t, 0)
 	scan := WorldObjectScan{
 		Scanned: true,
-		Stats:   filmdec.EquipmentCreationStats{Accepted: 2},
-		Creations: []filmdec.EquipmentCreation{
+		Stats:   grammar.EquipmentCreationStats{Accepted: 2},
+		Creations: []grammar.EquipmentCreation{
 			gwTestCreation(50, 2, 5_000_000, fam, 7, 7),
 			gwTestCreation(50, 2, 45_000_000, fam, 7, 7),
 		},
-		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000, 60_000_000}},
+		Keyframes: grammar.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000, 60_000_000}},
 		// UNE SEULE piste, sur la PREMIERE vie : elle demarre a l'instant de la premiere
 		// creation et s'acheve bien avant la seconde.
-		Tracks: []filmdec.ProjectileTrack{{Slot: 50, Gen: 2, Pts: []filmdec.ProjectileSample{
+		Tracks: []grammar.ProjectileTrack{{Slot: 50, Gen: 2, Pts: []grammar.ProjectileSample{
 			{TimestampUS: 5_000_000, X: 7, Y: 7},
 			{TimestampUS: 9_000_000, X: 9, Y: 9},
 		}}},
 	}
-	pos := []filmdec.BipedPosition{{Slot: 1, TimestampUS: 65_000_000, X: 100, Y: 100, HasWorld: true}}
+	pos := []grammar.BipedPosition{{Slot: 1, TimestampUS: 65_000_000, X: 100, Y: 100, HasWorld: true}}
 	objs, _ := padObjects(scan, weaponPadRule(nil), nil, pos)
 	if len(objs) != 2 {
 		t.Fatalf("2 objets attendus sur la meme cle, %d", len(objs))

@@ -35,7 +35,7 @@ package replay
 import (
 	"fmt"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // WeaponChangeKind qualifie un changement d'arme en main, tel que le document le publie.
@@ -83,7 +83,7 @@ type WeaponChange struct {
 // antérieurs à l'origine du document le sont aussi — un rejeu ne montre pas ce qui précède sa
 // première frame.
 func buildWeaponChanges(
-	changes []filmdec.HeldWeaponChange, origin uint64, step uint64,
+	changes []grammar.HeldWeaponChange, origin uint64, step uint64,
 ) ([]WeaponChange, WeaponChangeCoverage) {
 	var cov WeaponChangeCoverage
 	cov.Decoded = len(changes)
@@ -92,7 +92,7 @@ func buildWeaponChanges(
 	}
 	out := make([]WeaponChange, 0, len(changes))
 	for _, c := range changes {
-		if c.Kind == filmdec.HeldWeaponRestated {
+		if c.Kind == grammar.HeldWeaponRestated {
 			cov.Restated++
 			continue
 		}
@@ -102,10 +102,10 @@ func buildWeaponChanges(
 		}
 		frame := int((c.TimestampUS - origin) / step)
 		w := WeaponChange{T: frame, Slot: c.Slot, Kind: weaponChangeKindOf(c.Kind)}
-		if c.Family != filmdec.NoWeaponVariant {
+		if c.Family != grammar.NoWeaponVariant {
 			w.W = fmt.Sprintf("%08x", c.Family)
 		}
-		if c.Previous != filmdec.NoWeaponVariant {
+		if c.Previous != grammar.NoWeaponVariant {
 			w.From = fmt.Sprintf("%08x", c.Previous)
 		}
 		out = append(out, w)
@@ -126,11 +126,11 @@ func buildWeaponChanges(
 }
 
 // weaponChangeKindOf traduit la nature lue par le décodeur en nature publiée.
-func weaponChangeKindOf(k filmdec.HeldWeaponChangeKind) WeaponChangeKind {
+func weaponChangeKindOf(k grammar.HeldWeaponChangeKind) WeaponChangeKind {
 	switch k {
-	case filmdec.HeldWeaponDropped:
+	case grammar.HeldWeaponDropped:
 		return WeaponDropped
-	case filmdec.HeldWeaponSwapped:
+	case grammar.HeldWeaponSwapped:
 		return WeaponSwapped
 	default:
 		return WeaponTaken
@@ -160,11 +160,11 @@ type WeaponChangeCoverage struct {
 // IL SERT À DISTINGUER UNE PRISE D'UNE RÉ-ANNONCE, et c'est sa seule raison d'être : la
 // PREMIÈRE émission d'un emplacement n'a pas d'état précédent dans le flux, son état de départ
 // vient du spawn. Sans ce prédicat, chaque première émission serait comptée comme une prise.
-func spawnSetFrom(loadouts []filmdec.KeyframeLoadout) func(uint32, uint64) (map[uint32]bool, bool) {
+func spawnSetFrom(loadouts []grammar.KeyframeLoadout) func(uint32, uint64) (map[uint32]bool, bool) {
 	if len(loadouts) == 0 {
 		return nil
 	}
-	bySlot := map[uint32][]filmdec.KeyframeLoadout{}
+	bySlot := map[uint32][]grammar.KeyframeLoadout{}
 	for _, l := range loadouts {
 		bySlot[l.Slot] = append(bySlot[l.Slot], l)
 	}

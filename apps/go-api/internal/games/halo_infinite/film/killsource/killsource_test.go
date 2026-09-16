@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -456,7 +456,7 @@ func checkOrigins(t *testing.T, res *Result, ref reference) {
 		t.Errorf("lignes d origine %q = %d, attendu %d", OriginBotKiller,
 			n[OriginBotKiller], ref.botKillerDeaths)
 	}
-	if res.Health.Verdict() == filmdec.VerdictAlerte {
+	if res.Health.Verdict() == grammar.VerdictAlerte {
 		t.Errorf("verdict de sante ALERTE sur un film de reference : %v", res.Health.Alerts())
 	}
 	if res.Health.TagOutOfCatalogueWalk != 0 {

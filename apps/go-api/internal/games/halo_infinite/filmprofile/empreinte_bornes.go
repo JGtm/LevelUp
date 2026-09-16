@@ -19,7 +19,7 @@ package filmprofile
 //	ELLE SE CALCULE SUR LA STRUCTURE, pas sur le texte. Chaque entree est REMISE A PLAT
 //	(`json.Compact`) avant d etre hachee, et les clefs sont triees : une reindentation du
 //	fichier ne change pas l empreinte, un chiffre si. Ce paquet ne connait donc PAS le type
-//	`filmdec.MapQuantEntry` — il n a pas a le connaitre, et ne doit pas l importer.
+//	`grammar.MapQuantEntry` — il n a pas a le connaitre, et ne doit pas l importer.
 
 import (
 	"bytes"

@@ -1,11 +1,11 @@
 package archlint
 
-// filmdec_package_vars_test.go — L'ETAT GLOBAL DE `filmdec` NE CROIT PLUS (item 1.10, lot 1 de
+// filmdec_package_vars_test.go — L'ETAT GLOBAL DE `grammar` NE CROIT PLUS (item 1.10, lot 1 de
 // PLAN_CUISSON_PERF).
 //
 // # POURQUOI CE RATCHET EXISTE
 //
-// `filmdec` PORTAIT son etat de reglage dans des VARIABLES DE PAQUET (largeurs d'axe, crochets
+// `grammar` PORTAIT son etat de reglage dans des VARIABLES DE PAQUET (largeurs d'axe, crochets
 // de deserialisation, compteurs d'observation). C'est ce qui obligeait tout le decodage a passer
 // sous un verrou de paquet : deux films decodes en parallele dans le meme processus se seraient
 // vole leurs largeurs. Ce ratchet a d'abord GELE le compte (2026-09-03, decision D10 de
@@ -20,7 +20,7 @@ package archlint
 // # CE QUI EST COMPTE, EXACTEMENT
 //
 // Les NOMS declares par un `var` de NIVEAU PAQUET dans les fichiers non-test de
-// `internal/games/halo_infinite/film/filmdec` — un bloc `var ( a = 1; b = 2 )` compte donc pour DEUX, parce que
+// `internal/games/halo_infinite/film/grammar` — un bloc `var ( a = 1; b = 2 )` compte donc pour DEUX, parce que
 // c'est deux morceaux d'etat, pas une ligne de syntaxe. L'identifiant blanc (`var _ = ...`,
 // assertion de compilation) n'est PAS compte : il ne porte aucun etat. Le comptage se fait par
 // `go/ast` et non par grep — un `var` dans un commentaire ou dans un corps de fonction ne doit
@@ -127,7 +127,7 @@ import (
 	"testing"
 )
 
-// filmdecVarsGeles : le compte GELE des variables de paquet de `filmdec` (cf. l en-tete pour la
+// filmdecVarsGeles : le compte GELE des variables de paquet de `grammar` (cf. l en-tete pour la
 // convention de comptage et la date de mesure).
 //
 // RESSERRE A 94 LE 2026-09-16 (revue de jalon M1, constat C4) : `keyframeBodyVariants` et la
@@ -174,7 +174,7 @@ import (
 // `herite` — la DERNIERE variable que les lots 2.2.a/b/e avaient regroupee, « ce qu une passe
 // laisse a la suivante dans le processus » — disparait. Ce qu elle portait (descripteur de
 // traversee, largeur d axe absolue, largeurs d axe des objets du monde, decoupage MPP,
-// `param_4` force) devient [filmdec.ProfilDeBalayage], une VALEUR : le lecteur de bits en tient
+// `param_4` force) devient [grammar.ProfilDeBalayage], une VALEUR : le lecteur de bits en tient
 // une copie, le contexte du film celle du decodage courant, et `FrameConfig.Profil` la passe aux
 // portes de balayage. La calibration de `killsource` la REND desormais
 // (`Result.ProfilCalibre`), et `replaybuild` la passe explicitement a `replay.BuildFromFilm` —
@@ -186,24 +186,24 @@ import (
 // corruption, queue de record NEW, deserialiseur d etat par archetype, `simulation-state`
 // complet, portee baseline, grammaire d ecrivain d i0, corps d action de mobilite, corps
 // d ancrage de capacite, inference de chaine, generation stricte, et les DEUX tables de
-// largeurs (calibrees, bouchon) — deviennent [filmdec.GrammaireBalayage], un champ du profil
+// largeurs (calibrees, bouchon) — deviennent [grammar.GrammaireBalayage], un champ du profil
 // que le lecteur de bits porte. Un instrument qui en pose une la pose pour SON balayage.
 // Bilan net : -12 = 30.
 //
 // RESSERRE A 23 LE 2026-09-17 (lot 2.3, famille « la capture de position ») : SEPT de moins.
 // SIX decrivaient UN record en cours de decodage (`posCaptureStartBit`, `posCaptureSlot`,
 // `accumWorld`, `accumSlot`, `absViaFallback`, et la portee de `setAccumSlot`) : elles
-// deviennent [filmdec.captureDePosition], un champ du LECTEUR de bits — deux balayages
+// deviennent [grammar.captureDePosition], un champ du LECTEUR de bits — deux balayages
 // simultanes n ont rien a partager la-dedans. La septieme, `absIdxHist`, est un COMPTEUR
-// D OBSERVATION : elle rejoint [filmdec.Observation]. `lastRepVersion` et son accesseur
+// D OBSERVATION : elle rejoint [grammar.Observation]. `lastRepVersion` et son accesseur
 // exporte `LastRepVersion()` sont SUPPRIMES — aucun appelant dans le depot, tests compris
 // (regle 7). Bilan net : -7 = 23, dont UNE SEULE encore ecrite : `observateur`.
 //
 // RESSERRE A 22 LE 2026-09-17 (lot 2.3, famille « l observateur ») — ET LE COMPTE QUI FAIT FOI
 // EST L AUTRE : **ZERO variable de paquet ECRITE**. `observateur` etait la derniere ; les
 // vingt-huit reglages publics (`SetXxxHook`) qui l ecrivaient ont disparu avec elle. Chaque
-// balayage construit desormais SON observateur ([filmdec.NouvelleObservation]) et le pose sur
-// ses lecteurs avec son profil ([filmdec.ContexteDeLecture]).
+// balayage construit desormais SON observateur ([grammar.NouvelleObservation]) et le pose sur
+// ses lecteurs avec son profil ([grammar.ContexteDeLecture]).
 //
 // RESSERRE A 21 LE 2026-09-17 (revue adversariale du lot 2.3, constat P1-1). Le lot avait
 // laisse 22 apres la famille « observateur » et n a pas re-mesure apres le retrait du verrou :
@@ -222,11 +222,11 @@ const filmdecVarsGeles = 21
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/filmdec"))
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/grammar"))
 	compte, parFichier := compterVarsDePaquet(t, pkgDir)
 	switch {
 	case compte > filmdecVarsGeles:
-		t.Fatalf("l'etat global de `filmdec` a CRU : %d variables de paquet, gelees a %d "+
+		t.Fatalf("l'etat global de `grammar` a CRU : %d variables de paquet, gelees a %d "+
 			"(D10 de PLAN_CUISSON_PERF, mesure du 2026-09-03).\n%s\n"+
 			"Un nouveau reglage de decodage se passe en PARAMETRE (`filmdec.ContexteDeLecture`, "+
 			"`ScanFilmOptions`, `FilmContext`), pas en variable de paquet : deux films se decodent "+
@@ -234,7 +234,7 @@ func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {
 			"queue leu leu.",
 			compte, filmdecVarsGeles, detailParFichier(parFichier))
 	case compte < filmdecVarsGeles:
-		t.Logf("l'etat global de `filmdec` a BAISSE : %d variables de paquet au lieu de %d — "+
+		t.Logf("l'etat global de `grammar` a BAISSE : %d variables de paquet au lieu de %d — "+
 			"resserrer le ratchet en mettant `filmdecVarsGeles` a %d (avec la date de la mesure).",
 			compte, filmdecVarsGeles, compte)
 	}
@@ -325,13 +325,13 @@ func detailParFichier(parFichier map[string]int) string {
 // Aucune des vingt-deux restantes n est dans ce cas (elles sont lues par indexation ou par
 // `range`), et le compte TOTAL gele plus haut interdit d en ajouter sans le dire.
 func TestAucunVarDePaquetEcriteDansFilmdec(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/filmdec"))
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/grammar"))
 	ecrites := varsDePaquetEcrites(t, pkgDir)
 	if len(ecrites) == 0 {
 		return
 	}
 	sort.Strings(ecrites)
-	t.Fatalf("UNE VARIABLE DE PAQUET DE `filmdec` EST ECRITE (%d) :\n  %s\n\n"+
+	t.Fatalf("UNE VARIABLE DE PAQUET DE `grammar` EST ECRITE (%d) :\n  %s\n\n"+
 		"Le decodeur n'en a plus AUCUNE depuis le lot 2.3 : c'est ce qui permet a deux films de\n"+
 		"se decoder en parallele, et ce qui a permis de retirer le verrou de paquet.\n"+
 		"Ce qu'il faut a la place : porter la valeur dans `filmdec.ProfilDeBalayage` (si elle\n"+

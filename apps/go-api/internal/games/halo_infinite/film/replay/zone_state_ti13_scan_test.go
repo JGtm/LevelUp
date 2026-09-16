@@ -3,9 +3,9 @@ package replay
 // zone_state_ti13_scan_test.go — LOT C-bis PHASE 2a : LE BALAYAGE DE `ti=13` DANS `replay`.
 //
 // POURQUOI CE BALAYAGE EST RECOPIE ICI, ET CE QUE LA RECOPIE COUTE. La phase 1 a mesure `ti=13`
-// depuis `filmdec`, ou vivent l'ancrage (`matchWorldObjectRecord`) et le rejeu des composants
+// depuis `grammar`, ou vivent l'ancrage (`matchWorldObjectRecord`) et le rejeu des composants
 // (`consumeByName`) — tous deux NON EXPORTES. Le pont geometrique, lui, vit dans `replay`
-// (`AttributeZones`, les zones du catalogue, les trajectoires nommees), et `filmdec` ne peut pas
+// (`AttributeZones`, les zones du catalogue, les trajectoires nommees), et `grammar` ne peut pas
 // importer `replay` (cycle). La phase 2a doit donc lire `ti=13` DEPUIS `replay`, et la seule voie
 // honnete est de recopier le strict necessaire dans un fichier de TEST : aucun code de production
 // n'est ajoute, deplace ou exporte pour cette mesure.
@@ -34,7 +34,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -173,11 +173,11 @@ func p2aMkdir(t *testing.T, dir string) {
 // recopie de grammaire pourrait s'appliquer a un tout autre archetype sans que rien ne le dise.
 func p2aCheckRegistre(t *testing.T, dir string) {
 	t.Helper()
-	raw, err := filmdec.ReadFilmChunk(dir, 0)
+	raw, err := grammar.ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("lecture de chunk_00 (registre) : %v", err)
 	}
-	reg, err := filmdec.ParseRegistryChunk(raw)
+	reg, err := grammar.ParseRegistryChunk(raw)
 	if err != nil {
 		t.Fatalf("analyse du registre : %v", err)
 	}
@@ -215,16 +215,16 @@ func p2aComp(cs []string, i int) string {
 // la phase 2a n'a pas besoin des bandes de controle, son temoin est le HASARD des appariements.
 func p2aBande(dir string) map[uint32]bool {
 	tis := map[uint32]map[int]bool{}
-	for ch := 1; ch <= filmdec.CountFilmChunks(dir); ch++ {
-		data, err := filmdec.ReadFilmChunk(dir, ch)
+	for ch := 1; ch <= grammar.CountFilmChunks(dir); ch++ {
+		data, err := grammar.ReadFilmChunk(dir, ch)
 		if err != nil {
 			continue
 		}
-		for _, pk := range filmdec.WalkPackets(data) {
-			if pk.Type != filmdec.PacketTypeKeyframe {
+		for _, pk := range grammar.WalkPackets(data) {
+			if pk.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
-			for _, r := range filmdec.WalkKeyframeWorld(pk.Payload(data)) {
+			for _, r := range grammar.WalkKeyframeWorld(pk.Payload(data)) {
 				s := uint32(r.Slot)
 				if tis[s] == nil {
 					tis[s] = map[int]bool{}
@@ -243,7 +243,7 @@ func p2aBande(dir string) map[uint32]bool {
 }
 
 // p2aRecord est l'en-tete reconnu d'un record delta d'objet du monde (recopie de
-// `filmdec.WorldObjectRecord` et de son reconnaisseur).
+// `grammar.WorldObjectRecord` et de son reconnaisseur).
 type p2aRecord struct {
 	Slot  uint32
 	Idx   []int
@@ -252,24 +252,24 @@ type p2aRecord struct {
 
 func p2aMatchRecord(pay []byte, p int, band map[uint32]bool) (p2aRecord, bool) {
 	var rec p2aRecord
-	if filmdec.PeekBits(pay, p, 1) != 1 { // prefixe de record DELTA
+	if grammar.PeekBits(pay, p, 1) != 1 { // prefixe de record DELTA
 		return rec, false
 	}
-	slot := uint32(filmdec.PeekBits(pay, p+1, 13))
+	slot := uint32(grammar.PeekBits(pay, p+1, 13))
 	if !band[slot] {
 		return rec, false
 	}
-	if filmdec.PeekBits(pay, p+16, 2) != 0 { // porte de masque = 0 -> branche eparse
+	if grammar.PeekBits(pay, p+16, 2) != 0 { // porte de masque = 0 -> branche eparse
 		return rec, false
 	}
-	mc := int(filmdec.PeekBits(pay, p+18, 3))
+	mc := int(grammar.PeekBits(pay, p+18, 3))
 	if mc < 1 || mc > p2aMaxMaskCnt {
 		return rec, false
 	}
 	idx := make([]int, mc)
 	prev := -1
 	for k := 0; k < mc; k++ {
-		v := int(filmdec.PeekBits(pay, p+p2aHeaderBits+p2aIndexBits*k, p2aIndexBits))
+		v := int(grammar.PeekBits(pay, p+p2aHeaderBits+p2aIndexBits*k, p2aIndexBits))
 		if v <= prev {
 			return rec, false
 		}
@@ -281,9 +281,9 @@ func p2aMatchRecord(pay []byte, p int, band map[uint32]bool) (p2aRecord, bool) {
 
 // p2aReplay rejoue les composants annonces d'un record ti=13 et recolte leurs valeurs. Rend la
 // position du bit de fin et l'aboutissement — c'est l'image exacte de `zsReplay` (phase 1), a
-// ceci pres que la grammaire est lue ici au lieu d'etre appelee dans `filmdec`.
+// ceci pres que la grammaire est lue ici au lieu d'etre appelee dans `grammar`.
 func p2aReplay(pay []byte, rec p2aRecord, tMS int, sc *p2aScan) (int, bool) {
-	br := filmdec.LecteurSur(pay)
+	br := grammar.LecteurSur(pay)
 	br.SetBitPos(rec.After)
 	for _, i := range rec.Idx {
 		if i < 0 || i >= p2aPlayerIdx0+p2aPlayerN {
@@ -335,8 +335,8 @@ func p2aScanFilm(t *testing.T, dir string, startMS map[int]int) *p2aScan {
 	if len(band) == 0 {
 		return sc
 	}
-	for ch := 1; ch <= filmdec.CountFilmChunks(dir); ch++ {
-		data, err := filmdec.ReadFilmChunk(dir, ch)
+	for ch := 1; ch <= grammar.CountFilmChunks(dir); ch++ {
+		data, err := grammar.ReadFilmChunk(dir, ch)
 		if err != nil {
 			continue
 		}
@@ -346,8 +346,8 @@ func p2aScanFilm(t *testing.T, dir string, startMS map[int]int) *p2aScan {
 		}
 		var base uint64
 		haveBase := false
-		for _, pk := range filmdec.WalkPackets(data) {
-			if pk.Type != filmdec.PacketTypeDelta {
+		for _, pk := range grammar.WalkPackets(data) {
+			if pk.Type != grammar.PacketTypeDelta {
 				continue
 			}
 			if !haveBase {
@@ -432,16 +432,16 @@ func p2aHeaderAt(pay []byte, p int) bool {
 	if p < 0 || p+p2aHeaderBits+p2aIndexBits > total {
 		return false
 	}
-	if filmdec.PeekBits(pay, p, 1) != 1 || filmdec.PeekBits(pay, p+16, 2) != 0 {
+	if grammar.PeekBits(pay, p, 1) != 1 || grammar.PeekBits(pay, p+16, 2) != 0 {
 		return false
 	}
-	mc := int(filmdec.PeekBits(pay, p+18, 3))
+	mc := int(grammar.PeekBits(pay, p+18, 3))
 	if mc < 1 || mc > p2aMaxMaskCnt || p+p2aHeaderBits+p2aIndexBits*mc > total {
 		return false
 	}
 	prev := -1
 	for k := 0; k < mc; k++ {
-		v := int(filmdec.PeekBits(pay, p+p2aHeaderBits+p2aIndexBits*k, p2aIndexBits))
+		v := int(grammar.PeekBits(pay, p+p2aHeaderBits+p2aIndexBits*k, p2aIndexBits))
 		if v <= prev {
 			return false
 		}

@@ -48,16 +48,16 @@ import (
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // objFilmEnv — la garde d'environnement de toute la phase 0.
 const objFilmEnv = "OBJ_FILM"
 
 // objBipedTI est l'archetype des records de bipede joueur dans la table d'image-cle. Meme
-// valeur que `filmdec.BipedTypeIndex` ; on passe par la constante exportee du decodeur pour
+// valeur que `grammar.BipedTypeIndex` ; on passe par la constante exportee du decodeur pour
 // ne pas en faire une seconde definition.
-const objBipedTI = int(filmdec.BipedTypeIndex)
+const objBipedTI = int(grammar.BipedTypeIndex)
 
 // objPlayer est la ligne de match d'un joueur, telle que l'instantane parquet la donne.
 type objPlayer struct {
@@ -191,9 +191,9 @@ type objBridge struct {
 // carte absente du catalogue (Behemoth, Recharge). Le decoupage en vies est identique :
 // `buildLifeSpans` ne lit que `TimestampUS`.
 func objBuildBridge(dir string) (objBridge, error) {
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		return objBridge{}, fmt.Errorf("positions : %w", err)
 	}

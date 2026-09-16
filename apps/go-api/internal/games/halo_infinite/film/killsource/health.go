@@ -27,7 +27,7 @@ package killsource
 //	LE 20/20 VAUT SUR LES TAGS QUE LA MARCHE PORTE (les cinq plus frequents de chaque film), pas
 //	sur << un catalogue perime >> en general. La 21e ablation, sur un tag servi par le SCAN SEUL,
 //	rend un compteur a ZERO et aucune alerte. Dans ce mode, c est le plancher de couverture a
-//	1.00 qui est le filet — voir `filmdec.CoverageWarnRatio`.
+//	1.00 qui est le filet — voir `grammar.CoverageWarnRatio`.
 //
 // LA SONDE A PORTE RELACHEE EST PUBLIEE MAIS EXCLUE DES ALERTES, et c est mesure : son rapport
 // signal/hasard vaut 1.10 a 1.72 selon le film. Elle n est lisible que restreinte aux morts NON
@@ -41,13 +41,13 @@ package killsource
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // health : la mesure complete.
-func (c *decodeCtx) health(p *pass, cov Coverage) filmdec.KillSourceHealth {
+func (c *decodeCtx) health(p *pass, cov Coverage) grammar.KillSourceHealth {
 	nWalk, _ := c.walkOutOfCatalogue()
-	return filmdec.KillSourceHealth{
+	return grammar.KillSourceHealth{
 		Film:                  c.name,
 		Candidates:            len(p.all),
 		Published:             len(p.byTime),

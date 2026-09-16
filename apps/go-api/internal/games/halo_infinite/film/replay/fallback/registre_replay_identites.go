@@ -158,7 +158,7 @@ var registreReplayIdentites = []Repli{
 	},
 	// RETIRE LE 2026-09-16 (lot 1.9.10) : `repli_fin_de_vie_vehicule_par_recensement`. La fin de
 	// vie d'un véhicule se LIT au composant `object-dead-state` de `ti=40`
-	// (`filmdec.ScanObjectDeaths`), et la borne « dernier recensement + 20 s » a disparu du
+	// (`grammar.ScanObjectDeaths`), et la borne « dernier recensement + 20 s » a disparu du
 	// code avec son ancre (`vehicle_tracks.go`, `assignVehicleWindows`). Ce que la mesure a
 	// établi avant le retrait : le repli se déclenchait EXACTEMENT sur les vies que la dernière
 	// image-clé recense encore, c'est-à-dire celles qui finissent AVEC le film — 88 vies sur
@@ -239,7 +239,7 @@ var registreReplayIdentites = []Repli{
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgReplay + "player_index.go",
-			Ancre:   "raw, _, ok := filmdec.FilmChunkAt(film, c)",
+			Ancre:   "raw, _, ok := grammar.FilmChunkAt(film, c)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 1.6 (la table du film remplace cette voie) : le repli tombe quand la table de chunk_00 est le lien direct partout",

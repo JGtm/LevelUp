@@ -13,8 +13,8 @@ package replay
 // C EST LE BON DEFAUT — un patch du jeu ne doit pas eteindre le decodeur sur tout le parc neuf —
 // MAIS UN REPLI SILENCIEUX SUR TOUT LE PARC EST UN INCIDENT INVISIBLE : la seule trace serait
 // une derive de qualite sans cause, des semaines plus tard. D ou ce cableur, sur le patron exact
-// de `publierBuildInconnu` (film_player_table.go) : `filmdec` NOMME le compteur
-// (`filmdec.UnknownFormatExpvarPairs` -> `filmdec_unknown_format_<n>`), `replay` le CABLE.
+// de `publierBuildInconnu` (film_player_table.go) : `grammar` NOMME le compteur
+// (`grammar.UnknownFormatExpvarPairs` -> `filmdec_unknown_format_<n>`), `replay` le CABLE.
 //
 // # UN COMPTEUR PAR DECLENCHEMENT, UN AVERTISSEMENT PAR FILM
 //
@@ -44,7 +44,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/observability"
 )
 
@@ -52,7 +52,7 @@ import (
 // de format est absente de la table de profil. Un format CONNU sans largeur relue (20, 21, 24,
 // 25) n est PAS compte ici : c est l etat normal du parc ancien, pas un evenement.
 func publierFormatSansProfil(format int) {
-	for _, p := range filmdec.UnknownFormatExpvarPairs(format) {
+	for _, p := range grammar.UnknownFormatExpvarPairs(format) {
 		observability.AddInt(p.Name, p.Value)
 	}
 }
@@ -64,12 +64,12 @@ func publierFormatSansProfil(format int) {
 // `chunk_00`, et construire un contexte pour ca en creerait un SECOND pour le meme film — ce
 // que `archlint/no_recomputed_film_context_test.go` interdit depuis le lot 1.9.2.
 //
-// IL DELEGUE A [filmdec.MPPWidthsForFilm] DEPUIS LA REVUE M1 (2026-09-15) : la resolution du
+// IL DELEGUE A [grammar.MPPWidthsForFilm] DEPUIS LA REVUE M1 (2026-09-15) : la resolution du
 // decoupage MPP se fait a UN SEUL endroit, celui que les deux sites de cuisson employent. Une
 // seconde lecture de la meme valeur ici aurait diverge au premier format ajoute — c est
 // exactement ce qui etait arrive entre ce fichier et `gwWidthsForFilm`.
 func formatSansProfil(film *filmsource.Film) (int, bool) {
-	res := filmdec.MPPWidthsForFilm(film)
+	res := grammar.MPPWidthsForFilm(film)
 	return res.FormatVersion, res.FormatInconnu
 }
 
@@ -81,8 +81,8 @@ func avertirFormatSansProfil(film *filmsource.Film, matchID string) {
 		return
 	}
 	build := ""
-	if reg, ok := filmdec.FilmRegistryChunk(film); ok {
-		if id, err := filmdec.ReadFilmIdentity(reg); err == nil {
+	if reg, ok := grammar.FilmRegistryChunk(film); ok {
+		if id, err := grammar.ReadFilmIdentity(reg); err == nil {
 			build = id.Build
 		}
 	}

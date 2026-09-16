@@ -5,14 +5,14 @@ package archlint
 //
 // # CE QUE CE RATCHET REMPLACE, ET POURQUOI IL EST INVERSE
 //
-// Jusqu au lot 2.3, `filmdec` portait un verrou de PAQUET (`LockProcessDecode`) et le ratchet
+// Jusqu au lot 2.3, `grammar` portait un verrou de PAQUET (`LockProcessDecode`) et le ratchet
 // precedent exigeait que TOUT chemin de production enchainant des balayages le tienne. La raison
 // etait ecrite dans `decode_gate.go` : les parametres de replication du decodeur de bits etaient
 // des VARIABLES DE PAQUET, et le paquet chiffrait lui-meme ce qu un entrelacement coutait — « le
 // score d un film passe de 1111 a 1214 selon l ordre d appel ».
 //
 // CES VARIABLES N EXISTENT PLUS. Le profil de balayage voyage avec le lecteur de bits
-// ([filmdec.ProfilDeBalayage]), l observateur aussi ([filmdec.Observation]), et le ratchet
+// ([grammar.ProfilDeBalayage]), l observateur aussi ([grammar.Observation]), et le ratchet
 // `filmdec_package_vars_test.go` mesure ZERO variable de paquet ECRITE. Le verrou n a donc plus
 // de raison d etre — et le garder serait pire qu inutile : il SERIALISERAIT deux decodages que
 // plus rien n oblige a se suivre.
@@ -35,7 +35,7 @@ package archlint
 //
 // # LA MUTATION QUI DOIT ROUGIR
 //
-// Reintroduire `func LockProcessDecode()` dans `filmdec`, ou un `var processDecodeMu sync.Mutex`,
+// Reintroduire `func LockProcessDecode()` dans `grammar`, ou un `var processDecodeMu sync.Mutex`,
 // ou recreer `decode_gate.go` : ce test nomme le fichier fautif et refuse.
 //
 // # POURQUOI LE CODE, ET PAS LES COMMENTAIRES
@@ -110,7 +110,7 @@ func TestAucunVerrouDeDecodageDePaquet(t *testing.T) {
 		return
 	}
 	t.Fatalf("LE VERROU DE DECODAGE DE PAQUET EST DE RETOUR (%d) :\n  %s\n\n"+
-		"Il a ete retire au lot 2.3 parce que `filmdec` n a plus AUCUNE variable de paquet\n"+
+		"Il a ete retire au lot 2.3 parce que `grammar` n a plus AUCUNE variable de paquet\n"+
 		"ecrite (ratchet `filmdec_package_vars_test.go`) : deux films peuvent se decoder en\n"+
 		"parallele, et un verrou de paquet ne ferait que les serialiser. Ce qu il faut a la\n"+
 		"place : passer le profil et l observateur par `filmdec.ContexteDeLecture`.\n\n"+

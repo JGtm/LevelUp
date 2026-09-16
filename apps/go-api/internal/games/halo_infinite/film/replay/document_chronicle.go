@@ -1071,7 +1071,7 @@ package replay
 // de joueur : aucune identité dans `BipedPosition` » — EST FAIT, et par une LECTURE.
 //
 //	ce qui change   1. le record de CRÉATION d'un bipède (`ti=35`) porte l'index de participant
-//	                   de son propriétaire, à `+67` bits de l'en-tête NEW (`filmdec.ScanBipedCreations`).
+//	                   de son propriétaire, à `+67` bits de l'en-tête NEW (`grammar.ScanBipedCreations`).
 //	                   `identity.bipedSlots[].link.source` passe de `deduit` à **`direct`**, voie
 //	                   `creation_bipede` — ou `creation_bipede_propagee` pour les autres séjours
 //	                   du MÊME corps, qu'une découpe à `lifeGapUS` a séparés.
@@ -1180,7 +1180,7 @@ package replay
 //	                (médiane 31,89 m pour 63,775 m) avec |Δx| médian 0,20 m : le bit de poids
 //	                fort de Y bascule, 3 907 pas sur 4 901. Sur les cartes Forge l'axe touché est
 //	                plutôt X et le bit plus bas (étendue / 2^7 majoritaire). Le chantier appartient
-//	                à `filmdec` : `.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
+//	                à `grammar` : `.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
 //
 //	le contrat      `coverage.projectiles` est ADDITIF et optionnel. `grenades[].slot` et
 //	                `projectiles[].p` existaient déjà : ce sont leurs VALEURS qui changent, et
@@ -1275,7 +1275,7 @@ package replay
 //	l'indicateur    Il existait et personne ne le lisait : les quatre premiers octets de
 //	                `chunk_00.bin` (u32 little-endian) sont le FilmMajorVersion, la meme valeur
 //	                que l'API publie dans `CustomData.FilmMajorVersion`. Helper canonique :
-//	                `filmdec.FilmMajorVersionFromHeader`. Parc : 1 351 films, 0 registre
+//	                `grammar.FilmMajorVersionFromHeader`. Parc : 1 351 films, 0 registre
 //	                illisible — v31 x3, v33 x3, v37 x10, v38 x1, v39 x26, v40 x185, v41 x1123.
 //
 //	ce qui change   `gamertagsOf(deaths)` est la table qui nomme `roster[]` et qui rattache les
@@ -1521,7 +1521,7 @@ package replay
 //	               fin de manche ou a la fin du film ; un trou de replication est une LACUNE de la
 //	               meme vie (lot 1.9.13 : 212 coupures par trou -> 4, 208 lacunes, 14 vies
 //	               orphelines -> 0 sur les 8 builds) ; (2) une vie de vehicule finit au DEAD-STATE
-//	               ecrit (`ti=40`, marche de `filmdec.ScanObjectDeaths`), a la fin du film sinon
+//	               ecrit (`ti=40`, marche de `grammar.ScanObjectDeaths`), a la fin du film sinon
 //	               (lot 1.9.10 : sur `084a804d`, 19 fins lues sur 97, dead-states a 87 ms et 406 ms
 //	               des medailles datees) ; (3) un chassis est NOMME par sa piece ecrite (manifeste
 //	               de la chaine de destruction : un meme vehicule porte un identifiant PAR MODULE du

@@ -24,7 +24,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -148,7 +148,7 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // du redecodage alors que leur CONTENU change de nouveau, et cette fois a la racine.
 //
 // Ce qui change : le collecteur passe desormais au registre les RECORDS DE CREATION DE BIPEDE
-// (`filmdec.ScanBipedCreations`), et le nommage des vies bascule du pont par morts — un
+// (`grammar.ScanBipedCreations`), et le nommage des vies bascule du pont par morts — un
 // appariement glouton qui departageait par l'ordre des slots quand deux vies finissent au meme
 // instant — a une LECTURE du film. `match_lives.xuid` change donc sur les vies que le pont
 // echangeait (7 paires exactement echangees mesurees sur deux films) et se remplit sur les vies
@@ -180,7 +180,7 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // CE N'EST PAS `match_lives` NI `match_death_context` QUI CHANGENT — comme au lot 6.1, ce sont
 // `kill_positions` et `kill_openings` : `buildPositionRows` IMPOSE désormais au balayage des
 // bipèdes le découpage d'i0 que le CATALOGUE de carte porte (`optionsDeBalayageDesPositions`), là
-// où `ScanFilmOptions.Layout` restait nil et où `filmdec.DetectI0LayoutOf` décidait en mesurant le
+// où `ScanFilmOptions.Layout` restait nil et où `grammar.DetectI0LayoutOf` décidait en mesurant le
 // film. Sur une carte à plus de deux régions de compression l'auto-détection ne sait pas voir
 // l'index de région : sa porte d'un seul bit acceptait des enregistrements d'une AUTRE région,
 // exprimés dans une autre AABB, donc des coordonnées fausses sans le moindre signal.
@@ -212,7 +212,7 @@ const IsolationDecoderRev = "isolement-2026-09-15-decoupage-du-catalogue"
 // APLATI que la correction P0-2 a cesse d'employer.
 type materiauDIsolement struct {
 	registre  replay.IdentityRegistry
-	positions []filmdec.BipedPosition
+	positions []grammar.BipedPosition
 }
 
 // toLifeRows traduit les vies pures en lignes ecrivables.

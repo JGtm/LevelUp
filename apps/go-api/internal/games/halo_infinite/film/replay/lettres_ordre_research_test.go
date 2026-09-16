@@ -81,7 +81,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
@@ -233,13 +233,13 @@ func lettresEstZonesSimultanees(variant string) bool {
 // nommees (le pont xuid des trajectoires) et origine d'horloge. Rend aussi l'origine de l'axe des
 // frames, LA SEULE chose que la slice brute de positions laisse derriere elle.
 func lettresDoc(t *testing.T, dir string, film lettresFilm,
-	quant filmdec.MapQuantEntry,
+	quant grammar.MapQuantEntry,
 ) (ReplayDocument, uint64) {
 	t.Helper()
 	world := quant.Range()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.WorldRange = &world
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	switch {
 	case err != nil:
 		t.Fatalf("film %s : positions illisibles : %v", film.short, err)
@@ -287,7 +287,7 @@ func lettresOptions(t *testing.T, dir string, film lettresFilm) Options {
 // cette fonction : elle est consommee ici et laissee au ramasse-miettes.
 func lettresSeries(t *testing.T, dir string, c zoneCtx) zoneSeries {
 	t.Helper()
-	sc, err := filmdec.ScanFilmManagedProperties(dir)
+	sc, err := grammar.ScanFilmManagedProperties(dir)
 	if err != nil {
 		t.Skipf("proprietes ti=13 illisibles (%s) : %v", dir, err)
 	}
@@ -460,9 +460,9 @@ func lettresZones(t *testing.T, mapID string) []Zone {
 }
 
 // lettresQuant rend les bornes de quantification de la carte.
-func lettresQuant(t *testing.T, carte string) filmdec.MapQuantEntry {
+func lettresQuant(t *testing.T, carte string) grammar.MapQuantEntry {
 	t.Helper()
-	cat, err := filmdec.LoadMapQuantCatalog(filepath.Join(p2aRefDir(t), "map_quant_bounds.json"))
+	cat, err := grammar.LoadMapQuantCatalog(filepath.Join(p2aRefDir(t), "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}

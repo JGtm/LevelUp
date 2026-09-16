@@ -32,7 +32,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // deadRecord : un dead-state atteint par la marche, avec sa position.
@@ -41,7 +41,7 @@ type deadRecord struct {
 	chunk, pidx int
 	slot        int
 	bit         int // position du composant dead-state, -1 si non enregistree
-	dead        filmdec.DeadState
+	dead        grammar.DeadState
 }
 
 // walkResult : ce que la passe de marche produit.
@@ -57,13 +57,13 @@ type walkResult struct {
 // walkFrom : marche la boucle de records depuis le bit `start`, jusqu a `views` vues de
 // replication. Les records deja lus quand la chaine casse sont RENDUS : c est le filtre de
 // credibilite qui trie, pas le lecteur.
-func walkFrom(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig,
-	start, views int) []filmdec.FrameRecord {
-	br := filmdec.LecteurSur(pl)
+func walkFrom(pl []byte, w *grammar.World, cfg grammar.FrameConfig,
+	start, views int) []grammar.FrameRecord {
+	br := grammar.LecteurSur(pl)
 	br.Skip(start)
-	var recs []filmdec.FrameRecord
+	var recs []grammar.FrameRecord
 	for v := 0; v < views && len(pl)*8-br.BitPos() >= 8; v++ {
-		r2, err := filmdec.DecodeFrameRecords(br, w, cfg)
+		r2, err := grammar.DecodeFrameRecords(br, w, cfg)
 		recs = append(recs, r2...)
 		if err != nil {
 			break
@@ -74,14 +74,14 @@ func walkFrom(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig,
 
 // signature123 : un delta sur le slot 123 decode-t-il proprement en `s` et finit-il 35 bits plus
 // loin, avec un unique composant ?
-func signature123(pl []byte, s int, w *filmdec.World, cfg filmdec.FrameConfig) bool {
-	rec, end, ok := filmdec.TryDeltaAt(pl, s, w, cfg)
+func signature123(pl []byte, s int, w *grammar.World, cfg grammar.FrameConfig) bool {
+	rec, end, ok := grammar.TryDeltaAt(pl, s, w, cfg)
 	return ok && rec.Slot == 123 && end == s+35 && len(rec.Trace.Comps) == 1
 }
 
 // locateStrict : premiere position S >= 2 telle que le bit S-1 vaille 0 (fin de la liste
 // d evenements) et que la signature stricte y decode. -1 si aucune.
-func locateStrict(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
+func locateStrict(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
 	nb := len(pl) * 8
 	for s := 2; s+35 < nb; s++ {
 		if filmsource.BitAt(pl, s-1) != 0 {
@@ -96,13 +96,13 @@ func locateStrict(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 
 // locateFallback : meme condition, LARGEUR LIBRE. N est essaye qu apres l echec de la signature
 // stricte.
-func locateFallback(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
+func locateFallback(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
 	nb := len(pl) * 8
 	for s := 2; s+16 < nb; s++ {
 		if filmsource.BitAt(pl, s-1) != 0 {
 			continue
 		}
-		rec, _, ok := filmdec.TryDeltaAt(pl, s, w, cfg)
+		rec, _, ok := grammar.TryDeltaAt(pl, s, w, cfg)
 		if !ok || rec.Slot != 123 || !w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
 			continue
 		}
@@ -112,9 +112,9 @@ func locateFallback(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 }
 
 // locateRecords : le localisateur complet — signature stricte, puis repli. -1 si aucune position.
-func locateRecords(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
+func locateRecords(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
 	if s := locateStrict(pl, w, cfg); s >= 0 {
-		if rec, _, ok := filmdec.TryDeltaAt(pl, s, w, cfg); ok &&
+		if rec, _, ok := grammar.TryDeltaAt(pl, s, w, cfg); ok &&
 			w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
 			return s
 		}
@@ -126,10 +126,10 @@ func locateRecords(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 //
 // `mv` est le PROFIL DE MOUVEMENT que la calibration a retenu (lot 2.2.a). Il arrive en
 // PARAMETRE depuis le 2.2.a : avant, la marche reconstruisait un cadre par defaut et heritait
-// des largeurs calibrees par effet de bord des variables de paquet de `filmdec`.
-func runWalk(f *film, tl *timeline, r *roster, views int, prof filmdec.ProfilDeBalayage) *walkResult {
+// des largeurs calibrees par effet de bord des variables de paquet de `grammar`.
+func runWalk(f *film, tl *timeline, r *roster, views int, prof grammar.ProfilDeBalayage) *walkResult {
 	tl.rewind()
-	cfg := filmdec.DefaultFrameConfig()
+	cfg := grammar.DefaultFrameConfig()
 	cfg.Profil = prof
 	res := &walkResult{}
 	res.bipLo, res.bipHi = tl.bipedRange()
@@ -156,7 +156,7 @@ func runWalk(f *film, tl *timeline, r *roster, views int, prof filmdec.ProfilDeB
 // walkPacket : les dead-states d un seul paquet. Le monde est restaure : une marche qui a
 // desynchronise ne doit pas laisser de liaison derriere elle (les deux politiques qui les
 // conservaient ont ete MESUREES COMME PERDANTES, 330 -> 328 puis 315 sur 372).
-func walkPacket(p *packet, w *filmdec.World, cfg filmdec.FrameConfig,
+func walkPacket(p *packet, w *grammar.World, cfg grammar.FrameConfig,
 	start, views, ms int) []deadRecord {
 	snap := w.Snapshot()
 	recs := walkFrom(p.payload, w, cfg, start, views)
@@ -181,7 +181,7 @@ func walkPacket(p *packet, w *filmdec.World, cfg filmdec.FrameConfig,
 }
 
 // deadStateBit : position du composant dead-state dans le record, -1 s il n y figure pas.
-func deadStateBit(r *filmdec.FrameRecord) int {
+func deadStateBit(r *grammar.FrameRecord) int {
 	for _, c := range r.Trace.Comps {
 		if c.Name == deadStateComponent {
 			return c.StartBit

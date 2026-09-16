@@ -20,7 +20,7 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // shotPosToleranceUS : écart temporel maximal entre l'événement et l'échantillon de position
@@ -29,13 +29,13 @@ const shotPosToleranceUS = 120_000
 
 // slotTrack est l'index temporel des positions d'un slot, pour la recherche par instant.
 type slotTrack struct {
-	pts []filmdec.BipedPosition // triées par TimestampUS
+	pts []grammar.BipedPosition // triées par TimestampUS
 }
 
 // at renvoie l'échantillon le plus proche de tUS et son écart.
-func (s slotTrack) at(tUS uint64) (filmdec.BipedPosition, uint64) {
+func (s slotTrack) at(tUS uint64) (grammar.BipedPosition, uint64) {
 	i := sort.Search(len(s.pts), func(i int) bool { return s.pts[i].TimestampUS >= tUS })
-	best, bestD := filmdec.BipedPosition{}, uint64(math.MaxUint64)
+	best, bestD := grammar.BipedPosition{}, uint64(math.MaxUint64)
 	for _, j := range []int{i - 1, i} {
 		if j < 0 || j >= len(s.pts) {
 			continue
@@ -58,7 +58,7 @@ func (s slotTrack) at(tUS uint64) (filmdec.BipedPosition, uint64) {
 // véhicule occupé. LA CAUSE VOYAGE AVEC L'ÉVÉNEMENT : sans elle, la couverture ne saurait pas
 // quel compteur décrémenter quand la seconde porte rattache.
 type orphanShot struct {
-	ev     filmdec.FireEvent
+	ev     grammar.FireEvent
 	reason rejectReason
 }
 
@@ -72,7 +72,7 @@ type orphanShot struct {
 // « sans slot » et « hors fenêtre », ceux dont la signature est celle d'un tireur embarqué. Les
 // AMBIGUS n'y sont PAS, et c'est une mesure : l'ambiguïté naît de DEUX slots du même joueur qui
 // répliquent tous deux une position à cet instant — donc d'un joueur qui n'est PAS embarqué.
-func buildShots(pos []filmdec.BipedPosition, events []filmdec.FireEvent, origin, step uint64,
+func buildShots(pos []grammar.BipedPosition, events []grammar.FireEvent, origin, step uint64,
 	owner map[uint32]int) ([]Shot, []orphanShot, LayerCoverage) {
 	cov := LayerCoverage{Available: len(events)}
 	if len(pos) == 0 || len(events) == 0 || len(owner) == 0 {
@@ -117,8 +117,8 @@ func buildShots(pos []filmdec.BipedPosition, events []filmdec.FireEvent, origin,
 }
 
 // indexBySlot regroupe les positions par slot, triées par instant.
-func indexBySlot(pos []filmdec.BipedPosition) map[uint32]slotTrack {
-	m := map[uint32][]filmdec.BipedPosition{}
+func indexBySlot(pos []grammar.BipedPosition) map[uint32]slotTrack {
+	m := map[uint32][]grammar.BipedPosition{}
 	for _, p := range pos {
 		m[p.Slot] = append(m[p.Slot], p)
 	}

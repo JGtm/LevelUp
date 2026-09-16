@@ -12,7 +12,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // Kill : une mort, et LES DEUX REPONSES a << qu est-ce qui l a tuee >>.
@@ -318,8 +318,8 @@ type Result struct {
 	// Coverage : les denominateurs.
 	Coverage Coverage
 	// Health : la metrique de sante, prete pour `expvar` via `Health.ExpvarPairs()`.
-	// Le type est PUR (zero dependance interne) et vit dans `internal/games/halo_infinite/film/filmdec`.
-	Health filmdec.KillSourceHealth
+	// Le type est PUR (zero dependance interne) et vit dans `internal/games/halo_infinite/film/grammar`.
+	Health grammar.KillSourceHealth
 	// Stats : ce qu il faut pour PONDERER et pour VERIFIER que l hybride est bien une
 	// preference et non un arbitrage.
 	Stats Stats
@@ -334,11 +334,11 @@ type Result struct {
 	//
 	// POURQUOI CE CHAMP EXISTE. `replaybuild.BuildBytes` decode `killsource` PUIS appelle
 	// `replay.BuildFromFilm` dans le MEME processus. Jusqu au lot 2.3, la calibration ECRIVAIT
-	// ses largeurs dans des variables de paquet de `filmdec` que la cuisson du rejeu relisait
+	// ses largeurs dans des variables de paquet de `grammar` que la cuisson du rejeu relisait
 	// sans rien demander : l heritage etait REEL et VOULU (la grammaire mesuree sur le film
 	// prime sur le defaut), mais il passait par l ETAT DU PROCESSUS, ce qui interdisait deux
 	// decodages en parallele et n etait ecrit nulle part. Il passe desormais par ce champ.
-	ProfilCalibre filmdec.ProfilDeBalayage
+	ProfilCalibre grammar.ProfilDeBalayage
 	// BijectionMargin : ecart de score entre la meilleure bijection et la meilleure a UNE
 	// transposition pres. ZERO = au moins deux joueurs sont interchangeables.
 	BijectionMargin int

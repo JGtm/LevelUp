@@ -28,7 +28,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // attTolerancesMS — les tolérances d'appariement publiées, de la plus stricte à la plus
@@ -422,7 +422,7 @@ func attPorteursGate(o attOracle, lectures []attI10) (dedans, ouvDedans, dehors,
 		parXUID[w.XUID] = append(parXUID[w.XUID], w)
 	}
 	for _, l := range lectures {
-		if l.TI != uint32(filmdec.BipedTypeIndex) {
+		if l.TI != uint32(grammar.BipedTypeIndex) {
 			continue
 		}
 		x, nomme := o.Bridge.SlotXUID[l.Slot]

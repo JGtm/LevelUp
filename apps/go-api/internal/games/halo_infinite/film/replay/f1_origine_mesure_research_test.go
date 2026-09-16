@@ -42,7 +42,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -64,7 +64,7 @@ const (
 //
 // ELLE N'EST PLUS APPELEE PAR AUCUN CODE DE PRODUCTION. Si un jour elle l'etait de nouveau, le
 // registre des replis devrait reprendre ses deux entrees — sorties le 2026-09-15 avec elle.
-func f1OrigineParFenetre(lives []equipLife, p filmdec.EquipmentPlacement) string {
+func f1OrigineParFenetre(lives []equipLife, p grammar.EquipmentPlacement) string {
 	if len(lives) == 0 {
 		return OriginUnknown
 	}
@@ -94,7 +94,7 @@ func f1OrigineParFenetre(lives []equipLife, p filmdec.EquipmentPlacement) string
 
 // f1OrigineAvant est la regle D'AVANT le lot F.1 — le TEMOIN, jamais la regle vivante : la
 // fenetre temporelle ET la clause de distance.
-func f1OrigineAvant(lives []equipLife, p filmdec.EquipmentPlacement) string {
+func f1OrigineAvant(lives []equipLife, p grammar.EquipmentPlacement) string {
 	apres := f1OrigineParFenetre(lives, p)
 	if apres != OriginDropped {
 		return apres
@@ -212,13 +212,13 @@ func f1Films(t *testing.T) (string, []string) {
 }
 
 // f1Catalogue charge le catalogue de bornes de production.
-func f1Catalogue(t *testing.T) *filmdec.MapQuantCatalog {
+func f1Catalogue(t *testing.T) *grammar.MapQuantCatalog {
 	t.Helper()
 	path := os.Getenv(f1CatEnv)
 	if path == "" {
 		t.Skipf("instrument F.1 : definir %s (map_quant_bounds.json)", f1CatEnv)
 	}
-	cat, err := filmdec.LoadMapQuantCatalog(path)
+	cat, err := grammar.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -227,18 +227,18 @@ func f1Catalogue(t *testing.T) *filmdec.MapQuantCatalog {
 
 // f1Carte identifie la carte d'un film : largeurs LUES dans le film, puis la candidate qui
 // reproduit les REPERES de piste PUBLIES par l'artefact.
-func f1Carte(t *testing.T, dir, id string, cat *filmdec.MapQuantCatalog) (
-	filmdec.MapQuantEntry, string, float64, bool) {
+func f1Carte(t *testing.T, dir, id string, cat *grammar.MapQuantCatalog) (
+	grammar.MapQuantEntry, string, float64, bool) {
 	t.Helper()
 	lay, _, err := detecterI0Layout(dir)
 	if err != nil || !lay.Valid() {
 		t.Logf("film %s : decoupage i0 illisible (%v) — hors mesure", id, err)
-		return filmdec.MapQuantEntry{}, "", 0, false
+		return grammar.MapQuantEntry{}, "", 0, false
 	}
 	vues, ok := f1LitRepere(id)
 	if !ok {
 		t.Logf("film %s : aucun artefact exploitable — hors mesure (la carte ne se ferme pas)", id)
-		return filmdec.MapQuantEntry{}, "", 0, false
+		return grammar.MapQuantEntry{}, "", 0, false
 	}
 	// CANDIDATES DEDUPLIQUEES PAR BORNES, et ce n'est pas une optimisation gratuite : le
 	// catalogue porte une quarantaine de canevas de Forge qui partagent le MEME AABB. Les
@@ -247,7 +247,7 @@ func f1Carte(t *testing.T, dir, id string, cat *filmdec.MapQuantCatalog) (
 	vus := map[string]bool{}
 	var cands []struct {
 		nom string
-		e   filmdec.MapQuantEntry
+		e   grammar.MapQuantEntry
 	}
 	noms := make([]string, 0, len(cat.Maps))
 	for n := range cat.Maps {
@@ -266,11 +266,11 @@ func f1Carte(t *testing.T, dir, id string, cat *filmdec.MapQuantCatalog) (
 		vus[cle] = true
 		cands = append(cands, struct {
 			nom string
-			e   filmdec.MapQuantEntry
+			e   grammar.MapQuantEntry
 		}{n, e})
 	}
 	bestNom, bestEcart := "", math.Inf(1)
-	var best filmdec.MapQuantEntry
+	var best grammar.MapQuantEntry
 	for _, c := range cands {
 		if ec := f1Ecart(t, dir, c.e, vues); ec < bestEcart {
 			best, bestNom, bestEcart = c.e, c.nom, ec
@@ -279,7 +279,7 @@ func f1Carte(t *testing.T, dir, id string, cat *filmdec.MapQuantCatalog) (
 	if bestNom == "" || bestEcart > f1BornesToleranceM {
 		t.Logf("film %s : aucune carte de largeurs %v ne reproduit les reperes publies "+
 			"(meilleur ecart %.2f m) — hors mesure", id, lay.AxisW, bestEcart)
-		return filmdec.MapQuantEntry{}, "", bestEcart, false
+		return grammar.MapQuantEntry{}, "", bestEcart, false
 	}
 	return best, bestNom, bestEcart, true
 }
@@ -287,7 +287,7 @@ func f1Carte(t *testing.T, dir, id string, cat *filmdec.MapQuantCatalog) (
 // f1Ecart rend l'ecart MEDIAN, en metres, entre les reperes de slot recalcules avec `e` et ceux
 // que l'artefact publie. Median sur les slots aussi : une piste dont la decimation a mange un
 // long arret ne doit pas emporter le verdict a elle seule.
-func f1Ecart(t *testing.T, dir string, e filmdec.MapQuantEntry, vues f1Repere) float64 {
+func f1Ecart(t *testing.T, dir string, e grammar.MapQuantEntry, vues f1Repere) float64 {
 	t.Helper()
 	pos, ok := f1Positions(t, dir, e)
 	if !ok || len(pos) == 0 {
@@ -325,12 +325,12 @@ func f1Ecart(t *testing.T, dir string, e filmdec.MapQuantEntry, vues f1Repere) f
 
 // f1Positions balaie les positions de bipede avec les bornes donnees, sous le verrou de
 // decodage et la precision de la carte.
-func f1Positions(t *testing.T, dir string, e filmdec.MapQuantEntry) ([]filmdec.BipedPosition, bool) {
+func f1Positions(t *testing.T, dir string, e grammar.MapQuantEntry) ([]grammar.BipedPosition, bool) {
 	t.Helper()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	wr := e.Range()
 	scan.WorldRange = &wr
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		return nil, false
 	}

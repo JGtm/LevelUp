@@ -18,7 +18,7 @@ import (
 
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,7 +84,7 @@ func buildChunkURL(blobPrefix, fileRelativePath string) string {
 }
 
 // filmMajorVersionDuCache lit le `FilmMajorVersion` d'un film en cache dans l'en-tête de son
-// registre (`chunk_00`). Registre absent ou illisible : [filmdec.FilmMajorVersionUnknown], et la
+// registre (`chunk_00`). Registre absent ou illisible : [grammar.FilmMajorVersionUnknown], et la
 // dégradation est consignée — le décodeur du kill-feed retombe alors sur le découpage historique
 // du gamertag, ce qui est faux sur un film de version 39-40.
 //
@@ -96,13 +96,13 @@ func (c *HaloAPIClient) filmMajorVersionDuCache(ctx context.Context, matchID str
 	if err != nil {
 		slog.WarnContext(ctx, "film: registre illisible, version de film inconnue",
 			"match_id", matchID, "err", err)
-		return filmdec.FilmMajorVersionUnknown
+		return grammar.FilmMajorVersionUnknown
 	}
-	version, ok := filmdec.FilmMajorVersionFromHeader(filmsource.Inflate(registre))
+	version, ok := grammar.FilmMajorVersionFromHeader(filmsource.Inflate(registre))
 	if !ok {
 		slog.WarnContext(ctx, "film: registre absent du cache, version de film inconnue",
 			"match_id", matchID)
-		return filmdec.FilmMajorVersionUnknown
+		return grammar.FilmMajorVersionUnknown
 	}
 	return version
 }

@@ -33,7 +33,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // Fins d'affichage publiées. Identifiants STABLES du document (même règle que Family/Origin).
@@ -191,8 +191,8 @@ type GroundWeaponItemsCoverage struct {
 // schéma 25 ; `positions` est le nuage NON décimé trié par instant — la position d'un acteur à
 // l'instant d'un événement se lit dedans.
 func buildGroundWeaponItems(
-	objs []gwPickupObject, changes []filmdec.HeldWeaponChange,
-	positions []filmdec.BipedPosition, clock replayClock,
+	objs []gwPickupObject, changes []grammar.HeldWeaponChange,
+	positions []grammar.BipedPosition, clock replayClock,
 ) ([]GroundWeapon, GroundWeaponItemsCoverage) {
 	var cov GroundWeaponItemsCoverage
 	cov.Objects = len(objs)
@@ -269,8 +269,8 @@ func (c replayClock) frame(tUS uint64) int {
 }
 
 // gwItemPositionsBySlot indexe le nuage par slot ; chaque liste hérite du tri par instant.
-func gwItemPositionsBySlot(positions []filmdec.BipedPosition) map[uint32][]filmdec.BipedPosition {
-	out := map[uint32][]filmdec.BipedPosition{}
+func gwItemPositionsBySlot(positions []grammar.BipedPosition) map[uint32][]grammar.BipedPosition {
+	out := map[uint32][]grammar.BipedPosition{}
 	for _, p := range positions {
 		if !p.HasWorld {
 			continue
@@ -283,7 +283,7 @@ func gwItemPositionsBySlot(positions []filmdec.BipedPosition) map[uint32][]filmd
 // gwItemActorAt rend la position du slot à l'instant demandé (échantillon le plus proche, à
 // equipOwnerWindowUS près — la fenêtre du poseur d'équipement, même mesure).
 func gwItemActorAt(
-	bySlot map[uint32][]filmdec.BipedPosition, slot uint32, at uint64,
+	bySlot map[uint32][]grammar.BipedPosition, slot uint32, at uint64,
 ) ([3]float32, bool) {
 	list := bySlot[slot]
 	i := sort.Search(len(list), func(i int) bool { return list[i].TimestampUS >= at })
@@ -320,20 +320,20 @@ type gwItemPick struct {
 // ti=42) volait le lien de l'arme voisine — 27 mauvaises familles sur 33 liens. On ne lie que
 // l'arme que la prise NOMME.
 func gwItemLinkPickups(
-	objs []gwPickupObject, changes []filmdec.HeldWeaponChange,
-	bySlot map[uint32][]filmdec.BipedPosition, cov *GroundWeaponItemsCoverage,
+	objs []gwPickupObject, changes []grammar.HeldWeaponChange,
+	bySlot map[uint32][]grammar.BipedPosition, cov *GroundWeaponItemsCoverage,
 ) []gwItemPick {
 	out := make([]gwItemPick, len(objs))
-	takes := make([]filmdec.HeldWeaponChange, 0, len(changes))
+	takes := make([]grammar.HeldWeaponChange, 0, len(changes))
 	for _, ch := range changes {
-		if ch.Kind == filmdec.HeldWeaponTaken || ch.Kind == filmdec.HeldWeaponSwapped {
+		if ch.Kind == grammar.HeldWeaponTaken || ch.Kind == grammar.HeldWeaponSwapped {
 			takes = append(takes, ch)
 		}
 	}
 	sort.SliceStable(takes, func(i, j int) bool { return takes[i].TimestampUS < takes[j].TimestampUS })
 	cov.TakesTotal = len(takes)
 	for _, ch := range takes {
-		if ch.Family == filmdec.NoWeaponVariant {
+		if ch.Family == grammar.NoWeaponVariant {
 			continue
 		}
 		actor, ok := gwItemActorAt(bySlot, ch.Slot, ch.TimestampUS)

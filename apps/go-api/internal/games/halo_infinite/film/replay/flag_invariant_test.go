@@ -292,7 +292,7 @@ func TestFlagOverlapsComptesParDrapeau(t *testing.T) {
 // TestAttachFlagCarriesDescendLesEquipesJusquAuScan — LE MAILLON QUE PERSONNE NE GARDAIT (W1).
 //
 // L'invariant dur ne vaut que si la table des equipes lui parvient. DEPUIS LE LOT 1.7 ELLE VIENT
-// DU FILM (decision utilisateur V4) : `filmdec.ScanPlayerTeams` -> `teamPublication` ->
+// DU FILM (decision utilisateur V4) : `grammar.ScanPlayerTeams` -> `teamPublication` ->
 // `FlagCarryScan.TeamOf`, dans `attachFlagCarries`. Le maillon reste sans garde-rail naturel —
 // retirer la ligne `TeamOf: equipes.tableDesEquipesPourLesDrapeaux()` laisserait les paquets
 // VERTS, exactement comme le retrait de `TeamOf: in.TeamOf` le faisait avant. Un chainon muet ne

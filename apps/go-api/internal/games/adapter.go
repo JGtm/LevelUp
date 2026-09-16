@@ -270,7 +270,7 @@ const (
 	// (`film.usage_summary`, `film.bomb_stats`, la timeline d'objectif et les positions
 	// keyframe servies à la Match View) sont les projections.
 	//
-	// Halo Infinite : supported (décodeur `games/halo_infinite/film/filmdec` + `replaybuild`). Halo 5 :
+	// Halo Infinite : supported (décodeur `games/halo_infinite/film/grammar` + `replaybuild`). Halo 5 :
 	// not_exposed — autre format de film, aucun décodeur, donc aucun artefact possible.
 	//
 	// ⚠ ELLE GOUVERNE LA PRODUCTION, ET L'AFFICHAGE SUIT (décision utilisateur du

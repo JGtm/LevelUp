@@ -6,7 +6,7 @@ package replay
 // # D'OÙ VIENT LA DONNÉE
 //
 // La bombe et le crâne sont des OBJETS TENUS : le moteur les réplique dans le composant
-// weapon-state-type-info du bipède, exactement comme une arme (`filmdec.ScanFilmHeldWeaponChanges`).
+// weapon-state-type-info du bipède, exactement comme une arme (`grammar.ScanFilmHeldWeaponChanges`).
 // Leur famille (32 bits hauts de l'identifiant filmshell) est HORS du catalogue d'armes
 // (`weaponv3.KnownWeaponHigh32`) mais DANS l'atlas HUD du jeu :
 //

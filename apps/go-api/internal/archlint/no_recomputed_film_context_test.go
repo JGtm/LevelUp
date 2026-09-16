@@ -21,9 +21,9 @@
 //
 // # LES DEUX REGLES
 //
-//  1. Dans `filmdec` (hors _test), les trois calculs ne s'appellent QUE depuis l'allowlist
+//  1. Dans `grammar` (hors _test), les trois calculs ne s'appellent QUE depuis l'allowlist
 //     ci-dessous — le contexte, et les deux sites qui calculent une valeur DIFFERENTE, ecrite.
-//  2. Hors `filmdec`, aucun paquet de PRODUCTION de la chaine de cuisson n'analyse le registre
+//  2. Hors `grammar`, aucun paquet de PRODUCTION de la chaine de cuisson n'analyse le registre
 //     lui-meme (`filmdec.ParseRegistryChunk`), sauf l'allowlist datee.
 //
 // LES DEUX SONT VERIFIEES DANS LES DEUX SENS : un site en trop echoue, une entree MORTE de
@@ -32,7 +32,7 @@
 //
 // # POURQUOI go/ast ET PAS UN GREP
 //
-// `filmdec` CITE ces trois noms dans ses commentaires — abondamment, puisque c'est la migration
+// `grammar` CITE ces trois noms dans ses commentaires — abondamment, puisque c'est la migration
 // qu'il documente. Un test grep rougirait sur la documentation du garde-rail lui-meme. Le test
 // parse donc les fichiers et ne regarde que les APPELS, en nommant la FONCTION ENGLOBANTE : une
 // allowlist par fichier laisserait passer un second appel ajoute dans le meme fichier.
@@ -51,7 +51,7 @@ import (
 // detecter).
 //
 // `DetectI0Layout` RESTE DANS CETTE TABLE ALORS QU'ELLE N'EXISTE PLUS EN PRODUCTION (revue de
-// jalon M1, 2026-09-16 : elle est devenue `detectI0Layout` dans un fichier de test de `filmdec`,
+// jalon M1, 2026-09-16 : elle est devenue `detectI0Layout` dans un fichier de test de `grammar`,
 // faute d'appelant de production depuis le lot 1.9.4). C'est voulu : le scan ne lit que les
 // fichiers NON-test, donc l'entree ne coute rien, et elle rougirait immediatement si quelqu'un
 // reintroduisait l'enveloppe en production — ce qui est exactement le ratchet qu'on veut.
@@ -107,7 +107,7 @@ var calculsDuContexteFilm = map[string]bool{
 //	                      (Live Fire designe `aquarius`). La fonction est SUPPRIMEE, la carte vient
 //	                      du nom (`killcollector/map_identity.go`), et `DetectI0Layout` n'a plus
 //	                      AUCUN appelant de production : toute reapparition d'un appel dans
-//	                      `filmdec` rougit ici, faute d'entree d'allowlist.
+//	                      `grammar` rougit ici, faute d'entree d'allowlist.
 var appelsAutorisesDuContexte = map[string]string{
 	"film_context.go/(*FilmContext).BipedSlots -> bipedSlotBand":    "le releve unique de la bande du film",
 	"film_context.go/(*FilmContext).I0Layout -> DetectI0LayoutOf":   "la detection unique du decoupage d'i0",
@@ -121,7 +121,7 @@ var appelsAutorisesDuContexte = map[string]string{
 
 // TestContexteFilmCalculeUneFois — REGLE 1.
 func TestContexteFilmCalculeUneFois(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/filmdec"))
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/grammar"))
 	vus := map[string]bool{}
 	var enTrop []string
 	for nom, f := range fichiersGoNonTest(t, pkgDir) {
@@ -174,7 +174,7 @@ func TestContexteFilmCalculeUneFois(t *testing.T) {
 	}
 }
 
-// paquetsSansAnalyseDeRegistre : les paquets de la chaine de cuisson qui, hors `filmdec`, ne
+// paquetsSansAnalyseDeRegistre : les paquets de la chaine de cuisson qui, hors `grammar`, ne
 // doivent pas analyser le registre eux-memes — la cuisson passe par le contexte du film.
 var paquetsSansAnalyseDeRegistre = []string{
 	"internal/games/halo_infinite/film/replay",

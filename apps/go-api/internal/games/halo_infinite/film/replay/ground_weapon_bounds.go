@@ -27,7 +27,7 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // gwPickupBounds encadre la disparition d'un objet au sol : ce que le recensement des images-clés
@@ -144,7 +144,7 @@ type gwPickupHit struct {
 // seuil est franchi, et elle vaut mécaniquement 1,46 à 1,50 m sur tous les sous-ensembles. Elle
 // ne se publie pas.
 func gwPickupNearestPass(
-	pos [3]float32, lowUS, highUS uint64, samples []filmdec.BipedPosition,
+	pos [3]float32, lowUS, highUS uint64, samples []grammar.BipedPosition,
 ) gwPickupHit {
 	var out gwPickupHit
 	i := sort.Search(len(samples), func(i int) bool { return samples[i].TimestampUS >= lowUS })
@@ -183,8 +183,8 @@ func gwPickupNearestPass(
 // prédécesseur, sortait du jeu `at_rest` et amputait la grappe de son socle. Les deux questions
 // passent désormais par ici, et la fenêtre est celle du recensement.
 func gwPickupLifeTrack(
-	tracks []filmdec.ProjectileTrack, t0, lifeEnd uint64,
-) (filmdec.ProjectileTrack, bool) {
+	tracks []grammar.ProjectileTrack, t0, lifeEnd uint64,
+) (grammar.ProjectileTrack, bool) {
 	best, bestGap := -1, uint64(math.MaxUint64)
 	for i, tr := range tracks {
 		if len(tr.Pts) == 0 {
@@ -199,7 +199,7 @@ func gwPickupLifeTrack(
 		}
 	}
 	if best < 0 {
-		return filmdec.ProjectileTrack{}, false
+		return grammar.ProjectileTrack{}, false
 	}
 	return tracks[best], true
 }
@@ -207,7 +207,7 @@ func gwPickupLifeTrack(
 // gwPickupRefPos rend la position où l'objet SE TROUVE quand on le ramasse : le dernier point de
 // la piste de sa vie s'il a bougé (cf. gwPickupLifeTrack), sa position de création sinon.
 func gwPickupRefPos(
-	c filmdec.EquipmentCreation, life filmdec.ProjectileTrack, moved bool,
+	c grammar.EquipmentCreation, life grammar.ProjectileTrack, moved bool,
 ) ([3]float32, bool) {
 	if !moved {
 		return [3]float32{c.X, c.Y, c.Z}, false

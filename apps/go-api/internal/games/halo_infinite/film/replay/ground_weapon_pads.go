@@ -41,7 +41,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // LES QUATRE TYPES PUBLIÉS DU CALQUE (`WeaponPad`, `PadPresence`, `PadCycle`, `PadPickup`)
@@ -152,7 +152,7 @@ func (c GroundWeaponCoverage) Balanced() bool {
 // film et de sa règle (règle des 5 paramètres — ces trois-là voyagent toujours ensemble).
 type padChainInputs struct {
 	lives     map[uint32][]equipLife
-	positions []filmdec.BipedPosition
+	positions []grammar.BipedPosition
 	clock     replayClock
 }
 
@@ -183,7 +183,7 @@ type padChainCounts struct {
 // calque des armes au sol (`document_ground_weapon_items.go`, schéma 27) publie les vies
 // individuelles — les deux consommateurs partagent LA MÊME chaîne au lieu d'en dérouler deux.
 func buildWeaponPads(
-	scans PadScans, positions []filmdec.BipedPosition, clock replayClock, cat padCatalogs,
+	scans PadScans, positions []grammar.BipedPosition, clock replayClock, cat padCatalogs,
 ) ([]WeaponPad, []PadPickup, *GroundWeaponCoverage, []gwPickupObject) {
 	cov := &GroundWeaponCoverage{
 		Scanned: scans.Weapons.Scanned, Slots: scans.Weapons.Stats.Slots,

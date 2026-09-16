@@ -13,14 +13,14 @@ package replay
 //
 // DEUX CHEMINS EXISTENT DANS LE DEPOT, ET LES DEUX SONT MESURES ICI PLUTOT QUE L'UN CHOISI.
 //
-//  1. LE MARCHEUR DETERMINISTE (`filmdec.WalkKeyframeRecords`) : en-tete de 64 bits, puis corps
+//  1. LE MARCHEUR DETERMINISTE (`grammar.WalkKeyframeRecords`) : en-tete de 64 bits, puis corps
 //     par le lecteur de record NEW de production, puis enchainement sur la position atteinte.
 //     Il ne balaie rien — donc il est aussi un test de la grammaire, et son arret dit ou elle
 //     lache. Son rendement est publie meme quand il est nul : un chemin qui echoue est une
 //     piece, pas une gene (meme regle qu'au lot F pour le chemin sequentiel).
-//  2. LE BALAYEUR DE PRODUCTION (`filmdec.WalkKeyframeWorld`), celui dont `WorldFromKeyframe`
+//  2. LE BALAYEUR DE PRODUCTION (`grammar.WalkKeyframeWorld`), celui dont `WorldFromKeyframe`
 //     se sert pour binder le monde a chaque image-cle. Il ANCRE les records sur la grammaire
-//     d'en-tete au lieu de les enchainer, puis `filmdec.TraverseKeyframeBipedAt` — la sonde de
+//     d'en-tete au lieu de les enchainer, puis `grammar.TraverseKeyframeBipedAt` — la sonde de
 //     production du harnais loadout — rejoue le corps du bipede et rend ses composants.
 //
 // RESERVE DU CHEMIN 2, DITE D'AVANCE : le balayeur applique un FILTRE FORT (les 26 bits de
@@ -38,7 +38,7 @@ package replay
 // sous-dimensionnement au lieu de fabriquer un faux negatif.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // vgKFStat porte la couverture de la marche d'image-cle, publiee AVANT tout score.
@@ -65,16 +65,16 @@ type vgKFStat struct {
 // decoupes en composants — meme forme que la collecte delta, donc meme suite de mesure.
 //
 // les bascules de grammaire sont globales au process.
-func vgCollecteKF(dir string, reg *filmdec.Registry, cibles map[uint32]bool) ([]vfRecord, vgKFStat) {
+func vgCollecteKF(dir string, reg *grammar.Registry, cibles map[uint32]bool) ([]vfRecord, vgKFStat) {
 	st := vgKFStat{detArrets: map[string]int{}, recMin: -1}
 	var out []vfRecord
-	for c := 1; c <= filmdec.CountFilmChunks(dir); c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+	for c := 1; c <= grammar.CountFilmChunks(dir); c++ {
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(data) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(data) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			st.paquets++
@@ -89,22 +89,22 @@ func vgCollecteKF(dir string, reg *filmdec.Registry, cibles map[uint32]bool) ([]
 
 // vgMesureDeterministe republie le rendement du marcheur qui n'enchaine PAS par balayage. Il ne
 // sert a rien choisir : il documente si la grammaire tient de bout en bout sur ce film.
-func vgMesureDeterministe(st *vgKFStat, pay []byte, reg *filmdec.Registry) {
-	recs, stop := filmdec.WalkKeyframeRecords(pay, reg, filmdec.ContexteParDefaut())
+func vgMesureDeterministe(st *vgKFStat, pay []byte, reg *grammar.Registry) {
+	recs, stop := grammar.WalkKeyframeRecords(pay, reg, grammar.ContexteParDefaut())
 	st.detArrets[stop.String()]++
 	st.detRecords += len(recs)
 	for _, r := range recs {
-		if r.TI == filmdec.BipedTypeIndex {
+		if r.TI == grammar.BipedTypeIndex {
 			st.detBipeds++
 		}
 	}
 }
 
 // vgVerseKeyframe ancre les records d'UN paquet d'image-cle et rend ses bipedes mesurables.
-func vgVerseKeyframe(st *vgKFStat, pay []byte, reg *filmdec.Registry, cibles map[uint32]bool,
+func vgVerseKeyframe(st *vgKFStat, pay []byte, reg *grammar.Registry, cibles map[uint32]bool,
 	tMS int64,
 ) []vfRecord {
-	ancres := filmdec.WalkKeyframeWorld(pay)
+	ancres := grammar.WalkKeyframeWorld(pay)
 	st.records += len(ancres)
 	if st.recMin < 0 || len(ancres) < st.recMin {
 		st.recMin = len(ancres)
@@ -114,7 +114,7 @@ func vgVerseKeyframe(st *vgKFStat, pay []byte, reg *filmdec.Registry, cibles map
 	}
 	var out []vfRecord
 	for i, r := range ancres {
-		if r.TI != filmdec.BipedTypeIndex {
+		if r.TI != grammar.BipedTypeIndex {
 			continue
 		}
 		st.bipeds++
@@ -133,11 +133,11 @@ func vgVerseKeyframe(st *vgKFStat, pay []byte, reg *filmdec.Registry, cibles map
 }
 
 // vgTraverseKF rejoue le corps d'UN bipede d'image-cle et rend son record decoupe en composants.
-func vgTraverseKF(st *vgKFStat, pay []byte, reg *filmdec.Registry, r filmdec.KeyframeRec,
+func vgTraverseKF(st *vgKFStat, pay []byte, reg *grammar.Registry, r grammar.KeyframeRec,
 	borne int, tMS int64,
 ) (vfRecord, bool) {
-	tr, end := filmdec.TraverseKeyframeBipedAt(pay, r.Bit+64, reg, uint32(r.TI),
-		filmdec.ContexteParDefaut())
+	tr, end := grammar.TraverseKeyframeBipedAt(pay, r.Bit+64, reg, uint32(r.TI),
+		grammar.ContexteParDefaut())
 	if end > borne {
 		st.deborde++
 		return vfRecord{}, false
@@ -161,7 +161,7 @@ func vgTraverseKF(st *vgKFStat, pay []byte, reg *filmdec.Registry, r filmdec.Key
 // precedent, et la fin de corps borne le dernier. Un composant non porte arrete le decoupage —
 // au-dela, la position du curseur ne serait plus digne de confiance, exactement comme dans la
 // marche delta du lot F.
-func vgKFComposants(pay []byte, tr filmdec.EntityTrace, end int) []vfComp {
+func vgKFComposants(pay []byte, tr grammar.EntityTrace, end int) []vfComp {
 	out := make([]vfComp, 0, len(tr.Comps))
 	for i, c := range tr.Comps {
 		if !c.Ported {

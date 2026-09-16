@@ -37,7 +37,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -77,7 +77,7 @@ func TestTotalControlDesignateurParManche(t *testing.T) {
 		return
 	}
 
-	sc, err := filmdec.ScanFilmManagedProperties(dir)
+	sc, err := grammar.ScanFilmManagedProperties(dir)
 	if err != nil {
 		t.Fatalf("%s : proprietes ti=13 illisibles : %v", short, err)
 	}
@@ -159,13 +159,13 @@ func tcManchesOf(recs []objectives.StatRecord) []tcManche {
 // LE CHAINAGE EST LA GARDE : sur un KOTH de reference, le canal par joueur chaine a 33 % contre
 // 97 % pour le canal scalaire — le tag 5 non chaine des slots combles est de la contamination
 // d'ancrage, pas une designation.
-func tcDesignateurs(reads []filmdec.ManagedPropertyRead) map[uint32][]filmdec.ManagedPropertyRead {
-	out := map[uint32][]filmdec.ManagedPropertyRead{}
+func tcDesignateurs(reads []grammar.ManagedPropertyRead) map[uint32][]grammar.ManagedPropertyRead {
+	out := map[uint32][]grammar.ManagedPropertyRead{}
 	for _, r := range reads {
-		if r.Field != filmdec.ManagedPropertyScalar || !r.HasValue || !r.Chained {
+		if r.Field != grammar.ManagedPropertyScalar || !r.HasValue || !r.Chained {
 			continue
 		}
-		if r.Tag != filmdec.ManagedPropertyTagStringID {
+		if r.Tag != grammar.ManagedPropertyTagStringID {
 			continue
 		}
 		out[r.Slot] = append(out[r.Slot], r)
@@ -177,7 +177,7 @@ func tcDesignateurs(reads []filmdec.ManagedPropertyRead) map[uint32][]filmdec.Ma
 // confondus — c'est l'ensemble dont on compte le cardinal.
 //
 // LA VALEUR ZERO N'EST PAS UNE DESIGNATION : un slot qui emet zero ne nomme rien.
-func tcEnsembleDesigne(desig map[uint32][]filmdec.ManagedPropertyRead, t0, t1 uint64) []uint64 {
+func tcEnsembleDesigne(desig map[uint32][]grammar.ManagedPropertyRead, t0, t1 uint64) []uint64 {
 	vu := map[uint64]bool{}
 	for _, serie := range desig {
 		for _, r := range serie {

@@ -25,7 +25,7 @@ package archlint
 //
 // Il ne demande a personne de scinder les fichiers de la table. Il interdit de les AGRANDIR.
 // La scission se decide lot par lot, avec la preuve d equivalence qui va avec (le lot 2.7 l a
-// faite pour `filmdec` et `killcollector` ; le volet publication viendra apres la fusion des
+// faite pour `grammar` et `killcollector` ; le volet publication viendra apres la fusion des
 // lots 1.9.9 / 1.9.11 / 1.9.14, qui tiennent ces fichiers).
 //
 // Il ne distingue pas non plus un fichier de test d un fichier de production. Une table de
@@ -67,7 +67,7 @@ var racinesSurveilleesTaille = []string{
 const plancherFichiersBalayesTaille = 1200
 
 // plafondsParFichier — LA TABLE DATEE DES FICHIERS DEJA AU-DELA DU SEUIL, avec leur taille du
-// 2026-09-16 (lot 2.7, apres la scission de `filmdec` et de `killcollector`). Chemin relatif a
+// 2026-09-16 (lot 2.7, apres la scission de `grammar` et de `killcollector`). Chemin relatif a
 // `apps/go-api`, en slash.
 //
 // CHAQUE VALEUR NE PEUT QUE DESCENDRE. Faire monter une entree, c est autoriser exactement la
@@ -111,10 +111,10 @@ var plafondsParFichier = map[string]int{
 	"internal/games/halo_infinite/film/facts/objectives/e1911_manches_mesure_research_test.go":  523,
 	"internal/games/halo_infinite/film/facts/objectives/statborg.go":                            687,
 	"internal/replaybuild/replaybuild.go":                                                       577,
-	"internal/games/halo_infinite/film/filmdec/equipment_creation.go":                           508,
+	"internal/games/halo_infinite/film/grammar/equipment_creation.go":                           508,
 	// --- tests et instruments de mesure : tables de fixtures et balayages de recherche.
 	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":                   1202,
-	"internal/games/halo_infinite/film/filmdec/i59_anchor_test.go":                       1152,
+	"internal/games/halo_infinite/film/grammar/i59_anchor_test.go":                       1152,
 	"internal/games/halo_infinite/film/replay/structure_test.go":                         1151,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":             872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":            833,
@@ -123,17 +123,17 @@ var plafondsParFichier = map[string]int{
 	"internal/games/halo_infinite/film/replay/assaut_manches_research_test.go":           655,
 	"internal/games/halo_infinite/film/replay/mapvar/noms_lieux_hunt_test.go":            627,
 	"internal/games/halo_infinite/film/killicon/killicon_test.go":                        610,
-	"internal/games/halo_infinite/film/filmdec/components_hooks_test.go":                 600,
+	"internal/games/halo_infinite/film/grammar/components_hooks_test.go":                 600,
 	"internal/games/halo_infinite/film/replay/closures_test.go":                          598,
 	"internal/games/halo_infinite/film/replay/vehicules_v1a_test.go":                     587,
-	"internal/games/halo_infinite/film/filmdec/vehicules_v13_deadstate_test.go":          583,
+	"internal/games/halo_infinite/film/grammar/vehicules_v13_deadstate_test.go":          583,
 	"internal/games/halo_infinite/film/replay/minifilm_test.go":                          581,
-	"internal/games/halo_infinite/film/filmdec/ground_weapon_lifecycle_research_test.go": 574,
+	"internal/games/halo_infinite/film/grammar/ground_weapon_lifecycle_research_test.go": 574,
 	"internal/games/halo_infinite/film/replay/equipment_uses_join_test.go":               570,
 	"internal/games/halo_infinite/film/facts/objectives/assaut_pied_ancre_test.go":       558,
 	"internal/sync/killcollector/positions_test.go":                                      557,
-	"internal/games/halo_infinite/film/filmdec/golden_minibobine_test.go":                553,
-	"internal/games/halo_infinite/film/filmdec/vehicules_v2_items_test.go":               533,
+	"internal/games/halo_infinite/film/grammar/golden_minibobine_test.go":                553,
+	"internal/games/halo_infinite/film/grammar/vehicules_v2_items_test.go":               533,
 	"internal/games/halo_infinite/film/replay/attachement_phase0_bord_test.go":           529,
 	"internal/sync/killcollector/collector_test.go":                                      527,
 }

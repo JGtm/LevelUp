@@ -78,11 +78,11 @@ func TestEmpreinteHeriteeEgaleLeGoldenDeGrammaire(t *testing.T) {
 	film := filepath.Join(api, "internal", "games", "halo_infinite", "film")
 	racines := []string{
 		filepath.Join(api, "internal", "analysis", "filmsource"),
-		filepath.Join(film, "filmdec"),
+		filepath.Join(film, "grammar"),
 		filepath.Join(film, "killsource"),
 		filepath.Join(film, "facts", "objectives"),
 	}
-	golden := filepath.Join(film, "filmdec", "testdata", "grammar_rev.golden")
+	golden := filepath.Join(film, "grammar", "testdata", "grammar_rev.golden")
 
 	// L exclusion du gate de la grammaire porte sur le NOM du fichier, a n importe quelle
 	// profondeur ; `path.Base` du chemin relatif la reproduit exactement.

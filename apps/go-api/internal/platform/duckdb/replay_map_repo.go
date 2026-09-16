@@ -5,7 +5,7 @@ package duckdb
 // POURQUOI CE REPO EXISTE. L'artefact de rejeu 2D ne porte AUCUNE identité de carte : il est
 // écrit hors ligne à partir des seuls chunks du film, qui ne nomment pas la carte. Le fond de
 // carte, lui, est indexé par MODULE (`ridgeline.png`), et la seule chaîne qui relie un nom
-// affiché à un module est le catalogue de bornes (`filmdec.NormalizeMapName` +
+// affiché à un module est le catalogue de bornes (`grammar.NormalizeMapName` +
 // `map_quant_bounds.json`). Il manque donc le premier maillon — match -> nom de carte — et il
 // n'existe qu'en base.
 //

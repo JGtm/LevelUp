@@ -3,7 +3,7 @@ package killsource
 // world_precision_test.go — INSTRUMENT DE MESURE : LES LARGEURS D AXE DE LA CARTE
 // CHANGENT-ELLES CE QUE `Decode` PUBLIE ?
 //
-// LA QUESTION, ET POURQUOI ELLE SE POSE ICI. `filmdec.WorldObjectPrecision` est un GLOBAL de
+// LA QUESTION, ET POURQUOI ELLE SE POSE ICI. `grammar.WorldObjectPrecision` est un GLOBAL de
 // paquet dont le defaut `{13,13,14}` EST l entree `cliffhanger` du catalogue de bornes. Depuis
 // le 2026-08-15, `replay.BuildFromFilm` installe les largeurs de la carte du match pour toute
 // la duree de son decodage — mais `killsource.Decode` est une chaine d appel DISTINCTE, qui ne
@@ -11,7 +11,7 @@ package killsource
 // quelle que soit la carte.
 //
 // CE N EST PAS UNE QUESTION DE POSITION, C EST UNE QUESTION DE CURSEUR. La marche
-// (`walkFrom` -> `filmdec.DecodeFrameRecords`) deroule la boucle de records d un paquet ; le
+// (`walkFrom` -> `grammar.DecodeFrameRecords`) deroule la boucle de records d un paquet ; le
 // deser d `object-position-component` (traverse.go, chemin world-object) AVANCE le curseur de
 // `1 + 1 [+IndexW] + AxisW[0]+AxisW[1]+AxisW[2] + 2` bits. Sur une carte `[17 17 16]` le vrai
 // record fait 10 bits de plus que ce que le defaut lit : tout ce qui suit dans le paquet est
@@ -57,7 +57,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -73,7 +73,7 @@ func TestKillSourceWorldPrecisionImpact(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", ksPrecFilmEnv)
 	}
 	entry := ksPrecEntry(t)
-	def := filmdec.ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW
+	def := grammar.ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW
 	t.Logf("== FILM %s ==", dir)
 	t.Logf("  largeurs par DEFAUT du paquet : %v · largeurs DU CATALOGUE : %v (module %s)",
 		def, entry.AxisWidths, entry.Module)
@@ -145,7 +145,7 @@ func TestKillSourceWalkArchetypes(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", ksPrecFilmEnv)
 	}
-	prev := filmdec.ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
+	prev := grammar.ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 
 	src, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
@@ -172,7 +172,7 @@ func TestKillSourceWalkArchetypes(t *testing.T) {
 
 	hs := make([]ksPrecHist, 0, len(largeurs))
 	for _, w := range largeurs {
-		profil := filmdec.ProfilDeBalayageParDefaut()
+		profil := grammar.ProfilDeBalayageParDefaut()
 		profil.Mouvement.WorldObject.AxisW = w
 		h := ksPrecWalkHistogram(f, tl, DefaultOptions().Views, profil)
 		hs = append(hs, h)
@@ -226,15 +226,15 @@ func (h ksPrecHist) sortedTypes() []uint32 {
 }
 
 // worldObjectPositionComponent : le nom, dans le registre ECS du film, du composant dont le
-// deser lit `filmdec.WorldObjectPrecision` (traverse.go, chemin world-object d i0).
+// deser lit `grammar.WorldObjectPrecision` (traverse.go, chemin world-object d i0).
 const worldObjectPositionComponent = "object-position-component"
 
 // ksPrecWalkHistogram rejoue EXACTEMENT le parcours de `runWalk` — meme localisateur, meme
 // restauration du monde — mais compte au lieu de filtrer.
 func ksPrecWalkHistogram(f *film, tl *timeline, views int,
-	profil filmdec.ProfilDeBalayage) ksPrecHist {
+	profil grammar.ProfilDeBalayage) ksPrecHist {
 	tl.rewind()
-	cfg := filmdec.DefaultFrameConfig()
+	cfg := grammar.DefaultFrameConfig()
 	cfg.Profil = profil
 	h := ksPrecHist{byType: map[uint32]int{}}
 	for i := range f.t0 {
@@ -287,14 +287,14 @@ func ksPrecWalkHistogram(f *film, tl *timeline, views int,
 
 // ksPrecEntry : l entree de catalogue de la carte du match. C est la MEME entree qui porte les
 // bornes — bornes et largeurs ne se dissocient pas.
-func ksPrecEntry(t *testing.T) filmdec.MapQuantEntry {
+func ksPrecEntry(t *testing.T) grammar.MapQuantEntry {
 	t.Helper()
 	boundsPath, mapName := os.Getenv(ksPrecBoundsEnv), os.Getenv(ksPrecMapEnv)
 	if boundsPath == "" || mapName == "" {
 		t.Skipf("%s / %s absents : la source des largeurs est le CATALOGUE, pas le film",
 			ksPrecBoundsEnv, ksPrecMapEnv)
 	}
-	cat, err := filmdec.LoadMapQuantCatalog(boundsPath)
+	cat, err := grammar.LoadMapQuantCatalog(boundsPath)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", boundsPath, err)
 	}

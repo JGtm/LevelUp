@@ -97,7 +97,7 @@ type HighlightEvent struct {
 // matchs anciens cachés parsaient OK).
 //
 // filmMajorVersion a DEUX sources, et elles portent la même valeur : l'u32 little-endian en tête
-// du registre du film (`chunk_00`, cf. `filmdec.FilmMajorVersion`) et le `CustomData.FilmMajorVersion`
+// du registre du film (`chunk_00`, cf. `grammar.FilmMajorVersion`) et le `CustomData.FilmMajorVersion`
 // du manifeste de spectate de l'API. Un appelant qui tient le film lit la première, un appelant
 // du chemin en direct la seconde ; aucun ne la devine.
 //
@@ -134,7 +134,7 @@ func ParseHighlightEvents(data []byte, filmMajorVersion int) ([]HighlightEvent, 
 // `version` EST LUE, JAMAIS DEVINÉE (décision utilisateur du 2026-09-12). Le découpage du
 // gamertag est le seul champ du bloc d'event qui en dépende, et l'indicateur qui le commande
 // existe : `FilmMajorVersion`, l'u32 little-endian en tête du registre du film
-// (`filmdec.FilmMajorVersionFromHeader`), que l'API publie aussi dans son manifeste de
+// (`grammar.FilmMajorVersionFromHeader`), que l'API publie aussi dans son manifeste de
 // spectate. Les appelants le lisent et le passent ; ce parseur ne mesure rien.
 //
 // `version` = 0 signifie « le film ne porte pas son registre » : le découpage historique

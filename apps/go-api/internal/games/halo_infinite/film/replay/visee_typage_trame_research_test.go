@@ -44,11 +44,11 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // typesDeclaresParLeFilm est le nombre d'entrees de la table par type que porte chunk_00, mesure
-// au lot D1 (`filmdec.TestD1TableParType`) : 123 valeurs u32 non nulles qui s'arretent pile a la
+// au lot D1 (`grammar.TestD1TableParType`) : 123 valeurs u32 non nulles qui s'arretent pile a la
 // chaine d'identification du build. C'est aussi, a l'octet pres, la borne du dispatcher relevee
 // dans l'exe au lot B (`CMP R15,0x7b ; JNC`) — deux chaines sans etape commune.
 const typesDeclaresParLeFilm = 123
@@ -120,22 +120,22 @@ func typageDirs(t *testing.T) []string {
 // recenserFilm accumule les statistiques de premier octet d'un film et rend le nombre de paquets
 // delta lus.
 func recenserFilm(dir string, stats map[byte]*statOctet0) int {
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	lus := 0
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		paquets := filmdec.WalkPackets(chunk)
+		paquets := grammar.WalkPackets(chunk)
 		instants := map[uint64]int{}
 		for _, p := range paquets {
-			if p.Type == filmdec.PacketTypeDelta && p.Size >= 1 {
+			if p.Type == grammar.PacketTypeDelta && p.Size >= 1 {
 				instants[p.TimestampUS]++
 			}
 		}
 		for _, p := range paquets {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 				continue
 			}
 			b := p.Payload(chunk)[0]
@@ -322,16 +322,16 @@ func TestD3CadenceDesTrames(t *testing.T) {
 	ecarts := map[uint64]int{}
 	ecartsE5 := map[uint64]int{}
 	for _, dir := range dirs {
-		n := filmdec.CountFilmChunks(dir)
+		n := grammar.CountFilmChunks(dir)
 		for c := 1; c <= n; c++ {
-			chunk, err := filmdec.ReadFilmChunk(dir, c)
+			chunk, err := grammar.ReadFilmChunk(dir, c)
 			if err != nil {
 				continue
 			}
 			var prec uint64
 			premier := true
-			for _, p := range filmdec.WalkPackets(chunk) {
-				if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+			for _, p := range grammar.WalkPackets(chunk) {
+				if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 					continue
 				}
 				if !premier && p.TimestampUS >= prec {
@@ -409,18 +409,18 @@ func TestD4BitBasEstUnBitDIdentifiant(t *testing.T) {
 	vues := map[string]map[uint32]int{"tous": {}, "0xD2": {}, "0xD3": {}}
 	totaux := map[string]int{}
 	for _, dir := range dirs {
-		n := filmdec.CountFilmChunks(dir)
+		n := grammar.CountFilmChunks(dir)
 		for c := 1; c <= n; c++ {
-			chunk, err := filmdec.ReadFilmChunk(dir, c)
+			chunk, err := grammar.ReadFilmChunk(dir, c)
 			if err != nil {
 				continue
 			}
-			for _, p := range filmdec.WalkPackets(chunk) {
-				if p.Type != filmdec.PacketTypeDelta || p.Size < 4 {
+			for _, p := range grammar.WalkPackets(chunk) {
+				if p.Type != grammar.PacketTypeDelta || p.Size < 4 {
 					continue
 				}
 				pay := p.Payload(chunk)
-				v := filmdec.ReadBitsAtForDiag(pay, debutID, largeurID)
+				v := grammar.ReadBitsAtForDiag(pay, debutID, largeurID)
 				vues["tous"][v]++
 				totaux["tous"]++
 				if cle := fmt.Sprintf("0x%02X", pay[0]); vues[cle] != nil {

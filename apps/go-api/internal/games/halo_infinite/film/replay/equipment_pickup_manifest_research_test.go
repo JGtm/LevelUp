@@ -51,7 +51,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/weapons"
 )
 
@@ -84,7 +84,7 @@ func TestEquipmentPickupManifestNaming(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", pickupsBridgeEnv)
 	}
 
-	pickups, stats, err := filmdec.ScanFilmBipedPickups(dir)
+	pickups, stats, err := grammar.ScanFilmBipedPickups(dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
@@ -105,7 +105,7 @@ func TestEquipmentPickupManifestNaming(t *testing.T) {
 	nNonArme, nArme := 0, 0
 	for _, p := range pickups {
 		cible, n := nonArme, &nNonArme
-		if filmdec.BipedPickupIsWeaponClass(p.Class) {
+		if grammar.BipedPickupIsWeaponClass(p.Class) {
 			cible, n = arme, &nArme
 		}
 		*n++
@@ -223,7 +223,7 @@ func TestEquipmentPickupClassByManifest(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", pickupsBridgeEnv)
 	}
 
-	pickups, _, err := filmdec.ScanFilmBipedPickups(dir)
+	pickups, _, err := grammar.ScanFilmBipedPickups(dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
@@ -236,7 +236,7 @@ func TestEquipmentPickupClassByManifest(t *testing.T) {
 	// Et la répartition de classe PAR IDENTIFIANT, pour C3.
 	parID := map[uint32]map[uint8]int{}
 	for _, p := range pickups {
-		if filmdec.BipedPickupIsWeaponClass(p.Class) {
+		if grammar.BipedPickupIsWeaponClass(p.Class) {
 			continue
 		}
 		l := tab[p.Class]
@@ -340,7 +340,7 @@ func TestBuildPickupsFamilyCoverageOnRealFilms(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", pickupsBridgeEnv)
 	}
 
-	pickups, st, err := filmdec.ScanFilmBipedPickups(dir)
+	pickups, st, err := grammar.ScanFilmBipedPickups(dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}

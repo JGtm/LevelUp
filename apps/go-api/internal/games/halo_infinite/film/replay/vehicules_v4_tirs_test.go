@@ -30,7 +30,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // v4TemoinsFrames sont les decalages du temoin des tirs, en frames (100 ms) : +/-30, +/-60 et
@@ -134,14 +134,14 @@ func v4MesureTirs(ctx v4Ctx, tracks []VehicleTrack) v4TirAgg {
 
 // v4TirArg porte les entrees d UN orphelin (regle des 5 parametres du depot).
 type v4TirArg struct {
-	ev      filmdec.FireEvent
+	ev      grammar.FireEvent
 	vehArme bool
 }
 
 // v4TirRattache rejoue la PREMIERE porte (celle du bipede) et compte sa cause de rejet. Rend
 // vrai quand le tir est rattache — l orphelin n existe pas.
 func v4TirRattache(
-	ctx v4Ctx, slotTracks map[uint32]slotTrack, e filmdec.FireEvent, ag *v4TirAgg,
+	ctx v4Ctx, slotTracks map[uint32]slotTrack, e grammar.FireEvent, ag *v4TirAgg,
 ) bool {
 	slot, reason := slotFor(slotTracks, ctx.own.IndexParSlot(), e.FilmIndex, e.TimestampUS)
 	if reason == reasonAttached {

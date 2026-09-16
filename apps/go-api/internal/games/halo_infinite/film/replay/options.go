@@ -16,7 +16,7 @@ package replay
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
@@ -29,7 +29,7 @@ type Options struct {
 	// MinPoints : seuil de publication d'une track ; 0 -> DefaultMinPoints.
 	MinPoints int
 	// FilmMajorVersion : la version du film, LUE dans l'en-tete de son registre par l'appelant
-	// qui a charge le film (`filmdec.FilmMajorVersion`). nil quand le film ne porte pas son
+	// qui a charge le film (`grammar.FilmMajorVersion`). nil quand le film ne porte pas son
 	// registre, ou quand l'appelant construit depuis des positions sans film. Republiee telle
 	// quelle dans `Coverage.FilmMajorVersion` — cf. le commentaire de ce champ.
 	FilmMajorVersion *int
@@ -42,22 +42,22 @@ type Options struct {
 	// Loadouts : armes portées décodées des keyframes (cf. loadouts.go). Entrée de DONNÉES
 	// et non de réglage — elle vit ici plutôt qu'en paramètre pour ne pas pousser
 	// BuildFromPositions au-delà de 5 arguments. Absente = rejeu sans armes portées.
-	Loadouts []filmdec.KeyframeLoadout
+	Loadouts []grammar.KeyframeLoadout
 	// Grenades : lancers de grenade décodés des paquets delta (cf. grenades.go). Comme
 	// Loadouts, c'est une entrée de DONNÉES. Absente = rejeu sans lancers. Le rattachement
 	// à un slot passe par le pont du fil des morts : sans morts lisibles, les lancers décodés
 	// ne sont pas publiés (on refuse de les poser sur le mauvais joueur).
-	Grenades []filmdec.GrenadeThrow
+	Grenades []grammar.GrenadeThrow
 	// Projectiles : trajectoires de projectile decodees des paquets delta (cf. projectiles.go).
 	// Entree de DONNEES, comme Loadouts et Grenades. Absente = rejeu sans trajectoires.
-	Projectiles []filmdec.ProjectileTrack
+	Projectiles []grammar.ProjectileTrack
 	// Inventory : inventaire complet lu aux memes images-cles que les armes portees
 	// (cf. inventory.go). Entree de DONNEES. Absente = rejeu sans grenades ni munitions.
 	Inventory []KeyframeInventory
 	// InventoryDeltas sont les lectures d'inventaire des paquets DELTA (grenades). Absentes =
 	// le film n'en transmet pas, ou le balayage a echoue : l'axe des grenades retombe alors sur
 	// les seules images-cles.
-	InventoryDeltas []filmdec.InventoryDelta
+	InventoryDeltas []grammar.InventoryDelta
 	// InventoryDeltaAmmoRefused reporte la porte du scanner : le canal MUNITIONS de ce film a
 	// ete refuse en bloc. Pure telemetrie — les grenades ne sont pas concernees.
 	InventoryDeltaAmmoRefused bool
@@ -65,15 +65,15 @@ type Options struct {
 	// (cf. abilities.go). Entree de DONNEES, comme Inventory. C'est le canal qui voit TOUTE
 	// la palette ; celui des images-cles, porte par Inventory, n'en voit que la fenetre
 	// 16..23. Absente = rejeu dont les capacites se limitent a cette fenetre.
-	AbilityRanks []filmdec.AbilityRank
+	AbilityRanks []grammar.AbilityRank
 	// CamoStates : les transmissions de la voie d'etat du camouflage (i28 queue[1], cf.
 	// filmdec/camo_state.go). Entree de DONNEES, comme AbilityRanks. Absente = rejeu sans
 	// episodes de camouflage — le surbouclier, lui, voyage dans les positions (Shield.Q).
-	CamoStates []filmdec.CamoRead
+	CamoStates []grammar.CamoRead
 	// GrappleReads : les evenements de grappin lus dans le corps tag==3 d'i59 (cf.
 	// filmdec/grapple_state.go). Entree de DONNEES, comme CamoStates. Absente = rejeu sans
 	// tractions de grappin — jamais des tractions devinees.
-	GrappleReads []filmdec.GrappleRead
+	GrappleReads []grammar.GrappleRead
 	// AbilityImpulses / AbilityImpulseStats : les IMPULSIONS DE CAPACITE lues dans le corps
 	// tag==1 des composants i57/i59 (cf. filmdec/ability_impulses.go). Entree de DONNEES,
 	// comme GrappleReads — c'est le MEME composant, l'autre valeur de son tag.
@@ -81,8 +81,8 @@ type Options struct {
 	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le temoin
 	// `Absent` (le film ne declare NI i57 NI i59). Une liste vide sans lui serait
 	// indistinguable d'un film ou personne ne s'est servi de son propulseur.
-	AbilityImpulses     []filmdec.AbilityImpulse
-	AbilityImpulseStats filmdec.AbilityImpulseStats
+	AbilityImpulses     []grammar.AbilityImpulse
+	AbilityImpulseStats grammar.AbilityImpulseStats
 	// AbilityCharges / AbilityChargeStats : les CHARGES RESTANTES lues sur les emplacements
 	// ARMES du composant i56 (cf. filmdec/ability_charges.go). Entree de DONNEES, comme
 	// AbilityImpulses — meme canal d'identite (i48), autre grandeur.
@@ -90,8 +90,8 @@ type Options struct {
 	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent les temoins
 	// `Absent` (le film ne declare pas i56) et `Scanned` (le balayage a tourne). Une liste
 	// vide sans eux serait indistinguable d'un film ou personne n'use ses charges.
-	AbilityCharges     []filmdec.AbilityCharge
-	AbilityChargeStats filmdec.AbilityChargeStats
+	AbilityCharges     []grammar.AbilityCharge
+	AbilityChargeStats grammar.AbilityChargeStats
 	// Placements / PlacementStats : les POSES d'objets d'equipement lues dans les records de
 	// CREATION de l'archetype 37 (cf. filmdec/equipment_placements.go). Entree de DONNEES,
 	// comme GrappleReads. Absente = rejeu sans poses — jamais des poses devinees.
@@ -102,7 +102,7 @@ type Options struct {
 	// WeaponChanges : les PRISES ET LACHERS d'arme lus dans le flux delta (cf.
 	// filmdec/held_weapon_changes.go). Entree de DONNEES, comme GrappleReads. Absente =
 	// rejeu sans ramassages — jamais des ramassages devines.
-	WeaponChanges []filmdec.HeldWeaponChange
+	WeaponChanges []grammar.HeldWeaponChange
 	// Pickups / PickupStats : les RAMASSAGES NATIFS lus dans la liste d'evenements des paquets
 	// delta (evenement `biped_pickup`, cf. filmdec/biped_pickups.go). Entree de DONNEES, comme
 	// WeaponChanges. Absente = rejeu sans ramassages natifs — jamais des ramassages devines.
@@ -111,27 +111,27 @@ type Options struct {
 	// listes MULTIPLES, c'est-a-dire la mesure de ce que le canal ne peut PAS voir (un
 	// ramassage en 2e position d'une liste lui echappe). Une liste vide sans elles serait
 	// indistinguable d'un film sans ramassage.
-	Pickups     []filmdec.BipedPickup
-	PickupStats filmdec.BipedPickupStats
+	Pickups     []grammar.BipedPickup
+	PickupStats grammar.BipedPickupStats
 	// EquipmentChanges / EquipmentChangeStats : les RAMASSAGES ET CONSOMMATIONS d'equipement
 	// lus dans le flux delta (cf. filmdec/equipment_changes.go). Entree de DONNEES, comme
 	// WeaponChanges. Les stats voyagent avec parce qu'elles portent le TEMOIN DE COMPLETUDE
 	// (compteur de rotation) : sans elles, la couverture ne saurait pas dire ce qui manque.
-	EquipmentChanges     []filmdec.EquipmentChange
-	EquipmentChangeStats filmdec.EquipmentChangeStats
+	EquipmentChanges     []grammar.EquipmentChange
+	EquipmentChangeStats grammar.EquipmentChangeStats
 	// Translocations : les TÉLÉPORTATIONS du translocateur, datées par l'événement type 117
 	// du film (cf. filmdec/transloc_events.go). Entrée de DONNÉES, comme EquipmentChanges.
 	// Absente = rejeu sans téléportations — jamais des téléportations devinées. Ce sont les
 	// MÊMES événements qui exemptent le filtre de vitesse au décodage (décision D2) : le
 	// scan se fait UNE fois, avant les positions.
-	Translocations []filmdec.TranslocatorTeleport
-	Placements     []filmdec.EquipmentPlacement
-	PlacementStats filmdec.EquipmentPlacementStats
+	Translocations []grammar.TranslocatorTeleport
+	Placements     []grammar.EquipmentPlacement
+	PlacementStats grammar.EquipmentPlacementStats
 	// SpawnEvents / SpawnStats : les evenements type 103 `EquipmentSpawnedObject` lus dans la
 	// liste de tete des paquets delta — « une PIECE a ete engendree ». Entree de DONNEES, comme
 	// Placements : absente, l'origine d'une pose retombe sur ses replis nommes (lot 1.9.1).
-	SpawnEvents []filmdec.EquipmentSpawnEvent
-	SpawnStats  filmdec.EquipmentSpawnStats
+	SpawnEvents []grammar.EquipmentSpawnEvent
+	SpawnStats  grammar.EquipmentSpawnStats
 	// Pads : ce que le film rend sur les SOCLES — armes au sol (`ti=42`) et power-ups (`ti=37`),
 	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
 	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
@@ -171,7 +171,7 @@ type Options struct {
 	// `PlayerIndices`, et le publie (`coverage.identity.filmTable.refus`).
 	FilmTable FilmPlayerTable
 	// PlayerTeams est l'ÉQUIPE DE CHAQUE JOUEUR telle que le film l'écrit : `index de joueur ->
-	// désignateur` (`-1` = aucune équipe), lue par [filmdec.ScanPlayerTeams] dans le composant
+	// désignateur` (`-1` = aucune équipe), lue par [grammar.ScanPlayerTeams] dans le composant
 	// i0 de ti=9.
 	//
 	// C'EST LA SEULE SOURCE D'ÉQUIPE DU DOCUMENT (décision utilisateur du 2026-09-13, V4 du
@@ -181,21 +181,21 @@ type Options struct {
 	// TeamScan est le rapport de cette lecture : records, rejets par domaine, divergences. Il
 	// voyage avec la table parce qu'une table vide et une lecture refusée ne disent pas la même
 	// chose, et que la couverture publie la différence.
-	TeamScan filmdec.TeamScanReport
+	TeamScan grammar.TeamScanReport
 	// ScoreboardTeams est la table `xuid -> équipe` de la FEUILLE DE MATCH, et elle n'est qu'un
 	// CONTRÔLE : aucune équipe publiée n'en sort. Elle alimente
 	// `coverage.teams.{accord, contradiction, silence}` — une contradiction se compte, elle ne
 	// se corrige pas en silence. Vide (CLI hors ligne, ouvrier sans faits) : le contrôle se tait
 	// et le document est le même, à l'octet près.
 	ScoreboardTeams map[string]int
-	// BipedCreations : les records de CRÉATION de bipède du film (`filmdec.ScanBipedCreations`).
+	// BipedCreations : les records de CRÉATION de bipède du film (`grammar.ScanBipedCreations`).
 	// C'est le lien DIRECT corps -> joueur : le film écrit l'index de participant du
 	// propriétaire dans le default-state du record (lot E2, 2026-09-08).
 	//
 	// VIDE = LE REGISTRE DÉGRADE EN ENTIER sur le pont par morts, et il le publie
 	// (`coverage.bridge.bridgeNamedLives` non nul). Ce n'est pas une option à activer : c'est
 	// l'état d'un producteur qui ne porte pas encore ce canal.
-	BipedCreations []filmdec.BipedCreation
+	BipedCreations []grammar.BipedCreation
 	// RosterXUIDs : les joueurs de la FEUILLE DE MATCH, fournis par l'assembleur. Ils
 	// COMPLÈTENT le roster que le fil des morts donne (`rosterFromDeaths`) avant la lecture
 	// de l'index de joueur.
@@ -328,8 +328,8 @@ type Options struct {
 	// de DONNÉES, comme Loadouts et Deaths. Zéro = origine incalculable : le document ne
 	// publie alors aucune origine, et le client retombe sur son appariement.
 	FilmClockOriginUS uint64
-	// Scan : réglages du décodage offline ; zéro -> filmdec.DefaultScanFilmOptions().
-	Scan *filmdec.ScanFilmOptions
+	// Scan : réglages du décodage offline ; zéro -> grammar.DefaultScanFilmOptions().
+	Scan *grammar.ScanFilmOptions
 	// ProfilDeBalayage est le PROFIL que les lecteurs de bits de cette cuisson porteront —
 	// largeurs calibrées et `param_4` que la passe précédente a retenus SUR CE FILM (lot 2.3).
 	//
@@ -340,26 +340,26 @@ type Options struct {
 	// arrive désormais par ici : `killsource.Result.ProfilCalibre` quand le décodage a abouti,
 	// `killsource.ProfilDeDepart()` sinon.
 	//
-	// nil = l'invariant du profil ([filmdec.ProfilDeBalayageParDefaut]) : c'est le cas des
+	// nil = l'invariant du profil ([grammar.ProfilDeBalayageParDefaut]) : c'est le cas des
 	// instruments et des tests, qui ne décodent pas de kill-feed avant la cuisson.
-	ProfilDeBalayage *filmdec.ProfilDeBalayage
+	ProfilDeBalayage *grammar.ProfilDeBalayage
 	// Labels : le catalogue de libellés DU TITRE (armes, grenades, capacités), chargé
 	// depuis config/titles/{slug}/mappings/ par l'appelant hors ligne (cf. catalog.go).
 	// Absent = document sans table de libellés : le client affiche les identifiants
 	// bruts, ce qui reste vrai — contrairement à un nom approché.
 	Labels LabelCatalog
-	// MapQuant : l'ENTRÉE DE CATALOGUE de la carte du match (cf. filmdec.MapQuantCatalog).
+	// MapQuant : l'ENTRÉE DE CATALOGUE de la carte du match (cf. grammar.MapQuantCatalog).
 	// OBLIGATOIRE : sans elle le décodeur ne produit que des quanta, et BuildFromFilm refuse
 	// d'émettre un document plutôt que des coordonnées fausses (elles l'étaient jusqu'ici :
 	// les bornes de Cliffhanger étaient appliquées à toutes les cartes, et le filtre de
 	// téléportation en m/s décalibré d'autant).
 	//
-	// POURQUOI L'ENTRÉE ENTIÈRE ET NON `*filmdec.Vec3Range` (correctif du 2026-08-15) : les
+	// POURQUOI L'ENTRÉE ENTIÈRE ET NON `*grammar.Vec3Range` (correctif du 2026-08-15) : les
 	// BORNES et les LARGEURS D'AXE sont deux faces de la même entrée de catalogue, et jusqu'ici
 	// seules les bornes descendaient. Les largeurs restaient au défaut de paquet — celles de
 	// Cliffhanger — sur toutes les autres cartes. Les porter dans un second champ aurait laissé
 	// armer l'une sans l'autre : un seul champ, donc, et l'oubli devient impossible.
-	MapQuant *filmdec.MapQuantEntry
+	MapQuant *grammar.MapQuantEntry
 	// Observe recoit chaque etape de BuildFromFilm et sa sortie (cf. observe.go). Nil = rien —
 	// mais EN PRODUCTION IL N'EST JAMAIS NIL : `replaybuild.BuildBytes` passe toujours sa
 	// methode `b.observe`, qui teste elle-meme si un observateur est branche (cf. observe.go).

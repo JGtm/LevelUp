@@ -8,7 +8,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
@@ -91,7 +91,7 @@ func TestUneMortEcriteDansLeTrouCoupeLaVie(t *testing.T) {
 func TestUneApparitionEcriteCoupeLaVie(t *testing.T) {
 	fb := fallback.NouveauCompteur()
 	in := faitsAvecUneMortALaFin(fb)
-	in.creations = []filmdec.BipedCreation{
+	in.creations = []grammar.BipedCreation{
 		{Slot: 100, Generation: 2, TimestampUS: trouFinUS - 200_000, HasIndex: true},
 	}
 	if got := decouperAuxFaitsEcrits(deuxSejoursDUnCorps(), in); len(got) != 2 {
@@ -153,8 +153,8 @@ func TestDecoupeSurEntreeTronquee(t *testing.T) {
 }
 
 // positionsAvecTrou : la figure commune, en positions decodees — un point toutes les 500 ms.
-func positionsAvecTrou() []filmdec.BipedPosition {
-	var out []filmdec.BipedPosition
+func positionsAvecTrou() []grammar.BipedPosition {
+	var out []grammar.BipedPosition
 	for t := uint64(1_000_000); t <= trouDebutUS; t += 500_000 {
 		out = append(out, posAt(100, t, 1, 1, 0))
 	}
