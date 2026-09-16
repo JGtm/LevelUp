@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // registryBlocks est le nombre de blocs d'archetype que porte REELLEMENT le registre du build
@@ -308,7 +308,7 @@ func TestD1Builds(t *testing.T) {
 			continue
 		}
 		lus++
-		data := filmsource.Inflate(raw)
+		data := source.Inflate(raw)
 		cle, g := classerFilm(data)
 		if groupes[cle] == nil {
 			groupes[cle] = g

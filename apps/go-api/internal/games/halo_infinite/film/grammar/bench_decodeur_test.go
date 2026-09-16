@@ -42,7 +42,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // benchBobine : la bobine de reference des bancs, relative au paquet.
@@ -116,9 +116,9 @@ func BenchmarkKeyframeClosure(b *testing.B) {
 }
 
 // benchFilm charge la bobine des bancs UNE fois.
-func benchFilm(b *testing.B) *filmsource.Film {
+func benchFilm(b *testing.B) *source.Film {
 	b.Helper()
-	film, err := filmsource.LoadDir(filepath.FromSlash(benchBobine), nil)
+	film, err := source.LoadDir(filepath.FromSlash(benchBobine), nil)
 	if err != nil {
 		b.Fatalf("bobine des bancs illisible (%s) : %v — regenerer les bobines du lot 0.A.2",
 			benchBobine, err)

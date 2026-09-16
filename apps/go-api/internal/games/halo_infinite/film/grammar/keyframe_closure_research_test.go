@@ -28,7 +28,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // TestKeyframeClosureInventaire imprime la fermeture et l inventaire des composants par
@@ -43,7 +43,7 @@ func TestKeyframeClosureInventaire(t *testing.T) {
 func inventaireUnFilm(t *testing.T, dir string) {
 	t.Helper()
 	nom := filepath.Base(dir)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Logf("%s : ECARTE (LoadDir : %v)", nom, err)
 		return

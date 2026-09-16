@@ -56,8 +56,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -147,7 +147,7 @@ func TestKillSourceWalkArchetypes(t *testing.T) {
 	}
 	prev := grammar.ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks de %s : %v", dir, err)
 	}
@@ -336,7 +336,7 @@ func ksPrecRun(t *testing.T, dir string, axisW [3]uint) ksPrecMeasure {
 	t.Helper()
 	_ = axisW
 
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks de %s : %v", dir, err)
 	}

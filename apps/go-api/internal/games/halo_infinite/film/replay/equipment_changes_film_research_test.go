@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 func TestEquipmentChangesSurFilmReel(t *testing.T) {
@@ -32,7 +32,7 @@ func TestEquipmentChangesSurFilmReel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("carte %q : %v", mapName, err)
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks du film illisibles : %v", err)
 	}

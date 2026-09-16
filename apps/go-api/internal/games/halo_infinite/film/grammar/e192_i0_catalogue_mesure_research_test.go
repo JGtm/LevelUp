@@ -48,7 +48,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e192CarteDuFilm : la carte de chaque témoin, telle que le registre du match la nomme.
@@ -145,7 +145,7 @@ func e192Mesure(t *testing.T, cat *MapQuantCatalog, dir string) (e192Ligne, bool
 		return l, false
 	}
 	l.Impose = entry.Layout()
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Logf("  %-10s SAUTÉ : film illisible (%v)", l.Film, err)
 		return l, false
@@ -158,7 +158,7 @@ func e192Mesure(t *testing.T, cat *MapQuantCatalog, dir string) (e192Ligne, bool
 }
 
 // e192Identite rend la version majeure et le build du film, lus dans `chunk_00`.
-func e192Identite(film *filmsource.Film) (int, string) {
+func e192Identite(film *source.Film) (int, string) {
 	reg, ok := FilmRegistryChunk(film)
 	if !ok {
 		return FilmMajorVersionUnknown, "sans chunk_00"
@@ -173,7 +173,7 @@ func e192Identite(film *filmsource.Film) (int, string) {
 
 // e192Balayages joue les QUATRE balayages : positions et pistes de touche, découpage auto-détecté
 // puis imposé par le catalogue. Les réglages sont ceux des DEUX chemins de `killcollector`.
-func e192Balayages(film *filmsource.Film, entry MapQuantEntry, l *e192Ligne) {
+func e192Balayages(film *source.Film, entry MapQuantEntry, l *e192Ligne) {
 	rng := entry.Range()
 	impose := l.Impose
 

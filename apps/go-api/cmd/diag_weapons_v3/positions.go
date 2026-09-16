@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"math"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // runPositions traite le panel en mode POSITIONS, match par match.
@@ -61,7 +61,7 @@ func processMatchPositions(ctx context.Context, c *conn, cfg runConfig, m matchR
 //
 // CE CHEMIN N'EST PAS CELUI DE LA CUISSON, et c'est délibéré (§7 de PLAN_CUISSON_PERF) :
 // `analysis/positions` sert la vue de match côté serveur, il porte son propre marcheur de
-// paquets et il n'est PAS migré vers `filmsource`. D'où l'inflate local, à l'allowlist datée du
+// paquets et il n'est PAS migré vers `source`. D'où l'inflate local, à l'allowlist datée du
 // garde-rail (item 1.9). L'indice est ici la POSITION dans le manifeste, que
 // [filmcache.Source.Chunk] et [filmcache.Source.Meta] partagent.
 func collectPositionChunks(src *filmcache.Source) []positions.ChunkInput {
@@ -84,10 +84,10 @@ func collectPositionChunks(src *filmcache.Source) []positions.ChunkInput {
 	return out
 }
 
-// decompressZlib renvoie le contenu décompressé d'un chunk film. C'est [filmsource.Inflate] —
+// decompressZlib renvoie le contenu décompressé d'un chunk film. C'est [source.Inflate] —
 // UN SEUL décompresseur dans le dépôt depuis le lot 2.4.2 — et la convention est la même :
 // un chunk non compressé (ou un flux tronqué) traverse tel quel.
-func decompressZlib(raw []byte) []byte { return filmsource.Inflate(raw) }
+func decompressZlib(raw []byte) []byte { return source.Inflate(raw) }
 
 // printPositionsSummary affiche le résumé d'un match : nb positions, bornes
 // x/y/z, split équipe best-effort.

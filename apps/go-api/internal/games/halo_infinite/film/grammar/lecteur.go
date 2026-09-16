@@ -1,6 +1,6 @@
 package grammar
 
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // selectorBits is the width of the leading selector in a signed variable-width
 // integer; the selector value sel gives the field width w = 8 << sel.
@@ -15,7 +15,7 @@ const signExtendMaxWidth = 32
 // lecteur.go — LE LECTEUR DE LA GRAMMAIRE (`bitreader.go` jusqu au lot 2.4.2).
 
 // Lecteur est LE LECTEUR DE LA GRAMMAIRE : le lecteur de bits canonique de la couche
-// `source` ([filmsource.Bits]), plus ce qui appartient au decodeur — un profil de largeurs, un
+// `source` ([source.Bits]), plus ce qui appartient au decodeur — un profil de largeurs, un
 // etat de capture, un observateur.
 //
 // # IL NE LIT PLUS AUCUN OCTET LUI-MEME (lot 2.4, ADR 0034 D-2)
@@ -25,13 +25,13 @@ const signExtendMaxWidth = 32
 // avec la nature : il ne lit plus, il DECORE. `BitReader` et `NewBitReader` restent nommes dans
 // `archlint/no_raw_film_bytes_outside_source_test.go`, en ratchet anti-resurrection — les
 // reintroduire, ici ou ailleurs, rougit. Les methodes de lecture — `ReadBits`, `ReadBit`, `Skip`,
-// `BitPos`, `SetBitPos`, `Remaining` — sont desormais celles de [filmsource.Bits], PROMUES par
+// `BitPos`, `SetBitPos`, `Remaining` — sont desormais celles de [source.Bits], PROMUES par
 // l embarquement : une seule implantation, une seule convention de bourrage de queue. Ce qui
 // reste ici est la grammaire : [Lecteur.ReadSignedVarWidth], le codec du moteur, et les trois
 // champs prives ci-dessous.
 type Lecteur struct {
 	// Bits : le lecteur canonique. Embarque, donc ses methodes sont celles de ce type.
-	*filmsource.Bits
+	*source.Bits
 	// p est le PROFIL DE BALAYAGE que ce lecteur porte (lot 2.3 du PLAN_DECODEUR_FILM ;
 	// les lots 2.2.a a 2.2.e l avaient assemble valeur par valeur). Il decide des largeurs :
 	// descripteur de traversee et largeur d axe absolue, cadre d image-cle, decoupage MPP,
@@ -50,7 +50,7 @@ type Lecteur struct {
 
 // LecteurSur rend un lecteur de grammaire positionne sur le premier bit de `buf`. C est la
 // SEULE porte de construction du paquet, et elle passe par la couche source
-// ([filmsource.NewBits]) : `filmdec` ne fabrique plus de lecteur de bits.
+// ([source.NewBits]) : `filmdec` ne fabrique plus de lecteur de bits.
 //
 // LE LECTEUR NAIT AVEC L INVARIANT DU PROFIL ([ProfilDeBalayageParDefaut]), jamais avec un
 // etat de processus : depuis le lot 2.3 il n en existe plus. Un balayage qui tient son propre
@@ -58,7 +58,7 @@ type Lecteur struct {
 // [FrameConfig], le contexte du film ([FilmContext.NouveauLecteur]) et les marches qui
 // recoivent leur profil de leur appelant.
 func LecteurSur(buf []byte) *Lecteur {
-	return &Lecteur{Bits: filmsource.NewBits(buf), p: ProfilDeBalayageParDefaut()}
+	return &Lecteur{Bits: source.NewBits(buf), p: ProfilDeBalayageParDefaut()}
 }
 
 // PoserProfil installe le profil de balayage de ce lecteur et rend le precedent. C est la

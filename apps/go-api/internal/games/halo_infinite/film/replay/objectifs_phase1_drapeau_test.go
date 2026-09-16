@@ -30,10 +30,10 @@ import (
 
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // objSeuilMarqueur — le seuil du gate 1, ecrit avant la mesure et jamais rebaisse.
@@ -426,7 +426,7 @@ func objMax(v []int) int {
 func objGroundWeapons(t *testing.T, root, id string, quant *grammar.MapQuantEntry) WorldObjectScan {
 	t.Helper()
 	dir := objChunkDir(root, id)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks du film %s illisibles : %v", id, err)
 	}

@@ -43,8 +43,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // afExplosions : les instants d'explosion DATES du releve A0.3 (`A_PROTOCOLE.md` §2), recopies
@@ -72,7 +72,7 @@ const (
 // Par `filmcache`, comme le reste du paquet depuis l'item 1.5 : la copie locale de la
 // disposition du cache que portait cette sonde etait justifiee par un cycle d'import que le
 // lot 1 a supprime (cf. [newDiskFilm]).
-func afOuvrir(t *testing.T, cache, id string) (*filmsource.Film, bool) {
+func afOuvrir(t *testing.T, cache, id string) (*source.Film, bool) {
 	t.Helper()
 	film, ok, err := filmcache.LoadFilm(cache, id)
 	if err != nil {
@@ -93,21 +93,21 @@ func afScanTousLesIndices(data []byte) []afBloc {
 	var out []afBloc
 	seen := map[int]bool{}
 	for ms := 8; ms <= total-8; ms++ {
-		if filmsource.OctetAuBit(data, ms) != 0xc0 {
+		if source.OctetAuBit(data, ms) != 0xc0 {
 			continue
 		}
 		xe := ms - 8
 		if xe < 64 {
 			continue
 		}
-		if p := filmsource.OctetAuBit(data, xe); p != 0x2d && p != 0x25 {
+		if p := source.OctetAuBit(data, xe); p != 0x2d && p != 0x25 {
 			continue
 		}
 		xstart := xe - 64
 		if seen[xstart] {
 			continue
 		}
-		x := filmsource.U64LEAuBit(data, xstart)
+		x := source.U64LEAuBit(data, xstart)
 		if x <= minXUID || x >= maxXUID {
 			continue
 		}
@@ -127,18 +127,18 @@ func afDecodeBloc(data []byte, xstart, total int) (afBloc, bool) {
 		win = total
 	}
 	for b := xstart; b <= win-32; b++ {
-		if filmsource.OctetAuBit(data, b) == 0 && filmsource.OctetAuBit(data, b+8) == 0 &&
-			filmsource.OctetAuBit(data, b+16) == 0x2e && filmsource.OctetAuBit(data, b+24) == 0xe0 {
+		if source.OctetAuBit(data, b) == 0 && source.OctetAuBit(data, b+8) == 0 &&
+			source.OctetAuBit(data, b+16) == 0x2e && source.OctetAuBit(data, b+24) == 0xe0 {
 			ebs := b - 60*8
 			if ebs < xstart {
 				return afBloc{}, false
 			}
-			t := int(filmsource.OctetAuBit(data, ebs+48*8))<<24 | int(filmsource.OctetAuBit(data, ebs+49*8))<<16 |
-				int(filmsource.OctetAuBit(data, ebs+50*8))<<8 | int(filmsource.OctetAuBit(data, ebs+51*8))
+			t := int(source.OctetAuBit(data, ebs+48*8))<<24 | int(source.OctetAuBit(data, ebs+49*8))<<16 |
+				int(source.OctetAuBit(data, ebs+50*8))<<8 | int(source.OctetAuBit(data, ebs+51*8))
 			return afBloc{
-				th:   int(filmsource.OctetAuBit(data, ebs+47*8)),
+				th:   int(source.OctetAuBit(data, ebs+47*8)),
 				t:    t,
-				slot: int(filmsource.OctetAuBit(data, ebs+36*8)),
+				slot: int(source.OctetAuBit(data, ebs+36*8)),
 			}, true
 		}
 	}

@@ -37,7 +37,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e191cSansDesync sont les archetypes de la classe (B) : aucun composant sans lecteur, et
@@ -73,7 +73,7 @@ func TestE191cListeCourte(t *testing.T) {
 func e191cUnFilmListe(t *testing.T, court string, blanchis map[string]int, suspects map[string][]int) {
 	t.Helper()
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}

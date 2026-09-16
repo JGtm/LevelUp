@@ -3,7 +3,7 @@ package objectives
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // score_measure_rounds_test.go — la grammaire d'ancrage ETENDUE de l'item A.0b.1 : lire les
@@ -100,7 +100,7 @@ type statRecordExt struct {
 
 // statRecordsExt decode un film avec la grammaire etendue. Meme balayage et meme horloge que
 // [StatRecords] : seules la forme de liste et les familles de composants changent.
-func statRecordsExt(film *filmsource.Film) []statRecordExt {
+func statRecordsExt(film *source.Film) []statRecordExt {
 	var out []statRecordExt
 	for _, c := range manifestChunks(film) {
 		frames := framesOf(film, c.pos)
@@ -188,17 +188,17 @@ type headerForm struct {
 // matchHeaderExt teste l'en-tete d'un record DELTA sur la grammaire exacte, sans presumer ni la
 // generation, ni le selecteur de base, ni la forme de la liste.
 func matchHeaderExt(pay []byte, b int) (slot int, idx []int, compAt int, form headerForm, ok bool) {
-	if filmsource.BitsTronques(pay, b, 1) != 1 {
+	if source.BitsTronques(pay, b, 1) != 1 {
 		return 0, nil, 0, form, false
 	}
-	low := int(filmsource.BitsTronques(pay, b+1, statIDLowBits))
+	low := int(source.BitsTronques(pay, b+1, statIDLowBits))
 	if low < statLowMin || low > extLowMax {
 		return 0, nil, 0, form, false
 	}
 	q := b + 1 + statIDLowBits
-	form.Gen = int(filmsource.BitsTronques(pay, q, statTagBits))
+	form.Gen = int(source.BitsTronques(pay, q, statTagBits))
 	q += statTagBits
-	form.Baseline = filmsource.BitsTronques(pay, q, 1) == 1
+	form.Baseline = source.BitsTronques(pay, q, 1) == 1
 	q++
 	// Generation et selecteur de base sont RE-CONTRAINTS a la valeur calibree : les relacher
 	// ouvre 2 bits de faux positifs, mesure sur `24dbb67d` (total de frags a 12 677 437 729 et
@@ -208,7 +208,7 @@ func matchHeaderExt(pay []byte, b int) (slot int, idx []int, compAt int, form he
 	if form.Gen != statCalibratedGen || form.Baseline {
 		return 0, nil, 0, form, false
 	}
-	if filmsource.BitsTronques(pay, q, 1) == 0 {
+	if source.BitsTronques(pay, q, 1) == 0 {
 		idx, compAt, ok = sparseList(pay, q+1)
 	} else {
 		form.Dense = true
@@ -219,14 +219,14 @@ func matchHeaderExt(pay []byte, b int) (slot int, idx []int, compAt int, form he
 
 // sparseList lit la forme gate=0 : R(3) compte + compte x R(6) index, strictement croissants.
 func sparseList(pay []byte, p int) ([]int, int, bool) {
-	n := int(filmsource.BitsTronques(pay, p, 3))
+	n := int(source.BitsTronques(pay, p, 3))
 	if n < 1 || n > statMaxCompPerRecord {
 		return nil, 0, false
 	}
 	idx := make([]int, n)
 	prev := -1
 	for i := 0; i < n; i++ {
-		idx[i] = int(filmsource.BitsTronques(pay, p+3+statCompIndexBits*i, statCompIndexBits))
+		idx[i] = int(source.BitsTronques(pay, p+3+statCompIndexBits*i, statCompIndexBits))
 		if idx[i] >= statMaxComp || idx[i] <= prev {
 			return nil, 0, false
 		}
@@ -241,7 +241,7 @@ func denseList(pay []byte, p int) ([]int, int, bool) {
 	if p+statDenseMaskBits > len(pay)*8 {
 		return nil, 0, false
 	}
-	mask := filmsource.BitsTronques(pay, p, statDenseMaskBits)
+	mask := source.BitsTronques(pay, p, statDenseMaskBits)
 	if mask == 0 || mask>>statMaxComp != 0 {
 		return nil, 0, false
 	}
@@ -267,8 +267,8 @@ func decodeCompsExt(pay []byte, at int, idx []int, tMS, slot int) (map[int]curVa
 			// L'assertion de production (les deux en-tetes valent 0) est RELACHEE au premier
 			// composant : si l'en-tete est un numero de manche, exiger 0 rejette toutes les
 			// manches suivantes. Les en-tetes sont conserves et publies.
-			h1 := int(filmsource.BitsTronques(pay, q, statHdrBits))
-			h2 := int(filmsource.BitsTronques(pay, q+statHdrBits, statHdrBits))
+			h1 := int(source.BitsTronques(pay, q, statHdrBits))
+			h2 := int(source.BitsTronques(pay, q+statHdrBits, statHdrBits))
 			if i == 0 && (h1 > statHdrMaxRelaxed || h2 > statHdrMaxRelaxed) {
 				return nil, nil, false
 			}
@@ -312,7 +312,7 @@ func decodeFinalizedComponent(pay []byte, p int) (map[int]int64, int, bool) {
 	if p+statRoundMaskBits > len(pay)*8 {
 		return nil, 0, false
 	}
-	mask := filmsource.BitsTronques(pay, p, statRoundMaskBits)
+	mask := source.BitsTronques(pay, p, statRoundMaskBits)
 	q := p + statRoundMaskBits
 	out := map[int]int64{}
 	for i := 0; i < statRoundMaskBits; i++ {
@@ -323,7 +323,7 @@ func decodeFinalizedComponent(pay []byte, p int) (map[int]int64, int, bool) {
 			if q+1 > len(pay)*8 {
 				return nil, 0, false
 			}
-			present := filmsource.BitsTronques(pay, q, 1) == 0
+			present := source.BitsTronques(pay, q, 1) == 0
 			q++
 			if !present {
 				continue

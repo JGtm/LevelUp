@@ -62,7 +62,7 @@ import (
 	"math/bits"
 	"strings"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // chunk00Error : une erreur sentinelle CONSTANTE des lecteurs de `chunk_00`.
@@ -206,8 +206,8 @@ func ReadFilmIdentity(chunk0 []byte) (FilmIdentity, error) {
 		Version:        chaineDeChamp(chunk0, buildOff-identFieldBytes),
 		Build:          chaineDeChamp(chunk0, buildOff),
 		Flavor:         chaineDeChamp(chunk0, buildOff+identFieldBytes),
-		BuildID:        filmsource.U32LE(chunk0, buildOff+identBuildIDOff),
-		Changelist:     filmsource.U32LE(chunk0, buildOff+identChangelistOff),
+		BuildID:        source.U32LE(chunk0, buildOff+identBuildIDOff),
+		Changelist:     source.U32LE(chunk0, buildOff+identChangelistOff),
 		TypeVersions:   lireTableParType(chunk0, finRegistre, buildOff-identFieldBytes),
 		RegistryBlocks: len(reg.Archetypes),
 		BuildOffset:    buildOff,
@@ -293,7 +293,7 @@ func lireTableParType(d []byte, finRegistre, versionOff int) []uint32 {
 	}
 	out := make([]uint32, 0, (versionOff-finRegistre)/4)
 	for off := finRegistre; off+4 <= versionOff; off += 4 {
-		out = append(out, filmsource.U32LE(d, off))
+		out = append(out, source.U32LE(d, off))
 	}
 	return out
 }

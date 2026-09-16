@@ -24,8 +24,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -51,7 +51,7 @@ func TestBTB2025Abstention(t *testing.T) {
 // diagnostiquerFilm : une passe `prepare` complete, puis le detail de ce que chaque etape voit.
 func diagnostiquerFilm(t *testing.T, dir string) {
 	t.Helper()
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chargement %s : %v", dir, err)
 	}
@@ -132,7 +132,7 @@ func TestBTB2025KillFeedNoms(t *testing.T) {
 		if id == "" {
 			continue
 		}
-		src, err := filmsource.LoadDir(filepath.Join(root, id), nil)
+		src, err := source.LoadDir(filepath.Join(root, id), nil)
 		if err != nil {
 			t.Fatalf("%s : %v", id, err)
 		}
@@ -201,7 +201,7 @@ func TestBTB2025NonRegression(t *testing.T) {
 	if root == "" || id == "" {
 		t.Skipf("banc garde : %s et KS_BTB2025_NONREG requis", btb2025RootEnv)
 	}
-	src, err := filmsource.LoadDir(filepath.Join(root, id), nil)
+	src, err := source.LoadDir(filepath.Join(root, id), nil)
 	if err != nil {
 		t.Fatalf("chargement %s : %v", id, err)
 	}
@@ -258,7 +258,7 @@ func TestBTB2025ParcVersions(t *testing.T) {
 			sansRegistre = append(sansRegistre, e.Name())
 			continue
 		}
-		version, ok := grammar.FilmMajorVersionFromHeader(filmsource.Inflate(registre))
+		version, ok := grammar.FilmMajorVersionFromHeader(source.Inflate(registre))
 		if !ok {
 			sansRegistre = append(sansRegistre, e.Name())
 			continue

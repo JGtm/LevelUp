@@ -1,6 +1,6 @@
 package grammar
 
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // biped_pickups.go — LES RAMASSAGES, lus dans l'ÉVÉNEMENT NATIF `biped_pickup` de la bobine.
 //
@@ -150,7 +150,7 @@ func bipedPickupReadRef(br *Lecteur, w uint) (uint64, bool) {
 // ScanFilmBipedPickups est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanBipedPickups].
 func ScanFilmBipedPickups(dir string) ([]BipedPickup, BipedPickupStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, BipedPickupStats{}, err
 	}

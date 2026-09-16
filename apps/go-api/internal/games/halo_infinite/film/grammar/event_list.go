@@ -1,6 +1,6 @@
 package grammar
 
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // Décodage de la LISTE D'ÉVÉNEMENTS en tête d'un paquet delta de film Theater.
 //
@@ -384,7 +384,7 @@ func decodeBoardRefs(pay []byte, base uint32, inBand SlotBand, ev *VehicleEvent)
 // ScanFilmVehicleEvents est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis appelle
 // [ScanVehicleEvents]. La cuisson passe un contexte deja ouvert.
 func ScanFilmVehicleEvents(dir string) ([]VehicleEvent, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -51,7 +51,7 @@ import (
 	"strings"
 	"unicode"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // LES SEPT BUILDS CONNUS DU CACHE, NOMMES UNE FOIS. Ils servent DEUX fois chacun — la table
@@ -337,7 +337,7 @@ func BuildProfileFor(build string, format int) (BuildProfile, error) {
 // `50247b26`, `a349fea8`) rend [ErrUnknownBuild] avec un build VIDE — et le compteur
 // [UnknownBuildExpvarPairs] le range sous `sans_section`. Se comporter comme `HI_1_4_1` n est
 // pas etre `HI_1_4_1` : leur profil se declare au REGISTRE des replis (1.9.0), pas ici.
-func BuildProfileFromFilm(f *filmsource.Film) (BuildProfile, error) {
+func BuildProfileFromFilm(f *source.Film) (BuildProfile, error) {
 	reg, ok := FilmRegistryChunk(f)
 	if !ok {
 		return BuildProfile{}, erreurBuildInconnu("")

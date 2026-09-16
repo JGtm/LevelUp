@@ -15,7 +15,7 @@ package replay
 //
 // LE PREFIXE EST `Scan` DEPUIS LE LOT 1 (2026-09-02), ET C'EST UNE EXTENSION DELIBEREE DU GARDE.
 // Les balayages prenaient un REPERTOIRE et s'appelaient `ScanFilmXxx(dir)` ; ils prennent
-// desormais un `*filmsource.Film` deja charge et s'appellent `ScanXxx(film)` — les formes `dir`
+// desormais un `*source.Film` deja charge et s'appellent `ScanXxx(film)` — les formes `dir`
 // survivent en enveloppes hors production (D2), et AUCUNE n'est appelee ici. Garder `ScanFilm`
 // aurait rendu le compte a 5 sur 22 : le garde aurait cesse de garder en silence.
 //

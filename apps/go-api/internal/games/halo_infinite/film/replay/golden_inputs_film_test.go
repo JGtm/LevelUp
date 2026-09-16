@@ -46,8 +46,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
@@ -65,7 +65,7 @@ func decodeFilmInputsForEntry(film, dir string, entry grammar.MapQuantEntry) (*g
 	// LE FILM SE CHARGE UNE FOIS, comme en production (`replaybuild.BuildBytes`) : c est ce
 	// chargement-la que l etage de balayage consomme, et c est lui aussi qui porte la version
 	// majeure du film.
-	charge, err := filmsource.LoadDir(dir, nil)
+	charge, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, fmt.Errorf("chargement du film %s : %w", dir, err)
 	}
@@ -115,7 +115,7 @@ func decodeFilmInputsForEntry(film, dir string, entry grammar.MapQuantEntry) (*g
 // L AUTO-DETECTION NE SURVIT QUE LA OU LA PRODUCTION L EMPLOIE — entree de carte invalide
 // (`axisWidths` absent, cf. resolveI0Layout). Elle est alors NOMMEE dans le fixture, pour qu un
 // lecteur sache que ces quanta ne viennent pas du catalogue.
-func decoupageDuFixture(charge *filmsource.Film, entry grammar.MapQuantEntry) (grammar.I0Layout, bool, error) {
+func decoupageDuFixture(charge *source.Film, entry grammar.MapQuantEntry) (grammar.I0Layout, bool, error) {
 	if impose := grammar.NewFilmContextForMap(nil, &entry, nil).ImposedLayout(); impose != nil {
 		return *impose, false, nil
 	}

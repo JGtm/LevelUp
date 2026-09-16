@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // statborg_rounds_test.go — les corrections de production du 2026-08-18 (lot A, item A.1.0),
@@ -106,8 +106,8 @@ func TestStatborgManche2RejeteeParLAncienneGrammaire(t *testing.T) {
 	if !ok {
 		t.Fatal("en-tete non reconnu")
 	}
-	h1 := filmsource.BitsTronques(vecRound1.data, at, statHdrBits)
-	h2 := filmsource.BitsTronques(vecRound1.data, at+statHdrBits, statHdrBits)
+	h1 := source.BitsTronques(vecRound1.data, at, statHdrBits)
+	h2 := source.BitsTronques(vecRound1.data, at+statHdrBits, statHdrBits)
 	if h1 == 0 && h2 == 0 {
 		t.Fatal("les deux en-tetes sont nuls : ce vecteur ne prouve plus rien")
 	}
@@ -123,7 +123,7 @@ func TestStatborgManche2RejeteeParLAncienneGrammaire(t *testing.T) {
 // TestStatborgListeDenseLue fige la lecture de la forme dense : masque de 64 bits, et non une
 // liste creuse de sept index au plus.
 func TestStatborgListeDenseLue(t *testing.T) {
-	if got := filmsource.BitsTronques(vecDense.data, vecDense.bits+statIDBits+statGenBits, 1); got != 1 {
+	if got := source.BitsTronques(vecDense.data, vecDense.bits+statIDBits+statGenBits, 1); got != 1 {
 		t.Fatalf("ce vecteur n'est pas en forme dense (gate = %d)", got)
 	}
 	_, idx, _, ok := matchRecordHeader(vecDense.data, vecDense.bits)
@@ -155,16 +155,16 @@ func TestStatRecordsPlafond(t *testing.T) {
 // LE MANIFESTE EST SYNTHETISE AVEC UN TYPE DE JEU (2) : `objectives` ne balaie que les
 // chunks que le manifeste decrit, et un type ZERO signifierait « chunk hors manifeste »
 // (cf. `manifestChunks`).
-func filmRepete(t *testing.T, data []byte) *filmsource.Film {
+func filmRepete(t *testing.T, data []byte) *source.Film {
 	t.Helper()
-	chunks := make(filmsource.MemoryChunks, repeatChunks)
-	meta := make([]filmsource.ChunkMeta, repeatChunks)
+	chunks := make(source.MemoryChunks, repeatChunks)
+	meta := make([]source.ChunkMeta, repeatChunks)
 	brut := chunkRepete(data)
 	for i := range chunks {
 		chunks[i] = brut
-		meta[i] = filmsource.ChunkMeta{Index: i + 1, ChunkType: 2, StartMS: i * 1000}
+		meta[i] = source.ChunkMeta{Index: i + 1, ChunkType: 2, StartMS: i * 1000}
 	}
-	film, err := filmsource.Load(chunks, meta)
+	film, err := source.Load(chunks, meta)
 	if err != nil {
 		t.Fatalf("chargement du film repete : %v", err)
 	}
@@ -176,7 +176,7 @@ func filmRepete(t *testing.T, data []byte) *filmsource.Film {
 const (
 	repeatChunks  = 200
 	repeatPackets = 200
-	// repeatHdrSize est la taille de l'en-tete de paquet, telle que `filmsource` la decoupe.
+	// repeatHdrSize est la taille de l'en-tete de paquet, telle que `source` la decoupe.
 	repeatHdrSize = 16
 )
 

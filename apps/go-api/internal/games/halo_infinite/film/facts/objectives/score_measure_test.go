@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // score_measure_test.go — INSTRUMENT de la phase 0 du lot A de
@@ -111,7 +111,7 @@ func (m *measureRows) row(kind string, vals ...any) {
 }
 
 // writeMeta ecrit l'identite du film et le cout du decodage.
-func writeMeta(m *measureRows, short string, or oracleMatch, film *filmsource.Film, recs []StatRecord, decodeMS int64) {
+func writeMeta(m *measureRows, short string, or oracleMatch, film *source.Film, recs []StatRecord, decodeMS int64) {
 	tMin, tMax := recs[0].TimeMS, recs[0].TimeMS
 	nTeam, nPlayer := 0, 0
 	for _, r := range recs {
@@ -134,7 +134,7 @@ func writeMeta(m *measureRows, short string, or oracleMatch, film *filmsource.Fi
 
 // framePacketCount compte les paquets FRAME du film — denominateur commun avec la voie
 // « chaine » du controle D1, qui balaie les memes paquets.
-func framePacketCount(film *filmsource.Film) int {
+func framePacketCount(film *source.Film) int {
 	n := 0
 	for _, c := range manifestChunks(film) {
 		n += len(framesOf(film, c.pos))

@@ -77,12 +77,12 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -327,7 +327,7 @@ func lettresPaires(t *testing.T, dir string, film lettresFilm, doc ReplayDocumen
 }
 
 // lettresCaptures rend les captures de zone nommees et identifiees par xuid.
-func lettresCaptures(t *testing.T, film *filmsource.Film,
+func lettresCaptures(t *testing.T, film *source.Film,
 	roster []p2aPlayer,
 ) []objectives.IdentifiedEvent {
 	t.Helper()

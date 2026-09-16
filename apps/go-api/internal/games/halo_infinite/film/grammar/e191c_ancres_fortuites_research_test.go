@@ -42,7 +42,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e191cN1Bit est la position de `n1` depuis le debut du record : la fin de l en-tete par entite.
@@ -116,7 +116,7 @@ func e191cOu(m map[int]*e191cFermeture, ti int) e191cFermeture {
 func e191cUneBobine(t *testing.T, court string, brut, filtre map[int]*e191cFermeture) (int, int) {
 	t.Helper()
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}

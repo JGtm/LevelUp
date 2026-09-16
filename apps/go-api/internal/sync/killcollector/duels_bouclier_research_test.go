@@ -58,10 +58,10 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -302,10 +302,10 @@ func duelsBLireEquipes(t *testing.T, db *sql.DB, matchID string) map[uint64]int6
 // exactement l'option que le lot 7 devrait activer en production s'il s'ouvre.
 func duelsBLireFilm(
 	t *testing.T, root, matchID, carte, bornesPath string,
-) (*filmsource.Film, []grammar.BipedPosition, uint64) {
+) (*source.Film, []grammar.BipedPosition, uint64) {
 	t.Helper()
 	dir := duelsBFilmDir(root, matchID)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("film %s illisible : %v", dir, err)
 	}
@@ -350,7 +350,7 @@ func duelsBFilmDir(root, matchID string) string {
 // decodeurs du meme fait divergeraient » (killpos_bridge.go). Le roster fourni a l'index de
 // joueur est celui de `match_participants`, comme en production (rosterUint64 dans positions.go).
 func duelsBPontIdentite(
-	t *testing.T, film *filmsource.Film, positions []grammar.BipedPosition, equipes map[uint64]int64,
+	t *testing.T, film *source.Film, positions []grammar.BipedPosition, equipes map[uint64]int64,
 ) (map[uint32]uint64, replay.IdentityRegistry) {
 	t.Helper()
 	deaths, err := replay.ScanDeaths(film)

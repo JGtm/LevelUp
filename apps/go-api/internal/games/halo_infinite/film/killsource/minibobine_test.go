@@ -70,7 +70,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // miniBobineDir : la bobine versionnee, relative au paquet.
@@ -99,7 +99,7 @@ const miniBobinePlancher = 10
 // TestGoldenMiniBobine : LE GOLDEN INCONDITIONNEL. Aucune variable d environnement, aucune
 // fixture hors depot — il tourne partout ou `go test ./...` tourne, donc en CI.
 func TestGoldenMiniBobine(t *testing.T) {
-	src, err := filmsource.LoadDir(miniBobineDir, nil)
+	src, err := source.LoadDir(miniBobineDir, nil)
 	if err != nil {
 		t.Fatalf("mini-bobine illisible sous %s : %v — elle est VERSIONNEE, son absence est une "+
 			"erreur, pas une raison d ignorer le test", miniBobineDir, err)
@@ -189,8 +189,8 @@ func TestMiniBobineRegenerer(t *testing.T) {
 		t.Skip("regeneration de la bobine : exige KILLSOURCE_FIXTURES et -update (elle ecrase " +
 			"des octets versionnes)")
 	}
-	source := filepath.Join(dir, miniBobineFilm)
-	src, err := filmsource.LoadDir(source, nil)
+	cheminSource := filepath.Join(dir, miniBobineFilm)
+	src, err := source.LoadDir(cheminSource, nil)
 	if err != nil {
 		t.Fatalf("film source illisible : %v", err)
 	}
@@ -199,9 +199,9 @@ func TestMiniBobineRegenerer(t *testing.T) {
 		t.Fatalf("creation de %s : %v", miniBobineDir, err)
 	}
 	for i := 0; i < miniBobinePrefixe; i++ {
-		copierChunk(t, source, i, i)
+		copierChunk(t, cheminSource, i, i)
 	}
-	copierChunk(t, source, hi, miniBobinePrefixe)
+	copierChunk(t, cheminSource, hi, miniBobinePrefixe)
 	ecrireProvenance(t, hi)
 	t.Logf("bobine regeneree : %d chunk(s) de prefixe + le chunk HIGHLIGHT (n%d du film)",
 		miniBobinePrefixe, hi)
@@ -209,11 +209,11 @@ func TestMiniBobineRegenerer(t *testing.T) {
 
 // chunkHighlight : l index du chunk qui porte le plus de kills — la meme detection PAR CONTENU
 // que [loadKillFeed], et pour la meme raison.
-func chunkHighlight(t *testing.T, src *filmsource.Film) int {
+func chunkHighlight(t *testing.T, src *source.Film) int {
 	t.Helper()
 	best, bestN := -1, 0
 	for i := 0; i < src.NumChunks(); i++ {
-		// Le chunk arrive DECOMPRESSE (`filmsource` l a inflate au chargement) ;
+		// Le chunk arrive DECOMPRESSE (`source` l a inflate au chargement) ;
 		// `ParseHighlightEvents` accepte les deux formes depuis l incident du 2026-05-22.
 		evs, err := analysis.ParseHighlightEvents(src.Chunk(i), 0)
 		if err != nil {
@@ -237,10 +237,10 @@ func chunkHighlight(t *testing.T, src *filmsource.Film) int {
 
 // copierChunk : recopie les octets BRUTS, sans les decompresser ni les toucher. La bobine doit
 // etre du film, pas une re-serialisation.
-func copierChunk(t *testing.T, source string, from, to int) {
+func copierChunk(t *testing.T, cheminSource string, from, to int) {
 	t.Helper()
 	name := fmt.Sprintf("chunk_%02d.bin", from)
-	raw, err := os.ReadFile(filepath.Join(source, name)) //nolint:gosec // chemin construit d un index
+	raw, err := os.ReadFile(filepath.Join(cheminSource, name)) //nolint:gosec // chemin construit d un index
 	if err != nil {
 		t.Fatalf("lecture de %s : %v", name, err)
 	}

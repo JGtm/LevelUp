@@ -37,7 +37,7 @@ package grammar
 import (
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // EquipmentCreationField désigne l'un des deux champs que le default-state de ti=37 lisait et
@@ -172,7 +172,7 @@ type EquipmentCreationStats struct {
 // ScanFilmEquipmentCreations est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanEquipmentCreations].
 func ScanFilmEquipmentCreations(dir string, wr *Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}
@@ -204,7 +204,7 @@ func ScanEquipmentCreations(fc *FilmContext, wr *Vec3Range) ([]EquipmentCreation
 func ScanFilmEquipmentCreationsForBand(
 	dir string, wr *Vec3Range, band map[uint32]bool,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}

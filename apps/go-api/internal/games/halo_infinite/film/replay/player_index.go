@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // player_index.go — L'INDEX DE JOUEUR SE LIT DANS LE FILM.
@@ -53,7 +53,7 @@ type PlayerIndexTable struct {
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 // ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanPlayerIndices].
 func ScanFilmPlayerIndices(filmDir string, roster []uint64) (PlayerIndexTable, error) {
-	film, err := filmsource.LoadDir(filmDir, nil)
+	film, err := source.LoadDir(filmDir, nil)
 	if err != nil {
 		return PlayerIndexTable{ByXUID: map[uint64]int{}}, err
 	}
@@ -61,7 +61,7 @@ func ScanFilmPlayerIndices(filmDir string, roster []uint64) (PlayerIndexTable, e
 }
 
 // ScanPlayerIndices lit l'index de joueur de chaque xuid du roster dans un film DEJA CHARGE.
-func ScanPlayerIndices(film *filmsource.Film, roster []uint64) (PlayerIndexTable, error) {
+func ScanPlayerIndices(film *source.Film, roster []uint64) (PlayerIndexTable, error) {
 	out := PlayerIndexTable{ByXUID: map[uint64]int{}}
 	if len(roster) == 0 {
 		return out, fmt.Errorf("roster vide : rien à résoudre")

@@ -36,9 +36,9 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/port"
 )
 
@@ -89,7 +89,7 @@ type filmStats struct {
 // cache) et un film SANS MANIFESTE. Le second garde son sens apres le lot 1 — le film se charge
 // tres bien sans manifeste, mais aucun de ses chunks n'a alors de type ni de `start_ms`, donc
 // rien n'est datable ici (cf. [chunksDuManifeste]).
-func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
+func readFilmStats(ctx context.Context, matchID string, film *source.Film,
 	facts port.MatchFacts, deaths filmDeaths,
 ) filmStats {
 	if film == nil || len(chunksDuManifeste(film)) == 0 {
@@ -131,19 +131,19 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 
 // chunksDuManifeste rend les chunks du film que le MANIFESTE decrit.
 //
-// ZERO N'EST PAS UN TYPE DE CHUNK : c'est ce que `filmsource.LoadDir` synthetise pour un
+// ZERO N'EST PAS UN TYPE DE CHUNK : c'est ce que `source.LoadDir` synthetise pour un
 // `chunk_NN.bin` present au cache mais ABSENT du manifeste. Mesure du 2026-09-02 sur les
 // 1 380 manifestes du cache : trois valeurs seulement — 1 pour l'en-tete, 2 pour les chunks de
 // jeu, 3 pour le pied — et jamais 0. Un chunk hors manifeste n'a donc pas de debut connu, et
 // l'inscrire a zero dans l'horloge dirait au balayage de l'anneau « ce chunk commence a 0 » au
 // lieu de « je ne sais pas » (`filmdec/navpoint_radial_scan.go`, `hasStart`). Un film du cache
 // est dans ce cas : `7b0d89c4` porte les fichiers 31 et 32 sans les avoir au manifeste.
-func chunksDuManifeste(film *filmsource.Film) []filmsource.ChunkMeta {
+func chunksDuManifeste(film *source.Film) []source.ChunkMeta {
 	if film == nil {
 		return nil
 	}
 	meta := film.Meta()
-	out := make([]filmsource.ChunkMeta, 0, len(meta))
+	out := make([]source.ChunkMeta, 0, len(meta))
 	for _, m := range meta {
 		if m.ChunkType == 0 {
 			continue
@@ -164,7 +164,7 @@ func chunksDuManifeste(film *filmsource.Film) []filmsource.ChunkMeta {
 //	                        balaye par BuildFromFilm) : la garde seule.
 //
 // Hors de la famille bomb, il rend un input VIDE : ni balayage, ni calque, ni couverture.
-func bombInput(film *filmsource.Film, bomb bool) replay.BombInput {
+func bombInput(film *source.Film, bomb bool) replay.BombInput {
 	if !bomb {
 		return replay.BombInput{}
 	}
@@ -245,7 +245,7 @@ func vipInput(recs []objectives.StatRecord, isVip bool) replay.VipInput {
 // AUCUN FAIT DE MATCH N'ENTRE DANS LE CALQUE : ce qui descend est une TABLE slot -> xuid. Sans
 // lignes de match, `CompletedByLines` rend le pont par morts inchange et l'artefact reste
 // exactement celui d'avant — la propriete « publiable hors ligne » est conservee.
-func flagInput(recs []objectives.StatRecord, film *filmsource.Film,
+func flagInput(recs []objectives.StatRecord, film *source.Film,
 	pont *pontParManche) replay.FlagInput {
 	return withFlagIdentity(replay.FlagInput{
 		Scanned: true,

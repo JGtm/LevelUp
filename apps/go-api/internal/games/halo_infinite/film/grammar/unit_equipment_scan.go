@@ -16,7 +16,7 @@ package grammar
 import (
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // UnitEquipmentEmission est UNE lecture d'i26 rattachée à son record bipède.
@@ -37,7 +37,7 @@ type UnitEquipmentEmission struct {
 // ScanFilmUnitEquipment est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanUnitEquipment].
 func ScanFilmUnitEquipment(dir string) ([]UnitEquipmentEmission, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
 	}

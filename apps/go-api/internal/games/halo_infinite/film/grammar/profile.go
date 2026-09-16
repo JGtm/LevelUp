@@ -37,7 +37,7 @@ package grammar
 import (
 	"errors"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // HighlightProfile : l implantation du gamertag dans un bloc d evenement de temps fort, keyee
@@ -203,7 +203,7 @@ func (p Profile) Err() error { return p.err }
 //
 // `film` nil et `entry` nil sont ACCEPTES : le profil rend alors ses invariants, sa carte nulle,
 // et [Profile.Err] porte les cles manquantes.
-func ResolveProfile(film *filmsource.Film, entry *MapQuantEntry) Profile {
+func ResolveProfile(film *source.Film, entry *MapQuantEntry) Profile {
 	p := Profile{
 		keyframe: cadreDuProfil(),
 		movement: mouvementDuProfil(),
@@ -256,7 +256,7 @@ func ResolveProfile(film *filmsource.Film, entry *MapQuantEntry) Profile {
 // type — couterait une analyse de registre de plus par appel pour une valeur qui tient dans les
 // quatre premiers octets. La VALEUR est la meme : c est la meme fonction qui la compose ici et
 // dans [ResolveProfile], et [Profile.Highlight] la rend a l identique.
-func HighlightProfileOfFilm(f *filmsource.Film) HighlightProfile {
+func HighlightProfileOfFilm(f *source.Film) HighlightProfile {
 	reg, ok := FilmRegistryChunk(f)
 	if !ok {
 		return highlightDuProfil(FilmMajorVersionUnknown, false)

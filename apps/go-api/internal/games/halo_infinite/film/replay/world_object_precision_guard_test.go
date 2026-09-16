@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // world_object_precision_guard_test.go — GARDE-RAIL du correctif du 2026-08-15.
@@ -73,7 +73,7 @@ func TestInstallWorldObjectPrecisionKeepsDefaultWithoutWidths(t *testing.T) {
 // largeurs venant du MÊME champ, l'état « bornes armées, largeurs oubliées » n'existe pas —
 // c'est la raison d'être du champ unique `Options.MapQuant`.
 func TestBuildFromFilmRefusesWithoutMapQuant(t *testing.T) {
-	film, err := filmsource.LoadDir(MiniFilmDir, nil)
+	film, err := source.LoadDir(MiniFilmDir, nil)
 	if err != nil {
 		t.Fatalf("mini-bobine illisible : %v", err)
 	}

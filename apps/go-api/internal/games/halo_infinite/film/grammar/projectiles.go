@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // projectiles.go — TRAJECTOIRES DE PROJECTILE, décodées des paquets delta.
@@ -112,7 +112,7 @@ const EquipmentTypeIndex = 37
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 // ScanFilmProjectiles est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanProjectiles].
 func ScanFilmProjectiles(dir string, wr *Vec3Range) ([]ProjectileTrack, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func ScanProjectiles(fc *FilmContext, wr *Vec3Range) ([]ProjectileTrack, error) 
 // ScanFilmWorldObjects est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanWorldObjects].
 func ScanFilmWorldObjects(dir string, wr *Vec3Range, typeIndex int) ([]ProjectileTrack, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func ScanWorldObjects(fc *FilmContext, wr *Vec3Range, typeIndex int) ([]Projecti
 func ScanFilmWorldObjectsForBand(
 	dir string, wr *Vec3Range, band map[uint32]bool,
 ) ([]ProjectileTrack, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
 	}

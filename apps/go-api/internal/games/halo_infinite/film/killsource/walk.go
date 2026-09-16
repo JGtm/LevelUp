@@ -31,8 +31,8 @@ package killsource
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // deadRecord : un dead-state atteint par la marche, avec sa position.
@@ -84,7 +84,7 @@ func signature123(pl []byte, s int, w *grammar.World, cfg grammar.FrameConfig) b
 func locateStrict(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
 	nb := len(pl) * 8
 	for s := 2; s+35 < nb; s++ {
-		if filmsource.BitAt(pl, s-1) != 0 {
+		if source.BitAt(pl, s-1) != 0 {
 			continue
 		}
 		if signature123(pl, s, w, cfg) {
@@ -99,7 +99,7 @@ func locateStrict(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
 func locateFallback(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
 	nb := len(pl) * 8
 	for s := 2; s+16 < nb; s++ {
-		if filmsource.BitAt(pl, s-1) != 0 {
+		if source.BitAt(pl, s-1) != 0 {
 			continue
 		}
 		rec, _, ok := grammar.TryDeltaAt(pl, s, w, cfg)

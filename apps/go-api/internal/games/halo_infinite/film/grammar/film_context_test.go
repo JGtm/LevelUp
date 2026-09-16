@@ -26,7 +26,7 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // memeBande dit si deux bandes de slots sont identiques, et nomme le premier ecart.
@@ -57,7 +57,7 @@ func memeErreur(t *testing.T, quoi string, got, want error) {
 // comparerContexteAuRecalcul verifie les trois derivations d'un film, contexte contre recalcul
 // direct. C'est le coeur des deux tests ci-dessous ; il ne suppose RIEN du film (bobine partielle
 // ou film complet, il compare ce qui sort).
-func comparerContexteAuRecalcul(t *testing.T, film *filmsource.Film) {
+func comparerContexteAuRecalcul(t *testing.T, film *source.Film) {
 	t.Helper()
 	fc := NewFilmContext(film)
 
@@ -201,7 +201,7 @@ func TestFilmContextEgaleLeRecalculDirectVraiFilm(t *testing.T) {
 	if dir == "" {
 		t.Skip("FILM_CONTEXT_FILM absent : ce controle demande un repertoire de chunks reel")
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks du film %s illisibles : %v", dir, err)
 	}

@@ -23,8 +23,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/observability"
 )
 
@@ -67,7 +67,7 @@ func TestFormatInconnuTombeSurLesLargeursCalibrees(t *testing.T) {
 func TestFormatConnuNeCompteRien(t *testing.T) {
 	// La bobine INTACTE : `a521164d` (HI_1_4_1) porte le format 21 — connu de la table, sans
 	// largeur relue. C'est le parc ancien tel qu'il est, aucune reecriture.
-	film, err := filmsource.LoadDir(filepath.Join("testdata", "minifilm_a521164d"), nil)
+	film, err := source.LoadDir(filepath.Join("testdata", "minifilm_a521164d"), nil)
 	if err != nil {
 		t.Fatalf("chargement de la bobine a521164d : %v", err)
 	}
@@ -83,13 +83,13 @@ func TestFormatConnuNeCompteRien(t *testing.T) {
 // bobineAuFormat recopie une bobine versionnee dans un repertoire temporaire et y REECRIT la
 // version de format, aux quatre octets que `grammar` designe (`chunk_00+4`).
 //
-// Le `chunk_00` est ecrit DECOMPRESSE : `filmsource.Inflate` rend le tampon inchange quand il
+// Le `chunk_00` est ecrit DECOMPRESSE : `source.Inflate` rend le tampon inchange quand il
 // n'est pas zlib, et les 1 351 `chunk_00` du cache sont dans ce cas — la bobine reecrite est
 // donc de la meme forme que la production, pas un cas de figure invente pour le test.
-func bobineAuFormat(t *testing.T, court string, format int) *filmsource.Film {
+func bobineAuFormat(t *testing.T, court string, format int) *source.Film {
 	t.Helper()
 	src := filepath.Join("testdata", "minifilm_"+court)
-	origine, err := filmsource.LoadDir(src, nil)
+	origine, err := source.LoadDir(src, nil)
 	if err != nil {
 		t.Fatalf("chargement de %s : %v", src, err)
 	}
@@ -121,7 +121,7 @@ func bobineAuFormat(t *testing.T, court string, format int) *filmsource.Film {
 			t.Fatalf("ecriture de %s : %v", e.Name(), err)
 		}
 	}
-	mute, err := filmsource.LoadDir(dst, nil)
+	mute, err := source.LoadDir(dst, nil)
 	if err != nil {
 		t.Fatalf("rechargement de la bobine reecrite : %v", err)
 	}

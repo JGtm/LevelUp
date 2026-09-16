@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // bipedCreationFilmEnv nomme le répertoire de chunks du film à mesurer.
@@ -52,7 +52,7 @@ func TestCreationBipedeSurFilm(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", bipedCreationFilmEnv)
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chargement du film %s : %v", dir, err)
 	}

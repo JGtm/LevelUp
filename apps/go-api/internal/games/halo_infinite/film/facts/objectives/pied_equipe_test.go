@@ -57,7 +57,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // Le bloc de référence, et d'où il vient. Ces constantes sont la provenance MISE EN CODE : le
@@ -117,7 +117,7 @@ func TestPiedEquipeOctet37(t *testing.T) {
 func TestPiedBlocSepareLesChamps(t *testing.T) {
 	bloc := lirePiedFixture(t)
 	ebs := piedDebutBlocBits(t, bloc)
-	lire := func(octet int) int { return int(filmsource.OctetAuBit(bloc, ebs+octet*8)) }
+	lire := func(octet int) int { return int(source.OctetAuBit(bloc, ebs+octet*8)) }
 	equipe := lire(footerByteTeam)
 	if equipe != piedAttenduTeam {
 		t.Fatalf("octet %d = %d, attendu %d", footerByteTeam, equipe, piedAttenduTeam)
@@ -158,7 +158,7 @@ func TestPiedBlocSepareLesChamps(t *testing.T) {
 //
 // Les deux tests ci-dessus appellent `scanTh10Events` en direct, ce qui laissait `FooterEvents`
 // — le point d'entrée que le lot 1.7 lira — sans aucune couverture (constat de la revue R1).
-// Celui-ci monte un `filmsource.Film` en mémoire à partir de la MÊME fixture : un répertoire
+// Celui-ci monte un `source.Film` en mémoire à partir de la MÊME fixture : un répertoire
 // temporaire, un `chunk_40.bin` qui porte les octets bruts, et le manifeste positionnel qui le
 // déclare de type 3. `FooterEvents` doit alors choisir ce chunk (c'est `footerData` qui décide,
 // sur le type du manifeste et non sur la position) et rendre l'événement avec son équipe.
@@ -254,7 +254,7 @@ func TestCaptureScorerPrendLeDernierDuCluster(t *testing.T) {
 }
 
 // piedFilmEnMemoire monte un film d'un seul chunk, de type 3, portant la fixture.
-func piedFilmEnMemoire(t *testing.T) *filmsource.Film {
+func piedFilmEnMemoire(t *testing.T) *source.Film {
 	t.Helper()
 	bloc := lirePiedFixture(t)
 	dir := t.TempDir()
@@ -262,14 +262,14 @@ func piedFilmEnMemoire(t *testing.T) *filmsource.Film {
 	if err := os.WriteFile(nom, bloc, 0o600); err != nil {
 		t.Fatalf("écriture de %s : %v", nom, err)
 	}
-	film, err := filmsource.LoadDir(dir, []filmsource.ChunkMeta{
+	film, err := source.LoadDir(dir, []source.ChunkMeta{
 		{Index: piedChunk, ChunkType: chunkTypePied},
 	})
 	if err != nil {
 		t.Fatalf("chargement du film de test : %v", err)
 	}
 	// Le chunk ne doit surtout pas avoir été « décompressé » : la fixture est déjà en clair, et
-	// `filmsource.Inflate` ne touche que ce qui commence par 0x78. Si un jour le premier octet
+	// `source.Inflate` ne touche que ce qui commence par 0x78. Si un jour le premier octet
 	// de la fixture valait 0x78 par hasard, ce contrôle le dirait au lieu de laisser le test
 	// échouer plus loin pour une raison illisible.
 	if got := film.Chunk(0); len(got) != len(bloc) {
@@ -295,10 +295,10 @@ func piedDebutBlocBits(t *testing.T, bloc []byte) int {
 	t.Helper()
 	total := len(bloc) * 8
 	for b := 0; b <= total-32; b++ {
-		if filmsource.OctetAuBit(bloc, b) == 0 && filmsource.OctetAuBit(bloc, b+8) == 0 &&
-			filmsource.OctetAuBit(bloc, b+16) == 0x2e && filmsource.OctetAuBit(bloc, b+24) == 0xe0 {
+		if source.OctetAuBit(bloc, b) == 0 && source.OctetAuBit(bloc, b+8) == 0 &&
+			source.OctetAuBit(bloc, b+16) == 0x2e && source.OctetAuBit(bloc, b+24) == 0xe0 {
 			ebs := b - footerBlockBytes*8
-			if ebs >= 0 && int(filmsource.OctetAuBit(bloc, ebs+footerByteType*8)) == 10 {
+			if ebs >= 0 && int(source.OctetAuBit(bloc, ebs+footerByteType*8)) == 10 {
 				return ebs
 			}
 		}
@@ -335,7 +335,7 @@ func lirePiedFixture(t *testing.T) []byte {
 // première version prenait `film.Chunk(NumChunks()-1)`, ce qui marche sur `53ce4390` et ment sur
 // tout film dont le cache porte des chunks APRÈS le pied. Cette porte lit donc
 // `film_manifests/<id>.json`, exige que `chunk_type` y vaille 3 pour le chunk nommé par la
-// provenance, et passe ces métadonnées à `filmsource` — la sélection est ensuite celle de la
+// provenance, et passe ces métadonnées à `source` — la sélection est ensuite celle de la
 // production, [footerData].
 func TestPiedBlocProvenance(t *testing.T) {
 	dir := os.Getenv("PIED_FILM_DIR")
@@ -351,7 +351,7 @@ func TestPiedBlocProvenance(t *testing.T) {
 	if filepath.Base(dir) != piedFilm {
 		t.Fatalf("PIED_FILM_DIR désigne %s : la fixture vient de %s", filepath.Base(dir), piedFilm)
 	}
-	film, err := filmsource.LoadDir(dir, piedMetaDuManifeste(t, dir))
+	film, err := source.LoadDir(dir, piedMetaDuManifeste(t, dir))
 	if err != nil {
 		t.Fatalf("chargement de %s : %v", dir, err)
 	}
@@ -386,7 +386,7 @@ func TestPiedBlocProvenance(t *testing.T) {
 // piedMetaDuManifeste lit `<cache>/film_manifests/<id>.json` et rend les métadonnées de chunk.
 // Il EXIGE que le chunk nommé par la provenance ([piedChunk]) y soit déclaré de type 3 : sans
 // cette vérification, la porte de régénération devinerait le pied par sa position.
-func piedMetaDuManifeste(t *testing.T, dir string) []filmsource.ChunkMeta {
+func piedMetaDuManifeste(t *testing.T, dir string) []source.ChunkMeta {
 	t.Helper()
 	chemin := filepath.Join(filepath.Dir(filepath.Dir(dir)), "film_manifests", piedFilm+".json")
 	blob, err := os.ReadFile(chemin) //nolint:gosec // chemin dérivé de PIED_FILM_DIR, poste de dev
@@ -404,10 +404,10 @@ func piedMetaDuManifeste(t *testing.T, dir string) []filmsource.ChunkMeta {
 	if err := json.Unmarshal(blob, &doc); err != nil {
 		t.Fatalf("manifeste %s illisible : %v", chemin, err)
 	}
-	out := make([]filmsource.ChunkMeta, 0, len(doc.Chunks))
+	out := make([]source.ChunkMeta, 0, len(doc.Chunks))
 	typeDuPied := -1
 	for _, c := range doc.Chunks {
-		out = append(out, filmsource.ChunkMeta{Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS})
+		out = append(out, source.ChunkMeta{Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS})
 		if c.Index == piedChunk {
 			typeDuPied = c.ChunkType
 		}

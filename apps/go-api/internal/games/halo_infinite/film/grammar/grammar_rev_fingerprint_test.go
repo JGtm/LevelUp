@@ -15,7 +15,7 @@ package grammar
 // # CE QUE CE TEST FAIT
 //
 // Il hache toutes les sources `.go` hors `_test.go` des QUATRE paquets qui lisent les octets du
-// film — `analysis/filmsource/`, `filmdec/`, `killsource/` et `film/facts/objectives/` — et
+// film — `film/source/`, `filmdec/`, `killsource/` et `film/facts/objectives/` — et
 // compare au golden
 // `testdata/grammar_rev.golden`, qui fige le couple (revision, empreinte) avec son
 // historique. Toucher l'une ou l'autre le fait rougir ; le remettre au vert oblige a rouvrir la
@@ -24,9 +24,9 @@ package grammar
 //
 // # POURQUOI CES QUATRE PAQUETS DANS UNE SEULE EMPREINTE
 //
-// `analysis/filmsource` est ENTRE LE 2026-09-18 (lot 2.4.1), et il y est entre DANS LE COMMIT QUI
+// `film/source` est ENTRE LE 2026-09-18 (lot 2.4.1), et il y est entre DANS LE COMMIT QUI
 // L A RENDU NECESSAIRE : c est ce lot qui a fait descendre LE lecteur de bits du depot dans la
-// couche `source` (`filmsource.Bits`, `filmsource.BitsAt`, `filmsource.BitAt`, avec le marcheur
+// couche `source` (`source.Bits`, `source.BitsAt`, `source.BitAt`, avec le marcheur
 // de paquets et l inflate qui y vivaient deja). Sans cette racine, la lecture de bits aurait pu
 // changer sans que `GrammarRev` bouge — le lot aurait ouvert le trou qu il pretend fermer.
 //
@@ -44,7 +44,7 @@ package grammar
 // qui laisse passer le changement qu il existe pour attraper n en est pas un.
 //
 // Ce paquet DEMENAGERA sous `film/` au pas 5 de la revision (decision V5 du
-// PLAN_DECODEUR_FILM : `analysis/filmsource` et ses voisins passent sous `film/internal/`). Le
+// PLAN_DECODEUR_FILM : `film/source` et ses voisins passent sous `film/internal/`). Le
 // jour ou il bougera, `racinesGrammaire` echouera bruyamment sur un dossier vide — ce qui est
 // exactement le comportement voulu, et non une regression a contourner.
 //
@@ -253,7 +253,7 @@ func racinesGrammaire(t *testing.T) []string {
 	internalDir := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(ici)))))
 	filmDir := filepath.Join(internalDir, "games", "halo_infinite", "film")
 	return []string{
-		filepath.Join(internalDir, "analysis", "filmsource"),
+		filepath.Join(filmDir, "source"),
 		filepath.Join(filmDir, "grammar"),
 		filepath.Join(filmDir, "killsource"),
 		filepath.Join(filmDir, "facts", "objectives"),

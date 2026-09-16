@@ -42,7 +42,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // siegesTemoins : les quatre temoins que le lot 1.9.14 nomme, plus leur build — pour que la
@@ -71,7 +71,7 @@ type siegeEntite struct {
 func TestSiegesDesRemplacants(t *testing.T) {
 	for _, tem := range siegesTemoins() {
 		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+tem.Court)
-		film, err := filmsource.LoadDir(dir, nil)
+		film, err := source.LoadDir(dir, nil)
 		if err != nil {
 			t.Fatalf("%s : chargement de la bobine : %v", tem.Court, err)
 		}

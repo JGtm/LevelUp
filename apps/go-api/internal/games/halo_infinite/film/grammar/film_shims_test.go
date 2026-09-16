@@ -3,7 +3,7 @@ package grammar
 // film_shims_test.go — LES ENVELOPPES D2 DES HELPERS INTERNES, RESERVEES AUX TESTS.
 //
 // Le lot 1 de PLAN_CUISSON_PERF (2026-09-02) a fait passer les balayages et leurs helpers d'un
-// REPERTOIRE a un `*filmsource.Film` deja charge : la cuisson ne decompresse plus le film une
+// REPERTOIRE a un `*source.Film` deja charge : la cuisson ne decompresse plus le film une
 // fois par balayage. Les helpers NON EXPORTES (`bipedSlotBand`, `worldObjectSlotBand`,
 // `observedSlotBand`, les lecteurs d'archetype) sont appeles par une quarantaine de tests
 // internes — instruments de mesure, sondes de corpus, gardes de recherche — qui, eux, n'ont
@@ -18,13 +18,13 @@ package grammar
 // restent inchanges, et le film charge enumere lui-meme ses chunks de donnees. C'est ce qui a
 // permis une migration purement mecanique de ces sites.
 
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // filmDeDir charge le film d'un repertoire, ou rend nil. Les helpers ci-dessous rendent alors
 // leur resultat vide ou leur erreur habituelle — exactement ce que faisait un repertoire
 // illisible avant le lot 1.
-func filmDeDir(dir string) *filmsource.Film {
-	film, err := filmsource.LoadDir(dir, nil)
+func filmDeDir(dir string) *source.Film {
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil
 	}

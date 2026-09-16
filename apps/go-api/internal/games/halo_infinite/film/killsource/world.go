@@ -31,8 +31,8 @@ package killsource
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // keyframeEvent : un paquet keyframe decode, avec son horodatage.
@@ -252,15 +252,15 @@ func sweepKeyframe(buf []byte, onlyTI int) []anchor {
 	total := len(buf) * 8
 	var out []anchor
 	for q := 0; q+64 <= total; q++ {
-		id := uint32(filmsource.BitsAt(buf, q, 32))
+		id := uint32(source.BitsAt(buf, q, 32))
 		if id == 0xFFFFFFFF || id>>30 == 0 {
 			continue
 		}
 		slot := int(id & 0x3FFFFFFF)
-		if slot >= 8192 || uint32(filmsource.BitsAt(buf, q+32, 32)) >= 50 {
+		if slot >= 8192 || uint32(source.BitsAt(buf, q+32, 32)) >= 50 {
 			continue
 		}
-		ti := int(filmsource.BitsAt(buf, q+58, 6))
+		ti := int(source.BitsAt(buf, q+58, 6))
 		if onlyTI >= 0 && ti != onlyTI {
 			continue
 		}

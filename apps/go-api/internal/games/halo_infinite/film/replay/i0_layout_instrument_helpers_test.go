@@ -22,13 +22,13 @@ package replay
 // tague, regle du 2026-09-16, §2.3 du plan).
 
 import (
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // detecterI0Layout lit le decoupage d i0 DANS le film de `dir`.
 func detecterI0Layout(dir string) (grammar.I0Layout, grammar.I0LayoutReport, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return grammar.I0Layout{}, grammar.I0LayoutReport{}, err
 	}

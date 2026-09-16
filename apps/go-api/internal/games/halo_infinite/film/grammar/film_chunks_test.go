@@ -1,6 +1,6 @@
 package grammar
 
-// film_chunks_test.go — LE PONT VERS `filmsource` REND EXACTEMENT CE QUE L'ANCIEN CHEMIN RENDAIT.
+// film_chunks_test.go — LE PONT VERS `source` REND EXACTEMENT CE QUE L'ANCIEN CHEMIN RENDAIT.
 //
 // C'est le test qui autorise la migration du lot 1 : si `FilmChunkAt` differait d'un octet de
 // `ReadFilmChunk` + `WalkPackets`, tous les balayages migres changeraient de sortie en silence.
@@ -12,7 +12,7 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // miniBobineChunks : la mini-bobine du film 000d5950 (fixture de `replay`, avec sa PROVENANCE).
@@ -20,12 +20,12 @@ import (
 // le cas ou la POSITION dans le film ne vaut pas le NUMERO du chunk.
 const miniBobineChunks = "../replay/testdata/minifilm_000d5950"
 
-func chargerMiniBobine(t *testing.T) *filmsource.Film {
+func chargerMiniBobine(t *testing.T) *source.Film {
 	t.Helper()
 	if _, err := os.Stat(miniBobineChunks); err != nil {
 		t.Fatalf("mini-bobine absente (%s) : %v", miniBobineChunks, err)
 	}
-	film, err := filmsource.LoadDir(miniBobineChunks, nil)
+	film, err := source.LoadDir(miniBobineChunks, nil)
 	if err != nil {
 		t.Fatalf("LoadDir : %v", err)
 	}
@@ -136,7 +136,7 @@ func TestFilmChunkNumbersArretAuPremierTrou(t *testing.T) {
 			t.Fatalf("ecriture de %s : %v", n, err)
 		}
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir : %v", err)
 	}

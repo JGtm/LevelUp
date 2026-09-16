@@ -38,7 +38,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e191cCinq sont les cinq archetypes « objet du monde » du perimetre re-cadre du lot : ceux
@@ -74,7 +74,7 @@ type e191cMesure struct {
 func e191cLire(t *testing.T, court string) e191cMesure {
 	t.Helper()
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}
@@ -140,7 +140,7 @@ func e191cLogBlanchis(t *testing.T) {
 	blanchis, cible := map[string]int{}, []string{}
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-		film, err := filmsource.LoadDir(dir, nil)
+		film, err := source.LoadDir(dir, nil)
 		if err != nil {
 			t.Fatalf("LoadDir %s : %v", dir, err)
 		}
@@ -314,7 +314,7 @@ func e191cLogPetits(t *testing.T) {
 	tab := map[int]*petit{}
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-		film, err := filmsource.LoadDir(dir, nil)
+		film, err := source.LoadDir(dir, nil)
 		if err != nil {
 			t.Fatalf("LoadDir %s : %v", dir, err)
 		}
@@ -419,7 +419,7 @@ var e191cPaires = [][2]int{{18, 19}, {22, 25}, {14, 20}, {17, 3}}
 func TestE191cPairesDiscriminantes(t *testing.T) {
 	t.Logf("######## PAS 2 BIS — LES COUPLES DE MEME TAILLE, L UN FERME, L AUTRE PAS ########")
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+closureMiniFilms()[0])
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}

@@ -11,7 +11,7 @@ package grammar
 // bande et compare deja les deux dans son en-tete. Les lire cote a cote est ce qui evite qu'on
 // applique la mauvaise a un archetype (la lecon mesuree du 2026-07-26, rappelee ci-dessous).
 
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // worldObjectSlotBand rend les slots utilisables pour un archétype, lus dans les keyframes.
 //
@@ -31,7 +31,7 @@ import "levelup/go-api/internal/analysis/filmsource"
 // LA FORME JUSTE est donc : combler la plage de l'archétype, PUIS retirer tout slot vu porter un
 // AUTRE archétype. On récupère la couverture sans la contamination, et le retrait est fondé sur
 // une observation, pas sur une heuristique.
-func worldObjectSlotBand(film *filmsource.Film, typeIndex int) map[uint32]bool {
+func worldObjectSlotBand(film *source.Film, typeIndex int) map[uint32]bool {
 	seen := map[uint32]bool{}
 	others := map[uint32]bool{}
 	for _, c := range FilmChunkNumbers(film) {

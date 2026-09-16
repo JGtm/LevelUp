@@ -38,7 +38,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e191bCarteDeBobine : la carte REELLEMENT jouee par chaque bobine par build (table
@@ -105,7 +105,7 @@ func e191bItoa(v uint) string {
 func e191bDeuxMesures(t *testing.T, cat *MapQuantCatalog, court string) (a, b KeyframeClosureStat, e MapQuantEntry) {
 	t.Helper()
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}
@@ -119,7 +119,7 @@ func e191bDeuxMesures(t *testing.T, cat *MapQuantCatalog, court string) (a, b Ke
 }
 
 // e191bFermetureTI37 rend la fermeture de l archetype 37 pour un film charge.
-func e191bFermetureTI37(t *testing.T, film *filmsource.Film, court string,
+func e191bFermetureTI37(t *testing.T, film *source.Film, court string,
 	carte *MapQuantEntry) KeyframeClosureStat {
 	t.Helper()
 	fc := NewFilmContext(film)

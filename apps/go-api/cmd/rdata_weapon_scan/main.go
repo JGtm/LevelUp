@@ -18,15 +18,15 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const cache = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950`
 
 func inflate(p string) []byte {
 	raw, _ := os.ReadFile(p)
-	return filmsource.Inflate(raw)
+	return source.Inflate(raw)
 }
 
 // loadWorld parses world_dump.txt -> slot:typeIndex map and typeIndex->slots.
@@ -104,10 +104,10 @@ type packet struct {
 	payload []byte
 }
 
-// listPackets : le decoupage de [filmsource.Paquets], dans la forme locale de cet outil. Il
+// listPackets : le decoupage de [source.Paquets], dans la forme locale de cet outil. Il
 // recopiait l en-tete de seize octets — un marcheur de plus — jusqu au lot 2.4.2.
 func listPackets(d []byte) []packet {
-	pks := filmsource.Paquets(d, 0)
+	pks := source.Paquets(d, 0)
 	out := make([]packet, 0, len(pks))
 	off := 0
 	for i := range pks {

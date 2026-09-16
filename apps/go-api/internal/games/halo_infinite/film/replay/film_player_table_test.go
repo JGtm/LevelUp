@@ -15,15 +15,15 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/observability"
 )
 
 // chunk00DeLaBobine rend les octets DEJA DECOMPRESSES du `chunk_00` d'une bobine par build.
 func chunk00DeLaBobine(t *testing.T, b buildMiniFilm) []byte {
 	t.Helper()
-	film, err := filmsource.LoadDir(b.Dir(), nil)
+	film, err := source.LoadDir(b.Dir(), nil)
 	if err != nil {
 		t.Fatalf("chargement de %s : %v", b.Dir(), err)
 	}
@@ -68,7 +68,7 @@ func TestScanFilmPlayerTableSurLesBobines(t *testing.T) {
 // TestScanFilmPlayerTableSansRegistre (T-REFUS) : la bobine historique n'a PAS de `chunk_00`, et
 // c'est le cas le plus simple d'un film qui ne porte pas sa table. Cause NOMMEE, aucun panic.
 func TestScanFilmPlayerTableSansRegistre(t *testing.T) {
-	film, err := filmsource.LoadDir(filepath.Join(goldenDir, "minifilm_"+goldenFilm), nil)
+	film, err := source.LoadDir(filepath.Join(goldenDir, "minifilm_"+goldenFilm), nil)
 	if err != nil {
 		t.Fatalf("chargement de la bobine historique : %v", err)
 	}

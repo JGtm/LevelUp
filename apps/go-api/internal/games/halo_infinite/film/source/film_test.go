@@ -1,4 +1,4 @@
-package filmsource_test
+package source_test
 
 // film_test.go — LA GRAMMAIRE D3 REVISEE, REGLE PAR REGLE, SUR DES CHUNKS CONSTRUITS.
 //
@@ -13,7 +13,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -53,9 +53,9 @@ func compresse(t *testing.T, clair []byte) []byte {
 }
 
 // chargeClair : un film d'un seul chunk, donne en clair et compresse par le test.
-func chargeClair(t *testing.T, clair []byte) *filmsource.Film {
+func chargeClair(t *testing.T, clair []byte) *source.Film {
 	t.Helper()
-	f, err := filmsource.Load(filmsource.MemoryChunks{compresse(t, clair)}, nil)
+	f, err := source.Load(source.MemoryChunks{compresse(t, clair)}, nil)
 	if err != nil {
 		t.Fatalf("Load : %v", err)
 	}
@@ -184,7 +184,7 @@ func TestFluxZlibTronqueRendLePartiel(t *testing.T) {
 	comp := compresse(t, clair)
 	tronque := comp[:len(comp)*3/5]
 
-	f, err := filmsource.Load(filmsource.MemoryChunks{tronque}, nil)
+	f, err := source.Load(source.MemoryChunks{tronque}, nil)
 	if err != nil {
 		t.Fatalf("Load : %v", err)
 	}
@@ -204,7 +204,7 @@ func TestFluxZlibTronqueRendLePartiel(t *testing.T) {
 // et se decoupent normalement.
 func TestChunkNonCompresse(t *testing.T) {
 	clair := paquet(typeDelta, 7, []byte("clair"))
-	f, err := filmsource.Load(filmsource.MemoryChunks{clair}, nil)
+	f, err := source.Load(source.MemoryChunks{clair}, nil)
 	if err != nil {
 		t.Fatalf("Load : %v", err)
 	}
@@ -240,7 +240,7 @@ func TestPayloadEstUneSousTranche(t *testing.T) {
 func TestAllPacketsOrdreChunkPuisIndex(t *testing.T) {
 	c0 := append(paquet(typeDelta, 1, []byte("a")), paquet(typeDelta, 2, []byte("b"))...)
 	c1 := paquet(typeKeyframe, 3, []byte("c"))
-	f, err := filmsource.Load(filmsource.MemoryChunks{compresse(t, c0), compresse(t, c1)}, nil)
+	f, err := source.Load(source.MemoryChunks{compresse(t, c0), compresse(t, c1)}, nil)
 	if err != nil {
 		t.Fatalf("Load : %v", err)
 	}
@@ -269,9 +269,9 @@ func TestAllPacketsOrdreChunkPuisIndex(t *testing.T) {
 // telle quelle et le film ne depend pas de la tranche de l'appelant.
 func TestMetaNilEtFournie(t *testing.T) {
 	clair := paquet(typeDelta, 1, []byte("a"))
-	src := filmsource.MemoryChunks{compresse(t, clair)}
+	src := source.MemoryChunks{compresse(t, clair)}
 
-	sansMeta, err := filmsource.Load(src, nil)
+	sansMeta, err := source.Load(src, nil)
 	if err != nil {
 		t.Fatalf("Load sans meta : %v", err)
 	}
@@ -279,8 +279,8 @@ func TestMetaNilEtFournie(t *testing.T) {
 		t.Fatalf("Meta() = %+v, attendu nil", sansMeta.Meta())
 	}
 
-	meta := []filmsource.ChunkMeta{{Index: 0, ChunkType: 3, StartMS: 4200}}
-	avecMeta, err := filmsource.Load(src, meta)
+	meta := []source.ChunkMeta{{Index: 0, ChunkType: 3, StartMS: 4200}}
+	avecMeta, err := source.Load(src, meta)
 	if err != nil {
 		t.Fatalf("Load avec meta : %v", err)
 	}
@@ -296,10 +296,10 @@ func TestMetaNilEtFournie(t *testing.T) {
 // TestLoadRefuseUneSourceVide — une source sans chunk n'est pas un film ; une source nulle non
 // plus. Les deux se disent par une erreur, jamais par un film vide.
 func TestLoadRefuseUneSourceVide(t *testing.T) {
-	if _, err := filmsource.Load(filmsource.MemoryChunks{}, nil); err == nil {
+	if _, err := source.Load(source.MemoryChunks{}, nil); err == nil {
 		t.Fatal("Load sur une source sans chunk : erreur attendue")
 	}
-	if _, err := filmsource.Load(nil, nil); err == nil {
+	if _, err := source.Load(nil, nil); err == nil {
 		t.Fatal("Load sur une source nulle : erreur attendue")
 	}
 }

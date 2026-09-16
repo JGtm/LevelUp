@@ -4,7 +4,7 @@ package weaponv3
 // xuid -> player_index (decision D6 du plan `.ai/V7.5/PLAN_CUISSON_PERF.md`).
 //
 // IL RESTE ICI APRES LE LOT 2.4.2, ET C EST DELIBERE : les deux primitives ont descendu dans la
-// couche source ([filmsource.BitsTolerants], [filmsource.ChercherMotif64]), mais la propriete
+// couche source ([source.BitsTolerants], [source.ChercherMotif64]), mais la propriete
 // que ce fichier garde est celle du RESOLVEUR — qu il lise aujourd hui ce qu il lisait avant,
 // bornes negatives comprises. Les oracles sont les implantations d AVANT, recopiees ici et
 // nulle part ailleurs.
@@ -22,7 +22,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // refBit est `bitReader.bit` : zero des deux cotes du tampon.
@@ -81,7 +81,7 @@ func TestPIReadBitsWordMatchesReference(t *testing.T) {
 		positions = append(positions, total+7, total+64)
 		for _, bp := range positions {
 			for n := 0; n <= 64; n++ {
-				got := filmsource.BitsTolerants(buf, bp, n)
+				got := source.BitsTolerants(buf, bp, n)
 				want := refReadBits(buf, total, bp, n)
 				if got != want {
 					t.Fatalf("BitsTolerants(len=%d, bp=%d, n=%d) = %#x, reference %#x",
@@ -109,7 +109,7 @@ func TestFindPattern64MatchesReference(t *testing.T) {
 				}
 				writeBitsBE(buf, bp, 64, target)
 				wantPos, wantOK := refFindPattern64(buf, target)
-				gotPos, gotOK := filmsource.ChercherMotif64(buf, target)
+				gotPos, gotOK := source.ChercherMotif64(buf, target)
 				if gotOK != wantOK || gotPos != wantPos {
 					t.Fatalf("ChercherMotif64(size=%d, implante a bp=%d) = (%d, %v), reference (%d, %v)",
 						size, bp, gotPos, gotOK, wantPos, wantOK)
@@ -125,7 +125,7 @@ func TestFindPattern64AbsentMatchesReference(t *testing.T) {
 	for _, buf := range piFuzzBuffers() {
 		for _, target := range []uint64{0, ^uint64(0), 0x0123456789ABCDEF} {
 			wantPos, wantOK := refFindPattern64(buf, target)
-			gotPos, gotOK := filmsource.ChercherMotif64(buf, target)
+			gotPos, gotOK := source.ChercherMotif64(buf, target)
 			if gotOK != wantOK || gotPos != wantPos {
 				t.Fatalf("ChercherMotif64(len=%d, target=%#x) = (%d, %v), reference (%d, %v)",
 					len(buf), target, gotPos, gotOK, wantPos, wantOK)

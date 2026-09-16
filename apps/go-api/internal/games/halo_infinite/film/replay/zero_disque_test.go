@@ -7,8 +7,8 @@ package replay
 //
 // Avant le lot 1, chaque balayage rouvrait le repertoire de chunks pour son propre compte : le
 // film entier etait relu et redecompresse une trentaine de fois par artefact. Le lot a fait
-// passer tout le monde a un `*filmsource.Film` charge UNE fois. Ce test est la preuve
-// STRUCTURELLE de ce contrat : le film arrive en MEMOIRE (`filmsource.Load` sur des
+// passer tout le monde a un `*source.Film` charge UNE fois. Ce test est la preuve
+// STRUCTURELLE de ce contrat : le film arrive en MEMOIRE (`source.Load` sur des
 // `MemoryChunks`, jamais `LoadDir`), et le decodage s'execute depuis un REPERTOIRE COURANT VIDE.
 // Un balayage qui reouvrirait la bobine par le seul chemin qu'il pourrait connaitre — le chemin
 // relatif que les enveloppes `dir` recoivent — ne trouverait rien, et le test le verrait.
@@ -50,8 +50,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // miniBobineChunks : les NUMEROS de fichier des chunks de la mini-bobine, dans l'ordre. Ce sont
@@ -59,14 +59,14 @@ import (
 // et numero ferait marcher son premier chunk de DONNEES comme un registre.
 var miniBobineChunks = []int{1, 2, 3}
 
-// chargerMiniBobineEnMemoire lit les trois chunks et rend le film charge par [filmsource.Load].
+// chargerMiniBobineEnMemoire lit les trois chunks et rend le film charge par [source.Load].
 //
 // A APPELER AVANT TOUT `t.Chdir` : c'est la SEULE lecture disque autorisee par ce fichier, et
 // elle est celle du HARNAIS, pas du decodeur.
-func chargerMiniBobineEnMemoire(t *testing.T) *filmsource.Film {
+func chargerMiniBobineEnMemoire(t *testing.T) *source.Film {
 	t.Helper()
-	chunks := make(filmsource.MemoryChunks, 0, len(miniBobineChunks))
-	meta := make([]filmsource.ChunkMeta, 0, len(miniBobineChunks))
+	chunks := make(source.MemoryChunks, 0, len(miniBobineChunks))
+	meta := make([]source.ChunkMeta, 0, len(miniBobineChunks))
 	for _, num := range miniBobineChunks {
 		path := filepath.Join(MiniFilmDir, fmt.Sprintf("chunk_%02d.bin", num))
 		raw, err := os.ReadFile(path) //nolint:gosec // chemin de fixture fige dans le code
@@ -77,9 +77,9 @@ func chargerMiniBobineEnMemoire(t *testing.T) *filmsource.Film {
 		// ChunkType et StartMS restent nuls : ils ne servent qu'a `objectives` (type de
 		// chunk, horloge), qui n'est pas sur le chemin de `BuildFromFilm`, et la mini-bobine
 		// n'a de toute facon pas de manifeste pour les porter.
-		meta = append(meta, filmsource.ChunkMeta{Index: num})
+		meta = append(meta, source.ChunkMeta{Index: num})
 	}
-	film, err := filmsource.Load(chunks, meta)
+	film, err := source.Load(chunks, meta)
 	if err != nil {
 		t.Fatalf("chargement en memoire de la mini-bobine : %v", err)
 	}
@@ -134,7 +134,7 @@ func TestZeroDisqueBuildFromFilm(t *testing.T) {
 		t.Fatalf("erreur INATTENDUE : %v\n  attendue : %s\n"+
 			"Depuis un repertoire courant VIDE, la seule issue admise est ce refus de decodage. "+
 			"Une erreur d'ouverture de fichier signifie qu'un balayage a tente de RELIRE le film "+
-			"(ou un catalogue) au lieu d'utiliser le `*filmsource.Film` deja charge : c'est "+
+			"(ou un catalogue) au lieu d'utiliser le `*source.Film` deja charge : c'est "+
 			"exactement ce que le lot 1 de PLAN_CUISSON_PERF a supprime.", err, attendu)
 	}
 

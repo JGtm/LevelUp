@@ -40,9 +40,9 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // defaultCacheDir : la racine du cache de films, relative a `apps/go-api/`. Meme valeur que
@@ -201,10 +201,10 @@ func withFilm(args []string, o options, render func(*rapport) error) error {
 //
 // LE CHARGEMENT EST HORS DU CHRONOMETRE depuis le lot 1 de PLAN_CUISSON_PERF (item 1.4) :
 // `killsource.Decode` ne lit plus le disque et ne decompresse plus rien, donc `duree` mesure
-// le DECODAGE seul — la lecture et l inflate du film, eux, sont le cout de `filmsource.LoadDir`.
+// le DECODAGE seul — la lecture et l inflate du film, eux, sont le cout de `source.LoadDir`.
 func decoder(film, cache string) (*rapport, error) {
 	dir, name := resoudre(film, cache)
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, fmt.Errorf("film %s : %w", name, err)
 	}

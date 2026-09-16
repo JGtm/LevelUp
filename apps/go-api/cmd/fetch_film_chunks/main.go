@@ -25,8 +25,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -231,7 +231,7 @@ func downloadChunk(ctx context.Context, client *http.Client, task downloadTask) 
 		return fmt.Errorf("read body: %w", err)
 	}
 
-	decompressed, err := filmsource.Decompresser(raw)
+	decompressed, err := source.Decompresser(raw)
 	if err != nil {
 		return err
 	}

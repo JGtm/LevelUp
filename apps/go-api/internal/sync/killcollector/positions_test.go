@@ -1,6 +1,6 @@
 package killcollector
 
-// positions_test.go — LE CHARGEMENT DU FILM (chunks synthétiques -> `filmsource.Film`), LA
+// positions_test.go — LE CHARGEMENT DU FILM (chunks synthétiques -> `source.Film`), LA
 // COMPOSITION PURE, ET LE REFUS PROPRE. Aucun test ici n'ouvre de base ni ne lit de film réel —
 // c'est le rôle de positions_integration_test.go (fixture réelle, gate KILLSOURCE_FIXTURES) et de
 // kill_position_persister_test.go (persister, :memory:). Ce fichier verrouille exactement ce que
@@ -27,7 +27,7 @@ import (
 )
 
 // zlibCompressForTest compresse b, pour verifier qu'un chunk COMPRESSE (la forme du cache
-// herite) arrive decompresse aux balayages — c'est `filmsource` qui inflate, une seule fois.
+// herite) arrive decompresse aux balayages — c'est `source` qui inflate, une seule fois.
 func zlibCompressForTest(t *testing.T, b []byte) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -45,7 +45,7 @@ func zlibCompressForTest(t *testing.T, b []byte) []byte {
 //
 // LE PONT DISQUE A DISPARU AU LOT 1 (PLAN_CUISSON_PERF, item 1.6) : les chunks téléchargés ne
 // sont plus recopiés dans un répertoire temporaire pour être relus quatre fois. `FilmOf` les
-// charge une fois (`filmsource`), et le seul contrôle qui protégeait d'une position FAUSSE — le
+// charge une fois (`source`), et le seul contrôle qui protégeait d'une position FAUSSE — le
 // refus d'une séquence trouée — est conservé tel quel, en mémoire.
 
 func TestFilmOf_ChargeLesChunksALeurIndex(t *testing.T) {
@@ -83,7 +83,7 @@ func TestFilmOf_ChargeLesChunksALeurIndex(t *testing.T) {
 }
 
 // TestFilmOf_ZlibRoundTrip — les chunks descendent COMPRESSÉS du cache hérité et CLAIRS des
-// téléchargements récents. `filmsource` décompresse à la charge, une fois pour tous les lecteurs
+// téléchargements récents. `source` décompresse à la charge, une fois pour tous les lecteurs
 // (avant, chacune des quatre lectures repayait cette décompression).
 func TestFilmOf_ZlibRoundTrip(t *testing.T) {
 	compressed := zlibCompressForTest(t, []byte("payload-compresse"))

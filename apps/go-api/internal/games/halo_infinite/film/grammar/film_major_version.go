@@ -29,7 +29,7 @@ package grammar
 //
 // # POURQUOI IL VIT ICI
 //
-// `filmsource` est volontairement AVEUGLE au contenu (« les chunks bruts, et rien d'autre », et
+// `source` est volontairement AVEUGLE au contenu (« les chunks bruts, et rien d'autre », et
 // `archlint/filmsource_leaf_test.go` le maintient feuille) ; `filmdec` est le paquet qui porte la
 // SEMANTIQUE de `chunk_00` — `registry.go` l'analyse, [FilmRegistryChunk] le localise. La lecture
 // de l'en-tete du registre appartient donc a `filmdec`, et a lui seul.
@@ -51,7 +51,7 @@ package grammar
 // `kind` u32 du premier slot ». Le comptage etait juste, l'interpretation non : c'est la version
 // du film. Le commentaire de `looksZlib` renvoie desormais ici.
 
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // FilmMajorVersionUnknown : la valeur que porte une version non lue. C'est aussi celle que les
 // appelants passaient en dur avant le 2026-09-12, et le decoupage « gamertag en tete » que
@@ -63,7 +63,7 @@ const filmMajorVersionOffset = 0
 
 // FilmMajorVersionFromHeader lit le `FilmMajorVersion` en tete du registre DECOMPRESSE
 // (`chunk_00.bin` : le cache n'en porte aucun encore compresse — 0 sur 1 351 mesures le
-// 2026-09-12 — mais un appelant qui tient des octets bruts passe par `filmsource.Inflate`, qui
+// 2026-09-12 — mais un appelant qui tient des octets bruts passe par `source.Inflate`, qui
 // rend le tampon inchange quand il n'est pas zlib).
 //
 // ok=false quand le chunk fait moins de quatre octets : l'appelant retombe alors sur
@@ -73,14 +73,14 @@ func FilmMajorVersionFromHeader(chunk0 []byte) (int, bool) {
 	if len(chunk0) < filmMajorVersionOffset+4 {
 		return FilmMajorVersionUnknown, false
 	}
-	return int(filmsource.U32LE(chunk0, filmMajorVersionOffset)), true
+	return int(source.U32LE(chunk0, filmMajorVersionOffset)), true
 }
 
 // FilmMajorVersion rend la version d'un film DEJA CHARGE, lue dans son registre.
 //
 // ok=false quand le film ne porte pas son registre (bobine partielle, fixture sans `chunk_00` —
 // `replay/testdata/minifilm_000d5950` est exactement ce cas) ou que cet en-tete est trop court.
-func FilmMajorVersion(f *filmsource.Film) (int, bool) {
+func FilmMajorVersion(f *source.Film) (int, bool) {
 	reg, ok := FilmRegistryChunk(f)
 	if !ok {
 		return FilmMajorVersionUnknown, false

@@ -19,7 +19,7 @@ package objectives
 //
 // Pour chaque enregistrement retenu par la production ([scanFrameForRecords]) :
 //
-//	chunk / pidx     le paquet, tel que `filmsource.Packet` le nomme deja (Chunk, Index).
+//	chunk / pidx     le paquet, tel que `source.Packet` le nomme deja (Chunk, Index).
 //	bit              le bit de l'en-tete d'enregistrement dans la charge du paquet.
 //	at               le bit du CHAMP DE 5 BITS (le premier des deux en-tetes du composant).
 //	at-bit           LE DEPLACEMENT. C'est la reponse directe a la question : la grammaire le
@@ -53,7 +53,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -147,7 +147,7 @@ func e1911Decoupe(v string) []string {
 //
 // AUCUNE LIGNE DE PRODUCTION N'EST TOUCHEE : l'instrument appelle [matchRecordHeader] et
 // [decodeComponents], exactement comme [scanFrameForRecords], et refait le meme filtre.
-func e1911Sites(film *filmsource.Film) []e1911Site {
+func e1911Sites(film *source.Film) []e1911Site {
 	var out []e1911Site
 	for _, c := range manifestChunks(film) {
 		for _, f := range framesOf(film, c.pos) {
@@ -159,7 +159,7 @@ func e1911Sites(film *filmsource.Film) []e1911Site {
 
 // e1911SitesDuPaquet balaie UN paquet et rend ses enregistrements retenus, chevauchements
 // calcules.
-func e1911SitesDuPaquet(f filmsource.Packet) []e1911Site {
+func e1911SitesDuPaquet(f source.Packet) []e1911Site {
 	pay := f.Payload
 	var out []e1911Site
 	lim := len(pay)*8 - statTailBits
@@ -182,13 +182,13 @@ func e1911SitesDuPaquet(f filmsource.Packet) []e1911Site {
 
 // e1911SiteDe assemble le releve d'UN enregistrement : sa position, sa forme, ses deux en-tetes
 // et les bits autour du champ.
-func e1911SiteDe(f filmsource.Packet, pay []byte, b, at int, idx []int) e1911Site {
+func e1911SiteDe(f source.Packet, pay []byte, b, at int, idx []int) e1911Site {
 	return e1911Site{
 		Chunk: f.Chunk, Pidx: f.Index, Bit: b, At: at,
-		Dense: filmsource.BitsTronques(pay, b+statIDBits+statGenBits, 1) == 1,
+		Dense: source.BitsTronques(pay, b+statIDBits+statGenBits, 1) == 1,
 		NComp: len(idx),
-		H1:    int(filmsource.BitsTronques(pay, at, statHdrBits)),
-		H2:    int(filmsource.BitsTronques(pay, at+statHdrBits, statHdrBits)),
+		H1:    int(source.BitsTronques(pay, at, statHdrBits)),
+		H2:    int(source.BitsTronques(pay, at+statHdrBits, statHdrBits)),
 		Fin:   e1911FinDe(pay, at, idx),
 		Avant: e1911Bits(pay, at-8, 8),
 		Champ: e1911Bits(pay, at, 2*statHdrBits),
@@ -236,7 +236,7 @@ func e1911Bits(pay []byte, p, n int) string {
 	}
 	var b strings.Builder
 	for i := 0; i < n; i++ {
-		fmt.Fprintf(&b, "%d", filmsource.BitsTronques(pay, p+i, 1))
+		fmt.Fprintf(&b, "%d", source.BitsTronques(pay, p+i, 1))
 	}
 	return b.String()
 }

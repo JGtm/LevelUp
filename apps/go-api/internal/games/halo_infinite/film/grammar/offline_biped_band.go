@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // ScanFilmBipedPositionsForBand est l'ENVELOPPE D2, HORS PRODUCTION, de
@@ -39,7 +39,7 @@ func ScanFilmBipedPositionsForBand(dir string, band SlotBand, opt ScanFilmOption
 	if band.Count() == 0 {
 		return nil, errors.New("bande de slots vide")
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func ScanBipedPositionsForBand(fc *FilmContext, band SlotBand, opt ScanFilmOptio
 // bipedScanChunks refuse les options qui interdisent toute émission de coordonnée, puis rend la
 // liste des chunks à balayer. Les DEUX entrées y passent : c'est ce qui leur garantit la même
 // erreur, dans le même ordre, sur des options incomplètes ou un film sans chunk.
-func bipedScanChunks(film *filmsource.Film, opt ScanFilmOptions) ([]int, error) {
+func bipedScanChunks(film *source.Film, opt ScanFilmOptions) ([]int, error) {
 	if opt.WorldRange == nil && !opt.QuantaOnly {
 		return nil, fmt.Errorf("%w : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", ErrUnknownMapBounds)
 	}
@@ -118,7 +118,7 @@ func bipedScanChunks(film *filmsource.Film, opt ScanFilmOptions) ([]int, error) 
 }
 
 // bipedI0Layout rend le découpage d'i0 : celui que l'appelant force, sinon celui lu dans le film.
-func bipedI0Layout(film *filmsource.Film, opt ScanFilmOptions) (I0Layout, error) {
+func bipedI0Layout(film *source.Film, opt ScanFilmOptions) (I0Layout, error) {
 	if opt.Layout != nil {
 		return *opt.Layout, nil
 	}
@@ -131,7 +131,7 @@ func bipedI0Layout(film *filmsource.Film, opt ScanFilmOptions) (I0Layout, error)
 
 // scanBipedChunks déroule le balayage sur les chunks demandés et rend les positions ainsi que
 // le nombre de chunks effectivement LUS — un film partiel est licite, un film illisible non.
-func scanBipedChunks(film *filmsource.Film, chunks []int, band SlotBand, lay I0Layout,
+func scanBipedChunks(film *source.Film, chunks []int, band SlotBand, lay I0Layout,
 	opt ScanFilmOptions, ctx ContexteDeLecture) ([]BipedPosition, int) {
 	var out []BipedPosition
 	read := 0
@@ -159,7 +159,7 @@ func scanBipedChunks(film *filmsource.Film, chunks []int, band SlotBand, lay I0L
 // n'apparaît que dans le keyframe d'après), trous comblés entre min et max — les slots
 // biped sont alloués dans une bande contiguë, et un biped créé PUIS détruit à l'intérieur
 // d'un chunk n'apparaît dans aucun keyframe.
-func bipedSlotBand(film *filmsource.Film, chunks []int) SlotBand {
+func bipedSlotBand(film *source.Film, chunks []int) SlotBand {
 	seen := map[uint32]bool{}
 	scan := append(append([]int{}, chunks...), chunks[len(chunks)-1]+1)
 	for _, c := range scan {

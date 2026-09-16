@@ -31,9 +31,9 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/sync/haloclient"
 )
 
@@ -70,7 +70,7 @@ type filmRoster struct {
 
 // filmRosterDepuisFilm construit le roster. Une erreur ou un fil des morts vide n'est pas
 // fatale ici : l'appelant essaie le film suivant, exactement comme pour un décodage échoué.
-func filmRosterDepuisFilm(film *filmsource.Film) (filmRoster, error) {
+func filmRosterDepuisFilm(film *source.Film) (filmRoster, error) {
 	deaths, err := replay.ScanDeaths(film)
 	if err != nil {
 		return filmRoster{}, err

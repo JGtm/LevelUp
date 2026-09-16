@@ -4,7 +4,7 @@ package grammar
 //
 // CE QUE CE TEST FERME. Le 2026-09-02, `c17f4941f` (lot 1a de PLAN_CUISSON_PERF) a retire
 // l'inflate de [ParseRegistryChunk] : la decompression se fait une fois par film, dans
-// `filmsource`. Le retrait etait juste ; ce qui l'accompagnait ne l'etait pas — un tampon encore
+// `source`. Le retrait etait juste ; ce qui l'accompagnait ne l'etait pas — un tampon encore
 // compresse rendait un registre VIDE et une erreur NULLE. Chaque lecteur d'archetype rendait
 // ensuite « archetype N absent du registre », un message qui accuse le BUILD DU JEU d'un defaut
 // de l'APPELANT.
@@ -13,7 +13,7 @@ package grammar
 // contraire (corrige le 2026-09-06, revue CTF-R1) : elle attribuait au fixture E2E
 // `film_e2e/c0a82e88` « quatre jours de decodage sans registre ». Le fixture portait bien deux
 // couches zlib sur ses morceaux 00 et 07, mais le chemin E2E les absorbait toutes les deux (le
-// telechargeur de l'ouvrier en pele une, `filmsource` l'autre) — l'epreuve reste verte avec le
+// telechargeur de l'ouvrier en pele une, `source` l'autre) — l'epreuve reste verte avec le
 // fixture d'origine, meme artefact, meme taille. Ce test vaut donc pour ce qu'il est : un refus
 // explicite la ou il y avait un silence, pas la reparation d'un sinistre.
 
@@ -47,7 +47,7 @@ func TestParseRegistryChunkRefuseUnTamponCompresse(t *testing.T) {
 		{"registre inflate", []byte{0x29, 0x00}, false},
 		{"zeros", []byte{0x00, 0x00}, false},
 		// Piege : premier octet 0x78 mais somme de controle FAUSSE — ce n'est pas du zlib, et
-		// le test du seul premier octet (celui de `filmsource.inflate`) s'y tromperait.
+		// le test du seul premier octet (celui de `source.inflate`) s'y tromperait.
 		{"0x78 sans somme valide", []byte{0x78, 0x00}, false},
 	} {
 		t.Run(cas.nom, func(t *testing.T) {

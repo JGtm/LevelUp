@@ -39,7 +39,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // Découpage de l'en-tête d'i0, seule partie NON dérivée du film (source : Ghidra).
@@ -148,7 +148,7 @@ func (s i0Sample) bit(k int) uint64 { return (s.bits[k>>6] >> (63 - uint(k&63)))
 // L'ENVELOPPE `dir` A ETE DEPLACEE EN TEST LE 2026-09-16 (revue de jalon M1, constat C4) : elle
 // n'avait plus aucun appelant de production depuis le lot 1.9.4. Cf.
 // `i0_layout_instrument_helpers_test.go`.
-func DetectI0LayoutOf(film *filmsource.Film) (I0Layout, I0LayoutReport, error) {
+func DetectI0LayoutOf(film *source.Film) (I0Layout, I0LayoutReport, error) {
 	nums := FilmChunkNumbers(film)
 	if len(nums) == 0 {
 		return I0Layout{}, I0LayoutReport{}, ErrNoFilmChunk

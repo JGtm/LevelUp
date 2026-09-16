@@ -41,7 +41,7 @@ package grammar
 import (
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // BipedAim est une lecture de VISEE issue d'un record qui ne porte AUCUNE position.
@@ -72,7 +72,7 @@ func (a BipedAim) AimPitchDeg() float32 { return aimPitchDegFromRaw(a.PitchRaw) 
 // ScanFilmBipedAimOnly est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis appelle
 // [ScanBipedAimOnly]. La cuisson passe un contexte deja ouvert (une seule decompression).
 func ScanFilmBipedAimOnly(dir string) ([]BipedAim, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
 	}

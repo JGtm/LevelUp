@@ -3,7 +3,7 @@ package grammar
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // keyframe_ground_weapons.go — ARMES AU SOL, lues dans les keyframes type-2.
@@ -66,7 +66,7 @@ func ScanFilmKeyframeGroundWeapons(dir string, known map[uint32]bool) ([]Keyfram
 	if len(known) == 0 {
 		return nil, nil // catalogue vide : rien a chercher, et rien a charger
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func ScanFilmKeyframeGroundWeapons(dir string, known map[uint32]bool) ([]Keyfram
 }
 
 // ScanKeyframeGroundWeapons décode les armes au sol des images-clés d'un film DEJA CHARGE.
-func ScanKeyframeGroundWeapons(film *filmsource.Film, known map[uint32]bool) ([]KeyframeGroundWeapon, error) {
+func ScanKeyframeGroundWeapons(film *source.Film, known map[uint32]bool) ([]KeyframeGroundWeapon, error) {
 	if len(known) == 0 {
 		return nil, nil
 	}
@@ -128,7 +128,7 @@ func keyframeGroundWeapons(pay []byte, known map[uint32]bool) []KeyframeGroundWe
 // HORS LIGNE (I/O disque sur tout le film).
 // ENVELOPPE D2, HORS PRODUCTION : consommee par les instruments de mesure des armes au sol.
 func GroundWeaponSlotBand(dir string) map[uint32]bool {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil
 	}
@@ -201,7 +201,7 @@ func WorldObjectPositionsForBand(dir string, wr *Vec3Range, band map[uint32]bool
 	if wr == nil || len(band) == 0 {
 		return out
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return out
 	}

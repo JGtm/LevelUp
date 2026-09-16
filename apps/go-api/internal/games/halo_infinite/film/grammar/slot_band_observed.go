@@ -1,6 +1,6 @@
 package grammar
 
-import "levelup/go-api/internal/analysis/filmsource"
+import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // slot_band_observed.go — L'AUTRE REGLE DE BANDE : les slots REELLEMENT OBSERVES, sans
 // comblement.
@@ -39,7 +39,7 @@ import "levelup/go-api/internal/analysis/filmsource"
 
 // observedSlotBand rend les slots d'un archetype REELLEMENT OBSERVES aux images-cles, SANS
 // combler les trous — cf. l'en-tete pour le depart entre les deux regles.
-func observedSlotBand(film *filmsource.Film, typeIndex int) map[uint32]bool {
+func observedSlotBand(film *source.Film, typeIndex int) map[uint32]bool {
 	seen, others := map[uint32]bool{}, map[uint32]bool{}
 	for _, c := range FilmChunkNumbers(film) {
 		data, pks, ok := FilmChunkAt(film, c)

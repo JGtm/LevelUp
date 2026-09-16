@@ -46,7 +46,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -82,7 +82,7 @@ func TestVersionGrenadeTags(t *testing.T) {
 		if id == "" {
 			continue
 		}
-		film, err := filmsource.LoadDir(filepath.Join(root, id), nil)
+		film, err := source.LoadDir(filepath.Join(root, id), nil)
 		if err != nil {
 			t.Errorf("%s : film illisible : %v", id, err)
 			continue
@@ -117,7 +117,7 @@ func TestVersionGrenadeTags(t *testing.T) {
 // hgrenBalayage rend le nombre de marqueurs trouves et les identifiants observes derriere eux,
 // tries par frequence decroissante. Meme parcours que `ScanGrenadeThrows`, SANS la liste
 // blanche : c'est tout l'interet.
-func hgrenBalayage(film *filmsource.Film) (int, []hgrenCand) {
+func hgrenBalayage(film *source.Film) (int, []hgrenCand) {
 	compte := map[uint32]*hgrenCand{}
 	marqueurs := 0
 	for _, c := range FilmChunkNumbers(film) {

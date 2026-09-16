@@ -38,7 +38,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e191cBalayageMax borne le balayage de largeur d etat par defaut. Le plus large etat par
@@ -78,7 +78,7 @@ func TestE191cEtatParDefaut(t *testing.T) {
 func e191cBalayerBobine(t *testing.T, court string, par map[int]*e191cEtatMesure) {
 	t.Helper()
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}

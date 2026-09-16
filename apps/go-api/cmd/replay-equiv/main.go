@@ -42,7 +42,7 @@
 // de paquets historiques pour mesurer leur divergence (D3, item 0.7) ; leurs originaux ont
 // disparu aux items 1.4/1.5, la copie ne comparait donc plus qu'a elle-meme. La mesure, elle,
 // reste : figee au §2 de `.ai/V7.5/MESURES_CUISSON_PERF.md`, et rejouee en CI en une seconde par
-// le test de la mini-bobine de `internal/analysis/filmsource` (qui compare la grammaire retenue
+// le test de la mini-bobine de `internal/games/halo_infinite/film/source` (qui compare la grammaire retenue
 // a `grammar.WalkPackets` sur un vrai chunk). Pour re-mesurer un jour : commit `aa694442f` et
 // anterieurs.
 //

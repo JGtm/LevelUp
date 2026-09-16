@@ -28,12 +28,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // p2aPlayer est la ligne de match d'un joueur, telle que l'export TSV la donne.
@@ -182,7 +182,7 @@ func (f p2aFilm) p2aTeams() map[string]int {
 // (`filmcache`) — jamais une disposition reconstituee sur place. C'est lui que prennent les
 // points d'entree d'`objectives` depuis l'item 1.5 : une decompression, pas une par
 // balayage. Il remplace `p2aSource`, qui n'ouvrait que le manifeste et n'a plus d'appelant.
-func p2aBobine(t *testing.T, dir string) *filmsource.Film {
+func p2aBobine(t *testing.T, dir string) *source.Film {
 	t.Helper()
 	film, ok, err := filmcache.LoadFilmDir(dir)
 	if err != nil || !ok {
@@ -193,7 +193,7 @@ func p2aBobine(t *testing.T, dir string) *filmsource.Film {
 
 // p2aStartMS rend l'instant de depart de chaque chunk, sur l'horloge du manifeste — que le
 // film charge porte deja (`Meta()`), sans rouvrir le manifeste.
-func p2aStartMS(film *filmsource.Film) map[int]int {
+func p2aStartMS(film *source.Film) map[int]int {
 	out := map[int]int{}
 	for _, m := range film.Meta() {
 		out[m.Index] = m.StartMS
@@ -323,7 +323,7 @@ var p2aZoneStats = map[string]bool{
 }
 
 // p2aCaptures rend les captures et securisations de zone, identifiees par xuid.
-func p2aCaptures(film *filmsource.Film, f p2aFilm) []objectives.IdentifiedEvent {
+func p2aCaptures(film *source.Film, f p2aFilm) []objectives.IdentifiedEvent {
 	if f.ObjType != objectives.ObjectiveTypeZone {
 		return nil // KOTH, Oddball, Slayer : aucun emplacement nomme (cf. named.go)
 	}

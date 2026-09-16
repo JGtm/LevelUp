@@ -29,7 +29,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // bilanMPP : ce que la passe compte.
@@ -71,7 +71,7 @@ func mesurerMPPUnFilm(t *testing.T, dir string, b *bilanMPP) {
 		b.sansChunk00++
 		return
 	}
-	d := filmsource.Inflate(brut)
+	d := source.Inflate(brut)
 	b.lus++
 	format, okF := FilmFormatVersionFromHeader(d)
 	build := ""

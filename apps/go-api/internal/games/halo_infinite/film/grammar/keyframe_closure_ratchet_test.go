@@ -38,7 +38,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // updateFermeture : LA PORTE DE REGENERATION DE CE GOLDEN, ET D AUCUN AUTRE.
@@ -214,7 +214,7 @@ func fermetureDUneBobine(t *testing.T, dir string) map[uint32]KeyframeClosureSta
 	if _, err := os.Stat(dir); err != nil {
 		t.Fatalf("bobine absente (%s) : %v — regenerer les bobines du lot 0.A.2", dir, err)
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}

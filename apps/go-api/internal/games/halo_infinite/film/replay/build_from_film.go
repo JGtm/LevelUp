@@ -17,7 +17,7 @@ package replay
 // desormais le meme etage — il n'y a plus de sequence a recopier.
 //
 // C'EST ICI QUE LE FILM EST CONSOMME, ET NULLE PART AILLEURS DANS `replay` : les balayages
-// recoivent un `*filmsource.Film` deja charge (une seule decompression par cuisson) et les
+// recoivent un `*source.Film` deja charge (une seule decompression par cuisson) et les
 // enveloppes `dir` sont interdites en production (garde-rail
 // `internal/archlint/no_film_reread_test.go`).
 //
@@ -30,9 +30,9 @@ import (
 	"fmt"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // BuildFromFilm décode les positions bipeds des SEULS chunks du film DEJA CHARGE et en
@@ -40,12 +40,12 @@ import (
 //
 // LE FILM EST UN PARAMETRE DEPUIS LE LOT 1 (2026-09-02, PLAN_CUISSON_PERF item 1.2), et c'est
 // tout le gain : les ~27 balayages de `scanFilmInputs` relisaient et redecompressaient le film
-// ENTIER chacun leur tour. Ils consomment desormais le meme `*filmsource.Film`, charge UNE fois
+// ENTIER chacun leur tour. Ils consomment desormais le meme `*source.Film`, charge UNE fois
 // par l'appelant (`replaybuild.BuildBytes`). Aucun d'eux ne touche plus le disque.
 //
 // HORS LIGNE par construction — ne jamais appeler depuis un chemin de requête ; l'API sert
 // l'artefact pré-construit.
-func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options) (ReplayDocument, error) {
+func BuildFromFilm(matchID, titleSlug string, film *source.Film, opt Options) (ReplayDocument, error) {
 	if opt.MapQuant == nil {
 		return ReplayDocument{}, fmt.Errorf("%w (match %s) : le document de rejeu exige l'entrée de catalogue de la carte",
 			grammar.ErrUnknownMapBounds, matchID)
@@ -119,7 +119,7 @@ func poserProfilPuisCarte(fc *grammar.FilmContext, matchID string, opt Options) 
 // lirait un zero sans que rien ne le dise.
 type filmScan struct {
 	matchID string
-	film    *filmsource.Film
+	film    *source.Film
 	fc      *grammar.FilmContext
 	scan    grammar.ScanFilmOptions
 	world   grammar.Vec3Range
@@ -157,7 +157,7 @@ func decoupageForce(opt Options) *grammar.I0Layout {
 // filtre de vitesse aux teleportations, les changements d'arme se qualifient sur les loadouts
 // deja lus, les changements d'equipement sur les naissances lues dans les positions, et les
 // socles comme les vehicules heritent des largeurs MPP calibrees par les poses.
-func scanFilmInputs(matchID string, film *filmsource.Film, fc *grammar.FilmContext,
+func scanFilmInputs(matchID string, film *source.Film, fc *grammar.FilmContext,
 	opt Options) (FilmInputs, error) {
 	s := &filmScan{matchID: matchID, film: film, fc: fc, opt: opt, world: opt.MapQuant.Range()}
 	s.scan = grammar.DefaultScanFilmOptions()

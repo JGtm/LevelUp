@@ -5,7 +5,7 @@ package grammar
 // # CE QUE CE FICHIER FERME
 //
 // Lot 2 de PLAN_CUISSON_PERF (2026-09-03). Le lot 1 avait supprime les ~36 relectures du film :
-// les balayages recoivent un `*filmsource.Film` decompresse UNE fois. Restait le second etage du
+// les balayages recoivent un `*source.Film` decompresse UNE fois. Restait le second etage du
 // meme defaut — chaque balayage RECALCULAIT, sur ce film deja charge, les trois memes
 // derivations :
 //
@@ -95,7 +95,7 @@ package grammar
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // FilmContext porte les derivations d'un film qui ne dependent que de lui : les numeros de ses
@@ -106,7 +106,7 @@ import (
 // Les champs sont PRIVES : un layout ou un registre se lit avec l'erreur qui va avec (cf.
 // l'en-tete), et une bande de slots exposee en clair serait modifiable par son lecteur.
 type FilmContext struct {
-	film *filmsource.Film
+	film *source.Film
 
 	chunks    []int
 	chunksLus bool
@@ -240,7 +240,7 @@ func (c *FilmContext) NouveauLecteur(buf []byte) *Lecteur {
 // `film` nil est ACCEPTE et n'est pas une erreur : la cuisson passe un film nil quand les chunks
 // sont illisibles (`replaybuild.chargerFilm`), et chaque balayage rend alors son
 // [ErrNoFilmChunk] a sa place — exactement comme un repertoire vide avant le lot 1.
-func NewFilmContext(film *filmsource.Film) *FilmContext {
+func NewFilmContext(film *source.Film) *FilmContext {
 	return &FilmContext{film: film, bal: ProfilDeBalayageParDefaut()}
 }
 
@@ -252,7 +252,7 @@ func NewFilmContext(film *filmsource.Film) *FilmContext {
 // C'est le constructeur de la CUISSON : `replay.BuildFromFilm` le construit une fois, lit le
 // decoupage tranche par [FilmContext.ImposedLayout] pour en armer les positions, et passe le
 // contexte aux six canaux delta et aux ramassages natifs — un seul decoupage pour tout le film.
-func NewFilmContextForMap(film *filmsource.Film, entry *MapQuantEntry, forced *I0Layout) *FilmContext {
+func NewFilmContextForMap(film *source.Film, entry *MapQuantEntry, forced *I0Layout) *FilmContext {
 	c := &FilmContext{film: film, impose: resolveI0Layout(forced, entry),
 		bal: ProfilDeBalayageParDefaut()}
 	c.prof, c.profLu = ResolveProfile(film, entry), true
@@ -274,7 +274,7 @@ func NewFilmContextForMap(film *filmsource.Film, entry *MapQuantEntry, forced *I
 // RECOUVREMENT ASSUME avec `avertirFormatSansProfil` sur le seul cas « format inconnu » : cette
 // ligne-ci nomme le PROFIL et ses deux cles, et elle couvre aussi le chemin `killcollector`, ou
 // aucun autre avertissement n existe.
-func journaliserProfilIncomplet(film *filmsource.Film, p Profile) {
+func journaliserProfilIncomplet(film *source.Film, p Profile) {
 	if p.Err() == nil {
 		return
 	}
@@ -338,7 +338,7 @@ func (c *FilmContext) Profile() Profile {
 func (c *FilmContext) ProfileErr() error { return c.Profile().Err() }
 
 // Film rend le film sous-jacent, pour les balayages qui lisent des chunks sans rien deriver.
-func (c *FilmContext) Film() *filmsource.Film {
+func (c *FilmContext) Film() *source.Film {
 	if c == nil {
 		return nil
 	}
@@ -461,7 +461,7 @@ func (c *FilmContext) archetype(ti int) (Archetype, *Registry, bool, error) {
 // (`replay.installWorldObjectPrecision`), jamais de l auto-detection — cf. la regle du
 // catalogue en tete de ce fichier. Un decoupage illisible laisse l invariant, sans erreur :
 // c est ce que le defaut de paquet faisait avant.
-func contexteDeBobine(film *filmsource.Film) *FilmContext {
+func contexteDeBobine(film *source.Film) *FilmContext {
 	fc := NewFilmContext(film)
 	if lay, _, err := DetectI0LayoutOf(film); err == nil {
 		fc.PoserLargeursObjetDuMondeDepuisDecoupage(lay)
@@ -479,7 +479,7 @@ func contexteDeBobine(film *filmsource.Film) *FilmContext {
 // largeurs du CATALOGUE de la carte (`replay.installWorldObjectPrecision`), jamais de
 // l auto-detection : cf. la regle du catalogue en tete de ce fichier.
 func ContexteDeFilm(dir string) (*FilmContext, I0Layout, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, I0Layout{}, err
 	}

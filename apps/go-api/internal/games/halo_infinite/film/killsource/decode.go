@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // Erreurs rendues par [Decode]. Elles se testent avec `errors.Is`.
@@ -67,8 +67,8 @@ type decodeCtx struct {
 // leur divergence, la provenance technique de chaque ligne, les denominateurs nommes et la
 // metrique de sante.
 //
-// `film` est charge par l appelant (`filmsource.LoadDir` depuis le cache disque,
-// `filmsource.Load(filmsource.MemoryChunks(...), meta)` depuis des chunks telecharges) : depuis le
+// `film` est charge par l appelant (`source.LoadDir` depuis le cache disque,
+// `source.Load(source.MemoryChunks(...), meta)` depuis des chunks telecharges) : depuis le
 // lot 1 de PLAN_CUISSON_PERF (item 1.4), ce paquet ne lit plus le disque et ne decompresse plus
 // rien lui-meme, et une cuisson qui decode aussi le rejeu 2D partage LE MEME film. `film` nil ou
 // vide rend [ErrNoChunk].
@@ -76,7 +76,7 @@ type decodeCtx struct {
 // `opts` peut valoir nil : c est alors la configuration GELEE, celle qui a produit les chiffres
 // publies. `name` sert uniquement a etiqueter la mesure de sante (identifiant de film ou de
 // match, au choix de l appelant).
-func Decode(ctx context.Context, name string, film *filmsource.Film, opts *Options) (*Result, error) {
+func Decode(ctx context.Context, name string, film *source.Film, opts *Options) (*Result, error) {
 	o := DefaultOptions()
 	if opts != nil {
 		o = *opts
@@ -114,7 +114,7 @@ func ProfilDeDepart() grammar.ProfilDeBalayage {
 }
 
 // prepare : les cinq etapes qui precedent la publication. Aucune ne consulte l arme.
-func (c *decodeCtx) prepare(ctx context.Context, src *filmsource.Film) error {
+func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 	var err error
 	if c.film, err = loadFilm(src); err != nil {
 		return err

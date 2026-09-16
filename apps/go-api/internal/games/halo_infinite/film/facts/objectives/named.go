@@ -3,7 +3,7 @@ package objectives
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // named.go — les EVENEMENTS DE JOUEUR NOMMES, lus par le COMPOSANT et non par la valeur.
@@ -215,7 +215,7 @@ type NamedEvent struct {
 // Un mode sans table (KOTH, Oddball) rend nil — pas d'erreur, pas de nom invente. Les
 // emplacements de `hill` et `ball` n'ont pas encore ete nommes : le balayage est le meme,
 // c'est le corpus qui manque.
-func NamedEvents(film *filmsource.Film, objectiveType string) []NamedEvent {
+func NamedEvents(film *source.Film, objectiveType string) []NamedEvent {
 	return NamedEventsFrom(StatRecords(film), objectiveType)
 }
 
@@ -326,7 +326,7 @@ func CountsBySlot(evs []NamedEvent) map[int]map[string]int {
 // donc la redondance est une source de controle GRATUITE et interne au film — si `comp 12 A`
 // et `comp 2 A` divergent sur un slot, l'un des deux decodages a derape sur ce slot, et on
 // le sait sans oracle externe.
-func CrossCheckNamedEvents(film *filmsource.Film, objectiveType string) map[int]map[string][2]int {
+func CrossCheckNamedEvents(film *source.Film, objectiveType string) map[int]map[string][2]int {
 	return crossCheckFrom(StatRecords(film), objectiveType)
 }
 

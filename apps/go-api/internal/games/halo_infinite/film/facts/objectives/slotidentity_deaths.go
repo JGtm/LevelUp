@@ -3,7 +3,7 @@ package objectives
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // slotidentity_deaths.go — LE SECOND PONT slot statborg -> joueur : par les INSTANTS DE
@@ -96,7 +96,7 @@ const (
 // disjointes, un desaccord signale que l'une des deux lit de travers, et rien ne dit laquelle.
 //
 // `deaths` vide (fil des morts illisible) : seul le pont par totaux repond, comme avant.
-func SlotIdentityResolved(film *filmsource.Film, lines []PlayerLine, deaths []DeathInstant) (map[int]string, IdentityStats) {
+func SlotIdentityResolved(film *source.Film, lines []PlayerLine, deaths []DeathInstant) (map[int]string, IdentityStats) {
 	return slotIdentityResolvedFrom(StatRecords(film), lines, deaths)
 }
 
@@ -124,7 +124,7 @@ func slotIdentityResolvedFrom(recs []StatRecord, lines []PlayerLine, deaths []De
 // SlotIdentityFromDeaths apparie chaque slot statborg a un xuid par les seuls INSTANTS DE MORT
 // du film. Aucune ligne de match, aucune base — c'est ce qui le rend employable sur un film
 // tronque.
-func SlotIdentityFromDeaths(film *filmsource.Film, deaths []DeathInstant) map[int]string {
+func SlotIdentityFromDeaths(film *source.Film, deaths []DeathInstant) map[int]string {
 	return slotIdentityFromDeaths(StatRecords(film), deaths)
 }
 

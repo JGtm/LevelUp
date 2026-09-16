@@ -27,7 +27,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // assistAttendu : ce que chaque film de reference rend. Ces nombres ne sont PAS des cibles, ce
@@ -410,7 +410,7 @@ func verifierPart(t *testing.T, quoi string, p DamageShare, connu bool, pct int)
 
 func decodeFixture(t *testing.T, root, id string) *Result {
 	t.Helper()
-	src, err := filmsource.LoadDir(root+"/"+id, nil)
+	src, err := source.LoadDir(root+"/"+id, nil)
 	if err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}
@@ -425,7 +425,7 @@ func decodeFixture(t *testing.T, root, id string) *Result {
 // de paquet est tenu par l APPELANT (les globaux de replication sont partages).
 func prepareForAssist(t *testing.T, root, id string) (*decodeCtx, *assistScan) {
 	t.Helper()
-	src, err := filmsource.LoadDir(root+"/"+id, nil)
+	src, err := source.LoadDir(root+"/"+id, nil)
 	if err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}

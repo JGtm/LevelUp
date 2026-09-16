@@ -31,12 +31,12 @@ import (
 	"strconv"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/games/mappings"
@@ -337,7 +337,7 @@ type entreesCatalogue struct {
 // lui-meme (item 1.4 du plan). `deaths` est l'unique lecture du fil des morts, partagee avec
 // `readFilmStats`.
 func (b *Builder) collecterEntreesCatalogue(
-	matchID string, film *filmsource.Film, facts port.MatchFacts, mapNames []string,
+	matchID string, film *source.Film, facts port.MatchFacts, mapNames []string,
 	stats *filmStats, deaths filmDeaths,
 ) entreesCatalogue {
 	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux

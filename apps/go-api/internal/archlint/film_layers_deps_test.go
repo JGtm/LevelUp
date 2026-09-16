@@ -13,7 +13,7 @@ package archlint
 // deplacement n aurait rien garde PENDANT le deplacement, qui est justement le moment ou l on
 // casse des choses : la methode du lot E est « ratchets de dependance poses AVANT le premier
 // `git mv` ». Celui-ci vaut donc DEJA sur l arborescence d aujourd hui, ou les couches sont des
-// paquets aux noms d avant (`filmdec`, `killsource`, `objectiveevents`, `filmsource`), et il
+// paquets aux noms d avant (`filmdec`, `killsource`, `objectiveevents`, `source`), et il
 // guide 2.5 : son allowlist EST la liste des coupes a faire, et elle se vide a mesure.
 //
 // # LA TABLE COUCHE -> PAQUETS, ET CE QUI CHANGERA EN 2.5
@@ -81,9 +81,9 @@ package archlint
 //
 // # L ORDRE DES COMMITS DE 2.5, ET POURQUOI IL N EST PAS CELUI DE LA NOTE
 //
-// MESURE DU 2026-09-16, a l entree du lot : deplacer `filmsource` EN PREMIER (ordre §2.7 de la
+// MESURE DU 2026-09-16, a l entree du lot : deplacer `source` EN PREMIER (ordre §2.7 de la
 // note) fait rougir D9 sur DIX-SEPT fichiers. La cause est mecanique : `objectiveevents` et
-// `weaponv3` vivent sous `internal/analysis/` et importent `filmsource` ; le jour ou `filmsource`
+// `weaponv3` vivent sous `internal/analysis/` et importent `source` ; le jour ou `source`
 // descend sous `film/`, ces imports deviennent « `internal/analysis/` importe un paquet de
 // titre ». La facade de 2.4 etait nee dans `internal/analysis/filmsource` precisement pour
 // l eviter (V15 (1)) — la note ne l a pas reporte sur l ordre des commits de 2.5.
@@ -151,9 +151,9 @@ var (
 // la faute (classer un paquet coute une ligne, l oublier ouvrirait un trou).
 var couchesDuDecodeur = map[string]coucheFilm{
 	// --- source : charger, decompresser, decouper, lire l en-tete, tenir le lecteur de bits.
-	// `filmsource` est une FEUILLE sans aucun import du depot (ratchet `filmsource_leaf_test.go`)
+	// `source` est une FEUILLE sans aucun import du depot (ratchet `filmsource_leaf_test.go`)
 	// et passe sous `film/internal/source` au lot 2.5.a (decision V5 du plan).
-	"internal/analysis/filmsource": coucheSource,
+	"internal/games/halo_infinite/film/source": coucheSource,
 
 	// --- profile : VIDE AUJOURD HUI, et c est ecrit. La part profil existe (`filmdec/profile.go`,
 	// `profile_table.go`, `build_profile.go`, `map_bounds.go`, `i0_layout.go`, `mpp_widths.go`,
@@ -231,18 +231,6 @@ type areteToleree struct {
 // rougir `TestAllowlistsDesCouchesNeSontPasPerimees`.
 var aretesTolerees = []areteToleree{
 	{
-		de: "internal/games/halo_infinite/film/filmcache", vers: "internal/analysis/filmsource",
-		pose: "2026-09-17", lot: "2.5.a",
-		coupe: "le cache ouvre la source ; l import suit `filmsource` sous " +
-			"`film/internal/source`, sans autre changement que la ligne d import",
-	},
-	{
-		de: "internal/games/halo_infinite/film/grammar", vers: "internal/analysis/filmsource",
-		pose: "2026-09-17", lot: "2.5.a",
-		coupe: "grammar -> source : le sens est deja bon, seul le lieu est faux ; " +
-			"`git mv` de `filmsource` puis re-pointage de l import",
-	},
-	{
 		de: "internal/games/halo_infinite/film/killsource", vers: "internal/analysis",
 		pose: "2026-09-17", lot: "2.5.c",
 		coupe: "4 symboles (`EventTypeDeath`, `EventTypeKill`, `HighlightEvent`, " +
@@ -250,39 +238,10 @@ var aretesTolerees = []areteToleree{
 			"dans un paquet title-agnostic ; elle descend en `grammar` avec son type",
 	},
 	{
-		de: "internal/games/halo_infinite/film/killsource", vers: "internal/analysis/filmsource",
-		pose: "2026-09-17", lot: "2.5.a",
-		coupe: "facts -> source : meme coupe que l arete 2, par le `git mv` de `filmsource`",
-	},
-	{
 		de: "internal/games/halo_infinite/film/replay", vers: "internal/analysis",
 		pose: "2026-09-17", lot: "2.5.c",
 		coupe: "4 usages (`ParseHighlightEvents` x3, `WeaponIDToName`, `HighlightEvent`, " +
 			"`EventTypeDeath`) : ils suivent la descente de l arete 3",
-	},
-	{
-		de: "internal/games/halo_infinite/film/replay", vers: "internal/analysis/filmsource",
-		pose: "2026-09-17", lot: "2.5.a",
-		coupe: "`replay` NE DECODE RIEN (ADR 0034 D-1) : les quatre sites qui chargent le film " +
-			"eux-memes (`deaths_source.go`, `inventory_decode.go`, `origin.go`, " +
-			"`player_index.go`) remontent en `facts`, ou `replay` recoit un film deja charge",
-	},
-	{
-		de: "internal/games/halo_infinite/film/facts/objectives", vers: "internal/analysis/filmsource",
-		pose: "2026-09-17", lot: "2.5.a puis 2.5.d.2",
-		coupe: "facts -> source : le sens est bon, les deux paquets descendent sous `film/` ; le " +
-			"lot 2.5.d.2 a fait le premier des deux deplacements (2026-09-16), l entree tombe " +
-			"au second, quand `filmsource` descendra a son tour (2.5.a)",
-	},
-	{
-		de: "internal/games/halo_infinite/film/grammar/weaponv3", vers: "internal/analysis/filmsource",
-		pose: "2026-09-18", lot: "2.5.a puis 2.5.c",
-		coupe: "NEE DU LOT 2.4.2, ET VOULUE PAR V15 (1) : la facade `film.Source` nait dans " +
-			"`internal/analysis/filmsource` precisement parce que `weaponv3` et " +
-			"`objectiveevents` ne peuvent pas importer un paquet de titre sans rougir D9. " +
-			"`weaponv3` y a perdu son lecteur de bits, sa copie divergente de la lecture par " +
-			"mot et son marcheur de paquets. Le sens est bon (grammar -> source) ; c est le " +
-			"LIEU qui ne l est pas encore, et 2.5.a le corrige par `git mv` pur",
 	},
 	{
 		de: "internal/games/halo_infinite/film/grammar/weaponv3", vers: "internal/analysis",
@@ -292,26 +251,13 @@ var aretesTolerees = []areteToleree{
 	},
 }
 
-// paquetHorsLieuTolere : un paquet classe dans une couche mais qui ne vit pas encore sous
-// `film/`. C est la cause RACINE de la plupart des aretes ci-dessus ; la table le dit separement
-// parce que c est le deplacement du PAQUET qui les casse toutes d un coup.
-type paquetHorsLieuTolere struct {
-	paquet string
-	pose   string
-	lot    string
-	coupe  string
-}
-
-// paquetsHorsLieuToleres — 3 paquets mesures le 2026-09-17 ; `objectiveevents` est RENTRE A SA
-// PLACE le 2026-09-16 (lot 2.5.d.2), il en reste 2.
-var paquetsHorsLieuToleres = []paquetHorsLieuTolere{
-	{
-		paquet: "internal/analysis/filmsource", pose: "2026-09-17", lot: "2.5.a",
-		coupe: "`git mv` vers `film/source` (decision V5 du plan), puis `film/internal/source` " +
-			"au dernier commit du lot ; la remontee des 14 fichiers de `grammar` qui lisent " +
-			"`chunk_00` (note de preparation §2.3) N EST PAS un deplacement pur — voir §4",
-	},
-}
+// LA TOLERANCE DE LIEU A ETE SUPPRIMEE LE 2026-09-16 (lot 2.5.a), AVEC SA DERNIERE ENTREE.
+// `paquetHorsLieuTolere` / `paquetsHorsLieuToleres` dataient le sursis d un paquet de couche
+// vivant hors de `film/` ; les trois qui en avaient un y sont rentres (`objectiveevents` au
+// 2.5.d.2, `weaponv3` au 2.5.c, `filmsource` au 2.5.a). La regle R2 (le lieu) n a plus AUCUNE
+// exception, et le mecanisme qui les portait est supprime avec elles : une table vide dont
+// personne ne lit plus les champs est du code mort, et un sursis re-devient une DECISION a
+// ecrire, pas une ligne a remplir.
 
 // couchesVidesTolerees : une couche declaree que AUCUN paquet ne porte encore, avec le lot qui
 // la peuplera. Une couche vide ne garde rien — elle ne se tolere que datee.
@@ -378,18 +324,14 @@ func TestCouchesDuDecodeurSontPeupleesEtALeurPlace(t *testing.T) {
 // verifierLieuDesCouches : un paquet de couche vit sous `film/`, ou bien son sursis est date.
 func verifierLieuDesCouches(t *testing.T) {
 	t.Helper()
-	horsLieu := indexDesPaquetsHorsLieu()
 	for _, rel := range clesTrieesFilm(couchesDuDecodeur) {
 		c := couchesDuDecodeur[rel]
 		if c.rang < 0 || souscheminDeFilm(rel, racineDecodeurFilm) {
 			continue
 		}
-		if _, ok := horsLieu[rel]; ok {
-			continue
-		}
 		t.Errorf("%s porte la couche %q mais ne vit pas sous %s : une couche du decodeur vit "+
-			"DANS le decodeur (ADR 0034 D-1). La deplacer, ou dater son sursis dans "+
-			"`paquetsHorsLieuToleres` avec le lot qui la deplacera.",
+			"DANS le decodeur (ADR 0034 D-1), sans exception — la tolerance datee a ete "+
+			"supprimee au lot 2.5.a avec sa derniere entree. La deplacer.",
 			rel, c.nom, racineDecodeurFilm)
 	}
 }
@@ -435,25 +377,7 @@ func TestAllowlistsDesCouchesNeSontPasPerimees(t *testing.T) {
 		t.Errorf("`aretesTolerees` cite %s (pose %s, lot %s), qui n est plus une violation : "+
 			"entree perimee, la retirer.", cleArete(a.de, a.vers), a.pose, a.lot)
 	}
-	verifierAllowlistDeLieu(t)
 	verifierAllowlistDesCouchesVides(t)
-}
-
-// verifierAllowlistDeLieu : un paquet rentre a sa place sort de la table.
-func verifierAllowlistDeLieu(t *testing.T) {
-	t.Helper()
-	for _, p := range paquetsHorsLieuToleres {
-		c, classe := couchesDuDecodeur[p.paquet]
-		if !classe {
-			t.Errorf("`paquetsHorsLieuToleres` cite %s, qui n est plus dans aucune couche : "+
-				"entree perimee, la retirer.", p.paquet)
-			continue
-		}
-		if souscheminDeFilm(p.paquet, racineDecodeurFilm) || c.rang < 0 {
-			t.Errorf("`paquetsHorsLieuToleres` cite %s, qui est rentre a sa place (lot %s) : "+
-				"entree perimee, la retirer.", p.paquet, p.lot)
-		}
-	}
 }
 
 // verifierAllowlistDesCouchesVides : une couche peuplee sort de la table des couches vides.

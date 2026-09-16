@@ -3,7 +3,7 @@ package grammar
 import (
 	"math"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // Décodage OFFLINE des ÉVÉNEMENTS DE TIR du film (record d'event type 105).
@@ -142,7 +142,7 @@ type FireEvent struct {
 //
 // ScanFilmFireEvents est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanFireEvents].
 func ScanFilmFireEvents(dir string) ([]FireEvent, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func ScanFilmFireEvents(dir string) ([]FireEvent, error) {
 }
 
 // ScanFireEvents décode les événements de tir longs d'un film DEJA CHARGE.
-func ScanFireEvents(film *filmsource.Film) ([]FireEvent, error) {
+func ScanFireEvents(film *source.Film) ([]FireEvent, error) {
 	var out []FireEvent
 	read := 0
 	for _, c := range FilmChunkNumbers(film) {

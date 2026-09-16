@@ -24,7 +24,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // bobineEquipes : ce que la lecture doit rendre sur chaque bobine par build.
@@ -72,10 +72,10 @@ func bobinesEquipes() []bobineEquipes {
 }
 
 // bobineFilm charge une bobine par build.
-func bobineFilm(t *testing.T, film string) *filmsource.Film {
+func bobineFilm(t *testing.T, film string) *source.Film {
 	t.Helper()
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+film)
-	f, err := filmsource.LoadDir(dir, nil)
+	f, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("bobine %s : %v — regenerer les bobines du lot 0.A.2", film, err)
 	}

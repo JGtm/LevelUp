@@ -16,7 +16,7 @@ import (
 	"math/bits"
 	"strings"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // PIBits : largeur du champ player_index (0-31). EXPORTEE parce que la ventilation des tirs
@@ -29,8 +29,8 @@ const PIBits = 5
 // par mot (`bits_word.go`, divergente de celle de `grammar`) — plus son propre balayage de
 // motif. Les trois vivent desormais dans la couche source :
 //
-//	bitReader.readBits(bp, n)  ->  filmsource.BitsTolerants(chunk, bp, n)
-//	findPattern64(d, cible)    ->  filmsource.ChercherMotif64(d, cible)
+//	bitReader.readBits(bp, n)  ->  source.BitsTolerants(chunk, bp, n)
+//	findPattern64(d, cible)    ->  source.ChercherMotif64(d, cible)
 //
 // LA CONVENTION DE BORD EST PRESERVEE, ET C EST POURQUOI C EST `BitsTolerants` ET PAS
 // `BitsAt` : ce resolveur relit les cinq bits qui PRECEDENT le motif trouve, donc sur un motif
@@ -50,8 +50,8 @@ func ResolveXuidToPI(rosterXuids []uint64, chunk []byte) map[uint64]int {
 		return out
 	}
 	for _, x := range rosterXuids {
-		if bp, ok := filmsource.ChercherMotif64(chunk, xuidTargetPattern(x)); ok {
-			out[x] = int(filmsource.BitsTolerants(chunk, bp-PIBits, PIBits))
+		if bp, ok := source.ChercherMotif64(chunk, xuidTargetPattern(x)); ok {
+			out[x] = int(source.BitsTolerants(chunk, bp-PIBits, PIBits))
 		}
 	}
 	return out

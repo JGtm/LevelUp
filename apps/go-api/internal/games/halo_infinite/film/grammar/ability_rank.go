@@ -26,7 +26,7 @@ package grammar
 import (
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // i48Index est l'index d'itérateur du composant `biped-desired-ability-set-component` dans
@@ -82,7 +82,7 @@ type AbilityRankStats struct {
 // contexte pour elle seule, puis appelle [ScanAbilityRanks]. La cuisson, elle, passe le contexte
 // qu'elle partage entre tous ses balayages.
 func ScanFilmAbilityRanks(dir string) ([]AbilityRank, AbilityRankStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, AbilityRankStats{}, err
 	}

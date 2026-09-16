@@ -55,7 +55,7 @@ package grammar
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -131,7 +131,7 @@ type TranslocatorTeleport struct {
 // ScanFilmTranslocatorTeleports est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis
 // appelle [ScanTranslocatorTeleports]. La cuisson, elle, passe le film qu'elle a déjà chargé.
 func ScanFilmTranslocatorTeleports(dir string, entry *MapQuantEntry) []TranslocatorTeleport {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil // meme degradation silencieuse qu'un chunk illisible : couverture moindre
 	}
@@ -140,7 +140,7 @@ func ScanFilmTranslocatorTeleports(dir string, entry *MapQuantEntry) []Transloca
 
 // ScanTranslocatorTeleports lit les téléportations du translocateur d'un film DEJA CHARGE,
 // triées par instant. Cf. [ScanFilmTranslocatorTeleports] pour la doctrine du balayage.
-func ScanTranslocatorTeleports(film *filmsource.Film, entry *MapQuantEntry) []TranslocatorTeleport {
+func ScanTranslocatorTeleports(film *source.Film, entry *MapQuantEntry) []TranslocatorTeleport {
 	var out []TranslocatorTeleport
 	for _, c := range FilmChunkNumbers(film) {
 		chunk, pks, ok := FilmChunkAt(film, c)

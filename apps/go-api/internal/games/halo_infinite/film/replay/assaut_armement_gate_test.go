@@ -45,9 +45,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // agFenetreMS est la tolérance du critère (b) : 4 930 ± 600 ms, la demi-fenêtre sous laquelle
@@ -186,7 +186,7 @@ func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCover
 	for _, c := range src.Meta() {
 		clock[c.Index] = c.StartMS
 	}
-	film, err := filmsource.LoadDir(filepath.Join(cache, "film_chunks", id), nil)
+	film, err := source.LoadDir(filepath.Join(cache, "film_chunks", id), nil)
 	if err != nil {
 		t.Fatalf("chunks du film %s illisibles : %v", id, err)
 	}

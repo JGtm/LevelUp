@@ -36,7 +36,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e191cN2Max borne le balayage de chaque largeur MPP.
@@ -49,7 +49,7 @@ func TestE191cOracleN2(t *testing.T) {
 	parTI := map[int][]e191cAncre{}
 	for _, court := range closureMiniFilms()[:2] {
 		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-		film, err := filmsource.LoadDir(dir, nil)
+		film, err := source.LoadDir(dir, nil)
 		if err != nil {
 			t.Fatalf("LoadDir %s : %v", dir, err)
 		}
@@ -139,7 +139,7 @@ func TestE191cOracleN2ParBuild(t *testing.T) {
 	t.Logf("  %-10s %-5s %7s   %-18s   %-18s", "bobine", "ti", "records", "meilleure paire", "l ecrivain 9/5")
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-		film, err := filmsource.LoadDir(dir, nil)
+		film, err := source.LoadDir(dir, nil)
 		if err != nil {
 			t.Fatalf("LoadDir %s : %v", dir, err)
 		}

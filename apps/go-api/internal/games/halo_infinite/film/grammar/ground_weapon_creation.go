@@ -25,7 +25,7 @@ package grammar
 import (
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // ScanFilmGroundWeaponCreations décode les records de création des ARMES AU SOL du film de dir,
@@ -39,7 +39,7 @@ import (
 func ScanFilmGroundWeaponCreations(
 	dir string, wr *Vec3Range,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}
@@ -72,7 +72,7 @@ func ScanGroundWeaponCreations(
 func ScanFilmGroundWeaponCreationsForBand(
 	dir string, wr *Vec3Range, band map[uint32]bool,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}

@@ -33,7 +33,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e191cCorriges nomme les quatre composants dont la CATEGORIE a change le 2026-09-15, avec la
@@ -101,7 +101,7 @@ func e191cJoin(l []string) string {
 func e191cBasculesBobine(t *testing.T, court string) (perdus, gagnes []e191cBascule) {
 	t.Helper()
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}

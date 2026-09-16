@@ -1,4 +1,4 @@
-package filmsource
+package source
 
 // bits.go — LE LECTEUR DE BITS CANONIQUE : LA SEULE PORTE AUX BITS D UN FILM.
 //

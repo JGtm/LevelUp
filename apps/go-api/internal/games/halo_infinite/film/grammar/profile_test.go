@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // TestProfilResoudLesTroisCles : sur chaque bobine par build, le profil resout la version de
@@ -123,9 +123,9 @@ func TestProfilChunk00TronqueNePaniquePas(t *testing.T) {
 
 // filmDUnChunk00 fabrique un film d UN SEUL chunk, celui du registre, depuis des octets deja
 // decompresses. Il sert aux entrees TRONQUEES : un `chunk_00` coupe ne se trouve pas sur disque.
-func filmDUnChunk00(t *testing.T, chunk0 []byte) *filmsource.Film {
+func filmDUnChunk00(t *testing.T, chunk0 []byte) *source.Film {
 	t.Helper()
-	f, err := filmsource.Load(filmsource.MemoryChunks{chunk0}, nil)
+	f, err := source.Load(source.MemoryChunks{chunk0}, nil)
 	if err != nil {
 		// Zero chunk n est pas un film : c est le cas `film nil`, deja couvert par son test.
 		t.Fatalf("film synthetique d un chunk de %d octets : %v", len(chunk0), err)

@@ -287,18 +287,18 @@ package grammar
 // ENTREE `grammar-2026-09-15.28` (2026-09-18, lot 2.4.1 — RANG PROVISOIRE) : `.27` -> `.28`.
 // AUCUN OCTET N EST LU AUTREMENT, et c est PROUVE bit a bit, pas suppose.
 //
-// LE LECTEUR DE BITS DESCEND DANS LA COUCHE SOURCE. `filmsource.Bits` est desormais LE lecteur
+// LE LECTEUR DE BITS DESCEND DANS LA COUCHE SOURCE. `source.Bits` est desormais LE lecteur
 // du depot : MSB-first big-endian, bourrage a zero au-dela du tampon, lecture par mot de 64
-// bits. [Lecteur] ne porte plus ni tampon ni position — il EMBARQUE `*filmsource.Bits` et n y
+// bits. [Lecteur] ne porte plus ni tampon ni position — il EMBARQUE `*source.Bits` et n y
 // ajoute que ce qui appartient a la grammaire : le profil de largeurs, la capture de position,
 // l observateur, et le codec [Lecteur.ReadSignedVarWidth]. `filmdec/bits_word.go` disparait :
-// sa lecture par mot est [filmsource.BitsAt], et ses trois derniers appelants directs
+// sa lecture par mot est [source.BitsAt], et ses trois derniers appelants directs
 // (`PeekBits`, `kfReadBits`, `readBitsAt`) y passent.
 //
 // `killsource.evReader` EST ABSORBE (item 2.4.1). Le deuxieme des sept lecteurs de bits du
 // depot — son type, sa boucle `bitsWide`, et les trois primitives de position du paquet
-// `bitAt` / `bits32` / `bitsN` — est SUPPRIME ; ses 23 sites passent par [filmsource.BitAt] et
-// [filmsource.BitsAt]. `bits32` lisait CINQ octets puis decalait, ce qui n est pas la boucle de
+// `bitAt` / `bits32` / `bitsN` — est SUPPRIME ; ses 23 sites passent par [source.BitAt] et
+// [source.BitsAt]. `bits32` lisait CINQ octets puis decalait, ce qui n est pas la boucle de
 // la lecture par mot : son equivalence est prouvee comme les autres.
 //
 // LE DRAPEAU DE DEBORDEMENT RESTE AU MARCHEUR, PAS AU LECTEUR (arbitrage V15 (3)). Le lecteur
@@ -346,13 +346,13 @@ package grammar
 //
 // CE QUI CHANGE DE NOM PARCE QUE SA NATURE A CHANGE : `grammar.BitReader` / `NewBitReader`
 // deviennent `Lecteur` / `LecteurSur`. Le type ne LIT plus, il DECORE — il embarque
-// `*filmsource.Bits` et n ajoute que la grammaire (profil de largeurs, capture de position,
+// `*source.Bits` et n ajoute que la grammaire (profil de largeurs, capture de position,
 // observateur, `ReadSignedVarWidth`). Les deux anciens noms restent nommes dans
 // `archlint/no_raw_film_bytes_outside_source_test.go` : ratchet anti-resurrection.
 //
 // LES SIX PAQUETS QUI TRAVERSENT LA FACADE : `filmdec` (les 48 constructions de lecteur, les
 // quatre sections de `chunk_00`, le second marcheur de paquets), `killsource` (le film porte
-// desormais `*filmsource.Film` et non une COPIE de ses chunks), `analysis/objectiveevents`
+// desormais `*source.Film` et non une COPIE de ses chunks), `analysis/objectiveevents`
 // (`film.go` et `statborg.go` : les trois lecteurs du pied de film disparaissent),
 // `analysis/weaponv3` (`bits_word.go` — la copie DIVERGENTE de la lecture par mot — est
 // supprime, `pi_resolver.go` n a plus de type `bitReader`, `timing.go` n a plus de marcheur),
@@ -424,3 +424,30 @@ package grammar
 //
 // `KillSourceDecoderRev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet.
 // `SchemaVersion` reste 60.
+//
+// ENTREE `grammar-2026-09-15.32` (2026-09-16, lot 2.5.a — RANG PROVISOIRE) : `.31` -> `.32`.
+// DEPLACEMENT PUR, SORTIE IDENTIQUE.
+//
+// LA COUCHE `source` RENTRE DANS LE DECODEUR. `internal/analysis/filmsource` devient
+// `internal/games/halo_infinite/film/source` : le paquet change de nom (`filmsource` ->
+// `source`) et de chemin, RIEN D AUTRE. Il reste ce qu il etait — une FEUILLE sans aucun import
+// du depot, tenue par `archlint/filmsource_leaf_test.go`, dont la constante suit le chemin.
+//
+// CE QUE CE COMMIT FERME. Les SIX dernieres aretes de lieu du ratchet des couches tombent d un
+// coup (`filmcache`, `grammar`, `killsource`, `replay`, `facts/objectives`, `grammar/weaponv3`
+// vers `filmsource`), et la table `paquetsHorsLieuToleres` se VIDE : plus aucun paquet de couche
+// ne vit hors de `film/`. Il ne reste que TROIS aretes, toutes vers `internal/analysis` RACINE,
+// toutes datees « 2.5.c » : ce sont des descentes de SYMBOLES, pas des deplacements de paquet.
+//
+// CE QUE CE COMMIT NE FAIT PAS, ET LA MESURE LE DIT. La note de preparation §2.3 faisait remonter
+// QUATORZE fichiers de `filmdec` dans la couche `source` (le lecteur canonique, les quatre
+// sections de `chunk_00`, le registre, la table des joueurs). Ce n est PAS un deplacement pur :
+// 76 de leurs 159 declarations sont referencees par le reste du paquet (`ReadFilmChunk` 293 fois
+// dans 179 fichiers, `Lecteur` 344 fois, `WalkPackets` 217, `Archetype` 177, `Registry` 158), et
+// `lecteur.go` lit `Profile`, `Observation`, `FrameConfig`, `ProfilDeBalayage` — c est-a-dire que
+// `source` importerait `profile` et `grammar`, deux imports VERS LE HAUT. La couche `source` du
+// lot est donc `filmsource` seul ; la remontee reste a faire, et elle n est pas un `git mv`.
+//
+// L EMPREINTE MONTE parce que la clause `package` de cinq fichiers de production a change et que
+// la racine hachee suit le paquet. AUCUN OCTET DE FILM N EST LU AUTREMENT.
+// `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.

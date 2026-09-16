@@ -35,7 +35,7 @@ import (
 	"sync"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // deuxFilmsDeBuildsDifferents : les deux mini-bobines du parallelisme. Elles sont de BUILDS
@@ -48,10 +48,10 @@ var deuxFilmsDeBuildsDifferents = [2]string{
 
 // TestDeuxFilmsEnParallele — LE CRITERE S2.
 func TestDeuxFilmsEnParallele(t *testing.T) {
-	films := [2]*filmsource.Film{}
+	films := [2]*source.Film{}
 	for i, court := range deuxFilmsDeBuildsDifferents {
 		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
-		f, err := filmsource.LoadDir(dir, nil)
+		f, err := source.LoadDir(dir, nil)
 		if err != nil {
 			t.Fatalf("bobine %s : %v", court, err)
 		}
@@ -108,7 +108,7 @@ func TestDeuxFilmsEnParallele(t *testing.T) {
 // archetype : c est exactement ce qu un etat de processus melangeait. Le test refuse d ailleurs
 // deux empreintes egales, pour ne pas passer sur un temoin muet (mesure : les deux bobines
 // different des le premier archetype, ti=0 pour l une, ti=1 pour l autre).
-func empreinteDeDecodage(t *testing.T, f *filmsource.Film) string {
+func empreinteDeDecodage(t *testing.T, f *source.Film) string {
 	t.Helper()
 	fc := NewFilmContext(f)
 	stats, err := KeyframeClosure(fc)

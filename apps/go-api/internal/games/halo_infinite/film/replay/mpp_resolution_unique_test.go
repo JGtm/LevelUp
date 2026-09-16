@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // TestGwWidthsForFilmSuitLaVersionDeFormat — LE TEMOIN DU CONSTAT 2, COTE SOCLES.
@@ -144,7 +144,7 @@ func appelsQualifiesDuFichier(t *testing.T, chemin string) []string {
 
 // filmFormat27BuildInconnu : la bobine `bcb6d393` (format 27) dont le nom de build est remplace
 // par un build HORS TABLE, de meme longueur — la substitution ne deplace aucun octet.
-func filmFormat27BuildInconnu(t *testing.T) *filmsource.Film {
+func filmFormat27BuildInconnu(t *testing.T) *source.Film {
 	t.Helper()
 	d0 := chunk00Brut(t, "bcb6d393")
 	patche := append([]byte(nil), d0...)
@@ -166,13 +166,13 @@ func chunk00Brut(t *testing.T, court string) []byte {
 	if err != nil {
 		t.Fatalf("lecture de %s : %v", chemin, err)
 	}
-	return filmsource.Inflate(b)
+	return source.Inflate(b)
 }
 
 // filmDUnChunk charge un film d un seul chunk deja inflate (le registre en position 0).
-func filmDUnChunk(t *testing.T, chunk []byte) *filmsource.Film {
+func filmDUnChunk(t *testing.T, chunk []byte) *source.Film {
 	t.Helper()
-	f, err := filmsource.Load(filmsource.MemoryChunks{chunk}, nil)
+	f, err := source.Load(source.MemoryChunks{chunk}, nil)
 	if err != nil {
 		t.Fatalf("chargement du temoin : %v", err)
 	}

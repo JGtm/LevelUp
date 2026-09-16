@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // filmCacheEnv — nom de la variable qui porte la racine du cache film
@@ -29,15 +29,15 @@ func cacheRoot() string { return os.Getenv(filmCacheEnv) }
 
 // newDiskFilm charge UN film du cache disque (film_manifests/<id>.json +
 // film_chunks/<id>/chunk_NN.bin) dans la forme que prennent les points d'entree : un
-// `*filmsource.Film` deja decompresse et decoupe. Renvoie (nil,false) si le film est absent.
+// `*source.Film` deja decompresse et decoupe. Renvoie (nil,false) si le film est absent.
 //
 // IL PASSE PAR `filmcache`, LA SEULE PORTE DU CACHE, ET C'EST NEUF (item 1.5, 2026-09-02).
 // Ce fichier reconstituait la disposition du cache pour son compte, avec une entree d'allowlist
 // datee dans l'ancien `filmcache_guard_test.go` ; sa justification etait un CYCLE D'IMPORT —
 // `filmcache` importait `objectives` pour ses types de chunk. Le lot 1 a supprime ce
-// cycle (les deux paquets dependent maintenant du paquet FEUILLE `filmsource`), donc la
+// cycle (les deux paquets dependent maintenant du paquet FEUILLE `source`), donc la
 // derogation n'a plus d'objet et la copie s'en va avec elle.
-func newDiskFilm(t *testing.T, id string) (*filmsource.Film, bool) {
+func newDiskFilm(t *testing.T, id string) (*source.Film, bool) {
 	t.Helper()
 	film, ok, err := filmcache.LoadFilm(cacheRoot(), id)
 	if err != nil {
