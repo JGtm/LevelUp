@@ -495,11 +495,17 @@ a server that holds the shared DB in write.
 go run ./cmd/replay-equiv                            # whole corpus (CORPUS.txt), compare only
 go run ./cmd/replay-equiv -films 000d5950 -update    # (re-)freeze the references of one film
 # flags: -corpus F  -films a,b (replaces the corpus)  -update  -mem-gib N (default 3, 0 = off)
-#        -title slug
+#        -title slug  -out-dir D (keep the child TSVs instead of a wiped temp dir)
 ```
 
 The equivalence harness of the build chain: it hashes the output of **every** scan, not just the
-final artifact, so a divergence is located down to the scan. Parent and child share one binary —
+final artifact, so a divergence is located down to the scan. **Since 2026-09-17 it names EVERY
+divergent scan of a film, not just the first** (D2), with the expected and obtained count and sha
+per scan and a header line `ECART sur N etape(s) sur M`: three divergent scans used to mean three
+full film decodes (one to three minutes each) to discover them one at a time, and a single
+divergence could not be told apart from a general one. `-out-dir D` keeps the child TSVs instead
+of wiping a temp dir, so the obtained digests can be diffed against the references without
+re-decoding. `-update` and the TSV reference format are unchanged. Parent and child share one binary —
 the parent plans and decodes nothing, each film is born in a bounded child (solo lock with bounded
 wait, sentinel) and dies with its RAM. References live in
 `internal/games/halo_infinite/film/replay/testdata/equivalence/<short8>.tsv`, each opening with its

@@ -516,11 +516,18 @@ franchement au lieu d'écrire des faits vides — arrêter un serveur qui tient 
 go run ./cmd/replay-equiv                          # tout le corpus (CORPUS.txt), comparaison seule
 go run ./cmd/replay-equiv -films 000d5950 -update  # (re)fige les références d'un seul film
 # flags : -corpus F  -films a,b (remplace le corpus)  -update  -mem-gib N (défaut 3, 0 = désarmé)
-#         -title slug
+#         -title slug  -out-dir D (conserve les TSV des enfants au lieu d'un temporaire effacé)
 ```
 
 Le harnais d'équivalence de la construction : il hache la sortie de **chaque** balayage, pas
-seulement l'artefact final, ce qui localise une divergence au balayage près. Parent et enfant vivent
+seulement l'artefact final, ce qui localise une divergence au balayage près. **Depuis le
+2026-09-17, il nomme TOUTES les étapes divergentes d'un film, pas seulement la première** (D2),
+avec le compte et le sha attendus / obtenus par étape et une ligne d'en-tête
+`ECART sur N etape(s) sur M` : trois étapes divergentes valaient jusque-là trois décodages
+complets (une à trois minutes chacun) pour les découvrir une à une, et une divergence locale ne
+se distinguait pas d'une divergence générale. `-out-dir D` conserve les TSV des enfants au lieu
+d'effacer un temporaire, pour comparer les digests obtenus aux références sans re-décoder.
+`-update` et le format des TSV de référence sont inchangés. Parent et enfant vivent
 dans le même binaire — le parent planifie et ne décode rien, chaque film naît dans un enfant borné
 (verrou solo en attente bornée, sentinelle) et meurt avec sa RAM. Les références vivent dans
 `internal/games/halo_infinite/film/replay/testdata/equivalence/<short8>.tsv`, chacune ouverte par son marqueur
