@@ -1349,6 +1349,14 @@ en = "Generating code…"
 fr = "Code à saisir"
 en = "Code to enter"
 
+[common.auth.xbox_copy_code]
+fr = "Copier le code"
+en = "Copy code"
+
+[common.auth.xbox_code_copied]
+fr = "Code copié"
+en = "Code copied"
+
 [common.auth.xbox_only_if_you_clicked]
 fr = "Ne saisis ce code que si TU viens de cliquer \"Se connecter avec Xbox\" sur LevelUp."
 en = "Only enter this code if YOU just clicked 'Sign in with Xbox' on LevelUp."
