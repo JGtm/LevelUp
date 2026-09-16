@@ -1,3 +1,15 @@
+## [2026-09-16] Chantier décodeur — fusion du lot 2.5.b (la couche profile, données seulement), les cinq couches existent
+
+**Statut** : Complété (fusion) / En cours (réconciliation 2.6 volet facts).
+
+**Décision technique principale.** Le lot 2.5.b (`feat/decfilm-25b`, 4 commits, 244 fichiers) applique V19 : `film/profile` naît comme FEUILLE de données (`go list -deps` ne rend qu'elle-même) — `I0Layout` et ses largeurs, `MPPWidths`, `PrecisionDescriptor`, `AxisRange` / `Vec3Range` et les cinq plages, `FilmIdentity`, la table `profile_table.go`, `map_bounds.go`, les tables par build et par format, `Profile` et ses sous-profils avec `Resoudre` ; la DÉTECTION reste en `grammar` (`ResolveProfile`, `DetectI0LayoutOf`, `ReadFilmIdentity`, `BuildProfileFromFilm`) et rend des valeurs de profil par `profile.ClesDuFilm` — l'inversion de dépendance que le déplacement pur ne pouvait pas faire. 12 exports, zéro copie, 269 sites requalifiés. R3 du ratchet des couches passe STRICT (`couchesVidesTolerees` supprimée avec sa dernière entrée) ; R1 tenu sans allowlist. `GrammarRev` .33 -> .34 (extraction, sortie identique ; `film/profile` entre dans les racines hachées ; chronique rotationnée .21-.26 vers l'archive), `KillSourceDecoderRev` inchangée. Statués sur mesure : D8 (2.5.b) `player_table_control.go` décode des octets et reste en `grammar` (avec D3 (2.5.a), pour 2.5.e) ; D9 `ProfilDeBalayage` reste, pure donnée mais ni par build ni par carte ; D10 `SlotBand` n'est pas du profil (la carte de la note comptait sept fichiers, il y en a six) ; D11 `film/profile` sans test de frontière (2.5.e). Makefile et ci.yml apprennent `film/profile` (la couche neuve sortait des jobs, comme `facts` au 2.5).
+
+**Gates.** Équivalence 20 films : **20 identiques, 0 différent** (21 min, aucune référence re-figée) ; corpus gate `--base=42212abab` : **14/14 `ok`, 60 -> 60, 0/0/0, aucun témoin absent, exit 0** (23 min). D4 tenu au sens strict, contenu ET forme.
+
+**Croisement avec 2.6 volet facts.** Les deux lots ont monté `GrammarRev` au rang .34 sur leur branche : 2.5.b fusionne d'abord ; l'agent de 2.6 réconcilie sa branche sur l'intégration au rang .35 (deux entrées de chronique conservées, `facts.Rev` inchangée avec empreinte régénérée pour la valeur de `GrammarRev` et trois fichiers de `facts/` requalifiés, `source.Rev` et `shapes.golden` inchangés — s'ils rougissent c'est un signal).
+
+**Prochaine étape** : réconciliation puis fusion du volet facts de 2.6 (équivalence + corpus gate par le pilote sur la tête fusionnée), lancement de 2.5.e + 2.5.g (brief prêt), puis 2.6 volet grammar/profile/replay, 2.6.3, clôture M2.
+
 ## [2026-09-16] Chantier décodeur — fusion du lot 2.5.h (type HighlightEvent en domaine), 2.6 volet facts lancé en parallèle
 
 **Statut** : Complété (fusion) / En cours (2.5.b, 2.6 volet facts+source).
