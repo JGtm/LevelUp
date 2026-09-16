@@ -132,11 +132,11 @@ token PROPRE du joueur pour les succès Xbox Live ; le store rend le sentinelle
 
 ## 3. Étape 0 — Préparation (rapide)
 
-- [ ] 0.1 Worktree `../LevelUp-wt-sync-robustesse` sur `wt/sync-robustesse` (créé par le pilote) ;
+- [x] 0.1 Worktree `../LevelUp-wt-sync-robustesse` sur `wt/sync-robustesse` (créé par le pilote) ;
       `git branch --show-current`. Pas de `npm install`.
-- [ ] 0.2 Lire `CLAUDE.md`, ce plan, `internal/platform/auth/pool/README.md`,
+- [x] 0.2 Lire `CLAUDE.md`, ce plan, `internal/platform/auth/pool/README.md`,
       `.ai/PLAN_SYNC_POOL_SEAMS_SCHEMA_2026-09-16.md` §8, skills `plan-execution`, `arch-rules`.
-- [ ] 0.3 Baseline : `cd apps/go-api && go build ./... && go test ./cmd/levelup/... ./internal/platform/auth/pool/... ./internal/sync/ -count=1 -timeout 30m` → 0 (noter la durée).
+- [x] 0.3 Baseline : `cd apps/go-api && go build ./... && go test ./cmd/levelup/... ./internal/platform/auth/pool/... ./internal/sync/ -count=1 -timeout 30m` → 0 (noter la durée).
 
 **Gate G0** : branche correcte, baseline verte notée dans « Avancement ».
 
@@ -303,4 +303,21 @@ Journal de phase : section « Avancement » en fin de fichier. Reprise : la lire
 
 ## Avancement
 
-(vide — plan révisé, non exécuté au 2026-09-16 19:xx)
+### Étape 0 — Préparation — CLOSE le 2026-09-16 21:40
+
+- Items : 0.1 `[x]` (branche `wt/sync-robustesse`, worktree dédié, `git branch --show-current` vérifié),
+  0.2 `[x]` (CLAUDE.md du worktree identique à la racine, plan lu en entier, README du pool,
+  `.ai/PLAN_SYNC_POOL_SEAMS_SCHEMA_2026-09-16.md` §8, skills `plan-execution` et `arch-rules`,
+  5 dernières entrées de `.ai/thought_log.md`), 0.3 `[x]`.
+- Gate G0 : `go build ./...` → code 0 (79 s) ; `go test ./cmd/levelup/... ./internal/platform/auth/pool/... ./internal/sync/ -count=1 -timeout 30m`
+  → code 0 (84 s), 3 paquets `ok` (`cmd/levelup` 0,813 s ; `internal/platform/auth/pool` 0,715 s ;
+  `internal/sync` 67,764 s). CGO actif (`CGO_ENABLED=1`, gcc `/c/msys64/ucrt64/bin/gcc`, go 1.26.1).
+- Écarts : aucun. Baseline de tests : aucune paire retirée (aucun test touché).
+- Vérifications sur pièces faites pendant l'étape (numéros du 2026-09-16 confirmés) :
+  `pool.go:269` message « aucun slot sain disponible (PolicyAnyPublic) » ; `pooled_client.go`
+  `doPublic` enveloppe déjà en `%w` ; `engine.go:245-251` `AddWarning` + `break` ;
+  `domain/sync.go` `Status()` ; `haloclient.HTTPError{StatusCode, RetryAfter}` ; le type rendu par
+  `GetMatchHistory` est `[]MatchHistoryEntry` (alias `haloclient.MatchHistoryEntry`,
+  `haloclient_reexport.go:23`) et NON `[]domain.MatchHistoryEntry` comme écrit en 1.2 —
+  variante appliquée à l'écriture du code ; l'interface `pool.Pool` n'expose PAS `GlobalCooldown`
+  (types.go:118-175) → la constante nommée prévue par 1.2 sera utilisée.
