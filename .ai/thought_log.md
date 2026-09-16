@@ -1,3 +1,15 @@
+## [2026-09-16] Chantier décodeur — fusion du lot 2.5 (quatre couches sur cinq, déplacements purs), arbitrage V19
+
+**Statut** : Complété (fusion) / En cours (2.5.b, 2.5.h).
+
+**Décision technique principale.** Le lot 2.5 (`feat/decfilm-25`, 5 commits) fusionne dans l'intégration avec quatre couches en place par `git mv` purs, une par commit, chacune gatée par une équivalence courte (10 films, 0 différence) : `analysis/objectiveevents` -> `film/facts/objectives`, `filmdec` -> `film/grammar` (+ `grammar/weaponv3`), `analysis/filmsource` -> `film/source`, `killsource` + `replay/fallback` -> `film/facts/`. L'ORDRE de la note (§2.7 : `filmsource` d'abord) a été inversé sur mesure : descendre la source en premier faisait rougir D9 sur 17 fichiers (`objectiveevents` et `weaponv3` vivaient encore sous `analysis/` et l'importaient). `GrammarRev` .29 -> .33 (une entrée par couche, « déplacement pur, sortie identique »), `KillSourceDecoderRev` inchangée. Ratchet des couches : `aretesTolerees` 10 -> 3 (toutes vers `analysis` racine, descentes de symboles restantes), `paquetsHorsLieuToleres` 3 -> 0 puis SUPPRIMÉE avec son mécanisme — R2 (le lieu) est le premier axe passé STRICT ; D9 3 -> 1. Baseline de tests re-pointée (86 lignes `objectiveevents`), `Makefile` + `ci.yml` : `film/facts/...` entre dans les jobs unitaire et couverture (il en sortait silencieusement).
+
+**Arrêt propre, mesuré (V19).** 2.5.b (`profile`) n'est PAS un déplacement pur : `i0_layout.go` et `profile.go` balayent le film (détection du découpage i0, `offline_biped`, `default_state_arch`…) — c'est de la grammaire ; 43 déclarations des 7 fichiers de profil sont référencées ailleurs dont 12 privées. Arbitrage du pilote : **profile = DONNÉES** (types, table, catalogue descendent ; la détection reste en `grammar` et rend des valeurs de profil ; sens `grammar -> profile`, jamais l'inverse) — lot d'extraction à part. Item neuf **2.5.h** : le type `analysis.HighlightEvent` remonte en `domain/` (~60 consommateurs title-agnostic) AVANT que son parseur descende en `grammar` (V15 (4)) — parallélisable avec 2.5.b. 2.5.e (façade, bascule `film/internal/`, ratchet strict, règle neuve pour D6 : `replay` n'importe pas `source`) et 2.5.g viennent après. D7 (chemins morts dans `COMMANDS.md`) traité dans 2.5.e.
+
+**Gates.** 4 équivalences courtes 10/0 ; corpus gate `--base=7d6ecfaf6` **14/14 `ok`, 60 -> 60, 0/0/0, aucun témoin absent** (11,2 min) ; 40 cuissons, 40 identiques. Fusion : batterie complète + `go vet ./...` + lint.
+
+**Prochaine étape** : lancer 2.5.b (extraction profile) et 2.5.h (type HighlightEvent) en parallèle ; puis 2.5.e + 2.5.g ; puis 2.6 ; clôture M2 (fusion origin/feat/v75 dans l'intégration d'abord, recuisson du parc à demander).
+
 ## [2026-09-16] Chantier décodeur — fusion du lot 2.4 (une seule porte aux octets), feat/v75 remis à niveau, 2.5 lancé sur base provisoire
 
 **Statut** : Complété (fusion 2.4) / En cours (2.5).
