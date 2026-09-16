@@ -27,7 +27,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // objModeCorpus — les films de mode CONNU. Le mode vient de `game_variant_name`, releve dans

@@ -4,7 +4,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // camo_duration_distribution_test.go — LA DISTRIBUTION DES DUREES DES EPISODES CAMO DU

@@ -3,7 +3,7 @@ package replay
 import (
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // flag_carries_marker.go — LE CONTROLE INDEPENDANT, et les comptes qu'il alimente.

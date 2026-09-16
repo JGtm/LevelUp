@@ -46,8 +46,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // agFenetreMS est la tolérance du critère (b) : 4 930 ± 600 ms, la demi-fenêtre sous laquelle

@@ -31,9 +31,9 @@ import (
 	"context"
 	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // ouvrirManifeste ouvre le manifeste du film et JOURNALISE ce qu'il en est.
@@ -65,8 +65,8 @@ func ouvrirManifeste(ctx context.Context, matchID, filmDir string) *filmcache.So
 // son propre journal, exactement comme un repertoire vide le faisait avant. Echouer ici priverait
 // la cuisson des etapes qui ne dependent pas du film (catalogues, killsource) et changerait
 // l'ordre des etapes observees.
-func chargerFilm(ctx context.Context, matchID, filmDir string, src *filmcache.Source) *source.Film {
-	film, err := source.LoadDir(filmDir, metaDuManifeste(src))
+func chargerFilm(ctx context.Context, matchID, filmDir string, src *filmcache.Source) *decfilm.Film {
+	film, err := decfilm.LoadDir(filmDir, metaDuManifeste(src))
 	if err != nil {
 		slog.WarnContext(ctx, "replaybuild: chunks du film illisibles — aucun balayage ne lira ce film",
 			"err", err, "match_id", matchID, "filmDir", filmDir)
@@ -77,12 +77,12 @@ func chargerFilm(ctx context.Context, matchID, filmDir string, src *filmcache.So
 
 // metaDuManifeste rend l'index du manifeste, ou nil s'il n'y en a pas.
 //
-// MANIFESTE ABSENT N'EST PAS FATAL : `source.LoadDir` synthetise alors les NUMEROS de chunk
+// MANIFESTE ABSENT N'EST PAS FATAL : `decfilm.LoadDir` synthetise alors les NUMEROS de chunk
 // depuis les noms de fichiers, ce qui suffit aux balayages de `grammar`. Ce qui manque, ce sont
 // le TYPE et le DEBUT de chaque chunk — donc les enregistrements d'entite (`objectives`
 // ne balaie que les chunks decrits par le manifeste) et l'horloge de l'armement de la bombe.
 // `readFilmStats` le dit et le journalise plutot que de publier une courbe vide.
-func metaDuManifeste(src *filmcache.Source) []source.ChunkMeta {
+func metaDuManifeste(src *filmcache.Source) []decfilm.ChunkMeta {
 	if src == nil {
 		return nil
 	}
@@ -102,7 +102,7 @@ type filmDeaths struct {
 
 // lireMorts lit le fil des morts du film charge. Le chunk highlight est deja decompresse : ce
 // qui reste est le parse, fait une fois pour les deux consommateurs.
-func lireMorts(film *source.Film) filmDeaths {
+func lireMorts(film *decfilm.Film) filmDeaths {
 	list, err := replay.ScanDeaths(film)
 	return filmDeaths{list: list, err: err}
 }

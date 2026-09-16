@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
@@ -20,7 +20,7 @@ func TestResolveKillIdentity_Gamertag(t *testing.T) {
 }
 
 func TestResolveKillIdentity_ReplixuidPrefixe(t *testing.T) {
-	// "xuid:<N>" est la forme de repli du décodeur (killsource.XUIDNamePrefix) quand le
+	// "xuid:<N>" est la forme de repli du décodeur (decfilm.XUIDNamePrefix) quand le
 	// film ne porte aucun gamertag pour ce joueur : le nombre EST déjà le xuid, aucune
 	// table à consulter.
 	xuid, ok := resolveKillIdentity("xuid:2535469190789936", nil)
@@ -73,20 +73,20 @@ func TestGamertagXUIDIndex_ListeVide(t *testing.T) {
 // couples publiés vaut le nombre de kills fournis.
 
 // killDe fabrique un kill killsource minimal : un tueur, une victime, un instant.
-func killDe(tueur, victime string, ms int) killsource.Kill {
-	return killsource.Kill{TimeMS: ms, Victim: victime, Feed: killsource.FeedTruth{Killer: tueur, Present: true}}
+func killDe(tueur, victime string, ms int) decfilm.Kill {
+	return decfilm.Kill{TimeMS: ms, Victim: victime, Feed: decfilm.FeedTruth{Killer: tueur, Present: true}}
 }
 
 func TestResolveKills_TueurEtVictimeResolus(t *testing.T) {
 	idx := map[string]uint64{"Tueur": 11, "Victime": 22}
-	r := resolveKills([]killsource.Kill{killDe("Tueur", "Victime", 4200)}, idx)
+	r := resolveKills([]decfilm.Kill{killDe("Tueur", "Victime", 4200)}, idx)
 	if len(r.refs) != 1 || r.refs[0].XUID != 11 || r.refs[0].TimeMS != 4200 {
 		t.Fatalf("refs = %+v, attendu un frag du xuid 11 à 4200 ms", r.refs)
 	}
 	if len(r.pairs) != 1 {
 		t.Fatalf("pairs = %+v, attendu un couple", r.pairs)
 	}
-	// L'INSTANT VOYAGE VERBATIM : `killsource.Kill.TimeMS` est déjà sur l'horloge du match
+	// L'INSTANT VOYAGE VERBATIM : `decfilm.Kill.TimeMS` est déjà sur l'horloge du match
 	// (celle du fil des morts) — aucune conversion ici, ni ailleurs (cf. MatchKillsInput).
 	veut := replay.KillRef{KillerXUID: 11, VictimXUID: 22, TimeMS: 4200}
 	if r.pairs[0] != veut {
@@ -101,7 +101,7 @@ func TestResolveKills_VictimeInconnueEcarteeEtComptee(t *testing.T) {
 	// Cas NOMINAL : la victime est un bot, elle n'a aucun xuid au fil des morts. Le frag
 	// reste crédité au tueur (jointure équipement), le COUPLE est perdu — et compté.
 	idx := map[string]uint64{"Tueur": 11}
-	r := resolveKills([]killsource.Kill{killDe("Tueur", "Bot 004", 900)}, idx)
+	r := resolveKills([]decfilm.Kill{killDe("Tueur", "Bot 004", 900)}, idx)
 	if len(r.refs) != 1 {
 		t.Fatalf("refs = %+v, attendu le frag du tueur malgré la victime inconnue", r.refs)
 	}
@@ -115,7 +115,7 @@ func TestResolveKills_VictimeInconnueEcarteeEtComptee(t *testing.T) {
 
 func TestResolveKills_TueurInconnuPerdLesDeuxSorties(t *testing.T) {
 	idx := map[string]uint64{"Victime": 22}
-	r := resolveKills([]killsource.Kill{killDe("Fantome", "Victime", 900)}, idx)
+	r := resolveKills([]decfilm.Kill{killDe("Fantome", "Victime", 900)}, idx)
 	if len(r.refs) != 0 || len(r.pairs) != 0 {
 		t.Fatalf("refs = %+v, pairs = %+v, attendu vides", r.refs, r.pairs)
 	}
@@ -129,7 +129,7 @@ func TestResolveKills_TueurInconnuPerdLesDeuxSorties(t *testing.T) {
 // compté — c'est l'invariant qui rend `MatchKillsInput.Dropped` lisible.
 func TestResolveKills_ComptesConserves(t *testing.T) {
 	idx := map[string]uint64{"A": 1, "B": 2}
-	kills := []killsource.Kill{
+	kills := []decfilm.Kill{
 		killDe("A", "B", 100),         // couple complet
 		killDe("B", "Bot 001", 200),   // victime bot
 		killDe("Inconnu", "A", 300),   // tueur hors roster
@@ -156,11 +156,11 @@ func TestKillRefs_PortesFermees(t *testing.T) {
 	deaths := filmDeaths{list: []replay.Death{{XUID: 22, Gamertag: "Victime"}}}
 	// `BijectionMargin > 0` et aucune alerte de santé : la porte ligne-par-ligne est OUVERTE,
 	// ce qui isole chacun des deux autres refus.
-	ouvert := &killsource.Result{BijectionMargin: 1, Kills: []killsource.Kill{killDe("Tueur", "Victime", 10)}}
+	ouvert := &decfilm.Result{BijectionMargin: 1, Kills: []decfilm.Kill{killDe("Tueur", "Victime", 10)}}
 	if _, mk := b.killRefs("m", deaths, nil); mk.Read || len(mk.Kills) != 0 {
 		t.Fatalf("killsource nil : MatchKills = %+v, attendu non lu", mk)
 	}
-	if _, mk := b.killRefs("m", deaths, &killsource.Result{}); mk.Read {
+	if _, mk := b.killRefs("m", deaths, &decfilm.Result{}); mk.Read {
 		t.Fatalf("porte ligne-par-ligne fermée : MatchKills lu, attendu non lu")
 	}
 	if _, mk := b.killRefs("m", filmDeaths{err: errFilTest}, ouvert); mk.Read {

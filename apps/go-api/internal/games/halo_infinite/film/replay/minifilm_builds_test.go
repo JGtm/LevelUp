@@ -41,7 +41,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // miniFilmBuildBudget : le plafond par bobine, arbitrage V7 du plan (1 Mio).

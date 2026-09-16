@@ -5,7 +5,7 @@
 // V19 (2), prerequis de V15 (4) mesure au §4 D4 ; ADR 0034). Le type vivait dans
 // `internal/analysis`, a cote du lecteur binaire qui le produit
 // (`grammar.ParseHighlightEvents`). Or ce lecteur est de la GRAMMAIRE DE FILM : il
-// doit descendre sous `internal/games/halo_infinite/film/grammar`. Le faire descendre
+// doit descendre sous `internal/games/halo_infinite/film/internal/grammar`. Le faire descendre
 // sans sortir d'abord le TYPE laisserait le choix entre deux fautes — `internal/analysis`
 // importerait un paquet de titre (garde-rail D9), ou le decodeur importerait
 // `internal/analysis` (regle R2 du ratchet des couches). Le type remonte donc D'ABORD,

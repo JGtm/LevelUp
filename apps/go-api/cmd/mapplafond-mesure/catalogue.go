@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/himap"
 )
@@ -62,7 +62,7 @@ func chargeCartes(racine, slug string) ([]carte, []string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	bornes, err := profile.LoadMapQuantCatalog(res.MapQuantBoundsPath(slug))
+	bornes, err := decfilm.LoadMapQuantCatalog(res.MapQuantBoundsPath(slug))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -170,7 +170,7 @@ func chargeBrutPOC(chemin string) map[int][][2]float64 {
 // catalogue porte plusieurs entrees pour un meme dossier (une carte classee et sa version non
 // classee), et la cuisson prend l'UNION de leurs ancres, dedupliquee par position — un doublon
 // pese sur la mediane qui donne le sol joue sans etre une mesure de plus.
-func ancresParModule(cat *replay.MapObjectivesCatalog, bornes *profile.MapQuantCatalog) map[string][][3]float64 {
+func ancresParModule(cat *replay.MapObjectivesCatalog, bornes *decfilm.MapQuantCatalog) map[string][][3]float64 {
 	ids := make([]string, 0, len(cat.Maps))
 	for id := range cat.Maps {
 		ids = append(ids, id)
@@ -207,7 +207,7 @@ func ancresParModule(cat *replay.MapObjectivesCatalog, bornes *profile.MapQuantC
 // celui du catalogue de bornes, `nom affiche -> module` — la meme table, declaree une seule
 // fois, que le service du fond de carte emploie en production
 // (`internal/service/replay_map_background.go`).
-func moduleDeLEntree(e replay.MapObjectivesEntry, bornes *profile.MapQuantCatalog) string {
+func moduleDeLEntree(e replay.MapObjectivesEntry, bornes *decfilm.MapQuantCatalog) string {
 	if chemin, ok := himap.ChercheModuleInstalle(e.Module); ok {
 		return filepath.Base(filepath.Dir(chemin))
 	}

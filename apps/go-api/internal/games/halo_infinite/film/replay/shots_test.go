@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // posAt fabrique un échantillon de position portant un cap de visée i21.

@@ -32,7 +32,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // decodeFilmZoneReads balaye les proprietes reseau de `ti=13` et JOURNALISE ce qu'il en est.

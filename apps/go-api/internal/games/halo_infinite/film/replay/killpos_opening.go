@@ -1,6 +1,6 @@
 package replay
 
-import "levelup/go-api/internal/games/halo_infinite/film/grammar"
+import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 
 // killpos_opening.go — OÙ L'ENGAGEMENT A COMMENCÉ, ET POURQUOI CE N'EST QU'UN PROXY.
 //

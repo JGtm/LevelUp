@@ -34,8 +34,7 @@ import (
 	"sort"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponscan"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/weapons/filmshell"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -82,7 +81,7 @@ func BuildWeaponShotsBatch(
 	// base : c est la seule quantite qui ne depende d aucune resolution.
 	counts := map[int]map[uint64]int{}
 	for _, data := range chunks {
-		for _, ev := range weaponscan.ScanFireEventsB5(data, zeroEstimator) {
+		for _, ev := range decfilm.ScanFireEventsB5(data, zeroEstimator) {
 			pi := ev.FilmIndex5
 			if pi < 0 || pi > maxReplicationIndex {
 				continue
@@ -146,7 +145,7 @@ func resolvePlayerIndices(rosterXUIDs []string, chunks [][]byte) map[int]string 
 }
 
 // motifDuXUID : le xuid encode en 8 octets LITTLE-ENDIAN puis relu en BIG-ENDIAN. C est sous
-// cette forme qu il apparait dans le flux de replication (methode `weaponv3.ResolveXuidToPI`).
+// cette forme qu il apparait dans le flux de replication (methode `decfilm.ResolveXuidToPI`).
 //
 // C EST UN RENVERSEMENT D OCTETS, et il s ecrit comme tel depuis le lot 2.5.e : ecrire un mot
 // dans un sens puis le relire dans l autre EST `bits.ReverseBytes64`, et c est deja
@@ -155,7 +154,7 @@ func resolvePlayerIndices(rosterXUIDs []string, chunks [][]byte) map[int]string 
 // `encoding/binary`, que le ratchet des lectures brutes comptait ici comme une porte aux octets.
 func motifDuXUID(xuid uint64) uint64 { return bits.ReverseBytes64(xuid) }
 
-// chercherMotifs : LA MEME RECHERCHE QUE `weaponv3.ResolveBest`, EN UNE SEULE PASSE.
+// chercherMotifs : LA MEME RECHERCHE QUE `decfilm.ResolveBest`, EN UNE SEULE PASSE.
 //
 // POURQUOI ELLE EXISTE — LA VERSION NAIVE REND LE BACKFILL IMPRATICABLE. `ResolveBest` balaie
 // le film UNE FOIS PAR XUID, et chaque position y coute une relecture de 64 bits : sur un roster
@@ -213,7 +212,7 @@ func chercherDansChunk(
 			continue // premiere occurrence gagnante, comme `ResolveBest`
 		}
 		debut := pos - 63
-		if debut < weaponv3.PIBits {
+		if debut < decfilm.PIBits {
 			continue // pas assez de bits AVANT le motif pour porter un indice
 		}
 		out[xuid] = lireIndiceAvant(data, debut)
@@ -226,7 +225,7 @@ func chercherDansChunk(
 // lireIndiceAvant : les 5 bits qui precedent immediatement le motif, MSB-first.
 func lireIndiceAvant(data []byte, debutMotif int) int {
 	v := 0
-	for i := debutMotif - weaponv3.PIBits; i < debutMotif; i++ {
+	for i := debutMotif - decfilm.PIBits; i < debutMotif; i++ {
 		v = v<<1 | int((data[i>>3]>>uint(7-(i&7)))&1)
 	}
 	return v

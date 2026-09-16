@@ -25,8 +25,8 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vehicleCensusTolUS est la TOLERANCE de la fenetre d une vie, de part et d autre de son

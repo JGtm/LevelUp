@@ -50,8 +50,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // miniBobineChunks : les NUMEROS de fichier des chunks de la mini-bobine, dans l'ordre. Ce sont

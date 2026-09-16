@@ -3,7 +3,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // projectiles.go — TRAJECTOIRES DE PROJECTILE projetées sur la grille du rejeu.

@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // objectives.go — LE CALQUE DES ACTIONS D'OBJECTIF : ce que chaque joueur a FAIT, nomme et

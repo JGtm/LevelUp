@@ -9,7 +9,7 @@ package archlint
 // des valeurs deja lues. A la pose de ce ratchet c etait faux — SEPT lecteurs de bits distincts
 // vivaient dans NEUF paquets, et chacun reposait sur sa propre idee du bourrage, du
 // debordement et de l ordre des bits. Le lot 2.4 les a ramenes a une facade unique
-// (`film.Source`, nee dans `internal/games/halo_infinite/film/source/`, decision V15 (1)).
+// (`film.Source`, nee dans `internal/games/halo_infinite/film/internal/source/`, decision V15 (1)).
 //
 // # L ALLOWLIST N EXISTE PLUS (lot 2.5.e, 2026-09-16)
 //
@@ -69,7 +69,7 @@ package archlint
 //
 // # LA CIBLE
 //
-// La couche `source` — aujourd hui `internal/games/halo_infinite/film/source/`, demain
+// La couche `source` — aujourd hui `internal/games/halo_infinite/film/internal/source/`, demain
 // `film/internal/source` (lot 2.5.a) — est le SEUL lieu autorise. Elle est exclue du balayage.
 // Tout autre site des racines surveillees est une violation, sans exception : l allowlist
 // datee a ete supprimee avec sa derniere entree au lot 2.5.e.
@@ -121,7 +121,7 @@ package archlint
 //	            par appel sur 109 168 positions reelles des dix bobines versionnees
 //	            (`killsource/equivalence_lecteur_test.go`) et de bout en bout par le golden des
 //	            triplets fige AVANT l absorption (`chaines_evenements_test.go`).
-//	2.4.2 (63)  VIDEE le 2026-09-18. La facade EST `internal/games/halo_infinite/film/source` (V15 (1)), et
+//	2.4.2 (63)  VIDEE le 2026-09-18. La facade EST `internal/games/halo_infinite/film/internal/source` (V15 (1)), et
 //	            elle porte desormais TOUT ce qui touche un octet de film :
 //	              - le lecteur canonique [source.Bits] et ses quatre conventions de bord
 //	                nommees (`BitsAt`, `BitAt`, `BitsTolerants`, `BitsTronques`) ;
@@ -211,7 +211,7 @@ var racinesOctetsBruts = []string{
 type exclusionOctets struct{ chemin, raison string }
 
 var exclusionsOctetsBruts = []exclusionOctets{
-	{chemin: "internal/games/halo_infinite/film/source", raison: "LA COUCHE SOURCE : le seul lieu " +
+	{chemin: "internal/games/halo_infinite/film/internal/source", raison: "LA COUCHE SOURCE : le seul lieu " +
 		"autorise (ADR 0034 D-2). Passe sous `film/internal/source` au lot 2.5.a ; ce " +
 		"deplacement se repercute ICI, sur cette ligne."},
 	{chemin: "cmd/weapon-sounds", raison: "lit les banques Wwise de l INSTALLATION DU JEU, " +

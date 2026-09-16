@@ -15,7 +15,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
@@ -98,12 +98,12 @@ func sweepFilm(cache, id string) error {
 	if !ok {
 		return fmt.Errorf("film absent du cache (%s)", cache)
 	}
-	recs, truncated := objectives.StatRecordsCtx(context.Background(), film, id)
+	recs, truncated := decfilm.StatRecordsCtx(context.Background(), film, id)
 	deaths, err := replay.ScanDeaths(film)
 	if err != nil {
 		return fmt.Errorf("fil des morts : %w", err)
 	}
-	identity := objectives.SlotIdentityByDeaths(recs, deathInstants(deaths))
+	identity := decfilm.SlotIdentityByDeaths(recs, deathInstants(deaths))
 	fmt.Printf("IDENTITE\t%s\tslots_nommes=%d\tenregistrements=%d\ttronque=%v\n",
 		id, len(identity), len(recs), truncated)
 	for _, slot := range sortedSlots(identity) {
@@ -117,11 +117,11 @@ func sweepFilm(cache, id string) error {
 //
 // LES SLOTS NON NOMMES SORTENT AUSSI (xuid « - ») : la confrontation ne s'en sert pas,
 // mais un balayage qui les tairait cacherait son propre denominateur.
-func sweepEmplacements(id string, recs []objectives.StatRecord, identity map[int]string) {
+func sweepEmplacements(id string, recs []decfilm.StatRecord, identity map[int]string) {
 	for comp := 0; comp <= sweepMaxComp; comp++ {
 		for _, sideB := range []bool{false, true} {
-			c := objectives.StatComponent{Comp: comp, SideB: sideB}
-			series := objectives.SeriesTotal(recs, c, false)
+			c := decfilm.StatComponent{Comp: comp, SideB: sideB}
+			series := decfilm.SeriesTotal(recs, c, false)
 			for _, slot := range sortedSeriesSlots(series) {
 				pts := series[slot]
 				if len(pts) == 0 {
@@ -140,10 +140,10 @@ func sweepEmplacements(id string, recs []objectives.StatRecord, identity map[int
 
 // deathInstants traduit le fil des morts dans la forme du pont d'identite — meme
 // conversion que `deathInstantsOf` du rejeu (xuid decimal, horloge du match).
-func deathInstants(deaths []replay.Death) []objectives.DeathInstant {
-	out := make([]objectives.DeathInstant, 0, len(deaths))
+func deathInstants(deaths []replay.Death) []decfilm.DeathInstant {
+	out := make([]decfilm.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
-		out = append(out, objectives.DeathInstant{
+		out = append(out, decfilm.DeathInstant{
 			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS),
 		})
 	}
@@ -169,7 +169,7 @@ func sortedSlots(m map[int]string) []int {
 	return out
 }
 
-func sortedSeriesSlots(m map[int][]objectives.ScorePoint) []int {
+func sortedSeriesSlots(m map[int][]decfilm.ScorePoint) []int {
 	out := make([]int, 0, len(m))
 	for s := range m {
 		out = append(out, s)

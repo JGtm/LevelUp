@@ -65,7 +65,7 @@ var killScopeRE = regexp.MustCompile(
 // verrouillée par un test, pas par ce ratchet.
 var killScopeOwners = []string{
 	"internal/domain/killscope/",
-	"internal/games/halo_infinite/film/facts/killsource/",
+	"internal/games/halo_infinite/film/internal/facts/killsource/",
 }
 
 func TestNoRawKillScopeLiteral(t *testing.T) {

@@ -29,7 +29,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // Translocation est UNE téléportation exécutée, sur l'axe de frames du document.

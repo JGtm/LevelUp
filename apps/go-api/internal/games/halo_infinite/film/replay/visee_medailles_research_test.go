@@ -43,7 +43,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/highlightevent"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const adsFilmsDirEnv = "ADS_FILMS_DIR"

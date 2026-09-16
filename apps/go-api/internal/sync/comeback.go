@@ -43,7 +43,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // steaktacularMedalIDForTitle résout l'ID de la médaille "killing spree"
@@ -100,7 +100,7 @@ func computeMatchDominanceFlag(ctx context.Context, db *sql.DB, xuid, matchID st
 	// CTF : la courbe de captures prime quand elle existe. Les autres modes à
 	// objectif (zone/hill/skull) marquent au tick, pas à l'event : leur courbe de
 	// score reste non décodée en live, ils passent directement au repli.
-	if objectives.ObjectiveTypeOf(gameVariant) == objectives.ObjectiveTypeFlag {
+	if decfilm.ObjectiveTypeOf(gameVariant) == decfilm.ObjectiveTypeFlag {
 		if flag, ok := objectiveCurveDominanceFlag(ctx, db, matchID, myTeamID, outcome); ok {
 			return flag, nil
 		}

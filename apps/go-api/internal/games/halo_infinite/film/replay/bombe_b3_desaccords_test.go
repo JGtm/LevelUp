@@ -39,7 +39,7 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // b3Films : les trois films porteurs des quatre désaccords de B2-V1.

@@ -36,24 +36,23 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/port"
 )
 
 // filmStats est ce que le second decodage rend au constructeur.
 type filmStats struct {
 	score      *replay.ScoreInput
-	objectives []objectives.IdentifiedEvent
+	objectives []decfilm.IdentifiedEvent
 	// objectivesUnnamed est le nombre d evenements d objectif que le film NOMMAIT et que le
 	// pont par manche n a pas su attribuer. Il voyage jusqu au document parce qu il est le
 	// DENOMINATEUR manquant : sans lui, `coverage.objectives.available` compte les rescapes
-	// et un calque partiel se lit ~100 % (cf. objectives.IdentifyNamedEventsByRound).
+	// et un calque partiel se lit ~100 % (cf. decfilm.IdentifyNamedEventsByRound).
 	objectivesUnnamed int
 	// objectivesRefused est le nombre d evenements que la GARDE D EFFECTIF refuse de publier :
 	// le match compte plus de joueurs que le statborg n a de slots d entite
-	// (objectives.RosterFitsStatborg). Il voyage pour la meme raison que le precedent —
+	// (decfilm.RosterFitsStatborg). Il voyage pour la meme raison que le precedent —
 	// un calque muet doit dire ce que son silence coute.
 	objectivesRefused int
 	// flag porte les lectures du DRAPEAU VIVANT que seul cet etage peut faire : les
@@ -76,7 +75,7 @@ type filmStats struct {
 	// statborgIdentity est le pont slot d entite -> xuid PAR MANCHE, deja resolu pour les deux
 	// calques d objectif. Il voyage jusqu au document parce que le REGISTRE d identite le
 	// publie avec sa provenance (`identity.statborgSlots`) — il ne le recalcule pas.
-	statborgIdentity objectives.RoundIdentity
+	statborgIdentity decfilm.RoundIdentity
 }
 
 // readFilmStats decode les enregistrements d'entite et assemble les entrees des deux calques.
@@ -89,13 +88,13 @@ type filmStats struct {
 // cache) et un film SANS MANIFESTE. Le second garde son sens apres le lot 1 — le film se charge
 // tres bien sans manifeste, mais aucun de ses chunks n'a alors de type ni de `start_ms`, donc
 // rien n'est datable ici (cf. [chunksDuManifeste]).
-func readFilmStats(ctx context.Context, matchID string, film *source.Film,
+func readFilmStats(ctx context.Context, matchID string, film *decfilm.Film,
 	facts port.MatchFacts, deaths filmDeaths,
 ) filmStats {
 	if film == nil || len(chunksDuManifeste(film)) == 0 {
 		return filmStats{} // film illisible ou manifeste absent — deja journalise par filmload.go
 	}
-	recs, truncated := objectives.StatRecordsCtx(ctx, film, matchID)
+	recs, truncated := decfilm.StatRecordsCtx(ctx, film, matchID)
 	if len(recs) == 0 {
 		slog.InfoContext(ctx, "replaybuild: aucun enregistrement d'entite dans le film — courbe de score vide",
 			"match_id", matchID)
@@ -131,19 +130,19 @@ func readFilmStats(ctx context.Context, matchID string, film *source.Film,
 
 // chunksDuManifeste rend les chunks du film que le MANIFESTE decrit.
 //
-// ZERO N'EST PAS UN TYPE DE CHUNK : c'est ce que `source.LoadDir` synthetise pour un
+// ZERO N'EST PAS UN TYPE DE CHUNK : c'est ce que `decfilm.LoadDir` synthetise pour un
 // `chunk_NN.bin` present au cache mais ABSENT du manifeste. Mesure du 2026-09-02 sur les
 // 1 380 manifestes du cache : trois valeurs seulement — 1 pour l'en-tete, 2 pour les chunks de
 // jeu, 3 pour le pied — et jamais 0. Un chunk hors manifeste n'a donc pas de debut connu, et
 // l'inscrire a zero dans l'horloge dirait au balayage de l'anneau « ce chunk commence a 0 » au
 // lieu de « je ne sais pas » (`filmdec/navpoint_radial_scan.go`, `hasStart`). Un film du cache
 // est dans ce cas : `7b0d89c4` porte les fichiers 31 et 32 sans les avoir au manifeste.
-func chunksDuManifeste(film *source.Film) []source.ChunkMeta {
+func chunksDuManifeste(film *decfilm.Film) []decfilm.ChunkMeta {
 	if film == nil {
 		return nil
 	}
 	meta := film.Meta()
-	out := make([]source.ChunkMeta, 0, len(meta))
+	out := make([]decfilm.ChunkMeta, 0, len(meta))
 	for _, m := range meta {
 		if m.ChunkType == 0 {
 			continue
@@ -164,7 +163,7 @@ func chunksDuManifeste(film *source.Film) []source.ChunkMeta {
 //	                        balaye par BuildFromFilm) : la garde seule.
 //
 // Hors de la famille bomb, il rend un input VIDE : ni balayage, ni calque, ni couverture.
-func bombInput(film *source.Film, bomb bool) replay.BombInput {
+func bombInput(film *decfilm.Film, bomb bool) replay.BombInput {
 	if !bomb {
 		return replay.BombInput{}
 	}
@@ -200,7 +199,7 @@ func bombInput(film *source.Film, bomb bool) replay.BombInput {
 // AUCUN FAIT DE MATCH N'ENTRE DANS LE CALQUE : ce qui descend est une TABLE slot -> xuid. Sans
 // lignes de match, les completions s'abstiennent et l'artefact reste exactement celui d'avant —
 // la propriete « publiable hors ligne » est conservee.
-func skullInput(recs []objectives.StatRecord, isSkull bool,
+func skullInput(recs []decfilm.StatRecord, isSkull bool,
 	pont *pontParManche) replay.SkullInput {
 	if !isSkull {
 		return replay.SkullInput{}
@@ -211,7 +210,7 @@ func skullInput(recs []objectives.StatRecord, isSkull bool,
 // vipInput assemble ce que la COURONNE VIP lit dans le film — les memes enregistrements d'entite
 // que la courbe de score et le drapeau, gardes par le mode. Hors VIP, elle rend un input VIDE
 // (ni records ni Scanned) : le calque ne sera ni construit ni publie.
-func vipInput(recs []objectives.StatRecord, isVip bool) replay.VipInput {
+func vipInput(recs []decfilm.StatRecord, isVip bool) replay.VipInput {
 	if !isVip {
 		return replay.VipInput{}
 	}
@@ -245,20 +244,20 @@ func vipInput(recs []objectives.StatRecord, isVip bool) replay.VipInput {
 // AUCUN FAIT DE MATCH N'ENTRE DANS LE CALQUE : ce qui descend est une TABLE slot -> xuid. Sans
 // lignes de match, `CompletedByLines` rend le pont par morts inchange et l'artefact reste
 // exactement celui d'avant — la propriete « publiable hors ligne » est conservee.
-func flagInput(recs []objectives.StatRecord, film *source.Film,
+func flagInput(recs []decfilm.StatRecord, film *decfilm.Film,
 	pont *pontParManche) replay.FlagInput {
 	return withFlagIdentity(replay.FlagInput{
 		Scanned: true,
 		Records: recs,
-		Bursts:  objectives.CaptureBurstTimes(film),
+		Bursts:  decfilm.CaptureBurstTimes(film),
 	}, pont)
 }
 
 // withFlagIdentity pose le pont COMPLETE sur l'entree du calque — et SEULEMENT sur un film que
 // les trois signaux reconnaissent comme du CTF. Coeur PUR, sans film : c'est la regle, seule.
 func withFlagIdentity(in replay.FlagInput, pont *pontParManche) replay.FlagInput {
-	signals := objectives.FlagFilmSignalsFrom(in.Bursts,
-		objectives.NamedEventsFrom(in.Records, objectives.ObjectiveTypeFlag))
+	signals := decfilm.FlagFilmSignalsFrom(in.Bursts,
+		decfilm.NamedEventsFrom(in.Records, decfilm.ObjectiveTypeFlag))
 	if signals.IsFlagFilm() {
 		in.Identity = pont.identite()
 	}
@@ -267,7 +266,7 @@ func withFlagIdentity(in replay.FlagInput, pont *pontParManche) replay.FlagInput
 
 // identifiedEvents nomme les actions d'objectif du film et les attribue a un xuid PAR MANCHE.
 //
-// LE PONT EST PAR MANCHE, PAR LES INSTANTS DE MORT ([objectives.ResolveRoundIdentity]),
+// LE PONT EST PAR MANCHE, PAR LES INSTANTS DE MORT ([decfilm.ResolveRoundIdentity]),
 // comme la couronne VIP, le drapeau et le porteur du crane — et PLUS par les TOTAUX du match. Le
 // slot d'entite statborg est REATTRIBUE d'une manche a l'autre : un pont par totaux collait les
 // actions d'apres-bascule au mauvais joueur (le compteur de morts repart de zero a chaque manche,
@@ -304,9 +303,9 @@ func withFlagIdentity(in replay.FlagInput, pont *pontParManche) replay.FlagInput
 // D'OBJECTIF (D.2, 2026-09-13) : ils font le denominateur de `coverage.objectives`, ou `kills` et
 // `assists` n'ont rien a faire (raison mesuree : replay/objectives.go).
 func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
-	recs []objectives.StatRecord, facts port.MatchFacts,
-	pont *pontParManche) ([]objectives.IdentifiedEvent, int, int) {
-	named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeOf(facts.GameVariantName))
+	recs []decfilm.StatRecord, facts port.MatchFacts,
+	pont *pontParManche) ([]decfilm.IdentifiedEvent, int, int) {
+	named := decfilm.NamedEventsFrom(recs, decfilm.ObjectiveTypeOf(facts.GameVariantName))
 	if len(named) == 0 {
 		return nil, 0, 0
 	}
@@ -314,19 +313,19 @@ func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 	// de huit joueurs le statborg n'a plus de slot pour dire de qui il parle, et les comptes
 	// publies ne correspondent a personne — `4f77afc1` annoncait 65 prises de drapeau pour 4 a
 	// l'oracle. Le calque se tait ENTIEREMENT, et le refus se compte et se journalise.
-	if sieges := siegesAuCoupDEnvoi(facts); !objectives.RosterFitsStatborg(sieges) {
+	if sieges := siegesAuCoupDEnvoi(facts); !decfilm.RosterFitsStatborg(sieges) {
 		slog.WarnContext(ctx, "replaybuild: actions d'objectif REFUSEES — effectif hors du format du statborg",
 			"match_id", matchID, "nommees", len(named), "sieges", sieges,
-			"lignes", len(facts.Players), "slots", objectives.StatPlayerSlots)
-		return nil, 0, objectives.CountObjectiveFamily(named)
+			"lignes", len(facts.Players), "slots", decfilm.StatPlayerSlots)
+		return nil, 0, decfilm.CountObjectiveFamily(named)
 	}
 	if deaths.err != nil {
 		slog.WarnContext(ctx, "replaybuild: fil des morts illisible — actions d'objectif non identifiees",
 			"err", deaths.err, "match_id", matchID, "nommees", len(named))
-		return nil, objectives.CountObjectiveFamily(named), 0
+		return nil, decfilm.CountObjectiveFamily(named), 0
 	}
-	out, _ := objectives.IdentifyNamedEventsByRound(named, pont.identite())
-	nonNommes := objectives.CountObjectiveFamily(named) - objectives.CountObjectiveFamily(out)
+	out, _ := decfilm.IdentifyNamedEventsByRound(named, pont.identite())
+	nonNommes := decfilm.CountObjectiveFamily(named) - decfilm.CountObjectiveFamily(out)
 	slog.InfoContext(ctx, "replaybuild: actions d'objectif identifiees par manche",
 		"match_id", matchID, "nommees", len(named), "identifiees", len(out),
 		"nonNommees", nonNommes, "lignes", len(facts.Players))
@@ -338,7 +337,7 @@ func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 // Un siege est occupe par au plus une personne a la fois : une ligne de BOT (il remplit une
 // place liberee) et une ligne de joueur ARRIVE EN COURS (il en prend une) n'en ouvrent aucun.
 // Trois lignes peuvent ainsi se partager un seul siege — c'est le cas de cinq films d'arene du
-// parc, qui portent 9 ou 10 lignes pour huit sieges (cf. `objectives.RosterFitsStatborg`).
+// parc, qui portent 9 ou 10 lignes pour huit sieges (cf. `decfilm.RosterFitsStatborg`).
 func siegesAuCoupDEnvoi(facts port.MatchFacts) int {
 	n := 0
 	for _, p := range facts.Players {
@@ -364,11 +363,11 @@ func siegesAuCoupDEnvoi(facts port.MatchFacts) int {
 // `lines` vide = pont par morts seul : `CompletedByLines` rend l'identite inchangee, et les deux
 // calques restent publiables hors ligne, sans base.
 type pontParManche struct {
-	recs   []objectives.StatRecord
-	deaths []objectives.DeathInstant
-	lines  []objectives.PlayerLine
+	recs   []decfilm.StatRecord
+	deaths []decfilm.DeathInstant
+	lines  []decfilm.PlayerLine
 	resolu bool
-	id     objectives.RoundIdentity
+	id     decfilm.RoundIdentity
 }
 
 // identite rend le pont, en le resolvant au premier appel.
@@ -382,9 +381,9 @@ type pontParManche struct {
 // joueur qui meurt moins de trois fois dans une manche restaient sans auteur alors que les
 // COMPTEURS, eux, allaient etre completes par le meme mecanisme (`buildPlayerScores`) — deux
 // lecteurs du meme pont n'auraient plus dit la meme chose du meme match.
-func (p *pontParManche) identite() objectives.RoundIdentity {
+func (p *pontParManche) identite() decfilm.RoundIdentity {
 	if !p.resolu {
-		p.id = objectives.ResolveRoundIdentity(p.recs, p.deaths).
+		p.id = decfilm.ResolveRoundIdentity(p.recs, p.deaths).
 			CompletedByLines(p.recs, p.lines).
 			CompletedByElimination(p.recs, p.lines).
 			CompletedByRoundResidue(p.recs, p.lines)
@@ -394,23 +393,23 @@ func (p *pontParManche) identite() objectives.RoundIdentity {
 }
 
 // deathInstantsOf traduit le fil des morts du film dans la forme qu'attend le pont d'identite.
-func deathInstantsOf(deaths []replay.Death) []objectives.DeathInstant {
-	out := make([]objectives.DeathInstant, 0, len(deaths))
+func deathInstantsOf(deaths []replay.Death) []decfilm.DeathInstant {
+	out := make([]decfilm.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
-		out = append(out, objectives.DeathInstant{
+		out = append(out, decfilm.DeathInstant{
 			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS)})
 	}
 	return out
 }
 
 // playerLines traduit les faits de match en lignes d'appariement.
-func playerLines(facts port.MatchFacts) []objectives.PlayerLine {
+func playerLines(facts port.MatchFacts) []decfilm.PlayerLine {
 	if len(facts.Players) == 0 {
 		return nil
 	}
-	out := make([]objectives.PlayerLine, 0, len(facts.Players))
+	out := make([]decfilm.PlayerLine, 0, len(facts.Players))
 	for _, p := range facts.Players {
-		out = append(out, objectives.PlayerLine{
+		out = append(out, decfilm.PlayerLine{
 			XUID: p.XUID, Kills: p.Kills, Deaths: p.Deaths, Assists: p.Assists,
 		})
 	}

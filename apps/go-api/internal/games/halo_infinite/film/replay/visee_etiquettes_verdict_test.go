@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vgIdxSentinelle : index d archetype fictif de la colonne sentinelle. POSITIF a dessein :

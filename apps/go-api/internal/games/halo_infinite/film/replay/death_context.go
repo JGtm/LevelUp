@@ -40,7 +40,7 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // DecimalesDeDistance : la précision à laquelle une distance en mètres est publiée.

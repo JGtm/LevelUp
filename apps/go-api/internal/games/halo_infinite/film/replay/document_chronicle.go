@@ -720,7 +720,7 @@ package replay
 // s'applique, et non l'exception du lot P5 (schéma 38 maintenu), qui ne valait que parce
 // qu'AUCUN artefact 38 n'existait alors hors témoins de gate. Ici la reprise doit re-cuire tout
 // artefact < 40.
-// Détail : internal/games/halo_infinite/film/facts/objectives/slotidentity_rounds.go (CompletedByLines) et
+// Détail : internal/games/halo_infinite/film/internal/facts/objectives/slotidentity_rounds.go (CompletedByLines) et
 // .ai/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md section 9.
 //
 // v41 (2026-09-06) : TROIS CALQUES RATTRAPENT « UNE TRACK = UNE VIE ». Aucun champ n'est
@@ -806,7 +806,7 @@ package replay
 // portage : elle n'est servie que s'il y a un drapeau à entourer.
 // Détail : internal/games/halo_infinite/film/replay/build_objectives_live.go (`FlagInput.Identity`,
 // `flagIdentityOf`), internal/replaybuild/matchfacts.go (`pontParManche`),
-// internal/games/halo_infinite/film/facts/objectives/slotidentity_rounds.go (`CompletedByLines`) et
+// internal/games/halo_infinite/film/internal/facts/objectives/slotidentity_rounds.go (`CompletedByLines`) et
 // .ai/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md.
 //
 // v43 (2026-09-06) : UNE VIE ANONYME N'EST PAS UNE ABSENCE. Aucun champ n'est ajouté ; c'est le
@@ -860,7 +860,7 @@ package replay
 // La version monte pour la raison des montées v39 à v43 : un artefact 1 à 43 d'un film
 // multi-manche porte des compteurs gonflés sans que sa forme le dise, et `backfill-replay` saute
 // un artefact à la version courante. Détail :
-// internal/games/halo_infinite/film/facts/objectives/round_bounds.go et .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
+// internal/games/halo_infinite/film/internal/facts/objectives/round_bounds.go et .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
 //
 // v45 (2026-09-06) : UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE. Aucun champ n'est
 // ajouté ; c'est le CONTENU d'`equipmentEpisodes` et de `flagCarries` qui change. Même cause

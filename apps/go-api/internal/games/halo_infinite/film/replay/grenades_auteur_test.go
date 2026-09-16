@@ -16,7 +16,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // grenPos fabrique un echantillon de position de biped exploitable (HasWorld).

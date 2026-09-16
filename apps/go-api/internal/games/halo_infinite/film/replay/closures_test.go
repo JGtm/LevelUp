@@ -10,7 +10,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // at construit un échantillon de position au seul instant qui nous intéresse. Les helpers

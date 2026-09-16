@@ -19,7 +19,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // objetExAequo fabrique un objet au sol qui partage SON APPARITION ENTIERE avec ses soeurs :

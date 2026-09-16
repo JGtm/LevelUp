@@ -43,8 +43,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // amCorpus : film -> manches REELLES connues du releve A0.3 (ou du mode pour les temoins).

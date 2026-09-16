@@ -51,7 +51,7 @@ const seuilLignesParFichier = 500
 // Ce sont celles du chantier du decodeur de film — le perimetre du lot 2.7.
 //
 // LA QUATRIEME RACINE A DISPARU LE 2026-09-16 (lot 2.5.d.2) : `internal/analysis/objectiveevents`
-// est descendu sous `internal/games/halo_infinite/film/facts/objectives`, donc SOUS la premiere
+// est descendu sous `internal/games/halo_infinite/film/internal/facts/objectives`, donc SOUS la premiere
 // racine. La garder aurait fait compter ses fichiers DEUX FOIS dans le plancher — un plancher
 // qu on gonfle est un plancher qui ne mesure plus rien.
 var racinesSurveilleesTaille = []string{
@@ -107,37 +107,37 @@ var plafondsParFichier = map[string]int{
 	// vague 2 de la famille 1.9 et le schema 60, avant que le ratchet n existe ici. Meme regle :
 	// chaque valeur ne peut que descendre. `document_vehicles.go` et `score_timeline.go` sont dans
 	// le perimetre du volet 2.7p (scission en cours) et sortiront de la table a sa fusion.
-	"internal/games/halo_infinite/film/facts/fallback/registre_killsource.go":                         555,
-	"internal/games/halo_infinite/film/replay/document_shape_test.go":                                 511,
-	"internal/games/halo_infinite/film/facts/killsource/e197_identite_paquet_mesure_research_test.go": 654,
-	"internal/games/halo_infinite/film/facts/objectives/e1911_manches_mesure_research_test.go":        523,
-	"internal/games/halo_infinite/film/facts/objectives/statborg.go":                                  687,
-	"internal/replaybuild/replaybuild.go":                                                             577,
-	"internal/games/halo_infinite/film/grammar/equipment_creation.go":                                 508,
+	"internal/games/halo_infinite/film/internal/facts/fallback/registre_killsource.go":                         555,
+	"internal/games/halo_infinite/film/replay/document_shape_test.go":                                          511,
+	"internal/games/halo_infinite/film/internal/facts/killsource/e197_identite_paquet_mesure_research_test.go": 654,
+	"internal/games/halo_infinite/film/internal/facts/objectives/e1911_manches_mesure_research_test.go":        523,
+	"internal/games/halo_infinite/film/internal/facts/objectives/statborg.go":                                  687,
+	"internal/replaybuild/replaybuild.go":                                                                      577,
+	"internal/games/halo_infinite/film/internal/grammar/equipment_creation.go":                                 508,
 	// --- tests et instruments de mesure : tables de fixtures et balayages de recherche.
-	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":                   1202,
-	"internal/games/halo_infinite/film/grammar/i59_anchor_test.go":                       1152,
-	"internal/games/halo_infinite/film/replay/structure_test.go":                         1151,
-	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":             872,
-	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":            833,
-	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":              814,
-	"internal/games/halo_infinite/film/replay/ctf_retour_zone_research_test.go":          812,
-	"internal/games/halo_infinite/film/replay/assaut_manches_research_test.go":           655,
-	"internal/games/halo_infinite/film/replay/mapvar/noms_lieux_hunt_test.go":            627,
-	"internal/games/halo_infinite/film/killicon/killicon_test.go":                        610,
-	"internal/games/halo_infinite/film/grammar/components_hooks_test.go":                 600,
-	"internal/games/halo_infinite/film/replay/closures_test.go":                          598,
-	"internal/games/halo_infinite/film/replay/vehicules_v1a_test.go":                     587,
-	"internal/games/halo_infinite/film/grammar/vehicules_v13_deadstate_test.go":          583,
-	"internal/games/halo_infinite/film/replay/minifilm_test.go":                          581,
-	"internal/games/halo_infinite/film/grammar/ground_weapon_lifecycle_research_test.go": 574,
-	"internal/games/halo_infinite/film/replay/equipment_uses_join_test.go":               570,
-	"internal/games/halo_infinite/film/facts/objectives/assaut_pied_ancre_test.go":       558,
-	"internal/sync/killcollector/positions_test.go":                                      557,
-	"internal/games/halo_infinite/film/grammar/golden_minibobine_test.go":                553,
-	"internal/games/halo_infinite/film/grammar/vehicules_v2_items_test.go":               533,
-	"internal/games/halo_infinite/film/replay/attachement_phase0_bord_test.go":           529,
-	"internal/sync/killcollector/collector_test.go":                                      527,
+	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":                            1202,
+	"internal/games/halo_infinite/film/internal/grammar/i59_anchor_test.go":                       1152,
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1151,
+	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
+	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
+	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,
+	"internal/games/halo_infinite/film/replay/ctf_retour_zone_research_test.go":                   812,
+	"internal/games/halo_infinite/film/replay/assaut_manches_research_test.go":                    655,
+	"internal/games/halo_infinite/film/replay/mapvar/noms_lieux_hunt_test.go":                     627,
+	"internal/games/halo_infinite/film/killicon/killicon_test.go":                                 610,
+	"internal/games/halo_infinite/film/internal/grammar/components_hooks_test.go":                 600,
+	"internal/games/halo_infinite/film/replay/closures_test.go":                                   598,
+	"internal/games/halo_infinite/film/replay/vehicules_v1a_test.go":                              587,
+	"internal/games/halo_infinite/film/internal/grammar/vehicules_v13_deadstate_test.go":          583,
+	"internal/games/halo_infinite/film/replay/minifilm_test.go":                                   581,
+	"internal/games/halo_infinite/film/internal/grammar/ground_weapon_lifecycle_research_test.go": 574,
+	"internal/games/halo_infinite/film/replay/equipment_uses_join_test.go":                        570,
+	"internal/games/halo_infinite/film/internal/facts/objectives/assaut_pied_ancre_test.go":       558,
+	"internal/sync/killcollector/positions_test.go":                                               557,
+	"internal/games/halo_infinite/film/internal/grammar/golden_minibobine_test.go":                553,
+	"internal/games/halo_infinite/film/internal/grammar/vehicules_v2_items_test.go":               533,
+	"internal/games/halo_infinite/film/replay/attachement_phase0_bord_test.go":                    529,
+	"internal/sync/killcollector/collector_test.go":                                               527,
 }
 
 // TestTailleDesFichiersDuFilmNeCroitPas : aucun fichier des racines surveillees ne depasse son

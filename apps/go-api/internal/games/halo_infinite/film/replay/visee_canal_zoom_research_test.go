@@ -29,7 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // TestViseeTypesDePaquet recense les TYPES D'EVENT des paquets delta d'un film (payload[0]>>1,

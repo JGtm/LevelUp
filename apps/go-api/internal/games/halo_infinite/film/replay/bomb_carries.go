@@ -37,7 +37,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // bombHeldFamily est la FAMILLE de l'objet bombe dans le canal des armes tenues (moitié

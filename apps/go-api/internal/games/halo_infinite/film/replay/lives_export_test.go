@@ -9,7 +9,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // posDe pose un point de réplication d'un slot à un instant, en microsecondes.

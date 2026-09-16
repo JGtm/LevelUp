@@ -18,8 +18,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -68,7 +67,7 @@ func TestFilmOf_ChargeLesChunksALeurIndex(t *testing.T) {
 		t.Errorf("chunk 2 = %q", got)
 	}
 	// LES METADONNEES SONT POSITIONNELLES et portent le manifeste : c'est par elles que les
-	// balayages traduisent un NUMERO de chunk en position (grammar.FilmChunkNumbers).
+	// balayages traduisent un NUMERO de chunk en position (decfilm.FilmChunkNumbers).
 	meta := film.Meta()
 	if len(meta) != 3 {
 		t.Fatalf("Meta = %d entrees, attendu 3", len(meta))
@@ -99,7 +98,7 @@ func TestFilmOf_ZlibRoundTrip(t *testing.T) {
 
 // TestFilmOf_NumerosDeChunksVusParLesBalayages — LE CONTRAT QUI REMPLACE LE PONT DISQUE, et le
 // seul qui pouvait se perdre en route : les quatre balayages parcourent les chunks de DONNÉES par
-// NUMÉRO (`grammar.FilmChunkNumbers`), là où ils comptaient `grammar.CountFilmChunks(dir)` — donc
+// NUMÉRO (`decfilm.FilmChunkNumbers`), là où ils comptaient `decfilm.CountFilmChunks(dir)` — donc
 // 1..N depuis chunk_01. Le film chargé en mémoire doit rendre exactement les mêmes numéros, sinon
 // `ScanDeaths` (qui prend le DERNIER numéro comme chunk du kill-feed) et `ScanClockOrigin` (qui
 // lit le numéro 1) changeraient de cible sans rien signaler.
@@ -113,12 +112,12 @@ func TestFilmOf_NumerosDeChunksVusParLesBalayages(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FilmOf: %v", err)
 	}
-	nums := grammar.FilmChunkNumbers(film)
+	nums := decfilm.FilmChunkNumbers(film)
 	if len(nums) != 3 || nums[0] != 1 || nums[2] != 3 {
 		t.Fatalf("numeros = %v, attendu [1 2 3] (le registre exclu, le kill-feed en dernier)", nums)
 	}
 	// Le NUMÉRO adresse bien la position : c'est ce que `FilmChunkAt` traduit pour les balayages.
-	raw, _, ok := grammar.FilmChunkAt(film, 3)
+	raw, _, ok := decfilm.FilmChunkAt(film, 3)
 	if !ok || string(raw) != "killfeed" {
 		t.Errorf("chunk numero 3 = %q (ok=%v), attendu le kill-feed", raw, ok)
 	}
@@ -259,10 +258,10 @@ func (f fakeMapNames) MapKeysForMap(context.Context, string) (port.MatchMapKeys,
 	return f.keys, f.err
 }
 
-func testMapQuantCatalog() *profile.MapQuantCatalog {
-	return &profile.MapQuantCatalog{
-		SchemaVersion: profile.MapQuantSchemaVersion,
-		Maps: map[string]profile.MapQuantEntry{
+func testMapQuantCatalog() *decfilm.MapQuantCatalog {
+	return &decfilm.MapQuantCatalog{
+		SchemaVersion: decfilm.MapQuantSchemaVersion,
+		Maps: map[string]decfilm.MapQuantEntry{
 			"catalyst": {
 				Min: [3]float32{-100, -100, -100},
 				Max: [3]float32{100, 100, 100},
@@ -458,7 +457,7 @@ func TestEntreeDuRegistrePorteLeRosterDeLaFeuille(t *testing.T) {
 //
 // MUTATION : retirer `BipedCreations` d'`entreeDuRegistre` -> ROUGE.
 func TestEntreeDuRegistrePorteLesCreationsDeBipede(t *testing.T) {
-	l := lecturesDuFilm{creations: []grammar.BipedCreation{
+	l := lecturesDuFilm{creations: []decfilm.BipedCreation{
 		{Slot: 512, Generation: 1, ParticipantIndex: 3, HasIndex: true, TimestampUS: 42},
 	}}
 	in := entreeDuRegistre(l, MatchIdentities{XUIDs: []string{"111"}}, nil, "m1")
@@ -493,23 +492,23 @@ func TestEntreeDuRegistrePorteLesCreationsDeBipede(t *testing.T) {
 // DEUX vies pour 222, la vie du bot comprise, nommees `biped_creation`/`biped_creation_propagee`
 // au lieu de `tableau_api`).
 func TestEntreeDuRegistrePorteLesBotsEtLesParticipants(t *testing.T) {
-	var pos []grammar.BipedPosition
+	var pos []decfilm.BipedPosition
 	for tUS := uint64(1_000_000); tUS <= 4_000_000; tUS += 500_000 {
-		pos = append(pos, grammar.BipedPosition{Slot: 100, TimestampUS: tUS, HasWorld: true})
+		pos = append(pos, decfilm.BipedPosition{Slot: 100, TimestampUS: tUS, HasWorld: true})
 	}
 	for tUS := uint64(20_000_000); tUS <= 23_000_000; tUS += 500_000 {
-		pos = append(pos, grammar.BipedPosition{Slot: 100, TimestampUS: tUS, HasWorld: true})
+		pos = append(pos, decfilm.BipedPosition{Slot: 100, TimestampUS: tUS, HasWorld: true})
 	}
 	// Le siege partage : une vie AVANT l'arrivee de 222 (le bot), une vie APRES (l'humain).
 	for tUS := uint64(1_000_000); tUS <= 4_000_000; tUS += 500_000 {
-		pos = append(pos, grammar.BipedPosition{Slot: 300, TimestampUS: tUS, HasWorld: true})
+		pos = append(pos, decfilm.BipedPosition{Slot: 300, TimestampUS: tUS, HasWorld: true})
 	}
 	for tUS := uint64(20_000_000); tUS <= 24_000_000; tUS += 500_000 {
-		pos = append(pos, grammar.BipedPosition{Slot: 300, TimestampUS: tUS, HasWorld: true})
+		pos = append(pos, decfilm.BipedPosition{Slot: 300, TimestampUS: tUS, HasWorld: true})
 	}
 	l := lecturesDuFilm{
 		positions: pos,
-		creations: []grammar.BipedCreation{
+		creations: []decfilm.BipedCreation{
 			{Slot: 100, Generation: 1, ParticipantIndex: 0, HasIndex: true, TimestampUS: 1_000_000},
 			{Slot: 300, Generation: 1, ParticipantIndex: 9, HasIndex: true, TimestampUS: 1_000_000},
 		},

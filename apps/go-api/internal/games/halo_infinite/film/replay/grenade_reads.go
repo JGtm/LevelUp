@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // grenade_reads.go — LES GRENADES PORTÉES, sur leur propre axe, alimentées par DEUX canaux.

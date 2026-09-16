@@ -47,7 +47,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // flagHomeGuardMS — l'ecart, en millisecondes, sous lequel la fin d'un portage d'un AUTRE

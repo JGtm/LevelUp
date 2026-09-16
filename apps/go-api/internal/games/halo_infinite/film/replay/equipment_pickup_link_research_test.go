@@ -47,7 +47,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // eqlLife est la fenêtre de présence d'un objet du monde et sa position de repos.

@@ -71,7 +71,7 @@ match et le KPI « arme favorite » de l'accueil.
 |-------|-------------|
 | Orchestration pipeline (par match / tous participants / batch) | `internal/sync/backfill_weapons.go` |
 | Écriture DB (INSERT append-only) | `internal/sync/writes.go` — `InsertWeaponKills`, `MarkWeaponKillsDone` |
-| Scan des chunks (fire events, timeline arme tenue) | `internal/games/halo_infinite/film/grammar/weaponscan/scanner.go`, `internal/analysis/weapon_parser.go` |
+| Scan des chunks (fire events, timeline arme tenue) | `internal/games/halo_infinite/film/internal/grammar/weaponscan/scanner.go`, `internal/analysis/weapon_parser.go` |
 | Map des Weapon IDs, timings, fusions, sentinels | `internal/games/weapons/filmshell/catalogue.go` |
 | Corrélation kill -> arme | `internal/analysis/weapon_correlation.go` |
 | Réconciliation API | `internal/analysis/weapon_reconciliation.go` |

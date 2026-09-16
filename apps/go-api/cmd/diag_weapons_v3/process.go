@@ -6,7 +6,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -34,7 +34,7 @@ func processMatch(ctx context.Context, c *conn, cfg runConfig, m matchRef) error
 		return err
 	}
 
-	events, ctl := objectives.Extract(m.full, reg.variant, film, objectives.MapRoster(roster))
+	events, ctl := decfilm.Extract(m.full, reg.variant, film, decfilm.MapRoster(roster))
 	printSummary(m, reg, events)
 	// L'EQUIPE VIENT DU PIED DU FILM (lot 1.7.3) : le roster ci-dessus n'en est que le controle,
 	// et ces trois comptes sont ce que la feuille de match en dit. Les taire ferait passer un
@@ -151,7 +151,7 @@ func teamSplit(events []domain.ObjectiveEvent) (t0, t1, unknown int) {
 func countCaptures(events []domain.ObjectiveEvent) int {
 	n := 0
 	for _, e := range events {
-		if e.EventType == objectives.EventTypeCapture {
+		if e.EventType == decfilm.EventTypeCapture {
 			n++
 		}
 	}

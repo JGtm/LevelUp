@@ -63,7 +63,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // a7ExigeChainage : le filtre de fiabilite. MIS A FAUX le 2026-08-31 apres une premiere passe

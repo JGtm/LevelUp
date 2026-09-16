@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // identity_registry_composition_test.go — LE REGISTRE COMPOSE DES LECTURES, ET RIEN D'AUTRE.

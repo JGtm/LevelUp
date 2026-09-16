@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // flag_neutral_test.go — LA VARIANTE « DRAPEAU NEUTRE » SE RECONNAIT, sans film.

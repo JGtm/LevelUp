@@ -6,7 +6,7 @@
 // La projection a DEUX consommateurs : `internal/replaybuild` (la cuisson) et
 // `internal/sync/killcollector` (le collecteur de sync) construisent tous deux
 // `replay.IdentityInput.Bots` a partir du MEME roster BOT_METADATA
-// (`killsource.Result.Roster`). Avant ce paquet, seul `replaybuild` la projetait — le
+// (`decfilm.Result.Roster`). Avant ce paquet, seul `replaybuild` la projetait — le
 // collecteur ne passait ni `Bots` ni `Participants` au registre d'identite (revue
 // adversariale de la vague 4, 2026-09-10, constat P2 sur
 // `sync/killcollector/positions.go:484-489`). Consequence mesuree : sur un siege d'index
@@ -34,13 +34,13 @@
 package replayidentity
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // BotIdentities projette le roster de bots declares par BOT_METADATA vers ce que le registre
 // d'identite consomme (`replay.IdentityInput.Bots`). PURE — aucune I/O, aucun re-decodage : elle
-// lit `res.Roster`, deja construit par `killsource.Decode`.
+// lit `res.Roster`, deja construit par `decfilm.Decode`.
 //
 // # CE QUE LE FILTRE REFUSE
 //
@@ -49,7 +49,7 @@ import (
 // (`UnpinnedBots` — son slot contredit l'espace des humains) est une anomalie DECLAREE, pas une
 // identite : le publier ferait porter un identifiant a un corps que le modele ne sait pas
 // placer.
-func BotIdentities(res *killsource.Result) []replay.BotIdentity {
+func BotIdentities(res *decfilm.Result) []replay.BotIdentity {
 	if res == nil || len(res.Roster.Bots) == 0 {
 		return nil
 	}
@@ -65,7 +65,7 @@ func BotIdentities(res *killsource.Result) []replay.BotIdentity {
 		// `BotID` VOYAGE (lot 4.3) : c'est la cle EXACTE que `BotIdentity.Bid()` publie
 		// (`bid(N.0)`), la meme forme que `RosterEntry.Bid` / `IdentityPlayer.Bid`.
 		out = append(out, replay.BotIdentity{
-			FilmIndex: b.Slot, Name: b.Name + killsource.BotSuffix, BotID: b.BotID})
+			FilmIndex: b.Slot, Name: b.Name + decfilm.BotSuffix, BotID: b.BotID})
 	}
 	return out
 }

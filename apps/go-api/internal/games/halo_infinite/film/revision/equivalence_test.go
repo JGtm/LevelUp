@@ -65,7 +65,7 @@ const fichierPorteurDeRevision = "grammar_rev.go"
 // des racines est celui de `racinesGrammaire` (filmdec/grammar_rev_fingerprint_test.go).
 func TestEmpreinteHeriteeEgaleLeGoldenDeGrammaire(t *testing.T) {
 	api := racineAPI(t)
-	film := filepath.Join(api, "internal", "games", "halo_infinite", "film")
+	film := filepath.Join(api, "internal", "games", "halo_infinite", "film", "internal")
 	racines := []string{
 		filepath.Join(film, "source"),
 		filepath.Join(film, "profile"),
