@@ -35,6 +35,29 @@ package persist
 // population qu une clef a quatre colonnes perdrait. L identite doit donc CONCORDER quand les
 // deux cotes la portent, et son absence d un cote n empeche rien.
 //
+// ─── CE QUE LA MESURE DU 2026-09-16 A CONTREDIT (lot 2.9, D1 de la cloture M1) ──────────────
+//
+// LE TEMOIN : `9f9b19e5-5df4-4268-aa32-900a4fc6725a@63757`. A cet instant le credit porte la mort
+// de 2535413577167650 (Artemlv2774, tue par Ritio3987) et le film celle de 2535427572079378
+// (DANIELBOIMEXICO, dont les morts de credit de ce match sont a 106 661 ms, 162 355 ms, ...).
+// DEUX MORTS DISTINCTES A LA MEME MILLISECONDE, chaque cote n en voyant qu une. La clef
+// `(match_id, time_ms)` les a appariees, le controle d identite a rendu l erreur — et la passe a
+// refuse LE FILM ENTIER (249 films ecrits sur 250, tranche 1 du backlog du 2026-09-17).
+//
+// LES CHIFFRES, en lecture seule sur les vues `_latest` (oracle `pre-chaine-2026-09-09` pour
+// Infinite, base du titre pour Halo 5) :
+//
+//	credit d Infinite, couples bruts     137 286 instants sur 1 384 matchs — 0 a deux victimes
+//	passes servies d Infinite            138 807 instants — 0 a deux morts, maximum 1 par instant
+//	credit de Halo 5, couples bruts      268 330 instants sur 2 754 matchs — 7 a DEUX VICTIMES
+//	                                     DISTINCTES a la meme milliseconde
+//	entre les deux cotes d un match      le temoin ci-dessus. INVISIBLE EN BASE : la fusion
+//	                                     echouait avant d ecrire quoi que ce soit
+//
+// L UNICITE TIENT A L INTERIEUR DE CHAQUE COTE, PAS ENTRE LES DEUX. Le film voit des morts que le
+// kill-feed humain-seul ne porte pas (bots), et il lui manque 25,6 % de celles du credit : deux
+// morts a la meme milliseconde suffisent pour que chaque cote n en voie qu une, et pas la meme.
+//
 // ─── CE QUE LA FUSION NE FABRIQUE JAMAIS ───────────────────────────────────────────────────
 //
 // Les TROIS etats de l assistant survivent, et aucune combinaison nouvelle n apparait :
@@ -123,10 +146,13 @@ type MergeStats struct {
 	// etat credit (rien n est perdu), et les lignes de film n y sont PAS ajoutees en orphelines
 	// (la mort est deja dans la base : ce serait la compter deux fois).
 	//
-	// L unicite de `(match_id, time_ms)` est une propriete MESUREE du corpus Halo Infinite
-	// (74 569 clefs pour 74 569 lignes de film, 98 662 pour 98 662 morts de credit), PAS une
-	// garantie de schema : Halo 5 porte 7 collisions reelles (deux morts distinctes a la meme
-	// milliseconde, victimes differentes). Le jour ou Infinite en produirait, ce compteur le dit.
+	// L unicite de `(match_id, time_ms)` est une propriete MESUREE de chaque COTE PRIS SEUL
+	// (74 569 clefs pour 74 569 lignes de film, 98 662 pour 98 662 morts de credit ; 137 286
+	// instants de couples credit sur Infinite au 2026-09-16, 0 a deux victimes). Elle n est ni une
+	// garantie de schema — Halo 5 porte 7 collisions reelles, deux victimes distinctes a la meme
+	// milliseconde — NI UNE PROPRIETE ENTRE LES DEUX COTES : le temoin `9f9b19e5@63757` porte une
+	// mort de credit et une mort de film a la meme milliseconde, victimes differentes (en-tete du
+	// fichier). Ce compteur n a jamais vu ce cas-la : il tombait sur le controle d identite avant.
 	AmbiguousInstants int
 }
 
@@ -261,11 +287,15 @@ func compterInstantsAmbigus(base, film map[int][]int) int {
 // verifierConcordance : LE CONTROLE D IDENTITE. Quand les deux cotes portent un xuid, il doit
 // etre le meme.
 //
-// Une divergence est une ERREUR RENDUE et pas une ligne ecartee : elle signifierait que la clef
+// Une divergence est une ERREUR RENDUE et pas une ligne ecartee : elle signifie que la clef
 // `(match_id, time_ms)` a apparie deux morts differentes, c est-a-dire que la propriete sur
-// laquelle repose toute cette fusion est fausse. Elle ne s est jamais produite (0 sur 73 589
-// lignes appariees) — et c est precisement pour cela qu elle doit echouer bruyamment le jour ou
-// elle se produirait.
+// laquelle repose l appariement est fausse a cet instant.
+//
+// ELLE S EST PRODUITE. Le commentaire precedent disait « jamais (0 sur 73 589 lignes appariees) » :
+// c etait vrai du corpus de 2026-08 et FAUX depuis le 2026-09-17 — temoin `9f9b19e5@63757`, deux
+// morts distinctes a la meme milliseconde, une de chaque cote (en-tete du fichier). Le garde-fou a
+// fait son travail — echouer bruyamment plutot que d attribuer au hasard l arme d une mort a une
+// autre — mais il a coute LE FILM ENTIER : le defaut est dans la clef, pas dans le decodeur.
 //
 // L ABSENCE N EST PAS UNE DIVERGENCE : le film ne resout pas toujours un xuid (631 victimes,
 // 754 tueurs). C est le cas normal d un nom que le roster n a pas su rattacher, et c est la
