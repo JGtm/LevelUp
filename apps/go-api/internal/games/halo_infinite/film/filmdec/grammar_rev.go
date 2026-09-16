@@ -313,4 +313,31 @@ package filmdec
 // appelant hors instruments, et son propre garde-rail interdit meme de le NOMMER ici.
 //
 // `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
-const GrammarRev = "grammar-2026-09-15.22"
+// ENTREE `grammar-2026-09-15.23` (2026-09-17, lot 2.2.d — RANG PROVISOIRE) : `.22` -> `.23`.
+// AUCUN OCTET N EST LU AUTREMENT.
+//
+// LA VERSION DU FILM VIENT DU PROFIL DU CONTEXTE. La phase de balayage des positions du rejeu
+// rouvrait le registre pour son propre compte (`FilmMajorVersion(s.film)`) alors que le
+// contexte avait deja resolu le profil a sa construction (D1). Elle prend desormais
+// `Profile.Highlight()` — MEME valeur par le MEME chemin (les deux composent depuis
+// `FilmMajorVersionFromHeader`), une localisation de `chunk_00` en moins par cuisson, et le
+// drapeau `Lue` a la place d un second booleen qui disait la meme chose.
+//
+// CE QUE LA FAMILLE NE PEUT PAS FAIRE, ET POURQUOI C EST ECRIT ICI. La BRANCHE qui applique
+// l implantation du gamertag (`analysis.decodeEventBytes`, `version <= 38 || version >= 41`) et
+// les offsets du PIED (octets 36, 37, 47, 48 dans `analysis/objectiveevents`) vivent sous
+// `internal/analysis/`, a qui le ratchet `no_title_package_in_analysis_test.go` interdit
+// d importer un paquet de titre — allowlist a une seule entree, et ce n est pas celle-la. Les y
+// faire lire le profil exigerait ce que la decision V5 et le pas 5 tranchent : faire descendre
+// la source du film sous `film/internal/source`. La deuxieme copie de la regle reste donc en
+// place, gardee par `TestProfilHighlightEgaleLeParseur` — le garde-rail qui interdit aux deux
+// de diverger. Statue `[!]` a l item 2.2.d, consigne en §4 du plan.
+//
+// L EMPREINTE NE BOUGE PAS, ET LA REVISION SI : c est le seul lot de la serie dont le
+// changement vit ENTIEREMENT hors des deux paquets haches (`filmdec/` et `killsource/`) — il
+// est dans `replay/film_scan.go`. La revision monte quand meme, parce qu elle nomme la
+// GRAMMAIRE SOUS LAQUELLE UN ARTEFACT A ETE CUIT et qu un lecteur de cette chaine a change ;
+// le golden porte donc le meme sha sur deux rangs, ce qui se lit et ne se devine pas.
+//
+// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
+const GrammarRev = "grammar-2026-09-15.23"
