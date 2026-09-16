@@ -106,7 +106,7 @@ the pool*).
 | `cmd/levelup backfill --csr` / `--shared-csr` | `PolicyAnyPublic` | **No** |
 | `cmd/levelup archive-films`, `backfill-killsource --online`, `replay-events` | `PolicyAnyPublic` | **No** |
 | `internal/scheduler` auto-sync cycle (`checkSyncPreconditions` → `BuildEngine`) | `PolicyAnyPublic` | **No** |
-| `PooledHaloClient.GetCareerRank` | `PolicyPinnedPlayer` | **Yes** — returns `sync.ErrNoPinnedToken` otherwise; the career step logs one WARN and leaves `career_synced=false` |
+| `PooledHaloClient.GetCareerRank` | `PolicyPinnedPlayer` | **Yes** — returns `sync.ErrNoPinnedToken` otherwise. No sync step calls it today (career is served by `service.CareerLiveService`, decoupled from post-sync since 2026-05-14); `sync.syncCareerRank` degrades it to one WARN if a caller ever returns |
 | `internal/scheduler` Spartan customization cron | `PolicyPinnedPlayer` | **Yes** — the only legitimate `HasPlayer(` guard left outside this package (ratchet: `internal/archlint/no_pool_hasplayer_gate_test.go`) |
 
 Before 2026-09-16 three call sites short-circuited the doctrine with `if !pool.HasPlayer(gt) {

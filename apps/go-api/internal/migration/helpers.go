@@ -134,12 +134,57 @@ func alterColumnTypeIfNeeded(db *sql.DB, table, column, wanted string) (bool, er
 	if strings.EqualFold(strings.TrimSpace(actuel), strings.TrimSpace(wanted)) {
 		return false, nil
 	}
+	// DuckDB 1.5.5 refuse l'ALTER COLUMN des qu'un index SECONDAIRE existe sur la table,
+	// meme sur une autre colonne (« Cannot alter entry ... there are entries that depend
+	// on it »). On depose les index de la table (DDL relevee dans duckdb_indexes()), on
+	// elargit, on les recree. Un index sans DDL relisible fait echouer la migration plutot
+	// que d'etre depose a l'aveugle (revue adversariale du 2026-09-16, P0).
+	indexes, err := tableSecondaryIndexes(db, table)
+	if err != nil {
+		return false, fmt.Errorf("alterColumnTypeIfNeeded index de %s: %w", table, err)
+	}
+	for _, idx := range indexes {
+		if _, err := db.ExecContext(bootCtx(), "DROP INDEX IF EXISTS "+idx.name); err != nil {
+			return false, fmt.Errorf("alterColumnTypeIfNeeded DROP INDEX %s: %w", idx.name, err)
+		}
+	}
 	_, err = db.ExecContext(bootCtx(),
 		fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DATA TYPE %s", table, column, wanted))
 	if err != nil {
 		return false, fmt.Errorf("alterColumnTypeIfNeeded ALTER %s.%s -> %s: %w", table, column, wanted, err)
 	}
+	for _, idx := range indexes {
+		if _, err := db.ExecContext(bootCtx(), idx.ddl); err != nil {
+			return true, fmt.Errorf("alterColumnTypeIfNeeded recreation index %s: %w", idx.name, err)
+		}
+	}
 	return true, nil
+}
+
+// tableIndex : un index secondaire et la DDL qui le recree (duckdb_indexes().sql).
+type tableIndex struct{ name, ddl string }
+
+// tableSecondaryIndexes releve les index secondaires d'une table (la PK n'y figure pas).
+func tableSecondaryIndexes(db *sql.DB, table string) ([]tableIndex, error) {
+	rows, err := db.QueryContext(bootCtx(),
+		"SELECT index_name, sql FROM duckdb_indexes() WHERE table_name = ?", table)
+	if err != nil {
+		return nil, fmt.Errorf("duckdb_indexes(): %w", err)
+	}
+	defer rows.Close()
+	var out []tableIndex
+	for rows.Next() {
+		var name string
+		var ddl sql.NullString
+		if err := rows.Scan(&name, &ddl); err != nil {
+			return nil, fmt.Errorf("scan index: %w", err)
+		}
+		if !ddl.Valid || strings.TrimSpace(ddl.String) == "" {
+			return nil, fmt.Errorf("index %s sans DDL dans duckdb_indexes() — refus de le deposer a l'aveugle", name)
+		}
+		out = append(out, tableIndex{name: name, ddl: ddl.String})
+	}
+	return out, rows.Err()
 }
 
 // createIndexSafe cree un index en ignorant les erreurs "already exists".

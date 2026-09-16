@@ -66,10 +66,12 @@ statistiques, les films et les CSR sont des points d'accès PUBLICS que n'import
 parc sert (`PolicyAnyPublic`). Un profil suivi qui ne s'est jamais connecté par le SSO Xbox se
 synchronise comme les autres. Il suffit que le pool tienne au moins un jeton sain.
 
-Seule exception : le **rang de carrière**, réservé à son propriétaire (`PolicyPinnedPlayer`).
-Sans le jeton propre du joueur il est sauté, avec un AVERTISSEMENT unique par passe, et la
-commande affiche `career_synced=false` — la synchronisation, elle, reste en succès. Même règle
-pour le cron de personnalisation Spartan, qui garde pour cette raison son contrôle `HasPlayer`.
+Le rang de carrière ne fait PAS partie de la synchronisation : il est servi par le flux
+séparé de carrière en direct (`service.CareerLiveService`), et `career_synced` vaut toujours
+`false` dans le résumé du sync, jeton ou pas. Le client poolé garde `PolicyPinnedPlayer` sur
+`GetCareerRank` et rend `sync.ErrNoPinnedToken` pour un joueur sans jeton propre ; aucune étape
+du sync ne l appelle aujourd hui. Le cron de personnalisation Spartan est le seul appelant qui
+exige le jeton propre du joueur, et garde pour cette raison son contrôle `HasPlayer`.
 
 Les passes `backfill --csr` / `--shared-csr` et les commandes de films (`archive-films`,
 `backfill-killsource --online`, `replay-events`) suivent la même doctrine : `--gamertag` nomme le

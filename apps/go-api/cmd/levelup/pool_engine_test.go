@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/auth/pool"
 	go_sync "levelup/go-api/internal/sync"
@@ -56,46 +55,6 @@ var errNonEpingle = errString("aucun token pour ce gamertag")
 type errString string
 
 func (e errString) Error() string { return string(e) }
-
-// TestNewPooledEngineSertUnJoueurHorsPool — le moteur se construit pour un joueur ABSENT du
-// pool : aucune recherche de token propre, aucun échec.
-func TestNewPooledEngineSertUnJoueurHorsPool(t *testing.T) {
-	p := &poolUnSlot{proprietaire: "JGtm"}
-	if p.HasPlayer("Nuzzles") {
-		t.Fatal("préparation : Nuzzles ne doit pas être dans le pool de fixture")
-	}
-	cfg := &config.AppConfig{RepoRoot: t.TempDir()}
-	joueur := domain.PlayerSummary{Gamertag: "Nuzzles", XUID: "2533274800000000"}
-
-	engine := newPooledEngine(cfg, nil, p, joueur)
-	if engine == nil {
-		t.Fatal("newPooledEngine a rendu nil pour un joueur absent du pool")
-	}
-}
-
-// TestClientPooleServLesEndpointsPublicsHorsPool — le client posé sur le moteur acquiert bien
-// un token du PARC (PolicyAnyPublic) pour un joueur qui n'en a pas : c'est ce qui permet de
-// synchroniser un profil suivi sans token propre.
-func TestClientPooleServLesEndpointsPublicsHorsPool(t *testing.T) {
-	p := &poolUnSlot{proprietaire: "JGtm"}
-	client := go_sync.NewPooledHaloClient(p, "Nuzzles", "2533274800000000", 0)
-
-	// Contexte déjà annulé : l'appel HTTP échoue, mais APRÈS l'acquisition. Ce qu'on mesure
-	// est l'acquisition, pas le réseau.
-	ctx, annuler := context.WithCancel(context.Background())
-	annuler()
-	_, _ = client.GetMatchStats(ctx, "match-test")
-
-	if len(p.acquis) == 0 {
-		t.Fatal("aucune acquisition : le client n'a pas parlé au pool")
-	}
-	for _, a := range p.acquis {
-		if a != "public" {
-			t.Errorf("acquisition %q — un endpoint public doit passer par PolicyAnyPublic, "+
-				"sinon un joueur sans token propre reste bloqué (D1, plan 2026-09-16)", a)
-		}
-	}
-}
 
 // TestRangDeCarriereSeDegradeSeul — le SEUL endpoint privacy-gated rend ErrNoPinnedToken pour
 // un joueur hors pool : dégradation par endpoint, pas échec du sync.

@@ -246,6 +246,26 @@ sortie, écarts). Reprise : lire cette section puis `git log --oneline -10` dans
   artefacts de rejeu : identifier l'étape post-sync qui lit les films en CLI (événements de
   surbrillance ?) et documenter ce qu'elle produit.
 
+### Revue adversariale du 2026-09-16 — P2 consignés (réels, hors périmètre, non corrigés)
+
+- Deux fixtures de test recopient encore `team_0_score SMALLINT` / `team_1_score SMALLINT` :
+  `internal/migration/steps_shared_rebuild_match_participants_test.go:106-107` et
+  `internal/sync/art_rebuild_regression_test.go:110-111`. Sans effet à l exécution (les tests ne
+  touchent pas aux scores) ; le ratchet `match_registry_ddl_types_test.go` ne compare que les deux
+  DDL de production.
+- Toute commande CLI mono-joueur construit désormais le pool COMPLET (`MaxSize` 0) et fait donc
+  tourner les refresh tokens de tout le parc ; un serveur qui tournerait en parallèle garderait les
+  anciens RT en mémoire (`resolver.go` : `Refresh` relit `r.sources`, non réécrit au re-scan) et
+  finirait en `reauth_required` sur N comptes à l expiration du cache. En pratique les deux ne
+  cohabitent pas (la CLI sync tient la base partagée en RW → serveur arrêté), mais la classe
+  préexistante (`--all`) a une surface multipliée par N.
+- `internal/service/career_live_target.go:20-24` affirme, mesuré, que `/careerranks` n est PAS
+  soumis au joueur ; la politique `PolicyPinnedPlayer` de `GetCareerRank` repose donc sur une
+  prémisse contredite ailleurs dans le dépôt — à trancher par l utilisateur (hors périmètre).
+- Dix binaires de `cmd/` dépendent de `internal/sync/skill` TRANSITIVEMENT sans appeler
+  `RegisterAll` ; le ratchet ne voit que l import direct. Aucun chemin vers un classifier n a été
+  trouvé dans leur code.
+
 ## Annexe A — Reprise du sync de Nuzzles (utilisateur + pilote, APRÈS ce plan et quand la base est libre)
 
 1. `replay_build_location` est actuellement à **`off`** dans `app_settings.json` (posé le
@@ -432,3 +452,27 @@ poussait UN jeton à 5 rps, le nouveau tient `1 × taille du parc`, ce qui est l
 | 2 | `e0f42be18` | `feat(sync)` — le pool sert tout profil suivi |
 | 3 | `2d51b80ec` | `fix(schema)` — `match_registry` team scores en INTEGER |
 | 4 | (ce commit) | `chore(plan)` — journal, clôture, note de finition |
+
+### Revue adversariale (4.4), ronde 1 — 2026-09-16 ~13:30-14:30 — pilote
+
+Deux relecteurs aveugles (pool/CLI ; seams/migration), contrat écrit, filtre de recevabilité.
+9 constats recevables, 0 jeté.
+
+- **P0 (2), corrigés** : (a) `RunBackfillCSR` / `RunBackfillSharedCSR` exigeaient les tokens du
+  joueur AVANT de regarder le client poolé → `backfill --csr` / `--shared-csr` en échec pour
+  tous les joueurs ; garde extraite dans `requireTokensUnlessCustomClient` (3 tests, message
+  sans « re-login »). (b) `ALTER COLUMN … SET DATA TYPE` échoue en DuckDB 1.5.5 dès qu'un index
+  SECONDAIRE existe sur la table (`idx_mr_start_time`, mesuré par sonde par le relecteur) → la
+  migration aurait échoué à chaque boot et bloqué pve/social ; le helper dépose les index
+  secondaires (DDL relevée dans `duckdb_indexes()`), élargit, les recrée ; la fixture du test porte
+  l'index réel et vérifie qu'il survit.
+- **P1 (5), corrigés** : dry-run `--shared-csr` sans pool (aucune rotation de RT en dry-run) ;
+  cinq docs qui décrivaient une dégradation carrière inexistante (l'étape carrière est hors du
+  sync depuis le 2026-05-14) réécrites ; trois tests vides supprimés ; `steps_shared_core.go`
+  ramené à 633 L (632 en base : la référence de l'étape), étape dans
+  `steps_shared_widen_scores.go` ; runners CSR dans `cmd_backfill_csr.go` (865 L vs 1 026) ;
+  doc de paquet `auto_sync.go` remise à l'endroit.
+- **P2 (4), consignés** en §8, non corrigés.
+- Gates rejoués : `go vet` (6 paquets) → 0 ; unitaires `cmd/levelup`, `migration`, `scheduler`,
+  `archlint`, `halo_infinite/migrations`, `titleseams`, `sync` → 0 ; intégration `-p 1`
+  `migration`, `halo_infinite/migrations`, `persist` → 0.
