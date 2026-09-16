@@ -4,11 +4,11 @@ package filmdec
 //
 // Sorti de `traverse.go` par deplacement pur au lot 2.7 (scission des fichiers de plus de
 // 500 lignes) : aucune ligne de logique n'a change. Ce fichier porte les deux descripteurs
-// que le deser d'i0 consulte — le chemin DELTA du bipede (`TraversalPrecision`) et le chemin
+// que le deser d'i0 consulte — le chemin DELTA du bipede (`BitReader.traversal`) et le chemin
 // ABSOLU des objets du monde (`WorldObjectPrecision`) — et le seul point d'installation des
 // largeurs de la carte.
 
-// TraversalPrecision est le descripteur de quantification de position employé quand le
+// traversal est le descripteur de quantification de position employé quand le
 // déser d'i0 (object-position-dynamic-precision-component) se déclenche. Les tables de
 // l'exécutable lisent 0 statiquement : les vraies largeurs viennent de la config de
 // réplication du film.
@@ -24,15 +24,20 @@ package filmdec
 // CE CHAMP N'EST PAS LE LEVIER — piège vérifié le 2026-07-26, à ne pas refaire.
 // `AxisW` est la largeur des DELTAS de position (petits écarts image à image : 6 bits
 // suffisent). Les 13/13/14 sont les largeurs des positions ABSOLUES, et le déser en tient
-// une seconde, distincte, via `absAxisW`/`SetAbsoluteAxisW`. Y écrire 13/13/14 allonge le
+// une seconde, distincte, via `absAxisW`/`AbsoluteAxisW`. Y écrire 13/13/14 allonge le
 // chemin delta — qui est le chemin DOMINANT — et dégrade au lieu de corriger : mesuré,
 // i22 passe de 90,02 % à 92,83 % de comptes impossibles. Le 6/6/6 est donc conservé ici.
 //
 // Le vrai correctif d'i0 doit distinguer les deux largeurs le long de chaque branche de
 // FUN_1406cfe44 (keep-baseline 101 bits · absolu · delta prédit), et non régler une globale.
-// `PositionCalibratedSkip` court-circuite déjà le problème en sautant 47 ou 101 bits selon
+// `calibratedSkip` court-circuite déjà le problème en sautant 47 ou 101 bits selon
 // le premier bit — mais c'est un banc de calibration propre à Cliffhanger, pas un décodeur.
-var TraversalPrecision = PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{6, 6, 6}}
+//
+// C'ÉTAIT UNE VARIABLE DE PAQUET (`TraversalPrecision`) JUSQU'AU LOT 2.2.a : elle vient
+// désormais du PROFIL que le lecteur porte ([BitReader.poserMouvement]), et son défaut est
+// l'invariant de [mouvementDuProfil]. Le seul écrivain de production — la calibration de
+// `killsource` — le passe maintenant par `FrameConfig.Mouvement`.
+func (b *BitReader) traversal() PrecisionDescriptor { return b.mv.Traversal }
 
 // WorldObjectPrecision est le descripteur du chemin WORLD-OBJECT d'i0
 // (`object-position-component`) : projectiles ti=41, armes au sol ti=42, équipement ti=37,

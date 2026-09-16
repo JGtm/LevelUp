@@ -255,7 +255,7 @@ func tableProfilInvariants() []LigneProfil {
 			Cle: cleToutes, Champ: "Movement.AbsoluteAxisW", Valeur: "14",
 			Source: ProvenancePresumee,
 			Preuve: "uniforme applique a defaut de table par index de plage ; `absAxisWFor` " +
-				"retombe dessus (repli inscrit au registre, ancre `if absoluteAxisW > 0 {`)",
+				"retombe dessus (repli inscrit au registre, ancre `if w := br.absoluteAxisW(); w > 0 {`)",
 			Date: dateProfilPose,
 		},
 		{

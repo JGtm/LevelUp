@@ -348,4 +348,17 @@
 #               chainage. Faux positif d empreinte, meme nature que `.13` et `.14`.
 #               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` non plus : le corpus gate
 #               rend schema 59 -> 59 et 0 gain / 0 perte / 0 changement sur les 14 temoins.
-grammar-2026-09-15.19	caa007f928cec9bcce58bda4dfe084869a12c351365b35436a4305fde92c670e
+#   2026-09-17  grammar-2026-09-15.20  lot 2.2.a (`.19` -> `.20`, RANG PROVISOIRE) : LES LECTEURS
+#               DU CHEMIN DE POSITION PRENNENT LEUR VALEUR AU PROFIL. Les cinq variables de
+#               paquet de la famille (descripteur de traversee, largeur d axe absolue, pleine
+#               precision, queue de poignee du delta, saut calibre) voyagent desormais avec le
+#               LECTEUR DE BITS, seme par [mouvementDuProfil] — la meme fonction que le profil.
+#               La calibration de `killsource` les passe par `FrameConfig.Mouvement` au lieu de
+#               les ecrire dans le processus, et RESSORT son resultat (`calibration.Mouvement`)
+#               vers `runWalk` et `calibrateRSP`, qui en heritaient par effet de bord. UNE
+#               variable survit et elle est NOMMEE : `mouvementHerite`, le profil qu une passe
+#               laisse a la suivante — fait de production mesure (`replaybuild` decode
+#               `killsource` PUIS `replay.BuildFromFilm`, sans restauration), avec date de
+#               bascule, cible de retrait (lot 2.3) et critere. Ratchet 94 -> 90. AUCUN OCTET
+#               N EST LU AUTREMENT. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
+grammar-2026-09-15.20	b03d4b521a70d6c49347ab8c0e1beceb25434f1293996cb3392e4c28b337b6d1

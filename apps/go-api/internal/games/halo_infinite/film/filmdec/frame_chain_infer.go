@@ -80,6 +80,7 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 	frameLen := len(buf) * 8
 	redecode := func() EntityTrace {
 		br := NewBitReader(buf)
+		br.poserMouvement(cfg.Mouvement)
 		br.Skip(bodyStart)
 		if recType == recNew {
 			return TraverseEntity(br, w.Reg, cfg.NewDefaultStateBits)
@@ -217,6 +218,7 @@ func (c *chainCtx) confirmChainAt(pos, depth, recs int) bool {
 		return false
 	}
 	br := NewBitReader(c.buf)
+	br.poserMouvement(c.cfg.Mouvement) // EN TETE (lot 2.2.a)
 	br.Skip(pos)
 	if c.cfg.HasExtraFields {
 		br.Skip(32)

@@ -129,7 +129,17 @@ import (
 // table de variantes qui l accompagne quittent la production avec `walkKeyframeBody` — zero
 // appelant de production depuis le lot 1.4 — pour un fichier `_test.go` du paquet. Le ratchet ne
 // DESCEND que, et son en-tete le demande explicitement des qu une baisse est mesuree.
-const filmdecVarsGeles = 94
+//
+// RESSERRE A 90 LE 2026-09-17 (lot 2.2.a du PLAN_DECODEUR_FILM, famille « positions ») : les CINQ
+// valeurs du chemin de position — `TraversalPrecision`, `absoluteAxisW`, `PositionFullPrecision`,
+// `PositionDeltaHasHandleTail`, `PositionCalibratedSkip` — ne sont plus des variables de paquet :
+// elles voyagent avec le LECTEUR DE BITS (`BitReader.mv`), semees par le profil
+// (`filmdec.mouvementDuProfil`) et posees EN TETE de balayage par les portes a `FrameConfig`.
+// UNE variable NEUVE les remplace, et elle est nommee : `mouvementHerite`
+// (`filmdec/mouvement_herite.go`), le profil qu une passe laisse a la suivante dans le meme
+// processus — kill-switch date, retrait cible lot 2.3, critere « `replay.BuildFromFilm` recoit
+// le profil de son appelant ». Bilan net : -5 +1 = 90.
+const filmdecVarsGeles = 90
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

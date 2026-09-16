@@ -47,7 +47,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	variant = noVariant
 	switch name {
 	case "object-position-dynamic-precision-component": // i0
-		consumeObjectPositionDynamicPrecisionD(br, TraversalPrecision)
+		consumeObjectPositionDynamicPrecisionD(br, br.traversal())
 		return variant, nil, true
 	case "object-translational-velocity-dynamic-precision-component": // i1
 		consumeObjectTranslationalVelocity(br)

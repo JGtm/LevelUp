@@ -16,7 +16,7 @@ package filmdec
 //     the per-slot baseline.
 //
 // WORLD RANGE for the absolute/keyframe quantized path: the i0 axis widths come from
-// TraversalPrecision (IndexW=1, AxisW=6/6/6, measured via Cheat Engine). The dequant
+// le descripteur de traversée (IndexW=1, AxisW=6/6/6, measured via Cheat Engine). The dequant
 // RANGE is the engine world-position range DAT_143b8c6f0 precision-2 = +/-100 per axis
 // (QuantRangeWorld100, validated by quantize_test.go::TestReadQuantizedVec3_World100).
 // Halo Infinite ships maps inside a normalized [-100,100]^3 replication box for the
@@ -189,7 +189,7 @@ const (
 // 22 reglages morts, et c est la valeur que la production decode.
 const absDequantMode = AbsDequantRange
 
-// absoluteAxisW, si > 0, OVERRIDE la largeur d'axe des CHEMINS ABSOLUS i0 (consumeAbsoluteWithGate
+// `MovementProfile.AbsoluteAxisW`, si > 0, OVERRIDE la largeur d'axe des CHEMINS ABSOLUS i0 (consumeAbsoluteWithGate
 // + predFlag==1) — distincte de pd.AxisW (qui garde 6/6/6 pour le default-state et le delta
 // axis-width). La capture CE mesure 3×14 sur predFlag==1 (total i0 predicted = 47 bits). 0 =
 // utilise pd.AxisW[i] (comportement historique). Changer cette largeur CHANGE la consommation de
@@ -204,10 +204,11 @@ const absDequantMode = AbsDequantRange
 // pas une constante ad hoc. Verification croisee : a i0=47, les desers PORTES de i1 et i21
 // consomment exactement leurs largeurs vraies sur 100.0% de 15 529 records, et le deser
 // porte de i25 finit exactement a la fin vraie sur 100.0% de 3 090 records.
-var absoluteAxisW uint = 14
-
-// SetAbsoluteAxisW règle la largeur d'axe des chemins absolus i0 (0 = pd.AxisW). Harness de sweep.
-func SetAbsoluteAxisW(w uint) { absoluteAxisW = w }
+// C'ÉTAIT LA VARIABLE DE PAQUET `absoluteAxisW` (et son réglage public `SetAbsoluteAxisW`)
+// JUSQU'AU LOT 2.2.a : la largeur vient désormais du PROFIL que le lecteur porte
+// ([BitReader.poserMouvement]), et le balayage de calibration de `killsource` la passe par
+// `FrameConfig.Mouvement` au lieu de l'écrire dans le processus entier.
+func (b *BitReader) absoluteAxisW() uint { return b.mv.AbsoluteAxisW }
 
 // absAxisW retourne la largeur d'axe effective d'un chemin ABSOLU i0.
 //
@@ -230,15 +231,15 @@ func SetAbsoluteAxisW(w uint) { absoluteAxisW = w }
 // souvent. Chercher la faute dans les grammaires de composants ne pouvait rien donner :
 // elles étaient justes.
 //
-// POURQUOI L'ESSAI PRÉCÉDENT AVAIT ÉCHOUÉ : régler `TraversalPrecision.AxisW` à 13/13/14
+// POURQUOI L'ESSAI PRÉCÉDENT AVAIT ÉCHOUÉ : régler `Traversal.AxisW` à 13/13/14
 // changeait AUSSI la largeur du delta — le chemin dominant — et dégradait la mesure. Le
 // commentaire de traverse.go le disait déjà : « le vrai correctif doit distinguer les deux
 // largeurs le long de chaque branche, et non régler une globale. »
 // (Le descripteur de précision n'entre PAS dans ce choix : la largeur absolue vient soit
 // du réglage global, soit de WorldObjectPrecision — jamais du descripteur de l'appelant.)
-func absAxisW(i int) uint {
-	if absoluteAxisW > 0 {
-		return absoluteAxisW
+func absAxisW(br *BitReader, i int) uint {
+	if w := br.absoluteAxisW(); w > 0 {
+		return w
 	}
 	return WorldObjectPrecision.AxisW[i]
 }
@@ -257,18 +258,18 @@ func absAxisW(i int) uint {
 // position (`MOV R9D,0x10` a 1406d008a dans FUN_1406cfe44 ; `MOV R8D,0x10` a 140f7ea50 dans
 // FUN_140f7ea14, que FUN_14076e4ec deplace en R9 a 14076e505 ; 14226a6b8 dans FUN_14076f3ec).
 // Les trois largeurs ne sont donc PAS uniformes et PAS les memes pour tous les index — ce que
-// l'override uniforme `absoluteAxisW` suppose.
+// l'override uniforme `AbsoluteAxisW` suppose.
 //
 // LA TABLE `absPerIndexAxisW` QUI PORTAIT CE MODELE A ETE SUPPRIMEE le 2026-09-06 (lot E, item
 // E.8) : elle etait nil et le restait — son unique installateur, le reglage public
 // `SetAbsPerIndexAxisW`, n avait aucun appelant et est parti au lot E.2. Elle ne portait AUCUNE
 // valeur mesuree, seulement le modele ci-dessus, qui reste donc ecrit ici, a l endroit ou un
 // futur portage viendra le lire. La largeur rendue est celle du chemin uniforme, comme avant.
-func absAxisWFor(idx, i int) uint {
+func absAxisWFor(br *BitReader, idx, i int) uint {
 	if i == 0 {
 		absIdxHist[idx]++
 	}
-	return absAxisW(i)
+	return absAxisW(br, i)
 }
 
 // absIdxHist : histogramme des index de plage rencontres sur les chemins ABSOLUS de i0 (7ter.54
