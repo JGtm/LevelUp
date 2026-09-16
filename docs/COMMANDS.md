@@ -689,6 +689,15 @@ was indistinguishable from a loss under `1`.
 | 3 | `codeErreurCuisson` | the gate started, but a BAKED witness failed to bake or to diff — distinct from 1: the question could not be put, the answer is not "it lost" |
 | 4 | `codeCouvertureIncomplete` | at least one ABSENT witness without `--allow-missing` (CORPUS-R1 C3) — distinct from both 1 and 2: the manifest is valid, nothing lost, something is missing |
 
+**Robust facts export (2026-09-17, D2)**: `levelup replay-facts-export` opens the shared DB
+read-only, and fails when the local server happens to hold it for writing at that exact second
+("`… serveur en ecriture ? reessayer`"). On the lot 2.1 gate that cost two witnesses out of
+fourteen — `2/14 absent(s)` for a few seconds of bad luck, with the run replayed by hand from a
+manifest cut down to those two. The gate now **retries a held-DB failure 3 times, 2 s apart**,
+and never retries a permanent failure (id unknown to the registry, empty facts): re-asking a
+question whose answer cannot change only lengthens a 25-minute gate. A witness still missing
+afterwards is `ABSENT` and exits 4, distinct from a loss; `--temoins a,b` replays just those.
+
 **Named changes in the JSON report (2026-09-17, D5)**: the JSON now carries
 `changementsDetail` (axis, metric, old, new) symmetric to `pertesDetail`, plus a `statut` and
 an `absentCause` on every line, and the printed table gains a `DETAIL DES CHANGEMENTS` section
@@ -706,6 +715,7 @@ from the JSON alone, as a clean witness.
 | `--strict` | `false` | in `--reference=parc` mode, a loss or a change also exits 1 (no effect in base mode, already blocking) |
 | `--allow-missing` | `false` | tolerate an ABSENT witness (warning only) instead of exiting 4 |
 | `--manifest` | `<source-root>/config/replay_corpus.toml` | manifest path |
+| `--temoins` | (none) | replay ONLY the named witnesses (comma-separated ids) — the versioned manifest stays the corpus, no reduced manifest to write. An unknown id is an error (exit 2), never a silently truncated run. |
 | `--source-root` | `git rev-parse --show-toplevel` | repo whose HEAD code/config is under test — **not** `db_profiles.json`-based: works from any worktree, including one without a local copy of that file |
 | `--parc-root` | `source-root` if it already carries the title's shared DB, else auto-detected via the common `.git` | the dev parc (film chunks, `--reference=parc` artifacts) |
 | `--lock-root` | `CacheRootDir()` of the parc | where the shared decode lock lives |

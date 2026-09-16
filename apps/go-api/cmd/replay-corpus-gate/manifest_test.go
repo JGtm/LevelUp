@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -97,5 +98,84 @@ func ecrireFixtureTOML(t *testing.T, path, texte string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(texte), 0o600); err != nil {
 		t.Fatalf("ecriture de la fixture : %v", err)
+	}
+}
+
+// manifesteTrois fabrique un manifeste minimal de trois temoins, pour les tests de --temoins.
+func manifesteTrois() Manifest {
+	var m Manifest
+	m.Meta.TitleSlug = "halo_infinite"
+	m.Temoins = []Temoin{
+		{ID: "c75f33b8", Famille: "assaut"},
+		{ID: "111fa685", Famille: "btb"},
+		{ID: "bcb6d393", Famille: "ctf_mono_manche"},
+	}
+	return m
+}
+
+// TestFiltrerTemoinsGardeLesNommesDansLOrdreDemande — D2 (cloture M1) : rejouer les seuls
+// temoins perdus par l'alea de l'export, sans ecrire un manifeste reduit a la main. L'ordre est
+// celui de l'operateur, pas celui du manifeste.
+func TestFiltrerTemoinsGardeLesNommesDansLOrdreDemande(t *testing.T) {
+	m, err := FiltrerTemoins(manifesteTrois(), NomsDemandes("111fa685, c75f33b8"))
+	if err != nil {
+		t.Fatalf("filtre sur deux ids connus : %v", err)
+	}
+	if len(m.Temoins) != 2 {
+		t.Fatalf("%d temoin(s) gardes, 2 attendus : %+v", len(m.Temoins), m.Temoins)
+	}
+	if m.Temoins[0].ID != "111fa685" || m.Temoins[1].ID != "c75f33b8" {
+		t.Errorf("ordre = %s, %s — celui de --temoins attendu", m.Temoins[0].ID, m.Temoins[1].ID)
+	}
+	if m.Temoins[0].Famille != "btb" {
+		t.Errorf("le temoin garde a perdu sa famille : %+v", m.Temoins[0])
+	}
+}
+
+// TestFiltrerTemoinsVideRendLeManifesteEntier — sans --temoins, le corpus complet : le chemin
+// par defaut ne doit rien filtrer du tout.
+func TestFiltrerTemoinsVideRendLeManifesteEntier(t *testing.T) {
+	m, err := FiltrerTemoins(manifesteTrois(), NomsDemandes(""))
+	if err != nil {
+		t.Fatalf("filtre vide : %v", err)
+	}
+	if len(m.Temoins) != 3 {
+		t.Fatalf("%d temoin(s), 3 attendus — un filtre vide ne filtre pas", len(m.Temoins))
+	}
+}
+
+// TestFiltrerTemoinsRefuseUnIdInconnu — UNE FAUTE DE FRAPPE N'EST PAS UN CORPUS REDUIT. Un id
+// inconnu doit rendre une erreur nommant l'intrus ET les ids connus, jamais un manifeste
+// ampute en silence (le meme silence que verifierCouverture interdit).
+func TestFiltrerTemoinsRefuseUnIdInconnu(t *testing.T) {
+	_, err := FiltrerTemoins(manifesteTrois(), NomsDemandes("c75f33b8,c75f33b9"))
+	if err == nil {
+		t.Fatal("un id absent du manifeste doit etre une erreur, pas un filtre silencieux")
+	}
+	for _, attendu := range []string{"c75f33b9", "bcb6d393"} {
+		if !strings.Contains(err.Error(), attendu) {
+			t.Errorf("le message doit nommer l'intrus et les ids connus, %q manquant : %v", attendu, err)
+		}
+	}
+}
+
+// TestFiltrerTemoinsDedoublonne — `--temoins a,a` est une maladresse, pas une demande de cuire
+// deux fois le meme film (chaque cuisson coute 1 a 3 min).
+func TestFiltrerTemoinsDedoublonne(t *testing.T) {
+	m, err := FiltrerTemoins(manifesteTrois(), NomsDemandes("c75f33b8,c75f33b8"))
+	if err != nil {
+		t.Fatalf("filtre avec doublon : %v", err)
+	}
+	if len(m.Temoins) != 1 {
+		t.Fatalf("%d temoin(s), 1 attendu : un id repete ne cuit pas deux fois", len(m.Temoins))
+	}
+}
+
+// TestNomsDemandesTolereEspacesEtVides — la valeur est tapee a la main sur une ligne de
+// commande : « a, b ,, c » vaut trois ids.
+func TestNomsDemandesTolereEspacesEtVides(t *testing.T) {
+	got := NomsDemandes(" a, b ,, c ")
+	if len(got) != 3 || got[0] != "a" || got[1] != "b" || got[2] != "c" {
+		t.Fatalf("NomsDemandes = %q, [a b c] attendu", got)
 	}
 }
