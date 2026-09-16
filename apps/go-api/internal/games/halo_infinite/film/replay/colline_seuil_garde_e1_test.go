@@ -37,7 +37,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 const (
@@ -153,8 +153,8 @@ func TestCollineSeuilGardeE1(t *testing.T) {
 	}
 	ownerSlot := d.slot + 1
 
-	recs := objectiveevents.StatRecords(p2aBobine(t, dir))
-	score := objectiveevents.SeriesTotal(recs, objectiveevents.ModeScoreComponent, true)
+	recs := objectives.StatRecords(p2aBobine(t, dir))
+	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true)
 	slots := d2ScoreSlots(score)
 	if len(slots) != 2 {
 		t.Logf("ECARTE   %s (%s) : %d slot(s) d'equipe au score de mode — sans les deux camps, "+
@@ -240,7 +240,7 @@ func e1Ligne(t *testing.T, short, carte, source string, i int, tenue, duree floa
 //
 // UNE PERIODE QUE DEUX CAMPS CLOTURENT A LA MEME FRAME EST ECARTEE : elle ne nomme pas son
 // marqueur, et lui en attribuer un serait une devinette.
-func e1Periodes(doc ReplayDocument, score map[int][]objectiveevents.ScorePoint, slots []int,
+func e1Periodes(doc ReplayDocument, score map[int][]objectives.ScorePoint, slots []int,
 	debut int,
 ) []e1Periode {
 	type inc struct {

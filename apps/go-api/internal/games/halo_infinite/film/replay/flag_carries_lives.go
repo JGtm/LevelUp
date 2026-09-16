@@ -3,7 +3,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // flag_carries_lives.go — DE PORTAGES ISOLES A LA VIE D'UN DRAPEAU.
@@ -199,7 +199,7 @@ func flagTenuParUnAutre(raws []flagCarryRaw, i int) bool {
 func flagReturnTimes(scan FlagCarryScan) []int64 {
 	var out []int64
 	for _, e := range scan.Events {
-		if e.Stat == objectiveevents.StatFlagReturns {
+		if e.Stat == objectives.StatFlagReturns {
 			out = append(out, int64(e.TimeMS))
 		}
 	}

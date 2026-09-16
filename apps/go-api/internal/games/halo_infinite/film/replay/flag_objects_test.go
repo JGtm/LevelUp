@@ -22,7 +22,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
@@ -47,10 +47,10 @@ func flagTestSpawns() []FlagSpawn {
 func flagTestOpenScan(free []flagFreeLife) FlagCarryScan {
 	return FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns:   flagTestSpawns(),
 		Free:     free,
 	}
@@ -127,10 +127,10 @@ func TestLeLacherPrendLaPositionDeLaPisteLibre(t *testing.T) {
 	deaths := []Death{{XUID: 1, TimeMS: 4000}}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns:   flagTestSpawns(),
 	}
 	ctx := flagTestCtx(tracks, deaths, 100)

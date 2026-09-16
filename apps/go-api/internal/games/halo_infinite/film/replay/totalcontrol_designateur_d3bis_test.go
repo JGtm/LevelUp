@@ -19,7 +19,7 @@ package replay
 //
 //	les DESIGNATEURS  les slots `ti=13` a serie de tag 5 CHAINEE (le tag 5 non chaine est de la
 //	                  contamination d'ancrage — meme predicat que le volet colline).
-//	les MANCHES       `objectiveevents.RealRounds` sur les enregistrements d'entite.
+//	les MANCHES       `objectives.RealRounds` sur les enregistrements d'entite.
 //
 // LES DEUX HORLOGES SONT RAMENEES A CELLE DU MOTEUR. Les lectures `ti=13` portent un horodatage
 // MOTEUR ; les enregistrements d'entite sont dates depuis le PREMIER PAQUET du film.
@@ -36,7 +36,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
@@ -70,7 +70,7 @@ func TestTotalControlDesignateurParManche(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s : origine d'horloge illisible : %v", short, err)
 	}
-	recs := objectiveevents.StatRecords(p2aBobine(t, dir))
+	recs := objectives.StatRecords(p2aBobine(t, dir))
 	manches := tcManchesOf(recs)
 	if len(manches) == 0 {
 		t.Logf("NON EXPLOITABLE %s : aucune manche lisible — ce film ne compte ni pour ni contre", short)
@@ -126,8 +126,8 @@ func TestTotalControlDesignateurParManche(t *testing.T) {
 //
 // LES MANCHES FANTOMES SONT ECARTEES par `RealRounds` — les cumuler ferait exploser les
 // compteurs (mesure du lot A : un score d'equipe passait de 1 a 2 104).
-func tcManchesOf(recs []objectiveevents.StatRecord) []tcManche {
-	reelles := objectiveevents.RealRounds(recs)
+func tcManchesOf(recs []objectives.StatRecord) []tcManche {
+	reelles := objectives.RealRounds(recs)
 	bornes := map[int][2]int{}
 	for _, r := range recs {
 		if !reelles[r.Round] {

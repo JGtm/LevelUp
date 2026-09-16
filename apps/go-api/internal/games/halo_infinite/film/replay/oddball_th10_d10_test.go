@@ -34,8 +34,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 const (
@@ -119,9 +119,9 @@ func d10Evenements(t *testing.T, root, id string) []d10Th10 {
 		t.Fatalf("%s : film absent du cache", id)
 	}
 	var out []d10Th10
-	evenements, _ := objectiveevents.Extract(id, d4VariantOddball, src, objectiveevents.MapRoster{})
+	evenements, _ := objectives.Extract(id, d4VariantOddball, src, objectives.MapRoster{})
 	for _, ev := range evenements {
-		if ev.EventType != objectiveevents.EventTypeSkullCarry || ev.TimeMS == nil {
+		if ev.EventType != objectives.EventTypeSkullCarry || ev.TimeMS == nil {
 			continue
 		}
 		e := d10Th10{ms: int64(*ev.TimeMS)}

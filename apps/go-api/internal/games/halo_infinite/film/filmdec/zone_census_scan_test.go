@@ -10,7 +10,7 @@ package filmdec
 // separement coutaient sept fois ce prix ; une bande UNION plus une table slot -> archetype
 // rend exactement la meme mesure pour un seul parcours.
 //
-// L'HORLOGE est celle d'`objectiveevents.StatRecords` (statborg.go) et pas une autre :
+// L'HORLOGE est celle d'`objectives.StatRecords` (statborg.go) et pas une autre :
 // `tMS = manifeste.start_ms[chunk] + (us_du_paquet - us_du_PREMIER_paquet_delta_du_chunk)/1000`.
 // Sans cette identite de base, comparer des annonces a des evenements nommes n'aurait aucun
 // sens.
@@ -66,7 +66,7 @@ type zcScanResult struct {
 }
 
 // zcClock convertit l'horodatage moteur d'un paquet en millisecondes de match, sur la MEME
-// base que `objectiveevents.StatRecords`.
+// base que `objectives.StatRecords`.
 type zcClock struct {
 	// startMS[chunk] vient du manifeste du film.
 	startMS map[int]int

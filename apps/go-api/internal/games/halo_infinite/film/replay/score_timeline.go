@@ -3,7 +3,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
@@ -22,12 +22,12 @@ import (
 // est fait UNE fois par l'appelant et ses enregistrements servent aux trois calques qui en
 // dependent (score, identite des slots, actions d'objectif).
 type ScoreInput struct {
-	// Records sont les enregistrements d'entite du film (objectiveevents.StatRecordsCtx).
-	Records []objectiveevents.StatRecord
+	// Records sont les enregistrements d'entite du film (objectives.StatRecordsCtx).
+	Records []objectives.StatRecord
 	// Lines sont les lignes de match des joueurs (`match_participants`) : le triplet
 	// (frags, morts, assistances) est la CLE d'appariement du slot d'entite au xuid.
 	// Absentes, aucun joueur n'est publie — jamais un slot attribue au hasard.
-	Lines []objectiveevents.PlayerLine
+	Lines []objectives.PlayerLine
 	// TeamByXUID donne le camp de chaque joueur (`match_participants.team_id`). Sert a la
 	// resolution d'identite (b) : la somme des frags d'un camp contre celle du slot d'equipe.
 	TeamByXUID map[string]int
@@ -73,15 +73,15 @@ func (c scoreClock) frameOf(timeMS int) (int, bool) {
 // scoreSeriesSet porte les deux formes d'un meme emplacement, deja decodees pour tous les
 // slots d'une famille (equipes ou joueurs) : la courbe par manche et la courbe cumulee.
 type scoreSeriesSet struct {
-	byRound map[int]map[int][]objectiveevents.ScorePoint
-	total   map[int][]objectiveevents.ScorePoint
+	byRound map[int]map[int][]objectives.ScorePoint
+	total   map[int][]objectives.ScorePoint
 }
 
 // loadScoreSeries decode les deux formes d'un emplacement.
-func loadScoreSeries(recs []objectiveevents.StatRecord, comp objectiveevents.StatComponent, teams bool) scoreSeriesSet {
+func loadScoreSeries(recs []objectives.StatRecord, comp objectives.StatComponent, teams bool) scoreSeriesSet {
 	return scoreSeriesSet{
-		byRound: objectiveevents.SeriesByRound(recs, comp, teams),
-		total:   objectiveevents.SeriesTotal(recs, comp, teams),
+		byRound: objectives.SeriesByRound(recs, comp, teams),
+		total:   objectives.SeriesTotal(recs, comp, teams),
 	}
 }
 
@@ -120,7 +120,7 @@ func (s scoreSeriesSet) final(slot int) (int64, bool) {
 //
 // Les emissions hors fenetre sont ecartees sans bruit — elles sont le cas nominal (le film
 // continue apres la derniere position publiee, et commence avant la premiere).
-func scoreTicksOf(pts []objectiveevents.ScorePoint, c scoreClock) []ScoreTick {
+func scoreTicksOf(pts []objectives.ScorePoint, c scoreClock) []ScoreTick {
 	out := make([]ScoreTick, 0, len(pts))
 	for _, p := range pts {
 		t, ok := c.frameOf(p.TimeMS)
@@ -144,7 +144,7 @@ func scoreTicksOf(pts []objectiveevents.ScorePoint, c scoreClock) []ScoreTick {
 }
 
 // scoreRoundsOf pose les manches d'un slot sur la grille, dans l'ordre des manches.
-func scoreRoundsOf(byRound map[int][]objectiveevents.ScorePoint, c scoreClock) []ScoreRound {
+func scoreRoundsOf(byRound map[int][]objectives.ScorePoint, c scoreClock) []ScoreRound {
 	rounds := make([]int, 0, len(byRound))
 	for r := range byRound {
 		rounds = append(rounds, r)
@@ -175,14 +175,14 @@ func buildScoreTimeline(in *ScoreInput, deaths []Death, c scoreClock,
 		return nil, nil
 	}
 	recs := in.Records
-	teamScore := loadScoreSeries(recs, objectiveevents.ModeScoreComponent, true)
-	teamFrags := loadScoreSeries(recs, objectiveevents.KillsComponent, true)
-	playerFrags := loadScoreSeries(recs, objectiveevents.KillsComponent, false)
+	teamScore := loadScoreSeries(recs, objectives.ModeScoreComponent, true)
+	teamFrags := loadScoreSeries(recs, objectives.KillsComponent, true)
+	playerFrags := loadScoreSeries(recs, objectives.KillsComponent, false)
 	// L'identite PLATE par TOTAUX reste la source de la preuve (b) d'identite des CAMPS
 	// (`resolveTeamIdentity`) : les courbes d'equipe ne bougent pas. En MONO-MANCHE elle nomme
 	// aussi les joueurs (le slot n'est pas reattribue) ; en MULTI-MANCHE, `buildPlayerScores`
 	// passe par l'identite PAR MANCHE (les instants de mort). Cf. buildPlayerScores.
-	identity := objectiveevents.SlotIdentityFrom(recs, in.Lines)
+	identity := objectives.SlotIdentityFrom(recs, in.Lines)
 
 	slots := teamSlotsOf(teamScore, teamFrags)
 	teamID, method := resolveTeamIdentity(in, slots, teamScore, teamFrags, playerFrags, identity)
@@ -205,7 +205,7 @@ func buildScoreTimeline(in *ScoreInput, deaths []Death, c scoreClock,
 		Oracle:        ScoreOracleDisplayed,
 		Points:        countScorePoints(tl),
 	}
-	attachRoundsCoverage(cov, objectiveevents.ResolveRounds(recs), fb)
+	attachRoundsCoverage(cov, objectives.ResolveRounds(recs), fb)
 	if len(tl.Teams) == 0 && len(tl.Players) == 0 {
 		tl = nil
 	}
@@ -222,7 +222,7 @@ func buildScoreTimeline(in *ScoreInput, deaths []Death, c scoreClock,
 //
 // `RoundsWritten` n'est publie qu'a partir de DEUX designateurs : sur un film mono-manche il
 // rendrait `[0]`, ce que `Rounds = 1` dit deja, au prix d'un champ sur les 1 300 films du parc.
-func attachRoundsCoverage(cov *ScoreCoverage, d objectiveevents.RoundsDecision, fb *fallback.Compteur) {
+func attachRoundsCoverage(cov *ScoreCoverage, d objectives.RoundsDecision, fb *fallback.Compteur) {
 	cov.Rounds = len(d.Real)
 	if len(d.Written) > 1 {
 		cov.RoundsWritten = d.Written
@@ -272,7 +272,7 @@ func publishableHold(ticks, series int) *int {
 // teamSlotsOf rend les slots d'entite d'equipe vus par le film, dans l'ordre.
 func teamSlotsOf(score, frags scoreSeriesSet) []int {
 	seen := map[int]bool{}
-	for _, m := range []map[int][]objectiveevents.ScorePoint{score.total, frags.total} {
+	for _, m := range []map[int][]objectives.ScorePoint{score.total, frags.total} {
 		for slot := range m {
 			seen[slot] = true
 		}

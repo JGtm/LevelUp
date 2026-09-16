@@ -5,7 +5,7 @@
 // PUBLIE le taux obtenu avec son temoin negatif.
 //
 //	les formes    data/titles/{slug}/reference/map_objectives.json (replay.LoadMapObjectives)
-//	les instants  les evenements nommes du statborg, identifies par xuid (objectiveevents)
+//	les instants  les evenements nommes du statborg, identifies par xuid (objectives)
 //	les positions les trajectoires decodees du film (replay.BuildFromFilm)
 //
 // # Pourquoi un binaire et pas un test

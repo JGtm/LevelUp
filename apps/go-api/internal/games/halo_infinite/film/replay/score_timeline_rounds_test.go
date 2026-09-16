@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // score_timeline_rounds_test.go — LE CALQUE DU SCORE PAR JOUEUR MIGRE VERS L'IDENTITE PAR MANCHE.
@@ -30,8 +30,8 @@ func multiRoundClock() scoreClock {
 // slots. Le compteur de morts (comp 2 B) est l'ancre d'identite ; ses instants correspondent au
 // fil des morts. Chaque (slot, manche) porte aussi un train de score de mode (comp 0 A, >= 3
 // emissions) pour que RealRounds tienne les deux manches pour reelles.
-func reassignFixture() ([]objectiveevents.StatRecord, []Death) {
-	var recs []objectiveevents.StatRecord
+func reassignFixture() ([]objectives.StatRecord, []Death) {
+	var recs []objectives.StatRecord
 	// Score de mode : trois emissions croissantes par manche sur le slot 22 -> manches 0 et 1.
 	recs = append(recs, modeRamp(22, 0, 1_000, 1_000, 10, 20, 30)...)
 	recs = append(recs, modeRamp(22, 1, 11_000, 1_000, 10, 20, 30)...)
@@ -132,7 +132,7 @@ func TestScoreTimelineReassignedContreEpreuve(t *testing.T) {
 	recs, deaths := reassignFixture()
 	c := multiRoundClock()
 
-	flatIdent := objectiveevents.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
+	flatIdent := objectives.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
 	if flatIdent[22] != "1001" || flatIdent[20] != "1002" {
 		t.Fatalf("pont plat = %v, attendu {22:1001(A), 20:1002(B)} (il ne voit que la manche 0)", flatIdent)
 	}

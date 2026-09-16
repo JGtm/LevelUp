@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // TestFlagCarriesVieAnonymeNEstPasUneAbsence — UNE VIE ANONYME EST UNE PRESENCE SANS IDENTITE
@@ -24,11 +24,11 @@ func TestFlagCarriesVieAnonymeNEstPasUneAbsence(t *testing.T) {
 	}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 7000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 9000, Slot: 12, Stat: objectiveevents.StatFlagCaptures},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 7000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 9000, Slot: 12, Stat: objectives.StatFlagCaptures},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: porteur}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: porteur}),
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	ctx := flagTestCtx(tracks, nil, 100)
@@ -59,11 +59,11 @@ func TestFlagCarriesVieAnonymeSansPontResteEcartee(t *testing.T) {
 	tracks := []Track{flagTestTrack(536, "", 60, 99, 30, 40)}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 7000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 9000, Slot: 12, Stat: objectiveevents.StatFlagCaptures},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 7000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 9000, Slot: 12, Stat: objectives.StatFlagCaptures},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: porteur}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: porteur}),
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	for nom, pont := range map[string]map[uint32]uint64{
@@ -101,11 +101,11 @@ func TestFlagCarriesSlotPartageRefuseLeRepli(t *testing.T) {
 	}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 7000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 9000, Slot: 12, Stat: objectiveevents.StatFlagCaptures},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 7000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 9000, Slot: 12, Stat: objectives.StatFlagCaptures},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: porteur}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: porteur}),
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	ctx := flagTestCtx(tracks, nil, 130)
@@ -133,11 +133,11 @@ func TestFlagCarriesSlotNonPartageAccepteEtNeCompteRien(t *testing.T) {
 	}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 7000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 9000, Slot: 12, Stat: objectiveevents.StatFlagCaptures},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 7000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 9000, Slot: 12, Stat: objectives.StatFlagCaptures},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: porteur}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: porteur}),
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	ctx := flagTestCtx(tracks, nil, 130)
@@ -183,11 +183,11 @@ func TestFlagCarriesSlotEpureDuPontComptEncoreLeRefus(t *testing.T) {
 	}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 7000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 9000, Slot: 12, Stat: objectiveevents.StatFlagCaptures},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 7000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 9000, Slot: 12, Stat: objectives.StatFlagCaptures},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: porteur}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: porteur}),
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	ctx := flagTestCtx(tracks, nil, 130)

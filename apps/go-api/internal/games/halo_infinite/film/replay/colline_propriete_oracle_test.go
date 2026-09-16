@@ -53,7 +53,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
@@ -108,11 +108,11 @@ func TestCollineProprieteOracle(t *testing.T) {
 func ctIncrements(t *testing.T, e ctEntree) []ctIncrement {
 	t.Helper()
 	src := p2aBobine(t, e.dir)
-	recs := objectiveevents.StatRecords(src)
-	series := objectiveevents.SeriesTotal(recs, objectiveevents.ModeScoreComponent, true)
+	recs := objectives.StatRecords(src)
+	series := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true)
 	var out []ctIncrement
 	for slot, pts := range series {
-		if !objectiveevents.IsTeamSlot(slot) {
+		if !objectives.IsTeamSlot(slot) {
 			continue
 		}
 		var prev int64

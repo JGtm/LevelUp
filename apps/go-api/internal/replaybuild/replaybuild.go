@@ -16,7 +16,7 @@
 //
 // Il décode le film à DEUX endroits, et pour deux grammaires différentes : `games/halo_infinite/film/replay`
 // pour les positions et les événements de réplication (sérialisé par le verrou process de
-// `filmdec`), `analysis/objectiveevents` pour les enregistrements d'entité d'où sortent la
+// `filmdec`), `film/facts/objectives` pour les enregistrements d'entité d'où sortent la
 // courbe de score et les actions d'objectif (cf. matchfacts.go).
 package replaybuild
 

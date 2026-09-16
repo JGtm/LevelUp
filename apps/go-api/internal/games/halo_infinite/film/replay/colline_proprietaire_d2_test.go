@@ -21,7 +21,7 @@ package replay
 // En KOTH le score de mode EST le temps de colline (« l'API compte des secondes de colline »,
 // chronique 33->34 du contrat). Le camp dont le score de MODE monte pendant un intervalle est
 // donc celui qui tient la colline pendant cet intervalle. C'est un oracle a la milliseconde,
-// DEJA EN PRODUCTION depuis le schema 12 (`objectiveevents.SeriesTotal` + `ModeScoreComponent`),
+// DEJA EN PRODUCTION depuis le schema 12 (`objectives.SeriesTotal` + `ModeScoreComponent`),
 // et il ne coute aucune lecture de film supplementaire.
 //
 // # CE QUE LA MESURE NE DEMANDE PAS, ET C'EST DELIBERE
@@ -46,7 +46,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // d2MinRunFrames : duree MINIMALE d'un intervalle de propriete pour etre confronte.
@@ -109,15 +109,15 @@ func TestCollineProprietaireD2(t *testing.T) {
 		e.short, d.slot, len(d.changes), d.first, ownerSlot, len(samples),
 		e.doc.FrameCount, e.doc.FrameIntervalMS)
 
-	recs := objectiveevents.StatRecords(p2aBobine(t, e.dir))
-	score := objectiveevents.SeriesTotal(recs, objectiveevents.ModeScoreComponent, true)
+	recs := objectives.StatRecords(p2aBobine(t, e.dir))
+	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true)
 	slots := d2ScoreSlots(score)
 	// DIAGNOSTIC DE L'ORACLE, pose AVANT de s'en servir. Un slot d'equipe manquant peut venir
 	// de DEUX causes tres differentes : le film ne replique pas la serie de ce camp, ou notre
 	// filtre de stricte croissance (`longestRun`) l'a jetee. La lecture NON STRICTE du meme
 	// emplacement les separe, et sans elle le negatif resterait vague.
-	brut := objectiveevents.SeriesTotal(recs,
-		objectiveevents.StatComponent{Comp: 0, SideB: false, Strict: false}, true)
+	brut := objectives.SeriesTotal(recs,
+		objectives.StatComponent{Comp: 0, SideB: false, Strict: false}, true)
 	t.Logf("%s : oracle — slots STRICTS %v, slots BRUTS %v", e.short, slots, d2ScoreSlots(brut))
 	if len(slots) != 2 {
 		t.Logf("NEGATIF  %s : %d slot(s) d'equipe seulement au score de mode — l'oracle ne peut "+
@@ -210,7 +210,7 @@ func d2Decale(runs []d2Run, shift, frames int) []d2Run {
 
 // d2Confront confronte chaque intervalle au camp qui MARQUE pendant lui, et rend l'accord sous
 // la meilleure bijection valeur <-> slot d'equipe.
-func d2Confront(runs []d2Run, score map[int][]objectiveevents.ScorePoint, slots []int,
+func d2Confront(runs []d2Run, score map[int][]objectives.ScorePoint, slots []int,
 	e ctEntree,
 ) d2Verdict {
 	v := d2Verdict{runs: len(runs)}
@@ -276,13 +276,13 @@ func d2MeilleureBijection(paires map[uint64]map[int]int, slots []int) (int, stri
 }
 
 // d2Delta rend la progression du score sur la fenetre de frames [t0, t1].
-func d2Delta(pts []objectiveevents.ScorePoint, e ctEntree, t0, t1 int) int64 {
+func d2Delta(pts []objectives.ScorePoint, e ctEntree, t0, t1 int) int64 {
 	return d2ValeurA(pts, e, t1) - d2ValeurA(pts, e, t0)
 }
 
 // d2ValeurA rend la valeur CUMULEE en vigueur a une frame : la derniere emission dont l'instant
 // y tombe ou la precede. Zero avant la premiere.
-func d2ValeurA(pts []objectiveevents.ScorePoint, e ctEntree, frame int) int64 {
+func d2ValeurA(pts []objectives.ScorePoint, e ctEntree, frame int) int64 {
 	var out int64
 	for _, p := range pts {
 		f, ok := p2aFrameOf(e.doc, p.TimeMS)
@@ -295,7 +295,7 @@ func d2ValeurA(pts []objectiveevents.ScorePoint, e ctEntree, frame int) int64 {
 }
 
 // d2ScoreSlots rend les slots d'equipe qui portent une serie, tries.
-func d2ScoreSlots(score map[int][]objectiveevents.ScorePoint) []int {
+func d2ScoreSlots(score map[int][]objectives.ScorePoint) []int {
 	out := make([]int, 0, len(score))
 	for s, pts := range score {
 		if len(pts) > 0 {
@@ -307,7 +307,7 @@ func d2ScoreSlots(score map[int][]objectiveevents.ScorePoint) []int {
 }
 
 // d2Final rend le dernier point d'une serie cumulee, 0 si vide.
-func d2Final(pts []objectiveevents.ScorePoint) int64 {
+func d2Final(pts []objectives.ScorePoint) int64 {
 	if len(pts) == 0 {
 		return 0
 	}

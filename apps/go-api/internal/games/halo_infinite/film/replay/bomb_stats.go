@@ -11,7 +11,7 @@ package replay
 // # D'OÙ VIENT CHAQUE CHIFFRE, ET CE QUE ÇA VAUT — mesure contre déduction
 //
 //	bomb_detonations              MESURE. Compteur du moteur : statborg `comp 0` canal A,
-//	                              nommé `StatBombDetonations` (objectiveevents/named.go), puis
+//	                              nommé `StatBombDetonations` (objectives/named.go), puis
 //	                              identifié PAR MANCHE par l'appelant hors ligne. Gate A4
 //	                              (2026-09-01) : la somme des slots joueurs vaut exactement les
 //	                              explosions du film, 4/4 films sur moitiés disjointes.
@@ -83,11 +83,11 @@ import (
 	"sort"
 	"strconv"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // BombEventDetonated est la valeur `event_type` d'une explosion de bombe datée, sous
-// l'objectif `objectiveevents.ObjectiveTypeBomb`.
+// l'objectif `objectives.ObjectiveTypeBomb`.
 const BombEventDetonated = "bomb_detonated"
 
 // BombSourceNavpointRing / BombSourceStatborg nomment LA PROVENANCE de chaque fait daté de la
@@ -113,16 +113,16 @@ const (
 // LES DEUX FAMILLES SONT `exact`, ET CE N'EST PAS UNE FACILITÉ : l'armement est daté par la FIN
 // d'un segment de l'anneau (l'instant du paquet, à la milliseconde), l'explosion par l'émission
 // du statborg qui la porte (idem). Aucune des deux n'est une inflexion interpolée — c'est ce que
-// `objectiveevents.ConfidenceApprox` désigne, et ce n'est pas notre cas.
+// `objectives.ConfidenceApprox` désigne, et ce n'est pas notre cas.
 //
 // Un type inconnu rend deux chaînes VIDES : le persister refusera alors la ligne plutôt que de
 // l'écrire sans provenance, ce qui est exactement le comportement voulu.
 func BombEventProvenance(eventType string) (source, confidence string) {
 	switch eventType {
 	case BombEventArmed:
-		return BombSourceNavpointRing, objectiveevents.ConfidenceExact
+		return BombSourceNavpointRing, objectives.ConfidenceExact
 	case BombEventDetonated:
-		return BombSourceStatborg, objectiveevents.ConfidenceExact
+		return BombSourceStatborg, objectives.ConfidenceExact
 	}
 	return "", ""
 }
@@ -149,7 +149,7 @@ type BombStatsInput struct {
 	// Objectives est le calque des actions d'objectif NOMMÉES ET IDENTIFIÉES PAR MANCHE, tel
 	// que `Options.Objectives` le porte. Seules les entrées `StatBombDetonations` sont lues :
 	// les autres statistiques du même flux (frags, assistances) ne concernent pas ce noyau.
-	Objectives []objectiveevents.IdentifiedEvent
+	Objectives []objectives.IdentifiedEvent
 	// CarryRead : le canal des armes tenues a été balayé et filtré sur la famille bombe
 	// (`BombInput.CarryScanned`). Faux = `bomb_grabs` et `time_as_bomb_carrier_seconds`
 	// restent absents partout.
@@ -374,7 +374,7 @@ func bombDetonationsByXUID(in BombStatsInput) (map[string]int, []BombEvent) {
 	counts := map[string]int{}
 	events := make([]BombEvent, 0, len(in.Objectives))
 	for _, e := range in.Objectives {
-		if e.Stat != objectiveevents.StatBombDetonations || e.XUID == "" {
+		if e.Stat != objectives.StatBombDetonations || e.XUID == "" {
 			continue
 		}
 		counts[e.XUID]++

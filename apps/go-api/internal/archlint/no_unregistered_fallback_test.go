@@ -91,7 +91,7 @@ var perimetreReplis = []string{
 	"internal/games/halo_infinite/film",
 	"internal/replaybuild",
 	"internal/sync/killcollector",
-	"internal/analysis/objectiveevents",
+	"internal/games/halo_infinite/film/facts/objectives",
 }
 
 // replisDeLEcrivainDuJeu : les identifiants qui portent `fallback` SANS être un repli de

@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // flag_retour_auto_test.go — LE RETOUR AUTOMATIQUE DU DRAPEAU, sans film.
@@ -19,10 +19,10 @@ func TestFlagRetourAutomatiqueParLObjet(t *testing.T) {
 	deaths := []Death{{XUID: 1, TimeMS: 4000}}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 		// La vie libre nait A 7 s AU SOCLE de l'equipe 1 : c'est le drapeau qui rentre.
 		Free: []flagFreeLife{{
@@ -51,10 +51,10 @@ func TestFlagRetourAutomatiqueNAgitPasSurUnDrapeauPorte(t *testing.T) {
 	tracks := []Track{flagTestTrack(10, "1", 0, 99, 95, 95)}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 		Free: []flagFreeLife{{
 			T0US: 5_000_000, T1US: 5_000_000,
@@ -84,11 +84,11 @@ func TestFlagRetourAutomatiqueSAbstientSiUnAutreDrapeauGitLa(t *testing.T) {
 	deaths := []Death{{XUID: 1, TimeMS: 4000}, {XUID: 2, TimeMS: 4000}}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 1000, Slot: 14, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 1000, Slot: 14, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 		Free: []flagFreeLife{{
 			T0US: 7_000_000, T1US: 7_000_000,

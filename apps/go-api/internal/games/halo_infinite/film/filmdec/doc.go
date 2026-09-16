@@ -9,7 +9,7 @@
 // decision, not housekeeping (D1 of PLAN_EXPLOITATION_REGISTRE_FILM, 2026-08-18). The parser
 // that lived in statborg.go mirrored FUN_140c18794 faithfully, but it was reached through the
 // component chain at an offset the measurement disproved: 841 readings out of 841 wrong. The
-// score of the match is decoded by ANCHORING instead, in analysis/objectiveevents, whose
+// score of the match is decoded by ANCHORING instead, in film/facts/objectives, whose
 // grammar was calibrated against a Cheat Engine capture. Two decoders of the same fact
 // diverge; this one is gone rather than kept "just in case". The ECS deserializer of the
 // statborg archetype (consumeStatborgValueStat, components_world.go) is untouched — it

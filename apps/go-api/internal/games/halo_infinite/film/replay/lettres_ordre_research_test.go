@@ -34,7 +34,7 @@ package replay
 //	la BOUCLE        chaque film laissait son pic dans le MEME processus — le tas ne revient pas
 //	                 a l'OS entre deux films. Desormais : `LETTRES_FILM` designe UN film, la
 //	                 comparaison inter-match se fait hors film (cf. TestLettresOrdreStabilite).
-//	la BOMBE         `objectiveevents.NamedEvents` -> `incrementTimes` emet UN evenement PAR UNITE
+//	la BOMBE         `objectives.NamedEvents` -> `incrementTimes` emet UN evenement PAR UNITE
 //	                 de compteur (`for ; prev < p.Value; prev++`) : une emission aberrante sur un
 //	                 composant fait croitre la sortie en centaines de millions d'entrees (registre
 //	                 des reports : OOM ~26 Gio sur `51101d1d`). C'est du code de PRODUCTION, hors
@@ -78,8 +78,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
@@ -226,7 +226,7 @@ func lettresMesureFilm(t *testing.T, dir string, film lettresFilm) lettresMesure
 // meme pas etre decode (c'est aussi ce qui tient l'instrument a l'ecart des films dont les
 // evenements nommes explosent : la bombe consignee a frappe un CTF).
 func lettresEstZonesSimultanees(variant string) bool {
-	return objectiveevents.ObjectiveTypeOf(variant) == objectiveevents.ObjectiveTypeZone
+	return objectives.ObjectiveTypeOf(variant) == objectives.ObjectiveTypeZone
 }
 
 // lettresDoc assemble le document minimal dont l'appariement a besoin : positions en metres, vies
@@ -329,23 +329,23 @@ func lettresPaires(t *testing.T, dir string, film lettresFilm, doc ReplayDocumen
 // lettresCaptures rend les captures de zone nommees et identifiees par xuid.
 func lettresCaptures(t *testing.T, film *filmsource.Film,
 	roster []p2aPlayer,
-) []objectiveevents.IdentifiedEvent {
+) []objectives.IdentifiedEvent {
 	t.Helper()
-	lines := make([]objectiveevents.PlayerLine, 0, len(roster))
+	lines := make([]objectives.PlayerLine, 0, len(roster))
 	for _, p := range roster {
-		lines = append(lines, objectiveevents.PlayerLine{
+		lines = append(lines, objectives.PlayerLine{
 			XUID: p.XUID, Kills: p.Kills, Deaths: p.Deaths, Assists: p.Assists,
 		})
 	}
-	named := objectiveevents.NamedEvents(film, objectiveevents.ObjectiveTypeZone)
+	named := objectives.NamedEvents(film, objectives.ObjectiveTypeZone)
 	if len(named) > lettresMaxNamed {
 		t.Fatalf("%d evenements nommes, plafond %d — la bombe `incrementTimes` du registre",
 			len(named), lettresMaxNamed)
 	}
-	identity := objectiveevents.SlotIdentity(film, lines)
-	out := make([]objectiveevents.IdentifiedEvent, 0, 256)
-	for _, e := range objectiveevents.IdentifyNamedEvents(named, identity) {
-		if e.Stat == objectiveevents.StatZoneCaptures || e.Stat == objectiveevents.StatZoneSecures {
+	identity := objectives.SlotIdentity(film, lines)
+	out := make([]objectives.IdentifiedEvent, 0, 256)
+	for _, e := range objectives.IdentifyNamedEvents(named, identity) {
+		if e.Stat == objectives.StatZoneCaptures || e.Stat == objectives.StatZoneSecures {
 			out = append(out, e)
 		}
 	}

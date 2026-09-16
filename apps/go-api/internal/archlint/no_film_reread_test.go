@@ -87,7 +87,7 @@ func fichiersGoNonTest(t *testing.T, pkgDir string) map[string]*ast.File {
 // paquetsSansInflate : les paquets de la chaine de cuisson qui n'ont plus le droit de
 // decompresser eux-memes, relatifs a apps/go-api.
 //
-// `objectiveevents` y est entre a l'item 1.5 (2026-09-02) : il portait le TROISIEME inflate et
+// `objectives` y est entre a l'item 1.5 (2026-09-02) : il portait le TROISIEME inflate et
 // le TROISIEME marcheur de paquets du depot (`decompressChunk`, `walkFrames`), et c'est celui
 // dont la grammaire divergeait le plus — il n'emettait que le type 0, s'arretait sur CHUNK_END
 // sans l'emettre, bornait la taille SANS l'offset, et marchait le BRUT COMPRESSE quand
@@ -100,7 +100,7 @@ func fichiersGoNonTest(t *testing.T, pkgDir string) map[string]*ast.File {
 // Le reste du depot est couvert par l'allowlist FERMEE de la regle 4.
 var paquetsSansInflate = []string{
 	"internal/games/halo_infinite/film/filmdec",
-	"internal/analysis/objectiveevents",
+	"internal/games/halo_infinite/film/facts/objectives",
 	"internal/games/halo_infinite/film/replay",
 	"internal/games/halo_infinite/film/killsource",
 }
@@ -281,7 +281,7 @@ var enveloppesInterditesEnProduction = []string{
 //
 //	internal/games/halo_infinite/film/replay        BuildFromFilm et les balayages du document
 //	internal/replaybuild            la cuisson (BuildBytes / BuildMatch)
-//	internal/analysis/objectiveevents  ses neuf points d'entree prennent un *filmsource.Film
+//	internal/games/halo_infinite/film/facts/objectives  ses neuf points d'entree prennent un *filmsource.Film
 //	internal/games/halo_infinite/film/killsource  Decode recoit le film deja charge
 //	internal/sync/killcollector     positions.go : le pont disque a disparu a l'item 1.6
 //	internal/api/wire               registry_replay_build.go : le cablage de l'API
@@ -289,7 +289,7 @@ var enveloppesInterditesEnProduction = []string{
 var paquetsDeProduction = []string{
 	"internal/games/halo_infinite/film/replay",
 	"internal/replaybuild",
-	"internal/analysis/objectiveevents",
+	"internal/games/halo_infinite/film/facts/objectives",
 	"internal/games/halo_infinite/film/killsource",
 	"internal/sync/killcollector",
 	"internal/api/wire",
@@ -375,7 +375,7 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 // du module, separateur `/`.
 //
 // POURQUOI UNE LISTE FERMEE ET PAS UNE INTERDICTION PAR PAQUET. Avant le lot 1, TROIS inflates
-// divergents cohabitaient dans la chaine de cuisson (`filmdec`, `objectiveevents`,
+// divergents cohabitaient dans la chaine de cuisson (`filmdec`, `objectives`,
 // `killsource`) — et il a fallu une mesure sur 1 378 films pour prouver qu'ils voyaient les
 // memes octets. Un quatrieme se serait ajoute sans bruit dans n'importe quel paquet : la regle
 // par paquet ne l'aurait vu que si le paquet avait ete prevu. La liste ci-dessous est donc

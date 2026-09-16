@@ -13,7 +13,7 @@ import (
 //
 // Le score dans le temps a DEUX voies possibles vers les memes octets :
 //
-//	l'ANCRAGE  `objectiveevents.StatRecords` localise chaque enregistrement d'entite par les
+//	l'ANCRAGE  `objectives.StatRecords` localise chaque enregistrement d'entite par les
 //	           contraintes mesurees de son en-tete, sans traverser la chaine de composants ;
 //	la CHAINE  `DecodeFrameRecords` marche la boucle de records du paquet et passe par
 //	           `consumeByName`, dont deux cas concernent l'archetype statborg (ti=6 i0 et i57).

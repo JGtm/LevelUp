@@ -15,7 +15,7 @@ package filmdec
 // # CE QUE CE TEST FAIT
 //
 // Il hache toutes les sources `.go` hors `_test.go` des QUATRE paquets qui lisent les octets du
-// film — `analysis/filmsource/`, `filmdec/`, `killsource/` et `analysis/objectiveevents/` — et
+// film — `analysis/filmsource/`, `filmdec/`, `killsource/` et `film/facts/objectives/` — et
 // compare au golden
 // `testdata/grammar_rev.golden`, qui fige le couple (revision, empreinte) avec son
 // historique. Toucher l'une ou l'autre le fait rougir ; le remettre au vert oblige a rouvrir la
@@ -35,7 +35,7 @@ package filmdec
 // l autre est exactement le genre de divergence silencieuse que ce chantier cherche a rendre
 // impossible. Une empreinte commune la fait sonner.
 //
-// `analysis/objectiveevents` est ENTRE LE 2026-09-14 (lot 1.1.5), et il a fallu un faux negatif
+// `film/facts/objectives` est ENTRE LE 2026-09-14 (lot 1.1.5), et il a fallu un faux negatif
 // pour le voir : ce paquet porte le lecteur du PIED DE FILM (`scanTh10Events`,
 // `decodeTh10Block`) — des offsets d octets dans un bloc de 60, c est-a-dire de la grammaire au
 // sens exact de la ligne `GrammarRev` ci-dessus (« une largeur, un cadre, un ordre de
@@ -256,7 +256,7 @@ func racinesGrammaire(t *testing.T) []string {
 		filepath.Join(internalDir, "analysis", "filmsource"),
 		filepath.Join(filmDir, "filmdec"),
 		filepath.Join(filmDir, "killsource"),
-		filepath.Join(internalDir, "analysis", "objectiveevents"),
+		filepath.Join(filmDir, "facts", "objectives"),
 	}
 }
 

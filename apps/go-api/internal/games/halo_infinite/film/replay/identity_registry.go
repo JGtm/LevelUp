@@ -30,7 +30,7 @@ package replay
 import (
 	"strconv"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
@@ -106,13 +106,13 @@ type IdentityInput struct {
 // StatborgIdentityInput porte l'identite des slots d'entite statborg et les enregistrements qui
 // en sont le DENOMINATEUR.
 //
-// POURQUOI ELLE ARRIVE RESOLUE. La resolution vit dans `objectiveevents`, feuille du decodage,
+// POURQUOI ELLE ARRIVE RESOLUE. La resolution vit dans `objectives`, feuille du decodage,
 // et deux calques la partagent deja, memorisee (cf. `replaybuild.pontParManche`). La recalculer
 // ici serait un second deroulage complet du compteur de morts par cuisson — le cout que la
 // memorisation existe pour eviter.
 type StatborgIdentityInput struct {
-	Identity objectiveevents.RoundIdentity
-	Records  []objectiveevents.StatRecord
+	Identity objectives.RoundIdentity
+	Records  []objectives.StatRecord
 }
 
 // IdentityRegistry est la table d'identite d'UN film : les liens, leur provenance, et les
@@ -244,7 +244,7 @@ func (r IdentityRegistry) PontDeSlot(slot uint32) string {
 
 // scoreRecordsOf rend les enregistrements de statborg que l'appelant a deja decodes, ou rien.
 // Le registre ne decode jamais : il PUBLIE ce que la lecture a rendu.
-func scoreRecordsOf(in *ScoreInput) []objectiveevents.StatRecord {
+func scoreRecordsOf(in *ScoreInput) []objectives.StatRecord {
 	if in == nil {
 		return nil
 	}

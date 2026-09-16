@@ -809,7 +809,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   règle des montées v3/v4/v5/v14/v22/v25/39 (« un artefact vN doit se voir comme à
 	//   re-cuire »), pas l'exception du lot P5, qui ne valait que parce qu'aucun artefact 38
 	//   n'existait alors hors témoins de gate.
-	//   Détail : internal/analysis/objectiveevents/slotidentity_rounds.go (CompletedByLines).
+	//   Détail : internal/games/halo_infinite/film/facts/objectives/slotidentity_rounds.go (CompletedByLines).
 	// v41 — TROIS CALQUES RATTRAPENT « UNE TRACK = UNE VIE » (2026-09-06). Aucun champ ajouté.
 	//   `48cf4905d` a découpé les pistes à `lifeGapUS` ; trois consommateurs supposaient encore
 	//   « un slot = une piste » et ne gardaient que la DERNIÈRE : le nommage des vies fermées
@@ -866,7 +866,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact 1 à 43 d'un film multi-manche porte des compteurs
 	//   gonflés sans que sa forme le dise, et `backfill-replay` saute un artefact à la version
 	//   courante.
-	//   Détail : internal/analysis/objectiveevents/round_bounds.go et
+	//   Détail : internal/games/halo_infinite/film/facts/objectives/round_bounds.go et
 	//   .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
 	// v45 — UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE (2026-09-06). Aucun champ
 	//   ajouté : c'est le CONTENU de `equipmentEpisodes` et de `flagCarries` qui change, sur la

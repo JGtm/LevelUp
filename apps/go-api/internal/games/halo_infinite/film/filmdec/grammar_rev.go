@@ -80,16 +80,16 @@ package filmdec
 // FUSION (2026-09-16) : l integration portait `.8` (lot 1.9.4) et la branche du lot 1.9.1 ter
 // `.9` (cle = version de format, repli compte) ; les deux sont reunies ici, au rang suivant.
 // LOT 1.9.13 (2026-09-15) : `.7` -> `.8`. AUCUNE grammaire d octets ne change, et aucun bit lu
-// n est lu autrement : `objectiveevents.RoundBounds.Starts` est un ACCESSEUR de lecture sur des
+// n est lu autrement : `objectives.RoundBounds.Starts` est un ACCESSEUR de lecture sur des
 // bornes de manche deja mesurees, que la decoupe des vies du rejeu consomme. L empreinte hache
 // les OCTETS des trois paquets (cf. grammar_rev_fingerprint_test.go, « il ne distingue pas un
 // changement de grammaire d une reformulation de commentaire ») : le faux positif coute cette
 // ligne, et c est le marche assume du garde-rail. `KillSourceDecoderRev` ne bouge PAS —
 // `killsource/` n est pas touche.
 // FUSION (2026-09-16) : l integration portait `.10` et la branche du lot 1.9.13 `.8` (accesseur
-// neuf dans objectiveevents, faux positif d empreinte) ; reunies ici, au rang suivant.
+// neuf dans objectives, faux positif d empreinte) ; reunies ici, au rang suivant.
 // LA CHRONIQUE DES RANGS, a partir du `.11`, vit dans `grammar_rev_chronique.go` : une
 // entree par rang, et rien qu une. Elle EST la documentation de cette constante — elle en a
 // seulement ete sortie le 2026-09-18 (lot 2.4.1) parce que ce fichier avait atteint le seuil
 // de 500 lignes et qu une chronique qui ne peut plus grandir cesse d etre tenue.
-const GrammarRev = "grammar-2026-09-15.29"
+const GrammarRev = "grammar-2026-09-15.30"

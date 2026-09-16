@@ -68,6 +68,10 @@ var paquetsInterTitres = map[string]bool{
 // 399 après. Le plancher est posé à 300 (75 % de l'état d'après), assez serré pour qu'un
 // parcours cassé échoue, assez lâche pour ne pas devenir un compteur à maintenir. Un ratchet
 // qui ne scanne rien passe en silence, ce qui est pire que pas de ratchet.
+//
+// RE-MESURE DU 2026-09-16 (lot 2.5.d.2) : 427 fichiers avant la descente d'`objectiveevents`
+// sous `film/facts/objectives`, 365 après. Le plancher tient (le lot 2.5 en retirera encore
+// `weaponv3` et `filmsource`, soit ~351 à sa clôture) ; il est ré-examiné à chaque descente.
 const plancherFichiersAnalysis = 300
 
 // franchissementsToleres : les fichiers d'`internal/analysis/` qui importent encore un paquet
@@ -78,16 +82,13 @@ const plancherFichiersAnalysis = 300
 // Une entrée qui ne correspond plus à aucune violation fait rougir ce test (une exemption qui
 // survit à son site finit par en couvrir un autre).
 var franchissementsToleres = map[string]string{
-	"internal/analysis/objectiveevents/assaut_footer_research_test.go": "2026-09-12 — " +
-		"`games/halo_infinite/film/filmcache` : test de RECHERCHE (pied de paquet du mode " +
-		"Assaut) qui ouvre des films réels du cache local. La dépendance est au CACHE DE " +
-		"FILMS d'un titre, pas à l'algorithme : le portage consiste à faire passer le film " +
-		"par un paramètre (fixture ou interface de source), comme le fait déjà " +
-		"`analysis/filmsource`. Hors périmètre du lot E (déplacement pur).",
-	"internal/analysis/objectiveevents/extract_test.go": "2026-09-12 — " +
-		"`games/halo_infinite/film/filmcache` : même motif que ci-dessus (extraction des " +
-		"événements d'objectif vérifiée sur films réels). Même portage attendu : la source " +
-		"du film devient un paramètre du test.",
+	// RETIRÉES LE 2026-09-16 (lot 2.5.d.2) : `internal/analysis/objectiveevents/` —
+	// `assaut_footer_research_test.go` et `extract_test.go`. Le portage attendu n'a pas eu lieu
+	// (la source du film n'est toujours pas un paramètre de ces tests) : c'est le PAQUET qui a
+	// quitté `internal/analysis/`, descendu sous
+	// `internal/games/halo_infinite/film/facts/objectives` — il est désormais une couche du
+	// décodeur, chez lui, et ouvrir un film du cache local y est légitime. La dette décrite par
+	// ces deux entrées disparaît donc avec sa cause, et non par contournement.
 	// RETIRÉE LE 2026-09-16 (lot 2.4, item 2.4.2) : `internal/analysis/filmsource/source_test.go`
 	// n'importe plus `filmdec` : le test compare le marcheur canonique (`filmsource.Paquets`) à une
 	// COPIE DE RÉFÉRENCE de l'ancienne grammaire portée par le test lui-même (738 paquets).

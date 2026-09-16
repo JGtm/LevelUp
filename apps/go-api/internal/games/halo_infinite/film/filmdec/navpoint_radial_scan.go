@@ -40,7 +40,7 @@ package filmdec
 // # L'HORLOGE EST CELLE DU MANIFESTE, ET C'EST CE QUI REND LA LECTURE CONFRONTABLE
 //
 // Les lectures sont datees sur `start_ms` par chunk (le manifeste du cache film), base = le
-// PREMIER PAQUET DELTA du chunk — la MEME base que `objectiveevents.StatRecords`, donc que les
+// PREMIER PAQUET DELTA du chunk — la MEME base que `objectives.StatRecords`, donc que les
 // explosions du statborg. Un chunk absent du manifeste rend ses paquets inconfrontables : ils
 // sont comptes (`PacketsNoClock`), jamais tus.
 //
@@ -67,7 +67,7 @@ const navpointRadialArchIndex = 12
 const navpointRadialMaxReads = 3_000_000
 
 // NavpointRadialRead est UNE lecture de `managed-navpoint-radial-progress` (ti=12 i14), datee
-// sur l'horloge du MANIFESTE (la meme que `objectiveevents.StatRecords`, donc que les
+// sur l'horloge du MANIFESTE (la meme que `objectives.StatRecords`, donc que les
 // explosions du statborg).
 type NavpointRadialRead struct {
 	// Slot identifie le point de navigation. Les navpoints vont par paires (+12, un par camp).
@@ -236,7 +236,7 @@ func (s *NavpointRadialScan) ajouter(r NavpointRadialRead) {
 //
 // LA BASE DE L'HORLOGE EST LE PREMIER PAQUET DELTA DU CHUNK, exactement comme la mesure du
 // lot C (`zsScan`) : c'est ce qui met les lectures sur la MEME base que
-// `objectiveevents.StatRecords`, donc que les explosions du statborg.
+// `objectives.StatRecords`, donc que les explosions du statborg.
 func (w *navpointRadialWalk) scanChunk(data []byte, pks []FilmPacket, band map[uint32]bool,
 	startMS map[int]int, c int,
 ) {

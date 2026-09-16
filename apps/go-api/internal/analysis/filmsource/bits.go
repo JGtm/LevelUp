@@ -7,7 +7,7 @@ package filmsource
 // Avant le lot 2.4, SEPT lecteurs de bits distincts lisaient les memes octets de film, chacun
 // avec sa propre idee du bourrage de queue, du debordement et de l ordre des bits :
 // `filmdec.Lecteur`, `killsource.evReader`, les trois primitives de position de `killsource`
-// (`bitAt` / `bits32` / `bitsN`, plus `bitsWide`), `objectiveevents.readBitsBE`,
+// (`bitAt` / `bits32` / `bitsN`, plus `bitsWide`), `objectives.readBitsBE`,
 // `weaponv3.bitReader`, `analysis.scanEvents` et la copie de `bitAt` d `analysis/positions`.
 // Une largeur corrigee d un cote et pas de l autre est exactement la divergence silencieuse que
 // le chantier ferme. Ils sont ramenes ICI, dans la couche `source` — le seul paquet dont un
@@ -196,7 +196,7 @@ func BitsTolerants(d []byte, pos, n int) uint64 {
 // ELLE N EST PAS INTERCHANGEABLE AVEC [BitsAt], et c est tout l interet de la nommer : sur les
 // derniers bits d un bloc, `BitsAt` decale la valeur lue vers la gauche des bits manquants
 // (bourrage a zero du moteur) la ou celle-ci ne la decale pas. Les deux rendent alors des
-// valeurs DIFFERENTES. C est la convention du lecteur du PIED DE FILM (`objectiveevents`), et
+// valeurs DIFFERENTES. C est la convention du lecteur du PIED DE FILM (`objectives`), et
 // la fondre dans celle du moteur changerait des valeurs decodees — ce que D4 interdit.
 func BitsTronques(d []byte, pos, n int) uint64 {
 	if pos >= 0 && n >= 0 && n <= 64 {

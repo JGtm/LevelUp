@@ -50,7 +50,7 @@ type LayerCoverage struct {
 	Unpublished int `json:"unpublished"`
 	// RefusedByRoster : événements que le calque REFUSE DE PUBLIER parce que l'effectif du
 	// match dépasse ce que le format peut porter — huit slots d'entité de joueur au statborg
-	// (cf. objectiveevents.RosterFitsStatborg). Le calque se tait ENTIÈREMENT, et ce compteur
+	// (cf. objectives.RosterFitsStatborg). Le calque se tait ENTIÈREMENT, et ce compteur
 	// dit combien d'actions ce silence coûte : un calque muet dont personne ne sait pourquoi
 	// il est muet est pire que le calque faux qu'il remplace.
 	//

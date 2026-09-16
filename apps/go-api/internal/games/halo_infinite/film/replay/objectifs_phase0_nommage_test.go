@@ -10,7 +10,7 @@ package replay
 //	Le motif porte-t-il ce suffixe ? Sinon il n'a PAS de nom de tag, et c'est ce qu'on ecrit.
 //
 //	LE CRANE. Sur `24dbb67d` (Oddball), aucun oracle nomme n'existe — le statborg ne replique
-//	aucun compteur de crane (mesure `objectiveevents`, mode sans table). La signature est
+//	aucun compteur de crane (mesure `objectives`, mode sans table). La signature est
 //	donc STRUCTURELLE : une famille portee par UN SEUL bipede a la fois, qui change de main.
 //	Seuil : <= 1 porteur sur >= 90 % des images ou la famille est portee, et au moins deux
 //	porteurs distincts sur le match. Controle grossier : les evenements `th=10` du footer.
@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // objSeuilMonoPorteur / objMinImagesPortees / objMinPorteursDistincts — les seuils de la
@@ -52,8 +52,8 @@ func objMotifRetenu(t *testing.T, root string) (uint32, bool) {
 		}
 		films++
 		b := objBridgeOf(t, root, id)
-		evs := objectiveevents.IdentifyNamedEvents(
-			objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag), objIdentites(src, b.Deaths))
+		evs := objectives.IdentifyNamedEvents(
+			objectives.NamedEvents(src, objectives.ObjectiveTypeFlag), objIdentites(src, b.Deaths))
 		recs, _ := objRecordsOf(t, root, id)
 		wins, _ := objPortageWindows(evs, b.Deaths, objFinMatch(evs, b.Deaths))
 		for _, c := range objCandidats(objConfronte(recs, b, wins)) {
@@ -222,11 +222,11 @@ func objValsDe(sigs []objSignature) []uint32 {
 // `th=10` du footer, approximes a 5-20 s, publies comme tels par la chaine de production.
 func objControleGrossierCrane(t *testing.T, src *objDiskFilm, b objBridge, recs []objRecord) {
 	t.Helper()
-	roster := objectiveevents.MapRoster{}
+	roster := objectives.MapRoster{}
 	for _, p := range objCorpus[objBallFilm].Players {
 		roster[p.XUID] = p.Team
 	}
-	evs, _ := objectiveevents.Extract(objBallFilm, "Ranked:Oddball", src, roster)
+	evs, _ := objectives.Extract(objBallFilm, "Ranked:Oddball", src, roster)
 	acteurs := 0
 	for _, e := range evs {
 		acteurs += len(e.Players)

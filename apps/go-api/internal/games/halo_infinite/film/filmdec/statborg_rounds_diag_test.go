@@ -16,7 +16,7 @@ import (
 //
 // Sur `24dbb67d` (Oddball, 519 s), les emissions du score de mode s'ARRETENT a 290 683 ms et le
 // film rend 100/78 quand l'API rend 200/121. 100/78 est la manche 1 ; la manche 2 est invisible a
-// la grammaire d'ancrage (`objectiveevents.StatRecords`). Trois causes possibles, qui ne se
+// la grammaire d'ancrage (`objectives.StatRecords`). Trois causes possibles, qui ne se
 // distinguent que par la mesure :
 //
 //	(a) l'entite d'equipe est RECREEE entre les manches — slot ou GENERATION differents, et la
@@ -27,7 +27,7 @@ import (
 //	(c) elles n'emettent plus du tout, et le film ne porte pas la manche 2.
 //
 // Ce test ne conclut pas : il ecrit ce que les images-cles et la chaine voient, avant et apres la
-// bascule. La grammaire d'ancrage etendue vit dans l'instrument du lot A (paquet objectiveevents).
+// bascule. La grammaire d'ancrage etendue vit dans l'instrument du lot A (paquet objectives).
 //
 // Gardes : `ROUNDS_FILM` (dossier de chunks), `ROUNDS_SPLIT_MS` (instant de bascule, defaut
 // 290683), `ROUNDS_OUT` (TSV de sortie, facultatif). Un film par processus (D17).
@@ -105,7 +105,7 @@ type roundsDiag struct {
 }
 
 // chunk marche tous les paquets d'un chunk, l'horloge etant recalee sur le start_ms du manifeste
-// (meme convention que objectiveevents.StatRecords : le premier paquet du chunk porte l'origine).
+// (meme convention que objectives.StatRecords : le premier paquet du chunk porte l'origine).
 func (d *roundsDiag) chunk(data []byte, startMS int) {
 	base := int64(-1)
 	for _, pk := range WalkPackets(data) {

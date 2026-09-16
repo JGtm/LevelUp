@@ -21,8 +21,8 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // skullOracleEnv : chemin de l'oracle fige (film -> xuid -> stats de portage).
@@ -35,7 +35,7 @@ const skullOracleEnv = "SKULL_ORACLE"
 // somme pas les durees par joueur, il pose les intervalles). Elle vit donc a cote du seul gate qui
 // s'en sert, hors du binaire de prod, et reutilise `skullCarryIntervals` — le coeur PUBLIE que le
 // temoin doit precisement verifier.
-func skullCarrySecondsByXUID(recs []objectiveevents.StatRecord, identity objectiveevents.RoundIdentity) map[string]float64 {
+func skullCarrySecondsByXUID(recs []objectives.StatRecord, identity objectives.RoundIdentity) map[string]float64 {
 	out := map[string]float64{}
 	for _, r := range skullCarryIntervals(recs, identity) {
 		if r.xuid == "" {
@@ -72,12 +72,12 @@ func TestSkullCarrierWitness(t *testing.T) {
 	if !ok {
 		t.Fatalf("%s : film absent du cache", id)
 	}
-	recs := objectiveevents.StatRecords(src)
+	recs := objectives.StatRecords(src)
 	deaths, err := ScanFilmDeaths(objChunkDir(root, id))
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
-	identity := objectiveevents.ResolveRoundIdentity(recs, deathInstantsOf(deaths))
+	identity := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths))
 	carry := skullCarrySecondsByXUID(recs, identity)
 	gamertags := skullGamertags(deaths)
 

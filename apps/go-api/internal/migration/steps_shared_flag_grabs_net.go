@@ -17,7 +17,7 @@ package migration
 //	                   (`flagCarries[].spans`, etats portes). C'est ce que LE FILM lit — a ne
 //	                   pas confondre avec `match_objective_stats.flag_grabs`, le compteur de
 //	                   l'API, qui est une autre chaine et n'entre jamais ici.
-//	flag_grabs_net     les memes prises, JONGLAGE REPLIE (`objectiveevents.NetFlagGrabs`).
+//	flag_grabs_net     les memes prises, JONGLAGE REPLIE (`objectives.NetFlagGrabs`).
 //	openings           le nombre d'OUVERTURES DE PORTAGE que l'oracle du film a comptees sur
 //	                   CE match (`coverage.flagCarries.openings`, `flag_grabs` + `flag_steals`
 //	                   fusionnes). C'est le DENOMINATEUR de `flag_grabs_raw` : les pistes ne

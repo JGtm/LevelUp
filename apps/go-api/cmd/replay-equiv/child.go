@@ -31,9 +31,9 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/digest"
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/replaybuild"
 )
@@ -169,8 +169,8 @@ func alerterCatalogueVide(
 // modeAZones dit si la variante est de celles qui TIENNENT des zones (KOTH, Strongholds et
 // famille). L'aiguillage est celui du depot — jamais une seconde table de variantes.
 func modeAZones(variante string) bool {
-	switch objectiveevents.ObjectiveTypeOf(variante) {
-	case objectiveevents.ObjectiveTypeZone, objectiveevents.ObjectiveTypeHill:
+	switch objectives.ObjectiveTypeOf(variante) {
+	case objectives.ObjectiveTypeZone, objectives.ObjectiveTypeHill:
 		return true
 	default:
 		return false

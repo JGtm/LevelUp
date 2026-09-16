@@ -29,8 +29,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
@@ -125,7 +125,7 @@ func TestAssautA1Identite(t *testing.T) {
 // slot d'equipe (une montee = une explosion — releve A0.3, corrobore par le score API 9/9).
 func a1ClassesTemporelles(t *testing.T, id string, src *objDiskFilm) (debuts, explosions []int64) {
 	t.Helper()
-	recs, truncated := objectiveevents.StatRecordsCtx(context.Background(), src, id)
+	recs, truncated := objectives.StatRecordsCtx(context.Background(), src, id)
 	if truncated {
 		t.Logf("%s : enregistrements TRONQUES — classes temporelles partielles, et cela se dit", id)
 	}
@@ -136,7 +136,7 @@ func a1ClassesTemporelles(t *testing.T, id string, src *objDiskFilm) (debuts, ex
 		if p, ok := premier[r.Round]; !ok || r.TimeMS < p {
 			premier[r.Round] = r.TimeMS
 		}
-		if !objectiveevents.IsTeamSlot(r.Slot) {
+		if !objectives.IsTeamSlot(r.Slot) {
 			continue
 		}
 		v, ok := r.Comps[0]

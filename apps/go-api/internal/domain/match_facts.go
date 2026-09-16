@@ -17,7 +17,7 @@ package domain
 //
 // LE TRIPLET EST UNE CLÉ, pas une statistique d'affichage : (frags, morts, assistances) est ce
 // qui apparie le slot d'entité du film au xuid, et rien d'autre ne le fait — le slot d'entité
-// et le slot de biped sont deux espaces différents (cf. objectiveevents/slotidentity.go).
+// et le slot de biped sont deux espaces différents (cf. objectives/slotidentity.go).
 type MatchPlayerFact struct {
 	// XUID en décimal, même forme que la base et que le rejeu.
 	XUID string `json:"xuid"`
@@ -63,7 +63,7 @@ type MatchFacts struct {
 	// TeamScores porte `team_0_score` / `team_1_score` du registre. Nil = absents.
 	TeamScores *[2]int `json:"teamScores,omitempty"`
 	// GameVariantName est le nom de variante du match : il donne la FAMILLE d'objectif
-	// (`objectiveevents.ObjectiveTypeOf`), sans laquelle aucune action ne peut être nommée.
+	// (`objectives.ObjectiveTypeOf`), sans laquelle aucune action ne peut être nommée.
 	GameVariantName string `json:"gameVariantName,omitempty"`
 	// MapID est l'asset UGC de la carte (`match_registry.map_id`) : la SEULE clé qui joint le
 	// match au catalogue versionné d'objectifs de carte, d'où sortent les socles de drapeau

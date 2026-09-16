@@ -79,6 +79,25 @@ package archlint
 // Les deux « en plus » sont reelles et tombent au meme lot que les autres : la note regardait le
 // SENS des aretes (celles-la sont dans le bon sens), ce ratchet regarde aussi le LIEU.
 //
+// # L ORDRE DES COMMITS DE 2.5, ET POURQUOI IL N EST PAS CELUI DE LA NOTE
+//
+// MESURE DU 2026-09-16, a l entree du lot : deplacer `filmsource` EN PREMIER (ordre §2.7 de la
+// note) fait rougir D9 sur DIX-SEPT fichiers. La cause est mecanique : `objectiveevents` et
+// `weaponv3` vivent sous `internal/analysis/` et importent `filmsource` ; le jour ou `filmsource`
+// descend sous `film/`, ces imports deviennent « `internal/analysis/` importe un paquet de
+// titre ». La facade de 2.4 etait nee dans `internal/analysis/filmsource` precisement pour
+// l eviter (V15 (1)) — la note ne l a pas reporte sur l ordre des commits de 2.5.
+//
+// L ordre suivi est donc celui qu impose la dependance : les paquets de couche quittent
+// `internal/analysis/` AVANT la couche `source`.
+//
+//	2.5.d.2  objectiveevents -> film/facts/objectives   (vide analysis/ de la couche facts)
+//	2.5.c    weaponv3 dissous, grammaire d analysis/ descendue, filmdec -> film/grammar
+//	2.5.a    filmsource -> film/source                  (plus aucun consommateur dans analysis/)
+//	2.5.d.1  killsource -> film/facts/killsource, fallback -> film/facts/fallback
+//	2.5.b    la couche profile
+//	2.5.e    facade, bascule film/<couche> -> film/internal/<couche>, ratchet STRICT
+//
 // # MUTATIONS QUI DOIVENT LE FAIRE ROUGIR
 //
 //   - classer `film/filmdec` en `replay` : `killsource` (facts) -> `filmdec` devient un import
@@ -153,7 +172,9 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// --- facts : de la chronologie brute aux faits du match (vies, identite, tirs, morts,
 	// objectifs, equipement, vehicules), chacun avec ses compteurs de couverture.
 	"internal/games/halo_infinite/film/killsource": coucheFacts,
-	"internal/analysis/objectiveevents":            coucheFacts,
+	// DESCENDU LE 2026-09-16 (lot 2.5.d.2) d `internal/analysis/objectiveevents` : le paquet vit
+	// desormais sous `film/facts/`, et passera sous `film/internal/facts/` au dernier commit du lot.
+	"internal/games/halo_infinite/film/facts/objectives": coucheFacts,
 
 	// --- replay : publie le document versionne. NE DECODE RIEN (ADR 0034 D-1).
 	"internal/games/halo_infinite/film/replay": coucheReplay,
@@ -244,12 +265,6 @@ var aretesTolerees = []areteToleree{
 			"`player_index.go`) remontent en `facts`, ou `replay` recoit un film deja charge",
 	},
 	{
-		de: "internal/games/halo_infinite/film/replay", vers: "internal/analysis/objectiveevents",
-		pose: "2026-09-17", lot: "2.5.d",
-		coupe: "`objectiveevents` descend en `facts` ; l arete devient replay -> facts, au bon " +
-			"lieu comme au bon sens",
-	},
-	{
 		de: "internal/games/halo_infinite/film/replay", vers: "internal/analysis/weaponv3",
 		pose: "2026-09-17", lot: "2.5.c",
 		coupe: "3 symboles cote `weaponv3` (`CommonWeaponSuffix`, `WeaponFusionMap`, " +
@@ -257,10 +272,11 @@ var aretesTolerees = []areteToleree{
 			"en `games/weapons`",
 	},
 	{
-		de: "internal/analysis/objectiveevents", vers: "internal/analysis/filmsource",
-		pose: "2026-09-17", lot: "2.5.a puis 2.5.d",
-		coupe: "facts -> source : le sens est bon, les deux paquets descendent sous " +
-			"`film/internal/` ; l entree tombe au second des deux deplacements",
+		de: "internal/games/halo_infinite/film/facts/objectives", vers: "internal/analysis/filmsource",
+		pose: "2026-09-17", lot: "2.5.a puis 2.5.d.2",
+		coupe: "facts -> source : le sens est bon, les deux paquets descendent sous `film/` ; le " +
+			"lot 2.5.d.2 a fait le premier des deux deplacements (2026-09-16), l entree tombe " +
+			"au second, quand `filmsource` descendra a son tour (2.5.a)",
 	},
 	{
 		de: "internal/analysis/weaponv3", vers: "internal/analysis/filmsource",
@@ -290,17 +306,14 @@ type paquetHorsLieuTolere struct {
 	coupe  string
 }
 
-// paquetsHorsLieuToleres — 3 paquets mesures le 2026-09-17.
+// paquetsHorsLieuToleres — 3 paquets mesures le 2026-09-17 ; `objectiveevents` est RENTRE A SA
+// PLACE le 2026-09-16 (lot 2.5.d.2), il en reste 2.
 var paquetsHorsLieuToleres = []paquetHorsLieuTolere{
 	{
 		paquet: "internal/analysis/filmsource", pose: "2026-09-17", lot: "2.5.a",
-		coupe: "`git mv` vers `film/internal/source` (decision V5 du plan), plus la remontee des " +
-			"14 fichiers de `filmdec` qui lisent `chunk_00` (note de preparation §2.3)",
-	},
-	{
-		paquet: "internal/analysis/objectiveevents", pose: "2026-09-17", lot: "2.5.d",
-		coupe: "`git mv` vers `film/internal/facts` ; les trois helpers de lecture de bits de " +
-			"`film.go` appartiennent a `source` et disparaissent avant, au lot 2.4",
+		coupe: "`git mv` vers `film/source` (decision V5 du plan), puis `film/internal/source` " +
+			"au dernier commit du lot ; la remontee des 14 fichiers de `filmdec` qui lisent " +
+			"`chunk_00` (note de preparation §2.3) N EST PAS un deplacement pur — voir §4",
 	},
 	{
 		paquet: "internal/analysis/weaponv3", pose: "2026-09-17", lot: "2.5.c",

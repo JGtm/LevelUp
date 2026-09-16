@@ -4,18 +4,18 @@
 // chaque chunk de donnees est une suite de paquets a en-tete fixe. Avant ce paquet, la chaine de
 // cuisson d'un artefact de rejeu relisait et redecompressait le film entier ~36-40 fois, avec
 // TROIS inflates et TROIS marcheurs de paquets DIVERGENTS (`filmdec`, `killsource`,
-// `objectiveevents`). Ici : un chargement, un jeu de paquets, une grammaire.
+// `objectives`). Ici : un chargement, un jeu de paquets, une grammaire.
 // Reference : `.ai/V7.5/PLAN_CUISSON_PERF.md` §2 (conception) et §3 D1/D3.
 //
 // # POURQUOI UN PAQUET FEUILLE, ET POURQUOI PAS `filmdec`
 //
 // Ce paquet n'importe RIEN du depot (stdlib seule) — un garde-rail le verifie
 // (`internal/archlint/filmsource_leaf_test.go`). Ce n'est pas une coquetterie d'architecture,
-// c'est la seule position possible : `filmcache` importe `objectiveevents` (`filmcache.go`), et
-// cinq tests INTERNES de `filmdec` importent `objectiveevents` ou `filmcache`
+// c'est la seule position possible : `filmcache` importe `objectives` (`filmcache.go`), et
+// cinq tests INTERNES de `filmdec` importent `objectives` ou `filmcache`
 // (`sonde_registre_verdicts_test.go`, `navpoint_ti12_radial_test.go`,
 // `objectif_ti11_minuteurs_test.go`, `ti47_annonces_test.go`, `zone_census_report_test.go`).
-// Loger la source du film dans `filmdec` ferait donc importer `filmdec` par `objectiveevents`, ou
+// Loger la source du film dans `filmdec` ferait donc importer `filmdec` par `objectives`, ou
 // `filmcache` par `filmdec` : un cycle, en production ou en test. Une feuille n'en cree aucun.
 //
 // # LA GRAMMAIRE (D3 REVISEE DU 2026-09-02) — ET LA MESURE QUI L'A ECRITE
@@ -79,6 +79,6 @@
 // pas ses octets. Corollaire a connaitre : garder un seul `Packet` retient tout le chunk.
 //
 // Les films dits « bombes » (`51101d1d`, `a349fea8`, `1c4c63c2`, `60ae07c4`) ne le sont PAS par
-// leur taille decompressee mais par l'amplification en aval (`objectiveevents.NamedEventsFrom`) :
+// leur taille decompressee mais par l'amplification en aval (`objectives.NamedEventsFrom`) :
 // ce paquet n'est pas le lieu ou les plafonner (lot 4b du plan).
 package filmsource

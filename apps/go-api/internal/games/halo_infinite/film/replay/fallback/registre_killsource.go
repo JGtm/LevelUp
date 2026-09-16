@@ -210,7 +210,7 @@ var registreKillsource = []Repli{
 		DatePose:     dateAudit0E,
 		CibleRetrait: "lot 1.9.8 (le chunk du pied pris au type du manifeste)",
 		// ORDRE `devant_la_lecture` : le TYPE du chunk est porté par `filmsource.Film.Meta()` et
-		// déjà lu par ce patron (`objectiveevents/extract.go`) ; l'argmax décide sans le
+		// déjà lu par ce patron (`objectives/extract.go`) ; l'argmax décide sans le
 		// consulter. RÉSERVE du plan : le manifeste est un descripteur EXTERNE, l'argmax restera
 		// donc en repli COMPTÉ après la conversion.
 		CritereRetrait:  "le type du manifeste decide ; l'argmax ne se declenche que sur un film sans manifeste, et son compte le dit",

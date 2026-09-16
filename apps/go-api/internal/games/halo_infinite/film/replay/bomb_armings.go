@@ -62,7 +62,7 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 	"levelup/go-api/internal/observability"
@@ -393,7 +393,7 @@ func bombMedianCV(xs []float64) (float64, float64) {
 func bombDetonationTimes(actions []ObjectiveAction) []int {
 	var out []int
 	for _, a := range actions {
-		if a.Stat == objectiveevents.StatBombDetonations {
+		if a.Stat == objectives.StatBombDetonations {
 			out = append(out, a.TimeMS)
 		}
 	}

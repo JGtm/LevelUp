@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
@@ -61,8 +61,8 @@ type result struct {
 // nommes par le meme decodeur mais ne sont PAS des actions de zone — les inclure diluerait
 // le taux avec des evenements qui n'ont aucune raison de se produire dans une zone.
 var zoneStats = map[string]bool{
-	objectiveevents.StatZoneCaptures: true,
-	objectiveevents.StatZoneSecures:  true,
+	objectives.StatZoneCaptures: true,
+	objectives.StatZoneSecures:  true,
 }
 
 // nullShiftFrames : decalage du TEMOIN TEMPOREL, en frames de 100 ms (30 s).
@@ -153,7 +153,7 @@ func slotBridgeOf(tracks []replay.Track) map[uint32]uint64 {
 // LU, pas estime :
 //
 //	les actions   TimeMS = ms depuis le PREMIER PAQUET DU FILM (horloge du manifeste,
-//	              `objectiveevents.StatRecords` : `meta.StartMS + (f.us - base)/1000`) ;
+//	              `objectives.StatRecords` : `meta.StartMS + (f.us - base)/1000`) ;
 //	les positions Point.T = frame depuis le PREMIER PAQUET DE POSITION
 //	              (`build.go` : `origin = sorted[0].TimestampUS`).
 //
@@ -171,7 +171,7 @@ func slotBridgeOf(tracks []replay.Track) map[uint32]uint64 {
 //
 // Le filtre par track publiee reproduit `dropUnpublishedActions` : sans lui, la comparaison
 // AVANT/APRES ne porterait pas sur le meme denominateur.
-func correctedActions(evs []objectiveevents.IdentifiedEvent, originMS int64,
+func correctedActions(evs []objectives.IdentifiedEvent, originMS int64,
 	intervalMS, frameCount int, tracks []replay.Track) []replay.ObjectiveAction {
 	if intervalMS <= 0 || frameCount <= 0 {
 		return nil
@@ -233,16 +233,16 @@ func shiftBy(actions []replay.ObjectiveAction, frameCount, delta int) []replay.O
 // `64e8adfa` et `24dbb67d`, plan objectifs vivants phase 0). Le repli par INSTANTS DE MORT
 // n'emprunte rien a la base, tient sur un film tronque, et ne se declenche que s'il nomme
 // STRICTEMENT plus de slots — un film complet rend donc exactement ce qu'il rendait avant.
-func identifyZoneActions(lines []objectiveevents.PlayerLine,
-	film *filmsource.Film) []objectiveevents.IdentifiedEvent {
-	named := objectiveevents.NamedEvents(film, objectiveevents.ObjectiveTypeZone)
-	identity, st := objectiveevents.SlotIdentityResolved(film, lines, deathInstantsOf(film))
-	if st.Source != objectiveevents.IdentitySourceTotals || st.Conflicts > 0 {
+func identifyZoneActions(lines []objectives.PlayerLine,
+	film *filmsource.Film) []objectives.IdentifiedEvent {
+	named := objectives.NamedEvents(film, objectives.ObjectiveTypeZone)
+	identity, st := objectives.SlotIdentityResolved(film, lines, deathInstantsOf(film))
+	if st.Source != objectives.IdentitySourceTotals || st.Conflicts > 0 {
 		fmt.Printf("    pont d'identite : voie %q (%d par totaux, %d par instants de mort, "+
 			"%d desaccords ecartes)\n", st.Source, st.ByTotals, st.ByDeaths, st.Conflicts)
 	}
-	all := objectiveevents.IdentifyNamedEvents(named, identity)
-	out := make([]objectiveevents.IdentifiedEvent, 0, len(all))
+	all := objectives.IdentifyNamedEvents(named, identity)
+	out := make([]objectives.IdentifiedEvent, 0, len(all))
 	for _, e := range all {
 		if zoneStats[e.Stat] {
 			out = append(out, e)
@@ -268,15 +268,15 @@ func printSelection(all []candidate, elig []eligible, rej rejects) {
 // deathInstantsOf lit le fil des morts du film et le met dans la forme qu'attend le pont
 // d'identite. Un fil illisible rend une liste vide : le pont retombe alors sur les seuls
 // totaux, exactement comme avant ce correctif — une degradation, jamais une erreur.
-func deathInstantsOf(film *filmsource.Film) []objectiveevents.DeathInstant {
+func deathInstantsOf(film *filmsource.Film) []objectives.DeathInstant {
 	deaths, err := replay.ScanDeaths(film)
 	if err != nil {
 		fmt.Printf("    fil des morts illisible (%v) — pont d'identite par totaux seuls\n", err)
 		return nil
 	}
-	out := make([]objectiveevents.DeathInstant, 0, len(deaths))
+	out := make([]objectives.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
-		out = append(out, objectiveevents.DeathInstant{
+		out = append(out, objectives.DeathInstant{
 			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS),
 		})
 	}

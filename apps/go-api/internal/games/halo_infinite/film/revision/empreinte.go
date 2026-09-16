@@ -5,7 +5,7 @@
 //
 // Deux gates du depot font AUJOURD HUI la meme chose, chacun avec sa copie du code :
 //
-//	filmdec/grammar_rev_fingerprint_test.go      hache filmdec/ + killsource/ + objectiveevents/
+//	filmdec/grammar_rev_fingerprint_test.go      hache filmdec/ + killsource/ + objectives/
 //	sync/killcollector/decoder_rev_fingerprint_test.go  hache killsource/
 //
 // La decision V15 (11) du plan pose QUATRE revisions, une par couche (`source`, `profile`,

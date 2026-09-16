@@ -74,7 +74,7 @@ func chargerMiniBobineEnMemoire(t *testing.T) *filmsource.Film {
 			t.Fatalf("mini-bobine illisible (%s) : %v", path, err)
 		}
 		chunks = append(chunks, raw)
-		// ChunkType et StartMS restent nuls : ils ne servent qu'a `objectiveevents` (type de
+		// ChunkType et StartMS restent nuls : ils ne servent qu'a `objectives` (type de
 		// chunk, horloge), qui n'est pas sur le chemin de `BuildFromFilm`, et la mini-bobine
 		// n'a de toute facon pas de manifeste pour les porter.
 		meta = append(meta, filmsource.ChunkMeta{Index: num})

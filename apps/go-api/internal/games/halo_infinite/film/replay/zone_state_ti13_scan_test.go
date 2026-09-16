@@ -106,7 +106,7 @@ func p2aPayloadBits(tag int, modeA bool) int {
 }
 
 // p2aEch est une valeur de ti=13 lue dans le flux, datee sur l'horloge du MANIFESTE (la meme
-// que `objectiveevents.StatRecords` : `startMS` du chunk + delta du paquet).
+// que `objectives.StatRecords` : `startMS` du chunk + delta du paquet).
 type p2aEch struct {
 	tMS  int
 	slot uint32

@@ -51,8 +51,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
@@ -67,7 +67,7 @@ const (
 	// d4EcartEvenementMS : la coincidence exigee avec un evenement `th=10` de crane. Une
 	// seconde est la valeur du protocole du §2.4, ecrite avant toute mesure.
 	d4EcartEvenementMS = 1000
-	// d4VariantOddball : le libelle de mode donne a `objectiveevents.Extract`. Le film ne nomme
+	// d4VariantOddball : le libelle de mode donne a `objectives.Extract`. Le film ne nomme
 	// pas son mode (map_objectives.go) ; le corpus, lui, est Oddball par construction — c'est
 	// le recensement D1 qui l'a classe, sur le `pair_name` du registre.
 	d4VariantOddball = "Oddball:Arena"
@@ -171,9 +171,9 @@ func d4EvenementsCrane(t *testing.T, root, id string) []int64 {
 		t.Fatalf("%s : film absent du cache", id)
 	}
 	var out []int64
-	evenements, _ := objectiveevents.Extract(id, d4VariantOddball, src, objectiveevents.MapRoster{})
+	evenements, _ := objectives.Extract(id, d4VariantOddball, src, objectives.MapRoster{})
 	for _, ev := range evenements {
-		if ev.EventType != objectiveevents.EventTypeSkullCarry || ev.TimeMS == nil {
+		if ev.EventType != objectives.EventTypeSkullCarry || ev.TimeMS == nil {
 			continue
 		}
 		out = append(out, int64(*ev.TimeMS))

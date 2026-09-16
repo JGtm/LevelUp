@@ -80,7 +80,7 @@ func TestEmpreinteHeriteeEgaleLeGoldenDeGrammaire(t *testing.T) {
 		filepath.Join(api, "internal", "analysis", "filmsource"),
 		filepath.Join(film, "filmdec"),
 		filepath.Join(film, "killsource"),
-		filepath.Join(api, "internal", "analysis", "objectiveevents"),
+		filepath.Join(film, "facts", "objectives"),
 	}
 	golden := filepath.Join(film, "filmdec", "testdata", "grammar_rev.golden")
 

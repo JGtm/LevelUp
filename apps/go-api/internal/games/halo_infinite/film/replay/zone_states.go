@@ -22,7 +22,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
@@ -69,7 +69,7 @@ type ZoneInput struct {
 	// la remplace pas. Vide : seuls les camps 0 et 1 — les deux valeurs mesurees — sont acceptes.
 	TeamByXUID map[string]int
 	// Hill dit que le mode du match est un mode a COLLINE — la famille d'objectif `hill` au sens
-	// d'`objectiveevents.ObjectiveTypeOf(game_variant_name)`. L'appelant la resout ; ce paquet ne
+	// d'`objectives.ObjectiveTypeOf(game_variant_name)`. L'appelant la resout ; ce paquet ne
 	// connait pas la variante.
 	//
 	// C'EST LA SEULE PORTE DU REPLI PAR LES POSITIONS, ET ELLE EST FERMEE PAR DEFAUT (revue R1,
@@ -245,7 +245,7 @@ func zoneWindowFrames(intervalMS int) int {
 func zoneCapturesOf(actions []ObjectiveAction) []ObjectiveAction {
 	out := make([]ObjectiveAction, 0, len(actions))
 	for _, a := range actions {
-		if a.Stat == objectiveevents.StatZoneCaptures || a.Stat == objectiveevents.StatZoneSecures {
+		if a.Stat == objectives.StatZoneCaptures || a.Stat == objectives.StatZoneSecures {
 			out = append(out, a)
 		}
 	}

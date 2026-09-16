@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 )
@@ -29,7 +29,7 @@ func TestPlayerLinesGardentLOrdreDuTriplet(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("%d ligne(s), attendu 1", len(got))
 	}
-	want := objectiveevents.PlayerLine{XUID: "2533274", Kills: 11, Deaths: 7, Assists: 3}
+	want := objectives.PlayerLine{XUID: "2533274", Kills: 11, Deaths: 7, Assists: 3}
 	if got[0] != want {
 		t.Errorf("ligne = %+v, attendu %+v — l'ordre du triplet (frags, morts, assistances) "+
 			"est la CLE d'appariement du slot d'entite au xuid", got[0], want)
@@ -80,9 +80,9 @@ func TestTeamByXUIDSansCampConnuRendNil(t *testing.T) {
 // relu). Le fil des morts volontairement EN ERREUR le prouve — s'il etait consomme, l'appel
 // journaliserait le refus et rendrait nil pour une autre raison que la garde de mode.
 func TestIdentifiedEventsSansFamilleNeNommeRien(t *testing.T) {
-	recs := []objectiveevents.StatRecord{{
+	recs := []objectives.StatRecord{{
 		TimeMS: 1_000, Slot: 10, Round: 0,
-		Comps: map[int]objectiveevents.StatValue{2: {A: 3, B: 1}, 3: {A: 1}},
+		Comps: map[int]objectives.StatValue{2: {A: 3, B: 1}, 3: {A: 1}},
 	}}
 	for nom, variant := range map[string]string{
 		"mode sans famille d'objectif": "Slayer:Arena",
@@ -102,18 +102,18 @@ func TestIdentifiedEventsSansFamilleNeNommeRien(t *testing.T) {
 // twoRoundFlagFixture — un film SYNTHETIQUE a deux manches ou le slot 22 est REATTRIBUE ("A" en
 // manche 0, "B" en manche 1), avec une CAPTURE DE DRAPEAU (comp 21 A) posee en manche 1. Le score
 // de mode (comp 0 A) marque les manches ; le compteur de morts (comp 2 B) RESET par manche apparie
-// le slot au fil des morts. Meme grammaire que `twoRoundReassignedFixture` d'objectiveevents.
-func twoRoundFlagFixture() ([]objectiveevents.NamedEvent, []objectiveevents.StatRecord, []objectiveevents.DeathInstant) {
-	sv := func(comp int, side string, v int64) map[int]objectiveevents.StatValue {
+// le slot au fil des morts. Meme grammaire que `twoRoundReassignedFixture` d'objectives.
+func twoRoundFlagFixture() ([]objectives.NamedEvent, []objectives.StatRecord, []objectives.DeathInstant) {
+	sv := func(comp int, side string, v int64) map[int]objectives.StatValue {
 		if side == "B" {
-			return map[int]objectiveevents.StatValue{comp: {B: v}}
+			return map[int]objectives.StatValue{comp: {B: v}}
 		}
-		return map[int]objectiveevents.StatValue{comp: {A: v}}
+		return map[int]objectives.StatValue{comp: {A: v}}
 	}
-	rec := func(t, slot, round, comp int, side string, v int64) objectiveevents.StatRecord {
-		return objectiveevents.StatRecord{TimeMS: t, Slot: slot, Round: round, Comps: sv(comp, side, v)}
+	rec := func(t, slot, round, comp int, side string, v int64) objectives.StatRecord {
+		return objectives.StatRecord{TimeMS: t, Slot: slot, Round: round, Comps: sv(comp, side, v)}
 	}
-	recs := []objectiveevents.StatRecord{
+	recs := []objectives.StatRecord{
 		// Score de mode : trois emissions croissantes par manche -> manches 0 et 1 reelles.
 		rec(900, 22, 0, 0, "A", 10), rec(1900, 22, 0, 0, "A", 20), rec(2900, 22, 0, 0, "A", 30),
 		rec(10900, 22, 1, 0, "A", 10), rec(11900, 22, 1, 0, "A", 20), rec(12900, 22, 1, 0, "A", 30),
@@ -126,13 +126,13 @@ func twoRoundFlagFixture() ([]objectiveevents.NamedEvent, []objectiveevents.Stat
 		// Capture de drapeau (comp 21 A) sur le slot 22, EN MANCHE 1.
 		rec(12500, 22, 1, 21, "A", 1),
 	}
-	deaths := []objectiveevents.DeathInstant{
+	deaths := []objectives.DeathInstant{
 		{XUID: "A", TimeMS: 1000}, {XUID: "A", TimeMS: 2000}, {XUID: "A", TimeMS: 3000},
 		{XUID: "B", TimeMS: 11000}, {XUID: "B", TimeMS: 12000}, {XUID: "B", TimeMS: 13000},
 		{XUID: "C", TimeMS: 1500}, {XUID: "C", TimeMS: 2500}, {XUID: "C", TimeMS: 3500},
 		{XUID: "C", TimeMS: 11500}, {XUID: "C", TimeMS: 12500}, {XUID: "C", TimeMS: 13500},
 	}
-	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeFlag)
+	named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeFlag)
 	return named, recs, deaths
 }
 
@@ -143,9 +143,9 @@ func TestIdentifyRoundEventsMultiManche(t *testing.T) {
 	named, recs, deaths := twoRoundFlagFixture()
 
 	// La capture de drapeau doit bien avoir ete nommee sur le slot 22.
-	var cap *objectiveevents.NamedEvent
+	var cap *objectives.NamedEvent
 	for i := range named {
-		if named[i].Stat == objectiveevents.StatFlagCaptures && named[i].Slot == 22 {
+		if named[i].Stat == objectives.StatFlagCaptures && named[i].Slot == 22 {
 			cap = &named[i]
 		}
 	}
@@ -155,12 +155,12 @@ func TestIdentifyRoundEventsMultiManche(t *testing.T) {
 
 	// `nil` lignes : ce test porte sur le pont PAR MANCHE seul. La complétion par le triplet
 	// (`CompletedByLines`) refuse de toute façon le multi-manche — cf.
-	// `objectiveevents.TestCompletedByLinesRefuseLeMultiManche`, qui le prouve à sa source.
-	got, _ := objectiveevents.IdentifyNamedEventsByRound(named,
+	// `objectives.TestCompletedByLinesRefuseLeMultiManche`, qui le prouve à sa source.
+	got, _ := objectives.IdentifyNamedEventsByRound(named,
 		(&pontParManche{recs: recs, deaths: deaths}).identite())
 	var capX string
 	for _, e := range got {
-		if e.Stat == objectiveevents.StatFlagCaptures {
+		if e.Stat == objectives.StatFlagCaptures {
 			capX = e.XUID
 		}
 	}
@@ -169,10 +169,10 @@ func TestIdentifyRoundEventsMultiManche(t *testing.T) {
 	}
 
 	// CONTRE-EPREUVE : le pont plat par instants de mort la donne a "A".
-	flat := objectiveevents.IdentifyNamedEvents(named, objectiveevents.SlotIdentityByDeaths(recs, deaths))
+	flat := objectives.IdentifyNamedEvents(named, objectives.SlotIdentityByDeaths(recs, deaths))
 	var flatCapX string
 	for _, e := range flat {
-		if e.Stat == objectiveevents.StatFlagCaptures {
+		if e.Stat == objectives.StatFlagCaptures {
 			flatCapX = e.XUID
 		}
 	}
@@ -192,7 +192,7 @@ func TestDeathInstantsOfConversion(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("%d instant(s), attendu 1", len(got))
 	}
-	want := objectiveevents.DeathInstant{XUID: "2533274", TimeMS: 4200}
+	want := objectives.DeathInstant{XUID: "2533274", TimeMS: 4200}
 	if got[0] != want {
 		t.Errorf("instant = %+v, attendu %+v (xuid en decimal, instant en ms)", got[0], want)
 	}
