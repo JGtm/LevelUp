@@ -320,7 +320,7 @@ func consumeMobilityActionBody(br *BitReader) {
 }
 
 // consume140c1e9d4 mirroite FUN_140c1e9d4 : TROIS champs consecutifs de `w` bits.
-func consume140c1e9d4(br *BitReader, w uint) {
+func consume140c1e9d4(br *BitReader, w uint) { //nolint:unparam // largeur de grammaire ecrite au site d appel pour la lisibilite de la lecture ; le lot 2.2 la porte au profil (2026-09-17, fusion 2.7g : la scission a sorti ce site de la baseline lint)
 	br.ReadBits(w)
 	br.ReadBits(w)
 	br.ReadBits(w)

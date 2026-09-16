@@ -72,7 +72,7 @@ type PrecisionDescriptor struct {
 // site du depot ne l'installait non-nil, tests compris. Il etait donc prouvablement toujours
 // nil, et sa capture — additive, sans effet sur la consommation de bits — n'emettait rien.
 // La consommation de bits de ce deser est inchangee, a la ligne pres.
-func consumeDynPrecVec3(br *BitReader, mag, scale uint) {
+func consumeDynPrecVec3(br *BitReader, mag, scale uint) { //nolint:unparam // magnitude de grammaire ecrite au site d appel ; le lot 2.2 la porte au profil (2026-09-17, fusion 2.7g : la scission a sorti ce site de la baseline lint)
 	if br.ReadBit() { // FUN_14076d528 leading R(1); JNZ -> absent (0 payload bits)
 		return
 	}
