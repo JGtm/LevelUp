@@ -36,7 +36,16 @@ import (
 
 // Sleep — seam de paquet pour l'attente entre deux tentatives. Les tests le remplacent par un
 // enregistreur de durées : aucune suite ne doit dormir pour de vrai.
-var Sleep = time.Sleep
+// Annulable : un arret du serveur ou du job pendant l attente ne doit pas tenir le writer de
+// la base partagee jusqu au bout du sommeil (revue adversariale du 2026-09-16, P2).
+var Sleep = func(ctx context.Context, d time.Duration) error {
+	select {
+	case <-time.After(d):
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
 
 const (
 	// Attempts : nombre TOTAL d'appels pour une page.
@@ -100,7 +109,9 @@ func Page[T any](
 			"cause", cause, "wait", wait, "err", err,
 		)
 		if wait > 0 {
-			Sleep(wait)
+			if err := Sleep(ctx, wait); err != nil {
+				return nil, err
+			}
 		}
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, ctxErr
