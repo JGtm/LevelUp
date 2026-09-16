@@ -15,7 +15,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/platform/userstore"
 )
 
@@ -34,7 +33,7 @@ func main() {
 	dataDir := fs.String("data-dir", defaultDataDir(), "Répertoire data/auth")
 	_ = fs.Parse(os.Args[2:])
 
-	usersPath := config.UsersFilePathIn(*dataDir)
+	usersPath := userstore.FilePathIn(*dataDir)
 	store := userstore.NewStore(usersPath)
 
 	switch subcmd {
