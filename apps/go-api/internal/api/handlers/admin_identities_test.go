@@ -30,10 +30,6 @@ func (f *fakeDirectory) Get(context.Context, string) (domain.IdentityRecord, err
 	return domain.IdentityRecord{}, nil
 }
 
-func (f *fakeDirectory) HasTrackedProfile(context.Context, string, string) (bool, error) {
-	return false, nil
-}
-
 // Onboard et Purge ne sont pas servis par ce handler : présents pour satisfaire
 // le port.
 func (f *fakeDirectory) Onboard(context.Context, domain.OnboardRequest) (domain.OnboardResult, error) {

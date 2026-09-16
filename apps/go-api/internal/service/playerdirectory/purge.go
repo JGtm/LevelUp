@@ -102,16 +102,18 @@ func (d *Directory) Purge(ctx context.Context, xuid string,
 	if err != nil {
 		return domain.PurgeReport{XUID: xuid}, err
 	}
-	if rec.Account != nil && rec.Account.Role == domain.RoleAdmin {
+	if admin := adminAccountOf(rec); admin != "" {
 		slog.WarnContext(ctx, "player_directory: purge refusée — compte administrateur",
-			"xuid", xuid, "username", rec.Account.Username)
-		return domain.PurgeReport{XUID: xuid, Gamertag: rec.Gamertag, DryRun: opts.DryRun},
+			"xuid", xuid, "username", admin)
+		return domain.PurgeReport{XUID: rec.XUID, Gamertag: rec.Gamertag, DryRun: opts.DryRun},
 			ErrPurgeAdminRefused
 	}
 
 	r := &purgeRun{
-		ctx: ctx, deps: d.purge, fs: d.fs, dryRun: opts.DryRun, xuid: xuid,
-		report: domain.PurgeReport{XUID: xuid, Gamertag: rec.Gamertag, DryRun: opts.DryRun},
+		// rec.XUID, pas la clé reçue : une identité sans xuid désignée par son
+		// gamertag (dossier orphelin) n'a ni credentials, ni groupes, ni compte.
+		ctx: ctx, deps: d.purge, fs: d.fs, dryRun: opts.DryRun, xuid: rec.XUID,
+		report: domain.PurgeReport{XUID: rec.XUID, Gamertag: rec.Gamertag, DryRun: opts.DryRun},
 	}
 	slog.InfoContext(ctx, "player_directory: purge d'identité", "xuid", xuid,
 		"gamertag", rec.Gamertag, "dry_run", opts.DryRun,
@@ -256,6 +258,9 @@ func (r *purgeRun) removeGroups() {
 	if r.deps.Groups == nil {
 		return
 	}
+	if r.xuid == "" {
+		return // identité sans xuid : aucune appartenance de groupe possible
+	}
 	groups, err := r.deps.Groups.ListForXUID(r.xuid)
 	if err != nil {
 		slog.ErrorContext(r.ctx, "player_directory: lecture des groupes impossible", "err", err,
@@ -272,14 +277,34 @@ func (r *purgeRun) removeGroups() {
 }
 
 func (r *purgeRun) removeAccount(rec domain.IdentityRecord) {
-	if rec.Account == nil {
-		return
+	// Tous les comptes du xuid, le principal ET les doublons (R1) : une purge
+	// d'identité ne doit laisser aucun compte capable de se reconnecter.
+	for _, acc := range allAccounts(rec) {
+		username := acc.Username
+		r.step(domain.PurgeStepAccount, username, func() error {
+			if r.deps.Accounts == nil {
+				return errors.New("aucune suppression de compte cablee dans ce process")
+			}
+			return r.deps.Accounts.Delete(username)
+		})
 	}
-	username := rec.Account.Username
-	r.step(domain.PurgeStepAccount, username, func() error {
-		if r.deps.Accounts == nil {
-			return errors.New("aucune suppression de compte cablee dans ce process")
+}
+
+// allAccounts rend le compte principal suivi des doublons, dans l'ordre de lecture.
+func allAccounts(rec domain.IdentityRecord) []domain.AccountRef {
+	if rec.Account == nil {
+		return rec.DuplicateAccounts
+	}
+	return append([]domain.AccountRef{*rec.Account}, rec.DuplicateAccounts...)
+}
+
+// adminAccountOf rend le nom du premier compte administrateur porté par
+// l'identité (principal ou doublon), ou "" s'il n'y en a aucun.
+func adminAccountOf(rec domain.IdentityRecord) string {
+	for _, acc := range allAccounts(rec) {
+		if acc.Role == domain.RoleAdmin {
+			return acc.Username
 		}
-		return r.deps.Accounts.Delete(username)
-	})
+	}
+	return ""
 }

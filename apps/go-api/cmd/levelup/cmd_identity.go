@@ -58,7 +58,7 @@ import (
 // runIdentity route `identity <sous-commande>`.
 func runIdentity(cfg *config.AppConfig, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: levelup identity list | levelup identity purge <xuid> [--yes]")
+		return errors.New("usage: levelup identity list | levelup identity purge <xuid|gamertag> [--yes]")
 	}
 	switch args[0] {
 	case "list":
@@ -76,7 +76,7 @@ func runIdentity(cfg *config.AppConfig, args []string) error {
 // sont nil-safe).
 func buildCLIDirectory(cfg *config.AppConfig) port.PlayerDirectory {
 	paths := titlePkg.NewPathResolver(cfg.RepoRoot)
-	users := userstore.NewStore(filepath.Join(cfg.AuthDir, "users.json"))
+	users := userstore.NewStore(cfg.UsersFilePath())
 	groups := groupstore.NewGroupStore(filepath.Join(cfg.AuthDir, "groups.json"))
 	tokens := auth_platform.NewMultiUserTokenStore(paths.WatcherTokensDir())
 	profiles := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot)
@@ -149,7 +149,7 @@ func runIdentityPurge(cfg *config.AppConfig, args []string, out io.Writer) error
 		return err
 	}
 	if xuid == "" {
-		return errors.New("usage: levelup identity purge <xuid> [--yes]")
+		return errors.New("usage: levelup identity purge <xuid|gamertag> [--yes]")
 	}
 
 	report, err := buildCLIDirectory(cfg).Purge(context.Background(), xuid,
@@ -158,7 +158,7 @@ func runIdentityPurge(cfg *config.AppConfig, args []string, out io.Writer) error
 	// doit se lire — c'est justement quand elle echoue qu'on en a besoin.
 	printErr := printPurgeReport(out, report, *yes)
 	if errors.Is(err, port.ErrIdentityNotFound) {
-		return fmt.Errorf("aucune identite pour le xuid %q (voir `levelup identity list`)", xuid)
+		return fmt.Errorf("aucune identite pour la cle %q — un xuid, ou le gamertag d'une identite sans xuid (voir `levelup identity list`)", xuid)
 	}
 	if err != nil {
 		return err

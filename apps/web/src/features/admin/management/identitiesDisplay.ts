@@ -27,6 +27,7 @@ const ANOMALY_LABEL_KEY: Record<string, AdminManifestKey> = {
   watched_without_profile: 'admin.identities.anomaly_watched_without_profile',
   profile_without_account: 'admin.identities.anomaly_profile_without_account',
   profile_without_token: 'admin.identities.anomaly_profile_without_token',
+  account_duplicate: 'admin.identities.anomaly_account_duplicate',
 }
 
 export function anomalyLabelKey(code: string): AdminManifestKey | null {

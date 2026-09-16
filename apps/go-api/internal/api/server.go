@@ -664,7 +664,7 @@ func NewRouter(
 	jobStore := jobs_platform.NewStore(jobsPath)
 
 	// Auth locale : user store + invite store (mode password).
-	usersPath := filepath.Join(cfg.AuthDir, "users.json")
+	usersPath := cfg.UsersFilePath()
 	invitesPath := filepath.Join(cfg.AuthDir, "invites.json")
 	users := userstore.NewStore(usersPath)
 	invites := userstore.NewInviteStore(invitesPath)

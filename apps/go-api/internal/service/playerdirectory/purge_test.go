@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/userstore"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 )
 
@@ -380,4 +381,98 @@ func (p *purgeOrdre) PurgeIdentityData(_ string, titleSlugs []string) (map[strin
 		out[s] = true
 	}
 	return out, nil
+}
+
+// TestPurge_DeuxComptesMemeXuid_LesDeuxSupprimes (R1, revue du 2026-09-16) : une
+// identité portée par deux comptes (mot de passe + SSO). La purge doit retirer
+// les DEUX — sinon un compte capable de se reconnecter survit à la purge.
+func TestPurge_DeuxComptesMemeXuid_LesDeuxSupprimes(t *testing.T) {
+	f := newPurgeFixture(t)
+	if _, err := f.users.Create("second", "mot-de-passe-long-12", domain.RoleUser); err != nil {
+		t.Fatalf("second compte: %v", err)
+	}
+	if err := f.users.LinkIdentity("second", purgeGamertag, purgeXUID); err != nil {
+		t.Fatalf("lien identite: %v", err)
+	}
+
+	report, err := f.dir.Purge(context.Background(), purgeXUID, domain.PurgeOptions{})
+	if err != nil {
+		t.Fatalf("Purge: %v", err)
+	}
+	steps := stepsOfKind(report, domain.PurgeStepAccount)
+	if len(steps) != 2 {
+		t.Fatalf("etapes compte = %+v, attendu 2", steps)
+	}
+	for _, s := range steps {
+		if !s.Done {
+			t.Errorf("etape compte non executee : %+v", s)
+		}
+	}
+	if _, err := f.users.GetByXUID(purgeXUID); err == nil {
+		t.Error("aucun compte ne devrait plus porter ce xuid")
+	}
+	if _, err := f.users.Get("second"); err == nil {
+		t.Error("le second compte devrait avoir disparu")
+	}
+}
+
+// TestPurge_RefuseSiUnDoublonEstAdministrateur (R1) : le refus vaut pour TOUS
+// les comptes du xuid, pas seulement le principal.
+func TestPurge_RefuseSiUnDoublonEstAdministrateur(t *testing.T) {
+	f := newPurgeFixture(t)
+	if _, err := f.users.Create("second_admin", "mot-de-passe-long-12", domain.RoleAdmin); err != nil {
+		t.Fatalf("second compte: %v", err)
+	}
+	if err := f.users.LinkIdentity("second_admin", purgeGamertag, purgeXUID); err != nil {
+		t.Fatalf("lien identite: %v", err)
+	}
+	avant := sha256File(t, f.sharedPath)
+
+	_, err := f.dir.Purge(context.Background(), purgeXUID, domain.PurgeOptions{})
+	if !errors.Is(err, ErrPurgeAdminRefused) {
+		t.Fatalf("err = %v, attendu ErrPurgeAdminRefused", err)
+	}
+	if _, err := f.users.GetByXUID(purgeXUID); err != nil {
+		t.Error("rien ne doit avoir ete supprime sur un refus")
+	}
+	if exists(f.paths.PlayerDir(testTitle, purgeGamertag)) == false {
+		t.Error("le dossier du profil doit etre intact sur un refus")
+	}
+	if apres := sha256File(t, f.sharedPath); apres != avant {
+		t.Error("la base partagee ne doit pas bouger")
+	}
+}
+
+// TestPurge_DossierOrphelinSansXuid_ParGamertag (revue du 2026-09-16) : le
+// résidu que `identity list` signale en warning doit pouvoir être retiré même
+// quand aucun registre ne connaît plus de xuid — par le gamertag du dossier.
+func TestPurge_DossierOrphelinSansXuid_ParGamertag(t *testing.T) {
+	f := newPurgeFixture(t)
+	orphan := f.paths.PlayerDBPath(testTitle, "Fantome")
+	writeFile(t, orphan, "residu")
+	avant := sha256File(t, f.sharedPath)
+
+	report, err := f.dir.Purge(context.Background(), "fantome", domain.PurgeOptions{})
+	if err != nil {
+		t.Fatalf("Purge par gamertag: %v", err)
+	}
+	if exists(filepath.Dir(orphan)) {
+		t.Error("le dossier orphelin devrait avoir disparu")
+	}
+	if report.XUID != "" || report.Gamertag != "Fantome" {
+		t.Errorf("en-tete du rapport = %+v", report)
+	}
+	if len(stepsOfKind(report, domain.PurgeStepOrphanDir)) != 1 ||
+		len(stepsOfKind(report, domain.PurgeStepAccount)) != 0 ||
+		len(stepsOfKind(report, domain.PurgeStepToken)) != 0 ||
+		len(stepsOfKind(report, domain.PurgeStepGroup)) != 0 {
+		t.Fatalf("seule l'etape dossier orphelin est attendue : %+v", report.Steps)
+	}
+	if apres := sha256File(t, f.sharedPath); apres != avant {
+		t.Error("la base partagee ne doit pas bouger")
+	}
+	// L'identité suivie (avec xuid) reste intacte : le gamertag ne la désigne pas.
+	if _, err := f.dir.Purge(context.Background(), purgeGamertag, domain.PurgeOptions{DryRun: true}); !errors.Is(err, port.ErrIdentityNotFound) {
+		t.Fatalf("une identite AVEC xuid ne se purge pas par gamertag : err = %v", err)
+	}
 }

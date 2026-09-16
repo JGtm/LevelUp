@@ -13,9 +13,18 @@
  */
 import { useQueryClient } from '@tanstack/react-query'
 
+import { apiErrorCode } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { useUpdateSettings } from '@/features/settings/queries'
 import { useAppShellStore } from '@/stores/appShellStore'
+
+/**
+ * Code serveur quand le verrou est forcé par l'environnement
+ * (LEVELUP_INSTANCE_LOCKED) : le fichier ne peut pas l'ouvrir, le PATCH est
+ * refusé en 409 au lieu de réussir sur disque et de laisser l'interrupteur se
+ * recocher seul (revue adversariale du 2026-09-16).
+ */
+export const LOCK_FORCED_CODE = 'instance_lock_forced'
 
 export interface InstanceLock {
   /** Instance fermée ? (source : /bootstrap via le store appShell) */
@@ -24,6 +33,8 @@ export interface InstanceLock {
   isPending: boolean
   /** Le dernier changement a échoué (403 non-admin, 422 en démo…). */
   isError: boolean
+  /** Code machine du dernier échec (ex. LOCK_FORCED_CODE), null sinon. */
+  errorCode: string | null
   setLocked: (next: boolean) => void
 }
 
@@ -36,6 +47,7 @@ export function useInstanceLock(): InstanceLock {
     locked,
     isPending: update.isPending,
     isError: update.isError,
+    errorCode: update.isError ? (apiErrorCode(update.error) ?? null) : null,
     setLocked: (next: boolean) => {
       update.mutate(
         { instance_locked: next },

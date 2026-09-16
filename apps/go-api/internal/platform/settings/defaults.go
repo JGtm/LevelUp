@@ -3,7 +3,8 @@
 //
 // Extrait de store.go le 2026-09-15 (ADR 0035 D5) : le mode « défauts sûrs »
 // ajoute de la logique de décision à ce point, qui n'a rien à voir avec les I/O
-// du store (seuil fichier ≤ 500 L, CLAUDE.md règle 5).
+// du store. L'extraction ramène store.go de 556 à 516 lignes — la dette de
+// seuil (CLAUDE.md règle 5, ≤ 500 L) est réduite, pas résorbée.
 package settings
 
 import "encoding/json"

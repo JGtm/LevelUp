@@ -47,10 +47,6 @@ func (m *mockDirectory) Get(context.Context, string) (domain.IdentityRecord, err
 	return domain.IdentityRecord{}, nil
 }
 
-func (m *mockDirectory) HasTrackedProfile(context.Context, string, string) (bool, error) {
-	return false, nil
-}
-
 func (m *mockDirectory) Purge(context.Context, string, domain.PurgeOptions) (domain.PurgeReport, error) {
 	return domain.PurgeReport{}, nil
 }

@@ -531,23 +531,29 @@ gate complet machine au repos.
 
 ## 9. Étape 7 — Clôture (rapide) — pilote
 
-- [ ] 7.1 Revue adversariale du diff complet (skill `adversarial-review`, contexte frais) ;
+- [x] 7.1 Revue adversariale du diff complet (skill `adversarial-review`, contexte frais) ;
       constats corrigés dans la branche.
-- [ ] 7.2 Gates complets : `cd apps/go-api && go test ./...` ; `go test -tags=integration ./internal/sync/... ./internal/persist/...` ;
+- [x] 7.2 Gates complets : `cd apps/go-api && go test ./...` ; `go test -tags=integration ./internal/sync/... ./internal/persist/...` ;
       `make go-api-lint` (pas de nouvelle dette) ; `make check-types` ; `make test-web` ;
       `make openapi-check`.
-- [ ] 7.3 Docs : `CLAUDE.md` (section « Architecture des Données » : ligne « Identités
+- [x] 7.3 Docs : `CLAUDE.md` (section « Architecture des Données » : ligne « Identités
       joueurs : 4 registres, clé xuid, lecture/écriture via `PlayerDirectory` — ADR 0035 » ;
       liste des ADR : `0035`) ; `docs/ARCHITECTURE_V6.md` EN + FR (paragraphe registres
       d'identité) ; ADR 0035 amendée avec le résultat mesuré ; §10 de ce plan renseigné ;
       plan frère : note en §10 (helper de verrou + `Onboard` à utiliser en 5.3/5.4).
-- [ ] 7.4 `.ai/thought_log.md` : entrée `[2026-09-15]` (statut, décisions, résultats, suite).
+- [x] 7.4 `.ai/thought_log.md` : entrée `[2026-09-15]` (statut, décisions, résultats, suite).
 - [ ] 7.5 Commit(s) sur `wt/player-directory` ; PAS de push, PAS de merge sans l'utilisateur.
 - [ ] 7.6 Prod (à la main de l'utilisateur, après merge/déploiement) : verrou déjà posé (P0) ;
       `levelup identity purge 2533274796795729 --yes` sur le VPS ; vérifier
       `GET /admin/identities` → 0 anomalie warning.
 
 ## 10. Découvertes hors périmètre (ne pas traiter ici)
+
+- (revue adversariale ronde 1, 2026-09-16) `internal/api/handlers/settings.go:~232` : le toggle
+  `instance_locked` fait confiance à `sess.Role` (rôle figé à l'ouverture de session) alors que
+  `setup.go:actorIsAdmin` résout le rôle par le store (`authz.CurrentUser`) précisément pour qu'un
+  admin rétrogradé perde l'exemption. Préexistant, hors diff ; aligner sur `authz.CurrentUser` dans
+  un lot ultérieur (même correctif que 1.3).
 
 - `sync-full --gamertag` (CLI) exige le refresh token du joueur alors que le serveur emprunte
   au pool (déjà noté par le plan frère).
@@ -684,4 +690,4 @@ gate complet machine au repos.
 | 4 | **terminée** | B | G4 ✅ | 7/7 items `[x]` ; section « Identités » en tête de la page Gestion (TanStack Table, 7 colonnes, tokens sémantiques, 35 clés FR+EN) + interrupteur « Instance fermée », que le backend acceptait mais qu'aucune page n'exposait ; 21 tests vitest neufs ; suite web complète verte (7704 tests) ; 3 découvertes en §10 |
 | 5 | **terminée** | C | G5 ✅ | 6/6 items `[x]` ; `Onboard` seul chemin de création (profil PUIS watcher, ordre tenu par un test) ; ratchet `no_direct_profile_create` (allowlist à 1 entrée) ; `port.ProfileService` + `fileExists` supprimés (code mort) ; contrat OpenAPI inchangé ; 3 découvertes en §10 |
 | 6 | **terminée** | C | G6 ✅ | 6/6 items `[x]` (+ 6.2bis) ; purge ordonnée, dry-run par défaut, refus admin, sha256 du shared inchangé ; `Daemon.RemovePlayer` et `ProfileService.PurgeIdentityData` ajoutés (les deux manquaient) ; ratchet `no_duckdb_import_playerdirectory` ÉCRIT et vu rougir ; CLI `levelup identity list/purge` + COMMANDS EN & FR ; 5 découvertes en §10 |
-| 7 | à faire | pilote | — | |
+| 7 | clos sauf 7.5 (commit : feu vert utilisateur) et 7.6 (prod) | pilote | gates complets verts | 2 rondes de revue adversariale, 0 P0/P1 restant |

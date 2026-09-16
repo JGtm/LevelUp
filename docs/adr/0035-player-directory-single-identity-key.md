@@ -1,7 +1,7 @@
 # ADR 0035 — Player directory: one identity key, one onboarding path, one read model
 
-**Status**: Accepted (2026-09-15). To be amended at the closure of
-`.ai/PLAN_ANNUAIRE_JOUEURS_2026-09-15.md` (step 7) with the measured outcome.
+**Status**: Accepted (2026-09-15). Amended at closure (2026-09-16) after two adversarial
+review rounds — see the *Amended at closure* notes under D2, D3, D5, D6 and the Outcome section.
 
 **Branch**: `wt/player-directory` (worktree `LevelUp-wt-player-directory`, base `feat/v75`)
 
@@ -74,9 +74,20 @@ implements it by composing the existing stores through small reader interfaces (
   and informational `profile_without_account` (friends tracked by an admin — normal) and
   `profile_without_token` (the auth pool lends credentials — normal).
 
-The port exposes `List`, `Get(xuid)`, `HasTrackedProfile(title, xuid)`, `Onboard(req)` and
-`Purge(xuid, opts)`. The storage behind the port may be unified later without touching any
-consumer; that is the purpose of the port, not a promise to do it.
+The port exposes `List`, `Get(key)`, `Onboard(req)` and `Purge(key, opts)`. The storage behind
+the port may be unified later without touching any consumer; that is the purpose of the port,
+not a promise to do it.
+
+*Amended at closure (2026-09-16, adversarial review round 1):* the port does **not** expose
+`HasTrackedProfile`. The single definition of "tracked" is `config.AppConfig.HasTrackedProfile`
+(`domain.SyncablePlayers`, looked up by xuid); the gates of D3 read it directly and the
+directory reuses it through its `ProfilesReader` — a delegating method on the port had no
+production caller and was removed as dead code. `Get`/`Purge` take a *key*: a xuid, or the
+gamertag of an identity that has **no** xuid anywhere (an orphan player directory), never the
+gamertag of an identity that has one. When two accounts in `users.json` carry the same xuid
+(a real production case: a password account and an SSO account for the same person), the
+first one read is `Account`, the others are `DuplicateAccounts`, and the record carries the
+warning anomaly `account_duplicate`; nothing is overwritten or hidden.
 
 ### D3 — No sync and no live tracking without a tracked profile
 
@@ -91,6 +102,15 @@ The Xbox SSO strategy still creates the account and stores the credentials (it m
 refresh token is what makes the later profile usable), but it notifies the watcher only when the
 gate passes. An account without a profile is a valid, inert state whose only exit is the setup
 wizard (or an invitation grant, per the sibling plan).
+
+*Amended at closure (2026-09-16, adversarial review round 1):* the gate cuts both ways. Pausing
+a title (`PATCH /profiles/{slug}/titles/{title}/sync {enabled:false}`) or purging it (`DELETE
+.../data`) removes the (xuid, title) couple from the watcher (`Daemon.RemovePlayerTitle`), and
+re-enabling it adds the couple back. Without that, the poller of a paused title survived until
+the next restart and every match it detected was refused by the gate — incrementing
+`sync_refused_no_profile`, the counter meant to signal an unknown identity, and raising
+`watched_without_profile` in the directory. A legitimate administrative action must never trip
+the intrusion signal.
 
 ### D4 — One onboarding path
 
@@ -114,6 +134,13 @@ When not enforced (single-user, `auth_mode=none`, demo) the current defaults sta
 `POST /setup/players`: adding a friend's profile is an admin act. Existing files that already
 carry the keys are not rewritten — production is locked by its administrator, not by a deploy.
 
+*Amended at closure (2026-09-16):* the lock is also exposed as an admin switch on the
+Management page (`PATCH /settings {instance_locked}` already existed, no page used it — the
+production instance had to be locked by editing the file). When the lock is forced by the
+environment (`LEVELUP_INSTANCE_LOCKED`), a request to lift it from the settings is refused with
+`409 instance_lock_forced` and nothing is written: the file cannot open what the environment
+closes, and the switch says so instead of silently snapping back.
+
 ### D6 — Purge never touches the shared warehouse
 
 `PlayerDirectory.Purge(xuid)` removes, in this order: live tracking, profile entries for every
@@ -122,6 +149,12 @@ account. It refuses to purge an admin, and it is dry-run unless confirmed. Match
 persisted in `shared_matches_v2.duckdb` are never deleted by a purge: they carry other players'
 data (opponents, teammates) and the shared warehouse is append-only by design (ADR 0026). A test
 asserts the shared file's bytes are unchanged by a purge.
+
+*Amended at closure (2026-09-16):* a purge removes **every** account carrying the xuid
+(principal and duplicates) and refuses if **any** of them is an administrator; an identity
+without a xuid (an orphan player directory) is purged by its gamertag and only its directories
+are touched; a directory that cannot be removed is logged with the OS error before the report
+marks it as not removed.
 
 ### D7 — One admin read model
 
@@ -139,3 +172,28 @@ the 2026-07-23 account the same evening.
   must take the lock from `authz.InstanceLocked` and the profile creation through `Onboard`.
 - Not done here, deliberately: unifying the three files into one store; an admin HTTP endpoint
   for purge (CLI only); multiple xuids per account (ADR 0029, deferred).
+
+## Outcome (closure, 2026-09-16)
+
+Delivered on `wt/player-directory` in seven steps (three implementation agents, one at a time,
+then the pilot's closure). Production was locked by hand on 2026-09-15 19:44 UTC (in-place
+edit of `app_settings.json`, same inode, backup kept) before any code shipped.
+
+- Ratchets added: `no_bare_instance_lock_read`, `no_direct_profile_create`,
+  `no_duckdb_import_playerdirectory`, `no_users_json_literal` — the last one caught a fourth
+  copy of the `users.json` literal (`cmd/admin`) the same minute it was written.
+- Adversarial review, two rounds with fresh contexts: round 1 (access / anti-patterns /
+  multi-title) raised 5 admissible findings, all P1, all fixed — the most consequential being
+  that pausing or purging a title left its poller alive and, with the new gate, tripped the
+  intrusion counter; round 2 (tests / front + re-verification of the 8 fixes) raised 0 P0/P1,
+  2 P2 and 3 reserves, all fixed or accepted with a test. The loop converged (5 → 0).
+- Pilot review register: `.ai/REVUE_ANNUAIRE_JOUEURS_2026-09-15.md` (R1-R6, A1-A8, B1-B5).
+- Gates at rest: `go test ./...` green (3 min 34 s warm; the first cold pass of
+  `internal/sync` needs `-timeout 30m`, 501 s), `-tags=integration ./internal/sync/...
+  ./internal/persist/...` green, `golangci-lint --new-from-merge-base` 0 issue, `tsc` clean,
+  vitest 717 files / 7 707 tests green, `openapi-check` clean, no hard-coded colour.
+- Left open, on purpose: a group *owned* by a purged identity is reported as a failed purge
+  step rather than transferred or deleted (product decision pending); three local
+  `token_orphan` fixtures from 2026-08-20; the settings toggle still trusts `sess.Role`
+  (pre-existing, plan §10); the invitation path that gives a beta-tester a way in on a locked
+  instance is the sibling plan's job.

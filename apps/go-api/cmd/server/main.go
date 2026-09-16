@@ -687,7 +687,7 @@ func main() {
 
 	// Auth locale : user store partagé — filtrage ownership des joueurs (ADR 0029,
 	// modes password + xbox) et check "first launch" (mode password).
-	usersPath := filepath.Join(cfg.AuthDir, "users.json")
+	usersPath := cfg.UsersFilePath()
 	us := userstore.NewStore(usersPath)
 	bootSvc = bootSvc.WithUserLookup(us)
 	if cfg.AuthMode == "password" {

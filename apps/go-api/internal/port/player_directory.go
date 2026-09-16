@@ -28,11 +28,15 @@ type PlayerDirectory interface {
 	// List rend toutes les identités connues d'au moins un registre, avec leurs
 	// anomalies et les compteurs d'en-tête.
 	List(ctx context.Context) (domain.AdminIdentitiesResponse, error)
-	// Get rend l'identité d'un xuid, ou ErrIdentityNotFound.
+	// Get rend l'identité d'un xuid, ou ErrIdentityNotFound. Une identité SANS
+	// xuid (dossier joueur orphelin, profil legacy) se désigne par son gamertag ;
+	// une identité qui a un xuid ne se désigne que par lui.
+	//
+	// La question « ce couple (titre, xuid) est-il un profil suivi ? » n'est PAS
+	// posée à l'annuaire : les portes de l'ADR 0035 D3 lisent
+	// config.AppConfig.HasTrackedProfile, seule définition de « suivi »
+	// (domain.SyncablePlayers) — l'annuaire la réutilise, il ne la redéfinit pas.
 	Get(ctx context.Context, xuid string) (domain.IdentityRecord, error)
-	// HasTrackedProfile dit si le couple (titre, xuid) est un profil SUIVI —
-	// la question que posent les portes de l'ADR 0035 D3.
-	HasTrackedProfile(ctx context.Context, titleSlug, xuid string) (bool, error)
 	// Onboard crée le profil de suivi d'un joueur puis, si le watcher tourne,
 	// l'y ajoute — dans CET ordre, que la porte « profil suivi » du daemon rend
 	// obligatoire (ADR 0035 D3/D4). C'est le seul créateur de profil du dépôt :

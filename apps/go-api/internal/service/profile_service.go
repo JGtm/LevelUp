@@ -7,6 +7,7 @@
 package service
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -23,11 +24,25 @@ type ProfileService struct {
 	// suppression (purge). Injecté par le caller pour garder ce package SANS
 	// dépendance directe à platform/duckdb (archlint no_duckdb_import). nil-safe.
 	evictDB func(playerDBPath string)
+	// removeAll supprime un dossier joueur (os.RemoveAll par défaut). Seam de
+	// test : la branche « dossier non supprimable » (verrou Windows, EBUSY,
+	// droits) n'est pas reproductible de façon portable autrement.
+	removeAll func(path string) error
 }
 
 // NewProfileService crée un ProfileService.
 func NewProfileService(dbProfilesPath, repoRoot string) *ProfileService {
-	return &ProfileService{store: dbprofiles.NewStore(dbProfilesPath), repoRoot: repoRoot}
+	return &ProfileService{store: dbprofiles.NewStore(dbProfilesPath), repoRoot: repoRoot, removeAll: os.RemoveAll}
+}
+
+// WithRemoveAll remplace la suppression de dossier (tests de la branche
+// d'échec de la purge uniquement). nil ⇒ os.RemoveAll.
+func (s *ProfileService) WithRemoveAll(fn func(path string) error) *ProfileService {
+	if fn == nil {
+		fn = os.RemoveAll
+	}
+	s.removeAll = fn
+	return s
 }
 
 // WithDBEvictor injecte la fonction d'éviction des handles DuckDB cachés (appelée
@@ -159,7 +174,17 @@ func (s *ProfileService) PurgeIdentityData(gamertag string, titleSlugs []string)
 		if s.evictDB != nil {
 			s.evictDB(pr.PlayerDBPath(slug, key))
 		}
-		removed[slug] = os.RemoveAll(pr.PlayerDir(slug, key)) == nil
+		dir := pr.PlayerDir(slug, key)
+		if err := s.removeAll(dir); err != nil {
+			// LOGUE AVANT DE DÉGRADER (règle 3) : la cause (verrou Windows, EBUSY,
+			// droits) reste lisible dans le journal ; le rapport de purge, lui, ne
+			// porte que le fait « dossier non supprimé » (R6, revue du 2026-09-16).
+			slog.Warn("profile: dossier joueur non supprimé lors de la purge",
+				"err", err, "path", dir, "title_slug", slug, "gamertag", gamertag)
+			removed[slug] = false
+			continue
+		}
+		removed[slug] = true
 	}
 	return removed, nil
 }

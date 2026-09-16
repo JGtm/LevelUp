@@ -14932,6 +14932,12 @@ components:
           type:
             - array
             - "null"
+        duplicate_accounts:
+          items:
+            $ref: '#/components/schemas/AccountRef'
+          type:
+            - array
+            - "null"
         gamertag:
           type: string
         orphan_dirs:

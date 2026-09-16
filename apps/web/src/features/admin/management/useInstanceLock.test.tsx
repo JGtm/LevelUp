@@ -13,13 +13,22 @@ import type { ReactNode } from 'react'
 
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useInstanceLock } from './useInstanceLock'
+import { LOCK_FORCED_CODE, useInstanceLock } from './useInstanceLock'
 
 const mutate = vi.fn()
-const state = { isPending: false, isError: false }
+const state: { isPending: boolean; isError: boolean; error: unknown } = {
+  isPending: false,
+  isError: false,
+  error: null,
+}
 
 vi.mock('@/features/settings/queries', () => ({
-  useUpdateSettings: () => ({ mutate, isPending: state.isPending, isError: state.isError }),
+  useUpdateSettings: () => ({
+    mutate,
+    isPending: state.isPending,
+    isError: state.isError,
+    error: state.error,
+  }),
 }))
 
 function makeWrapper() {
@@ -35,6 +44,7 @@ beforeEach(() => {
   mutate.mockReset()
   state.isPending = false
   state.isError = false
+  state.error = null
   useAppShellStore.setState({ instanceLocked: false })
 })
 
@@ -68,5 +78,27 @@ describe('useInstanceLock', () => {
     const { result } = renderHook(() => useInstanceLock(), { wrapper })
     expect(result.current.isPending).toBe(true)
     expect(result.current.isError).toBe(true)
+  })
+})
+
+describe('useInstanceLock — code d erreur (verrou force par l environnement)', () => {
+  it('expose instance_lock_forced quand le serveur refuse en 409', () => {
+    state.isError = true
+    state.error = { code: LOCK_FORCED_CODE, message: 'force' }
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useInstanceLock(), { wrapper })
+    expect(result.current.isError).toBe(true)
+    expect(result.current.errorCode).toBe(LOCK_FORCED_CODE)
+  })
+
+  it('errorCode est null sans erreur, et null sur une erreur sans code', () => {
+    const { wrapper } = makeWrapper()
+    const ok = renderHook(() => useInstanceLock(), { wrapper })
+    expect(ok.result.current.errorCode).toBeNull()
+
+    state.isError = true
+    state.error = new Error('reseau')
+    const ko = renderHook(() => useInstanceLock(), { wrapper })
+    expect(ko.result.current.errorCode).toBeNull()
   })
 })
