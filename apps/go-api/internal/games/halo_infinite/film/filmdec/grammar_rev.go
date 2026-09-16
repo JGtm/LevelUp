@@ -175,8 +175,8 @@ package filmdec
 // un repli nomme et compte. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 59 en
 // attendant la montee unique de la vague (les champs `vehicles[].end/tEnd` et
 // `coverage.vehicles.*` arrivent avec elle).
-// ENTREE `grammar-2026-09-15.16` (2026-09-17, lot 2.1, « le profil, resolu une fois, encore
-// recopie ») : `.15` -> `.16`. AUCUNE grammaire d octets n est reecrite, et AUCUN bit n est lu
+// ENTREE `grammar-2026-09-15.18` (2026-09-17, lot 2.1, « le profil, resolu une fois, encore
+// recopie ») : `.17` -> `.18`. AUCUNE grammaire d octets n est reecrite, et AUCUN bit n est lu
 // autrement — c est la promesse meme du jalon M2 (D4 : un pas structurel est clos a ZERO
 // difference d equivalence). L empreinte hache les OCTETS des trois paquets, commentaires
 // compris : elle monte parce que la SOURCE change, et la revision avec elle.
@@ -205,4 +205,4 @@ package filmdec
 // `killsource/` change de deux lignes — la source de la version majeure et le commentaire qui la
 // nomme — et les lignes PRODUITES sont identiques a l octet, donc aucun match deja decode n est
 // candidat au backlog. `SchemaVersion` reste 59 : le document publie ne gagne ni ne perd un champ.
-const GrammarRev = "grammar-2026-09-15.16"
+const GrammarRev = "grammar-2026-09-15.18"
