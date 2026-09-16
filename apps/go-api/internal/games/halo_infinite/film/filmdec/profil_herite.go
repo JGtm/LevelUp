@@ -1,7 +1,8 @@
 package filmdec
 
-// mouvement_herite.go — LA FUITE DU PROFIL DE MOUVEMENT D UNE PASSE SUR LA SUIVANTE, NOMMEE
-// (lot 2.2.a du PLAN_DECODEUR_FILM).
+// profil_herite.go — CE QU UNE PASSE DE DECODAGE LAISSE A LA SUIVANTE, EN UN SEUL ENDROIT NOMME
+// (lots 2.2.a, 2.2.b et 2.2.e du PLAN_DECODEUR_FILM ; le fichier s appelait `mouvement_herite.go`
+// jusqu au 2.2.e, quand il a cesse de ne porter que le mouvement).
 //
 // # CE QUE CE FICHIER PORTE, ET POURQUOI IL EXISTE
 //
@@ -26,7 +27,9 @@ package filmdec
 //
 // # KILL-SWITCH (regle 11 du CLAUDE.md)
 //
-//	BASCULE         2026-09-17 (lot 2.2.a) : cinq variables de paquet deviennent une.
+//	BASCULE         2026-09-17 (lot 2.2.a) : cinq variables de paquet deviennent une ; le
+//	                2.2.b y ajoute les largeurs de carte, le 2.2.e les largeurs MPP et le
+//	                `param_4` force — soit ONZE variables regroupees en une.
 //	CIBLE DE RETRAIT lot 2.3 (« plus de globale, plus de verrou »), et au plus tard le lot 2.5,
 //	                qui fait descendre le profil du film jusqu aux balayages de `replay`.
 //	CRITERE MESURABLE `replay.BuildFromFilm` recoit le profil de mouvement de son appelant —
@@ -44,26 +47,49 @@ package filmdec
 // tient son propre profil le pose sur son lecteur ([BitReader.poserMouvement]) et n en depend
 // plus : c est deja le cas de toutes les portes a [FrameConfig].
 
-// mouvementHerite : le profil de mouvement qu une passe laisse a la suivante dans le processus.
+// profilHerite : TOUT ce qu une passe laisse a la suivante dans le processus.
 //
-// UNE SEULE VARIABLE POUR LES SIX VALEURS, et c est delibere : les deux qui fuient (descripteur
-// de traversee, largeur d axe absolue) voyageaient dans deux globales distinctes dont les durees
-// de vie se geraient a la main — le genre d oubli qui laisse la calibration d un match fuir sur
-// le suivant. Groupees, elles se posent et se remettent a zero d un seul geste.
-var mouvementHerite = mouvementDuProfil()
+// UNE SEULE STRUCTURE, ET C EST LE POINT. Ces valeurs vivaient dans SIX variables de paquet
+// distinctes (deux du chemin de position, deux du bloc `object-multiplayer-properties`, deux du
+// `param_4` par composant) dont les durees de vie se geraient a la main, une par une — le genre
+// d oubli qui laisse la calibration d un match fuir sur le suivant. Groupees, elles se posent,
+// se lisent et se remettent a zero d un seul geste, et le jour du retrait il n y a qu une chose
+// a retirer.
+type profilHerite struct {
+	// mouvement : descripteur de traversee, largeur d axe absolue, descripteur world-object,
+	// range de dequantification, quantum et largeur du delta, drapeaux de contexte.
+	mouvement MovementProfile
+	// mpp : le decoupage des deux champs de largeur variable du bloc
+	// `object-multiplayer-properties`, pose par la VERSION DE FORMAT du film.
+	mpp MPPWidths
+	// rsp : le `param_4` du moteur qu un harnais de balayage a force, et le drapeau qui dit
+	// qu il l a force. Hors balayage, la table par composant decide seule.
+	rsp       uint32
+	rspImpose bool
+}
+
+// herite : l instance. Sa valeur AU REPOS est EXACTEMENT ce que le profil pose.
+var herite = profilHerite{mouvement: mouvementDuProfil(), mpp: mppDuProfil()}
 
 // PoserMouvementHerite installe le profil de mouvement que les balayages SUIVANTS du processus
 // prendront par defaut. Le seul appelant de production est la calibration de `killsource`.
 //
 // L APPELANT DOIT DETENIR `LockProcessDecode` — meme contrat que l installateur des largeurs
 // d axe de la carte, cote `replay`, et pour la meme raison : c est un etat de processus.
-func PoserMouvementHerite(m MovementProfile) { mouvementHerite = m }
+func PoserMouvementHerite(m MovementProfile) { herite.mouvement = m }
 
-// ReinitialiserMouvementHerite remet l invariant du profil. Appele en tete de `killsource.Decode`
-// (`resetGlobals`) : sans cela, enchainer deux films dans le meme processus ferait demarrer la
-// calibration du second depuis les valeurs du premier.
-func ReinitialiserMouvementHerite() { mouvementHerite = mouvementDuProfil() }
+// ReinitialiserMouvementHerite remet l invariant du profil SUR LE SEUL MOUVEMENT. Appele en tete
+// de `killsource.Decode` (`resetGlobals`) : sans cela, enchainer deux films dans le meme
+// processus ferait demarrer la calibration du second depuis les valeurs du premier.
+//
+// IL NE TOUCHE NI AUX LARGEURS MPP NI AU `param_4`, ET C EST DELIBERE : `resetGlobals` ne les
+// remettait pas non plus avant le lot 2.2.e. Les largeurs MPP sont POSEES ET RESTAUREES par
+// leur installateur (`InstallFilmFormatMPP` rend sa restauration, l appelant la differe), donc
+// equilibrees par construction ; le `param_4`, lui, est remis par `SetRecordStateParam(0)` juste
+// apres, comme avant. Elargir cette remise a zero serait un changement de comportement, pas un
+// nettoyage — exactement ce que le critere D4 du jalon interdit.
+func ReinitialiserMouvementHerite() { herite.mouvement = mouvementDuProfil() }
 
 // MouvementHerite rend le profil de mouvement herite. Lecture seule ; il sert aux instruments et
 // aux garde-rails qui verifient que le repos vaut bien l invariant.
-func MouvementHerite() MovementProfile { return mouvementHerite }
+func MouvementHerite() MovementProfile { return herite.mouvement }

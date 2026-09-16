@@ -99,7 +99,7 @@ func consumeCaptureAndBipedComponent(br *BitReader, name string, typeIndex uint3
 		// ported=false sur les seules valeurs internes jamais observées — désync propre,
 		// même contrat qu'i57 ci-dessus. param_4 vient de paramForComponent (i59 -> 2,
 		// la queue R(3) est lue — l'ancien global brut valait 0 et la sautait).
-		return variant, nil, consumeBipedSpartanAbilityNonPredictedState(br, paramForComponent(name))
+		return variant, nil, consumeBipedSpartanAbilityNonPredictedState(br, paramForComponent(br, name))
 	case "simulation-state", "simulation-state-component": // i60 (thunk 142f02434 -> FUN_142ED6D88, vérifié live)
 		// GRAMMAIRE COMPLÈTE depuis le 2026-08-17 (lot R7-b) : structure connue (flag +
 		// 2×gate5 + 8×R16 + 2×R2 + R1[R19]+R8) PLUS la queue FUN_14076e494, dont le prédicat

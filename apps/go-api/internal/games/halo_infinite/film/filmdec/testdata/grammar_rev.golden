@@ -397,4 +397,17 @@
 #               entierement hors des deux paquets haches ; la revision monte quand meme, elle
 #               nomme la grammaire sous laquelle un artefact a ete cuit. AUCUN OCTET N EST LU
 #               AUTREMENT. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` 60.
-grammar-2026-09-15.23	94baf8a0e8fc025feb2639eadcda0a83bc17c1aec5b74957ee3d3e2ff3842648
+#   2026-09-17  grammar-2026-09-15.24  lot 2.2.e (`.23` -> `.24`, RANG PROVISOIRE) : EQUIPEMENT ET
+#               MOBILITE AU PROFIL, ET L HERITAGE DEVIENT UNE STRUCTURE. Les deux largeurs du
+#               bloc `object-multiplayer-properties` (dont depend la lecture de tout l etat par
+#               defaut), le `param_4` force par un harnais et son drapeau, et les bits
+#               supplementaires d une action de mobilite rejoignent le profil que le lecteur
+#               porte ; les deux listes de candidats de la calibration MPP redeviennent des
+#               fonctions. L heritage porte desormais TOUT ce qu une passe laisse a la suivante
+#               en UNE structure (`profil_herite.go`) : onze variables regroupees en une depuis
+#               le 2.2.a, une seule date, une seule cible. Sa remise a zero reste bornee au
+#               mouvement — mesure, `resetGlobals` ne remettait pas le reste. Deplacement pur en
+#               prime : `mpp_widths.go` sort de `default_state.go` (503 lignes). Ratchet 86 ->
+#               79. AUCUN OCTET N EST LU AUTREMENT. `KillSourceDecoderRev` ne bouge PAS
+#               (`killsource/` intact) ; `SchemaVersion` reste 60.
+grammar-2026-09-15.24	8d0e656453fe1583d8e8fb45669e37c42038071cd38a4f00ce47aeaf55e06e9a

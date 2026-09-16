@@ -63,7 +63,7 @@ func dynPrecOrientationGrammar() dirsGrammar {
 	return dirsGrammar{
 		fwdUpDynPrec:  true,
 		angVelDynPrec: true,
-		fwdUpParam:    paramForComponent(compForwardUpDynPrec),
+		fwdUpParam:    paramMesureDuComposant(compForwardUpDynPrec),
 	}
 }
 

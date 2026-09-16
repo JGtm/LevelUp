@@ -146,7 +146,18 @@ import (
 // `WorldObjectPrecision` — est posee par carte, et son installateur
 // (`replay/world_object_precision.go`) ecrit desormais le profil HERITE au lieu d une globale
 // propre : aucune variable neuve, le canal existait deja. Bilan net : -4 = 86.
-const filmdecVarsGeles = 86
+//
+// RESSERRE A 79 LE 2026-09-17 (lot 2.2.e, famille « equipement et mobilite ») : SEPT de moins.
+// Les deux largeurs du bloc `object-multiplayer-properties` (`mppLeadBits`, `mppIndexBits`), le
+// `param_4` force par un harnais et son drapeau (`recordStateParam`,
+// `recordStateParamOverride`) et les bits supplementaires d une action de mobilite
+// (`MobilityActionExtraBits`) rejoignent le PROFIL que le lecteur porte ; les deux listes de
+// candidats de la calibration MPP (`mppLeadCandidates`, `mppIndexCandidates`) redeviennent des
+// FONCTIONS — c etaient des tables de grammaire deguisees en `var`, que rien n ecrivait (meme
+// geste qu au lot E.3 du 2026-09-05). Aucune variable neuve : l heritage du lot 2.2.a les
+// accueille toutes, et c est desormais UNE structure (`filmdec.profilHerite`) au lieu d une
+// valeur. Bilan net : -7 = 79.
+const filmdecVarsGeles = 79
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

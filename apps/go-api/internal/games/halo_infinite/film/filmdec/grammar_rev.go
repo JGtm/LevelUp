@@ -254,7 +254,7 @@ package filmdec
 // TETE sur son lecteur. Son resultat est RENDU (`calibration.Mouvement`) et passe explicitement
 // a `runWalk` et a `calibrateRSP`, qui en heritaient jusqu ici par effet de bord.
 //
-// UNE VARIABLE DE PAQUET SURVIT, ET ELLE EST NOMMEE : `mouvementHerite`
+// UNE VARIABLE DE PAQUET SURVIT, ET ELLE EST NOMMEE : `herite`
 // (`mouvement_herite.go`), le profil qu une passe laisse a la suivante DANS LE MEME PROCESSUS.
 // Ce n est pas un reglage mais un FAIT DE PRODUCTION mesure sur pieces : `replaybuild` decode
 // `killsource` PUIS appelle `replay.BuildFromFilm`, et `killsource` ne restaure pas les
@@ -340,4 +340,31 @@ package filmdec
 // le golden porte donc le meme sha sur deux rangs, ce qui se lit et ne se devine pas.
 //
 // `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
-const GrammarRev = "grammar-2026-09-15.23"
+// ENTREE `grammar-2026-09-15.24` (2026-09-17, lot 2.2.e — RANG PROVISOIRE) : `.23` -> `.24`.
+// AUCUN OCTET N EST LU AUTREMENT.
+//
+// EQUIPEMENT ET MOBILITE AU PROFIL, ET L HERITAGE DEVIENT UNE STRUCTURE. Cinq valeurs de plus
+// quittent les variables de paquet pour le profil que le lecteur porte : les DEUX largeurs du
+// bloc `object-multiplayer-properties` (la lecture de tout l etat par defaut en depend), le
+// `param_4` qu un harnais force et son drapeau, et les bits supplementaires d une action de
+// mobilite. Deux listes de candidats de la calibration MPP redeviennent des FONCTIONS — c etaient
+// des tables de grammaire deguisees en `var`, que rien n ecrivait.
+//
+// L HERITAGE PORTE DESORMAIS TOUT CE QU UNE PASSE LAISSE A LA SUIVANTE, en UNE structure
+// (`profil_herite.go`, renomme depuis `mouvement_herite.go`) : mouvement, largeurs MPP,
+// `param_4` force. Onze variables de paquet regroupees en une depuis le lot 2.2.a, avec une
+// seule date de bascule, une seule cible de retrait et un seul critere.
+//
+// SA REMISE A ZERO RESTE BORNEE AU MOUVEMENT, et c est mesure : `killsource.resetGlobals` ne
+// remettait pas les largeurs MPP avant ce lot (elles sont posees et RESTAUREES par leur
+// installateur, donc equilibrees) ni le `param_4` (remis juste apres par son propre reglage).
+// L elargir serait un changement de comportement, pas un nettoyage.
+//
+// DEPLACEMENT PUR EN PRIME : la migration des deux largeurs a fait passer `default_state.go` a
+// 503 lignes ; le decoupage du bloc MPP en sort dans `mpp_widths.go`, sans qu une ligne de
+// logique change. Ratchet des variables de paquet : 86 -> 79.
+//
+// `KillSourceDecoderRev` ne bouge PAS : `killsource/` est INTACT — le balayage de `param_4`
+// passe toujours par `SetRecordStateParam`, meme espace, meme critere, memes lignes produites.
+// `SchemaVersion` reste 60.
+const GrammarRev = "grammar-2026-09-15.24"

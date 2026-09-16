@@ -160,7 +160,7 @@ var registreFilmdec = []Repli{
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "component_param4.go",
-			Ancre:   "func paramForComponent(name string) uint32 {",
+			Ancre:   "func paramForComponent(br *BitReader, name string) uint32 {",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 3.6 (les composants manquants, archetype par archetype)",
@@ -228,8 +228,8 @@ var registreFilmdec = []Repli{
 		Condition: CondInconditionnel,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgFilmdec + "default_state.go",
-			Ancre:   "var mppLeadBits = 9",
+			Fichier: pkgFilmdec + "mpp_widths.go",
+			Ancre:   "const mppLeadParDefaut = 9",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "lot 3.x (profil par build : les largeurs MPP sont une donnee du build)",
