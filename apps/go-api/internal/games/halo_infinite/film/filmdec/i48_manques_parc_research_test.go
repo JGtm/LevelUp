@@ -113,8 +113,6 @@ func TestI48ManquesParc(t *testing.T) {
 			maxJumps = n
 		}
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	examined, scanner, film, missTotal, hitTotal := 0, 0, 0, 0, 0
 	for _, dir := range strings.Split(parc, ",") {
@@ -233,8 +231,6 @@ func TestI48ManquesAvantApres(t *testing.T) {
 	if parc == "" {
 		t.Skipf("%s absent : instrument de mesure saute", i48mParcEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	var tb, ta i48mChain
 	var totalAdd int
 	for _, dir := range strings.Split(parc, ",") {

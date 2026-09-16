@@ -69,7 +69,7 @@ func consumePlayerAndSceneComponent(br *BitReader, name string, typeIndex uint32
 		br.ReadBit()
 		return variant, nil, true
 	case compManagedObjectPropName: // ti=13 i0 (FUN_142ed69d8) — R(32), sonde
-		publishProbe(typeIndex, ProbeManagedObjectPropertyName, br.ReadBits(32))
+		br.obs.publishProbe(typeIndex, ProbeManagedObjectPropertyName, br.ReadBits(32))
 		return variant, nil, true
 	case "managed-navpoint-sub-type-component": // ti=12 i0 (FUN_1410e0cac) — R(32)
 		br.ReadBits(32)
@@ -92,10 +92,10 @@ func consumeCrewFlockAndMusicComponent(br *BitReader, name string, typeIndex uin
 	variant = noVariant
 	switch name {
 	case "biped-emp-timer-component": // ti=35 i51 (FUN_142f02830) — R(8) (timer quant 0..10s)
-		publishEmpTimer(br.ReadBits(8)) // cf. emp_timer.go — largeur inchangée, valeur publiée
+		br.obs.publishEmpTimer(br.ReadBits(8)) // cf. emp_timer.go — largeur inchangée, valeur publiée
 		return variant, nil, true
 	case compSplashMessageDynamic: // ti=47 i1 (FUN_140daebd0) — R(24), sonde
-		publishProbe(typeIndex, ProbeSplashDynamic, br.ReadBits(24))
+		br.obs.publishProbe(typeIndex, ProbeSplashDynamic, br.ReadBits(24))
 		return variant, nil, true
 	// LOW-confidence : largeur quantifiee runtime data-dependent sur la branche gate==1.
 	// On porte le cas commun (gate==0) et on desync PROPREMENT sur la branche data-dependent
@@ -354,7 +354,7 @@ func consumePlayerTailAndGameEngineComponent(br *BitReader, name string, typeInd
 		consumeStatborgRoundOutcomes(br)
 		return variant, nil, true
 	case compSplashMessageStatic: // ti=47 i0 (FUN_141085d50) — sonde sur le R(24) inconditionnel
-		publishProbe(typeIndex, ProbeSplashStatic, consumeManagedSplashMessage(br))
+		br.obs.publishProbe(typeIndex, ProbeSplashStatic, consumeManagedSplashMessage(br))
 		return variant, nil, true
 	default:
 		return consumeCaptureAndBipedComponent(br, name, typeIndex, level)

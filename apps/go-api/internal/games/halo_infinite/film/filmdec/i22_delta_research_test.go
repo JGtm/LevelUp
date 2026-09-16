@@ -44,8 +44,6 @@ func TestI22DeltaResearch(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s non defini : sonde de recherche sautee", i22FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	n := CountFilmChunks(dir)
 	if n == 0 {
@@ -106,7 +104,8 @@ func TestI22DeltaResearch(t *testing.T) {
 				if maskHas(idx, i22Index) {
 					withI22++
 					last.got = false
-					if walkRecordTo(pay, i0, total, idx, lay, arch, i22Index) && last.got {
+					if walkRecordTo(pay, i0, total, idx,
+						grammaireRecord{lay: lay, arch: arch, prof: profilDeCarte(lay)}, i22Index) && last.got {
 						read++
 						countHist[last.count]++
 						ok := last.count == 4
@@ -167,8 +166,6 @@ func TestInventoryComponentsDeltaCensus(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s non defini : sonde de recherche sautee", i22FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	n := CountFilmChunks(dir)
 	chunks := make([]int, 0, n)
@@ -213,7 +210,8 @@ func TestInventoryComponentsDeltaCensus(t *testing.T) {
 						continue
 					}
 					announced[tg]++
-					if walkRecordTo(pay, i0, total, idx, lay, arch, tg) {
+					if walkRecordTo(pay, i0, total, idx,
+						grammaireRecord{lay: lay, arch: arch, prof: profilDeCarte(lay)}, tg) {
 						walked[tg]++
 					}
 				}
@@ -246,7 +244,7 @@ func walkCursorTo(pay []byte, i0, total int, idx []int, lay I0Layout, arch Arche
 		if id == target {
 			return at, true
 		}
-		br := NewBitReader(pay)
+		br := lecteurDInstrument(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), arch.Level(id))
 		if !ported || br.BitPos() > total {
@@ -265,8 +263,6 @@ func TestInventoryValuesDeltaProbe(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s non defini", i22FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	n := CountFilmChunks(dir)
 	chunks := make([]int, 0, n)

@@ -41,7 +41,6 @@ package filmdec
 // exact de `ScanFilmAbilityImpulses` — même contexte partagé, autre composant.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
-// L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : le hook installé est
 // un global de paquet.
 
 import "levelup/go-api/internal/analysis/filmsource"
@@ -117,11 +116,6 @@ type AbilityChargeStats struct {
 // TRIÉES par instant, puis par slot, puis par emplacement — un ordre total, pour que deux
 // exécutions rendent le même artefact.
 //
-// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe
-// `observateur.AbilityEnergyHook`, qui est un global de paquet. L'appelant doit détenir
-// LockProcessDecode (BuildFromFilm le fait). Le hook est restauré à la sortie, y compris
-// en cas d'erreur.
-//
 // ScanFilmAbilityCharges est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film, ouvre un
 // contexte pour elle seule, puis appelle [ScanAbilityCharges]. La cuisson, elle, passe le
 // contexte qu'elle partage entre tous ses balayages.
@@ -130,7 +124,7 @@ func ScanFilmAbilityCharges(dir string) ([]AbilityCharge, AbilityChargeStats, er
 	if err != nil {
 		return nil, AbilityChargeStats{}, err
 	}
-	return ScanAbilityCharges(NewFilmContext(film))
+	return ScanAbilityCharges(contexteDeBobine(film))
 }
 
 // ScanAbilityCharges décode les lectures de charge d'équipement d'un film DEJA CHARGE. Cf.
@@ -141,8 +135,8 @@ func ScanAbilityCharges(fc *FilmContext) ([]AbilityCharge, AbilityChargeStats, e
 	if err != nil {
 		return nil, st, err
 	}
-	sc := &abilityChargeScanner{st: &st, lay: s.lay, arch: s.arch,
-		idx: componentIndexOfAny(s.arch, abilityEnergyName, abilityEnergyNameAlt)}
+	sc := &abilityChargeScanner{st: &st, gram: s.gram,
+		idx: componentIndexOfAny(s.gram.arch, abilityEnergyName, abilityEnergyNameAlt)}
 	if sc.idx < 0 {
 		// AUCUNE ERREUR ICI, et c'est délibéré : le film ne déclare pas le composant, donc il
 		// ne transmet pas ce canal — un fait mesuré, que `Absent` publie au lieu de le
@@ -153,13 +147,13 @@ func ScanAbilityCharges(fc *FilmContext) ([]AbilityCharge, AbilityChargeStats, e
 
 	// Le hook est LA grammaire : c'est le désérialiseur lui-même qui publie, on ne relit
 	// pas les bits à côté de lui (même règle que ScanFilmAbilityImpulses).
-	prev := observateur.AbilityEnergyHook
-	SetAbilityEnergyHook(func(mask uint32, ch [AbilityEnergyCharges]int) {
+	obs := NouvelleObservation()
+	obs.AbilityEnergyHook = func(mask uint32, ch [AbilityEnergyCharges]int) {
 		sc.mask, sc.ch, sc.got = mask, ch, true
-	})
-	defer SetAbilityEnergyHook(prev)
+	}
+	sc.gram.obs = obs
 
-	walkDeltaBipedRecords(s.fc, s.chunks, s.slots, s.lay, func(r deltaBipedRecord) {
+	walkDeltaBipedRecords(s.fc, s.chunks, s.slots, s.gram.lay, func(r deltaBipedRecord) {
 		st.Records++
 		sc.account(r.Payload, r.I0, r.Total, r.Mask, r.Slot, r.Chunk, r.Packet)
 	})
@@ -174,8 +168,7 @@ func ScanAbilityCharges(fc *FilmContext) ([]AbilityCharge, AbilityChargeStats, e
 type abilityChargeScanner struct {
 	st   *AbilityChargeStats
 	out  []AbilityCharge
-	lay  I0Layout
-	arch Archetype
+	gram grammaireRecord
 	idx  int
 	mask uint32
 	ch   [AbilityEnergyCharges]int
@@ -190,7 +183,7 @@ func (sc *abilityChargeScanner) account(pay []byte, i0, total int, idx []int,
 	}
 	sc.st.WithI56++
 	sc.got = false
-	walkRecordTo(pay, i0, total, idx, sc.lay, sc.arch, sc.idx)
+	walkRecordTo(pay, i0, total, idx, sc.gram, sc.idx)
 	if !sc.got {
 		// Composant annoncé et non atteint : une lecture PERDUE, pas une absence de charge —
 		// le dénominateur doit le dire.

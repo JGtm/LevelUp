@@ -146,7 +146,6 @@ func r11EnergyTxt(mask uint32, ch [AbilityEnergyCharges]int) string {
 
 // r11Collect est LE SEUL balayage de ce lot (regle des <= 2 copies) : le journal et la mesure
 // des charges le partagent. Un passage, quatre composants, les desers de PRODUCTION.
-// L'appelant detient LockProcessDecode : les hooks sont des globaux de paquet.
 func r11Collect(s r8MobSetup) r11Reads {
 	idx := map[string]int{
 		"i48": r8IndexOfAny(s.arch, r11I48Names),
@@ -217,7 +216,7 @@ func r11Walk(s r8MobSetup, idx, stat map[string]int, set func(uint32, uint64)) {
 				stat["records"]++
 				if r11Announces(ids, idx, stat) {
 					set(slot, pk.TimestampUS)
-					walkRecordComponents(pay, i0, total, ids, s.lay, s.arch,
+					walkRecordComponents(pay, i0, total, ids, s.gram,
 						func(int) bool { return true })
 				}
 				p = i0 + s.lay.TotalBits()
@@ -249,14 +248,13 @@ type r11Setup struct {
 	scan   r8MobSetup
 }
 
-// r11Prepare resout un film : artefact, bornes de carte, precision monde, origine d'horloge.
-// L'appelant DOIT detenir LockProcessDecode et restaurer WorldObjectPrecisionActuelle() en sortie.
+// r11Prepare resout un film : artefact, bornes de carte, origine d'horloge. Depuis le lot 2.3
+// il n'y a plus de precision monde a installer : les enveloppes D2 posent le decoupage du film
+// sur LEUR contexte.
 func r11Prepare(t *testing.T, dir string) r11Setup {
 	t.Helper()
 	id := filepath.Base(dir)
 	art := r9LoadArt(t, id)
-	entry := r8MapEntry(t, dir)
-	SetWorldObjectPrecisionFromLayout(entry.Layout())
 	origin, ok := r9FirstPacketUS(dir, 1)
 	if !ok {
 		t.Fatalf("%s : chunk 1 illisible, aucune origine d'horloge", id)
@@ -283,10 +281,6 @@ type r11JLine struct {
 
 func r11JournalOneFilm(t *testing.T, dir string) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
-	saved := WorldObjectPrecisionActuelle()
-	defer func() { PoserWorldObjectPrecision(saved) }()
 	s := r11Prepare(t, dir)
 	rd := r11Collect(s.scan)
 	xuid, all := r11XUID(), os.Getenv(r11AllEnv) == "1"

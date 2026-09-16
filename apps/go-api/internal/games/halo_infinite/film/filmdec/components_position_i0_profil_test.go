@@ -47,7 +47,7 @@ func bitsDe(bits string, octets int) []byte {
 // consommationI0 rend le nombre de bits que le deserialiseur d i0 consomme sur `buf`, sous le
 // profil `mv`.
 func consommationI0(mv MovementProfile, buf []byte) int {
-	br := NewBitReader(buf)
+	br := lecteurDInstrument(buf)
 	br.poserMouvement(mv)
 	consumeObjectPositionDynamicPrecisionD(br, br.traversal())
 	return br.BitPos()
@@ -56,8 +56,6 @@ func consommationI0(mv MovementProfile, buf []byte) int {
 // TestProfilDePositionChangeLaConsommationDeBits — LE TEMOIN DE MUTATION DES VALEURS QUI
 // CHANGENT UN COMPTE DE BITS.
 func TestProfilDePositionChangeLaConsommationDeBits(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 	defer AbsIndexHistogram() // le compteur d observation du chemin absolu ne fuit pas sur les autres tests
 
 	// LE FLUX ABSOLU : bUsePred=0, bDelta=0, precHigh=0, selecteur d index=0, puis du zero.
@@ -142,8 +140,6 @@ func TestProfilDePositionChangeLaConsommationDeBits(t *testing.T) {
 // resynchronisation. Le rejeu 2D, lui, dequantifie ailleurs (`ScanBipedPositions`, sur le
 // decoupage d i0 de la carte). Leur mutation ne pouvait donc rougir aucun test de bout en bout.
 func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 	defer AbsIndexHistogram()
 
 	profil := ResolveProfile(nil, nil).Movement()
@@ -156,7 +152,7 @@ func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
 		precedent := observateur.PosCaptureHook
 		observateur.PosCaptureHook = func(s PositionSample) { vu = s.Vec }
 		defer func() { observateur.PosCaptureHook = precedent }()
-		br := NewBitReader(buf)
+		br := lecteurDInstrument(buf)
 		br.poserMouvement(mv)
 		consumeObjectPositionDynamicPrecisionD(br, br.traversal())
 		return vu
@@ -200,11 +196,6 @@ func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
 // CE TEST JOUE CE HARNAIS, et c est la seule facon honnete de donner un temoin a cette valeur :
 // mesurer le chemin ou elle sert, en le nommant comme un harnais.
 func TestProfilDeMobiliteChangeLaConsommationDeBits(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
-	precedent := MobilityActionBodyPorted
-	SetMobilityActionBodyPorted(false)
-	defer SetMobilityActionBodyPorted(precedent)
 
 	// flag1=1 (le corps suit), flag2=0, puis la queue de poignee `FUN_1408f0ac4(...,0)` sur des
 	// bits nuls. Le compte exact importe peu : ce qui compte est l ECART entre deux profils.
@@ -212,7 +203,12 @@ func TestProfilDeMobiliteChangeLaConsommationDeBits(t *testing.T) {
 	consommation := func(extra int) int {
 		mv := ResolveProfile(nil, nil).Movement()
 		mv.MobilityActionExtraBits = extra
-		br := NewBitReader(flux)
+		br := lecteurDInstrument(flux)
+		// LE HARNAIS EST DANS LE PROFIL DU LECTEUR (lot 2.3) : eteindre le portage du corps
+		// d i54 ne touche que CE balayage.
+		p := br.Profil()
+		p.Grammaire.CorpsActionMobilite = false
+		br.PoserProfil(p)
 		br.poserMouvement(mv)
 		consumeBipedMobilityAction(br)
 		return br.BitPos()

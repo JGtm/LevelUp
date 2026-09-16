@@ -69,8 +69,6 @@ func v11ViseeUnFilm(t *testing.T, dir string) {
 		t.Logf("V11 %s : film absent — saute", dir)
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 	chunks := make([]int, 0, CountFilmChunks(dir))
 	for c := 1; c <= CountFilmChunks(dir); c++ {
 		chunks = append(chunks, c)
@@ -117,7 +115,7 @@ func v11LitViseesSansI0(dir string, bande SlotBand) []v11Visee {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
-			for _, a := range ScanBipedAimRecords(pk.Payload(data), bande) {
+			for _, a := range ScanBipedAimRecords(pk.Payload(data), bande, ContexteParDefaut()) {
 				out = append(out, v11Visee{Slot: a.Slot, TS: pk.TimestampUS,
 					YawRaw: a.YawRaw, PitchRaw: a.PitchRaw})
 			}
@@ -266,8 +264,6 @@ func v11OccupationUnFilm(t *testing.T, dir string) {
 	if CountFilmChunks(dir) == 0 {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 	evs, err := ScanFilmVehicleEvents(dir)
 	if err != nil {
 		t.Logf("V11 OCCUPATION %s : %v", dir, err)

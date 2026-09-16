@@ -74,8 +74,6 @@ func TestZoneEtatPhase2bTemoin(t *testing.T) {
 // p2bScan balaye les proprietes reseau de `ti=13` par le chemin de PRODUCTION.
 func p2bScan(t *testing.T, dir string) filmdec.ManagedPropertyScan {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
 	sc, err := filmdec.ScanFilmManagedProperties(dir)
 	if err != nil {
 		t.Fatalf("balayage ti=13 impossible (%s) : %v", dir, err)
@@ -89,8 +87,6 @@ func p2bBuild(t *testing.T, dir, short string, quant *filmdec.MapQuantEntry, zon
 	caps []objectiveevents.IdentifiedEvent,
 ) (ReplayDocument, uint64) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
 	worldRange := quant.Range()
 	scan := filmdec.DefaultScanFilmOptions()
 	scan.WorldRange = &worldRange

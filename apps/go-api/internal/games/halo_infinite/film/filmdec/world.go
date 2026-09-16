@@ -61,15 +61,16 @@ func (w *World) BindFull(id, typeIndex uint32) {
 // celui pose au binding, comme le fait `FUN_1406caad8` (`entry[0] != eid` -> return 3, corps NON
 // lu, boucle abandonnee). Defaut false : les bindings issus des keyframes portent une generation
 // qui peut avoir change depuis, et le mode strict doit rester un A/B mesurable.
-var strictGeneration = false
-
-// SetStrictGeneration active le test sur l'eid complet (generation comprise).
-func SetStrictGeneration(v bool) { strictGeneration = v }
+//
+// C EST UNE BASCULE DU PROFIL DE BALAYAGE DEPUIS LE LOT 2.3
+// ([GrammaireBalayage.GenerationStricte]), plus une variable de paquet : elle arrive donc par le
+// meme canal que les largeurs, et `killsource` la passe a la cuisson du rejeu comme le reste de
+// ce qu il retient.
 
 // GenerationMatches indique si l'eid complet `id` correspond a celui memorise pour son slot.
 // Toujours vrai quand le mode strict est desactive ou quand aucune generation n'a ete memorisee.
-func (w *World) GenerationMatches(id uint32) bool {
-	if !strictGeneration {
+func (w *World) GenerationMatches(id uint32, strict bool) bool {
+	if !strict {
 		return true
 	}
 	s, ok := w.slots[id&0x3fffffff]

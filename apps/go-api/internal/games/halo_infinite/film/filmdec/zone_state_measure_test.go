@@ -58,8 +58,6 @@ func TestZoneStateLotC1b(t *testing.T) {
 	dir := zcDir(t)
 	out := zcOutDir(t)
 	short := filepath.Base(dir)
-	release := LockProcessDecode()
-	defer release()
 
 	gram, reg := zcLoadGrammar(t, dir)
 	c := zcKeyframeCensus(dir)
@@ -179,7 +177,7 @@ func zsScanPayload(pay []byte, b zcBands, reg *Registry, col *zsCollect, curSlot
 // zsReplay rejoue les composants annonces d'un record par la boucle de PRODUCTION, dans l'ordre
 // du masque, et rend vrai si tous ont ete consommes. Les hooks publient au passage.
 func zsReplay(pay []byte, rec WorldObjectRecord, arch Archetype, ti uint32) bool {
-	br := NewBitReader(pay)
+	br := lecteurDInstrument(pay)
 	br.SetBitPos(rec.After)
 	for _, i := range rec.Idx {
 		if i < 0 || i >= len(arch.Components) {

@@ -258,7 +258,7 @@ func (w *ti10Walk) walk(pay []byte, rec WorldObjectRecord, ms int32) (int, bool)
 			w.sc.Bloque[id]++
 			return at, false
 		}
-		br := NewBitReader(pay)
+		br := lecteurDInstrument(pay)
 		br.SetBitPos(at)
 		w.got, w.key = false, false
 		_, _, ported := consumeByName(br, name, ti10ArchIndex, w.arch.Level(id))
@@ -289,7 +289,7 @@ func (w *ti10Walk) scanKeyframe(pay []byte, ms int32) {
 		}
 		sc.KeyRecords++
 		first := len(sc.Reads)
-		br := NewBitReader(pay)
+		br := lecteurDInstrument(pay)
 		br.SetBitPos(r.Bit + keyframeRecordTIBit)
 		w.cur.Slot, w.cur.TMS, w.cur.Comp = uint32(r.Slot), ms, -1
 		tr := TraverseEntity(br, w.reg, 0)

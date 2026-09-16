@@ -23,8 +23,6 @@ package filmdec
 // composant qui la contient par sa position en bits (CompResult.StartBit).
 //
 // MÊME CONTRAT QUE LES AUTRES SONDES (SetObjectParentStateHook, SetUnitEquipmentHook) : global
-// de paquet, donc UN SEUL décodage filmdec à la fois par process ; l'appelant détient
-// `LockProcessDecode` et restaure la sonde précédente.
 
 // UnitRefKind distingue les deux formes de champ de référence.
 type UnitRefKind int
@@ -71,14 +69,10 @@ type UnitRefRead struct {
 	Probe bool
 }
 
-// SetUnitRefHook installe (ou retire, avec nil) la sonde. L'appelant détient
-// `LockProcessDecode` et restaure la valeur précédente.
-func SetUnitRefHook(h func(UnitRefRead)) { observateur.UnitRefHook = h }
-
 // publishUnitRef transmet la lecture à la sonde, si elle est posée.
-func publishUnitRef(r UnitRefRead) {
-	if observateur.UnitRefHook == nil {
+func (o *Observation) publishUnitRef(r UnitRefRead) {
+	if o == nil || o.UnitRefHook == nil {
 		return
 	}
-	observateur.UnitRefHook(r)
+	o.UnitRefHook(r)
 }

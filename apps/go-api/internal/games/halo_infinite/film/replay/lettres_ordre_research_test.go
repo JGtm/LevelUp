@@ -206,8 +206,6 @@ func lettresMesureFilm(t *testing.T, dir string, film lettresFilm) lettresMesure
 	}
 	zones := lettresZones(t, film.mapID)
 	quant := lettresQuant(t, film.carte)
-	release := filmdec.LockProcessDecode()
-	defer release()
 	doc, origin := lettresDoc(t, dir, film, quant)
 	m := lettresMesure{film: film, catalog: len(zones), frames: doc.FrameCount,
 		tracks: len(doc.Tracks)}

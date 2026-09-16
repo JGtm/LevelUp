@@ -59,8 +59,6 @@ func TestLoadoutPrediction(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	t.Log("CRITERE (enonce avant lecture) : partant de l'inventaire d'une image-cle et en " +
 		"appliquant les changements du flux delta, l'inventaire predit doit egaler celui de " +

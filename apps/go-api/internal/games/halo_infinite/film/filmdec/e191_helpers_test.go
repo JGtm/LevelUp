@@ -21,7 +21,7 @@ type e191cAncre struct {
 }
 
 // e191cN2Part rend la part des records dont `n2` prend la valeur modale, et cette valeur.
-func e191cN2Part(ancres []e191cAncre, ti int) (float64, uint64, int) {
+func e191cN2Part(ancres []e191cAncre, ti int, ctx ContexteDeLecture) (float64, uint64, int) {
 	hist := map[uint64]int{}
 	total := 0
 	{
@@ -29,6 +29,7 @@ func e191cN2Part(ancres []e191cAncre, ti int) (float64, uint64, int) {
 			p, b := a.Pay, keyframeBorne{Bit: a.Bit, TI: ti}
 			total++
 			br := NewBitReader(p)
+			br.PoserContexte(ctx)
 			br.SetBitPos(b.Bit + keyframeFullStateHeaderBits)
 			n1 := int32(br.ReadBits(keyframeFullStateSizeBits)) //nolint:gosec // 32 bits
 			if n1 > 0 {

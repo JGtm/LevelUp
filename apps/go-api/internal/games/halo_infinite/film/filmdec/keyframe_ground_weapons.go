@@ -205,6 +205,7 @@ func WorldObjectPositionsForBand(dir string, wr *Vec3Range, band map[uint32]bool
 	if err != nil {
 		return out
 	}
+	lg := contexteDeBobine(film).ProfilDeBalayage().LargeursObjetDuMonde()
 	for _, c := range FilmChunkNumbers(film) {
 		chunk, pks, ok := FilmChunkAt(film, c)
 		if !ok {
@@ -214,7 +215,7 @@ func WorldObjectPositionsForBand(dir string, wr *Vec3Range, band map[uint32]bool
 			if p.Type != PacketTypeDelta {
 				continue
 			}
-			for _, s := range scanProjectileRecords(p.Payload(chunk), band, wr) {
+			for _, s := range scanProjectileRecords(p.Payload(chunk), band, wr, lg) {
 				out[s.slot] = append(out[s.slot], WorldObjectSample{
 					TimestampUS: p.TimestampUS,
 					Gen:         s.gen,

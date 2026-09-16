@@ -186,14 +186,14 @@ func imcMarcher(modele string, pay []byte, reg *Registry, bit int) (end, desync 
 		if !ok {
 			return bit, 0
 		}
-		rec, _, _ := walkOneKeyframeRecord(pay, reg, bit, h)
+		rec, _, _ := walkOneKeyframeRecord(pay, reg, bit, h, contexteDInstrument())
 		return rec.BitEnd, rec.DesyncAt
 	case imcEtatDecale:
-		tr := walkKeyframeFullState(pay, bit, reg,
+		tr := walkKeyframeFullState(pay, bit, reg, contexteDInstrument(),
 			keyframeFullStateTemoin{EnTeteBits: keyframeFullStateHeaderBits + 1})
 		return tr.EndBit, tr.DesyncAt
 	}
-	tr := WalkKeyframeFullState(pay, bit, reg)
+	tr := WalkKeyframeFullState(pay, bit, reg, contexteDInstrument())
 	return tr.EndBit, tr.DesyncAt
 }
 
@@ -335,8 +335,6 @@ func imcPublierDesyncs(t *testing.T, modele string, ti int, c *imcCompte, n int)
 // TestImageCleFermetureParArchetype EST LA MESURE : le tableau `archetype x modele`, par
 // build puis tous films confondus, avec les temoins T+ et T-.
 func TestImageCleFermetureParArchetype(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	dirs := chunk00Films(t, "CHUNK00_FILMS")
 	global := imcNouvelleTable()
 	parBuild := map[string]imcTable{}

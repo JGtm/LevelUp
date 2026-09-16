@@ -21,7 +21,6 @@ package filmdec
 // coordonnée monde (règle map_bounds.go).
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
-// L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : le hook installé
 // est un global de paquet.
 
 import (
@@ -76,11 +75,6 @@ type GrappleStats struct {
 // ScanFilmGrappleReads décode les événements de grappin (corps tag==3 d'i59) dans les
 // paquets delta du film de dir.
 //
-// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe
-// `observateur.AbilityNonPredictedHook`, qui est un global de paquet. L'appelant doit détenir
-// LockProcessDecode (BuildFromFilm le fait). Le hook est restauré à la sortie, y compris
-// en cas d'erreur.
-//
 // ScanFilmGrappleReads est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanGrappleReads].
 func ScanFilmGrappleReads(dir string) ([]GrappleRead, GrappleStats, error) {
@@ -88,7 +82,7 @@ func ScanFilmGrappleReads(dir string) ([]GrappleRead, GrappleStats, error) {
 	if err != nil {
 		return nil, GrappleStats{}, err
 	}
-	return ScanGrappleReads(NewFilmContext(film))
+	return ScanGrappleReads(contexteDeBobine(film))
 }
 
 // ScanGrappleReads décode les événements de grappin d'un film DEJA CHARGE.
@@ -123,10 +117,11 @@ func ScanGrappleReads(fc *FilmContext) ([]GrappleRead, GrappleStats, error) {
 
 	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit
 	// pas les bits à côté de lui (même règle que ScanFilmAbilityRanks et ScanFilmCamoStates).
-	sc := &grappleScanner{st: &st, lay: lay, arch: arch, i59idx: i59idx}
-	prev := observateur.AbilityNonPredictedHook
-	SetAbilityNonPredictedHook(func(s AbilityNonPredictedState) { sc.last, sc.got = s, true })
-	defer SetAbilityNonPredictedHook(prev)
+	sc := &grappleScanner{st: &st, gram: grammaireRecord{lay: lay, arch: arch,
+		prof: fc.ProfilDeBalayage()}, i59idx: i59idx}
+	obs := NouvelleObservation()
+	obs.AbilityNonPredictedHook = func(s AbilityNonPredictedState) { sc.last, sc.got = s, true }
+	sc.gram.obs = obs
 
 	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
 		st.Records++
@@ -141,8 +136,7 @@ func ScanGrappleReads(fc *FilmContext) ([]GrappleRead, GrappleStats, error) {
 type grappleScanner struct {
 	st     *GrappleStats
 	out    []GrappleRead
-	lay    I0Layout
-	arch   Archetype
+	gram   grammaireRecord
 	i59idx int
 	last   AbilityNonPredictedState
 	got    bool
@@ -155,7 +149,7 @@ func (sc *grappleScanner) account(pay []byte, i0, total int, idx []int,
 	slot uint32, chunk int, pk FilmPacket) {
 	sc.st.WithI59++
 	sc.got = false
-	walkRecordTo(pay, i0, total, idx, sc.lay, sc.arch, sc.i59idx)
+	walkRecordTo(pay, i0, total, idx, sc.gram, sc.i59idx)
 	if !sc.got {
 		sc.st.Unread++
 		return

@@ -50,6 +50,9 @@ func (b *Builder) buildReplayOptions(
 		Bomb:             stats.bomb,
 		Zone: replay.ZoneInput{Zones: cat.zones, Roles: cat.zoneRoles, TeamByXUID: teamByXUID(facts),
 			Hill: isHillVariant(facts.GameVariantName)},
+		// LE PROFIL DE BALAYAGE QUE `killsource` A RETENU SUR CE FILM (lot 2.3, condition D1 du
+		// lot 2.2.a) : il voyage par les options au lieu de fuir par l'etat du processus.
+		ProfilDeBalayage: profilDeBalayageDeLaCuisson(cat.killsource),
 		MapQuant:         &entry,
 		Observe:          b.observe,
 		SpawnPoints:      cat.spawnPts,

@@ -375,7 +375,7 @@ func probeMarche(pay []byte, rec WorldObjectRecord, a *probeArch, total int) boo
 		if name == "" {
 			return false
 		}
-		br := NewBitReader(pay)
+		br := lecteurDInstrument(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(a.ti), a.arch.Level(id))
 		if !ported || br.BitPos() > total {

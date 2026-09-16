@@ -62,8 +62,6 @@ func TestI56CrossI48Rank(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i56xFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	s := eaSetupBiped(t, dir)
 	t.Logf("composant %d du registre biped : %q", i56Index, s.arch.component(i56Index))

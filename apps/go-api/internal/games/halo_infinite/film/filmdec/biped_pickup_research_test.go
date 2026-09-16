@@ -282,8 +282,6 @@ func TestBipedPickupCalibration(t *testing.T) {
 	if !ok {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 	t.Logf("== CALIBRAGE IDLowBits sur les trames PURES de %s ==", f.dir)
 	best, pct := bpkCalibre(t, f, t.Logf)
 	t.Logf("RETENU : IDLowBits=%d (%.1f %% de trames exactes)", best, pct)
@@ -339,8 +337,6 @@ func TestBipedPickupRecensement(t *testing.T) {
 	if !ok {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	var (
 		total, nPickup, nBoard, nAutre int
@@ -417,8 +413,6 @@ func TestBipedPickupCadrageScan(t *testing.T) {
 	if !ok {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	const (
 		offMin = 4

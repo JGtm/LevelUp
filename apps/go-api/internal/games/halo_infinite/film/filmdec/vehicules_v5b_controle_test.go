@@ -347,8 +347,6 @@ func v5bAncrageUnFilm(t *testing.T, dir string) {
 		return
 	}
 	kfs := v5Keyframes(dir)
-	release := LockProcessDecode()
-	defer release()
 	for _, veh := range v5bVehiculesApparies(app) {
 		recs := v5bCollecteVehicule(app, kfs, veh, 0, true)
 		var occ, lib []v5bRec

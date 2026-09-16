@@ -157,8 +157,6 @@ func TestWeaponIndexGroundTruth(t *testing.T) {
 	if base == "" {
 		t.Skip("PRECISION_CORPUS absent : verite terrain sautee")
 	}
-	release := LockProcessDecode()
-	defer release()
 	for _, f := range idxGTCorpus {
 		runWeaponIndexGroundTruth(t, filepath.Join(base, f.id), f)
 	}

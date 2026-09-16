@@ -327,9 +327,6 @@ func f1Ecart(t *testing.T, dir string, e filmdec.MapQuantEntry, vues f1Repere) f
 // decodage et la precision de la carte.
 func f1Positions(t *testing.T, dir string, e filmdec.MapQuantEntry) ([]filmdec.BipedPosition, bool) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
-	defer installWorldObjectPrecisionDeCarte(e, dir, nil)()
 	scan := filmdec.DefaultScanFilmOptions()
 	wr := e.Range()
 	scan.WorldRange = &wr

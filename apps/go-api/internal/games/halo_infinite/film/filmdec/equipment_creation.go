@@ -67,15 +67,11 @@ func (f EquipmentCreationField) String() string {
 	return fmt.Sprintf("champ inconnu (%d)", int(f))
 }
 
-// SetEquipmentCreationHook installe (ou retire, avec nil) la sonde du default-state de ti=37.
-func SetEquipmentCreationHook(h func(f EquipmentCreationField, value uint64, present bool)) {
-	observateur.EquipmentCreationHook = h
-}
-
-func publishEquipmentCreation(f EquipmentCreationField, value uint64, present bool) {
-	if observateur.EquipmentCreationHook != nil {
-		observateur.EquipmentCreationHook(f, value, present)
+func (o *Observation) publishEquipmentCreation(f EquipmentCreationField, value uint64, present bool) {
+	if o == nil || o.EquipmentCreationHook == nil {
+		return
 	}
+	o.EquipmentCreationHook(f, value, present)
 }
 
 // Découpage de l'en-tête d'un record de CRÉATION (type NEW) d'objet du monde dans un paquet
@@ -180,7 +176,7 @@ func ScanFilmEquipmentCreations(dir string, wr *Vec3Range) ([]EquipmentCreation,
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}
-	return ScanEquipmentCreations(NewFilmContext(film), wr)
+	return ScanEquipmentCreations(contexteDeBobine(film), wr)
 }
 
 // ScanEquipmentCreations décode les records de création d'équipement d'un film DEJA CHARGE.
@@ -212,7 +208,7 @@ func ScanFilmEquipmentCreationsForBand(
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}
-	return ScanEquipmentCreationsForBand(NewFilmContext(film), wr, band)
+	return ScanEquipmentCreationsForBand(contexteDeBobine(film), wr, band)
 }
 
 // ScanEquipmentCreationsForBand balaye une bande de slots donnée dans un film DEJA CHARGE.
@@ -234,9 +230,10 @@ func ScanEquipmentCreationsForBand(
 	}
 
 	var cur equipCreationRead
-	defer installCreationHooks(&cur)()
+	obs := installCreationHooks(&cur)
 
-	w := equipCreationWalk{comps: len(arch.Components), wr: wr, band: band, cur: &cur}
+	w := equipCreationWalk{obs: obs, prof: fc.ProfilDeBalayage(),
+		comps: len(arch.Components), wr: wr, band: band, cur: &cur}
 	return runCreationWalk(fc, w, &st), st, nil
 }
 
@@ -246,18 +243,15 @@ func ScanEquipmentCreationsForBand(
 //
 // Les deux vont ENSEMBLE et se posent d'un seul geste : le balayage lit un record entier, et
 // n'installer que l'une des deux rendrait un record à moitié observé sans que rien ne le dise.
-func installCreationHooks(cur *equipCreationRead) func() {
-	prev, prevMPP := observateur.EquipmentCreationHook, observateur.MppHook
-	SetEquipmentCreationHook(func(f EquipmentCreationField, v uint64, present bool) {
+func installCreationHooks(cur *equipCreationRead) *Observation {
+	obs := NouvelleObservation()
+	obs.EquipmentCreationHook = func(f EquipmentCreationField, v uint64, present bool) {
 		cur.present[f], cur.val[f] = present, v
-	})
-	SetMultiplayerPropertiesHook(func(f MPPField, v uint64, present bool) {
-		cur.mppPresent[f], cur.mppVal[f] = present, v
-	})
-	return func() {
-		SetEquipmentCreationHook(prev)
-		SetMultiplayerPropertiesHook(prevMPP)
 	}
+	obs.MppHook = func(f MPPField, v uint64, present bool) {
+		cur.mppPresent[f], cur.mppVal[f] = present, v
+	}
+	return obs
 }
 
 // equipCreationRead porte ce que les hooks ont publié pour UN record.
@@ -276,6 +270,11 @@ type equipCreationRead struct {
 // ARMES AU SOL (`ti=42`, ground_weapon_creation.go) empruntent donc ce code au lieu d'en
 // recopier une seconde version qui re-divergerait au premier correctif.
 type equipCreationWalk struct {
+	// obs / prof : l OBSERVATEUR et le PROFIL que cette marche pose sur chaque lecteur qu elle
+	// construit (lot 2.3, cf. [equipCreationWalk.contexte]). Le profil vient du contexte du
+	// film, ou d un candidat quand la calibration MPP balaie.
+	obs   *Observation
+	prof  ProfilDeBalayage
 	comps int
 	wr    *Vec3Range
 	band  map[uint32]bool
@@ -309,6 +308,10 @@ func (w equipCreationWalk) archetype() uint32 {
 	return w.ti
 }
 
+// contexte rend ce que cette marche pose sur ses lecteurs.
+func (w equipCreationWalk) contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: w.prof, Obs: w.obs}
+}
 func (w equipCreationWalk) defaultState() func(*BitReader) {
 	if w.deser == nil {
 		return consumeDefaultStateTI37
@@ -322,7 +325,7 @@ func (w equipCreationWalk) decodePos(pay []byte, at int) ([3]float32, bool) {
 	if w.posDecode != nil {
 		return w.posDecode(pay, at)
 	}
-	return decodeWorldObjectPos(pay, at, w.wr)
+	return decodeWorldObjectPos(pay, at, w.wr, w.prof.LargeursObjetDuMonde())
 }
 
 // posAdvance rend la largeur d'i0 pour avancer le curseur après un record accepté.
@@ -330,7 +333,7 @@ func (w equipCreationWalk) posAdvance() int {
 	if w.posBits > 0 {
 		return w.posBits
 	}
-	return projPosBits()
+	return projPosBits(w.prof.LargeursObjetDuMonde())
 }
 
 // scanPayload balaye UN payload delta et rend les records de création reconnus.
@@ -428,6 +431,8 @@ func (w equipCreationWalk) readCreation(
 	var cre EquipmentCreation
 	*w.cur = equipCreationRead{}
 	br := NewBitReader(pay)
+	br.PoserContexte(w.contexte())
+	br.PoserObservation(w.obs)
 	start := p + woNewHeaderBits
 	br.SetBitPos(start)
 	w.defaultState()(br)
@@ -449,7 +454,7 @@ func (w equipCreationWalk) readCreation(
 		return cre, false
 	}
 	if w.ammoArch != nil {
-		cre.Ammo, cre.HasAmmo = readGroundWeaponAmmo(pay, compStart, idx, *w.ammoArch)
+		cre.Ammo, cre.HasAmmo = readGroundWeaponAmmo(pay, compStart, idx, *w.ammoArch, w.contexte())
 	}
 	cre.HasRef, cre.Ref = w.cur.present[EquipCreationRef], uint32(w.cur.val[EquipCreationRef])
 	cre.HasID, cre.AbilityID = w.cur.present[EquipCreationAbilityID], uint32(w.cur.val[EquipCreationAbilityID])

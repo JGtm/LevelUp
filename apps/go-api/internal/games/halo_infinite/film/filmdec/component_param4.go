@@ -21,18 +21,12 @@ package filmdec
 // optional slot / flag reads are absent. When a real descriptor count is known it
 // must be supplied (it cannot be recovered from the bits alone).
 //
-// IL VIT DANS LE PROFIL HERITE DEPUIS LE LOT 2.2.e (`profil_herite.go`), plus dans deux
-// variables de paquet : un harnais de calibration peut toujours balayer {0,1,2,3} pour trouver
+// IL VIT DANS LE PROFIL QUE LE LECTEUR PORTE DEPUIS LE LOT 2.2.e ([ProfilDeBalayage]), plus
+// dans deux variables de paquet : un harnais de calibration peut toujours balayer {0,1,2,3} pour trouver
 // la valeur qui resynchronise le composant APRES un composant qui en depend (i10
 // object-parent-state, i19/i20/i23 unit-*), mais ce qu il pose voyage desormais avec le lecteur.
 // Verdict du workflow deser-fix : la desynchronisation d i10 en image-cle est CE parametre, pas
 // un defaut de code.
-
-// SetRecordStateParam lets a harness sweep the runtime actor-tick/weapon-set count
-// (param_4) that varies the bit width of i10/i19/i20/i23. See paramForComponent.
-//
-// L APPELANT DOIT DETENIR `LockProcessDecode` : il ecrit le profil herite du processus.
-func SetRecordStateParam(v uint32) { herite.rsp, herite.rspImpose = v, true }
 
 // paramByComponent porte le VRAI param_4, par composant, tel que la capture live le
 // mesure (colonne `param4` de .ai/V7.5/dumps/ce_capture_delta.csv). Extraction sur
@@ -89,8 +83,8 @@ func paramForComponent(br *BitReader, name string) uint32 {
 	}
 	// LE REPLI DU HARNAIS N'EST CONSULTE QUE HORS TABLE, et c'est ce qui rend
 	// [paramMesureDuComposant] equivalent pour un nom TABULE — cf. sa godoc.
-	if br.rspImpose { // un harnais de balayage a forcé la valeur, et le lecteur la porte
-		return br.rsp
+	if br.p.ParamEtatImpose { // un harnais de balayage a forcé la valeur, et le lecteur la porte
+		return br.p.ParamEtat
 	}
 	return 1
 }
@@ -115,4 +109,4 @@ func paramMesureDuComposant(name string) uint32 {
 //
 // C'ÉTAIT LA VARIABLE DE PAQUET `recordStateParam`, avec son drapeau
 // `recordStateParamOverride`, JUSQU'AU LOT 2.2.e.
-func (b *BitReader) recordStateParam() uint32 { return b.rsp }
+func (b *BitReader) recordStateParam() uint32 { return b.p.ParamEtat }

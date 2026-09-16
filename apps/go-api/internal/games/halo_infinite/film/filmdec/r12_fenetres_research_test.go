@@ -227,10 +227,6 @@ func TestR12Fenetres(t *testing.T) {
 
 func r12FenetresOneFilm(t *testing.T, dir string) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
-	saved := WorldObjectPrecisionActuelle()
-	defer func() { PoserWorldObjectPrecision(saved) }()
 	s := r12Prepare(t, dir)
 	rd := r12Collect(s)
 	pal := r12ClassifyPalette(rd.Ranks)

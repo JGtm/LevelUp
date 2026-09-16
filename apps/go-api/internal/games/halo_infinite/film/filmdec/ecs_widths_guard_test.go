@@ -106,8 +106,6 @@ var ecsEcartsAdmis = []ecsEcartAdmis{
 // TestG4LargeursEntieresSuiventLeCode — LE CONTROLE.
 func TestG4LargeursEntieresSuiventLeCode(t *testing.T) {
 	rows := loadECSTable(t)
-	release := LockProcessDecode()
-	defer release()
 
 	admis := map[string]ecsEcartAdmis{}
 	for _, e := range ecsEcartsAdmis {
@@ -266,8 +264,6 @@ var ecsMesuresCitees = []ecsMesureCitee{
 // deser consomme, motif par motif.
 func TestG5MesuresCiteesParLaTable(t *testing.T) {
 	rows := loadECSTable(t)
-	release := LockProcessDecode()
-	defer release()
 
 	index := map[string]ecsRow{}
 	for _, r := range rows {

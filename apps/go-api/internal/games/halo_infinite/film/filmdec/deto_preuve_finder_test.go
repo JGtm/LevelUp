@@ -69,8 +69,6 @@ func TestDetoPreuveFindRockets(t *testing.T) {
 	if root == "" {
 		t.Skip("LOT1_CORPUS absent : recherche de films a roquettes sautee")
 	}
-	release := LockProcessDecode()
-	defer release()
 	scanCap := rockFinderCapD
 	if v := os.Getenv("LOT1_FINDER_CAP"); v != "" {
 		if k, err := strconv.Atoi(v); err == nil && k > 0 {

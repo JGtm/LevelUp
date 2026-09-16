@@ -34,7 +34,7 @@ package replay
 // (0x273fe0eb `ability_grapple_hook`, 0x8c77ffe7 meme modele `hlmt`).
 //
 // LECTURE SEULE : aucune base, aucun artefact ecrit, aucun champ de document. UN SEUL decodage
-// filmdec par process (LockProcessDecode), UN SEUL film par process (D17).
+// film par process (D17).
 //
 // USAGE (depuis apps/go-api) :
 //
@@ -93,11 +93,8 @@ func TestEquipmentUsesPhase0(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", eqUsesFilmEnv)
 	}
 	short := filepath.Base(dir)
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	entry, metres := eqUsesEntry(t, dir)
-	defer installWorldObjectPrecisionDeCarte(entry, dir, nil)()
 	wr := entry.Range()
 	t.Logf("FILM %s · largeurs d'axe %v · bornes %s", short, entry.AxisWidths,
 		map[bool]string{true: "MONDE (metres)", false: "NORMALISEES [0,1]"}[metres])

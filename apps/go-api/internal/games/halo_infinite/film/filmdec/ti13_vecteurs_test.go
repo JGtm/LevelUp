@@ -282,8 +282,6 @@ func TestTi13IdentifiantsPartagesEntreFilms(t *testing.T) {
 // choses que le test precedent ne couvre pas : ce que le hook PUBLIE, et combien de bits le
 // lecteur a reellement consommes. C'est le test du port, pas de la table de largeurs.
 func TestTi13VecteursPortDeser(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 	prev := observateur.ManagedPropertyHook
 	defer SetManagedPropertyHook(prev)
 
@@ -305,7 +303,7 @@ func ti13VerifiePort(t *testing.T, v ti13VecteurFige) {
 		champ, vals, vu = f, append([]uint64(nil), values...), vu+1
 	})
 
-	br := NewBitReader(ti13Octets(v.raw))
+	br := lecteurDInstrument(ti13Octets(v.raw))
 	champAttendu := ManagedPropertyPerPlayer
 	if v.modeA {
 		champAttendu = ManagedPropertyScalar
@@ -354,8 +352,6 @@ func ti13VerifiePublication(t *testing.T, ref string, v ti13VecteurFige, vals []
 // consommation de bits, sinon un artefact construit avec sonde et un artefact construit sans
 // divergeraient en silence. Meme garde qu'au lot C (`TestZoneHooksConsommentLesMemesBitsSansHook`).
 func TestTi13HookConsommeLesMemesBitsSansHook(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 	prev := observateur.ManagedPropertyHook
 	defer SetManagedPropertyHook(prev)
 
@@ -372,12 +368,12 @@ func TestTi13HookConsommeLesMemesBitsSansHook(t *testing.T) {
 		octets := []byte{byte(tag << 4), 0xA5, 0x3C, 0xF0, 0x0F, 0x5A}
 		for _, c := range cas {
 			SetManagedPropertyHook(nil)
-			brSans := NewBitReader(octets)
+			brSans := lecteurDInstrument(octets)
 			c.deser(brSans)
 			sans := brSans.BitPos()
 
 			SetManagedPropertyHook(func(ManagedPropertyField, []uint64) {})
-			brAvec := NewBitReader(octets)
+			brAvec := lecteurDInstrument(octets)
 			c.deser(brAvec)
 			avec := brAvec.BitPos()
 

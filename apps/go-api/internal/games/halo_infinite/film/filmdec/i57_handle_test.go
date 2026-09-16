@@ -61,8 +61,6 @@ func TestI57HandleAndDeployables(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i57hFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	s := eaSetupBiped(t, dir)
 	idx57 := s.arch.indicesOfFirst("biped-spartan-ability-component")
@@ -280,13 +278,7 @@ type i57hActEvent struct {
 // transitions d'`equipment-activated` par vie d'objet (le protocole du 15/08).
 func i57hActivatedTransitions(t *testing.T, dir string) []i57hActEvent {
 	t.Helper()
-	lay, _, err := detectI0Layout(dir)
-	if err != nil {
-		t.Fatalf("découpage i0 illisible : %v", err)
-	}
-	prevPrec := WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { PoserWorldObjectPrecision(prevPrec) })
-	SetWorldObjectPrecisionFromLayout(lay)
+	_, _ = contexteDuFilm(t, dir)
 	samples, st, err := ScanFilmEquipmentState(dir)
 	if err != nil {
 		t.Fatalf("balayage equipment-state impossible : %v", err)

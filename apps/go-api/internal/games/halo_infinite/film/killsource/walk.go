@@ -102,7 +102,7 @@ func locateFallback(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 			continue
 		}
 		rec, _, ok := filmdec.TryDeltaAt(pl, s, w, cfg)
-		if !ok || rec.Slot != 123 || !w.GenerationMatches(rec.ID) {
+		if !ok || rec.Slot != 123 || !w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
 			continue
 		}
 		return s
@@ -113,7 +113,8 @@ func locateFallback(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 // locateRecords : le localisateur complet — signature stricte, puis repli. -1 si aucune position.
 func locateRecords(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 	if s := locateStrict(pl, w, cfg); s >= 0 {
-		if rec, _, ok := filmdec.TryDeltaAt(pl, s, w, cfg); ok && w.GenerationMatches(rec.ID) {
+		if rec, _, ok := filmdec.TryDeltaAt(pl, s, w, cfg); ok &&
+			w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
 			return s
 		}
 	}
@@ -125,10 +126,10 @@ func locateRecords(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 // `mv` est le PROFIL DE MOUVEMENT que la calibration a retenu (lot 2.2.a). Il arrive en
 // PARAMETRE depuis le 2.2.a : avant, la marche reconstruisait un cadre par defaut et heritait
 // des largeurs calibrees par effet de bord des variables de paquet de `filmdec`.
-func runWalk(f *film, tl *timeline, r *roster, views int, mv filmdec.MovementProfile) *walkResult {
+func runWalk(f *film, tl *timeline, r *roster, views int, prof filmdec.ProfilDeBalayage) *walkResult {
 	tl.rewind()
 	cfg := filmdec.DefaultFrameConfig()
-	cfg.Mouvement = mv
+	cfg.Profil = prof
 	res := &walkResult{}
 	res.bipLo, res.bipHi = tl.bipedRange()
 	for i := range f.t0 {

@@ -190,7 +190,7 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 	if err != nil {
 		return nil, err
 	}
-	return ScanBipedPositions(film, opt)
+	return ScanBipedPositions(contexteDeBobine(film), opt)
 }
 
 // ScanBipedPositions décode les positions absolues de bipeds d'un film DEJA CHARGE. Cf.
@@ -198,7 +198,8 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 //
 // C'est l'entrée BIPÈDE de [ScanBipedPositionsForBand] : elle ne fait qu'y ajouter le relevé
 // de la bande de slots `ti=35` (bipedSlotBand). Aucun décodage ne lui est propre.
-func ScanBipedPositions(film *filmsource.Film, opt ScanFilmOptions) ([]BipedPosition, error) {
+func ScanBipedPositions(fc *FilmContext, opt ScanFilmOptions) ([]BipedPosition, error) {
+	film := fc.Film()
 	chunks, err := bipedScanChunks(film, opt)
 	if err != nil {
 		return nil, err
@@ -207,19 +208,21 @@ func ScanBipedPositions(film *filmsource.Film, opt ScanFilmOptions) ([]BipedPosi
 	if band.Count() == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	return ScanBipedPositionsForBand(film, band, opt)
+	return ScanBipedPositionsForBand(fc, band, opt)
 }
 
 // ScanBipedRecords balaie un payload de paquet delta bit à bit et renvoie les positions
 // absolues des records biped reconnus. PUR (aucune I/O) : c'est le cœur testable du
 // décodeur. Les champs Chunk/PacketIndex/TimestampUS sont laissés à zéro (remplis par
 // l'appelant).
-func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilmOptions) []BipedPosition {
+func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilmOptions,
+	ctx ContexteDeLecture) []BipedPosition {
 	i0Bits := lay.TotalBits()
 	var out []BipedPosition
 	// UN SEUL lecteur de bits pour tout le payload : `scanRecordDirs` le repositionne par
 	// `SetBitPos` a chaque composant de vitalite, la ou il en allouait deux PAR RECORD.
 	br := NewBitReader(payload)
+	br.PoserContexte(ctx)
 	// LA GRAMMAIRE D'ORIENTATION EST RESOLUE UNE FOIS PAR PAYLOAD, hors de la boucle : elle ne
 	// depend que des options (l'archetype decide d'i2 ET d'i3 a la fois), jamais du record.
 	g := dirsGrammar{}
@@ -247,8 +250,8 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilm
 		if opt.CaptureDirs {
 			rec.componentDirs, rec.componentVitals = scanRecordDirs(br, r.I0+i0Bits, r.Total, r.Mask, g)
 			rec.MaskBits, rec.MaskOver = maskBitsOf(r.Mask)
-			if observateur.RecordMaskHook != nil {
-				observateur.RecordMaskHook(r.Mask, payload, r.I0+i0Bits)
+			if br.obs != nil && br.obs.RecordMaskHook != nil {
+				br.obs.RecordMaskHook(r.Mask, payload, r.I0+i0Bits)
 			}
 		}
 		out = append(out, rec)

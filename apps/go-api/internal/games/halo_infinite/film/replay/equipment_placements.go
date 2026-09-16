@@ -259,7 +259,7 @@ const equipmentFamilyOther = "other"
 // à une largeur devinée rendrait du bruit. Les trois se lisent au journal, et la troisième se
 // relit ensuite dans l'artefact (`coverage.placements.calibrated`).
 //
-// HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
+// HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmPlacements(
 	fc *filmdec.FilmContext, matchID string, worldRange *filmdec.Vec3Range,
 ) ([]filmdec.EquipmentPlacement, filmdec.EquipmentPlacementStats) {

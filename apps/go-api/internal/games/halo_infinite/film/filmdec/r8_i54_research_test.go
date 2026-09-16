@@ -19,7 +19,7 @@ package filmdec
 // CONTROLE (`r8BodyBits`, la largeur totale consommee, comparee a celle du deser de
 // production sur le meme record).
 //
-// GARDES : `R8_FILMS`, `R8_BOUNDS`, `R8_IDS`. `LockProcessDecode`, CGO_ENABLED=0.
+// GARDES : `R8_FILMS`, `R8_BOUNDS`, `R8_IDS`. CGO_ENABLED=0.
 
 import (
 	"sort"
@@ -50,6 +50,7 @@ type r8MobEvent struct {
 
 // r8MobSetup porte la configuration de lecture d'un film (regle des 5 parametres).
 type r8MobSetup struct {
+	gram     grammaireRecord
 	dir      string
 	chunks   []int
 	slots    SlotBand
@@ -90,7 +91,8 @@ func r8MobResolve(t *testing.T, dir string) r8MobSetup {
 	if idx < 0 {
 		t.Fatalf("composant %q absent de l'archetype biped de %s", r8CompMobilityAction, dir)
 	}
-	return r8MobSetup{dir: dir, chunks: chunks, slots: slots, lay: lay, arch: arch, i54Index: idx}
+	return r8MobSetup{gram: grammaireRecord{lay: lay, arch: arch, prof: profilDeCarte(lay)},
+		dir: dir, chunks: chunks, slots: slots, lay: lay, arch: arch, i54Index: idx}
 }
 
 // r8MobOffset marche les composants du masque qui precedent i54 avec les desers de
@@ -170,7 +172,6 @@ func r8MirrorBody(br *BitReader, ev *r8MobEvent) {
 }
 
 // r8ScanMobility balaye le film et rend toutes les emissions d'i54, triees par instant.
-// L'appelant doit detenir LockProcessDecode.
 func r8ScanMobility(t *testing.T, s r8MobSetup) ([]r8MobEvent, int, int) {
 	t.Helper()
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + s.lay.TotalBits()

@@ -30,8 +30,6 @@ func TestTI47Annonces(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument ti=47 saute", ti47FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {

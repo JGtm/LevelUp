@@ -192,8 +192,6 @@ func v11TourelleUnFilm(t *testing.T, dir string) {
 		t.Logf("V11 %s : film absent — saute", dir)
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 	kf := ScanFilmWorldObjectKeyframes(dir, v11VehiculeTI)
 	if len(kf.Band) == 0 {
 		t.Logf("V11 %s : bande ti=40 vide", dir)

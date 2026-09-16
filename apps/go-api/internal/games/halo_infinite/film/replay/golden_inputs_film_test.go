@@ -73,8 +73,6 @@ func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*g
 	// verrou de decodage, puis les largeurs d axe du chemin world-object installees DEPUIS
 	// L ENTREE DE CATALOGUE — largeurs, largeur d index de region ET region, que seule
 	// `MapQuantEntry.Layout()` porte toutes les trois.
-	release := filmdec.LockProcessDecode()
-	defer release()
 	roster, err := rosterDeLaFeuille(film)
 	if err != nil {
 		return nil, err
@@ -85,7 +83,7 @@ func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*g
 	// ce que la production fait.
 	opt := Options{MapQuant: &entry, RosterXUIDs: roster}
 	fc := filmdec.NewFilmContextForMap(charge, opt.MapQuant, decoupageForce(opt))
-	defer installWorldObjectPrecision(fc.Profile(), film, nil)()
+	installWorldObjectPrecision(fc, film, opt.Fallbacks)
 	in, err := scanFilmInputs(film, charge, fc, opt)
 	if err != nil {
 		return nil, err

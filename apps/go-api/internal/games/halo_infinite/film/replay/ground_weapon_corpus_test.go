@@ -37,8 +37,6 @@ func TestGroundWeaponCorpusCensus(t *testing.T) {
 	if raw == "" {
 		t.Skipf("%s absent : recensement de corpus sauté", gwCorpusEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	for _, dir := range strings.Split(raw, ",") {
 		dir = strings.TrimSpace(dir)

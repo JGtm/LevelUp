@@ -75,13 +75,8 @@ const (
 	anchorInnerHeavy = 2
 )
 
-// abilityAnchorBodyPorted : le corps tag==3 est-il décodé ? Bascule A/B (patron
-// MobilityActionBodyPorted) pour rejouer la ligne de base d'avant le port (tag lu, corps
-// sauté, marche continuée sans lui).
-var abilityAnchorBodyPorted = true
-
-// SetAbilityAnchorBodyPorted bascule le portage du corps d'i59 (instruments uniquement).
-func SetAbilityAnchorBodyPorted(b bool) { abilityAnchorBodyPorted = b }
+// C'ÉTAIT LA VARIABLE DE PAQUET `abilityAnchorBodyPorted` JUSQU'AU LOT 2.3 : la bascule A/B du
+// corps tag==3 d'i59 vit dans [GrammaireBalayage.CorpsAncrageCapacite].
 
 // AbilityAnchorVec est UNE lecture de FUN_142f26e9c : porte à 1 = vecteur constant (0 bit
 // de charge) ; porte à 0 = direction cubemap (anchorVecDirBits) + magnitude log/exp

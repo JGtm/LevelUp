@@ -187,7 +187,8 @@ func ScanBipedCreationsForBand(
 		return nil, st, errors.New("bande de slots vide")
 	}
 	st.Slots = band.Count()
-	w := bipedCreationWalk{band: band, st: &st, autres: map[uint32]int{}}
+	w := bipedCreationWalk{prof: fc.ProfilDeBalayage(), band: band, st: &st, autres: map[uint32]int{}}
+	_ = w.obs // aucun crochet : ce balayage lit par decalage, il n observe rien
 	var out []BipedCreation
 	for _, c := range nums {
 		data, pks, ok := fc.ChunkAt(c)
@@ -208,6 +209,11 @@ func ScanBipedCreationsForBand(
 // bipedCreationWalk porte ce que la marche d'un payload doit connaître (règle des 5 paramètres) :
 // la bande, les compteurs, et l'histogramme des mots de représentation refusés.
 type bipedCreationWalk struct {
+	// obs est l OBSERVATEUR de ce balayage (lot 2.3), pose sur chaque lecteur construit.
+	obs *Observation
+	// prof est le PROFIL DE BALAYAGE du contexte, pose sur chaque lecteur de cette marche
+	// (lot 2.3) : c est par lui que les largeurs de la carte et du format atteignent les feuilles.
+	prof   ProfilDeBalayage
 	band   SlotBand
 	st     *BipedCreationStats
 	autres map[uint32]int
@@ -246,6 +252,11 @@ func (w bipedCreationWalk) scanPayload(pay []byte, pk FilmPacket, chunk int) []B
 // CHAQUE REFUS EST COMPTÉ À PART, et les catégories ne sont pas décoratives : `ShapeBad` est le
 // rejet ordinaire d'un ancrage bit à bit, `SignatureMismatch` est le seul qui dise quelque chose
 // du FILM, et `GateClosed` est un fait mesuré à zéro dont la remontée serait une découverte.
+// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
+func (w bipedCreationWalk) contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: w.prof, Obs: w.obs}
+}
+
 func (w bipedCreationWalk) readCreation(pay []byte, p, total int) (BipedCreation, bool) {
 	var cre BipedCreation
 	st := w.st
@@ -255,6 +266,7 @@ func (w bipedCreationWalk) readCreation(pay []byte, p, total int) (BipedCreation
 		return cre, false
 	}
 	br := NewBitReader(pay)
+	br.PoserContexte(w.contexte())
 	br.SetBitPos(start)
 	// g0 : la porte de version. Les records mesurés l'ouvrent et écrivent 13 EXPLICITEMENT ;
 	// une porte fermée laisserait la version implicite, et le gate ne l'accepte pas.

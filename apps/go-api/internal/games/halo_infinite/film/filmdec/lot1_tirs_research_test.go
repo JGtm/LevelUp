@@ -117,8 +117,6 @@ func TestLot1TirsEtCibles(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	n := CountFilmChunks(dir)
 	if n > deltaWitnessChunks {
 		n = deltaWitnessChunks

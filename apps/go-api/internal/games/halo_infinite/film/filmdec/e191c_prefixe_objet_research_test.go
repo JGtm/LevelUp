@@ -377,7 +377,7 @@ func e191cScannerPetits(t *testing.T, fc *FilmContext, reg *Registry, f func(ti 
 				if !ok || len(arch.Components) > e191cPetitMax {
 					continue
 				}
-				tr := WalkKeyframeFullState(pay, b.Bit, reg)
+				tr := WalkKeyframeFullState(pay, b.Bit, reg, contexteDInstrument())
 				f(b.TI, arch.Components, tr.EndBit-b.Want, tr.DesyncAt)
 			}
 		}

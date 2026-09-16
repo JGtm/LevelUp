@@ -57,8 +57,6 @@ type e191cEtatMesure struct {
 // TestE191cEtatParDefaut publie, pour chacun des cinq archetypes objet, les largeurs d etat par
 // defaut qui ferment le plus de records, et la largeur que le deserialiseur porte aujourd hui.
 func TestE191cEtatParDefaut(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	t.Logf("######## PAS 2 — LARGEUR D ETAT PAR DEFAUT IMPLIQUEE (balayage 0..%d bits) ########", e191cBalayageMax)
 	par := map[int]*e191cEtatMesure{}
 	for _, ti := range e191cCinq {
@@ -103,7 +101,7 @@ func e191cBalayerBobine(t *testing.T, court string, par map[int]*e191cEtatMesure
 
 // e191cUnRecord mesure UN record : la marche portee, puis le balayage de largeur substituee.
 func e191cUnRecord(pay []byte, reg *Registry, b keyframeBorne, m *e191cEtatMesure) {
-	tr := WalkKeyframeFullState(pay, b.Bit, reg)
+	tr := WalkKeyframeFullState(pay, b.Bit, reg, contexteDInstrument())
 	if tr.DesyncAt < 0 {
 		m.Portee[e191cLargeurPortee(pay, reg, b.Bit)]++
 		if tr.EndBit == b.Want {
@@ -112,7 +110,7 @@ func e191cUnRecord(pay []byte, reg *Registry, b keyframeBorne, m *e191cEtatMesur
 	}
 	for w := 0; w <= e191cBalayageMax; w++ {
 		tem := keyframeFullStateTemoin{EnTeteBits: keyframeFullStateHeaderBits + w, SansEtatParDefaut: true}
-		st := walkKeyframeFullState(pay, b.Bit, reg, tem)
+		st := walkKeyframeFullState(pay, b.Bit, reg, contexteDInstrument(), tem)
 		if st.DesyncAt < 0 && st.EndBit == b.Want {
 			m.ParW[w]++
 		}

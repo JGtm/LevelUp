@@ -150,8 +150,6 @@ func TestBipedPickupGrammaire(t *testing.T) {
 	if !ok {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 	cfg := bpkCfg(f.idLow)
 
 	var g bpkGramStats
@@ -213,8 +211,6 @@ func TestBipedPickupPlafondEvenement(t *testing.T) {
 	if !ok {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 	cfg := bpkCfg(f.idLow)
 
 	var seuls, exact int
@@ -293,8 +289,6 @@ func TestBipedPickupEchecs(t *testing.T) {
 	if !ok {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 	cfg := bpkCfg(f.idLow)
 
 	const fMin, fMax = 10, 120
@@ -394,8 +388,6 @@ func TestBipedPickupLargeurRef0(t *testing.T) {
 	if !ok {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 	cfg := bpkCfg(f.idLow)
 
 	const wMin, wMax = 4, 14

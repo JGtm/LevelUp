@@ -112,6 +112,8 @@ var appelsAutorisesDuContexte = map[string]string{
 	"film_context.go/(*FilmContext).BipedSlots -> bipedSlotBand":    "le releve unique de la bande du film",
 	"film_context.go/(*FilmContext).I0Layout -> DetectI0LayoutOf":   "la detection unique du decoupage d'i0",
 	"film_context.go/(*FilmContext).Registry -> ParseRegistryChunk": "l'analyse unique du registre chunk_00",
+	"film_context.go/contexteDeBobine -> DetectI0LayoutOf":          "le contexte des ENVELOPPES D2 (2026-09-17, lot 2.3) : il y pose le decoupage LU DANS LE FILM, ce que chaque instrument faisait a la main par une variable de paquet. C'est bien LA detection du contexte — `NewFilmContext` la memorise —, mais elle a lieu a la CONSTRUCTION et non a la premiere demande, donc l'analyseur la voit comme un second site. La cuisson ne passe pas par la : elle prend les largeurs du CATALOGUE",
+	"film_context.go/ContexteDeFilm -> DetectI0LayoutOf":            "la meme, depuis un REPERTOIRE (2026-09-17, lot 2.3) : l'enveloppe D2 rend aussi le decoupage a son appelant, qui s'en sert pour journaliser",
 	"i0_layout.go/DetectI0LayoutOf -> bipedSlotBand":                "bande REDUITE aux 6 premiers chunks : autre valeur",
 	"offline_biped.go/ScanBipedPositions -> bipedSlotBand":          "bande sur opt.Chunks : hors perimetre du lot 2",
 	"offline_biped_band.go/bipedI0Layout -> DetectI0LayoutOf":       "repli quand opt.Layout est nil : hors perimetre du lot 2 (le site a change de nom le 2026-09-05 quand `ScanBipedPositionsForBand` a extrait le helper partage par les deux entrees, puis de FICHIER le meme jour — offline_biped.go franchissait les 500 lignes, la plomberie de balayage a ete deplacee dans offline_biped_band.go, sans changement de logique)",

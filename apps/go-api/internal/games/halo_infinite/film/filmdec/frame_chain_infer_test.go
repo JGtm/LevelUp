@@ -46,12 +46,16 @@ func twoEmptyArchReg() *Registry {
 	}}
 }
 
-var emptyCfg = FrameConfig{HasExtraFields: false, IDLowBits: 11}
+var emptyCfg = FrameConfig{HasExtraFields: false, IDLowBits: 11,
+	Profil: ProfilDeBalayageParDefaut()}
 
+// withChain joue `f` avec l inference de chaine levee SUR LE CADRE des tests de ce fichier.
+// Depuis le lot 2.3 c est une bascule du PROFIL, plus une variable de paquet — mais elle vit
+// dans le cadre partage par ces tests, qui sont sequentiels.
 func withChain(on bool, f func()) {
-	prev := inferChain
-	inferChain = on
-	defer func() { inferChain = prev }()
+	prev := emptyCfg.Profil.Grammaire.InferenceChaine
+	emptyCfg.Profil.Grammaire.InferenceChaine = on
+	defer func() { emptyCfg.Profil.Grammaire.InferenceChaine = prev }()
 	f()
 }
 
@@ -68,7 +72,7 @@ func TestChainImmediateResolvesUnboundThenBound(t *testing.T) {
 	bw.deltaEmpty(50)  // hard-bound successor -> confirms
 	bw.end()
 
-	ResetChainStats()
+	emptyCfg.Obs = NouvelleObservation()
 	withChain(true, func() {
 		recs, inferred := DecodeFrameInfer(bw.buf, w, emptyCfg)
 		if inferred != 1 {
@@ -101,7 +105,7 @@ func TestChainNoFalseBindWhenUnconfirmed(t *testing.T) {
 		bw.bit(1)
 	}
 
-	ResetChainStats()
+	emptyCfg.Obs = NouvelleObservation()
 	withChain(true, func() {
 		recs, inferred := DecodeFrameInfer(bw.buf, w, emptyCfg)
 		if inferred != 0 {
@@ -127,7 +131,7 @@ func TestChainFlushEndConfirms(t *testing.T) {
 		bw.bit(0)
 	}
 
-	ResetChainStats()
+	emptyCfg.Obs = NouvelleObservation()
 	withChain(true, func() {
 		_, inferred := DecodeFrameInfer(bw.buf, w, emptyCfg)
 		if inferred != 1 {

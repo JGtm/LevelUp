@@ -134,8 +134,8 @@ func scanEquipmentRecovery(s abilityScanSetup, wins []equipRecoveryWindow) []equ
 			cMax = w.chunkMax
 		}
 	}
-	last, restore := equipRecoveryHook()
-	defer restore()
+	last, obs := equipRecoveryHook()
+	s.gram.obs = obs
 	for c := cMin; c <= cMax; c++ {
 		active := windowsOfChunk(wins, c)
 		if len(active) == 0 {
@@ -170,24 +170,24 @@ func windowsOfChunk(wins []equipRecoveryWindow, c int) []*equipRecoveryWindow {
 	return out
 }
 
-// equipRecoveryHook installe la sonde i48 du déserialiseur de production et rend (capture,
-// restauration) — même geste que walkAbilityEmissionsWith : le hook EST la grammaire, on ne
-// relit pas les bits à côté de lui.
+// equipRecoveryHook construit l OBSERVATEUR du balayage, avec la sonde i48 du déserialiseur de
+// production, et rend (capture, observateur) — même geste que walkAbilityEmissionsWith : le hook
+// EST la grammaire, on ne relit pas les bits à côté de lui.
 func equipRecoveryHook() (*struct {
 	counter uint32
 	rank    int
 	got     bool
-}, func()) {
+}, *Observation) {
 	last := &struct {
 		counter uint32
 		rank    int
 		got     bool
 	}{}
-	prev := observateur.AbilitySetHook
-	SetAbilitySetHook(func(counter uint64, rank, _ int) {
+	obs := NouvelleObservation()
+	obs.AbilitySetHook = func(counter uint64, rank, _ int) {
 		last.counter, last.rank, last.got = uint32(counter), rank, true
-	})
-	return last, func() { SetAbilitySetHook(prev) }
+	}
+	return last, obs
 }
 
 // scanEquipRecoveryPacket balaye un paquet position de bit par position de bit, SANS saut
@@ -284,12 +284,12 @@ func walkEquipRecoveryAt(
 		if !ok || idx[0] == 0 || !maskHas(idx, i48Index) {
 			return 0, 0, false
 		}
-		walkComponentsAt(pay, p+bipedHeaderBits+bipedIndexBits*mc, total, idx, s.arch, stop)
+		walkComponentsAt(pay, p+bipedHeaderBits+bipedIndexBits*mc, total, idx, s.gram, stop)
 	} else {
 		// FORME DENSE R(64), ordre FIGÉ par P1.0 : bit k du flux = composant 63−k. Le record
 		// porte un i0 absolu de la bonne région — l'ancre anti-bruit du balayage strict.
 		i0 := p + 18 + 64 // [1 préfixe][14 id][2 tag][1 porte=1] puis R(64), i0 ensuite
-		if i0+s.lay.TotalBits() > total {
+		if i0+s.gram.lay.TotalBits() > total {
 			return 0, 0, false
 		}
 		idx := denseMaskIndices(pay, p+18)
@@ -299,10 +299,10 @@ func walkEquipRecoveryAt(
 		}
 		const preGate = i0SpineBits + i0UseDefaultBits
 		if readBitsAt(pay, i0, preGate) != 0 ||
-			readBitsAt(pay, i0+preGate, s.lay.GateBits-preGate) != s.lay.Region {
+			readBitsAt(pay, i0+preGate, s.gram.lay.GateBits-preGate) != s.gram.lay.Region {
 			return 0, 0, false
 		}
-		walkRecordComponents(pay, i0, total, idx, s.lay, s.arch, stop)
+		walkRecordComponents(pay, i0, total, idx, s.gram, stop)
 	}
 	if !reached || !last.got {
 		return 0, 0, false

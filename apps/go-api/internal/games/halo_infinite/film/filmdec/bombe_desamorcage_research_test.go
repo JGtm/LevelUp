@@ -153,8 +153,6 @@ func TestBombeDesamorcage(t *testing.T) {
 		g.Disarm()
 		t.Logf("pic memoire observe : %.2f Gio", float64(g.Peak())/(1<<30))
 	}()
-	release := LockProcessDecode()
-	defer release()
 
 	films := make([]string, 0, len(ti12Explosions))
 	for id := range ti12Explosions {

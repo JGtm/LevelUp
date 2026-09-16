@@ -43,16 +43,8 @@ func TestEquipmentCreationOffset(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", equipCreationFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
-	lay, _, err := detectI0Layout(dir)
-	if err != nil {
-		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
-	}
-	prev := WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-	SetWorldObjectPrecisionFromLayout(lay)
+	_, lay := contexteDuFilm(t, dir)
 
 	n := CountFilmChunks(dir)
 	band := worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)
@@ -65,6 +57,7 @@ func TestEquipmentCreationOffset(t *testing.T) {
 		t.Fatalf("archétype ti=%d illisible : %v", EquipmentTypeIndex, err)
 	}
 	pr := equipOffsetProbe{
+		lg:    profilDeCarte(lay).LargeursObjetDuMonde(),
 		comps: len(arch.Components), band: band, want37: EquipmentTypeIndex,
 		want: map[[3]int32][]equipCreationWanted{},
 		gap:  map[uint32]int{}, ti: map[uint32]int{}, hdr: map[uint32]int{},
@@ -134,6 +127,9 @@ func equipLogBitProfile(t *testing.T, pr equipOffsetProbe) {
 
 // equipOffsetProbe localise les corps de record par la position, puis cherche l'en-tête.
 type equipOffsetProbe struct {
+	// lg : les largeurs d axe du chemin world-object de CE film (lot 2.3 : elles ne vivent
+	// plus dans une variable de paquet).
+	lg    PrecisionDescriptor
 	comps int
 	band  map[uint32]bool
 	// want37 est l'ARCHÉTYPE cherché en amont du corps. Il est un CHAMP et non la constante
@@ -189,7 +185,7 @@ func (pr *equipOffsetProbe) body(pay []byte, b, total int) (equipCreationLifeKey
 	if !valid || br.BitPos() > total || idx[0] != 0 {
 		return equipCreationLifeKey{}, false
 	}
-	v, valid := decodeWorldObjectPos(pay, br.BitPos(), &equipCreationUnitRange)
+	v, valid := decodeWorldObjectPos(pay, br.BitPos(), &equipCreationUnitRange, pr.lg)
 	if !valid {
 		return equipCreationLifeKey{}, false
 	}

@@ -248,16 +248,12 @@ func optionsDeBalayageDesPositions(
 // LES QUATRE BALAYAGES PARTAGENT LE FILM DÉJÀ CHARGÉ (lot 1, item 1.6) : ils prenaient chacun un
 // répertoire et relisaient le film entier depuis le disque, décompression comprise.
 //
-// TIENT LE VERROU DE DÉCODAGE DU PROCESS, comme son frère `buildHitsBatches` (hits.go) et comme
-// le contrat de `filmdec/decode_gate.go:16-18` l'exige : « tout chemin qui enchaîne les balayages
-// de ce paquet acquiert ce verrou pour TOUTE la durée du décodage d'un film ». Ce chemin-ci
-// enchaîne QUATRE balayages sur des globaux de paquet et ne le prenait pas — asymétrie relevée
-// au registre (E5) et corrigée le 2026-09-05 (lot E, item E.5).
-//
-// PAS DE RÉ-ENTRANCE : le mutex n'est pas réentrant, et `killsource.Decode` — le seul autre
-// preneur du chemin `collect()` — le relâche AVANT de rendre (`killsource/decode.go:78-79`,
-// `defer release()` sur une fonction qui retourne). `collectPositions` est appelé après lui,
-// jamais dedans.
+// PLUS AUCUN VERROU DE DÉCODAGE (lot 2.3). Ce chemin enchaîne QUATRE balayages, et il a
+// longtemps fallu les sérialiser : les paramètres de réplication du décodeur étaient des
+// variables de paquet de `filmdec`, qu'un décodage concurrent aurait écrasées. Il n'en reste
+// AUCUNE d'écrite (ratchet `archlint/filmdec_package_vars_test.go`) : chaque balayage porte son
+// profil et son observation, donc son propre état. Le verrou INTER-PROCESSUS
+// `filmproc.AcquireSolo`, lui, borne la mémoire de la machine et n'est pas concerné.
 //
 // ELLE NE COMPOSE RIEN ELLE-MEME : ce qui suit les balayages — les deux jeux de lignes — vit
 // dans `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06,
@@ -266,11 +262,9 @@ func buildPositionRows(
 	film *filmsource.Film, res *killsource.Result, entry filmdec.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
 ) (passePositions, materiauDIsolement, error) {
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	fc := filmdec.NewFilmContextForMap(film, &entry, nil)
-	positions, err := filmdec.ScanBipedPositions(film, optionsDeBalayageDesPositions(fc, entry))
+	positions, err := filmdec.ScanBipedPositions(fc, optionsDeBalayageDesPositions(fc, entry))
 	if err != nil {
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf("positions bipeds: %w", err)
 	}

@@ -9,12 +9,17 @@ import (
 
 // world_object_precision_guard_test.go — GARDE-RAIL des LECTEURS de `WorldObjectPrecision`.
 //
-// LA RÈGLE. `WorldObjectPrecision` est un GLOBAL de paquet dont le défaut est l'entrée
-// `cliffhanger` du catalogue. Il n'est juste que si l'appelant a installé les largeurs de la
-// carte du match (`replay.installWorldObjectPrecision`, appelé par `BuildFromFilm` sous
-// `LockProcessDecode`). Un NOUVEAU lecteur posé hors de ce chemin lirait Cliffhanger en
-// silence sur toutes les autres cartes — exactement le défaut corrigé le 2026-08-15, qui avait
-// survécu des mois précisément parce que rien ne le signalait.
+// LA RÈGLE. Les largeurs world-object sont un CHAMP DU PROFIL DE BALAYAGE dont l'invariant est
+// l'entrée `cliffhanger` du catalogue. Elles ne sont justes que si l'appelant a posé les
+// largeurs de la carte du match (`replay.installWorldObjectPrecision`, appelé par
+// `BuildFromFilm` sur le contexte du film). Un NOUVEAU lecteur posé hors de ce chemin lirait
+// Cliffhanger en silence sur toutes les autres cartes — exactement le défaut corrigé le
+// 2026-08-15, qui avait survécu des mois précisément parce que rien ne le signalait.
+//
+// DEPUIS LE LOT 2.3 CE N'EST PLUS UNE VARIABLE DE PAQUET : le profil voyage avec le contexte du
+// film et avec le lecteur de bits. La garde ne change pas pour autant — la question qu'elle
+// pose (« d'où ce lecteur tient-il les largeurs de la carte ? ») est la même, et sa réponse
+// est désormais « de son profil », qui a lui aussi une provenance.
 //
 // LA GARDE : tout fichier de PRODUCTION qui mentionne les largeurs world-object doit figurer
 // dans l'allowlist datée ci-dessous, avec la raison de sa présence. Ajouter une entrée est un
@@ -34,11 +39,18 @@ import (
 
 // worldObjectPrecisionReaders — ALLOWLIST DATÉE (2026-08-15). Chemin relatif à apps/go-api.
 var worldObjectPrecisionReaders = map[string]string{
-	"internal/games/halo_infinite/film/filmdec/build_profile.go": "CITATION en commentaire " +
-		"(2026-09-15, lot 1.9.1 bis pas 3) : `InstallFilmFormatMPP` renvoie au contrat de " +
-		"`replay.installWorldObjectPrecision` pour dire que son appelant doit detenir " +
-		"LockProcessDecode — le profil par build installe les largeurs MPP, jamais celles " +
-		"des axes ; aucune lecture de la valeur ici",
+	"internal/games/halo_infinite/film/filmdec/grammar_rev.go": "CITATION dans l'ENTRÉE DE " +
+		"CHRONIQUE du lot 2.3 (2026-09-17) : elle dit ce que le profil de balayage a remplacé, " +
+		"donc elle nomme les largeurs world-object. Aucune lecture de la valeur — ce fichier " +
+		"ne porte que la révision de grammaire et son historique",
+	"internal/games/halo_infinite/film/filmdec/profil_balayage.go": "le PORTEUR (2026-09-17, " +
+		"lot 2.3) : le champ `Mouvement.WorldObject` du profil de balayage, son accesseur et " +
+		"les deux poses (brute, et depuis le découpage d'une carte). C'est ici que vivaient " +
+		"la variable de paquet puis l'héritage de processus ; le profil se PASSE désormais",
+	"internal/games/halo_infinite/film/filmdec/film_context.go": "les trois accès du CONTEXTE " +
+		"(2026-09-17, lot 2.3) : `LargeursObjetDuMonde`, ses deux poses, et le contexte des " +
+		"enveloppes D2, qui pose le découpage LU DANS LE FILM. La cuisson, elle, prend celui " +
+		"du CATALOGUE de la carte — et c'est écrit à chacun des deux endroits",
 	"internal/games/halo_infinite/film/filmdec/traverse.go": "la LARGEUR D'INDEX DE RÉGION lue par " +
 		"la queue d'i60 (`consumeSimStateHandleTail`) — même contrat que le reste : les " +
 		"largeurs viennent de l'appelant (BuildFromFilm / installWorldObjectPrecision). " +
@@ -82,14 +94,10 @@ var worldObjectPrecisionReaders = map[string]string{
 	"internal/games/halo_infinite/film/replay/world_object_precision.go": "l'INSTALLATEUR de production : " +
 		"pose les largeurs de la carte du match et rend la restauration",
 	"internal/games/halo_infinite/film/replay/build_from_film.go": "le BRANCHEMENT : `BuildFromFilm` appelle " +
-		"`installWorldObjectPrecision` depuis `Options.MapQuant`, sous le verrou de décodage. " +
+		"`installWorldObjectPrecision` depuis `Options.MapQuant`, qui les pose sur le CONTEXTE " +
+		"du film (lot 2.3 — plus aucun état de processus). " +
 		"Le fichier s'appelait `build.go` jusqu'au lot 1 de PLAN_CUISSON_PERF (2026-09-02), qui " +
 		"a sorti le decodage de l'assemblage par un deplacement pur",
-	"internal/games/halo_infinite/film/replay/build_ground_weapons.go": "2026-08-17 (correctif de revue du " +
-		"lot des socles) : le décodage `ti=42` est SOUS les largeurs que `BuildFromFilm` a " +
-		"installées juste avant — il ne les pose pas, il en dépend, et son commentaire le dit " +
-		"en citant l'installateur. Il pose en revanche les largeurs du bloc MPP " +
-		"(`gwInstallMPPWidths`), qui sont un AUTRE global et qu'il restaure lui-même",
 }
 
 // TestWorldObjectPrecisionReadersAreAllowlisted balaie les sources de production d'apps/go-api.

@@ -128,7 +128,7 @@ func noterEntitesDuPaquet(pay []byte, reg *Registry, rang int, ts uint64, ents m
 		if b.TI != managedPlayerTypeIndex {
 			continue
 		}
-		idx, brut, ok := lireEquipeDuRecord(pay, b.Bit, reg)
+		idx, brut, ok := lireEquipeDuRecord(pay, b.Bit, reg, ContexteParDefaut())
 		if !ok || idx < 0 || idx >= playerTableSlots || brut < 0 || brut > teamDesignatorRawMax {
 			continue
 		}

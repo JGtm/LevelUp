@@ -54,8 +54,6 @@ func TestEquipmentEntityState(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", equipFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	arch := equipLogArchetype(t, dir)
 	lay := equipSetPrecision(t, dir)
@@ -108,23 +106,17 @@ func equipLogArchetype(t *testing.T, dir string) Archetype {
 	return arch
 }
 
-// equipSetPrecision installe les largeurs d'axe LUES DANS LE FILM pour le chemin
-// world-object, et les restaure à la sortie.
-//
-// DÉCOUVERTE À NOTER, NON TRAITÉE ICI : aucun chemin de production n'appelle
-// SetWorldObjectPrecisionFromLayout — le défaut {13,13,14} (largeurs de Cliffhanger) sert
-// donc partout, y compris sur les cartes dont DetectI0Layout mesure d'autres largeurs.
+// equipSetPrecision rend le découpage d'i0 LU DANS LE FILM. Depuis le lot 2.3 il n'y a plus
+// rien à installer : les enveloppes D2 (`ScanFilm*`) posent ce découpage sur LEUR contexte,
+// et la cuisson prend, elle, les largeurs du CATALOGUE de la carte.
 func equipSetPrecision(t *testing.T, dir string) I0Layout {
 	t.Helper()
 	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
 	}
-	prev := WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
-	SetWorldObjectPrecisionFromLayout(lay)
-	t.Logf("largeurs d'axe LUES DANS LE FILM : %v (défaut du paquet : %v)",
-		lay.AxisW, prev.AxisW)
+	t.Logf("largeurs d'axe LUES DANS LE FILM : %v (invariant du profil : %v)",
+		lay.AxisW, ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW)
 	return lay
 }
 

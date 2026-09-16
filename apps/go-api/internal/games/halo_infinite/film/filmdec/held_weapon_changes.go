@@ -98,7 +98,7 @@ func ScanFilmHeldWeaponChanges(
 	if err != nil {
 		return nil, HeldWeaponChangeStats{}, err
 	}
-	return ScanHeldWeaponChanges(NewFilmContext(film), spawnSet)
+	return ScanHeldWeaponChanges(contexteDeBobine(film), spawnSet)
 }
 
 // ScanHeldWeaponChanges décode les changements d'arme en main d'un film DEJA CHARGE.
@@ -114,9 +114,9 @@ func ScanHeldWeaponChanges(
 		high, low uint32
 		got       bool
 	}
-	prev := observateur.HeldWeaponHook
-	SetHeldWeaponHook(func(h, l uint32) { last.high, last.low, last.got = h, l, true })
-	defer SetHeldWeaponHook(prev)
+	obs := NouvelleObservation()
+	obs.HeldWeaponHook = func(h, l uint32) { last.high, last.low, last.got = h, l, true }
+	cfg.gram.obs = obs
 
 	type key struct {
 		slot uint32
@@ -124,13 +124,13 @@ func ScanHeldWeaponChanges(
 	}
 	prevFam, seen := map[key]uint32{}, map[key]bool{}
 	var out []HeldWeaponChange
-	walkDeltaBipedRecords(fc, cfg.chunks, cfg.slots, cfg.lay, func(r deltaBipedRecord) {
+	walkDeltaBipedRecords(fc, cfg.chunks, cfg.slots, cfg.gram.lay, func(r deltaBipedRecord) {
 		st.Records++
 		if !heldWeaponMaskHas(r.Mask, cfg.weaponIdx) {
 			return
 		}
 		st.WithComponent++
-		walkRecordComponents(r.Payload, r.I0, r.Total, r.Mask, cfg.lay, cfg.arch, func(id int) bool {
+		walkRecordComponents(r.Payload, r.I0, r.Total, r.Mask, cfg.gram, func(id int) bool {
 			if !cfg.weaponIdx[id] || !last.got {
 				last.got = false
 				return true
@@ -184,8 +184,7 @@ func classifyHeldWeaponChange(
 type heldWeaponScan struct {
 	chunks    []int
 	slots     SlotBand
-	lay       I0Layout
-	arch      Archetype
+	gram      grammaireRecord
 	weaponIdx map[int]bool
 }
 
@@ -205,12 +204,11 @@ func newHeldWeaponScan(fc *FilmContext) (heldWeaponScan, error) {
 	if err != nil {
 		return s, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
-	s.lay = lay
 	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return s, err
 	}
-	s.arch = arch
+	s.gram = grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage()}
 	s.weaponIdx = map[int]bool{}
 	for id := 0; id < archetypeBlockSlots; id++ {
 		if arch.component(id) == compWeaponStateTypeInfo {

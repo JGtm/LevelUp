@@ -163,7 +163,7 @@ func e191cCompter(pay []byte, reg *Registry, recs []e191cRec, dst map[int]*e191c
 		}
 		f := dst[recs[i].TI]
 		f.Bornes++
-		tr := WalkKeyframeFullState(pay, recs[i].Bit, reg)
+		tr := WalkKeyframeFullState(pay, recs[i].Bit, reg, contexteDInstrument())
 		if tr.DesyncAt < 0 && tr.EndBit == recs[i+1].Bit {
 			f.Fermes++
 		}

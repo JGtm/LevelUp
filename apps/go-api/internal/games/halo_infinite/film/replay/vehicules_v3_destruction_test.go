@@ -207,10 +207,6 @@ func v3dUnFilm(t *testing.T, root string, f v0Film, ag *v3dAgg) {
 		t.Logf("V3d %s : film absent du cache — saute", f.ID)
 		return
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return

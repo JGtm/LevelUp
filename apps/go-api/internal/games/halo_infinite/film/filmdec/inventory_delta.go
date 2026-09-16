@@ -33,7 +33,6 @@ package filmdec
 // rafraîchit un inventaire dont l'arme est nommée ailleurs.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
-// L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : les hooks installés
 // sont des globaux de paquet.
 
 import (
@@ -98,10 +97,6 @@ type InventoryDelta struct {
 // ScanFilmInventoryDeltas décode les transmissions d'inventaire de grenades (i22 compteurs,
 // i47 masque et sélection) dans les paquets delta du film de dir.
 //
-// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `observateur.GrenadeCountsHook`
-// et `observateur.GrenadeSetHook`, qui sont des globaux de paquet. L'appelant doit détenir
-// LockProcessDecode (BuildFromFilm le fait). Les hooks sont restaurés à la sortie.
-//
 // ScanFilmInventoryDeltas est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanInventoryDeltas].
 func ScanFilmInventoryDeltas(dir string) ([]InventoryDelta, InventoryDeltaStats, error) {
@@ -109,7 +104,7 @@ func ScanFilmInventoryDeltas(dir string) ([]InventoryDelta, InventoryDeltaStats,
 	if err != nil {
 		return nil, InventoryDeltaStats{}, err
 	}
-	return ScanInventoryDeltas(NewFilmContext(film))
+	return ScanInventoryDeltas(contexteDeBobine(film))
 }
 
 // ScanInventoryDeltas décode l'inventaire suivi dans les paquets delta d'un film DEJA CHARGE.
@@ -118,10 +113,9 @@ func ScanInventoryDeltas(fc *FilmContext) ([]InventoryDelta, InventoryDeltaStats
 	if err != nil {
 		return nil, InventoryDeltaStats{}, err
 	}
-	restore := sc.installHooks()
-	defer restore()
+	sc.gram.obs = sc.installHooks()
 
-	walkDeltaBipedRecords(fc, sc.chunks, sc.slots, sc.lay, func(r deltaBipedRecord) {
+	walkDeltaBipedRecords(fc, sc.chunks, sc.slots, sc.gram.lay, func(r deltaBipedRecord) {
 		sc.st.Records++
 		sc.readRecord(r.Chunk, r.Packet, r.Payload, r.I0, r.Total, r.Slot, r.Mask)
 	})
@@ -134,8 +128,7 @@ func ScanInventoryDeltas(fc *FilmContext) ([]InventoryDelta, InventoryDeltaStats
 type invDeltaScanner struct {
 	chunks []int
 	slots  SlotBand
-	lay    I0Layout
-	arch   Archetype
+	gram   grammaireRecord
 	// role dit, pour un index de composant du masque, CE QU'IL EST pour l'inventaire — et,
 	// pour les munitions, DE QUEL emplacement d'arme il parle. C'est la seule table câblée du
 	// balayage, et elle est construite depuis les NOMS du registre du film, jamais depuis des
@@ -209,7 +202,8 @@ func newInvDeltaScanner(fc *FilmContext) (*invDeltaScanner, error) {
 		return nil, err
 	}
 	sc := &invDeltaScanner{
-		chunks: chunks, slots: slots, lay: lay, arch: arch,
+		chunks: chunks, slots: slots,
+		gram: grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage()},
 		role: invDeltaRoles(arch),
 	}
 	if len(sc.role) == 0 {
@@ -258,27 +252,21 @@ func archIndexOf(arch Archetype, names ...string) int {
 }
 
 // installHooks branche les quatre sondes de déser et rend leur restauration.
-func (sc *invDeltaScanner) installHooks() func() {
-	prev22, prev47 := observateur.GrenadeCountsHook, observateur.GrenadeSetHook
-	prevAmmo, prevRounds := observateur.WeaponAmmoHook, observateur.WeaponRoundsHook
-	SetGrenadeCountsHook(func(c uint64, v []uint64) {
+func (sc *invDeltaScanner) installHooks() *Observation {
+	obs := NouvelleObservation()
+	obs.GrenadeCountsHook = func(c uint64, v []uint64) {
 		sc.last22c, sc.last22v, sc.got22 = c, v, true
-	})
-	SetGrenadeSetHook(func(mask uint32, sel int) {
+	}
+	obs.GrenadeSetHook = func(mask uint32, sel int) {
 		sc.last47mask, sc.last47sel, sc.got47 = mask, sel, true
-	})
-	SetWeaponAmmoHook(func(hasMag bool, mag uint32, hasFrac bool, fracQ uint32) {
+	}
+	obs.WeaponAmmoHook = func(hasMag bool, mag uint32, hasFrac bool, fracQ uint32) {
 		sc.lastAmmo = invDeltaAmmoAcc{
 			Read: true, HasMag: hasMag, Mag: mag, HasFrac: hasFrac, FracQ: fracQ,
 		}
-	})
-	SetWeaponRoundsHook(func(rounds uint32) { sc.lastRounds, sc.lastRoundsRead = rounds, true })
-	return func() {
-		SetGrenadeCountsHook(prev22)
-		SetGrenadeSetHook(prev47)
-		SetWeaponAmmoHook(prevAmmo)
-		SetWeaponRoundsHook(prevRounds)
 	}
+	obs.WeaponRoundsHook = func(rounds uint32) { sc.lastRounds, sc.lastRoundsRead = rounds, true }
+	return obs
 }
 
 // (L'ancrage des records d'un paquet vivait ici, en copie de huit autres. Il est passé dans
@@ -306,7 +294,7 @@ func (sc *invDeltaScanner) readRecord(
 	sc.resetRecord()
 	sc.countAnnounced(idx)
 	seen := 0
-	walkRecordComponents(pay, i0, total, idx, sc.lay, sc.arch, func(id int) bool {
+	walkRecordComponents(pay, i0, total, idx, sc.gram, func(id int) bool {
 		if r, ok := sc.role[id]; ok {
 			sc.capture(r)
 			seen++

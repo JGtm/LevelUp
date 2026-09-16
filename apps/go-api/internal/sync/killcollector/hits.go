@@ -124,8 +124,6 @@ func (c *KillSourceCollector) collectHits(
 func (c *KillSourceCollector) buildHitsBatches(
 	ctx context.Context, matchID, dir string, chunks []haloclient.FilmChunk, parts MatchIdentities,
 ) ([]persist.WeaponAccuracyInsert, persist.WeaponHitDistanceBatch, bool) {
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	raw, err := filmdec.ReadFilmChunk(dir, 0)
 	if err != nil {

@@ -214,11 +214,11 @@ func litScan(chunkIdx int) {
 func litLoc(reg *filmdec.Registry, worldPath string, chunkIdx, maxPkts int) {
 	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
 	pkts := listPackets(d)
-	cfg := filmdec.FrameConfig{HasExtraFields: false, IDLowBits: 11}
-	filmdec.SetRecordStateParam(2)
+	cfg := filmdec.FrameConfig{HasExtraFields: false, IDLowBits: 11,
+		Profil: filmdec.ProfilDeBalayageParDefaut()}
+	cfg.Profil.PoserParamEtat(2)
 	// stub i63 pour franchir le dernier composant biped et enchaîner les records.
-	filmdec.SetUnportedStubWidth("biped-action-component", 48)
-	defer filmdec.SetUnportedStubWidth("biped-action-component", -1)
+	cfg.Profil.Grammaire.LargeursBouchon = map[string]int{"biped-action-component": 48}
 
 	var t0 []packet
 	for _, p := range pkts {
@@ -704,15 +704,6 @@ func freshWorld(reg *filmdec.Registry, path string) *filmdec.World {
 }
 
 func main() {
-	// LE VERROU DE DÉCODAGE, POUR TOUTE LA DURÉE DU PROCESS (2026-09-06, correction C4 de la revue
-	// du lot E). `litLoc` appelle `filmdec.DecodeFrameRecords`, qui lit les globaux de réplication
-	// du décodeur : le contrat de `filmdec/decode_gate.go:16-18` exige que le verrou soit tenu
-	// pour toute la durée du décodage d'un film, jamais par sous-appel. Cet outil est un binaire
-	// mono-tâche ; le prendre en tête de `main` est la forme la plus simple qui satisfait le
-	// contrat, et c'est celle que le ratchet `archlint/decode_lock_held_test.go` mesure.
-	release := filmdec.LockProcessDecode()
-	defer release()
-
 	// Mode upstream : pour chaque WST gate=1 (littéral d'arme), cherche en AMONT un header
 	// de record dont le slot ∈ 512-519 (biped joueur). Teste l'attribution par remontée.
 	if len(os.Args) >= 2 && os.Args[1] == "upstream" {

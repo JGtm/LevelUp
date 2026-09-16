@@ -161,9 +161,6 @@ func TestZeroDisqueBalayagesSupportes(t *testing.T) {
 	// MEME GESTE QUE LA PRODUCTION (cf. installWorldObjectPrecision) : les largeurs d'axe du
 	// chemin world-object sont un global de paquet, installe depuis l'entree de catalogue et
 	// restaure ensuite — sans quoi ce test contaminerait le film suivant du meme process.
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	t.Cleanup(func() { filmdec.PoserWorldObjectPrecision(prev) })
-	filmdec.SetWorldObjectPrecisionFromLayout(filmdec.I0Layout{AxisW: entry.AxisWidths})
 	wr := entry.Range()
 
 	entrerDansUnRepertoireVide(t)
@@ -192,7 +189,7 @@ func TestZeroDisqueBalayagesSupportes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("indices joueur : %v", err)
 	}
-	proj, err := filmdec.ScanProjectiles(film, &wr)
+	proj, err := filmdec.ScanProjectiles(filmdec.NewFilmContext(film), &wr)
 	if err != nil {
 		t.Fatalf("projectiles : %v", err)
 	}

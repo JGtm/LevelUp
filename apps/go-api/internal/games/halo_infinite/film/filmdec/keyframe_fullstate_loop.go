@@ -78,17 +78,19 @@ type keyframeFullStateTemoin struct {
 // deserialiseurs d'etat par defaut : rien n'est recopie, seul le CADRE change par rapport au
 // record NEW du chemin delta.
 //
-// Les bascules globales de grammaire (`filmComponentCorruptionCheck`, `simStateComplete`,
-// `keyframeWriterI0Grammar`, ...) sont celles du process : l'appelant les regle et detient
-// `LockProcessDecode`.
-func WalkKeyframeFullState(pay []byte, recBit int, reg *Registry) EntityTrace {
-	return walkKeyframeFullState(pay, recBit, reg, keyframeFullStateTemoin{})
+// LE PROFIL DE BALAYAGE EST UN PARAMETRE (lot 2.3) : le cadre d'image-cle, le decoupage MPP et
+// les largeurs d'axe de la carte descendent par lui jusqu'aux feuilles. L'appelant le tient du
+// contexte de son film ([FilmContext.ProfilDeBalayage]).
+func WalkKeyframeFullState(pay []byte, recBit int, reg *Registry, ctx ContexteDeLecture) EntityTrace {
+	return walkKeyframeFullState(pay, recBit, reg, ctx, keyframeFullStateTemoin{})
 }
 
 // walkKeyframeFullState est la marche, avec le bouton des temoins. Les instruments l'appellent
 // avec un temoin nomme ; la production passe par `WalkKeyframeFullState`, donc par le temoin nul.
-func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, tem keyframeFullStateTemoin) EntityTrace {
+func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, ctx ContexteDeLecture,
+	tem keyframeFullStateTemoin) EntityTrace {
 	br := NewBitReader(pay)
+	br.PoserContexte(ctx)
 	// L EN-TETE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c) ; le temoin negatif, quand il
 	// est pose, le remplace — c est sa seule raison d etre (cf. `keyframeFullStateTemoin`).
 	hdr := tem.EnTeteBits
@@ -143,7 +145,7 @@ func consumeFullStateDefaultBlock(br *BitReader, ti uint32, sansEtatParDefaut bo
 	n1 := int32(br.ReadBits(mot))           //nolint:gosec // 32 bits lus, compares SIGNES
 	if !sansEtatParDefaut && n1 > 0 {       // FUN_142e2bfd0 : `if (0 < (int)uVar7)`, comparaison SIGNEE
 		consumeKeyframeDefaultState(br, ti)
-		if filmComponentCorruptionCheck {
+		if br.p.Grammaire.ControleDeCorruption {
 			// FUN_142e2bfd0 : mot de controle INCONDITIONNEL (pas de R(1) de garde ici,
 			// contrairement au controle PAR COMPOSANT de FUN_142e2c690).
 			br.ReadBits(mot)

@@ -64,8 +64,6 @@ type ctrlBilan struct {
 
 func TestControleBornesFilms(t *testing.T) {
 	paires, root, cat := ctrlEntrees(t)
-	release := LockProcessDecode()
-	defer release()
 
 	bilans := map[string]*ctrlBilan{}
 	var sansEntree []string

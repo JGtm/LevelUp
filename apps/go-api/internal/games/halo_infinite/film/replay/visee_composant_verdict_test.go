@@ -53,8 +53,6 @@ func TestViseeComposantOffsetVariable(t *testing.T) {
 	if filepath.Base(dir) != "00162144" {
 		t.Fatalf("la chronologie relevee est celle de 00162144 ; film fourni : %s", filepath.Base(dir))
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	pont := vfPontPublie(t, dir, chronoGT)
 	src := vfSourcePubliee(t, dir)

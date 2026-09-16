@@ -157,7 +157,7 @@ func (k kf7eTally) rate() float64 {
 
 // kf7eWalkOne rejoue le corps d'UN record sous la configuration donnee, puis mesure.
 func kf7eWalkOne(f kf35Film, pay []byte, b kf35Bound, c kf7eCase, tal *kf7eTally) {
-	tr := WalkKeyframeFullState(pay, b.Rec.Bit, f.Reg)
+	tr := WalkKeyframeFullState(pay, b.Rec.Bit, f.Reg, contexteDInstrument())
 	if tr.DesyncAt >= 0 {
 		tal.desync++
 		return
@@ -198,7 +198,7 @@ func kf7eChain(f kf35Film, pay []byte, from int, b kf35Bound) bool {
 		if !ok || h.Slot <= prev {
 			return false
 		}
-		tr := WalkKeyframeFullState(pay, pos, f.Reg)
+		tr := WalkKeyframeFullState(pay, pos, f.Reg, contexteDInstrument())
 		if tr.DesyncAt >= 0 {
 			return false
 		}
@@ -209,15 +209,11 @@ func kf7eChain(f kf35Film, pay []byte, from int, b kf35Bound) bool {
 
 // kf7ePass mesure UNE configuration sur UN film, bascules globales installees et restaurees.
 func kf7ePass(f kf35Film, c kf7eCase) kf7eTally {
-	prevCorr, prevI0 := filmComponentCorruptionCheck, keyframeWriterI0Grammar
-	prevScope := SetKeyframeBaselineScope(c.Scope)
-	SetFilmComponentCorruptionCheck(c.Corr)
-	SetKeyframeWriterI0Grammar(c.I0)
-	defer func() {
-		SetFilmComponentCorruptionCheck(prevCorr)
-		SetKeyframeWriterI0Grammar(prevI0)
-		SetKeyframeBaselineScope(prevScope)
-	}()
+	defer poserBasculeDInstrument(func(g *GrammaireBalayage) {
+		g.PorteeBaseline = c.Scope
+		g.ControleDeCorruption = c.Corr
+		g.GrammaireEcrivainI0 = c.I0
+	})()
 	tal := newKF7ETally()
 	for _, pay := range f.Pays {
 		for _, b := range kf35BoundedRecs(pay) {
@@ -253,12 +249,8 @@ func kf7eCases() []kf7eCase {
 // films du corpus ferme, largeurs de la carte installees et trous neutralises.
 func TestKF7EFullStateLoop(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
+	defer poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })()
 
 	for _, f := range films {
 		kf7eOneFilm(t, f)
@@ -311,15 +303,11 @@ func kf7eLogBreaks(t *testing.T, hist map[string]int, n int) {
 // la largeur PREDITE par le decoupage de la carte. Sans lui, « (e) ameliore » ne se verifie pas.
 func TestKF7EProfileI0(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
-	prevSim := simStateComplete
-	SetSimStateComplete(true)
-	defer SetSimStateComplete(prevSim)
-	prevCorr := filmComponentCorruptionCheck
-	SetFilmComponentCorruptionCheck(false)
-	defer SetFilmComponentCorruptionCheck(prevCorr)
+	defer poserBasculeDInstrument(func(g *GrammaireBalayage) {
+		g.SimStateComplet = true
+		g.ControleDeCorruption = false
+	})()
 
 	for _, f := range films {
 		kf7eProfileOne(t, f)
@@ -334,10 +322,9 @@ func kf7eProfileOne(t *testing.T, f kf35Film) {
 	defer restoreStubs()
 
 	for _, on := range []bool{false, true} {
-		prev := keyframeWriterI0Grammar
-		SetKeyframeWriterI0Grammar(on)
+		prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.GrammaireEcrivainI0 = on })
 		stats := kf35bProfile(f, kf7dVariant)
-		SetKeyframeWriterI0Grammar(prev)
+		prev()
 		for _, s := range stats {
 			if s.Name != kf7dI0 {
 				continue

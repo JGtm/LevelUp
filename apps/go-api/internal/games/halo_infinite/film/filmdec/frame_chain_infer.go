@@ -33,14 +33,6 @@ const (
 	chainConfirmMinComps = 1
 )
 
-// ChainRepairedCount returns how many desynced records component-width inference
-// rescued (diagnostics). Compteur de l OBSERVATEUR depuis le lot 2.2.f.
-func ChainRepairedCount() int { return observateur.ChaineReparees }
-
-// CompWidthObservations returns the accumulated stub-width observations per
-// component name (width -> occurrences). Table de l OBSERVATEUR depuis le lot 2.2.f — c est
-// « la table sans verrou » que l en-tete de `decode_gate.go` nomme.
-
 // chainCompMaxStub bounds the stub-width sweep of component repair (bits).
 const chainCompMaxStub = 640
 
@@ -63,17 +55,19 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 		return tr, 0, false
 	}
 	name := tr.Comps[len(tr.Comps)-1].Name
-	if _, preset := unportedStubWidth[name]; preset {
+	if _, preset := cfg.Profil.Grammaire.largeurBouchon(name); preset {
 		return tr, 0, false // an external harness already stubs it; do not fight it
 	}
-	savedPos, savedRef := observateur.PosCaptureHook, observateur.UnitRefHook
-	observateur.PosCaptureHook, observateur.UnitRefHook = nil, nil
-	defer func() { observateur.PosCaptureHook, observateur.UnitRefHook = savedPos, savedRef }()
+	defer cfg.Obs.neutraliserCaptures()()
 
+	// LA TABLE DE BOUCHONS EST CELLE DE CE BALAYAGE (lot 2.3) : `repairUnportedComponent`
+	// essaie des largeurs sur SON cadre, et ce cadre meurt avec lui. Avant, la table etait une
+	// variable de paquet que chaque essai ecrivait — donc un etat que tout le processus voyait.
+	cfg.Profil.Grammaire.LargeursBouchon = map[string]int{}
 	frameLen := len(buf) * 8
 	redecode := func() EntityTrace {
 		br := NewBitReader(buf)
-		br.poserMouvement(cfg.Mouvement)
+		br.poserCadre(cfg)
 		br.Skip(bodyStart)
 		if recType == recNew {
 			return TraverseEntity(br, w.Reg, cfg.NewDefaultStateBits)
@@ -84,7 +78,7 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 	byEnd := map[int][]int{}
 	var order []int
 	for stub := 0; stub <= chainCompMaxStub; stub++ {
-		unportedStubWidth[name] = stub
+		cfg.Profil.Grammaire.LargeursBouchon[name] = stub
 		t := redecode()
 		if t.DesyncAt != -1 || t.EndBit > frameLen {
 			continue
@@ -94,7 +88,7 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 		}
 		byEnd[t.EndBit] = append(byEnd[t.EndBit], stub)
 	}
-	delete(unportedStubWidth, name)
+	delete(cfg.Profil.Grammaire.LargeursBouchon, name)
 	sort.Ints(order)
 	if len(order) == 0 {
 		return tr, 0, false
@@ -107,42 +101,23 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 		return tr, 0, false
 	}
 	stub := byEnd[winEnd][0]
-	unportedStubWidth[name] = stub
+	cfg.Profil.Grammaire.LargeursBouchon[name] = stub
 	t := redecode()
-	delete(unportedStubWidth, name)
+	delete(cfg.Profil.Grammaire.LargeursBouchon, name)
 	if t.DesyncAt != -1 || t.EndBit != winEnd {
 		return tr, 0, false
 	}
-	o := obsDuCadre(cfg)
-	o.ChaineReparees++
-	if o.CompWidths[name] == nil {
-		o.CompWidths[name] = map[int]int{}
-	}
-	for _, s := range byEnd[winEnd] {
-		o.CompWidths[name][s]++
-	}
+	cfg.Obs.compterReparation(name, byEnd[winEnd])
 	return t, winEnd, true
 }
 
 // chainTombstone marks a slot DELed earlier along the current path.
 const chainTombstone = ^uint32(0)
 
-// Chain outcome counters (whole-run diagnostics; see ChainStats / ResetChainStats).
-// "immediate" = resolved by tier 1 (next record confirms, single-step semantics);
-// "deep" = resolved by the tier-2 recursive walk (a genuine transient chain).
-// Champs de l OBSERVATEUR depuis le lot 2.2.f.
-
-// ChainStats returns the cumulative chain-inference outcome counters.
-func ChainStats() (immediate, deep, ambiguous, none, budget int) {
-	o := observateur
-	return o.ChaineImmediat, o.ChaineProfond, o.ChaineAmbigu, o.ChaineAucun, o.ChaineBudget
-}
-
-// ResetChainStats zeroes the chain-inference outcome counters.
-func ResetChainStats() {
-	o := observateur
-	o.ChaineImmediat, o.ChaineProfond, o.ChaineAmbigu, o.ChaineAucun, o.ChaineBudget = 0, 0, 0, 0, 0
-}
+// Les compteurs d issue de l inference de chaine sont des champs de l OBSERVATEUR depuis le lot
+// 2.2.f, et ils appartiennent au BALAYAGE depuis le lot 2.3 : `ChainStats` / `ResetChainStats`,
+// qui lisaient et remettaient a zero ceux du PROCESSUS, ont disparu avec lui — un instrument lit
+// desormais les compteurs de l observateur qu il a pose.
 
 // deltaBodyTrial decodes a delta BODY (mask + components) at bit `bitpos` with an
 // explicit archetype, STRICTLY: the traversal must be clean and the body must not run
@@ -153,8 +128,10 @@ func ResetChainStats() {
 // was tried and dropped: it measurably rejected TRUE alignments (tmp_chaindbg: 717 of
 // 902 single-step wins lost to it). traverseComponentLoop already ignores mask bits
 // beyond len(arch.Components), so an over-wide mask is harmless, not a misparse tell.
-func deltaBodyTrial(buf []byte, bitpos int, arch Archetype, ti uint32, frameLen int) (end, comps int, ok bool) {
+func deltaBodyTrial(buf []byte, bitpos int, arch Archetype, ti uint32, frameLen int,
+	ctx ContexteDeLecture) (end, comps int, ok bool) {
 	br := NewBitReader(buf)
+	br.PoserContexte(ctx)
 	br.Skip(bitpos)
 	t := EntityTrace{DesyncAt: -1, TypeIndex: ti}
 	t.Mask = consumeMask(br)
@@ -196,7 +173,8 @@ func (c *chainCtx) cleanBodyEnds(body int) []int {
 			break
 		}
 		c.budget--
-		end, _, ok := deltaBodyTrial(c.buf, body, c.w.Reg.Archetypes[ti], uint32(ti), c.frameLen)
+		end, _, ok := deltaBodyTrial(c.buf, body, c.w.Reg.Archetypes[ti], uint32(ti), c.frameLen,
+			c.cfg.contexte())
 		if ok && !seen[end] {
 			seen[end] = true
 			ends = append(ends, end)
@@ -214,7 +192,7 @@ func (c *chainCtx) confirmChainAt(pos, depth, recs int) bool {
 		return false
 	}
 	br := NewBitReader(c.buf)
-	br.poserMouvement(c.cfg.Mouvement) // EN TETE (lot 2.2.a)
+	br.poserCadre(c.cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(pos)
 	if c.cfg.HasExtraFields {
 		br.Skip(32)
@@ -301,7 +279,7 @@ func (c *chainCtx) chainDelta(br *BitReader, depth, recs int) bool {
 			return false
 		}
 		c.budget--
-		end, comps, clean := deltaBodyTrial(c.buf, body, arch, ti, c.frameLen)
+		end, comps, clean := deltaBodyTrial(c.buf, body, arch, ti, c.frameLen, c.cfg.contexte())
 		if !clean {
 			return false
 		}
@@ -344,15 +322,14 @@ func (c *chainCtx) chainDelta(br *BitReader, depth, recs int) bool {
 // several archetypes share the winning alignment — the skip is still exact, but the
 // slot must not be soft-bound to an arbitrary pick), the body end bit, and ok.
 func inferChainArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (ti uint32, end int, uniqueTi, ok bool) {
-	savedPos := observateur.PosCaptureHook
-	observateur.PosCaptureHook = nil
-	defer func() { observateur.PosCaptureHook = savedPos }()
+	defer cfg.Obs.neutraliserCapturePosition()()
 
 	frameLen := len(buf) * 8
 	byEnd := map[int][]uint32{}
 	var order []int
 	for i := range w.Reg.Archetypes {
-		e, _, clean := deltaBodyTrial(buf, bitpos, w.Reg.Archetypes[i], uint32(i), frameLen)
+		e, _, clean := deltaBodyTrial(buf, bitpos, w.Reg.Archetypes[i], uint32(i), frameLen,
+			cfg.contexte())
 		if !clean {
 			continue
 		}
@@ -369,11 +346,7 @@ func inferChainArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (ti 
 	if !ok2 {
 		return 0, bitpos, false, false
 	}
-	if o := obsDuCadre(cfg); immediate {
-		o.ChaineImmediat++
-	} else {
-		o.ChaineProfond++
-	}
+	cfg.Obs.compterIssueDeChaine(immediate)
 	tis := byEnd[winEnd]
 	return tis[0], winEnd, len(tis) == 1, true
 }
@@ -395,11 +368,7 @@ func resolveAlignment(c *chainCtx, order []int) (winEnd int, immediate, ok bool)
 			return cands[0], false, true
 		}
 		if len(cands) == 0 {
-			if o := obsDuCadre(c.cfg); c.budget <= 0 {
-				o.ChaineBudget++
-			} else {
-				o.ChaineAucun++
-			}
+			c.cfg.Obs.compterEchecDeChaine(c.budget <= 0)
 			return 0, false, false
 		}
 	}
@@ -423,7 +392,7 @@ func resolveAlignment(c *chainCtx, order []int) (winEnd int, immediate, ok bool)
 	if len(cands) == 1 {
 		return cands[0], false, true
 	}
-	obsDuCadre(c.cfg).ChaineAmbigu++
+	c.cfg.Obs.compterAmbiguiteDeChaine()
 	return 0, false, false
 }
 

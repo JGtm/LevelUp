@@ -137,10 +137,9 @@ const keyframeWalkBudget = 2 * kfTableCap
 // la grammaire portee est juste, la position atteinte EST la frontiere suivante. C'est donc
 // aussi un test de la grammaire — l'arret dit ou elle a lache.
 //
-// Les bascules globales de grammaire (`filmComponentCorruptionCheck`, `newRecordTailBits`,
-// `useArchDefaultStateDeser`) sont celles du process : l'appelant les regle et detient
-// `LockProcessDecode`.
-func WalkKeyframeRecords(pay []byte, reg *Registry) ([]KeyframeWalkRec, KeyframeWalkStop) {
+// LE PROFIL DE BALAYAGE EST UN PARAMETRE (lot 2.3) : c'est par lui que les largeurs du film
+// descendent jusqu'aux feuilles.
+func WalkKeyframeRecords(pay []byte, reg *Registry, ctx ContexteDeLecture) ([]KeyframeWalkRec, KeyframeWalkStop) {
 	total := len(pay) * 8
 	out := make([]KeyframeWalkRec, 0, 512)
 	pos, prevSlot := keyframePrefixBits, -1
@@ -161,7 +160,7 @@ func WalkKeyframeRecords(pay []byte, reg *Registry) ([]KeyframeWalkRec, Keyframe
 		if h.Slot <= prevSlot {
 			return out, KeyframeStopSlot
 		}
-		rec, stop, done := walkOneKeyframeRecord(pay, reg, pos, h)
+		rec, stop, done := walkOneKeyframeRecord(pay, reg, pos, h, ctx)
 		out = append(out, rec)
 		if done {
 			return out, stop
@@ -173,10 +172,12 @@ func WalkKeyframeRecords(pay []byte, reg *Registry) ([]KeyframeWalkRec, Keyframe
 // walkOneKeyframeRecord rejoue le corps d'UN record et rend le record, la cause d'arret
 // eventuelle et un booleen d'arret. Extrait de `WalkKeyframeRecords` pour tenir le seuil de
 // 80 lignes par fonction.
-func walkOneKeyframeRecord(pay []byte, reg *Registry, pos int, h KeyframeHeader) (
+func walkOneKeyframeRecord(pay []byte, reg *Registry, pos int, h KeyframeHeader,
+	ctx ContexteDeLecture) (
 	KeyframeWalkRec, KeyframeWalkStop, bool,
 ) {
 	br := NewBitReader(pay)
+	br.PoserContexte(ctx)
 	br.SetBitPos(pos + keyframeRecordTIBit)
 	tr := TraverseEntity(br, reg, 0)
 	rec := KeyframeWalkRec{
@@ -218,8 +219,9 @@ const keyframeChainMax = 16
 // exactement `want`, sans jamais depasser `keyframeChainMax` records intercales. `prevSlot`
 // est le slot du record d'ou l'on part (la table est a slots croissants).
 //
-// L'appelant regle les bascules globales de grammaire et detient `LockProcessDecode`.
-func ChainKeyframeRecords(pay []byte, reg *Registry, from, want, prevSlot int) KeyframeChainResult {
+// Le PROFIL DE BALAYAGE vient de l'appelant (lot 2.3).
+func ChainKeyframeRecords(pay []byte, reg *Registry, from, want, prevSlot int,
+	ctx ContexteDeLecture) KeyframeChainResult {
 	total := len(pay) * 8
 	res := KeyframeChainResult{Stop: KeyframeStopEnd}
 	pos := from
@@ -241,7 +243,7 @@ func ChainKeyframeRecords(pay []byte, reg *Registry, from, want, prevSlot int) K
 			res.Stop = KeyframeStopSlot
 			return res
 		}
-		rec, stop, done := walkOneKeyframeRecord(pay, reg, pos, h)
+		rec, stop, done := walkOneKeyframeRecord(pay, reg, pos, h, ctx)
 		if done {
 			res.Stop = stop
 			return res

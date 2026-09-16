@@ -83,4 +83,13 @@
 #               plus par la fenetre de 2,5 s (2 899 appariements sur 21 films : 2 205 egaux, 2 differents,
 #               692 sans identite -> repli nomme et compte). Zero desaccord avec la fenetre, mais les
 #               lignes peuvent bouger la ou les deux divergent : lignes en base candidates au backlog.
-killsource-2026-09-16.2	cefcc74c2dcbeec3944e4d4a0da2cce78747140bd00da1f5c00e0ee642868f8b
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lots 2.2.a puis 2.3). `killsource/`
+#               change de FORME, pas de contenu : la calibration ne pose plus les largeurs dans des
+#               variables de paquet de `filmdec` mais les RESSORT (`calibration.Profil`,
+#               `Result.ProfilCalibre`, `ProfilDeDepart`), et `filmdec.LockProcessDecode` — un verrou,
+#               qui ne lit aucun bit — est retire de tous ses sites d appel. Les lignes produites sont
+#               identiques a l octet : meme espace balaye, meme critere, meme vainqueur. Aucun match
+#               deja decode n est candidat au backlog.
+
+killsource-2026-09-16.2	7d9ef1af0bf79a5eeaaab7f27690ae05e205fe80f0b43aeb5e8968eb87f87528

@@ -121,8 +121,7 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	// elles, la fermeture des archetypes qui portent ce bloc (ti=36, 37, 38, 39, 42, 43) est
 	// mesuree au decoupage d un AUTRE build. Un build inconnu ne change rien et n est pas une
 	// erreur ICI : la mesure continue au defaut de paquet, et c est la PRODUCTION qui doit
-	// mettre le film de cote (D-4). L appelant detient `LockProcessDecode`.
-	if restore, err := InstallFilmFormatMPP(fc.Film()); err == nil {
+	if restore, err := InstallFilmFormatMPP(fc); err == nil {
 		defer restore()
 	}
 	stats := map[uint32]KeyframeClosureStat{}
@@ -137,7 +136,7 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}
-			accumulerFermeture(pk.Payload(data), reg, stats, bloquants)
+			accumulerFermeture(pk.Payload(data), reg, stats, bloquants, fc.ContexteDeLecture())
 		}
 	}
 	for ti, parComposant := range bloquants {
@@ -155,10 +154,11 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 // denominateur d'un record par payload sans qu'aucun port ne puisse jamais le fermer.
 func accumulerFermeture(pay []byte, reg *Registry,
 	stats map[uint32]KeyframeClosureStat, bloquants map[uint32]map[string]int,
+	ctx ContexteDeLecture,
 ) {
 	for _, b := range keyframeBornes(pay) {
 		ti := uint32(b.TI) //nolint:gosec // TI est un index d'archetype, jamais negatif
-		tr := WalkKeyframeFullState(pay, b.Bit, reg)
+		tr := WalkKeyframeFullState(pay, b.Bit, reg, ctx)
 		s := stats[ti]
 		s.Total++
 		switch {

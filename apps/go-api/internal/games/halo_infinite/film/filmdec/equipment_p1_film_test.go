@@ -50,8 +50,6 @@ func TestP1RecuperationDynasty(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : validation sur pièces sautée", p1FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	changes, st, err := ScanFilmEquipmentChanges(dir, p1BirthWitness(t, dir))
 	if err != nil {
 		t.Fatalf("balayage : %v", err)

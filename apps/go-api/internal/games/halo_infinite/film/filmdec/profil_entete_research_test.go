@@ -134,8 +134,6 @@ func profilRegistre(t *testing.T, dir string) *Registry {
 // TestProfilEnteteTI9Derivation somme les largeurs de l'executable sur chaque record ti=9 et
 // publie l'ecart a 186. C'est la mesure qui repond a « expliquer 186 ».
 func TestProfilEnteteTI9Derivation(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	dirs := chunk00Films(t, "CHUNK00_FILMS")
 	entetes := map[int]int{}
 	predits := map[int]int{}
@@ -248,8 +246,6 @@ func profilVerdictBorne(lo, hi int) string {
 // tout le corpus. Un ecart CONSTANT est une donnee de profil ; un ecart qui varie avec la
 // forme du masque dit que le modele se trompe de terme.
 func TestProfilEnteteTI9Voisinage(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	parForme := map[string]map[int]int{}
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
 		v, err := equipePrepare(dir)

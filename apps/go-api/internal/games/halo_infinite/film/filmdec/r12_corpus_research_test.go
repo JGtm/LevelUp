@@ -121,10 +121,6 @@ func TestR12Corpus(t *testing.T) {
 func r12CorpusOneFilm(t *testing.T, dir string) (rep, gra, repDec r12Ecarts,
 	n104, n105 int, lignes []string) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
-	saved := WorldObjectPrecisionActuelle()
-	defer func() { PoserWorldObjectPrecision(saved) }()
 	s := r12Prepare(t, dir)
 	rd := r12Collect(s)
 	pal := r12ClassifyPalette(rd.Ranks)

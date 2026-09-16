@@ -319,6 +319,9 @@ type entreesCatalogue struct {
 	matchKills  replay.MatchKillsInput
 	bots        []replay.BotIdentity
 	successions []replay.Succession
+	// killsource : le resultat du kill-feed, ou nil. Il ne voyage ici que pour son PROFIL DE
+	// BALAYAGE (lot 2.3 — cf. profilDeBalayageDeLaCuisson).
+	killsource *killsource.Result
 }
 
 // collecterEntreesCatalogue rassemble tout ce que `BuildFromFilm` reçoit SANS l'avoir décodé
@@ -375,7 +378,8 @@ func (b *Builder) collecterEntreesCatalogue(
 	bots := replayidentity.BotIdentities(ksRes)
 	successions := botSuccessions(matchID, facts, ksRes)
 	return entreesCatalogue{
-		zones: zones, zoneRoles: zoneRoles,
+		killsource: ksRes,
+		zones:      zones, zoneRoles: zoneRoles,
 		spawnPts: spawnPts, spawnPointsState: mapState,
 		neutral: neutral, kills: kills, matchKills: matchKills,
 		bots: bots, successions: successions,
@@ -431,16 +435,12 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 // d'ASSEMBLAGE — il compose déjà les libellés du titre de la même façon. Deux décodeurs du
 // même fait divergeraient.
 //
-// DEUX ACQUISITIONS DU VERROU filmdec, ET C'EST VOULU : `killsource.Decode` (dans
-// decodeKillSource) prend et rend le verrou process, puis `replay.BuildFromFilm` le reprend.
-// Ce sont deux décodages complets du MÊME film, chacun sérialisé de bout en bout ; c'est
-// exactement ce que fait déjà le cycle post-sync (arme du kill puis artefacts). Les enchaîner
-// sous un seul verrou exigerait un mutex réentrant, que Go n'a pas — et le contrat qui compte
-// (« jamais deux films entrelacés dans un décodage ») est tenu par chacune des deux.
+// DEUX DÉCODAGES COMPLETS DU MÊME FILM, ET C'EST VOULU : `killsource.Decode` (dans
+// decodeKillSource) puis `replay.BuildFromFilm`. Ce que le premier CALIBRE voyage désormais au
+// second par les options (lot 2.3, `profilDeBalayageDeLaCuisson`), plus par l'état du processus.
 //
 // TOUT ÉCHEC EST NON FATAL : un film dont la source de dégât ne se décode pas reste un rejeu
-// parfaitement valide, avec des lignes de mort neutres au repère générique. Le refus est
-// JOURNALISÉ (dans decodeKillSource), jamais avalé.
+// valide, aux repères génériques. Le refus est JOURNALISÉ (decodeKillSource), jamais avalé.
 func (b *Builder) neutralDeaths(matchID string, res *killsource.Result) []replay.NeutralDeath {
 	if res == nil {
 		return nil

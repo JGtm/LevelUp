@@ -48,19 +48,18 @@ func TestProfilEgaleGlobales(t *testing.T) {
 // verifierMPPEgaleGlobales confronte `Profile.MPP` a ce que [InstallFilmFormatMPP] pose.
 //
 // DEUX CAS, ET ILS NE SE CONFONDENT PAS : une largeur POSEE doit se retrouver a l identique dans
-// les globales ; une largeur INDETERMINEE (formats 20, 21, 24, 25) doit laisser les globales
-// EXACTEMENT ou elles etaient — c est ce que la calibration attend pour decider a sa place.
+// le profil du contexte ; une largeur INDETERMINEE (formats 20, 21, 24, 25) doit le laisser
+// EXACTEMENT ou il etait — c est ce que la calibration attend pour decider a sa place.
 func verifierMPPEgaleGlobales(t *testing.T, b bobineIdentite, film *filmsource.Film, p Profile) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
-	avant := CurrentMPPWidths()
-	restore, err := InstallFilmFormatMPP(film)
+	fc := NewFilmContext(film)
+	avant := fc.ProfilDeBalayage().MPP
+	restore, err := InstallFilmFormatMPP(fc)
 	if err != nil {
 		t.Fatalf("%s (%s) : format refuse par la production alors que le profil le connait : %v",
 			b.film, b.build, err)
 	}
-	apres := CurrentMPPWidths()
+	apres := fc.ProfilDeBalayage().MPP
 	restore()
 	switch {
 	case p.MPP().Valid() && apres != p.MPP():

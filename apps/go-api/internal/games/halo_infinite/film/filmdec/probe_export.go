@@ -17,11 +17,10 @@ package filmdec
 // has a ported deser at all. It is the generic probe used to CONFRONT one component's
 // width to the Rosetta position oracle in isolation, without decoding a whole record.
 // Read-only: no World, no capture hooks touched.
-func ConsumeComponentAt(buf []byte, start int, name string, typeIndex, level uint32) (end int, ported bool) {
-	saved := observateur.PosCaptureHook
-	observateur.PosCaptureHook = nil
-	defer func() { observateur.PosCaptureHook = saved }()
+func ConsumeComponentAt(buf []byte, start int, name string, typeIndex, level uint32,
+	ctx ContexteDeLecture) (end int, ported bool) {
 	br := NewBitReader(buf)
+	br.PoserContexte(ctx)
 	br.Skip(start)
 	_, _, ok := consumeByName(br, name, typeIndex, level)
 	return br.BitPos(), ok
@@ -38,8 +37,10 @@ func ConsumeComponentAt(buf []byte, start int, name string, typeIndex, level uin
 // n'etait peuplee que par `SetDefaultStateBitsForTI`, un reglage sans appelant. Elle restait
 // donc vide a jamais et la branche etait inatteignable. Un `ti` autre que le bipede tombe,
 // comme avant, sur la porte has-components sans sauter de default-state.
-func TraverseKeyframeBipedAt(buf []byte, stateBit int, reg *Registry, ti uint32) (EntityTrace, int) {
+func TraverseKeyframeBipedAt(buf []byte, stateBit int, reg *Registry, ti uint32,
+	ctx ContexteDeLecture) (EntityTrace, int) {
 	br := NewBitReader(buf)
+	br.PoserContexte(ctx)
 	br.SetBitPos(stateBit)
 	if ti == bipedDefaultStateTypeIndex {
 		consumeBipedDefaultState(br)

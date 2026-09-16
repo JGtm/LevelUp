@@ -22,13 +22,11 @@ package filmdec
 // brut vaut mieux que publier une seconde inventée.
 const EmpTimerQuantMax = 255
 
-// SetEmpTimerHook installe (ou retire, avec nil) la sonde d'i51.
-func SetEmpTimerHook(h func(quant uint32)) { observateur.EmpTimerHook = h }
-
 // publishEmpTimer est appelé par le déserialiseur d'i51 (traverse.go) juste après la lecture
 // de ses 8 bits. Le parcours de bits est inchangé.
-func publishEmpTimer(quant uint64) {
-	if observateur.EmpTimerHook != nil {
-		observateur.EmpTimerHook(uint32(quant))
+func (o *Observation) publishEmpTimer(quant uint64) {
+	if o == nil || o.EmpTimerHook == nil {
+		return
 	}
+	o.EmpTimerHook(uint32(quant))
 }

@@ -100,7 +100,7 @@ func eqScan(t *testing.T, s hwSetup) []eqEmission {
 				}
 				if maskHas(idx, idx48) {
 					last.got = false
-					if walkRecordTo(pay, i0, total, idx, s.lay, s.arch, idx48) && last.got {
+					if walkRecordTo(pay, i0, total, idx, s.gram, idx48) && last.got {
 						out = append(out, eqEmission{
 							Slot: slot, Chunk: c, TimestampUS: pk.TimestampUS,
 							Counter: last.counter, Rank: last.rank,
@@ -219,8 +219,6 @@ func TestEquipmentChangeCanal(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	t.Log("CRITERE (enonce avant lecture) : pour qu i48 serve de canal de RAMASSAGE " +
 		"d equipement, il faut qu une part non negligeable des vies porte au moins DEUX " +
@@ -295,8 +293,6 @@ func TestEquipmentPremiereEmissionContreDebutDeVie(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	s := hwResolve(t, dir)
 	ev := eqScan(t, s)
@@ -369,8 +365,6 @@ func TestEquipmentPorteOuverteContreFinDeVie(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	s := hwResolve(t, dir)
 	ev := eqScan(t, s)

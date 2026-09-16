@@ -98,8 +98,6 @@ func TestEquipmentPickupKeyframeNaming(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", pickupsBridgeEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	pickups, _, err := filmdec.ScanFilmBipedPickups(dir)
 	if err != nil {

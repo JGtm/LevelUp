@@ -302,7 +302,7 @@ func (w *gameEntityWalk) walk(pay []byte, at, total, class int, idx []int, last 
 		if name == "" {
 			return false
 		}
-		br := NewBitReader(pay)
+		br := lecteurDInstrument(pay)
 		br.SetBitPos(at)
 		_, _, payload, ported := consumeByNameCapturing(br, name, uint32(class), arch.Level(id))
 		if !ported || br.BitPos() > total {

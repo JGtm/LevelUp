@@ -50,13 +50,11 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 		return ReplayDocument{}, fmt.Errorf("%w (match %s) : le document de rejeu exige l'entrée de catalogue de la carte",
 			filmdec.ErrUnknownMapBounds, matchID)
 	}
-	// UN SEUL decodage filmdec a la fois par process (verrou de paquet partage avec
-	// killsource.Decode) : les balayages de `scanFilmInputs` lisent et ecrivent les globaux de
-	// filmdec (dont compWidthObs, sans verrou propre). Tenu jusqu'au retour : l'assemblage
-	// pur qui suit est negligeable devant le decodage, et relacher plus tot inviterait un
-	// entrelacement entre deux sous-balayages du MEME film.
-	release := filmdec.LockProcessDecode()
-	defer release()
+	// PLUS DE VERROU DE PAQUET ICI (lot 2.3) : `filmdec` n'a plus aucune variable de paquet
+	// ecrite, et cette cuisson porte son propre etat de decodage — le profil de balayage et
+	// l'observation vivent dans le `FilmContext` construit ci-dessous, donc dans CET appel. Deux
+	// films peuvent se cuire en parallele dans le meme processus ; le verrou INTER-PROCESSUS
+	// `filmproc.AcquireSolo`, qui borne la memoire de la machine, reste a la charge des outils.
 	// LE COMPTEUR DE REPLIS NAIT ICI, AVANT LE PREMIER BALAYAGE (lot 1.9.0, D14) : les replis du
 	// BALAYAGE (largeurs par defaut, plafond de grenades) et ceux de l'ASSEMBLAGE tombent dans le
 	// meme compte, celui de cette cuisson, publie dans `coverage.fallbacks`.
@@ -75,15 +73,41 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// d i0, registre) restent PARESSEUSES, donc calculees au premier balayage qui les demande,
 	// donc apres l installation ci-dessous et apres le demarrage de l horloge des etapes.
 	fc := filmdec.NewFilmContextForMap(film, opt.MapQuant, decoupageForce(opt))
-	// Les largeurs d'axe du chemin WORLD-OBJECT sont un global de paquet : installées ici,
-	// sous le verrou, pour TOUT le decodage du film, et restaurees au retour.
-	defer installWorldObjectPrecision(fc.Profile(), matchID, opt.Fallbacks)()
+	poserProfilPuisCarte(fc, matchID, opt)
 	in, err := scanFilmInputs(matchID, film, fc, opt)
 	if err != nil {
 		return ReplayDocument{}, err
 	}
 	in.applyTo(&opt)
 	return BuildFromPositions(matchID, titleSlug, in.Positions, in.Fire, opt), nil
+}
+
+// poserProfilPuisCarte installe sur le contexte, DANS CET ORDRE, le profil de balayage calibre
+// par la passe precedente puis les largeurs d'axe de la carte.
+//
+// # L ORDRE EST LA REGLE, ET IL N EST PAS COMMUTATIF
+//
+// [filmdec.FilmContext.PoserProfilDeBalayage] remplace le profil ENTIER. Poser les largeurs de la
+// carte d'abord et le profil ensuite les EFFACERAIT sans un mot : les objets du monde seraient
+// dequantifies aux largeurs par defaut — celles d'UNE carte, `cliffhanger` — sur toutes les
+// autres. Dans le bon ordre, `installWorldObjectPrecision` n'ecrase que le descripteur
+// world-object du profil, et laisse la traversee, la largeur d'axe absolue et le `param_4` que
+// `killsource` a calibres.
+//
+// # D OU VIENT LE PROFIL
+//
+// Des OPTIONS (lot 2.3, condition D1 du lot 2.2.a). `killsource` calibre sur CE film un
+// descripteur de traversee, une largeur d'axe absolue et un `param_4` dont la cuisson heritait
+// jusqu'ici par l'etat du processus ; `replaybuild` les passe desormais explicitement. Options
+// sans profil (appelant qui n'a pas decode le kill-feed) : le contexte garde le sien.
+//
+// Garde-rail : `TestRouteDuProfilCalibreJusquAuContexte` epingle les deux — le profil calibre
+// ARRIVE, et les largeurs de carte SURVIVENT. Intervertir les deux appels le fait rougir.
+func poserProfilPuisCarte(fc *filmdec.FilmContext, matchID string, opt Options) {
+	if opt.ProfilDeBalayage != nil {
+		fc.PoserProfilDeBalayage(*opt.ProfilDeBalayage)
+	}
+	installWorldObjectPrecision(fc, matchID, opt.Fallbacks)
 }
 
 // filmScan porte ce que les cinq phases de balayage se partagent : le film et son contexte, les
@@ -124,10 +148,10 @@ func decoupageForce(opt Options) *filmdec.I0Layout {
 
 // scanFilmInputs EST L'ETAGE DE BALAYAGE : il lit le film et rend ce que l'assemblage consomme.
 //
-// PRE-REQUIS : l'appelant detient `filmdec.LockProcessDecode` et a installe les largeurs d'axe
-// de la carte (`installWorldObjectPrecision`). Les deux sont des globaux de paquet, et
-// `BuildFromFilm` — l'unique appelant de production — les tient pour toute la duree du decodage.
-// Le ratchet `archlint/decode_lock_held_test.go` verifie cette couverture par point fixe.
+// PRE-REQUIS : l'appelant a pose sur le CONTEXTE DU FILM le profil de balayage calibre puis
+// les largeurs d'axe de la carte (`installWorldObjectPrecision`), DANS CET ORDRE — poser le
+// profil ECRASE les largeurs, cf. `BuildFromFilm`. Ce ne sont plus des globaux de paquet depuis
+// le lot 2.3 : ils voyagent avec le contexte, donc avec cet appel.
 //
 // L'ORDRE DES PHASES EST L'ORDRE DU FILM, et il n'est pas libre : les positions exemptent le
 // filtre de vitesse aux teleportations, les changements d'arme se qualifient sur les loadouts

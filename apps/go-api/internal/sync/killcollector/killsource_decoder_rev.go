@@ -125,6 +125,27 @@ package killcollector
 // balaye (21 largeurs d axe x 3 largeurs d index), meme critere, meme vainqueur, memes largeurs
 // pour toutes les passes qui suivent, y compris l heritage vers la cuisson du rejeu
 // (`filmdec/mouvement_herite.go`). Aucun match deja decode n est candidat au backlog.
+// 2026-09-17, LOT 2.3 — LA REVISION NE BOUGE TOUJOURS PAS, MEME RAISON, ET LE CHOIX EST ECRIT.
+// `killsource/` change encore de FORME, plus de contenu :
+//
+//	`calibration.Mouvement` devient `calibration.Profil` ([filmdec.ProfilDeBalayage]) et porte
+//	AUSSI le `param_4` retenu ; `resetGlobals` disparait au profit de [ProfilDeDepart], qui
+//	NOMME ce que `Decode` posait dans le processus (`param_4` force a zero, generation stricte
+//	levee) ; le resultat sort par [Result.ProfilCalibre], que `replaybuild` passe a
+//	`replay.BuildFromFilm`.
+//
+// LES LIGNES PRODUITES SONT IDENTIQUES A L OCTET : meme espace balaye, meme critere, meme
+// vainqueur, memes valeurs pour les passes suivantes — y compris l heritage vers la cuisson du
+// rejeu, qui passe desormais par un parametre au lieu de l etat du processus. Le meme lot RETIRE
+// `filmdec.LockProcessDecode` de tous ses sites d appel dans `killsource/` : un verrou ne lit
+// aucun bit, et son retrait ne change pas davantage les lignes produites. Aucun match deja
+// decode n est candidat au backlog.
+// 2026-09-17, LOT 2.3.5 (revue adversariale) — REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE.
+// `killsource/decode.go` perd DEUX LIGNES DE COMMENTAIRE : la doc du verrou disparu disait
+// encore « le rejeu 2D decode les memes globaux dans le meme process », ce qui contredisait
+// la ligne au-dessus (doc inversee, constat P1-2 de la revue). Aucun octet n est lu
+// autrement ; le choix est explicite, comme le garde-rail l exige quand l empreinte bouge
+// sans la revision.
 const KillSourceDecoderRev = "killsource-2026-09-16.2"
 
 // L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :

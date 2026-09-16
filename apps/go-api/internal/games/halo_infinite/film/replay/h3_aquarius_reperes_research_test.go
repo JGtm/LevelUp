@@ -327,9 +327,6 @@ func h3EcartImpose(t *testing.T, dir string, e filmdec.MapQuantEntry, vues f1Rep
 func h3PositionsImposees(t *testing.T, dir string, e filmdec.MapQuantEntry) (
 	[]filmdec.BipedPosition, bool) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
-	defer installWorldObjectPrecisionDeCarte(e, dir, nil)()
 	scan := filmdec.DefaultScanFilmOptions()
 	wr := e.Range()
 	scan.WorldRange = &wr

@@ -39,7 +39,7 @@ package replay
 // power-up de socle sur 12 films » etait une propriete du filtre, pas du corpus.
 //
 // LECTURE SEULE, aucune base (les cartes se lisent hors de cet instrument, dans l'instantane
-// parquet du registre). UN SEUL decodage filmdec par process (`LockProcessDecode`), largeurs
+// parquet du registre). Largeurs
 // d'axe restaurees (`installWorldObjectPrecision`).
 //
 // USAGE (depuis apps/go-api) :
@@ -77,9 +77,6 @@ func TestGroundWeaponPads(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", gwPadsEnv)
 	}
 	entry := mapQuantEntryFromEnv(t, gwPadsMapEnv, gwPadsBoundsEnv)
-	release := filmdec.LockProcessDecode()
-	defer release()
-	defer installWorldObjectPrecisionDeCarte(entry, dir, nil)()
 
 	wr := entry.Range()
 	film, mapName := filepath.Base(dir), os.Getenv(gwPadsMapEnv)

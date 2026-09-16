@@ -15,7 +15,7 @@ import (
 
 // geoActiveBase : base bipede DETECTEE du film courant (ref dom1 -> slot absolu = base+idx).
 // Fixee par TestGeoExplosifs apres le sweep geoDetectBase ; 512 par defaut. Le paquet serialise
-// le decodage (LockProcessDecode), donc un etat de paquet est sur, comme les hooks du paquet.
+// le decodage, donc un etat de test est sur : la production, elle, n en a plus.
 var geoActiveBase = geoBase
 
 const (

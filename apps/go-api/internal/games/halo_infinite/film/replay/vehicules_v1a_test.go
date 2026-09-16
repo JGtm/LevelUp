@@ -98,10 +98,6 @@ func v1aContinuiteUnFilm(t *testing.T, root string, f v0Film) {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return
@@ -213,10 +209,6 @@ func v1aCapUnFilm(t *testing.T, root string, f v0Film) {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return
@@ -395,10 +387,6 @@ func v1aGeometriqueUnFilm(t *testing.T, root string, f v0Film) {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecisionActuelle()
-	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return

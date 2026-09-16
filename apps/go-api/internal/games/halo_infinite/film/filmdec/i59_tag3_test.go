@@ -44,8 +44,6 @@ func TestI59Tag3Count(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i59FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	s := eaSetupBiped(t, dir)
 	idx59 := s.arch.indicesOfFirst("biped-spartan-ability-non-predicted-state-component")

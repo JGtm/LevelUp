@@ -425,4 +425,32 @@
 #               raison est ecrite. Les 85 ancres `fichier:ligne` de la table ECS suivent le
 #               deplacement des fonctions. Ratchet 79 -> 43. AUCUN OCTET N EST LU AUTREMENT.
 #               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
-grammar-2026-09-15.26	ee09b3833c3f2264d5d08f46b4c2651c290724e75470b6fe74c04b581057b289
+#   2026-09-17  grammar-2026-09-15.27  lot 2.3 (`.26` -> `.27`, RANG PROVISOIRE) : LE PROFIL DE
+#               BALAYAGE REMPLACE L HERITAGE PAR L ETAT DU PROCESSUS. `herite` disparait ; ce
+#               qu elle portait (traversee, largeur d axe absolue, largeurs d axe des objets du
+#               monde, decoupage MPP, `param_4` force) devient `ProfilDeBalayage`, une VALEUR
+#               que le lecteur de bits, le contexte du film et `FrameConfig.Profil` portent.
+#               La calibration de `killsource` voyage par `Result.ProfilCalibre` ->
+#               `replay.Options.ProfilDeBalayage` -> `FilmContext` (condition D1 du pilote) ;
+#               un kill-feed non decode passe `killsource.ProfilDeDepart()`, ce que `Decode`
+#               laissait derriere lui meme en echec. La double ecriture datee
+#               (`replay.doubleEcritureGlobales`) est retiree a sa date cible. Les enveloppes
+#               D2 posent le decoupage LU DANS LE FILM sur leur propre contexte ; la cuisson
+#               prend celui du CATALOGUE. Les DOUZE bascules de grammaire (controle de
+#               corruption, queue de record NEW, deser d etat par archetype, sim-state complet,
+#               portee baseline, grammaire d ecrivain d i0, corps i54, corps i59, inference de
+#               chaine, generation stricte, largeurs calibrees et bouchon) deviennent
+#               `GrammaireBalayage`, un champ du profil. La generation stricte etait le second
+#               heritage silencieux de `killsource` vers la cuisson : elle est ecrite.
+#               Un cadre de trame se prend au contexte (`FilmContext.CadreDeBalayage`).
+#               La CAPTURE DE POSITION (six variables decrivant UN record en cours) devient
+#               `captureDePosition`, un champ du LECTEUR ; l histogramme des index absolus
+#               rejoint `Observation` ; `lastRepVersion` et `LastRepVersion()` sont supprimes
+#               (aucun appelant). L OBSERVATEUR part en dernier, avec les VINGT-HUIT reglages
+#               publics qui l ecrivaient : chaque balayage construit le sien et le pose sur ses
+#               lecteurs AVEC son profil, par `ContexteDeLecture{Profil, Obs}`. Quatre
+#               accesseurs de compteurs de processus sans appelant sont supprimes.
+#               Ratchet 43 -> 22, et ZERO variable de paquet ECRITE.
+#               AUCUN OCTET N EST LU AUTREMENT.
+#               `KillSourceDecoderRev` ne bouge PAS (golden refige) ; `SchemaVersion` reste 60.
+grammar-2026-09-15.27	0323a9d0c92f191e2e8eb9f80fff05b180b16933a13d1514a32cd5fe3db2f3b3

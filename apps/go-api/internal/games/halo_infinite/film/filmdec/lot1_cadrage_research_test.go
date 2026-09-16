@@ -44,8 +44,6 @@ func TestLot1EnteteParPaquet(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("chunk_00 illisible : %v", err)
@@ -166,8 +164,6 @@ func TestLot1PremierRecordSousK(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("chunk_00 illisible : %v", err)
@@ -283,8 +279,6 @@ func TestLot1InferenceParFamille(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("chunk_00 illisible : %v", err)
@@ -297,9 +291,6 @@ func TestLot1InferenceParFamille(t *testing.T) {
 	if n > deltaWitnessChunks {
 		n = deltaWitnessChunks
 	}
-	prev := inferChain
-	SetInferChain(true)
-	defer SetInferChain(prev)
 
 	amorces := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12}
 	cibles := map[byte]bool{0xA0: true, 0xC0: true, 0xC2: true, 0xC3: true, 0xC7: true,

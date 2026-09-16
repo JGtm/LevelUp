@@ -248,7 +248,7 @@ func (w i48Walk) record(pay []byte, i0, total int, idx []int) (s i48Sample, got 
 			}
 			// Seconde lecture, par le déserialiseur de production : elle publie via le hook.
 			w.hook.got = false
-			br := NewBitReader(pay)
+			br := lecteurDInstrument(pay)
 			br.SetBitPos(at)
 			consumeByName(br, arch48Name, uint32(BipedTypeIndex), arch.Level(id))
 			return s, true
@@ -257,7 +257,7 @@ func (w i48Walk) record(pay []byte, i0, total int, idx []int) (s i48Sample, got 
 		if name == "" {
 			return s, false
 		}
-		br := NewBitReader(pay)
+		br := lecteurDInstrument(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), arch.Level(id))
 		if !ported || br.BitPos() > total {

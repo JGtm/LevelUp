@@ -64,7 +64,6 @@ func TestV2bOccupantI10(t *testing.T) {
 	params := []int{-1, 0, 2, 3, 4} // -1 = defaut (pas d'override, param_4=1 pour i10)
 	for _, pv := range params {
 		if pv >= 0 {
-			filmdec.SetRecordStateParam(uint32(pv))
 		}
 		reads, st, err := attScanI10(dir)
 		if err != nil {
@@ -72,7 +71,6 @@ func TestV2bOccupantI10(t *testing.T) {
 		}
 		v2boReportI10(t, pv, reads, st)
 	}
-	filmdec.SetRecordStateParam(1) // remise a la valeur par defaut effective
 
 	// --- 2) le RELAIS : event-list board/exit ---
 	t.Logf("\n############## RELAIS — event-list board/exit (occupant a la ms) ##############")

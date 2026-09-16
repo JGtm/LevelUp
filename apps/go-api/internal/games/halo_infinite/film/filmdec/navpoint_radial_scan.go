@@ -116,9 +116,6 @@ type NavpointRadialScan struct {
 // Une bande vide n'est pas une erreur : c'est le negatif « aucun navpoint dans ce film », et le
 // scan rendu le dit (SlotsObserved == 0).
 //
-// UN SEUL DECODAGE filmdec A LA FOIS PAR PROCESS : le balayage installe un hook global de
-// paquet. L'appelant detient `LockProcessDecode` (BuildFromFilm le fait).
-//
 // ScanFilmNavpointRadial est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanNavpointRadial].
 func ScanFilmNavpointRadial(dir string, chunkStartMS map[int]int) (*NavpointRadialScan, error) {
@@ -126,7 +123,7 @@ func ScanFilmNavpointRadial(dir string, chunkStartMS map[int]int) (*NavpointRadi
 	if err != nil {
 		return &NavpointRadialScan{Blocked: map[int]int{}}, err
 	}
-	return ScanNavpointRadial(NewFilmContext(film), chunkStartMS)
+	return ScanNavpointRadial(contexteDeBobine(film), chunkStartMS)
 }
 
 // ScanNavpointRadial balaye l'anneau ti=12 d'un film DEJA CHARGE.
@@ -146,8 +143,8 @@ func ScanNavpointRadial(fc *FilmContext, chunkStartMS map[int]int) (*NavpointRad
 	if err != nil {
 		return sc, err
 	}
-	w := navpointRadialWalk{arch: arch, reg: reg, sc: sc}
-	defer w.install()()
+	w := navpointRadialWalk{prof: fc.ProfilDeBalayage(), arch: arch, reg: reg, sc: sc}
+	w.obs = w.install()
 	for _, c := range nums {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
@@ -193,6 +190,11 @@ func (c *FilmContext) filmArchetype(ti int) (Archetype, *Registry, error) {
 // navpointRadialWalk porte ce que la marche d'un record doit connaitre, et l'etat que le hook
 // y depose (regle des 5 parametres).
 type navpointRadialWalk struct {
+	// obs est l OBSERVATEUR de ce balayage (lot 2.3), pose sur chaque lecteur construit.
+	obs *Observation
+	// prof est le PROFIL DE BALAYAGE du contexte, pose sur chaque lecteur de cette marche
+	// (lot 2.3) : c est par lui que les largeurs de la carte et du format atteignent les feuilles.
+	prof ProfilDeBalayage
 	arch Archetype
 	reg  *Registry
 	cur  NavpointRadialRead
@@ -201,10 +203,15 @@ type navpointRadialWalk struct {
 	key  bool
 }
 
+// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
+func (w *navpointRadialWalk) contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: w.prof, Obs: w.obs}
+}
+
 // install pose le hook de ti=12 et rend sa restauration (defer).
-func (w *navpointRadialWalk) install() func() {
-	prev := observateur.NavpointHook
-	SetNavpointHook(func(f NavpointField, values []uint64) {
+func (w *navpointRadialWalk) install() *Observation {
+	obs := NouvelleObservation()
+	obs.NavpointHook = func(f NavpointField, values []uint64) {
 		if f != NavpointRadialProgress || len(values) == 0 {
 			return
 		}
@@ -212,8 +219,8 @@ func (w *navpointRadialWalk) install() func() {
 		if w.key && w.sc != nil {
 			w.sc.ajouter(w.cur)
 		}
-	})
-	return func() { SetNavpointHook(prev) }
+	}
+	return obs
 }
 
 // ajouter range une lecture sous le plafond de recolte.
@@ -310,6 +317,7 @@ func (w *navpointRadialWalk) walk(pay []byte, rec WorldObjectRecord, ms int32) (
 			return at, false
 		}
 		br := NewBitReader(pay)
+		br.PoserContexte(w.contexte())
 		br.SetBitPos(at)
 		w.got, w.key = false, false
 		_, _, ported := consumeByName(br, name, navpointRadialArchIndex, w.arch.Level(id))
@@ -354,7 +362,7 @@ func (w *navpointRadialWalk) scanKeyframe(pay []byte, ms int32) {
 		}
 		first := len(sc.Reads)
 		w.cur.Slot, w.cur.TMS = uint32(b.Slot), ms //nolint:gosec // Slot vient d'un id de 30 bits
-		tr := WalkKeyframeFullState(pay, b.Bit, w.reg)
+		tr := WalkKeyframeFullState(pay, b.Bit, w.reg, w.contexte())
 		if tr.DesyncAt >= 0 || tr.EndBit > total {
 			sc.KeyBroken++
 			sc.Blocked[tr.DesyncAt]++

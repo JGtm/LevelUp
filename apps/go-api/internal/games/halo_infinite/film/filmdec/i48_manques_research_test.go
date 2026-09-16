@@ -51,6 +51,7 @@ const (
 
 // i48mSetup porte la configuration resolue une fois pour un film.
 type i48mSetup struct {
+	gram   grammaireRecord
 	dir    string
 	chunks []int
 	slots  SlotBand
@@ -84,7 +85,8 @@ func i48mResolve(t *testing.T, dir string) i48mSetup {
 		t.Fatalf("archetype biped illisible : %v", err)
 	}
 	return i48mSetup{
-		dir: dir, chunks: chunks, slots: slots, lay: lay, arch: arch,
+		gram: grammaireRecord{lay: lay, arch: arch, prof: profilDeCarte(lay)},
+		dir:  dir, chunks: chunks, slots: slots, lay: lay, arch: arch,
 		idx48:  eqAbilityIndex(t, arch),
 		minRec: bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits(),
 	}
@@ -168,7 +170,7 @@ func i48mStrict(s i48mSetup, usMin, usMax uint64) (ems, unread []i48mCand) {
 				}
 				last.got = false
 				stop := -1
-				walkRecordComponents(pay, i0, total, idx, s.lay, s.arch, func(id int) bool {
+				walkRecordComponents(pay, i0, total, idx, s.gram, func(id int) bool {
 					stop = id
 					return id != s.idx48
 				})
@@ -312,7 +314,7 @@ func i48mWalk(s i48mSetup, pay []byte, cand *i48mCand, i0, total int) {
 			}
 		}
 		stop := -1
-		walkRecordComponents(pay, i0, total, cand.Idx, s.lay, s.arch, func(id int) bool {
+		walkRecordComponents(pay, i0, total, cand.Idx, s.gram, func(id int) bool {
 			stop = id
 			return id != s.idx48
 		})
@@ -324,7 +326,7 @@ func i48mWalk(s i48mSetup, pay []byte, cand *i48mCand, i0, total int) {
 		return
 	}
 	// Masque sans i0 : les composants commencent immediatement apres les indices.
-	br := NewBitReader(pay)
+	br := lecteurDInstrument(pay)
 	br.SetBitPos(cand.Off + bipedHeaderBits + bipedIndexBits*len(cand.Idx))
 	for _, id := range cand.Idx {
 		name := s.arch.component(id)
@@ -396,8 +398,6 @@ func TestI48ManquesFenetre(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", i48mFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	usMin, usMax := i48mEnvUint(t, i48mMinEnv), i48mEnvUint(t, i48mMaxEnv)
 	slotFilter := uint64(0)
 	if v := os.Getenv(i48mSlotEnv); v != "" {

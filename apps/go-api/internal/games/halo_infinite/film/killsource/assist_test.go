@@ -28,7 +28,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // assistAttendu : ce que chaque film de reference rend. Ces nombres ne sont PAS des cibles, ce
@@ -85,8 +84,6 @@ func fixturesRoot(t *testing.T) string {
 // le bon doit gagner d un facteur au moins 4.
 func TestAssistOrdreDesChamps(t *testing.T) {
 	root := fixturesRoot(t)
-	release := filmdec.LockProcessDecode()
-	defer release()
 	for id := range assistAttendu {
 		c, s := prepareForAssist(t, root, id)
 		lu, inverse := 0, 0
@@ -432,7 +429,6 @@ func prepareForAssist(t *testing.T, root, id string) (*decodeCtx, *assistScan) {
 	if err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}
-	resetGlobals()
 	c := &decodeCtx{name: id, opts: DefaultOptions()}
 	if err := c.prepare(context.Background(), src); err != nil {
 		t.Fatalf("%s: %v", id, err)

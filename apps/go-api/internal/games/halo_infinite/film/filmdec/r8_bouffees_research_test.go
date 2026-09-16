@@ -79,7 +79,6 @@ type r8Rec struct {
 }
 
 // r8ScanRecords balaye les records delta de bipede et n'en retient que l'en-tete et le
-// masque. L'appelant doit detenir LockProcessDecode.
 func r8ScanRecords(s r8MobSetup) []r8Rec {
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + s.lay.TotalBits()
 	var out []r8Rec
@@ -230,11 +229,6 @@ func r8BouffeesOneFilm(t *testing.T, dir string) {
 	t.Helper()
 	entry := r8MapEntry(t, dir)
 	wr := entry.Range()
-	release := LockProcessDecode()
-	defer release()
-	saved := WorldObjectPrecisionActuelle()
-	SetWorldObjectPrecisionFromLayout(entry.Layout())
-	defer func() { PoserWorldObjectPrecision(saved) }()
 
 	s := r8MobResolve(t, dir)
 	opt := DefaultScanFilmOptions()

@@ -162,8 +162,6 @@ func rsEcarts(d []byte) ([]*s3sEnr, []int) {
 // nuls de cette moitie recule de la meme quantite, le champ qui change est celui qui est ecrit
 // a zero — le bloc de personnalisation `sub+0xcc0`.
 func TestResidusSlotTransposition(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
 		_, d := readChunk00(t, dir)
 		build, _ := s3bBuild(d)
@@ -264,8 +262,6 @@ func rsChaine(d []byte, delta int) (enrs []*s3sEnr, vacants int) {
 // d'enregistrements que le balayage corrige — c'est-a-dire qu'il doit cesser d'etre mort sur les
 // builds anciens, sans rien perdre sur le build courant.
 func TestResidusSlotChaineParBuild(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	egaux, vus := 0, 0
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
 		_, d := readChunk00(t, dir)

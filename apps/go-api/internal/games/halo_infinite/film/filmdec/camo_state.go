@@ -22,7 +22,6 @@ package filmdec
 // canal, pas une condition de lecture : l'état est publié pour toute vie qui le transmet.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
-// L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : le hook installé est
 // un global de paquet.
 
 import (
@@ -81,7 +80,6 @@ type CamoStateStats struct {
 // queue[1]) dans les paquets delta du film de dir.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `observateur.CamoStateHook`,
-// qui est un global de paquet. L'appelant doit détenir LockProcessDecode (BuildFromFilm le
 // fait). Le hook est restauré à la sortie, y compris en cas d'erreur.
 //
 // ScanFilmCamoStates est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanCamoStates].
@@ -90,7 +88,7 @@ func ScanFilmCamoStates(dir string) ([]CamoRead, CamoStateStats, error) {
 	if err != nil {
 		return nil, CamoStateStats{}, err
 	}
-	return ScanCamoStates(NewFilmContext(film))
+	return ScanCamoStates(contexteDeBobine(film))
 }
 
 // ScanCamoStates décode les transmissions de la voie d'état du camouflage d'un film DEJA CHARGE.
@@ -127,14 +125,14 @@ func ScanCamoStates(fc *FilmContext) ([]CamoRead, CamoStateStats, error) {
 		channel bool
 		got     bool
 	}
-	prev := observateur.CamoStateHook
-	SetCamoStateHook(func(cs CamoState) {
+	obs := NouvelleObservation()
+	obs.CamoStateHook = func(cs CamoState) {
 		last.q, last.channel = cs.SubQ[camoChannelIndex], cs.SubPresent[camoChannelIndex]
 		last.got = true
-	})
-	defer SetCamoStateHook(prev)
+	}
 
 	var out []CamoRead
+	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage(), obs: obs}
 	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
 		st.Records++
 		if !maskHas(r.Mask, i28idx) {
@@ -143,7 +141,7 @@ func ScanCamoStates(fc *FilmContext) ([]CamoRead, CamoStateStats, error) {
 		st.WithI28++
 		last.got = false
 		switch {
-		case !walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, lay, arch, i28idx) || !last.got:
+		case !walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, gram, i28idx) || !last.got:
 			st.Unread++
 		case !last.channel:
 			st.Read++

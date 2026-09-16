@@ -102,7 +102,8 @@ func r9SigScan(t *testing.T, dir string) ([]r9Signal, map[int]int, int) {
 func r9SigPayload(pay []byte, band map[uint32]bool, arch Archetype, idx22 int,
 	pk FilmPacket, census map[int]int, out []r9Signal, records *int) ([]r9Signal, int) {
 	total := len(pay) * 8
-	limit := total - (worldObjectHeaderBits + worldObjectIndexBits + projPosBits())
+	limit := total - (worldObjectHeaderBits + worldObjectIndexBits +
+		projPosBits(ProfilDeBalayageParDefaut().LargeursObjetDuMonde()))
 	for p := 0; p <= limit; p++ {
 		rec, ok := matchWorldObjectRecord(pay, p, band)
 		if !ok || rec.Idx[0] != 0 {
@@ -161,11 +162,6 @@ func r9I22OneFilm(t *testing.T, dir string) {
 	t.Helper()
 	entry := r8MapEntry(t, dir)
 	wr := entry.Range()
-	release := LockProcessDecode()
-	defer release()
-	saved := WorldObjectPrecisionActuelle()
-	SetWorldObjectPrecisionFromLayout(entry.Layout())
-	defer func() { PoserWorldObjectPrecision(saved) }()
 
 	pl, _, err := ScanFilmEquipmentPlacements(dir, &wr)
 	if err != nil {
