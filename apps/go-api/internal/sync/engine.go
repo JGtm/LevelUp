@@ -237,16 +237,16 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 		slog.DebugContext(ctx, "sync: requête historique API",
 			"gamertag", e.gamertag, "xuid", e.xuid, "start", start, "page_size", historyPageSize,
 		)
-		// L'endpoint /hi/players/{player}/matches exige strictement le format
-		// xuid(NNN) (voir Grunt StatsModule.GetMatchHistory + SPNKr). Passer le
-		// gamertag directement renvoie une réponse stale figée — symptôme du
-		// "no inserts since 6 mai" diagnostiqué le 2026-05-20.
-		entries, err := in.client.GetMatchHistory(ctx, fmt.Sprintf("xuid(%s)", e.xuid), in.opts.MatchType, start, historyPageSize)
+		// Rejeu borné du 429 / du parc en cooldown et format xuid(NNN) exigé par
+		// l'endpoint : engine_history_retry.go. Une page perdue arrête la pagination,
+		// donc la passe est INCOMPLÈTE : AddError (et non AddWarning) pour que Status()
+		// rende partial_success/failure (D1, robustesse 2026-09-16 — avant : "OK ... success inserted=0").
+		entries, err := e.fetchHistoryPage(ctx, &in, start)
 		if err != nil {
-			slog.WarnContext(ctx, "sync: GetMatchHistory échoué",
+			slog.ErrorContext(ctx, "sync: historique interrompu",
 				"gamertag", e.gamertag, "start", start, "err", err,
 			)
-			result.AddWarning(fmt.Sprintf("GetMatchHistory(start=%d): %v", start, err))
+			result.AddError(fmt.Sprintf("historique interrompu à start=%d: %v", start, err))
 			break
 		}
 		if len(entries) == 0 {

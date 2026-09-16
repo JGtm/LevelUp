@@ -233,6 +233,24 @@ func TestPooledHaloClientAcquireFailure(t *testing.T) {
 	}
 }
 
+// TestPooledHaloClientAcquireFailure_SentinelleSlotSainTraverse : la sentinelle
+// pool.ErrNoHealthySlot survit à l'enveloppe de doPublic (`%w`). C'est elle qui permet à la
+// pagination d'historique de distinguer « tout le parc est en cooldown » (attendre puis
+// rejouer) d'une panne quelconque (abandonner) — D1, plan robustesse 2026-09-16. Ce test
+// rougit si doPublic repasse à `%v` ou si la sentinelle redevient un fmt.Errorf anonyme.
+func TestPooledHaloClientAcquireFailure_SentinelleSlotSainTraverse(t *testing.T) {
+	mp := &mockPool{
+		tokens: make(map[string]*domain.HaloTokens),
+		err:    pool.ErrNoHealthySlot,
+	}
+	client := NewPooledHaloClient(mp, "", "", 0)
+
+	_, err := client.GetMatchHistory(context.Background(), "Bob", "all", 0, 25)
+	if !errors.Is(err, pool.ErrNoHealthySlot) {
+		t.Fatalf("errors.Is(err, pool.ErrNoHealthySlot) = false, erreur obtenue: %v", err)
+	}
+}
+
 // TestPooledHaloClientInterface vérifie que PooledHaloClient implémente HaloClient.
 func TestPooledHaloClientInterface(t *testing.T) {
 	mp := &mockPool{
