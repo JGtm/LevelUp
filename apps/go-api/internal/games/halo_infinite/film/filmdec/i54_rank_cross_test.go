@@ -70,7 +70,7 @@ func TestI54CrossI48Rank(t *testing.T) {
 		records, with54, read, unread, flag1On int
 		onTs                                   = map[uint32][]uint64{}
 	)
-	prev := mobilityActionHook
+	prev := observateur.MobilityActionHook
 	SetMobilityActionHook(func(flag1, _ bool) { capt.flag1, capt.got = flag1, true })
 	defer SetMobilityActionHook(prev)
 

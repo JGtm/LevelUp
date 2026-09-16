@@ -247,8 +247,8 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilm
 		if opt.CaptureDirs {
 			rec.componentDirs, rec.componentVitals = scanRecordDirs(br, r.I0+i0Bits, r.Total, r.Mask, g)
 			rec.MaskBits, rec.MaskOver = maskBitsOf(r.Mask)
-			if recordMaskHook != nil {
-				recordMaskHook(r.Mask, payload, r.I0+i0Bits)
+			if observateur.RecordMaskHook != nil {
+				observateur.RecordMaskHook(r.Mask, payload, r.I0+i0Bits)
 			}
 		}
 		out = append(out, rec)

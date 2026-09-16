@@ -73,7 +73,7 @@ func TestI22DeltaResearch(t *testing.T) {
 		vals  []uint64
 		got   bool
 	}
-	prev := grenadeCountsHook
+	prev := observateur.GrenadeCountsHook
 	SetGrenadeCountsHook(func(c uint64, v []uint64) {
 		last.count, last.vals, last.got = c, append([]uint64(nil), v...), true
 	})

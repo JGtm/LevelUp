@@ -12,7 +12,7 @@ package filmdec
 //	     ecrit d'abord comme une assertion, il a echoue en disant vrai (la bande EST incomplete,
 //	     le film lie des entites par records NEW en cours de flux) ;
 //	G1b  la marche doit trouver STRICTEMENT PLUS de dead-states `ti=35` que l'ancre
-//	     (`ScanFilmBipedPositions` + recordMaskHook, le temoin du lot V10) — sinon elle
+//	     (`ScanFilmBipedPositions` + observateur.RecordMaskHook, le temoin du lot V10) — sinon elle
 //	     n'apporte rien et la mesure est nulle ;
 //	G2   sur un film ou AUCUNE entite `ti=40` n'est declaree, le compte vehicule doit etre 0 ;
 //	G3   aucun compte ne se publie sans sa couverture (records propres / records marches, et
@@ -399,7 +399,7 @@ func v13KillerResolved(ds []v13Dead) (ok, n int) {
 // combien portent i11. Rend (-1, -1) si le balayage echoue.
 func v13AnchorI11(t *testing.T, dir string) (nRec, nI11 int) {
 	t.Helper()
-	prev := recordMaskHook
+	prev := observateur.RecordMaskHook
 	SetRecordMaskHook(func(idx []int, _ []byte, _ int) {
 		nRec++
 		for _, id := range idx {

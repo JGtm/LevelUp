@@ -88,7 +88,7 @@ type componentDirs struct {
 	AimFlag2           bool // +0x5f8 bit0 : drapeau accolé à la direction B. Valide si HasAimB.
 	// MaskBits : le MASQUE DE COMPOSANTS du record, un bit par index déclaré (bit i = index i).
 	// Il voyage DANS le record, et c'est tout son intérêt : le hook de diagnostic
-	// (recordMaskHook) tire AVANT les filtres de post-traitement (DropIsolated,
+	// (observateur.RecordMaskHook) tire AVANT les filtres de post-traitement (DropIsolated,
 	// DropTeleports), donc un appelant qui appaire ses appels aux positions renvoyées
 	// s'appaire à côté dès qu'un record est écarté. Renseigné sous CaptureDirs.
 	MaskBits uint64
@@ -200,15 +200,10 @@ func (p BipedPosition) VelocityVector() ([3]float32, bool) {
 	return [3]float32{d[0] * m, d[1] * m, d[2] * m}, true
 }
 
-// recordMaskHook (DEBUG) reçoit, pour chaque record biped ÉMIS, la liste des index de
-// composants de son masque, le payload du paquet et le bit qui suit i0. Sert au
-// diagnostic « quel champ, à quel offset, porte la direction » ; nil en production (même
-// convention que `unitRefHook`). Les appels sont dans le MÊME ordre que les
-// positions renvoyées (filtres de post-traitement mis à part).
-var recordMaskHook func(idx []int, payload []byte, afterI0 int)
-
 // SetRecordMaskHook installe (ou efface, nil) le hook de diagnostic du masque.
-func SetRecordMaskHook(h func(idx []int, payload []byte, afterI0 int)) { recordMaskHook = h }
+func SetRecordMaskHook(h func(idx []int, payload []byte, afterI0 int)) {
+	observateur.RecordMaskHook = h
+}
 
 // ReadBitsAtForDiag expose la lecture MSB-first de n bits (n <= 32) à une position bit
 // absolue : réservée aux harnais de diagnostic qui balaient un payload de paquet.

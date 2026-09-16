@@ -83,20 +83,14 @@ func (f EquipmentField) String() string {
 	return fmt.Sprintf("champ inconnu (%d)", int(f))
 }
 
-// equipmentStateHook, si non nil, reçoit CHAQUE lecture d'un des quatre composants : le
-// champ, la valeur, et `present` — faux quand la porte du composant s'est fermée sans
-// transmettre de valeur. Une porte fermée n'est PAS une valeur nulle, et les confondre
-// fabriquerait des transitions qui n'existent pas.
-var equipmentStateHook func(f EquipmentField, value uint64, present bool)
-
 // SetEquipmentStateHook installe (ou retire, avec nil) la sonde des composants d'équipement.
 func SetEquipmentStateHook(h func(f EquipmentField, value uint64, present bool)) {
-	equipmentStateHook = h
+	observateur.EquipmentStateHook = h
 }
 
 func publishEquipment(f EquipmentField, value uint64, present bool) {
-	if equipmentStateHook != nil {
-		equipmentStateHook(f, value, present)
+	if observateur.EquipmentStateHook != nil {
+		observateur.EquipmentStateHook(f, value, present)
 	}
 }
 
@@ -235,7 +229,7 @@ func (c *FilmContext) EquipmentArchetype() (Archetype, error) {
 // ScanFilmEquipmentState décode l'état des objets d'équipement transmis dans les paquets
 // delta du film de dir.
 //
-// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `equipmentStateHook`,
+// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `observateur.EquipmentStateHook`,
 // qui est un global de paquet. Le hook est restauré à la sortie, y compris en cas d'erreur.
 //
 // ScanFilmEquipmentState est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
@@ -268,7 +262,7 @@ func ScanEquipmentState(fc *FilmContext) ([]EquipmentStateSample, EquipmentState
 	w := equipmentWalk{arch: arch, want: equipmentFieldIndices(arch)}
 
 	var cur EquipmentStateSample
-	prev := equipmentStateHook
+	prev := observateur.EquipmentStateHook
 	SetEquipmentStateHook(func(f EquipmentField, value uint64, present bool) {
 		cur.Seen[f], cur.Present[f], cur.Val[f] = true, present, value
 	})

@@ -33,20 +33,13 @@ const (
 	chainConfirmMinComps = 1
 )
 
-// chainStatRepaired counts records rescued by component-width inference.
-var chainStatRepaired int
-
 // ChainRepairedCount returns how many desynced records component-width inference
-// rescued (diagnostics).
-func ChainRepairedCount() int { return chainStatRepaired }
-
-// compWidthObs records, per component name, the stub widths that produced the winning
-// alignment (repair events) — calibration data for porting the missing desers.
-var compWidthObs = map[string]map[int]int{}
+// rescued (diagnostics). Compteur de l OBSERVATEUR depuis le lot 2.2.f.
+func ChainRepairedCount() int { return observateur.ChaineReparees }
 
 // CompWidthObservations returns the accumulated stub-width observations per
-// component name (width -> occurrences).
-func CompWidthObservations() map[string]map[int]int { return compWidthObs }
+// component name (width -> occurrences). Table de l OBSERVATEUR depuis le lot 2.2.f — c est
+// « la table sans verrou » que l en-tete de `decode_gate.go` nomme.
 
 // chainCompMaxStub bounds the stub-width sweep of component repair (bits).
 const chainCompMaxStub = 640
@@ -73,9 +66,9 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 	if _, preset := unportedStubWidth[name]; preset {
 		return tr, 0, false // an external harness already stubs it; do not fight it
 	}
-	savedPos, savedRef := posCaptureHook, unitRefHook
-	posCaptureHook, unitRefHook = nil, nil
-	defer func() { posCaptureHook, unitRefHook = savedPos, savedRef }()
+	savedPos, savedRef := observateur.PosCaptureHook, observateur.UnitRefHook
+	observateur.PosCaptureHook, observateur.UnitRefHook = nil, nil
+	defer func() { observateur.PosCaptureHook, observateur.UnitRefHook = savedPos, savedRef }()
 
 	frameLen := len(buf) * 8
 	redecode := func() EntityTrace {
@@ -120,12 +113,13 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 	if t.DesyncAt != -1 || t.EndBit != winEnd {
 		return tr, 0, false
 	}
-	chainStatRepaired++
-	if compWidthObs[name] == nil {
-		compWidthObs[name] = map[int]int{}
+	o := obsDuCadre(cfg)
+	o.ChaineReparees++
+	if o.CompWidths[name] == nil {
+		o.CompWidths[name] = map[int]int{}
 	}
 	for _, s := range byEnd[winEnd] {
-		compWidthObs[name][s]++
+		o.CompWidths[name][s]++
 	}
 	return t, winEnd, true
 }
@@ -136,16 +130,18 @@ const chainTombstone = ^uint32(0)
 // Chain outcome counters (whole-run diagnostics; see ChainStats / ResetChainStats).
 // "immediate" = resolved by tier 1 (next record confirms, single-step semantics);
 // "deep" = resolved by the tier-2 recursive walk (a genuine transient chain).
-var chainStatImmediate, chainStatDeep, chainStatAmbiguous, chainStatNone, chainStatBudget int
+// Champs de l OBSERVATEUR depuis le lot 2.2.f.
 
 // ChainStats returns the cumulative chain-inference outcome counters.
 func ChainStats() (immediate, deep, ambiguous, none, budget int) {
-	return chainStatImmediate, chainStatDeep, chainStatAmbiguous, chainStatNone, chainStatBudget
+	o := observateur
+	return o.ChaineImmediat, o.ChaineProfond, o.ChaineAmbigu, o.ChaineAucun, o.ChaineBudget
 }
 
 // ResetChainStats zeroes the chain-inference outcome counters.
 func ResetChainStats() {
-	chainStatImmediate, chainStatDeep, chainStatAmbiguous, chainStatNone, chainStatBudget = 0, 0, 0, 0, 0
+	o := observateur
+	o.ChaineImmediat, o.ChaineProfond, o.ChaineAmbigu, o.ChaineAucun, o.ChaineBudget = 0, 0, 0, 0, 0
 }
 
 // deltaBodyTrial decodes a delta BODY (mask + components) at bit `bitpos` with an
@@ -348,9 +344,9 @@ func (c *chainCtx) chainDelta(br *BitReader, depth, recs int) bool {
 // several archetypes share the winning alignment — the skip is still exact, but the
 // slot must not be soft-bound to an arbitrary pick), the body end bit, and ok.
 func inferChainArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (ti uint32, end int, uniqueTi, ok bool) {
-	savedPos := posCaptureHook
-	posCaptureHook = nil
-	defer func() { posCaptureHook = savedPos }()
+	savedPos := observateur.PosCaptureHook
+	observateur.PosCaptureHook = nil
+	defer func() { observateur.PosCaptureHook = savedPos }()
 
 	frameLen := len(buf) * 8
 	byEnd := map[int][]uint32{}
@@ -373,10 +369,10 @@ func inferChainArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (ti 
 	if !ok2 {
 		return 0, bitpos, false, false
 	}
-	if immediate {
-		chainStatImmediate++
+	if o := obsDuCadre(cfg); immediate {
+		o.ChaineImmediat++
 	} else {
-		chainStatDeep++
+		o.ChaineProfond++
 	}
 	tis := byEnd[winEnd]
 	return tis[0], winEnd, len(tis) == 1, true
@@ -399,10 +395,10 @@ func resolveAlignment(c *chainCtx, order []int) (winEnd int, immediate, ok bool)
 			return cands[0], false, true
 		}
 		if len(cands) == 0 {
-			if c.budget <= 0 {
-				chainStatBudget++
+			if o := obsDuCadre(c.cfg); c.budget <= 0 {
+				o.ChaineBudget++
 			} else {
-				chainStatNone++
+				o.ChaineAucun++
 			}
 			return 0, false, false
 		}
@@ -427,7 +423,7 @@ func resolveAlignment(c *chainCtx, order []int) (winEnd int, immediate, ok bool)
 	if len(cands) == 1 {
 		return cands[0], false, true
 	}
-	chainStatAmbiguous++
+	obsDuCadre(c.cfg).ChaineAmbigu++
 	return 0, false, false
 }
 

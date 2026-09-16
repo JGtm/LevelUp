@@ -98,8 +98,8 @@ type InventoryDelta struct {
 // ScanFilmInventoryDeltas décode les transmissions d'inventaire de grenades (i22 compteurs,
 // i47 masque et sélection) dans les paquets delta du film de dir.
 //
-// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `grenadeCountsHook`
-// et `grenadeSetHook`, qui sont des globaux de paquet. L'appelant doit détenir
+// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `observateur.GrenadeCountsHook`
+// et `observateur.GrenadeSetHook`, qui sont des globaux de paquet. L'appelant doit détenir
 // LockProcessDecode (BuildFromFilm le fait). Les hooks sont restaurés à la sortie.
 //
 // ScanFilmInventoryDeltas est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
@@ -259,8 +259,8 @@ func archIndexOf(arch Archetype, names ...string) int {
 
 // installHooks branche les quatre sondes de déser et rend leur restauration.
 func (sc *invDeltaScanner) installHooks() func() {
-	prev22, prev47 := grenadeCountsHook, grenadeSetHook
-	prevAmmo, prevRounds := weaponAmmoHook, weaponRoundsHook
+	prev22, prev47 := observateur.GrenadeCountsHook, observateur.GrenadeSetHook
+	prevAmmo, prevRounds := observateur.WeaponAmmoHook, observateur.WeaponRoundsHook
 	SetGrenadeCountsHook(func(c uint64, v []uint64) {
 		sc.last22c, sc.last22v, sc.got22 = c, v, true
 	})

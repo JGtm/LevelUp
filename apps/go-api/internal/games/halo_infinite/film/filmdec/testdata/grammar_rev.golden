@@ -410,4 +410,16 @@
 #               prime : `mpp_widths.go` sort de `default_state.go` (503 lignes). Ratchet 86 ->
 #               79. AUCUN OCTET N EST LU AUTREMENT. `KillSourceDecoderRev` ne bouge PAS
 #               (`killsource/` intact) ; `SchemaVersion` reste 60.
-grammar-2026-09-15.24	8d0e656453fe1583d8e8fb45669e37c42038071cd38a4f00ce47aeaf55e06e9a
+#   2026-09-17  grammar-2026-09-15.25  lot 2.2.f (`.24` -> `.25`, RANG PROVISOIRE) : L OBSERVATEUR.
+#               Trente-sept variables de paquet deviennent les CHAMPS d un seul objet — les 29
+#               crochets de deserialiseur et les 8 compteurs de l inference de chaine, dont
+#               `compWidthObs`, « la table sans verrou » que l en-tete de `decode_gate.go` nomme
+#               comme l une des deux raisons du verrou de processus. Un observateur ne change
+#               AUCUNE consommation de bits : c est ce qui le distingue du profil, et c est
+#               ecrit en tete de `observateur.go`. La forme « passe en parametre »
+#               (`FrameConfig.Obs`) est ouverte pour la seule famille dont les compteurs sont
+#               ecrits la ou le cadre est en portee ; les 29 crochets attendent le pas 5, et la
+#               raison est ecrite. Les 85 ancres `fichier:ligne` de la table ECS suivent le
+#               deplacement des fonctions. Ratchet 79 -> 43. AUCUN OCTET N EST LU AUTREMENT.
+#               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
+grammar-2026-09-15.25	2a19dde6b735fe71e18c33f71439a462e60f98f2d21034479fd5e31f5ba41660

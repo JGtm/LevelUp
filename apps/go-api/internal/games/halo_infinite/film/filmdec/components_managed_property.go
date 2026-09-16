@@ -136,29 +136,18 @@ func (f ManagedPropertyField) String() string {
 	return champInconnu
 }
 
-// managedPropertyHook, si non nil, recoit chaque lecture d'un champ de ti=13.
-//
-// PAS DE `present` ICI : aucun des deux composants n'a de porte de tete — le tag EST la valeur de
-// tete, et il est publie. Global de paquet : l'appelant detient `LockProcessDecode`.
-//
-// FORME DES VALEURS : `values[0]` est toujours le TAG ; `values[1]`, present seulement quand la
-// branche lit, est le quantum BRUT. Une branche muette publie donc un seul element — et c'est une
-// information, pas un manque : elle dit que la propriete existe et que ce record n'en porte pas
-// la valeur.
-var managedPropertyHook func(f ManagedPropertyField, values []uint64)
-
 // SetManagedPropertyHook installe (ou retire, avec nil) la sonde des composants de ti=13.
 //
 // UN HOOK SEPARE de ceux de ti=10 et ti=12, pour la meme raison qui les separait entre eux : les
 // archetypes sont distincts, leurs slots sont disjoints, et un consommateur qui suit l'etat d'une
 // propriete n'ecoute pas les memes objets qu'un consommateur qui suit une bordure ou un marqueur.
 func SetManagedPropertyHook(h func(f ManagedPropertyField, values []uint64)) {
-	managedPropertyHook = h
+	observateur.ManagedPropertyHook = h
 }
 
 func publishManagedProperty(f ManagedPropertyField, values ...uint64) {
-	if managedPropertyHook != nil {
-		managedPropertyHook(f, values)
+	if observateur.ManagedPropertyHook != nil {
+		observateur.ManagedPropertyHook(f, values)
 	}
 }
 

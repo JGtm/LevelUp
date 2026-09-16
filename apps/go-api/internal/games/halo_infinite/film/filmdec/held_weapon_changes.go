@@ -114,7 +114,7 @@ func ScanHeldWeaponChanges(
 		high, low uint32
 		got       bool
 	}
-	prev := heldWeaponHook
+	prev := observateur.HeldWeaponHook
 	SetHeldWeaponHook(func(h, l uint32) { last.high, last.low, last.got = h, l, true })
 	defer SetHeldWeaponHook(prev)
 

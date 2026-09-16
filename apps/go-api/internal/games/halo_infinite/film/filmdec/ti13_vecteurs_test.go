@@ -284,7 +284,7 @@ func TestTi13IdentifiantsPartagesEntreFilms(t *testing.T) {
 func TestTi13VecteursPortDeser(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
-	prev := managedPropertyHook
+	prev := observateur.ManagedPropertyHook
 	defer SetManagedPropertyHook(prev)
 
 	for _, groupe := range [][]ti13VecteurFige{ti13VecteursModeA, ti13VecteursModeB} {
@@ -356,7 +356,7 @@ func ti13VerifiePublication(t *testing.T, ref string, v ti13VecteurFige, vals []
 func TestTi13HookConsommeLesMemesBitsSansHook(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
-	prev := managedPropertyHook
+	prev := observateur.ManagedPropertyHook
 	defer SetManagedPropertyHook(prev)
 
 	cas := []struct {

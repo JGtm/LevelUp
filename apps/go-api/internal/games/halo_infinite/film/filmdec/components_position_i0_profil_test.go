@@ -153,9 +153,9 @@ func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
 
 	lire := func(mv MovementProfile, buf []byte) [3]float32 {
 		var vu [3]float32
-		precedent := posCaptureHook
-		posCaptureHook = func(s PositionSample) { vu = s.Vec }
-		defer func() { posCaptureHook = precedent }()
+		precedent := observateur.PosCaptureHook
+		observateur.PosCaptureHook = func(s PositionSample) { vu = s.Vec }
+		defer func() { observateur.PosCaptureHook = precedent }()
 		br := NewBitReader(buf)
 		br.poserMouvement(mv)
 		consumeObjectPositionDynamicPrecisionD(br, br.traversal())

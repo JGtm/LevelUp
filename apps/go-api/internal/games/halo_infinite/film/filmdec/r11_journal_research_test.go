@@ -159,8 +159,8 @@ func r11Collect(s r8MobSetup) r11Reads {
 		slot uint32
 		ts   uint64
 	}
-	prev48, prev56 := abilitySetHook, abilityEnergyHook
-	prev57, prev59 := spartanAbilityHook, abilityNonPredictedHook
+	prev48, prev56 := observateur.AbilitySetHook, observateur.AbilityEnergyHook
+	prev57, prev59 := observateur.SpartanAbilityHook, observateur.AbilityNonPredictedHook
 	SetAbilitySetHook(func(counter uint64, rank, _ int) {
 		out.Stat["i48"]++
 		out.Ranks = append(out.Ranks, r11RankRead{cur.slot, cur.ts, uint32(counter), rank})

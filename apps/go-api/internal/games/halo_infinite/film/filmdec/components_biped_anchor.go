@@ -93,7 +93,7 @@ type AbilityAnchorVec struct {
 }
 
 // AbilityNonPredictedState est la lecture complète d'i59 par le déser de production,
-// publiée par abilityNonPredictedHook (cf. ability_state_hooks.go).
+// publiée par observateur.AbilityNonPredictedHook (cf. ability_state_hooks.go).
 type AbilityNonPredictedState struct {
 	// Tag est le tag externe R(2) (FUN_142f2679c). Le corps n'existe que pour Tag==3.
 	Tag uint32

@@ -101,20 +101,10 @@ func setAccumSlot(slot uint32) { accumSlot = slot }
 // PosKindAbsFallback. The two paths have very different reliability in practice.
 var absViaFallback bool
 
-// posCaptureHook, when non-nil, receives every i0 position payload the deser decodes.
-// Nil by default (no-op, no behaviour change). Not safe for concurrent use across
-// goroutines (single-frame decode is sequential).
-//
-// INSTALLÉ DEPUIS LE PAQUET, PLUS DE L'EXTÉRIEUR : le seul installateur est
-// `scanForTargetDelta` (frame_records.go), qui capture la position i0 de chaque record
-// d'essai. Le réglage public `SetPositionCaptureHook` a été supprimé le 2026-09-05
-// (lot E, item E.2) : il n'avait aucun appelant.
-var posCaptureHook func(PositionSample)
-
 // emitPos reports a decoded i0 sample to the hook if one is installed.
 func emitPos(kind PosKind, v [3]float32) {
-	if posCaptureHook != nil {
-		posCaptureHook(PositionSample{Kind: kind, Vec: v, BitPos: posCaptureStartBit, Slot: posCaptureSlot})
+	if observateur.PosCaptureHook != nil {
+		observateur.PosCaptureHook(PositionSample{Kind: kind, Vec: v, BitPos: posCaptureStartBit, Slot: posCaptureSlot})
 	}
 }
 

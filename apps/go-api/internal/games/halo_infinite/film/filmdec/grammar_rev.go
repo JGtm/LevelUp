@@ -367,4 +367,32 @@ package filmdec
 // `KillSourceDecoderRev` ne bouge PAS : `killsource/` est INTACT — le balayage de `param_4`
 // passe toujours par `SetRecordStateParam`, meme espace, meme critere, memes lignes produites.
 // `SchemaVersion` reste 60.
-const GrammarRev = "grammar-2026-09-15.24"
+// ENTREE `grammar-2026-09-15.25` (2026-09-17, lot 2.2.f — RANG PROVISOIRE) : `.24` -> `.25`.
+// AUCUN OCTET N EST LU AUTREMENT.
+//
+// L OBSERVATEUR : TRENTE-SEPT VARIABLES DE PAQUET DEVIENNENT LES CHAMPS D UN SEUL OBJET. Les
+// VINGT-NEUF crochets de deserialiseur (un par famille de composants, plus la capture de
+// position, le masque de record et la sonde de references d unite) et les HUIT compteurs de
+// l inference de chaine — dont `compWidthObs`, « la table sans verrou » que l en-tete de
+// `decode_gate.go` nomme comme l une des deux raisons du verrou de processus — sont desormais
+// `filmdec.Observation`. Ratchet : 79 -> 43.
+//
+// UN OBSERVATEUR NE CHANGE AUCUNE CONSOMMATION DE BITS, et c est la propriete qui le distingue
+// du PROFIL : le profil DECIDE des largeurs, l observateur ne fait que recevoir ce que le
+// deserialiseur a deja lu. Elle est ecrite en tete de `observateur.go` — un champ qui changerait
+// un compte de bits serait une valeur de profil mal rangee.
+//
+// LA FORME « PASSE EN PARAMETRE » EST OUVERTE, ET SEULEMENT LA OU ELLE NE MENT PAS.
+// `FrameConfig.Obs` sert la famille de l inference de chaine, dont les compteurs sont ecrits
+// dans des fonctions qui tiennent DEJA leur cadre : un instrument y passe SON observateur et lit
+// ses compteurs sans jamais ecrire dans le processus. Les vingt-neuf crochets de deserialiseur,
+// eux, sont publies par des feuilles que seul le lecteur de bits atteint, et le lecteur ne
+// recevra son observateur qu au pas 5, avec le profil ; leur donner un parametre que les
+// feuilles ne liraient pas serait un mensonge, pas une etape. C est ecrit tel quel dans
+// `observateur.go`, avec la date de bascule, la cible de retrait et le critere.
+//
+// LES ANCRES `fichier:ligne` DE LA TABLE ECS SUIVENT (85 lignes recalees) : le retrait des
+// declarations a deplace des fonctions, et le garde-rail G1 lit ces ancres sur pieces.
+//
+// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
+const GrammarRev = "grammar-2026-09-15.25"

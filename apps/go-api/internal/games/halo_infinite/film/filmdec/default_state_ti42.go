@@ -50,7 +50,7 @@ package filmdec
 //
 // L'IDENTITE DE L'ARME SORT PAR LE MEME CHEMIN QUE CELLE DE L'EQUIPEMENT : le bloc
 // `object-multiplayer-properties` du point 2 publie son mot de 32 bits inconditionnel par
-// `mppHook` (MPPWord32). Pour ti=37 ce mot est le GlobalID du tag `eqip` ; l'hypothese pour
+// `observateur.MppHook` (MPPWord32). Pour ti=37 ce mot est le GlobalID du tag `eqip` ; l'hypothese pour
 // ti=42 est le tag `weap`, et elle se MESURE en croisant ce mot avec la famille high-32 lue
 // aux images-cles (deux chaines independantes), jamais en le supposant.
 //

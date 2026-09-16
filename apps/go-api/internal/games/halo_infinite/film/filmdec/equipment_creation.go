@@ -67,19 +67,14 @@ func (f EquipmentCreationField) String() string {
 	return fmt.Sprintf("champ inconnu (%d)", int(f))
 }
 
-// equipmentCreationHook, si non nil, reçoit CHAQUE lecture des deux champs du default-state de
-// ti=37 : le champ, la valeur, et `present` — faux quand la porte s'est fermée sans transmettre
-// de valeur. Une porte fermée n'est PAS une valeur nulle.
-var equipmentCreationHook func(f EquipmentCreationField, value uint64, present bool)
-
 // SetEquipmentCreationHook installe (ou retire, avec nil) la sonde du default-state de ti=37.
 func SetEquipmentCreationHook(h func(f EquipmentCreationField, value uint64, present bool)) {
-	equipmentCreationHook = h
+	observateur.EquipmentCreationHook = h
 }
 
 func publishEquipmentCreation(f EquipmentCreationField, value uint64, present bool) {
-	if equipmentCreationHook != nil {
-		equipmentCreationHook(f, value, present)
+	if observateur.EquipmentCreationHook != nil {
+		observateur.EquipmentCreationHook(f, value, present)
 	}
 }
 
@@ -174,7 +169,7 @@ type EquipmentCreationStats struct {
 // dir, sur la bande de slots de ti=37 lue dans les images-clés.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe
-// `equipmentCreationHook`, qui est un global de paquet. Le hook est restauré à la sortie.
+// `observateur.EquipmentCreationHook`, qui est un global de paquet. Le hook est restauré à la sortie.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 //
@@ -252,7 +247,7 @@ func ScanEquipmentCreationsForBand(
 // Les deux vont ENSEMBLE et se posent d'un seul geste : le balayage lit un record entier, et
 // n'installer que l'une des deux rendrait un record à moitié observé sans que rien ne le dise.
 func installCreationHooks(cur *equipCreationRead) func() {
-	prev, prevMPP := equipmentCreationHook, mppHook
+	prev, prevMPP := observateur.EquipmentCreationHook, observateur.MppHook
 	SetEquipmentCreationHook(func(f EquipmentCreationField, v uint64, present bool) {
 		cur.present[f], cur.val[f] = present, v
 	})

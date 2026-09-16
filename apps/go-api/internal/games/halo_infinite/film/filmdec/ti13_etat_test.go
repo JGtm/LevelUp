@@ -116,7 +116,7 @@ func ti13EtatScan(t *testing.T, c zcCensus, b zcBands, reg *Registry, clk zcCloc
 	var curIdx []int
 	var curPos int
 
-	prev := managedPropertyHook
+	prev := observateur.ManagedPropertyHook
 	SetManagedPropertyHook(func(f ManagedPropertyField, values []uint64) {
 		e := ti13Ech{tMS: curT, slot: curSlot, idx: -1, tag: int(values[0])}
 		if curPos < len(curIdx) {
