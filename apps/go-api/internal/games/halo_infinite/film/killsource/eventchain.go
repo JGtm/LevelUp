@@ -1,5 +1,7 @@
 package killsource
 
+import "levelup/go-api/internal/analysis/filmsource"
+
 // eventchain.go — LA LISTE D EVENEMENTS EN TETE DE PAQUET.
 //
 // Le paquet de replication commence par une LISTE D EVENEMENTS, puis vient la boucle de records
@@ -98,57 +100,89 @@ var evStub = map[int]bool{3: true, 4: true, 23: true, 24: true, 25: true, 26: tr
 var evFixed = map[int]int{5: 111, 6: 93, 7: 118, 9: 36, 12: 94, 21: 2, 34: 59, 38: 10, 40: 78,
 	75: 54, 76: 104}
 
-// evReader : lecteur MSB-first avec DETECTION DE DEBORDEMENT. Le drapeau est indispensable : une
-// lecture hors tampon rend des zeros, et sans lui une chaine desynchronisee << lit >> des
-// evenements parfaitement valides apres la fin du paquet.
-type evReader struct {
-	pl   []byte
-	bp   int
+// curseurEv : LE CURSEUR MEFIANT DE LA CHAINE D EVENEMENTS.
+//
+// Il ne lit AUCUN octet lui-meme (lot 2.4.1, ADR 0034 D-2) : il porte le lecteur de bits
+// canonique de la couche source ([filmsource.Bits]) et lui ajoute la seule chose que le moteur
+// n a pas — LE REFUS DE LIRE AU-DELA DU PAQUET. Le drapeau est indispensable : le lecteur du
+// moteur bourre a zero, et sans ce refus une chaine desynchronisee << lit >> des evenements
+// parfaitement valides apres la fin du paquet.
+//
+// LE DRAPEAU EST ICI, ET PAS DANS LE LECTEUR (arbitrage V15 (3)). La mefiance appartient au
+// MARCHEUR de chaine, pas au moteur : le lecteur canonique garde la semantique du jeu
+// (bourrage a zero), et le refus se teste par [filmsource.Bits.Remaining] AVANT chaque lecture.
+// Aucune valeur lue ne change — `bp+n > len(pl)*8` et `Remaining() < n` sont la meme condition,
+// et l equivalence bit a bit est prouvee par `equivalence_lecteur_test.go`.
+//
+// Jusqu au lot 2.4.1 ce type s appelait `evReader` et portait son propre `pl []byte` / `bp int`
+// avec sa propre boucle bit a bit (`bitsWide`) : c etait le DEUXIEME des sept lecteurs de bits
+// du depot.
+type curseurEv struct {
+	b    *filmsource.Bits
 	over bool
 }
 
-func (r *evReader) rd(n int) uint64 {
+// nouveauCurseurEv ouvre un curseur sur `pl`, positionne au bit `bp`.
+func nouveauCurseurEv(pl []byte, bp int) *curseurEv {
+	b := filmsource.NewBits(pl)
+	b.SetBitPos(bp)
+	return &curseurEv{b: b}
+}
+
+// pos : la position de lecture, en bits.
+func (r *curseurEv) pos() int { return r.b.BitPos() }
+
+// aller : repositionne le curseur a une position ABSOLUE deja calculee (la fin des champs d un
+// kill-event, par exemple). Ne leve pas le drapeau : la position vient d une lecture qui a
+// deja fait ses bornes.
+func (r *curseurEv) aller(p int) { r.b.SetBitPos(p) }
+
+// octets : les octets du paquet parcouru.
+func (r *curseurEv) octets() []byte { return r.b.Octets() }
+
+// epuise : plus aucun bit a lire.
+func (r *curseurEv) epuise() bool { return r.b.Remaining() <= 0 }
+
+func (r *curseurEv) rd(n int) uint64 {
 	if n <= 0 {
 		return 0
 	}
-	if r.bp+n > len(r.pl)*8 {
+	if r.b.Remaining() < n {
 		r.over = true
 		return 0
 	}
-	v := bitsWide(r.pl, r.bp, n)
-	r.bp += n
-	return v
+	return r.b.ReadBits(uint(n))
 }
 
-func (r *evReader) g1() int { return int(r.rd(1)) }
+func (r *curseurEv) g1() int { return int(r.rd(1)) }
 
 // skip : avance de `n` bits sans construire de valeur. Necessaire au-dela de 64 bits, ou `rd`
 // n aurait plus de sens.
-func (r *evReader) skip(n int) {
+func (r *curseurEv) skip(n int) {
 	if n <= 0 {
 		return
 	}
-	if r.bp+n > len(r.pl)*8 {
+	if r.b.Remaining() < n {
 		r.over = true
 		return
 	}
-	r.bp += n
+	r.b.Skip(n)
 }
 
-// bitsWide : lecture MSB-first de n bits (n <= 64). `bits32` et `bitsN` du paquet sont bornes a
-// 32 et 8 bits ; la grammaire d evenement lit jusqu a 128 bits par morceaux.
-func bitsWide(d []byte, bp, n int) uint64 {
-	var v uint64
-	for i := 0; i < n; i++ {
-		v = v<<1 | uint64(bitAt(d, bp+i))
-	}
-	return v
+// estAncreDeKillEvent : la position `x` ouvre-t-elle un kill-event ? Bit de continuation a 1
+// juste avant, code 85 sur les sept bits suivants. C est le GENERATEUR de candidats de
+// [killEventsIn] — la seule lecture que le balayage fait a CHAQUE bit du paquet, donc la seule
+// qui doive rester sans allocation : elle passe par les primitives de position de la couche
+// source, pas par un curseur construit par position essayee.
+func estAncreDeKillEvent(pl []byte, x int) bool {
+	return filmsource.BitAt(pl, x-1) == 1 &&
+		int(filmsource.BitsAt(pl, x, 7)) == killEventCode
 }
 
 // evPresence : la boucle de presence, 3 emplacements FIXES. Rend faux quand un emplacement
 // PRESENT porte un cfgIdx non resolu : la longueur est alors inconnue, et une longueur inconnue
 // arrete la chaine.
-func evPresence(r *evReader, code int) bool {
+func evPresence(r *curseurEv, code int) bool {
 	cfg := evCfgIdx[code]
 	for i := 0; i < 3; i++ {
 		if r.g1() == 0 {
@@ -211,7 +245,7 @@ type killEventFields struct {
 
 // readEntityRef5 : ECS_ReadEntityRefIndex5. Porte a 1 => ABSENT (-1) ; porte a 0 => 5 bits
 // d indice local.
-func readEntityRef5(r *evReader) int {
+func readEntityRef5(r *curseurEv) int {
 	if r.g1() != 0 {
 		return -1
 	}
@@ -240,7 +274,7 @@ func readEntityRef5(r *evReader) int {
 //
 //	victime(E5)  tueur(E5)  [% TUEUR]  R1  assistant(E5)  [% ASSISTANT]
 func readKillEvent(pl []byte, body int) killEventFields {
-	r := &evReader{pl: pl, bp: body}
+	r := nouveauCurseurEv(pl, body)
 	var k killEventFields
 	k.victim = readEntityRef5(r)
 	k.killer = readEntityRef5(r)
@@ -248,7 +282,7 @@ func readKillEvent(pl []byte, body int) killEventFields {
 	k.flag = r.g1()
 	k.assist = readEntityRef5(r)
 	k.assistPct = uint32(r.rd(32))
-	k.end = r.bp
+	k.end = r.pos()
 	if r.over {
 		k.end = -1
 	}
@@ -263,8 +297,8 @@ func killEventPlausible(k killEventFields) bool {
 
 // evStep : decode UN evenement complet a partir de son bit de continuation.
 // `fin` vaut vrai quand le bit de continuation est a 0 — fin NORMALE de la liste, pas une erreur.
-func evStep(r *evReader, gate15 bool) (fin, ok bool) {
-	if r.bp >= len(r.pl)*8 {
+func evStep(r *curseurEv, gate15 bool) (fin, ok bool) {
+	if r.epuise() {
 		return false, false
 	}
 	if r.g1() == 0 {
@@ -288,7 +322,7 @@ func evStep(r *evReader, gate15 bool) (fin, ok bool) {
 // gardes (rappel 99.2 %), 11/1739 faux gardes, dont 10 sont des kill-events REELS du meme paquet
 // (multi-kill atteste) et 1 porte un indice de victime hors roster (RE_LOG 7ter.25 (3)).
 func evChainLen(pl []byte, p int, gate15 bool, maxEv int) int {
-	r := &evReader{pl: pl, bp: p}
+	r := nouveauCurseurEv(pl, p)
 	n := 0
 	for n < maxEv {
 		fin, ok := evStep(r, gate15)

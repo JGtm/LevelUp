@@ -256,7 +256,7 @@ var registreKillsource = []Repli{
 		Condition: CondLectureNonPortee,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{
-			{Fichier: pkgKillsource + "eventbody.go", Ancre: "func evBody(r *evReader, code int, gate15 bool) bool {"},
+			{Fichier: pkgKillsource + "eventbody.go", Ancre: "func evBody(r *curseurEv, code int, gate15 bool) bool {"},
 			{Fichier: pkgKillsource + "eventchain.go", Ancre: "if c < 0 || c >= len(presRange) {"},
 		},
 		DatePose:        dateAudit0E,

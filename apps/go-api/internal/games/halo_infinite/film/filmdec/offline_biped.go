@@ -371,7 +371,7 @@ func DequantBipedAxis(q uint32, ax int, lay I0Layout, world Vec3Range) float32 {
 // panique aux memes positions qu'avant.
 func readBitsAt(b []byte, pos, n int) uint32 {
 	if pos >= 0 && n > 0 && n <= 64 && pos+n <= len(b)*8 {
-		return uint32(wordBitsAt(b, pos, uint(n)))
+		return uint32(filmsource.BitsAt(b, pos, uint(n)))
 	}
 	var v uint32
 	for i := 0; i < n; i++ {

@@ -136,34 +136,10 @@ func packetsOf(src *filmsource.Film) []packet {
 func (f *film) ms(p *packet) int { return int((p.ts - f.tsBase) / 1000) }
 
 // hasEvents : le paquet porte-t-il une liste d evenements ? Le bit 1 du payload le dit.
-func hasEvents(p *packet) bool { return bitAt(p.payload, 1) != 0 }
-
-// bitAt : lecture MSB-first d un bit. Hors tampon = 0, comme le lecteur de bits du moteur.
-func bitAt(d []byte, p int) int {
-	if p < 0 || p>>3 >= len(d) {
-		return 0
-	}
-	return int(d[p>>3]>>uint(7-(p&7))) & 1
-}
-
-// bits32 : lecture MSB-first de 32 bits a la position `p`.
-func bits32(d []byte, p int) uint32 {
-	i, sh := p>>3, uint(p&7)
-	var v uint64
-	for k := 0; k < 5; k++ {
-		v <<= 8
-		if i+k < len(d) {
-			v |= uint64(d[i+k])
-		}
-	}
-	return uint32(v >> (8 - sh))
-}
-
-// bitsN : lecture MSB-first de n bits (n <= 8) a la position `p`.
-func bitsN(d []byte, p, n int) int {
-	v := 0
-	for k := 0; k < n; k++ {
-		v = v<<1 | bitAt(d, p+k)
-	}
-	return v
-}
+//
+// LES TROIS PRIMITIVES DE POSITION DU PAQUET ONT DISPARU AU LOT 2.4.1 (`bitAt`, `bits32`,
+// `bitsN`) : elles formaient, avec `evReader` et `bitsWide`, le deuxieme des sept lecteurs de
+// bits du depot. Les 23 sites qui les appelaient passent par les primitives de la couche source
+// ([filmsource.BitAt], [filmsource.BitsAt]), dont l equivalence bit a bit est prouvee par
+// `equivalence_lecteur_test.go`.
+func hasEvents(p *packet) bool { return filmsource.BitAt(p.payload, 1) != 0 }

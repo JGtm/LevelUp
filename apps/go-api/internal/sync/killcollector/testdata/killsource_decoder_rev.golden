@@ -92,4 +92,13 @@
 #               identiques a l octet : meme espace balaye, meme critere, meme vainqueur. Aucun match
 #               deja decode n est candidat au backlog.
 
-killsource-2026-09-16.2	7d9ef1af0bf79a5eeaaab7f27690ae05e205fe80f0b43aeb5e8968eb87f87528
+#   2026-09-18  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.4.1). `killsource/` change de
+#               LECTEUR, pas de contenu : `evReader`, `bitsWide`, `bitAt`, `bits32` et `bitsN` sont
+#               SUPPRIMES au profit du lecteur canonique de la couche source (filmsource.Bits /
+#               BitsAt / BitAt). Le refus de lire au-dela du paquet passe du lecteur au MARCHEUR
+#               (curseurEv, qui teste Remaining() avant chaque lecture) : meme condition, memes
+#               valeurs. Prouve appel par appel sur 109 168 positions reelles des dix bobines, et de
+#               bout en bout par un golden de triplets produit PAR LE CODE DE LA BASE avant
+#               l absorption. Aucun match deja decode n est candidat au backlog.
+
+killsource-2026-09-16.2	7225fd401ebcf3a55c3f53dae03f357dc061b103414c94ad9ffa4fbc6d20d3b8

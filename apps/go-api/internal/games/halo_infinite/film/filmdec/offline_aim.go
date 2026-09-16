@@ -230,7 +230,7 @@ func ReadBitsAtForDiag(b []byte, pos, n int) uint32 { return readBitsAt(b, pos, 
 // balayage qui en reconnait des dizaines de milliers par film. `br` doit etre lie au
 // payload balaye.
 func scanRecordDirs(br *BitReader, at, total int, idx []int, g dirsGrammar) (componentDirs, componentVitals) {
-	pay := br.buf
+	pay := br.Octets()
 	var out componentDirs
 	var vit componentVitals
 	at += i0TailBits // queue d'i0 (handleSel + regionPresent)
