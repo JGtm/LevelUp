@@ -96,9 +96,21 @@ var plafondsParFichier = map[string]int{
 	"internal/games/halo_infinite/film/replay/zone_states_hill.go":   526,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
-	"internal/analysis/objectiveevents/statborg.go":                   687,
-	"internal/replaybuild/replaybuild.go":                             577,
-	"internal/games/halo_infinite/film/filmdec/equipment_creation.go": 508,
+	// --- entres en table A LA FUSION DU LOT 2.7g DANS L INTEGRATION (2026-09-17) : ces sept
+	// fichiers etaient sous le seuil (ou n existaient pas) a la base du lot et l ont depasse par la
+	// vague 2 de la famille 1.9 et le schema 60, avant que le ratchet n existe ici. Meme regle :
+	// chaque valeur ne peut que descendre. `document_vehicles.go` et `score_timeline.go` sont dans
+	// le perimetre du volet 2.7p (scission en cours) et sortiront de la table a sa fusion.
+	"internal/games/halo_infinite/film/replay/document_vehicles.go":                             505,
+	"internal/games/halo_infinite/film/replay/score_timeline.go":                                524,
+	"internal/games/halo_infinite/film/replay/fallback/registre_killsource.go":                  555,
+	"internal/games/halo_infinite/film/killsource/assist.go":                                    531,
+	"internal/games/halo_infinite/film/replay/document_shape_test.go":                           511,
+	"internal/games/halo_infinite/film/killsource/e197_identite_paquet_mesure_research_test.go": 654,
+	"internal/analysis/objectiveevents/e1911_manches_mesure_research_test.go":                   523,
+	"internal/analysis/objectiveevents/statborg.go":                                             687,
+	"internal/replaybuild/replaybuild.go":                                                       577,
+	"internal/games/halo_infinite/film/filmdec/equipment_creation.go":                           508,
 	// --- tests et instruments de mesure : tables de fixtures et balayages de recherche.
 	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":                   1202,
 	"internal/games/halo_infinite/film/filmdec/i59_anchor_test.go":                       1152,
