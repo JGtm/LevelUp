@@ -50,8 +50,9 @@ var worldObjectPrecisionReaders = map[string]string{
 		"pour le descripteur world-object et pourquoi il vit DANS la structure (restauration " +
 		"par valeur par l'installateur) — aucune lecture de la valeur ici",
 	"internal/games/halo_infinite/film/filmdec/position_capture.go": "repli d'`absAxisW`, INATTEIGNABLE en " +
-		"l'état : il est gardé par `absoluteAxisW > 0`, dont le défaut vaut 14 et dont le seul " +
-		"écrivain (killsource/calibrate.go) balaie 6..26",
+		"l'état : il est gardé par `br.absoluteAxisW() > 0`, dont le défaut vaut 14 et dont le " +
+		"seul écrivain (killsource/calibrate.go) balaie 6..26 — depuis le lot 2.2.a il le fait " +
+		"par `FrameConfig.Mouvement` et par l'héritage de processus, plus par une variable de paquet",
 	"internal/games/halo_infinite/film/filmdec/keyframe_ground_weapons.go": "CITATION en commentaire " +
 		"(parenté des archétypes d'objet du monde) — aucune lecture de la valeur",
 	"internal/games/halo_infinite/film/filmdec/components_biped_anchor.go": "le corps tag==3 d'i59 (ancre du " +

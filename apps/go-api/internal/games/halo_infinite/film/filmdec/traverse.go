@@ -66,7 +66,7 @@ const objectArchetypeCount = 50
 // The remaining 260 bits are read by FUN_140F44C38 leaf paths whose widths are
 // populated at map-load from the film's replication/precision config (DAT_1445cc9e0
 // per-axis widths, DAT_144632be0 index width, DAT_145121140) and read 0 statically —
-// the same limitation already affecting TraversalPrecision / PrecisionDescriptor. On
+// the same limitation already affecting the traversal PrecisionDescriptor. On
 // the calibration record those config-gated paths form a regular 96-bit block (a
 // quantized vec3/quat, "0x3FC,0" x4 @bit194256) plus dense words: NOT a free loop,
 // but driven by runtime widths not recoverable from the .exe. vtable[0x88] gets no
@@ -188,7 +188,7 @@ func consumeCorruptionCheck(br *BitReader) {
 // la raison historique (« grammaire de la queue non résoluble offline ») : la grammaire est
 // établie (consumeSimStateHandleTail, lot R7-b, décompile + prédicat prouvé vrai par
 // construction). Ce qui manque est la SOURCE DES LARGEURS D'AXE de cette queue sur le chemin
-// de production : `absAxisWFor` retombe sur `absoluteAxisW`, un UNIFORME 14 qui n'est la
+// de production : `absAxisWFor` retombe sur `AbsoluteAxisW`, un UNIFORME 14 qui n'est la
 // largeur d'aucune carte (Cliffhanger 13/13/14, Bazaar 17/17/16, Illusion 18/18/17 —
 // mesurés par DetectI0Layout le 2026-08-17). Continuer la marche avec une queue mal
 // dimensionnée propagerait un désalignement au lieu d'un désync propre.
@@ -196,7 +196,7 @@ func consumeCorruptionCheck(br *BitReader) {
 // KILL-SWITCH — bascule du défaut à `true` conditionnée à UN critère mesurable : que le
 // chemin absolu d'i0 tire ses trois largeurs de la carte du match (comme
 // `replay.installWorldObjectPrecision` le fait déjà pour `WorldObjectPrecision`) au lieu de
-// l'uniforme `absoluteAxisW`. Retrait cible du drapeau : à la bascule. Témoin de détection
+// l'uniforme `AbsoluteAxisW`. Retrait cible du drapeau : à la bascule. Témoin de détection
 // connu : `TestGoldenMiniBobine` (killsource) passe de 0 à 2 « source appartenant à la
 // victime » PROPOSÉES, 0 publiée dans les deux cas — mesuré le 2026-08-17.
 var simStateComplete = false
@@ -209,7 +209,7 @@ func SetSimStateComplete(v bool) { simStateComplete = v }
 // inconnue, désync propre ».
 //
 //	cVar1 = FUN_14076f91c()   garde RUNTIME (DAT_144e61ea0 / DAT_145121140), 0 bit
-//	                          = PositionFullPrecision, déjà modélisée ici.
+//	                          = `BitReader.fullPrecision`, déjà modélisée ici.
 //	cVar1 != 0 : FUN_1411b259c -> FUN_1406d676c(br, br, dst, 0x60)   = R(96) brut.
 //	cVar1 == 0 (retail, dominant) : FUN_14076e524(dst, br, idxOut, LEVEL=0x10) =
 //	          R(1) porte d'index ; si 0 -> R(DAT_144632be0) index de région ;
@@ -219,7 +219,7 @@ func SetSimStateComplete(v bool) { simStateComplete = v }
 // (ici la garde est runtime, pas un bit du flux) et MOINS son R(2) « fini » de queue — que
 // FUN_14076e494 n'appelle pas.
 func consumeSimStateHandleTail(br *BitReader) {
-	if fullPrecisionGate() { // FUN_14076f91c vrai -> copie brute
+	if fullPrecisionGate(br) { // FUN_14076f91c vrai -> copie brute
 		br.ReadBits(rawVec3Bits) // FUN_1406d676c(..., 0x60)
 		return
 	}
@@ -228,7 +228,7 @@ func consumeSimStateHandleTail(br *BitReader) {
 		idx = int(br.ReadBits(WorldObjectPrecision.IndexW))
 	}
 	for i := 0; i < 3; i++ {
-		br.ReadBits(absAxisWFor(idx, i)) // FUN_140cc5128 axe i
+		br.ReadBits(absAxisWFor(br, idx, i)) // FUN_140cc5128 axe i
 	}
 }
 

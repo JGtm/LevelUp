@@ -208,7 +208,7 @@ var registreFilmdec = []Repli{
 		Ordre:     OrdreDevantLaLecture,
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "position_capture.go",
-			Ancre:   "if absoluteAxisW > 0 {",
+			Ancre:   "if w := br.absoluteAxisW(); w > 0 {",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "lot 3.4 (largeurs par carte et par build)",

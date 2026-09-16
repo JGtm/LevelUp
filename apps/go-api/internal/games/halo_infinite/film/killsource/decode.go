@@ -97,10 +97,14 @@ func Decode(ctx context.Context, name string, film *filmsource.Film, opts *Optio
 // SANS CELA, enchainer deux films dans le meme process fait demarrer la calibration du second
 // depuis les valeurs du premier — mesure : le score d un film passe de 1111 a 1214 selon l ordre
 // d appel.
+//
+// LES DEUX LARGEURS DE POSITION SONT REGROUPEES DEPUIS LE LOT 2.2.a (`SetAbsoluteAxisW` et
+// `TraversalPrecision`, disparues) : elles voyagent avec le lecteur de bits, et la seule chose
+// qui survit a une passe est le PROFIL HERITE (`filmdec/mouvement_herite.go`) — remis a
+// l invariant ici, exactement comme les deux variables l etaient.
 func resetGlobals() {
-	filmdec.SetAbsoluteAxisW(14)
+	filmdec.ReinitialiserMouvementHerite()
 	filmdec.SetRecordStateParam(0)
-	filmdec.TraversalPrecision = filmdec.PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{6, 6, 6}}
 	filmdec.SetStrictGeneration(true)
 	filmdec.SetMobilityActionBodyPorted(true)
 }
@@ -150,7 +154,7 @@ func (c *decodeCtx) prepare(ctx context.Context, src *filmsource.Film) error {
 	if err = ctx.Err(); err != nil {
 		return err
 	}
-	c.walkRes = runWalk(c.film, tl, c.roster, c.opts.Views)
+	c.walkRes = runWalk(c.film, tl, c.roster, c.opts.Views, c.calib.Mouvement)
 	c.scanCands = scanFilm(c.film, c.roster.nPlay)
 	if err = ctx.Err(); err != nil {
 		return err

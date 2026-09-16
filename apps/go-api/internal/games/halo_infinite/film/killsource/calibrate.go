@@ -46,6 +46,15 @@ type calibration struct {
 	Flat          bool // le profil est plat : les valeurs par defaut ont ete conservees
 	RSP           uint32
 	RSPRatio      float64
+	// Mouvement est le PROFIL DE MOUVEMENT retenu, celui que toutes les passes qui suivent
+	// posent sur leur lecteur de bits (lot 2.2.a du PLAN_DECODEUR_FILM).
+	//
+	// AVANT CE LOT, LE RESULTAT DE LA CALIBRATION N ETAIT NULLE PART : il etait ECRIT dans
+	// deux variables de paquet de `filmdec` (`SetAbsoluteAxisW`, `TraversalPrecision`) que la
+	// passe suivante relisait sans le savoir — `runWalk` reconstruisait un `DefaultFrameConfig`
+	// et heritait pourtant des largeurs calibrees, par effet de bord du processus. Il est
+	// desormais RENDU, et passe explicitement par `FrameConfig.Mouvement`.
+	Mouvement filmdec.MovementProfile
 }
 
 func (c calibration) String() string {
@@ -73,7 +82,7 @@ const (
 func calibrate(f *film, tl *timeline, views int) calibration {
 	sample := calibSample(f, calibSampleSize)
 	cfg := filmdec.DefaultFrameConfig()
-	saved := filmdec.TraversalPrecision
+	saved := cfg.Mouvement.Traversal
 
 	type cand struct {
 		aw, iw uint
@@ -82,8 +91,8 @@ func calibrate(f *film, tl *timeline, views int) calibration {
 	out := make([]cand, 0, (axisWMax-axisWMin+1)*(indexWMax-indexWMin+1))
 	for iw := indexWMin; iw <= indexWMax; iw++ {
 		for aw := axisWMin; aw <= axisWMax; aw++ {
-			filmdec.SetAbsoluteAxisW(aw)
-			filmdec.TraversalPrecision = filmdec.PrecisionDescriptor{IndexW: iw, AxisW: saved.AxisW}
+			cfg.Mouvement.AbsoluteAxisW = aw
+			cfg.Mouvement.Traversal = filmdec.PrecisionDescriptor{IndexW: iw, AxisW: saved.AxisW}
 			out = append(out, cand{aw, iw, countBipedRecords(sample, tl, cfg, views)})
 		}
 	}
@@ -94,8 +103,15 @@ func calibrate(f *film, tl *timeline, views int) calibration {
 		res.Flat = true
 		res.AxisW, res.IndexW = 14, 1
 	}
-	filmdec.SetAbsoluteAxisW(res.AxisW)
-	filmdec.TraversalPrecision = filmdec.PrecisionDescriptor{IndexW: res.IndexW, AxisW: saved.AxisW}
+	cfg.Mouvement.AbsoluteAxisW = res.AxisW
+	cfg.Mouvement.Traversal = filmdec.PrecisionDescriptor{IndexW: res.IndexW, AxisW: saved.AxisW}
+	res.Mouvement = cfg.Mouvement
+	// L HERITAGE EST POSE ICI, ET C EST LE SEUL SITE DU DEPOT (lot 2.2.a). Il remplace les deux
+	// ecritures de variables de paquet (`SetAbsoluteAxisW`, `TraversalPrecision`) que ce site
+	// faisait : la cuisson du rejeu, qui s execute APRES dans le meme processus et qui ne
+	// demande rien, decodait deja ses composants a ces largeurs. Cf. `filmdec/mouvement_herite.go`
+	// pour la date de bascule et le critere de retrait.
+	filmdec.PoserMouvementHerite(res.Mouvement)
 	calibrateRSP(f, tl, views, &res)
 	return res
 }
@@ -141,7 +157,11 @@ func calibrateRSP(f *film, tl *timeline, views int, res *calibration) {
 	for i := 0; i < len(f.t0); i += rspStride {
 		sm = append(sm, f.t0[i])
 	}
+	// LE CADRE PORTE LE MOUVEMENT DEJA CALIBRE : le balayage de `recordStateParam` doit se
+	// juger aux largeurs retenues, pas aux largeurs par defaut. C etait vrai avant le lot
+	// 2.2.a parce que les largeurs vivaient dans le processus ; c est desormais ecrit.
 	cfg := filmdec.DefaultFrameConfig()
+	cfg.Mouvement = res.Mouvement
 	best, bestN, worstN := uint32(0), -1, 1<<62
 	for r := uint32(0); r <= rspMax; r++ {
 		filmdec.SetRecordStateParam(r)

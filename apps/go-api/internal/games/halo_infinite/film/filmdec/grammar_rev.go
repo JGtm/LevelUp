@@ -236,4 +236,35 @@ package filmdec
 // `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` non plus (aucun
 // octet cuit ne change, et `replay-equiv` doit rendre ZERO difference — une difference serait
 // une regression, pas une divergence).
-const GrammarRev = "grammar-2026-09-15.19"
+// ENTREE `grammar-2026-09-15.20` (2026-09-17, lot 2.2.a — RANG PROVISOIRE, a renumeroter au
+// rang de fusion) : `.19` -> `.20`. AUCUN OCTET N EST LU AUTREMENT.
+//
+// LES LECTEURS DU CHEMIN DE POSITION PRENNENT LEUR VALEUR AU PROFIL. Les cinq valeurs de la
+// famille 2.2.a — le descripteur de quantification de TRAVERSEE, la largeur d axe des chemins
+// ABSOLUS, et les trois drapeaux de contexte (pleine precision, queue de poignee du delta,
+// saut calibre) — etaient des VARIABLES DE PAQUET de `filmdec`. Elles voyagent desormais avec
+// le LECTEUR DE BITS (`BitReader.mv`, pose par [BitReader.poserMouvement]), seul objet deja
+// passe a tous les deserialiseurs : une copie par lecteur construit, jamais une lecture par bit
+// lu (budget 0.A.5). Leur source est [mouvementDuProfil], la MEME fonction que [ResolveProfile]
+// emploie — il n y a plus deux tables de valeurs.
+//
+// LE SEUL ECRIVAIN DE PRODUCTION PASSE PAR LE CADRE. La calibration de `killsource`
+// (`calibrate.go`) balayait 63 configurations en ECRIVANT dans le processus a chaque essai ;
+// elle les passe maintenant par `FrameConfig.Mouvement`, que chaque porte de balayage pose EN
+// TETE sur son lecteur. Son resultat est RENDU (`calibration.Mouvement`) et passe explicitement
+// a `runWalk` et a `calibrateRSP`, qui en heritaient jusqu ici par effet de bord.
+//
+// UNE VARIABLE DE PAQUET SURVIT, ET ELLE EST NOMMEE : `mouvementHerite`
+// (`mouvement_herite.go`), le profil qu une passe laisse a la suivante DANS LE MEME PROCESSUS.
+// Ce n est pas un reglage mais un FAIT DE PRODUCTION mesure sur pieces : `replaybuild` decode
+// `killsource` PUIS appelle `replay.BuildFromFilm`, et `killsource` ne restaure pas les
+// largeurs qu il a calibrees — la cuisson du rejeu decode donc deja aux largeurs du kill-feed.
+// Le retirer changerait la largeur de chaque i0 du rejeu, ce que D4 interdit. Il porte donc sa
+// date de bascule, sa cible de retrait (lot 2.3, au plus tard 2.5) et son critere mesurable.
+// Bilan du ratchet : 94 -> 90 variables de paquet.
+//
+// `KillSourceDecoderRev` NE BOUGE PAS : `killsource/` change de forme (la calibration rend son
+// resultat au lieu de l ecrire dans le processus) mais les lignes PRODUITES sont identiques a
+// l octet — meme espace balaye, meme critere, meme vainqueur, memes largeurs pour les passes
+// qui suivent. `SchemaVersion` reste 60 : aucun champ publie ne bouge.
+const GrammarRev = "grammar-2026-09-15.20"

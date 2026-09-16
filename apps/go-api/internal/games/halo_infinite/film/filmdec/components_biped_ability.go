@@ -127,7 +127,7 @@ func SetAbilitySetHook(h func(counter uint64, rank int, width int)) { abilitySet
 //	R(w) ; w = 4 if DAT_145121140 == 1 else 2   (-> ctx+0xa33)
 //	R(1) flag                                   (-> ctx+0xa36)
 //
-// DAT_145121140 is the process-wide high-precision setting — PositionFullPrecision, and
+// DAT_145121140 is the process-wide high-precision setting — `fullPrecision` du profil, and
 // it ALONE (this reader does NOT consult the baseline scope DAT_144e61ea0 : verifie sur
 // piece le 2026-08-17, `iVar10 = (DAT_145121140 == '\x01') * 2 + 2`). Retail offline films
 // keep it false -> w=2, total 3 bits.
@@ -135,7 +135,7 @@ func SetAbilitySetHook(h func(counter uint64, rank int, width int)) { abilitySet
 // trailing block reads exactly one more bit).
 func consumeBipedControlContext(br *BitReader) {
 	w := uint(2)
-	if PositionFullPrecision { // DAT_145121140 == 1 -> 4-bit field
+	if br.fullPrecision() { // DAT_145121140 == 1 -> 4-bit field
 		w = 4
 	}
 	br.ReadBits(w) // R(2|4) -> ctx+0xa33
@@ -333,7 +333,7 @@ func consume140c1e9d4(br *BitReader, w uint) {
 // CORRIGE le 2026-08-17 (lot R7-c) : ce site rendait ZERO bit. Le vecteur ecrit est bien un
 // NaN de conservation, mais le CURSEUR avance de 96 bits.
 func consumeE494Position(br *BitReader) {
-	if fullPrecisionGate() {
+	if fullPrecisionGate(br) {
 		br.ReadBits(rawVec3Bits)
 		return
 	}

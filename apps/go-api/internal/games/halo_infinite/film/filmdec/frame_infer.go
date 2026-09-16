@@ -17,6 +17,7 @@ package filmdec
 // successor. Falls back to a desync (returns) when inference is ambiguous/none.
 func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int) {
 	br := NewBitReader(buf)
+	br.poserMouvement(cfg.Mouvement) // EN TETE (lot 2.2.a)
 	out, inferred, _ := decodeInferLoop(br, buf, w, cfg)
 	return out, inferred
 }
@@ -250,6 +251,7 @@ func inferUnboundArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (u
 	for ti := range w.Reg.Archetypes {
 		arch := w.Reg.Archetypes[ti]
 		br := NewBitReader(buf)
+		br.poserMouvement(cfg.Mouvement)
 		br.Skip(bitpos) // bitpos = delta body start (mask), already past type+id
 		t := decodeDeltaWithArch(br, arch, uint32(ti))
 		if t.DesyncAt != -1 {

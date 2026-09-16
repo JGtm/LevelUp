@@ -234,7 +234,7 @@ func consumeBipedDefaultStateMovement(br *BitReader) {
 	// i0 object-position (FUN_1406cfe44 chemin absolu / FUN_14076e29c spawn convergent sur
 	// FUN_14076e524) : precHigh R(1) + idxSel R(1) + idx R(IndexW) + 3×R(axisW).
 	posCaptureStartBit = br.BitPos()
-	consumeAbsoluteWithGate(br, TraversalPrecision) // FUN_14076e524 : vec3 quantifié absolu (emitPos)
+	consumeAbsoluteWithGate(br, br.traversal()) // FUN_14076e524 : vec3 quantifié absolu (emitPos)
 }
 
 // consumePresenceMask porte FUN_1406d7610 (lecteur du masque de présence des composants,

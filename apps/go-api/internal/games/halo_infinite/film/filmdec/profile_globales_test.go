@@ -111,6 +111,12 @@ func verifierCadreEgaleConstantes(t *testing.T) {
 //
 // IL LIT LES GLOBALES TELLES QU ELLES SONT, et c est voulu : un test du paquet qui les laisserait
 // sales est lui-meme un defaut, et ce test est l endroit ou il se voit.
+//
+// IL A MAIGRI DE CINQ LIGNES AU LOT 2.2.a : le descripteur de traversee, la largeur d axe
+// absolue et les trois drapeaux de position ne sont plus des variables de paquet — les lecteurs
+// les prennent au profil que porte le lecteur de bits, ce que prouve
+// [TestLecteurPorteLeProfilDeMouvement]. Ne restent ici que les valeurs des familles 2.2.b et
+// 2.2.e, encore en globales.
 func verifierMouvementEgaleGlobales(t *testing.T) {
 	t.Helper()
 	m := ResolveProfile(nil, nil).Movement()
@@ -118,14 +124,9 @@ func verifierMouvementEgaleGlobales(t *testing.T) {
 		nom             string
 		profil, globale any
 	}{
-		{"Traversal", m.Traversal, TraversalPrecision},
-		{"AbsoluteAxisW", m.AbsoluteAxisW, absoluteAxisW},
 		{"DeltaQuantum", m.DeltaQuantum, DeltaQuantum},
 		{"DeltaAxisWidth", m.DeltaAxisWidth, DeltaAxisWidth},
 		{"Range", m.Range, WorldPositionRange},
-		{"FullPrecision", m.FullPrecision, PositionFullPrecision},
-		{"DeltaHasHandleTail", m.DeltaHasHandleTail, PositionDeltaHasHandleTail},
-		{"CalibratedSkip", m.CalibratedSkip, PositionCalibratedSkip},
 		{"MobilityActionExtraBits", m.MobilityActionExtraBits, MobilityActionExtraBits},
 	}
 	for _, e := range ecarts {
@@ -134,6 +135,46 @@ func verifierMouvementEgaleGlobales(t *testing.T) {
 				"les lecteurs sur une valeur differente de celle qu ils lisent", e.nom,
 				e.profil, e.globale)
 		}
+	}
+}
+
+// TestLecteurPorteLeProfilDeMouvement — LA BASCULE DU LOT 2.2.a, PROUVEE.
+//
+// Trois affirmations, et chacune ferme un chemin par lequel un lecteur pourrait se retrouver
+// avec une autre valeur que celle du profil :
+//
+//	AU REPOS      un lecteur neuf porte EXACTEMENT [mouvementDuProfil] — donc l heritage de
+//	              processus (`mouvement_herite.go`), au repos, vaut l invariant du profil.
+//	PAR LE CADRE  `DefaultFrameConfig().Mouvement` dit la meme chose, pour les portes de
+//	              balayage qui reconstruisent un cadre.
+//	EN TETE       une valeur posee en tete de balayage arrive jusqu aux accesseurs que les
+//	              deserialiseurs appellent — et n en modifie aucun autre lecteur.
+func TestLecteurPorteLeProfilDeMouvement(t *testing.T) {
+	release := LockProcessDecode()
+	defer release()
+	invariant := ResolveProfile(nil, nil).Movement()
+	if got := NewBitReader(nil).mv; got != invariant {
+		t.Errorf("lecteur neuf : mouvement %+v, profil %+v", got, invariant)
+	}
+	if got := DefaultFrameConfig().Mouvement; got != invariant {
+		t.Errorf("cadre par defaut : mouvement %+v, profil %+v", got, invariant)
+	}
+	br, temoin := NewBitReader(nil), NewBitReader(nil)
+	pose := invariant
+	pose.Traversal = PrecisionDescriptor{IndexW: 3, AxisW: [3]uint{11, 12, 13}}
+	pose.AbsoluteAxisW, pose.FullPrecision = 19, true
+	pose.DeltaHasHandleTail, pose.CalibratedSkip = true, true
+	br.poserMouvement(pose)
+	switch {
+	case br.traversal() != pose.Traversal:
+		t.Errorf("traversal() rend %+v, pose %+v", br.traversal(), pose.Traversal)
+	case br.absoluteAxisW() != pose.AbsoluteAxisW:
+		t.Errorf("absoluteAxisW() rend %d, pose %d", br.absoluteAxisW(), pose.AbsoluteAxisW)
+	case !br.fullPrecision() || !br.deltaHasHandleTail() || !br.calibratedSkip():
+		t.Errorf("les trois drapeaux poses ne sont pas rendus : %v/%v/%v", br.fullPrecision(),
+			br.deltaHasHandleTail(), br.calibratedSkip())
+	case temoin.mv != invariant:
+		t.Errorf("poser le profil sur un lecteur a change un AUTRE lecteur : %+v", temoin.mv)
 	}
 }
 
