@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/observability"
 )
@@ -174,7 +175,7 @@ func offsetDeLaChaineDeBuild(t *testing.T, chunk0 []byte) int {
 
 // identiteDeLaBobine rend la section d'identification lue par `grammar`, pour que les mutations
 // portent sur les octets que la GRAMMAIRE designe et non sur une recherche a nous.
-func identiteDeLaBobine(t *testing.T, chunk0 []byte) grammar.FilmIdentity {
+func identiteDeLaBobine(t *testing.T, chunk0 []byte) profile.FilmIdentity {
 	t.Helper()
 	ident, err := grammar.ReadFilmIdentity(chunk0)
 	if err != nil {

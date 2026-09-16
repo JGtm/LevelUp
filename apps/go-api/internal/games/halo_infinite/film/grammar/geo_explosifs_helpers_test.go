@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // geoActiveBase : base bipede DETECTEE du film courant (ref dom1 -> slot absolu = base+idx).
@@ -286,7 +287,7 @@ func geoResolveBip(w *World, base, idx int) bool {
 
 // geoTracks decode positions monde ET visee (i21) par slot, tries par ts. Filtres teleport/
 // isolation coupes pour MAXIMISER la couverture (on mesure la resolvabilite, pas une trajectoire).
-func geoTracks(t *testing.T, dir string, wr *Vec3Range, n int) map[uint32][]geoAimSample {
+func geoTracks(t *testing.T, dir string, wr *profile.Vec3Range, n int) map[uint32][]geoAimSample {
 	t.Helper()
 	opt := DefaultScanFilmOptions()
 	opt.MaxSpeedMPS = 0

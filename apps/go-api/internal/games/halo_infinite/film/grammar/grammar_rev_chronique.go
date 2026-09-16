@@ -27,185 +27,12 @@ package grammar
 // commit par commit sur l integration (`git log --first-parent`), la suite reelle est celle-ci —
 // un lot, un rang, dans l ordre ou les merges sont tombes.
 //
-// LES RANGS `.12` A `.20` VIVENT DANS `grammar_rev_chronique_archive.go` : la chronique se
-// ROTATIONNE quand ce fichier atteint 500 lignes, comme `.ai/thought_log.md`. Ce qui suit est
-// la suite VIVANTE, a partir du `.21`.
+// LES RANGS `.12` A `.26` VIVENT DANS `grammar_rev_chronique_archive.go` : la chronique se
+// ROTATIONNE quand ce fichier atteint 500 lignes, comme `.ai/thought_log.md`. Le geste a ete
+// refait le 2026-09-16 (lot 2.5.b), sur les rangs `.21` a `.26` (les six lots de la famille
+// 2.2) : c est le geste ordinaire que l en-tete de l archive annonce, pas un incident. Ce qui
+// suit est la suite VIVANTE, a partir du `.27`.
 //
-// ENTREE `grammar-2026-09-15.21` (2026-09-17, lot 2.2.a — RANG DE FUSION) : `.20` -> `.21`.
-// AUCUN OCTET N EST LU AUTREMENT.
-//
-// LES SIX RANGS DU LOT 2.2 ONT ETE DECALES DE +1 (`.20`-`.25` -> `.21`-`.26`) : ils avaient ete
-// poses a titre PROVISOIRE sur une base ou l integration valait `.19`, et celle-ci est passee a
-// `.20` (fusion 2.7g + 2.7p + correctif lint). Ce sont donc les rangs de FUSION. Le decalage ne
-// touche AUCUNE source hachee : `grammar_rev.go` est hors de l ensemble d empreinte depuis la
-// revue R1 (P2-3), et l empreinte des six rangs est inchangee a l octet.
-//
-// LES LECTEURS DU CHEMIN DE POSITION PRENNENT LEUR VALEUR AU PROFIL. Les cinq valeurs de la
-// famille 2.2.a — le descripteur de quantification de TRAVERSEE, la largeur d axe des chemins
-// ABSOLUS, et les trois drapeaux de contexte (pleine precision, queue de poignee du delta,
-// saut calibre) — etaient des VARIABLES DE PAQUET de `filmdec`. Elles voyagent desormais avec
-// le LECTEUR DE BITS (`Lecteur.mv`, pose par [Lecteur.poserMouvement]), seul objet deja
-// passe a tous les deserialiseurs : une copie par lecteur construit, jamais une lecture par bit
-// lu (budget 0.A.5). Leur source est [mouvementDuProfil], la MEME fonction que [ResolveProfile]
-// emploie — il n y a plus deux tables de valeurs.
-//
-// LE SEUL ECRIVAIN DE PRODUCTION PASSE PAR LE CADRE. La calibration de `killsource`
-// (`calibrate.go`) balayait 63 configurations en ECRIVANT dans le processus a chaque essai ;
-// elle les passe maintenant par `FrameConfig.Mouvement`, que chaque porte de balayage pose EN
-// TETE sur son lecteur. Son resultat est RENDU (`calibration.Mouvement`) et passe explicitement
-// a `runWalk` et a `calibrateRSP`, qui en heritaient jusqu ici par effet de bord.
-//
-// UNE VARIABLE DE PAQUET SURVIT, ET ELLE EST NOMMEE : `herite`
-// (`mouvement_herite.go`), le profil qu une passe laisse a la suivante DANS LE MEME PROCESSUS.
-// Ce n est pas un reglage mais un FAIT DE PRODUCTION mesure sur pieces : `replaybuild` decode
-// `killsource` PUIS appelle `replay.BuildFromFilm`, et `killsource` ne restaure pas les
-// largeurs qu il a calibrees — la cuisson du rejeu decode donc deja aux largeurs du kill-feed.
-// Le retirer changerait la largeur de chaque i0 du rejeu, ce que D4 interdit. Il porte donc sa
-// date de bascule, sa cible de retrait (lot 2.3, au plus tard 2.5) et son critere mesurable.
-// Bilan du ratchet : 94 -> 90 variables de paquet.
-//
-// `KillSourceDecoderRev` NE BOUGE PAS : `killsource/` change de forme (la calibration rend son
-// resultat au lieu de l ecrire dans le processus) mais les lignes PRODUITES sont identiques a
-// l octet — meme espace balaye, meme critere, meme vainqueur, memes largeurs pour les passes
-// qui suivent. `SchemaVersion` reste 60 : aucun champ publie ne bouge.
-// ENTREE `grammar-2026-09-15.22` (2026-09-17, lot 2.2.b — RANG DE FUSION) : `.21` -> `.22`.
-// AUCUN OCTET N EST LU AUTREMENT.
-//
-// LES LECTEURS DES OBJETS DU MONDE PRENNENT LEUR VALEUR AU PROFIL. Quatre variables de paquet
-// de plus le rejoignent : le descripteur world-object (largeurs d axe, largeur d index de
-// region, region attendue), la range de dequantification absolue, le quantum du chemin delta
-// et la largeur d axe du chemin delta axis-width. Trois n avaient plus d ecrivain depuis le
-// lot E ; la quatrieme est posee PAR CARTE, et son installateur
-// (`replay/world_object_precision.go`) ecrit desormais le profil HERITE au lieu d une globale
-// propre. Aucune variable neuve : le canal du lot 2.2.a suffisait.
-//
-// POURQUOI L HERITAGE ET PAS LE PROFIL DU FILM, ICI AUSSI. Les largeurs de la carte doivent
-// atteindre les quarante balayages de `replay.BuildFromFilm`, dont aucun ne recoit le profil et
-// dont chacun construit ses propres lecteurs. Tant que le profil ne descend pas jusqu a eux
-// (lot 2.5), l installateur reste le seul canal — c est la meme dette, pas une nouvelle.
-//
-// TROIS LECTEURS N ONT PAS DE LECTEUR DE BITS (`projectiles.go` : `projGateBits`, `projPosBits`,
-// `decodeWorldObjectPos`). Ils lisent par DECALAGE D OCTET sur un payload, pour LOCALISER un
-// record avant de le decoder, et prennent donc leurs largeurs a l heritage par une fonction
-// NOMMEE au lieu d une variable. Le garde-rail d allowlist les voit : il est re-cle sur les
-// TROIS formes d acces, plus sur un seul nom.
-//
-// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
-// ENTREE `grammar-2026-09-15.23` (2026-09-17, lot 2.2.c — RANG DE FUSION) : `.22` -> `.23`.
-// AUCUN OCTET N EST LU AUTREMENT.
-//
-// LES MARCHES D IMAGE-CLE PRENNENT LEUR CADRE AU PROFIL. `walkKeyframeFullState`,
-// `consumeFullStateDefaultBlock` et la lecture d equipe du pied de record lisaient les DEUX
-// constantes du paquet (en-tete de 108 bits, mot de taille de 32) ; elles les prennent
-// desormais au lecteur, qui les porte depuis une source unique — `cadreDuProfil`, la meme
-// fonction que [ResolveProfile] emploie pour poser `Profile.Keyframe`. Les deux constantes
-// n ont plus qu UN lecteur dans le paquet : cette fonction.
-//
-// POURQUOI CELA COMPTE ALORS QUE LE RATCHET NE BOUGE PAS. La famille des images-cles ne portait
-// AUCUNE variable de paquet : `keyframeBodyVariants` avait deja quitte la production a la revue
-// de jalon M1 (constat C4, avec `walkKeyframeBody`), et les largeurs etaient des `const`. Le
-// compte reste donc a 86 — et le gain n est pas la : il est qu une valeur faussee DANS LE
-// PROFIL rougit desormais la lecture (`TestKeyframeClosureRatchet`, sur les sept bobines), au
-// lieu de ne rougir qu une constante que personne ne relie au profil.
-//
-// LE BOUTON DES TEMOINS NEGATIFS SURVIT, ET IL EST INTACT : quand il est pose, il remplace le
-// cadre du profil — c est sa seule raison d etre (mesure du plancher de faux positifs, regle 4
-// de METHODE_RETRO_INGENIERIE_FILM). Il n est pas un reglage de production : non exporte, sans
-// appelant hors instruments, et son propre garde-rail interdit meme de le NOMMER ici.
-//
-// `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
-// ENTREE `grammar-2026-09-15.24` (2026-09-17, lot 2.2.d — RANG DE FUSION) : `.23` -> `.24`.
-// AUCUN OCTET N EST LU AUTREMENT.
-//
-// LA VERSION DU FILM VIENT DU PROFIL DU CONTEXTE. La phase de balayage des positions du rejeu
-// rouvrait le registre pour son propre compte (`FilmMajorVersion(s.film)`) alors que le
-// contexte avait deja resolu le profil a sa construction (D1). Elle prend desormais
-// `Profile.Highlight()` — MEME valeur par le MEME chemin (les deux composent depuis
-// `FilmMajorVersionFromHeader`), une localisation de `chunk_00` en moins par cuisson, et le
-// drapeau `Lue` a la place d un second booleen qui disait la meme chose.
-//
-// CE QUE LA FAMILLE NE PEUT PAS FAIRE, ET POURQUOI C EST ECRIT ICI. La BRANCHE qui applique
-// l implantation du gamertag (`analysis.decodeEventBytes`, `version <= 38 || version >= 41`) et
-// les offsets du PIED (octets 36, 37, 47, 48 dans `analysis/objectiveevents`) vivent sous
-// `internal/analysis/`, a qui le ratchet `no_title_package_in_analysis_test.go` interdit
-// d importer un paquet de titre — allowlist a une seule entree, et ce n est pas celle-la. Les y
-// faire lire le profil exigerait ce que la decision V5 et le pas 5 tranchent : faire descendre
-// la source du film sous `film/internal/source`. La deuxieme copie de la regle reste donc en
-// place, gardee par `TestProfilHighlightEgaleLeParseur` — le garde-rail qui interdit aux deux
-// de diverger. Statue `[!]` a l item 2.2.d, consigne en §4 du plan.
-//
-// L EMPREINTE NE BOUGE PAS, ET LA REVISION SI : c est le seul lot de la serie dont le
-// changement vit ENTIEREMENT hors des deux paquets haches (`filmdec/` et `killsource/`) — il
-// est dans `replay/film_scan.go`. La revision monte quand meme, parce qu elle nomme la
-// GRAMMAIRE SOUS LAQUELLE UN ARTEFACT A ETE CUIT et qu un lecteur de cette chaine a change ;
-// le golden porte donc le meme sha sur deux rangs, ce qui se lit et ne se devine pas.
-//
-// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
-// ENTREE `grammar-2026-09-15.25` (2026-09-17, lot 2.2.e — RANG DE FUSION) : `.24` -> `.25`.
-// AUCUN OCTET N EST LU AUTREMENT.
-//
-// EQUIPEMENT ET MOBILITE AU PROFIL, ET L HERITAGE DEVIENT UNE STRUCTURE. Cinq valeurs de plus
-// quittent les variables de paquet pour le profil que le lecteur porte : les DEUX largeurs du
-// bloc `object-multiplayer-properties` (la lecture de tout l etat par defaut en depend), le
-// `param_4` qu un harnais force et son drapeau, et les bits supplementaires d une action de
-// mobilite. Deux listes de candidats de la calibration MPP redeviennent des FONCTIONS — c etaient
-// des tables de grammaire deguisees en `var`, que rien n ecrivait.
-//
-// L HERITAGE PORTE DESORMAIS TOUT CE QU UNE PASSE LAISSE A LA SUIVANTE, en UNE structure
-// (`profil_herite.go`, renomme depuis `mouvement_herite.go`) : mouvement, largeurs MPP,
-// `param_4` force. Onze variables de paquet regroupees en une depuis le lot 2.2.a, avec une
-// seule date de bascule, une seule cible de retrait et un seul critere.
-//
-// SA REMISE A ZERO RESTE BORNEE AU MOUVEMENT, et c est mesure : `killsource.resetGlobals` ne
-// remettait pas les largeurs MPP avant ce lot (elles sont posees et RESTAUREES par leur
-// installateur, donc equilibrees) ni le `param_4` (remis juste apres par son propre reglage).
-// L elargir serait un changement de comportement, pas un nettoyage.
-//
-// DEPLACEMENT PUR EN PRIME : la migration des deux largeurs a fait passer `default_state.go` a
-// 503 lignes ; le decoupage du bloc MPP en sort dans `mpp_widths.go`, sans qu une ligne de
-// logique change. Ratchet des variables de paquet : 86 -> 79.
-//
-// LA REVUE ADVERSARIALE DU LOT (2.3.5) N A CHANGE AUCUN OCTET LU : 27 constats, 3 P1 et 19 P2
-// confirmes, 5 refuses, zero P0. Cote `filmdec` — ratchet des variables resserre de 22 a 21 (le
-// compte REEL ; 22 laissait une place libre), six blocs de doc INVERSEE reecrits, godoc de trois
-// symboles disparus retirees, et `Lecteur.Observation` / `Lecteur.Contexte`, ajoutes par ce
-// lot sans aucun appelant hors test, SUPPRIMES (regle 7). Cote `replay`, la pose du profil puis
-// de la carte devient `poserProfilPuisCarte`, qu epingle
-// `TestRouteDuProfilCalibreJusquAuContexte` : la route de D1 n avait aucun test qui rougisse, ni
-// sur des options ignorees, ni sur l ordre inverse — qui effacait les largeurs de la carte en
-// silence, `PoserProfilDeBalayage` remplacant le profil ENTIER.
-//
-// `KillSourceDecoderRev` ne bouge PAS : `killsource/` est INTACT — le balayage de `param_4`
-// passe toujours par `SetRecordStateParam`, meme espace, meme critere, memes lignes produites.
-// `SchemaVersion` reste 60.
-// ENTREE `grammar-2026-09-15.26` (2026-09-17, lot 2.2.f — RANG DE FUSION) : `.25` -> `.26`.
-// AUCUN OCTET N EST LU AUTREMENT.
-//
-// L OBSERVATEUR : TRENTE-SEPT VARIABLES DE PAQUET DEVIENNENT LES CHAMPS D UN SEUL OBJET. Les
-// VINGT-NEUF crochets de deserialiseur (un par famille de composants, plus la capture de
-// position, le masque de record et la sonde de references d unite) et les HUIT compteurs de
-// l inference de chaine — dont `compWidthObs`, « la table sans verrou » que l en-tete de
-// `decode_gate.go` nomme comme l une des deux raisons du verrou de processus — sont desormais
-// `grammar.Observation`. Ratchet : 79 -> 43.
-//
-// UN OBSERVATEUR NE CHANGE AUCUNE CONSOMMATION DE BITS, et c est la propriete qui le distingue
-// du PROFIL : le profil DECIDE des largeurs, l observateur ne fait que recevoir ce que le
-// deserialiseur a deja lu. Elle est ecrite en tete de `observateur.go` — un champ qui changerait
-// un compte de bits serait une valeur de profil mal rangee.
-//
-// LA FORME « PASSE EN PARAMETRE » EST OUVERTE, ET SEULEMENT LA OU ELLE NE MENT PAS.
-// `FrameConfig.Obs` sert la famille de l inference de chaine, dont les compteurs sont ecrits
-// dans des fonctions qui tiennent DEJA leur cadre : un instrument y passe SON observateur et lit
-// ses compteurs sans jamais ecrire dans le processus. Les vingt-neuf crochets de deserialiseur,
-// eux, sont publies par des feuilles que seul le lecteur de bits atteint, et le lecteur ne
-// recevra son observateur qu au pas 5, avec le profil ; leur donner un parametre que les
-// feuilles ne liraient pas serait un mensonge, pas une etape. C est ecrit tel quel dans
-// `observateur.go`, avec la date de bascule, la cible de retrait et le critere.
-//
-// LES ANCRES `fichier:ligne` DE LA TABLE ECS SUIVENT (85 lignes recalees) : le retrait des
-// declarations a deplace des fonctions, et le garde-rail G1 lit ces ancres sur pieces.
-//
-// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
 // ENTREE `grammar-2026-09-15.27` (2026-09-17, lot 2.3 — RANG PROVISOIRE) : `.26` -> `.27`.
 // AUCUN OCTET N EST LU AUTREMENT.
 //
@@ -444,7 +271,7 @@ package grammar
 // sections de `chunk_00`, le registre, la table des joueurs). Ce n est PAS un deplacement pur :
 // 76 de leurs 159 declarations sont referencees par le reste du paquet (`ReadFilmChunk` 293 fois
 // dans 179 fichiers, `Lecteur` 344 fois, `WalkPackets` 217, `Archetype` 177, `Registry` 158), et
-// `lecteur.go` lit `Profile`, `Observation`, `FrameConfig`, `ProfilDeBalayage` — c est-a-dire que
+// `lecteur.go` lit `profile.Profile`, `Observation`, `FrameConfig`, `ProfilDeBalayage` — c est-a-dire que
 // `source` importerait `profile` et `grammar`, deux imports VERS LE HAUT. La couche `source` du
 // lot est donc `filmsource` seul ; la remontee reste a faire, et elle n est pas un `git mv`.
 //
@@ -466,7 +293,49 @@ package grammar
 // `killsource` est identique a l octet, donc `KillSourceDecoderRev` ne bouge pas (son golden est
 // refige, son ancre de racine suit le paquet). `SchemaVersion` reste 60.
 //
-// ENTREE `grammar-2026-09-15.34` (2026-09-16, lot 2.6 volet facts + source) : `.33` -> `.34`.
+// ENTREE `grammar-2026-09-15.34` (2026-09-16, lot 2.5.b) : `.33` -> `.34`. EXTRACTION DE LA
+// COUCHE `profile`, SORTIE IDENTIQUE.
+//
+// CE N EST PAS UN DEPLACEMENT PUR, ET C EST LA DIFFERENCE AVEC `.31` A `.33`. La couche
+// `profile` (ADR 0034 D-1) NAIT par EXTRACTION avec inversion de dependance : la DONNEE descend
+// dans `film/profile`, la LECTURE reste ici. Concretement, ce qui a change dans le source de
+// `grammar` :
+//
+//	des declarations SORTENT       les types de valeur (`I0Layout`, `MPPWidths`,
+//	                               `PrecisionDescriptor`, `AxisRange` / `Vec3Range` et les cinq
+//	                               plages de `DAT_143b8c6f0`, `FilmIdentity`), la table de profil
+//	                               et ses invariants, la table par build et par format, le
+//	                               catalogue de bornes par carte.
+//	des symboles PRIVES sont       ce que `grammar` continue de lire de l autre cote de la
+//	EXPORTES                       frontiere l est desormais par un nom exporte, JAMAIS par une
+//	                               copie (CLAUDE.md regle 6).
+//	des appelants sont             environ 350 sites qualifient desormais `profile.X`. Le CORPS
+//	REQUALIFIES                    des fonctions ne change pas.
+//	la RESOLUTION est INVERSEE     `ResolveProfile` reste ici — elle ouvre le `chunk_00`, lit le
+//	                               registre, la version de format et la section 2 — et appelle
+//	                               `profile.Resoudre` avec les cles DEJA LUES. Avant, la lecture
+//	                               et la table etaient dans la meme fonction ; c est cette
+//	                               couture qui aurait fait importer `grammar` par `profile`.
+//
+// AUCUN OCTET DE FILM N EST LU AUTREMENT : aucune largeur, aucun cadre, aucun ordre de
+// composants, aucune valeur de table ne change. Les corps sont deplaces sans une ligne de
+// difference, les litteraux de la table de profil sont relus a l identique (le test de
+// conformite du catalogue `film_profiles.json` le prouve : il lit le SOURCE de la table par
+// `go/parser`, et son contenu attendu est INCHANGE).
+//
+// L EMPREINTE MONTE POUR DEUX RAISONS, et les deux sont voulues : les octets de source de
+// `grammar` ont change (declarations sorties, qualifieurs ajoutes), et la racine `film/profile`
+// ENTRE dans l empreinte. Ce second point est le vrai gain du lot pour ce garde-rail : la
+// DONNEE du decodeur — les largeurs par carte, la transposition par build, le decoupage MPP par
+// format — est desormais hachee, alors qu elle aurait pu bouger sans que `GrammarRev` monte si
+// la racine n avait pas suivi.
+//
+// `KillSourceDecoderRev` ne bouge PAS : `film/facts/killsource` ne change que ses qualifieurs,
+// sa sortie est identique a l octet, et son propre ratchet d empreinte fait foi.
+// `SchemaVersion` reste 60.
+//
+// ENTREE `grammar-2026-09-15.35` (2026-09-16, lot 2.6 volet facts + source — RANG DE FUSION) :
+// `.34` -> `.35`.
 // REVISIONS PAR COUCHE ET TYPES DE CONTRAT, SORTIE IDENTIQUE.
 //
 // TROIS GESTES, ET AUCUN NE LIT UN OCTET AUTREMENT. (1) `source.Rev` NAIT (`source/rev.go`,
@@ -487,3 +356,9 @@ package grammar
 // MEME type pour le compilateur. `SchemaVersion` reste 60 ; aucun match deja decode n est
 // candidat au backlog, et c est la condition meme de V15 (16) — M2 est un jalon a ZERO
 // difference de contenu.
+//
+// RANG DE FUSION, ET IL EST DE FUSION AU SENS STRICT : ce lot avait ete pose a `.34` sur une base
+// ou l integration valait `.33`, et le lot 2.5.b a pris ce rang avant lui. Les deux entrees
+// restent, dans l ordre ou les merges sont tombes — renumeroter la leur serait reecrire une
+// chronique deja figee dans un golden. L empreinte de ce rang inclut la racine `film/profile`,
+// entree au rang precedent.

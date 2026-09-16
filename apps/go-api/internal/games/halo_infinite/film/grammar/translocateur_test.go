@@ -37,6 +37,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"os"
 	"sort"
@@ -110,8 +111,8 @@ func TestTranslocateur(t *testing.T) {
 // translocBounds lit les bornes de la carte. Elles sont OBLIGATOIRES : sans elles les seuils
 // en mètres n'ont pas de sens, et un instrument qui les devinerait rendrait des chiffres faux
 // plutôt qu'une absence.
-func translocBounds() (Vec3Range, error) {
-	var wr Vec3Range
+func translocBounds() (profile.Vec3Range, error) {
+	var wr profile.Vec3Range
 	raw := strings.TrimSpace(os.Getenv(translocBoundsEnv))
 	if raw == "" {
 		return wr, fmt.Errorf("bornes absentes (attendu minX,minY,minZ,maxX,maxY,maxZ en mètres —" +
@@ -175,7 +176,7 @@ type translocSaut struct {
 // `MaxSpeedMPS = 0` est le cœur de la mesure : le défaut (100 m/s) rejette précisément les
 // téléportations qu'on cherche. `IsolationGapMS = 0` de même — une arrivée isolée dans le temps
 // est exactement ce qu'un retour produirait.
-func translocJumps(t *testing.T, dir string, lay I0Layout, wr Vec3Range) []translocSaut {
+func translocJumps(t *testing.T, dir string, lay profile.I0Layout, wr profile.Vec3Range) []translocSaut {
 	t.Helper()
 	opt := DefaultScanFilmOptions()
 	opt.MaxSpeedMPS = 0

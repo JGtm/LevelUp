@@ -12,7 +12,7 @@ package killcollector
 // restait vert : `killcollector`, `film/...` et `archlint` compris. Deux raisons, et il faut les
 // dire ensemble : aucun temoin de `hits_carte_par_nom_test.go` ne donne DEUX noms qui resolvent
 // (le seul a deux candidats commence par une carte absente du catalogue), et l'empreinte de
-// `TestFactsRevSuitLesFaits` ne hache que `film/facts/killsource`, jamais `killcollector`.
+// `TestFactsRevSuitLesFaits` hache TOUT l arbre `film/facts`, jamais `killcollector`.
 //
 // Le mecanisme d'un repli non teste est un repli dont personne ne verra changer la reponse.
 //
@@ -33,13 +33,12 @@ package killcollector
 
 import (
 	"context"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // bornesDeLaCarte rend les bornes du catalogue VERSIONNE pour un nom, ou echoue.
-func bornesDeLaCarte(t *testing.T, nom string) grammar.MapQuantEntry {
+func bornesDeLaCarte(t *testing.T, nom string) profile.MapQuantEntry {
 	t.Helper()
 	e, err := catalogueDeBornesVersionne(t).Lookup(nom)
 	if err != nil {
@@ -61,7 +60,7 @@ func TestLePremierNomQuiResoutGagne(t *testing.T) {
 	cas := []struct {
 		nom     string
 		noms    []string
-		attendu grammar.MapQuantEntry
+		attendu profile.MapQuantEntry
 		perdant string
 	}{
 		{nom: "temoin d'abord", noms: []string{carteTemoinDesJumelles, jumelleDeLaCarteTemoin},

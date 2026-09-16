@@ -42,6 +42,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // VehicleScan porte ce qu une lecture du film rend sur les VEHICULES (`ti=40`).
@@ -94,7 +95,7 @@ type VehicleScan struct {
 // c'est lui qui porte la bande bipede, le decoupage d'i0 et le registre que les cinq lectures
 // ci-dessous partagent.
 func decodeFilmVehicleScan(
-	fc *grammar.FilmContext, matchID string, wr *grammar.Vec3Range, mpp grammar.MPPWidths,
+	fc *grammar.FilmContext, matchID string, wr *profile.Vec3Range, mpp profile.MPPWidths,
 ) VehicleScan {
 	defer gwInstallMPPWidths(fc, gwWidthsForFilm(fc, mpp))()
 	kf := grammar.ScanWorldObjectKeyframes(fc.Film(), grammar.VehicleTypeIndex)
@@ -216,7 +217,7 @@ func decodeFilmVehicleEvents(fc *grammar.FilmContext, matchID string) []grammar.
 //     que les positions bipedes du meme film — sur une carte a plus de deux regions,
 //     l'auto-detection lit l'index de region comme un bit d'axe. Nil (catalogue sans largeurs) :
 //     l'auto-detection reprend, comme pour le bipede.
-func vehicleScanOptions(fc *grammar.FilmContext, wr *grammar.Vec3Range) grammar.ScanFilmOptions {
+func vehicleScanOptions(fc *grammar.FilmContext, wr *profile.Vec3Range) grammar.ScanFilmOptions {
 	opt := grammar.DefaultScanFilmOptions()
 	opt.RequireTag1 = false
 	opt.CaptureDirs = true

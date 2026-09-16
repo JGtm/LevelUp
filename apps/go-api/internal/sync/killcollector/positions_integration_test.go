@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/haloclient"
 )
@@ -33,13 +33,13 @@ import (
 // DELEGUE DEPUIS LE LOT 1.9.2 : `catalogueDeBornesVersionne`
 // (positions_decoupage_catalogue_test.go, SANS tag de build) fait exactement cela, et deux
 // chargeurs du meme fichier auraient ete deux chemins a tenir d accord.
-func realMapQuantCatalog(t *testing.T) *grammar.MapQuantCatalog {
+func realMapQuantCatalog(t *testing.T) *profile.MapQuantCatalog {
 	t.Helper()
 	return catalogueDeBornesVersionne(t)
 }
 
 // allCatalogNames : TOUS les noms du catalogue REEL, comme candidats (cf. en-tete du fichier).
-func allCatalogNames(cat *grammar.MapQuantCatalog) []string {
+func allCatalogNames(cat *profile.MapQuantCatalog) []string {
 	names := make([]string, 0, len(cat.Maps))
 	for name := range cat.Maps {
 		names = append(names, name)

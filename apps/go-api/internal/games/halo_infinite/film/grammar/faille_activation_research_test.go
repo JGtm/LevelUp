@@ -35,6 +35,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"os"
 	"sort"
@@ -78,7 +79,7 @@ type failleAncre struct {
 // failleSetup lit l'environnement de l'instrument ; skip sans FAILLE_FILM, fatal si le reste
 // est illisible (un instrument qui devine rend des chiffres faux plutôt qu'une absence).
 // Rend aussi l'origine d'horloge, pour que les rapports parlent en millisecondes de FILM.
-func failleSetup(t *testing.T) (string, Vec3Range, []failleAncre, uint64) {
+func failleSetup(t *testing.T) (string, profile.Vec3Range, []failleAncre, uint64) {
 	t.Helper()
 	dir := os.Getenv(failleFilmEnv)
 	if dir == "" {
@@ -127,8 +128,8 @@ func failleOrigineHorloge(dir string) (uint64, error) {
 
 // failleBounds lit les bornes de la carte (même format que TRANSLOC_BOUNDS : le champ
 // `bounds` de l'artefact du rejeu, minX,minY,minZ,maxX,maxY,maxZ en mètres).
-func failleBounds() (Vec3Range, error) {
-	var wr Vec3Range
+func failleBounds() (profile.Vec3Range, error) {
+	var wr profile.Vec3Range
 	parts := strings.Split(strings.TrimSpace(os.Getenv(failleBoundsEnv)), ",")
 	if len(parts) != 6 {
 		return wr, fmt.Errorf("6 nombres attendus, %d reçus", len(parts))
@@ -299,7 +300,7 @@ func failleRecensement(t *testing.T, kf failleKF, ancres []failleAncre, origine 
 }
 
 // failleCreations (canal 1) : records NEW de tous les archétypes lisibles, fenêtres seules.
-func failleCreations(t *testing.T, dir string, wr *Vec3Range, kf failleKF, ancres []failleAncre, n int, origine uint64) {
+func failleCreations(t *testing.T, dir string, wr *profile.Vec3Range, kf failleKF, ancres []failleAncre, n int, origine uint64) {
 	t.Helper()
 	raw0, err := ReadFilmChunk(dir, 0)
 	if err != nil {
@@ -368,7 +369,7 @@ func failleCreationsPourTI(t *testing.T, dir string, w equipCreationWalk, ancres
 }
 
 // failleDeltas (canal 2) : positions delta des objets du monde (bande UNION), fenêtres seules.
-func failleDeltas(t *testing.T, dir string, wr *Vec3Range, kf failleKF, ancres []failleAncre, n int, origine uint64) {
+func failleDeltas(t *testing.T, dir string, wr *profile.Vec3Range, kf failleKF, ancres []failleAncre, n int, origine uint64) {
 	t.Helper()
 	union := map[uint32]bool{}
 	bandes := map[int]map[uint32]bool{}

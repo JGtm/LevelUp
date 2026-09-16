@@ -54,6 +54,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -265,10 +266,10 @@ func grenEcartPct(n, total int) string {
 
 // grenEcartBornes charge les bornes de déquantification de la carte depuis le catalogue
 // VERSIONNÉ du parc désigné.
-func grenEcartBornes(t *testing.T, parc, carte string) grammar.MapQuantEntry {
+func grenEcartBornes(t *testing.T, parc, carte string) profile.MapQuantEntry {
 	t.Helper()
 	chemin := filepath.Join(parc, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json")
-	cat, err := grammar.LoadMapQuantCatalog(chemin)
+	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", chemin, err)
 	}

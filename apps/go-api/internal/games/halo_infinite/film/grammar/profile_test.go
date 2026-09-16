@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -47,9 +48,9 @@ func TestProfilResoudLesTroisCles(t *testing.T) {
 }
 
 // verifierFormatDuProfil confronte la cle de FORMAT et le decoupage MPP qu elle porte.
-func verifierFormatDuProfil(t *testing.T, b bobineIdentite, p Profile) {
+func verifierFormatDuProfil(t *testing.T, b bobineIdentite, p profile.Profile) {
 	t.Helper()
-	attendu, connu := mppWidthsPourFormat(p.FormatVersion())
+	attendu, connu := profile.MPPPourFormat(p.FormatVersion())
 	if !connu {
 		t.Fatalf("%s : format %d absent de la table alors que Err() est nul", b.film, p.FormatVersion())
 	}
@@ -64,7 +65,7 @@ func verifierFormatDuProfil(t *testing.T, b bobineIdentite, p Profile) {
 }
 
 // verifierSlotsDuProfil confronte la transposition de slot a l oracle du lot 1.5.2.
-func verifierSlotsDuProfil(t *testing.T, b bobineTable, p Profile) {
+func verifierSlotsDuProfil(t *testing.T, b bobineTable, p profile.Profile) {
 	t.Helper()
 	if !p.Slots().Connu {
 		t.Fatalf("%s : build inconnu du profil alors que Err() est nul", b.film)
@@ -80,7 +81,7 @@ func verifierSlotsDuProfil(t *testing.T, b bobineTable, p Profile) {
 // voisin, pas de le lire du tout. Les deux erreurs sont typees, et le reste du profil est pose.
 func TestProfilSansCleRendUneErreurTypeeEtPoseQuandMeme(t *testing.T) {
 	p := ResolveProfile(nil, nil)
-	if !errors.Is(p.Err(), ErrUnknownFormat) || !errors.Is(p.Err(), ErrUnknownBuild) {
+	if !errors.Is(p.Err(), profile.ErrUnknownFormat) || !errors.Is(p.Err(), profile.ErrUnknownBuild) {
 		t.Fatalf("film nil : les deux cles doivent etre signalees typees, obtenu %v", p.Err())
 	}
 	if p.Keyframe().CadreBits() != 172 {
@@ -96,9 +97,9 @@ func TestProfilSansCleRendUneErreurTypeeEtPoseQuandMeme(t *testing.T) {
 	}
 	// L implantation du gamertag TOMBE EN TETE, et la NOMME : c est le comportement historique
 	// que `analysis.ParseHighlightEvents` applique a la version 0, pas un silence.
-	if h := p.Highlight(); h.Lue || h.Implantation != implantationEnTete || h.GamertagOffsetBytes != 0 {
+	if h := p.Highlight(); h.Lue || h.Implantation != profile.ImplantationEnTete || h.GamertagOffsetBytes != 0 {
 		t.Errorf("version majeure non lue : implantation attendue %q a l octet 0, obtenu %+v",
-			implantationEnTete, h)
+			profile.ImplantationEnTete, h)
 	}
 }
 
@@ -136,7 +137,7 @@ func filmDUnChunk00(t *testing.T, chunk0 []byte) *source.Film {
 // TestProfilEstImmuable : un lecteur qui modifie ce qu il a recu ne modifie pas le profil du
 // film. Sans cela « immuable » serait un mot dans un commentaire.
 func TestProfilEstImmuable(t *testing.T) {
-	p := ResolveProfile(bobineFilm(t, "fb1a1a72"), &MapQuantEntry{Module: "temoin"})
+	p := ResolveProfile(bobineFilm(t, "fb1a1a72"), &profile.MapQuantEntry{Module: "temoin"})
 	id := p.Identity()
 	if len(id.TypeVersions) == 0 {
 		t.Fatalf("bobine sans table par type : le test ne mesure rien")
@@ -164,7 +165,7 @@ var dateProfil = regexp.MustCompile(`^20\d\d-\d\d-\d\d$`)
 // TestProfilTableComplete : chaque ligne de la table porte ses six colonnes, et sa provenance
 // est l une des trois. Une valeur sans preuve n est pas une valeur de profil (D3).
 func TestProfilTableComplete(t *testing.T) {
-	lignes := TableProfil()
+	lignes := profile.TableProfil()
 	if len(lignes) == 0 {
 		t.Fatalf("table de profil vide : le ratchet ne mesure plus rien")
 	}
@@ -182,8 +183,8 @@ func TestProfilTableComplete(t *testing.T) {
 			t.Errorf("%s / %s : une valeur sans preuve n est pas une valeur de profil", l.Cle, l.Champ)
 		case !dateProfil.MatchString(l.Date):
 			t.Errorf("%s / %s : date %q, forme attendue AAAA-MM-JJ", l.Cle, l.Champ, l.Date)
-		case l.Source != ProvenanceRelue && l.Source != ProvenanceMesuree &&
-			l.Source != ProvenancePresumee:
+		case l.Source != profile.ProvenanceRelue && l.Source != profile.ProvenanceMesuree &&
+			l.Source != profile.ProvenancePresumee:
 			t.Errorf("%s / %s : provenance %q hors des trois", l.Cle, l.Champ, l.Source)
 		}
 	}
@@ -210,8 +211,8 @@ var presumesGeles = []string{
 // profil ») consommera.
 func TestProfilPresumes(t *testing.T) {
 	var vus []string
-	for _, l := range TableProfil() {
-		if l.Source != ProvenancePresumee {
+	for _, l := range profile.TableProfil() {
+		if l.Source != profile.ProvenancePresumee {
 			continue
 		}
 		vus = append(vus, l.Cle+" / "+l.Champ)
@@ -229,7 +230,7 @@ func TestProfilPresumes(t *testing.T) {
 // ([NewFilmContextForMap]) pose le profil, carte comprise, et son erreur remonte TYPEE par
 // [FilmContext.ProfileErr] — le film n est pas mis de cote (item 2.1.2, D1).
 func TestFilmContextResoutLeProfilALaConstruction(t *testing.T) {
-	entry := MapQuantEntry{Module: "temoin", Min: [3]float32{-1, -1, -1}, Max: [3]float32{1, 1, 1}}
+	entry := profile.MapQuantEntry{Module: "temoin", Min: [3]float32{-1, -1, -1}, Max: [3]float32{1, 1, 1}}
 	film := bobineFilm(t, "fb1a1a72")
 	fc := NewFilmContextForMap(film, &entry, nil)
 	if err := fc.ProfileErr(); err != nil {

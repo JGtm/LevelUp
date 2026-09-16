@@ -37,6 +37,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI56DropsAreEvents$' -timeout 30m -v
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"testing"
@@ -85,7 +86,7 @@ func TestI56DropsAreEvents(t *testing.T) {
 type i56dEnv struct {
 	chunks []int
 	slots  SlotBand
-	lay    I0Layout
+	lay    profile.I0Layout
 	arch   Archetype
 }
 

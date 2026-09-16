@@ -1,3 +1,15 @@
+## [2026-09-16] Chantier décodeur — fusion du lot 2.5.h (type HighlightEvent en domaine), 2.6 volet facts lancé en parallèle
+
+**Statut** : Complété (fusion) / En cours (2.5.b, 2.6 volet facts+source).
+
+**Décision technique principale.** Le type d'ingestion des temps forts (`analysis.HighlightEvent`, 7 champs, 4 constantes) remonte en `domain/highlightevent`, paquet feuille à zéro dépendance (`go list -deps` : lui seul). Pas `games/canonical` : `canonical.HighlightEvent` existe déjà et désigne la forme INTER-TITRES relue en base ; le type porté ici est la forme d'INGESTION de la table `highlight_events`, remplie par le film ET par l'import OpenSpartan pour un seul écrivain — un type de `domain/`. 30 consommateurs re-pointés sans alias ; golden forme + sortie (275 événements sur la fixture v41, sha figé) posé AVANT le mouvement, inchangé après, non-mutisme prouvé par deux mutations. Décision prise par l'exécuteur faute de pouvoir demander, acceptée par le pilote : un PONT transitoire (`analysis/highlight_event_pont_film.go`, 5 renvois) tient les 11 fichiers de `film/` que 2.5.b mute en parallèle et dont `facts/killsource/feed.go` est une racine hachée de `GrammarRev` ; il est gardé par `TestPontTempsFortVersFilmNEstPasPerime` qui ROUGIT le jour où plus rien ne le cite — supprimé par 2.5.e. Découverte D1 (2.5.h) : la mesure de D4 (2.5) confondait deux homonymes (44 fichiers concernés, pas 60) ; D3 (2.5.h) : deux vocabulaires pour les mêmes quatre types d'événement (`highlightevent.EventType*` et `canonical.Event*`) — un choix de contrat, pas un déplacement.
+
+**Fusion.** 3734845d0 : 84 paquets verts, `go vet` propre, lint 0 issue, `film/` intact.
+
+**Parallélisation (question de l'utilisateur : « 2.6 peut pas commencer ? »).** Réponse : à moitié. Le volet facts + source de 2.6 démarre sur 3734845d0 (`source.Rev`, `facts.Rev` héritière de `KillSourceDecoderRev` dont la constante descend de `sync/killcollector`, `film/types` pour les 22 types de faits et de source avec `shapes.golden`, SYNC_GUIDE au présent) ; le volet grammar/profile/replay et 2.6.3 (dernier commit du jalon par construction) attendent 2.5.b et 2.5.e.
+
+**Prochaine étape** : fusion 2.5.b (voie libre pour ses gates au rendu), puis 2.5.e + 2.5.g, fusion du volet facts de 2.6, puis 2.6 volet grammar/profile/replay, 2.6.3, clôture M2.
+
 ## [2026-09-16] Chantier décodeur — fusion du lot 2.5 (quatre couches sur cinq, déplacements purs), arbitrage V19
 
 **Statut** : Complété (fusion) / En cours (2.5.b, 2.5.h).

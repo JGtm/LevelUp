@@ -5,6 +5,7 @@ package grammar
 // l'en-tete de ce fichier-la pour le raisonnement, les sources et les mesures.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"sort"
 	"testing"
 )
@@ -80,7 +81,7 @@ func detoProjBand(dir string, n int) map[uint32]bool {
 // detoScanProjectiles decode les pistes projectile (ti=41) des n premiers chunks et rend UN
 // point de detonation par vie (derniere position). Reutilise le decodeur pur scanProjectileRecords
 // + le decoupage en vies splitLives (memes que ScanFilmProjectiles), borne aux chunks pour la RAM.
-func detoScanProjectiles(t *testing.T, dir string, wr *Vec3Range, n int) []detoDeton {
+func detoScanProjectiles(t *testing.T, dir string, wr *profile.Vec3Range, n int) []detoDeton {
 	t.Helper()
 	band := detoProjBand(dir, n)
 	if len(band) == 0 || wr == nil {

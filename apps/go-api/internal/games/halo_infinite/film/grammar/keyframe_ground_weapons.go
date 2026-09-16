@@ -3,6 +3,7 @@ package grammar
 import (
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -178,7 +179,7 @@ func GroundWeaponSlotBand(dir string) map[uint32]bool {
 // ENVELOPPE D2, HORS PRODUCTION (marquee a l'item 1.7, 2026-09-03 : elle chargeait deux films
 // par appel — un par enveloppe deleguee — sans porter le marqueur que l'inventaire des
 // enveloppes cherche). Son unique consommateur est l'instrument de mesure cite ci-dessus.
-func GroundWeaponPositions(dir string, wr *Vec3Range) map[uint32][]WorldObjectSample {
+func GroundWeaponPositions(dir string, wr *profile.Vec3Range) map[uint32][]WorldObjectSample {
 	if wr == nil {
 		return map[uint32][]WorldObjectSample{}
 	}
@@ -196,7 +197,7 @@ func GroundWeaponPositions(dir string, wr *Vec3Range) map[uint32][]WorldObjectSa
 // HORS LIGNE (I/O disque sur tout le film).
 //
 // ENVELOPPE D2, HORS PRODUCTION : son unique consommateur est l'instrument de mesure ci-dessus.
-func WorldObjectPositionsForBand(dir string, wr *Vec3Range, band map[uint32]bool) map[uint32][]WorldObjectSample {
+func WorldObjectPositionsForBand(dir string, wr *profile.Vec3Range, band map[uint32]bool) map[uint32][]WorldObjectSample {
 	out := map[uint32][]WorldObjectSample{}
 	if wr == nil || len(band) == 0 {
 		return out

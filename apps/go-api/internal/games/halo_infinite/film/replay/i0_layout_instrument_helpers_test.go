@@ -23,14 +23,15 @@ package replay
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // detecterI0Layout lit le decoupage d i0 DANS le film de `dir`.
-func detecterI0Layout(dir string) (grammar.I0Layout, grammar.I0LayoutReport, error) {
+func detecterI0Layout(dir string) (profile.I0Layout, grammar.I0LayoutReport, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return grammar.I0Layout{}, grammar.I0LayoutReport{}, err
+		return profile.I0Layout{}, grammar.I0LayoutReport{}, err
 	}
 	return grammar.DetectI0LayoutOf(film)
 }

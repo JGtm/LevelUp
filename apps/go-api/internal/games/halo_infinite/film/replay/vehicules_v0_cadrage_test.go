@@ -31,6 +31,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -65,16 +66,16 @@ func v0Corpus(t *testing.T) []v0Film {
 // v0Bornes rend les bornes monde d'une carte NOMMEE et installe ses largeurs d'axe pour le
 // chemin objet du monde. Il double `attBornes` parce que celui-ci passe par un fixture
 // film -> carte (`attCartes`) que le corpus de ce lot ne peuple pas : ici la carte est donnee.
-func v0Bornes(t *testing.T, root, carte string) (grammar.Vec3Range, bool) {
+func v0Bornes(t *testing.T, root, carte string) (profile.Vec3Range, bool) {
 	t.Helper()
-	cat, err := grammar.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
 	e, err := cat.Lookup(carte)
 	if err != nil {
 		t.Logf("carte %q absente du catalogue de bornes (%v)", carte, err)
-		return grammar.Vec3Range{}, false
+		return profile.Vec3Range{}, false
 	}
 	return e.Range(), true
 }
@@ -355,7 +356,7 @@ func v0GrammaireUnFilm(t *testing.T, root string, f v0Film) {
 // paquet pour cela : `ScanFilmBipedPositions` releve lui-meme la bande `ti=35`. C'est
 // exactement le morceau manquant que le lot V1 aura a exposer proprement ; ici il tient en une
 // boucle de lecture de chunks, sans toucher au decodeur.
-func v0ScanBipedeSurBande(dir string, bande map[uint32]bool, lay grammar.I0Layout,
+func v0ScanBipedeSurBande(dir string, bande map[uint32]bool, lay profile.I0Layout,
 	opt grammar.ScanFilmOptions) []grammar.BipedPosition {
 	var out []grammar.BipedPosition
 	n := grammar.CountFilmChunks(dir)

@@ -28,11 +28,18 @@ package archlint
 //	R2 (le lieu)  aucun paquet du decodeur (tout ce qui vit sous `film/`, plus tout paquet classe
 //	              dans une couche) n importe `internal/analysis` ni `internal/analysis/*`.
 //	R3 (peuplement) une couche declaree porte au moins un paquet ; une couche vide ne garde rien.
+//	                STRICT depuis le 2026-09-16 (lot 2.5.b) : plus aucune tolerance datee.
 //
 // Mesure a la pose (2026-09-17, `go list -f` sur les paquets surveilles) : **R1 est deja tenue —
 // zero import vers le haut**. C est le point remarquable du graphe actuel : a l INTERIEUR du
 // decodeur, tout descend deja. Ce qui est a l envers est le LIEU : quatre paquets de couche
 // vivent encore hors du decodeur, ou en dependent (R2, 10 aretes).
+//
+// RE-MESURE DU 2026-09-16, a la cloture du lot 2.5.b : il reste **3 aretes** (toutes R2, toutes
+// rattachees a la descente de `analysis.ParseHighlightEvents` et a la dissolution de
+// `weaponv3`), **0 paquet hors lieu** et **0 couche vide** — les cinq couches sont peuplees, la
+// derniere (`profile`) par ce lot. Deux des trois axes n ont plus de mecanisme de tolerance du
+// tout ; le troisieme n a plus que ces trois lignes datees.
 //
 // # CE QUE CE RATCHET NE GARDE PAS, ET QUI LE GARDE
 //
@@ -95,11 +102,14 @@ package archlint
 //	2.5.c    weaponv3 dissous, grammaire d analysis/ descendue, filmdec -> film/grammar
 //	2.5.a    filmsource -> film/source                  (plus aucun consommateur dans analysis/)
 //	2.5.d.1  killsource -> film/facts/killsource, fallback -> film/facts/fallback
-//	2.5.b    la couche profile
+//	2.5.b    la couche profile (EXTRACTION, pas `git mv` : la donnee descend, la detection reste)
 //	2.5.e    facade, bascule film/<couche> -> film/internal/<couche>, ratchet STRICT
 //
 // # MUTATIONS QUI DOIVENT LE FAIRE ROUGIR
 //
+//   - faire importer `grammar` par `film/profile` (par exemple en y ramenant `DetectI0LayoutOf`) :
+//     `profile` (rang 1) -> `grammar` (rang 2) est un import VERS LE HAUT, R1 rougit. C est la
+//     regle que le lot 2.5.b a rendue tenable, et celle qu une rechute romprait en premier ;
 //   - classer `film/grammar` en `replay` : `killsource` (facts) -> `grammar` devient un import
 //     vers le haut, R1 rougit ;
 //   - retirer une entree d `aretesTolerees` : l arete correspondante rougit ;
@@ -155,11 +165,14 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// et passe sous `film/internal/source` au lot 2.5.a (decision V5 du plan).
 	"internal/games/halo_infinite/film/source": coucheSource,
 
-	// --- profile : VIDE AUJOURD HUI, et c est ecrit. La part profil existe (`filmdec/profile.go`,
-	// `profile_table.go`, `build_profile.go`, `map_bounds.go`, `i0_layout.go`, `mpp_widths.go`,
-	// `slot_band_dense.go`) mais elle vit DANS `grammar` : au niveau PAQUET — la seule granularite
-	// qu un graphe d imports connaisse — le paquet `grammar` porte donc les DEUX tant que 2.5.b n a pas
-	// extrait ces sept fichiers. Voir `couchesVidesTolerees`.
+	// --- profile : la table de profil, les catalogues et les types de VALEUR. PEUPLEE LE
+	// 2026-09-16 (lot 2.5.b) : le paquet `film/profile` porte desormais ce qui vivait dans
+	// `grammar` sous les noms `profile.go`, `profile_table.go`, `build_profile.go`,
+	// `map_bounds.go`, `i0_layout.go`, `mpp_widths.go`. Ce N ETAIT PAS un `git mv` : la
+	// DETECTION (le balayage qui PRODUIT un decoupage i0, la resolution depuis un film, le
+	// controle du calibrage) est restee en `grammar` et rend un type de `profile` — c est
+	// l inversion de dependance qui a leve le blocage mesure au §4 D2 du plan.
+	"internal/games/halo_infinite/film/profile": coucheProfile,
 
 	// --- grammar : decodeurs de records et de composants, fonctions pures de (profil, bits).
 	"internal/games/halo_infinite/film/grammar": coucheGrammar,
@@ -270,14 +283,16 @@ var aretesTolerees = []areteToleree{
 // personne ne lit plus les champs est du code mort, et un sursis re-devient une DECISION a
 // ecrire, pas une ligne a remplir.
 
-// couchesVidesTolerees : une couche declaree que AUCUN paquet ne porte encore, avec le lot qui
-// la peuplera. Une couche vide ne garde rien — elle ne se tolere que datee.
-var couchesVidesTolerees = map[string]string{
-	"profile": "2026-09-17, lot 2.5.b — la part profil vit dans `grammar` (profile.go, " +
-		"profile_table.go, build_profile.go, map_bounds.go, i0_layout.go, mpp_widths.go, " +
-		"slot_band_dense.go, 1 695 L). Au niveau PAQUET, le paquet `grammar` porte donc les DEUX tant " +
-		"que 2.5.b n a pas extrait ces sept fichiers.",
-}
+// LA TOLERANCE DE COUCHE VIDE A ETE SUPPRIMEE LE 2026-09-16 (lot 2.5.b), AVEC SA DERNIERE
+// ENTREE. `couchesVidesTolerees` datait le sursis d une couche declaree que aucun paquet ne
+// portait ; la seule qui en avait un, `profile`, est peuplee par ce lot. R3 (le peuplement) n a
+// donc plus AUCUNE exception, et le mecanisme qui les portait part avec elles — meme geste, meme
+// raison qu au lot 2.5.a pour la tolerance de LIEU : une table vide qu on garde « au cas ou »
+// invite a la remplir, alors qu une couche declaree sans paquet est une DECISION a ecrire.
+// TROISIEME ET DERNIER AXE DU RATCHET A PASSER STRICT : R1 (le sens) n a jamais eu d exception,
+// R2 (le lieu) n en a plus depuis le 2.5.a, R3 n en a plus depuis celui-ci. Seule
+// `aretesTolerees` subsiste, et elle ne porte plus que les trois aretes de la dissolution de
+// `weaponv3` et de la descente de `analysis.ParseHighlightEvents`.
 
 // TestCouchesDuDecodeurRespectentLeSensEtLeLieu : aucune arete a rebours, aucune dependance du
 // decodeur vers `internal/analysis` — hors les aretes datees ci-dessus.
@@ -359,11 +374,9 @@ func verifierPeuplementDesCouches(t *testing.T) {
 		if peuplees[c.nom] {
 			continue
 		}
-		if _, tolere := couchesVidesTolerees[c.nom]; tolere {
-			continue
-		}
 		t.Errorf("la couche %q ne porte aucun paquet : un rang sans paquet ne garde rien. "+
-			"Classer le paquet qui la porte, ou dater son absence dans `couchesVidesTolerees`.",
+			"Classer le paquet qui la porte — la tolerance datee a ete supprimee au lot 2.5.b "+
+			"avec sa derniere entree, une couche declaree porte donc un paquet, sans exception.",
 			c.nom)
 	}
 }
@@ -387,21 +400,5 @@ func TestAllowlistsDesCouchesNeSontPasPerimees(t *testing.T) {
 		}
 		t.Errorf("`aretesTolerees` cite %s (pose %s, lot %s), qui n est plus une violation : "+
 			"entree perimee, la retirer.", cleArete(a.de, a.vers), a.pose, a.lot)
-	}
-	verifierAllowlistDesCouchesVides(t)
-}
-
-// verifierAllowlistDesCouchesVides : une couche peuplee sort de la table des couches vides.
-func verifierAllowlistDesCouchesVides(t *testing.T) {
-	t.Helper()
-	for _, nom := range clesTrieesFilm(couchesVidesTolerees) {
-		for _, c := range couchesDuDecodeur {
-			if c.nom != nom {
-				continue
-			}
-			t.Errorf("`couchesVidesTolerees` cite la couche %q, qui porte desormais au moins un "+
-				"paquet : entree perimee, la retirer.", nom)
-			break
-		}
 	}
 }

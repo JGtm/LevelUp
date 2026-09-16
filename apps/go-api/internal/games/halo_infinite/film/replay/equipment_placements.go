@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // equipment_placements.go — LES POSES d'équipement sur la carte : le mur de protection, le
@@ -261,7 +262,7 @@ const equipmentFamilyOther = "other"
 //
 // HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmPlacements(
-	fc *grammar.FilmContext, matchID string, worldRange *grammar.Vec3Range,
+	fc *grammar.FilmContext, matchID string, worldRange *profile.Vec3Range,
 ) ([]grammar.EquipmentPlacement, grammar.EquipmentPlacementStats) {
 	pl, st, err := grammar.ScanEquipmentPlacements(fc, worldRange)
 	if st.FormatSansProfil {

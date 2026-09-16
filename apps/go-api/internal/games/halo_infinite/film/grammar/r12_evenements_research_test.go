@@ -34,6 +34,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"sort"
 	"testing"
@@ -41,21 +42,21 @@ import (
 
 // r12CtxDeLayout reconstruit le contexte de carte depuis le SEUL decoupage i0 du film.
 // Voir l'en-tete : la classe d'equivalence rend les memes largeurs que la vraie carte.
-func r12CtxDeLayout(lay I0Layout) r7Ctx {
+func r12CtxDeLayout(lay profile.I0Layout) r7Ctx {
 	var e [3]float64
 	for i := 0; i < 3; i++ {
 		e[i] = math.Pow(2, float64(lay.AxisW[i])) / 60.0
 	}
 	rb := uint(0)
-	if lay.GateBits > i0SpineBits+i0UseDefaultBits {
-		rb = uint(lay.GateBits - i0SpineBits - i0UseDefaultBits)
+	if lay.GateBits > profile.I0SpineBits+profile.I0UseDefaultBits {
+		rb = uint(lay.GateBits - profile.I0SpineBits - profile.I0UseDefaultBits)
 	}
 	return r7Ctx{etendues: e, regionBits: rb, hasMap: true}
 }
 
 // r12VerifieCtx controle la reconstruction : les largeurs a k=16 doivent EGALER `AxisW`.
 // Un ecart signifierait que la formule et le detecteur ne parlent pas de la meme grandeur.
-func r12VerifieCtx(t *testing.T, lay I0Layout, ctx r7Ctx) {
+func r12VerifieCtx(t *testing.T, lay profile.I0Layout, ctx r7Ctx) {
 	t.Helper()
 	for i := 0; i < 3; i++ {
 		if got := r7BitsAxe(ctx.etendues[i], 16); got != lay.AxisW[i] {

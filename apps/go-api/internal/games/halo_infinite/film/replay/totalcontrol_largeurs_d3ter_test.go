@@ -40,6 +40,7 @@ import (
 
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -56,7 +57,7 @@ const (
 // d3tLargeurs : les trois decoupages sondes. Le defaut, celui MESURE sur les films BTB du lot
 // armes-au-sol, et un absurde — sans ce dernier, deux resultats identiques ne prouveraient rien
 // (les deux premiers pourraient coincider par hasard sur ce film).
-var d3tLargeurs = []grammar.MPPWidths{{Lead: 9, Index: 5}, {Lead: 8, Index: 3}, {Lead: 12, Index: 7}}
+var d3tLargeurs = []profile.MPPWidths{{Lead: 9, Index: 5}, {Lead: 8, Index: 3}, {Lead: 12, Index: 7}}
 
 // d3tReleve est ce qu'un balayage rend, reduit a ce qui se compare.
 type d3tReleve struct {
@@ -133,7 +134,7 @@ func TestTotalControlLargeursMPP(t *testing.T) {
 //
 // LES LARGEURS SE POSENT SUR LE CONTEXTE DU FILM (lot 2.3) : rien n'est installe dans le
 // processus, donc rien n'est a restaurer, et deux sondes peuvent tourner cote a cote.
-func d3tScanSousLargeurs(dir string, w grammar.MPPWidths) (grammar.ManagedPropertyScan, error) {
+func d3tScanSousLargeurs(dir string, w profile.MPPWidths) (grammar.ManagedPropertyScan, error) {
 	fc, _, err := grammar.ContexteDeFilm(dir)
 	if err != nil {
 		return grammar.ManagedPropertyScan{}, err

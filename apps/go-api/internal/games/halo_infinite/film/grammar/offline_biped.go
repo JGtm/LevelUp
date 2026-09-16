@@ -45,6 +45,7 @@ package grammar
 import (
 	"fmt"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -134,11 +135,11 @@ type ScanFilmOptions struct {
 	// Layout force le découpage binaire d'i0. nil (défaut) = le découpage est LU dans le
 	// film par DetectI0Layout — c'est le mode normal, car les largeurs d'axe sont propres à
 	// la carte. Ne renseigner que pour rejouer un découpage connu (tests, comparaisons).
-	Layout *I0Layout
+	Layout *profile.I0Layout
 	// WorldRange porte les BORNES DE LA CARTE (AABB du BSP principal). Obligatoire pour
 	// produire des coordonnées monde : nil -> ScanFilmBipedPositions échoue avec
-	// ErrUnknownMapBounds, sauf si QuantaOnly. Cf. MapQuantCatalog.
-	WorldRange *Vec3Range
+	// profile.ErrUnknownMapBounds, sauf si QuantaOnly. Cf. profile.MapQuantCatalog.
+	WorldRange *profile.Vec3Range
 	// DynPrecOrientation choisit la grammaire d'i2/i3 sous CaptureDirs. false (défaut) =
 	// celle du BIPÈDE. true = celle des archétypes qui portent les variantes
 	// `-dynamic-precision-` de forward-and-up et angular-velocity : ti=38 (corps rigide),
@@ -181,10 +182,10 @@ func DefaultScanFilmOptions() ScanFilmOptions {
 // [ScanBipedPositions]. La cuisson passe un film deja charge (une seule decompression).
 func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, error) {
 	// LE REFUS DE BORNES PRECEDE LE CHARGEMENT, et c'est l'ordre d'origine : un appelant sans
-	// bornes doit recevoir ErrUnknownMapBounds, pas une erreur de lecture de repertoire. Le
+	// bornes doit recevoir profile.ErrUnknownMapBounds, pas une erreur de lecture de repertoire. Le
 	// message garde le chemin du film, que la forme `Scan*(film)` n'a plus.
 	if opt.WorldRange == nil && !opt.QuantaOnly {
-		return nil, fmt.Errorf("%w (film %s) : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", ErrUnknownMapBounds, dir)
+		return nil, fmt.Errorf("%w (film %s) : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", profile.ErrUnknownMapBounds, dir)
 	}
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -215,7 +216,7 @@ func ScanBipedPositions(fc *FilmContext, opt ScanFilmOptions) ([]BipedPosition, 
 // absolues des records biped reconnus. PUR (aucune I/O) : c'est le cœur testable du
 // décodeur. Les champs Chunk/PacketIndex/TimestampUS sont laissés à zéro (remplis par
 // l'appelant).
-func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilmOptions,
+func ScanBipedRecords(payload []byte, slots SlotBand, lay profile.I0Layout, opt ScanFilmOptions,
 	ctx ContexteDeLecture) []BipedPosition {
 	i0Bits := lay.TotalBits()
 	var out []BipedPosition
@@ -264,12 +265,12 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilm
 // sur les cartes dont la région jouée n'est pas la première du bloc structure-BSP) et
 // renvoie l'offset bit de i0, le slot et la liste des index de composants du masque.
 // Un record d'une autre région est écarté : ses quanta vivent dans une autre AABB.
-func matchBipedHeader(pay []byte, p, total int, slots SlotBand, needTag1 bool, lay I0Layout) (int, uint32, []int, bool) {
+func matchBipedHeader(pay []byte, p, total int, slots SlotBand, needTag1 bool, lay profile.I0Layout) (int, uint32, []int, bool) {
 	i0, slot, idx, ok := matchBipedHeaderRaw(pay, p, total, slots, needTag1, lay.TotalBits())
 	if !ok {
 		return 0, 0, nil, false
 	}
-	const preGate = i0SpineBits + i0UseDefaultBits
+	const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
 	if readBitsAt(pay, i0, preGate) != 0 { // i0 absolu : spine + useDefault nuls
 		return 0, 0, nil, false
 	}
@@ -340,7 +341,7 @@ func ascendingFromZero(pay []byte, at, count int) ([]int, bool) {
 }
 
 // saturatedQuantum signale un axe dans son bucket extrême (valeur écrêtée).
-func saturatedQuantum(q [3]uint32, lay I0Layout) bool {
+func saturatedQuantum(q [3]uint32, lay profile.I0Layout) bool {
 	for i, w := range lay.AxisW {
 		if q[i] == 0 || q[i] == uint32(1)<<w-1 {
 			return true
@@ -353,9 +354,9 @@ func saturatedQuantum(q [3]uint32, lay I0Layout) bool {
 // les largeurs du découpage lay et les BORNES DE LA CARTE world. Calcul en float64 pour ne
 // pas décaler l'indice de quantum sur les arrondis float32.
 //
-// world DOIT être l'AABB du BSP de la carte du film (cf. MapQuantCatalog) : appliquer les
+// world DOIT être l'AABB du BSP de la carte du film (cf. profile.MapQuantCatalog) : appliquer les
 // bornes d'une autre carte produit une coordonnée fausse, pas approximative.
-func DequantBipedAxis(q uint32, ax int, lay I0Layout, world Vec3Range) float32 {
+func DequantBipedAxis(q uint32, ax int, lay profile.I0Layout, world profile.Vec3Range) float32 {
 	rng := world[ax]
 	step := (float64(rng.Max) - float64(rng.Min)) / float64(uint64(1)<<lay.AxisW[ax])
 	return float32(float64(rng.Min) + step*(float64(q)+quantCenter))

@@ -30,6 +30,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"testing"
@@ -113,7 +114,7 @@ func TestI57Reach(t *testing.T) {
 
 // i57ScanPacket balaie un payload de paquet delta et compte les deux populations.
 func i57ScanPacket(
-	pay []byte, tsUS uint64, slots SlotBand, lay I0Layout, arch Archetype, c *i57Counters,
+	pay []byte, tsUS uint64, slots SlotBand, lay profile.I0Layout, arch Archetype, c *i57Counters,
 ) {
 	total := len(pay) * 8
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
@@ -141,7 +142,7 @@ func i57ScanPacket(
 // que l'en-tête d'i0 soit nul (i0 absolu), et que la MARCHE COMPLÈTE du masque soit portée.
 // Sans cette dernière condition, n'importe quel motif de 64 bits ferait un faux positif.
 func i57MatchDense(
-	pay []byte, p, total int, slots SlotBand, lay I0Layout, arch Archetype,
+	pay []byte, p, total int, slots SlotBand, lay profile.I0Layout, arch Archetype,
 ) (int, uint32, []int, bool) {
 	slot := readBitsAt(pay, p+1, bipedSlotBits)
 	if readBitsAt(pay, p, 1) != 1 || !slots.Has(slot) {
@@ -178,7 +179,7 @@ func i57MatchDense(
 
 // i57Account marche le record et impute le résultat aux bons compteurs.
 func i57Account(
-	pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype,
+	pay []byte, i0, total int, idx []int, lay profile.I0Layout, arch Archetype,
 	c *i57Counters, dense bool, slot uint32, tsUS uint64,
 ) {
 	// La marche se déclenche AUSSI sur i54 seul. Ne la déclencher que sur i56/i57 rendrait
@@ -230,7 +231,7 @@ func i57Account(
 // Rend le nom du composant qui casse la marche : c'est LE renseignement que l'item 3.1
 // demande, et il n'existait nulle part.
 func i57Walk(
-	pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype, stopAt int,
+	pay []byte, i0, total int, idx []int, lay profile.I0Layout, arch Archetype, stopAt int,
 ) (val, flag1 int, broke string, ok bool) {
 	val, flag1 = -1, -1
 	at := i0 + lay.TotalBits() + i0TailBits

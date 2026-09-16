@@ -9,7 +9,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
@@ -20,7 +20,7 @@ type runner struct {
 	slug     string
 	cacheDir string
 	db       *sql.DB
-	bounds   *grammar.MapQuantCatalog
+	bounds   *profile.MapQuantCatalog
 	zones    *replay.MapObjectivesCatalog
 	role     mapvar.Role
 	offset   mapvar.Vec3

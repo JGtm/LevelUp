@@ -57,6 +57,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -105,7 +106,7 @@ func TestGroundWeaponPads(t *testing.T) {
 // gwPadsScanOptions rend les options de balayage du nuage des bipedes : les bornes de la carte,
 // rien de plus. Le CAP n'est PAS capture — cet instrument ne mesure aucune orientation, et
 // `CaptureDirs` couterait un decodage supplementaire par record.
-func gwPadsScanOptions(wr *grammar.Vec3Range) grammar.ScanFilmOptions {
+func gwPadsScanOptions(wr *profile.Vec3Range) grammar.ScanFilmOptions {
 	o := grammar.DefaultScanFilmOptions()
 	o.WorldRange = wr
 	return o
@@ -114,7 +115,7 @@ func gwPadsScanOptions(wr *grammar.Vec3Range) grammar.ScanFilmOptions {
 // gwPadsWeapons rend les apparitions d'ARMES AU SOL retenues, et publie les denominateurs de
 // l'item 1.0 : ancres, acceptees, croisees, ecartees, temoin fantome, part sans vie delta.
 func gwPadsWeapons(
-	t *testing.T, dir string, wr *grammar.Vec3Range, lives map[uint32][]equipLife,
+	t *testing.T, dir string, wr *profile.Vec3Range, lives map[uint32][]equipLife,
 ) []gwPadApparition {
 	t.Helper()
 	band := grammar.GroundWeaponSlotBand(dir)
@@ -192,7 +193,7 @@ func gwPadsWeapons(
 // LA CALIBRATION DU BLOC MPP VIENT TOUJOURS DE LA CHAINE DES POSES, comme en production : sans
 // elle, aucune identite `eqip` ne se resout et le balayage rendrait zero en silence.
 func gwPadsPowerups(
-	t *testing.T, dir string, wr *grammar.Vec3Range, pos []grammar.BipedPosition,
+	t *testing.T, dir string, wr *profile.Vec3Range, pos []grammar.BipedPosition,
 	lives map[uint32][]equipLife,
 ) []gwPadApparition {
 	t.Helper()
@@ -340,7 +341,7 @@ func gwPadsPart(k, n int) string {
 //
 // LE CHEMIN PASSE PAR `PathResolver`, jamais par un `filepath.Join(..., "data", ...)` a la main
 // (regle du depot). `boundsEnv` ne sert qu'a pointer un catalogue de rechange.
-func mapQuantEntryFromEnv(t *testing.T, mapEnv, boundsEnv string) grammar.MapQuantEntry {
+func mapQuantEntryFromEnv(t *testing.T, mapEnv, boundsEnv string) profile.MapQuantEntry {
 	t.Helper()
 	nom := os.Getenv(mapEnv)
 	if nom == "" {
@@ -351,7 +352,7 @@ func mapQuantEntryFromEnv(t *testing.T, mapEnv, boundsEnv string) grammar.MapQua
 	if chemin == "" {
 		chemin = title.NewPathResolver(repoRootForTest(t)).MapQuantBoundsPath(title.DefaultSlug)
 	}
-	cat, err := grammar.LoadMapQuantCatalog(chemin)
+	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible (%s) : %v", chemin, err)
 	}

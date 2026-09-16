@@ -35,6 +35,7 @@ import (
 	"fmt"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -131,7 +132,7 @@ func absF32(f float32) float32 {
 }
 
 // EquipmentPosEps rend le rayon d'accord de l'oracle sur chaque axe, pour les bornes données.
-func EquipmentPosEps(wr *Vec3Range) [3]float32 {
+func EquipmentPosEps(wr *profile.Vec3Range) [3]float32 {
 	return [3]float32{
 		mppCalibPosEps * (wr[0].Max - wr[0].Min),
 		mppCalibPosEps * (wr[1].Max - wr[1].Min),
@@ -153,12 +154,12 @@ func mppLeadCandidates() []int  { return []int{9, 6, 5, 7, 8, 10, 11, 12, 13} }
 func mppIndexCandidates() []int { return []int{5, 2, 3, 4, 6, 7, 8} }
 
 // mppCandidates énumère les découpages testés, dans l'ordre de préférence.
-func mppCandidates() []MPPWidths {
+func mppCandidates() []profile.MPPWidths {
 	leads, idxs := mppLeadCandidates(), mppIndexCandidates()
-	out := make([]MPPWidths, 0, len(leads)*len(idxs))
+	out := make([]profile.MPPWidths, 0, len(leads)*len(idxs))
 	for _, idx := range idxs {
 		for _, lead := range leads {
-			out = append(out, MPPWidths{Lead: lead, Index: idx})
+			out = append(out, profile.MPPWidths{Lead: lead, Index: idx})
 		}
 	}
 	return out
@@ -185,13 +186,13 @@ const (
 // disent si le film a tranché ou non.
 type MPPCalibration struct {
 	// Widths est le découpage retenu ; non Valid() si la calibration n'a pas conclu.
-	Widths MPPWidths
+	Widths profile.MPPWidths
 	// Agree est le nombre de records dont la position retombe sur le premier point de la vie
 	// que leur en-tête annonce, au découpage retenu.
 	Agree int
 	// Runner / RunnerAgree : le meilleur découpage CONCURRENT et son score. C'est l'écart entre
 	// les deux qui fait la preuve, pas le score absolu.
-	Runner      MPPWidths
+	Runner      profile.MPPWidths
 	RunnerAgree int
 	// Anchors est le nombre d'en-têtes NEW ti=37 dont la vie est connue des paquets delta.
 	Anchors int
@@ -200,7 +201,7 @@ type MPPCalibration struct {
 	// Lives est le nombre de vies d'objet que l'oracle connaissait.
 	Lives int
 	// ByWidths est le score de CHAQUE découpage candidat : la pièce justificative.
-	ByWidths map[MPPWidths]int
+	ByWidths map[profile.MPPWidths]int
 }
 
 // String rend la calibration en une ligne, pour le journal de production.
@@ -227,21 +228,21 @@ func (c MPPCalibration) String() string {
 // poses inventées, et un identifiant lu 3 bits trop tôt est une invention.
 // ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [CalibrateMPPWidthsOf].
 func CalibrateMPPWidths(
-	dir string, wr *Vec3Range, band map[uint32]bool, spans map[EquipmentLifeKey][]EquipmentLifeSpan,
+	dir string, wr *profile.Vec3Range, band map[uint32]bool, spans map[EquipmentLifeKey][]EquipmentLifeSpan,
 ) (MPPCalibration, bool) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return MPPCalibration{ByWidths: map[MPPWidths]int{}, Lives: len(spans)}, false
+		return MPPCalibration{ByWidths: map[profile.MPPWidths]int{}, Lives: len(spans)}, false
 	}
 	return CalibrateMPPWidthsOf(contexteDeBobine(film), wr, band, spans)
 }
 
 // CalibrateMPPWidthsOf mesure le découpage du bloc MPP sur un film DEJA CHARGE.
 func CalibrateMPPWidthsOf(
-	fc *FilmContext, wr *Vec3Range, band map[uint32]bool,
+	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
 	spans map[EquipmentLifeKey][]EquipmentLifeSpan,
 ) (MPPCalibration, bool) {
-	cal := MPPCalibration{ByWidths: map[MPPWidths]int{}, Lives: len(spans)}
+	cal := MPPCalibration{ByWidths: map[profile.MPPWidths]int{}, Lives: len(spans)}
 	if wr == nil || len(band) == 0 || len(spans) == 0 {
 		return cal, false
 	}
@@ -282,7 +283,7 @@ func CalibrateMPPWidthsOf(
 	cal.Widths, cal.Agree = best.widths, best.agree
 	cal.Runner, cal.RunnerAgree = best.runner, best.runnerAgree
 	if !ok {
-		cal.Widths = MPPWidths{}
+		cal.Widths = profile.MPPWidths{}
 	}
 	return cal, ok
 }
@@ -331,15 +332,15 @@ func (pr *mppCalibProbe) scanPayload(pay []byte, atUS uint64) {
 
 // mppCalibResult est le classement des découpages à un instant du balayage.
 type mppCalibResult struct {
-	widths      MPPWidths
+	widths      profile.MPPWidths
 	agree       int
-	runner      MPPWidths
+	runner      profile.MPPWidths
 	runnerAgree int
 }
 
 // mppCalibVerdict classe les découpages et dit si l'écart tranche. Les deux conditions sont
 // cumulatives et énoncées avant la mesure : assez d'accords ET une avance qui écrase.
-func mppCalibVerdict(byWidths map[MPPWidths]int) (mppCalibResult, bool) {
+func mppCalibVerdict(byWidths map[profile.MPPWidths]int) (mppCalibResult, bool) {
 	var r mppCalibResult
 	for _, w := range mppCandidates() {
 		n := byWidths[w]
