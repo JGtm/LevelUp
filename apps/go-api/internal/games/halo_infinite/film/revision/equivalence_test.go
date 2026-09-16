@@ -44,30 +44,20 @@ import (
 // la grammaire — la constante decrit la couche, elle n en fait pas partie.
 const fichierPorteurDeRevision = "grammar_rev.go"
 
-// TestEmpreinteEgaleLeGoldenDeKillsource : le contrat COURANT rend l empreinte figee par
-// `sync/killcollector/testdata/killsource_decoder_rev.golden`.
-func TestEmpreinteEgaleLeGoldenDeKillsource(t *testing.T) {
-	api := racineAPI(t)
-	racine := filepath.Join(api, "internal", "games", "halo_infinite", "film", "facts", "killsource")
-	golden := filepath.Join(api, "internal", "sync", "killcollector", "testdata",
-		"killsource_decoder_rev.golden")
-
-	empreinte, err := revision.Empreinte([]string{racine}, nil)
-	if err != nil {
-		t.Fatalf("empreinte de %s : %v", racine, err)
-	}
-	rev, figee := derniereLigneDeDonnees(t, golden)
-	t.Logf("killsource : revision %s, figee %s, calculee %s", rev, figee, empreinte)
-	if empreinte != figee {
-		t.Fatalf("LE MECANISME CENTRAL NE REND PAS L EMPREINTE FIGEE DE `killsource`.\n"+
-			"  golden    : %s\n  revision  : %s\n  figee     : %s\n  calculee  : %s\n"+
-			"Le lot 2.6.1 ne pourra pas faire heriter ce gate sans regenerer son golden, donc "+
-			"sans monter `facts.Rev` — ce qui rouvrirait un backlog de redecodage pour un "+
-			"changement d outillage. Chercher la cause (ordre des fichiers, encadrement, "+
-			"normalisation des fins de ligne) AVANT de toucher au golden.",
-			golden, rev, figee, empreinte)
-	}
-}
+// TEST RETIRE LE 2026-09-16, DANS LE COMMIT QUI L A CONSOMME (lot 2.6.1, volet facts + source).
+//
+// `TestEmpreinteEgaleLeGoldenDeKillsource` prouvait que `revision.Empreinte(killsource/)` rendait
+// EXACTEMENT l empreinte figee par `killcollector/testdata/killsource_decoder_rev.golden`
+// (`7d9ef1af…`, revision `killsource-2026-09-16.2`). Ce qu il achetait est acquis : l heritage a
+// eu lieu, `facts.Rev` a repris la valeur de `KillSourceDecoderRev` SANS renumerotation, et
+// AUCUN backlog n a ete ouvert. Le golden qu il lisait n existe plus a ce chemin — il a
+// DESCENDU en `film/facts/testdata/facts_rev.golden`, ou le vrai gate (`facts/rev_test.go`) le
+// tient desormais, sur un perimetre plus large (tout l arbre des faits, plus les valeurs
+// amont). Le garder aurait demande de lui faire relire un golden qui ne fige plus la meme
+// quantite : un oracle qui ne mesure plus ce qu il annonce est pire qu absent.
+//
+// Le JUMEAU de la grammaire reste, lui, et il reste NECESSAIRE : `grammar.Rev` n a pas encore
+// herite (volet grammaire du lot 2.6, apres 2.5.e), et c est lui qui porte le cadre a retirer.
 
 // TestEmpreinteHeriteeEgaleLeGoldenDeGrammaire : le cadre herite rend l empreinte figee par
 // `filmdec/testdata/grammar_rev.golden`, sur les QUATRE racines (le lot 2.4 a fait entrer
