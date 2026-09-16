@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "titleSlug": "halo_infinite",
+  "about": "Catalogue des profils de film : ce que le depot sait de la grammaire d un film, indexe par les TROIS clefs que le film ECRIT (format chunk_00+4, build de la section 2, version majeure chunk_00+0). `derived` est fabrique par `go run ./cmd/film-profiles-build` ; `entries` est SAISI, chaque ligne avec sa provenance (relue / mesuree / presumee), sa preuve et sa date. Procedure : docs/RUNBOOK_FILM_PROFILES.md.",
+  "derived": {
+    "catalogue": "map_quant_bounds.json",
+    "schemaVersion": 1,
+    "maps": 79,
+    "mapsSha256": "e77e4ffc57b01857d55221812be10d96d9eb48426a4e0c1d4e1dffcc40b9ce48",
+    "tool": "CGO_ENABLED=1 go run ./cmd/mapquant-build"
+  },
+  "entries": [
+    {
+      "key": "format=27",
+      "field": "MPP",
+      "value": "lead=9 index=5",
+      "provenance": "relue",
+      "proof": "FUN_14080cfe8 (bloc object-multiplayer-properties) : champ de tete R(9) par FUN_141fd72c0 (`141fd72de : ADD dword ptr [RCX + 0x2c],0x9`), champ d index R(5) inline ; aucune branche de version dans le bloc",
+      "date": "2026-09-15"
+    },
+    {
+      "key": "format=20,21,24,25",
+      "field": "MPP",
+      "value": "INDETERMINEE (aucune largeur posee)",
+      "provenance": "mesuree",
+      "proof": "les deux oracles internes se contredisent : `n2` designe 8/3 (part modale 0,988 a 0,996 contre 0,304 a 0,522) et la fermeture designe 10/5 la ou l ecrivain est certain — cf. build_profile.go. La case reste VIDE : c est l etat reel de la connaissance",
+      "date": "2026-09-15"
+    },
+    {
+      "key": "build=HI_1_13_0",
+      "field": "Slots.PersoBytes",
+      "value": "1852",
+      "provenance": "relue",
+      "proof": "FUN_1407edea8 : `LEA R8,[RDI+0xcc0] ; R9D=0x39e0` ; fermeture par le serialiseur delta FUN_1407ec27c (`actionPose` a +0x738, plus 4 = 0x73C)",
+      "date": "2026-09-12"
+    },
+    {
+      "key": "build=HI_1_12_0",
+      "field": "Slots.PersoBytes",
+      "value": "1852",
+      "provenance": "mesuree",
+      "proof": "transposition `mesure - predit` de 0 bit, valeur unique sur les 146 films HI_1_12_0 du cache (oracle TestResidusSlotChaineCorpus)",
+      "date": "2026-09-14"
+    },
+    {
+      "key": "build=HI_1_11_0",
+      "field": "Slots.PersoBytes",
+      "value": "1492",
+      "provenance": "mesuree",
+      "proof": "transposition -2 880 bits, valeur unique sur les 39 films du cache ; coupe autour du bloc de queue verifiee sur `00ba2e1c`",
+      "date": "2026-09-13"
+    },
+    {
+      "key": "build=HI_1_10_0",
+      "field": "Slots.PersoBytes",
+      "value": "1492",
+      "provenance": "mesuree",
+      "proof": "transposition -2 880 bits, valeur unique sur les 26 films du cache ; coupe verifiee sur `084a804d`",
+      "date": "2026-09-13"
+    },
+    {
+      "key": "build=HI_1_9_0",
+      "field": "Slots.PersoBytes",
+      "value": "1312",
+      "provenance": "mesuree",
+      "proof": "transposition -4 320 bits, unique film `11de8353` du cache, coupe verifiee",
+      "date": "2026-09-13"
+    },
+    {
+      "key": "build=HI_1_8_0",
+      "field": "Slots.PersoBytes",
+      "value": "1312",
+      "provenance": "mesuree",
+      "proof": "transposition -4 320 bits, valeur unique sur les 10 films du cache ; coupe verifiee sur `0a247154`",
+      "date": "2026-09-13"
+    },
+    {
+      "key": "build=HI_1_4_1",
+      "field": "Slots.PersoBytes",
+      "value": "2052",
+      "provenance": "mesuree",
+      "proof": "transposition +1 600 bits, unique film `a521164d` du cache ; le +200 ne ferme sur aucun pas connu — cause au registre des reports",
+      "date": "2026-09-13"
+    },
+    {
+      "key": "majeure\u003c=38",
+      "field": "Highlight.Implantation",
+      "value": "gamertag_en_tete (b[0:32])",
+      "provenance": "mesuree",
+      "proof": "port de spnkr/film/highlight_events.py, confirme sur le cache : le roster humain se ferme sur les films de majeure \u003c= 38",
+      "date": "2026-09-12"
+    },
+    {
+      "key": "majeure=39,40",
+      "field": "Highlight.Implantation",
+      "value": "gamertag_decale_12 (b[12:44])",
+      "provenance": "mesuree",
+      "proof": "211 films du cache (mars-novembre 2025) : sous l implantation en tete le roster tombait a 2 noms distincts pour 24 a 27 joueurs (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md)",
+      "date": "2026-09-12"
+    },
+    {
+      "key": "majeure\u003e=41",
+      "field": "Highlight.Implantation",
+      "value": "gamertag_en_tete (b[0:32])",
+      "provenance": "mesuree",
+      "proof": "1 117 films du cache portent 0x29 (41) et rendent un roster ferme sous l implantation en tete",
+      "date": "2026-09-12"
+    },
+    {
+      "key": "toutes",
+      "field": "Keyframe.EnTeteBits",
+      "value": "108",
+      "provenance": "relue",
+      "proof": "FUN_142e2bfd0 : R(32) id, R(32) typeIndex, R(32), R(4) (FUN_142e29cf8), R(8)",
+      "date": "2026-08-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Keyframe.MotDeTailleBits",
+      "value": "32 (deux mots : n1, n2)",
+      "provenance": "relue",
+      "proof": "FUN_142e2bfd0 : deux `if (0 \u003c (int)uVar7)` gardant vtable[0x60] puis vtable[0x88] — comparaison SIGNEE",
+      "date": "2026-09-15"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.Traversal",
+      "value": "IndexW=1 AxisW=6/6/6",
+      "provenance": "presumee",
+      "proof": "largeurs capturees a l execution (Cheat Engine) sur UNE session ; aucune lecture chez l ecrivain, aucune mesure par build",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.AbsoluteAxisW",
+      "value": "14",
+      "provenance": "presumee",
+      "proof": "uniforme applique a defaut de table par index de plage ; `absAxisWFor` retombe dessus (repli inscrit au registre, ancre `if absoluteAxisW \u003e 0 {`)",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.DeltaQuantum",
+      "value": "0.01383",
+      "provenance": "mesuree",
+      "proof": "pas d un cran de position repliquee en DELTA par i0, mesure sur le film ; la range delta vaut DeltaQuantum * 2^AxisW",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.DeltaAxisWidth",
+      "value": "14",
+      "provenance": "presumee",
+      "proof": "largeur d axe du chemin DELTA axis-width ; ambiguite 6 contre 14 jamais tranchee chez l ecrivain",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.Range",
+      "value": "QuantRangeCEBiped",
+      "provenance": "presumee",
+      "proof": "DAT_14462cbe0[0] capture a l execution sur UNE carte ; la range par CARTE vient du catalogue (Profile.Map), celle-ci est le defaut de paquet",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.FullPrecision",
+      "value": "false",
+      "provenance": "relue",
+      "proof": "miroir du global de configuration DAT_145121140, teste `== 1` par FUN_14080cfe8 sans consommer de bit ; faux = la configuration de rejeu",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.DeltaHasHandleTail",
+      "value": "false",
+      "provenance": "relue",
+      "proof": "miroir du champ d execution bVar16 = (precIndex != -1) ; faux = le cas dominant du film, et ce n est PAS un bit du flux",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.CalibratedSkip",
+      "value": "false",
+      "provenance": "presumee",
+      "proof": "bascule de calibration d i0 (saut de 47 ou 101 bits) ; jamais activee en production, jamais mesuree par build",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.MobilityActionExtraBits",
+      "value": "0",
+      "provenance": "presumee",
+      "proof": "bits supplementaires d action de mobilite ; zero par defaut, aucune lecture chez l ecrivain",
+      "date": "2026-09-17"
+    }
+  ]
+}
