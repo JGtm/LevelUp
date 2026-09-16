@@ -26,6 +26,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/titleseams"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	go_sync "levelup/go-api/internal/sync"
@@ -34,6 +35,12 @@ import (
 // (helper de progression : compteurs gérés inline dans main)
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	gamertag := flag.String("gamertag", "JGtm", "Gamertag dont les tokens servent à l'auth API")
 	dryRun := flag.Bool("dry-run", false, "Lister sans écrire")
 	limit := flag.Int("limit", 0, "Limiter au N matchs les plus récents (0 = tous)")

@@ -37,7 +37,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	"levelup/go-api/internal/games/titleseams"
 	lusync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/skill"
 )
@@ -54,6 +54,12 @@ type runEnv struct {
 }
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	// Seams AVANT tout calcul (exigence B4.1 du plan).
 	wireClassifiers()
 
@@ -98,8 +104,6 @@ func main() {
 // fallback `ranked_slayer` sans le dire ; sans le seam LUSR, playlist_group
 // serait faux. Les deux écrivent des données persistées : fail-fast obligatoire.
 func wireClassifiers() {
-	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
-	lusync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
 	if err := lusync.ValidateLUSRChainClassifierWired(); err != nil {
 		slog.Error("recompute_perfnote: classifier LUSR non câblé", "err", err)
 		os.Exit(1)

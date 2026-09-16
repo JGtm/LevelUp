@@ -30,6 +30,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
+	"levelup/go-api/internal/games/titleseams"
 	lusync "levelup/go-api/internal/sync"
 )
 
@@ -49,6 +50,12 @@ var targets = map[string]string{
 }
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	dbPath := flag.String("db", sharedDBPath, "chemin vers shared_matches_v2.duckdb")
 	reset := flag.Bool("reset", false, "truncate player_skill_state_v2 avant le replay (état frais depuis priors)")
 	flag.Parse()

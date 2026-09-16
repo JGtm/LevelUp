@@ -85,18 +85,18 @@ Infinite, `grep "PlayerCount ="` → seulement `halo_5/ingest/collect.go`, `open
 
 ## 3. Étape 0 — Préparation (rapide)
 
-- [ ] 0.1 Worktree `../LevelUp-wt-sync-pool` sur `wt/sync-pool` (créé par le pilote) ;
+- [x] 0.1 Worktree `../LevelUp-wt-sync-pool` sur `wt/sync-pool` (créé par le pilote) ;
       vérifier `git branch --show-current`. `apps/web` n'est pas touché : pas de `npm install`.
-- [ ] 0.2 Lire `CLAUDE.md`, ce plan, `internal/platform/auth/pool/README.md`, skills
+- [x] 0.2 Lire `CLAUDE.md`, ce plan, `internal/platform/auth/pool/README.md`, skills
       `plan-execution`, `arch-rules`. Lire `docs/adr/0023-*.md` (tokens) et `0035-*.md`
       (annuaire : `ProfileGate`, `Onboard`) pour ne pas recroiser leur périmètre.
-- [ ] 0.3 Baseline : `cd apps/go-api && go build ./... && go test ./cmd/levelup/... ./internal/scheduler/... ./internal/sync/skill/... ./internal/platform/auth/pool/... ./internal/games/halo_infinite/migrations/... ./internal/archlint/...` → code de sortie 0 (noter la durée). `go test ./internal/sync/` seul dure ~500 s à froid : toujours `-timeout 30m`.
+- [x] 0.3 Baseline : `cd apps/go-api && go build ./... && go test ./cmd/levelup/... ./internal/scheduler/... ./internal/sync/skill/... ./internal/platform/auth/pool/... ./internal/games/halo_infinite/migrations/... ./internal/archlint/...` → code de sortie 0 (noter la durée). `go test ./internal/sync/` seul dure ~500 s à froid : toujours `-timeout 30m`.
 
 **Gate G0** : branche correcte, baseline verte notée dans « Avancement ».
 
 ## 4. Étape 1 — Seams title-owned câblés par toutes les CLI (D-B, moyen)
 
-- [ ] 1.1 `internal/games/titleseams/titleseams.go` (nouveau) : `func RegisterAll(prestigeConfigDir string)`
+- [x] 1.1 `internal/games/titleseams/titleseams.go` (nouveau) : `func RegisterAll(prestigeConfigDir string)`
       qui exécute, dans cet ordre et sans autre logique, les huit appels du bloc
       `cmd/server/main.go:1697-1725` : `migration.SetTitleStepsProvider(halomigrations.StepsFor)` ;
       `halo5migrations.SetMilestonesSeedRoot(filepath.Dir(prestigeConfigDir))` (si
@@ -110,23 +110,23 @@ Infinite, `grep "PlayerCount ="` → seulement `halo_5/ingest/collect.go`, `open
       Vérifier d'abord qu'aucun import cyclique n'apparaît (`titleseams` importe `sync`,
       `migration`, les paquets `halo_infinite`/`halo_5` ; aucun d'eux ne doit importer
       `titleseams`).
-- [ ] 1.2 `cmd/server/main.go` : le bloc est remplacé par l'appel `titleseams.RegisterAll(prestigeConfigDir)`
+- [x] 1.2 `cmd/server/main.go` : le bloc est remplacé par l'appel `titleseams.RegisterAll(prestigeConfigDir)`
       (les commentaires MT-07/MT-15/D-A déménagent dans le paquet). Comportement byte-identique.
-- [ ] 1.3 `cmd/levelup/main.go:65` : `migration.SetTitleStepsProvider` remplacé par
+- [x] 1.3 `cmd/levelup/main.go:65` : `migration.SetTitleStepsProvider` remplacé par
       `titleseams.RegisterAll(<racine config prestige résolue comme le serveur — vérifier
       comment `prestigeConfigDir` est calculé dans cmd/server et réutiliser la même source>)`.
       `cmd/backfill_all/main.go` : idem. Tout autre `main` de `cmd/` qui importe
       `levelup/go-api/internal/sync` (lister par `grep -rl '"levelup/go-api/internal/sync"' cmd/`)
       reçoit l'appel — la liste est écrite dans « Avancement ».
-- [ ] 1.4 Ratchet `internal/archlint/titleseams_wired_test.go` : pour chaque répertoire de
+- [x] 1.4 Ratchet `internal/archlint/titleseams_wired_test.go` : pour chaque répertoire de
       `cmd/` dont un fichier non-test importe `levelup/go-api/internal/sync` (ou
       `internal/sync/skill`), un fichier non-test du même répertoire contient
       `titleseams.RegisterAll(`. Allowlist VIDE ; message d'échec = le nom du `main` fautif et
       la ligne à ajouter.
-- [ ] 1.5 Test `internal/games/titleseams/titleseams_test.go` : après `RegisterAll("")`,
+- [x] 1.5 Test `internal/games/titleseams/titleseams_test.go` : après `RegisterAll("")`,
       `skill.GetLUSRChain("arena:slayer")` (ou l'appel public exact du provider) ne panique pas
       et retourne une chaîne non vide ; la variante titre H5 est routée (`GetLUSRChainForTitle`).
-- [ ] 1.6 Test de non-régression CLI : `cmd/levelup/main_seams_test.go` — invoque le même
+- [x] 1.6 Test de non-régression CLI : `cmd/levelup/main_seams_test.go` — invoque le même
       chemin de démarrage que `main` (fonction extraite si nécessaire, ≤ 80 L) puis
       `skill.GetLUSRChain(...)` sans panic. Un test qui passe avec ET sans 1.3 est refusé.
 
@@ -267,4 +267,23 @@ sortie, écarts). Reprise : lire cette section puis `git log --oneline -10` dans
 
 ## Avancement
 
-(vide — plan non exécuté au 2026-09-16 12:00)
+### Étape 0 — Préparation — 2026-09-16 12:00 — CLOSE
+
+- 0.1 `[x]` worktree `LevelUp-wt-sync-pool`, `git branch --show-current` = `wt/sync-pool`, base `e4a313311`. `apps/web` non touché.
+- 0.2 `[x]` lus : `CLAUDE.md`, ce plan, `internal/platform/auth/pool/README.md`, ADR 0023 / 0026 / 0035, skills `plan-execution` et `arch-rules`, 5 dernières entrées de `.ai/thought_log.md`.
+- 0.3 `[x]` baseline. `go build ./...` → **0**. `go test ./cmd/levelup/... ./internal/scheduler/... ./internal/sync/skill/... ./internal/platform/auth/pool/... ./internal/games/halo_infinite/migrations/... ./internal/archlint/... -timeout 30m` → **0**, 6 paquets `ok` (scheduler 97 s, archlint 34 s, migrations 23 s ; total ~3 min).
+
+**Gate G0** : passé.
+
+### Étape 1 — Seams title-owned câblés par toutes les CLI — 2026-09-16 12:40 — CLOSE
+
+- 1.1 `[x]` `internal/games/titleseams/titleseams.go` : `RegisterAll(prestigeConfigDir string)` (les 8 appels, dans l'ordre du bloc serveur, zéro logique) + `PrestigeConfigDir(repoRoot)` (même calcul que `cmd/server/main.go:461`, pour ne pas recopier le `filepath.Join` dans chaque CLI). Aucun cycle : ni `sync`, ni `migration`, ni `games/halo_*` n'importe `titleseams`.
+- 1.2 `[x]` `cmd/server/main.go` : bloc 1706-1735 remplacé par `titleseams.RegisterAll(prestigeConfigDir)` ; imports `halo5migrations` et `skillchain` retirés (devenus inutilisés). Les `ValidateLUSRChainClassifierWired` / `ValidateObjectiveFamilyClassifierWired` du boot restent en place. Comportement identique.
+- 1.3 `[x]` `cmd/levelup/main.go` : `wireStartupSeams(cfg)` (fonction extraite pour être exerçable, cf. 1.6) appelle `RegisterAll(PrestigeConfigDir(cfg.RepoRoot))`. **30 autres `main` de `cmd/` reçoivent `RegisterAll("")`** : backfill-csr-history, backfill-team-rounds, backfill-team-scores, backfill_all, backfill_kda_accuracy, backfill_objective_stats, backfill_participation_info, backfill_quit_timestamps, backfill_registry_names, bench-rps, diag_film, diag_film_avail, diag_live_economy, diag_lusr_player, diag_matchstats_dump, diag_perfsim, h5-backfill, h5-csr-match-backfill, h5-enrich, h5-lusr-backfill, h5-lusr-smoke, h5-sync, lusr_v2_canonical_backfill, lusr_v2_phase0, lusr_v2_replay, lusr_v2_squad_estimate, lusr_v2_ttt_batch, probe-world-stats, recompute_perfnote, refresh_golden_fixture.
+  **Écart assumé** : ces 30 outils reçoivent une racine de jalons VIDE. Le step `h5_seed_milestone_catalog` la traite en no-op gracieux explicitement prévu (« CLI sans milestones », `internal/games/halo_5/migrations/milestones.go:122`) — c'est leur comportement ACTUEL (aucun d'eux ne posait de racine), donc zéro régression, et ils gagnent les classifiers qui leur manquaient. Seule la CLI `levelup`, qui seed et provisionne, reçoit la vraie racine.
+  **Découverte traitée dans le périmètre (imposée par le gate G1)** : 9 binaires posaient déjà les classifiers À LA MAIN, et 7 d'entre eux SANS les variantes par titre h5 (diag_lusr_player, lusr_v2_phase0, lusr_v2_squad_estimate, lusr_v2_ttt_batch, lusr_v2_canonical_backfill, recompute_perfnote, h5-lusr-smoke/backfill/enrich pour partie) — tous les modes h5 y collapsaient dans `arena_slayer` en silence. Ces 4 appels `Set*Classifier*` ont été retirés de `cmd/` ; `RegisterAll` les pose tous, variantes h5 comprises.
+- 1.4 `[x]` `internal/archlint/titleseams_wired_test.go`, deux ratchets, allowlist VIDE : (a) `TestBinairesSyncCablentLesSeams` — tout répertoire de `cmd/` dont un fichier non-test importe `internal/sync` (ou un sous-paquet) contient `titleseams.RegisterAll(` ; (b) `TestSeamsPosesUniquementParTitleseams` — aucun fichier de `cmd/` ne pose les 4 seams de classification à la main. `SetTitleStepsProvider` / `SetCareerRankTranslationsProvider` ne sont PAS dans les motifs : 4 binaires qui n'embarquent pas le moteur de sync les posent légitimement seuls (h5-metadata-fetch, h5-read-smoke, seed-rank-translations, snapshot-world-leaderboard) et leur imposer `RegisterAll` y ferait entrer `internal/sync` pour rien — justification écrite dans le test.
+- 1.5 `[x]` `internal/games/titleseams/titleseams_test.go` : après `RegisterAll("")`, `GetLUSRChain("BTB:Slayer") == "btb"`, fallback non vide sur préfixe inconnu, `GetLUSRChainForTitle(halo_5, "") == "h5_arena"`, `ValidateLUSRChainClassifierWired() == nil`, famille objectif câblée des deux côtés ; idempotence ; `PrestigeConfigDir`.
+- 1.6 `[x]` `cmd/levelup/main_seams_test.go` exerce `wireStartupSeams` (le chemin de démarrage de `main`) après `SetLUSRChainClassifier(nil)`. **Mutation vérifiée** : en remplaçant l'appel par `_ = titleseams.PrestigeConfigDir(cfg.RepoRoot)`, le test ROUGIT (`GetLUSRChain a paniqué …`), puis repasse vert une fois restauré.
+
+**Gate G1** : `go build ./...` → **0** ; `go vet ./cmd/... ./internal/games/titleseams/... ./internal/archlint/...` → **0** ; `go test ./internal/games/titleseams/... ./internal/archlint/... ./cmd/levelup/... ./cmd/server/... -timeout 30m` → **0**, 4 paquets `ok` ; `grep -rn "SetLUSRChainClassifier(" cmd/` (hors tests) → **0 ligne** ; `gofmt -l` sur les fichiers touchés → vide.
