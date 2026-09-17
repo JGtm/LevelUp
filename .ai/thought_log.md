@@ -34,6 +34,46 @@ sous une page.
 
 **Prochaine étape** : fusion dans `feat/v75` sur demande de l'utilisateur, CI de branche à
 confirmer, gate visuel (une cible avec films décodés sur les matchs communs, une cible sans).
+## [2026-09-17] Synthèse : la carte des détournements porte un libellé unique pour tous les titres — Complété (branche `wt/detournements`, worktree `../LevelUp-wt-detournements`)
+
+**Demande** : la carte KPI des véhicules détournés de la page Synthèse (éjecter le pilote
+ennemi et prendre son véhicule) affichait un libellé FR choisi PAR TITRE — Halo 5 « Vol à la
+tire », Halo Infinite « Dépositaire ». Décision utilisateur du 2026-09-17, tranchée : un seul
+libellé pour tous les titres, FR « Détournements » / EN « Hijacks », et suppression du choix
+par titre.
+
+**Décision technique principale** : « Dépositaire » est le nom officiel FR de la médaille
+Reclaimer (« s'emparer d'un véhicule ennemi qui vous appartenait ») — ce n'est pas ce que la
+carte compte (awards `hijacked_*` côté Halo Infinite, médailles Hijack et Skyjack côté
+Halo 5) : le libellé n'était pas seulement redondant, il désignait un autre fait de jeu. Les
+deux clés `synthesis.combat_profile.hijacks_infinite` et `...hijacks_h5` fusionnent en une
+clé unique `synthesis.combat_profile.hijacks` dans
+`apps/web/src/lib/i18n/manifests/synthesis.toml` ; le commentaire du manifeste ne décrit plus
+un choix par titre mais ce que le compteur mesure, et dit pourquoi « Dépositaire » est
+abandonné (pour que le libellé ne soit pas ré-introduit de bonne foi). Le helper pur
+`hijacksLabel.ts` et son test sont SUPPRIMÉS (zéro code mort, pas de « au cas où ») ; avec eux
+disparaît la lecture de `currentTitleSlug` dans `SynthesisPage.tsx` — vérifié sur pièces : le
+fichier n'en avait aucun autre usage. La carte appelle `t('synthesis.combat_profile.hijacks')`
+directement. C'était l'une des cinq occurrences de `slug === 'halo_5'` côté front recensées
+par l'audit V7.5 (annexe W4) ; les quatre autres (`NavL1.tsx`, `NavL2.tsx`,
+`HomeCitationsNearCompletion.tsx`, `waypointUrl.ts` x2) restent, hors périmètre de ce lot.
+`apps/web/src/lib/i18n/generated/synthesis.ts` est régénéré par
+`node apps/web/scripts/build_i18n_manifests.mjs` (aucune cible npm ni make ne le fait — sans
+cette étape le typecheck rougit) ; le diff généré ne touche QUE les trois lignes de la fusion,
+aucune dérive sur les 21 autres manifestes.
+
+**Résultats observés** : baseline `make check-types` verte AVANT toute modification (EXIT 0),
+après `npm install` dans le worktree neuf. Gates de clôture, tous en code de sortie 0 :
+`npx vitest run src/features/synthesis src/lib/i18n` (16 fichiers, 158 tests passés, 14
+skippés), `make check-types` après purge de `node_modules/.tmp` (pas de faux vert
+incrémental), `npm run lint` (0 erreur, 27 warnings pré-existants TanStack Table / React
+Compiler), `npm run lint:fields` (1992 fichiers scannés, aucune violation). Grep final sous
+`apps/web/src` : `hijacks_infinite|hijacks_h5|hijacksLabel` rend zéro occurrence ;
+« Dépositaire » ne subsiste QUE dans le commentaire d'explication du manifeste, qui est exigé
+par la demande. Les mentions de l'ancien libellé par titre dans `docs/CHANGELOG.md`,
+`docs/FR/CHANGELOG.md` et les annexes d'audit `.ai/` sont de l'historique : laissées intactes.
+
+**Conclusion / prochaine étape** : fusion dans `feat/v75` par le superviseur.
 
 ## [2026-09-17] Explorer / briefing : arme favorite de la sélection — En cours — gate visuel utilisateur en attente (branche `wt/arme-favorite-briefing`, worktree `../LevelUp-wt-arme-favorite`)
 
