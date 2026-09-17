@@ -397,9 +397,9 @@ export function TimeseriesPerMinuteTrend({
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
-    const colKills = resolveToken('chart-series-1')
-    const colDeaths = resolveToken('outcome-loss')
-    const colAssists = resolveToken('chart-series-3')
+    const colKills = resolveToken('stat-kills')
+    const colDeaths = resolveToken('stat-deaths')
+    const colAssists = resolveToken('stat-assists')
 
     // Étiquettes X au format `#N\nMap` (style SquadPerformanceCharts).
     const categories = buildMatchCategories(rows)

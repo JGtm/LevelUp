@@ -225,7 +225,7 @@ function WeaponsTop({ weapons, locale, t }: { weapons: ExplorerWeaponKill[]; loc
               <div className="h-1 w-full overflow-hidden rounded-full bg-muted-foreground/15">
                 <div
                   className="h-full rounded-full"
-                  style={{ width: `${pct}%`, backgroundColor: tokenCssVar('chart-series-1') }}
+                  style={{ width: `${pct}%`, backgroundColor: tokenCssVar('stat-kills') }}
                 />
               </div>
             </li>

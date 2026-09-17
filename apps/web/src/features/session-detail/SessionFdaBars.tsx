@@ -34,9 +34,9 @@ interface FdaPoint {
 }
 
 const STAT_TOKEN: Record<FdaPoint['key'], SemanticToken> = {
-  frags: 'outcome-win',
-  deaths: 'outcome-loss',
-  assists: 'outcome-draw',
+  frags: 'stat-kills',
+  deaths: 'stat-deaths',
+  assists: 'stat-assists',
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

@@ -180,10 +180,9 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     const legend = screen.getByRole('list', { name: 'Légende' })
     const swatch = (name: string) =>
       within(legend).getByText(name).parentElement!.querySelector('span[aria-hidden]') as HTMLElement
-    expect(swatch('Mes frags').style.backgroundColor).toBe(tokenCssVar('chart-series-1'))
-    // `outcome-loss` : la convention frags/morts de toute l'app, et non `chart-series-3`
-    // qui est l'encre des ASSISTANCES ailleurs.
-    expect(swatch('Mes morts').style.backgroundColor).toBe(tokenCssVar('outcome-loss'))
+    // Famille des stats de combat (2026-09-17) : les mêmes encres que partout dans l'app.
+    expect(swatch('Mes frags').style.backgroundColor).toBe(tokenCssVar('stat-kills'))
+    expect(swatch('Mes morts').style.backgroundColor).toBe(tokenCssVar('stat-deaths'))
   })
 
   it('les deux tuiles de portée portent l’accent de leur côté', () => {
@@ -194,8 +193,8 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     const accentOf = (label: string) =>
       (screen.getByText(label).closest('div.rounded-lg')!.firstElementChild as HTMLElement).style
         .backgroundColor
-    expect(accentOf('Portée médiane de mes frags')).toBe(tokenCssVar('chart-series-1'))
-    expect(accentOf('Portée médiane de mes morts')).toBe(tokenCssVar('outcome-loss'))
+    expect(accentOf('Portée médiane de mes frags')).toBe(tokenCssVar('stat-kills'))
+    expect(accentOf('Portée médiane de mes morts')).toBe(tokenCssVar('stat-deaths'))
   })
 
   it('le tableau groupe ses colonnes : mes frags D’ABORD, mes morts ensuite', () => {

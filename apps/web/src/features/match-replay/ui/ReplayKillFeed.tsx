@@ -462,7 +462,7 @@ function KillLine({
     <li
       className={FEED_ROW}
       style={{
-        background: assisted ? `color-mix(in srgb, ${tokenCssVar('info')} 9%, transparent)` : undefined,
+        background: assisted ? `color-mix(in srgb, ${tokenCssVar('stat-assists')} 9%, transparent)` : undefined,
       }}
       title={lineHint}
     >
@@ -508,7 +508,7 @@ function KillLine({
           <MedalBadges medals={k.medals} />
         </span>
       )}
-      {/* L'ASSISTANCE DANS LA MÊME RANGÉE : la marque à l'encre `bonus` (option 2a — la
+      {/* L'ASSISTANCE DANS LA MÊME RANGÉE : la marque à l'encre `stat-assists` (option 2a — la
           couleur d'équipe de l'assistant colorait une DEUXIÈME fois ce que son nom dit
           déjà), l'assistant, SA part seule — la part du tueur est sortie de la rangée
           (demande utilisateur du 2026-08-24 : « celui de l'assistant suffit »). Le nom de

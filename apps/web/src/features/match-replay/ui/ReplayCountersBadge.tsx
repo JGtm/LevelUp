@@ -130,9 +130,9 @@ export function ReplayCountersBadge({
   if (!live && !board) return null
   const counters = live ?? { kills: board?.kills, deaths: board?.deaths, assists: board?.assists }
   const parts: [number | null | undefined, string][] = [
-    [counters.kills, 'success'],
-    [counters.deaths, 'destructive'],
-    [counters.assists, 'info'],
+    [counters.kills, 'stat-kills'],
+    [counters.deaths, 'stat-deaths'],
+    [counters.assists, 'stat-assists'],
   ]
   // LE FDA SUIT LA SOURCE AFFICHÉE, et ne la mélange jamais : sur un joueur publié il est
   // celui de l'INSTANT LU (il bouge avec la lecture), sinon celui des totaux de la base

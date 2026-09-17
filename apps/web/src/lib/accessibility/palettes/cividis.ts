@@ -97,10 +97,16 @@ export const cividisPalette: Palette = {
   'chart-series-7': CIVIDIS_T10,      // t=0.10
   'chart-series-8': CIVIDIS_T90,      // t=0.90
 
-  // ── Bonus (assistances) — ocre Cividis : meilleur compromis distinct du set
+  // ── Bonus (cœur de la faille du rejeu ; ex-assistances, cf. stat-assists) — ocre Cividis : meilleur compromis distinct du set
   //     joueurs {navy, jaune, gris, bleu} et non-vermillon (≠ morts). Ramp
   //     séquentielle bleu→jaune : pas de pourpre possible (limite CVD assumée).
   'bonus': CIVIDIS_T75, // #B6A855 (ocre)
+  // Stats de combat (2026-09-17) — rampe séquentielle : ΔE ≥ 15, contraste sur UNE surface.
+  'stat-kills': SAFE_BLUE,
+  'stat-deaths': SAFE_VERMILLION,
+  'stat-assists': SAFE_GREY,
+  'assist-received': CIVIDIS_T90,
+  'assist-given': CIVIDIS_T10,
 
   // ── Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) ──────
   // Extrémité chaude de la rampe (t=1.00) : la seule teinte "or" disponible dans

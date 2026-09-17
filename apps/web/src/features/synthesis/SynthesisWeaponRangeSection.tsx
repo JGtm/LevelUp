@@ -60,14 +60,12 @@ const NESTED_CHART_CHROME = 'rounded-none border-none bg-transparent shadow-none
 /**
  * Encres de la section — un seul endroit, partagé par les graphes et les deux légendes.
  *
- * FRAGS ET MORTS SUIVENT LA CONVENTION DE TOUTE L'APP (retour utilisateur 2026-09-09) :
- * `chart-series-1` pour ce qu'on fait, `outcome-loss` pour ce qu'on subit — les mêmes deux
- * encres que « Évolution Frags / Morts », la cadence de l'Explorateur ou le profil de combat.
- * Le côté « morts » empruntait jusqu'ici `chart-series-3`, qui est l'encre des ASSISTANCES
- * ailleurs : deux bleus voisins pour deux faits opposés.
+ * FRAGS ET MORTS SUIVENT LA CONVENTION DE TOUTE L'APP : les jetons dédiés `stat-kills` /
+ * `stat-deaths` (famille des stats de combat, 2026-09-17), qui remplacent les emprunts
+ * `chart-series-1` / `outcome-loss` retenus le 2026-09-09.
  */
-const KILLS_TOKEN: SemanticToken = 'chart-series-1'
-const DEATHS_TOKEN: SemanticToken = 'outcome-loss'
+const KILLS_TOKEN: SemanticToken = 'stat-kills'
+const DEATHS_TOKEN: SemanticToken = 'stat-deaths'
 const MEDIAN_TOKEN: SemanticToken = 'perf-tier-2'
 const DELTA_TOKEN: SemanticToken = 'chart-series-4'
 

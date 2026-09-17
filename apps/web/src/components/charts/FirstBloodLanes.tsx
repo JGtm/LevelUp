@@ -23,8 +23,8 @@
  *   - Le redimensionnement suit le conteneur : `echarts-for-react` monte un
  *     size-sensor (`autoResize` par défaut) — aucun ResizeObserver à câbler ici.
  *
- * Couleurs : `outcome-win` (premier frag) / `outcome-loss` (première mort) —
- * mêmes tokens que l'histogramme remplacé, aucune valeur hex.
+ * Couleurs : `stat-kills` (premier frag) / `stat-deaths` (première mort) — famille des
+ * stats de combat, aucune valeur hex.
  * Modèle pur (médianes, tri, formats) : `./firstBloodLanesModel` — nommé ainsi (et
  * pas `firstBloodLanes.ts`) pour ne pas différer de ce fichier par la seule casse :
  * sur un FS insensible à la casse, Vite résoudrait `./firstBloodLanes` vers ce
@@ -246,8 +246,8 @@ export function buildFirstBloodLanesOption(
   if (lanes.length === 0) return { backgroundColor: CHART_BG }
 
   const tc = getEChartsThemeColors()
-  const killColor = resolveToken('outcome-win')
-  const deathColor = resolveToken('outcome-loss')
+  const killColor = resolveToken('stat-kills')
+  const deathColor = resolveToken('stat-deaths')
 
   const bars: GapBar[] = lanes.flatMap((l, i) =>
     l.medianKillSec == null || l.medianDeathSec == null || l.gapSec == null

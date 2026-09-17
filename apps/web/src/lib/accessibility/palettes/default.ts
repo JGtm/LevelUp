@@ -74,9 +74,15 @@ export const defaultPalette: Palette = {
   'chart-series-7': '#F59E0B', // amber   — 7e série
   'chart-series-8': '#EC4899', // pink    — 8e série
 
-  // ── Bonus (assistances) — violet, distinct des 8 couleurs squad verrouillées ─
+  // ── Bonus — violet (cœur de la faille du rejeu ; ex-assistances, cf. stat-assists) ─
   // (joueurs + opposés). N'utilise PAS chart-series-7 (== perf-tier-3 ambre = joueur 3).
   'bonus': '#A855F7', // violet-500 (teinte 271°)
+  // Stats de combat (2026-09-17) — contraste 3:1 sur les deux surfaces, ΔE ≥ 15, daltonisme ≥ 8.
+  'stat-kills': '#059669',      // emerald-600
+  'stat-deaths': '#F43F5E',     // rose-500
+  'stat-assists': '#0284C7',    // sky-600
+  'assist-received': '#A16207', // yellow-700 — « il te sert »
+  'assist-given': '#7C3AED',    // violet-600 — « tu le sers »
 
   // ── Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) ──────
   // Aligné sur le "Légendaire" du Battlepass (rarity.ts : bg/glow amber-400,
@@ -88,7 +94,7 @@ export const defaultPalette: Palette = {
   // ── Extrême rare — l'accent violet du sommet d'une rampe d'intensité ──────
   // Fuchsia plutôt que purple : le violet prolonge le ROUGE vers le magenta, ce qui
   // se lit comme « au-delà du chaud » sur la rampe d'intensité. Et il ne double pas
-  // la valeur de `bonus` (#A855F7), qui dit les assistances dans les charts.
+  // la valeur de `bonus` (#A855F7), le cœur de la faille du rejeu.
   'extreme': '#C026D3', // fuchsia-600
 
   // ── Badges narratifs (source : match-card-presentation.ts) ─────────────────

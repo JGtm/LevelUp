@@ -63,7 +63,7 @@ export function TimeseriesDistributionsTabView({
             reviewKey: undefined as string | undefined,
             title:
               fieldMappings?.fields['kills']?.label ?? 'Frags',
-            colorToken: 'chart-series-1' as const,
+            colorToken: 'stat-kills' as const,
             xAxisLabel: fieldMappings?.fields['kills']?.label ?? 'Frags',
             colorTokenByBucket: undefined,
             hidden: false,

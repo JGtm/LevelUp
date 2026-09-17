@@ -347,22 +347,22 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
             {hasKDA && (
               <div data-testid="match-card-kda-bar" className="px-3 pt-2.5 pb-2 space-y-1.5">
                 <div className="h-2 w-full rounded-full overflow-hidden flex">
-                  {kills > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(kills / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('outcome-win') }} />}
-                  {assists > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(assists / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('perf-tier-2') }} />}
-                  {deaths > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(deaths / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('outcome-loss') }} />}
+                  {kills > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(kills / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('stat-kills') }} />}
+                  {assists > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(assists / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('stat-assists') }} />}
+                  {deaths > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(deaths / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('stat-deaths') }} />}
                 </div>
                 <div className="flex justify-center gap-5 mt-2">
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{kills}</span>
-                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('outcome-win') }}>{t('common.match_card.frags')}</span>
+                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('stat-kills') }}>{t('common.match_card.frags')}</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{assists}</span>
-                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('perf-tier-2') }}>{t('common.match_card.assists')}</span>
+                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('stat-assists') }}>{t('common.match_card.assists')}</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{deaths}</span>
-                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('outcome-loss') }}>{t('common.match_card.deaths')}</span>
+                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('stat-deaths') }}>{t('common.match_card.deaths')}</span>
                   </div>
                 </div>
               </div>

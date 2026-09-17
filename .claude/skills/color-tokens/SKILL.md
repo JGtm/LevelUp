@@ -47,6 +47,31 @@ apps/web/src/lib/accessibility/
 Consulter `semantic-tokens.ts` pour la liste complète. Exemples typiques :
 `primary`, `secondary`, `success`, `warning`, `danger`, `series1`…`seriesN`, `neutral`.
 
+## Stats de combat — famille dédiée (2026-09-17)
+
+Toute couleur qui dit « c'est un frag / une mort / une assistance / ce sens d'assistance »
+passe par ces cinq jetons, dans toutes les pages :
+
+| Jeton | Rôle |
+|---|---|
+| `stat-kills` | frags |
+| `stat-deaths` | morts |
+| `stat-assists` | assistances (y compris le bonus assistances/3 et la marque du rejeu) |
+| `assist-received` | un autre joueur t'assiste (« il te sert ») |
+| `assist-given` | tu assistes un autre joueur (« tu le sers ») |
+
+- **Part de dégâts d'une assistance** : jamais une autre teinte. Trois tons de la couleur du
+  sens (opacités 35 / 65 / 100 %) pour les tranches < 25 %, 25-50 %, > 50 %
+  (`features/_shared/assists/AssistButterflyBar.tsx`, bornes `domain.AssistTier*MaxPct`).
+- **Ne relèvent PAS de la famille** (garder la couleur de leur rôle) : couleur d'équipe par
+  camp (`team-*`), couleur de joueur (`squad-player-*`), classe d'arme (`frag-*`), issue du
+  match, échelle de qualité, accent de sous-type de frag (frags parfaits, tirs à la tête…).
+- **Garde-fous** : `lib/accessibility/combatStatTokens.test.ts` (contraste + écarts, valeurs
+  par palette) et `lib/accessibility/combatStatNoBorrow.guard.test.ts` (ratchet : un jeton
+  emprunté sur une ligne qui nomme une stat échoue, sauf usage justifié dans `KEPT`).
+- **Distance de couleur** dans un test : importer `deltaE` / `simulateCvd` depuis
+  `lib/accessibility/colorDistance.ts` (copie de la matrice OKLab interdite par ratchet).
+
 ## Exceptions tolérées (avec commentaire justificatif)
 
 | Exception | Localisation |

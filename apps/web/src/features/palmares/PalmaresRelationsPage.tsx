@@ -293,8 +293,8 @@ function HeroRelationCard({
             <RelationSplitBar
               leftValue={relation.kills_dealt}
               rightValue={relation.deaths_suffered}
-              leftToken="outcome-win"
-              rightToken="outcome-loss"
+              leftToken="stat-kills"
+              rightToken="stat-deaths"
               leftLabel={labels.table.fragsUnit}
               rightLabel={labels.table.deathsUnit}
               locale={locale}

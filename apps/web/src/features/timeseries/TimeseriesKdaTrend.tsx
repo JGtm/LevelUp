@@ -58,9 +58,9 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
-    const colKills = resolveToken('chart-series-1')
-    const colDeaths = resolveToken('outcome-loss')
-    const colBonus = resolveToken('bonus') // bonus assistances — violet, distinct du bleu frags / rouge morts
+    const colKills = resolveToken('stat-kills')
+    const colDeaths = resolveToken('stat-deaths')
+    const colBonus = resolveToken('stat-assists') // bonus = assistances / 3 : la couleur des assistances
 
     const categories = buildMatchCategories(rows)
     const kills = rows.map((r) => r.kills)

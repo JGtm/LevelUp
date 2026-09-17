@@ -25,8 +25,8 @@ export const ASSIST_ICON_STEM = 'killfeed-62'
 /**
  * AssistMark — LA MARQUE D'ASSISTANCE : la vignette D'ASSISTANCE DU JEU (`jeu/killfeed-62`),
  * en masque teint — la MÊME technique que l'icône d'arme du fil (`WeaponIcon`, masque +
- * `currentColor` porté par le parent). L'ENCRE EST LE TOKEN `bonus` (option 2a du handoff
- * 2026-08-27), plus la couleur d'équipe de l'assistant : son nom la dit déjà sur la même
+ * `currentColor` porté par le parent). L'ENCRE EST LE TOKEN `stat-assists` (famille des stats
+ * de combat depuis le 2026-09-17 ; `bonus` avant, option 2a du handoff 2026-08-27), plus la couleur d'équipe de l'assistant : son nom la dit déjà sur la même
  * ligne, et une marque à encre CONSTANTE se reconnaît d'une ligne à l'autre.
  *
  * PROVENANCE, CORRECTION DU LOT R1. R1 avait conclu qu'aucune icône d'assistance n'existait
@@ -54,7 +54,7 @@ export function AssistMark({ label }: { label: string }) {
         label={label}
         width={PICTOGRAM_PX}
         height={PICTOGRAM_PX}
-        style={{ color: tokenCssVar('bonus') }}
+        style={{ color: tokenCssVar('stat-assists') }}
       />
     </span>
   )
