@@ -1,0 +1,460 @@
+# PLAN — Arme favorite dans le briefing Explorer (2026-09-17)
+
+> Date : 2026-09-17. Cadrage validé par l'utilisateur en conversation le 2026-09-17
+> (empilement sous « Par contexte », 1 ou 2 armes, jamais d'ajout de colonne, coût de
+> hauteur anticipé avant le rendu). **Amendé le 2026-09-17 après revue `plan-review`**
+> (dix points tranchés avec l'utilisateur : contrat OpenAPI, compilation i18n, gardes de la
+> grille, définition du dénominateur, XUID, approximation du helper, piège DP-3, fichier
+> propre, outil de mesure, assertion du log) et précision de l'utilisateur sur la
+> DÉFINITION de l'arme favorite (D0).
+> Branche d'exécution : `wt/arme-favorite-briefing`, worktree dédié
+> `../LevelUp-wt-arme-favorite` créé depuis `feat/v75` (le worktree principal est PARTAGÉ
+> entre agents, ne jamais y coder).
+> Clôture : commits sur `wt/arme-favorite-briefing`, fusion dans `feat/v75` sur signal de
+> l'utilisateur.
+> Contrat d'exécution : skill `plan-execution` (ordre strict, aucun report, tout item
+> statué, zéro fix hors périmètre). Ce fichier est la source de vérité de l'avancement.
+
+## Objectif et critère de succès
+
+Ajouter au bandeau de briefing de l'Explorer (mode Matchs, `include_briefing=true`) un bloc
+« Arme favorite » : la ou les deux armes ayant produit **le plus de frags** du joueur sur
+le scope filtré, avec le dénominateur de ce qui a été mesuré.
+
+**Critère de succès** : le bloc s'affiche sous « Par contexte » sans changer la hauteur de
+la rangée quand une carte de dimension est bien remplie ; il prend la place de « Par
+contexte » quand ce bloc est absent ; il ne crée JAMAIS de sixième cellule ; il se réduit à
+une ligne compacte (et une seule ligne de rangée en plus) quand toutes les cellules sont
+courtes ; il s'affiche sur Halo Infinite (source film, note de couverture visible) comme sur
+Halo 5 (source native, note quasi jamais visible) ; il disparaît proprement quand aucun frag
+n'est mesuré. Gates Go et web verts, CI de branche verte au niveau job, gate visuel de
+l'utilisateur passé.
+
+## Ce qui existe et se réutilise (vérifié sur pièces le 2026-09-17)
+
+| Besoin | Existant | Fichier |
+|---|---|---|
+| Frags par arme sur un lot de matchs | `port.WeaponKillsRepository.LoadWeaponKillsAggregated` (filtres `MatchIDs` + `XUIDs`) | `internal/port/weapon_kills.go` |
+| Choix du lecteur PAR TITRE, sans slug | `ServiceRegistry.weaponKillsRepoFor` (film si `film.kill_source` + classificateur, sinon `weapon_kills` natif) | `internal/api/wire/registry_pages.go:468` |
+| Top N armes trié (kills desc, départage libellé) + filtre « libellé résolu, hors sentinelles » | `buildTopWeaponKills` | `internal/service/synthesis_service_builders.go:226` |
+| Type de ligne d'arme sérialisé | `domain.SynthesisWeaponKillEntry` (Label, Kills, Class, Role) | `internal/domain/synthesis.go:164` |
+| Assemblage du briefing (in-memory sur raw rows) | `buildExplorerBriefing` | `internal/service/match_history_service_briefing.go:60` |
+| Injection de dépendance par `WithX` sur ce service | `WithRankedCapable`, `WithPlayerMatchesRepo(repo, slug, gamertag)` | `internal/api/wire/registry_pages_home.go:82` |
+| Identité du joueur au câblage | `pdb.XUID` | `internal/api/wire/registry_pages_home.go` (`MatchHistoryCtx`) |
+| Gabarit visuel « liste d'armes » (libellé + frags + barre par classe) | `TopArmes` + `fragClassColor` | `features/explorer/ExplorerTargetSampleStats.tsx:150` |
+| Précédent « module du briefing dans son fichier » | `ExplorerRankedBlock.tsx` | `features/explorer/` |
+| Helpers purs du briefing (+ tests) | `ExplorerBriefing.logic.ts` | `features/explorer/ExplorerBriefing.logic.ts` |
+| Grille « Par… », ses gardes de rendu | `ExplorerBriefingModules.tsx:110-121` | `features/explorer/` |
+| Garde-rails filtrant sur `/briefing/i` | terminologie + `deltaToken` | `explorerBriefingTerminology.guard.test.ts`, `explorerDeltaToken.guard.test.ts` |
+| Contrat OpenAPI GÉNÉRÉ (Huma + fragment manuel) | `make openapi-gen`, `make openapi-check` | `Makefile:115-128` |
+| Manifestes i18n compilés | `node apps/web/scripts/build_i18n_manifests.mjs` (aucune cible npm/make) | `apps/web/scripts/` |
+| Types front = ré-export du contrat OpenAPI | `components['schemas'][...]` | `lib/api/types.ts:911` |
+
+**Mesures de cadrage (base locale, 2026-09-17)** — couverture de la source d'arme :
+Infinite 2026 = 948/949 matchs, 2025 = 412/415, 2024 = 15/54, 2023 = 9/536 ;
+Halo 5 = 2 754/3 032 matchs (550 926 lignes natives). Coût d'agrégation mesuré :
+0,22 s sur TOUT l'historique du joueur sans filtre de matchs.
+
+## Décisions tranchées AVANT exécution (fermes, ne pas re-décider)
+
+**D0 — Définition.** L'arme favorite est l'arme qui a produit **le plus de frags crédités
+au joueur** sur le scope (source de dégât du film sur Infinite, arme native du kill sur
+Halo 5). Ce n'est NI l'arme la plus tenue, NI la plus tirée (`film.weapon_shots` est une
+autre famille de données, hors sujet). Tri : frags décroissants, départage par libellé
+(`buildTopWeaponKills`).
+
+**D1 — Placement.** Le bloc est empilé SOUS « Par contexte », dans la MÊME cellule de la
+grille « Par… » (wrapper `space-y-2`). Quand `context_split` est absent, le bloc devient
+une cellule propre de cette grille. Dans les deux cas le nombre de cellules reste
+identique : **jamais de sixième cellule**, aucun autre bloc déplacé, DP-3 non rouvert.
+Les DEUX gardes de rendu de la grille (`dimensions.length > 0 || hasContextOrRanked` et
+l'early-return) incluent `weapons != null` : un briefing dont le seul module est l'arme
+favorite peint la grille avec cette unique cellule.
+
+**D2 — Contenu.** 1 ou 2 armes, JAMAIS 3. Gabarit = celui de `TopArmes` (libellé tronqué +
+frags alignés + barre fine colorée par `fragClassColor`). Pas d'icône d'arme (ni ce registre
+visuel ni le payload ne la portent). Une grenade PEUT être l'arme favorite — c'est déjà le
+cas dans le top armes de la Synthèse ; on garde la cohérence entre surfaces.
+
+**D3 — La hauteur est décidée AVANT le rendu, jamais mesurée.** Le nombre de lignes de
+chaque cellule est une donnée connue du composant : carte de dimension = `entries.length`
+(1..6, `selectTopFlop(…, 3)`), « Par contexte » = 2, Classement = `kinds.length` (1..3)
+**seulement s'il est réellement affiché** (`showRanked`, qui dépend de la capability
+`ranked` que seul le composant connaît). Le helper pur reçoit donc des COMPTES, pas le
+briefing :
+
+```
+favoriteWeaponSlots({ dimensionLines: number[], rankedLines: number, stacked: boolean }): 0 | 1 | 2
+base         = stacked ? 4 : 2
+lignesRangee = max(...dimensionLines, rankedLines, base)
+placeLibre   = lignesRangee - base
+slots        = clamp(placeLibre, 0, 2)
+```
+
+**Constante de base : 2 en cellule propre, 4 en empilé** (amendement du 2026-09-17, après
+revue du diff). Empilé sous « Par contexte », le bloc paie en plus son libellé,
+l'espacement de la pile et les marges de la carte du haut — environ DEUX lignes que la
+formule nue ne comptait pas. Sans cette constante la rangée grandissait d'environ quatre
+lignes là où la formule promet qu'elle ne bouge pas. C'est exactement le geste prévu par
+D3 : la correction d'un écart de hauteur se fait DANS la formule, jamais par une mesure
+du DOM.
+
+- `slots = 2` → deux armes avec barre — la rangée ne bouge pas ;
+- `slots = 1` → une arme avec barre — la rangée ne bouge pas ;
+- `slots = 0` → **forme compacte** : une seule ligne (libellé + frags, sans barre) — la
+  rangée gagne UNE ligne, jamais plus.
+
+Le calcul choisit la FORME, jamais la présence. Il prédit en lignes LOGIQUES ; le gate
+visuel valide les hauteurs PHYSIQUES (les lignes du Classement sont `flex-wrap`, un
+titre porte une infobulle). Un écart constaté se corrige DANS LA FORMULE (une constante,
+par exemple compter une ligne de Classement pour 1,5) — jamais par une mesure du DOM
+(`ResizeObserver`, `getBoundingClientRect`…). En cas de doute, la forme compacte est le
+repli sûr : elle coûte au plus une ligne.
+
+**D4 — Source.** `port.WeaponKillsRepository` obtenu par `weaponKillsRepoFor(pdb)` — les
+deux implémentations (film Infinite / natif Halo 5) derrière le même port, aucune
+comparaison de slug. Le service reçoit le repo ET le xuid :
+`WithWeaponKillsRepo(repo port.WeaponKillsRepository, xuid string)` (câblage avec
+`pdb.XUID`). Filtres : `MatchIDs` = matchs du scope filtré, `XUIDs: []string{xuid}`
+(filtre direct sur la colonne xuid des deux lecteurs — jamais `Gamertag`, qui passe par
+une jointure `xuid_aliases` rendant zéro ligne en silence si l'alias manque),
+`ResolveRoles: true` (nécessaire à `Class` pour la couleur), `IncludeGrenadeMelee: false`
+(sinon Halo 5 remonte des lignes sentinelles grenade/mêlée qui ne sont pas des armes),
+`MinKills: 0`.
+
+**D5 — La couverture s'exprime en FRAGS, pas en matchs.** Le port rend des lignes agrégées
+par arme : il ne dit pas combien de matchs ont contribué, et l'ajout d'un compte de matchs
+changerait la signature du port et ses deux implémentations. Le bloc porte :
+- `measured_kills` = somme des frags des lignes **retenues par le même filtre que le top**
+  (`Label != "" && !IsGrenadeMelee`, celui de `buildTopWeaponKills`), AVANT troncature au
+  top 2 — « mesuré » signifie « ce qu'on saurait nommer », le dénominateur reste cohérent
+  avec ce qui est affiché ;
+- `scope_kills` = somme des `r.Kills` des raw rows du scope (`domain/match_history.go:39`,
+  déjà en mémoire, aucune requête).
+La note « N frags mesurés sur M » s'affiche si et seulement si `measured < scope`. Si
+`measured >= scope` (source film qui crédite autant ou plus que l'API) : pas de note.
+
+**D6 — Un seul critère d'omission : `measured_kills == 0`.** Pas de plancher arbitraire :
+un plancher cacherait l'information au lieu de la qualifier, et la note du dénominateur dit
+exactement ce qui est mesuré (scope 2023 : « 62 frags mesurés sur 4 210 »). Le bloc hérite
+par ailleurs du seuil d'échantillon existant — `buildExplorerBriefing` sort avant les
+modules quand `LowSample` est vrai. Aucun nouveau seuil nommé.
+
+**D7 — Libellé d'arme.** Résolution FR-first avec repli EN, telle que le résolveur existant
+la fait (`resolveWeaponKeyDimensions` / `weapon_name_labels`). Aucune locale nouvelle à
+câbler, aucune décision à prendre.
+
+**D8 — Best-effort strict.** Toute erreur du repo → `slog` puis bloc nil.
+`games.ErrCapabilityNotSupported` → `DebugContext` (titre sans source d'arme, cas légitime) ;
+toute autre erreur → `WarnContext` (même doctrine que `loadWeaponKillRows`). Le briefing et
+la page ne échouent JAMAIS à cause de ce bloc.
+
+**D9 — Hors périmètre, définitivement.** Pas de top 3, pas d'icône, pas de tuile dans le
+socle, pas de carte « grenade collée », pas de renommage « Dépositaire » (sujet distinct,
+décidé mais non inclus ici), aucun changement de DP-3 ni des blocs existants, aucun script
+npm/make nouveau pour la compilation i18n (Découvertes).
+
+**D10 — Fichier propre côté web.** Le bloc vit dans `ExplorerBriefingWeapons.tsx` dès le
+premier commit (précédent `ExplorerRankedBlock.tsx`), nommé *Briefing* pour rester sous
+les deux garde-rails qui filtrent sur ce motif. Il est une liste `flex flex-col` — JAMAIS
+une grille à colonnes nommées (`[grid-template-columns:…]`), car le test DP-3 cible la
+DERNIÈRE grille portant cette classe (`ExplorerBriefingStrip.test.tsx:100`) et viserait
+la mauvaise.
+
+**Habillage : empilé = NU, cellule propre = CARTE** (amendement du 2026-09-17). Sous
+« Par contexte », le bloc n'a pas de `BriefingSectionCard` : un libellé en petites
+capitales (`text-2xs uppercase tracking-wide text-muted-foreground`) puis la liste. Une
+seconde carte y coûterait son en-tête, sa bordure et son corps — environ 70 px, soit
+quatre lignes de rangée gagnées pour rien. En cellule propre il n'y a aucun coût
+d'empilement et le bloc doit ressembler à ses voisines : carte complète, en-tête compris
+(la doctrine `BriefingSectionCard` vaut pour les CELLULES de la rangée « Par… », pas pour
+un contenu empilé dans l'une d'elles). La forme compacte, déjà nue, vaut dans les deux
+habillages.
+
+## Étapes
+
+### Étape 1 — Backend : type, builder, câblage
+
+- [x] `internal/domain/explorer_briefing.go` : type `ExplorerBriefingWeapons`
+      (`Entries []SynthesisWeaponKillEntry` (2 max), `MeasuredKills int`, `ScopeKills int`)
+      + champ `Weapons *ExplorerBriefingWeapons \`json:"weapons,omitempty"\`` sur
+      `ExplorerBriefing`, documenté comme les autres blocs (nil = module non émis).
+- [x] Nouveau fichier `internal/service/match_history_service_briefing_weapons.go`
+      (le fichier briefing principal fait 490 lignes — ne pas l'alourdir) portant
+      `buildBriefingWeapons(ctx, repo, titleSlug, xuid, filtered) *domain.ExplorerBriefingWeapons`.
+      Les `MatchIDs` et `scope_kills` se lisent dans les raw rows déjà en mémoire
+      (`filtered[].MatchID`, `filtered[].Kills` — `domain/match_history.go:11` et `:39`) :
+      aucune requête supplémentaire hors celle du repo d'armes. Filtre des lignes,
+      `measured_kills`, tri et troncature au top 2 selon D5 (`buildTopWeaponKills`, même
+      package ; le filtre est appliqué UNE fois et partagé entre le dénominateur et le top).
+- [x] `buildExplorerBriefing` appelle le builder APRÈS `ContextSplit`, avant `Streaks`.
+- [x] `MatchHistoryService` : champs `weaponKillsRepo port.WeaponKillsRepository` +
+      `weaponKillsXUID string` ; méthode `WithWeaponKillsRepo(repo, xuid)` sur le modèle de
+      `WithPlayerMatchesRepo` (le repo et l'identité voyagent ensemble).
+- [x] `registry_pages_home.go` (`MatchHistoryCtx`) :
+      `svc = svc.WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb), pdb.XUID)` avec commentaire
+      renvoyant à `weaponKillsRepoFor` (même factory que Synthesis, Explorer-cible et
+      Sessions — pas de second chemin de lecture).
+- [x] Logging conforme D8.
+
+**Gate 1** (depuis `apps/go-api/`) :
+```
+go build ./... && go vet ./... && go test ./internal/service/... ./internal/domain/...
+```
+
+### Étape 2 — Tests Go du builder
+
+- [x] Deux armes remontées, `measured < scope` → bloc avec 2 entrées max, `MeasuredKills`
+      = somme des lignes retenues (une ligne à libellé vide dans le jeu de test NE compte
+      PAS, D5).
+- [x] `measured_kills == 0` (aucune ligne, ou uniquement des lignes à libellé vide) → bloc
+      nil (D6).
+- [x] Repo nil / `ErrCapabilityNotSupported` → bloc nil, aucune erreur propagée (D8).
+- [x] Erreur inattendue du repo → bloc nil (assertion sur le résultat nil UNIQUEMENT ; le
+      `WarnContext` se vérifie à la relecture du diff, pas de capteur `slog`).
+- [x] Filtres passés au repo factice : `XUIDs == [xuid]`, `Gamertag == ""`,
+      `IncludeGrenadeMelee == false`, `ResolveRoles == true` — garde-fou de D4.
+- [x] `LowSample` → bloc absent (hérité, vérifié par un test de `buildExplorerBriefing`).
+
+**Gate 2** : `go test ./internal/service/... -run Briefing -v` vert, et
+`go test ./...` sans régression.
+
+### Étape 3 — Contrat OpenAPI et types front
+
+- [x] `make openapi-gen` régénère `apps/go-api/api/openapi.yaml` (document Huma + fragment
+      manuel ; le fragment n'est PAS touché, le champ se dérive de la struct Go). Ne jamais
+      éditer `openapi.yaml` à la main.
+- [x] `make generate-types` régénère `apps/web/src/lib/api/generated.ts`.
+- [x] `lib/api/types.ts` : ré-export `ExplorerBriefingWeapons` depuis `components['schemas']`
+      (jamais de mirror manuel).
+
+**Gate 3** : `make openapi-check` (aucune dérive — aucun job CI ne la vérifie, ce gate
+local est le seul filet) PUIS `make check-types` après purge de
+`apps/web/node_modules/.tmp` (faux vert incrémental documenté dans `delivery-checklist`).
+
+### Étape 4 — Front : helper pur + son test
+
+- [x] `features/explorer/ExplorerBriefing.logic.ts` :
+      `favoriteWeaponSlots({ dimensionLines, rankedLines }): 0 | 1 | 2` exactement selon la
+      formule D3, sans aucune dépendance React/DOM ni lecture du briefing brut.
+- [x] `ExplorerBriefing.logic.test.ts` : `[6,3,2]`/0 → 2 ; `[3]`/0 → 1 ; `[2,2]`/0 → 0 ;
+      `[]`/3 → 1 ; `[]`/0 → 0 ; `[6]`/3 → 2 (le max l'emporte).
+
+**Gate 4** : `npx vitest run src/features/explorer/ExplorerBriefing.logic.test.ts`
+(hors sandbox — cf. mémoire `reference_vitest_outside_sandbox`).
+
+### Étape 5 — Front : rendu et i18n
+
+- [x] Nouveau fichier `features/explorer/ExplorerBriefingWeapons.tsx` (D10) : composant
+      `FavoriteWeaponBlock` à trois formes selon `slots` (D3), gabarit `TopArmes` (D2),
+      liste `flex flex-col` (jamais de grille à colonnes nommées), note de couverture en
+      `text-3xs text-muted-foreground` affichée si et seulement si
+      `measured_kills < scope_kills` (D5).
+- [x] `ExplorerBriefingModules.tsx` : calcule `dimensionLines` et `rankedLines`
+      (`showRanked ? kinds.length : 0`), appelle le helper, monte le bloc : empilé sous
+      `ContextSplitCard` dans la même cellule quand `context_split` existe ; cellule propre
+      sinon (D1).
+- [x] `ExplorerBriefingModules.tsx` : les DEUX gardes de rendu incluent `weapons != null`
+      (D1).
+- [x] `lib/i18n/manifests/explorer.toml` : titre du bloc + note paramétrée `{n}`/`{m}`,
+      FR ET EN, FR sans anglicisme (« Arme favorite » / « Favorite weapon » ;
+      « {n} frags mesurés sur {m} » / « {n} of {m} kills measured »).
+- [x] `node apps/web/scripts/build_i18n_manifests.mjs` — régénère `generated/explorer.ts`
+      (aucune cible npm/make ne le fait ; sans cet item les clés n'existent pas côté TS).
+- [x] Couleurs : `fragClassColor` uniquement, aucun hex ni classe Tailwind couleur.
+
+**Gate 5** : `make check-types`, `make test-web`, `npm run lint` (depuis `apps/web/`) verts ;
+`ExplorerBriefingStrip.test.tsx` — dont le test DP-3, INTOUCHÉ — vert.
+
+### Étape 6 — Tests de rendu
+
+Dans `ExplorerBriefingWeapons.test.tsx` (nouveau) :
+- [x] `slots = 2` → deux lignes avec barre ; `slots = 1` → une ligne avec barre ;
+      `slots = 0` → forme compacte sans barre.
+- [x] Note de couverture présente quand `measured < scope`, absente quand
+      `measured == scope` (cas Halo 5) ET quand `measured > scope`.
+
+Dans `ExplorerBriefingStrip.test.tsx` (à côté du describe DP-3, qui reste tel quel) :
+- [x] Dimensions pleines + `context_split` + `weapons` → le bloc est DANS la cellule
+      « Par contexte » (assertion de parenté, miroir du test DP-3).
+- [x] `weapons` sans `context_split` → le bloc est un enfant DIRECT de la grille.
+- [x] `weapons` SEUL (ni dimension, ni contexte, ni classé) → la grille est rendue avec une
+      cellule (gardes D1).
+- [x] `weapons` absent → aucune trace du bloc, grille inchangée.
+
+**Gate 6** : `make test-web` vert.
+
+### Étape 7 — Mesure de coût et gates de livraison
+
+- [x] Mesurer avec le CLI duckdb en `READ_ONLY` sur la base partagée, forme exacte de la
+      requête du lecteur du titre avec `IN (SELECT match_id FROM match_participants WHERE
+      xuid = ?)` à la place des paramètres liés (ordre de grandeur, c'est ce qu'on cherche),
+      sur le PLUS GRAND scope (tout l'historique) ; consigner le chiffre dans le thought
+      log (référence : 0,22 s sans filtre de matchs). Au-delà de ~300 ms : Découvertes +
+      remontée à l'utilisateur, AUCUNE optimisation dans ce lot.
+- [x] `go test ./...` puis `go vet ./...` (le diff ne touche ni persist/ ni sync/ ni
+      migration/ → tag `integration` non requis ; le noter explicitement à la clôture).
+      Les deux sortie 0. Le tag `integration` a néanmoins été joué en entier (voir journal) :
+      il fallait un verdict de baseline sur cette machine.
+- [x] `go test ./internal/archlint/` — garde-rails d'architecture, obligatoire pour tout lot
+      Go de ce dépôt (consigne superviseur 2026-09-17). Sortie 0, 35,6 s.
+- [x] `make gate-push` — JOUÉ, verdict lu : `GATE_EXIT=2`. Les trois premières étapes vertes
+      (golangci-lint `--new-from-merge-base=origin/main` : 0 issue ; `tsc -b` ; `eslint`
+      0 erreur). La quatrième (`check_test_baseline.sh tests`) est rouge pour DEUX causes
+      d'environnement, aucune imputable au diff — démontrées sur pièces au journal. Le fond
+      du gate a été vérifié autrement et il est VERT (`--from-jsonl`, sortie 0). L'autorité
+      reste la CI Linux.
+- [~] CI de branche verte AU NIVEAU JOB (`gh run list --branch wt/arme-favorite-briefing`) —
+      DÉLÉGUÉ AU SUPERVISEUR : l'item exige un push, interdit à l'exécutant. `gh run list`
+      ne rend rien (la branche n'existe pas sur `origin`). À jouer après push de la branche.
+
+### Étape 8 — Gate visuel utilisateur (5 écrans)
+
+L'utilisateur nomme les témoins ; les captures sont faites par lui, jamais par l'agent.
+Un écart de hauteur observé se traite par la formule D3, pas par une mesure.
+
+- [ ] Scope complet Infinite : 2 armes, rangée de hauteur inchangée.
+- [ ] Scope filtré sur une seule carte : forme compacte, +1 ligne maximum.
+- [ ] Scope ancien (2023) : note de couverture explicite et lisible.
+- [ ] Scope sans « Par contexte » : bloc en cellule propre, toujours 5 cellules au plus.
+- [ ] Halo 5 : bloc nominal, aucune note de couverture, aucune ligne sentinelle
+      grenade/mêlée.
+
+### Étape 9 — Clôture
+
+- [x] Entrée `.ai/thought_log.md` (date, titre, statut, décision technique, résultats
+      mesurés dont le chiffre de l'étape 7, prochaine étape). Statut « En cours — gate visuel
+      utilisateur en attente ».
+- [x] Tout item du plan statué `[x]` / `[~]` / `[!]` pour les étapes 1 à 7 et 9. Les cases de
+      l'ÉTAPE 8 restent volontairement vides : ce gate appartient à l'utilisateur, qui nomme
+      les témoins et fait les captures — l'agent ne les coche pas à sa place.
+- [~] Reports éventuels dans `.ai/V7.5/REGISTRE_REPORTS.md` : AUCUN report de travail à
+      inscrire. Ce que le lot a écarté n'est pas du travail différé mais des découvertes hors
+      périmètre (D9), consignées dans la section « Découvertes » ci-dessus — renommage
+      « Dépositaire », cible `npm run build-i18n`, absence de job CI sur la dérive
+      `openapi.yaml`, les deux défauts de `check_test_baseline.sh`, le flake
+      `PalmaresRelationsPage`.
+- [!] Fusion dans `feat/v75` sur signal explicite de l'utilisateur (mode branche unique) —
+      HORS MANDAT de l'exécutant : ni push, ni merge, ni changement de branche. À la main du
+      superviseur puis de l'utilisateur.
+
+## Découvertes (consigner, NE PAS traiter)
+
+- 2026-09-17 — Le libellé FR « Dépositaire » de la carte hijacks de la Synthèse est le nom
+  de la médaille *Reclaimer* (« s'emparer d'un véhicule ennemi qui vous appartenait »), pas
+  celui du détournement générique que compte la carte. Renommage en « Détournements » pour
+  tous les titres décidé par l'utilisateur le 2026-09-17, HORS de ce lot.
+- 2026-09-17 — Ce bloc introduit la PREMIÈRE requête DuckDB dans un briefing jusqu'ici
+  entièrement calculé en mémoire sur les raw rows. À surveiller si d'autres modules suivent.
+- 2026-09-17 — La compilation des manifestes i18n (`build_i18n_manifests.mjs`) n'a ni
+  cible npm ni cible make : chaque lot qui touche un `.toml` doit y penser. Un script
+  `npm run build-i18n` (et son appel dans le gate web) éviterait l'oubli — hors périmètre.
+- 2026-09-17 — Aucun job CI ne vérifie la dérive de `openapi.yaml` (`make openapi-check`
+  n'est joué qu'en local) ; spectral et les tests YAML ne détectent pas un champ manquant.
+- 2026-09-17 — `PalmaresRelationsPage > rend les badges solid (duo gagnant)` dépasse le
+  délai de 5 s dans la suite web complète (13,5 s mesurés) et passe en 15/15 rejoué seul :
+  test sensible à la charge, sans rapport avec ce lot. À surveiller s'il rougit en CI.
+- 2026-09-17 — `scripts/check_test_baseline.sh` n'est pas rejouable en local sur cette
+  machine : il force `CC=gcc` résolu dans `/c/msys64/ucrt64/bin` alors que le poste exige la
+  chaîne winlibs (le lien de `libduckdb_static` casse en `__emutls_v` avec msys64), et son
+  budget de 300 s par paquet est sous la durée réelle d'`internal/sync` en intégration
+  (494 s mesurés). Le commentaire du script (« vert avec CC=gcc résolu PATH », 2026-08-03)
+  ne vaut plus pour ce poste. Deux corrections possibles (ne PAS traiter ici) : ne pas
+  écraser un `CC` déjà positionné, et aligner le budget sur celui de la CI (600 s).
+- 2026-09-17 — Le module « arme favorite » est monté dans `MatchHistoryCtx`, qui sert AUSSI
+  la page Historique. Celle-ci ne pose pas `include_briefing` : le briefing étendu n'est pas
+  construit, donc aucune requête d'armes ne part. Câblage inoffensif, noté pour mémoire.
+
+## Journal d'exécution
+
+- **Étape 0 (2026-09-17)** — `npm install` dans `apps/web` (508 paquets, sortie 0). Baseline
+  AVANT toute modification : `make check-types` sortie 0, `go build ./...` sortie 0,
+  `go vet ./...` sortie 0. Baseline verte.
+- **Étape 1 (2026-09-17)** — Gate 1 (`go build ./... && go vet ./... && go test
+  ./internal/service/... ./internal/domain/...`) sortie 0. Commit `b358fc8c7`.
+- **Étape 2 (2026-09-17)** — Gate 2a (`go test ./internal/service/... -run Briefing -v`)
+  sortie 0, 6 nouveaux tests verts. Gate 2b (`go test ./...`) : sortie 1 avec UN SEUL échec,
+  `TestOpenAPIYAMLIsUpToDate` — le contrat `openapi.yaml` ne porte pas encore le champ
+  `weapons` ajouté à l'étape 1 (« relancer `make openapi-gen` », ligne 12831). C'est
+  exactement le premier item de l'étape 3 ; le plan ordonne la réparation APRÈS l'étape 2.
+  Aucune autre régression : tous les autres paquets `ok`. Re-vérifié vert après l'étape 3
+  (voir ci-dessous) et à l'étape 7.
+  Incident d'outillage sans effet sur le verdict : un premier `go test ./...` lancé en
+  avant-plan a été tué au bout de 10 min (limite d'attente de l'outillage) ; le run rejoué en
+  arrière-plan vers un log persistant est allé au bout (ligne `GOTEST_EXIT=1`).
+
+- **Étape 3 (2026-09-17)** — `make openapi-gen` (740 095 octets écrits, +22 lignes :
+  `weapons` sur `ExplorerBriefing` + schéma `ExplorerBriefingWeapons`), `make generate-types`
+  (+8 lignes dans `generated.ts`), ré-export dans `lib/api/types.ts`. Gate 3 :
+  `make openapi-check` sortie 0 (document à jour ET `generated.ts` dérivé),
+  `make check-types` sortie 0 après purge de `apps/web/node_modules/.tmp`. L'échec unique du
+  gate 2b est levé : `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate` sortie 0.
+
+- **Étape 4 (2026-09-17)** — `favoriteWeaponSlots` ajouté à `ExplorerBriefing.logic.ts`
+  (plancher de 2 lignes = hauteur de « Par contexte », place libre plafonnée à 2). Gate 4 :
+  `npx vitest run src/features/explorer/ExplorerBriefing.logic.test.ts` sortie 0, 4 tests.
+
+- **Étape 5 (2026-09-17)** — `ExplorerBriefingWeapons.tsx` (carte à 1-2 lignes avec barre,
+  forme compacte d'une ligne nue quand `slots = 0`), montage dans
+  `ExplorerBriefingModules.tsx`, deux clés i18n FR/EN + manifestes recompilés.
+  Note de mise en œuvre non prévue par le plan mais dictée par lui : la cellule empilée
+  porte `self-start`. Étirée par la grille (défaut `stretch`), elle donnerait TOUTE sa
+  hauteur à `ContextSplitCard` (qui porte `h-full`) et l'arme favorite déborderait sous la
+  cellule — le même piège que les deux `h-full` concurrents de la rangée 3 de l'Explorer.
+  Gate 5 : `make check-types` sortie 0 (cache purgé), `npm run lint` sortie 0 (0 erreur,
+  27 avertissements préexistants), `npm run lint:colors` et `lint:fields` sortie 0,
+  `make test-web` sortie 2 avec UN SEUL échec — `PalmaresRelationsPage > rend les badges
+  solid (duo gagnant)`, « Test timed out in 5000ms », feature étrangère au diff : rejoué
+  seul, 15/15 verts, sortie 0. Flake de charge, consigné en Découvertes.
+  `ExplorerBriefingStrip.test.tsx` (dont DP-3, intouché) + les deux garde-rails du briefing
+  rejoués ensemble : 35 tests verts, sortie 0.
+
+- **Étape 6 (2026-09-17)** — `ExplorerBriefingWeapons.test.tsx` (6 tests : trois formes,
+  trois états de la note) et 4 tests ajoutés à `ExplorerBriefingStrip.test.tsx` À CÔTÉ du
+  describe DP-3, qui n'a pas été touché. Les tests de placement comptent les cellules de la
+  grille : 2 avec « Par contexte », 2 sans, 1 quand l'arme favorite est seule — la preuve
+  qu'aucune cellule n'est ajoutée. Gate 6 : `make check-types` sortie 0 (cache purgé) puis
+  `make test-web` sortie 0 — 732 fichiers, 7 858 tests verts, 17 ignorés. Le flake
+  `PalmaresRelationsPage` de l'étape 5 ne s'est pas reproduit.
+
+- **Étape 7 (2026-09-17)** — **Mesure : 0,24 s** (4 exécutions : 0,257 / 0,263 / 0,214 /
+  0,219 s) pour la requête de production sur le PLUS GRAND scope — 1 147 matchs, 109 sources
+  de dégât distinctes, xuid `2533274823110022`. Sous les ~300 ms du plan : aucune remontée,
+  aucune optimisation. Conforme à la référence de cadrage (0,22 s). Requête exacte :
+  la forme de `buildKillSourceWeaponQuery` avec `k.match_id IN (SELECT match_id FROM
+  match_participants WHERE xuid = '2533274823110022')` (la clause d'exclusion Campagne est
+  un no-op sur ce titre : `campaignExcludedVariantIDs` n'a d'entrée que pour `halo_5`).
+  Obstacle d'environnement : `shared_matches_v2.duckdb` du checkout principal est tenu en
+  écriture par `server.exe` (PID 15880) et refuse même l'ATTACH `READ_ONLY` (modèle
+  mono-process). Le serveur n'a PAS été arrêté ; la mesure porte sur une COPIE d'octets du
+  fichier (302 Mo, copie en 0,6 s, supprimée après), même disque, même schéma — l'ordre de
+  grandeur cherché est intact.
+  Gates : `go test ./...` sortie 0, `go vet ./...` sortie 0, `go test ./internal/archlint/`
+  sortie 0.
+  `make gate-push` : `GATE_EXIT=2`. golangci-lint (0 issue), `tsc -b` et `eslint`
+  (0 erreur) verts ; `check_test_baseline.sh tests` rouge pour DEUX causes d'environnement :
+  1. le script force `PATH=/c/msys64/ucrt64/bin` + `CC=gcc`, or cette machine exige la
+     chaîne winlibs : avec msys64 (gcc 16.1.0) le lien de TOUT binaire de test embarquant
+     `libduckdb_static` casse en « undefined reference to `__emutls_v._ZSt11__once_call` ».
+     Démontré sur pièces : `go test -tags=integration -c ./internal/service/` échoue avec
+     `CC=gcc`+msys64 et réussit (sortie 0) avec le `CC` winlibs de la machine. Résultat : 46
+     paquets absents du run, TOUS en N/N (aucune absence partielle → signature de lien, pas
+     un test renommé ou supprimé) ; aucun nom de test touché par ce lot n'est perdu.
+  2. même avec le bon compilateur, `internal/sync` en `-tags=integration` demande 494 s sur
+     cette machine (mesuré seul : `ok internal/sync 494,015s`, sortie 0) alors que le script
+     n'accorde que 300 s par paquet. Aggravé ce soir par une charge externe (une autre
+     session a lancé `make dev` depuis un autre worktree pendant le gate).
+  Le FOND du gate a donc été vérifié autrement, sans toucher au script : suite complète
+  `go test -tags=integration -count=1 -timeout=900s -p 1 -json ./...` → sortie 0, ZÉRO
+  événement `"Action":"fail"` ; puis `check_test_baseline.sh tests --from-jsonl` sur ce
+  JSONL → **sortie 0** : « Tous les tests baseline présents » (9 706 attendus, 17 247 servis),
+  « Aucun test en échec », « Aucun package en échec hors test ». Le tag `integration` n'était
+  pas requis par le diff (ni persist/, ni sync/, ni migration/ touchés) ; il a été joué pour
+  obtenir ce verdict.
+  Item CI statué `[~]` : il exige un push, interdit à l'exécutant.
+
+## Protocole de reprise de session
+
+1. Lire ce fichier : les cases cochées font foi.
+2. `git log --oneline -10` sur `wt/arme-favorite-briefing`.
+3. Reprendre à la PREMIÈRE étape dont le gate n'est pas passé — jamais plus loin.

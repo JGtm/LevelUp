@@ -1,3 +1,104 @@
+## [2026-09-17] Explorer / briefing : arme favorite de la sélection — En cours — gate visuel utilisateur en attente (branche `wt/arme-favorite-briefing`, worktree `../LevelUp-wt-arme-favorite`)
+
+**Demande** : ajouter au bandeau de briefing de l'Explorer (mode Matchs) l'arme — ou les deux
+armes — ayant produit le plus de frags du joueur sur le scope filtré, empilée sous « Par
+contexte », sans jamais créer de sixième cellule ni allonger la rangée quand une carte de
+dimension est bien remplie. Plan et décisions D0..D10 tranchées avant exécution :
+`.ai/PLAN_ARME_FAVORITE_BRIEFING_EXPLORER_2026-09-17.md`.
+
+**Décision technique** : l'arme favorite est l'arme qui a produit le plus de FRAGS CRÉDITÉS
+(ni la plus tenue, ni la plus tirée). La lecture passe par le port existant
+`WeaponKillsRepository` obtenu par `weaponKillsRepoFor(pdb)` — même factory que la Synthèse,
+l'Explorer-cible et les Sessions, donc source de dégât du film quand le titre la déclare et
+arme native du kill sinon : aucune comparaison de slug, aucun second chemin de lecture. Le
+repo et le **xuid** voyagent ensemble (`WithWeaponKillsRepo(repo, xuid)`) parce que le filtre
+du port se pose sur la colonne xuid ; filtrer par gamertag passerait par une jointure
+`xuid_aliases` qui rend zéro ligne EN SILENCE si l'alias manque. C'est le PREMIER module du
+briefing qui interroge la base — tous les autres s'agrègent en mémoire sur les raw rows ; les
+`MatchIDs` et le total de frags du scope se lisent dans ces rows déjà chargées, donc une
+seule requête ajoutée par briefing.
+
+Le dénominateur s'exprime en FRAGS et pas en matchs : l'agrégat par arme ne dit pas combien
+de matchs ont contribué, et l'y ajouter changerait la signature du port et ses deux
+implémentations. Un seul filtre de lignes (libellé résolu, hors sentinelles grenade/mêlée,
+celui de `buildTopWeaponKills`) sert À LA FOIS `measured_kills` et les deux entrées
+affichées, pour que la note de couverture reste cohérente avec ce qu'on montre. Elle ne
+paraît que si `measured < scope` : une source de dégât peut créditer autant ou plus que l'API
+du titre, auquel cas il n'y a rien à dire au lecteur. Un seul critère d'omission,
+`measured_kills == 0`, plus le seuil d'échantillon déjà en place (en low sample aucune
+lecture ne part). Best-effort strict : capability absente en `DebugContext`, toute autre
+erreur en `WarnContext`, bloc nil dans les deux cas.
+
+Côté web, la hauteur se DÉCIDE et ne se mesure jamais. `favoriteWeaponSlots` reçoit des
+COMPTES de lignes que le composant connaît déjà (entrées d'une carte de dimension, deux pour
+« Par contexte », chaînes de Classement RÉELLEMENT affichées) et rend la place libre sous la
+cellule la plus haute, plafonnée à deux : deux armes avec barre, une arme avec barre, ou une
+ligne compacte nue. Aucun `ResizeObserver`, aucun `getBoundingClientRect` — un écart observé
+au gate visuel se corrigera DANS la formule. La cellule empilée porte `self-start` : étirée
+par la grille (défaut `stretch`), elle donnerait toute sa hauteur à `ContextSplitCard`, qui
+porte `h-full`, et l'arme favorite déborderait sous la cellule — même piège que les deux
+`h-full` concurrents de la rangée 3 de l'Explorer. Le bloc est une liste `flex flex-col` et
+jamais une grille à colonnes nommées : le test DP-3 cible la DERNIÈRE grille portant cette
+classe et tomberait sur celle-ci ; DP-3 n'a pas été touché.
+
+**Résultats observés** — latence de la requête ajoutée, sur le PLUS GRAND scope (tout
+l'historique du joueur `2533274823110022`, 1 147 matchs, 109 sources de dégât distinctes) :
+**0,24 s** (4 exécutions : 0,257 / 0,263 / 0,214 / 0,219 s), sous les ~300 ms fixés par le
+plan et conforme à la référence de cadrage (0,22 s) — aucune optimisation dans ce lot. La
+base partagée du checkout principal étant tenue en écriture par `server.exe` (PID 15880) et
+refusant même l'ATTACH `READ_ONLY`, la mesure porte sur une copie d'octets du fichier ; le
+serveur n'a pas été arrêté.
+
+Gates : `go build ./...`, `go vet ./...` (`GOVET_EXIT=0`), `go test ./...`
+(`GOTEST_EXIT=0`), `go test ./internal/archlint/` (`ARCHLINT_EXIT=0`, 35,6 s),
+`make openapi-check` (document à jour ET `generated.ts` dérivé), `make check-types` cache
+`.tmp` purgé, `eslint` 0 erreur, `lint:colors` et `lint:fields` 0 violation, `make test-web`
+sortie 0 (732 fichiers, 7 858 tests). Suite Go complète sous tag `integration`, sérialisée :
+sortie 0, zéro événement d'échec — le tag n'était pas requis (ni persist/, ni sync/, ni
+migration/ touchés), il a été joué pour obtenir un verdict de baseline.
+
+`make gate-push` : `GATE_EXIT=2`, verdict lu et non contourné. Ses trois premières étapes
+sont vertes (golangci-lint `--new-from-merge-base=origin/main` 0 issue, `tsc -b`, `eslint`
+0 erreur) ; la quatrième, `check_test_baseline.sh tests`, est rouge pour deux causes
+d'ENVIRONNEMENT, aucune imputable au diff. D'abord le script force
+`PATH=/c/msys64/ucrt64/bin` et `CC=gcc` alors que ce poste exige la chaîne winlibs : avec
+msys64 (gcc 16.1.0) le lien de tout binaire de test embarquant `libduckdb_static` casse en
+« undefined reference to `__emutls_v._ZSt11__once_call` » — démontré sur pièces, le MÊME
+`go test -tags=integration -c ./internal/service/` échoue avec msys64 et réussit avec le `CC`
+winlibs. D'où 46 paquets absents du run, TOUS en N/N : aucune absence partielle, donc
+signature de lien et non test renommé ou supprimé ; aucun nom de test touché par ce lot n'est
+perdu. Ensuite, même avec le bon compilateur, `internal/sync` sous tag `integration` demande
+494 s sur cette machine (`SYNC_EXIT=0`, mesuré seul) quand le script n'accorde que 300 s par
+paquet ; charge externe aggravante ce soir (une autre session a lancé `make dev` depuis un
+autre worktree pendant le gate). Le FOND du gate a été vérifié sans toucher au script :
+`check_test_baseline.sh tests --from-jsonl` sur le JSONL de la suite intégration à budget
+tenable rend **sortie 0** — « Tous les tests baseline présents » (9 706 attendus, 17 247
+servis), « Aucun test en échec », « Aucun package en échec hors test ». L'autorité reste la
+CI Linux. Les deux défauts du script sont consignés en Découvertes du plan, NON traités
+(hors périmètre).
+
+**Correction post-CR (relecture du diff par le superviseur)** : en mode EMPILÉ, le bloc à
+une ou deux armes était rendu dans une SECONDE `BriefingSectionCard`. Son chrome seul
+(en-tête `px-3 py-2 text-sm` + bordure + corps `p-3`) pèse environ 70 px : la pile
+« contexte (≈ 97 px) + carte arme à deux lignes (≈ 131 px) » ≈ 235 px face aux ≈ 175 px
+d'une carte de dimension à six entrées, soit une rangée plus haute d'environ quatre lignes
+là où la formule promet qu'elle ne bouge pas — et le débordement subsistait même à une
+seule arme. Deux gestes, tous deux dans la doctrine « la hauteur se décide » : le composant
+reçoit `stacked` et, empilé, perd sa carte (libellé en petites capitales puis la liste,
+barres conservées ; carte complète conservée en cellule propre, où il n'y a aucun coût
+d'empilement et où il doit ressembler à ses voisines) ; et la constante de base de
+`favoriteWeaponSlots` passe de 2 à 4 en empilé, parce que le libellé, l'espacement de la
+pile et les marges de la carte du haut coûtent environ deux lignes que la formule nue ne
+comptait pas. Aucune mesure du DOM ajoutée. Les quatre tests de placement du Strip et le
+describe DP-3 passent sans retouche.
+
+**Prochaine étape** : gate visuel de l'utilisateur, cinq écrans (scope complet Infinite,
+scope réduit à une carte, scope 2023 pour la note de couverture, scope sans « Par contexte »,
+et Halo 5). Puis push de la branche par le superviseur et vérification de la CI au niveau
+job (`gh run list --branch wt/arme-favorite-briefing` ne rend rien aujourd'hui : la branche
+n'existe pas sur `origin`, le push est hors mandat de l'exécutant), enfin fusion dans
+`feat/v75` sur signal explicite de l'utilisateur.
+
 ## [2026-09-17] Explorer / recherche joueur : 3e rangée (résultats + assistances + portée) — Complété (branche `wt/explorer-rangee3`, worktree `../LevelUp-wt-explorer-rangee3`)
 
 **Demande** : sortir « Répartition des résultats » de la rangée de « Répartition des frags »
