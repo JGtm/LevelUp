@@ -1,4 +1,4 @@
-## [2026-09-16] Export video du rejeu — formats standard 1080p / 720p au lieu de dimensions variables — En cours (gate visuel utilisateur ; non commite)
+## [2026-09-16] Export video du rejeu — formats standard 1080p / 720p au lieu de dimensions variables — Complete (720c62a33, gate visuel valide par l utilisateur le 2026-09-17)
 
 **Decision technique principale.** L'export encodait la toile telle qu'affichee (hauteur ~960 x
 DPR, largeur = fenetre) : dimensions et proportions variaient d'une machine a l'autre. Decisions
@@ -29,7 +29,7 @@ charge, vert isole), typecheck 0, lint 0 erreur, lint:colors 0. Contre-verificat
 vitest export+hooks+settings 26 fichiers / 355 tests verts ; apres E2b vitest match-replay 193 fichiers / 2916 tests verts ; apres E2c 195 fichiers / 2925 tests verts, lint:colors 0, typecheck exit 0, lint 0 erreur (25 avertissements preexistants).
 720p en rendu direct : raisonnement ecrit, NON mesure.
 
-**Conclusion / prochaine etape.** Gate visuel utilisateur (dimensions reelles, bandes couleur du
+**Conclusion / prochaine etape.** Gate visuel VALIDE par l utilisateur le 2026-09-17 (dimensions reelles, bandes couleur du
 bloc, nettete texte 720p, affichage pendant l export, cadrage, theme clair -> clip noir et sombre), puis commit sur autorisation et fusion
 vers feat/v75. Decouvertes non traitees : gestes de cadrage actifs pendant un export (preexistant,
 soldees par E2b) ; test Palmares flaky.
