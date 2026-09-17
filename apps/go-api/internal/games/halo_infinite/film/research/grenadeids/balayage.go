@@ -125,6 +125,10 @@ type Releve struct {
 	LancersConfirmes int
 	// TiIndetermines : marqueurs en tete de payload, dont le sixieme bit d index manque.
 	TiIndetermines int
+	// AmorceParLargeur[w][v] : passe E — ce qui PRECEDE un identifiant connu, a la largeur w.
+	AmorceParLargeur map[int]map[uint64]int
+	// IndexDepuisIdentifiant[d] : passe E — dispersion du champ de 5 bits a `identifiant + d`.
+	IndexDepuisIdentifiant map[int]*CompteIndex
 	// Tranches : les suites de bits relevees autour des marqueurs portant `Options.Dump`.
 	Tranches []Tranche
 	// Occurrences : les marqueurs, conserves pour la passe D (appariement a i22).
@@ -235,6 +239,8 @@ func lireLesDeuxSignaux(pay []byte, b *Bobine, chunk int, p grammar.FilmPacket, 
 		v := grammar.PeekBits(pay, bp, 32)
 		if id := uint32(v); estIdentifiantActuel(id) {
 			r.Absolus[id]++
+			noterAmorce(pay, bp, r)
+			noterIndexDepuisIdentifiant(pay, bp, r)
 			absolus = append(absolus, occAbsolue{bitPos: bp, id: id})
 		}
 		if bp > limMarqueur {

@@ -147,10 +147,11 @@ func hgrenBalayage(film *source.Film) (int, []hgrenCand) {
 
 // hgrenPayload balaye UN payload de paquet delta et rend le nombre de marqueurs vus.
 func hgrenPayload(pay []byte, compte map[uint32]*hgrenCand) int {
-	limit := len(pay)*8 - grenadeThrowBits
+	ref := grammaireDeReference()
+	limit := len(pay)*8 - ref.amorce.StructureBits()
 	vus := 0
 	for bp := 0; bp <= limit; bp++ {
-		if PeekBits(pay, bp, 24) != grenadeMarker {
+		if PeekBits(pay, bp, ref.amorce.Bits) != ref.motif {
 			continue
 		}
 		vus++

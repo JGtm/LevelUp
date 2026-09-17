@@ -260,8 +260,8 @@ func avertitSiEcarte(name, mod string, q himap.BSP, candidats []himap.BSP) {
 
 // entreeRegionExterne construit l'entrée d'une carte dont les régions vivent dans
 // `ds/globals` (module sans sbsp, région jouée déclarée). La largeur de l'index d'i0 est
-// ceilLog2(nb de régions), jamais moins de 1 — la loi du moteur (himap.BSPQuantification,
-// i0RegionIndexBits).
+// `decfilm.LargeurIndexDePlage` — la loi du moteur (`FUN_140be9a14` : 1 si une seule plage,
+// sinon ceilLog2 du compte), transcrite une seule fois depuis le lot 3.4.1.
 func entreeRegionExterne(name, mod, modulePath, levels string, region uint32) (decfilm.MapQuantEntry, error) {
 	globals, err := filepath.Glob(filepath.Join(levels, "..", "..", "globals", "*.module"))
 	if err != nil || len(globals) == 0 {
@@ -278,10 +278,10 @@ func entreeRegionExterne(name, mod, modulePath, levels string, region uint32) (d
 	if !b.Bounds.Valid() {
 		return decfilm.MapQuantEntry{}, fmt.Errorf("AABB dégénérée (région %d)", region)
 	}
-	bits := uint(1)
-	for (1 << bits) < len(regions) {
-		bits++
-	}
+	// LA LOI VIT DANS LE DECODEUR DEPUIS LE LOT 3.4.1 (`profile/loi_largeurs.go`,
+	// transcription de `FUN_140be9a14`) : cet outil la recopiait en boucle a la main, et une
+	// meme largeur du jeu ne s ecrit qu une fois (CLAUDE.md regle 6).
+	bits := decfilm.LargeurIndexDePlage(len(regions))
 	e := decfilm.MapQuantEntry{Module: mod, Region: region, RegionIndexBits: bits}
 	w := b.Bounds.AxisWidths()
 	for ax := 0; ax < 3; ax++ {

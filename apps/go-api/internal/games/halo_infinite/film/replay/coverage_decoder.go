@@ -66,27 +66,28 @@ type DecoderCoverage struct {
 // dédupliquée par processus, et rien n'en restait dans l'artefact. Un film cuit sous une
 // grammaire de composants jamais vue était donc indistinguable d'un film nominal.
 //
-// # DEUX STATUTS ICI, TROIS À TERME — ET LA RAISON EST MESURÉE
+// # TROIS STATUTS DEPUIS LE LOT 3.1.1, ET LA RAISON DU TROISIÈME EST MESURÉE
 //
 // Le catalogue `games/halo_infinite/filmprofile` porte une TABLE d'empreintes par clé écrite du
-// film, avec le statut `connue` ou `presumee` par ligne. Le décodeur NE PEUT PAS la lire : ce
-// serait un import d'un paquet de catalogue depuis un calque, ce que le sens unique interdit
-// (ADR 0034, D-1). Le chemin prévu est que la table du PROFIL
-// (`film/internal/profile/profile_table.go`) recopie ces empreintes, et que la classification se
-// fasse là où l'empreinte est calculée — `grammar.ReadFilmIdentity`, décision D4 (3.2).
+// film. Le décodeur NE PEUT PAS la lire : ce serait un import d'un paquet de catalogue depuis un
+// calque, ce que le sens unique interdit (ADR 0034, D-1). La table du PROFIL
+// (`film/internal/profile/registre_empreintes.go`) la RECOPIE donc, et
+// `filmprofile.TestCatalogueConformeALaTableDesEmpreintes` prouve la recopie valeur contre
+// valeur.
 //
-// CE CHEMIN N'EXISTE PAS ENCORE : mesure du 2026-09-17, `profile_table.go` ne porte AUCUNE
-// empreinte de registre, et `TestCatalogueConformeALaTableDuLot21` tient les deux tables égales
-// ligne pour ligne. Ce lot livre donc la classification sur la SEULE empreinte que le décodeur
-// connaît — `connue` / `inconnue` — et le statut `presumee` naîtra avec la recopie, au volet
-// 3.1.1. Le champ `status` est une chaîne et non un booléen précisément pour que ce troisième
-// état n'oblige aucun consommateur à changer de forme.
+// CE QUE LE TROISIÈME STATUT CORRIGE, MESURÉ : le décodeur ne connaissait qu'UNE empreinte — le
+// build de référence — et sur les 17 témoins du corpus gate, CINQ empreintes parfaitement
+// mesurées et écrites au catalogue sortaient `inconnue` (`HI_1_8_0` / `HI_1_9_0`, `HI_1_10_0`,
+// `HI_1_11_0`, `HI_1_4_1`). Les trois cas se décident en UN endroit,
+// `profile.ClasserEmpreinteRegistre` ; ce fichier les PUBLIE, il ne les recalcule pas. Le champ
+// `status` reste une chaîne et non un booléen, précisément pour que ce troisième état n'oblige
+// aucun consommateur à changer de forme — la publication ne monte donc aucun schéma.
 type RegistryCoverage struct {
 	// Fingerprint est l'empreinte FNV-1a 64 bits des entrées NOMMÉES, `0x` + 16 chiffres
 	// minuscules — la même forme que le catalogue, pour que les deux se joignent sans conversion.
 	Fingerprint string `json:"fingerprint"`
-	// Status vaut `connue` quand l'empreinte est celle du build de référence, `inconnue` sinon.
-	// Un troisième état `presumee` est prévu (cf. l'en-tête du type).
+	// Status vaut `connue`, `presumee` ou `inconnue` (cf. `profile.ClasserEmpreinteRegistre`,
+	// qui définit les trois cas en un seul endroit).
 	Status string `json:"status"`
 	// Blocks est le nombre de blocs d'archétype du registre (49 ou 50 selon le build).
 	Blocks int `json:"blocks"`
@@ -95,14 +96,18 @@ type RegistryCoverage struct {
 	NamedSlots int `json:"namedSlots"`
 }
 
-// Les deux statuts que ce lot publie. Le troisième (`presumee`) naîtra avec la recopie des
-// empreintes du catalogue dans la table du profil (volet 3.1.1).
+// LES TROIS STATUTS PUBLIÉS SONT CEUX DE LA COUCHE PROFIL, RE-EXPORTÉS ET NON RECOPIÉS : deux
+// listes de littéraux divergeraient au premier statut ajouté, et celle qui fait foi est celle
+// qui CLASSE (`profile.ClasserEmpreinteRegistre`).
 const (
-	// RegistryStatutConnue : l'empreinte est celle du build de référence du dépôt.
-	RegistryStatutConnue = "connue"
-	// RegistryStatutInconnue : l'empreinte n'est PAS celle du build de référence. Le film reste
-	// décodé — l'empreinte est un signal, pas une porte.
-	RegistryStatutInconnue = "inconnue"
+	// RegistryStatutConnue : l'empreinte est celle que la table attend pour la clé du film.
+	RegistryStatutConnue = string(profile.StatutRegistreConnue)
+	// RegistryStatutPresumee : l'empreinte est au catalogue, mais sous une AUTRE clé — ou la clé
+	// du film n'a pas d'empreinte attendue. Le film reste décodé.
+	RegistryStatutPresumee = string(profile.StatutRegistrePresumee)
+	// RegistryStatutInconnue : l'empreinte n'est NULLE PART au catalogue. Le film reste décodé —
+	// l'empreinte est un signal, pas une porte ; la porte est la CLÉ (`profile.CleConnue`).
+	RegistryStatutInconnue = string(profile.StatutRegistreInconnue)
 )
 
 // ProjectileCoverage est la couverture du calque des projectiles.
@@ -174,30 +179,37 @@ func couvertureDuDecodeur(id *profile.FilmIdentity) *DecoderCoverage {
 	if id == nil {
 		return cov
 	}
-	cov.Build = id.Build
+	// LA CHAÎNE `build` EST VIDÉE QUAND LA CLÉ N'A PAS SERVI (V15 (15)) — publier une clé que le
+	// profil ne sait pas appliquer laisserait croire qu'elle a servi. LA DÉCISION EST ICI DEPUIS
+	// LE LOT 3.1.1, et non plus dans `identiteDuFilm` : la CLASSIFICATION du registre a besoin du
+	// build RÉELLEMENT écrit, et la vider en amont lui faisait perdre la clé sur la population
+	// même où elle compte le plus. Le critère est le MÊME qu'avant (`Profile.Err() != nil` sur un
+	// film qui écrit un build, c'est-à-dire `!CleConnue`), donc aucun artefact ne change.
+	if profile.CleConnue(id.FormatVersion, id.Build, 0) {
+		cov.Build = id.Build
+	}
 	if id.RegistryFingerprint == 0 {
 		return cov
 	}
 	cov.Registry = &RegistryCoverage{
 		Fingerprint: fmt.Sprintf("0x%016x", id.RegistryFingerprint),
-		Status:      statutDuRegistre(id.RegistryFingerprint),
+		Status:      statutDuRegistre(id.Build, id.RegistryFingerprint),
 		Blocks:      id.RegistryBlocks,
 		NamedSlots:  id.RegistryNamedSlots,
 	}
 	return cov
 }
 
-// statutDuRegistre CLASSE une empreinte de registre contre ce que le decodeur connait.
+// statutDuRegistre PUBLIE la classification d une empreinte de registre. Elle ne la CALCULE pas :
+// les trois cas sont definis en un seul endroit, `profile.ClasserEmpreinteRegistre`.
 //
-// DEUX ETATS ICI, TROIS A TERME : la table du PROFIL ne recopie pas encore les empreintes du
-// catalogue (mesure du 2026-09-17), donc `presumee` n existe pas — cf. l en-tete de
-// [RegistryCoverage]. Le jour ou elle les portera, cette fonction consultera la table et rendra
-// le statut qu elle declare ; aucun consommateur n aura a changer de forme.
-func statutDuRegistre(fp uint64) string {
-	if fp == grammar.KnownRegistryFingerprint {
-		return RegistryStatutConnue
-	}
-	return RegistryStatutInconnue
+// LA VERSION MAJEURE N ENTRE PAS, ET C EST MESURE : les clefs `majeure=` de la table decrivent
+// les films dont `chunk_00` ne porte AUCUNE section d identification, et ces films-la n ont pas
+// d empreinte de registre a publier — `identiteDuFilm` rend nil pour eux (leur identite n est
+// pas lue, donc leur empreinte vaut zero, donc ce bloc est absent). Un film qui arrive ici ECRIT
+// donc toujours un build.
+func statutDuRegistre(build string, fp uint64) string {
+	return string(profile.ClasserEmpreinteRegistre(build, 0, fp))
 }
 
 // identiteDuFilm rend la section 2 de `chunk_00` telle que le PROFIL du contexte l a deja lue,
@@ -228,8 +240,8 @@ func identiteDuFilm(fc *grammar.FilmContext) *profile.FilmIdentity {
 	if id.Build == "" && id.RegistryFingerprint == 0 {
 		return nil
 	}
-	if p.Err() != nil {
-		id.Build = ""
-	}
+	// LE BUILD N EST PLUS VIDE ICI DEPUIS LE LOT 3.1.1 : la decision de ne pas le PUBLIER
+	// appartient a [couvertureDuDecodeur], qui applique le meme critere. Le vider ici privait la
+	// classification du registre de la clef du film, sur la population meme ou elle compte.
 	return &id
 }
