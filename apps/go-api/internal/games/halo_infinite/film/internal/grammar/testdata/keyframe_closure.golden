@@ -53,12 +53,35 @@
 #     ti=29 1/256, ti=6 4/7896) ; sur ceux qui echouent, `n1` est constant et `n2` est du bruit.
 #     `n2` est donc un oracle GRATUIT de justesse de l ETAT PAR DEFAUT, et il designe la cause :
 #     le premier bit faux de ti=13, 37 et 38 est DANS LEUR ETAT PAR DEFAUT, avant tout composant.
+#   2026-09-17 lot 3.6.a : le JOUEUR GERE (ti=9) n a plus aucun composant sans lecteur.
+#     `i4 managed-player-forge-weather-effect-overrides-component` (FUN_142ed5bc8,
+#     R(32) + R(32), 64 bits inconditionnels) etait le BLOQUANT NOMME des sept bobines ;
+#     `i9 managed-player-custom-input-prompt-widget` (FUN_141fcf160) passe de `partiel`
+#     a `porte` (boucle a etiquette du sac texte FUN_14080b034). Grammaires relevees chez
+#     l ecrivain, aucune entree de profil.
+#     7 lignes MONTENT, 0 descend, aucune ne disparait, aucun total ne bouge :
+#       ti=9     0/1717 -> 1716/1717 (99,94 %), et plus AUCUN bloquant nomme
+#         a521164d 0/262 -> 262/262 · 60ae07c4 0/240 -> 240/240 · 11de8353 0/393 -> 393/393
+#         111fa685 0/337 -> 336/337 · e5adf7b2 0/261 -> 261/261 · bcb6d393 0/144 -> 144/144
+#         fb1a1a72  0/80 ->   80/80
+#     LE 1 717e N EST PAS UN RECORD : sur `111fa685`, chunk 1, bit 9145, la marche va au
+#     bout de ses composants (DesyncAt = -1) et finit 3 415 bits AVANT la frontiere ; son
+#     `n1` vaut 2 154 823 696 quand les 1 716 autres valent 12. C est une ANCRE FORTUITE,
+#     la population que `default_state_n2_constant_test.go` ecarte deja par ce critere —
+#     aucune largeur de ti=9 ne peut la fermer. La cible du lot est donc 1 716, pas 1 717.
+#     `i9` ne fait monter AUCUN compte ici : il n existe au registre que sur `bcb6d393` et
+#     `fb1a1a72` (9 composants sur les cinq autres bobines), et aucun record n y atteignait
+#     la branche refusee. Sa grammaire est tenue par un test de largeur sur tampon
+#     synthetique (`TestTI9InputPromptLargeursDuSacTexte`, 11 chemins).
+#     Les 6 films de recherche NE SONT PAS mesures a ce lot : la voie libre du pilote
+#     (un seul decodage a la fois sur la machine) n avait pas ete donnee. Ligne `[!]` du
+#     plan, a jouer avec les deux gates de decodage.
 a521164d	ti=0	0	1	
 a521164d	ti=2	0	11	i11 game-engine-soft-ceilings-component
 a521164d	ti=4	10	10	
 a521164d	ti=5	0	352	i22 player-aim-assist-component
 a521164d	ti=6	0	528	
-a521164d	ti=9	0	262	i4 managed-player-forge-weather-effect-overrides-component
+a521164d	ti=9	262	262	
 a521164d	ti=10	0	573	i2 managed-object-navpoint-component
 a521164d	ti=11	0	18	i4 managed-objective-interaction-filter-component
 a521164d	ti=12	0	298	i1 managed-navpoint-flags-component
@@ -89,7 +112,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 60ae07c4	ti=4	21	29	
 60ae07c4	ti=5	0	960	i22 player-aim-assist-component
 60ae07c4	ti=6	1438	1439	
-60ae07c4	ti=9	0	240	i4 managed-player-forge-weather-effect-overrides-component
+60ae07c4	ti=9	240	240	
 60ae07c4	ti=10	1	376	i2 managed-object-navpoint-component
 60ae07c4	ti=11	0	135	i4 managed-objective-interaction-filter-component
 60ae07c4	ti=12	0	204	i1 managed-navpoint-flags-component
@@ -121,7 +144,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 11de8353	ti=5	0	512	i22 player-aim-assist-component
 11de8353	ti=6	764	766	
 11de8353	ti=8	0	2	
-11de8353	ti=9	0	393	i4 managed-player-forge-weather-effect-overrides-component
+11de8353	ti=9	393	393	
 11de8353	ti=10	0	95	i2 managed-object-navpoint-component
 11de8353	ti=11	0	14	i4 managed-objective-interaction-filter-component
 11de8353	ti=12	0	31	i1 managed-navpoint-flags-component
@@ -152,7 +175,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 111fa685	ti=4	0	13	
 111fa685	ti=5	0	448	i22 player-aim-assist-component
 111fa685	ti=6	670	671	
-111fa685	ti=9	0	337	i4 managed-player-forge-weather-effect-overrides-component
+111fa685	ti=9	336	337	
 111fa685	ti=10	0	103	i2 managed-object-navpoint-component
 111fa685	ti=11	0	13	i4 managed-objective-interaction-filter-component
 111fa685	ti=12	1	15	i1 managed-navpoint-flags-component
@@ -182,7 +205,7 @@ e5adf7b2	ti=2	0	11	i11 game-engine-soft-ceilings-component
 e5adf7b2	ti=4	10	10	
 e5adf7b2	ti=5	0	352	i22 player-aim-assist-component
 e5adf7b2	ti=6	528	528	
-e5adf7b2	ti=9	0	261	i4 managed-player-forge-weather-effect-overrides-component
+e5adf7b2	ti=9	261	261	
 e5adf7b2	ti=10	0	262	i2 managed-object-navpoint-component
 e5adf7b2	ti=11	0	10	i4 managed-objective-interaction-filter-component
 e5adf7b2	ti=12	0	60	i1 managed-navpoint-flags-component
@@ -215,7 +238,7 @@ bcb6d393	ti=3	0	1	i0 low-frequency
 bcb6d393	ti=4	18	18	
 bcb6d393	ti=5	0	608	i22 player-aim-assist-component
 bcb6d393	ti=6	910	911	
-bcb6d393	ti=9	0	144	i4 managed-player-forge-weather-effect-overrides-component
+bcb6d393	ti=9	144	144	
 bcb6d393	ti=10	2	419	i2 managed-object-navpoint-component
 bcb6d393	ti=11	0	85	i4 managed-objective-interaction-filter-component
 bcb6d393	ti=12	4	160	i1 managed-navpoint-flags-component
@@ -246,7 +269,7 @@ fb1a1a72	ti=3	0	25	i0 low-frequency
 fb1a1a72	ti=4	0	11	
 fb1a1a72	ti=5	0	384	i22 player-aim-assist-component
 fb1a1a72	ti=6	574	575	
-fb1a1a72	ti=9	0	80	i4 managed-player-forge-weather-effect-overrides-component
+fb1a1a72	ti=9	80	80	
 fb1a1a72	ti=10	0	433	i2 managed-object-navpoint-component
 fb1a1a72	ti=11	0	50	i4 managed-objective-interaction-filter-component
 fb1a1a72	ti=12	0	111	i1 managed-navpoint-flags-component

@@ -88,28 +88,20 @@ func pgesDecodePayload(br *Lecteur) pgesPayload {
 		}
 		p.props = append(p.props, pr)
 	}
-	// Bloc "text" optionnel (FUN_14080b034) : R(1) porte ; si 1 : R(32) nom, R(3) compte,
-	// compte x element (FUN_1407f0ebc) : R(3) sous-type puis valeur.
-	if br.ReadBit() {
+	// Bloc "text" optionnel (FUN_14080b034) — LE LECTEUR DE PRODUCTION, PAS UNE COPIE.
+	//
+	// Cet instrument portait sa propre version du sac, et elle etait FAUSSE sur le sous-type 2 :
+	// elle marquait « quantifie a largeur runtime » (`p.exact = false`) et ne consommait AUCUN
+	// bit, la ou le binaire lit R(1) puis R(24) ou R(32) — deux largeurs LITTERALES
+	// (`142c70d02`, `142c70d27`). La grammaire relevee au lot 3.6.a vit dans
+	// `components_managed_player.go` ; ce qui reste ici est la mise en forme pour l instrument.
+	if sac := consumeSacTexte(br); sac.Present {
 		p.hasText = true
-		p.textName = br.ReadBits(32)
-		tc := int(br.ReadBits(3))
-		p.textParts = tc
-		for i := 0; i < tc; i++ {
-			switch int(br.ReadBits(3)) {
-			case 0:
-				// 0 bit
-			case 1:
-				// FUN_1407f2058 : R(1) porte ; si 0 : R(5) index de participant absolu
-				if !br.ReadBit() {
-					p.participants = append(p.participants, br.ReadBits(5))
-				}
-			case 3:
-				br.Skip(32) // string_id
-			case 2:
-				p.exact = false // FUN_142c70cd0 : quantifie a largeur runtime
-			default:
-				br.Skip(32) // 4..7 : R(32)
+		p.textName = sac.Nom
+		p.textParts = len(sac.Entrees)
+		for _, e := range sac.Entrees {
+			if e.SousType == sacTexteParticipant && e.AValeur {
+				p.participants = append(p.participants, e.Valeur)
 			}
 		}
 	}
