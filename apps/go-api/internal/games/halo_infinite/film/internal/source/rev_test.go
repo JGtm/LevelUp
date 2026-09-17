@@ -79,7 +79,7 @@ func racineDeLaCoucheSource(t *testing.T) string {
 // empreinteDeLaCoucheSource rend l empreinte et le nombre de fichiers haches.
 func empreinteDeLaCoucheSource(t *testing.T) (string, int) {
 	t.Helper()
-	res, err := revision.Calculer(revision.CadreRacine,
+	res, err := revision.Calculer(
 		[]string{racineDeLaCoucheSource(t)},
 		func(rel string) bool { return rel == fichierPorteurDeRevisionSource })
 	if err != nil {
@@ -96,7 +96,7 @@ func TestSourceRevSuitLaCoucheSource(t *testing.T) {
 		regenererGoldenSourceRev(t, empreinte)
 		return
 	}
-	c, err := revision.LireChronique(prefixeRevisionSource, fichierPorteurDeRevisionSource,
+	c, err := revision.LireChronique(prefixeRevisionSource, []string{fichierPorteurDeRevisionSource},
 		cheminGoldenSourceRev)
 	if err != nil {
 		t.Fatalf("chronique de `source` : %v", err)
@@ -136,7 +136,7 @@ func regenererGoldenSourceRev(t *testing.T, empreinte string) {
 // chronique s y etait arretee a `.12` pendant que la constante valait `.14`, et rien ne
 // rougissait — les deux changements de comportement intermediaires n avaient aucune entree.
 func TestChroniqueDeSourceCouvreLaRevisionCourante(t *testing.T) {
-	c, err := revision.LireChronique(prefixeRevisionSource, fichierPorteurDeRevisionSource,
+	c, err := revision.LireChronique(prefixeRevisionSource, []string{fichierPorteurDeRevisionSource},
 		cheminGoldenSourceRev)
 	if err != nil {
 		t.Fatalf("chronique de `source` : %v", err)

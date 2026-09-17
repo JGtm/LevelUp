@@ -1,18 +1,18 @@
 // Package revision porte LE MECANISME D EMPREINTE DE SOURCES partage par les revisions de
 // couche du decodeur de film (lot 2.6.0 du PLAN_DECODEUR_FILM_2026-09-13).
 //
-// # POURQUOI CE PAQUET EXISTE, ET POURQUOI AVANT 2.6.1
+// # POURQUOI CE PAQUET EXISTE
 //
-// Deux gates du depot font AUJOURD HUI la meme chose, chacun avec sa copie du code :
-//
-//	filmdec/grammar_rev_fingerprint_test.go      hache filmdec/ + killsource/ + objectives/
-//	sync/killcollector/decoder_rev_fingerprint_test.go  hache killsource/
+// Deux gates du depot faisaient la meme chose, chacun avec sa copie du code : celui de la
+// grammaire (`filmdec/grammar_rev_fingerprint_test.go`, qui hachait cinq racines) et celui des
+// faits (`sync/killcollector/decoder_rev_fingerprint_test.go`, qui hachait `killsource/`).
 //
 // La decision V15 (11) du plan pose QUATRE revisions, une par couche (`source`, `profile`,
-// `grammar`, `facts`). Les ecrire a l identique ferait QUATRE copies du meme motif, alors que
-// CLAUDE.md regle 6 impose de centraliser des la TROISIEME — et d y poser un garde-rail, sans
+// `grammar`, `facts`). Les ecrire a l identique aurait fait QUATRE copies du meme motif, alors
+// que CLAUDE.md regle 6 impose de centraliser des la TROISIEME — et d y poser un garde-rail, sans
 // quoi la factorisation re-diverge. Ce paquet est cette centralisation ; le garde-rail est
-// `archlint/no_ad_hoc_source_fingerprint_test.go`.
+// `archlint/no_ad_hoc_source_fingerprint_test.go`, dont l allowlist est VIDE depuis que la
+// grammaire a herite (lot 2.6.1) : les quatre couches passent par ici, et aucune copie ne reste.
 //
 // # CE QUE CE PAQUET NE FAIT PAS
 //
@@ -24,12 +24,16 @@
 //
 // # POURQUOI ICI, ET PAS SOUS `film/internal/`
 //
-// Le paquet doit etre importable par les futurs `film/internal/{source,profile,grammar,facts}`
-// ET par `sync/killcollector` tant que la constante de revision des faits y vit (elle descend
-// en `facts/` au lot 2.6.1, note de preparation §3.1). Sous `film/internal/`, le compilateur
-// fermerait la porte a `killcollector`. Il est donc classe `horsCoucheFilm` dans
-// `archlint/film_layers_deps_test.go` : outillage de revision, ni decodage ni publication — il
-// ne lit aucun octet de film, il hache des octets de SOURCE.
+// Il etait hors de `film/internal/` pour rester importable par `sync/killcollector`, qui portait
+// la constante de revision des faits. CETTE RAISON A DISPARU au volet facts du lot 2.6.1 : la
+// constante a descendu en `film/internal/facts/rev.go`, et depuis le volet grammaire les seuls
+// importateurs de ce paquet sont les quatre gates de couche, tous sous `film/`. Le paquet
+// POURRAIT donc passer sous `film/internal/` ; il ne le fait pas dans ce lot, qui ne deplace
+// rien (D5 (2.6), consigne au §4 du plan).
+//
+// Il est classe `horsCoucheFilm` dans `archlint/film_layers_deps_test.go` : outillage de
+// revision, ni decodage ni publication — il ne lit aucun octet de film, il hache des octets de
+// SOURCE.
 package revision
 
 import (
@@ -40,58 +44,39 @@ import (
 	"hash"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 )
 
-// Cadre : LA FORME DES OCTETS SOUMIS AU HACHAGE — c est-a-dire le CONTRAT de l empreinte.
+// LE CADRE DU HACHAGE — c est-a-dire le CONTRAT de l empreinte — EST UNIQUE : le chemin hache a
+// cote du contenu est RELATIF A LA RACINE de la couche.
 //
-// Deux cadres coexistent le temps du lot 2.6.1, et ce n est pas une preference de style : deux
-// empreintes calculees par deux cadres differents ne se comparent pas, donc changer de cadre
-// sur une couche en place renumeroterait sa revision pour rien.
-type Cadre int
-
-const (
-	// CadreRacine — LE CONTRAT COURANT : le chemin hache a cote du contenu est RELATIF A LA
-	// RACINE de la couche.
-	//
-	// ARBITRAGE (lot 2.6.0, pour le pas 5). Les deux mecanismes existants ne hachent pas le meme
-	// chemin :
-	//
-	//	killsource   `decode.go`           (relatif a la racine)
-	//	grammaire    `filmdec/decode.go`   (relatif au PARENT de la racine : le nom du dossier
-	//	                                    de racine est prefixe au chemin)
-	//
-	// Le pas 5 deplace les couches EN BLOC (`git mv filmdec film/internal/grammar`). Sous le
-	// cadre de la grammaire, ce deplacement change les 141 chemins haches et donc l empreinte,
-	// alors qu AUCUN octet de grammaire n a bouge : il faudrait soit monter la revision pour
-	// rien — ce qui, pour `facts`, rouvre un backlog de redecodage (V15 (16)) — soit regenerer
-	// le golden sur la branche « revision inchangee, empreinte differente », c est-a-dire faire
-	// taire le ratchet dans le cas precis pour lequel il existe.
-	//
-	// Le chemin relatif A LA RACINE survit au `git mv` du dossier entier et mord toujours sur ce
-	// que le prefixe attrapait : un fichier renomme DANS la couche. C est donc le contrat
-	// courant. Ce que le cadre perd — deux racines qui portent le meme nom de fichier ne sont
-	// plus distinguees par leur dossier — est sans effet : les racines sont hachees dans l ordre
-	// ou l appelant les donne, et la longueur du contenu encadre chaque fichier (voir
-	// [Calculer]).
-	CadreRacine Cadre = iota
-
-	// CadreHeriteGrammaire — LE CONTRAT HERITE de `grammar_rev_fingerprint_test.go` : le chemin
-	// hache est prefixe du nom du dossier de racine, et l encadrement est `chemin`, octet NUL,
-	// contenu (sans longueur).
-	//
-	// KILL-SWITCH, ET IL EST DATE. Bascule du defaut : jamais — ce cadre n est le defaut de
-	// personne, il ne sert qu a PROUVER (`equivalence_test.go`) que le mecanisme central rend
-	// EXACTEMENT l empreinte figee dans `filmdec/testdata/grammar_rev.golden`, donc qu au lot
-	// 2.6.1 `grammar.Rev` heritera sans renumerotation gratuite. Cible de retrait : lot 2.6.1,
-	// dans le commit qui fait passer `grammar` a [CadreRacine] avec la montee de revision qui
-	// l accompagne. Critere mesurable : plus aucun appelant de [EmpreinteHeritee] hors de son
-	// propre test de non-regression.
-	CadreHeriteGrammaire
-)
+// ARBITRAGE (lot 2.6.0, pour le pas 5). Les deux mecanismes d avant ne hachaient pas le meme
+// chemin :
+//
+//	killsource   `decode.go`           (relatif a la racine)
+//	grammaire    `filmdec/decode.go`   (relatif au PARENT de la racine : le nom du dossier de
+//	                                    racine etait prefixe au chemin)
+//
+// Le pas 5 deplace les couches EN BLOC (`git mv filmdec film/internal/grammar`). Sous le cadre de
+// la grammaire, ce deplacement changeait les 141 chemins haches et donc l empreinte, alors
+// qu AUCUN octet de grammaire n avait bouge : il aurait fallu soit monter la revision pour rien —
+// ce qui, pour `facts`, rouvre un backlog de redecodage (V15 (16)) — soit regenerer le golden sur
+// la branche « revision inchangee, empreinte differente », c est-a-dire faire taire le ratchet
+// dans le cas precis pour lequel il existe.
+//
+// Le chemin relatif A LA RACINE survit au `git mv` du dossier entier et mord toujours sur ce que
+// le prefixe attrapait : un fichier renomme DANS la couche. Ce que le cadre perd — deux racines
+// qui portent le meme nom de fichier ne sont plus distinguees par leur dossier — est sans effet :
+// les racines sont hachees dans l ordre ou l appelant les donne, et la longueur du contenu
+// encadre chaque fichier (voir [Calculer]).
+//
+// LE CADRE HERITE DE LA GRAMMAIRE A ETE SUPPRIME AU LOT 2.6.1, dans le commit qui a fait heriter
+// `grammar.Rev` — c etait sa cible de retrait datee, et son critere mesurable est tenu : plus
+// aucun appelant. Ce qu il servait a prouver est acquis : l heritage de l OUTILLAGE ne coute
+// aucune renumerotation (l empreinte heritee des cinq racines egalait `7994ce19…`, figee au rang
+// `.38`). Ce qui a fait monter le rang au `.39` est le PERIMETRE, pas le cadre.
 
 // ErrRacineSansSource : une racine ne porte AUCUNE source `.go` de production.
 //
@@ -111,29 +96,21 @@ type Resultat struct {
 	Fichiers int
 }
 
-// Empreinte hache les sources `.go` de production des racines, sous le contrat courant
-// ([CadreRacine]).
+// Calculer hache les sources `.go` de production des racines et rend l empreinte AVEC le nombre
+// de fichiers.
+//
+// C est LE seul point d entree du calcul : les quatre couches l appellent, chacune citant le
+// compte dans ses messages d echec. Un raccourci qui ne rendrait que l empreinte a existe au lot
+// 2.6.0 (`Empreinte`) et n a jamais eu de consommateur — il est supprime au 2.6.1 (CLAUDE.md
+// regle 7).
 //
 // `exclure` recoit le chemin de chaque fichier RELATIF A SA RACINE, en slash, et rend vrai pour
 // les fichiers a ecarter — nominalement le fichier qui PORTE la revision, qui decrit la couche
 // sans en faire partie. Nil n exclut rien.
 //
 // `valeursAmont` porte la VALEUR des revisions dont la couche depend (decision V15 (12) :
-// `facts.Rev` hache la valeur de `grammar.Rev`). Elles sont hachees EN TETE, avant toute source.
-func Empreinte(racines []string, exclure func(rel string) bool, valeursAmont ...string) (string, error) {
-	r, err := Calculer(CadreRacine, racines, exclure, valeursAmont...)
-	return r.Empreinte, err
-}
-
-// EmpreinteHeritee hache les memes sources sous le contrat [CadreHeriteGrammaire].
-//
-// A N APPELER QUE depuis la preuve d equivalence : voir la note de retrait de la constante.
-func EmpreinteHeritee(racines []string, exclure func(rel string) bool, valeursAmont ...string) (string, error) {
-	r, err := Calculer(CadreHeriteGrammaire, racines, exclure, valeursAmont...)
-	return r.Empreinte, err
-}
-
-// Calculer rend l empreinte ET le nombre de fichiers, sous le cadre demande.
+// `facts.Rev` hache la valeur de `grammar.Rev`). Elles sont hachees EN TETE, avant toute source,
+// DANS L ORDRE DONNE — l ordre fait partie du contrat.
 //
 // # CE QUI ENTRE DANS LE HACHAGE, DANS L ORDRE
 //
@@ -157,7 +134,7 @@ func EmpreinteHeritee(racines []string, exclure func(rel string) bool, valeursAm
 // porte sur les OCTETS. Un garde-rail qui ne mordrait que sur le « significatif » devrait
 // comprendre le decodeur — il rendrait des faux negatifs, c est-a-dire le defaut meme qu il
 // existe pour fermer. Un faux positif coute une ligne a mettre a jour.
-func Calculer(cadre Cadre, racines []string, exclure func(rel string) bool, valeursAmont ...string) (Resultat, error) {
+func Calculer(racines []string, exclure func(rel string) bool, valeursAmont ...string) (Resultat, error) {
 	h := sha256.New()
 	for _, v := range valeursAmont {
 		_, _ = fmt.Fprintf(h, "amont:%d\n%s\n", len(v), v)
@@ -171,7 +148,7 @@ func Calculer(cadre Cadre, racines []string, exclure func(rel string) bool, vale
 		if len(lus) == 0 {
 			return Resultat{}, fmt.Errorf("%w : %s", ErrRacineSansSource, racine)
 		}
-		ecrireSources(h, cadre, racine, lus)
+		ecrireSources(h, lus)
 		total += len(lus)
 	}
 	return Resultat{Empreinte: hex.EncodeToString(h.Sum(nil)), Fichiers: total}, nil
@@ -223,18 +200,13 @@ func sourcesDe(racine string, exclure func(rel string) bool) ([]sourceLue, error
 	return lus, nil
 }
 
-// ecrireSources verse les sources d une racine dans le hachage, selon le cadre.
+// ecrireSources verse les sources d une racine dans le hachage.
 //
-// Le tri se fait sur le chemin relatif a la racine dans les DEUX cadres : le prefixe du cadre
-// herite etant constant pour une racine donnee, il ne change aucun ordre relatif.
-func ecrireSources(h hash.Hash, cadre Cadre, racine string, lus []sourceLue) {
+// LA RACINE N EST PAS UN PARAMETRE, et c est le cadre lui-meme : seul le chemin RELATIF entre
+// dans les octets haches, de sorte qu un `git mv` de la couche entiere ne coute rien (voir
+// l en-tete de ce fichier).
+func ecrireSources(h hash.Hash, lus []sourceLue) {
 	for _, f := range lus {
-		if cadre == CadreHeriteGrammaire {
-			_, _ = h.Write([]byte(path.Join(filepath.Base(racine), f.rel)))
-			_, _ = h.Write([]byte{0})
-			_, _ = h.Write([]byte(f.texte))
-			continue
-		}
 		// La longueur encadre le contenu : sans elle, deux decoupages differents des memes
 		// octets rendraient la meme empreinte.
 		_, _ = fmt.Fprintf(h, "%s\n%d\n", f.rel, len(f.texte))
