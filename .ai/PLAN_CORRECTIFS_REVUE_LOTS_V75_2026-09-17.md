@@ -52,7 +52,7 @@ corrections (sync/ touché). Merge final dans feat/v75 après CI verte.
 - [x] 3.1 Fusion `fix/revue-lots-v75-go` → `fix/revue-lots-v75`, gates complets rejoués.
 - [x] 3.2 Ronde 2 de relecture adversariale sur les seules corrections (1 relecteur Go, 1 web).
 - [ ] 3.3 Push, CI verte au niveau job.
-- [ ] 3.4 Journal thought_log (entrée revue + entrée correctifs), plan statué.
+- [x] 3.4 Journal thought_log (entrée revue + entrée correctifs), plan statué.
 - [ ] 3.5 Merge dans feat/v75 (demander avant).
 
 ## Découvertes (non traitées)
