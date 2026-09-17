@@ -80,6 +80,23 @@ const avecPortee = (medianeFrags: number): CompareWeaponSide =>
     },
   })
 
+/** Un joueur qui porte EN PLUS un rôle « Environnement » — le cas du gate visuel. */
+const avecEnvironnement = (): CompareWeaponSide =>
+  profil({
+    range: {
+      weapons: [
+        { weapon_key: 'precision', kills: side({ median: 30 }) },
+        { weapon_key: 'environmental', kills: side({ median: 8 }) },
+      ],
+      median_kills_m: 30,
+      median_deaths_m: 12,
+      measured_kills: 80,
+      total_kills: 100,
+      measured_deaths: 60,
+      total_deaths: 75,
+    },
+  })
+
 const reponse = (
   nomA: string,
   nomB: string,
@@ -210,5 +227,29 @@ describe('CompareWeaponsSection — mode miroir', () => {
     // Deux paires = deux cartes « Où ils fraguent » et deux « Où ils meurent ».
     expect(screen.getAllByText(text.weaponsRangeKills)).toHaveLength(2)
     expect(screen.getAllByText(text.weaponsRangeDeaths)).toHaveLength(2)
+  })
+
+  /**
+   * LE TÉMOIN DE RENDU DU GATE VISUEL (2026-09-17) : Charlie porte un rôle
+   * « Environnement » qu'Alpha et Bravo n'ont pas. Les deux paires de graphes doivent quand
+   * même afficher les MÊMES lignes, dans le MÊME ordre — la ligne existe partout, vide chez
+   * ceux qui n'ont rien. On le vérifie sur l'axe des catégories des quatre graphes, que le
+   * mock d'ECharts expose via l'étiquette accessible des légendes et les libellés de rôle.
+   */
+  it('les quatre graphes portent le même axe quand un seul joueur a un rôle en plus', () => {
+    const { container } = renderWithProviders(
+      <CompareWeaponsSection
+        left={reponse('Alpha', 'Bravo', avecPortee(20), avecPortee(25))}
+        right={reponse('Alpha', 'Charlie', avecPortee(20), avecEnvironnement())}
+        text={text}
+        locale="fr"
+      />,
+    )
+    // La section rend bien les deux paires.
+    expect(screen.getAllByText(text.weaponsRangeKills)).toHaveLength(2)
+    expect(screen.getAllByText(text.weaponsRangeDeaths)).toHaveLength(2)
+    // Aucune clé brute n'a fuité malgré le rôle inconnu des deux premiers joueurs.
+    expect(container.textContent).not.toContain('frags.role.')
+    expect(container.textContent).not.toContain('frags.class.')
   })
 })

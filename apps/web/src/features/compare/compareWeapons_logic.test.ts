@@ -19,6 +19,7 @@ import {
   fragClassRows,
   hasWeaponProfile,
   roleLabel,
+  roleAxis,
   roleRangeLines,
 } from './compareWeapons_logic'
 
@@ -55,8 +56,8 @@ const resolveManifeste = (key: string) => {
 }
 const nomDeRole = (key: string) => roleLabel(key, resolveManifeste)
 
-describe('fragClassRows — l’union des classes', () => {
-  it('garde l’ordre de A, puis ajoute ce que seul B porte', () => {
+describe('fragClassRows — l’union des classes, sur N côtés', () => {
+  it('garde l’ordre du premier côté, puis ajoute ce que les suivants portent', () => {
     const a = profil({
       frag_classes: [
         { class: 'shoulder', kills: 40, share_pct: 40 },
@@ -78,10 +79,26 @@ describe('fragClassRows — l’union des classes', () => {
     const rows = fragClassRows(a, b)
     const epaule = rows.find((r) => r.classKey === 'shoulder')!
     const grenade = rows.find((r) => r.classKey === 'grenade')!
-    expect(epaule.sharePctB).toBe(0)
-    expect(epaule.killsB).toBe(0)
-    expect(grenade.sharePctA).toBe(0)
-    expect(grenade.killsA).toBe(0)
+    expect(epaule.parts[1]).toEqual({ kills: 0, sharePct: 0 })
+    expect(grenade.parts[0]).toEqual({ kills: 0, sharePct: 0 })
+  })
+
+  /**
+   * LE CAS DU GATE VISUEL (2026-09-17) : un seul des trois joueurs porte « Environnement ».
+   * Avec deux unions à deux appliquées séparément, la ligne n'existait que d'un côté et les
+   * colonnes se décalaient. Ici l'union est faite UNE fois sur les trois.
+   */
+  it('trois côtés : une classe que seul C porte a sa ligne, et les trois parts existent', () => {
+    const a = profil({ frag_classes: [{ class: 'shoulder', kills: 40, share_pct: 40 }] })
+    const b = profil({ frag_classes: [{ class: 'shoulder', kills: 30, share_pct: 30 }] })
+    const c = profil({ frag_classes: [{ class: 'environmental', kills: 5, share_pct: 5 }] })
+    const rows = fragClassRows(a, b, c)
+    expect(rows.map((r) => r.classKey)).toEqual(['shoulder', 'environmental'])
+    for (const r of rows) expect(r.parts).toHaveLength(3)
+    const env = rows.find((r) => r.classKey === 'environmental')!
+    expect(env.parts[0].sharePct).toBe(0)
+    expect(env.parts[1].sharePct).toBe(0)
+    expect(env.parts[2].sharePct).toBe(5)
   })
 
   it('accepte un côté absent (profil non servi)', () => {
@@ -91,7 +108,7 @@ describe('fragClassRows — l’union des classes', () => {
   })
 })
 
-describe('roleRangeLines — l’union des rôles, un côté de mesure à la fois', () => {
+describe('roleAxis / roleRangeLines — un axe unique pour tous les graphes', () => {
   const a = profil({
     range: {
       weapons: [
@@ -120,42 +137,87 @@ describe('roleRangeLines — l’union des rôles, un côté de mesure à la foi
       total_deaths: 60,
     },
   })
-
-  it('superpose A en haut et B en bas, sur le côté demandé', () => {
-    const lignes = roleRangeLines(a, b, 'kills', nomDeRole)
-    const precision = lignes.find((l) => l.weaponKey === 'precision')!
-    expect(precision.top?.median).toBe(20)
-    expect(precision.bottom?.median).toBe(25)
+  /** C porte un rôle qu'aucun des deux autres n'a — le cas du gate visuel. */
+  const c = profil({
+    range: {
+      weapons: [{ weapon_key: 'environmental', kills: side({ median: 8 }) }],
+      median_kills_m: 8,
+      median_deaths_m: 0,
+      measured_kills: 10,
+      total_kills: 12,
+      measured_deaths: 0,
+      total_deaths: 0,
+    },
   })
 
-  it('trie par médiane de A croissante, puis par celle de B pour les rôles que A n’a pas', () => {
-    // Mêlée (A, 2) · Précision (A, 20) · Sniper (B seul, 40).
-    expect(roleRangeLines(a, b, 'kills', nomDeRole).map((l) => l.weaponKey)).toEqual([
+  it('trie par médiane de la RÉFÉRENCE côté frags, les rôles qu’elle n’a pas à la fin', () => {
+    // A mesure melee (2) et precision (20) ; sniper (B) et environmental (C) lui sont
+    // inconnus → à la fin, par libellé (« Environnement » avant « Tir de précision »).
+    expect(roleAxis([a, b, c], nomDeRole).map((e) => e.weaponKey)).toEqual([
       'melee',
       'precision',
+      'environmental',
       'sniper',
     ])
   })
 
-  it('écarte un rôle qu’aucun des deux n’a mesuré de ce côté', () => {
-    // Côté morts : seul B mesure « precision ». Mêlée et sniper n'ont pas de côté morts.
-    const lignes = roleRangeLines(a, b, 'deaths', nomDeRole)
-    expect(lignes.map((l) => l.weaponKey)).toEqual(['precision'])
-    expect(lignes[0].top).toBeNull()
-    expect(lignes[0].bottom?.median).toBe(18)
+  it('résout le libellé et n’expose JAMAIS une clé de manifeste brute', () => {
+    for (const e of roleAxis([a, b, c], nomDeRole)) {
+      expect(e.label).not.toContain('frags.role.')
+      expect(e.label).not.toContain('frags.class.')
+    }
+    expect(roleAxis([a, b], nomDeRole).find((e) => e.weaponKey === 'precision')!.label).toBe(
+      'Précision',
+    )
   })
 
-  it('résout le libellé et n’affiche JAMAIS une clé de manifeste brute', () => {
-    const lignes = roleRangeLines(a, b, 'kills', nomDeRole)
-    for (const l of lignes) {
-      expect(l.label).not.toContain('frags.role.')
-      expect(l.label).not.toContain('frags.class.')
+  it('superpose A en haut et B en bas, sur le côté demandé', () => {
+    const axis = roleAxis([a, b], nomDeRole)
+    const precision = roleRangeLines(axis, a, b, 'kills').find((l) => l.weaponKey === 'precision')!
+    expect(precision.top?.median).toBe(20)
+    expect(precision.bottom?.median).toBe(25)
+  })
+
+  /**
+   * LE TÉMOIN DU GATE VISUEL : les deux paires du mode miroir rendent EXACTEMENT le même axe,
+   * de la même longueur, dans le même ordre — y compris les lignes où le couple n'a rien.
+   */
+  it('les deux paires du miroir portent des axes identiques, lignes vides comprises', () => {
+    const axis = roleAxis([a, b, c], nomDeRole)
+    const paires = [
+      roleRangeLines(axis, a, b, 'kills'),
+      roleRangeLines(axis, a, c, 'kills'),
+      roleRangeLines(axis, a, b, 'deaths'),
+      roleRangeLines(axis, a, c, 'deaths'),
+    ]
+    const attendu = axis.map((e) => e.weaponKey)
+    for (const lignes of paires) {
+      expect(lignes).toHaveLength(axis.length)
+      expect(lignes.map((l) => l.weaponKey)).toEqual(attendu)
     }
-    expect(lignes.find((l) => l.weaponKey === 'precision')!.label).toBe('Précision')
+    // A vs B ne mesure rien sur « environmental » : la ligne existe quand même, vide.
+    const env = paires[0].find((l) => l.weaponKey === 'environmental')!
+    expect(env.top).toBeNull()
+    expect(env.bottom).toBeNull()
+    // A vs C la porte côté C.
+    expect(paires[1].find((l) => l.weaponKey === 'environmental')!.bottom?.median).toBe(8)
+  })
+
+  it('une ligne sans mesure de ce côté est rendue vide, jamais filtrée', () => {
+    const axis = roleAxis([a, b], nomDeRole)
+    const morts = roleRangeLines(axis, a, b, 'deaths')
+    expect(morts.map((l) => l.weaponKey)).toEqual(axis.map((e) => e.weaponKey))
+    const precision = morts.find((l) => l.weaponKey === 'precision')!
+    expect(precision.top).toBeNull()
+    expect(precision.bottom?.median).toBe(18)
+    const melee = morts.find((l) => l.weaponKey === 'melee')!
+    expect(melee.top).toBeNull()
+    expect(melee.bottom).toBeNull()
   })
 
   it('rend une liste vide sans bloc de portée', () => {
-    expect(roleRangeLines(profil({}), profil({}), 'kills', nomDeRole)).toEqual([])
+    expect(roleAxis([profil({}), profil({})], nomDeRole)).toEqual([])
+    expect(roleRangeLines([], profil({}), profil({}), 'kills')).toEqual([])
   })
 })
 

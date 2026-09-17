@@ -20,6 +20,8 @@
  * `compareWeapons_logic.ts` (pur, testé hors rendu) ; l'option ECharts vient du module de la
  * Synthèse, rendu title-agnostic pour être partagé (`top`/`bottom` et non `kills`/`deaths`).
  */
+import { useMemo } from 'react'
+
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
@@ -30,7 +32,7 @@ import { CompareBar } from './CompareBar'
 import { CompareBlock } from './CompareBlock'
 import { CompareMirrorRow } from './CompareMirrorRow'
 import { CompareWeaponsRange } from './CompareWeaponsRange'
-import { fragClassRows, hasWeaponProfile } from './compareWeapons_logic'
+import { fragClassRows, hasWeaponProfile, roleAxis } from './compareWeapons_logic'
 import {
   TOKEN_A,
   TOKEN_B,
@@ -68,34 +70,29 @@ function FragClassBars({
   const sideB = left.weapons?.player_b
   const sideC = right?.weapons?.player_b
 
-  const rowsAB = fragClassRows(sideA, sideB)
-  const rowsAC = fragClassRows(sideA, sideC)
-  // En miroir, l'union des deux unions : une classe que seul C porte doit avoir sa ligne.
-  const cles = right
-    ? [...new Set([...rowsAB.map((r) => r.classKey), ...rowsAC.map((r) => r.classKey)])]
-    : rowsAB.map((r) => r.classKey)
-  if (cles.length === 0) return null
-
-  const parAB = new Map(rowsAB.map((r) => [r.classKey, r]))
-  const parAC = new Map(rowsAC.map((r) => [r.classKey, r]))
+  // UNE SEULE UNION, SUR LES TROIS CÔTÉS (gate visuel 2026-09-17) : deux unions à deux
+  // donnaient deux listes de classes différentes et des colonnes décalées dès qu'un seul
+  // joueur portait une classe que les autres n'ont pas.
+  const rows = right ? fragClassRows(sideA, sideB, sideC) : fragClassRows(sideA, sideB)
+  if (rows.length === 0) return null
 
   return (
     <div className="space-y-3">
-      {cles.map((key) => {
-        const ab = parAB.get(key)
-        const ac = parAC.get(key)
-        const label = roleName(key)
+      {rows.map(({ classKey, parts }) => {
+        const label = roleName(classKey)
+        // `parts` suit l'ordre des côtés passés à `fragClassRows` : A, B, puis C en miroir.
+        const [partA, partB, partC] = parts
         if (right) {
           return (
             <CompareMirrorRow
-              key={key}
+              key={classKey}
               label={label}
-              valueA={f.percent(ab?.sharePctA ?? ac?.sharePctA ?? 0)}
-              valueB={f.percent(ab?.sharePctB ?? 0)}
-              valueC={f.percent(ac?.sharePctB ?? 0)}
-              rawA={ab?.sharePctA ?? ac?.sharePctA ?? 0}
-              rawB={ab?.sharePctB ?? 0}
-              rawC={ac?.sharePctB ?? 0}
+              valueA={f.percent(partA.sharePct)}
+              valueB={f.percent(partB.sharePct)}
+              valueC={f.percent(partC.sharePct)}
+              rawA={partA.sharePct}
+              rawB={partB.sharePct}
+              rawC={partC.sharePct}
               // Aucun vainqueur (D3) : une part de frags décrit un style, pas une performance.
               winnerAB={null}
               winnerAC={null}
@@ -106,12 +103,12 @@ function FragClassBars({
         }
         return (
           <CompareBar
-            key={key}
+            key={classKey}
             label={label}
-            valueA={f.percent(ab?.sharePctA ?? 0)}
-            valueB={f.percent(ab?.sharePctB ?? 0)}
-            rawA={ab?.sharePctA ?? 0}
-            rawB={ab?.sharePctB ?? 0}
+            valueA={f.percent(partA.sharePct)}
+            valueB={f.percent(partB.sharePct)}
+            rawA={partA.sharePct}
+            rawB={partB.sharePct}
             winner={null}
             ariaLabel={`${label} — ${names.a} / ${names.b}`}
             sampleNote={sideB ? text.weaponsMatches(sideB.matches) : undefined}
@@ -176,13 +173,23 @@ export interface CompareWeaponsSectionProps {
 
 export function CompareWeaponsSection({ left, right, text, locale }: CompareWeaponsSectionProps) {
   const f = useWeaponFormats(locale)
+  const roleName = useRoleName(locale)
   const sideA = left.weapons?.player_a
   const sideB = left.weapons?.player_b
   const sideC = right?.weapons?.player_b
 
+  // L'AXE DES RÔLES EST CALCULÉ UNE FOIS POUR TOUTE LA SECTION (gate visuel 2026-09-17) :
+  // les quatre graphes du mode miroir doivent porter les mêmes lignes dans le même ordre,
+  // sinon les deux paires côte à côte se décalent dès qu'un seul des trois joueurs a un rôle
+  // que les autres n'ont pas.
+  const axis = useMemo(
+    () => roleAxis([sideA, sideB, sideC], roleName),
+    [sideA, sideB, sideC, roleName],
+  )
+
   // SECTION ENTIÈREMENT ABSENTE quand aucune réponse ne porte de profil — jamais une section
   // vide, qui se lirait comme un chargement bloqué.
-  if (!hasWeaponProfile(sideA, sideB) && !hasWeaponProfile(sideA, sideC)) return null
+  if (!hasWeaponProfile(sideA, sideB, sideC)) return null
 
   const nomA = left.player_a.gamertag
   const nomB = left.player_b.gamertag
@@ -190,41 +197,42 @@ export function CompareWeaponsSection({ left, right, text, locale }: CompareWeap
 
   return (
     <div className="space-y-5">
-      {/* DEUX CARTES, MÊME GABARIT QUE LES TROIS BLOCS DE MÉTRIQUES (`CompareBlock`) :
-          le profil d'armes se lit dans la même grammaire que le reste de la page, et son
-          titre vit dans l'en-tête de carte — plus de titre de section flottant au-dessus. */}
+      {/* LA CARTE « PROFIL D'ARMES » NE PORTE QUE LES BARRES PAR CLASSE (gate visuel
+          2026-09-17). Les deux graphes de portée sont DÉJÀ des blocs — `ChartCard` dans sa
+          `SectionCard` — et les imbriquer dans une carte donnait un cadre dans un cadre. Ils
+          vivent donc au niveau de la section, entre les deux cartes. */}
       <CompareBlock title={text.catWeapons}>
-        <div className="space-y-5">
-          <FragClassBars
-            left={left}
-            right={right}
-            names={{ a: nomA, b: nomB, c: nomC }}
+        <FragClassBars
+          left={left}
+          right={right}
+          names={{ a: nomA, b: nomB, c: nomC }}
+          text={text}
+          locale={locale}
+        />
+      </CompareBlock>
+
+      <div className={right ? 'grid grid-cols-1 gap-4 xl:grid-cols-2' : undefined}>
+        <CompareWeaponsRange
+          axis={axis}
+          sideA={sideA}
+          sideB={sideB}
+          names={{ a: nomA, b: nomB }}
+          colorBottomToken={TOKEN_B}
+          text={text}
+          locale={locale}
+        />
+        {right && (
+          <CompareWeaponsRange
+            axis={axis}
+            sideA={sideA}
+            sideB={sideC}
+            names={{ a: nomA, b: nomC }}
+            colorBottomToken={TOKEN_C}
             text={text}
             locale={locale}
           />
-
-          <div className={right ? 'grid grid-cols-1 gap-4 xl:grid-cols-2' : undefined}>
-            <CompareWeaponsRange
-              sideA={sideA}
-              sideB={sideB}
-              names={{ a: nomA, b: nomB }}
-              colorBottomToken={TOKEN_B}
-              text={text}
-              locale={locale}
-            />
-            {right && (
-              <CompareWeaponsRange
-                sideA={sideA}
-                sideB={sideC}
-                names={{ a: nomA, b: nomC }}
-                colorBottomToken={TOKEN_C}
-                text={text}
-                locale={locale}
-              />
-            )}
-          </div>
-        </div>
-      </CompareBlock>
+        )}
+      </div>
 
       <TopWeaponsRow
         colonnes={
