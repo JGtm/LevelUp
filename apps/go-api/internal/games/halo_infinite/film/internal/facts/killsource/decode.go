@@ -20,6 +20,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -114,6 +115,29 @@ func ProfilDeDepart() grammar.ProfilDeBalayage {
 	return p
 }
 
+// ProfilDeDepartPourCarte rend le PROFIL DE DEPART sous l entree de catalogue de la CARTE du
+// match : l invariant de [ProfilDeDepart], plus les largeurs d axe et la largeur d index de
+// plage que la carte impose au chemin absolu de position ([profile.MapQuantEntry.PrecisionAbsolue]).
+//
+// `carte` nil, ou une entree sans largeurs (catalogue anterieur au champ, entree fabriquee a la
+// main), LAISSE l invariant : le second rendu dit `false`, l appelant le journalise et le
+// compte. C est le repli `repli_carte_absente_largeurs_par_defaut` du registre, et il n est pas
+// neutre — l invariant est l entree `cliffhanger` du catalogue, c est-a-dire UNE carte appliquee
+// a toutes.
+//
+// C EST LE MEME GESTE QUE `replay.installWorldObjectPrecision`, PAR LE MEME APPEL
+// (`PoserLargeursObjetDuMondeDepuisDecoupage`) : les deux chemins de decodage du depot posent
+// desormais la carte de la meme facon, et il n y a pas deux regles a maintenir.
+func ProfilDeDepartPourCarte(carte *profile.MapQuantEntry) (grammar.ProfilDeBalayage, bool) {
+	p := ProfilDeDepart()
+	if carte == nil {
+		return p, false
+	}
+	avant := p.LargeursObjetDuMonde()
+	p.PoserLargeursObjetDuMondeDepuisDecoupage(carte.Layout())
+	return p, p.LargeursObjetDuMonde() != avant
+}
+
 // prepare : les cinq etapes qui precedent la publication. Aucune ne consulte l arme.
 func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 	var err error
@@ -155,7 +179,15 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 		return err
 	}
 	tl.rewind()
-	c.calib = calibrate(c.film, tl, c.opts.Views)
+	c.calib = calibrate(c.film, tl, c.opts.Views, c.opts.Carte)
+	if !c.calib.CarteLue {
+		// REPLI NOMME ET COMPTE (`repli_carte_absente_largeurs_par_defaut`) : les largeurs
+		// conservees sont celles d UNE carte — l entree `cliffhanger` du catalogue — appliquees
+		// a celle-ci. Jamais de degradation silencieuse (CLAUDE.md regle 3).
+		slog.WarnContext(ctx, "killsource: carte du match absente — la marche des morts lit ses "+
+			"positions aux largeurs d axe PAR DEFAUT, celles d une autre carte",
+			"film", c.name, "largeurs", c.calib.LueAxisW, "indexW", c.calib.LueIndexW)
+	}
 	if err = ctx.Err(); err != nil {
 		return err
 	}
