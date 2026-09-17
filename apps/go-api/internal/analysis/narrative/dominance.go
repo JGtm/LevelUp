@@ -19,7 +19,7 @@ type DominanceBadge struct {
 	ColorToken string
 }
 
-// ResolveDominanceBadge retourne le badge si le flag est l'un des 5 narratifs.
+// ResolveDominanceBadge retourne le badge si le flag est l'un des 7 narratifs.
 // Pour DominanceNone (0) ou un flag inconnu, retourne nil (pas de badge).
 func ResolveDominanceBadge(flag canonical.DominanceFlag) *DominanceBadge {
 	switch flag {
@@ -52,6 +52,18 @@ func ResolveDominanceBadge(flag canonical.DominanceFlag) *DominanceBadge {
 			Flag:       flag,
 			LabelKey:   "narrative.dominance.contre_remontada",
 			ColorToken: "narrative.dominance.win.counter",
+		}
+	case canonical.DominanceSabordage:
+		return &DominanceBadge{
+			Flag:       flag,
+			LabelKey:   "narrative.dominance.sabordage",
+			ColorToken: "narrative.dominance.loss.scuttled",
+		}
+	case canonical.DominanceAbnegation:
+		return &DominanceBadge{
+			Flag:       flag,
+			LabelKey:   "narrative.dominance.abnegation",
+			ColorToken: "narrative.dominance.win.selfless",
 		}
 	}
 	return nil

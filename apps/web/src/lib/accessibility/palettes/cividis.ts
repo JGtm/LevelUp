@@ -127,6 +127,14 @@ export const cividisPalette: Palette = {
   'narrative-debacle-text':          '#FFFFFF',            // blanc sur vermillion sombre (6.2)
   'narrative-contre-remontada':      CIVIDIS_T75,      // ocre
   'narrative-contre-remontada-text': '#000000',
+  // Couleur PROPRE (le Reddish Purple brut sert déjà extreme / frag-equipment) :
+  // Reddish Purple × 0.60, même valeur que sur Okabe-Ito.
+  'narrative-sabordage':             '#7A4964',
+  'narrative-sabordage-text':        '#FFFFFF',
+  // Couleur PROPRE : les jaunes de la rampe sont tous affectés ; Bluish Green
+  // Okabe-Ito, absent de cette palette, se lit par sa luminosité (6.1 sur noir).
+  'narrative-abnegation':            '#009E73',
+  'narrative-abnegation-text':       '#000000',
 
   // ── Badges encounter — axe blue/vermillion ────────────────────────────────
   // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts ;

@@ -244,6 +244,10 @@
   --ac-narrative-debacle-text:           #FFF7ED;
   --ac-narrative-contre-remontada:       #33D6FF;
   --ac-narrative-contre-remontada-text:  #082F49;
+  --ac-narrative-sabordage:              #BE185D;
+  --ac-narrative-sabordage-text:         #FFFFFF;
+  --ac-narrative-abnegation:             #A3E635;
+  --ac-narrative-abnegation-text:        #1A2E05;
   /* Badges encounter */
   --ac-narrative-encounter-ally-plus:    #10B981;
   --ac-narrative-encounter-tough-enemy:  #EF4444;
