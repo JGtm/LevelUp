@@ -27,52 +27,11 @@ package grammar
 // commit par commit sur l integration (`git log --first-parent`), la suite reelle est celle-ci —
 // un lot, un rang, dans l ordre ou les merges sont tombes.
 //
-// LES RANGS `.12` A `.27` VIVENT DANS `rev_chronique_archive.go` : la chronique se
+// LES RANGS `.12` A `.28` VIVENT DANS `rev_chronique_archive.go` : la chronique se
 // ROTATIONNE quand ce fichier atteint 500 lignes, comme `.ai/thought_log.md`. Le geste a ete
-// refait le 2026-09-16 (lot 2.5.b) sur les rangs `.21` a `.26`, puis le 2026-09-17 (lot 3.6.a)
-// sur le rang `.27` : c est le geste ordinaire que l en-tete de l archive annonce, pas un
-// incident, et il etait du — le fichier etait a 500 lignes PILE, donc au plafond du ratchet de
-// taille (decouverte D2 (3.3.1) du plan). Ce qui suit est la suite VIVANTE, a partir du `.28`.
-//
-// ENTREE `grammar-2026-09-15.28` (2026-09-18, lot 2.4.1 — RANG PROVISOIRE) : `.27` -> `.28`.
-// AUCUN OCTET N EST LU AUTREMENT, et c est PROUVE bit a bit, pas suppose.
-//
-// LE LECTEUR DE BITS DESCEND DANS LA COUCHE SOURCE. `source.Bits` est desormais LE lecteur
-// du depot : MSB-first big-endian, bourrage a zero au-dela du tampon, lecture par mot de 64
-// bits. [Lecteur] ne porte plus ni tampon ni position — il EMBARQUE `*source.Bits` et n y
-// ajoute que ce qui appartient a la grammaire : le profil de largeurs, la capture de position,
-// l observateur, et le codec [Lecteur.ReadSignedVarWidth]. `filmdec/bits_word.go` disparait :
-// sa lecture par mot est [source.BitsAt], et ses trois derniers appelants directs
-// (`PeekBits`, `kfReadBits`, `readBitsAt`) y passent.
-//
-// `killsource.evReader` EST ABSORBE (item 2.4.1). Le deuxieme des sept lecteurs de bits du
-// depot — son type, sa boucle `bitsWide`, et les trois primitives de position du paquet
-// `bitAt` / `bits32` / `bitsN` — est SUPPRIME ; ses 23 sites passent par [source.BitAt] et
-// [source.BitsAt]. `bits32` lisait CINQ octets puis decalait, ce qui n est pas la boucle de
-// la lecture par mot : son equivalence est prouvee comme les autres.
-//
-// LE DRAPEAU DE DEBORDEMENT RESTE AU MARCHEUR, PAS AU LECTEUR (arbitrage V15 (3)). Le lecteur
-// canonique garde la semantique du MOTEUR (bourrage a zero) ; la MEFIANCE de la chaine
-// d evenements — sans laquelle une chaine desynchronisee lit des evenements valides apres la
-// fin du paquet — vit dans `killsource.curseurEv`, qui teste `Remaining()` avant chaque lecture.
-// `bp+n > len(pl)*8` et `Remaining() < n` sont la MEME condition : aucune valeur lue ne change,
-// et `Skip` reste borne exactement la ou `evReader.skip` le bornait (chez le marcheur).
-//
-// LES DEUX PREUVES. (1) Appel par appel, sur les positions REELLES des chaines des dix bobines
-// versionnees — 1 114 paquets a events, 109 168 positions, 72 largeurs par position — les copies
-// de reference des anciens lecteurs et le lecteur canonique rendent la meme valeur, la meme
-// position de sortie et le meme drapeau (`killsource/equivalence_lecteur_test.go`). (2) De bout
-// en bout, les triplets (code, bit de debut, bit de fin) de chaque chaine, plus les six champs
-// de chaque kill-event, sont IDENTIQUES a un golden produit par le code de la BASE, avant
-// l absorption (`killsource/testdata/chaines_evenements.golden`, sans porte `-update`).
-//
-// L EMPREINTE HACHE DESORMAIS QUATRE RACINES : `internal/analysis/filmsource` rejoint `filmdec`,
-// `killsource` et `objectiveevents`. Sans cela ce lot aurait OUVERT UN TROU — la lecture de bits
-// qui vient d y descendre aurait pu changer sans que `grammar.Rev` bouge.
-//
-// `facts.Rev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet (c est
-// exactement ce que les deux preuves ci-dessus etablissent), seule sa source change. Son golden
-// est regenere pour refiger le couple (revision, empreinte). `SchemaVersion` reste 60.
+// refait le 2026-09-16 (lot 2.5.b), sur les rangs `.21` a `.26` (les six lots de la famille
+// 2.2) : c est le geste ordinaire que l en-tete de l archive annonce, pas un incident. Ce qui
+// suit est la suite VIVANTE, a partir du `.27`.
 //
 // ENTREE `grammar-2026-09-15.29` (2026-09-18, lot 2.4.2 — RANG PROVISOIRE) : `.28` -> `.29`.
 // AUCUN OCTET N EST LU AUTREMENT. LA PORTE AUX OCTETS EST UNIQUE.
@@ -421,48 +380,72 @@ package grammar
 // `profile/grenade.go`), derive le motif du `ti` projectile RESOLU PAR NOM dans le registre du
 // film, et ecarte par le sixieme bit d index les naissances de `managed-player`, comptees.
 // `profile.Rev` monte avec elle ; `facts.Rev` derriere ; `SchemaVersion` ne bouge PAS.
+
+// ENTREE `grammar-2026-09-15.41` (2026-09-17, lot 3.4.1) : LA MARCHE DES MORTS CALIBREE PAR LA
+// CARTE. LE CHEMIN ABSOLU D i0 CHANGE DE LARGEUR, DE PLAGE ET DE REGLE D EMISSION.
 //
-// ENTREE `grammar-2026-09-15.41` (2026-09-17, lot 3.6.a — RANG PROVISOIRE, LE PILOTE
-// RENUMEROTE A LA FUSION) : `.40` -> `.41`. UNE GRAMMAIRE DE COMPOSANT DE PLUS EST LUE, ET LE
-// BLOQUANT DE `ti=9` TOMBE.
+// C EST UN CHANGEMENT DE DECODAGE, pas une reformulation : des bits DIFFERENTS sont lus aux
+// memes offsets, et des positions qui etaient jetees sont publiees.
 //
-// DEUX LECTEURS NEUFS, RELEVES CHEZ L ECRIVAIN (`components_managed_player.go`), ET LE DIXIEME
-// COMPOSANT DE L ARCHETYPE EST PORTE :
+//	`position_capture.go`        `Lecteur.absoluteAxisW` et `absAxisW` DISPARAISSENT avec le
+//	                             champ `Movement.AbsoluteAxisW` : la largeur UNIFORME de 14 bits
+//	                             ecrasait les trois largeurs de la carte sur le chemin absolu du
+//	                             bipede. `absAxisWFor` suit desormais l index de plage — table
+//	                             DEFAUT du build (`22/22/22`) pour `idx == -1`, table PAR INDEX
+//	                             de la carte pour `idx >= 0` — et `dequantWorldAxis` suit le
+//	                             MEME index pour ses bornes : chez `FUN_14076e524` largeurs et
+//	                             bornes sortent de la meme AABB, les dissocier etait le defaut.
+//	`components_position_i0.go`  CORRECTIF D1 (3.4). Le commentaire « index 1 / no-index =
+//	                             +/-20000 » etait FAUX et le filtre `if idx != 0 { return }`
+//	                             avec lui : seul `index == -1` prend la boite du build. La
+//	                             position n est emise que si l index designe la plage
+//	                             CATALOGUEE (`Region`), nulle sur 78 cartes sur 79 et EGALE A 1
+//	                             sur Live Fire, dont les deux films du corpus voyaient donc
+//	                             leurs 59 376 positions valides jetees et le reste garde.
+//	                             La largeur de l index vient de la CARTE (`DAT_144632be0`,
+//	                             2 bits sur Live Fire) et non plus du descripteur de l appelant.
+//	                             `consumeAbsolutePayload` et `consumePredictedAbsolute` perdent
+//	                             leur parametre `pd`, devenu inutile.
+//
+// CE QUI CHANGE A L ECHELLE DU BIT, sur Cliffhanger : le chemin absolu du bipede lisait
+// `5 + 3x14 + 2 = 49` bits, il en lit `5 + 13+13+14 + 2 = 47` — exactement la mesure Cheat
+// Engine du dispatch (une seule valeur distincte, 100 % de 154 158 releves). Le compte se ferme
+// ou il ne se fermait pas.
+//
+// `facts.Rev` MONTE (elle hache la valeur de celle-ci) : les lignes de kill deja en base
+// deviennent candidates au backlog de redecodage — sur SIGNAL UTILISATEUR (D6), jamais
+// automatiquement. `SchemaVersion` : cf. le volet 3.4.2.
+//
+// ENTREE `grammar-2026-09-15.42` (2026-09-17, lot 3.6.a — RANG PRIS A LA FUSION : la branche
+// portait `.41`, deja occupe par 3.4.1 sur l integration) : `.41` -> `.42`. LE JOUEUR GERE
+// (`ti=9`) N A PLUS AUCUN COMPOSANT SANS LECTEUR.
+//
+// DEUX LECTEURS NEUFS, RELEVES CHEZ L ECRIVAIN (`components_managed_player.go`) :
 //
 //	i4  `managed-player-forge-weather-effect-overrides-component`, ecrivain `FUN_142ed5bc8` :
-//	    `R(32)` + `R(32)`, 64 bits INCONDITIONNELS.
+//	    `R(32)` + `R(32)`, 64 bits INCONDITIONNELS. C etait le BLOQUANT NOMME des sept bobines.
 //	i9  `managed-player-custom-input-prompt-widget`, ecrivain `FUN_141fcf160` : `R(1)` present,
 //	    `R(2)` mode, puis le SAC TEXTE `FUN_14080b034` (`R(1)` + `R(32)` nom + `n = R(3)` +
 //	    `n` corps `FUN_1407f0ebc` a largeurs litterales). Le depot rendait `ported = false` des
 //	    que `n` depassait 0 — une desynchronisation propre sur une grammaire entierement
 //	    decidable hors ligne.
 //
-// AUCUNE ENTREE DE PROFIL : toutes ces largeurs sont des litteraux d instruction, rien n y depend
-// d une carte, d une table du jeu ni d un build. Le sac texte devient le SEUL lecteur du depot
-// pour `FUN_14080b034` : les deux instruments qui en portaient leur propre copie
-// (`playergameevent_0xe9_helpers_test.go`, `r7_charges_lot2_research_test.go`) l appellent, et
-// l un des deux lisait le sous-type 2 a zero bit en le disant « quantifie a largeur runtime »,
-// ce qui est faux sur pieces.
+// AUCUNE ENTREE DE PROFIL : toutes ces largeurs sont des litteraux d instruction. Le sac texte
+// devient le SEUL lecteur du depot pour `FUN_14080b034` : les deux instruments qui en portaient
+// leur propre copie l appellent desormais.
 //
-// CE QUE LA MESURE DIT. Fermeture d image-cle de `ti=9` sur les sept bobines du ratchet 0.A.3 :
-// `0 / 1 717` (bloquant `i4` sur les SEPT) -> `1 716 / 1 717`, et plus AUCUN bloquant nomme sur
-// aucune bobine. Le 1 717e n est pas un record : c est une ancre fortuite de `111fa685`
-// (`n1 = 2 154 823 696` contre `12` sur les 1 716 autres), la population que
-// `default_state_n2_constant_test.go` ecarte deja par ce critere.
+// LES DIX `case` DE `ti=9` SONT RASSEMBLES dans `consumeManagedPlayerComponent` — les trois
+// maillons qui se les partageaient etaient AU PLAFOND du ratchet de longueur, et porter `i4` n y
+// avait pas de place. La scission est NEUTRE PAR CONSTRUCTION : aucune etiquette `case` n est
+// dupliquee dans la chaine (verifie sur pieces), donc l ordre des maillons ne decide de rien.
 //
-// `i9` NE FAIT MONTER AUCUN COMPTE, ET C EST MESURE : il n existe au registre que sur les DEUX
-// bobines les plus recentes (`bcb6d393`, `fb1a1a72` — neuf composants sur les cinq autres), et
-// sur celles-la aucun record n atteignait la branche refusee (`d0` a l instrument
-// `imagecle_fermeture`). Ce qu il ferme est un cas que ce corpus ne porte pas ; sa grammaire est
-// donc tenue par un test de largeur sur tampon synthetique, onze chemins.
+// CE QUE LA MESURE DIT. Fermeture d image-cle de `ti=9` : sur les sept bobines du ratchet 0.A.3,
+// `0 / 1 717` (bloquant `i4` sur les SEPT) -> `1 716 / 1 717`, plus aucun bloquant nomme ; le
+// 1 717e est une ancre fortuite de `111fa685` (`n1 = 2 154 823 696` contre `12` sur les autres).
+// Sur les SIX FILMS DE RECHERCHE, `0 / 1 679` (100 % de desync) -> **`1 679 / 1 679`**, temoin de
+// hasard a `0 / 1 679` : l archetype ferme a 100 % des qu on quitte le bruit du balayeur d ancres.
 //
-// `facts.Rev` NE MONTE PAS, ET C EST UNE DECISION ECRITE : aucune source de `facts/` n est
-// touchee et aucun fait publie ne change. Son golden est refige AU MEME RANG
-// (`killsource-2026-09-16.7`) parce qu il hache la VALEUR de cette constante — c est la branche
-// « la sortie ne peut PAS changer » que son propre gate nomme, et elle laisse `decoder_rev`
-// intacte en base, donc AUCUNE ligne de `match_kill_events` candidate au backlog. La preuve
-// attendue est celle des deux gates avec decodage (equivalence 20 films, corpus gate 17
-// temoins) : toute etape qui bouge est un ARRET, pas un ajustement.
-//
-// `SchemaVersion` reste 61 : aucun consommateur ne publie ce composant, l artefact cuit est
-// inchange.
+// `facts.Rev` : ce lot ne la fait pas monter de son propre chef (aucune source de `facts/`
+// touchee, aucun fait publie change) ; elle vaut celle de 3.4.1, qui la monte pour sa raison.
+// `SchemaVersion` reste 61 : mesure sur pieces, le document cuit de `084a804d` est identique
+// base -> tete sur TOUS ses chemins sauf `/coverage/decoder/grammarRev`.

@@ -353,7 +353,7 @@ func (b *Builder) collecterEntreesCatalogue(
 	// `replay.BuildFromFilm` — au lieu de deux, comme avant la jointure des frags sous
 	// effet actif (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1).
 	tKS := time.Now()
-	ksRes := b.decodeKillSource(matchID, film)
+	ksRes := b.decodeKillSource(matchID, mapNames, film)
 	logPhase("killsource", matchID, tKS)
 	b.observe("killsource", ksRes)
 	// Les POINTS D'APPARITION viennent du catalogue des socles, par map_id — ils donnent leur

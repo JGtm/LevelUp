@@ -43,3 +43,24 @@ var (
 	// table; hardcoded here for map 000d5950 to validate the corrected scale.
 	QuantRangeCEBiped = Vec3Range{{-41.10318, 72.10963}, {-56.60697, 57.212566}, {-84.37078, 53.18034}}
 )
+
+// QuantRangeParDefautDuBuild rend la plage de la table DEFAUT du moteur : les bornes
+// `DAT_143b8c6b8` de `.rdata` (`+/-20000` sur les trois axes), recopiees en `DAT_1445cc9c8` par
+// le remplisseur `FUN_140be9a14`.
+//
+// C EST LA PLAGE DU CHEMIN `index == -1`, ET D AUCUN AUTRE. `FUN_14076e524` ne la choisit que
+// lorsque le bit de porte est pose ; tout `index >= 0` adresse `DAT_14462cbe0 + index*0x18`,
+// c est-a-dire une plage REELLE de la carte. La boite de 40 000 unites est celle des objets
+// hors carte, pas un repli neutre : dequantifier une position de carte dedans la deplacerait de
+// plusieurs milliers d unites.
+//
+// Elle est une FONCTION et non une `var` : une plage exportee par valeur mutable serait un etat
+// de paquet que n importe qui pourrait reecrire, et la couche `profile` porte des DONNEES.
+func QuantRangeParDefautDuBuild() Vec3Range {
+	b := BornesParDefautDuBuild()
+	var r Vec3Range
+	for axe := 0; axe < 3; axe++ {
+		r[axe] = AxisRange{Min: b[axe][0], Max: b[axe][1]}
+	}
+	return r
+}

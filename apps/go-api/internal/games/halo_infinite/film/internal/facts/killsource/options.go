@@ -10,9 +10,14 @@ package killsource
 // ce paquet n en lit AUCUNE — un decodeur de production dont le comportement depend de
 // l environnement du process n est pas reproductible.
 
-import "math/rand"
+import (
+	"math/rand"
 
-// Options : les quatre bascules mesurables. Le zero-value N EST PAS la configuration retenue :
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+)
+
+// Options : les quatre bascules mesurables, plus la CARTE du match (une donnee, pas une
+// bascule). Le zero-value N EST PAS la configuration retenue :
 // passer `nil` a [Decode], ou partir de [DefaultOptions], est la bonne facon de faire.
 type Options struct {
 	// Bots : lire BOT_METADATA (paquet type 12) pour etendre le roster et epingler les slots
@@ -71,6 +76,33 @@ type Options struct {
 
 	// Views : nombre de vues de replication marchees par paquet. DEFAUT : 8.
 	Views int
+
+	// Carte : L ENTREE DE CATALOGUE DE LA CARTE DU MATCH, et c est une DONNEE, pas une bascule.
+	//
+	// POURQUOI ELLE EST ICI, ET PAS DEVINEE. Les largeurs d axe du chemin absolu de position et
+	// la largeur d index de plage sont installees AU CHARGEMENT DE LA CARTE par le moteur
+	// (`FUN_140be9a14`) et ne se lisent NULLE PART dans le film. Jusqu au lot 3.4.1 ce paquet
+	// les INFERAIT par balayage — il etait le seul a le faire, parce qu il etait le seul chemin
+	// de decodage a ne recevoir aucune entree de catalogue, quand `replay.BuildFromFilm` la
+	// recoit depuis le 2026-08-15.
+	//
+	// L INFERENCE EST DEVENUE ORACLE (V17, M3-Q8 : « la valeur LUE prime sur la valeur
+	// mesuree ») : sans cette entree elle ne serait remplacee par RIEN — le decodeur retomberait
+	// sur l invariant du profil, c est-a-dire sur les largeurs d UNE carte (`cliffhanger`,
+	// 13/13/14) appliquees a toutes, quand les quatre films de reference de ce paquet rendent
+	// QUATRE couples distincts. La demotion de l inference et l arrivee de la carte sont donc le
+	// MEME geste ; les separer aurait ete une regression sur toute carte dont les largeurs ne
+	// sont pas l invariant.
+	//
+	// NIL EST LICITE, ET COMPTE : le decodeur retombe sur l invariant, le DIT
+	// (`repli_carte_absente_largeurs_par_defaut` au registre, avertissement par film) et
+	// [Result.Calibration] porte la mention. C est le cas d un appelant sans base sous la main
+	// (CLI unitaire, ouvrier distant, collecteur sans `WithPositionCapture`).
+	//
+	// PROVENANCE DES VALEURS : [profile.MapQuantEntry.PrecisionAbsolue] — les trois largeurs
+	// d axe derivees des bornes par la loi du moteur (accord 79 cartes sur 79), la largeur
+	// d index de plage et l index de la plage jouee.
+	Carte *profile.MapQuantEntry
 }
 
 // bijectionSeed : graine FIXE de la montee locale. Elle ne doit pas bouger : c est elle qui

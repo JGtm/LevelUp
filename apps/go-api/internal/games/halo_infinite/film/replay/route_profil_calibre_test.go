@@ -42,12 +42,16 @@ func TestRouteDuProfilCalibreJusquAuContexte(t *testing.T) {
 		t.Fatalf("entree de catalogue de Cliffhanger illisible : %v", err)
 	}
 
-	// UN PROFIL CALIBRE RECONNAISSABLE. Les trois valeurs sont celles que `killsource` calibre
-	// (descripteur de traversee, largeur d'axe absolue, `param_4`), reglees sur des valeurs QUE
-	// NI L'INVARIANT NI LE CATALOGUE NE PRODUISENT : leur presence apres coup ne peut venir que
-	// de la route.
+	// UN PROFIL CALIBRE RECONNAISSABLE. Les valeurs sont celles que `killsource` retient
+	// (descripteur de traversee, `param_4`) plus une valeur de mouvement QUE LA CARTE NE POSE
+	// PAS, toutes reglees sur des valeurs QUE NI L'INVARIANT NI LE CATALOGUE NE PRODUISENT :
+	// leur presence apres coup ne peut venir que de la route.
+	//
+	// C'ETAIT `Mouvement.AbsoluteAxisW` JUSQU'AU LOT 3.4.1-a : la largeur UNIFORME du chemin
+	// absolu a disparu avec ce lot (le chemin lit desormais la table PAR INDEX de la carte), et
+	// il fallait donc un temoin de mouvement que la pose de la carte n'ecrase pas.
 	calibre := grammar.ProfilDeBalayageParDefaut()
-	calibre.Mouvement.AbsoluteAxisW = 17
+	calibre.Mouvement.DeltaAxisWidth = 17
 	calibre.Mouvement.Traversal.IndexW = 2
 	calibre.PoserParamEtat(3)
 	// ET UNE QUATRIEME, QUI REND LA MUTATION D ORDRE VISIBLE. Le descripteur world-object du
@@ -63,11 +67,11 @@ func TestRouteDuProfilCalibreJusquAuContexte(t *testing.T) {
 	got := fc.ProfilDeBalayage()
 
 	// (1) LE PROFIL CALIBRE EST ARRIVE.
-	if got.Mouvement.AbsoluteAxisW != 17 {
-		t.Errorf("largeur d'axe absolue = %d, calibree a 17.\n"+
+	if got.Mouvement.DeltaAxisWidth != 17 {
+		t.Errorf("largeur d'axe du chemin delta = %d, calibree a 17.\n"+
 			"La calibration de `killsource` n'atteint plus le contexte : `BuildFromFilm` ignore "+
 			"`Options.ProfilDeBalayage`, ou quelque chose le remplace apres coup. C'est la "+
-			"condition D1 du lot 2.2.a.", got.Mouvement.AbsoluteAxisW)
+			"condition D1 du lot 2.2.a.", got.Mouvement.DeltaAxisWidth)
 	}
 	if got.Mouvement.Traversal.IndexW != 2 {
 		t.Errorf("index de traversee = %d, calibre a 2 (meme cause qu'au-dessus)",

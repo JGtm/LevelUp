@@ -62,8 +62,11 @@ func TestProfilDePositionChangeLaConsommationDeBits(t *testing.T) {
 	defer AbsIndexHistogram() // le compteur d observation du chemin absolu ne fuit pas sur les autres tests
 
 	// LE FLUX ABSOLU : bUsePred=0, bDelta=0, precHigh=0, selecteur d index=0, puis du zero.
-	// Derivation du compte, avec IndexW=1 et AbsoluteAxisW=14 :
-	//   2 (bUsePred + bDelta) + 1 (precHigh) + 1 (selecteur) + 1 (index) + 3x14 + 2 (fini) = 49.
+	// Derivation du compte, avec IndexW=1 et les largeurs de carte 13/13/14 (lot 3.4.1-a : la
+	// largeur UNIFORME de 14 bits a disparu, le chemin absolu lit la table PAR INDEX) :
+	//   2 (bUsePred + bDelta) + 1 (precHigh) + 1 (selecteur) + 1 (index) + 13+13+14 + 2 (fini) = 47.
+	// C est le compte que la capture Cheat Engine du dispatch donne, 100 % de 154 158 releves ;
+	// sous l uniforme 14 le deserialiseur en lisait 49.
 	absolu := bitsDe("", 32)
 	// LE FLUX DELTA PREDIT : bUsePred=0, bDelta=1, predFlag=0, present=0, masque=1, puis les
 	// trois deltas de 8 bits. Derivation : 3 + 2 + 24 = 29 sans queue de poignee ; avec elle,
@@ -80,19 +83,20 @@ func TestProfilDePositionChangeLaConsommationDeBits(t *testing.T) {
 		attendu, mutante int
 		fausser          func(m profile.MovementProfile) profile.MovementProfile
 	}{
-		{"Traversal.IndexW", absolu, 49, 51, func(m profile.MovementProfile) profile.MovementProfile {
-			m.Traversal.IndexW = 3
+		{"WorldObject.IndexW", absolu, 47, 49, func(m profile.MovementProfile) profile.MovementProfile {
+			// LA LARGEUR D INDEX DE PLAGE EST CELLE DE LA CARTE DEPUIS LE LOT 3.4.1-b
+			// (`DAT_144632be0`, une valeur posee au chargement et lue par TOUS les chemins
+			// de `FUN_14076e524`). Ce cas mesurait `Traversal.IndexW` — le descripteur de
+			// l appelant — que le chemin absolu ne lit plus : c est le descripteur ABSOLU
+			// qui decide, ici a 3 bits au lieu de 1, soit +2 bits.
+			m.WorldObject.IndexW = 3
 			return m
 		}},
-		{"AbsoluteAxisW", absolu, 49, 67, func(m profile.MovementProfile) profile.MovementProfile {
-			m.AbsoluteAxisW = 20 // 3x20 au lieu de 3x14 : +18 bits
-			return m
-		}},
-		{"FullPrecision", absolu, 49, 99, func(m profile.MovementProfile) profile.MovementProfile {
+		{"FullPrecision", absolu, 47, 99, func(m profile.MovementProfile) profile.MovementProfile {
 			m.FullPrecision = true // 2 + 1 + 96 bits bruts, la charge quantifiee n est pas lue
 			return m
 		}},
-		{"CalibratedSkip", absolu, 49, 47, func(m profile.MovementProfile) profile.MovementProfile {
+		{"CalibratedSkip", absolu, 47, 47, func(m profile.MovementProfile) profile.MovementProfile {
 			m.CalibratedSkip = true // le banc saute au total mesure : 47 sur bUsePred=0
 			return m
 		}},
@@ -100,13 +104,12 @@ func TestProfilDePositionChangeLaConsommationDeBits(t *testing.T) {
 			m.DeltaHasHandleTail = true
 			return m
 		}},
-		{"WorldObject.AxisW", absolu, 49, 49, func(m profile.MovementProfile) profile.MovementProfile {
-			// LE CHEMIN ABSOLU NE LIT LES LARGEURS DE CARTE QUE PAR LE REPLI d `absAxisW`,
-			// eteint tant que la largeur uniforme est posee. Le compte ne bouge donc PAS
-			// ici — et c est la mesure, pas une lacune : le temoin du descripteur
-			// world-object est `TestG5MesuresCiteesParLaTable`, qui mesure le chemin
-			// `object-position-component` du dispatch. La ligne reste pour que la
-			// prochaine main qui allume ce repli voie le compte changer.
+		{"WorldObject.AxisW", absolu, 47, 57, func(m profile.MovementProfile) profile.MovementProfile {
+			// LE CHEMIN ABSOLU DU BIPEDE LIT LES LARGEURS DE LA CARTE DEPUIS LE LOT 3.4.1-a.
+			// Tant que la largeur uniforme etait posee — c est-a-dire toujours, en
+			// production — ce cas ne deplacait AUCUN bit : 49 des deux cotes. Avec les
+			// largeurs de Bazaar (17/17/16) au lieu de celles de Cliffhanger (13/13/14),
+			// le compte passe de 47 a 57 : +10 bits, exactement l ecart des trois axes.
 			m.WorldObject.AxisW = [3]uint{17, 17, 16}
 			return m
 		}},

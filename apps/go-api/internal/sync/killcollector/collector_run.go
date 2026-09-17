@@ -123,9 +123,14 @@ func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID st
 		return nil, nil, nil, OutcomeNoFilm, fmt.Errorf("chargement du film %s: %w", matchID, err)
 	}
 
-	// `nil` = la CONFIGURATION GELEE, celle qui a produit les chiffres publies. Ne jamais
-	// passer d Options ici sans une raison ecrite : ce sont elles qui definissent le decodage.
-	res, err := decfilm.Decode(ctx, matchID, film, nil)
+	// LA CONFIGURATION GELEE, celle qui a produit les chiffres publies, PLUS LA CARTE DU MATCH.
+	// Ne jamais passer d autre Options ici sans une raison ecrite : ce sont elles qui
+	// definissent le decodage. `Carte` n en est pas une : c est une DONNEE d entree, la meme
+	// entree de catalogue que la passe des positions resout deja (`resolveMapBounds`), et sans
+	// elle la marche des morts lit ses positions aux largeurs d UNE AUTRE CARTE (lot 3.4.1).
+	opts := decfilm.DefaultOptions()
+	opts.Carte = c.carteDuMatch(ctx, matchID)
+	res, err := decfilm.Decode(ctx, matchID, film, &opts)
 	if err != nil {
 		// Un film sans kill-feed n est pas une panne : c est un film dont on ne peut rien
 		// publier. Le distinguer evite qu un backfill s arrete sur un vieux match.
