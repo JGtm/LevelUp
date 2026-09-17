@@ -5475,6 +5475,29 @@ d'arrêt, et l'étape suivante ne s'ouvre pas sur une étape non close.
 | 2026-09-17 | 3.4.2 (**D5 (3.4.1) N'EST PAS FERMÉE**) | lecture des références commises + `git diff` | `a521164d` `abilityImpulses` **1 -> 0** est MOT POUR MOT la perte que `181ad7ac7` déclare avoir corrigée. Elle est toujours là. **Attribution faite sur pièces, sans décodage supplémentaire** : (1) `git diff --stat d620a1a56 HEAD -- …/equivalence/` est **VIDE** — les références n'ont pas bougé d'un octet depuis la base du lot ; (2) le gate 3.3.2, joué à `492cb0923` contre CES MÊMES références, a mesuré « les 52 autres étapes identiques AU BIT » et « sur RIEN d'autre » — donc `abilityImpulses`, `grappleReads.stats` et `pads` CONCORDAIENT à la base ; (3) `git diff 181ad7ac7 HEAD -- '*.go'` ne touche que le volet grenades, le corpus gate et les révisions : **la fusion est innocente**, et le seul commit du lot qui touche le chemin de lecture des positions est **`f3a2f00eb`**. La régression vient donc du lot 3.4.1, et `181ad7ac7` ne l'a fermée que sur le chemin de `killsource` (`Traversal.IndexW` rendu au balayage), **pas sur le chemin du REJEU**, où `Traversal.IndexW` vaut l'invariant 1 du profil par défaut |
 | 2026-09-17 | 3.4.2 (gates NON JOUÉS, et pourquoi) | `replay-corpus-gate` 17 témoins ; mesure `killsource` avant / après | **`[!]` NON JOUÉS.** Condition d'arrêt atteinte à l'équivalence ; la règle 1 de `plan-execution` interdit d'ouvrir l'étape N+1 sur une étape N non close. **DÉCISION DU PILOTE DU 2026-09-17 : voie (a)** — quatre lectures publiées perdues sont une régression du lot ; on ne livre pas dessus et on ne re-fige AUCUNE référence sur une hypothèse. Instruction sur pièces sur UN film (`a521164d`) avant tout correctif |
 
+#### Instruction SUR PIÈCES de la régression, un seul film (`a521164d`), 2026-09-17 — VERDICT (i)
+
+Voie (a) du pilote. Aucun balayage de corpus : deux films ouverts en lecture seule, par des
+instruments versionnés du dépôt.
+
+| Date | Question | Commande | Résultat |
+|---|---|---|---|
+| 2026-09-17 | (ii) la largeur de la carte est-elle FAUSSE ? | `CHUNK00_FILMS=<cache>/a521164d go test …/internal/grammar/ -run '^TestE192CatalogueContreDetection$' -v` | **(ii) RÉFUTÉE.** `a521164d` / Fragmentation Heavies : catalogue `gate=5 17/17/15 (i0=54 bits)` **contre** auto-détection LUE DANS LE FILM `gate=5 17/17/15 (i0=54 bits)` — **identiques**, `diff = "="`, **0 carte en désaccord**, Δpositions +0, Δpistes +0, Δbruts +0. La loi et le catalogue disent ce que le film dit |
+| 2026-09-17 | quelle valeur du profil déplace les lecteurs ? | `I0AB_FILM=<cache>/a521164d go test …/internal/grammar/ -run '^TestI0AlignementAB$' -v` | **LES LARGEURS D'AXE N'Y SONT POUR RIEN.** `[14 14 14]` (l'uniforme d'avant) contre `[17 17 15]` (la carte) : records **137 089 -> 137 089**, masqueI57 **1 702 -> 1 702**, masqueI59 **1 743 -> 1 743**, impulsions lues **3 423 -> 3 423**, publiées **0 -> 0** ; grappin **1 721 lues, 41 tag3, 5 cassés, 36 rendues** des deux côtés. **Le seul levier est `Traversal.IndexW`** : iw=1 -> **0** impulsion, iw=2 -> **1**, iw=3 -> **0**. `param_4` de 0 à 5 : **0 partout** |
+| 2026-09-17 | que décide la production, et sur quoi ? | `KS_BTB2025_ROOT=… KS_BTB2025_IDS=a521164d KS_BTB2025_CARTES='Fragmentation Heavies' go test …/facts/killsource/ -run '^TestBTB2025Abstention$' -v` | `CALIB  LU axisW=[17 17 15] indexW_plage=1 [CARTE] | ORACLE axisW=19 [score 230, mediane 94] desaccords=1 | **DECIDE indexW_poignee=3** recordStateParam=4`. La tête décide **3**, donc publie **0** impulsion ; la base décidait **2**, donc **1** |
+| 2026-09-17 | **(i) LE CRITÈRE PEUT-IL SEULEMENT DÉCIDER `iw` ?** | `KS_POIGNEE_FILM=… KS_POIGNEE_CARTE=… go test …/facts/killsource/ -run '^TestScoreDuMotDePoignee$' -v` (instrument neuf, lecture seule) | **NON, ET C'EST LE DÉFAUT.** `a521164d`, au TRIPLET LU `[17 17 15]` — ce que la production décode : **iw=1 score 272 · iw=2 score 272 · iw=3 score 272**, strictement IDENTIQUES. Sous le modèle UNIFORME que le balayage score encore : iw=1 `aw=19` **226** · iw=2 `aw=19` **226** · iw=3 `aw=19` **230** — l'écart qui décide vaut **4 records sur 226 (1,8 %)**, et le meilleur uniforme (230) est **sous** le triplet réel (272). `64e8adfa` (Catalyst, la plus grosse perte, 7 -> 3) : **61 = 61 = 61** au triplet `[15 15 15]` ET à l'uniforme — égalité PARFAITE, donc `out[0]` sort d'un `sort.Slice` INSTABLE sur des ex æquo |
+| 2026-09-17 | la valeur atteint-elle bien les lecteurs du rejeu ? | lecture de `internal/replaybuild/kills.go` | **OUI, structurellement** : `profilDeBalayageDeLaCuisson(res)` rend `res.ProfilCalibre` — le profil que `killsource` a calibré — et `options.go:55` le pose en `ProfilDeBalayage` de la cuisson. Tout lecteur derrière i0 (`ScanAbilityImpulses`, `ScanGrappleReads`, les tapis) hérite donc du `Traversal.IndexW` décidé par le balayage |
+
+**VERDICT : (i), et plus grave que l'énoncé.** `infererLargeurs` score ses candidats avec
+`WorldObject.AxisW = {aw, aw, aw}` — une largeur d'axe UNIFORME que la production a cessé de lire
+à ce lot même. Le `iw` retenu est l'argmax dans un monde que le décodeur n'habite plus. Mais la
+mesure va plus loin : **dans le monde que la production décode, le critère `countBipedRecords` est
+AVEUGLE à cette grandeur** (272 = 272 = 272 ; 61 = 61 = 61). Le garde-fou `flatRatio` ne protège
+pas de cela — il teste la netteté de la largeur d'AXE (230 contre une médiane de 94, donc « net »)
+puis prend le `iw` du MÊME gagnant, sans jamais vérifier que `iw` est discriminé. **Une seule
+mesure, deux grandeurs, un seul garde.** La valeur publiée `abilityImpulses` de 14 films sur 20
+roule donc sur un ex æquo tranché par un tri instable — à la tête comme à la base.
+
 ### Clôture M2 — gestes du pilote (références, banc, fusions), 2026-09-17
 
 Sur l'intégration `feat/recherche-decodeur-film`, après la fusion de 2.6 (92c83b333, fin du code
