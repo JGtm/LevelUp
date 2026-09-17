@@ -20,10 +20,14 @@ Related files:
 - `apps/go-api/cmd/film-profiles-build/` — the fabrication chain for the **derived** block, and
   its `gamefiles` gate.
 - `apps/go-api/internal/games/halo_infinite/film/internal/profile/profile_table.go` — the lot 2.1
-  table, still the source of truth for the **content** of `entries` while both coexist (lot 3.1.1
-  makes the decoder read the file and removes the copy). `TestCatalogueConformeALaTableDuLot21`
-  keeps them equal, line for line. It does **not** cover `registryFingerprints`: that section has
-  no copy in the decoder, and is validated on its own values.
+  table, the source of truth for the **content** of `entries`.
+  `TestCatalogueConformeALaTableDuLot21` keeps the two equal, line for line.
+- `apps/go-api/internal/games/halo_infinite/film/internal/profile/registre_empreintes.go` — since
+  lot 3.1.1, the decoder's **copy** of `registryFingerprints` (nine keys), kept equal by
+  `TestCatalogueConformeALaTableDesEmpreintes`. The decoder copies rather than reads: importing a
+  catalogue package from a layer is what the one-way rule forbids (ADR 0034, D-1).
+- `apps/go-api/internal/games/halo_infinite/film/internal/profile/classement_registre.go` — the
+  three runtime states of a registry fingerprint, defined in one place (§6).
 - `config/replay_corpus.toml` — the witness corpus (one `[[temoin]]` per grammar family, and
   since lot 3.2.3 at least one per registry key).
 
@@ -43,7 +47,8 @@ never an external setting that would refuse a film; it is a table indexed by wha
 | `toutes` | nothing — invariant applied to every film | a value whose per-build variability has never been measured |
 
 A key the reader does not understand is **refused**, not skipped: a line that selects no film is
-a profile value that silently never applies.
+a profile value that silently never applies. Symmetrically, since lot 3.1.1, a *film* whose key
+the table does not know is **set aside** rather than decoded on a neighbour's profile — see §6.
 
 ## 2. Two natures of entry, and only one of them is fabricated
 
@@ -201,7 +206,7 @@ registry is a property of the *game build*, never of the repository or of the bi
 | `presumee` | one film of the key was read while the cache holds others: nothing contradicts the value, nothing proves it holds for the whole key yet |
 
 The third state the decoder needs — `inconnue` — never appears in this file: it qualifies a
-fingerprint *read in a film* and absent from this table, which is a runtime classification.
+fingerprint *read in a film* and absent from this table, which is a runtime classification (§6).
 
 **Two measured facts to expect.** A fingerprint is **not unique** (`HI_1_8_0`/`HI_1_9_0`,
 `HI_1_12_0`/`HI_1_13_0` and `HI_1_4_1`/`majeure=33` each share one), so validation enforces
@@ -219,6 +224,7 @@ an undated date. Gate: `go test ./internal/games/halo_infinite/filmprofile/ -cou
 | Gate | Runs where | Proves |
 |---|---|---|
 | `TestCatalogueConformeALaTableDuLot21` | everywhere (CI included) | the committed catalogue **is** the lot 2.1 table, line for line — same order, keys, values, provenances, proofs and dates |
+| `TestCatalogueConformeALaTableDesEmpreintes` | everywhere (CI included) | the same, for `registryFingerprints` against the decoder's copy — same order, keys, fingerprints, block and slot counts, statuses, provenances, witnesses, proofs and dates |
 | `TestCatalogueCommisEstValide` | everywhere | schema, unique (key, field) pairs, known provenances, non-empty proofs, dated dates, and all four key shapes still present |
 | `TestValideRefuseUneEmpreinte` (+ its neighbours) | everywhere | what the registry table refuses: malformed fingerprint, key shape meaningless for a registry, build outside the catalogue's build table, duplicate key, witness-less entry |
 | `TestEmpreintesCommisesCouvrentLesBuildsDuCatalogue` | everywhere | every build the catalogue knows has its registry fingerprint, and both section-less major versions are covered |
@@ -229,10 +235,67 @@ an undated date. Gate: `go test ./internal/games/halo_infinite/filmprofile/ -cou
 
 The last one is the reason the catalogue has **no overlay**, unlike `map_weapon_pads.json`: the
 decoder reads the profile, full stop. Anything it would write there at runtime would be a
-guessed profile value — precisely what an unknown build must not produce (lot 3.1.1 puts the
-film aside instead).
+guessed profile value — precisely what an unknown build must not produce: the film is set aside
+instead (§6).
 
-## 6. What the tool does not do
+## 6. What happens to a film whose key is unknown
+
+Since lot 3.1.1 (2026-09-17, decision D-4 of ADR 0034), **the film is set aside**: nothing is
+decoded, no artefact is cooked, no kill-source fact is written. It is never read under a
+neighbouring build's profile — a plausible, wrong document is the one outcome D-4 declares
+unacceptable.
+
+### 6.1 The key, and what counts as unknown
+
+The verdict bears on the key the film **writes** — its build when it writes one, its major
+version otherwise — and on its format version, tested against the profile table
+(`profile.CleConnue`). It is deliberately **not** `Profile.Err() != nil`: that error is also
+raised, with an empty build, for the films whose `chunk_00` carries no identification section,
+and the table *does* know those under `majeure=31` / `majeure=33`. Setting them aside would drop
+five cache films, two of which are corpus-gate witnesses.
+
+A reel with no `chunk_00` is never set aside: it writes no key at all, and each scan already
+returns its own diagnostic.
+
+### 6.2 What a set-aside film leaves behind
+
+| Where | What you see |
+|---|---|
+| Log (both producers) | one `WARN` per film, naming the key: `cle`, `format`, `build`, `majeure`, and the typed error |
+| `/debug/vars` per key | `filmdec_unknown_build_<build>` (`sans_section` for an empty build) and `filmdec_unknown_format_<n>` — the counters `grammar` already named |
+| `/debug/vars` per pass | `killsource_ecartes_cle_inconnue` — how many passes the policy stopped, not which key |
+| Kill-source outcome | `ecarte-cle-inconnue` (`KillSourceOutcome`), its own column in `KillSourceSummary` |
+| Cooking | `replaybuild.ErrUnknownFilmKey`; the child exits `filmproc.CodeSkipped`, the post-sync counts it under `ecartes_cle_inconnue` |
+| Match registry | **nothing.** No `MBitFilmAbsent`: that marker is terminal, and the film comes back on its own the day the table learns to read it |
+
+The match therefore stays a backlog candidate and is retried each cycle until the key is added.
+That is the intended cost: the policy stops publishing *now* and resumes *as soon as* the table
+knows the key. Measured on 2026-09-17: one film in 1 589 (`58e6f72a`, build `HI_1_5_1`).
+
+### 6.3 The three runtime states of a registry fingerprint
+
+`coverage.decoder.registry.status` (schema 61) is **not** the `status` column of §4.5 — that one
+says how far a measurement reaches, this one says what a film is worth against the table:
+
+| Status | Means |
+|---|---|
+| `connue` | the fingerprint read is the one the table expects for that key |
+| `presumee` | the fingerprint is in the catalogue, but under **another** key — or the film's key has no expected fingerprint (a new build) |
+| `inconnue` | the fingerprint is nowhere in the catalogue: the game changed its component grammar |
+
+The three cases are decided in one place, `profile.ClasserEmpreinteRegistre`;
+`replay.statutDuRegistre` publishes them. The status classifies, it never refuses: the gate is
+the key, not the fingerprint — three pairs of keys share a fingerprint while their structure
+sizes differ, so an equal fingerprint proves nothing about widths.
+
+### 6.4 Adding the missing key
+
+Follow §4 as written: a witness in `config/replay_corpus.toml`, a `presumee` line in `entries`
+and its twin in `profile_table.go`, the registry fingerprint in `registryFingerprints` and its
+copy in `registre_empreintes.go`, then the gates. The moment the table carries the key, the
+match leaves the backlog by itself — nothing has to be un-marked.
+
+## 7. What the tool does not do
 
 `cmd/film-profiles-build` writes the `derived` block and nothing else. It copies `entries` and
 `registryFingerprints` through untouched and refuses to write a catalogue that does not validate. It never regenerates
