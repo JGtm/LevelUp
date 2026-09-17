@@ -17,6 +17,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/haloclient"
@@ -121,6 +122,20 @@ func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID st
 	if err != nil {
 		observability.AddInt(metricDecodeError, 1)
 		return nil, nil, nil, OutcomeNoFilm, fmt.Errorf("chargement du film %s: %w", matchID, err)
+	}
+
+	// LA PORTE DE LA CLE, AVANT TOUT DECODAGE (lot 3.1.1, D-4 d ADR 0034). Un film dont la cle
+	// ecrite est absente de la table de profil est MIS DE COTE : aucun fait killsource ecrit,
+	// aucune position, aucun tir — jamais un decodage au profil d un voisin.
+	if cle := replay.CleDuFilm(film); cle.Refusee() {
+		replay.PublierCleInconnue(cle)
+		observability.AddInt(metricUnknownKey, 1)
+		slog.WarnContext(ctx, "killsource: film ECARTE — la cle ecrite dans le film est absente "+
+			"de la table de profil ; aucun fait n est publie (ajouter la ligne : "+
+			"docs/RUNBOOK_FILM_PROFILES.md)",
+			"match_id", matchID, "cle", cle.Ecrite, "format", cle.Format, "build", cle.Build,
+			"majeure", cle.Majeure, "err", cle.Err)
+		return nil, nil, nil, OutcomeUnknownKey, nil
 	}
 
 	// `nil` = la CONFIGURATION GELEE, celle qui a produit les chiffres publies. Ne jamais
