@@ -69,6 +69,17 @@ interface Props {
    * page Carrière, où le user a explicitement demandé "pas de bloc").
    */
   hideCardWrapper?: boolean
+  /**
+   * Construit ou non la colonne « Assistances ». Défaut `true` (vue match, où
+   * le bloc `assists` est posé par le chargeur du match).
+   *
+   * À passer à `false` quand la source de lignes ne pose JAMAIS le bloc
+   * `assists` — cas de la page Carrière (`CareerService.GetTopEncounters`), où
+   * la colonne n'afficherait que des « — » avec une infobulle et un tri sans
+   * objet. C'est une décision d'appelant, PAS une déduction sur les données :
+   * une vue match dont aucune ligne n'est mesurée garde la colonne et ses « — ».
+   */
+  showAssists?: boolean
 }
 
 function isSemanticToken(s: string): s is SemanticToken {
@@ -227,7 +238,13 @@ function formatRelativeEN(iso: string): string {
   return years <= 1 ? '1 y ago' : `${years} y ago`
 }
 
-export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideCardWrapper = false }: Props) {
+export function MatchEncountersTable({
+  rows,
+  locale = 'fr',
+  onPlayerClick,
+  hideCardWrapper = false,
+  showAssists = true,
+}: Props) {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug?: string }
   const navigate = useNavigate()
   const titleSlug = useTitleSlug()
@@ -421,21 +438,25 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
           return <span className="font-mono">{formatKDCross(r.kills_dealt, r.deaths_suffered)}</span>
         },
       },
-      {
-        id: 'assists',
-        // Tri sur les assistances échangées (données + reçues) ; non mesuré → en bas.
-        accessorFn: (r) => assistSortValue(r.assists),
-        ...NUMERIC_SORT,
-        header: assistsLabel,
-        meta: { headerTooltip: ASSISTS_TEXT[locale].columnTooltip },
-        cell: (ctx) => (
-          <AssistExchangeCell
-            assists={ctx.row.original.assists}
-            teammateMatches={ctx.row.original.ally_count}
-            locale={locale}
-          />
-        ),
-      },
+      ...(showAssists
+        ? ([
+            {
+              id: 'assists',
+              // Tri sur les assistances échangées (données + reçues) ; non mesuré → en bas.
+              accessorFn: (r) => assistSortValue(r.assists),
+              ...NUMERIC_SORT,
+              header: assistsLabel,
+              meta: { headerTooltip: ASSISTS_TEXT[locale].columnTooltip },
+              cell: (ctx) => (
+                <AssistExchangeCell
+                  assists={ctx.row.original.assists}
+                  teammateMatches={ctx.row.original.ally_count}
+                  locale={locale}
+                />
+              ),
+            },
+          ] satisfies ColumnDef<MatchEncounterRow>[])
+        : []),
       {
         id: 'ratio',
         accessorFn: (r) => ratioValue(r.kills_dealt, r.deaths_suffered),
@@ -471,7 +492,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [labels, playerSlug, formatRelative, onPlayerClick, assistsLabel],
+    [labels, playerSlug, formatRelative, onPlayerClick, assistsLabel, showAssists],
   )
 
   // I16 : tri CLIENT par clic sur les en-têtes (pattern DetectionsPanel minimal).
