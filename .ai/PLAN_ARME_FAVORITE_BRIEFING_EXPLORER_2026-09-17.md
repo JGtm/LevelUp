@@ -215,10 +215,10 @@ local est le seul filet) PUIS `make check-types` après purge de
 
 ### Étape 4 — Front : helper pur + son test
 
-- [ ] `features/explorer/ExplorerBriefing.logic.ts` :
+- [x] `features/explorer/ExplorerBriefing.logic.ts` :
       `favoriteWeaponSlots({ dimensionLines, rankedLines }): 0 | 1 | 2` exactement selon la
       formule D3, sans aucune dépendance React/DOM ni lecture du briefing brut.
-- [ ] `ExplorerBriefing.logic.test.ts` : `[6,3,2]`/0 → 2 ; `[3]`/0 → 1 ; `[2,2]`/0 → 0 ;
+- [x] `ExplorerBriefing.logic.test.ts` : `[6,3,2]`/0 → 2 ; `[3]`/0 → 1 ; `[2,2]`/0 → 0 ;
       `[]`/3 → 1 ; `[]`/0 → 0 ; `[6]`/3 → 2 (le max l'emporte).
 
 **Gate 4** : `npx vitest run src/features/explorer/ExplorerBriefing.logic.test.ts`
@@ -337,6 +337,10 @@ Un écart de hauteur observé se traite par la formule D3, pas par une mesure.
   `make openapi-check` sortie 0 (document à jour ET `generated.ts` dérivé),
   `make check-types` sortie 0 après purge de `apps/web/node_modules/.tmp`. L'échec unique du
   gate 2b est levé : `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate` sortie 0.
+
+- **Étape 4 (2026-09-17)** — `favoriteWeaponSlots` ajouté à `ExplorerBriefing.logic.ts`
+  (plancher de 2 lignes = hauteur de « Par contexte », place libre plafonnée à 2). Gate 4 :
+  `npx vitest run src/features/explorer/ExplorerBriefing.logic.test.ts` sortie 0, 4 tests.
 
 ## Protocole de reprise de session
 
