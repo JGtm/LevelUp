@@ -6494,6 +6494,9 @@ export interface components {
             /** Format: int64 */
             ally_count?: number;
             /** Format: int64 */
+            assist_volume_max?: number;
+            assists?: components["schemas"]["RelationAssists"];
+            /** Format: int64 */
             count_together: number;
             /** Format: int64 */
             deaths_suffered?: number;

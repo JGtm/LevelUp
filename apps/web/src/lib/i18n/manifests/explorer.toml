@@ -662,6 +662,22 @@ en = "Gap between this win rate and the historical personal average."
 fr = "Écart de frags cumulé"
 en = "Cumulative frag gap"
 
+# ─── 3e rangée de la section « matchs joués ensemble » : répartition des résultats +
+# part des assistances (colonne gauche), portée des frags (colonne droite).
+# Le texte de l'état « aucun match mesuré » vient de ASSISTS_TEXT.notMeasured
+# (_shared/assists/assistsI18n.ts), partagé avec Relations — pas de doublon ici.
+[explorer.target_profile.assists_title]
+fr = "Part des assistances"
+en = "Assist share"
+
+[explorer.target_profile.frag_range_title]
+fr = "Portée des frags"
+en = "Frag range"
+
+[explorer.target_profile.frag_range_pending]
+fr = "En préparation"
+en = "In preparation"
+
 [explorer.target_profile.section_sample_empty]
 fr = "Aucun match en commun avec ce joueur — les comparaisons directes apparaîtront après des parties partagées."
 en = "No matches in common with this player yet — direct comparisons will appear after you play shared games."
