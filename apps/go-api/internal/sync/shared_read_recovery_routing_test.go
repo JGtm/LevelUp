@@ -214,16 +214,19 @@ var sharedReadAllowlist = []sharedReadAllowEntry{
 		needle:    "metadataDBPath",
 		reason:    "emprunt metadata preexistant au lot, hors perimetre",
 	},
-	// allowlist(2026-08-26) : les DEUX ouvertures RO de metadata.duckdb du fichier
-	// (RunBackfillCitations + RunBackfillCompositeOnlyCitations). metadata n'est
-	// géré par AUCUN sharedprovider : il n'y a pas de swap RO→RW à casser, et le
-	// handle est possédé (Close apparié), pas emprunté. L'interdiction
-	// `OpenReadOnly(` ajoutée au fichier vise shared_matches_v2, pas metadata.
+	// allowlist(2026-09-17) : les DEUX lectures de metadata.duckdb du fichier
+	// (RunBackfillCitations + RunBackfillCompositeOnlyCitations) passent par
+	// OpenReadForQuery. Depuis le 2026-09-16 le serveur ET le moteur de sync tiennent
+	// metadata en `rw:` partage : un OpenReadOnly direct echouait (« different
+	// configuration ») depuis l orchestrateur de backfill de l admin. Emprunt BORNE :
+	// acquisition -> requetes -> release (no-op sur handle emprunte, fermeture sur
+	// handle ouvert a defaut) ; aucun sharedprovider ne swappe metadata. Le ratchet
+	// archlint no_metadata_readonly_in_sync_test.go interdit le retour d OpenReadOnly.
 	{
 		rel:       "internal/sync/citations_backfill.go",
-		construct: "OpenReadOnly(",
+		construct: "OpenReadForQuery(",
 		needle:    "metadataDBPath",
-		reason:    "ouverture metadata (aucun sharedprovider sur ce chemin), handle possede + Close apparie",
+		reason:    "lecture metadata bornee via OpenReadForQuery (handle rw partage reutilise ; ratchet archlint)",
 	},
 	// allowlist(2026-08-26) : emprunt BORNÉ de shared_matches_v2 pour le tri chrono
 	// du recalcul composite-only (sortMatchIDsChronoOnShared). L'instantané que le

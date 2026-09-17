@@ -111064,3 +111064,31 @@ voir compte rendu de session.
 avec film décodé uniquement — sans film, jamais de badge Voleur). Spec historique
 `.ai/charts_specs/teammates/07_impact_taquinerie.yaml` non mise à jour (déjà périmée : ignore
 kamikaze, référence le Python supprimé).
+
+## [2026-09-17] Backfill citations depuis l'admin : metadata ouvert en lecture seule sous handle rw — Complété
+
+**Statut** : Complété. Branche `wt/citations-meta` (worktree dédié), base `origin/feat/v75` @ 016703f8e.
+
+**Décision technique principale** : les trois passes de citations (`RunBackfillCitations`,
+`RunBackfillCompositeOnlyCitations`, `RunCitationPostComputeChecks`) ouvraient `metadata.duckdb`
+par `OpenReadOnly` (`ro:`). Le serveur tient ce fichier en `rw:` depuis le boot et l'orchestrateur
+de backfill de l'admin appelle ces passes dans ce process → « different configuration », le job
+admin échouait (proprement, erreur remontée). En CLI, sans handle `rw:`, le chemin était sain —
+d'où l'absence de trace. Même correctif que `medal_exploit` la veille : `OpenReadForQuery`
+(réutilise le handle en cache, sinon ouvre `ro:`), `release` en `defer`. Test sous handle `rw:`
+tenu sur `RunCitationPostComputeChecks` (la seule des trois sans lease ni shared), prouvé par
+mutation ; ratchet archlint `no_metadata_readonly_in_sync_test.go` : plus aucun
+`OpenReadOnly(…metadataDBPath)` dans `internal/sync/` hors tests (quatrième copie corrigée,
+cinquième interdite — règle ≤ 2 copies). Découverte §10 du plan robustesse ; décisions 1 (job
+serveur jamais en échec) et 2 (`PolicyPinnedPlayer` du live-sync H5) laissées telles quelles par
+l'utilisateur le 2026-09-17.
+
+**Résultats observés** : test + ratchet rougissent sur retour d'`OpenReadOnly`, verts après
+restauration ; `golangci-lint` propre sur les fichiers touchés ; gates : voir le commit. Le garde-rail
+`shared_read_recovery_routing_test.go` a mordu : son allowlist du 26/08 autorisait `OpenReadOnly`
+sur metadata au motif « pas de swap RO→RW à casser, handle possédé » — prémisse rendue fausse
+par le lot du 16/09 (moteur en `rw:` partagé) sans que la revue le voie. Entrée remplacée par
+une exception datée 2026-09-17 décrivant l emprunt borné via `OpenReadForQuery`.
+
+**Conclusion / prochaine étape** : commit sur `wt/citations-meta`, fusion dans `feat/v75` et push
+sur signal de l'utilisateur.
