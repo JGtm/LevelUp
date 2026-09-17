@@ -168,3 +168,49 @@ func TestBackfillDominanceFlags_FragContrast_Duree(t *testing.T) {
 		})
 	}
 }
+
+// seedThirdTeamParticipant ajoute un joueur d'une TROISIÈME équipe au match (Multi Team).
+func seedThirdTeamParticipant(t *testing.T, sharedDB *sql.DB, matchID string, teamID int) {
+	t.Helper()
+	if _, err := sharedDB.ExecContext(context.Background(), `
+		INSERT INTO match_participants (match_id, xuid, team_id, outcome)
+		VALUES (?, 'third_xuid', ?, 3)`, matchID, teamID); err != nil {
+		t.Fatalf("insert participant troisieme equipe: %v", err)
+	}
+}
+
+// TestBackfillDominanceFlags_FragContrast_TroisEquipes — SABORDAGE / ABNÉGATION opposent
+// DEUX camps. Sur un Multi Team à objectifs, le filtre `team_id IN (0, 1)` de la timeline
+// retirait les équipes 2+ au lieu d'écarter le match : le verdict se rendait alors sur une
+// FRACTION du match. Le comptage des équipes doit l'écarter entièrement.
+func TestBackfillDominanceFlags_FragContrast_TroisEquipes(t *testing.T) {
+	cases := []struct {
+		name      string
+		thirdTeam bool
+		want      int
+	}{
+		{"deux equipes : badge rendu", false, analysis.DominanceFlagSabordage},
+		{"trois equipes : match ecarte", true, analysis.DominanceFlagNone},
+	}
+	for i, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			playerDB, sharedDB := newInMemoryDBs(t)
+			ensureDominanceFlagColumn(t, playerDB)
+			const myXUID = "me"
+			matchID := "m_frag_equipes_" + string(rune('a'+i))
+			seedComebackMatch(t, sharedDB, matchID, "Strongholds:Arena", myXUID, 0, 3 /* loss */, 1)
+			if c.thirdTeam {
+				seedThirdTeamParticipant(t, sharedDB, matchID, 2)
+			}
+			// Timeline identique dans les deux cas : 30 frags contre 20 entre les équipes 0 et 1.
+			seedKillTimeline(t, sharedDB, matchID, 30, 20, false)
+			if err := BackfillDominanceFlags(
+				context.Background(), sharedDB, playerDB, myXUID, []string{matchID}); err != nil {
+				t.Fatalf("BackfillDominanceFlags: %v", err)
+			}
+			if got := readDominanceFlag(t, playerDB, matchID); got != c.want {
+				t.Errorf("flag = %d, attendu %d", got, c.want)
+			}
+		})
+	}
+}
