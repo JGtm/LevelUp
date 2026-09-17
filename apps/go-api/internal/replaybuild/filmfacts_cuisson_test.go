@@ -11,10 +11,12 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 )
@@ -184,5 +186,59 @@ func TestSectionStatborgVideNeFabriquePasDeCalque(t *testing.T) {
 	if st.score != nil {
 		t.Error("une section statborg VIDE a produit une courbe de score : le document dirait " +
 			"« zero point » la ou rien n a ete lu")
+	}
+}
+
+// TestCompleterLesFaitsPoseLesDEUXSectionsDeLAssemblage : LA MOITIE `replaybuild` DU GARDE-RAIL
+// DU TROU QUE S8 A TROUVE (2026-09-18).
+//
+// # CE QU IL GARDE
+//
+// La chaine de production d un fichier de faits traverse DEUX paquets. `replay.faitsDuBalayage`
+// pose ce que la couche de publication sait ; les sections STATBORG et KILLSOURCE, elles, naissent
+// ICI (`statborgDuFilm`, `decodeKillSource`) et la couche de publication ne les voit jamais
+// passer. Personne ne les posait : le fichier ecrit portait deux sections VIDES, l en-tete restait
+// FRAIS, et un rejeu publiait un document sans courbe de score, sans actions d objectif, sans
+// drapeau, sans couronne, sans crane et sans armement. Seul le gate S8 pouvait l attraper, et il
+// l a attrape a la PREMIERE ecriture.
+//
+// L AUTRE MOITIE DU GARDE-RAIL VIT CHEZ `replay` :
+// `TestFaitsDuBalayageLaisseExactementDeuxSectionsAuLAssemblage` y nomme les sections que la
+// publication laisse volontairement vides. Une section NEUVE que personne ne remplirait rougit
+// la-bas ; celle-ci verifie que les deux nommees arrivent bien.
+//
+// POURQUOI DEUX TESTS ET PAS UN : `film/internal/*` n est pas importable d ici — c est la
+// frontiere du decodeur (ADR 0034) —, donc ce paquet ne peut pas fabriquer une identite de film ni
+// un rapport de replis. Chaque moitie vit dans le paquet qui voit son cote.
+func TestCompleterLesFaitsPoseLesDEUXSectionsDeLAssemblage(t *testing.T) {
+	var f replay.FilmFactsFile
+	if !reflect.ValueOf(f.Statborg).IsZero() || f.Kills != nil {
+		t.Fatal("le temoin part deja rempli : le test ne mesure rien")
+	}
+	src := entreesDeCuisson{
+		statborg: statborgTemoin(),
+		kills:    &decfilm.Result{Calibration: "temoin"},
+	}
+	completerLesFaits(&f, src)
+	if reflect.ValueOf(f.Statborg).IsZero() {
+		t.Error("FilmFactsFile.Statborg sort VIDE : un rejeu reconstruirait ses entrees de calque " +
+			"sur une section vide et publierait un document appauvri, en-tete FRAIS a l appui.")
+	}
+	if f.Kills == nil {
+		t.Error("FilmFactsFile.Kills sort NIL : les morts neutres, les references de frag, les " +
+			"identites de bot et le profil de balayage calibre seraient perdus au rejeu.")
+	}
+	// UN NIL NE DOIT PAS PANIQUER : le chemin decode peut ne rien avoir a persister (decoupage
+	// d i0 illisible), et `ecrireLesFaits` le journalise deja.
+	completerLesFaits(nil, src)
+}
+
+// statborgTemoin : une section statborg non vide, sans un octet de film.
+func statborgTemoin() replay.FilmStatborg {
+	return replay.FilmStatborg{
+		Records:      []decfilm.StatRecord{{TimeMS: 1, Slot: 10, Comps: map[int]decfilm.StatValue{0: {A: 1}}}},
+		BurstMS:      []int{1200},
+		Truncated:    true,
+		ChunkStartMS: map[int]int{0: 0},
 	}
 }

@@ -285,6 +285,7 @@ func (b *Builder) documentDeLaCuisson(ctx context.Context, matchID string, opts 
 	if err != nil {
 		return replay.ReplayDocument{}, fmt.Errorf("décodage du film %s: %w", matchID, err)
 	}
+	completerLesFaits(aPersister, src)
 	b.ecrireLesFaits(ctx, matchID, aPersister)
 	return doc, nil
 }
