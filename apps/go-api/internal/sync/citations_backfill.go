@@ -104,12 +104,15 @@ func (e *SyncEngine) RunBackfillCitations(ctx context.Context, force bool) (int,
 	defer releaseShared()
 
 	// Phase 2 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : cache duckdbpkg (DSN aligne).
-	metaHandle, err := duckdbpkg.OpenReadOnly(e.metadataDBPath)
+	// OpenReadForQuery reutilise le handle deja tenu par le process (le serveur tient metadata
+	// en rw: depuis le boot ; l orchestrateur de backfill de l admin passe ici) et n ouvre en
+	// lecture seule qu a defaut. Un OpenReadOnly direct echouait sous handle rw (« different
+	// configuration ») : le backfill citations lance depuis l admin echouait (2026-09-17).
+	metaDB, releaseMeta, err := duckdbpkg.OpenReadForQuery(e.metadataDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillCitations open metadata: %w", err)
 	}
-	defer metaHandle.Close()
-	metaDB := metaHandle.SQLDb()
+	defer releaseMeta()
 
 	matchIDs, err := selectMatchesForCitations(ctx, playerHandle.SQLDb(), force)
 	if err != nil {
@@ -234,12 +237,15 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 	defer playerHandle.Close()
 
 	// Phase 2 : cache duckdbpkg (DSN aligne).
-	metaHandle, err := duckdbpkg.OpenReadOnly(e.metadataDBPath)
+	// OpenReadForQuery reutilise le handle deja tenu par le process (le serveur tient metadata
+	// en rw: depuis le boot ; l orchestrateur de backfill de l admin passe ici) et n ouvre en
+	// lecture seule qu a defaut. Un OpenReadOnly direct echouait sous handle rw (« different
+	// configuration ») : le backfill citations lance depuis l admin echouait (2026-09-17).
+	metaDB, releaseMeta, err := duckdbpkg.OpenReadForQuery(e.metadataDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations open metadata: %w", err)
 	}
-	defer metaHandle.Close()
-	metaDB := metaHandle.SQLDb()
+	defer releaseMeta()
 
 	mappings, err := loadFullCitationMappings(ctx, metaDB)
 	if err != nil {
