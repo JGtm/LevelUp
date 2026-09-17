@@ -267,16 +267,27 @@ Dans `ExplorerBriefingStrip.test.tsx` (à côté du describe DP-3, qui reste tel
 
 ### Étape 7 — Mesure de coût et gates de livraison
 
-- [ ] Mesurer avec le CLI duckdb en `READ_ONLY` sur la base partagée, forme exacte de la
+- [x] Mesurer avec le CLI duckdb en `READ_ONLY` sur la base partagée, forme exacte de la
       requête du lecteur du titre avec `IN (SELECT match_id FROM match_participants WHERE
       xuid = ?)` à la place des paramètres liés (ordre de grandeur, c'est ce qu'on cherche),
       sur le PLUS GRAND scope (tout l'historique) ; consigner le chiffre dans le thought
       log (référence : 0,22 s sans filtre de matchs). Au-delà de ~300 ms : Découvertes +
       remontée à l'utilisateur, AUCUNE optimisation dans ce lot.
-- [ ] `go test ./...` puis `go vet ./...` (le diff ne touche ni persist/ ni sync/ ni
+- [x] `go test ./...` puis `go vet ./...` (le diff ne touche ni persist/ ni sync/ ni
       migration/ → tag `integration` non requis ; le noter explicitement à la clôture).
-- [ ] `make gate-push`.
-- [ ] CI de branche verte AU NIVEAU JOB (`gh run list --branch wt/arme-favorite-briefing`).
+      Les deux sortie 0. Le tag `integration` a néanmoins été joué en entier (voir journal) :
+      il fallait un verdict de baseline sur cette machine.
+- [x] `go test ./internal/archlint/` — garde-rails d'architecture, obligatoire pour tout lot
+      Go de ce dépôt (consigne superviseur 2026-09-17). Sortie 0, 35,6 s.
+- [x] `make gate-push` — JOUÉ, verdict lu : `GATE_EXIT=2`. Les trois premières étapes vertes
+      (golangci-lint `--new-from-merge-base=origin/main` : 0 issue ; `tsc -b` ; `eslint`
+      0 erreur). La quatrième (`check_test_baseline.sh tests`) est rouge pour DEUX causes
+      d'environnement, aucune imputable au diff — démontrées sur pièces au journal. Le fond
+      du gate a été vérifié autrement et il est VERT (`--from-jsonl`, sortie 0). L'autorité
+      reste la CI Linux.
+- [~] CI de branche verte AU NIVEAU JOB (`gh run list --branch wt/arme-favorite-briefing`) —
+      DÉLÉGUÉ AU SUPERVISEUR : l'item exige un push, interdit à l'exécutant. `gh run list`
+      ne rend rien (la branche n'existe pas sur `origin`). À jouer après push de la branche.
 
 ### Étape 8 — Gate visuel utilisateur (5 écrans)
 
@@ -292,12 +303,21 @@ Un écart de hauteur observé se traite par la formule D3, pas par une mesure.
 
 ### Étape 9 — Clôture
 
-- [ ] Entrée `.ai/thought_log.md` (date, titre, statut, décision technique, résultats
-      mesurés dont le chiffre de l'étape 7, prochaine étape).
-- [ ] Tout item du plan statué `[x]` / `[~]` / `[!]`.
-- [ ] Reports éventuels inscrits dans `.ai/V7.5/REGISTRE_REPORTS.md` avec leur condition
-      de reprise.
-- [ ] Fusion dans `feat/v75` sur signal explicite de l'utilisateur (mode branche unique).
+- [x] Entrée `.ai/thought_log.md` (date, titre, statut, décision technique, résultats
+      mesurés dont le chiffre de l'étape 7, prochaine étape). Statut « En cours — gate visuel
+      utilisateur en attente ».
+- [x] Tout item du plan statué `[x]` / `[~]` / `[!]` pour les étapes 1 à 7 et 9. Les cases de
+      l'ÉTAPE 8 restent volontairement vides : ce gate appartient à l'utilisateur, qui nomme
+      les témoins et fait les captures — l'agent ne les coche pas à sa place.
+- [~] Reports éventuels dans `.ai/V7.5/REGISTRE_REPORTS.md` : AUCUN report de travail à
+      inscrire. Ce que le lot a écarté n'est pas du travail différé mais des découvertes hors
+      périmètre (D9), consignées dans la section « Découvertes » ci-dessus — renommage
+      « Dépositaire », cible `npm run build-i18n`, absence de job CI sur la dérive
+      `openapi.yaml`, les deux défauts de `check_test_baseline.sh`, le flake
+      `PalmaresRelationsPage`.
+- [!] Fusion dans `feat/v75` sur signal explicite de l'utilisateur (mode branche unique) —
+      HORS MANDAT de l'exécutant : ni push, ni merge, ni changement de branche. À la main du
+      superviseur puis de l'utilisateur.
 
 ## Découvertes (consigner, NE PAS traiter)
 
@@ -315,6 +335,13 @@ Un écart de hauteur observé se traite par la formule D3, pas par une mesure.
 - 2026-09-17 — `PalmaresRelationsPage > rend les badges solid (duo gagnant)` dépasse le
   délai de 5 s dans la suite web complète (13,5 s mesurés) et passe en 15/15 rejoué seul :
   test sensible à la charge, sans rapport avec ce lot. À surveiller s'il rougit en CI.
+- 2026-09-17 — `scripts/check_test_baseline.sh` n'est pas rejouable en local sur cette
+  machine : il force `CC=gcc` résolu dans `/c/msys64/ucrt64/bin` alors que le poste exige la
+  chaîne winlibs (le lien de `libduckdb_static` casse en `__emutls_v` avec msys64), et son
+  budget de 300 s par paquet est sous la durée réelle d'`internal/sync` en intégration
+  (494 s mesurés). Le commentaire du script (« vert avec CC=gcc résolu PATH », 2026-08-03)
+  ne vaut plus pour ce poste. Deux corrections possibles (ne PAS traiter ici) : ne pas
+  écraser un `CC` déjà positionné, et aligner le budget sur celui de la CI (600 s).
 - 2026-09-17 — Le module « arme favorite » est monté dans `MatchHistoryCtx`, qui sert AUSSI
   la page Historique. Celle-ci ne pose pas `include_briefing` : le briefing étendu n'est pas
   construit, donc aucune requête d'armes ne part. Câblage inoffensif, noté pour mémoire.
@@ -370,6 +397,42 @@ Un écart de hauteur observé se traite par la formule D3, pas par une mesure.
   qu'aucune cellule n'est ajoutée. Gate 6 : `make check-types` sortie 0 (cache purgé) puis
   `make test-web` sortie 0 — 732 fichiers, 7 858 tests verts, 17 ignorés. Le flake
   `PalmaresRelationsPage` de l'étape 5 ne s'est pas reproduit.
+
+- **Étape 7 (2026-09-17)** — **Mesure : 0,24 s** (4 exécutions : 0,257 / 0,263 / 0,214 /
+  0,219 s) pour la requête de production sur le PLUS GRAND scope — 1 147 matchs, 109 sources
+  de dégât distinctes, xuid `2533274823110022`. Sous les ~300 ms du plan : aucune remontée,
+  aucune optimisation. Conforme à la référence de cadrage (0,22 s). Requête exacte :
+  la forme de `buildKillSourceWeaponQuery` avec `k.match_id IN (SELECT match_id FROM
+  match_participants WHERE xuid = '2533274823110022')` (la clause d'exclusion Campagne est
+  un no-op sur ce titre : `campaignExcludedVariantIDs` n'a d'entrée que pour `halo_5`).
+  Obstacle d'environnement : `shared_matches_v2.duckdb` du checkout principal est tenu en
+  écriture par `server.exe` (PID 15880) et refuse même l'ATTACH `READ_ONLY` (modèle
+  mono-process). Le serveur n'a PAS été arrêté ; la mesure porte sur une COPIE d'octets du
+  fichier (302 Mo, copie en 0,6 s, supprimée après), même disque, même schéma — l'ordre de
+  grandeur cherché est intact.
+  Gates : `go test ./...` sortie 0, `go vet ./...` sortie 0, `go test ./internal/archlint/`
+  sortie 0.
+  `make gate-push` : `GATE_EXIT=2`. golangci-lint (0 issue), `tsc -b` et `eslint`
+  (0 erreur) verts ; `check_test_baseline.sh tests` rouge pour DEUX causes d'environnement :
+  1. le script force `PATH=/c/msys64/ucrt64/bin` + `CC=gcc`, or cette machine exige la
+     chaîne winlibs : avec msys64 (gcc 16.1.0) le lien de TOUT binaire de test embarquant
+     `libduckdb_static` casse en « undefined reference to `__emutls_v._ZSt11__once_call` ».
+     Démontré sur pièces : `go test -tags=integration -c ./internal/service/` échoue avec
+     `CC=gcc`+msys64 et réussit (sortie 0) avec le `CC` winlibs de la machine. Résultat : 46
+     paquets absents du run, TOUS en N/N (aucune absence partielle → signature de lien, pas
+     un test renommé ou supprimé) ; aucun nom de test touché par ce lot n'est perdu.
+  2. même avec le bon compilateur, `internal/sync` en `-tags=integration` demande 494 s sur
+     cette machine (mesuré seul : `ok internal/sync 494,015s`, sortie 0) alors que le script
+     n'accorde que 300 s par paquet. Aggravé ce soir par une charge externe (une autre
+     session a lancé `make dev` depuis un autre worktree pendant le gate).
+  Le FOND du gate a donc été vérifié autrement, sans toucher au script : suite complète
+  `go test -tags=integration -count=1 -timeout=900s -p 1 -json ./...` → sortie 0, ZÉRO
+  événement `"Action":"fail"` ; puis `check_test_baseline.sh tests --from-jsonl` sur ce
+  JSONL → **sortie 0** : « Tous les tests baseline présents » (9 706 attendus, 17 247 servis),
+  « Aucun test en échec », « Aucun package en échec hors test ». Le tag `integration` n'était
+  pas requis par le diff (ni persist/, ni sync/, ni migration/ touchés) ; il a été joué pour
+  obtenir ce verdict.
+  Item CI statué `[~]` : il exige un push, interdit à l'exécutant.
 
 ## Protocole de reprise de session
 
