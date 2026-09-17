@@ -1,3 +1,46 @@
+## [2026-09-16] Relations : assistances échangées (tableaux, carte Binôme, carte Noyau dur) — Complété (branche `claude/relations-assistance-stats-f1a581`, fusionnée dans feat/v75)
+
+**Demande** : afficher, par relation, combien l'autre joueur t'a assisté et combien tu l'as
+assisté. Rendu arbitré sur maquette (artefact « Assistances Binôme et Noyau dur ») : colonne
+« Assistances » dans le tableau Relations ET dans l'historique des rencontres de la vue match ;
+carte Binôme option B (papillon, sans verdict ni couverture) ; carte Noyau dur option A8 (papillon
+sur la rangée du fidèle, légende alignée sous les barres) ; trois tons par tranche de part avec
+infobulle « N frags assistés · X à Y % des dégâts ».
+
+**Décision technique** : une seule requête, Q28c (`platform/duckdb/relation_assists_repo.go`),
+lue par `CareerRepo.GetRelationAssists` (scope des filtres) et
+`MatchViewRepo.GetMatchEncounterAssists` (joueurs du match, tout l'historique). Portée
+`publishable AND assist_known` pour les assistances ET les frags dénominateurs (même population
+de lignes) ; matchs comptés = même équipe + au moins une ligne mesurée. Tranches bornées par
+`domain.AssistTierLowMaxPct` (25) / `AssistTierMidMaxPct` (50), part non plafonnée. Bloc absent
+(nil) = non mesuré, jamais un objet à zéro. Enrichissement best-effort (WARN + page intacte).
+Front : `features/_shared/assists/` (logique pure testée, barre papillon, cellule de tableau,
+libellés FR/EN) ; couleurs `compare-b` (l'autre) / `compare-a` (toi), tons = opacités.
+
+**Résultats observés** : prototype sur la base locale 0,4 s ; 382 relations mesurées sur 1 191
+pour JGtm. Vérification visuelle en local (API + Vite, 1440 px) : légende du Noyau dur alignée au
+pixel sous les barres, infobulles des segments et des cellules OK, colonne présente dans la vue
+match (« — » pour les non mesurés). Défaut trouvé à cette passe et corrigé : l'ancre inline-flex
+du Tooltip s'alignait sur la ligne de base et sortait du cadre rogné (segments partiellement
+invisibles et non survolables). Garde-fou `TestNoNewRawIsBotLiteral` : prédicat bot passé par
+`analysis.SQLIsNotBotCol`. Gates : go vet, golangci-lint (0 issue), tests service + intégration
+duckdb, openapi à jour, tsc, eslint (0 erreur), lint couleurs, vitest palmares/match-view/_shared
+(469 + nouveaux).
+
+**Révision d'échelle (retour utilisateur, même jour)** : la longueur des barres était la PART
+rapportée au maximum de la carte — un binôme à 3 assistances remplissait sa demi-barre, et un
+fidèle à 1 match mesuré écrasait Chocoboflor (250 assistances). Décision : longueur = VOLUME sur
+échelle log commune à toute la page (`assistVolumeMax` sur toutes les relations,
+`Math.log1p(n)/Math.log1p(max)`), tranches au prorata ; les parts restent en chiffres et
+infobulles. Mesuré à 1440 px (demi-barre 99 px) : Madina 422 → 99, Chocoboflor 250 → 91,
+Nilton410 15 → 47, SirAvlas 3 → 22 ; binôme MASTER551446 3 → 43/189 px au lieu de pleine.
+
+**Découvertes (non traitées)** : au boot local, `data_health` signale l'index `match_skill_rank`
+désynchronisé pour JGtm (2 clés) — préexistant, hors périmètre. L'échelle des papillons du Noyau
+dur est la plus grande part affichée : un fidèle à 1 seul match mesuré peut la dominer (SirAvlas).
+
+**Prochaine étape** : GO utilisateur du 2026-09-17 (échelle log validée) — commit, fusion de origin/feat/v75 et push vers feat/v75 ; CI de branche à confirmer au niveau job.
+
 ## [2026-09-16] Sync d'un profil sans token propre : pool partout, seams title-owned câblés par toutes les CLI, dérive de schéma `match_registry` — Complété (branche `wt/sync-pool`, non poussée)
 
 **Trois défauts distincts, tous rencontrés sur la même passe** (premier sync d'un profil suivi

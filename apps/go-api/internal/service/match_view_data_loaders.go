@@ -40,7 +40,8 @@ type matchViewData struct {
 	// via Q23b. Permet narrative.ComputeEncounterBadges (ally_plus +
 	// tough_enemy). Optionnel — degradation gracieuse vers badge ordinal
 	// seul si la repo retourne nil.
-	encounterStats []domain.EncounterStatsRaw
+	encounterStats   []domain.EncounterStatsRaw
+	encounterAssists map[string]domain.RelationAssists // colonne « Assistances » (cf. match_view_encounter_assists.go)
 	// killSources : source de dégât par (tueur, instant), pour l'arme du kill feed
 	// (Q21b). Vide si le titre n'a pas de décodeur de film ou si le match n'y est pas
 	// passé — le feed s'affiche alors sans icône d'arme.
@@ -195,6 +196,7 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.encounterStats, e = s.repo.GetMatchEncounterStats(gctx, matchID, s.xuid)
 		return e
 	})
+	s.loadEncounterAssists(gctx, g, matchID, &d)
 	goLoad(gctx, g, matchID, "media", func() error {
 		var e error
 		// Q24 retourne tous les auteurs (cross-joueur) : un coéquipier peut
@@ -491,6 +493,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 		}
 	}
 	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL, outcomes)
+	attachEncounterAssists(team.Encounters, d.encounterAssists)
 	// Halo 5 persisté : libellés d'équipe « Rouge/Bleu » depuis team_colors (no-op HINF
 	// et si le référentiel est vide → le front garde son libellé existant).
 	s.applyTeamNames(ctx, team.Scoreboard)

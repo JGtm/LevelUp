@@ -160,6 +160,72 @@ describe('PalmaresRelationsPage', () => {
     expect(screen.getAllByText('SoloOnly').length).toBeGreaterThan(0)
   })
 
+  it('assistances : papillon du binôme, rangées du noyau dur, « — » pour un fidèle non mesuré', async () => {
+    const base = {
+      total_matches: 20,
+      teammate_matches: 20,
+      teammate_wins: 12,
+      teammate_win_rate: 0.6,
+      enemy_matches: 0,
+      enemy_wins: 0,
+      enemy_win_rate: null,
+      avg_kda_with: 1,
+      avg_kda_against: null,
+      kills_dealt: 0,
+      deaths_suffered: 0,
+      duel_ratio: null,
+      first_seen_at: '2026-01-01T00:00:00Z',
+      last_seen_at: '2026-06-01T00:00:00Z',
+      category: 'ally',
+      is_core: true,
+      badges: [],
+    }
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/palmares/relations', () =>
+        HttpResponse.json({
+          overview: {
+            distinct_players: 2,
+            allies_count: 2,
+            rivals_count: 0,
+            core_count: 2,
+            top_ally: { gamertag: 'Passeur', win_rate: 0.6, matches: 20 },
+            top_nemesis: null,
+          },
+          relations: [
+            {
+              ...base,
+              xuid: '1',
+              gamertag: 'Passeur',
+              assists: {
+                matches_measured: 8,
+                my_frags: 100,
+                partner_frags: 80,
+                received: { total: 31, low: 5, mid: 16, high: 10 },
+                given: { total: 12, low: 2, mid: 6, high: 4 },
+              },
+            },
+            { ...base, xuid: '2', gamertag: 'SansFilm' },
+          ],
+        }),
+      ),
+    )
+
+    renderWithProviders(<PalmaresRelationsPage />)
+
+    const binome = await screen.findByTestId('binome-assists')
+    expect(binome).toHaveTextContent("Il t'a assisté")
+    expect(binome).toHaveTextContent("Tu l'as assisté")
+    expect(binome).toHaveTextContent('31 · 31 %')
+    expect(binome).toHaveTextContent('15 % · 12')
+
+    const core = screen.getByTestId('core-ranking')
+    // Un papillon pour le fidèle mesuré, « — » pour l'autre, légende sous les barres.
+    expect(core.querySelectorAll('[data-testid="assist-butterfly"]').length).toBe(1)
+    expect(core).toHaveTextContent('—')
+    expect(core).toHaveTextContent('◀ te sert')
+    expect(core).toHaveTextContent('tu le sers ▶')
+  })
+
   it('toggle « coéquipiers » : défaut masqué + bascule du libellé', async () => {
     renderWithProviders(<PalmaresRelationsPage />)
 
