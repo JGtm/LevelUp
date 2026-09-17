@@ -18,7 +18,9 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import type { CompareMetricRow, CompareResponse, MatchEncounterBadge } from '@/lib/api/types'
 
 import { CompareBar } from './CompareBar'
+import { CompareBlock } from './CompareBlock'
 import { CompareMirrorRow } from './CompareMirrorRow'
+import { CompareWeaponsSection } from './CompareWeaponsSection'
 import { getCompareText, normalizeCompareLocale, resolveMetricLabel, type CompareText } from './i18n'
 import { useCompare } from './queries'
 import type { Locale } from '@/lib/i18n/locale'
@@ -96,11 +98,8 @@ interface CategoryColumnProps {
 function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryColumnProps) {
   if (rows.length === 0) return null
   return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-3 py-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
-      </div>
-      <div className="p-3 space-y-3">
+    <CompareBlock title={title}>
+      <div className="space-y-3">
         {rows.map((row) => {
           const label = resolveMetricLabel(text, row.metric)
           const availableA = row.value_a_available !== false
@@ -136,7 +135,7 @@ function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryCol
           )
         })}
       </div>
-    </div>
+    </CompareBlock>
   )
 }
 
@@ -163,11 +162,8 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
 
   if (rows.length === 0) return null
   return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-3 py-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
-      </div>
-      <div className="p-3 space-y-3">
+    <CompareBlock title={title}>
+      <div className="space-y-3">
         {rows.map(({ left, right }) => {
           const label = resolveMetricLabel(text, left.metric)
           // Player A est partagé entre left/right ; on prend le OR pour considérer
@@ -208,7 +204,7 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
           )
         })}
       </div>
-    </div>
+    </CompareBlock>
   )
 }
 
@@ -428,6 +424,10 @@ export function ComparePage() {
               metricsRight={rightData.metrics}
               text={text}
             />
+            {/* Après « Bilan & Rang » : le profil d'armes décrit un STYLE, il se lit une fois
+                les chiffres de performance parcourus. Le composant se retire de lui-même
+                quand aucune des deux réponses ne porte de profil. */}
+            <CompareWeaponsSection left={leftData} right={rightData} text={text} locale={locale} />
           </div>
         </div>
       )}
@@ -469,6 +469,11 @@ export function ComparePage() {
               />
             </div>
           )}
+
+          {/* Après « Bilan & Rang » : le profil d'armes décrit un STYLE, il se lit une fois
+              les chiffres de performance parcourus. Le composant se retire de lui-même quand
+              la réponse ne porte pas de profil (titre sans registre, B absent de la base). */}
+          <CompareWeaponsSection left={leftData} text={text} locale={locale} />
         </div>
       )}
     </div>

@@ -493,6 +493,20 @@ type CompareRepository interface {
 	// xuidB calculées sur les matchs où xuidA et xuidB sont tous deux participants.
 	// Retourne (nil, nil) si aucun match croisé exploitable — best-effort.
 	GetCrossMatchSample(ctx context.Context, xuidA, xuidB string) (*domain.CrossMatchSample, error)
+
+	// GetWeaponScope rend le scope du profil d'armes d'un joueur : TOUS ses matchs présents
+	// dans la base partagée (campagne exclue, mêmes clauses que GetLocalStats) et ses
+	// totaux sur cet ensemble.
+	//
+	// C'EST LE SEUL SCOPE, POUR LES DEUX JOUEURS (plan
+	// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, D2 amendé au lot 3-bis, 2026-09-17). Un
+	// second scope « croisé » (les matchs communs à A et B) a été retiré : il lisait la
+	// même table avec la même exclusion et n'y ajoutait qu'un EXISTS, donc son résultat
+	// était un SOUS-ENSEMBLE de celui-ci et la branche qui l'appelait était morte.
+	//
+	// (nil, nil) si le joueur n'a aucun match — best-effort : le profil est alors simplement
+	// absent, jamais un bloc à zéro.
+	GetWeaponScope(ctx context.Context, xuid, titleSlug string) (*domain.CompareWeaponScope, error)
 }
 
 // LeaderboardRepository fournit les données pour la page Classement.
@@ -569,6 +583,9 @@ func (n *noopCompareRepo) GetEncounterStats(_ context.Context, _, _ string) (*do
 	return nil, nil
 }
 func (n *noopCompareRepo) GetCrossMatchSample(_ context.Context, _, _ string) (*domain.CrossMatchSample, error) {
+	return nil, nil
+}
+func (n *noopCompareRepo) GetWeaponScope(_ context.Context, _, _ string) (*domain.CompareWeaponScope, error) {
 	return nil, nil
 }
 
