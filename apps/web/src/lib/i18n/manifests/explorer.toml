@@ -1026,6 +1026,19 @@ en = "Placement ({n, plural, one {# match left} other {# matches left}})"
 fr = "Par contexte"
 en = "By context"
 
+# ─── Bandeau briefing : bloc « Arme favorite » ─────────────────────────────────
+# L'arme favorite est celle qui a produit le PLUS DE FRAGS sur la sélection (ni la
+# plus tenue, ni la plus tirée). La note de couverture ne s'affiche que lorsque tous
+# les frags de la sélection n'ont pas pu être rattachés à une arme nommée.
+
+[explorer.briefing.weapons_title]
+fr = "Arme favorite"
+en = "Favorite weapon"
+
+[explorer.briefing.weapons_coverage]
+fr = "{n, plural, one {# frag mesuré} other {# frags mesurés}} sur {m}"
+en = "{n} of {m} kills measured"
+
 # ─── Bandeau briefing : tuile « Séries marquantes » (socle) et bande « Moments forts » ─
 
 [explorer.briefing.streaks_title]

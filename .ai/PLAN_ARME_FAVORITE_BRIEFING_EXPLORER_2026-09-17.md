@@ -226,23 +226,23 @@ local est le seul filet) PUIS `make check-types` après purge de
 
 ### Étape 5 — Front : rendu et i18n
 
-- [ ] Nouveau fichier `features/explorer/ExplorerBriefingWeapons.tsx` (D10) : composant
+- [x] Nouveau fichier `features/explorer/ExplorerBriefingWeapons.tsx` (D10) : composant
       `FavoriteWeaponBlock` à trois formes selon `slots` (D3), gabarit `TopArmes` (D2),
       liste `flex flex-col` (jamais de grille à colonnes nommées), note de couverture en
       `text-3xs text-muted-foreground` affichée si et seulement si
       `measured_kills < scope_kills` (D5).
-- [ ] `ExplorerBriefingModules.tsx` : calcule `dimensionLines` et `rankedLines`
+- [x] `ExplorerBriefingModules.tsx` : calcule `dimensionLines` et `rankedLines`
       (`showRanked ? kinds.length : 0`), appelle le helper, monte le bloc : empilé sous
       `ContextSplitCard` dans la même cellule quand `context_split` existe ; cellule propre
       sinon (D1).
-- [ ] `ExplorerBriefingModules.tsx` : les DEUX gardes de rendu incluent `weapons != null`
+- [x] `ExplorerBriefingModules.tsx` : les DEUX gardes de rendu incluent `weapons != null`
       (D1).
-- [ ] `lib/i18n/manifests/explorer.toml` : titre du bloc + note paramétrée `{n}`/`{m}`,
+- [x] `lib/i18n/manifests/explorer.toml` : titre du bloc + note paramétrée `{n}`/`{m}`,
       FR ET EN, FR sans anglicisme (« Arme favorite » / « Favorite weapon » ;
       « {n} frags mesurés sur {m} » / « {n} of {m} kills measured »).
-- [ ] `node apps/web/scripts/build_i18n_manifests.mjs` — régénère `generated/explorer.ts`
+- [x] `node apps/web/scripts/build_i18n_manifests.mjs` — régénère `generated/explorer.ts`
       (aucune cible npm/make ne le fait ; sans cet item les clés n'existent pas côté TS).
-- [ ] Couleurs : `fragClassColor` uniquement, aucun hex ni classe Tailwind couleur.
+- [x] Couleurs : `fragClassColor` uniquement, aucun hex ni classe Tailwind couleur.
 
 **Gate 5** : `make check-types`, `make test-web`, `npm run lint` (depuis `apps/web/`) verts ;
 `ExplorerBriefingStrip.test.tsx` — dont le test DP-3, INTOUCHÉ — vert.
@@ -312,6 +312,12 @@ Un écart de hauteur observé se traite par la formule D3, pas par une mesure.
   `npm run build-i18n` (et son appel dans le gate web) éviterait l'oubli — hors périmètre.
 - 2026-09-17 — Aucun job CI ne vérifie la dérive de `openapi.yaml` (`make openapi-check`
   n'est joué qu'en local) ; spectral et les tests YAML ne détectent pas un champ manquant.
+- 2026-09-17 — `PalmaresRelationsPage > rend les badges solid (duo gagnant)` dépasse le
+  délai de 5 s dans la suite web complète (13,5 s mesurés) et passe en 15/15 rejoué seul :
+  test sensible à la charge, sans rapport avec ce lot. À surveiller s'il rougit en CI.
+- 2026-09-17 — Le module « arme favorite » est monté dans `MatchHistoryCtx`, qui sert AUSSI
+  la page Historique. Celle-ci ne pose pas `include_briefing` : le briefing étendu n'est pas
+  construit, donc aucune requête d'armes ne part. Câblage inoffensif, noté pour mémoire.
 
 ## Journal d'exécution
 
@@ -341,6 +347,21 @@ Un écart de hauteur observé se traite par la formule D3, pas par une mesure.
 - **Étape 4 (2026-09-17)** — `favoriteWeaponSlots` ajouté à `ExplorerBriefing.logic.ts`
   (plancher de 2 lignes = hauteur de « Par contexte », place libre plafonnée à 2). Gate 4 :
   `npx vitest run src/features/explorer/ExplorerBriefing.logic.test.ts` sortie 0, 4 tests.
+
+- **Étape 5 (2026-09-17)** — `ExplorerBriefingWeapons.tsx` (carte à 1-2 lignes avec barre,
+  forme compacte d'une ligne nue quand `slots = 0`), montage dans
+  `ExplorerBriefingModules.tsx`, deux clés i18n FR/EN + manifestes recompilés.
+  Note de mise en œuvre non prévue par le plan mais dictée par lui : la cellule empilée
+  porte `self-start`. Étirée par la grille (défaut `stretch`), elle donnerait TOUTE sa
+  hauteur à `ContextSplitCard` (qui porte `h-full`) et l'arme favorite déborderait sous la
+  cellule — le même piège que les deux `h-full` concurrents de la rangée 3 de l'Explorer.
+  Gate 5 : `make check-types` sortie 0 (cache purgé), `npm run lint` sortie 0 (0 erreur,
+  27 avertissements préexistants), `npm run lint:colors` et `lint:fields` sortie 0,
+  `make test-web` sortie 2 avec UN SEUL échec — `PalmaresRelationsPage > rend les badges
+  solid (duo gagnant)`, « Test timed out in 5000ms », feature étrangère au diff : rejoué
+  seul, 15/15 verts, sortie 0. Flake de charge, consigné en Découvertes.
+  `ExplorerBriefingStrip.test.tsx` (dont DP-3, intouché) + les deux garde-rails du briefing
+  rejoués ensemble : 35 tests verts, sortie 0.
 
 ## Protocole de reprise de session
 
