@@ -24,6 +24,7 @@ import { api, API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client
 import type { BootstrapResponse } from '@/lib/api/types'
 import { postLoginDestination } from '@/features/auth/postLoginDestination'
 import { verificationLinkLabel } from '@/lib/formatters'
+import { CopyCodeButton } from '@/features/auth/CopyCodeButton'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -328,9 +329,12 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       </p>
       <div className="rounded-lg bg-card border px-6 py-4 text-center">
         <p className="mb-2 text-xs text-muted-foreground">{t('common.auth.xbox_code_to_enter')}</p>
-        <span className="text-3xl font-mono font-bold tracking-widest text-foreground select-all">
-          {userCode}
-        </span>
+        <div className="flex items-center justify-center gap-3">
+          <span className="text-3xl font-mono font-bold tracking-widest text-foreground select-all">
+            {userCode}
+          </span>
+          <CopyCodeButton code={userCode} />
+        </div>
       </div>
       {secondsLeft != null && secondsLeft > 0 && (
         <p className="text-center text-xs text-muted-foreground">

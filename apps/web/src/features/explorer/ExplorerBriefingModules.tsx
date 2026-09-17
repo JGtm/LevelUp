@@ -78,6 +78,8 @@ const DOMINANCE_ITEMS: {
     labelKey: 'narrative.dominance.contre_remontada',
     token: 'narrative-contre-remontada',
   },
+  { field: 'sabordages', labelKey: 'narrative.dominance.sabordage', token: 'narrative-sabordage' },
+  { field: 'abnegations', labelKey: 'narrative.dominance.abnegation', token: 'narrative-abnegation' },
 ]
 
 export function ExplorerBriefingModules({

@@ -6399,6 +6399,8 @@ export interface components {
         };
         ExplorerBriefingDominance: {
             /** Format: int64 */
+            abnegations?: number;
+            /** Format: int64 */
             contre_remontadas?: number;
             /** Format: int64 */
             debandades?: number;
@@ -6408,6 +6410,8 @@ export interface components {
             humiliations?: number;
             /** Format: int64 */
             remontadas?: number;
+            /** Format: int64 */
+            sabordages?: number;
         };
         ExplorerBriefingPeakRank: {
             rating_type: string;

@@ -47,6 +47,8 @@ func TestIsKnownDominanceFlag(t *testing.T) {
 		DominanceRemontada:   true,
 		DominanceDebandade:   true,
 		DominanceContreRem:   true,
+		DominanceSabordage:   true,
+		DominanceAbnegation:  true,
 		DominanceFlag(99):    false,
 		DominanceFlag(-1):    false,
 	}
@@ -67,6 +69,8 @@ func TestDominanceFlagValues_Stable(t *testing.T) {
 		DominanceRemontada:   3,
 		DominanceDebandade:   4,
 		DominanceContreRem:   5,
+		DominanceSabordage:   6,
+		DominanceAbnegation:  7,
 	}
 	for flag, expected := range want {
 		if int(flag) != expected {
@@ -78,8 +82,8 @@ func TestDominanceFlagValues_Stable(t *testing.T) {
 func TestAllDominanceFlags(t *testing.T) {
 	t.Parallel()
 	all := AllDominanceFlags()
-	if len(all) != 6 {
-		t.Errorf("AllDominanceFlags len = %d, want 6", len(all))
+	if len(all) != 8 {
+		t.Errorf("AllDominanceFlags len = %d, want 8", len(all))
 	}
 	if all[0] != DominanceNone {
 		t.Error("DominanceNone should be first in AllDominanceFlags")

@@ -101,12 +101,14 @@ export type SemanticToken =
   // Composition de la rampe qui l'emploie : `heatmapRampTokens('intensity')`.
   | 'extreme'
 
-  // ── Badges narratifs — fond (5) ────────────────────────────────────────────
+  // ── Badges narratifs — fond (7) ────────────────────────────────────────────
   | 'narrative-dominant'
   | 'narrative-humiliation'
   | 'narrative-remontada'
   | 'narrative-debacle'
   | 'narrative-contre-remontada'
+  | 'narrative-sabordage'
+  | 'narrative-abnegation'
 
   // ── Badges encounter (4 + 5 solid hub Relations) ───────────────────────────
   | 'narrative-encounter-ally-plus'
@@ -120,13 +122,15 @@ export type SemanticToken =
   | 'narrative-encounter-proie-favorite'
   | 'narrative-encounter-cross-game'
 
-  // ── Badges narratifs — texte (5) ───────────────────────────────────────────
+  // ── Badges narratifs — texte (7) ───────────────────────────────────────────
   // Texte sur fond coloré — calculé pour assurer le contraste WCAG AA
   | 'narrative-dominant-text'
   | 'narrative-humiliation-text'
   | 'narrative-remontada-text'
   | 'narrative-debacle-text'
   | 'narrative-contre-remontada-text'
+  | 'narrative-sabordage-text'
+  | 'narrative-abnegation-text'
 
   // ── Classes de frags (11) — sunburst « Répartition des frags » ─────────────
   // Famille DÉDIÉE (2026-08-29) : les classes empruntaient des tokens d'autres
@@ -193,8 +197,10 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'extreme',
   'narrative-dominant', 'narrative-humiliation', 'narrative-remontada',
   'narrative-debacle', 'narrative-contre-remontada',
+  'narrative-sabordage', 'narrative-abnegation',
   'narrative-dominant-text', 'narrative-humiliation-text', 'narrative-remontada-text',
   'narrative-debacle-text', 'narrative-contre-remontada-text',
+  'narrative-sabordage-text', 'narrative-abnegation-text',
   'narrative-encounter-ally-plus', 'narrative-encounter-tough-enemy',
   'narrative-encounter-coriace', 'narrative-encounter-ordinal',
   'narrative-encounter-duo-gagnant', 'narrative-encounter-cameleon',

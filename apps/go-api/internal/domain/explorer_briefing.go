@@ -46,7 +46,7 @@ type ExplorerBriefing struct {
 	// de défaites), calculées sur TOUT le scope filtré (P-9). Nil si non pertinent
 	// (low sample, ou aucune row datée). Un segment à zéro est omis côté front.
 	Streaks *ExplorerBriefingStreaks `json:"streaks,omitempty"`
-	// Dominance : compteurs de moments forts (DominanceFlag 1..5) du scope. Nil si
+	// Dominance : compteurs de moments forts (DominanceFlag 1..7) du scope. Nil si
 	// non pertinent (low sample, ou tous les compteurs à zéro).
 	Dominance *ExplorerBriefingDominance `json:"dominance,omitempty"`
 }
@@ -215,7 +215,7 @@ type ExplorerBriefingStreaks struct {
 	WorstLossStreak int `json:"worst_loss_streak,omitempty"`
 }
 
-// ExplorerBriefingDominance compte les moments forts (DominanceFlag 1..5,
+// ExplorerBriefingDominance compte les moments forts (DominanceFlag 1..7,
 // cf. analysis.DominanceFlag*) du scope. Émis hors low_sample ; nil si tous les
 // compteurs sont à zéro (dégradation par omission). Les catégories à zéro sont
 // omises côté front (les libellés réutilisent narrative.dominance.*).
@@ -225,4 +225,6 @@ type ExplorerBriefingDominance struct {
 	Remontadas       int `json:"remontadas,omitempty"`
 	Debandades       int `json:"debandades,omitempty"`
 	ContreRemontadas int `json:"contre_remontadas,omitempty"`
+	Sabordages       int `json:"sabordages,omitempty"`
+	Abnegations      int `json:"abnegations,omitempty"`
 }
