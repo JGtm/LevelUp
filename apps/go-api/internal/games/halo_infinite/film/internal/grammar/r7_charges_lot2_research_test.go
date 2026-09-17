@@ -84,24 +84,19 @@ func r7ValeurTagA(br *Lecteur, tag uint64, ctx r7Ctx) bool {
 	return false
 }
 
-// r7ValeurTagB consomme la valeur d'un element du sous-sac du type 82 (union 0x1407f0ebc).
-func r7ValeurTagB(br *Lecteur, tag uint64) {
-	if r7CompteTags {
-		r7TagsB[tag]++
-	}
-	switch tag {
-	case 0:
+// r7SousSac consomme le sous-sac du type 82 (FUN_14080b034) PAR LE LECTEUR DE PRODUCTION
+// (`consumeSacTexte`, lot 3.6.a) et alimente le recensement d'etiquettes de l'instrument.
+//
+// La version manuscrite de cet instrument (`r7ValeurTagB`) lisait exactement les memes bits ;
+// elle a disparu avec le lecteur de production, qui porte desormais la grammaire relevee chez
+// l'ecrivain — une seule copie dans le depot (CLAUDE.md regle 6).
+func r7SousSac(br *Lecteur) {
+	sac := consumeSacTexte(br)
+	if !r7CompteTags {
 		return
-	case 1:
-		r7Porte5(br)
-	case 2: // 0x142c70cd0 : R(1) g ; si g==0 : R(32) ; sinon R(24)
-		if !br.ReadBit() {
-			br.Skip(32)
-		} else {
-			br.Skip(24)
-		}
-	default:
-		br.Skip(32)
+	}
+	for _, e := range sac.Entrees {
+		r7TagsB[e.SousType]++
 	}
 }
 
@@ -118,14 +113,8 @@ func r7SkipChargeLot2(br *Lecteur, typ int, ctx r7Ctx) bool {
 				return false
 			}
 		}
-		if br.ReadBit() { // sous-sac optionnel (FUN_14080b034)
-			br.Skip(32)
-			m := br.ReadBits(3)
-			for i := uint64(0); i < m; i++ {
-				r7ValeurTagB(br, br.ReadBits(3))
-			}
-		}
-		br.Skip(32) // masque de 32 R(1) inconditionnels (FUN_14080ae28)
+		r7SousSac(br) // sous-sac optionnel (FUN_14080b034), porte R(1) comprise
+		br.Skip(32)   // masque de 32 R(1) inconditionnels (FUN_14080ae28)
 		return true
 
 	// --- 15 Script (lecteur 0x14080bb4c) : AUTO-DELIMITE ---
