@@ -55,17 +55,37 @@ type calibration struct {
 	// ([profile.MapQuantEntry.PrecisionAbsolue]). Elles PRIMENT (V17, M3-Q8).
 	LueAxisW  [3]uint
 	LueIndexW uint
-	// AxisW / IndexW : ce que le BALAYAGE designe. Depuis le lot 3.4.1 il ne DECIDE plus : il
-	// sert d ORACLE, confronte aux valeurs lues ci-dessus.
-	AxisW, IndexW uint
+	// AxisW : la largeur d axe UNIFORME que le BALAYAGE designe. Depuis le lot 3.4.1 elle ne
+	// DECIDE plus : elle sert d ORACLE, confrontee a [LueAxisW].
+	AxisW uint
+	// PoigneeIndexW : LA LARGEUR DU MOT DE POIGNEE, ET LE BALAYAGE LA DECIDE (lot 3.4.1, apres
+	// la mesure d equivalence du 2026-09-17).
+	//
+	// ELLE N EST PAS LA LARGEUR D INDEX DE PLAGE, et les confondre a coute une lecture publiee.
+	// `Traversal.IndexW` est la largeur du mot que `consumePositionHandleTail` lit dans la
+	// queue de poignee (`FUN_1406d3140`, bitlen du compte de poignees) ; la largeur d INDEX DE
+	// PLAGE (`DAT_144632be0`) est celle de la carte, et elle vit dans `WorldObject.IndexW`.
+	// Aucune source lue ne donne la premiere : ni le catalogue, ni l executable relu a ce jour.
+	// Le balayage reste donc son SEUL pourvoyeur — repli `repli_largeur_mot_de_poignee_inferee`
+	// au registre — exactement comme `param_4`.
+	//
+	// CE QUE LA MESURE A MONTRE : en demotant l inference en oracle, le lot 3.4.1 avait retire
+	// cette valeur sans rien mettre a sa place ; elle retombait a l invariant 1. Sur
+	// `a521164d`, `ScanAbilityImpulses` rend 1 impulsion a la largeur 2 et ZERO a 1 comme a 3 —
+	// une lecture publiee perdue, vue par `replay-equiv` (`abilityImpulses` 1 -> 0, artefact
+	// -14 octets). Les largeurs d AXE, elles, restent celles de la carte : deux grandeurs, deux
+	// noms, deux sources (D5 (3.4.1), fermee par ce commit).
+	PoigneeIndexW uint
 	// CarteLue : les largeurs viennent-elles de l entree de catalogue de la CARTE du match ?
 	// FAUX = repli `repli_carte_absente_largeurs_par_defaut` — l invariant conserve, c est-a-dire
 	// les largeurs d UNE carte (`cliffhanger`) appliquees a celle-ci. Jamais un zero muet : le
 	// rendu lisible le dit, et `Decode` l avertit par film.
 	CarteLue bool
-	// Desaccords : nombre de grandeurs ou l inference CONTREDIT la valeur lue — la largeur
-	// d axe (hors du voisinage du triplet lu) et la largeur d index de plage. Zero = l oracle
-	// ne contredit pas la carte. Cf. [infererLargeurs] pour la portee exacte du critere.
+	// Desaccords : nombre de grandeurs ou l inference CONTREDIT la valeur lue. UNE SEULE
+	// grandeur y entre — la largeur d axe, hors du voisinage du triplet lu : c est la seule que
+	// l oracle et la carte disent toutes les deux. La largeur du mot de poignee en est SORTIE
+	// avec D5 (3.4.1) : comparer une grandeur decidee a une grandeur lue qui n est pas la meme
+	// rendait un desaccord qui ne voulait rien dire.
 	Desaccords    int
 	Score, Median int
 	Flat          bool // le profil est plat : l inference n a rien designe de net
@@ -93,9 +113,10 @@ func (c calibration) String() string {
 	if !c.CarteLue {
 		source = "DEFAUT (carte absente)"
 	}
-	return fmt.Sprintf("LU axisW=%v indexW=%d [%s] | ORACLE axisW=%d indexW=%d [%s] "+
-		"desaccords=%d | recordStateParam=%d [croissance x%.3f]",
-		c.LueAxisW, c.LueIndexW, source, c.AxisW, c.IndexW, src, c.Desaccords, c.RSP, c.RSPRatio)
+	return fmt.Sprintf("LU axisW=%v indexW_plage=%d [%s] | ORACLE axisW=%d [%s] desaccords=%d "+
+		"| DECIDE indexW_poignee=%d recordStateParam=%d [croissance x%.3f]",
+		c.LueAxisW, c.LueIndexW, source, c.AxisW, src, c.Desaccords,
+		c.PoigneeIndexW, c.RSP, c.RSPRatio)
 }
 
 // bornes de l espace balaye : 21 largeurs d axe x 3 largeurs d index = 63 configurations.
@@ -124,19 +145,29 @@ func calibrate(f *film, tl *timeline, views int, carte *profile.MapQuantEntry) c
 	return res
 }
 
-// infererLargeurs : L ORACLE. Il balaie les 63 configurations, retient celle qui maximise le
-// nombre de records de bipede lus sans desynchronisation, et COMPTE les desaccords avec ce que
-// le profil a pose. Il n ECRIT rien dans `res.Profil`.
+// infererLargeurs : L ORACLE DES LARGEURS D AXE, ET LE SEUL POURVOYEUR DE LA LARGEUR DU MOT DE
+// POIGNEE. Il balaie les 63 configurations et retient celle qui maximise le nombre de records
+// de bipede lus sans desynchronisation.
+//
+// DEUX GRANDEURS, DEUX SORTS, ET C EST TOUT LE CORRECTIF DU 2026-09-17 :
+//
+//	LARGEUR D AXE        la CARTE decide (catalogue, loi verifiee 79 fois sur 79) ; le balayage
+//	                     ne fait que COMPTER ses desaccords avec elle.
+//	MOT DE POIGNEE       aucune source lue ne la donne ; le balayage la DECIDE et la pose sur
+//	                     le profil retenu (`Traversal.IndexW`), comme il decide `param_4`.
+//
+// Les confondre a coute une lecture publiee : cf. le champ [calibration.PoigneeIndexW].
 //
 // LE GARDE-FOU EST INCHANGE : une configuration qui ne domine pas la MEDIANE d un facteur 2
 // signifie que le parametre reel n est pas dans l espace balaye. L inference ne designe alors
-// rien (`Flat`), et il n y a pas de desaccord a compter — un oracle qui ne voit rien ne
-// contredit personne.
+// rien (`Flat`), la largeur du mot de poignee reste celle de l invariant, et il n y a pas de
+// desaccord a compter — un oracle qui ne voit rien ne contredit personne.
 func infererLargeurs(f *film, tl *timeline, views int, res *calibration) {
 	sample := calibSample(f, calibSampleSize)
 	cfg := grammar.DefaultFrameConfig()
 	cfg.Profil = res.Profil
 	saved := cfg.Profil.Mouvement.Traversal
+	lues := cfg.Profil.Mouvement.WorldObject
 
 	type cand struct {
 		aw, iw uint
@@ -145,20 +176,32 @@ func infererLargeurs(f *film, tl *timeline, views int, res *calibration) {
 	out := make([]cand, 0, (axisWMax-axisWMin+1)*(indexWMax-indexWMin+1))
 	for iw := indexWMin; iw <= indexWMax; iw++ {
 		for aw := axisWMin; aw <= axisWMax; aw++ {
+			// LA LARGEUR D INDEX DE PLAGE NE SE BALAIE PLUS : elle vient de la carte, et la
+			// faire varier ferait juger l espace sur une valeur que le catalogue donne. Ce que
+			// `iw` fait varier ici est la largeur du MOT DE POIGNEE, et elle seule.
+			cfg.Profil.Mouvement.WorldObject = lues
 			cfg.Profil.Mouvement.WorldObject.AxisW = [3]uint{aw, aw, aw}
-			cfg.Profil.Mouvement.WorldObject.IndexW = iw
 			cfg.Profil.Mouvement.Traversal = profile.PrecisionDescriptor{IndexW: iw, AxisW: saved.AxisW}
 			out = append(out, cand{aw, iw, countBipedRecords(sample, tl, cfg, views)})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].score > out[j].score })
 	med := out[len(out)/2].score
-	res.AxisW, res.IndexW, res.Score, res.Median = out[0].aw, out[0].iw, out[0].score, med
+	res.AxisW, res.PoigneeIndexW, res.Score, res.Median = out[0].aw, out[0].iw, out[0].score, med
 	if float64(out[0].score) < flatRatio*float64(max1(med)) {
+		// PROFIL PLAT : l inference ne designe rien de net. Elle ne contredit donc personne — et
+		// la largeur du mot de poignee reste celle de l invariant, faute de mieux.
 		res.Flat = true
+		res.PoigneeIndexW = saved.IndexW
+		res.Profil.Mouvement.Traversal.IndexW = saved.IndexW
 		return
 	}
-	// LE DESACCORD SE COMPTE A LA PORTEE DE L ORACLE, ET PAS PLUS FINEMENT (lot 3.4.1).
+	// LA LARGEUR DU MOT DE POIGNEE EST RETENUE, ET C EST LA SEULE VALEUR QUE CE BALAYAGE DECIDE
+	// ENCORE. Aucune source lue ne la donne (ni le catalogue, ni l executable relu a ce jour) :
+	// repli `repli_largeur_mot_de_poignee_inferee` au registre, avec sa cible et son critere.
+	res.Profil.Mouvement.Traversal.IndexW = res.PoigneeIndexW
+	// LE DESACCORD SE COMPTE A LA PORTEE DE L ORACLE, ET SUR LA SEULE GRANDEUR QUE LES DEUX
+	// SOURCES DISENT (lot 3.4.1, D5 fermee).
 	//
 	// L oracle balaie une largeur UNIFORME ; la verite est un TRIPLET par axe (17/17/15 sur
 	// Fragmentation). Exiger l egalite ferait donc un desaccord sur toute carte dont les trois
@@ -166,10 +209,11 @@ func infererLargeurs(f *film, tl *timeline, views int, res *calibration) {
 	// Ce qu une sonde uniforme peut dire, et qu elle dit ici : la valeur lue est-elle DANS son
 	// voisinage ? Un oracle a 16 contre `[17 17 15]` ne contredit pas la carte ; un oracle a 16
 	// contre `[13 13 14]` — l invariant applique a une carte qui n est pas la sienne — si.
+	//
+	// LA LARGEUR D INDEX N Y ENTRE PLUS : celle que l oracle retient est le mot de POIGNEE,
+	// celle que la carte donne est l index de PLAGE. Les comparer rendait un desaccord qui ne
+	// disait rien — et, pire, avait fait croire que le balayage pouvait cesser de la poser.
 	if res.AxisW < minLargeur(res.LueAxisW) || res.AxisW > maxLargeur(res.LueAxisW) {
-		res.Desaccords++
-	}
-	if res.LueIndexW != res.IndexW {
 		res.Desaccords++
 	}
 }
