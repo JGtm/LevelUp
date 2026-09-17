@@ -23,6 +23,7 @@ import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { Tooltip } from '@/components/ui/tooltip'
 import { AllyEnemySplitBar, KDSplitBar } from '@/features/_shared/EncounterSplitBars'
+import { formatKDCross, formatKDRatio, formatRelativeFor } from '@/features/_shared/encounters/format'
 import type { Locale } from '@/lib/i18n/locale'
 
 // ─── Accent KPI selon le sentiment du contenu (barre colorée en haut) ────────
@@ -46,62 +47,6 @@ interface Props {
   stats: ExplorerEncounterStats
   /** Locale UI ('fr' | 'en') — défaut 'fr' si autre valeur. */
   locale: string
-}
-
-// ─── Helpers de formatage (copiés à l'identique de MatchEncountersTable.tsx) ─
-
-function formatKDCross(
-  kills: number | null | undefined,
-  deaths: number | null | undefined,
-): string {
-  if (kills == null && deaths == null) return '—'
-  return `${kills ?? 0}/${deaths ?? 0}`
-}
-
-function formatKDRatio(kills: number | null | undefined, deaths: number | null | undefined): string {
-  if (kills == null || deaths == null) return '—'
-  if (deaths === 0) return kills > 0 ? '∞' : '—'
-  return (kills / deaths).toFixed(2)
-}
-
-function formatRelativeFR(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
-  const diffMs = Date.now() - date.getTime()
-  const minutes = Math.round(diffMs / 60_000)
-  if (minutes < 1) return "à l'instant"
-  if (minutes < 60) return `il y a ${minutes} min`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return hours <= 1 ? 'il y a 1 h' : `il y a ${hours} h`
-  const days = Math.round(hours / 24)
-  if (days === 1) return 'hier'
-  if (days < 7) return `il y a ${days} j`
-  const weeks = Math.round(days / 7)
-  if (weeks < 5) return weeks <= 1 ? 'il y a 1 sem.' : `il y a ${weeks} sem.`
-  const months = Math.round(days / 30)
-  if (months < 12) return months <= 1 ? 'il y a 1 mois' : `il y a ${months} mois`
-  const years = Math.round(days / 365)
-  return years <= 1 ? 'il y a 1 an' : `il y a ${years} ans`
-}
-
-function formatRelativeEN(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
-  const diffMs = Date.now() - date.getTime()
-  const minutes = Math.round(diffMs / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes} min ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} h ago`
-  const days = Math.round(hours / 24)
-  if (days === 1) return 'yesterday'
-  if (days < 7) return `${days} d ago`
-  const weeks = Math.round(days / 7)
-  if (weeks < 5) return `${weeks} w ago`
-  const months = Math.round(days / 30)
-  if (months < 12) return `${months} mo ago`
-  const years = Math.round(days / 365)
-  return years <= 1 ? '1 y ago' : `${years} y ago`
 }
 
 // SplitBar / AllyEnemySplitBar / KDSplitBar : extraits vers
@@ -140,7 +85,7 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
   const manifestLocale: Locale = locale === 'en' ? 'en' : 'fr'
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, manifestLocale, values)
-  const formatRelative = manifestLocale === 'en' ? formatRelativeEN : formatRelativeFR
+  const formatRelative = formatRelativeFor(manifestLocale)
 
   const ally = stats.ally_count ?? null
   const enemy = stats.enemy_count ?? null
