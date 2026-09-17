@@ -1,6 +1,6 @@
 package grammar
 
-// rev_chronique_archive.go — LA CHRONIQUE DE [Rev], RANGS `.12` A `.26`.
+// rev_chronique_archive.go — LA CHRONIQUE DE [Rev], RANGS `.12` A `.28`.
 //
 // # POURQUOI UNE ARCHIVE (2026-09-18, lot 2.4.2)
 //
@@ -335,3 +335,122 @@ package grammar
 // declarations a deplace des fonctions, et le garde-rail G1 lit ces ancres sur pieces.
 //
 // `facts.Rev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
+
+// ENTREE `grammar-2026-09-15.27` (2026-09-17, lot 2.3 — RANG PROVISOIRE) : `.26` -> `.27`.
+// AUCUN OCTET N EST LU AUTREMENT.
+//
+// LE PROFIL DE BALAYAGE REMPLACE L HERITAGE PAR L ETAT DU PROCESSUS. La variable `herite`
+// (`profil_herite.go`, lots 2.2.a/b/e) — traversee, largeur d axe absolue, largeurs des objets
+// du monde, decoupage MPP, `param_4` force — disparait. Ce qu elle portait devient
+// [ProfilDeBalayage], une VALEUR : le lecteur en tient une copie (`Lecteur.p`), le contexte du
+// film celle du decodage courant, et `FrameConfig.Profil` la passe aux portes de balayage.
+//
+// LA CALIBRATION DE `killsource` VOYAGE DESORMAIS PAR LES OPTIONS (condition D1 du pilote).
+// `replaybuild.BuildBytes` decode `killsource` PUIS appelle `replay.BuildFromFilm` dans le MEME
+// processus ; jusqu ici la cuisson heritait des largeurs calibrees par l ETAT DU PROCESSUS —
+// heritage REEL et VOULU, mais invisible et incompatible avec deux decodages en parallele. Le
+// chemin est explicite : `killsource.Result.ProfilCalibre` -> `replay.Options.ProfilDeBalayage`
+// -> `FilmContext`. Kill-feed non decode : `killsource.ProfilDeDepart()` — l invariant plus le
+// `param_4` force a zero, ce que `Decode` laissait derriere lui meme en echec. Pas STRUCTUREL.
+//
+// LA DOUBLE ECRITURE DATEE EST RETIREE A SA DATE CIBLE : `replay.doubleEcritureGlobales`
+// (bascule 2026-09-17, cible « lot 2.3 », critere « 0 variable mutable ») disparait avec la
+// variable qu elle alimentait ; `installWorldObjectPrecision` pose sur le CONTEXTE.
+//
+// LES ENVELOPPES D2 (`ScanFilm*(dir)`) POSENT LE DECOUPAGE LU DANS LE FILM sur leur propre
+// contexte — le geste que chaque instrument repetait a la main, et dont l oubli « desalignait les
+// desers sans lever d erreur ». La CUISSON prend les largeurs du CATALOGUE, jamais l auto-detection.
+//
+// LES DOUZE BASCULES DE GRAMMAIRE SUIVENT LE MEME CHEMIN (famille 2 du lot) : les A/B de
+// retro-ingenierie — corruption per-composant, queue d un record NEW, deser d etat par
+// archetype, `simulation-state` complet, portee baseline, grammaire d ECRIVAIN du chemin absolu
+// d i0, corps i54 et i59, inference de chaine, generation stricte, et les DEUX tables de
+// largeurs — deviennent [GrammaireBalayage], un champ du profil. Ratchet : 42 -> 30.
+//
+// LA GENERATION STRICTE ETAIT LE SECOND HERITAGE SILENCIEUX, desormais ecrit :
+// `killsource.resetGlobals` levait `SetStrictGeneration(true)` pour tout le PROCESSUS sans
+// jamais le rabaisser. [killsource.ProfilDeDepart] le porte, `replaybuild` le passe.
+//
+// UN CADRE DE TRAME SE PREND AU CONTEXTE ([FilmContext.CadreDeBalayage]), plus a
+// `DefaultFrameConfig()` seul, qui rend l INVARIANT : s en contenter decoderait aux largeurs
+// d une autre carte — ce que l heritage masquait (`ScanObjectDeaths`).
+//
+// LA CAPTURE DE POSITION SUIT (famille 3 du lot). Six variables de paquet decrivaient UN record
+// en cours de decodage — ou le composant i0 a commence, son slot, le monde d accumulation et son
+// slot, le repli d absolue : elles deviennent `captureDePosition`, un champ du LECTEUR. La
+// septieme, l histogramme des index de plage absolus, est un COMPTEUR et rejoint `Observation`.
+// `lastRepVersion` / `LastRepVersion()` : SUPPRIMES (aucun appelant). Ratchet 30 -> 23, dont
+// UNE SEULE encore ecrite (`observateur`).
+//
+// L OBSERVATEUR EST LA DERNIERE A PARTIR (famille 4 du lot), avec les VINGT-HUIT reglages
+// publics qui l ecrivaient. Chaque balayage construit le SIEN et le pose AVEC son profil par un
+// porteur unique — `ContexteDeLecture{Profil, Obs}` — dont les deux champs ont une nature
+// OPPOSEE : le profil DECIDE des largeurs, l observateur ne fait que RECEVOIR. Les onze
+// `publishXxx` et les compteurs d issue de chaine deviennent des methodes nil-safe
+// d `Observation` ; `ChainStats`, `ResetChainStats`, `ChainRepairedCount`, `InferResyncCount`
+// (accesseurs DE PROCESSUS sans appelant) sont supprimes.
+//
+// RATCHET : 23 -> 22 puis 21 (resserre a la revue), et surtout **ZERO variable de paquet
+// ECRITE** : quatre erreurs sentinelles, seize tables de grammaire, un dedoublonneur.
+//
+// LE VERROU DE PROCESSUS DISPARAIT (famille 5, item 2.3.1) : `LockProcessDecode` et son fichier
+// `decode_gate.go` sont SUPPRIMES, avec les 373 sites d appel (276 fichiers) qui le prenaient.
+// Son en-tete nommait DEUX raisons d exister — l etat de paquet du decodeur, et « la table sans
+// verrou » des largeurs de bouchon ; les quatre familles precedentes ont retire l une (devenue
+// VALEUR du lecteur) et l autre (CHAMP de l observation). Un verrou prive de ses deux raisons
+// n est plus une protection mais une serialisation. Le verrou INTER-PROCESSUS
+// `filmproc.AcquireSolo` n est PAS concerne : il garde la RAM de la machine, et il reste.
+//
+// DEUX RATCHETS FIGENT LE RESULTAT (item 2.3.2). `TestAucunVarDePaquetEcriteDansFilmdec` refuse
+// par AST toute ecriture visant une variable de paquet de `filmdec`.
+// `TestAucunVerrouDeDecodageDePaquet` remplace l ancien ratchet INVERSE qui EXIGEAIT le verrou :
+// il interdit `LockProcessDecode`, `processDecodeMu` et un fichier nomme `decode_gate.go`.
+//
+// DEUX FILMS SE DECODENT EN PARALLELE (item 2.3.3) : `TestDeuxFilmsEnParallele` decode
+// `a521164d` (HI_1_4_1) et `fb1a1a72` (HI_1_13_0) en serie puis dans deux goroutines ;
+// empreintes identiques a l octet, sous `-race`.
+//
+// `facts.Rev` ne bouge PAS : `killsource/` change de FORME (la calibration rend un
+// profil, `resetGlobals` disparait) mais les lignes PRODUITES sont identiques a l octet. Son
+// golden est regenere pour refiger le couple (revision, empreinte). `SchemaVersion` reste 60.
+//
+// ENTREE `grammar-2026-09-15.28` (2026-09-18, lot 2.4.1 — RANG PROVISOIRE) : `.27` -> `.28`.
+// AUCUN OCTET N EST LU AUTREMENT, et c est PROUVE bit a bit, pas suppose.
+//
+// LE LECTEUR DE BITS DESCEND DANS LA COUCHE SOURCE. `source.Bits` est desormais LE lecteur
+// du depot : MSB-first big-endian, bourrage a zero au-dela du tampon, lecture par mot de 64
+// bits. [Lecteur] ne porte plus ni tampon ni position — il EMBARQUE `*source.Bits` et n y
+// ajoute que ce qui appartient a la grammaire : le profil de largeurs, la capture de position,
+// l observateur, et le codec [Lecteur.ReadSignedVarWidth]. `filmdec/bits_word.go` disparait :
+// sa lecture par mot est [source.BitsAt], et ses trois derniers appelants directs
+// (`PeekBits`, `kfReadBits`, `readBitsAt`) y passent.
+//
+// `killsource.evReader` EST ABSORBE (item 2.4.1). Le deuxieme des sept lecteurs de bits du
+// depot — son type, sa boucle `bitsWide`, et les trois primitives de position du paquet
+// `bitAt` / `bits32` / `bitsN` — est SUPPRIME ; ses 23 sites passent par [source.BitAt] et
+// [source.BitsAt]. `bits32` lisait CINQ octets puis decalait, ce qui n est pas la boucle de
+// la lecture par mot : son equivalence est prouvee comme les autres.
+//
+// LE DRAPEAU DE DEBORDEMENT RESTE AU MARCHEUR, PAS AU LECTEUR (arbitrage V15 (3)). Le lecteur
+// canonique garde la semantique du MOTEUR (bourrage a zero) ; la MEFIANCE de la chaine
+// d evenements — sans laquelle une chaine desynchronisee lit des evenements valides apres la
+// fin du paquet — vit dans `killsource.curseurEv`, qui teste `Remaining()` avant chaque lecture.
+// `bp+n > len(pl)*8` et `Remaining() < n` sont la MEME condition : aucune valeur lue ne change,
+// et `Skip` reste borne exactement la ou `evReader.skip` le bornait (chez le marcheur).
+//
+// LES DEUX PREUVES. (1) Appel par appel, sur les positions REELLES des chaines des dix bobines
+// versionnees — 1 114 paquets a events, 109 168 positions, 72 largeurs par position — les copies
+// de reference des anciens lecteurs et le lecteur canonique rendent la meme valeur, la meme
+// position de sortie et le meme drapeau (`killsource/equivalence_lecteur_test.go`). (2) De bout
+// en bout, les triplets (code, bit de debut, bit de fin) de chaque chaine, plus les six champs
+// de chaque kill-event, sont IDENTIQUES a un golden produit par le code de la BASE, avant
+// l absorption (`killsource/testdata/chaines_evenements.golden`, sans porte `-update`).
+//
+// L EMPREINTE HACHE DESORMAIS QUATRE RACINES : `internal/analysis/filmsource` rejoint `filmdec`,
+// `killsource` et `objectiveevents`. Sans cela ce lot aurait OUVERT UN TROU — la lecture de bits
+// qui vient d y descendre aurait pu changer sans que `grammar.Rev` bouge.
+//
+// `facts.Rev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet (c est
+// exactement ce que les deux preuves ci-dessus etablissent), seule sa source change. Son golden
+// est regenere pour refiger le couple (revision, empreinte). `SchemaVersion` reste 60.
+//

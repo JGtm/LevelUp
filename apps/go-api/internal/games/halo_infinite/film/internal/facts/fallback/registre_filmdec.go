@@ -205,27 +205,14 @@ var registreFilmdec = []Repli{
 		CompteurBranche: false,
 		CibleComptage:   comptageParFilmContext,
 	},
-	{
-		Nom:       "repli_largeur_absolue_uniforme",
-		Fait:      "la largeur de quantification des trois axes d'un chemin absolu i0",
-		Mecanisme: "une largeur UNIFORME (14) s'applique aux trois axes des que le reglage global est pose — ce qui est toujours vrai en production",
-		Condition: CondInconditionnel,
-		Ordre:     OrdreDevantLaLecture,
-		Sites: []Site{{
-			Fichier: pkgFilmdec + "position_capture.go",
-			Ancre:   "if w := br.absoluteAxisW(); w > 0 {",
-		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 3.4 (largeurs par carte et par build)",
-		// ORDRE `devant_la_lecture` : le global de precision des objets du monde porte les
-		// largeurs PAR AXE de la carte, et le reglage global uniforme les ecrase pour les trois.
-		// (Le nom de ce global n'est pas cite ici : `filmdec/world_object_precision_guard_test.go`
-		// exige que tout fichier qui le mentionne dise d'ou il tient ses largeurs, et un registre
-		// documentaire n'en lit aucune.)
-		CritereRetrait:  "les trois axes prennent leur largeur du profil ; le reglage global uniforme est retire avec ses tests",
-		CompteurBranche: false,
-		CibleComptage:   comptageParFilmContext,
-	},
+	// `repli_largeur_absolue_uniforme` EST RETIRE LE 2026-09-17 (lot 3.4.1-a), ET SON CRITERE
+	// EST TENU : « les trois axes prennent leur largeur du profil ; le reglage global uniforme
+	// est retire avec ses tests ». Le champ `profile.MovementProfile.AbsoluteAxisW` n'existe
+	// plus, ni son accesseur `Lecteur.absoluteAxisW` — le chemin absolu d i0 lit les trois
+	// largeurs PAR AXE du descripteur de la carte ([profile.MapQuantEntry.PrecisionAbsolue]),
+	// la meme table que le chemin world-object. Le temoin de mutation qui le prouve est
+	// `grammar.TestProfilDePositionChangeLaConsommationDeBits`, cas `WorldObject.AxisW` : sous
+	// l uniforme il mesurait 49 bits des deux cotes, il mesure desormais 47 contre 57.
 	{
 		Nom:       "repli_largeurs_mpp_par_defaut",
 		Fait:      "les largeurs du bloc de proprietes multijoueur (MPP), donc l'alignement de tout l'etat par defaut",
@@ -307,7 +294,7 @@ var registreFilmdec = []Repli{
 			Fichier: pkgFilmdec + "grenade_events.go",
 			Ancre:   "g := grammaireDeReference()",
 		}},
-		DatePose: "2026-09-17",
+		DatePose: dateM3,
 		// POURQUOI LE REFUS SERAIT PIRE QUE LE REPLI. D-4 d ADR 0034 interdit de lire un film au
 		// profil du build VOISIN ; ici la reference n est pas un voisin choisi au jugement, c est
 		// la grammaire de 1 269 des 1 351 films du cache. Refuser eteindrait les lancers de tout

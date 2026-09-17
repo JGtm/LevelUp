@@ -35,6 +35,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
@@ -97,4 +98,37 @@ func (c *KillSourceCollector) entreeDeCatalogueParNom(noms []string) (decfilm.Ma
 		}
 	}
 	return decfilm.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", decfilm.ErrUnknownMapBounds, noms)
+}
+
+// carteDuMatch rend l entree de catalogue de la carte du match POUR LE DECODAGE DES MORTS, ou
+// nil — et un nil est journalise, jamais avale.
+//
+// # POURQUOI ELLE EST SEPAREE DE `resolveMapBounds`
+//
+// `resolveMapBounds` sert les passes qui EXIGENT la carte : sans bornes, une position n est pas
+// une coordonnee et la passe s arrete. Le decodage des morts, lui, CONTINUE sans elle — aux
+// largeurs d axe par defaut, c est-a-dire celles d une autre carte (repli
+// `repli_carte_absente_largeurs_par_defaut`, lot 3.4.1). Les deux ont donc le meme resolveur et
+// deux contrats differents, et melanger les deux ferait soit refuser un decodage qui doit
+// aboutir, soit publier des distances sans bornes.
+//
+// # LE CABLAGE EST OPTIONNEL, ET SON ABSENCE N EST PAS UNE PANNE
+//
+// Un collecteur construit sans `WithPositionCapture` n a ni `mapNames` ni `mapBounds` : il
+// decode alors comme avant le lot 3.4.1. Le dire en `Info` et non en `Warn` est deliberé — c est
+// une configuration, pas un incident ; l avertissement PAR FILM, lui, est pose par le decodeur
+// (`killsource.Decode`), au seul endroit qui sait que la valeur a reellement manque.
+func (c *KillSourceCollector) carteDuMatch(ctx context.Context, matchID string) *decfilm.MapQuantEntry {
+	if !c.CaptureCablee() {
+		slog.InfoContext(ctx, "killsource: resolution de carte non cablee — la marche des morts "+
+			"decode aux largeurs d axe par defaut", "match_id", matchID)
+		return nil
+	}
+	entry, err := c.resolveMapBounds(ctx, matchID)
+	if err != nil {
+		slog.InfoContext(ctx, "killsource: carte du match non resolue — la marche des morts "+
+			"decode aux largeurs d axe par defaut", "err", err, "match_id", matchID)
+		return nil
+	}
+	return &entry
 }

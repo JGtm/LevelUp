@@ -99,15 +99,21 @@ func (k KeyframeProfile) CadreBits() int { return k.EnTeteBits + 2*k.MotDeTaille
 type MovementProfile struct {
 	// Traversal est le descripteur de quantification du chemin de TRAVERSEE.
 	Traversal PrecisionDescriptor
-	// WorldObject est le descripteur du chemin WORLD-OBJECT (projectiles, armes au sol,
-	// equipement, corps rigides), dont les largeurs sont celles de la CARTE du match. Son
-	// defaut n est pas un repli neutre : c est l entree `cliffhanger` du catalogue.
-	// L installateur de `replay` y pose les largeurs de la carte jouee (lot 2.2.b).
+	// WorldObject est le descripteur du chemin ABSOLU, celui de la table PAR INDEX DE PLAGE de
+	// la CARTE du match : les objets du monde (projectiles, armes au sol, equipement, corps
+	// rigides) ET le chemin absolu du bipede, qui lisent la MEME table
+	// (`DAT_1445ccbe0 + (index*0x20 + 16)*0xc`). Son defaut n est pas un repli neutre : c est
+	// l entree `cliffhanger` du catalogue. L installateur de `replay` y pose
+	// [MapQuantEntry.PrecisionAbsolue] de la carte jouee (lot 2.2.b).
 	// Provenance et preuve : ligne `Movement.WorldObject` de [TableProfil].
+	//
+	// LE CHAMP `AbsoluteAxisW` A DISPARU AU LOT 3.4.1, et c est le lot entier : une largeur
+	// UNIFORME de 14 bits ecrasait les trois largeurs de la carte sur le chemin absolu du
+	// bipede. `14` est bien une entree REELLE des tables du jeu — mais au NIVEAU 8 de la table
+	// DEFAUT, quand le composant de position lit au niveau 16, ou la table defaut vaut
+	// `22/22/22` et la table par index les largeurs de la carte. Elle n etait donc l entree
+	// d aucune des deux cases reellement lues (D3 (3.4)).
 	WorldObject PrecisionDescriptor
-	// AbsoluteAxisW est la largeur d axe uniforme du chemin ABSOLU, a defaut de table par
-	// index de plage.
-	AbsoluteAxisW uint
 	// DeltaQuantum est le pas, en unites monde, d UN cran de position repliquee en delta.
 	DeltaQuantum float32
 	// DeltaAxisWidth est la largeur d axe du chemin delta axis-width.
@@ -334,7 +340,6 @@ func MouvementParDefaut() MovementProfile {
 	return MovementProfile{
 		Traversal:               PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{6, 6, 6}},
 		WorldObject:             PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{13, 13, 14}},
-		AbsoluteAxisW:           14,
 		DeltaQuantum:            0.01383,
 		DeltaAxisWidth:          14,
 		Range:                   QuantRangeCEBiped,

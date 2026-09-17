@@ -39,11 +39,12 @@ import (
 
 // worldObjectPrecisionReaders — ALLOWLIST DATÉE (2026-08-15). Chemin relatif à apps/go-api.
 var worldObjectPrecisionReaders = map[string]string{
-	"internal/games/halo_infinite/film/internal/grammar/rev_chronique.go": "CITATION dans " +
+	"internal/games/halo_infinite/film/internal/grammar/rev_chronique_archive.go": "CITATION dans " +
 		"l'ENTRÉE DE CHRONIQUE du lot 2.3 (2026-09-17) : elle dit ce que le profil de balayage " +
 		"a remplacé, donc elle nomme les largeurs world-object. Aucune lecture de la valeur — " +
-		"ce fichier ne porte QUE la chronique de la révision de grammaire (sortie de " +
-		"`rev.go` le 2026-09-18, lot 2.4.1, au seuil des 500 lignes)",
+		"ce fichier ne porte QUE la chronique de la révision de grammaire. L'entrée VIVAIT dans " +
+		"`rev_chronique.go` jusqu'au lot 3.4.1 (2026-09-17), qui a fait passer les rangs `.27` " +
+		"et `.28` à l'archive — la rotation ordinaire, au seuil des 500 lignes",
 	"internal/games/halo_infinite/film/types/grammar_bipede.go": "CITATION dans la godoc du champ " +
 		"`GrappleRead.PosQ` (2026-09-17, lot 2.6.2) : elle dit que les trois quanta sont aux " +
 		"largeurs d'axe INSTALLÉES AU MOMENT DU BALAYAGE, ce qui est précisément la question " +
@@ -88,10 +89,30 @@ var worldObjectPrecisionReaders = map[string]string{
 		"par valeur par l'installateur) — aucune lecture de la valeur ici. LE TYPE A CHANGE DE " +
 		"COUCHE AU LOT 2.5.b (2026-09-16) : il descend de `grammar/components_movement.go` dans " +
 		"`profile/`, ou il est de la DONNEE ; le commentaire l'a suivi, pas la lecture",
-	"internal/games/halo_infinite/film/internal/grammar/position_capture.go": "repli d'`absAxisW`, INATTEIGNABLE en " +
-		"l'état : il est gardé par `br.absoluteAxisW() > 0`, dont le défaut vaut 14 et dont le " +
-		"seul écrivain (killsource/calibrate.go) balaie 6..26 — depuis le lot 2.2.a il le fait " +
-		"par `FrameConfig.Mouvement` et par l'héritage de processus, plus par une variable de paquet",
+	"internal/games/halo_infinite/film/internal/facts/killsource/decode.go": "LE REPLI NOMMÉ, " +
+		"et il est là précisément pour dire d'où ce chemin tient ses largeurs (lot 3.4.1) : " +
+		"`Decode` reçoit la carte du match par `Options.Carte`, la pose sur son profil de départ " +
+		"(`ProfilDeDepartPourCarte`) et AVERTIT par film quand elle manque — auquel cas la marche " +
+		"des morts lit bien les largeurs de Cliffhanger sur une autre carte, ce que " +
+		"`repli_carte_absente_largeurs_par_defaut` porte au registre. C'est la question de cette " +
+		"garde, et la réponse y est écrite ; aucune largeur n'est lue ici, seul le drapeau " +
+		"`CarteLue` l'est",
+	"internal/games/halo_infinite/film/internal/grammar/position_capture.go": "LA LECTURE DU CHEMIN ABSOLU " +
+		"D'i0 (`absAxisWFor`), depuis le lot 3.4.1 : la largeur UNIFORME de 14 bits qui " +
+		"l'écrasait a disparu avec `Movement.AbsoluteAxisW`, et le bipède lit désormais la " +
+		"table PAR INDEX de la carte — la MÊME que le chemin world-object, ce qu'elle a " +
+		"toujours été chez `FUN_14076e524`. Même contrat d'installation que le reste : les " +
+		"largeurs viennent de l'appelant (BuildFromFilm / installWorldObjectPrecision) ; sans " +
+		"installation ce sont celles de Cliffhanger, et `killsource` en mesure l'écart par son " +
+		"oracle (`calibration.Desaccords`). `idx == -1` n'en prend AUCUNE : c'est la table " +
+		"DÉFAUT du build (`profile.LargeursAxeParDefautDuBuild`, ±20000)",
+	"internal/games/halo_infinite/film/internal/grammar/components_position_i0.go": "LA RÈGLE D'ÉMISSION ET " +
+		"LA LARGEUR D'INDEX DE PLAGE du chemin absolu d'i0 (correctif D1 (3.4), lot 3.4.1) : " +
+		"`consumeAbsolutePayload` n'émet une position que si l'index lu désigne la plage " +
+		"CATALOGUÉE (`Region`), et lit cet index sur `DAT_144632be0` — la largeur de la CARTE, " +
+		"pas celle du descripteur de l'appelant. Les deux viennent du descripteur installé par " +
+		"`replay.installWorldObjectPrecision` ; sans installation, `Region` vaut 0 et la " +
+		"largeur 1, c'est-à-dire le cas de 78 cartes sur 79",
 	"internal/games/halo_infinite/film/internal/grammar/keyframe_ground_weapons.go": "CITATION en commentaire " +
 		"(parenté des archétypes d'objet du monde) — aucune lecture de la valeur",
 	"internal/games/halo_infinite/film/internal/grammar/components_biped_anchor.go": "le corps tag==3 d'i59 (ancre du " +

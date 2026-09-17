@@ -66,13 +66,51 @@ const maxAxisWidth = 26
 // quantDivisor : q(L) = 2^(16-L)/120, donc à L=16 le pas de grille vaut 2*q = 1/60.
 const quantDivisor = 120
 
-// AxisWidths applique la loi du moteur au niveau PositionLevel :
+// maxBinCount est le GARDE DE DÉBORDEMENT du remplisseur (`DAT_143cd975c` = 0x4a800000 =
+// 2^22) : au-delà de ce nombre de casiers, `FUN_140be9b88` cesse de compter et fige la valeur
+// (`MOV ECX,0x400000` en `140be9c16`), AVANT le `ceilLog2`.
+//
+// SANS EFFET SUR LE CATALOGUE ACTUEL, ET C'EST MESURÉ : au niveau 16 il se déclenche à une
+// étendue de 69 905,1 unités monde, quand la plus grande étendue des 79 cartes est 2 707,4
+// (`recharge`) — c'est pourquoi l'accord loi / catalogue est de 79 sur 79 sans lui. Il est
+// modélisé quand même (D2 (3.4)) : un canevas Forge plus grand ferait diverger la loi EN
+// SILENCE, et une loi incomplète est une loi fausse.
+const maxBinCount = 4194304.0
+
+// quantStepEpsilon est le second garde (`DAT_143cd837c` = 0x38d1b717 = 1e-4) : sous ce pas,
+// les trois largeurs valent d'emblée 26 SANS que les bornes soient regardées
+// (`MOV RAX,0x1a0000001a` en `140be9c62`). À cette loi cela vaut pour tout niveau >= 23 — donc
+// jamais pour [PositionLevel], qui est 16. Modélisé pour la même raison que ci-dessus.
+const quantStepEpsilon = 1e-4
+
+// AxisWidths applique la loi du moteur (`FUN_140be9b88`) au niveau PositionLevel :
+//
+//	pas(L)   = 2^(16-L)/120                                  -> 1/120 au niveau 16
+//	W[axe]   = min(26, ceilLog2(min(ceil(étendue/(2*pas)), 2^22)))
+//	W[axe]   = 26 partout si pas < 1e-4
+//
+// soit, au niveau 16 et tant que le garde de débordement ne mord pas,
 // W = min(26, ceilLog2(ceil(60*extent))).
+//
+// LA MÊME LOI VIT DANS LE DÉCODEUR (`film/internal/profile/loi_largeurs.go`) et les deux sont
+// tenues égales par `TestLoiHimapEtLoiDuProfilSAccordent` : elles ne peuvent pas être
+// centralisées — la couche `profile` est une FEUILLE, elle n'importe rien du dépôt (c'est sa
+// promesse, `TestCoucheProfileEstUneFeuille`) — donc elles sont confrontées.
 func (b Bounds) AxisWidths() [3]int {
+	step := math.Exp2(float64(16-PositionLevel)) / float64(quantDivisor)
+	if step < quantStepEpsilon {
+		return [3]int{maxAxisWidth, maxAxisWidth, maxAxisWidth}
+	}
 	var w [3]int
-	inv := float64(quantDivisor) / 2 / math.Exp2(float64(16-PositionLevel))
 	for ax := 0; ax < 3; ax++ {
-		w[ax] = capWidth(ceilLog2(uint64(math.Ceil(inv * b.Extent(ax)))))
+		bins := math.Ceil(b.Extent(ax) / (2 * step))
+		switch {
+		case !(bins > 0): // AABB dégénérée ou NaN : zéro casier, donc zéro bit (ceilLog2(0) = 0)
+			bins = 0
+		case bins > maxBinCount:
+			bins = maxBinCount
+		}
+		w[ax] = capWidth(ceilLog2(uint64(bins)))
 	}
 	return w
 }
