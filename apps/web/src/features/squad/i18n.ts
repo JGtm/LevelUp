@@ -182,8 +182,13 @@ export interface SquadText {
     noPairs: string
     /** Infobulle d'un segment : la PART de la paire dans les assistances mesurées. */
     tooltipShare: (share: string) => string
-    /** Infobulle d'un segment : les éliminations volées de la paire, quand il y en a. */
-    tooltipStolen: (n: number) => string
+    /** Infobulle d'un segment : les assistances de la paire où le larbin a fait plus de
+     *  dégâts que le patron (champ `stolen_count` de l'API, requête Q32d côté Go :
+     *  `assist_damage_pct > killer_damage_pct`), quand il y en a.
+     *  À NE PAS confondre avec le badge « Voleur » de la matrice, dont le critère est
+     *  autre (le tueur a fait 10 % des dégâts ou moins) : deux mesures distinctes, d'où
+     *  l'absence du mot « volé » ici. */
+    tooltipAssistantOutdamaged: (n: number) => string
   }
   timeline: {
     title: string
@@ -532,7 +537,7 @@ const FR_TEXT: SquadText = {
       'L\'assistance se lit dans le film du match. Les films expirent côté serveur : les matchs manquants ne pourront plus être mesurés.',
     noPairs: 'Aucune assistance entre membres de l\'escouade sur les matchs mesurés.',
     tooltipShare: (share) => `part ${share}`,
-    tooltipStolen: (n) => `dont ${n} volée${n > 1 ? 's' : ''}`,
+    tooltipAssistantOutdamaged: (n) => `dont ${n} où le larbin a fait plus de dégâts que le patron`,
   },
   timeline: {
     title: 'Performance d\'escouade par session',
@@ -889,7 +894,7 @@ const EN_TEXT: SquadText = {
       'Assists are read from the match film. Films expire server-side: the missing matches can no longer be measured.',
     noPairs: 'No assists between squad members across the measured matches.',
     tooltipShare: (share) => `share ${share}`,
-    tooltipStolen: (n) => `of which ${n} stolen`,
+    tooltipAssistantOutdamaged: (n) => `${n} where the lackey dealt more damage than the boss`,
   },
   timeline: {
     title: 'Squad performance by session',

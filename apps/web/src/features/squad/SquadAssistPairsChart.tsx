@@ -97,7 +97,7 @@ export function SquadAssistPairsChart({ block, roster }: SquadAssistPairsChartPr
       const part = parts.get(cle)
       if (part != null) notes.push(labels.tooltipShare(pctFmt.format(part)))
       const volee = volees.get(cle)
-      if (volee) notes.push(labels.tooltipStolen(volee))
+      if (volee) notes.push(labels.tooltipAssistantOutdamaged(volee))
       return notes.length > 0 ? notes.join(' · ') : undefined
     },
     [parts, volees, labels, pctFmt],
