@@ -6,7 +6,8 @@
 # (app deja relancee). Un trap garantit le redemarrage meme si le backup plante.
 #
 # Perimetre : DuckDB de TOUS les titres (titles/*, incl. halo_5) + tokens OAuth
-# (data/auth) + config JSON. MEDIAS EXCLUS (volumineux, peu sujets a corruption,
+# (data/auth) + etat global (data/global : alias Xbox, amis par joueur, monitoring,
+# etat admin) + config JSON. MEDIAS EXCLUS (volumineux, peu sujets a corruption,
 # disque VPS serre).
 #
 # Installation (VPS, one-shot) :
@@ -34,11 +35,13 @@ trap restart_app EXIT   # filet de securite : redemarre meme si plantage
 # 1. Arret bref pour coherence DuckDB.
 docker compose stop levelup >/dev/null 2>&1 || true
 
-# 2. Snapshot : DuckDB de tous les titres + tokens auth + config (medias/cache/logs exclus).
+# 2. Snapshot : DuckDB de tous les titres + tokens auth + etat global + config
+#    (medias/cache/logs exclus).
 rc=0
 restic backup --tag auto --host levelup-vps \
   data/titles \
   data/auth \
+  data/global \
   db_profiles.json app_settings.json .env.local || rc=$?
 
 # 3. Redemarrage ASAP (minimise le downtime) puis on desarme le filet.
