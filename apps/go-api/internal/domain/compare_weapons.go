@@ -61,10 +61,16 @@ type CompareWeaponProfile struct {
 // CompareWeaponSide est le profil d'UN joueur : son scope, sa répartition par classe, sa
 // portée par rôle et ses trois armes les plus meurtrières.
 //
-// CHAQUE BLOC EST INDÉPENDAMMENT ABSENT (D9). Un titre sans positions par kill n'a pas de
-// portée mais a des classes et un top 3 ; un joueur dont aucune arme n'est résolue n'a pas de
-// top 3 mais a ses compteurs natifs. Faire tomber le profil entier au premier bloc manquant
-// cacherait ce qui est pourtant mesuré.
+// LA PORTÉE TOMBE SEULE (D9). Un titre sans positions par kill garde ses classes et son top
+// 3 : seul `Range` est nil. Faire tomber le profil entier au premier bloc manquant cacherait
+// ce qui est pourtant mesuré.
+//
+// LES DEUX AUTRES BLOCS TOMBENT ENSEMBLE, ET C'EST ASSUMÉ. `FragClasses` et `TopWeapons`
+// naissent de la MÊME lecture (`LoadWeaponKillsAggregated`) : quand elle ne rend aucune ligne,
+// les deux restent vides. On pourrait publier les classes depuis les seuls compteurs natifs
+// (mêlée, grenade, « non attribué ») — c'est ce que l'Explorer a refusé de faire, et le compare
+// suit : une répartition réduite à trois seaux dont le plus gros est « Non attribué » se lit
+// comme une panne, pas comme un style.
 type CompareWeaponSide struct {
 	// Matches est la taille du scope (D2) — le nombre de matchs de ce joueur PRÉSENTS DANS
 	// LA BASE PARTAGÉE, campagne exclue.

@@ -118,9 +118,13 @@ func (s *CompareService) weaponScope(ctx context.Context, xuid string) *domain.C
 
 // buildWeaponSide assemble les trois blocs d'UN joueur sur son scope.
 //
-// CHAQUE BLOC EST INDÉPENDANT (D9) : la portée peut manquer sans emporter les classes, et le
-// top 3 peut être vide sans emporter la portée. Les trois pannes possibles sont distinctes, et
-// les confondre cacherait ce qui est pourtant mesuré.
+// LA PORTÉE EST INDÉPENDANTE DES DEUX AUTRES (D9) : elle vient d'une lecture distincte, et
+// son absence — titre sans positions par kill — n'emporte ni les classes ni le top 3.
+//
+// CLASSES ET TOP 3 PARTAGENT LEUR SOURCE, donc leur absence : tous deux naissent de
+// `LoadWeaponKillsAggregated`, et zéro ligne les laisse vides ensemble. Voir
+// `domain.CompareWeaponSide` pour pourquoi on ne publie PAS des classes réduites aux seuls
+// compteurs natifs dans ce cas.
 func (s *CompareService) buildWeaponSide(
 	ctx context.Context, scope *domain.CompareWeaponScope, xuid string,
 ) domain.CompareWeaponSide {
@@ -172,11 +176,29 @@ func (s *CompareService) loadCompareWeaponKills(
 func (s *CompareService) compareFragClasses(
 	ctx context.Context, rows []port.WeaponKillRow, scope *domain.CompareWeaponScope, xuid string,
 ) []domain.CompareFragClass {
-	fd := fragdist.Build(rows, domain.FragKillTypeCounts{
+	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
+	counts := domain.FragKillTypeCounts{
 		Melee:   scope.MeleeKills,
 		Grenade: scope.GrenadeKills,
 		Total:   scope.Kills,
-	}, titleHasNativeKillMechanics(s.titleSlug))
+	}
+	// MÉCANIQUES NATIVES : sur un titre qui les fournit, les OMETTRE N'EST PAS NEUTRE.
+	// `fragdist.Build` RETRANCHE les frags de mécanique des classes d'arme (une mêlée y est
+	// attribuée à l'ARME TENUE dans `weapon_kills`) en supposant que ces trois compteurs les
+	// rapportent. Les laisser à zéro sous-évaluerait « Mêlée », ferait disparaître
+	// « Capacités spartanes » et gonflerait « Non attribué » d'autant — une erreur silencieuse
+	// et arithmétiquement cohérente, puisque le total boucle quand même.
+	//
+	// Garde par CAPABILITY et jamais par slug : un titre sans mécaniques natives n'a rien à
+	// charger, et le zéro y est la valeur juste.
+	if hasMechanics {
+		if m := loadKillMechanicsForXUID(ctx, s.weaponKills, xuid, scope.MatchIDs); m != nil {
+			counts.Assassination = m.Assassinations
+			counts.GroundPound = m.GroundPound
+			counts.ShoulderBash = m.ShoulderBash
+		}
+	}
+	fd := fragdist.Build(rows, counts, hasMechanics)
 	logFragDistribution(ctx, "compare", s.titleSlug, xuid, fd)
 
 	out := make([]domain.CompareFragClass, 0, len(fd.Classes))

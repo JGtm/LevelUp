@@ -134,7 +134,8 @@ type ExplorerService struct {
 	// des frags » v2 (sunburst classe→rôle) + « Outils de destruction » de l'encart cible.
 	// Optionnel — nil → FragDistribution nil (le front retombe sur le donut kill-type
 	// legacy). Le repo concret DuckDB fournit AUSSI les mécaniques natives H5 via
-	// type-assertion (explorerKillMechanicsLoader), capability OPTIONNELLE façon lobbySizeProvider.
+	// type-assertion (killMechanicsLoader, service/kill_mechanics_loader.go) — capability
+	// OPTIONNELLE façon lobbySizeProvider, partagée avec le profil d'armes du Face-à-face.
 	weaponKillsRepo port.WeaponKillsRepository
 }
 
