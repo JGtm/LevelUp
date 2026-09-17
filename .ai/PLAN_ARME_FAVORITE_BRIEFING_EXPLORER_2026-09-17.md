@@ -202,11 +202,11 @@ go build ./... && go vet ./... && go test ./internal/service/... ./internal/doma
 
 ### Étape 3 — Contrat OpenAPI et types front
 
-- [ ] `make openapi-gen` régénère `apps/go-api/api/openapi.yaml` (document Huma + fragment
+- [x] `make openapi-gen` régénère `apps/go-api/api/openapi.yaml` (document Huma + fragment
       manuel ; le fragment n'est PAS touché, le champ se dérive de la struct Go). Ne jamais
       éditer `openapi.yaml` à la main.
-- [ ] `make generate-types` régénère `apps/web/src/lib/api/generated.ts`.
-- [ ] `lib/api/types.ts` : ré-export `ExplorerBriefingWeapons` depuis `components['schemas']`
+- [x] `make generate-types` régénère `apps/web/src/lib/api/generated.ts`.
+- [x] `lib/api/types.ts` : ré-export `ExplorerBriefingWeapons` depuis `components['schemas']`
       (jamais de mirror manuel).
 
 **Gate 3** : `make openapi-check` (aucune dérive — aucun job CI ne la vérifie, ce gate
@@ -330,6 +330,13 @@ Un écart de hauteur observé se traite par la formule D3, pas par une mesure.
   Incident d'outillage sans effet sur le verdict : un premier `go test ./...` lancé en
   avant-plan a été tué au bout de 10 min (limite d'attente de l'outillage) ; le run rejoué en
   arrière-plan vers un log persistant est allé au bout (ligne `GOTEST_EXIT=1`).
+
+- **Étape 3 (2026-09-17)** — `make openapi-gen` (740 095 octets écrits, +22 lignes :
+  `weapons` sur `ExplorerBriefing` + schéma `ExplorerBriefingWeapons`), `make generate-types`
+  (+8 lignes dans `generated.ts`), ré-export dans `lib/api/types.ts`. Gate 3 :
+  `make openapi-check` sortie 0 (document à jour ET `generated.ts` dérivé),
+  `make check-types` sortie 0 après purge de `apps/web/node_modules/.tmp`. L'échec unique du
+  gate 2b est levé : `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate` sortie 0.
 
 ## Protocole de reprise de session
 

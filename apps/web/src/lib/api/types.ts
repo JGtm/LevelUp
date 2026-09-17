@@ -912,6 +912,7 @@ export type ExplorerBriefingContextSplit = components['schemas']['ExplorerBriefi
 export type ExplorerBriefingContextGroup = components['schemas']['ExplorerBriefingContextGroup']
 export type ExplorerBriefingStreaks = components['schemas']['ExplorerBriefingStreaks']
 export type ExplorerBriefingDominance = components['schemas']['ExplorerBriefingDominance']
+export type ExplorerBriefingWeapons = components['schemas']['ExplorerBriefingWeapons']
 
 // ---------------------------------------------------------------------------
 // Accueil Mission Control (Slice 5)
