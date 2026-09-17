@@ -18,30 +18,36 @@ describe('signOf', () => {
 })
 
 describe('favoriteWeaponSlots', () => {
-  it('en cellule propre : la place libre au-dessus de deux lignes, plafonnée à deux', () => {
+  it('en cellule propre : deux armes dès que la rangée offre deux lignes au-delà de deux', () => {
     const seul = (dimensionLines: number[], rankedLines = 0) =>
       favoriteWeaponSlots({ dimensionLines, rankedLines, stacked: false })
     expect(seul([6, 3, 2])).toBe(2)
     expect(seul([6])).toBe(2)
     expect(seul([3])).toBe(1)
-    expect(seul([2, 2])).toBe(0)
-    expect(seul([2])).toBe(0)
+    expect(seul([2, 2])).toBe(1)
+    expect(seul([2])).toBe(1)
   })
 
-  it('empilé : deux lignes de plus à payer, donc la même place demande une rangée plus haute', () => {
+  it('empilé : deux lignes de plus à payer, donc la seconde arme demande une rangée plus haute', () => {
     const empile = (dimensionLines: number[], rankedLines = 0) =>
       favoriteWeaponSlots({ dimensionLines, rankedLines, stacked: true })
     expect(empile([6])).toBe(2)
     expect(empile([5])).toBe(1)
-    expect(empile([4])).toBe(0)
-    expect(empile([3])).toBe(0)
+    expect(empile([4])).toBe(1)
+    expect(empile([3])).toBe(1)
   })
 
-  it('compte le Classement comme les dimensions, et rend zéro sans aucune cellule haute', () => {
+  it('ne rend JAMAIS zéro : le bloc est toujours là, au minimum une arme', () => {
+    expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 0, stacked: false })).toBe(1)
+    expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 0, stacked: true })).toBe(1)
+    expect(favoriteWeaponSlots({ dimensionLines: [1], rankedLines: 0, stacked: true })).toBe(1)
+  })
+
+  it('compte le Classement comme les dimensions', () => {
     expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 3, stacked: false })).toBe(1)
-    expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 0, stacked: false })).toBe(0)
+    expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 4, stacked: false })).toBe(2)
     expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 6, stacked: true })).toBe(2)
-    expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 3, stacked: true })).toBe(0)
+    expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 3, stacked: true })).toBe(1)
   })
 
   it('retient le maximum quand dimensions et Classement coexistent', () => {

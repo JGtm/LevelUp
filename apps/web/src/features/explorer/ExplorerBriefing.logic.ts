@@ -33,8 +33,9 @@ export function deltaToken(v: number | null | undefined): SemanticToken {
 }
 
 /**
- * Nombre de lignes que le bloc « Arme favorite » peut prendre sans faire grandir la
- * rangée « Par… », d'après la place LIBRE sous la cellule la plus haute.
+ * Nombre d'armes que le bloc « Arme favorite » montre : DEUX quand la rangée « Par… » a
+ * la place de les porter sans grandir, UNE sinon. Jamais zéro — le bloc est toujours là,
+ * et toujours dans sa carte.
  *
  * La hauteur se DÉCIDE, elle ne se mesure pas : le nombre de lignes de chaque cellule
  * est une donnée que le composant connaît déjà — une carte de dimension en a autant que
@@ -42,17 +43,17 @@ export function deltaToken(v: number | null | undefined): SemanticToken {
  * quand la capability du titre l'omet). Aucune lecture du DOM ici, et aucune permise
  * ailleurs : un écart constaté au gate visuel se corrige DANS cette formule.
  *
- * Le résultat choisit la FORME du bloc, jamais sa présence :
- *   - 2 → deux armes avec leur barre, la rangée ne bouge pas ;
- *   - 1 → une arme avec sa barre, la rangée ne bouge pas ;
- *   - 0 → forme compacte d'une seule ligne, la rangée gagne UNE ligne, jamais plus.
+ * CE QUE LA FORMULE NE DÉCIDE PLUS. Au gate visuel du 2026-09-17 l'utilisateur a tranché
+ * que le bloc porte la carte de ses voisines dans TOUS les cas : le rendu nu empilé « ne
+ * collait pas du tout » avec le reste de la rangée. L'harmonie visuelle l'emporte donc sur
+ * la promesse de hauteur constante, la forme compacte a disparu, et il ne reste ici qu'un
+ * choix de NOMBRE d'armes.
  *
  * LA CONSTANTE DE BASE vaut 2 en cellule propre et 4 en empilé. Deux, c'est la hauteur
- * de « Par contexte », la cellule la plus courte de la rangée : en dessous, le bloc n'a
- * de toute façon aucune place gratuite. Quatre, parce qu'empilé SOUS cette carte le bloc
- * paie en plus son libellé, l'espacement de la pile et les marges de la carte du haut —
- * environ deux lignes que la formule nue ne comptait pas, d'où une rangée qui grandissait
- * là où elle promettait de ne pas bouger. Corriger ICI, jamais par une mesure du DOM.
+ * de « Par contexte », la cellule la plus courte de la rangée. Quatre, parce qu'empilé
+ * SOUS cette carte le bloc paie en plus le chrome de sa propre carte et l'espacement de
+ * la pile — environ deux lignes que la formule nue ne comptait pas. Une seconde arme n'est
+ * servie que si la rangée offre deux lignes au-delà de cette base.
  */
 export function favoriteWeaponSlots({
   dimensionLines,
@@ -63,10 +64,8 @@ export function favoriteWeaponSlots({
   rankedLines: number
   // stacked : le bloc est monté sous « Par contexte », dans la même cellule.
   stacked: boolean
-}): 0 | 1 | 2 {
+}): 1 | 2 {
   const base = stacked ? 4 : 2
   const rowLines = Math.max(base, rankedLines, ...dimensionLines)
-  const free = rowLines - base
-  if (free >= 2) return 2
-  return free === 1 ? 1 : 0
+  return rowLines - base >= 2 ? 2 : 1
 }
