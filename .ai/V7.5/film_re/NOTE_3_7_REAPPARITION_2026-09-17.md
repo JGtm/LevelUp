@@ -10,35 +10,61 @@
 
 ---
 
-## 0. LA REPONSE, EN DEUX PHRASES
+## 0. LA REPONSE, APRES LA VOIE LIBRE DU 2026-09-17
 
-**OBJECTIFS.** Le film ECRIT les minuteurs d'objectif, et il les ecrit a DEUX endroits distincts,
-tous deux identifies sur pieces : (a) le BASSIN du moteur de jeu,
-`managed-engine-timers-component` (`ti=0 i15`, en pratique `ti=2 i15` sur les builds du corpus) —
-un masque `R(64)` de 64 fentes, puis par fente presente `R(2)` d'etiquette et un enregistrement de
-minuteur en SECONDES, le MEME que l'horloge de manche ; c'est lui que designent les index figes de
-`ti=11 i0` et de `ti=12 i10` ; (b) le COMPTE A REBOURS MANUEL du navpoint,
-`managed-navpoint-manual-timer-initial-duration` / `-current-duration` (`ti=12 i11` / `i12`),
-`R(17)` chacun, pas de 50 ms, borne 6 553,55 s. Ni l'un ni l'autre n'est porte ; les deux sont
-DECIDABLES HORS LIGNE (aucune dependance de configuration runtime) et leur grammaire complete est
-en § 2 et § 3.
+> Cette section a ete REECRITE apres la lecture de cinq films entiers. La version du matin
+> affirmait que le bassin du moteur « porte les minuteurs d'objectif, et c'est lui que designent
+> les index de `ti=11 i0` ». **La mesure l'a REFUTEE** (§ 6 bis.3) et elle affirmait aussi que le
+> cycle des vehicules etait « aujourd'hui applicable » : **refute aussi** (§ 5). Les deux
+> corrections sont ecrites la ou elles portent ; ce qui suit est l'etat MESURE.
 
-**VEHICULES.** Le film N'ECRIT PAS de minuteur de reapparition de vehicule, et le negatif est
-MESURE, pas suppose : sur les **294 noms de composant que l'executable embarque**, aucun des **15**
-composants `vehicle-*` ne porte de temps sauf `vehicle-emp-timer-component` (la neutralisation
-EMP), les **10** composants « respawn » sont TOUS ceux d'un JOUEUR ou d'une nuee IA, et « return »
-comme « reset » rendent **ZERO** composant (§ 4). Le delai de reapparition d'un vehicule est une
-REGLE DE VARIANTE (`ManagedGameVariant_Get/SetVehicleRespawnTimeOverrideForAll|Channel|Class`,
-`...VehicleInitialSpawnDelayOverride...`), pas un etat replique. **La reapparition d'un vehicule se
-DEDUIT de l'apparition et de la destruction, toutes deux DEJA DATEES a la milliseconde par le
-rejeu** (`VehicleTrack.T0` du record de creation, `VehicleTrack.TEnd` du dead-state `ti=40 i11`) :
-c'est le modele `PadCycle`, et il est aujourd'hui applicable alors qu'il ne l'etait pas en
-2026-09-01 (§ 5).
+**OBJECTIFS — CE QUI EST ACQUIS.** Le film ecrit bien des comptes a rebours, et le lot en a lu
+un sur film entier : le BASSIN du moteur de jeu, `managed-engine-timers-component`
+(`ti=0`/`ti=2` `i15`, ecrivain `FUN_1407ee7b8`) — masque `R(64)` de 64 fentes, puis par fente
+presente `R(2)` d'etiquette et le MEME enregistrement de minuteur que l'horloge de manche
+(`R(16)+R(16)+R(5)`, en SECONDES). **La lecture est prouvee par la COHERENCE TEMPORELLE** : sur
+`bcb6d393`, une fente porte `a = 29,939 s` de duree totale et un reste qui tombe de 24,995 s a
+5,219 s entre deux images-cles espacees de 20,0 s — 19,776 s consommees, soit la resolution du
+quantum (§ 6 bis.2). Les trois grammaires qui barraient la route (`i11` = `R(128)`, `i13` =
+`R(13)` + `n x R(1)`, `i14` = quatre champs sous le niveau 2) sont relevees et suffisent (§ 2 bis).
 
-Un candidat reste OUVERT et il est nomme : `device-object-dispenser-timer-component` (`ti=43 i37`)
-est un VRAI compte a rebours de generateur (deux fentes, porte `R(1)`, `[0, 600] s`, § 4.3). Rien
-ne prouve qu'un generateur de vehicule soit une entite `device` — et c'est exactement le piege de
-V22 bis. Le test qui tranche est ecrit en § 8, et il demande des films entiers.
+**OBJECTIFS — CE QUI EST REFUTE, ET C'EST LE RESULTAT LE PLUS IMPORTANT DU LOT.** Le bassin **ne
+porte PAS le minuteur du drapeau**. La jointure que tout le lot cherchait — l'index de minuteur
+d'un objectif designe-t-il une fente du bassin ? — est un **NEGATIF MESURE** : sur
+`bcb6d393` (CTF:Arena, Cliffhanger), `fb1a1a72` (CTF:Arena, Banished Narrows) et `d9781168`
+(Oddball:Arena, Dredge), **`ti=11 i0` vaut `(-1, -1)` — « aucun minuteur » — sur 446 records
+d'objectif sur 446**. Ni le drapeau de deux CTF ni le crane d'un Oddball ne branche de fente. Et
+les memes deux durees (27,741 s et 29,939 s) apparaissent en CTF **et** en Oddball, ou il n'y a
+pas de drapeau, pendant que le nombre de fentes allouees (10, 13, 7) suit l'ordre de grandeur du
+nombre de JOUEURS : les minuteurs du bassin sont GENERIQUES, pas modaux. Piste nommee et non
+prouvee, a coller a une mort datee (§ 9) : `Engine_SetSpawnTimerAndTotalRespawnDurationForPlayer`
+— la chaine du jeu decrit exactement la forme mesuree (duree totale + restant, par joueur).
+
+**OBJECTIFS — LA VOIE QUI RESTE.** `managed-navpoint-manual-timer-initial-duration` /
+`-current-duration` (`ti=12 i11` / `i12`), `R(17)` chacun, pas de 50 ms : une duree INITIALE et
+une duree COURANTE, sans indirection ni index a resoudre. Grammaire complete, decidable hors
+ligne, relevee au lot 3.6. **Non mesuree** : le bloquant de `ti=12` est `i1`, dix composants
+avant. C'est desormais le chemin le plus court vers un compte a rebours d'objectif (§ 8.2), et le
+second est `ti=13` (la propriete reseau nommee par le script Lua, § 9 item 5).
+
+**VEHICULES — LE NEGATIF EST DOUBLE, ET LES DEUX MOITIES SONT MESUREES.** (1) Le film n'ecrit
+AUCUN minuteur de reapparition de vehicule : sur les **294 noms de composant que l'executable
+embarque**, aucun des **15** `vehicle-*` ne porte de temps hors `vehicle-emp-timer-component`,
+les **10** « respawn » sont tous ceux d'un JOUEUR ou d'une nuee IA, et « return » comme « reset »
+rendent **ZERO** (§ 4) ; le delai vient des surcharges de VARIANTE
+(`ManagedGameVariant_*VehicleRespawnTimeOverride*`) et des proprietes de placement Forge, deux
+regles connues avant le match. (2) **La deduction, elle, n'est pas faisable aujourd'hui** :
+`VehicleTrack.TEnd` — la fin datee par le dead-state `ti=40 i11` — est renseignee **1 fois sur
+109** sur `a349fea8` et **1 fois sur 42** sur `a521164d` (cuisson de production). Sur 31
+emplacements agglomeres, **zero ecart mesurable**. Le prealable n'est plus la resolution du
+recensement (levee en 2026-09-05) mais l'ATTRIBUTION de la fin de vie (§ 5).
+
+**LE CANDIDAT QUI RESTE OUVERT, NOMME POUR NE PAS REFAIRE V22 BIS** :
+`device-object-dispenser-timer-component` (`ti=43 i37`) est un VRAI compte a rebours de
+generateur — deux fentes, porte `R(1)`, `R(10)+R(10)+R(5)+R(10)`, `[0, 600] s` (§ 4.3). **Rien ne
+relie une entite `device` a un vehicule** : la confrontation des positions `ti=43` aux
+emplacements de naissance mesures n'a pas eu lieu (§ 6 bis.4), et conclure sans elle referait
+exactement l'erreur que l'utilisateur a signalee.
 
 ---
 
@@ -130,9 +156,70 @@ entite, une fois par image-cle. `ti=11 i0` (objectif) et `ti=12 i10` (navpoint) 
 datent rien par eux-memes, ils DESIGNENT. Les index 65/66/67 sont les trois minuteurs reserves
 (manche, mort subite, delai de grace), 0..63 les fentes de ce bassin, -1 « aucun minuteur ».
 
-**Ce n'est donc pas « le minuteur du drapeau ».** C'est l'endroit ou le minuteur du drapeau se
-trouve SI le drapeau en a un, et l'index de `ti=11 i0` dit lequel. La jointure index -> fente est
-la preuve qui manque, et elle n'est pas faisable aujourd'hui : le bassin n'est pas lisible (§ 6).
+**Ce n'est donc pas « le minuteur du drapeau ».** C'etait l'endroit ou le minuteur du drapeau se
+trouverait SI le drapeau en avait un — et **LA MESURE DU 2026-09-17 DIT QU'IL N'EN A PAS**. La
+jointure index -> fente a ete jouee sur trois films entiers : `ti=11 i0` vaut `(-1, -1)`, « aucun
+minuteur », sur 446 records d'objectif sur 446 (§ 6 bis.3). Ce paragraphe garde sa grammaire, qui
+est juste et desormais verifiee sur film ; son hypothese de DESTINATION, elle, est REFUTEE.
+
+---
+
+## 2 bis. LA ROUTE VERS LE BASSIN, OUVERTE : LES TROIS GRAMMAIRES QUI MANQUAIENT (2026-09-17, voie libre)
+
+Le § 6 mesure que 113 records sur 113 butent sur `i11`. Les trois composants non portes qui
+precedent `i15` ont ete resolus par la meme chaine (calibration inchangee, 6/6) puis lus a
+`objdump`. **Les trois grammaires sont decidables hors ligne, et elles suffisent : la marche
+franchit `i15` et ne s'arrete qu'a `i16`** (§ 6 bis).
+
+### 2 bis.1 `game-engine-soft-ceilings-component` (i11) — `R(128)` plat
+
+Descripteur `0x143d0f560`, ecrivain `FUN_14116d1ac` (36 octets). Un seul appel :
+`FUN_1406d676c(flux, _, dest = etat + 0x148, n = 0x80)`. `FUN_1406d676c` est le lecteur de BLOC
+DE BITS du moteur : `cmp $0x40,%ebp ; jae` puis, dans la branche large (`1406d68a6`),
+`add %ebp,0x2c(%r10)` par mot de 64 bits avec `ebp = 0x40`, `sub %ebp,%r11d` et rebouclage tant
+que le reste est >= 64. Il lit donc EXACTEMENT `n` bits. **128 bits, inconditionnel, sans porte.**
+
+### 2 bis.2 `game-engine-disabled-kill-volume-flags-component` (i13) — `R(13)` puis `n x R(1)`
+
+Descripteur `0x143d0f510`, ecrivain `FUN_142f03498` (325 octets).
+`addl $0xd,0x2c(%rdx)` puis `shr $0x33` : **`R(13)`** = le COMPTE. Puis la boucle
+`142f03579..142f035be` : `call FUN_1406cf008` (= `R(1)`) par volume, `inc %esi`,
+`cmp %ebx,%esi ; jl` — **un bit par volume**, ecrit en champ de bits a `etat + 0x164`.
+Largeur : `13 + n`.
+
+### 2 bis.3 `GameEngineComposerLetterboxComponent` (i14) — DEUX branches, et le NIVEAU decide
+
+Descripteur `0x143d0f740`, ecrivain `FUN_142f0328c` (521 octets). Premiere instruction utile :
+`cmp $0x2,%r9d ; jb 0x142f03405` — `r9d` est le NIVEAU du composant, celui que le registre porte
+en `entree + 0x100`. `ecs_table.tsv` le donne : **`level = 2`** pour `ti=0 i14` comme pour
+`ti=2 i14`. La branche prise est donc la HAUTE (`142f032b9`) :
+
+```
+R(1)                                                    -> etat + 0x564
+R(16) quantifie sur [0, DAT_143cd8374]                  -> etat + 0x568
+4 x FUN_142efd284 : R(1) ; si le bit vaut 0 -> R(7)     -> etat + 0x56c..0x57b  (PORTE INVERSEE)
+4 x [ R(1) ; si 1 -> R(16) ]                            -> etat + 0x57c..       (mots de 16 bits)
+```
+
+Largeur : **25 bits au minimum, 117 au maximum.** `FUN_142efd284` est bien une porte INVERSEE
+(`call FUN_1406cf008 ; test %al,%al ; je` -> la lecture de `R(7)` n'a lieu que si le bit vaut
+ZERO ; a un, le champ prend `-1`). La branche BASSE (`level < 2`) differe : elle finit par un
+`FUN_1406d676c(..., n = 0x40)` = `R(64)` que la branche haute n'a pas. **Un port qui ignorerait
+le niveau se desynchroniserait de 64 bits.**
+
+### 2 bis.4 Le quatrieme champ du lecteur de minuteur, et il compte
+
+`FUN_142ba78dc(dest, flux, n, max)` n'est pas un alias de `FUN_140d580d0` : il l'appelle PUIS lit
+un TROISIEME reel quantifie (`142ba790d call FUN_1406d84b4`, `movss %xmm0,0xc(%rsi)`). Donc :
+
+| lecteur | champs | largeur |
+|---|---|---|
+| `FUN_140d580d0(dest, flux, n, max)` | `R(n) + R(n) + R(5)` | `2n + 5` |
+| `FUN_142ba78dc(dest, flux, n, max)` | `R(n) + R(n) + R(5) + R(n)` | `3n + 5` |
+
+Les trois composants portes du moteur (`ti=0 i5/i6/i7`) utilisent la forme COURTE — c'est ce que
+le depot lit deja (`R(16)+R(16)+R(5)`, `vitality.go:175`). La forme LONGUE n'apparait qu'a
+l'etiquette 1 du bassin et chez le distributeur de `ti=43 i37`.
 
 ---
 
@@ -238,23 +325,50 @@ lot, ne relie une entite `device` a un vehicule :
 
 ---
 
-## 5. CE QUE LE REJEU PEUT DEJA FAIRE DES VEHICULES, ET QUI A CHANGE DEPUIS 2026-09-01
+## 5. CE QUE LE REJEU PEUT DEJA FAIRE DES VEHICULES — ET LA MESURE DU 2026-09-17 QUI CORRIGE CE PARAGRAPHE
+
+> **CORRIGE LE 2026-09-17 SUR PIECES, APRES LA VOIE LIBRE.** La version initiale de cette
+> section affirmait que le cycle de reapparition d'un vehicule etait « mesurable AUJOURD'HUI ».
+> **C'EST FAUX, et la mesure sur deux films entiers le dit** (§ 6 ter). Le paragraphe est
+> reecrit ci-dessous ; l'affirmation retiree est nommee pour qu'elle ne revienne pas.
 
 `V2_SPAWNS_COOLDOWNS` a conclu « cooldown NON mesurable » pour une raison precise et datee : la
 fin de vie d'un vehicule etait BORNEE par le recensement des images-cles, soit +/-20 s, et un
-cooldown de 20-35 s n'en sort pas. **Cette raison est tombee le 2026-09-05** : le dead-state de
-`ti=40 i11` est lu, la destruction est DATEE A LA MILLISECONDE, et le rejeu la publie deja
-(`VehicleTrack.TEnd`, present pour le seul `End == "destroyed"` — `document_vehicles.go`).
+cooldown de 20-35 s n'en sort pas. Cette raison-la EST tombee le 2026-09-05 : le dead-state de
+`ti=40 i11` est lu et le rejeu publie `VehicleTrack.TEnd`, date a la milliseconde.
 
-Le cycle de reapparition d'un vehicule est donc mesurable AUJOURD'HUI, par le modele deja ecrit et
-deja publie pour les armes : `PadCycle` (`document_ground_weapons.go:111`) — mediane, deciles,
-nombre d'ecarts MESURES, nombre de reapparitions dont la disparition precedente n'est pas datee.
-La regle de `PadCycle` s'applique telle quelle, y compris sa discipline : **cle ABSENTE quand le
-cycle n'est pas ETABLI** (au moins deux ecarts), jamais un chiffre instable publie comme stable.
+**MAIS UNE SECONDE CAUSE, JAMAIS MESUREE, PREND SA PLACE : `TEnd` EST QUASI TOUJOURS ABSENT.**
+Mesure du 2026-09-17, par la cuisson de PRODUCTION (`BuildFromFilm`) sur les deux BTB Heavies :
 
-C'est cela, la reponse produite pour les vehicules : **la reapparition se DEDUIT de l'apparition
-et de la destruction, le minuteur n'est pas ecrit** — et la deduction est maintenant assez fine
-pour etre honnete.
+| film | carte | vies de vehicule | naissance situee | **fin DATEE (`TEnd`)** |
+|---|---|---|---:|---:|
+| `a349fea8` | Fragmentation Heavies | 109 | 90 | **1** |
+| `a521164d` | Fragmentation Heavies | 42 | 37 | **1** |
+
+**Une fin datee sur 109, une sur 42.** Le cycle exige, par vie, la fin datee de la vie
+PRECEDENTE au meme emplacement : sur 31 emplacements agglomeres a 2 m pour `a349fea8` (dont 15
+credibles, 2 a 8 vies chacun), le compte des ecarts mesurables est **ZERO**, et les 56 occasions
+sont toutes comptees comme des MANQUES. Aucun cycle n'est etabli, sur aucun emplacement, sur
+aucun des deux films.
+
+CE QUI RESTE VRAI, ET CE QUI NE L'EST PLUS :
+
+- VRAI : le film n'ecrit AUCUN minuteur de reapparition de vehicule (§ 4, negatif mesure sur
+  l'univers des 294 noms de composant). La reapparition ne peut que se DEDUIRE.
+- VRAI : la FORME de la deduction est celle de `PadCycle` (`document_ground_weapons.go:111`) —
+  mediane, deciles, ecarts mesures, manques comptes, cle ABSENTE quand le cycle n'est pas etabli.
+- **PLUS VRAI** : que la deduction soit faisable aujourd'hui. Elle ne l'est pas. Le prealable
+  n'est plus la resolution du recensement, c'est **l'ATTRIBUTION de la fin de vie** : pourquoi
+  `TEnd` ne se renseigne-t-il qu'une fois sur cent ? Le journal de cuisson de `a349fea8` dit
+  `vehicules : balaye=true` et publie 109 vies, donc le calque marche ; c'est le rattachement du
+  dead-state a la vie qui ne se fait pas. La reserve 2 de `NOTE_V13_DEADSTATE_VEHICULE` § 5
+  (« sur-comptage certain : il faut grouper les dead-states consecutifs d'un meme slot en UN
+  episode de mort. Non fait. ») designe le meme endroit.
+
+C'est donc cela, la reponse produite pour les vehicules, et elle est en deux temps : **le film
+n'ecrit pas le minuteur, et la deduction attend que la fin de vie soit attribuee.** Le lot de
+port devra ouvrir CE prealable avant de publier un `VehicleCycle` — sinon il publierait un calque
+vide sur 99 % des vies.
 
 ---
 
@@ -296,6 +410,130 @@ images-cles** : l'image-cle est un ETAT COMPLET, il n'y a pas de masque de prese
 rendait 64 bits a UN sur `ti=2`, `ti=11` et `ti=12` — au-dela meme du nombre de composants
 declares au registre (18, 34, 28). La recette V13 vaut pour les records DELTA. La difference est
 de CADRE, pas de corpus ; ne pas la re-essayer sur une image-cle.
+
+---
+
+## 6 bis. LE BASSIN LU SUR CINQ FILMS ENTIERS — ET IL NE PORTE PAS LE MINUTEUR DU DRAPEAU
+
+> Voie libre du pilote, 2026-09-17. **CINQ FILMS, UN PAR UN**, par deux instruments cibles ;
+> jamais de balayage du corpus, ni `replay-equiv`, ni corpus gate. Films choisis dans
+> `config/replay_corpus.toml` (mode et carte lus la, jamais en base) :
+>
+> | court | mode | carte | pourquoi |
+> |---|---|---|---|
+> | `bcb6d393` | CTF:Arena | Cliffhanger | CTF mono-manche, temoin canonique du corpus |
+> | `fb1a1a72` | CTF:Arena | Banished Narrows | CTF multi-manche |
+> | `d9781168` | Oddball:Arena | Dredge | le crane |
+> | `a349fea8` | BTB Heavies:Total Control | Fragmentation Heavies | vehicules, Heavies |
+> | `a521164d` | BTB Heavies:Total Control | Fragmentation Heavies | vehicules, second temoin |
+
+### 6 bis.1 LA LECTURE EST ACQUISE SUR LES TROIS FILMS D'ARENE, ET ELLE ECHOUE SUR LES DEUX BTB
+
+| film | records de moteur marches | fentes allouees (union des masques) | verdict |
+|---|---:|---|---|
+| `bcb6d393` | 19 | `0x00000000000003ff` = **10, contigues** | LECTURE ACQUISE |
+| `fb1a1a72` | 41 | `0x0000000000001fff` = **13, contigues** | LECTURE ACQUISE |
+| `d9781168` | 37 | `0x000000000000007f` = **7, contigues** | LECTURE ACQUISE |
+| `a349fea8` | 53 | `0xffffffffffffffcf` = 62, **tout-a-un** | LECTURE REFUSEE (bruit) |
+| `a521164d` | 20 | `0xb36fffffffffffc6` = 55, **tout-a-un** | LECTURE REFUSEE (bruit) |
+
+**Un masque de 64 fentes presque tout a un n'est pas une mesure, c'est une signature de
+desalignement** — le meme raisonnement que l'oracle `n2` du golden 0.A.3. Les trois films
+d'arene rendent au contraire des PREFIXES CONTIGUS (0..9, 0..12, 0..6) : un pool alloue
+sequentiellement, exactement ce qu'un bassin doit ressembler. La grammaire de ce lot vaut donc
+sur les builds d'arene mesures et PAS sur les deux BTB Heavies ; c'est la doctrine du profil par
+build, et le port devra la re-mesurer par build (§ 8).
+
+Sur les cinq films, la marche franchit `i15` et s'arrete a **`i16 scenario-intro-component`** —
+non porte, SITUE APRES le bassin. La regle de `NOTE_V13_DEADSTATE_VEHICULE` § 3 s'applique :
+`DesyncAt` est l index du PREMIER composant non porte, donc tout ce qui precede a ete consomme
+dans l ordre. La fermeture n'est donc pas atteignable sans porter `i16`/`i17`, et l'oracle de
+justesse est ailleurs — § 6 bis.2.
+
+### 6 bis.2 L'ORACLE QUI REMPLACE LA FERMETURE : LA COHERENCE TEMPORELLE DU DECOMPTE
+
+La lecture rend, par fente, `a` (le premier reel) et `b` (le second). Sur `bcb6d393`, fentes 7, 8
+et 9, aux images-cles espacees de 20,0 s :
+
+| image-cle | `a` | `b` | reste consomme depuis la precedente |
+|---|---|---|---|
+| t = 40,0 s | 29,939 s | 24,995 s | — |
+| t = 60,0 s | 29,939 s | 5,219 s | **19,776 s** pour 20,0 s ecoulees |
+| t = 80,0 s | 29,939 s | 0,000 s | epuise |
+
+**`a` est la DUREE TOTALE, `b` le TEMPS RESTANT, et le reste decroit au rythme REEL a 1,1 % pres
+— sur une lecture de 16 bits quantifiee au pas de 0,549 s, c'est-a-dire a la resolution du
+quantum.** Aucune fenetre mal posee ne produit cela : un decompte qui suit l'horloge du film sur
+trois echantillons consecutifs est une preuve de justesse plus forte qu'une fermeture, parce
+qu'elle porte sur la VALEUR et non sur la position.
+
+Quanta de duree totale observes, IDENTIQUES sur les trois films d'arene (aucune autre valeur) :
+
+| quantum `qa` | duree | `bcb6d393` | `fb1a1a72` | `d9781168` |
+|---|---|---:|---:|---:|
+| 0 | 0,000 s | 71 | 163 | 150 |
+| 1 | 0,275 s | 31 | 64 | 57 |
+| 51 | **27,741 s** | 22 | 136 | 3 |
+| 55 | **29,939 s** | 48 | 157 | 42 |
+
+Toutes les fentes vivantes portent l'etiquette **2** (echelle `[0, 36000]` s) ; l'etiquette 1 et
+sa forme longue n'apparaissent sur aucun des cinq films.
+
+### 6 bis.3 LA JOINTURE NE SE FAIT PAS : `ti=11 i0` VAUT `(-1, -1)` SUR 446 RECORDS SUR 446
+
+C'etait LA question du lot : l'index de minuteur d'un objectif designe-t-il une fente du bassin ?
+`ti=11 i0` est lu PAR LA MEME MARCHE que le bassin (meme cadre d'image-cle, meme etat par defaut,
+meme frontiere — deux cadres differents ne se joignent pas), et il est le PREMIER composant apres
+l'en-tete, donc acquis sans rien porter.
+
+| film | records `ti=11` lus | couples de quanta distincts | index sous la lecture (a) `q-1` | sous la lecture (b) `q/2-1` |
+|---|---:|---|---|---|
+| `bcb6d393` | 85 | `(0, 0)` seulement | `(-1, -1)` | `(-1, -1)` |
+| `fb1a1a72` | 195 | `(0, 0)` seulement | `(-1, -1)` | `(-1, -1)` |
+| `d9781168` | 166 | `(0, 0)` seulement | `(-1, -1)` | `(-1, -1)` |
+
+**446 records, un seul couple, et c'est « AUCUN MINUTEUR ».** Sur ces trois films, aucun objectif
+du HUD — ni le drapeau de deux CTF, ni le crane d'un Oddball — ne branche de fente du bassin. La
+jointure index -> fente n'existe pas sur ce corpus, et ce n'est pas un defaut de lecture : c'est
+la valeur que le film ecrit.
+
+DEUX CONSEQUENCES, TOUTES DEUX FERMES :
+
+1. **LE BASSIN N'EST PAS LA VOIE DU RETOUR DU DRAPEAU.** L'hypothese de la version initiale de
+   cette note (« c'est lui que designent les index de `ti=11 i0` ») est REFUTEE sur les trois
+   films d'arene mesures. Le bassin porte de vrais comptes a rebours — mais pas ceux-la.
+2. **LES MINUTEURS DU BASSIN SONT GENERIQUES, PAS MODAUX.** Les memes deux durees (27,741 s et
+   29,939 s) apparaissent en CTF **et** en Oddball, ou il n'y a pas de drapeau ; et le nombre de
+   fentes allouees (10, 13, 7) suit l'ordre de grandeur du nombre de JOUEURS, pas celui des
+   objectifs (2 drapeaux, 1 crane). Trois fentes qui portent la MEME valeur au MEME instant
+   (7, 8, 9 sur `bcb6d393`) se lisent alors comme trois minuteurs demarres ensemble.
+
+**PISTE NOMMEE, NON PROUVEE — et elle ne doit pas etre presentee autrement.** L'executable porte
+la chaine `Engine_SetSpawnTimerAndTotalRespawnDurationForPlayer` : « minuteur de reapparition ET
+DUREE TOTALE de reapparition POUR UN JOUEUR », c'est-a-dire exactement la forme mesuree
+(`a` = duree totale, `b` = restant) et exactement la granularite mesuree (par joueur).
+`Player_GetRespawnTimerCountdown`, `NormalizedTimeRemainingUntilRespawn` et
+`RespawnGrowthInSeconds` / `MaximumRespawnTimeInSeconds` sont du meme vocabulaire. **Ce qui
+manque pour conclure : coller un demarrage de fente a une MORT datee du fil des morts.** Ce
+n'est pas fait, c'est cheap, et c'est le premier item du § 9.
+
+### 6 bis.4 CE QUE LA VOIE LIBRE N'A PAS PU MESURER, ET POURQUOI — DIT SANS ENJOLIVER
+
+- **`flagCarries` n'est pas cuit par cet instrument.** `BuildFromFilm` avec le seul
+  `Options.MapQuant` publie 0 intervalle de drapeau sur les deux CTF (`DRAPEAUX : aucun`) : le
+  calque exige le catalogue versionne d'objectifs de carte, joint par `map_id`
+  (`document_objectives_live.go`, « le DRAPEAU le socle `flag_spawn` de la carte »), que
+  l'instrument ne fournit pas. La collation demandee « bassin contre `flagCarries.dropped` » n'a
+  donc PAS eu lieu. Elle n'aurait de toute facon rien nomme : la jointure par `ti=11 i0` est un
+  negatif mesure (§ 6 bis.3), donc il n'y a pas de fente de drapeau a coller.
+- **`ti=12 i11`/`i12` (le minuteur manuel du navpoint) n'est pas mesure.** Le bloquant de `ti=12`
+  est `i1`, dix composants avant : les franchir demande les cinq blocs de filtres et leur
+  `param_4`, releves mais non portes. C'est desormais LA voie la plus prometteuse pour les
+  objectifs, et le § 9 la chiffre.
+- **`ti=13 i0` par la voie delta n'est pas mesure.** Meme raison qu'au premier commit : `i0` est
+  marche mais pas recolte, et il faudrait hacher les noms Lua candidats.
+- **Les positions des entites `ti=43` ne sont pas confrontees aux emplacements de vehicule.** Le
+  document de rejeu ne publie pas les devices ; les extraire demande un troisieme instrument.
 
 ---
 
@@ -360,7 +598,17 @@ grammaire n'est fausse ; c'est une incoherence de TABLE.
 
 ## 8. LE CHEMIN DE PORT (lot post-M4, a instruire par le pilote)
 
-### 8.1 Objectifs — trois etapes, dans cet ordre
+### 8.1 Objectifs par le bassin — CE CHEMIN EST DESORMAIS SANS OBJET POUR LE DRAPEAU
+
+> **STATUE LE 2026-09-17 (voie libre).** Les trois etapes ci-dessous ont ete JOUEES dans un
+> instrument de recherche : les grammaires de `i11`, `i13` et `i14` sont relevees (§ 2 bis), le
+> bassin est lu sur trois films entiers (§ 6 bis.1), et l'etape 3 — la jointure a l'index de
+> `ti=11 i0` — est un NEGATIF MESURE (§ 6 bis.3). **Porter le bassin ne donnera donc PAS le
+> minuteur du drapeau.** Le chemin reste ecrit parce qu'il vaut pour lui-meme (le bassin porte de
+> vrais comptes a rebours ; le § 9.5 item 1 dit comment les nommer) et parce que les trois
+> grammaires sont acquises. La voie des objectifs est le § 8.2.
+
+### 8.1 bis Le chemin, tel qu'il a ete parcouru en recherche
 
 1. **Porter `ti=0/2 i11 game-engine-soft-ceilings-component`**, puis re-mesurer avec
    `TestReapparition37CheminVersLeBassin` : le bloquant doit avancer (candidats suivants au
@@ -407,58 +655,76 @@ Sur le modele de `PadCycle` (une donnee MESUREE, cle absente quand elle n'est pa
 
 ---
 
-## 9. CE QUI RESTE INCERTAIN, ET CE QUE JE VEUX LIRE SUR FILM ENTIER
+## 9. CE QUI RESTE, APRES LA VOIE LIBRE — ET CE QUE CHAQUE ITEM COUTE
 
-Rien de ce qui suit n'est faisable sur les mini-bobines : elles ne portent que des images-cles
-(sauf `000d5950`, un Fiesta sans objectif ni vehicule) et le bassin n'est pas lisible avant le
-port de `i11`.
+> Cette section remplace la liste « ce que je veux lire sur film entier » du matin : les quatre
+> mesures qu'elle demandait ont ete jouees ou explicitement rendues impossibles, et le § 6 bis
+> dit laquelle est laquelle. Ce qui suit est ce qui reste, avec son cout et son gate.
 
-1. **Le bassin porte-t-il le minuteur du drapeau ?** Non prouve. Preuve demandee : un film **CTF**
-   entier, lire `ti=11 i0` (deja porte) pour chaque objectif, et les fentes du bassin aux memes
-   images-cles apres port de `i11`/`i15`. Attendu : la fente designee par l'index d'un objectif de
-   drapeau porte une valeur qui DESCEND entre deux images-cles d'un lacher sans reprise.
-2. **Le navpoint du drapeau lache porte-t-il un minuteur manuel ?** Non prouve. Preuve demandee :
-   un film **CTF** entier, `ti=12 i11`/`i12` apres port — non nuls seulement pendant les
-   intervalles `dropped` que `flagCarries` publie deja. C'est le controle croise le moins cher,
-   et il valide ou invalide la voie courte (§ 8.2).
-3. **Un generateur de vehicule est-il une entite `device` ?** Non prouve, et c'est le piege a ne
-   pas refaire. Preuve demandee : un film **BTB a vehicules** entier, confronter les positions des
-   entites `ti=43` (composant `object-position` / `device-position`, deja portes) aux emplacements
-   de naissance des vehicules mesures par `V2_SPAWNS_COOLDOWNS` § 1 (rayon 0,00 m). Si un device
-   se tient a chaque pad de vehicule, `i37` est le compte a rebours cherche ; sinon le negatif du
-   § 4 est complet et definitif.
-4. **Le cycle de reapparition des vehicules, maintenant que la destruction est datee.** Mesure
-   demandee : 2 a 3 films **BTB / Heavies** entiers, ecart `TEnd -> naissance suivante au meme
-   emplacement`, avec les regles de stabilite de `PadCycle` (>= 2 ecarts, `missing` compte). C'est
-   la mesure qui remplace le `IQR/mediane 0,87-0,98` de 2026-09-01.
+### 9.1 Les quatre mesures de la voie libre, statuees
 
-5. **LE CANAL QUE CE LOT N'A PAS ECARTE, ET QU'IL FAUT NOMMER : `ti=13`,
-   `managed-object-property`.** Ce n'est pas un composant DE minuteur — c'est un sac de
-   proprietes NOMMEES qu'un script de mode attache a un objet (`Engine_CreateFloatNetworkedProperty`,
-   `NetworkedProperty_SetFloatProperty` : le NOM est un `StringId` choisi par le script, donc
-   il n'apparait PAS dans l'univers des noms de composant du § 4 — le negatif de ce paragraphe
-   ne le couvre pas). Trois faits le rendent candidat au retour de drapeau, et aucun ne suffit :
-   (a) le tag 3, DOMINANT a 85,7-95,4 % des slots mesures, est un flottant quantifie `R(24)` sur
-   **`[-100, +100]`** (`components_managed_property.go`) ; (b) l'echelle de la jauge de retour de
-   drapeau vaut **100** dans `parcel_deliver_object.lua` (memoire `reference_ctf_flag_lua_mechanics`,
-   avec `flagReturnTimer`, `flagReturnTimerRate`, `onReturnProgress`, `flagResetSeconds`) ;
-   (c) le meme canal porte deja la JAUGE DE CAPTURE des zones en production
-   (`zone_state_scan.go`, `document_zones.go`). Ce que ce lot NE peut pas faire : `ti=13 i0`
-   (`managed-object-property-name-component`, le `StringId` du nom) est MARCHE mais **pas
-   recolte** — le balayage l'a retire comme sortie morte a la revue R1 de la phase 2b — et le
-   golden de fermeture 0.A.3 mesure que l'ETAT PAR DEFAUT de `ti=13` est DESALIGNE (oracle `n2` :
-   `n1` constant a 136, `n2` du bruit), donc sa voie image-cle ne vaut rien ; seule la voie DELTA
-   parle, et elle n'existe pas dans les mini-bobines par build. Preuve demandee, sur un **CTF**
-   entier : recolter `i0` par la voie delta, hacher les noms Lua candidats (`flagReturnTimer`,
-   `flagResetSeconds`, `onReturnProgress`) par le hacheur de `StringId` du jeu, et regarder si un
-   slot porte un tag 3 qui monte vers 100 pendant un intervalle `dropped` de `flagCarries`.
-   **Ne pas conclure sans ce test** : c'est un canal generique, et un tag 3 qui varie ne dit pas
-   de lui-meme qu'il parle du drapeau.
+| mesure demandee | statut | ou |
+|---|---|---|
+| (1a) le bassin porte-t-il le minuteur du drapeau (index `ti=11 i0` -> fente) | `[x]` **REPONDU : NON**, 446 records sur 446 a `(-1, -1)` | § 6 bis.3 |
+| (1b) le navpoint du drapeau lache porte-t-il un minuteur manuel (`ti=12 i11`/`i12`) | `[!]` NON MESURE — bloquant `i1`, dix composants a porter | § 9.2 |
+| (1c) `ti=13 i0` par la voie delta | `[!]` NON MESURE — `i0` marche mais pas recolte | § 9.3 |
+| (2) Oddball : minuteur de remise a zero du crane | `[x]` **REPONDU : le bassin ne le porte pas** — `ti=11 i0` a `(-1, -1)` sur 166 records, memes durees generiques qu'en CTF | § 6 bis.3 |
+| (3a) un generateur de vehicule est-il un `device` | `[!]` NON MESURE — le document ne publie pas les devices | § 9.4 |
+| (3b) le cycle de reapparition depuis `T0`/`TEnd` | `[x]` **REPONDU : NON MESURABLE** — 1 fin datee sur 109 et sur 42, zero ecart sur 31 emplacements | § 5 |
 
-**Films souhaites, cinq au plus, un par un** : 2 CTF (dont un recent), 1 Oddball (le crane a-t-il
-un minuteur de remise a zero ?), 2 BTB a vehicules (dont un Heavies). Aucun KOTH ni Strongholds :
-les zones ne reapparaissent pas, et le lot 3.6 a mesure qu'un Strongholds ne porte aucun slot
-`ti=11` dans ses images-cles.
+### 9.2 `ti=12 i11`/`i12` — LE CHEMIN LE PLUS COURT VERS UN COMPTE A REBOURS D'OBJECTIF
+
+Ce qu'il faut porter, dans l'ordre le moins cher donne par `NOTE_3_6_TI12_GRAMMAIRES_A` § 17 pt 4 :
+`i1` (`R(8)`), `i7` (`R(8)`), `i8` (`R(32)`), `i10` (`2 x R(7)`, reutiliser
+`consumeObjectiveTimers`), puis `i11`/`i12` (`R(17)`). **Prealable non negociable** :
+`paramByComponent` doit poser `param_4 = 3` pour `i2` et `= 2` pour `i3`..`i6`, sinon la marche
+se desynchronise des le premier bloc de filtres (meme note, § 17 pt 1). Gate : le ratchet 0.A.3
+doit voir le bloquant de `ti=12` avancer de `i1` vers `i13`.
+
+Ce que la mesure dira ensuite, et le critere s'ecrit MAINTENANT : `i12` (duree courante) doit
+etre non nul PENDANT les intervalles `dropped` d'un CTF et nul en dehors. Le calque `flagCarries`
+est l'oracle, et il faut le CUIRE AVEC le catalogue d'objectifs de carte — ce que l'instrument de
+collation de ce lot ne fait pas (§ 6 bis.4).
+
+### 9.3 `ti=13` — la propriete reseau nommee par le script de mode
+
+Inchange depuis le matin : `Engine_CreateFloatNetworkedProperty` /
+`NetworkedProperty_SetFloatProperty` laissent le NOM au script, donc il n'apparait pas dans
+l'univers des 294 noms de composant du § 4 — **le negatif de ce lot ne couvre pas ce canal**. Tag
+3 = `R(24)` quantifie sur `[-100, +100]`, l'echelle de la jauge de retour vaut 100 dans
+`parcel_deliver_object.lua`, et le meme canal porte deja la jauge de capture des zones en
+production. Bloquants : `i0` (le `StringId` du nom) est marche mais pas recolte, et l'etat par
+defaut de `ti=13` est desaligne en image-cle (oracle `n2`) — seule la voie DELTA parle. Preuve
+demandee : recolter `i0` en delta sur un CTF, hacher `flagReturnTimer` / `flagResetSeconds` /
+`onReturnProgress` par le hacheur de `StringId` du jeu, et chercher un slot dont le tag 3 monte
+vers 100 pendant un `dropped`.
+
+### 9.4 Les devices contre les emplacements de vehicule
+
+`device-object-dispenser-timer-component` reste le seul minuteur de generateur de l'image. Le
+test qui tranche : extraire les positions des entites `ti=43` (`object-position` i0 et
+`device-position` i18, tous deux PORTES — le bloquant de `ti=43` est `i19`, donc la regle de V13
+s'applique) et les confronter aux emplacements de naissance de vehicule que ce lot a deja
+agglomeres (31 sur `a349fea8`, dont 15 credibles a 2-8 vies). Seuil a ecrire AVANT la mesure ;
+`V2_SPAWNS_COOLDOWNS` § 2 avait pose « >= 80 % des amas a < 1 m d'un emplacement declare » pour
+la confrontation `.mvar`, et il est reutilisable tel quel.
+
+### 9.5 Ce que la lecture du bassin doit encore prouver, et le cout est faible
+
+1. **NOMMER les minuteurs du bassin.** Coller un DEMARRAGE de fente (le premier echantillon ou
+   `b` devient non nul) a une MORT datee du fil des morts, deja lu par le rejeu. Si les
+   demarrages tombent sur des morts, la piste
+   `Engine_SetSpawnTimerAndTotalRespawnDurationForPlayer` est confirmee et le bassin est classe
+   « minuteurs de reapparition des joueurs » — donc SANS INTERET pour ce chantier, ce qui est
+   une reponse utile. Instrument : les deux de ce lot, plus une jointure ; aucun port.
+2. **LE PROFIL PAR BUILD.** La lecture du bassin echoue sur les deux BTB Heavies (masques
+   tout-a-un, § 6 bis.1) et reussit sur les trois films d'arene. Avant tout port, mesurer sur
+   quel ensemble de builds la grammaire tient — la cause probable est le NIVEAU de `i14` (la
+   branche `level < 2` lit `R(64)` de plus) ou l'etat par defaut de `ti=2`.
+3. **`i16 scenario-intro-component` et `i17 matchflow-isplaying-flags-component`** : les porter
+   rendrait la FERMETURE, donc l'oracle de justesse gratuit du ratchet 0.A.3 sur l'archetype du
+   moteur. Sans eux la lecture du bassin restera toujours justifiee par la seule coherence
+   temporelle — ce qui est solide mais ne se met pas sous ratchet.
 
 ---
 
@@ -505,3 +771,23 @@ objdump -d --no-show-raw-insn --start-address=0x1407ee7b8 --stop-address=0x1407e
 5. **`ti=40 vehicule` : 777 records d'image-cle bornes sur le corpus, marche COMPLETE, fin au
    mauvais bit, zero ferme.** Le decodeur consomme tous les composants declares et atterrit a cote
    : c'est une largeur fausse, pas une couverture manquante. Hors perimetre 3.7.
+6. **`VehicleTrack.TEnd` EST RENSEIGNE UNE FOIS SUR CENT** (1/109 et 1/42 sur deux BTB Heavies,
+   cuisson de production). Le calque des vehicules publie ses 109 vies, donc le balayage marche ;
+   c'est le RATTACHEMENT du dead-state a la vie qui ne se fait pas. La reserve 2 de
+   `NOTE_V13_DEADSTATE_VEHICULE` § 5 (« grouper les dead-states consecutifs d'un meme slot en UN
+   episode de mort. Non fait. ») designe le meme endroit. C'est le prealable de tout cycle de
+   reapparition de vehicule, et il n'appartient pas a un lot de recherche.
+7. **LA LECTURE DU BASSIN ECHOUE SUR LES BUILDS BTB HEAVIES** (masques de fente tout-a-un :
+   `0xffffffffffffffcf`, `0xb36fffffffffffc6`) et reussit sur les trois films d'arene (prefixes
+   contigus `0x3ff`, `0x1fff`, `0x7f`). Cause probable : le NIVEAU de `i14` — sa branche
+   `level < 2` lit `R(64)` de plus — ou l'etat par defaut de `ti=2`. A mesurer par build avant
+   tout port (§ 9.5 item 2).
+8. **`BuildFromFilm` avec le seul `Options.MapQuant` NE PUBLIE AUCUN `flagCarries`**, pas meme sur
+   un CTF:Arena du corpus temoin (`DRAPEAUX : aucun` sur `bcb6d393` ET `fb1a1a72`). Le calque
+   exige le catalogue versionne d'objectifs de carte. Aucun commentaire d'`Options` ne le dit :
+   un instrument de recherche qui cuit un film croit legitimement obtenir le document complet.
+9. **L'entite du moteur de jeu est declaree DEUX FOIS au registre** — `ti=0` (27 composants) et
+   `ti=2` (18) declarent tous deux le bassin en `i15`, et c'est `ti=2` qui vit (19 a 53 records
+   par film) pendant que `ti=0` n'a qu'un record a `n2 = 0`. Choisir le premier archetype qui
+   declare un composant est donc un piege : la premiere passe de ce lot a rendu « 0 record
+   marche » et aurait laisse croire que le bassin n'est pas dans le film.
