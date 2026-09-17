@@ -5430,7 +5430,8 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-17 | 2.6.0 | **D1 (2.6.0) — LES DEUX EMPREINTES DU DÉPÔT N'ENCADRENT PAS LES OCTETS DE LA MÊME FAÇON, ET AUCUN DES DEUX GATES NE POUVAIT LE DIRE.** Mesure sur `26cf32399`, code à code : `killcollector/decoder_rev_fingerprint_test.go` écrit `<chemin relatif à la racine>\n<longueur>\n<contenu>` ; `filmdec/grammar_rev_fingerprint_test.go` écrit `<nom du dossier de racine>/<chemin>`, un octet NUL, puis le contenu — sans longueur. Deux copies du même motif, nées à deux dates, divergentes sur le seul point qui compte : **deux empreintes calculées par deux cadres différents ne se comparent pas**. La conséquence est datée du pas 5 : `git mv filmdec film/internal/grammar` change les 141 chemins hachés sous le cadre de la grammaire, donc l'empreinte, alors qu'aucun octet de grammaire n'a bougé — il faudrait soit monter `grammar.Rev` pour rien, soit régénérer le golden sur la branche « révision inchangée, empreinte différente », c'est-à-dire faire taire le ratchet dans le cas précis pour lequel il existe. NON TRAITÉ au sens du re-pointage (frontière du lot : les deux gates ne sont pas touchés) : le cadre courant est le chemin relatif à la racine, l'ancien survit en `revision.CadreHeriteGrammaire`, kill-switch daté, et l'équivalence des deux est prouvée au bit près. | lot 2.6.1, dans le commit qui bascule `grammar` sur le contrat courant : la montée de révision qui accompagne le changement de cadre est alors DÉLIBÉRÉE et écrite, pas subie à l'occasion d'un `git mv` |
 | 2026-09-17 | 2.6.0 | **D2 (2.6.0) — LA CHRONIQUE RÉELLE DE `GrammarRev` PORTE DES TROUS DE RANG, ET UNE VÉRIFICATION « SANS TROU » SUR TOUT L'HISTORIQUE SERAIT ROUGE.** Mesure sur l'HISTORIQUE de `grammar_rev.golden` (39 entrées) : la série du 2026-09-15 passe de `.6` à `.8`, puis de `.8` à `.12` — `.7` et `.9` à `.11` n'existent pas. Cause lisible dans les entrées voisines (« RANG PROVISOIRE », « RANG DE FUSION ») : des lots parallèles réservent un rang, et la fusion qui n'a pas eu lieu le laisse vacant. Le contrôle de continuité de `revision.Chronique.VerifierRangs` prend donc un PLANCHER explicite (`depuis`), et le test qui lit les artefacts réels de `filmdec` ne l'applique PAS — poser une continuité sur la chronique d'une autre couche rendrait le paquet `revision` rouge à la prochaine fusion à rang provisoire, pour une décision qui ne lui appartient pas. NON TRAITÉ : renuméroter le passé obligerait à régénérer des goldens déjà écrits, c'est-à-dire à ouvrir des backlogs pour de la comptabilité. | lot 2.6.1 : chaque couche déclare le rang à partir duquel elle tient la continuité (le premier de sa propre série, les quatre séries naissant à ce lot) ; le passé de `grammar` reste tel quel, avec ses trous, et la chronique en dit la raison |
 | 2026-09-16 | 2.6.1 | **D1 (2.6) — LA CONSTANTE A DISPARU, SES RENVOIS DE PROSE SURVIVENT DANS DES PAQUETS INTERDITS AU LOT.** `KillSourceDecoderRev` n'existe plus (elle est `facts.Rev`), mais **7 fichiers** la citent encore en commentaire, tous hors frontière : `film/grammar/grammar_rev.go`, `grammar_rev_chronique.go`, `grammar_rev_chronique_archive.go`, `grammar_rev_fingerprint_test.go` (26 occurrences à eux quatre — le fichier de gate y pose la règle à trois étages), `film/replay/document_chronicle.go` (1), `internal/replaybuild/derivations_index.go` (1). Les toucher aurait fait monter l'empreinte de grammaire pendant que 2.5.b la déplace, et deux d'entre eux SONT la chronique d'une autre révision. NON TRAITÉ (frontière). | **Volet grammaire du lot 2.6** : le commit qui fait hériter `grammar.Rev` rouvre les quatre fichiers de `grammar/` et y renomme les renvois. `document_chronicle.go` et `derivations_index.go` : au premier lot qui les rouvre — même famille que D7 (2.5) et D4 (2.5.h) |
-| 2026-09-17 | 3.4.2 | **D7 (3.4.2) — STATUÉE PAR LA MESURE, ET SA CAUSE EST DOUBLE. RESTE OUVERTE.** L'instruction sur pièces (§5, deux films, aucun balayage de corpus) écarte deux des trois hypothèses et en laisse une décision au pilote. **(i) RÉFUTÉE** : l'histogramme `Observation.IndexAbsolus` est **VIDE** sur les deux marches — `consumeAbsolutePayload`, le chemin que le correctif D1 (3.4) a changé, n'est JAMAIS emprunté par la marche des morts d'objet ; `git diff 492cb0923 HEAD` sur `dispatch_object.go`, `object_deaths.go` et `object_deaths_calibrate.go` est **vide**, et l'ordre de pose du profil (`build_from_film.go:112-115`) donne les largeurs de la carte des DEUX côtés. **(iii) ÉTABLIE SUR DEUX TÉMOINS, RÉFUTÉE SUR DEUX AUTRES** : `60ae07c4` n'appariait qu'**1 mort sur 8** à une vie de véhicule à la base (et `50247b26` **0 sur 4**) — la baisse y est une CORRECTION ; mais `4f77afc1` appariait **14 sur 14** et en rend 11 sur 11, `11de8353` 3 sur 6 puis 2 sur 5 — ces morts-là n'étaient pas du bruit. **CE QUI DÉCIDE, ET C'EST LA VRAIE TROUVAILLE** : sur les films sans région, c'est **`param_4`** (`repli_parametre_etat_record_infere`, **D2 (3.4.1)**) — sur `a521164d` les morts `ti=40` valent **13 / 8 / 9 / 7 / 7 / 7** selon sa valeur, la production retient **4** à **14,8 % de marge** (`croissance x1.148`), et **aucune source lue ne donne cette valeur**. C'est le MÊME défaut que celui que 3.4.2 vient de corriger pour le mot de poignée, sur une autre grandeur. Sur `60ae07c4` c'est le DÉCOUPAGE : catalogue `gate=6 12/12/11` contre film `gate=5 13/12/11`, **même total de 41 bits** — le seul désaccord du corpus, sur les deux films Live Fire. **NON TRAITÉ** : le remède est le geste (a1) appliqué à `param_4`, et il change des vies de véhicule PUBLIÉES. | **DÉCISION DU PILOTE.** Deux gestes distincts : (a) donner à `param_4` son propre test de discrimination, scoré dans le monde que la production décode — même forme que `motDePoigneeRetenu` ; (b) trancher le découpage de Live Fire entre le catalogue et le film, par une mesure de CONTENU (aucun test de longueur ne peut le voir, les deux font 41 bits) |
+| 2026-09-17 | 3.4.2 | **D7 (3.4.2) — FERMÉE. CAUSE ÉTABLIE, REMÈDE MESURÉ ET ÉCARTÉ, RÉGRESSION RÉSIDUELLE ASSUMÉE ET ÉCRITE.** **(i) RÉFUTÉE** : l'histogramme `Observation.IndexAbsolus` est **VIDE** sur les deux marches — `consumeAbsolutePayload`, le chemin corrigé par D1 (3.4), n'est JAMAIS emprunté par la marche des morts d'objet ; `git diff 492cb0923 HEAD` sur `dispatch_object.go`, `object_deaths.go` et `object_deaths_calibrate.go` est vide. **(iii) ÉTABLIE SUR DEUX TÉMOINS SEULEMENT** : `60ae07c4` n'appariait qu'**1 mort sur 8** et `50247b26` **0 sur 4** — la baisse y est une correction ; mais `4f77afc1` appariait **14 sur 14** et `11de8353` 3 sur 6 : ces morts-là n'étaient pas du bruit. **LA CAUSE, DOUBLE** : sur les films sans région c'est **`param_4`**, décidé par un critère qui ne le sépare PAS (croissance des slots, **x1.001 sur la médiane** — `60ae07c4` et `11de8353` x1.000) alors qu'il fixe la largeur de trois composants ; sur Live Fire c'est le **découpage**, catalogue `gate=6 12/12/11` contre film `gate=5 13/12/11`, **41 bits des deux côtés** (**D8 (3.4.2)**). **LE REMÈDE (a1) A ÉTÉ CODÉ ET MESURÉ, PUIS ÉCARTÉ** : donner à `param_4` le test de discrimination du mot de poignée le fait tomber à l'invariant partout et **fait perdre des données PUBLIÉES ailleurs** — `grenadeReads/n` 193 -> 191 sur `bcb6d393` (le témoin NÉGATIF), `weaponChanges/par-kind/taken` 67 -> 65 sur `a349fea8` et 36 -> 32 sur `a521164d`, `coverage.abilities.published` 187 -> 186 sur `4f77afc1` — pour ne récupérer que 2 morts appariées sur 4. Tableau complet au §5 ; le correctif est conservé en patch hors dépôt (`param4_wip.patch`). **On ne remplace pas un bruit par une perte : `param_4` reste décidant, mais il est désormais NOMMÉ, MESURÉ et PUBLIÉ dans la chaîne lisible.** | **CANDIDAT POST-M3, NON RETENU POUR CE LOT** : donner à `param_4` un critère qui le DISCRIMINE vraiment — le taux de LOCALISATION DES PAQUETS, celui de `grammar/object_deaths_calibrate.go`, et non la croissance des slots — AVANT de lui appliquer un seuil. Le seuil n'est pas en cause : à x1.001 aucune barre raisonnable ne retiendrait la valeur, c'est le critère qui est inadapté. Lot à part entière |
+| 2026-09-17 | 3.4.2 | **D8 (3.4.2) — LE CATALOGUE ET LE FILM NE DÉCOUPENT PAS i0 DE LA MÊME FAÇON SUR LIVE FIRE, ET LES DEUX FONT 41 BITS. NON RETENUE.** `TestE192CatalogueContreDetection` sur les deux films Live Fire : catalogue `gate=6 region=1 12/12/11`, auto-détection `gate=5 13/12/11` — **le seul désaccord du corpus**, et il est invisible à toute mesure de LONGUEUR (même total). C'est exactement le piège que `dispatch_object.go` documente depuis le 2026-07-26, où seule une mesure de CONTENU avait tranché `R(1)+13/13/14` contre `R(2)+13/13/13`. **NON RETENUE POUR CE LOT, ET LA MESURE LE JUSTIFIE** : les positions de bipède de ces deux films sont déjà JUSTES par le catalogue (**71 903** et **75 297** lues, D1 (3.4.1)), et la perte se limite à **1 mort de véhicule appariée sur 8 lues** à la base sur `60ae07c4`. | Lot de mesure de CONTENU, hors M3 : départager les deux découpages comme le lot de juillet l'a fait — profil de bascule bit à bit sur des paires de records consécutifs d'une même entité. Aucun test de longueur ne peut le faire |
 | 2026-09-17 | 3.4.2 | **D3 (3.4.1) — STATUÉE : ELLE N'EST PAS LA CAUSE DE D7, ET ELLE RESTE OUVERTE SANS CONSÉQUENCE MESURÉE.** La découverte disait que le chemin world-object ne suit pas l'index de plage, contrairement au chemin du bipède corrigé par D1 (3.4). Vérifié sur pièces pendant l'instruction de D7 : la marche des morts d'objet ne prend JAMAIS le chemin absolu du bipède (histogramme vide sur `60ae07c4` comme sur `a521164d`), et `dispatch_object.go` n'a pas changé d'un octet depuis `492cb0923`. La dissymétrie existe toujours ; **aucune conséquence ne lui est attribuable à ce jour**. NON TRAITÉ. | Inchangé : lot M3 qui rouvrira le chemin world-object. Le correctif reste le même que celui d'`absAxisWFor`, et les deux chemins partagent déjà la fonction |
 | 2026-09-16 | 2.6.2 | **D2 (2.6) — SORTIR UN TYPE DE SON PAQUET TRANSFORME UN LITTÉRAL NON NOMMÉ EN ERREUR `go vet`.** `PlayerLine{"z16", 16, 13, 4}` compile tant que le type est déclaré dans le paquet ; dès qu'il vient d'ailleurs, l'analyse `composites` de `go vet` le refuse. Mesure sur ce volet : **16 littéraux**, tous dans `film/facts/objectives/named_test.go`, corrigés en champs nommés (le lot ne pouvait pas les laisser : `go vet ./...` est un gate). Aucun autre paquet n'en portait pour les 13 types déplacés. | **À prévoir au volet grammaire / rejeu**, qui déplace 49 types consommés par `replay` (246 citations) et `replaybuild` (74) : le coût n'est pas le déplacement, ce sont les littéraux positionnels des tests. À mesurer AVANT d'ouvrir le lot (`go vet ./...` après un déplacement d'essai) |
 | 2026-09-16 | 2.6.2 | **D3 (2.6) — LES TROIS ALIAS DATÉS ONT 79 FICHIERS DERRIÈRE EUX, ET C'EST LA LISTE DE TRAVAIL DU VOLET SUIVANT.** Mesure du 2026-09-16 (`grep` des 13 types qualifiés, hors `facts/` et `source/`) : **79 fichiers** hors des couches d'origine citent un type déplacé par son ancien nom de paquet — `film/replay` 246 citations, `internal/replaybuild` 74, `internal/sync/killcollector` 5, `film/filmcache` 4, `film/grammar` 3, `cmd/` 21. Tous compilent par les alias de `types_alias.go`, et chacun de ces fichiers appartient à un paquet que le brief interdisait à ce lot. | **Volet grammaire / rejeu du lot 2.6** : re-pointer, puis SUPPRIMER les trois `types_alias.go`. Le critère de retrait est écrit dans chacun d'eux, et il est mesurable au `grep` |
@@ -5633,6 +5634,69 @@ poignée**. Et sur `60ae07c4` la grandeur qui décide est le DÉCOUPAGE de la ca
 catalogue et le film DIFFÈRENT à total égal (41 bits) — le seul cas du corpus.
 **NON TRAITÉ : le remède est le même geste que (a1), mais sur `param_4`, et il change des vies de
 véhicule PUBLIÉES. C'est une décision du pilote, pas de l'exécutant.**
+
+#### Le remède (a1) appliqué à `param_4` : CODÉ, MESURÉ, ÉCARTÉ, 2026-09-17
+
+Décision du pilote après la mesure. Le correctif est conservé en patch hors dépôt
+(`param4_wip.patch`) : il n'est PAS dans l'arbre. Ce qui suit est ce qu'il rend, collé tel quel.
+
+**CE QU'IL FAISAIT.** `paramEtatRetenu`, fonction pure de la même forme que `motDePoigneeRetenu` :
+les six valeurs candidates scorées sous le profil déjà calibré, la meilleure retenue seulement si
+elle domine la MÉDIANE d'un facteur `flatRatio` (le rapport publié se mesurait au PIRE, ce qui
+flattait la mesure), sinon l'invariant. Ratchet étendu aux deux grandeurs, 9 cas de test sans
+film, repli re-motivé, `calibrate.go` scindé (il repassait 500 lignes).
+
+**CE QUE LE CRITÈRE DIT** : il ne sépare RIEN — `a521164d` **x1.001**, `60ae07c4` **x1.000**,
+`11de8353` **x1.000** sur la médiane. `param_4` tombe donc à l'invariant partout.
+
+**LE GATE DE CONTENU, `deathsMatched` base -> tête, corpus gate `--base=492cb0923`, 17 témoins :**
+
+| témoin | `deathsRead` sans (a) | `deathsRead` avec (a) | `deathsMatched` sans (a) | `deathsMatched` avec (a) | verdict du gate |
+|---|---|---|---|---|---|
+| `4f77afc1` | 14 -> 11 | **14 -> 14** | 14 -> 11 | **14 -> 13** | **NON TENU (−1)** |
+| `11de8353` | 6 -> 5 | 6 -> 5 | 3 -> 2 | **3 -> 2** | **NON TENU (−1)** |
+| `a521164d` | 12 -> 6 | **12 -> 10** | 4 -> 3 | **4 -> 4** | tenu |
+| `50247b26` | 4 -> 3 | récupéré | 0 -> 1 | récupéré | tenu |
+| `60ae07c4` | 8 -> 0 | 8 -> 0 | 1 -> 0 | 1 -> 0 | −1, **cas D8, non retenu** |
+
+**LES PERTES COLLATÉRALES, ET C'EST CE QUI TRANCHE.** Le bilan global se DÉGRADE — **11 témoins
+en PERTE contre 8** — et le TÉMOIN NÉGATIF `bcb6d393`, qui sortait `0 / 0 / 0`, bouge :
+
+| témoin | métrique PUBLIÉE | base -> tête avec (a) |
+|---|---|---|
+| `bcb6d393` (témoin négatif) | `grenadeReads/n` | **193 -> 191** |
+| `bcb6d393` | `grenadeReads.g/n` | 772 -> 764 |
+| `c75f33b8` | `grenadeReads/n` | 235 -> 234 |
+| `a349fea8` | `weaponChanges/par-kind/taken` | **67 -> 65** |
+| `a349fea8` | `weaponChanges.w/presents` | 83 -> 80 |
+| `a521164d` | `weaponChanges/par-kind/taken` | **36 -> 32** |
+| `4f77afc1` | `coverage.abilities.published` | 187 -> 186 |
+
+**VERDICT : (a1) NE TRANSFÈRE PAS À `param_4`, ET AUCUN SEUIL NE LE SAUVERAIT.** Le mot de
+poignée était une grandeur que le critère ne voyait pas ET qui ne changeait presque rien (0 à 8
+lectures, aucune attribution fausse). `param_4` est l'inverse : mal séparée (x1.001) mais LOURDE
+— elle fixe la largeur de trois composants, et la forcer à l'invariant fait lire moins de
+grenades, moins de changements d'arme, moins de capacités, pour récupérer 2 morts appariées sur
+4. Aucun seuil n'a été déplacé pour faire passer un témoin. **Écarté.**
+
+#### LA RÉGRESSION RÉSIDUELLE DU LOT, ÉCRITE TELLE QUELLE
+
+Le corpus gate final du lot est celui joué sur `13bac9f54` : **9 `ok`, 8 `PERTE`, zéro
+changement**, toutes classées. Ce qui reste perdu par rapport à `492cb0923`, sans l'adoucir :
+
+| témoin | morts de véhicule APPARIÉES, base -> tête |
+|---|---|
+| `4f77afc1` | **14 -> 11** |
+| `11de8353` | **3 -> 2** |
+| `a521164d` | **4 -> 3** |
+| `60ae07c4` | **1 -> 0** |
+| `50247b26` | 0 -> 1 (GAGNÉE) |
+
+**EN FACE, ET C'EST LE MARCHÉ QUE LE LOT PROPOSE** : **106 morts créditées -> 737** sur les six
+témoins anciens mesurés (`50247b26` 16 -> 110, `a349fea8` 27 -> 232, `a521164d` 8 -> 80,
+`60ae07c4` 23 -> 85, `11de8353` 16 -> 145, `0797ce72` 16 -> 85), la part passant de **17-27 % à
+64-89 %**. Quatre morts de véhicule appariées contre 631 morts de joueur créditées — le pilote a
+tranché pour la livraison, et la contrepartie est nommée ici plutôt que tue.
 ### Clôture M2 — gestes du pilote (références, banc, fusions), 2026-09-17
 
 Sur l'intégration `feat/recherche-decodeur-film`, après la fusion de 2.6 (92c83b333, fin du code
