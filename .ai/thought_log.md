@@ -111156,3 +111156,53 @@ front ; `CompareResponse` manuscrit dans `types.ts`.
 
 **Conclusion / prochaine étape** : go de l'utilisateur, puis lot 0 (worktree dédié) et lots 1 à
 5 sous `plan-execution` ; gate visuel de l'utilisateur avant fusion dans `feat/v75`.
+
+## [2026-09-17] Face-à-face : section « Profil d'armes » (classes, portée par rôle, top 3) — Complété (gate visuel utilisateur et fusion en attente)
+
+**Statut** : Complété côté code, sur `wt/compare-armes` (worktree dédié, base `feat/v75` @ 05723dce2),
+8 commits poussés (`bc1fc00cd` → `e540f5009`), plan `.ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md`
+statué. Restent : gate visuel de l'utilisateur (5.4) et fusion dans `feat/v75` sur signal (5.5).
+Exécution pilotée : un exécuteur Opus en lots séquentiels, comptes rendus vérifiés sur pièces par
+le superviseur (tests rejoués, SQL et extractions relus), une revue adversariale à contexte frais
+sur le diff Go.
+
+**Décision technique principale** : la portée par rôle réutilise la chaîne de la Synthèse sans
+seconde doctrine (`LoadWeaponRange` → `analysis.RegroupMeasuredKills` NEUF, rekeyage clé
+d'arme → clé de rôle AVANT l'agrégat → `WeaponRangeAggregate` → `buildWeaponRangeBlock` →
+`domain.SynthesisWeaponRange` avec `weapon_key` = rôle, libellés résolus côté web par le
+manifeste frags). Min/max ajoutés à l'agrégat (`WeaponRangeSide.min_m/max_m`, additifs) mais
+réservés à l'infobulle. Part des frags par classe via `fragdist.Build` avec les compteurs natifs
+chargés par une fonction UNIQUE `loadKillMechanicsForXUID` (extraite de l'Explorer, qui l'appelle
+désormais). Top 3 par `topWeaponKillRows`, helper extrait de `buildTopWeaponKills` avec garde-rail
+grep. Scope = même corpus que `GetLocalStats` (toutes les lignes `match_participants` du xuid,
+campagne exclue) pour A comme pour B présent dans la base partagée ; B absent = pas de profil.
+Aucun vainqueur. Icône d'arme par `wire.WeaponImageURLFromAdapter` (closure sortie de
+`server.go`, une seule définition). Côté web : `_weaponRangeChart.ts` généralisé (`top/bottom`
+au lieu de `kills/deaths`, labels et couleurs injectés, ligne min–max dans l'infobulle), section
+`CompareWeaponsSection` + `CompareWeaponsRange` + logique pure testée, « sur N matchs » sous
+chaque joueur, mode miroir B | A | C.
+
+**Résultats observés** : gates `go test ./...`, `go vet`, `make go-api-lint` (ratchet,
+merge-base `origin/main` cf333a388, 0 issue), typecheck (cache purgé), lint web (0 erreur),
+vitest 732 fichiers / 7868 tests, tous EXIT 0 en logs persistants. Revue adversariale : 14
+conditions tenues ; 1 P0 corrigé (Halo 5 : compteurs natifs assassinat / frappe au sol /
+charge d'épaule laissés à zéro → frags déversés dans « Non attribué », classe « Capacités
+spartanes » absente ; test qui rougit si l'appel disparaît, contrôle de mutation exécuté) ;
+1 commentaire inversé corrigé ; 2 P1 abandonnés par décision utilisateur (test DuckDB de
+`ResolveWeaponDimensions`, champs de mock jamais lus). Correctif de supervision : le scope
+« croisé » (matchs communs A/B) était un sous-ensemble strict du scope lifetime de B, donc
+inatteignable — retiré avec `IsSample` (lot 3-bis). CI : les branches `wt/**` ne déclenchent
+ni `ci.yml` ni `gitleaks.yml` (pas de `workflow_dispatch`) → verdict CI au niveau job impossible
+avant la fusion dans `feat/v75` ; base `feat/v75` verte (run 35254287872).
+
+**Découvertes consignées, non traitées** : `CompareRequest.Filters` validé mais jamais
+appliqué ; `enrichRemotePlayerBWithCrossSample` / `IsLocalSample` inatteignables en nominal
+par le même argument ; `GetCrossMatchSample` n'exclut pas la campagne ; `openapi-gen -check`
+joué par aucun gate automatique (CI, gate-push, lefthook) → une dérive Go → yaml passe
+inaperçue ; branches `wt/**` sans CI ni scan de secrets ; troisième doctrine de tri d'armes
+dans `timeseries_service_aggregations.go` ; `WEAPON_KEYS_WITHOUT_RANGE` pis-aller front ;
+`CompareResponse` manuscrit dans `types.ts` ; Debug/Warn de `logCompareWeaponFailure` non testé.
+
+**Conclusion / prochaine étape** : pile de dev locale basculée sur le worktree (données du dépôt
+principal via `LEVELUP_DATA_ROOT`) pour le gate visuel de l'utilisateur ; fusion dans `feat/v75`
+sur son signal, CI de `feat/v75` = verdict d'autorité.
