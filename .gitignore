@@ -356,3 +356,4 @@ tools/ce/*.csv
 # revue). Ils sont REGENERES a chaque run et ne doivent pas entrer dans le depot ; le seul
 # PNG versionne de ce dossier est `coupe.png`, qui est une reference, pas une sortie.
 apps/go-api/internal/himap/gate.png
+data/global/player_friends.json
