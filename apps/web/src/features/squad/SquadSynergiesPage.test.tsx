@@ -140,7 +140,7 @@ describe('SquadSynergiesPage — section Assistances', () => {
     renderWithProviders(<SquadSynergiesPage />)
     expect(screen.getByText('Assistances dans l\'escouade')).toBeInTheDocument()
     expect(
-      screen.getByText('Qui prépare les éliminations de qui, sur les matchs de la sélection.'),
+      screen.getByText(/^Une barre par larbin/),
     ).toBeInTheDocument()
   })
 
@@ -151,7 +151,7 @@ describe('SquadSynergiesPage — section Assistances', () => {
     })
     renderWithProviders(<SquadSynergiesPage />)
     expect(
-      screen.queryByText('Qui prépare les éliminations de qui, sur les matchs de la sélection.'),
+      screen.queryByText(/^Une barre par larbin/),
     ).toBeNull()
   })
 })
