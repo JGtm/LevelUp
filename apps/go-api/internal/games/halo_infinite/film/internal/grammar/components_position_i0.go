@@ -53,7 +53,7 @@ func consumeObjectPositionDynamicPrecisionD(br *Lecteur, pd profile.PrecisionDes
 			br.ReadBits(2) // FUN_14076e304, EN DERNIER
 			return
 		}
-		consumeAbsoluteWithGate(br, pd)
+		consumeAbsoluteWithGate(br)
 		consumePositionHandleTail(br, false, pd)
 		return
 	}
@@ -169,7 +169,7 @@ func consumePredictedAbsolute(br *Lecteur) {
 func consumePredictedDelta(br *Lecteur, pd profile.PrecisionDescriptor) {
 	if br.ReadBit() { // FUN_14076f3ec R(1); set => predicted absent -> absolute fallback
 		br.cap.viaRepli = true
-		consumeAbsoluteWithGate(br, pd)
+		consumeAbsoluteWithGate(br)
 		br.cap.viaRepli = false
 		return
 	}
@@ -252,7 +252,7 @@ func deltaAxisW(br *Lecteur, pd profile.PrecisionDescriptor, i int) uint {
 
 // consumeAbsoluteWithGate mirrors the absolute-reader spine (prec-select, the
 // FUN_14076f91c runtime gate, then FUN_14076e524 index+vec3).
-func consumeAbsoluteWithGate(br *Lecteur, pd profile.PrecisionDescriptor) {
+func consumeAbsoluteWithGate(br *Lecteur) {
 	precHigh := br.ReadBit() // FUN_1406cf008
 	if fullPrecisionGate(br) {
 		// FUN_1411b259c = FUN_1406d676c(br, br, dst, 0x60) : R(96) BRUT, pas 0 bit.
