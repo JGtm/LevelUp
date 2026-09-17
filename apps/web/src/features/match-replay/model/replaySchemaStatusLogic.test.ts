@@ -53,6 +53,7 @@ describe('computeReplaySchemaStatus', () => {
       kind: 'stale',
       schemaVersion: ANCIENNE,
       latestSchemaVersion: PRODUCTEUR,
+      couches: [],
     })
   })
 
@@ -73,6 +74,8 @@ describe('la matrice de compatibilité (MIN_RENDERABLE_SCHEMA_VERSION)', () => {
       kind: 'stale',
       schemaVersion: MIN_RENDERABLE_SCHEMA_VERSION - 1,
       latestSchemaVersion: undefined,
+
+      couches: [],
     })
   })
 
@@ -81,6 +84,7 @@ describe('la matrice de compatibilité (MIN_RENDERABLE_SCHEMA_VERSION)', () => {
       kind: 'stale',
       schemaVersion: MIN_RENDERABLE_SCHEMA_VERSION - 1,
       latestSchemaVersion: PRODUCTEUR,
+      couches: [],
     })
   })
 
@@ -215,6 +219,7 @@ describe('la matrice appliquée à CHAQUE fixture publiée par Go', () => {
           kind: 'stale',
           schemaVersion: f.schemaVersion,
           latestSchemaVersion: apres,
+          couches: [],
         })
       })
 
