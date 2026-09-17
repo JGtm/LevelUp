@@ -277,7 +277,7 @@ func (m *mockExplorerRepo) GetTopMedalsForMatches(_ context.Context, _ string, _
 }
 
 // fakeExplorerWeaponKillsRepo simule port.WeaponKillsRepository + la capability
-// OPTIONNELLE LoadKillMechanicsAggregated (explorerKillMechanicsLoader) pour la
+// OPTIONNELLE LoadKillMechanicsAggregated (killMechanicsLoader) pour la
 // « Répartition des frags » v2 de l'encart cible.
 type fakeExplorerWeaponKillsRepo struct {
 	rows    []port.WeaponKillRow

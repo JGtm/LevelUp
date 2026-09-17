@@ -267,6 +267,10 @@ Fichiers : `service/compare_weapons.go` (nouveau, ≤ 500 L ; scinder en
       (b) classes = `fragdist.Build(rows, FragKillTypeCounts{Melee, Grenade, Total: scope.Kills}, titleHasNativeKillMechanics(slug))`
       → `Classes` projetées en `CompareFragClass` avec `SharePct = kills*100/TotalKills`
       (classes à 0 kill omises, `unattributed` CONSERVÉ : les parts somment à 100) ;
+      **Lot 3-ter (2026-09-17, P0 de la revue adversariale)** : sur un titre à capability
+      `native_kill_mechanics`, les trois compteurs `Assassination/GroundPound/ShoulderBash`
+      sont CHARGÉS (`loadKillMechanicsForXUID`) — les laisser à zéro sous-évaluait « Mêlée »,
+      faisait disparaître « Capacités spartanes » et gonflait « Non attribué » d'autant ;
       (c) portée = `LoadWeaponRange(slug, {MatchIDs, XUIDs:[xuid]})` → clés distinctes →
       `ResolveWeaponDimensions` → `analysis.RegroupMeasuredKills(kills, role)` →
       `buildWeaponRangeBlock(regrouped, nil, weaponRangeScopeInfo{matchIDs, scope.Kills, scope.Deaths})` ;
@@ -427,6 +431,25 @@ cd apps/web && Remove-Item -Recurse -Force node_modules\.tmp ; npm run typecheck
   `sql.ErrNoRows` transformé en erreur — le chemin remote est donc atteint pour un joueur
   ABSENT, pas pour un joueur présent ; c'est bien le même argument, mais il touche une branche
   LIVRÉE et visible en prod. Chantier à part, avec sa propre vérification sur pièces.
+
+**Découvertes du lot 3-ter (2026-09-17) — consignées, NON traitées**
+
+- La distinction Debug / Warn de `logCompareWeaponFailure` (absence légitime de capability vs
+  anomalie SQL) n'est couverte par AUCUN test. C'est pourtant ce qui empêche un titre sans
+  décodeur de film de noyer les vrais bugs sous des Warn. Un témoin sur le niveau journalisé
+  demanderait un handler `slog` de test — à faire dans un lot de durcissement de la
+  journalisation, pas ici.
+- `make openapi-check` (`cmd/openapi-gen -check`, qui détecte une dérive Go -> `openapi.yaml`)
+  n'est joué NI par la CI, NI par `make gate-push`, NI par lefthook. Seul
+  `generated-types-fresh.guard.test.ts` tourne, et il compare `generated.ts` au YAML — pas le
+  YAML au code Go. Conséquence : un changement de contrat Go non suivi d'un `make openapi-gen`
+  passe tous les gates, et le front reste typé sur l'ancien contrat avec un `tsc` vert. C'est
+  exactement le piège rencontré au lot 3 (item 3.9). Le refermer = ajouter `openapi-check` à la
+  CI ou au hook — modification d'outillage hors périmètre.
+- Le dictionnaire `features/compare/i18n.ts` n'est PAS dans le périmètre du garde-rail
+  anti-anglicismes (`lib/i18n/no-anglicisms.guard.test.ts`, qui ne scanne que cinq
+  dictionnaires manuscrits et dix manifestes TOML). Les libellés FR de la page ne sont donc
+  contrôlés que par relecture. L'y ajouter est un lot d'élargissement de périmètre à part.
 
 ## Journal d'exécution
 
@@ -735,6 +758,67 @@ cd apps/web && npm run typecheck                              EXIT_TYPECHECK=0
 
 `CompareWeaponSide` dans `generated.ts` après régénération : `frag_classes`, `matches`,
 `range?`, `top_weapons`, `total_kills` — plus de `is_sample`.
+
+### 2026-09-17 — Lot 3-ter : mécaniques natives (P0) et commentaire du contrat
+
+**P0 — les mécaniques natives n'étaient pas chargées.** Sur un titre à capability
+`native_kill_mechanics`, `fragdist.Build` RETRANCHE les frags de mécanique des classes d'arme
+(un assassinat est inscrit dans `weapon_kills` au compte de l'ARME TENUE, `MechanicKills`) en
+supposant que `FragKillTypeCounts.Assassination/GroundPound/ShoulderBash` les rapportent. Le
+compare les laissait à zéro : « Mêlée » sous-évaluée du nombre d'assassinats, « Capacités
+spartanes » absente, « Non attribué » gonflé d'autant. **Le total bouclait quand même** —
+erreur arithmétiquement cohérente, donc invisible sur la page comme dans une assertion de
+somme des parts.
+
+**Correctif, sans troisième copie (règle n°6).** Le chargement vivait chez l'Explorer
+(`ExplorerService.loadTargetKillMechanics`) ; le compare en aurait été une seconde écriture,
+et l'Escouade en porte déjà une variante. Extrait en fonction LIBRE
+`loadKillMechanicsForXUID(ctx, repo, xuid, matchIDs)` dans un fichier neuf
+`service/kill_mechanics_loader.go`, avec l'interface de type-assertion renommée
+`explorerKillMechanicsLoader` -> `killMechanicsLoader`. L'Explorer l'appelle désormais
+directement (sa méthode thin est SUPPRIMÉE, pas laissée en façade) et le compare aussi,
+gardé par `titleHasNativeKillMechanics(slug)` — capability, jamais un slug.
+
+`teammates.loadSquadMechanicsByGT` N'EST PAS touchée, et c'est motivé : elle vit dans
+`service/teammates` (qui ne peut pas importer son parent `service`), passe par un AUTRE port
+(`squadLoader.LoadKillMechanics(ctx, slug, filters)`, trois arguments), charge N joueurs en une
+requête et rend une map keyée par GAMERTAG. La plier à cette signature changerait son
+comportement pour un gain nul.
+
+**Témoins** (`service/compare_weapons_mechanics_test.go`, fichier neuf) : fixture calibrée pour
+que le retrait de l'appel se voie sur TROIS classes à la fois — avec les mécaniques, Mêlée 10 /
+Capacités spartanes 2 / Non attribué 2 ; sans elles, Mêlée 6 / classe absente / Non attribué 8.
+Les parts somment à 100 dans les deux cas. Deux types de fake (avec et sans la méthode) plutôt
+qu'un drapeau, parce que ce qui est testé est une TYPE-ASSERTION. Un titre porteur de la
+capability est enregistré par swap+restore du registre par défaut (motif de
+`skill_v2_shadow_test.go`) — sans quoi les tests mesureraient l'autre branche.
+
+**Contrôle de mutation exécuté** : avec `if false && hasMechanics`, le témoin ROUGIT —
+`classe Mêlée = &{Class:melee Kills:6 SharePct:20}, attendu 10 frags`. Code restauré et
+vérifié après.
+
+**Commentaire inversé corrigé** (`domain/compare_weapons.go`, et son pendant sur
+`buildWeaponSide`). Il annonçait « un joueur dont aucune arme n'est résolue n'a pas de top 3
+mais a ses compteurs natifs », alors que `FragClasses` et `TopWeapons` naissent de la MÊME
+lecture et tombent donc ENSEMBLE. Le commentaire décrit maintenant le code réel et dit
+pourquoi ce choix est assumé (une répartition réduite à trois seaux dont le plus gros est
+« Non attribué » se lit comme une panne, pas comme un style — même arbitrage que l'Explorer).
+Aucun changement de comportement.
+
+**Gate 3-ter** — exécuté dans cette session :
+
+```
+cd apps/go-api && go test ./...        -> EXIT_TEST=0, aucun FAIL
+cd apps/go-api && go vet ./...         -> EXIT_VET=0
+golangci-lint run --timeout 5m --new-from-rev=05723dce2 <6 arbres>
+  0 issues.                            -> EXIT_LINT_NEW=0
+make openapi-gen && make generate-types -> EXIT_GEN=0
+  git diff --stat openapi.yaml generated.ts : SORTIE VIDE (le contrat ne bouge pas)
+```
+
+**Non faits, sur décision du superviseur** : pas de test DuckDB pour
+`ResolveWeaponDimensions` ; pas de nettoyage des champs `dimCalls`/`lastDimSlug`/`dimsErr` du
+mock `mockWeaponRangeRepo`.
 
 ## Reprise de session
 
