@@ -60,7 +60,30 @@ package profile
 // Ce qui change est la LISIBILITE du gate : jusqu ici la couche n etait hachee que dans
 // l empreinte de la grammaire, qui rendait le meme diagnostic pour une borne de carte et pour un
 // ordre de composants.
-const Rev = "profile-2026-09-17"
+//
+// ENTREE `profile-2026-09-17.2` (2026-09-17, lot 3.3.1) : L AMORCE DU RECORD DE CREATION DE
+// PROJECTILE ENTRE AU PROFIL, PAR CLE ECRITE DANS LE FILM. LE DECODAGE CHANGE.
+//
+// `grenade.go` pose NEUF lignes — les sept builds du cache et les deux versions majeures des
+// films sans section d identification, c est-a-dire exactement les clefs de la table des
+// empreintes de registre du lot 3.2.1. Chaque ligne porte trois nombres MESURES : la largeur du
+// motif d amorce (24 bits a partir de `HI_1_12_0`, 23 avant), la VALEUR de l amorce d etat par
+// defaut (`0x40C00`, `0x20600`, et `0x20400` sur la majeure 31), et la position du champ d index
+// de l auteur (+103, +100 ou +99).
+//
+// C EST UN CHANGEMENT DE DECODAGE, ET LE PLUS DIRECT QUI SOIT : jusqu ici `grammar` comparait
+// 24 bits sur TOUS les films, donc lisait le bit de poids fort de l identifiant comme un bit
+// d amorce sur les builds anciens. Les cinq temoins anciens du corpus publiaient ZERO lancer ;
+// la mesure du volet recherche en compte 1 282, et celle de ce lot ajoute `a521164d` (105),
+// `11de8353` (145) et `50247b26` (95).
+//
+// LA VALEUR DE L AMORCE EST UNE DONNEE, PAS UNE TRONCATURE. La majeure 31 porte `0x20400` la ou
+// toutes les autres clefs anciennes portent `0x20600`, A LARGEUR EGALE : deriver l amorce
+// ancienne de la recente par un decalage d un bit aurait marche sur huit clefs sur neuf.
+//
+// `grammar.Rev` et `facts.Rev` montent MECANIQUEMENT derriere cette ligne (elles hachent sa
+// valeur, puis celle de `grammar.Rev`), et chacune porte son entree.
+const Rev = "profile-2026-09-17.2"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/profile_rev.golden` porte le couple (revision, empreinte) avec son historique, et
