@@ -57,6 +57,7 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,10 +82,15 @@ type options struct {
 	// temporaire efface a la sortie.
 	outDir string
 	memGiB int
-	// child, film et out ne sont poses que par le PARENT, pour son enfant.
+	// deuxPasses : LE MODE S8 (item 4.1.3) — deux passes du MEME commit par film, decodage
+	// contre rejeu depuis les faits, aucune reference lue ni ecrite.
+	deuxPasses bool
+	// child, film, out et passe ne sont poses que par le PARENT, pour son enfant.
 	child bool
 	film  string
 	out   string
+	// passe : `film` (decodage force) ou `faits` (rejeu exige). Vide hors mode S8.
+	passe string
 }
 
 func main() {
@@ -111,6 +117,9 @@ func executer(o options) int {
 	if o.child {
 		return enfantEquivalence(o)
 	}
+	if o.deuxPasses {
+		return parentDeuxPasses(o)
+	}
 	return parentEquivalence(o)
 }
 
@@ -131,9 +140,14 @@ func lireDrapeaux() (options, error) {
 			"utile pour instruire une divergence sans re-decoder le film")
 	flag.IntVar(&o.memGiB, "mem-gib", filmproc.DefaultLimitGiB,
 		"plafond memoire de chaque enfant, en gibioctets (0 = desarme)")
-	flag.BoolVar(&o.child, "child", false, "INTERNE : role d'enfant, un seul film")
+	flag.BoolVar(&o.deuxPasses, "deux-passes", false,
+		"TEST S8 : joue LES DEUX branches du meme commit par film (decodage puis rejeu depuis les "+
+			"faits) et compare leurs artefacts a l octet — aucune reference lue ni ecrite")
+	flag.BoolVar(&o.child, "child", false, "INTERNE : role d enfant, un seul film")
 	flag.StringVar(&o.film, "film", "", "INTERNE : le film short8 de l'enfant")
-	flag.StringVar(&o.out, "out", "", "INTERNE : fichier de sortie de l'enfant")
+	flag.StringVar(&o.out, "out", "", "INTERNE : fichier de sortie de l enfant")
+	flag.StringVar(&o.passe, "passe", "",
+		"INTERNE (mode S8) : \"film\" force le decodage, \"faits\" exige le rejeu depuis les faits")
 	flag.Parse()
 
 	if o.repoRoot == "" {
@@ -146,10 +160,25 @@ func lireDrapeaux() (options, error) {
 	if o.corpus == "" {
 		o.corpus = filepath.Join(dossierEquivalence(o.repoRoot), "CORPUS.txt")
 	}
+	return o, valider(o)
+}
+
+// valider refuse une ligne de commande incoherente. SEPAREE de la lecture des drapeaux pour etre
+// testable sans toucher a `flag` (dont l etat est global au processus).
+func valider(o options) error {
 	if o.child && o.film == "" {
-		return o, errors.New("role d'enfant sans -film : rien a traiter")
+		return errors.New("role d enfant sans -film : rien a traiter")
 	}
-	return o, nil
+	if o.deuxPasses && o.update {
+		return errors.New("-deux-passes et -update sont exclusifs : le mode S8 ne lit et " +
+			"n ecrit AUCUNE reference, il compare deux passes du meme commit")
+	}
+	switch o.passe {
+	case "", passeFilm, passeFaits:
+	default:
+		return fmt.Errorf("-passe %q inconnue : %q ou %q", o.passe, passeFilm, passeFaits)
+	}
+	return nil
 }
 
 // dossierEquivalence rend l'emplacement CANONIQUE des digests de reference et des faits figes.

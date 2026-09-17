@@ -48,6 +48,10 @@ const attenteVerrouMax = 10 * time.Minute
 type collecteur struct {
 	lignes  []string
 	comptes map[string]int
+	// booleens porte la valeur des etapes qui rendent un BOOLEEN — aujourd hui la seule etape
+	// de BRANCHE (`filmFactsRejoue`). Ni le compte ni le digest ne la rendraient lisible : c est
+	// elle qui arme la garde anti-equivalence-vacuante du mode S8.
+	booleens map[string]bool
 	// etats porte la valeur des etapes qui rendent une CHAINE (`spawnPointsState` et ses
 	// pareilles). Le compte, lui, ne dirait rien d'elles : `digest.Of` rend la LONGUEUR d'une
 	// chaine, donc « 15 » la ou l'operateur attend « not_established ».
@@ -62,11 +66,17 @@ func (c *collecteur) etape(step string, v any) {
 		c.comptes = map[string]int{}
 	}
 	c.comptes[step] = compte
-	if s, ok := v.(string); ok {
+	switch t := v.(type) {
+	case string:
 		if c.etats == nil {
 			c.etats = map[string]string{}
 		}
-		c.etats[step] = s
+		c.etats[step] = t
+	case bool:
+		if c.booleens == nil {
+			c.booleens = map[string]bool{}
+		}
+		c.booleens[step] = t
 	}
 }
 
@@ -124,14 +134,59 @@ func digestsDuFilm(o options, cacheRoot string) ([]string, error) {
 	}
 	var col collecteur
 	b.WithObserver(col.etape)
-	slog.Info("cuisson d'equivalence", "film", o.film, "match", faits.MatchID,
-		"cartes", faits.MapNames, "joueurs", len(faits.Players), "variante", faits.GameVariantName)
+	// LA PASSE `film` FORCE LE DECODAGE (mode S8) : sans cela, la seconde passe relirait les
+	// faits que la premiere vient d ecrire, et le harnais comparerait « faits contre faits » —
+	// une equivalence VACUANTE.
+	if o.passe == passeFilm {
+		b.SansFaitsPersistes()
+	}
+	slog.Info("cuisson d equivalence", "film", o.film, "match", faits.MatchID,
+		"cartes", faits.MapNames, "joueurs", len(faits.Players), "variante", faits.GameVariantName,
+		"passe", o.passe)
 	if _, err := b.BuildBytes(faits.MatchID, faits.MapNames,
 		filmcache.ChunkDir(cacheRoot, o.film), faits.MatchFacts); err != nil {
 		return nil, err
 	}
+	if err := verifierLaBrancheServie(o.passe, col.booleens); err != nil {
+		return nil, err
+	}
 	alerterCatalogueVide(o.film, faits, col.comptes, col.etats)
 	return col.lignes, nil
+}
+
+// verifierLaBrancheServie REFUSE une passe qui n a pas joue la branche demandee.
+//
+// C EST LA GARDE ANTI-EQUIVALENCE-VACUANTE DU MODE S8, et elle vaut plus que le confort : si la
+// passe `faits` echouait a relire (en-tete perime, fichier absent, cle de cuisson changee), elle
+// REDECODERAIT EN SILENCE. Le harnais comparerait alors deux decodages — identiques par
+// construction — et rendrait un vert qui ne prouve rien. Le meme raisonnement vaut dans l autre
+// sens : une passe `film` qui aurait relu les faits ne mesurerait pas le decodage.
+//
+// Hors mode S8 (`-passe` vide), rien n est exige : la passe ordinaire n a pas de branche imposee.
+func verifierLaBrancheServie(passe string, booleens map[string]bool) error {
+	if passe == "" {
+		return nil
+	}
+	etape := replaybuild.EtapeRejeuDepuisLesFaits
+	relu, vue := booleens[etape]
+	if !vue {
+		return fmt.Errorf("l etape `%s` n a pas ete observee : impossible de savoir quelle "+
+			"branche a servi, donc impossible de comparer quoi que ce soit", etape)
+	}
+	if veutRelu := passe == passeFaits; relu != veutRelu {
+		return fmt.Errorf("passe %q demandee, branche servie %q : "+
+			"la comparaison serait VACUANTE (voir les lignes « faits de film perimes » du journal)",
+			passe, brancheDite(relu))
+	}
+	return nil
+}
+
+// brancheDite nomme la branche servie, pour un message qu un operateur comprend sans lire le code.
+func brancheDite(relu bool) string {
+	if relu {
+		return "rejeu depuis les faits"
+	}
+	return "decodage du film"
 }
 
 // alerterCatalogueVide CRIE quand un digest est celui du VIDE alors que le film avait de quoi le
