@@ -86,6 +86,19 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'match-view=>friends',
   // Career réutilise MatchEncountersTable pour les "Joueurs les plus croisés"
   'career=>match-view',
+  // Le profil d'armes du Face-à-face réutilise LE graphe de portée (bâton p10→p90, losange
+  // sur la médiane) plutôt que d'en écrire un second. Le module a été rendu title-agnostic
+  // le 2026-09-17 pour cela : ses deux mesures superposées s'appellent désormais
+  // `top`/`bottom` et non `kills`/`deaths` — à la Synthèse ce sont les frags et les morts
+  // d'un joueur, au Face-à-face deux JOUEURS. Le dupliquer donnerait deux grammaires
+  // graphiques pour la même lecture, et elles divergeraient au premier réglage de
+  // géométrie. UN SEUL MODULE NOMMÉ, pas la feature entière.
+  //
+  // PLACE DURABLE : `components/charts/`, où vivent les wrappers partagés. Le déplacement
+  // emmène `resolveWeaponLabel` (aujourd'hui dans `synthesis/weaponRange_logic`) et les
+  // quatre fichiers de la Synthèse qui en dépendent — chantier à part, consigné en
+  // Découverte au plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md (2026-09-17).
+  'compare=>synthesis/_weaponRangeChart',
   // Le rejeu 2D pose les kills de la Match View sur sa propre horloge : il réutilise la
   // COLLECTE des kills (`_momentum.collectKillEvents`), les deux cascades de couleur d'équipe
   // (`teamColor` pour les surfaces, `teamSeriesColor` pour les séries) et l'index des joueurs

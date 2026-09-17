@@ -32,6 +32,10 @@ const side = (o: Partial<WeaponRangeSide>): WeaponRangeSide => ({
   p10: 5,
   median: 7,
   p90: 10,
+  // min_m / max_m : ajoutés au contrat le 2026-09-17 (profil d'armes du Face-à-face).
+  // Publiés pour l'infobulle, JAMAIS tracés — ils encadrent le bâton p10 -> p90.
+  min_m: 2,
+  max_m: 14,
   above_pct: 30,
   level_pct: 50,
   below_pct: 20,
@@ -104,12 +108,12 @@ describe('buildWeaponElevationOption — deux piles de trois segments', () => {
     const portee = buildWeaponRangeOption({
       lines: LINES,
       tc: TC,
-      killsColor: '#a',
-      deathsColor: '#b',
+      topColor: '#a',
+      bottomColor: '#b',
       medianColor: '#c',
       cardColor: '#d',
       fmtDistance: (m) => `${m} m`,
-      labels: { kills: 'f', deaths: 'm', percentiles: 'p', noMeasure: 'n' },
+      labels: { top: 'f', bottom: 'm', percentiles: 'p', noMeasure: 'n' },
     }) as { yAxis: { data: string[] } }
     expect(optionOf(LINES).yAxis.data).toEqual(portee.yAxis.data)
     expect(optionOf(LINES).yAxis.data).toEqual(['hinf_commando', 'BR75'])

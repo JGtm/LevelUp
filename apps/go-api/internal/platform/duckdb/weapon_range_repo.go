@@ -235,3 +235,37 @@ func (r *WeaponRangeRepo) toMeasuredKills(
 		"lignes_lues", len(measured), "retenues", len(out), "hors_registre", unclassified)
 	return out
 }
+
+// ResolveWeaponDimensions traduit des clés de registre en dimensions class/role/family
+// (port.WeaponRangeRepository).
+//
+// DÉLÉGATION PURE À `resolveWeaponKeyDimensions`, l'unique résolution du paquet : la même que
+// celle qui sert les kills par arme et la vue d'un match. Une seconde requête ici pourrait
+// diverger sur la façon de départager une clé à plusieurs identifiants — et deux pages
+// classeraient alors la même arme dans deux rôles.
+//
+// LE SLUG EST UN PARAMÈTRE, PAS `r.pdb.TitleSlug` : l'appelant lit les frags mesurés d'un
+// titre donné (les deux lectures de ce repo prennent déjà leur slug en argument) et doit
+// pouvoir résoudre les clés du MÊME titre. Les lire sous le titre du PlayerDB rendrait les
+// dimensions d'un autre jeu dès que les deux diffèrent.
+//
+// BEST-EFFORT : registre absent ou metadata non migrée -> map VIDE et pas d'erreur. Une clé
+// résolue sans aucune dimension est écartée — une entrée à trois champs vides ne dit rien de
+// plus que son absence, et l'appelant qui la recevrait croirait la clé connue.
+func (r *WeaponRangeRepo) ResolveWeaponDimensions(
+	ctx context.Context, titleSlug string, keys []string,
+) (map[string]port.WeaponDimensions, error) {
+	out := make(map[string]port.WeaponDimensions, len(keys))
+	if len(keys) == 0 {
+		return out, nil
+	}
+	for key, meta := range resolveWeaponKeyDimensions(ctx, r.pdb.Metadata, titleSlug, keys) {
+		if meta.class == "" && meta.role == "" && meta.family == "" {
+			continue
+		}
+		out[key] = port.WeaponDimensions{Class: meta.class, Role: meta.role, Family: meta.family}
+	}
+	slog.DebugContext(ctx, "WeaponRangeRepo: weapon dimensions resolved",
+		"slug", titleSlug, "demandees", len(keys), "resolues", len(out))
+	return out, nil
+}

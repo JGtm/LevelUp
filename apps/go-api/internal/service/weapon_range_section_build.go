@@ -98,8 +98,13 @@ func mergeWeaponSides(rows []analysis.WeaponRange) []domain.WeaponRangeRow {
 	return trie
 }
 
-// weaponRangeSideOf convertit UN côté agrégé : les percentiles passent tels quels, les trois
-// classes de dénivelé deviennent des pourcentages (convention `*Pct` du dépôt, 0..100).
+// weaponRangeSideOf convertit UN côté agrégé : les percentiles et les deux extrêmes passent
+// tels quels, les trois classes de dénivelé deviennent des pourcentages (convention `*Pct` du
+// dépôt, 0..100).
+//
+// MIN ET MAX SONT PORTÉS JUSQU'AU CONTRAT MAIS NE SE TRACENT PAS (D5 du plan
+// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md) : ils vivent dans l'infobulle. La section
+// Synthèse ne les lit pas — son affichage est inchangé.
 //
 // Le dénominateur est `Measured`, qui ne peut pas être nul : un couple (arme, côté) naît d'au
 // moins un frag, et un couple sous le seuil n'arrive jamais jusqu'ici.
@@ -110,6 +115,8 @@ func weaponRangeSideOf(r analysis.WeaponRange) *domain.WeaponRangeSide {
 		P10:      r.P10,
 		Median:   r.Median,
 		P90:      r.P90,
+		MinM:     r.Min,
+		MaxM:     r.Max,
 		AbovePct: part(r.Above),
 		LevelPct: part(r.Level),
 		BelowPct: part(r.Below),

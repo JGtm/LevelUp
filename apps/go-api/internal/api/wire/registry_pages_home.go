@@ -291,7 +291,18 @@ func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.Compar
 		pdb.XUID,
 		pdb.TitleSlug,
 	).WithLiveIdentity(r.newCareerLiveService(pdb, r.newHomeRepo(pdb))).
-		WithLiveGamertagResolver(r.liveGamertagResolver) // nil-safe (no-op en démo)
+		WithLiveGamertagResolver(r.liveGamertagResolver). // nil-safe (no-op en démo)
+		// Profil d'armes : câblage INCONDITIONNEL, MÊMES repos que la Synthèse et les
+		// Séries temporelles. Ce sont EUX qui savent si ce titre a un registre d'armes
+		// et des positions par kill — ils rendent games.ErrCapabilityNotSupported et le
+		// service omet le bloc concerné. Un `if capability` ici prendrait la même
+		// décision à deux endroits qui divergeraient (même motif que Timeseries,
+		// registry_pages.go).
+		WithWeaponProfile(
+			r.weaponKillsRepoFor(pdb),
+			duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)),
+			r.weaponImageURLFor(pdb),
+		)
 	csrSeasonID := ""
 	if r.cfg != nil {
 		csrSeasonID = r.cfg.CSRSeasonIDForTitle(ctx, pdb.TitleSlug, nil)

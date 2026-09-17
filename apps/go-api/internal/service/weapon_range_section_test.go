@@ -47,9 +47,15 @@ type mockWeaponRangeRepo struct {
 	openErr   error
 	labels    map[string]port.WeaponLabel
 	labelsErr error
+	// dims / dimsErr : la résolution clé d'arme -> class/role/family (lot 2 du plan
+	// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md). Nil = registre muet, ce qui est un
+	// état réel (metadata non migrée) et non une panne.
+	dims    map[string]port.WeaponDimensions
+	dimsErr error
 
-	killCalls, openCalls, labelCalls int
-	lastFilters                      port.WeaponRangeFilters
+	killCalls, openCalls, labelCalls, dimCalls int
+	lastFilters                                port.WeaponRangeFilters
+	lastDimSlug                                string
 }
 
 func (m *mockWeaponRangeRepo) LoadWeaponRange(
@@ -66,6 +72,16 @@ func (m *mockWeaponRangeRepo) LoadWeaponOpening(
 	m.openCalls++
 	m.lastFilters = f
 	return m.openings, m.openErr
+}
+
+// ResolveWeaponDimensions — le slug demandé est MÉMORISÉ : c'est celui des frags lus, pas
+// celui du PlayerDB, et les confondre servirait les dimensions d'un autre titre.
+func (m *mockWeaponRangeRepo) ResolveWeaponDimensions(
+	_ context.Context, titleSlug string, _ []string,
+) (map[string]port.WeaponDimensions, error) {
+	m.dimCalls++
+	m.lastDimSlug = titleSlug
+	return m.dims, m.dimsErr
 }
 
 func (m *mockWeaponRangeRepo) ResolveWeaponLabels(

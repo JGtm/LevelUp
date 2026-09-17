@@ -58,12 +58,29 @@ const DIAMOND_RADIUS = 5
  */
 const WEAPON_KEYS_WITHOUT_RANGE = new Set(['hinf_environment'])
 
-/** Une arme projetée pour les DEUX graphes de la section — côté absent = `null`. */
+/**
+ * Une ligne du graphe — DEUX MESURES SUPERPOSÉES, et rien de plus.
+ *
+ * # POURQUOI `top` / `bottom` ET NON `kills` / `deaths` (2026-09-17)
+ *
+ * Ce module dessine deux bâtons l'un au-dessus de l'autre sur une même bande. À la Synthèse,
+ * ces deux bâtons sont « mes frags » et « mes morts » ; au Face-à-face, ce sont « le joueur A »
+ * et « le joueur B », sur un graphe qui ne montre QUE des frags (et un second qui ne montre que
+ * des morts). Garder les noms `kills`/`deaths` aurait obligé le compare à ranger le joueur B
+ * dans un champ nommé « morts » — un mensonge de nommage qui se paie à la première relecture.
+ *
+ * La GÉOMÉTRIE est la seule chose que ce module connaît : qui est en haut, qui est en bas. Le
+ * SENS (frags/morts, joueur A/joueur B) vit chez l'appelant, qui fournit aussi les deux
+ * libellés d'infobulle et les deux encres.
+ *
+ * Côté absent = `null`, jamais un zéro — « aucune mesure » et « mesuré, à zéro mètre » ne se
+ * lisent pas pareil.
+ */
 export interface WeaponRangeLine {
   weaponKey: string
   label: string
-  kills: WeaponRangeSide | null
-  deaths: WeaponRangeSide | null
+  top: WeaponRangeSide | null
+  bottom: WeaponRangeSide | null
 }
 
 /**
@@ -86,8 +103,9 @@ export function weaponRangeLines(
     .map((w) => ({
       weaponKey: w.weapon_key,
       label: resolveWeaponLabel(w, locale),
-      kills: w.kills ?? null,
-      deaths: w.deaths ?? null,
+      // Synthèse : les frags EN HAUT, les morts en dessous (l'ordre de la légende).
+      top: w.kills ?? null,
+      bottom: w.deaths ?? null,
     }))
 }
 
@@ -124,7 +142,7 @@ export function weaponRangeChartHeight(lineCount: number): number {
 export function weaponRangeAxisMax(lines: readonly WeaponRangeLine[]): number {
   let max = 0
   for (const line of lines) {
-    for (const side of [line.kills, line.deaths]) {
+    for (const side of [line.top, line.bottom]) {
       if (side && side.p90 > max) max = side.p90
     }
   }
@@ -149,23 +167,38 @@ export interface WeaponRangeOptionInput {
   /** Lignes DANS L'ORDRE DU BACKEND — l'inversion de l'axe Y se fait ici, pas chez l'appelant. */
   lines: readonly WeaponRangeLine[]
   tc: EChartsThemeColors
-  /** Encres résolues par l'appelant (tokens sémantiques) : bâtons, losange, contour. */
-  killsColor: string
-  deathsColor: string
+  /** Encres résolues par l'appelant (tokens sémantiques) : les deux bâtons, losange, contour. */
+  topColor: string
+  bottomColor: string
   medianColor: string
   /** Contour du losange = fond de carte : il se détache du bâton sans couleur nouvelle. */
   cardColor: string
   /** Formate une distance (« 12,4 m ») — la locale vit chez l'appelant. */
   fmtDistance: (m: number) => string
-  /** Libellés d'infobulle, déjà localisés. */
-  labels: { kills: string; deaths: string; percentiles: string; noMeasure: string }
+  /**
+   * Libellés d'infobulle, déjà localisés. `top`/`bottom` NOMMENT les deux mesures — « Mes
+   * frags »/« Mes morts » à la Synthèse, deux gamertags au Face-à-face.
+   *
+   * `observed` est OPTIONNEL : quand il est fourni ET que le contrat porte `min_m`/`max_m`,
+   * l'infobulle ajoute « min – max observés ». Les deux extrêmes ne sont JAMAIS tracés (D5
+   * du plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md) — les mettre dans la géométrie du
+   * bâton ferait exactement ce que D6 refuse : décrire deux accidents. Absent = la Synthèse,
+   * dont l'affichage reste inchangé.
+   */
+  labels: {
+    top: string
+    bottom: string
+    percentiles: string
+    noMeasure: string
+    observed?: string
+  }
 }
 
 /** Les quatre encres du `renderItem`, plus les lignes déjà retournées pour l'axe. */
 interface RangeRenderInput {
   ordered: readonly WeaponRangeLine[]
-  killsColor: string
-  deathsColor: string
+  topColor: string
+  bottomColor: string
   medianColor: string
   cardColor: string
 }
@@ -180,8 +213,8 @@ interface RangeRenderInput {
  */
 function makeRangeRenderItem({
   ordered,
-  killsColor,
-  deathsColor,
+  topColor,
+  bottomColor,
   medianColor,
   cardColor,
 }: RangeRenderInput) {
@@ -222,8 +255,8 @@ function makeRangeRenderItem({
       })
     }
     const offset = BAR_HEIGHT / 2 + BAR_GAP / 2
-    push(line.kills, killsColor, -offset)
-    push(line.deaths, deathsColor, +offset)
+    push(line.top, topColor, -offset)
+    push(line.bottom, bottomColor, +offset)
     return { type: 'group', children }
   }
 }
@@ -240,12 +273,21 @@ function rangeTooltipSideLine(
   side: WeaponRangeSide | null,
   fmtDistance: (m: number) => string,
   noMeasure: string,
+  observed?: string,
 ): string {
   if (!side) return `${escapeHtml(name)} — ${escapeHtml(noMeasure)}`
   const low = escapeHtml(fmtDistance(side.p10))
   const median = escapeHtml(fmtDistance(side.median))
   const high = escapeHtml(fmtDistance(side.p90))
-  return `${escapeHtml(name)} — ${side.measured} : ${low} · <b>${median}</b> · ${high}`
+  const base = `${escapeHtml(name)} — ${side.measured} : ${low} · <b>${median}</b> · ${high}`
+  // MIN ET MAX NE SONT PAS TRACÉS, ILS SE LISENT ICI (D5). Ils répondent à « jusqu'où
+  // est-il allé », que le bâton p10 → p90 ne dit pas — et les porter dans la géométrie
+  // décrirait deux accidents, ce que D6 refuse. Affichés seulement si l'appelant fournit le
+  // libellé : la Synthèse ne le fait pas, son infobulle est donc inchangée.
+  if (!observed) return base
+  const min = escapeHtml(fmtDistance(side.min_m))
+  const max = escapeHtml(fmtDistance(side.max_m))
+  return `${base} <span style="opacity:.7">(${escapeHtml(observed)} ${min} – ${max})</span>`
 }
 
 /**
@@ -259,8 +301,8 @@ function rangeTooltipSideLine(
 export function buildWeaponRangeOption({
   lines,
   tc,
-  killsColor,
-  deathsColor,
+  topColor,
+  bottomColor,
   medianColor,
   cardColor,
   fmtDistance,
@@ -273,13 +315,13 @@ export function buildWeaponRangeOption({
   const axis = getAxisBase(tc)
   const renderItem = makeRangeRenderItem({
     ordered,
-    killsColor,
-    deathsColor,
+    topColor,
+    bottomColor,
     medianColor,
     cardColor,
   })
   const sideLine = (name: string, side: WeaponRangeSide | null) =>
-    rangeTooltipSideLine(name, side, fmtDistance, labels.noMeasure)
+    rangeTooltipSideLine(name, side, fmtDistance, labels.noMeasure, labels.observed)
 
   return {
     backgroundColor: CHART_BG,
@@ -293,8 +335,8 @@ export function buildWeaponRangeOption({
         if (!line) return ''
         return [
           `<b>${escapeHtml(line.label)}</b> — ${escapeHtml(labels.percentiles)}`,
-          sideLine(labels.kills, line.kills),
-          sideLine(labels.deaths, line.deaths),
+          sideLine(labels.top, line.top),
+          sideLine(labels.bottom, line.bottom),
         ].join('<br/>')
       },
     },

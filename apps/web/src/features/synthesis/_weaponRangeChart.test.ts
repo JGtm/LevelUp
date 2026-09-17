@@ -41,6 +41,10 @@ const side = (o: Partial<WeaponRangeSide>): WeaponRangeSide => ({
   p10: 5,
   median: 7,
   p90: 10,
+  // min_m / max_m : ajoutés au contrat le 2026-09-17 (profil d'armes du Face-à-face).
+  // Publiés pour l'infobulle, JAMAIS tracés — ils encadrent le bâton p10 -> p90.
+  min_m: 2,
+  max_m: 14,
   above_pct: 30,
   level_pct: 50,
   below_pct: 20,
@@ -72,14 +76,14 @@ function optionOf(lines: WeaponRangeLine[]) {
   return buildWeaponRangeOption({
     lines,
     tc: TC,
-    killsColor: '#aa0000',
-    deathsColor: '#00aa00',
+    topColor: '#aa0000',
+    bottomColor: '#00aa00',
     medianColor: '#0000aa',
     cardColor: '#ffffff',
     fmtDistance: (m) => `${m} m`,
     labels: {
-      kills: 'Mes frags',
-      deaths: 'Mes morts',
+      top: 'Mes frags',
+      bottom: 'Mes morts',
       percentiles: 'p10 · médiane · p90',
       noMeasure: 'aucune mesure',
     },
@@ -116,8 +120,8 @@ describe('weaponRangeLines — la projection du contrat', () => {
     const fr = weaponRangeLines(ROWS, 'fr')
     expect(fr.map((l) => l.weaponKey)).toEqual(['hinf_melee', 'hinf_commando', 'hinf_s7'])
     expect(fr.map((l) => l.label)).toEqual(['Mêlée', 'hinf_commando', 'Fusil de précision S7'])
-    expect(fr[1].deaths).toBeNull()
-    expect(fr[2].kills).toBeNull()
+    expect(fr[1].bottom).toBeNull()
+    expect(fr[2].top).toBeNull()
     expect(weaponRangeLines(ROWS, 'en')[0].label).toBe('Melee')
   })
 
