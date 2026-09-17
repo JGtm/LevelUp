@@ -5130,8 +5130,9 @@ revues (M1, M2), un agent Opus peut décompiler les écrivains des composants bl
 INSTRUMENTS et notes (`film_re/`), sans toucher un fichier de production ; 3.6 devient alors un
 port de grammaires déjà relevées. Jamais un troisième agent.
 
-**Clôture M3** — neuf parts, statuées séparément (deux sont des lots, les sept autres sont des
-gestes du pilote) :
+**Clôture M3** — neuf parts, statuées séparément : **trois sont faites** (les fusions des lots de
+code, l'ADR amendé, le triage du §4 — les deux dernières étant le lot documents
+`feat/decfilm-clo3`), les **six autres sont des gestes du pilote** :
 
 - [x] **fusion des lots de CODE (V3, sur l'intégration)** — FAIT, neuf fusions, chacune avec son
       sha : 3.1 volet données (3.1.2 + 3.1.3) `5cb7e558e` · 3.5 instruction + 3.6 préparation
