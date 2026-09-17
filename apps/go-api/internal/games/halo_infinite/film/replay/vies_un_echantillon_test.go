@@ -124,7 +124,7 @@ type oracleVies struct {
 
 // classerViesDUnEchantillon classe chaque piste d'UN point contre le fil des morts et la cause de
 // fin de sa vie, telle que le registre l'a posee.
-func classerViesDUnEchantillon(t *testing.T, g *goldenInputs, opt Options,
+func classerViesDUnEchantillon(t *testing.T, g *FilmFacts, opt Options,
 	doc ReplayDocument) oracleVies {
 	t.Helper()
 	reg, clk := registreDuDocument(g, opt, doc)
@@ -161,7 +161,7 @@ func classerViesDUnEchantillon(t *testing.T, g *goldenInputs, opt Options,
 }
 
 // registreDuDocument reconstruit le registre d'identite du document, avec le MEME axe de frames.
-func registreDuDocument(g *goldenInputs, opt Options,
+func registreDuDocument(g *FilmFacts, opt Options,
 	doc ReplayDocument) (IdentityRegistry, IdentityClock) {
 	sorted := append([]grammar.BipedPosition(nil), g.Positions...)
 	sort.SliceStable(sorted, func(i, j int) bool {

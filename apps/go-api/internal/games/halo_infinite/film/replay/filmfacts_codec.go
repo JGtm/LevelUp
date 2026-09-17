@@ -1,11 +1,13 @@
 package replay
 
-// golden_inputs_codec_test.go — LES PRIMITIVES DU CODEC : flux binaire et sous-codecs partages.
+// filmfacts_codec.go — LES SOUS-CODECS PARTAGES ENTRE SECTIONS : positions, pistes, objets du
+// monde, images-cles, munitions.
 //
-// Extrait de golden_inputs_test.go le 2026-09-14 (revue R1, constat R1-7). DEPLACEMENT PUR.
+// Extrait de golden_inputs_test.go le 2026-09-14 (revue R1, constat R1-7), passe en PRODUCTION
+// le 2026-09-17 (lot 4.1.1-a). DEPLACEMENTS PURS. Le FLUX d octets lui-meme (`gwriter`,
+// `greader`, varints, flottants, centimetre entier) vit dans `filmfacts_flux.go`.
 
 import (
-	"encoding/binary"
 	"fmt"
 	"math"
 	"sort"
@@ -14,106 +16,6 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
-
-const cmScale = 100
-
-// gwriter accumule un flux binaire. Les entiers sont en varint : les deltas d horodatage et de
-// position tiennent sur un a deux octets, ce qui fait tout le poids du fixture.
-type gwriter struct{ b []byte }
-
-func (w *gwriter) u(v uint64)   { w.b = binary.AppendUvarint(w.b, v) }
-func (w *gwriter) i(v int64)    { w.b = binary.AppendVarint(w.b, v) }
-func (w *gwriter) byte8(v byte) { w.b = append(w.b, v) }
-func (w *gwriter) f32(v float32) {
-	w.b = binary.LittleEndian.AppendUint32(w.b, math.Float32bits(v))
-}
-func (w *gwriter) str(s string) {
-	w.u(uint64(len(s)))
-	w.b = append(w.b, s...)
-}
-func (w *gwriter) bool8(v bool) {
-	if v {
-		w.byte8(1)
-		return
-	}
-	w.byte8(0)
-}
-
-// greader relit le flux. Toute incoherence est une ERREUR remontee, jamais une valeur nulle
-// servie en silence.
-type greader struct {
-	b   []byte
-	off int
-	err error
-}
-
-func (r *greader) u() uint64 {
-	if r.err != nil {
-		return 0
-	}
-	v, n := binary.Uvarint(r.b[r.off:])
-	if n <= 0 {
-		r.err = fmt.Errorf("uvarint illisible a l offset %d", r.off)
-		return 0
-	}
-	r.off += n
-	return v
-}
-
-func (r *greader) i() int64 {
-	if r.err != nil {
-		return 0
-	}
-	v, n := binary.Varint(r.b[r.off:])
-	if n <= 0 {
-		r.err = fmt.Errorf("varint illisible a l offset %d", r.off)
-		return 0
-	}
-	r.off += n
-	return v
-}
-
-func (r *greader) byte8() byte {
-	if r.err != nil {
-		return 0
-	}
-	if r.off >= len(r.b) {
-		r.err = fmt.Errorf("fin de flux prematuree a l offset %d", r.off)
-		return 0
-	}
-	v := r.b[r.off]
-	r.off++
-	return v
-}
-
-func (r *greader) f32() float32 {
-	if r.err != nil {
-		return 0
-	}
-	if r.off+4 > len(r.b) {
-		r.err = fmt.Errorf("float32 tronque a l offset %d", r.off)
-		return 0
-	}
-	v := math.Float32frombits(binary.LittleEndian.Uint32(r.b[r.off:]))
-	r.off += 4
-	return v
-}
-
-func (r *greader) str() string {
-	n := int(r.u())
-	if r.err != nil {
-		return ""
-	}
-	if r.off+n > len(r.b) {
-		r.err = fmt.Errorf("chaine tronquee a l offset %d", r.off)
-		return ""
-	}
-	s := string(r.b[r.off : r.off+n])
-	r.off += n
-	return s
-}
-
-func (r *greader) bool8() bool { return r.byte8() == 1 }
 
 // encodePositionSection / decodePositionSection serialisent UNE suite de positions de bipede AVEC
 // sa table de slots.
@@ -438,7 +340,7 @@ func encodeAmmo(w *gwriter, a SlotAmmo) {
 	}
 	w.bool8(a.Gauge != nil)
 	if a.Gauge != nil {
-		w.b = binary.LittleEndian.AppendUint64(w.b, math.Float64bits(*a.Gauge))
+		w.b = ajouterPoidsFaibleDAbord(w.b, math.Float64bits(*a.Gauge), 8)
 	}
 	w.u(uint64(a.Overheat))
 	w.u(uint64(a.Flags))
@@ -459,7 +361,7 @@ func decodeAmmo(r *greader) SlotAmmo {
 			r.err = fmt.Errorf("jauge tronquee a l offset %d", r.off)
 			return a
 		}
-		v := math.Float64frombits(binary.LittleEndian.Uint64(r.b[r.off:]))
+		v := math.Float64frombits(lirePoidsFaibleDAbord(r.b[r.off:], 8))
 		r.off += 8
 		a.Gauge = &v
 	}
@@ -467,9 +369,3 @@ func decodeAmmo(r *greader) SlotAmmo {
 	a.Flags = uint32(r.u())
 	return a
 }
-
-// decodeGoldenInputs relit le fixture.
-
-func cmOf(v float32) int64 { return int64(math.Round(float64(v) * cmScale)) }
-
-func fromCM(v int64) float32 { return float32(float64(v) / cmScale) }
