@@ -524,6 +524,215 @@ exemptions for the game writer's own fallbacks.
   correction 5 below);
 - the persisted facts and the single published type — M4 and past-M4 by decision.
 
+## State reached at M3 (2026-09-17)
+
+Measured on the tree at the closure of milestone M3 of `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`
+(base `fe38d2e35`, the integration carrying lots 3.4, 3.6.a and 3.1.1 — the code of M3 is
+complete). Go paths are relative to `apps/go-api/internal/`. Same rule as the M2 section above:
+the plan holds the lots, the gates and their numbers; this section holds what the tree shows,
+decision by decision, and **where a decision reads differently from the tree the tree wins and
+the difference is written here**.
+
+M3 neither added nor removed a decision. It *spent* the profile: what D-3 declared a table of
+data, three families of measurement actually entered; what D-5 forbade at package level, M3
+extended to the scans themselves. The lots and their merge shas: 3.1 data (3.1.2, 3.1.3)
+`5cb7e558e`, 3.5 instruction and 3.6 preparation `4feea2ea6`, 3.2 data and witnesses
+`f84a9fbf8`, 3.4 Ghidra preparation `6a360201b`, 3.3 research `8a62e7213`, 3.3 production
+(3.3.1, 3.3.2, 3.3.3) `492cb0923`, 3.4 (3.4.1, 3.4.2) `accba88ac` with its CI fix `5897eb3dd`,
+3.6.a `2b68aa165`, 3.1.1 `fe38d2e35`. Lot 3.7 is research only (`feat/decfilm-37r`), no
+production file, so it moves nothing here.
+
+### D-3 — The profile is immutable, resolved once, keyed by build. **Spent: three families of data entered the table.**
+
+The table grew from **23 rows to 33** (`profile/profile_table.go`, counted on the tree: **7**
+read at the writer, **21** measured on a witness, **5** presumed) and it gained a second table
+beside it, the nine registry fingerprints (`profile/registre_empreintes.go`). The versioned
+catalog holds the same two shapes, 33 `entries` and 9 `registryFingerprints`, and
+`filmprofile.TestCatalogueConformeALaTableDuLot21` plus
+`TestCatalogueConformeALaTableDesEmpreintes` keep table and catalog equal value for value,
+proofs included. The leaf property holds: `go list -deps` on `profile` still returns only
+itself, and the decoder still does not *read* the catalog — it copies it.
+
+1. **The law of the axis widths, read at the writer, replaced a guessed uniform** (lot 3.4.1).
+   `profile/loi_largeurs.go` transcribes `FUN_140be9b88` / `FUN_140be9c78` with its two guards,
+   the `2^22` bin ceiling and the `1e-4` step epsilon, both now modelled on the other side too
+   (`himap/sbsp.go`: `maxBinCount`, `quantStepEpsilon`); `TestLaLoiRendLesLargeursDuCatalogue`
+   demands agreement on **79 maps out of 79**. The row `Movement.LoiLargeursAxe` is *read*; the
+   row `Movement.AbsoluteAxisW` — a uniform 14, guessed — **disappeared**, and the widths now
+   follow the range index: the default table of the build when the index is `-1`, the map's
+   per-index table otherwise. Measured consequence, not predicted: on Cliffhanger the biped's
+   absolute path read 49 bits and reads **47**.
+2. **The grenade preamble is a profile row per key, and it carries a VALUE, not only a width**
+   (lot 3.3.1). Nine rows, one per written key — seven builds plus the two major versions with
+   no identification section. The research lot had concluded "one bit" (23-bit preamble
+   `0x260600` up to `HI_1_11_0`, 24-bit `0x4C0C00` from `HI_1_12_0`); the production lot
+   measured that major 31 carries a **different value at equal width** (`0x20400`, 95 hits out
+   of 95), so deriving the old preamble from the recent one by a shift would have worked on
+   eight keys out of nine. The whitelist `GrenadeTypeIDsByRank` stays a **constant of the
+   title**: the pattern is derived from the projectile `ti` resolved **by name** in the film's
+   own registry, and no rank is ever guessed.
+3. **The registry fingerprints are copied into the profile, never read from the catalog**
+   (lot 3.1.1, already stated under D-3 above). Nine keys, five distinct fingerprints — three
+   pairs of builds share theirs — which is why uniqueness is validated on the **key** and why an
+   equal fingerprint authorizes no conclusion about structure sizes.
+4. **What stays presumed is five rows, and they are frozen.** `TestProfilPresumes` listed six at
+   M2 and lists **five** at this closure: `Movement.Traversal`, `Movement.DeltaAxisWidth`,
+   `Movement.Range`, `Movement.CalibratedSkip`, `Movement.MobilityActionExtraBits`. The ratchet
+   never rises; the entry that left did so by *disappearing*, not by being promoted, and the
+   plan says so at the line. `Movement.Traversal` deliberately stayed presumed: it is the delta
+   path's descriptor, a different quantity from the absolute width the Ghidra note actually
+   read, and declaring it read on the note's word would have been a false provenance.
+
+### D-4 — An unknown build fails loudly. **Reached at lot 3.1.1, and exercised the same day.**
+
+D-4 above says what the two orchestrators do. What M3 adds is that the case is **no longer
+hypothetical**. The park census (`TestRecensementDesClefsDuParc`, `chunk_00` only, no decode,
+2.8 s) counted **1 589 films and ten written keys**, where the user's decision of 2026-09-17 had
+been taken on "zero films today" (a census of 1 351 films three days earlier). One film,
+`58e6f72a`, writes `build=HI_1_5_1` — a **sixth** registry fingerprint, absent from the catalog,
+the only 1 034-named-slot registry of the park. It is set aside from that day: **one film out of
+1 589, 0.06 %**, and no gate suffers (the film is neither a corpus-gate witness nor an
+equivalence film). Two bounded consequences are written rather than hidden: the film stays a
+catch-up candidate and costs one download per cycle until the key is added — which is deliberate,
+because `MBitFilmAbsent` is terminal — and adding the key is the runbook procedure with measured
+values on a witness, that is a lot and not a line.
+
+### D-5 — No package-level mutable state in the decoder. **Reached at M2; M3 adds the companion rule: a scan does not decide what it cannot discriminate.**
+
+M2 removed the mutable state. M3 met the next form of the same defect: a *scan* that writes the
+value a reader will use, with a criterion blind to the quantity it decides. Two cases, both
+measured, and the plan holds the outputs.
+
+- **The handle word (`Traversal.IndexW`) no longer comes from a scan's tie-break.** The lot
+  3.4.1 gates found three steps moving that nothing expected (`abilityImpulses` on 7 films,
+  `grappleReads.stats` on 9, `pads` on 3) and four published reads lost. The cause was not the
+  map: the deciding criterion scored its candidates under a **uniform** axis width the
+  production had just stopped reading, and at the triplet actually read the scores are flat —
+  `272 / 272 / 272` on one witness, `61 / 61 / 61` on another — so the published value came out
+  of a tie broken by an unstable `sort.Slice`. Lot 3.4.2 splits the measurement in two: an
+  **axis oracle** that sweeps at a frozen handle word and **writes nothing**, and a handle-word
+  **decision** scored at the read triplet, kept only if it dominates the median by a factor;
+  otherwise the invariant 1 under a named, dated fallback. Both sorts became deterministic,
+  `motDePoigneeRetenu` is tested exhaustively **without a film**, and a source ratchet demands a
+  single write of `Traversal.IndexW` in the package.
+- **`param_4` still decides, and it is now named.** The record-state parameter is still inferred
+  by a scan, and the lot says so instead of implying otherwise: the fallback
+  `repli_parametre_etat_record_infere` entered the registry with its target and its retirement
+  criterion. The remedy was **coded and measured, then set aside**: giving `param_4` the
+  handle-word discrimination test drops it to the invariant everywhere and **loses published
+  data elsewhere** (`grenadeReads/n` 193 to 191 on the negative witness,
+  `weaponChanges/par-kind/taken` 67 to 65 and 36 to 32, `coverage.abilities.published` 187 to
+  186) to recover two matched deaths out of four. One does not replace noise with a loss; the
+  candidate is written, and it is not retained.
+- **The demoted inference became an oracle, and it earns its keep.** `killsource/calibrate.go`
+  counts disagreements instead of deciding: on a film whose widths are not the invariant the
+  oracle **confirms the map and contradicts the fallback** (axis disagreement 1 without the map,
+  0 with it). The map of the match now reaches `killsource` itself — it was the only decoding
+  path in the repository receiving no catalog entry — and its absence is a fallback that is
+  **named, counted and warned per film**.
+
+### D-6 — One revision per thing that can change. **Four revisions, three of them raised, and no schema bump.**
+
+| Revision | Value at the M3 closure | Moved by |
+|---|---|---|
+| `source.Rev` | `source-2026-09-16.2` | unchanged by M3 — no lot touched the way the bytes are reached |
+| `profile.Rev` | `profile-2026-09-17.3` | 3.3.1 (grenade preamble rows), 3.4.1 (the width law) |
+| `grammar.Rev` | `grammar-2026-09-15.42` | 3.3.1, 3.4.1, 3.6.a (the two `ti=9` components) |
+| `facts.Rev` | `killsource-2026-09-17.2` | 3.4.1 (the map reaches the death walk), 3.4.2 (the handle-word fix) |
+
+**`SchemaVersion` stays 61 across the whole milestone.** Three lots changed the cooked content
+and none of them added a field: the grenade throws travel in a block that already existed, the
+death walk changes which rows are credited and not their shape, and the registry status was
+already a string, so the third state `presumee` obliged no consumer to change form. That is also
+why the coverage counters M3's scans now emit are **logged and not published**: publishing them
+would raise the schema, and a schema rise marks the whole park for a re-cook — so they wait for
+M4's single rise 61 to 62, by a pilot decision written at the lot.
+
+The consequence of `facts.Rev` rising is the rule of this decision, and it is in force: the rows
+of `match_kill_events` already written became backlog candidates. The user deferred the
+deliberate drain — "it is a very long step, so we do it as late as possible" — to after M4 at the
+earliest, on an explicit signal, grouped with any later rise so the base is passed over once.
+The bounded post-sync catch-up is unchanged and needs no decision.
+
+The chronicle door held under load: at the 3.3 merge `grammar/rev_chronique.go` stood at exactly
+**500 lines**, its ceiling, and the next entry would not have fit; lot 3.4 moved old ranks into
+`rev_chronique_archive.go` and `fichiersDeChroniqueGrammar` now names both files (451 and 456
+lines on the tree). The corpus gate learned the matching lesson at lot 3.3.3: the six telemetry
+leaves — `coverage.decoder.{sourceRev, profileRev, grammarRev, factsRev}`, `build` and
+`registry.fingerprint` — are shown in their own section and **counted nowhere**, because a leaf
+that says which decoder cooked the artifact is not a datum of the match; and a rejection counter
+declared with its denominator is a **loss** only if the ratio degrades.
+
+### D-10 and D-10 bis — Grammar decides; a fallback is named, counted and retired. **Three retired, four posted, 99 entries.**
+
+The registry carries **99 entries across seven files** on the tree (98 across six at M2), the
+seventh slice being the calibration family that lot 3.4 split out. M3 is the first milestone
+where the count moved in both directions, which is what the decision asks for.
+
+- **Retired, because the value is now read**: `repli_largeur_absolue_uniforme` (the uniform
+  absolute width, replaced by the map's per-index table), `repli_calibration_paquet_exclu` and
+  `repli_calibration_paquet_non_localise` (the calibration no longer decides).
+- **Posted, each with its target and a measurable retirement criterion**:
+  `repli_parametre_etat_record_infere` (`param_4` still decides — D-5 above),
+  `repli_carte_absente_largeurs_par_defaut` (the match's map is missing; counted and warned per
+  film), `repli_largeur_mot_de_poignee_inferee` (the invariant when the scan cannot
+  discriminate; target = the width read at the writer),
+  `repli_amorce_grenade_profil_de_reference` (a key absent from the preamble table).
+
+The third retirement is the one to keep in mind: removing the two calibration fallbacks without
+looking at what remained would have erased an inference that still decides. A fallback registry
+is only worth its accuracy.
+
+### What M3 measured, in four numbers
+
+The plan's §5 holds the commands and the pasted outputs; these are the four the decisions above
+rest on.
+
+- **Credited deaths, six old witnesses: 106 to 737** (17-27 % of the raw couples to 64-89 %),
+  measured with the same instrument on both sides, once the match's map reaches `killsource`.
+- **Grenade throws on the old keys: 1 627** on the eight witnesses of the corpus where the
+  artifact published zero (2 176 over the nine old-grammar films of the equivalence corpus), the
+  counts agreeing to the unit between the production path and the equivalence step.
+- **`ti=9` closes 1 679 / 1 679** on the six research films, from `0 / 1 679`. On the seven
+  committed mini-reels it closes 1 716 / 1 717, and the remainder is a chance anchor of the
+  sweeper rather than a width — which is why the honest target of a port lot is "no named
+  blocker", not "100 %".
+- **Corpus gate, 17 witnesses out of 17 present at every pass**, schema 61 to 61. Lot 3.6.a
+  returned 0 gain / 0 loss / 0 change; lot 3.1.1 returned 0 loss / 0 gain and **6 witnesses
+  changing one leaf each, the same one** (`coverage.decoder.registry.status`, `inconnue` to
+  `connue`), which is the change it produces by construction. Lot 3.4 is the one that did not
+  come back clean and it is written as such: **8 witnesses in loss**, and the attribution was
+  made by measurement, not by reasoning — the same gate against the merge just before the
+  handle-word fix returns 8 out of 8 `ok`, so the cause is 3.4.1 and the loss is vehicle deaths
+  read under the map's widths.
+
+### What M3 leaves partial, named here so it is not re-discovered
+
+- **Two published lines lost, assumed and written**: `vehicles.tEnd/presents` and
+  `vehicles/par-end/destroyed`, on two witnesses, from the map's widths reaching the `ti=40`
+  dead-state walk. The cause is established (`param_4` on the films with no region, the i0
+  cutting on Live Fire — where the catalog and the film disagree while **both read 41 bits**, so
+  no length measurement can separate them), the remedy is measured and costlier than the defect,
+  and the candidate lot is written rather than started.
+- **The coverage counters of M3's scans** are logged and not published; they enter M4's single
+  schema rise 61 to 62, to be re-measured there against what the lots actually added.
+- **The facade's surface grew instead of shrinking**: **166** exported top-level declarations in
+  `film/decfilm/decfilm.go` (163 at M2), and **245** distinct `replay.X` identifiers cited
+  outside `film/` (the M2 section wrote 239, and the reproducible measure of that same set gave
+  242 then). The reduction stays M4 material; what M4 adds first is a dated ratchet on both
+  numbers, because nothing counts them today.
+- **`film/revision` outside `film/internal/`** — unchanged, a pure move nobody's fingerprint
+  sees, and `decfilm.Rev` still carries a name from the time there was one decoder revision
+  rather than four. Both are M4 material, and neither is a defect of value.
+- **No component port beyond `ti=9`.** The user, with the inventory in hand, decided on
+  2026-09-17 that no unported device, navpoint, vehicle or other archetype component has a
+  product use: the remaining cases of lot 3.6 are closed unretained, and "prepared without
+  porting" is what already exists and is held by ratchet — the ECS table naming every component
+  with its writer's address and its grammar where it was read, the closure golden naming each
+  archetype's blocker, and the `default` of every dispatch link counting the unknown.
+- **The persisted facts and the single published type** — M4 and past-M4 by decision,
+  unchanged.
+
 ## Corrections to statements made elsewhere
 
 Found on the tree during lot 0.B (2026-09-13), written here so the wrong sentence is not repeated:
