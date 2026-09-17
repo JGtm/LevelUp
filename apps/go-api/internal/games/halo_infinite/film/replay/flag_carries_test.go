@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // flag_carries_test.go — LES REGLES DU DRAPEAU, sans film.

@@ -30,10 +30,10 @@ import (
 	"fmt"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // BuildFromFilm décode les positions bipeds des SEULS chunks du film DEJA CHARGE et en

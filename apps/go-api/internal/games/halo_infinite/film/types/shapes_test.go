@@ -43,8 +43,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 

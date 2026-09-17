@@ -39,7 +39,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // kothTicksDesaccord est un joueur dont le compteur du film contredit l'oracle de l'API.

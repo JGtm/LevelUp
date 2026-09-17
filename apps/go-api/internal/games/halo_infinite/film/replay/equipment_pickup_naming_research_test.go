@@ -45,7 +45,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // eqnTolUS est la fenêtre d'appariement : la même que celle sous laquelle l'accord

@@ -14,7 +14,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // flagHomeScan monte un portage de « 1 » a 1 000 ms, ferme par sa mort a 6 000 ms (frame 60), et

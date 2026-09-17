@@ -12,7 +12,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // usageOwners répond « à qui était ce slot À CET INSTANT ».

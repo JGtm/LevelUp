@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // TestInvAbilityRankHighEstLaQueueDuMotif verrouille la DERIVATION, pas la valeur.

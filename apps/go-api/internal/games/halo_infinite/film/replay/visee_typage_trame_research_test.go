@@ -44,7 +44,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // typesDeclaresParLeFilm est le nombre d'entrees de la table par type que porte chunk_00, mesure

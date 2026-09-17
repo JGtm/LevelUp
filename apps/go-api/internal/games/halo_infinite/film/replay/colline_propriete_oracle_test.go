@@ -53,8 +53,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // SEUILS DE CT.1.2 — ecrits avant la mesure (plan, lot C-ter volet 1).

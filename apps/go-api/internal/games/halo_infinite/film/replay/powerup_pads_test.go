@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // LES DEUX IDENTITES `eqip` DU MANIFESTE (replay_labels.toml), ecrites ici pour que le test

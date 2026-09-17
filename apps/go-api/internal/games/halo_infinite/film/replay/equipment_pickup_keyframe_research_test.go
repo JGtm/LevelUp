@@ -55,7 +55,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // eqkLabels rend les etiquettes que le passage d'un releve a l'autre fait APPARAITRE.

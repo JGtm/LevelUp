@@ -47,8 +47,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 // Les composants d etat de l archetype 37 que cette mesure regarde, avec le nom que LE JEU leur

@@ -86,10 +86,10 @@ var franchissementsToleres = map[string]string{
 	// `assaut_footer_research_test.go` et `extract_test.go`. Le portage attendu n'a pas eu lieu
 	// (la source du film n'est toujours pas un paramètre de ces tests) : c'est le PAQUET qui a
 	// quitté `internal/analysis/`, descendu sous
-	// `internal/games/halo_infinite/film/facts/objectives` — il est désormais une couche du
+	// `internal/games/halo_infinite/film/internal/facts/objectives` — il est désormais une couche du
 	// décodeur, chez lui, et ouvrir un film du cache local y est légitime. La dette décrite par
 	// ces deux entrées disparaît donc avec sa cause, et non par contournement.
-	// RETIRÉE LE 2026-09-16 (lot 2.4, item 2.4.2) : `internal/games/halo_infinite/film/source/source_test.go`
+	// RETIRÉE LE 2026-09-16 (lot 2.4, item 2.4.2) : `internal/games/halo_infinite/film/internal/source/source_test.go`
 	// n'importe plus `grammar` : le test compare le marcheur canonique (`source.Paquets`) à une
 	// COPIE DE RÉFÉRENCE de l'ancienne grammaire portée par le test lui-même (738 paquets).
 	// RETIRÉE LE 2026-09-16 (item 2.5.f) : `internal/analysis/sessionusage/usage_outcomes.go`
@@ -97,11 +97,17 @@ var franchissementsToleres = map[string]string{
 	// d'équipement qu'il lisait dans `games/halo_infinite/film/replay` vivent désormais dans
 	// `internal/domain/equipmentusage` — le décodeur et l'agrégat de session les y lisent tous
 	// les deux. Reste TROIS entrées, toutes des TESTS.
-	"internal/analysis/weapon_index_equivalence_test.go": "2026-09-12, rendu visible par le " +
-		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/grammar` : test " +
-		"d'équivalence entre l'index d'armes d'`analysis` et celui du décodeur. Portage " +
-		"attendu : l'index d'armes est title-agnostic (`games/weapons`), la comparaison " +
-		"descend côté décodeur.",
+	// RETIRÉE LE 2026-09-16 (lot 2.5.e) : `internal/analysis/weapon_index_equivalence_test.go`
+	// était la DERNIÈRE. Le portage annoncé a eu lieu tel qu'il était écrit — « la comparaison
+	// descend côté décodeur » : le test vit désormais dans
+	// `internal/games/halo_infinite/film/internal/grammar/weaponscan/`, à côté du scanner dont il prouve
+	// la clé de tireur, et le catalogue d'armes qu'il opposait est sorti d'`internal/analysis`
+	// pour `games/weapons/filmshell`.
+	//
+	// LA TABLE EST VIDE, ET C'EST UN RATCHET : `internal/analysis/` n'importe plus AUCUN paquet
+	// de titre, ni en production ni en test. Toute entrée neuve doit se justifier par écrit et
+	// nommer son lot de retrait — ce n'est plus une liste de dette à vider, c'est une exception
+	// à décider.
 }
 
 func TestAnalysisImporteAucunPaquetDeTitre(t *testing.T) {

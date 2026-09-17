@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
@@ -201,7 +202,7 @@ func collectHighlightEvents(
 	if !out.chunkUsable() {
 		return out, nil // film absent / chunk vide → décision de marquage au FLUSH
 	}
-	events, err := analysis.ParseHighlightEvents(data, filmMajorVersion)
+	events, err := decfilm.ParseHighlightEvents(data, filmMajorVersion)
 	if err != nil {
 		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_invalid_data")
 		return out, fmt.Errorf("ParseHighlightEvents: %w", err)

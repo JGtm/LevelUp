@@ -18,7 +18,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // objContexteMotif porte ce que le motif a autour de lui.

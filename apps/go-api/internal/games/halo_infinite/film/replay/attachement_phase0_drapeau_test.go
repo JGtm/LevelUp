@@ -23,7 +23,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // attDrapeauRayonM : au-delà, une création n'est plus « au socle ». Trois mètres est la

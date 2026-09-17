@@ -40,14 +40,14 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/highlightevent"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // FilmHighlight : le chunk highlight d un match ET la version du film qui le porte.
 //
 // LES DEUX VOYAGENT ENSEMBLE PARCE QUE LE PARSEUR A BESOIN DES DEUX. `MajorVersion` commande le
 // decoupage du gamertag dans le bloc d event (octet 12 au lieu de 0 sur les versions 39-40) ; il
-// vaut [grammar.FilmMajorVersionUnknown] quand la source n a pas pu le lire, et le decoupage
+// vaut [decfilm.FilmMajorVersionUnknown] quand la source n a pas pu le lire, et le decoupage
 // historique s applique alors.
 type FilmHighlight struct {
 	Chunk        []byte
@@ -176,7 +176,7 @@ func (p passeMedailles) traiterMatch(
 		slog.InfoContext(ctx, "backfill medailles: match saute, film absent du cache", "match_id", matchID)
 		return nil
 	}
-	if film.MajorVersion == grammar.FilmMajorVersionUnknown {
+	if film.MajorVersion == decfilm.FilmMajorVersionUnknown {
 		// La source n a pas su lire l en-tete du registre : decoupage historique du gamertag.
 		// L appariement lui-meme s en moque (il se fait sur le xuid, lu au bit pres hors du
 		// bloc, et sur l instant), mais un decodage degrade ne se tait pas (CLAUDE.md n 3).
@@ -225,7 +225,7 @@ func (p passeMedailles) traiterMatch(
 // `TestEventsDuFilmSuitLaVersionDeclaree` lit le gamertag d un bloc de version 40 et rougit des
 // que la version cesse d etre transmise.
 func eventsDuFilm(film FilmHighlight) ([]highlightevent.HighlightEvent, error) {
-	return analysis.ParseHighlightEvents(film.Chunk, film.MajorVersion)
+	return decfilm.ParseHighlightEvents(film.Chunk, film.MajorVersion)
 }
 
 // correction est ce qu on ecrit sur une ligne : le type_hint TOUJOURS (quantite

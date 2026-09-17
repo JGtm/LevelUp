@@ -37,7 +37,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // v10Cand est une candidate du § 4.3, datee sur l horloge du FILM (secondes).

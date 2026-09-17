@@ -29,13 +29,13 @@ package killcollector
 
 import (
 	"context"
-	"encoding/binary"
 	"log/slog"
+	"math/bits"
 	"sort"
 	"strconv"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/weapons/filmshell"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
@@ -81,18 +81,18 @@ func BuildWeaponShotsBatch(
 	// base : c est la seule quantite qui ne depende d aucune resolution.
 	counts := map[int]map[uint64]int{}
 	for _, data := range chunks {
-		for _, ev := range analysis.ScanFireEventsB5(data, zeroEstimator) {
-			pi := ev.PlayerIndex5
+		for _, ev := range decfilm.ScanFireEventsB5(data, zeroEstimator) {
+			pi := ev.FilmIndex5
 			if pi < 0 || pi > maxReplicationIndex {
 				continue
 			}
-			id := binary.BigEndian.Uint64(ev.WeaponBytes[:])
-			// Les sentinelles grenade/melee/vehicule d `analysis` ne sont PAS des identifiants
+			id := filmshell.IDFromBytes(ev.WeaponBytes)
+			// Les sentinelles grenade/melee/vehicule de `filmshell` ne sont PAS des identifiants
 			// filmshell : les ecrire fabriquerait une jointure fausse avec
 			// `metadata.weapon_labels`. Le persister les refuse — mais il refuse la PASSE
 			// ENTIERE, alors qu ici une sentinelle isolee ne doit couter que sa propre ligne.
 			// On lit la liste chez son proprietaire plutot que d en recopier la borne.
-			if analysis.SentinelIDs[id] {
+			if filmshell.SentinelIDs[id] {
 				continue
 			}
 			if counts[pi] == nil {
@@ -145,14 +145,16 @@ func resolvePlayerIndices(rosterXUIDs []string, chunks [][]byte) map[int]string 
 }
 
 // motifDuXUID : le xuid encode en 8 octets LITTLE-ENDIAN puis relu en BIG-ENDIAN. C est sous
-// cette forme qu il apparait dans le flux de replication (methode `weaponv3.ResolveXuidToPI`).
-func motifDuXUID(xuid uint64) uint64 {
-	var le [8]byte
-	binary.LittleEndian.PutUint64(le[:], xuid)
-	return binary.BigEndian.Uint64(le[:])
-}
+// cette forme qu il apparait dans le flux de replication (methode `decfilm.ResolveXuidToPI`).
+//
+// C EST UN RENVERSEMENT D OCTETS, et il s ecrit comme tel depuis le lot 2.5.e : ecrire un mot
+// dans un sens puis le relire dans l autre EST `bits.ReverseBytes64`, et c est deja
+// l orthographe de `weaponv3.xuidTargetPattern`, le second (et dernier) site du depot. Il ne
+// touche AUCUN octet de film — il transforme un scalaire — donc il n avait rien a faire avec
+// `encoding/binary`, que le ratchet des lectures brutes comptait ici comme une porte aux octets.
+func motifDuXUID(xuid uint64) uint64 { return bits.ReverseBytes64(xuid) }
 
-// chercherMotifs : LA MEME RECHERCHE QUE `weaponv3.ResolveBest`, EN UNE SEULE PASSE.
+// chercherMotifs : LA MEME RECHERCHE QUE `decfilm.ResolveBest`, EN UNE SEULE PASSE.
 //
 // POURQUOI ELLE EXISTE — LA VERSION NAIVE REND LE BACKFILL IMPRATICABLE. `ResolveBest` balaie
 // le film UNE FOIS PAR XUID, et chaque position y coute une relecture de 64 bits : sur un roster
@@ -210,7 +212,7 @@ func chercherDansChunk(
 			continue // premiere occurrence gagnante, comme `ResolveBest`
 		}
 		debut := pos - 63
-		if debut < weaponv3.PIBits {
+		if debut < decfilm.PIBits {
 			continue // pas assez de bits AVANT le motif pour porter un indice
 		}
 		out[xuid] = lireIndiceAvant(data, debut)
@@ -223,7 +225,7 @@ func chercherDansChunk(
 // lireIndiceAvant : les 5 bits qui precedent immediatement le motif, MSB-first.
 func lireIndiceAvant(data []byte, debutMotif int) int {
 	v := 0
-	for i := debutMotif - weaponv3.PIBits; i < debutMotif; i++ {
+	for i := debutMotif - decfilm.PIBits; i < debutMotif; i++ {
 		v = v<<1 | int((data[i>>3]>>uint(7-(i&7)))&1)
 	}
 	return v

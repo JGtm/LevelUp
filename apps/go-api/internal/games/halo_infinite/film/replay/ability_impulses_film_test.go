@@ -42,7 +42,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 const (

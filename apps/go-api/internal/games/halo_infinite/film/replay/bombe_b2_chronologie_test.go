@@ -71,10 +71,10 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -332,13 +332,13 @@ func b2Kills(t *testing.T, cache, id string) []analysishl {
 	if err != nil {
 		t.Fatalf("%s : chunk highlight illisible : %v", id, err)
 	}
-	evs, err := analysis.ParseHighlightEvents(raw, 0)
+	evs, err := grammar.ParseHighlightEvents(raw, 0)
 	if err != nil {
 		t.Fatalf("%s : highlights illisibles : %v", id, err)
 	}
 	var out []analysishl
 	for _, e := range evs {
-		if e.EventType == analysis.EventTypeKill {
+		if e.EventType == highlightevent.EventTypeKill {
 			out = append(out, analysishl{xuid: e.XUID, tMS: e.TimeMS})
 		}
 	}

@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // attVehiculeTI est l'archétype « véhicule (présumé) » de la table ECS. Présumé est le mot

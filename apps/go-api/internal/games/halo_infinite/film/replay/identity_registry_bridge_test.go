@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // identity_registry_bridge_test.go — LE PONT PAR MORTS EN TEMOIN, ET LA PAIRE ECHANGEE.

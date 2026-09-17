@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // manches_segments_test.go — LA GARDE PAR SLOT, ET LE JOURNAL DES BORNES DE MANCHE.

@@ -38,7 +38,7 @@ package replay
 // sous-dimensionnement au lieu de fabriquer un faux negatif.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vgKFStat porte la couverture de la marche d'image-cle, publiee AVANT tout score.

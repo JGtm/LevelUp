@@ -15,7 +15,7 @@
  *
  * SUFFIXE " [bot]" — RETIRÉ À L'AFFICHAGE (retour user 2026-09-02). Le producteur
  * killsource écrit le gamertag d'un bot avec le suffixe littéral ` [bot]`
- * (`apps/go-api/internal/games/halo_infinite/film/facts/killsource/roster.go`,
+ * (`apps/go-api/internal/games/halo_infinite/film/internal/facts/killsource/roster.go`,
  * `botSuffix`) et l'artefact de rejeu (schéma 36) le porte pareil : c'est un
  * MARQUEUR DE DONNÉES, pas un choix d'affichage — l'écran n'a pas à le répéter,
  * d'autant que le contexte le dit déjà (badge « Bot », style atténué). Xbox

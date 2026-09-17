@@ -78,12 +78,12 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (

@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // score_timeline_test.go — L'ASSEMBLAGE DE LA COURBE DE SCORE, SANS UN OCTET DE FILM.

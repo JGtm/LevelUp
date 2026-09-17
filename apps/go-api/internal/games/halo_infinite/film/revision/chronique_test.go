@@ -199,7 +199,7 @@ func TestChroniqueRefuseUnGoldenMalforme(t *testing.T) {
 // ce que le gate de `grammar` exige deja par ses propres moyens.
 func TestChroniqueLitLesArtefactsReelsDeFilmdec(t *testing.T) {
 	api := racineAPI(t)
-	dir := filepath.Join(api, "internal", "games", "halo_infinite", "film", "grammar")
+	dir := filepath.Join(api, "internal", "games", "halo_infinite", "film", "internal", "grammar")
 	c, err := revision.LireChronique("grammar",
 		// Depuis le lot 2.4 (D2 (2.4)), la chronique est ROTATIONNEE : les entrees courantes vivent dans
 		// `grammar_rev_chronique.go`, les anciennes dans `grammar_rev_chronique_archive.go`.

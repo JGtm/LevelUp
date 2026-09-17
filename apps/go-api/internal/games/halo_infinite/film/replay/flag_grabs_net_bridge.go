@@ -27,7 +27,7 @@ package replay
 // fusionne. C'est pour cela que [FlagTracksOf] le rend a part.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // FlagTracksOf projette le calque de drapeau d'un document vers l'entree de

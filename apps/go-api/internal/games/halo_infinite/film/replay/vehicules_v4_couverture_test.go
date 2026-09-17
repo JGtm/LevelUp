@@ -31,7 +31,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // v4TemoinUS est le decalage du temoin. 60 s : plus d une vie de joueur, moins qu une partie —

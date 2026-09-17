@@ -33,7 +33,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // Fins d'affichage publiées. Identifiants STABLES du document (même règle que Family/Origin).

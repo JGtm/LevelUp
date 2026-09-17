@@ -26,8 +26,8 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 )
@@ -443,7 +443,7 @@ func downloadChunk(ctx context.Context, client *http.Client, url string) ([]byte
 	if err != nil {
 		return nil, err
 	}
-	return source.Decompresser(raw)
+	return decfilm.Decompresser(raw)
 }
 
 // beatUntil bat tant que le job est en cours. C'est ce battement qui prolonge le

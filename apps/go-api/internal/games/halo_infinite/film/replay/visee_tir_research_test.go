@@ -64,8 +64,8 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -251,19 +251,19 @@ func tirLitFeed(dir string) (tirFeed, bool) {
 	if err != nil {
 		return tirFeed{}, false
 	}
-	evs, err := analysis.ParseHighlightEvents(raw, 0)
+	evs, err := grammar.ParseHighlightEvents(raw, 0)
 	if err != nil {
 		return tirFeed{}, false
 	}
 	var f tirFeed
 	for _, e := range evs {
 		switch {
-		case e.EventType == analysis.EventTypeKill:
+		case e.EventType == highlightevent.EventTypeKill:
 			f.kills = append(f.kills, int64(e.TimeMS))
-		case e.EventType == analysis.EventTypeMedal &&
+		case e.EventType == highlightevent.EventTypeMedal &&
 			e.TypeHint == adsTypeHintMulti && e.MedalType == adsMedalNoScope:
 			f.noScope = append(f.noScope, int64(e.TimeMS))
-		case e.EventType == analysis.EventTypeMedal &&
+		case e.EventType == highlightevent.EventTypeMedal &&
 			e.TypeHint == adsTypeHintMulti && e.MedalType == adsMedalCounter:
 			f.counter = append(f.counter, int64(e.TimeMS))
 		}

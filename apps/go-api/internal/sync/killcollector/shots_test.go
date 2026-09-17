@@ -15,8 +15,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // ─── L instrument : un ecrivain de bits ────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ func (b *bitBuf) bytes() []byte {
 	return out
 }
 
-// ecrireFireEvent ajoute UN fire-event lisible par `analysis.ScanFireEventsB5`.
+// ecrireFireEvent ajoute UN fire-event lisible par `weaponscan.ScanFireEventsB5`.
 //
 // La geometrie est celle du scanner, et elle est le contrat teste ici :
 //
@@ -67,8 +67,8 @@ func ecrireFireEvent(b *bitBuf, playerIndex int, weaponID uint64) {
 // passerait alors pour de mauvaises raisons.
 func deuxArmes(t *testing.T) (uint64, uint64) {
 	t.Helper()
-	ids := make([]uint64, 0, len(analysis.WeaponIDs))
-	for id := range analysis.WeaponIDs {
+	ids := make([]uint64, 0, len(filmshell.WeaponIDs))
+	for id := range filmshell.WeaponIDs {
 		ids = append(ids, id)
 	}
 	if len(ids) < 2 {
@@ -143,7 +143,7 @@ func TestVentilationLitLIndiceSurCinqBits(t *testing.T) {
 func TestVentilationRefuseLesSentinelles(t *testing.T) {
 	a1, _ := deuxArmes(t)
 	var b bitBuf
-	for id := range analysis.SentinelIDs {
+	for id := range filmshell.SentinelIDs {
 		ecrireFireEvent(&b, 5, id)
 	}
 	ecrireFireEvent(&b, 5, a1)
@@ -152,7 +152,7 @@ func TestVentilationRefuseLesSentinelles(t *testing.T) {
 
 	for _, p := range batch.Players {
 		for _, w := range p.Weapons {
-			if analysis.SentinelIDs[w.WeaponID] {
+			if filmshell.SentinelIDs[w.WeaponID] {
 				t.Errorf("sentinelle %d ecrite — elle fabriquerait une jointure fausse avec "+
 					"metadata.weapon_labels", w.WeaponID)
 			}
@@ -232,7 +232,7 @@ func TestResolutionRefuseDeTrancherEntreDeuxXuids(t *testing.T) {
 
 // TestRechercheDeMotifsEquivautALaVersionNaive — LE test qui autorise l optimisation.
 //
-// La recherche en une passe (fenetre glissante + prefiltre) remplace `weaponv3.ResolveBest`,
+// La recherche en une passe (fenetre glissante + prefiltre) remplace `decfilm.ResolveBest`,
 // qui balaie le film une fois PAR XUID. Le remplacement n est legitime que s il rend EXACTEMENT
 // la meme chose : chunks dans l ordre, positions croissantes, premiere occurrence gagnante. Ce
 // test confronte les deux implementations sur des flux ou les motifs sont places a des positions
@@ -281,7 +281,7 @@ func TestRechercheDeMotifsEquivautALaVersionNaive(t *testing.T) {
 		back[v] = s
 	}
 	naive := map[int]string{}
-	for x, pi := range weaponv3.ResolveBest(numeriques, chunks) {
+	for x, pi := range decfilm.ResolveBest(numeriques, chunks) {
 		if _, deja := naive[pi]; deja {
 			naive[pi] = ""
 			continue

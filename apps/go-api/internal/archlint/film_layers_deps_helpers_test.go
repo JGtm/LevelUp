@@ -11,6 +11,7 @@ package archlint
 // hesite a lancer ne garde rien.
 
 import (
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/fs"
@@ -144,13 +145,66 @@ func importsDeProductionDuPaquet(t *testing.T, racineAPI, rel string) ([]string,
 	return clesTrieesFilm(vus), fichiers
 }
 
-// indexDesAretesTolerees indexe l allowlist des aretes par "de -> vers".
-func indexDesAretesTolerees() map[string]areteToleree {
-	out := make(map[string]areteToleree, len(aretesTolerees))
-	for _, a := range aretesTolerees {
-		out[cleArete(a.de, a.vers)] = a
+// siteDeChargement : un appel a un chargeur de la couche `source`, dans un fichier de
+// production de la couche de publication.
+type siteDeChargement struct {
+	fichier string // chemin relatif a `apps/go-api`
+	detail  string // l appel vu, pour le message
+}
+
+// chargementsDeSourceDansReplay parcourt les fichiers de PRODUCTION de la couche de publication
+// et rend les appels a un chargeur de `source` (R4).
+//
+// PAR `go/parser` ET NON PAR `grep`, pour la meme raison que le reste de ce fichier : la couche
+// CITE `source.LoadDir` dans ses commentaires â c est ainsi qu ils expliquent d ou vient le film
+// â et un grep rougirait sur la documentation de la regle.
+func chargementsDeSourceDansReplay(t *testing.T) []siteDeChargement {
+	t.Helper()
+	racineAPI := apiRootDepuisIci(t)
+	dir := filepath.Join(racineAPI, filepath.FromSlash(coucheQuiNeChargePas))
+	entrees, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("lecture de %s : %v â si la couche a DEMENAGE, deplacer `coucheQuiNeChargePas` "+
+			"avec elle", coucheQuiNeChargePas, err)
 	}
-	return out
+	fset := token.NewFileSet()
+	var vus int
+	var sites []siteDeChargement
+	for _, e := range entrees {
+		nom := e.Name()
+		if e.IsDir() || !strings.HasSuffix(nom, ".go") || strings.HasSuffix(nom, "_test.go") {
+			continue
+		}
+		vus++
+		f, perr := parser.ParseFile(fset, filepath.Join(dir, nom), nil, 0)
+		if perr != nil {
+			t.Fatalf("analyse de %s : %v", nom, perr)
+		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			appel, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			sel, ok := appel.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			x, ok := sel.X.(*ast.Ident)
+			if !ok || x.Name != "source" || !chargeursDeSource[sel.Sel.Name] {
+				return true
+			}
+			sites = append(sites, siteDeChargement{
+				fichier: coucheQuiNeChargePas + "/" + nom,
+				detail:  "source." + sel.Sel.Name + "(...) ligne " + itoa(fset.Position(appel.Pos()).Line),
+			})
+			return true
+		})
+	}
+	if vus < 40 {
+		t.Fatalf("balayage muet : %d fichier(s) de production vus dans %s, au moins 40 attendus",
+			vus, coucheQuiNeChargePas)
+	}
+	return sites
 }
 
 // clesTrieesFilm rend les cles d une map a cles chaines, triees.

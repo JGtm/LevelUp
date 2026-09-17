@@ -10,8 +10,7 @@ package killcollector
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
 )
 
@@ -35,10 +34,10 @@ import (
 // AUCUN PLAFOND A 100 sur les parts : 1,7 % des kill-events vont jusqu a 228, ce sont des
 // donnees. Le seul plafond applique est celui du TYPE (uint8, 255) — et si une valeur le
 // depassait, c est le type qu il faudrait elargir, pas la valeur qu il faudrait ecreter.
-func BuildKillSourceBatch(matchID string, res *killsource.Result, ids MatchIdentities) persist.KillSourceBatch {
+func BuildKillSourceBatch(matchID string, res *decfilm.Result, ids MatchIdentities) persist.KillSourceBatch {
 	batch := persist.KillSourceBatch{
 		MatchID:     matchID,
-		DecoderRev:  facts.Rev,
+		DecoderRev:  decfilm.Rev,
 		Publishable: res.LineByLinePublishable(),
 		Deaths:      make([]persist.KillEventInsert, 0, len(res.Kills)),
 	}
@@ -54,7 +53,7 @@ func BuildKillSourceBatch(matchID string, res *killsource.Result, ids MatchIdent
 // LES TROIS NOMS PASSENT PAR [MatchIdentities.Resoudre] — victime, tueur, assistant. Aucun ne se
 // resout « a la main » : le film peut donner un gamertag OU un xuid, et la regle qui les
 // distingue n existe qu a un seul endroit.
-func killToInsert(k *killsource.Kill, ids MatchIdentities) persist.KillEventInsert {
+func killToInsert(k *decfilm.Kill, ids MatchIdentities) persist.KillEventInsert {
 	victimeXUID, victimeNom := ids.Resoudre(k.Victim)
 	tueurXUID, tueurNom := ids.Resoudre(k.Feed.Killer)
 	d := persist.KillEventInsert{

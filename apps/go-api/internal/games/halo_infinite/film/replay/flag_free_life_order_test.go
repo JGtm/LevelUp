@@ -20,7 +20,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vieLibreExAequo fabrique une vie libre qui partage le triplet de tete (instant de creation,

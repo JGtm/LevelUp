@@ -39,7 +39,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/himap"
 )
@@ -170,7 +170,7 @@ func prepare(titleSlug, outDir string) (*environnement, error) {
 // piège que ce chantier paie depuis le début.
 func nomsAffichesParModule(chemin string) map[string][]string {
 	out := map[string][]string{}
-	cat, err := profile.LoadMapQuantCatalog(chemin)
+	cat, err := decfilm.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		slog.Warn("catalogue de bornes illisible — les assets sortiront sans nom affiché",
 			"err", err, "path", chemin)

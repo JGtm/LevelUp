@@ -26,8 +26,8 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 )
 
 // LES SEUILS, ÉCRITS AVANT LA MESURE (plan, items 1.2-1.4, 2.1, et décisions 2-4).

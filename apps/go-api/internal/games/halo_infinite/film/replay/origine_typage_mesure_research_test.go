@@ -26,7 +26,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // oriTypageEps est le rayon d'appariement naissance -> point. MEME valeur que l'instrument

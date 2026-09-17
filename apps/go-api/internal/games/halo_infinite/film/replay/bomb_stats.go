@@ -83,7 +83,7 @@ import (
 	"sort"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // BombEventDetonated est la valeur `event_type` d'une explosion de bombe datée, sous

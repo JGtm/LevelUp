@@ -26,12 +26,12 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // miniBobineV40 : la bobine de version 40, relative a CE paquet.
-const miniBobineV40 = "../facts/killsource/testdata/minibobine_e5adf7b2"
+const miniBobineV40 = "../internal/facts/killsource/testdata/minibobine_e5adf7b2"
 
 // miniBobineV40Version : la version que son registre declare.
 const miniBobineV40Version = 40
@@ -75,7 +75,7 @@ rend ici 2 noms pour 199 morts : l artefact de rejeu nomme alors ses vies avec d
 (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md).
 
 Verifier que ScanDeaths passe la version lue par grammar.FilmMajorVersion a
-analysis.ParseHighlightEvents.`,
+grammar.ParseHighlightEvents.`,
 			miniBobineV40, version, len(deaths), len(noms), miniBobineV40NomsPlancher)
 	}
 }

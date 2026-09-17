@@ -33,8 +33,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/digest"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 // miniFilmDigestsPath est le fichier de digests figes de la mini-bobine, a cote de ceux du

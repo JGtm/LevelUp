@@ -36,7 +36,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // abilityImpulseEpisodeGapUS : deux lectures du même slot séparées de moins d'une seconde

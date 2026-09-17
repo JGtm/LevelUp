@@ -20,7 +20,7 @@ func messagesDeFaits() revision.Messages {
 		Constante: "facts.Rev",
 		Forme:     "facts-AAAA-MM-JJ[.N]",
 		Porte:     revision.Porte{Nom: "facts-rev"},
-		Commande:  "go test ./internal/games/halo_infinite/film/facts/ -run FactsRev -update-facts-rev",
+		Commande:  "go test ./internal/games/halo_infinite/film/internal/facts/ -run FactsRev -update-facts-rev",
 		Question: "Les lignes de kill deja en base redeviennent-elles candidates au redecodage " +
 			"(backlog killsource) ? Le redecodage part sur SIGNAL UTILISATEUR (D6), jamais seul.",
 	}

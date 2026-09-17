@@ -3,7 +3,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // equipment_episodes.go — L'ÉTAT ACTIF D'UN ÉQUIPEMENT, daté PAR VIE sur l'axe du rejeu.

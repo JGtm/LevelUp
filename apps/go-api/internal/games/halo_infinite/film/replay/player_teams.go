@@ -43,7 +43,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // TeamCoverage est ce que la lecture de l'equipe a couvert, et ce que la base en dit.

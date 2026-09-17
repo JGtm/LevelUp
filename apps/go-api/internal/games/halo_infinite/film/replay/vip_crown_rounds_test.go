@@ -4,7 +4,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // vip_crown_rounds_test.go — LA PREUVE DE LA CORRECTION MULTI-MANCHE, AU NIVEAU DU CALQUE.

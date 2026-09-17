@@ -42,8 +42,8 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // a5Explosions : les instants d'explosion DATES du releve A0.3 (`A_PROTOCOLE.md` §2), recopies

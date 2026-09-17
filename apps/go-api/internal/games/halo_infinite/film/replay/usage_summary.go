@@ -56,7 +56,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // UsageSummaryRev — révision des RÈGLES DE PROJECTION de ce fichier (attribution par

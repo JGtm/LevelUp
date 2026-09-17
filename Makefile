@@ -194,7 +194,7 @@ restart: stop dev
 go-api-test:
 	cd $(GO_API_DIR) && CGO_ENABLED=0 LEVELUP_DEMO_MODE=true \
 		go test ./internal/domain/... ./internal/analysis/... \
-			./internal/games/halo_infinite/film/profile/... ./internal/games/halo_infinite/film/grammar/... ./internal/games/halo_infinite/film/facts/... ./internal/games/halo_infinite/film/replay/... \
+			./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/... \
 			./contracttest/... \
 		-v -timeout 60s -count=1
 
@@ -273,7 +273,7 @@ go-api-lint:
 		golangci-lint run --timeout 5m --new-from-merge-base=origin/main; \
 	else \
 		echo "golangci-lint absent — REPLI go vet (domain+analysis). Le lint complet FAIT FOI en CI (job go-lint, .github/workflows/ci.yml)."; \
-		go vet ./internal/domain/... ./internal/analysis/... ./internal/games/halo_infinite/film/profile/... ./internal/games/halo_infinite/film/grammar/... ./internal/games/halo_infinite/film/facts/... ./internal/games/halo_infinite/film/replay/...; \
+		go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/...; \
 	fi
 
 ## Installe les hooks git du projet (lefthook — seul système de hooks).

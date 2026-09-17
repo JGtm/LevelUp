@@ -53,7 +53,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // Les DEUX voies de nommage par le record de creation. Elles repondent a « comment sait-on a qui
