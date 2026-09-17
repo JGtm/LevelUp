@@ -78,23 +78,40 @@ type filmStats struct {
 	statborgIdentity decfilm.RoundIdentity
 }
 
-// readFilmStats decode les enregistrements d'entite et assemble les entrees des deux calques.
+// statborgDuFilm LIT la section statborg d un film : les enregistrements d entite, les instants
+// de rafale de capture, le temoin de troncature et l horloge des chunks du manifeste.
 //
-// Rend un filmStats VIDE (score nil) quand le film n'est pas lisible par cette porte : le
-// document sort alors sans courbe de score ET sans couverture de score, ce qui dit « rien n'a
-// ete lu » plutot que « rien n'existait ».
+// C EST LA SEULE MOITIE QUI A BESOIN DU FILM (lot 4.1.2) : l assemblage des entrees de calque, lui,
+// est PUR ([assemblerFilmStats]) et sert les deux chemins — le film et les faits persistes.
 //
-// LES DEUX REFUS SONT DISTINCTS, et ils l'etaient deja : un film ILLISIBLE (chunks absents du
+// Rend une section VIDE (aucun enregistrement) quand le film n est pas lisible par cette porte :
+// le document sort alors sans courbe de score ET sans couverture de score, ce qui dit « rien n a
+// ete lu » plutot que « rien n existait ».
+//
+// LES DEUX REFUS SONT DISTINCTS, et ils l etaient deja : un film ILLISIBLE (chunks absents du
 // cache) et un film SANS MANIFESTE. Le second garde son sens apres le lot 1 — le film se charge
-// tres bien sans manifeste, mais aucun de ses chunks n'a alors de type ni de `start_ms`, donc
-// rien n'est datable ici (cf. [chunksDuManifeste]).
-func readFilmStats(ctx context.Context, matchID string, film *decfilm.Film,
-	facts port.MatchFacts, deaths filmDeaths,
-) filmStats {
+// tres bien sans manifeste, mais aucun de ses chunks n a alors de type ni de `start_ms`, donc
+// rien n est datable ici (cf. [chunksDuManifeste]).
+func statborgDuFilm(ctx context.Context, matchID string, film *decfilm.Film) replay.FilmStatborg {
 	if film == nil || len(chunksDuManifeste(film)) == 0 {
-		return filmStats{} // film illisible ou manifeste absent — deja journalise par filmload.go
+		return replay.FilmStatborg{} // illisible ou sans manifeste — deja journalise par filmload.go
 	}
 	recs, truncated := decfilm.StatRecordsCtx(ctx, film, matchID)
+	return replay.FilmStatborg{
+		Records: recs, BurstMS: decfilm.CaptureBurstTimes(film), Truncated: truncated,
+		ChunkStartMS: horlogeDesChunks(film),
+	}
+}
+
+// assemblerFilmStats assemble les entrees des calques A PARTIR DE LA SECTION STATBORG, sans
+// toucher au film. Cf. `filmfacts_stats.go`.
+func assemblerFilmStats(ctx context.Context, matchID string, sb replay.FilmStatborg,
+	facts port.MatchFacts, deaths filmDeaths,
+) filmStats {
+	if len(sb.Records) == 0 && len(sb.ChunkStartMS) == 0 {
+		return filmStats{} // section vide : rien n a ete lu (cf. statborgDuFilm)
+	}
+	recs, truncated := sb.Records, sb.Truncated
 	if len(recs) == 0 {
 		slog.InfoContext(ctx, "replaybuild: aucun enregistrement d'entite dans le film — courbe de score vide",
 			"match_id", matchID)
@@ -120,10 +137,10 @@ func readFilmStats(ctx context.Context, matchID string, film *decfilm.Film,
 		objectives:        objectifs,
 		objectivesUnnamed: nonNommes,
 		objectivesRefused: refuses,
-		flag:              flagInput(recs, film, pont),
+		flag:              flagInput(recs, sb.BurstMS, pont),
 		vip:               vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:             skullInput(recs, isSkullVariant(facts.GameVariantName), pont),
-		bomb:              bombInput(film, isBombVariant(facts.GameVariantName)),
+		bomb:              bombInput(sb.ChunkStartMS, isBombVariant(facts.GameVariantName)),
 		statborgIdentity:  pont.identite(),
 	}
 }
@@ -163,19 +180,11 @@ func chunksDuManifeste(film *decfilm.Film) []decfilm.ChunkMeta {
 //	                        balaye par BuildFromFilm) : la garde seule.
 //
 // Hors de la famille bomb, il rend un input VIDE : ni balayage, ni calque, ni couverture.
-func bombInput(film *decfilm.Film, bomb bool) replay.BombInput {
+func bombInput(clock map[int]int, bomb bool) replay.BombInput {
 	if !bomb {
 		return replay.BombInput{}
 	}
-	in := replay.BombInput{CarryScanned: true}
-	chunks := chunksDuManifeste(film)
-	clock := make(map[int]int, len(chunks))
-	for _, c := range chunks {
-		clock[c.Index] = c.StartMS
-	}
-	in.Scanned = true
-	in.ChunkStartMS = clock
-	return in
+	return replay.BombInput{CarryScanned: true, Scanned: true, ChunkStartMS: clock}
 }
 
 // skullInput assemble ce que le PORTEUR DU CRANE lit dans le film — les memes enregistrements
@@ -244,12 +253,12 @@ func vipInput(recs []decfilm.StatRecord, isVip bool) replay.VipInput {
 // AUCUN FAIT DE MATCH N'ENTRE DANS LE CALQUE : ce qui descend est une TABLE slot -> xuid. Sans
 // lignes de match, `CompletedByLines` rend le pont par morts inchange et l'artefact reste
 // exactement celui d'avant — la propriete « publiable hors ligne » est conservee.
-func flagInput(recs []decfilm.StatRecord, film *decfilm.Film,
+func flagInput(recs []decfilm.StatRecord, bursts []int,
 	pont *pontParManche) replay.FlagInput {
 	return withFlagIdentity(replay.FlagInput{
 		Scanned: true,
 		Records: recs,
-		Bursts:  decfilm.CaptureBurstTimes(film),
+		Bursts:  bursts,
 	}, pont)
 }
 
