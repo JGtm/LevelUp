@@ -489,3 +489,12 @@ package grammar
 // `SchemaVersion` reste 60 ; aucun match deja decode n est candidat au backlog par un changement
 // de sortie — `facts.Rev` monte MECANIQUEMENT parce qu elle hache la valeur ci-dessus, et sa
 // propre entree le dit.
+//
+// ENTREE `grammar-2026-09-15.40` (2026-09-17, lot 3.3.1) : L AMORCE DES LANCERS DEVIENT UNE
+// DONNEE DE PROFIL, ET LE DECODAGE CHANGE. Le balayage comparait 24 bits sur TOUS les films : il
+// lisait donc le bit de poids fort de l identifiant comme un bit d amorce sur les builds
+// anterieurs a `HI_1_12_0`, d ou ZERO lancer publie sur cinq temoins du corpus. Il lit desormais
+// la largeur, la VALEUR de l amorce et la position de l index auteur au profil (neuf clefs,
+// `profile/grenade.go`), derive le motif du `ti` projectile RESOLU PAR NOM dans le registre du
+// film, et ecarte par le sixieme bit d index les naissances de `managed-player`, comptees.
+// `profile.Rev` monte avec elle ; `facts.Rev` derriere ; `SchemaVersion` ne bouge PAS.

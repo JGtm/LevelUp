@@ -50,6 +50,9 @@ const (
 	champSlotsPerso = "Slots.PersoBytes"
 	// champImplantation : l implantation du gamertag dans un bloc d evenement de temps fort.
 	champImplantation = "Highlight.Implantation"
+	// champGrenadeAmorce : l amorce du record de creation de projectile — largeur, valeur, et
+	// position solidaire de l identifiant et du champ d index de l auteur.
+	champGrenadeAmorce = "Grenade.Amorce"
 )
 
 // LES DATES AUXQUELLES CES PROVENANCES ONT ETE ETABLIES, nommees par ce qu elles datent.
@@ -60,6 +63,8 @@ const (
 	dateTranspositionSlots = "2026-09-13"
 	// dateProfilPose : le lot 2.1, jour ou ces valeurs entrent au profil avec leur provenance.
 	dateProfilPose = "2026-09-17"
+	// dateAmorceGrenade : lot 3.3.1, mesure de l amorce et de l index auteur sur dix films.
+	dateAmorceGrenade = "2026-09-17"
 )
 
 // Provenance dit d ou vient une valeur de profil. Cf. l en-tete du fichier.
@@ -106,8 +111,126 @@ func TableProfil() []LigneProfil {
 	out = append(out, tableProfilBuild()...)
 	out = append(out, tableProfilMajeure()...)
 	out = append(out, tableProfilInvariants()...)
+	out = append(out, tableProfilGrenade()...)
+	out = append(out, tableProfilGrenadeSansSection()...)
 	return out
 }
+
+// tableProfilGrenade : les lignes de l amorce du record de creation de projectile keyees par le
+// BUILD de la section 2 (lot 3.3.1). Les deux clefs de version majeure vivent dans
+// [tableProfilGrenadeSansSection] : la table se coupe la ou la CLEF change, pas au hasard.
+//
+// LES DEUX SOUS-TABLES COUVRENT LES NEUF CLEFS du depot — les sept builds du cache et les deux
+// versions majeures sans section d identification — c est-a-dire exactement celles de la table
+// des empreintes de registre. Les valeurs elles-memes vivent dans [AmorceGrenadePour], avec un
+// commentaire de provenance par ligne : cette table les REFERENCE, elle ne les recopie pas.
+//
+//nolint:funlen // une table de donnees : la decouper masquerait la lecture ligne a ligne
+func tableProfilGrenade() []LigneProfil {
+	return []LigneProfil{
+		{
+			Cle: "build=HI_1_13_0", Champ: champGrenadeAmorce, Valeur: valeurAmorceRecente,
+			Source: ProvenanceMesuree,
+			Preuve: "`bf15f7ab` : 137 lancers, amorce constante 0x14C0C00 sur 137/137 depuis le " +
+				"debut du typeIndex (dispersee des la largeur suivante), et dispersion de " +
+				"l index a +103 de 8 valeurs distinctes / maximum 7 — les huit joueurs d un " +
+				"match d arene, sans exception",
+			Date: dateAmorceGrenade,
+		},
+		{
+			Cle: "build=HI_1_12_0", Champ: champGrenadeAmorce, Valeur: valeurAmorceRecente,
+			Source: ProvenanceMesuree,
+			Preuve: "`bcb6d393` : 55 lancers, soit EXACTEMENT le grenades.available de son " +
+				"artefact cuit ; meme amorce 0x14C0C00 sur 55/55, index a +103 (54 sur 55 dans " +
+				"0..7). Controle negatif : le motif impair 0x4C0C01 y compte 67 occurrences et " +
+				"AUCUN identifiant reconnu",
+			Date: dateAmorceGrenade,
+		},
+		{
+			Cle: "build=HI_1_11_0", Champ: champGrenadeAmorce, Valeur: valeurAmorceAncienne,
+			Source: ProvenanceMesuree,
+			Preuve: "`e5adf7b2` : 138 lancers la ou l artefact en publie zero ; amorce 0xA60600 " +
+				"sur 138/138, index a +100 avec 23 valeurs distinctes / maximum 23 — vingt-trois " +
+				"des vingt-quatre joueurs d un BTB",
+			Date: dateAmorceGrenade,
+		},
+		{
+			Cle: "build=HI_1_10_0", Champ: champGrenadeAmorce, Valeur: valeurAmorceAncienne,
+			Source: ProvenanceMesuree,
+			Preuve: "DEUX films du meme build, ce qui est le controle de reproductibilite : " +
+				"`111fa685` 159 lancers et `084a804d` 289, amorce 0xA60600 sur 159/159 et " +
+				"289/289, index a +100 avec 24 valeurs distinctes / maximum 23 SUR LES DEUX",
+			Date: dateAmorceGrenade,
+		},
+		{
+			Cle: "build=HI_1_9_0", Champ: champGrenadeAmorce, Valeur: valeurAmorceAncienne,
+			Source: ProvenanceMesuree,
+			Preuve: "`11de8353`, unique film de ce build au cache : 145 lancers, amorce 0xA60600 " +
+				"sur 145/145, index a +100 avec 21 valeurs distinctes / maximum 22. L index est " +
+				"celui de ses voisins, et le registre le dit : l empreinte de `HI_1_9_0` est " +
+				"celle de `HI_1_8_0` (D2 (3.2)), ou il est mesure sans ambiguite",
+			Date: dateAmorceGrenade,
+		},
+		{
+			Cle: "build=HI_1_8_0", Champ: champGrenadeAmorce, Valeur: valeurAmorceAncienne,
+			Source: ProvenanceMesuree,
+			Preuve: "`60ae07c4` : 310 lancers, amorce 0xA60600 sur 310/310, et l index a +100 " +
+				"rend 310/310 dans 0..7 avec 8 valeurs distinctes / maximum 7 — le film est un " +
+				"Ranked:Oddball a huit joueurs, donc la mesure ferme sur l effectif exact",
+			Date: dateAmorceGrenade,
+		},
+		{
+			Cle: "build=HI_1_4_1", Champ: champGrenadeAmorce, Valeur: valeurAmorceMajeure33,
+			Source: ProvenanceMesuree,
+			Preuve: "`a521164d`, unique film de ce build au cache : 105 lancers, amorce 0xA60600 " +
+				"sur 105/105, index a +99 avec 22 valeurs distinctes / maximum 23. Le voisin " +
+				"+100 y rend 12 distinctes / maximum 11, signature d une lecture decalee : les " +
+				"deux positions sont mesurees separement, pas deduites l une de l autre",
+			Date: dateAmorceGrenade,
+		},
+	}
+}
+
+// tableProfilGrenadeSansSection : les deux clefs des films dont `chunk_00` ne porte AUCUNE
+// section d identification. Elles n ecrivent pas de build, et la version majeure est la seule
+// clef qu elles portent.
+func tableProfilGrenadeSansSection() []LigneProfil {
+	return []LigneProfil{
+		{
+			Cle: "majeure=33", Champ: champGrenadeAmorce, Valeur: valeurAmorceMajeure33,
+			Source: ProvenanceMesuree,
+			Preuve: "`a349fea8` (chunk_00 sans section d identification) : 386 lancers la ou " +
+				"l artefact en publie zero, amorce 0xA60600 sur 386/386, index a +99 avec 23 " +
+				"valeurs distinctes / maximum 23. Meme grammaire que `HI_1_4_1`, dont il partage " +
+				"aussi l empreinte de registre (D2 (3.2))",
+			Date: dateAmorceGrenade,
+		},
+		{
+			Cle: "majeure=31", Champ: champGrenadeAmorce, Valeur: valeurAmorceMajeure31,
+			Source: ProvenanceMesuree,
+			Preuve: "`50247b26` : sous le motif 0x260600 ce film rend TREIZE marqueurs sur 22 Mio " +
+				"de flux delta, alors que l identifiant de la grenade a fragmentation y apparait " +
+				"79 fois contre 0,17 attendue par hasard. La mesure de ce qui PRECEDE " +
+				"l identifiant rend 0xA60400 sur 95/95, constante a 24 bits et dispersee a 25 : " +
+				"l amorce vaut 0x20400, et la largeur seule ne decrit donc pas la grammaire. " +
+				"Index a +99, 21 valeurs distinctes / maximum 23",
+			Date: dateAmorceGrenade,
+		},
+	}
+}
+
+// LES QUATRE VALEURS D AMORCE, ECRITES UNE FOIS. Neuf clefs les partagent, et une table de
+// donnees qui recopierait la meme phrase neuf fois divergerait a la premiere correction.
+const (
+	// valeurAmorceRecente : builds `HI_1_12_0` et `HI_1_13_0`.
+	valeurAmorceRecente = "amorce=24 bits 0x40C00 ; identifiant a +24 ; index auteur a +103"
+	// valeurAmorceAncienne : builds `HI_1_8_0` a `HI_1_11_0`.
+	valeurAmorceAncienne = "amorce=23 bits 0x20600 ; identifiant a +23 ; index auteur a +100"
+	// valeurAmorceMajeure33 : `HI_1_4_1` et les films de majeure 33 sans section.
+	valeurAmorceMajeure33 = "amorce=23 bits 0x20600 ; identifiant a +23 ; index auteur a +99"
+	// valeurAmorceMajeure31 : la plus ancienne grammaire du cache, amorce de VALEUR differente.
+	valeurAmorceMajeure31 = "amorce=23 bits 0x20400 ; identifiant a +23 ; index auteur a +99"
+)
 
 // tableProfilFormat : les lignes keyees par la VERSION DE FORMAT (`chunk_00+4`).
 func tableProfilFormat() []LigneProfil {
