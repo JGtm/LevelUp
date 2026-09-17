@@ -16,7 +16,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
 import type { Locale } from '@/lib/i18n/locale'
 
-import { roleLabel } from './compareWeapons_logic'
+import { roleLabel } from '@/components/charts/weaponRangeRoles'
 
 /**
  * Les trois encres des joueurs — LES MÊMES que le reste de la page (barres, en-têtes).

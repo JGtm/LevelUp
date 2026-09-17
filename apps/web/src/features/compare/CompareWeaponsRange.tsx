@@ -28,13 +28,13 @@ import {
   buildWeaponRangeOption,
   weaponRangeChartHeight,
   type WeaponRangeLine,
-} from '@/features/synthesis/_weaponRangeChart'
-
+} from '@/components/charts/weaponRangeChart'
 import {
   roleRangeLines,
   type RangeSideKey,
   type RoleAxisEntry,
-} from './compareWeapons_logic'
+} from '@/components/charts/weaponRangeRoles'
+
 import type { CompareText } from './i18n'
 import {
   TOKEN_A,
@@ -176,11 +176,11 @@ export function CompareWeaponsRange({
   locale: Locale
 }) {
   const lignesFrags = useMemo(
-    () => roleRangeLines(axis, sideA, sideB, 'kills'),
+    () => roleRangeLines(axis, sideA?.range, sideB?.range, 'kills'),
     [axis, sideA, sideB],
   )
   const lignesMorts = useMemo(
-    () => roleRangeLines(axis, sideA, sideB, 'deaths'),
+    () => roleRangeLines(axis, sideA?.range, sideB?.range, 'deaths'),
     [axis, sideA, sideB],
   )
   if (!sideA?.range && !sideB?.range) return null

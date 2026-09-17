@@ -32,7 +32,8 @@ import { CompareBar } from './CompareBar'
 import { CompareBlock } from './CompareBlock'
 import { CompareMirrorRow } from './CompareMirrorRow'
 import { CompareWeaponsRange } from './CompareWeaponsRange'
-import { fragClassRows, hasWeaponProfile, roleAxis } from './compareWeapons_logic'
+import { roleAxis } from '@/components/charts/weaponRangeRoles'
+import { fragClassRows, hasWeaponProfile } from './compareWeapons_logic'
 import {
   TOKEN_A,
   TOKEN_B,
@@ -183,7 +184,7 @@ export function CompareWeaponsSection({ left, right, text, locale }: CompareWeap
   // sinon les deux paires côte à côte se décalent dès qu'un seul des trois joueurs a un rôle
   // que les autres n'ont pas.
   const axis = useMemo(
-    () => roleAxis([sideA, sideB, sideC], roleName),
+    () => roleAxis([sideA?.range, sideB?.range, sideC?.range], roleName),
     [sideA, sideB, sideC, roleName],
   )
 
