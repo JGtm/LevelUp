@@ -277,7 +277,29 @@ package facts
 // aucune largeur, aucun appariement ne change, les lignes produites sont identiques a l octet et
 // aucun match deja decode n est candidat au backlog. Le critere de retrait ecrit dans les deux
 // fichiers supprimes est tenu, et il etait mesurable au `grep`.
-const Rev = "killsource-2026-09-16.6"
+// ENTREE `killsource-2026-09-16.7` (2026-09-17, lot 3.3.1) : LA REVISION MONTE DERRIERE LA
+// GRAMMAIRE, ET LA SORTIE DU DECODEUR CHANGE — LES LANCERS DE GRENADE DES BUILDS ANCIENS.
+// Aucun octet de `facts/` n est ecrit autrement ; ce qui monte
+// est la VALEUR de `grammar.Rev` (elle-meme derriere `profile.Rev`), que cette revision hache —
+// le sens unique des quatre couches joue exactement comme il est ecrit.
+//
+// CE QUI A CHANGE EN AMONT : l amorce du record de creation de projectile devient une donnee de
+// PROFIL, keyee par les neuf clefs du depot (sept builds, deux versions majeures sans section
+// d identification). Le balayage comparait 24 bits sur TOUS les films ; sur les builds anterieurs
+// a `HI_1_12_0` son vingt-quatrieme bit est le bit de poids fort de l identifiant, d ou ZERO
+// lancer publie sur cinq temoins du corpus. Mesure du volet recherche et de ce lot : 1 282
+// lancers sur ces cinq temoins, plus `a521164d` (105), `11de8353` (145) et `50247b26` (95).
+//
+// BACKLOG KILLSOURCE SUR SIGNAL UTILISATEUR (D6), JAMAIS AUTOMATIQUE. Les lignes de
+// `match_kill_events` deja en base portent la revision anterieure et deviennent CANDIDATES au
+// redecodage (`conditionBacklog`, `sync/killcollector/postsync.go`) ; le redecodage du parc reste
+// un geste de PRODUCTION, pris par le pilote. Les lancers de grenade ne sont pas des kill-events
+// — ce qui change reellement pour `killsource` est la revision qu il estampille, pas ses lignes.
+//
+// `SchemaVersion` NE MONTE PAS : la FORME du document de rejeu est inchangee (aucun champ ajoute,
+// la couverture du balayage est journalisee et ne voyage pas dans l artefact). Ce qui change est
+// le CONTENU des artefacts des films anciens, et c est ce que le corpus gate mesure.
+const Rev = "killsource-2026-09-16.7"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/facts_rev.golden` porte le couple (revision, empreinte) avec son historique, et
