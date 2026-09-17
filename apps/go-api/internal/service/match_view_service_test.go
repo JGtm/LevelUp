@@ -95,6 +95,9 @@ func (m *mockMatchViewRepo) GetMatchEncounters(_ context.Context, _, _ string) (
 func (m *mockMatchViewRepo) GetMatchEncounterStats(_ context.Context, _, _ string) ([]domain.EncounterStatsRaw, error) {
 	return nil, nil
 }
+func (m *mockMatchViewRepo) GetMatchEncounterAssists(_ context.Context, _, _ string) (map[string]domain.RelationAssists, error) {
+	return nil, nil
+}
 func (m *mockMatchViewRepo) GetMatchSkillRank(_ context.Context, _ string) (*domain.SkillRankRaw, error) {
 	return nil, nil
 }

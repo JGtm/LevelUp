@@ -8713,6 +8713,27 @@ components:
         - Labels
         - IconURL
       type: object
+    AssistTiers:
+      additionalProperties: false
+      properties:
+        high:
+          format: int64
+          type: integer
+        low:
+          format: int64
+          type: integer
+        mid:
+          format: int64
+          type: integer
+        total:
+          format: int64
+          type: integer
+      required:
+        - total
+        - low
+        - mid
+        - high
+      type: object
     AsyncJobStatus:
       additionalProperties: false
       properties:
@@ -16848,6 +16869,8 @@ components:
         ally_count:
           format: int64
           type: integer
+        assists:
+          $ref: '#/components/schemas/RelationAssists'
         badges:
           items:
             $ref: '#/components/schemas/MatchEncounterBadge'
@@ -21867,6 +21890,29 @@ components:
         - variants_fixed
         - total_fixed
       type: object
+    RelationAssists:
+      additionalProperties: false
+      properties:
+        given:
+          $ref: '#/components/schemas/AssistTiers'
+        matches_measured:
+          format: int64
+          type: integer
+        my_frags:
+          format: int64
+          type: integer
+        partner_frags:
+          format: int64
+          type: integer
+        received:
+          $ref: '#/components/schemas/AssistTiers'
+      required:
+        - matches_measured
+        - my_frags
+        - partner_frags
+        - received
+        - given
+      type: object
     RelationBadge:
       additionalProperties: false
       properties:
@@ -21977,6 +22023,8 @@ components:
     RelationInsight:
       additionalProperties: false
       properties:
+        assists:
+          $ref: '#/components/schemas/RelationAssists'
         avg_kda_against:
           format: double
           type:

@@ -19,6 +19,9 @@ import {
 import { useMemo, useState, type ReactNode } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
+import { AssistExchangeCell } from '@/features/_shared/assists/AssistExchangeCell'
+import { assistSortValue } from '@/features/_shared/assists/assistExchange'
+import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatPercent } from '@/lib/formatters'
@@ -277,6 +280,25 @@ function buildColumns(
           />
         )
       },
+    },
+    {
+      id: 'assists',
+      // Tri sur les assistances échangées (données + reçues) ; non mesuré → en bas.
+      accessorFn: (r) => assistSortValue(r.assists),
+      sortUndefined: 'last',
+      sortDescFirst: true,
+      header: (ctx) => (
+        <HeaderLabelTooltip text={ASSISTS_TEXT[locale].columnTooltip}>
+          <SortLabel column={ctx.column}>{ASSISTS_TEXT[locale].column}</SortLabel>
+        </HeaderLabelTooltip>
+      ),
+      cell: (ctx) => (
+        <AssistExchangeCell
+          assists={ctx.row.original.assists}
+          teammateMatches={ctx.row.original.teammate_matches}
+          locale={locale}
+        />
+      ),
     },
     {
       id: 'ratio',

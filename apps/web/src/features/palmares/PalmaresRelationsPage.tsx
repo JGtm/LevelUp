@@ -9,7 +9,7 @@
  * tableau paginé (langage MatchEncountersTable) et section Moments & Rivalités.
  */
 import { useMemo, useState, type ReactNode } from 'react'
-import { winRateColor, kdaNetColor } from '@/lib/colors/outcomePalette'
+import { kdaNetColor } from '@/lib/colors/outcomePalette'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
 
@@ -21,7 +21,6 @@ import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { tokenCssVar, tokenVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { composeTierLabel } from '@/lib/skillTiers'
-import { formatPercent } from '@/lib/formatters'
 import type { FilterContextInput, RelationCSR, RelationInsight } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useRelationsPrefsStore } from '@/stores/relationsPrefsStore'
@@ -29,6 +28,8 @@ import { useRelationsPrefsStore } from '@/stores/relationsPrefsStore'
 import { getPalmaresText, normalizePalmaresLocale, type PalmaresText } from './i18n'
 import type { Locale } from '@/lib/i18n/locale'
 import { useRelationsMoments, useRelationsPage } from './queries'
+import { assistVolumeMax as computeAssistVolumeMax } from '@/features/_shared/assists/assistExchange'
+import { BinomeAssistsBlock, CoreRankingList } from './RelationAssistsCards'
 import { RelationBadges } from './RelationBadges'
 import { RelationSplitBar } from './RelationSplitBar'
 import { RelationsMomentsSection } from './RelationsMomentsSection'
@@ -171,6 +172,7 @@ function HeroRelationCard({
   recentForm,
   streak,
   csr,
+  assistVolumeMax,
 }: {
   title: string
   emptyLabel: string
@@ -184,6 +186,8 @@ function HeroRelationCard({
   recentForm?: string[] | null
   streak?: number
   csr?: RelationCSR | null
+  /** Borne de l'échelle des barres d'assistances (commune à la page). */
+  assistVolumeMax: number
 }) {
   if (!relation) {
     return (
@@ -305,6 +309,9 @@ function HeroRelationCard({
           {volume}
           {lastSeen && <> · {lastSeen}</>}
         </p>
+
+        {/* binôme : assistances échangées (option B) — absent si rien de mesuré */}
+        {isAlly && relation.assists && <BinomeAssistsBlock assists={relation.assists} volumeMax={assistVolumeMax} locale={locale} />}
       </div>
     </KpiCard>
   )
@@ -346,6 +353,7 @@ function CoreSummaryCard({
   onPlayerClick,
   playerWinRate,
   recentForm,
+  assistVolumeMax,
 }: {
   title: string
   unit: string
@@ -355,6 +363,8 @@ function CoreSummaryCard({
   onPlayerClick: (gamertag: string) => void
   playerWinRate?: number | null
   recentForm?: string[] | null
+  /** Borne de l'échelle des barres d'assistances (commune à la page). */
+  assistVolumeMax: number
 }) {
   const [expanded, setExpanded] = useState(false)
   const count = coreRows.length
@@ -409,42 +419,13 @@ function CoreSummaryCard({
         {/* sparkline des derniers matchs joués à côté d'un fidèle (#8, backend) */}
         <SparklineSection label={labels.core.recentForm} outcomes={form} />
 
-        {/* mini-tableau (sans en-têtes) des fidèles classés par WR (#7).
-            EXCEPTION tri client par en-têtes (I16) : pas de <thead> — ce n'est
-            pas un tableau de données généraliste mais un aperçu classé (WR
-            desc, tiebreak volume) avec expand/collapse ; rien à cliquer pour
-            trier, le classement EST le contenu affiché. */}
+        {/* aperçu classé des fidèles (WR desc, tiebreak volume) avec
+            expand/collapse ; chaque rangée porte le papillon des assistances
+            échangées (option A8, RelationAssistsCards). Pas d'en-têtes : le
+            classement EST le contenu affiché (exception I16). */}
         {ranked.length > 0 && (
           <div className="mt-3 border-t border-border pt-3">
-            <table className="w-full border-collapse text-sm">
-              <tbody>
-                {visibleRanked.map((r, i) => (
-                  <tr key={r.xuid} className="align-baseline">
-                    <td className="py-0.5 pr-2 text-right font-mono text-xs text-muted-foreground tabular-nums">
-                      {i + 1}
-                    </td>
-                    <td className="w-full py-0.5">
-                      <button
-                        type="button"
-                        className="block max-w-full truncate text-left font-semibold text-foreground hover:underline"
-                        onClick={() => onPlayerClick(r.gamertag)}
-                      >
-                        {r.gamertag}
-                      </button>
-                    </td>
-                    <td className="whitespace-nowrap py-0.5 pl-2 text-right font-mono text-xs text-muted-foreground tabular-nums">
-                      {labels.hero.matchesPlayed(r.total_matches.toLocaleString(locale))}
-                    </td>
-                    <td
-                      className="whitespace-nowrap py-0.5 pl-2 text-right font-mono text-xs font-bold tabular-nums"
-                      style={{ color: winRateColor(r.teammate_win_rate) }}
-                    >
-                      {formatPercent(r.teammate_win_rate, 0)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <CoreRankingList rows={visibleRanked} volumeMax={assistVolumeMax} labels={labels} locale={locale} onPlayerClick={onPlayerClick} />
             {hiddenCount > 0 && (
               <button
                 type="button"
@@ -654,6 +635,9 @@ function RelationsContent({
   const relations = data.relations ?? []
   const allyRelation = findRelation(relations, ov.top_ally?.gamertag)
   const nemesisRelation = findRelation(relations, ov.top_nemesis?.gamertag)
+  // Une seule échelle pour les barres d'assistances de toutes les cartes : binôme et
+  // fidèles se comparent (assistExchange.ts, échelle log du volume).
+  const assistVolumeMax = useMemo(() => computeAssistVolumeMax(relations.map((r) => r.assists)), [relations])
   // Série en cours de la bête noire : réutilise la donnée Moments (même queryKey →
   // dédupliquée par TanStack Query, pas d'appel réseau supplémentaire). La sparkline
   // « Derniers matchs » vient désormais de l'overview (top_nemesis_recent_form),
@@ -677,6 +661,7 @@ function RelationsContent({
           onPlayerClick={onPlayerClick}
           playerWinRate={ov.player_win_rate}
           recentForm={ov.top_ally_recent_form}
+          assistVolumeMax={assistVolumeMax}
         />
         <HeroRelationCard
           title={rel.hero.topNemesisTitle}
@@ -691,6 +676,7 @@ function RelationsContent({
           recentForm={ov.top_nemesis_recent_form}
           streak={nemesisRivalry?.current_streak}
           csr={ov.top_nemesis?.csr}
+          assistVolumeMax={assistVolumeMax}
         />
         <CoreSummaryCard
           title={rel.hero.coreTitle}
@@ -701,6 +687,7 @@ function RelationsContent({
           onPlayerClick={onPlayerClick}
           playerWinRate={ov.player_win_rate}
           recentForm={ov.core_recent_form}
+          assistVolumeMax={assistVolumeMax}
         />
       </div>
 

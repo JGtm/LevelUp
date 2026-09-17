@@ -4639,6 +4639,16 @@ export interface components {
             };
             VersionID: string;
         };
+        AssistTiers: {
+            /** Format: int64 */
+            high: number;
+            /** Format: int64 */
+            low: number;
+            /** Format: int64 */
+            mid: number;
+            /** Format: int64 */
+            total: number;
+        };
         AsyncJobStatus: {
             current_step?: string;
             error?: components["schemas"]["JobErrorDetail"];
@@ -8060,6 +8070,7 @@ export interface components {
         MatchEncounterRow: {
             /** Format: int64 */
             ally_count?: number;
+            assists?: components["schemas"]["RelationAssists"];
             badges?: components["schemas"]["MatchEncounterBadge"][] | null;
             /** Format: int64 */
             count_together: number;
@@ -10199,6 +10210,16 @@ export interface components {
             /** Format: int64 */
             variants_scanned: number;
         };
+        RelationAssists: {
+            given: components["schemas"]["AssistTiers"];
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            my_frags: number;
+            /** Format: int64 */
+            partner_frags: number;
+            received: components["schemas"]["AssistTiers"];
+        };
         RelationBadge: {
             color_token: string;
             detail?: {
@@ -10242,6 +10263,7 @@ export interface components {
             xuid: string;
         };
         RelationInsight: {
+            assists?: components["schemas"]["RelationAssists"];
             /** Format: double */
             avg_kda_against: number | null;
             /** Format: double */

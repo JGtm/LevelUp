@@ -1181,6 +1181,10 @@ export type RelationInsight = components['schemas']['RelationInsight']
 export type RelationRef = components['schemas']['RelationRef']
 // RelationCSR : snapshot CSR courant de la bête noire (lot relations-G, best-effort).
 export type RelationCSR = components['schemas']['RelationCSR']
+// RelationAssists : assistances échangées avec un joueur (matchs mesurés en même équipe),
+// découpées par tranche de part (AssistTiers). Absent = aucun match mesuré ensemble.
+export type RelationAssists = components['schemas']['RelationAssists']
+export type AssistTiers = components['schemas']['AssistTiers']
 export type RelationsOverview = components['schemas']['RelationsOverview']
 export type RelationsPageResponse = components['schemas']['RelationsPageResponse']
 

@@ -80,6 +80,7 @@ func (s *RelationsService) GetRelationsPage(ctx context.Context, input domain.Fi
 	// croisées sur un autre titre. No-op si crossGame non injecté ; toute erreur
 	// cross-titre est avalée en interne → aucune régression de /relations.
 	s.appendCrossGameBadges(ctx, insights)
+	s.appendAssists(ctx, insights, scope)
 
 	overview := buildOverview(stats)
 	s.appendCoreEngagement(ctx, &overview, stats, scope)
@@ -89,6 +90,34 @@ func (s *RelationsService) GetRelationsPage(ctx context.Context, input domain.Fi
 		Overview:  overview,
 		Relations: insights,
 	}, nil
+}
+
+// appendAssists attache à chaque relation les assistances échangées (même scope que les
+// agrégats). ADDITIF / best-effort : une erreur est loggée et les relations restent sans
+// assistances (« — » à l'écran) — /relations ne doit jamais échouer pour ce bloc.
+func (s *RelationsService) appendAssists(ctx context.Context, insights []domain.RelationInsight, scope []string) {
+	if len(insights) == 0 {
+		return
+	}
+	byXUID, err := s.repo.GetRelationAssists(ctx, scope)
+	if err != nil {
+		slog.WarnContext(ctx, "RelationsService: enrich assists failed", "err", err)
+		return
+	}
+	attachRelationAssists(insights, byXUID)
+}
+
+// attachRelationAssists pose le bloc d'assistances de chaque relation présente dans la
+// map. Une entrée à zéro match mesuré n'est pas publiée (le contrat dit « nil = non
+// mesuré »).
+func attachRelationAssists(insights []domain.RelationInsight, byXUID map[string]domain.RelationAssists) {
+	for i := range insights {
+		a, ok := byXUID[insights[i].XUID]
+		if !ok || a.MatchesMeasured == 0 {
+			continue
+		}
+		insights[i].Assists = &a
+	}
 }
 
 // appendNemesisCSR enrichit l'aperçu avec le CSR courant de la bête noire (top

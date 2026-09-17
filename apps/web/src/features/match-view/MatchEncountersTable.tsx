@@ -41,6 +41,9 @@ import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { tokenVar } from '@/lib/accessibility'
 import { AllyEnemySplitBar, KDSplitBar } from '@/features/_shared/EncounterSplitBars'
+import { AssistExchangeCell } from '@/features/_shared/assists/AssistExchangeCell'
+import { assistSortValue } from '@/features/_shared/assists/assistExchange'
+import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
 import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
 import { displayPlayerName } from '@/lib/players/displayName'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
@@ -414,6 +417,21 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
           }
           return <span className="font-mono">{formatKDCross(r.kills_dealt, r.deaths_suffered)}</span>
         },
+      },
+      {
+        id: 'assists',
+        // Tri sur les assistances échangées (données + reçues) ; non mesuré → en bas.
+        accessorFn: (r) => assistSortValue(r.assists),
+        ...NUMERIC_SORT,
+        header: ASSISTS_TEXT[locale].column,
+        meta: { headerTooltip: ASSISTS_TEXT[locale].columnTooltip },
+        cell: (ctx) => (
+          <AssistExchangeCell
+            assists={ctx.row.original.assists}
+            teammateMatches={ctx.row.original.ally_count}
+            locale={locale}
+          />
+        ),
       },
       {
         id: 'ratio',

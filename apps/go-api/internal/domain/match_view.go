@@ -758,6 +758,9 @@ type MatchEncounterRow struct {
 	// killer_victim_pairs est absent du repo.
 	KillsDealt     *int `json:"kills_dealt,omitempty"`
 	DeathsSuffered *int `json:"deaths_suffered,omitempty"`
+	// Assists : assistances échangées sur l'historique commun (matchs mesurés en même
+	// équipe). Absent = aucun match mesuré ensemble.
+	Assists *RelationAssists `json:"assists,omitempty"`
 	// Date du dernier match commun (toutes occurrences allié + ennemi).
 	LastSeenAt *time.Time `json:"last_seen_at,omitempty"`
 	// Badges narratifs typés (chunk MV4.C / MV4.C').

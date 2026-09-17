@@ -192,6 +192,12 @@ type RelationsRepository interface {
 	// d'erreur — si aucune ligne CSR (relation non classée), CSR non significatif
 	// (tier ET rating absents), ou table/colonne absente. xuid vide ⇒ (nil, nil).
 	GetLatestCSR(ctx context.Context, xuid string) (*domain.RelationCSR, error)
+
+	// GetRelationAssists : assistances échangées avec chaque coéquipier sur les matchs
+	// dont l'assistance est mesurée, indexées par xuid (domain/relation_assists.go). Un
+	// joueur jamais coéquipier sur un match mesuré est absent de la map. scope : même
+	// contrat que GetRelations.
+	GetRelationAssists(ctx context.Context, scope []string) (map[string]domain.RelationAssists, error)
 }
 
 // FriendMatchExtras : enrichissement per-friend pour le panneau d'expander
@@ -292,6 +298,10 @@ type MatchViewRepository interface {
 	// retourner (nil, nil) — le service dégrade gracieusement (badge ordinal
 	// seul attribué).
 	GetMatchEncounterStats(ctx context.Context, matchID, myXUID string) ([]domain.EncounterStatsRaw, error)
+
+	// GetMatchEncounterAssists retourne les assistances échangées (tout l'historique)
+	// avec les joueurs du match, indexées par xuid. Map vide si rien n'est mesuré.
+	GetMatchEncounterAssists(ctx context.Context, matchID, myXUID string) (map[string]domain.RelationAssists, error)
 
 	// GetMatchMedia retourne les médias associés au match (Q24).
 	// Cross-joueur : tous les auteurs sont retournés (un coéquipier peut avoir
@@ -516,6 +526,9 @@ func (n *noopMatchViewRepo) GetMatchEncounters(_ context.Context, _, _ string) (
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchEncounterStats(_ context.Context, _, _ string) ([]domain.EncounterStatsRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchEncounterAssists(_ context.Context, _, _ string) (map[string]domain.RelationAssists, error) {
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchMedia(_ context.Context, _ string) ([]domain.MediaAssocRaw, error) {
