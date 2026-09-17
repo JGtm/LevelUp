@@ -328,6 +328,27 @@ export function tintedIconCanvas(
   return off
 }
 
+/**
+ * outlinedSpriteCanvas — pose la BORDURE (jamais teintée) puis le sprite DÉJÀ TEINT par-dessus,
+ * dans une vignette hors écran (sprites véhicules redessinés, 2026-09-16). Les deux images ont
+ * le MÊME canevas et le MÊME centre par construction : aucun décalage à calculer. La bordure
+ * est posée APRÈS la teinte, dans un canvas neuf : une composition `multiply`/`source-atop`
+ * appliquée au même contexte la teinterait aussi.
+ */
+export function outlinedSpriteCanvas(
+  outline: HTMLImageElement,
+  tintedSprite: HTMLCanvasElement,
+): HTMLCanvasElement {
+  const off = document.createElement('canvas')
+  off.width = Math.max(1, outline.naturalWidth, tintedSprite.width)
+  off.height = Math.max(1, outline.naturalHeight, tintedSprite.height)
+  const octx = off.getContext('2d')
+  if (!octx) return tintedSprite
+  octx.drawImage(outline, (off.width - outline.naturalWidth) / 2, (off.height - outline.naturalHeight) / 2)
+  octx.drawImage(tintedSprite, (off.width - tintedSprite.width) / 2, (off.height - tintedSprite.height) / 2)
+  return off
+}
+
 /** Style du calque des lancers : la couleur des marques, et la vignette du TYPE par rang. */
 export interface GrenadeStyle {
   color: string
