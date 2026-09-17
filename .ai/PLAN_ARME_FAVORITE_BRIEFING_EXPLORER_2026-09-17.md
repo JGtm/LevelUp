@@ -185,17 +185,17 @@ go build ./... && go vet ./... && go test ./internal/service/... ./internal/doma
 
 ### Étape 2 — Tests Go du builder
 
-- [ ] Deux armes remontées, `measured < scope` → bloc avec 2 entrées max, `MeasuredKills`
+- [x] Deux armes remontées, `measured < scope` → bloc avec 2 entrées max, `MeasuredKills`
       = somme des lignes retenues (une ligne à libellé vide dans le jeu de test NE compte
       PAS, D5).
-- [ ] `measured_kills == 0` (aucune ligne, ou uniquement des lignes à libellé vide) → bloc
+- [x] `measured_kills == 0` (aucune ligne, ou uniquement des lignes à libellé vide) → bloc
       nil (D6).
-- [ ] Repo nil / `ErrCapabilityNotSupported` → bloc nil, aucune erreur propagée (D8).
-- [ ] Erreur inattendue du repo → bloc nil (assertion sur le résultat nil UNIQUEMENT ; le
+- [x] Repo nil / `ErrCapabilityNotSupported` → bloc nil, aucune erreur propagée (D8).
+- [x] Erreur inattendue du repo → bloc nil (assertion sur le résultat nil UNIQUEMENT ; le
       `WarnContext` se vérifie à la relecture du diff, pas de capteur `slog`).
-- [ ] Filtres passés au repo factice : `XUIDs == [xuid]`, `Gamertag == ""`,
+- [x] Filtres passés au repo factice : `XUIDs == [xuid]`, `Gamertag == ""`,
       `IncludeGrenadeMelee == false`, `ResolveRoles == true` — garde-fou de D4.
-- [ ] `LowSample` → bloc absent (hérité, vérifié par un test de `buildExplorerBriefing`).
+- [x] `LowSample` → bloc absent (hérité, vérifié par un test de `buildExplorerBriefing`).
 
 **Gate 2** : `go test ./internal/service/... -run Briefing -v` vert, et
 `go test ./...` sans régression.
@@ -312,6 +312,24 @@ Un écart de hauteur observé se traite par la formule D3, pas par une mesure.
   `npm run build-i18n` (et son appel dans le gate web) éviterait l'oubli — hors périmètre.
 - 2026-09-17 — Aucun job CI ne vérifie la dérive de `openapi.yaml` (`make openapi-check`
   n'est joué qu'en local) ; spectral et les tests YAML ne détectent pas un champ manquant.
+
+## Journal d'exécution
+
+- **Étape 0 (2026-09-17)** — `npm install` dans `apps/web` (508 paquets, sortie 0). Baseline
+  AVANT toute modification : `make check-types` sortie 0, `go build ./...` sortie 0,
+  `go vet ./...` sortie 0. Baseline verte.
+- **Étape 1 (2026-09-17)** — Gate 1 (`go build ./... && go vet ./... && go test
+  ./internal/service/... ./internal/domain/...`) sortie 0. Commit `b358fc8c7`.
+- **Étape 2 (2026-09-17)** — Gate 2a (`go test ./internal/service/... -run Briefing -v`)
+  sortie 0, 6 nouveaux tests verts. Gate 2b (`go test ./...`) : sortie 1 avec UN SEUL échec,
+  `TestOpenAPIYAMLIsUpToDate` — le contrat `openapi.yaml` ne porte pas encore le champ
+  `weapons` ajouté à l'étape 1 (« relancer `make openapi-gen` », ligne 12831). C'est
+  exactement le premier item de l'étape 3 ; le plan ordonne la réparation APRÈS l'étape 2.
+  Aucune autre régression : tous les autres paquets `ok`. Re-vérifié vert après l'étape 3
+  (voir ci-dessous) et à l'étape 7.
+  Incident d'outillage sans effet sur le verdict : un premier `go test ./...` lancé en
+  avant-plan a été tué au bout de 10 min (limite d'attente de l'outillage) ; le run rejoué en
+  arrière-plan vers un log persistant est allé au bout (ligne `GOTEST_EXIT=1`).
 
 ## Protocole de reprise de session
 
