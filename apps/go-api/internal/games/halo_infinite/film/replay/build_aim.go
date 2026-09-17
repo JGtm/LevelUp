@@ -10,7 +10,7 @@ package replay
 // opposition se lit d'un coup d'oeil.
 //
 // La forme publiee et la convention mesuree sont documentees sur les champs eux-memes
-// (`document_aim.go`), la convention de decodage sur `filmdec.BipedPosition.AimPitchDeg`.
+// (`document_aim.go`), la convention de decodage sur `grammar.BipedPosition.AimPitchDeg`.
 
 import "math"
 
@@ -49,7 +49,7 @@ func pitchForJSON(v float32) float32 {
 // zoomHoldUS borne le MAINTIEN d'un palier de lunette, en microsecondes.
 //
 // POURQUOI UN PLAFOND EXISTE. Les sorties de lunette sont sous-comptees par le scanner (seuls
-// les evenements portes EN TETE d'un paquet sont lus, cf. `filmdec.ScanFilmZoomEvents`). Deux
+// les evenements portes EN TETE d'un paquet sont lus, cf. `grammar.ScanFilmZoomEvents`). Deux
 // entrees consecutives sur un meme slot prouvent qu'une sortie a echappe a la lecture — sans
 // plafond, la premiere periode s'etendrait jusqu'a la seconde entree, et une entree jamais
 // refermee tiendrait jusqu'a la fin du match. Le plafond transforme une lacune de mesure en

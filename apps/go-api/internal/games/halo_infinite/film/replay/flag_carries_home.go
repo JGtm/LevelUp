@@ -47,7 +47,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // flagHomeGuardMS — l'ecart, en millisecondes, sous lequel la fin d'un portage d'un AUTRE
@@ -82,7 +82,7 @@ func flagOfOwner(spawns []FlagSpawn, team int) (int, bool) {
 func flagReturns(scan FlagCarryScan) []flagHomecoming {
 	var out []flagHomecoming
 	for _, e := range scan.Events {
-		if e.Stat != objectiveevents.StatFlagReturns {
+		if e.Stat != objectives.StatFlagReturns {
 			continue
 		}
 		f := -1

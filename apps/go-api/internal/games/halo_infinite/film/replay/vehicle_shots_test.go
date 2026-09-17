@@ -7,7 +7,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vsClock est l'horloge des cas : origine 0, pas 100 ms, 1 000 frames.
@@ -36,7 +36,7 @@ func vsDoc(rides []VehicleRide, samples []VehicleSample) *ReplayDocument {
 // vsOrphan fabrique un orphelin « sans slot » du joueur 3, a la frame demandee.
 func vsOrphan(frame int, weapon uint64) orphanShot {
 	return orphanShot{
-		ev: filmdec.FireEvent{
+		ev: grammar.FireEvent{
 			TimestampUS: uint64(frame) * 100_000, FilmIndex: 3, WeaponID: weapon,
 		},
 		reason: reasonNoSlot,

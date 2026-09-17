@@ -50,7 +50,7 @@ type LayerCoverage struct {
 	Unpublished int `json:"unpublished"`
 	// RefusedByRoster : événements que le calque REFUSE DE PUBLIER parce que l'effectif du
 	// match dépasse ce que le format peut porter — huit slots d'entité de joueur au statborg
-	// (cf. objectiveevents.RosterFitsStatborg). Le calque se tait ENTIÈREMENT, et ce compteur
+	// (cf. objectives.RosterFitsStatborg). Le calque se tait ENTIÈREMENT, et ce compteur
 	// dit combien d'actions ce silence coûte : un calque muet dont personne ne sait pourquoi
 	// il est muet est pire que le calque faux qu'il remplace.
 	//
@@ -377,7 +377,7 @@ type Coverage struct {
 	// inconnue).
 	T0Film *T0FilmCoverage `json:"t0Film,omitempty"`
 	// FilmMajorVersion est LA VERSION DU FILM qui a produit cet artefact, lue dans l'en-tête de
-	// son registre (`filmdec.FilmMajorVersionFromHeader`, u32 LE en tête de `chunk_00`).
+	// son registre (`grammar.FilmMajorVersionFromHeader`, u32 LE en tête de `chunk_00`).
 	//
 	// ELLE EST PUBLIÉE PARCE QUE LE DÉCODAGE EN DÉPEND ET QUE RIEN NE LE DISAIT. Le parc en cache
 	// porte sept versions (v31 x3, v33 x3, v37 x10, v38 x1, v39 x26, v40 x185, v41 x1123 au
@@ -399,7 +399,7 @@ type Coverage struct {
 	// Fallbacks dit QUELLE PART DE CE DOCUMENT VIENT D'UN REPLI (schéma 58, décision D14 du plan
 	// du décodeur, ADR 0034). Un repli est une décision de secours prise quand la lecture du film
 	// ne tranche pas ; chacun porte un nom stable, une condition et un critère de retrait, tous
-	// déclarés dans `film/replay/fallback`.
+	// déclarés dans `film/facts/fallback`.
 	//
 	// UNE LISTE PLATE, ET PAS UN BLOC PAR FAIT. Les replis ne se répartissent pas sur les calques
 	// existants — `repli_largeurs_axe_par_defaut_conservees` touche TOUT le décodage, et les
@@ -411,56 +411,10 @@ type Coverage struct {
 	// s'est PRODUIT. Ce qui PEUT se produire est au registre, qui est du code versionné. Absente
 	// quand aucun repli ne s'est déclenché, ou quand la cuisson ne portait pas de compteur.
 	Fallbacks []FallbackHit `json:"fallbacks,omitempty"`
-}
-
-// ProjectileCoverage est la couverture du calque des projectiles.
-type ProjectileCoverage struct {
-	// Tracks est le nombre de pistes DÉCODÉES — le dénominateur.
-	Tracks int `json:"tracks"`
-	// Published est le nombre de trajectoires publiées. L'écart avec Tracks tient aux pistes
-	// trop courtes pour se dessiner (moins de deux points de grille) et à celles qui naissent
-	// avant l'origine du rejeu.
-	Published int `json:"published"`
-	// Truncated est le nombre de trajectoires COUPÉES à un pas impossible (cf.
-	// projectileMaxStepM). Elle compte aussi les coupures si précoces que la trajectoire n'est
-	// plus publiable : sans cela le compteur mentirait par omission.
-	Truncated int `json:"truncated"`
-}
-
-// slotFor rend le slot du joueur pi à l'instant tUS, et la cause du rejet le cas échéant.
-//
-// C'EST LA MÊME PORTE QUE `uniqueSlotFor`, mais elle DIT pourquoi elle se ferme. L'ancienne
-// version rendait un booléen : « slot introuvable » et « slot ambigu » y étaient
-// indiscernables, alors qu'ils désignent deux chantiers différents.
-func slotFor(tracks map[uint32]slotTrack, owner map[uint32]int, pi int, tUS uint64) (uint32, rejectReason) {
-	var found uint32
-	n := 0
-	for slot, idx := range owner {
-		if idx != pi {
-			continue
-		}
-		if _, d := tracks[slot].at(tUS); d <= shotPosToleranceUS {
-			found = slot
-			n++
-		}
-	}
-	switch {
-	case n == 1:
-		return found, reasonAttached
-	case n > 1:
-		return 0, reasonAmbiguous
-	default:
-		return 0, reasonNoSlot
-	}
-}
-
-// countUnpublished mesure, après filtrage, combien d'événements rattachés ont été retirés
-// faute de trajectoire publiée. Rendu en tant que catégorie propre : ce n'est pas un échec
-// du rattachement, et le confondre avec « slot introuvable » orienterait vers le mauvais
-// chantier.
-func countUnpublished(before, after int) int {
-	if d := before - after; d > 0 {
-		return d
-	}
-	return 0
+	// Decoder dit SOUS QUELLES RÉVISIONS cet artefact a été cuit (schéma 61, lot 2.6.3).
+	//
+	// Un pointeur en `omitempty`, pour la même raison que `FilmMajorVersion` : l'ABSENCE du bloc
+	// dit « artefact antérieur au schéma 61 », et c'est une réponse, pas un trou. Tout ce que ce
+	// code cuit le porte.
+	Decoder *DecoderCoverage `json:"decoder,omitempty"`
 }

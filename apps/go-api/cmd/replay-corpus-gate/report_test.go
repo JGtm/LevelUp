@@ -13,8 +13,8 @@ func TestCodeSortieZeroSansPerte(t *testing.T) {
 		{Temoin: Temoin{ID: "a"}, Gains: 3, Pertes: 0},
 		{Temoin: Temoin{ID: "b"}, Gains: 0, Pertes: 0},
 	}
-	if got := codeSortie(lignes, true); got != 0 {
-		t.Fatalf("code = %d, attendu 0", got)
+	if got := codeSortie(lignes, true); got != codeOK {
+		t.Fatalf("code = %d, attendu codeOK (0)", got)
 	}
 }
 
@@ -26,8 +26,8 @@ func TestCodeSortieUnDesQuUnAxePerteSuffit(t *testing.T) {
 		{Temoin: Temoin{ID: "b"}, Pertes: 1},
 		{Temoin: Temoin{ID: "c"}, Pertes: 0},
 	}
-	if got := codeSortie(lignes, true); got != 1 {
-		t.Fatalf("code = %d, attendu 1 (b porte une perte)", got)
+	if got := codeSortie(lignes, true); got != codePerte {
+		t.Fatalf("code = %d, attendu codePerte (1) (b porte une perte)", got)
 	}
 }
 
@@ -35,8 +35,8 @@ func TestCodeSortieUnDesQuUnAxePerteSuffit(t *testing.T) {
 // faire echouer le gate : un rapport incomplet n'est pas un rapport vert.
 func TestCodeSortieErreurDeCuissonEstUnEchec(t *testing.T) {
 	lignes := []ligneRapport{{Temoin: Temoin{ID: "a"}, Erreur: errTest("cuisson cassee")}}
-	if got := codeSortie(lignes, true); got != 1 {
-		t.Fatalf("code = %d, attendu 1 (erreur de cuisson)", got)
+	if got := codeSortie(lignes, true); got != codeErreurCuisson {
+		t.Fatalf("code = %d, attendu codeErreurCuisson (3) — une erreur de cuisson n est PAS une perte", got)
 	}
 }
 
@@ -47,8 +47,8 @@ func TestCodeSortieAbsentNEstPasUnEchec(t *testing.T) {
 	lignes := []ligneRapport{
 		{Temoin: Temoin{ID: "a"}, Absent: true, AbsentCause: "aucun chunk"},
 	}
-	if got := codeSortie(lignes, true); got != 0 {
-		t.Fatalf("code = %d, attendu 0 (absent != echec)", got)
+	if got := codeSortie(lignes, true); got != codeOK {
+		t.Fatalf("code = %d, attendu codeOK (0) (absent != echec ICI, cf. verifierCouverture)", got)
 	}
 }
 
@@ -62,17 +62,18 @@ func TestBilanDepuisRapportSommeLesAxes(t *testing.T) {
 			"equipement": {Gains: 0, Pertes: 2},
 		},
 	}
-	schemaParc, schemaHEAD, gains, pertes, _, _ := bilanDepuisRapport(rap)
-	if schemaParc != 20 || schemaHEAD != 41 {
-		t.Fatalf("schemas = %d -> %d, attendu 20 -> 41", schemaParc, schemaHEAD)
+	var l ligneRapport
+	l.remplirBilan(rap)
+	if l.SchemaReference != 20 || l.SchemaHEAD != 41 {
+		t.Fatalf("schemas = %d -> %d, attendu 20 -> 41", l.SchemaReference, l.SchemaHEAD)
 	}
-	if gains != 3 || pertes != 3 {
-		t.Fatalf("gains=%d pertes=%d, attendu gains=3 pertes=3 (somme des deux axes)", gains, pertes)
+	if l.Gains != 3 || l.Pertes != 3 {
+		t.Fatalf("gains=%d pertes=%d, attendu gains=3 pertes=3 (somme des deux axes)", l.Gains, l.Pertes)
 	}
 }
 
-// TestImprimerTableauNommeLeStatut — le tableau doit distinguer absent / erreur / perte / ok
-// en toutes lettres, pour un operateur qui ne lit que la derniere colonne.
+// TestImprimerTableauNommeLeStatut — le tableau doit distinguer absent / erreur / perte /
+// changement / ok en toutes lettres, pour un operateur qui ne lit que la derniere colonne.
 func TestImprimerTableauNommeLeStatut(t *testing.T) {
 	var b strings.Builder
 	imprimerTableau(&b, []ligneRapport{
@@ -80,17 +81,69 @@ func TestImprimerTableauNommeLeStatut(t *testing.T) {
 		{Temoin: Temoin{ID: "bbbb2222", Famille: "oddball"}, Pertes: 1},
 		{Temoin: Temoin{ID: "cccc3333", Famille: "slayer"}, Absent: true, AbsentCause: "aucun chunk"},
 		{Temoin: Temoin{ID: "dddd4444", Famille: "assaut"}, Erreur: errTest("carte hors catalogue")},
+		{Temoin: Temoin{ID: "eeee5555", Famille: "vehicules"}, Gains: 4, Changements: 2},
 	}, "base(origin/feat/v75)")
 	out := b.String()
 	for _, attendu := range []string{
-		"aaaa1111", "ok",
-		"bbbb2222", "PERTE",
-		"cccc3333", "ABSENT", "aucun chunk",
-		"dddd4444", "ERREUR", "carte hors catalogue",
+		"aaaa1111", statutOK,
+		"bbbb2222", statutPerte,
+		"cccc3333", statutAbsent, "aucun chunk",
+		"dddd4444", statutErreur, "carte hors catalogue",
+		"eeee5555", statutChangement,
 	} {
 		if !strings.Contains(out, attendu) {
 			t.Errorf("le tableau doit contenir %q :\n%s", attendu, out)
 		}
+	}
+}
+
+// TestLigneVersJSONPorteStatutEtCause — D5 (1.9.9) : un lecteur qui n'a QUE le JSON lisait
+// `{"gains":0,"pertes":0,"changements":0}` pour un temoin en ERREUR comme pour un temoin
+// propre, et comptait donc des temoins conclus qui ne l'etaient pas. Chaque ligne porte
+// desormais son `statut`, TOUJOURS renseigne, et la cause de son absence.
+func TestLigneVersJSONPorteStatutEtCause(t *testing.T) {
+	cas := []struct {
+		nom    string
+		ligne  ligneRapport
+		statut string
+	}{
+		{"propre", ligneRapport{Temoin: Temoin{ID: "a"}, Gains: 3}, statutOK},
+		{"perte", ligneRapport{Temoin: Temoin{ID: "b"}, Pertes: 2}, statutPerte},
+		{"changement", ligneRapport{Temoin: Temoin{ID: "c"}, Changements: 2}, statutChangement},
+		{"erreur", ligneRapport{Temoin: Temoin{ID: "d"}, Erreur: errTest("plafond memoire")}, statutErreur},
+		{"absent", ligneRapport{Temoin: Temoin{ID: "e"}, Absent: true, AbsentCause: "faits non exportes"}, statutAbsent},
+	}
+	for _, c := range cas {
+		lj := ligneVersJSON(c.ligne)
+		if lj.Statut != c.statut {
+			t.Errorf("%s : statut JSON = %q, %q attendu", c.nom, lj.Statut, c.statut)
+		}
+	}
+	if got := ligneVersJSON(cas[3].ligne).Erreur; got != "plafond memoire" {
+		t.Errorf("la cause de l'erreur doit etre portee au JSON, obtenu %q", got)
+	}
+	if got := ligneVersJSON(cas[4].ligne).AbsentCause; got != "faits non exportes" {
+		t.Errorf("la cause de l'absence doit etre portee au JSON, obtenu %q", got)
+	}
+}
+
+// TestLigneVersJSONPorteLesDeuxDetails — `changementsDetail` est le symetrique de
+// `pertesDetail`, et les deux listes sont DISJOINTES.
+func TestLigneVersJSONPorteLesDeuxDetails(t *testing.T) {
+	lj := ligneVersJSON(ligneRapport{
+		Temoin: Temoin{ID: "a"}, Pertes: 1, Changements: 1,
+		PertesDetail: []replaydiff.Difference{
+			{Axe: "couverture", Metrique: "coverage.bridge.livesTotal", Sens: replaydiff.SensPerte, Ancien: "58", Nouveau: "57"},
+		},
+		ChangementsDetail: []replaydiff.Difference{
+			{Axe: "pistes", Metrique: "tracks/par-xuid/2535429985869093", Sens: replaydiff.SensChangement, Ancien: "6", Nouveau: "5"},
+		},
+	})
+	if len(lj.PertesDetail) != 1 || lj.PertesDetail[0].Metrique != "coverage.bridge.livesTotal" {
+		t.Errorf("pertesDetail mal porte : %+v", lj.PertesDetail)
+	}
+	if len(lj.ChangementsDetail) != 1 || lj.ChangementsDetail[0].Metrique != "tracks/par-xuid/2535429985869093" {
+		t.Errorf("changementsDetail mal porte : %+v", lj.ChangementsDetail)
 	}
 }
 
@@ -99,8 +152,9 @@ type errTest string
 func (e errTest) Error() string { return string(e) }
 
 // TestBilanDepuisRapportExtraitLeDetailDesPertesSeulement — LE COMPORTEMENT DEMANDE :
-// "rapporter, pas masquer". Le detail ne doit contenir QUE les sens Perte/Disparu — jamais un
-// gain ni un changement, qui noieraient le signal.
+// "rapporter, pas masquer". Le detail des PERTES ne doit contenir QUE les sens Perte/Disparu —
+// jamais un gain ni un changement, qui noieraient le signal — et celui des CHANGEMENTS que le
+// sens Changement (2026-09-17, les deux listes sont DISJOINTES).
 func TestBilanDepuisRapportExtraitLeDetailDesPertesSeulement(t *testing.T) {
 	rap := replaydiff.Rapport{
 		Differences: []replaydiff.Difference{
@@ -110,14 +164,24 @@ func TestBilanDepuisRapportExtraitLeDetailDesPertesSeulement(t *testing.T) {
 			{Axe: "carte", Metrique: "bounds.maxX", Sens: replaydiff.SensChangement, Ancien: "1", Nouveau: "2"},
 		},
 	}
-	_, _, _, _, _, detail := bilanDepuisRapport(rap)
-	if len(detail) != 2 {
-		t.Fatalf("%d entrees de detail, attendu 2 (perte + disparu seulement) : %+v", len(detail), detail)
+	var l ligneRapport
+	l.remplirBilan(rap)
+	if len(l.PertesDetail) != 2 {
+		t.Fatalf("%d entrees de detail de perte, attendu 2 (perte + disparu seulement) : %+v",
+			len(l.PertesDetail), l.PertesDetail)
 	}
-	for _, d := range detail {
+	for _, d := range l.PertesDetail {
 		if d.Sens != replaydiff.SensPerte && d.Sens != replaydiff.SensDisparu {
-			t.Errorf("le detail contient un sens %q — seuls perte/disparu sont attendus", d.Sens)
+			t.Errorf("le detail des pertes contient un sens %q — seuls perte/disparu sont attendus", d.Sens)
 		}
+	}
+	if len(l.ChangementsDetail) != 1 {
+		t.Fatalf("%d entrees de detail de changement, attendu 1 : %+v",
+			len(l.ChangementsDetail), l.ChangementsDetail)
+	}
+	if l.ChangementsDetail[0].Sens != replaydiff.SensChangement {
+		t.Errorf("le detail des changements contient un sens %q — seul changement est attendu",
+			l.ChangementsDetail[0].Sens)
 	}
 }
 
@@ -160,8 +224,8 @@ func TestImprimerDetailPertesVideNEcritRien(t *testing.T) {
 // jamais a jour, un gate qui echouerait dessus a chaque fois ne gaterait rien.
 func TestCodeSortiePertesNonBloquantesEnModeInformatif(t *testing.T) {
 	lignes := []ligneRapport{{Temoin: Temoin{ID: "a"}, Pertes: 5}}
-	if got := codeSortie(lignes, false); got != 0 {
-		t.Fatalf("code = %d, attendu 0 (pertesBloquent=false, mode parc informatif)", got)
+	if got := codeSortie(lignes, false); got != codeOK {
+		t.Fatalf("code = %d, attendu codeOK (0) (pertesBloquent=false, mode parc informatif)", got)
 	}
 }
 
@@ -170,8 +234,8 @@ func TestCodeSortiePertesNonBloquantesEnModeInformatif(t *testing.T) {
 // ce qui est distinct d'une perte mesuree.
 func TestCodeSortieErreurBloqueMemeEnModeInformatif(t *testing.T) {
 	lignes := []ligneRapport{{Temoin: Temoin{ID: "a"}, Erreur: errTest("cuisson cassee")}}
-	if got := codeSortie(lignes, false); got != 1 {
-		t.Fatalf("code = %d, attendu 1 (une erreur bloque toujours, meme pertesBloquent=false)", got)
+	if got := codeSortie(lignes, false); got != codeErreurCuisson {
+		t.Fatalf("code = %d, attendu codeErreurCuisson (3) (une erreur bloque toujours, meme pertesBloquent=false)", got)
 	}
 }
 

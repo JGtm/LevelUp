@@ -10,13 +10,13 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // at construit un échantillon de position au seul instant qui nous intéresse. Les helpers
 // `posAt` (shots_test.go) et `tracksOf` (lives_test.go) sont RÉUTILISÉS tels quels : une
 // troisième copie divergerait, et la règle du dépôt l'interdit.
-func at(slot uint32, tUS uint64) filmdec.BipedPosition { return posAt(slot, tUS, 0, 0, 0) }
+func at(slot uint32, tUS uint64) grammar.BipedPosition { return posAt(slot, tUS, 0, 0, 0) }
 
 // TestFermetureAAttribueLeCorpsQuiProlongeLeTireur : le cas nominal de la fermeture A, ET SA
 // SÉMANTIQUE EXACTE.

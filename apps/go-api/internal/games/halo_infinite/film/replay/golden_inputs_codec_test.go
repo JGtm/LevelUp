@@ -10,7 +10,9 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const cmScale = 100
@@ -124,7 +126,7 @@ func (r *greader) bool8() bool { return r.byte8() == 1 }
 // LA TABLE DES SLOTS EST DANS LA SECTION, et non dans l en-tete du blob : un slot tient sur
 // 13 bits mais un film n en emploie qu une centaine, et l indirection ramene 2 octets a 1 sur
 // chaque position. Chaque suite a la sienne — celle des vehicules n est pas celle des bipedes.
-func encodePositionSection(w *gwriter, pos []filmdec.BipedPosition) {
+func encodePositionSection(w *gwriter, pos []grammar.BipedPosition) {
 	slotIdx := map[uint32]int{}
 	var slots []uint32
 	for _, p := range pos {
@@ -189,18 +191,18 @@ func encodePositionSection(w *gwriter, pos []filmdec.BipedPosition) {
 	}
 }
 
-func decodePositionSection(r *greader, lay filmdec.I0Layout, world filmdec.Vec3Range) []filmdec.BipedPosition {
+func decodePositionSection(r *greader, lay profile.I0Layout, world profile.Vec3Range) []grammar.BipedPosition {
 	nSlots := int(r.u())
 	slots := make([]uint32, 0, nSlots)
 	for k := 0; k < nSlots && r.err == nil; k++ {
 		slots = append(slots, uint32(r.u()))
 	}
 	n := int(r.u())
-	out := make([]filmdec.BipedPosition, 0, n)
+	out := make([]grammar.BipedPosition, 0, n)
 	var lastTS uint64
 	lastXYZ := map[uint32][3]int64{}
 	for k := 0; k < n && r.err == nil; k++ {
-		var p filmdec.BipedPosition
+		var p grammar.BipedPosition
 		lastTS += r.u()
 		p.TimestampUS = lastTS
 		si := int(r.u())
@@ -219,9 +221,9 @@ func decodePositionSection(r *greader, lay filmdec.I0Layout, world filmdec.Vec3R
 			}
 			lastXYZ[p.Slot] = cur
 			p.Q = [3]uint32{uint32(cur[0]), uint32(cur[1]), uint32(cur[2])}
-			p.X = filmdec.DequantBipedAxis(p.Q[0], 0, lay, world)
-			p.Y = filmdec.DequantBipedAxis(p.Q[1], 1, lay, world)
-			p.Z = filmdec.DequantBipedAxis(p.Q[2], 2, lay, world)
+			p.X = grammar.DequantBipedAxis(p.Q[0], 0, lay, world)
+			p.Y = grammar.DequantBipedAxis(p.Q[1], 1, lay, world)
+			p.Z = grammar.DequantBipedAxis(p.Q[2], 2, lay, world)
 		}
 		if fl&gpHasYaw != 0 {
 			p.HasYaw = true
@@ -242,7 +244,7 @@ func decodePositionSection(r *greader, lay filmdec.I0Layout, world filmdec.Vec3R
 	return out
 }
 
-func encodeTracks(w *gwriter, tracks []filmdec.ProjectileTrack) {
+func encodeTracks(w *gwriter, tracks []types.ProjectileTrack) {
 	w.u(uint64(len(tracks)))
 	for _, tr := range tracks {
 		w.u(uint64(tr.Slot))
@@ -263,11 +265,11 @@ func encodeTracks(w *gwriter, tracks []filmdec.ProjectileTrack) {
 	}
 }
 
-func decodeTracks(r *greader) []filmdec.ProjectileTrack {
+func decodeTracks(r *greader) []types.ProjectileTrack {
 	n := int(r.u())
-	out := make([]filmdec.ProjectileTrack, 0, n)
+	out := make([]types.ProjectileTrack, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
-		tr := filmdec.ProjectileTrack{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		tr := types.ProjectileTrack{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		np := int(r.u())
 		var ts uint64
 		var prev [3]int64
@@ -278,7 +280,7 @@ func decodeTracks(r *greader) []filmdec.ProjectileTrack {
 				cur[a] = prev[a] + r.i()
 			}
 			prev = cur
-			tr.Pts = append(tr.Pts, filmdec.ProjectileSample{
+			tr.Pts = append(tr.Pts, types.ProjectileSample{
 				TimestampUS: ts, X: fromCM(cur[0]), Y: fromCM(cur[1]), Z: fromCM(cur[2]),
 				AtRest: r.bool8(),
 			})
@@ -327,7 +329,7 @@ func decodeWorldObjectScan(r *greader) WorldObjectScan {
 // L IDENTITE TIENT DANS `MPPWord32`, ET ELLE SEULE : c est le mot inconditionnel du bloc MPP —
 // le GlobalID du tag `eqip` pour ti=37, l identite du chassis pour ti=40 (cf.
 // filmdec/vehicle_creation.go). Les trois autres champs du bloc ne sont lus par aucun assemblage.
-func encodeCreations(w *gwriter, creations []filmdec.EquipmentCreation) {
+func encodeCreations(w *gwriter, creations []types.EquipmentCreation) {
 	w.u(uint64(len(creations)))
 	var lastTS uint64
 	for _, c := range creations {
@@ -338,21 +340,21 @@ func encodeCreations(w *gwriter, creations []filmdec.EquipmentCreation) {
 		w.f32(c.X)
 		w.f32(c.Y)
 		w.f32(c.Z)
-		w.bool8(c.MPPPresent[filmdec.MPPWord32])
-		w.u(c.MPPVal[filmdec.MPPWord32])
+		w.bool8(c.MPPPresent[grammar.MPPWord32])
+		w.u(c.MPPVal[grammar.MPPWord32])
 	}
 }
 
-func decodeCreations(r *greader) []filmdec.EquipmentCreation {
+func decodeCreations(r *greader) []types.EquipmentCreation {
 	n := int(r.u())
-	out := make([]filmdec.EquipmentCreation, 0, n)
+	out := make([]types.EquipmentCreation, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		c := filmdec.EquipmentCreation{TimestampUS: lastTS, Slot: uint32(r.u()), Gen: uint32(r.u())}
+		c := types.EquipmentCreation{TimestampUS: lastTS, Slot: uint32(r.u()), Gen: uint32(r.u())}
 		c.X, c.Y, c.Z = r.f32(), r.f32(), r.f32()
-		c.MPPPresent[filmdec.MPPWord32] = r.bool8()
-		c.MPPVal[filmdec.MPPWord32] = r.u()
+		c.MPPPresent[grammar.MPPWord32] = r.bool8()
+		c.MPPVal[grammar.MPPWord32] = r.u()
 		out = append(out, c)
 	}
 	return out
@@ -365,7 +367,7 @@ func decodeCreations(r *greader) []filmdec.EquipmentCreation {
 // LA BANDE DE SLOTS N EST PAS SERIALISEE, et c est delibere : l assemblage ne la lit pas (elle
 // sert au seul balayage, qui a deja eu lieu). Le fixture porte ce que l assemblage CONSOMME, pas
 // ce que le decodage a traverse.
-func encodeKeyframes(w *gwriter, kf filmdec.WorldObjectKeyframes) {
+func encodeKeyframes(w *gwriter, kf grammar.WorldObjectKeyframes) {
 	w.u(uint64(len(kf.TimesUS)))
 	var lastTS uint64
 	for _, t := range kf.TimesUS {
@@ -374,7 +376,7 @@ func encodeKeyframes(w *gwriter, kf filmdec.WorldObjectKeyframes) {
 	}
 	// L ORDRE DES CLES EST RENDU TOTAL : une map Go s itere au hasard, et un fixture dont les
 	// octets changent a chaque regeneration n est plus un fixture.
-	keys := make([]filmdec.EquipmentLifeKey, 0, len(kf.SeenUS))
+	keys := make([]types.EquipmentLifeKey, 0, len(kf.SeenUS))
 	for k := range kf.SeenUS {
 		keys = append(keys, k)
 	}
@@ -398,8 +400,8 @@ func encodeKeyframes(w *gwriter, kf filmdec.WorldObjectKeyframes) {
 	}
 }
 
-func decodeKeyframes(r *greader) filmdec.WorldObjectKeyframes {
-	var kf filmdec.WorldObjectKeyframes
+func decodeKeyframes(r *greader) grammar.WorldObjectKeyframes {
+	var kf grammar.WorldObjectKeyframes
 	n := int(r.u())
 	kf.TimesUS = make([]uint64, 0, n)
 	var lastTS uint64
@@ -408,9 +410,9 @@ func decodeKeyframes(r *greader) filmdec.WorldObjectKeyframes {
 		kf.TimesUS = append(kf.TimesUS, lastTS)
 	}
 	n = int(r.u())
-	kf.SeenUS = make(map[filmdec.EquipmentLifeKey][]uint64, n)
+	kf.SeenUS = make(map[types.EquipmentLifeKey][]uint64, n)
 	for k := 0; k < n && r.err == nil; k++ {
-		key := filmdec.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		key := types.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		np := int(r.u())
 		seen := make([]uint64, 0, np)
 		lastTS = 0

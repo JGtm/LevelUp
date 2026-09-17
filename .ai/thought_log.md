@@ -1,3 +1,312 @@
+## [2026-09-17] Chantier décodeur — fusion du lot 2.6 (quatre révisions, types de contrat, schéma 61) : le code de M2 est complet
+
+**Statut** : Complété (code M2) / En cours (clôture : ADR 0034, banc, fusion inverse, recuisson à demander).
+
+**Décision technique principale.** Le lot 2.6 (`feat/decfilm-26g`, 5 commits, tête 1a3ccac0f) fusionne : (1) les QUATRE révisions de couche vivent sur le mécanisme `film/revision` — `source.Rev` (`.2`), `profile.Rev` (née `profile-2026-09-17`, hache `profile/` + la VALEUR de `source.Rev`), `grammar.Rev` (héritière de `GrammarRev`, rang `.39` mesuré : le périmètre passe de 183 fichiers en octets à 143 + deux valeurs amont ; le kill-switch du cadre hérité est retiré à sa cible, l'allowlist des empreintes ad hoc est VIDE), `facts.Rev` (`.6`, hache `facts/` + les valeurs de `source.Rev` et `grammar.Rev`) — AUCUN backlog killsource ouvert (V15 (16)) ; (2) 35 types de contrat entrent dans `film/types` (48 re-mesurés, 31 retenus + 4 par clôture ; 17 écartés sur mesure : objets de service, types porteurs d'une règle, champs nommant une autre couche), `shapes.golden` passe à 46 sections, ZÉRO alias (les trois `types_alias.go` supprimés), 8 littéraux positionnels corrigés (`go vet composites`), sept `//nolint:gocyclo,funlen` datés sur la chaîne de dispatch (dette gelée, complexités inchangées, cible 2.7) ; (3) 2.6.3, le DERNIER commit de contenu du jalon : `SchemaVersion` 60 -> 61, `coverage.decoder{sourceRev, profileRev, grammarRev, factsRev, build, registry{fingerprint, status, blocks, namedSlots}}` (build VIDE et bloc PRÉSENT sur film sans section — V15 (15) ; registre classé `connue` / `inconnue`, `presumee` attend 3.1.1 ; D4 (3.2) fermée : `ReadFilmIdentity` rend l'empreinte au lieu de la jeter) et `coverage.abilityImpulses.scan{records, withI57, withI59, read, unread, tag1}` (D3 (validation) point 2), chronique v61 écrite dans le commit depuis le brouillon supprimé, `document_shape.golden`, OpenAPI (+74) et types web régénérés en dernier, 8 goldens d'assemblage et 8 fixtures web régénérés. Réconciliation sur f72c0e737 (feat/v75 fusionné + correctif CI) sans conflit ; la régénération d'OpenAPI rend des octets identiques à l'auto-fusion.
+
+**Gates.** Équivalence 20 films sur le sha réconcilié : les 52 étapes de balayage identiques au bit sur les 20 films, seule l'étape `artifact` diffère, deltas d'octets tous positifs (+254 à +362 ; les deux films sans section d'identification portent le plus petit, là où `build` est vide et `registry` absent) ; corpus gate 17 témoins `--base=f72c0e737` : **17/17 `ok`, schéma 60 -> 61 partout, 0 perte, 0 changement**, 15 feuilles ajoutées et nommées (`coverage.decoder.*` ×9, `coverage.abilityImpulses.scan.*` ×6), aucune valeur partagée modifiée hors `schemaVersion`. Validation croisée : la classification du registre sur les 17 témoins recoupe le catalogue de 3.2.1 (5 empreintes connues, dont la paire HI_1_8_0 = HI_1_9_0 de D2 (3.2)).
+
+**Clôture M2, état.** Références d'équivalence re-figées à la fusion (`-update` contrôlé : seule la ligne `artifact` des 20 tsv bouge) ; banc `grammar` re-figé sur c794c0877 (`-count 10`, médianes contre la base 0.A.5/R1 : `BitReaderReadBits` +8,7 %, 112,6 -> 122,3 us, dans le budget de +10 %, dispersion 22 % -> 1 % ; `TraverseEntity` -3,8 % ; `KeyframeClosure` -5,0 %, informatif) ; ADR 0034 amendé (état atteint, décision par décision : D-1 à D-10 bis, trois précisions sur D-1, la clé du profil corrigée à trois clés, D-4 HALF — le film à clé inconnue n est PAS mis de côté, aucun appelant de production ne lit `ProfileErr()`, correction 5 neuve ; D-7 = M4) — fusionné c794c0877 avec `CLAUDE.md` (ligne 0034 : compteur, pas de mise de côté) et `.ai/project_map.md` (chemins réels + chemins morts) ; SYNC_GUIDE déjà au présent depuis 2.6.1, ARCHITECTURE/FOUNDATIONS sans paragraphe décodeur (mesuré) ; fusion inverse intégration -> feat/v75 : réalisée par le commit de fusion sur `feat/v75` qui porte cette entrée (script `merge_integ_into_v75.sh` : fusion sans `--ff`, régénération d OpenAPI et des types web en dernier, batterie complète `./internal/... ./cmd/...` conditionnant le commit) ; recuisson du parc : REQUISE (D3 (validation) : bruit d'état de processus + schéma 61), DEMANDÉE à l'utilisateur, jamais lancée d'office. Reste ouvert pour M3 : statut `presumee` du registre (3.1.1), `film/revision` sous `film/internal/` (D5 (2.6)), double justification de la montée de schéma (D6 (2.6)), la surface de la façade (M4).
+
+**Prochaine étape** : M3 production — 3.4.1 (branchement, correctif Live Fire), 3.3.1 (largeur d'amorce par build), 3.2.1 volet code et 3.1.1 (build inconnu actif, `presumee`), 3.6 ports ; puis M4.
+
+## [2026-09-17] Chantier décodeur — fusion du lot 2.5.e + 2.5.g : les cinq couches sous film/internal, la façade, le ratchet strict
+
+**Statut** : Complété (fusion) / En cours (2.6 volet grammar/profile/replay + 2.6.3).
+
+**Décision technique principale.** Le lot 2.5.e (`feat/decfilm-25e`, 8 commits, 1 273 fichiers, tête 43456e132) termine le pas 5 : les quatre couches `source`, `profile`, `grammar`, `facts` passent sous `film/internal/` et le compilateur PROUVE la frontière (principe 11 de l'ADR 0034) ; `replay` reste exportée — couche de publication, 239 symboles cités hors du décodeur, le document de rejeu est le contrat public ; la façade s'appelle `film/decfilm` (l'identifiant `film` est le nom du film chargé dans 45 fichiers) et re-exporte 163 symboles (grammar 46, objectives 43, killsource 36, fallback 11, source 8, profile 7, weaponscan 5, weaponv3 4, positions 2, facts 1 ; par consommateur : `sync/killcollector` ~57, `replaybuild` 38, outils `cmd/` ~70) — « une façade de 163 symboles est un alias, pas une frontière » : la matière de la réduction en M4 est consignée. Descentes de grammaire restantes (V15 (2), (4)) : `highlight_event_parser` en `grammar` (zlib par `source.Decompresser`, sentinelle `source.ErrEnTeteZlib`), `weapon_scanner` en `grammar/weaponscan`, `analysis/positions` en `grammar/positions`, `weapon_data` en `games/weapons/filmshell` ; le pont 2.5.h supprimé avec son ratchet ; `PlayerPosition` / `TeamUnknown` en `domain/playerposition`. Ratchets : lectures brutes 9 -> 0 ET mécanisme d'allowlist supprimé (la case 2.4.3 se lit enfin comme écrite), arêtes de couche 3 -> 0 et mécanisme supprimé, D9 1 -> 0, zlib 3 -> 2 ; R1/R2/R3 STRICT sans aucune table ; R4 posée (« `replay` ne CHARGE pas le film », 4 entrées datées avec critère de retrait — D6 (2.5)). Deux changements de forme imposés par des ratchets sans allowlist, à sortie identique : `FireEvent.PlayerIndex*` -> `FilmIndex*`, extraction de `decodeFireEventAt` (80 lignes). D3 (2.5.a) + D8 (2.5.b) statués : le contrôle de la table des joueurs DÉCODE, il reste en `grammar` (V15 (8) périmé sur sa moitié « contrôle ») ; D11 : trois tests de frontière dans `profile` ; D2 (revue M2) : les docs inversées corrigées. 2.5.g statué `[~]` : les 29 crochets sont devenus des champs d'`Observation` au 2.2.f et `observateur` a disparu au 2.3 (zéro variable écrite) — le résidu est un harnais de test (163 sites, 39 fichiers), consigné. Révisions : `source.Rev` -> `.2`, `GrammarRev` .35 -> .38, `facts.Rev` .2 -> .5, chronique intégrale par rang, `SchemaVersion` 60, aucun backlog. Re-pointés : 19 ratchets, les racines des empreintes, la baseline de tests (271 événements, sans re-capture), Makefile + ci.yml, docs FR/EN (`COMMANDS`, `RUNBOOK_FILM_PROFILES`, `SYNC_GUIDE`, `WEAPONS`) et le front (garde-rail qui lit le source Go).
+
+**Réconciliation avec M3.** Les instruments de recherche de 3.2 / 3.3 / 3.4 importaient `film/grammar`, `film/source`, `film/profile` (8 imports) : plutôt qu'élargir la façade pour de la recherche, ils rentrent sous le décodeur — `film/research/{grenadeids, cmd_grenadeids, largeursaxe}`, tag `research`, classés `horsCoucheFilm` avec entrée datée ; `tools/film_re/` garde ce qui n'importe rien du décodeur. Deux conflits textuels seulement (runbook, plan). Les quatre empreintes n'ont pas bougé (`film/research/` n'est dans aucune racine hachée).
+
+**Gates.** Équivalence 20 films : **20 identiques, 0 différent** (références jamais réécrites : aucun des 20 tsv n'a de modification dans tout le lot) — elle mesure ce que 2.5.e-a affirmait en remplaçant deux lecteurs de bits par ceux de `source` ; corpus gate 17 témoins sur le sha réconcilié, base 8a62e7213 : **17/17 `ok`, 60 -> 60, 0/0/0, exit 0** ; le gate à 14 témoins sur la branche n'a pas été joué (manifeste périmé). Fusion : batterie complète `./internal/... ./cmd/...` + `go vet -tags=research` + lint.
+
+**Prochaine étape** : 2.6 volet grammar/profile/replay (grammar.Rev héritière, profile.Rev, les 49 types de grammar dans film/types, fin des alias) puis 2.6.3 (coverage.decoder + AbilityImpulseStats + classification du registre, schéma 61, DERNIER commit du jalon) ; clôture M2 : fusion de origin/feat/v75 (ea9ba1b4e) dans l'intégration, gate complet, ADR 0034 amendé, banc re-figé, recuisson du parc à demander à l'utilisateur.
+
+## [2026-09-17] Chantier décodeur — fusion du lot 3.2 volet données et témoins (M3 en parallèle de M2), mesure 0 de la recherche 3.3
+
+**Statut** : Complété (fusion 3.2 données) / En cours (2.5.e, 3.3 recherche).
+
+**Décision technique principale.** Première production de M3 fusionnée pendant M2, sans toucher au décodeur : la section `registryFingerprints` du catalogue des profils porte 9 clefs pour 5 empreintes de registre distinctes (7 builds mesurés sur les mini-bobines commises, `majeure=33` et `majeure=31` mesurés sur les `chunk_00` des films sans section), avec statut `connue` / `presumee` (jusqu'où la mesure porte) distinct de la provenance ; `filmprofile` la lit et la valide (22 cas de refus, accesseur build > majeure, faux sur inconnu). Écart assumé avec le brief : « 8 empreintes sur 1 351 films » (rapport H) était mesuré dans un domaine de hachage mort avant le 14/09 ; le résultat vrai est 9 clefs / 5 empreintes. Le corpus gate passe de 14 à 17 témoins — un témoin par clef de registre (`a521164d` HI_1_4_1, `11de8353` HI_1_9_0, `50247b26` majeure 31) ; le critère « artefact pré-cuit dans le parc » n'est pas un prérequis de gate (un seul témoin sur 14 en portait un) : les vrais prérequis sont chunks, manifeste et faits exportables, écrits au runbook. Gate 17/17 `ok`, 60 -> 60, 0/0/0, exit 0 (31 min). Découverte D2 (3.2) : l'empreinte de registre ne sépare PAS les builds (8_0 = 9_0, 12_0 = 13_0, 4_1 = majeure 33) — pas de clef de substitution pour 3.3 / 3.4 ; D4 : `ReadFilmIdentity` calcule l'empreinte puis la jette (le volet code de 3.2.1 la publiera dans `coverage.decoder`, après 2.6.3).
+
+**Recherche 3.3, mesure 0** (sans film du cache) : `ti` projectile = 41 sur les sept builds, marqueur `0x4C0C00` identique — le marqueur n'a pas bougé, l'hypothèse de l'utilisateur se réduit à la position ou au champ lu après lui (passes A à D sur six films, voie donnée à 00:20). Le registre passe de 49 à 50 blocs exactement à la frontière HI_1_11_0 / HI_1_12_0 où les lancers publiés apparaissent (corrélation, bloc après le rang 41). Le sixième bit du typeIndex, lu à `marqueur-1`, sépare `ti=41` de `ti=9` — un correctif de 3.3.1 qui l'ignorerait laisserait passer les naissances de joueur.
+
+**Prochaine étape** : verdict de la recherche 3.3 ; fusion 2.5.e + 2.5.g ; 2.6 volet grammar/profile/replay ; 2.6.3 ; clôture M2 (fusion de origin/feat/v75 = 3858eae59 dans l'intégration d'abord ; recuisson du parc à demander).
+
+## [2026-09-16] Chantier décodeur — fusion du volet facts + source de 2.6, gates à zéro, trois tranches M3 en parallèle
+
+**Statut** : Complété (fusion 2.6 facts, 3.4 prep) / En cours (2.5.e, 3.2 données, 3.3 recherche).
+
+**Décision technique principale.** Le volet facts + source du lot 2.6 (`feat/decfilm-26f`, réconcilié sur 2.5.b au rang `GrammarRev` .35) fusionne en e7b9bd48e : `source.Rev` (`film/source/rev.go`, `source-2026-09-16`) et `facts.Rev` (`film/facts/rev.go`, reprend `killsource-2026-09-16.2` — V15 (16), aucun backlog ; hache tout `film/facts` plus les VALEURS de `source.Rev` et de `GrammarRev` — V15 (12)) naissent sur le mécanisme de 2.6.0 ; `KillSourceDecoderRev` disparaît, `killcollector`, `postsync` et le backfill lisent `facts.Rev` ; `film/types` naît, feuille, avec 13 types purs et un golden unique de formes à porte double (9 types refusés sur mesure : méthodes ou dépendances ; alias datés par couche pour les 79 fichiers de `replay` / `replaybuild` / `cmd` encore derrière, à retirer au volet grammar/replay). Sept mutations de preuve. Gates sur la tête fusionnée : équivalence 20/20 identiques, corpus gate 14/14 à zéro.
+
+**M3 en parallèle (question de l'utilisateur).** Trois tranches sans toucher `film/` : 3.4 préparation Ghidra (fusionnée 6a360201b) — les largeurs d'axe sont un CALCUL (loi L=16, C=1/120, plafond 26, garde 2^22, eps 1e-4) sur les bornes de carte, LEVEL immédiat 0x10, accord loi / catalogue 79 cartes sur 79, verdict Q6 = (b) `map_quant_bounds.json` tel quel, 3.4.1 = branchement sans saisie + une ligne de profil sur la loi ; D1 (3.4) : `consumeAbsolutePayload` jette les positions valides des cartes à région (Live Fire) — correctif de contenu en 3.4.1 ; 3.2 données (livré, gate 17 témoins à la voie) — section `registryFingerprints` du catalogue, 9 clefs / 5 empreintes, statut connue / présumée, témoins 14 -> 17 ; D2 (3.2) : l'empreinte de registre ne sépare pas les builds ; 3.3 recherche (instrument prêt, mesure 0 en cours) — D2 (3.3r) : le marqueur de lancer ne porte que cinq bits d'index, `ti=41` et `ti=9` produisent les mêmes 24 bits.
+
+**Prochaine étape** : gate 3.2 (17 témoins) puis six films de 3.3 sur la voie ; 2.5.e + 2.5.g en cours ; puis 2.6 volet grammar/profile/replay, 2.6.3, clôture M2 ; M3 production ensuite (3.4.1 branchement, 3.3.1 selon le verdict de la recherche, 3.2.1 volet code, 3.1.1, 3.6).
+
+## [2026-09-16] Chantier décodeur — fusion du lot 2.5.b (la couche profile, données seulement), les cinq couches existent
+
+**Statut** : Complété (fusion) / En cours (réconciliation 2.6 volet facts).
+
+**Décision technique principale.** Le lot 2.5.b (`feat/decfilm-25b`, 4 commits, 244 fichiers) applique V19 : `film/profile` naît comme FEUILLE de données (`go list -deps` ne rend qu'elle-même) — `I0Layout` et ses largeurs, `MPPWidths`, `PrecisionDescriptor`, `AxisRange` / `Vec3Range` et les cinq plages, `FilmIdentity`, la table `profile_table.go`, `map_bounds.go`, les tables par build et par format, `Profile` et ses sous-profils avec `Resoudre` ; la DÉTECTION reste en `grammar` (`ResolveProfile`, `DetectI0LayoutOf`, `ReadFilmIdentity`, `BuildProfileFromFilm`) et rend des valeurs de profil par `profile.ClesDuFilm` — l'inversion de dépendance que le déplacement pur ne pouvait pas faire. 12 exports, zéro copie, 269 sites requalifiés. R3 du ratchet des couches passe STRICT (`couchesVidesTolerees` supprimée avec sa dernière entrée) ; R1 tenu sans allowlist. `GrammarRev` .33 -> .34 (extraction, sortie identique ; `film/profile` entre dans les racines hachées ; chronique rotationnée .21-.26 vers l'archive), `KillSourceDecoderRev` inchangée. Statués sur mesure : D8 (2.5.b) `player_table_control.go` décode des octets et reste en `grammar` (avec D3 (2.5.a), pour 2.5.e) ; D9 `ProfilDeBalayage` reste, pure donnée mais ni par build ni par carte ; D10 `SlotBand` n'est pas du profil (la carte de la note comptait sept fichiers, il y en a six) ; D11 `film/profile` sans test de frontière (2.5.e). Makefile et ci.yml apprennent `film/profile` (la couche neuve sortait des jobs, comme `facts` au 2.5).
+
+**Gates.** Équivalence 20 films : **20 identiques, 0 différent** (21 min, aucune référence re-figée) ; corpus gate `--base=42212abab` : **14/14 `ok`, 60 -> 60, 0/0/0, aucun témoin absent, exit 0** (23 min). D4 tenu au sens strict, contenu ET forme.
+
+**Croisement avec 2.6 volet facts.** Les deux lots ont monté `GrammarRev` au rang .34 sur leur branche : 2.5.b fusionne d'abord ; l'agent de 2.6 réconcilie sa branche sur l'intégration au rang .35 (deux entrées de chronique conservées, `facts.Rev` inchangée avec empreinte régénérée pour la valeur de `GrammarRev` et trois fichiers de `facts/` requalifiés, `source.Rev` et `shapes.golden` inchangés — s'ils rougissent c'est un signal).
+
+**Prochaine étape** : réconciliation puis fusion du volet facts de 2.6 (équivalence + corpus gate par le pilote sur la tête fusionnée), lancement de 2.5.e + 2.5.g (brief prêt), puis 2.6 volet grammar/profile/replay, 2.6.3, clôture M2.
+
+## [2026-09-16] Chantier décodeur — fusion du lot 2.5.h (type HighlightEvent en domaine), 2.6 volet facts lancé en parallèle
+
+**Statut** : Complété (fusion) / En cours (2.5.b, 2.6 volet facts+source).
+
+**Décision technique principale.** Le type d'ingestion des temps forts (`analysis.HighlightEvent`, 7 champs, 4 constantes) remonte en `domain/highlightevent`, paquet feuille à zéro dépendance (`go list -deps` : lui seul). Pas `games/canonical` : `canonical.HighlightEvent` existe déjà et désigne la forme INTER-TITRES relue en base ; le type porté ici est la forme d'INGESTION de la table `highlight_events`, remplie par le film ET par l'import OpenSpartan pour un seul écrivain — un type de `domain/`. 30 consommateurs re-pointés sans alias ; golden forme + sortie (275 événements sur la fixture v41, sha figé) posé AVANT le mouvement, inchangé après, non-mutisme prouvé par deux mutations. Décision prise par l'exécuteur faute de pouvoir demander, acceptée par le pilote : un PONT transitoire (`analysis/highlight_event_pont_film.go`, 5 renvois) tient les 11 fichiers de `film/` que 2.5.b mute en parallèle et dont `facts/killsource/feed.go` est une racine hachée de `GrammarRev` ; il est gardé par `TestPontTempsFortVersFilmNEstPasPerime` qui ROUGIT le jour où plus rien ne le cite — supprimé par 2.5.e. Découverte D1 (2.5.h) : la mesure de D4 (2.5) confondait deux homonymes (44 fichiers concernés, pas 60) ; D3 (2.5.h) : deux vocabulaires pour les mêmes quatre types d'événement (`highlightevent.EventType*` et `canonical.Event*`) — un choix de contrat, pas un déplacement.
+
+**Fusion.** 3734845d0 : 84 paquets verts, `go vet` propre, lint 0 issue, `film/` intact.
+
+**Parallélisation (question de l'utilisateur : « 2.6 peut pas commencer ? »).** Réponse : à moitié. Le volet facts + source de 2.6 démarre sur 3734845d0 (`source.Rev`, `facts.Rev` héritière de `KillSourceDecoderRev` dont la constante descend de `sync/killcollector`, `film/types` pour les 22 types de faits et de source avec `shapes.golden`, SYNC_GUIDE au présent) ; le volet grammar/profile/replay et 2.6.3 (dernier commit du jalon par construction) attendent 2.5.b et 2.5.e.
+
+**Prochaine étape** : fusion 2.5.b (voie libre pour ses gates au rendu), puis 2.5.e + 2.5.g, fusion du volet facts de 2.6, puis 2.6 volet grammar/profile/replay, 2.6.3, clôture M2.
+
+## [2026-09-16] Chantier décodeur — fusion du lot 2.5 (quatre couches sur cinq, déplacements purs), arbitrage V19
+
+**Statut** : Complété (fusion) / En cours (2.5.b, 2.5.h).
+
+**Décision technique principale.** Le lot 2.5 (`feat/decfilm-25`, 5 commits) fusionne dans l'intégration avec quatre couches en place par `git mv` purs, une par commit, chacune gatée par une équivalence courte (10 films, 0 différence) : `analysis/objectiveevents` -> `film/facts/objectives`, `filmdec` -> `film/grammar` (+ `grammar/weaponv3`), `analysis/filmsource` -> `film/source`, `killsource` + `replay/fallback` -> `film/facts/`. L'ORDRE de la note (§2.7 : `filmsource` d'abord) a été inversé sur mesure : descendre la source en premier faisait rougir D9 sur 17 fichiers (`objectiveevents` et `weaponv3` vivaient encore sous `analysis/` et l'importaient). `GrammarRev` .29 -> .33 (une entrée par couche, « déplacement pur, sortie identique »), `KillSourceDecoderRev` inchangée. Ratchet des couches : `aretesTolerees` 10 -> 3 (toutes vers `analysis` racine, descentes de symboles restantes), `paquetsHorsLieuToleres` 3 -> 0 puis SUPPRIMÉE avec son mécanisme — R2 (le lieu) est le premier axe passé STRICT ; D9 3 -> 1. Baseline de tests re-pointée (86 lignes `objectiveevents`), `Makefile` + `ci.yml` : `film/facts/...` entre dans les jobs unitaire et couverture (il en sortait silencieusement).
+
+**Arrêt propre, mesuré (V19).** 2.5.b (`profile`) n'est PAS un déplacement pur : `i0_layout.go` et `profile.go` balayent le film (détection du découpage i0, `offline_biped`, `default_state_arch`…) — c'est de la grammaire ; 43 déclarations des 7 fichiers de profil sont référencées ailleurs dont 12 privées. Arbitrage du pilote : **profile = DONNÉES** (types, table, catalogue descendent ; la détection reste en `grammar` et rend des valeurs de profil ; sens `grammar -> profile`, jamais l'inverse) — lot d'extraction à part. Item neuf **2.5.h** : le type `analysis.HighlightEvent` remonte en `domain/` (~60 consommateurs title-agnostic) AVANT que son parseur descende en `grammar` (V15 (4)) — parallélisable avec 2.5.b. 2.5.e (façade, bascule `film/internal/`, ratchet strict, règle neuve pour D6 : `replay` n'importe pas `source`) et 2.5.g viennent après. D7 (chemins morts dans `COMMANDS.md`) traité dans 2.5.e.
+
+**Gates.** 4 équivalences courtes 10/0 ; corpus gate `--base=7d6ecfaf6` **14/14 `ok`, 60 -> 60, 0/0/0, aucun témoin absent** (11,2 min) ; 40 cuissons, 40 identiques. Fusion : batterie complète + `go vet ./...` + lint.
+
+**Prochaine étape** : lancer 2.5.b (extraction profile) et 2.5.h (type HighlightEvent) en parallèle ; puis 2.5.e + 2.5.g ; puis 2.6 ; clôture M2 (fusion origin/feat/v75 dans l'intégration d'abord, recuisson du parc à demander).
+
+## [2026-09-16] Chantier décodeur — fusion du lot 2.4 (une seule porte aux octets), feat/v75 remis à niveau, 2.5 lancé sur base provisoire
+
+**Statut** : Complété (fusion 2.4) / En cours (2.5).
+
+**Décision technique principale.** Le lot 2.4 (`feat/decfilm-24`, 4 commits, tête 272a670f5, 248 fichiers) fusionne dans l'intégration : la façade `analysis/filmsource` porte désormais toute lecture brute (curseur `Bits`, quatre conventions de bord NOMMÉES `BitsAt` / `BitAt` / `BitsTolerants` / `BitsTronques` qui ne se fondent pas parce que chacune est la convention mesurée d'un lecteur réel, `Paquets` = le seul marcheur, `Inflate` / `Decompresser`, `U16LE` / `U32LE` / `U64LE`) ; `killsource.evReader` et `filmdec.BitReader` (lui-même non canonique : il portait son propre `buf` + `pos`) sont absorbés, `Lecteur` / `LecteurSur` décorent sans lire ; cinq marcheurs de paquets deviennent un (la note en comptait deux, D1 (2.4) quatre) ; le ratchet `no_raw_film_bytes_outside_source_test` descend de 78 à 9 couples (les 9 = cibles 2.5.c), `sitesZlibAutorises` −5, D9 5 -> 4 ; `GrammarRev` .27 -> .29 avec une QUATRIÈME racine hachée (`analysis/filmsource`) — sans elle le lot ouvrait le trou qu'il ferme ; `KillSourceDecoderRev` inchangée, sortie identique à l'octet PROUVÉE (golden des chaînes d'événements produit par le code de la base, 1 121 lignes, 1 528 kill-events ; équivalence bit à bit sur 109 168 positions réelles). Découverte traitée parce que le gate la bloquait : la chronique de `GrammarRev` dépassait 500 L — rotation dans `grammar_rev_chronique.go` + `grammar_rev_chronique_archive.go` (D2 (2.4)).
+
+**Gates.** Équivalence 20 films : **20 identiques / 0 différent** (références re-figées de 8e08d00ed) ; corpus gate `--base=88f1a1115` : **14/14 `ok`, 60 -> 60, 0 gain, 0 perte, 0 changement, exit 0** (771 s de cuisson). Un premier passage refusé (14/14 ABSENT, `open shared RO`) : la base partagée était tenue par un backfill killsource lancé par une AUTRE session Claude de l'utilisateur ; `--allow-missing` jamais passé, rejoué après libération — consigné, pas effacé (D5 (2.4) : « un décodage à la fois » n'est tenu que par la discipline des sessions ; `replay-equiv` ne touche pas la base et a tourné en parallèle sans le voir). À la fusion : conflit D9 (`no_title_package_in_analysis_test.go`, 2.4 retire `source_test.go`, 2.5.f retire `sessionusage` — les DEUX retraits, 3 entrées) et conflit SÉMANTIQUE avec 2.6.0 (`film/revision` hachait trois racines et lisait la chronique dans `grammar_rev.go` ; désormais quatre racines dans l'ordre de `racinesGrammaire`, exclusion des trois fichiers de chronique, lecture de `grammar_rev_chronique.go`), résolus d'abord sur la base provisoire de 2.5 puis repris à l'identique ici.
+
+**Hors chantier, même journée.** GO utilisateur : le feat/v75 local du checkout principal (34 devant / 192 derrière, schéma 54) est fusionné avec origin/feat/v75 (M1, schéma 60) en 1f4d564aa sans conflit, OpenAPI et types web régénérés, 34 paquets + tsc verts ; la session sync a rebâti le serveur dessus (dry-run : 76 artefacts à jour) et poussé 23f5df04b après avoir déclaré durables deux imports cross-feature de son lot amis. Le parc (76 artefacts, schéma 60) n'a jamais été touché par le serveur périmé (cuisson coupée à 17:58, vérifié 76/76).
+
+**Prochaine étape** : 2.5 (lancé sur base provisoire 7d6ecfaf6 = intégration + 2.4 + correctifs `revision`, voie libre pour ses équivalences courtes), puis 2.6, puis clôture M2 (fusionner origin/feat/v75 dans l'intégration AVANT la fusion inverse ; recuisson du parc à demander, D3 (validation)).
+
+## [2026-09-16 — date VRAIE] Chantier décodeur — ERRATUM DE DATES, fusions 2.6.0 et revue-M2, revue adversariale anticipée
+
+**Statut** : Complété.
+
+**Erratum.** L'horloge NTP du poste et les dates de commit git font foi : nous sommes le 2026-09-16. Les entrées de ce journal et du plan étiquetées « 2026-09-17 » et « 2026-09-18 » (M1 clos, lots 2.1 à 2.10, V15 à V17, fusions 2.3 et 2.5.f) datent toutes du 2026-09-16 (ou de la nuit du 15 au 16) ; l'ordre des entrées est juste. Pas de réécriture de masse : les noms `*_2026-09-17.md`, le tag `parc-schema54-avant-M1-2026-09-17` et la sauvegarde `replays_schema54_avant_M1_2026-09-17` restent, avec cette note (plan §1.4 V18). Règle appliquée désormais : `date +%F` avant toute date écrite.
+
+**Décisions et résultats.** (1) Revue adversariale ANTICIPÉE des lots M2 déjà fusionnés (workflow Opus, 4 lentilles, 2 sceptiques par constat, 34 agents) : 15 constats bruts, 8 confirmés (1 P1 : `docs/SYNC_GUIDE` décrivait au présent les quatre révisions du lot 2.6 ; 7 P2), 7 réfutés dont un cluster de quatre lentilles sur `replay-corpus-gate/finaliser` réfuté pour pré-existence seulement. (2) Lot correctif `revue-M2` fusionné (2fbc6cbf2) : SYNC_GUIDE daté et mis au futur, ratchet 2.10.2 avec test de péremption, godocs de `collect`/`decodeFilmForMatch` remises en place, conformité table 2.1 x catalogue dérivée du corps de `TableProfil` par go/parser, corpus gate : le verdict des témoins présents prime sur la couverture incomplète. Les trois constats `filmdec` (doc inversée) attendent 2.5.c (§4 D2 (revue M2)). (3) Lot 2.6.0 fusionné (73502aec8) : `film/revision`, mécanisme d'empreinte partagé, égal aux deux goldens existants du premier coup, arbitrage chemin relatif à la racine, garde-rail contre toute copie du motif. (4) Lot 2.4 livré (ccf6f3a88, 248 fichiers, GrammarRev .29) : équivalence 20/20 à zéro différence sur la branche ; corpus gate en attente de la base partagée, tenue par un backfill killsource lancé par une AUTRE session Claude de l'utilisateur (PID 39636) — la règle « un décodage à la fois » n'est pas tenue par la machine quand deux sessions décodent ; consigné, pas d'action sur ce processus.
+
+**Prochaine étape** : corpus gate 2.4 dès la libération de la base, fusion 2.4 (`merge_24.sh`), lancement 2.5 (brief prêt), puis 2.6 (brief prêt) ; recuisson du parc à la clôture M2 à demander à l'utilisateur (D3 (validation)).
+
+## [2026-09-18] Chantier décodeur — fusion du lot 2.3 (plus de globale, plus de verrou), correctif CI himap, lancement 2.4 / 2.5.f / mesure D1 (validation)
+
+**Statut** : Complété (fusion) / En cours (lots lancés).
+
+**Décision technique principale** : le lot 2.3 (`feat/decfilm-23`, 9 commits, tête 7c066c603) fusionne dans l'intégration en 88f1a1115 sans conflit : zéro variable de paquet écrite dans `filmdec` (ratchet 21), `LockProcessDecode` et `decode_gate.go` supprimés (373 sites), la calibration de `killsource` voyage explicitement (`Result.ProfilCalibre` -> `replay.Options.ProfilDeBalayage` -> `FilmContext`), `TestDeuxFilmsEnParallele` sous `-race`, `GrammarRev` .26 -> .27. Le ratchet `no_raw_film_bytes_outside_source_test` (né le 17/09, APRÈS la base de 2.3) rougit à la fusion sur `FilmContext.NouveauLecteur` : entrée DATÉE ciblée 2.4.2 (77 -> 78 couples), parce que c'est la forme même que la façade absorbe — pas un élargissement. Avant la fusion, correctif CI 52e8997e7 : trois commentaires du lot 2.10 citaient la bibliothèque du jeu en clair (ratchet `himap`), runs rouges depuis 07d1bbefc.
+
+**Résultats observés** : équivalence 20 films : 20/20 différents sur les seules étapes `killsource` et `vehicles`, toutes deux prouvées au champ près comme FORME (V14) — `vehicles` par un agent dédié : 278 chemins concordants, 3 divergents emboîtés sur `ObjectDeathStats.Config` (Mouvement -> Profil), faits véhicule identiques à l octet (V14 : forme de `killsource.Result`, re-figeage contrôlé de la seule ligne `killsource`) ; corpus gate 14 témoins `--base=52e8997e7` : 14/14 `ok`, 60 -> 60, 0/0/0, aucun absent. D4 (2.3) et D5 (2.3) consignés par l'exécuteur au §4 (base d'atterrissage bipède de `c75f33b8` 512 -> 508 par `param_4`, canal positions non mesuré).
+
+**Parallélisation** (base 88f1a1115) : lot 2.4 lancé (porte unique aux octets ; worktree avec jonctions ; décodage sur « voie libre » seulement) ; lot 2.5.f lancé en parallèle (portage des 4 symboles d'usage de `sessionusage`, D9 tombe ; carve-out écrit dans le brief de 2.4) ; mesure D1 (validation) lancée (deux worktrees détachés 8f35efb72 / da258bf76, instrument non suivi, décodage sur « voie libre »). Worktree 2105 retiré (0 jonction, cache 1 404 vérifié).
+
+**Mesure D1 (validation) FERMÉE** (agent Opus, deux worktrees détachés 8f35efb72 / da258bf76, six films) : comportement voulu — sous la table saine de `param_4`, M1 rend toujours au moins autant d'impulsions que la base ; les valeurs du parc (2 -> 0 sur `a6ae19fb`) sont reproduites à l'unité en forçant `param_4 = 2`, l'état de processus que `killsource.resetGlobals` laissait à la cuisson suivante et que 2.3 supprime ; les deux lectures de la base étaient fausses (niveau du composant voisin, recadrage du lot 1.2). Suites consignées : D3 (validation) — le parc recuit le 16/09 porte ce bruit d'état de processus, invisible au corpus gate (processus isolés) : recuisson REQUISE à la clôture de M2, à demander à l'utilisateur ; publier `AbilityImpulseStats` dans la couverture ; garde-rail killsource-puis-cuisson. D4 (validation) — `0d265ab0` diverge de son artefact dès i56 (`ammoRefused`), même cause présumée. **CI** : 88f1a1115 et 6fee1e5b4 verts sur tous les jobs (le job de couverture rouge depuis 07d1bbefc est réparé).
+
+**Prochaine étape** : voie libre à 2.4 puis à la mesure D1 (un décodage à la fois) ; fusion 2.5.f dès rendu ; 2.5.a-e après 2.4 ; puis 2.6, clôture M2.
+
+## [2026-09-17] Chantier decodeur — VALIDATION DE LA RECUISSON M1 sur le parc entier (76 artefacts) par workflow Opus : 2 221 pertes sur 2 235 adossees a une piece, 14 residuelles sur un seul canal, sauvegarde conservee — Complete
+
+**Decision technique principale.** Le corpus gate de cloture ne voyait que 14 temoins base contre
+tete ; la recuisson du parc compare des artefacts cuits AVANT les finitions v7.5 (13/09, jamais
+recuites) a la tete M1. Un workflow (replay-diff sur 76 couples -> 4 classeurs par quart -> 4
+sceptiques -> synthese) classe chaque perte dans les sept familles ecrites de la cloture M1 ou la
+declare hors famille ; la synthese tranche les desaccords sur piece (journal du 13/09, notes de
+recherche, artefacts).
+
+**Resultats observes.** 76/76 couples, 54 -> 60, 4 030 gains, 2 235 pertes, 24 changements.
+Deux familles LEGITIMES absentes du bloc de cloture, venues des finitions : H = denominateur des
+objectifs assaini (D10 du 13/09 : `8bc6074f` 218 -> 99 et `32d9a94f` 148 -> 55 retrouves a
+l unite, publication identique au bit pres) ; I = socles de drapeau neutres (`bc60b4d9` perd
+exactement ses 2 spans « au socle » d un troisieme drapeau inexistant, aucun span de portage perdu
+sur le parc). Zero perte sur points, tirs, kills, grenades, objectifs publies, score, projectiles,
+roster, horloges. Residu : 14 lignes / 7 artefacts — 8 lectures brutes d impulsion de capacite en
+moins sur 6 films (non publiees) = D1 (validation), mesure a faire base vs M1 sur `a6ae19fb` ; et
+`coverage.vehicles.shotsNoRide` a polarite inverse non declaree = D2 (validation), deux lignes de
+`polarite.go`. Verdict : sauvegarde `replays_schema54_avant_M1_2026-09-17` CONSERVEE jusqu a D1.
+
+**Prochaine etape.** Mesure D1 avec la voie (instruction bornee) ; D2 au prochain lot d outillage.
+
+---
+
+## [2026-09-17] Chantier decodeur — preparation 3.6, seconde passe par workflow (Opus) : ti=43 complet (22/22 grammaires nommees), ti=9 i9 et ti=35 i63 releves, 8 verifications, 1 discordance tranchee — Complete (intégration e369495eb)
+
+**Decision technique principale.** Meme harnais que la premiere passe (lecteurs paralleles -> un
+sceptique par note qui re-derive depuis Ghidra sans lire la note -> synthese qui tranche et commet
+une fois), repris apres un redemarrage de session avec `model: opus` pose sur les appels restants :
+le cache d un workflow est indexe par (prompt, opts), les resultats deja rendus sont conserves.
+
+**Resultats observes.** 7 agents, 0 erreur ; 13 grammaires (ti=43 i30-i40 en deux groupes, ti=9 i9 :
+R(1) porte, R(2), puis 4 emplacements « text » a 5 formes ; ti=35 i63 : corps d etiquette) ; 8
+verifiees (ti=43 : 3 + 17 elements concordants ; ti=9/ti=35 : 20 elements, 19 concordants, la
+discordance = trois adresses de slots de descripteur mal transcrites, tranchee par la synthese).
+Addendum §10 de `NOTE_3_6_SYNTHESE_2026-09-17.md`, tables §2 §3 §7 marquees perimees vers §10.
+Reste non elucide : ti=40 (preuve sur film requise avant toute decompilation), quelques corps
+d etiquette de ti=35 i63, nommes avec ce qui les leve.
+
+**Prochaine etape.** Les ports 3.6.a-e (M3, apres M2) deviennent des reports de grammaires deja
+relevees ; 2.3 en cours (seul muteur) ; tranche 4 killsource des que la base est libre.
+
+---
+
+## [2026-09-17] Chantier decodeur — preparation 3.6 par WORKFLOW ultracode : 53 grammaires relevees par six lecteurs Ghidra en parallele, 169 elements re-derives par six sceptiques, 2 discordances tranchees — Complete (intégration d432a4913)
+
+**Decision technique principale.** Premier usage du mode ultracode sur le chantier : un script
+deterministe (sonde de concurrence du pont Ghidra -> six lecteurs par groupe de composants, une note
+par lecteur -> un sceptique par note qui re-derive trois grammaires SANS lire la note d abord -> une
+synthese qui tranche les discordances et commet une fois). Frontiere de fichiers : notes
+`.ai/V7.5/film_re/` et plan seulement, Ghidra en lecture seule, aucun decodage de film. Le pont HTTP
+Ghidra supporte la lecture concurrente (deux decompilations en ~280 ms chacune ; 12 agents l ont
+sollicite en parallele sans erreur).
+
+**Resultats observes.** 15 agents, 0 erreur, 50 min, ~2,9 M jetons. 53 grammaires (43 a porter ou
+partielles + 10 recontroles) ; ti=12 : les 26 composants couverts, les 8 instances
+`visual-state-groups` resolues (descripteur commun `0x143d081b0`, lecteur `FUN_140dbe1bc`) ; ti=35 :
+les 4 partiels releves (`i63` garde des corps d etiquette non elucides, nommes) ; ti=43 : 12 / 22
+grammaires (les 11 restantes sont nommees, decompile sans film) ; ti=40 : rien sans preuve sur film
+(bloquant vide au golden) ; ti=42 : negatif mesure, pas un port. Verification : 169 elements, 167
+concordants, 2 discordances (formule `b7 = 1` sur ti=43 i19-i21 ; enumeration du bloc lourd de
+ti=43 i11), les deux tranchees en corrigeant la note. Le plan disait 52 composants pour ti=35 : 64.
+`NOTE_3_6_SYNTHESE_2026-09-17.md` : table par archetype, ce que chaque port demandera (3.6.a-e),
+ordre conseille, non-elucides nommes avec ce qui les leve ; 3.6.0 dimensionne au plan.
+
+**Prochaine etape.** Les ports 3.6.a-e sont des lots M3 (apres M2) : ils deviennent un report de
+grammaires deja relevees. Reste a relever sans film : ti=43 i30-i40, ti=9 i9, les corps d etiquette de
+ti=35 i63 ; ti=40 attend une preuve sur film.
+
+---
+
+## [2026-09-17] Chantier decodeur — lot 2.2 (M2, pas 2 : les lecteurs recoivent le profil) FUSIONNE ; V14 (D4 = zero difference de CONTENU) ; lots paralleles 2.8, 2.9, 3.1-donnees, preparation M3 fusionnes ; ultracode active — Complete (intégration 39190ae2f + refs)
+
+**Decision technique principale.** V14 : l equivalence hache aussi la FORME des structures observees
+(`digest.Of`, champs exportes ou non) ; quand un pas structurel change la forme d un type de balayage
+sans qu un octet cuit bouge, la difference se CLASSE au type et au champ pres (digest par type imbrique,
+base contre tete) et la seule ligne d etape se re-fige a la fusion sous controle des tsv ; le corpus gate
+(base contre tete, 14 temoins) est la preuve du contenu. Cas 2.2 : `filmdec.FrameConfig` 5 -> 7 champs
+(`Mouvement`, `Obs`), recopie par `ObjectDeathStats.Config` dans `VehicleScan` -> etape `vehicles`
+differente sur 20 films, corpus gate 0/0/0. Le premier classement de l executeur (« reference perimee »)
+etait FAUX et a ete conteste sur pieces (20/20 identiques a quatre tetes) ; la cause a ete prouvee par
+digest a la base et a la tete. V12 / V13 : parallelisation hors grammaire (2.8 outillage des gates, 2.9
+clef de fusion killsource avec revue adversariale a deux rondes, 3.1 volet donnees, preparation M3 par
+Ghidra) pendant que la chaine 2.2 -> 2.3 reste a un muteur. Ultracode active par l utilisateur : les
+releves 3.6 tournent en workflow (6 lecteurs Ghidra + 6 sceptiques + synthese).
+
+**Resultats observes.** 2.2 : ratchet `filmdecVarsGeles` 94 -> 43, GrammarRev .21 -> .26, corpus gate
+14/14 a 0, equivalence 20/20 identiques apres re-figeage de `vehicles` seul. 2.9 : la clef
+`(match_id, time_ms)` est unique DANS chaque cote (0 instant multi sur 138 807 sur Infinite), jamais
+ENTRE les deux ; appariement par la victime, repli restreint a l instant classique 1-1 avec une victime
+absente et des tueurs non contradictoires ; deux rondes de revue (P1 convergent des deux relecteurs
+sur le repli par elimination, corrige ; ronde 2 : 1 P1 de documentation + exposition residuelle, tranche
+par le pilote : tueur divergent sur une paire de repli = refus, l erreur reste sur une paire a meme
+victime — conforme a la mecanique « un tueur par victime a l instant T », 0 tueur divergent observe sur
+844 films). 2.8 : changements nommes, codes de sortie 0/1/2/3/4, reessai d export, `--temoins`,
+`--mem-gib`, replay-equiv toutes etapes. 3.1 donnees : catalogue `film_profiles.json` = table 2.1 (23
+entrees), paquet `filmprofile`, outil, runbook. Preparation M3 : 3.5 clos (constante de code, bande
+[512, 767], 7808/8064/128 = records fautifs combles sans borne), 57 ecrivains nommes, 2 bloquants
+resolus, ti=42 negatif mesure. Backlog killsource : 844 / 1 386 films, temoin 9f9b19e5 ecrit.
+Incidents de pilotage consignes : commit de fusion parti rouge (grep etroit), golden abime par un
+`sed i\` mal adresse, ratchets rougis en CI (taille, lint, chemin du jeu) et corriges par commits
+suivants — CI verte au niveau job sur ff80ec59c.
+
+**Prochaine etape.** 2.3 en cours (seul muteur) ; tranche 4 killsource (~540 films) ; synthese des
+releves 3.6 ; puis 2.4, 2.5, 2.6 et cloture M2 (ADR 0034 amende, fusion feat/v75).
+
+---
+
+## [2026-09-17] Chantier decodeur — lot 2.7 (M2, pas 7 : scission des fichiers > 500 L) FUSIONNE en deux volets paralleles, gate groupe a zero difference — Complete (intégration c6305127b)
+
+**Decision technique principale.** Le lot 2.7 a ete execute par DEUX executeurs en parallele avec une
+frontiere de fichiers ecrite : 2.7g (grammaire : `filmdec/` + `sync/killcollector/`, ratchet de taille,
+benchstat) et 2.7p (publication : paquet `replay`, `BuildFromPositions` 474 L -> 14 passes sur un
+assemblage prive, plus aucune fonction > 80 L). UN SEUL gate de decodage a la fin, sur la tete fusionnee,
+base = la tete d avant la premiere fusion (chemin critique : pas de gate par fusion quand un gate
+groupe protege la meme chose). Les executeurs renumerotent eux-memes leur `GrammarRev` au rang de
+fusion dans leur worktree avant que je fusionne (2.1 -> .18, 2.7g -> .19), en gardant leur entree de
+chronique integrale.
+
+**Resultats observes.** Equivalence 20/20 identiques ; corpus gate 14/14 a 0 / 0 / 0, schema 60,
+aucun temoin absent. A la fusion, trois rouges attendus et servis : (1) `collector.go` scinde par
+2.7g alors que le lot 1.9.7 y avait ajoute 41 lignes -> portees dans `collector_metrics.go` ;
+(2) le ratchet de taille fige sur la base du lot a rougi sur 11 fichiers grossis cote integration
+(vague 2, schema 60) -> plafonds re-mesures a la date d entree du ratchet dans l integration,
+commentaire date ; puis six fichiers `replay` sortis de la table a la fusion 2.7p ; (3) deux `unparam`
+sortis de la baseline lint par la scission -> `//nolint` dates (le lot 2.2 porte ces largeurs au
+profil), ce qui a fait bouger l empreinte de `filmdec/` -> GrammarRev .20 avec son entree. Deux
+erreurs de pilotage consignees en memoire : un commit de fusion parti avec un test rouge (sortie
+filtree par un grep trop etroit, commit non conditionne au verdict du paquet) et un golden abime par
+un `sed i\` mal adresse (restaure depuis git). CI verte au niveau job sur c6305127b ; les trois
+commits intermediaires (1ab915cfd, 8d05aa6b7, e2b389c07) ont une CI rouge, chacun corrige par le
+suivant. Decouvertes des executeurs au §4 : `funlen` ignore les commentaires (le seuil 80 L n est
+garde par aucun instrument), le registre des replis epingle le nom de fichier des sites (2.5),
+`ecs_table.tsv` aux trois quarts faux avant le lot, `replayClock{...}` ecrit 10 fois.
+Worktrees 21 / 27g / 27p retires (jonctions deliees et verifiees d abord, cache 1 386 / 1 386).
+
+**Prochaine etape.** Lot 2.2 en cours (six familles, rang de fusion .21) ; tranche 2 du backlog
+killsource pendant que la voie est libre ; puis 2.3 a 2.6 et la cloture M2.
+
+---
+
+## [2026-09-17] Chantier decodeur — lot 2.1 (M2, pas 1 : le profil resolu une fois) FUSIONNE a zero difference — Complete (intégration 1f7e48652)
+
+**Decision technique principale.** Fusion manuelle (pas le script) pour conserver l entree de
+chronique integrale de l executeur : `grammar_rev.go` garde les blocs ENTREE .16 et .17 de la tete
+ET le bloc .18 du lot, une seule constante `GrammarRev = .18` (l executeur avait renumerote .16 -> .18
+lui-meme dans son worktree, transition « .17 -> .18 », avant la fusion) ; golden de grammaire : les
+deux chroniques, une seule ligne de valeur, empreinte regeneree par le port ; golden killsource :
+tete conservee (`killsource-2026-09-16.2`, la revision ne bouge pas — choix explicite du lot,
+lignes produites identiques), empreinte regeneree par son port ; plan : les deux cotes. Gates de
+M2 joues sur la tete fusionnee, pas sur la branche seule.
+
+**Resultats observes.** Batterie film + satellites + archlint + api verte ; CI verte au niveau
+job ; equivalence 20/20 identiques ; corpus gate 14/14 a 0 / 0 / 0 (deux temoins rejoues avec un
+manifeste reduit apres l alea d export des faits, D2 (cloture M1) : le serveur local tenait la
+base en ecriture a cet instant, le gate ne reessaie pas). Le lot livre `filmdec.Profile` immuable
+resolu une fois a partir des trois cles ECRITES par le film, table par cle a provenance
+(relue / mesuree / presumee, six presumees gelees par test), double ecriture datee vers les
+globales (retrait cible 2.3), trois sites de `ParseHighlightEvents` au profil ; `SchemaVersion`
+60 inchangee, `filmdecVarsGeles` 94 inchange.
+
+**Prochaine etape.** 2.7g : gates avec la voie puis renumerotation .19 et fusion ; 2.7p ; 2.2-2.6 ;
+tranches killsource entre les gates.
+
+---
+
+## [2026-09-17] Chantier decodeur — M1 CLOS : feat/v75 avance a da258bf76, parc recuit au schema 60, backlog killsource tranche 1 — Complete
+
+**Decision technique principale.** Fusion en deux temps : `origin/feat/v75` d abord DANS l integration
+(da258bf76, un conflit — golden de forme — regenere par son port ; tests, typecheck, lint, vitest,
+equivalence 20/20 apres fusion, CI verte), puis avance rapide de `feat/v75` vers cette tete (CI
+verte a nouveau) apres une fenetre de 5 min aux cinq sessions voisines (aucune objection). Le
+checkout principal N est PAS avance : il porte un journal et un plan non commites d une autre
+session (« amis par joueur et invitations », 15/09), laisses a l arbitrage de l utilisateur ; le
+serveur local est reconstruit depuis le worktree d integration au meme commit. Recuisson du parc
+serveur ARRETE (le CLI killsource exige la base partagee en ecriture, meme en `--dry-run`, et la
+resolution des noms EN se degrade si le serveur tient metadata) ; artefacts precedents conserves
+(`replays_schema54_avant_M1_2026-09-17`) et binaire precedent tague (`parc-schema54-avant-M1-2026-09-17`
+sur 2ddef392c) jusqu a validation.
+
+**Resultats observes.** 76/76 artefacts construits (schema 54 -> 60, code 0, 6 s a 1 min 47 par film,
+pic 518 Mio). Backlog killsource mesure au `--dry-run` : 1 386 films, 41 723 chunks, 1 967 matchs en
+credit seul ; tranche 1 (`--limit 250`) : 249 films ecrits, UN refus — `9f9b19e5@63757`, « victime
+divergente entre credit et film » : la clef `(match_id, time_ms)` de la fusion a apparie deux morts
+distinctes a la meme milliseconde, PREMIERE occurrence (le garde-fou disait 0 sur 73 589) ;
+consigne D1 (cloture M1), hors lot. Plan : « M1 CLOS » sous le titre, bloc « CLOTURE M1 EXECUTEE »
+point par point. Critere d entree de M2 tenu (M1 fusionne, corpus re-fige). Lot 2.1 renumerote a
+`grammar-2026-09-15.18` par son executeur (d1d6f76ef), pret a fusionner.
+
+**Prochaine etape.** Serveur relance ; fusion 2.1 puis gates zero difference (equivalence 20 +
+corpus gate vs da258bf76) ; voie au 2.7g ; tranches killsource suivantes entre les gates.
+
+---
 ## [2026-09-16] Robustesse du sync par le pool : verdict fidèle, rejeu du 429, plafond de slots sains, migrations CLI, rang de carrière public — Complété (branche `wt/sync-robustesse`, non poussée)
 
 **Six défauts d'une même passe réelle** (premier `sync-full` servi par le pool, Nuzzles,

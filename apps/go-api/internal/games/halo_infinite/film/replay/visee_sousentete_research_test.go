@@ -41,7 +41,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -61,7 +61,7 @@ func sousEnteteTaux(pk []env114Paquet, pos int) (float64, int) {
 			continue
 		}
 		total++
-		uns += int(filmdec.ReadBitsAtForDiag(p.pay, pos, 1))
+		uns += int(grammar.ReadBitsAtForDiag(p.pay, pos, 1))
 	}
 	if total == 0 {
 		return 0, 0
@@ -78,7 +78,7 @@ func sousEnteteSousSeuil(pk []env114Paquet, pos, w int, borne uint32) float64 {
 			continue
 		}
 		total++
-		if filmdec.ReadBitsAtForDiag(p.pay, pos, w) < borne {
+		if grammar.ReadBitsAtForDiag(p.pay, pos, w) < borne {
 			ok++
 		}
 	}
@@ -93,7 +93,7 @@ func sousEnteteAncre(t *testing.T, nom string, pk []env114Paquet) {
 	t.Helper()
 	var longs []env114Paquet
 	for _, p := range pk {
-		if p.nBits > sousEnteteAncre105+5 && filmdec.ReadBitsAtForDiag(p.pay, 7, 1) == 0 {
+		if p.nBits > sousEnteteAncre105+5 && grammar.ReadBitsAtForDiag(p.pay, 7, 1) == 0 {
 			longs = append(longs, p)
 		}
 	}
@@ -125,7 +125,7 @@ func sousEnteteDecode(p env114Paquet, s int) (payload uint32, g0, g1, g2 uint32,
 		if pos+n > p.nBits {
 			return 0, false
 		}
-		return filmdec.ReadBitsAtForDiag(p.pay, pos, n), true
+		return grammar.ReadBitsAtForDiag(p.pay, pos, n), true
 	}
 	pos := 7 + s
 	if g0, ok = lire(pos, 1); !ok {

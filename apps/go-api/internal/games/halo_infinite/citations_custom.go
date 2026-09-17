@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 // init enregistre DispatchCustom auprès du moteur citations canonical
@@ -138,12 +139,12 @@ func computeAnnexionForcee(ctx domain.CitationContext) int {
 		total := 0
 		for _, e := range ctx.Events {
 			switch e.EventType {
-			case analysis.EventTypeMode:
+			case highlightevent.EventTypeMode:
 				streak++
 				if streak%3 == 0 {
 					total++
 				}
-			case analysis.EventTypeDeath:
+			case highlightevent.EventTypeDeath:
 				if e.XUID == ctx.PlayerXUID {
 					streak = 0
 				}

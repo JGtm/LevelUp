@@ -20,11 +20,11 @@ package killcollector
 import (
 	"context"
 	"database/sql"
+	_ "github.com/duckdb/duckdb-go/v2"
 	"testing"
 
-	_ "github.com/duckdb/duckdb-go/v2"
-
 	"levelup/go-api/internal/domain/killscope"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
 )
 
@@ -236,7 +236,7 @@ func TestCreditRecomposeAvecLEnrichissementDuFilm(t *testing.T) {
 func ecrirePasseDeFilm(t *testing.T, db *sql.DB, matchID string, morts int) {
 	t.Helper()
 	batch := persist.KillSourceBatch{
-		MatchID: matchID, DecoderRev: KillSourceDecoderRev, Publishable: true,
+		MatchID: matchID, DecoderRev: decfilm.Rev, Publishable: true,
 	}
 	for i := 0; i < morts; i++ {
 		batch.Deaths = append(batch.Deaths, persist.KillEventInsert{

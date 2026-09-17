@@ -53,8 +53,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/games/mappings"
@@ -122,7 +122,7 @@ func (b *Builder) zoneRoles(variant string) []mapvar.Role {
 // isHillVariant dit si la variante du match est un mode a COLLINE — la porte de la METHODE par
 // les positions (`replay.ZoneInput.Hill`). Un seul predicat, pour qu'il ne diverge pas.
 func isHillVariant(variant string) bool {
-	return objectiveevents.ObjectiveTypeOf(variant) == objectiveevents.ObjectiveTypeHill
+	return decfilm.ObjectiveTypeOf(variant) == decfilm.ObjectiveTypeHill
 }
 
 // isVipVariant dit si la variante du match est un mode VIP — la GARDE DE MODE de la couronne
@@ -147,7 +147,7 @@ func isVipVariant(variant string) bool {
 // paquet `replay` ne devine aucun mode. MEME predicat canonique que la colline
 // (`ObjectiveTypeOf`), pour qu'il ne diverge pas du reste de la reconnaissance de mode.
 func isSkullVariant(variant string) bool {
-	return objectiveevents.ObjectiveTypeOf(variant) == objectiveevents.ObjectiveTypeSkull
+	return decfilm.ObjectiveTypeOf(variant) == decfilm.ObjectiveTypeSkull
 }
 
 // isBombVariant dit si la variante est de la FAMILLE BOMB, TOUTES variantes — la GARDE DE
@@ -173,7 +173,7 @@ func isSkullVariant(variant string) bool {
 // d'Assaut de B1 (One Bomb comprise) : les deux gardes portent maintenant le meme predicat,
 // et restent DEUX champs parce qu'elles arment deux balayages distincts.
 func isBombVariant(variant string) bool {
-	return objectiveevents.ObjectiveTypeOf(variant) == objectiveevents.ObjectiveTypeBomb
+	return decfilm.ObjectiveTypeOf(variant) == decfilm.ObjectiveTypeBomb
 }
 
 // tableRoles projette la table du titre sur la variante du match : les memes entrees, le meme

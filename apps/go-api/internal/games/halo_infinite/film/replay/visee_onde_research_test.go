@@ -63,7 +63,7 @@ package replay
 //	    VERDICT POSITIF EXIGE p(max) < 1 %. Aucune conclusion positive sans ce controle.
 //
 // SOUS GARDE (ONDE_FILM, qui doit pointer 00162144 — la chronologie est celle de CE film).
-// Lecture de paquets pure : ni Scan*, ni LockProcessDecode, aucun etat global touche.
+// Lecture de paquets pure : aucun Scan*, aucun etat global touche.
 //
 // USAGE (depuis apps/go-api) :
 //
@@ -74,7 +74,7 @@ import (
 	"math/bits"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -157,14 +157,14 @@ type ondePaquet struct {
 func ondeCollecte(dir string, t0, t1 int64, octets int) ([]ondePaquet, int) {
 	var out []ondePaquet
 	var courts int
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 				continue
 			}
 			tMS := int64(p.TimestampUS / 1000)

@@ -24,11 +24,10 @@ package replay
 // CV <= 0,20). L'ancrage 3 doit ETABLIR plus de pads que l'ancrage 2 (census), sinon le cooldown
 // reste non resolu.
 //
-// CE QUI EST REUTILISE, sans copie : filmdec.ScanFilmVehicleCreations (naissances + position monde),
+// CE QUI EST REUTILISE, sans copie : grammar.ScanFilmVehicleCreations (naissances + position monde),
 // ScanFilmWorldObjectKeyframes (census), ScanFilmBipedPositionsForBand (trace de position),
 // indexBySlot/slotTrack (shots.go), gwPadsCycleFromGaps + gwPadCycleMaxCV (ground_weapon_rules.go).
 //
-// UN SEUL decodage filmdec par process (LockProcessDecode).
 //
 // USAGE (depuis apps/go-api, cache Go ISOLE) :
 //
@@ -45,7 +44,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -82,9 +83,6 @@ func TestV2bCooldown(t *testing.T) {
 	root := v2cRoot()
 	cat := v2cLoadBounds(t)
 
-	release := filmdec.LockProcessDecode()
-	defer release()
-
 	aggs := map[string]*v2cMapAgg{}
 	for _, f := range films {
 		entry, err := cat.Lookup(f.mapKey)
@@ -109,22 +107,22 @@ func TestV2bCooldown(t *testing.T) {
 	}
 }
 
-func v2cProcessFilm(t *testing.T, dir, short8 string, entry filmdec.MapQuantEntry, ag *v2cMapAgg) {
+func v2cProcessFilm(t *testing.T, dir, short8 string, entry profile.MapQuantEntry, ag *v2cMapAgg) {
 	wr := entry.Range()
-	cre, st, err := filmdec.ScanFilmVehicleCreations(dir, &wr)
+	cre, st, err := grammar.ScanFilmVehicleCreations(dir, &wr)
 	if err != nil {
 		t.Fatalf("%s : creations : %v", short8, err)
 	}
 	lives := v2cLivesPerBirth(cre)
 
-	kf := filmdec.ScanFilmWorldObjectKeyframes(dir, filmdec.VehicleTypeIndex)
+	kf := grammar.ScanFilmWorldObjectKeyframes(dir, grammar.VehicleTypeIndex)
 	v2cAttachCensus(lives, kf)
 
-	opt := filmdec.ScanFilmOptions{WorldRange: &wr, RequireTag1: false, DropSaturated: true}
+	opt := grammar.ScanFilmOptions{WorldRange: &wr, RequireTag1: false, DropSaturated: true}
 	if lay := entry.Layout(); lay.Valid() {
 		opt.Layout = &lay
 	}
-	pos, err := filmdec.ScanFilmBipedPositionsForBand(dir, filmdec.NewSlotBand(kf.Band), opt)
+	pos, err := grammar.ScanFilmBipedPositionsForBand(dir, grammar.NewSlotBand(kf.Band), opt)
 	if err != nil {
 		t.Fatalf("%s : trace position : %v", short8, err)
 	}
@@ -141,7 +139,7 @@ func v2cProcessFilm(t *testing.T, dir, short8 string, entry filmdec.MapQuantEntr
 }
 
 // v2cLivesPerBirth dedup une naissance par vie (slot,gen), la plus precoce, en metres monde.
-func v2cLivesPerBirth(cre []filmdec.EquipmentCreation) []*v2cLife {
+func v2cLivesPerBirth(cre []types.EquipmentCreation) []*v2cLife {
 	best := map[[2]uint32]*v2cLife{}
 	for _, c := range cre {
 		key := [2]uint32{c.Slot, c.Gen}
@@ -160,9 +158,9 @@ func v2cLivesPerBirth(cre []filmdec.EquipmentCreation) []*v2cLife {
 }
 
 // v2cAttachCensus pose goneBy (premiere image-cle apres le dernier recensement) par vie.
-func v2cAttachCensus(lives []*v2cLife, kf filmdec.WorldObjectKeyframes) {
+func v2cAttachCensus(lives []*v2cLife, kf grammar.WorldObjectKeyframes) {
 	for _, l := range lives {
-		seen := kf.SeenUS[filmdec.EquipmentLifeKey{Slot: l.slot, Gen: l.gen}]
+		seen := kf.SeenUS[types.EquipmentLifeKey{Slot: l.slot, Gen: l.gen}]
 		if len(seen) == 0 {
 			continue
 		}
@@ -336,12 +334,12 @@ func v2cRoot() string {
 	return `C:\Users\Guillaume\Projects\LevelUp\data\cache`
 }
 
-func v2cLoadBounds(t *testing.T) *filmdec.MapQuantCatalog {
+func v2cLoadBounds(t *testing.T) *profile.MapQuantCatalog {
 	path := os.Getenv("V2B_CD_BOUNDS")
 	if path == "" {
 		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
 	}
-	cat, err := filmdec.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}

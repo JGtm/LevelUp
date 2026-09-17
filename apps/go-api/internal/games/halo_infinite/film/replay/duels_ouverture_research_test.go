@@ -35,7 +35,7 @@ package replay
 // # CE QU'IL NE FAIT PAS
 //
 // Aucune base, aucun roster, aucune cuisson d'artefact, aucun réseau. Un film par process
-// (verrou `filmdec.LockProcessDecode`), comme la sonde n°1 dont il réutilise TOUS les
+// comme la sonde n°1 dont il réutilise TOUS les
 // helpers — la population de morts, la calibration de base, la distance : deux lectures
 // différentes des mêmes films ne se compareraient pas.
 //
@@ -53,8 +53,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // ouvEcartMaxMedianM : LE GATE. Écrit avant la mesure, en mètres.
@@ -86,17 +86,14 @@ func TestSondeDuelsOuverture(t *testing.T) {
 		t.Skipf("sonde desactivee : %s et %s requis", duelsFilmEnv, duelsMapEnv)
 	}
 
-	release := filmdec.LockProcessDecode()
-	defer release()
-
 	rng := duelsBornes(t, carte)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("film %s illisible : %v", dir, err)
 	}
-	opt := filmdec.DefaultScanFilmOptions()
+	opt := grammar.DefaultScanFilmOptions()
 	opt.WorldRange = &rng
-	positions, err := filmdec.ScanBipedPositions(film, opt)
+	positions, err := grammar.ScanBipedPositions(grammar.NewFilmContext(film), opt)
 	if err != nil {
 		t.Fatalf("positions bipeds : %v", err)
 	}

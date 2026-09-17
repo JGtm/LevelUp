@@ -14,7 +14,7 @@
 //     un score per-équipe — mesuré sur films réels, la valeur brute plafonnait
 //     quel que soit le final, et ne « retombait dessus » que par calibration.
 //     Le seul pont possible pour ces modes passe donc par la source
-//     ÉVÉNEMENTIELLE (analysis/objectiveevents), une fois qu'elle sera peuplée
+//     ÉVÉNEMENTIELLE (film/facts/objectives), une fois qu'elle sera peuplée
 //     en live — pas par un décodeur de score à réimplémenter.
 //  2. Chemin HISTORIQUE sinon, y compris pour un mode à objectif sans courbe.
 //     Dans l'ordre : DOMINATION si la médaille Steaktacular (ID 1169390319) est
@@ -41,9 +41,9 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // steaktacularMedalIDForTitle résout l'ID de la médaille "killing spree"
@@ -100,7 +100,7 @@ func computeMatchDominanceFlag(ctx context.Context, db *sql.DB, xuid, matchID st
 	// CTF : la courbe de captures prime quand elle existe. Les autres modes à
 	// objectif (zone/hill/skull) marquent au tick, pas à l'event : leur courbe de
 	// score reste non décodée en live, ils passent directement au repli.
-	if objectiveevents.ObjectiveTypeOf(gameVariant) == objectiveevents.ObjectiveTypeFlag {
+	if decfilm.ObjectiveTypeOf(gameVariant) == decfilm.ObjectiveTypeFlag {
 		if flag, ok := objectiveCurveDominanceFlag(ctx, db, matchID, myTeamID, outcome); ok {
 			return flag, nil
 		}

@@ -5,8 +5,10 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // equipment_placements.go — LES POSES d'équipement sur la carte : le mur de protection, le
@@ -17,7 +19,7 @@ import (
 // son bloc `object-multiplayer-properties`, le GlobalID du tag `eqip` de l'objet — les
 // 21 valeurs du corpus se résolvent toutes dans le groupe `eqip` du jeu. Le MÊME record porte
 // la position i0, c'est-à-dire le lieu exact de la pose. `t1` vient de la trajectoire décodée
-// des paquets delta. `filmdec.ScanFilmEquipmentPlacements` rend le tout.
+// des paquets delta. `grammar.ScanFilmEquipmentPlacements` rend le tout.
 //
 // `t1` N'EST PAS LA DISPARITION, et c'est mesuré (2026-08-18, `filmdec/equipment_life_end_test
 // .go`) : le décodage ne suit que les records qui portent une position, donc `t1` date l'instant
@@ -259,11 +261,11 @@ const equipmentFamilyOther = "other"
 // à une largeur devinée rendrait du bruit. Les trois se lisent au journal, et la troisième se
 // relit ensuite dans l'artefact (`coverage.placements.calibrated`).
 //
-// HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
+// HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmPlacements(
-	fc *filmdec.FilmContext, matchID string, worldRange *filmdec.Vec3Range,
-) ([]filmdec.EquipmentPlacement, filmdec.EquipmentPlacementStats) {
-	pl, st, err := filmdec.ScanEquipmentPlacements(fc, worldRange)
+	fc *grammar.FilmContext, matchID string, worldRange *profile.Vec3Range,
+) ([]types.EquipmentPlacement, grammar.EquipmentPlacementStats) {
+	pl, st, err := grammar.ScanEquipmentPlacements(fc, worldRange)
 	if st.FormatSansProfil {
 		// SITE 1 DU REPLI `repli_largeurs_mpp_calibrees_sur_le_film` : le compteur, pas le
 		// journal — l avertissement est emis UNE FOIS PAR FILM par `avertirFormatSansProfil`.
@@ -299,9 +301,9 @@ func decodeFilmPlacements(
 //
 // HORS LIGNE — appelee par le balayage, sous le meme verrou que le reste de la cuisson.
 func decodeFilmSpawnEvents(
-	fc *filmdec.FilmContext, matchID string,
-) ([]filmdec.EquipmentSpawnEvent, filmdec.EquipmentSpawnStats) {
-	ev, st, err := filmdec.ScanEquipmentSpawnEvents(fc)
+	fc *grammar.FilmContext, matchID string,
+) ([]types.EquipmentSpawnEvent, types.EquipmentSpawnStats) {
+	ev, st, err := grammar.ScanEquipmentSpawnEvents(fc)
 	if err != nil {
 		slog.Warn("evenements de piece engendree illisibles — l'origine des poses retombe sur ses replis",
 			"err", err, "match_id", matchID)
@@ -339,23 +341,23 @@ func logPlacementCoverage(c *EquipmentPlacementCoverage) {
 // AUCUN réglage : l'horloge et le compteur de replis restent dans `replayClock`.
 type equipmentInputs struct {
 	// Raw / Stats : le balayage des créations `ti=37` et sa calibration.
-	Raw   []filmdec.EquipmentPlacement
-	Stats filmdec.EquipmentPlacementStats
+	Raw   []types.EquipmentPlacement
+	Stats grammar.EquipmentPlacementStats
 	// Positions est le nuage NON décimé, TRIÉ par instant : la recherche du poseur est une
 	// fenêtre glissante, pas un balayage complet par pose.
-	Positions []filmdec.BipedPosition
+	Positions []grammar.BipedPosition
 	// Census est le recensement `ti=37` des images-clés — la FIN OBSERVÉE (schéma 28).
-	Census filmdec.WorldObjectKeyframes
+	Census grammar.WorldObjectKeyframes
 	// Spawns sont les événements 103 `EquipmentSpawnedObject` : « une PIÈCE a été engendrée » ;
 	// SpawnStats porte les DÉNOMINATEURS de leur balayage, sans lesquels un zéro d'événement ne
 	// se distingue pas d'un film que le lecteur n'a pas su lire.
-	Spawns     []filmdec.EquipmentSpawnEvent
-	SpawnStats filmdec.EquipmentSpawnStats
+	Spawns     []types.EquipmentSpawnEvent
+	SpawnStats types.EquipmentSpawnStats
 	// Lives sont les vies NOMMÉES du registre d'identité : leur `cause` porte la mort ÉCRITE.
 	Lives []lifeSpan
 	// Changes sont les ramassages et consommations d'équipement : leurs `taken` portent la prise
 	// ÉCRITE du poseur.
-	Changes []filmdec.EquipmentChange
+	Changes []types.EquipmentChange
 }
 
 // buildEquipmentPlacements assemble les poses : famille par le manifeste, poseur par

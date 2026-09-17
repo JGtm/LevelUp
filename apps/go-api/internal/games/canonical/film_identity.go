@@ -312,7 +312,7 @@ func (c *UnresolvedCauses) AddCause(m LinkMethod) {
 }
 
 // FilmTableRefusalInterleavedVacant : la cause d'abstention que le registre d'identite ajoute aux
-// causes de `filmdec` — la table est LUE, mais son rang est ambigu (cf. FilmTableCounts.Refusal).
+// causes de `grammar` — la table est LUE, mais son rang est ambigu (cf. FilmTableCounts.Refusal).
 const FilmTableInterleavedVacant = "vacant_intercale"
 
 // FilmTableCounts est ce que la TABLE DES JOUEURS DU FILM a donne, et ce que le controle en dit.

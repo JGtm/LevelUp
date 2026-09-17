@@ -34,7 +34,7 @@ package replay
 // (0x273fe0eb `ability_grapple_hook`, 0x8c77ffe7 meme modele `hlmt`).
 //
 // LECTURE SEULE : aucune base, aucun artefact ecrit, aucun champ de document. UN SEUL decodage
-// filmdec par process (LockProcessDecode), UN SEUL film par process (D17).
+// film par process (D17).
 //
 // USAGE (depuis apps/go-api) :
 //
@@ -55,7 +55,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -93,23 +94,20 @@ func TestEquipmentUsesPhase0(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", eqUsesFilmEnv)
 	}
 	short := filepath.Base(dir)
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	entry, metres := eqUsesEntry(t, dir)
-	defer installWorldObjectPrecision(entry, dir, nil)()
 	wr := entry.Range()
 	t.Logf("FILM %s · largeurs d'axe %v · bornes %s", short, entry.AxisWidths,
 		map[bool]string{true: "MONDE (metres)", false: "NORMALISEES [0,1]"}[metres])
 
-	samples, st, err := filmdec.ScanFilmEquipmentState(dir)
+	samples, st, err := grammar.ScanFilmEquipmentState(dir)
 	if err != nil {
 		t.Fatalf("etat d'equipement illisible : %v", err)
 	}
 	eqUsesLogVolumes(t, st)
 	eqUsesRawTransitions(t, samples)
 
-	placements, pst, err := filmdec.ScanFilmEquipmentPlacements(dir, &wr)
+	placements, pst, err := grammar.ScanFilmEquipmentPlacements(dir, &wr)
 	if err != nil {
 		t.Fatalf("poses d'equipement illisibles : %v", err)
 	}
@@ -144,7 +142,7 @@ func TestEquipmentUsesPhase0(t *testing.T) {
 // EXPLIQUE un negatif au lieu de le constater.
 func eqUsesOracles(t *testing.T, dir string, lives []eqLife, sig [2][]eqSignal) {
 	t.Helper()
-	reads, gst, err := filmdec.ScanFilmGrappleReads(dir)
+	reads, gst, err := grammar.ScanFilmGrappleReads(dir)
 	if err != nil {
 		t.Fatalf("evenements de grappin illisibles : %v", err)
 	}
@@ -181,16 +179,16 @@ func eqUsesOracles(t *testing.T, dir string, lives []eqLife, sig [2][]eqSignal) 
 // eqUsesPositions rend le nuage des bipedes TRIE, ou nil quand les bornes ne sont pas en
 // metres — la distance du poseur n'a alors aucun sens (cf. eqUsesOwners).
 func eqUsesPositions(
-	t *testing.T, dir string, wr filmdec.Vec3Range, metres bool,
-) []filmdec.BipedPosition {
+	t *testing.T, dir string, wr profile.Vec3Range, metres bool,
+) []grammar.BipedPosition {
 	t.Helper()
 	if !metres {
 		return nil
 	}
-	opt := filmdec.DefaultScanFilmOptions()
+	opt := grammar.DefaultScanFilmOptions()
 	opt.WorldRange = &wr
 	opt.CaptureDirs = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, opt)
+	pos, err := grammar.ScanFilmBipedPositions(dir, opt)
 	if err != nil {
 		t.Logf("nuage des bipedes indisponible : %v", err)
 		return nil
@@ -204,19 +202,19 @@ func eqUsesPositions(
 // et il n'est PAS comparable au comptage par vie identifiee. Publier les deux cote a cote est
 // ce qui permet de voir combien de ces « transitions » sont en realite des sauts d'un objet a
 // un autre, la generation ne faisant que 2 bits.
-func eqUsesRawTransitions(t *testing.T, samples []filmdec.EquipmentStateSample) {
+func eqUsesRawTransitions(t *testing.T, samples []grammar.EquipmentStateSample) {
 	t.Helper()
 	type key struct{ slot, gen uint32 }
-	series := map[key][]filmdec.EquipmentStateSample{}
+	series := map[key][]grammar.EquipmentStateSample{}
 	for _, s := range samples {
 		k := key{s.Slot, s.Gen}
 		series[k] = append(series[k], s)
 	}
-	var trans, pairs, down [filmdec.EquipmentFieldCount]int
+	var trans, pairs, down [grammar.EquipmentFieldCount]int
 	for _, ss := range series {
 		sort.SliceStable(ss, func(a, b int) bool { return ss[a].TimestampUS < ss[b].TimestampUS })
 		for i := 1; i < len(ss); i++ {
-			for f := 0; f < filmdec.EquipmentFieldCount; f++ {
+			for f := 0; f < grammar.EquipmentFieldCount; f++ {
 				if !ss[i-1].Present[f] || !ss[i].Present[f] {
 					continue
 				}
@@ -232,7 +230,7 @@ func eqUsesRawTransitions(t *testing.T, samples []filmdec.EquipmentStateSample) 
 	}
 	t.Logf("== D.0.1 TRANSITIONS BRUTES (groupees par (slot, generation) SEULE — le comptage"+
 		" du lot 0, sur %d cles) ==", len(series))
-	for _, f := range []filmdec.EquipmentField{filmdec.EquipEnergyDelay, filmdec.EquipCharges} {
+	for _, f := range []grammar.EquipmentField{grammar.EquipEnergyDelay, grammar.EquipCharges} {
 		t.Logf("  %-46s %d transitions sur %d paires consecutives · dont %d en BAISSE",
 			f, trans[f], pairs[f], down[f])
 	}
@@ -242,13 +240,13 @@ func eqUsesRawTransitions(t *testing.T, samples []filmdec.EquipmentStateSample) 
 // AUTO-DETECTEE par la signature des largeurs lues dans le film, meme methode qu'i59_anchor),
 // sinon les largeurs du film avec des bornes normalisees. Le second rend `metres` faux, et
 // tout ce qui exige des metres est alors declare non mesurable.
-func eqUsesEntry(t *testing.T, dir string) (filmdec.MapQuantEntry, bool) {
+func eqUsesEntry(t *testing.T, dir string) (profile.MapQuantEntry, bool) {
 	t.Helper()
 	lay, _, err := detecterI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible dans %s : %v", dir, err)
 	}
-	fallback := filmdec.MapQuantEntry{
+	fallback := profile.MapQuantEntry{
 		Module: "(bornes normalisees)", AxisWidths: lay.AxisW,
 		Min: [3]float32{0, 0, 0}, Max: [3]float32{1, 1, 1},
 	}
@@ -256,7 +254,7 @@ func eqUsesEntry(t *testing.T, dir string) (filmdec.MapQuantEntry, bool) {
 	if path == "" {
 		return fallback, false
 	}
-	cat, err := filmdec.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible (%s) : %v", path, err)
 	}
@@ -268,7 +266,7 @@ func eqUsesEntry(t *testing.T, dir string) (filmdec.MapQuantEntry, bool) {
 		return e, true
 	}
 	var hits []string
-	var found filmdec.MapQuantEntry
+	var found profile.MapQuantEntry
 	for name, e := range cat.Maps {
 		if e.AxisWidths == lay.AxisW {
 			hits, found = append(hits, name), e
@@ -298,13 +296,13 @@ func eqUsesFamilies(t *testing.T) map[uint32]string {
 
 // eqUsesLogVolumes publie D.0.1 : ce que le masque annonce et ce que la marche a lu, champ par
 // champ. Sans ces denominateurs, une distribution de valeurs ne se juge pas.
-func eqUsesLogVolumes(t *testing.T, st filmdec.EquipmentStateStats) {
+func eqUsesLogVolumes(t *testing.T, st grammar.EquipmentStateStats) {
 	t.Helper()
 	t.Logf("== D.0.1 VOLUMES == records delta ti=37 %d · slots %d · masque∋(un des 6) %d"+
 		" · marche ABOUTIE %d · CASSEE %d", st.Records, st.Slots, st.WithAny, st.Walked, st.Broken)
-	for f := 0; f < filmdec.EquipmentFieldCount; f++ {
+	for f := 0; f < grammar.EquipmentFieldCount; f++ {
 		t.Logf("  %-46s masque %6d · LU %6d · porte fermee %5d",
-			filmdec.EquipmentField(f), st.WithField[f], st.Read[f], st.Gated[f])
+			grammar.EquipmentField(f), st.WithField[f], st.Read[f], st.Gated[f])
 	}
 	for _, i := range []int{26, 27} {
 		if i < len(st.MaskCensus) {
@@ -323,11 +321,11 @@ func eqUsesLogVolumes(t *testing.T, st filmdec.EquipmentStateStats) {
 
 // eqUsesLogValues publie la distribution des valeurs d'i27 et d'i26 : « charges » exige des
 // entiers petits, « compte a rebours » une plage large.
-func eqUsesLogValues(t *testing.T, samples []filmdec.EquipmentStateSample, attached []bool) {
+func eqUsesLogValues(t *testing.T, samples []grammar.EquipmentStateSample, attached []bool) {
 	t.Helper()
 	t.Log("== D.0.1 DISTRIBUTION DES VALEURS TRANSMISES — REEL (lecture rattachee a une vie" +
 		" CONFIRMEE par l'oracle de position) contre FANTOME (aucune vie confirmee) ==")
-	for _, f := range []filmdec.EquipmentField{filmdec.EquipCharges, filmdec.EquipEnergyDelay} {
+	for _, f := range []grammar.EquipmentField{grammar.EquipCharges, grammar.EquipEnergyDelay} {
 		for _, reel := range []bool{true, false} {
 			hist := map[uint64]int{}
 			n := 0
@@ -353,7 +351,7 @@ func eqUsesLogValues(t *testing.T, samples []filmdec.EquipmentStateSample, attac
 // L'en-tete NEW de ti=37 n'est pas selectif (un quart des positions de bit tirees au hasard le
 // passent sur un film BTB) ; c'est l'oracle de position qui fait la mesure, et l'ecart entre
 // les trois compteurs EST le rapport reel/fantome.
-func eqUsesLogAnchorNoise(t *testing.T, st filmdec.EquipmentPlacementStats) {
+func eqUsesLogAnchorNoise(t *testing.T, st grammar.EquipmentPlacementStats) {
 	t.Helper()
 	pur := 0.0
 	if st.Accepted > 0 {

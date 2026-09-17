@@ -6,14 +6,13 @@ package replay
 // n'auraient aucune couverture de non-régression.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 func TestBuildTranslocations(t *testing.T) {
 	tracks := []Track{{Slot: 535, Points: []Point{{}, {}}}}
-	in := []filmdec.TranslocatorTeleport{
+	in := []types.TranslocatorTeleport{
 		{TimestampUS: ecOrigin - 1, Slot: 535},         // avant l'origine : écartée
 		{TimestampUS: ecOrigin + 2_000_000, Slot: 535}, // publiée, frame 20
 		{TimestampUS: ecOrigin + 3_000_000, Slot: 999}, // slot sans piste : écartée
@@ -36,7 +35,7 @@ func TestBuildTranslocations(t *testing.T) {
 // se liraient comme un saut vers l'origine du monde. `positioned` porte le dénominateur.
 func TestBuildTranslocationsVaEtVient(t *testing.T) {
 	tracks := []Track{{Slot: 535, Points: []Point{{}, {}}}, {Slot: 560, Points: []Point{{}, {}}}}
-	in := []filmdec.TranslocatorTeleport{
+	in := []types.TranslocatorTeleport{
 		{TimestampUS: ecOrigin + 2_000_000, Slot: 535, HasPositions: true,
 			From: [3]float32{2.789, 152.174, 3.5}, To: [3]float32{17.341, 135.502, 1.25}},
 		{TimestampUS: ecOrigin + 3_000_000, Slot: 560}, // charge non lue : sans va-et-vient

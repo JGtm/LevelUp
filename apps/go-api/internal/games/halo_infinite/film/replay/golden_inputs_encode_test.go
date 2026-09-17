@@ -9,7 +9,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -334,7 +334,7 @@ func encodeGoldenQueue(w *gwriter, g *goldenInputs) {
 // encodePlayerTeams ecrit l EQUIPE DE CHAQUE JOUEUR (v21, lot 1.7) : la table `index de joueur
 // -> designateur` et le RAPPORT de sa lecture. Les deux, parce qu une table vide et une lecture
 // refusee ne disent pas la meme chose, et que `coverage.teams` publie la difference.
-func encodePlayerTeams(w *gwriter, teams map[int]int, rep filmdec.TeamScanReport) {
+func encodePlayerTeams(w *gwriter, teams map[int]int, rep grammar.TeamScanReport) {
 	idx := make([]int, 0, len(teams))
 	for i := range teams {
 		idx = append(idx, i)

@@ -51,9 +51,10 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -67,7 +68,7 @@ const (
 	// d4EcartEvenementMS : la coincidence exigee avec un evenement `th=10` de crane. Une
 	// seconde est la valeur du protocole du §2.4, ecrite avant toute mesure.
 	d4EcartEvenementMS = 1000
-	// d4VariantOddball : le libelle de mode donne a `objectiveevents.Extract`. Le film ne nomme
+	// d4VariantOddball : le libelle de mode donne a `objectives.Extract`. Le film ne nomme
 	// pas son mode (map_objectives.go) ; le corpus, lui, est Oddball par construction — c'est
 	// le recensement D1 qui l'a classe, sur le `pair_name` du registre.
 	d4VariantOddball = "Oddball:Arena"
@@ -171,9 +172,9 @@ func d4EvenementsCrane(t *testing.T, root, id string) []int64 {
 		t.Fatalf("%s : film absent du cache", id)
 	}
 	var out []int64
-	evenements, _ := objectiveevents.Extract(id, d4VariantOddball, src, objectiveevents.MapRoster{})
+	evenements, _ := objectives.Extract(id, d4VariantOddball, src, objectives.MapRoster{})
 	for _, ev := range evenements {
-		if ev.EventType != objectiveevents.EventTypeSkullCarry || ev.TimeMS == nil {
+		if ev.EventType != objectives.EventTypeSkullCarry || ev.TimeMS == nil {
 			continue
 		}
 		out = append(out, int64(*ev.TimeMS))
@@ -183,12 +184,12 @@ func d4EvenementsCrane(t *testing.T, root, id string) []int64 {
 }
 
 // d4Resume regroupe les creations ecartees par mot et mesure les deux conditions.
-func d4Resume(ecartees []filmdec.EquipmentCreation, socles []PointObjective,
+func d4Resume(ecartees []types.EquipmentCreation, socles []PointObjective,
 	instants []int64, clockUS uint64) []d4Candidat {
-	parMot := map[uint32][]filmdec.EquipmentCreation{}
+	parMot := map[uint32][]types.EquipmentCreation{}
 	for _, c := range ecartees {
-		parMot[uint32(c.MPPVal[filmdec.MPPWord32])] = append(
-			parMot[uint32(c.MPPVal[filmdec.MPPWord32])], c)
+		parMot[uint32(c.MPPVal[grammar.MPPWord32])] = append(
+			parMot[uint32(c.MPPVal[grammar.MPPWord32])], c)
 	}
 	out := make([]d4Candidat, 0, len(parMot))
 	for mot, cs := range parMot {
@@ -224,7 +225,7 @@ func d4Resume(ecartees []filmdec.EquipmentCreation, socles []PointObjective,
 // d4EcartMin rend l'ecart temporel minimal (ms) entre une creation et un evenement de crane.
 //
 // LA CONVERSION EST CELLE DE L'ORIGINE LUE : matchMS = (creationUS - premierPaquetUS) / 1000.
-func d4EcartMin(c filmdec.EquipmentCreation, instants []int64, clockUS uint64) int64 {
+func d4EcartMin(c types.EquipmentCreation, instants []int64, clockUS uint64) int64 {
 	if c.TimestampUS < clockUS {
 		return math.MaxInt64
 	}

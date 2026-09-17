@@ -35,7 +35,7 @@ package replay
 // 164 kills ; controle de bout en bout de l'accesseur contre la geometrie : ecart median
 // 0,82 / 0,66 / 0,67 deg.
 //
-// RESERVE PUBLIEE, la meme que celle de l'accesseur (`filmdec.BipedPosition.AimPitchDeg`) :
+// RESERVE PUBLIEE, la meme que celle de l'accesseur (`grammar.BipedPosition.AimPitchDeg`) :
 // toutes les valeurs observees tiennent dans la MOITIE centrale du champ, si bien que « le
 // champ couvre +/- 180 deg et le jeu borne le tangage » et « le champ ne code que +/- 90 deg »
 // rendent EXACTEMENT les memes degres sur tout ce que le film transmet. La formule publiee est
@@ -92,7 +92,7 @@ type Point struct {
 	// `max(0,35 ; cos(p))`, PAIR donc muet sur le sens, ce qui obligeait a coller un tick a la
 	// pointe du cone ; ce tick a ete retire le 2026-08-29 (demande utilisateur) en meme temps
 	// que le cosinus. Convention, oracle et reserve : en tete de ce fichier et sur
-	// `filmdec.BipedPosition.AimPitchDeg`.
+	// `grammar.BipedPosition.AimPitchDeg`.
 	P float32 `json:"p,omitempty"`
 	// Sh (optionnel) est la FRACTION DE BOUCLIER dans [0, 1], décodée du composant i5
 	// (object-shield-vitality) du MÊME record que la position — donc au même instant.
@@ -137,7 +137,7 @@ type Point struct {
 	// (`unit_zoom`, type 21) porte par la liste d'evenements en tete de paquet. C'est un etat
 	// A BASCULE : une entree vaut jusqu'a la sortie, et non jusqu'au prochain echantillon.
 	// La reconstruction (maintien borne, sous-comptage des sorties assume) est decrite sur
-	// `filmdec.ZoomStateAt`.
+	// `grammar.ZoomStateAt`.
 	//
 	// CE QUI L'A ETABLI — VERITE TERRAIN, pas inference. L'utilisateur a releve a la main
 	// dans Theater, en premiere personne, les six periodes de lunette d'un joueur sur le film

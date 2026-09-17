@@ -11,7 +11,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // gaugeSamples fabrique `n` emissions aux frames t0 + i*pas, de valeur brute v0 + i*dv.
@@ -225,7 +225,7 @@ func TestZoneStatesPublieLaJaugeEnDirect(t *testing.T) {
 // transfert d'environ une seconde, pas la progression de garde (lot C-ter volet 1) : une serie
 // montrerait un arc qui se remplit en une seconde a chaque prise — credible et faux.
 func TestZoneStatesCollineNePublieAucuneJauge(t *testing.T) {
-	var reads []filmdec.ManagedPropertyRead
+	var reads []grammar.ManagedPropertyRead
 	reads = append(reads, zoneRampAt(40, 100, 900)...)
 	reads = append(reads, zoneRampAt(40, 400, 900)...)
 	in := zoneTestInput(reads)

@@ -27,12 +27,12 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // resumeAvecReplis forge une projection dont le rapport de replis porte ces declenchements.
-func resumeAvecReplis(matchID string, r ...fallback.Declenchement) resumeUsagePret {
+func resumeAvecReplis(matchID string, r ...decfilm.Declenchement) resumeUsagePret {
 	return resumeUsagePret{
 		matchID: matchID,
 		summary: replay.UsageSummary{Match: replay.UsageMatchSummary{Fallbacks: r}},
@@ -46,11 +46,11 @@ func TestJournalDesReplisAuxDeuxGrains(t *testing.T) {
 	journaliserReplisUsage(context.Background(), Deps{Gamertag: "GT", TitleSlug: "halo_infinite"},
 		[]resumeUsagePret{
 			resumeAvecReplis("m1",
-				fallback.Declenchement{Nom: fallback.NomGardeEquipementNegatifAZero, Declenchements: 2}),
+				decfilm.Declenchement{Nom: decfilm.NomGardeEquipementNegatifAZero, Declenchements: 2}),
 			resumeAvecReplis("m2"),
 			resumeAvecReplis("m3",
-				fallback.Declenchement{Nom: fallback.NomGardeEquipementNegatifAZero, Declenchements: 1},
-				fallback.Declenchement{Nom: fallback.NomGestePremiereVieDuSlot, Declenchements: 4}),
+				decfilm.Declenchement{Nom: decfilm.NomGardeEquipementNegatifAZero, Declenchements: 1},
+				decfilm.Declenchement{Nom: decfilm.NomGestePremiereVieDuSlot, Declenchements: 4}),
 		})
 	sortie := buf.String()
 	for _, attendu := range []string{
@@ -106,7 +106,7 @@ func TestProducteurPostSyncJournaliseLesReplis(t *testing.T) {
 			"est de nouveau sans lecteur (constat F2).\nSortie :\n%s", sortie)
 	}
 	if !strings.Contains(sortie, `"match_id":"m-cablage"`) ||
-		!strings.Contains(sortie, string(fallback.NomGardeEquipementNegatifAZero)) {
+		!strings.Contains(sortie, string(decfilm.NomGardeEquipementNegatifAZero)) {
 		t.Errorf("le repli declenche par la projection n'atteint pas le journal.\nSortie :\n%s", sortie)
 	}
 }

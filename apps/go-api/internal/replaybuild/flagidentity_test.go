@@ -3,8 +3,8 @@ package replaybuild
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 )
@@ -19,7 +19,7 @@ import (
 //
 // CES TESTS FIGENT LA REGLE, ET RIEN D'AUTRE. La correction du pont lui-meme (les trois gardes
 // de `CompletedByLines`) est prouvee a sa source, dans
-// `objectiveevents/slotidentity_completion_test.go` ; ce que l'on fige ici est le CABLAGE : le
+// `objectives/slotidentity_completion_test.go` ; ce que l'on fige ici est le CABLAGE : le
 // pont est pose sur un film de CTF, il ne l'est PAS ailleurs, et il n'est resolu qu'une fois.
 
 // monoRoundCTFFixture — un film SYNTHETIQUE d'une manche que les trois signaux reconnaissent
@@ -30,21 +30,21 @@ import (
 //	slot 14  compteurs AGREGES (9/5/4) qui ne designent AUCUNE ligne : personne ne le nomme.
 //
 // Rend les enregistrements, le fil des morts, les lignes de match et les bursts de capture.
-func monoRoundCTFFixture() ([]objectiveevents.StatRecord, []objectiveevents.DeathInstant,
-	[]objectiveevents.PlayerLine, []int) {
+func monoRoundCTFFixture() ([]decfilm.StatRecord, []decfilm.DeathInstant,
+	[]decfilm.PlayerLine, []int) {
 	// LES DEUX CANAUX D'UNE EMISSION SORTENT ENSEMBLE, et la fixture doit le respecter : le
 	// composant 2 porte les frags en A et les morts en B, dans le MEME enregistrement. N'ecrire
 	// qu'un canal poserait un zero sur l'autre, et la plus longue suite non decroissante du
 	// canal muet ecraserait la vraie serie.
-	tueMort := func(t, slot int, kills, deaths int64) objectiveevents.StatRecord {
-		return objectiveevents.StatRecord{TimeMS: t, Slot: slot, Round: 0,
-			Comps: map[int]objectiveevents.StatValue{2: {A: kills, B: deaths}}}
+	tueMort := func(t, slot int, kills, deaths int64) decfilm.StatRecord {
+		return decfilm.StatRecord{TimeMS: t, Slot: slot, Round: 0,
+			Comps: map[int]decfilm.StatValue{2: {A: kills, B: deaths}}}
 	}
-	sideA := func(t, slot, comp int, v int64) objectiveevents.StatRecord {
-		return objectiveevents.StatRecord{TimeMS: t, Slot: slot, Round: 0,
-			Comps: map[int]objectiveevents.StatValue{comp: {A: v}}}
+	sideA := func(t, slot, comp int, v int64) decfilm.StatRecord {
+		return decfilm.StatRecord{TimeMS: t, Slot: slot, Round: 0,
+			Comps: map[int]decfilm.StatValue{comp: {A: v}}}
 	}
-	recs := []objectiveevents.StatRecord{
+	recs := []decfilm.StatRecord{
 		// Slot 10 = "aaa" : 4 frags, 3 morts, 1 assistance. Ses TROIS morts coincident avec le
 		// fil ci-dessous, donc le pont PAR MORTS le nomme sans l'aide du triplet.
 		tueMort(500, 10, 1, 0), tueMort(1000, 10, 1, 1), tueMort(2000, 10, 2, 2),
@@ -62,11 +62,11 @@ func monoRoundCTFFixture() ([]objectiveevents.StatRecord, []objectiveevents.Deat
 		sideA(20500, 14, 3, 4),
 		sideA(21000, 14, 22, 1), // flag_grabs
 	}
-	deaths := []objectiveevents.DeathInstant{
+	deaths := []decfilm.DeathInstant{
 		{XUID: "aaa", TimeMS: 1000}, {XUID: "aaa", TimeMS: 2000}, {XUID: "aaa", TimeMS: 3000},
 		{XUID: "bbb", TimeMS: 5000}, {XUID: "bbb", TimeMS: 6000},
 	}
-	lines := []objectiveevents.PlayerLine{
+	lines := []decfilm.PlayerLine{
 		{XUID: "aaa", Kills: 4, Deaths: 3, Assists: 1},
 		{XUID: "bbb", Kills: 7, Deaths: 2, Assists: 1},
 	}

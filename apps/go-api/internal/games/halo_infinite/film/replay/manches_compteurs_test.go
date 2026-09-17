@@ -3,7 +3,8 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // manches_compteurs_test.go — LA DECOUPE PAR MANCHE CONFRONTEE AU TEMPS.
@@ -42,7 +43,7 @@ const (
 	//
 	// Le vrai `51ebbc0f` en porte 60, et l'en-tete de ce fichier le raconte tel quel. Mais
 	// depuis 6.R la SERIE passe elle aussi par la borne par pas
-	// (`objectiveevents.maxUnrollPerStep` = 16, cf. `boundSteps`) : un egare a 60 sautait de 3 a
+	// (`objectives.maxUnrollPerStep` = 16, cf. `boundSteps`) : un egare a 60 sautait de 3 a
 	// 60 d'un coup, donc le pas etait rejete et la manche 0 finissait a 3 MEME SANS le filtre de
 	// manche. Les trois tests ci-dessous auraient continue de passer avec leur mutation JOUEE —
 	// un garde-rail eteint par un autre filtre, et personne pour le dire.
@@ -50,7 +51,7 @@ const (
 	// 15 remet chaque filtre devant son propre defaut : le pas 3 -> 15 est SAIN pour la borne
 	// (12 <= 16), donc seul le filtre de manche peut encore ecarter l'egare, et le retirer fait
 	// bien remonter la manche 0 a 15. La borne par pas, elle, a ses propres tests
-	// (`objectiveevents/named_bornes_test.go`, `replay/bounds_aberrants_test.go`).
+	// (`objectives/named_bornes_test.go`, `replay/bounds_aberrants_test.go`).
 	manchesEgareAssists = 15
 )
 
@@ -63,11 +64,11 @@ var manchesSlots = []int{10, 12, 14, 16, 18, 20, 22, 24}
 //
 // `egare` ajoute L'ECHANTILLON EGARE : un enregistrement date DANS la manche 1 (14 000 ms) qui
 // declare la manche 0 et porte [manchesEgareAssists] assistances pour le slot 12.
-func deuxManchesFixture(egare bool) []objectiveevents.StatRecord {
+func deuxManchesFixture(egare bool) []types.StatRecord {
 	recs := manchesCorps(0, manchesDebutR0)
 	recs = append(recs, manchesCorps(1, manchesDebutR1)...)
 	if egare {
-		recs = append(recs, statRec(14_000, 12, 0, map[int]objectiveevents.StatValue{
+		recs = append(recs, statRec(14_000, 12, 0, map[int]types.StatValue{
 			2: {A: 0, B: 0}, 3: {A: manchesEgareAssists},
 		}))
 	}
@@ -76,15 +77,15 @@ func deuxManchesFixture(egare bool) []objectiveevents.StatRecord {
 
 // manchesCorps rend une manche complete : le train de score de mode du slot d'equipe, puis le
 // bloc des huit slots de joueur.
-func manchesCorps(round, debut int) []objectiveevents.StatRecord {
+func manchesCorps(round, debut int) []types.StatRecord {
 	return append(modeRamp(6, round, debut, 500, 1, 2, 3),
 		manchesBloc(round, debut, 3, manchesSlots)...)
 }
 
 // manchesBloc rend, pour chaque slot donne, l'ouverture a zero de la manche puis `n`
 // progressions espacees de [manchesPasProgression], decalees slot par slot.
-func manchesBloc(round, debut, n int, slots []int) []objectiveevents.StatRecord {
-	var recs []objectiveevents.StatRecord
+func manchesBloc(round, debut, n int, slots []int) []types.StatRecord {
+	var recs []types.StatRecord
 	for j, slot := range slots {
 		recs = append(recs, coreLine(slot, round, debut, 0, 0, 0, 0)...)
 		for i := 0; i < n; i++ {
@@ -122,12 +123,12 @@ func manchesMorts() []Death {
 
 // assistsDuSlot rend la serie d'assistances par manche d'un slot, telle que la production la
 // decoupe.
-func assistsDuSlot(recs []objectiveevents.StatRecord, slot int) map[int][]objectiveevents.ScorePoint {
-	return objectiveevents.SeriesByRound(recs, objectiveevents.AssistsComponent, false)[slot]
+func assistsDuSlot(recs []types.StatRecord, slot int) map[int][]types.ScorePoint {
+	return objectives.SeriesByRound(recs, objectives.AssistsComponent, false)[slot]
 }
 
 // dernierPoint rend l'instant et la valeur du dernier point d'une suite, ou (-1, -1).
-func dernierPoint(pts []objectiveevents.ScorePoint) (int, int64) {
+func dernierPoint(pts []types.ScorePoint) (int, int64) {
 	if len(pts) == 0 {
 		return -1, -1
 	}
@@ -187,20 +188,20 @@ func TestEchantillonEgareNeGonflePasLeTotalDuJoueur(t *testing.T) {
 
 // TestTotalNonChronologiqueEstRefuse — LE FILET, teste pour lui-meme.
 //
-// Le controle vit dans `objectiveevents.ChronologicalTotal` et sert les DEUX cumuls (par slot et
+// Le controle vit dans `objectives.ChronologicalTotal` et sert les DEUX cumuls (par slot et
 // par joueur). Il est mis a l'epreuve sur la forme exacte du defaut publie par `51ebbc0f` :
 // {3167, 60} avant {3057, 61}, donc un instant qui recule.
 //
 // MUTATION : retirer l'appel a `ChronologicalTotal` dans `cumulateRounds` ou dans
 // `seriesOfRounds` laisse passer le point qui recule.
 func TestTotalNonChronologiqueEstRefuse(t *testing.T) {
-	pts := []objectiveevents.ScorePoint{
+	pts := []types.ScorePoint{
 		{TimeMS: 1_412, Slot: 12, Value: 1},
 		{TimeMS: 3_167, Slot: 12, Value: 60},
 		{TimeMS: 3_057, Slot: 12, Value: 61},
 		{TimeMS: 4_225, Slot: 12, Value: 62},
 	}
-	got := objectiveevents.ChronologicalTotal(pts)
+	got := objectives.ChronologicalTotal(pts)
 	if len(got) != 3 {
 		t.Fatalf("%d points retenus, attendu 3 (le point qui recule doit etre ecarte) : %+v", len(got), got)
 	}
@@ -226,7 +227,7 @@ func TestSerieCumuleeParSlotResteChronologique(t *testing.T) {
 	recs := manchesCorps(0, 30_000)
 	recs = append(recs, manchesCorps(1, manchesDebutR0)...)
 
-	series := objectiveevents.SeriesTotal(recs, objectiveevents.AssistsComponent, false)
+	series := objectives.SeriesTotal(recs, objectives.AssistsComponent, false)
 	if len(series) == 0 {
 		t.Fatal("aucune serie cumulee : le corpus ne prouve rien")
 	}
@@ -255,10 +256,10 @@ func TestSerieCumuleeParSlotResteChronologique(t *testing.T) {
 // eventuelle se voie.
 func TestMonoMancheInchangeParLesBornes(t *testing.T) {
 	recs := manchesCorps(0, manchesDebutR0)
-	tardif := statRec(20_000, 12, 0, map[int]objectiveevents.StatValue{3: {A: manchesEgareAssists}})
+	tardif := statRec(20_000, 12, 0, map[int]types.StatValue{3: {A: manchesEgareAssists}})
 	recs = append(recs, tardif)
 
-	if objectiveevents.ResolveRoundBounds(recs).Excludes(tardif) {
+	if objectives.ResolveRoundBounds(recs).Excludes(tardif) {
 		t.Fatal("une borne de manche a ete posee sur un film MONO-MANCHE")
 	}
 	_, v := dernierPoint(assistsDuSlot(recs, 12)[0])
@@ -285,14 +286,14 @@ func TestMancheSansConsensusNeFixeAucuneBorne(t *testing.T) {
 	// le parasite jetterait (sur `a4083bd2`, 153 enregistrements sur 719).
 	for j, slot := range manchesSlots {
 		recs = append(recs, statRec(25_000+j*manchesDecalageSlot, slot, 0,
-			map[int]objectiveevents.StatValue{3: {A: 4}}))
+			map[int]types.StatValue{3: {A: 4}}))
 	}
 	// Le parasite : UN enregistrement, UN slot, date ENTRE les deux vraies manches — la
 	// chaine des debuts reste donc croissante, et seule la majorite de slots peut le refuser.
-	recs = append(recs, statRec(20_000, 10, 1, map[int]objectiveevents.StatValue{3: {A: 7}}))
+	recs = append(recs, statRec(20_000, 10, 1, map[int]types.StatValue{3: {A: 7}}))
 	recs = append(recs, manchesCorps(2, 40_000)...)
 
-	if n := objectiveevents.ResolveRoundBounds(recs).Outliers(recs); n != 0 {
+	if n := objectives.ResolveRoundBounds(recs).Outliers(recs); n != 0 {
 		t.Fatalf("une manche declaree par UN SEUL slot a fixe une borne : %d enregistrements ecartes", n)
 	}
 	if _, v := dernierPoint(assistsDuSlot(recs, 12)[0]); v != 4 {
@@ -320,7 +321,7 @@ func TestDebutsNonCroissantsNePosentAucuneBorne(t *testing.T) {
 	// Manche 1 : les huit slots l'ouvrent a 20 000 ms — AVANT le debut consensuel de la manche 0.
 	recs = append(recs, manchesCorps(1, 20_000)...)
 
-	if n := objectiveevents.ResolveRoundBounds(recs).Outliers(recs); n != 0 {
+	if n := objectives.ResolveRoundBounds(recs).Outliers(recs); n != 0 {
 		t.Fatalf("des bornes ont ete posees sur un etiquetage de manche qui ne suit pas l'horloge : "+
 			"%d enregistrements ecartes", n)
 	}
@@ -340,10 +341,10 @@ func TestDebutsNonCroissantsNePosentAucuneBorne(t *testing.T) {
 // du slot 10 a 5 000 ms.
 func TestEchantillonPrecoceNAlimentePasSaMancheDeclaree(t *testing.T) {
 	recs := deuxManchesFixture(false)
-	precoce := statRec(5_000, 10, 1, map[int]objectiveevents.StatValue{3: {A: 0}})
+	precoce := statRec(5_000, 10, 1, map[int]types.StatValue{3: {A: 0}})
 	recs = append(recs, precoce)
 
-	if !objectiveevents.ResolveRoundBounds(recs).Excludes(precoce) {
+	if !objectives.ResolveRoundBounds(recs).Excludes(precoce) {
 		t.Fatal("un enregistrement date AVANT le debut de la manche qu'il declare n'est pas ecarte")
 	}
 	pts := assistsDuSlot(recs, 10)[1]
@@ -369,7 +370,7 @@ func TestBorneNonCredibleNestPasPosee(t *testing.T) {
 	recs = append(recs, modeRamp(6, 1, 5_000, 500, 1, 2, 3)...)
 	recs = append(recs, manchesBloc(1, 5_000, 3, manchesSlots)...) // manche 1 : ouverte tot
 
-	if n := objectiveevents.ResolveRoundBounds(recs).Outliers(recs); n != 0 {
+	if n := objectives.ResolveRoundBounds(recs).Outliers(recs); n != 0 {
 		t.Errorf("une borne qui ne separe pas les deux manches a ete posee : %d enregistrements ecartes", n)
 	}
 }
@@ -386,11 +387,11 @@ func TestBorneNonCredibleNestPasPosee(t *testing.T) {
 func TestEchantillonEgareNeNommeAucuneAction(t *testing.T) {
 	recs := deuxManchesFixture(false)
 	// L'egare : date DANS la manche 1, declare la manche 0, porte 58 vols de drapeau.
-	recs = append(recs, statRec(14_000, 12, 0, map[int]objectiveevents.StatValue{24: {A: 58}}))
+	recs = append(recs, statRec(14_000, 12, 0, map[int]types.StatValue{24: {A: 58}}))
 
 	vols := 0
-	for _, e := range objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeFlag) {
-		if e.Stat == objectiveevents.StatFlagSteals {
+	for _, e := range objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeFlag) {
+		if e.Stat == objectives.StatFlagSteals {
 			vols++
 		}
 	}
@@ -410,12 +411,12 @@ func TestMedianeBasseNeCoupePasLOuvertureDUneManche(t *testing.T) {
 	recs := modeRamp(10, 0, 1_000, 500, 1, 2, 3)
 	recs = append(recs, coreLine(10, 0, 1_000, 1, 1, 1, 10)...)
 	recs = append(recs, coreLine(12, 0, 1_500, 1, 1, 1, 10)...)
-	ouverture := statRec(20_000, 10, 1, map[int]objectiveevents.StatValue{3: {A: 1}})
+	ouverture := statRec(20_000, 10, 1, map[int]types.StatValue{3: {A: 1}})
 	recs = append(recs, modeRamp(10, 1, 20_000, 500, 1, 2, 3)...)
 	recs = append(recs, ouverture)
 	recs = append(recs, coreLine(12, 1, 20_050, 1, 1, 1, 10)...)
 
-	if objectiveevents.ResolveRoundBounds(recs).Excludes(ouverture) {
+	if objectives.ResolveRoundBounds(recs).Excludes(ouverture) {
 		t.Error("l'ouverture de la manche 1 par le PREMIER slot (20 000 ms) est jugee hors de sa " +
 			"propre manche : la borne a ete prise a la mediane haute des debuts (20 050 ms)")
 	}

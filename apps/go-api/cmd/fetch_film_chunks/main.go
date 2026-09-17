@@ -11,8 +11,6 @@
 package main
 
 import (
-	"bytes"
-	"compress/zlib"
 	"context"
 	"encoding/json"
 	"flag"
@@ -27,6 +25,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
@@ -232,15 +231,9 @@ func downloadChunk(ctx context.Context, client *http.Client, task downloadTask) 
 		return fmt.Errorf("read body: %w", err)
 	}
 
-	zr, err := zlib.NewReader(bytes.NewReader(raw))
+	decompressed, err := decfilm.Decompresser(raw)
 	if err != nil {
-		return fmt.Errorf("zlib header: %w", err)
-	}
-	defer zr.Close()
-
-	decompressed, err := io.ReadAll(zr)
-	if err != nil {
-		return fmt.Errorf("zlib decompress: %w", err)
+		return err
 	}
 
 	if err := os.WriteFile(task.destPath, decompressed, 0o644); err != nil {

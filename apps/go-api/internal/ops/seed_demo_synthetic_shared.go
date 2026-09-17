@@ -12,13 +12,13 @@ import (
 	"os"
 	"path/filepath"
 
+	_ "github.com/duckdb/duckdb-go/v2"
+
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/migration"
-
-	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 // synthDemoSeason : season_id fixe du corpus synthétique.
@@ -300,8 +300,8 @@ func insertKillEvent(ctx context.Context, db *sql.DB, m synthMatch, k synthKill)
 		origine                 = killscope.OriginCreditOnly
 	)
 	if src, mesuree := demoSourceTagPour(m.idx, k.idx); mesuree {
-		tag, categorie, diverge = src, killsource.CategoryNone.Name(), false
-		voie, origine = killscope.ReadPathFilmWalk, string(killsource.OriginCredit)
+		tag, categorie, diverge = src, decfilm.CategoryNone.Name(), false
+		voie, origine = killscope.ReadPathFilmWalk, string(decfilm.OriginCredit)
 	}
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO match_kill_events

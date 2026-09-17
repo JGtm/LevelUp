@@ -41,7 +41,7 @@ package replay
 //
 // PARALLELISME SANS VERROU, ET POURQUOI C'EST PERMIS : ce fichier n'appelle AUCUN Scan* de
 // filmdec — seulement ReadFilmChunk/WalkPackets/ReadBitsAtForDiag, purs, sans etat global de
-// decodage. Le verrou de process (LockProcessDecode) protege les globaux des decodeurs ;
+// decodage.
 // aucun n'est touche ici.
 //
 // SOUS GARDE D'ENVIRONNEMENT (TIR_FILMS_DIR), saute partout ailleurs, CI comprise.
@@ -64,8 +64,8 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -243,7 +243,7 @@ func tirTraiteFilm(dir, name string) tirBilanFilm {
 
 // tirLitFeed lit le chunk d'evenements (le dernier) et rend kills + instants etiquetes.
 func tirLitFeed(dir string) (tirFeed, bool) {
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	if n == 0 {
 		return tirFeed{}, false
 	}
@@ -251,19 +251,19 @@ func tirLitFeed(dir string) (tirFeed, bool) {
 	if err != nil {
 		return tirFeed{}, false
 	}
-	evs, err := analysis.ParseHighlightEvents(raw, 0)
+	evs, err := grammar.ParseHighlightEvents(raw, 0)
 	if err != nil {
 		return tirFeed{}, false
 	}
 	var f tirFeed
 	for _, e := range evs {
 		switch {
-		case e.EventType == analysis.EventTypeKill:
+		case e.EventType == highlightevent.EventTypeKill:
 			f.kills = append(f.kills, int64(e.TimeMS))
-		case e.EventType == analysis.EventTypeMedal &&
+		case e.EventType == highlightevent.EventTypeMedal &&
 			e.TypeHint == adsTypeHintMulti && e.MedalType == adsMedalNoScope:
 			f.noScope = append(f.noScope, int64(e.TimeMS))
-		case e.EventType == analysis.EventTypeMedal &&
+		case e.EventType == highlightevent.EventTypeMedal &&
 			e.TypeHint == adsTypeHintMulti && e.MedalType == adsMedalCounter:
 			f.counter = append(f.counter, int64(e.TimeMS))
 		}
@@ -274,29 +274,29 @@ func tirLitFeed(dir string) (tirFeed, bool) {
 // tirLitRecords balaye les paquets delta et rend la tete de chaque record 105 LONG, trie par
 // instant. Memes filtres que ScanFilmFireEvents (variante longue, tete complete).
 func tirLitRecords(dir string) []tirRecord {
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	var out []tirRecord
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 				continue
 			}
 			pay := p.Payload(chunk)
-			if int(pay[0]>>1) != filmdec.FireEventType || int(pay[0])&1 != 0 ||
+			if int(pay[0]>>1) != grammar.FireEventType || int(pay[0])&1 != 0 ||
 				len(pay)*8 < tirHeadBits {
 				continue
 			}
 			r := tirRecord{tMS: int64(p.TimestampUS / 1000)}
-			r.head[0] = uint64(filmdec.ReadBitsAtForDiag(pay, 0, 32))<<32 |
-				uint64(filmdec.ReadBitsAtForDiag(pay, 32, 32))
-			r.head[1] = uint64(filmdec.ReadBitsAtForDiag(pay, 64, 32))<<32 |
-				uint64(filmdec.ReadBitsAtForDiag(pay, 96, 17))<<15
-			r.weapon = uint64(filmdec.ReadBitsAtForDiag(pay, 44, 32))<<32 |
-				uint64(filmdec.ReadBitsAtForDiag(pay, 76, 32))
+			r.head[0] = uint64(grammar.ReadBitsAtForDiag(pay, 0, 32))<<32 |
+				uint64(grammar.ReadBitsAtForDiag(pay, 32, 32))
+			r.head[1] = uint64(grammar.ReadBitsAtForDiag(pay, 64, 32))<<32 |
+				uint64(grammar.ReadBitsAtForDiag(pay, 96, 17))<<15
+			r.weapon = uint64(grammar.ReadBitsAtForDiag(pay, 44, 32))<<32 |
+				uint64(grammar.ReadBitsAtForDiag(pay, 76, 32))
 			out = append(out, r)
 		}
 	}

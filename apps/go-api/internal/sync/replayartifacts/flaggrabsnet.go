@@ -5,7 +5,7 @@ package replayartifacts
 // # CE QUE CE FICHIER FAIT
 //
 // Il LIT le calque de drapeau de l'artefact range (`flagCarries[].spans`), applique la regle
-// du jonglage (`objectiveevents.NetFlagGrabs`) avec la fenetre declaree par le titre, et
+// du jonglage (`decfilm.NetFlagGrabs`) avec la fenetre declaree par le titre, et
 // transporte le resultat vers `persist.FlagGrabsNetPersister`.
 //
 // # POURQUOI LA MESURE SE FAIT ICI, ET PAS A LA CUISSON
@@ -47,9 +47,9 @@ import (
 	"sort"
 	"time"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/observability"
@@ -91,7 +91,7 @@ func ProjeterPrisesNettes(matchID string, doc *replay.ReplayDocument, window tim
 	if !ok {
 		return persist.FlagGrabsNetBatch{}
 	}
-	res := objectiveevents.NetFlagGrabs(tracks, window)
+	res := decfilm.NetFlagGrabs(tracks, window)
 	if !res.Measured || len(res.Players) == 0 {
 		// AUCUN PORTAGE NOMME : la passe ne prouve pas qu'elle a su LIRE le calque, donc elle
 		// n'ecrit rien — et surtout pas un roster entier a zero, qui affirmerait « personne
@@ -114,7 +114,7 @@ func ProjeterPrisesNettes(matchID string, doc *replay.ReplayDocument, window tim
 // LES BOTS N'EN ONT PAS : un bot n'a pas de xuid (`RosterEntry.Bot`, XUID vide), et la table
 // est clef par xuid. Leur absence n'est pas un zero, c'est une identite que la base ne porte
 // pas — exactement ce que dit le schema de `match_bomb_stats`.
-func completerRosterAZero(doc *replay.ReplayDocument, mesures []objectiveevents.FlagGrabsNetPlayer) []persist.FlagGrabsNetRow {
+func completerRosterAZero(doc *replay.ReplayDocument, mesures []decfilm.FlagGrabsNetPlayer) []persist.FlagGrabsNetRow {
 	out := make([]persist.FlagGrabsNetRow, 0, len(mesures)+len(doc.Roster))
 	vus := make(map[string]bool, len(mesures))
 	for _, p := range mesures {

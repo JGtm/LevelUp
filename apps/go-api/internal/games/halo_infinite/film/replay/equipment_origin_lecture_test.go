@@ -22,24 +22,25 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // lecPose fabrique une pose brute avec une CLE DE VIE choisie — c'est elle que l'evenement 103
 // designe, et sans elle la lecture n'a rien a apparier.
-func lecPose(frame int, globalID uint32, life filmdec.EquipmentLifeKey, x float32,
-) filmdec.EquipmentPlacement {
+func lecPose(frame int, globalID uint32, life types.EquipmentLifeKey, x float32,
+) types.EquipmentPlacement {
 	p := origPoseOf(frame, globalID, x, 0, 0)
 	p.Life = life
 	return p
 }
 
 // lecSpawn fabrique un evenement 103 qui designe `life` a la frame donnee.
-func lecSpawn(frame int, life filmdec.EquipmentLifeKey) filmdec.EquipmentSpawnEvent {
-	return filmdec.EquipmentSpawnEvent{
+func lecSpawn(frame int, life types.EquipmentLifeKey) types.EquipmentSpawnEvent {
+	return types.EquipmentSpawnEvent{
 		TimestampUS: eqTS(frame), Spawned: life, SpawnedValid: true,
-		Source: filmdec.EquipmentLifeKey{Slot: 900}, SourceValid: true,
+		Source: types.EquipmentLifeKey{Slot: 900}, SourceValid: true,
 	}
 }
 
@@ -52,9 +53,9 @@ func lecVieMorte(slot uint32, deFrame, aFrame int) lifeSpan {
 }
 
 // lecPrise fabrique un ramassage d'equipement (`taken`) sur un siege, a la frame donnee.
-func lecPrise(slot uint32, frame int) filmdec.EquipmentChange {
-	return filmdec.EquipmentChange{
-		TimestampUS: eqTS(frame), Slot: slot, Kind: filmdec.EquipmentTaken,
+func lecPrise(slot uint32, frame int) types.EquipmentChange {
+	return types.EquipmentChange{
+		TimestampUS: eqTS(frame), Slot: slot, Kind: types.EquipmentTaken,
 	}
 }
 
@@ -68,12 +69,12 @@ func lecClock(fb *fallback.Compteur) replayClock {
 // lecCuisson assemble une cuisson et rend ses poses, sa couverture et le compte des replis.
 func lecCuisson(in equipmentInputs) ([]EquipmentPlacement, *EquipmentPlacementCoverage, *fallback.Compteur) {
 	fb := fallback.NouveauCompteur()
-	in.Stats = filmdec.EquipmentPlacementStats{Lives: len(in.Raw), Anchors: 12, Confirmed: len(in.Raw)}
-	in.Stats.Calibration.Widths = filmdec.CurrentMPPWidths()
+	in.Stats = grammar.EquipmentPlacementStats{Lives: len(in.Raw), Anchors: 12, Confirmed: len(in.Raw)}
+	in.Stats.Calibration.Widths = grammar.ProfilDeBalayageParDefaut().MPP
 	// LES DENOMINATEURS DU BALAYAGE, comme la production les fournit : sans eux `spawnLists`
 	// resterait a zero et le test ne dirait rien du cas « le film porte des listes mais aucun
 	// evenement », qui est precisement la question ouverte D2 (1.9.1).
-	in.SpawnStats = filmdec.EquipmentSpawnStats{
+	in.SpawnStats = types.EquipmentSpawnStats{
 		Chunks: 1, Packets: 100, Lists: 40, Events: len(in.Spawns), WithSpawned: len(in.Spawns),
 	}
 	out, cov := buildEquipmentPlacements(in, lecClock(fb))
@@ -89,12 +90,12 @@ func lecCuisson(in equipmentInputs) ([]EquipmentPlacement, *EquipmentPlacementCo
 // Le VERDICT ne change pas (un panneau n'existe que deploye), mais la PROVENANCE si : c'est
 // exactement la difference que `coverage.placements.byCause` existe pour publier.
 func TestOriginePoseLitLEvenementEngendre(t *testing.T) {
-	vie := filmdec.EquipmentLifeKey{Slot: 1030, Gen: 2}
-	pos := []filmdec.BipedPosition{origPos(512, 0, 0, 0, 0), origPos(512, 40, 4, 0, 0)}
-	raw := []filmdec.EquipmentPlacement{lecPose(40, wallPanelGlobalID, vie, 4)}
+	vie := types.EquipmentLifeKey{Slot: 1030, Gen: 2}
+	pos := []grammar.BipedPosition{origPos(512, 0, 0, 0, 0), origPos(512, 40, 4, 0, 0)}
+	raw := []types.EquipmentPlacement{lecPose(40, wallPanelGlobalID, vie, 4)}
 
 	_, cov, _ := lecCuisson(equipmentInputs{
-		Raw: raw, Positions: pos, Spawns: []filmdec.EquipmentSpawnEvent{lecSpawn(40, vie)},
+		Raw: raw, Positions: pos, Spawns: []types.EquipmentSpawnEvent{lecSpawn(40, vie)},
 		Lives: []lifeSpan{lecVieMorte(512, 0, 40)},
 	})
 	if got := cov.ByCause[CausePoseEvenementEngendre]; got != 1 {
@@ -136,15 +137,15 @@ func TestOriginePoseLitLEvenementEngendre(t *testing.T) {
 // La pose est posee A MI-VIE (la fenetre dirait `deployed`) puis A LA FIN (elle dirait
 // `dropped`) : l'evenement 103 rend `deployed` dans les DEUX cas, par la meme provenance.
 func TestFenetreFausseeNeChangeRienAuPanneau(t *testing.T) {
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
 	}
 	for _, frame := range []int{20, 40} {
-		vie := filmdec.EquipmentLifeKey{Slot: uint32(1000 + frame), Gen: 1}
+		vie := types.EquipmentLifeKey{Slot: uint32(1000 + frame), Gen: 1}
 		out, cov, _ := lecCuisson(equipmentInputs{
-			Raw:       []filmdec.EquipmentPlacement{lecPose(frame, wallPanelGlobalID, vie, 4)},
+			Raw:       []types.EquipmentPlacement{lecPose(frame, wallPanelGlobalID, vie, 4)},
 			Positions: pos,
-			Spawns:    []filmdec.EquipmentSpawnEvent{lecSpawn(frame, vie)},
+			Spawns:    []types.EquipmentSpawnEvent{lecSpawn(frame, vie)},
 			Lives:     []lifeSpan{lecVieMorte(512, 0, 40)},
 		})
 		if out[0].Origin != OriginDeployed || cov.ByCause[CausePoseEvenementEngendre] != 1 {
@@ -159,9 +160,9 @@ func TestFenetreFausseeNeChangeRienAuPanneau(t *testing.T) {
 // Un appareil PORTE cree a l'instant d'une mort ECRITE de son poseur : `dropped`, par lecture.
 // MUTATION : la mort retiree, la meme pose tombe au REPLI de la fenetre — compte.
 func TestOriginePoseLitLaMortEcrite(t *testing.T) {
-	pos := []filmdec.BipedPosition{origPos(512, 0, 0, 0, 0), origPos(512, 40, 4, 0, 0)}
-	raw := []filmdec.EquipmentPlacement{
-		lecPose(40, wallDeviceGlobalID, filmdec.EquipmentLifeKey{Slot: 1040, Gen: 0}, 4),
+	pos := []grammar.BipedPosition{origPos(512, 0, 0, 0, 0), origPos(512, 40, 4, 0, 0)}
+	raw := []types.EquipmentPlacement{
+		lecPose(40, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1040, Gen: 0}, 4),
 	}
 
 	out, cov, _ := lecCuisson(equipmentInputs{
@@ -198,15 +199,15 @@ func TestOriginePoseLitLaMortEcrite(t *testing.T) {
 // ecrite, une prise l'est. La mutation retire la prise : plus rien ne couvre la pose, elle sort
 // `unknown`.
 func TestOriginePoseLitLaPriseEcrite(t *testing.T) {
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
 	}
-	raw := []filmdec.EquipmentPlacement{
-		lecPose(20, wallDeviceGlobalID, filmdec.EquipmentLifeKey{Slot: 1041, Gen: 0}, 2),
+	raw := []types.EquipmentPlacement{
+		lecPose(20, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1041, Gen: 0}, 2),
 	}
 
 	out, cov, _ := lecCuisson(equipmentInputs{
-		Raw: raw, Positions: pos, Changes: []filmdec.EquipmentChange{lecPrise(512, 20)},
+		Raw: raw, Positions: pos, Changes: []types.EquipmentChange{lecPrise(512, 20)},
 	})
 	if out[0].Origin != OriginDropped || cov.ByCause[CausePosePriseEcrite] != 1 {
 		t.Fatalf("origine %q / causes %v, attendu %q par %q",
@@ -225,14 +226,14 @@ func TestOriginePoseLitLaPriseEcrite(t *testing.T) {
 // un repli, elles sont une CONTRADICTION comptee. La mort tranche — elle libere tout ce que le
 // joueur tenait —, et la contradiction est publiee sous son propre nom.
 func TestOriginePoseCompteLaContradiction(t *testing.T) {
-	pos := []filmdec.BipedPosition{origPos(512, 0, 0, 0, 0), origPos(512, 40, 4, 0, 0)}
+	pos := []grammar.BipedPosition{origPos(512, 0, 0, 0, 0), origPos(512, 40, 4, 0, 0)}
 	out, cov, fb := lecCuisson(equipmentInputs{
-		Raw: []filmdec.EquipmentPlacement{
-			lecPose(40, wallDeviceGlobalID, filmdec.EquipmentLifeKey{Slot: 1042, Gen: 0}, 4),
+		Raw: []types.EquipmentPlacement{
+			lecPose(40, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1042, Gen: 0}, 4),
 		},
 		Positions: pos,
 		Lives:     []lifeSpan{lecVieMorte(512, 0, 40)},
-		Changes:   []filmdec.EquipmentChange{lecPrise(512, 40)},
+		Changes:   []types.EquipmentChange{lecPrise(512, 40)},
 	})
 	if got := cov.ByCause[CausePoseContradiction]; got != 1 {
 		t.Fatalf("byCause[%s] = %d, attendu 1 — la contradiction disparait en silence",
@@ -252,20 +253,20 @@ func TestOriginePoseCompteLaContradiction(t *testing.T) {
 // porte une cause, et une seule. Un ecart signale un chemin de classification qui a fui — la
 // meme regle que l'equilibre des origines, un etage plus bas.
 func TestByCauseSommeAuxPlacements(t *testing.T) {
-	vie := filmdec.EquipmentLifeKey{Slot: 1050, Gen: 3}
-	pos := []filmdec.BipedPosition{
+	vie := types.EquipmentLifeKey{Slot: 1050, Gen: 3}
+	pos := []grammar.BipedPosition{
 		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
 	}
 	_, cov, _ := lecCuisson(equipmentInputs{
-		Raw: []filmdec.EquipmentPlacement{
-			lecPose(40, wallPanelGlobalID, vie, 4),                                     // spawn_event
-			lecPose(40, wallDeviceGlobalID, filmdec.EquipmentLifeKey{Slot: 1051}, 4),   // death_written
-			lecPose(20, wallDeviceGlobalID, filmdec.EquipmentLifeKey{Slot: 1052}, 2),   // none
-			lecPose(20, wallDeviceGlobalID, filmdec.EquipmentLifeKey{Slot: 1053}, 300), // no_owner
-			lecPose(20, wallPanelGlobalID, filmdec.EquipmentLifeKey{Slot: 1054}, 300),  // manifest_piece
+		Raw: []types.EquipmentPlacement{
+			lecPose(40, wallPanelGlobalID, vie, 4),                                   // spawn_event
+			lecPose(40, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1051}, 4),   // death_written
+			lecPose(20, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1052}, 2),   // none
+			lecPose(20, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1053}, 300), // no_owner
+			lecPose(20, wallPanelGlobalID, types.EquipmentLifeKey{Slot: 1054}, 300),  // manifest_piece
 		},
 		Positions: pos,
-		Spawns:    []filmdec.EquipmentSpawnEvent{lecSpawn(40, vie)},
+		Spawns:    []types.EquipmentSpawnEvent{lecSpawn(40, vie)},
 		Lives:     []lifeSpan{lecVieMorte(512, 0, 40)},
 	})
 	somme := 0
@@ -290,8 +291,8 @@ func TestByCauseSommeAuxPlacements(t *testing.T) {
 // « designer » des poses qu'aucun evenement ne concerne : mesure du 2026-09-15, 3 evenements
 // « designaient » 83 poses de `d9781168`. Le temps est la seconde moitie de la cle.
 func TestDesignationExigeLeTempsEtPasSeulementLaCle(t *testing.T) {
-	vie := filmdec.EquipmentLifeKey{Slot: 1060, Gen: 1}
-	src := nouvelleSourceOrigine([]filmdec.EquipmentSpawnEvent{lecSpawn(40, vie)}, nil, nil)
+	vie := types.EquipmentLifeKey{Slot: 1060, Gen: 1}
+	src := nouvelleSourceOrigine([]types.EquipmentSpawnEvent{lecSpawn(40, vie)}, nil, nil)
 	cas := []struct {
 		nom   string
 		frame int
@@ -312,7 +313,7 @@ func TestDesignationExigeLeTempsEtPasSeulementLaCle(t *testing.T) {
 			t.Errorf("%s : designe = %v, attendu %v", c.nom, got, c.want)
 		}
 	}
-	autre := lecPose(40, wallPanelGlobalID, filmdec.EquipmentLifeKey{Slot: 1060, Gen: 2}, 0)
+	autre := lecPose(40, wallPanelGlobalID, types.EquipmentLifeKey{Slot: 1060, Gen: 2}, 0)
 	if src.designeParUnEvenement(autre) {
 		t.Error("une GENERATION differente est designee : la cle de vie est la paire complete")
 	}

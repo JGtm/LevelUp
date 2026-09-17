@@ -1,7 +1,7 @@
 // diag_weapons_v3 — CLI diagnostic (shadow) de la pipeline objective-events v3.
 //
 // Pour chaque match disposant de chunks film cachés + d'un manifest, décode les
-// events objectif (objectiveevents.Extract) à partir du cache disque + d'un
+// events objectif (objectives.Extract) à partir du cache disque + d'un
 // roster (xuid->team_id) résolu depuis shared.match_participants, affiche un
 // résumé par match (events par objective_type/event_type, split par équipe), et
 // pour le CTF compare le COUNT/split de captures décodées au score final DB

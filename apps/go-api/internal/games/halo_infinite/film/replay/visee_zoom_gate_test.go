@@ -49,7 +49,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -79,7 +79,7 @@ type zoomEvt struct {
 var zoomRefWidths = map[int]int{0: 13, 1: 13, 2: 8, 3: 8, 4: 9, 5: 8, 6: 9, 7: 13, 8: 13}
 
 // zoomLireRef consomme une reference gardee ; rend (index, presente).
-func zoomLireRef(br *filmdec.BitReader, dom int) (uint64, bool) {
+func zoomLireRef(br *grammar.Lecteur, dom int) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
 	}
@@ -97,8 +97,6 @@ func TestViseeZoomGate(t *testing.T) {
 	if filepath.Base(dir) != "00162144" {
 		t.Fatalf("la chronologie relevee est celle de 00162144 ; film fourni : %s", filepath.Base(dir))
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	off := zoomDecalage(t, dir)
 	evts := zoomLitEvenements(t, dir)
@@ -150,9 +148,9 @@ func TestViseeZoomGate(t *testing.T) {
 // tomber qu'une fraction. C'est une fermeture, pas une correlation.
 func zoomPontSlot(t *testing.T, dir string, evts []zoomEvt, off int64) {
 	t.Helper()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("balayage des positions : %v", err)
 	}
@@ -193,9 +191,9 @@ func zoomPontSlot(t *testing.T, dir string, evts []zoomEvt, off int64) {
 // zoomDecalage rend l'ecart feed -> film par le pont des morts (meme mecanique que la chronologie).
 func zoomDecalage(t *testing.T, dir string) int64 {
 	t.Helper()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("balayage des positions : %v", err)
 	}
@@ -211,16 +209,16 @@ func zoomDecalage(t *testing.T, dir string) int64 {
 // zoomLitEvenements decode les evenements `unit_zoom` de tete des paquets de la famille 0xCA.
 func zoomLitEvenements(t *testing.T, dir string) []zoomEvt {
 	t.Helper()
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	var out []zoomEvt
 	paquets, autres := 0, 0
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, pk := range filmdec.WalkPackets(chunk) {
-			if pk.Type != filmdec.PacketTypeDelta || pk.Size < 2 {
+		for _, pk := range grammar.WalkPackets(chunk) {
+			if pk.Type != grammar.PacketTypeDelta || pk.Size < 2 {
 				continue
 			}
 			pay := pk.Payload(chunk)
@@ -228,7 +226,7 @@ func zoomLitEvenements(t *testing.T, dir string) []zoomEvt {
 				continue
 			}
 			paquets++
-			br := filmdec.NewBitReader(pay)
+			br := grammar.LecteurSur(pay)
 			br.Skip(1) // bit de configuration
 			if !br.ReadBit() {
 				continue // pas d'evenement en tete

@@ -39,14 +39,15 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // FilmHighlight : le chunk highlight d un match ET la version du film qui le porte.
 //
 // LES DEUX VOYAGENT ENSEMBLE PARCE QUE LE PARSEUR A BESOIN DES DEUX. `MajorVersion` commande le
 // decoupage du gamertag dans le bloc d event (octet 12 au lieu de 0 sur les versions 39-40) ; il
-// vaut [filmdec.FilmMajorVersionUnknown] quand la source n a pas pu le lire, et le decoupage
+// vaut [decfilm.FilmMajorVersionUnknown] quand la source n a pas pu le lire, et le decoupage
 // historique s applique alors.
 type FilmHighlight struct {
 	Chunk        []byte
@@ -175,7 +176,7 @@ func (p passeMedailles) traiterMatch(
 		slog.InfoContext(ctx, "backfill medailles: match saute, film absent du cache", "match_id", matchID)
 		return nil
 	}
-	if film.MajorVersion == filmdec.FilmMajorVersionUnknown {
+	if film.MajorVersion == decfilm.FilmMajorVersionUnknown {
 		// La source n a pas su lire l en-tete du registre : decoupage historique du gamertag.
 		// L appariement lui-meme s en moque (il se fait sur le xuid, lu au bit pres hors du
 		// bloc, et sur l instant), mais un decodage degrade ne se tait pas (CLAUDE.md n 3).
@@ -223,8 +224,8 @@ func (p passeMedailles) traiterMatch(
 // 2026-09-12, constat P1-3). Isoler le geste lui donne un point d observation :
 // `TestEventsDuFilmSuitLaVersionDeclaree` lit le gamertag d un bloc de version 40 et rougit des
 // que la version cesse d etre transmise.
-func eventsDuFilm(film FilmHighlight) ([]analysis.HighlightEvent, error) {
-	return analysis.ParseHighlightEvents(film.Chunk, film.MajorVersion)
+func eventsDuFilm(film FilmHighlight) ([]highlightevent.HighlightEvent, error) {
+	return decfilm.ParseHighlightEvents(film.Chunk, film.MajorVersion)
 }
 
 // correction est ce qu on ecrit sur une ligne : le type_hint TOUJOURS (quantite
@@ -244,12 +245,12 @@ type correction struct {
 // deux cotes n ont pas le meme cardinal n est PAS devine — ses lignes comptent
 // « sans paire ».
 func apparier(
-	ctx context.Context, enBase []evenementBase, events []analysis.HighlightEvent,
+	ctx context.Context, enBase []evenementBase, events []highlightevent.HighlightEvent,
 	resoudre ResolveurNomMedaille, bilan *BilanBackfillMedailles,
 ) []correction {
-	duFilm := map[coupleAppariement][]analysis.HighlightEvent{}
+	duFilm := map[coupleAppariement][]highlightevent.HighlightEvent{}
 	for _, ev := range events {
-		if ev.EventType != analysis.EventTypeMedal {
+		if ev.EventType != highlightevent.EventTypeMedal {
 			continue
 		}
 		c := coupleAppariement{xuid: strconv.FormatUint(ev.XUID, 10), timeMS: ev.TimeMS}
@@ -318,7 +319,7 @@ func matchsMedaillesSansIdentite(ctx context.Context, db *sql.DB) ([]string, err
 	const q = `SELECT DISTINCT match_id FROM highlight_events
 	           WHERE event_type = ? AND raw_json IS NULL
 	           ORDER BY match_id`
-	rows, err := db.QueryContext(ctx, q, analysis.EventTypeMedal)
+	rows, err := db.QueryContext(ctx, q, highlightevent.EventTypeMedal)
 	if err != nil {
 		return nil, fmt.Errorf("backfill medailles: selection des matchs: %w", err)
 	}
@@ -341,7 +342,7 @@ func medaillesDuMatch(ctx context.Context, db *sql.DB, matchID string) ([]evenem
 		SELECT id, COALESCE(xuid, ''), COALESCE(time_ms, 0), raw_json IS NOT NULL
 		FROM highlight_events
 		WHERE match_id = ? AND event_type = ?
-		ORDER BY id`, matchID, analysis.EventTypeMedal)
+		ORDER BY id`, matchID, highlightevent.EventTypeMedal)
 	if err != nil {
 		return nil, fmt.Errorf("backfill medailles: events de %s: %w", matchID, err)
 	}

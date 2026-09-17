@@ -26,7 +26,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // oriTypageEps est le rayon d'appariement naissance -> point. MEME valeur que l'instrument
@@ -80,7 +80,7 @@ func TestOrigineTypageParLaMesure(t *testing.T) {
 	if len(pts) == 0 {
 		t.Skip("aucun point catalogue : dump ou liste de types absents")
 	}
-	cre, st, err := filmdec.ScanFilmEquipmentCreations(s.dir, &s.wr)
+	cre, st, err := grammar.ScanFilmEquipmentCreations(s.dir, &s.wr)
 	if err != nil {
 		t.Fatalf("balayage des naissances : %v", err)
 	}
@@ -174,13 +174,13 @@ func TestOrigineTypageParLaMesure(t *testing.T) {
 // oriPosAuTemps rend la position du bipede `slot` la plus proche dans le TEMPS de `ts`, et
 // l'ecart temporel. Sans position ou avec un ecart trop grand, l'appariement est refuse : un
 // ramassage date par une position vieille de plusieurs secondes ne dit rien du lieu.
-func oriPosAuTemps(pos map[uint32][]filmdec.BipedPosition, slot uint32, ts uint64,
-) (filmdec.BipedPosition, uint64, bool) {
+func oriPosAuTemps(pos map[uint32][]grammar.BipedPosition, slot uint32, ts uint64,
+) (grammar.BipedPosition, uint64, bool) {
 	l, ok := pos[slot]
 	if !ok || len(l) == 0 {
-		return filmdec.BipedPosition{}, 0, false
+		return grammar.BipedPosition{}, 0, false
 	}
-	var best filmdec.BipedPosition
+	var best grammar.BipedPosition
 	bd := uint64(1) << 62
 	for _, p := range l {
 		d := p.TimestampUS - ts
@@ -211,7 +211,7 @@ func TestOrigineTypageParLesRamassages(t *testing.T) {
 	if len(pts) == 0 {
 		t.Skip("aucun point catalogue")
 	}
-	pickups, st, err := filmdec.ScanFilmBipedPickups(s.dir)
+	pickups, st, err := grammar.ScanFilmBipedPickups(s.dir)
 	if err != nil {
 		t.Fatalf("balayage des ramassages : %v", err)
 	}
@@ -219,7 +219,7 @@ func TestOrigineTypageParLesRamassages(t *testing.T) {
 	table := map[int32]map[string]int{}
 	var nonArme, nommes, sansPos, tropLoin, horsPortee int
 	for _, p := range pickups {
-		if filmdec.BipedPickupIsWeaponClass(p.Class) {
+		if grammar.BipedPickupIsWeaponClass(p.Class) {
 			continue
 		}
 		nonArme++
@@ -317,14 +317,14 @@ func TestOrigineControleArmesSurSocles(t *testing.T) {
 	if len(pts) == 0 {
 		t.Skip("aucun point catalogue")
 	}
-	pickups, _, err := filmdec.ScanFilmBipedPickups(s.dir)
+	pickups, _, err := grammar.ScanFilmBipedPickups(s.dir)
 	if err != nil {
 		t.Fatalf("balayage des ramassages : %v", err)
 	}
 	var armesSurSocle, armesSurAutre, armesHorsPortee int
 	repart := map[int32]int{}
 	for _, p := range pickups {
-		if !filmdec.BipedPickupIsWeaponClass(p.Class) {
+		if !grammar.BipedPickupIsWeaponClass(p.Class) {
 			continue
 		}
 		bp, ecart, ok := oriPosAuTemps(s.pos, p.Slot, p.TimestampUS)
@@ -406,7 +406,7 @@ func TestOrigineTypageConsolide(t *testing.T) {
 	if len(pts) == 0 {
 		t.Skip("aucun point catalogue")
 	}
-	pickups, _, err := filmdec.ScanFilmBipedPickups(s.dir)
+	pickups, _, err := grammar.ScanFilmBipedPickups(s.dir)
 	if err != nil {
 		t.Fatalf("balayage des ramassages : %v", err)
 	}
@@ -414,7 +414,7 @@ func TestOrigineTypageConsolide(t *testing.T) {
 	par := map[int32]*oriTypageVerdict{}
 	var totalArme, totalNonArme int
 	for _, p := range pickups {
-		arme := filmdec.BipedPickupIsWeaponClass(p.Class)
+		arme := grammar.BipedPickupIsWeaponClass(p.Class)
 		if arme {
 			totalArme++
 		} else {

@@ -52,10 +52,10 @@ package replay
 //	                  (`flag_grabs`, `flag_steals`, `flag_captures`, `flag_returns`) plus le fil
 //	                  des morts du film. Aucune estimation, aucune fenetre de tolerance.
 //	le PORTEUR        le slot statborg resolu en xuid par le pont par INSTANTS DE MORT
-//	                  (`objectiveevents.SlotIdentityResolved`) — le film seul, aucune base.
+//	                  (`objectives.SlotIdentityResolved`) — le film seul, aucune base.
 //	la POSITION       la piste PUBLIEE du porteur a l'instant considere : le drapeau porte EST
 //	                  a la position de son porteur. Rien de l'objet n'est decode.
-//	le MODE           trois signaux du film qui s'accordent (`objectiveevents.FlagFilmSignals`).
+//	le MODE           trois signaux du film qui s'accordent (`objectives.FlagFilmSignals`).
 //	le DRAPEAU        le socle `flag_spawn` de la carte, du catalogue versionne d'objectifs,
 //	                  joint par `map_id` — jamais par le module ni par le nom public (les deux
 //	                  mentent, cf. les decouvertes du plan).
@@ -189,7 +189,7 @@ type FlagSpan struct {
 // distinguent. Son ABSENCE dit encore autre chose : l'appelant n'a rien fourni a lire.
 type FlagCarriesCoverage struct {
 	// FlagFilm dit si le film a ete RECONNU comme une partie de CTF par l'accord des trois
-	// signaux (cf. `objectiveevents.FlagFilmSignals`). Faux : tout le reste vaut zero, et c'est
+	// signaux (cf. `objectives.FlagFilmSignals`). Faux : tout le reste vaut zero, et c'est
 	// le cas nominal de tous les autres modes.
 	FlagFilm bool `json:"flagFilm"`
 	// Bursts / Captures / Steals : les trois signaux qui ont fonde ce verdict, publies pour

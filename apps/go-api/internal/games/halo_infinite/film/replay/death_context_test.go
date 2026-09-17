@@ -24,19 +24,19 @@ import (
 	"math"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // posMonde pose une position monde d'un slot, à un instant de l'horloge du FILM.
-func posMonde(slot uint32, tMS int64, x, y float32) filmdec.BipedPosition {
-	return filmdec.BipedPosition{
+func posMonde(slot uint32, tMS int64, x, y float32) grammar.BipedPosition {
+	return grammar.BipedPosition{
 		Slot: slot, TimestampUS: uint64(tMS) * 1000, X: x, Y: y, HasWorld: true,
 	}
 }
 
 // pisteMonde échantillonne un slot toutes les 100 ms, à position fixe.
-func pisteMonde(slot uint32, deMS, aMS int64, x, y float32) []filmdec.BipedPosition {
-	out := []filmdec.BipedPosition{}
+func pisteMonde(slot uint32, deMS, aMS int64, x, y float32) []grammar.BipedPosition {
+	out := []grammar.BipedPosition{}
 	for t := deMS; t <= aMS; t += 100 {
 		out = append(out, posMonde(slot, t, x, y))
 	}
@@ -47,7 +47,7 @@ func pisteMonde(slot uint32, deMS, aMS int64, x, y float32) []filmdec.BipedPosit
 func mortFilm(xuid uint64, tMS int64) Death { return Death{XUID: xuid, TimeMS: tMS} }
 
 // dcEntree monte une entrée : le pont est construit par `ResolveSlotXUID`, le vrai.
-func dcEntree(pos []filmdec.BipedPosition, mortsFilm []Death, journal []MortDuJournal) EntreeContexteMorts {
+func dcEntree(pos []grammar.BipedPosition, mortsFilm []Death, journal []MortDuJournal) EntreeContexteMorts {
 	rep := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: mortsFilm, PlayerIndices: indexDe(111, 222, 333, 444, 999)})
 	return EntreeContexteMorts{
 		Positions: pos,
@@ -65,8 +65,8 @@ func dcEntree(pos []filmdec.BipedPosition, mortsFilm []Death, journal []MortDuJo
 //	999   adversaire en (1,0), visible          -> n'entre nulle part
 //
 // Les vies se nomment par les morts du fil : chaque joueur en a une qui clôt sa vie.
-func corpusDeReference() ([]filmdec.BipedPosition, []Death, []MortDuJournal) {
-	var pos []filmdec.BipedPosition
+func corpusDeReference() ([]grammar.BipedPosition, []Death, []MortDuJournal) {
+	var pos []grammar.BipedPosition
 	pos = append(pos, pisteMonde(1, 0, 10_000, 0, 0)...)  // moi
 	pos = append(pos, pisteMonde(2, 0, 20_000, 3, 0)...)  // visible a 3 m
 	pos = append(pos, pisteMonde(3, 0, 6_000, 20, 20)...) // meurt a 6 000
@@ -116,7 +116,7 @@ func TestContextesDesMorts_LesTroisEtats(t *testing.T) {
 // été faux, et rien ne l'aurait signalé. C'est le bug que `nameTracksByLives` a corrigé pour
 // les traces le 2026-09-02 ; l'attribution se fait ici par la VIE QUI COUVRE L'INSTANT.
 func TestContextesDesMorts_SlotRecycle_LePremierOccupantNHeritePas(t *testing.T) {
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	pos = append(pos, pisteMonde(1, 0, 25_000, 0, 0)...)      // moi, tout du long
 	pos = append(pos, pisteMonde(2, 0, 10_000, 50, 50)...)    // 222, loin, puis mort
 	pos = append(pos, pisteMonde(2, 18_000, 28_000, 3, 0)...) // 333 REPREND LE SLOT, a 3 m
@@ -151,7 +151,7 @@ func TestContextesDesMorts_SlotRecycle_LePremierOccupantNHeritePas(t *testing.T)
 // 500 ms avant moi a encore une position DANS la fenêtre de visibilité. Sans le test de
 // vitalité, il sortait « visible » AVEC UNE DISTANCE, et ma mort se lisait « accompagnée ».
 func TestContextesDesMorts_MortRecente_NEstPasVisible(t *testing.T) {
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	pos = append(pos, pisteMonde(1, 0, 10_000, 0, 0)...)
 	pos = append(pos, pisteMonde(2, 0, 9_500, 3, 0)...) // 222 meurt a 9 500, a 3 m de moi
 
@@ -186,7 +186,7 @@ func TestContextesDesMorts_LaFenetreDeVisibilite(t *testing.T) {
 		{"une ms de trop", FenetreVisibiliteMs + 1, false},
 	} {
 		t.Run(cas.nom, func(t *testing.T) {
-			var pos []filmdec.BipedPosition
+			var pos []grammar.BipedPosition
 			pos = append(pos, pisteMonde(1, 0, 10_000, 0, 0)...)
 			// 222 vit d'un bout a l'autre (donc VIVANT a 10 000, UNE seule vie : le trou
 			// reste sous `lifeGapUS`), mais sa REPLICATION s'interrompt juste avant ma mort.
@@ -274,7 +274,7 @@ func TestContextesDesMorts_LaSommeDesEtatsFaitLeTotal(t *testing.T) {
 // vue ». L'erreur serait un décalage CONSTANT, invisible à l'œil.
 func TestContextesDesMorts_HorlogeDuFilmConvertie(t *testing.T) {
 	const dec = 4_000
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	pos = append(pos, pisteMonde(1, dec, dec+10_000, 0, 0)...)
 	pos = append(pos, pisteMonde(2, dec, dec+20_000, 3, 0)...)
 

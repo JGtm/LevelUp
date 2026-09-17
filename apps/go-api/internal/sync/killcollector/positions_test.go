@@ -1,6 +1,6 @@
 package killcollector
 
-// positions_test.go — LE CHARGEMENT DU FILM (chunks synthétiques -> `filmsource.Film`), LA
+// positions_test.go — LE CHARGEMENT DU FILM (chunks synthétiques -> `source.Film`), LA
 // COMPOSITION PURE, ET LE REFUS PROPRE. Aucun test ici n'ouvre de base ni ne lit de film réel —
 // c'est le rôle de positions_integration_test.go (fixture réelle, gate KILLSOURCE_FIXTURES) et de
 // kill_position_persister_test.go (persister, :memory:). Ce fichier verrouille exactement ce que
@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -27,7 +27,7 @@ import (
 )
 
 // zlibCompressForTest compresse b, pour verifier qu'un chunk COMPRESSE (la forme du cache
-// herite) arrive decompresse aux balayages — c'est `filmsource` qui inflate, une seule fois.
+// herite) arrive decompresse aux balayages — c'est `source` qui inflate, une seule fois.
 func zlibCompressForTest(t *testing.T, b []byte) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -45,7 +45,7 @@ func zlibCompressForTest(t *testing.T, b []byte) []byte {
 //
 // LE PONT DISQUE A DISPARU AU LOT 1 (PLAN_CUISSON_PERF, item 1.6) : les chunks téléchargés ne
 // sont plus recopiés dans un répertoire temporaire pour être relus quatre fois. `FilmOf` les
-// charge une fois (`filmsource`), et le seul contrôle qui protégeait d'une position FAUSSE — le
+// charge une fois (`source`), et le seul contrôle qui protégeait d'une position FAUSSE — le
 // refus d'une séquence trouée — est conservé tel quel, en mémoire.
 
 func TestFilmOf_ChargeLesChunksALeurIndex(t *testing.T) {
@@ -67,7 +67,7 @@ func TestFilmOf_ChargeLesChunksALeurIndex(t *testing.T) {
 		t.Errorf("chunk 2 = %q", got)
 	}
 	// LES METADONNEES SONT POSITIONNELLES et portent le manifeste : c'est par elles que les
-	// balayages traduisent un NUMERO de chunk en position (filmdec.FilmChunkNumbers).
+	// balayages traduisent un NUMERO de chunk en position (decfilm.FilmChunkNumbers).
 	meta := film.Meta()
 	if len(meta) != 3 {
 		t.Fatalf("Meta = %d entrees, attendu 3", len(meta))
@@ -83,7 +83,7 @@ func TestFilmOf_ChargeLesChunksALeurIndex(t *testing.T) {
 }
 
 // TestFilmOf_ZlibRoundTrip — les chunks descendent COMPRESSÉS du cache hérité et CLAIRS des
-// téléchargements récents. `filmsource` décompresse à la charge, une fois pour tous les lecteurs
+// téléchargements récents. `source` décompresse à la charge, une fois pour tous les lecteurs
 // (avant, chacune des quatre lectures repayait cette décompression).
 func TestFilmOf_ZlibRoundTrip(t *testing.T) {
 	compressed := zlibCompressForTest(t, []byte("payload-compresse"))
@@ -98,7 +98,7 @@ func TestFilmOf_ZlibRoundTrip(t *testing.T) {
 
 // TestFilmOf_NumerosDeChunksVusParLesBalayages — LE CONTRAT QUI REMPLACE LE PONT DISQUE, et le
 // seul qui pouvait se perdre en route : les quatre balayages parcourent les chunks de DONNÉES par
-// NUMÉRO (`filmdec.FilmChunkNumbers`), là où ils comptaient `filmdec.CountFilmChunks(dir)` — donc
+// NUMÉRO (`decfilm.FilmChunkNumbers`), là où ils comptaient `decfilm.CountFilmChunks(dir)` — donc
 // 1..N depuis chunk_01. Le film chargé en mémoire doit rendre exactement les mêmes numéros, sinon
 // `ScanDeaths` (qui prend le DERNIER numéro comme chunk du kill-feed) et `ScanClockOrigin` (qui
 // lit le numéro 1) changeraient de cible sans rien signaler.
@@ -112,12 +112,12 @@ func TestFilmOf_NumerosDeChunksVusParLesBalayages(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FilmOf: %v", err)
 	}
-	nums := filmdec.FilmChunkNumbers(film)
+	nums := decfilm.FilmChunkNumbers(film)
 	if len(nums) != 3 || nums[0] != 1 || nums[2] != 3 {
 		t.Fatalf("numeros = %v, attendu [1 2 3] (le registre exclu, le kill-feed en dernier)", nums)
 	}
 	// Le NUMÉRO adresse bien la position : c'est ce que `FilmChunkAt` traduit pour les balayages.
-	raw, _, ok := filmdec.FilmChunkAt(film, 3)
+	raw, _, ok := decfilm.FilmChunkAt(film, 3)
 	if !ok || string(raw) != "killfeed" {
 		t.Errorf("chunk numero 3 = %q (ok=%v), attendu le kill-feed", raw, ok)
 	}
@@ -155,9 +155,8 @@ func TestRefuserSequenceTrouee_ChunkVideEstUnTrou(t *testing.T) {
 }
 
 // TestRefuserSequenceTrouee_AucunChunkDeDonneesPasse — le contrôle ne juge pas l'absence de
-// contenu (0 chunk de données = 0 trou) ; c'est aux LECTEURS (ScanBipedPositions, etc.) de
-// refuser un film vide. Verrouille la frontière entre les deux responsabilités, comme le faisait
-// le pont disque avant lui.
+// contenu (0 chunk de données = 0 trou) ; c'est aux LECTEURS (ScanBipedPositions, etc.) de refuser
+// un film vide. Verrouille la frontière entre les deux responsabilités, comme le pont disque avant lui.
 func TestRefuserSequenceTrouee_AucunChunkDeDonneesPasse(t *testing.T) {
 	film, err := FilmOf(nil)
 	if err != nil {
@@ -259,10 +258,10 @@ func (f fakeMapNames) MapKeysForMap(context.Context, string) (port.MatchMapKeys,
 	return f.keys, f.err
 }
 
-func testMapQuantCatalog() *filmdec.MapQuantCatalog {
-	return &filmdec.MapQuantCatalog{
-		SchemaVersion: filmdec.MapQuantSchemaVersion,
-		Maps: map[string]filmdec.MapQuantEntry{
+func testMapQuantCatalog() *decfilm.MapQuantCatalog {
+	return &decfilm.MapQuantCatalog{
+		SchemaVersion: decfilm.MapQuantSchemaVersion,
+		Maps: map[string]decfilm.MapQuantEntry{
 			"catalyst": {
 				Min: [3]float32{-100, -100, -100},
 				Max: [3]float32{100, 100, 100},
@@ -458,7 +457,7 @@ func TestEntreeDuRegistrePorteLeRosterDeLaFeuille(t *testing.T) {
 //
 // MUTATION : retirer `BipedCreations` d'`entreeDuRegistre` -> ROUGE.
 func TestEntreeDuRegistrePorteLesCreationsDeBipede(t *testing.T) {
-	l := lecturesDuFilm{creations: []filmdec.BipedCreation{
+	l := lecturesDuFilm{creations: []decfilm.BipedCreation{
 		{Slot: 512, Generation: 1, ParticipantIndex: 3, HasIndex: true, TimestampUS: 42},
 	}}
 	in := entreeDuRegistre(l, MatchIdentities{XUIDs: []string{"111"}}, nil, "m1")
@@ -493,23 +492,23 @@ func TestEntreeDuRegistrePorteLesCreationsDeBipede(t *testing.T) {
 // DEUX vies pour 222, la vie du bot comprise, nommees `biped_creation`/`biped_creation_propagee`
 // au lieu de `tableau_api`).
 func TestEntreeDuRegistrePorteLesBotsEtLesParticipants(t *testing.T) {
-	var pos []filmdec.BipedPosition
+	var pos []decfilm.BipedPosition
 	for tUS := uint64(1_000_000); tUS <= 4_000_000; tUS += 500_000 {
-		pos = append(pos, filmdec.BipedPosition{Slot: 100, TimestampUS: tUS, HasWorld: true})
+		pos = append(pos, decfilm.BipedPosition{Slot: 100, TimestampUS: tUS, HasWorld: true})
 	}
 	for tUS := uint64(20_000_000); tUS <= 23_000_000; tUS += 500_000 {
-		pos = append(pos, filmdec.BipedPosition{Slot: 100, TimestampUS: tUS, HasWorld: true})
+		pos = append(pos, decfilm.BipedPosition{Slot: 100, TimestampUS: tUS, HasWorld: true})
 	}
 	// Le siege partage : une vie AVANT l'arrivee de 222 (le bot), une vie APRES (l'humain).
 	for tUS := uint64(1_000_000); tUS <= 4_000_000; tUS += 500_000 {
-		pos = append(pos, filmdec.BipedPosition{Slot: 300, TimestampUS: tUS, HasWorld: true})
+		pos = append(pos, decfilm.BipedPosition{Slot: 300, TimestampUS: tUS, HasWorld: true})
 	}
 	for tUS := uint64(20_000_000); tUS <= 24_000_000; tUS += 500_000 {
-		pos = append(pos, filmdec.BipedPosition{Slot: 300, TimestampUS: tUS, HasWorld: true})
+		pos = append(pos, decfilm.BipedPosition{Slot: 300, TimestampUS: tUS, HasWorld: true})
 	}
 	l := lecturesDuFilm{
 		positions: pos,
-		creations: []filmdec.BipedCreation{
+		creations: []decfilm.BipedCreation{
 			{Slot: 100, Generation: 1, ParticipantIndex: 0, HasIndex: true, TimestampUS: 1_000_000},
 			{Slot: 300, Generation: 1, ParticipantIndex: 9, HasIndex: true, TimestampUS: 1_000_000},
 		},

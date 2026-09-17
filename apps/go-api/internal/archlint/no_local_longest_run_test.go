@@ -51,19 +51,19 @@ var longestRunAllowed = map[string]bool{
 // items de domaine. `analysis.LongestRun[T]` prend une slice et un prédicat : il ne
 // modélise pas un curseur de bits. La forme se ressemble, l'objet non.
 //
-// Le paquet `filmdec` est de surcroît importé tel quel des deux lignées de recherche
+// Le paquet `grammar` est de surcroît importé tel quel des deux lignées de recherche
 // (il n'existait ni dans la base commune ni sur main) : deux de ses fichiers
 // déclenchaient déjà ce ratchet sur `feat/killsource-prod` AVANT toute réconciliation.
 // L'exemption règle donc une dette antérieure, elle n'en crée pas.
 //
-// RETRAIT : quand `filmdec` aura sa propre primitive de plage de bits. Le volet
+// RETRAIT : quand `grammar` aura sa propre primitive de plage de bits. Le volet
 // `cmd/tmp_*` / `cmd/wf_*` de cette exemption est RETIRÉ le 2026-08-01 (lot A du
 // plan de dette avant merge) : l'outillage de recherche est supprimé, l'exemption
 // par préfixe n'a plus de cible. Le volet `frame_debug.go` est RETIRÉ le 2026-09-05
 // (lot E, item E.2) : le fichier est supprimé (deux fonctions de debug sans aucun
 // appelant, tests compris), l'exemption n'a plus de cible non plus.
 var longestRunAllowedPrefixes = []string{
-	"internal/games/halo_infinite/film/filmdec/frame_records.go",
+	"internal/games/halo_infinite/film/internal/grammar/frame_records.go",
 }
 
 // longestRunExempt dit si le chemin relatif est couvert par une exemption datée.

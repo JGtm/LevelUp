@@ -8,7 +8,7 @@
 // uniquement pour `internal/analysis/temporal`. Tout le reste d'`analysis/` pouvait donc
 // importer un paquet de titre sans que rien ne rougisse.
 //
-// Ce test est posé AVANT le déplacement du décodeur de film (`filmdec`, `replay`) d'
+// Ce test est posé AVANT le déplacement du décodeur de film (`grammar`, `replay`) d'
 // `internal/analysis/` vers `internal/games/halo_infinite/film/` (lot E du plan
 // `.ai/PLAN_FORK_ET_RELEASE_2026-09-11.md`). Sans lui, le déplacement transformerait des
 // imports internes à `analysis/` en franchissements de frontière INVISIBLES : c'est
@@ -68,6 +68,10 @@ var paquetsInterTitres = map[string]bool{
 // 399 après. Le plancher est posé à 300 (75 % de l'état d'après), assez serré pour qu'un
 // parcours cassé échoue, assez lâche pour ne pas devenir un compteur à maintenir. Un ratchet
 // qui ne scanne rien passe en silence, ce qui est pire que pas de ratchet.
+//
+// RE-MESURE DU 2026-09-16 (lot 2.5.d.2) : 427 fichiers avant la descente d'`objectiveevents`
+// sous `film/facts/objectives`, 365 après. Le plancher tient (le lot 2.5 en retirera encore
+// `weaponv3` et `source`, soit ~351 à sa clôture) ; il est ré-examiné à chaque descente.
 const plancherFichiersAnalysis = 300
 
 // franchissementsToleres : les fichiers d'`internal/analysis/` qui importent encore un paquet
@@ -78,35 +82,32 @@ const plancherFichiersAnalysis = 300
 // Une entrée qui ne correspond plus à aucune violation fait rougir ce test (une exemption qui
 // survit à son site finit par en couvrir un autre).
 var franchissementsToleres = map[string]string{
-	"internal/analysis/objectiveevents/assaut_footer_research_test.go": "2026-09-12 — " +
-		"`games/halo_infinite/film/filmcache` : test de RECHERCHE (pied de paquet du mode " +
-		"Assaut) qui ouvre des films réels du cache local. La dépendance est au CACHE DE " +
-		"FILMS d'un titre, pas à l'algorithme : le portage consiste à faire passer le film " +
-		"par un paramètre (fixture ou interface de source), comme le fait déjà " +
-		"`analysis/filmsource`. Hors périmètre du lot E (déplacement pur).",
-	"internal/analysis/objectiveevents/extract_test.go": "2026-09-12 — " +
-		"`games/halo_infinite/film/filmcache` : même motif que ci-dessus (extraction des " +
-		"événements d'objectif vérifiée sur films réels). Même portage attendu : la source " +
-		"du film devient un paramètre du test.",
-	"internal/analysis/filmsource/source_test.go": "2026-09-12, rendu visible par le " +
-		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/filmdec` : le test " +
-		"EXTERNE de `filmsource` compare les deux marcheurs de paquets sur un film réel " +
-		"(preuve d'équivalence de la grammaire, cf. `filmsource_leaf_test.go`). Le paquet " +
-		"testé, lui, reste une feuille sans aucun import du dépôt : c'est le TEST qui " +
-		"franchit. Portage attendu : la preuve d'équivalence descend avec le décodeur, sous " +
-		"`games/halo_infinite/film/`.",
-	"internal/analysis/sessionusage/usage_outcomes.go": "2026-09-12, rendu visible par le " +
-		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/replay` : SEUL " +
-		"franchissement de PRODUCTION de la liste. `sessionusage` lit les types de sortie " +
-		"d'usage d'équipement produits par le décodeur. Portage attendu : ces types " +
-		"remontent en `domain/` (ou `games/canonical/`), comme `domain/replaydoc` l'a déjà " +
-		"fait pour le document de rejeu au lot A — après quoi `sessionusage` n'importera " +
-		"plus rien d'un titre.",
-	"internal/analysis/weapon_index_equivalence_test.go": "2026-09-12, rendu visible par le " +
-		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/filmdec` : test " +
-		"d'équivalence entre l'index d'armes d'`analysis` et celui du décodeur. Portage " +
-		"attendu : l'index d'armes est title-agnostic (`games/weapons`), la comparaison " +
-		"descend côté décodeur.",
+	// RETIRÉES LE 2026-09-16 (lot 2.5.d.2) : `internal/analysis/objectiveevents/` —
+	// `assaut_footer_research_test.go` et `extract_test.go`. Le portage attendu n'a pas eu lieu
+	// (la source du film n'est toujours pas un paramètre de ces tests) : c'est le PAQUET qui a
+	// quitté `internal/analysis/`, descendu sous
+	// `internal/games/halo_infinite/film/internal/facts/objectives` — il est désormais une couche du
+	// décodeur, chez lui, et ouvrir un film du cache local y est légitime. La dette décrite par
+	// ces deux entrées disparaît donc avec sa cause, et non par contournement.
+	// RETIRÉE LE 2026-09-16 (lot 2.4, item 2.4.2) : `internal/games/halo_infinite/film/internal/source/source_test.go`
+	// n'importe plus `grammar` : le test compare le marcheur canonique (`source.Paquets`) à une
+	// COPIE DE RÉFÉRENCE de l'ancienne grammaire portée par le test lui-même (738 paquets).
+	// RETIRÉE LE 2026-09-16 (item 2.5.f) : `internal/analysis/sessionusage/usage_outcomes.go`
+	// était le SEUL franchissement de PRODUCTION de cette liste. Les quatre symboles d'usage
+	// d'équipement qu'il lisait dans `games/halo_infinite/film/replay` vivent désormais dans
+	// `internal/domain/equipmentusage` — le décodeur et l'agrégat de session les y lisent tous
+	// les deux. Reste TROIS entrées, toutes des TESTS.
+	// RETIRÉE LE 2026-09-16 (lot 2.5.e) : `internal/analysis/weapon_index_equivalence_test.go`
+	// était la DERNIÈRE. Le portage annoncé a eu lieu tel qu'il était écrit — « la comparaison
+	// descend côté décodeur » : le test vit désormais dans
+	// `internal/games/halo_infinite/film/internal/grammar/weaponscan/`, à côté du scanner dont il prouve
+	// la clé de tireur, et le catalogue d'armes qu'il opposait est sorti d'`internal/analysis`
+	// pour `games/weapons/filmshell`.
+	//
+	// LA TABLE EST VIDE, ET C'EST UN RATCHET : `internal/analysis/` n'importe plus AUCUN paquet
+	// de titre, ni en production ni en test. Toute entrée neuve doit se justifier par écrit et
+	// nommer son lot de retrait — ce n'est plus une liste de dette à vider, c'est une exception
+	// à décider.
 }
 
 func TestAnalysisImporteAucunPaquetDeTitre(t *testing.T) {

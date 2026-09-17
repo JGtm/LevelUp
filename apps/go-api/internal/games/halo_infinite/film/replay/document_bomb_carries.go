@@ -11,7 +11,7 @@ package replay
 //
 // SOURCE, TOUTE DANS LE FILM : la bombe est un OBJET TENU — le moteur la replique dans le
 // composant weapon-state-type-info du bipede, exactement comme une arme
-// (`filmdec.ScanFilmHeldWeaponChanges`, le MEME balayage que `weaponChanges`). Sa famille est
+// (`grammar.ScanFilmHeldWeaponChanges`, le MEME balayage que `weaponChanges`). Sa famille est
 // `0x3fee4fcf` (B1 2026-09-01 : unique candidate hors catalogue d'armes des 9 films d'Assaut,
 // prise et lachee sur chacun ; l'atlas HUD la nomme independamment « ball | bomb »,
 // sprite contour-34). PRISE = transition VERS la famille ; LACHER = transition DEPUIS ; la

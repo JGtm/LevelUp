@@ -7,7 +7,7 @@
 //	go run ./cmd/refresh_golden_fixture --gamertag JGtm [--match-id <UUID>]
 //
 // Si `--match-id` est omis, le tool prend le match le plus récent du joueur.
-// Le fixture est écrit dans `internal/analysis/testdata/v41_chunk_he.bin`.
+// Le fixture est écrit dans `internal/games/halo_infinite/film/internal/grammar/testdata/v41_chunk_he.bin`.
 //
 // **Pré-requis** : refresh token OAuth du joueur dans le MultiUserTokenStore
 // (data/auth/watcher_tokens, source unique ADR 0023), et SPNKR_AZURE_CLIENT_ID
@@ -33,8 +33,8 @@ import (
 )
 
 const (
-	defaultFixturePath  = "internal/analysis/testdata/v41_chunk_he.bin"
-	manifestFixturePath = "internal/analysis/testdata/v41_film_manifest.json"
+	defaultFixturePath  = "internal/games/halo_infinite/film/internal/grammar/testdata/v41_chunk_he.bin"
+	manifestFixturePath = "internal/games/halo_infinite/film/internal/grammar/testdata/v41_film_manifest.json"
 )
 
 func main() {

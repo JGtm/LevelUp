@@ -16,7 +16,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // siegeFrames : la longueur des documents de ces tests. Les bornes t1 et t2 s'y rapportent.

@@ -74,29 +74,19 @@ package replay
 import (
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/domain/equipmentusage"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
-// equipmentOutcomeFamilies — LES FAMILLES QUI PORTENT UNE LIGNE D'ISSUE, dans
-// l'ordre où le bilan les cite. Une LISTE et non une map : l'ordre d'itération
-// d'une map n'est pas un ordre, et l'agrégat de session publie ces familles dans
-// celui-ci.
+// equipmentOutcomeFamilies — LE PÉRIMÈTRE DU BILAN, lu UNE FOIS depuis sa maison.
 //
-// CE N'EST PLUS UNE TABLE DE RECONNAISSANCE (la famille est publiée par le document
-// depuis le schéma 51) : c'est le PÉRIMÈTRE DU BILAN. Une famille du manifeste
-// absente d'ici reste hors bilan sans qu'on ait à l'exclure — le répulseur (négatif
-// mesuré, décision P4), le grappin et le propulseur portent une famille, ils n'ont
-// simplement aucune ligne « pris / utilisé / gardé / lâché ».
-var equipmentOutcomeFamilies = []string{
-	usageFamilyWall,
-	usageFamilySensor,
-	"translocator_beacon",
-	"shroud_screen",
-	"threat_seeker",
-	"repair_field",
-	usageFamilyPowerupCamo,
-	usageFamilyPowerupOvershield,
-}
+// La liste elle-même a quitté ce fichier le 2026-09-17 (item 2.5.f) pour
+// `internal/domain/equipmentusage` : l'agrégat de session la lit AUSSI, et il ne peut
+// pas importer un paquet de titre (D9). Ce que garde ce paquet est une COPIE LOCALE
+// de lecture, pas une seconde écriture — [equipmentusage.EquipmentOutcomeFamilies]
+// rend une copie défensive à chaque appel, et `estFamilleDuBilan` est sur le chemin
+// de CHAQUE changement d'équipement du film.
+var equipmentOutcomeFamilies = equipmentusage.EquipmentOutcomeFamilies()
 
 // estFamilleDuBilan dit si cette famille porte une ligne d'issue.
 func estFamilleDuBilan(family string) bool {
@@ -106,25 +96,6 @@ func estFamilleDuBilan(family string) bool {
 		}
 	}
 	return false
-}
-
-// EquipmentFamilyPowerupCamo / EquipmentFamilyPowerupOvershield — les deux familles
-// dont le côté « utilisé » est un ÉPISODE et non une pose (décision P2). Exportées
-// parce que l'agrégat de session doit faire la MÊME bascule sur une ligne de base :
-// des littéraux recopiés là-bas feraient une seconde vérité (CLAUDE.md n°6).
-const (
-	EquipmentFamilyPowerupCamo       = usageFamilyPowerupCamo
-	EquipmentFamilyPowerupOvershield = usageFamilyPowerupOvershield
-)
-
-// EquipmentOutcomeFamilies rend les familles qui portent une ligne d'issue, dans
-// l'ordre de la table ci-dessus. Exportée pour l'agrégat de session, qui doit
-// pouvoir citer une famille du bilan même quand AUCUNE prise ne l'a nommée sur le
-// scope (un déployable posé depuis l'équipement de réapparition, jamais `taken`).
-func EquipmentOutcomeFamilies() []string {
-	out := make([]string, len(equipmentOutcomeFamilies))
-	copy(out, equipmentOutcomeFamilies)
-	return out
 }
 
 // equipmentOutcomeFamilyOf rend la famille du bilan que nomme ce rang de palette,
@@ -260,7 +231,7 @@ func usageUsedOf(t *UsagePlayerSummary, family string) int {
 		return t.CamoEpisodes
 	case family == usageFamilyPowerupOvershield:
 		return t.OvershieldEpisodes
-	case usageFamilySpawnsPiece(family):
+	case equipmentusage.UsageFamilySpawnsPiece(family):
 		return t.DeployedByFamily[family]
 	default:
 		return t.SpentByFamily[family]

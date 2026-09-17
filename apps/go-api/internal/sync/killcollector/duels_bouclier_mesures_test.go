@@ -10,7 +10,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
@@ -28,7 +28,7 @@ type duelsBChute struct {
 // plafonne a 5 parametres, et ces six quantites voyagent toujours ensemble.
 type duelsBSonde struct {
 	kills     []duelsBKill
-	positions []filmdec.BipedPosition
+	positions []decfilm.BipedPosition
 	slotXUID  map[uint32]uint64
 	registre  replay.IdentityRegistry
 	equipes   map[uint64]int64
@@ -218,9 +218,9 @@ func duelsBGoNoGo(ok bool) string {
 // Rend AUSSI l'instant de la premiere lecture retenue : c'est le bord gauche du domaine ou une
 // chute est OBSERVABLE, et le temoin decale doit tomber a l'interieur (cf. duelsBComptes).
 func duelsBChutesBouclier(
-	positions []filmdec.BipedPosition, slotXUID map[uint32]uint64,
+	positions []decfilm.BipedPosition, slotXUID map[uint32]uint64,
 ) ([]duelsBChute, uint64) {
-	parSlot := map[uint32][]filmdec.BipedPosition{}
+	parSlot := map[uint32][]decfilm.BipedPosition{}
 	premiere := uint64(0)
 	for _, p := range positions {
 		if _, ok := slotXUID[p.Slot]; !ok {

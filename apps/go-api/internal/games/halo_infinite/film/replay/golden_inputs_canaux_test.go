@@ -28,7 +28,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // ---------------------------------------------------------------------------
@@ -43,7 +45,7 @@ import (
 // `HasIndex` VOYAGE AVEC L INDEX, et il le faut : une porte fermee n est PAS un index nul
 // (cf. filmdec/biped_creation.go). Relu a zero sans son temoin, le corps serait attribue au
 // participant 0.
-func encodeBipedCreations(w *gwriter, creations []filmdec.BipedCreation) {
+func encodeBipedCreations(w *gwriter, creations []grammar.BipedCreation) {
 	w.u(uint64(len(creations)))
 	var lastTS uint64
 	for _, c := range creations {
@@ -56,13 +58,13 @@ func encodeBipedCreations(w *gwriter, creations []filmdec.BipedCreation) {
 	}
 }
 
-func decodeBipedCreations(r *greader) []filmdec.BipedCreation {
+func decodeBipedCreations(r *greader) []grammar.BipedCreation {
 	n := int(r.u())
-	out := make([]filmdec.BipedCreation, 0, n)
+	out := make([]grammar.BipedCreation, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		c := filmdec.BipedCreation{TimestampUS: lastTS, Slot: uint32(r.u()), Generation: uint32(r.u())}
+		c := grammar.BipedCreation{TimestampUS: lastTS, Slot: uint32(r.u()), Generation: uint32(r.u())}
 		c.HasIndex = r.bool8()
 		c.ParticipantIndex = uint32(r.u())
 		out = append(out, c)
@@ -79,7 +81,7 @@ func decodeBipedCreations(r *greader) []filmdec.BipedCreation {
 //
 // `Kind` EST UNE CHAINE, et elle voyage telle quelle : c est elle que le calque publie
 // (« prise », « lacher »), et la re-deriver a la relecture serait un second decideur.
-func encodeWeaponChanges(w *gwriter, changes []filmdec.HeldWeaponChange) {
+func encodeWeaponChanges(w *gwriter, changes []types.HeldWeaponChange) {
 	w.u(uint64(len(changes)))
 	var lastTS uint64
 	for _, c := range changes {
@@ -93,17 +95,17 @@ func encodeWeaponChanges(w *gwriter, changes []filmdec.HeldWeaponChange) {
 	}
 }
 
-func decodeWeaponChanges(r *greader) []filmdec.HeldWeaponChange {
+func decodeWeaponChanges(r *greader) []types.HeldWeaponChange {
 	n := int(r.u())
-	out := make([]filmdec.HeldWeaponChange, 0, n)
+	out := make([]types.HeldWeaponChange, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		c := filmdec.HeldWeaponChange{TimestampUS: lastTS, Slot: uint32(r.u())}
+		c := types.HeldWeaponChange{TimestampUS: lastTS, Slot: uint32(r.u())}
 		c.SlotIndex = int(r.i())
 		c.Family = uint32(r.u())
 		c.Previous = uint32(r.u())
-		c.Kind = filmdec.HeldWeaponChangeKind(r.str())
+		c.Kind = types.HeldWeaponChangeKind(r.str())
 		out = append(out, c)
 	}
 	return out
@@ -118,7 +120,7 @@ func decodeWeaponChanges(r *greader) []filmdec.HeldWeaponChange {
 // LES STATS VOYAGENT AVEC LA LISTE, et il le faut : elles portent `MultiEvent`, c est-a-dire la
 // mesure de ce que le canal ne peut PAS voir (un ramassage en 2e position d une liste lui
 // echappe). Une liste vide sans elles serait indistinguable d un film sans ramassage.
-func encodePickups(w *gwriter, pickups []filmdec.BipedPickup, st filmdec.BipedPickupStats) {
+func encodePickups(w *gwriter, pickups []types.BipedPickup, st types.BipedPickupStats) {
 	w.u(uint64(len(pickups)))
 	var lastTS uint64
 	for _, p := range pickups {
@@ -140,17 +142,17 @@ func encodePickups(w *gwriter, pickups []filmdec.BipedPickup, st filmdec.BipedPi
 	w.u(uint64(st.UnexpectedWideRef))
 }
 
-func decodePickups(r *greader) ([]filmdec.BipedPickup, filmdec.BipedPickupStats) {
+func decodePickups(r *greader) ([]types.BipedPickup, types.BipedPickupStats) {
 	n := int(r.u())
-	out := make([]filmdec.BipedPickup, 0, n)
+	out := make([]types.BipedPickup, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		p := filmdec.BipedPickup{TimestampUS: lastTS, Slot: uint32(r.u()), CatalogID: uint32(r.u())}
+		p := types.BipedPickup{TimestampUS: lastTS, Slot: uint32(r.u()), CatalogID: uint32(r.u())}
 		p.Class = r.byte8()
 		out = append(out, p)
 	}
-	st := filmdec.BipedPickupStats{
+	st := types.BipedPickupStats{
 		Packets: int(r.u()), Type9: int(r.u()), Type8: int(r.u()), OtherType: int(r.u()),
 		Published: int(r.u()), MultiEvent: int(r.u()), RefusedNoRef: int(r.u()),
 		RefusedNoCatalog: int(r.u()), RefusedOffBand: int(r.u()), UnexpectedWideRef: int(r.u()),
@@ -167,7 +169,7 @@ func decodePickups(r *greader) ([]filmdec.BipedPickup, filmdec.BipedPickupStats)
 // `Counter`, `Recovered` et `Gap` sont dans le blob parce que la couverture les publie : ce canal
 // est le seul du rejeu qui sache s auto-mesurer, et un `Gap` relu a zero affirmerait une chaine
 // saine la ou des emissions manquent.
-func encodeEquipmentChanges(w *gwriter, changes []filmdec.EquipmentChange, st filmdec.EquipmentChangeStats) {
+func encodeEquipmentChanges(w *gwriter, changes []types.EquipmentChange, st types.EquipmentChangeStats) {
 	w.u(uint64(len(changes)))
 	var lastTS uint64
 	for _, c := range changes {
@@ -197,22 +199,22 @@ func encodeEquipmentChanges(w *gwriter, changes []filmdec.EquipmentChange, st fi
 	w.u(uint64(st.Recovered))
 }
 
-func decodeEquipmentChanges(r *greader) ([]filmdec.EquipmentChange, filmdec.EquipmentChangeStats) {
+func decodeEquipmentChanges(r *greader) ([]types.EquipmentChange, types.EquipmentChangeStats) {
 	n := int(r.u())
-	out := make([]filmdec.EquipmentChange, 0, n)
+	out := make([]types.EquipmentChange, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		c := filmdec.EquipmentChange{TimestampUS: lastTS, Slot: uint32(r.u()), Counter: uint32(r.u())}
+		c := types.EquipmentChange{TimestampUS: lastTS, Slot: uint32(r.u()), Counter: uint32(r.u())}
 		c.Rank = int(r.i())
 		c.Previous = int(r.i())
-		c.Kind = filmdec.EquipmentChangeKind(r.str())
+		c.Kind = types.EquipmentChangeKind(r.str())
 		c.Recovered = r.bool8()
 		c.Gap = int(r.i())
 		out = append(out, c)
 	}
-	var st filmdec.EquipmentChangeStats
-	st.Walk = filmdec.AbilityRankStats{
+	var st types.EquipmentChangeStats
+	st.Walk = types.AbilityRankStats{
 		Records: int(r.u()), WithI48: int(r.u()), Read: int(r.u()),
 		Unread: int(r.u()), Gated: int(r.u()),
 	}
@@ -238,7 +240,7 @@ func decodeEquipmentChanges(r *greader) ([]filmdec.EquipmentChange, filmdec.Equi
 // fonction (slot, instant) -> palier, que `FilmInputs.applyTo` reconstruit par
 // `buildScopedLookup` a partir de ces evenements et des vies lues dans les positions. Une
 // fermeture ne se serialise pas ; ses ENTREES, si.
-func encodeZoomEvents(w *gwriter, events []filmdec.ZoomEvent) {
+func encodeZoomEvents(w *gwriter, events []grammar.ZoomEvent) {
 	w.u(uint64(len(events)))
 	var lastTS uint64
 	for _, z := range events {
@@ -249,13 +251,13 @@ func encodeZoomEvents(w *gwriter, events []filmdec.ZoomEvent) {
 	}
 }
 
-func decodeZoomEvents(r *greader) []filmdec.ZoomEvent {
+func decodeZoomEvents(r *greader) []grammar.ZoomEvent {
 	n := int(r.u())
-	out := make([]filmdec.ZoomEvent, 0, n)
+	out := make([]grammar.ZoomEvent, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		out = append(out, filmdec.ZoomEvent{
+		out = append(out, grammar.ZoomEvent{
 			TimestampUS: lastTS, Slot: uint32(r.u()), Level: int(r.i()),
 		})
 	}
@@ -284,7 +286,7 @@ func encodeVehicleScan(w *gwriter, s VehicleScan) {
 	encodeVehicleAims(w, s.Aims)
 }
 
-func decodeVehicleScan(r *greader, lay filmdec.I0Layout, world filmdec.Vec3Range) VehicleScan {
+func decodeVehicleScan(r *greader, lay profile.I0Layout, world profile.Vec3Range) VehicleScan {
 	s := VehicleScan{Scanned: r.bool8()}
 	s.Keyframes = decodeKeyframes(r)
 	s.Creations = decodeCreations(r)
@@ -300,7 +302,7 @@ func decodeVehicleScan(r *greader, lay filmdec.I0Layout, world filmdec.Vec3Range
 // `SeatValid`) : un slot relu a zero sans son temoin nommerait l entite 0 — un vrai slot — la ou
 // l evenement ne nommait rien. `OccupantSonde`, `OccupantInBand` et `VehicleGen` sont les
 // controles independants que le calque consulte pour trancher entre deux vies de meme slot.
-func encodeVehicleEvents(w *gwriter, events []filmdec.VehicleEvent) {
+func encodeVehicleEvents(w *gwriter, events []types.VehicleEvent) {
 	w.u(uint64(len(events)))
 	var lastTS uint64
 	for _, e := range events {
@@ -319,13 +321,13 @@ func encodeVehicleEvents(w *gwriter, events []filmdec.VehicleEvent) {
 	}
 }
 
-func decodeVehicleEvents(r *greader) []filmdec.VehicleEvent {
+func decodeVehicleEvents(r *greader) []types.VehicleEvent {
 	n := int(r.u())
-	out := make([]filmdec.VehicleEvent, 0, n)
+	out := make([]types.VehicleEvent, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		e := filmdec.VehicleEvent{TimestampUS: lastTS, Kind: int(r.i())}
+		e := types.VehicleEvent{TimestampUS: lastTS, Kind: int(r.i())}
 		e.OccupantPresent = r.bool8()
 		e.OccupantSonde = int(r.i())
 		e.OccupantSlot = uint32(r.u())
@@ -343,7 +345,7 @@ func decodeVehicleEvents(r *greader) []filmdec.VehicleEvent {
 // encodeVehicleAims / decodeVehicleAims : les visees des bipedes qui ne repliquent PLUS leur
 // position — celles des occupants. Bande `ti=35`, pas `ti=40` : la visee publiee sur un episode
 // est celle de l HOMME a bord, jamais du chassis.
-func encodeVehicleAims(w *gwriter, aims []filmdec.BipedAim) {
+func encodeVehicleAims(w *gwriter, aims []grammar.BipedAim) {
 	w.u(uint64(len(aims)))
 	var lastTS uint64
 	for _, a := range aims {
@@ -355,13 +357,13 @@ func encodeVehicleAims(w *gwriter, aims []filmdec.BipedAim) {
 	}
 }
 
-func decodeVehicleAims(r *greader) []filmdec.BipedAim {
+func decodeVehicleAims(r *greader) []grammar.BipedAim {
 	n := int(r.u())
-	out := make([]filmdec.BipedAim, 0, n)
+	out := make([]grammar.BipedAim, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		out = append(out, filmdec.BipedAim{
+		out = append(out, grammar.BipedAim{
 			TimestampUS: lastTS, Slot: uint32(r.u()),
 			YawRaw: uint32(r.u()), PitchRaw: uint32(r.u()),
 		})

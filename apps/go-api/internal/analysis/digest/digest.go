@@ -6,7 +6,7 @@
 // balayage pour prouver qu'un refacto ne change RIEN. Un digest JSON aurait trois trous, et
 // chacun laisserait passer une regression :
 //   - il ne voit que les champs EXPORTES — le struct embarque non exporte `componentDirs` de
-//     `filmdec.BipedPosition` serait invisible, et une derive dedans passerait le gate ;
+//     `grammar.BipedPosition` serait invisible, et une derive dedans passerait le gate ;
 //   - `encoding/json` REFUSE NaN et les infinis : un film pathologique rendrait une erreur la
 //     ou le harnais doit justement mesurer ;
 //   - il porte les balises `json:"..."` et le nom des types : un renommage purement cosmetique

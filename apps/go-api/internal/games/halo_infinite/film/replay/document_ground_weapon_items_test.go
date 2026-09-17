@@ -13,7 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // gwiClock : origine 1 s, pas 100 ms, 100 frames — les frames attendues se lisent de tête.
@@ -35,17 +36,17 @@ func gwiObj(t0US uint64, x, y float32, fam uint32, class string) gwPickupObject 
 }
 
 // gwiPos fabrique un échantillon de position monde.
-func gwiPos(slot uint32, tUS uint64, x, y float32) filmdec.BipedPosition {
-	return filmdec.BipedPosition{Slot: slot, TimestampUS: tUS, X: x, Y: y, HasWorld: true}
+func gwiPos(slot uint32, tUS uint64, x, y float32) grammar.BipedPosition {
+	return grammar.BipedPosition{Slot: slot, TimestampUS: tUS, X: x, Y: y, HasWorld: true}
 }
 
 func TestGroundWeaponItemsFinParPickupLie(t *testing.T) {
 	objs := []gwPickupObject{gwiObj(2_000_000, 10, 10, 0xAABBCCDD, gwClassDropped)}
-	changes := []filmdec.HeldWeaponChange{
+	changes := []types.HeldWeaponChange{
 		// La prise tombe 3 s après la naissance, le ramasseur est SUR l'objet.
-		{TimestampUS: 5_000_000, Slot: 42, Family: 0xAABBCCDD, Kind: filmdec.HeldWeaponTaken},
+		{TimestampUS: 5_000_000, Slot: 42, Family: 0xAABBCCDD, Kind: types.HeldWeaponTaken},
 	}
-	pos := []filmdec.BipedPosition{gwiPos(42, 5_000_000, 10.3, 10)}
+	pos := []grammar.BipedPosition{gwiPos(42, 5_000_000, 10.3, 10)}
 	got, cov := buildGroundWeaponItems(objs, changes, pos, gwiClock())
 	if len(got) != 1 {
 		t.Fatalf("publiées = %d, attendu 1", len(got))
@@ -122,10 +123,10 @@ func TestGroundWeaponItemsLaFamilleEstUnCritere(t *testing.T) {
 	// Un ramasseur SUR l'objet, dans la fenêtre — mais la prise nomme une AUTRE arme (le cas
 	// réel : la prise du drapeau à côté d'une arme au sol). Elle ne doit PAS se lier.
 	objs := []gwPickupObject{gwiObj(2_000_000, 10, 10, 0xAABBCCDD, gwClassDropped)}
-	changes := []filmdec.HeldWeaponChange{
-		{TimestampUS: 5_000_000, Slot: 42, Family: 0x2A392328, Kind: filmdec.HeldWeaponTaken},
+	changes := []types.HeldWeaponChange{
+		{TimestampUS: 5_000_000, Slot: 42, Family: 0x2A392328, Kind: types.HeldWeaponTaken},
 	}
-	pos := []filmdec.BipedPosition{gwiPos(42, 5_000_000, 10.3, 10)}
+	pos := []grammar.BipedPosition{gwiPos(42, 5_000_000, 10.3, 10)}
 	got, cov := buildGroundWeaponItems(objs, changes, pos, gwiClock())
 	if len(got) != 1 || got[0].End == GroundWeaponEndPickup || cov.PickupLinked != 0 {
 		t.Fatalf("got = %+v cov = %+v : la famille est un CRITÈRE du lien — sans elle, une "+
@@ -136,13 +137,13 @@ func TestGroundWeaponItemsLaFamilleEstUnCritere(t *testing.T) {
 
 func TestGroundWeaponItemsLoinOuTardNeLiePas(t *testing.T) {
 	objs := []gwPickupObject{gwiObj(2_000_000, 10, 10, 0xAABBCCDD, gwClassDropped)}
-	changes := []filmdec.HeldWeaponChange{
+	changes := []types.HeldWeaponChange{
 		// Prise dans la fenêtre mais à 5 m : un autre objet, pas celui-ci.
-		{TimestampUS: 5_000_000, Slot: 42, Family: 0xAABBCCDD, Kind: filmdec.HeldWeaponTaken},
+		{TimestampUS: 5_000_000, Slot: 42, Family: 0xAABBCCDD, Kind: types.HeldWeaponTaken},
 		// Prise à 30 cm mais HORS de la fenêtre de vie.
-		{TimestampUS: 50_000_000, Slot: 43, Family: 0xAABBCCDD, Kind: filmdec.HeldWeaponTaken},
+		{TimestampUS: 50_000_000, Slot: 43, Family: 0xAABBCCDD, Kind: types.HeldWeaponTaken},
 	}
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		gwiPos(42, 5_000_000, 15, 10),
 		gwiPos(43, 50_000_000, 10.3, 10),
 	}
@@ -203,7 +204,7 @@ func TestGroundWeaponItemsIntervalleDeDisparition(t *testing.T) {
 // rien : `ammo` reste absent (c'est le cas majoritaire, cf. la réserve de lecture du décodeur).
 func TestGroundWeaponItemsMunitionsExactes(t *testing.T) {
 	avec := gwiObj(2_000_000, 10, 10, 0xAABBCCDD, gwClassDropped)
-	avec.HasAmmo, avec.Ammo = true, filmdec.GroundWeaponAmmo{Mag: 27, Res: 114}
+	avec.HasAmmo, avec.Ammo = true, types.GroundWeaponAmmo{Mag: 27, Res: 114}
 	sans := gwiObj(3_000_000, 20, 20, 0xAABBCCDD, gwClassDropped)
 	got, cov := buildGroundWeaponItems([]gwPickupObject{avec, sans}, nil, nil, gwiClock())
 	if len(got) != 2 {

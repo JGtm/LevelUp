@@ -10,11 +10,11 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 func TestKillPositionsPlaceLesDeuxJoueurs(t *testing.T) {
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		posAt(1, 10_000_000, 1, 2, 3),
 		posAt(2, 10_000_000, 4, 5, 6),
 	}
@@ -34,7 +34,7 @@ func TestKillPositionsPlaceLesDeuxJoueurs(t *testing.T) {
 
 // TestKillPositionsLaisseNilHorsTolerance : une position trop lointaine n'est PAS une position.
 func TestKillPositionsLaisseNilHorsTolerance(t *testing.T) {
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		posAt(1, 10_000_000, 1, 2, 3),
 		posAt(2, 5_000_000, 4, 5, 6), // 5 s avant la mort : hors tolérance
 	}
@@ -51,7 +51,7 @@ func TestKillPositionsLaisseNilHorsTolerance(t *testing.T) {
 
 // TestKillPositionsNEcritRienSansAucunePosition : une ligne vide ne vaut rien.
 func TestKillPositionsNEcritRienSansAucunePosition(t *testing.T) {
-	pos := []filmdec.BipedPosition{posAt(1, 1_000_000, 1, 2, 3)}
+	pos := []grammar.BipedPosition{posAt(1, 1_000_000, 1, 2, 3)}
 	slotXUID := map[uint32]uint64{1: 111}
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 999, TimeMS: 60_000}}
 	got, rep := BuildKillPositions(pos, regPlat(slotXUID), kills, 0)
@@ -67,7 +67,7 @@ func TestKillPositionsNEcritRienSansAucunePosition(t *testing.T) {
 func TestKillPositionsRefuseDeTrancherEntreDeuxCorps(t *testing.T) {
 	// Deux slots du MÊME joueur portent un échantillon à l'instant de la mort : le découpage
 	// des vies est faux ici, et choisir serait un coup de dé.
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		posAt(1, 10_000_000, 1, 2, 3),
 		posAt(2, 10_000_000, 9, 9, 9),
 		posAt(3, 10_000_000, 4, 5, 6),
@@ -86,7 +86,7 @@ func TestKillPositionsRefuseDeTrancherEntreDeuxCorps(t *testing.T) {
 // TestKillPositionsAppliqueLeDecalageDHorloge : le fil des morts et le film n'ont pas la même
 // origine, et l'oublier placerait toutes les morts ailleurs.
 func TestKillPositionsAppliqueLeDecalageDHorloge(t *testing.T) {
-	pos := []filmdec.BipedPosition{posAt(1, 14_000_000, 1, 2, 3), posAt(2, 14_000_000, 4, 5, 6)}
+	pos := []grammar.BipedPosition{posAt(1, 14_000_000, 1, 2, 3), posAt(2, 14_000_000, 4, 5, 6)}
 	slotXUID := map[uint32]uint64{1: 111, 2: 222}
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: 10_000}}
 	if _, rep := BuildKillPositions(pos, regPlat(slotXUID), kills, 0); rep.Dropped != 1 {

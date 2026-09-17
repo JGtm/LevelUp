@@ -115,7 +115,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -188,17 +188,15 @@ func (g *vgGrille) dureeMS() int64 { return int64(g.n) * g.pas }
 
 // vgBatGrille construit les etiquettes du film : evenements de lunette, vies, reconstruction de
 // production, puis erosion / dilatation aux marges declarees.
-//
-// L'appelant detient `LockProcessDecode` : le balayage des positions est un decodage filmdec.
 func vgBatGrille(dir string) (*vgGrille, error) {
-	evts := filmdec.ScanFilmZoomEvents(dir)
+	evts := grammar.ScanFilmZoomEvents(dir)
 	if len(evts) == 0 {
 		return nil, fmt.Errorf("aucun evenement unit_zoom dans %s : pas d'etiquettes", dir)
 	}
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.CaptureDirs = true
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		return nil, fmt.Errorf("balayage des positions : %w", err)
 	}
@@ -224,7 +222,7 @@ func vgBatGrille(dir string) (*vgGrille, error) {
 
 // vgBornes cadre la grille sur la plage temporelle REPLIQUEE du film (premiere et derniere
 // position bipede) : hors de cette plage il n'y a aucun record a etiqueter.
-func vgBornes(pos []filmdec.BipedPosition) *vgGrille {
+func vgBornes(pos []grammar.BipedPosition) *vgGrille {
 	t0, t1 := int64(pos[0].TimestampUS/1000), int64(pos[0].TimestampUS/1000)
 	for _, p := range pos {
 		t := int64(p.TimestampUS / 1000)
@@ -241,7 +239,7 @@ func vgBornes(pos []filmdec.BipedPosition) *vgGrille {
 }
 
 // vgSlotsZoomeurs rend les slots qui portent au moins une ENTREE en lunette.
-func vgSlotsZoomeurs(evts []filmdec.ZoomEvent) []uint32 {
+func vgSlotsZoomeurs(evts []grammar.ZoomEvent) []uint32 {
 	vus := map[uint32]bool{}
 	var out []uint32
 	for _, e := range evts {

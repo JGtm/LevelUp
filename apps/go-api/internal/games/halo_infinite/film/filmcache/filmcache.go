@@ -11,24 +11,24 @@
 // # Pourquoi ce paquet existe
 //
 // La meme source disque etait ecrite une fois dans `cmd/diag_weapons_v3` et une fois dans
-// les tests d'`objectiveevents`. Un troisieme outil en avait besoin : a la troisieme
+// les tests d'`objectives`. Un troisieme outil en avait besoin : a la troisieme
 // copie, la regle du depot impose de centraliser ET de poser un garde-rail. Une disposition
 // de cache dupliquee derive en silence — le jour ou le nom des chunks change, deux lecteurs
 // sur trois cessent de trouver le film et se contentent de rendre « rien a decoder ».
 //
 // LE GARDE-RAIL EST DEVENU UNE ASSERTION DE COMPILATION (2026-09-02, item 1.5 de
-// PLAN_CUISSON_PERF) : `var _ filmsource.Source = (*Source)(nil)` plus bas. L'ancien
+// PLAN_CUISSON_PERF) : `var _ source.Source = (*Source)(nil)` plus bas. L'ancien
 // `filmcache_guard_test.go` cherchait par expression reguliere les implementations d'une
-// interface `objectiveevents.FilmSource` qui n'existe plus, et son allowlist etait justifiee
-// par un cycle d'import (`filmcache` -> `objectiveevents`) que ce lot a supprime : les trois
+// interface `objectives.FilmSource` qui n'existe plus, et son allowlist etait justifiee
+// par un cycle d'import (`filmcache` -> `objectives`) que ce lot a supprime : les trois
 // entrees etaient donc caduques d'un coup. La forme d'une source de film est desormais celle
-// du paquet FEUILLE `analysis/filmsource`, que tout le monde peut importer sans cycle.
+// du paquet FEUILLE `film/source`, que tout le monde peut importer sans cycle.
 //
 // # Ce paquet ne decode rien
 //
-// Il rend des octets, un index et — par [LoadFilm] — un film DEJA CHARGE (`filmsource`, une
-// decompression par film). Le decodage, lui, vit dans `analysis/objectiveevents` et
-// `games/halo_infinite/film/filmdec`.
+// Il rend des octets, un index et — par [LoadFilm] — un film DEJA CHARGE (`source`, une
+// decompression par film). Le decodage, lui, vit dans `film/facts/objectives` et
+// `games/halo_infinite/film/internal/grammar`.
 package filmcache
 
 import (
@@ -37,7 +37,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // manifestsDir et chunksDir sont les deux sous-dossiers du cache. Nommes ici, et nulle
@@ -50,17 +51,17 @@ const (
 // Source est le MANIFESTE d'un film du cache, et l'acces aux octets bruts de ses chunks.
 //
 // L'INDICE D'UN CHUNK EST SA POSITION DANS LE MANIFESTE, jamais le numero de son fichier :
-// c'est le contrat de [filmsource.Source], et [Meta] donne les deux (`Meta()[i].Index` porte
+// c'est le contrat de [source.Source], et [Meta] donne les deux (`Meta()[i].Index` porte
 // le numero). Confondre les deux marcherait un chunk de donnees comme un registre.
 type Source struct {
 	root   string
 	short  string
-	chunks []filmsource.ChunkMeta
+	chunks []types.ChunkMeta
 }
 
 // Source implemente la source de film canonique du depot. C'est ce que verifie cette ligne,
 // et elle remplace a elle seule l'ancien garde-rail par expression reguliere (cf. l'en-tete).
-var _ filmsource.Source = (*Source)(nil)
+var _ source.Source = (*Source)(nil)
 
 type manifestJSON struct {
 	Chunks []struct {
@@ -88,9 +89,9 @@ func Open(root, shortID string) (*Source, bool, error) {
 	if err := json.Unmarshal(raw, &mf); err != nil {
 		return nil, false, fmt.Errorf("manifeste de film invalide (%s) : %w", path, err)
 	}
-	src := &Source{root: root, short: shortID, chunks: make([]filmsource.ChunkMeta, 0, len(mf.Chunks))}
+	src := &Source{root: root, short: shortID, chunks: make([]types.ChunkMeta, 0, len(mf.Chunks))}
 	for _, c := range mf.Chunks {
-		src.chunks = append(src.chunks, filmsource.ChunkMeta{
+		src.chunks = append(src.chunks, types.ChunkMeta{
 			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS,
 		})
 	}
@@ -98,14 +99,14 @@ func Open(root, shortID string) (*Source, bool, error) {
 }
 
 // Meta rend l'index du manifeste, POSITIONNEL : `Meta()[i]` decrit le chunk d'indice `i`, et
-// porte son numero de fichier en [filmsource.ChunkMeta.Index]. C'est la forme qu'attend
-// [filmsource.Load].
-func (s *Source) Meta() []filmsource.ChunkMeta { return s.chunks }
+// porte son numero de fichier en [types.ChunkMeta.Index]. C'est la forme qu'attend
+// [source.Load].
+func (s *Source) Meta() []types.ChunkMeta { return s.chunks }
 
-// NumChunks implemente [filmsource.Source] : le nombre d'entrees du manifeste.
+// NumChunks implemente [source.Source] : le nombre d'entrees du manifeste.
 func (s *Source) NumChunks() int { return len(s.chunks) }
 
-// Chunk implemente [filmsource.Source] : les octets BRUTS (compresses) du chunk d'INDICE `i`,
+// Chunk implemente [source.Source] : les octets BRUTS (compresses) du chunk d'INDICE `i`,
 // lu au fichier que le manifeste lui donne. Un chunk manquant au cache est une ERREUR ici —
 // l'appelant qui veut la degradation gracieuse d'un cache partiel passe par [LoadFilm], qui
 // charge les FICHIERS PRESENTS et non les entrees du manifeste.
@@ -122,7 +123,7 @@ func (s *Source) Chunk(i int) ([]byte, error) {
 }
 
 // LoadFilm charge le film complet d'un short8 du cache : manifeste puis chunks, decompresses
-// et decoupes en paquets UNE fois ([filmsource.LoadDir]).
+// et decoupes en paquets UNE fois ([source.LoadDir]).
 //
 // C'EST LE MEME CHEMIN QUE LA CUISSON (`replaybuild.BuildBytes`), et il le reste
 // deliberement : les NUMEROS de chunk viennent des fichiers presents, le manifeste ne fournit
@@ -131,12 +132,12 @@ func (s *Source) Chunk(i int) ([]byte, error) {
 // saute en silence.
 //
 // (nil, false, nil) quand le manifeste n'est pas la — meme contrat qu'[Open].
-func LoadFilm(root, shortID string) (*filmsource.Film, bool, error) {
+func LoadFilm(root, shortID string) (*source.Film, bool, error) {
 	src, ok, err := Open(root, shortID)
 	if err != nil || !ok {
 		return nil, ok, err
 	}
-	film, err := filmsource.LoadDir(ChunkDir(root, shortID), src.Meta())
+	film, err := source.LoadDir(ChunkDir(root, shortID), src.Meta())
 	if err != nil {
 		return nil, true, fmt.Errorf("filmcache: chargement du film %s : %w", shortID, err)
 	}
@@ -146,13 +147,13 @@ func LoadFilm(root, shortID string) (*filmsource.Film, bool, error) {
 // LoadFilmDir est [LoadFilm] pour l'appelant qui connait le REPERTOIRE DE CHUNKS et non le
 // couple (racine, short8) — la meme porte qu'[OpenChunkDir], et pour la meme raison : les
 // balayages hors ligne recoivent un chemin de chunks.
-func LoadFilmDir(chunkDir string) (*filmsource.Film, bool, error) {
+func LoadFilmDir(chunkDir string) (*source.Film, bool, error) {
 	cleaned := filepath.Clean(chunkDir)
 	return LoadFilm(filepath.Dir(filepath.Dir(cleaned)), filepath.Base(cleaned))
 }
 
 // ChunkDir rend le repertoire des chunks d'un film. C'est ce chemin qu'attendent les
-// balayages hors ligne de `games/halo_infinite/film/filmdec` et `games/halo_infinite/film/replay`, qui lisent le dossier
+// balayages hors ligne de `games/halo_infinite/film/internal/grammar` et `games/halo_infinite/film/replay`, qui lisent le dossier
 // directement plutot que par l'interface.
 func ChunkDir(root, shortID string) string {
 	return filepath.Join(root, chunksDir, shortID)
@@ -201,7 +202,7 @@ func chunkName(index int) string { return fmt.Sprintf("chunk_%02d.bin", index) }
 //
 // POURQUOI CETTE PORTE EXISTE. Le manifeste et les chunks vivent dans deux sous-dossiers
 // FRERES (cf. l'en-tete de ce paquet) ; les balayages hors ligne, eux, recoivent un chemin de
-// chunks parce que `games/halo_infinite/film/filmdec` et `games/halo_infinite/film/replay` lisent le dossier directement. Le
+// chunks parce que `games/halo_infinite/film/internal/grammar` et `games/halo_infinite/film/replay` lisent le dossier directement. Le
 // constructeur d'artefact a besoin des deux — les chunks pour le decodage, le manifeste pour
 // le `start_ms` de chaque chunk, sans lequel les enregistrements d'entite ne sont pas datables.
 //

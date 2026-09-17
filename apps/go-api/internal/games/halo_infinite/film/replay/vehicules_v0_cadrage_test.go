@@ -30,7 +30,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -65,20 +67,17 @@ func v0Corpus(t *testing.T) []v0Film {
 // v0Bornes rend les bornes monde d'une carte NOMMEE et installe ses largeurs d'axe pour le
 // chemin objet du monde. Il double `attBornes` parce que celui-ci passe par un fixture
 // film -> carte (`attCartes`) que le corpus de ce lot ne peuple pas : ici la carte est donnee.
-//
-// L'APPELANT DOIT DETENIR LockProcessDecode ET RESTAURER WorldObjectPrecision.
-func v0Bornes(t *testing.T, root, carte string) (filmdec.Vec3Range, bool) {
+func v0Bornes(t *testing.T, root, carte string) (profile.Vec3Range, bool) {
 	t.Helper()
-	cat, err := filmdec.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
 	e, err := cat.Lookup(carte)
 	if err != nil {
 		t.Logf("carte %q absente du catalogue de bornes (%v)", carte, err)
-		return filmdec.Vec3Range{}, false
+		return profile.Vec3Range{}, false
 	}
-	filmdec.SetWorldObjectPrecisionFromLayout(e.Layout())
 	return e.Range(), true
 }
 
@@ -149,11 +148,11 @@ func TestV0CadrageRecensement(t *testing.T) {
 	root := attRequireRoot(t)
 	for _, f := range v0Corpus(t) {
 		dir := objChunkDir(root, f.ID)
-		if filmdec.CountFilmChunks(dir) == 0 {
+		if grammar.CountFilmChunks(dir) == 0 {
 			t.Logf("%s : film absent du cache — saute", f.ID)
 			continue
 		}
-		k := filmdec.ScanFilmWorldObjectKeyframes(dir, int(attVehiculeTI))
+		k := grammar.ScanFilmWorldObjectKeyframes(dir, int(attVehiculeTI))
 		var complets, partiels, uniques int
 		var duree []uint64
 		for _, vus := range k.SeenUS {
@@ -203,19 +202,15 @@ func TestV0CadrageNuageDelta(t *testing.T) {
 func v0NuageDeltaFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
 	dir := objChunkDir(root, f.ID)
-	if filmdec.CountFilmChunks(dir) == 0 {
+	if grammar.CountFilmChunks(dir) == 0 {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return
 	}
-	veh, err := filmdec.ScanFilmWorldObjects(dir, &wr, int(attVehiculeTI))
+	veh, err := grammar.ScanFilmWorldObjects(dir, &wr, int(attVehiculeTI))
 	if err != nil {
 		t.Logf("V0 %s (%s) — balayage ti=%d : %v", f.ID, f.Carte, attVehiculeTI, err)
 		return
@@ -231,7 +226,7 @@ func v0NuageDeltaFilm(t *testing.T, root string, f v0Film) {
 		t.Logf("V0 %s : aucun slot libre pour une bande fantome", f.ID)
 		return
 	}
-	fveh, err := filmdec.ScanFilmWorldObjectsForBand(dir, &wr, fantome)
+	fveh, err := grammar.ScanFilmWorldObjectsForBand(dir, &wr, fantome)
 	if err != nil {
 		t.Logf("V0 %s : bande fantome : %v", f.ID, err)
 		return
@@ -279,26 +274,22 @@ func TestV0CadrageGrammaireI0(t *testing.T) {
 func v0GrammaireUnFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
 	dir := objChunkDir(root, f.ID)
-	if filmdec.CountFilmChunks(dir) == 0 {
+	if grammar.CountFilmChunks(dir) == 0 {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return
 	}
-	bande := filmdec.ScanFilmWorldObjectKeyframes(dir, int(attVehiculeTI)).Band
+	bande := grammar.ScanFilmWorldObjectKeyframes(dir, int(attVehiculeTI)).Band
 	if len(bande) == 0 {
 		t.Logf("V0 %s (%s) — aucun slot ti=%d : rien a comparer", f.ID, f.Carte, attVehiculeTI)
 		return
 	}
 
 	// (a) GRAMMAIRE OBJET DU MONDE — celle employee jusqu'ici sur ti=40.
-	veh, err := filmdec.ScanFilmWorldObjectsForBand(dir, &wr, bande)
+	veh, err := grammar.ScanFilmWorldObjectsForBand(dir, &wr, bande)
 	if err != nil {
 		t.Logf("V0 %s : grammaire objet du monde : %v", f.ID, err)
 		return
@@ -308,7 +299,7 @@ func v0GrammaireUnFilm(t *testing.T, root string, f v0Film) {
 	// (b) GRAMMAIRE BIPEDE (dynamic-precision) — celle que le registre attribue a ti=40.
 	// RequireTag1 est DESARME : le tag de 2 bits est la generation du handle, et les objets du
 	// monde en emploient les quatre (regle etablie par matchWorldObjectRecord).
-	opt := filmdec.DefaultScanFilmOptions()
+	opt := grammar.DefaultScanFilmOptions()
 	opt.WorldRange, opt.RequireTag1 = &wr, false
 	lay, _, err := detecterI0Layout(dir)
 	if err != nil {
@@ -366,20 +357,20 @@ func v0GrammaireUnFilm(t *testing.T, root string, f v0Film) {
 // paquet pour cela : `ScanFilmBipedPositions` releve lui-meme la bande `ti=35`. C'est
 // exactement le morceau manquant que le lot V1 aura a exposer proprement ; ici il tient en une
 // boucle de lecture de chunks, sans toucher au decodeur.
-func v0ScanBipedeSurBande(dir string, bande map[uint32]bool, lay filmdec.I0Layout,
-	opt filmdec.ScanFilmOptions) []filmdec.BipedPosition {
-	var out []filmdec.BipedPosition
-	n := filmdec.CountFilmChunks(dir)
+func v0ScanBipedeSurBande(dir string, bande map[uint32]bool, lay profile.I0Layout,
+	opt grammar.ScanFilmOptions) []grammar.BipedPosition {
+	var out []grammar.BipedPosition
+	n := grammar.CountFilmChunks(dir)
 	for c := 1; c <= n; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, pk := range filmdec.WalkPackets(data) {
-			if pk.Type != filmdec.PacketTypeDelta {
+		for _, pk := range grammar.WalkPackets(data) {
+			if pk.Type != grammar.PacketTypeDelta {
 				continue
 			}
-			for _, r := range filmdec.ScanBipedRecords(pk.Payload(data), filmdec.NewSlotBand(bande), lay, opt) {
+			for _, r := range grammar.ScanBipedRecords(pk.Payload(data), grammar.NewSlotBand(bande), lay, opt, grammar.ContexteParDefaut()) {
 				r.Chunk, r.PacketIndex, r.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, r)
 			}
@@ -389,7 +380,7 @@ func v0ScanBipedeSurBande(dir string, bande map[uint32]bool, lay filmdec.I0Layou
 }
 
 // v0ContinuiteTracks mesure la continuite des trajectoires rendues par le chemin objet du monde.
-func v0ContinuiteTracks(tracks []filmdec.ProjectileTrack) (int, float64) {
+func v0ContinuiteTracks(tracks []types.ProjectileTrack) (int, float64) {
 	pas, bons := 0, 0
 	for _, tr := range tracks {
 		for i := 1; i < len(tr.Pts); i++ {
@@ -408,8 +399,8 @@ func v0ContinuiteTracks(tracks []filmdec.ProjectileTrack) (int, float64) {
 }
 
 // v0ContinuitePositions mesure la continuite des positions rendues par le chemin bipede.
-func v0ContinuitePositions(pos []filmdec.BipedPosition) (int, float64) {
-	parSlot := map[uint32][]filmdec.BipedPosition{}
+func v0ContinuitePositions(pos []grammar.BipedPosition) (int, float64) {
+	parSlot := map[uint32][]grammar.BipedPosition{}
 	for _, p := range pos {
 		if p.HasWorld {
 			parSlot[p.Slot] = append(parSlot[p.Slot], p)

@@ -4,7 +4,8 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // skull_carries.go — LA REGLE : de quoi est faite une periode de portage du CRANE d'Oddball.
@@ -29,7 +30,7 @@ import (
 // # PAR MANCHE, et c'est structurel
 //
 // Les tics sont lus MANCHE PAR MANCHE (`SeriesByRound`), et le porteur d'un train est nomme par
-// l'identite de SA manche ([objectiveevents.RoundIdentity.AtRound]) : le slot d'entite est
+// l'identite de SA manche ([objectives.RoundIdentity.AtRound]) : le slot d'entite est
 // reattribue d'une manche a l'autre. Une bascule de manche NE FERME PAS un portage par une fausse
 // prise — les trains sont bornes par les seuls TROUS DE TICS, et chaque manche est un parcours
 // distinct, donc le dernier train d'une manche et le premier de la suivante ne se melangent pas.
@@ -74,9 +75,9 @@ const skullTickGapMS = 3000
 // Seuls les ecarts INTRA-TRAIN entrent (au-dela de [skullTickGapMS] ce n'est plus un ecart
 // entre deux tics mais la separation de deux periodes). Zero quand aucun ecart n'est mesurable
 // — un film dont tous les trains tiennent en un seul tic, ou un axe sans echelle.
-func skullTickWidthFrames(recs []objectiveevents.StatRecord, ctx matchClock) int {
+func skullTickWidthFrames(recs []types.StatRecord, ctx matchClock) int {
 	var ecarts []int
-	for _, byRound := range objectiveevents.SeriesByRound(recs, objectiveevents.SkullTicksComponent, false) {
+	for _, byRound := range objectives.SeriesByRound(recs, objectives.SkullTicksComponent, false) {
 		for _, pts := range byRound {
 			inst := skullTickInstants(pts)
 			for i := 1; i < len(inst); i++ {
@@ -101,7 +102,7 @@ func skullTickWidthFrames(recs []objectiveevents.StatRecord, ctx matchClock) int
 // porteur passerait au-dessus de son propre oracle (mesure : 2 joueurs sur 28, +0,1 s chacun).
 // (w-1)/2 est la plus grande fenetre symetrique en images ENTIERES qui ne depasse jamais
 // n largeurs de tic — le sens dans lequel on veut se tromper.
-func skullHalfTickFrames(recs []objectiveevents.StatRecord, ctx matchClock) int {
+func skullHalfTickFrames(recs []types.StatRecord, ctx matchClock) int {
 	w := skullTickWidthFrames(recs, ctx)
 	if w <= 1 {
 		return 0
@@ -122,7 +123,7 @@ type SkullInput struct {
 	// (`comp 21 B`) et les progressions du compteur de morts qui identifient les slots. Aucun fait
 	// de match n'entre : le porteur se nomme par les instants de mort, et le calque est donc
 	// publiable hors ligne.
-	Records []objectiveevents.StatRecord
+	Records []types.StatRecord
 	// Identity est le pont slot statborg -> xuid que l'APPELANT a deja resolu, PAR MANCHE.
 	// Valeur zero : ce paquet le resout lui-meme par les seuls instants de mort (cf.
 	// [skullIdentityOf]), et l'artefact reste publiable hors ligne.
@@ -137,7 +138,7 @@ type SkullInput struct {
 	// (morts + triplet de la feuille + elimination par manche) que la couche d'assemblage resout
 	// deja pour les actions d'objectif et le drapeau ferme ce trou, sans qu'aucun fait de match
 	// n'entre ici : ce qui descend est une TABLE slot -> xuid.
-	Identity objectiveevents.RoundIdentity
+	Identity objectives.RoundIdentity
 }
 
 // SkullCarryScan porte ce que le film rend du porteur. Les lectures voyagent ensemble, et
@@ -146,9 +147,9 @@ type SkullInput struct {
 type SkullCarryScan struct {
 	Scanned bool
 	// Records : les enregistrements d'entite (tics de score de mode + prises).
-	Records []objectiveevents.StatRecord
+	Records []types.StatRecord
 	// Identity est le pont slot statborg -> xuid PAR MANCHE (par les instants de mort).
-	Identity objectiveevents.RoundIdentity
+	Identity objectives.RoundIdentity
 }
 
 // L'AXE DE TEMPS est le `matchClock` partagé (match_clock.go) : la conversion match -> frames
@@ -375,8 +376,8 @@ func unionOverlap(spans []presenceSpan, f0, f1 int) (presenceSpan, bool) {
 // PAR MANCHE et par slot, chaque train nomme par l'identite de sa manche. Ordre TOTAL (instant,
 // puis manche, puis xuid) : sans lui le parcours de map rendrait une sortie differente a chaque
 // execution.
-func skullCarryIntervals(recs []objectiveevents.StatRecord, identity objectiveevents.RoundIdentity) []skullRawCarry {
-	bySlot := objectiveevents.SeriesByRound(recs, objectiveevents.SkullTicksComponent, false)
+func skullCarryIntervals(recs []types.StatRecord, identity objectives.RoundIdentity) []skullRawCarry {
+	bySlot := objectives.SeriesByRound(recs, objectives.SkullTicksComponent, false)
 	var out []skullRawCarry
 	for slot, byRound := range bySlot {
 		for round, pts := range byRound {
@@ -411,7 +412,7 @@ func skullCarryIntervals(recs []objectiveevents.StatRecord, identity objectiveev
 // skullTickInstants rend un instant par UNITE gagnee par le compteur de tics (deroulage par
 // valeur : la meme valeur reemise ne rajoute rien, si bien que chaque tic est date a sa PREMIERE
 // emission).
-func skullTickInstants(pts []objectiveevents.ScorePoint) []int {
+func skullTickInstants(pts []types.ScorePoint) []int {
 	var out []int
 	prev := int64(0)
 	for _, p := range pts {
@@ -424,9 +425,9 @@ func skullTickInstants(pts []objectiveevents.ScorePoint) []int {
 
 // skullGrabCount rend le nombre total de PRISES du crane (`comp 21 B`), toutes manches — le
 // denominateur de couverture, independant des trains de tics.
-func skullGrabCount(recs []objectiveevents.StatRecord) int {
+func skullGrabCount(recs []types.StatRecord) int {
 	total := 0
-	for _, byRound := range objectiveevents.SeriesByRound(recs, objectiveevents.SkullGrabsComponent, false) {
+	for _, byRound := range objectives.SeriesByRound(recs, objectives.SkullGrabsComponent, false) {
 		for _, pts := range byRound {
 			if n := len(pts); n > 0 {
 				total += int(pts[n-1].Value)
@@ -473,14 +474,14 @@ func attachSkullCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, 
 // par l'elimination : c'est un SUR-ENSEMBLE — aucun slot nomme ici ne peut y perdre son nom ni
 // y changer de joueur.
 //
-// [objectiveevents.RoundIdentity.Resolved] et non un compte de noms : un appelant hors ligne qui
+// [objectives.RoundIdentity.Resolved] et non un compte de noms : un appelant hors ligne qui
 // ne fournit RIEN doit tomber sur la resolution locale, alors qu'un pont fourni qui ne nomme
 // personne est une reponse, pas un silence.
-func skullIdentityOf(in SkullInput, opt Options) objectiveevents.RoundIdentity {
+func skullIdentityOf(in SkullInput, opt Options) objectives.RoundIdentity {
 	if in.Identity.Resolved() {
 		return in.Identity
 	}
-	return objectiveevents.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths))
+	return objectives.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths))
 }
 
 // logSkullCarriesCoverage journalise ce que le calque publie — et ce qu'il ecarte.

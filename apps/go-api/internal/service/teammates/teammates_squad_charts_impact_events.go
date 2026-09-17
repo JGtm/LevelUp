@@ -14,6 +14,7 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 func (s *TeammatesService) buildSquadImpactMatrix(
@@ -266,11 +267,11 @@ func (s *TeammatesService) buildSquadFirstBlood(
 	actors := make([]narrative.FirstEventActor, 0, len(events))
 	for _, e := range events {
 		switch e.EventType {
-		case analysis.EventTypeKill:
+		case highlightevent.EventTypeKill:
 			actors = append(actors, narrative.FirstEventActor{
 				MatchID: e.MatchID, XUID: e.XUID, IsKill: true, TimeMS: e.TimeMS,
 			})
-		case analysis.EventTypeDeath:
+		case highlightevent.EventTypeDeath:
 			actors = append(actors, narrative.FirstEventActor{
 				MatchID: e.MatchID, XUID: e.XUID, IsKill: false, TimeMS: e.TimeMS,
 			})

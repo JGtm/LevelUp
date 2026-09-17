@@ -8,9 +8,9 @@ import (
 	"context"
 	"errors"
 
-	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -153,7 +153,7 @@ type MatchViewService interface {
 	// GetMatchPositions retourne les positions joueurs keyframe v3 (match-level,
 	// §N) d'un match. Retourne games.ErrCapabilityNotSupported si le titre n'a pas
 	// la capability (repo non câblé ou table absente).
-	GetMatchPositions(ctx context.Context, matchID string) ([]positions.PlayerPosition, error)
+	GetMatchPositions(ctx context.Context, matchID string) ([]playerposition.PlayerPosition, error)
 }
 
 // ErrReplayNotAvailable est renvoyé quand aucun artefact de rejeu 2D n'existe pour le

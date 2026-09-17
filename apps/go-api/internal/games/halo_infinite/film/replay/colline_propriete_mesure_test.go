@@ -16,7 +16,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // ctEtatSlot est un slot d'une lecture : ses bascules, et l'instant a partir duquel il « porte »
@@ -170,7 +170,7 @@ func ctPremierContact(e ctEntree) int64 {
 		if !l.modeA || !l.chained || !l.has {
 			continue
 		}
-		if l.tag != filmdec.ManagedPropertyTagQuant && l.tag != filmdec.ManagedPropertyTagU32 {
+		if l.tag != grammar.ManagedPropertyTagQuant && l.tag != grammar.ManagedPropertyTagU32 {
 			continue
 		}
 		if first < 0 || l.tMS < first {
@@ -307,19 +307,19 @@ type ctPresence struct {
 // ctPresenceImagesCles releve la presence d'un slot a chaque image-cle du film.
 func ctPresenceImagesCles(e ctEntree, slot uint32) ctPresence {
 	p := ctPresence{premierePresente: -1, derniereAbsente: -1}
-	for ch := 1; ch <= filmdec.CountFilmChunks(e.dir); ch++ {
-		data, err := filmdec.ReadFilmChunk(e.dir, ch)
+	for ch := 1; ch <= grammar.CountFilmChunks(e.dir); ch++ {
+		data, err := grammar.ReadFilmChunk(e.dir, ch)
 		if err != nil {
 			continue
 		}
-		for _, pk := range filmdec.WalkPackets(data) {
-			if pk.Type != filmdec.PacketTypeKeyframe {
+		for _, pk := range grammar.WalkPackets(data) {
+			if pk.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			p.imagesCles++
 			ms := (int64(pk.TimestampUS) - int64(e.clockUS)) / 1000
 			present := false
-			for _, r := range filmdec.WalkKeyframeWorld(pk.Payload(data)) {
+			for _, r := range grammar.WalkKeyframeWorld(pk.Payload(data)) {
 				if uint32(r.Slot) == slot {
 					present = true
 					break

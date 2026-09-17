@@ -1,14 +1,13 @@
 package replay
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
-
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // projectiles.go — TRAJECTOIRES DE PROJECTILE projetées sur la grille du rejeu.
 //
-// SOURCE : filmdec.ScanFilmProjectiles — l'archétype ti=41, que le registre du film NOMME
+// SOURCE : grammar.ScanFilmProjectiles — l'archétype ti=41, que le registre du film NOMME
 // lui-même (`projectile-at-rest-state`, `projectile-tether-state`, `projectile-command_tick`).
 // Position répliquée à ~60 Hz du départ à l'immobilisation.
 //
@@ -47,7 +46,7 @@ type Projectile struct {
 // fort — et cette forme couvre 3 907 des 4 901 pas ; sur les cartes Forge, l'axe touché est
 // plutôt X et le bit plus bas (étendue / 2^7 majoritaire).
 //
-// LA CAUSE EST EN AMONT, dans la déquantification (`filmdec`), et elle N'EST PAS corrigée ici :
+// LA CAUSE EST EN AMONT, dans la déquantification (`grammar`), et elle N'EST PAS corrigée ici :
 // elle est caractérisée (`.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`). Ce qui est corrigé
 // ici est la PUBLICATION d'une position fausse, qui faisait tracer au client une droite en
 // travers de toute la carte, à 300 m/s et plus.
@@ -77,7 +76,7 @@ const projectileMaxStepM = 10
 // un décodeur qui coupe sans le dire est un rejet avalé (cf. coverage.go). Elle compte aussi les
 // coupures dont la trajectoire n'est pas publiée ensuite — sans quoi le compteur mentirait par
 // omission.
-func buildProjectiles(tracks []filmdec.ProjectileTrack, origin, step uint64) ([]Projectile, map[int]int, int) {
+func buildProjectiles(tracks []types.ProjectileTrack, origin, step uint64) ([]Projectile, map[int]int, int) {
 	if len(tracks) == 0 {
 		return nil, nil, 0
 	}

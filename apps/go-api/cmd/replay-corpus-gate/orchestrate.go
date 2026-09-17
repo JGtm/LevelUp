@@ -29,7 +29,9 @@ type temoinContexte struct {
 	LockRoot     string
 	TitleSlug    string
 	FactsDir     string
-	Reference    string // "base" (defaut) ou "parc"
+	// MemGiB : le plafond souple transmis a `replay-build`, LE MEME des deux cotes (D6).
+	MemGiB    int
+	Reference string // "base" (defaut) ou "parc"
 }
 
 // traiterTemoin cuit et compare UN temoin ; ne rend JAMAIS d'erreur — un temoin absent ou en
@@ -74,6 +76,7 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 
 	cuissonHead, err := bakeTemoin(ctx, cuissonParams{
 		BinPath: tc.BinHead, WorkRoot: tc.WorkRoot, LockRoot: tc.LockRoot, TitleSlug: tc.TitleSlug,
+		MemGiB: tc.MemGiB,
 	}, facts)
 	if err != nil {
 		base.Erreur = fmt.Errorf("cuisson HEAD : %w", err)
@@ -98,8 +101,7 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 		base.Erreur = fmt.Errorf("comparaison : %w", err)
 		return base
 	}
-	base.SchemaReference, base.SchemaHEAD, base.Gains, base.Pertes, base.Changements,
-		base.PertesDetail = bilanDepuisRapport(rap)
+	base.remplirBilan(rap)
 	return base
 }
 
@@ -115,6 +117,7 @@ func (tc temoinContexte) resoudreReference(ctx context.Context, facts replaybuil
 	}
 	cuissonBase, err := bakeTemoin(ctx, cuissonParams{
 		BinPath: tc.BinBase, WorkRoot: tc.WorkRootBase, LockRoot: tc.LockRoot, TitleSlug: tc.TitleSlug,
+		MemGiB: tc.MemGiB,
 	}, facts)
 	if err != nil {
 		return "", err
