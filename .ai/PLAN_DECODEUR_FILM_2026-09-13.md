@@ -5141,7 +5141,7 @@ code, l'ADR amendé, le triage du §4 — les deux dernières étant le lot docu
       3.3.3 `b43d4746f`) `492cb0923` · 3.4 (3.4.1 + 3.4.2) `accba88ac` avec son correctif CI
       `5897eb3dd` · 3.6.a `2b68aa165` · 3.1.1 `fe38d2e35`. Le code de M3 est complet à
       `fe38d2e35`.
-- [ ] **fusion du lot 3.7 (RECHERCHE SEULE)** — pilote. `feat/decfilm-37r`, deux commits
+- [x] **fusion du lot 3.7 (RECHERCHE SEULE)** — pilote. `feat/decfilm-37r`, deux commits FAIT le 2026-09-17 : fusionné 746867516 (trois commits, aucun fichier de production Go, instruments `film/research/cmd_reapparition` + note `NOTE_3_7_REAPPARITION`), ses `D1`..`D10 (3.7)` triées NON RETENUES (bc03c30a1).
       (`06881f9d0` + `fcee76fdc`), base `2fac0a4cf` : aucun fichier de production Go, aucun film
       du cache ouvert, gate au §5. Il apporte au §4 les cinq lignes `D1..D5 (3.7)`, déjà triées
       par le bloc « Clôture M3 — triage du §4 » ci-dessus.
