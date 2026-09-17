@@ -2,56 +2,18 @@
  * watcherCardTestText.ts — LA fixture i18n des tests de la carte watcher.
  *
  * Extraite de `WatcherCard.test.tsx` le 2026-09-17 : le fichier de test franchissait le
- * seuil des 500 lignes (CLAUDE.md n° 5) et 85 de ces lignes étaient une table de données
- * sans aucune décision. Elle vit donc à côté, et le test ne porte plus que des tests.
+ * seuil des 500 lignes (CLAUDE.md n° 5) et ces lignes étaient une table de données sans
+ * aucune décision. Elle vit donc à côté, et le test ne porte plus que des tests.
  *
- * `as unknown as SettingsText` : c'est un SOUS-ENSEMBLE des clés — celles que la carte
- * watcher traverse. Une clé manquante rendrait `undefined`, pas une erreur de compilation :
- * ajouter ici la clé de tout nouveau libellé lu par la carte.
+ * ELLE NE PORTE QUE LES CLÉS `watcher*`, c'est-à-dire EXACTEMENT celles que
+ * `WatcherCard.tsx` et `watcherPresence.ts` lisent (vérifié au grep) — la version inline
+ * en traînait une cinquantaine d'autres (sync, Discord, médias, backfill) qu'aucun rendu
+ * de cette carte ne touche. `as unknown as SettingsText` : c'est donc un SOUS-ENSEMBLE
+ * assumé ; ajouter ici la clé de tout nouveau libellé lu par la carte.
  */
 import type { SettingsText } from './i18n'
 
 export const WATCHER_TEST_TEXT = {
-  pageTitle: 'Paramètres',
-  pageSubtitle: "Configuration de l'application",
-  savedStatus: '✓ Enregistré',
-  errorStatus: '✗ Erreur',
-  loading: 'Chargement…',
-  tabSync: 'Sync',
-  manualSyncTitle: 'Sync manuelle',
-  manualSyncButton: 'Synchroniser',
-  manualSyncRunning: 'En cours…',
-  manualSyncDescription: '',
-  instanceTitle: 'Lab',
-  instanceDescription: '',
-  openLabButton: 'Ouvrir',
-  usersTitle: 'Utilisateurs',
-  usersDescription: '',
-  openUsersButton: 'Ouvrir',
-  interfaceTitle: 'Interface',
-  langLabel: 'Langue',
-  langFr: 'FR',
-  langEn: 'EN',
-  timezoneLabel: 'Fuseau',
-  showRecords: 'Records',
-  normalizeModeLabels: 'Normaliser modes',
-  excludeBTB: 'Exclure BTB',
-  refreshClearsCaches: 'Vider caches',
-  discordTitle: 'Discord',
-  discordEnabled: 'Activé',
-  discordNotifySync: 'Notifier sync',
-  discordNotifyBackfill: 'Notifier backfill',
-  discordNoWebhook: 'Webhook absent',
-  mediaTitle: 'Médias',
-  mediaWatcherEnabled: 'Surveillance médias',
-  mediaToleranceLabel: 'Tolérance',
-  mediaNoBaseDir: 'Aucun dossier',
-  spnkrTitle: 'SPNKr',
-  spnkrAutoSync: 'Auto-sync',
-  spnkrAutoSyncInterval: 'Intervalle',
-  spnkrAutoSyncIntervalUnit: 'h',
-  spnkrAutoSyncIntervalMinutes: 'Intervalle (min)',
-  spnkrAutoSyncIntervalMinutesUnit: 'min',
   watcherTitle: 'Détection de présence',
   watcherPresenceEnabled: 'Détection automatique',
   watcherPresenceDescription: 'Description',
@@ -86,12 +48,4 @@ export const WATCHER_TEST_TEXT = {
   watcherLastSeenRelative: 'Vu il y a {duration} sur {title}',
   watcherLastSeenAbsolute: 'Vu le {date} sur {title}',
   watcherNeverSeen: 'Jamais vu en jeu',
-  backfillTitle: 'Backfill',
-  backfillMedals: 'Médailles',
-  backfillSkill: 'CSR/MMR',
-  backfillAliases: 'Alias',
-  backfillPersonalScores: 'Scores',
-  backfillPerfScores: 'Perf',
-  backfillLUSR: 'LUSR',
-  backfillEvents: 'Événements',
 } as unknown as SettingsText
