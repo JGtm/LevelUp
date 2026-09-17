@@ -13,8 +13,8 @@
  *  4. AUCUN LIBELLÉ DE RÔLE N'EST UNE CLÉ DE MANIFESTE BRUTE.
  *
  * ECharts est mocké (jsdom ne peint pas de canvas) — même motif que les tests de
- * `SynthesisWeaponRangeSection`. La géométrie du graphe est testée PURE ailleurs
- * (`_weaponRangeChart.test.ts`).
+ * `WeaponRangeSection` (Séries temporelles). La géométrie du graphe est testée PURE ailleurs
+ * (`components/charts/weaponRangeChart.test.ts`).
  */
 import { describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'

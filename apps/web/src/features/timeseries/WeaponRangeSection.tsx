@@ -1,5 +1,10 @@
 /**
- * SynthesisWeaponRangeSection — LA PORTÉE DES ENGAGEMENTS SUR LA SYNTHÈSE.
+ * WeaponRangeSection — LA PORTÉE DES ENGAGEMENTS SUR L'ONGLET RÉSUMÉ.
+ *
+ * Elle a vécu sous `features/synthesis/` jusqu'au 2026-09-17, par héritage : la section a
+ * quitté la page Synthèse pour le Résumé le 2026-09-13 et ses fichiers n'avaient pas suivi.
+ * Un composant rangé sous le nom d'une page qui ne l'affiche plus égare ses lecteurs — c'est
+ * arrivé. Le dossier dit maintenant qui la rend.
  *
  * Transposition de la maquette validée par l'utilisateur le 2026-09-06
  * (`.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`, lot 5 du plan
@@ -8,7 +13,7 @@
  * frags au-dessus, morts en dessous) et le dénivelé (deux barres empilées à 100 %).
  *
  * CE COMPOSANT NE CALCULE RIEN. La projection et les deux options ECharts vivent dans
- * `_weaponRangeChart.ts` / `_weaponElevationChart.ts`, les décisions de lecture dans
+ * `@/components/charts/weaponRangeChart` (partagé) et `_weaponElevationChart.ts`, les décisions dans
  * `weaponRange_logic.ts` — tous purs, tous testés hors rendu.
  *
  * LES DÉNOMINATEURS SONT AFFICHÉS PARTOUT, et c'est le point : la mesure est partielle par
@@ -32,7 +37,7 @@ import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { AccentCard, SectionSubtitle } from './SynthesisCards'
+import { AccentCard, SectionSubtitle } from '@/features/synthesis/SynthesisCards'
 import {
   ELEVATION_KEYS,
   buildWeaponElevationOption,
@@ -43,8 +48,8 @@ import {
   weaponRangeChartHeight,
   weaponRangeLines,
   type WeaponRangeLine,
-} from './_weaponRangeChart'
-import { SynthesisWeaponRangeTable } from './SynthesisWeaponRangeTable'
+} from '@/components/charts/weaponRangeChart'
+import { WeaponRangeTable } from './WeaponRangeTable'
 import { WEAPON_RANGE_MIN_MEASURED, hasWeaponRangeRows } from './weaponRange_logic'
 import { useRangeFormats, type RangeFormats, type Translate } from './weaponRangeText'
 
@@ -228,7 +233,7 @@ function RangeFooter({
         {t('synthesis.weapon_range.table_summary')}
       </summary>
       <div className="overflow-x-auto px-3 pb-1">
-        <SynthesisWeaponRangeTable lines={lines} t={t} f={f} />
+        <WeaponRangeTable lines={lines} t={t} f={f} />
       </div>
     </details>
   )
@@ -343,11 +348,11 @@ function RangeChartBody({
 
 // ─── Section ──────────────────────────────────────────────────────────────────
 
-export interface SynthesisWeaponRangeSectionProps {
+export interface WeaponRangeSectionProps {
   range: SynthesisWeaponRange | null | undefined
 }
 
-export function SynthesisWeaponRangeSection({ range }: SynthesisWeaponRangeSectionProps) {
+export function WeaponRangeSection({ range }: WeaponRangeSectionProps) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = useCallback<Translate>(
     (key, vars) => formatMessage(synthesisManifest, key, locale, vars),

@@ -13,7 +13,7 @@
  * colonnes (2026-09-17) —
  *   1. Répartition des frags (2/3) | Cadence (1/3)
  *   2. Donuts de taux de victoire (1/3) | Écart de frags cumulé (2/3)
- *   3. Répartition des résultats + Part des assistances (2/3) | Portée des frags (1/3)
+ *   3. Répartition des résultats + Part des assistances (55 %) | Portée des frags (45 %)
  * Dans chaque rangée, la colonne gauche impose la hauteur et le bloc de droite s'étire.
  *
  * Cas no-tokens (auth_available=false) :
@@ -193,18 +193,18 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
               réutilisées du hub Relations. Rendue seulement si encounter_stats fourni. */}
           {encounterStats && <ExplorerTargetVersusDonuts encounterStats={encounterStats} />}
 
-          {/* Rangée 3 : bilan V/N/D puis « Part des assistances » empilés (2/3) +
-              « Portée des frags » (1/3, placeholder en attendant la mesure). Même
-              mécanique de hauteur que la rangée 1 : la colonne gauche décide, le bloc
-              de droite s'étire. */}
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="flex flex-col gap-4 lg:col-span-2">
+          {/* Rangée 3 : bilan V/N/D puis « Part des assistances » empilés (55 %) +
+              « Portée des frags » (45 %). Le ratio est explicite et non une fraction de
+              la grille de 3 : le graphe de portée a besoin de largeur pour ses bâtons,
+              et 1/3 le serrait trop (arbitrage utilisateur du 2026-09-17). Même
+              mécanique de hauteur que la rangée 1 : la colonne gauche décide, le bloc de
+              droite s'étire. */}
+          <div className="grid gap-4 lg:grid-cols-[55fr_45fr]">
+            <div className="flex flex-col gap-4">
               <ExplorerTargetOutcome sampleStats={sampleStats} />
               <ExplorerTargetAssists encounterStats={encounterStats} />
             </div>
-            <div className="lg:col-span-1">
-              <ExplorerTargetFragRange />
-            </div>
+            <ExplorerTargetFragRange encounterStats={encounterStats} gamertag={gamertag} />
           </div>
         </section>
       )}

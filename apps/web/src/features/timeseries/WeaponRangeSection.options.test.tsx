@@ -1,8 +1,8 @@
 /**
- * SynthesisWeaponRangeSection.options.test — CE QUE LA SECTION INJECTE VRAIMENT DANS ECHARTS.
+ * WeaponRangeSection.options.test — CE QUE LA SECTION INJECTE VRAIMENT DANS ECHARTS.
  *
  * POURQUOI CE FICHIER EXISTE (revue adversariale du lot 5, 2026-09-06). Les tests purs
- * (`_weaponRangeChart.test.ts`, `_weaponElevationChart.test.ts`) prouvent que les deux
+ * (`components/charts/weaponRangeChart.test.ts`, `_weaponElevationChart.test.ts`) prouvent que les deux
  * constructeurs honorent ce qu'on leur INJECTE ; le test de composant, lui, monte la section
  * avec ECharts mocké et ne regarde jamais l'option produite. Entre les deux, personne ne
  * vérifiait le CÂBLAGE : échanger les encres des frags et des morts, les libellés
@@ -23,8 +23,8 @@ import type { SynthesisWeaponRange, WeaponRangeSide } from '@/lib/api/types'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { SynthesisWeaponRangeSection } from './SynthesisWeaponRangeSection'
-import { WEAPON_RANGE_ROW_PX } from './_weaponRangeChart'
+import { WeaponRangeSection } from './WeaponRangeSection'
+import { WEAPON_RANGE_ROW_PX } from '@/components/charts/weaponRangeChart'
 
 /** Les options passées à ECharts, dans l'ordre de montage : portée, puis dénivelé. */
 const captured: { option: EChartsOption; style: { height?: number } }[] = []
@@ -105,7 +105,7 @@ const RANGE: SynthesisWeaponRange = {
 
 /** Monte la section et rend les deux options, dans l'ordre des graphes. */
 async function mountAndCapture(range: SynthesisWeaponRange = RANGE) {
-  renderWithProviders(<SynthesisWeaponRangeSection range={range} />)
+  renderWithProviders(<WeaponRangeSection range={range} />)
   // Les deux graphes sont chargés en `lazy` : attendre les rend déterministes. S'ils
   // n'arrivent pas (série vide -> état « Aucune donnée »), ce `find` échoue, et c'est voulu.
   const mocks = await screen.findAllByTestId('echarts-mock')

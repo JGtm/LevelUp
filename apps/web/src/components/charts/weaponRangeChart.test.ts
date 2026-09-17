@@ -1,5 +1,5 @@
 /**
- * _weaponRangeChart.test — les deux bâtons p10→p90 et leurs losanges, en pur.
+ * weaponRangeChart.test — les deux bâtons p10→p90 et leurs losanges, en pur.
  *
  * Ce que ces tests verrouillent : la projection (libellé par locale, côté absent normalisé
  * en `null`, ORDRE DU BACKEND conservé, pseudo-armes sans portée écartées), le libellé de
@@ -19,9 +19,10 @@ import {
   weaponRangeAxisMax,
   weaponRangeCategoryLabel,
   weaponRangeChartHeight,
+  resolveWeaponLabel,
   weaponRangeLines,
   type WeaponRangeLine,
-} from './_weaponRangeChart'
+} from './weaponRangeChart'
 
 const TC: EChartsThemeColors = {
   axisLabel: '#111111',
@@ -271,3 +272,20 @@ describe('infobulle', () => {
     expect(tooltip(99)).toBe('')
   })
 })
+
+describe('resolveWeaponLabel', () => {
+  it('rend le libellé de la locale demandée', () => {
+    const w = { weapon_key: 'hinf_br75', label: 'Fusil de combat BR75', label_en: 'BR75 Battle Rifle' }
+    expect(resolveWeaponLabel(w, 'fr')).toBe('Fusil de combat BR75')
+    expect(resolveWeaponLabel(w, 'en')).toBe('BR75 Battle Rifle')
+  })
+
+  it('replie sur la clé d’arme quand le registre n’a rien résolu (libellé absent ou vide)', () => {
+    expect(resolveWeaponLabel({ weapon_key: 'hinf_inconnue' }, 'fr')).toBe('hinf_inconnue')
+    expect(resolveWeaponLabel({ weapon_key: 'hinf_inconnue', label: '  ' }, 'fr')).toBe('hinf_inconnue')
+    // Locale EN sans `label_en` : le repli est la clé, JAMAIS le libellé français — servir
+    // l'autre langue serait un mélange silencieux.
+    expect(resolveWeaponLabel({ weapon_key: 'hinf_x', label: 'Hydra' }, 'en')).toBe('hinf_x')
+  })
+})
+

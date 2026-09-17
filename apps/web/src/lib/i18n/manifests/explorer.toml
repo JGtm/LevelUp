@@ -674,9 +674,26 @@ en = "Assist share"
 fr = "Portée des frags"
 en = "Frag range"
 
-[explorer.target_profile.frag_range_pending]
-fr = "En préparation"
-en = "In preparation"
+[explorer.target_profile.frag_range_self]
+fr = "Toi"
+en = "You"
+
+[explorer.target_profile.frag_range_empty]
+fr = "Aucun frag mesuré sur vos matchs communs"
+en = "No measured frag over your shared matches"
+
+# Infobulle du graphe — mêmes phrases que le Face-à-face, qui rend la même figure.
+[explorer.target_profile.frag_range_percentiles]
+fr = "10e centile · médiane · 90e centile"
+en = "10th percentile · median · 90th percentile"
+
+[explorer.target_profile.frag_range_no_measure]
+fr = "aucune mesure"
+en = "no measurement"
+
+[explorer.target_profile.frag_range_observed]
+fr = "observé"
+en = "observed"
 
 [explorer.target_profile.section_sample_empty]
 fr = "Aucun match en commun avec ce joueur — les comparaisons directes apparaîtront après des parties partagées."
