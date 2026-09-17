@@ -22,6 +22,13 @@ import (
 // « on ne sait pas », jamais « pas d'assistant ». Les parts ne sont ni plafonnées ni
 // complétées : NULL reste NULL (le vol exige une part mesurée).
 //
+// LES MORTS DE BOT SONT ÉCARTÉES ICI, comme en Q32c (`queries_squad.go`) : elles arrivent du
+// film avec un `victim_xuid` NULL (orphelines — le kill-feed de l'API est humain seul, cf.
+// `persist/kill_events_merge.go`). La première branche les exclut déjà par construction
+// (`IN (...)` est faux sur NULL) ; la seconde ne parlant que du tueur et de l'assistant, elle
+// les acceptait — un vol n'a de sens qu'entre joueurs, donc on écarte au plus près de la
+// source, où l'intention est lisible.
+//
 // Les '%s' positionnels sont, DANS CET ORDRE : match_ids, xuids (victime), xuids (tueur),
 // xuids (assistant). Ne PAS utiliser directement — passer par LoadSquadKillLog().
 const Q32eSquadKillLogTemplate = `
@@ -37,7 +44,8 @@ WHERE match_id IN (%s)
   AND publishable
   AND (
         victim_xuid IN (%s)
-     OR (assist_known AND feed_killer_xuid IN (%s) AND assist_xuid IN (%s))
+     OR (victim_xuid IS NOT NULL
+         AND assist_known AND feed_killer_xuid IN (%s) AND assist_xuid IN (%s))
   )
 ORDER BY match_id, time_ms`
 
