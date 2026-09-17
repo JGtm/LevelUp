@@ -76,6 +76,10 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	}
 	// Split solo/escouade : aucun gate capability (P-7), omission si non pertinent.
 	b.ContextSplit = buildBriefingContextSplit(filtered)
+	// Arme favorite : SEUL module du briefing qui interroge la base (agrégat des
+	// frags par arme sur les matchs du scope). Best-effort strict — repo absent,
+	// capability manquante ou erreur → bloc nil, le reste du briefing est servi.
+	b.Weapons = buildBriefingWeapons(ctx, s.weaponKillsRepo, s.titleSlug, s.weaponKillsXUID, filtered)
 	// Séries + moments forts : calculés sur TOUT le scope filtré (P-9), omission
 	// si non pertinent (aucune row datée / tous les compteurs à zéro).
 	b.Streaks = buildBriefingStreaks(filtered)

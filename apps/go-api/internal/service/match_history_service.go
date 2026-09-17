@@ -112,6 +112,14 @@ type MatchHistoryService struct {
 	// courant, injecté par le wiring (jamais dérivé d'un slug ici — ADR 0025).
 	// Nil → colonne « Rang » en texte localisé, comme avant (H5, titre sans badge).
 	skillBadgeResolver func(tierEN string, subTier int) string
+	// weaponKillsRepo / weaponKillsXUID (optionnels) : lecteur des frags par arme du
+	// titre et identité du joueur pour qui les lire, injectés ENSEMBLE par le wiring
+	// (WithWeaponKillsRepo). Alimentent le module « arme favorite » du briefing
+	// Explorer. Le xuid voyage avec le repo parce que le filtre du port se pose sur la
+	// colonne xuid des deux lecteurs — jamais sur le gamertag, qui passe par une
+	// jointure d'alias. Non câblé → module omis (dégradation propre).
+	weaponKillsRepo port.WeaponKillsRepository
+	weaponKillsXUID string
 	// replaySvc (optionnel) : service de rejeu 2D, appelé UNE FOIS par requête pour
 	// lister les matchs ayant un artefact (colonne « Rejeu » + filtre replay_scope).
 	// Nil → aucune ligne ne porte de rejeu (titre sans film cuit, dégradation propre).
@@ -268,6 +276,16 @@ func (s *MatchHistoryService) WithCSRThresholds(resolver CSRThresholdResolver) *
 // titleSupportsLiveCSR. Sans appel : module classé toujours omis.
 func (s *MatchHistoryService) WithRankedCapable(capable bool) *MatchHistoryService {
 	s.rankedCapable = capable
+	return s
+}
+
+// WithWeaponKillsRepo injecte le lecteur des frags par arme ET l'identité du joueur
+// pour qui les lire (module « arme favorite » du briefing Explorer). Les deux voyagent
+// ensemble comme dans WithPlayerMatchesRepo : un repo sans xuid ne sait rien filtrer.
+// Sans appel : module omis.
+func (s *MatchHistoryService) WithWeaponKillsRepo(repo port.WeaponKillsRepository, xuid string) *MatchHistoryService {
+	s.weaponKillsRepo = repo
+	s.weaponKillsXUID = xuid
 	return s
 }
 
