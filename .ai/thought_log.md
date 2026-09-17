@@ -92,6 +92,22 @@ pile et les marges de la carte du haut coûtent environ deux lignes que la formu
 comptait pas. Aucune mesure du DOM ajoutée. Les quatre tests de placement du Strip et le
 describe DP-3 passent sans retouche.
 
+**Gate visuel utilisateur (2026-09-17)** — deux retours, deux gestes. D'abord le rendu nu
+empilé sous « Par contexte » « ne colle pas du tout » avec le reste de la rangée :
+l'utilisateur veut le bloc DANS UNE CARTE comme tous les autres, dans tous les cas.
+L'harmonie visuelle l'emporte donc sur la promesse « la rangée ne bouge pas » — la rangée
+peut grandir quand le bloc est empilé, c'est assumé. Il n'y a plus qu'un habillage
+(`BriefingSectionCard`), plus de forme compacte, et `favoriteWeaponSlots` ne rend plus que
+`1 | 2` : la formule ne choisit plus que le NOMBRE d'armes, jamais la forme ni la présence.
+La constante `stacked ? 4 : 2` survit pour ce seul arbitrage — une seconde arme n'est
+servie que si la rangée offre deux lignes au-delà de la base. Ensuite la note de couverture
+(« 7 362 frags mesurés sur 11 150 ») quitte l'UI : `coverageNote`, `CompactLine`, la prop
+`stacked` du composant et la clé i18n `weapons_coverage` sont supprimés avec leurs tests
+(zéro code mort). `measured_kills` et `scope_kills` RESTENT au contrat et servis par l'API :
+ils restent vrais et pourront porter une infobulle plus tard — champs non affichés, pas
+code mort ; le backend n'a pas été touché. Les quatre tests de placement du Strip et le
+describe DP-3 passent sans retouche (aucun ne dépendait de la forme compacte).
+
 **Prochaine étape** : gate visuel de l'utilisateur, cinq écrans (scope complet Infinite,
 scope réduit à une carte, scope 2023 pour la note de couverture, scope sans « Par contexte »,
 et Halo 5). Puis push de la branche par le superviseur et vérification de la CI au niveau
