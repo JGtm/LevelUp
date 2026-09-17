@@ -231,6 +231,12 @@
   --ac-chart-series-8: #EC4899;
   /* Bonus (assistances) — violet, distinct des couleurs joueurs squad */
   --ac-bonus: #A855F7;
+  /* Stats de combat (2026-09-17) */
+  --ac-stat-kills: #059669;
+  --ac-stat-deaths: #F43F5E;
+  --ac-stat-assists: #0284C7;
+  --ac-assist-received: #A16207;
+  --ac-assist-given: #7C3AED;
   /* Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) */
   --ac-legendary: #FBBF24;
   /* Badges narratifs */

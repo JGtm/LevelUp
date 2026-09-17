@@ -130,8 +130,8 @@ describe('FirstBloodLanes — structure de l’option', () => {
     const { option } = await renderChart()
     const [, , , medKills, medDeaths] = option.series
     expect(medKills.symbolSize).toBe(16)
-    expect(medKills.itemStyle).toMatchObject({ color: 'tok:outcome-win', borderWidth: 2 })
-    expect(medDeaths.itemStyle).toMatchObject({ color: 'tok:outcome-loss', borderWidth: 2 })
+    expect(medKills.itemStyle).toMatchObject({ color: 'tok:stat-kills', borderWidth: 2 })
+    expect(medDeaths.itemStyle).toMatchObject({ color: 'tok:stat-deaths', borderWidth: 2 })
     expect(medKills.data.map((d) => d.value)).toEqual([
       [30, 0],
       [90, 1],
@@ -157,7 +157,7 @@ describe('FirstBloodLanes — barre d’avance', () => {
     expect(el.type).toBe('rect')
     expect(el.shape).toMatchObject({ x: 60, width: 60, height: 8, r: 4 })
     expect(el.shape.y).toBe(100 - 4)
-    expect(el.style).toMatchObject({ fill: 'tok:outcome-win', opacity: 0.5 })
+    expect(el.style).toMatchObject({ fill: 'tok:stat-kills', opacity: 0.5 })
   })
 
   it('vire au rouge quand la première mort précède le premier frag', async () => {
@@ -169,7 +169,7 @@ describe('FirstBloodLanes — barre d’avance', () => {
       shape: { x: number; width: number }
       style: { fill: string }
     }
-    expect(el.style.fill).toBe('tok:outcome-loss')
+    expect(el.style.fill).toBe('tok:stat-deaths')
     expect(el.shape).toMatchObject({ x: 100, width: 80 })
   })
 

@@ -52,7 +52,7 @@ function ButterflyRow({ rank, nemesis, victim, maxDeaths, maxFrags, onPlayerClic
             </span>
             <span className="text-muted-foreground text-xs leading-none shrink-0">·</span>
             <span className="font-mono shrink-0 leading-none whitespace-nowrap text-xs">
-              <span style={{ color: tokenCssVar('outcome-loss') }}>{nemesis.deaths}</span>
+              <span style={{ color: tokenCssVar('stat-deaths') }}>{nemesis.deaths}</span>
               <span className="text-muted-foreground"> · {nemesis.match_count}</span>
             </span>
             <button
@@ -67,7 +67,7 @@ function ButterflyRow({ rank, nemesis, victim, maxDeaths, maxFrags, onPlayerClic
                 style={{
                   width: `${leftPct}%`,
                   height: '100%',
-                  backgroundColor: tokenCssVar('outcome-loss'),
+                  backgroundColor: tokenCssVar('stat-deaths'),
                   minWidth: leftPct > 0 ? '3px' : '0',
                 }}
               />
@@ -95,7 +95,7 @@ function ButterflyRow({ rank, nemesis, victim, maxDeaths, maxFrags, onPlayerClic
                 style={{
                   width: `${rightPct}%`,
                   height: '100%',
-                  backgroundColor: tokenCssVar('outcome-win'),
+                  backgroundColor: tokenCssVar('stat-kills'),
                   minWidth: rightPct > 0 ? '3px' : '0',
                 }}
               />
@@ -109,7 +109,7 @@ function ButterflyRow({ rank, nemesis, victim, maxDeaths, maxFrags, onPlayerClic
             </button>
             <span className="font-mono shrink-0 leading-none whitespace-nowrap text-xs">
               <span className="text-muted-foreground">{victim.match_count} · </span>
-              <span style={{ color: tokenCssVar('outcome-win') }}>{victim.frags}</span>
+              <span style={{ color: tokenCssVar('stat-kills') }}>{victim.frags}</span>
             </span>
             <span className="text-muted-foreground text-xs leading-none shrink-0">·</span>
             <span
@@ -176,11 +176,11 @@ function RivalsButterflyChart({ nemeses, victims, nemesisLabel, victimLabel, col
     <div className="space-y-1">
       <div className="flex items-center text-xs uppercase tracking-wide font-semibold select-none mb-2">
         <div className="flex-1 text-right pr-10">
-          <span style={{ color: tokenCssVar('outcome-loss') }}>← {nemesisLabel}</span>
+          <span style={{ color: tokenCssVar('stat-deaths') }}>← {nemesisLabel}</span>
         </div>
         <div className="w-8 shrink-0" />
         <div className="flex-1 pl-10">
-          <span style={{ color: tokenCssVar('outcome-win') }}>{victimLabel} →</span>
+          <span style={{ color: tokenCssVar('stat-kills') }}>{victimLabel} →</span>
         </div>
       </div>
       <ButterflyColHeader colLabels={colLabels} />

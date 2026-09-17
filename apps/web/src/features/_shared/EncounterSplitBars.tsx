@@ -84,8 +84,8 @@ export function KDSplitBar({
     <SplitBar
       leftCount={kills}
       rightCount={deaths}
-      leftColor={tokenCssVar('outcome-win')}
-      rightColor={tokenCssVar('outcome-loss')}
+      leftColor={tokenCssVar('stat-kills')}
+      rightColor={tokenCssVar('stat-deaths')}
       leftTooltip={ttKills}
       rightTooltip={ttDeaths}
     />

@@ -27,6 +27,12 @@
  * modification d'un match qui n'est pas BTB » tient. Toute divergence ULTERIEURE reste une
  * régression 4v4, jamais une fixture à régénérer.
  *
+ * SECONDE MISE A JOUR, 2026-09-17 (famille des stats de combat) : SEULES les encres du
+ * triplet frags / morts / assistances changent (`--ac-success` -> `--ac-stat-kills`,
+ * `--ac-destructive` -> `--ac-stat-deaths`, `--ac-info` -> `--ac-stat-assists`), vérifié
+ * jeton par jeton : 8 de chaque en 4v4, 12 en 6v6, aucun autre caractère du HTML. Le fond
+ * du FDA (`--ac-success` / `--ac-destructive` à 22 %) n'est pas touché.
+ *
  * LE GABARIT NORMAL VA JUSQU'À SIX SIÈGES PAR CAMP (la densité se lit sur la catégorie de
  * mode, jamais sur les effectifs — décision D1) : la même fixation à 6 sièges
  * (`__fixtures__/replayTeams.6v6.html`) a été prise à l'étape 2 du plan, AVANT le premier code

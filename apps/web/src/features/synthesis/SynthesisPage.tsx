@@ -319,15 +319,15 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                     <p className="text-xl font-bold text-primary">{kd}</p>
                     <div className="mt-1.5 w-full">
                       <ProportionalBar segments={[
-                        { value: overview.total_kills,   color: 'outcome-win' },
-                        { value: overview.total_assists,  color: 'outcome-draw' },
-                        { value: overview.total_deaths,   color: 'outcome-loss' },
+                        { value: overview.total_kills,   color: 'stat-kills' },
+                        { value: overview.total_assists,  color: 'stat-assists' },
+                        { value: overview.total_deaths,   color: 'stat-deaths' },
                       ]} />
                     </div>
                     <div className="mt-1 flex justify-center gap-2 text-xs font-semibold tabular-nums">
-                      <span style={{ color: tokenCssVar('outcome-win') }}>{overview.total_kills}</span>
-                      <span style={{ color: tokenCssVar('outcome-draw') }}>{overview.total_assists}</span>
-                      <span style={{ color: tokenCssVar('outcome-loss') }}>{overview.total_deaths}</span>
+                      <span style={{ color: tokenCssVar('stat-kills') }}>{overview.total_kills}</span>
+                      <span style={{ color: tokenCssVar('stat-assists') }}>{overview.total_assists}</span>
+                      <span style={{ color: tokenCssVar('stat-deaths') }}>{overview.total_deaths}</span>
                     </div>
                   </div>
 

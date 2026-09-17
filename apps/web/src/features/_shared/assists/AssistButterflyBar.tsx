@@ -6,8 +6,8 @@
  * en trois tons de la couleur du joueur, du centre vers l'extérieur : coup de pouce
  * (< 25 % des dégâts), travail partagé (25-50 %), frag préparé (> 50 %). Chaque segment porte son infobulle « N frags assistés · tranche ».
  *
- * Couleurs : `compare-b` pour l'autre joueur, `compare-a` pour le joueur (même paire que
- * les comparaisons à deux joueurs). Les tons sont des opacités, pas des couleurs.
+ * Couleurs : `assist-received` (l'autre te sert) et `assist-given` (tu le sers), famille
+ * des stats de combat. Les tons sont des opacités, pas des couleurs.
  */
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -20,8 +20,8 @@ import type { AssistTier, AssistsText } from './assistsI18n'
 
 const TIER_OPACITY: Record<AssistTier, number> = { low: 0.35, mid: 0.65, high: 1 }
 
-export const ASSIST_RECEIVED_TOKEN: SemanticToken = 'compare-b'
-export const ASSIST_GIVEN_TOKEN: SemanticToken = 'compare-a'
+export const ASSIST_RECEIVED_TOKEN: SemanticToken = 'assist-received'
+export const ASSIST_GIVEN_TOKEN: SemanticToken = 'assist-given'
 
 type Variant = 'card' | 'row'
 

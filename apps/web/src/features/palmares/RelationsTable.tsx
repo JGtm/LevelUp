@@ -274,8 +274,8 @@ function buildColumns(
           <SplitBar
             leftCount={r.kills_dealt}
             rightCount={r.deaths_suffered}
-            leftColor={tokenCssVar('outcome-win')}
-            rightColor={tokenCssVar('outcome-loss')}
+            leftColor={tokenCssVar('stat-kills')}
+            rightColor={tokenCssVar('stat-deaths')}
             leftTooltip={labels.tooltip.fragsDealt(String(r.kills_dealt))}
             rightTooltip={labels.tooltip.deathsSuffered(String(r.deaths_suffered))}
           />

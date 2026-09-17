@@ -75,10 +75,27 @@ export type SemanticToken =
   | 'chart-series-7'
   | 'chart-series-8'
 
-  // ── Bonus (1) — segment "assistances" empilé dans les charts squad/timeseries ─
-  // Couleur dédiée et distincte des 8 couleurs verrouillées de l'escouade
-  // (4 joueurs + leurs opposés colorimétriques) — cf. squadPerformanceLineCharts.
+  // ── Bonus (1) — cœur de la faille du rejeu 2D (useReplayInks, RIFT_CORE_TOKEN) ─
+  // Jusqu'au 2026-09-17 il colorait aussi le segment « assistances » des charts
+  // squad/timeseries : ce rôle est passé à `stat-assists` (famille des stats de combat).
   | 'bonus'
+
+  // ── Stats de combat (5) — famille DÉDIÉE (2026-09-17) ─────────────────────
+  // Frags, morts, assistances, et SENS d'une assistance entre le joueur et un autre
+  // (reçue : l'autre te sert ; donnée : tu le sers). Avant cette famille, chaque page
+  // empruntait un rôle voisin (issue, palier de performance, série de graphique, info,
+  // comparaison) : cinq teintes d'assistances selon la page, et l'ambre « reçue »
+  // identique au joueur d'escouade 2. Valeurs validées palette par palette avec
+  // l'utilisateur (PLAN_COULEURS_STATS_COMBAT_2026-09-17) et verrouillées par
+  // combatStatTokens.test.ts. RÈGLE : une couleur qui dit « frag / mort / assistance »
+  // passe par ces jetons ; une couleur d'équipe, de joueur ou d'issue reste la sienne.
+  // La PART de dégâts d'une assistance se dit en tons (opacités 35 / 65 / 100 %) de la
+  // couleur du sens, jamais par une autre teinte.
+  | 'stat-kills'
+  | 'stat-deaths'
+  | 'stat-assists'
+  | 'assist-received'
+  | 'assist-given'
 
   // ── Rareté (1) — accent "légendaire", réutilisable hors Battlepass ─────────
   // PAS un doublon de `rarity.ts` (qui reste la SEULE source des 5 teintes de
@@ -193,6 +210,7 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
   'bonus',
+  'stat-kills', 'stat-deaths', 'stat-assists', 'assist-received', 'assist-given',
   'legendary',
   'extreme',
   'narrative-dominant', 'narrative-humiliation', 'narrative-remontada',

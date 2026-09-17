@@ -274,7 +274,7 @@ export function buildKillsDeathsButterflyOption(
   const hiddenPlayers = opts.hiddenPlayers ?? new Set<string>()
   const hiddenTypes = opts.hiddenTypes ?? new Set<string>()
   const showBonus = !hiddenTypes.has('Bonus')
-  const bonusColor = resolveToken('bonus') // bonus assistances — violet, distinct des couleurs joueurs + opposés (morts)
+  const bonusColor = resolveToken('stat-assists') // bonus = assistances / 3 : la couleur des assistances (famille des stats de combat)
   const emptyData = new Array<number | null>(n).fill(null)
   const seriesPerPlayer: Array<Record<string, unknown>> = []
   // Étendue d'axe calculée sur le JEU COMPLET (bonus + joueurs masqués inclus),

@@ -93,9 +93,16 @@ export const okabePalette: Palette = {
   'chart-series-7': '#CC79A7', // Reddish Purple
   'chart-series-8': '#BBBBBB', // Gris clair (substitut de Black)
 
-  // ── Bonus (assistances) — Reddish Purple : distinct du perf-tier-3 jaune et
+  // ── Bonus (cœur de la faille du rejeu ; ex-assistances, cf. stat-assists) — Reddish Purple : distinct du perf-tier-3 jaune et
   //     des joueurs squad (bleu/vert). Pas de collision en Okabe-Ito.
   'bonus': '#CC79A7', // Reddish Purple
+  // Stats de combat (2026-09-17) — ΔE ≥ 15 et daltonisme ≥ 8 ; contraste exigé sur UNE
+  // surface (bleu ciel et orange ne tiennent pas 3:1 sur fond clair sans collision).
+  'stat-kills': '#008E68',      // Bluish Green assombri (× 0.90)
+  'stat-deaths': '#D55E00',     // Vermillion
+  'stat-assists': '#56B4E9',    // Sky Blue
+  'assist-received': '#E69F00', // Orange
+  'assist-given': '#CC79A7',    // Reddish Purple
 
   // ── Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) ──────
   // Yellow : le plus "or" du set CVD-safe, et DISTINCT de `warning` (Orange) —

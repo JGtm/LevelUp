@@ -2,6 +2,8 @@
 
 exports[`palette "cividis" > snapshot stable — toute modification doit être intentionnelle 1`] = `
 {
+  "assist-given": "#1B3158",
+  "assist-received": "#E1C752",
   "bonus": "#B6A855",
   "chart-series-1": "#00224E",
   "chart-series-2": "#FEE838",
@@ -75,6 +77,9 @@ exports[`palette "cividis" > snapshot stable — toute modification doit être i
   "squad-player-2": "#7C7B78",
   "squad-player-3": "#B6A855",
   "squad-player-4": "#FEE838",
+  "stat-assists": "#888888",
+  "stat-deaths": "#D55E00",
+  "stat-kills": "#0072B2",
   "success": "#0072B2",
   "team-ally": "#0072B2",
   "team-enemy": "#D55E00",
@@ -85,6 +90,8 @@ exports[`palette "cividis" > snapshot stable — toute modification doit être i
 
 exports[`palette "default" > snapshot stable — toute modification doit être intentionnelle 1`] = `
 {
+  "assist-given": "#7C3AED",
+  "assist-received": "#A16207",
   "bonus": "#A855F7",
   "chart-series-1": "#93C5FD",
   "chart-series-2": "#6366F1",
@@ -158,6 +165,9 @@ exports[`palette "default" > snapshot stable — toute modification doit être i
   "squad-player-2": "#D97706",
   "squad-player-3": "#DB2777",
   "squad-player-4": "#0891B2",
+  "stat-assists": "#0284C7",
+  "stat-deaths": "#F43F5E",
+  "stat-kills": "#059669",
   "success": "#10B981",
   "team-ally": "#3B82F6",
   "team-enemy": "#EF4444",
@@ -168,6 +178,8 @@ exports[`palette "default" > snapshot stable — toute modification doit être i
 
 exports[`palette "okabe-ito" > snapshot stable — toute modification doit être intentionnelle 1`] = `
 {
+  "assist-given": "#CC79A7",
+  "assist-received": "#E69F00",
   "bonus": "#CC79A7",
   "chart-series-1": "#0072B2",
   "chart-series-2": "#E69F00",
@@ -241,6 +253,9 @@ exports[`palette "okabe-ito" > snapshot stable — toute modification doit être
   "squad-player-2": "#B77E00",
   "squad-player-3": "#8E5374",
   "squad-player-4": "#009E73",
+  "stat-assists": "#56B4E9",
+  "stat-deaths": "#D55E00",
+  "stat-kills": "#008E68",
   "success": "#009E73",
   "team-ally": "#0072B2",
   "team-enemy": "#D55E00",
@@ -251,6 +266,8 @@ exports[`palette "okabe-ito" > snapshot stable — toute modification doit être
 
 exports[`palette "tol-bright" > snapshot stable — toute modification doit être intentionnelle 1`] = `
 {
+  "assist-given": "#AA4499",
+  "assist-received": "#A75324",
   "bonus": "#AA3377",
   "chart-series-1": "#4477AA",
   "chart-series-2": "#EE6677",
@@ -324,6 +341,9 @@ exports[`palette "tol-bright" > snapshot stable — toute modification doit êtr
   "squad-player-2": "#CC3311",
   "squad-player-3": "#AA4499",
   "squad-player-4": "#117733",
+  "stat-assists": "#2996BE",
+  "stat-deaths": "#EE6677",
+  "stat-kills": "#228833",
   "success": "#228833",
   "team-ally": "#4477AA",
   "team-enemy": "#EE6677",

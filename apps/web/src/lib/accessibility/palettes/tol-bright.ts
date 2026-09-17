@@ -119,9 +119,16 @@ export const tolBrightPalette: Palette = {
   'chart-series-7': TOL_GREY,
   'chart-series-8': TOL_BLACK,
 
-  // ── Bonus (assistances) — pourpre Tol, standout cohérent avec le défaut,
+  // ── Bonus (cœur de la faille du rejeu ; ex-assistances, cf. stat-assists) — pourpre Tol, standout cohérent avec le défaut,
   //     distinct des joueurs squad (bleu/vert/bleu-clair).
   'bonus': TOL_PURPLE, // #AA3377
+  // Stats de combat (2026-09-17) — contraste 3:1 sur les deux surfaces, ΔE ≥ 15.
+  // Assistances et « il te sert » : teintes Tol assombries pour tenir le contraste.
+  'stat-kills': TOL_GREEN,
+  'stat-deaths': TOL_RED,
+  'stat-assists': '#2996BE',    // Tol Light-Cyan #33BBEE × 0.80
+  'assist-received': '#A75324', // Tol Vibrant Orange #EE7733 × 0.70
+  'assist-given': '#AA4499',    // Tol Muted Purple
 
   // ── Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) ──────
   // Le plus proche d'un "or" dans le set catégoriel à 7 teintes — déjà réutilisé

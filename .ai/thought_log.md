@@ -1,3 +1,31 @@
+## [2026-09-17] Couleurs dédiées des stats de combat (frags, morts, assistances, sens d'assistance) — Complété (branche `claude/couleurs-stats-combat`, fusionnée dans feat/v75)
+
+**Demande** : que les deux couleurs du sens d'assistance (« il te sert » / « tu le sers ») de la
+page Relations deviennent la règle partout, en complément de la couleur des assistances. Constat
+en inventaire : aucune stat de combat n'avait de jeton ; ~97 endroits empruntaient une vingtaine
+de jetons d'autres rôles (assistances en cinq teintes selon la page ; l'ambre « reçue » identique
+au joueur d'escouade 2). Plan : `.ai/PLAN_COULEURS_STATS_COMBAT_2026-09-17.md`.
+
+**Décision technique** : famille dédiée `stat-kills`, `stat-deaths`, `stat-assists`,
+`assist-received`, `assist-given`, une valeur par palette (défaut, Okabe-Ito, Cividis, Tol),
+choisie par l'utilisateur dans l'artefact « Couleurs des stats de combat » puis ajustée par
+recherche exhaustive pour passer les règles du garde-fou escouade (ΔE ≥ 15, daltonisme ≥ 8 sur
+défaut/Okabe, contraste 3:1 ; Okabe-Ito exempté sur fond clair, infaisable). Migration des sites
+où la couleur dit la stat ; conservés : couleurs d'équipe, de joueur, d'issue, de qualité,
+accents de sous-type de frag, encres de carte du rejeu. Garde-fous :
+`combatStatTokens.test.ts` (famille) et `combatStatNoBorrow.guard.test.ts` (ratchet anti-emprunt,
+7 sous-types justifiés). Conversion OKLab centralisée dans `lib/accessibility/colorDistance.ts`
+(2 copies existantes migrées + ratchet anti-copie). Règle écrite dans le skill `color-tokens`.
+
+**Résultats observés** : 22 fichiers migrés ; `bonus` ne sert plus qu'au cœur de la faille du
+rejeu (commentaires corrigés). Tests épinglés mis à jour (FirstBloodLanes, portée des armes) ;
+fixtures HTML du rejeu 4v4/6v6 régénérées après vérification jeton par jeton (seules les encres du
+triplet F/D/A changent). Rendu vérifié en local : tuiles de match (vert/bleu/rose), carte FDA de la
+Synthèse, papillons et colonne Assistances de Relations (ambre #A16207 / violet #7C3AED).
+Changement visible à signaler : les frags des graphiques passent du bleu clair au vert.
+
+**Prochaine étape** : GO utilisateur du 2026-09-17 — commit, fusion dans feat/v75 et push ; CI à confirmer au niveau job.
+
 ## [2026-09-16] Relations : assistances échangées (tableaux, carte Binôme, carte Noyau dur) — Complété (branche `claude/relations-assistance-stats-f1a581`, fusionnée dans feat/v75)
 
 **Demande** : afficher, par relation, combien l'autre joueur t'a assisté et combien tu l'as
