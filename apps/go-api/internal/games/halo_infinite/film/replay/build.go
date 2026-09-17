@@ -40,6 +40,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []grammar.BipedPosition,
 	fire []grammar.FireEvent, opt Options) ReplayDocument {
 	a := &assemblage{matchID: matchID, opt: opt, pos: pos, fire: fire}
 	if !a.ouvrir(titleSlug) {
+		a.poserLesCalquesProduits()
 		return a.doc
 	}
 	a.poserLesPistes()
@@ -56,6 +57,11 @@ func BuildFromPositions(matchID, titleSlug string, pos []grammar.BipedPosition,
 	a.poserCapacitesEtTranslocations()
 	a.poserImpulsionsEtCharges()
 	a.clore()
+	// LES CALQUES PRODUITS EN DERNIER, APRES `clore` : la table se lit sur le document FINI, et
+	// la seconde porte des tirs comme les replis ecrivent encore pendant les passes precedentes
+	// (cf. layers.go). Le document sans aucune piste la pose aussi, dans son retour anticipe :
+	// sans quoi `layers` absent porterait DEUX sens, celui que le schema 62 ferme.
+	a.poserLesCalquesProduits()
 	return a.doc
 }
 

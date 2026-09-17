@@ -344,8 +344,7 @@ func structAnonyme(t reflect.Type) string {
 // shapeEnteteCuite : la quatrième ligne d'en-tête du golden.
 const shapeEnteteCuite = "empreinte-cuite "
 
-// shapeEnteteCuiteRegle : la cinquième ligne — la VERSION DE LA RÈGLE qui a produit
-// l'empreinte cuite.
+// shapeEnteteCuiteRegle : la cinquième ligne — la VERSION DE LA RÈGLE de l'empreinte cuite.
 const shapeEnteteCuiteRegle = "empreinte-cuite-regle "
 
 // cuiteRegleCourante — la version de la RÈGLE de calcul de l'empreinte cuite.
@@ -368,11 +367,12 @@ const cuiteRegleCourante = 2
 
 // calquesALaRequete — les balises JSON des champs du document que la CUISSON N'ÉCRIT JAMAIS.
 // Toute entrée ici se justifie par un grep : aucun chemin de `build*.go` ne pose le champ.
-// Dernière vérification : 2026-09-14.
+// Dernière vérification : 2026-09-17 — `vehicleLabels` y entre au schéma 62 (cf. layers.go).
 var calquesALaRequete = map[string]bool{
 	"mapObjectives": true, // objectives_catalog.go + service/replay_map_objectives.go
 	"mapWeaponPads": true, // map_weapon_pads_catalog.go + service/replay_map_weapon_pads.go
 	"weaponTiers":   true, // map_weapon_pads.go (WeaponTiersInfo) + service/replay_weapon_tiers.go
+	"vehicleLabels": true, // service/replay_vehicle_labels.go (resolveVehicleLabels) — sprites de chassis
 }
 
 // documentShapeRenderCuite rend la forme du document PRIVÉE des types que seuls les calques
@@ -501,7 +501,7 @@ func TestDocumentShapeCalquesALaRequeteRestentHorsCuisson(t *testing.T) {
 		if err != nil {
 			t.Fatalf("lecture de %s : %v", f, err)
 		}
-		for _, champ := range []string{"MapObjectives", "MapWeaponPads", "WeaponTiers"} {
+		for _, champ := range []string{"MapObjectives", "MapWeaponPads", "WeaponTiers", "VehicleLabels"} {
 			if strings.Contains(string(src), "."+champ+" =") {
 				t.Errorf("%s ecrit %s a la CUISSON : ce calque n'est plus resolu a la requete, "+
 					"retirer son entree de calquesALaRequete et remonter SchemaVersion", f, champ)

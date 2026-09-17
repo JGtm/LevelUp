@@ -417,4 +417,68 @@ type Coverage struct {
 	// dit « artefact antérieur au schéma 61 », et c'est une réponse, pas un trou. Tout ce que ce
 	// code cuit le porte.
 	Decoder *DecoderCoverage `json:"decoder,omitempty"`
+	// DeathsPaths dit CE QUE CHAQUE VOIE DE LECTURE DES MORTS A PROPOSE, APPARIE ET PUBLIE
+	// (schema 62, lot 4.2.1-b). Meme regime que `Decoder` : pointeur en `omitempty`, l ABSENCE
+	// du bloc dit « artefact anterieur au schema 62 » ou « morts non lues » — cf.
+	// [DeathsPathsCoverage], qui ecrit les deux sens et ce que `SchemaVersion` tranche.
+	DeathsPaths *DeathsPathsCoverage `json:"deathsPaths,omitempty"`
+}
+
+// DeathsPathsCoverage dit CE QUE CHAQUE VOIE DE LECTURE DES MORTS A PROPOSE, APPARIE ET PUBLIE
+// (schema 62, lot 4.2.1-b ; mesures de M3).
+//
+// # LES DEUX VOIES, ET POURQUOI LEUR COMPTE ENTRE DANS L ARTEFACT
+//
+// Le decodage des morts lit le MEME champ par deux localisateurs (`killsource.PathWalk`, la
+// MARCHE qui deroule les records depuis le debut du paquet, et `killsource.PathScan`, le SCAN
+// DIRECT qui balaie les positions de bit) et, quand les deux repondent, elles repondent au meme
+// bit — desaccord ZERO sur la serie de reference. Ce n est donc pas un arbitrage entre deux
+// mesures, c est une PREFERENCE entre deux localisateurs, et les deux n ont pas la meme
+// precision : 98,2 % contre 78,4 % au gate (b).
+//
+// JUSQU AU SCHEMA 61, AUCUN COMPTE PAR VOIE N ATTEIGNAIT L ARTEFACT, alors que les deux voies
+// existent dans le type publie depuis toujours. Un consommateur ne pouvait donc pas PONDERER ce
+// qu il lisait : une ligne de mort venue du scan et une venue de la marche s affichaient pareil,
+// et un film ou le scan a tout porte etait indistinguable d un film nominal.
+//
+// # LE REGIME
+//
+//	bloc ABSENT, schema < 62   artefact anterieur a ce lot
+//	bloc ABSENT, schema >= 62  le decodage des morts n a pas ete lu (`KillsInput.Read` faux :
+//	                           source illisible, ou porte de publication ligne-par-ligne fermee)
+//	bloc PRESENT               lu ; une voie a zero population est une MESURE (« cette voie n a
+//	                           rien propose sur ce film »), pas un trou
+//
+// # UNE SEULE FORME, ET C EST DELIBERE
+//
+// Ce type est AUSSI l entree que l appelant remplit (`KillsInput.Paths`) : le producteur du
+// compte est `internal/replaybuild`, qui lit `killsource.Result.Stats`. En declarer deux — une
+// forme d entree et une forme publiee, converties l une dans l autre — serait la troisieme copie
+// d un {population, apparie, publie} que CLAUDE.md regle 6 interdit, pour trois entiers qui ne
+// se transforment pas en route.
+type DeathsPathsCoverage struct {
+	// Walk : la MARCHE. Rappel plus faible, precision superieure ; seule voie sans porte de
+	// catalogue, donc seule capable de detecter un catalogue perime.
+	Walk DeathsPathTally `json:"walk"`
+	// Scan : le SCAN DIRECT. Rappel superieur, precision inferieure — c est la voie de
+	// rattrapage.
+	// LA CLE N EST PAS `scan`, ET C EST UN RATCHET DU DEPOT QUI LE DECIDE : `"scan"` en litteral
+	// brut est interdit hors de `domain/killscope` et de `killsource` (J4R-3,
+	// `archlint/no_raw_kill_scope_literal_test.go`) — c est sur cette valeur que se decide la
+	// PRESEANCE des ecrivains de `shared.match_kill_events`, et une seconde copie libre de deriver
+	// y rendrait la preseance du film aveugle SANS erreur ni compteur. `directScan` est le nom que
+	// le code donne deja a cette voie (« le SCAN DIRECT »).
+	Scan DeathsPathTally `json:"directScan"`
+}
+
+// DeathsPathTally : les trois denominateurs d une voie de lecture des morts.
+type DeathsPathTally struct {
+	// Population : ce que la voie a PROPOSE.
+	Population int `json:"population"`
+	// Matched : ce dont le couple exact existe au kill-feed dans la fenetre.
+	Matched int `json:"matched"`
+	// Published : ce qui a effectivement ete publie. Une mort deja couverte par une voie plus
+	// contrainte ne l est pas deux fois : la somme des deux `published` ne se lit donc pas comme
+	// un total de morts.
+	Published int `json:"published"`
 }

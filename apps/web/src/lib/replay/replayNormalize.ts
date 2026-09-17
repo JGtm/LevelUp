@@ -58,6 +58,18 @@ export type {
  * Aucune valeur n'est inventée : un tableau null ou absent devient vide, ce qui est
  * exactement ce que le producteur voulait dire. Les objets ne sont recopiés qu'en surface
  * — les points de trajectoire, qui font le poids du document, ne sont jamais dupliqués.
+ *
+ * DEUX QUESTIONS, DEUX CHAMPS, DEPUIS LE SCHÉMA 62 — et c'est ce que les commentaires ci-dessous
+ * nomment désormais tous les deux. « Ce calque A-T-IL ÉTÉ PRODUIT ? » se lit dans `layers[nom]` :
+ * entrée présente = la passe a tourné (sous la révision nommée), entrée absente = elle n'a pas
+ * tourné (une garde de mode fermée, un balayage qui n'a pas abouti). « QU'A COÛTÉ la lecture ? »
+ * se lit dans `coverage.X` : ce qui a été vu, rattaché, perdu. Avant 62 la première question se
+ * déduisait de la seconde — une jointure entre un tableau absent et un bloc de couverture, qui
+ * demandait de connaître la carte des blocs (et `coverage.groundWeapons` mesure `padPickups`,
+ * `coverage.zones` mesure `zoneStates` : les deux nomenclatures ne coïncident pas).
+ *
+ * L'OBJET `layers` LUI-MÊME PEUT ÊTRE ABSENT (artefact antérieur à 62) : c'est `schemaVersion`
+ * qui tranche, et `calquePresent` (features/match-replay/model) porte cette lecture en un point.
  */
 export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentReady {
   return {
@@ -69,12 +81,13 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     abilities: raw.abilities ?? [],
     // L'ARMEMENT DE LA BOMBE d'Assaut (schéma 29) : hold, instant armé, mèche. Absent =
     // artefact antérieur, mode non couvert, ou calque retenu par la confrontation locale —
-    // `coverage.bombArmings` distingue les silences. Aucun tableau imbriqué : l'entrée est plate.
+    // `layers[bombArmings]` / `coverage.bombArmings` distinguent les silences. Aucun tableau
+    // imbriqué : l'entrée est plate.
     bombArmings: raw.bombArmings ?? [],
     // LES PÉRIODES DE PORTAGE DE LA BOMBE d'Assaut (schéma 30) : une entrée plate par période
     // (xuid, t0, t1, closed), le patron de `skullCarries` sur le canal des armes tenues.
-    // Absent = artefact antérieur, ou film hors famille bomb — `coverage.bombCarries`
-    // distingue les deux.
+    // Absent = artefact antérieur, ou film hors famille bomb — `layers[bombCarries]` /
+    // `coverage.bombCarries` distinguent les deux.
     bombCarries: raw.bombCarries ?? [],
     // LES FAITS DATÉS DE LA BOMBE (schéma 39) : armements et explosions. Absent = artefact
     // antérieur, ou film hors famille bomb.
@@ -85,19 +98,21 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // LES RAMASSAGES ET LES CONSOMMATIONS d'équipement (schéma 26) : la source FINE de datation
     // de ce que porte un joueur. `abilities` reste la LECTURE (ce qu'il porte, échantillonné) ;
     // ceci est l'ÉVÉNEMENT (ce qui lui arrive, daté). Absent = artefact antérieur, ou film qui
-    // n'en porte aucun — `coverage.equipmentChanges` distingue les deux.
+    // n'en porte aucun — `layers[equipmentChanges]` / `coverage.equipmentChanges` distinguent les deux.
     equipmentChanges: raw.equipmentChanges ?? [],
     // LES PRISES ET LES LÂCHERS D'ARME (schéma 25) : même rapport à `loadouts` que ci-dessus —
     // la lecture d'image-clé dit l'ÉTAT, ces événements datent le CHANGEMENT. Absent = artefact
-    // antérieur, ou film qui n'en porte aucun (`coverage.weaponChanges` distingue les deux).
+    // antérieur, ou film qui n'en porte aucun (`layers[weaponChanges]` / `coverage.weaponChanges`
+    // distinguent les deux).
     weaponChanges: raw.weaponChanges ?? [],
     // LES RAMASSAGES NATIFS (schéma 30) : l'événement que la bobine écrit elle-même, là où
     // `weaponChanges` déduit d'un changement de composant. Absent = artefact antérieur, ou film
-    // qui n'en porte aucun (`coverage.pickups` distingue les deux).
+    // qui n'en porte aucun (`layers[pickups]` / `coverage.pickups` distinguent les deux).
     pickups: raw.pickups ?? [],
     // LES ARMES AU SOL individuelles (schéma 27) : une entrée par objet qui a bougé, bornée par
     // l'OBSERVATION. Absent = artefact antérieur, ou film dont aucune arme ne tombe —
-    // `coverage.groundWeaponItems` distingue les deux. Aucun tableau imbriqué : l'objet est plat.
+    // `layers[groundWeapons]` / `coverage.groundWeaponItems` distinguent les deux. Aucun tableau
+    // imbriqué : l'objet est plat.
     groundWeapons: raw.groundWeapons ?? [],
     // Les épisodes d'ÉTAT ACTIF d'équipement (schéma 7) : camouflage et surbouclier,
     // datés par vie — les deux seules familles dont l'état est MESURÉ. Absent = aucune
@@ -106,12 +121,13 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // Les POSES d'équipement (schéma 9) : mur, capteur, et les objets du monde qui
     // partagent l'archétype — ces derniers publiés en famille `other`, avec leur
     // identifiant de tag et sans nom. Absent = le film n'en porte aucune, OU sa largeur
-    // de bloc de réplication n'a pas été tranchée : `coverage.placements.calibrated`
-    // distingue les deux, et c'est pour cela qu'il est publié.
+    // de bloc de réplication n'a pas été tranchée : `layers[equipmentPlacements]` /
+    // `coverage.placements.calibrated` distinguent les deux, et c'est pour cela qu'ils sont publiés.
     equipmentPlacements: raw.equipmentPlacements ?? [],
     // LA VIE DES DRAPEAUX de CTF (schéma 14) : une entrée par objet, une suite d'intervalles
     // d'état. Absent = le film n'est pas reconnu comme du CTF, ou personne ne l'a lu pour ce
-    // calque — `coverage.flagCarries` distingue les deux, et c'est pour cela qu'il est publié.
+    // calque — `layers[flagCarries]` / `coverage.flagCarries` distinguent les deux, et c'est pour
+    // cela qu'ils sont publiés.
     //
     // LE TABLEAU IMBRIQUÉ SE COMBLE AUSSI (`spans`), comme pour `weaponPads` et `tracks` : le
     // contrat le déclare nullable, et un drapeau qui arriverait avec `spans: null` ferait
@@ -119,28 +135,32 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     flagCarries: (raw.flagCarries ?? []).map((f) => ({ ...f, spans: f.spans ?? [] })),
     // LES PÉRIODES DE PORT DE LA COURONNE VIP (schéma 22) : une entrée plate par période
     // (xuid, t0, t1, closed), aucun tableau imbriqué. Absent = artefact antérieur, ou film
-    // non reconnu VIP — `coverage.vipCrown` distingue les deux, et c'est pour cela qu'il existe.
+    // non reconnu VIP — `layers[vipCrown]` / `coverage.vipCrown` distinguent les deux, et c'est
+    // pour cela qu'ils existent.
     vipCrown: raw.vipCrown ?? [],
     // LES PÉRIODES DE PORTAGE DU CRÂNE d'Oddball (schéma 23) : une entrée plate par période
     // (xuid, t0, t1, closed), aucun tableau imbriqué. Absent = artefact antérieur, ou film non
-    // reconnu Oddball — `coverage.skullCarries` distingue les deux.
+    // reconnu Oddball — `layers[skullCarries]` / `coverage.skullCarries` distinguent les deux.
     skullCarries: raw.skullCarries ?? [],
     // LES TÉLÉPORTATIONS DU TRANSLOCATEUR (schéma 38) : une entrée plate par saut — (t, slot)
     // et le va-et-vient, datés et situés par l'ÉVÉNEMENT du film. Absent = artefact antérieur
-    // au schéma 38, ou film sans translocateur — `coverage.translocations` distingue les deux.
+    // au schéma 38, ou film sans translocateur — `layers[translocations]` /
+    // `coverage.translocations` distinguent les deux.
     translocations: raw.translocations ?? [],
     // LES IMPULSIONS DE CAPACITÉ (schéma 38) : une entrée plate par geste (t, slot, family),
     // l'usage MESURÉ du propulseur. Absent = artefact antérieur au schéma 38, film sans
-    // propulseur, ou palette non classée — `coverage.abilityImpulses` distingue les trois.
+    // propulseur, ou palette non classée — `layers[abilityImpulses]` /
+    // `coverage.abilityImpulses` distinguent les trois.
     abilityImpulses: raw.abilityImpulses ?? [],
     // LES CHARGES D'ÉQUIPEMENT RESTANTES (schéma 38 enrichi, lot P5) : une entrée plate par
     // lecture (t, slot, family, charges) — jamais un compte d'usages dérivé. Absent =
     // artefact antérieur, film sans lecture armée, ou palette non classée —
-    // `coverage.abilityCharges` distingue les trois.
+    // `layers[abilityCharges]` / `coverage.abilityCharges` distinguent les trois.
     abilityCharges: raw.abilityCharges ?? [],
     // LES OBJETS D'OBJECTIF LIBRES (schéma 21) : une entrée par VIE de l'objet hors portage.
     // Absent = artefact antérieur, mode sans objet porté, ou film qui n'en porte pas —
-    // `coverage.objectiveObjects` distingue les trois, et c'est pour cela qu'il est publié.
+    // `layers[objectiveObjects]` / `coverage.objectiveObjects` distinguent les trois, et c'est
+    // pour cela qu'ils sont publiés.
     // Le tableau IMBRIQUÉ (`pts`) se comble aussi, même raison que `spans` ci-dessus.
     objectiveObjects: (raw.objectiveObjects ?? []).map((o) => ({ ...o, pts: o.pts ?? [] })),
     geometry: raw.geometry ?? [],
@@ -169,6 +189,12 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
           statborgSlots: raw.identity.statborgSlots ?? [],
         }
       : undefined,
+    // LES RÉVISIONS PAR CALQUE (schéma 62) : `layers` porte, pour chaque calque produit, la
+    // révision de la couche qui l'a décodé. MÊME RÉGIME que `coverage` et `identity` : l'OBJET
+    // garde le droit d'être ABSENT (artefact antérieur au schéma 62), et il n'est JAMAIS comblé —
+    // un objet vide se lirait « la table a été calculée, aucun calque produit », ce qui est faux.
+    // Une ENTRÉE absente dans un objet présent est une réponse : ce calque n'a pas été produit.
+    layers: raw.layers,
     inventory: (raw.inventory ?? []).map((inv) => ({ ...inv, am: inv.am ?? [], g: inv.g ?? [] })),
     loadouts: (raw.loadouts ?? []).map((lo) => ({ ...lo, w: lo.w ?? [] })),
     // Le TYPE des morts que personne ne revendique (chute, hors-limites, sa propre arme) :
@@ -180,7 +206,8 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     objectives: raw.objectives ?? [],
     // Les occupations de SOCLE achevées (schéma 11) : le socle s'est vidé quelque part dans
     // [tLow, tHigh]. Absent = aucun socle ne s'est vidé sur ce film — ou le film n'en porte
-    // aucun (`coverage.groundWeapons` distingue les deux, et c'est pour cela qu'il est publié).
+    // aucun (`layers[padPickups]` / `coverage.groundWeapons` distinguent les deux, et c'est pour
+    // cela qu'ils sont publiés).
     padPickups: raw.padPickups ?? [],
     // `mapObjectives` (objectifs STATIQUES du mode, servis à la requête) passe par
     // `...raw` : c'est un objet optionnel, pas un tableau — sa normalisation vit à
@@ -196,7 +223,8 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     structure: (raw.structure ?? []).map((s) => ({ ...s, poly: (s.poly ?? []) as ReplayXY[] })),
     tracks: (raw.tracks ?? []).map((t) => ({ ...t, points: t.points ?? [] })),
     // LA VIE DE CHAQUE VÉHICULE (schéma 29). Absent = artefact antérieur, ou film sans véhicule
-    // (`coverage.vehicles` distingue les deux). LES DEUX TABLEAUX IMBRIQUÉS SE COMBLENT AUSSI
+    // (`layers[vehicles]` / `coverage.vehicles` distinguent les deux). LES DEUX TABLEAUX
+    // IMBRIQUÉS SE COMBLENT AUSSI
     // (`samples`, `rides`), même patron que `tracks` et `weaponPads` : `spawn`, lui, N'EST PAS un
     // tableau et reste tel quel (absent = record de création non lu, jamais un objet inventé).
     vehicles: (raw.vehicles ?? []).map((v) => ({
@@ -222,7 +250,7 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     })),
     // L'ÉTAT DES ZONES (schéma 16) : une entrée par zone appariée, une suite d'intervalles de
     // propriété. Absent = le mode n'a pas de zone, ou l'appariement n'a rien rattaché —
-    // `coverage.zones` distingue les deux, et c'est pour cela qu'il est publié.
+    // `layers[zoneStates]` / `coverage.zones` distinguent les deux, et c'est pour cela qu'ils sont publiés.
     //
     // LES TABLEAUX IMBRIQUÉS SE COMBLENT AUSSI (`spans`, et `gauge` — la jauge en direct du
     // schéma 18), comme pour `flagCarries` et `weaponPads`. Une jauge absente (schéma <= 17, ou

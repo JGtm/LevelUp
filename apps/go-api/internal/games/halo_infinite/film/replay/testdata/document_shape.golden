@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 61
-empreinte-stockee ad3867e2236d4865
-empreinte-servie ad3867e2236d4865
-empreinte-cuite 9ce58fe1aa1123b5
+schema 62
+empreinte-stockee a6a9e5985745712b
+empreinte-servie a6a9e5985745712b
+empreinte-cuite ece713e460ff05f2
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -169,6 +169,7 @@ Coverage
   BombArmings json:"bombArmings,omitempty" *BombArmingsCoverage
   BombCarries json:"bombCarries,omitempty" *BombCarriesCoverage
   Bridge json:"bridge" BridgeHealth
+  DeathsPaths json:"deathsPaths,omitempty" *DeathsPathsCoverage
   Decoder json:"decoder,omitempty" *DecoderCoverage
   Equipment json:"equipment,omitempty" *EquipmentCoverage
   EquipmentChanges json:"equipmentChanges,omitempty" *EquipmentChangeCoverage
@@ -201,6 +202,13 @@ Coverage
   VipCrown json:"vipCrown,omitempty" *VipCrownCoverage
   WeaponChanges json:"weaponChanges,omitempty" *WeaponChangeCoverage
   Zones json:"zones,omitempty" *ZonesCoverage
+DeathsPathTally
+  Matched json:"matched" int
+  Population json:"population" int
+  Published json:"published" int
+DeathsPathsCoverage
+  Scan json:"directScan" DeathsPathTally
+  Walk json:"walk" DeathsPathTally
 DecoderCoverage
   Build json:"build" string
   FactsRev json:"factsRev" string
@@ -676,6 +684,7 @@ ReplayDocument
   Identity json:"identity,omitempty" *IdentitySection
   Inventory json:"inventory,omitempty" []Inventory
   KillEffects json:"killEffects,omitempty" map[string]string
+  Layers json:"layers,omitempty" map[string]string
   Loadouts json:"loadouts,omitempty" []Loadout
   MapObjectives json:"mapObjectives,omitempty" *MapObjectives
   MapWeaponPads json:"mapWeaponPads,omitempty" *MapWeaponPads

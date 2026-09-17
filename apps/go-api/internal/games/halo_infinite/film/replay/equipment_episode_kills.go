@@ -51,6 +51,14 @@ type EquipmentKillRef struct {
 type KillsInput struct {
 	Read  bool
 	Kills []EquipmentKillRef
+	// Paths : ce que CHAQUE VOIE de lecture des morts a propose, apparie et publie (schema 62,
+	// lot 4.2.1-b). L appelant le remplit depuis `killsource.Result.Stats` ; il voyage ici et non
+	// dans une option a part parce que c est la SANTE DU MEME DECODAGE que `Read` qualifie deja.
+	//
+	// nil = non mesure, et c est le meme cas que `Read` faux : le bloc `coverage.deathsPaths`
+	// reste alors ABSENT plutot que de publier six zeros, qui se liraient comme « deux voies ont
+	// tourne et n ont rien trouve ».
+	Paths *DeathsPathsCoverage
 }
 
 // attachAllEquipmentKills pose les compteurs sur les épisodes DÉJÀ CONSTRUITS et rend si la
