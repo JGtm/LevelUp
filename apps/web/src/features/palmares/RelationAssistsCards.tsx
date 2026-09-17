@@ -4,7 +4,9 @@
  *
  *  - BinomeAssistsBlock : carte Binôme, option B — barre papillon (il t'a assisté à
  *    gauche, tu l'as assisté à droite) sous deux têtes, puis « total · part » de chaque
- *    côté. Aucun texte de verdict ni de couverture.
+ *    côté. Aucun texte de verdict ni de couverture. La figure elle-même vit dans
+ *    `_shared/assists/AssistExchangeSummary` (l'encart cible Explorer la rend aussi) ;
+ *    ici on ne pose que l'habillage propre à la carte (filet de séparation).
  *  - CoreRankingList : carte Noyau dur, option A8 — une rangée par fidèle : rang, nom,
  *    papillon, matchs, taux de victoire ; légende « ◀ te sert · tu le sers ▶ » alignée
  *    sous la colonne des barres. Classement inchangé (taux de victoire), 3 premiers puis
@@ -21,7 +23,7 @@ import {
   ASSIST_RECEIVED_TOKEN,
   AssistButterflyBar,
 } from '@/features/_shared/assists/AssistButterflyBar'
-import { givenShare, receivedShare } from '@/features/_shared/assists/assistExchange'
+import { AssistExchangeSummary } from '@/features/_shared/assists/AssistExchangeSummary'
 import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
 import { tokenCssVar } from '@/lib/accessibility'
 import { winRateColor } from '@/lib/colors/outcomePalette'
@@ -42,26 +44,14 @@ export function BinomeAssistsBlock({
   volumeMax: number
   locale: Locale
 }) {
-  const text = ASSISTS_TEXT[locale]
-  const received = receivedShare(assists)
-  const given = givenShare(assists)
-  const fmt = (n: number) => n.toLocaleString(locale)
   return (
-    <div className="mt-3 border-t border-border pt-3" data-testid="binome-assists">
-      <div className="mb-1 flex items-baseline justify-between text-xs text-muted-foreground">
-        <span>{text.receivedHead}</span>
-        <span>{text.givenHead}</span>
-      </div>
-      <AssistButterflyBar assists={assists} volumeMax={volumeMax} text={text} locale={locale} variant="card" />
-      <div className="mt-1 flex items-baseline justify-between font-mono text-xs tabular-nums">
-        <span style={{ color: tokenCssVar(ASSIST_RECEIVED_TOKEN) }}>
-          {fmt(assists.received.total)} · {formatPercent(received, 0)}
-        </span>
-        <span style={{ color: tokenCssVar(ASSIST_GIVEN_TOKEN) }}>
-          {formatPercent(given, 0)} · {fmt(assists.given.total)}
-        </span>
-      </div>
-    </div>
+    <AssistExchangeSummary
+      assists={assists}
+      volumeMax={volumeMax}
+      locale={locale}
+      className="mt-3 border-t border-border pt-3"
+      testId="binome-assists"
+    />
   )
 }
 
