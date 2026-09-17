@@ -75,6 +75,10 @@ func BuildFromFilm(matchID, titleSlug string, film *source.Film, opt Options) (R
 	// donc apres l installation ci-dessous et apres le demarrage de l horloge des etapes.
 	fc := grammar.NewFilmContextForMap(film, opt.MapQuant, decoupageForce(opt))
 	poserProfilPuisCarte(fc, matchID, opt)
+	// LA SECTION 2 DE `chunk_00`, POUR L ARTEFACT (schema 61, lot 2.6.3). Le profil du contexte
+	// l a DEJA lue a sa resolution : la reprendre ici ne relit pas un octet. Elle porte la cle du
+	// profil (`build`) et l empreinte du registre ECS, que `coverage.decoder` publie.
+	opt.FilmIdentity = identiteDuFilm(fc)
 	in, err := scanFilmInputs(matchID, film, fc, opt)
 	if err != nil {
 		return ReplayDocument{}, err

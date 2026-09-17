@@ -35,6 +35,17 @@ type Options struct {
 	// registre, ou quand l'appelant construit depuis des positions sans film. Republiee telle
 	// quelle dans `Coverage.FilmMajorVersion` — cf. le commentaire de ce champ.
 	FilmMajorVersion *int
+	// FilmIdentity : la SECTION 2 de `chunk_00`, lue par l'appelant qui a ouvert le film
+	// (`grammar.ReadFilmIdentity`, via le profil du contexte). nil quand le film ne porte AUCUNE
+	// section d'identification (5 films du cache, majeures 31 et 33), quand `chunk_00` est
+	// tronqué ou encore compressé, ou quand l'appelant construit depuis des positions sans film.
+	//
+	// DEUX CHAMPS DE `coverage.decoder` EN VIENNENT, ET RIEN D'AUTRE : `build` (la clé du profil,
+	// chaîne VIDE quand cette option est nil — décision V15 (15), le bloc reste présent) et le
+	// bloc `registry` (l'empreinte du registre ECS et sa classification, absent quand cette
+	// option est nil). Les quatre révisions, elles, sont des constantes de compilation : elles ne
+	// dépendent d'aucun film et se posent toujours.
+	FilmIdentity *profile.FilmIdentity
 	// Geometry : props Forge optionnels (repères contextuels, pas le fond de carte).
 	Geometry []MapObject
 	// Structure : emprises de la géométrie structurelle de la carte (le vrai fond de

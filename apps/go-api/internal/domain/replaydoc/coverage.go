@@ -46,6 +46,10 @@ type Coverage struct {
 	// déclenchés pendant la cuisson, triés par nom. Absente quand aucun ne s'est déclenché.
 	// Le nom est stable et se joint au registre des replis du décodeur.
 	Fallbacks []FallbackHit `json:"fallbacks,omitempty"`
+	// Decoder dit SOUS QUELLES RÉVISIONS cet artefact a été cuit (schéma 61) : les quatre
+	// révisions de calque, la clé du profil, et la classification de l empreinte du registre ECS.
+	// Absent = artefact antérieur au schéma 61 — c est une réponse, pas un trou.
+	Decoder *DecoderCoverage `json:"decoder,omitempty"`
 }
 
 // FallbackHit est un repli du décodeur et son nombre de déclenchements sur la cuisson qui a
@@ -336,15 +340,16 @@ type TranslocationCoverage struct {
 // AbilityImpulseCoverage dit ce que le calque a lu et ce qu'il a écarté — l'entonnoir
 // complet, sans lequel « N impulsions » ne se juge pas.
 type AbilityImpulseCoverage struct {
-	Reads           int  `json:"reads"`
-	Episodes        int  `json:"episodes"`
-	Published       int  `json:"published"`
-	BeforeOrigin    int  `json:"beforeOrigin"`
-	Unpublished     int  `json:"unpublished"`
-	NoIdentity      int  `json:"noIdentity"`
-	OtherFamily     int  `json:"otherFamily"`
-	NoResolver      int  `json:"noResolver"`
-	ComponentAbsent bool `json:"componentAbsent,omitempty"`
+	Reads           int                         `json:"reads"`
+	Episodes        int                         `json:"episodes"`
+	Published       int                         `json:"published"`
+	BeforeOrigin    int                         `json:"beforeOrigin"`
+	Unpublished     int                         `json:"unpublished"`
+	NoIdentity      int                         `json:"noIdentity"`
+	OtherFamily     int                         `json:"otherFamily"`
+	NoResolver      int                         `json:"noResolver"`
+	ComponentAbsent bool                        `json:"componentAbsent,omitempty"`
+	Scan            *AbilityImpulseScanCoverage `json:"scan,omitempty"`
 }
 
 // AbilityChargeCoverage dit ce que le calque a lu et ce qu'il a écarté — l'entonnoir
@@ -378,4 +383,41 @@ type EquipmentChangeCoverage struct {
 	LivesFirstOffSpec int `json:"livesFirstOffSpec"`
 	Repeats           int `json:"repeats"`
 	Recovered         int `json:"recovered"`
+}
+
+// DecoderCoverage dit SOUS QUELLES RÉVISIONS cet artefact a été cuit (schéma 61).
+//
+// Télémétrie pure : aucun rendu n'en dépend. Les quatre révisions sont celles des calques du
+// décodeur, dans l'ordre du sens unique ; `build` est la clé du profil, lue en clair dans la
+// section 2 de `chunk_00`, et elle est VIDE — le bloc restant présent — quand le film n'écrit
+// pas de build ou quand le profil ne le connaît pas.
+type DecoderCoverage struct {
+	SourceRev  string            `json:"sourceRev"`
+	ProfileRev string            `json:"profileRev"`
+	GrammarRev string            `json:"grammarRev"`
+	FactsRev   string            `json:"factsRev"`
+	Build      string            `json:"build"`
+	Registry   *RegistryCoverage `json:"registry,omitempty"`
+}
+
+// RegistryCoverage CLASSE l'empreinte du registre ECS du film — la grammaire de ses composants.
+// Absent quand le registre n'a pas été lu. `status` vaut `connue` ou `inconnue` ; un troisième
+// état `presumee` est prévu et c'est pourquoi le champ est une chaîne.
+type RegistryCoverage struct {
+	Fingerprint string `json:"fingerprint"`
+	Status      string `json:"status"`
+	Blocks      int    `json:"blocks"`
+	NamedSlots  int    `json:"namedSlots"`
+}
+
+// AbilityImpulseScanCoverage porte les dénominateurs du BALAYAGE du canal d'impulsion — ce que
+// la marche a rencontré, avant tout repliement en épisodes. Absent quand le balayage n'a pas
+// tourné : un bloc de zéros affirmerait qu'il a tourné sans rien rencontrer.
+type AbilityImpulseScanCoverage struct {
+	Records int `json:"records"`
+	WithI57 int `json:"withI57"`
+	WithI59 int `json:"withI59"`
+	Read    int `json:"read"`
+	Unread  int `json:"unread"`
+	Tag1    int `json:"tag1"`
 }
