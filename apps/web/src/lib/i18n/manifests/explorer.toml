@@ -1028,16 +1028,13 @@ en = "By context"
 
 # ─── Bandeau briefing : bloc « Arme favorite » ─────────────────────────────────
 # L'arme favorite est celle qui a produit le PLUS DE FRAGS sur la sélection (ni la
-# plus tenue, ni la plus tirée). La note de couverture ne s'affiche que lorsque tous
-# les frags de la sélection n'ont pas pu être rattachés à une arme nommée.
+# plus tenue, ni la plus tirée). La note de couverture « N frags mesurés sur M » a
+# quitté l'UI au gate visuel du 2026-09-17 (décision utilisateur) : sa clé est
+# supprimée. Les compteurs restent servis par l'API, sans affichage.
 
 [explorer.briefing.weapons_title]
 fr = "Arme favorite"
 en = "Favorite weapon"
-
-[explorer.briefing.weapons_coverage]
-fr = "{n, plural, one {# frag mesuré} other {# frags mesurés}} sur {m}"
-en = "{n} of {m} kills measured"
 
 # ─── Bandeau briefing : tuile « Séries marquantes » (socle) et bande « Moments forts » ─
 
