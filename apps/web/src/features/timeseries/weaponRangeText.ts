@@ -5,7 +5,7 @@
  * section, ses graphes et son tableau partagent : une distance écrite « 7,4 m » en français
  * et « 7.4 m » en anglais ne doit pas dépendre de qui l'écrit.
  *
- * Fichier à part parce que le tableau (`SynthesisWeaponRangeTable.tsx`) en dépend autant que
+ * Fichier à part parce que le tableau (`WeaponRangeTable.tsx`) en dépend autant que
  * la section, et qu'un import croisé entre les deux composants aurait fermé un cycle.
  */
 import { useMemo } from 'react'

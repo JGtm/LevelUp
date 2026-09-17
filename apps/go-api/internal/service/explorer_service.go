@@ -137,6 +137,12 @@ type ExplorerService struct {
 	// type-assertion (killMechanicsLoader, service/kill_mechanics_loader.go) — capability
 	// OPTIONNELLE façon lobbySizeProvider, partagée avec le profil d'armes du Face-à-face.
 	weaponKillsRepo port.WeaponKillsRepository
+
+	// weaponRangeRepo (portée des frags) : lecteur des frags MESURÉS alimentant le bloc
+	// « Portée des frags » de la 3e rangée de l'encart cible. MÊME repo que l'onglet Résumé
+	// et le Face-à-face — c'est lui qui sait si le titre produit des positions par kill, et
+	// il le dit par games.ErrCapabilityNotSupported. Optionnel : nil → bloc absent.
+	weaponRangeRepo port.WeaponRangeRepository
 }
 
 // ExplorerRelationsProvider fournit les agrégats relationnels joueur↔cible
@@ -232,6 +238,13 @@ func (s *ExplorerService) WithLiveGamertagResolver(r GamertagXUIDResolver) *Expl
 
 func (s *ExplorerService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) *ExplorerService {
 	s.weaponKillsRepo = repo
+	return s
+}
+
+// WithWeaponRangeRepo câble le lecteur de frags mesurés (bloc « Portée des frags »).
+// NIL-SAFE : sans lui, le bloc reste absent et la rangée sert ses deux autres blocs.
+func (s *ExplorerService) WithWeaponRangeRepo(repo port.WeaponRangeRepository) *ExplorerService {
+	s.weaponRangeRepo = repo
 	return s
 }
 
@@ -388,6 +401,13 @@ func (s *ExplorerService) GetCommonMatches(
 
 	// Encart "Profil joueur cible" : 4 sources fetch en parallèle (best-effort).
 	targetProfile := s.buildTargetProfile(ctx, otherXUID, otherGamertag, rawMatches)
+	// Bloc « Portée des frags » de la 3e rangée : APRÈS le profil, parce qu'il réutilise
+	// les totaux de la cible déjà agrégés sur ces mêmes matchs plutôt que de les relire.
+	var targetSample *domain.ExplorerTargetSampleStats
+	if targetProfile != nil {
+		targetSample = targetProfile.SampleStats
+	}
+	s.enrichEncounterFragRange(ctx, encounterStats, otherXUID, extractCommonMatchIDs(rawMatches), targetSample)
 
 	slog.DebugContext(ctx, "explorer_common_matches",
 		"xuid", s.xuid, "other_xuid", otherXUID,

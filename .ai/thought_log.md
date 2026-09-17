@@ -1,3 +1,40 @@
+## [2026-09-17] Explorer : le bloc « Portée des frags » remplace son placeholder, et la famille du graphe est rangée — Complété (branche `wt/explorer-portee-frags`)
+
+**Demande** : mettre dans le placeholder de la 3e rangée de l'encart cible la même chose que le
+bloc « Où ils fraguent » du Face-à-face, une fois `wt/compare-armes` fusionné. Précisions de
+l'utilisateur : n'afficher QUE les bandes des joueurs, colonne à 45 %, le graphe de portée RESTE
+sur l'onglet Résumé. Plan : `.ai/PLAN_EXPLORER_PORTEE_FRAGS_2026-09-17.md`.
+
+**Décision technique** : rien de la chaîne n'a été réécrit. Côté Go, la suite « frags mesurés →
+clés d'arme traduites en rôles → regroupement → agrégat P10/médiane/P90 » existait une fois
+(`compareWeaponRange`) ; l'Explorer en aurait été la deuxième copie, elle est donc extraite dans
+`service/weapon_range_by_role.go` et les deux appelants s'y branchent, avec un garde-rail qui
+interdit d'appeler `analysis.RegroupMeasuredKills` ailleurs. Deux champs neufs sur
+`ExplorerEncounterStats` (`frag_range_self`, `frag_range_target`), remplis best-effort sur les
+matchs communs : les totaux de la cible viennent de l'agrégat déjà calculé par l'encart (les
+relire serait une seconde source), ceux du joueur courant d'une lecture dédiée dont l'échec ne
+fait pas tomber la bande.
+
+Côté web, deux déplacements demandés par l'utilisateur et faits AVANT de consommer : le module de
+dessin (`_weaponRangeChart` + `resolveWeaponLabel`) dans `components/charts/weaponRangeChart.ts`,
+et les décisions d'axe (`roleAxis`, `roleRangeLines`, `roleLabel`, généralisées pour prendre un
+bloc de portée et non un « côté de page ») dans `components/charts/weaponRangeRoles.ts`. Puis,
+sur rappel de l'utilisateur, TOUTE la famille de la section est passée de `features/synthesis/` à
+`features/timeseries/` avec perte du préfixe `Synthesis` : la page Synthèse ne l'affiche plus
+depuis le 2026-09-13 et le dossier mentait — ce mensonge avait égaré deux agents dans la journée.
+
+**Résultats observés** : la dérogation `compare=>synthesis/_weaponRangeChart` est retirée, celle
+de l'Explorer n'a jamais existé, le ratchet inter-features reste à 7/7 avec un cran libéré.
+Diff net **−153 lignes** (313 ajoutées, 466 retirées) sur 37 fichiers. Gates : `tsc -b` cache
+purgé, `eslint` 0 erreur, `lint:colors` / `lint:fields` / lint inter-features 0 violation,
+`go test service+domain+analysis` 28 paquets sans échec, `openapi-gen -check` à jour, et les deux
+suites complètes vertes. Reste ouvert et consigné au backlog : `timeseries=>synthesis` ne tient
+plus qu'à `SynthesisWeaponAccuracyChart` et `SynthesisCards`, deux modules partagés encore logés
+sous une page.
+
+**Prochaine étape** : fusion dans `feat/v75` sur demande de l'utilisateur, CI de branche à
+confirmer, gate visuel (une cible avec films décodés sur les matchs communs, une cible sans).
+
 ## [2026-09-17] Explorer / recherche joueur : 3e rangée (résultats + assistances + portée) — Complété (branche `wt/explorer-rangee3`, worktree `../LevelUp-wt-explorer-rangee3`)
 
 **Demande** : sortir « Répartition des résultats » de la rangée de « Répartition des frags »

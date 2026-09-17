@@ -93,6 +93,12 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 	// l'encart cible : même loader weapon_kills que Synthesis/Sessions (frag v2). Le repo
 	// concret fournit aussi les mécaniques natives H5 (LoadKillMechanicsAggregated).
 	svc = svc.WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb))
+	// « Portée des frags » (3e rangée de l'encart cible) : MÊME repo que l'onglet Résumé et
+	// le Face-à-face, câblé INCONDITIONNELLEMENT. C'est lui qui sait si ce titre produit des
+	// positions par kill — il rend games.ErrCapabilityNotSupported et le service omet le
+	// bloc. Un `if capability` ici prendrait la même décision à deux endroits qui
+	// divergeraient (même motif que Compare, registry_pages_home.go).
+	svc = svc.WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))
 	// A1.3 : le player-query Explorer est une LECTURE PUBLIQUE de tiers → résolution
 	// pool-first (session → profil → pool sain). Quand le RT du profil sélectionné
 	// est mort, un token sain du pool porte quand même les fetchs live de la cible.

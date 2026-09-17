@@ -1,8 +1,9 @@
 /**
  * weaponRange_logic.test — les décisions de lecture de la section « Portée par arme ».
  *
- * Ce que ces tests verrouillent : le repli d'un libellé non résolu sur la clé d'arme (un
- * trou de registre doit SE VOIR) et la garde qui empêche une carte à zéro ligne.
+ * Ce que ces tests verrouillent : la garde qui empêche une carte à zéro ligne, et le miroir
+ * du seuil Go. Le repli de libellé a suivi `resolveWeaponLabel` dans
+ * `components/charts/weaponRangeChart.test.ts` le 2026-09-17.
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -11,27 +12,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { SynthesisWeaponRange } from '@/lib/api/types'
 
-import {
-  WEAPON_RANGE_MIN_MEASURED,
-  hasWeaponRangeRows,
-  resolveWeaponLabel,
-} from './weaponRange_logic'
-
-describe('resolveWeaponLabel', () => {
-  it('rend le libellé de la locale demandée', () => {
-    const w = { weapon_key: 'hinf_br75', label: 'Fusil de combat BR75', label_en: 'BR75 Battle Rifle' }
-    expect(resolveWeaponLabel(w, 'fr')).toBe('Fusil de combat BR75')
-    expect(resolveWeaponLabel(w, 'en')).toBe('BR75 Battle Rifle')
-  })
-
-  it('replie sur la clé d’arme quand le registre n’a rien résolu (libellé absent ou vide)', () => {
-    expect(resolveWeaponLabel({ weapon_key: 'hinf_inconnue' }, 'fr')).toBe('hinf_inconnue')
-    expect(resolveWeaponLabel({ weapon_key: 'hinf_inconnue', label: '  ' }, 'fr')).toBe('hinf_inconnue')
-    // Locale EN sans `label_en` : le repli est la clé, JAMAIS le libellé français — servir
-    // l'autre langue serait un mélange silencieux.
-    expect(resolveWeaponLabel({ weapon_key: 'hinf_x', label: 'Hydra' }, 'en')).toBe('hinf_x')
-  })
-})
+import { WEAPON_RANGE_MIN_MEASURED, hasWeaponRangeRows } from './weaponRange_logic'
 
 describe('hasWeaponRangeRows', () => {
   const bloc = (weapons: SynthesisWeaponRange['weapons']): SynthesisWeaponRange => ({

@@ -24,7 +24,7 @@ import {
 } from '@/components/charts/_utils'
 import type { WeaponRangeSide } from '@/lib/api/types'
 
-import { weaponRangeCategoryLabel, type WeaponRangeLine } from './_weaponRangeChart'
+import { weaponRangeCategoryLabel, type WeaponRangeLine } from '@/components/charts/weaponRangeChart'
 
 /*
  * `WeaponRangeLine.top` / `.bottom` ET NON `.kills` / `.deaths` DEPUIS LE 2026-09-17 : la

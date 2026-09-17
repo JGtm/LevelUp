@@ -1,12 +1,14 @@
 /**
  * weaponRange_logic — LES DÉCISIONS DE LECTURE DE LA SECTION « PORTÉE PAR ARME », hors JSX.
  *
- * Tout ce que la section doit DÉCIDER (a-t-elle de quoi s'afficher, comment se nomme une
- * arme, que dit la ligne « sous le seuil ») vit ici, pur et testable. Le composant ne fait
- * que poser des nœuds ; les options ECharts vivent dans `_weaponRangeChart.ts` et
- * `_weaponElevationChart.ts`.
+ * Tout ce que la section doit DÉCIDER (a-t-elle de quoi s'afficher, que dit la ligne « sous
+ * le seuil ») vit ici, pur et testable. Le composant ne fait que poser des nœuds ; les
+ * options ECharts vivent dans `@/components/charts/weaponRangeChart` (partagé avec le
+ * Face-à-face et l'Explorer) et dans `_weaponElevationChart.ts`.
+ *
+ * `resolveWeaponLabel` est parti avec le module de rendu le 2026-09-17 : il ne servait qu'à
+ * lui, et le laisser ici aurait fait remonter `components/` vers `features/`.
  */
-import type { ManifestLocale } from '@/lib/i18n/format'
 import type { SynthesisWeaponRange } from '@/lib/api/types'
 
 /**
@@ -21,25 +23,6 @@ import type { SynthesisWeaponRange } from '@/lib/api/types'
  * découverte est consignée au plan (le contrat pourrait le porter).
  */
 export const WEAPON_RANGE_MIN_MEASURED = 8
-
-/** Une entrée du contrat qui porte un libellé bilingue et une clé d'arme. */
-interface LabelledWeapon {
-  weapon_key: string
-  label?: string
-  label_en?: string
-}
-
-/**
- * resolveWeaponLabel — le nom affiché d'une arme, dans la locale courante.
- *
- * Repli sur `weapon_key` quand le registre n'a pas résolu le libellé : une clé technique
- * lisible vaut mieux qu'une ligne anonyme, et elle SE VOIT (le trou de registre se signale
- * de lui-même au lieu de se cacher derrière un tiret).
- */
-export function resolveWeaponLabel(w: LabelledWeapon, locale: ManifestLocale): string {
-  const label = locale === 'en' ? w.label_en : w.label
-  return label && label.trim() !== '' ? label : w.weapon_key
-}
 
 /**
  * hasWeaponRangeRows — la section a-t-elle une ligne à dessiner ?
