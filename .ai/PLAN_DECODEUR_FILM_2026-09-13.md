@@ -5324,6 +5324,35 @@ régénération, pas les deux gates nommés.
 | 2026-09-17 | 2.6.1 / 2.6.2 / 2.6.3 | les trois | RÉVISIONS : quatre goldens, choix écrit à chaque mouvement | `source-2026-09-16.2` (inchangée, empreinte recopiée 2×), `profile-2026-09-17` (naissance puis empreinte recopiée), `grammar-2026-09-15.38` -> `.39` (rang neuf, PÉRIMÈTRE changé ; puis empreinte recopiée 2×), `killsource-2026-09-16.5` -> `.6` (montée MÉCANIQUE par l'amont ; puis recopiée). **AUCUN BACKLOG KILLSOURCE OUVERT** |
 
 
+### Lot 2.6 (M2, pas 6) — gates AVEC DÉCODAGE, 2026-09-17 (« voie libre » du pilote)
+
+Joués sur le sha RÉCONCILIÉ `bfc56d096` (merge de `f72c0e737` dans `feat/decfilm-26g`), un
+décodage à la fois, rien d'autre sur le poste. **Jamais `-update`** : le pilote re-fige à la
+fusion.
+
+| Date | Gate | Portée | Résultat |
+|---|---|---|---|
+| 2026-09-17 | `replay-equiv` (sortie 1, attendue) | 20 films du CORPUS | **BILAN : 0 identique, 20 différents, 0 écarté, 0 échec, 0 illisible.** Sur CHACUN des 20 : **ÉCART sur 1 étape sur 53, et c'est `artifact`** — l'étape de PUBLICATION. Diff ligne à ligne des TSV (référence figée vs tête) : `artifact` est la SEULE ligne qui bouge, les **52 étapes de balayage sont identiques au bit** sur les 20 films. Aucun balayage n'a changé : la différence est entièrement dans ce que le document PORTE |
+| 2026-09-17 | `replay-equiv` — taille de l'artefact | 20 films | deltas **tous POSITIFS** (addition pure, rien de retiré) : `min=+254`, `max=+362`, `somme=+6 970` octets. **La règle V15 (15) se lit DANS LA MESURE** : les deux seuls films SANS section d'identification — `50247b26` (majeure 31) et `a349fea8` (majeure 33) — portent le delta le PLUS PETIT, `+254`, exactement les deux où `build` est la chaîne vide et où le sous-bloc `registry` est absent ; les 18 autres portent le bloc complet (+354 à +362) |
+| 2026-09-17 | `replay-corpus-gate --base=f72c0e737` (sortie **0**) | 17 témoins, chacun cuit DEUX fois | **17/17 `ok`, schéma 60 -> 61 partout, 0 PERTE, 0 CHANGEMENT.** Gains 12 à 17 par témoin (`a349fea8` 12 et `50247b26` 13 : les deux sans section). Durées 11,9 s à 2 min 35 |
+| 2026-09-17 | champs neufs NOMMÉS (feuilles JSON aplaties, base vs tête, union des 17) | 17 témoins | **15 feuilles AJOUTÉES, 0 RETIRÉE** : `coverage.decoder.{sourceRev, profileRev, grammarRev, factsRev, build}`, `coverage.decoder.registry.{fingerprint, status, blocks, namedSlots}`, `coverage.abilityImpulses.scan.{records, withI57, withI59, read, unread, tag1}`. Par témoin : **+15 / -0** sur quinze, **+11 / -0** sur `50247b26` et `a349fea8` — les 4 manquantes sont exactement les `coverage.decoder.registry.*`, le bloc absent quand le registre n'est pas lu |
+| 2026-09-17 | feuilles PARTAGÉES dont la VALEUR change | `bcb6d393`, `50247b26`, `a521164d` | **AUCUNE**, hors `schemaVersion` (60 -> 61). Le contenu cuit est identique à la valeur près : ce lot AJOUTE, il ne modifie rien |
+
+**LA CLASSIFICATION DU REGISTRE, MESURÉE SUR LES 17 TÉMOINS, RECOUPE LE CATALOGUE DU LOT 3.2.1 —
+et c'est une validation croisée que personne n'avait demandée** : `0x36ca8c3d2a2f9b88` (HI_1_12_0
+et HI_1_13_0, 50 blocs / 1 067 slots) sort `connue` — c'est `KnownRegistryFingerprint` ;
+`0x33c7e724716d8cc5` sort sur HI_1_8_0 **et** HI_1_9_0 (la paire que D2 (3.2) annonce),
+`0x9b6397b3ad58e258` sur HI_1_10_0, `0x8879e2b6746ba047` sur HI_1_11_0, `0x40531a0d86ce90ce` sur
+HI_1_4_1 (1 033 slots, la valeur de D1 (3.2)). Les cinq sortent `inconnue`, et **c'est le
+comportement attendu à ce stade** : le décodeur ne connaît qu'une empreinte, celle du build de
+référence. Ces cinq-là sont exactement la population que le volet 3.1.1 fera passer à `presumee`
+ou `connue` quand la table du profil recopiera les empreintes du catalogue.
+
+**VERDICT : le lot 2.6 est une révision à ZÉRO différence de contenu sur les 17 témoins (D4), et
+la seule différence d'équivalence est celle que 2.6.3 produit PAR CONSTRUCTION — deux blocs de
+télémétrie ajoutés, nommés, comptés en gains.** Aucun backlog killsource ouvert, aucune recuisson
+requise : M2 se clôt à zéro backlog (V15 (16)).
+
 ### Lot 2.5.e (M2, pas 5) — façade, bascule sous `film/internal/`, ratchet STRICT, SANS AUCUN DÉCODAGE, 2026-09-16 / 2026-09-17
 
 Branche `feat/decfilm-25e`, base `e7b9bd48e`. **Quatre commits de code, un par point du brief**, plus
