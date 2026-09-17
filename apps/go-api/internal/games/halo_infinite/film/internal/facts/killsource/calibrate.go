@@ -1,23 +1,31 @@
 package killsource
 
-// calibrate.go — LA CALIBRATION MAP-DEPENDANTE, AUTOMATIQUE.
+// calibrate.go — L INFERENCE DES LARGEURS, DEVENUE ORACLE, ET LA CALIBRATION DE `param_4`.
 //
-// Deux parametres du decodeur de replication sont installes AU CHARGEMENT DE LA MAP et ne se
-// lisent nulle part dans le film : la largeur d axe de position (`axisW`) et la largeur d index
-// (`indexW`). Tant qu ils devaient etre fournis a la main, le decodeur etait MONO-FILM. C est la
-// seule chose qui separait << un decodeur >> de << deux resultats >>.
+// # CE QUI A CHANGE AU LOT 3.4.1-b, ET POURQUOI
 //
-// LE PARAMETRE EST REELLEMENT MAP-DEPENDANT : les quatre films de reference rendent QUATRE
-// couples DISTINCTS (14/1, 17/2, 16/2, 17/1). Il n y a donc rien a coder en dur, et les tables
-// de precision dumpees du jeu ne remplacent PAS le balayage : injectees, elles effondrent trois
-// films sur quatre (leur contenu est un instantane installe PAR MAP, pas une specification
-// portable).
+// Deux parametres du decodeur de replication sont installes AU CHARGEMENT DE LA CARTE et ne se
+// lisent nulle part dans le film : les largeurs d axe de position (`axisW`) et la largeur
+// d index de plage (`indexW`). Ce fichier les INFERAIT, par balayage, faute de les connaitre.
+//
+// ON LES CONNAIT. Elles sont dans le catalogue des cartes, calculees des bornes par la loi du
+// moteur (`profile/loi_largeurs.go`, accord 79 cartes sur 79) et posees au profil par
+// [profile.MapQuantEntry.PrecisionAbsolue]. L inference NE DECIDE DONC PLUS : la valeur LUE
+// prime sur la valeur mesuree (arbitrage utilisateur V17, M3-Q8 — « 3.4 lira la valeur dans le
+// film plutot que de la mesurer »). Le balayage RESTE, comme ORACLE : il est le seul juge
+// INTERNE AU FILM dont on dispose pour dire qu une entree de catalogue ment, et un balayage
+// qu on retire est une mesure qu on cesse de faire.
+//
+// CE QUE LE BALAYAGE PROUVAIT, ET CE QU IL PROUVE ENCORE : les quatre films de reference
+// rendaient QUATRE couples DISTINCTS (14/1, 17/2, 16/2, 17/1) — c est-a-dire exactement ce
+// qu une grandeur PAR CARTE produit. La lecture Ghidra du remplisseur (`FUN_140be9a14`, note
+// 3.4 du 2026-09-16) explique enfin POURQUOI, et d ou la valeur vient.
 //
 // CRITERE, ET IL EST INTERNE : nombre de records d archetype biped decodes sans desynchronisation
 // sur un echantillon FIGE de paquets sans event. Il ne regarde ni le kill-feed, ni une arme, ni
-// aucun oracle. GARDE-FOU : la configuration retenue doit dominer la MEDIANE d un facteur >= 2 ;
-// un profil plat signifie que le parametre reel n est pas dans l espace balaye, et alors on ne
-// devine pas — on garde les valeurs par defaut et on le DIT (champ `Flat`).
+// aucun oracle externe. GARDE-FOU : la configuration designee doit dominer la MEDIANE d un
+// facteur >= 2 ; un profil plat signifie que le parametre reel n est pas dans l espace balaye,
+// et alors l oracle ne designe rien (champ `Flat`) — il ne contredit personne.
 //
 // LE MONDE DOIT ETRE CHRONOLOGIQUE PENDANT LE BALAYAGE, et c est un correctif paye cher : avancer
 // le monde a la FIN du film puis echantillonner des paquets du DEBUT est anodin a 8 joueurs, mais
@@ -40,11 +48,21 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
-// calibration : ce que le balayage a retenu.
+// calibration : ce que le decodeur APPLIQUE, et ce que le balayage MESURE a cote.
 type calibration struct {
+	// LueAxisW / LueIndexW : LES VALEURS QUE LE DECODAGE APPLIQUE, lues au profil — les trois
+	// largeurs d axe de la table PAR INDEX de la carte et la largeur d index de plage
+	// ([profile.MapQuantEntry.PrecisionAbsolue]). Elles PRIMENT (V17, M3-Q8).
+	LueAxisW  [3]uint
+	LueIndexW uint
+	// AxisW / IndexW : ce que le BALAYAGE designe. Depuis le lot 3.4.1 il ne DECIDE plus : il
+	// sert d ORACLE, confronte aux valeurs lues ci-dessus.
 	AxisW, IndexW uint
+	// Desaccords : nombre de grandeurs ou l inference contredit la valeur lue (une par axe,
+	// plus la largeur d index). Zero = les deux sources disent la meme chose.
+	Desaccords    int
 	Score, Median int
-	Flat          bool // le profil est plat : les valeurs par defaut ont ete conservees
+	Flat          bool // le profil est plat : l inference n a rien designe de net
 	RSP           uint32
 	RSPRatio      float64
 	// Profil est le PROFIL DE BALAYAGE retenu, celui que toutes les passes qui suivent posent
@@ -63,11 +81,11 @@ type calibration struct {
 func (c calibration) String() string {
 	src := fmt.Sprintf("score %d, mediane %d", c.Score, c.Median)
 	if c.Flat {
-		src = fmt.Sprintf("PROFIL PLAT (score %d, mediane %d) : valeurs par defaut conservees",
-			c.Score, c.Median)
+		src = fmt.Sprintf("PROFIL PLAT (score %d, mediane %d)", c.Score, c.Median)
 	}
-	return fmt.Sprintf("axisW=%d indexW=%d [%s] | recordStateParam=%d [croissance x%.3f]",
-		c.AxisW, c.IndexW, src, c.RSP, c.RSPRatio)
+	return fmt.Sprintf("LU axisW=%v indexW=%d | ORACLE axisW=%d indexW=%d [%s] "+
+		"desaccords=%d | recordStateParam=%d [croissance x%.3f]",
+		c.LueAxisW, c.LueIndexW, c.AxisW, c.IndexW, src, c.Desaccords, c.RSP, c.RSPRatio)
 }
 
 // bornes de l espace balaye : 21 largeurs d axe x 3 largeurs d index = 63 configurations.
@@ -80,12 +98,34 @@ const (
 	flatRatio            = 2.0
 )
 
-// calibrate : applique la calibration map-dependante et rend ce qui a ete retenu. `tl` doit etre
-// une timeline REMBOBINEE : le balayage la parcourt chronologiquement.
+// calibrate : pose le profil du film, MESURE l inference a cote, et calibre `recordStateParam`.
+// `tl` doit etre une timeline REMBOBINEE : le balayage la parcourt chronologiquement.
+//
+// L INFERENCE DES LARGEURS NE DECIDE PLUS (lot 3.4.1-b, V17 M3-Q8 : « la valeur LUE prime sur
+// la valeur mesuree »). Le profil porte les largeurs de la table PAR INDEX de la carte et la
+// largeur d index de plage ; le balayage reste, il rend un VERDICT qu on confronte — c est le
+// seul oracle INTERNE AU FILM dont on dispose pour dire qu une entree de catalogue ment.
 func calibrate(f *film, tl *timeline, views int) calibration {
+	profil := ProfilDeDepart()
+	abs := profil.LargeursObjetDuMonde()
+	res := calibration{Profil: profil, LueAxisW: abs.AxisW, LueIndexW: abs.IndexW}
+	infererLargeurs(f, tl, views, &res)
+	calibrateRSP(f, tl, views, &res)
+	return res
+}
+
+// infererLargeurs : L ORACLE. Il balaie les 63 configurations, retient celle qui maximise le
+// nombre de records de bipede lus sans desynchronisation, et COMPTE les desaccords avec ce que
+// le profil a pose. Il n ECRIT rien dans `res.Profil`.
+//
+// LE GARDE-FOU EST INCHANGE : une configuration qui ne domine pas la MEDIANE d un facteur 2
+// signifie que le parametre reel n est pas dans l espace balaye. L inference ne designe alors
+// rien (`Flat`), et il n y a pas de desaccord a compter — un oracle qui ne voit rien ne
+// contredit personne.
+func infererLargeurs(f *film, tl *timeline, views int, res *calibration) {
 	sample := calibSample(f, calibSampleSize)
 	cfg := grammar.DefaultFrameConfig()
-	cfg.Profil = ProfilDeDepart()
+	cfg.Profil = res.Profil
 	saved := cfg.Profil.Mouvement.Traversal
 
 	type cand struct {
@@ -95,27 +135,27 @@ func calibrate(f *film, tl *timeline, views int) calibration {
 	out := make([]cand, 0, (axisWMax-axisWMin+1)*(indexWMax-indexWMin+1))
 	for iw := indexWMin; iw <= indexWMax; iw++ {
 		for aw := axisWMin; aw <= axisWMax; aw++ {
-			cfg.Profil.Mouvement.AbsoluteAxisW = aw
+			cfg.Profil.Mouvement.WorldObject.AxisW = [3]uint{aw, aw, aw}
+			cfg.Profil.Mouvement.WorldObject.IndexW = iw
 			cfg.Profil.Mouvement.Traversal = profile.PrecisionDescriptor{IndexW: iw, AxisW: saved.AxisW}
 			out = append(out, cand{aw, iw, countBipedRecords(sample, tl, cfg, views)})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].score > out[j].score })
 	med := out[len(out)/2].score
-	res := calibration{AxisW: out[0].aw, IndexW: out[0].iw, Score: out[0].score, Median: med}
+	res.AxisW, res.IndexW, res.Score, res.Median = out[0].aw, out[0].iw, out[0].score, med
 	if float64(out[0].score) < flatRatio*float64(max1(med)) {
 		res.Flat = true
-		res.AxisW, res.IndexW = 14, 1
+		return
 	}
-	cfg.Profil.Mouvement.AbsoluteAxisW = res.AxisW
-	cfg.Profil.Mouvement.Traversal = profile.PrecisionDescriptor{IndexW: res.IndexW, AxisW: saved.AxisW}
-	res.Profil = cfg.Profil
-	// PLUS AUCUNE ECRITURE D ETAT DE PROCESSUS ICI (lot 2.3). Ce site posait l heritage
-	// (`grammar.PoserMouvementHerite`), et avant lui deux variables de paquet : la cuisson du
-	// rejeu, qui s execute APRES dans le meme processus, decodait alors ses composants a ces
-	// largeurs sans rien demander. Le resultat est desormais RENDU a l appelant, qui le passe.
-	calibrateRSP(f, tl, views, &res)
-	return res
+	for ax := 0; ax < 3; ax++ {
+		if res.LueAxisW[ax] != res.AxisW {
+			res.Desaccords++
+		}
+	}
+	if res.LueIndexW != res.IndexW {
+		res.Desaccords++
+	}
 }
 
 // calibSample : echantillon FIGE de paquets type-0 SANS event, de taille utile. Leur boucle de
