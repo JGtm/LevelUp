@@ -147,6 +147,7 @@ function buildColumns(
   labels: RelationsLabels,
   locale: Locale,
   onPlayerClick: (gamertag: string) => void,
+  assistsLabel: string,
 ): ColumnDef<RelationInsight>[] {
   return [
     {
@@ -289,7 +290,7 @@ function buildColumns(
       sortDescFirst: true,
       header: (ctx) => (
         <HeaderLabelTooltip text={ASSISTS_TEXT[locale].columnTooltip}>
-          <SortLabel column={ctx.column}>{ASSISTS_TEXT[locale].column}</SortLabel>
+          <SortLabel column={ctx.column}>{assistsLabel}</SortLabel>
         </HeaderLabelTooltip>
       ),
       cell: (ctx) => (
@@ -345,16 +346,20 @@ export function RelationsTable({
   locale,
   onPlayerClick,
   emptyMessage,
+  assistsLabel,
 }: {
   rows: RelationInsight[]
   labels: RelationsLabels
   locale: Locale
   onPlayerClick: (gamertag: string) => void
   emptyMessage: string
+  /** Libellé de la colonne « Assistances », title-aware (champ `assists` des mappings,
+   *  résolu par la page via useFieldLabel). */
+  assistsLabel: string
 }) {
   const columns = useMemo(
-    () => buildColumns(labels, locale, onPlayerClick),
-    [labels, locale, onPlayerClick],
+    () => buildColumns(labels, locale, onPlayerClick, assistsLabel),
+    [labels, locale, onPlayerClick, assistsLabel],
   )
   // Pas d'état de tri initial : l'ordre serveur (matchs communs DESC) est
   // conservé tant qu'aucun en-tête n'est cliqué (A3).

@@ -47,6 +47,7 @@ import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
 import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
 import { displayPlayerName } from '@/lib/players/displayName'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
+import { useFieldLabel } from '@/lib/i18n/fieldMappings'
 import { ariaSortOf, sortSuffixOf } from './sortHeader'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import type { MatchEncounterBadge, MatchEncounterRow } from '@/lib/api/types'
@@ -231,6 +232,8 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
   const navigate = useNavigate()
   const titleSlug = useTitleSlug()
   const formatRelative = locale === 'en' ? formatRelativeEN : formatRelativeFR
+  // Libellé de colonne « Assistances » title-aware (mappings du titre, champ `assists`).
+  const assistsLabel = useFieldLabel('assists')
 
   const labels = useMemo(
     () =>
@@ -423,7 +426,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
         // Tri sur les assistances échangées (données + reçues) ; non mesuré → en bas.
         accessorFn: (r) => assistSortValue(r.assists),
         ...NUMERIC_SORT,
-        header: ASSISTS_TEXT[locale].column,
+        header: assistsLabel,
         meta: { headerTooltip: ASSISTS_TEXT[locale].columnTooltip },
         cell: (ctx) => (
           <AssistExchangeCell
@@ -468,7 +471,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [labels, playerSlug, formatRelative, onPlayerClick],
+    [labels, playerSlug, formatRelative, onPlayerClick, assistsLabel],
   )
 
   // I16 : tri CLIENT par clic sur les en-têtes (pattern DetectionsPanel minimal).
