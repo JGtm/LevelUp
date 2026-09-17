@@ -7369,8 +7369,8 @@ indépendants.
 ### Lot 3.1.1 (M3) — politique de clef inconnue + statut `presumee`, gates SANS décodage, 2026-09-17
 
 Branche `feat/decfilm-311`, base `492cb0923`. Trois commits, un par volet du brief. Les gates AVEC
-décodage (`replay-equiv`, `replay-corpus-gate`) attendent la « voie libre » du pilote — un seul
-décodage à la fois sur ce poste.
+décodage sont JOUÉS, après fusion de l intégration, et ont leur propre section ci-dessous
+(« Lot 3.1.1 (M3) — gates AVEC DÉCODAGE ») — un seul décodage à la fois sur ce poste.
 
 | Date | Item | Commit | Gate | Résultat |
 |---|---|---|---|---|
@@ -7390,6 +7390,111 @@ décodage à la fois sur ce poste.
 | 2026-09-17 | 3.1.1-b (schéma) | `4bf62211f` | `grep` de `SchemaVersion` ; `go test ./internal/api/ ./internal/service/...` | **schéma INCHANGÉ (61)** : `status` était déjà une chaîne, le troisième état n'ajoute aucun champ. `openapi.yaml` et les types web ne bougent pas |
 | 2026-09-17 | 3.1.1-c | ce commit | relecture du runbook (EN-only), parité `SYNC_GUIDE` EN/FR | runbook §6 NEUF (« what happens to a film whose key is unknown » : le verdict, ce que le film laisse derrière lui, les trois états du registre, comment ajouter la clef) ; trois phrases PÉRIMÉES corrigées (le lot 3.1.1 RECOPIE, il ne fait pas lire le fichier au décodeur) ; `SYNC_GUIDE` **196/196 lignes des deux côtés** |
 | 2026-09-17 | 3.1.1-c | ce commit | `CLAUDE.md` ligne 0034 · ADR 0034 | « compteur » redevient « erreur typée + film mis de côté + compteur » ; D-3 et D-4 passent **Reached** avec leur sha, les deux partiels correspondants sont barrés, correction 5 marquée **CONSOMMÉE** |
+
+### Lot 3.1.1 (M3) — gates AVEC DÉCODAGE, 2026-09-17 (« voie libre » du pilote)
+
+Joués sur la tête `85b041e34` (3.1.1 + fusion de l'intégration `accba88ac` puis du correctif CI
+`5897eb3dd`), un décodage à la fois, rien d'autre sur le poste. **Jamais `-update`** : le pilote
+re-fige à la fusion.
+
+#### (1) `replay-corpus-gate --base=5897eb3dd` — 17 témoins, chacun cuit DEUX fois
+
+| Bilan | Valeur |
+|---|---|
+| Couverture | **17/17 présents** (`couverture_incomplete = false`) |
+| Schéma | **61 -> 61** sur les 17 |
+| **Pertes** | **0** |
+| **Gains** | **0** |
+| **Changements** | **6 témoins, UNE feuille chacun, la même** |
+| Durées | 12,4 s à 2 min 37 |
+| Code de sortie | **1** — contractuel : le gate sort 1 dès qu'il y a un *changement*, indépendamment des pertes |
+
+La feuille, sur les six : `coverage.decoder.registry.status` **`inconnue` -> `connue`**. C'est le
+changement que le lot produit PAR CONSTRUCTION, annoncé d'avance au §5 du lot 2.6.
+
+```
+084a804d  vehicules                       61 -> 61   0 gain  0 perte  1 chang.  2m8.4s   CHANGEMENT
+111fa685  version_39                      61 -> 61   0 gain  0 perte  1 chang.  41.08s   CHANGEMENT
+e5adf7b2  version_40_build_1_11           61 -> 61   0 gain  0 perte  1 chang.  46.14s   CHANGEMENT
+60ae07c4  version_37                      61 -> 61   0 gain  0 perte  1 chang.  30.53s   CHANGEMENT
+a521164d  version_33_build_1_4_1          61 -> 61   0 gain  0 perte  1 chang.  46.06s   CHANGEMENT
+11de8353  version_38_build_1_9_0          61 -> 61   0 gain  0 perte  1 chang.  38.19s   CHANGEMENT
+  -- les onze autres : 0 gain, 0 perte, 0 changement --
+bcb6d393 fb1a1a72 d9781168 c75f33b8 bf15f7ab 51ebbc0f 0797ce72 a349fea8 50247b26 bfecd02b 4f77afc1
+```
+
+**SIX TÉMOINS POUR CINQ EMPREINTES, ET LE COMPTE EST BON** : `084a804d` et `111fa685` sont tous
+deux `HI_1_10_0` et partagent l'empreinte `0x9b6397b3ad58e258`. Les cinq empreintes sont donc
+exactement celles que le §5 du lot 2.6 désignait — `HI_1_8_0` / `HI_1_9_0`, `HI_1_10_0`,
+`HI_1_11_0`, `HI_1_4_1`.
+
+**LES ONZE ZÉROS SE LISENT, ET C'EST LE CONTRÔLE NÉGATIF DU LOT.** Les neuf témoins de build
+récent étaient DÉJÀ `connue` (c'est l'empreinte de référence) ; `a349fea8` et `50247b26` (sans
+section d'identification) n'ont AUCUN bloc `registry` à classer — conforme à la mesure du lot 2.6,
+qui comptait pour eux 11 feuilles neuves au lieu de 15, les 4 manquantes étant précisément
+`coverage.decoder.registry.*`.
+
+#### (2) `replay-equiv` — 20 films, JAMAIS `-update`
+
+`BILAN : 0 identique(s), 20 different(s), 0 ecarte(s), 0 echec(s), 0 illisible(s)` (code 1).
+
+**SEPT NOMS D'ÉTAPE BOUGENT EN TOUT, SUR 53, ET AUCUN N'EST NOUVEAU** : `killsource` 20/20,
+`vehicles` 20/20, `artifact` 20/20, `grenades` 9, `grappleReads.stats` 8, `abilityImpulses` 7,
+`pads` 3. Les références sont figées à `92c83b333` (clôture M2, commit `6a21f5358`), donc
+ANTÉRIEURES à 3.3 et à 3.4 : elles sont périmées, et c'est connu.
+
+```
+000d5950  killsource vehicles artifact                                              artifact  +2
+01e1f945  killsource vehicles artifact                                              artifact  +2
+64e8adfa  killsource abilityImpulses vehicles artifact                              artifact  +2
+7344d24f  killsource abilityImpulses vehicles artifact                              artifact  +2
+696a9d7c  killsource grappleReads.stats vehicles artifact                           artifact  +2
+53ce4390  killsource grappleReads.stats abilityImpulses vehicles artifact           artifact  +2
+d9781168  killsource vehicles artifact                                              artifact  +2
+9f57c612  killsource grappleReads.stats vehicles artifact                           artifact  +2
+51101d1d  killsource grappleReads.stats abilityImpulses vehicles artifact           artifact  +2
+bcb6d393  killsource vehicles artifact                                              artifact  +2
+fb1a1a72  killsource pads vehicles artifact                                         artifact  +12
+084a804d  killsource grappleReads.stats vehicles grenades artifact                  artifact  +19 645
+111fa685  killsource grappleReads.stats vehicles grenades artifact                  artifact  +12 985
+11de8353  killsource grappleReads.stats vehicles grenades artifact                  artifact  +11 825
+1c4c63c2  killsource grappleReads.stats abilityImpulses vehicles grenades artifact  artifact  +36 786
+50247b26  killsource pads vehicles grenades artifact                                artifact  +4 623
+60ae07c4  killsource pads vehicles grenades artifact                                artifact  +25 931
+a349fea8  killsource vehicles grenades artifact                                     artifact  +21 486
+a521164d  killsource abilityImpulses vehicles grenades artifact                     artifact  +8 133
+e5adf7b2  killsource abilityImpulses vehicles grenades artifact                     artifact  +11 132
+```
+
+**L'ATTRIBUTION NE REPOSE PAS SUR UNE HYPOTHÈSE : ELLE EST MESURÉE, DEUX FOIS.**
+
+*Preuve mécanique.* `git diff --name-only 5897eb3dd..HEAD -- '*.go' | grep -v _test` rend
+**16 fichiers de production, dont ZÉRO sous `internal/{source,grammar,facts}/`** — le chemin de
+BALAYAGE n'est pas touché d'une ligne. Le seul fichier de ce lot qui puisse déplacer un octet cuit
+est `replay/coverage_decoder.go`, c'est-à-dire l'étape `artifact` et elle seule ; `profile/` n'y
+ajoute que des données et une recherche en table, lues par cette classification.
+
+*Preuve par différentiel.* Le corpus gate ci-dessus compare la tête à `5897eb3dd` — donc à
+l'intégration elle-même, 3.3 et 3.4 comprises — sur 17 des 20 films, et ne trouve **aucune**
+différence en dehors de `coverage.decoder.registry.status`. Or **chacune des six étapes
+non-`artifact`** de la liste bouge sur au moins un témoin où le gate n'a rien mesuré au-delà de
+cette feuille : `killsource` et `vehicles` sur `bcb6d393` (0 changement), `grenades` sur
+`a349fea8` et `50247b26` (0 changement), `grappleReads.stats` sur `084a804d` et `111fa685`,
+`abilityImpulses` sur `a521164d` et `e5adf7b2`, `pads` sur `fb1a1a72` et `50247b26`. Ces six
+étapes diffèrent donc de la RÉFÉRENCE PÉRIMÉE, pas de l'intégration — aucune n'est imputable à ce
+lot.
+
+*Le compte des octets recoupe les deux.* **DIX films à exactement +2 octets** — la dérive connue de
+la référence sur `artifact` — et ce sont exactement des films dont le statut de registre était DÉJÀ
+`connue` : ce lot n'y déplace rien. Les neuf films à gros delta (+4 623 à +36 786) sont ceux où 3.3
+et 3.4 gagnent des lancers de grenade et des morts créditées. La contribution propre de ce lot est
+de **−2 octets** par film dont le statut bascule (`inconnue`, 8 caractères, -> `connue`, 6),
+absorbée dans ces gains sur les six films concernés.
+
+**VERDICT : aucune étape nouvelle hors `artifact`, aucune perte, et la seule différence que ce lot
+produit est la feuille `coverage.decoder.registry.status` sur les six témoins que le lot 2.6 avait
+nommés d'avance.** Les références d'équivalence restent à re-figer par le pilote à la fusion (elles
+portent aussi 3.3 et 3.4) ; ce lot n'en a touché aucune.
 
 **RÉVISIONS : AUCUNE NE MONTE, et le choix est écrit deux fois au golden.** Une clef de profil et
 une empreinte de registre ne commandent AUCUN bit lu — D2 (3.2) l'a mesuré : trois paires de clefs
