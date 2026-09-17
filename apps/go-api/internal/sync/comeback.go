@@ -140,15 +140,33 @@ func fragContrastDominanceFlag(ctx context.Context, db *sql.DB, matchID string, 
 	if len(events) == 0 {
 		return analysis.DominanceFlagNone
 	}
+	return analysis.ComputeFragContrastDominance(
+		events, matchEndFromDurationMS(ctx, db, matchID), myTeamID, outcome)
+}
+
+// matchEndFromDurationMS rend la fin du match en ms depuis `match_registry`, ou 0 quand la
+// durée est inconnue (erreur de lecture, ligne absente, colonne NULL, valeur <= 0).
+//
+// 0 fait retomber ComputeFragContrastDominance sur la DERNIÈRE FRAG comme fin de match :
+// repli VOULU (décision de la revue du 2026-09-17, le badge reste calculable), mais qui
+// raccourcit le match de référence et déplace donc le seuil « en tête ≥ 75 % du temps ».
+// Il est tracé à chaque fois : un NULL ne lève aucune erreur, il ne se verrait pas sinon.
+func matchEndFromDurationMS(ctx context.Context, db *sql.DB, matchID string) int64 {
 	var durationS sql.NullInt64
 	if err := db.QueryRowContext(ctx,
 		`SELECT duration_seconds FROM match_registry WHERE match_id = ? LIMIT 1`, matchID,
 	).Scan(&durationS); err != nil {
-		// La dernière frag sert de fin de match : dégradation tracée, pas bloquante.
-		slog.WarnContext(ctx, "fragContrastDominanceFlag: lecture de la durée",
-			"match_id", matchID, "err", err)
+		slog.WarnContext(ctx, "fragContrastDominanceFlag: durée absente, fin = dernière frag",
+			"match_id", matchID, "raison", "lecture de duration_seconds", "err", err)
+		return 0
 	}
-	return analysis.ComputeFragContrastDominance(events, durationS.Int64*1000, myTeamID, outcome)
+	if !durationS.Valid || durationS.Int64 <= 0 {
+		slog.WarnContext(ctx, "fragContrastDominanceFlag: durée absente, fin = dernière frag",
+			"match_id", matchID, "raison", "duration_seconds NULL ou <= 0",
+			"duree_connue", durationS.Valid, "duree_s", durationS.Int64)
+		return 0
+	}
+	return durationS.Int64 * 1000
 }
 
 // loadDistinctTeamKillEvents charge les frags des équipes 0/1, DÉDOUBLONNÉES sur
