@@ -5731,7 +5731,6 @@ export interface components {
         };
         CompareWeaponSide: {
             frag_classes: components["schemas"]["CompareFragClass"][] | null;
-            is_sample?: boolean;
             /** Format: int64 */
             matches: number;
             range?: components["schemas"]["SynthesisWeaponRange"];

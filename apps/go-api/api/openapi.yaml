@@ -11424,8 +11424,6 @@ components:
           type:
             - array
             - "null"
-        is_sample:
-          type: boolean
         matches:
           format: int64
           type: integer

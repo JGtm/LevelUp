@@ -71,42 +71,41 @@ func (s *CompareService) WithWeaponProfile(
 
 // buildWeaponProfile assemble le profil des deux joueurs, ou nil.
 //
-// # LE SCOPE DE CHAQUE CÔTÉ SUIT LA DOCTRINE DE LA PAGE (D2)
+// # LE SCOPE DE CHAQUE CÔTÉ SUIT LA DOCTRINE DE LA PAGE (D2, amendé au lot 3-bis)
 //
-//	A (toujours local)      -> tous ses matchs, campagne exclue
-//	B local                 -> tous SES matchs, campagne exclue
-//	B non local, xuid connu -> les matchs COMMUNS avec A, et le profil est un ÉCHANTILLON
-//	B sans xuid             -> rien : jamais croisé, il n'existe pas dans la base partagée
+//	A et B -> tous leurs matchs présents dans la base partagée, campagne exclue
+//	B sans xuid, ou absent de la base -> rien : il n'y a rien à mesurer
+//
+// UN SEUL CHEMIN, ET C'EST UN RÉSULTAT. Le plan prévoyait un scope « croisé » (les matchs
+// communs avec A) pour un B non suivi ; il a été retiré le 2026-09-17 parce qu'il était un
+// SOUS-ENSEMBLE du scope ci-dessus — même table, même exclusion, plus un `EXISTS`. La branche
+// qui le servait ne pouvait donc jamais être prise.
 //
 // NIL SI L'UN DES DEUX CÔTÉS MANQUE, et c'est délibéré : la section compare deux joueurs. Un
 // seul côté publié inviterait à lire un profil comme s'il avait un vis-à-vis.
 func (s *CompareService) buildWeaponProfile(
 	ctx context.Context, xuidB string,
 ) *domain.CompareWeaponProfile {
-	if s.weaponKills == nil || s.weaponRange == nil || s.xuidA == "" {
+	if s.weaponKills == nil || s.weaponRange == nil || s.xuidA == "" || xuidB == "" {
 		return nil
 	}
 	scopeA := s.weaponScope(ctx, s.xuidA)
-	if scopeA == nil {
-		return nil
-	}
-	scopeB, echantillon := s.weaponScopeB(ctx, xuidB)
-	if scopeB == nil {
+	scopeB := s.weaponScope(ctx, xuidB)
+	if scopeA == nil || scopeB == nil {
 		return nil
 	}
 	profile := &domain.CompareWeaponProfile{
-		PlayerA: s.buildWeaponSide(ctx, scopeA, s.xuidA, false),
-		PlayerB: s.buildWeaponSide(ctx, scopeB, xuidB, echantillon),
+		PlayerA: s.buildWeaponSide(ctx, scopeA, s.xuidA),
+		PlayerB: s.buildWeaponSide(ctx, scopeB, xuidB),
 	}
 	slog.DebugContext(ctx, "compare: profil d armes assemble",
 		"title", s.titleSlug, "matchs_a", scopeA.Matches, "matchs_b", scopeB.Matches,
-		"echantillon_b", echantillon,
 		"portee_a", profile.PlayerA.Range != nil, "portee_b", profile.PlayerB.Range != nil)
 	return profile
 }
 
-// weaponScope lit le scope LIFETIME d'un joueur local. nil si le joueur n'a aucun match, ou
-// si la lecture échoue (journalisée, jamais avalée).
+// weaponScope lit le scope d'un joueur. nil si le joueur n'a aucun match dans la base
+// partagée, ou si la lecture échoue (journalisée, jamais avalée).
 func (s *CompareService) weaponScope(ctx context.Context, xuid string) *domain.CompareWeaponScope {
 	scope, err := s.repo.GetWeaponScope(ctx, xuid, s.titleSlug)
 	if err != nil {
@@ -117,45 +116,16 @@ func (s *CompareService) weaponScope(ctx context.Context, xuid string) *domain.C
 	return scope
 }
 
-// weaponScopeB choisit le scope du joueur B et dit s'il décrit un ÉCHANTILLON.
-//
-// LA DISTINCTION EST LE CŒUR DE D2. Un joueur suivi localement a une carrière lisible ; un
-// joueur qui ne l'est pas n'existe ici que par les matchs partagés avec A. Publier le second
-// sans le dire ferait passer une poignée de matchs pour un profil de carrière.
-func (s *CompareService) weaponScopeB(
-	ctx context.Context, xuidB string,
-) (scope *domain.CompareWeaponScope, echantillon bool) {
-	if xuidB == "" {
-		return nil, false
-	}
-	if local := s.weaponScope(ctx, xuidB); local != nil {
-		return local, false
-	}
-	// Pas de scope lifetime : soit B n'est pas suivi, soit il n'a aucun match à lui seul.
-	// Dans les deux cas, ce qu'on sait de lui est ce qu'on a joué AVEC lui.
-	croise, err := s.repo.GetCrossWeaponScope(ctx, s.xuidA, xuidB, s.titleSlug)
-	if err != nil {
-		logBestEffortErr(ctx, "compare: scope d armes croise non disponible", err,
-			"xuidA", s.xuidA, "xuidB", xuidB, "title", s.titleSlug)
-		return nil, false
-	}
-	if croise == nil {
-		return nil, false
-	}
-	return croise, true
-}
-
 // buildWeaponSide assemble les trois blocs d'UN joueur sur son scope.
 //
 // CHAQUE BLOC EST INDÉPENDANT (D9) : la portée peut manquer sans emporter les classes, et le
 // top 3 peut être vide sans emporter la portée. Les trois pannes possibles sont distinctes, et
 // les confondre cacherait ce qui est pourtant mesuré.
 func (s *CompareService) buildWeaponSide(
-	ctx context.Context, scope *domain.CompareWeaponScope, xuid string, echantillon bool,
+	ctx context.Context, scope *domain.CompareWeaponScope, xuid string,
 ) domain.CompareWeaponSide {
 	side := domain.CompareWeaponSide{
 		Matches:     scope.Matches,
-		IsSample:    echantillon,
 		TotalKills:  scope.Kills,
 		FragClasses: []domain.CompareFragClass{},
 		TopWeapons:  []domain.CompareTopWeapon{},

@@ -576,7 +576,7 @@ func (m *mockCompareRepoAB) GetCrossMatchSample(_ context.Context, _, _ string) 
 	return nil, nil
 }
 
-// GetWeaponScope / GetCrossWeaponScope — les deux scopes du profil d'armes (plan
+// GetWeaponScope — le scope du profil d'armes (plan
 // .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 2).
 //
 // NIL PAR DÉFAUT, ET C'EST LE BON DÉFAUT POUR CE MOCK : les tests de ce fichier verrouillent
@@ -584,10 +584,6 @@ func (m *mockCompareRepoAB) GetCrossMatchSample(_ context.Context, _, _ string) 
 // absent de la réponse, ce qui est exactement le contrat quand aucun scope n'est lisible —
 // ces tests continuent donc de mesurer ce qu'ils mesuraient.
 func (m *mockCompareRepoAB) GetWeaponScope(_ context.Context, _, _ string) (*domain.CompareWeaponScope, error) {
-	return nil, nil
-}
-
-func (m *mockCompareRepoAB) GetCrossWeaponScope(_ context.Context, _, _, _ string) (*domain.CompareWeaponScope, error) {
 	return nil, nil
 }
 

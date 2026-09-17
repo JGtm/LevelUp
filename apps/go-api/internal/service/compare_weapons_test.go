@@ -5,10 +5,10 @@ package service
 //
 // # CE QUE CES TESTS VERROUILLENT, DANS L'ORDRE D'IMPORTANCE
 //
-//  1. LE SCOPE DE B N'EST PAS CELUI DE A. Un joueur non suivi n'existe localement que par les
-//     matchs joués AVEC le joueur courant : son profil décrit un ÉCHANTILLON, et la réponse
-//     doit le dire (`is_sample`). Servir sa carrière là où on n'a vu que trois matchs est
-//     l'erreur la plus coûteuse de cette section, et la plus invisible.
+//  1. CHAQUE JOUEUR EST MESURÉ SUR SON PROPRE SCOPE, et `Matches` le publie. Un joueur peu vu
+//     affiche un petit N — c'est ce nombre, et lui seul, qui dit au lecteur sur quoi le profil
+//     repose. (Un drapeau `is_sample` a existé ici jusqu'au lot 3-bis, 2026-09-17 : il servait
+//     un second scope « croisé » qui était un sous-ensemble de celui-ci, donc inatteignable.)
 //  2. CHAQUE BLOC TOMBE SEUL (D9). Un titre sans positions par kill garde ses classes et son
 //     top 3 ; seul le bloc de portée disparaît. Faire tomber le profil entier cacherait ce
 //     qui est pourtant mesuré.
@@ -34,21 +34,19 @@ const epsPart = 0.01
 
 // ─── fakes ───────────────────────────────────────────────────────────────────
 
-// fakeCompareWeaponRepo — un port.CompareRepository dont les DEUX scopes sont scriptables par
+// fakeCompareWeaponRepo — un port.CompareRepository dont le scope d'armes est scriptable par
 // xuid. Fake dédié plutôt que `mockCompareRepoAB` étendu : les tests de métriques ont besoin
 // d'un scope NUL par défaut, ceux-ci d'un scope par joueur, et un mock qui sert les deux
 // besoins finit par ne servir aucun des deux lisiblement.
 type fakeCompareWeaponRepo struct {
 	statsA, statsB *domain.NormalizedPlayerStats
 	xuidB          string
-	// scopes : xuid -> scope lifetime. Absent = joueur non suivi localement.
+	// scopes : xuid -> scope. Absent = joueur absent de la base partagée.
 	scopes map[string]*domain.CompareWeaponScope
-	// cross : scope croisé rendu pour n'importe quel couple. nil = jamais croisé.
-	cross *domain.CompareWeaponScope
-	// scopeErr / crossErr : pannes de lecture (best-effort attendu côté service).
-	scopeErr, crossErr error
+	// scopeErr : panne de lecture (best-effort attendu côté service).
+	scopeErr error
 
-	scopeCalls, crossCalls int
+	scopeCalls int
 }
 
 func (f *fakeCompareWeaponRepo) GetLocalStats(_ context.Context, xuid, _ string) (*domain.NormalizedPlayerStats, error) {
@@ -87,14 +85,6 @@ func (f *fakeCompareWeaponRepo) GetWeaponScope(_ context.Context, xuid, _ string
 		return nil, f.scopeErr
 	}
 	return f.scopes[xuid], nil
-}
-
-func (f *fakeCompareWeaponRepo) GetCrossWeaponScope(_ context.Context, _, _, _ string) (*domain.CompareWeaponScope, error) {
-	f.crossCalls++
-	if f.crossErr != nil {
-		return nil, f.crossErr
-	}
-	return f.cross, nil
 }
 
 // fakeCompareWeaponKills — un port.WeaponKillsRepository scriptable par xuid.
@@ -219,7 +209,7 @@ func sommeDesParts(side domain.CompareWeaponSide) float64 {
 
 // ─── tests ───────────────────────────────────────────────────────────────────
 
-// TestBuildWeaponProfile_DeuxJoueursLocaux : deux scopes LIFETIME, aucun échantillon, les
+// TestBuildWeaponProfile_DeuxJoueursLocaux : deux joueurs présents dans la base partagée, les
 // trois blocs présents des deux côtés.
 func TestBuildWeaponProfile_DeuxJoueursLocaux(t *testing.T) {
 	repo := &fakeCompareWeaponRepo{scopes: map[string]*domain.CompareWeaponScope{
@@ -245,13 +235,9 @@ func TestBuildWeaponProfile_DeuxJoueursLocaux(t *testing.T) {
 	if profile.PlayerA.Matches != 3 || profile.PlayerB.Matches != 2 {
 		t.Errorf("matchs = A%d B%d, attendu A3 B2", profile.PlayerA.Matches, profile.PlayerB.Matches)
 	}
-	if profile.PlayerA.IsSample || profile.PlayerB.IsSample {
-		t.Errorf("aucun échantillon attendu (les deux joueurs sont locaux) : A=%v B=%v",
-			profile.PlayerA.IsSample, profile.PlayerB.IsSample)
-	}
-	if repo.crossCalls != 0 {
-		t.Errorf("scope croisé appelé %d fois : B est local, son scope est sa carrière",
-			repo.crossCalls)
+	if repo.scopeCalls != 2 {
+		t.Errorf("scope lu %d fois, attendu 2 (un par joueur, un seul chemin depuis le "+
+			"lot 3-bis)", repo.scopeCalls)
 	}
 	if profile.PlayerA.Range == nil {
 		t.Error("bloc de portée A attendu : 9 frags mesurés au-dessus du seuil")
@@ -264,66 +250,39 @@ func TestBuildWeaponProfile_DeuxJoueursLocaux(t *testing.T) {
 	}
 }
 
-// TestBuildWeaponProfile_BNonLocalEstUnEchantillon : B n'a pas de scope lifetime ; son profil
-// vient du scope CROISÉ et se déclare échantillon. C'est la distinction que la page doit
-// annoncer — sans elle, une poignée de matchs se lit comme une carrière.
-func TestBuildWeaponProfile_BNonLocalEstUnEchantillon(t *testing.T) {
-	repo := &fakeCompareWeaponRepo{
-		scopes: map[string]*domain.CompareWeaponScope{"xuid-a": cwScope(5, 40, 20, 5, 5)},
-		cross:  cwScope(2, 7, 11, 1, 0),
-	}
-	kills := &fakeCompareWeaponKills{rows: map[string][]port.WeaponKillRow{
-		"xuid-a": cwRows(), "xuid-b": cwRows(),
-	}}
-	rng := &fakeCompareWeaponRange{}
-
-	profile := cwService(repo, kills, rng).buildWeaponProfile(context.Background(), "xuid-b")
-	if profile == nil {
-		t.Fatal("profil nil : A a un scope et B est croisé")
-	}
-	if !profile.PlayerB.IsSample {
-		t.Error("is_sample attendu vrai : B n'est pas suivi localement")
-	}
-	if profile.PlayerB.Matches != 2 {
-		t.Errorf("matchs B = %d, attendu 2 (ceux du scope croisé, pas la carrière)",
-			profile.PlayerB.Matches)
-	}
-	if profile.PlayerB.TotalKills != 7 {
-		t.Errorf("frags B = %d, attendu 7 (ceux du scope croisé)", profile.PlayerB.TotalKills)
-	}
-	if profile.PlayerA.IsSample {
-		t.Error("A est local : son profil n'est jamais un échantillon")
-	}
-}
-
-// TestBuildWeaponProfile_BJamaisCroise_ProfilAbsent : ni scope lifetime ni scope croisé —
-// la section entière disparaît, proprement.
-func TestBuildWeaponProfile_BJamaisCroise_ProfilAbsent(t *testing.T) {
+// TestBuildWeaponProfile_BAbsentDeLaBase_ProfilAbsent : B n'a aucune ligne dans la base
+// partagée — la section entière disparaît, proprement.
+//
+// C'EST LE SEUL CAS « PAS DE PROFIL POUR B » DEPUIS LE LOT 3-BIS (2026-09-17). Un scope
+// « croisé » de repli existait ici ; il était un sous-ensemble du scope lu par ce test (même
+// table, même exclusion, plus un `EXISTS`), donc il ne pouvait jamais être non vide quand
+// celui-ci l'était. Le supprimer n'enlève aucun cas produit : il retire un chemin mort et le
+// test qui entretenait l'illusion qu'il vivait.
+func TestBuildWeaponProfile_BAbsentDeLaBase_ProfilAbsent(t *testing.T) {
 	repo := &fakeCompareWeaponRepo{
 		scopes: map[string]*domain.CompareWeaponScope{"xuid-a": cwScope(5, 40, 20, 5, 5)},
 	}
 	svc := cwService(repo, &fakeCompareWeaponKills{}, &fakeCompareWeaponRange{})
 
 	if p := svc.buildWeaponProfile(context.Background(), "xuid-b"); p != nil {
-		t.Fatalf("profil = %+v, attendu nil : B n'a ni carrière locale ni match commun", p)
+		t.Fatalf("profil = %+v, attendu nil : B n'a aucun match dans la base partagée", p)
 	}
 }
 
 // TestBuildWeaponProfile_BSansXUID_ProfilAbsent : un B que rien n'a résolu (jamais croisé,
-// résolution live en échec) n'a aucun scope possible — et le scope croisé n'est même pas tenté.
+// résolution live en échec) n'a aucun scope possible — et la base n'est même pas interrogée.
 func TestBuildWeaponProfile_BSansXUID_ProfilAbsent(t *testing.T) {
 	repo := &fakeCompareWeaponRepo{
 		scopes: map[string]*domain.CompareWeaponScope{"xuid-a": cwScope(5, 40, 20, 5, 5)},
-		cross:  cwScope(2, 7, 11, 1, 0),
 	}
 	svc := cwService(repo, &fakeCompareWeaponKills{}, &fakeCompareWeaponRange{})
 
 	if p := svc.buildWeaponProfile(context.Background(), ""); p != nil {
 		t.Fatalf("profil = %+v, attendu nil : aucun xuid pour B", p)
 	}
-	if repo.crossCalls != 0 {
-		t.Errorf("scope croisé appelé %d fois sans xuid B : la jointure n'aurait aucun sens",
-			repo.crossCalls)
+	if repo.scopeCalls != 0 {
+		t.Errorf("base interrogée %d fois sans xuid B : il n'y a rien à chercher",
+			repo.scopeCalls)
 	}
 }
 

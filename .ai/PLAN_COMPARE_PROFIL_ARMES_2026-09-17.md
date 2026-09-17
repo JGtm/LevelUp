@@ -20,11 +20,12 @@ section « Profil d'armes » à trois blocs, pour deux ou trois joueurs :
    superposés ; min et max observés, effectif et dénivelé dans l'infobulle.
 3. **Top 3 armes** par joueur, icône + nom + frags.
 
-**Critère de succès** : la section s'affiche pour A local vs B local (portée lifetime des
-deux), pour A vs B non suivi mais croisé (portée de B sur l'échantillon croisé, note
-« sur N matchs »), reste absente proprement pour un B jamais croisé, et se dégrade bloc par
-bloc sur un titre sans positions par kill (Halo 5 : classes et top 3 présents, portée
-absente, aucune erreur). Aucun vainqueur n'est élu. Gates Go et web verts, CI de branche
+**Critère de succès** (amendé au lot 3-bis, 2026-09-17 — voir amendement D2) : la section
+s'affiche pour A vs B dès que les deux sont présents dans la base partagée, chacun sur le
+scope lifetime de ses propres matchs, avec la note « sur N matchs » tirée de `matches` POUR
+LES DEUX ; elle reste absente proprement pour un B absent de la base (ou sans xuid) ; elle se
+dégrade bloc par bloc sur un titre sans positions par kill (Halo 5 : classes et top 3
+présents, portée absente, aucune erreur). Aucun vainqueur n'est élu. Gates Go et web verts, CI de branche
 verte au niveau job, gate visuel de l'utilisateur passé.
 
 ## Ce qui existe et se réutilise (vérifié sur pièces le 2026-09-17)
@@ -59,6 +60,25 @@ frags par **classe**. Top **3** armes.
 - B sans xuid (jamais croisé, résolution live en échec) : pas de bloc (`weapons` absent).
 - La période des filtres (`CompareRequest.Filters`) n'est PAS appliquée : le service ne
   l'applique à aucune métrique aujourd'hui (constat, voir Découvertes).
+
+> **AMENDEMENT D2 — 2026-09-17, lot 3-bis (revue du superviseur).** Le scope CROISÉ est
+> RETIRÉ, et avec lui le drapeau `IsSample`. Doctrine effective :
+>
+> - **B présent dans la base partagée** = scope LIFETIME de ses lignes `match_participants`
+>   (les mêmes matchs que ses métriques, `IsLocal` de la page), campagne exclue. Identique au
+>   scope de A.
+> - **B absent de la base partagée** (ou sans xuid) = pas de profil (`weapons` absent).
+> - **Le scope croisé a été retiré parce qu'il était inatteignable** : sa requête lisait la
+>   MÊME table `match_participants` avec la MÊME clause d'exclusion de campagne (portée sur
+>   `a.match_id`, égal à `b.match_id` par la jointure) et n'y ajoutait qu'un `EXISTS(a.xuid =
+>   A)`. Son résultat était donc un SOUS-ENSEMBLE du scope lifetime de B : « croisé non vide »
+>   impliquait « lifetime non vide », la branche de repli de `weaponScopeB` n'était jamais
+>   prise, `IsSample` n'était jamais vrai, et un test vert entretenait l'illusion (règle « 0
+>   code mort », anti-pattern n°1 du dépôt). Vérification sur pièces faite avant suppression :
+>   aucun cas où le croisé est non vide alors que le lifetime est vide.
+> - **`matches` remplace ce que `is_sample` prétendait dire.** Il est publié pour les DEUX
+>   joueurs et le front l'affiche pour les deux (décision prise pour le lot 4) : un joueur peu
+>   vu montre un petit N, ce qui dit au lecteur sur quoi le profil repose, sans qualifier.
 
 **D3 — Aucun vainqueur.** Toutes les lignes sont descriptives (`winner` null). Une distance
 plus longue n'est pas meilleure, une part de frags décrit un style.
@@ -195,6 +215,8 @@ Fichiers : `port/repository_data.go` (CompareRepository), `port/weapon_range.go`
       `SharedReadDB().Get` (SharedReader, jamais `OpenReadOnly`), timeout 15 s, `(nil, nil)` si
       zéro match. Totaux : `SUM(kills)`, `SUM(deaths)`, `SUM(melee_kills)`, `SUM(grenade_kills)`
       depuis `match_participants` (vérifier les noms de colonnes sur pièces, skill `db-schema`).
+      **Lot 3-bis (2026-09-17) : `GetCrossWeaponScope` RETIRÉ** — sous-ensemble du premier,
+      branche appelante morte (voir amendement D2). Seul `GetWeaponScope` subsiste.
 - [x] 2.2 Les mocks existants de `compare_service_test.go` (`mockCompareRepo`,
       `mockCompareRepoAB`) implémentent les deux méthodes (retour `nil, nil` par défaut).
       — `mockCompareRepoAB` : fait. `mockCompareRepo` : `[~]` couvert par l'analyse ci-contre —
@@ -205,6 +227,9 @@ Fichiers : `port/repository_data.go` (CompareRepository), `port/weapon_range.go`
 - [x] 2.3 Test DuckDB `:memory:` des deux méthodes (nouveau `compare_repo_weapons_test.go`,
       même régime de tag que les autres tests du paquet) : trois matchs dont un de campagne
       exclu, un commun A/B, totaux exacts.
+      **Lot 3-bis** : les deux tests du scope croisé (`TestGetCrossWeaponScope_*`) sont
+      SUPPRIMÉS avec la méthode. Restent `TestGetWeaponScope_LifetimeCampagneExclue` (trois
+      matchs dont un de Campagne, totaux exacts) et `TestGetWeaponScope_AucunMatch`.
 - [x] 2.4 `port.WeaponRangeRepository` gagne
       `ResolveWeaponDimensions(ctx, titleSlug string, keys []string) (map[string]WeaponDimensions, error)`
       avec `type WeaponDimensions struct{ Class, Role, Family string }` ; implémentation =
@@ -235,6 +260,8 @@ Fichiers : `service/compare_weapons.go` (nouveau, ≤ 500 L ; scinder en
       sur capability absente, parité `logWeaponRangeFailure`). Scope par côté selon D2 :
       A → `GetWeaponScope(xuidA)` ; B `IsLocal` → `GetWeaponScope(xuidB)` ; B non local avec
       xuid → `GetCrossWeaponScope(xuidA, xuidB)` et `IsSample = true` ; B sans xuid → `nil`.
+      **Lot 3-bis (2026-09-17)** : `buildWeaponProfile(ctx, xuidB)` appelle `GetWeaponScope`
+      pour A ET pour B, sans repli ; xuid B vide → `nil` sans toucher la base.
 - [x] 3.4 Par côté, `buildWeaponSide(ctx, scope, xuid)` :
       (a) `LoadWeaponKillsAggregated(slug, {MatchIDs, XUIDs:[xuid], ResolveRoles:true})` ;
       (b) classes = `fragdist.Build(rows, FragKillTypeCounts{Melee, Grenade, Total: scope.Kills}, titleHasNativeKillMechanics(slug))`
@@ -261,6 +288,10 @@ Fichiers : `service/compare_weapons.go` (nouveau, ≤ 500 L ; scinder en
       scope croisé) ; B sans xuid (`Weapons` nil) ; range repo rend
       `ErrCapabilityNotSupported` (classes et top 3 présents, `Range` nil) ; clé d'arme sans
       rôle écartée ; parts qui somment à 100 ± 0,01 ; top 3 borné et trié.
+      **Lot 3-bis** : le test « B non local croisé » est SUPPRIMÉ (il couvrait un chemin
+      mort). Il est remplacé par `TestBuildWeaponProfile_BAbsentDeLaBase_ProfilAbsent`, et
+      `TestBuildWeaponProfile_DeuxJoueursLocaux` vérifie désormais que la base est lue
+      exactement DEUX fois — une par joueur, un seul chemin.
 - [x] 3.8 Ratchet identité `registry_auth_page_identity_ratchet_test.go` vert (le xuid A reste
       celui du constructeur).
 - [x] 3.9 `make generate-types` : `apps/web/src/lib/api/generated.ts` porte
@@ -381,6 +412,21 @@ cd apps/web && Remove-Item -Recurse -Force node_modules\.tmp ; npm run typecheck
 - `api/server.go` construit son `AssetMetadataHandler` avec un `hiAssetURL` passé en paramètre
   alors qu'un `*wire.ServiceRegistry` existe déjà au même point d'appel (`server_apiv1.go`,
   `reg` ligne 1255). Deux chemins vers le même adaptateur d'assets — hors périmètre.
+
+**Découverte du lot 3-bis (2026-09-17) — consignée, À NE PAS TRAITER dans ce chantier**
+
+- Le raisonnement qui a tué le scope croisé s'applique TEL QUEL à la branche
+  `enrichRemotePlayerBWithCrossSample` / `IsLocalSample` de `compare_service.go`. Elle n'est
+  appelée que lorsque `GetLocalStats(xuidB)` a échoué ou rendu vide (chemin « B remote ») ;
+  or `GetCrossMatchSample` lit la même table `match_participants` avec une auto-jointure qui
+  n'y ajoute qu'un `EXISTS(a.xuid = A)` — son résultat est donc un sous-ensemble des lignes
+  que `GetLocalStats` aurait comptées. `GetLocalStats` vide ⇒ `GetCrossMatchSample` vide, donc
+  `IsLocalSample` n'est jamais vrai en nominal, et les quatre métriques locale-only qu'il
+  débloque (série max, durée de vie, tués parfaits, tirs à la tête) ne s'affichent jamais pour
+  un B remote. NUANCE à vérifier avant tout retrait : `GetLocalStats` échoue aussi sur
+  `sql.ErrNoRows` transformé en erreur — le chemin remote est donc atteint pour un joueur
+  ABSENT, pas pour un joueur présent ; c'est bien le même argument, mais il touche une branche
+  LIVRÉE et visible en prod. Chantier à part, avec sa propre vérification sur pièces.
 
 ## Journal d'exécution
 
@@ -629,6 +675,66 @@ cd apps/web && npm run test -- --run src/features/synthesis
   ce chantier) : +6 lignes de champs et +4 à `GetPage`. Croissance minimale et inévitable pour
   le câblage ; scinder ce fichier est un chantier à part, hors périmètre.
 - `service/compare_weapons.go` : 347 lignes, fonctions toutes sous 80 lignes.
+
+### 2026-09-17 — Lot 3-bis : retrait du scope croisé (revue du superviseur, P1)
+
+**Constat, vérifié sur pièces avant toute suppression.** Les deux requêtes lisaient la MÊME
+table :
+
+```sql
+-- GetWeaponScope(B)
+FROM match_participants mp WHERE mp.xuid = B  <exclusion sur mp.match_id>
+
+-- GetCrossWeaponScope(A, B)
+FROM match_participants a
+JOIN match_participants b ON b.match_id = a.match_id AND b.xuid = B
+WHERE a.xuid = A                              <exclusion sur a.match_id>
+```
+
+`a.match_id = b.match_id` par la jointure, donc l'exclusion de campagne est le MÊME prédicat
+sur les MÊMES lignes. Le croisé ne fait qu'ajouter `EXISTS(a.xuid = A)` : ses lignes sont un
+sous-ensemble strict de celles du lifetime de B. Conclusion : **croisé non vide ⇒ lifetime non
+vide**, donc la branche de repli de `weaponScopeB` ne pouvait jamais être prise, `IsSample`
+jamais valoir vrai, et `TestBuildWeaponProfile_BNonLocalEstUnEchantillon` était un test vert
+sur un chemin mort. Aucun cas contraire trouvé — le constat du superviseur est confirmé et la
+suppression faite.
+
+**Supprimé** : `port.CompareRepository.GetCrossWeaponScope` (+ impl `noopCompareRepo`),
+`CompareRepo.GetCrossWeaponScope` (+ le helper `scanWeaponScope`, devenu un intermédiaire à un
+seul appelant, réintégré dans `GetWeaponScope`), `CompareService.weaponScopeB` (réduit à
+l'appel direct), le paramètre `echantillon` de `buildWeaponSide`, le champ
+`domain.CompareWeaponSide.IsSample`, les méthodes de mock correspondantes, et TROIS tests
+(`TestGetCrossWeaponScope_MatchsCommunsTotauxDeB`, `TestGetCrossWeaponScope_JamaisCroise`,
+`TestBuildWeaponProfile_BNonLocalEstUnEchantillon`).
+
+**Ajouté** : `TestBuildWeaponProfile_BAbsentDeLaBase_ProfilAbsent` (le seul cas « pas de profil
+pour B » qui subsiste) ; `TestBuildWeaponProfile_DeuxJoueursLocaux` compte désormais les appels
+au scope (exactement 2, un par joueur) ; `TestBuildWeaponProfile_BSansXUID_ProfilAbsent`
+vérifie que la base n'est PAS interrogée sans xuid.
+
+`Matches` est conservé et devient le seul porteur du « sur N matchs », publié pour les deux
+joueurs (décision du lot 4).
+
+**Gates rejoués dans cette session**
+
+```
+cd apps/go-api && go build ./...                              EXIT_BUILD=0
+cd apps/go-api && go vet -tags=integration ./...              EXIT_VET_INT=0
+make openapi-gen && make generate-types                       EXIT_GEN=0
+  git diff --stat : openapi.yaml -2 lignes, generated.ts -1 ligne
+  grep is_sample sur les deux fichiers : AUCUNE occurrence
+cd apps/go-api && go test ./...                               EXIT_TEST=0
+cd apps/go-api && go vet ./...                                EXIT_VET=0
+go test -tags=integration ./internal/platform/duckdb/ -run TestGetWeaponScope -v
+  --- PASS: TestGetWeaponScope_LifetimeCampagneExclue (0.34s)
+  --- PASS: TestGetWeaponScope_AucunMatch (0.21s)               EXIT=0
+golangci-lint run --timeout 5m --new-from-rev=05723dce2 <6 arbres>
+  0 issues.                                                   EXIT_LINT_NEW=0
+cd apps/web && npm run typecheck                              EXIT_TYPECHECK=0
+```
+
+`CompareWeaponSide` dans `generated.ts` après régénération : `frag_classes`, `matches`,
+`range?`, `top_weapons`, `total_kills` — plus de `is_sample`.
 
 ## Reprise de session
 
