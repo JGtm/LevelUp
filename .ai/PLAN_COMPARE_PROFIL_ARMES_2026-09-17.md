@@ -164,16 +164,16 @@ type CompareWeaponScope struct {
 Fichiers : `internal/analysis/weapon_range.go` (+ `_test.go`), `domain/synthesis_weapon_range.go`,
 `service/weapon_range_section_build.go`.
 
-- [ ] 1.1 `analysis.WeaponRange` gagne `Min, Max float64`, calculés dans `weaponRangeOf` sur la
+- [x] 1.1 `analysis.WeaponRange` gagne `Min, Max float64`, calculés dans `weaponRangeOf` sur la
       même série triée que les percentiles. Test : nominal, une seule mesure (min = max =
       médiane), série non triée.
-- [ ] 1.2 `analysis.RegroupMeasuredKills(kills []MeasuredKill, keyOf func(weaponKey string) string) (out []MeasuredKill, dropped int)` :
+- [x] 1.2 `analysis.RegroupMeasuredKills(kills []MeasuredKill, keyOf func(weaponKey string) string) (out []MeasuredKill, dropped int)` :
       pur, remplace `WeaponKey` par `keyOf(WeaponKey)` ; clé vide = écarté et compté. Ne
       touche à rien d'autre (côté, distance, dénivelé conservés). Tests : regroupement de deux
       armes vers un rôle, clé inconnue écartée, entrée vide.
-- [ ] 1.3 `domain.WeaponRangeSide` gagne `MinM`/`MaxM` ; `weaponRangeSideOf` les remplit.
+- [x] 1.3 `domain.WeaponRangeSide` gagne `MinM`/`MaxM` ; `weaponRangeSideOf` les remplit.
       Test existant de `weapon_range_section_build` étendu sur les deux champs.
-- [ ] 1.4 `weapon_range_guard_test.go` (seuils définis une seule fois) reste vert sans
+- [x] 1.4 `weapon_range_guard_test.go` (seuils définis une seule fois) reste vert sans
       modification : ne PAS introduire de nouveau littéral de seuil.
 
 **Gate 1** :
@@ -401,6 +401,45 @@ et D10 (aucun filtre temporel dans le repo : le scope arrive par `MatchIDs`) rel
 **Note de tenue du plan** : le fichier de plan était UNTRACKED dans le worktree principal
 (partagé). Il a été COPIÉ dans ce worktree — le worktree principal n'a pas été modifié — et
 c'est cette copie qui est versionnée sur `wt/compare-armes`.
+
+### 2026-09-17 — Lot 1 clos (1.1 à 1.4 tous `[x]`)
+
+**Gate 1** — commande exacte du plan :
+
+```
+cd apps/go-api && go test ./internal/analysis/... ./internal/domain/... ./internal/service/... \
+  && go vet ./internal/analysis/... ./internal/domain/...
+```
+
+```
+ok      levelup/go-api/internal/domain          2.201s
+ok      levelup/go-api/internal/domain/title    52.415s
+ok      levelup/go-api/internal/service         20.406s
+ok      levelup/go-api/internal/service/fragdist        0.930s
+...
+EXIT_TEST=0
+EXIT_VET=0
+```
+
+Détail des tests neufs (exécution ciblée `-v`) : `TestWeaponRangeMinMaxNominal`,
+`TestWeaponRangeMinMaxUneSeuleMesure`, `TestWeaponRangeMinMaxSerieNonTriee`,
+`TestRegroupMeasuredKillsFusionneVersLeRole`, `TestRegroupMeasuredKillsClefInconnueEcartee`,
+`TestRegroupMeasuredKillsConserveCoteDistanceDenivele`,
+`TestRegroupMeasuredKillsNeMutePasLEntree`,
+`TestRegroupMeasuredKillsEntreeVideEtResolveurNil`,
+`TestWeaponRangeSideOf_MinEtMaxPortesJusquAuContrat`,
+`TestWeaponRangeSideOf_MinEtMaxCoteMorts` — tous PASS. Le garde-rail
+`TestSeuilsPorteeDefinisUneSeuleFois` (1.4) reste PASS **sans modification** : aucun nouveau
+littéral de seuil n'a été introduit.
+
+**Écarts / précisions d'implémentation**
+
+- `RegroupMeasuredKills` accepte un `keyOf` NIL (tout écarté et compté) plutôt que de paniquer :
+  un câblage manquant ne doit pas faire tomber une page. Couvert par un test.
+- Le test min/max du service est bâti sur une fixture à distances VARIÉES et non sur `wrKills`
+  (qui pose n frags à la même distance : min == max == p10 == p90 == médiane, donc un test
+  bâti dessus resterait vert même avec min/max câblés sur les percentiles).
+- `internal/analysis/weapon_range.go` passe de 323 à 380 lignes (seuil 500 respecté).
 
 ## Reprise de session
 
