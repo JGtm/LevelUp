@@ -33,8 +33,14 @@ type CompareService struct {
 	currentSeasonID string                         // saison CSR courante (pour le fetch CSR)
 	ranks           *mappings.RankCatalog          // optionnel : titres de rang carrière (même catalogue que l'Explorer)
 	liveResolver    GamertagXUIDResolver           // optionnel : résout gamertag→xuid live pour un B jamais croisé (enrichit rang/CSR)
-	xuidA           string
-	titleSlug       string
+	// weaponKills / weaponRange / weaponImage : le profil d'armes (compare_weapons.go).
+	// Les trois sont optionnels et câblés ensemble par WithWeaponProfile ; sans les deux
+	// repos, la réponse ne porte pas de champ `weapons`.
+	weaponKills port.WeaponKillsRepository
+	weaponRange port.WeaponRangeRepository
+	weaponImage weaponImageFunc
+	xuidA       string
+	titleSlug   string
 }
 
 // NewCompareService crée un CompareService.
@@ -207,6 +213,10 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 	}
 
 	s.attachEncounterBadges(ctx, &resp, xuidBResolved, statsB.Gamertag)
+	// Profil d'armes : ADDITIF et best-effort. Il ne peut ni échouer ni retarder la page
+	// au-delà de ses propres lectures — un nil laisse la réponse exactement telle qu'elle
+	// était avant ce chantier.
+	resp.Weapons = s.buildWeaponProfile(ctx, xuidBResolved)
 	return resp, nil
 }
 

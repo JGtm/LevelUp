@@ -312,8 +312,10 @@ func buildAssetMetadataHandler(cfg *config.AppConfig, hiAssetURL *halo_games.Ass
 					if titleID != "" && titleID != hiAssetURL.TitleSlug() {
 						return "", false
 					}
-					url := hiAssetURL.WeaponImageURL(weaponID)
-					return url, url != "" && hiAssetURL.WeaponImageIsTinted(weaponID)
+					// La résolution URL + masque vit en UN SEUL endroit du dépôt
+					// (D11) : la recopier ici la ferait diverger de celle que sert
+					// le profil d'armes du Face-à-face.
+					return wire.WeaponImageURLFromAdapter(hiAssetURL)(weaponID)
 				}),
 			func(slug string, cap titlePkg.Capability) bool {
 				d := titleRegistry.Get(slug)

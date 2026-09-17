@@ -226,16 +226,16 @@ Fichiers : `service/compare_weapons.go` (nouveau, ≤ 500 L ; scinder en
 `service/synthesis_service_builders.go`, `api/wire/registry_pages_home.go`, `api/server.go`,
 `domain/compare.go`.
 
-- [ ] 3.1 `domain.CompareResponse` gagne `Weapons *CompareWeaponProfile` (tag json
+- [x] 3.1 `domain.CompareResponse` gagne `Weapons *CompareWeaponProfile` (tag json
       `weapons,omitempty`).
-- [ ] 3.2 `CompareService.WithWeaponProfile(kills port.WeaponKillsRepository, rng port.WeaponRangeRepository, image func(weaponID int64) (string, bool)) *CompareService`
+- [x] 3.2 `CompareService.WithWeaponProfile(kills port.WeaponKillsRepository, rng port.WeaponRangeRepository, image func(weaponID int64) (string, bool)) *CompareService`
       (nil-safe : sans les deux repos, `Weapons` reste nil).
-- [ ] 3.3 `buildWeaponProfile(ctx, statsA, statsB, xuidB)` appelé dans `GetPage` après
+- [x] 3.3 `buildWeaponProfile(ctx, statsA, statsB, xuidB)` appelé dans `GetPage` après
       `buildMetrics`, best-effort (jamais d'erreur remontée, log Warn sur anomalie SQL, Debug
       sur capability absente, parité `logWeaponRangeFailure`). Scope par côté selon D2 :
       A → `GetWeaponScope(xuidA)` ; B `IsLocal` → `GetWeaponScope(xuidB)` ; B non local avec
       xuid → `GetCrossWeaponScope(xuidA, xuidB)` et `IsSample = true` ; B sans xuid → `nil`.
-- [ ] 3.4 Par côté, `buildWeaponSide(ctx, scope, xuid)` :
+- [x] 3.4 Par côté, `buildWeaponSide(ctx, scope, xuid)` :
       (a) `LoadWeaponKillsAggregated(slug, {MatchIDs, XUIDs:[xuid], ResolveRoles:true})` ;
       (b) classes = `fragdist.Build(rows, FragKillTypeCounts{Melee, Grenade, Total: scope.Kills}, titleHasNativeKillMechanics(slug))`
       → `Classes` projetées en `CompareFragClass` avec `SharePct = kills*100/TotalKills`
@@ -247,23 +247,23 @@ Fichiers : `service/compare_weapons.go` (nouveau, ≤ 500 L ; scinder en
       ou capability absente ;
       (d) top 3 = `topWeaponKillRows(rows, 3)` (helper D11) → `CompareTopWeapon`, icône via
       la fonction injectée (URL vide = pas d'icône).
-- [ ] 3.5 D11 : extraire `topWeaponKillRows(rows []port.WeaponKillRow, n int) []port.WeaponKillRow`
+- [x] 3.5 D11 : extraire `topWeaponKillRows(rows []port.WeaponKillRow, n int) []port.WeaponKillRow`
       dans `synthesis_service_builders.go`, `buildTopWeaponKills` l'appelle ; garde-rail
       `compare_weapons_guard_test.go` : le littéral de tri choisi apparaît UNE fois dans
       `internal/service/` hors tests.
-- [ ] 3.6 Câblage : dans `registry_pages_home.go` `Compare()`, `.WithWeaponProfile(r.weaponKillsRepoFor(pdb), duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), r.weaponImageURLFor(pdb))`.
+- [x] 3.6 Câblage : dans `registry_pages_home.go` `Compare()`, `.WithWeaponProfile(r.weaponKillsRepoFor(pdb), duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), r.weaponImageURLFor(pdb))`.
       `weaponImageURLFor` = méthode NEUVE du registry qui porte la closure aujourd'hui inline
       dans `server.go:307` ; `server.go` l'appelle à son tour (une seule définition, D11). Le
       câblage est INCONDITIONNEL (le repo décide de la capability, jamais un `if` ici, même
       motif que Timeseries `registry_pages.go:398`).
-- [ ] 3.7 Tests service (fakes, sans DuckDB) dans `compare_weapons_test.go` :
+- [x] 3.7 Tests service (fakes, sans DuckDB) dans `compare_weapons_test.go` :
       A local + B local (deux scopes lifetime) ; B non local croisé (`IsSample`, matches du
       scope croisé) ; B sans xuid (`Weapons` nil) ; range repo rend
       `ErrCapabilityNotSupported` (classes et top 3 présents, `Range` nil) ; clé d'arme sans
       rôle écartée ; parts qui somment à 100 ± 0,01 ; top 3 borné et trié.
-- [ ] 3.8 Ratchet identité `registry_auth_page_identity_ratchet_test.go` vert (le xuid A reste
+- [x] 3.8 Ratchet identité `registry_auth_page_identity_ratchet_test.go` vert (le xuid A reste
       celui du constructeur).
-- [ ] 3.9 `make generate-types` : `apps/web/src/lib/api/generated.ts` porte
+- [x] 3.9 `make generate-types` : `apps/web/src/lib/api/generated.ts` porte
       `CompareWeaponProfile`, `CompareWeaponSide`, `CompareFragClass`, `CompareTopWeapon` et
       `WeaponRangeSide.min_m/max_m`.
 
@@ -359,6 +359,28 @@ cd apps/web && Remove-Item -Recurse -Force node_modules\.tmp ; npm run typecheck
   PUBLIÉE au compare (elle a un sens de distance : chute, explosif de carte).
 - `CompareResponse` est une interface manuscrite dans `types.ts` alors que `CompareMetricRow`
   vient du généré : migrer l'ensemble vers `components['schemas']` est un lot à part.
+
+**Découvertes des lots 0 à 3 (2026-09-17) — consignées, NON traitées**
+
+- `CompareRepo.GetCrossMatchSample` n'applique PAS `excludeCampaignByMatchID`, alors que
+  `GetLocalStats` le fait sur la même table. Les quatre métriques locale-only d'un joueur B
+  croisé (série max, durée de vie, tués parfaits, tirs à la tête) comptent donc les matchs de
+  Campagne de `halo_5`, ce que la colonne de A n'a jamais fait. `GetCrossWeaponScope` a choisi
+  la clause d'exclusion ; la métrique voisine reste comme elle est — à trancher hors plan.
+- Une TROISIÈME variante du tri « armes par frags décroissants » vit dans
+  `timeseries_service_aggregations.go:360` : même comparateur, mais départage sur le
+  `WeaponID` et non sur le libellé. Ce n'est pas une copie du littéral visé par D11 (le
+  garde-rail ne la signale pas, et c'est voulu — son témoin licite épingle justement cette
+  forme), mais c'est bien une DEUXIÈME doctrine de départage pour le même classement
+  d'armes : une même arme à frags égaux se range différemment selon la page. À unifier hors
+  plan.
+- `make generate-types` ne régénère PAS `openapi.yaml` (généré par `cmd/openapi-gen`). Lancé
+  seul après un changement de contrat Go, il produit un `generated.ts` périmé ET un gate vert.
+  Seul `make openapi-check` attrape le décalage. Un `generate-types` qui dépendrait de
+  `openapi-gen` fermerait le piège — modification de Makefile hors périmètre.
+- `api/server.go` construit son `AssetMetadataHandler` avec un `hiAssetURL` passé en paramètre
+  alors qu'un `*wire.ServiceRegistry` existe déjà au même point d'appel (`server_apiv1.go`,
+  `reg` ligne 1255). Deux chemins vers le même adaptateur d'assets — hors périmètre.
 
 ## Journal d'exécution
 
@@ -515,6 +537,98 @@ touchée.
 - `domain/compare_weapons.go` ne porte AU LOT 2 que `CompareWeaponScope`. Le reste du contrat
   (`CompareWeaponProfile` et ses blocs) arrive au lot 3, avec son producteur — publier des
   types que personne n'assemble en ferait du code mort le temps d'un lot.
+
+### 2026-09-17 — Lot 3 clos (3.1 à 3.9 tous `[x]`)
+
+**Gate 3** — commandes exactes du plan, exécutées dans cette session :
+
+```
+cd apps/go-api && go test ./...        -> EXIT_TEST=0 (aucun paquet hors "ok"/"no test files")
+cd apps/go-api && go vet ./...         -> EXIT_VET=0
+make generate-types                    -> EXIT_GEN=0
+git diff --stat apps/web/src/lib/api/generated.ts apps/go-api/api/openapi.yaml
+  apps/go-api/api/openapi.yaml      | 90 +++++++++++++++++
+  apps/web/src/lib/api/generated.ts | 36 ++++++++
+```
+
+Aucun `-tags=integration` requis pour ce lot (aucune écriture, aucun persist/sync/migration
+touché) — dit explicitement comme le demande le plan. Les tests `integration` du lot 2 ont
+tout de même été rejoués plus haut.
+
+**Le maillon lint du gate 3 demande une lecture précise.** La commande littérale du plan
+
+```
+golangci-lint run ./internal/service/... ./internal/api/... ./internal/platform/duckdb/... \
+  ./internal/analysis/... ./internal/domain/... ./internal/port/...
+```
+
+sort en **EXIT=1 avec 132 issues** — c'est la DETTE GELÉE du dépôt sur ces six arbres
+(funlen 33, goconst 38, gocyclo 12, lll 10, prealloc 3, revive 14, staticcheck 3, unparam 6,
+unused 13), pas un défaut de ce lot : `make go-api-lint` n'invoque jamais golangci nu, il
+invoque le RATCHET `--new-from-merge-base=origin/main`. Le même ratchet joué contre la base de
+la branche :
+
+```
+golangci-lint run --timeout 5m --new-from-rev=05723dce2 <mêmes paquets>
+0 issues.   EXIT_LINT_NEW=0
+```
+
+Et aucune des 132 issues ne porte sur un fichier NEUF de ce chantier (vérifié par grep sur la
+sortie : les seules lignes touchant des fichiers modifiés sont `buildMetrics is too long
+(81 > 80)` et `buildWeaponAccuracy - n always receives ...`, deux issues PRÉEXISTANTES dont le
+numéro de ligne a seulement glissé).
+
+**3.9 — écart de procédure, important** : `make generate-types` ne fait que
+`openapi-typescript api/openapi.yaml -> generated.ts`. Or `openapi.yaml` est lui-même GÉNÉRÉ
+(`cmd/openapi-gen`) : lancé seul, `make generate-types` aurait régénéré `generated.ts` depuis
+un `openapi.yaml` périmé et le gate serait passé au vert SANS les nouveaux schémas.
+`make openapi-gen` a donc été joué d'abord. Vérifié dans `generated.ts` :
+`CompareWeaponProfile`, `CompareWeaponSide`, `CompareFragClass`, `CompareTopWeapon`,
+`CompareResponse.weapons?`, et `WeaponRangeSide.min_m` / `.max_m`.
+
+**Effet de bord du contrat sur le web, RÉPARÉ dans ce lot** : `min_m`/`max_m` étant REQUIS
+dans le schéma généré, quatre fixtures de test Synthèse qui construisaient un
+`WeaponRangeSide` sans eux ne compilaient plus (`SynthesisWeaponRangeSection.test.tsx`,
+`SynthesisWeaponRangeSection.options.test.tsx`, `_weaponRangeChart.test.ts`,
+`_weaponElevationChart.test.ts`). Ce n'est PAS un fix opportuniste : c'est une casse causée par
+ce lot, et la laisser rendrait la branche rouge au typecheck. Les deux champs y sont ajoutés
+avec un commentaire disant qu'ils ne sont jamais tracés. Vérifié :
+
+```
+cd apps/web && npm run typecheck                     -> EXIT_TYPECHECK=0
+cd apps/web && npm run test -- --run src/features/synthesis
+  Test Files  10 passed (10) · Tests 102 passed | 14 skipped (116)   EXIT_VITEST=0
+```
+
+**3.8** — `go test ./internal/api/wire/ -run 'Identity|identity'` : 4 tests PASS
+(`TestForcePageIdentityXUID_*`, `TestEnrichCallersForcePageIdentity`).
+
+**Écarts / décisions d'implémentation**
+
+- `WithWeaponProfile` prend un `weaponImageFunc` (type nommé local) plutôt qu'un littéral
+  `func(int64) (string, bool)` : le plan écrivait le littéral, le type nommé porte la doctrine
+  (URL et « masque à teinter » sortent TOUJOURS du même appel — les séparer donne une
+  silhouette noire).
+- `buildWeaponProfile(ctx, xuidB)` et non `(ctx, statsA, statsB, xuidB)` : les deux `stats` ne
+  servaient à rien — le scope de chaque côté se lit par xuid, et `IsLocal` de `statsB` n'est
+  PAS le bon test (un joueur peut être `IsLocal` sans scope d'armes lisible). Le service
+  essaie donc le scope lifetime de B, et retombe sur le scope croisé — plus robuste, même
+  résultat produit.
+- D11, closure d'icône : la définition canonique est `wire.WeaponImageURLFromAdapter(adapter)`,
+  fonction EXPORTÉE du paquet `wire`, et non une simple méthode du registry — `api/server.go`
+  vit dans le paquet `api` et ne peut pas appeler une méthode non exportée. La méthode
+  `(*ServiceRegistry).weaponImageURLFor(pdb)` l'utilise pour le compare ; `server.go` l'appelle
+  aussi, en gardant sa garde de titre. UNE seule écriture du couple URL + masque.
+- Le garde-rail D11 (`compare_weapons_guard_test.go`) vise la FORME COMPLÈTE du comparateur
+  (frags décroissants PUIS libellé croissant) et non la seule comparaison de frags :
+  `internal/service/` porte plusieurs tris par frags décroissants légitimes et différents
+  (répartition des frags, séries temporelles qui départagent sur l'identifiant d'arme). Les
+  signaler ferait désactiver le garde-rail. Il porte son contrôle positif ET son témoin
+  licite.
+- `compare_service.go` passe de 587 à 597 lignes (fichier DÉJÀ au-dessus du seuil de 500 avant
+  ce chantier) : +6 lignes de champs et +4 à `GetPage`. Croissance minimale et inévitable pour
+  le câblage ; scinder ce fichier est un chantier à part, hors périmètre.
+- `service/compare_weapons.go` : 347 lignes, fonctions toutes sous 80 lignes.
 
 ## Reprise de session
 
