@@ -170,7 +170,13 @@ type FilmFactsFile struct {
 	// Facts : section 1 — les entrees de l assemblage et la cle de cuisson.
 	Facts FilmFacts
 	// Identity : section 2 — la section 2 de `chunk_00`, sans laquelle le build sort vide.
-	Identity profile.FilmIdentity
+	//
+	// EN POINTEUR, ET SON ABSENCE A UN SENS : `Options.FilmIdentity` est nil quand le film ne
+	// porte AUCUNE section d identification (5 films du cache, versions majeures 31 et 33), et
+	// `couvertureDuDecodeur` en tire « build vide, bloc registry absent ». Le porter par VALEUR
+	// aurait aplati ce nil sur une identite a zero — c est-a-dire exactement l ambiguite que D-7
+	// interdit, reintroduite par le fichier de faits.
+	Identity *profile.FilmIdentity
 	// Fallbacks : section 3 — le rapport des replis DU BALAYAGE, et de lui seul (cf. l en-tete).
 	Fallbacks []fallback.Declenchement
 	// Statborg : section 4.
@@ -287,19 +293,26 @@ func DecodeFilmFactsEntete(blob []byte) (FilmFactsEntete, error) {
 // Utilisable dit si ces faits sont relisables PAR LE BINAIRE COURANT, ou rend la raison typee.
 //
 // TOUT OU RIEN, ET C EST LA REGLE DU LOT 4.1 (note de preparation de M4, §2.4) : version de codec,
-// schema de faits, LES QUATRE revisions et la cle de cuisson. La finesse par couche est l objet du
-// lot 4.4 (`coverage_decoder.go` le dit deja) — ne pas l anticiper ici.
-func (e FilmFactsEntete) Utilisable(courante DecoderCoverage, entry profile.MapQuantEntry) error {
+// schema de faits, LES QUATRE REVISIONS DE COUCHE et la cle de cuisson. La finesse par couche est
+// l objet du lot 4.4 (`coverage_decoder.go` le dit deja) — ne pas l anticiper ici.
+//
+// # `build` ET `registry` NE SONT PAS COMPARES, ET C EST UNE PROPRIETE, PAS UN OUBLI
+//
+// Les quatre revisions sont des CONSTANTES DE COMPILATION : le binaire courant les connait sans
+// ouvrir un fichier. `build` et le bloc `registry`, eux, sont des FAITS DU FILM — la cle ecrite
+// dans la section 2 de `chunk_00` et l empreinte de son registre ECS. Ils ne peuvent pas avoir
+// change pour un film donne, et les RECALCULER exigerait precisement ce que cette porte evite :
+// ouvrir le film. Les comparer serait donc soit impossible, soit une tautologie.
+func (e FilmFactsEntete) Utilisable(entry profile.MapQuantEntry) error {
 	if e.VersionCodec != VersionCodecFaits || e.Schema != SchemaDesFaits {
 		return ErrFilmFactsVersion
 	}
-	if !memesRevisions(e.Coverage, courante) {
-		return fmt.Errorf("%w : faits {%s %s %s %s build=%q} contre binaire {%s %s %s %s build=%q}",
+	courantes := couvertureDuDecodeur(nil)
+	if !memesRevisionsDeCouche(e.Coverage, *courantes) {
+		return fmt.Errorf("%w : faits {%s %s %s %s} contre binaire {%s %s %s %s}",
 			ErrFilmFactsRevisions,
 			e.Coverage.SourceRev, e.Coverage.ProfileRev, e.Coverage.GrammarRev, e.Coverage.FactsRev,
-			e.Coverage.Build,
-			courante.SourceRev, courante.ProfileRev, courante.GrammarRev, courante.FactsRev,
-			courante.Build)
+			courantes.SourceRev, courantes.ProfileRev, courantes.GrammarRev, courantes.FactsRev)
 	}
 	return verifierCleDeCuisson(e.MapModule, e.AxisW, e.LayoutDetected, entry)
 }
@@ -415,24 +428,13 @@ func decodeCouvertureDuDecodeur(r *greader) DecoderCoverage {
 	return c
 }
 
-// memesRevisions compare deux [DecoderCoverage] PAR VALEUR.
+// memesRevisionsDeCouche compare LES QUATRE REVISIONS, et elles seules.
 //
-// PAS `==`, ET C EST UN PIEGE MESURE : le champ `Registry` est un POINTEUR, donc `==` compare des
-// ADRESSES — deux couvertures identiques sorties de deux appels sont alors toujours differentes,
-// et la porte de fraicheur refuserait TOUS les faits en silence (constate le 2026-09-17 a la pose
-// de ce test). L absence du bloc a un sens (le registre n a pas ete lu) : les deux nil sont egaux,
-// un nil et un non-nil ne le sont pas.
-func memesRevisions(a, b DecoderCoverage) bool {
-	if a.SourceRev != b.SourceRev || a.ProfileRev != b.ProfileRev ||
-		a.GrammarRev != b.GrammarRev || a.FactsRev != b.FactsRev || a.Build != b.Build {
-		return false
-	}
-	switch {
-	case a.Registry == nil && b.Registry == nil:
-		return true
-	case a.Registry == nil || b.Registry == nil:
-		return false
-	default:
-		return *a.Registry == *b.Registry
-	}
+// PAS `a == b` SUR LE TYPE ENTIER, et ce n est pas qu une question de perimetre : `DecoderCoverage`
+// porte un POINTEUR (`Registry`), donc `==` compare des ADRESSES — deux couvertures identiques
+// sorties de deux appels seraient alors toujours differentes, et la porte de fraicheur refuserait
+// TOUS les faits en silence (constate le 2026-09-17 a la pose de cette porte).
+func memesRevisionsDeCouche(a, b DecoderCoverage) bool {
+	return a.SourceRev == b.SourceRev && a.ProfileRev == b.ProfileRev &&
+		a.GrammarRev == b.GrammarRev && a.FactsRev == b.FactsRev
 }

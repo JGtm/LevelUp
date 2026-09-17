@@ -98,7 +98,12 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	246  4.1.1-c (2026-09-17)                  `replay.FilmFacts` nomme dans le godoc de
 //	                                           `domain/title/registry_film_facts.go` (la
 //	                                           distinction avec `.facts.json`)
-const plafondSurfaceReplay = 246 // 2026-09-17 — base a5d15e634 + 4.1.1-c
+//	253  4.1.2   (2026-09-17)                  la bascule : `replaybuild` cite les sept symboles
+//	                                           du fichier de faits (`FilmFactsFile`,
+//	                                           `FilmStatborg`, `DecodeFilmFactsEntete`,
+//	                                           `DecodeFilmFactsFile`, `EncodeFilmFactsFile`,
+//	                                           `BuildFromFacts`, `BuildFromFilmAvecFaits`)
+const plafondSurfaceReplay = 253 // 2026-09-17 — base a5d15e634 + 4.1.2
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

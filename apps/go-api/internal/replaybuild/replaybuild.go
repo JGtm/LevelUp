@@ -22,7 +22,6 @@ package replaybuild
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -236,24 +235,13 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 	// le total ci-dessous n'est utile que si on sait lequel l'a mange.
 	debutTotal := time.Now()
 	ctx := context.Background()
-	// LE FILM EST DECOMPRESSE UNE FOIS ICI, POUR TOUTE LA CUISSON (lot 1, PLAN_CUISSON_PERF
-	// item 1.3). Avant, chacun des ~20 balayages de `BuildFromFilm` relisait et redecompressait
-	// le film entier depuis le disque. Le manifeste, deja ouvert pour le statborg, donne le
-	// type et le debut de chaque chunk ; les NUMEROS, eux, viennent des fichiers presents.
-	tFilm := time.Now()
-	src := ouvrirManifeste(ctx, matchID, filmDir)
-	film := chargerFilm(ctx, matchID, filmDir, src)
-	// LA PORTE DE LA CLÉ, AVANT TOUTE LECTURE (lot 3.1.1, cf. cle_du_film.go).
-	if err := ecarterSiCleInconnue(ctx, matchID, film); err != nil {
+	// LA BASCULE (lot 4.1.2) : APRES l'entree de catalogue — elle sert aux deux branches ET
+	// valide l'en-tete des faits — et AVANT tout chargement de film. Cf. filmfacts_cuisson.go.
+	src, err := b.entreesDeLaCuisson(ctx, matchID, mapNames, filmDir, entry)
+	if err != nil {
 		return Built{}, err
 	}
-	// UNE SEULE LECTURE DU FIL DES MORTS pour les deux consommateurs de cet etage
-	// (`identifiedEvents` et `killRefs`, qui ouvraient chacun le chunk highlight).
-	deaths := lireMorts(film)
-	logPhase("film", matchID, tFilm)
-	tStats := time.Now()
-	stats := readFilmStats(ctx, matchID, film, facts, deaths)
-	logPhase("stats", matchID, tStats)
+	stats := assemblerFilmStats(ctx, matchID, src.statborg, facts, src.deaths)
 	b.observe("score", stats.score)
 	b.observe("objectives", stats.objectives)
 	b.observe("vip", stats.vip)
@@ -269,27 +257,33 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 		stats.score.TargetScore, _ = b.regulation.ScoreTarget(facts.GameVariantName)
 		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
 	}
-	cat := b.collecterEntreesCatalogue(matchID, film, facts, mapNames, &stats, deaths)
+	cat := b.collecterEntreesCatalogue(matchID, mapNames, facts, &stats, src)
+	doc, err := b.documentDeLaCuisson(ctx, matchID, b.buildReplayOptions(entry, facts, cat, &stats), src)
+	if err != nil {
+		return Built{}, err
+	}
+	return b.serialiserDocument(matchID, entry, doc, src.faits != nil, debutTotal)
+}
+
+// documentDeLaCuisson produit le document : DEPUIS LES FAITS quand la bascule les a juges frais,
+// DEPUIS LE FILM sinon — et, dans ce second cas, RANGE les faits pour la prochaine fois.
+//
+// LES DEUX BRANCHES CONVERGENT CHEZ L'APPELANT, sur `json.Marshal` : un second encodage aurait pu
+// diverger d'un reglage, et l'equivalence a l'octet du test S8 n'aurait plus rien prouve.
+func (b *Builder) documentDeLaCuisson(ctx context.Context, matchID string, opts replay.Options,
+	src entreesDeCuisson,
+) (replay.ReplayDocument, error) {
+	if src.faits != nil {
+		return replay.BuildFromFacts(matchID, b.titleSlug, src.faits, opts), nil
+	}
 	tDecode := time.Now()
-	opts := b.buildReplayOptions(entry, facts, cat, &stats)
-	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, film, opts)
+	doc, aPersister, err := replay.BuildFromFilmAvecFaits(matchID, b.titleSlug, src.film, opts)
 	logPhase("decodage", matchID, tDecode)
 	if err != nil {
-		return Built{}, fmt.Errorf("décodage du film %s: %w", matchID, err)
+		return replay.ReplayDocument{}, fmt.Errorf("décodage du film %s: %w", matchID, err)
 	}
-	if len(doc.Tracks) == 0 {
-		return Built{}, fmt.Errorf("%w (match %s)", ErrNoTracks, matchID)
-	}
-	tMarshal := time.Now()
-	blob, err := json.Marshal(doc)
-	logPhase("marshal", matchID, tMarshal)
-	if err != nil {
-		return Built{}, fmt.Errorf("sérialisation artefact %s: %w", matchID, err)
-	}
-	b.observe("artifact", blob)
-	slog.Info("cuisson: octets construits", "match_id", matchID,
-		"duration", time.Since(debutTotal), "tracks", len(doc.Tracks), "bytes", len(blob))
-	return Built{Blob: blob, Module: entry.Module, Tracks: len(doc.Tracks)}, nil
+	b.ecrireLesFaits(ctx, matchID, aPersister)
+	return doc, nil
 }
 
 // entreesCatalogue porte ce que la construction lit HORS DU FILM : les zones et leurs rôles,
@@ -322,13 +316,15 @@ type entreesCatalogue struct {
 // `stats` est pris par POINTEUR parce que les socles de drapeau s'ajoutent à `stats.flag`, qui
 // part ensuite tel quel dans les options du décodage.
 //
-// `film` est celui que `BuildBytes` a charge une fois : `decodeKillSource` n'ouvre plus rien
-// lui-meme (item 1.4 du plan). `deaths` est l'unique lecture du fil des morts, partagee avec
-// `readFilmStats`.
+// `ksRes` est le resultat du kill-feed, DEJA RESOLU par l appelant (lot 4.1.2) : decode sur le
+// chemin du film, RELU sur le chemin des faits. Le sortir d ici est ce qui rend cette fonction
+// commune aux deux branches sans qu elle connaisse le film. `deaths` est l unique lecture du fil
+// des morts, partagee avec l assemblage des entrees de calque.
 func (b *Builder) collecterEntreesCatalogue(
-	matchID string, film *decfilm.Film, facts port.MatchFacts, mapNames []string,
-	stats *filmStats, deaths filmDeaths,
+	matchID string, mapNames []string, facts port.MatchFacts, stats *filmStats,
+	src entreesDeCuisson,
 ) entreesCatalogue {
+	deaths, ksRes := src.deaths, src.kills
 	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
 	// lectures que le second décodage a déjà faites (cf. flagspawns.go).
 	stats.flag.Spawns = b.flagSpawns(matchID, facts.MapID)
@@ -339,13 +335,10 @@ func (b *Builder) collecterEntreesCatalogue(
 	zones, zoneRoles := b.matchZones(matchID, facts.MapID, facts.GameVariantName)
 	b.observe("zones", zones)
 	b.observe("zoneRoles", zoneRoles)
-	// UN SEUL décodage killsource par match : neutralDeaths ET killRefs (cf. kills.go) en
-	// dérivent tous les deux, pour ne payer qu'UNE fois le verrou filmdec partagé avec
-	// `replay.BuildFromFilm` — au lieu de deux, comme avant la jointure des frags sous
-	// effet actif (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1).
-	tKS := time.Now()
-	ksRes := b.decodeKillSource(matchID, mapNames, film)
-	logPhase("killsource", matchID, tKS)
+	// L ETAPE `killsource` RESTE OBSERVEE ICI, A SA PLACE DANS LA SUITE : seul le DECODAGE est
+	// remonte chez l appelant (lot 4.1.2), pour que le chemin des faits puisse fournir le meme
+	// resultat sans film. L ordre des etapes observees est donc inchange — ce qu exige
+	// `observe_test.go`, et ce sur quoi le harnais d equivalence est cale.
 	b.observe("killsource", ksRes)
 	// Les POINTS D'APPARITION viennent du catalogue des socles, par map_id — ils donnent leur
 	// origine aux ramassages non-arme (cf. spawnpoints.go).
@@ -562,5 +555,7 @@ var (
 		"score", "objectives", "vip", "skull", "bomb", "flag", "zones", "zoneRoles",
 		"killsource", "spawnPoints", "spawnPointsState", "neutralDeaths", "killRefs",
 	}
-	BuildBytesStepsAfter = []string{"artifact"}
+	// `EtapeRejeuDepuisLesFaits` PRECEDE `artifact` : le harnais doit savoir QUELLE BRANCHE a
+	// servi avant de comparer les octets qu elle a produits (lot 4.1.2).
+	BuildBytesStepsAfter = []string{EtapeRejeuDepuisLesFaits, "artifact"}
 )

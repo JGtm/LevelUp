@@ -12,10 +12,12 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -41,8 +43,9 @@ func fichierTemoin(t *testing.T) *FilmFactsFile {
 			Registry: &RegistryCoverage{Fingerprint: "0x0123456789abcdef",
 				Status: RegistryStatutConnue, Blocks: 9, NamedSlots: 31},
 		},
-		Facts:    *facts,
-		Identity: profile.FilmIdentity{Version: "v", Build: "HI_1_13_0", Flavor: "f", BuildID: 7, Changelist: 9, FormatVersion: 27},
+		Facts: *facts,
+		Identity: &profile.FilmIdentity{Version: "v", Build: "HI_1_13_0", Flavor: "f",
+			BuildID: 7, Changelist: 9, FormatVersion: 27},
 		Fallbacks: []fallback.Declenchement{
 			{Nom: fallback.NomLargeursAxeParDefautConservees, Declenchements: 1},
 			{Nom: fallback.NomPlafondGrenadeParDefaut, Declenchements: 3},
@@ -195,7 +198,7 @@ func TestFilmFactsFichierNePerdQueLePaquetDeKillsource(t *testing.T) {
 	// La section 1 passe par le codec MAISON (elle ne perd rien par ce mecanisme) : les sections
 	// mesurees ici sont les quatre qui passent par JSON.
 	for _, rt := range []reflect.Type{
-		reflect.TypeOf(profile.FilmIdentity{}),
+		reflect.TypeOf(&profile.FilmIdentity{}),
 		reflect.TypeOf([]fallback.Declenchement{}),
 		reflect.TypeOf(FilmStatborg{}),
 		reflect.TypeOf(killsource.Result{}),
@@ -271,10 +274,17 @@ func TestFilmFactsEnteteEstLeMemeTypeQueCoverageDecoder(t *testing.T) {
 	}
 }
 
-// TestFilmFactsUtilisableRefuseLesQuatreCauses : la regle de fraicheur TOUT OU RIEN, par cause.
+// TestFilmFactsUtilisableRefuseLesQuatreCauses : la regle de fraicheur TOUT OU RIEN, par cause —
+// et ce qui NE doit PAS peser (le build, le registre : des faits du film, pas du binaire).
 func TestFilmFactsUtilisableRefuseLesQuatreCauses(t *testing.T) {
 	entry := goldenEntryPourTest(t)
 	f := fichierTemoin(t)
+	// LES REVISIONS DU TEMOIN DOIVENT ETRE CELLES DU BINAIRE : la porte de fraicheur les compare
+	// aux constantes de compilation, et un temoin a revisions inventees ne mesurerait que le refus.
+	f.Coverage.SourceRev = source.Rev
+	f.Coverage.ProfileRev = profile.Rev
+	f.Coverage.GrammarRev = grammar.Rev
+	f.Coverage.FactsRev = facts.Rev
 	blob, err := EncodeFilmFactsFile(f)
 	if err != nil {
 		t.Fatalf("encodage : %v", err)
@@ -283,32 +293,40 @@ func TestFilmFactsUtilisableRefuseLesQuatreCauses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("en-tete : %v", err)
 	}
-	if err := e.Utilisable(f.Coverage, entry); err != nil {
+	if err := e.Utilisable(entry); err != nil {
 		t.Fatalf("des faits frais sont refuses : %v", err)
 	}
-	autre := f.Coverage
-	autre.GrammarRev += "-bis"
-	if err := e.Utilisable(autre, entry); !errorsEstRevisions(err) {
+	autre := e
+	autre.Coverage.GrammarRev += "-bis"
+	if err := autre.Utilisable(entry); !errorsEstRevisions(err) {
 		t.Errorf("une revision differente doit rendre ErrFilmFactsRevisions, obtenu : %v", err)
+	}
+	// LE BUILD ET LE REGISTRE NE SONT PAS COMPARES, et c est une propriete ecrite : ce sont des
+	// faits DU FILM, que la porte ne peut pas recalculer sans ouvrir le film (cf. `Utilisable`).
+	autreBuild := e
+	autreBuild.Coverage.Build = "HI_9_9_9"
+	autreBuild.Coverage.Registry = nil
+	if err := autreBuild.Utilisable(entry); err != nil {
+		t.Errorf("le build et le registre ne doivent PAS peser sur la fraicheur : %v", err)
 	}
 	perime := e
 	perime.Schema = SchemaDesFaits + 1
-	if err := perime.Utilisable(f.Coverage, entry); !errorsEstVersion(err) {
+	if err := perime.Utilisable(entry); !errorsEstVersion(err) {
 		t.Errorf("un schema inconnu doit rendre ErrFilmFactsVersion, obtenu : %v", err)
 	}
 	autreCarte := entry
 	autreCarte.Module = "une_autre_carte"
-	if err := e.Utilisable(f.Coverage, autreCarte); !errorsEstCarte(err) {
+	if err := e.Utilisable(autreCarte); !errorsEstCarte(err) {
 		t.Errorf("une autre carte doit rendre ErrFilmFactsCarte, obtenu : %v", err)
 	}
 	decale := e
 	decale.AxisW[0]++
-	if err := decale.Utilisable(f.Coverage, entry); !errorsEstDecoupage(err) {
+	if err := decale.Utilisable(entry); !errorsEstDecoupage(err) {
 		t.Errorf("un decoupage contredit doit rendre ErrFilmFactsDecoupage, obtenu : %v", err)
 	}
 	detecte := e
 	detecte.LayoutDetected = true
-	if err := detecte.Utilisable(f.Coverage, entry); !errorsEstDecoupage(err) {
+	if err := detecte.Utilisable(entry); !errorsEstDecoupage(err) {
 		t.Errorf("l AUTRE sens (faits « auto-detectes » sur une carte que le catalogue impose) "+
 			"doit rendre ErrFilmFactsDecoupage, obtenu : %v", err)
 	}
@@ -339,3 +357,101 @@ func errorsEstVersion(err error) bool   { return errors.Is(err, ErrFilmFactsVers
 func errorsEstRevisions(err error) bool { return errors.Is(err, ErrFilmFactsRevisions) }
 func errorsEstCarte(err error) bool     { return errors.Is(err, ErrFilmFactsCarte) }
 func errorsEstDecoupage(err error) bool { return errors.Is(err, ErrFilmFactsDecoupage) }
+
+// TestEnteteDesFaitsEgaleLaCouvertureDuDocument : L INVARIANT DU LOT 4.1.2, MESURE SANS FILM.
+//
+// L en-tete du fichier de faits porte [DecoderCoverage] VERBATIM, et l artefact publie le MEME
+// type en `coverage.decoder`. L invariant est donc : L EN-TETE RELU == LE `coverage.decoder` DE
+// L ARTEFACT PRODUIT, CHAMP POUR CHAMP.
+//
+// IL SE MESURE ICI SANS OUVRIR UN FILM, et c est ce qui le rend toujours actif : l assemblage est
+// PUR (`BuildFromPositions`), et l identite du film est le SEUL parametre dont les deux cotes
+// dependent. Les deux cas du bloc `registry` sont joues — present, et absent (film sans section
+// d identification, ou l invariant V15 (15) exige « build vide, bloc present »).
+func TestEnteteDesFaitsEgaleLaCouvertureDuDocument(t *testing.T) {
+	entry := goldenEntryPourTest(t)
+	// LES ENTREES VIENNENT DU FIXTURE VERSIONNE (aucun octet de film) : un document sans position
+	// ne publie AUCUNE couverture, donc l invariant n aurait pas de cote gauche a comparer.
+	g := loadGoldenInputs(t)
+	for _, id := range []*profile.FilmIdentity{
+		nil,
+		{Build: "HI_1_13_0", FormatVersion: 27},
+		{Build: "HI_1_13_0", FormatVersion: 27, RegistryFingerprint: 0x0123456789abcdef,
+			RegistryBlocks: 9, RegistryNamedSlots: 31},
+	} {
+		opt := g.options()
+		opt.MapQuant, opt.FilmIdentity = &entry, id
+		doc := BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, opt)
+		if doc.Coverage == nil || doc.Coverage.Decoder == nil {
+			t.Fatal("le document ne publie pas `coverage.decoder` : l invariant n a plus de " +
+				"cote gauche")
+		}
+		blob, err := EncodeFilmFactsFile(&FilmFactsFile{
+			Coverage: *couvertureDuDecodeur(id),
+			Facts:    FilmFacts{Film: goldenFilm, MapModule: entry.Module, AxisW: entry.AxisWidths},
+			Identity: identiteDeFaits(id),
+		})
+		if err != nil {
+			t.Fatalf("encodage : %v", err)
+		}
+		e, err := DecodeFilmFactsEntete(blob)
+		if err != nil {
+			t.Fatalf("en-tete : %v", err)
+		}
+		if !reflect.DeepEqual(e.Coverage, *doc.Coverage.Decoder) {
+			t.Errorf("en-tete des faits != coverage.decoder de l artefact :\n  faits    : %+v\n"+
+				"  artefact : %+v", e.Coverage, *doc.Coverage.Decoder)
+		}
+	}
+}
+
+// TestBuildFromFactsEgaleLAssemblageDirect : LE DOCUMENT REJOUE DEPUIS UN FICHIER DE FAITS EST
+// CELUI DE L ASSEMBLAGE DIRECT.
+//
+// C EST LA MOITIE DE S8 QUI SE MESURE SANS FILM. Le test S8 du lot 4.1.3 compare deux PASSES
+// completes (film contre faits) sur le corpus ; celui-ci compare, sur le fixture versionne,
+// l assemblage sur les entrees EN MEMOIRE a l assemblage sur les MEMES entrees passees par le
+// fichier de faits. Un champ que le fichier perdrait se voit ici, sans decoder un film et sans
+// attendre la « voie libre » de la machine.
+//
+// LES REPLIS DU BALAYAGE FONT PARTIE DE LA MESURE : le rapport persiste est cumule par
+// `BuildFromFacts` AVANT l assemblage, et le cote gauche le pose directement sur son compteur.
+// Les deux doivent publier le MEME `coverage.fallbacks`.
+func TestBuildFromFactsEgaleLAssemblageDirect(t *testing.T) {
+	entry := goldenEntryPourTest(t)
+	g := loadGoldenInputs(t)
+	id := &profile.FilmIdentity{Build: "HI_1_13_0", FormatVersion: 27}
+	repliDuBalayage := []fallback.Declenchement{
+		{Nom: fallback.NomPlafondGrenadeParDefaut, Declenchements: 2},
+	}
+
+	// A GAUCHE : l assemblage direct, avec le repli du balayage DEJA dans le compteur — c est
+	// l etat ou `BuildFromFilmAvecFaits` laisse les options en sortant de son balayage.
+	optDirect := g.options()
+	optDirect.MapQuant, optDirect.FilmIdentity = &entry, id
+	optDirect.Fallbacks = fallback.NouveauCompteur()
+	optDirect.Fallbacks.Cumuler(repliDuBalayage)
+	direct := BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, optDirect)
+
+	// A DROITE : le MEME etat, passe par le fichier de faits.
+	blob, err := EncodeFilmFactsFile(&FilmFactsFile{
+		Coverage:  *couvertureDuDecodeur(id),
+		Facts:     *g,
+		Identity:  identiteDeFaits(id),
+		Fallbacks: repliDuBalayage,
+	})
+	if err != nil {
+		t.Fatalf("encodage : %v", err)
+	}
+	f, err := DecodeFilmFactsFile(blob, entry)
+	if err != nil {
+		t.Fatalf("relecture : %v", err)
+	}
+	rejoue := BuildFromFacts(goldenFilm, "halo_infinite", f, Options{MapQuant: &entry})
+
+	if renderAssembly(direct) != renderAssembly(rejoue) {
+		t.Error("le document REJOUE DEPUIS LES FAITS differe de l assemblage direct : le fichier " +
+			"de faits perd un champ que `BuildFromPositions` consomme, ou ne restitue pas " +
+			"l identite / les replis du balayage. Comparer `renderAssembly` des deux cotes.")
+	}
+}
