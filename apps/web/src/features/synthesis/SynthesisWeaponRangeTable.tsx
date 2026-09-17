@@ -96,7 +96,7 @@ export function SynthesisWeaponRangeTable({
             <td className="whitespace-nowrap border-b border-border px-2.5 py-1 text-left">
               {line.label}
             </td>
-            {[...sideCells(line.kills), ...sideCells(line.deaths)].map((value, i) => (
+            {[...sideCells(line.top), ...sideCells(line.bottom)].map((value, i) => (
               <td
                 key={i}
                 className="whitespace-nowrap border-b border-border px-2.5 py-1 text-right"

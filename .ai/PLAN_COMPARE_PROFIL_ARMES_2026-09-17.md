@@ -318,10 +318,10 @@ Fichiers : `features/compare/ComparePage.tsx`, `features/compare/i18n.ts` (+ tes
 `features/synthesis/SynthesisWeaponRangeSection.tsx`, `features/synthesis/SynthesisWeaponRangeTable.tsx`,
 `lib/api/types.ts`.
 
-- [ ] 4.1 `types.ts` : `CompareResponse.weapons?: components['schemas']['CompareWeaponProfile']`
+- [x] 4.1 `types.ts` : `CompareResponse.weapons?: components['schemas']['CompareWeaponProfile']`
       (interface manuscrite existante, champ typé depuis le généré ; exporter les alias
       `CompareWeaponSide`, `CompareFragClass`, `CompareTopWeapon` depuis `components['schemas']`).
-- [ ] 4.2 Généralisation de `_weaponRangeChart.ts` sans changer le rendu Synthèse :
+- [x] 4.2 Généralisation de `_weaponRangeChart.ts` sans changer le rendu Synthèse :
       `WeaponRangeLine.kills/deaths` renommés `top/bottom` ; `WeaponRangeOptionInput`
       reçoit `topColor/bottomColor` et `labels.top/labels.bottom` (à la place de
       kills/deaths) ; l'infobulle ajoute une ligne « min – max observés » quand
@@ -330,7 +330,10 @@ Fichiers : `features/compare/ComparePage.tsx`, `features/compare/i18n.ts` (+ tes
       `SynthesisWeaponRangeSection`, `SynthesisWeaponRangeTable` et leurs tests suivent le
       renommage. Les tests Synthèse existants restent verts (même option produite à
       libellés égaux).
-- [ ] 4.3 `compareWeapons_logic.ts` (pur, testé) :
+- [x] 4.3 `compareWeapons_logic.ts` (pur, testé) :
+      **Lot 4** : `sampleNote` N'EXISTE PAS — `is_sample` a été retiré au lot 3-bis. La note
+      « sur N matchs » se lit de `matches`, pour CHAQUE joueur et sans condition, dans le
+      composant. Le module rend en plus `coverageOf` et `hasWeaponProfile`.
       `fragClassRows(sideA, sideB)` (union des classes, part 0 pour la classe absente d'un
       côté, ordre = ordre de A puis B) ;
       `roleRangeLines(sideA, sideB, side: 'kills'|'deaths', locale)` → `WeaponRangeLine[]`
@@ -339,7 +342,11 @@ Fichiers : `features/compare/ComparePage.tsx`, `features/compare/i18n.ts` (+ tes
       : jamais une clé `frags.` brute affichée, même contrat que `fragRoleDisplayLabel`) ;
       `belowThresholdText(rows, locale)` ; `sampleNote(side, text)` (note « sur N matchs »
       seulement si `is_sample`).
-- [ ] 4.4 `CompareWeaponsSection.tsx` : props `{ left: CompareResponse; right?: CompareResponse; text; locale }`.
+- [x] 4.4 `CompareWeaponsSection.tsx` : props `{ left: CompareResponse; right?: CompareResponse; text; locale }`.
+      **Lot 4** : TROIS fichiers et non un — `CompareWeaponsSection.tsx` (classes, armes,
+      orchestration), `CompareWeaponsRange.tsx` (le bloc portée) et `compareWeaponsShared.ts`
+      (encres, formateurs, résolveur de libellé). Seuils du dépôt respectés (fichier ≤ 500 L,
+      fonction ≤ 80 L) — voir le journal.
       Bloc 1 : une `CompareBar` par classe (`winner={null}`, valeurs « 42 % », `sampleNote`),
       `CompareMirrorRow` en miroir. Bloc 2 : deux `ChartCard` (frags / morts) par comparaison,
       option via `buildWeaponRangeOption` avec `resolveToken('compare-a'/'compare-b')` (et
@@ -349,19 +356,25 @@ Fichiers : `features/compare/ComparePage.tsx`, `features/compare/i18n.ts` (+ tes
       Bloc 3 : colonnes top 3 (`WeaponIcon` + nom via locale + frags), B | A | C en miroir.
       Section entière absente si `weapons` absent des deux réponses ; chaque bloc absent
       indépendamment si son côté est vide.
-- [ ] 4.5 `ComparePage.tsx` : la section s'insère après « Bilan & Rang » dans les deux modes.
+- [x] 4.5 `ComparePage.tsx` : la section s'insère après « Bilan & Rang » dans les deux modes.
       Titre `text.catWeapons`. Aucune couleur hex ni classe Tailwind couleur (skill
       `color-tokens`) ; tokens `compare-a/b/c` uniquement.
-- [ ] 4.6 `i18n.ts` : nouvelles clés FR + EN (`catWeapons`, `weaponsClassesTitle`,
+- [x] 4.6 `i18n.ts` : nouvelles clés FR + EN (`catWeapons`, `weaponsClassesTitle`,
       `weaponsRangeKills`, `weaponsRangeDeaths`, `weaponsTopTitle`, `weaponsCoverage(n, m)`,
       `weaponsBelowThreshold(list)`, `weaponsObserved`, `weaponsNoRange`, `weaponsPercentiles`,
       `weaponsNoMeasure`) ; `i18n.test.ts` (parité des clés) vert. FR sans anglicisme
       (« frags », « morts », « portée », jamais « kills »/« range »).
-- [ ] 4.7 Tests : `compareWeapons_logic.test.ts` (union, parts, tri, libellé jamais brut,
-      note d'échantillon) ; `CompareWeaponsSection.test.tsx` (rendu 2 joueurs, rendu miroir,
+      **Lot 4** : une DOUZIÈME clé, `weaponsMatches(n)` — « sur N matchs », affichée pour
+      chaque joueur depuis le retrait d'`is_sample` (lot 3-bis). `i18n.test.ts` gagne trois
+      témoins : parité du dictionnaire ENTIER (le test historique ne couvrait que `metrics`),
+      présence des douze clés dans les deux langues, et absence d'anglicisme dans les
+      libellés FR du bloc.
+- [x] 4.7 Tests : `compareWeapons_logic.test.ts` (union, parts, tri, libellé jamais brut,
+      note « sur N matchs » — et non « note d'échantillon », `is_sample` ayant été retiré au
+      lot 3-bis) ; `CompareWeaponsSection.test.tsx` (rendu 2 joueurs, rendu miroir,
       section absente sans `weapons`, bloc portée absent sans `range`) avec
       `echarts-for-react` mocké (référence : tests de `SynthesisWeaponRangeSection`).
-- [ ] 4.8 Garde-rails existants verts : lint anti-anglicismes, `lint-no-hardcoded-fields`,
+- [x] 4.8 Garde-rails existants verts : lint anti-anglicismes, `lint-no-hardcoded-fields`,
       `metric-key-guardrail.test.ts`.
 
 **Gate 4** :
@@ -449,7 +462,25 @@ cd apps/web && Remove-Item -Recurse -Force node_modules\.tmp ; npm run typecheck
 - Le dictionnaire `features/compare/i18n.ts` n'est PAS dans le périmètre du garde-rail
   anti-anglicismes (`lib/i18n/no-anglicisms.guard.test.ts`, qui ne scanne que cinq
   dictionnaires manuscrits et dix manifestes TOML). Les libellés FR de la page ne sont donc
-  contrôlés que par relecture. L'y ajouter est un lot d'élargissement de périmètre à part.
+  contrôlés que par relecture. Le lot 4 y répond LOCALEMENT (un témoin dans `i18n.test.ts`
+  sur les douze libellés du profil d'armes) ; élargir le périmètre du garde-rail global au
+  dictionnaire entier reste un lot à part.
+
+**Découvertes du lot 4 (2026-09-17) — consignées, NON traitées**
+
+- `features/synthesis/_weaponRangeChart.ts` est désormais partagé par DEUX features. Sa place
+  durable est `components/charts/`, où vivent les wrappers de graphe partagés (doctrine du
+  linter cross-feature et du skill `foundations-usage`). Le déplacement emmène
+  `resolveWeaponLabel` (aujourd'hui dans `synthesis/weaponRange_logic`, qui ne peut pas
+  descendre seul) et retouche les quatre fichiers Synthèse qui en dépendent : chantier à part.
+  En attendant, la dépendance est DÉCLARÉE au module près dans `ALLOWED_CROSS_IMPORTS`.
+- `CompareResponse` reste une interface MANUSCRITE dans `types.ts` alors que le champ neuf
+  `weapons` est typé depuis le généré : les deux moitiés du même type n'ont pas la même
+  source. Migrer l'interface entière vers `components['schemas']` est le lot déjà consigné
+  plus haut ; ce lot-ci n'a fait que ne pas aggraver la dette.
+- Le test `components/shell/NavL1.test.tsx` a expiré (5 000 ms) sur une exécution complète de
+  la suite (487 s) et passe seul en 9,4 s : c'est un flake de charge, pas un échec de
+  contenu. Le durcir (timeout explicite ou allègement du rendu) est hors périmètre.
 
 ## Journal d'exécution
 
@@ -819,6 +850,114 @@ make openapi-gen && make generate-types -> EXIT_GEN=0
 **Non faits, sur décision du superviseur** : pas de test DuckDB pour
 `ResolveWeaponDimensions` ; pas de nettoyage des champs `dimCalls`/`lastDimSlug`/`dimsErr` du
 mock `mockWeaponRangeRepo`.
+
+### 2026-09-17 — Lot 4 clos (4.1 à 4.8 tous `[x]`)
+
+**Le renommage `top`/`bottom` est le cœur du lot, et il n'est pas cosmétique.** Le module de
+rendu dessine deux bâtons superposés sur une bande. À la Synthèse ce sont « mes frags » et
+« mes morts » ; au Face-à-face ce sont DEUX JOUEURS, sur un graphe qui ne montre qu'un côté de
+mesure (le titre de carte le nomme). Garder `kills`/`deaths` aurait obligé le compare à ranger
+le joueur B dans un champ nommé « morts ». Le module ne connaît donc plus que la GÉOMÉTRIE ;
+le sens vit chez l'appelant, qui fournit aussi les deux libellés et les deux encres.
+
+**Rendu Synthèse strictement inchangé**, et c'est vérifié : les dix fichiers de test de
+`features/synthesis` restent verts (102 tests). Le seul écart apparu pendant le renommage a
+été corrigé plutôt qu'accepté — les noms de PILE du graphe de dénivelé (`stack: 'kills'` /
+`'deaths'`) étaient devenus `'top'`/`'bottom'`, ce qui ne changeait rien au rendu mais faisait
+rougir un test ; ils sont restaurés, le graphe de dénivelé étant propre à la Synthèse.
+
+**Infobulle min–max (D5)** : `labels.observed` est OPTIONNEL. Le compare le fournit, la
+Synthèse non — son infobulle est donc inchangée. Les deux extrêmes ne sont JAMAIS tracés.
+
+**Import cross-feature : le ratchet n'a PAS été relevé.** `compare` importe le graphe de
+`synthesis` ; le linter `tools/lint-cross-feature-imports.mjs` plafonne à 7 violations NON
+DÉCLARÉES et en comptait 7. La paire a été ajoutée à `ALLOWED_CROSS_IMPORTS` — mécanisme prévu
+pour une dépendance DURABLE — en la nommant AU MODULE (`compare=>synthesis/_weaponRangeChart`)
+et non à la feature entière, avec justification datée. Le compteur reste à 7, le plafond
+inchangé. La place durable du module est `components/charts/` : consigné en Découverte.
+
+**Gate 4** — commande exacte du plan (`Remove-Item node_modules\.tmp` rendu en `rm -rf`, shell
+bash) :
+
+```
+cd apps/web && rm -rf node_modules/.tmp
+npm run typecheck   -> tsc -b, aucune erreur           EXIT_TYPECHECK=0
+npm run lint        -> 27 problems (0 errors, 27 warnings)  EXIT_LINT=0
+                       AUCUN avertissement sur features/compare/ (vérifié par grep) ;
+                       les 27 sont la dette `react-hooks/incompatible-library` préexistante
+                       de TanStack Table, sur des fichiers non touchés.
+npm run test        -> voir ci-dessous
+```
+
+Premier passage de `npm run test` : **1 échec sur 7 885**, `components/shell/NavL1.test.tsx`
+— un `Test timed out in 5000ms` sur une suite complète de 487 s (machine saturée), pas une
+assertion. Rejoué SEUL : **12 tests PASS en 9,4 s**. Aucun fichier de `components/shell/`
+n'est touché par ce lot.
+
+Deuxième passage (suite entière) : **732 fichiers, 7 868 tests, 0 échec, EXIT_VITEST=0** — le
+flake ne s'est pas reproduit.
+
+Passage FINAL, après la scission en trois fichiers décrite plus bas (le deuxième passage avait
+démarré avant elle) :
+
+```
+cd apps/web && rm -rf node_modules/.tmp
+npm run typecheck   -> EXIT_TYPECHECK=0                        (log persistant, ligne 5)
+npm run lint        -> 27 problems (0 errors, 27 warnings)
+                       EXIT_LINT=0                             (ligne 244)
+npm run test        -> Test Files  732 passed | 1 skipped (733)
+                       Tests  7868 passed | 17 skipped (7885)
+                       Duration 432,96 s · EXIT_VITEST=0        (ligne 459)
+grep -nE '^ FAIL ' sur le log persistant -> AUCUNE ligne
+```
+
+UN SEUL FICHIER A BOUGÉ APRÈS LE DÉPART DE CE RUN (`compare/i18n.ts`, 19:39:04 contre un
+départ à 19:38:03), et la modification est un COMMENTAIRE JSDoc : celui de
+`weaponsBelowThreshold` annonçait « Sous le seuil de 8 mesures » alors que la chaîne publiée
+ne chiffre aucun seuil (doc inversée, anti-pattern n°9 du dépôt — corrigé, voir plus bas). La
+sous-suite concernée a donc été rejouée EN AVANT-PLAN sur les bytes finaux :
+
+```
+npm run test -- --run src/features/compare src/features/synthesis
+  Test Files  14 passed (14) · Tests  149 passed | 14 skipped (163)   EXIT_SUBSET=0
+```
+
+**Garde-rails d'outillage (4.8)** :
+
+```
+node tools/lint-no-hardcoded-fields.mjs  -> 1976 fichiers, aucune violation   EXIT=0
+node tools/lint-no-hardcoded-colors.mjs  -> clean (0 violation)               EXIT=0
+node tools/lint-cross-feature-imports.mjs -> 7 <= plafond 7                   EXIT=0
+grep hex + classes Tailwind couleur dans features/compare/ -> aucun (hors tests)
+```
+
+**Écarts / décisions d'implémentation**
+
+- `sampleNote` de l'item 4.3 n'a pas été écrit : `is_sample` a disparu au lot 3-bis. La note
+  « sur N matchs » se lit de `matches`, pour CHAQUE joueur et sans condition.
+- Le module pur rend deux fonctions de plus que le plan : `coverageOf` (les deux dénominateurs
+  de couverture, qui ne sont pas interchangeables) et `hasWeaponProfile` (la garde de section).
+- `roleRangeLines` prend un résolveur de libellé INJECTÉ plutôt qu'une `locale` : le module
+  pur ne connaît alors aucun manifeste, et son test n'a pas à en charger un.
+- Les classes du bloc 1 sont nommées par le MÊME résolveur que les rôles (`frags.role.<clé>`
+  puis `frags.class.<clé>`) : les clés de classe tombent naturellement dans le second essai,
+  et deux résolveurs pour deux familles de clés auraient divergé.
+- Le bloc « armes les plus utilisées » affiche les armes servies par le back (trois au plus,
+  déjà triées) : aucun tri côté front, qui serait une seconde doctrine.
+- **La phrase « sous le seuil » ne CHIFFRE pas le seuil**, là où l'item 4.4 citait
+  `WEAPON_RANGE_MIN_MEASURED`. Cette constante est un MIROIR de la valeur Go, et le fichier qui
+  la porte (`synthesis/weaponRange_logic.ts`) documente qu'elle n'existe qu'une fois ; l'importer
+  depuis `compare` coûterait une seconde déclaration cross-feature, la recopier en ferait une
+  troisième copie d'un seuil produit — ce que la règle n°6 interdit. La phrase publiée reste
+  informative parce qu'elle NOMME chaque rôle écarté AVEC son effectif (« Puissance (6) ») : le
+  lecteur voit l'ordre de grandeur sans qu'on lui annonce la borne.
+- **Trois fichiers de composant, pas un.** La première écriture faisait 508 lignes avec deux
+  fonctions à 83 et 92 lignes — au-dessus des seuils du dépôt (500 / 80). Scindé :
+  `CompareWeaponsSection.tsx` (278 L, classes + armes + orchestration),
+  `CompareWeaponsRange.tsx` (233 L, le bloc portée) et `compareWeaponsShared.ts` (71 L, les
+  encres, les formateurs et le résolveur de libellé que les deux consomment). Les recopier
+  aurait donné deux palettes et deux façons d'écrire « 12,4 m ». Fonction la plus longue après
+  scission : 73 lignes.
 
 ## Reprise de session
 

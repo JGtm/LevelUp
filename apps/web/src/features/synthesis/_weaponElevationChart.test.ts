@@ -108,12 +108,12 @@ describe('buildWeaponElevationOption — deux piles de trois segments', () => {
     const portee = buildWeaponRangeOption({
       lines: LINES,
       tc: TC,
-      killsColor: '#a',
-      deathsColor: '#b',
+      topColor: '#a',
+      bottomColor: '#b',
       medianColor: '#c',
       cardColor: '#d',
       fmtDistance: (m) => `${m} m`,
-      labels: { kills: 'f', deaths: 'm', percentiles: 'p', noMeasure: 'n' },
+      labels: { top: 'f', bottom: 'm', percentiles: 'p', noMeasure: 'n' },
     }) as { yAxis: { data: string[] } }
     expect(optionOf(LINES).yAxis.data).toEqual(portee.yAxis.data)
     expect(optionOf(LINES).yAxis.data).toEqual(['hinf_commando', 'BR75'])

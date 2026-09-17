@@ -2290,7 +2290,26 @@ export interface CompareResponse {
   privacy_warning?: MatchPrivacyWarning | null
   /** C3.6 : indique si les données de joueur B sont partielles (champs null). */
   player_b_partial?: boolean
+  /**
+   * Profil d'armes des deux joueurs (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
+   * ADDITIF et absent quand il n'est pas lisible : titre sans registre d'armes, joueur B
+   * absent de la base partagée, câblage manquant.
+   *
+   * Typé DEPUIS LE GÉNÉRÉ, contrairement au reste de cette interface manuscrite : le champ
+   * neuf n'a aucune raison de re-diverger du contrat, et migrer l'interface entière est un
+   * lot à part (consigné en Découverte au plan).
+   */
+  weapons?: components['schemas']['CompareWeaponProfile']
 }
+
+/** Un côté du profil d'armes — le scope, les classes, la portée par rôle, le top 3. */
+export type CompareWeaponSide = components['schemas']['CompareWeaponSide']
+
+/** Une classe d'arme et la part des frags du joueur qu'elle porte. */
+export type CompareFragClass = components['schemas']['CompareFragClass']
+
+/** Une arme du top 3 : nom bilingue, frags, dimensions registre, icône. */
+export type CompareTopWeapon = components['schemas']['CompareTopWeapon']
 
 // ─── Sprint 54-B : Match Privacy ─────────────────────────────────────────────
 
