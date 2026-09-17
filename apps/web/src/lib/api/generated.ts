@@ -6359,6 +6359,7 @@ export interface components {
             ranked?: components["schemas"]["ExplorerBriefingRanked"];
             scope?: components["schemas"]["ExplorerBriefingScope"];
             streaks?: components["schemas"]["ExplorerBriefingStreaks"];
+            weapons?: components["schemas"]["ExplorerBriefingWeapons"];
         };
         ExplorerBriefingBaseline: {
             /** Format: double */
@@ -6479,6 +6480,13 @@ export interface components {
             best_win_streak?: number;
             /** Format: int64 */
             worst_loss_streak?: number;
+        };
+        ExplorerBriefingWeapons: {
+            entries: components["schemas"]["SynthesisWeaponKillEntry"][] | null;
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: int64 */
+            scope_kills: number;
         };
         ExplorerEncounterRow: {
             count_matches: number;

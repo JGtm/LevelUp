@@ -12828,6 +12828,8 @@ components:
           $ref: '#/components/schemas/ExplorerBriefingScope'
         streaks:
           $ref: '#/components/schemas/ExplorerBriefingStreaks'
+        weapons:
+          $ref: '#/components/schemas/ExplorerBriefingWeapons'
       type: object
     ExplorerBriefingBaseline:
       additionalProperties: false
@@ -13075,6 +13077,26 @@ components:
         worst_loss_streak:
           format: int64
           type: integer
+      type: object
+    ExplorerBriefingWeapons:
+      additionalProperties: false
+      properties:
+        entries:
+          items:
+            $ref: '#/components/schemas/SynthesisWeaponKillEntry'
+          type:
+            - array
+            - "null"
+        measured_kills:
+          format: int64
+          type: integer
+        scope_kills:
+          format: int64
+          type: integer
+      required:
+        - entries
+        - measured_kills
+        - scope_kills
       type: object
     ExplorerEncounterRow:
       properties:
