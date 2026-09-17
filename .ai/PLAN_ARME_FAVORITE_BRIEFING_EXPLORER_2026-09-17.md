@@ -156,11 +156,11 @@ la mauvaise.
 
 ### Étape 1 — Backend : type, builder, câblage
 
-- [ ] `internal/domain/explorer_briefing.go` : type `ExplorerBriefingWeapons`
+- [x] `internal/domain/explorer_briefing.go` : type `ExplorerBriefingWeapons`
       (`Entries []SynthesisWeaponKillEntry` (2 max), `MeasuredKills int`, `ScopeKills int`)
       + champ `Weapons *ExplorerBriefingWeapons \`json:"weapons,omitempty"\`` sur
       `ExplorerBriefing`, documenté comme les autres blocs (nil = module non émis).
-- [ ] Nouveau fichier `internal/service/match_history_service_briefing_weapons.go`
+- [x] Nouveau fichier `internal/service/match_history_service_briefing_weapons.go`
       (le fichier briefing principal fait 490 lignes — ne pas l'alourdir) portant
       `buildBriefingWeapons(ctx, repo, titleSlug, xuid, filtered) *domain.ExplorerBriefingWeapons`.
       Les `MatchIDs` et `scope_kills` se lisent dans les raw rows déjà en mémoire
@@ -168,15 +168,15 @@ la mauvaise.
       aucune requête supplémentaire hors celle du repo d'armes. Filtre des lignes,
       `measured_kills`, tri et troncature au top 2 selon D5 (`buildTopWeaponKills`, même
       package ; le filtre est appliqué UNE fois et partagé entre le dénominateur et le top).
-- [ ] `buildExplorerBriefing` appelle le builder APRÈS `ContextSplit`, avant `Streaks`.
-- [ ] `MatchHistoryService` : champs `weaponKillsRepo port.WeaponKillsRepository` +
+- [x] `buildExplorerBriefing` appelle le builder APRÈS `ContextSplit`, avant `Streaks`.
+- [x] `MatchHistoryService` : champs `weaponKillsRepo port.WeaponKillsRepository` +
       `weaponKillsXUID string` ; méthode `WithWeaponKillsRepo(repo, xuid)` sur le modèle de
       `WithPlayerMatchesRepo` (le repo et l'identité voyagent ensemble).
-- [ ] `registry_pages_home.go` (`MatchHistoryCtx`) :
+- [x] `registry_pages_home.go` (`MatchHistoryCtx`) :
       `svc = svc.WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb), pdb.XUID)` avec commentaire
       renvoyant à `weaponKillsRepoFor` (même factory que Synthesis, Explorer-cible et
       Sessions — pas de second chemin de lecture).
-- [ ] Logging conforme D8.
+- [x] Logging conforme D8.
 
 **Gate 1** (depuis `apps/go-api/`) :
 ```

@@ -117,6 +117,12 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 	// match.skill.snapshot, jamais le slug. Inoffensif pour la page Historique
 	// (elle ne pose pas include_briefing → briefing étendu non construit).
 	svc = svc.WithRankedCapable(r.titleSupportsLiveCSR(pdb))
+	// Module « arme favorite » du briefing Explorer : MÊME factory que la Synthèse,
+	// l'Explorer-cible et les Sessions (weaponKillsRepoFor — source de dégât du film
+	// quand le titre la déclare, arme native du kill sinon). Pas de second chemin de
+	// lecture. Le xuid accompagne le repo : le filtre du port se pose sur la colonne
+	// xuid, jamais sur le gamertag.
+	svc = svc.WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb), pdb.XUID)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
