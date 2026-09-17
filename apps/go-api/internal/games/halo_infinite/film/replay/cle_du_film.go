@@ -38,8 +38,6 @@ package replay
 // deux gestes appartiennent a l orchestrateur, qui seul connait le vocabulaire de son pipeline.
 
 import (
-	"fmt"
-
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -103,10 +101,8 @@ func CleDeChunk0(chunk0 []byte) CleFilm {
 		c.Build = id.Build
 	}
 	switch {
-	case c.Build != "":
-		c.Ecrite = "build=" + c.Build
-	case majeureLue:
-		c.Ecrite = fmt.Sprintf("majeure=%d", majeure)
+	case c.Build != "", majeureLue:
+		c.Ecrite = profile.CleEcrite(c.Build, c.Majeure)
 	default:
 		// NI BUILD NI MAJEURE : le `chunk_00` est la mais rien de nommable n en sort. Le
 		// refuser nommerait une cle qu on n a pas lue ; les lecteurs rendent deja leur erreur.
