@@ -62,6 +62,24 @@ Note : le skill `halo-modes` décrit la normalisation des modes ; `config/titles
 Cible : `mappings/fields.toml` / `assets.toml` (décider : arme = asset), ou un `weapons.toml` par
 titre si la table porte plus que des libellés (familles, icônes — cf. `frag-*` tokens web).
 
+**Addendum 2026-09-17 — lecteurs AVEUGLES à la locale (autre défaut que le libellé en dur).**
+Les noms d'armes vivent déjà dans `weapon_names.toml` (en/fr), mais plusieurs lecteurs qui ne
+publient qu'UN nom par arme servaient `weaponResolved.label` (FR-first) quelle que soit la
+locale : « Tourelle LMG du Falcon » et « Apparition » sortaient sur la capture README anglaise
+de la vue de match (`18-match-view`). **Corrigé** (commit du 2026-09-17) pour les trois lecteurs
+de la Match view — `lookupWeaponMeta` / `lookupWeaponLabels` (kills par arme du viewer, arme
+favorite du scoreboard) et `bulkWeaponKillsFromSource` (sources de dégât du film) — via
+`weaponResolved.displayLabel(ctxkeys.Locale(ctx))`, même doctrine que `lookupMedalMeta`.
+Même passe, trois autres lecteurs de la même famille corrigés : `weapon_accuracy_repo.go`
+(« Précision par arme », Synthèse / Session / Escouade — FR-first sans locale),
+`killsource_weapon_scope.go` (`WeaponHighlight.LabelEN` recevait le libellé FR ; `labelEN`
+voyage désormais dans `weaponScopeRow`, plus de seconde requête pour l'arme favorite de
+l'Accueil) et `home_repo_medals_citations.go` (arme favorite SQL : sous EN servait
+`weapon_labels.name_en`, le nom d'URL image, au lieu du libellé du TOML). Garde-rail :
+`TestMatchViewWeaponLabels_FollowRequestLocale`. Restant connu : aucun lecteur Go de
+`weaponResolved.label` sans locale hors `media_repo_*` (filtres médias, servent FR+EN
+séparément — conforme).
+
 ### D. Rangs / CSR
 
 | Site | Contenu |

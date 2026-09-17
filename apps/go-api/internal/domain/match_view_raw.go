@@ -294,9 +294,13 @@ type BulkMedalRaw struct {
 
 // BulkWeaponKillRaw : une ligne de Q28 (kills par arme de tous les joueurs du match).
 type BulkWeaponKillRaw struct {
-	XUID        string
-	WeaponID    int64
-	Kills       int
+	XUID     string
+	WeaponID int64
+	Kills    int
+	// WeaponLabel : nom d'affichage dans la LOCALE DE REQUÊTE (ctxkeys.Locale, choisi côté
+	// repo depuis weapon_name_labels en/fr — 2026-09-17). Il est servi tel quel par
+	// MatchWeaponKill.WeaponLabel et FragRoleEntry.Label : un lecteur EN voit « Wraith »,
+	// un lecteur FR « Apparition ».
 	WeaponLabel string
 	// Class / Role / Family : dimensions du registre d'armes (axe manipulation + fonction
 	// de combat + famille), résolues dans la même passe que le label (resolveWeaponMeta).

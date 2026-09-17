@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
@@ -160,8 +161,10 @@ GROUP BY wa.xuid, wa.weapon_id`)
 	return sb.String(), args
 }
 
-// attachWeaponLabels renseigne le Label EN/FR, la Class ET le Role (registre) par weapon_id
-// via resolveWeaponMeta (registre + weapon_labels). Best-effort : meta absent → no-op (Label/
+// attachWeaponLabels renseigne le Label DANS LA LOCALE DE REQUÊTE (ctxkeys.Locale, cf.
+// weaponResolved.displayLabel — avant le 2026-09-17 : FR-first quelle que soit la locale, et
+// « Précision par arme » servait des noms FR sous UI EN), la Class ET le Role (registre) par
+// weapon_id via resolveWeaponMeta (registre + weapon_labels). Best-effort : meta absent → no-op (Label/
 // Class/Role vides, le service filtre). La Class sert à écarter du graphe précision les classes
 // sans précision pertinente (grenade/mêlée/capacités) ; le Role sert à AGRÉGER PAR RÔLE la
 // précision de l'Escouade (regroupement des ~30 armes par rôle pour la lisibilité).
@@ -174,13 +177,14 @@ func (r *WeaponAccuracyRepo) attachWeaponLabels(ctx context.Context, slug string
 		ids = append(ids, row.WeaponID)
 	}
 	meta := resolveWeaponMeta(ctx, r.pdb.Metadata, slug, ids)
+	locale := ctxkeys.Locale(ctx)
 	for i := range rows {
 		m, ok := meta[rows[i].WeaponID]
 		if !ok {
 			continue
 		}
 		if m.label != "" {
-			rows[i].Label = m.label
+			rows[i].Label = m.displayLabel(locale)
 		}
 		rows[i].Class = m.class
 		rows[i].Role = m.role
