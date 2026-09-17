@@ -1,3 +1,31 @@
+## [2026-09-17] Suite de la revue des 8 lots — 7 petits items web (libellés EN de la tuile, « volé », tranche 25 %, tests sprite+bordure, garde anti-anglicismes, helpers de rencontre, bouton de copie du watcher) — Complété (branche `fix/revue-suite-v75`)
+
+**Demande** (décisions utilisateur du 2026-09-17, après le lot de correctifs) : traduire les deux
+libellés FR seuls de la tuile de match ; lever la double définition de « volé » (l'infobulle des
+paires du graphe d'assistances vs le badge Voleur) ; corriger le libellé de la tranche basse des
+assistances (25 tombe dans la tranche moyenne) ; tester le couple sprite + bordure des véhicules
+(comportement voulu : indissociables, pas de sprite sans bordure chargée) ; faire voir les mots
+soudés au garde anti-anglicismes ; centraliser les helpers de formatage copiés entre les deux
+tableaux de rencontres ; donner un retour visuel au bouton de copie du code du watcher. Puis arrêt.
+
+**Décisions techniques** : `NARRATIVE_LABELS` typé `Record<Locale, Record<NarrativeType, string>>`
+(FR inchangé, EN COMEBACK / COLLAPSE / COUNTER-COMEBACK / SCUTTLED / SELFLESS) ; clé
+`tooltipStolen` -> `tooltipAssistantOutdamaged` (« dont N où le larbin a fait plus de dégâts que le
+patron ») ; tranches « moins de 25 % » / « 25 à 50 % » / « plus de 50 % » FR+EN, logique inchangée ;
+`useReplayVehicles.test.ts` (attente -> null et rien en cache ; chargée -> bordure sous le sprite ;
+échec -> sprite seul, un seul warn, pas de nouvelle requête), aucun changement de code ; motifs
+`kill(streak|feed|cam)` et `(win|loss|kill)streak` dans le garde, aucune chaîne FR réelle touchée ;
+module `features/_shared/encounters/format.ts` (+ `formatRelativeFor`) avec garde-rail grep ;
+WatcherCard sur `useCopyToClipboard`, clé `watcherAuthCodeCopied`, retiré de l'allowlist.
+
+**Résultats observés** : typecheck 0, lint 0 erreur, lint:colors 0, lint:fields 0, vitest 301
+fichiers / 2 895 tests ; chaque test prouvé rouge par mutation. Découvertes non traitées :
+`ratioValue` de MatchEncountersTable duplique `formatKDRatio` en numérique ; bascule
+semaines -> mois à 5 semaines (« il y a 4 sem. » pour un mois) ; MatchEncountersTable 552 L sous
+exemption ; le garde anti-anglicismes ne scanne pas `match-replay/i18n`.
+
+**Conclusion / prochaine étape** : CI de branche, merge dans feat/v75, arrêt du chantier revue.
+
 ## [2026-09-17] Noms d'armes de la Match view dans la locale de requête + rôles « Larbin / Patron » sur les assistances d'escouade — Complété (feat/v75, non committé)
 
 **Demande** : (1) sur la capture README anglaise `18-match-view`, « Tourelle LMG du Falcon » et
