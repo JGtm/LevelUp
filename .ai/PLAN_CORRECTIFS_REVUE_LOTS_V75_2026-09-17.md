@@ -53,7 +53,7 @@ corrections (sync/ touché). Merge final dans feat/v75 après CI verte.
 - [x] 3.2 Ronde 2 de relecture adversariale sur les seules corrections (1 relecteur Go, 1 web).
 - [x] 3.3 Push, CI verte au niveau job.
 - [x] 3.4 Journal thought_log (entrée revue + entrée correctifs), plan statué.
-- [ ] 3.5 Merge dans feat/v75 (demander avant).
+- [x] 3.5 Merge dans feat/v75 (demander avant).
 
 ## Découvertes (non traitées)
 
@@ -86,3 +86,4 @@ corrections (sync/ touché). Merge final dans feat/v75 après CI verte.
   Limite notée par le relecteur Go : deux camps numérotés hors {0,1} passeraient le comptage
   puis seraient tronqués par IN (0,1) — pas de preuve qu'une telle numérotation existe.
 - 2026-09-17 : CI verte au niveau job sur 1624eb65f (run 35233986512, 8 jobs ok, E2E skipped) ; la tete 176f6a700 n ajoute que des .ai/*.md (ignores par la CI). Merge dans feat/v75 sequence apres le push des deux commits de la session e2 (Larbin/Patron, noms d armes).
+- 2026-09-17 : merge dans feat/v75 = ed04d6c0f (--no-ff, sans conflit, par-dessus abd8aaa2d de la session e2), CI feat/v75 verte au niveau job (run 35241978391). Worktrees et branches locales supprimes ; fix/revue-lots-v75 conservee sur origin. PLAN CLOS.
