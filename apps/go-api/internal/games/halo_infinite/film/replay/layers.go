@@ -3,13 +3,17 @@ package replay
 // layers.go — LA TABLE DES CALQUES : QUELLE COUCHE A PRODUIT QUOI (lot 4.2.1-a du
 // PLAN_DECODEUR_FILM_2026-09-13 ; ADR 0034 D-6 et D-7).
 //
-// # CE QUE CE FICHIER EST, ET CE QU IL N EST PAS ENCORE
+// # CE QUE CE FICHIER PORTE, ET OU IL ABOUTIT
 //
-// Il porte la TABLE, et rien d autre : aucun champ n est ajoute au document par ce lot, et
-// `SchemaVersion` ne bouge pas. La montee de schema qui publiera `layers` a la racine est un
-// commit a part (lot 4.2.1-b), volontairement, parce qu une montee marque tout le parc a recuire
-// (`Digest.UpToDate`, `internal/replaybuild/artifact_digest.go`) : ce qui se discute ici est le
-// CONTENU de la table, ligne a ligne, pas une forme.
+// La TABLE, sa fermeture, et la passe qui pose [ReplayDocument.Layers] — publie a la racine
+// DEPUIS LE SCHEMA 62 (lot 4.2.1-b). La table a ete ecrite et fermee au commit precedent SANS
+// montee de schema, delibere : une montee marque tout le parc a recuire
+// (`Digest.UpToDate`, `internal/replaybuild/artifact_digest.go`), et ce qui se discute dans une
+// table de calques est son CONTENU ligne a ligne, pas la forme qui la transporte.
+//
+// LA POSE EST LA DERNIERE PASSE de `BuildFromPositions`, apres `clore` : les passes precedentes
+// ecrivent encore (la seconde porte des tirs deplace des evenements, les replis se publient en
+// dernier), et une table lue trop tot decrirait un document qui n existe pas encore.
 //
 // # LE NOM D UN CALQUE EST LA CLE JSON DU DOCUMENT
 //
@@ -70,11 +74,21 @@ package replay
 // exactement la distinction que `coverage` tient aujourd hui a coups de blocs `omitempty`, et
 // qu un tableau vide seul ne sait pas dire.
 //
-// # LES TROIS CALQUES A LA REQUETE N Y ENTRENT JAMAIS
+// # LES QUATRE CALQUES A LA REQUETE N Y ENTRENT JAMAIS
 //
-// `mapObjectives`, `mapWeaponPads` et `weaponTiers` sont resolus PAR LE SERVICE, a la requete :
-// la cuisson ne les ecrit pas (garde `TestDocumentShapeCalquesALaRequeteRestentHorsCuisson`,
-// `document_shape_test.go`). Ils ne sont ni dans la table, ni dans les exemptions.
+// `mapObjectives`, `mapWeaponPads`, `weaponTiers` et `vehicleLabels` sont resolus PAR LE SERVICE,
+// a la requete : la cuisson ne les ecrit pas (garde
+// `TestDocumentShapeCalquesALaRequeteRestentHorsCuisson`, `document_shape_test.go`). Ils ne sont
+// ni dans la table, ni dans les exemptions.
+//
+// `vehicleLabels` EST ENTRE DANS CETTE LISTE AU SCHEMA 62, et c est une correction : la mesure du
+// 2026-09-17 (ecriture de cette table) a montre qu aucun chemin de `build*.go` ne pose
+// `doc.VehicleLabels` — son seul ecrivain du depot est
+// `internal/service/replay_vehicle_labels.go` (`resolveVehicleLabels`), a la requete, exactement
+// comme ses trois voisins. Il manquait a `calquesALaRequete` depuis son ajout. Le reclasser
+// change l empreinte de forme CUITE, donc il ne pouvait entrer que dans un commit qui monte
+// `SchemaVersion` — celui-ci (decision de pilote du 2026-09-17 : « c est le seul moment ou ce
+// reclassement est gratuit »).
 
 import (
 	"strconv"
@@ -169,19 +183,17 @@ var couchesDesCalques = map[string]string{
 // `TestCalquesCouvrentTousLesChampsRacineCuits` — c est le sens de la faute qu on veut : classer
 // un champ coute une ligne, l oublier ouvrirait un trou.
 var calquesSansCouche = map[string]string{
-	// N EST PAS CUIT DU TOUT, et c est mesure : aucun chemin de `build*.go` ne pose
-	// `doc.VehicleLabels` ; le seul ecrivain du depot est
-	// `internal/service/replay_vehicle_labels.go` (`resolveVehicleLabels`), a la REQUETE, comme
-	// `mapObjectives` et ses deux voisins. Il n est pourtant PAS dans `calquesALaRequete`
-	// (`document_shape_test.go`) : l y ajouter changerait l empreinte de forme cuite, ce que ce
-	// lot n a pas le droit de faire. Consigne au §4 du plan, non traite.
-	"vehicleLabels": "2026-09-17 — resolu a la requete par le service (replay_vehicle_labels.go), jamais par la cuisson",
 	// N EST PAS UN CALQUE : `coverage` est la MESURE de la cuisson, toutes couches confondues
 	// (47 balises, de `tracks` a `decoder`). Lui donner une couche serait faux dans les deux
 	// sens — elle bouge avec n importe laquelle des quatre, et une montee de schema la change
 	// aussi. C est d ailleurs `coverage` que `layers` complete : l une dit CE QUI a ete lu,
 	// l autre SOUS QUELLE REVISION.
 	"coverage": "2026-09-17 — mesure de la cuisson, tous calques confondus : aucune couche unique ne la produit",
+	// NE SE DECRIT PAS LUI-MEME : `layers` est LA REPONSE sur les calques, comme `coverage` est
+	// leur MESURE. Une entree `layers: <revision>` serait soit circulaire (la publication le pose,
+	// mais ses valeurs bougent avec les quatre couches), soit fausse dans un sens ou dans l autre.
+	// Un lecteur qui veut savoir si la table est la lit l OBJET, pas une entree dedans.
+	"layers": "2026-09-17 — la reponse sur les calques, pas un calque : une entree sur elle-meme serait circulaire",
 	// SUBSTANCE = UN CATALOGUE QU AUCUNE DES CINQ REVISIONS NE HACHE (limite 2 en tete de
 	// fichier). Les quatre suivants sortent du catalogue FIGE de la carte, recopie verbatim par
 	// `ouvrir` (`opt.Geometry` / `opt.Structure`, poses par `replaybuild.buildReplayOptions`) ou
@@ -251,21 +263,41 @@ var gardesDeProduction = map[string]func(doc *ReplayDocument, opt Options) bool{
 // calquesProduits rend, pour CETTE cuisson, les calques produits et la revision de la couche qui
 // les a produits — la forme exacte que `layers` portera a la racine du document.
 //
-// ELLE N EST APPELEE PAR PERSONNE AU LOT 4.2.1-a, et c est voulu : le champ qui la consomme
-// arrive avec la montee de schema (lot 4.2.1-b). Ce lot-ci fige la TABLE et sa fermeture.
-//
 // `doc` nil rend nil : un appelant sans document n a aucun calque a declarer, et fabriquer une
 // table de calques pour un document qui n existe pas serait une affirmation.
+//
+// UN DOCUMENT SANS AUCUNE PISTE NE DECLARE QUE LA PUBLICATION. `ouvrir` rend faux quand le film
+// ne porte aucune position, et `BuildFromPositions` publie alors le document TEL QUEL : aucune
+// des treize passes de calque n a tourne. Declarer produits les trente-et-un calques non gardes
+// serait un mensonge, et precisement celui que cette table existe pour empecher. Le temoin est
+// `FrameCount`, qui vaut zero dans ce cas exact et au moins un des qu une position est publiee
+// (`frameSpan`, build.go).
 func calquesProduits(doc *ReplayDocument, opt Options) map[string]string {
 	if doc == nil {
 		return nil
 	}
+	assemble := doc.FrameCount > 0
 	out := make(map[string]string, len(couchesDesCalques))
 	for nom, revision := range couchesDesCalques {
+		if !assemble && revision != revisionDeLaPublication {
+			continue
+		}
 		if garde, gardee := gardesDeProduction[nom]; gardee && !garde(doc, opt) {
 			continue
 		}
 		out[nom] = revision
 	}
 	return out
+}
+
+// poserLesCalquesProduits publie [ReplayDocument.Layers] — LA DERNIERE PASSE de l assemblage.
+//
+// Elle ne pose RIEN quand la table ne rend rien : un document sans le moindre calque garderait
+// alors `layers` absent, ce qui voudrait dire « artefact anterieur au schema 62 ». Le cas n est
+// pas atteignable aujourd hui (les quatre calques de publication sont toujours produits) et la
+// garde est la pour que le jour ou il le deviendrait, l ambiguite ne renaisse pas en silence.
+func (a *assemblage) poserLesCalquesProduits() {
+	if calques := calquesProduits(&a.doc, a.opt); len(calques) > 0 {
+		a.doc.Layers = calques
+	}
 }

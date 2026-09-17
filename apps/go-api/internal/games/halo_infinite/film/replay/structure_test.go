@@ -1161,8 +1161,23 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   versions de schéma » que D-7 interdit. AUCUNE des quatre révisions ne monte dans ce lot,
 	//   donc aucun match ne devient candidat au backlog killsource, et aucune recuisson n'est
 	//   requise. Détail : `document_chronicle.go`.
-	if SchemaVersion != 61 {
-		t.Fatalf("SchemaVersion = %d, attendu 61 : incrémenter exige une raison écrite ci-dessus "+
+	// - v62 (lot 4.2.1 du PLAN_DECODEUR_FILM, jalon M4, 2026-09-17) : L'ARTEFACT DIT SOUS QUELLE
+	//   RÉVISION CHAQUE CALQUE A ÉTÉ PRODUIT. `layers` est NEUF À LA RACINE — `nom de calque ->
+	//   révision de la couche productrice`, l'une des cinq connues (`source-`, `profile-`,
+	//   `grammar-`, `killsource-`, `publication-<schemaVersion>`) — et `coverage.deathsPaths` publie
+	//   les trois dénominateurs de CHACUNE des deux voies de lecture des morts (la MARCHE et le SCAN
+	//   DIRECT, de précisions différentes : 98,2 % contre 78,4 % au gate d'appariement). Au même
+	//   commit, `vehicleLabels` passe dans `calquesALaRequete` : mesure du 2026-09-17, aucun chemin
+	//   de `build*.go` ne le pose, il manquait à la table depuis son ajout.
+	//   POURQUOI LA VERSION MONTE alors que tout y est optionnel et que c'est de la TÉLÉMÉTRIE PURE :
+	//   un artefact 61 ne peut pas dire sous quelle révision chacun de ses calques a été produit — il
+	//   peut seulement ne rien en dire, et l'ABSENCE de `layers` est précisément ce qui doit signifier
+	//   « antérieur à 62 ». Lui laisser un second sens rouvrirait l'ambiguïté que D-7 interdit. Le
+	//   reclassement de `vehicleLabels` change en outre l'empreinte de forme CUITE, qui ne se
+	//   régénère que dans un commit qui monte la version. AUCUNE des quatre révisions ne monte,
+	//   donc aucun match ne devient candidat au backlog killsource. Détail : `document_chronicle.go`.
+	if SchemaVersion != 62 {
+		t.Fatalf("SchemaVersion = %d, attendu 62 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

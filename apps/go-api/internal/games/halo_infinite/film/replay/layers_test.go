@@ -34,7 +34,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
-// plancherChampsRacine : 58 balises `json:` a la racine du document au 2026-09-17 (le meme
+// plancherChampsRacine : 59 balises `json:` a la racine du document au 2026-09-17 (le meme
 // compte que `wantReplayDocumentFields`, `apps/go-api/contracttest/replay_contract_test.go`). Un
 // balayage qui en rend nettement moins n a pas trouve le type.
 const plancherChampsRacine = 50
@@ -207,7 +207,9 @@ func TestCalquesProduitsSuiventLesGardes(t *testing.T) {
 		t.Error("`calquesProduits` sur un document nil doit rendre nil : declarer des calques " +
 			"pour un document qui n existe pas serait une affirmation")
 	}
-	ferme := calquesProduits(&ReplayDocument{}, Options{})
+	// `FrameCount` NON NUL : sans lui le document serait « sans aucune piste », cas ou la table ne
+	// declare que la publication (cf. `calquesProduits`) — ce que le test suivant couvre.
+	ferme := calquesProduits(&ReplayDocument{FrameCount: 1}, Options{})
 	for balise := range couchesDesCalques {
 		_, gardee := gardesDeProduction[balise]
 		_, produit := ferme[balise]
@@ -221,7 +223,7 @@ func TestCalquesProduitsSuiventLesGardes(t *testing.T) {
 		}
 	}
 	origine := int64(42)
-	ouvert := calquesProduits(&ReplayDocument{OriginMs: &origine}, optionsToutesGardesOuvertes())
+	ouvert := calquesProduits(&ReplayDocument{FrameCount: 1, OriginMs: &origine}, optionsToutesGardesOuvertes())
 	if len(ouvert) != len(couchesDesCalques) {
 		for balise := range couchesDesCalques {
 			if _, ok := ouvert[balise]; !ok {
@@ -317,6 +319,56 @@ func TestCalquesGardesFermeesLaissentLeCalqueVide(t *testing.T) {
 			t.Errorf("le calque %q est declare GARDE, et la cuisson l ecrit pourtant toutes "+
 				"gardes fermees : sa passe tourne sans garde, retirer l entree de "+
 				"`gardesDeProduction` (son absence de `layers` mentirait)", balise)
+		}
+	}
+}
+
+// TestCalquesProduitsSurUnDocumentSansPisteNeDeclarentQueLaPublication : un film sans aucune
+// position publie un document TEL QUEL — aucune des treize passes de calque n a tourne. La table
+// ne doit alors declarer que les quatre calques de publication, et surtout pas les trente-et-un
+// calques non gardes : ce serait le mensonge exact que `layers` existe pour empecher.
+func TestCalquesProduitsSurUnDocumentSansPisteNeDeclarentQueLaPublication(t *testing.T) {
+	doc := BuildFromPositions("m", "halo_infinite", nil, nil, Options{FrameIntervalMS: 100})
+	if doc.FrameCount != 0 {
+		t.Fatalf("temoin : un document sans position doit garder FrameCount a zero, vu %d", doc.FrameCount)
+	}
+	if len(doc.Layers) == 0 {
+		t.Fatal("`layers` ABSENT sur un document cuit au schema 62 : son absence voudrait dire " +
+			"« artefact anterieur », et le document sans piste en est un de plus")
+	}
+	for nom, rev := range doc.Layers {
+		if rev != revisionDeLaPublication {
+			t.Errorf("le calque %q est declare produit sous %q sur un document SANS PISTE : "+
+				"sa passe n a pas tourne", nom, rev)
+		}
+	}
+	for nom, rev := range couchesDesCalques {
+		if rev != revisionDeLaPublication {
+			continue
+		}
+		if _, ok := doc.Layers[nom]; !ok {
+			t.Errorf("le calque de publication %q manque : il est ecrit par `ouvrir`, donc "+
+				"produit meme sans piste", nom)
+		}
+	}
+}
+
+// TestLayersEstPoseParLaCuisson : la table ATTEINT le document. Sans ce test, `layers` pourrait
+// rester nil en production sans qu aucune fermeture ne le dise.
+func TestLayersEstPoseParLaCuisson(t *testing.T) {
+	doc := BuildFromPositions("m", "halo_infinite", positionsPourVersion(), nil,
+		Options{FrameIntervalMS: 100})
+	if len(doc.Layers) == 0 {
+		t.Fatal("`layers` absent d une cuisson reelle : la passe `poserLesCalquesProduits` ne " +
+			"pose rien, ou elle n est pas appelee")
+	}
+	if doc.Layers["tracks"] != grammar.Rev {
+		t.Errorf("`layers[tracks]` vaut %q, attendu %q : la table n est pas celle qui est posee",
+			doc.Layers["tracks"], grammar.Rev)
+	}
+	for _, requete := range []string{"mapObjectives", "mapWeaponPads", "weaponTiers", "vehicleLabels"} {
+		if _, ok := doc.Layers[requete]; ok {
+			t.Errorf("le calque a la requete %q est declare produit par la cuisson", requete)
 		}
 	}
 }

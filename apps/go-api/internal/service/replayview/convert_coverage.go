@@ -48,6 +48,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		Bridge:            toBridgeHealth(v.Bridge),
 		Fallbacks:         toFallbackHits(v.Fallbacks),
 		Decoder:           ptrOf(v.Decoder, toDecoderCoverage),
+		DeathsPaths:       ptrOf(v.DeathsPaths, toDeathsPathsCoverage),
 	}
 }
 
@@ -350,5 +351,23 @@ func toAbilityImpulseScanCoverage(v replay.AbilityImpulseScanCoverage) replaydoc
 		Read:    v.Read,
 		Unread:  v.Unread,
 		Tag1:    v.Tag1,
+	}
+}
+
+// toDeathsPathsCoverage projette le bloc `coverage.deathsPaths` : les trois denominateurs de
+// CHACUNE des deux voies de lecture des morts. Plate, comme `toDecoderCoverage`, et sous la meme
+// parite champ par champ (`parity_test.go`).
+func toDeathsPathsCoverage(v replay.DeathsPathsCoverage) replaydoc.DeathsPathsCoverage {
+	return replaydoc.DeathsPathsCoverage{
+		Walk: toDeathsPathTally(v.Walk),
+		Scan: toDeathsPathTally(v.Scan),
+	}
+}
+
+func toDeathsPathTally(v replay.DeathsPathTally) replaydoc.DeathsPathTally {
+	return replaydoc.DeathsPathTally{
+		Population: v.Population,
+		Matched:    v.Matched,
+		Published:  v.Published,
 	}
 }

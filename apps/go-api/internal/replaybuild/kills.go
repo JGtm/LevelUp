@@ -129,7 +129,7 @@ func (b *Builder) killRefs(matchID string, deaths filmDeaths, res *decfilm.Resul
 	}
 	r := resolveKills(res.Kills, gamertagXUIDIndex(deaths.list))
 	r.log(matchID, len(res.Kills))
-	return replay.KillsInput{Read: true, Kills: r.refs},
+	return replay.KillsInput{Read: true, Kills: r.refs, Paths: voiesDesMorts(res)},
 		replay.MatchKillsInput{Read: true, Kills: r.pairs, Dropped: len(res.Kills) - len(r.pairs)}
 }
 
@@ -234,4 +234,36 @@ func resolveKillIdentity(name string, byGamertag map[string]uint64) (uint64, boo
 	}
 	xuid, ok := byGamertag[name]
 	return xuid, ok
+}
+
+// voiesDesMorts traduit ce que les DEUX VOIES de lecture des morts ont propose, apparie et publie
+// en bloc de couverture de l artefact (schema 62, lot 4.2.1-b).
+//
+// # POURQUOI ICI, ET PAS DANS LE DECODEUR
+//
+// Les deux voies existent dans le type publie de `killsource` depuis toujours et leurs
+// denominateurs sont mesures par le decodage (`Result.Stats.Walk` / `.Scan`) ; ce qui manquait
+// est le PONT jusqu a l artefact — aucun compte par voie ne l atteignait, donc aucun
+// consommateur ne pouvait ponderer une ligne de mort par la precision de la voie qui l a lue.
+// Le decodeur, lui, n a pas a connaitre la forme de l artefact : il rend ses statistiques, et
+// c est la cuisson qui decide de les publier (meme frontiere que `neutralDeaths` juste au-dessus).
+//
+// L APPEL EST GARDE PAR SON APPELANT : il n est atteint que sur le chemin ou `KillsInput.Read`
+// vaut vrai, donc un bloc present veut dire « les morts ont ete lues », jamais « elles ont ete
+// lues et n ont rien rendu ».
+func voiesDesMorts(res *decfilm.Result) *replay.DeathsPathsCoverage {
+	if res == nil {
+		return nil
+	}
+	return &replay.DeathsPathsCoverage{
+		Walk: tallyDeVoie(res.Stats.Walk),
+		Scan: tallyDeVoie(res.Stats.Scan),
+	}
+}
+
+// tallyDeVoie recopie les trois denominateurs d une voie. Les noms ne changent pas en route :
+// une traduction de vocabulaire entre le decodeur et l artefact rendrait la jointure des deux
+// mesures impossible a verifier.
+func tallyDeVoie(s decfilm.PathStats) replay.DeathsPathTally {
+	return replay.DeathsPathTally{Population: s.Population, Matched: s.Matched, Published: s.Published}
 }
