@@ -24,7 +24,16 @@ import { BriefingSectionCard } from './BriefingSectionCard'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 
-/** Ligne d'arme : libellé tronqué, frags alignés à droite, barre fine teintée par classe. */
+/**
+ * Ligne d'arme : nom, barre et compteur sur UNE SEULE ligne (gate visuel du 2026-09-17 —
+ * la barre passait auparavant sous le nom).
+ *
+ * Le libellé prend une part FIXE (`basis-[50%] shrink-0`) pour que les barres des deux
+ * armes démarrent au même endroit : une largeur laissée au contenu les décalerait l'une
+ * par rapport à l'autre. La barre mange le reste (`flex-1`), le compteur reste à droite à
+ * sa largeur propre. FLEX seulement, jamais de grille à colonnes nommées : le test DP-3
+ * cible la dernière grille de ce type et tomberait sur celle-ci (D10).
+ */
 function WeaponRow({
   weapon,
   maxKills,
@@ -36,19 +45,19 @@ function WeaponRow({
 }) {
   const pct = Math.round((weapon.kills / maxKills) * 100)
   return (
-    <li className="flex flex-col gap-1">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="min-w-0 truncate text-xs font-medium text-foreground">{weapon.label}</span>
-        <span className="flex-shrink-0 text-xs font-semibold tabular-nums text-foreground">
-          {weapon.kills.toLocaleString(intlLocale(locale))}
-        </span>
-      </div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-muted-foreground/15">
+    <li className="flex items-center gap-2">
+      <span className="min-w-0 shrink-0 basis-[50%] truncate text-xs font-medium text-foreground">
+        {weapon.label}
+      </span>
+      <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-muted-foreground/15">
         <div
           className="h-full rounded-full"
           style={{ width: `${pct}%`, backgroundColor: fragClassColor(weapon.class) }}
         />
       </div>
+      <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">
+        {weapon.kills.toLocaleString(intlLocale(locale))}
+      </span>
     </li>
   )
 }

@@ -1,7 +1,8 @@
 /**
  * Tests du bloc « Arme favorite » du briefing Explorer.
  *
- * Deux contrats : le NOMBRE d'armes suit `slots` (deux ou une, toujours avec leur barre),
+ * Deux contrats : le NOMBRE d'armes suit `slots` (deux ou une, chacune tenant sur UNE
+ * ligne — nom, barre et compteur côte à côte, gate visuel du 2026-09-17),
  * et l'HABILLAGE est celui des voisines de la rangée — la carte, empilé comme seul
  * (décision utilisateur au gate visuel du 2026-09-17). Le stub i18n renvoie la clé : on
  * contrôle la structure, pas la traduction.
@@ -59,6 +60,28 @@ describe('FavoriteWeaponBlock — nombre d’armes selon la place', () => {
     expect(text).toContain('Fusil de combat')
     expect(text).not.toContain('Pistolet')
     expect(bars(container)).toBe(1)
+  })
+
+  it('tient chaque arme sur UNE ligne : nom, barre et compteur côte à côte', () => {
+    const { container } = renderWithProviders(
+      <FavoriteWeaponBlock weapons={weaponsBlock()} slots={2} t={t} locale="fr" />,
+    )
+    const lignes = Array.from(container.querySelectorAll('li'))
+    expect(lignes).toHaveLength(2)
+    const attendu = [
+      { label: 'Fusil de combat', kills: '40' },
+      { label: 'Pistolet', kills: '25' },
+    ]
+    lignes.forEach((ligne, i) => {
+      expect(ligne.textContent).toContain(attendu[i].label)
+      expect(ligne.textContent).toContain(attendu[i].kills)
+      // La barre vit DANS la ligne, plus en dessous.
+      expect(ligne.querySelectorAll('[class*="bg-muted-foreground/15"]')).toHaveLength(1)
+      // Rangée flex, jamais empilée — et jamais une grille (D10, piège du test DP-3).
+      expect(ligne.className).toContain('flex')
+      expect(ligne.className).not.toContain('flex-col')
+      expect(ligne.className).not.toContain('grid')
+    })
   })
 })
 
