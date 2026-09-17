@@ -5178,12 +5178,12 @@ code, l'ADR amendé, le triage du §4 — les deux dernières étant le lot docu
 - [x] **entrée `.ai/thought_log.md`** — pilote. Brouillon RÉDIGÉ par le lot documents, hors FAIT le 2026-09-17 : entrée en tête de `.ai/thought_log.md`, ce commit.
       dépôt, avec deux placeholders à remplir avec les chiffres des gates finaux :
       `__REFIGEAGE__` (les étapes re-figées) et `__CORPUS__` (le verdict du corpus gate final).
-- [ ] **recuisson du parc sur signal** — pilote. REPORTÉE ici depuis la clôture M2 par V20 (1) ;
+- [x] **recuisson du parc sur signal** — pilote. REPORTÉE ici depuis la clôture M2 par V20 (1) ; FAITE le 2026-09-17 (GO utilisateur) : `levelup backfill-replay --only-existing`, code a5d15e634 (`LEVELUP_REPO_ROOT` = checkout principal), 87 artefacts construits, 0 erreur de décodage, 0 carte hors catalogue, 37 min 42 s, pic mémoire 3,30 GiB ; aucun serveur ne tournait, la session qui le tenait avait disparu ; schéma 61, révisions de M3 dans `coverage.decoder`.
       coût réel mesuré : **87 artefacts**, ~25 min, sans toucher la base. Le backlog killsource
       ouvert par la montée de `facts.Rev` (`killsource-2026-09-17.2`) N'EN FAIT PAS PARTIE : il
       est repoussé après M4 au plus tôt, sur signal explicite, et groupé avec toute montée
       ultérieure (V24).
-- [ ] **fusion dans `feat/v75` (V3)** — pilote, CI verte au niveau job. Push sur `main` =
+- [x] **fusion dans `feat/v75` (V3)** — pilote, CI verte au niveau job. Push sur `main` = FAITE le 2026-09-17 : `origin/feat/v75` 248f49750 <- intégration a5d15e634 (94 commits, 0 conflit, batterie complète 185 paquets `ok`, OpenAPI identique), commit dcd18e87a poussé (rejoué une fois : la distante avait bougé pendant la première passe), CI surveillée.
       déploiement prod : prévenir l'utilisateur.
 
 #### Clôture M3 — triage du §4 (2026-09-17)
