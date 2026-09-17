@@ -43,9 +43,12 @@ export interface UseHlsVideoOptions {
   /** La source du média : tout ce qui n'est pas un `.m3u8` est laissé au `<video src>`. */
   src: string
   /**
-   * `false` : le manifest est lu (les pistes audio remontent) mais AUCUN segment n'est
-   * téléchargé avant un `startLoad()` de l'appelant — ce que fait le coverflow, qui monte
-   * jusqu'à cinq lecteurs et n'en écoute qu'un. Défaut `true` : un lecteur seul charge.
+   * `false` : le manifest est lu (les pistes audio, elles, ne remontent qu'après le premier
+   * `startLoad()` — hls.js n'émet AUDIO_TRACKS_UPDATED que depuis
+   * `AudioTrackController.switchLevel()`, sur LEVEL_LOADING / LEVEL_SWITCHING) mais AUCUN
+   * segment n'est téléchargé avant un `startLoad()` de l'appelant — ce que fait le
+   * coverflow, qui monte jusqu'à cinq lecteurs et n'en écoute qu'un.
+   * Défaut `true` : un lecteur seul charge.
    */
   autoStartLoad?: boolean
   /** Pistes audio du master (vide au démontage). Non appelé quand le master n'en expose pas. */

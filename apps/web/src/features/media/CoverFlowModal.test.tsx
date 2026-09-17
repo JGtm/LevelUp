@@ -651,3 +651,30 @@ describe('CoverFlowModal — enchaînement automatique effectif', () => {
     expect(screen.getByText(/ImgC/)).toBeInTheDocument()
   })
 })
+
+describe('CoverFlowModal — vignette en poster du lecteur', () => {
+  // Les voisins HLS ne chargent aucun segment (autoStartLoad:false) et le clip
+  // centré n'a pas encore décodé sa première image : sans poster, le slot est un
+  // cadre noir. La vignette déjà produite par le pipeline média le remplit.
+  it('la vignette sert de poster au lecteur', () => {
+    const item = makeItem({
+      basename: 'A.mp4',
+      file_path: '/media/A.mp4',
+      thumbnail_path: '/media/thumbs/A.jpg',
+    })
+    const { container } = renderWithProviders(
+      <CoverFlowModal items={[item]} startIndex={0} onClose={vi.fn()} onToggleLike={vi.fn()} />,
+    )
+    const video = container.querySelector('video') as HTMLVideoElement
+    expect(video.getAttribute('poster')).toBe('/media/thumbs/A.jpg')
+  })
+
+  it('aucun poster quand le média n\'a pas de vignette', () => {
+    const item = makeItem({ basename: 'A.mp4', file_path: '/media/A.mp4', thumbnail_path: null })
+    const { container } = renderWithProviders(
+      <CoverFlowModal items={[item]} startIndex={0} onClose={vi.fn()} onToggleLike={vi.fn()} />,
+    )
+    const video = container.querySelector('video') as HTMLVideoElement
+    expect(video.hasAttribute('poster')).toBe(false)
+  })
+})
