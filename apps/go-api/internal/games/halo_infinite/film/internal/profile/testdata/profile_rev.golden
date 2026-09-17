@@ -60,5 +60,19 @@
 #               ecarte ne se decode plus du tout, ce qui est une decision d ORCHESTRATION
 #               (`sync/killcollector`, `replaybuild`), hors de cette couche. La monter aurait
 #               ouvert un backlog killsource pour une sortie identique a l octet.
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 3.1.1-b), ET LE CHOIX EST
+#               EXPLICITE. La couche gagne la TABLE DES EMPREINTES DE REGISTRE
+#               (`registre_empreintes.go`, 9 clefs recopiees du catalogue versionne) et sa
+#               CLASSIFICATION (`classement_registre.go` : connue / presumee / inconnue).
+#               AUCUN BIT LU NE CHANGE : une empreinte de registre ne commande aucune largeur,
+#               aucune borne, aucune plage — D2 (3.2) l a mesure, trois paires de clefs
+#               PARTAGENT leur empreinte alors que leurs tailles de structures different, donc
+#               l empreinte ne peut pas servir de clef de decodage et ne sert qu a CLASSER.
+#               Ce qui change est la TELEMETRIE de l artefact (`coverage.decoder.registry.status`
+#               passe `inconnue` -> `connue` sur cinq clefs), publiee par la couche `replay`, qui
+#               ne porte aucune revision. Monter celle-ci aurait fait monter `grammar.Rev` puis
+#               `facts.Rev`, donc OUVERT UN BACKLOG KILLSOURCE pour une sortie de faits
+#               identique a l octet.
 profile-2026-09-17	923c8ad7d9495662e97c1240b1c3e77abcffd04d9b3ae38e5748b859e8623e63
-profile-2026-09-17.2	ed7df93b151f59a1a545ab9f1289610ab427054a7349ffe92e36f5e02aa6f7de
+profile-2026-09-17.2	c620ec50e2ca0de61b973339e9b327f6f1cd432e0b5afcef37a63c7ca6c50a9e
