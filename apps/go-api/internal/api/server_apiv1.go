@@ -43,6 +43,7 @@ import (
 	"levelup/go-api/internal/ops"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
@@ -93,6 +94,7 @@ type apiV1Deps struct {
 	sessionStore          *session_platform.Store
 	tokenProvider         auth_platform.TokenProvider
 	groupStore            *groupstore.GroupStore
+	friendStore           *friendstore.FriendStore
 	settingsStore         *settings_platform.Store
 	assetHandler          *handlers.AssetHandler
 	assetMetaHandler      *handlers.AssetMetadataHandler
@@ -124,6 +126,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	sessionStore := d.sessionStore
 	tokenProvider := d.tokenProvider
 	groupStore := d.groupStore
+	friendStore := d.friendStore
 	settingsStore := d.settingsStore
 	assetHandler := d.assetHandler
 	assetMetaHandler := d.assetMetaHandler
@@ -155,7 +158,29 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	humaAPI := newHumaAPI(r, apiOpt)
 	registerChangelogHuma(humaAPI, handlers.NewChangelogHandler(cfg.RepoRoot))
 
+	// Verrou « instance fermée » (lockdown) : RÉSOLVEUR UNIQUE de l'instance
+	// (ADR 0035 D5). Effectif = env (LEVELUP_INSTANCE_LOCKED, verrou forcé au boot)
+	// OU app_settings.instance_locked (mutable à chaud via PATCH /settings admin).
+	// Résolu live à chaque appel pour refléter une bascule runtime. Construit ICI et
+	// injecté partout — aucun consommateur ne relit la clé (garde-rail
+	// internal/archlint/no_bare_instance_lock_read_test.go). Le repli sur erreur de
+	// lecture (WARN + non verrouillé) vit dans authz.InstanceLocked.
+	instanceLockedFn := func() bool {
+		return authz.InstanceLocked(cfg.InstanceLocked, func() (bool, error) {
+			s, err := settingsStore.Load()
+			if err != nil {
+				return false, err
+			}
+			return s.InstanceLocked, nil
+		})
+	}
+
 	// Endpoints P0 : bootstrap + liste joueurs
+	// Le bootstrap expose le verrou au front (bandeau « instance fermée ») : il le
+	// prend au résolveur, jamais en relisant cfg/settings de son côté.
+	if bootSvc != nil {
+		bootSvc.WithInstanceLock(instanceLockedFn)
+	}
 	handlers.NewBootstrapHandler(bootSvc).Mount(r, apiOpt)
 	handlers.NewPlayersHandler(bootSvc).Mount(r, apiOpt)
 
@@ -304,24 +329,6 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	sessionHandler := handlers.NewSessionHandler(sessionStore)
 	sessionHandler.Mount(r, apiOpt)
 
-	// Verrou « instance fermée » (lockdown) : effectif = env (LEVELUP_INSTANCE_LOCKED,
-	// verrou forcé au boot) OU app_settings.instance_locked (mutable à chaud via
-	// PATCH /settings admin). Résolu live pour refléter une bascule runtime.
-	instanceLockedFn := func() bool {
-		if cfg.InstanceLocked {
-			return true
-		}
-		s, err := settingsStore.Load()
-		if err != nil {
-			// LOGUE AVANT DE DÉGRADER (règle n°3) : sans cette ligne, un app_settings.json
-			// illisible faisait retomber le verrou sur "non verrouillé" en silence (Q8,
-			// .ai/DECOUVERTES_TACTIQUE_2026-09-07.md).
-			slog.Warn("instance_locked: settings illisibles, repli sur non verrouillé", "err", err)
-			return false
-		}
-		return s.InstanceLocked
-	}
-
 	// Sprint 15 : Device Code Flow + authentification Halo
 	// D3 cohabitation (cf. SPRINT_XBOX_SSO §0bis) : en mode "xbox", la LinkStrategy
 	// est XboxSSOLinkStrategy (login direct via XUID + création user si nouveau).
@@ -343,10 +350,23 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			}
 			return daemon
 		}
+		// Porte « profil suivi » (ADR 0035 D3) : le login SSO crée le compte et
+		// persiste les tokens, mais ne met le joueur sous surveillance que s'il a
+		// un profil déclaré. Erreur de lecture ⇒ refus journalisé.
+		ssoProfileGate := func(gctx context.Context, titleSlug, xuid string) bool {
+			ok, err := cfg.HasTrackedProfile(titleSlug, xuid)
+			if err != nil {
+				slog.ErrorContext(gctx, "xbox_sso: lecture de db_profiles.json échouée — watcher non notifié",
+					"err", err, "title_slug", titleSlug, "xuid", xuid)
+				return false
+			}
+			return ok
+		}
 		xboxLinkStrategy = service.NewXboxSSOLinkStrategy(users).
 			WithTokenStore(multiUserTokens).
 			WithDaemonGetter(daemonGetter).
 			WithInstanceLock(instanceLockedFn).
+			WithProfileGate(ssoProfileGate).
 			WithInviteStore(invites).
 			WithGroupStore(groupStore)
 		authHandler.WithLinkStrategy(xboxLinkStrategy)
@@ -389,6 +409,21 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		groupsHandler.Mount(r, apiOpt) // 7 routes /groups migrées vers Huma (V72-01 / H5)
 	})
 
+	// ProfileService PARTAGÉ : writer UNIQUE de db_profiles.json. Le store
+	// porte un verrou process par-instance → toutes les écritures (onboarding
+	// setup ET réglages titre B.5) DOIVENT passer par la MÊME instance, sinon
+	// deux read-modify-write concurrents pourraient s'écraser (lost update).
+	profileService := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot).
+		WithDBEvictor(func(playerDBPath string) { platform_duckdb.EvictAndCloseCached(playerDBPath) })
+	// Annuaire des joueurs (ADR 0035) : UNE instance pour la lecture admin
+	// (GET /admin/identities) ET l'écriture (POST /setup/players → Onboard,
+	// D4). Construite ici parce que les deux points de montage en dépendent et
+	// que le créateur de profil qu'elle porte est le writer unique ci-dessus.
+	playerDirectory := buildPlayerDirectory(playerDirectoryDeps{
+		cfg: cfg, users: users, tokens: authStore, groups: groupStore, daemon: daemon,
+		profiles: profileService,
+	})
+
 	// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
 	adminHandler := handlers.NewAdminHandler(users, invites)
 	r.Route("/admin", func(r chi.Router) {
@@ -410,6 +445,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// seule du MultiUserTokenStore (ADR 0023), sans refresh réseau.
 		tokenHealthHandler := handlers.NewAdminTokenHealthHandler(reg.TokenHealth)
 		tokenHealthHandler.Mount(r.With(middleware.NoStore), adminOpt)
+		// Annuaire des joueurs (ADR 0035 D7) : les quatre registres d'identité
+		// (compte, profil, credentials, suivi live) lus ENSEMBLE par xuid, plus le
+		// témoin disque. NoStore : l'anomalie qu'on vient de corriger doit
+		// disparaître au rafraîchissement suivant, pas au bout d'un cache.
+		identitiesHandler := handlers.NewAdminIdentitiesHandler(playerDirectory)
+		identitiesHandler.Mount(r.With(middleware.NoStore), adminOpt)
 		// Dashboard monitoring admin : overview/scheduler/convergence/jobs
 		// + actions correctives (data-health run, cycle auto-sync forcé).
 		// Cf. server_admin_monitoring.go.
@@ -473,18 +514,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	}
 
 	// Sprint 16 : Settings + Setup joueur
-	// §4 plan Squad/Sessions : orchestrator recompute is_with_friends, déclenché
-	// async sur diff friend_gamertags lors d'un PATCH /settings.
-	friendsOrchestrator := service.NewFriendsOrchestratorService(cfg, func() ([]string, error) {
-		s, err := settingsStore.Load()
-		if err != nil {
-			return nil, err
-		}
-		return s.FriendGamertags, nil
-	}).WithNotifier(reg.NotificationsEmitter)
+	// Orchestrateur du recompute is_with_friends : déclenché par le PUT de la
+	// liste d'amis d'un joueur (handlers/friends.go), avec SA liste.
+	friendsOrchestrator := service.NewFriendsOrchestratorService(cfg, friendStore.Get).
+		WithNotifier(reg.NotificationsEmitter)
 	settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore).
-		WithFriendsOrchestrator(friendsOrchestrator).
-		WithNotificationsEmitter(reg.NotificationsEmitter).
+		WithFriendStore(friendStore).
 		WithBackupScheduler(backupScheduler)
 	// Fraîcheur A4.2 : le runner monitoring lit l'âge du dernier backup depuis
 	// le même scheduler (manifest duckdbbackup) — nil toléré (section absente).
@@ -498,13 +533,17 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		settingsHandler.Mount(r, apiOpt) // /settings + /settings/{media,sessions,backup}/...
 	})
 
-	// ProfileService PARTAGÉ : writer UNIQUE de db_profiles.json. Le store
-	// porte un verrou process par-instance → toutes les écritures (onboarding
-	// setup ET réglages titre B.5) DOIVENT passer par la MÊME instance, sinon
-	// deux read-modify-write concurrents pourraient s'écraser (lost update).
-	profileService := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot).
-		WithDBEvictor(func(playerDBPath string) { platform_duckdb.EvictAndCloseCached(playerDBPath) })
-	setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, profileService)
+	// Le SetupHandler n'écrit plus db_profiles.json lui-même : il passe par
+	// l'annuaire (Onboard), seul chemin de création de profil (ADR 0035 D4). Le
+	// ProfileService PARTAGÉ (writer unique du fichier, construit plus haut) est
+	// derrière l'annuaire. WithProvisionGrant : un invité porteur d'un droit de
+	// provisioning passe le verrou pour SON premier profil (plan amis/invitations
+	// D3) — même lookup que l'exemption admin.
+	setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore).
+		WithDirectory(playerDirectory).
+		WithInstanceLock(instanceLockedFn).
+		WithUserLookup(users).
+		WithProvisionGrant(users, users)
 	// S8 (sécurité, lot S) : /setup/players (écrit db_profiles.json) et
 	// /setup/smoke-test → RequireAuth par cohérence (gardes internes conservées).
 	// No-op en démo / auth non activée.
@@ -523,7 +562,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	registerJobsHuma(
 		newHumaAPI(r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)), apiOpt),
 		handlers.NewJobsHandler(jobStore))
-	syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider)
+	syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider).
+		WithFriendStore(friendStore)
 	// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
 	if prestigeBundle != nil {
 		syncH = syncH.WithPrestigeHook(prestigeBundle.RunPostSync)
@@ -636,7 +676,31 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		titleOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/profiles/{player_slug}/titles/{slug}")
 		r.Use(middleware.TitleSlugFromPath("slug"))
 		r.Use(ownershipMW)
-		handlers.NewTitleSyncHandler(profileService).Mount(r, titleOpt)
+		// Le suivi live suit le profil : pause/purge retirent le couple du watcher,
+		// réactivation le remet (revue adversariale du 2026-09-16, P1).
+		handlers.NewTitleSyncHandler(profileService).
+			WithWatcher(func() handlers.TitleWatcher {
+				// DaemonController ne porte pas RemovePlayerTitle : même assertion
+				// que buildPlayerDirectory pour WatchedReader. nil si pas de daemon.
+				if tw, ok := daemon.(handlers.TitleWatcher); ok {
+					return tw
+				}
+				return nil
+			}).
+			WithPlayerLookup(func(titleSlug, playerSlug string) (domain.PlayerSummary, bool) {
+				players, err := cfg.LoadPlayers(titleSlug)
+				if err != nil {
+					slog.Warn("title sync: profils illisibles pour aligner le suivi live", "err", err, "titleSlug", titleSlug)
+					return domain.PlayerSummary{}, false
+				}
+				for _, p := range players {
+					if p.PlayerSlug == playerSlug {
+						return p, true
+					}
+				}
+				return domain.PlayerSummary{}, false
+			}).
+			Mount(r, titleOpt)
 	})
 
 	// Endpoints P1 : pages par joueur (Sprint 37 — DI via wire.ServiceRegistry)
@@ -674,6 +738,16 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 		filters := handlers.NewFiltersHandler(reg.Filters)
 		filters.Mount(r, playerOpt)
+
+		// Amis du joueur (liste par profil, D1/D4) : lecture pour qui accède au
+		// profil, écriture pour le propriétaire direct ou un admin. Le recompute
+		// is_with_friends du joueur suit chaque écriture.
+		friendsHandler := handlers.NewFriendsHandler(friendStore, users,
+			handlers.PlayerXUIDResolver(playerOwnershipXUIDResolver(cfg)),
+			playerGamertagResolver(cfg), cfg.DemoMode, cfg.AuthMode).
+			WithRecomputer(friendsOrchestrator).
+			WithNotifications(reg.NotificationsEmitter, cfg.AppSettingsPath)
+		friendsHandler.Mount(r, playerOpt)
 
 		mh := handlers.NewMatchHistoryHandler(reg.MatchHistoryCtx)
 		mh.Mount(r, playerOpt) // POST /pages/match-history/query (export CSV reste chi, plus bas)
@@ -1028,6 +1102,7 @@ type apiV1Inputs struct {
 	autoSyncScheduler *scheduler.AutoSyncScheduler
 	backupScheduler   *duckdbbackup.Scheduler
 	groupStore        *groupstore.GroupStore
+	friendStore       *friendstore.FriendStore
 	sessionStore      *session_platform.Store
 	attemptStore      *auth_platform.AttemptStore
 	settingsStore     *settings_platform.Store
@@ -1049,6 +1124,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	autoSyncScheduler := in.autoSyncScheduler
 	backupScheduler := in.backupScheduler
 	groupStore := in.groupStore
+	friendStore := in.friendStore
 	sessionStore := in.sessionStore
 	attemptStore := in.attemptStore
 	settingsStore := in.settingsStore
@@ -1180,6 +1256,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		WithTitleResolver(titleResolver).
 		WithCapabilities(hiCaps).
 		WithSettingsStore(settingsStore).
+		WithFriendStore(friendStore).
 		WithRankCatalog(hiRanks).
 		WithRankImageURLsByTitle(rankImageURLsByTitle).
 		WithPlaylistLabelOverrides(playlistLabelOverrides).
@@ -1471,6 +1548,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		sessionStore:          sessionStore,
 		tokenProvider:         tokenProvider,
 		groupStore:            groupStore,
+		friendStore:           friendStore,
 		settingsStore:         settingsStore,
 		assetHandler:          assetHandler,
 		assetMetaHandler:      assetMetaHandler,

@@ -33,11 +33,9 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/notifications"
-	"levelup/go-api/internal/notify"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
-	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/service"
 	go_sync "levelup/go-api/internal/sync"
@@ -46,13 +44,12 @@ import (
 
 // SettingsHandler gère les endpoints de configuration.
 type SettingsHandler struct {
-	cfg                 *config.AppConfig
-	settingsStore       *settings_platform.Store
-	jobStore            *jobs.Store
-	mediaIndexer        service.MediaIndexer
-	friendsOrchestrator port.FriendsOrchestrator    // nil = recompute désactivé (mode legacy)
-	notifierFor         NotificationsEmitterFactory // nil = pas de notifs friend_added
-	backupSched         *duckdbbackup.Scheduler     // nil = backup désactivé
+	cfg           *config.AppConfig
+	settingsStore *settings_platform.Store
+	friendStore   *friendstore.FriendStore // nil = aucun ami résolu au recalcul des sessions
+	jobStore      *jobs.Store
+	mediaIndexer  service.MediaIndexer
+	backupSched   *duckdbbackup.Scheduler // nil = backup désactivé
 }
 
 // NewSettingsHandler crée un SettingsHandler avec le DirMediaIndexer par défaut.
@@ -76,18 +73,10 @@ func NewSettingsHandlerWithIndexer(
 	}
 }
 
-// WithFriendsOrchestrator branche un FriendsOrchestrator déclenché sur diff
-// friend_gamertags lors d'un PATCH /settings. §4 plan Squad/Sessions overhaul.
-func (h *SettingsHandler) WithFriendsOrchestrator(o port.FriendsOrchestrator) *SettingsHandler {
-	h.friendsOrchestrator = o
-	return h
-}
-
-// WithNotificationsEmitter branche la factory d'émetteurs pour les notifications
-// friend_added (§6 plan Squad/Sessions overhaul). Sans wiring, le PATCH
-// fonctionne mais aucune notif n'est émise.
-func (h *SettingsHandler) WithNotificationsEmitter(f NotificationsEmitterFactory) *SettingsHandler {
-	h.notifierFor = f
+// WithFriendStore branche le store des amis par joueur, lu par le recalcul des
+// sessions (chaque joueur est recalculé avec SA liste). Nil → aucun ami résolu.
+func (h *SettingsHandler) WithFriendStore(store *friendstore.FriendStore) *SettingsHandler {
+	h.friendStore = store
 	return h
 }
 
@@ -236,6 +225,15 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 		}
 		slog.InfoContext(ctx, "settings: verrou d'instance modifié", "locked", *req.InstanceLocked)
 	}
+	// Verrou forcé par l'environnement (LEVELUP_INSTANCE_LOCKED) : le fichier ne
+	// peut pas l'ouvrir — écrire `false` réussirait sur disque alors que l'instance
+	// resterait fermée, et l'interrupteur admin se recocherait seul (revue
+	// adversariale du 2026-09-16). Refus explicite, quel que soit le mode d'auth.
+	if req.InstanceLocked != nil && !*req.InstanceLocked && h.cfg.InstanceLocked {
+		slog.WarnContext(ctx, "settings: déverrouillage refusé — verrou forcé par l'environnement")
+		return nil, humacore.NewError(http.StatusConflict, "instance_lock_forced",
+			"Le verrou est force par l'environnement (LEVELUP_INSTANCE_LOCKED) et ne peut pas etre leve depuis les reglages.")
+	}
 
 	// Validation des champs analyse.
 	if req.SessionGapMinutes != nil && *req.SessionGapMinutes < 0 {
@@ -291,9 +289,6 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
 
-	// Snapshot friend_gamertags avant Apply pour détecter le diff post-save.
-	prevFriends := append([]string(nil), cfg.FriendGamertags...)
-
 	settings_platform.Apply(cfg, &req)
 
 	if err := h.settingsStore.Save(cfg); err != nil {
@@ -308,28 +303,6 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 			"value", cfg.RendementExcludeAssists)
 	}
 	analysis.SetExcludeAssistsFromYield(cfg.RendementExcludeAssists)
-
-	// §4 plan Squad/Sessions overhaul : si friend_gamertags a changé,
-	// déclencher async le recompute is_with_friends sur toutes les player DBs.
-	// Idempotent (la garde FALSE dans friends_recompute.go protège les retries).
-	if h.friendsOrchestrator != nil && friendGamertagsChanged(prevFriends, cfg.FriendGamertags) {
-		go func() {
-			bgCtx := context.Background()
-			if err := h.friendsOrchestrator.OnFriendsChanged(bgCtx); err != nil {
-				slog.ErrorContext(bgCtx, "friends recompute orchestration failed", "err", err)
-			}
-		}()
-	}
-
-	// §6 plan Squad/Sessions overhaul : notif friend_added pour chaque nouveau
-	// gamertag (set diff prev → next). Best-effort (warn log si l'émetteur
-	// échoue, mais la réponse PATCH reste OK).
-	if h.notifierFor != nil {
-		added := newFriendsAdded(prevFriends, cfg.FriendGamertags)
-		if len(added) > 0 {
-			h.emitFriendsAdded(ctx, added)
-		}
-	}
 
 	// PMT-4 PR-3c : persiste l'overlay per-titre (après le Save global réussi).
 	if len(perTitleOverlay) > 0 {
@@ -346,23 +319,6 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 		resolved = cfg
 	}
 	return &settingsJSONOutput{Body: h.settingsResponse(resolved)}, nil
-}
-
-// newFriendsAdded retourne les gamertags présents dans next mais pas dans prev
-// (set diff case-insensitive + trim, cohérent avec friendGamertagsChanged).
-// Retourne les gamertags **dans la casse next** (préserve la saisie utilisateur).
-func newFriendsAdded(prev, next []string) []string {
-	prevSet := make(map[string]struct{}, len(prev))
-	for _, gt := range prev {
-		prevSet[normalizeGamertag(gt)] = struct{}{}
-	}
-	var added []string
-	for _, gt := range next {
-		if _, ok := prevSet[normalizeGamertag(gt)]; !ok {
-			added = append(added, gt)
-		}
-	}
-	return added
 }
 
 // validateReplayBuildLocation contrôle le réglage « où se construit un rejeu ».
@@ -389,59 +345,6 @@ func (h *SettingsHandler) validateReplayBuildLocation(ctx context.Context, loc *
 		return humacore.NewError(http.StatusBadRequest, "invalid_replay_build_location", err.Error())
 	}
 	return nil
-}
-
-// emitFriendsAdded émet 1 notification friend_added (in-app) par nouveau
-// gamertag, et déclenche le webhook Discord si activé. §6.A + §6.B.
-// Best-effort sur les 2 canaux : warn log + continue, jamais bloquant.
-func (h *SettingsHandler) emitFriendsAdded(ctx context.Context, added []string) {
-	if h.notifierFor == nil {
-		return
-	}
-	em, err := h.notifierFor(ctx, "")
-	if err != nil || em == nil {
-		slog.WarnContext(ctx, "notifications: friend_added emitter factory failed", "err", err)
-		return
-	}
-	// Charger NotifyConfig une fois pour la batch (évite N reads disk).
-	notifyCfg := notify.LoadNotifyConfig(h.cfg.AppSettingsPath)
-	// PMT-11 : libellés Discord du titre courant (outcomes + footer). Failsafe Halo.
-	notifyCfg.Labels = notify.LabelsForSlug(ctxkeys.TitleSlug(ctx))
-	for _, gt := range added {
-		if err := em.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategoryFriendAdded,
-			Severity: notifications.SeverityInfo,
-			TitleKey: "notif.friend_added.title",
-			BodyKey:  "notif.friend_added.body",
-			Params:   map[string]any{"gamertag": gt},
-			Source:   "settings_handler",
-		}); err != nil {
-			slog.WarnContext(ctx, "notifications: friend_added emit", "gamertag", gt, "err", err)
-		}
-		// §6.B Discord : webhook failsafe (no-op si webhook vide / NotifyFriends off).
-		go notify.NotifyFriendAdded(notifyCfg, gt)
-	}
-}
-
-// friendGamertagsChanged compare deux listes (set-equality, case-insensitive).
-func friendGamertagsChanged(prev, next []string) bool {
-	if len(prev) != len(next) {
-		return true
-	}
-	set := make(map[string]struct{}, len(prev))
-	for _, gt := range prev {
-		set[normalizeGamertag(gt)] = struct{}{}
-	}
-	for _, gt := range next {
-		if _, ok := set[normalizeGamertag(gt)]; !ok {
-			return true
-		}
-	}
-	return false
-}
-
-func normalizeGamertag(gt string) string {
-	return strings.ToLower(strings.TrimSpace(gt))
 }
 
 // handlePostMediaResetIndex réinitialise l'index des médias (opération destructive).
@@ -620,17 +523,6 @@ func sessionComputeOptionsFor(store *settings_platform.Store, pr *titlePkg.PathR
 // handlePostRecalculateSessions lance un recalcul des sessions pour tous les joueurs.
 // POST /settings/sessions/recalculate — retourne un AsyncJobStatus (202).
 func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *struct{}) (*asyncJobOutput, error) {
-	// FriendGamertags reste GLOBAL (cross-titre, PMT-4) : les amis sont des
-	// personnes transverses au titre + le grant d'accès famille ne doit pas
-	// varier par jeu. Résolu une seule fois via Load(), jamais par overlay.
-	globalCfg := settings_platform.Defaults()
-	if h.settingsStore != nil {
-		if cfg, err := h.settingsStore.Load(); err == nil {
-			globalCfg = cfg
-		}
-	}
-	friendGamertags := globalCfg.FriendGamertags
-
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "players_load_error",
@@ -657,6 +549,18 @@ func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *
 			// PMT-4 : le rythme de session dépend du titre). Overlay absent ⇒
 			// valeurs globales byte-identiques.
 			opts := sessionComputeOptionsFor(h.settingsStore, pr, p.TitleSlug)
+			// Amis DU joueur recalculé (data/global/player_friends.json) : les
+			// sessions d'escouade de chacun se calculent sur SA liste. Store absent
+			// ou lecture en échec → aucun ami (log avant dégradation).
+			var friendGamertags []string
+			if h.friendStore != nil {
+				fs, ferr := h.friendStore.Get(p.XUID)
+				if ferr != nil {
+					slog.WarnContext(context.Background(), "sessions recalculate: lecture des amis échouée",
+						"gamertag", p.Gamertag, "err", ferr)
+				}
+				friendGamertags = fs
+			}
 			playerDBPath := config.PlayerDBPath(h.cfg, "", p.Gamertag)
 			n, err := go_sync.RecalculatePlayerSessions(
 				context.Background(), h.cfg.SharedProvider, playerDBPath, sharedDBPath, p.XUID,

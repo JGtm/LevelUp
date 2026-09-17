@@ -78,6 +78,12 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'career=>achievements',
   // Career réutilise ExplorerMatchesTable pour les "Matchs marquants"
   'career=>explorer',
+  // Amis par profil joueur (plan 2026-09-15, D1/D2) : la page « Amis et groupes »
+  // (features/groups) embarque la section d'amis, et la vue match colore les amis
+  // depuis usePlayerFriends — la liste a quitté GET /settings (admin-only) pour
+  // /players/{slug}/friends. Dépendances durables (2026-09-16).
+  'groups=>friends',
+  'match-view=>friends',
   // Career réutilise MatchEncountersTable pour les "Joueurs les plus croisés"
   'career=>match-view',
   // Le rejeu 2D pose les kills de la Match View sur sa propre horloge : il réutilise la

@@ -592,6 +592,16 @@ func (p *PathResolver) GlobalXuidAliasesDBPath() string {
 	return filepath.Join(p.repoRoot, "data", "global", "xbox_aliases.duckdb")
 }
 
+// PlayerFriendsPath retourne le chemin du fichier des listes d'amis par profil
+// joueur (clé : xuid). Global et NON per-titre, comme les aliases xbox : un ami
+// est une personne, pas une entrée de jeu — la même liste vaut pour tous les
+// titres du joueur.
+//
+// Ex: data/global/player_friends.json
+func (p *PathResolver) PlayerFriendsPath() string {
+	return filepath.Join(p.repoRoot, "data", "global", "player_friends.json")
+}
+
 // GlobalMonitoringDB retourne le chemin de la base monitoring globale
 // (persistance du dashboard admin : détections avec cycle de vie, historique
 // des crons, runs data-health). Globale et NON per-titre : l'observabilité du

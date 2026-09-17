@@ -543,14 +543,87 @@ func TestXboxSSOLinkStrategy_ExistingUser_InviteAddsToGroup(t *testing.T) {
 	}
 }
 
-// Invitation legacy (sans groupe) + verrou → pas de groupe → bypass refusé.
-func TestXboxSSOLinkStrategy_LegacyInviteNoGroup_Locked_Rejected(t *testing.T) {
-	s, _, invites, _ := newGroupInviteRig(t, true)
+// Invitation SANS groupe + verrou → compte créé, AUCUN groupe rejoint, code
+// consommé, droit de provisioning posé (D3, 2026-09-15).
+//
+// CE TEST ÉTAIT L'INVERSE jusqu'au 2026-09-15 : une invitation sans groupe était
+// rejetée comme « legacy password », ce qui rendait POST /admin/invites inopérant
+// en SSO Xbox. C'est le défaut que ce lot corrige — l'assertion est retournée
+// avec le comportement, pas supprimée.
+func TestXboxSSOLinkStrategy_InviteWithoutGroup_Locked_CreatesUserAndGrant(t *testing.T) {
+	s, users, invites, groups := newGroupInviteRig(t, true)
 	inv, _ := invites.Generate("admin", 7, "") // GroupID vide
 	sess := &domain.SessionData{PendingInviteCode: inv.Code}
-	attempt := &auth.Attempt{XUID: "x", Gamertag: "GT"}
+	attempt := &auth.Attempt{XUID: "guest-x", Gamertag: "Guest"}
 
-	if err := s.OnAuthSuccess(context.Background(), attempt, sess); !errors.Is(err, service.ErrInstanceLocked) {
-		t.Fatalf("attendu ErrInstanceLocked (invite sans groupe), got %v", err)
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("OnAuthSuccess: %v", err)
+	}
+	user, err := users.GetByXUID("guest-x")
+	if err != nil {
+		t.Fatalf("compte devrait être créé malgré le verrou : %v", err)
+	}
+	if user.ProvisionGrant != inv.Code {
+		t.Errorf("provision_grant = %q, want %q (droit de créer son profil)", user.ProvisionGrant, inv.Code)
+	}
+	if gotInv, _ := invites.Get(inv.Code); !gotInv.IsUsed() {
+		t.Error("l'invitation devrait être consommée")
+	}
+	if sess.PendingInviteCode != "" {
+		t.Error("PendingInviteCode devrait être vidé")
+	}
+	all, _ := groups.List()
+	if len(all) != 0 {
+		t.Errorf("aucun groupe ne doit être créé ni rejoint, got %d", len(all))
+	}
+}
+
+// Invitation DE GROUPE + verrou → groupe rejoint ET droit de provisioning posé
+// (l'invité doit pouvoir créer son profil, groupe ou pas).
+func TestXboxSSOLinkStrategy_GroupInvite_Locked_AlsoGrantsProvisioning(t *testing.T) {
+	s, users, invites, groups := newGroupInviteRig(t, true)
+	g, _ := groups.Create("Fam", "owner-x", "Owner")
+	inv, _ := invites.Generate("Owner", 7, g.ID)
+
+	sess := &domain.SessionData{PendingInviteCode: inv.Code}
+	attempt := &auth.Attempt{XUID: "newcomer-x", Gamertag: "Newbie"}
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("OnAuthSuccess: %v", err)
+	}
+	user, err := users.GetByXUID("newcomer-x")
+	if err != nil {
+		t.Fatalf("compte non créé : %v", err)
+	}
+	if user.ProvisionGrant != inv.Code {
+		t.Errorf("provision_grant = %q, want %q", user.ProvisionGrant, inv.Code)
+	}
+	if got, _ := groups.Get(g.ID); !got.HasMember("newcomer-x") {
+		t.Errorf("l'invité devrait être membre du groupe : %+v", got.Members)
+	}
+}
+
+// Compte EXISTANT + invitation → aucun droit de provisioning : le droit ne vaut
+// que pour le compte que l'invitation vient de créer.
+func TestXboxSSOLinkStrategy_ExistingUser_InviteGrantsNothing(t *testing.T) {
+	s, users, invites, _ := newGroupInviteRig(t, false)
+	if _, err := users.CreateFromXbox("Existing", "exist-x"); err != nil {
+		t.Fatalf("CreateFromXbox: %v", err)
+	}
+	inv, _ := invites.Generate("admin", 7, "")
+	sess := &domain.SessionData{PendingInviteCode: inv.Code}
+	attempt := &auth.Attempt{XUID: "exist-x", Gamertag: "Existing"}
+
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("OnAuthSuccess: %v", err)
+	}
+	user, err := users.GetByXUID("exist-x")
+	if err != nil {
+		t.Fatalf("GetByXUID: %v", err)
+	}
+	if user.ProvisionGrant != "" {
+		t.Errorf("provision_grant = %q, want vide (compte préexistant)", user.ProvisionGrant)
+	}
+	if gotInv, _ := invites.Get(inv.Code); !gotInv.IsUsed() {
+		t.Error("l'invitation devrait tout de même être consommée")
 	}
 }

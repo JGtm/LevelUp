@@ -27,7 +27,7 @@ func TestResolveForTitle_HaloParity(t *testing.T) {
 	writeSettingsJSON(t, global, `{
 		"discord_webhook_url": "https://hook.global",
 		"session_gap_minutes": 90,
-		"friend_gamertags": ["A", "B"],
+		"watcher_subscribed_players": ["A", "B"],
 		"discord_notify_sync": true,
 		"coach_proactive_mode": true
 	}`)
@@ -65,7 +65,7 @@ func TestResolveForTitle_SyntheticOverlay(t *testing.T) {
 	writeSettingsJSON(t, global, `{
 		"discord_webhook_url": "https://hook.global",
 		"session_gap_minutes": 90,
-		"friend_gamertags": ["A", "B"],
+		"watcher_subscribed_players": ["A", "B"],
 		"discord_notify_sync": true,
 		"show_records": true
 	}`)
@@ -75,7 +75,7 @@ func TestResolveForTitle_SyntheticOverlay(t *testing.T) {
 	writeSettingsJSON(t, overlay, `{
 		"discord_webhook_url": "https://hook.synth",
 		"session_gap_minutes": 30,
-		"friend_gamertags": ["X"]
+		"watcher_subscribed_players": ["X"]
 	}`)
 
 	got, err := store.ResolveForTitle(overlay)
@@ -90,8 +90,8 @@ func TestResolveForTitle_SyntheticOverlay(t *testing.T) {
 	if got.SessionGapMinutes != 30 {
 		t.Errorf("session_gap = %d, want 30 (overlay)", got.SessionGapMinutes)
 	}
-	if len(got.FriendGamertags) != 1 || got.FriendGamertags[0] != "X" {
-		t.Errorf("friends = %v, want [X] (overlay)", got.FriendGamertags)
+	if len(got.WatcherSubscribedPlayers) != 1 || got.WatcherSubscribedPlayers[0] != "X" {
+		t.Errorf("watcher_subscribed_players = %v, want [X] (overlay)", got.WatcherSubscribedPlayers)
 	}
 	// Hérités du global (absents de l'overlay).
 	if !got.DiscordNotifySync {

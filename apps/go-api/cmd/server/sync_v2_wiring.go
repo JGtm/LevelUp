@@ -28,6 +28,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/friendstore"
 	settingsplatform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
@@ -52,8 +53,9 @@ type SyncV2WiringDeps struct {
 	MetaDB         *sql.DB
 	SharedDB       *sql.DB
 	TokenProvider  auth.TokenProvider
-	Settings       *settingsplatform.Store // pour FriendsLoader + MediaScanHook
-	PostSyncRunner port.PostSyncRunner     // pour WithPostSyncRunner (progression V2)
+	Settings       *settingsplatform.Store  // pour MediaScanHook + rejeux
+	Friends        *friendstore.FriendStore // amis PAR JOUEUR (FriendsLoader du cycle)
+	PostSyncRunner port.PostSyncRunner      // pour WithPostSyncRunner (progression V2)
 	// PrestigeHook (optionnel) ré-évalue les défis Prestige actifs après le post-sync
 	// de chaque joueur (Phase 6). = PrestigeBundle.RunPostSync. Nil → no-op.
 	PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
@@ -130,7 +132,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 
 	// HaloClient factory : pinned client par joueur via pool.
 	clientFactory := func(gamertag, xuid string) syncv2.HaloClient {
-		c := syncpkg.NewPooledHaloClient(deps.TokenPool, gamertag, xuid, 0)
+		c := syncpkg.NewPooledHaloClient(deps.TokenPool, 0)
 		return c
 	}
 	matchListProvider := syncv2.NewMatchListProvider(clientFactory, "matchmaking", 25, 20)
@@ -313,14 +315,12 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 			engine.WithSharedProvider(deps.Cfg.SharedProvider)
 		}
 
-		// 2. FriendsLoader (sessions auto-recompute is_with_friends)
-		if deps.Settings != nil {
+		// 2. FriendsLoader (sessions auto-recompute is_with_friends) — amis DU
+		// JOUEUR du profil câblé, pas de l'instance.
+		if deps.Friends != nil && p.XUID != "" {
+			xuid := p.XUID
 			engine.WithFriendsLoader(func() ([]string, error) {
-				cfg, lerr := deps.Settings.Load()
-				if lerr != nil {
-					return nil, lerr
-				}
-				return cfg.FriendGamertags, nil
+				return deps.Friends.Get(xuid)
 			})
 		}
 
@@ -334,7 +334,7 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 
 		// 3. Custom client pinned via pool
 		if deps.TokenPool != nil {
-			pooledClient := syncpkg.NewPooledHaloClient(deps.TokenPool, p.Gamertag, p.XUID, 0)
+			pooledClient := syncpkg.NewPooledHaloClient(deps.TokenPool, 0)
 			engine.SetCustomClient(pooledClient)
 		}
 

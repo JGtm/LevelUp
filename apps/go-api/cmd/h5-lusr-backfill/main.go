@@ -23,12 +23,18 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	halo5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/migration"
 	lusync "levelup/go-api/internal/sync"
 )
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	gt := "JGtm"
 	if len(os.Args) > 1 {
 		gt = os.Args[1]
@@ -71,11 +77,7 @@ func main() {
 	titlePkg.SetDefaultRegistry(reg)
 
 	// Classifier LUSR title-aware (défaut Infinite + h5).
-	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
-	lusync.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
 	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif).
-	lusync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
-	lusync.SetObjectiveFamilyClassifierForTitle(halo5.TitleSlug, halo5.IsObjectiveSubMode)
 
 	// Mode canonical (écrit match_skill_rank).
 	if err := os.Setenv("LEVELUP_LUSR_V2_ENABLED", "1"); err != nil {

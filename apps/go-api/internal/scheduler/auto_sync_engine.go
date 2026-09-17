@@ -32,7 +32,8 @@ import (
 //
 // Sémantique des nils :
 //   - s.cfg.SharedProvider == nil → engine en mode legacy (OpenSharedDB direct)
-//   - s.settings == nil → pas de FriendsLoader, pas de MediaScanHook
+//   - s.settings == nil → pas de MediaScanHook
+//   - s.friends == nil → pas de FriendsLoader
 //   - s.pool == nil → pas de PooledHaloClient (le moteur tombera back sur le
 //     client default si pas .SetCustomClient — non-recommandé en prod)
 //   - s.postSyncRunner == nil → post-sync runner V1 désactivé
@@ -53,18 +54,17 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	if s.cfg.SharedProvider != nil {
 		engine.WithSharedProvider(s.cfg.SharedProvider)
 	}
-	if s.settings != nil {
+	// Amis DU JOUEUR synchronisé (fermeture sur son xuid) : la liste n'est plus
+	// celle de l'instance, donc deux joueurs auto-syncés n'héritent plus des amis
+	// l'un de l'autre.
+	if s.friends != nil && xuid != "" {
 		engine.WithFriendsLoader(func() ([]string, error) {
-			cfg, lerr := s.settings.Load()
-			if lerr != nil {
-				return nil, lerr
-			}
-			return cfg.FriendGamertags, nil
+			return s.friends.Get(xuid)
 		})
 	}
 	s.wireReplayArtifacts(engine)
 	if s.pool != nil {
-		pooledClient := sync.NewPooledHaloClient(s.pool, gamertag, xuid, 0) // 0 = defaultPooledRPS
+		pooledClient := sync.NewPooledHaloClient(s.pool, 0) // 0 = defaultPooledRPS
 		engine.SetCustomClient(pooledClient)
 	}
 	// Phase 4 plan stabilisation 2026-05-22 : injecter le runner post-sync

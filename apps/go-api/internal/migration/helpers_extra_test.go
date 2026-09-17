@@ -177,3 +177,67 @@ func TestRunForDB_WithBackfill_Error(t *testing.T) {
 		t.Fatalf("expected no error (backfill errors are ignored), got: %v", err)
 	}
 }
+
+// TestAlterColumnTypeIfNeeded — élargit une colonne, puis ne fait rien au second passage.
+//
+// Le besoin est né le 2026-09-16 : `match_registry.team_{0,1}_score` était SMALLINT en base
+// alors que la DDL disait INTEGER, et tout match à plus de 32 767 points d'équipe était rejeté
+// à l'INSERT. `CREATE TABLE IF NOT EXISTS` ne répare jamais ça.
+func TestAlterColumnTypeIfNeeded(t *testing.T) {
+	db := openMemDB(t)
+	if _, err := db.Exec("CREATE TABLE t_widen (id VARCHAR PRIMARY KEY, score SMALLINT)"); err != nil {
+		t.Fatalf("création: %v", err)
+	}
+	if _, err := db.Exec("INSERT INTO t_widen VALUES ('a', 42)"); err != nil {
+		t.Fatalf("insertion: %v", err)
+	}
+
+	change, err := alterColumnTypeIfNeeded(db, "t_widen", "score", "INTEGER")
+	if err != nil {
+		t.Fatalf("alterColumnTypeIfNeeded: %v", err)
+	}
+	if !change {
+		t.Error("attendu change=true sur une colonne SMALLINT à porter en INTEGER")
+	}
+	typeCourant, err := columnDataType(db, "t_widen", "score")
+	if err != nil {
+		t.Fatalf("columnDataType: %v", err)
+	}
+	if typeCourant != "INTEGER" {
+		t.Errorf("type = %s, attendu INTEGER", typeCourant)
+	}
+	if _, err := db.Exec("INSERT INTO t_widen VALUES ('b', 120267)"); err != nil {
+		t.Errorf("insertion d'une valeur > 32 767 après élargissement: %v", err)
+	}
+
+	// Second passage : no-op.
+	change, err = alterColumnTypeIfNeeded(db, "t_widen", "score", "INTEGER")
+	if err != nil {
+		t.Fatalf("second passage: %v", err)
+	}
+	if change {
+		t.Error("attendu change=false au second passage (idempotence)")
+	}
+}
+
+// TestAlterColumnTypeIfNeeded_ColonneAbsente — table ou colonne absente : no-op silencieux,
+// jamais une erreur (l'ordre des étapes de migration ne garantit pas la présence de la table).
+func TestAlterColumnTypeIfNeeded_ColonneAbsente(t *testing.T) {
+	db := openMemDB(t)
+	if _, err := db.Exec("CREATE TABLE t_vide (id INTEGER)"); err != nil {
+		t.Fatalf("création: %v", err)
+	}
+
+	for _, cas := range []struct{ table, colonne string }{
+		{"t_vide", "inconnue"},
+		{"table_absente", "score"},
+	} {
+		change, err := alterColumnTypeIfNeeded(db, cas.table, cas.colonne, "INTEGER")
+		if err != nil {
+			t.Errorf("%s.%s : %v, attendu nil", cas.table, cas.colonne, err)
+		}
+		if change {
+			t.Errorf("%s.%s : change=true alors que la colonne n'existe pas", cas.table, cas.colonne)
+		}
+	}
+}

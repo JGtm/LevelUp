@@ -11,8 +11,6 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	auth_platform "levelup/go-api/internal/platform/auth"
-	"levelup/go-api/internal/platform/auth/capturecli"
-	auth_pool "levelup/go-api/internal/platform/auth/pool"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -23,7 +21,7 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 	maxMatches := fs.Int("max-matches", 25, "Nombre max de nouveaux matchs à insérer")
 	matchType := fs.String("match-type", "matchmaking", "Type de match: all|matchmaking|custom|local")
 	rps := fs.Int("rps", 1, "Nombre max de requêtes API par seconde")
-	tokenPoolSize := fs.Int("token-pool-size", 0, "Taille du pool de tokens (0=auto-detect, 1=désactiver)")
+	tokenPoolSize := fs.Int("token-pool-size", 0, "Nombre maximal de slots SAINS du pool de tokens (0=tous les jetons sains du parc)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -39,51 +37,34 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 		return runSyncDeltaAll(ctx, cfg, *maxMatches, *matchType, *rps, *tokenPoolSize)
 	}
 
+	// Les migrations shared AVANT de synchroniser : une passe qui insère sur un schéma
+	// périmé rejette des matchs pour TOUS les joueurs (C-C, 2026-09-16).
+	if err := applySharedMigrationsForTitle(cfg, titlePkg.DefaultSlug); err != nil {
+		return err
+	}
+
 	player, err := loadPlayerSummary(cfg, *gamertag)
 	if err != nil {
 		return err
 	}
-	tokens, err := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
+	// Le joueur visé n a PAS besoin de son propre token : TOUS ses endpoints sont publics et
+	// servis par n importe quel token du pool (D1 du plan 2026-09-16, étendu au rang de
+	// carrière par D4 du plan robustesse). Le rang de carrière n est pas synchronisé ici
+	// (flux CareerLiveService) : career_synced vaut false pour tous.
+	engine, closePool, err := newPooledEngineForPlayer(ctx, cfg, *player, *tokenPoolSize, *rps)
 	if err != nil {
 		return err
 	}
+	defer closePool()
 
-	provider := auth_platform.NewSISUProvider()
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, provider).
-		WithCSRSeasonID(cfg.CurrentCSRSeasonID)
-	if cache := loadLocalFilmCache(); cache != nil {
-		engine.SetLocalFilmCache(cache)
-	}
-	opts := domain.DefaultSyncOptions()
-	opts.MatchType = *matchType
-	opts.MaxMatches = *maxMatches
-	opts.RequestsPerSecond = *rps
+	opts := buildSyncOptions(*maxMatches, *matchType, *rps)
 
 	syncResult, err := engine.RunDelta(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("run delta: %w", err)
 	}
 
-	postSync := false
-	careerSynced := false
-	if syncResult.PostSync != nil {
-		postSync = true
-		careerSynced = syncResult.PostSync.CareerSynced
-	}
-	fmt.Printf(
-		"sync delta OK: gamertag=%s inserted=%d skipped=%d status=%s post_sync=%t career_synced=%t duration=%.2fs\n",
-		player.Gamertag,
-		syncResult.MatchesInserted,
-		syncResult.MatchesSkipped,
-		syncResult.Status(),
-		postSync,
-		careerSynced,
-		syncResult.DurationSeconds,
-	)
-	if len(syncResult.Warnings) > 0 {
-		fmt.Printf("warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
-	}
-	return nil
+	return reportSyncResult(os.Stdout, "delta", player.Gamertag, &syncResult)
 }
 
 func runSyncDeltaAll(
@@ -100,6 +81,11 @@ func runSyncDeltaAll(
 	}
 	if len(players) == 0 {
 		return fmt.Errorf("aucun joueur configuré")
+	}
+
+	// Idem mono-joueur : le schéma partagé est mis à niveau avant la première insertion.
+	if err := applySharedMigrationsForTitle(cfg, titlePkg.DefaultSlug); err != nil {
+		return err
 	}
 
 	provider := auth_platform.NewSISUProvider()
@@ -132,26 +118,13 @@ func runSyncDeltaAll(
 		}
 
 		// ─── Client setup (toujours via le pool) ───
-		// Skip si ce joueur n'a pas de token dans le pool (cas où Discovery
-		// n'a rien trouvé pour lui : pas d'env var, pas de sync_meta).
-		if !pool.HasPlayer(player.Gamertag) {
-			skipped++
-			fmt.Printf("sync delta SKIP: gamertag=%s reason=not_in_pool\n", player.Gamertag)
-			continue
-		}
+		// AUCUN skip « pas de token propre » (D1, plan 2026-09-16) : le pool sert les
+		// endpoints publics de n'importe quel joueur suivi. Le garde-fou `not_in_pool` qui
+		// vivait ici datait du pool-par-joueur d'avant l'ADR 0023. Le skip `no_player_db`
+		// ci-dessus RESTE : `--all` ne crée pas la base d'un profil neuf, seul le sync
+		// mono-joueur le fait (décision inchangée, plan 2026-09-16 §8).
 
-		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider).
-			WithCSRSeasonID(cfg.CurrentCSRSeasonID)
-		cache := loadLocalFilmCache()
-		if cache != nil {
-			engine.SetLocalFilmCache(cache)
-		}
-
-		pooledClient := go_sync.NewPooledHaloClient(pool, player.Gamertag, player.XUID, 0) // 0 = defaultPooledRPS
-		if cache != nil {
-			pooledClient.WithLocalFilmCache(cache)
-		}
-		engine.SetCustomClient(pooledClient)
+		engine := newPooledEngine(cfg, provider, pool, player)
 
 		syncResult, syncErr := engine.RunDelta(ctx, opts)
 		if syncErr != nil {
@@ -160,20 +133,13 @@ func runSyncDeltaAll(
 			continue
 		}
 
-		synced++
-		careerSynced := syncResult.PostSync != nil && syncResult.PostSync.CareerSynced
-		fmt.Printf(
-			"sync delta OK: gamertag=%s inserted=%d skipped=%d status=%s career_synced=%t duration=%.2fs (pool)\n",
-			player.Gamertag,
-			syncResult.MatchesInserted,
-			syncResult.MatchesSkipped,
-			syncResult.Status(),
-			careerSynced,
-			syncResult.DurationSeconds,
-		)
-		if len(syncResult.Warnings) > 0 {
-			fmt.Printf("  warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
+		// Un joueur dont la passe s'est arrêtée sur une erreur compte dans `failed` :
+		// le compte rendu du lot doit dire la même chose que le verdict par joueur.
+		if reportErr := reportSyncResult(os.Stdout, "delta", player.Gamertag, &syncResult); reportErr != nil {
+			failed++
+			continue
 		}
+		synced++
 	}
 
 	fmt.Printf("sync delta batch: total=%d synced=%d skipped=%d failed=%d\n", total, synced, skipped, failed)
@@ -190,7 +156,7 @@ func runSyncFull(cfg *config.AppConfig, args []string) error {
 	maxMatches := fs.Int("max-matches", 150, "Nombre de matchs API à parcourir (défaut 150 = 6 pages)")
 	matchType := fs.String("match-type", "matchmaking", "Type de match: all|matchmaking|custom|local")
 	rps := fs.Int("rps", 1, "Nombre max de requêtes API par seconde")
-	tokenPoolSize := fs.Int("token-pool-size", 0, "Taille du pool de tokens (0=auto-detect)")
+	tokenPoolSize := fs.Int("token-pool-size", 0, "Nombre maximal de slots SAINS du pool de tokens (0=tous les jetons sains du parc)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -206,51 +172,34 @@ func runSyncFull(cfg *config.AppConfig, args []string) error {
 		return runSyncFullAll(ctx, cfg, *maxMatches, *matchType, *rps, *tokenPoolSize)
 	}
 
+	// Les migrations shared AVANT de synchroniser : une passe qui insère sur un schéma
+	// périmé rejette des matchs pour TOUS les joueurs (C-C, 2026-09-16).
+	if err := applySharedMigrationsForTitle(cfg, titlePkg.DefaultSlug); err != nil {
+		return err
+	}
+
 	player, err := loadPlayerSummary(cfg, *gamertag)
 	if err != nil {
 		return err
 	}
-	tokens, err := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
+	// Le joueur visé n a PAS besoin de son propre token : TOUS ses endpoints sont publics et
+	// servis par n importe quel token du pool (D1 du plan 2026-09-16, étendu au rang de
+	// carrière par D4 du plan robustesse). Le rang de carrière n est pas synchronisé ici
+	// (flux CareerLiveService) : career_synced vaut false pour tous.
+	engine, closePool, err := newPooledEngineForPlayer(ctx, cfg, *player, *tokenPoolSize, *rps)
 	if err != nil {
 		return err
 	}
+	defer closePool()
 
-	provider := auth_platform.NewSISUProvider()
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, provider).
-		WithCSRSeasonID(cfg.CurrentCSRSeasonID)
-	if cache := loadLocalFilmCache(); cache != nil {
-		engine.SetLocalFilmCache(cache)
-	}
-	opts := domain.DefaultSyncOptions()
-	opts.MatchType = *matchType
-	opts.MaxMatches = *maxMatches
-	opts.RequestsPerSecond = *rps
+	opts := buildSyncOptions(*maxMatches, *matchType, *rps)
 
 	syncResult, err := engine.RunFull(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("run full: %w", err)
 	}
 
-	postSync := false
-	careerSynced := false
-	if syncResult.PostSync != nil {
-		postSync = true
-		careerSynced = syncResult.PostSync.CareerSynced
-	}
-	fmt.Printf(
-		"sync full OK: gamertag=%s inserted=%d skipped=%d status=%s post_sync=%t career_synced=%t duration=%.2fs\n",
-		player.Gamertag,
-		syncResult.MatchesInserted,
-		syncResult.MatchesSkipped,
-		syncResult.Status(),
-		postSync,
-		careerSynced,
-		syncResult.DurationSeconds,
-	)
-	if len(syncResult.Warnings) > 0 {
-		fmt.Printf("warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
-	}
-	return nil
+	return reportSyncResult(os.Stdout, "full", player.Gamertag, &syncResult)
 }
 
 func runSyncFullAll(
@@ -267,6 +216,11 @@ func runSyncFullAll(
 	}
 	if len(players) == 0 {
 		return fmt.Errorf("aucun joueur configuré")
+	}
+
+	// Idem mono-joueur : le schéma partagé est mis à niveau avant la première insertion.
+	if err := applySharedMigrationsForTitle(cfg, titlePkg.DefaultSlug); err != nil {
+		return err
 	}
 
 	provider := auth_platform.NewSISUProvider()
@@ -293,24 +247,10 @@ func runSyncFullAll(
 			fmt.Printf("sync full SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
 			continue
 		}
-		if !pool.HasPlayer(player.Gamertag) {
-			skipped++
-			fmt.Printf("sync full SKIP: gamertag=%s reason=not_in_pool\n", player.Gamertag)
-			continue
-		}
+		// Idem `--all` delta : plus de skip `not_in_pool` (D1, plan 2026-09-16) ; le skip
+		// `no_player_db` ci-dessus reste (décision inchangée, plan 2026-09-16 §8).
 
-		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider).
-			WithCSRSeasonID(cfg.CurrentCSRSeasonID)
-		cache := loadLocalFilmCache()
-		if cache != nil {
-			engine.SetLocalFilmCache(cache)
-		}
-
-		pooledClient := go_sync.NewPooledHaloClient(pool, player.Gamertag, player.XUID, 0)
-		if cache != nil {
-			pooledClient.WithLocalFilmCache(cache)
-		}
-		engine.SetCustomClient(pooledClient)
+		engine := newPooledEngine(cfg, provider, pool, player)
 
 		syncResult, syncErr := engine.RunFull(ctx, opts)
 		if syncErr != nil {
@@ -319,20 +259,12 @@ func runSyncFullAll(
 			continue
 		}
 
-		synced++
-		careerSynced := syncResult.PostSync != nil && syncResult.PostSync.CareerSynced
-		fmt.Printf(
-			"sync full OK: gamertag=%s inserted=%d skipped=%d status=%s career_synced=%t duration=%.2fs (pool)\n",
-			player.Gamertag,
-			syncResult.MatchesInserted,
-			syncResult.MatchesSkipped,
-			syncResult.Status(),
-			careerSynced,
-			syncResult.DurationSeconds,
-		)
-		if len(syncResult.Warnings) > 0 {
-			fmt.Printf("  warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
+		// Idem `--all` delta : une passe au statut non-`success` compte dans `failed`.
+		if reportErr := reportSyncResult(os.Stdout, "full", player.Gamertag, &syncResult); reportErr != nil {
+			failed++
+			continue
 		}
+		synced++
 	}
 
 	fmt.Printf("sync full batch: total=%d synced=%d skipped=%d failed=%d\n", total, synced, skipped, failed)
@@ -362,76 +294,6 @@ func loadPlayerSummary(cfg *config.AppConfig, gamertag string) (*domain.PlayerSu
 		}
 	}
 	return nil, fmt.Errorf("joueur introuvable dans db_profiles.json: %s", gamertag)
-}
-
-// buildCLITokenPool construit le pool de tokens des commandes `--all`
-// (sync-delta / sync-full) depuis le MultiUserTokenStore — source unique
-// ADR 0023 Phase 5. Avant la Phase 5 ce chemin passait par `NewDiscovery` sans
-// store, ce qui, une fois les fallbacks retirés, ne découvrait plus AUCUNE
-// source (pool vide → « pool creation » en erreur).
-//
-// La rotation du refresh token est PERSISTÉE dans le store (callback onRotated).
-// C'est non négociable depuis que le CLI consomme le RT canonique du serveur :
-// Microsoft rotate le RT à chaque usage, et ne pas réécrire la rotation
-// brûlerait le token du store — invalid_grant au refresh suivant, côté serveur
-// comme côté CLI (classe d'incident Madina, ADR 0023).
-func buildCLITokenPool(
-	ctx context.Context,
-	cfg *config.AppConfig,
-	provider auth_platform.TokenProvider,
-	players []domain.PlayerSummary,
-	tokenPoolSize, rps int,
-) (auth_pool.Pool, error) {
-	pathResolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	store := auth_platform.NewMultiUserTokenStore(pathResolver.WatcherTokensDir())
-
-	discovery := auth_pool.NewDiscoveryWithStore(cfg, pathResolver, titlePkg.DefaultSlug, store)
-	sources, err := discovery.Scan(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("pool discovery: %w", err)
-	}
-
-	onRotated := func(rctx context.Context, gamertag, newRT string) error {
-		xuid := capturecli.ResolveXUIDForRotation(rctx, store, players, gamertag)
-		if xuid == "" {
-			return fmt.Errorf("rotation RT non persistée : xuid introuvable pour %s", gamertag)
-		}
-		return store.UpdateOAuthRefreshToken(xuid, newRT)
-	}
-
-	// 0 = TTL par défaut du resolver (~3h30, durée de vie Spartan ~4h).
-	poolResolver := auth_pool.NewResolver(provider, 0, onRotated)
-	pool, err := auth_pool.NewPool(ctx, poolResolver, sources, auth_pool.PoolOptions{
-		MaxSize:     tokenPoolSize, // 0 = utiliser toutes les sources découvertes
-		PerTokenRPS: rps,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("pool creation: %w", err)
-	}
-	return pool, nil
-}
-
-// haloTokensForPlayer obtient des tokens Halo (Spartan + Clearance) frais pour
-// un joueur depuis le MultiUserTokenStore — source unique ADR 0023 Phase 5
-// (2026-08-25 : le repli par variable d'environnement n'est plus lu).
-// La rotation du refresh token est persistée par le helper canonique.
-func haloTokensForPlayer(ctx context.Context, repoRoot, gamertag string) (*domain.HaloTokens, error) {
-	store := auth_platform.NewMultiUserTokenStore(titlePkg.NewPathResolver(repoRoot).WatcherTokensDir())
-	user, err := store.LoadByGamertag(gamertag)
-	if err != nil || user == nil || user.OAuthRefreshToken == "" {
-		return nil, fmt.Errorf("aucun refresh token pour %s dans data/auth/watcher_tokens "+
-			"(se connecter via le SSO Xbox ou lancer `go run ./cmd/token-capture/ %s`)", gamertag, gamertag)
-	}
-	result, err := auth_platform.RefreshHaloTokensViaStoreFirst(
-		ctx, store, auth_platform.NewSISUProvider(), user.XUID, gamertag)
-	if err != nil {
-		return nil, fmt.Errorf("refresh store pour %s: %w", gamertag, err)
-	}
-	tokens := auth_platform.HaloTokensFromExchange(result)
-	if tokens == nil {
-		return nil, fmt.Errorf("aucun token Halo obtenu pour %s", gamertag)
-	}
-	return tokens, nil
 }
 
 // loadLocalFilmCache resout LEVELUP_LEGACY_FILM_CACHE_DIR (ex.

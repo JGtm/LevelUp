@@ -31,6 +31,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/auth"
@@ -40,6 +41,12 @@ import (
 )
 
 func main() {
+	// Seams title-owned : ce binaire embarque le moteur de sync TRANSITIVEMENT (ratchet
+	// titleseams_wired_test.go, 2026-09-16). Sans ce câblage, tout chemin qui atteindrait un
+	// classifier ou une étape de migration title-owned partirait en panic fail-loud MT-15 ou
+	// en scores muets.
+	titleseams.RegisterAll("")
+
 	titleSlug := flag.String("title", "halo_infinite", "title slug à bootstrapper")
 	metadataDBPath := flag.String("metadata-db", "data/titles/halo_infinite/warehouse/metadata.duckdb", "chemin metadata.duckdb")
 	sharedDBPath := flag.String("shared-db", "data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb", "chemin shared_matches_v2.duckdb")

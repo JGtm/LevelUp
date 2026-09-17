@@ -4,7 +4,7 @@
  * Quatre rôles distincts (l'équipe alliée vs ennemie reste TOUJOURS lisible) :
  *  - Joueur principal (is_me) → `SQUAD_MAIN_PLAYER_TOKEN` (cohérent avec la
  *    pill de la page Squad — source unique, jamais de token en dur ici).
- *  - Amis (page Escouade — `settings.friend_gamertags`) côté allié → tokens
+ *  - Amis (page Escouade — liste d'amis du joueur) côté allié → tokens
  *    `SQUAD_TEAMMATE_COLOR_TOKENS` (`squad-player-2` / `-3` / `-4`).
  *    Garantit la cohérence visuelle avec la page Squad.
  *  - Autres coéquipiers (même `team_side` que le main, non amis) → palette
@@ -77,7 +77,7 @@ export interface MatchPlayerColors {
 /**
  * Construit la palette joueurs pour un match.
  *
- * `friendGamertags` (typiquement `settings.friend_gamertags`) permet de
+ * `friendGamertags` (la liste d'amis du joueur consulté) permet de
  * réutiliser le color scheme de la page Squad pour les amis ALLIÉS. Les amis
  * adverses tombent dans la palette ennemie pour préserver la lecture
  * équipe vs équipe.
