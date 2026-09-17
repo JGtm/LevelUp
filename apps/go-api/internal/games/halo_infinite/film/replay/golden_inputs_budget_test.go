@@ -23,10 +23,23 @@ import (
 // goldenInputsBudget : LE PLAFOND DU JEU ENTIER, en octets compresses.
 //
 // POSE LE 2026-09-14 (lot 1.0) A 12 MIO (12 582 912 octets). UNE SEULE MESURE FAIT FOI, celle
-// que ce test lit sur le disque : 11 044 446 octets compresses pour les huit fixtures, soit
-// 10,53 Mio. Il reste 1 538 466 octets libres, soit 12 % du plafond. (Le commentaire d origine
+// que ce test lit sur le disque : **11 049 200 octets** compresses pour les huit fixtures, soit
+// 10,54 Mio. Il reste 1 533 712 octets libres, soit 12,2 % du plafond. (Le commentaire d origine
 // citait TROIS totaux differents pour une seule mesure — un d avant regeneration, un du plan, un
 // mesure : revue R2, constat R2-2.)
+//
+// LE CHIFFRE AVAIT DEJA DERIVE DE 4 754 OCTETS, ET LE TEST RESTAIT VERT : le commentaire
+// annoncait 11 044 446 o quand le disque en portait 11 049 200 (mesure du 2026-09-17, lot 4.1.1-b
+// — le test n assertit que le plafond de 12 Mio, donc rien ne relisait le total ecrit ici).
+// Corrige. C est la deuxieme fois que ce commentaire derive : un total recopie a la main dans un
+// commentaire n a pas de gardien, et le seul gardien possible est la commande qui le remesure
+// (`go test -run GoldenInputsTiennent -v`).
+//
+// LE LOT 4.1.1-b N Y A PAS TOUCHE, ET C EST UNE DECISION ECRITE : les quatre canaux gardes par
+// l appelant (`FlagMarks`, `ZoneReads`, `ZoneScanned`, `BombReads`) entrent au FICHIER DE FAITS
+// (`filmfacts_fichier.go`, section 1) et non dans ce blob-ci, parce qu un fixture ne fournit
+// JAMAIS de garde de mode : les y mettre aurait exige de re-decoder huit films pour ajouter huit
+// suites de zeros. Les huit fixtures sont donc INCHANGEES a l octet.
 //
 // HISTORIQUE, CHAQUE CHIFFRE AVEC SA BASE : 10 849 119 o a l origine du jeu par build
 // (lot 0.A.2) ; 18 656 453 o a l etape flottants du lot 0.D.3 bis, revenus a 10 337 463 o en
