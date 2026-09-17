@@ -7,7 +7,7 @@ contre la corruption, pour pouvoir revenir en arrière.
 
 | | |
 |---|---|
-| **Périmètre** | DuckDB du titre (`data/titles/halo_infinite/` : metadata, shared_matches_v2, shared_pve, shared_social, players) + tokens OAuth (`data/auth/`) + config (`db_profiles.json`, `app_settings.json`, `.env.local`) |
+| **Périmètre** | DuckDB de **tous les titres** (`data/titles/` : metadata, shared_matches_v2, shared_pve, shared_social, players) + tokens OAuth, comptes et groupes (`data/auth/`) + état global (`data/global/` : alias Xbox, amis par joueur, monitoring, état admin) + config (`db_profiles.json`, `app_settings.json`, `.env.local`) |
 | **Exclus** | Médias (`data/media`, ~4,5 Go ; fichiers plats peu sujets à corruption), cache, logs |
 | **Repo** | `/opt/levelup/restic-repo` (local au VPS — même disque, assumé) |
 | **Password** | `/opt/levelup/.restic-password` (root, 600) — **à copier hors-VPS** (sinon repo irrécupérable si la machine est perdue) |

@@ -111092,3 +111092,67 @@ une exception datée 2026-09-17 décrivant l emprunt borné via `OpenReadForQuer
 
 **Conclusion / prochaine étape** : commit sur `wt/citations-meta`, fusion dans `feat/v75` et push
 sur signal de l'utilisateur.
+
+## [2026-09-17] Sauvegarde restic : `data/global` entre dans le périmètre — Complété
+
+**Statut** : Complété. Branche `feat/v75`, base `c2d337b91`. Script d'exploitation seulement,
+aucun code applicatif touché — le déploiement effectif sur le VPS reste à la main de
+l'utilisateur.
+
+**Décision technique principale** : `scripts/restic-backup.sh` sauvegardait `data/titles`,
+`data/auth` et les trois JSON de config, mais **pas `data/global/`**. Le trou a été trouvé en
+instruisant la question « qu'ai-je à faire en prod pour les amis par joueur ». La feature
+d'amis par joueur (`friendstore`, plan `.ai/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`)
+écrit `data/global/player_friends.json`, qui n'est ni versionné (`.gitignore` ligne 359, posée
+par l'utilisateur ce jour) ni sauvegardé : les listes personnalisées à l'écran n'avaient aucun
+point de restauration. Le même trou couvrait déjà `data/global/xbox_aliases.duckdb`, store
+canonique des alias Xbox (table de CLAUDE.md). Choix du **répertoire entier** plutôt que du seul
+JSON, par cohérence avec le traitement de `data/auth` et pour ne pas laisser l'énumération
+diverger au prochain fichier ajouté ; il emporte aussi `monitoring.duckdb` et `admin_state/`
+(quelques Mo, négligeable devant `data/titles`).
+
+**Résultats observés** : `bash -n scripts/restic-backup.sh` OK, bit exécutable préservé
+(`100755`, aucun changement de mode au diff). Commentaire de périmètre de l'en-tête et de
+l'étape 2 mis à jour dans le même diff (règle « doc inversée »). `scripts/RESTIC_BACKUP.md` :
+ligne « Périmètre » corrigée — elle annonçait encore `data/titles/halo_infinite/` seul alors que
+le script sauvegarde `data/titles` en entier depuis l'arrivée de halo_5, et ne mentionnait ni les
+comptes ni les groupes de `data/auth/`.
+
+**Ce qui reste à vérifier, et que je n'ai pas pu faire d'ici** : `restic backup` échoue si un
+chemin passé n'existe pas — le run reporterait `FAILED` et sauterait le prune. `data/global/`
+existe quasi certainement sur le VPS (le sync y écrit les alias), mais ça n'a pas été constaté
+sur pièces. Un `ls /opt/levelup/data/global` avant le prochain 04:00 UTC lève le doute.
+
+**Conclusion / prochaine étape** : commit sur `feat/v75` au signal de l'utilisateur. Le script
+est repris par le `git reset --hard` du déploiement (note du runbook), donc aucune recopie
+manuelle — contrairement aux units systemd.
+
+## [2026-09-17] Face-à-face : plan « Profil d'armes » (classes, portée par rôle, top 3) — En cours (plan écrit, exécution en attente du go)
+
+**Statut** : En cours. Plan `.ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md` écrit sur le worktree
+principal (`feat/v75` @ c2d337b91, fichier de doc seul, aucun code). Exécution prévue dans un
+worktree dédié `wt/compare-armes` par un exécuteur, sur signal explicite de l'utilisateur.
+
+**Décision technique principale** : la section réutilise la chaîne portée de la Synthèse sans
+seconde doctrine : `LoadWeaponRange` (frags mesurés, deux côtés) + `analysis.WeaponRangeAggregate`
++ `buildWeaponRangeBlock` + `domain.SynthesisWeaponRange`, avec un seul ajout pur en amont
+(`RegroupMeasuredKills` : clé d'arme → clé de rôle via `resolveWeaponKeyDimensions` exposé par
+un port) et min/max ajoutés à l'agrégat pour l'infobulle seulement (D6 du plan portée : sur des
+centaines de frags, min et max sont deux accidents ; la barre reste P10 à P90, losange médiane).
+Grain rôle et non famille (une trentaine de familles Infinite, quasi une par arme, presque
+toutes sous le seuil de 8 mesures) ni classe (« lourde » mélange sniper et épée). Parts de frags
+par classe via `fragdist.Build` (même builder que Sessions/Escouade/Explorer). Scope = doctrine
+des métriques existantes : lifetime pour un joueur local, matchs communs pour un B non local
+avec xuid, rien pour un B jamais croisé. Aucun vainqueur (une distance plus longue n'est pas
+meilleure). Précision par arme écartée : capability remisée sur Infinite depuis le recalage du
+2026-09-01 (tirs par arme sans touches), native sur Halo 5 seulement.
+
+**Résultats observés** : lecture sur pièces du registre d'armes (3 niveaux : classe, rôle,
+famille), de `compare_service.go` (B local / cross-sample / Waypoint), de la section portée
+(Séries temporelles depuis le 2026-09-13), de `_weaponRangeChart.ts` (bâton + losange,
+libellés et couleurs déjà injectables). Découvertes consignées au plan sans traitement :
+`CompareRequest.Filters` validé mais jamais appliqué ; `WEAPON_KEYS_WITHOUT_RANGE` pis-aller
+front ; `CompareResponse` manuscrit dans `types.ts`.
+
+**Conclusion / prochaine étape** : go de l'utilisateur, puis lot 0 (worktree dédié) et lots 1 à
+5 sous `plan-execution` ; gate visuel de l'utilisateur avant fusion dans `feat/v75`.
