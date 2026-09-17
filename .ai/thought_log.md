@@ -111199,3 +111199,100 @@ front ; `CompareResponse` manuscrit dans `types.ts`.
 
 **Conclusion / prochaine étape** : go de l'utilisateur, puis lot 0 (worktree dédié) et lots 1 à
 5 sous `plan-execution` ; gate visuel de l'utilisateur avant fusion dans `feat/v75`.
+
+## [2026-09-17] Lightbox médias : clips JGtm illisibles au « suivant », aperçus voisins noirs — En cours (diagnostic, rien modifié)
+
+**Décision technique** : investigation sur pièces (code web + Go, disque et logs du VPS en
+lecture seule, sources hls.js 1.7.1 = version verrouillée, le node_modules local est à 1.6.16),
+sans reproduction navigateur (consigne : pas d'instance Chrome pilotée). Aucun code touché.
+
+**Résultats observés** : (1) Les clips de JGtm sont TOUS des arbres HLS-fMP4 lus par hls.js/MSE
+(148 arbres, vidéo AV1 stream-copiée de 2 à 18 Mbit/s) ; ceux de Chocoboflor sont des `.mp4`
+H.264 servis tels quels (aucun arbre `hls/`), donc `<video src>` natif avec Range. Toute la
+dissymétrie vient de là. (2) Aperçus voisins : `ClipPlayer` ne pose aucun `poster` et les voisins
+HLS sont montés `autoStartLoad:false` sans jamais charger un segment → cadre noir, sauf pour un
+clip déjà visité (données en tampon) ; les `.mp4` voisins ont `preload=auto` → première image
+visible. Les vignettes `.webp` existent (`thumbnail_path`, 230 sur le VPS) mais ne servent pas au
+coverflow. (3) Passage au suivant : la vidéo étant copiée, ffmpeg ne peut couper qu'aux images
+clés → segments vidéo de **8 s** (`TARGETDURATION:8`, cible 4 s ignorée) qui pèsent jusqu'à
+**18 Mo** (`Replay 2026-07-31 23-03-04`) ; hls.js doit télécharger le segment ENTIER + init +
+segment audio avant la première image (≈ 1,7 s mesuré VPS→poste à ~88 Mbit/s via ssh, bien
+plus sur un lien plus lent), là où un `.mp4` progressif affiche en quelques centaines de Ko.
+Les voisins `.mp4` en `preload=auto` concurrencent en plus la bande passante. (4) Le master des 28
+arbres au layout game/voices/full déclare `BANDWIDTH=211200` (audio seul, ffmpeg 5.1 du conteneur
+ne connaît pas le débit d'une vidéo copiée) et AUCUN attribut `CODECS` (ffmpeg 5.1 ne sait pas
+écrire `av01…`) : hls.js sniffe le codec dans `init_0.mp4`, Safari serait perdu. (5) Aucune
+erreur serveur : http.log (WARN seulement) ne montre aucun échec récent sur `JGtm/hls/…`, nginx
+proxy HTTP/1.1 sans `limit_rate`. (6) Piste écartée : `lastCurrentTime` hls.js non remis à 0 au
+recul de `currentTime` (seek arrière ignoré) — sans effet visible car `loadedmetadata` reste vrai.
+
+**Conclusion / prochaine étape** : gate utilisateur (DevTools, onglet Réseau filtré `.m4s`
+pendant un « suivant » : durée du premier `seg_0_000.m4s` et présence d'un `hls:fatal` en
+console) pour trancher entre « lent » et « bloqué ». Correctifs candidats, à décider : poster
+`thumbnail_path` sur `ClipPlayer` (déterministe, sans risque) ; préchargement du premier segment
+du voisin +1 ; réencodage/segmentation aux images clés courtes (`-g`/`force_key_frames`) ou
+plafond de débit au transcodage ; `CODECS`/`BANDWIDTH` réécrits dans `rewriteMasterFile`.
+
+**Amendement (même jour, précision utilisateur)** : la lecture n'arrive JAMAIS sur le média
+suivant ou précédent — c'est un blocage, pas une lenteur. Les segments de 8 s expliquent un
+délai, pas un blocage. Deux causes plausibles restent : (a) le pilotage voisin → centre de
+hls.js (instance créée puis `stopLoad()` avant le manifest, `startLoad()` plus tard) alors que
+le seul chemin dont on sait qu'il marche est « instance neuve montée au centre » ; (b) le
+décodeur AV1 du navigateur retenu par le clip précédent (élément conservé avec ses données,
+en pause) et refusé au suivant. Recommandation : ne monter QU'UN lecteur, pour le clip centré,
+instance neuve à chaque navigation, voisins = vignette `thumbnail_path` ; l'état Jeu/Voix
+remonte au parent. Ce découpage neutralise (a) et (b) et règle les aperçus. Vérification
+utilisateur pour trancher (a)/(b) : `chrome://media-internals` après un « suivant » raté.
+
+**Précision** : navigateur = Firefox (pas de `chrome://media-internals`). Test remplacé par DevTools Firefox : Réseau filtré `.m4s` (segment demandé ou non) + Console (`hls:fatal`).
+
+**CAUSE RACINE TROUVÉE (journal Réseau Firefox fourni par l'utilisateur, 2026-09-17)** : tous
+les `master.m3u8` des clips voisins sont `NS_BINDING_ABORTED` ; seul celui du clip ouvert au
+centre répond 200, et au clic « suivant » AUCUNE requête ne part. Mécanisme : `ClipPlayer` crée
+l'instance hls.js (`loadSource` = XHR du manifest en vol) puis, dans l'effet suivant du même
+commit, appelle `hls.stopLoad()` pour un voisin. Or dans hls.js (1.6.16 comme 1.7.1)
+`PlaylistLoader` est le PREMIER des `networkControllers` : `stopLoad()` → `destroyInternalLoaders()`
+→ le manifest est avorté. Au recentrage, `startLoad()` trouve `levels` nul →
+`_forceStartLoad = true`, état STOPPED, et rien ne relance jamais `MANIFEST_LOADING` : le clip ne
+lira jamais. Le commentaire du lot B (« loadSource charge le manifest, y compris pour les
+voisins ») est faux depuis son écriture (`8dee69897`, 2026-07-17). Les `.mp4` de Chocoboflor ne
+passent pas par hls.js, d'où l'asymétrie. Correctif minimal : ne jamais appeler `stopLoad()` sur
+une instance qui n'a pas été démarrée (`autoStartLoad:false` suffit à ne rien charger) — un ref
+« démarré » posé au premier `startLoad()` ; garde-rail : test qui monte un voisin et vérifie que
+`stopLoad` n'est PAS appelé avant `startLoad`. Poster `thumbnail_path` en second point.
+
+## [2026-09-17] Correctif lightbox HLS : le manifest des voisins n est plus avorté — Complété (feat/v75 `27e576f1e`, hotfix main non poussé `8dcaac96b`)
+
+**Décision technique** : correctif de production sur `main` (hotfix `fix/lightbox-hls-neighbour-manifest`,
+worktree `../LevelUp-wt-lightbox-hls`, exécuteur Opus piloté), pas sur `feat/v75` : l'utilisateur
+subit le bug en prod maintenant, et `CoverFlowModal.tsx` a divergé entre les deux branches
+(l'attache hls.js vit dans `lib/media/useHlsVideo.ts` sur `feat/v75`, inline sur `main`). Le
+correctif minimal : un ref « démarré » dans `ClipPlayer` ; `stopLoad()` n'est appelé que sur une
+instance qui a reçu `startLoad()` (un voisin jamais démarré garde son manifest, `autoStartLoad:false`
+suffit à ne rien précharger). Poster `thumbnail_path` sur le `<video>`. Commentaires faux réécrits.
+Pas de restructuration « un seul lecteur ».
+
+**Résultats observés** : l'ancien test HLS ASSERTAIT le bug (`stopLoad` attendu sur un voisin) ;
+remplacé par 3 tests (voisin sans `stopLoad`, suivant démarre l'ex-voisin avec `stopLoad` à 0,
+retour redémarre) + 2 tests poster. Rougissent sans le correctif (vérifié par l'exécuteur, 3
+échecs). Gates rejoués par le superviseur : vitest media+lib 120/120, `tsc -b --force` 0,
+eslint 0 sur les 3 fichiers. Seul lecteur HLS de l'app sur `main` (aucun autre `stopLoad(`).
+Hors périmètre, non traité : boutons précédent/suivant sans `aria-label` ; angle mort si
+`filePath` changeait sur une instance centrée (inatteignable, `key` = `file_path`).
+
+**Conclusion / prochaine étape** : OK utilisateur pour commit → push de la branche → PR vers
+`main` → CI verte au niveau job → fusion = déploiement prod (prévenir) → gate visuel prod
+(Firefox, Réseau : `master.m3u8` des voisins en 200, `seg_0_000.m4s` du nouveau clip au
+« suivant »). Ensuite, porter sur `feat/v75` lors du merge de `main` (structure différente :
+ref « démarré » à poser dans `ClipPlayer` autour de `hlsRef` du hook ; mock du test différent).
+
+**Clôture (même jour)** : décision utilisateur = commit + merge dans `feat/v75` (pas de hotfix
+`main`). Commit `8dcaac96b` sur `fix/lightbox-hls-neighbour-manifest` (base `main`, conservé
+localement, NON poussé) ; portage `27e576f1e` sur `wt/lightbox-hls-v75` (structure `useHlsVideo`,
+exécuteur Opus, cherry-pick résolu sur `CoverFlowModal.tsx` seul), fusionné en avance rapide dans
+`feat/v75`. Gates rejoués par le superviseur sur le portage : vitest media+lib 117/117, eslint 0
+sur les 4 fichiers, `tsc -b --force` = 1 seule erreur PRÉEXISTANTE hors périmètre
+(`mediabunny` absent du `node_modules` partagé du principal, dépendance de `replayVideoEncoder.ts`
+depuis `720c62a33`) — 0 erreur sur les fichiers touchés. Reste : push de `feat/v75` pour la CI
+(niveau job), gate visuel utilisateur en prod à la sortie de v7.5.0 (ou hotfix `main` si demandé :
+la branche est prête), `npm install` dans le principal pour rétablir le typecheck.
