@@ -103,8 +103,11 @@ const MANIFESTS_DIR = join(process.cwd(), 'src', 'lib', 'i18n', 'manifests')
 // anglicisme en début de phrase ("Kills", "Streak"...).
 const FORBIDDEN_PATTERNS: { name: string; re: RegExp }[] = [
   { name: 'PB', re: /\bPB\b/i },
-  { name: 'kill(s)', re: /\bkills?\b/i },
-  { name: 'assist(s)', re: /\bassists?\b/i },
+  // Fin de mot Unicode, pas `\b` (ASCII en JS) : « assisté », « assistée » sont du
+  // FRANÇAIS — `\b` voyait une frontière avant le « é » et les signalait (faux positif
+  // sur la description du badge « Voleur », CI rouge du 2026-09-17).
+  { name: 'kill(s)', re: /\bkills?(?![\p{L}\p{N}_])/iu },
+  { name: 'assist(s)', re: /\bassists?(?![\p{L}\p{N}_])/iu },
   { name: 'streak', re: /\bstreak\b/i },
   { name: 'win rate', re: /\bwin rate\b/i },
   { name: 'leaderboard', re: /\bleaderboard\b/i },
@@ -257,5 +260,18 @@ describe('garde-rail anti-anglicismes FR (I15 + I15-bis, périmètre = fichiers 
       ...scanManifest('tactical.toml'),
     ]
     expect(offenders, `Anglicismes détectés :\n${formatOffenders(offenders)}`).toEqual([])
+  })
+})
+
+describe("motifs anti-anglicismes — frontières de mot Unicode", () => {
+  const pattern = (name: string) => FORBIDDEN_PATTERNS.find((p) => p.name === name)!.re
+  it("ne signale pas le français accentué (assisté, assistée)", () => {
+    expect(pattern("assist(s)").test("assisté par cet ami")).toBe(false)
+    expect(pattern("assist(s)").test("frag assistée")).toBe(false)
+  })
+  it("signale toujours l’anglicisme", () => {
+    expect(pattern("assist(s)").test("3 assists")).toBe(true)
+    expect(pattern("assist(s)").test("Assist")).toBe(true)
+    expect(pattern("kill(s)").test("kills totaux")).toBe(true)
   })
 })
