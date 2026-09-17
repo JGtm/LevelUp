@@ -1038,6 +1038,21 @@ Le verdict CI au niveau job reste donc À OBTENIR — il le sera mécaniquement 
 `feat/v75` (préfixe couvert), ou plus tôt si l'utilisateur veut élargir les déclencheurs.
 
 
+
+**2026-09-17 — Lot 5-ui (retour du gate visuel utilisateur, hors diff initial).** Les titres
+des trois blocs historiques du Face-à-face (`ComparePage.tsx`, `CategoryColumn` l.102 et
+`CategoryMirrorSection` l.169) étaient `text-xs font-semibold uppercase tracking-wider
+text-muted-foreground` — grisés et en capitales — quand celui de la section neuve est
+`text-sm font-semibold`, en couleur de premier plan. C'est ce dernier rendu qui est validé :
+les deux anciens `<h2>` sont alignés dessus À L'IDENTIQUE. Aucun test ne ciblait les anciennes
+classes (grep sur `text-muted-foreground` / `uppercase` dans les tests de la feature : zéro
+occurrence ; aucun test ne monte `CategoryColumn` ni `CategoryMirrorSection`). Les trois
+`text-muted-foreground` restants du fichier sont le séparateur « vs », un lien de retour et un
+état vide — hors sujet, non touchés. Gate : `npm run typecheck` EXIT=0 (après purge de
+`node_modules/.tmp`), `npm run lint` EXIT=0 (0 erreur, 27 avertissements préexistants, aucun
+sur `ComparePage`), `npm run test -- --run src/features/compare` 4 fichiers / 47 tests,
+0 ligne `^ FAIL`, EXIT=0.
+
 ## Reprise de session
 
 1. Relire le skill `plan-execution`, puis ce journal.
