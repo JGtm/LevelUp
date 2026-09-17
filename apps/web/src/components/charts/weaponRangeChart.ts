@@ -1,5 +1,14 @@
 /**
- * _weaponRangeChart — LA PORTÉE D'USAGE PAR ARME, mes frags ET mes morts sur la MÊME ligne.
+ * weaponRangeChart — LA GRAMMAIRE DU BÂTON DE PORTÉE : p10 → p90, losange sur la médiane,
+ * deux mesures superposées (`top` / `bottom`) sur la même bande.
+ *
+ * WRAPPER PARTAGÉ, ET PLUS UN MODULE DE PAGE (déplacé de `features/synthesis/` le
+ * 2026-09-17). Trois surfaces le rendent : l'onglet Résumé des séries temporelles (mes frags
+ * en haut, mes morts en bas, une ligne par ARME), le profil d'armes du Face-à-face et le
+ * bloc « Portée des frags » de l'Explorer (deux JOUEURS superposés, une ligne par RÔLE).
+ * C'est ce que le nommage `top`/`bottom` rend possible sans mentir. Le laisser sous
+ * `features/synthesis/` — une page qui ne l'affiche même plus depuis le 2026-09-13 —
+ * demandait une dérogation à l'anti-import inter-features par consommateur.
  *
  * Grammaire reprise du graphe de portée par match validé le 2026-09-02
  * (`features/match-view/_killDistanceChart.ts`) : un bâton par arme, un losange sur la
@@ -32,7 +41,27 @@ import {
 import type { WeaponRangeRow, WeaponRangeSide } from '@/lib/api/types'
 import type { ManifestLocale } from '@/lib/i18n/format'
 
-import { resolveWeaponLabel } from './weaponRange_logic'
+/** Une entrée du contrat qui porte un libellé bilingue et une clé d'arme. */
+interface LabelledWeapon {
+  weapon_key: string
+  label?: string
+  label_en?: string
+}
+
+/**
+ * resolveWeaponLabel — le nom affiché d'une arme, dans la locale courante.
+ *
+ * Repli sur `weapon_key` quand le registre n'a pas résolu le libellé : une clé technique
+ * lisible vaut mieux qu'une ligne anonyme, et elle SE VOIT (le trou de registre se signale
+ * de lui-même au lieu de se cacher derrière un tiret).
+ *
+ * Vit ici depuis le 2026-09-17 : seul ce module l'appelait, et le garder sous
+ * `features/synthesis/` aurait fait remonter `components/` vers `features/`.
+ */
+export function resolveWeaponLabel(w: LabelledWeapon, locale: ManifestLocale): string {
+  const label = locale === 'en' ? w.label_en : w.label
+  return label && label.trim() !== '' ? label : w.weapon_key
+}
 
 /** Hauteur d'une bande : deux bâtons + leur écart y tiennent (26 px suffisaient à un seul). */
 export const WEAPON_RANGE_ROW_PX = 34

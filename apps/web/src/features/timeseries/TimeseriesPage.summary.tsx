@@ -24,7 +24,7 @@ import { buildFragDetailBreakdown } from '@/components/charts/fragDetailBreakdow
 import { SynthesisWeaponAccuracyChart } from '@/features/synthesis/SynthesisWeaponAccuracyChart'
 // Portée des engagements : section migrée de la Synthèse vers cet onglet le 2026-09-13
 // (pendant de la précision par arme). Même import cross-feature déclaré que ci-dessus.
-import { SynthesisWeaponRangeSection } from '@/features/synthesis/SynthesisWeaponRangeSection'
+import { WeaponRangeSection } from './WeaponRangeSection'
 import {
   TimeseriesAssistsTrend,
   TimeseriesAvgLifeTrend,
@@ -248,7 +248,7 @@ export function TimeseriesSummaryTab({
           deux répondent à « avec quoi, et comment ». La section se retire d'elle-même quand
           rien n'est mesuré sur le scope ; le gate reste la capability produit `weapon_range`
           (Halo 5 ne la déclare pas — ses événements de frag n'ont pas d'arme). */}
-      {hasWeaponRange && <SynthesisWeaponRangeSection range={data.weapon_range} />}
+      {hasWeaponRange && <WeaponRangeSection range={data.weapon_range} />}
 
       {/* Précision par arme (Halo 5 natif, survol lié au sunburst) | Tendance FDA. Titre
           sans précision native (Infinite → weapon_accuracy vide) : la tendance FDA occupe

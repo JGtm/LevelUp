@@ -10,6 +10,35 @@
 
 ---
 
+### [web/frontières] Dérogation `timeseries=>synthesis` — deux modules partagés encore rangés sous une page
+
+Noté le 2026-09-17 (chantier « Portée des frags » de l'Explorer). La famille du graphe de portée
+a été rangée là où elle se rend : le module de dessin dans `components/charts/weaponRangeChart.ts`
+(3 consommateurs), la section et ses satellites dans `features/timeseries/` (la page Synthèse ne
+les affiche plus depuis le 2026-09-13). La dérogation `compare=>synthesis/_weaponRangeChart` a
+disparu avec.
+
+**Il reste `timeseries=>synthesis`**, qui ne tient plus qu'à deux imports de
+`features/timeseries/` :
+
+- `SynthesisWeaponAccuracyChart` — un graphe, rendu par l'onglet Résumé ET par la Synthèse ;
+- `SynthesisCards` (`AccentCard`, `SectionSubtitle`) — des primitives d'habillage, consommées
+  bien au-delà de la Synthèse.
+
+Les deux sont des composants PARTAGÉS logés dans le dossier d'une page, exactement ce que
+l'anti-import inter-features demande d'éviter. Le lint le dit lui-même : « les composants
+partagés doivent vivre dans `components/` ou `lib/` ».
+
+**Impact utilisateur : aucun.** **Intérêt : hygiène de frontières** — et un dossier qui ment sur
+qui rend quoi a déjà égaré deux agents sur ce même graphe (2026-09-17).
+**Correctif** : `SynthesisCards` → `components/ui/` (ce sont des primitives), le graphe de
+précision → `components/charts/`, puis retirer la paire de `ALLOWED_CROSS_IMPORTS` et vérifier
+que le ratchet retombe à 6. **Effort : S** (déplacements mécaniques + imports ; aucun des deux
+modules n'importe `@/features/**`, la frontière inversée est donc déjà respectée).
+
+---
+
+
 ### [replay/sons] Fins de partie multi-équipes par couleur — écran + annonceur
 
 Noté le 2026-08-27 (chantier rejeu 2D, plan `.ai/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md`,

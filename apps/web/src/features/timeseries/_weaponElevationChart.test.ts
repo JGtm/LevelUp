@@ -12,7 +12,7 @@ import type { EChartsThemeColors } from '@/lib/echarts/themeColors'
 import type { WeaponRangeRow, WeaponRangeSide } from '@/lib/api/types'
 
 import { ELEVATION_KEYS, buildWeaponElevationOption } from './_weaponElevationChart'
-import { buildWeaponRangeOption, weaponRangeLines, type WeaponRangeLine } from './_weaponRangeChart'
+import { buildWeaponRangeOption, weaponRangeLines, type WeaponRangeLine } from '@/components/charts/weaponRangeChart'
 
 const TC: EChartsThemeColors = {
   axisLabel: '#111111',

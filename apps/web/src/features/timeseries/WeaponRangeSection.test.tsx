@@ -1,5 +1,5 @@
 /**
- * SynthesisWeaponRangeSection.test — la section « Portée des engagements ».
+ * WeaponRangeSection.test — la section « Portée des engagements ».
  *
  * Ce que ces tests verrouillent : les quatre tuiles AVEC leur dénominateur, les DEUX tuiles
  * d'entame qui n'apparaissent QUE si l'entame est mesurée (jamais un zéro — décision D5), les
@@ -7,7 +7,7 @@
  * dépliable (les deux côtés, le tiret du côté non mesuré), et le retrait complet de la
  * section quand rien n'est publiable.
  *
- * Les deux graphes sont testés PURS (`_weaponRangeChart.test.ts`,
+ * Les deux graphes sont testés PURS (`components/charts/weaponRangeChart.test.ts`,
  * `_weaponElevationChart.test.ts`) — ici ECharts est mocké (jsdom ne peint pas de canvas).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -18,7 +18,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import type { SynthesisWeaponRange, WeaponRangeSide } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { SynthesisWeaponRangeSection } from './SynthesisWeaponRangeSection'
+import { WeaponRangeSection } from './WeaponRangeSection'
 
 vi.mock('echarts-for-react', () => ({
   default: () => <div data-testid="echarts-mock" />,
@@ -96,12 +96,12 @@ beforeEach(() => {
   useAppShellStore.setState({ locale: 'fr' })
 })
 
-describe('SynthesisWeaponRangeSection — rendu nominal', () => {
+describe('WeaponRangeSection — rendu nominal', () => {
   // DEUX CARTES DEPUIS LE 2026-09-13 : la portée et le dénivelé répondaient à deux questions
   // sous un seul titre. Chacune porte son graphe ; le compte d'armes (« 2 armes · … »), lu
   // une fois puis jamais, a été retiré du bandeau.
   it('affiche les DEUX cartes, chacune avec son graphe', () => {
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} />)
     expect(screen.getByRole('region', { name: 'Portée par arme' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Dénivelé' })).toBeInTheDocument()
     // Deux ChartCard : le canvas lui-même est chargé en `lazy`, on pince la carte.
@@ -109,7 +109,7 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
   })
 
   it('les quatre tuiles portent leur valeur ET leur dénominateur', () => {
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} />)
     expect(screen.getByText('Portée médiane de mes frags')).toBeInTheDocument()
     expect(textOf(/^1 214 frags mesurés sur 1 602$/).length).toBeGreaterThan(0)
     expect(screen.getByText('Portée médiane de mes morts')).toBeInTheDocument()
@@ -130,7 +130,7 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     // Les mentions « (bâton du haut) » / « (bâton du bas, l'arme est celle du tueur) » ont
     // été retirées le 2026-09-09 : elles doublaient un ordre déjà lisible sur le graphe et
     // faisaient une ligne de légende deux fois plus longue que la légende.
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} />)
     // `within` la légende : « Mes frags » nomme AUSSI un groupe de colonnes du tableau.
     const legend = screen.getByRole('list', { name: 'Légende' })
     expect(within(legend).getByText('Mes frags')).toBeInTheDocument()
@@ -145,7 +145,7 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
   it('les deux légendes sont rendues en PIED de leur graphe, par le composant commun', () => {
     // « Ça ne suit pas la nomenclature des autres graphes » (2026-09-09) : les deux légendes
     // passent désormais par <ChartLegend>, posé dans le pied de carte de leur ChartCard.
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} />)
     const legends = screen.getAllByTestId('chart-legend')
     expect(legends).toHaveLength(2)
     for (const legend of legends) {
@@ -157,7 +157,7 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
   it('les deux légendes portent des noms accessibles DISTINCTS', () => {
     // Deux listes nommées « Légende » ne se distinguent pas au lecteur d'écran : la seconde
     // qualifie ce qu'elle légende (maquette du 2026-09-06).
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} />)
     expect(screen.getByRole('list', { name: 'Légende' })).toBeInTheDocument()
     expect(screen.getByRole('list', { name: 'Légende du dénivelé' })).toBeInTheDocument()
   })
@@ -167,7 +167,7 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     // INDÉPENDANTE des encres frags/morts (elle dit d'OÙ, pas qui tue qui) ; « à niveau »
     // emprunte le gris des libellés d'axe, qui n'a pas de token d'accessibilité — d'où la
     // variable CSS brute.
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} />)
     const legend = screen.getByRole('list', { name: 'Légende du dénivelé' })
     const swatch = (name: string) =>
       within(legend).getByText(name).parentElement!.querySelector('span[aria-hidden]') as HTMLElement
@@ -181,7 +181,7 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     // échanger les deux `tokenCssVar` de `RangeLegend` laissait la suite verte : la légende
     // aurait annoncé les frags à l'encre des morts, et rien n'aurait mordu — alors que c'est
     // la légende qui dit au lecteur quel bâton est lequel.
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} />)
     const legend = screen.getByRole('list', { name: 'Légende' })
     const swatch = (name: string) =>
       within(legend).getByText(name).parentElement!.querySelector('span[aria-hidden]') as HTMLElement
@@ -194,7 +194,7 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     // Le filet de 3 px en tête de tuile est le SEUL rappel de couleur entre la tuile et son
     // bâton : les valeurs sont déjà épinglées, l'ENCRE ne l'était pas (lot 6, item 6.0d).
     // Échanger `accent={KILLS_TOKEN}` et `accent={DEATHS_TOKEN}` laissait la suite verte.
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} />)
     const accentOf = (label: string) =>
       (screen.getByText(label).closest('div.rounded-lg')!.firstElementChild as HTMLElement).style
         .backgroundColor
@@ -203,7 +203,7 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
   })
 
   it('le tableau groupe ses colonnes : mes frags D’ABORD, mes morts ensuite', () => {
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} />)
     const groups = Array.from(
       screen.getByRole('table').querySelectorAll('thead tr:first-child th'),
     ).map((th) => flat(th.textContent))
@@ -214,13 +214,13 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
   it('ne publie plus ni la ligne « sous le seuil » ni la note de couverture', () => {
     // Retirées le 2026-09-09 (demande utilisateur) : deux paragraphes de texte gris sous la
     // carte, qui répétaient une réserve déjà portée par les dénominateurs de chaque tuile.
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} />)
     expect(screen.queryByText(/Sous le seuil/)).not.toBeInTheDocument()
     expect(screen.queryByText(/couverture partielle/)).not.toBeInTheDocument()
   })
 
   it('le tableau déplié redit les deux côtés, avec un tiret là où rien n’est mesuré', () => {
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} />)
     expect(screen.getByText('Voir en tableau')).toBeInTheDocument()
     const table = screen.getByRole('table')
     const commando = within(table).getByText('Commando VK78').closest('tr')
@@ -233,12 +233,12 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
   })
 })
 
-describe('SynthesisWeaponRangeSection — dégradations', () => {
+describe('WeaponRangeSection — dégradations', () => {
   it('entame mesurée mais AUCUN frag apparié : la distance d’entame reste, le delta disparaît', () => {
     // Les deux absences disent deux choses différentes : `opening` absent = aucune entame
     // mesurée ; `opening.delta` absent = aucune entame appariée à son frag.
     renderWithProviders(
-      <SynthesisWeaponRangeSection
+      <WeaponRangeSection
         range={{ ...RANGE, opening: { median_m: 9.1, measured_kills: 618 } }}
       />,
     )
@@ -249,7 +249,7 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
   })
 
   it('sans entame mesurée, les DEUX tuiles d’entame disparaissent (jamais un zéro)', () => {
-    renderWithProviders(<SynthesisWeaponRangeSection range={{ ...RANGE, opening: undefined }} />)
+    renderWithProviders(<WeaponRangeSection range={{ ...RANGE, opening: undefined }} />)
     expect(screen.queryByText("Distance d'entame médiane")).not.toBeInTheDocument()
     expect(screen.queryByText('Entame → frag')).not.toBeInTheDocument()
     // Les deux tuiles de portée, elles, restent : la portée ne dépend pas de l'entame.
@@ -261,7 +261,7 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
     // retire le bloc que si les DEUX côtés sont vides, et sert le côté absent à zéro. Une
     // tuile « 0,0 m » se lirait « il frague au contact » — la MÊME doctrine que l'entame (D5).
     const { container } = renderWithProviders(
-      <SynthesisWeaponRangeSection
+      <WeaponRangeSection
         range={{
           ...RANGE,
           weapons: [{ ...RANGE.weapons![0], kills: undefined }],
@@ -280,7 +280,7 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
 
   it('l’autre côté vide : la tuile des morts disparaît, celle des frags reste', () => {
     renderWithProviders(
-      <SynthesisWeaponRangeSection
+      <WeaponRangeSection
         range={{
           ...RANGE,
           weapons: [{ ...RANGE.weapons![0], deaths: undefined }],
@@ -299,7 +299,7 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
     // Miroir du cas nominal (delta négatif) : `signDisplay: 'exceptZero'` doit écrire le
     // signe des DEUX côtés, sans quoi « 1,7 m » ne dirait pas si la distance s'ouvre ou se ferme.
     renderWithProviders(
-      <SynthesisWeaponRangeSection
+      <WeaponRangeSection
         range={{
           ...RANGE,
           opening: { median_m: 9.1, measured_kills: 618, delta: { median_m: 1.7, closing_share_pct: 38.6, n: 574 } },
@@ -310,9 +310,9 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
   })
 
   it('sans bloc du tout, la section entière se retire', () => {
-    const { container: nul } = renderWithProviders(<SynthesisWeaponRangeSection range={undefined} />)
+    const { container: nul } = renderWithProviders(<WeaponRangeSection range={undefined} />)
     expect(nul).toBeEmptyDOMElement()
-    const { container: vide } = renderWithProviders(<SynthesisWeaponRangeSection range={null} />)
+    const { container: vide } = renderWithProviders(<WeaponRangeSection range={null} />)
     expect(vide).toBeEmptyDOMElement()
   })
 
@@ -320,7 +320,7 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
     // Cas nominal (consigne du pilote, revue du lot 4) : `weapons` vide MAIS des compteurs
     // et des médianes bien réels, et les deux listes « sous le seuil » remplies.
     renderWithProviders(
-      <SynthesisWeaponRangeSection
+      <WeaponRangeSection
         range={{
           ...RANGE,
           weapons: [],
@@ -354,7 +354,7 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
 
   it('en anglais, libellés et nombres suivent la locale', () => {
     useAppShellStore.setState({ locale: 'en' })
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} />)
     expect(screen.getByText('Median range of my kills')).toBeInTheDocument()
     expect(textOf(/^1,214 measured kills out of 1,602$/).length).toBeGreaterThan(0)
     expect(screen.getByText('BR75 Battle Rifle')).toBeInTheDocument()

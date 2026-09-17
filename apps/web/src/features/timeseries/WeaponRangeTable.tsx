@@ -1,5 +1,5 @@
 /**
- * SynthesisWeaponRangeTable — LE MÊME CONTENU QUE LES DEUX GRAPHES, EN CHIFFRES.
+ * WeaponRangeTable — LE MÊME CONTENU QUE LES DEUX GRAPHES, EN CHIFFRES.
  *
  * Déplié depuis le `<details>` de la carte « Portée par arme ». Extrait de la section pour
  * la garder sous le plafond de 500 lignes : c'est une vue complète (douze colonnes, deux
@@ -19,7 +19,7 @@
  */
 import type { WeaponRangeSide } from '@/lib/api/types'
 
-import type { WeaponRangeLine } from './_weaponRangeChart'
+import type { WeaponRangeLine } from '@/components/charts/weaponRangeChart'
 import type { RangeFormats, SynthesisKey, Translate } from './weaponRangeText'
 
 /**
@@ -43,7 +43,7 @@ const COLUMNS: SynthesisKey[][] = [
  * graphe qui le précède, DANS LE MÊME ORDRE. Le rendre triable le désynchroniserait de la
  * lecture d'à côté, qui est justement un continuum du contact à la longue portée.
  */
-export function SynthesisWeaponRangeTable({
+export function WeaponRangeTable({
   lines,
   t,
   f,

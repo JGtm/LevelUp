@@ -29,7 +29,6 @@ import (
 	"errors"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
@@ -244,11 +243,12 @@ func (s *CompareService) compareTopWeapons(rows []port.WeaponKillRow) []domain.C
 // mélangerait un fusil de précision et une épée — une portée qui ne décrit personne. Le rôle
 // est le seul grain où les lignes ont assez de mesures ET un sens de distance homogène.
 //
-// # LE REKEYAGE SE FAIT AVANT L'AGRÉGAT, JAMAIS APRÈS
+// # LA CHAÎNE EST PARTAGÉE AVEC L'EXPLORER (2026-09-17)
 //
-// `analysis.RegroupMeasuredKills` change la clé des frags, puis `buildWeaponRangeBlock`
-// agrège. Fusionner des lignes DÉJÀ agrégées mélangerait des percentiles, ce qui n'a aucun
-// sens : la médiane d'un ensemble ne se déduit pas des médianes de ses parties.
+// Frags mesurés, traduction des clés en rôles, regroupement AVANT agrégat, mise en forme :
+// tout vit dans `weapon_range_by_role.go`, que le bloc « Portée des frags » de l'encart cible
+// appelle aussi. Deux copies de cette chaîne divergeraient au premier réglage de seuil, et les
+// deux pages afficheraient alors deux portées différentes des mêmes frags.
 //
 // # LES LIBELLÉS NE SONT PAS HYDRATÉS (D8)
 //
@@ -258,69 +258,12 @@ func (s *CompareService) compareTopWeapons(rows []port.WeaponKillRow) []domain.C
 func (s *CompareService) compareWeaponRange(
 	ctx context.Context, scope *domain.CompareWeaponScope, xuid string,
 ) *domain.SynthesisWeaponRange {
-	if xuid == "" || len(scope.MatchIDs) == 0 {
+	if scope == nil {
 		return nil
 	}
-	filtres := port.WeaponRangeFilters{MatchIDs: scope.MatchIDs, XUIDs: []string{xuid}}
-	mesures, err := s.weaponRange.LoadWeaponRange(ctx, s.titleSlug, filtres)
-	if err != nil {
-		logCompareWeaponFailure(ctx, "portee", s.titleSlug, xuid, len(scope.MatchIDs), err)
-		return nil
-	}
-	if len(mesures) == 0 {
-		return nil
-	}
-	roles := s.resolveWeaponRoles(ctx, mesures)
-	regroupes, ecartes := analysis.RegroupMeasuredKills(mesures, func(cle string) string {
-		return roles[cle]
-	})
-	if ecartes > 0 {
-		// Une clé sans rôle est écartée (D8). Debug et non Warn : un registre incomplet
-		// est un état connu, pas une panne — mais un silence total en ferait un zéro.
-		slog.DebugContext(ctx, "compare: frags mesures ecartes faute de role",
-			"title", s.titleSlug, "xuid", xuid, "ecartes", ecartes, "gardes", len(regroupes))
-	}
-	if len(regroupes) == 0 {
-		return nil
-	}
-	return buildWeaponRangeBlock(regroupes, nil, weaponRangeScopeInfo{
+	return buildWeaponRangeByRole(ctx, s.weaponRange, "compare", s.titleSlug, xuid, weaponRangeScopeInfo{
 		matchIDs: scope.MatchIDs, totalKills: scope.Kills, totalDeaths: scope.Deaths,
 	})
-}
-
-// resolveWeaponRoles traduit les clés d'arme des frags mesurés en clés de RÔLE.
-//
-// UNE SEULE RÉSOLUTION POUR TOUT LE LOT : les clés sont dédupliquées avant l'appel. Résoudre
-// clé par clé ferait une requête registre par arme.
-//
-// LA CLÉ EST SON PROPRE RÔLE QUAND LE REGISTRE N'EN DONNE PAS D'AUTRE (`grenade`, `melee`,
-// `sidearm`, `equipment`, `vehicle`, `turret`, `environmental` : le registre y pose
-// class == role). Rien de particulier n'est fait pour ces cas — le registre rend déjà le bon
-// rôle ; une liste en dur ici serait une seconde source qui divergerait du TOML du titre.
-func (s *CompareService) resolveWeaponRoles(
-	ctx context.Context, mesures []analysis.MeasuredKill,
-) map[string]string {
-	cles := make([]string, 0, len(mesures))
-	vues := make(map[string]bool, len(mesures))
-	for _, m := range mesures {
-		if m.WeaponKey != "" && !vues[m.WeaponKey] {
-			vues[m.WeaponKey] = true
-			cles = append(cles, m.WeaponKey)
-		}
-	}
-	dims, err := s.weaponRange.ResolveWeaponDimensions(ctx, s.titleSlug, cles)
-	if err != nil {
-		logBestEffortErr(ctx, "compare: dimensions d armes non resolues", err,
-			"title", s.titleSlug, "cles", len(cles))
-		return nil
-	}
-	roles := make(map[string]string, len(dims))
-	for cle, d := range dims {
-		if d.Role != "" {
-			roles[cle] = d.Role
-		}
-	}
-	return roles
 }
 
 // logCompareWeaponFailure distingue l'ABSENCE LÉGITIME de l'ANOMALIE — parité
