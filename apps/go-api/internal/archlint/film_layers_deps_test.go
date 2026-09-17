@@ -188,7 +188,12 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// n importent RIEN du decodeur. La coupe suit la dependance, pas le repertoire d origine.
 	"internal/games/halo_infinite/film/research/grenadeids":     horsCoucheFilm,
 	"internal/games/halo_infinite/film/research/cmd_grenadeids": horsCoucheFilm,
-	"internal/games/halo_infinite/film/research/largeursaxe":    horsCoucheFilm,
+	// Lot 3.7 (2026-09-17) : l instrument de la reapparition. Il ne lit AUCUN film — il lit
+	// `HaloInfinite.exe` et rejoue la chaine descripteur -> ecrivain de
+	// `NOTE_3_6_METHODE_DESCRIPTEURS` quand Ghidra n est pas disponible. Il n importe donc
+	// aucune couche du decodeur, et se classe hors couche comme ses voisins.
+	"internal/games/halo_infinite/film/research/reapparition":     horsCoucheFilm,
+	"internal/games/halo_infinite/film/research/cmd_reapparition": horsCoucheFilm,
 
 	// --- source : charger, decompresser, decouper, lire l en-tete, tenir le lecteur de bits.
 	// `source` est une FEUILLE sans aucun import du depot (ratchet `filmsource_leaf_test.go`)

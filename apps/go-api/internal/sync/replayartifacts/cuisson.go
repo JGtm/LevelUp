@@ -112,11 +112,17 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 // les films sont expirés » ni de « la cuisson a échoué cinq fois » — trois situations qui
 // appellent trois actions différentes et qui s'écrivaient toutes « 0 ».
 type bilanCuisson struct {
-	construits   int
-	filmsSauves  int
-	dejaAJour    int
-	sansFilm     int
-	echecs       int
+	construits  int
+	filmsSauves int
+	dejaAJour   int
+	sansFilm    int
+	echecs      int
+	// ecartes : films MIS DE COTE parce que leur cle ecrite est absente de la table de profil
+	// (lot 3.1.1, `replaybuild.ErrUnknownFilmKey`). SEPARE DES ECHECS, et ce n est pas cosmetique :
+	// un echec appelle un diagnostic, un ecarte appelle une LIGNE DE TABLE
+	// (`docs/RUNBOOK_FILM_PROFILES.md`) — les melanger noierait l evenement « le jeu a change »
+	// dans le bruit des cuissons qui plantent.
+	ecartes      int
 	budgetEpuise bool
 	// ranges : les artefacts RANGÉS par ce cycle, à dériver une fois TOUTE cuisson terminée
 	// (cf. derivations.go). Ils voyagent dans le bilan plutôt que d'être dérivés ici : un
@@ -296,6 +302,20 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 		logFn := slog.WarnContext
 		if strings.Contains(berr.Error(), replaybuild.ErrMapNotInCatalog.Error()) {
 			logFn = slog.DebugContext
+		}
+		// CLÉ INCONNUE = ÉCARTÉ, PAS UN ÉCHEC (lot 3.1.1). Le film est là et lisible ; ce qui
+		// manque est une ligne de table côté dépôt. Le compter en échec ferait chercher une
+		// panne, et noierait dans le bruit le seul signal qui compte : le jeu a changé.
+		//
+		// LE TEST PORTE SUR LE TEXTE, comme celui d'`ErrMapNotInCatalog` juste au-dessus, et
+		// pour la même raison : l'erreur traverse une FRONTIÈRE DE PROCESSUS (l'enfant de
+		// cuisson rend un code de sortie et un `stderr`), donc `errors.Is` n'a rien à mordre.
+		if strings.Contains(berr.Error(), replaybuild.ErrUnknownFilmKey.Error()) {
+			slog.WarnContext(ctx, "post-sync: artefact rejeu ECARTE — clé du film absente de la "+
+				"table de profil (ajouter la ligne : docs/RUNBOOK_FILM_PROFILES.md)",
+				"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
+			b.ecartes++
+			return
 		}
 		logFn(ctx, "post-sync: artefact rejeu non construit",
 			"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)

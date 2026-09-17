@@ -17,6 +17,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/haloclient"
@@ -123,9 +124,28 @@ func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID st
 		return nil, nil, nil, OutcomeNoFilm, fmt.Errorf("chargement du film %s: %w", matchID, err)
 	}
 
-	// `nil` = la CONFIGURATION GELEE, celle qui a produit les chiffres publies. Ne jamais
-	// passer d Options ici sans une raison ecrite : ce sont elles qui definissent le decodage.
-	res, err := decfilm.Decode(ctx, matchID, film, nil)
+	// LA PORTE DE LA CLE, AVANT TOUT DECODAGE (lot 3.1.1, D-4 d ADR 0034). Un film dont la cle
+	// ecrite est absente de la table de profil est MIS DE COTE : aucun fait killsource ecrit,
+	// aucune position, aucun tir — jamais un decodage au profil d un voisin.
+	if cle := replay.CleDuFilm(film); cle.Refusee() {
+		replay.PublierCleInconnue(cle)
+		observability.AddInt(metricUnknownKey, 1)
+		slog.WarnContext(ctx, "killsource: film ECARTE — la cle ecrite dans le film est absente "+
+			"de la table de profil ; aucun fait n est publie (ajouter la ligne : "+
+			"docs/RUNBOOK_FILM_PROFILES.md)",
+			"match_id", matchID, "cle", cle.Ecrite, "format", cle.Format, "build", cle.Build,
+			"majeure", cle.Majeure, "err", cle.Err)
+		return nil, nil, nil, OutcomeUnknownKey, nil
+	}
+
+	// LA CONFIGURATION GELEE, celle qui a produit les chiffres publies, PLUS LA CARTE DU MATCH.
+	// Ne jamais passer d autre Options ici sans une raison ecrite : ce sont elles qui
+	// definissent le decodage. `Carte` n en est pas une : c est une DONNEE d entree, la meme
+	// entree de catalogue que la passe des positions resout deja (`resolveMapBounds`), et sans
+	// elle la marche des morts lit ses positions aux largeurs d UNE AUTRE CARTE (lot 3.4.1).
+	opts := decfilm.DefaultOptions()
+	opts.Carte = c.carteDuMatch(ctx, matchID)
+	res, err := decfilm.Decode(ctx, matchID, film, &opts)
 	if err != nil {
 		// Un film sans kill-feed n est pas une panne : c est un film dont on ne peut rien
 		// publier. Le distinguer evite qu un backfill s arrete sur un vieux match.

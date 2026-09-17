@@ -74,8 +74,8 @@ func kf35bInstallPrecision(t *testing.T, name string) (profile.I0Layout, func())
 	t.Logf("      [%s] decoupage i0 lu dans le film : %s (%d paires, frontieres %v)",
 		name, lay, rep.Pairs, rep.Boundaries)
 	p := profilDeCarte(lay)
-	// 0 => absAxisW retombe sur les largeurs world-object de la carte, celles qu'on vient de poser.
-	p.Mouvement.AbsoluteAxisW = 0
+	// Le chemin absolu lit les largeurs world-object de la carte, celles qu'on vient de poser :
+	// depuis le lot 3.4.1-a il n'y a plus de largeur UNIFORME a neutraliser ici.
 	return lay, poserProfilDInstrument(p)
 }
 
