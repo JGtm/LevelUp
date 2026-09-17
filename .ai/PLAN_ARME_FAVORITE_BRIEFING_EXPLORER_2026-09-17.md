@@ -84,11 +84,20 @@ chaque cellule est une donnée connue du composant : carte de dimension = `entri
 briefing :
 
 ```
-favoriteWeaponSlots({ dimensionLines: number[], rankedLines: number }): 0 | 1 | 2
-lignesRangee = max(...dimensionLines, rankedLines, 2)
-placeLibre   = lignesRangee - 2
+favoriteWeaponSlots({ dimensionLines: number[], rankedLines: number, stacked: boolean }): 0 | 1 | 2
+base         = stacked ? 4 : 2
+lignesRangee = max(...dimensionLines, rankedLines, base)
+placeLibre   = lignesRangee - base
 slots        = clamp(placeLibre, 0, 2)
 ```
+
+**Constante de base : 2 en cellule propre, 4 en empilé** (amendement du 2026-09-17, après
+revue du diff). Empilé sous « Par contexte », le bloc paie en plus son libellé,
+l'espacement de la pile et les marges de la carte du haut — environ DEUX lignes que la
+formule nue ne comptait pas. Sans cette constante la rangée grandissait d'environ quatre
+lignes là où la formule promet qu'elle ne bouge pas. C'est exactement le geste prévu par
+D3 : la correction d'un écart de hauteur se fait DANS la formule, jamais par une mesure
+du DOM.
 
 - `slots = 2` → deux armes avec barre — la rangée ne bouge pas ;
 - `slots = 1` → une arme avec barre — la rangée ne bouge pas ;
@@ -151,6 +160,16 @@ les deux garde-rails qui filtrent sur ce motif. Il est une liste `flex flex-col`
 une grille à colonnes nommées (`[grid-template-columns:…]`), car le test DP-3 cible la
 DERNIÈRE grille portant cette classe (`ExplorerBriefingStrip.test.tsx:100`) et viserait
 la mauvaise.
+
+**Habillage : empilé = NU, cellule propre = CARTE** (amendement du 2026-09-17). Sous
+« Par contexte », le bloc n'a pas de `BriefingSectionCard` : un libellé en petites
+capitales (`text-2xs uppercase tracking-wide text-muted-foreground`) puis la liste. Une
+seconde carte y coûterait son en-tête, sa bordure et son corps — environ 70 px, soit
+quatre lignes de rangée gagnées pour rien. En cellule propre il n'y a aucun coût
+d'empilement et le bloc doit ressembler à ses voisines : carte complète, en-tête compris
+(la doctrine `BriefingSectionCard` vaut pour les CELLULES de la rangée « Par… », pas pour
+un contenu empilé dans l'une d'elles). La forme compacte, déjà nue, vaut dans les deux
+habillages.
 
 ## Étapes
 

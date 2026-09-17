@@ -77,6 +77,21 @@ servis), « Aucun test en échec », « Aucun package en échec hors test ». L'
 CI Linux. Les deux défauts du script sont consignés en Découvertes du plan, NON traités
 (hors périmètre).
 
+**Correction post-CR (relecture du diff par le superviseur)** : en mode EMPILÉ, le bloc à
+une ou deux armes était rendu dans une SECONDE `BriefingSectionCard`. Son chrome seul
+(en-tête `px-3 py-2 text-sm` + bordure + corps `p-3`) pèse environ 70 px : la pile
+« contexte (≈ 97 px) + carte arme à deux lignes (≈ 131 px) » ≈ 235 px face aux ≈ 175 px
+d'une carte de dimension à six entrées, soit une rangée plus haute d'environ quatre lignes
+là où la formule promet qu'elle ne bouge pas — et le débordement subsistait même à une
+seule arme. Deux gestes, tous deux dans la doctrine « la hauteur se décide » : le composant
+reçoit `stacked` et, empilé, perd sa carte (libellé en petites capitales puis la liste,
+barres conservées ; carte complète conservée en cellule propre, où il n'y a aucun coût
+d'empilement et où il doit ressembler à ses voisines) ; et la constante de base de
+`favoriteWeaponSlots` passe de 2 à 4 en empilé, parce que le libellé, l'espacement de la
+pile et les marges de la carte du haut coûtent environ deux lignes que la formule nue ne
+comptait pas. Aucune mesure du DOM ajoutée. Les quatre tests de placement du Strip et le
+describe DP-3 passent sans retouche.
+
 **Prochaine étape** : gate visuel de l'utilisateur, cinq écrans (scope complet Infinite,
 scope réduit à une carte, scope 2023 pour la note de couverture, scope sans « Par contexte »,
 et Halo 5). Puis push de la branche par le superviseur et vérification de la CI au niveau
