@@ -58,8 +58,14 @@ type calibration struct {
 	// AxisW / IndexW : ce que le BALAYAGE designe. Depuis le lot 3.4.1 il ne DECIDE plus : il
 	// sert d ORACLE, confronte aux valeurs lues ci-dessus.
 	AxisW, IndexW uint
-	// Desaccords : nombre de grandeurs ou l inference contredit la valeur lue (une par axe,
-	// plus la largeur d index). Zero = les deux sources disent la meme chose.
+	// CarteLue : les largeurs viennent-elles de l entree de catalogue de la CARTE du match ?
+	// FAUX = repli `repli_carte_absente_largeurs_par_defaut` — l invariant conserve, c est-a-dire
+	// les largeurs d UNE carte (`cliffhanger`) appliquees a celle-ci. Jamais un zero muet : le
+	// rendu lisible le dit, et `Decode` l avertit par film.
+	CarteLue bool
+	// Desaccords : nombre de grandeurs ou l inference CONTREDIT la valeur lue — la largeur
+	// d axe (hors du voisinage du triplet lu) et la largeur d index de plage. Zero = l oracle
+	// ne contredit pas la carte. Cf. [infererLargeurs] pour la portee exacte du critere.
 	Desaccords    int
 	Score, Median int
 	Flat          bool // le profil est plat : l inference n a rien designe de net
@@ -83,9 +89,13 @@ func (c calibration) String() string {
 	if c.Flat {
 		src = fmt.Sprintf("PROFIL PLAT (score %d, mediane %d)", c.Score, c.Median)
 	}
-	return fmt.Sprintf("LU axisW=%v indexW=%d | ORACLE axisW=%d indexW=%d [%s] "+
+	source := "CARTE"
+	if !c.CarteLue {
+		source = "DEFAUT (carte absente)"
+	}
+	return fmt.Sprintf("LU axisW=%v indexW=%d [%s] | ORACLE axisW=%d indexW=%d [%s] "+
 		"desaccords=%d | recordStateParam=%d [croissance x%.3f]",
-		c.LueAxisW, c.LueIndexW, c.AxisW, c.IndexW, src, c.Desaccords, c.RSP, c.RSPRatio)
+		c.LueAxisW, c.LueIndexW, source, c.AxisW, c.IndexW, src, c.Desaccords, c.RSP, c.RSPRatio)
 }
 
 // bornes de l espace balaye : 21 largeurs d axe x 3 largeurs d index = 63 configurations.
@@ -105,10 +115,10 @@ const (
 // la valeur mesuree »). Le profil porte les largeurs de la table PAR INDEX de la carte et la
 // largeur d index de plage ; le balayage reste, il rend un VERDICT qu on confronte — c est le
 // seul oracle INTERNE AU FILM dont on dispose pour dire qu une entree de catalogue ment.
-func calibrate(f *film, tl *timeline, views int) calibration {
-	profil := ProfilDeDepart()
+func calibrate(f *film, tl *timeline, views int, carte *profile.MapQuantEntry) calibration {
+	profil, carteLue := ProfilDeDepartPourCarte(carte)
 	abs := profil.LargeursObjetDuMonde()
-	res := calibration{Profil: profil, LueAxisW: abs.AxisW, LueIndexW: abs.IndexW}
+	res := calibration{Profil: profil, CarteLue: carteLue, LueAxisW: abs.AxisW, LueIndexW: abs.IndexW}
 	infererLargeurs(f, tl, views, &res)
 	calibrateRSP(f, tl, views, &res)
 	return res
@@ -148,14 +158,41 @@ func infererLargeurs(f *film, tl *timeline, views int, res *calibration) {
 		res.Flat = true
 		return
 	}
-	for ax := 0; ax < 3; ax++ {
-		if res.LueAxisW[ax] != res.AxisW {
-			res.Desaccords++
-		}
+	// LE DESACCORD SE COMPTE A LA PORTEE DE L ORACLE, ET PAS PLUS FINEMENT (lot 3.4.1).
+	//
+	// L oracle balaie une largeur UNIFORME ; la verite est un TRIPLET par axe (17/17/15 sur
+	// Fragmentation). Exiger l egalite ferait donc un desaccord sur toute carte dont les trois
+	// axes ne sont pas egaux — c est-a-dire presque toutes — et le compteur ne dirait plus rien.
+	// Ce qu une sonde uniforme peut dire, et qu elle dit ici : la valeur lue est-elle DANS son
+	// voisinage ? Un oracle a 16 contre `[17 17 15]` ne contredit pas la carte ; un oracle a 16
+	// contre `[13 13 14]` — l invariant applique a une carte qui n est pas la sienne — si.
+	if res.AxisW < minLargeur(res.LueAxisW) || res.AxisW > maxLargeur(res.LueAxisW) {
+		res.Desaccords++
 	}
 	if res.LueIndexW != res.IndexW {
 		res.Desaccords++
 	}
+}
+
+// minLargeur / maxLargeur : les bornes du triplet de largeurs lu.
+func minLargeur(w [3]uint) uint {
+	m := w[0]
+	for _, v := range w[1:] {
+		if v < m {
+			m = v
+		}
+	}
+	return m
+}
+
+func maxLargeur(w [3]uint) uint {
+	m := w[0]
+	for _, v := range w[1:] {
+		if v > m {
+			m = v
+		}
+	}
+	return m
 }
 
 // calibSample : echantillon FIGE de paquets type-0 SANS event, de taille utile. Leur boucle de

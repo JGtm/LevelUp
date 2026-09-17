@@ -89,6 +89,14 @@ var worldObjectPrecisionReaders = map[string]string{
 		"par valeur par l'installateur) — aucune lecture de la valeur ici. LE TYPE A CHANGE DE " +
 		"COUCHE AU LOT 2.5.b (2026-09-16) : il descend de `grammar/components_movement.go` dans " +
 		"`profile/`, ou il est de la DONNEE ; le commentaire l'a suivi, pas la lecture",
+	"internal/games/halo_infinite/film/internal/facts/killsource/decode.go": "LE REPLI NOMMÉ, " +
+		"et il est là précisément pour dire d'où ce chemin tient ses largeurs (lot 3.4.1) : " +
+		"`Decode` reçoit la carte du match par `Options.Carte`, la pose sur son profil de départ " +
+		"(`ProfilDeDepartPourCarte`) et AVERTIT par film quand elle manque — auquel cas la marche " +
+		"des morts lit bien les largeurs de Cliffhanger sur une autre carte, ce que " +
+		"`repli_carte_absente_largeurs_par_defaut` porte au registre. C'est la question de cette " +
+		"garde, et la réponse y est écrite ; aucune largeur n'est lue ici, seul le drapeau " +
+		"`CarteLue` l'est",
 	"internal/games/halo_infinite/film/internal/grammar/position_capture.go": "LA LECTURE DU CHEMIN ABSOLU " +
 		"D'i0 (`absAxisWFor`), depuis le lot 3.4.1 : la largeur UNIFORME de 14 bits qui " +
 		"l'écrasait a disparu avec `Movement.AbsoluteAxisW`, et le bipède lit désormais la " +

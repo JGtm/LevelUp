@@ -23,6 +23,33 @@ package fallback
 
 var registreKillsourceCarte = []Repli{
 	{
+		Nom:       "repli_carte_absente_largeurs_par_defaut",
+		Fait:      "les largeurs d axe et la largeur d index de plage du chemin absolu de position, pour la marche des morts",
+		Mecanisme: "aucune entree de catalogue n a ete passee a `killsource.Decode` : l invariant du profil est conserve, c est-a-dire les largeurs d UNE carte (`cliffhanger`, 13/13/14) appliquees a celle du match",
+		Condition: CondSectionAbsente,
+		Ordre:     OrdreDevantLaLecture,
+		Sites: []Site{{
+			Fichier: pkgKillsource + "decode.go",
+			Ancre:   "if !c.calib.CarteLue {",
+		}},
+		DatePose: "2026-09-17",
+		// POSE PAR LE LOT 3.4.1, QUI FERME LE DEFAUT DONT IL EST LE RESTE. Jusqu a ce lot,
+		// `killsource` ne recevait AUCUNE entree de catalogue et INFERAIT ces largeurs par
+		// balayage ; l inference est devenue ORACLE (V17, M3-Q8 : la valeur LUE prime), et la
+		// valeur lue arrive desormais par `Options.Carte` — depuis `replaybuild.BuildBytes` et
+		// depuis `killcollector`. Ce repli nomme ce qui reste : les appelants qui n ont pas de
+		// base sous la main (CLI unitaire, ouvrier distant, collecteur sans
+		// `WithPositionCapture`). Il n est PAS neutre — l invariant est l entree `cliffhanger` du
+		// catalogue — et c est pourquoi il est AVERTI par film, en plus d etre inscrit ici.
+		//
+		// L ORACLE EST SON CONTROLE : sur un film dont la carte manque, `calibration.Desaccords`
+		// compte ce que le balayage aurait designe contre ce qui est applique.
+		CibleRetrait:    "lot qui rendra l entree de catalogue obligatoire a `killsource.Decode` (un film dont la carte est inconnue serait alors mis de cote plutot que decode aux largeurs d une autre — cf. D1 (cloture M2), question ouverte au pilote)",
+		CritereRetrait:  "0 appel de production sans `Options.Carte` ; la CLI et les instruments la resolvent eux aussi, ou disent pourquoi ils ne le peuvent pas",
+		CompteurBranche: false,
+		CibleComptage:   comptageFamille19,
+	},
+	{
 		Nom:       "repli_distances_de_touche_desactivees",
 		Fait:      "la distance tireur -> victime de chaque touche",
 		Mecanisme: "carte hors catalogue, ou positions de bipedes indisponibles : les distances sont desactivees, les touches restent comptees",
