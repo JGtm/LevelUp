@@ -10,6 +10,7 @@ package objectives
 // fortuite que [RealRounds] ne retient pas.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"reflect"
 	"sort"
 	"testing"
@@ -17,7 +18,7 @@ import (
 
 // refNamedEventsFrom est [NamedEventsFrom] d'AVANT : une serie par emplacement, donc un
 // balayage de `recs` et un calcul de [RealRounds] par emplacement, et un tri a trois cles.
-func refNamedEventsFrom(recs []StatRecord, objectiveType string) []NamedEvent {
+func refNamedEventsFrom(recs []types.StatRecord, objectiveType string) []NamedEvent {
 	table, ok := namedStatSlots[objectiveType]
 	if !ok {
 		return nil
@@ -49,40 +50,40 @@ func refNamedEventsFrom(recs []StatRecord, objectiveType string) []NamedEvent {
 }
 
 // onePassCorpus construit un jeu d'enregistrements qui touche chaque filtre de la marche.
-func onePassCorpus() []StatRecord {
-	rec := func(ms, slot, round int, comps map[int]StatValue) StatRecord {
-		return StatRecord{TimeMS: ms, Slot: slot, Round: round, Comps: comps}
+func onePassCorpus() []types.StatRecord {
+	rec := func(ms, slot, round int, comps map[int]types.StatValue) types.StatRecord {
+		return types.StatRecord{TimeMS: ms, Slot: slot, Round: round, Comps: comps}
 	}
-	var out []StatRecord
+	var out []types.StatRecord
 	// Manche 0 : deux joueurs, plusieurs emplacements, dont les deux cotes de `comp 21`.
 	for i, ms := range []int{1000, 2000, 3000, 4000, 5000, 6000} {
 		v := int64(i + 1)
 		out = append(out,
-			rec(ms, 10, 0, map[int]StatValue{
+			rec(ms, 10, 0, map[int]types.StatValue{
 				2: {A: v, B: 0}, 21: {A: v, B: v / 2}, 22: {A: v * 2, B: 0},
 				0: {A: v, B: 0},
 			}),
-			rec(ms+50, 12, 0, map[int]StatValue{
+			rec(ms+50, 12, 0, map[int]types.StatValue{
 				3: {A: v, B: 0}, 20: {A: 0, B: v}, 23: {A: v, B: 0},
 			}),
 			// Slot d'EQUIPE : ignore par le nommage.
-			rec(ms+10, 6, 0, map[int]StatValue{0: {A: v * 10, B: 0}}),
+			rec(ms+10, 6, 0, map[int]types.StatValue{0: {A: v * 10, B: 0}}),
 		)
 	}
 	// Manche 1 : le compteur repart de zero — c'est le cumul qui doit le rattraper.
 	for i, ms := range []int{20000, 21000, 22000, 23000, 24000, 25000} {
 		v := int64(i + 1)
 		out = append(out,
-			rec(ms, 10, 1, map[int]StatValue{2: {A: v, B: 0}, 21: {A: v, B: 0}, 0: {A: v, B: 0}}),
-			rec(ms+50, 12, 1, map[int]StatValue{3: {A: v, B: 0}, 20: {A: 0, B: v}}),
+			rec(ms, 10, 1, map[int]types.StatValue{2: {A: v, B: 0}, 21: {A: v, B: 0}, 0: {A: v, B: 0}}),
+			rec(ms+50, 12, 1, map[int]types.StatValue{3: {A: v, B: 0}, 20: {A: 0, B: v}}),
 		)
 	}
 	// Emission NEGATIVE (ancrage parasite) et score de mode HORS DOMAINE (canal B aberrant).
 	out = append(out,
-		rec(7000, 10, 0, map[int]StatValue{2: {A: -115, B: 0}}),
-		rec(7100, 10, 0, map[int]StatValue{0: {A: 66, B: 16635}}),
+		rec(7000, 10, 0, map[int]types.StatValue{2: {A: -115, B: 0}}),
+		rec(7100, 10, 0, map[int]types.StatValue{0: {A: 66, B: 16635}}),
 		// Manche 9 fortuite : sans contiguite, RealRounds ne la retient pas.
-		rec(90000, 10, 9, map[int]StatValue{2: {A: 400, B: 0}}),
+		rec(90000, 10, 9, map[int]types.StatValue{2: {A: 400, B: 0}}),
 	)
 	return out
 }

@@ -26,6 +26,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV11Visee -v -timeout 120m
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
 	"math/rand/v2"
 	"sort"
@@ -325,7 +326,7 @@ func v11OccupationUnFilm(t *testing.T, dir string) {
 // 105 / 105. Le DEBUT de l'episode est donc pris ou la production le prend depuis V1a.4 : au
 // dernier point du flux de position qui precede la sortie, c'est-a-dire a l'ouverture du TROU
 // que la sortie ferme.
-func v11Episodes(evs []VehicleEvent, pos map[uint32][]uint64) []v11Episode {
+func v11Episodes(evs []types.VehicleEvent, pos map[uint32][]uint64) []v11Episode {
 	sort.SliceStable(evs, func(i, j int) bool { return evs[i].TimestampUS < evs[j].TimestampUS })
 	var out []v11Episode
 	for _, e := range evs {

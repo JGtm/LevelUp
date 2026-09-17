@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // score_timeline_rounds_test.go — LE CALQUE DU SCORE PAR JOUEUR MIGRE VERS L'IDENTITE PAR MANCHE.
@@ -30,8 +31,8 @@ func multiRoundClock() scoreClock {
 // slots. Le compteur de morts (comp 2 B) est l'ancre d'identite ; ses instants correspondent au
 // fil des morts. Chaque (slot, manche) porte aussi un train de score de mode (comp 0 A, >= 3
 // emissions) pour que RealRounds tienne les deux manches pour reelles.
-func reassignFixture() ([]objectives.StatRecord, []Death) {
-	var recs []objectives.StatRecord
+func reassignFixture() ([]types.StatRecord, []Death) {
+	var recs []types.StatRecord
 	// Score de mode : trois emissions croissantes par manche sur le slot 22 -> manches 0 et 1.
 	recs = append(recs, modeRamp(22, 0, 1_000, 1_000, 10, 20, 30)...)
 	recs = append(recs, modeRamp(22, 1, 11_000, 1_000, 10, 20, 30)...)

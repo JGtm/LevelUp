@@ -42,6 +42,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // CES SEUILS ONT ETE REMIS EN CAUSE LE 2026-09-02, ET LA MESURE LES A CONFIRMES. Le calque
@@ -115,7 +116,7 @@ type vehicleRideInputs struct {
 	// bipeds est le nuage NON decime des BIPEDES, d ou sortent les trous.
 	bipeds []grammar.BipedPosition
 	// events sont les embarquements et les sorties.
-	events []grammar.VehicleEvent
+	events []types.VehicleEvent
 	// aimBySlot porte la VISEE de chaque occupant, indexee par SON slot bipede et triee par
 	// instant (cf. vehicle_rides_aim.go). Vide : les episodes sortent sans serie de visee.
 	aimBySlot map[uint32][]grammar.BipedAim
@@ -130,7 +131,7 @@ type vehicleRideInputs struct {
 	// est ici parce que le nom porte par un evenement peut designer une vie que le calque ne
 	// publie pas — la TOURELLE d un Warthog, entite `ti=40` attachee qui ne replique jamais sa
 	// position (cf. `vehicleLifeFromEvent`).
-	drawable map[grammar.EquipmentLifeKey]bool
+	drawable map[types.EquipmentLifeKey]bool
 	clock    replayClock
 }
 
@@ -140,10 +141,10 @@ type vehicleRideInputs struct {
 // l assemblage — un nom d evenement qui designe une vie non dessinable ferait disparaitre
 // l occupant (cf. `vehicleLifeFromEvent`, et la tourelle du Warthog qui l a revele).
 func vehicleDrawableLives(
-	lives []vehicleLife, spawns map[grammar.EquipmentLifeKey]grammar.EquipmentCreation,
+	lives []vehicleLife, spawns map[types.EquipmentLifeKey]types.EquipmentCreation,
 	bySlot map[uint32][]grammar.BipedPosition,
-) map[grammar.EquipmentLifeKey]bool {
-	out := make(map[grammar.EquipmentLifeKey]bool, len(lives))
+) map[types.EquipmentLifeKey]bool {
+	out := make(map[types.EquipmentLifeKey]bool, len(lives))
 	for _, l := range lives {
 		if sp, ok := spawns[l.key]; ok && sp.TimestampUS > 0 {
 			out[l.key] = true
@@ -187,14 +188,14 @@ type vehicleRideStats struct {
 // qu en REPLI, pour les episodes qu aucun evenement n atteste — aux memes portes qu avant.
 func buildVehicleRides(
 	in vehicleRideInputs,
-) (map[grammar.EquipmentLifeKey][]VehicleRide, vehicleRideStats) {
+) (map[types.EquipmentLifeKey][]VehicleRide, vehicleRideStats) {
 	var st vehicleRideStats
 	if in.clock.step == 0 || len(in.lives) == 0 {
 		return nil, st
 	}
 	boards, exits := vehicleEventsByOccupant(in.events)
 	bySlot := vehiclePositionsBySlot(in.bipeds)
-	out := map[grammar.EquipmentLifeKey][]VehicleRide{}
+	out := map[types.EquipmentLifeKey][]VehicleRide{}
 	var kept []vehicleEpisode
 	for _, ep := range vehicleEventEpisodes(boards, exits, bySlot) {
 		st.episodes++
@@ -251,7 +252,7 @@ func buildVehicleRides(
 // vehicleRideOf assemble UN episode : les bornes du trou, affinees par les evenements quand ils
 // tombent dessus, et l identite de l occupant quand le pont la donne.
 func vehicleRideOf(
-	g vehicleGap, boards, exits []grammar.VehicleEvent, in vehicleRideInputs,
+	g vehicleGap, boards, exits []types.VehicleEvent, in vehicleRideInputs,
 ) VehicleRide {
 	r := VehicleRide{Slot: g.slot, Src: VehicleRideSrcGap}
 	startUS, endUS := g.startUS, g.endUS
@@ -299,7 +300,7 @@ func vehicleRideOf(
 // porter. POINTEUR, et il le faut : le siege 0 est le CONDUCTEUR, c est-a-dire la valeur la plus
 // frequente et la plus utile du champ — `omitempty` sur un entier l effacerait exactement comme
 // une absence de lecture.
-func vehicleSeatOf(ev grammar.VehicleEvent) *int {
+func vehicleSeatOf(ev types.VehicleEvent) *int {
 	if !ev.SeatValid {
 		return nil
 	}
@@ -396,13 +397,13 @@ func vehicleSampleNear(
 // reponse est donc unique.
 func vehicleLifeAt(
 	lives []vehicleLife, slot uint32, atUS uint64,
-) (grammar.EquipmentLifeKey, bool) {
+) (types.EquipmentLifeKey, bool) {
 	for _, l := range lives {
 		if l.key.Slot == slot && atUS >= l.loUS && atUS <= l.hiUS {
 			return l.key, true
 		}
 	}
-	return grammar.EquipmentLifeKey{}, false
+	return types.EquipmentLifeKey{}, false
 }
 
 // vehicleEventsByOccupant range les evenements par slot d occupant, embarquements d un cote et
@@ -412,9 +413,9 @@ func vehicleLifeAt(
 // n est pas un joueur, c est une lecture qui a rate. La mesure les compte a zero sur le corpus
 // (68/68 en bande apres le portage du 2026-09-02) ; le filtre est la pour que ca reste vrai.
 func vehicleEventsByOccupant(
-	events []grammar.VehicleEvent,
-) (boards, exits map[uint32][]grammar.VehicleEvent) {
-	boards, exits = map[uint32][]grammar.VehicleEvent{}, map[uint32][]grammar.VehicleEvent{}
+	events []types.VehicleEvent,
+) (boards, exits map[uint32][]types.VehicleEvent) {
+	boards, exits = map[uint32][]types.VehicleEvent{}, map[uint32][]types.VehicleEvent{}
 	for _, ev := range events {
 		if !ev.OccupantPresent || !ev.OccupantInBand {
 			continue
@@ -426,7 +427,7 @@ func vehicleEventsByOccupant(
 			exits[ev.OccupantSlot] = append(exits[ev.OccupantSlot], ev)
 		}
 	}
-	for _, m := range []map[uint32][]grammar.VehicleEvent{boards, exits} {
+	for _, m := range []map[uint32][]types.VehicleEvent{boards, exits} {
 		for s := range m {
 			v := m[s]
 			sort.SliceStable(v, func(i, j int) bool { return v[i].TimestampUS < v[j].TimestampUS })
@@ -437,9 +438,9 @@ func vehicleEventsByOccupant(
 
 // vehicleEventNear rend l evenement le plus proche d un instant dans la tolerance, s il y en a un.
 func vehicleEventNear(
-	evs []grammar.VehicleEvent, atUS uint64,
-) (grammar.VehicleEvent, bool) {
-	best, found, bestGap := grammar.VehicleEvent{}, false, uint64(0)
+	evs []types.VehicleEvent, atUS uint64,
+) (types.VehicleEvent, bool) {
+	best, found, bestGap := types.VehicleEvent{}, false, uint64(0)
 	for _, ev := range evs {
 		g := gapUS(ev.TimestampUS, atUS)
 		if g/1000 > vehicleEventTolMS {

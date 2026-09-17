@@ -31,6 +31,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
 	"os"
 	"sort"
@@ -163,7 +164,7 @@ func equipOwnerRanks(t *testing.T, dir string) map[uint32]int {
 // equipOwnerCross croise l'identifiant `eqip` de chaque création avec le rang du bipède le
 // plus proche à l'instant de la pose, et publie le TÉMOIN en regard.
 func equipOwnerCross(
-	t *testing.T, pl []EquipmentPlacement, pos []equipOwnerSample, ranks map[uint32]int,
+	t *testing.T, pl []types.EquipmentPlacement, pos []equipOwnerSample, ranks map[uint32]int,
 ) {
 	table := map[uint32]map[int]int{}
 	temoin := map[uint32]map[int]int{}
@@ -203,7 +204,7 @@ func equipOwnerPut(dst map[uint32]map[int]int, id uint32, ranks map[uint32]int, 
 // un AUTRE bipède vivant au même instant, choisi de façon déterministe (le i-ème de la liste
 // des vivants) pour que la mesure soit rejouable à l'identique.
 func equipOwnerNearest(
-	pos []equipOwnerSample, c EquipmentPlacement, i int,
+	pos []equipOwnerSample, c types.EquipmentPlacement, i int,
 ) (near, other equipOwnerSample, ok bool) {
 	lo := sort.Search(len(pos), func(k int) bool {
 		return pos[k].ts+equipOwnerWindowUS >= c.T0US
@@ -245,7 +246,7 @@ func equipOwnerGap(a, b uint64) uint64 {
 	return b - a
 }
 
-func equipOwnerDist(c EquipmentPlacement, s equipOwnerSample) float64 {
+func equipOwnerDist(c types.EquipmentPlacement, s equipOwnerSample) float64 {
 	dx, dy, dz := float64(c.X-s.p[0]), float64(c.Y-s.p[1]), float64(c.Z-s.p[2])
 	return dx*dx + dy*dy + dz*dz
 }

@@ -16,15 +16,16 @@ package objectives
 // plafond disparait, et il tombe avec le bon message.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"runtime"
 	"testing"
 )
 
 // bombRecord fabrique une emission du compteur de morts d'un slot de joueur.
-func bombRecord(slot, timeMS int, deaths int64) StatRecord {
-	return StatRecord{
+func bombRecord(slot, timeMS int, deaths int64) types.StatRecord {
+	return types.StatRecord{
 		Slot: slot, TimeMS: timeMS,
-		Comps: map[int]StatValue{coreKillsComp: {B: deaths}},
+		Comps: map[int]types.StatValue{coreKillsComp: {B: deaths}},
 	}
 }
 
@@ -33,7 +34,7 @@ func bombRecord(slot, timeMS int, deaths int64) StatRecord {
 func TestUneLectureAberranteNeDerouleRien(t *testing.T) {
 	// 400 millions : l'ordre de grandeur qui produisait les 19-22 Go observes en production.
 	const aberrante = int64(400_000_000)
-	recs := []StatRecord{bombRecord(10, 1000, 3), bombRecord(10, 2000, aberrante)}
+	recs := []types.StatRecord{bombRecord(10, 1000, 3), bombRecord(10, 2000, aberrante)}
 
 	var avant, apres runtime.MemStats
 	runtime.GC()
@@ -59,7 +60,7 @@ func TestUneLectureAberranteNeDerouleRien(t *testing.T) {
 // SANS CE SECOND TEST, le premier serait satisfait par un garde qui jette tout — et le pont
 // d'identite ne nommerait plus personne, en silence.
 func TestUneProgressionNormaleSeDerouleEncore(t *testing.T) {
-	recs := []StatRecord{
+	recs := []types.StatRecord{
 		bombRecord(10, 1000, 1), bombRecord(10, 2000, 2), bombRecord(10, 5000, 4),
 		bombRecord(12, 1500, 1),
 	}
@@ -82,12 +83,12 @@ func TestUneProgressionNormaleSeDerouleEncore(t *testing.T) {
 // Le plafond est une BORNE DE SURETE, pas un seuil de plausibilite : le poser au plus juste
 // ferait jeter des lectures vraies sur un mode ou une partie qu'on n'a pas encore vue.
 func TestLePlafondEstAuBordEtPasEnDessous(t *testing.T) {
-	got := deathProgressions([]StatRecord{bombRecord(10, 1000, maxDeathsPerSlot)})
+	got := deathProgressions([]types.StatRecord{bombRecord(10, 1000, maxDeathsPerSlot)})
 	if n := len(got[10]); n != maxDeathsPerSlot {
 		t.Errorf("%d instants pour une emission a la valeur du plafond, attendu %d — le plafond "+
 			"doit etre INCLUS", n, maxDeathsPerSlot)
 	}
-	auDela := deathProgressions([]StatRecord{bombRecord(10, 1000, maxDeathsPerSlot+1)})
+	auDela := deathProgressions([]types.StatRecord{bombRecord(10, 1000, maxDeathsPerSlot+1)})
 	if n := len(auDela[10]); n != 0 {
 		t.Errorf("%d instants pour une emission JUSTE au-dessus du plafond, attendu 0", n)
 	}

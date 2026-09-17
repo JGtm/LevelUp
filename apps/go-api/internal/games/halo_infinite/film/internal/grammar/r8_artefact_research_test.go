@@ -50,7 +50,7 @@ type r8Track struct {
 	Points   []r8Point `json:"points"`
 }
 
-// r8Placement est une pose d'equipement (cf. replay.EquipmentPlacement).
+// r8Placement est une pose d'equipement (cf. types.EquipmentPlacement).
 type r8Placement struct {
 	T0     int     `json:"t0"`
 	T1     int     `json:"t1"`
@@ -171,7 +171,7 @@ func r8ReadArtifact(t *testing.T, path, id string) *r8Artifact {
 }
 
 // r8Dist2 est la distance HORIZONTALE (x, y) en metres — z est l'altitude dans le
-// document (cf. EquipmentPlacement.Z). Deux poses d'un meme socle se comparent au sol.
+// document (cf. types.EquipmentPlacement.Z). Deux poses d'un meme socle se comparent au sol.
 func r8Dist2(ax, ay, bx, by float64) float64 {
 	dx, dy := ax-bx, ay-by
 	return math.Hypot(dx, dy)

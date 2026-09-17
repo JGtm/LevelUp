@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Options règle l'assemblage du document de rejeu.
@@ -34,6 +35,17 @@ type Options struct {
 	// registre, ou quand l'appelant construit depuis des positions sans film. Republiee telle
 	// quelle dans `Coverage.FilmMajorVersion` — cf. le commentaire de ce champ.
 	FilmMajorVersion *int
+	// FilmIdentity : la SECTION 2 de `chunk_00`, lue par l'appelant qui a ouvert le film
+	// (`grammar.ReadFilmIdentity`, via le profil du contexte). nil quand le film ne porte AUCUNE
+	// section d'identification (5 films du cache, majeures 31 et 33), quand `chunk_00` est
+	// tronqué ou encore compressé, ou quand l'appelant construit depuis des positions sans film.
+	//
+	// DEUX CHAMPS DE `coverage.decoder` EN VIENNENT, ET RIEN D'AUTRE : `build` (la clé du profil,
+	// chaîne VIDE quand cette option est nil — décision V15 (15), le bloc reste présent) et le
+	// bloc `registry` (l'empreinte du registre ECS et sa classification, absent quand cette
+	// option est nil). Les quatre révisions, elles, sont des constantes de compilation : elles ne
+	// dépendent d'aucun film et se posent toujours.
+	FilmIdentity *profile.FilmIdentity
 	// Geometry : props Forge optionnels (repères contextuels, pas le fond de carte).
 	Geometry []MapObject
 	// Structure : emprises de la géométrie structurelle de la carte (le vrai fond de
@@ -43,7 +55,7 @@ type Options struct {
 	// Loadouts : armes portées décodées des keyframes (cf. loadouts.go). Entrée de DONNÉES
 	// et non de réglage — elle vit ici plutôt qu'en paramètre pour ne pas pousser
 	// BuildFromPositions au-delà de 5 arguments. Absente = rejeu sans armes portées.
-	Loadouts []grammar.KeyframeLoadout
+	Loadouts []types.KeyframeLoadout
 	// Grenades : lancers de grenade décodés des paquets delta (cf. grenades.go). Comme
 	// Loadouts, c'est une entrée de DONNÉES. Absente = rejeu sans lancers. Le rattachement
 	// à un slot passe par le pont du fil des morts : sans morts lisibles, les lancers décodés
@@ -51,14 +63,14 @@ type Options struct {
 	Grenades []grammar.GrenadeThrow
 	// Projectiles : trajectoires de projectile decodees des paquets delta (cf. projectiles.go).
 	// Entree de DONNEES, comme Loadouts et Grenades. Absente = rejeu sans trajectoires.
-	Projectiles []grammar.ProjectileTrack
+	Projectiles []types.ProjectileTrack
 	// Inventory : inventaire complet lu aux memes images-cles que les armes portees
 	// (cf. inventory.go). Entree de DONNEES. Absente = rejeu sans grenades ni munitions.
 	Inventory []KeyframeInventory
 	// InventoryDeltas sont les lectures d'inventaire des paquets DELTA (grenades). Absentes =
 	// le film n'en transmet pas, ou le balayage a echoue : l'axe des grenades retombe alors sur
 	// les seules images-cles.
-	InventoryDeltas []grammar.InventoryDelta
+	InventoryDeltas []types.InventoryDelta
 	// InventoryDeltaAmmoRefused reporte la porte du scanner : le canal MUNITIONS de ce film a
 	// ete refuse en bloc. Pure telemetrie — les grenades ne sont pas concernees.
 	InventoryDeltaAmmoRefused bool
@@ -66,15 +78,15 @@ type Options struct {
 	// (cf. abilities.go). Entree de DONNEES, comme Inventory. C'est le canal qui voit TOUTE
 	// la palette ; celui des images-cles, porte par Inventory, n'en voit que la fenetre
 	// 16..23. Absente = rejeu dont les capacites se limitent a cette fenetre.
-	AbilityRanks []grammar.AbilityRank
+	AbilityRanks []types.AbilityRank
 	// CamoStates : les transmissions de la voie d'etat du camouflage (i28 queue[1], cf.
 	// filmdec/camo_state.go). Entree de DONNEES, comme AbilityRanks. Absente = rejeu sans
 	// episodes de camouflage — le surbouclier, lui, voyage dans les positions (Shield.Q).
-	CamoStates []grammar.CamoRead
+	CamoStates []types.CamoRead
 	// GrappleReads : les evenements de grappin lus dans le corps tag==3 d'i59 (cf.
 	// filmdec/grapple_state.go). Entree de DONNEES, comme CamoStates. Absente = rejeu sans
 	// tractions de grappin — jamais des tractions devinees.
-	GrappleReads []grammar.GrappleRead
+	GrappleReads []types.GrappleRead
 	// AbilityImpulses / AbilityImpulseStats : les IMPULSIONS DE CAPACITE lues dans le corps
 	// tag==1 des composants i57/i59 (cf. filmdec/ability_impulses.go). Entree de DONNEES,
 	// comme GrappleReads — c'est le MEME composant, l'autre valeur de son tag.
@@ -82,8 +94,8 @@ type Options struct {
 	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le temoin
 	// `Absent` (le film ne declare NI i57 NI i59). Une liste vide sans lui serait
 	// indistinguable d'un film ou personne ne s'est servi de son propulseur.
-	AbilityImpulses     []grammar.AbilityImpulse
-	AbilityImpulseStats grammar.AbilityImpulseStats
+	AbilityImpulses     []types.AbilityImpulse
+	AbilityImpulseStats types.AbilityImpulseStats
 	// AbilityCharges / AbilityChargeStats : les CHARGES RESTANTES lues sur les emplacements
 	// ARMES du composant i56 (cf. filmdec/ability_charges.go). Entree de DONNEES, comme
 	// AbilityImpulses — meme canal d'identite (i48), autre grandeur.
@@ -91,8 +103,8 @@ type Options struct {
 	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent les temoins
 	// `Absent` (le film ne declare pas i56) et `Scanned` (le balayage a tourne). Une liste
 	// vide sans eux serait indistinguable d'un film ou personne n'use ses charges.
-	AbilityCharges     []grammar.AbilityCharge
-	AbilityChargeStats grammar.AbilityChargeStats
+	AbilityCharges     []types.AbilityCharge
+	AbilityChargeStats types.AbilityChargeStats
 	// Placements / PlacementStats : les POSES d'objets d'equipement lues dans les records de
 	// CREATION de l'archetype 37 (cf. filmdec/equipment_placements.go). Entree de DONNEES,
 	// comme GrappleReads. Absente = rejeu sans poses — jamais des poses devinees.
@@ -103,7 +115,7 @@ type Options struct {
 	// WeaponChanges : les PRISES ET LACHERS d'arme lus dans le flux delta (cf.
 	// filmdec/held_weapon_changes.go). Entree de DONNEES, comme GrappleReads. Absente =
 	// rejeu sans ramassages — jamais des ramassages devines.
-	WeaponChanges []grammar.HeldWeaponChange
+	WeaponChanges []types.HeldWeaponChange
 	// Pickups / PickupStats : les RAMASSAGES NATIFS lus dans la liste d'evenements des paquets
 	// delta (evenement `biped_pickup`, cf. filmdec/biped_pickups.go). Entree de DONNEES, comme
 	// WeaponChanges. Absente = rejeu sans ramassages natifs — jamais des ramassages devines.
@@ -112,27 +124,27 @@ type Options struct {
 	// listes MULTIPLES, c'est-a-dire la mesure de ce que le canal ne peut PAS voir (un
 	// ramassage en 2e position d'une liste lui echappe). Une liste vide sans elles serait
 	// indistinguable d'un film sans ramassage.
-	Pickups     []grammar.BipedPickup
-	PickupStats grammar.BipedPickupStats
+	Pickups     []types.BipedPickup
+	PickupStats types.BipedPickupStats
 	// EquipmentChanges / EquipmentChangeStats : les RAMASSAGES ET CONSOMMATIONS d'equipement
 	// lus dans le flux delta (cf. filmdec/equipment_changes.go). Entree de DONNEES, comme
 	// WeaponChanges. Les stats voyagent avec parce qu'elles portent le TEMOIN DE COMPLETUDE
 	// (compteur de rotation) : sans elles, la couverture ne saurait pas dire ce qui manque.
-	EquipmentChanges     []grammar.EquipmentChange
-	EquipmentChangeStats grammar.EquipmentChangeStats
+	EquipmentChanges     []types.EquipmentChange
+	EquipmentChangeStats types.EquipmentChangeStats
 	// Translocations : les TÉLÉPORTATIONS du translocateur, datées par l'événement type 117
 	// du film (cf. filmdec/transloc_events.go). Entrée de DONNÉES, comme EquipmentChanges.
 	// Absente = rejeu sans téléportations — jamais des téléportations devinées. Ce sont les
 	// MÊMES événements qui exemptent le filtre de vitesse au décodage (décision D2) : le
 	// scan se fait UNE fois, avant les positions.
-	Translocations []grammar.TranslocatorTeleport
-	Placements     []grammar.EquipmentPlacement
+	Translocations []types.TranslocatorTeleport
+	Placements     []types.EquipmentPlacement
 	PlacementStats grammar.EquipmentPlacementStats
 	// SpawnEvents / SpawnStats : les evenements type 103 `EquipmentSpawnedObject` lus dans la
 	// liste de tete des paquets delta — « une PIECE a ete engendree ». Entree de DONNEES, comme
 	// Placements : absente, l'origine d'une pose retombe sur ses replis nommes (lot 1.9.1).
-	SpawnEvents []grammar.EquipmentSpawnEvent
-	SpawnStats  grammar.EquipmentSpawnStats
+	SpawnEvents []types.EquipmentSpawnEvent
+	SpawnStats  types.EquipmentSpawnStats
 	// Pads : ce que le film rend sur les SOCLES — armes au sol (`ti=42`) et power-ups (`ti=37`),
 	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
 	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.

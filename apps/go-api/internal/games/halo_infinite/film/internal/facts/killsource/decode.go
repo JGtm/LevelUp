@@ -21,6 +21,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Erreurs rendues par [Decode]. Elles se testent avec `errors.Is`.
@@ -56,7 +57,7 @@ type decodeCtx struct {
 	// face (lot 1.9.3, `feed_couples.go`) et l ASSISTANT (`assist.go`).
 	killEvents *assistScan
 	// couples : d ou vient le couple de chaque instant du kill-feed.
-	couples  CoupleStats
+	couples  types.CoupleStats
 	mult     map[multKey]int
 	calib    calibration
 	bijScore int

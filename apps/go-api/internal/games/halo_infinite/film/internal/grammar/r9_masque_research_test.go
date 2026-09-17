@@ -37,6 +37,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -77,7 +78,7 @@ func r9MasqueOneFilm(t *testing.T, dir string) {
 // d'annonces de chaque composant. AUCUNE marche : seuls l'en-tete et le masque sont lus, donc
 // le resultat ne depend d'aucun deser et ne souffre d'aucune desynchronisation.
 func r9MasqueScan(
-	s r8MobSetup, ranks []AbilityRank, lives map[uint32][]r8LifeSpan,
+	s r8MobSetup, ranks []types.AbilityRank, lives map[uint32][]r8LifeSpan,
 ) (map[int]int, map[int]map[int]int) {
 	recs := map[int]int{}
 	ann := map[int]map[int]int{}

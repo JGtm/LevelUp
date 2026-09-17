@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // gwiClock : origine 1 s, pas 100 ms, 100 frames — les frames attendues se lisent de tête.
@@ -41,9 +42,9 @@ func gwiPos(slot uint32, tUS uint64, x, y float32) grammar.BipedPosition {
 
 func TestGroundWeaponItemsFinParPickupLie(t *testing.T) {
 	objs := []gwPickupObject{gwiObj(2_000_000, 10, 10, 0xAABBCCDD, gwClassDropped)}
-	changes := []grammar.HeldWeaponChange{
+	changes := []types.HeldWeaponChange{
 		// La prise tombe 3 s après la naissance, le ramasseur est SUR l'objet.
-		{TimestampUS: 5_000_000, Slot: 42, Family: 0xAABBCCDD, Kind: grammar.HeldWeaponTaken},
+		{TimestampUS: 5_000_000, Slot: 42, Family: 0xAABBCCDD, Kind: types.HeldWeaponTaken},
 	}
 	pos := []grammar.BipedPosition{gwiPos(42, 5_000_000, 10.3, 10)}
 	got, cov := buildGroundWeaponItems(objs, changes, pos, gwiClock())
@@ -122,8 +123,8 @@ func TestGroundWeaponItemsLaFamilleEstUnCritere(t *testing.T) {
 	// Un ramasseur SUR l'objet, dans la fenêtre — mais la prise nomme une AUTRE arme (le cas
 	// réel : la prise du drapeau à côté d'une arme au sol). Elle ne doit PAS se lier.
 	objs := []gwPickupObject{gwiObj(2_000_000, 10, 10, 0xAABBCCDD, gwClassDropped)}
-	changes := []grammar.HeldWeaponChange{
-		{TimestampUS: 5_000_000, Slot: 42, Family: 0x2A392328, Kind: grammar.HeldWeaponTaken},
+	changes := []types.HeldWeaponChange{
+		{TimestampUS: 5_000_000, Slot: 42, Family: 0x2A392328, Kind: types.HeldWeaponTaken},
 	}
 	pos := []grammar.BipedPosition{gwiPos(42, 5_000_000, 10.3, 10)}
 	got, cov := buildGroundWeaponItems(objs, changes, pos, gwiClock())
@@ -136,11 +137,11 @@ func TestGroundWeaponItemsLaFamilleEstUnCritere(t *testing.T) {
 
 func TestGroundWeaponItemsLoinOuTardNeLiePas(t *testing.T) {
 	objs := []gwPickupObject{gwiObj(2_000_000, 10, 10, 0xAABBCCDD, gwClassDropped)}
-	changes := []grammar.HeldWeaponChange{
+	changes := []types.HeldWeaponChange{
 		// Prise dans la fenêtre mais à 5 m : un autre objet, pas celui-ci.
-		{TimestampUS: 5_000_000, Slot: 42, Family: 0xAABBCCDD, Kind: grammar.HeldWeaponTaken},
+		{TimestampUS: 5_000_000, Slot: 42, Family: 0xAABBCCDD, Kind: types.HeldWeaponTaken},
 		// Prise à 30 cm mais HORS de la fenêtre de vie.
-		{TimestampUS: 50_000_000, Slot: 43, Family: 0xAABBCCDD, Kind: grammar.HeldWeaponTaken},
+		{TimestampUS: 50_000_000, Slot: 43, Family: 0xAABBCCDD, Kind: types.HeldWeaponTaken},
 	}
 	pos := []grammar.BipedPosition{
 		gwiPos(42, 5_000_000, 15, 10),
@@ -203,7 +204,7 @@ func TestGroundWeaponItemsIntervalleDeDisparition(t *testing.T) {
 // rien : `ammo` reste absent (c'est le cas majoritaire, cf. la réserve de lecture du décodeur).
 func TestGroundWeaponItemsMunitionsExactes(t *testing.T) {
 	avec := gwiObj(2_000_000, 10, 10, 0xAABBCCDD, gwClassDropped)
-	avec.HasAmmo, avec.Ammo = true, grammar.GroundWeaponAmmo{Mag: 27, Res: 114}
+	avec.HasAmmo, avec.Ammo = true, types.GroundWeaponAmmo{Mag: 27, Res: 114}
 	sans := gwiObj(3_000_000, 20, 20, 0xAABBCCDD, gwClassDropped)
 	got, cov := buildGroundWeaponItems([]gwPickupObject{avec, sans}, nil, nil, gwiClock())
 	if len(got) != 2 {

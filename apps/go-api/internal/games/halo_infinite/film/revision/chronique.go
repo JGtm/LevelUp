@@ -66,6 +66,18 @@ func ParserRevision(prefixe, revision string) (Rang, error) {
 	return Rang{Date: m[1], N: n}, nil
 }
 
+// Anterieur dit si `r` vient STRICTEMENT avant `autre` dans la serie — la comparaison qu un
+// plancher de [Chronique.VerifierRangs] demande, et que l egalite de chaine ne rend pas (un cote
+// de la chronique peut commencer apres le plancher sans jamais en porter la valeur exacte).
+//
+// Les dates sont en ISO, donc ordonnees par comparaison de chaines.
+func (r Rang) Anterieur(autre Rang) bool {
+	if r.Date != autre.Date {
+		return r.Date < autre.Date
+	}
+	return r.N < autre.N
+}
+
 // Suit dit si `suivant` est le rang IMMEDIATEMENT apres `precedent` : le lot d apres dans la
 // journee, ou le premier lot d un jour ulterieur.
 func (r Rang) Suit(precedent Rang) bool {
@@ -84,7 +96,10 @@ type EntreeGodoc struct {
 	Date string
 	// Lot : ce que l entree dit du lot, tel qu ecrit, coupe a la fin de la ligne.
 	Lot string
-	// Ligne : le numero de ligne de l entree dans le fichier, pour les messages.
+	// Fichier : le fichier de godoc qui porte l entree — une chronique rotationnee en porte
+	// plusieurs, et un message qui ne citerait qu un numero de ligne designerait le mauvais.
+	Fichier string
+	// Ligne : le numero de ligne de l entree dans [EntreeGodoc.Fichier], pour les messages.
 	Ligne int
 }
 
@@ -114,26 +129,36 @@ func formeEntreeGodoc(prefixe string) *regexp.Regexp {
 }
 
 // LireChronique lit le godoc et le golden d une couche.
-func LireChronique(prefixe, cheminGodoc, cheminGolden string) (Chronique, error) {
+//
+// `cheminsGodoc` porte les fichiers qui declarent les entrees, DANS L ORDRE CHRONOLOGIQUE : une
+// chronique qui ne peut que grandir finit par rotationner (le fichier de `grammar` a passe deux
+// fois le seuil de 500 lignes, d ou une archive), et la couper en deux ne doit pas couper la
+// suite des rangs — c est justement la continuite que [Chronique.VerifierRangs] mesure. Une
+// couche dont la chronique tient dans un fichier en passe un seul.
+func LireChronique(prefixe string, cheminsGodoc []string, cheminGolden string) (Chronique, error) {
 	c := Chronique{Prefixe: prefixe}
-	godoc, err := lignesDe(cheminGodoc)
-	if err != nil {
-		return Chronique{}, err
-	}
 	forme := formeEntreeGodoc(prefixe)
-	for i, ligne := range godoc {
-		m := forme.FindStringSubmatch(ligne)
-		if m == nil {
-			continue
+	for _, chemin := range cheminsGodoc {
+		godoc, err := lignesDe(chemin)
+		if err != nil {
+			return Chronique{}, err
 		}
-		lot := strings.TrimSpace(m[3])
-		if fin := strings.Index(lot, ")"); fin >= 0 {
-			lot = lot[:fin]
+		for i, ligne := range godoc {
+			m := forme.FindStringSubmatch(ligne)
+			if m == nil {
+				continue
+			}
+			lot := strings.TrimSpace(m[3])
+			if fin := strings.Index(lot, ")"); fin >= 0 {
+				lot = lot[:fin]
+			}
+			c.Godoc = append(c.Godoc, EntreeGodoc{
+				Revision: prefixe + "-" + m[1], Date: m[2], Lot: lot,
+				Fichier: chemin, Ligne: i + 1,
+			})
 		}
-		c.Godoc = append(c.Godoc, EntreeGodoc{
-			Revision: prefixe + "-" + m[1], Date: m[2], Lot: lot, Ligne: i + 1,
-		})
 	}
+	var err error
 	if c.Golden, err = lireGolden(cheminGolden); err != nil {
 		return Chronique{}, err
 	}
@@ -233,9 +258,17 @@ func (c Chronique) revisionsGodoc() []string {
 // sur le passe demanderait de renumeroter des revisions deja ecrites dans des goldens, c
 // est-a-dire d ouvrir des backlogs pour de la comptabilite. Le plancher est donc EXPLICITE :
 // la couche declare a partir d ou elle tient la regle. `depuis` vide verifie tout.
+//
+// LE PLANCHER OUVRE SUR LE RANG, PAS SUR L EGALITE DE CHAINE (correctif du volet grammaire du
+// lot 2.6). Les deux cotes de la chronique ne commencent pas au meme rang : le godoc porte tout
+// l historique, le golden n accumule ses lignes de donnees que depuis le jour ou sa porte a
+// cesse de reecrire la seule et unique ligne. Un plancher compare par egalite ne s ouvrait donc
+// jamais du cote golden — il n y verifiait RIEN, en silence, ce qui est le defaut que tous les
+// ratchets de ce chantier ferment. L ouverture se fait au premier rang qui n est pas ANTERIEUR
+// au plancher.
 func (c Chronique) VerifierRangs(depuis string) error {
-	fautes := c.fautesDeRang("le godoc", c.revisionsGodoc(), c.lignesGodoc(), depuis)
-	fautes = append(fautes, c.fautesDeRang("le golden", c.revisionsGolden(), c.lignesGolden(), depuis)...)
+	fautes := c.fautesDeRang("le godoc", c.revisionsGodoc(), c.positionsGodoc(), depuis)
+	fautes = append(fautes, c.fautesDeRang("le golden", c.revisionsGolden(), c.positionsGolden(), depuis)...)
 	if len(fautes) == 0 {
 		return nil
 	}
@@ -243,20 +276,24 @@ func (c Chronique) VerifierRangs(depuis string) error {
 }
 
 // fautesDeRang rend les ruptures de la suite des revisions d un cote de la chronique.
-func (c Chronique) fautesDeRang(quoi string, revisions []string, lignes []int, depuis string) []string {
+func (c Chronique) fautesDeRang(quoi string, revisions, positions []string, depuis string) []string {
+	plancher, plancherLu := Rang{}, depuis == ""
+	if !plancherLu {
+		if r, err := ParserRevision(c.Prefixe, depuis); err == nil {
+			plancher = r
+		} else {
+			return []string{fmt.Sprintf("plancher %q : %v", depuis, err)}
+		}
+	}
 	var fautes []string
 	var precedent Rang
-	ouvert := depuis == ""
 	for i, rev := range revisions {
-		if rev == depuis {
-			ouvert = true
-		}
-		if !ouvert {
-			continue
-		}
 		rang, err := ParserRevision(c.Prefixe, rev)
 		if err != nil {
-			fautes = append(fautes, fmt.Sprintf("%s ligne %d : %v", quoi, lignes[i], err))
+			fautes = append(fautes, fmt.Sprintf("%s, %s : %v", quoi, positions[i], err))
+			continue
+		}
+		if !plancherLu && rang.Anterieur(plancher) {
 			continue
 		}
 		if precedent == (Rang{}) {
@@ -264,10 +301,10 @@ func (c Chronique) fautesDeRang(quoi string, revisions []string, lignes []int, d
 			continue
 		}
 		if !rang.Suit(precedent) {
-			fautes = append(fautes, fmt.Sprintf("%s ligne %d : %s ne suit pas %s-%s%s — les "+
+			fautes = append(fautes, fmt.Sprintf("%s, %s : %s ne suit pas %s-%s%s — les "+
 				"rangs sont strictement croissants et sans trou (un rang saute est un lot dont "+
 				"personne ne saura dire ce qu il a change)",
-				quoi, lignes[i], rev, c.Prefixe, precedent.Date, suffixeRang(precedent.N)))
+				quoi, positions[i], rev, c.Prefixe, precedent.Date, suffixeRang(precedent.N)))
 		}
 		precedent = rang
 	}
@@ -282,7 +319,10 @@ func suffixeRang(n int) string {
 	return "." + strconv.Itoa(n)
 }
 
-// revisionsGolden / lignesGolden / lignesGodoc : les projections dont [VerifierRangs] a besoin.
+// revisionsGolden / positionsGolden / positionsGodoc : les projections dont [VerifierRangs] a
+// besoin. Une POSITION est citable telle quelle dans un message : `<fichier> ligne <n>` du cote
+// godoc, ou la chronique peut s etaler sur plusieurs fichiers, `ligne <n>` du cote golden, qui
+// n en a qu un.
 func (c Chronique) revisionsGolden() []string {
 	out := make([]string, 0, len(c.Golden))
 	for _, l := range c.Golden {
@@ -291,18 +331,18 @@ func (c Chronique) revisionsGolden() []string {
 	return out
 }
 
-func (c Chronique) lignesGolden() []int {
-	out := make([]int, 0, len(c.Golden))
+func (c Chronique) positionsGolden() []string {
+	out := make([]string, 0, len(c.Golden))
 	for _, l := range c.Golden {
-		out = append(out, l.Ligne)
+		out = append(out, fmt.Sprintf("ligne %d", l.Ligne))
 	}
 	return out
 }
 
-func (c Chronique) lignesGodoc() []int {
-	out := make([]int, 0, len(c.Godoc))
+func (c Chronique) positionsGodoc() []string {
+	out := make([]string, 0, len(c.Godoc))
 	for _, e := range c.Godoc {
-		out = append(out, e.Ligne)
+		out = append(out, fmt.Sprintf("%s ligne %d", e.Fichier, e.Ligne))
 	}
 	return out
 }

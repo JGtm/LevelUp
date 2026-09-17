@@ -35,6 +35,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // p2aPlayer est la ligne de match d'un joueur, telle que l'export TSV la donne.
@@ -159,10 +160,10 @@ func p2aFilmOf(t *testing.T, dir string) (string, p2aFilm) {
 }
 
 // p2aLines rend les lignes de match qui fondent le pont slot statborg -> xuid.
-func (f p2aFilm) p2aLines() []objectives.PlayerLine {
-	out := make([]objectives.PlayerLine, 0, len(f.Players))
+func (f p2aFilm) p2aLines() []types.PlayerLine {
+	out := make([]types.PlayerLine, 0, len(f.Players))
 	for _, p := range f.Players {
-		out = append(out, objectives.PlayerLine{
+		out = append(out, types.PlayerLine{
 			XUID: p.XUID, Kills: p.Kills, Deaths: p.Deaths, Assists: p.Assists,
 		})
 	}

@@ -92,6 +92,20 @@ func RegistryFingerprint(reg *Registry) uint64 {
 	return reg.fingerprint
 }
 
+// RegistryNamedSlots rend le nombre d'entrees NOMMEES hachees — le denominateur de l'empreinte.
+// Zero pour un registre nil.
+//
+// PUBLIE AU LOT 2.6.3 parce que l'artefact le porte desormais a cote de l'empreinte
+// (`coverage.decoder.registry`) : une empreinte sans son denominateur ne distingue pas
+// « grammaire d'un autre build » de « registre tronque ». C'est le meme couple que
+// `warnUnknownRegistry` journalise depuis le lot 0.3.
+func RegistryNamedSlots(reg *Registry) int {
+	if reg == nil {
+		return 0
+	}
+	return reg.namedSlots
+}
+
 // registryWarned : les empreintes inconnues DEJA signalees dans ce process.
 //
 // LA DEDUPLICATION EST NECESSAIRE, ET ELLE SE FAIT SUR L'EMPREINTE. Le registre est re-parse

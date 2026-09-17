@@ -84,6 +84,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -332,9 +333,9 @@ func lettresCaptures(t *testing.T, film *source.Film,
 	roster []p2aPlayer,
 ) []objectives.IdentifiedEvent {
 	t.Helper()
-	lines := make([]objectives.PlayerLine, 0, len(roster))
+	lines := make([]types.PlayerLine, 0, len(roster))
 	for _, p := range roster {
-		lines = append(lines, objectives.PlayerLine{
+		lines = append(lines, types.PlayerLine{
 			XUID: p.XUID, Kills: p.Kills, Deaths: p.Deaths, Assists: p.Assists,
 		})
 	}

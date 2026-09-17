@@ -52,6 +52,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // miniBobineChunks : les NUMEROS de fichier des chunks de la mini-bobine, dans l'ordre. Ce sont
@@ -66,7 +67,7 @@ var miniBobineChunks = []int{1, 2, 3}
 func chargerMiniBobineEnMemoire(t *testing.T) *source.Film {
 	t.Helper()
 	chunks := make(source.MemoryChunks, 0, len(miniBobineChunks))
-	meta := make([]source.ChunkMeta, 0, len(miniBobineChunks))
+	meta := make([]types.ChunkMeta, 0, len(miniBobineChunks))
 	for _, num := range miniBobineChunks {
 		path := filepath.Join(MiniFilmDir, fmt.Sprintf("chunk_%02d.bin", num))
 		raw, err := os.ReadFile(path) //nolint:gosec // chemin de fixture fige dans le code
@@ -77,7 +78,7 @@ func chargerMiniBobineEnMemoire(t *testing.T) *source.Film {
 		// ChunkType et StartMS restent nuls : ils ne servent qu'a `objectives` (type de
 		// chunk, horloge), qui n'est pas sur le chemin de `BuildFromFilm`, et la mini-bobine
 		// n'a de toute facon pas de manifeste pour les porter.
-		meta = append(meta, source.ChunkMeta{Index: num})
+		meta = append(meta, types.ChunkMeta{Index: num})
 	}
 	film, err := source.Load(chunks, meta)
 	if err != nil {

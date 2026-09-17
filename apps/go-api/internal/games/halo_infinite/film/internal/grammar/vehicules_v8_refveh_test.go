@@ -6,7 +6,7 @@ package grammar
 // CE QU IL VERIFIE, ET POURQUOI IL EXISTE. Le lot V7 a mesure que la reference 1 de la SORTIE est
 // le VEHICULE (105 / 105 sur 12 films, § 7 de son rapport) — mais il l a mesure avec un decodeur
 // D INSTRUMENT, en chainant `readDom1Ref` a la main. Le lot V8 fait de cette lecture une donnee de
-// PRODUCTION (`VehicleEvent.VehicleSlot`) : la mesure doit donc etre refaite PAR LE DECODEUR DE
+// PRODUCTION (`types.VehicleEvent.VehicleSlot`) : la mesure doit donc etre refaite PAR LE DECODEUR DE
 // PRODUCTION, sans quoi rien ne garantit que les deux lisent la meme chose.
 //
 // IL REPOND AUSSI A LA QUESTION LAISSEE OUVERTE POUR L EMBARQUEMENT : ses trois references sont en

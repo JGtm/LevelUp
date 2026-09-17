@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // bobineMarcheDir : la bobine a paquets delta, chez `killsource`.
@@ -171,7 +172,7 @@ func TestAcceptationSansComposantAuRegistre(t *testing.T) {
 // MEILLEURE gagne — plusieurs vues de replication republient le meme dead-state, et une vue
 // tardive qui rompt ne doit pas degrader une lecture propre.
 func TestDedupObjectDeaths(t *testing.T) {
-	in := []ObjectDeath{
+	in := []types.ObjectDeath{
 		{TimestampUS: 100, Slot: 777, Gen: 1, TailDesync: true},
 		{TimestampUS: 100, Slot: 777, Gen: 1, TailDesync: false},
 		{TimestampUS: 100, Slot: 778, Gen: 1},

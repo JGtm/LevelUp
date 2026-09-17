@@ -2,6 +2,7 @@ package objectives
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
 )
 
@@ -51,7 +52,7 @@ type headerGroup struct {
 // plus longue suite croissante que la production. `useH2` choisit le second en-tete.
 func headerGroups(recs []statRecordExt, comp int, useH2 bool) []headerGroup {
 	type key struct{ slot, hdr int }
-	series := map[key][]ScorePoint{}
+	series := map[key][]types.ScorePoint{}
 	for _, r := range recs {
 		v, ok := r.Cur[comp]
 		if !ok || v.A < 0 {
@@ -62,7 +63,7 @@ func headerGroups(recs []statRecordExt, comp int, useH2 bool) []headerGroup {
 			h = v.H2
 		}
 		k := key{r.Slot, h}
-		series[k] = append(series[k], ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
+		series[k] = append(series[k], types.ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
 	}
 	var out []headerGroup
 	for k, pts := range series {

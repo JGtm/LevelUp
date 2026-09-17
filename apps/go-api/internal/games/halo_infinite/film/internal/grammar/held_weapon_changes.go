@@ -23,49 +23,8 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
-
-// HeldWeaponChangeKind qualifie un changement d'arme en main.
-type HeldWeaponChangeKind string
-
-const (
-	// HeldWeaponTaken : l'emplacement était vide (ou l'arme absente du loadout de spawn) et
-	// porte désormais une arme.
-	HeldWeaponTaken HeldWeaponChangeKind = "taken"
-	// HeldWeaponDropped : l'emplacement passe à vide. C'est le cas NON AMBIGU.
-	HeldWeaponDropped HeldWeaponChangeKind = "dropped"
-	// HeldWeaponSwapped : l'emplacement passe d'une arme à une autre.
-	HeldWeaponSwapped HeldWeaponChangeKind = "swapped"
-	// HeldWeaponRestated : l'arme était déjà portée au spawn ; le flux ne fait que la
-	// ré-annoncer (changement d'emplacement). Ce n'est PAS un ramassage, et le distinguer
-	// est ce qui empêche de compter des prises qui n'ont pas eu lieu.
-	HeldWeaponRestated HeldWeaponChangeKind = "restated"
-)
-
-// HeldWeaponChange est UN changement d'arme en main, daté et attribué.
-type HeldWeaponChange struct {
-	// TimestampUS est l'horodatage du paquet — MÊME horloge que BipedPosition.TimestampUS.
-	TimestampUS uint64
-	// Chunk localise l'événement dans le film.
-	Chunk int
-	// Slot est le slot du bipède porteur : il désigne une VIE, pas un joueur.
-	Slot uint32
-	// SlotIndex est l'emplacement d'arme concerné (l'index du composant dans le masque).
-	SlotIndex int
-	// Family est la moitié HAUTE de l'identifiant 64 bits : l'identité de l'arme, celle que
-	// le catalogue nomme. `noVariant` quand l'emplacement devient vide.
-	//
-	// C'EST LA MOITIÉ HAUTE ET PAS LA BASSE, et le point a été payé : le déserialiseur lit
-	// deux R(32) et le port ne rendait que le second, qui ne résout RIEN au catalogue (cinq
-	// valeurs distinctes sur trente et une émissions, dont un suffixe partagé).
-	Family uint32
-	// Low est la moitié basse (la variante cosmétique), gardée pour le diagnostic.
-	Low uint32
-	// Previous est la famille précédente sur cet emplacement, quand elle est connue.
-	Previous uint32
-	// Kind qualifie le changement.
-	Kind HeldWeaponChangeKind
-}
 
 // HeldWeaponChangeStats compte ce que le balayage a vu, pour que l'appelant puisse juger la
 // couverture sans relire le film.
@@ -93,7 +52,7 @@ type HeldWeaponChangeStats struct {
 // [ScanHeldWeaponChanges].
 func ScanFilmHeldWeaponChanges(
 	dir string, spawnSet func(slot uint32, at uint64) (map[uint32]bool, bool),
-) ([]HeldWeaponChange, HeldWeaponChangeStats, error) {
+) ([]types.HeldWeaponChange, HeldWeaponChangeStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, HeldWeaponChangeStats{}, err
@@ -104,7 +63,7 @@ func ScanFilmHeldWeaponChanges(
 // ScanHeldWeaponChanges décode les changements d'arme en main d'un film DEJA CHARGE.
 func ScanHeldWeaponChanges(
 	fc *FilmContext, spawnSet func(slot uint32, at uint64) (map[uint32]bool, bool),
-) ([]HeldWeaponChange, HeldWeaponChangeStats, error) {
+) ([]types.HeldWeaponChange, HeldWeaponChangeStats, error) {
 	var st HeldWeaponChangeStats
 	cfg, err := newHeldWeaponScan(fc)
 	if err != nil {
@@ -123,7 +82,7 @@ func ScanHeldWeaponChanges(
 		comp int
 	}
 	prevFam, seen := map[key]uint32{}, map[key]bool{}
-	var out []HeldWeaponChange
+	var out []types.HeldWeaponChange
 	walkDeltaBipedRecords(fc, cfg.chunks, cfg.slots, cfg.gram.lay, func(r deltaBipedRecord) {
 		st.Records++
 		if !heldWeaponMaskHas(r.Mask, cfg.weaponIdx) {
@@ -138,7 +97,7 @@ func ScanHeldWeaponChanges(
 			last.got = false
 			st.Emissions++
 			k := key{r.Slot, id}
-			ch := HeldWeaponChange{
+			ch := types.HeldWeaponChange{
 				TimestampUS: r.Packet.TimestampUS, Chunk: r.Chunk, Slot: r.Slot, SlotIndex: id,
 				Family: last.high, Low: last.low, Previous: noVariant,
 			}
@@ -161,23 +120,23 @@ func ScanHeldWeaponChanges(
 // juge contre le loadout de spawn : une famille absente du spawn est une acquisition, une
 // famille déjà présente n'est qu'une ré-annonce.
 func classifyHeldWeaponChange(
-	ch HeldWeaponChange, hadPrevious bool,
+	ch types.HeldWeaponChange, hadPrevious bool,
 	spawnSet func(uint32, uint64) (map[uint32]bool, bool),
-) HeldWeaponChangeKind {
+) types.HeldWeaponChangeKind {
 	switch {
 	case ch.Family == noVariant:
-		return HeldWeaponDropped
+		return types.HeldWeaponDropped
 	case hadPrevious && ch.Previous == noVariant:
-		return HeldWeaponTaken
+		return types.HeldWeaponTaken
 	case hadPrevious:
-		return HeldWeaponSwapped
+		return types.HeldWeaponSwapped
 	}
 	if spawnSet != nil {
 		if set, ok := spawnSet(ch.Slot, ch.TimestampUS); ok && set[ch.Family] {
-			return HeldWeaponRestated
+			return types.HeldWeaponRestated
 		}
 	}
-	return HeldWeaponTaken
+	return types.HeldWeaponTaken
 }
 
 // heldWeaponScan porte la configuration résolue une fois pour un film.
@@ -233,5 +192,5 @@ func heldWeaponMaskHas(idx []int, weaponIdx map[int]bool) bool {
 
 // NoWeaponVariant est la sentinelle d'EMPLACEMENT VIDE, telle que le déserialiseur l'écrit
 // quand la porte de présence est fermée. Exportée parce que les consommateurs
-// (`HeldWeaponChange.Family`, `.Previous`) doivent pouvoir la tester sans redéclarer la valeur.
+// (`types.HeldWeaponChange.Family`, `.Previous`) doivent pouvoir la tester sans redéclarer la valeur.
 const NoWeaponVariant = noVariant

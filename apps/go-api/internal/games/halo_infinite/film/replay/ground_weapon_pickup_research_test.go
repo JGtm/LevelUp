@@ -46,6 +46,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -68,11 +69,11 @@ type gwPickupFilm struct {
 	bySlot        map[uint32][]grammar.BipedPosition
 	lives         map[uint32][]equipLife
 	kfTimes       []uint64
-	seen          map[grammar.EquipmentLifeKey][]uint64
+	seen          map[types.EquipmentLifeKey][]uint64
 	loadouts      map[uint64]map[uint32][]string
 	keyframes     grammar.WorldObjectKeyframes
-	tracks        []grammar.ProjectileTrack
-	spans         map[grammar.EquipmentLifeKey][]grammar.EquipmentLifeSpan
+	tracks        []types.ProjectileTrack
+	spans         map[types.EquipmentLifeKey][]grammar.EquipmentLifeSpan
 	filmEndUS     uint64
 	rng           *rand.Rand
 }

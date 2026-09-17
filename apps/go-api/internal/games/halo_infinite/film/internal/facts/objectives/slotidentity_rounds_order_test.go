@@ -13,14 +13,15 @@ package objectives
 // meme entree, rejouee, la rend encore — c'est le second qui secoue l'iteration de la map.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"reflect"
 	"testing"
 )
 
 // recsExAequo : quatre manches dont TROIS commencent au meme instant (5 000 ms). L'instant seul
 // ne les separe pas.
-func recsExAequo() []StatRecord {
-	return []StatRecord{
+func recsExAequo() []types.StatRecord {
+	return []types.StatRecord{
 		{TimeMS: 5000, Slot: 10, Round: 0},
 		{TimeMS: 9000, Slot: 11, Round: 0},
 		{TimeMS: 7000, Slot: 10, Round: 1},
@@ -41,7 +42,7 @@ func byRoundExAequo() map[int]map[int]string {
 
 func TestRoundStartsOfEstTotalSurDesManchesExAequo(t *testing.T) {
 	base := recsExAequo()
-	ordres := [][]StatRecord{
+	ordres := [][]types.StatRecord{
 		base,
 		{base[5], base[4], base[3], base[2], base[1], base[0]},
 		{base[2], base[0], base[5], base[1], base[3], base[4]},
@@ -74,7 +75,7 @@ func TestRoundStartsOfEstTotalSurDesManchesExAequo(t *testing.T) {
 // le pas sur l'ordre metier — c'est l'instant de debut qui ordonne, le numero ne fait que
 // trancher les egalites.
 func TestRoundStartsOfGardeLInstantEnPremierCritere(t *testing.T) {
-	recs := []StatRecord{
+	recs := []types.StatRecord{
 		{TimeMS: 9000, Slot: 10, Round: 0},
 		{TimeMS: 1000, Slot: 10, Round: 1},
 	}

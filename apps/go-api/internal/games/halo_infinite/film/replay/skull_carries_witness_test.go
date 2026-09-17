@@ -23,6 +23,7 @@ import (
 
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // skullOracleEnv : chemin de l'oracle fige (film -> xuid -> stats de portage).
@@ -35,7 +36,7 @@ const skullOracleEnv = "SKULL_ORACLE"
 // somme pas les durees par joueur, il pose les intervalles). Elle vit donc a cote du seul gate qui
 // s'en sert, hors du binaire de prod, et reutilise `skullCarryIntervals` — le coeur PUBLIE que le
 // temoin doit precisement verifier.
-func skullCarrySecondsByXUID(recs []objectives.StatRecord, identity objectives.RoundIdentity) map[string]float64 {
+func skullCarrySecondsByXUID(recs []types.StatRecord, identity objectives.RoundIdentity) map[string]float64 {
 	out := map[string]float64{}
 	for _, r := range skullCarryIntervals(recs, identity) {
 		if r.xuid == "" {

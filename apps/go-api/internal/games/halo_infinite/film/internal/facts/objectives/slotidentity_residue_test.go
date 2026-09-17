@@ -1,14 +1,17 @@
 package objectives
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 // Ces tests testent [RoundIdentity.CompletedByRoundResidue] SEULE : une defense en profondeur
 // (le calque du crane) masquerait la mutation du composant qu'elle protege.
 
 // deuxManchesQuatreSlots : deux manches reelles, quatre slots emetteurs par manche, des
 // segments (K,D,A) TOUS DISTINCTS — la matiere d'un appariement par residu.
-func deuxManchesQuatreSlots() []StatRecord {
-	var out []StatRecord
+func deuxManchesQuatreSlots() []types.StatRecord {
+	var out []types.StatRecord
 	t := 1000
 	for _, r := range []int{0, 1} {
 		for i, slot := range []int{10, 12, 14, 16} {
@@ -29,7 +32,7 @@ func deuxManchesQuatreSlots() []StatRecord {
 func TestResiduNommeDeuxSlotsQueLEliminationNeTranchePas(t *testing.T) {
 	recs := deuxManchesQuatreSlots()
 	// Segments par manche : slot 10 = (3,3,3), 12 = (4,3,5), 14 = (5,3,7), 16 = (6,3,9).
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "A", Kills: 6, Deaths: 6, Assists: 6},
 		{XUID: "B", Kills: 8, Deaths: 6, Assists: 10},
 		{XUID: "C", Kills: 10, Deaths: 6, Assists: 14},
@@ -62,7 +65,7 @@ func TestResiduNommeDeuxSlotsQueLEliminationNeTranchePas(t *testing.T) {
 // TestResiduSeTaitSurUnResiduPartage : deux slots muets au MEME segment — rien ne dit lequel
 // est lequel, aucun n'est nomme.
 func TestResiduSeTaitSurUnResiduPartage(t *testing.T) {
-	var recs []StatRecord
+	var recs []types.StatRecord
 	t0 := 1000
 	for _, r := range []int{0, 1} {
 		for _, slot := range []int{10, 12, 14, 16} {
@@ -72,7 +75,7 @@ func TestResiduSeTaitSurUnResiduPartage(t *testing.T) {
 			}
 		}
 	}
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "A", Kills: 6, Deaths: 6, Assists: 6},
 		{XUID: "B", Kills: 6, Deaths: 6, Assists: 6},
 		{XUID: "C", Kills: 6, Deaths: 6, Assists: 6},
@@ -94,7 +97,7 @@ func TestResiduSeTaitSurUnResiduPartage(t *testing.T) {
 // TestResiduRefuseLeSegmentNul : un slot qui n'a RIEN fait dans la manche et un joueur au
 // residu nul s'apparieraient sur du vide — la regle refuse.
 func TestResiduRefuseLeSegmentNul(t *testing.T) {
-	var recs []StatRecord
+	var recs []types.StatRecord
 	t0 := 1000
 	for _, r := range []int{0, 1} {
 		for _, slot := range []int{10, 12} {
@@ -106,7 +109,7 @@ func TestResiduRefuseLeSegmentNul(t *testing.T) {
 	}
 	// slot 14 emet le compteur de base, mais a zero partout, dans les deux manches.
 	recs = append(recs, recKDA(9000, 14, 0, 0, 0, 0), recKDA(9100, 14, 1, 0, 0, 0))
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "A", Kills: 6, Deaths: 6, Assists: 6},
 		{XUID: "B", Kills: 6, Deaths: 6, Assists: 6},
 		{XUID: "Z", Kills: 0, Deaths: 0, Assists: 0},
@@ -124,7 +127,7 @@ func TestResiduRefuseLeSegmentNul(t *testing.T) {
 // la voie du triplet ([RoundIdentity.CompletedByLines]) est deja celle qui repond. La garde
 // mono-manche existe pour que ce lot ne change AUCUN film mono-manche du parc.
 func TestResiduNeTouchePasUnFilmMonoManche(t *testing.T) {
-	var recs []StatRecord
+	var recs []types.StatRecord
 	t0 := 1000
 	for _, slot := range []int{10, 12, 14} {
 		for n := 1; n <= 3; n++ {
@@ -132,7 +135,7 @@ func TestResiduNeTouchePasUnFilmMonoManche(t *testing.T) {
 			t0 += 100
 		}
 	}
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "A", Kills: 3, Deaths: 3, Assists: 3},
 		{XUID: "B", Kills: 3, Deaths: 3, Assists: 3},
 		{XUID: "C", Kills: 3, Deaths: 3, Assists: 3},
@@ -162,7 +165,7 @@ func TestResiduSansLignesRendLIdentiteInchangee(t *testing.T) {
 // concorde.
 func TestResiduNeContreditJamais(t *testing.T) {
 	recs := deuxManchesQuatreSlots()
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "A", Kills: 6, Deaths: 6, Assists: 6},
 		{XUID: "B", Kills: 8, Deaths: 6, Assists: 10},
 		{XUID: "C", Kills: 10, Deaths: 6, Assists: 14},

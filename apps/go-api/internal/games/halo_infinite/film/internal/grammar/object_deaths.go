@@ -39,29 +39,13 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // deadStateComponentName est le nom du composant `i11` dans le registre ECS du film. Il est
 // NOMMÉ par le film lui-même (chunk 0) : l'index se RÉSOUT par ce nom, archétype par archétype,
 // et n'est jamais écrit en dur — deux archétypes ne le portent pas au même rang.
 const deadStateComponentName = "object-dead-state-component"
-
-// ObjectDeath est UNE mort écrite : le composant dead-state d'une entité, porté à `Mort`.
-type ObjectDeath struct {
-	// TimestampUS est l'instant du PAQUET qui la porte, sur l'horloge du film.
-	TimestampUS uint64
-	// Slot / Gen identifient la VIE de l'entité (le pool de slots reboucle, la génération fait
-	// 2 bits) ; TypeIndex est son archétype.
-	Slot, Gen, TypeIndex uint32
-	// Dead est le composant capturé. Chez le bipède il porte le couple victime / tueur ; sur
-	// les autres archétypes seul le drapeau `Mort` est établi (les champs restent lus, leur
-	// SENS ne l'est pas — cf. la réserve 1 de la note V13).
-	Dead DeadState
-	// TailDesync dit que le record a rompu APRÈS le dead-state : la tête est lue au bon
-	// endroit, la queue du record n'est pas modélisée. Compté à part, jamais confondu avec un
-	// record entièrement porté.
-	TailDesync bool
-}
 
 // ObjectDeathStats porte les DÉNOMINATEURS sans lesquels aucun compte ne se publie : un compte
 // faible sous une couverture faible ne conclut pas à l'absence, il conclut « sous-instrumenté ».
@@ -104,7 +88,7 @@ func newObjectDeathStats() ObjectDeathStats {
 
 // ScanFilmObjectDeaths est l'ENVELOPPE HORS PRODUCTION (charge le film depuis `dir`) ; la
 // cuisson appelle [ScanObjectDeaths].
-func ScanFilmObjectDeaths(dir string) ([]ObjectDeath, ObjectDeathStats, error) {
+func ScanFilmObjectDeaths(dir string) ([]types.ObjectDeath, ObjectDeathStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, newObjectDeathStats(), err
@@ -119,7 +103,7 @@ func ScanFilmObjectDeaths(dir string) ([]ObjectDeath, ObjectDeathStats, error) {
 // (`FrameRecord.TypeIndex`), jamais par bande de slots dérivée des images-clés. Le filtre de
 // bande aurait perdu 2 à 5 morts de bipède par film, le film liant aussi des entités par
 // records NEW en cours de flux.
-func ScanObjectDeaths(fc *FilmContext) ([]ObjectDeath, ObjectDeathStats, error) {
+func ScanObjectDeaths(fc *FilmContext) ([]types.ObjectDeath, ObjectDeathStats, error) {
 	st := newObjectDeathStats()
 	reg, err := fc.Registry()
 	if err != nil {
@@ -187,7 +171,7 @@ type objectDeathHarvest struct {
 	reg *Registry
 	idx map[uint32]int
 	st  *ObjectDeathStats
-	out []ObjectDeath
+	out []types.ObjectDeath
 }
 
 // deadStateIndex rend l'index du composant dead-state dans l'archétype `ti`, résolu PAR LE NOM
@@ -222,7 +206,7 @@ func (h *objectDeathHarvest) harvest(recs []FrameRecord, atUS uint64) {
 		if !ok {
 			continue
 		}
-		h.out = append(h.out, ObjectDeath{
+		h.out = append(h.out, types.ObjectDeath{
 			TimestampUS: atUS, Slot: r.Slot, Gen: r.ID >> 30, TypeIndex: r.TypeIndex,
 			Dead: *r.Trace.Dead, TailDesync: tail,
 		})
@@ -262,7 +246,7 @@ func (h *objectDeathHarvest) note(r *FrameRecord) {
 // LA QUALITÉ LA MEILLEURE GAGNE : si le même instant est vu par un record entièrement porté ET
 // par un record à queue inconnue, c'est le premier qui est retenu — la marche ne doit pas
 // dégrader une lecture propre parce qu'une vue ultérieure a rompu.
-func dedupObjectDeaths(in []ObjectDeath) []ObjectDeath {
+func dedupObjectDeaths(in []types.ObjectDeath) []types.ObjectDeath {
 	if len(in) == 0 {
 		return nil
 	}
@@ -283,7 +267,7 @@ func dedupObjectDeaths(in []ObjectDeath) []ObjectDeath {
 		at        uint64
 	}
 	seen := map[key]bool{}
-	out := make([]ObjectDeath, 0, len(in))
+	out := make([]types.ObjectDeath, 0, len(in))
 	for _, d := range in {
 		k := key{d.Slot, d.Gen, d.TimestampUS}
 		if seen[k] {

@@ -12,7 +12,10 @@ package grammar
 // justifie : les separer de leur provenance serait exactement la dette que les commentaires de
 // ce chantier existent pour empecher.
 
-import "unicode/utf16"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"unicode/utf16"
+)
 
 // slotVacantBits rend la longueur, en bits, d'un enregistrement de slot ENTIEREMENT A ZERO sur
 // un build dont le bloc de personnalisation mesure `persoBits`.
@@ -63,7 +66,7 @@ func gamertagImprimable(s string) bool {
 // slotEnr : un enregistrement decode, plus les quatre nombres LUS DANS LE FLUX dont la longueur
 // predite depend.
 type slotEnr struct {
-	slot                     PlayerSlot
+	slot                     types.PlayerSlot
 	masque, n, m, uniteesNom int
 }
 

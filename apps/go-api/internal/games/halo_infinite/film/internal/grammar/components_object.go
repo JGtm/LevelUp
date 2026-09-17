@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // Object-component (i0..i17) bit-consumers for the BIPED archetype (#35), plus
 // the held-weapon (weapon-state-type-info, i43..46) variant-name reader.
 //
@@ -112,50 +114,6 @@ func consumeObjectDeadState(br *Lecteur) (mort bool) {
 	return br.ReadBit() // comp+0x70 (non-0x23/0x28 archetypes)
 }
 
-// DeadState holds the captured fields of the BIPED dead-state heavy form
-// (FUN_140c1dd44), the kill-feed death event recorded on the victim's
-// object-dead-state component. These are THE candidate weapon/damage-source
-// fields established by the RE of the kill feed mechanism:
-//
-//	Mort   = comp+0x70  death flag (R(1) before the anim block).
-//	EnumA  = comp+0x04  R(5) tag-table enum (damage-type / method candidate).
-//	EnumB  = comp+0x08  R(5) tag-table enum (damage-type / method candidate).
-//	Val0c  = comp+0x0c  R(4) value.
-//	Val0e  = comp+0x0e  R(3) value.
-//	HasRef = the leading present bit of the +0x10 block was set.
-//	GIDPresent = the inner global-id present bit was set.
-//	GlobalID   = comp+0x10 source R(32) global-id (resolved via GetLocalHandleFromGlobalId,
-//	             table DAT_144b404f0) — SAME mechanism as the WST weapon handle.
-//	             This is the strongest WEAPON / damage-source candidate.
-//	Val14, Val18 = comp+0x14 (R(3)), comp+0x18 (R(1)+optR(6)) — only read when HasRef.
-//
-// The -1 / 0xFFFFFFFF sentinels mean "absent" (the engine writes them on the
-// not-present branches).
-type DeadState struct {
-	Mort       bool
-	EnumA      int32
-	EnumB      int32
-	Val0c      uint8
-	Val0e      uint8
-	HasRef     bool
-	GIDPresent bool
-	GlobalID   uint32 // raw R(32) global-id (0xFFFFFFFF if absent) — the weapon/source ref
-	Val14      uint8
-	Val18      int8
-	// SrcTag0 (comp+0x00) and SrcTag4c (comp+0x4c) are the two readOpt(1+32) reads at
-	// the HEAD and TAIL of FUN_140c1dd44, both via FUN_14080d69c. The 2026-07-10g
-	// Ghidra grammar analysis hypothesised these were the persisted damage SOURCE tag
-	// (melee/grenade cause) in the firearm family tag space. EMPIRICALLY REFUTED
-	// (2026-07-10, tmp_dmgsource on film 000d5950): 0/786 resolve to any weapon family
-	// — the values are RUNTIME entity/anim handles, because FUN_14080d69c reads a
-	// local-handle, NOT the build-time tag string-id (that is FUN_14080dec4, used for
-	// the firearm family and the WST held-weapon variant). Captured for future
-	// world-binding resolution (a handle CAN be resolved to a source entity/tag once
-	// the entity store is bound), NOT as a direct weapon name. 0xFFFFFFFF == absent.
-	SrcTag0  uint32 // comp+0x00 readOpt(1+32) head handle (FUN_14080d69c) — runtime handle, not a tag
-	SrcTag4c uint32 // comp+0x4c readOpt(1+32) tail handle (FUN_14080d69c) — runtime handle, not a tag
-}
-
 // consumeObjectDeadStateBiped is the typeIndex==0x23 (BIPED #35) form of
 // dead-state: the death flag, then the full anim sub-block, then comp+0xc4.
 // It returns the captured dead-state fields (the weapon-attribution payload).
@@ -174,8 +132,8 @@ const deadStatePreSkip = 0
 // consumeObjectDeadStateBipedTI est la forme lourde parametree par le typeIndex :
 // FUN_140c1dce0 lit [R(1) Mort] puis, si typeIndex vaut 0x23 (35) OU 0x28 (40), le corps
 // FUN_140c1dd44 ; le R(1) de queue (comp+0xc4) n'est lu que si typeIndex == 0x23.
-func consumeObjectDeadStateBipedTI(br *Lecteur, typeIndex uint32) DeadState {
-	ds := DeadState{GlobalID: 0xFFFFFFFF, EnumA: -1, EnumB: -1, Val14: 0, Val18: -1, SrcTag0: 0xFFFFFFFF, SrcTag4c: 0xFFFFFFFF}
+func consumeObjectDeadStateBipedTI(br *Lecteur, typeIndex uint32) types.DeadState {
+	ds := types.DeadState{GlobalID: 0xFFFFFFFF, EnumA: -1, EnumB: -1, Val14: 0, Val18: -1, SrcTag0: 0xFFFFFFFF, SrcTag4c: 0xFFFFFFFF}
 	if deadStatePreSkip != 0 {
 		br.Skip(deadStatePreSkip)
 	}
@@ -239,7 +197,7 @@ func consumeObjectDeadStateBipedTI(br *Lecteur, typeIndex uint32) DeadState {
 // Plasma=3,Hardlight=4,Shock=5,Power=6,Melee) and NO killbreakdown category
 // (weapon/grenade/melee/other). The damage class is resolved at REPLAY from the
 // DamageReport pipeline (param_3, FUN_1407e00ac), not stored per-kill in the film.
-func consumeDeadStateAnimBlock(br *Lecteur, ds *DeadState) {
+func consumeDeadStateAnimBlock(br *Lecteur, ds *types.DeadState) {
 	// anim handle (comp+0x00) — srcTag#1 (captured; same tag space as firearm family)
 	if br.ReadBit() { // FUN_14080d69c
 		ds.SrcTag0 = uint32(br.ReadBits(32))

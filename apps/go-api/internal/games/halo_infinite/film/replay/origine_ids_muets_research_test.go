@@ -33,6 +33,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // oriIdsMuets : les deux identifiants à élucider, en hexadécimal minuscule (convention de
@@ -44,7 +45,7 @@ const oriSuiteUS = 2_000_000
 
 // oriTenuApres rend les familles d'arme que le slot reçoit en main dans la fenêtre qui suit
 // `at` (décalée de decalUS pour le témoin).
-func oriTenuApres(chg []grammar.HeldWeaponChange, slot uint32, at uint64, decalUS int64) []uint32 {
+func oriTenuApres(chg []types.HeldWeaponChange, slot uint32, at uint64, decalUS int64) []uint32 {
 	var out []uint32
 	for _, c := range chg {
 		if c.Slot != slot || c.Family == grammar.NoWeaponVariant {

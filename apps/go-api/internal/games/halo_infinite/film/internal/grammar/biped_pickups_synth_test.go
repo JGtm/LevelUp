@@ -18,7 +18,10 @@ package grammar
 //	[R(3) classe][1 porte][R(32) identifiant de catalogue]
 //	[1 fin de liste]
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 // bpSynthWriter écrit des bits MSB-first, comme le flux du moteur.
 type bpSynthWriter struct {
@@ -104,7 +107,7 @@ func bpSynthNominal() bpSynthPacket {
 }
 
 func TestDecodeBipedPickupNominal(t *testing.T) {
-	var st BipedPickupStats
+	var st types.BipedPickupStats
 	got, ok := decodeBipedPickup(bpSynthNominal().bytes(), &st)
 	if !ok {
 		t.Fatalf("l événement forgé doit se décoder ; stats=%+v", st)
@@ -139,7 +142,7 @@ func TestDecodeBipedPickupNominal(t *testing.T) {
 func TestDecodeBipedPickupIsOrderSensitive(t *testing.T) {
 	p := bpSynthNominal()
 	p.swapClassAndGate = true
-	var st BipedPickupStats
+	var st types.BipedPickupStats
 	got, ok := decodeBipedPickup(p.bytes(), &st)
 	if ok && got.Class == 5 && got.CatalogID == 0x1A2B3C4D {
 		t.Error("un paquet dont la classe et la porte du catalogue sont INVERSÉES se décode " +
@@ -150,7 +153,7 @@ func TestDecodeBipedPickupIsOrderSensitive(t *testing.T) {
 func TestDecodeBipedPickupBoardVehicleIsCountedNotPublished(t *testing.T) {
 	p := bpSynthNominal()
 	p.typ = 8 // littéral : cf. bpSynthNominal
-	var st BipedPickupStats
+	var st types.BipedPickupStats
 	if _, ok := decodeBipedPickup(p.bytes(), &st); ok {
 		t.Error("un embarquement en véhicule (type 8) ne doit PAS être publié comme un ramassage")
 	}
@@ -162,7 +165,7 @@ func TestDecodeBipedPickupBoardVehicleIsCountedNotPublished(t *testing.T) {
 func TestDecodeBipedPickupOtherTypeIsCounted(t *testing.T) {
 	p := bpSynthNominal()
 	p.typ = 21 // unit_zoom : ne partage pas l octet 0xC4, mais le décodeur ne doit pas le publier
-	var st BipedPickupStats
+	var st types.BipedPickupStats
 	if _, ok := decodeBipedPickup(p.bytes(), &st); ok {
 		t.Error("un type inconnu de ce canal ne doit pas être publié")
 	}
@@ -192,7 +195,7 @@ func TestDecodeBipedPickupTruncatedRefusesWithoutPanic(t *testing.T) {
 	// La porte du catalogue est au bit 25 : à quatre octets (32 bits) elle est déjà lisible.
 	const derniereCoupureAveugle = 3
 	for n := 0; n <= derniereCoupureAveugle; n++ {
-		var st BipedPickupStats
+		var st types.BipedPickupStats
 		got, ok := decodeBipedPickup(full[:n], &st)
 		if ok {
 			t.Errorf("payload tronqué à %d octet(s) : publié %+v, attendu un refus", n, got)
@@ -209,7 +212,7 @@ func TestDecodeBipedPickupTruncatedRefusesWithoutPanic(t *testing.T) {
 func TestDecodeBipedPickupWithoutRefIsRefused(t *testing.T) {
 	p := bpSynthNominal()
 	p.refPresent = false
-	var st BipedPickupStats
+	var st types.BipedPickupStats
 	if _, ok := decodeBipedPickup(p.bytes(), &st); ok {
 		t.Error("un ramassage sans référence de ramasseur ne doit pas être publié")
 	}
@@ -221,7 +224,7 @@ func TestDecodeBipedPickupWithoutRefIsRefused(t *testing.T) {
 func TestDecodeBipedPickupWithoutCatalogIsRefused(t *testing.T) {
 	p := bpSynthNominal()
 	p.catalogPresent = false
-	var st BipedPickupStats
+	var st types.BipedPickupStats
 	if _, ok := decodeBipedPickup(p.bytes(), &st); ok {
 		t.Error("un ramassage sans identifiant de catalogue ne doit pas être publié")
 	}
@@ -236,7 +239,7 @@ func TestDecodeBipedPickupWithoutCatalogIsRefused(t *testing.T) {
 func TestDecodeBipedPickupCountsMultiEventLists(t *testing.T) {
 	p := bpSynthNominal()
 	p.moreEvents = true
-	var st BipedPickupStats
+	var st types.BipedPickupStats
 	if _, ok := decodeBipedPickup(p.bytes(), &st); !ok {
 		t.Fatal("un événement suivi d un autre reste publiable")
 	}

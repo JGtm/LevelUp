@@ -21,6 +21,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // f1Change est UNE pose dont l'origine bascule.
@@ -99,7 +100,7 @@ func TestF1OrigineAvantApres(t *testing.T) {
 // f1PosesEtPositions rend les poses de production du film et le nuage TRIE des bipedes — les
 // deux entrees exactes de `buildEquipmentPlacements`.
 func f1PosesEtPositions(t *testing.T, dir string, e *profile.MapQuantEntry) (
-	[]grammar.EquipmentPlacement, []grammar.BipedPosition, bool) {
+	[]types.EquipmentPlacement, []grammar.BipedPosition, bool) {
 	t.Helper()
 	pos, ok := f1Positions(t, dir, *e)
 	if !ok {
@@ -117,7 +118,7 @@ func f1PosesEtPositions(t *testing.T, dir string, e *profile.MapQuantEntry) (
 //
 // LE POSEUR EST CELUI DE LA PRODUCTION (`equipmentOwner`) : sans lui, l'origine est `unknown`
 // des deux cotes, et la compter ailleurs fabriquerait une transition qui n'existe pas.
-func f1Compare(id string, raw []grammar.EquipmentPlacement, positions []grammar.BipedPosition,
+func f1Compare(id string, raw []types.EquipmentPlacement, positions []grammar.BipedPosition,
 	familles map[uint32]string) (map[string]int, map[string]int, map[string]int, []f1Change) {
 	avant, apres, trans := map[string]int{}, map[string]int{}, map[string]int{}
 	lives := equipmentLives(positions)

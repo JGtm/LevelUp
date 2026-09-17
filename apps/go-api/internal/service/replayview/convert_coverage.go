@@ -47,6 +47,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		Verdict:           v.Verdict,
 		Bridge:            toBridgeHealth(v.Bridge),
 		Fallbacks:         toFallbackHits(v.Fallbacks),
+		Decoder:           ptrOf(v.Decoder, toDecoderCoverage),
 	}
 }
 
@@ -281,6 +282,7 @@ func toAbilityImpulseCoverage(v replay.AbilityImpulseCoverage) replaydoc.Ability
 		OtherFamily:     v.OtherFamily,
 		NoResolver:      v.NoResolver,
 		ComponentAbsent: v.ComponentAbsent,
+		Scan:            ptrOf(v.Scan, toAbilityImpulseScanCoverage),
 	}
 }
 
@@ -311,5 +313,42 @@ func toEquipmentChangeCoverage(v replay.EquipmentChangeCoverage) replaydoc.Equip
 		LivesFirstOffSpec: v.LivesFirstOffSpec,
 		Repeats:           v.Repeats,
 		Recovered:         v.Recovered,
+	}
+}
+
+// toDecoderCoverage projette le bloc `coverage.decoder` : les quatre revisions de calque, la cle
+// du profil, et la classification de l empreinte du registre.
+//
+// LA SEULE TRADUCTION, ET ELLE EST PLATE : cinq chaines et un sous-bloc optionnel. La parite
+// champ par champ est tenue par `parity_test.go` (D-7) — un champ ajoute d un cote sans l autre
+// y rougit.
+func toDecoderCoverage(v replay.DecoderCoverage) replaydoc.DecoderCoverage {
+	return replaydoc.DecoderCoverage{
+		SourceRev:  v.SourceRev,
+		ProfileRev: v.ProfileRev,
+		GrammarRev: v.GrammarRev,
+		FactsRev:   v.FactsRev,
+		Build:      v.Build,
+		Registry:   ptrOf(v.Registry, toRegistryCoverage),
+	}
+}
+
+func toRegistryCoverage(v replay.RegistryCoverage) replaydoc.RegistryCoverage {
+	return replaydoc.RegistryCoverage{
+		Fingerprint: v.Fingerprint,
+		Status:      v.Status,
+		Blocks:      v.Blocks,
+		NamedSlots:  v.NamedSlots,
+	}
+}
+
+func toAbilityImpulseScanCoverage(v replay.AbilityImpulseScanCoverage) replaydoc.AbilityImpulseScanCoverage {
+	return replaydoc.AbilityImpulseScanCoverage{
+		Records: v.Records,
+		WithI57: v.WithI57,
+		WithI59: v.WithI59,
+		Read:    v.Read,
+		Unread:  v.Unread,
+		Tag1:    v.Tag1,
 	}
 }

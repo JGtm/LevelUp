@@ -56,6 +56,7 @@ package objectives
 
 import (
 	"bufio"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"sort"
 	"strconv"
@@ -142,12 +143,12 @@ type e1911Bilan struct {
 	Ecart     []int // `SansGarde` moins `Retenues` : ce que le retrait de la garde ajouterait
 	FilmT0    int
 	FilmT1    int
-	ReglFin   int                          // instant de fin du temps reglementaire, ancre de FIN, ms film
-	ReglDebut int                          // idem, ancre de DEBUT
-	Slots     []int                        // slots d'EQUIPE vus, tries
-	Pistes    map[int]map[int][]ScorePoint // score de mode par slot d equipe PUIS par manche
-	ScoreFin  []int                        // score de mode par slot d'equipe a `ReglFin`
-	ScoreDeb  []int                        // idem a `ReglDebut`
+	ReglFin   int                                // instant de fin du temps reglementaire, ancre de FIN, ms film
+	ReglDebut int                                // idem, ancre de DEBUT
+	Slots     []int                              // slots d'EQUIPE vus, tries
+	Pistes    map[int]map[int][]types.ScorePoint // score de mode par slot d equipe PUIS par manche
+	ScoreFin  []int                              // score de mode par slot d'equipe a `ReglFin`
+	ScoreDeb  []int                              // idem a `ReglDebut`
 	// Manche2 est le plus petit designateur MATERIEL strictement positif du film, -1 s'il n'y
 	// en a pas ; `Manche2T` est l'instant de son PREMIER enregistrement et `Manche2Score` le
 	// score de chaque camp JUSTE AVANT cet instant.
@@ -227,7 +228,7 @@ func e1911Ligne(line string) (e1911Match, bool) {
 }
 
 // e1911Mesure assemble le bilan d'un film.
-func e1911Mesure(m e1911Match, recs []StatRecord) e1911Bilan {
+func e1911Mesure(m e1911Match, recs []types.StatRecord) e1911Bilan {
 	b := e1911Bilan{M: m, Records: len(recs)}
 	if len(recs) == 0 {
 		return b
@@ -277,7 +278,7 @@ func e1911PremiereSeconde(desig []e1911Designateur) (int, int) {
 //
 // C'est la grandeur que le lot doit mesurer AVANT de retirer la garde : l'ecart avec
 // `Retenues` est, film par film, ce que le retrait changerait a la production.
-func e1911SansGarde(recs []StatRecord) []int {
+func e1911SansGarde(recs []types.StatRecord) []int {
 	runs := e1911RunsParManche(recs)
 	material := materialRounds(recs)
 	out := map[int]bool{}
@@ -294,16 +295,16 @@ func e1911SansGarde(recs []StatRecord) []int {
 
 // e1911RunsParManche rend, par manche, la plus longue suite coherente du score de mode tous
 // slots confondus — exactement ce que [RealRounds] calcule avant d'appeler [contiguousRounds].
-func e1911RunsParManche(recs []StatRecord) map[int]int {
+func e1911RunsParManche(recs []types.StatRecord) map[int]int {
 	type cle struct{ slot, round int }
-	series := map[cle][]ScorePoint{}
+	series := map[cle][]types.ScorePoint{}
 	for _, r := range recs {
 		v, ok := r.Comps[modeScoreComp]
 		if !ok || !modeScoreInDomain(v) {
 			continue
 		}
 		k := cle{r.Slot, r.Round}
-		series[k] = append(series[k], ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
+		series[k] = append(series[k], types.ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
 	}
 	out := map[int]int{}
 	for k, pts := range series {
@@ -328,7 +329,7 @@ func e1911RunsParManche(recs []StatRecord) map[int]int {
 //
 // Un slot d'equipe SANS aucune emission de score reste dans `slots` avec une piste vide : il
 // vaut zero, il n'est pas absent (cf. l'en-tete du fichier).
-func e1911PistesEquipe(recs []StatRecord) ([]int, map[int]map[int][]ScorePoint) {
+func e1911PistesEquipe(recs []types.StatRecord) ([]int, map[int]map[int][]types.ScorePoint) {
 	vus := map[int]bool{}
 	for _, r := range recs {
 		if IsTeamSlot(r.Slot) {
@@ -341,9 +342,9 @@ func e1911PistesEquipe(recs []StatRecord) ([]int, map[int]map[int][]ScorePoint) 
 	}
 	sort.Ints(slots)
 	raw := rawSeriesByRound(recs, ModeScoreComponent.key(), true)
-	out := make(map[int]map[int][]ScorePoint, len(slots))
+	out := make(map[int]map[int][]types.ScorePoint, len(slots))
 	for _, s := range slots {
-		parManche := map[int][]ScorePoint{}
+		parManche := map[int][]types.ScorePoint{}
 		for round, pts := range raw[s] {
 			sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
 			if kept := longestRun(pts, true); len(kept) > 0 {
@@ -373,7 +374,7 @@ func e1911ScoreALInstant(b e1911Bilan, tMS int) []int {
 }
 
 // e1911DerniereValeur rend la valeur du dernier point a `tMS` ou avant (0 si aucun).
-func e1911DerniereValeur(pts []ScorePoint, tMS int) int {
+func e1911DerniereValeur(pts []types.ScorePoint, tMS int) int {
 	v := 0
 	for _, p := range pts {
 		if p.TimeMS > tMS {
@@ -387,7 +388,7 @@ func e1911DerniereValeur(pts []ScorePoint, tMS int) int {
 // e1911Designateurs recense, par valeur du champ de manche, ce que les enregistrements portent :
 // leur compte par nature de slot, leur fenetre, leur famille de composant, la part POSTERIEURE a
 // la fin du temps reglementaire, et leur histogramme temporel.
-func e1911Designateurs(recs []StatRecord, reglFin, filmT1 int) []e1911Designateur {
+func e1911Designateurs(recs []types.StatRecord, reglFin, filmT1 int) []e1911Designateur {
 	tranches := filmT1/e1911TrancheMS + 1
 	par := map[int]*e1911Designateur{}
 	for _, r := range recs {
@@ -440,7 +441,7 @@ func e1911Blocs(instants []int) []e1911Bloc {
 }
 
 // e1911Note range un enregistrement dans le recensement de son designateur.
-func e1911Note(d *e1911Designateur, r StatRecord, reglFin int) {
+func e1911Note(d *e1911Designateur, r types.StatRecord, reglFin int) {
 	d.Records++
 	d.instants = append(d.instants, r.TimeMS)
 	d.slots[r.Slot] = true
@@ -476,7 +477,7 @@ func e1911Note(d *e1911Designateur, r StatRecord, reglFin int) {
 // e1911Famille classe un enregistrement par le PLUS PETIT index de composant qu'il porte, selon
 // le registre ECS de l'archetype 6 (0-27 `current-round-value`, 28-55 `finalized-rounds-values`,
 // 56 `round-outcomes`, 57 `entry-index-and-type`).
-func e1911Famille(r StatRecord) int {
+func e1911Famille(r types.StatRecord) int {
 	low := statMaxComp
 	for i := range r.Comps {
 		if i < low {

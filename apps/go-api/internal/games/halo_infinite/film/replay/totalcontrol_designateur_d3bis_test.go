@@ -38,6 +38,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -126,7 +127,7 @@ func TestTotalControlDesignateurParManche(t *testing.T) {
 //
 // LES MANCHES FANTOMES SONT ECARTEES par `RealRounds` — les cumuler ferait exploser les
 // compteurs (mesure du lot A : un score d'equipe passait de 1 a 2 104).
-func tcManchesOf(recs []objectives.StatRecord) []tcManche {
+func tcManchesOf(recs []types.StatRecord) []tcManche {
 	reelles := objectives.RealRounds(recs)
 	bornes := map[int][2]int{}
 	for _, r := range recs {

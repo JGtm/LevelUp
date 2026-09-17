@@ -93,7 +93,7 @@
 //	                                   pourcentage parfaitement credible.
 //	Known == true, Name renseigne      un assistant NOMME ; `k.AssistDamage` est mesuree.
 //	Known == true, Rejected non vide   le champ designait quelqu un qu on REFUSE de nommer
-//	                                   (`Assist.Name` vide). La part EST mesuree, son porteur ne
+//	                                   (`types.Assist.Name` vide). La part EST mesuree, son porteur ne
 //	                                   l est pas : ne pas l ecrire en base sans nom.
 //
 // AUCUNE DES DEUX PARTS N EST PLAFONNEE A 100 : 1.7 % des kill-events attaches a de vraies morts

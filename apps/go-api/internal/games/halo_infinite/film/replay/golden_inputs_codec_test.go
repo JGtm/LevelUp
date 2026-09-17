@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const cmScale = 100
@@ -243,7 +244,7 @@ func decodePositionSection(r *greader, lay profile.I0Layout, world profile.Vec3R
 	return out
 }
 
-func encodeTracks(w *gwriter, tracks []grammar.ProjectileTrack) {
+func encodeTracks(w *gwriter, tracks []types.ProjectileTrack) {
 	w.u(uint64(len(tracks)))
 	for _, tr := range tracks {
 		w.u(uint64(tr.Slot))
@@ -264,11 +265,11 @@ func encodeTracks(w *gwriter, tracks []grammar.ProjectileTrack) {
 	}
 }
 
-func decodeTracks(r *greader) []grammar.ProjectileTrack {
+func decodeTracks(r *greader) []types.ProjectileTrack {
 	n := int(r.u())
-	out := make([]grammar.ProjectileTrack, 0, n)
+	out := make([]types.ProjectileTrack, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
-		tr := grammar.ProjectileTrack{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		tr := types.ProjectileTrack{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		np := int(r.u())
 		var ts uint64
 		var prev [3]int64
@@ -279,7 +280,7 @@ func decodeTracks(r *greader) []grammar.ProjectileTrack {
 				cur[a] = prev[a] + r.i()
 			}
 			prev = cur
-			tr.Pts = append(tr.Pts, grammar.ProjectileSample{
+			tr.Pts = append(tr.Pts, types.ProjectileSample{
 				TimestampUS: ts, X: fromCM(cur[0]), Y: fromCM(cur[1]), Z: fromCM(cur[2]),
 				AtRest: r.bool8(),
 			})
@@ -328,7 +329,7 @@ func decodeWorldObjectScan(r *greader) WorldObjectScan {
 // L IDENTITE TIENT DANS `MPPWord32`, ET ELLE SEULE : c est le mot inconditionnel du bloc MPP —
 // le GlobalID du tag `eqip` pour ti=37, l identite du chassis pour ti=40 (cf.
 // filmdec/vehicle_creation.go). Les trois autres champs du bloc ne sont lus par aucun assemblage.
-func encodeCreations(w *gwriter, creations []grammar.EquipmentCreation) {
+func encodeCreations(w *gwriter, creations []types.EquipmentCreation) {
 	w.u(uint64(len(creations)))
 	var lastTS uint64
 	for _, c := range creations {
@@ -344,13 +345,13 @@ func encodeCreations(w *gwriter, creations []grammar.EquipmentCreation) {
 	}
 }
 
-func decodeCreations(r *greader) []grammar.EquipmentCreation {
+func decodeCreations(r *greader) []types.EquipmentCreation {
 	n := int(r.u())
-	out := make([]grammar.EquipmentCreation, 0, n)
+	out := make([]types.EquipmentCreation, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		c := grammar.EquipmentCreation{TimestampUS: lastTS, Slot: uint32(r.u()), Gen: uint32(r.u())}
+		c := types.EquipmentCreation{TimestampUS: lastTS, Slot: uint32(r.u()), Gen: uint32(r.u())}
 		c.X, c.Y, c.Z = r.f32(), r.f32(), r.f32()
 		c.MPPPresent[grammar.MPPWord32] = r.bool8()
 		c.MPPVal[grammar.MPPWord32] = r.u()
@@ -375,7 +376,7 @@ func encodeKeyframes(w *gwriter, kf grammar.WorldObjectKeyframes) {
 	}
 	// L ORDRE DES CLES EST RENDU TOTAL : une map Go s itere au hasard, et un fixture dont les
 	// octets changent a chaque regeneration n est plus un fixture.
-	keys := make([]grammar.EquipmentLifeKey, 0, len(kf.SeenUS))
+	keys := make([]types.EquipmentLifeKey, 0, len(kf.SeenUS))
 	for k := range kf.SeenUS {
 		keys = append(keys, k)
 	}
@@ -409,9 +410,9 @@ func decodeKeyframes(r *greader) grammar.WorldObjectKeyframes {
 		kf.TimesUS = append(kf.TimesUS, lastTS)
 	}
 	n = int(r.u())
-	kf.SeenUS = make(map[grammar.EquipmentLifeKey][]uint64, n)
+	kf.SeenUS = make(map[types.EquipmentLifeKey][]uint64, n)
 	for k := 0; k < n && r.err == nil; k++ {
-		key := grammar.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		key := types.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		np := int(r.u())
 		seen := make([]uint64, 0, np)
 		lastTS = 0

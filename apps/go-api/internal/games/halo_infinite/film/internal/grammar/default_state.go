@@ -1,6 +1,9 @@
 package grammar
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // Biped (#35) default-state deserializer, ported bit-exact from FUN_140F44C38
 // (= vtable[0x60] of the runtime biped archetype-descriptor, confirmed live via
@@ -377,7 +380,7 @@ const (
 	MPPVariantName
 	// MPPTailName est le champ de 32 bits de la queue G3, derrière une porte (FUN_14080dec4).
 	MPPTailName
-	MPPFieldCount = 4
+	MPPFieldCount = types.MPPFieldCount
 )
 
 // String rend l'étiquette du champ — celle du déserialiseur.

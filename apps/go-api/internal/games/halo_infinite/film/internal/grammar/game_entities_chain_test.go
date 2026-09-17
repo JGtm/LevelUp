@@ -73,7 +73,7 @@ type HeldWeaponSample struct {
 	// `FireEvent`, donc directement croisable avec le flux des tirs.
 	TimestampUS uint64
 	// Family est le high-32 de l'identifiant d'arme, c'est-a-dire la FAMILLE — la meme cle
-	// que `FireEvent.WeaponID >> 32` et que `KeyframeLoadout.Families`.
+	// que `FireEvent.WeaponID >> 32` et que `types.KeyframeLoadout.Families`.
 	Family uint32
 }
 

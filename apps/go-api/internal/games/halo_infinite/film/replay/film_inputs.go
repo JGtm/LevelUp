@@ -30,7 +30,10 @@ package replay
 // `FilmInputs` est exactement le troisieme tiers. `applyTo` les repose sur les `Options` que
 // l'assemblage recoit — c'est la seule ecriture, et elle est ecrite une fois.
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // FilmInputs porte ce que l'etage de balayage d'un film rend a l'assemblage.
 //
@@ -44,7 +47,7 @@ type FilmInputs struct {
 	// Translocations sont les teleportations du translocateur (evenements type 117). Elles
 	// servent DEUX fois : le calque du document, et l'exemption du filtre de vitesse des
 	// positions (decision D2) — d'ou leur lecture AVANT les positions.
-	Translocations []grammar.TranslocatorTeleport
+	Translocations []types.TranslocatorTeleport
 	// Positions est le nuage NON decime des positions de bipede : le premier parametre de
 	// `BuildFromPositions`.
 	Positions []grammar.BipedPosition
@@ -53,36 +56,36 @@ type FilmInputs struct {
 	// Fire sont les evenements de tir : le second parametre de `BuildFromPositions`.
 	Fire []grammar.FireEvent
 	// Loadouts sont les armes portees relevees aux images-cles.
-	Loadouts []grammar.KeyframeLoadout
+	Loadouts []types.KeyframeLoadout
 	// WeaponChanges sont les prises et lachers d'arme lus dans le flux delta.
-	WeaponChanges []grammar.HeldWeaponChange
+	WeaponChanges []types.HeldWeaponChange
 	// Pickups / PickupStats sont les ramassages NATIFS (evenement `biped_pickup`) et la mesure
 	// de ce que ce canal ne peut PAS voir (listes multiples, refus).
-	Pickups     []grammar.BipedPickup
-	PickupStats grammar.BipedPickupStats
+	Pickups     []types.BipedPickup
+	PickupStats types.BipedPickupStats
 	// Inventory est l'inventaire complet lu aux memes images-cles que les armes portees.
 	Inventory []KeyframeInventory
 	// InventoryDeltas sont les lectures d'inventaire des paquets DELTA (grenades, jeu
 	// selectionne) ; InventoryDeltaAmmoRefused est le VERDICT de la porte du canal munitions,
 	// publie tel quel dans la couverture.
-	InventoryDeltas           []grammar.InventoryDelta
+	InventoryDeltas           []types.InventoryDelta
 	InventoryDeltaAmmoRefused bool
 	// AbilityRanks sont les identites de capacite portees (i48).
-	AbilityRanks []grammar.AbilityRank
+	AbilityRanks []types.AbilityRank
 	// EquipmentChanges / EquipmentChangeStats sont les ramassages et consommations d'equipement,
 	// avec le TEMOIN DE COMPLETUDE (compteur de rotation) que la couverture publie.
-	EquipmentChanges     []grammar.EquipmentChange
-	EquipmentChangeStats grammar.EquipmentChangeStats
+	EquipmentChanges     []types.EquipmentChange
+	EquipmentChangeStats types.EquipmentChangeStats
 	// CamoStates sont les transmissions de la voie d'etat du camouflage (i28 queue[1]).
-	CamoStates []grammar.CamoRead
+	CamoStates []types.CamoRead
 	// GrappleReads sont les evenements de grappin (corps tag==3 d'i59).
-	GrappleReads []grammar.GrappleRead
+	GrappleReads []types.GrappleRead
 	// AbilityImpulses / AbilityImpulseStats sont les impulsions de capacite (tag==1 d'i57/i59).
-	AbilityImpulses     []grammar.AbilityImpulse
-	AbilityImpulseStats grammar.AbilityImpulseStats
+	AbilityImpulses     []types.AbilityImpulse
+	AbilityImpulseStats types.AbilityImpulseStats
 	// AbilityCharges / AbilityChargeStats sont les charges d'equipement restantes (i56).
-	AbilityCharges     []grammar.AbilityCharge
-	AbilityChargeStats grammar.AbilityChargeStats
+	AbilityCharges     []types.AbilityCharge
+	AbilityChargeStats types.AbilityChargeStats
 	// ZoomEvents sont les bascules de LUNETTE lues dans la liste d'evenements. Elles entrent ici
 	// BRUTES, et non deja reduites en `Options.Scoped` : c'est `applyTo` qui reconstruit le
 	// palier a l'instant (cf. sa note), pour qu'un fixture n'ait qu'une LISTE a serialiser la ou
@@ -91,13 +94,13 @@ type FilmInputs struct {
 	// Placements / PlacementStats sont les POSES d'equipement (creations ti=37) et la CALIBRATION
 	// du bloc de replication mesuree sur ce film — celle dont les socles et les vehicules
 	// heritent leurs largeurs MPP.
-	Placements     []grammar.EquipmentPlacement
+	Placements     []types.EquipmentPlacement
 	PlacementStats grammar.EquipmentPlacementStats
 	// SpawnEvents / SpawnStats sont les evenements de liste type 103 `EquipmentSpawnedObject`
 	// — « une PIECE a ete engendree » — et les denominateurs de leur balayage. C'est LE SIGNAL
 	// ECRIT de l'origine d'une pose de panneau (lot 1.9.1, D13).
-	SpawnEvents []grammar.EquipmentSpawnEvent
-	SpawnStats  grammar.EquipmentSpawnStats
+	SpawnEvents []types.EquipmentSpawnEvent
+	SpawnStats  types.EquipmentSpawnStats
 	// Pads sont les deux voies des SOCLES (armes au sol ti=42, power-ups ti=37).
 	Pads PadScans
 	// Vehicles est le calque des VEHICULES (ti=40) : recensement, creations, nuage de positions,
@@ -112,11 +115,11 @@ type FilmInputs struct {
 	ZoneScanned bool
 	// BombReads est l'anneau d'armement de la bombe (ti=12), sur les seuls matchs que l'appelant
 	// reconnait Assaut armable.
-	BombReads []grammar.NavpointRadialRead
+	BombReads []types.NavpointRadialRead
 	// Grenades sont les lancers de grenade des paquets delta.
 	Grenades []grammar.GrenadeThrow
 	// Projectiles sont les trajectoires de projectile.
-	Projectiles []grammar.ProjectileTrack
+	Projectiles []types.ProjectileTrack
 	// Deaths est le fil des morts : il NOMME les vies et fonde tout le rattachement.
 	Deaths []Death
 	// PlayerIndices est la table identite -> index de joueur, LUE dans le film.

@@ -35,6 +35,7 @@ import (
 
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -181,7 +182,7 @@ func a0RelevesScore(t *testing.T, id string, src *objDiskFilm) {
 // de mode filtre est PARTIEL sur ces films. Le brut ci-dessous rend chaque emission datee
 // avec sa manche, dedoublonnee par valeur (une reemission de la meme valeur n'est pas un
 // increment) — les parasites eventuels restent visibles, c'est un RELEVE, pas un calque.
-func a0RelevesScoreBrut(t *testing.T, id string, recs []objectives.StatRecord,
+func a0RelevesScoreBrut(t *testing.T, id string, recs []types.StatRecord,
 	real map[int]bool) {
 	t.Helper()
 	type cle struct{ slot, round int }

@@ -54,26 +54,8 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
-
-// EquipmentPlacement est UNE pose d'objet d'équipement, telle que le film la porte.
-type EquipmentPlacement struct {
-	// Life identifie la vie d'objet (slot, génération) — la clé qui relie le record de création
-	// à la trajectoire décodée des paquets delta.
-	Life EquipmentLifeKey
-	// T0US est l'instant du record de création : la pose. T1US est le dernier point de la vie
-	// décodée, c'est-à-dire l'instant où l'objet cesse de bouger — une BORNE INFÉRIEURE de sa
-	// durée de vie, jamais sa disparition (cf. l'en-tête de ce fichier). Les deux sur l'horloge
-	// des paquets, celle des positions de bipède.
-	T0US, T1US uint64
-	// X, Y, Z est la position du record de création, en coordonnées MONDE (bornes de la carte).
-	X, Y, Z float32
-	// GlobalID est le GlobalID du tag `eqip` de l'objet : son IDENTITÉ, telle que le jeu la
-	// définit. Le nom se résout par le manifeste du titre, jamais ici.
-	GlobalID uint32
-	// Points est le nombre d'échantillons de la vie décodée — le dénominateur d'une trajectoire.
-	Points int
-}
 
 // EquipmentPlacementStats compte ce que le balayage a rencontré. Sans ces dénominateurs, « N
 // poses » ne se juge pas : c'est l'écart entre les ancres, les records acceptés et les records
@@ -130,7 +112,7 @@ type EquipmentPlacementStats struct {
 // [ScanEquipmentPlacements].
 func ScanFilmEquipmentPlacements(
 	dir string, wr *profile.Vec3Range,
-) ([]EquipmentPlacement, EquipmentPlacementStats, error) {
+) ([]types.EquipmentPlacement, EquipmentPlacementStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, EquipmentPlacementStats{ByID: map[uint32]int{}}, err
@@ -149,7 +131,7 @@ func ScanFilmEquipmentPlacements(
 // (aucun chunk de données, bande vide) sont déjà passées trois lignes plus haut.
 func ScanEquipmentPlacements(
 	fc *FilmContext, wr *profile.Vec3Range,
-) ([]EquipmentPlacement, EquipmentPlacementStats, error) {
+) ([]types.EquipmentPlacement, EquipmentPlacementStats, error) {
 	st := EquipmentPlacementStats{ByID: map[uint32]int{}}
 	if wr == nil {
 		return nil, st, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
@@ -226,7 +208,7 @@ func ScanEquipmentPlacements(
 // (projectiles.go) : le départage n'utilise QUE des champs de la pose, jamais une adresse ni un
 // rang d'itération. Deux poses que ce comparateur ne sépare pas sont identiques champ pour
 // champ — les échanger ne change pas la sortie.
-func lessPlacement(a, b EquipmentPlacement) bool {
+func lessPlacement(a, b types.EquipmentPlacement) bool {
 	switch {
 	case a.T0US != b.T0US:
 		return a.T0US < b.T0US
@@ -257,16 +239,16 @@ func lessPlacement(a, b EquipmentPlacement) bool {
 // au cours d'un match. Dédupliquer sur la paire seule fondrait deux poses distinctes du même
 // socle en une, et c'est la deuxième — la plus tardive — qui disparaîtrait.
 func confirmPlacements(
-	cre []EquipmentCreation, spans map[EquipmentLifeKey][]EquipmentLifeSpan,
+	cre []types.EquipmentCreation, spans map[types.EquipmentLifeKey][]EquipmentLifeSpan,
 	eps [3]float32, st *EquipmentPlacementStats,
-) []EquipmentPlacement {
+) []types.EquipmentPlacement {
 	type lifeInstance struct {
-		key   EquipmentLifeKey
+		key   types.EquipmentLifeKey
 		spanT uint64
 	}
-	best := map[lifeInstance]EquipmentPlacement{}
+	best := map[lifeInstance]types.EquipmentPlacement{}
 	for _, c := range cre {
-		k := EquipmentLifeKey{c.Slot, c.Gen}
+		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
 		life, hit := MatchEquipmentLife(spans[k], [3]float32{c.X, c.Y, c.Z}, eps, c.TimestampUS)
 		if !hit {
 			continue
@@ -276,13 +258,13 @@ func confirmPlacements(
 		if cur, seen := best[id]; seen && cur.T0US <= c.TimestampUS {
 			continue
 		}
-		best[id] = EquipmentPlacement{
+		best[id] = types.EquipmentPlacement{
 			Life: k, T0US: c.TimestampUS, T1US: life.T1US,
 			X: c.X, Y: c.Y, Z: c.Z,
 			GlobalID: uint32(c.MPPVal[MPPWord32]), Points: life.Points,
 		}
 	}
-	out := make([]EquipmentPlacement, 0, len(best))
+	out := make([]types.EquipmentPlacement, 0, len(best))
 	for _, p := range best {
 		out = append(out, p)
 	}

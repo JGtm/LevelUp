@@ -29,6 +29,7 @@ package grammar
 //	  -timeout 120m -v
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math/rand"
 	"path/filepath"
 	"sort"
@@ -123,7 +124,7 @@ func r8Episodes(evs []r8MobEvent) []r8MobEvent {
 }
 
 // r8RankAt rend le dernier rang de capacite lu pour ce slot a `at` ou avant, ou -1.
-func r8RankAt(ranks []AbilityRank, slot uint32, at uint64) int {
+func r8RankAt(ranks []types.AbilityRank, slot uint32, at uint64) int {
 	best, bestT := -1, uint64(0)
 	for _, r := range ranks {
 		if r.Slot != slot || r.TimestampUS > at {
@@ -237,7 +238,7 @@ func r8Pair(k uint32, v int) string {
 // r8LogOracle confronte les episodes i54 a l'oracle de vitesse, avec le grappin en positif
 // et des instants tires au hasard en negatif.
 func r8LogOracle(
-	t *testing.T, eps []r8MobEvent, grapples []GrappleRead, ranks []AbilityRank,
+	t *testing.T, eps []r8MobEvent, grapples []types.GrappleRead, ranks []types.AbilityRank,
 	speeds r8SpeedIndex,
 ) {
 	t.Helper()

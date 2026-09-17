@@ -38,19 +38,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-)
-
-// EquipmentChangeKind qualifie un changement d'équipement porté.
-type EquipmentChangeKind string
-
-const (
-	// EquipmentTaken : le joueur porte désormais cet équipement. C'est un RAMASSAGE.
-	EquipmentTaken EquipmentChangeKind = "taken"
-	// EquipmentSpent : le joueur n'en porte plus. Il l'a CONSOMMÉ (mesuré : jamais à la mort).
-	EquipmentSpent EquipmentChangeKind = "spent"
-	// EquipmentSpawned : première émission d'une vie, contemporaine de la naissance du
-	// bipède — le joueur RÉAPPARAÎT avec cet équipement. Ce n'est PAS un ramassage.
-	EquipmentSpawned EquipmentChangeKind = "spawned"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // equipmentSpawnWindowUS est l'écart maximal entre la naissance d'une vie et sa première
@@ -63,67 +51,6 @@ const (
 // valeur entre ~100 ms et ~1 100 ms donne le même classement.
 const equipmentSpawnWindowUS = 1_000_000
 
-// EquipmentChange est UN changement d'équipement porté, daté et attribué.
-type EquipmentChange struct {
-	// TimestampUS est l'horodatage du paquet — MÊME horloge que BipedPosition.TimestampUS.
-	TimestampUS uint64
-	// Chunk / PacketIndex localisent l'événement dans le film.
-	Chunk, PacketIndex int
-	// Slot est le slot du bipède : il désigne une VIE, pas un joueur.
-	Slot uint32
-	// Counter est le compteur de rotation R(3). Il est conservé parce qu'il est LE témoin de
-	// complétude : un pas différent de 1 (modulo 8) entre deux émissions d'une même vie
-	// dénonce des émissions manquées.
-	Counter uint32
-	// Rank est le rang de palette de l'équipement désormais porté, dans la même convention
-	// qu'AbilityRank.Rank. Vaut AbilitySetNoRank sur EquipmentSpent.
-	Rank int
-	// Previous est le rang précédent sur cette vie, quand il est connu. AbilitySetNoRank
-	// sinon — y compris à la première émission, dont l'état d'avant n'est pas lisible.
-	Previous int
-	// Kind qualifie le changement.
-	Kind EquipmentChangeKind
-	// Recovered dit que cette émission vient de la RÉCUPÉRATION GATÉE (equipment_recovery.go)
-	// et non du balayage strict : ses octets existent dans le film sous une forme que la
-	// production rejette par construction, et son compteur comble exactement un saut annoncé.
-	// La provenance reste dite — un `from` redevenu fiable grâce à elle n'est pas un `from`
-	// lu par le chemin nominal.
-	Recovered bool
-	// Gap est le saut de compteur RÉSIDUEL constaté depuis l'émission précédente de la même
-	// vie, APRÈS récupération : 0 = chaîne saine (pas de 1), n > 0 = n émissions manquent
-	// encore juste avant celle-ci — son champ Previous n'est alors PAS une identité fiable.
-	// La première émission d'une vie porte 0 (pas d'émission précédente) ; l'incomplétude de
-	// tête se lit dans EquipmentChangeStats.LivesFirstOffSpec.
-	Gap int
-}
-
-// EquipmentChangeStats dit ce que le balayage a vu ET ce qu'il a MANQUÉ. Le second est la
-// raison d'être de la structure : c'est le seul canal du rejeu qui sache s'auto-mesurer.
-type EquipmentChangeStats struct {
-	// Walk porte les dénominateurs du balayage (records, lectures, portes ouvertes).
-	Walk AbilityRankStats
-	// Lives est le nombre de vies ayant émis au moins une fois.
-	Lives int
-	// Repeats compte les transitions dont le compteur ne bouge PAS. Une valeur non nulle
-	// contredirait la propriété qui fonde ce fichier — le composant ne devrait entrer au
-	// masque QUE sur changement.
-	Repeats int
-	// CounterJumps compte les transitions dont le compteur avance d'autre chose que 1
-	// (modulo 8), et MissedEstimate le nombre d'émissions que ces sauts impliquent.
-	CounterJumps, MissedEstimate int
-	// LivesFirstOffSpec compte les vies dont la PREMIÈRE émission n'a pas le compteur
-	// attendu : des émissions antérieures ont été manquées, ou le slot a été mal ancré.
-	LivesFirstOffSpec int
-	// Spawned / Taken / Spent ventilent les changements rendus.
-	Spawned, Taken, Spent int
-	// Recovered compte les émissions issues de la récupération gatée (equipment_recovery.go),
-	// À PART des lues par le balayage strict. Les compteurs ci-dessus (CounterJumps,
-	// MissedEstimate, LivesFirstOffSpec) décrivent la chaîne FINALE, récupération comprise :
-	// ce qui reste manquant après elle — le témoin mesure ce qui est publié, pas un état
-	// intermédiaire.
-	Recovered int
-}
-
 // equipmentFirstCounter est la valeur du compteur R(3) à la première émission d'une vie,
 // mesurée sur 264 vies de 269. Elle sert de témoin : une première émission qui ne la porte
 // pas signale des émissions manquées en amont.
@@ -133,7 +60,7 @@ const equipmentFirstCounter = 5
 //
 // `bornAt` donne l'instant de naissance d'une vie — c'est lui qui distingue une annonce de
 // réapparition d'un ramassage, et le balayage REFUSE de trancher sans lui : sans témoin, une
-// première émission est rendue `EquipmentTaken`, ce qui SURESTIME les ramassages sur les
+// première émission est rendue `types.EquipmentTaken`, ce qui SURESTIME les ramassages sur les
 // modes où les joueurs réapparaissent équipés. L'appelant qui n'a pas de témoin doit le
 // savoir. Le témoin sert AUSSI la récupération de tête de vie (fenêtre
 // [naissance, première émission]) : sans lui, elle n'est pas tentée.
@@ -148,10 +75,10 @@ const equipmentFirstCounter = 5
 // [ScanEquipmentChanges].
 func ScanFilmEquipmentChanges(
 	dir string, bornAt func(slot uint32) (uint64, bool),
-) ([]EquipmentChange, EquipmentChangeStats, error) {
+) ([]types.EquipmentChange, types.EquipmentChangeStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, EquipmentChangeStats{}, err
+		return nil, types.EquipmentChangeStats{}, err
 	}
 	return ScanEquipmentChanges(contexteDeBobine(film), bornAt)
 }
@@ -160,10 +87,10 @@ func ScanFilmEquipmentChanges(
 // [ScanFilmEquipmentChanges] pour la doctrine des deux passes.
 func ScanEquipmentChanges(
 	fc *FilmContext, bornAt func(slot uint32) (uint64, bool),
-) ([]EquipmentChange, EquipmentChangeStats, error) {
+) ([]types.EquipmentChange, types.EquipmentChangeStats, error) {
 	setup, err := resolveAbilityScan(fc)
 	if err != nil {
-		return nil, EquipmentChangeStats{}, err
+		return nil, types.EquipmentChangeStats{}, err
 	}
 	var strict []abilityEmission
 	walk := walkAbilityEmissionsWith(setup, func(e abilityEmission) {
@@ -201,9 +128,9 @@ type equipEmission struct {
 // F4 : une fusion non testée hors gating laissait des mutations survivre à la CI).
 func assembleEquipmentChanges(
 	strict []abilityEmission, recovered []equipRecovered, bornAt func(uint32) (uint64, bool),
-) ([]EquipmentChange, EquipmentChangeStats) {
-	var st EquipmentChangeStats
-	var out []EquipmentChange
+) ([]types.EquipmentChange, types.EquipmentChangeStats) {
+	var st types.EquipmentChangeStats
+	var out []types.EquipmentChange
 	for _, list := range mergeEquipEmissions(strict, recovered, &st) {
 		st.Lives++
 		if list[0].Counter != equipmentFirstCounter {
@@ -211,7 +138,7 @@ func assembleEquipmentChanges(
 		}
 		rank, seen := AbilitySetNoRank, false
 		for i, e := range list {
-			ch := EquipmentChange{
+			ch := types.EquipmentChange{
 				TimestampUS: e.TimestampUS, Chunk: e.Chunk, PacketIndex: e.PacketIndex,
 				Slot: e.Slot, Counter: e.Counter, Rank: e.Rank, Previous: AbilitySetNoRank,
 				Recovered: e.recovered,
@@ -225,9 +152,9 @@ func assembleEquipmentChanges(
 			}
 			ch.Kind = classifyEquipmentChange(ch, seen, bornAt)
 			switch ch.Kind {
-			case EquipmentSpawned:
+			case types.EquipmentSpawned:
 				st.Spawned++
-			case EquipmentSpent:
+			case types.EquipmentSpent:
 				st.Spent++
 			default:
 				st.Taken++
@@ -244,7 +171,7 @@ func assembleEquipmentChanges(
 // de bit compris), puis passe le VERROU FINAL. st.Recovered ne compte que les récupérées qui
 // SURVIVENT au verrou : une récupérée retirée n'est pas publiée, elle ne se compte pas.
 func mergeEquipEmissions(
-	strict []abilityEmission, recovered []equipRecovered, st *EquipmentChangeStats,
+	strict []abilityEmission, recovered []equipRecovered, st *types.EquipmentChangeStats,
 ) map[uint32][]equipEmission {
 	merged := map[uint32][]equipEmission{}
 	for _, e := range strict {
@@ -361,7 +288,7 @@ func emissionFilmOrderLess(a, b abilityEmission) bool {
 }
 
 // equipmentChangeFilmOrderLess est le même ordre total, sur les changements assemblés.
-func equipmentChangeFilmOrderLess(a, b EquipmentChange) bool {
+func equipmentChangeFilmOrderLess(a, b types.EquipmentChange) bool {
 	if a.TimestampUS != b.TimestampUS {
 		return a.TimestampUS < b.TimestampUS
 	}
@@ -395,7 +322,7 @@ func counterGap(from, to uint32) int {
 // countEquipmentCounterStep comptabilise l'avance du compteur entre deux émissions d'une même
 // vie. Le compteur est sur 3 bits : l'avance se lit MODULO 8, et un pas de 1 dit « aucune
 // émission entre les deux ».
-func countEquipmentCounterStep(st *EquipmentChangeStats, from, to uint32) {
+func countEquipmentCounterStep(st *types.EquipmentChangeStats, from, to uint32) {
 	switch step := counterStep(from, to); step {
 	case 0:
 		st.Repeats++
@@ -410,18 +337,18 @@ func countEquipmentCounterStep(st *EquipmentChangeStats, from, to uint32) {
 // contre la NAISSANCE du bipède : contemporaine, c'est une annonce de réapparition ; tardive,
 // c'est un ramassage sur la carte.
 func classifyEquipmentChange(
-	ch EquipmentChange, hadPrevious bool, bornAt func(uint32) (uint64, bool),
-) EquipmentChangeKind {
+	ch types.EquipmentChange, hadPrevious bool, bornAt func(uint32) (uint64, bool),
+) types.EquipmentChangeKind {
 	if ch.Rank == AbilitySetNoRank {
-		return EquipmentSpent
+		return types.EquipmentSpent
 	}
 	if hadPrevious {
-		return EquipmentTaken
+		return types.EquipmentTaken
 	}
 	if bornAt != nil {
 		if birth, ok := bornAt(ch.Slot); ok && ch.TimestampUS <= birth+equipmentSpawnWindowUS {
-			return EquipmentSpawned
+			return types.EquipmentSpawned
 		}
 	}
-	return EquipmentTaken
+	return types.EquipmentTaken
 }

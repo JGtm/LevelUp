@@ -35,7 +35,10 @@ package grammar
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 // sont des globaux de paquet.
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // abilityImpulseTag : la valeur du tag externe qui date une impulsion. Le 3 est le grappin
 // (grapple_state.go), le 0 et le 2 sont l'état de repos (1 572 et 1 565 lectures sur
@@ -51,54 +54,6 @@ const (
 	abilityPredictedNameAlt = "biped-spartan-ability"
 )
 
-// AbilityImpulse est UNE lecture d'impulsion de capacité, localisée dans le film.
-type AbilityImpulse struct {
-	// Slot est l'identifiant bas du biped porteur — le même que celui des trajectoires,
-	// donc UNE VIE et non un joueur (le slot migre aux réapparitions).
-	Slot uint32
-	// Chunk / PacketIndex localisent la lecture dans le film.
-	Chunk, PacketIndex int
-	// TimestampUS est l'horodatage du paquet porteur — MÊME horloge que BipedPosition.
-	TimestampUS uint64
-	// Predicted dit que la lecture vient du composant PRÉDIT i57 plutôt que de son jumeau
-	// non prédit i59. LES DEUX SONT CO-TRANSMIS : un même geste apparaît souvent dans les
-	// deux, et c'est à l'assembleur de les replier en épisodes plutôt que de compter deux
-	// fois. Le témoin est publié pour que la couverture puisse dire lequel a parlé.
-	Predicted bool
-}
-
-// AbilityImpulseStats compte ce que la marche a rencontré. Sans ces dénominateurs, une
-// liste d'impulsions ne se juge pas : « 60 lectures » ne dit rien sans « sur combien de
-// records annonçant le composant ».
-type AbilityImpulseStats struct {
-	// Records est le nombre de records delta biped reconnus.
-	Records int
-	// WithI57 / WithI59 : records dont le masque annonce le composant prédit / non prédit.
-	WithI57, WithI59 int
-	// Read / Unread : lectures abouties, et records dont la marche n'a pas atteint la cible
-	// (un composant intermédiaire non porté, ou un débordement du payload).
-	Read, Unread int
-	// Tag1 est le nombre de lectures dont le tag externe vaut abilityImpulseTag — les
-	// seules publiées.
-	Tag1 int
-	// Absent dit qu'AUCUN des deux composants n'est déclaré par l'archétype biped du film.
-	// C'est une information, pas une erreur : le film ne transmet alors pas ce canal, et
-	// une liste vide sans ce témoin serait indistinguable d'un film sans propulseur.
-	Absent bool
-	// Scanned dit que LE BALAYAGE A TOURNÉ. Faux = il n'a jamais commencé (une des quatre
-	// portes de résolution a refusé : aucun chunk, aucun slot biped aux images-clés, découpage
-	// i0 indétectable, registre illisible) — l'appelant reçoit alors une erreur, et tout ce qui
-	// suit dans cette structure est un zéro SANS SIGNIFICATION.
-	//
-	// POURQUOI UN TÉMOIN PLUTÔT QUE L'ERREUR SEULE : l'erreur meurt chez l'appelant immédiat,
-	// et le zéro qu'il laisse derrière voyage jusqu'à l'artefact. Sans ce champ, une couverture
-	// de zéros affirmerait « le balayage a tourné, le composant est là, personne ne s'en est
-	// servi » sur un film où rien n'a jamais été lu — la faute exacte que la doctrine de
-	// coverage.go interdit (cf. `attachInventoryCoverage`). Un balayage qui aboutit le pose,
-	// `Absent` compris : « aucun composant déclaré » EST un résultat de balayage.
-	Scanned bool
-}
-
 // ScanFilmAbilityImpulses décode les impulsions de capacité (corps tag==1 d'i57 et d'i59)
 // dans les paquets delta du film de dir. Les lectures sortent TRIÉES par instant, puis par
 // slot — un ordre total, pour que deux exécutions rendent le même artefact.
@@ -110,18 +65,18 @@ type AbilityImpulseStats struct {
 // ScanFilmAbilityImpulses est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film, ouvre un
 // contexte pour elle seule, puis appelle [ScanAbilityImpulses]. La cuisson, elle, passe le
 // contexte qu'elle partage entre tous ses balayages.
-func ScanFilmAbilityImpulses(dir string) ([]AbilityImpulse, AbilityImpulseStats, error) {
+func ScanFilmAbilityImpulses(dir string) ([]types.AbilityImpulse, types.AbilityImpulseStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, AbilityImpulseStats{}, err
+		return nil, types.AbilityImpulseStats{}, err
 	}
 	return ScanAbilityImpulses(contexteDeBobine(film))
 }
 
 // ScanAbilityImpulses décode les impulsions de capacité d'un film DEJA CHARGE. Cf.
 // [ScanFilmAbilityImpulses] pour la doctrine du balayage.
-func ScanAbilityImpulses(fc *FilmContext) ([]AbilityImpulse, AbilityImpulseStats, error) {
-	var st AbilityImpulseStats
+func ScanAbilityImpulses(fc *FilmContext) ([]types.AbilityImpulse, types.AbilityImpulseStats, error) {
+	var st types.AbilityImpulseStats
 	s, err := resolveAbilityScan(fc)
 	if err != nil {
 		return nil, st, err
@@ -171,8 +126,8 @@ func componentIndexOfAny(arch Archetype, names ...string) int {
 // abilityImpulseScanner porte l'état du balayage : compteurs, capture des deux hooks, et
 // sortie.
 type abilityImpulseScanner struct {
-	st             *AbilityImpulseStats
-	out            []AbilityImpulse
+	st             *types.AbilityImpulseStats
+	out            []types.AbilityImpulse
 	gram           grammaireRecord
 	i57idx, i59idx int
 	tag57, tag59   uint64
@@ -228,7 +183,7 @@ func (sc *abilityImpulseScanner) publish(got bool, tag uint64, predicted bool,
 		return
 	}
 	sc.st.Tag1++
-	sc.out = append(sc.out, AbilityImpulse{
+	sc.out = append(sc.out, types.AbilityImpulse{
 		Slot: slot, Chunk: chunk, PacketIndex: pk.Index,
 		TimestampUS: pk.TimestampUS, Predicted: predicted,
 	})
@@ -249,11 +204,11 @@ func (sc *abilityImpulseScanner) imputeUnread(has57, has59 bool) {
 // sortAbilityImpulses ordonne les lectures sur (instant, slot, composant) — un ordre TOTAL.
 // Un tri partiel laisserait l'ordre des lectures d'un même paquet dépendre du parcours,
 // donc l'artefact dépendre de rien de mesurable.
-func sortAbilityImpulses(out []AbilityImpulse) {
+func sortAbilityImpulses(out []types.AbilityImpulse) {
 	if len(out) < 2 {
 		return
 	}
-	lessImpulse := func(a, b AbilityImpulse) bool {
+	lessImpulse := func(a, b types.AbilityImpulse) bool {
 		if a.TimestampUS != b.TimestampUS {
 			return a.TimestampUS < b.TimestampUS
 		}

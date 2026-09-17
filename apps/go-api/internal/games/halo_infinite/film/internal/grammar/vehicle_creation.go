@@ -34,6 +34,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // decodeBipedI0Pos VALIDE et decode le composant i0 en PRECISION-DYNAMIQUE (grammaire biped, porte
@@ -75,9 +76,9 @@ func decodeBipedI0Pos(pay []byte, at int, lay profile.I0Layout, wr *profile.Vec3
 // aucun ne recopie la marche. Le vehicule etant le troisieme, la boucle a ete factorisee ici
 // plutot que recopiee (regle des 2 copies du depot, 2026-09-05).
 func runCreationWalk(
-	fc *FilmContext, w equipCreationWalk, st *EquipmentCreationStats,
-) []EquipmentCreation {
-	var out []EquipmentCreation
+	fc *FilmContext, w equipCreationWalk, st *types.EquipmentCreationStats,
+) []types.EquipmentCreation {
+	var out []types.EquipmentCreation
 	for _, c := range fc.ChunkNumbers() {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
@@ -97,10 +98,10 @@ func runCreationWalk(
 // [ScanVehicleCreations].
 func ScanFilmVehicleCreations(
 	dir string, wr *profile.Vec3Range,
-) ([]EquipmentCreation, EquipmentCreationStats, error) {
+) ([]types.EquipmentCreation, types.EquipmentCreationStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, EquipmentCreationStats{}, err
+		return nil, types.EquipmentCreationStats{}, err
 	}
 	return ScanVehicleCreations(contexteDeBobine(film), wr)
 }
@@ -110,8 +111,8 @@ func ScanFilmVehicleCreations(
 // (consumeDefaultStateTI40) et le gate i0 dyn.-prec.
 func ScanVehicleCreations(
 	fc *FilmContext, wr *profile.Vec3Range,
-) ([]EquipmentCreation, EquipmentCreationStats, error) {
-	var st EquipmentCreationStats
+) ([]types.EquipmentCreation, types.EquipmentCreationStats, error) {
+	var st types.EquipmentCreationStats
 	if len(fc.ChunkNumbers()) == 0 {
 		return nil, st, ErrNoFilmChunk
 	}
@@ -133,8 +134,8 @@ func ScanVehicleCreations(
 // d'un meme vehicule rendraient un gate incoherent avec le nuage qu'il est cense qualifier.
 func ScanVehicleCreationsForBand(
 	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
-) ([]EquipmentCreation, EquipmentCreationStats, error) {
-	var st EquipmentCreationStats
+) ([]types.EquipmentCreation, types.EquipmentCreationStats, error) {
+	var st types.EquipmentCreationStats
 	if wr == nil {
 		return nil, st, fmt.Errorf("bornes absentes : sans elles le decodeur ne rend que des quanta")
 	}

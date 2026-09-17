@@ -69,6 +69,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -102,7 +103,7 @@ func (k asCanal) String() string {
 }
 
 // asLire rend la valeur d'un canal et si elle est PRESENTE (C et D sont conditionnels).
-func asLire(v StatValue, canal byte) (int64, bool) {
+func asLire(v types.StatValue, canal byte) (int64, bool) {
 	switch canal {
 	case 'A':
 		return v.A, true
@@ -117,7 +118,7 @@ func asLire(v StatValue, canal byte) (int64, bool) {
 
 // asInstants rend, pour chaque unite balayee, les instants ou elle emet un evenement. Un seul
 // parcours des enregistrements : l'etat est tenu par (canal, slot, manche).
-func asInstants(recs []StatRecord) map[asCanal][]int {
+func asInstants(recs []types.StatRecord) map[asCanal][]int {
 	type etat struct {
 		comp        int
 		canal       byte

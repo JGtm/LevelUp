@@ -1,5 +1,7 @@
 package replay
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // flag_grabs_net_bridge.go — LE PONT entre le calque de drapeau PUBLIE et la regle des prises
 // nettes (`objectives.NetFlagGrabs`).
 //
@@ -26,10 +28,6 @@ package replay
 // (`Openings`) arrive donc par `coverage.flagCarries.openings`, qui EST ce compte, deja
 // fusionne. C'est pour cela que [FlagTracksOf] le rend a part.
 
-import (
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
-)
-
 // FlagTracksOf projette le calque de drapeau d'un document vers l'entree de
 // [objectives.NetFlagGrabs], en MILLISECONDES.
 //
@@ -43,7 +41,7 @@ import (
 //	                                  convertit en secondes, donc aucune fenetre ne s'applique
 //
 // Dans les trois cas la grandeur est NON MESUREE — jamais des zeros.
-func FlagTracksOf(doc *ReplayDocument) (tracks []objectives.FlagTrack, openings int, ok bool) {
+func FlagTracksOf(doc *ReplayDocument) (tracks []types.FlagTrack, openings int, ok bool) {
 	if doc == nil || doc.Coverage == nil || doc.Coverage.FlagCarries == nil {
 		return nil, 0, false
 	}
@@ -52,15 +50,15 @@ func FlagTracksOf(doc *ReplayDocument) (tracks []objectives.FlagTrack, openings 
 		return nil, 0, false
 	}
 	iv := doc.FrameIntervalMS
-	out := make([]objectives.FlagTrack, 0, len(doc.FlagCarries))
+	out := make([]types.FlagTrack, 0, len(doc.FlagCarries))
 	for _, fc := range doc.FlagCarries {
-		tr := objectives.FlagTrack{Team: fc.Team, Spans: make([]objectives.FlagSpan, 0, len(fc.Spans))}
+		tr := types.FlagTrack{Team: fc.Team, Spans: make([]types.FlagSpan, 0, len(fc.Spans))}
 		for _, sp := range fc.Spans {
 			x := ""
 			if sp.XUID != nil {
 				x = *sp.XUID
 			}
-			tr.Spans = append(tr.Spans, objectives.FlagSpan{
+			tr.Spans = append(tr.Spans, types.FlagSpan{
 				State: sp.State, StartMS: sp.T0 * iv, EndMS: sp.T1 * iv, XUID: x,
 			})
 		}

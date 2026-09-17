@@ -1,16 +1,19 @@
 package objectives
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 // Les quatre tests ci-dessous testent [RoundIdentity.CompletedByElimination] SEULE : une
 // defense en profondeur (le score du rejeu) masquerait la mutation du composant qu'elle
 // protege (regle §1 du plan v2).
 
 // recKDA fabrique un enregistrement de statborg portant les trois compteurs de base.
-func recKDA(timeMS, slot, round, k, d, a int) StatRecord {
-	return StatRecord{
+func recKDA(timeMS, slot, round, k, d, a int) types.StatRecord {
+	return types.StatRecord{
 		TimeMS: timeMS, Slot: slot, Round: round,
-		Comps: map[int]StatValue{
+		Comps: map[int]types.StatValue{
 			coreKillsComp:   {A: int64(k), B: int64(d)},
 			coreAssistsComp: {A: int64(a)},
 			modeScoreComp:   {A: int64(k + d + a + 1)},
@@ -19,8 +22,8 @@ func recKDA(timeMS, slot, round, k, d, a int) StatRecord {
 }
 
 // deuxManchesTroisSlots : deux manches reelles, trois slots emetteurs par manche.
-func deuxManchesTroisSlots() []StatRecord {
-	var out []StatRecord
+func deuxManchesTroisSlots() []types.StatRecord {
+	var out []types.StatRecord
 	t := 1000
 	for _, r := range []int{0, 1} {
 		for i, slot := range []int{10, 12, 14} {
@@ -55,7 +58,7 @@ func TestCompletionParEliminationNommeLeSlotUnique(t *testing.T) {
 	recs := deuxManchesTroisSlots()
 	// Segments de la manche 0 : slot 10 = (3,3,3), slot 12 = (4,3,3), slot 14 = (5,3,3).
 	// Segments de la manche 1 : identiques.
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "A", Kills: 6, Deaths: 6, Assists: 6},
 		{XUID: "B", Kills: 8, Deaths: 6, Assists: 6},
 		{XUID: "C", Kills: 10, Deaths: 6, Assists: 6},
@@ -82,7 +85,7 @@ func TestCompletionParEliminationNommeLeSlotUnique(t *testing.T) {
 // MUTATION : remplacer « exactement un » par « le premier » -> une identite est inventee, rouge.
 func TestCompletionParEliminationSeTaitADeuxCandidats(t *testing.T) {
 	recs := deuxManchesTroisSlots()
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "A", Kills: 6, Deaths: 6, Assists: 6},
 		{XUID: "B", Kills: 8, Deaths: 6, Assists: 6},
 		{XUID: "C", Kills: 10, Deaths: 6, Assists: 6},
@@ -104,7 +107,7 @@ func TestCompletionParEliminationSeTaitADeuxCandidats(t *testing.T) {
 // MUTATION : inverser l'ordre de fusion (ecrire avant de lire les deja-nommes) -> rouge.
 func TestCompletionParEliminationNeContreditJamaisLePontParMorts(t *testing.T) {
 	recs := deuxManchesTroisSlots()
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "A", Kills: 6, Deaths: 6, Assists: 6},
 		{XUID: "B", Kills: 8, Deaths: 6, Assists: 6},
 		{XUID: "C", Kills: 10, Deaths: 6, Assists: 6},
@@ -131,7 +134,7 @@ func TestCompletionParEliminationNeContreditJamaisLePontParMorts(t *testing.T) {
 // MUTATION : retirer le controle du residu -> le slot est nomme a tort, rouge.
 func TestCompletionParEliminationRefuseSurResiduDiscordant(t *testing.T) {
 	recs := deuxManchesTroisSlots()
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "A", Kills: 6, Deaths: 6, Assists: 6},
 		{XUID: "B", Kills: 8, Deaths: 6, Assists: 6},
 		// Le total de C ne correspond a AUCUNE decomposition : son residu de manche 0 vaudrait

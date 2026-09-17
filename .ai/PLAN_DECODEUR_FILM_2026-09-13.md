@@ -4319,7 +4319,7 @@ différence ; `git diff --stat -M` ne montre que des renommages.
       `sync/killcollector` tant que la constante des faits y vit. Aucun décodage, aucune jonction ;
       `filmdec/`, `killsource/`, `killcollector/` **non touchés** (`git diff --name-only` : 12
       fichiers, tous dans la frontière du brief).
-- [~] 2.6.1 `grammar.Rev`, `facts.Rev` (héritière de `KillSourceDecoderRev` pour le backlog) ;
+- [x] 2.6.1 `grammar.Rev`, `facts.Rev` (héritière de `KillSourceDecoderRev` pour le backlog) ;
       empreinte par couche ; règle « montée de `facts.Rev` = backlog killsource » écrite dans le
       test et dans `docs/SYNC_GUIDE` (FR + EN).
       **VOLET FACTS + SOURCE FAIT (2026-09-16, branche `feat/decfilm-26f`) ; VOLET GRAMMAR /
@@ -4335,10 +4335,25 @@ différence ; `git diff --stat -M` ne montre que des renommages.
       prouvé par mutation. La règle du backlog vit dans le message de `TestFactsRevSuitLesFaits`
       et dans `docs/SYNC_GUIDE` FR + EN, au présent. Allowlist
       `no_ad_hoc_source_fingerprint_test` : 2 → 1 (l'entrée grammaire reste).
-      **RESTE** : `grammar.Rev` (l'entrée d'allowlist, le retrait de `CadreHeriteGrammaire`, la
-      renumérotation de série) et `profile.Rev` (la couche n'existe pas encore) — tous deux dans
-      `film/grammar/`, tenu par 2.5.b pendant ce lot.
-- [~] 2.6.2 Paquet de types de sortie sans dépendance (`film/internal/types`, à la manière de
+      **VOLET GRAMMAIRE + PROFIL FAIT (2026-09-17, `3774e46dc`), L'ITEM EST CLOS.** `profile.Rev`
+      NAÎT (`profile-2026-09-17`, hache `profile/` — 10 fichiers — plus la VALEUR de `source.Rev` ;
+      le catalogue des cartes n'est PAS haché, limite écrite). `GrammarRev` devient `grammar.Rev`
+      et son gate passe sur `film/revision` : l'empreinte hachait CINQ RACINES EN OCTETS
+      (183 fichiers), elle hache `grammar/` SEUL (143) plus les VALEURS de `profile.Rev` puis
+      `source.Rev`. **RANG NEUF `.38` -> `.39`, avec la raison écrite** : l'héritage de
+      l'OUTILLAGE ne coûtait rien (cadre hérité = `7994ce19…`, la preuve de 2.6.0 tenait), mais le
+      PÉRIMÈTRE change et l'empreinte mesurée vaut `966e3f3e…` — deux quantités ne se figent pas
+      sous la même ligne. `facts.Rev` `.5` -> `.6` MÉCANIQUEMENT (elle hache cette valeur), sans
+      changement de sortie, AUCUN backlog. Kill-switch `CadreHeriteGrammaire` RETIRÉ à sa cible,
+      avec `Cadre` / `CadreRacine` / `Empreinte` / `EmpreinteHeritee` (un seul cadre, un seul point
+      d'entrée `revision.Calculer`) ; allowlist `no_ad_hoc_source_fingerprint_test` **VIDE**, et
+      devenue un ratchet. `LireChronique` lit PLUSIEURS fichiers de godoc (la chronique de
+      `grammar` est rotationnée) et le plancher de `VerifierRangs` ouvre sur le RANG, pas sur
+      l'égalité de chaîne — il ne s'ouvrait jamais du côté golden, donc n'y vérifiait RIEN.
+      `equivalence_test.go` devient la NON-RÉGRESSION DES QUATRE RÉVISIONS : un second oracle qui
+      redéclare chaque périmètre depuis la racine du module, plus la preuve que le chaînage mord.
+      D1 (2.6) et D4 (2.6) traitées. `docs/SYNC_GUIDE` FR + EN au PRÉSENT sur les quatre.
+- [x] 2.6.2 Paquet de types de sortie sans dépendance (`film/internal/types`, à la manière de
       `games/canonical`) produits par `grammar` et `facts`, consommés par `facts` et `replay` ; un
       test de contrat par type (forme figée).
       **VOLET FACTS + SOURCE FAIT (2026-09-16) ; VOLET GRAMMAR / REPLAY APRÈS 2.5.e.**
@@ -4354,13 +4369,51 @@ différence ; `git diff --stat -M` ne montre que des renommages.
       Golden UNIQUE `film/types/testdata/shapes.golden` (107 lignes, V15 (13)) : une section par
       type, et les revisions `source.Rev` / `facts.Rev` en première ligne de données ; porte de
       régénération à deux verrous, `t.Fatalf` même en réussite ; mutation de forme jouée (rouge).
-      **RESTE** : les 49 types `grammar → replay`, le retrait des trois `types_alias.go` (datés,
-      critère mesurable écrit) et le re-pointage de `replay`, `replaybuild` et `ops`.
-- [ ] 2.6.3 L'artefact publie `coverage.decoder.{grammarRev, factsRev, build}` (ajout de champ →
+      **VOLET GRAMMAIRE + REJEU FAIT (2026-09-17, `8ead46ce7`), L'ITEM EST CLOS.** La RE-MESURE
+      corrige le chiffre de cet item : l'intersection « types exportés par la racine de `grammar`
+      x identifiants employés par `replay`, production seule » rend **48** et non 49 — six des 53
+      comptés en septembre ont descendu dans `profile` au lot 2.5.b (`I0Layout`, `MPPWidths`,
+      `MapQuantCatalog`, `MapQuantEntry`, `Profile`, `Vec3Range`) et `ProfilDeBalayage` y est
+      apparu. **31 des 48 entrent**, 17 sont écartés (2 objets de SERVICE, 12 qui portent une
+      RÈGLE — une méthode qui décode, nomme un symbole d'une autre couche ou tranche une question
+      de grammaire —, 3 dont un champ nomme `grammar.MPPCalibration`,
+      `grammar.ManagedPropertyField` ou `grammar.FrameConfig`), **+4 par CLÔTURE DES CHAMPS = 35**
+      (`EquipmentChangeKind` et ses constantes, `DeadState`, `PlayerSlotShorts`,
+      `InventoryDeltaAmmo`), plus la constante `MPPFieldCount` (une dimension de tableau fait
+      partie de la forme ; `grammar.MPPField` la REPREND). Les TROIS `types_alias.go` sont
+      SUPPRIMÉS et leur critère de retrait est tenu au grep — 0 occurrence, y compris chez les
+      couches qui PRODUISENT ces types (D3 (2.6) fermée). D2 (2.6) mesurée puis corrigée : HUIT
+      littéraux positionnels, tous `EquipmentLifeKey{slot, gen}`, en champs nommés. `shapes.golden`
+      13 -> **46** types, sa ligne de révisions porte les TROIS couches productrices. SEPT
+      `//nolint:gocyclo,funlen` datés sur la chaîne de dispatch : la ligne de déclaration change
+      (`*DeadState` -> `*types.DeadState`), donc le ratchet `--new-from-*` re-voit une dette gelée
+      que ce lot n'a pas accrue (gocyclo 31/36/41/25/23/37/38, valeurs INCHANGÉES ; critère de
+      retrait <= 15, lot 2.7). AUCUNE révision ne monte : empreintes recopiées, choix écrit dans
+      les trois goldens — aucun backlog killsource ouvert (V15 (16)).
+- [x] 2.6.3 L'artefact publie `coverage.decoder.{grammarRev, factsRev, build}` (ajout de champ →
       montée de `SchemaVersion` 57 par l'empreinte de forme ; contenu cuit inchangé par ailleurs).
+      **FAIT (2026-09-17, `(ce commit)`), DERNIER COMMIT DE M2. Le « 57 » ci-dessus est PÉRIMÉ
+      (chiffre du 2026-09-13) : la montée est 60 -> 61.** Le bloc porte LES QUATRE révisions
+      (V15 (11)) et non deux : `sourceRev`, `profileRev`, `grammarRev`, `factsRev`, plus `build`.
+      `build` vaut la CHAÎNE VIDE et le bloc reste PRÉSENT dans les deux cas où la clé n'a pas
+      servi — film sans section d'identification, et build absent de la table de profil
+      (V15 (15)). Le sous-bloc `coverage.decoder.registry` CLASSE l'empreinte du registre ECS
+      (`fingerprint`, `status` connue / inconnue, `blocks`, `namedSlots`) : **D4 (3.2) est FERMÉE**
+      — `ReadFilmIdentity` rend l'empreinte et les entrées nommées au lieu de les jeter. Le
+      troisième statut `presumee` N'EST PAS LIVRÉ, et la mesure dit pourquoi : `profile_table.go`
+      ne porte AUCUNE empreinte de registre au 2026-09-17, le décodeur ne peut pas lire
+      `filmprofile` (sens unique, D-1), donc la recopie est le volet 3.1.1 ; `status` est une
+      chaîne précisément pour que ce troisième état n'oblige personne à changer de forme.
+      **D3 (validation) point 2 traité dans le même commit** : `coverage.abilityImpulses.scan`
+      publie les dénominateurs du balayage (`records`, `withI57`, `withI59`, `read`, `unread`,
+      `tag1`), absent quand le balayage n'a pas tourné. Entrée de chronique v61 ÉCRITE DANS CE
+      COMMIT, brouillon `.ai/BROUILLON_CHRONIQUE_V61_2026-09-17.md` SUPPRIMÉ ; justification
+      écrite aussi dans `structure_test.go`, que son propre gate exige. `api/openapi.yaml` et les
+      types web régénérés EN DERNIER. AUCUNE des quatre révisions ne monte (empreintes recopiées,
+      choix écrit) : aucun backlog killsource, aucune recuisson requise.
 
 Preuve : une mutation de source rougit l'empreinte de sa couche ; `replay-equiv` différence
-limitée au champ `coverage.decoder`.
+limitée aux champs `coverage.decoder` et `coverage.abilityImpulses.scan`.
 
 #### Lot 2.7 (pas 7) — Scission des fichiers de plus de 500 lignes — M, high
 
@@ -4679,6 +4732,20 @@ défont par `git revert` ; avant la recuisson, tag git du binaire précédent et
       (`gamefiles`), plus la grammaire des clés et 15 cas de refus. Ratchet étendu : il garde
       désormais N catalogues (`chemsVersionnes`, `fichiersVersionnesGardes`), le profil étant le
       cas STRICT (aucun overlay) ; 4 cas de morsure ajoutés.
+      **VOLET CODE PARTIEL, LIVRÉ AU LOT 2.6.3 (2026-09-17).** `warnUnknownRegistry` n'est plus
+      la SEULE trace : `coverage.decoder.registry` publie l'empreinte du registre, son statut,
+      ses blocs et ses entrées nommées (schéma 61). **D4 (3.2) est FERMÉE** — `ReadFilmIdentity`
+      rend l'empreinte et le compte d'entrées nommées au lieu de les jeter
+      (`profile.FilmIdentity.RegistryFingerprint` / `.RegistryNamedSlots`, `Registry.namedSlots`
+      + `grammar.RegistryNamedSlots`).
+      **RESTE — et c'est le volet 3.1.1** : la classification livrée est `connue` / `inconnue`
+      sur la SEULE empreinte que le décodeur connaisse (`grammar.KnownRegistryFingerprint`). Le
+      troisième statut `presumee` exige que la table du PROFIL
+      (`film/internal/profile/profile_table.go`) recopie la section `registryFingerprints` du
+      catalogue — mesure du 2026-09-17 : elle n'en porte AUCUNE, et le décodeur ne peut pas lire
+      `filmprofile` (ce serait un import de catalogue depuis un calque, D-1). `status` est une
+      chaîne et non un booléen pour que ce troisième état n'oblige aucun consommateur à changer
+      de forme.
 - [x] 3.1.3 Procédure d'ajout d'un build (`docs/RUNBOOK`, EN) : outil, témoin au corpus, entrée
       présumée puis prouvée. **FAIT (2026-09-16).** `docs/RUNBOOK_FILM_PROFILES.md` (EN-only) :
       les quatre formes de clé, les deux natures d'entrée, les trois provenances et ce que
@@ -5204,6 +5271,8 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-16 | 2.6.2 | **D2 (2.6) — SORTIR UN TYPE DE SON PAQUET TRANSFORME UN LITTÉRAL NON NOMMÉ EN ERREUR `go vet`.** `PlayerLine{"z16", 16, 13, 4}` compile tant que le type est déclaré dans le paquet ; dès qu'il vient d'ailleurs, l'analyse `composites` de `go vet` le refuse. Mesure sur ce volet : **16 littéraux**, tous dans `film/facts/objectives/named_test.go`, corrigés en champs nommés (le lot ne pouvait pas les laisser : `go vet ./...` est un gate). Aucun autre paquet n'en portait pour les 13 types déplacés. | **À prévoir au volet grammaire / rejeu**, qui déplace 49 types consommés par `replay` (246 citations) et `replaybuild` (74) : le coût n'est pas le déplacement, ce sont les littéraux positionnels des tests. À mesurer AVANT d'ouvrir le lot (`go vet ./...` après un déplacement d'essai) |
 | 2026-09-16 | 2.6.2 | **D3 (2.6) — LES TROIS ALIAS DATÉS ONT 79 FICHIERS DERRIÈRE EUX, ET C'EST LA LISTE DE TRAVAIL DU VOLET SUIVANT.** Mesure du 2026-09-16 (`grep` des 13 types qualifiés, hors `facts/` et `source/`) : **79 fichiers** hors des couches d'origine citent un type déplacé par son ancien nom de paquet — `film/replay` 246 citations, `internal/replaybuild` 74, `internal/sync/killcollector` 5, `film/filmcache` 4, `film/grammar` 3, `cmd/` 21. Tous compilent par les alias de `types_alias.go`, et chacun de ces fichiers appartient à un paquet que le brief interdisait à ce lot. | **Volet grammaire / rejeu du lot 2.6** : re-pointer, puis SUPPRIMER les trois `types_alias.go`. Le critère de retrait est écrit dans chacun d'eux, et il est mesurable au `grep` |
 | 2026-09-16 | 2.6 (docs) | **D4 (2.6) — LES DEUX `SYNC_GUIDE` CITENT UN CHEMIN DE REPLI QUI N'EXISTE PLUS.** La ligne « Renvois / References » de la sous-section des révisions nomme `internal/games/halo_infinite/film/replay/fallback` ; le registre des replis a descendu en `film/facts/fallback` au lot 2.5.d.1. La phrase reste vraie sur le fond, le chemin est faux, dans les DEUX fichiers. NON TRAITÉ : le brief borne la mise à jour documentaire à la sous-section des révisions, et cette ligne parle du registre des replis. | Même famille que D7 (2.5) : au premier lot qui rouvre ces deux guides — ou au volet grammaire du 2.6, qui y reviendra pour `grammar.Rev` |
+| 2026-09-17 | 2.6.1 | **D5 (2.6) — `film/revision` N'A PLUS DE RAISON DE VIVRE HORS DE `film/internal/`.** Il y était pour rester importable par `sync/killcollector`, qui portait la constante de révision des faits ; celle-ci a descendu en `film/internal/facts/rev.go` au volet facts, et depuis le volet grammaire les SEULS importateurs du paquet sont les quatre gates de couche, tous sous `film/` (mesure : `grep -rln film/revision` rend 16 fichiers, dont 12 tests du paquet lui-même, 2 ratchets d'`archlint` et 2 citations de prose). Le compilateur pourrait donc le fermer comme les quatre couches. NON TRAITÉ : ce lot ne déplace rien, et l'en-tête du paquet porte désormais la mesure au lieu de la raison périmée. | Lot 2.7 ou le premier lot qui rouvre `film/revision` — un `git mv` pur, sans effet sur aucune empreinte (le paquet n'est haché par personne) |
+| 2026-09-17 | 2.6.2 | **D6 (2.6) — LA JUSTIFICATION DE MONTÉE DE SCHÉMA EST ÉCRITE DEUX FOIS, ET LES DEUX COPIES DIVERGERONT.** `replay/document_chronicle.go` porte l'entrée de chronique v52..v61 et `replay/structure_test.go` porte, au-dessus de son garde de version, un résumé de la MÊME entrée pour chacune des dix dernières versions. Le test exige la seconde (il refuse `SchemaVersion + 1` sans raison écrite au-dessus de lui) et la chronique exige la première (`TestDocumentShapeSchemaHasChronicleEntry`). Aucune des deux ne lit l'autre : rien n'empêche un résumé de contredire sa chronique, et les deux fichiers sont les deux seuls du dépôt sous exemption écrite du ratchet de taille — pour la même cause. NON TRAITÉ (règle 7 : ce lot ne fait que suivre les deux gates). | Lot 2.7 (item 2.7.1, qui tranche déjà que la chronique ne se scinde pas) : faire LIRE la chronique par le garde de `structure_test.go` au lieu de recopier son texte, ou déclarer la copie et la mesurer |
 | 2026-09-16 | 2.5.e-a | **D1 (2.5.e) — LE MARCHEUR DE PAQUETS D'`analysis/positions` EST UN CINQUIÈME, ET IL N'EST PAS FONDU ICI.** `type2Payload` (`positions.go`) parcourt les blocs de seize octets du chunk avec sa PROPRE grammaire d'arrêt : il borne sur `off+16+size > len(d)`, retourne le payload du PREMIER bloc `TYPE_2`, et s'arrête sur `typ == 7` APRÈS avoir avancé. `source.Paquets` (le marcheur unique, D3 révisée) émet le terminateur PUIS s'arrête, et traite la taille nulle autrement. Les fondre changerait des valeurs décodées sur les chunks de bord, ce que D4 interdit à un pas structurel : la descente a donc porté les LECTURES (`source.U16LE` / `U32LE`, `source.BitAt`), pas le marcheur. NON TRAITÉ (règle 7). | lot 2.7 ou M3 : opposer les deux marcheurs sur des chunks réels (comme `source.TestDeuxMarcheursDePaquetsSAccordent` le fait déjà pour les deux autres), PUIS fondre si l'accord est mesuré |
 | 2026-09-16 | 2.5.e-a | **D2 (2.5.e) — LE CATALOGUE D'ARMES NE POUVAIT PAS ALLER DANS `games/weapons`, ET L'ARÊTE DU RATCHET LE PRESCRIVAIT.** L'entrée d'allowlist `weaponv3 -> analysis` annonçait « le catalogue d'armes remonte en `games/weapons` ». Mesure du 2026-09-16 (`go list -deps ./internal/games/weapons`) : ce paquet dépend de `database/sql`, `internal/migration` ET, transitivement, d'`internal/analysis` — l'y poser ferait entrer tout l'outillage de migration dans les dépendances du décodeur, et ramènerait `analysis` dans son arbre par la porte de derrière. Le catalogue vit donc dans `internal/games/weapons/filmshell`, sous-paquet FEUILLE (aucun import du dépôt), hors des racines surveillées par le ratchet 2.4.3 puisqu'il NOMME les armes sans lire un octet. | sans objet — tranché dans le lot, et la raison est écrite dans le godoc du paquet |
 | 2026-09-16 | 2.5.e-b | **D3 (2.5.e) — LA FAÇADE NE PEUT PAS RE-EXPORTER `BuildBipedTracks` PAR UN RENVOI ÉCRIT.** Sa signature rend `map[uint32][]hitPosSample`, et `hitPosSample` est un type NON EXPORTÉ de `grammar`. Un renvoi d'une ligne doit NOMMER le type ; l'écrire exigerait d'exporter `hitPosSample`, c'est-à-dire un changement de contenu dans un lot de déplacements. La façade la re-exporte donc comme VALEUR de fonction (`var BuildBipedTracks = grammar.BuildBipedTracks`), seule exception de ses 163 symboles, et son godoc le dit. NON TRAITÉ (règle 7). | M4, avec la réduction de la façade : soit le type s'exporte (il décrit une position de touche, rien de secret), soit l'appelant (`sync/killcollector/hits.go`) reçoit une forme déjà publiée |
@@ -5228,6 +5297,61 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-17 | 3.3 (recherche) | **D5 (3.3r) — LA POSITION DU CHAMP D'INDEX AUTEUR SUR LES BUILDS ANCIENS N'EST PAS ÉTABLIE, et le décalage d'un bit ne s'y propage PAS mécaniquement.** Les 47 bits qui séparent l'identifiant de l'index sont un TOTAL mesuré, pas une suite de champs lue (`grammar/grenade_events.go` le dit lui-même : « la source de référence décrit sauter 47 bits sans dire depuis quoi »). Mesure : à +103, `bcb6d393` rend **54 index sur 55** dans 0..7 (position juste) et `111fa685` **49 sur 159** (position fausse) ; à +102, ni l'un ni l'autre n'est propre. Le critère « toutes les valeurs dans 0..7 » ne tranche pas : **18 décalages sur 49** le satisfont sur les deux films. NON TRAITÉ (règle 7). | **Lot 3.3.1**, avec un critère plus fort que « dans 0..7 » : recoupement avec la table des joueurs du film (lot 1.5) ou avec le pont index / slot de `replay`. Ne bloque pas la livraison : les lancers anciens sont publiables avec leur TYPE et sans auteur, ce que la couverture distingue déjà (`grenadesDisponibles` contre `grenadesRattachees`) — et M3-Q5 = B porte sur le TYPE |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Lot 2.6 (M2, pas 6) — volet GRAMMAIRE + PROFIL + REJEU, puis 2.6.3, SANS AUCUN DÉCODAGE, 2026-09-17
+
+Branche `feat/decfilm-26g`, base `c1aee754e` (intégration avec 2.5.e + 2.5.g fusionnés). Trois
+commits : `3774e46dc` (2.6.1), `8ead46ce7` (2.6.2), `(ce commit)` (2.6.3). **Les gates AVEC
+décodage — `replay-equiv` 20 films, `replay-corpus-gate` 17 témoins — attendent la « voie libre »
+du pilote** : un seul décodage à la fois sur ce poste, et le brief les interdit sans son signal.
+Les régénérations de goldens et de fixtures que la montée de schéma EXIGE (assemblage 1 + 7 par
+build, 8 fixtures de contrat web) ont, elles, été jouées une par une — ce sont des portes de
+régénération, pas les deux gates nommés.
+
+| Date | Item | Commit | Gate | Résultat |
+|---|---|---|---|---|
+| 2026-09-17 | 2.6.1 / 2.6.2 / 2.6.3 | les trois | `gofmt -l ./internal ./cmd` | sortie **VIDE** aux trois commits |
+| 2026-09-17 | 2.6.1 / 2.6.2 / 2.6.3 | les trois | `go build ./...` · `go vet ./...` | build OK ; vet **0 diagnostic** — dont **0 `composites`** après correction des huit littéraux positionnels de `EquipmentLifeKey` (D2 (2.6) mesurée par ce gate même) |
+| 2026-09-17 | 2.6.1 / 2.6.2 / 2.6.3 | les trois | `go test -count=1 ./internal/... ./cmd/...` (CGO) | **exit 0**, batterie complète aux trois commits |
+| 2026-09-17 | 2.6.1 | `3774e46dc` | `go test -race -count=1` sur `grammar`, `facts` + ses 3 sous-paquets, `revision`, `profile`, `source` | `ok` partout — grammar 294 s, killsource 19,3 s, objectives 2,0 s, fallback 1,1 s, facts 1,2 s, revision 1,3 s, profile 1,2 s, source 1,5 s |
+| 2026-09-17 | 2.6.2 | `8ead46ce7` | `go test -race -count=1` sur `grammar`, `facts` + ses 3 sous-paquets, `types` | `ok` partout — grammar 269 s, killsource 19,0 s, objectives 1,9 s, fallback 1,1 s, facts 1,2 s, types 1,2 s |
+| 2026-09-17 | 2.6.1 / 2.6.2 / 2.6.3 | les trois | `golangci-lint run --new-from-rev=c1aee754e` | **0 issue** aux trois. Au 2.6.2 le ratchet a re-vu SEPT `gocyclo` de dette gelée (la ligne de déclaration des sept maillons de dispatch change : `*DeadState` -> `*types.DeadState`) : exemptions `//nolint:gocyclo,funlen` datées, justification et critère de retrait en tête de `dispatch_object.go`, complexités MESURÉES inchangées (31, 36, 41, 25, 23, 37, 38) |
+| 2026-09-17 | 2.6.1 | `3774e46dc` | **mutation d'un octet de production, jouée et annulée sur les QUATRE couches** | chaque gate rougit avec son empreinte mesurée : `source` 6 fichiers (`2e12d461…` -> `4f61d57d…`), `profile` 10 (`a3c2aa5b…` -> `47327bf1…`), `grammar` 143 (`966e3f3e…` -> `ed508a1d…`), `facts` 55 (`cd0491cb…` -> `894848f5…`) |
+| 2026-09-17 | 2.6.1 | `3774e46dc` | `TestUneMutationRougitSaCoucheEtCellesQuiEnDependent` (preuve du CHAÎNAGE, commise) | vert : muter la valeur de `source.Rev` fait bouger `profile`, `grammar` ET `facts` ; `profile.Rev` fait bouger `grammar` ; `grammar.Rev` fait bouger `facts` |
+| 2026-09-17 | 2.6.2 | `8ead46ce7` | **mutation de FORME, jouée et annulée** (un champ ajouté à `types.ProjectileSample`) | `shapes.golden` rougit AU CHAMP PRÈS, section `## ProjectileSample (grammar)` nommée dans le message |
+| 2026-09-17 | 2.6.3 | `(ce commit)` | montée de schéma — les 8 points de la checklist §3.3 de la note de préparation | tous cochés sur pièces : (1) `DecoderCoverage` + `RegistryCoverage` + le champ `Decoder`, (2) les jumeaux `replaydoc`, (3) `convert_coverage.go`, (4) `SchemaVersion = 61`, (5) l'entrée v61 DANS CE COMMIT + le brouillon supprimé, (6) `document_shape.golden` régénéré par sa porte unique (empreinte `9ce58fe1aa1123b5`), (7) `api/openapi.yaml` régénéré EN DERNIER puis les types web, (8) `parity_test.go` vert — il est RÉFLEXIF, donc la parité champ par champ est tenue sans liste à maintenir |
+| 2026-09-17 | 2.6.3 | `(ce commit)` | `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate -count=1` (CGO) | `ok` — `openapi.yaml` +74 lignes (`DecoderCoverage`, `RegistryCoverage`, `AbilityImpulseScanCoverage`), `generated.ts` +32 |
+| 2026-09-17 | 2.6.1 / 2.6.2 / 2.6.3 | les trois | RÉVISIONS : quatre goldens, choix écrit à chaque mouvement | `source-2026-09-16.2` (inchangée, empreinte recopiée 2×), `profile-2026-09-17` (naissance puis empreinte recopiée), `grammar-2026-09-15.38` -> `.39` (rang neuf, PÉRIMÈTRE changé ; puis empreinte recopiée 2×), `killsource-2026-09-16.5` -> `.6` (montée MÉCANIQUE par l'amont ; puis recopiée). **AUCUN BACKLOG KILLSOURCE OUVERT** |
+
+
+### Lot 2.6 (M2, pas 6) — gates AVEC DÉCODAGE, 2026-09-17 (« voie libre » du pilote)
+
+Joués sur le sha RÉCONCILIÉ `bfc56d096` (merge de `f72c0e737` dans `feat/decfilm-26g`), un
+décodage à la fois, rien d'autre sur le poste. **Jamais `-update`** : le pilote re-fige à la
+fusion.
+
+| Date | Gate | Portée | Résultat |
+|---|---|---|---|
+| 2026-09-17 | `replay-equiv` (sortie 1, attendue) | 20 films du CORPUS | **BILAN : 0 identique, 20 différents, 0 écarté, 0 échec, 0 illisible.** Sur CHACUN des 20 : **ÉCART sur 1 étape sur 53, et c'est `artifact`** — l'étape de PUBLICATION. Diff ligne à ligne des TSV (référence figée vs tête) : `artifact` est la SEULE ligne qui bouge, les **52 étapes de balayage sont identiques au bit** sur les 20 films. Aucun balayage n'a changé : la différence est entièrement dans ce que le document PORTE |
+| 2026-09-17 | `replay-equiv` — taille de l'artefact | 20 films | deltas **tous POSITIFS** (addition pure, rien de retiré) : `min=+254`, `max=+362`, `somme=+6 970` octets. **La règle V15 (15) se lit DANS LA MESURE** : les deux seuls films SANS section d'identification — `50247b26` (majeure 31) et `a349fea8` (majeure 33) — portent le delta le PLUS PETIT, `+254`, exactement les deux où `build` est la chaîne vide et où le sous-bloc `registry` est absent ; les 18 autres portent le bloc complet (+354 à +362) |
+| 2026-09-17 | `replay-corpus-gate --base=f72c0e737` (sortie **0**) | 17 témoins, chacun cuit DEUX fois | **17/17 `ok`, schéma 60 -> 61 partout, 0 PERTE, 0 CHANGEMENT.** Gains 12 à 17 par témoin (`a349fea8` 12 et `50247b26` 13 : les deux sans section). Durées 11,9 s à 2 min 35 |
+| 2026-09-17 | champs neufs NOMMÉS (feuilles JSON aplaties, base vs tête, union des 17) | 17 témoins | **15 feuilles AJOUTÉES, 0 RETIRÉE** : `coverage.decoder.{sourceRev, profileRev, grammarRev, factsRev, build}`, `coverage.decoder.registry.{fingerprint, status, blocks, namedSlots}`, `coverage.abilityImpulses.scan.{records, withI57, withI59, read, unread, tag1}`. Par témoin : **+15 / -0** sur quinze, **+11 / -0** sur `50247b26` et `a349fea8` — les 4 manquantes sont exactement les `coverage.decoder.registry.*`, le bloc absent quand le registre n'est pas lu |
+| 2026-09-17 | feuilles PARTAGÉES dont la VALEUR change | `bcb6d393`, `50247b26`, `a521164d` | **AUCUNE**, hors `schemaVersion` (60 -> 61). Le contenu cuit est identique à la valeur près : ce lot AJOUTE, il ne modifie rien |
+
+**LA CLASSIFICATION DU REGISTRE, MESURÉE SUR LES 17 TÉMOINS, RECOUPE LE CATALOGUE DU LOT 3.2.1 —
+et c'est une validation croisée que personne n'avait demandée** : `0x36ca8c3d2a2f9b88` (HI_1_12_0
+et HI_1_13_0, 50 blocs / 1 067 slots) sort `connue` — c'est `KnownRegistryFingerprint` ;
+`0x33c7e724716d8cc5` sort sur HI_1_8_0 **et** HI_1_9_0 (la paire que D2 (3.2) annonce),
+`0x9b6397b3ad58e258` sur HI_1_10_0, `0x8879e2b6746ba047` sur HI_1_11_0, `0x40531a0d86ce90ce` sur
+HI_1_4_1 (1 033 slots, la valeur de D1 (3.2)). Les cinq sortent `inconnue`, et **c'est le
+comportement attendu à ce stade** : le décodeur ne connaît qu'une empreinte, celle du build de
+référence. Ces cinq-là sont exactement la population que le volet 3.1.1 fera passer à `presumee`
+ou `connue` quand la table du profil recopiera les empreintes du catalogue.
+
+**VERDICT : le lot 2.6 est une révision à ZÉRO différence de contenu sur les 17 témoins (D4), et
+la seule différence d'équivalence est celle que 2.6.3 produit PAR CONSTRUCTION — deux blocs de
+télémétrie ajoutés, nommés, comptés en gains.** Aucun backlog killsource ouvert, aucune recuisson
+requise : M2 se clôt à zéro backlog (V15 (16)).
 
 ### Lot 2.5.e (M2, pas 5) — façade, bascule sous `film/internal/`, ratchet STRICT, SANS AUCUN DÉCODAGE, 2026-09-16 / 2026-09-17
 

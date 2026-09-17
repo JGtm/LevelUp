@@ -43,6 +43,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // VehicleScan porte ce qu une lecture du film rend sur les VEHICULES (`ti=40`).
@@ -56,15 +57,15 @@ type VehicleScan struct {
 	// Keyframes porte la BANDE de slots `ti=40` et le RECENSEMENT qui borne les fins de vie.
 	Keyframes grammar.WorldObjectKeyframes
 	// Creations sont les records de creation acceptes : position de naissance + bloc MPP.
-	Creations []grammar.EquipmentCreation
-	Stats     grammar.EquipmentCreationStats
+	Creations []types.EquipmentCreation
+	Stats     types.EquipmentCreationStats
 	// Positions est le nuage NON decime des positions de vehicule, lu a la grammaire bipede
 	// (porte 5 bits) sur la bande `ti=40` — la seule qui rende 99,4 a 100 % de pas sous 35 m/s
 	// (cadrage vehicules du 2026-08-31).
 	Positions []grammar.BipedPosition
 	// Events sont les embarquements et les sorties de la liste d evenements des paquets delta.
 	// Absents = episodes d occupation bornes par le seul trou de position (repli mesure).
-	Events []grammar.VehicleEvent
+	Events []types.VehicleEvent
 	// Aims sont les lectures de VISEE des bipedes qui ne repliquent PLUS leur position — celles
 	// des occupants, donc. Bande `ti=35` (les joueurs), PAS `ti=40` : la visee publiee sur un
 	// episode est celle de l HOMME a bord, jamais du chassis. Absentes = episodes sans serie de
@@ -75,7 +76,7 @@ type VehicleScan struct {
 	// ancres de ce paquet n acceptent qu un masque ouvrant sur `i0` et n arrivent jamais a
 	// `i11`. C est ce qui DATE la fin de vie d un vehicule (lot 1.9.10) ; sans elles, la fin
 	// n est plus qu une borne de recensement.
-	Deaths []grammar.ObjectDeath
+	Deaths []types.ObjectDeath
 	// DeathStats porte les denominateurs de cette lecture (cadre retenu, paquets localises,
 	// records par archetype, controle de masque). ILS VOYAGENT AVEC LA LISTE : une liste vide
 	// sans eux serait indistinguable d un film ou aucun vehicule ne meurt.
@@ -142,14 +143,14 @@ func decodeFilmVehicleScan(
 // l aurait perdu (2 a 5 morts par film chez le bipede, mesure V13 gate G1a).
 func decodeFilmVehicleDeaths(
 	fc *grammar.FilmContext, matchID string,
-) ([]grammar.ObjectDeath, grammar.ObjectDeathStats) {
+) ([]types.ObjectDeath, grammar.ObjectDeathStats) {
 	all, st, err := grammar.ScanObjectDeaths(fc)
 	if err != nil {
 		slog.Warn("vehicules : morts ecrites illisibles — fins de vie bornees par le seul"+
 			" recensement", "err", err, "match_id", matchID)
 		return nil, st
 	}
-	out := make([]grammar.ObjectDeath, 0, len(all))
+	out := make([]types.ObjectDeath, 0, len(all))
 	for _, d := range all {
 		if d.TypeIndex == uint32(grammar.VehicleTypeIndex) {
 			out = append(out, d)
@@ -187,7 +188,7 @@ func decodeFilmOccupantAims(fc *grammar.FilmContext, matchID string) []grammar.B
 // absence rend les episodes d occupation au seul trou de position, qui est la primitive de repli
 // MESUREE (86,3 % des trous portent leur sortie, et 100 % de ces sorties ferment le trou a
 // +/-2 s — rapport V3_DESTRUCTION_DATEE_2026-09-02, gate 6).
-func decodeFilmVehicleEvents(fc *grammar.FilmContext, matchID string) []grammar.VehicleEvent {
+func decodeFilmVehicleEvents(fc *grammar.FilmContext, matchID string) []types.VehicleEvent {
 	ev, err := grammar.ScanVehicleEvents(fc)
 	if err != nil {
 		slog.Warn("vehicules : liste d evenements illisible — episodes d occupation bornes par le"+

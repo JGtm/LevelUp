@@ -6,23 +6,22 @@ package replay
 // dans assaut_armement_gate_test.go (garde ASSAUT_CACHE).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // baMontee fabrique les lectures d'UN segment qui ARME : n échantillons espacés de 100 ms,
 // quanta croissants finissant au QUANTUM PLEIN (254) — la définition mesurée de « bombe
 // armée » (le segment finit à son sommet, et ce sommet est le plein).
-func baMontee(slot uint32, startMS int32, n int) []grammar.NavpointRadialRead {
+func baMontee(slot uint32, startMS int32, n int) []types.NavpointRadialRead {
 	return baMonteeVers(slot, startMS, n, 254)
 }
 
 // baMonteeVers fabrique un segment montant finissant au quantum qEnd (pas de 16 quanta).
-func baMonteeVers(slot uint32, startMS int32, n int, qEnd uint8) []grammar.NavpointRadialRead {
-	out := make([]grammar.NavpointRadialRead, 0, n)
+func baMonteeVers(slot uint32, startMS int32, n int, qEnd uint8) []types.NavpointRadialRead {
+	out := make([]types.NavpointRadialRead, 0, n)
 	for i := 0; i < n; i++ {
-		out = append(out, grammar.NavpointRadialRead{
+		out = append(out, types.NavpointRadialRead{
 			Slot: slot, TMS: startMS + int32(i)*100, Q: qEnd - uint8(16*(n-1-i)),
 		})
 	}
@@ -32,11 +31,11 @@ func baMonteeVers(slot uint32, startMS int32, n int, qEnd uint8) []grammar.Navpo
 // baTenue fabrique une TENUE DE DÉSARMEMENT : segment descendant de q0, 2 quanta par 100 ms
 // (20 quanta/s — au milieu des 14-26 mesurés, très en dessous des 138 d'une chute
 // d'explosion). durMS fixe sa durée, donc la pause qu'elle retranche à la mèche.
-func baTenue(slot uint32, startMS int32, durMS int32, q0 uint8) []grammar.NavpointRadialRead {
+func baTenue(slot uint32, startMS int32, durMS int32, q0 uint8) []types.NavpointRadialRead {
 	n := int(durMS/100) + 1
-	out := make([]grammar.NavpointRadialRead, 0, n)
+	out := make([]types.NavpointRadialRead, 0, n)
 	for i := 0; i < n; i++ {
-		out = append(out, grammar.NavpointRadialRead{
+		out = append(out, types.NavpointRadialRead{
 			Slot: slot, TMS: startMS + int32(i)*100, Q: q0 - uint8(2*i),
 		})
 	}
@@ -90,7 +89,7 @@ func TestBuildBombArmingsEcarteLesSegmentsSousLePlein(t *testing.T) {
 func TestBuildBombArmingsEcarteLeCycleDeRecharge(t *testing.T) {
 	reads := baMontee(30, 10_000, 9) // 126 -> 254
 	for i := 1; i <= 8; i++ {        // redescente immédiate, même segment : 254 -> 126
-		reads = append(reads, grammar.NavpointRadialRead{
+		reads = append(reads, types.NavpointRadialRead{
 			Slot: 30, TMS: 10_800 + int32(i)*100, Q: uint8(254 - 16*i),
 		})
 	}

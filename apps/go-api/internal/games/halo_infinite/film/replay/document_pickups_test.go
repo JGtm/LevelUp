@@ -12,21 +12,20 @@ package replay
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 func TestBuildPickupsProjectsAndNames(t *testing.T) {
 	const origin, step = 1_000_000, 100_000 // frame = (ts - 1 s) / 100 ms
-	in := []grammar.BipedPickup{
+	in := []types.BipedPickup{
 		{TimestampUS: 900_000, Slot: 520, CatalogID: 0xAABBCCDD, Class: 0}, // avant l'origine
 		{TimestampUS: 1_000_000, Slot: 520, CatalogID: 0x11223344, Class: 0},
 		{TimestampUS: 1_250_000, Slot: 999, CatalogID: 0x55667788, Class: 2}, // slot sans pont
 		{TimestampUS: 1_500_000, Slot: 521, CatalogID: 0x99AABBCC, Class: 3},
 	}
 	slotXUID := map[uint32]uint64{520: 111, 521: 222}
-	st := grammar.BipedPickupStats{MultiEvent: 7, RefusedOffBand: 1}
+	st := types.BipedPickupStats{MultiEvent: 7, RefusedOffBand: 1}
 
 	got, cov := buildPickups(in, replayClock{origin: origin, step: step}, pickupInputs{occupant: occupantFigeUS(slotXUID), st: st, weaponKeys: nil, judge: nil})
 	if len(got) != 3 {

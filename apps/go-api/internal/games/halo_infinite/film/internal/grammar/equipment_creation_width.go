@@ -37,11 +37,8 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
-
-// EquipmentLifeKey identifie une vie d'objet du monde : LA PAIRE (slot, génération), jamais le
-// slot seul — le pool de slots reboucle et la génération ne fait que 2 bits.
-type EquipmentLifeKey struct{ Slot, Gen uint32 }
 
 // EquipmentLifeSpan est UNE vie d'objet telle que les paquets delta l'ont décodée : ses bornes
 // temporelles et son premier point. C'est à la fois l'ORACLE de la calibration et la matière de
@@ -66,13 +63,13 @@ type EquipmentLifeSpan struct {
 // initiale de cet oracle) perdait la moitié des poses sur les films BTB : un record de création
 // tardif ne retombait sur AUCUN premier point connu. On garde donc toutes les vies de la clé,
 // triées par instant, et c'est la POSITION qui départage.
-func EquipmentLifeSpans(tracks []ProjectileTrack) map[EquipmentLifeKey][]EquipmentLifeSpan {
-	out := make(map[EquipmentLifeKey][]EquipmentLifeSpan, len(tracks))
+func EquipmentLifeSpans(tracks []types.ProjectileTrack) map[types.EquipmentLifeKey][]EquipmentLifeSpan {
+	out := make(map[types.EquipmentLifeKey][]EquipmentLifeSpan, len(tracks))
 	for _, tr := range tracks {
 		if len(tr.Pts) == 0 {
 			continue
 		}
-		k := EquipmentLifeKey{tr.Slot, tr.Gen}
+		k := types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}
 		p := tr.Pts[0]
 		out[k] = append(out[k], EquipmentLifeSpan{
 			T0US:   p.TimestampUS,
@@ -228,7 +225,7 @@ func (c MPPCalibration) String() string {
 // poses inventées, et un identifiant lu 3 bits trop tôt est une invention.
 // ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [CalibrateMPPWidthsOf].
 func CalibrateMPPWidths(
-	dir string, wr *profile.Vec3Range, band map[uint32]bool, spans map[EquipmentLifeKey][]EquipmentLifeSpan,
+	dir string, wr *profile.Vec3Range, band map[uint32]bool, spans map[types.EquipmentLifeKey][]EquipmentLifeSpan,
 ) (MPPCalibration, bool) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -240,7 +237,7 @@ func CalibrateMPPWidths(
 // CalibrateMPPWidthsOf mesure le découpage du bloc MPP sur un film DEJA CHARGE.
 func CalibrateMPPWidthsOf(
 	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
-	spans map[EquipmentLifeKey][]EquipmentLifeSpan,
+	spans map[types.EquipmentLifeKey][]EquipmentLifeSpan,
 ) (MPPCalibration, bool) {
 	cal := MPPCalibration{ByWidths: map[profile.MPPWidths]int{}, Lives: len(spans)}
 	if wr == nil || len(band) == 0 || len(spans) == 0 {
@@ -291,7 +288,7 @@ func CalibrateMPPWidthsOf(
 // mppCalibProbe porte ce que la marche d'un payload doit connaître (règle des 5 paramètres).
 type mppCalibProbe struct {
 	walk  equipCreationWalk
-	spans map[EquipmentLifeKey][]EquipmentLifeSpan
+	spans map[types.EquipmentLifeKey][]EquipmentLifeSpan
 	eps   [3]float32
 	cal   *MPPCalibration
 }
@@ -303,7 +300,7 @@ type mppCalibProbe struct {
 // bloc MPP, qui vit derrière lui. Soixante-trois balayages complets du film coûteraient
 // soixante-trois fois le prix de celui-ci pour la même information.
 func (pr *mppCalibProbe) scanPayload(pay []byte, atUS uint64) {
-	var st EquipmentCreationStats
+	var st types.EquipmentCreationStats
 	total := len(pay) * 8
 	limit := total - woNewHeaderBits
 	cands := mppCandidates()
@@ -312,7 +309,7 @@ func (pr *mppCalibProbe) scanPayload(pay []byte, atUS uint64) {
 		if !ok {
 			continue
 		}
-		spans := pr.spans[EquipmentLifeKey{slot, gen}]
+		spans := pr.spans[types.EquipmentLifeKey{Slot: slot, Gen: gen}]
 		if len(spans) == 0 {
 			continue // une vie que les paquets delta n'ont pas vue ne peut rien arbitrer
 		}

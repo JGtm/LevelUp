@@ -1,9 +1,8 @@
 package replay
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // projectiles.go — TRAJECTOIRES DE PROJECTILE projetées sur la grille du rejeu.
@@ -77,7 +76,7 @@ const projectileMaxStepM = 10
 // un décodeur qui coupe sans le dire est un rejet avalé (cf. coverage.go). Elle compte aussi les
 // coupures dont la trajectoire n'est pas publiée ensuite — sans quoi le compteur mentirait par
 // omission.
-func buildProjectiles(tracks []grammar.ProjectileTrack, origin, step uint64) ([]Projectile, map[int]int, int) {
+func buildProjectiles(tracks []types.ProjectileTrack, origin, step uint64) ([]Projectile, map[int]int, int) {
 	if len(tracks) == 0 {
 		return nil, nil, 0
 	}

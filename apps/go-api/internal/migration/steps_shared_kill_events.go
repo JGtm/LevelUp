@@ -108,7 +108,7 @@ package migration
 // (0,004 %)** ; aucune ligne au-dela de 1. Le declencheur litteral est donc franchi, et pourtant
 // l hypothese de schema TIENT — parce que ce que ce compteur mesure n est pas « une mort porte
 // deux assistants » mais « DEUX KILL-EVENTS ATTACHES a la meme mort nomment des assistants
-// differents » (cf. `killsource.Assist.Extra`, qui delimite lui-meme cette portee). Un seuil a
+// differents » (cf. `types.Assist.Extra`, qui delimite lui-meme cette portee). Un seuil a
 // zero sur une quantite d appariement, et non sur une cardinalite du format, ne pouvait rester
 // vrai indefiniment.
 //

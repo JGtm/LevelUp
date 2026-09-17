@@ -32,6 +32,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // PickupKind qualifie ce qui a été ramassé.
@@ -178,13 +179,13 @@ type pickupInputs struct {
 	// horloge du film) — le registre à l'instant, jamais le pont aplati (lot 6.1, 2026-09-10).
 	// Nil = aucun nommage, ce qui est la dégradation propre quand le pont n'existe pas.
 	occupant   func(slot uint32, tUS uint64) uint64
-	st         grammar.BipedPickupStats
+	st         types.BipedPickupStats
 	weaponKeys map[uint32]string
 	judge      *pickupOriginJudge
 }
 
 func buildPickups(
-	pickups []grammar.BipedPickup, clk replayClock, in pickupInputs,
+	pickups []types.BipedPickup, clk replayClock, in pickupInputs,
 ) ([]Pickup, PickupCoverage) {
 	occupant, st, weaponKeys, judge := in.occupant, in.st, in.weaponKeys, in.judge
 	cov := PickupCoverage{

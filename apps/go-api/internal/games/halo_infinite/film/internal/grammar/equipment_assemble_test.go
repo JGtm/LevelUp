@@ -6,6 +6,7 @@ package grammar
 // dépendent d'aucun film : la fusion est pure, c'est ce qui la rend mutation-résistante.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"reflect"
 	"testing"
 )
@@ -48,7 +49,7 @@ func TestAssembleOrdreEtChainagePrevious(t *testing.T) {
 	if !out[1].Recovered || out[1].Previous != 4 || out[1].Rank != 11 {
 		t.Errorf("récupérée : %+v, attendu Recovered from=4 rang=11", out[1])
 	}
-	if out[2].Kind != EquipmentSpent || out[2].Previous != 11 {
+	if out[2].Kind != types.EquipmentSpent || out[2].Previous != 11 {
 		t.Errorf("spent : %+v, attendu Previous=11 — c'est le correctif que D1 existe pour rendre", out[2])
 	}
 	if st.Recovered != 1 || st.CounterJumps != 0 || st.MissedEstimate != 0 || st.Repeats != 0 {

@@ -38,6 +38,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -240,7 +241,7 @@ func e1Ligne(t *testing.T, short, carte, source string, i int, tenue, duree floa
 //
 // UNE PERIODE QUE DEUX CAMPS CLOTURENT A LA MEME FRAME EST ECARTEE : elle ne nomme pas son
 // marqueur, et lui en attribuer un serait une devinette.
-func e1Periodes(doc ReplayDocument, score map[int][]objectives.ScorePoint, slots []int,
+func e1Periodes(doc ReplayDocument, score map[int][]types.ScorePoint, slots []int,
 	debut int,
 ) []e1Periode {
 	type inc struct {

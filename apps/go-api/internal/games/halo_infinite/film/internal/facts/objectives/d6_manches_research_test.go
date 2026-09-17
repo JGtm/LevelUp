@@ -33,6 +33,7 @@ package objectives
 //	  go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run D6MatiereDesManches -v
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"sort"
 	"strings"
@@ -91,8 +92,8 @@ func d6Films(t *testing.T) []string {
 }
 
 // d6Series construit la table (slot, manche) -> mesure.
-func d6Series(recs []StatRecord) map[d6Cle]*d6Serie {
-	pts := map[d6Cle][]ScorePoint{}
+func d6Series(recs []types.StatRecord) map[d6Cle]*d6Serie {
+	pts := map[d6Cle][]types.ScorePoint{}
 	out := map[d6Cle]*d6Serie{}
 	for _, r := range recs {
 		k := d6Cle{r.Slot, r.Round}
@@ -103,7 +104,7 @@ func d6Series(recs []StatRecord) map[d6Cle]*d6Serie {
 		}
 		d6Note(s, r)
 		if v, ok := r.Comps[modeScoreComp]; ok && modeScoreInDomain(v) {
-			pts[k] = append(pts[k], ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
+			pts[k] = append(pts[k], types.ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
 		}
 	}
 	for k, p := range pts {
@@ -119,7 +120,7 @@ func d6Series(recs []StatRecord) map[d6Cle]*d6Serie {
 }
 
 // d6Note range un enregistrement dans la mesure de son couple.
-func d6Note(s *d6Serie, r StatRecord) {
+func d6Note(s *d6Serie, r types.StatRecord) {
 	s.records++
 	if r.TimeMS < s.t0 {
 		s.t0 = r.TimeMS
@@ -138,7 +139,7 @@ func d6Note(s *d6Serie, r StatRecord) {
 }
 
 // d6ImprimeSeries imprime une ligne par couple (slot, manche), tries par manche puis slot.
-func d6ImprimeSeries(t *testing.T, recs []StatRecord) {
+func d6ImprimeSeries(t *testing.T, recs []types.StatRecord) {
 	t.Helper()
 	series := d6Series(recs)
 	cles := make([]d6Cle, 0, len(series))
@@ -166,7 +167,7 @@ func d6ImprimeSeries(t *testing.T, recs []StatRecord) {
 }
 
 // d6ImprimeDecision rejoue, manche par manche, ce que [RealRounds] decide et POURQUOI.
-func d6ImprimeDecision(t *testing.T, recs []StatRecord) {
+func d6ImprimeDecision(t *testing.T, recs []types.StatRecord) {
 	t.Helper()
 	runs := d6RunsParManche(recs)
 	material, present := materialRounds(recs), presentRounds(recs)
@@ -202,7 +203,7 @@ func d6ImprimeDecision(t *testing.T, recs []StatRecord) {
 // (`vue && !present[round]`, lot 6.7-B1 item 4) sans toucher une ligne de production : la
 // clause devient toujours fausse, et la chaine retrouve le comportement d avant le commit
 // `bb06cce5a`. C est la mutation qui nomme le critere responsable d un ecart.
-func d6ToutPresent(recs []StatRecord) map[int]bool {
+func d6ToutPresent(recs []types.StatRecord) map[int]bool {
 	out := map[int]bool{}
 	for round := 0; round <= statMaxRound; round++ {
 		out[round] = true
@@ -218,7 +219,7 @@ func d6ToutPresent(recs []StatRecord) map[int]bool {
 // emettre tous les slots pendant toute sa duree, donc sa densite vaut celle de la manche 0 ou
 // davantage (les manches suivantes sont plus courtes) ; un ancrage est une goutte reguliere
 // saupoudree sur tout le match.
-func d6ImprimeDensite(t *testing.T, recs []StatRecord) {
+func d6ImprimeDensite(t *testing.T, recs []types.StatRecord) {
 	t.Helper()
 	ref := d6Densite(recs, 0)
 	t.Logf("  --- densite d emission (enregistrements par seconde de la fenetre de la manche) ---")
@@ -233,7 +234,7 @@ func d6ImprimeDensite(t *testing.T, recs []StatRecord) {
 }
 
 // d6Densite rend les enregistrements par seconde d une manche, sur sa propre fenetre.
-func d6Densite(recs []StatRecord, round int) float64 {
+func d6Densite(recs []types.StatRecord, round int) float64 {
 	lo, hi, ok := d6Fenetre(recs, round)
 	if !ok || hi <= lo {
 		return 0
@@ -255,7 +256,7 @@ func d6Densite(recs []StatRecord, round int) float64 {
 // toute la duree du match et se recouvre donc avec la manche 0. C est exactement le motif que
 // l en-tete de [contiguousRounds] decrit pour `e60aaf06` (« un ancrage [...] dont l intervalle
 // tombe ENTIEREMENT dans celui de la manche 0 »).
-func d6ImprimeRecouvrement(t *testing.T, recs []StatRecord) {
+func d6ImprimeRecouvrement(t *testing.T, recs []types.StatRecord) {
 	t.Helper()
 	lo, hi, ok := d6Fenetre(recs, 0)
 	if !ok {
@@ -283,7 +284,7 @@ func d6ImprimeRecouvrement(t *testing.T, recs []StatRecord) {
 }
 
 // d6Fenetre rend les instants extremes des enregistrements d une manche.
-func d6Fenetre(recs []StatRecord, round int) (lo, hi int, ok bool) {
+func d6Fenetre(recs []types.StatRecord, round int) (lo, hi int, ok bool) {
 	for _, r := range recs {
 		if r.Round != round {
 			continue
@@ -300,7 +301,7 @@ func d6Fenetre(recs []StatRecord, round int) (lo, hi int, ok bool) {
 }
 
 // d6ManchesVues rend, triees, les manches qui portent au moins un enregistrement.
-func d6ManchesVues(recs []StatRecord) []int {
+func d6ManchesVues(recs []types.StatRecord) []int {
 	seen := map[int]bool{}
 	for _, r := range recs {
 		seen[r.Round] = true
@@ -310,7 +311,7 @@ func d6ManchesVues(recs []StatRecord) []int {
 
 // d6RunsParManche rend, par manche, la plus longue suite coherente tous slots confondus —
 // exactement ce que [RealRounds] calcule avant d appeler [contiguousRounds].
-func d6RunsParManche(recs []StatRecord) map[int]int {
+func d6RunsParManche(recs []types.StatRecord) map[int]int {
 	out := map[int]int{}
 	for k, s := range d6Series(recs) {
 		if s.run > out[k.round] {
@@ -322,7 +323,7 @@ func d6RunsParManche(recs []StatRecord) map[int]int {
 
 // d6JoueursParManche compte les enregistrements de slot JOUEUR par manche (le denominateur de
 // [materialRounds]).
-func d6JoueursParManche(recs []StatRecord) map[int]int {
+func d6JoueursParManche(recs []types.StatRecord) map[int]int {
 	out := map[int]int{}
 	for _, r := range recs {
 		if IsTeamSlot(r.Slot) {
@@ -334,7 +335,7 @@ func d6JoueursParManche(recs []StatRecord) map[int]int {
 }
 
 // d6MaxManche rend le plus grand numero de manche vu.
-func d6MaxManche(recs []StatRecord) int {
+func d6MaxManche(recs []types.StatRecord) int {
 	high := 0
 	for _, r := range recs {
 		if r.Round > high {
@@ -376,7 +377,7 @@ func d6Triees(m map[int]bool) []int {
 //	    plusieurs manches ? Leur presence est une ECRITURE du jeu, pas une inference.
 
 // d6ImprimeRepartition imprime, par manche, le nombre d enregistrements par tranche de 60 s.
-func d6ImprimeRepartition(t *testing.T, recs []StatRecord) {
+func d6ImprimeRepartition(t *testing.T, recs []types.StatRecord) {
 	t.Helper()
 	const seau = 60_000
 	fin := 0
@@ -398,7 +399,7 @@ func d6ImprimeRepartition(t *testing.T, recs []StatRecord) {
 }
 
 // d6ImprimeComposants imprime, par manche, les index de composant vus et leur compte.
-func d6ImprimeComposants(t *testing.T, recs []StatRecord) {
+func d6ImprimeComposants(t *testing.T, recs []types.StatRecord) {
 	t.Helper()
 	t.Logf("  --- composants vus par manche (0-27 manche en cours, 28-55 manches finalisees, 56 issues) ---")
 	for _, round := range d6ManchesVues(recs) {

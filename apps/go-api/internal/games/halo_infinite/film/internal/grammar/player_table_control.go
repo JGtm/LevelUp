@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // player_table_control.go — LE CONTROLE DU PROFIL PAR LE FILM (lot 1.5.2).
 //
 // D-3 d'ADR 0034 : le profil DIT la largeur du bloc de personnalisation, et le film ne la dit
@@ -19,7 +21,7 @@ package grammar
 // `[!]` ont donc la meme cause, et une seule mesure les tranche.
 //
 // MESURE DU 2026-09-16 (sonde `go/parser`, croisement des references) : les SEPT declarations de
-// ce fichier lisent HUIT symboles de `grammar` — `PlayerSlot`, `PlayerTableReport`
+// ce fichier lisent HUIT symboles de `grammar` — `types.PlayerSlot`, `PlayerTableReport`
 // (`player_table.go`), `decodeSlot`, `gamertagImprimable`, `longueurPredite`, `slotEnr`,
 // `slotVacant`, `slotVacantBits` (`player_table_record.go`).
 //
@@ -58,7 +60,7 @@ package grammar
 // La transposition MODALE est publiee comme calibrage du film, dans l'unite du profil. La MODE
 // est choisie plutot que la moyenne parce qu'elle est insensible aux quelques ecarts que les
 // vacants et les enregistrements invisibles deforment.
-func controlerCalibrage(d []byte, candidats []int, finBit, persoBits int, slots []PlayerSlot,
+func controlerCalibrage(d []byte, candidats []int, finBit, persoBits int, slots []types.PlayerSlot,
 	rep *PlayerTableReport) {
 	ctl := controleEcarts{d: d, vide: slotVacantBits(persoBits), finBit: finBit,
 		retenus: positionsRetenues(slots)}
@@ -137,7 +139,7 @@ func modeEcart(m map[int]int) (valeur, couverts int) {
 }
 
 // positionsRetenues rend l'ensemble des positions de bit que la marche a retenues.
-func positionsRetenues(slots []PlayerSlot) map[int]bool {
+func positionsRetenues(slots []types.PlayerSlot) map[int]bool {
 	out := make(map[int]bool, len(slots))
 	for _, s := range slots {
 		out[s.Bit] = true

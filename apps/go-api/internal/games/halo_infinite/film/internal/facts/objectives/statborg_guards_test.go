@@ -1,6 +1,9 @@
 package objectives
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 // statborg_guards_test.go — LES CONTROLES NEGATIFS DES GARDES D'ANCRAGE (revue R1, 2026-08-18).
 //
@@ -107,7 +110,7 @@ func TestRealRoundsRefuseUneMancheIsolee(t *testing.T) {
 // Une manche REELLE tire une suite croissante d'au moins statMinRoundRun emissions ; un ancrage
 // fortuit arrive ISOLE. Compter les enregistrements bruts ne suffisait pas.
 func TestRealRoundsRefuseUneEmissionIsolee(t *testing.T) {
-	var recs []StatRecord
+	var recs []types.StatRecord
 	recs = append(recs, modeSerie(6, 0, 1_000, 1, 2, 3)...)
 	recs = append(recs, modeSerie(6, 1, 9_000, 7)...) // une seule emission : pas une manche
 	real := RealRounds(recs)
@@ -127,7 +130,7 @@ func TestRealRoundsRefuseUneEmissionIsolee(t *testing.T) {
 // TOUTES les manches suivantes, y compris completes : le match retombait sur la seule manche 1
 // de repli, et son total valait zero.
 func TestRealRoundsGardeLesManchesApresUneManche0Courte(t *testing.T) {
-	var recs []StatRecord
+	var recs []types.StatRecord
 	recs = append(recs, modeSerie(6, 0, 1_000, 2)...) // manche 0 : une seule emission
 	recs = append(recs, modeSerie(6, 1, 20_000, 1, 2, 3)...)
 	recs = append(recs, modeSerie(6, 2, 40_000, 1, 2, 3)...)
@@ -147,12 +150,12 @@ func TestRealRoundsGardeLesManchesApresUneManche0Courte(t *testing.T) {
 }
 
 // modeSerie construit les emissions de score de MODE d'un slot pour une manche.
-func modeSerie(slot, round, startMS int, values ...int64) []StatRecord {
-	out := make([]StatRecord, 0, len(values))
+func modeSerie(slot, round, startMS int, values ...int64) []types.StatRecord {
+	out := make([]types.StatRecord, 0, len(values))
 	for i, v := range values {
-		out = append(out, StatRecord{
+		out = append(out, types.StatRecord{
 			TimeMS: startMS + i*1_000, Slot: slot, Round: round,
-			Comps: map[int]StatValue{modeScoreComp: {A: v}},
+			Comps: map[int]types.StatValue{modeScoreComp: {A: v}},
 		})
 	}
 	return out
@@ -163,17 +166,17 @@ func modeSerie(slot, round, startMS int, values ...int64) []StatRecord {
 //
 // Le score de mode ne bouge qu'UNE fois — la forme exacte d'une manche d'Assaut One Bomb, celle
 // que le critere de suite coherente ne peut pas admettre.
-func joueurSerie(round, startMS, n int, scoreFinal int64) []StatRecord {
-	out := make([]StatRecord, 0, n)
+func joueurSerie(round, startMS, n int, scoreFinal int64) []types.StatRecord {
+	out := make([]types.StatRecord, 0, n)
 	for i := 0; i < n; i++ {
 		slot := 10 + 2*(i%8)
-		out = append(out, StatRecord{
+		out = append(out, types.StatRecord{
 			TimeMS: startMS + i*100, Slot: slot, Round: round,
-			Comps: map[int]StatValue{modeScoreComp: {A: 0}},
+			Comps: map[int]types.StatValue{modeScoreComp: {A: 0}},
 		})
 	}
 	if n > 0 && scoreFinal > 0 {
-		out[n-1].Comps = map[int]StatValue{modeScoreComp: {A: scoreFinal}}
+		out[n-1].Comps = map[int]types.StatValue{modeScoreComp: {A: scoreFinal}}
 	}
 	return out
 }
@@ -185,7 +188,7 @@ func joueurSerie(round, startMS, n int, scoreFinal int64) []StatRecord {
 // Avant le second critere, seule la manche 0 survivait et 8 explosions sur 11 etaient perdues
 // sur les 3 films One Bomb du corpus.
 func TestRealRoundsAdmetUneMancheAUneSeuleEmissionDeScore(t *testing.T) {
-	var recs []StatRecord
+	var recs []types.StatRecord
 	for round := 0; round < 4; round++ {
 		recs = append(recs, joueurSerie(round, round*100_000, 200, 1)...)
 	}
@@ -203,7 +206,7 @@ func TestRealRoundsAdmetUneMancheAUneSeuleEmissionDeScore(t *testing.T) {
 // Sur un film tres pauvre, la part seule passerait : un enregistrement contre trois fait 33 %.
 // Le plancher statMinRoundRecords ferme cette porte.
 func TestRealRoundsRefuseUnAncrageMalgreLaPart(t *testing.T) {
-	var recs []StatRecord
+	var recs []types.StatRecord
 	recs = append(recs, joueurSerie(0, 1_000, 3, 1)...)
 	recs = append(recs, joueurSerie(1, 9_000, 1, 0)...) // 1/3 = 33 % de la part, mais 1 << plancher
 	if real := RealRounds(recs); real[1] {
@@ -219,7 +222,7 @@ func TestRealRoundsRefuseUnAncrageMalgreLaPart(t *testing.T) {
 // une fois double, et pourtant un film de Slayer, mode qui n'a pas de manche. Seule la PART
 // l'ecarte. Le vecteur reproduit ce rapport a l'echelle : 30 contre 600 = 5 %.
 func TestRealRoundsRefuseUneMancheTropMaigreEnPart(t *testing.T) {
-	var recs []StatRecord
+	var recs []types.StatRecord
 	recs = append(recs, joueurSerie(0, 1_000, 600, 1)...)
 	recs = append(recs, joueurSerie(1, 900_000, 30, 0)...) // 5 % : sous statMinRoundRecordShare
 	if real := RealRounds(recs); real[1] {
@@ -227,7 +230,7 @@ func TestRealRoundsRefuseUneMancheTropMaigreEnPart(t *testing.T) {
 			"filtre plus", real, statMinRoundRecordShare)
 	}
 	// Temoin : la MEME manche a 21 %% (le plancher mesure d'une manche reelle) passe.
-	var temoin []StatRecord
+	var temoin []types.StatRecord
 	temoin = append(temoin, joueurSerie(0, 1_000, 600, 1)...)
 	temoin = append(temoin, joueurSerie(1, 900_000, 126, 0)...)
 	if real := RealRounds(temoin); !real[1] {

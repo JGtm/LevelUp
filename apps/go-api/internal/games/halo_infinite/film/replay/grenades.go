@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // grenades.go — LANCERS DE GRENADE.
@@ -87,7 +88,7 @@ type Grenade struct {
 // index PUBLIÉ (cf. buildProjectiles) : c'est lui qui alimente Grenade.Proj. Nil = aucun
 // projectile publié, les lancers sortent sans lien — jamais un index qui ne pointe rien.
 func buildGrenades(pos []grammar.BipedPosition, throws []grammar.GrenadeThrow,
-	origin, step uint64, owner map[uint32]int, proj []grammar.ProjectileTrack,
+	origin, step uint64, owner map[uint32]int, proj []types.ProjectileTrack,
 	pubProjByRaw map[int]int) ([]Grenade, LayerCoverage) {
 	cov := LayerCoverage{Available: len(throws)}
 	if len(throws) == 0 {
@@ -267,7 +268,7 @@ func birthsInWindow(births []projectileBirth, at uint64) []projectileBirth {
 // (rang dans la tranche décodée) : c'est cette clé que buildProjectiles sait traduire en
 // index publié.
 type projectileBirth struct {
-	s   grammar.ProjectileSample
+	s   types.ProjectileSample
 	raw int
 }
 
@@ -284,7 +285,7 @@ type projectileBirth struct {
 // parmi les naissances d'une même fenêtre revient au biped de l'auteur, pas au rang dans la
 // tranche. L'ordre reste requis — il rend `birthsInWindow` reproductible — mais il n'arbitre
 // plus rien.
-func projectileBirths(proj []grammar.ProjectileTrack) []projectileBirth {
+func projectileBirths(proj []types.ProjectileTrack) []projectileBirth {
 	out := make([]projectileBirth, 0, len(proj))
 	for raw, p := range proj {
 		if len(p.Pts) > 0 {

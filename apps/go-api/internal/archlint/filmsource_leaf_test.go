@@ -49,8 +49,9 @@ const filmsourceLeafPrefix = "levelup/go-api/"
 // 2026-09-16).
 //
 // `film/types` porte les types de DONNEES qui traversent les frontieres de couche —
-// `ChunkMeta` et `Packet` y ont descendu, cette couche n en garde que des alias dates
-// (`source/types_alias.go`). L argument de ce ratchet est un CYCLE VERIFIE, pas une preference :
+// `ChunkMeta` et `Packet` y ont descendu, et depuis le volet grammaire du meme lot (2026-09-17)
+// cette couche les NOMME EN DIRECT : les alias dates de `source/types_alias.go` sont supprimes,
+// leur critere de retrait tenu. L argument de ce ratchet est un CYCLE VERIFIE, pas une preference :
 // il interdit les imports qui peuvent en fermer un. Or `types` est LUI-MEME une feuille a zero
 // import du depot, et c est teste (`film_types_leaf_test.go`, pose au meme commit) : une feuille
 // importee par une feuille ne ferme aucun cycle, quel que soit le graphe au-dessus.

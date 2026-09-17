@@ -5,7 +5,10 @@ package grammar
 // balayage lui-même se juge sur pièces (golden d'assemblage du paquet `replay`, et test
 // d'acceptation contre le relevé Theater).
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 func TestComponentIndexOfAnyResoutParNomExact(t *testing.T) {
 	// LA RESOLUTION EST EXACTE, jamais par prefixe : « biped-spartan-ability » est un prefixe
@@ -51,7 +54,7 @@ func TestAbilityImpulseScannerEpingleLaValeurDuTag(t *testing.T) {
 		{3, false, "LE GRAPPIN — il a son propre calque (grappleLines), jamais celui-ci"},
 	}
 	for _, c := range cas {
-		var st AbilityImpulseStats
+		var st types.AbilityImpulseStats
 		sc := &abilityImpulseScanner{st: &st}
 		sc.publish(true, c.tag, true, 512, 3, FilmPacket{Index: 7, TimestampUS: 1_234_000})
 		if got := len(sc.out) == 1; got != c.publiee {
@@ -75,7 +78,7 @@ func boolToInt(b bool) int {
 }
 
 func TestAbilityImpulsePublieLaLocalisationEtLeTemoinDeComposant(t *testing.T) {
-	var st AbilityImpulseStats
+	var st types.AbilityImpulseStats
 	sc := &abilityImpulseScanner{st: &st}
 	pk := FilmPacket{Index: 7, TimestampUS: 1_234_000}
 	sc.publish(true, 1, true, 512, 3, pk)
@@ -98,7 +101,7 @@ func TestAbilityImpulsePublieLaLocalisationEtLeTemoinDeComposant(t *testing.T) {
 // N'en publier qu'un ferait tomber `coverage.abilityImpulses.reads` de moitié dans le document
 // servi (86 -> 43 sur le film de référence) sans qu'aucun compteur ne le dise.
 func TestAbilityImpulseEmetLesDeuxComposants(t *testing.T) {
-	var st AbilityImpulseStats
+	var st types.AbilityImpulseStats
 	sc := &abilityImpulseScanner{st: &st}
 	sc.tag57, sc.got57 = 1, true
 	sc.tag59, sc.got59 = 1, true
@@ -115,7 +118,7 @@ func TestAbilityImpulseEmetLesDeuxComposants(t *testing.T) {
 	}
 	// Un composant annoncé dont la lecture n'a pas abouti ne publie rien ET compte au
 	// dénominateur des perdues : les deux voies sont indépendantes.
-	st, sc.got59 = AbilityImpulseStats{}, false
+	st, sc.got59 = types.AbilityImpulseStats{}, false
 	sc.st, sc.out = &st, nil
 	sc.emit(true, true, 512, 3, FilmPacket{Index: 8})
 	if st.Read != 1 || st.Unread != 1 || len(sc.out) != 1 {
@@ -126,7 +129,7 @@ func TestAbilityImpulseEmetLesDeuxComposants(t *testing.T) {
 func TestImputeUnreadCompteChaqueComposantAnnonceEtNonAtteint(t *testing.T) {
 	// UN COMPOSANT ANNONCE ET NON LU N'EST PAS UNE ABSENCE D'IMPULSION : c'est une lecture
 	// perdue, et le denominateur doit le dire. Les deux composants comptent separement.
-	var st AbilityImpulseStats
+	var st types.AbilityImpulseStats
 	sc := &abilityImpulseScanner{st: &st}
 	sc.got57, sc.got59 = false, false
 	sc.imputeUnread(true, true)
@@ -148,14 +151,14 @@ func TestSortAbilityImpulsesOrdreTotal(t *testing.T) {
 	// L'ORDRE EST TOTAL — instant, puis slot, puis composant : sans le troisieme critere, deux
 	// lectures co-transmises du meme slot au meme instant sortiraient dans l'ordre du parcours,
 	// et l'artefact dependrait de rien de mesurable.
-	out := []AbilityImpulse{
+	out := []types.AbilityImpulse{
 		{Slot: 20, TimestampUS: 5, Predicted: false},
 		{Slot: 10, TimestampUS: 5, Predicted: false},
 		{Slot: 10, TimestampUS: 5, Predicted: true},
 		{Slot: 10, TimestampUS: 1, Predicted: false},
 	}
 	sortAbilityImpulses(out)
-	want := []AbilityImpulse{
+	want := []types.AbilityImpulse{
 		{Slot: 10, TimestampUS: 1, Predicted: false},
 		{Slot: 10, TimestampUS: 5, Predicted: true},
 		{Slot: 10, TimestampUS: 5, Predicted: false},

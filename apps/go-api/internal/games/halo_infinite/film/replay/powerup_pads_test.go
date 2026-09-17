@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // LES DEUX IDENTITES `eqip` DU MANIFESTE (replay_labels.toml), ecrites ici pour que le test
@@ -62,15 +63,15 @@ func puTestCatalogs() padCatalogs {
 func puTestScan(id uint32, x, y float32) WorldObjectScan {
 	return WorldObjectScan{
 		Scanned: true,
-		Stats:   grammar.EquipmentCreationStats{Slots: 12, Anchors: 60, Accepted: 3},
-		Creations: []grammar.EquipmentCreation{
+		Stats:   types.EquipmentCreationStats{Slots: 12, Anchors: 60, Accepted: 3},
+		Creations: []types.EquipmentCreation{
 			puTestCreation(20, 0, 1_000_000, id, x, y),
 			puTestCreation(21, 0, 31_000_000, id, x+0.2, y-0.1),
 			puTestCreation(22, 0, 51_000_000, id, x-0.1, y+0.2),
 		},
 		Keyframes: grammar.WorldObjectKeyframes{
 			TimesUS: []uint64{0, 20_000_000, 40_000_000, 60_000_000, 80_000_000},
-			SeenUS: map[grammar.EquipmentLifeKey][]uint64{
+			SeenUS: map[types.EquipmentLifeKey][]uint64{
 				{Slot: 20}: {20_000_000},
 				{Slot: 21}: {40_000_000},
 				{Slot: 22}: {60_000_000},
@@ -82,8 +83,8 @@ func puTestScan(id uint32, x, y float32) WorldObjectScan {
 // puTestCreation fabrique un record de creation `ti=37` porteur d'une identite `eqip`.
 func puTestCreation(
 	slot, gen uint32, atUS uint64, id uint32, x, y float32,
-) grammar.EquipmentCreation {
-	c := grammar.EquipmentCreation{Slot: slot, Gen: gen, TimestampUS: atUS, X: x, Y: y}
+) types.EquipmentCreation {
+	c := types.EquipmentCreation{Slot: slot, Gen: gen, TimestampUS: atUS, X: x, Y: y}
 	c.MPPPresent[grammar.MPPWord32] = true
 	c.MPPVal[grammar.MPPWord32] = uint64(id)
 	return c
@@ -162,12 +163,12 @@ func TestPowerupPadsEcarteLesCreationsAVieDelta(t *testing.T) {
 
 // puTestTracks donne a chaque creation une piste delta qui commence a son instant : la vie a
 // donc BOUGE au sens de `gwPickupLifeTrack`.
-func puTestTracks(cre []grammar.EquipmentCreation) []grammar.ProjectileTrack {
-	out := make([]grammar.ProjectileTrack, 0, len(cre))
+func puTestTracks(cre []types.EquipmentCreation) []types.ProjectileTrack {
+	out := make([]types.ProjectileTrack, 0, len(cre))
 	for _, c := range cre {
-		out = append(out, grammar.ProjectileTrack{
+		out = append(out, types.ProjectileTrack{
 			Slot: c.Slot, Gen: c.Gen,
-			Pts: []grammar.ProjectileSample{
+			Pts: []types.ProjectileSample{
 				{TimestampUS: c.TimestampUS, X: c.X, Y: c.Y, Z: c.Z},
 				{TimestampUS: c.TimestampUS + 200_000, X: c.X + 1.5, Y: c.Y, Z: c.Z},
 			},

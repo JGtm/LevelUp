@@ -24,22 +24,23 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // lecPose fabrique une pose brute avec une CLE DE VIE choisie — c'est elle que l'evenement 103
 // designe, et sans elle la lecture n'a rien a apparier.
-func lecPose(frame int, globalID uint32, life grammar.EquipmentLifeKey, x float32,
-) grammar.EquipmentPlacement {
+func lecPose(frame int, globalID uint32, life types.EquipmentLifeKey, x float32,
+) types.EquipmentPlacement {
 	p := origPoseOf(frame, globalID, x, 0, 0)
 	p.Life = life
 	return p
 }
 
 // lecSpawn fabrique un evenement 103 qui designe `life` a la frame donnee.
-func lecSpawn(frame int, life grammar.EquipmentLifeKey) grammar.EquipmentSpawnEvent {
-	return grammar.EquipmentSpawnEvent{
+func lecSpawn(frame int, life types.EquipmentLifeKey) types.EquipmentSpawnEvent {
+	return types.EquipmentSpawnEvent{
 		TimestampUS: eqTS(frame), Spawned: life, SpawnedValid: true,
-		Source: grammar.EquipmentLifeKey{Slot: 900}, SourceValid: true,
+		Source: types.EquipmentLifeKey{Slot: 900}, SourceValid: true,
 	}
 }
 
@@ -52,9 +53,9 @@ func lecVieMorte(slot uint32, deFrame, aFrame int) lifeSpan {
 }
 
 // lecPrise fabrique un ramassage d'equipement (`taken`) sur un siege, a la frame donnee.
-func lecPrise(slot uint32, frame int) grammar.EquipmentChange {
-	return grammar.EquipmentChange{
-		TimestampUS: eqTS(frame), Slot: slot, Kind: grammar.EquipmentTaken,
+func lecPrise(slot uint32, frame int) types.EquipmentChange {
+	return types.EquipmentChange{
+		TimestampUS: eqTS(frame), Slot: slot, Kind: types.EquipmentTaken,
 	}
 }
 
@@ -73,7 +74,7 @@ func lecCuisson(in equipmentInputs) ([]EquipmentPlacement, *EquipmentPlacementCo
 	// LES DENOMINATEURS DU BALAYAGE, comme la production les fournit : sans eux `spawnLists`
 	// resterait a zero et le test ne dirait rien du cas « le film porte des listes mais aucun
 	// evenement », qui est precisement la question ouverte D2 (1.9.1).
-	in.SpawnStats = grammar.EquipmentSpawnStats{
+	in.SpawnStats = types.EquipmentSpawnStats{
 		Chunks: 1, Packets: 100, Lists: 40, Events: len(in.Spawns), WithSpawned: len(in.Spawns),
 	}
 	out, cov := buildEquipmentPlacements(in, lecClock(fb))
@@ -89,12 +90,12 @@ func lecCuisson(in equipmentInputs) ([]EquipmentPlacement, *EquipmentPlacementCo
 // Le VERDICT ne change pas (un panneau n'existe que deploye), mais la PROVENANCE si : c'est
 // exactement la difference que `coverage.placements.byCause` existe pour publier.
 func TestOriginePoseLitLEvenementEngendre(t *testing.T) {
-	vie := grammar.EquipmentLifeKey{Slot: 1030, Gen: 2}
+	vie := types.EquipmentLifeKey{Slot: 1030, Gen: 2}
 	pos := []grammar.BipedPosition{origPos(512, 0, 0, 0, 0), origPos(512, 40, 4, 0, 0)}
-	raw := []grammar.EquipmentPlacement{lecPose(40, wallPanelGlobalID, vie, 4)}
+	raw := []types.EquipmentPlacement{lecPose(40, wallPanelGlobalID, vie, 4)}
 
 	_, cov, _ := lecCuisson(equipmentInputs{
-		Raw: raw, Positions: pos, Spawns: []grammar.EquipmentSpawnEvent{lecSpawn(40, vie)},
+		Raw: raw, Positions: pos, Spawns: []types.EquipmentSpawnEvent{lecSpawn(40, vie)},
 		Lives: []lifeSpan{lecVieMorte(512, 0, 40)},
 	})
 	if got := cov.ByCause[CausePoseEvenementEngendre]; got != 1 {
@@ -140,11 +141,11 @@ func TestFenetreFausseeNeChangeRienAuPanneau(t *testing.T) {
 		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
 	}
 	for _, frame := range []int{20, 40} {
-		vie := grammar.EquipmentLifeKey{Slot: uint32(1000 + frame), Gen: 1}
+		vie := types.EquipmentLifeKey{Slot: uint32(1000 + frame), Gen: 1}
 		out, cov, _ := lecCuisson(equipmentInputs{
-			Raw:       []grammar.EquipmentPlacement{lecPose(frame, wallPanelGlobalID, vie, 4)},
+			Raw:       []types.EquipmentPlacement{lecPose(frame, wallPanelGlobalID, vie, 4)},
 			Positions: pos,
-			Spawns:    []grammar.EquipmentSpawnEvent{lecSpawn(frame, vie)},
+			Spawns:    []types.EquipmentSpawnEvent{lecSpawn(frame, vie)},
 			Lives:     []lifeSpan{lecVieMorte(512, 0, 40)},
 		})
 		if out[0].Origin != OriginDeployed || cov.ByCause[CausePoseEvenementEngendre] != 1 {
@@ -160,8 +161,8 @@ func TestFenetreFausseeNeChangeRienAuPanneau(t *testing.T) {
 // MUTATION : la mort retiree, la meme pose tombe au REPLI de la fenetre — compte.
 func TestOriginePoseLitLaMortEcrite(t *testing.T) {
 	pos := []grammar.BipedPosition{origPos(512, 0, 0, 0, 0), origPos(512, 40, 4, 0, 0)}
-	raw := []grammar.EquipmentPlacement{
-		lecPose(40, wallDeviceGlobalID, grammar.EquipmentLifeKey{Slot: 1040, Gen: 0}, 4),
+	raw := []types.EquipmentPlacement{
+		lecPose(40, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1040, Gen: 0}, 4),
 	}
 
 	out, cov, _ := lecCuisson(equipmentInputs{
@@ -201,12 +202,12 @@ func TestOriginePoseLitLaPriseEcrite(t *testing.T) {
 	pos := []grammar.BipedPosition{
 		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
 	}
-	raw := []grammar.EquipmentPlacement{
-		lecPose(20, wallDeviceGlobalID, grammar.EquipmentLifeKey{Slot: 1041, Gen: 0}, 2),
+	raw := []types.EquipmentPlacement{
+		lecPose(20, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1041, Gen: 0}, 2),
 	}
 
 	out, cov, _ := lecCuisson(equipmentInputs{
-		Raw: raw, Positions: pos, Changes: []grammar.EquipmentChange{lecPrise(512, 20)},
+		Raw: raw, Positions: pos, Changes: []types.EquipmentChange{lecPrise(512, 20)},
 	})
 	if out[0].Origin != OriginDropped || cov.ByCause[CausePosePriseEcrite] != 1 {
 		t.Fatalf("origine %q / causes %v, attendu %q par %q",
@@ -227,12 +228,12 @@ func TestOriginePoseLitLaPriseEcrite(t *testing.T) {
 func TestOriginePoseCompteLaContradiction(t *testing.T) {
 	pos := []grammar.BipedPosition{origPos(512, 0, 0, 0, 0), origPos(512, 40, 4, 0, 0)}
 	out, cov, fb := lecCuisson(equipmentInputs{
-		Raw: []grammar.EquipmentPlacement{
-			lecPose(40, wallDeviceGlobalID, grammar.EquipmentLifeKey{Slot: 1042, Gen: 0}, 4),
+		Raw: []types.EquipmentPlacement{
+			lecPose(40, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1042, Gen: 0}, 4),
 		},
 		Positions: pos,
 		Lives:     []lifeSpan{lecVieMorte(512, 0, 40)},
-		Changes:   []grammar.EquipmentChange{lecPrise(512, 40)},
+		Changes:   []types.EquipmentChange{lecPrise(512, 40)},
 	})
 	if got := cov.ByCause[CausePoseContradiction]; got != 1 {
 		t.Fatalf("byCause[%s] = %d, attendu 1 — la contradiction disparait en silence",
@@ -252,20 +253,20 @@ func TestOriginePoseCompteLaContradiction(t *testing.T) {
 // porte une cause, et une seule. Un ecart signale un chemin de classification qui a fui — la
 // meme regle que l'equilibre des origines, un etage plus bas.
 func TestByCauseSommeAuxPlacements(t *testing.T) {
-	vie := grammar.EquipmentLifeKey{Slot: 1050, Gen: 3}
+	vie := types.EquipmentLifeKey{Slot: 1050, Gen: 3}
 	pos := []grammar.BipedPosition{
 		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
 	}
 	_, cov, _ := lecCuisson(equipmentInputs{
-		Raw: []grammar.EquipmentPlacement{
-			lecPose(40, wallPanelGlobalID, vie, 4),                                     // spawn_event
-			lecPose(40, wallDeviceGlobalID, grammar.EquipmentLifeKey{Slot: 1051}, 4),   // death_written
-			lecPose(20, wallDeviceGlobalID, grammar.EquipmentLifeKey{Slot: 1052}, 2),   // none
-			lecPose(20, wallDeviceGlobalID, grammar.EquipmentLifeKey{Slot: 1053}, 300), // no_owner
-			lecPose(20, wallPanelGlobalID, grammar.EquipmentLifeKey{Slot: 1054}, 300),  // manifest_piece
+		Raw: []types.EquipmentPlacement{
+			lecPose(40, wallPanelGlobalID, vie, 4),                                   // spawn_event
+			lecPose(40, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1051}, 4),   // death_written
+			lecPose(20, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1052}, 2),   // none
+			lecPose(20, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1053}, 300), // no_owner
+			lecPose(20, wallPanelGlobalID, types.EquipmentLifeKey{Slot: 1054}, 300),  // manifest_piece
 		},
 		Positions: pos,
-		Spawns:    []grammar.EquipmentSpawnEvent{lecSpawn(40, vie)},
+		Spawns:    []types.EquipmentSpawnEvent{lecSpawn(40, vie)},
 		Lives:     []lifeSpan{lecVieMorte(512, 0, 40)},
 	})
 	somme := 0
@@ -290,8 +291,8 @@ func TestByCauseSommeAuxPlacements(t *testing.T) {
 // « designer » des poses qu'aucun evenement ne concerne : mesure du 2026-09-15, 3 evenements
 // « designaient » 83 poses de `d9781168`. Le temps est la seconde moitie de la cle.
 func TestDesignationExigeLeTempsEtPasSeulementLaCle(t *testing.T) {
-	vie := grammar.EquipmentLifeKey{Slot: 1060, Gen: 1}
-	src := nouvelleSourceOrigine([]grammar.EquipmentSpawnEvent{lecSpawn(40, vie)}, nil, nil)
+	vie := types.EquipmentLifeKey{Slot: 1060, Gen: 1}
+	src := nouvelleSourceOrigine([]types.EquipmentSpawnEvent{lecSpawn(40, vie)}, nil, nil)
 	cas := []struct {
 		nom   string
 		frame int
@@ -312,7 +313,7 @@ func TestDesignationExigeLeTempsEtPasSeulementLaCle(t *testing.T) {
 			t.Errorf("%s : designe = %v, attendu %v", c.nom, got, c.want)
 		}
 	}
-	autre := lecPose(40, wallPanelGlobalID, grammar.EquipmentLifeKey{Slot: 1060, Gen: 2}, 0)
+	autre := lecPose(40, wallPanelGlobalID, types.EquipmentLifeKey{Slot: 1060, Gen: 2}, 0)
 	if src.designeParUnEvenement(autre) {
 		t.Error("une GENERATION differente est designee : la cle de vie est la paire complete")
 	}

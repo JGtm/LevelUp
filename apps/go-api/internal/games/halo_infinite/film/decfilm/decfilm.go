@@ -35,7 +35,7 @@
 //	const / var X       la valeur elle-meme. Les `var` sont des sentinelles d erreur et des
 //	                    tables lues, jamais ecrites.
 //	func X(...) { ... } un RENVOI D UNE LIGNE. La signature NOMME les types de la couche
-//	                    (`grammar.Lecteur`, `objectives.StatRecord`) : ceux-la restent
+//	                    (`grammar.Lecteur`, `types.StatRecord`) : ceux-la restent
 //	                    inaccessibles a l appelant, qui ne peut que faire CIRCULER la valeur —
 //	                    et c est exactement la frontiere qu on veut. Un type qu un appelant doit
 //	                    NOMMER a son alias ci-dessus ; les autres n en ont pas, volontairement.
@@ -78,6 +78,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // ---- facts ----
@@ -168,14 +169,14 @@ type ProfilDeBalayage = grammar.ProfilDeBalayage
 
 func ProfilDeBalayageParDefaut() grammar.ProfilDeBalayage { return grammar.ProfilDeBalayageParDefaut() }
 func ReadFilmChunk(dir string, chunk int) ([]byte, error) { return grammar.ReadFilmChunk(dir, chunk) }
-func ReadPlayerTable(chunk0 []byte, ident profile.FilmIdentity) ([]grammar.PlayerSlot, grammar.PlayerTableReport, error) {
+func ReadPlayerTable(chunk0 []byte, ident profile.FilmIdentity) ([]types.PlayerSlot, grammar.PlayerTableReport, error) {
 	return grammar.ReadPlayerTable(chunk0, ident)
 }
 
 type Registry = grammar.Registry
 
 func RegistryFingerprint(reg *grammar.Registry) uint64 { return grammar.RegistryFingerprint(reg) }
-func ScanBipedCreations(fc *grammar.FilmContext) ([]grammar.BipedCreation, grammar.BipedCreationStats, error) {
+func ScanBipedCreations(fc *grammar.FilmContext) ([]grammar.BipedCreation, types.BipedCreationStats, error) {
 	return grammar.ScanBipedCreations(fc)
 }
 func ScanBipedPositions(fc *grammar.FilmContext, opt grammar.ScanFilmOptions) ([]grammar.BipedPosition, error) {
@@ -210,8 +211,8 @@ type WeaponHitStats = grammar.WeaponHitStats
 type World = grammar.World
 
 // ---- killsource ----
-type ApparStats = killsource.ApparStats
-type Assist = killsource.Assist
+type ApparStats = types.ApparStats
+type Assist = types.Assist
 
 const BotSuffix = killsource.BotSuffix
 
@@ -227,7 +228,7 @@ const CategoryHeadshotMultiplier = killsource.CategoryHeadshotMultiplier
 const CategoryNone = killsource.CategoryNone
 const CategorySilentMelee = killsource.CategorySilentMelee
 
-type CoupleStats = killsource.CoupleStats
+type CoupleStats = types.CoupleStats
 type Coverage = killsource.Coverage
 type DamageShare = killsource.DamageShare
 
@@ -275,7 +276,7 @@ func CountObjectiveFamily[E interface{ StatName() string }](evs []E) int {
 	return objectives.CountObjectiveFamily(evs)
 }
 
-type DeathInstant = objectives.DeathInstant
+type DeathInstant = types.DeathInstant
 
 const EventTypeCapture = objectives.EventTypeCapture
 
@@ -286,7 +287,7 @@ func FlagFilmSignalsFrom(bursts []int, evs []objectives.NamedEvent) objectives.F
 	return objectives.FlagFilmSignalsFrom(bursts, evs)
 }
 
-type FlagGrabsNetPlayer = objectives.FlagGrabsNetPlayer
+type FlagGrabsNetPlayer = types.FlagGrabsNetPlayer
 type IdentifiedEvent = objectives.IdentifiedEvent
 
 func IdentifyNamedEvents(evs []objectives.NamedEvent, identity map[int]string) []objectives.IdentifiedEvent {
@@ -304,10 +305,10 @@ type NamedEvent = objectives.NamedEvent
 func NamedEvents(film *source.Film, objectiveType string) []objectives.NamedEvent {
 	return objectives.NamedEvents(film, objectiveType)
 }
-func NamedEventsFrom(recs []objectives.StatRecord, objectiveType string) []objectives.NamedEvent {
+func NamedEventsFrom(recs []types.StatRecord, objectiveType string) []objectives.NamedEvent {
 	return objectives.NamedEventsFrom(recs, objectiveType)
 }
-func NetFlagGrabs(tracks []objectives.FlagTrack, window time.Duration) objectives.FlagGrabsNetResult {
+func NetFlagGrabs(tracks []types.FlagTrack, window time.Duration) objectives.FlagGrabsNetResult {
 	return objectives.NetFlagGrabs(tracks, window)
 }
 
@@ -323,10 +324,10 @@ const ObjectiveTypeSkull = objectives.ObjectiveTypeSkull
 const ObjectiveTypeZone = objectives.ObjectiveTypeZone
 const OriginRoundResidue = objectives.OriginRoundResidue
 
-type PlayerLine = objectives.PlayerLine
+type PlayerLine = types.PlayerLine
 
-func RealRounds(recs []objectives.StatRecord) map[int]bool { return objectives.RealRounds(recs) }
-func ResolveRoundIdentity(recs []objectives.StatRecord, deaths []objectives.DeathInstant) objectives.RoundIdentity {
+func RealRounds(recs []types.StatRecord) map[int]bool { return objectives.RealRounds(recs) }
+func ResolveRoundIdentity(recs []types.StatRecord, deaths []types.DeathInstant) objectives.RoundIdentity {
 	return objectives.ResolveRoundIdentity(recs, deaths)
 }
 
@@ -335,18 +336,18 @@ const RoleScorer = objectives.RoleScorer
 func RosterFitsStatborg(n int) bool { return objectives.RosterFitsStatborg(n) }
 
 type RoundIdentity = objectives.RoundIdentity
-type ScorePoint = objectives.ScorePoint
+type ScorePoint = types.ScorePoint
 
-func SeriesByRound(recs []objectives.StatRecord, c objectives.StatComponent, teams bool) map[int]map[int][]objectives.ScorePoint {
+func SeriesByRound(recs []types.StatRecord, c objectives.StatComponent, teams bool) map[int]map[int][]types.ScorePoint {
 	return objectives.SeriesByRound(recs, c, teams)
 }
-func SeriesTotal(recs []objectives.StatRecord, c objectives.StatComponent, teams bool) map[int][]objectives.ScorePoint {
+func SeriesTotal(recs []types.StatRecord, c objectives.StatComponent, teams bool) map[int][]types.ScorePoint {
 	return objectives.SeriesTotal(recs, c, teams)
 }
-func SlotIdentityByDeaths(recs []objectives.StatRecord, deaths []objectives.DeathInstant) map[int]string {
+func SlotIdentityByDeaths(recs []types.StatRecord, deaths []types.DeathInstant) map[int]string {
 	return objectives.SlotIdentityByDeaths(recs, deaths)
 }
-func SlotIdentityResolved(film *source.Film, lines []objectives.PlayerLine, deaths []objectives.DeathInstant) (map[int]string, objectives.IdentityStats) {
+func SlotIdentityResolved(film *source.Film, lines []types.PlayerLine, deaths []types.DeathInstant) (map[int]string, objectives.IdentityStats) {
 	return objectives.SlotIdentityResolved(film, lines, deaths)
 }
 
@@ -355,14 +356,14 @@ type StatComponent = objectives.StatComponent
 const StatFlagCaptures = objectives.StatFlagCaptures
 const StatPlayerSlots = objectives.StatPlayerSlots
 
-type StatRecord = objectives.StatRecord
+type StatRecord = types.StatRecord
 
-func StatRecords(film *source.Film) []objectives.StatRecord { return objectives.StatRecords(film) }
-func StatRecordsCtx(ctx context.Context, film *source.Film, matchID string) ([]objectives.StatRecord, bool) {
+func StatRecords(film *source.Film) []types.StatRecord { return objectives.StatRecords(film) }
+func StatRecordsCtx(ctx context.Context, film *source.Film, matchID string) ([]types.StatRecord, bool) {
 	return objectives.StatRecordsCtx(ctx, film, matchID)
 }
 
-type StatValue = objectives.StatValue
+type StatValue = types.StatValue
 
 const StatZoneCaptures = objectives.StatZoneCaptures
 const StatZoneSecures = objectives.StatZoneSecures
@@ -391,23 +392,23 @@ const MapQuantSchemaVersion = profile.MapQuantSchemaVersion
 func NormalizeMapName(s string) string { return profile.NormalizeMapName(s) }
 
 // ---- source ----
-type ChunkMeta = source.ChunkMeta
+type ChunkMeta = types.ChunkMeta
 
 func Decompresser(raw []byte) ([]byte, error) { return source.Decompresser(raw) }
 
 type Film = source.Film
 
 func Inflate(raw []byte) []byte { return source.Inflate(raw) }
-func Load(src source.Source, meta []source.ChunkMeta) (*source.Film, error) {
+func Load(src source.Source, meta []types.ChunkMeta) (*source.Film, error) {
 	return source.Load(src, meta)
 }
-func LoadDir(dir string, meta []source.ChunkMeta) (*source.Film, error) {
+func LoadDir(dir string, meta []types.ChunkMeta) (*source.Film, error) {
 	return source.LoadDir(dir, meta)
 }
 
 type MemoryChunks = source.MemoryChunks
 
-func Paquets(chunk []byte, ch int) []source.Packet { return source.Paquets(chunk, ch) }
+func Paquets(chunk []byte, ch int) []types.Packet { return source.Paquets(chunk, ch) }
 
 // ---- weaponscan ----
 func FindFramePositions(data []byte) []int { return weaponscan.FindFramePositions(data) }

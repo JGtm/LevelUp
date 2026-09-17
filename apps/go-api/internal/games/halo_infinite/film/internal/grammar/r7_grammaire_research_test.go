@@ -133,7 +133,7 @@ var r7Noms = map[int]string{
 // r7RefVal est UNE reference gardee lue : sa presence, son domaine, son index et sa
 // GENERATION (les 2 bits que la marche sautait avant le lot F.0 du 2026-09-13). Index et
 // generation forment ensemble la cle d'une VIE d'entite — la meme paire que
-// `EquipmentLifeKey` et que l'en-tete NEW d'un record de creation.
+// `types.EquipmentLifeKey` et que l'en-tete NEW d'un record de creation.
 type r7RefVal struct {
 	Present bool
 	Dom     int

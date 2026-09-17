@@ -112,7 +112,7 @@ func TestChroniqueLitLesDeuxCotesEtRendLaCourante(t *testing.T) {
 	godoc, golden := ecrireChroniqueSynthetique(t,
 		[]string{"couche-2026-09-16", "couche-2026-09-17", "couche-2026-09-17.2"},
 		[]string{"couche-2026-09-16\taaa", "couche-2026-09-17\tbbb", "couche-2026-09-17.2\tccc"})
-	c, err := revision.LireChronique("couche", godoc, golden)
+	c, err := revision.LireChronique("couche", []string{godoc}, golden)
 	if err != nil {
 		t.Fatalf("lecture : %v", err)
 	}
@@ -138,7 +138,7 @@ func TestChroniqueRefuseCeQuiDoitLEtre(t *testing.T) {
 	godoc, golden := ecrireChroniqueSynthetique(t,
 		[]string{"couche-2026-09-16"},
 		[]string{"couche-2026-09-16\taaa", "couche-2026-09-17\tbbb"})
-	c, err := revision.LireChronique("couche", godoc, golden)
+	c, err := revision.LireChronique("couche", []string{godoc}, golden)
 	if err != nil {
 		t.Fatalf("lecture : %v", err)
 	}
@@ -153,7 +153,7 @@ func TestChroniqueRefuseCeQuiDoitLEtre(t *testing.T) {
 	godocTrou, goldenTrou := ecrireChroniqueSynthetique(t,
 		[]string{"couche-2026-09-17", "couche-2026-09-17.4"},
 		[]string{"couche-2026-09-17\taaa", "couche-2026-09-17.4\tbbb"})
-	cTrou, err := revision.LireChronique("couche", godocTrou, goldenTrou)
+	cTrou, err := revision.LireChronique("couche", []string{godocTrou}, goldenTrou)
 	if err != nil {
 		t.Fatalf("lecture : %v", err)
 	}
@@ -163,6 +163,26 @@ func TestChroniqueRefuseCeQuiDoitLEtre(t *testing.T) {
 	// 4. Le PLANCHER : la meme chronique, lue a partir du rang qui suit le trou, est acceptee.
 	if err := cTrou.VerifierRangs("couche-2026-09-17.4"); err != nil {
 		t.Errorf("le plancher ne neutralise pas un trou anterieur : %v", err)
+	}
+	// 5. LE PLANCHER OUVRE SUR LE RANG, PAS SUR L EGALITE DE CHAINE. Les deux cotes d une
+	// chronique ne commencent pas au meme rang : le godoc porte tout l historique, le golden
+	// n accumule ses lignes que depuis le jour ou sa porte a cesse de reecrire l unique ligne.
+	// Un plancher compare par egalite ne s ouvrirait jamais du cote golden — il n y verifierait
+	// RIEN, en silence.
+	godocDecale, goldenDecale := ecrireChroniqueSynthetique(t,
+		[]string{"couche-2026-09-17", "couche-2026-09-17.2", "couche-2026-09-17.3"},
+		[]string{"couche-2026-09-17.2\tbbb", "couche-2026-09-17.5\tccc"})
+	cDecale, err := revision.LireChronique("couche", []string{godocDecale}, goldenDecale)
+	if err != nil {
+		t.Fatalf("lecture : %v", err)
+	}
+	if err := cDecale.VerifierRangs("couche-2026-09-17"); err == nil {
+		t.Error("le trou `.2` -> `.5` du GOLDEN passe : le plancher ne s est pas ouvert du cote " +
+			"golden, qui ne porte pas sa valeur exacte")
+	}
+	// Et le plancher amnistie toujours ce qui le precede, des deux cotes.
+	if err := cDecale.VerifierRangs("couche-2026-09-18"); err != nil {
+		t.Errorf("un plancher posterieur a toute la chronique refuse quand meme : %v", err)
 	}
 }
 
@@ -181,11 +201,11 @@ func TestChroniqueRefuseUnGoldenMalforme(t *testing.T) {
 		if err := os.WriteFile(golden, []byte(contenu), 0o600); err != nil {
 			t.Fatalf("ecriture : %v", err)
 		}
-		if _, err := revision.LireChronique("couche", godoc, golden); err == nil {
+		if _, err := revision.LireChronique("couche", []string{godoc}, golden); err == nil {
 			t.Errorf("golden %s accepte", nom)
 		}
 	}
-	if _, err := revision.LireChronique("couche", filepath.Join(dir, "absent.go"),
+	if _, err := revision.LireChronique("couche", []string{filepath.Join(dir, "absent.go")},
 		filepath.Join(dir, "g.golden")); err == nil {
 		t.Error("godoc absent accepte — un artefact versionne absent est une erreur")
 	}
@@ -202,13 +222,19 @@ func TestChroniqueLitLesArtefactsReelsDeFilmdec(t *testing.T) {
 	dir := filepath.Join(api, "internal", "games", "halo_infinite", "film", "internal", "grammar")
 	c, err := revision.LireChronique("grammar",
 		// Depuis le lot 2.4 (D2 (2.4)), la chronique est ROTATIONNEE : les entrees courantes vivent dans
-		// `grammar_rev_chronique.go`, les anciennes dans `grammar_rev_chronique_archive.go`.
-		filepath.Join(dir, "grammar_rev_chronique.go"), filepath.Join(dir, "testdata", "grammar_rev.golden"))
+		// `rev_chronique.go`, les anciennes dans `rev_chronique_archive.go`. LES DEUX SE LISENT
+		// ENSEMBLE, dans l ordre chronologique — c est le cas d usage reel de la lecture
+		// multi-fichiers, et le seul du depot.
+		[]string{
+			filepath.Join(dir, "rev_chronique_archive.go"),
+			filepath.Join(dir, "rev_chronique.go"),
+		},
+		filepath.Join(dir, "testdata", "grammar_rev.golden"))
 	if err != nil {
 		t.Fatalf("lecture de la chronique reelle : %v", err)
 	}
 	if len(c.Godoc) == 0 {
-		t.Fatal("aucune entree de godoc lue dans grammar_rev_chronique.go — la forme `// ENTREE` a change")
+		t.Fatal("aucune entree de godoc lue dans rev_chronique.go ni dans son archive — la forme `// ENTREE` a change")
 	}
 	courante := c.Courante()
 	t.Logf("chronique reelle : %d entrees de godoc, revision courante %s (golden ligne %d)",

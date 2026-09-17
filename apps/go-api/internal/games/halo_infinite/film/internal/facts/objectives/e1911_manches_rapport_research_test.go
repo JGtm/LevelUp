@@ -10,6 +10,7 @@ package objectives
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
 	"strings"
 	"testing"
@@ -85,7 +86,7 @@ func e1911ImprimePistes(t *testing.T, b e1911Bilan) {
 }
 
 // e1911Piste rend une piste sous la forme `valeur@instant`, au plus [e1911MaxPoints] points.
-func e1911Piste(pts []ScorePoint) string {
+func e1911Piste(pts []types.ScorePoint) string {
 	const e1911MaxPoints = 40
 	parts := make([]string, 0, e1911MaxPoints+1)
 	for i, p := range pts {

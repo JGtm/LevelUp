@@ -44,6 +44,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // TestManchesBornesReleve imprime, film par film, la table des debuts de manche par slot.
@@ -68,7 +69,7 @@ func TestManchesBornesReleve(t *testing.T) {
 }
 
 // mbReleveFilm imprime le releve d'un film.
-func mbReleveFilm(t *testing.T, film string, recs []objectives.StatRecord, tronque bool) {
+func mbReleveFilm(t *testing.T, film string, recs []types.StatRecord, tronque bool) {
 	t.Helper()
 	real := objectives.RealRounds(recs)
 	rounds := make([]int, 0, len(real))
@@ -94,7 +95,7 @@ func mbReleveFilm(t *testing.T, film string, recs []objectives.StatRecord, tronq
 
 // mbColonnes rend, pour une manche : le premier instant de chaque slot (trie) et tous les
 // instants de la manche (tries).
-func mbColonnes(recs []objectives.StatRecord, round int) (debuts, instants []int) {
+func mbColonnes(recs []types.StatRecord, round int) (debuts, instants []int) {
 	premier := map[int]int{}
 	for _, r := range recs {
 		if r.Round != round {

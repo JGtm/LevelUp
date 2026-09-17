@@ -46,6 +46,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // eqnTolUS est la fenêtre d'appariement : la même que celle sous laquelle l'accord
@@ -57,7 +58,7 @@ var eqnDecalages = []int64{37_000_000, -53_000_000, 91_000_000}
 
 // eqnRankAt rend les rangs i48 transmis par `slot` à moins de eqnTolUS de `at` (décalés de
 // decalUS pour les témoins).
-func eqnRankAt(ranks []grammar.AbilityRank, slot uint32, at uint64, decalUS int64) []int {
+func eqnRankAt(ranks []types.AbilityRank, slot uint32, at uint64, decalUS int64) []int {
 	var out []int
 	for _, r := range ranks {
 		if r.Slot != slot {

@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -31,8 +32,8 @@ func gwFlagScan(id uint32) (WorldObjectScan, []grammar.BipedPosition) {
 	kf := []uint64{0, 20_000_000, 40_000_000, 60_000_000, 80_000_000}
 	scan := WorldObjectScan{
 		Scanned: true,
-		Stats:   grammar.EquipmentCreationStats{Slots: 8, Anchors: 40, Accepted: 4},
-		Creations: []grammar.EquipmentCreation{
+		Stats:   types.EquipmentCreationStats{Slots: 8, Anchors: 40, Accepted: 4},
+		Creations: []types.EquipmentCreation{
 			gwTestCreation(10, 0, 1_000_000, id, 10, 10),
 			gwTestCreation(11, 0, 31_000_000, id, 10.2, 10.1),
 			gwTestCreation(12, 0, 51_000_000, id, 9.9, 10.2),
@@ -40,7 +41,7 @@ func gwFlagScan(id uint32) (WorldObjectScan, []grammar.BipedPosition) {
 		},
 		Keyframes: grammar.WorldObjectKeyframes{
 			TimesUS: kf,
-			SeenUS: map[grammar.EquipmentLifeKey][]uint64{
+			SeenUS: map[types.EquipmentLifeKey][]uint64{
 				{Slot: 10}: {20_000_000}, {Slot: 11}: {40_000_000},
 				{Slot: 12}: {60_000_000}, {Slot: 13}: {80_000_000},
 			},

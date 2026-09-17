@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Les seuils de la décision 4(b), écrits avant la mesure.
@@ -87,7 +88,7 @@ func attVehiculesFilm(t *testing.T, root, id string) {
 }
 
 // attNuages décode les deux nuages de positions d'un film, aux bornes de sa carte.
-func attNuages(t *testing.T, root, id string) ([]grammar.ProjectileTrack, []grammar.BipedPosition, bool) {
+func attNuages(t *testing.T, root, id string) ([]types.ProjectileTrack, []grammar.BipedPosition, bool) {
 	t.Helper()
 	wr, _, ok := attBornes(t, root, id)
 	if !ok {
@@ -125,7 +126,7 @@ func attSlotsBipede(bip []grammar.BipedPosition) map[uint32]bool {
 // cherche le véhicule le plus proche À CET INSTANT (interpolation par le plus proche voisin
 // temporel de sa trajectoire, sans extrapolation au-delà d'une seconde) ; les échantillons
 // consécutifs qui restent sous le rayon avec LE MÊME véhicule forment une période.
-func attPeriodesABord(veh []grammar.ProjectileTrack, bip []grammar.BipedPosition) []attPeriode {
+func attPeriodesABord(veh []types.ProjectileTrack, bip []grammar.BipedPosition) []attPeriode {
 	parBipede := map[uint32][]grammar.BipedPosition{}
 	for _, b := range bip {
 		if b.HasWorld {
@@ -148,7 +149,7 @@ func attPeriodesABord(veh []grammar.ProjectileTrack, bip []grammar.BipedPosition
 
 // attPeriodesDuBipede découpe la suite d'échantillons d'UN bipède en périodes « à bord ».
 func attPeriodesDuBipede(slot uint32, ech []grammar.BipedPosition,
-	veh []grammar.ProjectileTrack) []attPeriode {
+	veh []types.ProjectileTrack) []attPeriode {
 	var out []attPeriode
 	var cour attPeriode
 	ouvert := false
@@ -191,7 +192,7 @@ func attFermePeriode(out []attPeriode, p attPeriode) []attPeriode {
 const attExtrapolationUS = uint64(1_000_000)
 
 // attVehiculeLePlusProche rend le slot du véhicule sous le rayon à cet instant, s'il y en a.
-func attVehiculeLePlusProche(e grammar.BipedPosition, veh []grammar.ProjectileTrack) (uint32, bool) {
+func attVehiculeLePlusProche(e grammar.BipedPosition, veh []types.ProjectileTrack) (uint32, bool) {
 	best, found := uint32(0), false
 	bestD := math.MaxFloat64
 	for _, v := range veh {
@@ -210,10 +211,10 @@ func attVehiculeLePlusProche(e grammar.BipedPosition, veh []grammar.ProjectileTr
 // attEchantillonLePlusProche rend l'échantillon de trajectoire le plus proche d'un instant,
 // et l'écart. `ScanFilmWorldObjectsForBand` rend les points d'une vie DÉJÀ TRIÉS (tri total
 // sur instant puis position) : la recherche dichotomique est donc licite ici.
-func attEchantillonLePlusProche(pts []grammar.ProjectileSample, atUS uint64) (
-	grammar.ProjectileSample, uint64, bool) {
+func attEchantillonLePlusProche(pts []types.ProjectileSample, atUS uint64) (
+	types.ProjectileSample, uint64, bool) {
 	if len(pts) == 0 {
-		return grammar.ProjectileSample{}, 0, false
+		return types.ProjectileSample{}, 0, false
 	}
 	i := sort.Search(len(pts), func(k int) bool { return pts[k].TimestampUS >= atUS })
 	best := i
@@ -231,7 +232,7 @@ func attEchantillonLePlusProche(pts []grammar.ProjectileSample, atUS uint64) (
 // de leur début, une lecture d'i10 ATTACHÉE sur le slot du bipède dont le champ candidat
 // désigne CE véhicule. Témoin : le même compte avec un autre véhicule du match.
 func attConfronteI10(t *testing.T, root, id string, periodes []attPeriode,
-	veh []grammar.ProjectileTrack) {
+	veh []types.ProjectileTrack) {
 	t.Helper()
 	lectures, _ := attScanOf(t, root, id)
 	parSlot := map[uint32][]attI10{}
@@ -310,7 +311,7 @@ func attEcartUS(a, b uint64) uint64 {
 // les deux bords sont près d'un véhicule. Si les trous ne sont pas plus près des véhicules
 // que le reste du temps, c'est le MODÈLE qui ne tient pas ici — et c'est une information de
 // même valeur que son contraire.
-func attLogTrous(t *testing.T, id string, veh []grammar.ProjectileTrack, bip []grammar.BipedPosition) {
+func attLogTrous(t *testing.T, id string, veh []types.ProjectileTrack, bip []grammar.BipedPosition) {
 	t.Helper()
 	parBipede := map[uint32][]grammar.BipedPosition{}
 	for _, b := range bip {
@@ -358,7 +359,7 @@ const (
 // LE TEMOIN FANTOME passe par le MEME decodeur, sur une bande de MEME cardinalite faite de
 // slots jamais vus porter cet archetype. S'il rend autant de vies et le meme etalement, le
 // signal est sous le bruit — et l'oracle geometrique de l'item 0.3 ne mesure rien.
-func attControleNuage(t *testing.T, root, id string, veh []grammar.ProjectileTrack) {
+func attControleNuage(t *testing.T, root, id string, veh []types.ProjectileTrack) {
 	t.Helper()
 	vus, autres := attBandesKeyframe(objChunkDir(root, id))
 	serre, large, comptes := attEtalement(veh)
@@ -434,7 +435,7 @@ func attBandeFantome(vus, autres map[uint32]bool) map[uint32]bool {
 // attEtalement rend, sur les vies d'au moins `attMinEchantillons` points, combien tiennent
 // dans `attEtalementSerre` et combien depassent `attEtalementLarge` (diagonale en plan de
 // leur boite englobante), plus le denominateur.
-func attEtalement(tracks []grammar.ProjectileTrack) (serre, large, comptes int) {
+func attEtalement(tracks []types.ProjectileTrack) (serre, large, comptes int) {
 	for _, tr := range tracks {
 		if len(tr.Pts) < attMinEchantillons {
 			continue
@@ -466,7 +467,7 @@ func attEtalement(tracks []grammar.ProjectileTrack) (serre, large, comptes int) 
 // films deja mesures, pas pour celui-ci. Si les deux nuages n'occupent pas le meme volume,
 // une distance entre eux ne mesure pas une proximite mais un desaccord de repere, et l'oracle
 // geometrique de l'item 0.3 est nul et non avenu AVANT d'avoir rien conclu.
-func attControleEmprises(t *testing.T, id string, veh []grammar.ProjectileTrack,
+func attControleEmprises(t *testing.T, id string, veh []types.ProjectileTrack,
 	bip []grammar.BipedPosition) {
 	t.Helper()
 	var vb, bb attBoite
@@ -506,7 +507,7 @@ func (b *attBoite) ajoute(x, y, z float32) {
 }
 
 // attPartDansEmprise rend la part des points de trajectoire qui tombent dans une boite.
-func attPartDansEmprise(tracks []grammar.ProjectileTrack, b attBoite) float64 {
+func attPartDansEmprise(tracks []types.ProjectileTrack, b attBoite) float64 {
 	dedans, total := 0, 0
 	for _, tr := range tracks {
 		for _, p := range tr.Pts {

@@ -1,6 +1,9 @@
 package grammar
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // player_table.go — LA TABLE DES 32 JOUEURS DU MATCH, LUE DANS `chunk_00` (lot 1.5.2 et 1.5.3).
 //
@@ -131,56 +134,6 @@ const (
 	slotNomMinImprimable = 3
 )
 
-// PlayerSlotShorts : les champs COURTS d'un enregistrement de slot.
-//
-// Ils sont publies parce qu'ils sont lus, et parce qu'un champ mesure CONSTANT qui se met a
-// varier est le premier signe qu'une grammaire a bouge. Mesure du 2026-09-12 sur les 44
-// enregistrements de six films : huit d'entre eux sont constants sur tout le corpus (`Deux`=0,
-// `F10`=183, `F14`=0, `F6`=-1, `F8`=0, `F7`=0, `Repr`=0, `Tete`=0) ; le neuvieme, `F1`, prend
-// deux valeurs et ce sont exactement les enregistrements a listes vides contre ceux a listes
-// pleines — un drapeau de presence des listes. AUCUN ne porte l'equipe : c'est mesure, et ferme
-// par la negative (aucun ne partage un roster en deux moities egales, sur 0/6 films).
-type PlayerSlotShorts struct {
-	Tete uint32 // slot+0x04, 32 bits
-	Deux uint32 // slot+0x08, 2 bits (octet signe : domaine -2..1)
-	Repr uint32 // sub+0xcb0, 32 bits, etiquete `desired-representation`
-	Q64  uint64 // sub+0xcb8, 64 bits
-	F10  uint32 // sub+0xc12, 10 bits
-	F14  uint32 // sub+0xc36, 14 bits
-	F6   int    // sub+0xc35, 6 bits, ecrit VALEUR+1 : rendu signe (-1 sur un slot occupe)
-	F8   uint32 // sub+0xc10, 8 bits
-	F7   uint32 // sub+0xc34, 7 bits
-	F1   uint32 // sub+0xc11 & 1, 1 bit
-}
-
-// PlayerSlot : un slot OCCUPE de la table.
-type PlayerSlot struct {
-	// FilmIndex : le RANG du slot dans la table de 32, VACANTS COMPRIS. C'est l'index du
-	// tableau que l'ecrivain parcourt (`enregistrement += 0x1450`), donc l'index du slot.
-	//
-	// CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS. L'ordre des enregistrements EST le
-	// `player_index` de production : `filmIndex - rang` est CONSTANT sur 76 films sur 76, et la
-	// coincidence est totale sur 72 (2026-09-12, oracle = le `roster[].filmIndex` des documents
-	// de rejeu). Mais aucun de ces 76 films ne porte de slot vacant INTERCALE, donc l'oracle ne
-	// separe pas « rang absolu » de « index parmi les occupes » : les deux definitions y
-	// coincident. Les 5 films du cache a vacant intercale (`07f6af1b`, `0d1dddfb`, `1c5c10cc`,
-	// `b1bcbe24`, `c744aa29`, mesures le 2026-09-14) n'ont AUCUN document de rejeu — la question
-	// n'est donc pas tranchable sur ce corpus, et le rapport porte `InterleavedVacant` pour que
-	// le consommateur sache quand les deux lectures divergent.
-	FilmIndex int
-	XUID      uint64
-	Gamertag  string
-	// SessionToken : le champ de 48 bits de `slot+0x09`. Propre au couple (match, joueur) :
-	// cinq valeurs differentes a forte entropie pour un meme XUID sur cinq films. Lecture la
-	// plus economique : un jeton de session. NON PROUVE.
-	SessionToken uint64
-	// Bit / TotalBits : la position et la longueur de l'enregistrement dans le flux, pour qu'un
-	// rapport ou un instrument puisse revenir dessus sans re-chercher.
-	Bit       int
-	TotalBits int
-	Shorts    PlayerSlotShorts
-}
-
 // PlayerTableReport : ce que la lecture a vu, et ce que le CONTROLE en dit.
 type PlayerTableReport struct {
 	// Build / PersoBytes / ProfileDeltaBits : ce que le PROFIL dit (player_table_profile.go).
@@ -211,7 +164,7 @@ type PlayerTableReport struct {
 	// 0 sur les 1 351 films du cache — le slot 0 est occupe partout.
 	HeadVacant int
 	// InterleavedVacant : un slot vacant tombe AVANT le dernier occupe. C'est le seul cas ou
-	// « rang absolu » et « index parmi les occupes » divergent (cf. PlayerSlot.FilmIndex).
+	// « rang absolu » et « index parmi les occupes » divergent (cf. types.PlayerSlot.FilmIndex).
 	InterleavedVacant bool
 	// FirstRecordBit : la position du slot 0 dans le flux.
 	FirstRecordBit int
@@ -230,7 +183,7 @@ type PlayerTableReport struct {
 // premier bit du corps).
 //
 // Les slots VACANTS sont ECARTES de la tranche rendue — ils n'ont ni XUID ni nom — mais ils
-// comptent dans le rang (`PlayerSlot.FilmIndex`) et dans le rapport.
+// comptent dans le rang (`types.PlayerSlot.FilmIndex`) et dans le rapport.
 //
 // DEUX BORNES, ET ELLES NE SONT PAS INTERCHANGEABLES. Le BALAYAGE s'arrete au dernier octet
 // ECRIT : au-dela il n'y a que des zeros, donc aucun en-tete de slot occupe a trouver. Les
@@ -242,7 +195,7 @@ type PlayerTableReport struct {
 // Erreurs typees : [profile.ErrUnknownBuild] enveloppe avec le nom du build (D-4 : le film est mis de
 // cote, JAMAIS lu au profil du build voisin ; publier [UnknownBuildExpvarPairs] au meme
 // endroit), [ErrChunk00Truncated], [ErrPlayerTableNotFound].
-func ReadPlayerTable(chunk0 []byte, ident profile.FilmIdentity) ([]PlayerSlot, PlayerTableReport, error) {
+func ReadPlayerTable(chunk0 []byte, ident profile.FilmIdentity) ([]types.PlayerSlot, PlayerTableReport, error) {
 	rep := PlayerTableReport{Build: ident.Build}
 	octets, connu := profile.PersonnalisationOctets(ident.Build)
 	if !connu {
@@ -268,7 +221,7 @@ func ReadPlayerTable(chunk0 []byte, ident profile.FilmIdentity) ([]PlayerSlot, P
 
 // departTable : ce qu'une marche fermee a rendu.
 type departTable struct {
-	slots       []PlayerSlot
+	slots       []types.PlayerSlot
 	vacants     int
 	teteVacants int
 	essais      int
@@ -354,7 +307,7 @@ func candidatsReels(d []byte, candidats []int, finBit, persoBits int) []int {
 // enregistrements que la marche lit EN PLUS sont ceux que le balayage ne pouvait pas voir
 // (jeton de 48 bits nul, XUID hors de la plage Xbox) ; le rapport les compte
 // (`Occupied - CandidatesReal`).
-func visiteTousLesReels(slots []PlayerSlot, reels []int) bool {
+func visiteTousLesReels(slots []types.PlayerSlot, reels []int) bool {
 	if len(slots) == 0 || len(reels) == 0 {
 		return false
 	}
@@ -370,7 +323,7 @@ func visiteTousLesReels(slots []PlayerSlot, reels []int) bool {
 // marcherTable lit 32 slots consecutifs a partir de `depart` : un vacant s'enjambe de sa
 // longueur calculee, un occupe se decode et avance de sa longueur PREDITE. `ferme` dit que les
 // 32 slots ont ete lus — la borne de l'ecrivain, verifiee par la lecture.
-func marcherTable(d []byte, depart, finBit, persoBits int) (slots []PlayerSlot, vacants int,
+func marcherTable(d []byte, depart, finBit, persoBits int) (slots []types.PlayerSlot, vacants int,
 	ferme bool) {
 	vide := slotVacantBits(persoBits)
 	p := depart

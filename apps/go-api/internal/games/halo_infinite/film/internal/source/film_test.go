@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -279,7 +280,7 @@ func TestMetaNilEtFournie(t *testing.T) {
 		t.Fatalf("Meta() = %+v, attendu nil", sansMeta.Meta())
 	}
 
-	meta := []source.ChunkMeta{{Index: 0, ChunkType: 3, StartMS: 4200}}
+	meta := []types.ChunkMeta{{Index: 0, ChunkType: 3, StartMS: 4200}}
 	avecMeta, err := source.Load(src, meta)
 	if err != nil {
 		t.Fatalf("Load avec meta : %v", err)

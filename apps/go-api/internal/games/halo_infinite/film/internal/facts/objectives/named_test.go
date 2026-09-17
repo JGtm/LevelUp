@@ -1,6 +1,7 @@
 package objectives
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -29,7 +30,7 @@ import (
 // playerStat est la ligne complete d'un joueur : son triplet d'identite et les compteurs
 // d'objectif que l'oracle a huit joueurs lui donne.
 type playerStat struct {
-	line  PlayerLine
+	line  types.PlayerLine
 	stats map[string]int
 }
 
@@ -42,47 +43,47 @@ var oracle8 = map[string][]playerStat{
 	// 696a9d7c — Strongholds. Les xuid ne sont pas necessaires ici : le triplet suffit a
 	// designer chaque joueur, et le test porte sur l'appariement, pas sur la forme de la cle.
 	"696a9d7c": {
-		{PlayerLine{XUID: "z16", Kills: 16, Deaths: 13, Assists: 4}, map[string]int{StatZoneCaptures: 10, StatZoneSecures: 6}},
-		{PlayerLine{XUID: "z15a", Kills: 15, Deaths: 14, Assists: 3}, map[string]int{StatZoneCaptures: 4, StatZoneSecures: 2}},
-		{PlayerLine{XUID: "z15b", Kills: 15, Deaths: 17, Assists: 4}, map[string]int{StatZoneCaptures: 9, StatZoneSecures: 1}},
-		{PlayerLine{XUID: "z15c", Kills: 15, Deaths: 9, Assists: 10}, map[string]int{StatZoneCaptures: 6, StatZoneSecures: 3}},
-		{PlayerLine{XUID: "madina", Kills: 15, Deaths: 11, Assists: 5}, map[string]int{StatZoneCaptures: 10, StatZoneSecures: 0}},
-		{PlayerLine{XUID: "z9a", Kills: 9, Deaths: 12, Assists: 4}, map[string]int{StatZoneCaptures: 6, StatZoneSecures: 1}},
-		{PlayerLine{XUID: "z9b", Kills: 9, Deaths: 15, Assists: 7}, map[string]int{StatZoneCaptures: 7, StatZoneSecures: 2}},
-		{PlayerLine{XUID: "z8", Kills: 8, Deaths: 12, Assists: 8}, map[string]int{StatZoneCaptures: 9, StatZoneSecures: 1}},
+		{types.PlayerLine{XUID: "z16", Kills: 16, Deaths: 13, Assists: 4}, map[string]int{StatZoneCaptures: 10, StatZoneSecures: 6}},
+		{types.PlayerLine{XUID: "z15a", Kills: 15, Deaths: 14, Assists: 3}, map[string]int{StatZoneCaptures: 4, StatZoneSecures: 2}},
+		{types.PlayerLine{XUID: "z15b", Kills: 15, Deaths: 17, Assists: 4}, map[string]int{StatZoneCaptures: 9, StatZoneSecures: 1}},
+		{types.PlayerLine{XUID: "z15c", Kills: 15, Deaths: 9, Assists: 10}, map[string]int{StatZoneCaptures: 6, StatZoneSecures: 3}},
+		{types.PlayerLine{XUID: "madina", Kills: 15, Deaths: 11, Assists: 5}, map[string]int{StatZoneCaptures: 10, StatZoneSecures: 0}},
+		{types.PlayerLine{XUID: "z9a", Kills: 9, Deaths: 12, Assists: 4}, map[string]int{StatZoneCaptures: 6, StatZoneSecures: 1}},
+		{types.PlayerLine{XUID: "z9b", Kills: 9, Deaths: 15, Assists: 7}, map[string]int{StatZoneCaptures: 7, StatZoneSecures: 2}},
+		{types.PlayerLine{XUID: "z8", Kills: 8, Deaths: 12, Assists: 8}, map[string]int{StatZoneCaptures: 9, StatZoneSecures: 1}},
 	},
 	// 1bc77d2e — CTF, avec les vrais xuid.
 	"1bc77d2e": {
-		{PlayerLine{XUID: "2533274823110022", Kills: 24, Deaths: 13, Assists: 2}, map[string]int{ // JGtm
+		{types.PlayerLine{XUID: "2533274823110022", Kills: 24, Deaths: 13, Assists: 2}, map[string]int{ // JGtm
 			StatFlagCaptures: 1, StatFlagReturns: 2, StatFlagSteals: 4,
 			StatFlagCaptureAssists: 0, StatFlagCarriersKilled: 2, StatFlagGrabs: 3}},
-		{PlayerLine{XUID: "2535433601851512", Kills: 20, Deaths: 15, Assists: 7}, map[string]int{
+		{types.PlayerLine{XUID: "2535433601851512", Kills: 20, Deaths: 15, Assists: 7}, map[string]int{
 			StatFlagCaptures: 1, StatFlagReturns: 1, StatFlagSteals: 2,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 3, StatFlagGrabs: 3}},
-		{PlayerLine{XUID: "2535421262359392", Kills: 16, Deaths: 13, Assists: 5}, map[string]int{
+		{types.PlayerLine{XUID: "2535421262359392", Kills: 16, Deaths: 13, Assists: 5}, map[string]int{
 			StatFlagCaptures: 1, StatFlagReturns: 1, StatFlagSteals: 0,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 3, StatFlagGrabs: 13}},
-		{PlayerLine{XUID: "2535469190789936", Kills: 16, Deaths: 15, Assists: 7}, map[string]int{ // Chocoboflor
+		{types.PlayerLine{XUID: "2535469190789936", Kills: 16, Deaths: 15, Assists: 7}, map[string]int{ // Chocoboflor
 			StatFlagCaptures: 1, StatFlagReturns: 1, StatFlagSteals: 0,
 			StatFlagCaptureAssists: 2, StatFlagCarriersKilled: 1, StatFlagGrabs: 6}},
-		{PlayerLine{XUID: "2535415145546162", Kills: 11, Deaths: 11, Assists: 2}, map[string]int{
+		{types.PlayerLine{XUID: "2535415145546162", Kills: 11, Deaths: 11, Assists: 2}, map[string]int{
 			StatFlagCaptures: 0, StatFlagReturns: 3, StatFlagSteals: 1,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 2, StatFlagGrabs: 2}},
-		{PlayerLine{XUID: "2533274858283686", Kills: 11, Deaths: 12, Assists: 13}, map[string]int{ // Madina97294
+		{types.PlayerLine{XUID: "2533274858283686", Kills: 11, Deaths: 12, Assists: 13}, map[string]int{ // Madina97294
 			StatFlagCaptures: 0, StatFlagReturns: 0, StatFlagSteals: 2,
 			StatFlagCaptureAssists: 2, StatFlagCarriersKilled: 1, StatFlagGrabs: 16}},
-		{PlayerLine{XUID: "2535436340554308", Kills: 10, Deaths: 18, Assists: 5}, map[string]int{
+		{types.PlayerLine{XUID: "2535436340554308", Kills: 10, Deaths: 18, Assists: 5}, map[string]int{
 			StatFlagCaptures: 0, StatFlagReturns: 1, StatFlagSteals: 3,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 1, StatFlagGrabs: 1}},
-		{PlayerLine{XUID: "2535456897775421", Kills: 6, Deaths: 17, Assists: 4}, map[string]int{
+		{types.PlayerLine{XUID: "2535456897775421", Kills: 6, Deaths: 17, Assists: 4}, map[string]int{
 			StatFlagCaptures: 1, StatFlagReturns: 0, StatFlagSteals: 2,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 0, StatFlagGrabs: 2}},
 	},
 }
 
 // linesOf rend les lignes de match d'un film, pour l'appariement des slots.
-func linesOf(film string) []PlayerLine {
-	out := make([]PlayerLine, 0, len(oracle8[film]))
+func linesOf(film string) []types.PlayerLine {
+	out := make([]types.PlayerLine, 0, len(oracle8[film]))
 	for _, p := range oracle8[film] {
 		out = append(out, p.line)
 	}
@@ -208,7 +209,7 @@ func TestNamedEventsCrossCheck(t *testing.T) {
 // etat de l'art §21), le binaire ne declare aucune famille de stats KOTH, et la base n'a
 // aucune colonne `hill_*`. Trois sources concordantes.
 func TestNamedEventsUnknownModeIsSilent(t *testing.T) {
-	recs := []StatRecord{{TimeMS: 1000, Slot: 10, Comps: map[int]StatValue{20: {A: 0, B: 3}}}}
+	recs := []types.StatRecord{{TimeMS: 1000, Slot: 10, Comps: map[int]types.StatValue{20: {A: 0, B: 3}}}}
 	for _, mode := range []string{ObjectiveTypeHill, ObjectiveTypeSkull, "", "slayer"} {
 		if got := NamedEventsFrom(recs, mode); got != nil {
 			t.Errorf("mode %q : %d evenements rendus, attendu aucun", mode, len(got))
@@ -222,10 +223,10 @@ func TestNamedEventsUnknownModeIsSilent(t *testing.T) {
 //
 // Sans ce garde-fou, la suite ci-dessous (1 puis -115 puis 1) rendait 116 evenements.
 func TestNamedEventsIgnoresNegativeValues(t *testing.T) {
-	recs := []StatRecord{
-		{TimeMS: 1000, Slot: 10, Comps: map[int]StatValue{23: {A: 1}}},
-		{TimeMS: 2000, Slot: 10, Comps: map[int]StatValue{23: {A: -115}}},
-		{TimeMS: 3000, Slot: 10, Comps: map[int]StatValue{23: {A: 1}}},
+	recs := []types.StatRecord{
+		{TimeMS: 1000, Slot: 10, Comps: map[int]types.StatValue{23: {A: 1}}},
+		{TimeMS: 2000, Slot: 10, Comps: map[int]types.StatValue{23: {A: -115}}},
+		{TimeMS: 3000, Slot: 10, Comps: map[int]types.StatValue{23: {A: 1}}},
 	}
 	got := NamedEventsFrom(recs, ObjectiveTypeFlag)
 	if len(got) != 1 {
@@ -240,9 +241,9 @@ func TestNamedEventsIgnoresNegativeValues(t *testing.T) {
 // emettre : sinon chaque frag serait compte deux fois (comp 2 A et comp 12 A portent tous
 // deux le nombre de frags).
 func TestNamedEventsRedundantSlotsDoNotDoubleCount(t *testing.T) {
-	recs := []StatRecord{{
+	recs := []types.StatRecord{{
 		TimeMS: 1000, Slot: 10,
-		Comps: map[int]StatValue{2: {A: 3}, 12: {A: 3, B: 2}, 3: {A: 2}},
+		Comps: map[int]types.StatValue{2: {A: 3}, 12: {A: 3, B: 2}, 3: {A: 2}},
 	}}
 	counts := CountsBySlot(NamedEventsFrom(recs, ObjectiveTypeZone))
 	if got := counts[10][StatKills]; got != 3 {
@@ -256,10 +257,10 @@ func TestNamedEventsRedundantSlotsDoNotDoubleCount(t *testing.T) {
 // TestNamedEventsRepeatedValueIsNotAnEvent — un composant est reemis des que l'UNE de ses
 // deux valeurs bouge. Une reemission a valeur inchangee n'est donc pas un evenement.
 func TestNamedEventsRepeatedValueIsNotAnEvent(t *testing.T) {
-	recs := []StatRecord{
-		{TimeMS: 1000, Slot: 10, Comps: map[int]StatValue{20: {B: 1}}},
-		{TimeMS: 2000, Slot: 10, Comps: map[int]StatValue{20: {B: 1}}},
-		{TimeMS: 3000, Slot: 10, Comps: map[int]StatValue{20: {B: 2}}},
+	recs := []types.StatRecord{
+		{TimeMS: 1000, Slot: 10, Comps: map[int]types.StatValue{20: {B: 1}}},
+		{TimeMS: 2000, Slot: 10, Comps: map[int]types.StatValue{20: {B: 1}}},
+		{TimeMS: 3000, Slot: 10, Comps: map[int]types.StatValue{20: {B: 2}}},
 	}
 	got := NamedEventsFrom(recs, ObjectiveTypeZone)
 	if len(got) != 2 {

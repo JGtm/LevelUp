@@ -8,7 +8,7 @@
 # CE QUE L EMPREINTE HACHE (depuis le lot 2.6.1, 2026-09-16) : les sources NON-TEST de TOUT
 # l arbre internal/games/halo_infinite/film/internal/facts/ (killsource, objectives, fallback ; `rev.go`
 # exclu — il DECRIT la couche), fins de ligne normalisees en LF, chemin relatif A LA RACINE hache
-# a cote du contenu, PLUS les VALEURS amont de `source.Rev` et de `grammar.GrammarRev` (V15 (12)).
+# a cote du contenu, PLUS les VALEURS amont de `source.Rev` et de `grammar.Rev` (V15 (12)).
 # Avant ce lot elle ne hachait que `killsource/`, et le defaut etait ecrit : une correction de
 # grammaire qui change la sortie des faits sans toucher un octet de `killsource/` ne faisait
 # sonner personne.
@@ -159,7 +159,24 @@
 #               VOULU — une couche du dessous qui bouge fait bouger les faits — et ici elle ne
 #               commande rien : la sortie est identique a l octet des DEUX cotes, aucun match deja
 #               decode n est candidat au backlog.
+#   2026-09-17  `killsource-2026-09-16.5` -> `.6` (lot 2.6.1, volet grammaire). L AMONT CHANGE DE
+#               NOM ET DE PERIMETRE, LA SORTIE NE BOUGE PAS. `GrammarRev` devient `grammar.Rev`
+#               et son empreinte cesse de hacher les octets de `source/`, `profile/` et `facts/`
+#               au profit des seuls siens plus les VALEURS de `profile.Rev` et `source.Rev` : sa
+#               valeur passe a `grammar-2026-09-15.39`, et cette empreinte la hache. Rien de
+#               `killsource/`, `objectives/` ni `fallback/` ne change — AUCUN BACKLOG.
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.6.2, volet grammaire /
+#               rejeu), ET LE CHOIX EST EXPLICITE. Les DEUX alias dates de l arbre des faits
+#               (`killsource/types_alias.go`, `objectives/types_alias.go`) sont SUPPRIMES : les
+#               onze types de contrat se nomment `types.X` partout, y compris dans la couche qui
+#               les produit. Un alias de type est LE MEME type pour le compilateur ; aucune
+#               lecture, aucune largeur, aucun appariement ne change, la sortie est identique a
+#               l octet et AUCUN match deja decode n est candidat au backlog. Le critere de
+#               retrait ecrit dans les deux fichiers supprimes est tenu : plus aucun
+#               `killsource.{ApparStats,Assist,CoupleStats}` ni `objectives.{...}` dans le depot.
 killsource-2026-09-16.2	d09f5d19636bbb5eff1c4d38b54489868bafa127c01ce91b6cb028e9dd7bc131
 killsource-2026-09-16.3	8c87a14f4d72f8f2b05350a39c9a93b80479a372d61f3a9416628689e2b8e67e
 killsource-2026-09-16.4	a3fcc9fed6be58eeab197aaa212dd2e0e386750671ff6a67858454d76935eac8
 killsource-2026-09-16.5	2fa87d8ed6f9c0455e62163b4a5ab1876fda69aa54f6810708ae6ada385e7ee1
+killsource-2026-09-16.6	53750b4b23ee50362c2d5fb9a016331efade8a35333bd717641d13f173c7c2d7

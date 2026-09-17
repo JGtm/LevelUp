@@ -34,9 +34,8 @@ package replay
 // jamais déguisées en mesure (la leçon H2 de la revue P3, appliquée d'emblée).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // AbilityCharge est UNE lecture de charge publiée : qui, quand, quel équipement, et ce
@@ -106,11 +105,11 @@ type AbilityChargeCoverage struct {
 // portait ce joueur quand cette valeur a été transmise ? »).
 type abilityChargeInputs struct {
 	// reads : les lectures armées brutes du film (filmdec).
-	reads []grammar.AbilityCharge
+	reads []types.AbilityCharge
 	// stats : les dénominateurs du balayage — c'est d'eux que vient `ComponentAbsent`.
-	stats grammar.AbilityChargeStats
+	stats types.AbilityChargeStats
 	// ranks : les identités de capacité transmises par i48, le SEUL canal d'identité.
-	ranks []grammar.AbilityRank
+	ranks []types.AbilityRank
 	// lives : le découpage des vies, tel que le pont l'a déjà fait sur les positions BRUTES.
 	lives []lifeSpan
 	// palette : la palette du match, qui nomme le rang. Nil = film non classé -> aucune
@@ -187,7 +186,7 @@ type abilityChargeBuilder struct {
 // resolve donne son identité à UNE lecture et rend la charge à publier. ok=false quand elle
 // est écartée — et les deux refus sont comptés à part : « aucun rang lu dans la vie » et
 // « rang lu mais famille non mesurée » ne disent pas la même chose du film.
-func (b *abilityChargeBuilder) resolve(r grammar.AbilityCharge) (AbilityCharge, bool) {
+func (b *abilityChargeBuilder) resolve(r types.AbilityCharge) (AbilityCharge, bool) {
 	rank, ok := b.byLife.rankInLife(r.Slot, r.TimestampUS)
 	if !ok {
 		b.cov.NoIdentity++

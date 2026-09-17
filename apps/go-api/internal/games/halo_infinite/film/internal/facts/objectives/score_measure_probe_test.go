@@ -2,6 +2,7 @@ package objectives
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
 )
 
@@ -27,7 +28,7 @@ import (
 // writeProbe balaie les emplacements de l'archetype et ecrit ceux qui reproduisent les
 // compteurs de l'oracle. `n` borne le nombre de slots joueurs attendus (8 au statborg) : la
 // comparaison n'a de sens que si l'oracle a exactement ce nombre de lignes.
-func writeProbe(m *measureRows, recs []StatRecord, or oracleMatch) {
+func writeProbe(m *measureRows, recs []types.StatRecord, or oracleMatch) {
 	if len(or.Lines) != statPlayerSlots {
 		m.row("probe", "non arme", fmt.Sprintf("%d lignes d'oracle pour %d slots",
 			len(or.Lines), statPlayerSlots))
@@ -81,11 +82,11 @@ const roundMinSegment = 3
 //
 // C'est une sonde d'EXPLICATION : elle ne remplace pas le verdict A.0.1, elle dit si l'ecart
 // mesure a une cause nommee.
-func writeRounds(m *measureRows, recs []StatRecord, or oracleMatch) {
+func writeRounds(m *measureRows, recs []types.StatRecord, or oracleMatch) {
 	sum := map[int]int64{}
 	segs := map[int]int{}
 	for _, slot := range []int{6, 8} {
-		var cur []ScorePoint
+		var cur []types.ScorePoint
 		for _, p := range rawSerieOfSlot(recs, slot) {
 			if len(cur) > 0 && p.Value < cur[len(cur)-1].Value {
 				sum[slot], segs[slot] = addSegment(sum[slot], segs[slot], cur)
@@ -105,7 +106,7 @@ func writeRounds(m *measureRows, recs []StatRecord, or oracleMatch) {
 }
 
 // addSegment ajoute la derniere valeur retenue d'un segment a la somme des manches.
-func addSegment(sum int64, segs int, cur []ScorePoint) (int64, int) {
+func addSegment(sum int64, segs int, cur []types.ScorePoint) (int64, int) {
 	if len(cur) < roundMinSegment {
 		return sum, segs
 	}
@@ -118,21 +119,21 @@ func addSegment(sum int64, segs int, cur []ScorePoint) (int64, int) {
 
 // rawSerieOfSlot rend les emissions du score de mode d'un slot, dans l'ordre du film, les
 // valeurs negatives (ancrages parasites) jetees mais AUCUN filtre de monotonie applique.
-func rawSerieOfSlot(recs []StatRecord, slot int) []ScorePoint {
-	var out []ScorePoint
+func rawSerieOfSlot(recs []types.StatRecord, slot int) []types.ScorePoint {
+	var out []types.ScorePoint
 	for _, r := range recs {
 		if r.Slot != slot {
 			continue
 		}
 		if v, ok := r.Comps[modeScoreComp]; ok && v.A >= 0 {
-			out = append(out, ScorePoint{TimeMS: r.TimeMS, Slot: slot, Value: v.A})
+			out = append(out, types.ScorePoint{TimeMS: r.TimeMS, Slot: slot, Value: v.A})
 		}
 	}
 	return out
 }
 
 // fieldOf extrait un compteur de toutes les lignes de match.
-func fieldOf(lines []PlayerLine, which string) []int64 {
+func fieldOf(lines []types.PlayerLine, which string) []int64 {
 	out := make([]int64, 0, len(lines))
 	for _, l := range lines {
 		switch which {

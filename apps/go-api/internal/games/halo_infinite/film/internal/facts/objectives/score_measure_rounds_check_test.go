@@ -2,6 +2,7 @@ package objectives
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"path/filepath"
 	"sort"
@@ -178,13 +179,13 @@ func dedupFinalized(recs []statRecordExt, comp int) []finalizedValue {
 // de manche repart de zero, donc une chute de valeur borne une manche. C'est la mesure qui dit
 // si le film porte une ou plusieurs manches, et laquelle la grammaire voit.
 func writeExtSegments(m *measureRows, recs []statRecordExt, comp int) {
-	series := map[int][]ScorePoint{}
+	series := map[int][]types.ScorePoint{}
 	for _, r := range recs {
 		v, ok := r.Cur[comp]
 		if !ok || v.A < 0 {
 			continue
 		}
-		series[r.Slot] = append(series[r.Slot], ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
+		series[r.Slot] = append(series[r.Slot], types.ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
 	}
 	for _, slot := range sortedSlots(series) {
 		for i, seg := range segmentsOf(series[slot]) {
@@ -197,10 +198,10 @@ func writeExtSegments(m *measureRows, recs []statRecordExt, comp int) {
 // segmentsOf decoupe une serie chronologique a chaque CHUTE de valeur, puis filtre chaque
 // segment par la plus longue suite croissante (le meme critere que la production) et ne garde
 // que ceux d'au moins [roundSegmentMin] emissions retenues.
-func segmentsOf(pts []ScorePoint) [][]ScorePoint {
+func segmentsOf(pts []types.ScorePoint) [][]types.ScorePoint {
 	sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
-	var out [][]ScorePoint
-	var cur []ScorePoint
+	var out [][]types.ScorePoint
+	var cur []types.ScorePoint
 	flush := func() {
 		if kept := longestRun(cur, true); len(kept) >= roundSegmentMin {
 			out = append(out, kept)
@@ -225,13 +226,13 @@ const roundSegmentMin = 3
 // lire la valeur du film a un instant DONNE — par exemple a `time_played` quand l'oracle semble
 // fige avant la fin du film (item A.0b.3).
 func writeExtSerie(m *measureRows, recs []statRecordExt) {
-	series := map[int][]ScorePoint{}
+	series := map[int][]types.ScorePoint{}
 	for _, r := range recs {
 		if !IsTeamSlot(r.Slot) {
 			continue
 		}
 		if v, ok := r.Cur[modeScoreComp]; ok && v.A >= 0 {
-			series[r.Slot] = append(series[r.Slot], ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
+			series[r.Slot] = append(series[r.Slot], types.ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
 		}
 	}
 	for _, slot := range sortedSlots(series) {

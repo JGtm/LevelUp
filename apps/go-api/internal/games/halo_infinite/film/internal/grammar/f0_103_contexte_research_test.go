@@ -24,8 +24,8 @@ package grammar
 // le type 103 les domaines sont {0,0,7}, soit TROIS references de 13 bits — exactement la
 // largeur de `FrameConfig.IDLowBits`, celle de l en-tete NEW d un record de creation
 // (`woNewSlotBits`). L hypothese testee est donc mecanique : `(index, generation)` d une
-// reference du 103 est la cle de vie d une entite, la MEME paire que `EquipmentLifeKey` et que
-// `EquipmentCreation.Slot/Gen`. Le test est un APPARIEMENT EXACT, pas une fenetre de temps.
+// reference du 103 est la cle de vie d une entite, la MEME paire que `types.EquipmentLifeKey` et que
+// `types.EquipmentCreation.Slot/Gen`. Le test est un APPARIEMENT EXACT, pas une fenetre de temps.
 //
 // # POURQUOI LES COORDONNEES NE SONT PAS JUGEES ICI
 //
@@ -50,6 +50,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"path/filepath"
 	"sort"
@@ -72,7 +73,7 @@ type f0Ev103 struct {
 	Chunk  int
 	Paquet int
 	// TsUS est l horodatage MOTEUR du paquet : la meme horloge que
-	// `EquipmentCreation.TimestampUS` et `EquipmentPlacement.T0US`. Aucun recalage n est
+	// `types.EquipmentCreation.TimestampUS` et `types.EquipmentPlacement.T0US`. Aucun recalage n est
 	// donc necessaire entre l evenement et le record de creation.
 	TsUS uint64
 	// Pos est le rang dans la liste (1 = tete, cadrage CERTAIN).
@@ -101,16 +102,16 @@ type f0Film struct {
 	// Creations est le balayage BRUT des records `ti=37` (sans l oracle de vie delta) :
 	// TOUTES les apparitions d objet d equipement, y compris celles que l artefact ne
 	// publie pas. C est le denominateur de la question 4.
-	Creations []EquipmentCreation
-	CreStats  EquipmentCreationStats
+	Creations []types.EquipmentCreation
+	CreStats  types.EquipmentCreationStats
 	// Places est la chaine de PRODUCTION : les poses confirmees par l oracle de vie, celles
 	// que l artefact publie.
-	Places     []EquipmentPlacement
+	Places     []types.EquipmentPlacement
 	PlaceStats EquipmentPlacementStats
 	// Projectiles est le balayage `ti=41` : la SECONDE nature d objet que le 103 peut
 	// engendrer. Sans elle, une reference qui designe un projectile se lirait « non resolue »,
 	// et le taux de resolution du 103 serait sous-estime sans qu on sache pourquoi.
-	Projectiles []ProjectileTrack
+	Projectiles []types.ProjectileTrack
 }
 
 // f0Films rend la racine et les films demandes, ou skip l instrument.

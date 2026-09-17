@@ -1,6 +1,9 @@
 package grammar
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // Décodage de la LISTE D'ÉVÉNEMENTS en tête d'un paquet delta de film Theater.
 //
@@ -225,59 +228,6 @@ func readPlainRef(pay []byte, at, w int) guardedRef {
 // vehicleSeatBits est la largeur du champ SIÈGE dans la charge d'un événement véhicule : R(6).
 const vehicleSeatBits = 6
 
-// VehicleEvent est un embarquement (board) ou une sortie (exit) décodé depuis la liste
-// d'événements d'un paquet delta.
-type VehicleEvent struct {
-	// Kind vaut EventBipedBoardVehicle ou EventUnitExitVehicle.
-	Kind int
-	// Chunk / PacketIndex localisent l'événement dans le film.
-	Chunk, PacketIndex int
-	// TimestampUS est l'INSTANT de l'événement, en microsecondes (horloge du film) — même
-	// horloge que BipedPosition/FireEvent, donc directement croisable.
-	TimestampUS uint64
-
-	// OccupantPresent : la référence 0 (l'unité) est présente.
-	OccupantPresent bool
-	// OccupantSonde : la sonde de la réf 0 de la SORTIE (domaine 1). 1 = index bipède-relatif
-	// (9 bits), 0 = slot absolu (13 bits). Toujours 0 pour un EMBARQUEMENT : ses réfs sont en
-	// domaines 2/3/7, et `FUN_1406d3140` ne lit la sonde que pour le domaine 1.
-	OccupantSonde int
-	// OccupantSlot est le slot de l'unité : base bipède + index si sonde=1, index brut sinon.
-	OccupantSlot uint32
-	// OccupantInBand : le slot tombe dans la bande de slots bipèdes du film (contrôle).
-	OccupantInBand bool
-
-	// VehicleSlot est le slot du VÉHICULE que l'événement NOMME : la RÉFÉRENCE 1 de la SORTIE,
-	// lue en domaine 1 exactement comme l'occupant.
-	//
-	// POURQUOI LE MÊME DOMAINE POUR DEUX CHOSES DIFFÉRENTES — c'est l'acquis du lot V7 (§ 6 du
-	// rapport `V7_DESTRUCTION_EVENEMENT_2026-09-02.md`) : LE DOMAINE 1 EST CELUI DES UNITÉS, et
-	// dans la taxonomie Halo le BIPÈDE et le VÉHICULE sont deux spécialisations d'UNITÉ. La base
-	// est la même (le minimum de la bande bipède) et l'index de 9 bits porte au-delà, jusqu'à la
-	// bande `ti=40`. Mesure : sur les références de domaine 1 dont l'index SORT de la bande
-	// bipède, 99,6 à 100,0 % tombent dans la bande `ti=40` (types 0/1/7/36, 12 films) là où le
-	// hasard en mettrait 3 à 16 %. Le lot V6 avait cherché le véhicule en domaine 7 et l'y avait
-	// réfuté à raison : il est en domaine 1.
-	//
-	// POUR LA SORTIE, LA MESURE EST SANS RESTE : 105 / 105 sorties de 12 films, 100,0 % en bande
-	// `ti=40`, zéro bipède, zéro hors bande (V7 § 7). C'est cette référence-là que le calque de
-	// rejeu emploie pour résoudre le véhicule d'un épisode d'occupation, la géométrie n'étant plus
-	// que le repli.
-	VehicleSlot uint32
-	// VehicleSlotValid : la référence du véhicule était PRÉSENTE (bit de garde posé). Faux pour un
-	// EMBARQUEMENT : ses trois références sont en domaines 2/3/7 et AUCUNE ne résout un slot
-	// `ti=40` (mesure au § 2 du rapport V8).
-	VehicleSlotValid bool
-	// VehicleGen est la GÉNÉRATION (2 bits) du handle du véhicule, lue dans la même référence.
-	// Elle n'est PAS la clé de vie employée par le calque — celle-ci se résout par la fenêtre
-	// temporelle du recensement —, mais elle en est le contrôle indépendant (V8 § 2).
-	VehicleGen uint32
-
-	// Seat est le siège (R(6)) lu en fin de charge. SeatValid=false si le payload est trop court.
-	Seat      uint32
-	SeatValid bool
-}
-
 // decodeVehicleEvent décode l'événement de tête board/exit d'un payload. `base` est le début de
 // la plage de slots bipèdes du film (min de la bande) ; `inBand` teste l'appartenance d'un slot
 // à la bande. Rend ok=false si le type de tête n'est pas board/exit.
@@ -290,12 +240,12 @@ type VehicleEvent struct {
 //   - EMBARQUEMENT (`biped_board_vehicle`) : réfs en domaines 2, 3, 7 puis R(6) siège. AUCUNE
 //     sonde (elle n'existe que pour le domaine 1). La réf 0 est l'occupant, slot = base +
 //     index(8).
-func decodeVehicleEvent(pay []byte, base uint32, inBand SlotBand) (VehicleEvent, bool) {
+func decodeVehicleEvent(pay []byte, base uint32, inBand SlotBand) (types.VehicleEvent, bool) {
 	typ, present := PacketHeadEventType(pay)
 	if !present || (typ != EventBipedBoardVehicle && typ != EventUnitExitVehicle) {
-		return VehicleEvent{}, false
+		return types.VehicleEvent{}, false
 	}
-	ev := VehicleEvent{Kind: typ}
+	ev := types.VehicleEvent{Kind: typ}
 	var seatBit int
 	if typ == EventUnitExitVehicle {
 		seatBit = decodeExitRefs(pay, base, inBand, &ev)
@@ -318,7 +268,7 @@ func decodeVehicleEvent(pay []byte, base uint32, inBand SlotBand) (VehicleEvent,
 // pas : la réf 0 est l'OCCUPANT (100 % en bande bipède), la réf 1 est le VÉHICULE (105 / 105 en
 // bande `ti=40`, zéro bipède — V7 § 7). La réf 1 était lue et JETÉE jusqu'au lot V8 ; elle est
 // désormais publiée, et c'est elle qui nomme le véhicule d'un épisode d'occupation.
-func decodeExitRefs(pay []byte, base uint32, inBand SlotBand, ev *VehicleEvent) int {
+func decodeExitRefs(pay []byte, base uint32, inBand SlotBand, ev *types.VehicleEvent) int {
 	r0 := readDom1Ref(pay, eventPayloadStartBit)
 	if r0.Present {
 		ev.OccupantPresent = true
@@ -371,7 +321,7 @@ func boardRefs(pay []byte) (r0, r1, r2 guardedRef) {
 
 // decodeBoardRefs remplit l'occupant d'un EMBARQUEMENT et rend le bit du siège. L'occupant est la
 // réf 0 (domaine 2), rapportée à la base de la bande bipède comme pour la sortie.
-func decodeBoardRefs(pay []byte, base uint32, inBand SlotBand, ev *VehicleEvent) int {
+func decodeBoardRefs(pay []byte, base uint32, inBand SlotBand, ev *types.VehicleEvent) int {
 	r0, _, r2 := boardRefs(pay)
 	if r0.Present {
 		ev.OccupantPresent = true
@@ -383,7 +333,7 @@ func decodeBoardRefs(pay []byte, base uint32, inBand SlotBand, ev *VehicleEvent)
 
 // ScanFilmVehicleEvents est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis appelle
 // [ScanVehicleEvents]. La cuisson passe un contexte deja ouvert.
-func ScanFilmVehicleEvents(dir string) ([]VehicleEvent, error) {
+func ScanFilmVehicleEvents(dir string) ([]types.VehicleEvent, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
@@ -397,14 +347,14 @@ func ScanFilmVehicleEvents(dir string) ([]VehicleEvent, error) {
 // PLAN_CUISSON_PERF) ; le balayage parcourt ensuite les paquets delta dont l'événement de tête
 // est board/exit. Les chunks illisibles sont ignorés (film partiel) ; erreur seulement si aucun
 // chunk lisible.
-func ScanVehicleEvents(fc *FilmContext) ([]VehicleEvent, error) {
+func ScanVehicleEvents(fc *FilmContext) ([]types.VehicleEvent, error) {
 	nums := fc.ChunkNumbers()
 	band := fc.BipedSlots()
 	base := uint32(0)
 	if slots := band.Slots(); len(slots) > 0 {
 		base = slots[0] // la bande est rendue en ordre croissant : le premier EST le minimum
 	}
-	var out []VehicleEvent
+	var out []types.VehicleEvent
 	read := 0
 	for _, c := range nums {
 		data, pks, ok := fc.ChunkAt(c)

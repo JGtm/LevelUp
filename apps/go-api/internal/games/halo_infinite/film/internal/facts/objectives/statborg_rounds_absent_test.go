@@ -24,11 +24,14 @@ package objectives
 // morts, et [RoundIdentity.At] envoyait dans cette manche vide tout evenement date apres
 // 79 076 ms — soit la quasi-totalite du match.
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 // TestRealRoundsRefuseUneMancheDerriereUnTrouVide — un trou VIDE rompt la chaine.
 func TestRealRoundsRefuseUneMancheDerriereUnTrouVide(t *testing.T) {
-	var recs []StatRecord
+	var recs []types.StatRecord
 	recs = append(recs, joueurSerie(0, 1_000, 300, 200)...)
 	// Pas de manche 1 : aucun enregistrement, d'aucune sorte.
 	recs = append(recs, joueurSerie(2, 80_000, 44, 0)...)
@@ -48,7 +51,7 @@ func TestRealRoundsRefuseUneMancheDerriereUnTrouVide(t *testing.T) {
 // pour une suite coherente) garde la chaine ouverte. Si la garde regardait autre chose que la
 // PRESENCE — la matiere, la coherence — ce test rougirait.
 func TestRealRoundsGardeUneMancheCourteQuiEXISTE(t *testing.T) {
-	var recs []StatRecord
+	var recs []types.StatRecord
 	recs = append(recs, joueurSerie(0, 1_000, 300, 200)...)
 	recs = append(recs, joueurSerie(1, 60_000, 3, 0)...)
 	recs = append(recs, joueurSerie(2, 80_000, 44, 0)...)

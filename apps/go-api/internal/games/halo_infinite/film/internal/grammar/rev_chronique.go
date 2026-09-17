@@ -1,18 +1,18 @@
 package grammar
 
-// grammar_rev_chronique.go — LA CHRONIQUE DE [GrammarRev], UNE ENTREE PAR RANG.
+// rev_chronique.go — LA CHRONIQUE DE [Rev], UNE ENTREE PAR RANG.
 //
 // # POURQUOI CE FICHIER EXISTE (2026-09-18, lot 2.4.1)
 //
-// La chronique vivait dans le godoc de [GrammarRev]. Au rang `.28` ce fichier passait 500
+// La chronique vivait dans le godoc de [Rev]. Au rang `.28` ce fichier passait 500
 // lignes, et le ratchet de taille (`archlint/film_file_size_test.go`) le refusait — a juste
 // titre : une chronique qui ne peut plus grandir cesse d etre tenue, et c est exactement le
 // defaut F5 que `TestChroniqueCouvreLaRevisionCourante` a ete ecrit pour fermer. Elle vit donc
-// ici, ou elle peut grandir, et `grammar_rev.go` ne garde que la regle et la constante.
+// ici, ou elle peut grandir, et `rev.go` ne garde que la regle et la constante.
 //
 // # CE FICHIER N EST PAS DE LA GRAMMAIRE
 //
-// Comme `grammar_rev.go`, il est EXCLU de l ensemble hache par l empreinte (cf.
+// Comme `rev.go`, il est EXCLU de l ensemble hache par l empreinte (cf.
 // `fichiersHorsGrammaire`) : il DECRIT la grammaire, il n en fait pas partie. Sans cette
 // exclusion, ecrire une entree changerait l empreinte, et la branche « la revision a change
 // sans que la grammaire bouge » redeviendrait du code mort (revue R1, P2-3).
@@ -27,7 +27,7 @@ package grammar
 // commit par commit sur l integration (`git log --first-parent`), la suite reelle est celle-ci —
 // un lot, un rang, dans l ordre ou les merges sont tombes.
 //
-// LES RANGS `.12` A `.26` VIVENT DANS `grammar_rev_chronique_archive.go` : la chronique se
+// LES RANGS `.12` A `.26` VIVENT DANS `rev_chronique_archive.go` : la chronique se
 // ROTATIONNE quand ce fichier atteint 500 lignes, comme `.ai/thought_log.md`. Le geste a ete
 // refait le 2026-09-16 (lot 2.5.b), sur les rangs `.21` a `.26` (les six lots de la famille
 // 2.2) : c est le geste ordinaire que l en-tete de l archive annonce, pas un incident. Ce qui
@@ -107,7 +107,7 @@ package grammar
 // `a521164d` (HI_1_4_1) et `fb1a1a72` (HI_1_13_0) en serie puis dans deux goroutines ;
 // empreintes identiques a l octet, sous `-race`.
 //
-// `KillSourceDecoderRev` ne bouge PAS : `killsource/` change de FORME (la calibration rend un
+// `facts.Rev` ne bouge PAS : `killsource/` change de FORME (la calibration rend un
 // profil, `resetGlobals` disparait) mais les lignes PRODUITES sont identiques a l octet. Son
 // golden est regenere pour refiger le couple (revision, empreinte). `SchemaVersion` reste 60.
 //
@@ -145,9 +145,9 @@ package grammar
 //
 // L EMPREINTE HACHE DESORMAIS QUATRE RACINES : `internal/analysis/filmsource` rejoint `filmdec`,
 // `killsource` et `objectiveevents`. Sans cela ce lot aurait OUVERT UN TROU — la lecture de bits
-// qui vient d y descendre aurait pu changer sans que `GrammarRev` bouge.
+// qui vient d y descendre aurait pu changer sans que `grammar.Rev` bouge.
 //
-// `KillSourceDecoderRev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet (c est
+// `facts.Rev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet (c est
 // exactement ce que les deux preuves ci-dessus etablissent), seule sa source change. Son golden
 // est regenere pour refiger le couple (revision, empreinte). `SchemaVersion` reste 60.
 //
@@ -192,7 +192,7 @@ package grammar
 // degenere). Le differentiel du resolveur xuid -> player_index reste dans `weaponv3`, positions
 // NEGATIVES comprises, et vise desormais les primitives de la source.
 //
-// `KillSourceDecoderRev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet.
+// `facts.Rev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet.
 // `SchemaVersion` reste 60.
 //
 // ENTREE `grammar-2026-09-15.30` (2026-09-16, lot 2.5.d.2 — RANG PROVISOIRE) : `.29` -> `.30`.
@@ -208,7 +208,7 @@ package grammar
 // L EMPREINTE MONTE PARCE QU ELLE HACHE DES OCTETS DE SOURCE, et c est ecrit dans son en-tete :
 // la clause `package` de 27 fichiers de production a change. AUCUN OCTET DE FILM N EST LU
 // AUTREMENT — la grammaire du pied de film (`scanTh10Events`, `decodeTh10Block`) est identique a
-// l octet, seul son LIEU a change. `racinesGrammaire` (grammar_rev_fingerprint_test.go) et le
+// l octet, seul son LIEU a change. `racinesGrammaire` (rev_test.go) et le
 // cadre herite (`film/revision/equivalence_test.go`) suivent la racine.
 //
 // L ORDRE DES COMMITS DE 2.5 CHANGE, ET LA MESURE LE DIT. La note de preparation (§2.7) faisait
@@ -219,7 +219,7 @@ package grammar
 // `internal/analysis/` AVANT la couche `source`. Deux entrees de l allowlist D9 tombent ici, par
 // le deplacement lui-meme.
 //
-// `KillSourceDecoderRev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet (seul
+// `facts.Rev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet (seul
 // un commentaire y nomme desormais `objectives`). `SchemaVersion` reste 60.
 //
 // ENTREE `grammar-2026-09-15.31` (2026-09-16, lot 2.5.c — RANG PROVISOIRE) : `.30` -> `.31`.
@@ -249,7 +249,7 @@ package grammar
 // `"filmdec"` du registre des replis (`facts/fallback/registre.go`) est une CLE publiee du meme
 // ordre. Leur renommage se decidera avec les consommateurs, pas ici.
 //
-// `KillSourceDecoderRev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet.
+// `facts.Rev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet.
 // `SchemaVersion` reste 60.
 //
 // ENTREE `grammar-2026-09-15.32` (2026-09-16, lot 2.5.a — RANG PROVISOIRE) : `.31` -> `.32`.
@@ -277,7 +277,7 @@ package grammar
 //
 // L EMPREINTE MONTE parce que la clause `package` de cinq fichiers de production a change et que
 // la racine hachee suit le paquet. AUCUN OCTET DE FILM N EST LU AUTREMENT.
-// `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
+// `facts.Rev` ne bouge PAS ; `SchemaVersion` reste 60.
 //
 // ENTREE `grammar-2026-09-15.33` (2026-09-16, lot 2.5.d.1 — RANG PROVISOIRE) : `.32` -> `.33`.
 // DEPLACEMENT PUR, SORTIE IDENTIQUE.
@@ -290,7 +290,7 @@ package grammar
 //
 // L EMPREINTE MONTE parce qu elle hache le CHEMIN RELATIF a cote du contenu et que la racine
 // `killsource` a change de place. AUCUN OCTET DE FILM N EST LU AUTREMENT ; la SORTIE de
-// `killsource` est identique a l octet, donc `KillSourceDecoderRev` ne bouge pas (son golden est
+// `killsource` est identique a l octet, donc `facts.Rev` ne bouge pas (son golden est
 // refige, son ancre de racine suit le paquet). `SchemaVersion` reste 60.
 //
 // ENTREE `grammar-2026-09-15.34` (2026-09-16, lot 2.5.b) : `.33` -> `.34`. EXTRACTION DE LA
@@ -327,10 +327,10 @@ package grammar
 // `grammar` ont change (declarations sorties, qualifieurs ajoutes), et la racine `film/profile`
 // ENTRE dans l empreinte. Ce second point est le vrai gain du lot pour ce garde-rail : la
 // DONNEE du decodeur — les largeurs par carte, la transposition par build, le decoupage MPP par
-// format — est desormais hachee, alors qu elle aurait pu bouger sans que `GrammarRev` monte si
+// format — est desormais hachee, alors qu elle aurait pu bouger sans que `grammar.Rev` monte si
 // la racine n avait pas suivi.
 //
-// `KillSourceDecoderRev` ne bouge PAS : `film/facts/killsource` ne change que ses qualifieurs,
+// `facts.Rev` ne bouge PAS : `film/facts/killsource` ne change que ses qualifieurs,
 // sa sortie est identique a l octet, et son propre ratchet d empreinte fait foi.
 // `SchemaVersion` reste 60.
 //
@@ -341,7 +341,7 @@ package grammar
 // TROIS GESTES, ET AUCUN NE LIT UN OCTET AUTREMENT. (1) `source.Rev` NAIT (`source/rev.go`,
 // golden a historique `source/testdata/source_rev.golden`) : la couche qui porte la porte aux
 // octets a desormais sa revision propre, sur le mecanisme central `film/revision`. (2)
-// `facts.Rev` NAIT (`facts/rev.go`) et REPREND la valeur de `KillSourceDecoderRev`
+// `facts.Rev` NAIT (`facts/rev.go`) et REPREND la valeur de `facts.Rev`
 // (`killsource-2026-09-16.2`, V15 (16)) : la constante quitte `sync/killcollector`, qui la LIT,
 // son empreinte couvre TOUT l arbre `facts/` (killsource, objectives, fallback) plus les VALEURS
 // de `source.Rev` et de cette constante-ci (V15 (12)), et le backlog de redecodage reste un
@@ -456,3 +456,36 @@ package grammar
 // portent plus les phrases citees.
 //
 // `SchemaVersion` reste 60 ; aucun match deja decode n est candidat au backlog.
+//
+// ENTREE `grammar-2026-09-15.39` (2026-09-17, lot 2.6.1) : HERITAGE, MEME GRAMMAIRE, EMPREINTE
+// RE-POINTEE. AUCUN OCTET N EST LU AUTREMENT.
+//
+// La constante passe de `GrammarRev` a [Rev] et son gate passe sur le mecanisme central
+// (`film/revision`, lot 2.6.0) : c est la derniere des quatre couches a heriter, et l allowlist
+// de `archlint/no_ad_hoc_source_fingerprint_test.go` en devient VIDE.
+//
+// CE QUI CHANGE EST LE PERIMETRE DE L EMPREINTE, ET LUI SEUL. Elle hachait CINQ RACINES EN
+// OCTETS — `source/`, `profile/`, `grammar/`, `facts/killsource/`, `facts/objectives/`, 183
+// fichiers ; elle hache desormais `grammar/` SEUL (143 fichiers) plus les VALEURS de
+// `profile.Rev` et de `source.Rev` (V15 (12)), dans cet ordre. Les couches du dessous ont chacune
+// leur revision depuis le volet facts + source du meme lot : c est `source.Rev` qui hache
+// `source/`, `profile.Rev` qui hache `profile/`, `facts.Rev` qui hache `facts/`. Hacher leurs
+// octets ICI aurait fait monter la grammaire pour une couche du DESSOUS d elle, et surtout
+// rendait le meme diagnostic pour une borne de carte, un ordre de composants et un appariement
+// de kill-feed.
+//
+// RIEN N EST RELACHE : le sens unique passe des octets aux VALEURS AMONT, qui le tiennent plus
+// strictement — une montee de `source.Rev` ou de `profile.Rev` fait monter `Rev`, donc
+// `facts.Rev`, donc le backlog killsource (D6, signal utilisateur), sans que personne ait a y
+// penser.
+//
+// POURQUOI UN RANG NEUF PLUTOT QU UNE EMPREINTE RECOPIEE. La preuve d equivalence du lot 2.6.0
+// disait que le cadre HERITE rend, sur les cinq racines, exactement l empreinte figee au `.38`
+// (`7994ce19…`) : l heritage de l OUTILLAGE ne coute donc rien. Le PERIMETRE, lui, change — 143
+// fichiers et deux valeurs amont au lieu de 183 fichiers — et l empreinte mesuree vaut
+// `966e3f3e…`. Deux quantites differentes ne se figent pas sous la meme ligne : le rang monte,
+// et la raison est ecrite ici.
+//
+// `SchemaVersion` reste 60 ; aucun match deja decode n est candidat au backlog par un changement
+// de sortie — `facts.Rev` monte MECANIQUEMENT parce qu elle hache la valeur ci-dessus, et sa
+// propre entree le dit.

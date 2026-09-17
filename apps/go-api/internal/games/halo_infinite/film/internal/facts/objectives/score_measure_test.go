@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // score_measure_test.go — INSTRUMENT de la phase 0 du lot A de
@@ -111,7 +112,7 @@ func (m *measureRows) row(kind string, vals ...any) {
 }
 
 // writeMeta ecrit l'identite du film et le cout du decodage.
-func writeMeta(m *measureRows, short string, or oracleMatch, film *source.Film, recs []StatRecord, decodeMS int64) {
+func writeMeta(m *measureRows, short string, or oracleMatch, film *source.Film, recs []types.StatRecord, decodeMS int64) {
 	tMin, tMax := recs[0].TimeMS, recs[0].TimeMS
 	nTeam, nPlayer := 0, 0
 	for _, r := range recs {
@@ -152,7 +153,7 @@ func framePacketCount(film *source.Film) int {
 // son score. Mesure du 2026-08-17 : en CTF `530820e5` (oracle 3-0), le slot 6 n'a aucune
 // emission et le slot 8 en a trois, une par capture. Le compte de slots emetteurs est publie
 // a cote du verdict pour que la convention reste verifiable ligne par ligne.
-func writeTeams(m *measureRows, recs []StatRecord, or oracleMatch) map[int]int64 {
+func writeTeams(m *measureRows, recs []types.StatRecord, or oracleMatch) map[int]int64 {
 	raw := collectComponent(recs, modeScoreComp, false)
 	// La courbe mesuree est celle de la PRODUCTION (manches cumulees), pas une re-implementation :
 	// l instrument doit juger le code livre, pas un double.
@@ -160,7 +161,7 @@ func writeTeams(m *measureRows, recs []StatRecord, or oracleMatch) map[int]int64
 	last := map[int]int64{}
 	emitters := 0
 	for _, slot := range []int{6, 8} {
-		rawN, keptPts := 0, []ScorePoint{}
+		rawN, keptPts := 0, []types.ScorePoint{}
 		for _, p := range raw {
 			if p.Slot == slot {
 				rawN++
@@ -187,7 +188,7 @@ func writeTeams(m *measureRows, recs []StatRecord, or oracleMatch) map[int]int64
 }
 
 // monotoneOf dit si une suite est strictement croissante en valeur.
-func monotoneOf(pts []ScorePoint) string {
+func monotoneOf(pts []types.ScorePoint) string {
 	for i := 1; i < len(pts); i++ {
 		if pts[i].Value <= pts[i-1].Value {
 			return "non"
@@ -210,7 +211,7 @@ func agreementOf(last map[int]int64, or oracleMatch) string {
 }
 
 // writePlayers ecrit les compteurs par slot de joueur (A.0.3) et rend l'appariement retenu.
-func writePlayers(m *measureRows, recs []StatRecord, or oracleMatch) (map[int]string, int) {
+func writePlayers(m *measureRows, recs []types.StatRecord, or oracleMatch) (map[int]string, int) {
 	kills := lastBySlot(recs, statSlotKey{coreKillsComp, sideA})
 	deaths := lastBySlot(recs, statSlotKey{coreKillsComp, sideB})
 	assists := lastBySlot(recs, statSlotKey{coreAssistsComp, sideA})
@@ -218,7 +219,7 @@ func writePlayers(m *measureRows, recs []StatRecord, or oracleMatch) (map[int]st
 	triplet := SlotIdentityFrom(recs, or.Lines)
 	noncirc := identityByDeathsAssists(deaths, assists, or.Lines)
 
-	byXUID := map[string]PlayerLine{}
+	byXUID := map[string]types.PlayerLine{}
 	for _, l := range or.Lines {
 		byXUID[l.XUID] = l
 	}
@@ -267,7 +268,7 @@ func writePlayers(m *measureRows, recs []StatRecord, or oracleMatch) (map[int]st
 // qui exige deja cette egalite ne prouve rien. Cet appariement-ci laisse les frags LIBRES,
 // et le controle de `comp 2 A` devient une mesure. Le prix est une resolution plus faible :
 // deux joueurs au meme couple (morts, assistances) ne sont apparies ni l'un ni l'autre.
-func identityByDeathsAssists(deaths, assists map[int]int64, lines []PlayerLine) map[int]string {
+func identityByDeathsAssists(deaths, assists map[int]int64, lines []types.PlayerLine) map[int]string {
 	claim := map[int]string{}
 	for slot := range deaths {
 		var found string
@@ -296,7 +297,7 @@ func identityByDeathsAssists(deaths, assists map[int]int64, lines []PlayerLine) 
 
 // writeIdentity applique la cascade D3 : (a) par les scores finaux, (b) par les sommes de
 // frags des slots joueurs identifies, (c) non resolu.
-func writeIdentity(m *measureRows, recs []StatRecord, or oracleMatch, last map[int]int64, ident map[int]string) {
+func writeIdentity(m *measureRows, recs []types.StatRecord, or oracleMatch, last map[int]int64, ident map[int]string) {
 	// (a) — les deux scores oracle doivent differer, sinon l'etiquetage est ambigu.
 	if or.Team0 != or.Team1 && agreementOf(last, or) == "exact" {
 		t6 := 0
@@ -332,7 +333,7 @@ func writeIdentity(m *measureRows, recs []StatRecord, or oracleMatch, last map[i
 
 // writeVolume mesure ce que la publication couterait (A.0.4) : les points reellement
 // publies (aux CHANGEMENTS) et la taille JSON de la charge utile.
-func writeVolume(m *measureRows, recs []StatRecord, ident map[int]string) {
+func writeVolume(m *measureRows, recs []types.StatRecord, ident map[int]string) {
 	var doc struct {
 		Teams   []volTeam   `json:"teams"`
 		Players []volPlayer `json:"players"`
@@ -362,8 +363,8 @@ func writeVolume(m *measureRows, recs []StatRecord, ident map[int]string) {
 // serieOfSlot rend la suite chronologique d'un emplacement pour UN slot, debarrassee des
 // ancrages parasites par le meme critere de plus longue sous-suite que la production
 // (strict pour le score de mode, non decroissant pour un compteur).
-func serieOfSlot(recs []StatRecord, slot int, key statSlotKey, strict bool) []ScorePoint {
-	var pts []ScorePoint
+func serieOfSlot(recs []types.StatRecord, slot int, key statSlotKey, strict bool) []types.ScorePoint {
+	var pts []types.ScorePoint
 	for _, r := range recs {
 		if r.Slot != slot {
 			continue
@@ -379,13 +380,13 @@ func serieOfSlot(recs []StatRecord, slot int, key statSlotKey, strict bool) []Sc
 		if val < 0 {
 			continue
 		}
-		pts = append(pts, ScorePoint{TimeMS: r.TimeMS, Slot: slot, Value: val})
+		pts = append(pts, types.ScorePoint{TimeMS: r.TimeMS, Slot: slot, Value: val})
 	}
 	return longestRun(pts, strict)
 }
 
 // lastValueOfSlot rend la derniere valeur retenue d'un emplacement pour un slot, ou -1.
-func lastValueOfSlot(recs []StatRecord, slot int, key statSlotKey) int64 {
+func lastValueOfSlot(recs []types.StatRecord, slot int, key statSlotKey) int64 {
 	pts := serieOfSlot(recs, slot, key, false)
 	if len(pts) == 0 {
 		return -1
@@ -394,7 +395,7 @@ func lastValueOfSlot(recs []StatRecord, slot int, key statSlotKey) int64 {
 }
 
 // lastBySlot rend, par slot de JOUEUR, la derniere valeur retenue d'un emplacement.
-func lastBySlot(recs []StatRecord, key statSlotKey) map[int]int64 {
+func lastBySlot(recs []types.StatRecord, key statSlotKey) map[int]int64 {
 	out := map[int]int64{}
 	for slot, pts := range seriesBySlot(recs, key) {
 		if len(pts) > 0 {
@@ -405,7 +406,7 @@ func lastBySlot(recs []StatRecord, key statSlotKey) map[int]int64 {
 }
 
 // changesOnly ne garde que les emissions ou la valeur CHANGE — la forme publiee.
-func changesOnly(pts []ScorePoint) []ScorePoint {
+func changesOnly(pts []types.ScorePoint) []types.ScorePoint {
 	out := pts[:0:0]
 	for i, p := range pts {
 		if i == 0 || p.Value != pts[i-1].Value {
@@ -416,7 +417,7 @@ func changesOnly(pts []ScorePoint) []ScorePoint {
 }
 
 // filterSlot restreint une suite a un slot.
-func filterSlot(pts []ScorePoint, slot int) []ScorePoint {
+func filterSlot(pts []types.ScorePoint, slot int) []types.ScorePoint {
 	out := pts[:0:0]
 	for _, p := range pts {
 		if p.Slot == slot {
@@ -449,7 +450,7 @@ type volPlayer struct {
 }
 
 // asPoints convertit une suite d'emissions en points publiables.
-func asPoints(pts []ScorePoint) []volPoint {
+func asPoints(pts []types.ScorePoint) []volPoint {
 	out := make([]volPoint, 0, len(pts))
 	for _, p := range pts {
 		out = append(out, volPoint{T: p.TimeMS, V: p.Value})
@@ -482,7 +483,7 @@ func boolFR(b bool) string {
 }
 
 // oracleOf rend le compteur oracle demande, ou "-" si le joueur n'est pas apparie.
-func oracleOf(l PlayerLine, has bool, which string) string {
+func oracleOf(l types.PlayerLine, has bool, which string) string {
 	if !has {
 		return "-"
 	}

@@ -6,6 +6,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // projectiles.go — TRAJECTOIRES DE PROJECTILE, décodées des paquets delta.
@@ -82,24 +83,6 @@ func projPosBits(lg profile.PrecisionDescriptor) int {
 	return projGateBits(lg) + int(lg.AxisW[0]+lg.AxisW[1]+lg.AxisW[2]) + 2
 }
 
-// ProjectileSample est une position de projectile à un instant.
-type ProjectileSample struct {
-	TimestampUS uint64
-	Chunk       int
-	X, Y, Z     float32
-	// AtRest signale que ce record porte `projectile-at-rest-state` : le vol est fini.
-	AtRest bool
-}
-
-// ProjectileTrack est la vie d'un projectile : un slot, une génération, une suite de positions.
-type ProjectileTrack struct {
-	// Slot et Gen identifient la vie. LA PAIRE, pas le slot seul : le pool de slots reboucle
-	// et un même slot sert plusieurs projectiles au cours du match.
-	Slot uint32
-	Gen  uint32
-	Pts  []ProjectileSample
-}
-
 // EquipmentTypeIndex est l'archétype des objets d'ÉQUIPEMENT déployés (mur, champ de
 // réparation, détecteur, écran). Comme les projectiles, ce sont des entités du monde : elles
 // ont une position, et donc un endroit où le joueur les a posées.
@@ -112,7 +95,7 @@ const EquipmentTypeIndex = 37
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 // ScanFilmProjectiles est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanProjectiles].
-func ScanFilmProjectiles(dir string, wr *profile.Vec3Range) ([]ProjectileTrack, error) {
+func ScanFilmProjectiles(dir string, wr *profile.Vec3Range) ([]types.ProjectileTrack, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
@@ -121,7 +104,7 @@ func ScanFilmProjectiles(dir string, wr *profile.Vec3Range) ([]ProjectileTrack, 
 }
 
 // ScanProjectiles décode les trajectoires de projectile d'un film DEJA CHARGE.
-func ScanProjectiles(fc *FilmContext, wr *profile.Vec3Range) ([]ProjectileTrack, error) {
+func ScanProjectiles(fc *FilmContext, wr *profile.Vec3Range) ([]types.ProjectileTrack, error) {
 	return ScanWorldObjects(fc, wr, ProjectileTypeIndex)
 }
 
@@ -135,7 +118,7 @@ func ScanProjectiles(fc *FilmContext, wr *profile.Vec3Range) ([]ProjectileTrack,
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 // ScanFilmWorldObjects est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanWorldObjects].
-func ScanFilmWorldObjects(dir string, wr *profile.Vec3Range, typeIndex int) ([]ProjectileTrack, error) {
+func ScanFilmWorldObjects(dir string, wr *profile.Vec3Range, typeIndex int) ([]types.ProjectileTrack, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
@@ -144,7 +127,7 @@ func ScanFilmWorldObjects(dir string, wr *profile.Vec3Range, typeIndex int) ([]P
 }
 
 // ScanWorldObjects décode les trajectoires d'un archétype d'objet du monde d'un film DEJA CHARGE.
-func ScanWorldObjects(fc *FilmContext, wr *profile.Vec3Range, typeIndex int) ([]ProjectileTrack, error) {
+func ScanWorldObjects(fc *FilmContext, wr *profile.Vec3Range, typeIndex int) ([]types.ProjectileTrack, error) {
 	film := fc.Film()
 	if len(FilmChunkNumbers(film)) == 0 {
 		return nil, ErrNoFilmChunk
@@ -167,7 +150,7 @@ func ScanWorldObjects(fc *FilmContext, wr *profile.Vec3Range, typeIndex int) ([]
 // [ScanWorldObjectsForBand].
 func ScanFilmWorldObjectsForBand(
 	dir string, wr *profile.Vec3Range, band map[uint32]bool,
-) ([]ProjectileTrack, error) {
+) ([]types.ProjectileTrack, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
@@ -178,7 +161,7 @@ func ScanFilmWorldObjectsForBand(
 // ScanWorldObjectsForBand décode les trajectoires d'une bande de slots dans un film DEJA CHARGE.
 func ScanWorldObjectsForBand(
 	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
-) ([]ProjectileTrack, error) {
+) ([]types.ProjectileTrack, error) {
 	if wr == nil {
 		return nil, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
 	}
@@ -189,7 +172,7 @@ func ScanWorldObjectsForBand(
 		return nil, ErrNoFilmChunk
 	}
 	type key struct{ slot, gen uint32 }
-	lives := map[key][]ProjectileSample{}
+	lives := map[key][]types.ProjectileSample{}
 	for _, c := range nums {
 		chunk, pks, ok := FilmChunkAt(film, c)
 		if !ok {
@@ -207,14 +190,14 @@ func ScanWorldObjectsForBand(
 			}
 		}
 	}
-	out := make([]ProjectileTrack, 0, len(lives))
+	out := make([]types.ProjectileTrack, 0, len(lives))
 	for k, pts := range lives {
 		// Tri TOTAL des échantillons d'une vie : l'instant seul laisse des ex æquo (plusieurs
 		// records du même projectile dans un même paquet), et un départage arbitraire ferait
 		// dépendre le premier point — donc la naissance — de l'ordre d'arrivée.
 		sort.Slice(pts, func(i, j int) bool { return lessSample(pts[i], pts[j]) })
 		for _, seg := range splitLives(pts) {
-			out = append(out, ProjectileTrack{Slot: k.slot, Gen: k.gen, Pts: seg})
+			out = append(out, types.ProjectileTrack{Slot: k.slot, Gen: k.gen, Pts: seg})
 		}
 	}
 	// Tri TOTAL des vies. `lives` est une MAP : son ordre d'itération change à chaque exécution,
@@ -228,7 +211,7 @@ func ScanWorldObjectsForBand(
 }
 
 // lessSample : ordre total sur les échantillons d'une vie (instant, puis position).
-func lessSample(a, b ProjectileSample) bool {
+func lessSample(a, b types.ProjectileSample) bool {
 	if a.TimestampUS != b.TimestampUS {
 		return a.TimestampUS < b.TimestampUS
 	}
@@ -259,7 +242,7 @@ func lessSample(a, b ProjectileSample) bool {
 // l'ordre) : jamais une adresse mémoire ni le rang d'itération de la map, qui rendraient le
 // résultat non reproductible d'un processus à l'autre. Deux pistes que ce comparateur ne
 // sépare pas sont IDENTIQUES champ pour champ — les échanger ne change donc pas la sortie.
-func lessTrack(a, b ProjectileTrack) bool {
+func lessTrack(a, b types.ProjectileTrack) bool {
 	if a.Pts[0].TimestampUS != b.Pts[0].TimestampUS {
 		return a.Pts[0].TimestampUS < b.Pts[0].TimestampUS
 	}
@@ -282,7 +265,7 @@ func lessTrack(a, b ProjectileTrack) bool {
 
 // compareSample ordonne deux échantillons sur TOUS leurs champs — c'est ce qui rend le
 // départage de lessTrack indépendant de l'ordre d'arrivée.
-func compareSample(a, b ProjectileSample) int {
+func compareSample(a, b types.ProjectileSample) int {
 	switch {
 	case a.TimestampUS != b.TimestampUS:
 		return signe(a.TimestampUS < b.TimestampUS)
@@ -330,12 +313,12 @@ const projectileGapUS = 250_000
 // recensement des keyframes le PROUVE : 101 poses sur 295 (000d5950) et 228 sur 537
 // (00ba2e1c) y figurent encore plus d'une seconde après la fin de leur flux de position.
 // La dernière borne d'une vie est donc une MISE AU REPOS, jamais une disparition.
-func splitLives(pts []ProjectileSample) [][]ProjectileSample {
-	var out [][]ProjectileSample
+func splitLives(pts []types.ProjectileSample) [][]types.ProjectileSample {
+	var out [][]types.ProjectileSample
 	start := 0
 	flush := func(end int) {
 		if end-start >= 3 {
-			seg := make([]ProjectileSample, end-start)
+			seg := make([]types.ProjectileSample, end-start)
 			copy(seg, pts[start:end])
 			out = append(out, seg)
 		}
@@ -353,7 +336,7 @@ func splitLives(pts []ProjectileSample) [][]ProjectileSample {
 
 // projSample porte le slot et la génération le temps du regroupement en vies.
 type projSample struct {
-	ProjectileSample
+	types.ProjectileSample
 	slot, gen uint32
 }
 
@@ -385,7 +368,7 @@ func scanProjectileRecords(pay []byte, band map[uint32]bool, wr *profile.Vec3Ran
 			}
 		}
 		out = append(out, projSample{
-			ProjectileSample: ProjectileSample{X: v[0], Y: v[1], Z: v[2], AtRest: rest},
+			ProjectileSample: types.ProjectileSample{X: v[0], Y: v[1], Z: v[2], AtRest: rest},
 			slot:             rec.Slot, gen: rec.Gen,
 		})
 		p += posBits // un record accepté n'est pas re-balayé

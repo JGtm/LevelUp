@@ -1,6 +1,9 @@
 package grammar
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // biped_pickups.go — LES RAMASSAGES, lus dans l'ÉVÉNEMENT NATIF `biped_pickup` de la bobine.
 //
@@ -81,26 +84,6 @@ const (
 	bipedPickupCatalogBits = 32
 )
 
-// BipedPickup est UN ramassage, daté, attribué et nommé.
-type BipedPickup struct {
-	// TimestampUS est l'horodatage du paquet — MÊME horloge que BipedPosition.TimestampUS.
-	TimestampUS uint64
-	// Chunk localise l'événement dans le film.
-	Chunk int
-	// Slot est le slot du bipède RAMASSEUR : il désigne une VIE, pas un joueur. Même espace
-	// de slots que HeldWeaponChange.Slot — c'est celui que l'assemblage relie au joueur.
-	Slot uint32
-	// CatalogID est l'identifiant de CATALOGUE de l'objet ramassé (le R(32) de la charge).
-	// Ce n'est PAS un handle du monde : la même valeur se retrouve d'un match à l'autre.
-	// Pour les armes, il vaut la FAMILLE d'arme telle que HeldWeaponChange.Family la publie —
-	// mesuré : 100 % des familles vues par i43..i46 sont dans l'ensemble des CatalogID.
-	CatalogID uint32
-	// Class est le R(3) de tête de charge. Il sépare les ramassages d'ARME des autres : les
-	// classes 0 et 1 portent une famille d'arme d'i43..i46 dans 63 à 72 % des cas, les classes
-	// 2 et 3 dans 0,0 % — sur 118 événements de deux films. Voir BipedPickupIsWeaponClass.
-	Class uint8
-}
-
 // BipedPickupIsWeaponClass dit si la classe désigne un ramassage d'ARME.
 //
 // LA SÉPARATION EST MESURÉE, PAS SUPPOSÉE : classes 0 et 1 → 63-72 % d'armes connues du canal
@@ -108,29 +91,6 @@ type BipedPickup struct {
 // désignent (équipement, grenades, consommables) n'est pas nommé par le catalogue d'armes.
 // Ce que 0 distingue de 1, et 2 de 3, n'est PAS établi.
 func BipedPickupIsWeaponClass(c uint8) bool { return c <= 1 }
-
-// BipedPickupStats dit ce que le balayage a vu ET ce qu'il a REFUSÉ. Le second compte autant :
-// la largeur d'index du domaine 2 est une valeur de runtime, et un film qui la porterait
-// différente produirait des slots hors de la bande de bipèdes. Ces rejets sont la sentinelle.
-type BipedPickupStats struct {
-	// Packets est le nombre de paquets delta dont l'octet de tête vaut 0xC4.
-	Packets int
-	// Type9 / Type8 / OtherType ventilent le type lu en tête de liste.
-	Type9, Type8, OtherType int
-	// Published est le nombre de ramassages rendus.
-	Published int
-	// MultiEvent compte les listes qui portent un AUTRE événement après le type 9. Il mesure
-	// ce que ce balayage ne peut pas voir : un type 9 en deuxième position d'une liste ouverte
-	// par une autre famille lui échappe entièrement.
-	MultiEvent int
-	// RefusedNoRef / RefusedNoCatalog / RefusedOffBand comptent les rejets. Aucun des trois
-	// n'a jamais été observé non nul sur le corpus de référence — une valeur non nulle est un
-	// signal, pas un détail.
-	RefusedNoRef, RefusedNoCatalog, RefusedOffBand int
-	// UnexpectedWideRef compte les événements dont ref1 ou ref2 est présente. Jamais observé :
-	// une valeur non nulle dénonce un cadrage faux ou un build différent.
-	UnexpectedWideRef int
-}
 
 // bipedPickupReadRef consomme une référence gardée de largeur w (plus R(2) de génération).
 func bipedPickupReadRef(br *Lecteur, w uint) (uint64, bool) {
@@ -149,17 +109,17 @@ func bipedPickupReadRef(br *Lecteur, w uint) (uint64, bool) {
 //
 // ScanFilmBipedPickups est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanBipedPickups].
-func ScanFilmBipedPickups(dir string) ([]BipedPickup, BipedPickupStats, error) {
+func ScanFilmBipedPickups(dir string) ([]types.BipedPickup, types.BipedPickupStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, BipedPickupStats{}, err
+		return nil, types.BipedPickupStats{}, err
 	}
 	return ScanBipedPickups(contexteDeBobine(film))
 }
 
 // ScanBipedPickups décode les ramassages natifs d'un film DEJA CHARGE.
-func ScanBipedPickups(fc *FilmContext) ([]BipedPickup, BipedPickupStats, error) {
-	var st BipedPickupStats
+func ScanBipedPickups(fc *FilmContext) ([]types.BipedPickup, types.BipedPickupStats, error) {
+	var st types.BipedPickupStats
 	chunks := fc.ChunkNumbers()
 	if len(chunks) == 0 {
 		return nil, st, ErrNoFilmChunk
@@ -169,7 +129,7 @@ func ScanBipedPickups(fc *FilmContext) ([]BipedPickup, BipedPickupStats, error) 
 	// désactive seulement le rejet — et on le dit dans les stats.
 	band := fc.BipedSlots()
 
-	var out []BipedPickup
+	var out []types.BipedPickup
 	for _, c := range chunks {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
@@ -203,7 +163,7 @@ func ScanBipedPickups(fc *FilmContext) ([]BipedPickup, BipedPickupStats, error) 
 // decodeBipedPickup consomme l'événement de tête d'un payload 0xC4. Rend (ramassage, ok) ;
 // `ok` est faux dès que la lecture n'est pas celle qu'on attend — on ne publie jamais un
 // ramassage deviné.
-func decodeBipedPickup(pay []byte, st *BipedPickupStats) (BipedPickup, bool) {
+func decodeBipedPickup(pay []byte, st *types.BipedPickupStats) (types.BipedPickup, bool) {
 	// LE PRÉAMBULE FAIT 9 BITS : configuration(1) + continuation(1) + type R(7). Il se lit par
 	// `readPacketHead` (event_list.go), le SEUL lecteur du préambule depuis le 2026-09-05
 	// (lot E, item E.3). La justification qui vivait ici — « il se lit en ligne plutôt que par
@@ -212,22 +172,22 @@ func decodeBipedPickup(pay []byte, st *BipedPickupStats) (BipedPickup, bool) {
 	br := LecteurSur(pay)
 	h := readPacketHead(br)
 	if !h.More { // continuation : un événement suit
-		return BipedPickup{}, false // liste vide : impossible pour 0xC4, mais on ne le suppose pas
+		return types.BipedPickup{}, false // liste vide : impossible pour 0xC4, mais on ne le suppose pas
 	}
 	switch typ := h.Type; typ {
 	case bipedPickupType:
 		st.Type9++
 	case bipedBoardVehicleType:
 		st.Type8++
-		return BipedPickup{}, false
+		return types.BipedPickup{}, false
 	default:
 		st.OtherType++
-		return BipedPickup{}, false
+		return types.BipedPickup{}, false
 	}
 	idx, ok := bipedPickupReadRef(br, bipedPickupIdxBits)
 	if !ok {
 		st.RefusedNoRef++
-		return BipedPickup{}, false
+		return types.BipedPickup{}, false
 	}
 	_, wide1 := bipedPickupReadRef(br, bipedPickupWideRefBits)
 	_, wide2 := bipedPickupReadRef(br, bipedPickupWideRefBits)
@@ -237,13 +197,13 @@ func decodeBipedPickup(pay []byte, st *BipedPickupStats) (BipedPickup, bool) {
 	class := uint8(br.ReadBits(bipedPickupClassBits))
 	if !br.ReadBit() {
 		st.RefusedNoCatalog++
-		return BipedPickup{}, false
+		return types.BipedPickup{}, false
 	}
 	catalog := uint32(br.ReadBits(bipedPickupCatalogBits))
 	if br.ReadBit() { // fin de liste : 1 = un autre événement suit
 		st.MultiEvent++
 	}
-	return BipedPickup{
+	return types.BipedPickup{
 		Slot:      uint32(bipedPickupRefBaseDom2 + int(idx)),
 		CatalogID: catalog,
 		Class:     class,
