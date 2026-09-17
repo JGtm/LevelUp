@@ -90,7 +90,15 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //
 // 1,5 fois la facade : c est la mesure qui dit ou est le vrai poids de la frontiere (note de
 // preparation de M4, §1.3 point 4). L ADR 0034 `:335` en annoncait 239 a la cloture de M2.
-const plafondSurfaceReplay = 245 // 2026-09-17 — base a5d15e634
+//
+// HISTORIQUE DES MONTEES, une ligne par commit qui la fait bouger — c est ce qui rend le ratchet
+// lisible plutot qu une valeur qui change sans raison ecrite :
+//
+//	245  4.1.1-a (2026-09-17, base a5d15e634)  pose du compteur
+//	246  4.1.1-c (2026-09-17)                  `replay.FilmFacts` nomme dans le godoc de
+//	                                           `domain/title/registry_film_facts.go` (la
+//	                                           distinction avec `.facts.json`)
+const plafondSurfaceReplay = 246 // 2026-09-17 — base a5d15e634 + 4.1.1-c
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
