@@ -82,7 +82,7 @@ export function displayPlayerName(
 
 /**
  * Clé de comparaison d'un gamertag : minuscules, sans espaces de bord. C'est la clé de
- * l'appariement « ce joueur est-il un ami ? » (`settings.friend_gamertags`) — la même
+ * l'appariement « ce joueur est-il un ami ? » (liste d'amis du joueur) — la même
  * partout où la question se pose (charts de la Match View, rejeu 2D), pour qu'un ami
  * saisi « Ma Pote » et présent comme « MA POTE » soit reconnu des deux côtés.
  */

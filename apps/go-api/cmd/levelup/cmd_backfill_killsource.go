@@ -149,7 +149,7 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	fs.BoolVar(&o.filmsOnly, "films-only", false, "ne jouer que la passe de decodage des films")
 	fs.BoolVar(&o.creditOnly, "credit-only", false, "ne jouer que la passe credit-seul (SQL -> SQL)")
 	fs.BoolVar(&o.online, "online", false, "telecharger les films absents du cache (et les y archiver) au lieu de s en tenir au cache")
-	fs.StringVar(&o.gamertag, "gamertag", "", "joueur dont les tokens servent la passe --online (obligatoire avec --online)")
+	fs.StringVar(&o.gamertag, "gamertag", "", "joueur dont les films sont traités, les plus récents d abord (obligatoire avec --online) ; les jetons viennent du pool")
 	fs.IntVar(&o.rps, "rps", 4, "debit maximal des requetes Halo de la passe --online")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -158,8 +158,8 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("--films-only et --credit-only s excluent")
 	}
 	if o.online && o.gamertag == "" {
-		return fmt.Errorf("--online exige --gamertag : les films se telechargent avec les tokens " +
-			"d un joueur declare dans db_profiles.json")
+		return fmt.Errorf("--online exige --gamertag : il nomme le joueur DONT les films sont " +
+			"traites (profil declare dans db_profiles.json) ; les jetons viennent du pool")
 	}
 	if !o.online && o.gamertag != "" {
 		return fmt.Errorf("--gamertag n a de sens qu avec --online (la passe hors ligne n emet aucune requete)")

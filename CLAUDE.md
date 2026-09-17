@@ -97,10 +97,22 @@ Tous les chemins passent par `PathResolver` (`internal/domain/title/registry.go`
 | Enrichissements joueur | `data/titles/{slug}/players/{gamertag}/stats.duckdb` |
 | Aliases Xbox globaux | `data/global/xbox_aliases.duckdb` |
 | Tokens auth (source unique) | `data/auth/watcher_tokens/{xuid}.json` |
+| Comptes utilisateurs (rôle, mot de passe, xuid lié) | `data/auth/users.json` |
+| Groupes / escouades | `data/auth/groups.json` |
+| Profils suivis (db_path, sync par titre, `auth_only`) | `db_profiles.json` |
 | Sessions HTTP | `data/sessions/` |
 | Manifests par titre | `config/titles/{slug}/title.toml` + `mappings/{fields,assets,outcomes,capabilities}.toml` |
 
 Détail des tables : skill `db-schema`. Slugs actifs : `halo_infinite` (défaut), `halo_5`.
+
+**Identités joueurs (ADR 0035)** : quatre registres (profils, comptes, tokens, suivi live du
+watcher) et une seule clé de jointure, le **xuid** (gamertag/slug = affichage et chemin FS).
+Lecture composite et écritures d'onboarding/purge passent par le port `PlayerDirectory`
+(`internal/service/playerdirectory/`) : `Onboard` est le SEUL appelant de
+`ProfileService.CreatePlayer` (ratchet), aucun sync ni suivi live sans profil suivi
+(`domain.ProfileGate` sur le coordinateur, le daemon et le SSO), le verrou d'instance se lit
+UNIQUEMENT via `authz.InstanceLocked` (ratchet), la purge (`levelup identity purge`) ne
+touche jamais la base partagée. Vue admin : `GET /admin/identities` / section « Identités ».
 
 ## Règles critiques — écritures DuckDB (anti-corruption ART)
 
@@ -315,7 +327,10 @@ git commit -m "refactor(phase2): ..."
   seule source d'un compte de session, `/filters/resolve` en repli de chargement seulement ;
   2 ratchets) · `0034` **décodeur de film** (profil par build immuable, cinq couches
   `source`→`profile`→`grammar`→`facts`→`replay`, porte unique aux octets, build inconnu = erreur
-  typée + film mis de côté, faits / publication séparés, équipe = le film seul).
+  typée + film mis de côté, faits / publication séparés, équipe = le film seul) ·
+  `0035` **annuaire des joueurs** (xuid = clé d'identité unique ; port `PlayerDirectory` ;
+  aucun sync ni suivi sans profil suivi ; `Onboard` seul chemin de création ; verrou décidé
+  en un point, défauts sûrs en mode appliqué ; purge sans toucher la base partagée).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

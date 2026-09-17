@@ -6,6 +6,14 @@
 //  2. Sinon CreateFromXbox : créer un user à partir du gamertag/XUID
 //  3. Wire la session (login automatique)
 //
+// Ce que la stratégie NE fait PAS (ADR 0035 D3, 2026-09-15) : créer un profil de
+// suivi, ni mettre le joueur sous surveillance du watcher tant qu'aucun profil
+// n'existe. Le compte et les credentials sont bien créés — le refresh token est
+// ce qui rendra le profil utilisable plus tard — mais un compte sans profil est
+// un état VALIDE et INERTE : aucun poller, aucun sync, aucune écriture disque.
+// Sa seule sortie est le wizard de mise en place (ou une invitation, cf. le plan
+// frère). C'est le maillon manquant de l'incident du 2026-07-23.
+//
 // La récupération de BDD orpheline (§11 du plan) est différée à une future PR
 // (nécessite pool.Invalidate + scan filesystem multi-titre).
 package service
@@ -18,6 +26,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/userstore"
 )
@@ -40,8 +49,8 @@ type WatcherDaemon interface {
 // si le daemon n'est pas (encore) prêt.
 type WatcherDaemonGetter func() WatcherDaemon
 
-// InviteResolver lit et consomme un code d'invitation "rejoindre un groupe".
-// Satisfait par *userstore.InviteStore.
+// InviteResolver lit et consomme un code d'invitation. Satisfait par
+// *userstore.InviteStore.
 type InviteResolver interface {
 	Get(code string) (*domain.InviteCode, error)
 	Consume(code, usedBy string) error
@@ -57,9 +66,11 @@ type GroupJoiner interface {
 //
 // PR 2.5a : si `tokenStore` est non-nil, persiste les tokens RTA dans
 // data/auth/watcher_tokens/{xuid}.json.
-// PR 2.5b : si `daemonGetter` retourne un daemon non-nil et tournant, ajoute
-// le joueur au watcher pour subscribe RTA immédiat (sous réserve que le tracker
-// actuel soit ami Xbox de ce joueur — sinon status=3 silencieux).
+// PR 2.5b : si `daemonGetter` retourne un daemon non-nil et tournant, ET que
+// `profileGate` s'ouvre pour ce xuid (ADR 0035 D3, 2026-09-15), ajoute le joueur
+// au watcher pour subscribe RTA immédiat (sous réserve que le tracker actuel
+// soit ami Xbox de ce joueur — sinon status=3 silencieux). Sans profil suivi, le
+// login aboutit et les tokens sont persistés, mais rien n'est mis en marche.
 type XboxSSOLinkStrategy struct {
 	users        *userstore.Store
 	tokenStore   *auth.MultiUserTokenStore // optionnel
@@ -68,9 +79,14 @@ type XboxSSOLinkStrategy struct {
 	// INCONNU est refusé (pas de CreateFromXbox) ; un XUID connu se connecte
 	// normalement. nil → jamais verrouillé. Cf. WithInstanceLock.
 	instanceLocked func() bool
-	// invites + groups : flow "rejoindre un groupe". Si la session porte un
-	// PendingInviteCode valide, le login bypass le verrou d'instance et ajoute le
-	// joueur au groupe ciblé (puis consomme le code). nil → flow désactivé.
+	// profileGate : porte « profil suivi » (ADR 0035 D3). Le watcher n'est notifié
+	// que si elle s'ouvre pour (titre par défaut, xuid). nil = porte ouverte —
+	// seam de test ; le serveur la pose toujours.
+	profileGate domain.ProfileGate
+	// invites + groups : flow d'invitation. Si la session porte un
+	// PendingInviteCode valide, le login lève le verrou d'instance, consomme le
+	// code, et — SI l'invitation porte un groupe — y ajoute le joueur.
+	// nil → flow désactivé.
 	invites InviteResolver
 	groups  GroupJoiner
 }
@@ -103,7 +119,15 @@ func (s *XboxSSOLinkStrategy) WithInstanceLock(fn func() bool) *XboxSSOLinkStrat
 	return s
 }
 
-// WithInviteStore injecte le résolveur d'invitations (flow "rejoindre un groupe").
+// WithProfileGate pose la porte « profil suivi » : sans profil déclaré pour le
+// xuid, le login SSO réussit et les tokens sont persistés, mais le watcher n'est
+// PAS notifié (ADR 0035 D3).
+func (s *XboxSSOLinkStrategy) WithProfileGate(g domain.ProfileGate) *XboxSSOLinkStrategy {
+	s.profileGate = g
+	return s
+}
+
+// WithInviteStore injecte le résolveur d'invitations (flow d'invitation).
 func (s *XboxSSOLinkStrategy) WithInviteStore(inv InviteResolver) *XboxSSOLinkStrategy {
 	s.invites = inv
 	return s
@@ -131,15 +155,18 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 			attempt.XUID, attempt.Gamertag)
 	}
 
-	// Flow "rejoindre un groupe" : une invitation valide en session autorise le
-	// bypass du verrou d'instance et déclenche l'ajout au groupe après login.
+	// Flow d'invitation : une invitation valide en session (avec ou sans groupe)
+	// lève le verrou d'instance et est consommée après login.
 	pendingInvite := s.resolvePendingInvite(ctx, sess)
 
+	// created : le compte vient d'être créé par CE login. Seul ce cas donne droit
+	// au provisioning de profil (D3).
+	created := false
 	user, err := s.users.GetByXUID(attempt.XUID)
 	switch {
 	case errors.Is(err, userstore.ErrUserNotFound):
 		// Instance fermée : un XUID inconnu ne peut pas créer de compte — sauf s'il
-		// présente une invitation valide (flow "rejoindre un groupe").
+		// présente une invitation valide.
 		if s.instanceLocked != nil && s.instanceLocked() && pendingInvite == nil {
 			slog.WarnContext(ctx, "xbox_sso: nouvelle identité refusée — instance verrouillée",
 				"xuid", attempt.XUID, "gamertag", attempt.Gamertag)
@@ -149,6 +176,7 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 		if err != nil {
 			return fmt.Errorf("xbox_sso: CreateFromXbox: %w", err)
 		}
+		created = true
 		slog.InfoContext(ctx, "xbox_sso: user créé depuis SSO",
 			"username", user.Username, "xuid", attempt.XUID)
 	case err != nil:
@@ -181,9 +209,10 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 		XUID:     attempt.XUID,
 	}
 
-	// Flow "rejoindre un groupe" : ajout au groupe + consommation du code.
+	// Flow d'invitation : consommation du code, ajout au groupe s'il y en a un,
+	// droit de provisioning si le compte vient d'être créé.
 	if pendingInvite != nil {
-		s.redeemGroupInvite(ctx, pendingInvite, attempt, sess)
+		s.redeemInvite(ctx, pendingInvite, attempt, sess, user, created)
 	}
 
 	// PR 2.5a — Persistance tokens RTA (best-effort, non bloquant).
@@ -195,7 +224,9 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 	// PR 2.5b — Notifier le watcher daemon pour subscribe RTA immédiat.
 	// Le getter résout le daemon lazy (créé après cette strategy dans main.go).
 	// No-op si daemon nil ou pas démarré. Best-effort : erreur loggée, login OK.
-	if s.daemonGetter != nil {
+	// ADR 0035 D3 : uniquement si le xuid a un profil SUIVI — sinon on s'arrête
+	// ici, compte et tokens en place, rien d'actif.
+	if s.daemonGetter != nil && s.watcherAllowedFor(ctx, attempt) {
 		if d := s.daemonGetter(); d != nil && d.IsRunning() {
 			s.notifyWatcher(ctx, attempt, user, d)
 		}
@@ -203,9 +234,30 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 	return nil
 }
 
-// resolvePendingInvite retourne l'invitation valide portée par la session (flow
-// "rejoindre un groupe"), ou nil. Une invitation expirée/consommée/introuvable, ou
-// sans store câblé, est traitée comme absente (login normal, soumis au verrou).
+// watcherAllowedFor dit si le watcher peut prendre en charge ce compte : il lui
+// faut un profil suivi sur le titre par défaut (ADR 0035 D3). Le refus est
+// journalisé — un compte qui se connecte sans profil est une information, pas un
+// silence.
+func (s *XboxSSOLinkStrategy) watcherAllowedFor(ctx context.Context, attempt *auth.Attempt) bool {
+	if s.profileGate == nil {
+		return true
+	}
+	if s.profileGate(ctx, title.DefaultSlug, attempt.XUID) {
+		return true
+	}
+	slog.InfoContext(ctx, "xbox_sso: compte sans profil suivi — watcher non notifié, provisioning requis",
+		"xuid", attempt.XUID, "gamertag", attempt.Gamertag)
+	return false
+}
+
+// resolvePendingInvite retourne l'invitation valide portée par la session, ou
+// nil. Une invitation expirée/consommée/introuvable, ou sans store câblé, est
+// traitée comme absente (login normal, soumis au verrou).
+//
+// UNE INVITATION SANS GROUPE EST VALIDE (2026-09-15, D3). Auparavant elle était
+// rejetée ici comme « legacy password », ce qui rendait `POST /admin/invites`
+// inopérant en SSO Xbox : l'admin générait un lien qui ne créait aucun compte
+// sur instance verrouillée.
 func (s *XboxSSOLinkStrategy) resolvePendingInvite(ctx context.Context, sess *domain.SessionData) *domain.InviteCode {
 	if s.invites == nil || sess == nil || sess.PendingInviteCode == "" {
 		return nil
@@ -219,29 +271,46 @@ func (s *XboxSSOLinkStrategy) resolvePendingInvite(ctx context.Context, sess *do
 		slog.WarnContext(ctx, "xbox_sso: invitation en session invalide (expirée/consommée)", "code", inv.Code)
 		return nil
 	}
-	if inv.GroupID == "" {
-		// Invitation legacy (inscription password) — pas de groupe à rejoindre.
-		return nil
-	}
 	return inv
 }
 
-// redeemGroupInvite ajoute le joueur au groupe ciblé puis consomme le code.
-// Best-effort : un échec est loggé mais ne bloque pas le login (la session est déjà
-// câblée). Vide PendingInviteCode pour éviter une re-consommation.
-func (s *XboxSSOLinkStrategy) redeemGroupInvite(ctx context.Context, inv *domain.InviteCode, attempt *auth.Attempt, sess *domain.SessionData) {
-	if s.groups != nil {
-		if err := s.groups.AddMember(inv.GroupID, attempt.XUID, attempt.Gamertag); err != nil {
-			slog.ErrorContext(ctx, "xbox_sso: ajout au groupe échoué (non bloquant)",
-				"group_id", inv.GroupID, "xuid", attempt.XUID, "err", err)
-		} else {
-			slog.InfoContext(ctx, "xbox_sso: joueur ajouté au groupe via invitation",
-				"group_id", inv.GroupID, "gamertag", attempt.Gamertag)
+// redeemInvite consomme TOUJOURS le code, ajoute le joueur au groupe SI
+// l'invitation en porte un, et pose le droit de provisioning sur le compte
+// UNIQUEMENT s'il vient d'être créé (`created`) — un compte existant qui
+// présente une invitation ne gagne aucun droit de créer un profil.
+//
+// Best-effort : un échec est loggé mais ne bloque pas le login (la session est
+// déjà câblée). Vide PendingInviteCode pour éviter une re-consommation.
+func (s *XboxSSOLinkStrategy) redeemInvite(
+	ctx context.Context, inv *domain.InviteCode, attempt *auth.Attempt,
+	sess *domain.SessionData, user *domain.User, created bool,
+) {
+	if inv.GroupID != "" {
+		if s.groups != nil {
+			if err := s.groups.AddMember(inv.GroupID, attempt.XUID, attempt.Gamertag); err != nil {
+				slog.ErrorContext(ctx, "xbox_sso: ajout au groupe échoué (non bloquant)",
+					"group_id", inv.GroupID, "xuid", attempt.XUID, "err", err)
+			} else {
+				slog.InfoContext(ctx, "xbox_sso: joueur ajouté au groupe via invitation",
+					"group_id", inv.GroupID, "gamertag", attempt.Gamertag)
+			}
 		}
+	} else {
+		slog.InfoContext(ctx, "xbox_sso: invitation sans groupe consommée",
+			"code", inv.Code, "gamertag", attempt.Gamertag)
 	}
 	if err := s.invites.Consume(inv.Code, attempt.Gamertag); err != nil {
 		slog.WarnContext(ctx, "xbox_sso: consommation invitation échouée (non bloquant)",
 			"code", inv.Code, "err", err)
+	}
+	if created && user != nil {
+		if err := s.users.SetProvisionGrant(user.Username, inv.Code); err != nil {
+			slog.ErrorContext(ctx, "xbox_sso: pose du droit de provisioning échouée (non bloquant)",
+				"username", user.Username, "err", err)
+		} else {
+			slog.InfoContext(ctx, "xbox_sso: droit de provisioning posé pour l'invité",
+				"username", user.Username)
+		}
 	}
 	sess.PendingInviteCode = ""
 }

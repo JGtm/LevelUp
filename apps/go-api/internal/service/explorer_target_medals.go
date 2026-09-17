@@ -5,9 +5,11 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"sort"
 
 	"levelup/go-api/internal/assets/static"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -75,5 +77,40 @@ func buildTargetTopMedals(
 	if len(items) > explorerTopMedalsCap {
 		items = items[:explorerTopMedalsCap]
 	}
+	return items
+}
+
+// computeTargetTopMedalsLocal agrège le top médailles de la cible sur EXACTEMENT
+// les matchs du profil de combat LOCAL (shared.medals_earned, SUM(count) par
+// identifiant), puis les enrichit via buildTargetTopMedals — MÊMES libellés,
+// images et cap que la liste lifetime, aucune duplication de mapping.
+//
+// Alimente le bloc « Top médailles » quand le toggle du profil de combat est sur
+// « Local ». Best-effort : toute défaillance est loguée puis dégradée en nil (le
+// front masque alors le bloc), jamais fatale pour l'encart.
+func (s *ExplorerService) computeTargetTopMedalsLocal(
+	ctx context.Context, targetXUID string, localMatches []domain.ExplorerTargetRecentMatch,
+) []domain.MedalDigestItem {
+	if len(localMatches) == 0 {
+		return nil
+	}
+	matchIDs := make([]string, 0, len(localMatches))
+	for _, m := range localMatches {
+		if m.MatchID != "" {
+			matchIDs = append(matchIDs, m.MatchID)
+		}
+	}
+	if len(matchIDs) == 0 {
+		return nil
+	}
+	counts, err := s.repo.GetTopMedalsForMatches(ctx, targetXUID, matchIDs, explorerTopMedalsCap)
+	if err != nil {
+		slog.WarnContext(ctx, "explorer_target_top_medals_local_failed",
+			"xuid", targetXUID, "matches", len(matchIDs), "err", err)
+		return nil
+	}
+	items := buildTargetTopMedals(ctx, s.deps.MedalDefs, counts, s.deps.TitleSlug, ctxkeys.Locale(ctx))
+	slog.DebugContext(ctx, "explorer_target_top_medals",
+		"xuid", targetXUID, "matches", len(matchIDs), "medals", len(items), "source", "local")
 	return items
 }

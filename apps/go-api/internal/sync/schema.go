@@ -191,8 +191,11 @@ CREATE TABLE IF NOT EXISTS match_registry (
     duration_seconds          INTEGER,
     playable_duration_seconds INTEGER,
     real_start_time           TIMESTAMP,
-    team_0_score              SMALLINT,
-    team_1_score              SMALLINT,
+    -- INTEGER et pas SMALLINT : un score d'equipe depasse 32 767 (Bapteme du feu,
+    -- mesure le 2026-09-16). Les bases anterieures sont converties par l'etape
+    -- widen_match_registry_team_scores.
+    team_0_score              INTEGER,
+    team_1_score              INTEGER,
     team_0_ps_score           INTEGER,
     team_1_ps_score           INTEGER,
     -- Manches gagnees par camp + nombre de manches jouees (CoreStats.RoundsWon/Lost/Tied).

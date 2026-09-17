@@ -192,4 +192,32 @@ func (c *AppConfig) loadPlayersV3(data []byte, titleFilter ...string) ([]domain.
 	return players, nil
 }
 
+// HasTrackedProfile dit si le couple (titre, xuid) est un profil SUIVI :
+// déclaré dans db_profiles.json pour CE titre, non auth_only, et sync_enabled
+// != false — le filtre de domain.SyncablePlayers, réutilisé tel quel pour qu'il
+// n'existe qu'une définition de « suivi » (ADR 0035 D3).
+//
+// La recherche se fait par XUID et JAMAIS par gamertag : un gamertag se renomme
+// (et le renommé pourrait alors emprunter le profil d'un autre), un xuid non.
+// Un xuid vide ne correspond à rien : la réponse est false sans lecture.
+//
+// L'erreur de lecture de db_profiles.json est REMONTÉE au caller : c'est à lui
+// de décider de sa dégradation (les portes de l'ADR 0035 refusent, en le
+// journalisant — on ne synchronise pas « dans le doute »).
+func (c *AppConfig) HasTrackedProfile(titleSlug, xuid string) (bool, error) {
+	if xuid == "" {
+		return false, nil
+	}
+	players, err := c.LoadPlayers(titleSlug)
+	if err != nil {
+		return false, err
+	}
+	for _, p := range domain.SyncablePlayers(players) {
+		if p.XUID == xuid {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // LoadAppSettings charge app_settings.json. Retourne une map vide si absent.

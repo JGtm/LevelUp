@@ -55,7 +55,7 @@ import { MatchBreadcrumb } from '@/features/match-view/MatchHeader'
 import { buildMatchHeadingStr } from '@/features/match-view/format'
 import { useMatchView } from '@/features/match-view/queries'
 import type { TeamColorResolver } from '@/features/match-view/teamColor'
-import { useSettings } from '@/features/settings/queries'
+import { useFriendGamertags } from '@/features/friends/queries'
 import { tokenCssVar } from '@/lib/accessibility'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
@@ -140,14 +140,17 @@ function ReplayPage() {
   // médias, score final — vit dans `model/replayModel`, pure et testée sans React ; ce hook
   // ne fait que la mémoïser. La page n'en garde que ce qui dépend de la LANGUE ou de
   // l'affichage, plus bas.
-  const { data: settings } = useSettings()
+  const friendGamertags = useFriendGamertags(playerSlug)
   // PAR LES YEUX DE QUI (2026-09-06, L2b) : un seul foyer, ici, et sa valeur descend en
   // PARAMÈTRE à tout ce qui en dépend — modèle, calques d'objectif, écran de fin, export.
   // Le défaut est le joueur de la page, à CHAQUE montage (décision 8 : rien n'est persisté).
   // Depuis le 2026-09-07 (L3), le MENU de la première piste de la frise appelle `select` : il
   // reçoit `model.players` pour ses sections et ne touche à rien d'autre que ce foyer.
   const viewpoint = useReplayViewpoint(matchView?.team_tab.scoreboard)
-  const model = useReplayModel(data, matchView, settings, viewpoint.xuid)
+  // Objet memoise : `useReplayModel` memoise sur son identite ; un litteral neuf a chaque
+  // rendu (150 ms en lecture) reconstruisait tout le modele a chaque tick (revue 2026-09-16).
+  const modelSettings = useMemo(() => ({ friendGamertags }), [friendGamertags])
+  const model = useReplayModel(data, matchView, modelSettings, viewpoint.xuid)
   const { scoreboard, identity: xuidMeta, marks, window: playWindow, feed: feedEntries } = model
   // LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : sur le rejeu, les points, les titres de
   // colonnes et les noms du fil prennent les MÊMES tokens d'accessibilité — allié / adverse,

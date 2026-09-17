@@ -60,6 +60,39 @@ go run ./cmd/levelup sync-full --gamertag MonGamertag --max-matches 500
 go run ./cmd/levelup sync-achievements --all [--dry-run]
 ```
 
+**Aucun joueur n'a besoin de son propre jeton.** Tous les chemins de synchronisation —
+`--gamertag` comme `--all` — passent par le pool de jetons : l'historique des matchs, les
+statistiques, les films et les CSR sont des points d'accès PUBLICS que n'importe quel jeton du
+parc sert (`PolicyAnyPublic`). Un profil suivi qui ne s'est jamais connecté par le SSO Xbox se
+synchronise comme les autres. Il suffit que le pool tienne au moins un jeton sain.
+
+Le rang de carrière ne fait PAS partie de la synchronisation : il est servi par le flux
+séparé de carrière en direct (`service.CareerLiveService`), et `career_synced` vaut toujours
+`false` dans le résumé du sync, jeton ou pas. `/careerranks` est lui-même PUBLIC : mesuré le
+2026-09-16 avec trois jetons prêteurs différents sur un xuid tiers, il rend le même rang et la
+même XP que l'appel du propriétaire — le client poolé l'acquiert donc en `PolicyAnyPublic`
+comme tout le reste (D4, plan robustesse du sync). Le cron de personnalisation Spartan est le
+seul appelant qui exige le jeton propre du joueur (403 pour un tiers, mesuré), et garde pour
+cette raison son contrôle `HasPlayer`.
+
+Les passes `backfill --csr` / `--shared-csr` et les commandes de films (`archive-films`,
+`backfill-killsource --online`, `replay-events`) suivent la même doctrine : `--gamertag` nomme le
+joueur traité, pas un prêteur de jeton.
+
+**Note d exploitation.** Une passe de synchronisation en ligne de commande tient la base
+partagée en ÉCRITURE et applique les migrations shared du titre avant sa première insertion :
+à lancer **serveur arrêté** (un seul writer, ADR 0013). Elle fait aussi tourner les jetons de
+rafraîchissement de TOUT le parc via le pool — ne jamais faire tourner les jetons du parc
+pendant qu un serveur tourne, sinon ce serveur garde les anciens jetons en mémoire et finit en
+`reauth_required` sur N comptes.
+
+`--token-pool-size N` plafonne le nombre de slots SAINS, pas le nombre de sources tentées : le
+scan est parcouru en entier, dans l'ordre alphabétique des gamertags, et une source dont le
+jeton de rafraîchissement ne se résout pas ne consomme pas le quota. `0` prend tous les jetons
+sains du parc. Avant le 2026-09-16, le plafond tronquait le scan AVANT de résoudre : avec
+`--token-pool-size 1`, un seul compte révoqué pouvait être tenté et la commande échouait sur
+« aucun slot créé ».
+
 ### Backfill (local Go ; CSR/weapons nécessitent des tokens Halo)
 
 ```bash
@@ -152,6 +185,35 @@ go run ./cmd/levelup backup  --gamertag X [--output-dir D] [--compression-level 
 go run ./cmd/levelup restore --gamertag X --backup-dir D [--replace] [--dry-run] [--tables T1,T2]
 go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite]
 ```
+
+### Identités joueur (annuaire et purge — ADR 0035)
+
+Quatre registres décrivent un joueur : le compte (`data/auth/users.json`), les identifiants
+(`data/auth/watcher_tokens/{xuid}.json`), le profil de suivi (`db_profiles.json`) et le suivi
+live du daemon watcher. La seule clé qui les relie est le **xuid**. `identity list` les lit
+ensemble et signale ce qui ne colle pas ; `identity purge` retire une identité de tous.
+
+```bash
+go run ./cmd/levelup identity list                          # l'annuaire, anomalies comprises
+go run ./cmd/levelup identity purge <xuid>                  # SIMULATION : imprime le rapport, ne supprime rien
+go run ./cmd/levelup identity purge <xuid> --yes            # exécute
+```
+
+- **La base partagée des matchs n'est jamais touchée.** Les matchs déjà persistés dans
+  `shared_matches_v2.duckdb` portent aussi les données des adversaires et des coéquipiers du
+  joueur purgé, et l'entrepôt est append-only par construction (ADR 0026). La purge ne
+  l'ouvre même pas.
+- **La simulation est le défaut.** Sans `--yes`, la commande imprime le rapport complet de ce
+  qu'elle ferait et sort 0.
+- **Ordre** (ADR 0035 D6) : suivi live, puis entrées de profil et dossiers joueur, dossiers
+  orphelins, identifiants, appartenances aux groupes, et enfin le compte. Une étape en échec
+  n'arrête jamais les suivantes — le rapport est toujours complet et nomme chaque échec.
+- **Un compte administrateur est refusé.** Retirer le dernier administrateur fermerait
+  l'administration à clef ; cela se fait délibérément, à la main.
+- **Pré-requis : le serveur ne doit pas tenir la player DB.** La purge supprime le dossier du
+  joueur avec son fichier DuckDB. Elle n'évince que les handles du *processus courant* : si le
+  serveur tient le fichier, la suppression échoue (verrou Windows) et l'étape est rendue en
+  échec dans le rapport. Arrêter le serveur, ou purger un joueur qui n'est pas suivi.
 
 ### Référentiels / seed / migration
 
@@ -464,7 +526,7 @@ défi legacy).
 ```bash
 go run ./cmd/levelup rebuild-pme-art --all | --gamertag X   # reconstruit l'index ART player_match_enrichment
 go run ./cmd/levelup consolidate-aliases                    # merge xbox_aliases dans shared.xuid_aliases
-go run ./cmd/levelup recompute-friends [--dry-run]          # recompute is_with_friends sur les player DBs
+go run ./cmd/levelup recompute-friends [--dry-run]          # recompute is_with_friends, chaque joueur avec SES amis
 go run ./cmd/levelup replay-events --gamertag X             # re-parse les highlight events
 go run ./cmd/levelup reset-bitmasks                         # reset des bits de backfill skill/participants/PVE
 go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute des coefficients d'engagement

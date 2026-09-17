@@ -60,6 +60,35 @@ go run ./cmd/levelup sync-full --gamertag YourGamertag --max-matches 500
 go run ./cmd/levelup sync-achievements --all [--dry-run]
 ```
 
+**No player needs their own token.** Every sync path — `--gamertag` as well as `--all` — goes
+through the token pool: match history, match stats, films and CSR are PUBLIC endpoints that any
+token in the fleet can serve (`PolicyAnyPublic`). A followed profile that never signed in via
+Xbox SSO is synced like any other. The pool must simply hold at least one healthy token.
+
+The career rank is NOT part of the sync at all: it is served by the separate live career flow
+(`service.CareerLiveService`), and `career_synced` is always `false` in the sync summary, token
+or no token. `/careerranks` itself is PUBLIC: measured on 2026-09-16 with three different lender
+tokens on a third-party xuid, it returns the same rank and XP as the owner own call, so the
+pooled client acquires it in `PolicyAnyPublic` like everything else (D4, sync robustness plan).
+The Spartan customization cron is the one caller that needs the player s own token (403 for a
+third party, measured), and keeps its `HasPlayer` guard for that reason.
+
+The `backfill --csr` / `--shared-csr` passes and the film commands (`archive-films`,
+`backfill-killsource --online`, `replay-events`) follow the same doctrine: `--gamertag` names the
+player being processed, not a token lender.
+
+**Operational note.** A sync CLI pass holds the shared database in WRITE mode and applies the
+shared migrations of the title before its first insert: run it with the **server stopped**
+(single writer, ADR 0013). It also refreshes the refresh tokens of the WHOLE fleet through the
+pool — never rotate the fleet tokens while a server is running, or that server keeps the old
+tokens in memory and ends up in `reauth_required` on N accounts.
+
+`--token-pool-size N` caps the number of HEALTHY slots, not the number of sources tried: the
+scan is walked in full, in alphabetical gamertag order, and a source whose refresh token fails
+to resolve does not consume the quota. `0` takes every healthy token of the fleet. Before
+2026-09-16 the cap truncated the scan BEFORE resolving, so `--token-pool-size 1` could pick a
+single revoked account and fail with "aucun slot cree".
+
 ### Backfill (mostly local, Go-only; CSR/weapons need Halo tokens)
 
 ```bash
@@ -149,6 +178,36 @@ go run ./cmd/levelup backup  --gamertag X [--output-dir D] [--compression-level 
 go run ./cmd/levelup restore --gamertag X --backup-dir D [--replace] [--dry-run] [--tables T1,T2]
 go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite]
 ```
+
+### Player identities (directory and purge — ADR 0035)
+
+Four registries describe a player: the account (`data/auth/users.json`), the credentials
+(`data/auth/watcher_tokens/{xuid}.json`), the tracking profile (`db_profiles.json`) and the
+watcher daemon's live tracking. The only key that joins them is the **xuid**. `identity list`
+reads them together and flags what does not line up; `identity purge` removes an identity from
+all of them.
+
+```bash
+go run ./cmd/levelup identity list                          # directory, anomalies included
+go run ./cmd/levelup identity purge <xuid>                  # DRY RUN: prints the report, deletes nothing
+go run ./cmd/levelup identity purge <xuid> --yes            # executes
+```
+
+- **The shared match warehouse is never touched.** Matches already persisted in
+  `shared_matches_v2.duckdb` also carry the data of the purged player's opponents and
+  teammates, and the warehouse is append-only by design (ADR 0026). The purge never even
+  opens it.
+- **Dry run is the default.** Without `--yes`, the command prints the complete report of what
+  it would do and exits 0.
+- **Order** (ADR 0035 D6): live tracking, then profile entries and their player directories,
+  orphan directories, credentials, group memberships, and finally the account. A failing step
+  never stops the following ones — the report is always complete and names each failure.
+- **An administrator account is refused.** Removing the last admin would lock administration
+  out of the instance; do it deliberately, by hand.
+- **Precondition: the server must not be holding the player DB.** The purge deletes the
+  player's directory along with its DuckDB file. It evicts the cached handles of the *current
+  process* only: if the server holds the file, the deletion fails (Windows lock) and the step
+  is reported as failed. Stop the server, or purge a player who is not being tracked.
 
 ### Metadata / seed / migration
 
@@ -445,7 +504,7 @@ metric absent from the grammar is flagged as an orphan (naming drift / legacy ch
 ```bash
 go run ./cmd/levelup rebuild-pme-art --all | --gamertag X   # rebuild player_match_enrichment ART index
 go run ./cmd/levelup consolidate-aliases                    # merge xbox_aliases into shared.xuid_aliases
-go run ./cmd/levelup recompute-friends [--dry-run]          # recompute is_with_friends across player DBs
+go run ./cmd/levelup recompute-friends [--dry-run]          # recompute is_with_friends, each player with THEIR own friends list
 go run ./cmd/levelup replay-events --gamertag X             # re-parse highlight events
 go run ./cmd/levelup reset-bitmasks                         # reset skill/participants/PVE backfill bits
 go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute engagement coefficients

@@ -23,6 +23,30 @@ data/
       stats.duckdb
 ```
 
+## Player identity registries (ADR 0035)
+
+A player is known to four registries with different lifecycles and sensitivity:
+
+| Registry | File | Keyed by | Holds |
+|---|---|---|---|
+| Tracked profiles | `db_profiles.json` | slug/gamertag per title | `db_path`, `sync_enabled`, `initial_max_matches`, `auth_only` |
+| Accounts | `data/auth/users.json` | username | role, password hash, linked xuid/gamertag |
+| Credentials | `data/auth/watcher_tokens/{xuid}.json` | xuid | refresh/access/XSTS tokens (ADR 0023) |
+| Live tracking | watcher daemon (in memory) | gamertag x title | pollers, rebuilt from profiles at boot |
+
+The **xuid is the only join key** between them; gamertag and slug are display values and
+the file-system path component. The `PlayerDirectory` port
+(`internal/service/playerdirectory/`) is the single composite read model
+(`GET /admin/identities`, admin "Identities" section, `levelup identity list`) and the single
+write path for onboarding (`Onboard`, the only caller of `ProfileService.CreatePlayer`) and
+purge (`Purge`, which never touches the shared warehouse). Three invariants are enforced by
+ratchets in `internal/archlint/`: no sync and no live tracking without a tracked profile
+(`domain.ProfileGate` on the sync coordinator, the watcher daemon and the Xbox SSO), the
+instance lock is read only through `authz.InstanceLocked`, and `playerdirectory` never
+imports DuckDB. When the auth is enforced and `app_settings.json` lacks the keys, the
+defaults are `instance_locked=true` and `can_self_provision=false`; an admin is exempt from
+both on `POST /setup/players`.
+
 ## Key tables (high-level)
 
 ### metadata.duckdb

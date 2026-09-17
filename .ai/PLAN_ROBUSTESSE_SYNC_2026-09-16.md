@@ -1,0 +1,623 @@
+# PLAN — Robustesse du sync par le pool : verdict fidèle, 429, plafond de slots, migrations CLI, rang de carrière public
+
+> Créé le 2026-09-16 (soir), révisé le même soir après revue fraîche (`plan-review`, 8 P1 / 7 P2
+> intégrés). Branche : `wt/sync-robustesse`. Worktree dédié :
+> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-sync-robustesse`. Base : `feat/v75` @ `ab7fc5695`.
+> **Push sur `main` = déploiement prod : interdit.** Push de `feat/v75` : décision utilisateur.
+>
+> **Contrat d'exécution : skill `plan-execution` fait foi.** Ordre strict, une étape à la fois,
+> aucun report d'étape exécutable, chaque item statué `[x]` / `[~]` (référence) / `[!]`
+> (justification écrite), zéro fix hors périmètre (découvertes en §10). Vérifier sur pièces
+> avant de coder et avant de cocher : les numéros de ligne datent du 2026-09-16 sur `ab7fc5695`.
+>
+> **Interdits absolus** : aucun démarrage de serveur, aucune ouverture d'une base sous `data/`
+> (le serveur local tient les bases ; mono-process ADR 0013). Tests sur `:memory:` /
+> `t.TempDir()`, build, vet, grep. Aucun `time.Sleep` réel dans un test : les attentes passent
+> par le seam nommé en 1.1.
+>
+> **Règle de baseline (dans le contrat, leçon du 2026-09-16)** : tout `func Test*` renommé ou
+> supprimé par le lot est retiré de `.ai/baselines/tests_pre_migration.jsonl` dans le MÊME commit,
+> et le retrait est daté dans l'en-tête de `scripts/check_test_baseline.sh`. Vérification
+> reproductible (paires `Package::Test`) :
+>
+> ```
+> extrait() { sed -n 's/.*"Package":"\([^"]*\)".*"Test":"\([^"]*\)".*/\1::\2/p' "$1" | sort -u; }
+> comm -3 <(git show <base>:.ai/baselines/tests_pre_migration.jsonl | extrait /dev/stdin) <(extrait .ai/baselines/tests_pre_migration.jsonl)
+> ```
+> Le résultat (paires retirées) est copié dans « Avancement ».
+
+---
+
+## 1. Constat (première exécution réelle du sync par le pool, Nuzzles, 2026-09-16)
+
+**C-A — Un `429` termine la passe qui se déclare réussie.** 6 slots × 3 req/s : `HTTP 429` sur
+`GetMatchHistory(start=225)`. Le pool met le slot fautif en cooldown AIMD et `acquireAnyPublic`
+le saute (il ne bloque jamais : quand TOUS les slots sont en pause il rend immédiatement
+`fmt.Errorf("pool: aucun slot sain disponible (PolicyAnyPublic)")`, `pool.go:269`, enveloppé par
+`doPublic` en `"pooled: Acquire failed: %w"`, `pooled_client.go:146-162`). Mais
+`paginateAndPersistHistory` (`internal/sync/engine.go:245-251`) fait `result.AddWarning` puis
+`break` sur TOUTE erreur d'historique, et `SyncResult.Status()` (`internal/domain/sync.go:93-101`)
+ne regarde que `Errors` → `sync full OK … status=success inserted=0`. Le client HTTP rend
+`*haloclient.HTTPError{StatusCode: 429, RetryAfter}` sans retenter (`halo_client_http.go:296-300`,
+« le caller retentera ») — le caller ne retente pas. `errors.As` fonctionne : `GetMatchHistory`
+enveloppe en `%w` (`halo_client.go:258`), `doPublic` et `cachedHaloClient` passent l'erreur telle
+quelle. Les 503 sont DÉJÀ retentés en interne par `doGet` (`halo_client_http.go:293-310`).
+Côté serveur (`sync_handler.go:516-520/599-603`, `auto_sync_run.go:379-389`) : le job reste
+`succeeded`, `Errors > 0` → WARN « erreurs partielles » + `detail.SyncStatus` exposé au web
+(`types.ts sync_status`) ; aucune notification d'erreur — passer les erreurs d'historique en
+`Errors` les rend VISIBLES au monitoring sans basculer aucun job en échec.
+
+**C-B — `--token-pool-size N` compte les sources, pas les slots sains.** `NewPool`
+(`internal/platform/auth/pool/pool.go:137-183`) tronque `sources[:MaxSize]` AVANT de résoudre ;
+avec `1`, la première source du scan (Chocoboflor, révoquée) est la seule tentée → « aucun slot
+créé ». L'ordre du scan n'est pas stable (map).
+
+**C-C — `sync-full` / `sync-delta` n'appliquent aucune migration.** `cmd/levelup/cmd_sync.go` :
+zéro appel ; seuls le boot du serveur (`cmd/server/main.go:1686`) et les `backfill`
+(`cmd/levelup/cmd_backfill.go:375 applyMigrationsOnDB`, qui passe par `duckdbpkg.OpenReadWrite`,
+cache `rw:`, mono-connexion — pas un « bare connect ») le font. Vécu : élargissement livré mais
+non appliqué pendant 83 min de sync → 2 matchs rejetés une seconde fois.
+
+**C-D — `PolicyPinnedPlayer` sur `GetCareerRank` repose sur une prémisse fausse.** Mesuré le
+2026-09-16 (sonde non versionnée, serveur arrêté) : `GET /careerranks` pour un xuid TIERS avec
+trois prêteurs différents (JGtm, DankerGlue, Trimbutton) → `200` ; rang ET XP identiques à
+l'appel du propriétaire (JGtm : `rank=202 xp=2555` vu par DankerGlue et Trimbutton ; Nuzzles :
+`rank=272 xp=0` — 272 est le rang maximal, l'XP nulle est sa vraie valeur). L'endpoint est
+entièrement public. Aucun appelant de production n'utilise `GetCareerRank` (`career.go:56`
+`//nolint:unused`, tests seulement ; `fetch_cache.go:124` passe-plat ; `v2/fetch_player.go:43`
+commentaire). `pinnedGamertag` / `pinnedXUID` du `PooledHaloClient` ne sont lus QUE par
+`GetCareerRank` (`pooled_client.go:33-35, 50-59, 300-308`). Restent réellement pinned, HORS
+périmètre : le cron de personnalisation Spartan (`spartan_customization_cron.go:338`,
+`/customization/appearance` 403 pour un tiers — mesuré, `career_live_target.go:24`) et le
+live-sync Halo 5 (`halo_5/livesync/acquire.go:41`).
+
+**C-E — Deux résidus du post-sync CLI.** (1) `engine.go:494` ouvre `metadata.duckdb` par
+`OpenReadForQuery` (clé `ro:` en CLI), handle tenu par `defer` jusqu'à la fin de `run()`
+(`:500-503`) et LU pendant le post-sync (`engine_postsync.go:337-342`, `assetnames_wiring.go:49`,
+`citations_backfill.go:422`, `convergence.go:657`) ; puis `engine_postsync_csr.go:305
+OpenReadWriteShared` (clé `rw:`) et `runAchievementsSync:170` (même défaut) → « different
+configuration ». (2) `resolveAchievementsAccessToken` (`engine_postsync_csr.go:327-329`) résout le
+token PROPRE du joueur pour les succès Xbox Live ; le store rend le sentinelle
+`auth.ErrUserTokensNotFound` (`multi_user_token_store.go:111`), déjà journalisé en Debug à
+`engine_postsync_csr.go:136`, MAIS le helper `access_token_store_first.go:56` émet un
+`ErrorContext` avant — un ERROR par passe pour un cas normal (profil suivi sans token).
+
+**C-F — Hygiène.** Aide du drapeau `--gamertag` de `backfill-killsource --online`
+(`cmd_backfill_killsource.go:152`) en retard sur le comportement ; 12 fichiers de test déclarent
+`match_registry` avec `SMALLINT`, dont le test de la migration d'élargissement qui DOIT le faire
+(DDL legacy) ; le ratchet `titleseams_wired_test.go` ne voit que l'import direct de
+`internal/sync` (10 binaires transitifs : `backfill-world-player-stats`, `h5-appearance-backfill`,
+`h5-csr-backfill`, `h5-events-backfill`, `h5-kill-kind-backfill`, `h5-roster-refetch`,
+`levelup-titles`, `openapi-gen`, `populate-playlists-catalog`, `replay-worker`).
+
+## 2. Décisions tranchées
+
+- **D1** — Rejeu d'une page d'historique : (i) `*haloclient.HTTPError` avec `StatusCode == 429`
+  → rejouer IMMÉDIATEMENT la même page (le pool saute le slot en cooldown ; avec un seul slot le
+  rejeu retombe sur le cas ii) ; (ii) erreur d'acquisition « aucun slot sain » → attendre
+  `min(pool.GlobalCooldown, 60 s)` puis rejouer ; 3 tentatives au total ; les 503 ne sont PAS
+  rejoués ici (déjà retentés par `doGet`). Échec définitif ou toute autre erreur →
+  `result.AddError` (plus `AddWarning`), `break` ; `Status()` inchangé (`partial_success` /
+  `failure`) ; la CLI rend un code de sortie ≠ 0 avec « historique interrompu à start=N ».
+  L'attente passe par un seam de paquet `var historyRetrySleep = time.Sleep` (tests sans sommeil).
+  L'erreur du pool devient typée : `pool.ErrNoHealthySlot` (sentinelle) rendue par
+  `acquireAnyPublic`, enveloppée `%w` par `doPublic`.
+- **D2** — `MaxSize` plafonne les slots SAINS : sources triées par gamertag, parcours complet,
+  `break` quand `len(slots) == MaxSize` (`> 0`) ; `0` = toutes les saines.
+- **D3** — `sync-full` / `sync-delta` (mono et `--all`) appliquent les migrations shared du titre
+  avant de synchroniser via `migration.RunForTitleDB(db, titleSlug, TargetShared)` (même
+  ouverture que `applyMigrationsOnDB`). La base joueur reste à `EnsurePlayerSchema`.
+- **D4** — `GetCareerRank` passe en `PolicyAnyPublic`. `ErrNoPinnedToken`, la branche de
+  dégradation de `syncCareerRank`, les champs `pinnedGamertag` / `pinnedXUID` et les deux
+  paramètres correspondants de `NewPooledHaloClient` disparaissent (0 code mort) ; les six
+  appelants de production et les mocks sont retouchés. Cron Spartan et live-sync H5 inchangés.
+- **D5** — Post-sync CLI : (1) `engine.go:494` ouvre metadata par `OpenReadWriteShared` (clé
+  `rw:`, refcount : dans le serveur c'est le handle déjà en cache, en CLI une instance unique)
+  et `e.metaDB` sert TOUT le run ; le seed de catalogue (`engine_postsync_csr.go:305`) et
+  `runAchievementsSync:170` réutilisent ce handle au lieu d'ouvrir. Les leases (`KindPlayer`
+  `engine.go:449`, `KindMetadata` `:297`) ne bougent pas — ouvrir un handle n'est pas prendre un
+  lease. Jamais l'autre variante (libérer avant le post-sync : elle éteint quatre étapes en
+  silence). (2) `access_token_store_first.go:56` : sur `errors.Is(err, auth.ErrUserTokensNotFound)`
+  retourner SANS `ErrorContext` ; `engine_postsync_csr.go:136` : Debug → `InfoContext` « succès
+  Xbox Live sautés : aucun token propre pour ce profil ». Un seul journal par passe.
+- **D6** — Hygiène : aide du drapeau alignée sur `docs/COMMANDS.md` ; fixtures `SMALLINT`
+  alignées SAUF les DDL legacy volontaires, marquées `// match_registry-ddl: legacy — <raison>`
+  et exclues du ratchet ; ratchet étendu aux `*_test.go` non marqués, colonnes communes
+  seulement, sans plancher ; ratchet `titleseams` sur les dépendances transitives par UN SEUL
+  `go list -f '{{.ImportPath}} {{.Deps}}' ./cmd/...` (2,7 s mesuré, Windows OK).
+- **D7** — Hors périmètre, refusés : rotation des RT par la CLI pendant qu'un serveur tourne
+  (note d'exploitation) ; `snapshot ready DE FORCE` (voulu, grâce 60 j) ; trois RT révoqués
+  (ADR 0023) ; faire basculer un job serveur en échec sur `Errors > 0` (comportement actuel
+  documenté en C-A, décision produit distincte).
+
+## 3. Étape 0 — Préparation (rapide)
+
+- [x] 0.1 Worktree `../LevelUp-wt-sync-robustesse` sur `wt/sync-robustesse` (créé par le pilote) ;
+      `git branch --show-current`. Pas de `npm install`.
+- [x] 0.2 Lire `CLAUDE.md`, ce plan, `internal/platform/auth/pool/README.md`,
+      `.ai/PLAN_SYNC_POOL_SEAMS_SCHEMA_2026-09-16.md` §8, skills `plan-execution`, `arch-rules`.
+- [x] 0.3 Baseline : `cd apps/go-api && go build ./... && go test ./cmd/levelup/... ./internal/platform/auth/pool/... ./internal/sync/ -count=1 -timeout 30m` → 0 (noter la durée).
+
+**Gate G0** : branche correcte, baseline verte notée dans « Avancement ».
+
+## 4. Étape 1 — Verdict fidèle et rejeu du 429 (C-A, D1 ; moyen, cœur du plan)
+
+- [x] 1.1 `internal/platform/auth/pool/pool.go:269` : `var ErrNoHealthySlot = errors.New("pool: aucun slot sain disponible (PolicyAnyPublic)")`,
+      rendu par `acquireAnyPublic` ; `pooled_client.go:146-162` `doPublic` : `fmt.Errorf("pooled: Acquire failed: %w", err)`
+      (vérifier que c'est déjà `%w`). Test : `errors.Is(err, pool.ErrNoHealthySlot)` traverse `doPublic`.
+- [x] 1.2 Nouveau fichier `internal/sync/engine_history_retry.go` (le fichier `engine.go` dépasse
+      500 L : ne pas l'accroître) : `var historyRetrySleep = time.Sleep` ;
+      `func (e *SyncEngine) fetchHistoryPage(ctx context.Context, in *historyPaginationInputs, start int) ([]domain.MatchHistoryEntry, error)`
+      (≤ 5 paramètres — `historyPaginationInputs` existe, `engine.go:206-213` ; vérifier le type
+      des entrées rendu par `GetMatchHistory`) : boucle de 3 tentatives ; `*haloclient.HTTPError`
+      429 → rejeu immédiat ; `errors.Is(err, pool.ErrNoHealthySlot)` → `historyRetrySleep(min(cooldown, 60 s))`
+      puis rejeu, `cooldown` = `pool.GlobalCooldown` si accessible depuis le client (sinon 30 s
+      constante nommée) ; autre erreur → retour immédiat. `slog.WarnContext` à chaque rejeu
+      (`start`, `attempt`, `cause`).
+- [x] 1.3 `engine.go:245-251` : appel remplacé par `fetchHistoryPage` ; en cas d'erreur définitive
+      `result.AddError(fmt.Sprintf("historique interrompu à start=%d: %v", start, err))` puis
+      `break`. `SyncResult.Status()` non modifié.
+- [x] 1.4 `cmd/levelup/cmd_sync.go` : fonction pure `reportSyncResult(w io.Writer, mode string, r *domain.SyncResult) error`
+      dans `cmd/levelup/sync_report.go` : imprime `sync <mode> <STATUT>: …` (+ `first_error=` si
+      `Errors` non vide) et rend une erreur quand `r.Status() != "success"`. Les quatre runners
+      (`runSyncDelta`, `runSyncFull`, `runSyncDeltaAll`, `runSyncFullAll`) l'appellent ; en `--all`
+      un joueur en `failure` compte dans `failed`.
+- [x] 1.5 Tests (aucun sommeil réel : `historyRetrySleep` remplacé dans le test, durées demandées
+      enregistrées) : `engine_history_retry_test.go` — (a) 429 puis 200 → page obtenue, 0 attente ;
+      (b) `ErrNoHealthySlot` puis 200 → une attente = `min(cooldown, 60 s)`, page obtenue ; (c) 429
+      × 3 → erreur, `AddError`, `Status()=failure` si rien inséré (via la boucle de pagination avec
+      client factice) ; (d) 500 → erreur immédiate, 0 rejeu, 0 attente ; (e) 503 → pas rejoué ici.
+      `sync_report_test.go` — `success` → nil ; `failure` → erreur et texte contenant
+      `first_error`. Chaque test rougit si la correction est retirée (le noter dans le test).
+- [x] 1.6 Baseline : paires renommées/supprimées retirées (commande du contrat) — a priori aucune.
+
+**Gate G1** : `go test ./internal/sync/ -run 'History|Pagin|Retry' -count=1 -timeout 30m` → 0 ;
+`go test ./cmd/levelup/ ./internal/platform/auth/pool/ -count=1` → 0 ; `go vet ./internal/sync/ ./cmd/levelup/ ./internal/platform/auth/pool/` → 0 ;
+`wc -l internal/sync/engine.go` ≤ valeur de base (`git show ab7fc5695:apps/go-api/internal/sync/engine.go | wc -l`).
+
+## 5. Étape 2 — Plafond de slots sains (C-B, D2 ; rapide)
+
+- [x] 2.1 `pool.go:137-183` : `sort.Slice(sources, by Gamertag)` ; boucle sur TOUTES les sources,
+      `continue` sur échec (journal inchangé), `break` quand `MaxSize > 0 && len(slots) == MaxSize`.
+      « aucun slot créé » conservé pour 0 slot.
+- [x] 2.2 Doc `PoolOptions.MaxSize` (`pool.go:114`), aide `--token-pool-size` (`cmd_sync.go`),
+      `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` : « nombre maximal de slots SAINS ».
+- [x] 2.3 Tests `pool_test.go` : sources [révoquée, saine, saine] (résolveur factice) — `MaxSize 1`
+      → 1 slot = première saine par ordre alphabétique ; `2` → 2 ; `0` → toutes ; même résultat
+      quel que soit l'ordre d'entrée.
+
+**Gate G2** : `go test ./internal/platform/auth/pool/... -count=1` → 0.
+
+## 6. Étape 3 — Rang de carrière public (C-D, D4 ; moyen)
+
+- [x] 3.1 `internal/sync/pooled_client.go` : `GetCareerRank` via `doPublic` (`PolicyAnyPublic`) ;
+      supprimer `ErrNoPinnedToken` (`:287-293`), les champs `pinnedGamertag` / `pinnedXUID`
+      (`:33-35`), les paramètres correspondants de `NewPooledHaloClient` (`:50-59`) et le
+      commentaire `:24`. `grep -rn "ErrNoPinnedToken\|pinnedGamertag\|pinnedXUID" apps/go-api` → vide.
+- [x] 3.2 Appelants de `NewPooledHaloClient` retouchés (signature sans pin) : `cmd/levelup/pool_engine.go:96,162`,
+      `cmd/server/main.go:2179`, `cmd/server/sync_v2_wiring.go:135,337`,
+      `internal/scheduler/auto_sync_engine.go:67` ; mocks `mockPool` (`pooled_client_test.go`),
+      `poolUnSlot` (`cmd/levelup/pool_engine_test.go`) ; doc de `newPooledEngine`
+      (`pool_engine.go`, « ne sert qu'à épingler ») réécrite ; `cmd/server/main.go:753`
+      commentaire mis à jour. Vérifier par `go build ./...` qu'aucun autre appelant n'existe.
+- [x] 3.3 `internal/sync/career.go:25-60` : retirer la branche `errors.Is(err, ErrNoPinnedToken)`
+      et la doc « seul endpoint privacy-gated » ; la validation du xuid reste.
+- [x] 3.4 Tests : supprimer `career_no_pinned_token_test.go` (`TestSyncCareerRank_SansTokenPropre_DegradeSansEchouer`,
+      `TestSyncCareerRank_AutreErreur_Remontee` — le second déplacé dans `career_integration_test.go`
+      s'il teste encore quelque chose) et `pool_engine_test.go TestRangDeCarriereSeDegradeSeul` ;
+      `pooled_client_test.go` : `_PinnedToken` et `_NoPinnedToken` remplacés par
+      `TestPooledHaloClientGetCareerRank_AcquiertEnPublic` (le `mockPool` gagne un champ
+      `lastPolicy` ; assertion = `PolicyAnyPublic`, pas de réponse HTTP simulée) ; `_PoolError`
+      conservé. **Baseline** : paires supprimées/renommées retirées (`_PinnedToken`,
+      `_NoPinnedToken`, `_PoolError` si renommé, `TestSyncCareerRank_*` supprimés — ceux du
+      16/09 n'y sont pas), en-tête daté.
+- [x] 3.5 Docs : `internal/platform/auth/pool/README.md` (tableau des appelants : `GetCareerRank`
+      → `PolicyAnyPublic` ; pinned = cron Spartan + live-sync H5 ; mesure du 2026-09-16 consignée :
+      trois prêteurs, rang et XP identiques à l'appel du propriétaire, Nuzzles `272/0` = rang
+      max), `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` (paragraphe carrière), `cmd/levelup/pool_engine.go:5-10`,
+      `cmd/levelup/cmd_sync.go` (deux commentaires), `.ai/PLAN_SYNC_POOL_SEAMS_SCHEMA_2026-09-16.md`
+      §8 (ligne « prémisse contredite » → « tranchée par mesure, D4 du plan robustesse »).
+
+**Gate G3** : `grep -rn "ErrNoPinnedToken\|pinnedGamertag\|pinnedXUID" apps/go-api` → vide ;
+`grep -rn "PolicyPinnedPlayer" apps/go-api --include=*.go | grep -v _test | grep -v "auth/pool/" | grep -v "^\s*//" | grep "Acquire("`
+→ exactement `spartan_customization_cron.go` et `halo_5/livesync/acquire.go` ;
+`go build ./... && go test ./internal/sync/ ./cmd/levelup/ ./internal/scheduler/ -count=1 -timeout 30m` → 0.
+
+## 7. Étape 4 — Cohérence CLI / serveur (C-C, C-E, D3, D5 ; moyen)
+
+- [x] 4.1 `cmd/levelup/migrations_cli.go` : `applyMigrationsOnDB` déplacé depuis
+      `cmd_backfill.go:375` (un seul exemplaire) ; nouveau `applySharedMigrationsForTitle(cfg, titleSlug) error`
+      = ouverture identique + `migration.RunForTitleDB(db, titleSlug, migration.TargetShared)`
+      (pas `RunForDB`, qui force `DefaultSlug`) ; chemin via `PathResolver.SharedDBPath(titleSlug)`.
+      Appelé en tête des quatre runners de sync, `slog.InfoContext` « migrations shared : N
+      appliquées » (0 = à jour).
+- [x] 4.2 `internal/sync/engine.go:482-503` : `OpenReadForQuery` → `duckdbpkg.OpenReadWriteShared`
+      (même durée de vie, même `defer`) ; `engine_postsync_csr.go:295-312` (seed de catalogue) et
+      `runAchievementsSync:170` : utiliser `e.metaDB` s'il est non nil, sinon ouvrir comme avant.
+      Le WARN « metadata inaccessible » ne doit plus apparaître sur une passe CLI normale.
+      Vérifier sur pièces que les quatre lecteurs de `e.metaDB` (C-E) ne posent pas de
+      contrainte RO.
+- [x] 4.3 `internal/platform/auth/access_token_store_first.go:50-60` : `errors.Is(err, ErrUserTokensNotFound)`
+      → retour sans `ErrorContext` ; `internal/sync/engine_postsync_csr.go:133-138` : Debug →
+      `slog.InfoContext(ctx, "post-sync: succès Xbox Live sautés — aucun token propre pour ce profil", "gamertag", …)`.
+      Un seul journal par passe.
+- [x] 4.4 Tests : `migrations_cli_test.go` — `applySharedMigrationsForTitle` sur une base
+      temporaire (`t.TempDir()`) crée `match_registry` avec `team_0_score INTEGER` (preuve que
+      les steps title-owned jouent : `cmd/levelup/main.go:55` câble `titleseams.RegisterAll`) ;
+      l'ORDRE « migrations avant `RunFull` » est vérifié sur pièces et noté `[~]` (pas de seam
+      de moteur à inventer). `access_token_store_first_test.go` — store vide → `("", nil)` et
+      aucune ligne ERROR capturée (handler slog de test). 4.2 : `go test -tags=integration -p 1 ./internal/sync/ -run 'Catalog|Achievements|PostSync'`.
+- [x] 4.5 Baseline : paires renommées/supprimées retirées si besoin.
+
+**Gate G4** : `go test ./cmd/levelup/ ./internal/sync/ ./internal/platform/auth/ -count=1 -timeout 30m` → 0 ;
+`go test -tags=integration -p 1 ./internal/sync/ -timeout 30m` → 0 ; `grep -rn "func applyMigrationsOnDB" cmd/`
+→ une seule définition ; `grep -rn "OpenReadForQuery" internal/sync/engine.go` → vide.
+
+## 8. Étape 5 — Hygiène (C-F, D6 ; rapide)
+
+- [x] 5.1 `cmd/levelup/cmd_backfill_killsource.go:152` : aide de `--gamertag` = « joueur dont
+      les films sont traités (les plus récents d'abord) ; les tokens viennent du pool ».
+- [x] 5.2 Fixtures : `internal/migration/steps_shared_rebuild_match_participants_test.go:106-107`
+      et `internal/sync/art_rebuild_regression_test.go:110-111` → `INTEGER`. Le test de
+      l'élargissement (`steps_shared_core_widen_test.go`) et tout autre test qui DOIT porter la
+      DDL legacy reçoivent le marqueur `// match_registry-ddl: legacy — <raison>` sur la ligne
+      précédant la DDL. Ratchet `internal/archlint/match_registry_ddl_types_test.go` étendu :
+      pour chaque `*_test.go` contenant `CREATE TABLE match_registry` SANS marqueur, les colonnes
+      communes avec la DDL de production ont le même type ; aucun plancher de colonnes.
+      Lister les 12 fichiers touchés dans « Avancement » (alignés vs marqués).
+- [x] 5.3 `internal/archlint/titleseams_wired_test.go` : critère = dépendances transitives
+      (`go list -f '{{.ImportPath}} {{.Deps}}' ./cmd/...`, une seule exécution, `t.Skip` si `go`
+      absent du PATH avec message), allowlist toujours vide ; les 10 binaires listés en C-F
+      reçoivent `titleseams.RegisterAll("")` s'ils rougissent.
+- [x] 5.4 `docs/COMMANDS.md` FR + EN, note d'exploitation : « la CLI de sync tient la base
+      partagée en écriture : serveur arrêté ; ne pas faire tourner les tokens du parc pendant
+      qu'un serveur tourne ».
+
+**Gate G5** : `go test ./internal/archlint/ ./internal/migration/ ./internal/sync/ -run 'Ddl|DDL|Seams|Titleseams|ArtRebuild|RebuildMatchParticipants|Widen' -count=1 -timeout 30m` → 0 ;
+`go build ./cmd/...` → 0.
+
+## 9. Étape 6 — Clôture
+
+- [x] 6.1 Gates complets : `go build ./... && go vet ./... && go test ./... -count=1 -timeout 30m` → 0 ;
+      `go test -tags=integration -p 1 ./... -timeout 30m` → 0 ; `gofmt -l ./cmd ./internal` → vide.
+- [x] 6.2 Baseline : commande du contrat exécutée ; paires retirées listées dans « Avancement » ;
+      en-tête de `scripts/check_test_baseline.sh` daté.
+- [x] 6.3 `.ai/thought_log.md` : entrée `[2026-09-1x]` Complété.
+- [~] 6.4 Revue adversariale (pilote, 2 relecteurs : pool/moteur ; post-sync/migrations/hygiène)
+      et CI : `[~]`. Push et fusion : décision utilisateur.
+
+Journal de phase : section « Avancement » en fin de fichier. Reprise : la lire, puis
+`git log --oneline -10` dans le worktree.
+
+---
+
+## 10. Découvertes hors périmètre (ne pas traiter ici)
+
+- **Dérive de type des fixtures `match_registry` (mesurée le 2026-09-16, étape 5)** : 45
+  divergences dans 25 fichiers de test, toutes sur les horodatages (`TIMESTAMP` vs
+  `TIMESTAMPTZ`, DANS LES DEUX SENS), `backfill_completed` (BIGINT/INTEGER) et `player_count`
+  (INTEGER/SMALLINT). Les réaligner touche la sémantique de fuseau de chaque test : chantier à
+  part. Gelées dans `deriveFixturesGelees` (`internal/archlint/match_registry_ddl_types_test.go`),
+  liste qui ne peut que rétrécir.
+- **Flake Windows `internal/mapcatalog::TestAddOverlayEntryConcurrentDossierAbsentNePerdRien`**
+  (vu au gate 6.1 du 2026-09-16) : `open …map_weapon_pads.json.lock: Accès refusé` sous
+  concurrence dans un `t.TempDir()`. Rejoué seul `-count=3` → vert. Paquet hors périmètre.
+- **42 binaires de `cmd/` dépendent du moteur de sync**, contre 84 d'un sous-paquet quelconque
+  de `internal/sync/` : le ratchet titleseams ne couvre volontairement que les deux paquets
+  porteurs d'un fail-loud. Si un seam fail-loud apparaît un jour dans `haloclient`,
+  `matchflags` ou `schemadrift`, il faudra élargir `paquetsFailLoud`.
+
+- Le serveur ne bascule jamais un job de sync en échec : `sync_handler.go:516-520/599-603` marque
+  `succeeded` quoi qu'il arrive ; `auto_sync_run.go:379-389` journalise WARN et expose
+  `sync_status` au web. Décision produit distincte (D7).
+- `halo_5/livesync/acquire.go:41` : `PolicyPinnedPlayer` pour le live-sync Halo 5 — légitime ou
+  même prémisse que C-D ? Hors titre, hors plan.
+- `HaloAPIClient.GetCareerRank` avale déjà 401/403 (`doPlayerGatedGet`) : à revoir si un
+  endpoint réellement gated y passe un jour.
+
+## Avancement
+
+### Étape 0 — Préparation — CLOSE le 2026-09-16 21:40
+
+- Items : 0.1 `[x]` (branche `wt/sync-robustesse`, worktree dédié, `git branch --show-current` vérifié),
+  0.2 `[x]` (CLAUDE.md du worktree identique à la racine, plan lu en entier, README du pool,
+  `.ai/PLAN_SYNC_POOL_SEAMS_SCHEMA_2026-09-16.md` §8, skills `plan-execution` et `arch-rules`,
+  5 dernières entrées de `.ai/thought_log.md`), 0.3 `[x]`.
+- Gate G0 : `go build ./...` → code 0 (79 s) ; `go test ./cmd/levelup/... ./internal/platform/auth/pool/... ./internal/sync/ -count=1 -timeout 30m`
+  → code 0 (84 s), 3 paquets `ok` (`cmd/levelup` 0,813 s ; `internal/platform/auth/pool` 0,715 s ;
+  `internal/sync` 67,764 s). CGO actif (`CGO_ENABLED=1`, gcc `/c/msys64/ucrt64/bin/gcc`, go 1.26.1).
+- Écarts : aucun. Baseline de tests : aucune paire retirée (aucun test touché).
+- Vérifications sur pièces faites pendant l'étape (numéros du 2026-09-16 confirmés) :
+  `pool.go:269` message « aucun slot sain disponible (PolicyAnyPublic) » ; `pooled_client.go`
+  `doPublic` enveloppe déjà en `%w` ; `engine.go:245-251` `AddWarning` + `break` ;
+  `domain/sync.go` `Status()` ; `haloclient.HTTPError{StatusCode, RetryAfter}` ; le type rendu par
+  `GetMatchHistory` est `[]MatchHistoryEntry` (alias `haloclient.MatchHistoryEntry`,
+  `haloclient_reexport.go:23`) et NON `[]domain.MatchHistoryEntry` comme écrit en 1.2 —
+  variante appliquée à l'écriture du code ; l'interface `pool.Pool` n'expose PAS `GlobalCooldown`
+  (types.go:118-175) → la constante nommée prévue par 1.2 sera utilisée.
+
+### Étape 1 — Verdict fidèle et rejeu du 429 — CLOSE le 2026-09-16 22:10
+
+- Items : 1.1 `[x]`, 1.2 `[x]`, 1.3 `[x]`, 1.4 `[x]`, 1.5 `[x]`, 1.6 `[x]`.
+- Gate G1 (codes de sortie vérifiés) :
+  - `go test ./internal/sync/ -run 'History|Pagin|Retry' -count=1 -timeout 30m` → 0
+    (20 tests exécutés, dont les 5 neufs) ;
+  - `go test ./cmd/levelup/ ./internal/platform/auth/pool/ -count=1` → 0 (2 paquets `ok`) ;
+  - `go vet ./internal/sync/ ./cmd/levelup/ ./internal/platform/auth/pool/` → 0 ;
+  - `wc -l internal/sync/engine.go` = 897 = valeur de base (`ab7fc5695`) ;
+  - en plus du gate : `go test ./internal/sync/ -count=1 -timeout 30m` → 0 (66,7 s), pour
+    prouver qu'aucun test existant ne dépendait de l'ancien `AddWarning`.
+- Vérification par MUTATION (chaque correction retirée fait rougir son test, puis restaurée) :
+  - 429 non rejoué → `TestFetchHistoryPage_429PuisSucces_RejoueSansAttendre` et
+    `TestPaginateAndPersistHistory_429Persistant_ErreurEtStatutFailure` FAIL ;
+  - `AddError` redevenu `AddWarning` → `TestPaginateAndPersistHistory_429Persistant_*` FAIL ;
+  - verdict CLI toujours `nil` → `TestReportSyncResult_Failure_*` et `_PartialSuccess_*` FAIL.
+- Écarts par rapport à la lettre du plan (assumés, vérifiés sur pièces) :
+  1. `fetchHistoryPage` rend `[]MatchHistoryEntry` (alias `haloclient.MatchHistoryEntry`) et non
+     `[]domain.MatchHistoryEntry` : c'est le type réellement rendu par `HaloClient.GetMatchHistory`.
+  2. L'attente du cas « aucun slot sain » vient de deux constantes nommées
+     (`historyNoSlotCooldown` = 30 s, défaut de `PoolOptions.GlobalCooldown`, et
+     `historyNoSlotWaitCap` = 60 s) : l'interface `pool.Pool` n'expose PAS la valeur configurée,
+     la variante prévue par 1.2 s'applique.
+  3. `reportSyncResult(w io.Writer, mode, gamertag string, r *domain.SyncResult) error` prend
+     QUATRE paramètres (le plan en écrivait trois) : `domain.SyncResult` ne porte pas le
+     gamertag, et les variantes `--all` émettent une ligne par joueur — sans ce paramètre le
+     compte rendu de lot perdait l'identité du joueur. Toujours pure, ≤ 5 paramètres.
+  4. Les quatre runners passent `&syncResult` : `RunDelta`/`RunFull` rendent une VALEUR.
+- Effet CLI : la ligne devient `sync <mode> SUCCESS|PARTIAL_SUCCESS|FAILURE: gamertag=… status=…`
+  (+ `errors=N first_error=…`), et le code de sortie est non nul dès que le statut n'est pas
+  `success` ; en `--all`, un joueur non-`success` compte désormais dans `failed`.
+- Baseline de tests : aucune paire `Package::Test` retirée (commande du préambule exécutée,
+  sortie VIDE ; aucun test renommé ni supprimé — 6 tests ajoutés).
+- Découvertes hors périmètre : aucune nouvelle.
+
+### Étape 2 — Plafond de slots sains — CLOSE le 2026-09-16 22:35
+
+- Items : 2.1 `[x]`, 2.2 `[x]`, 2.3 `[x]`.
+- 2.1 : `NewPool` copie les sources, les trie par gamertag, parcourt TOUT le scan et sort
+  quand `MaxSize > 0 && len(slots) == MaxSize`. « aucune source de credential » est rendu sur
+  une liste vide, « aucun slot créé » quand rien ne se résout (messages inchangés).
+- 2.2 : doc de `PoolOptions.MaxSize` (`types.go`, et non `pool.go:114` — le champ vit dans
+  `types.go`), doc de `NewPool`, aide des deux drapeaux `--token-pool-size`
+  (`sync-delta` et `sync-full`), `docs/COMMANDS.md` et `docs/FR/COMMANDS.md`.
+- 2.3 : `internal/platform/auth/pool/pool_maxsize_test.go` (5 tests, résolveur factice qui
+  refuse les comptes « révoqués ») : `MaxSize 1` → 1 slot = première SAINE par ordre
+  alphabétique (la révoquée est première alphabétiquement et ne consomme pas le quota) ;
+  `2` → 2 ; `0` → toutes les saines ; même parc pour trois ordres d'entrée différents ;
+  toutes révoquées → erreur explicite.
+- Gate G2 : `go test ./internal/platform/auth/pool/... -count=1` → 0 (`ok`). En plus :
+  `go vet ./internal/platform/auth/pool/ ./cmd/levelup/` → 0, `go build ./...` → 0,
+  `gofmt -l cmd internal` → vide.
+- Vérification par MUTATION : retour à `sources[:capacity]` sans tri → trois des cinq tests
+  FAIL (`_MaxSize1_`, `_MaxSize2_`, `_MemeParcQuelQueSoitLOrdreDEntree`), restauré ensuite.
+- Écart : aucun. Baseline de tests : aucune paire retirée (5 tests ajoutés, aucun renommé).
+
+### Étape 3 — Rang de carrière public — CLOSE le 2026-09-16 23:05
+
+- Items : 3.1 `[x]`, 3.2 `[x]`, 3.3 `[x]`, 3.4 `[x]`, 3.5 `[x]`.
+- 3.1 : `GetCareerRank` passe par `doPublic` ; `ErrNoPinnedToken`, `pinnedGamertag`,
+  `pinnedXUID` et les deux paramètres de `NewPooledHaloClient` supprimés (signature
+  `NewPooledHaloClient(p pool.Pool, requestsPerSecond int)`).
+- 3.2 : six appelants de production retouchés (`cmd/levelup/pool_engine.go:96,153`,
+  `cmd/server/main.go:2179`, `cmd/server/sync_v2_wiring.go:135,337`,
+  `internal/scheduler/auto_sync_engine.go:67`). **Code mort découvert et supprimé dans la
+  foulée** (règle 7 de CLAUDE.md, conséquence directe du retrait du pin) : `newPooledClient`
+  perdait l'usage de son paramètre `gamertag` et de la boucle de résolution du xuid — les
+  deux sont partis, avec les trois appels (`cmd_archive_films.go`,
+  `cmd_backfill_killsource_online.go`, `cmd_replay_events.go`) ; dans ce dernier,
+  `loadPlayerSummary` reste appelée comme PRÉCONDITION (profil suivi) sans capturer sa valeur.
+- 3.3 : branche `errors.Is(err, ErrNoPinnedToken)` retirée de `syncCareerRank` (la validation
+  du xuid reste) ; doc réécrite.
+- 3.4 : `internal/sync/career_no_pinned_token_test.go` et `cmd/levelup/pool_engine_test.go`
+  SUPPRIMÉS (le second en entier : il ne portait que ce test et sa fixture `poolUnSlot`, qui
+  serait devenue du code mort) ; `TestSyncCareerRank_AutreErreur_Remontee` déplacé dans
+  `career_integration_test.go` (il prouve encore que syncCareerRank n'avale rien) ;
+  `_PinnedToken` / `_NoPinnedToken` remplacés par
+  `TestPooledHaloClientGetCareerRank_AcquiertEnPublic` (le `mockPool` gagne `lastPolicies`) ;
+  `_PoolError` CONSERVÉ sous son nom, assertion alignée sur `pool.ErrNoHealthySlot`.
+- 3.5 : `internal/platform/auth/pool/README.md` (couches, deux politiques, tableau des
+  appelants, mesure du 2026-09-16 consignée, exemple `NewPooledHaloClient` corrigé),
+  `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` (paragraphe carrière), `cmd/levelup/pool_engine.go`
+  (doctrine en tête), `cmd/levelup/cmd_sync.go` (les deux commentaires),
+  `.ai/PLAN_SYNC_POOL_SEAMS_SCHEMA_2026-09-16.md` §8 (« prémisse contredite » → tranchée par
+  mesure, D4).
+- Gate G3 (codes de sortie vérifiés) :
+  - grep `PolicyPinnedPlayer` … `Acquire(` → EXACTEMENT `halo_5/livesync/acquire.go:41` et
+    `scheduler/spartan_customization_cron.go:338`, comme prescrit ;
+  - `go build ./...` → 0 ; `go test ./internal/sync/ ./cmd/levelup/ ./internal/scheduler/
+    -count=1 -timeout 30m` → 0 (3 paquets `ok`) ; `gofmt -l cmd internal` → vide ;
+    `go vet` (dont `-tags=integration ./internal/sync/`) → 0.
+  - grep `ErrNoPinnedToken|pinnedGamertag|pinnedXUID` hors paquet `pool` : **6 lignes
+    restantes, toutes légitimes** — `ErrNoPinnedToken` et `pinnedXUID` sont à ZÉRO ;
+    les 6 occurrences de `pinnedGamertag` sont le nom du PARAMÈTRE de l'interface
+    `pool.Pool.Acquire`, implémentée par `mockPool` (5) plus un commentaire qui le cite (1).
+    D4 ne supprime pas `PolicyPinnedPlayer` — le cron Spartan et le live-sync H5 la gardent —
+    donc ce paramètre d'interface reste. Écart assumé et documenté ici.
+- Vérification par MUTATION : `GetCareerRank` remis en `PolicyPinnedPlayer` →
+  `TestPooledHaloClientGetCareerRank_AcquiertEnPublic` FAIL ; restauré.
+- **Baseline de tests — 2 paires retirées** (8 lignes JSONL, 60 980 → 60 972) :
+  `levelup/go-api/internal/sync::TestPooledHaloClientGetCareerRank_PinnedToken` et
+  `levelup/go-api/internal/sync::TestPooledHaloClientGetCareerRank_NoPinnedToken`.
+  Commande du préambule exécutée, sortie recopiée ci-dessus. En-tête de
+  `scripts/check_test_baseline.sh` daté du 2026-09-16 (lot robustesse, étape 3, D4).
+  Les tests supprimés des deux fichiers effacés n'étaient PAS dans la baseline (créés le
+  2026-09-16, vérifié : 0 ligne chacun).
+
+### Étape 4 — Cohérence CLI / serveur — CLOSE le 2026-09-16 22:12
+
+- Items : 4.1 `[x]`, 4.2 `[x]`, 4.3 `[x]`, 4.4 `[x]` (avec le sous-point « ordre » en `[~]`,
+  cf. ci-dessous, comme le plan le prescrit lui-même), 4.5 `[x]`.
+- 4.1 : `cmd/levelup/migrations_cli.go` — `applyMigrationsOnDB` déplacé depuis
+  `cmd_backfill.go` (UN seul exemplaire, 13 appelants inchangés) + `applySharedMigrationsForTitle`
+  (`PathResolver.SharedDBPath`, `migration.RunForTitleDB(db, slug, TargetShared)`, jamais
+  `RunForDB` qui force `DefaultSlug`). Appelée en tête des QUATRE runners, AVANT la création du
+  pool (échec = on ne touche pas au réseau). Journal
+  `slog.InfoContext("migrations shared appliquées", title_slug, appliquees, db)` : le compte
+  vient d'un `count(*)` sur `schema_migrations` avant/après — `RunForTitleDB` ne rend PAS de
+  compteur (vérifié sur pièces, `registry.go:223`) ; le compteur est best-effort et ne peut pas
+  faire échouer une passe.
+- 4.2 : `engine.go` ouvre metadata par `OpenReadWriteShared` (clé `rw:`), même durée de vie,
+  `Close()` refcompté (erreur journalisée, jamais avalée) ; `engine_postsync_csr.go` — le seed de
+  catalogue ET `runAchievementsSync` réutilisent `e.metaDB` quand il est non nil, sinon ouvrent
+  comme avant. Les leases `KindPlayer` / `KindMetadata` ne bougent pas.
+  **Vérification sur pièces des lecteurs de `e.metaDB`** : `engine_batch_path.go:53`
+  (EnrichRegistryFromMetadata), `assetnames_wiring.go:59`, `citations_backfill.go:423`,
+  `convergence.go:657`, `engine_postsync.go:342` — aucun n'exige la lecture seule, et deux
+  ÉCRIVENT (asset_translations, `ops.CatalogRefreshFromRegistry`) : le handle RW est la bonne
+  ouverture, l'ancienne clé `ro:` était le vrai défaut.
+- 4.3 : `access_token_store_first.go` rend `("", nil)` SANS `ErrorContext` sur
+  `errors.Is(err, ErrUserTokensNotFound)` (la branche AU3 « store illisible » reste pour les
+  autres erreurs) ; `engine_postsync_csr.go` journalise UNE fois en Info « post-sync : succès
+  Xbox Live sautés — aucun token propre pour ce profil ».
+- 4.4 : `cmd/levelup/migrations_cli_test.go` (2 tests, `t.TempDir()`, aucune base sous `data/`) —
+  la passe crée `match_registry` avec `team_0_score` / `team_1_score` en **INTEGER** (preuve que
+  les étapes title-owned jouent : le test câble `wireStartupSeams`, comme `main()`), et elle est
+  idempotente ; slug vide → titre par défaut. `access_token_store_first_test.go` — store sans
+  fichier → `("", nil)` et AUCUNE ligne `"level":"ERROR"` (handler slog de test).
+  **Sous-point `[~]`** : l'ORDRE « migrations avant `RunFull` » est vérifié SUR PIÈCES (les
+  quatre appels sont en tête de runner, avant `newPooledEngine*`) et non par un test — il
+  faudrait inventer un seam de moteur, ce que le plan exclut explicitement.
+- **RÉGRESSION RÉELLE ATTRAPÉE PAR LE GATE** : `TestE2E_SyncEngine_MockClientError_ProviderRecovers_integration`
+  (`engine_provider_resilience_test.go`) exigeait `warnings ≥ 1` et un statut `success` sur un
+  échec d'historique — c'est EXACTEMENT le défaut C-A. Test **RETOURNÉ** (nom inchangé, donc
+  aucune paire de baseline touchée : il y figure et y reste) : il exige désormais
+  `errors ≥ 1` ET `Status() == "failure"`, en-tête daté expliquant l'inversion. La résilience du
+  Provider (StateRO, readers) reste assertée à l'identique.
+- Gate G4 (codes de sortie vérifiés) :
+  - `go test ./cmd/levelup/ ./internal/sync/ ./internal/platform/auth/ -count=1 -timeout 30m`
+    → 0 (3 paquets `ok`) ;
+  - `go test -tags=integration -p 1 ./internal/sync/ -timeout 30m` → 0 (`ok`, 140,8 s) — la
+    première exécution avait rendu 1 avec le test ci-dessus, réparé puis rejoué en entier ;
+  - `grep -rn "func applyMigrationsOnDB" cmd/` → UNE seule définition
+    (`cmd/levelup/migrations_cli.go:32`) ;
+  - `grep -rn "OpenReadForQuery" internal/sync/engine.go` → VIDE ;
+  - `go build ./...`, `go vet`, `gofmt -l cmd internal` → 0 / vide.
+- Vérifications par MUTATION : la sentinelle `ErrUserTokensNotFound` remise dans la branche AU3
+  → `..._StoreSansFichier_AucunError` FAIL (et `..._StoreLoadError_Logged` reste vert) ;
+  restaurée. Le retrait des quatre appels de migration compile (aucun test ne le voit) — c'est
+  le sous-point `[~]` ci-dessus, consigné tel quel.
+- Baseline de tests : AUCUNE paire retirée à cette étape (aucun test renommé ni supprimé).
+
+### Étape 5 — Hygiène — CLOSE le 2026-09-16 22:35
+
+- Items : 5.1 `[x]`, 5.2 `[x]`, 5.3 `[x]`, 5.4 `[x]`.
+- 5.1 : aide de `--gamertag` de `backfill-killsource` = « joueur dont les films sont traités,
+  les plus récents d'abord ; les jetons viennent du pool » ; le message d'erreur de
+  `--online` sans `--gamertag` disait la même chose périmée, aligné dans la foulée.
+- 5.2 : fixtures alignées sur INTEGER —
+  `internal/migration/steps_shared_rebuild_match_participants_test.go:106-107` et
+  `internal/sync/art_rebuild_regression_test.go:110-111`. DDL legacy VOLONTAIRE marquée :
+  `internal/games/halo_infinite/migrations/steps_shared_core_widen_test.go`
+  (`// match_registry-ddl: legacy — c'est le SUJET du test`). Ratchet
+  `internal/archlint/match_registry_ddl_types_test.go` étendu (`TestMatchRegistryFixturesDeTestAlignees`) :
+  colonnes communes seulement, aucun plancher, parseur tolérant à la mise en forme (une
+  fixture écrit sa DDL sur une seule ligne), **68 fixtures examinées**.
+  **ÉCART MAJEUR, SIGNALÉ** : appliqué pour la première fois à tout le module, le ratchet a
+  mesuré **45 divergences dans 25 fichiers**, AUCUNE sur les scores d'équipe — horodatages
+  (`TIMESTAMP` vs `TIMESTAMPTZ`, dans les DEUX sens), `backfill_completed` (BIGINT/INTEGER),
+  `player_count` (INTEGER/SMALLINT). Les réaligner touche la sémantique de fuseau de chaque
+  test : hors périmètre (découverte §10). Elles sont GELÉES dans `deriveFixturesGelees`, une
+  carte datée (fichier → colonne → type toléré) qui NE PEUT QUE RÉTRÉCIR : une divergence
+  nouvelle rougit, et une entrée dont la fixture a été réalignée rougit aussi (« entrée
+  périmée »). Deux mutations vérifiées : `team_0_score SMALLINT` remis dans une fixture non
+  marquée → FAIL ; entrée gelée devenue périmée → FAIL.
+- 5.3 : `internal/archlint/titleseams_wired_test.go` — critère = dépendances TRANSITIVES par
+  UNE seule exécution `go list -e -f '{{.ImportPath}} {{.Name}} {{.Deps}}' ./cmd/...` (≈ 1 s
+  mesuré ici), `t.Skip` si `go` est absent du PATH, allowlist toujours VIDE. Les 10 binaires
+  annoncés en C-F rougissaient et ont reçu `titleseams.RegisterAll("")` :
+  `backfill-world-player-stats`, `h5-appearance-backfill`, `h5-csr-backfill`,
+  `h5-events-backfill`, `h5-kill-kind-backfill`, `h5-roster-refetch`, `levelup-titles`,
+  `openapi-gen`, `populate-playlists-catalog`, `replay-worker`. Le ratchet compte désormais
+  **42 binaires** dépendant du moteur, tous câblés.
+  **Précision de critère (documentée dans le test)** : la correspondance est EXACTE sur
+  `internal/sync` ET `internal/sync/skill` (les deux paquets porteurs d'un fail-loud), pas par
+  préfixe : 42 binaires en dépendent, contre 84 pour un sous-paquet quelconque de
+  `internal/sync/` — imposer `RegisterAll` à un binaire qui ne tire que `haloclient` ou
+  `matchflags` ne protégerait de rien et diluerait le ratchet. Mutation vérifiée : câblage
+  retiré de `replay-worker` (dépendance transitive pure) → FAIL nominatif.
+- 5.4 : note d'exploitation ajoutée dans `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` (base
+  partagée tenue en écriture + migrations appliquées → serveur arrêté ; ne pas faire tourner
+  les jetons du parc pendant qu'un serveur tourne).
+- Gate G5 (codes de sortie vérifiés) :
+  - `go test ./internal/archlint/ ./internal/migration/ ./internal/sync/ ./internal/games/halo_infinite/migrations/ -run 'Ddl|DDL|Seams|Titleseams|ART_Rebuild|RebuildMatchParticipants|Widen' -count=1 -timeout 30m`
+    → 0 ; **écart de commande assumé** : le filtre du plan (`ArtRebuild`, `internal/migration`)
+    ne matchait RIEN (les tests s'appellent `TestART_Rebuild*` et les deux fixtures modifiées
+    sont sous `//go:build integration`). Complément exécuté :
+    `go test -tags=integration -p 1 ./internal/migration/ ./internal/sync/ -run 'ART_Rebuild|RebuildMatchParticipants'`
+    → 0 (2 paquets `ok`) — les fixtures touchées sont donc réellement exercées ;
+  - `go build ./cmd/...` → 0 ; `gofmt -l cmd internal` → vide.
+- Baseline de tests : AUCUNE paire retirée (un test ajouté, aucun renommé ni supprimé).
+
+### Étape 6 — Clôture — CLOSE le 2026-09-16 22:56
+
+- Items : 6.1 `[x]`, 6.2 `[x]`, 6.3 `[x]`, 6.4 `[~]` (revue adversariale, CI, push et fusion :
+  au pilote, par décision explicite du pilote).
+- **DÉPLACEMENT IMPOSÉ PAR UN RATCHET, découvert au gate 6.1** : le premier
+  `go test ./...` a fait rougir `internal/archlint::TestSyncRootPackageFrozen` —
+  `internal/sync/engine_history_retry.go` (étape 1) portait la racine du god-package de 80 à
+  **81 fichiers**, ce que le ratchet K3c / ADR 0027 interdit (précédent du 2026-08-14 : c'est
+  le FICHIER qui part, jamais la baseline qui monte). Le rejeu vit désormais dans le
+  sous-paquet cohésif **`internal/sync/historyretry`** (`Page[T]`, seam `Sleep`, constantes
+  `Attempts` / `NoSlotCooldown` / `WaitCap`) ; `engine.go` l'appelle avec une fermeture et
+  reste à **897 lignes** (valeur de base) ; la racine de `internal/sync/` revient à **80**.
+  Les cinq tests du rejeu ont suivi dans le nouveau paquet (`TestPage_*`) ; le paquet `sync`
+  garde le test de VERDICT (`TestPaginateAndPersistHistory_429Persistant_ErreurEtStatutFailure`,
+  qui remplace le seam par `historyretry.Sleep`). Aucun de ces tests n'était dans la baseline
+  (créés ce jour), donc aucune paire à retirer.
+- Gate 6.1 (codes de sortie vérifiés, exécution finale) :
+  - `go build ./...` → **0** (124 s) ;
+  - `go vet ./...` → **0** (41 s) ;
+  - `gofmt -l ./cmd ./internal` → **vide** ;
+  - `go test ./... -count=1 -timeout 30m` → 1, **181 paquets `ok`**, UN SEUL échec :
+    `internal/mapcatalog::TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` — **flake
+    Windows** (`open …\map_weapon_pads.json.lock: Accès refusé` sous concurrence dans un
+    `t.TempDir()`), paquet JAMAIS touché par ce lot. Rejoué SEUL : `go test
+    ./internal/mapcatalog/ -count=3` → **0** (`ok`, 1,46 s). Verdict : gate vert hors flake,
+    consigné en §10 ;
+  - `go test -tags=integration -p 1 ./... -timeout 30m` → **0**, **183 paquets `ok`** (1 339 s).
+- 6.2 — **Baseline de tests, différence finale** (commande du préambule, base `ab7fc5695` →
+  HEAD) : exactement **2 paires retirées**,
+  `levelup/go-api/internal/sync::TestPooledHaloClientGetCareerRank_PinnedToken` et
+  `..._NoPinnedToken`. En-tête de `scripts/check_test_baseline.sh` daté (retrait du
+  2026-09-16, lot robustesse, étape 3, D4).
+- 6.3 — entrée `.ai/thought_log.md` du 2026-09-16, statut Complété.
+
+### Revue adversariale (6.4), ronde 1 — 2026-09-16 soir — pilote
+
+Deux relecteurs aveugles (moteur/pool/CLI ; migrations CLI/post-sync/hygiène), contrat écrit
+incluant la règle de baseline, filtre de recevabilité. 3 constats recevables, 0 jeté ;
+35 conditions vérifiées qui tiennent (16 + 19), dont : sentinelle `ErrNoHealthySlot` traverse
+`doPublic` et `cachedHaloClient` ; pool à un slot → 429 → `ErrNoHealthySlot` → attente → 3e
+tentative ; delta/flush intacts ; six appelants de `NewPooledHaloClient` ; seuls pinned = cron
+Spartan + live-sync H5 ; `reportSyncResult` en `--all` compte un `partial_success` en `failed`
+et sort ≠ 0 ; handle metadata `rw:` partagé (refcount) — le serveur garde le sien ; ordre des
+leases ; `applySharedMigrationsForTitle` dans les quatre runners via `PathResolver` +
+`RunForTitleDB` ; un seul journal pour le token absent ; carte gelée du ratchet DDL ;
+`RegisterAll("")` sûr ; baseline = exactement les 2 paires attendues.
+
+- **P1 (corrigé)** : `loadMedalExploitMap` (`engine_backfills.go`) ouvrait `metadata.duckdb` par
+  `OpenReadOnly` alors que le moteur le tient désormais en `rw:` partagé → « different
+  configuration », `nil` en Debug, `medal_exploit = 0` pour tous les matchs (LUSR v1, défaut
+  de la CLI). Passage par `OpenReadForQuery` (handle réutilisé), journal en Warn ; test de
+  non-régression sous handle `rw:` tenu, **prouvé par mutation** (OpenReadOnly → rouge).
+- **P2 (corrigé)** : l'attente « pool sans slot sain » n'était pas annulable par le contexte
+  (jusqu'à 30 s en tenant le writer partagé à l'arrêt) → seam `Sleep(ctx, d) error` avec
+  `select` sur `ctx.Done()`, test d'annulation.
+- **P2 (corrigé)** : commentaire de la carte gelée « 25 fichiers » → 30 (compte réel).
+- Non recevable, noté : le plafond de hot-add `pool.go` (`AddOrUpdateSource`) compte tous les
+  slots, sains ou non — sans appelant à `MaxSize > 0` aujourd'hui.
+
+### Revue adversariale, ronde 2 — 2026-09-16 ~23:20 — pilote — CLOSE
+
+Relecture des seules corrections (`4aeb76d68..b970648e0`) par un contexte frais : **0 P0, 0 P1**,
+1 P2 — le capteur de journal du test `TestLoadMedalExploitMap_SousHandleRW…` ne retenait que
+`Warn+` : un retour de l'ancien bloc AVEC son `Debug` d'origine le laissait vert. Corrigé : tous
+les niveaux retenus, mutation exacte du relecteur rejouée (OpenReadOnly + Debug → rouge).
+C1..C3 fermés ; 15 conditions vérifiées, dont : aucun autre `OpenReadOnly(e.metadataDBPath)`
+atteignable pendant `run()` (les six appelants de `loadMedalExploitMap` couverts ; les trois
+sites de `citations_*` ne sont atteints que par les `backfill` et le serveur, hors run) ;
+`Sleep` par défaut rend `ctx.Err()` immédiatement sur contexte déjà annulé ; aucun `t.Parallel()`
+ne chevauche le `slog.SetDefault` du test. P0+P1 : 1 → 0. Boucle close (borne du skill).
+- Gates complets après les deux rondes (2026-09-16 ~23:50) : `go build ./...` → 0 ; `go vet ./...` → 0 ;
+  `gofmt -l` → vide ; `go test ./... -count=1 -timeout 30m` → 0, aucun `--- FAIL:` ;
+  `go test -tags=integration -p 1 ./... -timeout 30m` → 0.

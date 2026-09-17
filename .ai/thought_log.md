@@ -295,6 +295,145 @@ point par point. Critere d entree de M2 tenu (M1 fusionne, corpus re-fige). Lot 
 corpus gate vs da258bf76) ; voie au 2.7g ; tranches killsource suivantes entre les gates.
 
 ---
+## [2026-09-16] Robustesse du sync par le pool : verdict fidèle, rejeu du 429, plafond de slots sains, migrations CLI, rang de carrière public — Complété (branche `wt/sync-robustesse`, non poussée)
+
+**Six défauts d'une même passe réelle** (premier `sync-full` servi par le pool, Nuzzles,
+6 slots x 3 req/s). Plan exécuté : `.ai/PLAN_ROBUSTESSE_SYNC_2026-09-16.md`, six étapes, six
+commits sur `wt/sync-robustesse`.
+
+**C-A — un `429` terminait la passe, qui se déclarait réussie.** Le pool appliquait bien son
+cooldown AIMD au slot fautif, mais `paginateAndPersistHistory` faisait `AddWarning` + `break`
+sur la première erreur d'historique, et `SyncResult.Status()` ne regarde que `Errors` : sortie
+`sync full OK … status=success inserted=0`. **Décision D1** : rejeu borné — 429 rejoué
+IMMÉDIATEMENT (le pool sert un autre slot), `pool.ErrNoHealthySlot` (sentinelle neuve, traversant
+l'enveloppe `%w` de `doPublic`) attend `min(cooldown, 60 s)` puis rejoue, 3 tentatives ; 503 PAS
+rejoué ici (déjà retenté par `doGet` — un second étage doublerait la charge d'une API dégradée).
+Une page perdue compte désormais en `Errors` : `Status()` rend `partial_success`/`failure` et la
+CLI sort en code non nul (`reportSyncResult`, source unique du verdict, testée sans base ni
+réseau). **Écart de dernière minute imposé par un ratchet** : le fichier neuf posé à la racine de
+`internal/sync/` a fait rougir `TestSyncRootPackageFrozen` (K3c / ADR 0027, 80 → 81 fichiers) ;
+le rejeu vit donc dans le sous-paquet `internal/sync/historyretry` et `engine.go` reste à 897
+lignes. Le ratchet a fait exactement son travail, comme le 2026-08-14.
+
+**C-B — `--token-pool-size N` comptait les sources, pas les slots sains.** `NewPool` tronquait
+`sources[:MaxSize]` AVANT de résoudre : avec `1`, la première source du scan (Chocoboflor,
+révoquée) était la seule tentée → « aucun slot créé ». Le scan vient d'une map, donc l'ordre
+changeait à chaque exécution. **D2** : copie triée par gamertag, parcours complet, sortie quand
+le nombre de slots RÉSOLUS atteint le plafond.
+
+**C-D — le rang de carrière n'est pas privé : mesure contre prémisse.** `GET /careerranks`
+interrogé pour un xuid TIERS avec trois prêteurs (JGtm, DankerGlue, Trimbutton) rend 200 avec le
+MÊME rang et la MÊME XP que l'appel du propriétaire (JGtm `rank=202 xp=2555` vu par deux
+prêteurs ; Nuzzles `rank=272 xp=0`, 272 = rang maximal). `PolicyPinnedPlayer` reposait sur une
+prémisse fausse, déjà contredite par `career_live_target.go`. **D4** : `GetCareerRank` passe en
+`PolicyAnyPublic`, `ErrNoPinnedToken` et les champs `pinned*` disparaissent, six appelants de
+production retouchés — et le code mort qui en découlait (`newPooledClient` perdait l'usage de son
+paramètre `gamertag` et d'une boucle de résolution de xuid) est parti avec. L'épinglage ne
+subsiste que là où un endpoint l'exige vraiment : cron de personnalisation Spartan (403 mesuré
+pour un tiers) et live-sync Halo 5 — le grep du gate les montre seuls.
+
+**C-C / C-E — la CLI ne migrait pas, et se marchait sur les pieds.** `sync-full`/`sync-delta`
+n'appliquaient AUCUNE migration : l'élargissement `match_registry.team_{0,1}_score` est resté non
+appliqué pendant 83 min de sync et deux matchs à gros score ont été rejetés une seconde fois (un
+match rejeté du registre est perdu POUR TOUS). Les quatre runners appellent maintenant
+`applySharedMigrationsForTitle` (`RunForTitleDB`, jamais `RunForDB` qui force le slug par défaut)
+avant même de créer le pool. Le post-sync CLI ouvrait metadata en `ro:` puis en `rw:` dans le
+MÊME process (« different configuration » → seed de catalogue désactivé) : le run ouvre désormais
+en `OpenReadWriteShared` et le post-sync réutilise `e.metaDB` — deux de ses lecteurs ÉCRIVENT, la
+lecture seule n'a jamais été un besoin. Enfin, un profil sans fichier de tokens produisait un
+ERROR par passe côté auth ET un Debug côté sync : la sentinelle `ErrUserTokensNotFound` rend
+`("", nil)` sans ERROR, et le post-sync journalise UNE fois en Info.
+
+**Ce que le gate a attrapé, et qui valait le détour.** (1) Un test d'intégration existant,
+`TestE2E_SyncEngine_MockClientError_ProviderRecovers_integration`, exigeait `warnings ≥ 1` et un
+statut `success` sur un historique échoué — c'était le défaut C-A lui-même, écrit noir sur blanc
+dans la suite. Test RETOURNÉ (nom inchangé, donc baseline intacte), pas supprimé. (2) Le nouveau
+ratchet de fixtures `match_registry`, appliqué pour la première fois à tout le module, a mesuré
+45 divergences de type dans 25 fichiers — toutes sur les horodatages, `backfill_completed` et
+`player_count`, aucune sur les scores d'équipe. Hors périmètre : gelées dans une carte datée qui
+ne peut que RÉTRÉCIR (une entrée réalignée rougit aussi), découverte consignée en §10.
+
+**Résultats observés (codes de sortie vérifiés)** : `go build ./...` → 0 ; `go vet ./...` → 0 ;
+`gofmt -l ./cmd ./internal` → vide ; `go test ./... -count=1 -timeout 30m` → **181 paquets `ok`**,
+un seul échec, le flake Windows préexistant `internal/mapcatalog` (verrou `Accès refusé` sous
+concurrence), rejoué seul `-count=3` → vert ; `go test -tags=integration -p 1 ./... -timeout 30m`
+→ 0, **183 paquets `ok`** (1 339 s). Neuf mutations vérifiées à la main (429 non rejoué, AddError
+redevenu AddWarning, verdict CLI toujours nil, troncature du pool sans tri, GetCareerRank
+re-épinglé, sentinelle de token remise dans la branche AU3, DDL SMALLINT dans une fixture non
+marquée, entrée gelée périmée, câblage titleseams retiré d'un binaire transitif) : chacune fait
+rougir son test avant restauration. **Baseline de tests** : exactement 2 paires retirées
+(`TestPooledHaloClientGetCareerRank_PinnedToken` / `_NoPinnedToken`, renommés en
+`_AcquiertEnPublic`), en-tête de `scripts/check_test_baseline.sh` daté.
+
+**Conclusion / prochaine étape** : branche `wt/sync-robustesse` prête, 7 commits, rien de poussé,
+rien de fusionné. Restent au pilote la revue adversariale (deux relecteurs : pool/moteur ;
+post-sync/migrations/hygiène) et la CI. Aucune base sous `data/` n'a été ouverte, aucun serveur
+démarré, aucun `time.Sleep` réel ajouté à la suite. Note d'exploitation ajoutée à COMMANDS.md
+FR + EN : la CLI de sync tient la base partagée en écriture ET applique les migrations — serveur
+arrêté, et ne pas faire tourner les jetons du parc pendant qu'un serveur tourne.
+
+## [2026-09-16] Sync d'un profil sans token propre : pool partout, seams title-owned câblés par toutes les CLI, dérive de schéma `match_registry` — Complété (branche `wt/sync-pool`, non poussée)
+
+**Trois défauts distincts, tous rencontrés sur la même passe** (premier sync d'un profil suivi
+sans token propre, Nuzzles, 2 023 matchs en 65 min). Plan exécuté :
+`.ai/PLAN_SYNC_POOL_SEAMS_SCHEMA_2026-09-16.md`, quatre étapes, quatre commits.
+
+**D-A — le pool sert tout le monde, sauf là où trois appelants disaient le contraire.** Le pool
+de tokens est conçu pour servir n'importe quel joueur sur les endpoints publics
+(`PolicyAnyPublic` : historique, stats, films, CSR) et ne réserver au propriétaire que les
+endpoints privacy-gated (`PolicyPinnedPlayer` : rang de carrière, personnalisation Spartan). Or
+`sync-delta --all`, `sync-full --all` et le cycle d'auto-sync court-circuitaient la doctrine avec
+`if !pool.HasPlayer(gt) { skip }` — un profil suivi sans refresh token propre était sauté EN
+BLOC, à vie —, et la CLI mono-joueur exigeait carrément le token du joueur visé
+(`haloTokensForPlayer`, 9 appelants). **Décision D1** : un profil suivi se synchronise par le
+pool ; la dégradation est PAR ENDPOINT, pas par joueur. Les 9 appelants sont passés au pool et
+`haloTokensForPlayer` est supprimée (0 code mort) ; la précondition du scheduler disparaît ; le
+cron Spartan garde son `HasPlayer` avec une exemption datée, gardée par un ratchet à une entrée.
+`sync.ErrNoPinnedToken` remplace le `(nil, nil)` muet de `GetCareerRank` — un skip silencieux est
+indistinguable d'un joueur sans progression, et c'est exactement ce qui avait caché le trou.
+
+**Écart consigné sur D-A** : le plan plaçait le WARN de dégradation dans « l'étape post-sync
+carrière ». Vérification sur pièces : cette étape n'existe plus, elle est DÉCOUPLÉE depuis le
+2026-05-14 (`engine_postsync.go` section 3 ; le flux XP + Spartan ID est servi par
+`service.CareerLiveService`). Le WARN est donc posé sur `syncCareerRank`, seul consommateur de
+`GetCareerRank` dans le paquet.
+
+**D-B — huit seams title-owned câblés par un seul binaire sur trente-deux.** `cmd/server` posait
+le provider d'étapes de migration, la racine des jalons h5, les traductions de rangs et les
+quatre classifiers (LUSR et famille objectif, défaut + variante h5). Aucune CLI ne posait les
+classifiers : tout `sync-delta`/`sync-full` en ligne de commande rendait
+`post-sync: PANIC récupéré … classifier LUSR non câblé` (fail-loud MT-15) puis
+`perf_scores=0 lusr=0 citations=0 dominance=0` sur toute la passe — les `backfill` masquaient le
+trou en recalculant après coup. Nouveau paquet `internal/games/titleseams` :
+`RegisterAll(prestigeConfigDir)`, zéro logique, appelé par les 32 binaires de `cmd/` qui
+importent le moteur. **Découverte du ratchet** : 9 binaires posaient déjà des classifiers à la
+main et 7 d'entre eux SANS les variantes par titre — tous les modes Halo 5 y collapsaient dans
+`arena_slayer`, en silence. Deux ratchets archlint à allowlist vide ferment les deux sens.
+
+**D-C — une DDL peut mentir, et `CREATE TABLE IF NOT EXISTS` ne le répare jamais.** Le code
+déclarait `match_registry.team_{0,1}_score INTEGER` ; les bases réelles, créées par une DDL
+antérieure, portaient SMALLINT. Deux matchs de Baptême du feu ont été REJETÉS à l'INSERT
+(`Type INT64 with value 120267 … INT16`) : un score d'équipe dépasse 32 767. Un match rejeté du
+registre est perdu POUR TOUS LES JOUEURS. Étape idempotente `widen_match_registry_team_scores`,
+helper `migration.AlterColumnTypeIfNeeded`, DDL de secours et fixture de test alignées, et un
+ratchet qui compare colonne à colonne les DEUX déclarations de `match_registry`. **Question ART
+tranchée sur pièces** : `ALTER COLUMN … SET DATA TYPE` sur une table portant sa PK (index ART)
+passe en DuckDB 1.5.5 embarquée — test sur la DDL legacy avec contrôle négatif —, la recette de
+reconstruction de l'ADR 0026 n'a pas été nécessaire.
+
+**Résultats observés (gates, codes de sortie vérifiés)** : `go build ./...` et `go vet ./...` → 0 ;
+`go test ./... -timeout 30m` → 0, **180 paquets `ok`** ; `go test -tags=integration -p 1 ./... -timeout 30m`
+→ 0, **181 paquets `ok`**. Quatre mutations vérifiées à la main (le test du câblage CLI, les
+deux ratchets, le ratchet de DDL) : chacune fait rougir le garde-rail avant d'être restaurée.
+Trois tests du scheduler ont été RETOURNÉS, aucun supprimé en silence, chacun documenté dans son
+en-tête.
+
+**Conclusion / prochaine étape** : branche `wt/sync-pool` prête, 4 commits, rien de poussé, rien
+de fusionné. Restent au pilote la revue adversariale (deux relecteurs : auth/pool, puis
+sync/migration) et la CI. Ensuite seulement, la reprise du sync de Nuzzles (annexe A du plan) :
+`replay_build_location` est à `off` depuis le 2026-09-16 et doit revenir à `local` après la
+cuisson ; les deux matchs rejetés rentreront d'eux-mêmes grâce à l'étape 3. Aucune base sous
+`data/` n'a été ouverte pendant tout le chantier.
 
 ## [2026-09-17] Chantier decodeur — CLOTURE M1, gate de jalon en regime complet (equivalence 20 films + corpus gate vs base de fusion feat/v75), re-figeage unique des references — Complete (intégration 170ecaab5)
 
@@ -110104,3 +110243,615 @@ l'utilisateur. Lot 1 (`feat/quantum-projectiles`) et lot 2 (`feat/mapquant-forge
 indépendants et parallélisables en worktrees dédiés. Le sous-lot 1C décide du sort de la précision
 par arme pour les armes à projectile : succès vers un plan séparé, échec vers le registre des
 reports, la remise du 01/09 restant en l'état.
+
+## [2026-09-15] Annuaire des joueurs — étape 1 : le verrou d'instance se décide en un seul point — Complété
+
+**Décision technique principale** : le verrou « instance fermée » avait TROIS copies de son
+calcul d'après le plan (`api/handlers/setup.go`, `api/server_apiv1.go`, la closure injectée dans
+`XboxSSOLinkStrategy`) — la vérification sur pièces en a trouvé une QUATRIÈME,
+`service/bootstrap_service.go`, celle qui rend `instance_locked` au front, et une seule des
+quatre journalisait son repli sur un `app_settings.json` illisible. Le point de décision unique
+est `authz.InstanceLocked(envLocked bool, load func() (bool, error)) bool` : le package `authz`
+reste PUR (il ne peut importer ni `platform/settings` ni `config`), d'où le callback plutôt
+qu'une interface `SettingsLoader`. `api/server_apiv1.go` construit UNE closure et l'injecte en
+`func() bool` aux quatre consommateurs — type inchangé, donc les tests existants de
+`user_auth`/`xbox_auth_service` ne bougent pas. Ratchet `no_bare_instance_lock_read_test.go` :
+balayage du module entier, allowlist datée de six chemins, commentaires et `_test.go` ignorés.
+
+Deuxième décision : les défauts SÛRS deviennent les défauts appliqués. `settings.Store` reçoit
+`WithEnforcedDefaults(authz.Enforced(demoMode, authMode))` ; en mode appliqué, une clé ABSENTE
+donne `instance_locked=true` et `can_self_provision=false`, une valeur EXPLICITE gagne toujours,
+et le fichier n'est jamais réécrit au boot. La branche « fichier absent » de `Load` passait à
+côté (elle retournait `defaultSettings()` sans réappliquer les défauts) : même trou, autre porte,
+corrigé. `buildCapabilities` portait un second défaut indépendant pour `can_self_provision`
+(`true` en dur) — aligné sur la même règle, sinon le front proposait une création de profil que
+`POST /setup/players` refuse en 403. Enfin l'admin est exempté des DEUX gardes sur
+`/setup/players` : déclarer le profil d'un ami est un acte d'administration, et le rôle est lu
+dans le STORE quand le lookup est câblé (un admin rétrogradé depuis l'ouverture de sa session
+perd l'exemption).
+
+**Résultats observés** : gate G1 vert avec `-count=1` — 9 paquets `ok`, 0 échec (authz 7,8 s,
+api/handlers 51,5 s, platform/settings 5,1 s, archlint 65,7 s, service 52,8 s) ; `go vet ./...`
+→ 0 ; plus aucune ligne `InstanceLocked ||` en code de production. Baseline de l'étape 0 :
+tous les paquets verts, mais `internal/sync` DÉPASSE le timeout par défaut de `go test` sur ce
+poste (601 s au premier passage, build CGO DuckDB à froid inclus ; `ok 501 s` avec
+`-timeout 30m`) — tout gate qui l'inclut doit porter ce drapeau. `store.go` est repassé de
+556 L à 516 L par extraction de `settings/defaults.go` : la dette de seuil baisse.
+Réserve consignée : au premier passage de G1, `internal/service` a échoué pendant que le
+rattrapage `internal/sync` tournait en parallèle ; vert deux fois ensuite, le nom du test perdu
+dans une sortie tronquée. Aucun test désactivé ni skippé ; à re-vérifier au gate complet de
+l'étape 7.
+
+**Conclusion / prochaine étape** : étape 2 du plan — portes « profil suivi » sur le coordinateur
+de sync, le daemon watcher et le SSO Xbox, pour qu'un compte sans profil ne déclenche ni poller,
+ni sync, ni écriture disque.
+
+## [2026-09-15] Annuaire des joueurs — étape 2 : rien ne tourne pour un compte sans profil — Complété
+
+**Décision technique principale** : une seule porte, `domain.ProfileGate`
+(`func(ctx, titleSlug, xuid) bool`), posée aux trois endroits par lesquels un compte pouvait
+mettre la machine en marche — `sync.Coordinator.Submit`, `watcher.Daemon.AddPlayer` et la
+notification du watcher par le SSO Xbox. Elle s'appuie sur `AppConfig.HasTrackedProfile`, qui
+réutilise `domain.SyncablePlayers` telle quelle pour qu'il n'existe qu'UNE définition de
+« suivi » (présent dans db_profiles pour ce titre, ni `auth_only`, ni en pause) et qui cherche
+par XUID, jamais par gamertag. Refus = WARN structuré + compteur expvar `sync_refused_no_profile`
+(déclaré avec les compteurs de gate existants, registre `internal/observability` de l'ADR 0009,
+aucun second mécanisme). Le SSO continue de créer le compte et de persister les tokens — le
+refresh token est ce qui rendra le profil utilisable le jour où on le déclare ; ce qu'il ne fait
+plus, c'est mettre le joueur sous surveillance.
+
+Deux écarts au plan, tous deux tranchés sur pièces. (1) Le plan prévoyait deux poses de la porte
+dans `main.go`, l'une sur le coordinateur, l'autre sur le daemon : le `Coordinator` est construit
+DANS `watcher.NewDaemon` et n'est exposé que derrière l'interface `SyncGate` — il n'est pas
+atteignable depuis `main.go`. `Daemon.WithProfileGate` pose donc les deux (elle délègue), et un
+test garde ce lien. Exposer le coordinateur juste pour satisfaire la forme du gate aurait été le
+contraire d'un progrès. (2) Le titre est normalisé sur `DefaultSlug` AVANT d'interroger la porte,
+des deux côtés : `notifyWatcher` ne renseigne pas `TitleSlug`, et un titre vide est lu « TOUS les
+titres » par `LoadPlayers` — sans cette normalisation, le profil Halo 5 d'un joueur aurait ouvert
+son suivi Halo Infinite.
+
+**Résultats observés** : gate G2 vert — 23 paquets `ok` (dont `domain` et `archlint`, ajoutés au gate pour couvrir `domain/identity.go` et les ratchets), puis 10 paquets `ok` avec `-tags=integration`, 0 échec de part et d'autre ; `make check-types` → 0 ; 27 tests vitest verts ; eslint 0 sur les quatre fichiers web touchés. Côté web, la vérification de l'item 2.8
+a montré que la redirection attendue n'existait PAS pour le cas réel : `setup_state` et
+`setup_required` décrivent l'INSTANCE, alors qu'`available_players` est filtré par propriété.
+Sur une instance déjà peuplée, un compte SSO sans profil recevait `setup_state: 'ready'` et
+atterrissait sur la page « on synchronise tes derniers matchs » — qui ne synchronise plus rien
+pour lui depuis cette étape — et `SetupPage` l'aurait renvoyé à l'accueil, donc une simple garde
+de route aurait bouclé. Quatre fonctions pures dans `setupRouting.ts` (aucune logique dans les
+composants), une garde dans `__root.tsx`, et le wizard qui choisit son étape et ne rend la main
+qu'à bon escient. 17 cas vitest, aucune chaîne d'interface nouvelle donc aucun manifeste i18n à
+régénérer.
+
+**Conclusion / prochaine étape** : étapes 1 et 2 closes et commitées sur `wt/player-directory`,
+non poussées. La suite appartient aux agents B (annuaire `PlayerDirectory` + `GET /admin/identities`,
+puis la section « Identités » de la page de gestion) et C (chemin d'onboarding unique, purge
+d'identité + CLI). Réserve à lever au gate complet de l'étape 7 : le flake `internal/service`
+observé une fois sous contention au premier passage de G1.
+
+## [2026-09-15] Annuaire des joueurs — étape 3 : un seul modèle de lecture des identités — Complété
+
+**Décision technique principale** : l'annuaire ne fusionne pas les registres, il les LIT
+ensemble. Un port (`port.PlayerDirectory`) et un paquet de service
+(`internal/service/playerdirectory/`) composent les cinq sources par petites interfaces de
+lecture — profils (`config.AppConfig`), comptes (`userstore.Store`), credentials
+(`MultiUserTokenStore`), suivi live (le daemon watcher) et le disque (`PathResolver`) — et
+rendent une ligne par identité, keyée par le xuid (ADR 0035 D1). Aucun import DuckDB, aucune
+écriture, aucun accès à l'entrepôt partagé : le témoin disque CONSTATE l'existence d'un dossier
+et d'une player DB, il n'en ouvre jamais aucune.
+
+Trois choix pris sur pièces, contre la lettre du plan et pour son intention. (1) Le lecteur de
+profils porte aussi `HasTrackedProfile` : le port doit répondre à cette question, et
+`AppConfig` sait déjà y répondre depuis l'étape 2 — la réimplémenter dans le service aurait créé
+une deuxième définition de « suivi », ce que l'ADR 0035 D3 interdit expressément. (2) Le watcher
+rend `WatchedPlayers() []domain.WatchedPlayerRef` plutôt que les clés `gamertag|titre` : le
+`PlayerWatcher` porte déjà le xuid, donc le suivi live se rattache par xuid au lieu de dépendre
+d'un format de clé interne qui aurait cassé l'annuaire en silence le jour où il change.
+(3) `IdentityRecord` porte les dossiers orphelins, sans quoi `computeAnomalies` n'aurait pas pu
+rester une fonction pure de la ligne — et c'est sa pureté qui la rend testable seule.
+
+Un dossier joueur que plus aucun registre ne réclame produit une ligne à xuid vide plutôt que
+d'être écarté : c'est précisément ce qu'on cherche à voir. Les anomalies sont des CODES machine
+avec un contexte machine (slug, nom de dossier) ; les libellés FR/EN sont posés côté web à
+l'étape 4 — le ratchet `no_french_label_literal` interdit de toute façon un littéral accentué
+dans un fichier neuf de `internal/service` ou `internal/api/handlers`.
+
+**Résultats observés** : gate G3 vert — 9 paquets `ok`, 0 échec (14 s) ; `make openapi-check`
+→ 0 (contrat régénéré : +162 lignes, `generated.ts` +94) ; `make check-types` → 0. Hors gate :
+`./internal/api/...` et `./internal/archlint/...` verts (36 s), `golangci-lint` 0 issue sur les
+paquets neufs et aucun constat sur les fichiers ajoutés ailleurs. 26 tests neufs (annuaire,
+fonction pure d'anomalies, handler, watcher, userstore). Découverte consignée en §10 du plan :
+le ratchet `no_duckdb_import` que l'étape 6 dit « existant » n'existe pas — il sera à écrire.
+
+**Conclusion / prochaine étape** : étape 4 — section « Identités » sur `/admin/management`
+(TanStack Table, tokens sémantiques, i18n FR+EN) et interrupteur « Instance fermée », que le
+backend accepte depuis longtemps mais qu'aucune page n'exposait.
+
+## [2026-09-15] Annuaire des joueurs — étape 4 : la page qui aurait montré le compte, et l'interrupteur qui manquait — Complété
+
+**Décision technique principale** : la section « Identités » passe AVANT les comptes sur
+`/admin/management`, parce qu'elle est la vue d'ensemble dont les comptes ne sont qu'un
+sous-ensemble — et parce que c'est là que se voit ce qui MANQUE. Table TanStack, sept colonnes,
+tri par défaut sur les anomalies `warning` : ce qu'un administrateur ouvre cette page pour voir
+est en haut. Aucune logique dans le composant : `identitiesDisplay.ts` (fonctions pures :
+sévérité → token, code → clé i18n, compte de warnings, états de profil et d'identifiants) et
+`useInstanceLock.ts` (état + mutation + invalidation).
+
+Deux choix de lisibilité qui sont en fait des choix de fiabilité. Un code d'anomalie inconnu du
+web est affiché BRUT plutôt que de laisser une cellule muette : le serveur peut livrer un
+nouveau code avant le front, et une ligne vide serait un mensonge. Et l'état « aucun jeton »
+n'a AUCUNE couleur, alors que les trois autres en ont une : c'est le cas normal d'un ami dont
+le pool d'auth prête les identifiants, et peindre le normal en rouge apprend à ignorer la
+couleur.
+
+L'interrupteur « Instance fermée » a demandé une vérification sur pièces qui a payé : le
+backend expose et accepte `instance_locked` depuis le 2026-06-08, mais le type TypeScript
+`SettingsResponse` — écrit à la main, pas dérivé du contrat — ne le portait pas, donc
+`UpdateSettingsRequest` le refusait. C'est la raison mécanique pour laquelle aucune page ne
+proposait le verrou et pour laquelle la production a dû être verrouillée à la main dans le
+fichier de réglages. Champ ajouté, hook dédié, invalidation de `bootstrap` au succès (la seule
+source de l'état affiché).
+
+**Résultats observés** : gate G4 vert — `make check-types` 0 ; 38 fichiers / 233 tests vitest
+sur `admin` + `settings`, 0 échec ; `lint:colors` 0 violation ; `npm run lint` 0 erreur (le
+seul warning d'un fichier neuf est celui que TanStack Table pose sur CHAQUE tableau du dépôt,
+vérifié en comparant avec `DetectionsPanel`). La suite web COMPLÈTE a été lancée en plus du
+gate, et elle a payé : elle a révélé un vrai échec que le gate ne couvre pas — le garde-rail
+qui exige qu'une nouvelle query key soit classée title-scopée ou agnostique. Classée agnostique
+avec justification (une identité porte ses profils de TOUS les titres ; la scoper masquerait
+l'anomalie cherchée). Second passage complet : 718 fichiers, 7704 tests, 0 échec. Consigné
+aussi : 7 garde-rails web expirent par contention au premier passage d'une suite complète sur
+machine chargée — verts isolément, ne pas s'y fier sans relancer.
+
+**Conclusion / prochaine étape** : étapes 3 et 4 closes et commitées sur `wt/player-directory`,
+non poussées. La suite appartient à l'agent C (étape 5 : chemin d'onboarding unique via
+`PlayerDirectory.Onboard` ; étape 6 : purge d'identité + CLI). Point d'attention pour lui,
+consigné en §10 : le ratchet `no_duckdb_import` que l'étape 6 dit « existant » n'existe pas —
+il sera à écrire, pas à étendre.
+
+## [2026-09-16] Annuaire des joueurs — étape 5 : un seul chemin pour qu'un joueur existe — Complété
+
+**Décision technique principale** : `PlayerDirectory.Onboard` devient le SEUL créateur de
+profil, et l'ordre qu'il impose — profil de suivi d'abord, suivi live ensuite — n'est plus
+une convention mais une contrainte mécanique. Depuis l'étape 2, `watcher.Daemon.AddPlayer`
+porte une porte qui LIT `db_profiles.json` : notifier le watcher avant d'avoir écrit le profil
+se solderait par un refus. Le test `TestOnboard_ProfilAvantWatcher` tient ce lien — son double
+de watcher rejoue la porte et refuse tant que le profil n'est pas là, donc une inversion de
+l'ordre fait rougir la suite au lieu de repasser en prod.
+
+Le handler `POST /setup/players` ne connaît plus `ProfileService` : il garde ce qui est HTTP
+(gardes d'ouverture, validation, identité Xbox de la session, réponse) et délègue la mise en
+place. Conséquences assumées, toutes dans le sens de la règle « 0 code mort » : l'interface
+`port.ProfileService` n'avait plus de consommateur et a été supprimée ; le helper `fileExists`
+n'était plus utilisé que par ses deux propres tests — le « dead code museum » à tests verts du
+diagnostic de revue — supprimé avec eux. Le ratchet `no_direct_profile_create_test.go` (module
+entier, allowlist d'UNE entrée datée) interdit qu'un second appelant de `CreatePlayer(`
+réapparaisse : c'est exactement ce qui a rouvert le trou du 2026-07-23, deux endroits décidant
+qu'un joueur existe.
+
+Un cas que le plan n'avait pas prévu, trouvé sur pièces : `AddPlayer` refuse un xuid vide.
+Un profil créé en mode manuel n'en a pas — notifier quand même aurait produit un `slog.Error`
+à chaque création manuelle, du bruit sur un cas parfaitement normal. `notifyWatcher`
+court-circuite en amont avec un INFO : le watcher suit PAR xuid, sans xuid il n'y a rien à
+suivre.
+
+**Résultats observés** : gate G5 vert — `go test -timeout 30m ./internal/service/playerdirectory/...
+./internal/api/handlers/... ./internal/archlint/...` → 3 paquets `ok`, 0 échec, exit 0 (35 s) ;
+`grep -rn "\.CreatePlayer(" hors tests et hors annuaire` → 0 ligne. Hors gate : `go vet ./...`
+→ 0 ; `./internal/api/... ./internal/domain/... ./internal/port/...` → 11 paquets `ok` (26 s) ;
+`make openapi-check` → 0 (contrat inchangé, la réponse de `/setup/players` n'a pas bougé) ;
+`golangci-lint --new-from-merge-base=origin/main` → 0 issue. `handleCreatePlayer` avait
+grossi à 94 lignes : `guardLinkedXboxIdentity` extrait, il redescend à 71 — la dette de seuil
+baisse au lieu de monter, et `setup.go` ne porte plus aucun constat de lint.
+
+**Conclusion / prochaine étape** : étape 6 — purge d'identité (`Purge`, jamais la base
+partagée) et CLI `levelup identity list` / `identity purge`, avec le ratchet
+`no_duckdb_import_playerdirectory` à écrire (il n'existe pas, cf. §10 du plan).
+
+## [2026-09-16] Annuaire des joueurs — étape 6 : une identité sort, les matchs restent — Complété
+
+**Décision technique principale** : la purge d'une identité retire le suivi live, les profils
+et leurs dossiers, les dossiers orphelins, les identifiants, les appartenances aux groupes et
+le compte — et ne touche JAMAIS la base partagée. Ce n'est pas une promesse de commentaire :
+`purge_test.go` compare le sha256 de `shared_matches_v2.duckdb` avant et après, et le ratchet
+`no_duckdb_import_playerdirectory` interdit au paquet d'importer le moindre paquet DuckDB, ce
+qui rend l'écart impossible plutôt que seulement mesuré. Le garde-rail a été vu ROUGIR sur un
+import ajouté volontairement avant d'être remis vert : un ratchet qu'on n'a jamais vu échouer
+ne garde rien.
+
+Deux méthodes manquaient, et les découvrir a été le vrai travail. `watcher.Daemon` n'avait
+aucun retrait par joueur : `UpdateSubscriptions` travaille par GAMERTAG, ce qui convient à une
+liste d'abonnement écrite par un humain mais pas à une identité — un gamertag se renomme, un
+xuid non. `RemovePlayer(ctx, xuid)` retire donc tous les titres du xuid, cancel du REST poller
+compris (sans quoi sa goroutine survivrait, la fuite W2 que le retrait existant avait déjà
+corrigée). Et `ProfileService.PurgeTitleData` ne pouvait PAS servir : `RemoveEntry` refuse le
+dernier titre actif d'un gamertag, invariant qui protège un joueur qui RESTE ; appliqué titre
+par titre il aurait échoué sur le dernier et laissé le profil en place — purge incomplète, et
+silencieuse côté fichier. `PurgeIdentityData` retire tout en une mutation atomique, et un test
+dédié tient ce cas.
+
+La commande est une simulation tant qu'on n'a pas dit `--yes`. Piège corrigé sur pièces : le
+paquet `flag` s'arrête au premier argument non-flag, donc `identity purge <xuid> --yes` —
+l'ordre documenté, celui qu'un humain écrit — aurait laissé `--yes` non lu, c'est-à-dire une
+simulation là où l'on croyait exécuter. Le positionnel est extrait avant `Parse`, et un test
+joue cet ordre exact.
+
+**Résultats observés** : gate G6 vert — 2 paquets `ok` exit 0 ; `go build ./cmd/levelup` 0 ;
+`levelup identity list` sur les registres locaux rend 12 identités sans panique (les 4 joueurs
+à profils multi-titres, 6 amis `auth_only`, et 3 lignes `token_orphan` — des fixtures à xuid
+factice que personne ne réclame, c'est-à-dire exactement ce que l'annuaire est fait pour
+montrer). Hors gate : `go vet ./...` 0, 14 paquets verts (archlint, watcher, domain, port,
+service), `golangci-lint --new-from-merge-base` 0 issue. `docs/COMMANDS.md` et
+`docs/FR/COMMANDS.md` documentent la commande, sa précondition (le serveur ne doit pas tenir
+la player DB) et ce qu'elle ne touche jamais.
+
+**Conclusion / prochaine étape** : étapes 5 et 6 closes et commitées sur `wt/player-directory`,
+non poussées. Reste l'étape 7 (pilote) : revue adversariale du diff complet, gates complets,
+docs (CLAUDE.md, ARCHITECTURE_V6 EN+FR, ADR 0035 amendée), puis la purge en production du
+compte du 2026-07-23. Cinq découvertes consignées en §10 du plan, dont deux à arbitrer : un
+groupe dont l'identité purgée est PROPRIÉTAIRE ne se quitte pas (l'étape est rendue en échec
+plutôt que de supprimer le groupe d'autrui), et les 3 fixtures `token_orphan` locales qui
+attendent une décision.
+
+## [2026-09-16] Annuaire des joueurs (ADR 0035) — clôture : revues adversariales, correctifs, gates complets
+
+**Statut** : Complété (code + tests + docs ; commit de clôture en attente du feu vert utilisateur ;
+ni push ni merge).
+
+**Décision technique principale** : clôture du plan `.ai/PLAN_ANNUAIRE_JOUEURS_2026-09-15.md`
+(étapes 0-6 livrées par trois agents, un à la fois ; étape 7 par le pilote). Deux rondes de revue
+adversariale à contexte frais (skill `adversarial-review`, contrat écrit, deux relecteurs
+enchaînés) : ronde 1 (accès / anti-patterns / multi-titre) → 5 constats recevables, tous P1, tous
+corrigés ; ronde 2 (tests / front + re-vérification des 8 corrections) → 0 P0/P1, 2 P2 + 3
+réserves, corrigés ou acceptés avec test. Boucle convergente (5 → 0), pas de ronde 3. Registre
+daté : `.ai/REVUE_ANNUAIRE_JOUEURS_2026-09-15.md` (R1-R6 pilote, A1-A8 ronde 1, B1-B5 ronde 2).
+Correctifs notables : (1) pause/purge d'un titre retirent le couple du watcher et la réactivation
+le remet (`Daemon.RemovePlayerTitle`, `TitleSyncHandler.WithWatcher/WithPlayerLookup`) — sans
+cela un poller fantôme faisait grimper `sync_refused_no_profile`, le signal d'intrusion ; (2)
+deux comptes sur un même xuid (cas réel prod `JGtm`/`jgtm_xbox`) : `DuplicateAccounts` + anomalie
+`account_duplicate`, principal = le plus ancien (tri total avant lecture, le store itère une map),
+purge de tous les comptes, refus si l'un est admin ; (3) verrou forcé par l'environnement :
+`PATCH /settings {instance_locked:false}` → 409 `instance_lock_forced`, message spécifique côté
+web ; (4) `HasTrackedProfile` retiré du port (code mort : les portes lisent
+`config.AppConfig.HasTrackedProfile`, définition unique) ; (5) `identity purge` accepte le gamertag
+d'une identité SANS xuid (dossier orphelin) ; (6) littéral `users.json` centralisé
+(`config.UsersFilePath[In]`) + ratchet, qui a attrapé une 4e copie (`cmd/admin`) ; (7) ordre stable
+des comptes sans identité Xbox ; (8) branche d'échec de `PurgeIdentityData` journalisée ET testée
+(seam `WithRemoveAll`) ; (9) assertions de compilation sur les interfaces résolues par assertion de
+type au câblage. ADR 0035 amendée (D2, D3, D5, D6 + Outcome). CLAUDE.md (registres d'identité,
+ADR 0035), ARCHITECTURE_V6 EN + FR (section « registres d'identité »).
+
+**Résultats observés** : machine au repos — `go test ./...` vert (3 min 34 s à chaud ; à froid
+`internal/sync` exige `-timeout 30m`, 501 s) ; `go test -tags=integration ./internal/sync/...
+./internal/persist/...` vert ; `golangci-lint --new-from-merge-base=origin/main` 0 issue ; `tsc`
+propre ; vitest complet 717 fichiers / 7 707 tests, 0 échec (`--testTimeout=60000` nécessaire au
+premier passage d'un arbre neuf) ; `openapi-check` OK ; lint couleurs 0 violation ; eslint 0
+erreur (26 avertissements préexistants). Le flake d'`internal/service` observé par l'agent A sous
+contention ne s'est pas reproduit.
+
+**Action prod (2026-09-15 19:44 UTC, feu vert explicite)** : `instance_locked=true` écrit EN PLACE
+dans `/opt/levelup/app_settings.json` (inode 263613 conservé — `sed -i` aurait laissé le conteneur
+sur l'ancien inode), sauvegarde `app_settings.json.bak-20260915194349`, vérifié hôte + conteneur +
+`GET /bootstrap`. Origine : intrusion SSO du 2026-07-23 17:44 UTC (`XxGdakilla187xX`, xuid
+`2533274796795729`), instance jamais verrouillée depuis la livraison du verrou (2026-06-08).
+
+**Conclusion / prochaine étape** : (a) commit de clôture sur `wt/player-directory` après feu vert
+(44 fichiers, 9 nouveaux) ; (b) merge dans `feat/v75` et déploiement = décision utilisateur ;
+(c) décision utilisateur du 2026-09-16 : l'intrus n'est PAS purgé — son identité reste visible
+en warning dans `GET /admin/identities` (l'outil `levelup identity purge` reste disponible) ;
+après déploiement, vérifier que la section « Identités » la liste avec ses anomalies ; (d) décisions produit ouvertes : groupe dont l'identité
+purgée est propriétaire, 3 fixtures `token_orphan` locales, toggle `settings.go` qui fait confiance
+à `sess.Role` (plan §10) ; (e) le plan frère « amis / invitations » doit utiliser
+`authz.InstanceLocked` et `PlayerDirectory.Onboard` (étape 5.3/5.4).
+## [2026-09-15] Amis par joueur et invitations « sans groupe » sur instance verrouillée — plan écrit, non exécuté
+
+**Statut** : Complété (analyse et plan, aucun code touché — exécution refusée par l'utilisateur
+pour cette session).
+
+**Décision technique principale** : vérification sur pièces du modèle multi-utilisateur (ADR
+0029 + `groupstore`) à la question « un utilisateur hors de mon groupe voit-il mes amis ? ». Réponse :
+non, l'accès est cloisonné par propriété + co-membres de groupe (`authz.CanAccessPlayer`,
+`RequirePlayerOwnership`, `familyXUIDResolver` câblé sur `CoMemberXUIDs`). Deux défauts relevés et
+tranchés avec l'utilisateur : (1) `app_settings.friend_gamertags` est global à l'instance ET lu par
+le front via `GET /settings` sous `RequireAdmin` — un utilisateur standard n'a aujourd'hui aucune
+fonctionnalité « amis » ; (2) sur instance verrouillée, seule l'invitation DE GROUPE lève le verrou
+(`xbox_auth_service.go:222` rejette `GroupID == ""`), l'invitation admin sans groupe est inopérante
+en SSO Xbox et n'a plus d'UI ; tout invité reste ensuite coincé sur `POST /setup/players` (403
+`instance_locked`). Décisions D1-D6 : amis par profil joueur (xuid) dans
+`data/global/player_friends.json` (store miroir de groupstore), champ global supprimé après
+migration idempotente ; UI sur `/groups` renommée « Amis et groupes » ; invitation (groupe ou non)
+lève le verrou de compte et porte un droit à usage unique de provisioning du profil, porté par
+`users.json` (`User.ProvisionGrant`) ; édition des amis par le propriétaire direct ou l'admin ;
+invitation sans groupe = admin, page `/admin/management`.
+
+**Résultats observés** : `users.json` local ne contient qu'un compte (admin) — les profils amis
+n'ont jamais été des utilisateurs ; le commentaire de `middleware.FamilyXUIDResolver` parle
+encore de `FriendGamertags` alors que le câblage réel est `groupstore.CoMemberXUIDs` ; la CLI
+`sync-full --gamertag` exige le refresh token DU joueur alors que le serveur emprunte au pool
+(pertinent pour l'ajout de Nuzzles, procédure en annexe du plan).
+
+**Conclusion / prochaine étape** : plan `.ai/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`
+(7 étapes, gates, décisions tranchées, annexe Nuzzles). Exécution dans un worktree dédié
+`wt/amis-invitations` sur signal de l'utilisateur. Rien committé.
+## [2026-09-15] Amis par joueur + invitation sans groupe sur instance verrouillée — Complété (étapes 0 à 7, recette navigateur au pilote)
+
+**Statut** : Complété — branche `wt/amis-invitations` (worktree dédié
+`LevelUp-wt-amis-invitations`, base `feat/v75` @ 2ddef392c), 8 commits, non poussée,
+non mergée. Plan exécuté : `.ai/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`
+(section « Avancement » : items statués + sorties de gates).
+
+**Décision technique principale** — deux défauts, une même cause : une donnée de PERSONNE
+traitée comme un réglage d'INSTANCE.
+
+1. *La liste d'amis était globale.* `app_settings.friend_gamertags` était UNE liste pour
+   toute l'instance : elle pilotait `is_with_friends` dans toutes les player DBs, et n'était
+   lisible que par un admin (`GET /settings` sous `RequireAdmin`) — un utilisateur standard
+   n'avait donc AUCUNE fonctionnalité « amis ». Elle devient une liste PAR PROFIL (clé xuid,
+   `data/global/player_friends.json`, `platform/friendstore` calqué sur `groupstore`),
+   servie par `GET|PUT /players/{slug}/friends` sous le chokepoint d'ownership (ADR 0029).
+   Deux portes distinctes et assumées : le middleware décide de l'ACCÈS (un co-membre de
+   groupe lit), `can_edit` décide de l'ÉCRITURE (propriétaire direct ou admin, D4) — et
+   `can_edit` est porté par la réponse, de sorte que le front n'interprète jamais un 403
+   pour décider de son affichage. Le champ global est SUPPRIMÉ (domaine, store, contrat
+   OpenAPI, types web) derrière une migration de boot idempotente et un ratchet archlint à
+   allowlist vide.
+2. *L'invitation sans groupe ne passait pas le verrou.* Sur instance verrouillée, seule une
+   invitation DE GROUPE créait un compte : `POST /admin/invites` était inopérant en SSO Xbox.
+   Désormais toute invitation valide lève le verrou ; le groupe n'est rejoint que s'il y en a
+   un ; et le compte AINSI CRÉÉ porte un droit à usage unique (`User.ProvisionGrant`) de créer
+   SON profil joueur, sans quoi l'invité atterrissait sur le Setup et prenait un 403
+   `instance_locked`. Le droit vit sur le COMPTE (il survit à une déconnexion entre le login
+   et le Setup), il est refusé si un profil porte déjà son xuid, et il est effacé après usage.
+   Le contrôle « xuid = identité liée » reste la vraie barrière : le droit ne dispense pas
+   d'être soi.
+
+**Écart consigné** : la gate G2.0 (existence de `data/auth/groups.json` en prod) n'a PAS été
+validée. Variante D6 appliquée : la migration de groupe par défaut est conservée, simplement
+re-sourcée depuis le store d'amis (`friendStore.Get(xuid de l'admin)`), et ordonnée après la
+migration des amis. Les deux restent idempotentes.
+
+**Résultats observés**
+- Go : `go build ./...`, `go vet ./...`, `go test ./...` → 0. Intégration
+  `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` → 0.
+- Web : typecheck (cache `node_modules/.tmp` purgé) → 0 ; `npm run lint` → 0 erreur
+  (25 avertissements préexistants) ; `npm run test:run` → 716 fichiers, 7681 tests verts.
+- Ajouts : 37 tests Go (friendstore, domaine, handler amis, setup, userstore, service SSO) et
+  22 tests web (hooks, section, flux d'ajout, table d'erreurs).
+
+**Trois pièges rencontrés, à retenir**
+- *Fins de ligne.* Réécrire un fichier du dépôt via un script Python en mode texte sous
+  Windows le convertit en CRLF — invisible dans `git diff` (normalisation à l'index), mais
+  trois garde-rails du dépôt LISENT LA SOURCE et découpent sur `"\n}\n"` :
+  `wire/home_factories_parity_test.go` a viré au rouge pour cette seule raison, en accusant
+  un câblage parfaitement correct. Réflexe : `gofmt -l ./cmd ./internal` après toute
+  réécriture scriptée.
+- *Le champ écrit deux fois dans le contrat.* `friend_gamertags` figurait dans le struct Go ET
+  à la main dans `api/openapi_manual_fragment.yaml` : régénérer sans toucher au fragment
+  laissait le champ dans `openapi.yaml`. Les autres champs du fragment méritent un audit.
+- *Le ratchet des libellés FR.* `no_french_label_literal_test.go` interdit tout littéral
+  accentué dans un fichier NEUF de `api/handlers`. Plutôt que d'agrandir son allowlist (ce
+  que le ratchet interdit précisément), le nouveau handler applique la décision D6 du plan
+  « libellés en dur » : il ne renvoie qu'un CODE machine, et la table FR/EN vit côté web
+  (`features/friends/errors.ts`). Le motif de refus d'une liste est porté par le code
+  (`invalid_friends_too_many`, `invalid_friends_gamertag_too_long`), pas par une phrase.
+
+**Conclusion / prochaine étape** : la branche est prête pour la revue adversariale et la CI,
+toutes deux à la main du pilote, ainsi que la recette navigateur (elle exige un second compte
+Xbox de test, le basculement d'`instance_locked` et l'arrêt du serveur principal — un worktree
+ne peut pas démarrer de serveur sans violer le mono-process, ADR 0013). Merge dans `feat/v75`
+sur signal de l'utilisateur uniquement ; jamais dans `main`. Deux découvertes hors périmètre
+sont consignées en §10 du plan : l'ADR 0029 décrit encore un 404 sur slug inconnu là où le
+middleware répond un 403 uniforme depuis le durcissement S7, et d'autres réglages lus par le
+front pour un utilisateur standard peuvent souffrir du même 403 que `GET /settings`.
+
+## [2026-09-16] Amis par joueur et invitations sans groupe — revue adversariale du lot, deux rondes — Complété
+
+**Statut** : Complété (revue + correctifs). Branche `wt/amis-invitations`, 12 commits au-dessus de
+`feat/v75`, ni poussée ni mergée. Recette navigateur NON faite (exige l'arrêt du serveur local et
+un second compte Xbox : la première connexion de Nuzzles la jouera).
+
+**Décision technique principale** : revue adversariale conforme au skill — deux relecteurs
+aveugles en parallèle (contrôle d'accès + couverture ; migration/sync/front + anti-patterns),
+contrat écrit, filtre de recevabilité, triage par le pilote, ronde 2 sur les seules corrections.
+Dix constats recevables, zéro jeté. Deux P0 : (1) le droit de provisioning à usage unique
+(`setup.go`) laissait passer `profile_mode` différent de xbox et un xuid vide, donc un invité
+pouvait écrire dans `db_profiles.json` un profil pour un gamertag/xuid étrangers — trou
+PRÉEXISTANT que le nouveau droit rendait atteignable ; la requête est désormais épinglée à
+l'identité du porteur quel que soit le mode ; (2) `RecomputeForPlayer`/`RecomputeAll`
+retournaient tôt sur liste vide, donc le retrait du dernier ami ne démotait jamais
+`is_with_friends` — le recalcul est convergent depuis le 19/06, c'était la doc (« additive »,
+« vide → no-op ») qui mentait et qui a justifié le court-circuit ; les deux docs sont remises à
+l'endroit. Cinq P1 corrigés (invalidations Carrière/Accueil après PUT via préfixes
+`careerAll`/`homeAll` + garde-rail ; rejeu 2D reconstruit à chaque tick par un objet non
+mémoïsé et un `?? []` neuf ; quatre clés i18n mortes ; `slog.Warn` nu). Quatre P2 consignés
+au plan §10, non corrigés (consommation du code best-effort après création ; titre vide dans le
+recalcul des sessions, préexistant ; branches non testées ; pas de test propre d'orchestrateur).
+
+**Résultats observés** : ronde 2 → 0 P0, 0 P1, C1..C6 fermés, 19 conditions tenues ; P0+P1 de
+7 à 0, boucle close. Gates finaux : `go test ./...` → 0 ; `go build` serveur/CLI/`internal` →
+0 ; typecheck cache purgé → 0 ; lint → 0 erreur (25 avertissements préexistants) ; vitest
+716 fichiers / 7 681 tests → 0. Côté prod (lecture seule VPS) : `data/auth/groups.json`
+ABSENT du volume persistant (les deux trouvés étaient les couches du conteneur démo),
+`friend_gamertags` = 4 gamertags, `instance_locked: false` — la variante D6 (migration de
+groupe conservée, re-sourcée depuis le friendstore) était la bonne.
+
+**Conclusion / prochaine étape** : lot prêt pour décision de fusion dans `feat/v75` par
+l'utilisateur. Restent à lui : recette navigateur (admin : lien d'invitation, page Rejoindre,
+Amis et groupes, recoloration vue match ; invité : première connexion de Nuzzles), bascule
+`instance_locked` en prod si l'early access doit être fermé, procédure Nuzzles (annexe A).
+
+## [2026-09-16] Annuaire des joueurs — jonction avec le plan amis/invitations à la fusion de feat/v75
+
+**Statut** : Complété (fusion `feat/v75` → `wt/player-directory`, quatre conflits résolus à la main,
+gates complets relancés sur l'arbre fusionné).
+
+**Décision technique principale** : le plan frère (amis par joueur + invitations sans groupe +
+droit de provisioning, fusionné dans `feat/v75` en `13c4b6c61`) avait été écrit contre l'ancien
+`setup.go`. Jonction sémantique plutôt que juxtaposition : (1) `guardProvisioning` rend le porteur
+d'un droit de provisioning — le droit ne lève QUE le verrou d'instance, jamais
+`can_self_provision`, et l'admin reste exempté des deux ; (2) une seule résolution du compte
+courant (`userLookup`) sert l'exemption admin ET le droit (`WithProvisionGrant` l'alimente) ;
+(3) la création reste `PlayerDirectory.Onboard` — l'épinglage de la requête à l'identité du
+porteur et l'effacement du droit après usage (constat P0 de leur revue) sont conservés autour ;
+(4) `port.ProfileService` (mort chez nous) et `port.FriendsOrchestrator` (mort chez eux) sont
+tous deux retirés ; (5) `xbox_auth_service.go` : porte profil (nous) + invitation sans groupe
+(eux) coexistent ; (6) tests : `mockProfileService` → `mockDirectory`, rig verrouillé câblé sur
+`WithInstanceLock` (le verrou env est résolu au câblage, plus lu par le handler), assertion
+d'épinglage portée sur `OnboardRequest.XUID`.
+
+**Résultats observés** : suite `internal/api/handlers` verte avec les tests des deux plans ;
+ratchets verts ; OpenAPI/`generated.ts` régénérés ; gates complets Go + web relancés sur l'arbre
+fusionné (résultat consigné au commit de fusion).
+
+**Conclusion / prochaine étape** : commit de fusion sur `wt/player-directory`, puis
+`feat/v75` avancée en fast-forward, puis fusion de `wt/explorer-medals-local` (aucun conflit).
+## [2026-09-15] Explorer — le top medailles du profil de combat suit le toggle En direct / Local — Complete
+
+**Decision technique** : la section « Profil de combat » (mode Joueur) servait deux sources de
+matchs derriere un toggle, mais le bloc « Top medailles » restait cable en dur sur
+`target_profile.top_medals`, c'est-a-dire les medailles a vie du service record live — un
+echantillon de vingt matchs locaux affichait donc les compteurs d'une carriere entiere. Nouveau
+champ `ExplorerTargetProfile.TopMedalsLocal` (`top_medals_local`), agrege sur EXACTEMENT les
+`match_id` de `combat_profile_local` : nouvelle methode de lecture `GetTopMedalsForMatches`
+(SUM(count) par `medal_name_id` sur `shared.medals_earned`, tri decroissant, departage par
+identifiant croissant, borne `explorerTopMedalsCap`), calquee sur `GetTopWeaponsForMatches`.
+Le mapping identifiant → medaille affichable N'EST PAS duplique : le service reutilise
+`buildTargetTopMedals`, donc libelles, difficultes, images et cap sont ceux du chemin a vie.
+Ecrite dans un fichier neuf (`explorer_repo_medals.go`) plutot qu'ajoutee a `explorer_repo.go`,
+deja a 650 lignes : la dette gelee ne s'accroit pas. Le calcul est enchaine dans la goroutine qui
+produit deja le profil local (dependance sequentielle reelle), best-effort : erreur loguee en
+`slog.WarnContext` puis degradation en liste vide, jamais fatale pour l'encart. Cote web,
+`ExplorerCombatProfile` choisit `source === 'live' ? topMedals : topMedalsLocal` et le bloc
+disparait quand la source retenue n'a aucune medaille — pas de cadre vide. Titre du bloc inchange.
+
+**Resultats observes** : Go — `go test ./internal/service/... ./internal/platform/duckdb/...
+./internal/domain/... ./internal/port/...` vert (17 paquets, dont `service` 74 s et
+`platform/duckdb` 257 s) ; le test de requete est sous `//go:build integration` comme ses voisins
+(`newTestPlayerDB` y vit) et passe en 4 s, quatre sous-cas : agregat trie avec exclusion du match
+hors liste ET de l'autre joueur, borne `limit`, entrees vides (trois formes) → nil, xuid sans
+medaille → vide. Le test service passe par `buildTargetProfile` (et non par la sous-fonction) pour
+verifier le champ reellement porte par la reponse : vide quand le profil local est vide, enrichi
+sinon (libelle + image identiques au chemin a vie), et vide sans casser le profil local quand la
+lecture echoue. `go vet` propre sur les paquets touches, avec et sans le tag `integration`.
+Contrat : `openapi-gen` ajoute les six lignes de `top_medals_local`, `generate-types` une ligne
+dans `generated.ts` (`types.ts` re-exporte, rien a y toucher). Web — `make check-types` propre ;
+la suite complete passe a 713 fichiers / 7668 tests, 1 fichier et 17 tests ignores, zero echec.
+
+**Piege rencontre** : au delai par defaut de vitest (5 s), treize fichiers de garde-rails qui
+balaient `src/` tombent en timeout dans ce worktree frais — pas une regression : les sept
+identifies passent tous en 8,6 s des que le delai est releve, et la suite entiere est verte a
+`--testTimeout=60000`. C'est le cout du premier balayage a froid d'un arbre neuf, a garder en tete
+avant de conclure au rouge sur un worktree qui vient d'etre cree.
+
+**Conclusion / prochaine etape** : livre sur `wt/explorer-medals-local`, non pousse, non fusionne.
+Reserve unique : les deux listes ne sont pas comparables (carriere vs echantillon local) et l'UI
+ne le dit pas — le titre du bloc reste « Top medailles » dans les deux cas, conformement a la
+demande. Si l'ambiguite gene a l'usage, la suite naturelle est un sous-titre porte par le toggle.
+
+## [2026-09-16] Sync par le pool, seams title-owned, dérive de schéma — revue adversariale deux rondes, correctifs — Complété
+
+**Statut** : Complété (revue + correctifs). Branche `wt/sync-pool`, 6 commits au-dessus de
+`feat/v75` @ e4a313311, ni poussée ni fusionnée. Aucune base sous `data/` ouverte (autre session
+sur le chantier du décodeur) : tout prouvé par tests `:memory:`/`t.TempDir()`, build, vet, grep.
+
+**Décision technique principale** : revue conforme au skill — deux relecteurs aveugles (pool/CLI ;
+seams/migration), contrat, filtre de recevabilité, ronde 2 sur les seules corrections. Neuf
+constats recevables, zéro jeté. Deux P0 : (1) `RunBackfillCSR`/`RunBackfillSharedCSR` exigeaient
+les tokens du joueur AVANT de regarder le client poolé → `backfill --csr`/`--shared-csr` cassés
+pour tous depuis le passage de la CLI au pool ; garde extraite `requireTokensUnlessCustomClient`
+(3 tests), message sans « re-login ». (2) `ALTER COLUMN … SET DATA TYPE` échoue en DuckDB 1.5.5
+dès qu'un index SECONDAIRE existe sur la table (mesuré par sonde) : la migration
+`widen_match_registry_team_scores` aurait échoué à chaque boot et bloqué pve/social ; le helper
+dépose les index secondaires (DDL relevée dans `duckdb_indexes()`), élargit, recrée — le tout dans
+une transaction (ronde 2 : un arrêt entre dépose et recréation perdait les index à jamais). Cinq
+P1 : dry-run `--shared-csr` sans pool (un dry-run faisait tourner les RT de tout le parc) ; cinq
+docs qui décrivaient une dégradation carrière inexistante (étape carrière hors du sync depuis le
+2026-05-14) ; trois tests vides supprimés ; `steps_shared_core.go` ramené à 633 L (étape dans
+`steps_shared_widen_scores.go`), runners CSR dans `cmd_backfill_csr.go`. Ronde 2 : la fixture
+« index secondaire » n'avait pas été appliquée (script du pilote interrompu) — corrigée et prouvée
+par mutation. Quatre P2 consignés au plan §8.
+
+**Résultats observés** : gates ciblés → 0 (vet 6 paquets ; unitaires `cmd/levelup`, `migration`,
+`scheduler`, `archlint`, `halo_infinite/migrations`, `titleseams`, `sync` ; intégration `-p 1`
+`migration`, `halo_infinite/migrations`, `persist`). Gates complets (build, vet, `go test ./...`,
+`-tags=integration -p 1 ./...`) : voir le commit de clôture.
+
+**Conclusion / prochaine étape** : décision de fusion dans `feat/v75` par l'utilisateur. Puis
+annexe A du plan : reprise du sync de Nuzzles (6 500, post-sync complet), backfills de rattrapage,
+films des 200 plus récents, cuisson, `replay_build_location` → `local`, serveur relancé — quand
+la base sera libre.
+
+## [2026-09-16] Nuzzles — sync complet par le pool, rattrapages, films ; rejeux différés — Complété (opérations)
+
+**Statut** : Complété. Aucun code touché (opérations sur les bases locales avec la CLI bâtie sur
+`feat/v75` @ b4de1fc16, après fusion de `wt/sync-pool`).
+
+**Décision technique principale** : première exécution réelle du chemin « profil sans token propre
+synchronisé par le pool ». Quatre passes : (1) 6 slots × 3 req/s → un seul `HTTP 429` sur
+`GetMatchHistory` (start=225) a mis fin à la pagination et la passe s'est déclarée `success,
+inserted=0` — défaut de robustesse du moteur (`paginateAndPersistHistory` casse sur la première
+erreur d'historique), consigné ; (2) `--token-pool-size 1` → « aucun slot créé » : le plafond
+compte les sources tentées, pas les slots sains (Chocoboflor, révoqué, pris en premier),
+consigné ; (3) 6 slots × 1 req/s → 5 140 matchs en 83 min sans 429, post-sync complet (perf
+4 874, citations 5 161, dominance 5 140, sessions 7 163, 0 erreur fatale) ; (4) re-parcours après
+application de la migration d'élargissement (`backfill … --dry-run` applique les migrations
+shared sans appel API ; `sync-full` ne le fait pas) → les 2 matchs à gros score insérés.
+Rattrapages : perf 0 (déjà couvert), citations +146, LUSR +2 581, CSR +3 917 (154 sans
+récapitulatif), CSR partagé 4 037 matchs fetchés / 30 041 lignes. Films : `backfill-killsource
+--online --limit 200 --gamertag Nuzzles` → les 200 matchs les plus récents de Nuzzles (15/09 →
+20/08), 200/200 films au cache, 1 match en échec de fusion crédit/film (victime divergente,
+`0458aba1-65c8-474e-bfe8-a4bcc96ba95f`). Rejeux : NON cuits (décision utilisateur) — le chantier
+décodeur a changé le schéma cette nuit, `backfill-replay --dry-run` voit 1 586 films à
+construire et 0 à jour ; la recuisson du parc revient à ce chantier.
+
+**Résultats observés** : Nuzzles = 7 165 matchs distincts en base (API : 6 818 — l'historique
+`matchmaking` renvoie plus que le compteur affiché ; pas un doublon), liste d'amis vide, aucun
+groupe. `match_registry.team_{0,1}_score` = INTEGER sur la base réelle, 7 index intacts.
+`replay_build_location` remis à `local`, serveur relancé 17:51 (`match_count=9132`). Le pool
+tourne sur 6 slots (JGtm + 5 `auth_only`) ; 3 RT révoqués inchangés.
+
+**Conclusion / prochaine étape** : découvertes consignées au plan §8 (429 → arrêt silencieux,
+plafond de pool, aide du drapeau `--gamertag`, `snapshot ready DE FORCE`, metadata RO/RW dans le
+même process, token propre encore résolu au post-sync). Nuzzles peut se connecter (SSO Xbox ;
+instance non verrouillée en local) ; en prod, `instance_locked` à basculer côté admin si
+l'early access doit être fermé.
+
+Addendum 17:58 : `replay_build_location` REMIS À `off` sur alerte de la session pilote du décodeur —
+la `feat/v75` locale (b4de1fc16, SchemaVersion 54) est 33 commits devant / 192 derrière
+`origin/feat/v75` (da258bf76, jalon M1, SchemaVersion 60) ; à `local`, une simple ouverture de
+match dans l'UI aurait recuit un artefact au schéma 54 par-dessus le parc au schéma 60. Aucune
+cuisson entre 17:51 et 17:58. Fusion d'`origin/feat/v75` dans le local = décision utilisateur.
+
+## [2026-09-16] Robustesse du sync par le pool — revue adversariale deux rondes, correctifs, mesure /careerranks — Complété
+
+**Statut** : Complété (revue + correctifs). Branche `wt/sync-robustesse`, base `feat/v75` @
+ab7fc5695, 10 commits, ni poussée ni fusionnée. Aucune base sous `data/` ouverte.
+
+**Décision technique principale** : (1) mesure avant décision — `/careerranks` lu pour un xuid
+tiers avec trois prêteurs distincts (JGtm, DankerGlue, Trimbutton) rend rang ET XP identiques à
+l'appel du propriétaire (JGtm 202/2 555 ; Nuzzles 272/0, 272 = rang maximal) : l'endpoint est
+public, `PolicyPinnedPlayer` retiré de `GetCareerRank` avec son épinglage (D4). (2) Plan écrit
+puis relu par un contexte frais (8 P1 / 7 P2 intégrés avant exécution : rejeu du 429 qui ratait
+le cas « pool entier en pause », sommeils réels dans les tests, variante 4.2 qui aurait éteint
+quatre étapes en silence, gate G3 inatteignable, ratchet des fixtures contredisant le test de
+l'élargissement). (3) Exécution par un agent (8 commits), puis revue adversariale : ronde 1 →
+1 P1 (`loadMedalExploitMap` ouvrait metadata en `ro:` alors que le moteur le tient désormais en
+`rw:` → `medal_exploit = 0` en silence ; corrigé par `OpenReadForQuery`, test sous handle `rw:`
+prouvé par mutation) + 2 P2 (attente non annulable → seam `Sleep(ctx, d)` ; commentaire) ;
+ronde 2 → 0 P0/P1, 1 P2 (capteur de journal filtré sur Warn → tous niveaux, mutation exacte
+rejouée). Règle de baseline appliquée : 2 paires retirées (`TestPooledHaloClientGetCareerRank_
+{PinnedToken,NoPinnedToken}`), vérifiées par `comm`.
+
+**Résultats observés** : un `sync-full` interrompu par une erreur d'historique n'est plus
+`success` (statut `partial_success`/`failure`, code de sortie ≠ 0, `Errors` exposé au
+monitoring serveur sans basculer de job) ; rejeu borné d'une page sur 429 / pool sans slot sain ;
+`--token-pool-size` plafonne les slots sains ; `sync-full`/`sync-delta` appliquent les migrations
+shared ; un seul handle metadata par run ; plus d'ERROR pour un profil sans token propre aux
+succès Xbox Live ; ratchets DDL (carte gelée de 45 divergences dans 30 fichiers) et titleseams
+(transitif) durcis. Gates : build, vet, gofmt → 0 ; `go test ./...` → 0 ; intégration `-p 1`
+→ voir le commit de clôture. Un test d'intégration qui figeait le défaut (warnings ≥ 1 +
+success sur historique échoué) a été retourné, pas supprimé.
+
+**Conclusion / prochaine étape** : décision de fusion dans `feat/v75` et push par l'utilisateur.
+Découvertes consignées au plan §10 : le serveur ne bascule jamais un job de sync en échec
+(décision produit) ; `PolicyPinnedPlayer` du live-sync Halo 5 non instruit ; trois sites
+`citations_*` ouvrent metadata en `ro:` hors run (préexistant) ; plafond de hot-add du pool
+compte tous les slots (sans appelant à `MaxSize > 0`).

@@ -2,13 +2,13 @@
 //
 // §4 du plan Squad/Sessions overhaul (mode bootstrap initial). Itère toutes
 // les player DBs configurées (multi-titres) et applique le recompute additif
-// avec la liste actuelle de settings.friend_gamertags. Idempotent : la garde
-// FALSE dans friends_recompute.go protège les retries.
+// avec la liste d'amis DE CHAQUE JOUEUR (data/global/player_friends.json).
+// Idempotent : la garde FALSE dans friends_recompute.go protège les retries.
 //
 // Usage typique :
 //
 //	levelup recompute-friends           # tous les joueurs configurés
-//	levelup recompute-friends --dry-run # affiche les amis résolus sans UPDATE
+//	levelup recompute-friends --dry-run # affiche les amis de chaque joueur sans UPDATE
 package main
 
 import (
@@ -17,7 +17,8 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/config"
-	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/service"
 )
 
@@ -28,34 +29,28 @@ func runRecomputeFriends(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 
-	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
-	loadFriends := func() ([]string, error) {
-		s, err := settingsStore.Load()
-		if err != nil {
-			return nil, err
-		}
-		return s.FriendGamertags, nil
-	}
+	friendStore := friendstore.NewFriendStore(title.NewPathResolver(cfg.RepoRoot).PlayerFriendsPath())
+	loadFriends := friendStore.Get
 
 	if *dryRun {
-		friends, err := loadFriends()
-		if err != nil {
-			return fmt.Errorf("load settings: %w", err)
-		}
 		players, err := cfg.LoadPlayers()
 		if err != nil {
 			return fmt.Errorf("load players: %w", err)
 		}
-		fmt.Printf("dry-run recompute-friends: friends=%d players=%d\n", len(friends), len(players))
-		for _, gt := range friends {
-			fmt.Printf("  ami: %s\n", gt)
-		}
+		fmt.Printf("dry-run recompute-friends: players=%d\n", len(players))
 		for _, p := range players {
 			if p.IsDemo {
 				continue
 			}
-			fmt.Printf("  player: title=%s slug=%s gamertag=%s xuid=%s\n",
-				p.TitleSlug, p.PlayerSlug, p.Gamertag, p.XUID)
+			friends, ferr := loadFriends(p.XUID)
+			if ferr != nil {
+				return fmt.Errorf("load friends %s: %w", p.Gamertag, ferr)
+			}
+			fmt.Printf("  player: title=%s slug=%s gamertag=%s xuid=%s amis=%d\n",
+				p.TitleSlug, p.PlayerSlug, p.Gamertag, p.XUID, len(friends))
+			for _, gt := range friends {
+				fmt.Printf("    ami: %s\n", gt)
+			}
 		}
 		return nil
 	}

@@ -7,6 +7,7 @@
 package service
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -23,11 +24,25 @@ type ProfileService struct {
 	// suppression (purge). Injecté par le caller pour garder ce package SANS
 	// dépendance directe à platform/duckdb (archlint no_duckdb_import). nil-safe.
 	evictDB func(playerDBPath string)
+	// removeAll supprime un dossier joueur (os.RemoveAll par défaut). Seam de
+	// test : la branche « dossier non supprimable » (verrou Windows, EBUSY,
+	// droits) n'est pas reproductible de façon portable autrement.
+	removeAll func(path string) error
 }
 
 // NewProfileService crée un ProfileService.
 func NewProfileService(dbProfilesPath, repoRoot string) *ProfileService {
-	return &ProfileService{store: dbprofiles.NewStore(dbProfilesPath), repoRoot: repoRoot}
+	return &ProfileService{store: dbprofiles.NewStore(dbProfilesPath), repoRoot: repoRoot, removeAll: os.RemoveAll}
+}
+
+// WithRemoveAll remplace la suppression de dossier (tests de la branche
+// d'échec de la purge uniquement). nil ⇒ os.RemoveAll.
+func (s *ProfileService) WithRemoveAll(fn func(path string) error) *ProfileService {
+	if fn == nil {
+		fn = os.RemoveAll
+	}
+	s.removeAll = fn
+	return s
 }
 
 // WithDBEvictor injecte la fonction d'éviction des handles DuckDB cachés (appelée
@@ -114,6 +129,64 @@ func (s *ProfileService) PurgeTitleData(titleSlug, gamertag string) (dataRemoved
 		return false, nil // profil retiré, fichiers non supprimés (best-effort)
 	}
 	return true, nil
+}
+
+// PurgeIdentityData retire, en UNE mutation atomique, les entrées du gamertag
+// pour tous les titres donnés, puis supprime leurs dossiers joueur (handles
+// DuckDB évincés d'abord). Rend, par slug de titre, si le dossier a bien disparu.
+//
+// POURQUOI PAS PurgeTitleData EN BOUCLE (vérifié sur pièces, ADR 0035 D6) :
+// `Store.RemoveEntry` refuse de retirer le DERNIER titre actif d'un gamertag
+// (`ErrLastActiveTitle`). Cet invariant protège un joueur QUI RESTE — on ne le
+// laisse pas sans aucun titre actif. Une purge d'identité, elle, fait disparaître
+// le joueur : appliquée titre par titre, elle échouerait systématiquement sur le
+// dernier et laisserait le profil en place, donc la purge incomplète.
+//
+// La suppression disque est best-effort, comme dans PurgeTitleData : un verrou
+// Windows résiduel laisse des fichiers inertes, pas une entrée de profil vivante.
+func (s *ProfileService) PurgeIdentityData(gamertag string, titleSlugs []string) (map[string]bool, error) {
+	removed := make(map[string]bool, len(titleSlugs))
+	if gamertag == "" || len(titleSlugs) == 0 {
+		return removed, nil
+	}
+	keys := make(map[string]string, len(titleSlugs))
+	mutErr := s.store.Mutate(func(f *dbprofiles.File) error {
+		for _, slug := range titleSlugs {
+			if key, ok := f.FindKey(slug, gamertag); ok {
+				keys[slug] = key
+			}
+			f.Remove(slug, gamertag)
+		}
+		return nil
+	})
+	if mutErr != nil {
+		return nil, mutErr
+	}
+
+	pr := title.NewPathResolver(s.repoRoot)
+	for _, slug := range titleSlugs {
+		key, ok := keys[slug]
+		if !ok {
+			// Entrée déjà absente du fichier : le dossier, lui, peut encore
+			// exister (c'est précisément ce que l'incident du 2026-07-23 a laissé).
+			key = gamertag
+		}
+		if s.evictDB != nil {
+			s.evictDB(pr.PlayerDBPath(slug, key))
+		}
+		dir := pr.PlayerDir(slug, key)
+		if err := s.removeAll(dir); err != nil {
+			// LOGUE AVANT DE DÉGRADER (règle 3) : la cause (verrou Windows, EBUSY,
+			// droits) reste lisible dans le journal ; le rapport de purge, lui, ne
+			// porte que le fait « dossier non supprimé » (R6, revue du 2026-09-16).
+			slog.Warn("profile: dossier joueur non supprimé lors de la purge",
+				"err", err, "path", dir, "title_slug", slug, "gamertag", gamertag)
+			removed[slug] = false
+			continue
+		}
+		removed[slug] = true
+	}
+	return removed, nil
 }
 
 // relPlayerDBPath calcule le chemin de la player DB relatif au repo root (comme

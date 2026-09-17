@@ -129,7 +129,7 @@ func TestLotS_Diagnostics_RequireAuthAdmin(t *testing.T) {
 // (RequireAuth seul, self-provision autorisé) ---
 
 func TestLotS_Setup_RequireAuth(t *testing.T) {
-	h := NewSetupHandler(&config.AppConfig{}, nil, nil, nil, nil)
+	h := NewSetupHandler(&config.AppConfig{}, nil, nil, nil)
 	srv := lotSRouter(func(r chi.Router) { h.Mount(r) }, false, false)
 	for _, path := range []string{"/api/v1/setup/players", "/api/v1/setup/smoke-test"} {
 		req := httptest.NewRequest(http.MethodPost, path, nil)

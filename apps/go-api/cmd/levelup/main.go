@@ -19,6 +19,7 @@
 //	levelup sync-achievements (--gamertag X | --all) [--dry-run]
 //	levelup add-title      --name "Nom du jeu" [--slug s] [--capabilities c1,c2] [--xbox-id X] [--steam-id S]
 //	levelup populate-assets [--types map,playlist] [--langs fr-FR] [--dry-run] [--force] [--title-id slug]
+//	levelup identity       list | purge <xuid> [--yes]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-detecte si absent).
 //
@@ -29,6 +30,7 @@
 //   - cmd_notify.go  - notify-version, notify-sync
 //   - cmd_title.go   - add-title
 //   - cmd_populate_assets.go - populate-assets (traductions d'assets Discovery UGC)
+//   - cmd_identity.go - identity list / identity purge (annuaire des identites, ADR 0035)
 package main
 
 import (
@@ -36,9 +38,22 @@ import (
 	"os"
 
 	"levelup/go-api/internal/config"
-	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/games/titleseams"
 )
+
+// wireStartupSeams pose les seams title-owned de la CLI — MÊME câblage que le
+// serveur (2026-09-16). Couvre MT-07 (libellés de rangs, dont dépend
+// `seed rank-translations`), les steps de migration title-owned (sans eux les
+// racines shared_social ne sont pas exécutées par RunForDB → seed-demo média
+// échoue) ET les classifiers LUSR / famille objectif : sans eux, le post-sync de
+// `sync-delta` / `sync-full` panique (fail-loud MT-15) et rend perf_scores=0
+// lusr=0 citations=0 dominance=0 sur toute la passe.
+//
+// Extrait de main() pour être exerçable par main_seams_test.go : un test qui
+// n'invoquerait pas ce chemin passerait avec ET sans le câblage.
+func wireStartupSeams(cfg *config.AppConfig) {
+	titleseams.RegisterAll(titleseams.PrestigeConfigDir(cfg.RepoRoot))
+}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -52,15 +67,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// MT-07 : source title-owned des libellés de rangs (le sous-commande
-	// `seed rank-translations` via ops.SeedRankTranslations en dépend).
-	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)
-
-	// Steps de migration title-owned (parité cmd/server). SANS ça, les RACINES
-	// shared_social (create_base_shared_social_schema → table media_files / associations)
-	// ne sont PAS exécutées par RunForDB/RunForTitleDB dans la CLI → seed-demo média
-	// échoue (media_files absente). index-media et seed-demo en dépendent.
-	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+	wireStartupSeams(cfg)
 
 	subcmd := os.Args[1]
 	args := os.Args[2:]
@@ -145,6 +152,8 @@ func main() {
 		exitErr = runAddTitle(cfg, args)
 	case "populate-assets":
 		exitErr = runPopulateAssets(cfg, args)
+	case "identity":
+		exitErr = runIdentity(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -228,6 +237,11 @@ Commandes:
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu
   populate-assets Peupler asset_translations (noms localises des assets via Discovery UGC)
+  identity        Annuaire des identites : identity list (compte / profils / jeton / anomalies par xuid) et
+                  identity purge <xuid> [--yes] (retire compte, jeton, profils, dossiers et groupes ; SANS --yes
+                  c est une simulation qui imprime le rapport). La base partagee des matchs n est JAMAIS touchee.
+                  Le serveur ne doit pas tenir la player DB du joueur : la purge n evince que les handles du
+                  processus courant, un fichier tenu ailleurs fait echouer l etape (et le rapport le dit)
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-detecte si absent)

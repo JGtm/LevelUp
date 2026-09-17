@@ -111,7 +111,7 @@ func (e *SyncEngine) WithSharedProvider(p sharedprovider.Provider) *SyncEngine {
 	return e
 }
 
-// WithFriendsLoader attache un loader settings.FriendGamertags pour le hook
+// WithFriendsLoader attache un loader des amis du joueur pour le hook
 // auto-recompute is_with_friends post-sync delta. Sans ce hook, les nouveaux
 // matchs sync restent is_with_friends=FALSE jusqu'au prochain recompute
 // manuel (PATCH /settings ou CLI levelup recompute-friends).

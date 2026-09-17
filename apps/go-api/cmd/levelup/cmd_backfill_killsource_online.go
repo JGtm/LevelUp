@@ -44,7 +44,6 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	go_sync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/haloclient"
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/matchflags"
@@ -88,10 +87,13 @@ func passeDesFilmsEnLigne(ctx context.Context, cfg *config.AppConfig, db *sql.DB
 	// Les tokens sont resolus APRES le dry-run et APRES les capabilities : une passe qui
 	// n aurait rien a faire, ou un titre sans `film.kill_source`, ne doit pas exiger une
 	// authentification vivante pour dire qu elle n a rien a faire.
-	tokens, err := haloTokensForPlayer(ctx, cfg.RepoRoot, o.gamertag)
+	// Endpoint PUBLIC (chunks de film) : le pool le sert avec n'importe quel token du parc
+	// (PolicyAnyPublic, D1 du plan 2026-09-16) — plus besoin du token du gamertag nomme.
+	client, closePool, err := newPooledClient(ctx, cfg, o.rps)
 	if err != nil {
 		return fmt.Errorf("passe en ligne (%s): %w", o.gamertag, err)
 	}
+	defer closePool()
 	// LE CACHE DOIT EXISTER AVANT D ETRE LU. `NewLocalFilmCache` rend nil quand
 	// `film_manifests/` est absent, et ce nil vaut pour TOUT le process : sur une machine
 	// neuve, la passe archiverait sans jamais relire, et la passe SUIVANTE repaierait le
@@ -101,7 +103,7 @@ func passeDesFilmsEnLigne(ctx context.Context, cfg *config.AppConfig, db *sql.DB
 	}
 	source := killcollector.NewRemoteFilms(
 		killcollector.NewLocalCacheFilms(haloclient.NewLocalFilmCache(cacheRoot)),
-		go_sync.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, o.rps),
+		client,
 		cacheRoot,
 	)
 

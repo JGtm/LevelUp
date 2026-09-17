@@ -136,7 +136,7 @@ func (s *CareerService) GetEncounters(ctx context.Context) (domain.CareerEncount
 }
 
 // GetTopEncounters retourne les 10 joueurs les plus croisés au niveau carrière
-// globale, hors amis configurés (FriendGamertags). Enrichit chaque encounter avec
+// globale, hors amis configurés du joueur. Enrichit chaque encounter avec
 // le MÊME jeu de badges que la Match View et le hub Relations (4 badges de rencontre
 // + 5 badges « solid »), via le calcul partagé relations.ComputeBadges.
 func (s *CareerService) GetTopEncounters(ctx context.Context) (domain.CareerTopEncountersResponse, error) {

@@ -48,7 +48,7 @@ import (
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/platform/duckdb"
 	lusync "levelup/go-api/internal/sync"
 
@@ -100,8 +100,12 @@ func (g *groupStats) deathStats() (mean, std float64) {
 }
 
 func main() {
-	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)        // MT-15 (fail-loud)
-	lusync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode) // famille de la chaîne de perf classée
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 
 	dbPath := flag.String("db", sharedDBPath, "chemin vers shared_matches_v2.duckdb")
 	dryRun := flag.Bool("dry-run", false, "n'écrit pas en DB, affiche le rapport seulement")

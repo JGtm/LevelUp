@@ -38,15 +38,15 @@ import (
 	"levelup/go-api/internal/api"
 	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/assetnames"
+	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
-	halo5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/notifications/external"
@@ -61,6 +61,7 @@ import (
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/platform/netguard"
@@ -686,7 +687,7 @@ func main() {
 
 	// Auth locale : user store partagé — filtrage ownership des joueurs (ADR 0029,
 	// modes password + xbox) et check "first launch" (mode password).
-	usersPath := filepath.Join(cfg.AuthDir, "users.json")
+	usersPath := cfg.UsersFilePath()
 	us := userstore.NewStore(usersPath)
 	bootSvc = bootSvc.WithUserLookup(us)
 	if cfg.AuthMode == "password" {
@@ -695,6 +696,9 @@ func main() {
 	// Groupes/familles (accès mutuel aux données, ADR 0029 multi-groupes). Le set
 	// co-membres pilote le filtrage ownership (available_players) et le switch de BDD.
 	groupStore := groupstore.NewGroupStore(filepath.Join(cfg.AuthDir, "groups.json"))
+	// Amis PAR PROFIL JOUEUR (data/global/player_friends.json) : remplace l'ancien
+	// réglage global des amis dans app_settings. Migré une fois au boot.
+	friendStore := friendstore.NewFriendStore(title.NewPathResolver(cfg.RepoRoot).PlayerFriendsPath())
 	bootSvc = bootSvc.WithCoMemberResolver(func(xuid string) map[string]bool {
 		co, _ := groupStore.CoMemberXUIDs(xuid)
 		return co
@@ -716,7 +720,10 @@ func main() {
 	}
 
 	// --- 6. Scheduler, watcher, puis routeur HTTP ---
-	settingsStore := settings.NewStore(cfg.AppSettingsPath)
+	// WithEnforcedDefaults (ADR 0035 D5) : cf. internal/api/server.go — mêmes
+	// défauts sûrs des deux côtés, sinon le boot et le routeur divergeraient.
+	settingsStore := settings.NewStore(cfg.AppSettingsPath).
+		WithEnforcedDefaults(authz.Enforced(cfg.DemoMode, cfg.AuthMode))
 	// Propage le réglage global "rendement sans assistances" au package analysis
 	// dès le boot (sinon le défaut false s'applique jusqu'au premier PATCH).
 	if s, lerr := settingsStore.Load(); lerr == nil {
@@ -727,9 +734,15 @@ func main() {
 	}
 	tokenProvider := buildTokenProvider(settingsStore, title.DefaultHaloAuthDescriptor())
 
-	// Migration boot-time : crée un groupe par défaut "Mon foyer" depuis l'ancienne
-	// liste friend_gamertags (continuité d'accès au passage multi-groupes). Idempotent.
-	migrateDefaultGroupAtBoot(ctx, cfg, settingsStore, groupStore)
+	// Migration boot-time : dote chaque profil configuré de sa propre liste d'amis,
+	// héritée de l'ancienne liste globale des amis d'app_settings. Idempotente
+	// (no-op si player_friends.json existe). S'exécute AVANT la migration de groupe,
+	// qui lit désormais le store d'amis.
+	migratePlayerFriendsAtBoot(ctx, cfg, friendStore)
+
+	// Migration boot-time : crée un groupe par défaut "Mon foyer" depuis la liste
+	// d'amis de l'admin (continuité d'accès au passage multi-groupes). Idempotent.
+	migrateDefaultGroupAtBoot(ctx, cfg, friendStore, groupStore)
 
 	// ADR 0023 Phase 2 — Migration boot-time des tokens legacy vers MultiUserTokenStore.
 	// Discovery + Resolver + Pool : tous les appels API Halo passent par là.
@@ -752,7 +765,8 @@ func main() {
 		)
 	}
 
-	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool)
+	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool).
+		WithFriendStore(friendStore)
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
 
 	// Lot C1/C2 — persistance JSON légère (HORS DuckDB) de l'état runtime admin,
@@ -1298,6 +1312,7 @@ func main() {
 			SharedDB:       sharedSQLDB,
 			TokenProvider:  tokenProvider,
 			Settings:       settingsStore,
+			Friends:        friendStore,
 			PostSyncRunner: v2PostSyncRunner,
 			PrestigeHook:   prestigePostSyncHook,
 			ReplayEnqueue:  reg.EnqueueReplayBuildJob,
@@ -1687,36 +1702,12 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 		halomigrations.RegisterMilestonesSeedMigration(configTitlesRoot)
 	}
 
-	// Phase 1.5.1 B (ADR 0025) : enregistre les migrations title-owned (Halo
-	// Infinite) auprès du runner, avant tout RunForDB. Vide tant qu'aucun step
-	// n'a été déplacé hors du package migration (no-op) ; se remplit en b3.
-	migration.SetTitleStepsProvider(halomigrations.StepsFor)
-	// ROOT FIX assets Halo 5 : enregistre le set de migrations h5 (metadata ISOLÉE
-	// — référentiels h5 propres, zéro pollution HINF ; shared/player/… hérités du
-	// fallback HINF via OwnsTarget). DOIT précéder provisionAdditionalTitle(halo_5).
-	// Le set h5 possède SON milestone_catalog (schéma + seed) — il ne retombe pas
-	// sur le seed global multi-titres ; on injecte la racine config/titles/ AVANT
-	// Register pour que le seed h5 trouve config/titles/halo_5/milestones/catalog.toml.
-	if prestigeConfigDir != "" {
-		halo5migrations.SetMilestonesSeedRoot(filepath.Dir(prestigeConfigDir))
-	}
-	halo5migrations.Register()
-	// MT-07 : source title-owned des libellés de rangs de carrière (seed offline).
-	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)
-	// MT-15 : classifier LUSR title-owned (pair_name → chaîne TrueSkill). GetLUSRChain
-	// panique si non posé (fail-loud) — protège le chemin de scoring live.
-	syncpkg.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
-	// MT-15+ : classifier LUSR title-aware pour Halo 5 (pas de pair_name → chaîne
-	// unique h5_arena). Le seam GetLUSRChainForTitle route h5 vers ce classifier ;
-	// les autres titres gardent le défaut Infinite. Sans ça, h5 collapserait tous
-	// ses modes dans arena_slayer (classifier Infinite sur pair_name vide).
-	syncpkg.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
-	// Scission ranked par famille (D-A) : classifier title-owned de la famille
-	// objectif, consommé par GetPerformanceChain pour trancher entre les chaînes
-	// de performance ranked_slayer et ranked_objectif. h5 n'a pas de pair_name →
-	// classifier dédié qui répond false (tout son classé va en ranked_slayer).
-	syncpkg.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
-	syncpkg.SetObjectiveFamilyClassifierForTitle(halo5.TitleSlug, halo5.IsObjectiveSubMode)
+	// Seams title-owned (provider d'étapes, racine des jalons h5, traductions de
+	// rangs, classifiers LUSR + famille objectif) : câblage UNIQUE, partagé avec
+	// toutes les CLI depuis le 2026-09-16 (cf. internal/games/titleseams — les
+	// commentaires MT-07 / MT-15 / D-A y ont déménagé). Sans ce câblage, un sync
+	// hors serveur panique à l'étape LUSR du post-sync.
+	titleseams.RegisterAll(prestigeConfigDir)
 	// Lot B (audit robustesse) : fail-fast au boot si le classifier LUSR par
 	// défaut n'a pas été posé, au lieu du panic tardif au 1er match live.
 	if err := syncpkg.ValidateLUSRChainClassifierWired(); err != nil {
@@ -2185,7 +2176,7 @@ func startWatcherDaemon(
 	// PlayerWatcher.startPoller logge un Warn-once sans paniquer.
 	var matchFetcher watcher.MatchFetcher
 	if haloPool != nil {
-		pooled := syncpkg.NewPooledHaloClient(haloPool, "", "", 5)
+		pooled := syncpkg.NewPooledHaloClient(haloPool, 5)
 		matchFetcher = watcher.NewHaloMatchFetcher(pooled)
 		slog.Info("watcher: MatchFetcher branché sur le pool auto-sync")
 	} else {
@@ -2230,6 +2221,24 @@ func startWatcherDaemon(
 			return refresher
 		},
 	}, titleReg, syncTrigger)
+
+	// Porte « profil suivi » (ADR 0035 D3) : un couple (titre, xuid) qui n'est pas
+	// déclaré dans db_profiles.json — ou qui y est en pause / auth_only — n'entre
+	// ni dans le tracking live (Daemon.AddPlayer) ni dans le sync
+	// (Coordinator.Submit ; le daemon possède le coordinateur, WithProfileGate
+	// pose les deux). Erreur de lecture de db_profiles.json ⇒ on REFUSE, après
+	// l'avoir journalisée : on ne synchronise pas « dans le doute » (c'est
+	// exactement comme ça qu'un compte inconnu a écrit 25 matchs le 2026-07-23).
+	profileGate := func(ctx context.Context, titleSlug, xuid string) bool {
+		ok, err := cfg.HasTrackedProfile(titleSlug, xuid)
+		if err != nil {
+			slog.ErrorContext(ctx, "profil suivi : lecture de db_profiles.json échouée — requête refusée",
+				"err", err, "title_slug", titleSlug, "xuid", xuid)
+			return false
+		}
+		return ok
+	}
+	daemon.WithProfileGate(profileGate)
 
 	// Le refresh XSTS proactif a déjà été fait plus haut dans la fonction (avant
 	// le check IsXSTSValid). `tokens` reflète ici le state à jour : si un refresh
@@ -2332,12 +2341,37 @@ func resolveXUIDForRotation(ctx context.Context, cfg *config.AppConfig, store *a
 	return capturecli.ResolveXUIDForRotation(ctx, store, players, gamertag)
 }
 
-// migrateDefaultGroupAtBoot crée un groupe par défaut "Mon foyer" depuis l'ancienne
-// liste globale friend_gamertags, pour préserver la continuité d'accès au passage au
-// modèle multi-groupes. Best-effort + idempotent (no-op si un groupe existe déjà).
-// Le propriétaire est l'admin de db_profiles.json ; les amis résolus en xuid via les
-// profils connus deviennent membres.
-func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, settingsStore *settings.Store, gs *groupstore.GroupStore) {
+// migratePlayerFriendsAtBoot dote chaque profil configuré de sa propre liste
+// d'amis, héritée de l'ancienne liste globale des amis d'app_settings
+// (moins son propre gamertag). Best-effort + idempotent : no-op si le fichier
+// data/global/player_friends.json existe déjà.
+func migratePlayerFriendsAtBoot(ctx context.Context, cfg *config.AppConfig, fs *friendstore.FriendStore) {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		slog.WarnContext(ctx, "friends: migration ignorée — lecture des profils impossible", "err", err)
+		return
+	}
+	created, err := friendstore.MigrateFromAppSettings(fs, cfg.AppSettingsPath, players)
+	if err != nil {
+		slog.WarnContext(ctx, "friends: migration des amis par joueur échouée (non bloquant)", "err", err)
+		return
+	}
+	if created > 0 {
+		slog.InfoContext(ctx, "friends: listes d'amis par joueur créées depuis l'ancienne liste globale",
+			"created", created)
+	}
+}
+
+// migrateDefaultGroupAtBoot crée un groupe par défaut "Mon foyer" depuis la liste
+// d'amis de l'admin, pour préserver la continuité d'accès au passage au modèle
+// multi-groupes. Best-effort + idempotent (no-op si un groupe existe déjà).
+// Le propriétaire est l'admin de db_profiles.json ; ses amis résolus en xuid via
+// les profils connus deviennent membres.
+//
+// Source des membres : le store d'amis PAR JOUEUR (2026-09-15), lui-même migré
+// juste avant depuis l'ancienne liste globale des amis d'app_settings —
+// d'où l'ordre imposé des deux migrations au boot.
+func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, fs *friendstore.FriendStore, gs *groupstore.GroupStore) {
 	adminGT := cfg.AdminPlayer()
 	if adminGT == "" {
 		return // aucun admin désigné → migration impossible
@@ -2358,12 +2392,14 @@ func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, setti
 		return
 	}
 
-	s, err := settingsStore.Load()
-	if err != nil || s == nil {
+	adminFriends, err := fs.Get(ownerXUID)
+	if err != nil {
+		slog.WarnContext(ctx, "groups: migration ignorée — lecture des amis de l'admin impossible",
+			"admin", adminGT, "err", err)
 		return
 	}
 	var members []domain.GroupMember
-	for _, gt := range s.FriendGamertags {
+	for _, gt := range adminFriends {
 		if xuid := byGamertag[strings.ToLower(gt)]; xuid != "" {
 			members = append(members, domain.GroupMember{XUID: xuid, Gamertag: gt})
 		}
@@ -2375,7 +2411,7 @@ func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, setti
 		return
 	}
 	if created {
-		slog.InfoContext(ctx, "groups: groupe par défaut créé depuis friend_gamertags",
+		slog.InfoContext(ctx, "groups: groupe par défaut créé depuis les amis de l'admin",
 			"owner", adminGT, "members", len(members)+1)
 	}
 }
