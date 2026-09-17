@@ -3,7 +3,7 @@ package replay
 // document_pickups_test.go — LE FILET DES DEUX CALQUES PURS du ramassage natif.
 //
 // POURQUOI ICI ET PAS DANS LE GOLDEN. Le fixture d'assemblage ne porte NI `weaponChanges`, NI
-// `equipmentChanges`, NI les ramassages : `goldenInputs.options()` ne les transmet pas. C'est
+// `equipmentChanges`, NI les ramassages : `FilmFacts.options()` ne les transmet pas. C'est
 // une lacune ANTÉRIEURE à ce lot (les deux premiers canaux vivent déjà en production sans
 // couverture de golden) et ce lot ne la corrige pas — ce serait un fix hors périmètre. Mais
 // laisser un calque de production SANS filet ne se fait pas : `buildPickups` et

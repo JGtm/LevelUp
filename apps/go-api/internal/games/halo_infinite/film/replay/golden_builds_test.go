@@ -169,7 +169,7 @@ func regenererGoldenBuild(t *testing.T, b goldenBuild, dir string) {
 	if err != nil {
 		t.Fatalf("decodage de %s : %v", dir, err)
 	}
-	blob := encodeGoldenInputs(g)
+	blob := EncodeFilmFacts(g)
 	var buf bytes.Buffer
 	zw, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
 	if err != nil {
@@ -227,7 +227,7 @@ func TestGoldenBuildsAssemblyRegenerate(t *testing.T) {
 }
 
 // assemblerGoldenBuild rejoue l assemblage d une entree, avec SON catalogue de carte.
-func assemblerGoldenBuild(t *testing.T, b goldenBuild, g *goldenInputs,
+func assemblerGoldenBuild(t *testing.T, b goldenBuild, g *FilmFacts,
 	entry profile.MapQuantEntry,
 ) ReplayDocument {
 	t.Helper()
@@ -268,12 +268,12 @@ func TestGoldenBuildsInputsRoundTrip(t *testing.T) {
 		}
 		t.Run(b.Build+"/"+b.Short8, func(t *testing.T) {
 			g, entry := chargerGoldenBuild(t, b)
-			blob := encodeGoldenInputs(g)
-			again, err := decodeGoldenInputs(blob, entry)
+			blob := EncodeFilmFacts(g)
+			again, err := DecodeFilmFacts(blob, entry)
 			if err != nil {
 				t.Fatalf("second decodage : %v", err)
 			}
-			if got := encodeGoldenInputs(again); !bytes.Equal(blob, got) {
+			if got := EncodeFilmFacts(again); !bytes.Equal(blob, got) {
 				t.Fatalf("le codec n est pas un point fixe : %d octets contre %d", len(got), len(blob))
 			}
 			a := renderAssembly(assemblerGoldenBuild(t, b, g, entry))
@@ -287,7 +287,7 @@ func TestGoldenBuildsInputsRoundTrip(t *testing.T) {
 }
 
 // chargerGoldenBuild relit le fixture d entrees d une entree et son entree de catalogue.
-func chargerGoldenBuild(t *testing.T, b goldenBuild) (*goldenInputs, profile.MapQuantEntry) {
+func chargerGoldenBuild(t *testing.T, b goldenBuild) (*FilmFacts, profile.MapQuantEntry) {
 	t.Helper()
 	blob, err := os.ReadFile(b.inputsPath()) //nolint:gosec // chemin construit depuis la table
 	if err != nil {
@@ -307,7 +307,7 @@ func chargerGoldenBuild(t *testing.T, b goldenBuild) (*goldenInputs, profile.Map
 	if err != nil {
 		t.Fatalf("carte %q hors catalogue : %v", b.Map, err)
 	}
-	g, err := decodeGoldenInputs(buf.Bytes(), entry)
+	g, err := DecodeFilmFacts(buf.Bytes(), entry)
 	if err != nil {
 		t.Fatalf("decodage %s : %v", b.inputsPath(), err)
 	}
