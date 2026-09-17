@@ -9,10 +9,16 @@
  *
  * TROIS FORMES, décidées par `favoriteWeaponSlots` (ExplorerBriefing.logic) à partir de
  * comptes de lignes, jamais d'une mesure du DOM :
- *   - deux emplacements → carte de deux armes avec leur barre ;
- *   - un emplacement    → carte d'une arme avec sa barre ;
+ *   - deux emplacements → deux armes avec leur barre ;
+ *   - un emplacement    → une arme avec sa barre ;
  *   - aucun             → forme compacte : UNE ligne nue (libellé + frags, sans barre ni
  *     chrome de carte), pour que la rangée « Par… » ne gagne qu'une ligne et jamais plus.
+ *
+ * DEUX HABILLAGES, décidés par `stacked`. Empilé sous « Par contexte », le bloc est NU :
+ * un libellé en petites capitales puis la liste. Une seconde carte y coûterait son
+ * en-tête, sa bordure et son corps — environ 70 px, soit quatre lignes de rangée gagnées
+ * là où la formule promet que rien ne bouge. En cellule propre, au contraire, il n'y a
+ * aucun coût d'empilement et le bloc doit ressembler à ses voisines : carte complète.
  *
  * Le bloc est une LISTE `flex flex-col` et jamais une grille à colonnes nommées : le test
  * DP-3 vise la DERNIÈRE grille portant cette classe et tomberait sur celle-ci. Le nom du
@@ -96,18 +102,44 @@ function CompactLine({
   )
 }
 
+/** Liste des armes + note, sans habillage : le contenu commun aux deux habillages. */
+function WeaponList({
+  entries,
+  note,
+  locale,
+}: {
+  entries: SynthesisWeaponKillEntry[]
+  note: string | null
+  locale: Locale
+}) {
+  const maxKills = Math.max(1, ...entries.map((w) => w.kills))
+  return (
+    <>
+      <ul className="flex flex-col gap-2">
+        {entries.map((w, i) => (
+          <WeaponRow key={`${w.label}-${i}`} weapon={w} maxKills={maxKills} locale={locale} />
+        ))}
+      </ul>
+      {note != null && <p className="mt-2 text-3xs text-muted-foreground">{note}</p>}
+    </>
+  )
+}
+
 /**
  * Bloc « Arme favorite ». `slots` vient de `favoriteWeaponSlots` : il choisit la FORME,
  * jamais la présence — l'omission du module est décidée par le backend (aucun frag mesuré).
+ * `stacked` choisit l'HABILLAGE : nu sous « Par contexte », carte en cellule propre.
  */
 export function FavoriteWeaponBlock({
   weapons,
   slots,
+  stacked,
   t,
   locale,
 }: {
   weapons: ExplorerBriefingWeapons
   slots: 0 | 1 | 2
+  stacked: boolean
   t: T
   locale: Locale
 }) {
@@ -115,18 +147,23 @@ export function FavoriteWeaponBlock({
   const entries = (weapons.entries ?? []).slice(0, Math.max(1, slots))
   if (entries.length === 0) return null
   const note = coverageNote(weapons, t)
+  // La forme compacte est déjà nue : elle vaut dans les deux habillages.
   if (slots === 0) {
     return <CompactLine weapon={entries[0]} note={note} t={t} locale={locale} />
   }
-  const maxKills = Math.max(1, ...entries.map((w) => w.kills))
+  if (stacked) {
+    return (
+      <div className="flex flex-col gap-2">
+        <span className="text-2xs uppercase tracking-wide text-muted-foreground">
+          {t('explorer.briefing.weapons_title')}
+        </span>
+        <WeaponList entries={entries} note={note} locale={locale} />
+      </div>
+    )
+  }
   return (
     <BriefingSectionCard className="h-full" title={t('explorer.briefing.weapons_title')}>
-      <ul className="flex flex-col gap-2">
-        {entries.map((w, i) => (
-          <WeaponRow key={`${w.label}-${i}`} weapon={w} maxKills={maxKills} locale={locale} />
-        ))}
-      </ul>
-      {note != null && <p className="mt-2 text-3xs text-muted-foreground">{note}</p>}
+      <WeaponList entries={entries} note={note} locale={locale} />
     </BriefingSectionCard>
   )
 }

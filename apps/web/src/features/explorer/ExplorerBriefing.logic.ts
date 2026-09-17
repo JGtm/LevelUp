@@ -47,18 +47,26 @@ export function deltaToken(v: number | null | undefined): SemanticToken {
  *   - 1 → une arme avec sa barre, la rangée ne bouge pas ;
  *   - 0 → forme compacte d'une seule ligne, la rangée gagne UNE ligne, jamais plus.
  *
- * Le plancher de deux lignes est celui de « Par contexte », la cellule la plus courte
- * de la rangée : en dessous, le bloc n'a de toute façon aucune place gratuite.
+ * LA CONSTANTE DE BASE vaut 2 en cellule propre et 4 en empilé. Deux, c'est la hauteur
+ * de « Par contexte », la cellule la plus courte de la rangée : en dessous, le bloc n'a
+ * de toute façon aucune place gratuite. Quatre, parce qu'empilé SOUS cette carte le bloc
+ * paie en plus son libellé, l'espacement de la pile et les marges de la carte du haut —
+ * environ deux lignes que la formule nue ne comptait pas, d'où une rangée qui grandissait
+ * là où elle promettait de ne pas bouger. Corriger ICI, jamais par une mesure du DOM.
  */
 export function favoriteWeaponSlots({
   dimensionLines,
   rankedLines,
+  stacked,
 }: {
   dimensionLines: number[]
   rankedLines: number
+  // stacked : le bloc est monté sous « Par contexte », dans la même cellule.
+  stacked: boolean
 }): 0 | 1 | 2 {
-  const rowLines = Math.max(2, rankedLines, ...dimensionLines)
-  const free = rowLines - 2
+  const base = stacked ? 4 : 2
+  const rowLines = Math.max(base, rankedLines, ...dimensionLines)
+  const free = rowLines - base
   if (free >= 2) return 2
   return free === 1 ? 1 : 0
 }

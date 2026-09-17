@@ -118,9 +118,13 @@ export function ExplorerBriefingModules({
   // autant de chaînes AFFICHÉES (zéro si la capability du titre l'omet). Aucune mesure du
   // DOM : un écart de hauteur constaté se corrige dans favoriteWeaponSlots.
   const weapons = briefing.weapons ?? null
+  // Empilé sous « Par contexte » : le bloc paie l'empilement, la formule le compte et
+  // l'habillage tombe (rendu nu, pas une seconde carte).
+  const weaponsStacked = contextSplit != null
   const weaponSlots = favoriteWeaponSlots({
     dimensionLines: dimensions.map((d) => (d.entries ?? []).length),
     rankedLines: showRanked ? (ranked?.kinds?.length ?? 0) : 0,
+    stacked: weaponsStacked,
   })
   if (dimensions.length === 0 && !hasContextOrRanked && !showDominance && weapons == null) return null
 
@@ -143,13 +147,25 @@ export function ExplorerBriefingModules({
             (weapons != null ? (
               <div className="space-y-2 self-start">
                 <ContextSplitCard split={contextSplit} t={t} />
-                <FavoriteWeaponBlock weapons={weapons} slots={weaponSlots} t={t} locale={locale} />
+                <FavoriteWeaponBlock
+                  weapons={weapons}
+                  slots={weaponSlots}
+                  stacked
+                  t={t}
+                  locale={locale}
+                />
               </div>
             ) : (
               <ContextSplitCard split={contextSplit} t={t} />
             ))}
           {contextSplit == null && weapons != null && (
-            <FavoriteWeaponBlock weapons={weapons} slots={weaponSlots} t={t} locale={locale} />
+            <FavoriteWeaponBlock
+              weapons={weapons}
+              slots={weaponSlots}
+              stacked={false}
+              t={t}
+              locale={locale}
+            />
           )}
           {showRanked && ranked != null && <RankedBlock ranked={ranked} t={t} locale={locale} />}
         </div>
