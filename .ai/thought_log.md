@@ -1,3 +1,46 @@
+## [2026-09-17] Explorer / recherche joueur : 3e rangée (résultats + assistances + portée) — Complété (branche `wt/explorer-rangee3`, worktree `../LevelUp-wt-explorer-rangee3`)
+
+**Demande** : sortir « Répartition des résultats » de la rangée de « Répartition des frags »
+— qui occupe la place libérée — et le poser sur une nouvelle rangée sous « Écart de frags
+cumulé », surmontant un bloc « Part des assistances » au format de la carte Binôme de
+Relations, avec « Portée des frags » à leur droite. L'utilisateur a amendé la largeur du bloc
+de droite à 1/3 et tranché : assistances câblées pour de vrai, portée en placeholder jusqu'à
+la livraison de l'autre agent (`wt/compare-armes`). Plan :
+`.ai/PLAN_EXPLORER_RANGEE3_2026-09-17.md`.
+
+**Décision technique** : les assistances de la paire viennent du lecteur EXISTANT
+(`GetRelationAssists`, Q28c), ajouté à l'interface étroite `ExplorerRelationsProvider` et
+appelé une seule fois dans `enrichEncounterRelations` — aucun nouveau SQL, aucune méthode de
+repo. On lit la map entière des coéquipiers pour deux raisons : l'entrée de la cible en sort
+gratuitement, et la borne de l'échelle logarithmique des barres papillon doit être le plus
+gros volume d'un sens parmi TOUTES les relations (`AssistVolumeMax`). Se borner à la paire
+affichée remplirait toujours la demi-barre — l'échec déjà documenté dans `assistExchange.ts`
+après la revue du 2026-09-16. Côté web, la figure « têtes + papillon + total · part » passait
+de 1 à 2 copies : extraite dans `features/_shared/assists/AssistExchangeSummary.tsx`, que la
+carte Binôme consomme désormais (règle des 2 copies, anti « factorisation abandonnée »).
+
+Hauteurs : dans chaque rangée la colonne gauche décide et le bloc de droite s'étire (`h-full`
++ contenu `flex-1`, mécanique de la Cadence). Les DEUX blocs empilés de la rangée 3 n'ont
+volontairement PAS `h-full` : dans un flex-col à hauteur définie, deux `h-full` se disputent
+100 % chacun, se font rogner par `overflow-hidden` et la hauteur de rangée devient un partage
+50/50 arbitraire. C'est leur somme qui fixe la hauteur, et « Portée des frags » s'y aligne.
+Anneau des frags porté de 480 à 560 px pour occuper la place libérée par le bilan V/N/D.
+
+**Résultats observés** : gates verts — `go build ./...`, `go vet ./...` (module entier),
+`go test ./internal/service/... ./internal/domain/...` 0 échec, `openapi-gen -check` à jour,
+`tsc -b` cache purgé, `eslint` 0 erreur, `lint:colors` et `lint:fields` 0 violation, suite web
+complète 731 fichiers / 7845 tests verts sur l'arbre final. Le test de la page Relations passe
+SANS retouche (l'extraction ne change pas son rendu). Incident d'outillage : un `go test ./...`
+est resté 27 min sans une ligne de sortie NI un seul binaire de test vivant (deux `go` au repos,
+aucun compilateur) — il suivait un `go test` précédent interrompu par mes soins, donc verrou de
+cache de build probable ; cause non établie sur pièces. Tué, puis `make go-api-test` a repris
+normalement (binaires de test actifs, packages qui défilent). Couverture assurée par les paquets
+réellement touchés (`service`, `domain` : 0 échec), `go vet ./...` et la CI de branche.
+
+**Prochaine étape** : gate visuel de l'utilisateur (Explorer > recherche joueur, une cible avec
+matchs filmés ensemble ET une cible sans), puis fusion dans `feat/v75`. Reste ouvert : le bloc
+« Portée des frags » attend la mesure par rôle du chantier « Profil d'armes ».
+
 ## [2026-09-17] Couleurs dédiées des stats de combat (frags, morts, assistances, sens d'assistance) — Complété (branche `claude/couleurs-stats-combat`, fusionnée dans feat/v75)
 
 **Demande** : que les deux couleurs du sens d'assistance (« il te sert » / « tu le sers ») de la
