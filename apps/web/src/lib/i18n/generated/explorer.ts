@@ -38,7 +38,6 @@ export const explorerManifest = {
   "explorer.briefing.tip_streaks": { fr: "Séries extrêmes dans la sélection : la plus longue suite de victoires et la plus longue suite de défaites.", en: "Extreme streaks in the selection: the longest run of wins and the longest run of losses." },
   "explorer.briefing.tip_win_rate": { fr: "Part de matchs gagnés dans la sélection. Le ruban sous la valeur répartit victoires, nuls, abandons et défaites ; survol pour le détail chiffré.", en: "Share of matches won in the selection. The ribbon below the value splits wins, draws, DNFs and losses; hover for the detailed counts." },
   "explorer.briefing.vs_baseline": { fr: "vs habituel", en: "vs usual" },
-  "explorer.briefing.weapons_coverage": { fr: "{n, plural, one {# frag mesuré} other {# frags mesurés}} sur {m}", en: "{n} of {m} kills measured" },
   "explorer.briefing.weapons_title": { fr: "Arme favorite", en: "Favorite weapon" },
   "explorer.briefing.win_rate_label": { fr: "Taux de victoire", en: "Win rate" },
   "explorer.combat.axis_count": { fr: "Nombre", en: "Count" },

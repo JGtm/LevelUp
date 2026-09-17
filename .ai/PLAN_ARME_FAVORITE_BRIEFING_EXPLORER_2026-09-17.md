@@ -84,20 +84,30 @@ chaque cellule est une donnée connue du composant : carte de dimension = `entri
 briefing :
 
 ```
-favoriteWeaponSlots({ dimensionLines: number[], rankedLines: number, stacked: boolean }): 0 | 1 | 2
+favoriteWeaponSlots({ dimensionLines: number[], rankedLines: number, stacked: boolean }): 1 | 2
 base         = stacked ? 4 : 2
 lignesRangee = max(...dimensionLines, rankedLines, base)
-placeLibre   = lignesRangee - base
-slots        = clamp(placeLibre, 0, 2)
+slots        = (lignesRangee - base) >= 2 ? 2 : 1
 ```
 
+**AMENDÉ AU GATE VISUEL DU 2026-09-17 (décision utilisateur, remplace la forme
+compacte).** La formule ne choisit plus que le NOMBRE d'armes — une ou deux, jamais zéro.
+Il n'y a plus de forme compacte : le bloc est TOUJOURS rendu, et toujours dans la carte de
+ses voisines. L'utilisateur a jugé au gate que le rendu allégé « ne colle pas du tout »
+avec le reste de la rangée : l'harmonie visuelle l'emporte sur la promesse « la rangée ne
+bouge pas ». La rangée peut donc grandir ; ce n'est plus un défaut mais le choix assumé.
+
 **Constante de base : 2 en cellule propre, 4 en empilé** (amendement du 2026-09-17, après
-revue du diff). Empilé sous « Par contexte », le bloc paie en plus son libellé,
-l'espacement de la pile et les marges de la carte du haut — environ DEUX lignes que la
-formule nue ne comptait pas. Sans cette constante la rangée grandissait d'environ quatre
-lignes là où la formule promet qu'elle ne bouge pas. C'est exactement le geste prévu par
-D3 : la correction d'un écart de hauteur se fait DANS la formule, jamais par une mesure
-du DOM.
+revue du diff). Empilé sous « Par contexte », le bloc paie en plus le chrome de sa carte
+et l'espacement de la pile — environ DEUX lignes que la formule nue ne comptait pas. Elle
+sert désormais à décider si une SECONDE arme tient, pas à changer de forme. Reste le
+principe : un écart de hauteur se corrige DANS la formule, jamais par une mesure du DOM.
+
+**La note de couverture a quitté l'UI** (même gate visuel, décision utilisateur) : plus
+aucune mention « N frags mesurés sur M », et la clé i18n `weapons_coverage` est supprimée.
+`measured_kills` et `scope_kills` RESTENT au contrat et servis par l'API — ils restent
+vrais et pourront porter une infobulle plus tard. Champs NON AFFICHÉS, pas code mort :
+ne pas les retirer du backend.
 
 - `slots = 2` → deux armes avec barre — la rangée ne bouge pas ;
 - `slots = 1` → une arme avec barre — la rangée ne bouge pas ;
@@ -161,15 +171,14 @@ une grille à colonnes nommées (`[grid-template-columns:…]`), car le test DP-
 DERNIÈRE grille portant cette classe (`ExplorerBriefingStrip.test.tsx:100`) et viserait
 la mauvaise.
 
-**Habillage : empilé = NU, cellule propre = CARTE** (amendement du 2026-09-17). Sous
-« Par contexte », le bloc n'a pas de `BriefingSectionCard` : un libellé en petites
-capitales (`text-2xs uppercase tracking-wide text-muted-foreground`) puis la liste. Une
-seconde carte y coûterait son en-tête, sa bordure et son corps — environ 70 px, soit
-quatre lignes de rangée gagnées pour rien. En cellule propre il n'y a aucun coût
-d'empilement et le bloc doit ressembler à ses voisines : carte complète, en-tête compris
-(la doctrine `BriefingSectionCard` vaut pour les CELLULES de la rangée « Par… », pas pour
-un contenu empilé dans l'une d'elles). La forme compacte, déjà nue, vaut dans les deux
-habillages.
+**Habillage : LA CARTE, DANS TOUS LES CAS** (décision utilisateur au gate visuel du
+2026-09-17 — remplace l'amendement « empilé = nu » du même jour). Empilé sous « Par
+contexte » comme seul dans sa cellule, le bloc est une `BriefingSectionCard` titrée
+« Arme favorite », avec ses 1 ou 2 armes et leur barre. Le rendu nu testé entre-temps a
+été rejeté au gate : il « ne colle pas du tout » avec le reste de la rangée. Conséquences
+assumées : la rangée peut grandir quand le bloc est empilé, et il n'existe plus de forme
+compacte ni de prop `stacked` sur le composant (`stacked` ne survit que dans la formule,
+pour choisir une arme plutôt que deux).
 
 ## Étapes
 
