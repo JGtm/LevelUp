@@ -38,6 +38,52 @@ modules n'importe `@/features/**`, la frontière inversée est donc déjà respe
 
 ---
 
+### [compare/contrat] Champ `filters` de la requête du Face-à-face — jamais rempli, jamais lu
+
+Noté le 2026-09-17 (chantier « Profil d'armes », découverte non traitée). `domain.CompareRequest`
+porte un champ `Filters FilterContextInput` (validé dans `Validate()`, exposé dans le contrat
+OpenAPI et dans `apps/web/src/lib/api/types.ts` `CompareRequest.filters`) que la page n'envoie
+jamais et que `CompareService` ne lit nulle part. Reste de squelette, jamais demandé.
+
+**Impact utilisateur : aucun.** **Intérêt : hygiène de contrat** (un champ qui ment dans l'API).
+**Correctif** : retirer le champ côté Go + web, `make openapi-gen && make generate-types`.
+**Effort : XS** (~10 lignes). À grouper avec les deux items suivants.
+
+---
+
+### [compare/service] Repli « échantillon croisé » des 4 métriques locale-only — inatteignable
+
+Noté le 2026-09-17 (même chantier). `compare_service.go` :
+`enrichRemotePlayerBWithCrossSample` / `IsLocalSample` / `GetCrossMatchSample` calculent
+spree, durée de vie, frags parfaits et tirs à la tête d'un joueur B sur ses matchs communs avec
+A quand `GetLocalStats(xuidB)` ne rend rien. Or les deux lectures balaient la même table
+`shared.match_participants` : un B absent (pas de lifetime) n'a pas non plus de matchs communs.
+La branche ne tourne jamais en nominal ; le test qui la couvre entretient l'illusion (même
+argument que le scope croisé du profil d'armes, retiré au lot 3-bis du chantier). Nuance à
+vérifier avant retrait : `GetLocalStats` transforme `sql.ErrNoRows` en erreur, donc le chemin
+remote est bien ATTEINT pour un B absent, mais l'échantillon y est vide.
+
+**Impact utilisateur : aucun** (tout ce qui s'affiche vient du chemin nominal). **Intérêt :
+hygiène** (~40 lignes + une méthode de port + un test qui ne testent rien). Au passage,
+`GetCrossMatchSample` n'exclut pas la campagne, contrairement à `GetLocalStats` — sans effet
+tant que la branche est morte. **Effort : S.**
+
+---
+
+### [service/armes] Troisième doctrine de tri des armes dans les séries temporelles
+
+Noté le 2026-09-17 (même chantier). `timeseries_service_aggregations.go` (~:360) trie les armes
+par frags décroissants avec départage sur `WeaponID`, là où `topWeaponKillRows`
+(`synthesis_service_builders.go`, helper canonique posé au chantier avec garde-rail
+`compare_weapons_guard_test.go`) et `buildWeaponAccuracy` départagent sur le libellé.
+
+**Impact utilisateur : à égalité de frags, deux armes peuvent s'afficher dans un ordre différent
+entre Séries temporelles et Synthèse / Face-à-face** — cas rare, invisible en pratique.
+**Intérêt : cohérence**, et le garde-rail ne voit pas cette copie (littéral différent).
+**Correctif** : appeler `topWeaponKillRows` (ou étendre le garde-rail à ce départage).
+**Effort : XS** (~3 lignes).
+
+---
 
 ### [replay/sons] Fins de partie multi-équipes par couleur — écran + annonceur
 
