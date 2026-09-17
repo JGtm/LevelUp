@@ -76,6 +76,20 @@ type calibration struct {
 	// -14 octets). Les largeurs d AXE, elles, restent celles de la carte : deux grandeurs, deux
 	// noms, deux sources (D5 (3.4.1), fermee par ce commit).
 	PoigneeIndexW uint
+	// PoigneeScore / PoigneeMedian / PoigneeDiscriminee : CE QUE LA MESURE DU MOT DE POIGNEE A
+	// VU, et s il y avait quelque chose a voir.
+	//
+	// Le balayage score les trois largeurs candidates AU TRIPLET LU de la carte (le monde que la
+	// production decode) et n ecrit `PoigneeIndexW` au profil que si la meilleure DOMINE la
+	// mediane d un facteur `flatRatio`. `PoigneeDiscriminee` faux = l invariant tient, sous le
+	// repli `repli_largeur_mot_de_poignee_inferee`.
+	//
+	// POURQUOI CES TROIS CHAMPS EXISTENT. Avant le 2026-09-17, rien ne disait si la valeur posee
+	// venait d une mesure ou d un ex aequo. Elle venait d un ex aequo sur les deux films
+	// instruits (272/272/272 et 61/61/61), et elle voyageait jusqu au rejeu. Un lecteur du rendu
+	// lisible doit pouvoir lire la difference.
+	PoigneeScore, PoigneeMedian int
+	PoigneeDiscriminee          bool
 	// CarteLue : les largeurs viennent-elles de l entree de catalogue de la CARTE du match ?
 	// FAUX = repli `repli_carte_absente_largeurs_par_defaut` — l invariant conserve, c est-a-dire
 	// les largeurs d UNE carte (`cliffhanger`) appliquees a celle-ci. Jamais un zero muet : le
@@ -113,13 +127,23 @@ func (c calibration) String() string {
 	if !c.CarteLue {
 		source = "DEFAUT (carte absente)"
 	}
+	// LE RENDU DIT D OU VIENT LA LARGEUR DU MOT DE POIGNEE. « decidee » = la mesure a discrimine
+	// au triplet lu ; « INVARIANT (non discriminee) » = elle ne l a pas fait, et le repli tient.
+	// Sans cette mention, une valeur devinee sur un ex aequo se lisait comme une valeur mesuree.
+	poignee := fmt.Sprintf("decidee [score %d, mediane %d]", c.PoigneeScore, c.PoigneeMedian)
+	if !c.PoigneeDiscriminee {
+		poignee = fmt.Sprintf("INVARIANT (non discriminee) [score %d, mediane %d]",
+			c.PoigneeScore, c.PoigneeMedian)
+	}
 	return fmt.Sprintf("LU axisW=%v indexW_plage=%d [%s] | ORACLE axisW=%d [%s] desaccords=%d "+
-		"| DECIDE indexW_poignee=%d recordStateParam=%d [croissance x%.3f]",
+		"| DECIDE indexW_poignee=%d %s recordStateParam=%d [croissance x%.3f]",
 		c.LueAxisW, c.LueIndexW, source, c.AxisW, src, c.Desaccords,
-		c.PoigneeIndexW, c.RSP, c.RSPRatio)
+		c.PoigneeIndexW, poignee, c.RSP, c.RSPRatio)
 }
 
-// bornes de l espace balaye : 21 largeurs d axe x 3 largeurs d index = 63 configurations.
+// bornes des DEUX espaces balayes, separes depuis le 2026-09-17 : 21 largeurs d axe pour
+// l oracle, PUIS 3 largeurs de mot de poignee pour la decision — 24 configurations,
+// ET NON PLUS les 63 d un produit cartesien qui melangeait deux grandeurs.
 const (
 	axisWMin, axisWMax   = uint(6), uint(26)
 	indexWMin, indexWMax = uint(1), uint(3)
@@ -145,77 +169,152 @@ func calibrate(f *film, tl *timeline, views int, carte *profile.MapQuantEntry) c
 	return res
 }
 
-// infererLargeurs : L ORACLE DES LARGEURS D AXE, ET LE SEUL POURVOYEUR DE LA LARGEUR DU MOT DE
-// POIGNEE. Il balaie les 63 configurations et retient celle qui maximise le nombre de records
-// de bipede lus sans desynchronisation.
+// infererLargeurs : DEUX MESURES SEPAREES, DEUX SORTS, ET UN SEUL BALAYAGE QUI DECIDE ENCORE.
 //
-// DEUX GRANDEURS, DEUX SORTS, ET C EST TOUT LE CORRECTIF DU 2026-09-17 :
+//	LARGEUR D AXE     la CARTE decide (catalogue, loi verifiee 79 fois sur 79). Le balayage est
+//	                  un ORACLE : il compte ses desaccords avec elle, il n ecrit rien.
+//	MOT DE POIGNEE    aucune source lue ne la donne. Le balayage la DECIDE — mais SEULEMENT s il
+//	                  la DISCRIMINE, et il la score dans le monde que la production decode.
 //
-//	LARGEUR D AXE        la CARTE decide (catalogue, loi verifiee 79 fois sur 79) ; le balayage
-//	                     ne fait que COMPTER ses desaccords avec elle.
-//	MOT DE POIGNEE       aucune source lue ne la donne ; le balayage la DECIDE et la pose sur
-//	                     le profil retenu (`Traversal.IndexW`), comme il decide `param_4`.
+// POURQUOI LES DEUX MESURES SONT SEPAREES DEPUIS LE 2026-09-17 (voie (a1) du pilote).
+// Le balayage unique balayait les deux grandeurs ENSEMBLE et retenait le COUPLE de meilleur
+// score, sous une largeur d axe UNIFORME `aw/aw/aw`. Or la production ne lit plus jamais une
+// largeur uniforme depuis le lot 3.4.1 : elle lit le TRIPLET de la carte. Le `iw` retenu etait
+// donc l argmax dans un monde que le decodeur n habite plus, et le garde-fou ne le voyait pas :
+// `flatRatio` testait la nettete de la largeur d AXE, puis le code prenait le `iw` du MEME
+// gagnant sans jamais verifier qu il fut discrimine. UNE SEULE MESURE, DEUX GRANDEURS, UN SEUL
+// GARDE — et la consequence voyageait jusqu au rejeu, `profilDeBalayageDeLaCuisson`
+// (`replaybuild/kills.go`) transmettant `Result.ProfilCalibre` a tous les lecteurs derriere i0.
 //
-// Les confondre a coute une lecture publiee : cf. le champ [calibration.PoigneeIndexW].
+// CE QUE LA MESURE A DIT (§5 du plan, 2026-09-17, deux films en lecture seule) :
 //
-// LE GARDE-FOU EST INCHANGE : une configuration qui ne domine pas la MEDIANE d un facteur 2
-// signifie que le parametre reel n est pas dans l espace balaye. L inference ne designe alors
-// rien (`Flat`), la largeur du mot de poignee reste celle de l invariant, et il n y a pas de
-// desaccord a compter — un oracle qui ne voit rien ne contredit personne.
+//	a521164d  au TRIPLET LU [17 17 15]   iw=1 272 · iw=2 272 · iw=3 272   AVEUGLE
+//	          sous l UNIFORME            iw=1 226 · iw=2 226 · iw=3 230   4 records sur 226
+//	64e8adfa  au TRIPLET LU [15 15 15]   61 · 61 · 61                     EGALITE PARFAITE
+//
+// Le critere `countBipedRecords` est donc AVEUGLE a la largeur du mot de poignee sur ces films :
+// la valeur publiee roulait sur un ex aequo tranche par un tri instable. Elle ne roule plus.
 func infererLargeurs(f *film, tl *timeline, views int, res *calibration) {
 	sample := calibSample(f, calibSampleSize)
 	cfg := grammar.DefaultFrameConfig()
 	cfg.Profil = res.Profil
-	saved := cfg.Profil.Mouvement.Traversal
-	lues := cfg.Profil.Mouvement.WorldObject
+	oracleLargeurAxe(sample, tl, cfg, views, res)
+	decideMotDePoignee(sample, tl, cfg, views, res)
+}
 
+// oracleLargeurAxe : L ORACLE, ET IL N ECRIT RIEN AU PROFIL.
+//
+// Il balaie les 21 largeurs d axe UNIFORMES a mot de poignee FIGE sur l invariant — figer la
+// seconde grandeur est ce qui rend la premiere lisible. Il retient la meilleure, la confronte au
+// triplet LU de la carte, et compte le desaccord.
+//
+// LE GARDE-FOU EST CELUI D ORIGINE : une configuration qui ne domine pas la MEDIANE d un facteur
+// `flatRatio` signifie que le parametre reel n est pas dans l espace balaye. L oracle ne designe
+// alors rien (`Flat`) et ne contredit personne — un oracle qui ne voit rien se tait.
+//
+// LE DESACCORD SE COMPTE A LA PORTEE DE L ORACLE. Il balaie un UNIFORME quand la verite est un
+// TRIPLET (17/17/15 sur Fragmentation) : exiger l egalite ferait un desaccord sur presque toute
+// carte, et le compteur ne dirait plus rien. Le critere est donc « la valeur lue est-elle dans
+// le voisinage [min, max] du triplet ? ». Un oracle a 16 contre `[17 17 15]` ne contredit pas la
+// carte ; un oracle a 16 contre `[13 13 14]` — l invariant applique a une carte qui n est pas la
+// sienne — si. Limite ecrite au §4, D5 (3.4.1).
+func oracleLargeurAxe(sample []*packet, tl *timeline, cfg grammar.FrameConfig, views int, res *calibration) {
+	lues, invariant := cfg.Profil.Mouvement.WorldObject, cfg.Profil.Mouvement.Traversal
 	type cand struct {
-		aw, iw uint
-		score  int
+		aw    uint
+		score int
 	}
-	out := make([]cand, 0, (axisWMax-axisWMin+1)*(indexWMax-indexWMin+1))
-	for iw := indexWMin; iw <= indexWMax; iw++ {
-		for aw := axisWMin; aw <= axisWMax; aw++ {
-			// LA LARGEUR D INDEX DE PLAGE NE SE BALAIE PLUS : elle vient de la carte, et la
-			// faire varier ferait juger l espace sur une valeur que le catalogue donne. Ce que
-			// `iw` fait varier ici est la largeur du MOT DE POIGNEE, et elle seule.
-			cfg.Profil.Mouvement.WorldObject = lues
-			cfg.Profil.Mouvement.WorldObject.AxisW = [3]uint{aw, aw, aw}
-			cfg.Profil.Mouvement.Traversal = profile.PrecisionDescriptor{IndexW: iw, AxisW: saved.AxisW}
-			out = append(out, cand{aw, iw, countBipedRecords(sample, tl, cfg, views)})
+	out := make([]cand, 0, axisWMax-axisWMin+1)
+	for aw := axisWMin; aw <= axisWMax; aw++ {
+		cfg.Profil.Mouvement.WorldObject = lues
+		cfg.Profil.Mouvement.WorldObject.AxisW = [3]uint{aw, aw, aw}
+		cfg.Profil.Mouvement.Traversal = invariant
+		out = append(out, cand{aw, countBipedRecords(sample, tl, cfg, views)})
+	}
+	// TRI DETERMINISTE : score decroissant, PUIS largeur croissante. `sort.Slice` n est pas
+	// stable, et sur des ex aequo son `out[0]` est arbitraire — c est exactement le defaut que
+	// ce commit retire ; il ne sera pas laisse ici.
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].score != out[j].score {
+			return out[i].score > out[j].score
 		}
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].score > out[j].score })
+		return out[i].aw < out[j].aw
+	})
 	med := out[len(out)/2].score
-	res.AxisW, res.PoigneeIndexW, res.Score, res.Median = out[0].aw, out[0].iw, out[0].score, med
+	res.AxisW, res.Score, res.Median = out[0].aw, out[0].score, med
 	if float64(out[0].score) < flatRatio*float64(max1(med)) {
-		// PROFIL PLAT : l inference ne designe rien de net. Elle ne contredit donc personne — et
-		// la largeur du mot de poignee reste celle de l invariant, faute de mieux.
 		res.Flat = true
-		res.PoigneeIndexW = saved.IndexW
-		res.Profil.Mouvement.Traversal.IndexW = saved.IndexW
 		return
 	}
-	// LA LARGEUR DU MOT DE POIGNEE EST RETENUE, ET C EST LA SEULE VALEUR QUE CE BALAYAGE DECIDE
-	// ENCORE. Aucune source lue ne la donne (ni le catalogue, ni l executable relu a ce jour) :
-	// repli `repli_largeur_mot_de_poignee_inferee` au registre, avec sa cible et son critere.
-	res.Profil.Mouvement.Traversal.IndexW = res.PoigneeIndexW
-	// LE DESACCORD SE COMPTE A LA PORTEE DE L ORACLE, ET SUR LA SEULE GRANDEUR QUE LES DEUX
-	// SOURCES DISENT (lot 3.4.1, D5 fermee).
-	//
-	// L oracle balaie une largeur UNIFORME ; la verite est un TRIPLET par axe (17/17/15 sur
-	// Fragmentation). Exiger l egalite ferait donc un desaccord sur toute carte dont les trois
-	// axes ne sont pas egaux — c est-a-dire presque toutes — et le compteur ne dirait plus rien.
-	// Ce qu une sonde uniforme peut dire, et qu elle dit ici : la valeur lue est-elle DANS son
-	// voisinage ? Un oracle a 16 contre `[17 17 15]` ne contredit pas la carte ; un oracle a 16
-	// contre `[13 13 14]` — l invariant applique a une carte qui n est pas la sienne — si.
-	//
-	// LA LARGEUR D INDEX N Y ENTRE PLUS : celle que l oracle retient est le mot de POIGNEE,
-	// celle que la carte donne est l index de PLAGE. Les comparer rendait un desaccord qui ne
-	// disait rien — et, pire, avait fait croire que le balayage pouvait cesser de la poser.
 	if res.AxisW < minLargeur(res.LueAxisW) || res.AxisW > maxLargeur(res.LueAxisW) {
 		res.Desaccords++
 	}
+}
+
+// decideMotDePoignee : LA SEULE VALEUR QUE CE BALAYAGE DECIDE ENCORE — quand il la voit.
+//
+// Il score les trois largeurs candidates AU TRIPLET LU de la carte, c est-a-dire dans le monde
+// que la production decode, et non sous un uniforme qu elle a cesse de lire. La valeur n est
+// ecrite au profil que si elle est DISCRIMINEE ; sinon l invariant reste, sous le repli
+// `repli_largeur_mot_de_poignee_inferee` (registre, famille `killsource/calibration`).
+func decideMotDePoignee(sample []*packet, tl *timeline, cfg grammar.FrameConfig, views int, res *calibration) {
+	lues, invariant := cfg.Profil.Mouvement.WorldObject, cfg.Profil.Mouvement.Traversal
+	scores := make([]int, 0, indexWMax-indexWMin+1)
+	for iw := indexWMin; iw <= indexWMax; iw++ {
+		cfg.Profil.Mouvement.WorldObject = lues
+		cfg.Profil.Mouvement.Traversal = profile.PrecisionDescriptor{IndexW: iw, AxisW: invariant.AxisW}
+		scores = append(scores, countBipedRecords(sample, tl, cfg, views))
+	}
+	retenu, score, med, discriminee := motDePoigneeRetenu(scores, invariant.IndexW)
+	res.PoigneeIndexW, res.PoigneeScore, res.PoigneeMedian = retenu, score, med
+	res.PoigneeDiscriminee = discriminee
+	res.Profil.Mouvement.Traversal.IndexW = retenu
+}
+
+// motDePoigneeRetenu : LA DECISION, ISOLEE POUR ETRE TESTABLE SANS FILM.
+//
+// `scores[k]` est le nombre de records de bipede lus sans desynchronisation a la largeur
+// `indexWMin + k`, mesure au triplet LU. Rend la largeur retenue, son score, la mediane des
+// candidats, et SI la mesure a discrimine.
+//
+// LE SEUIL EST CELUI DE L ORACLE D AXE, `flatRatio`, ET C EST VOULU : meme critere interne, meme
+// doctrine — « une configuration qui ne domine pas la MEDIANE d un facteur 2 signifie que le
+// parametre reel n est pas dans l espace balaye ». Il est severe, et il doit l etre : la mesure
+// du 2026-09-17 a montre que l ecart qui decidait autrefois valait QUATRE RECORDS SUR 226
+// (1,8 %) — du bruit promu en donnee. Un seuil qui laisserait passer 1,8 % ne garderait rien.
+//
+// TROIS CANDIDATS, DONC LA MEDIANE EST LE DEUXIEME : une egalite parfaite (272/272/272) rend
+// `out[0] == med` et le rapport vaut 1, donc jamais 2 — l invariant tient, et c est le cas
+// mesure sur `a521164d` comme sur `64e8adfa`.
+//
+// DETERMINISME : a scores egaux la PLUS PETITE largeur gagne, et de toute facon l egalite ne
+// passe pas le seuil. Rejoue deux fois, la fonction rend la meme valeur — c est ce que le test
+// cible verifie sur les deux films.
+func motDePoigneeRetenu(scores []int, invariant uint) (retenu uint, score, mediane int, discriminee bool) {
+	if len(scores) == 0 {
+		return invariant, 0, 0, false
+	}
+	type cand struct {
+		iw    uint
+		score int
+	}
+	out := make([]cand, 0, len(scores))
+	for k, s := range scores {
+		out = append(out, cand{indexWMin + uint(k), s})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].score != out[j].score {
+			return out[i].score > out[j].score
+		}
+		return out[i].iw < out[j].iw
+	})
+	med := out[len(out)/2].score
+	if float64(out[0].score) < flatRatio*float64(max1(med)) {
+		// NON DISCRIMINEE : la mesure ne separe pas les candidats. Le balayage se tait et
+		// l invariant tient — jamais une valeur devinee sur un ex aequo.
+		return invariant, out[0].score, med, false
+	}
+	return out[0].iw, out[0].score, med, true
 }
 
 // minLargeur / maxLargeur : les bornes du triplet de largeurs lu.

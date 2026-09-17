@@ -4963,6 +4963,49 @@ défont par `git revert` ; avant la recuisson, tag git du binaire précédent et
       75 297 positions lues aujourd hui sur les deux films Live Fire). Ce que le corpus gate PEUT
       voir est la voie MARCHE de la source de dégât, mesurée à +154 lignes appariées sur le seul
       `e5adf7b2`.
+
+      **LES TROIS GATES AVEC DÉCODAGE SONT JOUÉS (2026-09-17, « voie libre » puis voie (a1) du
+      pilote), ET ILS ONT D'ABORD TROUVÉ UNE RÉGRESSION DU LOT.** `replay-equiv` sur les 20 films
+      faisait bouger trois étapes que rien n'attendait — `abilityImpulses` (7 films),
+      `grappleReads.stats` (9) et `pads` (3), 19 écarts sur 14 films, **quatre lectures publiées
+      perdues**. `D5 (3.4.1)` n'était donc PAS fermée par `181ad7ac7`.
+      **INSTRUCTION SUR PIÈCES, DEUX FILMS, SANS BALAYAGE DE CORPUS** : la carte ne ment pas
+      (`TestE192CatalogueContreDetection` sur `a521164d` — catalogue `17/17/15` contre
+      auto-détection LUE DANS LE FILM `17/17/15`, **0 carte en désaccord**) ; les largeurs d'axe
+      n'y sont pour rien (`[14 14 14]` contre `[17 17 15]` laisse records, masques, impulsions et
+      grappin IDENTIQUES) ; **le seul levier est `Traversal.IndexW`**, et le critère qui le
+      décidait est **AVEUGLE** à cette grandeur au triplet lu — `a521164d` **272 / 272 / 272**,
+      `64e8adfa` **61 / 61 / 61**, quand l'écart qui décidait sous l'uniforme valait **4 records
+      sur 226 (1,8 %)**. La valeur publiée sortait d'un ex æquo tranché par un `sort.Slice`
+      instable, et `profilDeBalayageDeLaCuisson` la transmettait à tous les lecteurs derrière i0.
+      **CORRECTIF (a1)** : `infererLargeurs` se scinde en DEUX mesures — un ORACLE d'axe qui
+      balaie à mot de poignée figé et **n'écrit rien**, et une DÉCISION du mot de poignée scorée
+      **au triplet LU**, retenue seulement si elle domine la médiane d'un facteur `flatRatio` ;
+      sinon l'invariant 1 sous `repli_largeur_mot_de_poignee_inferee` re-motivé (cible : la
+      largeur relevée CHEZ L'ÉCRIVAIN ; critère de retrait mesurable). Les deux tris deviennent
+      déterministes. **Garde-rails** : `motDePoigneeRetenu` testée exhaustivement SANS film (11
+      cas, chacun rejoué 8 fois) et un RATCHET DE SOURCE qui exige une écriture unique de
+      `Traversal.IndexW` dans le paquet ; test ciblé sur `a521164d` et `64e8adfa`, calibration
+      rejouée deux fois, **même verdict**. `facts.Rev` monte à `killsource-2026-09-17.2`.
+      **CE QUE LES GATES RENDENT APRÈS LE CORRECTIF** (§5, sorties collées) : équivalence
+      **20 différents**, `grenades` aux comptes EXACTS de 3.3.2, artefact **+2 octets** partout
+      (la révision), `bcb6d393` témoin négatif ne bougeant de rien d'autre, **18 écarts hors
+      liste tous CLASSÉS un par un** — les 11 `grappleReads.stats` / `pads` ne touchent AUCUNE
+      donnée publiée (les lectures publiées du grappin sont identiques pour `iw` = 1, 2 et 3 sur
+      les 15 films), les 7 `abilityImpulses` valent 8 lectures gagnées et 5 perdues, toutes
+      posées désormais par une valeur NOMMÉE. Corpus gate `--base=492cb0923` : **9 `ok`,
+      8 `PERTE`, ZÉRO changement**, schéma 61 -> 61, `bcb6d393` / `084a804d` / `0797ce72` à
+      `0 / 0 / 0`. **ATTRIBUTION** : le même gate contre la fusion `151d0c6f9` sort **8 témoins
+      sur 8 `ok`, 0 / 0 / 0, code 0** — le correctif du mot de poignée ne change RIEN au corpus
+      gate, et les pertes viennent du lot 3.4.1 (cf. **D7 (3.4.2)** au §4, arbitrage du pilote).
+      **MESURE KILLSOURCE, 6 témoins** (les trois films v31-37 sans carte versionnée sont exclus
+      et dits tels quels) : morts crédibles / brutes, sans carte puis avec — `50247b26` 16/60 ->
+      **110/144** · `a349fea8` 27/159 -> **232/361** · `a521164d` 8/31 -> **80/119** ·
+      `60ae07c4` 23/136 -> **85/96** · `11de8353` 16/83 -> **145/191** · `0797ce72` 16/81 ->
+      **85/102**. **106 morts créditées -> 737**, la part passant de **17-27 % à 64-89 %** — le
+      gain annoncé est tenu, et mesuré au même instrument des deux côtés.
+      **LE RE-FIGEAGE DES RÉFÉRENCES D'ÉQUIVALENCE RESTE AU PILOTE**, à la fusion, sur la
+      classification du §5.
 #### Lot 3.5 (P5) — La bande de slots bipède par build — S (instruction), high
 
 - [x] 3.5.1 Instruction bornée (une session) : cause de `[512, 7808]` / `[512, 8064]` ; si la
@@ -5427,6 +5470,9 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-17 | 3.4.1 | **D3 (3.4.1) — LE CHEMIN WORLD-OBJECT NE SUIT PAS L'INDEX DE PLAGE, LUI.** `grammar/dispatch_object.go` (`object-position-component`) lit son index de région puis ses trois axes aux largeurs de la région CATALOGUÉE quel que soit l'index lu, et ne porte aucune règle d'émission par région à cet endroit (le refus vit ailleurs, `projectiles.go` et `transloc_events.go`, à leurs propres sites). C'est la même dissymétrie que celle que ce lot vient de corriger côté bipède — sans conséquence mesurée aujourd'hui, `index == -1` étant rare sur ce chemin, mais la lecture de `FUN_14076e524` dit que la table DÉFAUT s'y applique comme ailleurs. NON TRAITÉ (règle 7 : hors du périmètre nommé du lot). | Lot M3 qui rouvrira le chemin world-object ; le correctif est le même que celui de `absAxisWFor`, et les deux chemins partagent déjà la fonction |
 | 2026-09-17 | 3.4.1 | **D4 (3.4.1) — LA LIGNE `Movement.Traversal` RESTE PRÉSUMÉE, contrairement à ce que la note 3.4 §5.2 annonçait.** La note écrivait que « les deux lignes `Movement.Traversal` et `Movement.AbsoluteAxisW` passent à une ligne `relue` ». Vérifié sur pièces : `Traversal` est le descripteur du chemin DELTA (`AxisW = 6/6/6`), un champ qui EXISTE toujours et que le chemin delta lit à chaque record — ce n'est pas la même grandeur que la largeur absolue. Le lot retire donc `Movement.AbsoluteAxisW` (le champ disparaît), ajoute `Movement.LoiLargeursAxe` (RELUE), et LAISSE `Movement.Traversal` présumée : sa variabilité par build n'a jamais été mesurée, et la déclarer relue sur la foi de la note serait une provenance fausse. `presumesGeles` perd donc une entrée et n'en gagne aucune. | Lot qui mesurera le `6/6/6` du chemin delta chez l'écrivain (la note 3.4 ne l'a pas ouvert : elle a lu le remplisseur des largeurs ABSOLUES) |
 | 2026-09-17 | 3.4.1 | **D5 (3.4.1) — L'ORACLE BALAIE UNE LARGEUR UNIFORME ET UN `indexW` QUI N'EST PAS CELUI DE LA PLAGE.** Deux limites de portée, écrites maintenant qu'il ne décide plus. (a) Il balaie une largeur d'axe UNIFORME quand la vérité est un TRIPLET (17/17/15 sur Fragmentation) : exiger l'égalité ferait un désaccord sur presque toutes les cartes, le compteur est donc « la valeur lue est-elle dans le voisinage [min, max] du triplet ? » — mesuré sur `e5adf7b2` : désaccord d'axe **1 sans carte** (16 hors de [13, 14]) et **0 avec** (16 dans [15, 17]), c'est-à-dire que l'oracle CONFIRME la carte et CONTREDIT le repli. (b) Son `iw` pose à la fois `Traversal.IndexW` — une largeur de mot de POIGNÉE — et `WorldObject.IndexW` — la largeur d'index de PLAGE : sur `e5adf7b2` il désigne 2 quand le catalogue dit 1 (Fragmentation ne déclare qu'une région), et ce désaccord résiduel de 1 ne dit donc pas ce qu'il a l'air de dire. NON TRAITÉ (règle 7). | Lot qui rouvrira la calibration : séparer les deux largeurs dans l'espace balayé (elles ne mesurent pas la même chose), ou balayer un triplet plutôt qu'un uniforme. Sans urgence — l'oracle ne décide plus rien |
+| 2026-09-17 | 3.4.2 | **D5 (3.4.1) EST FERMÉE — PAR LA MESURE, ET PAS DANS LE SENS OÙ `181ad7ac7` LA DÉCLARAIT FERMÉE.** Ce commit-là avait rendu au balayage la décision de la largeur du mot de poignée, en croyant la question réglée. Elle ne l'était pas : `replay-equiv` sur les 20 films faisait encore bouger `abilityImpulses` (7 films), `grappleReads.stats` (9) et `pads` (3), et `a521164d` perdait toujours son impulsion (1 -> 0). L'instruction sur pièces (§5) a montré POURQUOI : le balayage scorait ses candidats sous une largeur d'axe UNIFORME que la production avait cessé de lire à ce lot même, et **son critère est AVEUGLE à la grandeur qu'il décidait** — `a521164d` rend **272 / 272 / 272** au triplet lu, `64e8adfa` **61 / 61 / 61** ; l'écart qui décidait sous l'uniforme valait **4 records sur 226 (1,8 %)**. La valeur publiée sortait d'un ex æquo tranché par un `sort.Slice` instable. **Le lot 3.4.2 sépare les deux mesures** : l'oracle d'axe balaie à mot de poignée figé et n'écrit rien ; la décision du mot de poignée score au TRIPLET LU et ne retient que ce qui domine la médiane d'un facteur 2 — sinon l'invariant 1, sous le repli `repli_largeur_mot_de_poignee_inferee` re-motivé. Les deux tris deviennent déterministes. **FERMÉE.** | **RIEN.** Le garde-rail reste au dépôt : `motDePoigneeRetenu` est testée exhaustivement sans film, et un ratchet de source interdit toute autre écriture de `Traversal.IndexW` dans le paquet |
+| 2026-09-17 | 3.4.2 | **D6 (3.4.2) — LA LARGEUR DU MOT DE POIGNÉE RESTE À RELEVER CHEZ L'ÉCRIVAIN. NON RETENUE POUR L'INSTANT.** Le lot pose l'invariant sous un repli nommé parce qu'aucune source lue ne donne cette largeur : ni le catalogue, ni l'exécutable relu à ce jour. La lire chez l'écrivain — le bitlen du compte de poignées de `FUN_1406d3140` — la ferait entrer au profil comme la loi des largeurs d'axe y est entrée, et le balayage redeviendrait un oracle. **ARBITRAGE DU PILOTE DU 2026-09-17 : NON RETENUE**, et la raison est chiffrée : l'enjeu est de **quelques impulsions sur quelques films** (0 à 8 lectures par film sur des milliers de records lus), **aucune attribution fausse** — les lectures publiées du grappin, elles, sont IDENTIQUES pour `iw` = 1, 2 et 3 sur les **quinze** films mesurés. Pas de recherche à l'écrivain dans ce lot. | Lot qui rouvrira la grammaire de la queue de poignée, si le sujet remonte. Sans urgence ; le repli porte sa cible et son critère mesurable |
+| 2026-09-17 | 3.4.2 | **D7 (3.4.2) — LE LOT 3.4.1 FAIT BAISSER LES MORTS DE VÉHICULE LUES SUR CINQ TÉMOINS, ET DEUX VIES PUBLIÉES DISPARAISSENT. CE N'EST PAS LE CORRECTIF DU MOT DE POIGNÉE.** Le corpus gate contre `492cb0923` sort 8 témoins en PERTE, et les pertes se rangent en DEUX familles : les compteurs de `coverage.abilityImpulses` / `coverage.grapple` (classés au §5), et `coverage.vehicles.deaths*` — `60ae07c4` **8 -> 0** morts lues, `a521164d` 12 -> 6, `4f77afc1` 14 -> 11, `11de8353` 6 -> 5, `50247b26` 4 -> 3 — avec **DEUX LIGNES PUBLIÉES perdues** : `vehicles.tEnd/presents` et `vehicles/par-end/destroyed`, 1 -> néant sur `a521164d` et 4 -> 3 sur `4f77afc1`. **ATTRIBUTION FAITE PAR LA MESURE, PAS PAR RAISONNEMENT** : le même gate rejoué contre la fusion `151d0c6f9` (donc AVANT le correctif du mot de poignée, APRÈS 3.4.1) sort **8 témoins sur 8 `ok`, 0 gain, 0 perte, 0 changement, code 0** — seule la télémétrie `factsRev` bouge. La cause est donc dans le lot 3.4.1 (les largeurs de la carte atteignent le chemin absolu d'i0), et elle n'avait jamais été mesurée : les gates avec décodage de 3.4.1 n'ont pas été joués. La lecture des morts de véhicule (`object-dead-state` de `ti=40`, lot 1.9.10) marche les mêmes records. **NON TRAITÉ (règle 7, et hors du périmètre nommé de 3.4.2) — ARBITRAGE DU PILOTE REQUIS.** | Lot qui rouvrira le calque des véhicules sous les largeurs de la carte : soit les dead-states d'avant étaient lus à un alignement faux et la baisse est une correction, soit le chemin `ti=40` porte sa propre dissymétrie (même famille que **D3 (3.4.1)**, le chemin world-object qui ne suit pas l'index de plage). Témoin le plus net : `60ae07c4`, 8 morts lues -> 0 |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -5498,6 +5544,61 @@ puis prend le `iw` du MÊME gagnant, sans jamais vérifier que `iw` est discrimi
 mesure, deux grandeurs, un seul garde.** La valeur publiée `abilityImpulses` de 14 films sur 20
 roule donc sur un ex æquo tranché par un tri instable — à la tête comme à la base.
 
+
+### Lot 3.4.2 (M3, P4) — LE CORRECTIF (a1) ET SES TROIS GATES AVEC DÉCODAGE, 2026-09-17
+
+Voie (a1) du pilote : le balayage cesse de décider ce qu'il ne mesure pas. Tête `dbba2d929` +
+le correctif. Un seul décodeur à la fois ; les quatre passes se sont suivies.
+
+| Date | Item | Commande | Résultat |
+|---|---|---|---|
+| 2026-09-17 | 3.4.2 (le correctif) | `go test -run 'TestMotDePoigneeRetenu\|TestUneValeurNonDiscriminee'` | **2/2 PASS, sans film, en CI.** `motDePoigneeRetenu` testée sur 11 cas dont les deux mesurés (`272/272/272` et `61/61/61` -> invariant), le seuil exact (`200/100/10` retenu, `199/100/10` invariant) et les ex æquo en tête (`500/500/10` -> invariant : la médiane EST le second). Chaque cas rejoué 8 fois : même verdict. Le RATCHET DE SOURCE exige **exactement une** écriture de `Traversal.IndexW` dans le paquet, et qu'elle soit le retour de la décision |
+| 2026-09-17 | 3.4.2 (test ciblé, les deux films instruits) | `KS_POIGNEE_FILMS='<cache>/a521164d;<cache>/64e8adfa' … -run '^TestMotDePoigneeDeterministeSurFilm$'` | **2/2 PASS**, calibration complète rejouée DEUX FOIS par film, verdict identique. `a521164d` : `DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 272, mediane 272]` ; `64e8adfa` : `... [score 61, mediane 61]`. L'oracle d'axe, désormais scoré à mot de poignée figé, rend `axisW=19 desaccords=1` sur `a521164d` et **`axisW=15 desaccords=0`** sur `64e8adfa` — il CONFIRME la carte `[15 15 15]` |
+| 2026-09-17 | 3.4.2 (gates sans décodage) | `gofmt -l ./internal ./cmd` ; `go build ./...` ; `go vet ./...` ; `go test -count=1` sur les 6 racines ; `golangci-lint run --new-from-rev=492cb0923` | sortie vide ; vert ; vert ; **30 paquets `ok`, 0 `FAIL`** ; **0 issues**. Trois goldens régénérés PAR LEURS PORTES NOMMÉES : `facts_rev.golden` (révision montée), `shapes.golden` (révisions re-pointées, **aucune forme de type ne change**), les 8 fixtures de contrat (**une seule ligne diffère par film, `factsRev`** ; +2 octets). `minibobine.golden` : **UNE ligne**, la mention `INVARIANT (non discriminee)` — les 83 lignes publiées sont identiques |
+| 2026-09-17 | 3.4.2 (**ÉQUIVALENCE**, 20 films, jamais `-update`) | `replay-equiv -repo-root <worktree> -out-dir <scratch>` | **`BILAN : 0 identique(s), 20 different(s), 0 ecarte(s), 0 echec(s), 0 illisible(s)`**, ~17 min. `killsource`, `vehicles`, `artifact` sur les 20 ; `grenades` sur les 9 anciens **aux comptes EXACTS de 3.3.2** (289, 549, 310, 386, 95, 105, 145, 159, 138 = 2 176) ; artefact **+2 octets** partout (la chaîne `factsRev` gagne « .2 »), y compris sur `bcb6d393`, TÉMOIN NÉGATIF, qui ne bouge de RIEN d'autre. **18 écarts hors liste subsistent, tous classés ci-dessous** (contre 19 avant le correctif) |
+| 2026-09-17 | 3.4.2 (**CORPUS GATE**, 17 témoins, `--base=492cb0923`) | `replay-corpus-gate -base=492cb0923 -parc-root <parc> -source-root <worktree> -json … -work-root … -keep-work` | **9 `ok`, 8 `PERTE`, ZÉRO CHANGEMENT sur les 17**, schéma **61 -> 61** partout, ~40 min, code 1. `bcb6d393` (témoin négatif) **0 / 0 / 0 `ok`** ; `084a804d` et `0797ce72` **0 / 0 / 0 `ok`** aussi. Les pertes sont de DEUX familles : les compteurs `abilityImpulses` / `grapple` (classés ci-dessous) et `coverage.vehicles.deaths*` — cf. **D7 (3.4.2)** au §4 |
+| 2026-09-17 | 3.4.2 (**ATTRIBUTION** du corpus gate, 8 témoins, `--base=151d0c6f9`) | même outil, `-base=151d0c6f9 -temoins c75f33b8,111fa685,60ae07c4,a521164d,11de8353,50247b26,bfecd02b,4f77afc1` | **8 TÉMOINS SUR 8 `ok`, 0 gain, 0 perte, 0 changement, CODE 0**, seule la télémétrie `factsRev` bouge. **LE CORRECTIF DU MOT DE POIGNÉE NE CHANGE RIEN AU CORPUS GATE** : pas une ligne publiée, pas un compteur de couverture. Toutes les pertes vues contre `492cb0923` viennent donc du lot 3.4.1, dont les gates avec décodage n'avaient jamais été joués |
+| 2026-09-17 | 3.4.2 (**MESURE KILLSOURCE** avant / après, 6 témoins) | `KS_BTB2025_ROOT=… KS_BTB2025_IDS=… [KS_BTB2025_CARTES=…] -run '^TestBTB2025Abstention$'` | morts **crédibles / brutes**, sans carte puis avec : `50247b26` **16/60 -> 110/144** · `a349fea8` **27/159 -> 232/361** · `a521164d` **8/31 -> 80/119** · `60ae07c4` **23/136 -> 85/96** · `11de8353` **16/83 -> 145/191** · `0797ce72` **16/81 -> 85/102**. **106 morts créditées -> 737**, la part passant de **17-27 % à 64-89 %**. Les deux Live Fire lisent `indexW_plage=2` et leurs largeurs `[12 12 11]`, la carte à index de région sur 2 bits. `indexW_poignee=1 INVARIANT (non discriminee)` sur les SIX |
+| 2026-09-17 | 3.4.2 (substitution des trois films sans carte versionnée) | — | Les 7 films v31-37 de **D4 du `RAPPORT_LOT_H_VERSIONS_2026-09-13.md`** sont `13b00e35`, `47d20b5d`, `50247b26` (v31), `a349fea8`, `a521164d`, `03af54c3` (v33), `60ae07c4` (v37). **`13b00e35`, `47d20b5d` et `03af54c3` sont EXCLUS et dits tels quels** : ils sont au cache, mais leur carte n'est dans AUCUNE table versionnée (ni `config/replay_corpus.toml`, ni `CORPUS.txt`, ni le manifeste de film), et la base n'a pas été ouverte. Les six mesurés sont des témoins du corpus gate, cartes versionnées |
+
+#### Classification des 18 écarts hors liste de l'équivalence — une ligne par écart
+
+Trois faits mesurés servent à lire ce tableau. (1) **Le compte de la TÊTE égale la ligne `iw=1`
+sur les SEPT films à `abilityImpulses`** : la tête publie donc l'INVARIANT partout, c'est-à-dire
+le repli — vérifié directement sur `a521164d` et `64e8adfa` (`non discriminee`), et par égalité
+des comptes sur les cinq autres. (2) **Le compte de la BASE n'est pas toujours une ligne de ce
+tableau** (`64e8adfa` 7, `1c4c63c2` 42) : la base lisait à des largeurs d'AXE différentes en plus
+d'un autre `iw` — c'est la mesure directe du « monde périmé ». (3) **Les lectures PUBLIÉES du
+grappin sont IDENTIQUES pour `iw` = 1, 2 et 3 sur les QUINZE films** : `grappleReads.stats` ne
+bouge que sur ses COMPTEURS (`tag3`, corps cassés), jamais sur ce qui est publié.
+
+| film | étape | base -> tête | `iw`=1 / 2 / 3 à la carte | lecture |
+|---|---|---|---|---|
+| `64e8adfa` | `abilityImpulses` | 7 -> **8** | 8 / 2 / 3 | tête = `iw`=1, repli. Base 7 n'est AUCUNE des trois : elle lisait à d'autres largeurs d'axe |
+| `7344d24f` | `abilityImpulses` | 2 -> **1** | 1 / 1 / 2 | tête = `iw`=1, repli. Base = `iw`=3, ex æquo entre 1 et 2 à la tête |
+| `1c4c63c2` | `abilityImpulses` | 42 -> **41** | 41 / 43 / 44 | tête = `iw`=1, repli. Base 42 n'est AUCUNE des trois : autres largeurs d'axe |
+| `53ce4390` | `abilityImpulses` | 1 -> **2** | 2 / 1 / 0 | tête = `iw`=1, repli. Base = `iw`=2 |
+| `51101d1d` | `abilityImpulses` | 0 -> **2** | 2 / 1 / 0 | tête = `iw`=1, repli. Base = `iw`=3 |
+| `a521164d` | `abilityImpulses` | 1 -> **0** | 0 / 1 / 0 | tête = `iw`=1, repli **mesuré** (`272/272/272`). Base = `iw`=2, la seule des trois qui rend 1 |
+| `e5adf7b2` | `abilityImpulses` | 23 -> 23 (sha ≠) | 23 / 23 / 24 | tête = `iw`=1, repli. Compte ÉGAL, empreinte différente : ce ne sont pas les mêmes lectures |
+| `696a9d7c` | `grappleReads.stats` | 1 -> 1 (sha ≠) | grappin publié **29 / 29 / 29** | compteurs seuls (`tag3` 31/29/29) ; **aucune lecture publiée ne bouge** |
+| `084a804d` | `grappleReads.stats` | 1 -> 1 (sha ≠) | grappin publié **151 / 151 / 151** | compteurs seuls (`tag3` 190/190/191) ; aucune lecture publiée ne bouge |
+| `1c4c63c2` | `grappleReads.stats` | 1 -> 1 (sha ≠) | grappin publié **68 / 68 / 68** | compteurs seuls (`tag3` 77/76/75) ; aucune lecture publiée ne bouge |
+| `53ce4390` | `grappleReads.stats` | 1 -> 1 (sha ≠) | grappin publié **60 / 60 / 60** | compteurs seuls (`tag3` 74/73/73) ; aucune lecture publiée ne bouge |
+| `9f57c612` | `grappleReads.stats` | 1 -> 1 (sha ≠) | grappin publié **0 / 0 / 0** | compteurs seuls (`tag3` 0/0/2) ; ce film ne publie aucun grappin |
+| `51101d1d` | `grappleReads.stats` | 1 -> 1 (sha ≠) | grappin publié **0 / 0 / 0** | compteurs seuls (`tag3` 0/0/2) ; ce film ne publie aucun grappin |
+| `11de8353` | `grappleReads.stats` | 1 -> 1 (sha ≠) | grappin publié **69 / 69 / 69** | compteurs seuls (`tag3` 70/69/70) ; aucune lecture publiée ne bouge |
+| `111fa685` | `grappleReads.stats` | 1 -> 1 (sha ≠) | grappin publié **133 / 133 / 133** | compteurs seuls (`tag3` 139/138/141) ; aucune lecture publiée ne bouge |
+| `60ae07c4` | `pads` | 1 -> 1 (sha ≠) | impulsions **0 / 0 / 0**, grappin **0 / 0 / 0** | objet de statistiques ; les deux lecteurs voisins sont INSENSIBLES à `iw` sur ce film |
+| `50247b26` | `pads` | 1 -> 1 (sha ≠) | impulsions **22 / 22 / 22**, grappin **12 / 12 / 12** | objet de statistiques ; les deux lecteurs voisins sont INSENSIBLES à `iw` sur ce film |
+| `fb1a1a72` | `pads` | 1 -> 1 (sha ≠) | impulsions 0 / 1 / 0, grappin **0 / 0 / 0** | objet de statistiques ; aucune lecture de grappin publiée sur ce film |
+
+**CE QUE LA CLASSIFICATION ÉTABLIT.** Les 11 écarts `grappleReads.stats` + `pads` ne touchent
+**aucune donnée publiée** — ce sont des objets de statistiques observés, et leurs lectures
+publiées sont identiques à `iw` près. Les 7 écarts `abilityImpulses` portent **au total 8 lectures
+gagnées et 5 perdues**, toutes à un ou deux exemplaires sur des milliers de records, et toutes
+désormais posées par une valeur NOMMÉE (l'invariant sous repli) au lieu d'un ex æquo. **Le
+re-figeage des références appartient au pilote, à la fusion, sur cette classification.**
 ### Clôture M2 — gestes du pilote (références, banc, fusions), 2026-09-17
 
 Sur l'intégration `feat/recherche-decodeur-film`, après la fusion de 2.6 (92c83b333, fin du code
