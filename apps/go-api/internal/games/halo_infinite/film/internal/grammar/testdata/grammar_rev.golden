@@ -1,18 +1,30 @@
-# EMPREINTE DE LA GRAMMAIRE DU FILM — golden du lot 0.A.4.
+# EMPREINTE DE LA GRAMMAIRE DU FILM — golden du lot 0.A.4. Ne PAS editer a la main.
 #
-# Une seule ligne de donnees : `revision<TAB>empreinte`.
-#   revision   filmdec.GrammarRev (forme grammar-AAAA-MM-JJ)
-#   empreinte  sha256 des sources .go hors _test.go des QUATRE racines de grammaire —
-#              analysis/filmsource/, filmdec/, killsource/, analysis/objectiveevents/ —
-#              chemin relatif compris, fins de ligne normalisees en LF.
+# Une ligne de donnees par rang : `revision<TAB>empreinte`. Les lignes vides et celles qui
+# commencent par # sont de la prose. LA DERNIERE LIGNE DE DONNEES EST LA COURANTE.
+#   revision   grammar.Rev (forme grammar-AAAA-MM-JJ[.N])
+#   empreinte  sha256 des sources .go hors _test.go de la SEULE racine
+#              internal/games/halo_infinite/film/internal/grammar/ (sous-paquets compris),
+#              chemin relatif A LA RACINE hache a cote du contenu, fins de ligne normalisees en
+#              LF, `rev.go` / `rev_chronique.go` / `rev_chronique_archive.go` exclus — ils
+#              DECRIVENT la couche. En TETE du hachage : les VALEURS de `profile.Rev` puis de
+#              `source.Rev` (V15 (12)), dans cet ordre.
 #
-# LA REGLE A TROIS ETAGES :
-#   GrammarRev            monte a TOUT changement de grammaire (largeur, cadre, ordre, lecteur).
-#   KillSourceDecoderRev  monte si la SORTIE de killsource peut changer -> backlog de redecodage.
-#   SchemaVersion         monte si le CONTENU CUIT change -> recuisson par backfill-replay.
+# JUSQU AU RANG `.38` L EMPREINTE HACHAIT CINQ RACINES EN OCTETS (source, profile, grammar,
+# facts/killsource, facts/objectives). Le lot 2.6.1 a donne sa revision a chaque couche : le sens
+# unique passe des octets aux VALEURS AMONT, qui le tiennent plus strictement. Les lignes
+# anterieures au `.39` figent donc une AUTRE quantite — c est ecrit dans l entree `.39` de
+# `rev_chronique.go`, et c est la raison du rang neuf.
 #
-# REGENERATION :
-#   go test ./internal/games/halo_infinite/film/filmdec/ -run GrammarRevSuitLaGrammaire -update-grammar-rev
+# LES QUATRE REVISIONS DE COUCHE, ET LE CINQUIEME ETAGE :
+#   source.Rev    la porte aux octets.        profile.Rev  la table du decodeur.
+#   grammar.Rev   CETTE revision.             facts.Rev    la sortie des faits -> backlog
+#                                                          killsource (D6, signal utilisateur).
+#   SchemaVersion monte si le CONTENU CUIT change -> recuisson par backfill-replay.
+#
+# REGENERATION (les deux valeurs a la fois, jamais l une sans l autre) :
+#   LEVELUP_UPDATE_GRAMMAR_REV=1 go test ./internal/games/halo_infinite/film/internal/grammar/ \
+#     -run TestGrammarRevSuitLaGrammaire -update-grammar-rev
 #
 # HISTORIQUE
 #   2026-09-13  grammar-2026-09-13  premiere pose (lot 0.A.4). L'empreinte couvre desormais
@@ -568,4 +580,19 @@
 #               `player_table_control.go` porte desormais la decision de D3 + D8 (le controle du
 #               calibrage DECODE, donc il reste en `grammar`). Aucune ligne de code ne change :
 #               l empreinte monte parce que le hachage porte sur les OCTETS. `SchemaVersion` 60.
+#   2026-09-17  grammar-2026-09-15.39  lot 2.6.1 (`.38` -> `.39`) : HERITAGE, MEME GRAMMAIRE,
+#               EMPREINTE RE-POINTEE. AUCUN OCTET N EST LU AUTREMENT. La constante passe de
+#               `GrammarRev` a `grammar.Rev`, le gate passe sur `film/revision`, et le PERIMETRE
+#               de l empreinte change : `grammar/` SEUL (143 fichiers) plus les VALEURS de
+#               `profile.Rev` et `source.Rev`, au lieu de cinq racines en octets (183 fichiers).
+#               Deux quantites differentes ne se figent pas sous la meme ligne, d ou le rang
+#               neuf. `facts.Rev` monte mecaniquement (elle hache cette valeur) sans changement
+#               de sortie ; `SchemaVersion` reste 60.
+#
+# A PARTIR D ICI LE GOLDEN ACCUMULE SES LIGNES DE DONNEES (une par rang) : la porte centrale
+# (`revision.Porte`) AJOUTE une ligne quand la revision change et ne reecrit que la derniere a
+# revision constante. Les rangs anterieurs au `.38` n ont pas de ligne — l ancienne porte
+# reecrivait l unique ligne du fichier, et leurs empreintes sont perdues ; leur histoire est
+# ci-dessus.
 grammar-2026-09-15.38	7994ce195de82e8ca161ad32cc3ccfab5969a41aa635fb906183ecaf2c4f940e
+grammar-2026-09-15.39	966e3f3e7202d70b292261834ea7d5af1846b3c1b1e07c5db2806219aec26407

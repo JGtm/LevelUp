@@ -67,28 +67,28 @@ type empreinteAdHocToleree struct {
 	reprise string
 }
 
-// empreintesAdHocTolerees — L UNIQUE MECANISME RESTANT (mesure du 2026-09-17 sur `26cf32399` :
-// ils etaient DEUX ; celui de `facts` a herite au lot 2.6.1, voir la note sous la table).
+// empreintesAdHocTolerees — VIDE, ET C EST UN RATCHET (lot 2.6.1, 2026-09-17).
 //
-// L equivalence de chacun avec `revision` est DEJA PROUVEE, au bit pres, par
-// `film/revision/equivalence_test.go` : la reprise de 2.6.1 ne renumerote aucune revision.
-var empreintesAdHocTolerees = []empreinteAdHocToleree{
-	{
-		fichier: "internal/games/halo_infinite/film/internal/grammar/grammar_rev_fingerprint_test.go",
-		pose:    "2026-09-17", lot: "2.6.1",
-		reprise: "`grammar.Rev` passe par `revision.Empreinte` et `revision.Chronique` ; le cadre " +
-			"herite (`revision.CadreHeriteGrammaire`) disparait avec lui, dans le commit qui " +
-			"bascule la couche sur le chemin relatif a la racine",
-	},
-}
+// Les QUATRE couches passent par `film/revision`. Cette table n est plus une liste de travail :
+// elle est le ratchet qui interdit la cinquieme copie. Y ajouter une entree n est PAS une reponse
+// a un echec de ce test — c est rouvrir le defaut que la centralisation a ferme (deux cadres de
+// hachage divergents, donc une renumerotation de revision pour rien).
+var empreintesAdHocTolerees []empreinteAdHocToleree
 
-// L ENTREE `killcollector/decoder_rev_fingerprint_test.go` A ETE RETIREE LE 2026-09-16, DANS LE
-// COMMIT QUI L A RESOLUE (lot 2.6.1, volet facts + source). `facts.Rev` est descendue en
-// `film/facts/rev.go`, son gate est `film/facts/rev_test.go` et il passe par `revision.Calculer`
-// : les 120 lignes de `sha256` + `filepath.WalkDir` du gate d avant n existent plus, donc
-// l entree ne decrivait plus aucun porteur — et `TestAllowlistDesEmpreintesAdHocNEstPasPerimee`
-// l aurait dit. Il reste UNE entree, celle de la grammaire, que le volet grammaire du meme lot
-// fera heriter apres 2.5.e.
+// LES DEUX ENTREES ONT ETE RETIREES DANS LES COMMITS QUI LES ONT RESOLUES.
+//
+//	2026-09-16  `killcollector/decoder_rev_fingerprint_test.go` (lot 2.6.1, volet facts + source).
+//	            `facts.Rev` a descendu en `film/internal/facts/rev.go`, son gate est
+//	            `film/internal/facts/rev_test.go` et il passe par `revision.Calculer`.
+//	2026-09-17  `grammar/grammar_rev_fingerprint_test.go` (lot 2.6.1, volet grammaire).
+//	            `GrammarRev` est devenue `grammar.Rev`, son gate est
+//	            `film/internal/grammar/rev_test.go` et il passe par `revision.Calculer` ; le cadre
+//	            herite (`revision.CadreHeriteGrammaire`) est supprime avec lui, comme sa note de
+//	            retrait datee le prevoyait.
+//
+// Dans les deux cas les ~120 lignes de `sha256` + `filepath.WalkDir` n existent plus : l entree
+// ne decrivait plus aucun porteur, et `TestAllowlistDesEmpreintesAdHocNEstPasPerimee` l aurait
+// dit.
 
 // TestAucuneEmpreinteDeSourcesAdHoc : personne ne recalcule une empreinte de sources hors de
 // `film/revision`.
@@ -117,8 +117,8 @@ func TestAucuneEmpreinteDeSourcesAdHoc(t *testing.T) {
 		"regeneration, `revision.Messages` pour le message. Une copie de plus, c est un "+
 		"cinquieme cadre de hachage — et deux cadres differents ne se comparent pas, donc une "+
 		"renumerotation de revision pour rien. Ajouter une entree a `empreintesAdHocTolerees` "+
-		"N EST PAS une reponse : cette table est datee et ne recense que le mecanisme "+
-		"de la grammaire, que le volet grammaire du lot 2.6 doit faire heriter.",
+		"N EST PAS une reponse : cette table est VIDE depuis le lot 2.6.1 et c est un ratchet — "+
+		"les quatre couches passent par le mecanisme central, aucune copie ne reste.",
 		paquetCanoniqueEmpreinte, strings.Join(violations, "\n  "))
 }
 

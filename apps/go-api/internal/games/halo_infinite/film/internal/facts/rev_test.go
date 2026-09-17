@@ -12,7 +12,7 @@ package facts_test
 // # CE QU IL TIENT, ET LES DEUX GESTES QU IL EXIGE
 //
 // Il hache TOUT l arbre `film/facts/` (killsource, objectives, fallback) plus les VALEURS de
-// `source.Rev` et de `grammar.GrammarRev`, et compare au golden, qui porte le couple
+// `source.Rev` et de `grammar.Rev`, et compare au golden, qui porte le couple
 // (revision, empreinte) avec son historique. Toucher la couche — ou une couche du dessous — le
 // fait rougir ; le remettre au vert demande de rouvrir la ligne de la revision, donc de DECIDER
 // si les lignes en base doivent etre redecodees.
@@ -99,10 +99,10 @@ func racineDeLaCoucheFacts(t *testing.T) string {
 // amont fait partie du contrat : les inverser changerait l empreinte sans qu une source bouge.
 func empreinteDeLaCoucheFacts(t *testing.T) (string, int) {
 	t.Helper()
-	res, err := revision.Calculer(revision.CadreRacine,
+	res, err := revision.Calculer(
 		[]string{racineDeLaCoucheFacts(t)},
 		func(rel string) bool { return rel == fichierPorteurDeRevisionFacts },
-		source.Rev, grammar.GrammarRev)
+		source.Rev, grammar.Rev)
 	if err != nil {
 		t.Fatalf("empreinte de la couche facts : %v", err)
 	}
@@ -117,7 +117,7 @@ func TestFactsRevSuitLesFaits(t *testing.T) {
 		regenererGoldenFactsRev(t, empreinte)
 		return
 	}
-	c, err := revision.LireChronique(prefixeRevisionFacts, fichierPorteurDeRevisionFacts,
+	c, err := revision.LireChronique(prefixeRevisionFacts, []string{fichierPorteurDeRevisionFacts},
 		cheminGoldenFactsRev)
 	if err != nil {
 		t.Fatalf("chronique de `facts` : %v", err)
@@ -157,7 +157,7 @@ func regenererGoldenFactsRev(t *testing.T, empreinte string) {
 // chronique s y etait arretee a `.12` pendant que la constante valait `.14`, et rien ne
 // rougissait — les deux changements de comportement intermediaires n avaient aucune entree.
 func TestChroniqueDesFaitsCouvreLaRevisionCourante(t *testing.T) {
-	c, err := revision.LireChronique(prefixeRevisionFacts, fichierPorteurDeRevisionFacts,
+	c, err := revision.LireChronique(prefixeRevisionFacts, []string{fichierPorteurDeRevisionFacts},
 		cheminGoldenFactsRev)
 	if err != nil {
 		t.Fatalf("chronique de `facts` : %v", err)
