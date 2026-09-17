@@ -861,6 +861,24 @@ seuls concernés.
 main sur les artefacts conservés pour les nommer — pendant qu'un témoin en ERREUR s'écrivait
 `{"gains":0,"pertes":0,"changements":0}`, donc, lu du seul JSON, comme un témoin propre.
 
+**La télémétrie et les compteurs de rejet ne sont pas des pertes (2026-09-17, lot 3.3.3)** : le
+verdict comptait deux familles qu'il n'avait pas à compter. **La télémétrie** —
+`coverage.decoder.{sourceRev, profileRev, grammarRev, factsRev}`, `coverage.decoder.build`,
+`coverage.decoder.registry.fingerprint` — dit quelle VERSION du décodeur a cuit l'artefact, pas ce
+que le match contient. Ces feuilles étaient NEUVES au lot 2.6, donc comptées en gains ; depuis le
+schéma 61 elles sont partagées, si bien que tout lot qui fait monter une révision les faisait
+« bouger » sur chaque témoin et le gate sortait 1 sans que rien d'autre n'ait changé (lot 3.3.2 :
+51 des 59 changements étaient ces trois chaînes). Elles s'impriment désormais dans leur propre
+section `TELEMETRIE` et ne comptent nulle part. **Les compteurs de rejet** — `noSlot`, `unread`,
+`truncated`, `unnamedLives`… — sont déjà lus à l'envers par `replaydiff/polarite.go` (une baisse
+est un gain) ; ce que cette couche ne voit pas, c'est leur DÉNOMINATEUR. Une hausse n'est une
+`PERTE` que si le RAPPORT au dénominateur se dégrade, avec un dénominateur non nul des deux côtés ;
+un compteur qui monte de zéro parce que le dénominateur passe de 0 à N est un `CHANGEMENT` —
+imprimé, instruit par le pilote, toujours bloquant. La table des compteurs et de leurs
+dénominateurs est `cmd/replay-corpus-gate/verdict_metriques.go`, une ligne par bloc de couverture,
+chacune citant où le dénominateur a été lu. Le reste ne change pas : une perte réelle et un
+changement hors télémétrie sortent tous deux en 1.
+
 **Tous les drapeaux** (`cd apps/go-api && go run ./cmd/replay-corpus-gate -h` pour la liste à
 jour) :
 

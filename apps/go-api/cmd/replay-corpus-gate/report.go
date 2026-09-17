@@ -109,6 +109,11 @@ type ligneRapport struct {
 	// PertesDetail : les differences de sens PERTE ou DISPARU seulement — c'est LE FAIT a
 	// rapporter, jamais a resumer en un seul compte.
 	PertesDetail []replaydiff.Difference
+	// TelemetrieDetail : les feuilles de TELEMETRIE qui ont bouge (lot 3.3.3) — les revisions du
+	// decodeur, le build, l empreinte de registre. Elles ne comptent NI en gain, NI en perte, NI
+	// en changement (cf. verdict_metriques.go) et s impriment dans leur propre section : une
+	// revision qui monte est attendue a chaque lot, la voir est utile, en faire un verdict non.
+	TelemetrieDetail []replaydiff.Difference
 	// ChangementsDetail : les differences de sens CHANGEMENT, symetrique de PertesDetail
 	// (2026-09-17, D5 (1.9.9)). Sans lui, le JSON du gate disait « 2 changements » et le
 	// pilote devait relancer `replay-diff` a la main sur les artefacts conserves pour savoir
@@ -142,26 +147,38 @@ func (l ligneRapport) statut() string {
 	return statutOK
 }
 
-// remplirBilan peuple schemas, comptes et LES DEUX DETAILS depuis un `replaydiff.Rapport`.
+// remplirBilan peuple schemas, comptes et LES TROIS DETAILS depuis un `replaydiff.Rapport`.
 //
 // C'etait une fonction a six valeurs de retour ; la septieme (le detail des changements)
 // l'aurait rendue illisible a l'appel. Une methode qui peuple la ligne dit la meme chose sans
 // aligner sept resultats anonymes (CLAUDE.md n°5).
+//
+// ELLE NE SOMME PLUS `rap.Bilans` DEPUIS LE LOT 3.3.3, ET C'EST LE POINT : les bilans par axe
+// portent le sens que `replaydiff` a MESURE, et le gate en retient un autre sur deux familles —
+// la TELEMETRIE (jamais comptee) et les COMPTEURS DE REJET dont le denominateur a bouge
+// (`verdict_metriques.go`). Les comptes se recalculent donc DEPUIS LES ECARTS, qui sont la meme
+// population que les bilans (`replaydiff.Rapport.ajouter` alimente les deux d'un seul geste) :
+// aucune mesure n'est perdue, seule la CLASSIFICATION change.
 func (l *ligneRapport) remplirBilan(rap replaydiff.Rapport) {
 	l.SchemaReference, l.SchemaHEAD = rap.SchemaAncien, rap.SchemaNouveau
 	l.Gains, l.Pertes, l.Changements = 0, 0, 0
-	for _, b := range rap.Bilans {
-		l.Gains += b.Gains
-		l.Pertes += b.Pertes
-		l.Changements += b.Changements
-	}
-	l.PertesDetail, l.ChangementsDetail = nil, nil
+	l.PertesDetail, l.ChangementsDetail, l.TelemetrieDetail = nil, nil, nil
+	parMetrique := make(map[string]replaydiff.Difference, len(rap.Differences))
 	for _, d := range rap.Differences {
-		switch d.Sens {
+		parMetrique[d.Metrique] = d
+	}
+	for _, d := range rap.Differences {
+		switch classerPourLeVerdict(d, parMetrique) {
+		case sensTelemetrie:
+			l.TelemetrieDetail = append(l.TelemetrieDetail, d)
 		case replaydiff.SensPerte, replaydiff.SensDisparu:
+			l.Pertes++
 			l.PertesDetail = append(l.PertesDetail, d)
 		case replaydiff.SensChangement:
+			l.Changements++
 			l.ChangementsDetail = append(l.ChangementsDetail, d)
+		default:
+			l.Gains++
 		}
 	}
 }

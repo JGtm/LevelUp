@@ -66,7 +66,9 @@ var tablesDuProfil = []struct {
 	{"tableProfilFormat", 2},
 	{"tableProfilBuild", 7},
 	{"tableProfilMajeure", 3},
-	{"tableProfilInvariants", 12}, // 12 depuis la fusion du lot 2.2 (2026-09-17) : `Movement.WorldObject` entre dans la table
+	{"tableProfilInvariants", 12},        // 12 depuis la fusion du lot 2.2 (2026-09-17) : `Movement.WorldObject` entre dans la table
+	{"tableProfilGrenade", 7},            // lot 3.3.1 (2026-09-17) : l amorce du record de creation de projectile, par BUILD
+	{"tableProfilGrenadeSansSection", 2}, // lot 3.3.1 : les deux majeures sans section d identification
 }
 
 // lignesAttenduesParTable : le total des quatre, calcule une fois.

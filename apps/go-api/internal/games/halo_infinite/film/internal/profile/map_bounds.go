@@ -44,6 +44,12 @@ type MapQuantEntry struct {
 	// AxisWidths est W = min(26, ceilLog2(ceil(60*extent))) par axe, DÉDUIT des bornes par
 	// la loi du moteur. C'est une valeur de contrôle : elle doit égaler le découpage lu
 	// dans le film par DetectI0Layout, sans quoi les bornes ne sont pas celles de la carte.
+	//
+	// LA LOI QUI LES PRODUIT VIT DANS CE PAQUET DEPUIS LE LOT 3.4.1 (`loi_largeurs.go`,
+	// transcription de `FUN_140be9b88`), et `TestLaLoiRendLesLargeursDuCatalogue` exige que
+	// les 79 entrées commises la vérifient exactement. Ce champ reste la VALEUR — il est
+	// produit hors ligne par `cmd/mapquant-build` depuis les `.module` du jeu, sous un gate
+	// `gamefiles` qui relit le fichier commis à l'octet ; la loi en est le CONTRÔLE.
 	AxisWidths [3]uint `json:"axisWidths"`
 	// Region est l'INDEX DE RÉGION de compression que les bornes ci-dessus décrivent, dans
 	// l'ordre du bloc structure-BSP du tag de niveau. Zéro (l'absence historique du champ)
@@ -67,16 +73,45 @@ func (e MapQuantEntry) EffectiveRegionIndexBits() uint {
 	return e.RegionIndexBits
 }
 
+// PrecisionAbsolue rend le DESCRIPTEUR DE QUANTIFICATION DU CHEMIN ABSOLU pour cette carte :
+// la largeur d index de plage, les trois largeurs d axe et la valeur d index attendue.
+//
+// C EST LA PROJECTION DE L ENTREE DE CATALOGUE VERS LE VOCABULAIRE DU LECTEUR, et les trois
+// grandeurs sont celles que `FUN_14076e524` lit dans la table PAR INDEX de la carte :
+//
+//	IndexW  `DAT_144632be0` — 1 quand la carte declare une plage, sinon ceilLog2(compte)
+//	        ([LargeurIndexDePlage]) ; le catalogue le porte en `regionIndexBits`
+//	AxisW   `DAT_1445ccbe0 + (index*0x20 + 16)*0xc` — la loi appliquee aux bornes de la plage
+//	        au niveau du composant de position ([LargeursAxeDuNiveau], controle 79/79)
+//	Region  l index de la plage JOUEE, celle dont le catalogue porte les bornes
+//
+// ZERO VALEUR NOUVELLE : les trois sont deja au catalogue (lot 3.4, note du 2026-09-16, §4.1).
+// Ce qui manquait etait le BRANCHEMENT — le chemin absolu du bipede lisait une largeur UNIFORME
+// devinee (`Movement.AbsoluteAxisW`, 14) au lieu de celles de la carte.
+func (e MapQuantEntry) PrecisionAbsolue() PrecisionDescriptor {
+	return PrecisionDescriptor{
+		IndexW: e.EffectiveRegionIndexBits(),
+		AxisW:  e.AxisWidths,
+		Region: e.Region,
+	}
+}
+
 // Layout rend le découpage d'i0 que le CATALOGUE impose pour cette carte : l'en-tête
 // (spine + useDefault + index de région à sa vraie largeur), la région attendue et les
 // largeurs d'axe déduites des bornes. C'est la source d'autorité du décodage — le découpage
 // lu dans le film (DetectI0Layout) reste le CONTRÔLE, jamais l'entrée (la même doctrine que
 // celle du descripteur world-object, traverse.go).
+//
+// IL DERIVE DE [MapQuantEntry.PrecisionAbsolue] DEPUIS LE LOT 3.4.1 : les deux disaient la meme
+// chose avec deux ecritures, et deux ecritures d une meme largeur finissent par diverger
+// (CLAUDE.md regle 6). La seule difference reste la FORME de l en-tete, que ce type exprime en
+// nombre de bits de porte la ou le descripteur exprime la largeur de l index seule.
 func (e MapQuantEntry) Layout() I0Layout {
+	p := e.PrecisionAbsolue()
 	return I0Layout{
-		GateBits: I0SpineBits + I0UseDefaultBits + int(e.EffectiveRegionIndexBits()),
-		AxisW:    e.AxisWidths,
-		Region:   e.Region,
+		GateBits: I0SpineBits + I0UseDefaultBits + int(p.IndexW),
+		AxisW:    p.AxisW,
+		Region:   p.Region,
 	}
 }
 

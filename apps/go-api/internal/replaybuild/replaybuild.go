@@ -23,7 +23,6 @@ package replaybuild
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -40,18 +39,6 @@ import (
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
-
-// ErrMapNotInCatalog : aucune identité de carte candidate ne résout dans le catalogue de
-// bornes de déquantification. ÉCHEC VOULU, compté À PART par les backfills : construire
-// avec les bornes d'une autre carte donnerait des coordonnées fausses d'un facteur
-// d'échelle arbitraire (cf. cmd/mapquant-build). Cas nominal : cartes Forge, dont le
-// canevas n'est pas la carte.
-var ErrMapNotInCatalog = errors.New("replaybuild: carte hors catalogue de bornes")
-
-// ErrNoTracks : le décodage n'a produit aucune trajectoire — l'artefact n'est PAS écrit
-// (un document vide se servirait comme un rejeu « propre » alors que le film est vide ou
-// illisible).
-var ErrNoTracks = errors.New("replaybuild: aucune trajectoire décodée — artefact non écrit")
 
 // Builder porte les entrées chargées UNE fois (catalogue de bornes, libellés du titre,
 // props Forge) pour construire N artefacts. Construire un Builder par passe, pas par
@@ -256,6 +243,10 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 	tFilm := time.Now()
 	src := ouvrirManifeste(ctx, matchID, filmDir)
 	film := chargerFilm(ctx, matchID, filmDir, src)
+	// LA PORTE DE LA CLÉ, AVANT TOUTE LECTURE (lot 3.1.1, cf. cle_du_film.go).
+	if err := ecarterSiCleInconnue(ctx, matchID, film); err != nil {
+		return Built{}, err
+	}
 	// UNE SEULE LECTURE DU FIL DES MORTS pour les deux consommateurs de cet etage
 	// (`identifiedEvents` et `killRefs`, qui ouvraient chacun le chunk highlight).
 	deaths := lireMorts(film)
@@ -353,7 +344,7 @@ func (b *Builder) collecterEntreesCatalogue(
 	// `replay.BuildFromFilm` — au lieu de deux, comme avant la jointure des frags sous
 	// effet actif (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1).
 	tKS := time.Now()
-	ksRes := b.decodeKillSource(matchID, film)
+	ksRes := b.decodeKillSource(matchID, mapNames, film)
 	logPhase("killsource", matchID, tKS)
 	b.observe("killsource", ksRes)
 	// Les POINTS D'APPARITION viennent du catalogue des socles, par map_id — ils donnent leur

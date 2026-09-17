@@ -23,8 +23,14 @@ const (
 	metricTimeout     = "killsource_abandons_delai"
 	// metricBudget : passes arretees par leur budget. UN ARRET NOMINAL, pas une erreur —
 	// il se compte a part pour ne pas polluer `killsource_erreurs_decodage`.
-	metricBudget      = "killsource_budgets_epuises"
-	metricWriteError  = "killsource_erreurs_ecriture"
+	metricBudget     = "killsource_budgets_epuises"
+	metricWriteError = "killsource_erreurs_ecriture"
+	// metricUnknownKey : films ECARTES parce que leur cle ecrite est absente de la table de
+	// profil (lot 3.1.1, D-4 d ADR 0034). IL NE REMPLACE PAS les compteurs PAR CLE que
+	// `grammar` nomme (`filmdec_unknown_build_<build>`, `filmdec_unknown_format_<n>`) : ceux-la
+	// disent QUELLE cle manque, celui-ci dit combien de PASSES la politique a arretees. Les
+	// deux se lisent ensemble, et leur somme par cle doit se recouper.
+	metricUnknownKey  = "killsource_ecartes_cle_inconnue"
 	metricDeaths      = "killsource_morts_ecrites"
 	metricNotPublish  = "killsource_passes_non_publiables"
 	metricAssistExtra = "killsource_assist_extra_count"

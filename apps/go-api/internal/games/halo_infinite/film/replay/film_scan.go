@@ -380,7 +380,7 @@ func (s *filmScan) balayerCalquesGardes() {
 func (s *filmScan) balayerPont() {
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
-	grenades, err := grammar.ScanGrenadeThrows(s.film)
+	grenades, err := grammar.ScanGrenadeThrows(s.fc)
 	if err != nil {
 		slog.Warn("paquets delta illisibles — rejeu sans lancers de grenade", "err", err, "match_id", s.matchID)
 		grenades = nil
