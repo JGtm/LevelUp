@@ -187,7 +187,7 @@ Fichiers : `port/repository_data.go` (CompareRepository), `port/weapon_range.go`
 `platform/duckdb/compare_repo.go`, `platform/duckdb/weapon_range_repo.go`,
 `domain/compare_weapons.go`.
 
-- [ ] 2.1 `port.CompareRepository` gagne :
+- [x] 2.1 `port.CompareRepository` gagne :
       `GetWeaponScope(ctx, xuid, titleSlug string) (*domain.CompareWeaponScope, error)` (tous
       les matchs du xuid, campagne exclue, mêmes clauses que `GetLocalStats`) et
       `GetCrossWeaponScope(ctx, xuidA, xuidB, titleSlug string) (*domain.CompareWeaponScope, error)`
@@ -195,18 +195,23 @@ Fichiers : `port/repository_data.go` (CompareRepository), `port/weapon_range.go`
       `SharedReadDB().Get` (SharedReader, jamais `OpenReadOnly`), timeout 15 s, `(nil, nil)` si
       zéro match. Totaux : `SUM(kills)`, `SUM(deaths)`, `SUM(melee_kills)`, `SUM(grenade_kills)`
       depuis `match_participants` (vérifier les noms de colonnes sur pièces, skill `db-schema`).
-- [ ] 2.2 Les mocks existants de `compare_service_test.go` (`mockCompareRepo`,
+- [x] 2.2 Les mocks existants de `compare_service_test.go` (`mockCompareRepo`,
       `mockCompareRepoAB`) implémentent les deux méthodes (retour `nil, nil` par défaut).
-- [ ] 2.3 Test DuckDB `:memory:` des deux méthodes (nouveau `compare_repo_weapons_test.go`,
+      — `mockCompareRepoAB` : fait. `mockCompareRepo` : `[~]` couvert par l'analyse ci-contre —
+      il n'implémente PAS `port.CompareRepository` aujourd'hui (ni `GetPlayerATH`, ni
+      `GetPlayerATHFor`, ni `GetEncounterStats`, ni `GetCrossMatchSample`) et n'est jamais
+      passé à `NewCompareService` ; lui ajouter les deux méthodes serait du code mort.
+      Vérifié : `go vet -tags=integration ./...` ne le signale pas.
+- [x] 2.3 Test DuckDB `:memory:` des deux méthodes (nouveau `compare_repo_weapons_test.go`,
       même régime de tag que les autres tests du paquet) : trois matchs dont un de campagne
       exclu, un commun A/B, totaux exacts.
-- [ ] 2.4 `port.WeaponRangeRepository` gagne
+- [x] 2.4 `port.WeaponRangeRepository` gagne
       `ResolveWeaponDimensions(ctx, titleSlug string, keys []string) (map[string]WeaponDimensions, error)`
       avec `type WeaponDimensions struct{ Class, Role, Family string }` ; implémentation =
       délégation à `resolveWeaponKeyDimensions` (aucune requête neuve). Metadata absente =
       map vide, pas d'erreur. Le fake de `weapon_range_section_test.go` (ou équivalent)
       implémente la méthode.
-- [ ] 2.5 Ratchets du dépôt inchangés : `no_art_patterns_test.go`, `no_slug_comparison_test.go`,
+- [x] 2.5 Ratchets du dépôt inchangés : `no_art_patterns_test.go`, `no_slug_comparison_test.go`,
       `shared_read_recovery_routing_test.go` verts sans modification d'allowlist.
 
 **Gate 2** :
@@ -440,6 +445,76 @@ littéral de seuil n'a été introduit.
   (qui pose n frags à la même distance : min == max == p10 == p90 == médiane, donc un test
   bâti dessus resterait vert même avec min/max câblés sur les percentiles).
 - `internal/analysis/weapon_range.go` passe de 323 à 380 lignes (seuil 500 respecté).
+
+### 2026-09-17 — Lot 2 clos (2.1, 2.3, 2.4, 2.5 `[x]` ; 2.2 `[x]` pour AB, `[~]` pour `mockCompareRepo`)
+
+**Gate 2** — commande exacte du plan :
+
+```
+cd apps/go-api && go test ./internal/port/... ./internal/platform/duckdb/... ./internal/service/... \
+  && go vet ./...
+```
+
+```
+ok      levelup/go-api/internal/port                            9.213s
+ok      levelup/go-api/internal/platform/duckdb                 256.687s
+ok      levelup/go-api/internal/platform/duckdb/indexcheck      3.276s
+ok      levelup/go-api/internal/platform/duckdb/prestige        28.244s
+ok      levelup/go-api/internal/platform/duckdb/sharedprovider  0.443s
+ok      levelup/go-api/internal/service                         37.454s
+ok      levelup/go-api/internal/service/fragdist                2.330s
+...
+EXIT_TEST=0
+EXIT_VET=0
+```
+
+**Le gate du plan ne couvre PAS le test 2.3** : `compare_repo_weapons_test.go` porte
+`//go:build integration` (régime du paquet), et la commande de gate n'a pas le tag. Il a donc
+été exécuté séparément, dans cette session :
+
+```
+go test -tags=integration ./internal/platform/duckdb/ -run 'TestGetWeaponScope|TestGetCrossWeaponScope' -v
+--- PASS: TestGetWeaponScope_LifetimeCampagneExclue (0.55s)
+--- PASS: TestGetWeaponScope_AucunMatch (0.31s)
+--- PASS: TestGetCrossWeaponScope_MatchsCommunsTotauxDeB (0.52s)
+--- PASS: TestGetCrossWeaponScope_JamaisCroise (0.34s)
+ok      levelup/go-api/internal/platform/duckdb 1.907s   EXIT=0
+```
+
+Et `go vet -tags=integration ./...` -> EXIT=0 (c'est lui qui a prouvé que les deux mocks du
+paquet `service` satisfont bien les interfaces élargies).
+
+**2.5 — ratchets** : `go test ./internal/archlint/... ./internal/sync/` -> `ok` sur les deux
+paquets ; `git diff --stat` sur `internal/sync/no_art_patterns_test.go`,
+`internal/archlint/no_slug_comparison_test.go` et
+`internal/sync/shared_read_recovery_routing_test.go` rend une sortie VIDE — aucune allowlist
+touchée.
+
+**Écarts / décisions d'implémentation**
+
+- Les deux scopes vivent dans un fichier NEUF, `platform/duckdb/compare_repo_weapons.go`
+  (le plan citait `compare_repo.go`, déjà à 341 lignes : y ajouter ~130 lignes l'aurait mené
+  à ~470, trop près du plafond de 500).
+- UNE SEULE requête par scope, rendant une ligne par match : `MatchIDs` et les totaux sont
+  agrégés en Go sur les MÊMES lignes. Deux requêtes liraient deux instantanés de la base
+  partagée (un sync peut écrire entre les deux), et la couverture publiée afficherait un
+  dénominateur qui ne décrit plus le corpus de son numérateur.
+- `GetCrossWeaponScope` applique `excludeCampaignByMatchID` sur `a.match_id`, alors que
+  `GetCrossMatchSample` — dont il reprend l'auto-jointure — ne l'applique pas (écart noté au
+  lot 0). Motif : le côté A du même profil est mesuré campagne exclue, deux scopes aux règles
+  différentes rendraient les deux colonnes non comparables.
+- Les tests 2.3 passent par le titre `halo_5` et non le titre par défaut : `halo_5` est le seul
+  à déclarer des variants de Campagne, donc le seul où la clause d'exclusion n'est pas un
+  no-op. Menés sur le titre par défaut, ils seraient verts quelle que soit l'implémentation.
+- `ResolveWeaponDimensions` prend le slug EN PARAMÈTRE (comme les deux lectures du même repo)
+  et non `r.pdb.TitleSlug` : résoudre sous le titre du PlayerDB rendrait les dimensions d'un
+  autre jeu dès que les deux diffèrent. Le mock du service mémorise le slug reçu.
+- `port.WeaponDimensions` n'expose que Class/Role/Family : `weaponKeyResolved` porte aussi
+  label/labelEN/numericID, hors du besoin du port (les libellés passent par
+  `WeaponLabelResolver`).
+- `domain/compare_weapons.go` ne porte AU LOT 2 que `CompareWeaponScope`. Le reste du contrat
+  (`CompareWeaponProfile` et ses blocs) arrive au lot 3, avec son producteur — publier des
+  types que personne n'assemble en ferait du code mort le temps d'un lot.
 
 ## Reprise de session
 

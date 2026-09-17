@@ -84,6 +84,24 @@ type WeaponLabelResolver interface {
 	ResolveWeaponLabels(ctx context.Context, weaponKeys []string) (map[string]WeaponLabel, error)
 }
 
+// WeaponDimensions décrit la place d'une arme dans le REGISTRE du titre : sa classe (axe de
+// manipulation — épaule, poing, lourde...), son rôle (fonction de combat — précision,
+// automatique, sniper...) et sa famille.
+//
+// POURQUOI CE TYPE EXISTE ALORS QUE `WeaponKillRow` PORTE DÉJÀ LES TROIS CHAMPS. Les frags
+// MESURÉS (`analysis.MeasuredKill`) ne passent pas par `WeaponKillRow` : ils portent une clé
+// de registre et rien d'autre. Publier la portée par RÔLE (D1 du plan
+// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md) demande donc de traduire des clés en
+// dimensions, sans requête neuve — la résolution canonique existe déjà chez l'implémenteur.
+//
+// Les trois champs sont des CLÉS, jamais des libellés : le nom affichable passe par
+// `WeaponLabelResolver`, et aucun libellé FR/EN ne s'écrit côté Go.
+type WeaponDimensions struct {
+	Class  string
+	Role   string
+	Family string
+}
+
 // WeaponRangeRepository expose les deux lectures de frags mesurés, et la traduction des clés
 // d'arme qu'elles rendent.
 //
@@ -108,6 +126,19 @@ type WeaponRangeRepository interface {
 	// (décision utilisateur, jamais lancé d'office) : la section publie « N frags
 	// mesurés », jamais un zéro.
 	LoadWeaponOpening(ctx context.Context, slug string, filters WeaponRangeFilters) ([]analysis.MeasuredKill, error)
+
+	// ResolveWeaponDimensions traduit un lot de clés de registre en dimensions
+	// (classe / rôle / famille).
+	//
+	// BEST-EFFORT, MÊME RÉGIME QUE ResolveWeaponLabels : une clé absente du registre est
+	// absente de la map (jamais une entrée vide fabriquée), et une metadata non migrée
+	// rend une map vide SANS erreur. L'appelant décide alors quoi faire de l'inconnue —
+	// pour le profil d'armes, l'écarter et la compter (D8), jamais la ranger sous un seau
+	// fourre-tout qui mélangerait une épée et un fusil de précision.
+	//
+	// AUCUNE REQUÊTE NEUVE : la résolution canonique clé -> dimensions existe déjà chez
+	// l'implémenteur, partagée avec les lecteurs de kills par arme.
+	ResolveWeaponDimensions(ctx context.Context, titleSlug string, keys []string) (map[string]WeaponDimensions, error)
 
 	// WeaponLabelResolver : les deux lectures ci-dessus rendent des CLÉS de registre
 	// (`analysis.MeasuredKill.WeaponKey`), jamais des noms. Le service n'a pas d'autre
