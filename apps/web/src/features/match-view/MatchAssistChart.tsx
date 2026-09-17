@@ -2,8 +2,10 @@
  * MatchAssistChart — « qui est l'assistant de qui ».
  *
  * Barres empilées horizontales, MIROIR du graphe des antagonistes :
- *   - 1 ligne par ASSISTANT (groupées par équipe via assistStackedSeries)
- *   - segments empilés = les TUEURS qu'il a assistés
+ *   - 1 ligne par ASSISTANT — le LARBIN — (groupées par équipe via assistStackedSeries)
+ *   - segments empilés = les TUEURS qu'il a assistés — les PATRONS (vocabulaire de
+ *     l'écran, décision utilisateur du 2026-09-17, le même que la page Escouade : titres
+ *     d'axes et infobulle nomment les deux rôles)
  *   - infobulle : nombre d'assistances, « dont N volées » quand il y en a, et la part
  *     moyenne de participation quand elle est mesurée (même vocabulaire que le kill feed
  *     du rejeu — « part », jamais « dégâts »)
@@ -95,6 +97,9 @@ export function MatchAssistChart({ block, scoreboard, meXUID, t }: Props) {
       series={series}
       emptyMessage={emptyMessage}
       componentHexColors={componentHexColors}
+      categoryAxisName={t.assistRoleAssistant}
+      valueAxisName={t.assistValueAxis}
+      tooltipRoles={{ category: t.assistRoleAssistant, component: t.assistRoleBeneficiary }}
       tooltipHideZero
       tooltipComponentNote={(assistant, killer) => {
         const key = assistStolenKey(assistant, killer)

@@ -159,4 +159,89 @@ describe('buildBarStackedOption', () => {
     const winSeries = opt.series.find((s) => s.name === 'win')!
     expect(winSeries.data).toEqual([5, 0]) // B sans win → 0
   })
+
+  // ─── RÔLES NOMMÉS (Larbin / Patron, 2026-09-17) ───────────────────────────────────
+  //
+  // Sur les assistances d'escouade, barre et segment sont deux gamertags : sans les
+  // nommer, rien ne dit qui a assisté et qui a eu le frag. Le titre d'axe porte le rôle
+  // de la barre, l'infobulle les deux — et les appelants qui ne demandent rien gardent
+  // exactement le graphe d'avant.
+  type AxisOpt = {
+    xAxis: { name?: string; nameLocation?: string; nameGap?: number }
+    yAxis: { name?: string; nameLocation?: string }
+    grid: { bottom: number; left: number }
+  }
+
+  it('sans titre d\'axe : aucun `name`, marges inchangées', () => {
+    const opt = buildBarStackedOption(series) as AxisOpt
+    expect(opt.xAxis.name).toBeUndefined()
+    expect(opt.yAxis.name).toBeUndefined()
+    expect(opt.grid.bottom).toBe(40)
+    expect(opt.grid.left).toBe(8)
+  })
+
+  it('categoryAxisName : titre posé au MILIEU de l\'axe des catégories, marge basse élargie', () => {
+    const opt = buildBarStackedOption(series, { categoryAxisName: 'Larbin' }) as AxisOpt
+    expect(opt.xAxis.name).toBe('Larbin')
+    expect(opt.xAxis.nameLocation).toBe('middle')
+    expect(opt.xAxis.nameGap).toBeGreaterThan(0)
+    expect(opt.yAxis.name).toBeUndefined()
+    expect(opt.grid.bottom).toBeGreaterThan(40)
+    expect(opt.grid.left).toBe(8)
+  })
+
+  it('valueAxisName : titre sur l\'axe des valeurs (Y en vertical), marge gauche élargie', () => {
+    const opt = buildBarStackedOption(series, { valueAxisName: 'Assistances par patron' }) as AxisOpt
+    expect(opt.yAxis.name).toBe('Assistances par patron')
+    expect(opt.yAxis.nameLocation).toBe('middle')
+    expect(opt.xAxis.name).toBeUndefined()
+    expect(opt.grid.left).toBeGreaterThan(8)
+    expect(opt.grid.bottom).toBe(40)
+  })
+
+  it('orientation horizontale : chaque titre suit son axe (catégories sur Y, valeurs sur X)', () => {
+    const opt = buildBarStackedOption(series, {
+      categoryAxisName: 'Larbin',
+      valueAxisName: 'Assistances par patron',
+      orientation: 'horizontal',
+    }) as AxisOpt
+    expect(opt.yAxis.name).toBe('Larbin')
+    expect(opt.xAxis.name).toBe('Assistances par patron')
+    expect(opt.grid.left).toBeGreaterThan(8)
+    expect(opt.grid.bottom).toBeGreaterThan(40)
+  })
+
+  it('tooltipRoles seul : le formateur s\'installe et nomme les deux rôles', () => {
+    const opt = buildBarStackedOption(series, {
+      tooltipRoles: { category: 'Larbin', component: 'Patron' },
+    }) as TooltipOpt
+    const html = opt.tooltip.formatter!([param('Chocoboflor', 3, 'JGtm')])
+    expect(html).toContain('Larbin · JGtm')
+    expect(html).toContain('Patron · Chocoboflor')
+    expect(html).toContain('<strong>3</strong>')
+  })
+
+  it('tooltipRoles + tooltipComponentNote : la note reçoit le nom NU, pas le rôle', () => {
+    const vues: Array<[string, string]> = []
+    const opt = buildBarStackedOption(series, {
+      tooltipRoles: { category: 'Larbin', component: 'Patron' },
+      tooltipComponentNote: (category, component) => {
+        vues.push([category, component])
+        return 'part 50,0 %'
+      },
+    }) as TooltipOpt
+    const html = opt.tooltip.formatter!([param('Chocoboflor', 3, 'JGtm')])
+    expect(vues).toEqual([['JGtm', 'Chocoboflor']])
+    expect(html).toContain('Patron · Chocoboflor')
+    expect(html).toContain('part 50,0 %')
+  })
+
+  it('tooltipRoles : les rôles sont échappés comme le reste', () => {
+    const opt = buildBarStackedOption(series, {
+      tooltipRoles: { category: '<b>L</b>', component: '<i>P</i>' },
+    }) as TooltipOpt
+    const html = opt.tooltip.formatter!([param('X', 1, 'Y')])
+    expect(html).not.toContain('<b>L</b>')
+    expect(html).not.toContain('<i>P</i>')
+  })
 })

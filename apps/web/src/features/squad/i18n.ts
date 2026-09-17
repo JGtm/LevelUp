@@ -165,10 +165,16 @@ export interface SquadText {
     enemyMmrTooltip: string
     deltaMmrTooltip: string
   }
-  /** Tableau « Assistances » (assistant -> tueur assisté), page Synergies. */
+  /** Graphe « Assistances » (larbin -> patron), page Synergies. */
   assists: {
     title: string
     description: string
+    /** Rôle de la BARRE : celui qui a assisté (le larbin). Titre d'axe et infobulle. */
+    roleAssistant: string
+    /** Rôle du SEGMENT : celui qui a eu le frag crédité (le patron). Infobulle. */
+    roleBeneficiary: string
+    /** Titre de l'axe des valeurs : ce que la hauteur des segments compte. */
+    valueAxis: string
     /** Bandeau de couverture : « mesuré sur N des M matchs ». */
     coverage: (measured: number, total: number) => string
     coverageHint: string
@@ -515,7 +521,11 @@ const FR_TEXT: SquadText = {
   },
   assists: {
     title: 'Assistances dans l\'escouade',
-    description: 'Qui prépare les éliminations de qui, sur les matchs de la sélection.',
+    description:
+      'Une barre par larbin (celui qui prépare le frag), un segment par patron (celui qui l\'encaisse), sur les matchs de la sélection.',
+    roleAssistant: 'Larbin',
+    roleBeneficiary: 'Patron',
+    valueAxis: 'Assistances par patron',
     coverage: (measured, total) =>
       `Mesuré sur ${measured} des ${total} match${total > 1 ? 's' : ''} de la sélection`,
     coverageHint:
@@ -868,7 +878,11 @@ const EN_TEXT: SquadText = {
   },
   assists: {
     title: 'Assists within the squad',
-    description: 'Who sets up whose kills, across the selected matches.',
+    description:
+      'One bar per lackey (who sets up the kill), one segment per boss (who gets the credit), across the selected matches.',
+    roleAssistant: 'Lackey',
+    roleBeneficiary: 'Boss',
+    valueAxis: 'Assists per boss',
     coverage: (measured, total) =>
       `Measured on ${measured} of ${total} selected match${total > 1 ? 'es' : ''}`,
     coverageHint:

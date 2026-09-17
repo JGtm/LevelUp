@@ -32,6 +32,9 @@ import {
   seriesColor,
 } from './_utils'
 
+/** Distance (px) entre les étiquettes d'un axe et son titre, quand il en a un. */
+const AXIS_NAME_GAP = 28
+
 export interface ChartPointStacked {
   category: string
   components: Record<string, number>
@@ -75,6 +78,23 @@ export interface BarStackedChartProps {
    * elle, le formateur personnalisé s'active même si `tooltipHideZero` est faux.
    */
   tooltipComponentNote?: (category: string, component: string) => string | undefined
+  /**
+   * Titre de l'axe des catégories, posé au milieu sous les étiquettes. Nomme le RÔLE des
+   * barres quand la catégorie seule ne le dit pas : sur les assistances d'escouade, la barre
+   * est un gamertag et son rôle (« Larbin ») n'est écrit nulle part ailleurs.
+   */
+  categoryAxisName?: string
+  /**
+   * Titre de l'axe des valeurs (ce que la hauteur des segments compte), même position et
+   * même repli que `categoryAxisName`.
+   */
+  valueAxisName?: string
+  /**
+   * Rôles nommés dans l'infobulle : `category` préfixe l'en-tête (la barre survolée),
+   * `component` préfixe chaque segment (« Larbin · X » / « Patron · Y : 3 »). Active le
+   * formateur personnalisé, comme `tooltipComponentNote`.
+   */
+  tooltipRoles?: { category: string; component: string }
 }
 
 export function BarStackedChart({
@@ -90,6 +110,9 @@ export function BarStackedChart({
   tooltipHideZero = false,
   componentHexColors,
   tooltipComponentNote,
+  categoryAxisName,
+  valueAxisName,
+  tooltipRoles,
 }: BarStackedChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointStacked>[]) =>
@@ -100,6 +123,9 @@ export function BarStackedChart({
         tooltipHideZero,
         componentHexColors,
         tooltipComponentNote,
+        categoryAxisName,
+        valueAxisName,
+        tooltipRoles,
       }),
     [
       orientation,
@@ -108,6 +134,9 @@ export function BarStackedChart({
       tooltipHideZero,
       componentHexColors,
       tooltipComponentNote,
+      categoryAxisName,
+      valueAxisName,
+      tooltipRoles,
     ],
   )
 
@@ -131,6 +160,9 @@ interface BuildOpts {
   tooltipHideZero?: boolean
   componentHexColors?: Record<string, string>
   tooltipComponentNote?: (category: string, component: string) => string | undefined
+  categoryAxisName?: string
+  valueAxisName?: string
+  tooltipRoles?: { category: string; component: string }
 }
 
 interface TooltipParam {
@@ -157,6 +189,9 @@ export function buildBarStackedOption(
     tooltipHideZero = false,
     componentHexColors,
     tooltipComponentNote,
+    categoryAxisName,
+    valueAxisName,
+    tooltipRoles,
   } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -205,23 +240,38 @@ export function buildBarStackedOption(
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
-  const valueAxis = { ...axis, type: 'value' as const }
+  // Titre d'axe AU MILIEU, à distance des graduations (même choix que
+  // Heatmap2DChart.axisNameOpts) : la seule position qui ne chevauche ni la première ni la
+  // dernière étiquette. Sans titre, l'axe reste exactement celui d'avant l'ajout de l'option.
+  const axisName = (name: string | undefined) =>
+    name
+      ? {
+          name,
+          nameLocation: 'middle' as const,
+          nameGap: AXIS_NAME_GAP,
+          nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
+        }
+      : {}
+  const valueAxis = { ...axis, type: 'value' as const, ...axisName(valueAxisName) }
   const categoryAxis = {
     ...axis,
     type: 'category' as const,
     data: categories,
+    ...axisName(categoryAxisName),
   }
+  const xAxis = orientation === 'horizontal' ? valueAxis : categoryAxis
+  const yAxis = orientation === 'horizontal' ? categoryAxis : valueAxis
 
   const tooltipBase = {
     ...getTooltipBase(tc),
     trigger: 'axis' as const,
     axisPointer: { type: 'shadow' as const },
   }
-  // Formateur personnalisé dès que l'appelant demande le masquage des zéros OU une note
-  // par segment. Sans ni l'un ni l'autre on laisse le formateur natif d'ECharts — c'est
-  // le comportement de tous les appelants antérieurs.
+  // Formateur personnalisé dès que l'appelant demande le masquage des zéros, une note
+  // par segment OU des rôles nommés. Sans aucun des trois on laisse le formateur natif
+  // d'ECharts — c'est le comportement de tous les appelants antérieurs.
   const tooltip =
-    tooltipHideZero || tooltipComponentNote
+    tooltipHideZero || tooltipComponentNote || tooltipRoles
       ? {
           ...tooltipBase,
           formatter: (raw: unknown) => {
@@ -234,21 +284,33 @@ export function buildBarStackedOption(
                 const name = p.seriesName ?? ''
                 const note = tooltipComponentNote?.(header, name)
                 const suffix = note ? ` <span style="opacity:0.75">${escapeHtml(note)}</span>` : ''
-                return `${p.marker ?? ''}${escapeHtml(name)}: <strong>${p.value}</strong>${suffix}`
+                // Le rôle précède le nom (« Patron · X ») : la note et le compte gardent leur
+                // place, et `tooltipComponentNote` reçoit toujours le nom NU.
+                const shown = tooltipRoles ? `${tooltipRoles.component} · ${name}` : name
+                return `${p.marker ?? ''}${escapeHtml(shown)}: <strong>${p.value}</strong>${suffix}`
               })
             if (lines.length === 0) return ''
-            return `<div style="margin-bottom:4px;font-weight:600">${escapeHtml(header)}</div>${lines.join('<br/>')}`
+            const title = tooltipRoles ? `${tooltipRoles.category} · ${header}` : header
+            return `<div style="margin-bottom:4px;font-weight:600">${escapeHtml(title)}</div>${lines.join('<br/>')}`
           },
         }
       : tooltipBase
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 20, bottom: 40, left: 8, right: 16, containLabel: true },
+    // `containLabel` réserve la place des étiquettes, PAS celle d'un titre d'axe : un axe
+    // nommé agrandit sa marge (bas pour X, gauche pour Y), sinon le titre sort du cadre.
+    grid: {
+      top: 20,
+      bottom: 'name' in xAxis ? 40 + AXIS_NAME_GAP : 40,
+      left: 'name' in yAxis ? 8 + AXIS_NAME_GAP : 8,
+      right: 16,
+      containLabel: true,
+    },
     tooltip,
     legend: { ...getLegendBase(tc), data: components },
-    xAxis: orientation === 'horizontal' ? valueAxis : categoryAxis,
-    yAxis: orientation === 'horizontal' ? categoryAxis : valueAxis,
+    xAxis,
+    yAxis,
     series: echartsSeries,
   }
 }
