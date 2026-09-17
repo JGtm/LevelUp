@@ -124,11 +124,29 @@ func computeMatchDominanceFlag(ctx context.Context, db *sql.DB, xuid, matchID st
 }
 
 // fragContrastDominanceFlag applique SABORDAGE / ABNÉGATION depuis la timeline
-// de frags dédoublonnée et la durée du match. Limité aux 2-équipes (0/1). Sans
-// timeline (film non décodé, titre sans kill-feed) : pas de badge — les frags
-// finaux seuls ne distinguent rien (mesure du 2026-09-16, cf. analysis).
+// de frags dédoublonnée et la durée du match. Sans timeline (film non décodé,
+// titre sans kill-feed) : pas de badge — les frags finaux seuls ne distinguent
+// rien (mesure du 2026-09-16, cf. analysis).
+//
+// LA GARDE EST LE COMPTAGE DES ÉQUIPES du match : le badge oppose DEUX camps, donc un
+// match qui n'en compte pas exactement deux est ÉCARTÉ, pas rétréci. Le test
+// `myTeamID in {0,1}` et le filtre `mp.team_id IN (0, 1)` de la timeline restent en
+// ceinture : seuls, ils retiraient les équipes 2+ d'un Multi Team à objectifs et
+// rendaient un verdict sur une fraction du match (revue du 2026-09-17).
 func fragContrastDominanceFlag(ctx context.Context, db *sql.DB, matchID string, myTeamID, outcome int) int {
 	if myTeamID != 0 && myTeamID != 1 {
+		return analysis.DominanceFlagNone
+	}
+	teams, err := countMatchTeams(ctx, db, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "fragContrastDominanceFlag: comptage des équipes du match",
+			"match_id", matchID, "err", err)
+		return analysis.DominanceFlagNone
+	}
+	if teams != 2 {
+		// Cas NORMAL (Multi Team, FFA, roster incomplet) : Debug, pas Warn.
+		slog.DebugContext(ctx, "fragContrastDominanceFlag: match hors deux camps, badge écarté",
+			"match_id", matchID, "equipes", teams)
 		return analysis.DominanceFlagNone
 	}
 	events, err := loadDistinctTeamKillEvents(ctx, db, matchID)
@@ -140,15 +158,47 @@ func fragContrastDominanceFlag(ctx context.Context, db *sql.DB, matchID string, 
 	if len(events) == 0 {
 		return analysis.DominanceFlagNone
 	}
+	return analysis.ComputeFragContrastDominance(
+		events, matchEndFromDurationMS(ctx, db, matchID), myTeamID, outcome)
+}
+
+// countMatchTeams compte les équipes DISTINCTES du match (participants à team_id connu).
+// 2 = le match oppose deux camps ; toute autre valeur (Multi Team, FFA, roster vide) sort
+// du domaine de SABORDAGE / ABNÉGATION.
+func countMatchTeams(ctx context.Context, db *sql.DB, matchID string) (int, error) {
+	var teams int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(DISTINCT team_id) FROM match_participants
+		 WHERE match_id = ? AND team_id IS NOT NULL`, matchID,
+	).Scan(&teams); err != nil {
+		return 0, err
+	}
+	return teams, nil
+}
+
+// matchEndFromDurationMS rend la fin du match en ms depuis `match_registry`, ou 0 quand la
+// durée est inconnue (erreur de lecture, ligne absente, colonne NULL, valeur <= 0).
+//
+// 0 fait retomber ComputeFragContrastDominance sur la DERNIÈRE FRAG comme fin de match :
+// repli VOULU (décision de la revue du 2026-09-17, le badge reste calculable), mais qui
+// raccourcit le match de référence et déplace donc le seuil « en tête ≥ 75 % du temps ».
+// Il est tracé à chaque fois : un NULL ne lève aucune erreur, il ne se verrait pas sinon.
+func matchEndFromDurationMS(ctx context.Context, db *sql.DB, matchID string) int64 {
 	var durationS sql.NullInt64
 	if err := db.QueryRowContext(ctx,
 		`SELECT duration_seconds FROM match_registry WHERE match_id = ? LIMIT 1`, matchID,
 	).Scan(&durationS); err != nil {
-		// La dernière frag sert de fin de match : dégradation tracée, pas bloquante.
-		slog.WarnContext(ctx, "fragContrastDominanceFlag: lecture de la durée",
-			"match_id", matchID, "err", err)
+		slog.WarnContext(ctx, "fragContrastDominanceFlag: durée absente, fin = dernière frag",
+			"match_id", matchID, "raison", "lecture de duration_seconds", "err", err)
+		return 0
 	}
-	return analysis.ComputeFragContrastDominance(events, durationS.Int64*1000, myTeamID, outcome)
+	if !durationS.Valid || durationS.Int64 <= 0 {
+		slog.WarnContext(ctx, "fragContrastDominanceFlag: durée absente, fin = dernière frag",
+			"match_id", matchID, "raison", "duration_seconds NULL ou <= 0",
+			"duree_connue", durationS.Valid, "duree_s", durationS.Int64)
+		return 0
+	}
+	return durationS.Int64 * 1000
 }
 
 // loadDistinctTeamKillEvents charge les frags des équipes 0/1, DÉDOUBLONNÉES sur

@@ -47,6 +47,40 @@ typecheck purgé 0 ; vitest charts + squad + match-view + synthesis + session-de
 verts (1 571) ; eslint 0 erreur (4 warnings préexistants) ; lint:fields / lint:colors 0.
 Non fait : vérification visuelle (pas de serveur relancé) — verdict user attendu sur les
 titres d'axes et l'infobulle des deux graphes.
+## [2026-09-17] Correctifs de la revue adversariale des 8 lots feat/v75 — Complété (branche `fix/revue-lots-v75`, en attente de merge)
+
+**Demande** : corriger les P1 de la revue (décisions utilisateur du 2026-09-17 : P1-1, P1-2, P1-4,
+P1-5 à corriger ; P1-3 par comptage des équipes ; P1-6 tests aux bornes ; P1-7 = exception datée ;
+P2-1 laissé + commentaire ; P2-2 doc + ordre de livraison ; Cividis « deux surfaces »). Plan :
+`.ai/PLAN_CORRECTIFS_REVUE_LOTS_V75_2026-09-17.md`. Exécution par deux exécutants Opus en
+worktrees séparés (Go sur `fix/revue-lots-v75-go`, web sur `fix/revue-lots-v75`), pilote =
+session principale, vérification sur pièces de chaque compte rendu.
+
+**Décisions techniques** : Q32e exige `victim_xuid IS NOT NULL` sur la branche « candidat au
+vol » (NULL = bot ou nom non résolu, même règle que Q32c) ; `fragContrastDominanceFlag` compte
+les équipes du match (`COUNT(DISTINCT team_id)` sur match_participants, != 2 → aucun badge,
+Debug) et trace en WARN la durée absente (repli « dernière frag » conservé, extraction
+`matchEndFromDurationMS`) ; tests aux bornes des trois seuils des deux côtés (10/9 frags,
+17/18 contre 20 pour 0,85, 75,0/74,9999 % du temps), prouvés par mutation ; colonne
+« Assistances » derrière une prop `showAssists` (Carrière la passe à false) ; hook partagé
+`lib/clipboard/useCopyToClipboard` (2 s, timer nettoyé, échec journalisé) pour les 4 sites +
+garde-rail grep avec témoin positif et allowlist datée de 5 sites ; Cividis `assist-received`
+#686B00 (5,59:1 clair / 3,15:1 sombre), `assist-given` #AA4499 (5,16 / 3,41), dE paire 26,5, dE
+min famille 16,2, `contrast: 'both'` (aucune valeur de la rampe ne tient : le gris des
+assistances exclut les tons peu saturés de la bande de luminance utile).
+
+**Résultats observés** : Go `go test -tags=integration` 39 paquets ok (1 flake hors lot
+`TestGetMatchFilm_ParallelDownloadFasterThanSequential`, vert rejoué seul), golangci
+`--new-from-rev` 0 issue ; web typecheck 0, lint 0 erreur, lint:colors 0, lint:fields 0, vitest
+342 fichiers / 3 196 tests. Ronde 2 (corrections seules) : 0 P0/P1 ; 3 P2 doc Go corrigés dans
+la foulée ; 1 P2 web consigné (test « démontage » du hook creux sous React 19). Découvertes
+non traitées : glose « 15 % de frags de plus » vs formule 0,85 (+17,6 %) — décision produit ;
+WatcherCard copie sans retour visuel ; helpers copiés dans ExplorerEncounterBriefing ; DDL
+recopiée dans les helpers de test sync ; `seedComebackMatch` 8 paramètres.
+
+**Conclusion / prochaine étape** : CI de la branche au niveau job, puis merge dans feat/v75 sur
+accord utilisateur. La migration de reset ne doit être déployée qu'avec ces correctifs (doc du
+fichier mise à jour en ce sens).
 
 ## [2026-09-17] Revue adversariale des 8 lots livrés sur feat/v75 (ea9ba1b4e..016703f8e, 17 commits) — Complété (revue seule, aucune correction)
 
