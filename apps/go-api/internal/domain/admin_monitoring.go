@@ -217,9 +217,41 @@ type AdminResourcesResponse struct {
 	// (environnemental) d'un « aucune base » — sans lui, une racine erronée
 	// produit silencieusement une table de tailles nulles trompeuse.
 	DBInventoryStatus string `json:"db_inventory_status" enum:"ok,unavailable" doc:"ok = racine data lisible ; unavailable = racine data introuvable/illisible (RepoRoot mal résolu ou volume non monté)."`
+	// FilmFacts : ce que les FAITS PERSISTES PAR FILM occupent sur le disque, par titre
+	// (M4-D1, décision V17 du PLAN_DECODEUR_FILM). Vide tant qu'aucune cuisson n'en a écrit.
+	//
+	// POURQUOI CETTE LIGNE EXISTE. V17 tranche « on conserve TOUT » : aucun plafond, aucune
+	// purge par âge, et le cron de purge des artefacts ne touche ni les films ni les faits.
+	// Le contrepoids de cette décision est la PUBLICATION de la taille occupée — sans elle,
+	// un dossier qui grossit sans borne ne se découvre qu'au disque plein (incident VPS du
+	// 2026-07-13, cf. les seuils de `ops.DiskUsedWarnPercent`).
+	FilmFacts []ResourceFilmFacts `json:"film_facts,omitempty"`
+	// FilmFactsTotalBytes : le total des lignes ci-dessus, tous titres confondus.
+	FilmFactsTotalBytes int64 `json:"film_facts_total_bytes,omitempty"`
 	// Budgets / PoolStats : relecture des snapshots expvar existants (J1/J8).
 	Budgets   map[string]interface{} `json:"budgets,omitempty"`
 	PoolStats map[string]interface{} `json:"pool_stats,omitempty"`
+}
+
+// ResourceFilmFacts — l'inventaire des faits persistés d'un titre (M4-D1).
+//
+// LES DEUX HORODATAGES SONT LA MESURE UTILE, pas la décoration : « 1 200 fichiers, le plus
+// vieux d'il y a trois mois » et « 1 200 fichiers, tous d'hier » décrivent deux situations
+// opposées (un parc stable contre une recuisson en cours), et le nombre seul ne les distingue
+// pas.
+type ResourceFilmFacts struct {
+	// TitleSlug : le titre dont ce dossier porte les faits.
+	TitleSlug string `json:"title_slug"`
+	// Path : le dossier mesuré (`data/cache/film_facts/{slug}/`).
+	Path string `json:"path"`
+	// Files : nombre de fichiers de faits (extension `.filmfacts.bin` SEULE — un temporaire
+	// abandonné n'est pas un fait).
+	Files int `json:"files"`
+	// SizeBytes : leur taille totale.
+	SizeBytes int64 `json:"size_bytes"`
+	// OldestAt / NewestAt : RFC3339 UTC, vides quand le dossier est vide ou absent.
+	OldestAt string `json:"oldest_at,omitempty"`
+	NewestAt string `json:"newest_at,omitempty"`
 }
 
 // MonitoringServerInfo : identité du process serveur (overview).

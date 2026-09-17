@@ -8288,6 +8288,15 @@ components:
           type: integer
         disk:
           $ref: '#/components/schemas/ResourceDisk'
+        film_facts:
+          items:
+            $ref: '#/components/schemas/ResourceFilmFacts'
+          type:
+            - array
+            - "null"
+        film_facts_total_bytes:
+          format: int64
+          type: integer
         generated_at:
           type: string
         pool_stats:
@@ -22663,6 +22672,29 @@ components:
         - free_bytes
         - total_bytes
         - status
+      type: object
+    ResourceFilmFacts:
+      additionalProperties: false
+      properties:
+        files:
+          format: int64
+          type: integer
+        newest_at:
+          type: string
+        oldest_at:
+          type: string
+        path:
+          type: string
+        size_bytes:
+          format: int64
+          type: integer
+        title_slug:
+          type: string
+      required:
+        - title_slug
+        - path
+        - files
+        - size_bytes
       type: object
     ResourceRuntime:
       additionalProperties: false
