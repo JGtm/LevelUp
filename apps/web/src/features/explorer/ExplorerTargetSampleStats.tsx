@@ -8,8 +8,10 @@
  * ExplorerTargetFragV2. Sinon (cible sans données d'arme sur les matchs communs → le backend
  * renvoie frag_distribution nil), PAS de donut kill-type legacy — les autres surfaces v2
  * n'affichent rien sans modèle v2 : le bloc conserve son titre/emplacement et affiche le top
- * armes de la cible s'il est disponible, sinon un état vide. Ce fichier exporte AUSSI
- * ExplorerTargetSampleKpis (rangée KPI) et ExplorerTargetOutcome (bilan V/N/D) — inchangés.
+ * armes de la cible s'il est disponible, sinon un état vide. Le bloc occupe SEUL la
+ * colonne 2/3 de la 1re rangée (2026-09-17) et s'étire à sa hauteur. Ce fichier exporte
+ * AUSSI ExplorerTargetSampleKpis (rangée KPI) et ExplorerTargetOutcome (bilan V/N/D,
+ * désormais en 3e rangée).
  *
  * Calcul local depuis common_matches (DuckDB), indépendant des tokens Halo.
  * Affichée seulement quand `sampleStats != null && sample_size > 0`.
@@ -32,6 +34,10 @@ import type { Locale } from '@/lib/i18n/locale'
 /** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
  *  damage_taken (Halo 5). Aligné sur `notAvailable: 'N/A'` du module compare. */
 const DR_NA_LABEL = 'N/A'
+
+/** Borne de largeur de l'anneau. Relevée de 480 à 560 le 2026-09-17 : le bilan V/N/D a
+ *  quitté cette colonne pour la 3e rangée, le bloc occupe la place libérée. */
+const FRAG_SUNBURST_MAX_WIDTH_PX = 560
 
 interface ExplorerTargetSampleStatsProps {
   sampleStats: ExplorerTargetSampleStats
@@ -74,11 +80,11 @@ export function ExplorerTargetSampleStats({ sampleStats }: ExplorerTargetSampleS
   // emplacement) avec le top armes de la cible s'il est disponible, sinon un état vide.
   const topWeapons = sampleStats.top_weapons ?? []
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">
         {t('explorer.target_profile.label_kill_types')}
       </div>
-      <div className="p-3">
+      <div className="flex flex-1 flex-col justify-center p-3">
         {topWeapons.length > 0 ? (
           <WeaponsTop weapons={topWeapons} locale={appLocale} t={t} />
         ) : (
@@ -109,11 +115,11 @@ function ExplorerTargetFragV2({
   // « Top armes » : top 5 armes de la cible (weaponKills déjà trié kills desc côté backend).
   const topArmes = weaponKills.slice(0, 5)
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">
         {t('explorer.target_profile.label_kill_types')}
       </div>
-      <div className="p-3">
+      <div className="flex flex-1 flex-col justify-center p-3">
         {/* Rangée : sunburst NU (gauche) + Top armes (droite, top 5). */}
         <div className={`grid items-center gap-3 ${topArmes.length > 0 ? 'sm:grid-cols-[2fr_1fr]' : ''}`}>
           <FragSunburst
@@ -121,7 +127,7 @@ function ExplorerTargetFragV2({
             externalHoveredClass={hoveredClass}
             onClassHover={setHoveredClass}
             hideCenterLabel
-            maxWidthPx={480}
+            maxWidthPx={FRAG_SUNBURST_MAX_WIDTH_PX}
             legendSide="none"
             bare
           />
@@ -237,9 +243,14 @@ function WeaponsTop({ weapons, locale, t }: { weapons: ExplorerWeaponKill[]; loc
 }
 
 /**
- * ExplorerTargetOutcome — bilan V/N/D des matchs communs, rendu dans une section
- * séparée pleine largeur sous le donut + cadence (OutcomeBar + légende). nil si
- * aucun résultat exploitable.
+ * ExplorerTargetOutcome — bilan V/N/D des matchs communs (OutcomeBar + légende), rendu
+ * en HAUT de la colonne gauche de la 3e rangée, au-dessus de « Part des assistances »
+ * (depuis le 2026-09-17 ; il occupait auparavant le bas de la colonne des frags).
+ * nil si aucun résultat exploitable.
+ *
+ * Pas de `h-full` : empilé avec « Part des assistances », chaque bloc garde la hauteur de
+ * son contenu. C'est leur SOMME qui fixe la hauteur de la rangée — deux `h-full` dans un
+ * même flex-col à hauteur définie se disputeraient 100 % chacun et rogneraient le contenu.
  */
 export function ExplorerTargetOutcome({ sampleStats }: ExplorerTargetSampleStatsProps) {
   const appLocale = useAppShellStore((s) => s.locale)
@@ -247,7 +258,7 @@ export function ExplorerTargetOutcome({ sampleStats }: ExplorerTargetSampleStats
   const t: TFn = (key, values) => formatMessage(explorerManifest, key, appLocale, values)
   if (sampleStats.wins + sampleStats.draws + sampleStats.losses === 0) return null
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
+    <div className="overflow-hidden rounded-lg border border-border bg-card" data-testid="explorer-target-outcome">
       <div className="border-b border-border px-3 py-2 text-sm font-medium">
         {t('explorer.target_profile.results_title')}
       </div>

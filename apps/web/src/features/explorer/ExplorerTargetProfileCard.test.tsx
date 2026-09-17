@@ -9,9 +9,27 @@ import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
-import type { ExplorerTargetProfile } from '@/lib/api/types'
+import type { ExplorerEncounterStats, ExplorerTargetProfile } from '@/lib/api/types'
 
 import { ExplorerTargetProfileCard } from './ExplorerTargetProfileCard'
+
+/** `b` apparaît-il après `a` dans le document ? (ordre des rangées) */
+function follows(a: Element, b: Element): boolean {
+  return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+}
+
+const ENCOUNTER: ExplorerEncounterStats = {
+  count_together: 12,
+  ally_count: 8,
+  enemy_count: 4,
+  winrate_as_ally: 0.62,
+  winrate_vs_enemy: 0.5,
+  player_win_rate: 0.55,
+  frag_gap_series: [
+    { cumulative: 2, outcome: 'win' },
+    { cumulative: -1, outcome: 'loss' },
+  ],
+}
 
 const SAMPLE_FULL: ExplorerTargetProfile['sample_stats'] = {
   sample_size: 12,
@@ -374,5 +392,42 @@ describe('ExplorerTargetProfileCard', () => {
 
     expect(screen.getByTestId('explorer-live-status-badge-local_partial')).toBeInTheDocument()
     expect(screen.getByText('Live partiel')).toBeInTheDocument()
+  })
+
+  // Disposition de la section « matchs joués ensemble » (2026-09-17) : trois rangées
+  // de 3 colonnes. « Répartition des résultats » a quitté la colonne des frags pour la
+  // 3e rangée, où il surmonte « Part des assistances », avec « Portée des frags » à
+  // leur droite.
+  it('dispose la section « matchs joués ensemble » en trois rangées', () => {
+    const profile: ExplorerTargetProfile = {
+      identity: IDENTITY_FULL,
+      career_stats: CAREER_FULL,
+      sample_stats: SAMPLE_FULL,
+      auth_available: true,
+      live_status: { identity: 'ok', career: 'ok', season_csrs: 'ok', seasons: 'ok', combat_live: 'ok' },
+    }
+    renderWithProviders(
+      <ExplorerTargetProfileCard profile={profile} gamertag="TargetPlayer" encounterStats={ENCOUNTER} />,
+    )
+
+    const cadence = screen.getByTestId('explorer-target-cadence')
+    const versus = screen.getByTestId('explorer-target-versus')
+    const outcome = screen.getByTestId('explorer-target-outcome')
+    const assists = screen.getByTestId('explorer-target-assists')
+    const fragRange = screen.getByTestId('explorer-target-frag-range')
+
+    // Ordre : rangée 1 (cadence) → rangée 2 (donuts + écart) → rangée 3 (résultats).
+    expect(follows(cadence, versus)).toBe(true)
+    expect(follows(versus, outcome)).toBe(true)
+    expect(follows(outcome, assists)).toBe(true)
+
+    // Rangée 3 : résultats et assistances EMPILÉS dans la même colonne, portée à côté.
+    expect(outcome.parentElement).toBe(assists.parentElement)
+    expect(fragRange.parentElement).not.toBe(outcome.parentElement)
+
+    // « Répartition des frags » n'a plus le bilan V/N/D sous lui : sa colonne de la
+    // rangée 1 ne contient que ce bloc.
+    const fragsColumn = screen.getByText('Répartition des frags').closest('div[class*="rounded-lg"]')
+    expect(fragsColumn?.parentElement?.children).toHaveLength(1)
   })
 })
