@@ -4714,7 +4714,7 @@ sont des gestes du pilote) :
       paragraphe ne décrit le décodeur, rien à corriger.
 - [ ] fusion dans `feat/v75` (V3) — pilote.
 - [ ] recuisson sur signal (seul 2.6.3 change un champ) — pilote.
-- [ ] `bench_baseline.txt` re-figé et consigné — pilote (l'item 2.7.3 le prescrit ici).
+- [x] `bench_baseline.txt` re-figé et consigné — pilote (l item 2.7.3 le prescrit ici). FAIT le 2026-09-17 sur c794c0877 : `-count 10` sur `film/internal/grammar`, médianes contre la base (figée en `filmdec`, 0.A.5 / R1) : `BitReaderReadBits` +8,7 % (112,6 -> 122,3 us, dans le budget de +10 % ; dispersion 22 % -> 1 %), `TraverseEntity` -3,8 %, `KeyframeClosure` -5,0 % (informatif). La commande de régénération du fichier pointe désormais `film/internal/grammar`.
 
 ---
 
@@ -5319,6 +5319,18 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-17 | clôture M2 (ADR) | **D2 (clôture M2) — `decfilm.Rev` NE DIT PLUS DE QUELLE COUCHE ELLE PARLE.** La façade re-exporte `const Rev = facts.Rev` sous un nom né quand il n'y avait qu'une révision de décodeur ; il y en a quatre depuis 2.6.1, et le consommateur écrit `DecoderRev: decfilm.Rev` (`sync/killcollector/collector_batch.go:40`). La valeur est JUSTE — c'est bien `facts.Rev` qui commande le backlog — mais le nom laisse croire à une révision « du décodeur » unique, exactement ce que D-6 a cessé d'être. NON TRAITÉ (renommer un symbole de façade touche du Go). | M4, avec la réduction de la façade (V15 (7)) : `decfilm.FactsRev`, ou la disparition du renvoi si le consommateur cite la couche. Un seul site de production à changer, mesuré |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Clôture M2 — gestes du pilote (références, banc, fusions), 2026-09-17
+
+Sur l'intégration `feat/recherche-decodeur-film`, après la fusion de 2.6 (92c83b333, fin du code
+de M2). Un seul décodage à la fois : le re-figeage et le banc ont tourné l'un après l'autre.
+
+| Date | Geste | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-17 | références d'équivalence | `replay-equiv -update` CONTRÔLÉ sur 92c83b333, puis `git diff -U0 -- equivalence/*.tsv` | **20 identiques / 0 différent / 0 écarté / 0 échec** au bilan ; 20 fichiers, 20 lignes changées, **une seule étape re-figée : `artifact`** (le digest de l'artefact porte les deux blocs de 2.6.3) ; commit 6a21f5358 |
+| 2026-09-17 | banc `grammar` | `go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/` contre `testdata/bench_baseline.txt` (base figée en `filmdec`, 0.A.5 / R1) | médianes : `BitReaderReadBits` **+8,7 %** (112,6 -> 122,3 us, dans le budget de +10 % ; dispersion 22 % -> 1 %), `TraverseEntity` **-3,8 %**, `KeyframeClosure` **-5,0 %** (informatif, pas un gate) ; `benchstat` ne compare pas deux paquets de noms différents (`filmdec` / `grammar`), médianes calculées sur les 10 mesures ; baseline re-figée, commande de régénération re-pointée |
+| 2026-09-17 | fusion `feat/decfilm-adr` | `git diff --name-only 92c83b333..feat/decfilm-adr` puis `merge --no-ff` | **4 fichiers, tous `.md`, 0 conflit** ; c794c0877 |
+| 2026-09-17 | fusion inverse intégration -> `feat/v75` (V3) | `merge_integ_into_v75.sh` : fusion sans `--ff` sur `origin/feat/v75`, `go build && go vet`, OpenAPI et types web régénérés en dernier, `TestOpenAPIYAMLIsUpToDate`, batterie complète `./internal/... ./cmd/...` conditionnant le commit ; CI surveillée après le push | voir le commit de fusion sur `feat/v75` et l'entrée de journal de la clôture |
 
 ### Clôture M2 — ADR 0034 amendé + docs transverses, DOCUMENTS SEULEMENT, 2026-09-17
 

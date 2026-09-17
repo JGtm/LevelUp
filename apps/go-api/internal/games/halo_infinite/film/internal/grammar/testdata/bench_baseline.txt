@@ -13,41 +13,44 @@
 # Trancher un budget de +10 % dessus ferait rougir des lots innocents et passer des vrais
 # ralentissements. Il sert a voir un ordre de grandeur bouger (un facteur 2), rien de plus.
 #
-# Regeneration : go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/
+# Re-figee a la cloture de M2 (2026-09-17, tete c794c0877) : medianes BitReaderReadBits +8,7 % (112,6 -> 122,3 us,
+# dans le budget ; la dispersion de la base etait de 22 %, celle-ci de 1 %), TraverseEntity -3,8 %,
+# KeyframeClosure -5,0 % (informatif). Le paquet mesure est desormais film/internal/grammar.
+#
+# Regeneration : go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/
 goos: windows
 goarch: amd64
-pkg: levelup/go-api/internal/games/halo_infinite/film/filmdec
+pkg: levelup/go-api/internal/games/halo_infinite/film/internal/grammar
 cpu: AMD Ryzen 7 9850X3D 8-Core Processor           
-BenchmarkBitReaderReadBits-16    	   10000	    110779 ns/op	 591.59 MB/s
-BenchmarkBitReaderReadBits-16    	   10000	    111230 ns/op	 589.19 MB/s
-BenchmarkBitReaderReadBits-16    	   10000	    131187 ns/op	 499.56 MB/s
-BenchmarkBitReaderReadBits-16    	    6036	    173021 ns/op	 378.77 MB/s
-BenchmarkBitReaderReadBits-16    	    8104	    137330 ns/op	 477.21 MB/s
-BenchmarkBitReaderReadBits-16    	   10000	    111169 ns/op	 589.52 MB/s
-BenchmarkBitReaderReadBits-16    	   10000	    113750 ns/op	 576.14 MB/s
-BenchmarkBitReaderReadBits-16    	   10000	    110775 ns/op	 591.61 MB/s
-BenchmarkBitReaderReadBits-16    	   10000	    111369 ns/op	 588.46 MB/s
-BenchmarkBitReaderReadBits-16    	    8835	    114415 ns/op	 572.79 MB/s
-2026/09/13 16:32:28 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=50 slots_non_vides=1067
-BenchmarkTraverseEntity-16       	       3	 366209667 ns/op
-BenchmarkTraverseEntity-16       	       3	 362334467 ns/op
-BenchmarkTraverseEntity-16       	       3	 368120567 ns/op
-BenchmarkTraverseEntity-16       	       3	 361157567 ns/op
-BenchmarkTraverseEntity-16       	       3	 368509667 ns/op
-BenchmarkTraverseEntity-16       	       3	 361397800 ns/op
-BenchmarkTraverseEntity-16       	       3	 357388933 ns/op
-BenchmarkTraverseEntity-16       	       3	 381735333 ns/op
-BenchmarkTraverseEntity-16       	       3	 366103833 ns/op
-BenchmarkTraverseEntity-16       	       3	 378252133 ns/op
-BenchmarkKeyframeClosure-16      	       3	 387327300 ns/op
-BenchmarkKeyframeClosure-16      	       3	 380326800 ns/op
-BenchmarkKeyframeClosure-16      	       3	 383819733 ns/op
-BenchmarkKeyframeClosure-16      	       3	 371846533 ns/op
-BenchmarkKeyframeClosure-16      	       3	 382749167 ns/op
-BenchmarkKeyframeClosure-16      	       3	 376683600 ns/op
-BenchmarkKeyframeClosure-16      	       3	 381515667 ns/op
-BenchmarkKeyframeClosure-16      	       3	 371527300 ns/op
-BenchmarkKeyframeClosure-16      	       3	 391782833 ns/op
-BenchmarkKeyframeClosure-16      	       3	 381129700 ns/op
+BenchmarkBitReaderReadBits-16    	    9982	    124645 ns/op	 525.78 MB/s
+BenchmarkBitReaderReadBits-16    	    9651	    122349 ns/op	 535.65 MB/s
+BenchmarkBitReaderReadBits-16    	    9952	    124204 ns/op	 527.65 MB/s
+BenchmarkBitReaderReadBits-16    	    9670	    123796 ns/op	 529.39 MB/s
+BenchmarkBitReaderReadBits-16    	    9926	    122793 ns/op	 533.71 MB/s
+BenchmarkBitReaderReadBits-16    	    9921	    122190 ns/op	 536.34 MB/s
+BenchmarkBitReaderReadBits-16    	    9915	    122201 ns/op	 536.30 MB/s
+BenchmarkBitReaderReadBits-16    	    9740	    122051 ns/op	 536.96 MB/s
+BenchmarkBitReaderReadBits-16    	    9830	    121320 ns/op	 540.19 MB/s
+BenchmarkBitReaderReadBits-16    	    9643	    122286 ns/op	 535.92 MB/s
+BenchmarkTraverseEntity-16       	       3	 349992200 ns/op
+BenchmarkTraverseEntity-16       	       3	 352819667 ns/op
+BenchmarkTraverseEntity-16       	       3	 356162233 ns/op
+BenchmarkTraverseEntity-16       	       3	 359276767 ns/op
+BenchmarkTraverseEntity-16       	       3	 349745700 ns/op
+BenchmarkTraverseEntity-16       	       3	 350172333 ns/op
+BenchmarkTraverseEntity-16       	       3	 353061467 ns/op
+BenchmarkTraverseEntity-16       	       3	 351941300 ns/op
+BenchmarkTraverseEntity-16       	       3	 348576100 ns/op
+BenchmarkTraverseEntity-16       	       3	 353006800 ns/op
+BenchmarkKeyframeClosure-16      	       3	 362289000 ns/op
+BenchmarkKeyframeClosure-16      	       3	 360804733 ns/op
+BenchmarkKeyframeClosure-16      	       3	 362167333 ns/op
+BenchmarkKeyframeClosure-16      	       3	 359052200 ns/op
+BenchmarkKeyframeClosure-16      	       3	 362445400 ns/op
+BenchmarkKeyframeClosure-16      	       3	 361969400 ns/op
+BenchmarkKeyframeClosure-16      	       3	 363427933 ns/op
+BenchmarkKeyframeClosure-16      	       3	 361739300 ns/op
+BenchmarkKeyframeClosure-16      	       3	 369632067 ns/op
+BenchmarkKeyframeClosure-16      	       3	 368836500 ns/op
 PASS
-ok  	levelup/go-api/internal/games/halo_infinite/film/filmdec	56.791s
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/grammar	55.902s
