@@ -245,7 +245,7 @@ func v3dRapportBord(t *testing.T, tg *v3dTrouAgg3, trousFermes int) {
 // POURQUOI CET ETAGE. La grammaire de l'evenement d'EMBARQUEMENT a ete corrigee le 2026-09-02
 // par lecture de l'executable (rapport V3_EMBARQUEMENT) : ses trois references sont en domaines
 // 2, 3, 7 — et non 1, 7, 7 — et son occupant tombe desormais a 100 % dans la bande bipede. La
-// mesure cote `filmdec` montre que 77,3 % des embarquements OUVRENT un trou de position a
+// mesure cote `grammar` montre que 77,3 % des embarquements OUVRENT un trou de position a
 // l'instant exact (temoin 0 %), mais que 0 sur 17 de ces trous sont refermes par un evenement
 // de SORTIE, quel qu'en soit l'occupant. Reste la seconde branche du gate, que seul le paquet
 // `replay` peut mesurer (elle exige le pont slot -> xuid et le calage d'horloge du fil des

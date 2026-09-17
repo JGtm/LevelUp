@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 1,
+  "titleSlug": "halo_infinite",
+  "about": "Catalogue des profils de film : ce que le depot sait de la grammaire d un film, indexe par les TROIS clefs que le film ECRIT (format chunk_00+4, build de la section 2, version majeure chunk_00+0). `derived` est fabrique par `go run ./cmd/film-profiles-build` ; `entries` est SAISI, chaque ligne avec sa provenance (relue / mesuree / presumee), sa preuve et sa date ; `registryFingerprints` est SAISI lui aussi — une empreinte de registre ECS par clef ecrite (le build, ou la version majeure pour les films sans section d identification), avec ses films temoins et son statut (connue / presumee). Procedure : docs/RUNBOOK_FILM_PROFILES.md.",
+  "derived": {
+    "catalogue": "map_quant_bounds.json",
+    "schemaVersion": 1,
+    "maps": 79,
+    "mapsSha256": "e77e4ffc57b01857d55221812be10d96d9eb48426a4e0c1d4e1dffcc40b9ce48",
+    "tool": "CGO_ENABLED=1 go run ./cmd/mapquant-build"
+  },
+  "entries": [
+    {
+      "key": "format=27",
+      "field": "MPP",
+      "value": "lead=9 index=5",
+      "provenance": "relue",
+      "proof": "FUN_14080cfe8 (bloc object-multiplayer-properties) : champ de tete R(9) par FUN_141fd72c0 (`141fd72de : ADD dword ptr [RCX + 0x2c],0x9`), champ d index R(5) inline ; aucune branche de version dans le bloc",
+      "date": "2026-09-15"
+    },
+    {
+      "key": "format=20,21,24,25",
+      "field": "MPP",
+      "value": "INDETERMINEE (aucune largeur posee)",
+      "provenance": "mesuree",
+      "proof": "les deux oracles internes se contredisent : `n2` designe 8/3 (part modale 0,988 a 0,996 contre 0,304 a 0,522) et la fermeture designe 10/5 la ou l ecrivain est certain — cf. build_profile.go. La case reste VIDE : c est l etat reel de la connaissance",
+      "date": "2026-09-15"
+    },
+    {
+      "key": "build=HI_1_13_0",
+      "field": "Slots.PersoBytes",
+      "value": "1852",
+      "provenance": "relue",
+      "proof": "FUN_1407edea8 : `LEA R8,[RDI+0xcc0] ; R9D=0x39e0` ; fermeture par le serialiseur delta FUN_1407ec27c (`actionPose` a +0x738, plus 4 = 0x73C)",
+      "date": "2026-09-12"
+    },
+    {
+      "key": "build=HI_1_12_0",
+      "field": "Slots.PersoBytes",
+      "value": "1852",
+      "provenance": "mesuree",
+      "proof": "transposition `mesure - predit` de 0 bit, valeur unique sur les 146 films HI_1_12_0 du cache (oracle TestResidusSlotChaineCorpus)",
+      "date": "2026-09-14"
+    },
+    {
+      "key": "build=HI_1_11_0",
+      "field": "Slots.PersoBytes",
+      "value": "1492",
+      "provenance": "mesuree",
+      "proof": "transposition -2 880 bits, valeur unique sur les 39 films du cache ; coupe autour du bloc de queue verifiee sur `00ba2e1c`",
+      "date": "2026-09-13"
+    },
+    {
+      "key": "build=HI_1_10_0",
+      "field": "Slots.PersoBytes",
+      "value": "1492",
+      "provenance": "mesuree",
+      "proof": "transposition -2 880 bits, valeur unique sur les 26 films du cache ; coupe verifiee sur `084a804d`",
+      "date": "2026-09-13"
+    },
+    {
+      "key": "build=HI_1_9_0",
+      "field": "Slots.PersoBytes",
+      "value": "1312",
+      "provenance": "mesuree",
+      "proof": "transposition -4 320 bits, unique film `11de8353` du cache, coupe verifiee",
+      "date": "2026-09-13"
+    },
+    {
+      "key": "build=HI_1_8_0",
+      "field": "Slots.PersoBytes",
+      "value": "1312",
+      "provenance": "mesuree",
+      "proof": "transposition -4 320 bits, valeur unique sur les 10 films du cache ; coupe verifiee sur `0a247154`",
+      "date": "2026-09-13"
+    },
+    {
+      "key": "build=HI_1_4_1",
+      "field": "Slots.PersoBytes",
+      "value": "2052",
+      "provenance": "mesuree",
+      "proof": "transposition +1 600 bits, unique film `a521164d` du cache ; le +200 ne ferme sur aucun pas connu — cause au registre des reports",
+      "date": "2026-09-13"
+    },
+    {
+      "key": "majeure<=38",
+      "field": "Highlight.Implantation",
+      "value": "gamertag_en_tete (b[0:32])",
+      "provenance": "mesuree",
+      "proof": "port de spnkr/film/highlight_events.py, confirme sur le cache : le roster humain se ferme sur les films de majeure <= 38",
+      "date": "2026-09-12"
+    },
+    {
+      "key": "majeure=39,40",
+      "field": "Highlight.Implantation",
+      "value": "gamertag_decale_12 (b[12:44])",
+      "provenance": "mesuree",
+      "proof": "211 films du cache (mars-novembre 2025) : sous l implantation en tete le roster tombait a 2 noms distincts pour 24 a 27 joueurs (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md)",
+      "date": "2026-09-12"
+    },
+    {
+      "key": "majeure>=41",
+      "field": "Highlight.Implantation",
+      "value": "gamertag_en_tete (b[0:32])",
+      "provenance": "mesuree",
+      "proof": "1 117 films du cache portent 0x29 (41) et rendent un roster ferme sous l implantation en tete",
+      "date": "2026-09-12"
+    },
+    {
+      "key": "toutes",
+      "field": "Keyframe.EnTeteBits",
+      "value": "108",
+      "provenance": "relue",
+      "proof": "FUN_142e2bfd0 : R(32) id, R(32) typeIndex, R(32), R(4) (FUN_142e29cf8), R(8)",
+      "date": "2026-08-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Keyframe.MotDeTailleBits",
+      "value": "32 (deux mots : n1, n2)",
+      "provenance": "relue",
+      "proof": "FUN_142e2bfd0 : deux `if (0 < (int)uVar7)` gardant vtable[0x60] puis vtable[0x88] — comparaison SIGNEE",
+      "date": "2026-09-15"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.Traversal",
+      "value": "IndexW=1 AxisW=6/6/6",
+      "provenance": "presumee",
+      "proof": "largeurs capturees a l execution (Cheat Engine) sur UNE session ; aucune lecture chez l ecrivain, aucune mesure par build",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.AbsoluteAxisW",
+      "value": "14",
+      "provenance": "presumee",
+      "proof": "uniforme applique a defaut de table par index de plage ; `absAxisWFor` retombe dessus (repli inscrit au registre, ancre `if w := br.absoluteAxisW(); w > 0 {`)",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.WorldObject",
+      "value": "IndexW=1 AxisW=13/13/14 Region=0",
+      "provenance": "mesuree",
+      "proof": "largeurs du chemin world-object : le defaut EST l entree `cliffhanger` de `map_quant_bounds.json` (verifie par `map_bounds_test.go`) ; la carte du match les remplace par `SetWorldObjectPrecisionFromLayout`, depuis les bornes du catalogue et non l auto-detection (accord catalogue / film : 7 films sur 7)",
+      "date": "2026-08-15"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.DeltaQuantum",
+      "value": "0.01383",
+      "provenance": "mesuree",
+      "proof": "pas d un cran de position repliquee en DELTA par i0, mesure sur le film ; la range delta vaut DeltaQuantum * 2^AxisW",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.DeltaAxisWidth",
+      "value": "14",
+      "provenance": "presumee",
+      "proof": "largeur d axe du chemin DELTA axis-width ; ambiguite 6 contre 14 jamais tranchee chez l ecrivain",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.Range",
+      "value": "QuantRangeCEBiped",
+      "provenance": "presumee",
+      "proof": "DAT_14462cbe0[0] capture a l execution sur UNE carte ; la range par CARTE vient du catalogue (Profile.Map), celle-ci est le defaut de paquet",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.FullPrecision",
+      "value": "false",
+      "provenance": "relue",
+      "proof": "miroir du global de configuration DAT_145121140, teste `== 1` par FUN_14080cfe8 sans consommer de bit ; faux = la configuration de rejeu",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.DeltaHasHandleTail",
+      "value": "false",
+      "provenance": "relue",
+      "proof": "miroir du champ d execution bVar16 = (precIndex != -1) ; faux = le cas dominant du film, et ce n est PAS un bit du flux",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.CalibratedSkip",
+      "value": "false",
+      "provenance": "presumee",
+      "proof": "bascule de calibration d i0 (saut de 47 ou 101 bits) ; jamais activee en production, jamais mesuree par build",
+      "date": "2026-09-17"
+    },
+    {
+      "key": "toutes",
+      "field": "Movement.MobilityActionExtraBits",
+      "value": "0",
+      "provenance": "presumee",
+      "proof": "bits supplementaires d action de mobilite ; zero par defaut, aucune lecture chez l ecrivain",
+      "date": "2026-09-17"
+    }
+  ],
+  "registryFingerprints": [
+    {
+      "key": "build=HI_1_13_0",
+      "fingerprint": "0x36ca8c3d2a2f9b88",
+      "blocks": 50,
+      "namedSlots": 1067,
+      "status": "connue",
+      "provenance": "mesuree",
+      "witnesses": [
+        "fb1a1a72",
+        "0797ce72",
+        "4f77afc1",
+        "51ebbc0f",
+        "bf15f7ab",
+        "bfecd02b",
+        "c75f33b8",
+        "d9781168"
+      ],
+      "proof": "build de REFERENCE (grammar.KnownRegistryFingerprint). Lecture directe de chunk_00 de la mini-bobine commise film/replay/testdata/minifilm_fb1a1a72 (ParseRegistryChunk + RegistryFingerprint) : 0x36ca8c3d2a2f9b88, 50 blocs, 1067 slots nommes. Corrobore par le SILENCE de l alerte sur les huit temoins HI_1_13_0 du corpus gate du 2026-09-16 (journal de cuisson work_m1_cloture/logs/general.log : aucun WARN `empreinte du registre ECS du film INCONNUE` pour ces huit match_id, dont le build est ecrit en clair dans le meme journal) — 1 123 films de ce build au cache (lot H)",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "build=HI_1_12_0",
+      "fingerprint": "0x36ca8c3d2a2f9b88",
+      "blocks": 50,
+      "namedSlots": 1067,
+      "status": "presumee",
+      "provenance": "mesuree",
+      "witnesses": [
+        "bcb6d393"
+      ],
+      "proof": "lecture directe de chunk_00 de la mini-bobine commise minifilm_bcb6d393 : MEME empreinte que HI_1_13_0, 50 blocs, 1067 slots. Corrobore par le silence de l alerte sur bcb6d393 au corpus gate du 2026-09-16. FAIT NOUVEAU : la frontiere du registre n est pas celle des grenades — HI_1_12_0 est CONFORME au registre de reference, la population `grammaire inconnue` s arrete donc avant HI_1_12_0. `presumee` : un seul film lu sur les 146 de ce build au cache (lot H)",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "build=HI_1_11_0",
+      "fingerprint": "0x8879e2b6746ba047",
+      "blocks": 49,
+      "namedSlots": 1031,
+      "status": "presumee",
+      "provenance": "mesuree",
+      "witnesses": [
+        "e5adf7b2"
+      ],
+      "proof": "lecture directe de chunk_00 de la mini-bobine commise minifilm_e5adf7b2 : 0x8879e2b6746ba047, 49 blocs, 1031 slots. Meme valeur au corpus gate du 2026-09-16 (WARN empreinte=9834140534605324359, blocs=49, slots_non_vides=1031, temoin e5adf7b2). `presumee` : un seul film lu sur les 39 de ce build au cache (lot H)",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "build=HI_1_10_0",
+      "fingerprint": "0x9b6397b3ad58e258",
+      "blocks": 49,
+      "namedSlots": 1031,
+      "status": "connue",
+      "provenance": "mesuree",
+      "witnesses": [
+        "111fa685",
+        "084a804d"
+      ],
+      "proof": "lecture directe de chunk_00 de la mini-bobine commise minifilm_111fa685 : 0x9b6397b3ad58e258, 49 blocs, 1031 slots. DEUX films distincts au corpus gate du 2026-09-16 rendent la meme valeur (WARN empreinte=11196959896536408664 compte DEUX fois — la deduplication est par processus, et chaque temoin est cuit dans le sien ; les deux match_id de build HI_1_10_0 du journal sont 111fa685 et 084a804d). 26 films de ce build au cache (lot H)",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "build=HI_1_9_0",
+      "fingerprint": "0x33c7e724716d8cc5",
+      "blocks": 49,
+      "namedSlots": 1031,
+      "status": "connue",
+      "provenance": "mesuree",
+      "witnesses": [
+        "11de8353"
+      ],
+      "proof": "lecture directe de chunk_00 de la mini-bobine commise minifilm_11de8353 ET du film complet 11de8353 du cache : 0x33c7e724716d8cc5, 49 blocs, 1031 slots — valeur IDENTIQUE a celle de HI_1_8_0, mesure neuve (aucun temoin HI_1_9_0 n avait jamais ete cuit au corpus gate). `connue` : le cache ne porte qu UN film de ce build (lot H) et il est lu",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "build=HI_1_8_0",
+      "fingerprint": "0x33c7e724716d8cc5",
+      "blocks": 49,
+      "namedSlots": 1031,
+      "status": "presumee",
+      "provenance": "mesuree",
+      "witnesses": [
+        "60ae07c4"
+      ],
+      "proof": "lecture directe de chunk_00 de la mini-bobine commise minifilm_60ae07c4 : 0x33c7e724716d8cc5, 49 blocs, 1031 slots. Meme valeur au corpus gate du 2026-09-16 (WARN empreinte=3731204960007589061, temoin 60ae07c4). `presumee` : un seul film lu sur les 10 de ce build au cache (lot H)",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "build=HI_1_4_1",
+      "fingerprint": "0x40531a0d86ce90ce",
+      "blocks": 49,
+      "namedSlots": 1033,
+      "status": "connue",
+      "provenance": "mesuree",
+      "witnesses": [
+        "a521164d"
+      ],
+      "proof": "lecture directe de chunk_00 de la mini-bobine commise minifilm_a521164d ET du film complet a521164d du cache : 0x40531a0d86ce90ce, 49 blocs, 1033 slots — le SEUL registre du corpus a 1 033 slots nommes. `connue` : le cache ne porte qu UN film de ce build (lot H) et il est lu. Mesure neuve : aucun temoin HI_1_4_1 n avait jamais ete cuit au corpus gate",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "majeure=33",
+      "fingerprint": "0x40531a0d86ce90ce",
+      "blocks": 49,
+      "namedSlots": 1033,
+      "status": "presumee",
+      "provenance": "mesuree",
+      "witnesses": [
+        "a349fea8"
+      ],
+      "proof": "films de version majeure 33 dont chunk_00 ne porte AUCUNE section d identification : ils n ecrivent pas de build, la majeure est leur seule clef. Lecture directe de chunk_00 du film a349fea8 du cache : 0x40531a0d86ce90ce, 49 blocs, 1033 slots — MEME registre que HI_1_4_1, ce qui NOMME enfin la grammaire de ces films. Meme valeur au corpus gate du 2026-09-16 (WARN empreinte=4635077086892953806, blocs=49, slots_non_vides=1033, temoin a349fea8). `presumee` : un seul des deux films sans section de cette majeure est lu (lot H). Cette clef selectionne aussi a521164d, qui ecrit HI_1_4_1 : meme empreinte, aucune contradiction, et l entree `build=` prime",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "majeure=31",
+      "fingerprint": "0xba34fa35f781d1a7",
+      "blocks": 49,
+      "namedSlots": 1029,
+      "status": "presumee",
+      "provenance": "mesuree",
+      "witnesses": [
+        "50247b26"
+      ],
+      "proof": "films de version majeure 31 sans section d identification — la plus ancienne grammaire du cache. Lecture directe de chunk_00 du film 50247b26 : 0xba34fa35f781d1a7, 49 blocs, 1029 slots : une empreinte JAMAIS mesuree avant ce lot (aucun temoin de cette famille n a jamais ete cuit au corpus gate) et le seul registre du corpus a 1 029 slots. `presumee` : un seul des trois films de cette majeure est lu (lot H)",
+      "date": "2026-09-16"
+    }
+  ]
+}

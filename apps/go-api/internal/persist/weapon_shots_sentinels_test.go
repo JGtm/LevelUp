@@ -13,13 +13,13 @@ package persist
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 func TestSentinellesArmesAlignees(t *testing.T) {
-	for id := range analysis.SentinelIDs {
+	for id := range filmshell.SentinelIDs {
 		if id > weaponSentinelMax {
-			t.Errorf("analysis.SentinelIDs contient %d, au-dela de weaponSentinelMax=%d — "+
+			t.Errorf("filmshell.SentinelIDs contient %d, au-dela de weaponSentinelMax=%d — "+
 				"le persister laisserait passer cette sentinelle et fabriquerait une jointure "+
 				"fausse avec metadata.weapon_labels. Relever la constante ICI, dans le meme "+
 				"commit qui ajoute la sentinelle la-bas.", id, weaponSentinelMax)
@@ -27,9 +27,9 @@ func TestSentinellesArmesAlignees(t *testing.T) {
 	}
 	// Le sens inverse compte aussi : si `analysis` RETIRAIT une sentinelle, la constante
 	// deviendrait trop haute et le persister refuserait des identifiants filmshell legitimes.
-	if len(analysis.SentinelIDs) != weaponSentinelMax+1 {
-		t.Errorf("analysis.SentinelIDs a %d entrees pour weaponSentinelMax=%d (attendu %d) — "+
+	if len(filmshell.SentinelIDs) != weaponSentinelMax+1 {
+		t.Errorf("filmshell.SentinelIDs a %d entrees pour weaponSentinelMax=%d (attendu %d) — "+
 			"les deux ont divergé, le persister refuse ou laisse passer les mauvais identifiants",
-			len(analysis.SentinelIDs), weaponSentinelMax, weaponSentinelMax+1)
+			len(filmshell.SentinelIDs), weaponSentinelMax, weaponSentinelMax+1)
 	}
 }

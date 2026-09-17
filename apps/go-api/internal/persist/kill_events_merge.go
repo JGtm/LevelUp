@@ -17,7 +17,7 @@ package persist
 // ─── POURQUOI L APPARIEMENT EST SUR, ET POURQUOI LA TOLERANCE EST ZERO ─────────────────────
 //
 // LES DEUX SOURCES SONT LE MEME FLUX, LU A DEUX ENDROITS. Le kill-feed du film est decode par
-// `analysis.ParseHighlightEvents` — exactement le meme parseur que celui qui alimente
+// `grammar.ParseHighlightEvents` — exactement le meme parseur que celui qui alimente
 // `highlight_events` depuis l API. Ce ne sont pas deux mesures independantes d un meme evenement :
 // c est une seule mesure, livree par deux canaux. Il n y a donc AUCUN ecart d horloge a absorber,
 // et c est mesure : passer de 0 ms a 1 SECONDE ne gagne que 8 lignes sur 74 569 (0,01 %).
@@ -29,11 +29,36 @@ package persist
 // Toute tolerance non nulle achete quelques appariements de plus au prix de l unicite, et
 // l unicite est ce qui rend l enrichissement sur.
 //
-// L IDENTITE EST UN CONTROLE, PAS UN CRITERE DE JOINTURE. Sur les 73 589 lignes appariees :
-// 0 divergence de xuid de victime, 0 divergence de xuid de tueur. Le seul ecart est une ABSENCE
-// (631 victimes et 754 tueurs pour lesquels le film n a pas resolu de xuid) — c est exactement la
-// population qu une clef a quatre colonnes perdrait. L identite doit donc CONCORDER quand les
-// deux cotes la portent, et son absence d un cote n empeche rien.
+// L IDENTITE ETAIT UN CONTROLE ; DEPUIS LE LOT 2.9 ELLE EST AUSSI LE CRITERE. Sur les 73 589
+// lignes appariees de 2026-08 : 0 divergence de xuid de victime, 0 divergence de xuid de tueur, le
+// seul ecart etant une ABSENCE (631 victimes et 754 tueurs pour lesquels le film n a pas resolu de
+// xuid) — c est exactement la population qu une clef a quatre colonnes perdrait. D ou la regle :
+// la VICTIME apparie quand les deux cotes la portent, l INSTANT apparie en repli quand elle
+// manque d un cote, et le controle d identite garde les paires ainsi formees
+// (`kill_events_merge_pairing.go`, [verifierConcordance]).
+//
+// ─── CE QUE LA MESURE DU 2026-09-16 A CONTREDIT (lot 2.9, D1 de la cloture M1) ──────────────
+//
+// LE TEMOIN : `9f9b19e5-5df4-4268-aa32-900a4fc6725a@63757`. A cet instant le credit porte la mort
+// de 2535413577167650 (Artemlv2774, tue par Ritio3987) et le film celle de 2535427572079378
+// (DANIELBOIMEXICO, dont les morts de credit de ce match sont a 106 661 ms, 162 355 ms, ...).
+// DEUX MORTS DISTINCTES A LA MEME MILLISECONDE, chaque cote n en voyant qu une. La clef
+// `(match_id, time_ms)` les a appariees, le controle d identite a rendu l erreur — et la passe a
+// refuse LE FILM ENTIER (249 films ecrits sur 250, tranche 1 du backlog du 2026-09-17).
+//
+// LES CHIFFRES, en lecture seule sur les vues `_latest` (oracle `pre-chaine-2026-09-09` pour
+// Infinite, base du titre pour Halo 5) :
+//
+//	credit d Infinite, couples bruts     137 286 instants sur 1 384 matchs — 0 a deux victimes
+//	passes servies d Infinite            138 807 instants — 0 a deux morts, maximum 1 par instant
+//	credit de Halo 5, couples bruts      268 330 instants sur 2 754 matchs — 7 a DEUX VICTIMES
+//	                                     DISTINCTES a la meme milliseconde
+//	entre les deux cotes d un match      le temoin ci-dessus. INVISIBLE EN BASE : la fusion
+//	                                     echouait avant d ecrire quoi que ce soit
+//
+// L UNICITE TIENT A L INTERIEUR DE CHAQUE COTE, PAS ENTRE LES DEUX. Le film voit des morts que le
+// kill-feed humain-seul ne porte pas (bots), et il lui manque 25,6 % de celles du credit : deux
+// morts a la meme milliseconde suffisent pour que chaque cote n en voie qu une, et pas la meme.
 //
 // ─── CE QUE LA FUSION NE FABRIQUE JAMAIS ───────────────────────────────────────────────────
 //
@@ -82,7 +107,7 @@ const (
 	metricFusionAmbigus      = "killsource_fusion_instants_ambigus"
 )
 
-// PublishMergeStats publie les observations d une fusion et journalise les deux populations qui
+// PublishMergeStats publie les observations d une fusion et journalise les trois populations qui
 // ne vont pas de soi.
 //
 // LE COMPTEUR SEUL NE SUFFIT PAS pour les instants ambigus : il dit COMBIEN, jamais OU. Le log
@@ -97,6 +122,12 @@ func PublishMergeStats(ctx context.Context, matchID string, st MergeStats) {
 			"refuse sur ces instants (aucune mort perdue, aucune arme attribuee au hasard)",
 			"match_id", matchID, "instants_ambigus", st.AmbiguousInstants)
 	}
+	if st.OrphansSharedInstant > 0 {
+		slog.WarnContext(ctx, "killsource: deux morts a la meme milliseconde — la ligne de film "+
+			"porte une AUTRE victime que la mort de credit du meme instant, elle est conservee "+
+			"en orpheline (lot 2.9 ; avant lui la passe entiere tombait)",
+			"match_id", matchID, "orphelins_instant_partage", st.OrphansSharedInstant)
+	}
 	if st.OrphansHumanVsHuman > 0 {
 		slog.InfoContext(ctx, "killsource: orphelins de film humain contre humain conserves — "+
 			"population sous surveillance (mecanisme non demontre, cf. kill_events_merge.go)",
@@ -109,24 +140,39 @@ func PublishMergeStats(ctx context.Context, matchID string, st MergeStats) {
 type MergeStats struct {
 	// Enriched : morts de credit qui ont recu l enrichissement d une ligne de film.
 	Enriched int
-	// Orphans : lignes de film sans AUCUNE mort de credit a leur instant, CONSERVEES telles
-	// quelles (cf. [MergeCreditAndFilm], section « le sort des orphelins »).
+	// Orphans : lignes de film CONSERVEES telles quelles (cf. [MergeCreditAndFilm], section
+	// « le sort des orphelins ») — celles dont l instant ne porte aucune mort de credit, plus
+	// celles que la victime prouve etre une AUTRE mort que celles de leur instant.
 	Orphans int
+	// OrphansSharedInstant : la sous-population des orphelins qui PARTAGENT LEUR INSTANT avec une
+	// mort de credit portant une autre victime — deux morts a la meme milliseconde, une de chaque
+	// cote (temoin `9f9b19e5@63757`). C est la population que le lot 2.9 rend visible : avant lui
+	// elle faisait tomber la passe entiere.
+	//
+	// ELLE EST JOURNALISEE AVEC LE `match_id` ET NON PUBLIEE EN `expvar`, faute d une restitution
+	// CLI (`cmd/levelup/cmd_backfill_killsource_sante.go`, hors frontiere du lot 2.9) : un
+	// compteur expvar que la commande n affiche pas mourrait avec le process. Report consigne.
+	OrphansSharedInstant int
 	// OrphansHumanVsHuman : la sous-population des orphelins qui porte DEUX xuids — un humain
 	// tue un humain. C est la seule des trois populations d orphelins dont le mecanisme ne soit
 	// pas demontre (les deux autres sont des morts de bot, structurellement absentes du kill-feed
 	// de l API qui est HUMAIN SEUL). 13 lignes sur 74 569 au 2026-08-02 : elle merite un
 	// compteur, pas un rejet.
 	OrphansHumanVsHuman int
-	// AmbiguousInstants : instants ou l appariement a REFUSE DE CHOISIR — plusieurs morts de
-	// credit ou plusieurs lignes de film au meme instant. Les morts de credit y gardent leur
-	// etat credit (rien n est perdu), et les lignes de film n y sont PAS ajoutees en orphelines
-	// (la mort est deja dans la base : ce serait la compter deux fois).
+	// AmbiguousInstants : instants ou l appariement a REFUSE DE CHOISIR — au moins une ligne de
+	// film que ni la victime ni le repli sur l instant n ont su rattacher. Les morts de credit y
+	// gardent leur etat credit (rien n est perdu), et les lignes de film refusees n y sont PAS
+	// ajoutees en orphelines (la mort est peut-etre deja dans la base : ce serait la compter deux
+	// fois). Un instant dont TOUTES les lignes de film sont tranchees — appariees par la victime,
+	// ou prouvees autres morts — n est plus compte ici : la question y a une reponse.
 	//
-	// L unicite de `(match_id, time_ms)` est une propriete MESUREE du corpus Halo Infinite
-	// (74 569 clefs pour 74 569 lignes de film, 98 662 pour 98 662 morts de credit), PAS une
-	// garantie de schema : Halo 5 porte 7 collisions reelles (deux morts distinctes a la meme
-	// milliseconde, victimes differentes). Le jour ou Infinite en produirait, ce compteur le dit.
+	// L unicite de `(match_id, time_ms)` est une propriete MESUREE de chaque COTE PRIS SEUL
+	// (74 569 clefs pour 74 569 lignes de film, 98 662 pour 98 662 morts de credit ; 137 286
+	// instants de couples credit sur Infinite au 2026-09-16, 0 a deux victimes). Elle n est ni une
+	// garantie de schema — Halo 5 porte 7 collisions reelles, deux victimes distinctes a la meme
+	// milliseconde — NI UNE PROPRIETE ENTRE LES DEUX COTES : le temoin `9f9b19e5@63757` porte une
+	// mort de credit et une mort de film a la meme milliseconde, victimes differentes (en-tete du
+	// fichier). Ce compteur n a jamais vu ce cas-la : il tombait sur le controle d identite avant.
 	AmbiguousInstants int
 }
 
@@ -135,13 +181,18 @@ type MergeStats struct {
 // CONTRAT, dans l ordre :
 //
 //  1. la sortie porte TOUTES les morts de `base`, dans leur ordre, sans exception ;
-//  2. une mort de `base` est enrichie quand son instant porte EXACTEMENT une mort de credit et
-//     EXACTEMENT une ligne de film — sinon elle reste telle quelle et l instant est compte ;
-//  3. les xuids presents des DEUX cotes doivent concorder : une divergence est une ERREUR rendue,
-//     pas une ligne ecartee en silence ;
-//  4. les lignes de film dont l instant ne porte AUCUNE mort de credit sont AJOUTEES telles
-//     quelles (les orphelins) ; celles dont l instant en porte une sont consommees, enrichissantes
-//     ou non — jamais ajoutees, sans quoi la mort serait comptee deux fois.
+//  2. une mort de `base` est enrichie quand [apparier] lui a trouve une ligne de film — par la
+//     VICTIME quand les deux cotes la portent, par l instant en repli quand elle manque d un cote
+//     et que l instant ne porte QU UNE mort de credit et QU UNE ligne de film EN TOUT (sur le
+//     total de l instant, jamais sur ce qu il en reste) ; sinon elle reste telle quelle ;
+//  3. sur une paire FORMEE, les xuids presents des deux cotes doivent concorder : une divergence
+//     est une ERREUR rendue, pas une ligne ecartee en silence (cf. [verifierConcordance]). Une
+//     paire de REPLI dont les deux tueurs sont resolus et differents n est pas formee du tout :
+//     l appariement la refuse en amont (deux morts probables, pas une contradiction) ;
+//  4. une ligne de film est AJOUTEE telle quelle (orpheline) quand son instant ne porte aucune
+//     mort de credit, ou quand la victime prouve qu elle est une AUTRE mort que celles de son
+//     instant ; elle est REFUSEE — ni enrichissante ni ajoutee — quand l appariement n a pas su
+//     trancher, sans quoi une mort deja en base serait comptee deux fois.
 //
 // ─── LE SORT DES ORPHELINS : ILS SONT CONSERVES, ET C EST UNE MESURE QUI LE DECIDE ─────────
 //
@@ -176,8 +227,7 @@ func MergeCreditAndFilm(base, film KillSourceBatch) (KillSourceBatch, MergeStats
 			base.MatchID, film.MatchID)
 	}
 
-	parInstantFilm := indexerParInstant(film.Deaths)
-	parInstantBase := indexerParInstant(base.Deaths)
+	ap := apparier(base.Deaths, film.Deaths)
 
 	out := KillSourceBatch{
 		MatchID:         choisirNonVide(base.MatchID, film.MatchID),
@@ -189,8 +239,8 @@ func MergeCreditAndFilm(base, film KillSourceBatch) (KillSourceBatch, MergeStats
 
 	for i := range base.Deaths {
 		mort := base.Deaths[i]
-		idx, unique := appariementUnique(parInstantBase, parInstantFilm, mort.TimeMS)
-		if !unique {
+		idx, apparie := ap.filmPourCredit[i]
+		if !apparie {
 			out.Deaths = append(out.Deaths, mort)
 			continue
 		}
@@ -201,12 +251,16 @@ func MergeCreditAndFilm(base, film KillSourceBatch) (KillSourceBatch, MergeStats
 		st.Enriched++
 		out.Deaths = append(out.Deaths, mort)
 	}
-	st.AmbiguousInstants = compterInstantsAmbigus(parInstantBase, parInstantFilm)
+	st.AmbiguousInstants = ap.instantsAmbigus
 
-	// LES ORPHELINS, dans l ordre du film. Une ligne de film dont l instant porte une mort de
-	// credit est CONSOMMEE — enrichissante ou non : la mort est deja dans la base.
+	// LES ORPHELINS, dans l ordre du film. Une ligne de film REFUSEE (instant ambigu) n en est pas
+	// une : la mort est peut-etre deja dans la base, l ajouter la compterait deux fois.
 	for i := range film.Deaths {
-		if len(parInstantBase[film.Deaths[i].TimeMS]) > 0 {
+		v := ap.verdict[i]
+		if v == filmApparie || v == filmRefuse {
+			// APPARIEE : la mort est deja dans la sortie, enrichie — l ajouter la compterait
+			// deux fois. REFUSEE : l appariement n a pas su trancher, et la mort est peut-etre
+			// dans la base sous l autre ligne de l instant — meme risque, meme abstention.
 			continue
 		}
 		out.Deaths = append(out.Deaths, film.Deaths[i])
@@ -214,62 +268,52 @@ func MergeCreditAndFilm(base, film KillSourceBatch) (KillSourceBatch, MergeStats
 		if film.Deaths[i].VictimXUID != "" && film.Deaths[i].FeedKillerXUID != "" {
 			st.OrphansHumanVsHuman++
 		}
+		if v == filmOrphelinInstantPartage {
+			st.OrphansSharedInstant++
+		}
 	}
 	return out, st, nil
 }
 
-// indexerParInstant : `time_ms -> indices`. La clef est l instant SEUL — les identites sont un
-// controle, pas un critere de jointure (cf. en-tete du fichier).
-func indexerParInstant(deaths []KillEventInsert) map[int][]int {
-	out := make(map[int][]int, len(deaths))
-	for i := range deaths {
-		out[deaths[i].TimeMS] = append(out[deaths[i].TimeMS], i)
-	}
-	return out
-}
-
-// appariementUnique : l instant porte-t-il EXACTEMENT une mort de credit et EXACTEMENT une ligne
-// de film ? Rend l indice de la ligne de film et `true` dans ce cas seulement.
+// verifierConcordance : LE CONTROLE D IDENTITE D UNE PAIRE DEJA FORMEE. Quand les deux cotes
+// portent un xuid, il doit etre le meme.
 //
-// REFUSER DE CHOISIR EST LE COMPORTEMENT ATTENDU quand la clef n est pas unique : enrichir une
-// mort avec la ligne de film d une autre mort du meme instant attribuerait une arme au hasard, et
-// rien ne le signalerait jamais.
-func appariementUnique(base, film map[int][]int, t int) (int, bool) {
-	f := film[t]
-	if len(f) != 1 || len(base[t]) != 1 {
-		return 0, false
-	}
-	return f[0], true
-}
-
-// compterInstantsAmbigus : les instants ou les deux cotes portent quelque chose sans que
-// l appariement soit unique. Compte des INSTANTS, pas des lignes.
-func compterInstantsAmbigus(base, film map[int][]int) int {
-	n := 0
-	for t, b := range base {
-		f := film[t]
-		if len(f) == 0 {
-			continue
-		}
-		if len(b) != 1 || len(f) != 1 {
-			n++
-		}
-	}
-	return n
-}
-
-// verifierConcordance : LE CONTROLE D IDENTITE. Quand les deux cotes portent un xuid, il doit
-// etre le meme.
-//
-// Une divergence est une ERREUR RENDUE et pas une ligne ecartee : elle signifierait que la clef
+// Une divergence est une ERREUR RENDUE et pas une ligne ecartee : elle signifie que la clef
 // `(match_id, time_ms)` a apparie deux morts differentes, c est-a-dire que la propriete sur
-// laquelle repose toute cette fusion est fausse. Elle ne s est jamais produite (0 sur 73 589
-// lignes appariees) — et c est precisement pour cela qu elle doit echouer bruyamment le jour ou
-// elle se produirait.
+// laquelle repose l appariement est fausse a cet instant.
+//
+// LES DEUX SEULES FACONS D ARRIVER ICI (lot 2.9, corrige aux rondes 1 et 2 de la revue
+// adversariale, 2026-09-16). La fonction ne voit QUE des paires deja formees par [apparier], et il
+// n en existe que deux sortes :
+//
+//	passe 1, par la victime          les deux cotes portent la MEME victime resolue.
+//	passe 3, repli sur l instant     l instant porte UNE mort de credit et UNE ligne de film EN
+//	                                 TOUT, et l une des deux victimes au moins est absente.
+//
+// LA VICTIME DIVERGENTE EST IMPOSSIBLE PAR CONSTRUCTION DE CES DEUX PASSES : en passe 1 les
+// victimes sont egales, en passe 3 l une est vide — et une absence n est pas une divergence. Le
+// test reste, comme INVARIANT : le jour ou une paire serait formee sur autre chose que l identite,
+// il vaut mieux perdre une passe que recopier l arme d une mort sur une autre. (Il n est PAS
+// garde au nom d une unicite mesuree cote film : cette unicite-la n est pas mesurable en base,
+// cf. §4 D2 (2.9) du plan — c est la construction de l appariement qui le fonde, pas un chiffre.)
+//
+// LE TUEUR DIVERGENT N EST UNE ERREUR QUE SUR UNE PAIRE DE PASSE 1, et c est la ronde 2 qui a
+// corrige la portee. La paire y porte la MEME victime au MEME instant : c est donc la meme mort —
+// une victime ne mourant pas deux fois dans la meme milliseconde — et deux tueurs resolus
+// differents sont une vraie contradiction entre les deux cotes. La passe tombe, bruyamment.
+//
+// SUR UNE PAIRE DE PASSE 3, la meme situation ne dit PAS la meme chose : sans victime resolue d un
+// cote, la paire ne repose que sur l instant, et deux tueurs differents y disent bien plus
+// probablement DEUX MORTS a la meme milliseconde (la variante « victime de film non resolue » du
+// temoin — 631 victimes dans ce cas au parc). L appariement REFUSE donc ces paires-la en amont
+// (instant compte ambigu, rien d enrichi, rien d ajoute) et elles n arrivent jamais jusqu ici :
+// refuser un enrichissement coute une arme, rendre l erreur coutait LE FILM ENTIER. Le detail est
+// dans [appariement.repliSurLInstantClassique] — LE TEST DE TUEUR CI-DESSOUS NE VOIT DONC QUE DES
+// PAIRES DE PASSE 1.
 //
 // L ABSENCE N EST PAS UNE DIVERGENCE : le film ne resout pas toujours un xuid (631 victimes,
 // 754 tueurs). C est le cas normal d un nom que le roster n a pas su rattacher, et c est la
-// population que la fusion existe pour garder.
+// population que le repli sur l instant existe pour garder.
 func verifierConcordance(matchID string, credit, film *KillEventInsert) error {
 	if credit.VictimXUID != "" && film.VictimXUID != "" && credit.VictimXUID != film.VictimXUID {
 		return fmt.Errorf("persist: fusion %s@%d: victime divergente entre credit (%s) et film (%s) — "+

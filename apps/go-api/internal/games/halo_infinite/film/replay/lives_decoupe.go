@@ -45,9 +45,10 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // buildLifeSpans découpe les trajectoires en SÉJOURS DE RÉPLICATION : un slot qui disparaît plus
@@ -95,8 +96,8 @@ func buildLifeSpans(tracks map[uint32]slotTrack) []lifeSpan {
 // faitsQuiBornentUneVie porte ce que le film ECRIT et qui ferme legitimement une vie. Une
 // structure plutot que des parametres de plus : le depot en borne cinq.
 type faitsQuiBornentUneVie struct {
-	// creations : les records de creation de bipede (`filmdec.ScanBipedCreations`).
-	creations []filmdec.BipedCreation
+	// creations : les records de creation de bipede (`grammar.ScanBipedCreations`).
+	creations []grammar.BipedCreation
 	// manches : les frontieres de manche, sur l'horloge du FILM, en microsecondes.
 	manches []int64
 	// mortsParJoueur : les instants des morts ECRITES du fil, par joueur, sur l'horloge du FILM
@@ -209,7 +210,7 @@ func mortEcriteDansLeTrou(prec, suiv lifeSpan, in faitsQuiBornentUneVie) bool {
 }
 
 // creationsParSlot groupe les instants des records de creation par slot, tries.
-func creationsParSlot(creations []filmdec.BipedCreation) map[uint32][]uint64 {
+func creationsParSlot(creations []grammar.BipedCreation) map[uint32][]uint64 {
 	out := map[uint32][]uint64{}
 	for _, c := range creations {
 		out[c.Slot] = append(out[c.Slot], c.TimestampUS)
@@ -232,14 +233,14 @@ func mortsParJoueur(deaths []Death, offsetMS int64) map[uint64][]int64 {
 
 // manchesEnFilmUS pose les frontieres de manche sur l'horloge du FILM, en microsecondes.
 //
-// LES BORNES VIENNENT D'`objectiveevents`, QUI LES MESURE DEJA (`ResolveRoundBounds`) : les
+// LES BORNES VIENNENT D'`objectives`, QUI LES MESURE DEJA (`ResolveRoundBounds`) : les
 // re-mesurer ici ferait deux mesures de la meme grandeur, qui divergeraient.
-func manchesEnFilmUS(records []objectiveevents.StatRecord, offsetMS int64) []int64 {
+func manchesEnFilmUS(records []types.StatRecord, offsetMS int64) []int64 {
 	if len(records) == 0 {
 		return nil
 	}
 	var out []int64
-	for _, ms := range objectiveevents.ResolveRoundBounds(records).Starts() {
+	for _, ms := range objectives.ResolveRoundBounds(records).Starts() {
 		out = append(out, (int64(ms)+offsetMS)*1000)
 	}
 	return out

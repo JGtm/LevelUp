@@ -67,14 +67,27 @@ Xbox SSO is synced like any other. The pool must simply hold at least one health
 
 The career rank is NOT part of the sync at all: it is served by the separate live career flow
 (`service.CareerLiveService`), and `career_synced` is always `false` in the sync summary, token
-or no token. The pooled client still keeps `PolicyPinnedPlayer` on `GetCareerRank` and returns
-`sync.ErrNoPinnedToken` for a player without their own token; no sync step calls it today. The
-Spartan customization cron is the one caller that needs the player s own token, and keeps its
-`HasPlayer` guard for that reason.
+or no token. `/careerranks` itself is PUBLIC: measured on 2026-09-16 with three different lender
+tokens on a third-party xuid, it returns the same rank and XP as the owner own call, so the
+pooled client acquires it in `PolicyAnyPublic` like everything else (D4, sync robustness plan).
+The Spartan customization cron is the one caller that needs the player s own token (403 for a
+third party, measured), and keeps its `HasPlayer` guard for that reason.
 
 The `backfill --csr` / `--shared-csr` passes and the film commands (`archive-films`,
 `backfill-killsource --online`, `replay-events`) follow the same doctrine: `--gamertag` names the
 player being processed, not a token lender.
+
+**Operational note.** A sync CLI pass holds the shared database in WRITE mode and applies the
+shared migrations of the title before its first insert: run it with the **server stopped**
+(single writer, ADR 0013). It also refreshes the refresh tokens of the WHOLE fleet through the
+pool — never rotate the fleet tokens while a server is running, or that server keeps the old
+tokens in memory and ends up in `reauth_required` on N accounts.
+
+`--token-pool-size N` caps the number of HEALTHY slots, not the number of sources tried: the
+scan is walked in full, in alphabetical gamertag order, and a source whose refresh token fails
+to resolve does not consume the quota. `0` takes every healthy token of the fleet. Before
+2026-09-16 the cap truncated the scan BEFORE resolving, so `--token-pool-size 1` could pick a
+single revoked account and fail with "aucun slot cree".
 
 ### Backfill (mostly local, Go-only; CSR/weapons need Halo tokens)
 
@@ -274,6 +287,30 @@ CGO_ENABLED=1 go run ./cmd/mapquant-build [--levels DIR] [--title slug] [--out F
   design (refuses to publish a guessed coordinate).
 - Replay when: a new map's module link is established, or the game changes its modules/BSP.
 
+#### film-profiles-build
+
+```bash
+go run ./cmd/film-profiles-build [--title slug] [--check] [--out FILE] [--bounds FILE]
+```
+
+- Output: `data/titles/{slug}/reference/film_profiles.json` — the film profiles catalogue
+  (what the repository knows about a film's grammar, indexed by the three keys the film
+  *writes*). The tool produces the `derived` block **only** — the fingerprint of
+  `map_quant_bounds.json`, so the profile says which game-file derivation it is tied to. The
+  entered blocks — `entries` and `registryFingerprints` (one ECS registry fingerprint per
+  written key: the build, or the major version for films with no identification section) — are
+  written by hand, with provenance, and are copied through untouched.
+- Prereq: no game install, no network, no cgo. `--check` writes nothing and exits 1 if the
+  committed file is not the one the tool would produce. From a worktree, export
+  `LEVELUP_REPO_ROOT=<the worktree>` or pass `--out`/`--bounds` (`db_profiles.json` is
+  gitignored and only exists in the main checkout).
+- Replay when: after `mapquant-build` (a game update, a new map), or after adding a profile
+  entry. Procedure for adding a build: `docs/RUNBOOK_FILM_PROFILES.md`.
+- Gate with the game installed:
+  `CGO_ENABLED=1 go test -tags=gamefiles ./cmd/film-profiles-build/ -count=1` — replays the
+  whole chain (bounds regenerated from the `.module` files, then committed catalogue byte-for-byte
+  equal to what the chain produces). Skips where Halo Infinite is not installed.
+
 #### mapcallouts-build
 
 ```bash
@@ -402,7 +439,7 @@ v4tool.exe render -variant=any -cote=256 -out=<dir> \
   -curate="0x00002705:warthog,0x000025aa:mongoose,0x0000d3db:scorpion,0xb65b3b4a:wasp"
 ```
 
-- Output: `static/vehicles-assets/halo_infinite/replay/` — 20 files (18 PNG + `index.json` +
+- Output: `static/vehicles-assets/halo_infinite/replay/` — 38 files (18 sprites + 18 `*_outline.png` + `index.json` +
   `files_list.txt`), consumed by `useReplayVehicles.ts`. None of it goes through
   `PathResolver` — paths are plain `-out`/`-curate` flags.
 - Prereq: game installed, cgo/GPLv3 (never linked into `cmd/server`) ; no network.
@@ -541,11 +578,17 @@ a server that holds the shared DB in write.
 go run ./cmd/replay-equiv                            # whole corpus (CORPUS.txt), compare only
 go run ./cmd/replay-equiv -films 000d5950 -update    # (re-)freeze the references of one film
 # flags: -corpus F  -films a,b (replaces the corpus)  -update  -mem-gib N (default 3, 0 = off)
-#        -title slug
+#        -title slug  -out-dir D (keep the child TSVs instead of a wiped temp dir)
 ```
 
 The equivalence harness of the build chain: it hashes the output of **every** scan, not just the
-final artifact, so a divergence is located down to the scan. Parent and child share one binary —
+final artifact, so a divergence is located down to the scan. **Since 2026-09-17 it names EVERY
+divergent scan of a film, not just the first** (D2), with the expected and obtained count and sha
+per scan and a header line `ECART sur N etape(s) sur M`: three divergent scans used to mean three
+full film decodes (one to three minutes each) to discover them one at a time, and a single
+divergence could not be told apart from a general one. `-out-dir D` keeps the child TSVs instead
+of wiping a temp dir, so the obtained digests can be diffed against the references without
+re-decoding. `-update` and the TSV reference format are unchanged. Parent and child share one binary —
 the parent plans and decodes nothing, each film is born in a bounded child (solo lock with bounded
 wait, sentinel) and dies with its RAM. References live in
 `internal/games/halo_infinite/film/replay/testdata/equivalence/<short8>.tsv`, each opening with its
@@ -584,12 +627,12 @@ concatenated out of continuity.)
 ```bash
 cd apps/go-api
 # the committed baseline (regenerate only on a declared change)
-go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ \
-  > internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ \
+  > internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt
 
 # compare after a change, on the MEDIAN (what benchstat reports)
-go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ > /tmp/apres.txt
-benchstat internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt /tmp/apres.txt
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ > /tmp/apres.txt
+benchstat internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt /tmp/apres.txt
 # benchstat is not vendored: go install golang.org/x/perf/cmd/benchstat@latest
 ```
 
@@ -633,17 +676,34 @@ make go-api-coverage   # coverage report
 make go-api-lint       # go vet
 ```
 
-#### Map reverse-engineering corpus (`gamefiles` build tag)
+#### `gamefiles` build-tag corpus (map reverse engineering **and** committed catalogues)
 
-The 59 `*_gamefiles_test.go` files in `internal/himap/` decode the **installed game's**
-modules and sweep the 26 catalogue maps. They are long by nature — measured 2026-09-05,
-`TestBalayageCoquille` alone takes **203 s** for 26 maps (1 246 s before the module reader
-switched to memory mapping the same day). They sit behind
-`//go:build gamefiles` so that a plain `go test ./internal/himap/` stays usable (2.8 s).
+Two families of tests read the **installed game**, and both sit behind `//go:build gamefiles`:
+
+- the 59 `*_gamefiles_test.go` files in `internal/himap/` decode the game's modules and sweep
+  the 26 catalogue maps. They are long by nature — measured 2026-09-05, `TestBalayageCoquille`
+  alone takes **203 s** for 26 maps (1 246 s before the module reader switched to memory
+  mapping the same day). The tag keeps a plain `go test ./internal/himap/` usable (2.8 s);
+- three `cmd/` catalogue builders re-derive their **committed** catalogue from the installed
+  game and compare it byte for byte: `cmd/film-profiles-build/`, `cmd/mapfond-build/`,
+  `cmd/mapstruct-build/` (9.0 s for the three, measured 2026-09-17).
+
+`make go-api-test-gamefiles` runs **all four packages**. Until 2026-09-17 it only ran
+`./internal/himap/`, so the three `cmd/` tests were run by no command in the repository
+(discovery D1 (3.1.2), the oldest of them tagged since 2026-09-05). The package list is
+explicit rather than `./cmd/...`: under the tag, a package with no `gamefiles` file only adds
+compile time. `archlint.TestCibleMakefileGamefilesCouvreLeCorpus` fails if a package joins the
+corpus without joining the target.
 
 ```bash
 make go-api-test-gamefiles                       # whole corpus (~6 min, needs the game)
-cd apps/go-api && go test -tags=gamefiles -count=1 -timeout 3600s ./internal/himap/ -v
+cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
+  ./internal/himap/ \
+  ./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
+
+# Committed catalogues only (seconds, not minutes):
+cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 \
+  ./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
 
 # One map only (much faster):
 BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
@@ -656,7 +716,8 @@ LEVELUP_HALO_DEPLOY=/path/to/Halo Infinite/deploy go test -tags=gamefiles ./inte
 Without the game installed every test takes its `t.Skip` and the corpus is empty in a
 second — which is exactly what happens in CI. CI therefore only **compiles** it
 (`go vet -tags=gamefiles ./internal/himap/`, job `go-test`); it never runs it. The tag
-itself is enforced by `internal/himap/corpus_tag_test.go`, which runs in the default build.
+itself is enforced module-wide by `internal/archlint/gamefiles_tag_test.go`, which runs in the
+default build.
 
 **Known red test**: `TestBancCliffhanger` fails (accord 64.4 % against a 64.7 % re-based
 reference). It is *pre-existing*, not a regression — verified 2026-09-05 by replaying it on
@@ -689,7 +750,7 @@ gates nothing):
   diff under review, never from the parc's age.
 - `--reference=parc`: diffs HEAD against the artifact already baked in the local parc (the
   original, historical method — a release-time sweep). **Informative by default** (prints the
-  table, exits 0) — pass `--strict` to make it exit 1 on loss too.
+  table, exits 0) — pass `--strict` to make it exit 1 on loss or change too.
 
 In both modes the working root is disposable (copied inputs only, config/catalogs from the
 checked-out branch or the base worktree, film chunks from the dev parc — **never writes into
@@ -707,9 +768,63 @@ cd apps/go-api && go run ./cmd/replay-corpus-gate \
 **Coverage floor (2026-09-07, CORPUS-R1 C3)**: by default, **every** witness in the manifest
 must be baked and compared — a purged or partial film cache used to leave every witness
 ABSENT, and the gate silently exited 0 having compared nothing (`codeSortie` skips ABSENT
-lines). One or more ABSENT witnesses now exit 2, naming which ones and why; pass
+lines). One or more ABSENT witnesses now exit 4 when nothing else is wrong, naming which ones
+and why (see the priority rule below); pass
 `--allow-missing` to restore the old behavior (a `slog` warning only, never a failure) for a
 deliberate partial run.
+
+**Per-witness status, and its priority rule (2026-09-17)**: each witness carries exactly one
+status, in the rightmost table column and in the JSON `statut` field. The first rule that
+applies wins:
+
+| Status | Meaning |
+|---|---|
+| `ABSENT` / `ERREUR` | nothing was measured: film, facts or reference artifact missing (`ABSENT`, with its cause), or the bake/diff failed (`ERREUR`, with its cause). Mutually exclusive by construction. |
+| `PERTE` | at least one measure went down or vanished. **Wins over `CHANGEMENT`**: a witness carrying both is a witness in loss, and the loss is what gets investigated. |
+| `CHANGEMENT` | no loss, but at least one published value MOVED (a re-attribution, a naming path yielding to another — `replaydiff/polarite.go`). A status of its own since 2026-09-17: until then a change printed `PERTE`, which sent people hunting a regression where a value had only changed hands. Still **blocking** — a change is either justified (proven divergence) or fixed, never silent. |
+| `ok` | neither loss nor change. GAINS may be present: a gain is never a failure. |
+
+**Exit codes (named constants, 2026-09-17)**: each says exactly one thing. Before that date
+`2` meant both "invalid manifest" and "a witness is missing", so a caller could not tell "this
+gate never started" from "this gate started but did not compare everything"; and a bake error
+was indistinguishable from a loss under `1`.
+
+| Code | Constant | Meaning |
+|---|---|---|
+| 0 | `codeOK` | the whole manifest was compared, no blocking witness |
+| 1 | `codePerte` | at least one compared witness carries a blocking `PERTE` or `CHANGEMENT` — the gate's verdict |
+| 2 | `codeUsage` | the gate never started (invalid flag, unreadable manifest, missing root or capability, base worktree impossible); nothing was measured of the diff under review |
+| 3 | `codeErreurCuisson` | the gate started, but a BAKED witness failed to bake or to diff — distinct from 1: the question could not be put, the answer is not "it lost" |
+| 4 | `codeCouvertureIncomplete` | at least one ABSENT witness without `--allow-missing` (CORPUS-R1 C3), **and nothing else to report** — distinct from both 1 and 2: the manifest is valid, every witness that WAS compared is at zero, some are missing |
+
+**The verdict of the present witnesses wins over coverage (2026-09-16)**: coverage used to be
+checked BEFORE the verdict, so a single ABSENT witness — the facts-export race below, a partial
+film cache — made the gate exit 4 and MASKED a loss, a change or a bake error on all the
+others. The gate now settles the witnesses it did compare first: a loss or a change exits 1 and
+is printed in the table and the JSON, with the coverage warning logged on top; a bake error
+exits 3 the same way. Code 4 is left for the one case where "some are missing" is all there is
+to say. The JSON report carries both facts — `couverture_incomplete` at the root, next to the
+per-witness counters under `temoins` — so an automatic reader never mistakes "everything is at
+zero" for "everything that was compared is at zero". `--allow-missing` is unchanged: it turns
+the coverage check off, never the verdict.
+
+**Robust facts export (2026-09-17, D2)**: `levelup replay-facts-export` opens the shared DB
+read-only, and fails when the local server happens to hold it for writing at that exact second
+("`… serveur en ecriture ? reessayer`"). On the lot 2.1 gate that cost two witnesses out of
+fourteen — `2/14 absent(s)` for a few seconds of bad luck, with the run replayed by hand from a
+manifest cut down to those two. The gate now **retries a held-DB failure 3 times, 2 s apart**,
+and never retries a permanent failure (id unknown to the registry, empty facts): re-asking a
+question whose answer cannot change only lengthens a 25-minute gate. A witness still missing
+afterwards is `ABSENT` and exits 4 when the compared witnesses are clean, distinct from a
+loss; `--temoins a,b` replays just those.
+
+**Named changes in the JSON report (2026-09-17, D5)**: the JSON now carries
+`changementsDetail` (axis, metric, old, new) symmetric to `pertesDetail`, plus a `statut` and
+an `absentCause` on every line, and the printed table gains a `DETAIL DES CHANGEMENTS` section
+next to `DETAIL DES PERTES`. Until then the report said "2 changes" without ever saying WHICH,
+and the M1 closure had to re-run `replay-diff` by hand on the kept artifacts to name them —
+while a witness in ERROR was written as `{"gains":0,"pertes":0,"changements":0}`, i.e. read
+from the JSON alone, as a clean witness.
 
 **All flags** (`cd apps/go-api && go run ./cmd/replay-corpus-gate -h` for the live list):
 
@@ -717,9 +832,11 @@ deliberate partial run.
 |---|---|---|
 | `--reference` | `base` | `base` (fresh bake vs. a base revision) or `parc` (vs. the already-baked parc artifact) |
 | `--base` | auto (see above) | explicit base revision in `--reference=base` mode |
-| `--strict` | `false` | in `--reference=parc` mode, a loss also exits 1 (no effect in base mode, already blocking) |
-| `--allow-missing` | `false` | tolerate an ABSENT witness (warning only) instead of exiting 2 |
+| `--strict` | `false` | in `--reference=parc` mode, a loss or a change also exits 1 (no effect in base mode, already blocking) |
+| `--allow-missing` | `false` | tolerate an ABSENT witness (warning only) instead of exiting 4 |
 | `--manifest` | `<source-root>/config/replay_corpus.toml` | manifest path |
+| `--temoins` | (none) | replay ONLY the named witnesses (comma-separated ids) — the versioned manifest stays the corpus, no reduced manifest to write. An unknown id is an error (exit 2), never a silently truncated run. |
+| `--mem-gib` | `4` | soft memory ceiling (GiB) armed on EVERY child bake, HEAD and base alike (`0` disarms). The gate default sits ABOVE production's `filmproc.DefaultLimitGiB` = 3 on purpose (D6): two BTB witnesses were measured at 3.779 and 3.807 GiB on the base side, i.e. just over the 3.75 GiB hard limit, and were failing at random from one run to the next. |
 | `--source-root` | `git rev-parse --show-toplevel` | repo whose HEAD code/config is under test — **not** `db_profiles.json`-based: works from any worktree, including one without a local copy of that file |
 | `--parc-root` | `source-root` if it already carries the title's shared DB, else auto-detected via the common `.git` | the dev parc (film chunks, `--reference=parc` artifacts) |
 | `--lock-root` | `CacheRootDir()` of the parc | where the shared decode lock lives |
@@ -727,7 +844,7 @@ deliberate partial run.
 | `--keep-work` | `false` | keep the working root after the run (debugging) |
 | `--json` | (none) | path to also write the full report as JSON |
 
-**Run it before merging anything that touches** `games/halo_infinite/film/replay`, `replaybuild`, `filmdec`, or
+**Run it before merging anything that touches** `games/halo_infinite/film/replay`, `replaybuild`, `film/internal/grammar`, or
 that bumps `SchemaVersion`. **Requires**: the local dev parc (film chunks; + already-baked
 artifacts under `data/cache/replays` in `--reference=parc` mode) and read access to the title's
 shared DB (for match facts, via `levelup replay-facts-export` run as a subprocess, per witness —

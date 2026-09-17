@@ -1,0 +1,716 @@
+{
+  "fichierAncien": "cuisson-base/data/cache/replays/halo_infinite/bcb6d393.json",
+  "fichierNouveau": "data/cache/replays/halo_infinite/bcb6d393.json",
+  "matchId": "bcb6d393-8f5e-40e3-806b-e3cb35bfc9b0",
+  "schemaAncien": 54,
+  "schemaNouveau": 60,
+  "differences": [
+    {
+      "axe": "armes",
+      "metrique": "pickups.origin/presents",
+      "ancien": "6",
+      "nouveau": "9",
+      "sens": "gain",
+      "delta": 3
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byFamilyOrigin.grenade_frag/deployed",
+      "ancien": "2",
+      "nouveau": "",
+      "sens": "disparu",
+      "delta": -2
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byFamilyOrigin.repulsor/deployed",
+      "ancien": "1",
+      "nouveau": "",
+      "sens": "disparu",
+      "delta": -1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byFamilyOrigin.shroud_screen/deployed",
+      "ancien": "1",
+      "nouveau": "",
+      "sens": "disparu",
+      "delta": -1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byFamilyOrigin.thruster/deployed",
+      "ancien": "1",
+      "nouveau": "",
+      "sens": "disparu",
+      "delta": -1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.abilityCharges.noIdentity",
+      "ancien": "3",
+      "nouveau": "1",
+      "sens": "perte",
+      "delta": -2
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.bridge.directByCreationPropagated",
+      "ancien": "1",
+      "nouveau": "0",
+      "sens": "perte",
+      "delta": -1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.bridge.livesTotal",
+      "ancien": "58",
+      "nouveau": "57",
+      "sens": "perte",
+      "delta": -1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.grapple.pullLives",
+      "ancien": "4",
+      "nouveau": "3",
+      "sens": "perte",
+      "delta": -1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.pickups.originUnknown",
+      "ancien": "43",
+      "nouveau": "40",
+      "sens": "perte",
+      "delta": -3
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byFamilyOrigin.grenade_frag/dropped",
+      "ancien": "70",
+      "nouveau": "69",
+      "sens": "perte",
+      "delta": -1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.deployed",
+      "ancien": "5",
+      "nouveau": "0",
+      "sens": "perte",
+      "delta": -5
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.t0Film.moving",
+      "ancien": "56",
+      "nouveau": "55",
+      "sens": "perte",
+      "delta": -1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.t0Film.tracks",
+      "ancien": "56",
+      "nouveau": "55",
+      "sens": "perte",
+      "delta": -1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.abilityCharges.otherFamily",
+      "ancien": "3",
+      "nouveau": "5",
+      "sens": "gain",
+      "delta": 2
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.equipment.tracksTotal",
+      "ancien": "56",
+      "nouveau": "57",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.pickups.originGround",
+      "ancien": "6",
+      "nouveau": "9",
+      "sens": "gain",
+      "delta": 3
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byFamilyOrigin.grenade_frag/unknown",
+      "ancien": "4",
+      "nouveau": "7",
+      "sens": "gain",
+      "delta": 3
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byFamilyOrigin.repulsor/dropped",
+      "ancien": "4",
+      "nouveau": "5",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byFamilyOrigin.shroud_screen/dropped",
+      "ancien": "1",
+      "nouveau": "2",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byFamilyOrigin.thruster/dropped",
+      "ancien": "2",
+      "nouveau": "3",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.dropped",
+      "ancien": "92",
+      "nouveau": "94",
+      "sens": "gain",
+      "delta": 2
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.unknown",
+      "ancien": "4",
+      "nouveau": "7",
+      "sens": "gain",
+      "delta": 3
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage/n",
+      "ancien": "28",
+      "nouveau": "32",
+      "sens": "gain",
+      "delta": 4
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.fallbacks/n",
+      "ancien": "",
+      "nouveau": "3",
+      "sens": "apparu",
+      "delta": 3
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byCause.death_written",
+      "ancien": "",
+      "nouveau": "91",
+      "sens": "apparu",
+      "delta": 91
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byCause.no_owner",
+      "ancien": "",
+      "nouveau": "4",
+      "sens": "apparu",
+      "delta": 4
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byCause.none",
+      "ancien": "",
+      "nouveau": "3",
+      "sens": "apparu",
+      "delta": 3
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.byCause.taken_written",
+      "ancien": "",
+      "nouveau": "3",
+      "sens": "apparu",
+      "delta": 3
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.spawnEvents",
+      "ancien": "",
+      "nouveau": "1",
+      "sens": "apparu",
+      "delta": 1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.placements.spawnLists",
+      "ancien": "",
+      "nouveau": "2730",
+      "sens": "apparu",
+      "delta": 2730
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.score.roundsWritten/n",
+      "ancien": "",
+      "nouveau": "2",
+      "sens": "apparu",
+      "delta": 2
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.seats.apparies",
+      "ancien": "",
+      "nouveau": "2",
+      "sens": "apparu",
+      "delta": 2
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.seats.arrivants",
+      "ancien": "",
+      "nouveau": "3",
+      "sens": "apparu",
+      "delta": 3
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.seats.entrees",
+      "ancien": "",
+      "nouveau": "11",
+      "sens": "apparu",
+      "delta": 11
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.seats.lus",
+      "ancien": "",
+      "nouveau": "9",
+      "sens": "apparu",
+      "delta": 9
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.seats.occupantsMax",
+      "ancien": "",
+      "nouveau": "8",
+      "sens": "apparu",
+      "delta": 8
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.seats.presencesCloses",
+      "ancien": "",
+      "nouveau": "9",
+      "sens": "apparu",
+      "delta": 9
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.seats.sieges",
+      "ancien": "",
+      "nouveau": "9",
+      "sens": "apparu",
+      "delta": 9
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.teams.accord",
+      "ancien": "",
+      "nouveau": "11",
+      "sens": "apparu",
+      "delta": 11
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.teams.film",
+      "ancien": "",
+      "nouveau": "11",
+      "sens": "apparu",
+      "delta": 11
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.teams.read",
+      "ancien": "",
+      "nouveau": "true",
+      "sens": "apparu"
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.teams.records",
+      "ancien": "",
+      "nouveau": "144",
+      "sens": "apparu",
+      "delta": 144
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.teams.tracks",
+      "ancien": "",
+      "nouveau": "57",
+      "sens": "apparu",
+      "delta": 57
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.teams.tracksNamed",
+      "ancien": "",
+      "nouveau": "57",
+      "sens": "apparu",
+      "delta": 57
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.tracks.gapMs",
+      "ancien": "",
+      "nouveau": "5922",
+      "sens": "apparu",
+      "delta": 5922
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.tracks.gaps",
+      "ancien": "",
+      "nouveau": "1",
+      "sens": "apparu",
+      "delta": 1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.tracks.minPoints",
+      "ancien": "",
+      "nouveau": "1",
+      "sens": "apparu",
+      "delta": 1
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.tracks.published",
+      "ancien": "",
+      "nouveau": "57",
+      "sens": "apparu",
+      "delta": 57
+    },
+    {
+      "axe": "couverture",
+      "metrique": "coverage.tracks.publishedPoints",
+      "ancien": "",
+      "nouveau": "18937",
+      "sens": "apparu",
+      "delta": 18937
+    },
+    {
+      "axe": "entete",
+      "metrique": "schemaVersion",
+      "ancien": "54",
+      "nouveau": "60",
+      "sens": "gain",
+      "delta": 6
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks/par-xuid/2535429985869093",
+      "ancien": "6",
+      "nouveau": "5",
+      "sens": "changement",
+      "delta": -1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks/vies-par-xuid/2535429985869093",
+      "ancien": "6",
+      "nouveau": "5",
+      "sens": "changement",
+      "delta": -1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks.endFrame/presents",
+      "ancien": "56",
+      "nouveau": "57",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks.points.t/presents",
+      "ancien": "18935",
+      "nouveau": "18937",
+      "sens": "gain",
+      "delta": 2
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks.points.x/presents",
+      "ancien": "18935",
+      "nouveau": "18937",
+      "sens": "gain",
+      "delta": 2
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks.points.y/presents",
+      "ancien": "18935",
+      "nouveau": "18937",
+      "sens": "gain",
+      "delta": 2
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks.points.z/presents",
+      "ancien": "18923",
+      "nouveau": "18925",
+      "sens": "gain",
+      "delta": 2
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks.points/n",
+      "ancien": "18935",
+      "nouveau": "18937",
+      "sens": "gain",
+      "delta": 2
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks.points/total",
+      "ancien": "18935",
+      "nouveau": "18937",
+      "sens": "gain",
+      "delta": 2
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks.slot/presents",
+      "ancien": "56",
+      "nouveau": "57",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks.startFrame/presents",
+      "ancien": "53",
+      "nouveau": "54",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks.team/presents",
+      "ancien": "56",
+      "nouveau": "57",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks.xuid/presents",
+      "ancien": "54",
+      "nouveau": "55",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks/n",
+      "ancien": "56",
+      "nouveau": "57",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks/par-xuid/2533274876732804",
+      "ancien": "3",
+      "nouveau": "4",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks/par-xuid/2535460750735339",
+      "ancien": "5",
+      "nouveau": "6",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks/points",
+      "ancien": "18935",
+      "nouveau": "18937",
+      "sens": "gain",
+      "delta": 2
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks/vies-nommees",
+      "ancien": "54",
+      "nouveau": "55",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks/vies-par-xuid/2533274876732804",
+      "ancien": "3",
+      "nouveau": "4",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks/vies-par-xuid/2535460750735339",
+      "ancien": "5",
+      "nouveau": "6",
+      "sens": "gain",
+      "delta": 1
+    },
+    {
+      "axe": "pistes",
+      "metrique": "tracks.points.g/presents",
+      "ancien": "",
+      "nouveau": "1",
+      "sens": "apparu",
+      "delta": 1
+    },
+    {
+      "axe": "roster",
+      "metrique": "roster.seat/presents",
+      "ancien": "",
+      "nouveau": "11",
+      "sens": "apparu",
+      "delta": 11
+    },
+    {
+      "axe": "roster",
+      "metrique": "roster.seatSource/presents",
+      "ancien": "",
+      "nouveau": "11",
+      "sens": "apparu",
+      "delta": 11
+    },
+    {
+      "axe": "roster",
+      "metrique": "roster.team/presents",
+      "ancien": "",
+      "nouveau": "11",
+      "sens": "apparu",
+      "delta": 11
+    }
+  ],
+  "identiques": 686,
+  "bilans": {
+    "armes": {
+      "axe": "armes",
+      "pertes": 0,
+      "gains": 1,
+      "changements": 0,
+      "identiques": 108
+    },
+    "autres:identity": {
+      "axe": "autres:identity",
+      "pertes": 0,
+      "gains": 0,
+      "changements": 0,
+      "identiques": 1
+    },
+    "carte": {
+      "axe": "carte",
+      "pertes": 0,
+      "gains": 0,
+      "changements": 0,
+      "identiques": 24
+    },
+    "couverture": {
+      "axe": "couverture",
+      "pertes": 13,
+      "gains": 36,
+      "changements": 0,
+      "identiques": 275
+    },
+    "entete": {
+      "axe": "entete",
+      "pertes": 0,
+      "gains": 1,
+      "changements": 0,
+      "identiques": 2
+    },
+    "equipement": {
+      "axe": "equipement",
+      "pertes": 0,
+      "gains": 0,
+      "changements": 0,
+      "identiques": 86
+    },
+    "grenades": {
+      "axe": "grenades",
+      "pertes": 0,
+      "gains": 0,
+      "changements": 0,
+      "identiques": 26
+    },
+    "horloges": {
+      "axe": "horloges",
+      "pertes": 0,
+      "gains": 0,
+      "changements": 0,
+      "identiques": 5
+    },
+    "joueurs": {
+      "axe": "joueurs",
+      "pertes": 0,
+      "gains": 0,
+      "changements": 0,
+      "identiques": 32
+    },
+    "objectifs": {
+      "axe": "objectifs",
+      "pertes": 0,
+      "gains": 0,
+      "changements": 0,
+      "identiques": 48
+    },
+    "objets-objectif": {
+      "axe": "objets-objectif",
+      "pertes": 0,
+      "gains": 0,
+      "changements": 0,
+      "identiques": 1
+    },
+    "pistes": {
+      "axe": "pistes",
+      "pertes": 0,
+      "gains": 19,
+      "changements": 2,
+      "identiques": 23
+    },
+    "ports": {
+      "axe": "ports",
+      "pertes": 0,
+      "gains": 0,
+      "changements": 0,
+      "identiques": 22
+    },
+    "roster": {
+      "axe": "roster",
+      "pertes": 0,
+      "gains": 3,
+      "changements": 0,
+      "identiques": 29
+    },
+    "score": {
+      "axe": "score",
+      "pertes": 0,
+      "gains": 0,
+      "changements": 0,
+      "identiques": 4
+    }
+  }
+}

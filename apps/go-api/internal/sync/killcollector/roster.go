@@ -9,7 +9,7 @@ package killcollector
 //
 // ⚠ LA PHRASE D ORIGINE DISAIT « LE FILM NE PORTE AUCUN XUID », ET ELLE EST FAUSSE DEPUIS LE
 // LOT 1.5 (2026-09-14). `chunk_00` porte trente-deux enregistrements de slot avec XUID ET
-// gamertag (`filmdec.ReadPlayerTable`), et le lot 1.8 les emploie pour EPINGLER le lien
+// gamertag (`grammar.ReadPlayerTable`), et le lot 1.8 les emploie pour EPINGLER le lien
 // `indice -> joueur` dans le decodeur (`killsource/film_table.go`). Ce qui reste vrai, et qui
 // suffit a justifier ce fichier : la table du film est celle du DEBUT du film (un joueur qui
 // rejoint en cours de partie n y a pas de siege, mesure du lot 1.6), et elle ne resout pas les

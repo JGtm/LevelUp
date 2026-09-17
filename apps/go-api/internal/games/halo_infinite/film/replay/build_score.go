@@ -3,7 +3,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // build_score.go — LE CABLAGE DU CALQUE DE SCORE DANS L'ASSEMBLAGE.
@@ -49,10 +49,10 @@ func attachScoreTimeline(doc *ReplayDocument, opt Options, c scoreClock, matchID
 }
 
 // logRoundBounds publie ce que la confrontation de la MANCHE DECLAREE AU TEMPS a ecarte, et ce
-// qu'elle a EXEMPTE (cf. objectiveevents/round_bounds.go).
+// qu'elle a EXEMPTE (cf. objectives/round_bounds.go).
 //
 // LA FOURCHETTE NOMINALE N'EST PAS ECRITE ICI : elle vit en une seule place,
-// [objectiveevents.OutliersNominalMax], avec le releve qui la fonde. Au-dela, la ligne passe en
+// [objectives.OutliersNominalMax], avec le releve qui la fonde. Au-dela, la ligne passe en
 // WARN — c'est le « son explosion signalerait un etiquetage qui ne tient plus » du contrat, rendu
 // mesurable au lieu d'etre laisse en prose.
 //
@@ -65,7 +65,7 @@ func logRoundBounds(matchID string, in *ScoreInput, cov *ScoreCoverage) {
 	if in == nil || len(in.Records) == 0 || cov == nil || cov.Rounds < 2 {
 		return
 	}
-	bornes := objectiveevents.ResolveRoundBounds(in.Records)
+	bornes := objectives.ResolveRoundBounds(in.Records)
 	logKeptSegments(matchID, bornes)
 	// LA QUESTION EST « DES BORNES ONT-ELLES ETE POSEES », PAS « COMBIEN A-T-ON ECARTE » (constat
 	// N1 de la revue MANCHES-R2). Zero ecarte arrive AUSSI avec des bornes posees — quand tout ce
@@ -79,10 +79,10 @@ func logRoundBounds(matchID string, in *ScoreInput, cov *ScoreCoverage) {
 		return
 	}
 	n := bornes.Outliers(in.Records)
-	if n > objectiveevents.OutliersNominalMax {
+	if n > objectives.OutliersNominalMax {
 		slog.Warn("rejeu : enregistrements hors de la fenetre de leur manche declaree AU-DELA DU "+
 			"NOMINAL — l'etiquetage de manche de ce film est a regarder",
-			"match_id", matchID, "ecartes", n, "nominal_max", objectiveevents.OutliersNominalMax,
+			"match_id", matchID, "ecartes", n, "nominal_max", objectives.OutliersNominalMax,
 			"enregistrements", len(in.Records), "manches", cov.Rounds)
 		return
 	}
@@ -96,7 +96,7 @@ func logRoundBounds(matchID string, in *ScoreInput, cov *ScoreCoverage) {
 // plutot que jete (doctrine « une lecture vraie n'est jamais jetee », revue MANCHES-R1). Aucun
 // bloc n'est dans ce cas sur les douze films multi-manche du parc : une ligne ici veut dire que
 // le consensus et ce slot ne s'accordent pas sur les bornes de la manche.
-func logKeptSegments(matchID string, bornes objectiveevents.RoundBounds) {
+func logKeptSegments(matchID string, bornes objectives.RoundBounds) {
 	for _, s := range bornes.KeptSegments() {
 		slog.Warn("rejeu : bloc de manche GARDE hors de la fenetre consensuelle — le slot et le "+
 			"consensus ne s'accordent pas sur les bornes de cette manche",

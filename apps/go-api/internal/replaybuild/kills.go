@@ -14,30 +14,54 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // decodeKillSource décode killsource UNE SEULE FOIS par match. neutralDeaths ET killRefs en
 // dérivent tous les deux — avant le lot F.1, seul neutralDeaths décodait ; lui ajouter un
-// second appel aurait payé une DEUXIÈME fois le verrou filmdec partagé pour le même fait.
+// second appel aurait payé une DEUXIÈME fois le décodage du film pour le même fait (le verrou
+// de paquet qui le rendait coûteux a disparu au lot 2.3 ; le décodage, lui, coûte toujours).
 // nil = décodage impossible (film absent ou source non décodable), déjà journalisé ici :
 // les deux appelants n'ont qu'à tester le nil.
 //
 // LE FILM EST CELUI QUE `BuildBytes` A DÉJÀ CHARGÉ (lot 1, PLAN_CUISSON_PERF item 1.4) : ce
 // décodage ouvrait et redécompressait le film ENTIER pour son propre compte, en plus des
 // balayages. `film` nil (chunks illisibles, déjà journalisé par `chargerFilm`) n'est plus une
-// lecture ratée ici mais un refus en amont — `killsource.Decode` rend alors `ErrNoChunk`, et le
+// lecture ratée ici mais un refus en amont — `decfilm.Decode` rend alors `ErrNoChunk`, et le
 // journal en Info ci-dessous reste la SEULE trace côté cuisson, au même niveau qu'avant.
-func (b *Builder) decodeKillSource(matchID string, film *filmsource.Film) *killsource.Result {
-	res, err := killsource.Decode(context.Background(), matchID, film, nil)
+func (b *Builder) decodeKillSource(matchID string, film *decfilm.Film) *decfilm.Result {
+	res, err := decfilm.Decode(context.Background(), matchID, film, nil)
 	if err != nil {
 		slog.Info("replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",
 			"err", err, "match_id", matchID)
 		return nil
 	}
 	return res
+}
+
+// profilDeBalayageDeLaCuisson rend le PROFIL que la cuisson du rejeu doit porter apres le
+// decodage du kill-feed.
+//
+// DEUX CAS, ET LES DEUX SONT LE COMPORTEMENT DE PRODUCTION D AVANT LE LOT 2.3, rendu explicite :
+//
+//	DECODAGE ABOUTI  le profil CALIBRE sur ce film (descripteur de traversee, largeur d axe
+//	                 absolue, `param_4`). C est l heritage que la decouverte D1 du lot 2.2.a a
+//	                 nomme : reel, voulu (la grammaire mesuree prime sur le defaut), mais qui
+//	                 passait par l etat du processus.
+//	DECODAGE REFUSE  le profil DE DEPART de `killsource` ([decfilm.ProfilDeDepart]) —
+//	                 l invariant plus le `param_4` force a zero. `decfilm.Decode` posait ce
+//	                 zero AVANT de lire quoi que ce soit, et ne le retirait jamais : un film
+//	                 dont le kill-feed ne se decode pas laissait donc lui aussi sa trace sur la
+//	                 cuisson. Le reproduire ici est ce qui rend le pas STRUCTUREL (zero
+//	                 difference d octet, critere D4 du jalon).
+func profilDeBalayageDeLaCuisson(res *decfilm.Result) *decfilm.ProfilDeBalayage {
+	if res != nil {
+		p := res.ProfilCalibre
+		return &p
+	}
+	p := decfilm.ProfilDeDepart()
+	return &p
 }
 
 // killRefs résout, pour chaque frag publié par killsource, l'identité du TUEUR, de l'ASSISTANT
@@ -57,13 +81,13 @@ func (b *Builder) decodeKillSource(matchID string, film *filmsource.Film) *kills
 // `BombStatsCoverage.KillsRead` existent pour distinguer.
 //
 // LA RÉSOLUTION EST HORS LIGNE, ENTIÈREMENT FILM-NATIVE : ce paquet n'ouvre AUCUNE base (même
-// contrat que neutralDeaths et que le reste de replaybuild). `killsource.Kill.Feed.Killer` et
-// `killsource.Kill.Victim` portent un GAMERTAG (ou `xuid:<N>` en repli, cf.
-// killsource.XUIDNamePrefix) ; le pont gamertag -> xuid vient du fil des morts DU FILM : chaque
+// contrat que neutralDeaths et que le reste de replaybuild). `decfilm.Kill.Feed.Killer` et
+// `decfilm.Kill.Victim` portent un GAMERTAG (ou `xuid:<N>` en repli, cf.
+// decfilm.XUIDNamePrefix) ; le pont gamertag -> xuid vient du fil des morts DU FILM : chaque
 // mort y porte le xuid ET le gamertag de sa victime dans le MÊME enregistrement — aucune table
 // externe à charger.
 //
-// L'HORLOGE DES COUPLES EST CELLE DU MATCH, sans conversion : `killsource.Kill.TimeMS` et
+// L'HORLOGE DES COUPLES EST CELLE DU MATCH, sans conversion : `decfilm.Kill.TimeMS` et
 // `replay.Death.TimeMS` sont le MÊME champ du MÊME enregistrement du chunk highlight. La
 // dérivation et son contrôle vivent en tête de `replay.MatchKillsInput` — c'est là que la règle
 // doit être lue, pas ici, parce que c'est là qu'elle est consommée.
@@ -72,7 +96,7 @@ func (b *Builder) decodeKillSource(matchID string, film *filmsource.Film) *kills
 // ouvraient et reparsaient chacun le chunk highlight, pour en tirer le même fil. Ils reçoivent
 // désormais le MÊME résultat, lu une fois par `BuildBytes` — mêmes valeurs, mêmes refus
 // journalisés, une décompression et un parse de moins par cuisson.
-func (b *Builder) killRefs(matchID string, deaths filmDeaths, res *killsource.Result) (replay.KillsInput, replay.MatchKillsInput) {
+func (b *Builder) killRefs(matchID string, deaths filmDeaths, res *decfilm.Result) (replay.KillsInput, replay.MatchKillsInput) {
 	if res == nil {
 		return replay.KillsInput{}, replay.MatchKillsInput{}
 	}
@@ -109,7 +133,7 @@ type killResolution struct {
 
 // resolveKills résout tueur, assistant et victime en xuid, EN UNE PASSE. Pure : aucune I/O,
 // testable sans film (kills_test.go).
-func resolveKills(kills []killsource.Kill, byGamertag map[string]uint64) killResolution {
+func resolveKills(kills []decfilm.Kill, byGamertag map[string]uint64) killResolution {
 	r := killResolution{
 		refs:  make([]replay.EquipmentKillRef, 0, len(kills)),
 		pairs: make([]replay.KillRef, 0, len(kills)),
@@ -184,7 +208,7 @@ func gamertagXUIDIndex(deaths []replay.Death) map[string]uint64 {
 // SOURCE — si un troisième lecteur de cette règle apparaît, centraliser (règle du dépôt sur
 // les copies, CLAUDE.md n° 6).
 func resolveKillIdentity(name string, byGamertag map[string]uint64) (uint64, bool) {
-	if reste, ok := strings.CutPrefix(name, killsource.XUIDNamePrefix); ok {
+	if reste, ok := strings.CutPrefix(name, decfilm.XUIDNamePrefix); ok {
 		xuid, err := strconv.ParseUint(reste, 10, 64)
 		if err != nil {
 			return 0, false

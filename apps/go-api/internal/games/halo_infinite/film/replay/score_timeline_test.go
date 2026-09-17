@@ -1,15 +1,14 @@
 package replay
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
-
-	"levelup/go-api/internal/analysis/objectiveevents"
 )
 
 // score_timeline_test.go — L'ASSEMBLAGE DE LA COURBE DE SCORE, SANS UN OCTET DE FILM.
 //
 // Tout ce qui est verifie ici l'est sur des enregistrements CONSTRUITS : le decodage du film a
-// ses propres tests (objectiveevents), celui-ci ne teste que l'assemblage — la pose sur la
+// ses propres tests (objectives), celui-ci ne teste que l'assemblage — la pose sur la
 // grille de frames, la correction d'origine, les deux formes (manche / total) et les trois
 // issues de l'identite des camps. Un test qui exigerait un film ne dirait pas laquelle des deux
 // couches a bouge.
@@ -26,26 +25,26 @@ func testClock() scoreClock {
 }
 
 // statRec construit un enregistrement d'entite.
-func statRec(timeMS, slot, round int, comps map[int]objectiveevents.StatValue) objectiveevents.StatRecord {
-	return objectiveevents.StatRecord{TimeMS: timeMS, Slot: slot, Round: round, Comps: comps}
+func statRec(timeMS, slot, round int, comps map[int]types.StatValue) types.StatRecord {
+	return types.StatRecord{TimeMS: timeMS, Slot: slot, Round: round, Comps: comps}
 }
 
 // modeRamp construit une rampe de score de MODE (composant 0, valeur A) pour un slot et une
 // manche. Trois emissions au moins sont necessaires pour qu'une manche soit tenue pour reelle.
-func modeRamp(slot, round, startMS, stepMS int, values ...int64) []objectiveevents.StatRecord {
-	out := make([]objectiveevents.StatRecord, 0, len(values))
+func modeRamp(slot, round, startMS, stepMS int, values ...int64) []types.StatRecord {
+	out := make([]types.StatRecord, 0, len(values))
 	for i, v := range values {
 		out = append(out, statRec(startMS+i*stepMS, slot, round,
-			map[int]objectiveevents.StatValue{0: {A: v}}))
+			map[int]types.StatValue{0: {A: v}}))
 	}
 	return out
 }
 
 // coreLine construit l'emission des trois compteurs de base d'un slot (frags et morts en
 // composant 2, assistances en composant 3), plus son score personnel (composant 1, valeur B).
-func coreLine(slot, round, timeMS int, kills, deaths, assists, personal int64) []objectiveevents.StatRecord {
-	return []objectiveevents.StatRecord{
-		statRec(timeMS, slot, round, map[int]objectiveevents.StatValue{
+func coreLine(slot, round, timeMS int, kills, deaths, assists, personal int64) []types.StatRecord {
+	return []types.StatRecord{
+		statRec(timeMS, slot, round, map[int]types.StatValue{
 			1: {B: personal},
 			2: {A: kills, B: deaths},
 			3: {A: assists},
@@ -59,7 +58,7 @@ func coreLine(slot, round, timeMS int, kills, deaths, assists, personal int64) [
 // manche, donc la derniere valeur brute donne la DERNIERE MANCHE pour le match. Le total doit
 // valoir la somme, et rester croissant de bout en bout.
 func TestScoreTimelineRoundsAndTotal(t *testing.T) {
-	var recs []objectiveevents.StatRecord
+	var recs []types.StatRecord
 	recs = append(recs, modeRamp(6, 0, 2_000, 1_000, 1, 2, 3)...)
 	recs = append(recs, modeRamp(6, 1, 6_000, 1_000, 1, 2, 3)...)
 
@@ -136,7 +135,7 @@ func TestScoreTimelineDropsEmissionsBeforeFrameZero(t *testing.T) {
 // TestScoreTimelineTeamIdentityByFinalScore — PREUVE (a) : le score final designe le camp, et
 // l'ordre des slots n'est PAS l'ordre des camps.
 func TestScoreTimelineTeamIdentityByFinalScore(t *testing.T) {
-	var recs []objectiveevents.StatRecord
+	var recs []types.StatRecord
 	recs = append(recs, modeRamp(6, 0, 2_000, 1_000, 1, 2, 3)...) // final 3
 	recs = append(recs, modeRamp(8, 0, 2_500, 1_000, 1, 2)...)    // final 2
 	scores := [2]int{2, 3}                                        // team_0 = 2, team_1 = 3
@@ -163,8 +162,8 @@ func TestScoreTimelineTeamIdentityByFinalScore(t *testing.T) {
 // l'appelant. Trois issues : publiee telle quelle quand les finals la respectent, ABSENTE
 // quand un final la depasse (table perimee -> se taire), absente quand elle est inconnue.
 func TestScoreTimelineTargetScore(t *testing.T) {
-	recs := func() []objectiveevents.StatRecord {
-		var out []objectiveevents.StatRecord
+	recs := func() []types.StatRecord {
+		var out []types.StatRecord
 		out = append(out, modeRamp(6, 0, 2_000, 1_000, 1, 2, 3)...) // final 3
 		out = append(out, modeRamp(8, 0, 2_500, 1_000, 1, 2)...)    // final 2
 		return out
@@ -307,12 +306,12 @@ func TestScoreTimelineEmptyFilmKeepsCoverage(t *testing.T) {
 // fragsIdentityInput construit un match a deux camps ou les scores du registre sont EGAUX
 // (la preuve (a) ne s'applique pas) et ou les frags departagent : camp 0 = 3 + 2, camp 1 = 4 + 3.
 func fragsIdentityInput() *ScoreInput {
-	var recs []objectiveevents.StatRecord
+	var recs []types.StatRecord
 	recs = append(recs, modeRamp(6, 0, 2_000, 1_000, 1, 2, 3)...)
 	recs = append(recs, modeRamp(8, 0, 2_500, 1_000, 1, 2, 3)...)
 	// Les slots d'equipe repliquent le total de frags de leur camp (composant 2, valeur A).
-	recs = append(recs, statRec(5_000, 6, 0, map[int]objectiveevents.StatValue{2: {A: 5}}))
-	recs = append(recs, statRec(5_000, 8, 0, map[int]objectiveevents.StatValue{2: {A: 7}}))
+	recs = append(recs, statRec(5_000, 6, 0, map[int]types.StatValue{2: {A: 5}}))
+	recs = append(recs, statRec(5_000, 8, 0, map[int]types.StatValue{2: {A: 7}}))
 	recs = append(recs, coreLine(10, 0, 3_000, 3, 1, 2, 300)...)
 	recs = append(recs, coreLine(12, 0, 3_100, 2, 2, 3, 250)...)
 	recs = append(recs, coreLine(14, 0, 3_200, 4, 3, 6, 400)...)
@@ -321,7 +320,7 @@ func fragsIdentityInput() *ScoreInput {
 	scores := [2]int{3, 3} // egalite : la preuve (a) ne peut pas trancher
 	return &ScoreInput{
 		Records: recs,
-		Lines: []objectiveevents.PlayerLine{
+		Lines: []types.PlayerLine{
 			{XUID: "x10", Kills: 3, Deaths: 1, Assists: 2},
 			{XUID: "x12", Kills: 2, Deaths: 2, Assists: 3},
 			{XUID: "x14", Kills: 4, Deaths: 3, Assists: 6},
@@ -349,7 +348,7 @@ func lastValue(s ScoreSeries) int {
 func TestScoreTicksKeepOnlyChanges(t *testing.T) {
 	// Valeurs : 1, 1, 1, 2, 2, 3 — trois paliers, donc trois points, aux instants ou la
 	// valeur a ete ATTEINTE (la premiere emission du palier).
-	pts := []objectiveevents.ScorePoint{
+	pts := []types.ScorePoint{
 		{TimeMS: 2_000, Value: 1}, {TimeMS: 3_000, Value: 1}, {TimeMS: 4_000, Value: 1},
 		{TimeMS: 5_000, Value: 2}, {TimeMS: 6_000, Value: 2}, {TimeMS: 7_000, Value: 3},
 	}
@@ -369,7 +368,7 @@ func TestScoreTicksKeepOnlyChanges(t *testing.T) {
 // valeurs differentes dans la meme frame sont un vrai changement, et c'est l'etat de FIN de
 // frame que le client dessine.
 func TestScoreTicksSameFrameDifferentValues(t *testing.T) {
-	pts := []objectiveevents.ScorePoint{
+	pts := []types.ScorePoint{
 		{TimeMS: 2_000, Value: 1}, {TimeMS: 2_040, Value: 2}, {TimeMS: 2_090, Value: 3},
 	}
 	got := scoreTicksOf(pts, testClock())
@@ -413,10 +412,10 @@ func TestScoreTimelinePlayerCountersHaveNoRepeats(t *testing.T) {
 // repeatedCountersInput construit un joueur dont le composant 2 est reemis a chaque frag :
 // les morts y REPETENT leur valeur, exactement comme dans un film reel.
 func repeatedCountersInput() *ScoreInput {
-	var recs []objectiveevents.StatRecord
+	var recs []types.StatRecord
 	recs = append(recs, modeRamp(6, 0, 2_000, 1_000, 1, 2, 3)...)
 	for i, kills := range []int64{1, 2, 3} {
-		recs = append(recs, statRec(3_000+i*500, 10, 0, map[int]objectiveevents.StatValue{
+		recs = append(recs, statRec(3_000+i*500, 10, 0, map[int]types.StatValue{
 			1: {B: int64(100 * (i + 1))},
 			2: {A: kills, B: 2}, // les morts ne bougent pas : 2, 2, 2
 			3: {A: 1},
@@ -424,7 +423,7 @@ func repeatedCountersInput() *ScoreInput {
 	}
 	return &ScoreInput{
 		Records: recs,
-		Lines:   []objectiveevents.PlayerLine{{XUID: "x10", Kills: 3, Deaths: 2, Assists: 1}},
+		Lines:   []types.PlayerLine{{XUID: "x10", Kills: 3, Deaths: 2, Assists: 1}},
 	}
 }
 
@@ -436,13 +435,13 @@ func repeatedCountersInput() *ScoreInput {
 // AUCUN des deux scores du registre : la preuve (a) ne peut pas trancher — et elle ne doit
 // surtout pas trancher au plus proche — tandis que la somme des frags, elle, departage.
 func TestScoreTimelineIdentityWhenFilmDiffersFromRegistry(t *testing.T) {
-	var recs []objectiveevents.StatRecord
+	var recs []types.StatRecord
 	// Le film dit 200 et 126 ; le registre dit 193 et 112 (des TICKS, pas des points).
 	recs = append(recs, modeRamp(6, 0, 2_000, 500, 198, 199, 200)...)
 	recs = append(recs, modeRamp(8, 0, 2_100, 500, 124, 125, 126)...)
 	// Les frags departagent : camp 0 = 5 (3 + 2), camp 1 = 7 (4 + 3).
-	recs = append(recs, statRec(5_000, 6, 0, map[int]objectiveevents.StatValue{2: {A: 5}}))
-	recs = append(recs, statRec(5_000, 8, 0, map[int]objectiveevents.StatValue{2: {A: 7}}))
+	recs = append(recs, statRec(5_000, 6, 0, map[int]types.StatValue{2: {A: 5}}))
+	recs = append(recs, statRec(5_000, 8, 0, map[int]types.StatValue{2: {A: 7}}))
 	recs = append(recs, coreLine(10, 0, 3_000, 3, 1, 2, 300)...)
 	recs = append(recs, coreLine(12, 0, 3_100, 2, 2, 3, 250)...)
 	recs = append(recs, coreLine(14, 0, 3_200, 4, 3, 6, 400)...)
@@ -451,7 +450,7 @@ func TestScoreTimelineIdentityWhenFilmDiffersFromRegistry(t *testing.T) {
 	scores := [2]int{193, 112} // DIFFERENTS l'un de l'autre : (a) s'applique... et echoue
 	in := &ScoreInput{
 		Records: recs,
-		Lines: []objectiveevents.PlayerLine{
+		Lines: []types.PlayerLine{
 			{XUID: "x10", Kills: 3, Deaths: 1, Assists: 2},
 			{XUID: "x12", Kills: 2, Deaths: 2, Assists: 3},
 			{XUID: "x14", Kills: 4, Deaths: 3, Assists: 6},

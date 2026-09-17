@@ -1,7 +1,7 @@
 package replaybuild
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 )
@@ -10,7 +10,7 @@ import (
 // (catalogue d'entrees, faits du match, entrees de catalogue, statistiques du film) — extrait
 // de BuildBytes (lot restes R0, deplacement pur des champs, aucun changement de sortie).
 func (b *Builder) buildReplayOptions(
-	entry filmdec.MapQuantEntry, facts port.MatchFacts, cat entreesCatalogue, stats *filmStats,
+	entry decfilm.MapQuantEntry, facts port.MatchFacts, cat entreesCatalogue, stats *filmStats,
 ) replay.Options {
 	return replay.Options{
 		FrameIntervalMS: b.interval,
@@ -50,6 +50,9 @@ func (b *Builder) buildReplayOptions(
 		Bomb:             stats.bomb,
 		Zone: replay.ZoneInput{Zones: cat.zones, Roles: cat.zoneRoles, TeamByXUID: teamByXUID(facts),
 			Hill: isHillVariant(facts.GameVariantName)},
+		// LE PROFIL DE BALAYAGE QUE `killsource` A RETENU SUR CE FILM (lot 2.3, condition D1 du
+		// lot 2.2.a) : il voyage par les options au lieu de fuir par l'etat du processus.
+		ProfilDeBalayage: profilDeBalayageDeLaCuisson(cat.killsource),
 		MapQuant:         &entry,
 		Observe:          b.observe,
 		SpawnPoints:      cat.spawnPts,

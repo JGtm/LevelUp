@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // flag_neutral_test.go — LA VARIANTE « DRAPEAU NEUTRE » SE RECONNAIT, sans film.
@@ -95,10 +95,10 @@ func TestFlagVarianteNeutrePublieUnSeulDrapeau(t *testing.T) {
 	tracks := []Track{flagTestTrack(10, "1", 0, 99, 50, 50)}
 	deaths := []Death{{XUID: 1, TimeMS: 4000}}
 	scan := flagNeutralScan(4, 0)
-	scan.Events = []objectiveevents.NamedEvent{
-		{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+	scan.Events = []objectives.NamedEvent{
+		{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
 	}
-	scan.Identity = objectiveevents.FlatRoundIdentity(map[int]string{12: "1"})
+	scan.Identity = objectives.FlatRoundIdentity(map[int]string{12: "1"})
 	// Une naissance TARDIVE au centre, pendant que le drapeau git : c'est sa rentree.
 	scan.Free = append(scan.Free, flagFreeLifeAt(7_000_000, 50, 50))
 	got, cov := buildFlagCarries(scan, flagTestCtx(tracks, deaths, 100))

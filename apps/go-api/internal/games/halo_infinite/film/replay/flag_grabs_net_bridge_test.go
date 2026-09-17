@@ -2,14 +2,14 @@ package replay
 
 // flag_grabs_net_bridge_test.go — le pont, et LE GARDE-RAIL DES QUATRE ETATS.
 //
-// `objectiveevents` recopie les quatre chaines d'etat du drapeau pour rester independant du
+// `objectives` recopie les quatre chaines d'etat du drapeau pour rester independant du
 // decodeur de film. Une recopie sans garde-rail derive : ce test echoue le jour ou l'une des
 // quatre diverge de sa source (meme dispositif que bomb_stats_sentinels_test.go).
 
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 func TestFlagStates_SentinellesObjectiveEvents(t *testing.T) {
@@ -18,14 +18,14 @@ func TestFlagStates_SentinellesObjectiveEvents(t *testing.T) {
 		nom             string
 		source, recopie string
 	}{
-		{"carried", FlagStateCarried, objectiveevents.FlagSpanCarried},
-		{"carried_open", FlagStateCarriedOpen, objectiveevents.FlagSpanCarriedOpen},
-		{"dropped", FlagStateDropped, objectiveevents.FlagSpanDropped},
-		{"home", FlagStateHome, objectiveevents.FlagSpanHome},
+		{"carried", FlagStateCarried, objectives.FlagSpanCarried},
+		{"carried_open", FlagStateCarriedOpen, objectives.FlagSpanCarriedOpen},
+		{"dropped", FlagStateDropped, objectives.FlagSpanDropped},
+		{"home", FlagStateHome, objectives.FlagSpanHome},
 	}
 	for _, p := range paires {
 		if p.source != p.recopie {
-			t.Errorf("%s : replay=%q mais objectiveevents=%q — la recopie a derive de sa source",
+			t.Errorf("%s : replay=%q mais objectives=%q — la recopie a derive de sa source",
 				p.nom, p.source, p.recopie)
 		}
 	}

@@ -4,7 +4,7 @@ package replay
 // `ti=13`, PAR SLOT, SUR UN FILM KOTH — pas seulement la rampe.
 //
 // CE QUE CE FICHIER FAIT. Il balaye `ti=13` par le chemin de PRODUCTION
-// (`filmdec.ScanFilmManagedProperties`, zero copie de grammaire), pose chaque lecture sur les
+// (`grammar.ScanFilmManagedProperties`, zero copie de grammaire), pose chaque lecture sur les
 // deux axes de temps du rejeu (ms depuis le premier paquet du film ; frame du rejeu), et ecrit la
 // SERIE COMPLETE des valeurs par (slot, mode, tag) — mode A : les tags du variant scalaire i1 ;
 // mode B : les tags des 32 variants par joueur i2..i33, avec l'index de film du joueur — dans un
@@ -33,7 +33,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // ctOutDirName est le sous-dossier de sortie du lot C-ter sous `registre_film/`.
@@ -63,7 +63,7 @@ type ctLecture struct {
 type ctEntree struct {
 	dir, short string
 	film       p2aFilm
-	sc         filmdec.ManagedPropertyScan
+	sc         grammar.ManagedPropertyScan
 	doc        ReplayDocument
 	zones      []Zone
 	// clockUS : premier paquet du film (zero de l'horloge des evenements) ; posUS : premier
@@ -164,7 +164,7 @@ func ctLectures(e ctEntree) []ctLecture {
 	c := zoneCtx{origin: e.posUS, step: uint64(e.doc.FrameIntervalMS) * 1000, frames: e.doc.FrameCount}
 	out := make([]ctLecture, 0, len(e.sc.Reads))
 	for _, r := range e.sc.Reads {
-		l := ctLecture{slot: r.Slot, modeA: r.Field == filmdec.ManagedPropertyScalar, tag: r.Tag,
+		l := ctLecture{slot: r.Slot, modeA: r.Field == grammar.ManagedPropertyScalar, tag: r.Tag,
 			film: r.FilmIndex, value: r.Value, has: r.HasValue, frame: -1, chained: r.Chained,
 			strict: e.bande[r.Slot]}
 		l.tMS = (int64(r.TimestampUS) - int64(e.clockUS)) / 1000
@@ -206,21 +206,21 @@ func ctMode(modeA bool) string {
 }
 
 // ctValeurLue rend la valeur DECODEE d'une lecture selon le type de son tag — la convention des
-// convertisseurs exportes de `filmdec`, jamais une interpretation de plus.
+// convertisseurs exportes de `grammar`, jamais une interpretation de plus.
 func ctValeurLue(l ctLecture) string {
 	if !l.has {
 		return "-"
 	}
 	switch l.tag {
-	case filmdec.ManagedPropertyTagQuant, filmdec.ManagedPropertyTagQuantJ:
-		return fmt.Sprintf("%.5f", filmdec.ManagedPropertyQuantValue(l.value))
-	case filmdec.ManagedPropertyTagBool, filmdec.ManagedPropertyTagBoolJ:
+	case grammar.ManagedPropertyTagQuant, grammar.ManagedPropertyTagQuantJ:
+		return fmt.Sprintf("%.5f", grammar.ManagedPropertyQuantValue(l.value))
+	case grammar.ManagedPropertyTagBool, grammar.ManagedPropertyTagBoolJ:
 		return fmt.Sprintf("%d", l.value)
-	case filmdec.ManagedPropertyTagEnum:
-		return fmt.Sprintf("%d", filmdec.ManagedPropertyEnumValue(l.value))
+	case grammar.ManagedPropertyTagEnum:
+		return fmt.Sprintf("%d", grammar.ManagedPropertyEnumValue(l.value))
 	}
-	if l.tag >= filmdec.ManagedPropertyTagEnumJ {
-		return fmt.Sprintf("%d", filmdec.ManagedPropertyEnumValue(l.value))
+	if l.tag >= grammar.ManagedPropertyTagEnumJ {
+		return fmt.Sprintf("%d", grammar.ManagedPropertyEnumValue(l.value))
 	}
 	return fmt.Sprintf("0x%08X", l.value)
 }

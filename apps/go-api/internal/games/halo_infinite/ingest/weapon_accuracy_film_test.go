@@ -9,14 +9,14 @@ import (
 	"encoding/json"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 const testDecoderRev = "whd-test"
 
 // bucketsWith construit un histogramme de la bonne longueur avec les comptes donnes en tete.
 func bucketsWith(counts ...int) []int {
-	b := make([]int, filmdec.WeaponHitBucketCount())
+	b := make([]int, decfilm.WeaponHitBucketCount())
 	copy(b, counts)
 	return b
 }
@@ -27,7 +27,7 @@ func resolveFixed(m map[int]string) func(int) string {
 }
 
 func TestMapWeaponAccuracyFilmSurfaces(t *testing.T) {
-	stats := []filmdec.WeaponHitStats{
+	stats := []decfilm.WeaponHitStats{
 		{FilmIndex: 3, WeaponID: 1000, ShotsPaired: 10, Hits: 6, DistBuckets: bucketsWith(2, 1)},
 		{FilmIndex: 5, WeaponID: 2000, ShotsPaired: 4, Hits: 4, DistBuckets: bucketsWith(0, 0, 4)},
 	}
@@ -55,14 +55,14 @@ func TestMapWeaponAccuracyFilmSurfaces(t *testing.T) {
 	if err := json.Unmarshal([]byte(dist.Rows[0].DistBucketJSON), &hist); err != nil {
 		t.Fatalf("dist_bucket_json illisible : %v", err)
 	}
-	if len(hist) != filmdec.WeaponHitBucketCount() || hist[0] != 2 || hist[1] != 1 {
+	if len(hist) != decfilm.WeaponHitBucketCount() || hist[0] != 2 || hist[1] != 1 {
 		t.Errorf("histogramme serialise inattendu : %v", hist)
 	}
 }
 
 // TestMapWeaponAccuracyFilmSkips — indice non resolu, arme nulle, zero tir appariable : ecartes.
 func TestMapWeaponAccuracyFilmSkips(t *testing.T) {
-	stats := []filmdec.WeaponHitStats{
+	stats := []decfilm.WeaponHitStats{
 		{FilmIndex: 1, WeaponID: 1000, ShotsPaired: 9, Hits: 5, DistBuckets: bucketsWith(3)}, // indice non resolu
 		{FilmIndex: 2, WeaponID: 0, ShotsPaired: 9, Hits: 5, DistBuckets: bucketsWith(3)},    // arme nulle
 		{FilmIndex: 3, WeaponID: 1000, ShotsPaired: 0, Hits: 0, DistBuckets: bucketsWith()},  // zero tir appariable
@@ -78,7 +78,7 @@ func TestMapWeaponAccuracyFilmSkips(t *testing.T) {
 
 // TestMapWeaponAccuracyFilmAggregatesIndexCollision — deux FilmIndex sur le meme xuid+arme somment.
 func TestMapWeaponAccuracyFilmAggregatesIndexCollision(t *testing.T) {
-	stats := []filmdec.WeaponHitStats{
+	stats := []decfilm.WeaponHitStats{
 		{FilmIndex: 3, WeaponID: 1000, ShotsPaired: 6, Hits: 4, DistBuckets: bucketsWith(2)},
 		{FilmIndex: 4, WeaponID: 1000, ShotsPaired: 5, Hits: 2, DistBuckets: bucketsWith(1)},
 	}
@@ -97,7 +97,7 @@ func TestMapWeaponAccuracyFilmAggregatesIndexCollision(t *testing.T) {
 // TestMapWeaponAccuracyFilmNoDistanceRowWhenUnresolved — accuracy presente, distance absente quand
 // aucune touche n a ses deux positions (dist_n = 0).
 func TestMapWeaponAccuracyFilmNoDistanceRowWhenUnresolved(t *testing.T) {
-	stats := []filmdec.WeaponHitStats{
+	stats := []decfilm.WeaponHitStats{
 		{FilmIndex: 3, WeaponID: 1000, ShotsPaired: 10, Hits: 6, DistBuckets: bucketsWith()},
 	}
 	acc, dist := MapWeaponAccuracyFilm("m1", stats, resolveFixed(map[int]string{3: "xuid(1)"}), testDecoderRev)

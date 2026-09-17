@@ -33,7 +33,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // gwPickupWitnessTolUS est la tolerance temporelle du TEMOIN d'instant : de combien on accepte
@@ -51,7 +51,7 @@ const gwPickupWitnessSeed = 20260817
 // le temps, a `gwPickupWitnessTolUS` pres ; un slot sans echantillon dans cette fenetre est un
 // joueur mort ou non replique, et il ne compte pas.
 func gwPickupNearestAt(
-	pos [3]float32, atUS uint64, bySlot map[uint32][]filmdec.BipedPosition,
+	pos [3]float32, atUS uint64, bySlot map[uint32][]grammar.BipedPosition,
 ) (float64, bool) {
 	best, found := math.Inf(1), false
 	for _, pts := range bySlot {
@@ -111,7 +111,7 @@ func TestGwPickupBorneHauteSuitLaRepriseDeCle(t *testing.T) {
 // departage a instant egal est la distance puis le slot.
 func TestGwPickupPremierPassageEtPasLePlusProche(t *testing.T) {
 	pos := [3]float32{0, 0, 0}
-	s := []filmdec.BipedPosition{
+	s := []grammar.BipedPosition{
 		{Slot: 7, TimestampUS: 100, X: 9, HasWorld: true},
 		{Slot: 3, TimestampUS: 200, X: 1.2, HasWorld: true},
 		{Slot: 5, TimestampUS: 300, X: 0.1, HasWorld: true},
@@ -131,7 +131,7 @@ func TestGwPickupPremierPassageEtPasLePlusProche(t *testing.T) {
 // TestGwPickupTemoinIgnoreLesEchantillonsTropLoinDansLeTemps : le temoin d'instant ne doit pas
 // aller chercher une position vieille de plusieurs secondes pour la faire passer pour actuelle.
 func TestGwPickupTemoinIgnoreLesEchantillonsTropLoinDansLeTemps(t *testing.T) {
-	bySlot := map[uint32][]filmdec.BipedPosition{
+	bySlot := map[uint32][]grammar.BipedPosition{
 		1: {{Slot: 1, TimestampUS: 1_000_000, X: 0.5, HasWorld: true}},
 		2: {{Slot: 2, TimestampUS: 5_000_000, X: 0.1, HasWorld: true}},
 	}

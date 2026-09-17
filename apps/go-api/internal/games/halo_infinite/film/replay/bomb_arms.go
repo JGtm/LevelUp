@@ -126,7 +126,7 @@ import (
 )
 
 // BombEventArmed est la valeur `event_type` d'un armement de bombe daté, sous l'objectif
-// `objectiveevents.ObjectiveTypeBomb` — le pendant de BombEventDetonated.
+// `objectives.ObjectiveTypeBomb` — le pendant de BombEventDetonated.
 const BombEventArmed = "bomb_armed"
 
 // BombActorSourceDrop / BombActorSourceActiveCarry disent LAQUELLE des deux règles a nommé
@@ -134,7 +134,7 @@ const BombEventArmed = "bomb_armed"
 // de preuve (un geste observé contre une présence constatée), et un lecteur qui les
 // confondrait surestimerait ce que la mesure établit. La persistance les portera dans la
 // colonne `details` de `match_objective_events` — `source` y est déjà prise par la provenance
-// du DÉCODAGE (vocabulaire `objectiveevents.Source*`), qui est une autre question.
+// du DÉCODAGE (vocabulaire `objectives.Source*`), qui est une autre question.
 const (
 	// BombActorSourceDrop : la bombe a QUITTÉ les mains dans la fenêtre de l'armement.
 	BombActorSourceDrop = "carry_drop"

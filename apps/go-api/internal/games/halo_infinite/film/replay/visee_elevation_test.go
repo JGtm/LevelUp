@@ -31,9 +31,9 @@ package replay
 //
 // D'OU VIENNENT LES PIECES, ET POURQUOI D'ICI :
 //
-//	positions + elevation  `filmdec.ScanFilmBipedPositions` (CaptureDirs) — un seul balayage.
+//	positions + elevation  `grammar.ScanFilmBipedPositions` (CaptureDirs) — un seul balayage.
 //	fil des morts          `ScanFilmDeaths` (chunk highlight du film).
-//	fil des KILLS          `analysis.ParseHighlightEvents` sur le MEME chunk : la victime est un
+//	fil des KILLS          `grammar.ParseHighlightEvents` sur le MEME chunk : la victime est un
 //	                       event `death`, le tueur un event `kill` au MEME instant. On ne prend
 //	                       QUE les instants qui portent exactement un de chaque — aucun couple
 //	                       n'est reconstruit, aucun orphelin n'est recolle (`killsource` le fait,
@@ -43,7 +43,7 @@ package replay
 //	                       termine chaque vie (cf. lives.go). C'est lui aussi qui rend le
 //	                       decalage d'horloge entre le fil (horloge du match) et les positions
 //	                       (horloge du film).
-//	bornes de la carte     `filmdec.MapQuantCatalog` — le nom de carte est FOURNI par
+//	bornes de la carte     `profile.MapQuantCatalog` — le nom de carte est FOURNI par
 //	                       l'operateur (AIM_MAP), jamais devine, et le catalogue est CONTROLE
 //	                       contre le decoupage lu dans le film (`DetectI0Layout`) : sans ce
 //	                       controle, un dz en metres serait un dz dans une autre unite.
@@ -69,7 +69,8 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 const (
@@ -114,8 +115,6 @@ func TestViseeElevation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("carte %q absente du catalogue de bornes : %v", mapName, err)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	// CONTROLE AVANT MESURE : le decoupage d'i0 lu dans le film doit egaler celui que le
 	// catalogue deduit des bornes. S'ils different, les bornes ne sont pas celles de cette
@@ -133,11 +132,11 @@ func TestViseeElevation(t *testing.T) {
 		filepath.Base(dir), mapName, entry.Module, lay.AxisW)
 
 	wr := entry.Range()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.CaptureDirs = true
 	scan.WorldRange = &wr
 	debut := time.Now()
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	cout := time.Since(debut)
 	if err != nil {
 		t.Fatalf("balayage des positions : %v", err)
@@ -150,7 +149,7 @@ func TestViseeElevation(t *testing.T) {
 }
 
 // aimEntrees resout les trois entrees de l'instrument, ou declare le test saute.
-func aimEntrees(t *testing.T) (string, string, *filmdec.MapQuantCatalog) {
+func aimEntrees(t *testing.T) (string, string, *profile.MapQuantCatalog) {
 	t.Helper()
 	dir := os.Getenv(aimFilmEnv)
 	if dir == "" {
@@ -164,7 +163,7 @@ func aimEntrees(t *testing.T) (string, string, *filmdec.MapQuantCatalog) {
 	if boundsPath == "" {
 		t.Skipf("%s absent : sans bornes, un quantum n'est pas une altitude — mesure sautee", aimBoundsEnv)
 	}
-	cat, err := filmdec.LoadMapQuantCatalog(boundsPath)
+	cat, err := profile.LoadMapQuantCatalog(boundsPath)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -185,7 +184,7 @@ type aimDist struct {
 }
 
 // aimDistribution calcule et journalise la distribution brute de `PitchRaw`.
-func aimDistribution(t *testing.T, pos []filmdec.BipedPosition) aimDist {
+func aimDistribution(t *testing.T, pos []grammar.BipedPosition) aimDist {
 	t.Helper()
 	d := aimDist{total: len(pos), hist: make([]int, aimPitchSpan), min: aimPitchSpan, max: -1}
 	vals := make([]int, 0, len(pos))

@@ -55,6 +55,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -62,7 +63,7 @@ import (
 
 // CreditDecoderRev — la version du producteur credit-seul.
 //
-// Elle est du meme espace que [KillSourceDecoderRev] (la colonne `decoder_rev` est commune) mais
+// Elle est du meme espace que [facts.Rev] (la colonne `decoder_rev` est commune) mais
 // designe un AUTRE producteur : c est elle qui permettra de rejouer les matchs credit-seul sans
 // toucher aux matchs decodes depuis un film.
 const CreditDecoderRev = "highlight-credit-2026-08-01"
@@ -233,7 +234,7 @@ func (c *CreditCollector) evenementsDuMatch(ctx context.Context, matchID string)
 		  AND LOWER(he.event_type) IN (?, ?)
 		  AND he.xuid IS NOT NULL AND he.xuid <> ''
 		ORDER BY he.time_ms, he.xuid, he.event_type`,
-		matchID, analysis.EventTypeKill, analysis.EventTypeDeath)
+		matchID, highlightevent.EventTypeKill, highlightevent.EventTypeDeath)
 	if err != nil {
 		return nil, fmt.Errorf("killsource credit: evenements %s: %w", matchID, err)
 	}

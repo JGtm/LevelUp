@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 type weaponMetaEntry struct {
@@ -156,7 +156,7 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchBulkWeaponKills scan: %w", err)
 		}
 		canonicalU := widU
-		if canon, ok := analysis.WeaponFusionMapID[widU]; ok {
+		if canon, ok := filmshell.WeaponFusionMapID[widU]; ok {
 			canonicalU = canon
 		}
 		k := key{xuid: xuid, wid: int64(canonicalU)} //nolint:gosec

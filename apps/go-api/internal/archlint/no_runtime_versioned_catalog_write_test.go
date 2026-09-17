@@ -28,8 +28,16 @@
 // structure) est refusée elle aussi : un ratchet qui « ne sait pas » doit dire non, sinon il
 // donne une assurance qu'il n'a pas.
 //
-// `cmd/mapopads-build/` est la SEULE exception, et c'est sa raison d'être : cette chaîne de
-// fabrication PRODUIT le fichier versionné, à la main, hors serveur.
+// Les chaînes de fabrication (`cmd/mapopads-build/`, `cmd/film-profiles-build/`) sont les
+// SEULES exceptions, et c'est leur raison d'être : elles PRODUISENT le fichier versionné, à la
+// main, hors serveur, et leur résultat passe en revue.
+//
+// # LE RATCHET GARDE PLUSIEURS CATALOGUES (étendu le 2026-09-16, lot 3.1.2)
+//
+// `film_profiles.json` — le catalogue des profils de film — entre sous la même garde (D12 du
+// plan décodeur). Son cas est plus STRICT que celui des socles : il n'a pas d'overlay. Le
+// décodeur le LIT, un point c'est tout ; ce qu'il y écrirait à l'exécution serait une valeur de
+// profil devinée, exactement ce que le chantier interdit.
 package archlint
 
 import (
@@ -45,8 +53,25 @@ import (
 	"testing"
 )
 
-// chemVersionne : la méthode du PathResolver qui rend le chemin du fichier SUIVI PAR GIT.
-const chemVersionne = "MapWeaponPadsPath"
+// chemsVersionnes : les méthodes du PathResolver qui rendent un chemin SUIVI PAR GIT, et la
+// consigne à rappeler quand le runtime l'écrit. Un troisième catalogue s'ajoute ici, sans plus.
+var chemsVersionnes = map[string]string{
+	"MapWeaponPadsPath": "le runtime doit écrire l'OVERLAY " +
+		"(PathResolver.MapWeaponPadsOverlayPath), jamais le fichier suivi par git",
+	"FilmProfilesPath": "le catalogue des profils de film n'a PAS d'overlay : le runtime le " +
+		"LIT (filmprofile.Charger), il ne l'écrit jamais — une valeur de profil se relit chez " +
+		"l'écrivain ou se mesure sur un témoin, par cmd/film-profiles-build, hors serveur",
+}
+
+// nomsDesChemsVersionnes rend les méthodes gardées, triées — pour des messages stables.
+func nomsDesChemsVersionnes() []string {
+	noms := make([]string, 0, len(chemsVersionnes))
+	for nom := range chemsVersionnes {
+		noms = append(noms, nom)
+	}
+	sort.Strings(noms)
+	return noms
+}
 
 // lecteursAutorises : les seules fonctions qui ont le droit de recevoir ce chemin.
 //
@@ -81,6 +106,9 @@ var verbesDEcriture = []string{
 var exceptionsChaineDeFabrication = map[string]string{
 	"cmd/mapopads-build": "2026-09-05 — LA chaîne de fabrication du catalogue versionné : " +
 		"elle le produit à la main, hors serveur, et son résultat passe en revue",
+	"cmd/film-profiles-build": "2026-09-16 (lot 3.1.2) — LA chaîne de fabrication du catalogue " +
+		"des profils de film : elle produit son bloc `derived` hors serveur, recopie la part " +
+		"saisie sans y toucher, et son résultat passe en revue",
 }
 
 func estVerbeDEcriture(nom string) bool {
@@ -92,13 +120,20 @@ func estVerbeDEcriture(nom string) bool {
 	return false
 }
 
-// estAppelCheminVersionne dit si l'expression EST l'appel `…MapWeaponPadsPath(…)`.
+// estAppelCheminVersionne dit si l'expression appelle une méthode gardée, et laquelle.
 //
 // Le nom de l'appelé est lu par `nomAppele` (no_film_reread_test.go) — le paquet en a déjà un,
 // en écrire un second serait la 3e copie que la règle des deux copies interdit.
-func estAppelCheminVersionne(n ast.Node) bool {
+func estAppelCheminVersionne(n ast.Node) (string, bool) {
 	appel, ok := n.(*ast.CallExpr)
-	return ok && nomAppele(appel.Fun) == chemVersionne
+	if !ok {
+		return "", false
+	}
+	nom := nomAppele(appel.Fun)
+	if _, garde := chemsVersionnes[nom]; !garde {
+		return "", false
+	}
+	return nom, true
 }
 
 // analyserFichier rend les violations d'UN fichier déjà parsé.
@@ -115,9 +150,10 @@ func analyserFichier(fset *token.FileSet, f *ast.File) []string {
 		if !ok || fn.Body == nil {
 			return true
 		}
-		// 1. Les variables qui reçoivent le chemin versionné dans CETTE fonction, et les
-		//    positions de leurs identifiants de DÉCLARATION (à ne pas compter comme usages).
-		porteuses := map[string]bool{}
+		// 1. Les variables qui reçoivent un chemin versionné dans CETTE fonction (avec LA
+		//    méthode qui le rend, pour la consigne), et les positions de leurs identifiants de
+		//    DÉCLARATION (à ne pas compter comme usages).
+		porteuses := map[string]string{}
 		declarations := map[token.Pos]bool{}
 		ast.Inspect(fn.Body, func(m ast.Node) bool {
 			aff, ok := m.(*ast.AssignStmt)
@@ -125,7 +161,8 @@ func analyserFichier(fset *token.FileSet, f *ast.File) []string {
 				return true
 			}
 			for i, rhs := range aff.Rhs {
-				if !estAppelCheminVersionne(rhs) || i >= len(aff.Lhs) {
+				methode, garde := estAppelCheminVersionne(rhs)
+				if !garde || i >= len(aff.Lhs) {
 					continue
 				}
 				id, ok := aff.Lhs[i].(*ast.Ident)
@@ -134,7 +171,7 @@ func analyserFichier(fset *token.FileSet, f *ast.File) []string {
 						" : chemin versionné affecté à autre chose qu'une variable simple")
 					continue
 				}
-				porteuses[id.Name] = true
+				porteuses[id.Name] = methode
 				declarations[id.Pos()] = true
 			}
 			return true
@@ -148,16 +185,16 @@ func analyserFichier(fset *token.FileSet, f *ast.File) []string {
 				return true
 			}
 			for _, arg := range appel.Args {
-				var quoi string
+				var quoi, methode string
 				switch a := arg.(type) {
 				case *ast.CallExpr:
-					if estAppelCheminVersionne(a) {
-						quoi = chemVersionne + "()"
+					if nom, garde := estAppelCheminVersionne(a); garde {
+						quoi, methode = nom+"()", nom
 						vus[a.Pos()] = true
 					}
 				case *ast.Ident:
-					if porteuses[a.Name] && !declarations[a.Pos()] {
-						quoi = a.Name
+					if nom, porte := porteuses[a.Name]; porte && !declarations[a.Pos()] {
+						quoi, methode = a.Name, nom
 						vus[a.Pos()] = true
 					}
 				}
@@ -169,8 +206,7 @@ func analyserFichier(fset *token.FileSet, f *ast.File) []string {
 					continue
 				}
 				violations = append(violations, "ligne "+pos(appel)+" : le chemin VERSIONNÉ ("+
-					quoi+") est passé à "+appele+"() — le runtime doit écrire l'overlay "+
-					"(PathResolver.MapWeaponPadsOverlayPath), jamais le fichier suivi par git")
+					quoi+") est passé à "+appele+"() — "+chemsVersionnes[methode])
 			}
 			return true
 		})
@@ -180,16 +216,16 @@ func analyserFichier(fset *token.FileSet, f *ast.File) []string {
 		ast.Inspect(fn.Body, func(m ast.Node) bool {
 			switch x := m.(type) {
 			case *ast.CallExpr:
-				if estAppelCheminVersionne(x) && !vus[x.Pos()] {
-					// Seul cas licite : `v := …MapWeaponPadsPath(…)`, déjà couvert en 1.
+				if nom, garde := estAppelCheminVersionne(x); garde && !vus[x.Pos()] {
+					// Seul cas licite : `v := …FilmProfilesPath(…)`, déjà couvert en 1.
 					if !estAffectationSimple(fn.Body, x) {
 						violations = append(violations, "ligne "+pos(x)+" : résultat de "+
-							chemVersionne+"() utilisé dans un contexte non analysable "+
+							nom+"() utilisé dans un contexte non analysable "+
 							"(littéral, retour, champ) — l'affecter à une variable locale")
 					}
 				}
 			case *ast.Ident:
-				if porteuses[x.Name] && !declarations[x.Pos()] && !vus[x.Pos()] {
+				if _, porte := porteuses[x.Name]; porte && !declarations[x.Pos()] && !vus[x.Pos()] {
 					violations = append(violations, "ligne "+pos(x)+" : la variable "+x.Name+
 						" (chemin versionné) sort du périmètre analysable — un ratchet qui ne "+
 						"sait pas suivre une valeur doit dire non")
@@ -278,7 +314,7 @@ func TestRuntimeNEcritPasLeCatalogueVersionne(t *testing.T) {
 		if err != nil {
 			t.Fatalf("lecture %s : %v", rel, err)
 		}
-		if !strings.Contains(string(blob), chemVersionne) {
+		if !citeUnCheminVersionne(string(blob)) {
 			return
 		}
 		f, err := parser.ParseFile(fset, chemin, blob, 0)
@@ -291,26 +327,42 @@ func TestRuntimeNEcritPasLeCatalogueVersionne(t *testing.T) {
 	})
 	if len(violations) > 0 {
 		t.Errorf("ECRITURE RUNTIME D'UN CATALOGUE VERSIONNE : %d violation(s).\n  - %s\n\n"+
-			"Le fichier `data/titles/{slug}/reference/map_weapon_pads.json` est SUIVI PAR GIT : "+
-			"un déploiement (`git reset --hard origin/main`) efface ce que le runtime y écrit, "+
-			"et un commit local l'avale sans relecture. Le runtime écrit l'OVERLAY "+
+			"Les fichiers rendus par %v sont SUIVIS PAR GIT : un déploiement "+
+			"(`git reset --hard origin/main`) efface ce que le runtime y écrit, et un commit "+
+			"local l'avale sans relecture. Pour les socles, le runtime écrit l'OVERLAY "+
 			"(PathResolver.MapWeaponPadsOverlayPath, ignoré par git) via "+
-			"mapcatalog.AddOverlayEntry ; la fusion se fait à la LECTURE "+
-			"(replay.LoadMapWeaponPadsMerged).",
-			len(violations), strings.Join(violations, "\n  - "))
+			"mapcatalog.AddOverlayEntry et la fusion se fait à la LECTURE "+
+			"(replay.LoadMapWeaponPadsMerged) ; pour les profils de film, il n'écrit RIEN.",
+			len(violations), strings.Join(violations, "\n  - "), nomsDesChemsVersionnes())
 	}
+}
+
+// citeUnCheminVersionne : pré-filtre — inutile d'analyser un fichier qui n'en nomme aucune.
+func citeUnCheminVersionne(source string) bool {
+	for nom := range chemsVersionnes {
+		if strings.Contains(source, nom) {
+			return true
+		}
+	}
+	return false
+}
+
+// fichiersVersionnesGardes : les NOMS de fichier que seul le PathResolver a le droit d'écrire,
+// avec la méthode à employer à la place. Le pendant, côté littéral, de `chemsVersionnes`.
+var fichiersVersionnesGardes = map[string]string{
+	"map_weapon_pads.json": "MapWeaponPadsPath (lecture) ou MapWeaponPadsOverlayPath (runtime)",
+	"film_profiles.json":   "FilmProfilesPath (lecture ; seul cmd/film-profiles-build écrit)",
 }
 
 // TestCatalogueVersionneNommeParLeResolverSeul — LE CONTOURNEMENT PAR LE LITTÉRAL.
 //
-// Le ratchet ci-dessus suit `MapWeaponPadsPath`. Il serait aveugle à un
-// `filepath.Join(dir, "map_weapon_pads.json")` écrit à la main. Le nom du fichier n'a donc le
-// droit d'apparaître QUE là où le resolver le définit.
+// Le ratchet ci-dessus suit les MÉTHODES (`MapWeaponPadsPath`, `FilmProfilesPath`). Il serait
+// aveugle à un `filepath.Join(dir, "map_weapon_pads.json")` écrit à la main. Le nom d'un fichier
+// gardé n'a donc le droit d'apparaître QUE là où le resolver le définit.
 func TestCatalogueVersionneNommeParLeResolverSeul(t *testing.T) {
 	racine := racineGoAPI(t)
-	const literal = `"map_weapon_pads.json"`
 	autorise := map[string]bool{
-		"internal/domain/title/registry.go": true, // LA définition des deux chemins
+		"internal/domain/title/registry.go": true, // LA définition de ces chemins
 	}
 	var violations []string
 	parcourirSourcesProduction(t, racine, func(rel, chemin string) {
@@ -326,16 +378,18 @@ func TestCatalogueVersionneNommeParLeResolverSeul(t *testing.T) {
 			if strings.HasPrefix(nu, "//") || strings.HasPrefix(nu, "*") {
 				continue
 			}
-			if strings.Contains(ligne, literal) {
-				violations = append(violations, fmt.Sprintf("%s:%d  %s", rel, i+1, nu))
+			for fichier, consigne := range fichiersVersionnesGardes {
+				if strings.Contains(ligne, `"`+fichier+`"`) {
+					violations = append(violations,
+						fmt.Sprintf("%s:%d  %s  — employer %s", rel, i+1, nu, consigne))
+				}
 			}
 		}
 	})
+	sort.Strings(violations)
 	if len(violations) > 0 {
-		t.Errorf("le nom du catalogue des socles est écrit en dur hors du PathResolver : %d.\n"+
-			"  - %s\n\nUtiliser PathResolver.MapWeaponPadsPath (lecture) ou "+
-			"MapWeaponPadsOverlayPath (écriture runtime) — un chemin construit à la main "+
-			"contourne le ratchet ci-dessus.",
+		t.Errorf("le nom d'un catalogue versionné est écrit en dur hors du PathResolver : %d.\n"+
+			"  - %s\n\nUn chemin construit à la main contourne le ratchet ci-dessus.",
 			len(violations), strings.Join(violations, "\n  - "))
 	}
 }
@@ -371,6 +425,19 @@ func f(res R, d Deps) {
 	_, _ = replay.LoadMapWeaponPadsMerged(catPath, res.MapWeaponPadsOverlayPath(d.TitleSlug))
 	ajouterCarteAuCatalogue(ctx, d, fetcher, catPath, mapID, e)
 }`,
+		// LE CATALOGUE DES PROFILS DE FILM (2026-09-16, lot 3.1.2) : pas d'overlay, donc
+		// AUCUNE écriture runtime licite. Le défaut fermé ici serait un décodeur qui
+		// « complète » le profil d'un build inconnu au lieu de mettre le film de côté (3.1.1).
+		"écriture directe du catalogue des profils": `package p
+func f(res R) { _ = os.WriteFile(res.FilmProfilesPath(slug), blob, 0o644) }`,
+		"profil complété à l'exécution via une porteuse": `package p
+func f(res R, d Deps) {
+	chemin := res.FilmProfilesPath(d.TitleSlug)
+	cat, _ := filmprofile.Charger(chemin)
+	ajouterEntreeDeProfil(chemin, cat, build, largeur)
+}`,
+		"chemin du profil confié à un littéral composite": `package p
+func f(res R) { _ = Config{Sortie: res.FilmProfilesPath(slug)} }`,
 	}
 	for nom, src := range refuses {
 		t.Run("refusé/"+nom, func(t *testing.T) {
@@ -395,6 +462,16 @@ func f(res R, d Deps) {
 }`,
 		"lecture simple du fichier versionné": `package p
 func f(res R) { cat, _ := replay.LoadMapWeaponPads(res.MapWeaponPadsPath(slug)); _ = cat }`,
+		"lecture du catalogue des profils de film (ce que 3.1.1 fera)": `package p
+func f(res R, d Deps) {
+	chemin := res.FilmProfilesPath(d.TitleSlug)
+	cat, err := filmprofile.Charger(chemin)
+	if err != nil {
+		slog.WarnContext(ctx, "profil illisible", "err", err, "path", chemin)
+		return
+	}
+	_ = cat
+}`,
 		"écriture d'un AUTRE fichier dans la même fonction": `package p
 func f(res R, d Deps) {
 	catPath := res.MapWeaponPadsPath(d.TitleSlug)

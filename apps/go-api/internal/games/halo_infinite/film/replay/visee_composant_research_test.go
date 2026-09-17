@@ -24,11 +24,11 @@ package replay
 // D'OU VIENNENT LES FRONTIERES DE COMPOSANT. De la marche ANCREE de production, pas d'une
 // grammaire reecrite ici. Deux briques exportees, et rien entre les deux :
 //
-//	`filmdec.ScanBipedRecords` ancre les records bipedes d'un paquet delta sur la grammaire
+//	`grammar.ScanBipedRecords` ancre les records bipedes d'un paquet delta sur la grammaire
 //	d'en-tete bipede (prefixe, slot, tag, masque) — c'est le chemin que le depot qualifie de
 //	ROBUSTE, par opposition a la marche sequentielle. Sous `CaptureDirs`, il publie par
 //	`SetRecordMaskHook` la liste des index du masque et le bit qui suit i0.
-//	`filmdec.ConsumeComponentAt` execute le DESER DE PRODUCTION d'un composant nomme a un bit
+//	`grammar.ConsumeComponentAt` execute le DESER DE PRODUCTION d'un composant nomme a un bit
 //	donne et rend le bit d'apres. Enchainee sur les index du masque, elle EST la marche
 //	`walkRecordComponents` — meme dispatch `consumeByName`, meme arret au premier composant non
 //	porte — vue de l'exterieur du paquet.
@@ -113,7 +113,8 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 const (
@@ -204,7 +205,7 @@ func vfLitBits(pay []byte, at, larg int) uint64 {
 		if n-o < w {
 			w = n - o
 		}
-		v |= uint64(filmdec.ReadBitsAtForDiag(pay, at+o, w)) << (64 - o - w)
+		v |= uint64(grammar.ReadBitsAtForDiag(pay, at+o, w)) << (64 - o - w)
 	}
 	return v
 }
@@ -225,8 +226,8 @@ type vfAncre struct {
 // vfSource porte ce que la collecte doit savoir du film : le decoupage d'i0 (propre a la carte,
 // LU dans le film) et l'archetype bipede du registre.
 type vfSource struct {
-	lay   filmdec.I0Layout
-	arch  filmdec.Archetype
+	lay   profile.I0Layout
+	arch  grammar.Archetype
 	blocs int
 }
 
@@ -238,19 +239,19 @@ func vfOuvre(dir string) (vfSource, error) {
 		return s, fmt.Errorf("decoupage d'i0 : %w", err)
 	}
 	s.lay = lay
-	raw, err := filmdec.ReadFilmChunk(dir, 0)
+	raw, err := grammar.ReadFilmChunk(dir, 0)
 	if err != nil {
 		return s, fmt.Errorf("registre (chunk_00) illisible : %w", err)
 	}
-	reg, err := filmdec.ParseRegistryChunk(raw)
+	reg, err := grammar.ParseRegistryChunk(raw)
 	if err != nil {
 		return s, fmt.Errorf("registre illisible : %w", err)
 	}
 	s.blocs = len(reg.Archetypes)
-	arch, ok := reg.Archetype(filmdec.BipedTypeIndex)
+	arch, ok := reg.Archetype(grammar.BipedTypeIndex)
 	if !ok {
 		return s, fmt.Errorf("archetype bipede (ti=%d) absent d'un registre de %d blocs",
-			filmdec.BipedTypeIndex, s.blocs)
+			grammar.BipedTypeIndex, s.blocs)
 	}
 	s.arch = arch
 	return s, nil
@@ -284,7 +285,8 @@ func vfMarche(pay []byte, a vfAncre, s vfSource, st *vfStat) []vfComp {
 			st.arret[id]++
 			return out
 		}
-		end, ported := filmdec.ConsumeComponentAt(pay, at, name, filmdec.BipedTypeIndex, s.arch.Level(id))
+		end, ported := grammar.ConsumeComponentAt(pay, at, name, grammar.BipedTypeIndex, s.arch.Level(id),
+			grammar.ContexteParDefaut())
 		if !ported || end > total || end <= at {
 			st.arret[id]++
 			return out
@@ -341,33 +343,34 @@ func vfCollecte(dir string, s vfSource, pont vfPont, maxChunks int) (
 ) {
 	st := vfNewStat()
 	cibles := pont.slots
-	opt := filmdec.DefaultScanFilmOptions()
+	opt := grammar.DefaultScanFilmOptions()
 	opt.CaptureDirs = true
 	opt.QuantaOnly = true
 	var ancres []vfAncre
-	filmdec.SetRecordMaskHook(func(idx []int, _ []byte, afterI0 int) {
+	obs := grammar.NouvelleObservation()
+	obs.RecordMaskHook = func(idx []int, _ []byte, afterI0 int) {
 		ancres = append(ancres, vfAncre{idx: append([]int(nil), idx...), afterI0: afterI0})
-	})
-	defer filmdec.SetRecordMaskHook(nil)
+	}
 
 	var out []vfRecord
-	fin := filmdec.CountFilmChunks(dir)
+	fin := grammar.CountFilmChunks(dir)
 	if maxChunks > 0 && maxChunks < fin {
 		fin = maxChunks
 	}
 	for c := 1; c <= fin; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(data) {
-			if p.Type != filmdec.PacketTypeDelta {
+		for _, p := range grammar.WalkPackets(data) {
+			if p.Type != grammar.PacketTypeDelta {
 				continue
 			}
 			st.paquets++
 			pay := p.Payload(data)
 			ancres = ancres[:0]
-			recs := filmdec.ScanBipedRecords(pay, filmdec.NewSlotBand(cibles), s.lay, opt)
+			recs := grammar.ScanBipedRecords(pay, grammar.NewSlotBand(cibles), s.lay, opt,
+				grammar.ContexteDeLecture{Profil: grammar.ProfilDeBalayageParDefaut(), Obs: obs})
 			out = append(out, vfVersePaquet(&st, recs, ancres, pay, p, s, pont)...)
 		}
 	}
@@ -380,8 +383,8 @@ func vfCollecte(dir string, s vfSource, pont vfPont, maxChunks int) (
 // LE FILTRE PAR VIE, ET PAS SEULEMENT PAR SLOT : un slot MIGRE aux reapparitions, donc le meme
 // numero designe successivement plusieurs joueurs. `ScanBipedRecords` ne sait filtrer que par
 // slot ; c'est ici que le record devient celui d'une PERSONNE.
-func vfVersePaquet(st *vfStat, recs []filmdec.BipedPosition, ancres []vfAncre, pay []byte,
-	p filmdec.FilmPacket, s vfSource, pont vfPont,
+func vfVersePaquet(st *vfStat, recs []grammar.BipedPosition, ancres []vfAncre, pay []byte,
+	p grammar.FilmPacket, s vfSource, pont vfPont,
 ) []vfRecord {
 	st.bipeds += len(recs)
 	if len(recs) != len(ancres) {

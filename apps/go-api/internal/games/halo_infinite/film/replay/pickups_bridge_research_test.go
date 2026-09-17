@@ -32,7 +32,8 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const pickupsBridgeEnv = "BIPED_PICKUP_FILM"
@@ -42,10 +43,8 @@ func TestPickupsBridgeNamesPickers(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", pickupsBridgeEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
-	pickups, pStats, err := filmdec.ScanFilmBipedPickups(dir)
+	pickups, pStats, err := grammar.ScanFilmBipedPickups(dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
@@ -55,9 +54,9 @@ func TestPickupsBridgeNamesPickers(t *testing.T) {
 	// QuantaOnly : le pont ne se sert des positions que pour DÉCOUPER LES VIES (quel slot est
 	// occupé, de quand à quand). Les coordonnées monde ne l'intéressent pas, et exiger les
 	// bornes de carte ferait dépendre ce gate d'un catalogue sans rien lui apporter.
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.QuantaOnly = true
-	positions, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	positions, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("positions illisibles : %v", err)
 	}
@@ -70,7 +69,7 @@ func TestPickupsBridgeNamesPickers(t *testing.T) {
 		t.Fatalf("index de joueur illisible : %v", err)
 	}
 	table, tableCollisions := injectiveOrEmpty(idx)
-	fire, err := filmdec.ScanFilmFireEvents(dir)
+	fire, err := grammar.ScanFilmFireEvents(dir)
 	if err != nil {
 		fire = nil
 	}
@@ -101,20 +100,20 @@ func TestPickupsBridgeNamesPickers(t *testing.T) {
 	}
 
 	// B3 — l'egalite des slots entre les deux canaux, re-verifiee sur le chemin de production.
-	kf, err := filmdec.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
+	kf, err := grammar.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("images-cles illisibles : %v", err)
 	}
-	chg, _, err := filmdec.ScanFilmHeldWeaponChanges(dir, spawnSetFrom(kf))
+	chg, _, err := grammar.ScanFilmHeldWeaponChanges(dir, spawnSetFrom(kf))
 	if err != nil {
 		t.Fatalf("changements d arme illisibles : %v", err)
 	}
 	paires, egaux, ambigus := 0, 0, 0
 	for _, c := range chg {
-		if c.Kind != filmdec.HeldWeaponTaken && c.Kind != filmdec.HeldWeaponSwapped {
+		if c.Kind != types.HeldWeaponTaken && c.Kind != types.HeldWeaponSwapped {
 			continue
 		}
-		var cand []filmdec.BipedPickup
+		var cand []types.BipedPickup
 		for _, p := range pickups {
 			if p.CatalogID != c.Family {
 				continue

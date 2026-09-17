@@ -8,7 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // coverage_test.go — L'INVARIANT « rien ne se jette en silence ».
@@ -21,14 +22,14 @@ import (
 func TestCoverageBalancedOnEmptyInputs(t *testing.T) {
 	// Cas dégénérés : aucune position, aucun pont. Le compte doit rester juste — c'est là
 	// que les fuites passent inaperçues, parce qu'on regarde rarement le cas vide.
-	events := []filmdec.FireEvent{fireAt(1_000_000, 3, 90), fireAt(1_100_000, 3, 90)}
+	events := []grammar.FireEvent{fireAt(1_000_000, 3, 90), fireAt(1_100_000, 3, 90)}
 	for _, tc := range []struct {
 		name  string
-		pos   []filmdec.BipedPosition
+		pos   []grammar.BipedPosition
 		owner map[uint32]int
 	}{
 		{"sans position", nil, map[uint32]int{10: 3}},
-		{"sans pont", []filmdec.BipedPosition{posAt(10, 1_000_000, 1, 1, 90)}, nil},
+		{"sans pont", []grammar.BipedPosition{posAt(10, 1_000_000, 1, 1, 90)}, nil},
 		{"sans rien", nil, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -63,9 +64,9 @@ func TestCoverageCountsOutOfWindow(t *testing.T) {
 	// rattachement. La cause doit être « hors fenêtre » et NON « slot introuvable » : la
 	// première désigne le décodage des positions, la seconde le pont. Les confondre
 	// enverrait le prochain chantier au mauvais endroit.
-	pos := []filmdec.BipedPosition{posAt(10, 1_000_000, 1, 1, 90)}
+	pos := []grammar.BipedPosition{posAt(10, 1_000_000, 1, 1, 90)}
 	far := 1_000_000 + uint64(shotPosToleranceUS) + 500_000
-	events := []filmdec.FireEvent{fireAt(far, 3, 90)}
+	events := []grammar.FireEvent{fireAt(far, 3, 90)}
 	shots, _, cov := buildShots(pos, events, 1_000_000, 100_000, map[uint32]int{10: 3})
 	if len(shots) != 0 {
 		t.Fatalf("un tir hors fenetre ne doit pas etre publie : %+v", shots)
@@ -81,13 +82,13 @@ func TestCoverageCountsOutOfWindow(t *testing.T) {
 func TestDocumentPublishesCoverage(t *testing.T) {
 	// La couverture doit atteindre le DOCUMENT, pas seulement les journaux : c'est la
 	// différence entre un décodeur qui sait ce qu'il perd et un écran qui le montre.
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	for i := 0; i < 40; i++ {
 		ts := 1_000_000 + uint64(i)*50_000
 		pos = append(pos, posAt(10, ts, 1, 1, 90))
 		pos = append(pos, posAt(11, ts, 5, 5, 270))
 	}
-	events := []filmdec.FireEvent{fireAt(1_200_000, 3, 90), fireAt(1_300_000, 3, 90)}
+	events := []grammar.FireEvent{fireAt(1_200_000, 3, 90), fireAt(1_300_000, 3, 90)}
 	doc := BuildFromPositions("m", "halo_infinite", pos, events, Options{})
 	if doc.Coverage == nil {
 		t.Fatal("le document doit porter sa couverture")
@@ -210,10 +211,10 @@ func TestGrenadePlacedFromProjectileWithoutBridge(t *testing.T) {
 	// pas nommee — alors que leur position etait decodee.
 	// Le TypeID est renseigne : depuis le lot 3.1 un lancer porte son RANG, et un tag
 	// hors liste blanche n'est pas publie (il n'aurait aucune table pour le nommer).
-	throws := []filmdec.GrenadeThrow{
-		{TimestampUS: 2_000_000, FilmIndex: 5, TypeID: filmdec.GrenadeFragmentation},
+	throws := []grammar.GrenadeThrow{
+		{TimestampUS: 2_000_000, FilmIndex: 5, TypeID: grammar.GrenadeFragmentation},
 	}
-	proj := []filmdec.ProjectileTrack{{Slot: 1024, Gen: 1, Pts: []filmdec.ProjectileSample{
+	proj := []types.ProjectileTrack{{Slot: 1024, Gen: 1, Pts: []types.ProjectileSample{
 		{TimestampUS: 2_050_000, X: 12, Y: 34, Z: 5},
 	}}}
 	// AUCUNE position de biped, AUCUN pont : le lancer doit quand meme etre situe.
@@ -250,10 +251,10 @@ func TestGrenadeLinksItsPublishedProjectile(t *testing.T) {
 	// tranche PUBLIEE, du projectile ne de lui — c'est ce qui permet au client de poser
 	// l'effet du type au point de repos du vol. L'index 0 est un projectile valide : le
 	// champ est un pointeur precisement pour survivre a omitempty.
-	throws := []filmdec.GrenadeThrow{
-		{TimestampUS: 2_000_000, FilmIndex: 5, TypeID: filmdec.GrenadeFragmentation},
+	throws := []grammar.GrenadeThrow{
+		{TimestampUS: 2_000_000, FilmIndex: 5, TypeID: grammar.GrenadeFragmentation},
 	}
-	proj := []filmdec.ProjectileTrack{{Slot: 1024, Gen: 1, Pts: []filmdec.ProjectileSample{
+	proj := []types.ProjectileTrack{{Slot: 1024, Gen: 1, Pts: []types.ProjectileSample{
 		{TimestampUS: 2_050_000, X: 12, Y: 34, Z: 5},
 		{TimestampUS: 2_150_000, X: 13, Y: 35, Z: 4},
 		{TimestampUS: 2_250_000, X: 14, Y: 36, Z: 3, AtRest: true},

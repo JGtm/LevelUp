@@ -8,7 +8,7 @@ package replay
 // CHANGEMENT, un compteur de charges entières par emplacement armé — le quartet HAUT de sa
 // valeur 7 bits (rapport R11 §2 : sur `1cd3848a` la série de JGtm vaut 4, 3, 2, 1, 0
 // exactement aux cinq usages relevés au Theater ; 36 accroches de grappin sur 36 appariées
-// à une baisse contre 2/36 pour un témoin décalé). `filmdec.ScanFilmAbilityCharges` en rend
+// à une baisse contre 2/36 pour un témoin décalé). `grammar.ScanFilmAbilityCharges` en rend
 // les lectures ARMÉES ; ce fichier leur donne une IDENTITÉ et les publie telles quelles.
 //
 // LES LECTURES SONT PUBLIÉES, JAMAIS UN COMPTE D'USAGES DÉRIVÉ — piège (b) de R11 : une
@@ -34,9 +34,8 @@ package replay
 // jamais déguisées en mesure (la leçon H2 de la revue P3, appliquée d'emblée).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
-
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // AbilityCharge est UNE lecture de charge publiée : qui, quand, quel équipement, et ce
@@ -106,11 +105,11 @@ type AbilityChargeCoverage struct {
 // portait ce joueur quand cette valeur a été transmise ? »).
 type abilityChargeInputs struct {
 	// reads : les lectures armées brutes du film (filmdec).
-	reads []filmdec.AbilityCharge
+	reads []types.AbilityCharge
 	// stats : les dénominateurs du balayage — c'est d'eux que vient `ComponentAbsent`.
-	stats filmdec.AbilityChargeStats
+	stats types.AbilityChargeStats
 	// ranks : les identités de capacité transmises par i48, le SEUL canal d'identité.
-	ranks []filmdec.AbilityRank
+	ranks []types.AbilityRank
 	// lives : le découpage des vies, tel que le pont l'a déjà fait sur les positions BRUTES.
 	lives []lifeSpan
 	// palette : la palette du match, qui nomme le rang. Nil = film non classé -> aucune
@@ -187,7 +186,7 @@ type abilityChargeBuilder struct {
 // resolve donne son identité à UNE lecture et rend la charge à publier. ok=false quand elle
 // est écartée — et les deux refus sont comptés à part : « aucun rang lu dans la vie » et
 // « rang lu mais famille non mesurée » ne disent pas la même chose du film.
-func (b *abilityChargeBuilder) resolve(r filmdec.AbilityCharge) (AbilityCharge, bool) {
+func (b *abilityChargeBuilder) resolve(r types.AbilityCharge) (AbilityCharge, bool) {
 	rank, ok := b.byLife.rankInLife(r.Slot, r.TimestampUS)
 	if !ok {
 		b.cov.NoIdentity++

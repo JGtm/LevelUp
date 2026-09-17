@@ -33,7 +33,7 @@ package main
 // re-decoder ce qui est deja fait. `--force` redecode tout — c est ce qu il faut le jour ou une
 // revision change.
 //
-// DEUX REVISIONS, DEUX UNITES DE FRAICHEUR (lot 7C) : `KillSourceDecoderRev` pour le journal des
+// DEUX REVISIONS, DEUX UNITES DE FRAICHEUR (lot 7C) : `facts.Rev` pour le journal des
 // morts, `IsolationDecoderRev` pour les faits d isolement (`match_lives`,
 // `match_death_context`). Elles evoluent separement — un changement de la regle de visibilite
 // doit refaire les faits d isolement SANS refaire le journal, qui n a pas bouge. La commande
@@ -60,7 +60,7 @@ package main
 //	   qu il avait apres un seul. `replaybuild` n en avait pas davantage — mais SON APPELANT
 //	   chargeait les faits de TOUT le lot dans une map vivante toute la passe (supprime).
 //	2. LE PIC EST UNE FONCTION DES OCTETS DU FILM, BORNEE ET MESUREE. Le pic vaut le film brut
-//	   (garde vivant, `FilmOf` l aliase) plus le film decompresse (`filmsource.Load`, un tampon
+//	   (garde vivant, `FilmOf` l aliase) plus le film decompresse (`source.Load`, un tampon
 //	   par chunk). Mesure du cache au 2026-08-24, 951 films : le PLUS GROS
 //	   du corpus est `1c4c63c2` a 88 Mio sur disque (69 chunks), la moyenne est a 24 Mio. Le
 //	   pire cas tient donc largement sous le gibioctet.
@@ -149,7 +149,7 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	fs.BoolVar(&o.filmsOnly, "films-only", false, "ne jouer que la passe de decodage des films")
 	fs.BoolVar(&o.creditOnly, "credit-only", false, "ne jouer que la passe credit-seul (SQL -> SQL)")
 	fs.BoolVar(&o.online, "online", false, "telecharger les films absents du cache (et les y archiver) au lieu de s en tenir au cache")
-	fs.StringVar(&o.gamertag, "gamertag", "", "joueur dont les tokens servent la passe --online (obligatoire avec --online)")
+	fs.StringVar(&o.gamertag, "gamertag", "", "joueur dont les films sont traités, les plus récents d abord (obligatoire avec --online) ; les jetons viennent du pool")
 	fs.IntVar(&o.rps, "rps", 4, "debit maximal des requetes Halo de la passe --online")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -158,8 +158,8 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("--films-only et --credit-only s excluent")
 	}
 	if o.online && o.gamertag == "" {
-		return fmt.Errorf("--online exige --gamertag : les films se telechargent avec les tokens " +
-			"d un joueur declare dans db_profiles.json")
+		return fmt.Errorf("--online exige --gamertag : il nomme le joueur DONT les films sont " +
+			"traites (profil declare dans db_profiles.json) ; les jetons viennent du pool")
 	}
 	if !o.online && o.gamertag != "" {
 		return fmt.Errorf("--gamertag n a de sens qu avec --online (la passe hors ligne n emet aucune requete)")

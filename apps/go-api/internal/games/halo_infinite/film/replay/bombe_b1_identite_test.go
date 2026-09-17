@@ -6,7 +6,7 @@ package replay
 //
 // Dans Halo, la bombe d'Assaut est un OBJET TENU EN MAIN, comme le crâne d'Oddball et le
 // drapeau de CTF. Le dépôt décode déjà la chronologie de l'arme tenue par joueur
-// (`filmdec.ScanFilmHeldWeaponChanges`, composant weapon-state-type-info), et personne ne l'a
+// (`grammar.ScanFilmHeldWeaponChanges`, composant weapon-state-type-info), et personne ne l'a
 // jamais pointée sur l'Assaut. Le crâne et le drapeau ont un tag `weap` (32 bits hauts d'un
 // identifiant filmshell : `0x0017592c` et `0x2a392328`, catalogue d'icônes + manifeste
 // `replay_labels.toml`), mais AUCUN des deux n'est dans le catalogue d'ARMES
@@ -49,8 +49,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/weaponv3"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 )
 
 const (
@@ -73,10 +73,10 @@ type b1FamStat struct {
 }
 
 // b1ScanFilm balaye UN film et rend l'agrégat par famille, plus les stats du balayage.
-func b1ScanFilm(t *testing.T, cache, id string) (map[uint32]*b1FamStat, filmdec.HeldWeaponChangeStats) {
+func b1ScanFilm(t *testing.T, cache, id string) (map[uint32]*b1FamStat, grammar.HeldWeaponChangeStats) {
 	t.Helper()
 	dir := filepath.Join(cache, "film_chunks", id)
-	changes, stats, err := filmdec.ScanFilmHeldWeaponChanges(dir, nil)
+	changes, stats, err := grammar.ScanFilmHeldWeaponChanges(dir, nil)
 	if err != nil {
 		t.Fatalf("%s : canal des armes tenues illisible : %v", id, err)
 	}
@@ -88,7 +88,7 @@ func b1ScanFilm(t *testing.T, cache, id string) (map[uint32]*b1FamStat, filmdec.
 		return fams[f]
 	}
 	for _, ch := range changes {
-		if ch.Family != filmdec.NoWeaponVariant {
+		if ch.Family != grammar.NoWeaponVariant {
 			s := get(ch.Family)
 			s.vers++
 			s.slots[ch.Slot] = true
@@ -97,7 +97,7 @@ func b1ScanFilm(t *testing.T, cache, id string) (map[uint32]*b1FamStat, filmdec.
 			}
 			s.lastUS = ch.TimestampUS
 		}
-		if ch.Previous != filmdec.NoWeaponVariant && ch.Previous != ch.Family {
+		if ch.Previous != grammar.NoWeaponVariant && ch.Previous != ch.Family {
 			s := get(ch.Previous)
 			s.depuis++
 			s.slots[ch.Slot] = true
@@ -146,8 +146,6 @@ func TestBombeB1Temoin(t *testing.T) {
 		t.Skip("mesure non demandée : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestBombeB1Temoin")()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	fams, stats := b1ScanFilm(t, cache, b1Temoin)
 	t.Logf("%s : records=%d masque=%d emissions=%d repeats=%d, %d familles vues",
@@ -184,8 +182,6 @@ func TestBombeB1Assaut(t *testing.T) {
 		t.Skip("mesure non demandée : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestBombeB1Assaut")()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	// parFilm[film] = agrégat ; présence[fam] = films où la famille émet (VERS et DEPUIS).
 	parFilm := map[string]map[uint32]*b1FamStat{}

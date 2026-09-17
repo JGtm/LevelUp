@@ -46,7 +46,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -113,19 +113,19 @@ func TestAbilityIndexWidth(t *testing.T) {
 	)
 	for _, f := range films {
 		dir := filepath.Join(root, f)
-		n := filmdec.CountFilmChunks(dir)
+		n := grammar.CountFilmChunks(dir)
 		if n == 0 {
 			t.Logf("  %s : aucun chunk, ignoré", f)
 			continue
 		}
 		perFilmIdx[f] = map[uint32]int{}
 		for c := 1; c <= n; c++ {
-			chunk, err := filmdec.ReadFilmChunk(dir, c)
+			chunk, err := grammar.ReadFilmChunk(dir, c)
 			if err != nil {
 				continue
 			}
-			for _, p := range filmdec.WalkPackets(chunk) {
-				if p.Type != filmdec.PacketTypeKeyframe {
+			for _, p := range grammar.WalkPackets(chunk) {
+				if p.Type != grammar.PacketTypeKeyframe {
 					continue
 				}
 				pay := p.Payload(chunk)

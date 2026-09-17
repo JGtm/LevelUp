@@ -24,7 +24,7 @@ package replay
 // # LE PONT D'IDENTITE NE DEMANDE AUCUNE BASE, ET IL S'ENRICHIT QUAND L'APPELANT EN A UNE
 //
 // Le slot statborg d'un porteur se resout en xuid par les seuls INSTANTS DE MORT, PAR MANCHE
-// ([objectiveevents.ResolveRoundIdentity]) : les progressions du compteur de morts du statborg,
+// ([objectives.ResolveRoundIdentity]) : les progressions du compteur de morts du statborg,
 // restreintes a la manche, appariees au fil des morts du film (le slot est reattribue d'une
 // manche a l'autre). Le pont par TOTAUX aurait exige les lignes de match, donc
 // la base ; les deux ont ete confrontes a la phase 0 (8 accords / 0 desaccord la ou les deux
@@ -42,9 +42,10 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // FlagInput est CE QUE L'APPELANT FOURNIT du drapeau, plus ce que `BuildFromFilm` y depose.
@@ -55,11 +56,11 @@ type FlagInput struct {
 	// Scanned dit que l'appelant a bien ouvert le film. Faux : ni calque ni couverture — le
 	// document ne dit alors rien du drapeau, ce qui n'est pas « il n'y en avait pas ».
 	Scanned bool
-	// Records sont les enregistrements d'entite du film (`objectiveevents.StatRecordsCtx`), le
+	// Records sont les enregistrements d'entite du film (`objectives.StatRecordsCtx`), le
 	// MEME balayage que celui de la courbe de score : ils portent les evenements nommes du
 	// drapeau et les progressions du compteur de morts qui identifient les slots.
-	Records []objectiveevents.StatRecord
-	// Bursts sont les instants des BURSTS DE CAPTURE (`objectiveevents.CaptureBurstTimes`) —
+	Records []types.StatRecord
+	// Bursts sont les instants des BURSTS DE CAPTURE (`objectives.CaptureBurstTimes`) —
 	// une autre grammaire du film, et le signal sans lequel le discriminant de mode ne tient
 	// pas (un film Oddball rend 1 470 « prises » a la table du drapeau).
 	Bursts []int
@@ -74,7 +75,7 @@ type FlagInput struct {
 	// Marks est le CONTROLE independant, depose par `BuildFromFilm` : les records de bipede
 	// d'image-cle portant le marqueur de portage, et l'instant de toutes les images-cles.
 	// L'appelant ne le remplit pas.
-	Marks filmdec.CarrierMarkScan
+	Marks grammar.CarrierMarkScan
 	// Identity est le pont slot statborg -> xuid PAR MANCHE, DEJA RESOLU par l'appelant.
 	// FACULTATIF : laisse a zero, ce paquet le resout lui-meme par les seuls INSTANTS DE MORT
 	// (cf. [flagIdentityOf]), et le calque reste publiable hors ligne, sans base.
@@ -85,14 +86,14 @@ type FlagInput struct {
 	// ceux qui portent le drapeau. Sur `c0a82e88` (Husky Raid:CTF), les 3 prises du film sont
 	// toutes `noBridge` et le calque publie ZERO portage. La couche d'assemblage, elle, tient
 	// les lignes de match : elle COMPLETE le pont par le triplet
-	// ([objectiveevents.RoundIdentity.CompletedByLines], mono-manche, sans jamais contredire) et
+	// ([objectives.RoundIdentity.CompletedByLines], mono-manche, sans jamais contredire) et
 	// pose ici le resultat. C'est la MEME identite completee que les actions d'objectif
 	// consomment (`replaybuild.identifiedEvents`) — un seul pont pour les deux calques.
 	//
 	// CE PAQUET NE VOIT TOUJOURS AUCUN FAIT DE MATCH : il recoit une TABLE slot -> xuid, pas des
 	// lignes de match ; la regle qui la complete, et les faits qu'elle consomme, vivent chez
 	// l'appelant.
-	Identity objectiveevents.RoundIdentity
+	Identity objectives.RoundIdentity
 }
 
 // decodeFilmCarrierMarks balaye le marqueur de portage et JOURNALISE ce qu'il en est.
@@ -113,24 +114,24 @@ type FlagInput struct {
 // le calque est publie SANS son controle independant (`markerObserved` a zero), pas ampute. Un
 // silence ici laisserait croire que les images-cles ne portaient rien.
 //
-// HORS LIGNE — appelee par BuildFromFilm, sous LockProcessDecode.
-func decodeFilmCarrierMarks(film *filmsource.Film, matchID string, in FlagInput) filmdec.CarrierMarkScan {
+// HORS LIGNE — appelee par BuildFromFilm.
+func decodeFilmCarrierMarks(film *source.Film, matchID string, in FlagInput) grammar.CarrierMarkScan {
 	if !in.Scanned || !flagFilmSignalsOf(in).IsFlagFilm() {
-		return filmdec.CarrierMarkScan{}
+		return grammar.CarrierMarkScan{}
 	}
-	marks, err := filmdec.ScanCarrierMarks(film)
+	marks, err := grammar.ScanCarrierMarks(film)
 	if err != nil {
 		slog.Warn("drapeau : marqueur de portage illisible — calque publie sans son controle",
 			"err", err, "match_id", matchID)
-		return filmdec.CarrierMarkScan{}
+		return grammar.CarrierMarkScan{}
 	}
 	return marks
 }
 
 // flagFilmSignalsOf rend le verdict de mode a partir des SEULES lectures deja faites. Pur.
-func flagFilmSignalsOf(in FlagInput) objectiveevents.FlagFilmSignals {
-	return objectiveevents.FlagFilmSignalsFrom(in.Bursts,
-		objectiveevents.NamedEventsFrom(in.Records, objectiveevents.ObjectiveTypeFlag))
+func flagFilmSignalsOf(in FlagInput) objectives.FlagFilmSignals {
+	return objectives.FlagFilmSignalsFrom(in.Bursts,
+		objectives.NamedEventsFrom(in.Records, objectives.ObjectiveTypeFlag))
 }
 
 // attachFlagCarries pose la vie des drapeaux sur le document, avec sa couverture et son journal.
@@ -146,7 +147,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 	scan := FlagCarryScan{
 		Scanned: in.Scanned,
 		Signals: signals,
-		Events:  objectiveevents.NamedEventsFrom(in.Records, objectiveevents.ObjectiveTypeFlag),
+		Events:  objectives.NamedEventsFrom(in.Records, objectives.ObjectiveTypeFlag),
 		Spawns:  in.Spawns,
 		// L'EQUIPE DU PORTEUR VIENT DU FILM (lot 1.7, decision utilisateur V4) : elle ne descend
 		// plus de l'appelant, donc l'invariant « jamais son propre drapeau » tient sur une
@@ -161,7 +162,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 	// grammaire n'est pas celle du CTF ce compteur se lit n'importe ou. Mesure du terrain :
 	// `cmd/replay-build --facts` montait a 19-22 Go et ne rendait jamais la main.
 	//
-	// LE PLAFOND DU DEROULAGE EST LA VRAIE CORRECTION (`objectiveevents.maxDeathsPerSlot`) : il
+	// LE PLAFOND DU DEROULAGE EST LA VRAIE CORRECTION (`objectives.maxDeathsPerSlot`) : il
 	// ferme le defaut la ou il est, y compris sur un film de CTF. Cette garde-ci est la seconde
 	// moitie, et elle vaut par elle-meme : sur les neuf dixiemes des matchs — tout ce qui n'est
 	// pas du CTF — ce pont ne sert a RIEN, puisque le calque ne publie rien. On ne le paye plus.
@@ -201,14 +202,14 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 // son nom, et aucun ne peut y changer de joueur (`CompletedByLines` ne contredit jamais le pont
 // par morts).
 //
-// [objectiveevents.RoundIdentity.Resolved] et non un compte de noms : un appelant hors ligne qui
+// [objectives.RoundIdentity.Resolved] et non un compte de noms : un appelant hors ligne qui
 // ne fournit RIEN doit tomber sur la resolution locale, alors qu'un pont fourni qui ne nomme
 // personne est une reponse, pas un silence.
-func flagIdentityOf(in FlagInput, opt Options) objectiveevents.RoundIdentity {
+func flagIdentityOf(in FlagInput, opt Options) objectives.RoundIdentity {
 	if in.Identity.Resolved() {
 		return in.Identity
 	}
-	return objectiveevents.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths))
+	return objectives.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths))
 }
 
 // attachFlagReturnZone publie la REGLE de retour du mode — et se tait des qu'il manque quoi que
@@ -238,10 +239,10 @@ func attachFlagLayer(doc *ReplayDocument, carries []FlagCarry, cov *FlagCarriesC
 }
 
 // deathInstantsOf traduit le fil des morts du rejeu dans la forme qu'attend le pont d'identite.
-func deathInstantsOf(deaths []Death) []objectiveevents.DeathInstant {
-	out := make([]objectiveevents.DeathInstant, 0, len(deaths))
+func deathInstantsOf(deaths []Death) []types.DeathInstant {
+	out := make([]types.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
-		out = append(out, objectiveevents.DeathInstant{
+		out = append(out, types.DeathInstant{
 			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS),
 		})
 	}

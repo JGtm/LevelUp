@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -81,13 +81,11 @@ func TestOriginMeasure(t *testing.T) {
 // mesureOrigine rend l'origine par lecture et l'origine par temoin, en millisecondes.
 func mesureOrigine(t *testing.T, dir, short string) (int64, int64) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
 	// Sans bornes de carte les coordonnees restent des quanta — sans importance ici : seuls
 	// les HORODATAGES sont mesures.
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("positions : %v", err)
 	}

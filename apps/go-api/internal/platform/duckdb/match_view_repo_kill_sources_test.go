@@ -16,7 +16,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/killscope"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/migration"
 )
 
@@ -132,7 +132,7 @@ func TestQ21bKillSources_HeadshotMultiplierExclu(t *testing.T) {
 	// no_raw_headshot_category_literal_test.go interdit "HeadshotMultiplier" hors de son
 	// foyer — killsource EST ce foyer) : la valeur voyage depuis la SEULE source de vérité.
 	db := newKillSourcesDB(t, []killSourceRow{
-		{"m1", 1000, "K1", intPtr(0x11), strPtr(killsource.CategoryHeadshotMultiplier.Name())},
+		{"m1", 1000, "K1", intPtr(0x11), strPtr(decfilm.CategoryHeadshotMultiplier.Name())},
 	})
 	got := queryKillSources(t, db, "m1")
 	if len(got) != 1 {

@@ -4143,8 +4143,23 @@ export interface components {
             published: number;
             /** Format: int64 */
             reads: number;
+            scan?: components["schemas"]["AbilityImpulseScanCoverage"];
             /** Format: int64 */
             unpublished: number;
+        };
+        AbilityImpulseScanCoverage: {
+            /** Format: int64 */
+            read: number;
+            /** Format: int64 */
+            records: number;
+            /** Format: int64 */
+            tag1: number;
+            /** Format: int64 */
+            unread: number;
+            /** Format: int64 */
+            withI57: number;
+            /** Format: int64 */
+            withI59: number;
         };
         AbilityRead: {
             /** Format: int64 */
@@ -5787,6 +5802,7 @@ export interface components {
             bombArmings?: components["schemas"]["BombArmingsCoverage"];
             bombCarries?: components["schemas"]["BombCarriesCoverage"];
             bridge: components["schemas"]["BridgeHealth"];
+            decoder?: components["schemas"]["DecoderCoverage"];
             equipment?: components["schemas"]["EquipmentCoverage"];
             equipmentChanges?: components["schemas"]["EquipmentChangeCoverage"];
             fallbacks?: components["schemas"]["FallbackHit"][] | null;
@@ -5930,6 +5946,14 @@ export interface components {
             exists: boolean;
             name: string;
             tables?: components["schemas"]["TableStatus"][] | null;
+        };
+        DecoderCoverage: {
+            build: string;
+            factsRev: string;
+            grammarRev: string;
+            profileRev: string;
+            registry?: components["schemas"]["RegistryCoverage"];
+            sourceRev: string;
         };
         DetectionPatchInputBody: {
             note?: string;
@@ -6385,6 +6409,8 @@ export interface components {
         };
         ExplorerBriefingDominance: {
             /** Format: int64 */
+            abnegations?: number;
+            /** Format: int64 */
             contre_remontadas?: number;
             /** Format: int64 */
             debandades?: number;
@@ -6394,6 +6420,8 @@ export interface components {
             humiliations?: number;
             /** Format: int64 */
             remontadas?: number;
+            /** Format: int64 */
+            sabordages?: number;
         };
         ExplorerBriefingPeakRank: {
             rating_type: string;
@@ -10188,6 +10216,14 @@ export interface components {
         RegisterResponse: {
             role: string;
             username: string;
+        };
+        RegistryCoverage: {
+            /** Format: int64 */
+            blocks: number;
+            fingerprint: string;
+            /** Format: int64 */
+            namedSlots: number;
+            status: string;
         };
         RegistryNamesBackfillResult: {
             dry_run: boolean;

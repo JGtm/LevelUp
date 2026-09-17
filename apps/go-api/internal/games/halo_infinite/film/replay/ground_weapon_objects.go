@@ -19,7 +19,8 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // WorldObjectScan porte ce que le film rend sur UN archétype d'objet du monde. C'est une entrée
@@ -39,13 +40,13 @@ type WorldObjectScan struct {
 	Scanned bool
 	// Creations sont les records de création acceptés par le balayage, AVANT le filtre
 	// d'identité (celui-ci est une règle d'assemblage, cf. `padRule`).
-	Creations []filmdec.EquipmentCreation
-	Stats     filmdec.EquipmentCreationStats
+	Creations []types.EquipmentCreation
+	Stats     types.EquipmentCreationStats
 	// Keyframes porte la bande de slots et le RECENSEMENT qui borne les disparitions.
-	Keyframes filmdec.WorldObjectKeyframes
+	Keyframes grammar.WorldObjectKeyframes
 	// Tracks sont les pistes de position des paquets delta pour la même bande. Elles disent
 	// deux choses : si une vie a bougé (le critère `at_rest`) et où elle s'est arrêtée.
-	Tracks []filmdec.ProjectileTrack
+	Tracks []types.ProjectileTrack
 }
 
 // padRule est la RÈGLE D'IDENTITÉ d'une chaîne de socles : ce qui fait qu'un record de création
@@ -90,7 +91,7 @@ func weaponPadRule(flags map[uint32]Label) padRule {
 
 // gwPickupObject est une apparition retenue, bornée et datée.
 type gwPickupObject struct {
-	Key filmdec.EquipmentLifeKey
+	Key types.EquipmentLifeKey
 	// Appar est l'apparition au sens des socles : position de CRÉATION, classe, vie delta.
 	Appar gwPadApparition
 	// FamilyID est le mot MPP de 32 bits — l'identité brute de l'arme, celle que l'artefact
@@ -113,7 +114,7 @@ type gwPickupObject struct {
 	// de l arme quand elle touche le sol. Faux quand la lecture n est pas prouvee bit-exacte —
 	// la reserve de lecture est decrite et chiffree dans ce fichier-la.
 	HasAmmo bool
-	Ammo    filmdec.GroundWeaponAmmo
+	Ammo    types.GroundWeaponAmmo
 }
 
 // gwPickupDateUS rend l'instant retenu de la disparition : celui du passage quand il existe, la
@@ -142,9 +143,9 @@ func (o gwPickupObject) gwPickupDateUS() uint64 {
 // `continue` qui écarterait une création sans la compter le ferait tomber.
 func padObjects(
 	scan WorldObjectScan, rule padRule, lives map[uint32][]equipLife,
-	positions []filmdec.BipedPosition,
+	positions []grammar.BipedPosition,
 ) ([]gwPickupObject, gwRejects) {
-	byKey := map[filmdec.EquipmentLifeKey][]filmdec.EquipmentCreation{}
+	byKey := map[types.EquipmentLifeKey][]types.EquipmentCreation{}
 	kept := 0
 	var rejected gwRejects
 	for _, c := range scan.Creations {
@@ -162,7 +163,7 @@ func padObjects(
 			continue
 		}
 		kept++
-		k := filmdec.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
+		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
 		byKey[k] = append(byKey[k], c)
 	}
 	filmEnd := gwFilmEndUS(scan, positions)
@@ -292,8 +293,8 @@ type gwRejects struct {
 type gwResolveInputs struct {
 	kfTimes   []uint64
 	seen      []uint64
-	tracks    []filmdec.ProjectileTrack
-	positions []filmdec.BipedPosition
+	tracks    []types.ProjectileTrack
+	positions []grammar.BipedPosition
 }
 
 // gwPickupResolve borne la disparition de l'objet puis la date.
@@ -302,7 +303,7 @@ type gwResolveInputs struct {
 // a-t-il bougé ? » et à « où est-il quand on le prend ? ». Une seule règle
 // (`gwPickupLifeTrack`), un seul endroit qui l'applique.
 func gwPickupResolve(
-	o *gwPickupObject, c filmdec.EquipmentCreation, lifeEnd, filmEnd uint64, in gwResolveInputs,
+	o *gwPickupObject, c types.EquipmentCreation, lifeEnd, filmEnd uint64, in gwResolveInputs,
 ) {
 	life, moved := gwPickupLifeTrack(in.tracks, c.TimestampUS, lifeEnd)
 	o.Appar.HasDelta = moved
@@ -327,11 +328,11 @@ func gwPickupResolve(
 
 // gwTracksByKey indexe les pistes delta par vie (slot, gen).
 func gwTracksByKey(
-	tracks []filmdec.ProjectileTrack,
-) map[filmdec.EquipmentLifeKey][]filmdec.ProjectileTrack {
-	out := map[filmdec.EquipmentLifeKey][]filmdec.ProjectileTrack{}
+	tracks []types.ProjectileTrack,
+) map[types.EquipmentLifeKey][]types.ProjectileTrack {
+	out := map[types.EquipmentLifeKey][]types.ProjectileTrack{}
 	for _, tr := range tracks {
-		k := filmdec.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}
+		k := types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}
 		out[k] = append(out[k], tr)
 	}
 	return out
@@ -340,7 +341,7 @@ func gwTracksByKey(
 // gwFilmEndUS rend la fin du film au sens de ce calque : le dernier instant qu'une de ses trois
 // sources porte. C'est la borne haute de dernier recours — celle d'un objet créé après la
 // dernière image-clé, dont rien ne prouve la disparition.
-func gwFilmEndUS(scan WorldObjectScan, positions []filmdec.BipedPosition) uint64 {
+func gwFilmEndUS(scan WorldObjectScan, positions []grammar.BipedPosition) uint64 {
 	end := scan.Keyframes.LastTimeUS()
 	for _, p := range positions {
 		if p.TimestampUS > end {

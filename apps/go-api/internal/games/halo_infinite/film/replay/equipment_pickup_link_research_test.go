@@ -47,7 +47,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // eqlLife est la fenêtre de présence d'un objet du monde et sa position de repos.
@@ -65,13 +66,13 @@ type eqlLife struct {
 // delta, bornée en fin par le recensement des images-clés de la MÊME paire (slot, génération),
 // contenu à la fenêtre de la vie — la paire reboucle, son recensement mêle plusieurs vies.
 func eqlLivesFromScan(scan WorldObjectScan) []eqlLife {
-	byPair := map[filmdec.EquipmentLifeKey][]filmdec.ProjectileTrack{}
+	byPair := map[types.EquipmentLifeKey][]types.ProjectileTrack{}
 	for _, tr := range scan.Tracks {
 		if len(tr.Pts) == 0 {
 			continue
 		}
-		byPair[filmdec.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}] = append(
-			byPair[filmdec.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}], tr)
+		byPair[types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}] = append(
+			byPair[types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}], tr)
 	}
 	var out []eqlLife
 	for k, list := range byPair {
@@ -98,7 +99,7 @@ func eqlLivesFromScan(scan WorldObjectScan) []eqlLife {
 
 // eqlNearest rend la distance au plus proche objet VIVANT à l'instant `at`, et si un tel objet
 // existe.
-func eqlNearest(lives []eqlLife, p filmdec.BipedPosition, at uint64) (float64, bool) {
+func eqlNearest(lives []eqlLife, p grammar.BipedPosition, at uint64) (float64, bool) {
 	best, ok := math.MaxFloat64, false
 	for _, l := range lives {
 		if at < l.t0 || at > l.tEnd {
@@ -130,7 +131,7 @@ func eqlStats(ds []float64, seuil float64) (mediane float64, sous float64, n int
 
 func TestEquipmentPickupGroundLinkAtNativeInstant(t *testing.T) {
 	s := glResolve(t)
-	pickups, _, err := filmdec.ScanFilmBipedPickups(s.dir)
+	pickups, _, err := grammar.ScanFilmBipedPickups(s.dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
@@ -148,7 +149,7 @@ func TestEquipmentPickupGroundLinkAtNativeInstant(t *testing.T) {
 	var reel, temoinAutre, temoinDecale []float64
 	sansPos, sansObjet := 0, 0
 	for _, p := range pickups {
-		if filmdec.BipedPickupIsWeaponClass(p.Class) {
+		if grammar.BipedPickupIsWeaponClass(p.Class) {
 			continue
 		}
 		pos, ok := glAt(s.pos, p.Slot, p.TimestampUS)

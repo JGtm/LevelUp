@@ -14,7 +14,7 @@ package killcollector
 //
 // # LE FILM EST CHARGÉ UNE FOIS, ET LE PONT DISQUE A DISPARU
 //
-// `games/halo_infinite/film/replay`/`games/halo_infinite/film/filmdec` exposent QUATRE lectures du film : ScanBipedPositions,
+// `games/halo_infinite/film/replay`/`games/halo_infinite/film/internal/grammar` exposent QUATRE lectures du film : ScanBipedPositions,
 // ScanClockOrigin, ScanPlayerIndices, ScanDeaths. Le collecteur, lui, tient les chunks EN MÉMOIRE
 // PURE (téléchargés par `FilmChunksForMatch`) — il ne les a jamais écrits sur disque.
 //
@@ -27,10 +27,10 @@ package killcollector
 // PLAN_CUISSON_PERF (item 1.6, 2026-09-02) : quatre écritures de fichiers, puis QUATRE relectures
 // et QUATRE décompressions du film entier.
 //
-// Le lot 1 a rendu (b) possible SANS second décodeur : `internal/analysis/filmsource` est la source
+// Le lot 1 a rendu (b) possible SANS second décodeur : `internal/games/halo_infinite/film/internal/source` est la source
 // unique du film (une décompression, un découpage en paquets, une grammaire), et les quatre
-// balayages prennent désormais un `*filmsource.Film`. Le collecteur charge donc le film UNE fois
-// pour les morts (`killsource.Decode`) et le repasse tel quel ici. Plus de répertoire temporaire,
+// balayages prennent désormais un `*decfilm.Film`. Le collecteur charge donc le film UNE fois
+// pour les morts (`decfilm.Decode`) et le repasse tel quel ici. Plus de répertoire temporaire,
 // plus de disque plein possible — et le seul refus qui reste est celui qui protégeait d'une
 // position fausse : la séquence trouée (cf. refuserSequenceTrouee).
 //
@@ -72,10 +72,8 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/observability"
@@ -110,7 +108,7 @@ const (
 // structurellement aucune position à offrir. Utiliser la liste pré-fusion n'est donc pas une
 // approximation, c'est la population exacte qui peut avoir une position.
 func (c *KillSourceCollector) collectPositions(
-	ctx context.Context, matchID string, film *filmsource.Film, res *killsource.Result,
+	ctx context.Context, matchID string, film *decfilm.Film, res *decfilm.Result,
 	ids MatchIdentities, deaths, fusionnees []persist.KillEventInsert,
 ) {
 	if !c.caps.Has(games.CapFilmKillPositions) {
@@ -229,12 +227,12 @@ type passePositions struct {
 // 146 811 (`0797ce72`) — 26 enregistrements bruts sur 267 400 pour le premier.
 //
 // `entry` est passée PAR VALEUR et le contexte la lit à la construction : la règle du catalogue
-// est écrite UNE fois, dans `filmdec.NewFilmContextForMap`, et ce site la lit par
+// est écrite UNE fois, dans `decfilm.NewFilmContextForMap`, et ce site la lit par
 // `ImposedLayout()` — le même endroit que la cuisson.
 func optionsDeBalayageDesPositions(
-	fc *filmdec.FilmContext, entry filmdec.MapQuantEntry,
-) filmdec.ScanFilmOptions {
-	opt := filmdec.DefaultScanFilmOptions()
+	fc *decfilm.FilmContext, entry decfilm.MapQuantEntry,
+) decfilm.ScanFilmOptions {
+	opt := decfilm.DefaultScanFilmOptions()
 	rng := entry.Range()
 	opt.WorldRange = &rng
 	opt.Layout = fc.ImposedLayout()
@@ -248,29 +246,23 @@ func optionsDeBalayageDesPositions(
 // LES QUATRE BALAYAGES PARTAGENT LE FILM DÉJÀ CHARGÉ (lot 1, item 1.6) : ils prenaient chacun un
 // répertoire et relisaient le film entier depuis le disque, décompression comprise.
 //
-// TIENT LE VERROU DE DÉCODAGE DU PROCESS, comme son frère `buildHitsBatches` (hits.go) et comme
-// le contrat de `filmdec/decode_gate.go:16-18` l'exige : « tout chemin qui enchaîne les balayages
-// de ce paquet acquiert ce verrou pour TOUTE la durée du décodage d'un film ». Ce chemin-ci
-// enchaîne QUATRE balayages sur des globaux de paquet et ne le prenait pas — asymétrie relevée
-// au registre (E5) et corrigée le 2026-09-05 (lot E, item E.5).
-//
-// PAS DE RÉ-ENTRANCE : le mutex n'est pas réentrant, et `killsource.Decode` — le seul autre
-// preneur du chemin `collect()` — le relâche AVANT de rendre (`killsource/decode.go:78-79`,
-// `defer release()` sur une fonction qui retourne). `collectPositions` est appelé après lui,
-// jamais dedans.
+// PLUS AUCUN VERROU DE DÉCODAGE (lot 2.3). Ce chemin enchaîne QUATRE balayages, et il a
+// longtemps fallu les sérialiser : les paramètres de réplication du décodeur étaient des
+// variables de paquet de `grammar`, qu'un décodage concurrent aurait écrasées. Il n'en reste
+// AUCUNE d'écrite (ratchet `archlint/filmdec_package_vars_test.go`) : chaque balayage porte son
+// profil et son observation, donc son propre état. Le verrou INTER-PROCESSUS
+// `filmproc.AcquireSolo`, lui, borne la mémoire de la machine et n'est pas concerné.
 //
 // ELLE NE COMPOSE RIEN ELLE-MEME : ce qui suit les balayages — les deux jeux de lignes — vit
 // dans `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06,
 // constat B1 : aucun test ne pincait l accord entre le decalage et l instant persiste).
 func buildPositionRows(
-	film *filmsource.Film, res *killsource.Result, entry filmdec.MapQuantEntry, ids MatchIdentities,
+	film *decfilm.Film, res *decfilm.Result, entry decfilm.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
 ) (passePositions, materiauDIsolement, error) {
-	release := filmdec.LockProcessDecode()
-	defer release()
 
-	fc := filmdec.NewFilmContextForMap(film, &entry, nil)
-	positions, err := filmdec.ScanBipedPositions(film, optionsDeBalayageDesPositions(fc, entry))
+	fc := decfilm.NewFilmContextForMap(film, &entry, nil)
+	positions, err := decfilm.ScanBipedPositions(fc, optionsDeBalayageDesPositions(fc, entry))
 	if err != nil {
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf("positions bipeds: %w", err)
 	}
@@ -308,7 +300,7 @@ func buildPositionRows(
 	// sous le MEME verrou de decodage que les positions ; sans lui, `match_lives` retomberait
 	// sur le pont par morts alors que la cuisson, elle, lit le film. Deux producteurs, un seul
 	// nommage : c'est toute la decision D11. Absence NON fatale — le registre degrade et le dit.
-	creations, cStats, err := filmdec.ScanBipedCreations(fc)
+	creations, cStats, err := decfilm.ScanBipedCreations(fc)
 	if err != nil {
 		slog.Warn("killsource: creations de bipede illisibles — degradation sur le pont par morts",
 			"err", err, "match_id", matchID)
@@ -358,7 +350,7 @@ func buildPositionRows(
 // du kill. `toKillOpeningRows` n a donc AUCUNE avance a readditionner : le faire decalerait
 // toutes les lignes de 1,5 s.
 func composerPassePositions(
-	positions []filmdec.BipedPosition, reg replay.IdentityRegistry,
+	positions []decfilm.BipedPosition, reg replay.IdentityRegistry,
 	kills []replay.KillRef, originUS int64, matchID string,
 ) passePositions {
 	posOut, rep := replay.BuildKillPositions(positions, reg, kills, originUS)
@@ -451,18 +443,18 @@ func toKillPositionRows(matchID string, positions []replay.KillPosition) []persi
 // qui protegeait d une position FAUSSE — et il survit tel quel, sans disque.
 //
 // `FilmOf` (bridge.go) tolere des index non contigus (les trous restent des chunks VIDES,
-// `killsource.Decode` fait de l acces direct par index) ; les QUATRE balayages, eux, parcourent
-// les chunks de donnees par numero (`filmdec.FilmChunkNumbers`) et un chunk vide ne rend aucun
+// `decfilm.Decode` fait de l acces direct par index) ; les QUATRE balayages, eux, parcourent
+// les chunks de donnees par numero (`decfilm.FilmChunkNumbers`) et un chunk vide ne rend aucun
 // paquet — un film troue leur ferait donc lire un film AMPUTE, en silence, jamais une erreur. Le
 // controle ci-dessous refuse ce cas au lieu de le laisser produire une lecture partielle
 // plausible : le critere de ce chantier est qu aucune position fausse ne soit possible, un film
 // incomplet perd donc SES positions plutot que d en risquer de fausses.
 //
 // LA REGLE EST CELLE D AVANT, A L IDENTIQUE : le controle porte sur les chunks de DONNEES
-// (numeros 1..N), jamais sur l en-tete — c est ce que faisait `filmdec.CountFilmChunks`, qui
+// (numeros 1..N), jamais sur l en-tete — c est ce que faisait `decfilm.CountFilmChunks`, qui
 // comptait a partir de `chunk_01.bin`. Un film reduit au seul chunk 0, ou vide, passe donc ici
 // et se fait refuser par les balayages eux-memes (`ErrNoFilmChunk`).
-func refuserSequenceTrouee(film *filmsource.Film) error {
+func refuserSequenceTrouee(film *decfilm.Film) error {
 	if film == nil {
 		return fmt.Errorf("film absent")
 	}

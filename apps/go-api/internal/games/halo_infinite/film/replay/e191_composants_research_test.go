@@ -24,10 +24,10 @@ package replay
 //
 // # CE QUE CETTE MESURE LIT, ET OU
 //
-// Le RECORD DE CREATION de l objet (`filmdec.EquipmentCreation`) porte son MASQUE DE COMPOSANTS
+// Le RECORD DE CREATION de l objet (`types.EquipmentCreation`) porte son MASQUE DE COMPOSANTS
 // (`Mask`, la liste des index presents) : c est l etat de l objet AU MOMENT DE LA POSE, et c est
 // la question. La chaine de production le balaie deja
-// ([filmdec.ScanFilmEquipmentCreations]) ; cette mesure ne fait que joindre ce masque aux poses
+// ([grammar.ScanFilmEquipmentCreations]) ; cette mesure ne fait que joindre ce masque aux poses
 // PUBLIEES par la meme cuisson, clef `(slot, gen)` et instant.
 //
 // RESERVE ECRITE : ce masque est celui du record de CREATION. Un composant ECRIT PLUS TARD dans
@@ -47,7 +47,9 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Les composants d etat de l archetype 37 que cette mesure regarde, avec le nom que LE JEU leur
@@ -66,7 +68,7 @@ var e191Composants = []struct {
 
 // e191CleCreation identifie le record de creation d une pose : la vie de l objet et son instant.
 type e191CleCreation struct {
-	Life filmdec.EquipmentLifeKey
+	Life types.EquipmentLifeKey
 	T0US uint64
 }
 
@@ -122,7 +124,7 @@ func e191ComposantsDUnFilm(t *testing.T, root string, f e191Film) (map[string]in
 	}
 	parMasque := map[e191CleCreation][]int{}
 	for _, c := range cre {
-		parMasque[e191CleCreation{filmdec.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}, c.TimestampUS}] = c.Mask
+		parMasque[e191CleCreation{types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}, c.TimestampUS}] = c.Mask
 	}
 	ctx := e191Contexte(g)
 	ctx.familles = goldenCatalog(t).EquipmentFamilies
@@ -132,7 +134,7 @@ func e191ComposantsDUnFilm(t *testing.T, root string, f e191Film) (map[string]in
 		t.Logf("film %s : evenements 103 illisibles (%v) — hors mesure", f.Short8, err)
 		return nil, nil, false
 	}
-	designees := map[filmdec.EquipmentLifeKey][]uint64{}
+	designees := map[types.EquipmentLifeKey][]uint64{}
 	for _, e := range spawns {
 		if e.SpawnedValid {
 			designees[e.Spawned] = append(designees[e.Spawned], e.TimestampUS)
@@ -171,15 +173,16 @@ func e191ComposantsDUnFilm(t *testing.T, root string, f e191Film) (map[string]in
 
 // e191Creations balaie les records de CREATION ti=37 du film, aux memes largeurs MPP que la
 // chaine de production vient de mesurer — sans elles, aucune identite ne se resout.
-func e191Creations(dir string, e filmdec.MapQuantEntry, g *goldenInputs,
-) ([]filmdec.EquipmentCreation, filmdec.EquipmentCreationStats, bool) {
-	release := filmdec.LockProcessDecode()
-	defer release()
-	defer installWorldObjectPrecision(e, g.Film, nil)()
-	prev := filmdec.SetMPPWidths(g.PlacementStats.Calibration.Widths)
-	defer filmdec.SetMPPWidths(prev)
+func e191Creations(dir string, e profile.MapQuantEntry, g *goldenInputs,
+) ([]types.EquipmentCreation, types.EquipmentCreationStats, bool) {
+	fc, _, err := grammar.ContexteDeFilm(dir)
+	if err != nil {
+		return nil, types.EquipmentCreationStats{}, false
+	}
+	fc.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout())
+	fc.PoserMPP(g.PlacementStats.Calibration.Widths)
 	wr := e.Range()
-	cre, st, err := filmdec.ScanFilmEquipmentCreations(dir, &wr)
+	cre, st, err := grammar.ScanEquipmentCreations(fc, &wr)
 	if err != nil {
 		return nil, st, false
 	}

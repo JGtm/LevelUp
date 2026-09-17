@@ -39,7 +39,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 const (
@@ -56,7 +57,7 @@ const (
 // d3tLargeurs : les trois decoupages sondes. Le defaut, celui MESURE sur les films BTB du lot
 // armes-au-sol, et un absurde — sans ce dernier, deux resultats identiques ne prouveraient rien
 // (les deux premiers pourraient coincider par hasard sur ce film).
-var d3tLargeurs = []filmdec.MPPWidths{{Lead: 9, Index: 5}, {Lead: 8, Index: 3}, {Lead: 12, Index: 7}}
+var d3tLargeurs = []profile.MPPWidths{{Lead: 9, Index: 5}, {Lead: 8, Index: 3}, {Lead: 12, Index: 7}}
 
 // d3tReleve est ce qu'un balayage rend, reduit a ce qui se compare.
 type d3tReleve struct {
@@ -83,7 +84,7 @@ func TestTotalControlLargeursMPP(t *testing.T) {
 
 	// TEST A — LE MEME FILM SOUS TROIS DECOUPAGES.
 	releves := make([]d3tReleve, 0, len(d3tLargeurs))
-	var refScan filmdec.ManagedPropertyScan
+	var refScan grammar.ManagedPropertyScan
 	for i, w := range d3tLargeurs {
 		sc, err := d3tScanSousLargeurs(dir, w)
 		if err != nil {
@@ -131,19 +132,20 @@ func TestTotalControlLargeursMPP(t *testing.T) {
 
 // d3tScanSousLargeurs installe un decoupage MPP, balaye `ti=13`, et RESTAURE.
 //
-// LE VERROU DE PROCESSUS ET LA RESTAURATION SONT OBLIGATOIRES : ce sont des globaux de paquet, et
-// une sonde qui les laisserait poses contaminerait tout ce qui suit dans le meme processus.
-func d3tScanSousLargeurs(dir string, w filmdec.MPPWidths) (filmdec.ManagedPropertyScan, error) {
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.SetMPPWidths(w)
-	defer filmdec.SetMPPWidths(prev)
-	return filmdec.ScanFilmManagedProperties(dir)
+// LES LARGEURS SE POSENT SUR LE CONTEXTE DU FILM (lot 2.3) : rien n'est installe dans le
+// processus, donc rien n'est a restaurer, et deux sondes peuvent tourner cote a cote.
+func d3tScanSousLargeurs(dir string, w profile.MPPWidths) (grammar.ManagedPropertyScan, error) {
+	fc, _, err := grammar.ContexteDeFilm(dir)
+	if err != nil {
+		return grammar.ManagedPropertyScan{}, err
+	}
+	fc.PoserMPP(w)
+	return grammar.ScanManagedProperties(fc)
 }
 
 // d3tDiagnostic publie la CONCENTRATION du sous-ensemble chaine : le discriminant entre vrais
 // records et faux ancrages, defini avant la mesure.
-func d3tDiagnostic(t *testing.T, short string, sc filmdec.ManagedPropertyScan) {
+func d3tDiagnostic(t *testing.T, short string, sc grammar.ManagedPropertyScan) {
 	t.Helper()
 	parSlot := map[uint32]int{}
 	tag5 := map[uint32]map[uint64]bool{}
@@ -154,8 +156,8 @@ func d3tDiagnostic(t *testing.T, short string, sc filmdec.ManagedPropertyScan) {
 		}
 		chainees++
 		parSlot[r.Slot]++
-		if r.Field == filmdec.ManagedPropertyScalar && r.HasValue &&
-			r.Tag == filmdec.ManagedPropertyTagStringID {
+		if r.Field == grammar.ManagedPropertyScalar && r.HasValue &&
+			r.Tag == grammar.ManagedPropertyTagStringID {
 			if tag5[r.Slot] == nil {
 				tag5[r.Slot] = map[uint64]bool{}
 			}

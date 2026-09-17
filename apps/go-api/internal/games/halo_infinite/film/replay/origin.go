@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // origin.go — L'ORIGINE DE LA FRAME 0, PUBLIEE SUR L'HORLOGE DU FIL.
@@ -79,7 +79,7 @@ const originControlMinMatches = 5
 // HORS LIGNE (I/O disque) — jamais depuis un chemin de requete.
 // ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanClockOrigin].
 func ScanFilmClockOrigin(filmDir string) (uint64, error) {
-	film, err := filmsource.LoadDir(filmDir, nil)
+	film, err := source.LoadDir(filmDir, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -87,8 +87,8 @@ func ScanFilmClockOrigin(filmDir string) (uint64, error) {
 }
 
 // ScanClockOrigin rend l'horodatage moteur du PREMIER PAQUET d'un film DEJA CHARGE.
-func ScanClockOrigin(film *filmsource.Film) (uint64, error) {
-	_, packets, ok := filmdec.FilmChunkAt(film, 1)
+func ScanClockOrigin(film *source.Film) (uint64, error) {
+	_, packets, ok := grammar.FilmChunkAt(film, 1)
 	if !ok {
 		return 0, fmt.Errorf("chunk 1 (origine d'horloge) : absent du film")
 	}

@@ -244,6 +244,10 @@
   --ac-narrative-debacle-text:           #FFF7ED;
   --ac-narrative-contre-remontada:       #33D6FF;
   --ac-narrative-contre-remontada-text:  #082F49;
+  --ac-narrative-sabordage:              #BE185D;
+  --ac-narrative-sabordage-text:         #FFFFFF;
+  --ac-narrative-abnegation:             #A3E635;
+  --ac-narrative-abnegation-text:        #1A2E05;
   /* Badges encounter */
   --ac-narrative-encounter-ally-plus:    #10B981;
   --ac-narrative-encounter-tough-enemy:  #EF4444;
@@ -320,6 +324,19 @@
 :root[data-theme='dark'],
 :root[data-theme='light'] {
   --replay-label-stroke: rgb(8 12 18 / 0.92);
+}
+
+/* ─── Fond de la VIDÉO EXPORTÉE du rejeu 2D (--replay-export-backdrop) ────────── */
+/*
+   Décision utilisateur du 2026-09-16 (plan « formats vidéo », D8) : autour d'une carte qui
+   n'est pas en 16:9, le clip est NOIR PUR, quel que soit le thème de qui exporte — un fichier
+   ne doit pas changer d'apparence selon une préférence d'interface. Même valeur dans les deux
+   thèmes. Encre de mise en page, lue par canvasInk.ts, jamais écrite dans `features/`.
+*/
+:root,
+:root[data-theme='dark'],
+:root[data-theme='light'] {
+  --replay-export-backdrop: rgb(0 0 0);
 }
 
 /* ─── Base styles ───────────────────────────────────────────────────────────── */

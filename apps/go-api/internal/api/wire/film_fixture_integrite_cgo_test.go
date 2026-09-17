@@ -18,7 +18,7 @@
 // CE QUE ÇA N'A PAS CASSÉ, et il faut le dire ici parce que la première version de ce
 // commentaire prétendait le contraire (corrigé le 2026-09-06, revue CTF-R1) : la chaîne E2E
 // absorbait les DEUX couches, à deux étages différents — le téléchargeur de l'ouvrier en pèle
-// une (`cmd/replay-worker/job.go`, `downloadChunk`), `filmsource.Load` pèle l'autre. Mesure :
+// une (`cmd/replay-worker/job.go`, `downloadChunk`), `decfilm.Load` pèle l'autre. Mesure :
 // avec les morceaux d'origine remis, l'épreuve E2E est verte et rend le MÊME artefact, à l'octet
 // près. Le défaut était donc latent, pas actif.
 //
@@ -37,8 +37,7 @@ import (
 	"runtime"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // filmPreuveChunks rend le dossier des morceaux du mini-film versionné, résolu PAR LE PAQUET.
@@ -73,14 +72,14 @@ func TestFixtureFilmUneSeuleCoucheZlib(t *testing.T) {
 		}
 		// Une couche : la décompression change la taille (les morceaux de ce film ne sont jamais
 		// incompressibles — le moins compressible du fixture gagne encore un facteur 3).
-		unePasse := filmsource.Inflate(brut)
+		unePasse := decfilm.Inflate(brut)
 		if len(unePasse) == len(brut) {
 			t.Errorf("%s : AUCUNE couche zlib (%d octets) — le fixture doit porter les morceaux "+
 				"tels que le CDN les sert, pas la copie décompressée du cache local", nom, len(brut))
 			continue
 		}
 		// Pas deux : une seconde passe ne doit plus rien décompresser.
-		deuxPasses := filmsource.Inflate(unePasse)
+		deuxPasses := decfilm.Inflate(unePasse)
 		if len(deuxPasses) != len(unePasse) {
 			t.Errorf("%s : DEUX couches zlib (%d -> %d -> %d octets) — le décodage n'en pèle "+
 				"qu'une, tout ce qui lit ce morceau lira du zlib au lieu de sa charge",
@@ -98,14 +97,14 @@ func TestFixtureFilmRegistreECSLisible(t *testing.T) {
 	if err != nil {
 		t.Fatalf("morceau du registre illisible : %v", err)
 	}
-	reg, err := filmdec.ParseRegistryChunk(filmsource.Inflate(brut))
+	reg, err := decfilm.ParseRegistryChunk(decfilm.Inflate(brut))
 	if err != nil {
 		t.Fatalf("registre ECS du fixture illisible : %v", err)
 	}
-	if fp := filmdec.RegistryFingerprint(reg); fp != filmdec.KnownRegistryFingerprint {
+	if fp := decfilm.RegistryFingerprint(reg); fp != decfilm.KnownRegistryFingerprint {
 		t.Fatalf("empreinte du registre = %d, attendu %d (le build de référence) — le décodage "+
 			"tournerait sur une grammaire de composants qui n'est pas celle que la table décrit",
-			fp, filmdec.KnownRegistryFingerprint)
+			fp, decfilm.KnownRegistryFingerprint)
 	}
 	// Les quatre archétypes que la cuisson interroge nommément. Leur absence est exactement ce
 	// que le registre vide produisait, sous le message trompeur « archétype N absent du registre ».

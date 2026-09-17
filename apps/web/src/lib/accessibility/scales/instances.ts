@@ -119,4 +119,6 @@ export const narrativeScale = makeCategoricalScale({
   remontada:         'narrative-remontada',
   debacle:           'narrative-debacle',
   contre_remontada:  'narrative-contre-remontada',
+  sabordage:         'narrative-sabordage',
+  abnegation:        'narrative-abnegation',
 })

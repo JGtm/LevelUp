@@ -31,7 +31,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // PickupKind qualifie ce qui a été ramassé.
@@ -62,11 +63,11 @@ const (
 
 // pickupKindOfClass rend la nature d'un ramassage à partir de son R(3).
 //
-// LA TABLE EST ICI ET NULLE PART AILLEURS : le décodeur (`filmdec`) est title-agnostic et ne
+// LA TABLE EST ICI ET NULLE PART AILLEURS : le décodeur (`grammar`) est title-agnostic et ne
 // sait rien de ce qu'une classe désigne ; le document est la couche qui l'interprète.
 func pickupKindOfClass(c uint8) PickupKind {
 	switch {
-	case filmdec.BipedPickupIsWeaponClass(c):
+	case grammar.BipedPickupIsWeaponClass(c):
 		return PickupWeapon
 	case c == 2:
 		return PickupGrenade
@@ -178,13 +179,13 @@ type pickupInputs struct {
 	// horloge du film) — le registre à l'instant, jamais le pont aplati (lot 6.1, 2026-09-10).
 	// Nil = aucun nommage, ce qui est la dégradation propre quand le pont n'existe pas.
 	occupant   func(slot uint32, tUS uint64) uint64
-	st         filmdec.BipedPickupStats
+	st         types.BipedPickupStats
 	weaponKeys map[uint32]string
 	judge      *pickupOriginJudge
 }
 
 func buildPickups(
-	pickups []filmdec.BipedPickup, clk replayClock, in pickupInputs,
+	pickups []types.BipedPickup, clk replayClock, in pickupInputs,
 ) ([]Pickup, PickupCoverage) {
 	occupant, st, weaponKeys, judge := in.occupant, in.st, in.weaponKeys, in.judge
 	cov := PickupCoverage{

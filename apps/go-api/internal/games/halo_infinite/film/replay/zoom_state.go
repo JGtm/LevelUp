@@ -41,7 +41,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // zoomPeriode est un intervalle « a la lunette » reconstruit pour un slot, en microsecondes.
@@ -57,7 +57,7 @@ type zoomPeriode struct {
 // `lives` fournit la cause de fermeture n°2 (la fin de vie). Il peut etre vide : le modele
 // degrade alors proprement sur les trois autres causes.
 func buildScopedLookup(
-	evts []filmdec.ZoomEvent, lives []lifeSpan, holdUS uint64,
+	evts []grammar.ZoomEvent, lives []lifeSpan, holdUS uint64,
 ) func(uint32, uint64) int {
 	fins := finsDeVieParSlot(lives)
 	parSlot := map[uint32][]zoomPeriode{}

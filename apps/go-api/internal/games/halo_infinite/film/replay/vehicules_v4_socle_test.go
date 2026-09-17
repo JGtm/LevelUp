@@ -22,7 +22,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Gardes d environnement du lot V4.
@@ -36,16 +38,16 @@ const (
 type v4Ctx struct {
 	film  v0Film
 	dir   string
-	bip   []filmdec.BipedPosition
+	bip   []grammar.BipedPosition
 	scan  VehicleScan
-	fire  []filmdec.FireEvent
+	fire  []grammar.FireEvent
 	own   IdentityRegistry
 	clock replayClock
 	// lives / vehBySlot / spawns sont les entrees DEJA derivees de `scan`, pour ne pas les
 	// recalculer a chaque etage.
 	lives     []vehicleLife
-	vehBySlot map[uint32][]filmdec.BipedPosition
-	spawns    map[filmdec.EquipmentLifeKey]filmdec.EquipmentCreation
+	vehBySlot map[uint32][]grammar.BipedPosition
+	spawns    map[types.EquipmentLifeKey]types.EquipmentCreation
 	// lifeBySlot indexe les vies par slot, et slots liste TOUS les slots de vehicule (ceux du
 	// nuage ET ceux qui n ont qu une naissance), TRIES. Les deux existent pour le cout : la
 	// mesure interroge le voisin le plus proche des dizaines de milliers de fois, et un balayage
@@ -84,27 +86,27 @@ func v4Root(t *testing.T) string {
 }
 
 // v4Carte rend l entree de catalogue d une carte NOMMEE (bornes + decoupage d axe).
-func v4Carte(t *testing.T, root, carte string) (filmdec.MapQuantEntry, bool) {
+func v4Carte(t *testing.T, root, carte string) (profile.MapQuantEntry, bool) {
 	t.Helper()
-	cat, err := filmdec.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
 	e, err := cat.Lookup(carte)
 	if err != nil {
 		t.Logf("carte %q absente du catalogue de bornes (%v)", carte, err)
-		return filmdec.MapQuantEntry{}, false
+		return profile.MapQuantEntry{}, false
 	}
 	return e, true
 }
 
-// v4Decode reproduit le contexte de production d un film. L APPELANT DETIENT LockProcessDecode
-// et restaure `filmdec.WorldObjectPrecision` — c est la discipline de tous les instruments du
+// v4Decode reproduit le contexte de production d un film. L APPELANT
+// et restaure `grammar.WorldObjectPrecision` — c est la discipline de tous les instruments du
 // dossier, et elle n est pas negociable (les largeurs d axe sont un global de paquet).
 func v4Decode(t *testing.T, root string, f v0Film) (v4Ctx, bool) {
 	t.Helper()
 	ctx := v4Ctx{film: f, dir: objChunkDir(root, f.ID)}
-	if filmdec.CountFilmChunks(ctx.dir) == 0 {
+	if grammar.CountFilmChunks(ctx.dir) == 0 {
 		t.Logf("V4 %s : film absent du cache — saute", f.ID)
 		return ctx, false
 	}
@@ -112,7 +114,6 @@ func v4Decode(t *testing.T, root string, f v0Film) (v4Ctx, bool) {
 	if !ok {
 		return ctx, false
 	}
-	filmdec.SetWorldObjectPrecisionFromLayout(entry.Layout())
 	wr := entry.Range()
 	bip, ok := v4Bipedes(t, ctx.dir, entry, &wr)
 	if !ok {
@@ -128,7 +129,7 @@ func v4Decode(t *testing.T, root string, f v0Film) (v4Ctx, bool) {
 		t.Logf("V4 %s : balayage ti=40 sans resultat — rien a mesurer", f.ID)
 		return ctx, false
 	}
-	fire, err := filmdec.ScanFilmFireEvents(ctx.dir)
+	fire, err := grammar.ScanFilmFireEvents(ctx.dir)
 	if err != nil {
 		t.Logf("V4 %s : events de tir illisibles (%v)", f.ID, err)
 	}
@@ -152,16 +153,16 @@ func v4Decode(t *testing.T, root string, f v0Film) (v4Ctx, bool) {
 // v4Bipedes lit le nuage bipede aux MEMES reglages que la production (cap capture, decoupage
 // d axe du catalogue), TRIE par instant comme `BuildFromPositions` le fait.
 func v4Bipedes(
-	t *testing.T, dir string, entry filmdec.MapQuantEntry, wr *filmdec.Vec3Range,
-) ([]filmdec.BipedPosition, bool) {
+	t *testing.T, dir string, entry profile.MapQuantEntry, wr *profile.Vec3Range,
+) ([]grammar.BipedPosition, bool) {
 	t.Helper()
-	opt := filmdec.DefaultScanFilmOptions()
+	opt := grammar.DefaultScanFilmOptions()
 	opt.WorldRange = wr
 	opt.CaptureDirs = true
 	if lay := entry.Layout(); lay.Valid() {
 		opt.Layout = &lay
 	}
-	pos, err := filmdec.ScanFilmBipedPositions(dir, opt)
+	pos, err := grammar.ScanFilmBipedPositions(dir, opt)
 	if err != nil {
 		t.Logf("V4 : nuage bipede illisible (%v)", err)
 		return nil, false
@@ -172,7 +173,7 @@ func v4Bipedes(
 
 // v4Pont construit le pont slot -> joueur EXACTEMENT comme `BuildFromPositions`.
 func v4Pont(
-	t *testing.T, dir string, bip []filmdec.BipedPosition, fire []filmdec.FireEvent,
+	t *testing.T, dir string, bip []grammar.BipedPosition, fire []grammar.FireEvent,
 ) IdentityRegistry {
 	t.Helper()
 	deaths, err := ScanFilmDeaths(dir)
@@ -189,7 +190,7 @@ func v4Pont(
 }
 
 // v4Horloge rend l horloge du document (origine = premier paquet, pas = FrameIntervalMS defaut).
-func v4Horloge(bip []filmdec.BipedPosition) replayClock {
+func v4Horloge(bip []grammar.BipedPosition) replayClock {
 	if len(bip) == 0 {
 		return replayClock{}
 	}
@@ -243,7 +244,7 @@ func v4LifeAt(lives []vehicleLife, atUS uint64) (vehicleLife, bool) {
 // v4NearestHeld rend le vehicule VIVANT le plus proche EN PLAN d une position, a la position
 // TENUE, et la distance. Deterministe (slots tries).
 func v4NearestHeld(
-	ctx v4Ctx, e filmdec.BipedPosition,
+	ctx v4Ctx, e grammar.BipedPosition,
 ) (slot uint32, dist float64, age uint64, ok bool) {
 	best, bestD, bestAge, found := uint32(0), 0.0, uint64(0), false
 	for _, s := range ctx.slots {

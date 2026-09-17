@@ -42,8 +42,9 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // a5Explosions : les instants d'explosion DATES du releve A0.3 (`A_PROTOCOLE.md` §2), recopies
@@ -86,7 +87,7 @@ func TestAssautA5Explosions(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache (%s) : %v — la mesure serait partielle", id, cache, err)
 		}
-		recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, id)
+		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
 		attendus := map[int]bool{}
 		for _, ms := range a5Explosions[id] {
 			attendus[ms] = true
@@ -94,8 +95,8 @@ func TestAssautA5Explosions(t *testing.T) {
 		datees += len(a5Explosions[id])
 
 		publies := map[int]bool{}
-		for _, e := range objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeBomb) {
-			if e.Stat != objectiveevents.StatBombDetonations {
+		for _, e := range objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb) {
+			if e.Stat != objectives.StatBombDetonations {
 				t.Errorf("%s : statistique inattendue %q", id, e.Stat)
 				continue
 			}
@@ -177,19 +178,19 @@ func TestAssautA5PontIdentite(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}
-		recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, id)
+		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
 		deaths, err := ScanFilmDeaths(filepath.Join(cache, "film_chunks", id))
 		if err != nil {
 			t.Fatalf("%s : fil des morts illisible : %v", id, err)
 		}
-		instants := make([]objectiveevents.DeathInstant, 0, len(deaths))
+		instants := make([]types.DeathInstant, 0, len(deaths))
 		for _, d := range deaths {
-			instants = append(instants, objectiveevents.DeathInstant{
+			instants = append(instants, types.DeathInstant{
 				XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS)})
 		}
-		named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeBomb)
-		ident, _ := objectiveevents.IdentifyNamedEventsByRound(named,
-			objectiveevents.ResolveRoundIdentity(recs, instants))
+		named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)
+		ident, _ := objectives.IdentifyNamedEventsByRound(named,
+			objectives.ResolveRoundIdentity(recs, instants))
 		nommees += len(named)
 		publiees += len(ident)
 		t.Logf("%s : %d nommee(s) -> %d publiee(s)", id, len(named), len(ident))

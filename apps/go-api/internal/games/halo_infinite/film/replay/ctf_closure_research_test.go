@@ -27,7 +27,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 const ctfClosureFilmsEnv = "CTF_CLOSURE_FILMS"
@@ -57,7 +58,7 @@ func TestCTFExclusionClosure(t *testing.T) {
 	}
 }
 
-func ctfClosureReport(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapName string) string {
+func ctfClosureReport(t *testing.T, cat *profile.MapQuantCatalog, dir, short, mapName string) string {
 	t.Helper()
 	pos, fire, deaths, table := ctfDecodeFilm(t, cat, dir, mapName)
 	sort.SliceStable(pos, func(i, j int) bool { return pos[i].TimestampUS < pos[j].TimestampUS })
@@ -88,21 +89,21 @@ func ctfClosureReport(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, ma
 
 // ctfDecodeFilm est le préambule commun des instruments : décoder un film et lire son pont.
 // Factorisé au TROISIÈME exemplaire, comme l'exige la règle du dépôt.
-func ctfDecodeFilm(t *testing.T, cat *filmdec.MapQuantCatalog, dir, mapName string) (
-	[]filmdec.BipedPosition, []filmdec.FireEvent, []Death, PlayerIndexTable) {
+func ctfDecodeFilm(t *testing.T, cat *profile.MapQuantCatalog, dir, mapName string) (
+	[]grammar.BipedPosition, []grammar.FireEvent, []Death, PlayerIndexTable) {
 	t.Helper()
 	entry, err := cat.Lookup(mapName)
 	if err != nil {
 		t.Fatalf("bornes de %s : %v", mapName, err)
 	}
 	world := entry.Range()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.WorldRange, scan.CaptureDirs = &world, true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("positions : %v", err)
 	}
-	fire, err := filmdec.ScanFilmFireEvents(dir)
+	fire, err := grammar.ScanFilmFireEvents(dir)
 	if err != nil {
 		t.Fatalf("tirs : %v", err)
 	}
@@ -121,7 +122,7 @@ func ctfDecodeFilm(t *testing.T, cat *filmdec.MapQuantCatalog, dir, mapName stri
 // ctfCoverageOf rend la couverture du calque des tirs pour un pont donné — même porte que
 // buildShots, sans le filtre des trajectoires publiées (mesuré nul sur les sept films) : on
 // compare deux ponts, pas deux pipelines.
-func ctfCoverageOf(tracks map[uint32]slotTrack, owner map[uint32]int, fire []filmdec.FireEvent) LayerCoverage {
+func ctfCoverageOf(tracks map[uint32]slotTrack, owner map[uint32]int, fire []grammar.FireEvent) LayerCoverage {
 	cov := LayerCoverage{Available: len(fire)}
 	for _, e := range fire {
 		_, reason := slotFor(tracks, owner, e.FilmIndex, e.TimestampUS)

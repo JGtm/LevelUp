@@ -13,7 +13,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // aimClockTest : origine zero, une frame = 100 ms, 1 000 frames — la grille du document.
@@ -22,9 +22,9 @@ func aimClockTest() replayClock {
 }
 
 // aimRawTest fabrique une lecture brute a l instant voulu. Les scalaires bruts sont ceux du
-// composant `i21` ; on ne les reinterprete pas ici — l accesseur de `filmdec` fait foi.
-func aimRawTest(slot uint32, tUS uint64, yaw, pitch uint32) filmdec.BipedAim {
-	return filmdec.BipedAim{Slot: slot, TimestampUS: tUS, YawRaw: yaw, PitchRaw: pitch}
+// composant `i21` ; on ne les reinterprete pas ici — l accesseur de `grammar` fait foi.
+func aimRawTest(slot uint32, tUS uint64, yaw, pitch uint32) grammar.BipedAim {
+	return grammar.BipedAim{Slot: slot, TimestampUS: tUS, YawRaw: yaw, PitchRaw: pitch}
 }
 
 // TestVehicleRideAimEchantillonnageDeterministe : un point par frame, LE PREMIER OBSERVE GAGNE —
@@ -33,7 +33,7 @@ func aimRawTest(slot uint32, tUS uint64, yaw, pitch uint32) filmdec.BipedAim {
 func TestVehicleRideAimEchantillonnageDeterministe(t *testing.T) {
 	clock := aimClockTest()
 	// Trois lectures DANS la frame 1 (100, 130 et 190 ms), une dans la frame 2.
-	aims := []filmdec.BipedAim{
+	aims := []grammar.BipedAim{
 		aimRawTest(7, 100_000, 1000, 1024),
 		aimRawTest(7, 130_000, 2000, 1024),
 		aimRawTest(7, 190_000, 3000, 1024),
@@ -68,7 +68,7 @@ func TestVehicleRideAimEchantillonnageDeterministe(t *testing.T) {
 // autre vehicule.
 func TestVehicleRideAimBornesDeLEpisode(t *testing.T) {
 	clock := aimClockTest()
-	aims := []filmdec.BipedAim{
+	aims := []grammar.BipedAim{
 		aimRawTest(7, 100_000, 1000, 1024),   // AVANT l embarquement
 		aimRawTest(7, 500_000, 2000, 1024),   // dedans
 		aimRawTest(7, 900_000, 3000, 1024),   // dedans
@@ -90,7 +90,7 @@ func TestVehicleRideAimVideSansLecture(t *testing.T) {
 	if got := vehicleRideAimOf(nil, 0, 1_000_000, clock); got != nil {
 		t.Fatalf("aucune lecture : serie = %+v, attendu nil", got)
 	}
-	autreSlot := []filmdec.BipedAim{aimRawTest(9, 500_000, 1000, 1024)}
+	autreSlot := []grammar.BipedAim{aimRawTest(9, 500_000, 1000, 1024)}
 	if got := vehicleRideAimOf(vehicleAimBySlot(autreSlot)[7], 0, 1_000_000, clock); got != nil {
 		t.Fatalf("slot sans lecture : serie = %+v, attendu nil", got)
 	}
@@ -99,7 +99,7 @@ func TestVehicleRideAimVideSansLecture(t *testing.T) {
 // TestVehicleAimBySlotTrieEtSepare : l index par slot separe les occupants et TRIE chaque serie.
 // Deux occupants du MEME vehicule ont deux visees distinctes — c est tout l interet du lot.
 func TestVehicleAimBySlotTrieEtSepare(t *testing.T) {
-	idx := vehicleAimBySlot([]filmdec.BipedAim{
+	idx := vehicleAimBySlot([]grammar.BipedAim{
 		aimRawTest(7, 900_000, 1000, 1024),
 		aimRawTest(8, 100_000, 2000, 1024),
 		aimRawTest(7, 100_000, 3000, 1024),

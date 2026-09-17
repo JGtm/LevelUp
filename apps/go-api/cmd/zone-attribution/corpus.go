@@ -12,10 +12,9 @@ import (
 	"os"
 	"strings"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
@@ -71,13 +70,13 @@ func loadCandidates(ctx context.Context, db *sql.DB, matchArg string) ([]candida
 
 // selectEligible garde les matchs dont les QUATRE maillons sont la, et compte les autres.
 //
-// Le mode est classe par objectiveevents.ObjectiveTypeOf : le scan par mots-cles sur le
+// Le mode est classe par decfilm.ObjectiveTypeOf : le scan par mots-cles sur le
 // nom de variante vit la-bas et nulle part ailleurs (« Arena:Strongholds »,
 // « Strongholds:Arena », « Land Grab », « Total Control »...).
 func (r *runner) selectEligible(all []candidate) []eligible {
 	var out []eligible
 	for _, c := range all {
-		if objectiveevents.ObjectiveTypeOf(c.variant) != objectiveevents.ObjectiveTypeZone {
+		if decfilm.ObjectiveTypeOf(c.variant) != decfilm.ObjectiveTypeZone {
 			r.rejects.pasLeBonMode++
 			continue
 		}
@@ -110,15 +109,15 @@ type eligible struct {
 	candidate
 	// quant porte l'entree de catalogue ENTIERE : bornes ET largeurs d'axe. Les dissocier
 	// laisserait armer les unes sans les autres (cf. replay.Options.MapQuant).
-	quant *filmdec.MapQuantEntry
+	quant *decfilm.MapQuantEntry
 	zones replay.ZoneSet
 }
 
 // loadPlayerLines lit les lignes de match qui fondent le pont slot -> xuid.
 //
 // Le triplet (frags, morts, assistances) est la clé d'appariement : un slot dont le
-// triplet ne designe pas UNE seule ligne n'est pas apparie (objectiveevents/slotidentity.go).
-func loadPlayerLines(ctx context.Context, db *sql.DB, matchID string) ([]objectiveevents.PlayerLine, error) {
+// triplet ne designe pas UNE seule ligne n'est pas apparie (objectives/slotidentity.go).
+func loadPlayerLines(ctx context.Context, db *sql.DB, matchID string) ([]decfilm.PlayerLine, error) {
 	rows, err := db.QueryContext(ctx,
 		`SELECT xuid, COALESCE(kills,0), COALESCE(deaths,0), COALESCE(assists,0)
 		 FROM match_participants WHERE match_id = ?`, matchID)
@@ -127,9 +126,9 @@ func loadPlayerLines(ctx context.Context, db *sql.DB, matchID string) ([]objecti
 	}
 	defer func() { _ = rows.Close() }()
 
-	var out []objectiveevents.PlayerLine
+	var out []decfilm.PlayerLine
 	for rows.Next() {
-		var l objectiveevents.PlayerLine
+		var l decfilm.PlayerLine
 		if err := rows.Scan(&l.XUID, &l.Kills, &l.Deaths, &l.Assists); err != nil {
 			return nil, err
 		}

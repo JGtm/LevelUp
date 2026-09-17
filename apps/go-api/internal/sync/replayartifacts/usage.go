@@ -54,8 +54,8 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
@@ -203,7 +203,7 @@ func journaliserCouvertureUsage(ctx context.Context, d Deps, prets []resumeUsage
 // INFO et non WARN : un repli nommé qui se déclenche est le régime PRÉVU (D14), pas une
 // dégradation — contrairement aux ramassages non rattachés de [journaliserCouvertureUsage].
 func journaliserReplisUsage(ctx context.Context, d Deps, prets []resumeUsagePret) {
-	cumul := fallback.NouveauCompteur()
+	cumul := decfilm.NouveauCompteur()
 	films := 0
 	for i := range prets {
 		r := prets[i].summary.Match.Fallbacks
@@ -213,11 +213,11 @@ func journaliserReplisUsage(ctx context.Context, d Deps, prets []resumeUsagePret
 		films++
 		cumul.Cumuler(r)
 		slog.InfoContext(ctx, "post-sync: résumé d'usage — replis déclenchés par la projection",
-			"match_id", prets[i].matchID, "replis", fallback.Texte(r))
+			"match_id", prets[i].matchID, "replis", decfilm.Texte(r))
 	}
 	slog.InfoContext(ctx, "post-sync: résumé d'usage — replis de la passe",
 		"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "matchs", len(prets),
-		"matchsConcernes", films, "replis", fallback.Texte(cumul.Rapport()))
+		"matchsConcernes", films, "replis", decfilm.Texte(cumul.Rapport()))
 }
 
 // projeterResumesUsage projette tous les documents du lot, AVANT tout writer.

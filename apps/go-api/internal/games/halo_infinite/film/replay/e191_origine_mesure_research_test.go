@@ -14,7 +14,7 @@ package replay
 //
 //  1. l evenement de liste type 103 `EquipmentSpawnedObject` — « une PIECE a ete engendree » —
 //     dont la deuxieme reference designe la vie de l objet cree
-//     ([filmdec.ScanEquipmentSpawnEvents]) ;
+//     ([grammar.ScanEquipmentSpawnEvents]) ;
 //  2. la MORT ECRITE du poseur : une vie du slot poseur que le fil des morts ferme
 //     (`cause == CauseVieMort`, lien d identite des lots 1.6 et 1.8) ;
 //  3. la PRISE ECRITE du poseur : une emission `taken` d `equipmentChanges` sur le slot poseur
@@ -51,8 +51,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -194,7 +195,7 @@ func e191MesureUnFilm(t *testing.T, root string, f e191Film) ([]e191Pose, bool) 
 		t.Logf("film %s : evenements 103 illisibles (%v) — hors mesure", f.Short8, err)
 		return nil, false
 	}
-	designees := map[filmdec.EquipmentLifeKey][]uint64{}
+	designees := map[types.EquipmentLifeKey][]uint64{}
 	for _, e := range spawns {
 		if e.SpawnedValid {
 			designees[e.Spawned] = append(designees[e.Spawned], e.TimestampUS)
@@ -225,25 +226,23 @@ func e191MesureUnFilm(t *testing.T, root string, f e191Film) ([]e191Pose, bool) 
 // e191Spawns balaie les evenements 103 d un film, sous le verrou de decodage.
 //
 // LE CHARGEMENT EST ICI, ET C EST VOULU (revue de jalon M1, constat C4, 2026-09-16). Il vivait
-// dans `filmdec.ScanFilmEquipmentSpawnEvents`, une enveloppe `dir` de PRODUCTION dont cet appel
+// dans `grammar.ScanFilmEquipmentSpawnEvents`, une enveloppe `dir` de PRODUCTION dont cet appel
 // etait le SEUL au depot — instrument par instrument, tests compris. Regle 7 du depot (« 0 code
 // mort ») : l enveloppe est supprimee, ses deux lignes vivent chez son unique appelant, et la
 // production garde la seule forme qu elle emploie (`ScanEquipmentSpawnEvents(fc)`, sur un
 // contexte deja ouvert, qui ne recharge rien).
-func e191Spawns(dir string) ([]filmdec.EquipmentSpawnEvent, filmdec.EquipmentSpawnStats, error) {
-	release := filmdec.LockProcessDecode()
-	defer release()
-	film, err := filmsource.LoadDir(dir, nil)
+func e191Spawns(dir string) ([]types.EquipmentSpawnEvent, types.EquipmentSpawnStats, error) {
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, filmdec.EquipmentSpawnStats{}, err
+		return nil, types.EquipmentSpawnStats{}, err
 	}
-	return filmdec.ScanEquipmentSpawnEvents(filmdec.NewFilmContext(film))
+	return grammar.ScanEquipmentSpawnEvents(grammar.NewFilmContext(film))
 }
 
 // e191Ctx porte ce qu un film donne a la mesure : le nuage trie, les vies de poseur, et les deux
 // signaux ECRITS indexes par slot.
 type e191Ctx struct {
-	positions         []filmdec.BipedPosition
+	positions         []grammar.BipedPosition
 	vies              map[uint32][]equipLife
 	familles          map[uint32]string
 	morts, prises     map[uint32][]uint64
@@ -254,7 +253,7 @@ type e191Ctx struct {
 // MORTS ECRITES par slot (via le registre d identite, seul producteur de liens) et les PRISES
 // ECRITES par slot (`equipmentChanges` `taken`).
 func e191Contexte(g *goldenInputs) e191Ctx {
-	sorted := append([]filmdec.BipedPosition(nil), g.Positions...)
+	sorted := append([]grammar.BipedPosition(nil), g.Positions...)
 	sort.SliceStable(sorted, func(i, j int) bool {
 		return sorted[i].TimestampUS < sorted[j].TimestampUS
 	})
@@ -270,7 +269,7 @@ func e191Contexte(g *goldenInputs) e191Ctx {
 		ctx.nbMorts++
 	}
 	for _, c := range g.EquipmentChanges {
-		if c.Kind != filmdec.EquipmentTaken {
+		if c.Kind != types.EquipmentTaken {
 			continue
 		}
 		ctx.prises[c.Slot] = append(ctx.prises[c.Slot], c.TimestampUS)
@@ -282,7 +281,7 @@ func e191Contexte(g *goldenInputs) e191Ctx {
 // e191ViesDuRegistre construit le registre d identite EXACTEMENT comme `BuildFromPositions` (les
 // memes entrees, la meme horloge) et rend ses vies : c est lui, et lui seul, qui apparie le fil
 // des morts aux slots (lots 1.6 et 1.8).
-func e191ViesDuRegistre(g *goldenInputs, sorted []filmdec.BipedPosition) []lifeSpan {
+func e191ViesDuRegistre(g *goldenInputs, sorted []grammar.BipedPosition) []lifeSpan {
 	if len(sorted) == 0 {
 		return nil
 	}
@@ -321,8 +320,8 @@ func e191ObjetsPortes(t *testing.T) map[string]bool {
 }
 
 // e191UnePose annote UNE pose avec ce que chaque signal en dit.
-func e191UnePose(p filmdec.EquipmentPlacement, film string,
-	designees map[filmdec.EquipmentLifeKey][]uint64, portes map[string]bool, ctx e191Ctx,
+func e191UnePose(p types.EquipmentPlacement, film string,
+	designees map[types.EquipmentLifeKey][]uint64, portes map[string]bool, ctx e191Ctx,
 ) e191Pose {
 	fam := ctx.familles[p.GlobalID]
 	if fam == "" {
@@ -356,7 +355,7 @@ func e191UnePose(p filmdec.EquipmentPlacement, film string,
 
 // e191EcartFenetre rend l ecart, en ms, que la fenetre de 200 ms mesure : entre la creation de
 // l objet et la fin de la vie de poseur RETENUE par `equipmentOrigin`.
-func e191EcartFenetre(lives []equipLife, p filmdec.EquipmentPlacement) float64 {
+func e191EcartFenetre(lives []equipLife, p types.EquipmentPlacement) float64 {
 	best, bestGap := equipLife{}, ^uint64(0)
 	for _, v := range lives {
 		gap := uint64(0)

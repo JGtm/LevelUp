@@ -3,7 +3,7 @@
 // Interdit tout littéral brut `"HeadshotMultiplier"` (valeur DANGEREUSE de
 // `match_kill_events.source_category`) hors de ses deux propriétaires : `internal/domain/killscope`
 // (le comparateur `IsHeadshotCategory`, qui l'exclut explicitement) et
-// `internal/games/halo_infinite/film/killsource` (l'énumération `Category` qui la produit).
+// `internal/games/halo_infinite/film/internal/facts/killsource` (l'énumération `Category` qui la produit).
 //
 // POURQUOI `HeadshotMultiplier` SEUL, ET PAS AUSSI `"Headshot"` — CHOIX DÉLIBÉRÉ, PAS UN OUBLI.
 // `"Headshot"` est AUSSI le nom d'une médaille du jeu (catalogue commendations/citations,
@@ -48,7 +48,7 @@ var headshotCategoryRE = regexp.MustCompile(`["'](HeadshotMultiplier)["']`)
 // headshotCategoryOwners : les deux paquets qui ont le droit d'écrire cette valeur.
 var headshotCategoryOwners = []string{
 	"internal/domain/killscope/",
-	"internal/games/halo_infinite/film/killsource/",
+	"internal/games/halo_infinite/film/internal/facts/killsource/",
 }
 
 func TestNoRawHeadshotCategoryLiteral(t *testing.T) {

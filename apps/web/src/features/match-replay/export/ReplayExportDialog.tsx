@@ -29,6 +29,18 @@
  * pousse le début, pas l'inverse d'un cran. Un intervalle vide n'est pas une erreur à
  * signaler, c'est un geste qu'on empêche — il n'y a rien à dire à l'utilisateur.
  *
+ * # LE FORMAT DU FICHIER SE CHOISIT ICI, ET SE RETIENT (2026-09-16)
+ *
+ * 1080p ou 720p (`exportFormats.ts`), 1080p par défaut. Le choix est retenu dans CE navigateur
+ * (`readExportFormat` / `persistExportFormat`, décision D4) : on exporte rarement une seule fois,
+ * et le format est une habitude liée à l'usage (partage, montage), pas au match.
+ *
+ * # LE CADRAGE, LUI, NE SE PROPOSE QUE SUR UNE CARTE ZOOMÉE, ET NE SE RETIENT PAS (D6)
+ *
+ * À 1x il n'y a rien à choisir. Zoomée, la carte peut sortir entière (défaut : un clip se
+ * partage, on veut y voir tout le terrain) ou au cadrage de l'écran. Le choix vit le temps du
+ * dialogue : un zoom est un geste du moment.
+ *
  * # PENDANT LE CALCUL, LE PANNEAU NE SE FERME PAS TOUT SEUL
  *
  * Il devient une progression et un bouton « Annuler ». Et si l'utilisateur le referme quand
@@ -38,7 +50,9 @@
 import { useState } from 'react'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+import { persistExportFormat, readExportFormat } from '../settings/replayPreferences'
 import type { ReplayText } from '../i18n/i18nContract'
+import { DEFAULT_EXPORT_FRAMING, EXPORT_FORMATS, type ExportFormatId, type ExportFraming } from './exportFormats'
 import { clampExportBounds, etaLabel, type ExportBounds } from './replayExportPlan'
 import type { ReplayExport, ReplayExportState } from './useReplayExport'
 
@@ -58,6 +72,12 @@ export function ReplayExportDialog({ exporter, locale, onClose }: Props) {
   const domain = exporter.defaultBounds()
   const [bounds, setBounds] = useState<ExportBounds>(domain)
   const [withSound, setWithSound] = useState(true)
+  const [format, setFormat] = useState<ExportFormatId>(readExportFormat)
+  const [framing, setFraming] = useState<ExportFraming>(DEFAULT_EXPORT_FRAMING)
+  const chooseFormat = (id: ExportFormatId) => {
+    setFormat(id)
+    persistExportFormat(id)
+  }
   const { state } = exporter
 
   const setStart = (v: number) => setBounds((b) => clampExportBounds({ ...b, startFrame: v }, domain))
@@ -96,6 +116,8 @@ export function ReplayExportDialog({ exporter, locale, onClose }: Props) {
           domain={domain}
           exporter={exporter}
           sound={{ on: withSound, set: setWithSound }}
+          format={{ id: format, set: chooseFormat }}
+          framing={{ id: framing, set: setFraming }}
           onBound={{ start: setStart, end: setEnd }}
           onClose={onClose}
         />
@@ -104,15 +126,23 @@ export function ReplayExportDialog({ exporter, locale, onClose }: Props) {
   )
 }
 
-/** Le formulaire : les deux bornes, le son, et les deux gestes. */
+/**
+ * Le formulaire : les deux bornes, le format, le son, et les deux gestes.
+ *
+ * LE FORMAT N'A PAS BESOIN D'ÊTRE DÉSACTIVÉ PENDANT L'EXPORT : ce formulaire n'est pas rendu du
+ * tout pendant `prepare`/`encode` (cf. `isExportBusy`), le choix ne peut donc pas changer sous
+ * un calcul en cours.
+ */
 function ExportForm({
-  t, bounds, domain, exporter, sound, onBound, onClose,
+  t, bounds, domain, exporter, sound, format, framing, onBound, onClose,
 }: {
   t: ReplayText
   bounds: ExportBounds
   domain: ExportBounds
   exporter: ReplayExport
   sound: { on: boolean; set: (v: boolean) => void }
+  format: { id: ExportFormatId; set: (id: ExportFormatId) => void }
+  framing: { id: ExportFraming; set: (id: ExportFraming) => void }
   onBound: { start: (v: number) => void; end: (v: number) => void }
   onClose: () => void
 }) {
@@ -134,6 +164,8 @@ function ExportForm({
           onChange={onBound.end}
         />
       </div>
+      <FormatChoice t={t} format={format} />
+      {exporter.zoomLevel > 1 && <FramingChoice t={t} framing={framing} zoomLevel={exporter.zoomLevel} />}
       <label className="mt-3 flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
         <input
           type="checkbox"
@@ -156,13 +188,79 @@ function ExportForm({
         </button>
         <button
           type="button"
-          onClick={() => void exporter.run(bounds, { sound: sound.on })}
+          onClick={() => void exporter.run(bounds, { sound: sound.on, format: format.id, framing: framing.id })}
           className="h-8 cursor-pointer rounded-full bg-primary px-4 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           {t.exportStart}
         </button>
       </div>
     </>
+  )
+}
+
+/** Le choix du format : une option par format du catalogue, avec ses dimensions. */
+function FormatChoice({
+  t,
+  format,
+}: {
+  t: ReplayText
+  format: { id: ExportFormatId; set: (id: ExportFormatId) => void }
+}) {
+  return (
+    <div role="radiogroup" aria-label={t.exportFormat} className="mt-3 flex items-start gap-3 text-[12.5px] text-foreground">
+      <span className="w-12 shrink-0 text-muted-foreground">{t.exportFormat}</span>
+      <div className="flex flex-col gap-1">
+        {EXPORT_FORMATS.map((f) => (
+          <label key={f.id} className="flex cursor-pointer items-center gap-2">
+            <input
+              type="radio"
+              name="replay-export-format"
+              value={f.id}
+              checked={format.id === f.id}
+              onChange={() => format.set(f.id)}
+              className="size-3.5 cursor-pointer accent-primary"
+            />
+            <span className="font-mono tabular-nums">{t.exportFormatOptionFmt(f.id, f.width, f.height)}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Le choix du cadrage, sur une carte zoomée seulement (cf. l'en-tête). */
+function FramingChoice({
+  t,
+  framing,
+  zoomLevel,
+}: {
+  t: ReplayText
+  framing: { id: ExportFraming; set: (id: ExportFraming) => void }
+  zoomLevel: number
+}) {
+  const options: { id: ExportFraming; label: string }[] = [
+    { id: 'whole', label: t.exportFramingWhole },
+    { id: 'current', label: t.exportFramingCurrentFmt(zoomLevel) },
+  ]
+  return (
+    <div role="radiogroup" aria-label={t.exportFraming} className="mt-3 flex items-start gap-3 text-[12.5px] text-foreground">
+      <span className="w-12 shrink-0 text-muted-foreground">{t.exportFraming}</span>
+      <div className="flex flex-col gap-1">
+        {options.map((o) => (
+          <label key={o.id} className="flex cursor-pointer items-center gap-2">
+            <input
+              type="radio"
+              name="replay-export-framing"
+              value={o.id}
+              checked={framing.id === o.id}
+              onChange={() => framing.set(o.id)}
+              className="size-3.5 cursor-pointer accent-primary"
+            />
+            {o.label}
+          </label>
+        ))}
+      </div>
+    </div>
   )
 }
 

@@ -147,7 +147,17 @@ raison  = "seule carte du catalogue a index de region sur 2 bits ; porte de posi
 # bonne cle : le calque des lancers de grenade s'eteint au BUILD, a l'interieur de la version 40
 # (HI_1_11_0 : 0 lancer sur 12 films ; HI_1_12_0 : 49 a 215 sur 8 films), et l'identite entiere
 # s'eteint sur les cinq films dont chunk_00 ne porte pas de section d'identification.
-# Les quatre temoins ci-dessous ferment ce trou : un par grammaire distincte mesuree.
+# Les sept temoins ci-dessous ferment ce trou : un par grammaire distincte mesuree.
+#
+# SEPT DEPUIS LE LOT 3.2.3 (2026-09-16), ET LA REGLE EST DESORMAIS ECRITE : UN TEMOIN PAR CLEF
+# DE REGISTRE. La table des empreintes de registre ECS du catalogue des profils
+# (data/titles/halo_infinite/reference/film_profiles.json, section `registryFingerprints`,
+# lot 3.2.1) porte neuf clefs : les sept builds que le cache connait, et les deux familles de
+# films dont chunk_00 ne porte AUCUNE section d'identification (majeures 31 et 33). Trois de
+# ces clefs n'avaient aucun temoin ici — HI_1_4_1, HI_1_9_0 et la majeure 31 — et le corpus
+# passe donc de 14 a 17 entrees. Sans temoin, le gain attendu des lots 3.3 (grenades par build)
+# et 3.4 (marche des morts calibree) n'est mesurable nulle part : une grammaire sans temoin ne
+# se defend contre aucune regression.
 #
 # CE QU'ILS GARDENT EN L'ETAT. Sur ces films, plusieurs calques sont DEJA vides au HEAD (lancers
 # de grenade sur les quatre, identite et tirs publies sur a349fea8). Le gate compare deux
@@ -182,6 +192,36 @@ famille = "version_33_sans_identification"
 mode    = "BTB Heavies:Total Control"
 carte   = "Fragmentation Heavies"
 raison  = "un des cinq films du cache dont chunk_00 ne porte AUCUNE section d'identification (3 en version 31, 2 en version 33) : sur eux le XUID de 64 bits est introuvable dans les chunks de replication (2 sur 25 contre 25 sur 25 partout ailleurs), donc zero identite, zero piste nommee et zero tir publie. Temoin de la degradation la plus lourde connue — et de sa reparation future"
+
+# --- Les trois clefs de registre sans temoin (lot 3.2.3, 2026-09-16) -------------------------
+# Chacune de ces trois entrees couvre une clef de la table des empreintes de registre qui
+# n'etait gardee par AUCUN temoin. Les trois films sont deja au corpus d'EQUIVALENCE
+# (film/replay/testdata/equivalence/CORPUS.txt) et dans l'echantillon court des gates de
+# decodage : leur `.facts.json` est commis, leur cuisson est connue, et leur ajout ici n'est
+# qu'une entree de manifeste. Verifie avant l'ajout (2026-09-16) : chunks au cache, manifeste
+# de chunks present, et faits exportables par `levelup replay-facts-export` — les trois
+# conditions que le gate exige d'un temoin.
+
+[[temoin]]
+id      = "a521164d"
+famille = "version_33_build_1_4_1"
+mode    = "BTB Heavies:Total Control"
+carte   = "Fragmentation Heavies"
+raison  = "seul film HI_1_4_1 du cache (1 sur 1 351) et seul porteur du registre a 1 033 slots nommes (empreinte 0x40531a0d86ce90ce, 49 blocs) : la grammaire de composants la plus eloignee de la reference, et celle des deux films de majeure 33 sans section d'identification. Porte aussi la fermeture d'image-cle la plus basse mesuree (1,0 % contre 9,7 a 15,7 % ailleurs, D11 du lot 0.A.2) et le `+200 o` de HI_1_4_1 ouvert au registre des reports — un correctif de profil par build se voit ici avant partout ailleurs"
+
+[[temoin]]
+id      = "11de8353"
+famille = "version_38_build_1_9_0"
+mode    = "BTB:Fiesta Slayer"
+carte   = "Thunderhead"
+raison  = "seul film HI_1_9_0 du cache (1 sur 1 351), et le seul temoin de version majeure 38 : la version que la table des implantations de gamertag borne par `majeure<=38` (frontiere basse de la regle, le voisin immediat 39 bascule sur l'implantation decalee). Son registre (0x33c7e724716d8cc5, 49 blocs, 1 031 slots) est celui de HI_1_8_0 : la frontiere du registre n'est PAS celle des builds, et ce temoin est la preuve vivante du couple qui la porte"
+
+[[temoin]]
+id      = "50247b26"
+famille = "version_31_sans_identification"
+mode    = "BTB:Slayer"
+carte   = "Oasis"
+raison  = "la PLUS ANCIENNE grammaire du cache (majeure 31, format 20, 3 films) et la seule clef de registre dont l'empreinte n'avait jamais ete mesuree avant le lot 3.2.1 : 0xba34fa35f781d1a7, 49 blocs, 1 029 slots — le plus petit registre connu. chunk_00 sans section d'identification, donc aucun build ecrit : c'est le seul temoin ou le profil doit se decider sur la version majeure seule. Deja mesure a l'equivalence : le registre ne rend AUCUNE vie (`viesTotal=0`) et c'est le seul film ou le repli `repli_vie_coupee_au_trou_de_replication` se declenche — toute reparation future de cette famille se lit ici en premier"
 
 [[temoin]]
 id      = "bfecd02b"

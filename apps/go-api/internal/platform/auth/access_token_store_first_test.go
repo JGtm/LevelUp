@@ -145,3 +145,34 @@ func TestResolveMSAccessTokenStoreFirst_StoreLoadError_Logged(t *testing.T) {
 		t.Errorf("le log de l'échec store doit être de niveau ERROR (AU3), got:\n%s", out)
 	}
 }
+
+// TestResolveMSAccessTokenStoreFirst_StoreSansFichier_AucunError — un joueur ABSENT du
+// store est un cas NORMAL (profil suivi qui ne s'est jamais connecté par le SSO), pas une
+// panne : ("", nil) et AUCUNE ligne ERROR. Avant le 2026-09-16, la sentinelle
+// ErrUserTokensNotFound tombait dans la branche AU3 et produisait un ERROR à chaque
+// post-sync — doublé d'un journal côté appelant (C-E). Ce test rougit si la sentinelle
+// repasse par la branche « store illisible ».
+func TestResolveMSAccessTokenStoreFirst_StoreSansFichier_AucunError(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(prev)
+
+	store := NewMultiUserTokenStore(tempTokenDir(t))
+	prov := &fakeProvider{oauthAccess: "at-jamais-servi"}
+
+	at, err := ResolveMSAccessTokenStoreFirst(context.Background(), prov, store, "222", "Nuzzles")
+	if err != nil {
+		t.Fatalf("attendu un skip (\"\", nil), obtenu err=%v", err)
+	}
+	if at != "" {
+		t.Errorf("access_token = %q, attendu vide", at)
+	}
+	out := buf.String()
+	if strings.Contains(out, "\"level\":\"ERROR\"") {
+		t.Errorf("aucun ERROR attendu pour un joueur sans fichier de tokens, obtenu :\n%s", out)
+	}
+	if strings.Contains(out, "échec lecture store canonique") {
+		t.Errorf("le cas « pas de fichier » ne doit pas emprunter la branche AU3, obtenu :\n%s", out)
+	}
+}

@@ -30,7 +30,10 @@ package replay
 // `FilmInputs` est exactement le troisieme tiers. `applyTo` les repose sur les `Options` que
 // l'assemblage recoit — c'est la seule ecriture, et elle est ecrite une fois.
 
-import "levelup/go-api/internal/games/halo_infinite/film/filmdec"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // FilmInputs porte ce que l'etage de balayage d'un film rend a l'assemblage.
 //
@@ -44,60 +47,60 @@ type FilmInputs struct {
 	// Translocations sont les teleportations du translocateur (evenements type 117). Elles
 	// servent DEUX fois : le calque du document, et l'exemption du filtre de vitesse des
 	// positions (decision D2) — d'ou leur lecture AVANT les positions.
-	Translocations []filmdec.TranslocatorTeleport
+	Translocations []types.TranslocatorTeleport
 	// Positions est le nuage NON decime des positions de bipede : le premier parametre de
 	// `BuildFromPositions`.
-	Positions []filmdec.BipedPosition
+	Positions []grammar.BipedPosition
 	// BipedCreations sont les records de CREATION de bipede — le lien direct corps -> joueur.
-	BipedCreations []filmdec.BipedCreation
+	BipedCreations []grammar.BipedCreation
 	// Fire sont les evenements de tir : le second parametre de `BuildFromPositions`.
-	Fire []filmdec.FireEvent
+	Fire []grammar.FireEvent
 	// Loadouts sont les armes portees relevees aux images-cles.
-	Loadouts []filmdec.KeyframeLoadout
+	Loadouts []types.KeyframeLoadout
 	// WeaponChanges sont les prises et lachers d'arme lus dans le flux delta.
-	WeaponChanges []filmdec.HeldWeaponChange
+	WeaponChanges []types.HeldWeaponChange
 	// Pickups / PickupStats sont les ramassages NATIFS (evenement `biped_pickup`) et la mesure
 	// de ce que ce canal ne peut PAS voir (listes multiples, refus).
-	Pickups     []filmdec.BipedPickup
-	PickupStats filmdec.BipedPickupStats
+	Pickups     []types.BipedPickup
+	PickupStats types.BipedPickupStats
 	// Inventory est l'inventaire complet lu aux memes images-cles que les armes portees.
 	Inventory []KeyframeInventory
 	// InventoryDeltas sont les lectures d'inventaire des paquets DELTA (grenades, jeu
 	// selectionne) ; InventoryDeltaAmmoRefused est le VERDICT de la porte du canal munitions,
 	// publie tel quel dans la couverture.
-	InventoryDeltas           []filmdec.InventoryDelta
+	InventoryDeltas           []types.InventoryDelta
 	InventoryDeltaAmmoRefused bool
 	// AbilityRanks sont les identites de capacite portees (i48).
-	AbilityRanks []filmdec.AbilityRank
+	AbilityRanks []types.AbilityRank
 	// EquipmentChanges / EquipmentChangeStats sont les ramassages et consommations d'equipement,
 	// avec le TEMOIN DE COMPLETUDE (compteur de rotation) que la couverture publie.
-	EquipmentChanges     []filmdec.EquipmentChange
-	EquipmentChangeStats filmdec.EquipmentChangeStats
+	EquipmentChanges     []types.EquipmentChange
+	EquipmentChangeStats types.EquipmentChangeStats
 	// CamoStates sont les transmissions de la voie d'etat du camouflage (i28 queue[1]).
-	CamoStates []filmdec.CamoRead
+	CamoStates []types.CamoRead
 	// GrappleReads sont les evenements de grappin (corps tag==3 d'i59).
-	GrappleReads []filmdec.GrappleRead
+	GrappleReads []types.GrappleRead
 	// AbilityImpulses / AbilityImpulseStats sont les impulsions de capacite (tag==1 d'i57/i59).
-	AbilityImpulses     []filmdec.AbilityImpulse
-	AbilityImpulseStats filmdec.AbilityImpulseStats
+	AbilityImpulses     []types.AbilityImpulse
+	AbilityImpulseStats types.AbilityImpulseStats
 	// AbilityCharges / AbilityChargeStats sont les charges d'equipement restantes (i56).
-	AbilityCharges     []filmdec.AbilityCharge
-	AbilityChargeStats filmdec.AbilityChargeStats
+	AbilityCharges     []types.AbilityCharge
+	AbilityChargeStats types.AbilityChargeStats
 	// ZoomEvents sont les bascules de LUNETTE lues dans la liste d'evenements. Elles entrent ici
 	// BRUTES, et non deja reduites en `Options.Scoped` : c'est `applyTo` qui reconstruit le
 	// palier a l'instant (cf. sa note), pour qu'un fixture n'ait qu'une LISTE a serialiser la ou
 	// `Options.Scoped` est une fermeture, qui ne se fige pas.
-	ZoomEvents []filmdec.ZoomEvent
+	ZoomEvents []grammar.ZoomEvent
 	// Placements / PlacementStats sont les POSES d'equipement (creations ti=37) et la CALIBRATION
 	// du bloc de replication mesuree sur ce film — celle dont les socles et les vehicules
 	// heritent leurs largeurs MPP.
-	Placements     []filmdec.EquipmentPlacement
-	PlacementStats filmdec.EquipmentPlacementStats
+	Placements     []types.EquipmentPlacement
+	PlacementStats grammar.EquipmentPlacementStats
 	// SpawnEvents / SpawnStats sont les evenements de liste type 103 `EquipmentSpawnedObject`
 	// — « une PIECE a ete engendree » — et les denominateurs de leur balayage. C'est LE SIGNAL
 	// ECRIT de l'origine d'une pose de panneau (lot 1.9.1, D13).
-	SpawnEvents []filmdec.EquipmentSpawnEvent
-	SpawnStats  filmdec.EquipmentSpawnStats
+	SpawnEvents []types.EquipmentSpawnEvent
+	SpawnStats  types.EquipmentSpawnStats
 	// Pads sont les deux voies des SOCLES (armes au sol ti=42, power-ups ti=37).
 	Pads PadScans
 	// Vehicles est le calque des VEHICULES (ti=40) : recensement, creations, nuage de positions,
@@ -105,18 +108,18 @@ type FilmInputs struct {
 	Vehicles VehicleScan
 	// FlagMarks est le CONTROLE independant du calque du drapeau. Vide hors CTF : le balayage est
 	// garde par ce que l'appelant a fourni (`Options.Flag`).
-	FlagMarks filmdec.CarrierMarkScan
+	FlagMarks grammar.CarrierMarkScan
 	// ZoneReads / ZoneScanned sont l'etat des zones (ti=13). Le CATALOGUE de zones vient de
 	// l'appelant et commande le balayage : sans zones, rien n'est lu et `ZoneScanned` est faux.
-	ZoneReads   []filmdec.ManagedPropertyRead
+	ZoneReads   []grammar.ManagedPropertyRead
 	ZoneScanned bool
 	// BombReads est l'anneau d'armement de la bombe (ti=12), sur les seuls matchs que l'appelant
 	// reconnait Assaut armable.
-	BombReads []filmdec.NavpointRadialRead
+	BombReads []types.NavpointRadialRead
 	// Grenades sont les lancers de grenade des paquets delta.
-	Grenades []filmdec.GrenadeThrow
+	Grenades []grammar.GrenadeThrow
 	// Projectiles sont les trajectoires de projectile.
-	Projectiles []filmdec.ProjectileTrack
+	Projectiles []types.ProjectileTrack
 	// Deaths est le fil des morts : il NOMME les vies et fonde tout le rattachement.
 	Deaths []Death
 	// PlayerIndices est la table identite -> index de joueur, LUE dans le film.
@@ -136,12 +139,12 @@ type FilmInputs struct {
 	// COMPLETE par la lecture des chunks pour les xuids dont la table est muette.
 	FilmTable FilmPlayerTable
 	// PlayerTeams est l'EQUIPE DE CHAQUE JOUEUR, lue dans la trame d'etat par
-	// [filmdec.ScanPlayerTeams] : `index de joueur -> designateur` (`-1` = aucune equipe).
+	// [grammar.ScanPlayerTeams] : `index de joueur -> designateur` (`-1` = aucune equipe).
 	// C'est la SEULE source d'equipe du document (V4) ; la base ne fait que controler.
 	PlayerTeams map[int]int
 	// TeamScan est le rapport de cette lecture. Il voyage avec la table parce qu'une table vide
 	// et une lecture refusee ne disent pas la meme chose.
-	TeamScan filmdec.TeamScanReport
+	TeamScan grammar.TeamScanReport
 	// FilmClockOriginUS est l'horodatage moteur du PREMIER paquet du film. Zero = origine
 	// incalculable : le document sort sans origine.
 	FilmClockOriginUS uint64

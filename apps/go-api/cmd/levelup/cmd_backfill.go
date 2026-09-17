@@ -30,7 +30,6 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
-	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -367,19 +366,6 @@ func runBackfillCitationsOne(ctx context.Context, cfg *config.AppConfig, gamerta
 
 	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
 	return engine.RunBackfillCitations(ctx, force)
-}
-
-// applyMigrationsOnDB ouvre une DB en RW et applique les migrations enregistrees
-// pour la cible. Idempotent — DuckDB tolere une migration deja appliquee via
-// schema_migrations.
-func applyMigrationsOnDB(path string, target migration.TargetDB) error {
-	_ = migration.All()
-	db, err := duckdbpkg.OpenReadWrite(path)
-	if err != nil {
-		return fmt.Errorf("open rw %s: %w", path, err)
-	}
-	defer db.Close()
-	return migration.RunForDB(db.SQLDb(), target)
 }
 
 // ── LUSR backfill ─────────────────────────────────────────────────────────────

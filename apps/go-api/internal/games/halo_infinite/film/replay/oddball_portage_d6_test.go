@@ -36,7 +36,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 const (
@@ -198,10 +199,8 @@ func d6ViesEtSocles(t *testing.T, root, id string) ([]flagFreeLife, []PointObjec
 // bipedes en QUANTA — ce que fait le pont d'identite, qui n'a besoin que des slots et des
 // instants — comparerait des metres a des quanta et rendrait des distances sans aucun sens, sans
 // que rien ne le signale. La proximite exige LA MEME echelle des deux cotes.
-func d6Positions(dir string, wr filmdec.Vec3Range, lay filmdec.I0Layout) ([]filmdec.BipedPosition, error) {
-	release := filmdec.LockProcessDecode()
-	defer release()
-	opt := filmdec.DefaultScanFilmOptions()
+func d6Positions(dir string, wr profile.Vec3Range, lay profile.I0Layout) ([]grammar.BipedPosition, error) {
+	opt := grammar.DefaultScanFilmOptions()
 	opt.WorldRange = &wr
 	// Le découpage d'i0 vient du CATALOGUE quand il est complet (même doctrine que le
 	// chemin world-object ; indispensable sur les cartes à plus de 2 régions — Live Fire,
@@ -209,17 +208,13 @@ func d6Positions(dir string, wr filmdec.Vec3Range, lay filmdec.I0Layout) ([]film
 	if lay.Valid() {
 		opt.Layout = &lay
 	}
-	return filmdec.ScanFilmBipedPositions(dir, opt)
+	return grammar.ScanFilmBipedPositions(dir, opt)
 }
 
 // d6Bornes rend les bornes monde et le découpage d'i0 de la carte du film, sous verrou de
 // processus.
-func d6Bornes(t *testing.T, root, id string) (filmdec.Vec3Range, filmdec.I0Layout, bool) {
+func d6Bornes(t *testing.T, root, id string) (profile.Vec3Range, profile.I0Layout, bool) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
 	return attBornes(t, root, id)
 }
 

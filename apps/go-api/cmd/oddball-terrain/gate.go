@@ -101,7 +101,7 @@ func sortedStrKeys(m map[string]oracleStat) []string {
 	return out
 }
 
-// abs local (le paquet objectiveevents a le sien, non exporte).
+// abs local (le paquet objectives a le sien, non exporte).
 func abs(v int) int {
 	if v < 0 {
 		return -v

@@ -8,9 +8,8 @@ package replay
 // ecarte, et se taire proprement.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 const (
@@ -90,7 +89,7 @@ func TestObjectiveObjects_UneVieImmobileEstUneVieReelle(t *testing.T) {
 // La taire SANS la compter ferait passer un decalage d'horloge pour une absence d'objet.
 func TestObjectiveObjects_HorsAxeEstECARTE_ET_COMPTE(t *testing.T) {
 	labels, fams := ooTables(map[uint32]string{ooTestCrane: familleCrane})
-	scan := WorldObjectScan{Scanned: true, Creations: []filmdec.EquipmentCreation{
+	scan := WorldObjectScan{Scanned: true, Creations: []types.EquipmentCreation{
 		gwTestCreation(10, 0, 5_000_000_000, ooTestCrane, 1, 1), // frame 5000 : hors des 100
 	}}
 	lives, cov := buildObjectiveObjects(scan, labels, fams, ooClock())

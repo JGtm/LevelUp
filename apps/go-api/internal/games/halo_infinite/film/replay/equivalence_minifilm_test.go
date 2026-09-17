@@ -33,7 +33,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/digest"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 // miniFilmDigestsPath est le fichier de digests figes de la mini-bobine, a cote de ceux du
@@ -126,24 +127,23 @@ func digestsMiniBobine() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	// MEME GESTE QUE LA PRODUCTION (cf. installWorldObjectPrecision) : les largeurs d'axe du
-	// chemin world-object viennent de l'entree de catalogue. Sans ce reglage, le digest des
-	// projectiles dependrait de l'etat laisse par le test precedent.
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
-	filmdec.SetWorldObjectPrecisionFromLayout(filmdec.I0Layout{AxisW: entry.AxisWidths})
+	// LES LARGEURS D'AXE DU CHEMIN WORLD-OBJECT viennent de l'entree de catalogue, comme en
+	// production (cf. installWorldObjectPrecision). Depuis le lot 2.3 elles voyagent avec le
+	// contexte du film, pose ci-dessous — rien ne subsiste d'un test a l'autre.
+	profilCarte := grammar.ProfilDeBalayageParDefaut()
+	profilCarte.PoserLargeursObjetDuMondeDepuisDecoupage(profile.I0Layout{AxisW: entry.AxisWidths})
 	wr := entry.Range()
 	dir := MiniFilmDir
 
-	fire, err := filmdec.ScanFilmFireEvents(dir)
+	fire, err := grammar.ScanFilmFireEvents(dir)
 	if err != nil {
 		return nil, fmt.Errorf("tirs : %w", err)
 	}
-	grenades, err := filmdec.ScanFilmGrenadeThrows(dir)
+	grenades, err := grammar.ScanFilmGrenadeThrows(dir)
 	if err != nil {
 		return nil, fmt.Errorf("lancers de grenade : %w", err)
 	}
-	loadouts, err := filmdec.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
+	loadouts, err := grammar.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
 	if err != nil {
 		return nil, fmt.Errorf("armes portees : %w", err)
 	}
@@ -159,7 +159,7 @@ func digestsMiniBobine() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("indices joueur : %w", err)
 	}
-	proj, err := filmdec.ScanFilmProjectiles(dir, &wr)
+	proj, err := grammar.ScanFilmProjectiles(dir, &wr)
 	if err != nil {
 		return nil, fmt.Errorf("projectiles : %w", err)
 	}

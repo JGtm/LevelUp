@@ -3,8 +3,8 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/weaponv3"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Familles réelles du catalogue de production, choisies pour ce que le test doit prouver :
@@ -36,7 +36,7 @@ func TestLoadoutFamilies_DeriveDuCatalogueDeProduction(t *testing.T) {
 // sont UN canon (sinon le client afficherait deux fois le même fusil) ; un identifiant hors
 // catalogue est écarté sans faire disparaître le loadout.
 func TestBuildLoadouts_ReplieLesAliasEtIgnoreLInconnu(t *testing.T) {
-	raw := []filmdec.KeyframeLoadout{{
+	raw := []types.KeyframeLoadout{{
 		TimestampUS: 1_500_000, Slot: 512,
 		Families: []uint32{famShockRifle, famShockRifleRanked, famSkewer, famInconnue},
 	}}
@@ -58,7 +58,7 @@ func TestBuildLoadouts_ReplieLesAliasEtIgnoreLInconnu(t *testing.T) {
 // TestBuildLoadouts_EcarteCeQuiPrecedeLOrigine : un keyframe antérieur au premier paquet de
 // position n'a pas de frame sur l'axe du rejeu — il ne doit pas devenir la frame 0.
 func TestBuildLoadouts_EcarteCeQuiPrecedeLOrigine(t *testing.T) {
-	raw := []filmdec.KeyframeLoadout{
+	raw := []types.KeyframeLoadout{
 		{TimestampUS: 100_000, Slot: 512, Families: []uint32{famSkewer}},
 		{TimestampUS: 700_000, Slot: 513, Families: []uint32{famSkewer}},
 	}
@@ -71,7 +71,7 @@ func TestBuildLoadouts_EcarteCeQuiPrecedeLOrigine(t *testing.T) {
 // TestBuildLoadouts_SansArmeConnueNePublieRien : un record dont aucune famille n'est au
 // catalogue ne doit pas produire un loadout VIDE (le client l'afficherait comme « connu »).
 func TestBuildLoadouts_SansArmeConnueNePublieRien(t *testing.T) {
-	raw := []filmdec.KeyframeLoadout{{TimestampUS: 600_000, Slot: 512, Families: []uint32{famInconnue}}}
+	raw := []types.KeyframeLoadout{{TimestampUS: 600_000, Slot: 512, Families: []uint32{famInconnue}}}
 	if got := buildLoadouts(raw, 500_000, 100_000); got != nil {
 		t.Fatalf("aucun loadout publiable attendu, obtenu %+v", got)
 	}

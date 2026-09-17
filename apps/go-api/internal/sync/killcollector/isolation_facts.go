@@ -24,7 +24,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -117,7 +117,7 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // IsolationDecoderRev — la version du producteur des faits d'isolement, ecrite sur CHAQUE ligne
 // des deux tables.
 //
-// ELLE EST DISTINCTE DE [KillSourceDecoderRev] parce que les deux passes evoluent separement :
+// ELLE EST DISTINCTE DE [facts.Rev] parce que les deux passes evoluent separement :
 // un changement de la regle de visibilite ou de l'ordre des etats doit faire redecoder les faits
 // d'isolement SANS forcer un redecodage du journal des morts, qui n'a pas bouge. Meme espace de
 // valeurs, meme colonne `decoder_rev`, unites de fraicheur differentes.
@@ -136,7 +136,7 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // `match_lives_latest` porte la revision COURANTE ; tous les matchs qui ont des positions ET des
 // equipes sortent de cette selection, sont re-decodes, et ecrivent une NOUVELLE PASSE dans les
 // deux tables (append-only, ADR 0026 — les vues `_latest` basculent d'un bloc). Le journal des
-// morts, lui, n'est PAS reecrit : [KillSourceDecoderRev] ne bouge pas, et c'est tout l'objet des
+// morts, lui, n'est PAS reecrit : [facts.Rev] ne bouge pas, et c'est tout l'objet des
 // deux revisions separees. Commande : `levelup backfill-killsource`.
 //
 // # POURQUOI ELLE BOUGE UNE SECONDE FOIS LE 2026-09-08 (lot E2, lien direct corps -> joueur)
@@ -148,7 +148,7 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // du redecodage alors que leur CONTENU change de nouveau, et cette fois a la racine.
 //
 // Ce qui change : le collecteur passe desormais au registre les RECORDS DE CREATION DE BIPEDE
-// (`filmdec.ScanBipedCreations`), et le nommage des vies bascule du pont par morts — un
+// (`decfilm.ScanBipedCreations`), et le nommage des vies bascule du pont par morts — un
 // appariement glouton qui departageait par l'ordre des slots quand deux vies finissent au meme
 // instant — a une LECTURE du film. `match_lives.xuid` change donc sur les vies que le pont
 // echangeait (7 paires exactement echangees mesurees sur deux films) et se remplit sur les vies
@@ -180,7 +180,7 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // CE N'EST PAS `match_lives` NI `match_death_context` QUI CHANGENT — comme au lot 6.1, ce sont
 // `kill_positions` et `kill_openings` : `buildPositionRows` IMPOSE désormais au balayage des
 // bipèdes le découpage d'i0 que le CATALOGUE de carte porte (`optionsDeBalayageDesPositions`), là
-// où `ScanFilmOptions.Layout` restait nil et où `filmdec.DetectI0LayoutOf` décidait en mesurant le
+// où `ScanFilmOptions.Layout` restait nil et où `decfilm.DetectI0LayoutOf` décidait en mesurant le
 // film. Sur une carte à plus de deux régions de compression l'auto-détection ne sait pas voir
 // l'index de région : sa porte d'un seul bit acceptait des enregistrements d'une AUTRE région,
 // exprimés dans une autre AABB, donc des coordonnées fausses sans le moindre signal.
@@ -198,8 +198,8 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // redécodage TOUT match qui a des positions, comme au lot 6.1 ; les 1 299 autres films
 // réécriront une passe au contenu identique.
 //
-// POURQUOI PAS [KillSourceDecoderRev]. Le journal des morts ne change pas d'un octet, et
-// `internal/games/halo_infinite/film/killsource/` n'a pas bougé : la faire monter rouvrirait un
+// POURQUOI PAS [facts.Rev]. Le journal des morts ne change pas d'un octet, et
+// `internal/games/halo_infinite/film/internal/facts/killsource/` n'a pas bougé : la faire monter rouvrirait un
 // backlog de redécodage complet pour rien, et `decoder_rev_fingerprint_test.go` rougirait à juste
 // titre (« la revision a change sans le decodeur »). `kill_positions` ne porte pas de
 // `decoder_rev` : cette révision-ci est la seule que `matchsAJour` consulte pour ces tables.
@@ -212,7 +212,7 @@ const IsolationDecoderRev = "isolement-2026-09-15-decoupage-du-catalogue"
 // APLATI que la correction P0-2 a cesse d'employer.
 type materiauDIsolement struct {
 	registre  replay.IdentityRegistry
-	positions []filmdec.BipedPosition
+	positions []decfilm.BipedPosition
 }
 
 // toLifeRows traduit les vies pures en lignes ecrivables.

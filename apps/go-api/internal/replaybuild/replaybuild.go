@@ -16,7 +16,7 @@
 //
 // Il décode le film à DEUX endroits, et pour deux grammaires différentes : `games/halo_infinite/film/replay`
 // pour les positions et les événements de réplication (sérialisé par le verrou process de
-// `filmdec`), `analysis/objectiveevents` pour les enregistrements d'entité d'où sortent la
+// `grammar`), `film/facts/objectives` pour les enregistrements d'entité d'où sortent la
 // courbe de score et les actions d'objectif (cf. matchfacts.go).
 package replaybuild
 
@@ -31,11 +31,9 @@ import (
 	"strconv"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
@@ -61,7 +59,7 @@ var ErrNoTracks = errors.New("replaybuild: aucune trajectoire décodée — arte
 type Builder struct {
 	repoRoot  string
 	titleSlug string
-	catalog   *filmdec.MapQuantCatalog
+	catalog   *decfilm.MapQuantCatalog
 	labels    replay.LabelCatalog
 	// geometries : cache par MODULE des props Forge de la carte. PAR CARTE depuis le
 	// 2026-09-11 : un repertoire unique servait ses props a TOUS les matchs, cartes confondues
@@ -114,7 +112,7 @@ type Outcome struct {
 // cmd/replay-build). Les props Forge, eux, sont optionnels (journalisé).
 func NewBuilder(repoRoot, titleSlug string) (*Builder, error) {
 	pr := title.NewPathResolver(repoRoot)
-	cat, err := filmdec.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titleSlug))
+	cat, err := decfilm.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titleSlug))
 	if err != nil {
 		return nil, fmt.Errorf("catalogue de bornes du titre %s: %w", titleSlug, err)
 	}
@@ -212,7 +210,7 @@ func (b *Builder) geometryFor(module string) []replay.MapObject {
 // ResolveMapEntry résout la première identité de carte candidate qui existe au catalogue
 // de bornes. Les candidats s'essaient DANS L'ORDRE (du plus fiable au moins fiable, cf.
 // ReplayMapRepo) ; aucun ne résout → ErrMapNotInCatalog.
-func (b *Builder) ResolveMapEntry(mapNames []string) (filmdec.MapQuantEntry, error) {
+func (b *Builder) ResolveMapEntry(mapNames []string) (decfilm.MapQuantEntry, error) {
 	for _, name := range mapNames {
 		if name == "" {
 			continue
@@ -221,7 +219,7 @@ func (b *Builder) ResolveMapEntry(mapNames []string) (filmdec.MapQuantEntry, err
 			return entry, nil
 		}
 	}
-	return filmdec.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", ErrMapNotInCatalog, mapNames)
+	return decfilm.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", ErrMapNotInCatalog, mapNames)
 }
 
 // BuildBytes décode le film de filmDir et rend l'artefact SÉRIALISÉ — il n'écrit RIEN.
@@ -319,6 +317,9 @@ type entreesCatalogue struct {
 	matchKills  replay.MatchKillsInput
 	bots        []replay.BotIdentity
 	successions []replay.Succession
+	// killsource : le resultat du kill-feed, ou nil. Il ne voyage ici que pour son PROFIL DE
+	// BALAYAGE (lot 2.3 — cf. profilDeBalayageDeLaCuisson).
+	killsource *decfilm.Result
 }
 
 // collecterEntreesCatalogue rassemble tout ce que `BuildFromFilm` reçoit SANS l'avoir décodé
@@ -334,7 +335,7 @@ type entreesCatalogue struct {
 // lui-meme (item 1.4 du plan). `deaths` est l'unique lecture du fil des morts, partagee avec
 // `readFilmStats`.
 func (b *Builder) collecterEntreesCatalogue(
-	matchID string, film *filmsource.Film, facts port.MatchFacts, mapNames []string,
+	matchID string, film *decfilm.Film, facts port.MatchFacts, mapNames []string,
 	stats *filmStats, deaths filmDeaths,
 ) entreesCatalogue {
 	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
@@ -375,7 +376,8 @@ func (b *Builder) collecterEntreesCatalogue(
 	bots := replayidentity.BotIdentities(ksRes)
 	successions := botSuccessions(matchID, facts, ksRes)
 	return entreesCatalogue{
-		zones: zones, zoneRoles: zoneRoles,
+		killsource: ksRes,
+		zones:      zones, zoneRoles: zoneRoles,
 		spawnPts: spawnPts, spawnPointsState: mapState,
 		neutral: neutral, kills: kills, matchKills: matchKills,
 		bots: bots, successions: successions,
@@ -422,26 +424,22 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 // neutralDeaths rend les entrées d'artefact déjà résolues (type de mort + pictogramme du
 // titre) pour les morts que PERSONNE ne revendique, à partir d'un décodage killsource DÉJÀ
 // FAIT (cf. decodeKillSource, kills.go) — ce fichier ne décode plus rien lui-même depuis le
-// lot F.1 (jointure des frags sous effet actif), qui a besoin du MÊME `*killsource.Result`.
+// lot F.1 (jointure des frags sous effet actif), qui a besoin du MÊME `*decfilm.Result`.
 //
 // POURQUOI CE DÉCODAGE-CI VIT DANS `replaybuild`, ET PAS DANS `games/halo_infinite/film/replay`. La source du
 // dégât fatal se lit dans le composant dead-state du film, et ce décodage a UN seul
-// propriétaire dans le dépôt (`film/killsource`, avec ses golden et ses ancres Theater).
+// propriétaire dans le dépôt (`film/facts/killsource`, avec ses golden et ses ancres Theater).
 // `analysis/` est title-agnostic et n'a pas à le connaître ; ce paquet, lui, est la couche
 // d'ASSEMBLAGE — il compose déjà les libellés du titre de la même façon. Deux décodeurs du
 // même fait divergeraient.
 //
-// DEUX ACQUISITIONS DU VERROU filmdec, ET C'EST VOULU : `killsource.Decode` (dans
-// decodeKillSource) prend et rend le verrou process, puis `replay.BuildFromFilm` le reprend.
-// Ce sont deux décodages complets du MÊME film, chacun sérialisé de bout en bout ; c'est
-// exactement ce que fait déjà le cycle post-sync (arme du kill puis artefacts). Les enchaîner
-// sous un seul verrou exigerait un mutex réentrant, que Go n'a pas — et le contrat qui compte
-// (« jamais deux films entrelacés dans un décodage ») est tenu par chacune des deux.
+// DEUX DÉCODAGES COMPLETS DU MÊME FILM, ET C'EST VOULU : `decfilm.Decode` (dans
+// decodeKillSource) puis `replay.BuildFromFilm`. Ce que le premier CALIBRE voyage désormais au
+// second par les options (lot 2.3, `profilDeBalayageDeLaCuisson`), plus par l'état du processus.
 //
 // TOUT ÉCHEC EST NON FATAL : un film dont la source de dégât ne se décode pas reste un rejeu
-// parfaitement valide, avec des lignes de mort neutres au repère générique. Le refus est
-// JOURNALISÉ (dans decodeKillSource), jamais avalé.
-func (b *Builder) neutralDeaths(matchID string, res *killsource.Result) []replay.NeutralDeath {
+// valide, aux repères génériques. Le refus est JOURNALISÉ (decodeKillSource), jamais avalé.
+func (b *Builder) neutralDeaths(matchID string, res *decfilm.Result) []replay.NeutralDeath {
 	if res == nil {
 		return nil
 	}
@@ -493,7 +491,7 @@ func (b *Builder) neutralDeaths(matchID string, res *killsource.Result) []replay
 // BOT_METADATA du décodage killsource (BotID N — la clé exacte), l'instant de la base.
 // Un bot déclaré par la base mais absent du roster du film n'entre pas : sans nom lu, on
 // n'attribue rien — et l'écart se journalise, jamais avalé.
-func botSuccessions(matchID string, facts port.MatchFacts, res *killsource.Result) []replay.Succession {
+func botSuccessions(matchID string, facts port.MatchFacts, res *decfilm.Result) []replay.Succession {
 	if res == nil || len(res.Roster.Bots) == 0 {
 		return nil
 	}
@@ -504,7 +502,7 @@ func botSuccessions(matchID string, facts port.MatchFacts, res *killsource.Resul
 	byID := make(map[int]botRef, len(res.Roster.Bots))
 	for _, b := range res.Roster.Bots {
 		if b.Name != "" {
-			byID[b.BotID] = botRef{name: b.Name + killsource.BotSuffix, idx: b.Slot}
+			byID[b.BotID] = botRef{name: b.Name + decfilm.BotSuffix, idx: b.Slot}
 		}
 	}
 	var out []replay.Succession

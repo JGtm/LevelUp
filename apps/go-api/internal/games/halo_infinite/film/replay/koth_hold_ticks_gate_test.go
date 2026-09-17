@@ -39,7 +39,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // kothTicksDesaccord est un joueur dont le compteur du film contredit l'oracle de l'API.
@@ -58,21 +59,21 @@ type kothTicksDesaccord struct {
 // Un slot SANS EMISSION est la lecture « zero » du compteur, pas une absence de mesure : le
 // joueur n'a jamais tenu la colline. C'est la meme convention que la phase 2 du releve E1-bis.
 func kothTicksVerdict(
-	recs []objectiveevents.StatRecord, oracle []e1bJoueur,
+	recs []types.StatRecord, oracle []e1bJoueur,
 ) (apparies int, desaccords []kothTicksDesaccord) {
-	lines := make([]objectiveevents.PlayerLine, 0, len(oracle))
+	lines := make([]types.PlayerLine, 0, len(oracle))
 	attendu := map[string]int{}
 	for _, j := range oracle {
 		attendu[j.xuid] = j.tics
 		if j.kills < 0 {
 			continue // bot sans ligne de match : aucun pont possible, et c'est dit
 		}
-		lines = append(lines, objectiveevents.PlayerLine{
+		lines = append(lines, types.PlayerLine{
 			XUID: j.xuid, Kills: j.kills, Deaths: j.deaths, Assists: j.assists,
 		})
 	}
-	identity := objectiveevents.SlotIdentityFrom(recs, lines)
-	series := objectiveevents.SeriesTotal(recs, holdTicksComponent, false)
+	identity := objectives.SlotIdentityFrom(recs, lines)
+	series := objectives.SeriesTotal(recs, holdTicksComponent, false)
 	slots := make([]int, 0, len(identity))
 	for s := range identity {
 		slots = append(slots, s)
@@ -101,7 +102,7 @@ func TestKothHoldTicksGate(t *testing.T) {
 	if !ok {
 		t.Skipf("film %s hors corpus de tics de colline (aucun oracle gele pour lui)", short)
 	}
-	recs := objectiveevents.StatRecords(p2aBobine(t, dir))
+	recs := objectives.StatRecords(p2aBobine(t, dir))
 	if len(recs) == 0 {
 		t.Fatalf("%s : aucun enregistrement de statistiques — rien a confronter", short)
 	}

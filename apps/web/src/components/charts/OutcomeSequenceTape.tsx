@@ -135,7 +135,7 @@ export interface OutcomeSequenceTapeProps {
    */
   onMatchClick?: (matchId: string) => void
   /**
-   * Libellés des drapeaux de dominance (1..5) pour le tooltip. Absents → le
+   * Libellés des drapeaux de dominance (1..7) pour le tooltip. Absents → le
    * marqueur reste dessiné mais le tooltip n'ajoute rien : aucun consommateur
    * n'est obligé de fournir la traduction.
    */

@@ -23,7 +23,7 @@ import (
 
 	titlepkg "levelup/go-api/internal/domain/title"
 
-	"levelup/go-api/internal/analysis/positions"
+	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/migration"
 )
@@ -55,11 +55,11 @@ func newPlayerPositionsTestPlayerDB(t *testing.T) *PlayerDB {
 	}
 }
 
-func samplePositions() []positions.PlayerPosition {
-	return []positions.PlayerPosition{
+func samplePositions() []playerposition.PlayerPosition {
+	return []playerposition.PlayerPosition{
 		{TimeMS: 0, X: 25.6, Y: 10.4, Z: 1.2, Team: 0},
 		{TimeMS: 0, X: -6.0, Y: -24.0, Z: -2.8, Team: 1},
-		{TimeMS: 20000, X: 34.8, Y: 13.5, Z: 0.5, Team: positions.TeamUnknown},
+		{TimeMS: 20000, X: 34.8, Y: 13.5, Z: 0.5, Team: playerposition.TeamUnknown},
 	}
 }
 
@@ -67,7 +67,7 @@ func samplePositions() []positions.PlayerPosition {
 // table accepte. `pass` et l'horodatage sont partagés par toutes les lignes de la passe : c'est
 // exactement ce que fait `persist.PlayerPositionsPersister`, et c'est ce qui rend la vue
 // `_latest` capable de retenir une génération entière.
-func semerPasse(t *testing.T, pdb *PlayerDB, matchID, pass string, decalageSec int, pos []positions.PlayerPosition) {
+func semerPasse(t *testing.T, pdb *PlayerDB, matchID, pass string, decalageSec int, pos []playerposition.PlayerPosition) {
 	t.Helper()
 	ctx := context.Background()
 	for _, p := range pos {
@@ -106,8 +106,8 @@ func TestPlayerPositionsRepo_LoadMatch_ServesLatestPass(t *testing.T) {
 	if last.X != 34.8 || last.Y != 13.5 || last.Z != 0.5 {
 		t.Errorf("last pos = (%.2f,%.2f,%.2f), want (34.80,13.50,0.50)", last.X, last.Y, last.Z)
 	}
-	if last.Team != positions.TeamUnknown {
-		t.Errorf("last.Team = %d, want %d (TeamUnknown)", last.Team, positions.TeamUnknown)
+	if last.Team != playerposition.TeamUnknown {
+		t.Errorf("last.Team = %d, want %d (TeamUnknown)", last.Team, playerposition.TeamUnknown)
 	}
 	var hasTeam1 bool
 	for _, p := range got {
@@ -131,7 +131,7 @@ func TestPlayerPositionsRepo_SecondePasseRemplaceLaPremiere(t *testing.T) {
 	ctx := context.Background()
 
 	semerPasse(t, pdb, ppTestMatchID, "passe-a", 0, samplePositions())
-	semerPasse(t, pdb, ppTestMatchID, "passe-b", 60, []positions.PlayerPosition{
+	semerPasse(t, pdb, ppTestMatchID, "passe-b", 60, []playerposition.PlayerPosition{
 		{TimeMS: 5000, X: 1.0, Y: 2.0, Z: 3.0, Team: 0},
 	})
 

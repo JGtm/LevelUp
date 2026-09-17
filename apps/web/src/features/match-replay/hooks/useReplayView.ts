@@ -29,72 +29,18 @@ import { coversPlayedArea } from '../layers/mapBackground'
 import { frameBounds, sceneBounds, usefulHeight, visibleBounds } from '../../../lib/replay/replayLogic'
 import { type CanvasView } from '../model/replayView'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { useReplayZoom, type ReplayZoom } from './useReplayZoom'
+import { lockedZoom, useReplayZoom, type ReplayZoom } from './useReplayZoom'
+import { useExportLayout } from '../export/exportLayoutStore'
 
 // LA HAUTEUR DE DESSIN N'EST PLUS FIXE (2026-09-02) : elle est le moindre de ce que l'écran
 // laisse et de ce que la carte peut utiliser. La largeur, elle, suit toujours le ratio de la
 // scène à cette hauteur (cf. `renderWidth`), sans quoi une carte étirée laisserait des marges
 // latérales vides. Le PAD est la marge intérieure du cadrage, en px. Les TOKENS des encres du
 // canvas vivent avec elles, dans useReplayInks ; les DURÉES, dans useReplayTiming.
-/**
- * SURECHANTILLONNAGE DE L'EXPORT : le facteur par lequel la toile est rendue PENDANT un export,
- * et 1 le reste du temps.
- *
- * # POURQUOI IL EXISTE, ET C'EST UNE MESURE, PAS UNE INTUITION
- *
- * H.264 echantillonne la CHROMINANCE a 4:2:0 : un demi-pixel de couleur sur chaque axe. Sur un
- * rejeu — des traits fins, des petits chiffres, des aplats colores — c'est la que part la
- * nettete, et AUCUN debit ne la rachete. Mesure faite dans le navigateur le 2026-08-28 sur une
- * toile de 502x480, en comparant l'image decodee a sa source :
- *
- * | Rendu | Ecart moyen | Pixels franchement alteres | Poids |
- * |---|---|---|---|
- * | natif 502x480 a 2 Mb/s  | 5,08 | 7,9 % | 49 Ko |
- * | natif 502x480 a 20 Mb/s | 4,96 | 7,9 % | 184 Ko |
- * | double 1004x960         | 0,76 | 0 %   | 96 Ko |
- *
- * Multiplier le debit par DIX ne gagne rien ; doubler la resolution divise l'ecart par sept, et
- * ne coute que le double du poids d'un fichier qui est de toute facon petit.
- *
- * # POURQUOI UN OBJET MUTABLE DE MODULE, ET PAS UNE PROP
- *
- * Le trace lit cette valeur au moment ou il dimensionne le backing store. La faire descendre en
- * prop ou en etat traverserait `ReplayCanvas`, qui est A SON PLAFOND DE TAILLE
- * (`max-lines` eslint, R5) : le cablage couterait plus de lignes que la fonctionnalite.
- * Elle vit donc ici, ou le canvas puise deja sa geometrie, et l'export la repose a 1 dans un
- * `finally` — c'est le seul ecrivain, et il ne la laisse jamais levee.
- */
-export const exportRenderScale = { current: 1 }
-
-/** Le facteur MAXIMAL applique pendant un export (cf. `exportScaleFor`). */
-export const EXPORT_SUPERSAMPLE = 2
-
-/**
- * La hauteur de sortie que l'export VISE, en px CSS avant densite d'ecran. C'est la ligne
- * « double 1004x960 » du tableau ci-dessus : le point mesure ou l'ecart de chrominance tombe a
- * 0,76 pour un fichier de 96 Ko. Le tableau a ete releve a hauteur de toile fixe (480) ; depuis
- * que la toile s'adapte a l'ecran, c'est cette CIBLE qui est la constante, et le facteur qui
- * s'ajuste.
- */
-export const EXPORT_TARGET_HEIGHT = 960
-
-/**
- * exportScaleFor — le facteur de surechantillonnage pour une hauteur de toile donnee.
- *
- * IL REND L'EXPORT INVARIANT A LA TAILLE D'ECRAN, ce qui est tout l'interet : une toile de 480
- * est doublee (exactement le comportement d'avant, au pixel pres), une toile de 720 n'est
- * multipliee que par 1,33 — et les deux sortent la MEME video de 960 de haut. Sans lui, une
- * fenetre plus grande produirait mecaniquement un fichier plus lourd a encoder, pour la seule
- * raison que la personne a un grand ecran.
- *
- * Borne a `EXPORT_SUPERSAMPLE` : sur une petite toile, surechantillonner davantage couterait
- * plus d'encodage que ce que la mesure justifie.
- */
-export function exportScaleFor(viewHeight: number): number {
-  if (!(viewHeight > 0)) return EXPORT_SUPERSAMPLE
-  return Math.min(EXPORT_TARGET_HEIGHT / viewHeight, EXPORT_SUPERSAMPLE)
-}
-
+//
+// PENDANT UN EXPORT (2026-09-16), l'écran ne décide plus rien : la toile prend le cadre logique
+// du format choisi (`export/exportFormats.ts`), et la densité de rendu est celle du format
+// (`canvasPixelRatio`). Voir `useReplayView` plus bas.
 /**
  * LES BORNES DE LA HAUTEUR DU TERRAIN (2026-09-02, cf. `useReplayViewport`).
  *
@@ -147,6 +93,14 @@ export interface ReplayView {
   renderWidth: number
   /** Hauteur de dessin RETENUE, en px CSS : `min(offre de l'écran, hauteur utile de la carte)`. */
   renderHeight: number
+  /**
+   * LA BOÎTE DE LA TOILE À L'ÉCRAN, en px CSS. Hors export, elle vaut la taille de dessin.
+   * PENDANT UN EXPORT elle garde la taille d'avant : la toile se dessine au cadre 16:9 du
+   * format, et c'est `object-fit: contain` qui l'inscrit dans cette boîte — la page ne saute
+   * pas, l'image ne se déforme pas, et une bande du fond de la carte borde le cadre si les
+   * proportions de l'écran ne sont pas 16:9.
+   */
+  screen: { width: number; height: number }
   /** Amplitude verticale de la scène : l'indication d'étage s'y rapporte. */
   zRange: { min: number; max: number }
   /** LA projection, partagée par le dessin et par le survol. */
@@ -185,7 +139,7 @@ export function useReplayView({
   // de déborder, la hauteur utile empêche d'ajouter des bandes vides au-dessus et au-dessous
   // d'une carte que la largeur limite déjà. Sur une carte allongée dans une colonne étroite,
   // c'est la seconde qui mord ; sur une carte carrée dans un grand écran, c'est la première.
-  const renderHeight = useMemo(
+  const screenHeight = useMemo(
     () =>
       width === 0
         ? freeHeight
@@ -199,7 +153,14 @@ export function useReplayView({
   //
   // Ce n'est plus la toile qui prend la forme de la scène, c'est la FENÊTRE qui prend la forme de
   // la toile (cf. `frameBounds` juste en dessous).
-  const renderWidth = width
+  const screenWidth = width
+  // L'EXPORT REMPLACE L'OFFRE DE L'ÉCRAN PAR LE CADRE DU FORMAT (2026-09-16) : ni la fenêtre ni
+  // la hauteur utile de la carte n'entrent dans le fichier. Le cadre de la scène (`frameBounds`)
+  // s'élargit alors au 16:9 comme il s'élargit d'ordinaire à la forme de la toile — la carte y
+  // est ajustée, entourée du fond si ses proportions diffèrent, jamais rognée ni étirée.
+  const exportLayout = useExportLayout()
+  const renderWidth = exportLayout ? exportLayout.width : screenWidth
+  const renderHeight = exportLayout ? exportLayout.height : screenHeight
   const zRange = useMemo(
     () => ({ min: doc.bounds.minZ ?? 0, max: doc.bounds.maxZ ?? 0 }),
     [doc.bounds.minZ, doc.bounds.maxZ],
@@ -223,15 +184,28 @@ export function useReplayView({
     () => frameBounds(bounds, renderWidth, renderHeight, CANVAS_PAD),
     [bounds, renderWidth, renderHeight],
   )
-  const zoom = useReplayZoom(frame)
+  const userZoom = useReplayZoom(frame)
+  // PENDANT UN EXPORT (décisions D6/D7, 2026-09-16) : les gestes de cadrage sont éteints, et le
+  // cadrage « carte entière » rend la fenêtre à 1x SANS toucher à l'état du zoom — l'utilisateur
+  // le retrouve tel quel à la fin. « Cadrage actuel » garde palier et centre.
+  const exporting = exportLayout !== null
+  const zoom = exporting ? lockedZoom(userZoom) : userZoom
+  const shownLevel = exportLayout?.framing === 'whole' ? 1 : zoom.level
   const viewBounds = useMemo(
-    () => visibleBounds(frame, zoom.level, zoom.center.x, zoom.center.y),
-    [frame, zoom.level, zoom.center],
+    () => visibleBounds(frame, shownLevel, zoom.center.x, zoom.center.y),
+    [frame, shownLevel, zoom.center],
   )
+  // `exportLayout` EST UNE DÉPENDANCE MÊME QUAND LES TAILLES NE CHANGENT PAS : la densité de
+  // rendu, elle, change — un nouveau cadrage force la recuisson des calques statiques à la
+  // densité du format (`cookLayer` lit `canvasPixelRatio`), puis à celle de l'écran au retour.
   const canvasView = useMemo(
-    () => ({ bounds: viewBounds, width: renderWidth, height: renderHeight, pad: CANVAS_PAD }),
-    [viewBounds, renderWidth, renderHeight],
+    () => {
+      void exportLayout
+      return { bounds: viewBounds, width: renderWidth, height: renderHeight, pad: CANVAS_PAD }
+    },
+    [viewBounds, renderWidth, renderHeight, exportLayout],
   )
+  const screen = useMemo(() => ({ width: screenWidth, height: screenHeight }), [screenWidth, screenHeight])
 
-  return { mapImage, bounds, renderWidth, renderHeight, zRange, canvasView, zoom }
+  return { mapImage, bounds, renderWidth, renderHeight, screen, zRange, canvasView, zoom }
 }

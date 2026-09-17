@@ -64,7 +64,7 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	}
 	s.wireReplayArtifacts(engine)
 	if s.pool != nil {
-		pooledClient := sync.NewPooledHaloClient(s.pool, gamertag, xuid, 0) // 0 = defaultPooledRPS
+		pooledClient := sync.NewPooledHaloClient(s.pool, 0) // 0 = defaultPooledRPS
 		engine.SetCustomClient(pooledClient)
 	}
 	// Phase 4 plan stabilisation 2026-05-22 : injecter le runner post-sync

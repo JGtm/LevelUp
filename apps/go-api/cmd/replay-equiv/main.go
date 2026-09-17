@@ -27,7 +27,12 @@
 //
 // # LE MODE, ET CELUI QUI A DISPARU
 //
-//	replay-equiv [-corpus F] [-films a,b] [-update]   equivalence : digests par etape + artefact
+//	replay-equiv [-corpus F] [-films a,b] [-update] [-out-dir D]   equivalence : digests par etape + artefact
+//
+// `-out-dir` CONSERVE les TSV que les enfants ecrivent (sinon : dossier temporaire efface a la
+// sortie). Le parent, lui, nomme TOUTES les etapes divergentes d un film, pas seulement la
+// premiere (D2 (pilote), 2026-09-17) : trois etapes divergentes ne valent plus trois decodages
+// complets pour etre decouvertes une a une.
 //
 // `-corpus` ne nomme QUE la liste des films : les digests de reference et les faits vivent a
 // l'emplacement canonique (cf. dossierEquivalence) — un fichier de corpus ailleurs ne deplace
@@ -37,8 +42,8 @@
 // de paquets historiques pour mesurer leur divergence (D3, item 0.7) ; leurs originaux ont
 // disparu aux items 1.4/1.5, la copie ne comparait donc plus qu'a elle-meme. La mesure, elle,
 // reste : figee au §2 de `.ai/V7.5/MESURES_CUISSON_PERF.md`, et rejouee en CI en une seconde par
-// le test de la mini-bobine de `internal/analysis/filmsource` (qui compare la grammaire retenue
-// a `filmdec.WalkPackets` sur un vrai chunk). Pour re-mesurer un jour : commit `aa694442f` et
+// le test de la mini-bobine de `internal/games/halo_infinite/film/internal/source` (qui compare la grammaire retenue
+// a `grammar.WalkPackets` sur un vrai chunk). Pour re-mesurer un jour : commit `aa694442f` et
 // anterieurs.
 //
 // Exemple (depuis apps/go-api) :
@@ -72,7 +77,10 @@ type options struct {
 	corpus    string
 	films     string
 	update    bool
-	memGiB    int
+	// outDir : ou CONSERVER les TSV que les enfants ecrivent (`-out-dir`). Vide : dossier
+	// temporaire efface a la sortie.
+	outDir string
+	memGiB int
 	// child, film et out ne sont poses que par le PARENT, pour son enfant.
 	child bool
 	film  string
@@ -118,6 +126,9 @@ func lireDrapeaux() (options, error) {
 		"liste de films short8 separes par des virgules — REMPLACE le corpus")
 	flag.BoolVar(&o.update, "update", false,
 		"ecrit les digests de reference au lieu de les comparer (lots 0, 3 et 4b UNIQUEMENT)")
+	flag.StringVar(&o.outDir, "out-dir", "",
+		"conserver les digests produits par les enfants dans CE dossier (vide : dossier temporaire efface a la sortie) — "+
+			"utile pour instruire une divergence sans re-decoder le film")
 	flag.IntVar(&o.memGiB, "mem-gib", filmproc.DefaultLimitGiB,
 		"plafond memoire de chaque enfant, en gibioctets (0 = desarme)")
 	flag.BoolVar(&o.child, "child", false, "INTERNE : role d'enfant, un seul film")
