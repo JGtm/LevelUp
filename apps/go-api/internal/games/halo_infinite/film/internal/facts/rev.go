@@ -281,7 +281,7 @@ package facts
 // du jour.
 // LA SORTIE DES FAITS CHANGE, ET C EST LE BUT DU LOT.
 //
-// DEUX CAUSES, chacune mesurable :
+// TROIS CAUSES, chacune mesurable :
 //
 //	LA GRAMMAIRE   `grammar.Rev` passe au `.40` (le chemin absolu d i0 lit les largeurs et les
 //	               bornes de la table PAR INDEX de la carte au lieu d une largeur UNIFORME de
@@ -293,6 +293,16 @@ package facts
 //	               compte les desaccords (`calibration.Desaccords`, publie dans
 //	               `Result.Calibration`, qui ne sort pas de la CLI). Arbitrage utilisateur V17,
 //	               M3-Q8 : « la valeur LUE prime sur la valeur mesuree ».
+//	LA CARTE      `killsource.Decode` recoit desormais l ENTREE DE CATALOGUE de la carte du
+//	              match (`Options.Carte`), depuis `replaybuild.BuildBytes` et depuis
+//	              `sync/killcollector`. Elle DECIDE les largeurs d axe du chemin absolu de
+//	              position, la ou ce paquet etait le seul chemin de decodage du depot a ne
+//	              recevoir aucun catalogue et a devoir les inferer. Mesure sur `e5adf7b2`
+//	              (Fragmentation, 17/17/15) : la voie MARCHE passe de 13 lignes appariees sur
+//	              16 a 167 sur 169, la voie SCAN de 176 a 22, et les 191 morts publiees sur
+//	              197 couples reels sont les MEMES des deux cotes — zero perte. Sans carte, le
+//	              repli `repli_carte_absente_largeurs_par_defaut` est pose, compte et AVERTI
+//	              par film : le decodeur lit alors les largeurs d UNE autre carte, et le dit.
 //
 // LES LIGNES DE KILL DEJA EN BASE DEVIENNENT CANDIDATES AU BACKLOG DE REDECODAGE, et ce
 // backlog part sur SIGNAL UTILISATEUR (D6), JAMAIS automatiquement : chaque ligne de

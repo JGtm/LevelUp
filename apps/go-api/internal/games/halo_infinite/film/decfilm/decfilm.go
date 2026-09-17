@@ -232,6 +232,13 @@ type CoupleStats = types.CoupleStats
 type Coverage = killsource.Coverage
 type DamageShare = killsource.DamageShare
 
+// Options / DefaultOptions : LA CONFIGURATION GELEE du decodage des morts, et la CARTE du match
+// (`Options.Carte`, lot 3.4.1 — une donnee, pas une bascule). Re-exportees parce que les deux
+// appelants de production qui resolvent la carte — `replaybuild` et `sync/killcollector` —
+// n atteignent le decodeur que par cette facade.
+type Options = killsource.Options
+
+func DefaultOptions() Options { return killsource.DefaultOptions() }
 func Decode(ctx context.Context, name string, film *source.Film, opts *killsource.Options) (*killsource.Result, error) {
 	return killsource.Decode(ctx, name, film, opts)
 }
