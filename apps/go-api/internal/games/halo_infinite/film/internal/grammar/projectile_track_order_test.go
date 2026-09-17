@@ -11,6 +11,7 @@ package grammar
 // et 3 sur 477 (bande ti=37).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"reflect"
 	"sort"
 	"testing"
@@ -18,8 +19,8 @@ import (
 
 // pisteExAequo fabrique une vie de trois points qui NAIT au meme instant que ses soeurs : seul
 // le contenu la distingue.
-func pisteExAequo(slot, gen uint32, x float32, atRest bool) ProjectileTrack {
-	return ProjectileTrack{Slot: slot, Gen: gen, Pts: []ProjectileSample{
+func pisteExAequo(slot, gen uint32, x float32, atRest bool) types.ProjectileTrack {
+	return types.ProjectileTrack{Slot: slot, Gen: gen, Pts: []types.ProjectileSample{
 		{TimestampUS: 1000, Chunk: 1, X: x, Y: 2, Z: 3},
 		{TimestampUS: 1016, Chunk: 1, X: x + 1, Y: 2, Z: 3},
 		{TimestampUS: 1032, Chunk: 1, X: x + 2, Y: 2, Z: 3, AtRest: atRest},
@@ -35,15 +36,15 @@ func TestLessTrackEstTotalSurDesViesExAequo(t *testing.T) {
 	d := pisteExAequo(7, 1, 10, false)
 	d.Pts = d.Pts[:len(d.Pts)-1] // meme debut, moins de points
 
-	ordres := [][]ProjectileTrack{
+	ordres := [][]types.ProjectileTrack{
 		{a, b, c, d},
 		{d, c, b, a},
 		{c, a, d, b},
 		{b, d, a, c},
 	}
-	var reference []ProjectileTrack
+	var reference []types.ProjectileTrack
 	for i, entree := range ordres {
-		copie := append([]ProjectileTrack(nil), entree...)
+		copie := append([]types.ProjectileTrack(nil), entree...)
 		sort.Slice(copie, func(x, y int) bool { return lessTrack(copie[x], copie[y]) })
 		if i == 0 {
 			reference = copie
@@ -92,7 +93,7 @@ func TestLessTrackNeSeparePasDeuxViesIdentiques(t *testing.T) {
 }
 
 // resume rend une forme lisible d'une liste de vies, pour les messages d'echec.
-func resume(l []ProjectileTrack) []string {
+func resume(l []types.ProjectileTrack) []string {
 	out := make([]string, 0, len(l))
 	for _, tr := range l {
 		out = append(out, string(rune('A'+len(tr.Pts)))+"/"+string(rune('0'+int(tr.Pts[0].X)%10)))

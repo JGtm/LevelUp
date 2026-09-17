@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -173,7 +174,7 @@ func TestCollineProprietaireD2Ter(t *testing.T) {
 
 // d2tConfronte confronte chaque intervalle de propriete au camp dont le score personnel DOMINE,
 // et rend l'accord sous la meilleure bijection valeur <-> camp.
-func d2tConfronte(runs []d2Run, perso map[int][]objectives.ScorePoint, slotTeam map[int]int,
+func d2tConfronte(runs []d2Run, perso map[int][]types.ScorePoint, slotTeam map[int]int,
 	e ctEntree,
 ) d2tVerdict {
 	v := d2tVerdict{runs: len(runs)}

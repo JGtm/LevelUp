@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // dispatch_item.go — DEUXIEME MAILLON : equipement, objet pose, projectile, tacmap.
 //
 // Deplacement pur depuis `traverse.go` au lot 2.7 ; chaine et exemption de longueur
@@ -8,7 +10,7 @@ package grammar
 // consumeItemAndTacmapComponent porte les composants d'EQUIPEMENT et d'OBJET POSE (ti=37,
 // ti=42), de PROJECTILE (ti=41) et de TACMAP (ti=32/33/34), plus les arms de scene et de
 // corps rigide portes dans les memes lots.
-func consumeItemAndTacmapComponent(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
+func consumeItemAndTacmapComponent(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *types.DeadState, ported bool) { //nolint:gocyclo,funlen // dette gelee
 	variant = noVariant
 	switch name {
 	case "change-scene-component": // ti=16 i0 (FUN_142ed3fcc)

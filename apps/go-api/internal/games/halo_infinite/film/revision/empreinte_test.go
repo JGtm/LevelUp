@@ -34,11 +34,11 @@ func couche(t *testing.T, fichiers map[string]string) string {
 // empreinteDe rend l empreinte d une ou plusieurs racines, sans exclusion ni amont.
 func empreinteDe(t *testing.T, racines ...string) string {
 	t.Helper()
-	e, err := revision.Empreinte(racines, nil)
+	res, err := revision.Calculer(racines, nil)
 	if err != nil {
 		t.Fatalf("empreinte de %v : %v", racines, err)
 	}
-	return e
+	return res.Empreinte
 }
 
 // sourcesDeReference : la couche de reference des cas ci-dessous.
@@ -103,7 +103,7 @@ func TestEmpreinteIgnoreCeQuiNEstPasDeLaProduction(t *testing.T) {
 
 func TestEmpreinteSuitLesValeursAmont(t *testing.T) {
 	dir := couche(t, sourcesDeReference())
-	sansAmont, err := revision.Empreinte([]string{dir}, nil)
+	resSansAmont, err := revision.Calculer([]string{dir}, nil)
 	if err != nil {
 		t.Fatalf("empreinte : %v", err)
 	}
@@ -111,14 +111,15 @@ func TestEmpreinteSuitLesValeursAmont(t *testing.T) {
 	// UNE VALEUR AMONT DIFFERENTE -> l empreinte bouge. C est la decision V15 (12) : une
 	// correction de grammaire qui change la sortie des faits sans toucher un octet de `facts/`
 	// doit faire monter `facts.Rev`.
-	a, err := revision.Empreinte([]string{dir}, nil, "grammar-2026-09-17")
+	resA, err := revision.Calculer([]string{dir}, nil, "grammar-2026-09-17")
 	if err != nil {
 		t.Fatalf("empreinte : %v", err)
 	}
-	b, err := revision.Empreinte([]string{dir}, nil, "grammar-2026-09-18")
+	resB, err := revision.Calculer([]string{dir}, nil, "grammar-2026-09-18")
 	if err != nil {
 		t.Fatalf("empreinte : %v", err)
 	}
+	sansAmont, a, b := resSansAmont.Empreinte, resA.Empreinte, resB.Empreinte
 	if a == b {
 		t.Error("empreinte immobile alors que la revision amont a change : une correction de " +
 			"grammaire ne ferait pas monter la revision des faits (V15 (12))")
@@ -130,11 +131,11 @@ func TestEmpreinteSuitLesValeursAmont(t *testing.T) {
 	if a == sansAmont || b == sansAmont {
 		t.Error("une valeur amont ne change pas l empreinte : elle n entre pas dans le hachage")
 	}
-	vide, err := revision.Empreinte([]string{dir}, nil, []string{}...)
+	resVide, err := revision.Calculer([]string{dir}, nil, []string{}...)
 	if err != nil {
 		t.Fatalf("empreinte : %v", err)
 	}
-	if vide != sansAmont {
+	if vide := resVide.Empreinte; vide != sansAmont {
 		t.Errorf("une liste d amonts VIDE ecrit des octets : %s != %s — l equivalence avec les "+
 			"deux mecanismes existants tombe", vide, sansAmont)
 	}
@@ -146,34 +147,34 @@ func TestEmpreinteExclutCeQueLAppelantDemande(t *testing.T) {
 	dir := couche(t, avec)
 	sans := empreinteDe(t, couche(t, sourcesDeReference()))
 
-	exclu, err := revision.Empreinte([]string{dir}, func(rel string) bool { return rel == "rev.go" })
+	resExclu, err := revision.Calculer([]string{dir}, func(rel string) bool { return rel == "rev.go" })
 	if err != nil {
 		t.Fatalf("empreinte : %v", err)
 	}
 	// LE FICHIER QUI PORTE LA REVISION N EST PAS DE LA COUCHE. L exclure rend atteignable la
 	// branche « la revision a change sans que la couche bouge » (correctif R1 / P2-3) : sans
 	// elle, faire monter la revision changerait aussi l empreinte, et ce message serait mort.
-	if exclu != sans {
+	if exclu := resExclu.Empreinte; exclu != sans {
 		t.Errorf("le fichier exclu entre quand meme dans le hachage : %s != %s", exclu, sans)
 	}
-	if garde := empreinteDe(t, dir); garde == exclu {
+	if garde := empreinteDe(t, dir); garde == resExclu.Empreinte {
 		t.Error("le predicat d exclusion n a aucun effet mesurable")
 	}
 }
 
 func TestEmpreinteRefuseUneRacineVide(t *testing.T) {
 	vide := t.TempDir()
-	_, err := revision.Empreinte([]string{vide}, nil)
+	_, err := revision.Calculer([]string{vide}, nil)
 	if !errors.Is(err, revision.ErrRacineSansSource) {
 		t.Errorf("racine sans source : err = %v, attendu ErrRacineSansSource — une couche dont "+
 			"l arborescence a bouge doit echouer bruyamment, pas hacher du vide", err)
 	}
-	if _, err := revision.Empreinte([]string{filepath.Join(vide, "absent")}, nil); err == nil {
+	if _, err := revision.Calculer([]string{filepath.Join(vide, "absent")}, nil); err == nil {
 		t.Error("racine inexistante acceptee")
 	}
 	// UNE RACINE QUI NE PORTE QUE DES TESTS EST VIDE AU SENS DU MECANISME.
 	quEuxDesTests := couche(t, map[string]string{"scan_test.go": "package p\n"})
-	if _, err := revision.Empreinte([]string{quEuxDesTests}, nil); !errors.Is(err, revision.ErrRacineSansSource) {
+	if _, err := revision.Calculer([]string{quEuxDesTests}, nil); !errors.Is(err, revision.ErrRacineSansSource) {
 		t.Errorf("racine sans source de production : err = %v, attendu ErrRacineSansSource", err)
 	}
 }

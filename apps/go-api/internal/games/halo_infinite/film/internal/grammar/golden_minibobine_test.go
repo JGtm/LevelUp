@@ -77,7 +77,7 @@ package grammar
 // # REGENERATION DU 2026-09-11 (lot 6.10) — DEUX LIGNES, ET AUCUN BIT N'A BOUGE NON PLUS
 //
 // `groundWeaponCreations` ET `equipmentCreations` ont change de digest. La cause est la meme
-// qu'au lot 6.6 : `EquipmentCreation` porte deux champs de plus (`HasAmmo`, `Ammo` — les
+// qu'au lot 6.6 : `types.EquipmentCreation` porte deux champs de plus (`HasAmmo`, `Ammo` — les
 // MUNITIONS lues dans le composant i20 du meme record, cf. ground_weapon_ammo.go) et
 // `rendreStable` rend TOUS les champs. Sur CETTE bobine ils valent `false` et `{0 0}` partout :
 // ses 28 creations d'arme au sol portent TOUTES le composant i9, que la reserve de lecture
@@ -450,7 +450,7 @@ func comparerGoldenFamilles(t *testing.T, lignes []string) {
 // rendreStable rend une valeur sous une forme DETERMINISTE d'un processus a l'autre.
 //
 // POURQUOI PAS `%+v`, QUI SEMBLAIT SUFFIRE. Il imprime l'ADRESSE d'un pointeur, et plusieurs
-// structures du decodeur en portent (`InventoryDelta.Ammo[].Mag`, par exemple). Le digest
+// structures du decodeur en portent (`types.InventoryDelta.Ammo[].Mag`, par exemple). Le digest
 // changeait alors a chaque execution : un golden qui rougit au hasard ne verrouille rien et
 // finit desactive. Mesure faite en figeant ce golden : deux passes consecutives donnaient deux
 // empreintes differentes pour `inventoryDeltas`.

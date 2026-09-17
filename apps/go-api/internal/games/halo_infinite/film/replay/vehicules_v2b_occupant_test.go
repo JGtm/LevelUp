@@ -46,6 +46,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -127,7 +128,7 @@ func v2boReportI10(t *testing.T, pv int, reads []attI10, st attStat) {
 }
 
 // v2boReportRelay juge le relais event-list et le recoupe avec le trou V1a.4.
-func v2boReportRelay(t *testing.T, dir string, evs []grammar.VehicleEvent) {
+func v2boReportRelay(t *testing.T, dir string, evs []types.VehicleEvent) {
 	var board, exit, exitInBand int
 	for _, e := range evs {
 		switch e.Kind {

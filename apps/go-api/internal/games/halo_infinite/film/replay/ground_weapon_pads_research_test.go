@@ -58,6 +58,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -147,7 +148,7 @@ func gwPadsWeapons(
 			continue
 		}
 		crossed++
-		if f, seen := fam[grammar.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}]; seen {
+		if f, seen := fam[types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}]; seen {
 			pairs++
 			if f == w {
 				agree++
@@ -156,7 +157,7 @@ func gwPadsWeapons(
 		a := gwPadApparition{
 			Kind: gwPadKindWeapon, Family: gwPadsWeaponFamily(w),
 			X: c.X, Y: c.Y, Z: c.Z, TUS: c.TimestampUS,
-			HasDelta: len(spans[grammar.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}]) > 0,
+			HasDelta: len(spans[types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}]) > 0,
 		}
 		if !a.HasDelta {
 			noDelta++
@@ -220,9 +221,9 @@ func gwPadsPowerups(
 // la chaine independante qui CONTROLE le filtre d'identite.
 func gwPadsKeyframeFamilies(
 	t *testing.T, dir string, known map[uint32]bool,
-) map[grammar.EquipmentLifeKey]uint32 {
+) map[types.EquipmentLifeKey]uint32 {
 	t.Helper()
-	out := map[grammar.EquipmentLifeKey]uint32{}
+	out := map[types.EquipmentLifeKey]uint32{}
 	kf, err := grammar.ScanFilmKeyframeGroundWeapons(dir, known)
 	if err != nil {
 		t.Logf("familles d'image-cle illisibles (%v) : le controle d'identite sera vide", err)
@@ -230,7 +231,7 @@ func gwPadsKeyframeFamilies(
 	}
 	for _, g := range kf {
 		if len(g.Families) > 0 {
-			out[grammar.EquipmentLifeKey{Slot: g.Slot, Gen: g.Gen}] = g.Families[0]
+			out[types.EquipmentLifeKey{Slot: g.Slot, Gen: g.Gen}] = g.Families[0]
 		}
 	}
 	return out

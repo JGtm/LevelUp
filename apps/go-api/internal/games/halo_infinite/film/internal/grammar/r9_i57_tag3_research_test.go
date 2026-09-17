@@ -43,6 +43,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -185,7 +186,7 @@ func r9CountLives(lives map[uint32][]r8LifeSpan) int {
 }
 
 // r9LogCells publie la table tag x rang x oracle, tag 3 SCINDE par le bit `a`.
-func r9LogCells(t *testing.T, i57 []r9Read, ranks []AbilityRank,
+func r9LogCells(t *testing.T, i57 []r9Read, ranks []types.AbilityRank,
 	lives map[uint32][]r8LifeSpan, speeds r8SpeedIndex) {
 	t.Helper()
 	cells := map[string]*r9Cell{}
@@ -226,7 +227,7 @@ func r9LogCells(t *testing.T, i57 []r9Read, ranks []AbilityRank,
 // r9LogParVie publie LE DENOMINATEUR : episodes par VIE, par rang porte, pour chaque cellule
 // de tag. C'est la forme de tableau qui a tranche le propulseur au par. 8.8 de R8, et c'est
 // elle qui tranche ici : un rang tres porte et muet, ou un rang rare et bavard.
-func r9LogParVie(t *testing.T, i57 []r9Read, ranks []AbilityRank, lives map[uint32][]r8LifeSpan) {
+func r9LogParVie(t *testing.T, i57 []r9Read, ranks []types.AbilityRank, lives map[uint32][]r8LifeSpan) {
 	t.Helper()
 	vies := map[int]int{}
 	for slot, spans := range lives {
@@ -268,7 +269,7 @@ func r9LogParVie(t *testing.T, i57 []r9Read, ranks []AbilityRank, lives map[uint
 // r9LogVoisins repond a la question propre au REPULSEUR : il pousse LES AUTRES. A l'instant
 // d'une lecture `tag==3, a==1`, un bipede a moins de 6 m montre-t-il une bouffee ? La
 // comparaison se fait contre le temoin aleatoire apparie du meme film.
-func r9LogVoisins(t *testing.T, i57 []r9Read, ranks []AbilityRank,
+func r9LogVoisins(t *testing.T, i57 []r9Read, ranks []types.AbilityRank,
 	lives map[uint32][]r8LifeSpan, pos map[uint32][]BipedPosition, speeds r8SpeedIndex) {
 	t.Helper()
 	for _, cell := range []string{"tag=3/a=1 (RUNTIME)", "tag=3/a=0 (porte)"} {
@@ -312,7 +313,7 @@ func r9LogVoisins(t *testing.T, i57 []r9Read, ranks []AbilityRank,
 
 // r9LogTemoinI59 publie LE TEMOIN POSITIF : le tag 3 d'i59 doit retrouver le grappin. Sans
 // lui, un zero sur le repulseur ne prouverait rien.
-func r9LogTemoinI59(t *testing.T, i59 []r8TagRead, ranks []AbilityRank,
+func r9LogTemoinI59(t *testing.T, i59 []r8TagRead, ranks []types.AbilityRank,
 	lives map[uint32][]r8LifeSpan) {
 	t.Helper()
 	byTag := map[uint32]map[int]int{}

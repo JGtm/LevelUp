@@ -26,7 +26,10 @@ package grammar
 // protocole, dans un ordre deterministe — l'instrument de mesure et la production appellent la
 // MEME fonction, pour qu'ils ne divergent jamais.
 
-import "sort"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"sort"
+)
 
 // Les seuils de la definition d'une MONTEE CONTIGUE — protocole du 2026-09-01, 0/1000.
 const (
@@ -55,8 +58,8 @@ type NavpointRise struct {
 // NavpointContiguousRises decoupe les lectures en montees contigues, tous slots, et les rend
 // triees par (EndMS, Slot) — deterministe : deux montees peuvent finir a la MEME milliseconde
 // (les navpoints vont par paires et portent le meme anneau).
-func NavpointContiguousRises(reads []NavpointRadialRead) []NavpointRise {
-	series := map[uint32][]NavpointRadialRead{}
+func NavpointContiguousRises(reads []types.NavpointRadialRead) []NavpointRise {
+	series := map[uint32][]types.NavpointRadialRead{}
 	for _, r := range reads {
 		series[r.Slot] = append(series[r.Slot], r)
 	}
@@ -102,7 +105,7 @@ func lessNavpointRise(a, b NavpointRise) bool {
 // La marche est celle de l'instrument (`tpMonteesContigues`), a l'identique : un trou de plus
 // de NavpointRiseMaxGapMS entre deux echantillons casse la montee, et la borne de fin d'une
 // montee ouvre la suivante.
-func navpointRisesOfSeries(slot uint32, s []NavpointRadialRead) []NavpointRise {
+func navpointRisesOfSeries(slot uint32, s []types.NavpointRadialRead) []NavpointRise {
 	var out []NavpointRise
 	for i := 0; i < len(s); {
 		j := i

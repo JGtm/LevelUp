@@ -16,13 +16,14 @@ package objectives
 // 2 morts). [RoundIdentity.CompletedByLines] rend la parite.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
 	"testing"
 )
 
 // killRec est une emission synthetique du triplet complet (frags A, morts B) plus assistances.
-func tripletRec(t, slot, round int, kills, deaths, assists int64) StatRecord {
-	return StatRecord{TimeMS: t, Slot: slot, Round: round, Comps: map[int]StatValue{
+func tripletRec(t, slot, round int, kills, deaths, assists int64) types.StatRecord {
+	return types.StatRecord{TimeMS: t, Slot: slot, Round: round, Comps: map[int]types.StatValue{
 		coreKillsComp:   {A: kills, B: deaths},
 		coreAssistsComp: {A: assists},
 	}}
@@ -34,8 +35,8 @@ func tripletRec(t, slot, round int, kills, deaths, assists int64) StatRecord {
 //	le slot 22 n'en aligne que 2 -> il lui echappe, alors que son triplet (7,2,1) est UNIQUE.
 //
 // C'est la forme exacte du cas mesure sur `c0a82e88`.
-func filmUneMancheDeuxMortsFixture() ([]StatRecord, []DeathInstant, []PlayerLine) {
-	recs := []StatRecord{
+func filmUneMancheDeuxMortsFixture() ([]types.StatRecord, []types.DeathInstant, []types.PlayerLine) {
+	recs := []types.StatRecord{
 		// Une seule manche reelle (train de score de mode croissant).
 		modeRec(900, 22, 0, 10), modeRec(1900, 22, 0, 20), modeRec(2900, 22, 0, 30),
 		// Slot 20 : trois morts -> a la portee du pont par morts. Triplet (1,3,0).
@@ -44,11 +45,11 @@ func filmUneMancheDeuxMortsFixture() ([]StatRecord, []DeathInstant, []PlayerLine
 		tripletRec(1000, 22, 0, 7, 1, 1), tripletRec(2000, 22, 0, 7, 2, 1),
 	}
 	sort.SliceStable(recs, func(i, j int) bool { return recs[i].TimeMS < recs[j].TimeMS })
-	deaths := []DeathInstant{
+	deaths := []types.DeathInstant{
 		{XUID: "D", TimeMS: 1500}, {XUID: "D", TimeMS: 2500}, {XUID: "D", TimeMS: 3500},
 		{XUID: "S", TimeMS: 1000}, {XUID: "S", TimeMS: 2000},
 	}
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "D", Kills: 1, Deaths: 3, Assists: 0},
 		{XUID: "S", Kills: 7, Deaths: 2, Assists: 1},
 	}
@@ -85,7 +86,7 @@ func TestCompletedByLinesRattrapeLeJoueurQuiMeurtPeu(t *testing.T) {
 func TestCompletedByLinesSansLignesNeChangeRien(t *testing.T) {
 	recs, deaths, _ := filmUneMancheDeuxMortsFixture()
 	nu := ResolveRoundIdentity(recs, deaths)
-	for _, lignes := range [][]PlayerLine{nil, {}} {
+	for _, lignes := range [][]types.PlayerLine{nil, {}} {
 		complete := nu.CompletedByLines(recs, lignes)
 		if complete.NamedCount() != nu.NamedCount() || complete.At(22, 1000) != "" {
 			t.Errorf("sans lignes de match, l'identite doit rester INCHANGEE (nommes %d -> %d, slot 22 = %q)",
@@ -99,7 +100,7 @@ func TestCompletedByLinesSansLignesNeChangeRien(t *testing.T) {
 // repart de zero. La completion doit se taire, sans quoi elle reintroduirait le defaut corrige.
 func TestCompletedByLinesRefuseLeMultiManche(t *testing.T) {
 	recs, deaths := twoRoundReassignedFixture()
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "A", Kills: 0, Deaths: 3, Assists: 0},
 		{XUID: "B", Kills: 0, Deaths: 3, Assists: 0},
 		{XUID: "C", Kills: 0, Deaths: 6, Assists: 0},
@@ -126,7 +127,7 @@ func TestCompletedByLinesRefuseLeMultiManche(t *testing.T) {
 func TestCompletedByLinesNAttribueJamaisUnXUIDDejaPris(t *testing.T) {
 	recs, deaths, _ := filmUneMancheDeuxMortsFixture()
 	// Le triplet du slot 22 (7,2,1) est ici celui de "D" — deja nomme par les morts sur le slot 20.
-	lines := []PlayerLine{{XUID: "D", Kills: 7, Deaths: 2, Assists: 1}}
+	lines := []types.PlayerLine{{XUID: "D", Kills: 7, Deaths: 2, Assists: 1}}
 	nu := ResolveRoundIdentity(recs, deaths)
 	complete := nu.CompletedByLines(recs, lines)
 	if got := complete.At(22, 1000); got != "" {
@@ -150,8 +151,8 @@ func TestCompletedByLinesNAttribueJamaisUnXUIDDejaPris(t *testing.T) {
 // totaux uniques dans les lignes — et que le pont par morts NE PEUT PAS nommer (2 morts, sous
 // `deathInstantMin`). C'est exactement la configuration ou la garde mono-manche est le seul
 // rempart.
-func deuxManchesTripletResoluFixture() ([]StatRecord, []DeathInstant, []PlayerLine) {
-	recs := []StatRecord{
+func deuxManchesTripletResoluFixture() ([]types.StatRecord, []types.DeathInstant, []types.PlayerLine) {
+	recs := []types.StatRecord{
 		// Deux manches REELLES : une suite de score de mode croissante par manche.
 		modeRec(900, 22, 0, 10), modeRec(1900, 22, 0, 20), modeRec(2900, 22, 0, 30),
 		modeRec(10900, 22, 1, 10), modeRec(11900, 22, 1, 20), modeRec(12900, 22, 1, 30),
@@ -172,14 +173,14 @@ func deuxManchesTripletResoluFixture() ([]StatRecord, []DeathInstant, []PlayerLi
 		tripletRec(11700, 24, 1, 4, 1, 2),
 	}
 	sort.SliceStable(recs, func(i, j int) bool { return recs[i].TimeMS < recs[j].TimeMS })
-	deaths := []DeathInstant{
+	deaths := []types.DeathInstant{
 		{XUID: "A", TimeMS: 1000}, {XUID: "A", TimeMS: 2000}, {XUID: "A", TimeMS: 3000},
 		{XUID: "B", TimeMS: 11000}, {XUID: "B", TimeMS: 12000}, {XUID: "B", TimeMS: 13000},
 		{XUID: "C", TimeMS: 1500}, {XUID: "C", TimeMS: 2500}, {XUID: "C", TimeMS: 3500},
 		{XUID: "C", TimeMS: 11500}, {XUID: "C", TimeMS: 12500}, {XUID: "C", TimeMS: 13500},
 		{XUID: "E", TimeMS: 1300}, {XUID: "E", TimeMS: 11300},
 	}
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "A", Kills: 0, Deaths: 6, Assists: 0},
 		{XUID: "B", Kills: 0, Deaths: 6, Assists: 0},
 		{XUID: "C", Kills: 0, Deaths: 6, Assists: 0},
@@ -237,8 +238,8 @@ func TestCompletedByLinesRefuseLeMultiMancheQuandLeTripletAUneReponse(t *testing
 //
 // C'est le SEUL cas ou la garde 2 (« completer, jamais contredire ») tire toute seule : la
 // garde 3 (« aucun xuid deux fois ») ne la double pas, puisque "Q" est libre.
-func contradictionFixture() ([]StatRecord, []DeathInstant, []PlayerLine) {
-	recs := []StatRecord{
+func contradictionFixture() ([]types.StatRecord, []types.DeathInstant, []types.PlayerLine) {
+	recs := []types.StatRecord{
 		// Une seule manche reelle.
 		modeRec(900, 20, 0, 10), modeRec(1900, 20, 0, 20), modeRec(2900, 20, 0, 30),
 		// Slot 20 : trois morts (le pont par morts le nomme "P"), et un triplet (5,3,2) qui
@@ -248,10 +249,10 @@ func contradictionFixture() ([]StatRecord, []DeathInstant, []PlayerLine) {
 		tripletRec(3500, 20, 0, 5, 3, 2),
 	}
 	sort.SliceStable(recs, func(i, j int) bool { return recs[i].TimeMS < recs[j].TimeMS })
-	deaths := []DeathInstant{
+	deaths := []types.DeathInstant{
 		{XUID: "P", TimeMS: 1500}, {XUID: "P", TimeMS: 2500}, {XUID: "P", TimeMS: 3500},
 	}
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "P", Kills: 9, Deaths: 9, Assists: 9}, // aucun slot ne porte ce triplet
 		{XUID: "Q", Kills: 5, Deaths: 3, Assists: 2}, // celui du slot 20
 	}

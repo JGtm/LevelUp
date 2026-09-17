@@ -28,6 +28,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // camoComponentName est l'étiquette de registre d'i28 — celle par laquelle consumeByName
@@ -47,20 +48,6 @@ const (
 	CamoInactiveQ = 0
 	CamoActiveQ   = 4095
 )
-
-// CamoRead est UNE transmission de la voie d'état du camouflage, localisée dans le film.
-type CamoRead struct {
-	// Slot est l'identifiant bas du biped porteur — le même que celui des trajectoires,
-	// donc UNE VIE et non un joueur (le slot migre aux réapparitions).
-	Slot uint32
-	// Chunk / PacketIndex localisent la lecture dans le film.
-	Chunk, PacketIndex int
-	// TimestampUS est l'horodatage du paquet porteur — MÊME horloge que BipedPosition.
-	TimestampUS uint64
-	// Q est le quantum brut R(12) de queue[1]. Binaire mesuré : CamoInactiveQ ou
-	// CamoActiveQ.
-	Q uint16
-}
 
 // CamoStateStats compte ce que la marche a rencontré. Sans ces dénominateurs, une liste
 // de lectures ne se juge pas.
@@ -83,7 +70,7 @@ type CamoStateStats struct {
 // fait). Le hook est restauré à la sortie, y compris en cas d'erreur.
 //
 // ScanFilmCamoStates est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanCamoStates].
-func ScanFilmCamoStates(dir string) ([]CamoRead, CamoStateStats, error) {
+func ScanFilmCamoStates(dir string) ([]types.CamoRead, CamoStateStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, CamoStateStats{}, err
@@ -92,7 +79,7 @@ func ScanFilmCamoStates(dir string) ([]CamoRead, CamoStateStats, error) {
 }
 
 // ScanCamoStates décode les transmissions de la voie d'état du camouflage d'un film DEJA CHARGE.
-func ScanCamoStates(fc *FilmContext) ([]CamoRead, CamoStateStats, error) {
+func ScanCamoStates(fc *FilmContext) ([]types.CamoRead, CamoStateStats, error) {
 	var st CamoStateStats
 	chunks := fc.ChunkNumbers()
 	if len(chunks) == 0 {
@@ -131,7 +118,7 @@ func ScanCamoStates(fc *FilmContext) ([]CamoRead, CamoStateStats, error) {
 		last.got = true
 	}
 
-	var out []CamoRead
+	var out []types.CamoRead
 	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage(), obs: obs}
 	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
 		st.Records++
@@ -148,7 +135,7 @@ func ScanCamoStates(fc *FilmContext) ([]CamoRead, CamoStateStats, error) {
 			st.NoChannel++
 		default:
 			st.Read++
-			out = append(out, CamoRead{
+			out = append(out, types.CamoRead{
 				Slot: r.Slot, Chunk: r.Chunk, PacketIndex: r.Packet.Index,
 				TimestampUS: r.Packet.TimestampUS, Q: last.q,
 			})

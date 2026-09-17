@@ -114,7 +114,7 @@ func GrenadeRankOf(typeID uint32) (int, bool) {
 // GrenadeThrow est un lancer de grenade attribué à son auteur.
 type GrenadeThrow struct {
 	// TimestampUS est l'horodatage du paquet — MÊME horloge que BipedPosition.TimestampUS,
-	// FireEvent.TimestampUS et KeyframeLoadout.TimestampUS.
+	// FireEvent.TimestampUS et types.KeyframeLoadout.TimestampUS.
 	TimestampUS uint64
 	// Chunk / PacketIndex localisent le lancer dans le film (traçabilité).
 	Chunk, PacketIndex int

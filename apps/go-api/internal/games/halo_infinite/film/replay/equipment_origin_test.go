@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // equipment_origin_test.go — LA CLASSIFICATION D'ORIGINE, sur donnees synthetiques.
@@ -24,9 +25,9 @@ func origPos(slot uint32, frame int, x, y, z float32) grammar.BipedPosition {
 }
 
 // origPose fabrique une pose brute a l'instant de la frame donnee.
-func origPose(frame int, x, y, z float32) grammar.EquipmentPlacement {
-	return grammar.EquipmentPlacement{
-		Life: grammar.EquipmentLifeKey{}, T0US: eqTS(frame), T1US: eqTS(frame + 10),
+func origPose(frame int, x, y, z float32) types.EquipmentPlacement {
+	return types.EquipmentPlacement{
+		Life: types.EquipmentLifeKey{}, T0US: eqTS(frame), T1US: eqTS(frame + 10),
 		X: x, Y: y, Z: z, GlobalID: 0x2974c233, Points: 4,
 	}
 }
@@ -115,7 +116,7 @@ func TestBuildEquipmentPlacementsPublieUneOrigineToujours(t *testing.T) {
 		origPos(512, 0, 0, 0, 0),
 		origPos(512, 40, 4, 0, 0),
 	}
-	raw := []grammar.EquipmentPlacement{
+	raw := []types.EquipmentPlacement{
 		origPose(40, 4, 0, 0),   // lache : poseur a 0 m, fin de vie
 		origPose(20, 300, 0, 0), // aucun bipede a moins de 3 m -> sans poseur
 	}
@@ -139,7 +140,7 @@ func TestBuildEquipmentPlacementsPublieUneOrigineToujours(t *testing.T) {
 }
 
 // origPoseOf — la meme pose brute, pour un GlobalID choisi (le `eqip` de l'objet).
-func origPoseOf(frame int, globalID uint32, x, y, z float32) grammar.EquipmentPlacement {
+func origPoseOf(frame int, globalID uint32, x, y, z float32) types.EquipmentPlacement {
 	p := origPose(frame, x, y, z)
 	p.GlobalID = globalID
 	return p
@@ -180,7 +181,7 @@ func TestPieceEngendreeEstToujoursDeployee(t *testing.T) {
 	pos := []grammar.BipedPosition{
 		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
 	}
-	raw := []grammar.EquipmentPlacement{
+	raw := []types.EquipmentPlacement{
 		// 1. PANNEAU ne a la fin de la vie de son poseur, a ses pieds : `dropped` avant H.2.
 		origPoseOf(40, wallPanelGlobalID, 4, 0, 0),
 		// 2. PANNEAU sans poseur mesure (300 m de tout bipede) : `unknown` avant H.2.

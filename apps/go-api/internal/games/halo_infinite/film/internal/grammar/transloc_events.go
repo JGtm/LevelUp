@@ -57,6 +57,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -97,27 +98,6 @@ const (
 	translocMaxRegionBits = 8
 )
 
-// TranslocatorTeleport est UNE téléportation exécutée : quand, par quel bipède — et, quand la
-// charge a pu être lue, d'où à où.
-type TranslocatorTeleport struct {
-	// TimestampUS : l'horodatage du paquet porteur — MÊME horloge que
-	// BipedPosition.TimestampUS (l'horloge MOTEUR des paquets, cf. le piège documenté au
-	// rapport R1 §0 : elle n'est PAS la timeline de l'artefact).
-	TimestampUS uint64
-	// Slot : le slot du bipède qui se téléporte, directement comparable à
-	// BipedPosition.Slot.
-	Slot uint32
-	// From / To : le DÉPART et l'ARRIVÉE du saut en coordonnées monde (X, Y, Z), déquantifiés
-	// aux bornes VRAIES de la carte. Valides SEULEMENT si HasPositions ; à lire ensemble,
-	// jamais l'une sans l'autre.
-	From, To [3]float32
-	// HasPositions dit que la charge a été lue ET déquantifiée. Faux = l'instant et le slot
-	// restent mesurés, les positions ne sont pas connues (carte hors catalogue, entrée sans
-	// largeurs, région étrangère, ou charge non conforme au layout). Un appelant qui
-	// lirait From/To sans ce témoin publierait l'origine du monde comme une position.
-	HasPositions bool
-}
-
 // ScanFilmTranslocatorTeleports lit les téléportations du translocateur d'un film, triées
 // par instant.
 //
@@ -131,7 +111,7 @@ type TranslocatorTeleport struct {
 //
 // ScanFilmTranslocatorTeleports est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis
 // appelle [ScanTranslocatorTeleports]. La cuisson, elle, passe le film qu'elle a déjà chargé.
-func ScanFilmTranslocatorTeleports(dir string, entry *profile.MapQuantEntry) []TranslocatorTeleport {
+func ScanFilmTranslocatorTeleports(dir string, entry *profile.MapQuantEntry) []types.TranslocatorTeleport {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil // meme degradation silencieuse qu'un chunk illisible : couverture moindre
@@ -141,8 +121,8 @@ func ScanFilmTranslocatorTeleports(dir string, entry *profile.MapQuantEntry) []T
 
 // ScanTranslocatorTeleports lit les téléportations du translocateur d'un film DEJA CHARGE,
 // triées par instant. Cf. [ScanFilmTranslocatorTeleports] pour la doctrine du balayage.
-func ScanTranslocatorTeleports(film *source.Film, entry *profile.MapQuantEntry) []TranslocatorTeleport {
-	var out []TranslocatorTeleport
+func ScanTranslocatorTeleports(film *source.Film, entry *profile.MapQuantEntry) []types.TranslocatorTeleport {
+	var out []types.TranslocatorTeleport
 	for _, c := range FilmChunkNumbers(film) {
 		chunk, pks, ok := FilmChunkAt(film, c)
 		if !ok {
@@ -170,21 +150,21 @@ func ScanTranslocatorTeleports(film *source.Film, entry *profile.MapQuantEntry) 
 // (porte de ref0 à 0 — jamais observé, mais un slot non transmis ne se devine pas). La
 // CHARGE, elle, ne conditionne rien : elle échoue en positions absentes, pas en événement
 // perdu (l'instant et le slot sont déjà lus).
-func decodeTranslocHead(pay []byte, tsUS uint64, entry *profile.MapQuantEntry) (TranslocatorTeleport, bool) {
+func decodeTranslocHead(pay []byte, tsUS uint64, entry *profile.MapQuantEntry) (types.TranslocatorTeleport, bool) {
 	br := LecteurSur(pay)
 	h := readPacketHead(br) // [config][continuation][R(7) type] — event_list.go
 	if !h.More {
-		return TranslocatorTeleport{}, false // liste vide : pas d'événement en tête
+		return types.TranslocatorTeleport{}, false // liste vide : pas d'événement en tête
 	}
 	if h.Type != translocEventType {
-		return TranslocatorTeleport{}, false
+		return types.TranslocatorTeleport{}, false
 	}
 	if !br.ReadBit() {
-		return TranslocatorTeleport{}, false // ref0 absente : pas d'unité désignée
+		return types.TranslocatorTeleport{}, false // ref0 absente : pas d'unité désignée
 	}
 	idx := br.ReadBits(refDomWidth(translocRefDomain))
 	br.Skip(translocGenBits)
-	ev := TranslocatorTeleport{TimestampUS: tsUS, Slot: uint32(idx + translocSlotBase)}
+	ev := types.TranslocatorTeleport{TimestampUS: tsUS, Slot: uint32(idx + translocSlotBase)}
 	ev.From, ev.To, ev.HasPositions = decodeTranslocJump(br, entry)
 	return ev, true
 }

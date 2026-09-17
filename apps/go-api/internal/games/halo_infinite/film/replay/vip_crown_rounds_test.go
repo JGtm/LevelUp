@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // vip_crown_rounds_test.go — LA PREUVE DE LA CORRECTION MULTI-MANCHE, AU NIVEAU DU CALQUE.
@@ -17,19 +18,19 @@ import (
 // twoRoundVipRecs fabrique un film synthetique a deux manches : le slot 22 est le joueur "A" en
 // manche 0 puis "B" en manche 1 (le compteur de morts `comp 2 B` repart de zero par manche, et le
 // score de mode `comp 0 A` fait reconnaitre les deux manches).
-func twoRoundVipRecs() ([]objectives.StatRecord, []objectives.DeathInstant) {
-	rec := func(t, slot, round, comp int, a, b int64) objectives.StatRecord {
-		return objectives.StatRecord{TimeMS: t, Slot: slot, Round: round,
-			Comps: map[int]objectives.StatValue{comp: {A: a, B: b}}}
+func twoRoundVipRecs() ([]types.StatRecord, []types.DeathInstant) {
+	rec := func(t, slot, round, comp int, a, b int64) types.StatRecord {
+		return types.StatRecord{TimeMS: t, Slot: slot, Round: round,
+			Comps: map[int]types.StatValue{comp: {A: a, B: b}}}
 	}
-	recs := []objectives.StatRecord{
+	recs := []types.StatRecord{
 		rec(900, 22, 0, 0, 10, 0), rec(1900, 22, 0, 0, 20, 0), rec(2900, 22, 0, 0, 30, 0),
 		rec(10900, 22, 1, 0, 10, 0), rec(11900, 22, 1, 0, 20, 0), rec(12900, 22, 1, 0, 30, 0),
 		rec(1000, 22, 0, 2, 0, 1), rec(2000, 22, 0, 2, 0, 2), rec(3000, 22, 0, 2, 0, 3),
 		rec(11000, 22, 1, 2, 0, 1), rec(12000, 22, 1, 2, 0, 2), rec(13000, 22, 1, 2, 0, 3),
 	}
 	sort.SliceStable(recs, func(i, j int) bool { return recs[i].TimeMS < recs[j].TimeMS })
-	deaths := []objectives.DeathInstant{
+	deaths := []types.DeathInstant{
 		{XUID: "A", TimeMS: 1000}, {XUID: "A", TimeMS: 2000}, {XUID: "A", TimeMS: 3000},
 		{XUID: "B", TimeMS: 11000}, {XUID: "B", TimeMS: 12000}, {XUID: "B", TimeMS: 13000},
 	}

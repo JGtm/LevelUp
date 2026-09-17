@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // attDrapeauRayonM : au-delà, une création n'est plus « au socle ». Trois mètres est la
@@ -66,9 +67,9 @@ func attDrapeauObjetFilm(t *testing.T, root, id string) {
 
 // attCreations porte le tri d'un balayage de créations `ti=42`.
 type attCreations struct {
-	connues, ecartees []grammar.EquipmentCreation
+	connues, ecartees []types.EquipmentCreation
 	mots              map[uint32]int
-	st                grammar.EquipmentCreationStats
+	st                types.EquipmentCreationStats
 }
 
 // attCreationsEcartees balaye les créations `ti=42` d'un film et les trie par le croisement
@@ -110,10 +111,10 @@ func attCreationsEcartees(t *testing.T, root, id, roleSocle string) (
 
 // attLogDistances publie, pour chaque mot de 32 bits écarté, sa distance minimale à un socle
 // et son écart temporel minimal à un événement de drapeau.
-func attLogDistances(t *testing.T, id string, ecartees []grammar.EquipmentCreation,
+func attLogDistances(t *testing.T, id string, ecartees []types.EquipmentCreation,
 	socles []PointObjective, o attOracle) {
 	t.Helper()
-	parMot := map[uint32][]grammar.EquipmentCreation{}
+	parMot := map[uint32][]types.EquipmentCreation{}
 	for _, c := range ecartees {
 		m := uint32(c.MPPVal[grammar.MPPWord32])
 		parMot[m] = append(parMot[m], c)
@@ -142,7 +143,7 @@ func attLogDistances(t *testing.T, id string, ecartees []grammar.EquipmentCreati
 
 // attResumeMot rend, pour les créations d'un même mot : combien naissent au socle, la
 // distance minimale à un socle, et l'écart temporel minimal à un événement de drapeau.
-func attResumeMot(cs []grammar.EquipmentCreation, socles []PointObjective, o attOracle) (
+func attResumeMot(cs []types.EquipmentCreation, socles []PointObjective, o attOracle) (
 	auSocle int, dMin float64, tMin int64) {
 	dMin, tMin = math.MaxFloat64, int64(math.MaxInt64)
 	for _, c := range cs {
@@ -165,7 +166,7 @@ func attResumeMot(cs []grammar.EquipmentCreation, socles []PointObjective, o att
 // LA DISTANCE EST PRISE EN PLAN, et c'est délibéré : la hauteur d'un socle du fichier de
 // carte et celle de l'objet répliqué ne se réfèrent pas au même point (pied contre centre),
 // et mêler les deux ferait passer un écart de convention pour un écart de position.
-func attDistSocleMin(c grammar.EquipmentCreation, socles []PointObjective) float64 {
+func attDistSocleMin(c types.EquipmentCreation, socles []PointObjective) float64 {
 	best := math.MaxFloat64
 	for _, s := range socles {
 		if d := math.Hypot(float64(c.X)-float64(s.Center.X), float64(c.Y)-float64(s.Center.Y)); d < best {
@@ -177,7 +178,7 @@ func attDistSocleMin(c grammar.EquipmentCreation, socles []PointObjective) float
 
 // attEcartEvenementMin rend l'écart temporel minimal (ms) entre une création et un événement
 // de l'oracle — prise ou fin de portage.
-func attEcartEvenementMin(c grammar.EquipmentCreation, o attOracle) int64 {
+func attEcartEvenementMin(c types.EquipmentCreation, o attOracle) int64 {
 	at := int64(c.TimestampUS/1000) - o.Bridge.OffsetMS
 	best := int64(math.MaxInt64)
 	for _, w := range o.Fenetres {
@@ -193,7 +194,7 @@ func attEcartEvenementMin(c grammar.EquipmentCreation, o attOracle) int64 {
 // attLogI10SurEcartees confronte les lectures d'i10 portées par les SLOTS des créations
 // écartées à la frontière de portage de l'oracle.
 func attLogI10SurEcartees(t *testing.T, root, id string,
-	ecartees []grammar.EquipmentCreation, o attOracle) {
+	ecartees []types.EquipmentCreation, o attOracle) {
 	t.Helper()
 	slots := map[uint32]bool{}
 	for _, c := range ecartees {

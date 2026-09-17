@@ -38,6 +38,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"path/filepath"
 	"sort"
@@ -328,7 +329,7 @@ type r9Creneau struct {
 
 // r9RanksInLife rend les rangs DISTINCTS lus pour ce slot dans la vie qui couvre `at`,
 // sans contrainte d'anteriorite. Complement declare de `r8RankInLife`, jamais son remplacant.
-func r9RanksInLife(ranks []AbilityRank, lives map[uint32][]r8LifeSpan,
+func r9RanksInLife(ranks []types.AbilityRank, lives map[uint32][]r8LifeSpan,
 	slot uint32, at uint64) []int {
 	var span r8LifeSpan
 	found := false
@@ -397,7 +398,7 @@ func r9CreneauxOneFilm(t *testing.T, dir string) {
 // r9Impulsions replie les lectures `tag == 1` d'i57 ET d'i59 en EPISODES par slot, puis les
 // nomme. i57 et i59 sont co-transmis : une meme impulsion apparait souvent dans les deux, et
 // les replier ensemble evite de compter deux fois le meme geste.
-func r9Impulsions(art *r9Art, i57, i59 []r8TagRead, ranks []AbilityRank,
+func r9Impulsions(art *r9Art, i57, i59 []r8TagRead, ranks []types.AbilityRank,
 	lives map[uint32][]r8LifeSpan, speeds r8SpeedIndex, origin uint64) []r9Creneau {
 	type ev struct {
 		slot uint32
@@ -435,7 +436,7 @@ func r9Impulsions(art *r9Art, i57, i59 []r8TagRead, ranks []AbilityRank,
 }
 
 // r9Creneau1 construit UN creneau : instant du visionneur, acteur nomme, rang porte, pic.
-func r9Creneau1(art *r9Art, slot uint32, ts uint64, ranks []AbilityRank,
+func r9Creneau1(art *r9Art, slot uint32, ts uint64, ranks []types.AbilityRank,
 	lives map[uint32][]r8LifeSpan, speeds r8SpeedIndex, origin uint64) r9Creneau {
 	ms := (int64(ts) - int64(origin)) / 1000
 	frame := 0

@@ -41,7 +41,7 @@ package archlint
 // # POURQUOI LE CODE, ET PAS LES COMMENTAIRES
 //
 // Le balayage se fait sur l AST, IDENTIFIANTS SEULS. Un ratchet qui grepperait le texte brut
-// interdirait aux chroniques de revision (`filmdec/grammar_rev.go`,
+// interdirait aux chroniques de revision (`film/internal/grammar/rev.go`,
 // `killcollector/killsource_decoder_rev.go`) de NOMMER ce que leur lot a retire — c est-a-dire
 // qu il effacerait la trace du geste qu il protege. Un verrou qui revient revient en code.
 

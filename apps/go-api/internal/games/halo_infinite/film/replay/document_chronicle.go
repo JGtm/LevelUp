@@ -1567,3 +1567,60 @@ package replay
 //	POURQUOI LA    la FORME change (champs neufs, `end` a trois valeurs) et le CONTENU change sur
 //	VERSION MONTE  tout le parc. Un artefact 59 ne peut ni porter une lacune, ni une fin de vehicule
 //	               lue, ni nommer un Wraith. La reprise du backfill se fait par SchemaVersion.
+
+// v61 (2026-09-17, lot 2.6 du PLAN_DECODEUR_FILM) : L'ARTEFACT DIT SOUS QUELLES REVISIONS IL A
+// ETE CUIT.
+//
+//	ce qui etait   la revision du decodeur ne vivait que dans le depot : les goldens de
+//	hors du        `source.Rev`, `profile.Rev`, `grammar.Rev` et `facts.Rev` disent ce que la TETE
+//	document       decode, jamais ce qu'un artefact DEJA CUIT porte. Pour savoir sous quelle
+//	               grammaire un document avait ete produit, il fallait dater sa cuisson et
+//	               remonter au commit — et la version de schema ne repond pas a cette question :
+//	               plusieurs revisions de grammaire tiennent sous une meme version de schema.
+//
+//	le bloc        `coverage.decoder` est NEUF, et il porte LES QUATRE REVISIONS DE CALQUE
+//	ajoute        (decision V15 (11)) : `sourceRev` (la porte aux octets), `profileRev` (la table
+//	               du decodeur), `grammarRev` (la grammaire de lecture), `factsRev` (la couche des
+//	               faits, celle qui commande le backlog killsource) — dans l'ordre du sens unique.
+//	               UNE SEULE valeur ne dirait pas OU le changement a eu lieu, or c'est ce que la
+//	               recuisson selective par calque (4.4) doit decider. Plus `build`, la cle du
+//	               profil lue en clair dans `chunk_00` section 2 (D-3 de l'ADR 0034). Un pointeur
+//	               en `omitempty`, pour la meme raison que `FilmMajorVersion` : l'ABSENCE du bloc
+//	               dit « artefact anterieur a ce lot », et c'est une reponse, pas un trou.
+//
+//	build inconnu  `build` vaut la CHAINE VIDE et le bloc reste PRESENT dans les deux cas ou la
+//	               cle n'a pas servi : un film sans section d'identification (5 films du cache,
+//	               majeures 31 et 33) et un build que la table de profil ne connait pas
+//	               (`ErrUnknownBuild`). Sans cette regle, l'absence du bloc porterait deux sens —
+//	               « cuit avant le lot » et « build inconnu » — et c'est exactement l'ambiguite
+//	               « entre deux versions de schema » que D-7 interdit. Tout ce qui a ete LU reste
+//	               publie, le sous-bloc `registry` en particulier.
+//
+//	`coverage.     LA CLASSIFICATION DE L'EMPREINTE DU REGISTRE ECS (item 3.2.1, volet code
+//	decoder.       partiel) : `fingerprint` (`0x` + 16 hex), `status` (`connue` / `inconnue`),
+//	registry`      `blocks`, `namedSlots`. L'empreinte etait CALCULEE PUIS JETEE par
+//	               `ReadFilmIdentity` (D4 (3.2)) et ne survivait que dans un avertissement de
+//	               journal dedupliqué par processus : un film cuit sous une grammaire de
+//	               composants jamais vue etait indistinguable d'un film nominal. Le troisieme
+//	               statut `presumee` attend la recopie des empreintes du catalogue dans la table
+//	               du PROFIL (volet 3.1.1) — le decodeur ne peut pas lire `filmprofile`, le sens
+//	               unique l'interdit. Absent quand le registre n'a pas ete lu.
+//
+//	`coverage.     LES DENOMINATEURS DU BALAYAGE des impulsions de capacite (D3 (validation),
+//	abilityImpul-  point 2) : `records`, `withI57`, `withI59`, `read`, `unread`, `tag1`. `reads`
+//	ses.scan`      comptait les lectures brutes sans dire si la marche avait atteint sa cible :
+//	               la validation de la recuisson M1 a perdu huit lectures sur six films entre les
+//	               schemas 54 et 60, et `reads=0` etait indistinguable d'une marche cassee — ce
+//	               que la doctrine de `coverage.go` interdit. Absent quand le balayage n'a PAS
+//	               TOURNE : un bloc de zeros affirmerait qu'il a tourne sans rien rencontrer.
+//
+//	AUCUNE AUTRE   TELEMETRIE PURE : aucun rendu n'en depend, aucune decision de decodage ne
+//	DIFFERENCE     change, et AUCUNE des quatre revisions ne monte dans ce lot — donc aucun match
+//	               ne devient candidat au backlog killsource (D6). L'equivalence est a zero
+//	               difference hors les champs `coverage.decoder` et `coverage.abilityImpulses.scan`.
+//
+//	POURQUOI LA    des blocs apparaissent dans le document, donc la FORME change (garde-rail
+//	VERSION MONTE  `document_shape_test.go`, qui refuse la regeneration sans montee). Un artefact
+//	               60 ne peut pas dire sous quelle grammaire il a ete cuit : il peut seulement ne
+//	               rien en dire. Les artefacts deja cuits restent servis tels quels, leur bloc
+//	               `decoder` absent jusqu'a leur prochaine cuisson — aucune recuisson requise.

@@ -33,6 +33,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
 	"sort"
 	"strings"
@@ -379,7 +380,7 @@ func v11Deg(r float64) float64 {
 
 // v11PublieDistinct confronte, sur les 20 s qui precedent chaque sortie, la visee de
 // l'occupant au cap du vehicule NOMME par cette sortie.
-func v11PublieDistinct(t *testing.T, dir string, evs []VehicleEvent, visees []BipedAim,
+func v11PublieDistinct(t *testing.T, dir string, evs []types.VehicleEvent, visees []BipedAim,
 	capVeh map[uint32][]v11CapDate) {
 	t.Helper()
 	parSlot := map[uint32][]BipedAim{}

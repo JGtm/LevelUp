@@ -38,6 +38,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // manifestsDir et chunksDir sont les deux sous-dossiers du cache. Nommes ici, et nulle
@@ -55,7 +56,7 @@ const (
 type Source struct {
 	root   string
 	short  string
-	chunks []source.ChunkMeta
+	chunks []types.ChunkMeta
 }
 
 // Source implemente la source de film canonique du depot. C'est ce que verifie cette ligne,
@@ -88,9 +89,9 @@ func Open(root, shortID string) (*Source, bool, error) {
 	if err := json.Unmarshal(raw, &mf); err != nil {
 		return nil, false, fmt.Errorf("manifeste de film invalide (%s) : %w", path, err)
 	}
-	src := &Source{root: root, short: shortID, chunks: make([]source.ChunkMeta, 0, len(mf.Chunks))}
+	src := &Source{root: root, short: shortID, chunks: make([]types.ChunkMeta, 0, len(mf.Chunks))}
 	for _, c := range mf.Chunks {
-		src.chunks = append(src.chunks, source.ChunkMeta{
+		src.chunks = append(src.chunks, types.ChunkMeta{
 			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS,
 		})
 	}
@@ -98,9 +99,9 @@ func Open(root, shortID string) (*Source, bool, error) {
 }
 
 // Meta rend l'index du manifeste, POSITIONNEL : `Meta()[i]` decrit le chunk d'indice `i`, et
-// porte son numero de fichier en [source.ChunkMeta.Index]. C'est la forme qu'attend
+// porte son numero de fichier en [types.ChunkMeta.Index]. C'est la forme qu'attend
 // [source.Load].
-func (s *Source) Meta() []source.ChunkMeta { return s.chunks }
+func (s *Source) Meta() []types.ChunkMeta { return s.chunks }
 
 // NumChunks implemente [source.Source] : le nombre d'entrees du manifeste.
 func (s *Source) NumChunks() int { return len(s.chunks) }

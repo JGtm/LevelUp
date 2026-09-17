@@ -1,6 +1,9 @@
 package objectives
 
-import "sort"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"sort"
+)
 
 // slotidentity_rounds.go — L'IDENTITE slot d'entite -> joueur PAR MANCHE.
 //
@@ -36,7 +39,7 @@ import "sort"
 //
 // Pour <= 1 manche reelle, retourne `{manche: SlotIdentityByDeaths(recs, deaths)}` : le pont
 // plat, mot pour mot (cf. l'en-tete, NEUTRALITE MONO-MANCHE).
-func SlotIdentityByRound(recs []StatRecord, deaths []DeathInstant) map[int]map[int]string {
+func SlotIdentityByRound(recs []types.StatRecord, deaths []types.DeathInstant) map[int]map[int]string {
 	rounds := realRoundsSorted(recs)
 	if len(rounds) <= 1 {
 		r := 0
@@ -60,7 +63,7 @@ func SlotIdentityByRound(recs []StatRecord, deaths []DeathInstant) map[int]map[i
 }
 
 // realRoundsSorted rend la liste triee des manches REELLES (cf. [RealRounds]).
-func realRoundsSorted(recs []StatRecord) []int {
+func realRoundsSorted(recs []types.StatRecord) []int {
 	real := RealRounds(recs)
 	out := make([]int, 0, len(real))
 	for r, ok := range real {
@@ -75,7 +78,7 @@ func realRoundsSorted(recs []StatRecord) []int {
 // deathProgressionsForRound est [deathProgressions] RESTREINT a une manche : par slot de joueur,
 // un instant par unite gagnee par le compteur de morts (`comp 2 B`) DANS cette manche. Memes
 // gardes que le pont plat (slot de joueur, valeur dans [0, maxDeathsPerSlot], reculs jetes).
-func deathProgressionsForRound(recs []StatRecord, round int) map[int][]int {
+func deathProgressionsForRound(recs []types.StatRecord, round int) map[int][]int {
 	raw := map[int][]deathCount{}
 	for _, r := range recs {
 		if r.Round != round || IsTeamSlot(r.Slot) {
@@ -133,7 +136,7 @@ type roundStart struct {
 
 // ResolveRoundIdentity construit le resolveur : l'identite par manche PLUS les bornes de manche
 // (en ms) qui permettent de placer un instant dans sa manche.
-func ResolveRoundIdentity(recs []StatRecord, deaths []DeathInstant) RoundIdentity {
+func ResolveRoundIdentity(recs []types.StatRecord, deaths []types.DeathInstant) RoundIdentity {
 	byRound := SlotIdentityByRound(recs, deaths)
 	// TOUT CE QUE CETTE VOIE NOMME VIENT DES INSTANTS DE MORT — mono-manche comprise, ou elle
 	// delegue au pont plat, qui apparie lui aussi des instants (`slotIdentityFromDeaths`).
@@ -167,7 +170,7 @@ func FlatRoundIdentity(identity map[int]string) RoundIdentity {
 // slots) n'est pas dans [RoundStartsMS] alors qu'elle peut etre dans `byRound`. Son debut reste
 // alors le minimum de ses instants declares — le comportement d'avant, faute de mieux, et sur une
 // manche que la decoupe ne borne de toute facon pas.
-func roundStartsOf(recs []StatRecord, byRound map[int]map[int]string) []roundStart {
+func roundStartsOf(recs []types.StatRecord, byRound map[int]map[int]string) []roundStart {
 	if len(byRound) <= 1 {
 		return nil
 	}
@@ -254,7 +257,7 @@ func (ri RoundIdentity) At(slot, timeMS int) string {
 //     meme regle que la seconde passe de [SlotIdentityFrom] et que [withoutContestedXUID].
 //
 // `lines` vide rend l'identite INCHANGEE : le calque reste publiable hors ligne, sans base.
-func (ri RoundIdentity) CompletedByLines(recs []StatRecord, lines []PlayerLine) RoundIdentity {
+func (ri RoundIdentity) CompletedByLines(recs []types.StatRecord, lines []types.PlayerLine) RoundIdentity {
 	if len(lines) == 0 || len(ri.byRound) != 1 {
 		return ri
 	}

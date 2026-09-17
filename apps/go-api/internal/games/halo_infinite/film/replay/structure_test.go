@@ -1144,8 +1144,25 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   champs neufs) ET le CONTENU change sur tout le parc (335 vies fusionnées sur les 14
 	//   témoins, fins de véhicule lues, occupants des Wraith revenus). Un artefact 59 ne peut ni
 	//   porter une lacune, ni une fin lue, ni nommer un Wraith. Détail : `document_chronicle.go`.
-	if SchemaVersion != 60 {
-		t.Fatalf("SchemaVersion = %d, attendu 60 : incrémenter exige une raison écrite ci-dessus "+
+	// - v61 (lot 2.6.3 du PLAN_DECODEUR_FILM, 2026-09-17) : L'ARTEFACT DIT SOUS QUELLES RÉVISIONS
+	//   IL A ÉTÉ CUIT. `coverage.decoder` est NEUF et porte LES QUATRE révisions de calque
+	//   (`sourceRev`, `profileRev`, `grammarRev`, `factsRev` — décision V15 (11)), plus `build`,
+	//   la clé du profil lue en clair dans `chunk_00` section 2. Son sous-bloc `registry` CLASSE
+	//   l'empreinte du registre ECS (`fingerprint`, `status` connue / inconnue, `blocks`,
+	//   `namedSlots`) : elle était calculée puis jetée, et ne survivait que dans un avertissement
+	//   de journal dédupliqué par processus. `coverage.abilityImpulses.scan` publie les
+	//   dénominateurs du balayage du canal d'impulsion (`records`, `withI57`, `withI59`, `read`,
+	//   `unread`, `tag1`) — sans eux, `reads=0` était indistinguable d'une marche cassée, ce que
+	//   la validation de la recuisson M1 a payé d'un jour de mesure.
+	//   POURQUOI LA VERSION MONTE alors que TOUT y est optionnel et que c'est de la TÉLÉMÉTRIE
+	//   PURE : un artefact 60 ne peut pas dire sous quelle grammaire il a été cuit — il peut
+	//   seulement ne rien en dire, et l'ABSENCE du bloc est précisément ce qui doit signifier
+	//   « antérieur à 61 ». Lui laisser un second sens rouvrirait l'ambiguïté « entre deux
+	//   versions de schéma » que D-7 interdit. AUCUNE des quatre révisions ne monte dans ce lot,
+	//   donc aucun match ne devient candidat au backlog killsource, et aucune recuisson n'est
+	//   requise. Détail : `document_chronicle.go`.
+	if SchemaVersion != 61 {
+		t.Fatalf("SchemaVersion = %d, attendu 61 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

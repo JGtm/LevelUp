@@ -19,7 +19,10 @@ package objectives
 // MUTATION JOUEE : retirer `!statCountersInDomain(comps)` de [scanFrameForRecords] rougit
 // `TestLeBalayageJETTELEnregistrementHorsDomaine`, et lui seul.
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 // statBrancheComp est le composant que le vecteur porte — celui du cas reel de `fb1a1a72`.
 const statBrancheComp = 22
@@ -52,7 +55,7 @@ func statVecteurUnCompo(a uint64) []byte {
 
 // statPorteComp dit si l'un des enregistrements rendus porte le composant du vecteur avec la
 // valeur `a` — c'est-a-dire si le balayage a laisse passer CE vecteur-la et pas un autre ancrage.
-func statPorteComp(recs []StatRecord, a int64) bool {
+func statPorteComp(recs []types.StatRecord, a int64) bool {
 	for _, r := range recs {
 		if v, ok := r.Comps[statBrancheComp]; ok && v.A == a {
 			return true

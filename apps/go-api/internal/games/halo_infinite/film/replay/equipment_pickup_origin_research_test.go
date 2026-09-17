@@ -65,6 +65,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // epoFenetreUS est la fenêtre du juge temporel : la fin de vie doit tomber à moins de 500 ms
@@ -264,7 +265,7 @@ func epoCompte(b *epoBilan, n int) {
 // de grenade. La question « la prise vient-elle d'un point d'apparition ? » n'est donc pas
 // testable en propre : ce qui suit ne mesure que la proximité aux socles de POWER-UP, et un
 // taux nul y sera un manque de données, pas une réfutation.
-func epoSoclesDeCarte(t *testing.T, s glSetup, pickups []grammar.BipedPickup, familles map[uint32]string) {
+func epoSoclesDeCarte(t *testing.T, s glSetup, pickups []types.BipedPickup, familles map[uint32]string) {
 	t.Helper()
 	nom := os.Getenv("PICKUP_MAP")
 	cat, err := LoadMapWeaponPads(filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles",

@@ -48,6 +48,7 @@ package grammar
 //	  -run '^TestR9Poussee$' -count=1 -timeout 120m -v
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
 	"path/filepath"
 	"sort"
@@ -154,7 +155,7 @@ func r9PousseeOneFilm(t *testing.T, dir string) {
 // La boucle est O(pas x slots) : ~240 000 pas x ~12 slots par film, borne et sans allocation
 // dans la boucle interne.
 func r9Mesure(
-	pistes map[uint32][]r9Pas, ranks []AbilityRank, lives map[uint32][]r8LifeSpan,
+	pistes map[uint32][]r9Pas, ranks []types.AbilityRank, lives map[uint32][]r8LifeSpan,
 ) map[int]*r9Compteur {
 	out := map[int]*r9Compteur{}
 	get := func(r int) *r9Compteur {

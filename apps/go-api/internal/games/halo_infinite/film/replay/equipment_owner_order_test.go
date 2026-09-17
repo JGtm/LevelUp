@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // bipedeA place un bipede a une position monde donnee, dans la fenetre du poseur.
@@ -26,7 +27,7 @@ func bipedeA(slot uint32, x, y float32, tUS uint64) grammar.BipedPosition {
 }
 
 func TestEquipmentOwnerDepartageDeuxBipedesEquidistants(t *testing.T) {
-	pose := grammar.EquipmentPlacement{T0US: 1_000_000, X: 0, Y: 0, Z: 0}
+	pose := types.EquipmentPlacement{T0US: 1_000_000, X: 0, Y: 0, Z: 0}
 	// Trois slots a EXACTEMENT un metre de la pose, sur trois axes : la regle de distance ne
 	// les separe pas, et c'est le cas qui tirait au sort.
 	slots := []uint32{9, 4, 17}
@@ -55,7 +56,7 @@ func TestEquipmentOwnerDepartageDeuxBipedesEquidistants(t *testing.T) {
 // contourne pas la regle — un slot plus petit mais plus loin ne gagne pas, et au-dela du seuil
 // personne ne gagne.
 func TestEquipmentOwnerNePrendPasLePlusPetitSlotHorsRegle(t *testing.T) {
-	pose := grammar.EquipmentPlacement{T0US: 1_000_000}
+	pose := types.EquipmentPlacement{T0US: 1_000_000}
 	positions := []grammar.BipedPosition{
 		bipedeA(1, 2, 0, pose.T0US), // plus petit slot, mais deux fois plus loin
 		bipedeA(8, 1, 0, pose.T0US),

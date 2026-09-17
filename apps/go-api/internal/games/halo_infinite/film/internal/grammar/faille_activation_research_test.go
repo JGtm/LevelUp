@@ -36,6 +36,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
 	"os"
 	"sort"
@@ -214,12 +215,12 @@ func failleDist2D(x, y float32, a failleAncre) float64 {
 type failleKF struct {
 	timesUS  []uint64
 	seenByTI map[int]map[uint32]bool
-	lives    map[int]map[EquipmentLifeKey][]uint64
+	lives    map[int]map[types.EquipmentLifeKey][]uint64
 }
 
 // failleWalkKeyframes marche les images-clés du film UNE fois pour tous les archétypes.
 func failleWalkKeyframes(dir string, n int) failleKF {
-	kf := failleKF{seenByTI: map[int]map[uint32]bool{}, lives: map[int]map[EquipmentLifeKey][]uint64{}}
+	kf := failleKF{seenByTI: map[int]map[uint32]bool{}, lives: map[int]map[types.EquipmentLifeKey][]uint64{}}
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)
 		if err != nil {
@@ -233,10 +234,10 @@ func failleWalkKeyframes(dir string, n int) failleKF {
 			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
 				if kf.seenByTI[r.TI] == nil {
 					kf.seenByTI[r.TI] = map[uint32]bool{}
-					kf.lives[r.TI] = map[EquipmentLifeKey][]uint64{}
+					kf.lives[r.TI] = map[types.EquipmentLifeKey][]uint64{}
 				}
 				kf.seenByTI[r.TI][uint32(r.Slot)] = true
-				key := EquipmentLifeKey{Slot: uint32(r.Slot), Gen: uint32(r.Gen)}
+				key := types.EquipmentLifeKey{Slot: uint32(r.Slot), Gen: uint32(r.Gen)}
 				if v := kf.lives[r.TI][key]; len(v) == 0 || v[len(v)-1] != pk.TimestampUS {
 					kf.lives[r.TI][key] = append(kf.lives[r.TI][key], pk.TimestampUS)
 				}
@@ -335,7 +336,7 @@ func failleCreations(t *testing.T, dir string, wr *profile.Vec3Range, kf failleK
 // chaque création avec sa distance 2D à l'ancre de sa fenêtre.
 func failleCreationsPourTI(t *testing.T, dir string, w equipCreationWalk, ancres []failleAncre, n int, ti uint32, origine uint64) {
 	t.Helper()
-	var st EquipmentCreationStats
+	var st types.EquipmentCreationStats
 	paquets, creations, proches := 0, 0, 0
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)

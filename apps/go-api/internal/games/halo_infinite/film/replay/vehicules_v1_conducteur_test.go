@@ -44,6 +44,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Seuils et bornes de l'item 1, ecrits avant mesure.
@@ -60,7 +61,7 @@ const (
 
 // v1cVie est une vie de vehicule telle que le recensement la borne.
 type v1cVie struct {
-	Key         grammar.EquipmentLifeKey
+	Key         types.EquipmentLifeKey
 	T0, T1      uint64 // premiere et derniere image-cle qui la recense
 	CensusCount int    // nombre d'images-cles qui la recensent
 	Cand        map[uint32]uint64
@@ -145,7 +146,7 @@ func v1cVies(dir string) []v1cVie {
 
 // v1cGapStartsNearVehicles releve les DEBUTS DE TROU (>= v1cGapMinMS) dont le dernier point est a
 // moins de attBordRayonM d'un vehicule, avec le slot de ce vehicule et la distance.
-func v1cGapStartsNearVehicles(bip []grammar.BipedPosition, veh []grammar.ProjectileTrack) []v1cEvent {
+func v1cGapStartsNearVehicles(bip []grammar.BipedPosition, veh []types.ProjectileTrack) []v1cEvent {
 	parBipede := map[uint32][]grammar.BipedPosition{}
 	for _, b := range bip {
 		if b.HasWorld {
@@ -169,7 +170,7 @@ func v1cGapStartsNearVehicles(bip []grammar.BipedPosition, veh []grammar.Project
 // v1cGapStartsDuBipede releve les debuts de trou d'UN bipede. Le predicat de proximite est
 // `attVehiculeLePlusProche` — exactement celui de l'oracle geometrique du 18/08 (1,5 m, plus
 // proche voisin temporel), pour que le signal reste comparable a V1a.4.
-func v1cGapStartsDuBipede(slot uint32, ech []grammar.BipedPosition, veh []grammar.ProjectileTrack) []v1cEvent {
+func v1cGapStartsDuBipede(slot uint32, ech []grammar.BipedPosition, veh []types.ProjectileTrack) []v1cEvent {
 	var out []v1cEvent
 	for i := 1; i < len(ech); i++ {
 		if int64(ech[i].TimestampUS-ech[i-1].TimestampUS)/1000 < v1cGapMinMS {
@@ -210,7 +211,7 @@ func v1cAttribue(events []v1cEvent, vies []v1cVie) {
 }
 
 // v1cPublie ecrit la synthese et la table vie -> conducteur(s) candidat(s).
-func v1cPublie(t *testing.T, f v0Film, vies []v1cVie, veh []grammar.ProjectileTrack,
+func v1cPublie(t *testing.T, f v0Film, vies []v1cVie, veh []types.ProjectileTrack,
 	bip []grammar.BipedPosition, events []v1cEvent) {
 	t.Helper()
 	attrib, ambig, longues := 0, 0, 0

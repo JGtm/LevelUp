@@ -35,8 +35,8 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // loadoutFamilies est le catalogue de familles interrogé par le balayage : la table de
@@ -56,7 +56,7 @@ func loadoutFamilies() map[uint32]bool {
 // de famille distincts (le second à +97 bits) qui résolvent au MÊME nom canonique. On replie
 // sur le nom et on publie UN identifiant par arme — sans quoi le client afficherait deux fois
 // le même fusil.
-func buildLoadouts(raw []grammar.KeyframeLoadout, origin, step uint64) []Loadout {
+func buildLoadouts(raw []types.KeyframeLoadout, origin, step uint64) []Loadout {
 	if len(raw) == 0 {
 		return nil
 	}

@@ -55,6 +55,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -124,7 +125,7 @@ type grenEcartLectures struct {
 	indices   PlayerIndexTable
 	fire      []grammar.FireEvent
 	throws    []grammar.GrenadeThrow
-	proj      []grammar.ProjectileTrack
+	proj      []types.ProjectileTrack
 }
 
 func (l *grenEcartLectures) observe(step string, v any) {
@@ -144,7 +145,7 @@ func (l *grenEcartLectures) observe(step string, v any) {
 	case etapeGrenades:
 		l.throws, _ = v.([]grammar.GrenadeThrow)
 	case etapeProjectiles:
-		l.proj, _ = v.([]grammar.ProjectileTrack)
+		l.proj, _ = v.([]types.ProjectileTrack)
 	}
 }
 

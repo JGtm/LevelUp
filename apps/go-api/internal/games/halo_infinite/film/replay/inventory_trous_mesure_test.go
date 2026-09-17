@@ -51,6 +51,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -464,7 +465,7 @@ func invTrousJoinI48(t *testing.T, dir string, diags []invTrousDiag) {
 	}
 	t.Logf("    i48 : %d lectures (records %d, masque %d, illisibles %d)",
 		len(ranks), st.Records, st.WithI48, st.Unread)
-	bySlot := map[uint32][]grammar.AbilityRank{}
+	bySlot := map[uint32][]types.AbilityRank{}
 	for _, r := range ranks {
 		bySlot[r.Slot] = append(bySlot[r.Slot], r)
 	}
@@ -478,7 +479,7 @@ func invTrousJoinI48(t *testing.T, dir string, diags []invTrousDiag) {
 	}
 }
 
-func invTrousPlusProche(v []grammar.AbilityRank, ts uint64) int {
+func invTrousPlusProche(v []types.AbilityRank, ts uint64) int {
 	best, bestD := -1, uint64(1)<<62
 	for _, r := range v {
 		d := r.TimestampUS - ts

@@ -34,6 +34,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Fins d'affichage publiées. Identifiants STABLES du document (même règle que Family/Origin).
@@ -191,7 +192,7 @@ type GroundWeaponItemsCoverage struct {
 // schéma 25 ; `positions` est le nuage NON décimé trié par instant — la position d'un acteur à
 // l'instant d'un événement se lit dedans.
 func buildGroundWeaponItems(
-	objs []gwPickupObject, changes []grammar.HeldWeaponChange,
+	objs []gwPickupObject, changes []types.HeldWeaponChange,
 	positions []grammar.BipedPosition, clock replayClock,
 ) ([]GroundWeapon, GroundWeaponItemsCoverage) {
 	var cov GroundWeaponItemsCoverage
@@ -320,13 +321,13 @@ type gwItemPick struct {
 // ti=42) volait le lien de l'arme voisine — 27 mauvaises familles sur 33 liens. On ne lie que
 // l'arme que la prise NOMME.
 func gwItemLinkPickups(
-	objs []gwPickupObject, changes []grammar.HeldWeaponChange,
+	objs []gwPickupObject, changes []types.HeldWeaponChange,
 	bySlot map[uint32][]grammar.BipedPosition, cov *GroundWeaponItemsCoverage,
 ) []gwItemPick {
 	out := make([]gwItemPick, len(objs))
-	takes := make([]grammar.HeldWeaponChange, 0, len(changes))
+	takes := make([]types.HeldWeaponChange, 0, len(changes))
 	for _, ch := range changes {
-		if ch.Kind == grammar.HeldWeaponTaken || ch.Kind == grammar.HeldWeaponSwapped {
+		if ch.Kind == types.HeldWeaponTaken || ch.Kind == types.HeldWeaponSwapped {
 			takes = append(takes, ch)
 		}
 	}

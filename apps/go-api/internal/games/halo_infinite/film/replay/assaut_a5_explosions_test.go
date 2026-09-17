@@ -44,6 +44,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // a5Explosions : les instants d'explosion DATES du releve A0.3 (`A_PROTOCOLE.md` §2), recopies
@@ -182,9 +183,9 @@ func TestAssautA5PontIdentite(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s : fil des morts illisible : %v", id, err)
 		}
-		instants := make([]objectives.DeathInstant, 0, len(deaths))
+		instants := make([]types.DeathInstant, 0, len(deaths))
 		for _, d := range deaths {
-			instants = append(instants, objectives.DeathInstant{
+			instants = append(instants, types.DeathInstant{
 				XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS)})
 		}
 		named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)

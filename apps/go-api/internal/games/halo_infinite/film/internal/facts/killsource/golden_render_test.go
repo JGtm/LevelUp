@@ -9,6 +9,7 @@ package killsource
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
 	"strings"
 )
@@ -148,7 +149,7 @@ func sectionMortsParUnBot(b *strings.Builder, res *Result) {
 // assistantGolden : les TROIS etats de l assistant, jamais deux. Un golden qui ecrirait "" pour
 // << on ne sait pas >> et pour << pas d assistant >> effacerait la distinction que tout le schema
 // protege.
-func assistantGolden(a Assist) string {
+func assistantGolden(a types.Assist) string {
 	switch {
 	case !a.Known:
 		return "NON MESURE"

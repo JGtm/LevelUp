@@ -1,32 +1,45 @@
 package grammar
 
-// grammar_rev.go — LA REVISION DE LA GRAMMAIRE DU FILM.
+// rev.go — LA REVISION DE LA GRAMMAIRE DU FILM.
 //
-// # LA REGLE A TROIS ETAGES, ET CE QUE CHACUN PROTEGE
+// # LES QUATRE REVISIONS DE COUCHE, ET LE SENS UNIQUE QUI LES RELIE (decision V15 (11))
 //
-//	GrammarRev              monte a TOUT changement de grammaire — une largeur, un cadre, un
-//	                        ordre de composants, un lecteur neuf. C'est la revision de CE qui lit
-//	                        les octets du film.
-//	KillSourceDecoderRev    monte quand la SORTIE de `killsource` peut changer : les lignes de
-//	                        kill deja en base sont alors candidates au backlog de redecodage.
-//	SchemaVersion           monte quand le CONTENU CUIT change : `backfill-replay` re-cuit tout
-//	                        artefact anterieur.
+//	source.Rev    la porte aux octets : charger, decompresser, decouper, lire les bits.
+//	profile.Rev   la table du decodeur : les largeurs, les bornes, les provenances.
+//	Rev           CETTE constante — la grammaire de lecture : un cadre, un ordre de composants,
+//	              un lecteur. Elle hache ses propres octets PLUS les VALEURS de `profile.Rev` et
+//	              de `source.Rev` (V15 (12)).
+//	facts.Rev     la sortie des faits : les lignes de kill deja en base sont candidates au
+//	              backlog de redecodage. Elle hache la VALEUR de CETTE constante.
 //
-// Les trois sont INDEPENDANTES et ne se remplacent pas. Une largeur corrigee dans un composant
-// que personne ne consomme encore fait monter `GrammarRev` SEULE. La meme largeur, une fois
-// branchee sur le kill feed, fait monter `KillSourceDecoderRev` aussi. Si l'artefact publie s'en
-// trouve change, `SchemaVersion` monte a son tour. Confondre les trois, c'est soit re-cuire le
-// parc pour un commentaire, soit laisser en base des lignes decodees par une grammaire morte.
+// La chaine est mecanique et c est tout son interet : une largeur corrigee dans `profile` fait
+// monter `profile.Rev`, donc `Rev`, donc `facts.Rev` — sans que personne ait a y penser. Le
+// backlog, lui, part sur SIGNAL UTILISATEUR (decouverte D6), jamais automatiquement.
+//
+// # LE CINQUIEME ETAGE, QUI N EST PAS UNE REVISION DE COUCHE
+//
+//	SchemaVersion   monte quand le CONTENU CUIT change : `backfill-replay` re-cuit tout artefact
+//	                anterieur. Une largeur corrigee dans un composant que personne ne consomme
+//	                encore fait monter `Rev` SEULE ; si l artefact publie s en trouve change,
+//	                `SchemaVersion` monte a son tour. Confondre les etages, c est soit re-cuire
+//	                le parc pour un commentaire, soit laisser en base des lignes decodees par une
+//	                grammaire morte.
 //
 // # POURQUOI UNE CONSTANTE, ET PAS UN COMMENTAIRE
 //
-// `KillSourceDecoderRev` a porte pendant des mois la consigne « la faire evoluer a chaque
+// La revision des faits a porte pendant des mois la consigne « la faire evoluer a chaque
 // changement de decodage » : mesure du 2026-09-05, 14 commits sur le decodeur, ZERO bump. Une
 // consigne ecrite dans un commentaire ne se tient pas toute seule. Le garde-rail qui rend
-// celle-ci executoire est `grammar_rev_fingerprint_test.go` : il hache les sources de `filmdec`
-// ET de `killsource`, et rougit des qu'une d'elles bouge sans que cette constante monte.
+// celle-ci executoire est `rev_test.go` : il hache les sources de la couche et les valeurs de ses
+// deux amonts, et rougit des qu une d elles bouge sans que cette constante monte.
 
-// GrammarRev est la revision de la grammaire de lecture du film.
+// Rev est la revision de la grammaire de lecture du film.
+//
+// ELLE S APPELAIT `GrammarRev` JUSQU AU LOT 2.6.1 : le nom disait la couche deux fois une fois
+// qualifie (`grammar.GrammarRev`), et les quatre couches portent desormais la meme forme
+// (`source.Rev`, `profile.Rev`, `grammar.Rev`, `facts.Rev`). La SERIE, elle, n est pas
+// renumerotee — c est la meme chronique, et une chronique reecrite ne dit plus ce qui s est
+// passe.
 //
 // FORME : `grammar-AAAA-MM-JJ`, la date du jour ou la grammaire a change, suivie d'un `.N`
 // quand un SECOND lot la change le MEME jour. Ce qui doit rester separable est le LOT, pas le
@@ -55,7 +68,7 @@ package grammar
 // match. AUCUN BIT LU NE CHANGE, et l empreinte monte quand meme parce qu elle hache des octets
 // de source (c est ecrit dans son en-tete) : ce qui change est QUELLE carte, donc quelles bornes
 // et quel decoupage, s appliquent a un film — le meme genre de changement que la revision `.2`
-// nommait au lot 1.9.2. `KillSourceDecoderRev` ne bouge PAS (`film/facts/killsource/` n a pas bouge,
+// nommait au lot 1.9.2. `facts.Rev` ne bouge PAS (`film/facts/killsource/` n a pas bouge,
 // et son propre ratchet d empreinte fait foi) ; `SchemaVersion` non plus (le chemin de cuisson
 // n appelait pas cette fonction — verifie le 2026-09-15 : equivalence 10/10 identiques,
 // corpus gate 14 temoins a 0 gain / 0 perte / 0 changement).
@@ -82,14 +95,16 @@ package grammar
 // LOT 1.9.13 (2026-09-15) : `.7` -> `.8`. AUCUNE grammaire d octets ne change, et aucun bit lu
 // n est lu autrement : `objectives.RoundBounds.Starts` est un ACCESSEUR de lecture sur des
 // bornes de manche deja mesurees, que la decoupe des vies du rejeu consomme. L empreinte hache
-// les OCTETS des trois paquets (cf. grammar_rev_fingerprint_test.go, « il ne distingue pas un
+// les OCTETS des trois paquets (cf. rev_test.go, « il ne distingue pas un
 // changement de grammaire d une reformulation de commentaire ») : le faux positif coute cette
-// ligne, et c est le marche assume du garde-rail. `KillSourceDecoderRev` ne bouge PAS —
+// ligne, et c est le marche assume du garde-rail. `facts.Rev` ne bouge PAS —
 // `killsource/` n est pas touche.
 // FUSION (2026-09-16) : l integration portait `.10` et la branche du lot 1.9.13 `.8` (accesseur
 // neuf dans objectives, faux positif d empreinte) ; reunies ici, au rang suivant.
-// LA CHRONIQUE DES RANGS, a partir du `.11`, vit dans `grammar_rev_chronique.go` : une
-// entree par rang, et rien qu une. Elle EST la documentation de cette constante — elle en a
-// seulement ete sortie le 2026-09-18 (lot 2.4.1) parce que ce fichier avait atteint le seuil
-// de 500 lignes et qu une chronique qui ne peut plus grandir cesse d etre tenue.
-const GrammarRev = "grammar-2026-09-15.38"
+// LA CHRONIQUE DES RANGS, a partir du `.11`, vit dans `rev_chronique.go` — les rangs `.12` a
+// `.26` dans `rev_chronique_archive.go` : une entree par rang, et rien qu une. Elle EST la
+// documentation de cette constante — elle en a seulement ete sortie le 2026-09-18 (lot 2.4.1)
+// parce que ce fichier avait atteint le seuil de 500 lignes et qu une chronique qui ne peut plus
+// grandir cesse d etre tenue. LE GATE LIT LES DEUX FICHIERS, dans l ordre chronologique, et
+// exige que les rangs s y suivent sans trou a partir du `.12`.
+const Rev = "grammar-2026-09-15.39"

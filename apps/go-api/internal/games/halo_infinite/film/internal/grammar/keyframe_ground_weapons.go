@@ -42,15 +42,15 @@ const GroundWeaponTypeIndex = 42
 // KeyframeGroundWeapon est une arme AU SOL vue à l'instant d'un keyframe.
 type KeyframeGroundWeapon struct {
 	// TimestampUS est l'horodatage du paquet keyframe — MÊME horloge que
-	// BipedPosition.TimestampUS et KeyframeLoadout.TimestampUS.
+	// BipedPosition.TimestampUS et types.KeyframeLoadout.TimestampUS.
 	TimestampUS uint64
 	// Chunk / PacketIndex localisent le keyframe dans le film.
 	Chunk, PacketIndex int
 	// Slot / Gen identifient l'ENTITÉ arme au sol. Le pool de slots reboucle : c'est la PAIRE
-	// qui désigne une vie d'objet, comme pour les projectiles (cf. ProjectileTrack).
+	// qui désigne une vie d'objet, comme pour les projectiles (cf. types.ProjectileTrack).
 	Slot, Gen uint32
 	// Families liste les familles (high-32 du weapon-id) trouvées dans le record, dans l'ORDRE
-	// DES BITS. Les alias ne sont PAS repliés (même convention que KeyframeLoadout.Families) :
+	// DES BITS. Les alias ne sont PAS repliés (même convention que types.KeyframeLoadout.Families) :
 	// le repli appartient à la couche qui possède le catalogue d'armes.
 	Families []uint32
 }

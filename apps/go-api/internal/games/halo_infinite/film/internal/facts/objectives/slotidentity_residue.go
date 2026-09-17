@@ -1,5 +1,7 @@
 package objectives
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // slotidentity_residue.go — L'IDENTITE D'UN SLOT D'ENTITE PAR RESIDU DE MANCHE.
 //
 // # LE TROU QUE CE FICHIER FERME (decouverte 1 du lot 6.2,
@@ -52,7 +54,7 @@ const OriginRoundResidue = "residu_de_manche"
 
 // CompletedByRoundResidue complete l'identite PAR MANCHE en appariant le segment d'un slot muet
 // au RESIDU d'un xuid libre, quand l'appariement est unique des deux cotes.
-func (ri RoundIdentity) CompletedByRoundResidue(recs []StatRecord, lines []PlayerLine) RoundIdentity {
+func (ri RoundIdentity) CompletedByRoundResidue(recs []types.StatRecord, lines []types.PlayerLine) RoundIdentity {
 	if len(lines) == 0 || len(ri.byRound) <= 1 {
 		return ri
 	}
@@ -70,7 +72,7 @@ func (ri RoundIdentity) CompletedByRoundResidue(recs []StatRecord, lines []Playe
 // appariementsParResidu rend les couples (slot muet -> xuid libre) que le residu apparie de
 // facon UNIQUE DES DEUX COTES dans une manche.
 func appariementsParResidu(seg map[int]map[int]segmentKDA, byRound map[int]map[int]string,
-	recs []StatRecord, lines []PlayerLine, round int) map[int]string {
+	recs []types.StatRecord, lines []types.PlayerLine, round int) map[int]string {
 	muets, libres := muetsEtLibresDeManche(byRound, recs, lines, round)
 	if len(muets) == 0 || len(libres) == 0 {
 		return nil
@@ -102,8 +104,8 @@ func appariementsParResidu(seg map[int]map[int]segmentKDA, byRound map[int]map[i
 
 // muetsEtLibresDeManche rend les slots emetteurs non nommes de la manche et les xuid de la
 // feuille qu'aucun slot de cette manche ne porte.
-func muetsEtLibresDeManche(byRound map[int]map[int]string, recs []StatRecord,
-	lines []PlayerLine, round int) ([]int, []string) {
+func muetsEtLibresDeManche(byRound map[int]map[int]string, recs []types.StatRecord,
+	lines []types.PlayerLine, round int) ([]int, []string) {
 	nommes := byRound[round]
 	var muets []int
 	for _, slot := range EmittingPlayerSlots(recs, round) {
@@ -127,7 +129,7 @@ func muetsEtLibresDeManche(byRound map[int]map[int]string, recs []StatRecord,
 // residuDeManche rend le total de la feuille d'un joueur MOINS la somme de ses segments dans
 // les autres manches ou un slot porte deja son nom — ce qu'il lui reste a avoir fait ICI.
 func residuDeManche(seg map[int]map[int]segmentKDA, byRound map[int]map[int]string,
-	lines []PlayerLine, round int, xuid string) segmentKDA {
+	lines []types.PlayerLine, round int, xuid string) segmentKDA {
 	var out segmentKDA
 	for _, l := range lines {
 		if l.XUID == xuid {

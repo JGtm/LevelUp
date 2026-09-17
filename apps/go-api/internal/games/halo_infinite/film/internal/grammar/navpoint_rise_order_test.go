@@ -14,6 +14,7 @@ package grammar
 // d'entree, doivent rendre UNE SEULE sortie ; et le balayage complet, rejoue, rend la meme.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"reflect"
 	"sort"
 	"testing"
@@ -88,10 +89,10 @@ func TestLessNavpointRiseNeSeparePasDeuxMonteesIdentiques(t *testing.T) {
 func TestNavpointContiguousRisesRejouePareil(t *testing.T) {
 	// Deux slots dont les montees finissent a la MEME milliseconde : c'est la paire de
 	// navpoints du protocole (+12, un par camp), et elle porte le meme anneau.
-	var reads []NavpointRadialRead
+	var reads []types.NavpointRadialRead
 	for _, slot := range []uint32{12, 24} {
 		for i := int32(0); i < 4; i++ {
-			reads = append(reads, NavpointRadialRead{
+			reads = append(reads, types.NavpointRadialRead{
 				Slot: slot, TMS: 1_000 + i*100, Q: uint8(10 + i*NavpointRiseMinQuanta),
 			})
 		}

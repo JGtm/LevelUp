@@ -24,6 +24,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // EquipmentChangeKind qualifie un changement d'équipement, tel que le document le publie.
@@ -111,7 +112,7 @@ type EquipmentChangeCoverage struct {
 // document. Les annonces de réapparition et les événements antérieurs à l'origine sont
 // écartés — un rejeu ne montre pas ce qui précède sa première frame.
 func buildEquipmentChanges(
-	changes []grammar.EquipmentChange, st grammar.EquipmentChangeStats, origin, step uint64,
+	changes []types.EquipmentChange, st types.EquipmentChangeStats, origin, step uint64,
 ) ([]EquipmentChange, EquipmentChangeCoverage) {
 	cov := EquipmentChangeCoverage{
 		Decoded: len(changes), Lives: st.Lives, MissedEstimate: st.MissedEstimate,
@@ -123,7 +124,7 @@ func buildEquipmentChanges(
 	}
 	out := make([]EquipmentChange, 0, len(changes))
 	for _, c := range changes {
-		if c.Kind == grammar.EquipmentSpawned {
+		if c.Kind == types.EquipmentSpawned {
 			cov.Spawned++
 			continue
 		}
@@ -135,7 +136,7 @@ func buildEquipmentChanges(
 			T: int((c.TimestampUS - origin) / step), Slot: c.Slot,
 			R: c.Rank, From: c.Previous, Recovered: c.Recovered, Gap: c.Gap,
 		}
-		if c.Kind == grammar.EquipmentSpent {
+		if c.Kind == types.EquipmentSpent {
 			e.Kind, cov.Spent = EquipmentSpent, cov.Spent+1
 		} else {
 			e.Kind, cov.Taken = EquipmentTaken, cov.Taken+1

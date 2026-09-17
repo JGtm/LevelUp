@@ -7,7 +7,10 @@ package grammar
 // mutations le prouvent — décaler l'index d'un seul bit, ou déplacer la porte inversée, doit
 // faire ROUGIR. Un lecteur bit à bit qu'aucune mutation ne fait rougir ne lit rien de précis.
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 // bipedCreationRecord écrit un record de CRÉATION de bipède complet, à la spécification :
 //
@@ -64,8 +67,8 @@ func bandeDeTest(slots ...uint32) SlotBand {
 
 // balayerPourTest fait passer un payload par le MÊME chemin que la production
 // (`bipedCreationWalk.scanPayload`), et rend les records avec les compteurs.
-func balayerPourTest(pay []byte, band SlotBand) ([]BipedCreation, BipedCreationStats) {
-	var st BipedCreationStats
+func balayerPourTest(pay []byte, band SlotBand) ([]BipedCreation, types.BipedCreationStats) {
+	var st types.BipedCreationStats
 	st.Slots = band.Count()
 	w := bipedCreationWalk{band: band, st: &st, autres: map[uint32]int{}}
 	out := w.scanPayload(pay, FilmPacket{Index: 7, TimestampUS: 1234}, 3)

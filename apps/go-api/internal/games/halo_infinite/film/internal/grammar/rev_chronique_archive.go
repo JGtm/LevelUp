@@ -1,16 +1,16 @@
 package grammar
 
-// grammar_rev_chronique_archive.go — LA CHRONIQUE DE [GrammarRev], RANGS `.12` A `.26`.
+// rev_chronique_archive.go — LA CHRONIQUE DE [Rev], RANGS `.12` A `.26`.
 //
 // # POURQUOI UNE ARCHIVE (2026-09-18, lot 2.4.2)
 //
 // La chronique est ne pouvoir que grandir : un lot, un rang, une entree. Sortie de
-// `grammar_rev.go` au lot 2.4.1 parce que ce fichier avait atteint 500 lignes, elle a atteint le
+// `rev.go` au lot 2.4.1 parce que ce fichier avait atteint 500 lignes, elle a atteint le
 // meme seuil deux rangs plus loin. ELLE SE ROTATIONNE DONC, comme `.ai/thought_log.md` : les
-// rangs anciens passent ici, `grammar_rev_chronique.go` ne garde que la suite VIVANTE. Le geste
+// rangs anciens passent ici, `rev_chronique.go` ne garde que la suite VIVANTE. Le geste
 // se refait quand ce dernier repasse 500 lignes — c est un geste ordinaire, pas un incident.
 //
-// Comme `grammar_rev.go` et `grammar_rev_chronique.go`, ce fichier est EXCLU de l ensemble hache
+// Comme `rev.go` et `rev_chronique.go`, ce fichier est EXCLU de l ensemble hache
 // par l empreinte (`fichiersHorsGrammaire`) : il DECRIT la grammaire, il n en fait pas partie.
 //
 // ENTREE `grammar-2026-09-15.12` (2026-09-16, revue de jalon M1 lentille L4, merge `99644996e`) :
@@ -19,7 +19,7 @@ package grammar
 // « au plus un indice a inferer », il vaut desormais « une seule affectation possible »
 // (`FilmTablePinning.AffectationUnique`, indices libres ET noms libres). L empreinte hache les
 // octets des trois paquets, dont `killsource/` : elle monte donc, et la revision avec elle.
-// `KillSourceDecoderRev` MONTE aussi (`killsource-2026-09-16`) parce que la sortie persistee
+// `facts.Rev` MONTE aussi (`killsource-2026-09-16`) parce que la sortie persistee
 // change — la porte ne fait que se fermer, aucun film ne gagne la publication ligne par ligne.
 // `SchemaVersion` reste 59 : le document du rejeu ne porte pas cette porte.
 //
@@ -45,7 +45,7 @@ package grammar
 // (format 23) —, AUCUN a un format dont la largeur est relue. Zero octet cuit ne change sur ce
 // cache ; le gain porte sur le parc NEUF. `SchemaVersion` reste 59.
 //
-// `KillSourceDecoderRev` NE BOUGE PAS A CE RANG, et la confusion vaut d etre nommee : la porte de
+// `facts.Rev` NE BOUGE PAS A CE RANG, et la confusion vaut d etre nommee : la porte de
 // publication de `killsource` (`AffectationUnique`) releve de CETTE constante-la, et elle a ete
 // traitee au rang PRECEDENT (`.12`). `.13` ne touche que la porte MPP de `filmdec`/`replay` ;
 // `killsource/` n y est pas modifie, et son propre ratchet d empreinte fait foi.
@@ -67,9 +67,9 @@ package grammar
 //
 // LES TROIS FORMES LUES EN PRODUCTION SONT INCHANGEES, A L OCTET : `DetectI0LayoutOf`,
 // `ScanEquipmentSpawnEvents`, `WalkKeyframeFullState`. L empreinte hache les OCTETS des trois
-// paquets (cf. `grammar_rev_fingerprint_test.go`, « il ne distingue pas un changement de
+// paquets (cf. `rev_test.go`, « il ne distingue pas un changement de
 // grammaire d une reformulation de commentaire ») : ce faux positif COUTE ce rang, et c est la
-// seule raison pour laquelle `.14` existe. `KillSourceDecoderRev` ne bouge PAS (`killsource/`
+// seule raison pour laquelle `.14` existe. `facts.Rev` ne bouge PAS (`killsource/`
 // intact) ; `SchemaVersion` non plus.
 //
 // TOUTE ENTREE NEUVE OUVRE SUR LE MOT `ENTREE` SUIVI DE LA REVISION entre accents graves, et le
@@ -86,7 +86,7 @@ package grammar
 // (accepter si `DesyncAt == -1` ou `DesyncAt > index(dead-state)`). Aucune grammaire d octets
 // existante n est reecrite ; ce qui change est CE QUE LE PAQUET SAIT LIRE. La calibration du
 // cadre (IDLowBits) ne balaye plus l amorce (propriete du format) et son cadre par defaut est
-// un repli nomme et compte. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 59 en
+// un repli nomme et compte. `facts.Rev` ne bouge PAS ; `SchemaVersion` reste 59 en
 // attendant la montee unique de la vague (les champs `vehicles[].end/tEnd` et
 // `coverage.vehicles.*` arrivent avec elle).
 //
@@ -96,7 +96,7 @@ package grammar
 // fenetre devient le repli nomme et compte `repli_appariement_par_fenetre_temporelle`). Aucune
 // grammaire d octets n est reecrite : ce qui change est QUEL enregistrement lu se rattache a quel
 // instant — et l empreinte de cette revision couvre `killsource/`, donc elle monte avec lui.
-// `KillSourceDecoderRev` monte au meme geste (`killsource-2026-09-16.2`) ; `SchemaVersion` reste 59.
+// `facts.Rev` monte au meme geste (`killsource-2026-09-16.2`) ; `SchemaVersion` reste 59.
 //
 // ENTREE `grammar-2026-09-15.17` (2026-09-16, lot 1.9.11, fusion) : LE DESIGNATEUR DE MANCHE EST PUBLIE TEL QU ECRIT ET LA GARDE D ORDRE
 // devient une CONTRADICTION publiee (coverage.score.roundsWritten / roundsContradicted / roundsDecreed) ; le decret de la manche 0 est un repli nomme et compte ; ResolveRounds rend le verdict complet (objectiveevents, hache par l empreinte). Aucun octet lu autrement ; SchemaVersion 59 (montee de vague).
@@ -126,7 +126,7 @@ package grammar
 //	    a `HighlightProfileOfFilm` / `HighlightProfileFromHeader` : MEME u32, MEME valeur, source
 //	    unique et implantation NOMMEE.
 //
-// `KillSourceDecoderRev` NE BOUGE PAS, et le choix est EXPLICITE comme son ratchet l exige :
+// `facts.Rev` NE BOUGE PAS, et le choix est EXPLICITE comme son ratchet l exige :
 // `killsource/` change de deux lignes — la source de la version majeure et le commentaire qui la
 // nomme — et les lignes PRODUITES sont identiques a l octet, donc aucun match deja decode n est
 // candidat au backlog. `SchemaVersion` reste 59 : le document publie ne gagne ni ne perd un champ.
@@ -147,7 +147,7 @@ package grammar
 // les seules lignes neuves sont les en-tetes de fichier, les signatures des maillons et les six
 // `return` de chainage. L empreinte hache les OCTETS des trois paquets : ce faux positif coute
 // ce rang, meme nature que `.14` et `.13` de la revue M1.
-// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` non plus (aucun
+// `facts.Rev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` non plus (aucun
 // octet cuit ne change, et `replay-equiv` doit rendre ZERO difference — une difference serait
 // une regression, pas une divergence).
 //
@@ -157,7 +157,7 @@ package grammar
 // toujours 12 ; consumeDynPrecVec3 : mag toujours 19 — largeurs de grammaire ecrites au site d appel,
 // que le lot 2.2 porte au profil), sites sortis de la baseline lint par la scission 2.7g. L empreinte
 // hache les octets, commentaires compris : elle monte, la revision avec elle. Le volet 2.7p (paquet
-// `replay`, hors empreinte) est fusionne au meme geste ; `SchemaVersion` 60 et `KillSourceDecoderRev`
+// `replay`, hors empreinte) est fusionne au meme geste ; `SchemaVersion` 60 et `facts.Rev`
 // inchangees.
 //
 // ENTREE `grammar-2026-09-15.21` (2026-09-17, lot 2.2.a — RANG DE FUSION) : `.20` -> `.21`.
@@ -166,7 +166,7 @@ package grammar
 // LES SIX RANGS DU LOT 2.2 ONT ETE DECALES DE +1 (`.20`-`.25` -> `.21`-`.26`) : ils avaient ete
 // poses a titre PROVISOIRE sur une base ou l integration valait `.19`, et celle-ci est passee a
 // `.20` (fusion 2.7g + 2.7p + correctif lint). Ce sont donc les rangs de FUSION. Le decalage ne
-// touche AUCUNE source hachee : `grammar_rev.go` est hors de l ensemble d empreinte depuis la
+// touche AUCUNE source hachee : `rev.go` est hors de l ensemble d empreinte depuis la
 // revue R1 (P2-3), et l empreinte des six rangs est inchangee a l octet.
 //
 // LES LECTEURS DU CHEMIN DE POSITION PRENNENT LEUR VALEUR AU PROFIL. Les cinq valeurs de la
@@ -193,7 +193,7 @@ package grammar
 // date de bascule, sa cible de retrait (lot 2.3, au plus tard 2.5) et son critere mesurable.
 // Bilan du ratchet : 94 -> 90 variables de paquet.
 //
-// `KillSourceDecoderRev` NE BOUGE PAS : `killsource/` change de forme (la calibration rend son
+// `facts.Rev` NE BOUGE PAS : `killsource/` change de forme (la calibration rend son
 // resultat au lieu de l ecrire dans le processus) mais les lignes PRODUITES sont identiques a
 // l octet — meme espace balaye, meme critere, meme vainqueur, memes largeurs pour les passes
 // qui suivent. `SchemaVersion` reste 60 : aucun champ publie ne bouge.
@@ -219,7 +219,7 @@ package grammar
 // NOMMEE au lieu d une variable. Le garde-rail d allowlist les voit : il est re-cle sur les
 // TROIS formes d acces, plus sur un seul nom.
 //
-// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
+// `facts.Rev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
 // ENTREE `grammar-2026-09-15.23` (2026-09-17, lot 2.2.c — RANG DE FUSION) : `.22` -> `.23`.
 // AUCUN OCTET N EST LU AUTREMENT.
 //
@@ -242,7 +242,7 @@ package grammar
 // de METHODE_RETRO_INGENIERIE_FILM). Il n est pas un reglage de production : non exporte, sans
 // appelant hors instruments, et son propre garde-rail interdit meme de le NOMMER ici.
 //
-// `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
+// `facts.Rev` ne bouge PAS ; `SchemaVersion` reste 60.
 // ENTREE `grammar-2026-09-15.24` (2026-09-17, lot 2.2.d — RANG DE FUSION) : `.23` -> `.24`.
 // AUCUN OCTET N EST LU AUTREMENT.
 //
@@ -269,7 +269,7 @@ package grammar
 // GRAMMAIRE SOUS LAQUELLE UN ARTEFACT A ETE CUIT et qu un lecteur de cette chaine a change ;
 // le golden porte donc le meme sha sur deux rangs, ce qui se lit et ne se devine pas.
 //
-// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
+// `facts.Rev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
 // ENTREE `grammar-2026-09-15.25` (2026-09-17, lot 2.2.e — RANG DE FUSION) : `.24` -> `.25`.
 // AUCUN OCTET N EST LU AUTREMENT.
 //
@@ -304,7 +304,7 @@ package grammar
 // sur des options ignorees, ni sur l ordre inverse — qui effacait les largeurs de la carte en
 // silence, `PoserProfilDeBalayage` remplacant le profil ENTIER.
 //
-// `KillSourceDecoderRev` ne bouge PAS : `killsource/` est INTACT — le balayage de `param_4`
+// `facts.Rev` ne bouge PAS : `killsource/` est INTACT — le balayage de `param_4`
 // passe toujours par `SetRecordStateParam`, meme espace, meme critere, memes lignes produites.
 // `SchemaVersion` reste 60.
 // ENTREE `grammar-2026-09-15.26` (2026-09-17, lot 2.2.f — RANG DE FUSION) : `.25` -> `.26`.
@@ -334,4 +334,4 @@ package grammar
 // LES ANCRES `fichier:ligne` DE LA TABLE ECS SUIVENT (85 lignes recalees) : le retrait des
 // declarations a deplace des fonctions, et le garde-rail G1 lit ces ancres sur pieces.
 //
-// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
+// `facts.Rev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.

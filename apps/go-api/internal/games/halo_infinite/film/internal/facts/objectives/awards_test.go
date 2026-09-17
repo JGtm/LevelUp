@@ -1,6 +1,9 @@
 package objectives
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 // jgtmQuota1bc77d2e : ce que `personal_score_awards` donne pour JGtm sur le match
 // 1bc77d2e (CTF). Verite terrain figee ici pour garder le test pur (aucune dependance
@@ -31,11 +34,11 @@ func TestLabelPersonalScoreReconciliesJGtm(t *testing.T) {
 	}
 	deltas = append(deltas, 50, 50, 125, 125, 300, 10)
 
-	var pts []ScorePoint
+	var pts []types.ScorePoint
 	cum := int64(0)
 	for i, d := range deltas {
 		cum += d
-		pts = append(pts, ScorePoint{TimeMS: 1000 * (i + 1), Slot: 18, Value: cum})
+		pts = append(pts, types.ScorePoint{TimeMS: 1000 * (i + 1), Slot: 18, Value: cum})
 	}
 
 	events := LabelPersonalScore(pts, map[int][]Award{18: jgtmQuota1bc77d2e()})
@@ -100,7 +103,7 @@ func TestLabelPersonalScoreRefusesAmbiguousDecomposition(t *testing.T) {
 		{Name: "zone_captured", Category: "objective", Unit: 75, Count: 2},
 		{Name: "killed_player", Category: "kill", Unit: 100, Count: 4},
 	}
-	pts := []ScorePoint{{TimeMS: 1000, Slot: 10, Value: 125}}
+	pts := []types.ScorePoint{{TimeMS: 1000, Slot: 10, Value: 125}}
 	events := LabelPersonalScore(pts, map[int][]Award{10: quota})
 	if len(events) != 1 {
 		t.Fatalf("evenements = %d, attendu 1 (aucune decomposition ne doit etre choisie)", len(events))
@@ -121,7 +124,7 @@ func TestLabelPersonalScoreDecomposesWhenUnique(t *testing.T) {
 		{Name: "flag_returned", Category: "objective", Unit: 25, Count: 2},
 		{Name: "killed_player", Category: "kill", Unit: 100, Count: 2},
 	}
-	pts := []ScorePoint{{TimeMS: 1000, Slot: 10, Value: 125}}
+	pts := []types.ScorePoint{{TimeMS: 1000, Slot: 10, Value: 125}}
 	events := LabelPersonalScore(pts, map[int][]Award{10: quota})
 	if len(events) != 2 {
 		t.Fatalf("evenements = %d, attendu 2 (125 = 100 + 25)", len(events))
@@ -150,7 +153,7 @@ func TestLabelPersonalScoreDecomposesWhenUnique(t *testing.T) {
 // l'ancien commentaire annoncait) — l'evenement de 100 disparaitrait.
 func TestLabelPersonalScorePremiereLectureEstUnIncrementDepuisZero(t *testing.T) {
 	quota := []Award{{Name: "killed_player", Category: "kill", Unit: 100, Count: 2}}
-	pts := []ScorePoint{
+	pts := []types.ScorePoint{
 		{TimeMS: 1000, Slot: 7, Value: 100},
 		{TimeMS: 2000, Slot: 7, Value: 200},
 	}
@@ -169,7 +172,7 @@ func TestLabelPersonalScorePremiereLectureEstUnIncrementDepuisZero(t *testing.T)
 // cas que l'ancien garde attrapait, et le `d == 0` general le couvre deja.
 func TestLabelPersonalScoreIgnoreUnPremierPointNul(t *testing.T) {
 	quota := []Award{{Name: "killed_player", Category: "kill", Unit: 100, Count: 1}}
-	pts := []ScorePoint{
+	pts := []types.ScorePoint{
 		{TimeMS: 1000, Slot: 7, Value: 0},
 		{TimeMS: 2000, Slot: 7, Value: 100},
 	}
@@ -189,7 +192,7 @@ func TestLabelPersonalScoreHandlesNegativeAwards(t *testing.T) {
 		{Name: "killed_player", Category: "kill", Unit: 100, Count: 2},
 		{Name: "self_destruction", Category: "penalty", Unit: -100, Count: 1},
 	}
-	pts := []ScorePoint{
+	pts := []types.ScorePoint{
 		{TimeMS: 1000, Slot: 12, Value: 100},
 		{TimeMS: 2000, Slot: 12, Value: 0},
 		{TimeMS: 3000, Slot: 12, Value: 100},

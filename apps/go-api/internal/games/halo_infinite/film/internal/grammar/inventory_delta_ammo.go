@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // inventory_delta_ammo.go — LES MUNITIONS SUIVIES DANS LES PAQUETS DELTA. Prolonge
 // inventory_delta.go (seuil de taille du dépôt, CLAUDE.md n°5) : mêmes ancre, même marche,
 // même règle — c'est le déserialiseur qui publie.
@@ -56,26 +58,6 @@ type invDeltaAmmoAcc struct {
 	FracQ   uint32
 }
 
-// InventoryDeltaAmmo est l'état de munitions d'UN emplacement d'arme, tel qu'un paquet delta
-// le transmet. Les trois grandeurs sont indépendamment optionnelles : elles viennent de DEUX
-// composants distincts, qu'un record peut annoncer séparément.
-type InventoryDeltaAmmo struct {
-	// WeaponSlot est le rang de l'emplacement dans l'archétype (0 et 1 portent une arme).
-	WeaponSlot int
-	// Mag est le chargeur, ou nil si le film n'écrit rien pour ce champ.
-	Mag *uint32
-	// FracQ est le quantum R(12) BRUT de la fraction, ou nil. Brut, parce que la
-	// déquantification appartient à la couche qui sait ce qu'elle affiche.
-	//
-	// ELLE COMPTE CE QUI A ÉTÉ CONSOMMÉ, pas ce qui reste — deux témoins concordants, cf.
-	// AmmoSlot.Gauge (replay/inventory.go). Un client qui dessine une charge RESTANTE doit
-	// donc afficher le complément.
-	FracQ *uint32
-	// Res est la réserve (R(11)), ou nil si `weapon-state-rounds-inventory` n'était pas au
-	// masque de ce record.
-	Res *uint32
-}
-
 // captureAmmo range la dernière publication d'un `weapon-state-ammo` sous son emplacement.
 func (sc *invDeltaScanner) captureAmmo(slot int) {
 	if slot < 0 || slot >= invDeltaWeaponSlots || !sc.lastAmmo.Read {
@@ -100,13 +82,13 @@ func (sc *invDeltaScanner) captureRounds(slot int) {
 
 // collectAmmo assemble les emplacements lus sur ce record, et applique les garde-rails
 // d'enveloppe. Rend vrai si au moins un emplacement porte quelque chose.
-func (sc *invDeltaScanner) collectAmmo(rec *InventoryDelta) bool {
+func (sc *invDeltaScanner) collectAmmo(rec *types.InventoryDelta) bool {
 	for k := 0; k < invDeltaWeaponSlots; k++ {
 		acc, hasRes := sc.ammo[k], sc.roundsRead[k]
 		if !acc.Read && !hasRes {
 			continue
 		}
-		out := InventoryDeltaAmmo{WeaponSlot: k}
+		out := types.InventoryDeltaAmmo{WeaponSlot: k}
 		if acc.Read {
 			sc.st.AmmoRead++
 			if acc.HasMag {

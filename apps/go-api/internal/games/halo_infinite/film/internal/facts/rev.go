@@ -34,8 +34,10 @@ package facts
 //	TOUT L ARBRE `film/facts/`   killsource, objectives, fallback ; CE fichier exclu (il DECRIT
 //	                             la couche, il n en fait pas partie).
 //	LA VALEUR DE `source.Rev`    la porte aux octets (V15 (12)).
-//	LA VALEUR DE `GrammarRev`    la grammaire, tant que `grammar.Rev` n existe pas (volet
-//	                             grammaire du lot 2.6, apres 2.5.e).
+//	LA VALEUR DE `grammar.Rev`   la grammaire de lecture — et elle-meme hache les valeurs de
+//	                             `profile.Rev` et de `source.Rev` depuis le volet grammaire du
+//	                             lot 2.6.1. Les quatre revisions se chainent : la plus basse qui
+//	                             monte fait monter toutes celles du dessus.
 //
 // Hacher des VALEURS amont et pas leurs sources est ce qui rend la regle mecanique : une montee
 // d une couche du dessous fait monter les faits sans que personne ait a y penser. C est plus
@@ -98,6 +100,22 @@ package facts
 // `GrammarRev` passe a `grammar-2026-09-15.38` pour trois corrections de doc inversee et une
 // decision ecrite (commentaires seuls, cf. la chronique de la grammaire), et cette valeur est
 // hachee ici depuis le lot 2.6.1. Rien de la couche des faits ne change. AUCUN BACKLOG.
+//
+// ENTREE `killsource-2026-09-16.6` (2026-09-17, lot 2.6.1, volet grammaire) : L AMONT CHANGE DE
+// NOM ET DE PERIMETRE, LA SORTIE NE BOUGE PAS. AUCUN BACKLOG.
+//
+// La derniere des quatre couches herite du mecanisme central : `GrammarRev` devient
+// `grammar.Rev`, et son empreinte cesse de hacher les octets de `source/`, de `profile/` et de
+// `facts/` pour ne hacher que les siens PLUS les valeurs de `profile.Rev` et de `source.Rev`.
+// Sa valeur passe donc de `grammar-2026-09-15.38` a `grammar-2026-09-15.39` — deux quantites
+// differentes ne se figent pas sous la meme ligne, la raison est ecrite dans l entree `.39` de
+// `grammar/rev_chronique.go`. Cette valeur est hachee ICI (V15 (12)), d ou ce rang.
+//
+// RIEN DE LA COUCHE DES FAITS NE CHANGE : ni un octet de `killsource/`, `objectives/` ou
+// `fallback/`, ni une largeur, ni un ordre, ni une borne. Le decoupage de l empreinte de la
+// grammaire ne touche aucun bit lu — il ne change QUE le diagnostic qu un gate rouge rend.
+// AUCUN BACKLOG DE REDECODAGE : la regle « montee de `facts.Rev` = backlog killsource » vaut a
+// partir du premier changement de SORTIE, et ce n en est pas un.
 //
 // # L HISTORIQUE DE LA SERIE `killsource-...`, REPRIS SANS RENUMEROTATION
 //
@@ -251,7 +269,15 @@ package facts
 // `grammar.LecteurSur` (l ancien `NewBitReader`, renomme parce que le type ne lit plus, il
 // decore). Aucune largeur, aucun ordre de bits, aucune borne ne change : les lignes produites
 // sont identiques a l octet, et aucun match deja decode n est candidat au backlog.
-const Rev = "killsource-2026-09-16.5"
+// 2026-09-17, LOT 2.6.2 (volet grammaire / rejeu) — REVISION INCHANGEE, EMPREINTE SEULE
+// RECOPIEE, ET LE CHOIX EST ECRIT. Les DEUX alias dates de l arbre des faits
+// (`killsource/types_alias.go`, `objectives/types_alias.go`, poses au volet facts du meme lot)
+// sont SUPPRIMES : les onze types de contrat se nomment `types.X` partout, y compris dans la
+// couche qui les produit. Un alias de type est LE MEME type pour le compilateur — aucune lecture,
+// aucune largeur, aucun appariement ne change, les lignes produites sont identiques a l octet et
+// aucun match deja decode n est candidat au backlog. Le critere de retrait ecrit dans les deux
+// fichiers supprimes est tenu, et il etait mesurable au `grep`.
+const Rev = "killsource-2026-09-16.6"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/facts_rev.golden` porte le couple (revision, empreinte) avec son historique, et

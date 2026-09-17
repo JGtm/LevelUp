@@ -44,6 +44,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -65,7 +66,7 @@ const (
 //
 // ELLE N'EST PLUS APPELEE PAR AUCUN CODE DE PRODUCTION. Si un jour elle l'etait de nouveau, le
 // registre des replis devrait reprendre ses deux entrees — sorties le 2026-09-15 avec elle.
-func f1OrigineParFenetre(lives []equipLife, p grammar.EquipmentPlacement) string {
+func f1OrigineParFenetre(lives []equipLife, p types.EquipmentPlacement) string {
 	if len(lives) == 0 {
 		return OriginUnknown
 	}
@@ -95,7 +96,7 @@ func f1OrigineParFenetre(lives []equipLife, p grammar.EquipmentPlacement) string
 
 // f1OrigineAvant est la regle D'AVANT le lot F.1 — le TEMOIN, jamais la regle vivante : la
 // fenetre temporelle ET la clause de distance.
-func f1OrigineAvant(lives []equipLife, p grammar.EquipmentPlacement) string {
+func f1OrigineAvant(lives []equipLife, p types.EquipmentPlacement) string {
 	apres := f1OrigineParFenetre(lives, p)
 	if apres != OriginDropped {
 		return apres

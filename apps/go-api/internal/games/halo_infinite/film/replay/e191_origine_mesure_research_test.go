@@ -53,6 +53,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -194,7 +195,7 @@ func e191MesureUnFilm(t *testing.T, root string, f e191Film) ([]e191Pose, bool) 
 		t.Logf("film %s : evenements 103 illisibles (%v) — hors mesure", f.Short8, err)
 		return nil, false
 	}
-	designees := map[grammar.EquipmentLifeKey][]uint64{}
+	designees := map[types.EquipmentLifeKey][]uint64{}
 	for _, e := range spawns {
 		if e.SpawnedValid {
 			designees[e.Spawned] = append(designees[e.Spawned], e.TimestampUS)
@@ -230,10 +231,10 @@ func e191MesureUnFilm(t *testing.T, root string, f e191Film) ([]e191Pose, bool) 
 // mort ») : l enveloppe est supprimee, ses deux lignes vivent chez son unique appelant, et la
 // production garde la seule forme qu elle emploie (`ScanEquipmentSpawnEvents(fc)`, sur un
 // contexte deja ouvert, qui ne recharge rien).
-func e191Spawns(dir string) ([]grammar.EquipmentSpawnEvent, grammar.EquipmentSpawnStats, error) {
+func e191Spawns(dir string) ([]types.EquipmentSpawnEvent, types.EquipmentSpawnStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, grammar.EquipmentSpawnStats{}, err
+		return nil, types.EquipmentSpawnStats{}, err
 	}
 	return grammar.ScanEquipmentSpawnEvents(grammar.NewFilmContext(film))
 }
@@ -268,7 +269,7 @@ func e191Contexte(g *goldenInputs) e191Ctx {
 		ctx.nbMorts++
 	}
 	for _, c := range g.EquipmentChanges {
-		if c.Kind != grammar.EquipmentTaken {
+		if c.Kind != types.EquipmentTaken {
 			continue
 		}
 		ctx.prises[c.Slot] = append(ctx.prises[c.Slot], c.TimestampUS)
@@ -319,8 +320,8 @@ func e191ObjetsPortes(t *testing.T) map[string]bool {
 }
 
 // e191UnePose annote UNE pose avec ce que chaque signal en dit.
-func e191UnePose(p grammar.EquipmentPlacement, film string,
-	designees map[grammar.EquipmentLifeKey][]uint64, portes map[string]bool, ctx e191Ctx,
+func e191UnePose(p types.EquipmentPlacement, film string,
+	designees map[types.EquipmentLifeKey][]uint64, portes map[string]bool, ctx e191Ctx,
 ) e191Pose {
 	fam := ctx.familles[p.GlobalID]
 	if fam == "" {
@@ -354,7 +355,7 @@ func e191UnePose(p grammar.EquipmentPlacement, film string,
 
 // e191EcartFenetre rend l ecart, en ms, que la fenetre de 200 ms mesure : entre la creation de
 // l objet et la fin de la vie de poseur RETENUE par `equipmentOrigin`.
-func e191EcartFenetre(lives []equipLife, p grammar.EquipmentPlacement) float64 {
+func e191EcartFenetre(lives []equipLife, p types.EquipmentPlacement) float64 {
 	best, bestGap := equipLife{}, ^uint64(0)
 	for _, v := range lives {
 		gap := uint64(0)

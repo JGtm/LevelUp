@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // Keyframe/delta entity traversal: drives the mask-gated component loop
 // (FUN_14076cb60) over an archetype's ordered component list (from the registry),
 // dispatching each present component to its ported bit-consumer. The goal is to
@@ -33,8 +35,8 @@ type EntityTrace struct {
 	Gate        bool
 	Mask        uint64
 	Comps       []CompResult
-	Dead        *DeadState // captured object-dead-state heavy form (nil if no dead-state component present)
-	DesyncAt    int        // iterator index of the first un-ported present component (-1 if all consumed)
+	Dead        *types.DeadState // captured object-dead-state heavy form (nil if no dead-state component present)
+	DesyncAt    int              // iterator index of the first un-ported present component (-1 if all consumed)
 	EndBit      int
 }
 

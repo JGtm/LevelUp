@@ -49,6 +49,18 @@ type FilmIdentity struct {
 	// RegistryBlocks : le nombre de blocs du registre (49 ou 50 selon le build). C'est lui qui
 	// ancre la fin du registre, donc le debut de la table par type.
 	RegistryBlocks int
+	// RegistryFingerprint : le FNV-1a 64 bits des entrees NOMMEES du registre — l identite de la
+	// grammaire des composants du film. Zero quand le registre n a pas ete lu.
+	//
+	// ELLE ETAIT CALCULEE PUIS JETEE (decouverte D4 (3.2), 2026-09-16) : le lecteur de cette
+	// section re-parse le registre entier pour trouver l ancre de la chaine de build, donc il
+	// tient l empreinte sous la main. La rendre ne coute pas un cycle, et sans elle le decodeur
+	// ne pouvait pas DIRE sous quelle grammaire de composants un artefact a ete cuit — seul un
+	// avertissement de journal, dedupliqué par processus, en portait la trace.
+	RegistryFingerprint uint64
+	// RegistryNamedSlots : le nombre d entrees NOMMEES hachees — le denominateur de l empreinte.
+	// Sans lui, deux empreintes differentes ne se distinguent pas d un registre tronque.
+	RegistryNamedSlots int
 	// BuildOffset : l'octet de la chaine de build dans le tampon inflate. Publie parce que
 	// c'est l'ancre de toute la derivation, et qu'un rapport qui le porte se relit.
 	BuildOffset int

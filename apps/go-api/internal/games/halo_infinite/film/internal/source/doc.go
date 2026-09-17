@@ -67,7 +67,7 @@
 // source.go).
 //
 // Ce paquet ne connait pas la semantique des chunks au-dela de ce numero : le role de chacun se
-// lit dans le manifeste ([ChunkMeta], fourni par l'appelant), et l'interpretation viendra avec
+// lit dans le manifeste ([types.ChunkMeta], fourni par l'appelant), et l'interpretation viendra avec
 // `FilmContext` (lot 2 du plan).
 //
 // # POLITIQUE MEMOIRE
@@ -76,7 +76,7 @@
 // decoder une fois, et c'est deja ce que fait `killsource` aujourd'hui — pics mesures de 48 a
 // 256 Mio sur les films sains, sous un plafond enfant de 3 Gio. Les payloads de paquets sont des
 // SOUS-TRANCHES de ces buffers, jamais des copies : le cout d'un paquet est son en-tete decode,
-// pas ses octets. Corollaire a connaitre : garder un seul `Packet` retient tout le chunk.
+// pas ses octets. Corollaire a connaitre : garder un seul `types.Packet` retient tout le chunk.
 //
 // Les films dits « bombes » (`51101d1d`, `a349fea8`, `1c4c63c2`, `60ae07c4`) ne le sont PAS par
 // leur taille decompressee mais par l'amplification en aval (`objectives.NamedEventsFrom`) :

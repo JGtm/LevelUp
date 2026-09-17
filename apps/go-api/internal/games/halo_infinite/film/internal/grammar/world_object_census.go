@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // world_object_census.go — LE RECENSEMENT des OBJETS DU MONDE aux images-clés, et la BANDE de
@@ -49,7 +50,7 @@ type WorldObjectKeyframes struct {
 	// SeenUS porte, par vie d'objet (slot, gen), les instants des images-clés qui la RECENSENT,
 	// triés. Une vie absente n'est PAS une vie inexistante : elle a pu naître et disparaître
 	// entre deux images-clés (24,0 % des apparitions mesurées sur huit films).
-	SeenUS map[EquipmentLifeKey][]uint64
+	SeenUS map[types.EquipmentLifeKey][]uint64
 }
 
 // LastTimeUS rend l'instant de la DERNIÈRE image-clé du film, ou zéro s'il n'y en a aucune.
@@ -70,14 +71,14 @@ func (k WorldObjectKeyframes) LastTimeUS() uint64 {
 func ScanFilmWorldObjectKeyframes(dir string, ti int) WorldObjectKeyframes {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return WorldObjectKeyframes{SeenUS: map[EquipmentLifeKey][]uint64{}}
+		return WorldObjectKeyframes{SeenUS: map[types.EquipmentLifeKey][]uint64{}}
 	}
 	return ScanWorldObjectKeyframes(film, ti)
 }
 
 // ScanWorldObjectKeyframes marche les images-clés d'un film DEJA CHARGE.
 func ScanWorldObjectKeyframes(film *source.Film, ti int) WorldObjectKeyframes {
-	out := WorldObjectKeyframes{SeenUS: map[EquipmentLifeKey][]uint64{}}
+	out := WorldObjectKeyframes{SeenUS: map[types.EquipmentLifeKey][]uint64{}}
 	seen, others := map[uint32]bool{}, map[uint32]bool{}
 	for _, c := range FilmChunkNumbers(film) {
 		data, pks, ok := FilmChunkAt(film, c)
@@ -114,7 +115,7 @@ func (k *WorldObjectKeyframes) censusPacket(
 			continue
 		}
 		seen[slot] = true
-		key := EquipmentLifeKey{Slot: slot, Gen: uint32(r.Gen)}
+		key := types.EquipmentLifeKey{Slot: slot, Gen: uint32(r.Gen)}
 		// UN RECORD PAR VIE ET PAR IMAGE-CLÉ : le même objet peut être répliqué deux fois
 		// dans un même paquet, et compter deux fois le même instant fausserait le bornage.
 		if v := k.SeenUS[key]; len(v) > 0 && v[len(v)-1] == atUS {

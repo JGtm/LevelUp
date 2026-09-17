@@ -193,6 +193,12 @@ func (a *assemblage) composerLaCouverture() {
 	// La version du film est une DIMENSION du décodage : elle voyage avec l'artefact plutôt que
 	// d'exiger une relecture du film pour la retrouver (cf. Coverage.FilmMajorVersion).
 	a.doc.Coverage.FilmMajorVersion = a.opt.FilmMajorVersion
+	// SOUS QUELLES REVISIONS CET ARTEFACT A ETE CUIT (schema 61, lot 2.6.3). Pose ICI et pas dans
+	// `BuildFromFilm` : tout ce que ce code cuit doit porter le bloc, y compris un document
+	// assemble depuis des positions sans film — l ABSENCE du bloc est reservee aux artefacts
+	// anterieurs au schema 61, et lui donner un second sens rouvrirait l ambiguite que D-7
+	// interdit.
+	a.doc.Coverage.Decoder = couvertureDuDecodeur(a.opt.FilmIdentity)
 	// LE RESIDU DE NOMMAGE SE PUBLIE AVEC LE PONT : un artefact qui porte des vies sans identite
 	// doit le DIRE, sans quoi le defaut ne se voit que dans les journaux du jour de la cuisson.
 	a.doc.Coverage.Bridge.NamedByPreviousLife = a.unnamed.byPrevious

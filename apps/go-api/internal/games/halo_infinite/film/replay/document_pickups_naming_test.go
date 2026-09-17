@@ -10,9 +10,8 @@ package replay
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // pkClock construit l'horloge de test avec sa table d'équipement. Les trois quarts des cas de ce
@@ -29,12 +28,12 @@ func TestBuildPickupsResolvesFamilyFromTitleCatalogs(t *testing.T) {
 	// Deux catalogues DISJOINTS, comme en production (mesuré : 0 identifiant commun).
 	equipement := map[uint32]string{0xbcabbe43: "grenade_frag", 0xeef5d48d: "thruster"}
 	armes := map[uint32]string{0x767db96d: "hinf_ma40_ar"}
-	in := []grammar.BipedPickup{
+	in := []types.BipedPickup{
 		{TimestampUS: 1_000_000, Slot: 520, CatalogID: 0x767db96d, Class: 0}, // arme
 		{TimestampUS: 1_100_000, Slot: 520, CatalogID: 0xbcabbe43, Class: 2}, // grenade
 		{TimestampUS: 1_200_000, Slot: 520, CatalogID: 0xeef5d48d, Class: 3}, // équipement
 	}
-	got, cov := buildPickups(in, pkClock(equipement), pickupInputs{occupant: nil, st: grammar.BipedPickupStats{}, weaponKeys: armes, judge: nil})
+	got, cov := buildPickups(in, pkClock(equipement), pickupInputs{occupant: nil, st: types.BipedPickupStats{}, weaponKeys: armes, judge: nil})
 	if len(got) != 3 {
 		t.Fatalf("publiés = %d, attendu 3", len(got))
 	}
@@ -64,8 +63,8 @@ func TestBuildPickupsKindPerClassLiteral(t *testing.T) {
 		veut   string
 	}{{0, "weapon"}, {1, "weapon"}, {2, "grenade"}, {3, "equipment"}, {5, "item"}, {7, "item"}}
 	for _, c := range cas {
-		in := []grammar.BipedPickup{{TimestampUS: 1_000_000, Slot: 520, CatalogID: 1, Class: c.classe}}
-		got, _ := buildPickups(in, pkClock(nil), pickupInputs{occupant: nil, st: grammar.BipedPickupStats{}, weaponKeys: nil, judge: nil})
+		in := []types.BipedPickup{{TimestampUS: 1_000_000, Slot: 520, CatalogID: 1, Class: c.classe}}
+		got, _ := buildPickups(in, pkClock(nil), pickupInputs{occupant: nil, st: types.BipedPickupStats{}, weaponKeys: nil, judge: nil})
 		if len(got) != 1 {
 			t.Fatalf("classe %d : %d publié(s), attendu 1", c.classe, len(got))
 		}
@@ -82,12 +81,12 @@ func TestBuildPickupsKindPerClassLiteral(t *testing.T) {
 // résout est indiscernable d'un artefact où tout va bien — sauf par ce compteur. Le manifeste
 // ne déclare que 21 objets ; un 22e doit se VOIR.
 func TestBuildPickupsUnknownFamilyIsCountedNotInvented(t *testing.T) {
-	in := []grammar.BipedPickup{
+	in := []types.BipedPickup{
 		{TimestampUS: 1_000_000, Slot: 520, CatalogID: 0xbcabbe43, Class: 2}, // connu
 		{TimestampUS: 1_100_000, Slot: 520, CatalogID: 0xdeadbeef, Class: 3}, // INCONNU
 		{TimestampUS: 1_200_000, Slot: 520, CatalogID: 0xfeedface, Class: 0}, // arme INCONNUE
 	}
-	got, cov := buildPickups(in, pkClock(map[uint32]string{0xbcabbe43: "grenade_frag"}), pickupInputs{occupant: nil, st: grammar.BipedPickupStats{}, weaponKeys: map[uint32]string{}, judge: nil})
+	got, cov := buildPickups(in, pkClock(map[uint32]string{0xbcabbe43: "grenade_frag"}), pickupInputs{occupant: nil, st: types.BipedPickupStats{}, weaponKeys: map[uint32]string{}, judge: nil})
 	if len(got) != 3 {
 		t.Fatalf("publiés = %d, attendu 3", len(got))
 	}
@@ -114,12 +113,12 @@ func TestPickupFamilyNeverCrossesCatalogs(t *testing.T) {
 	const id = 0x12345678
 	equipement := map[uint32]string{id: "cote_equipement"}
 	armes := map[uint32]string{id: "cote_arme"}
-	in := []grammar.BipedPickup{
+	in := []types.BipedPickup{
 		{TimestampUS: 1_000_000, Slot: 520, CatalogID: id, Class: 0}, // arme
 		{TimestampUS: 1_100_000, Slot: 520, CatalogID: id, Class: 3}, // équipement
 		{TimestampUS: 1_200_000, Slot: 520, CatalogID: id, Class: 6}, // repli : aucun catalogue
 	}
-	got, _ := buildPickups(in, pkClock(equipement), pickupInputs{occupant: nil, st: grammar.BipedPickupStats{}, weaponKeys: armes, judge: nil})
+	got, _ := buildPickups(in, pkClock(equipement), pickupInputs{occupant: nil, st: types.BipedPickupStats{}, weaponKeys: armes, judge: nil})
 	if got[0].Family != "cote_arme" {
 		t.Errorf("classe arme : family = %q, attendu \"cote_arme\" — le catalogue d armes doit primer", got[0].Family)
 	}
@@ -138,11 +137,11 @@ func TestPickupFamilyNeverCrossesCatalogs(t *testing.T) {
 	// passait ce test. Ici l'identifiant est ABSENT de la table d'équipement et PRÉSENT dans
 	// celle des armes — un repli le nommerait, et il ne doit pas.
 	const orphelin = 0x87654321
-	seul := []grammar.BipedPickup{
+	seul := []types.BipedPickup{
 		{TimestampUS: 1_000_000, Slot: 520, CatalogID: orphelin, Class: 3}, // équipement
 		{TimestampUS: 1_100_000, Slot: 520, CatalogID: orphelin, Class: 2}, // grenade
 	}
-	gotSeul, cov := buildPickups(seul, pkClock(map[uint32]string{}), pickupInputs{occupant: nil, st: grammar.BipedPickupStats{}, weaponKeys: map[uint32]string{orphelin: "hinf_ma40_ar"}, judge: nil})
+	gotSeul, cov := buildPickups(seul, pkClock(map[uint32]string{}), pickupInputs{occupant: nil, st: types.BipedPickupStats{}, weaponKeys: map[uint32]string{orphelin: "hinf_ma40_ar"}, judge: nil})
 	for i, p := range gotSeul {
 		if p.Family != "" {
 			t.Errorf("non-arme %d : family = %q, attendu vide — l identifiant n est PAS dans le "+
@@ -156,8 +155,8 @@ func TestPickupFamilyNeverCrossesCatalogs(t *testing.T) {
 
 	// Et la symétrique : une ARME absente du catalogue d'armes ne doit pas piocher dans le
 	// manifeste d'équipement.
-	arme := []grammar.BipedPickup{{TimestampUS: 1_000_000, Slot: 520, CatalogID: orphelin, Class: 0}}
-	gotArme, _ := buildPickups(arme, pkClock(map[uint32]string{orphelin: "grenade_frag"}), pickupInputs{occupant: nil, st: grammar.BipedPickupStats{}, weaponKeys: map[uint32]string{}, judge: nil})
+	arme := []types.BipedPickup{{TimestampUS: 1_000_000, Slot: 520, CatalogID: orphelin, Class: 0}}
+	gotArme, _ := buildPickups(arme, pkClock(map[uint32]string{orphelin: "grenade_frag"}), pickupInputs{occupant: nil, st: types.BipedPickupStats{}, weaponKeys: map[uint32]string{}, judge: nil})
 	if gotArme[0].Family != "" {
 		t.Errorf("arme : family = %q, attendu vide — le manifeste d équipement ne doit pas servir de repli",
 			gotArme[0].Family)

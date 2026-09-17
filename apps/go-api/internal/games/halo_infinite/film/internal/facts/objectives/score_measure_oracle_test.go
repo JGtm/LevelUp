@@ -1,6 +1,7 @@
 package objectives
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"strconv"
 	"strings"
@@ -18,7 +19,7 @@ import (
 type oracleMatch struct {
 	MatchID, Variant, MapName string
 	Team0, Team1, DurationS   int
-	Lines                     []PlayerLine
+	Lines                     []types.PlayerLine
 	// Teams donne le team_id canonique par xuid.
 	Teams map[string]int
 }
@@ -49,7 +50,7 @@ func loadOracle(t *testing.T, path, short string) oracleMatch {
 			continue
 		}
 		xuid := part.col(r, "xuid")
-		out.Lines = append(out.Lines, PlayerLine{XUID: xuid,
+		out.Lines = append(out.Lines, types.PlayerLine{XUID: xuid,
 			Kills:   atoi(part.col(r, "kills")),
 			Deaths:  atoi(part.col(r, "deaths")),
 			Assists: atoi(part.col(r, "assists"))})

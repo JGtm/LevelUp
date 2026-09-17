@@ -1,6 +1,9 @@
 package objectives
 
-import "sort"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"sort"
+)
 
 // score.go — les COURBES tirees des enregistrements d'entite : score de mode et score
 // personnel, a la milliseconde.
@@ -124,9 +127,9 @@ func (c StatComponent) key() statSlotKey {
 // des pas que voit [countsOf] sur la suite cumulee, puisque le decalage d'une manche vaut le
 // total de la precedente (le pas de sa premiere emission y vaut donc sa valeur brute). Les deux
 // lectures jugent le meme pas.
-func SeriesByRound(recs []StatRecord, c StatComponent, teams bool) map[int]map[int][]ScorePoint {
+func SeriesByRound(recs []types.StatRecord, c StatComponent, teams bool) map[int]map[int][]types.ScorePoint {
 	real := RealRounds(recs)
-	out := map[int]map[int][]ScorePoint{}
+	out := map[int]map[int][]types.ScorePoint{}
 	for slot, byRound := range rawSeriesByRound(recs, c.key(), teams) {
 		for round, pts := range byRound {
 			if !real[round] {
@@ -141,7 +144,7 @@ func SeriesByRound(recs []StatRecord, c StatComponent, teams bool) map[int]map[i
 				continue
 			}
 			if out[slot] == nil {
-				out[slot] = map[int][]ScorePoint{}
+				out[slot] = map[int][]types.ScorePoint{}
 			}
 			out[slot][round] = kept
 		}
@@ -159,7 +162,7 @@ func SeriesByRound(recs []StatRecord, c StatComponent, teams bool) map[int]map[i
 // UN COMPTEUR `Unitary` PASSE PAR [boundedSeries] (correctif 6.R), sur la suite CUMULEE et donc
 // sur les memes pas que [countsOf] : le total publie vaut exactement le compte que la cle
 // d'appariement a lu.
-func SeriesTotal(recs []StatRecord, c StatComponent, teams bool) map[int][]ScorePoint {
+func SeriesTotal(recs []types.StatRecord, c StatComponent, teams bool) map[int][]types.ScorePoint {
 	out := cumulateRounds(rawSeriesByRound(recs, c.key(), teams), RealRounds(recs))
 	for slot, pts := range out {
 		if c.Unitary {
@@ -181,7 +184,7 @@ func SeriesTotal(recs []StatRecord, c StatComponent, teams bool) map[int][]Score
 //   - un compteur de recompense est NON DECROISSANT — un composant porte deux valeurs et
 //     il est reemis des que l'UNE des deux bouge, donc la meme valeur revient
 //     legitimement. Exiger la stricte croissance y jetterait des emissions reelles.
-func longestRun(pts []ScorePoint, strict bool) []ScorePoint {
+func longestRun(pts []types.ScorePoint, strict bool) []types.ScorePoint {
 	if len(pts) == 0 {
 		return nil
 	}
@@ -211,7 +214,7 @@ func longestRun(pts []ScorePoint, strict bool) []ScorePoint {
 			tailIdx[lo] = i
 		}
 	}
-	out := make([]ScorePoint, len(tailIdx))
+	out := make([]types.ScorePoint, len(tailIdx))
 	for i, k := len(tailIdx)-1, tailIdx[len(tailIdx)-1]; i >= 0; i, k = i-1, prev[k] {
 		out[i] = pts[k]
 	}
@@ -225,6 +228,6 @@ func longestRun(pts []ScorePoint, strict bool) []ScorePoint {
 // decodes de la MEME emission : si l'un est hors domaine, l'emission etait mal alignee et
 // l'autre ne vaut rien non plus. C'est la GARDE DE DOMAINE (garde anti-manche-fantome n 1),
 // etendue au canal frere le 2026-08-31.
-func modeScoreInDomain(v StatValue) bool {
+func modeScoreInDomain(v types.StatValue) bool {
 	return v.A >= 0 && v.A <= statMaxModeScore && v.B >= 0 && v.B <= statMaxModeScore
 }

@@ -17,6 +17,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // gwTestClock est l'axe de temps des tests : 100 ms de pas, 801 frames (80 s de film).
@@ -40,8 +41,8 @@ func gwTestFamily(t *testing.T, rank int) uint32 {
 }
 
 // gwTestCreation fabrique un record de creation porteur d'une identite d'arme.
-func gwTestCreation(slot, gen uint32, atUS uint64, fam uint32, x, y float32) grammar.EquipmentCreation {
-	c := grammar.EquipmentCreation{Slot: slot, Gen: gen, TimestampUS: atUS, X: x, Y: y}
+func gwTestCreation(slot, gen uint32, atUS uint64, fam uint32, x, y float32) types.EquipmentCreation {
+	c := types.EquipmentCreation{Slot: slot, Gen: gen, TimestampUS: atUS, X: x, Y: y}
 	c.MPPPresent[grammar.MPPWord32] = true
 	c.MPPVal[grammar.MPPWord32] = uint64(fam)
 	return c
@@ -76,8 +77,8 @@ func gwTestPadScan(t *testing.T) (WorldObjectScan, []grammar.BipedPosition) {
 	kf := []uint64{0, 20_000_000, 40_000_000, 60_000_000, 80_000_000}
 	scan := WorldObjectScan{
 		Scanned: true,
-		Stats:   grammar.EquipmentCreationStats{Slots: 8, Anchors: 40, Accepted: 4},
-		Creations: []grammar.EquipmentCreation{
+		Stats:   types.EquipmentCreationStats{Slots: 8, Anchors: 40, Accepted: 4},
+		Creations: []types.EquipmentCreation{
 			gwTestCreation(10, 0, 1_000_000, fam, 10, 10),
 			gwTestCreation(11, 0, 31_000_000, fam, 10.2, 10.1),
 			gwTestCreation(12, 0, 51_000_000, fam, 9.9, 10.2),
@@ -85,7 +86,7 @@ func gwTestPadScan(t *testing.T) (WorldObjectScan, []grammar.BipedPosition) {
 		},
 		Keyframes: grammar.WorldObjectKeyframes{
 			TimesUS: kf,
-			SeenUS: map[grammar.EquipmentLifeKey][]uint64{
+			SeenUS: map[types.EquipmentLifeKey][]uint64{
 				{Slot: 10}: {20_000_000},
 				{Slot: 11}: {40_000_000},
 				{Slot: 12}: {60_000_000},
@@ -220,8 +221,8 @@ func TestBuildWeaponPadsEcarteLesLachersEtLesObjetsQuiOntBouge(t *testing.T) {
 	kf := []uint64{0, 20_000_000, 40_000_000, 60_000_000, 80_000_000}
 	scan := WorldObjectScan{
 		Scanned: true,
-		Stats:   grammar.EquipmentCreationStats{Accepted: 4},
-		Creations: []grammar.EquipmentCreation{
+		Stats:   types.EquipmentCreationStats{Accepted: 4},
+		Creations: []types.EquipmentCreation{
 			// Deux apparitions au meme endroit, mais LACHEES : une vie de joueur s'acheve la.
 			gwTestCreation(20, 0, 10_000_000, fam, 30, 30),
 			gwTestCreation(21, 0, 50_000_000, fam, 30.1, 30),
@@ -230,9 +231,9 @@ func TestBuildWeaponPadsEcarteLesLachersEtLesObjetsQuiOntBouge(t *testing.T) {
 			gwTestCreation(23, 0, 50_000_000, fam, 60.1, 60),
 		},
 		Keyframes: grammar.WorldObjectKeyframes{TimesUS: kf},
-		Tracks: []grammar.ProjectileTrack{
-			{Slot: 22, Pts: []grammar.ProjectileSample{{TimestampUS: 10_000_000, X: 60, Y: 60}}},
-			{Slot: 23, Pts: []grammar.ProjectileSample{{TimestampUS: 50_000_000, X: 60.1, Y: 60}}},
+		Tracks: []types.ProjectileTrack{
+			{Slot: 22, Pts: []types.ProjectileSample{{TimestampUS: 10_000_000, X: 60, Y: 60}}},
+			{Slot: 23, Pts: []types.ProjectileSample{{TimestampUS: 50_000_000, X: 60.1, Y: 60}}},
 		},
 	}
 	// Deux vies de joueur qui S'ACHEVENT sur la premiere position, aux deux instants voulus :
@@ -266,8 +267,8 @@ func TestGroundWeaponObjectsEcarteLesCreationsSansIdentite(t *testing.T) {
 	sansMPP.MPPPresent[grammar.MPPWord32] = false
 	scan := WorldObjectScan{
 		Scanned: true,
-		Stats:   grammar.EquipmentCreationStats{Accepted: 3},
-		Creations: []grammar.EquipmentCreation{
+		Stats:   types.EquipmentCreationStats{Accepted: 3},
+		Creations: []types.EquipmentCreation{
 			gwTestCreation(31, 0, 2_000_000, fam, 1, 1),
 			gwTestCreation(32, 0, 3_000_000, 0xDEADBEEF, 2, 2), // identite hors catalogue
 			sansMPP,
@@ -294,14 +295,14 @@ func TestGroundWeaponObjectsBorneParLaRepriseDeCle(t *testing.T) {
 	fam := gwTestFamily(t, 0)
 	scan := WorldObjectScan{
 		Scanned: true,
-		Stats:   grammar.EquipmentCreationStats{Accepted: 2},
-		Creations: []grammar.EquipmentCreation{
+		Stats:   types.EquipmentCreationStats{Accepted: 2},
+		Creations: []types.EquipmentCreation{
 			gwTestCreation(40, 1, 5_000_000, fam, 0, 0),
 			gwTestCreation(40, 1, 25_000_000, fam, 0, 0),
 		},
 		Keyframes: grammar.WorldObjectKeyframes{
 			TimesUS: []uint64{0, 20_000_000, 40_000_000},
-			SeenUS:  map[grammar.EquipmentLifeKey][]uint64{{Slot: 40, Gen: 1}: {20_000_000, 40_000_000}},
+			SeenUS:  map[types.EquipmentLifeKey][]uint64{{Slot: 40, Gen: 1}: {20_000_000, 40_000_000}},
 		},
 	}
 	// Le nuage deborde la derniere image-cle : sans cela la fin du film tomberait dessus et
@@ -335,9 +336,9 @@ func TestCouvertureDesequilibreeQuandUneCreationSePerd(t *testing.T) {
 	fuite := WorldObjectScan{
 		Scanned: true,
 		// CINQ acceptees annoncees par le balayage...
-		Stats: grammar.EquipmentCreationStats{Accepted: 5},
+		Stats: types.EquipmentCreationStats{Accepted: 5},
 		// ... et TROIS transmises a l'assemblage.
-		Creations: []grammar.EquipmentCreation{
+		Creations: []types.EquipmentCreation{
 			gwTestCreation(80, 0, 1_000_000, fam, 1, 1),
 			gwTestCreation(81, 0, 2_000_000, fam, 2, 2),
 			gwTestCreation(82, 0, 3_000_000, 0xDEADBEEF, 3, 3),
@@ -364,8 +365,8 @@ func TestGroundWeaponObjectsSansImageCleSuivanteEstNever(t *testing.T) {
 	fam := gwTestFamily(t, 0)
 	scan := WorldObjectScan{
 		Scanned:   true,
-		Stats:     grammar.EquipmentCreationStats{Accepted: 1},
-		Creations: []grammar.EquipmentCreation{gwTestCreation(70, 0, 45_000_000, fam, 12, 12)},
+		Stats:     types.EquipmentCreationStats{Accepted: 1},
+		Creations: []types.EquipmentCreation{gwTestCreation(70, 0, 45_000_000, fam, 12, 12)},
 		// La derniere image-cle est a 40 s : l'objet nait APRES elle.
 		Keyframes: grammar.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000}},
 	}
@@ -398,15 +399,15 @@ func TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle(t *testing.T) {
 	fam := gwTestFamily(t, 0)
 	scan := WorldObjectScan{
 		Scanned: true,
-		Stats:   grammar.EquipmentCreationStats{Accepted: 2},
-		Creations: []grammar.EquipmentCreation{
+		Stats:   types.EquipmentCreationStats{Accepted: 2},
+		Creations: []types.EquipmentCreation{
 			gwTestCreation(50, 2, 5_000_000, fam, 7, 7),
 			gwTestCreation(50, 2, 45_000_000, fam, 7, 7),
 		},
 		Keyframes: grammar.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000, 60_000_000}},
 		// UNE SEULE piste, sur la PREMIERE vie : elle demarre a l'instant de la premiere
 		// creation et s'acheve bien avant la seconde.
-		Tracks: []grammar.ProjectileTrack{{Slot: 50, Gen: 2, Pts: []grammar.ProjectileSample{
+		Tracks: []types.ProjectileTrack{{Slot: 50, Gen: 2, Pts: []types.ProjectileSample{
 			{TimestampUS: 5_000_000, X: 7, Y: 7},
 			{TimestampUS: 9_000_000, X: 9, Y: 9},
 		}}},

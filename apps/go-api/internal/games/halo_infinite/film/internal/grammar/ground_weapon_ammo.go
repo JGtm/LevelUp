@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // ground_weapon_ammo.go — LES MUNITIONS EXACTES d'une ARME AU SOL, lues sur son record de
 // CREATION (lot 6.10, 2026-09-11, rapport `.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`).
 //
@@ -81,14 +83,6 @@ const compWeaponAmmo = "weapon-ammo-component"
 // reviendrait a faire confiance a un decalage inconnu.
 const compObjectMultiplayerProperties = "object-multiplayer-properties-component"
 
-// GroundWeaponAmmo porte les deux champs PROUVES du composant `weapon-ammo-component`.
-type GroundWeaponAmmo struct {
-	// Mag est le CHARGEUR de l'arme au moment ou elle a touche le sol (champ A, R(8)).
-	Mag uint32
-	// Res est la RESERVE a ce meme instant (champ B, R(11)).
-	Res uint32
-}
-
 // readGroundWeaponAmmo rejoue la boucle de composants de PRODUCTION sur le record de creation,
 // a partir du premier composant (i0, dont `compStart` est le premier bit), et rend le contenu
 // d'i20. PUR : il lit `pay` avec son PROPRE curseur, sans toucher celui du balayage — aucun bit
@@ -98,10 +92,10 @@ type GroundWeaponAmmo struct {
 // archetype dont les index ne portent pas les composants attendus, ou i20 non atteint. Le refus
 // des masques portant i9 a ete RETIRE le 2026-09-11 (cf. l'en-tete) : la marche les traverse.
 func readGroundWeaponAmmo(pay []byte, compStart int, mask []int, arch Archetype,
-	ctx ContexteDeLecture) (GroundWeaponAmmo, bool) {
+	ctx ContexteDeLecture) (types.GroundWeaponAmmo, bool) {
 	if arch.component(groundWeaponAmmoIndex) != compWeaponAmmo ||
 		arch.component(groundWeaponMPPIndex) != compObjectMultiplayerProperties {
-		return GroundWeaponAmmo{}, false
+		return types.GroundWeaponAmmo{}, false
 	}
 	var bits uint64
 	hasAmmo := false
@@ -112,7 +106,7 @@ func readGroundWeaponAmmo(pay []byte, compStart int, mask []int, arch Archetype,
 		bits |= uint64(1) << uint(i&63)
 	}
 	if !hasAmmo {
-		return GroundWeaponAmmo{}, false
+		return types.GroundWeaponAmmo{}, false
 	}
 	br := LecteurSur(pay)
 	br.PoserContexte(ctx)
@@ -126,7 +120,7 @@ func readGroundWeaponAmmo(pay []byte, compStart int, mask []int, arch Archetype,
 		r := LecteurSur(pay)
 		r.PoserContexte(ctx)
 		r.SetBitPos(c.StartBit)
-		return GroundWeaponAmmo{Mag: uint32(r.ReadBits(8)), Res: uint32(r.ReadBits(11))}, true
+		return types.GroundWeaponAmmo{Mag: uint32(r.ReadBits(8)), Res: uint32(r.ReadBits(11))}, true
 	}
-	return GroundWeaponAmmo{}, false
+	return types.GroundWeaponAmmo{}, false
 }

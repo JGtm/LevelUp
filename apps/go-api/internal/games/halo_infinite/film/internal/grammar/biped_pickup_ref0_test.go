@@ -25,6 +25,7 @@ package grammar
 // Garde BIPED_PICKUP_FILM.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
 	"testing"
 )
@@ -41,9 +42,9 @@ type bpkPaire struct {
 // evenements type 9 portant LA MEME arme a moins de bpkTolUS. On ne garde que les
 // appariements SANS AMBIGUITE (exactement un candidat) — un appariement multiple ne permet
 // pas de dire quel evenement porte quel ramasseur, et le compter fausserait le juge.
-func bpkPaires(evs []bpkEvent, chg []HeldWeaponChange) (paires []bpkPaire, ambigus int) {
+func bpkPaires(evs []bpkEvent, chg []types.HeldWeaponChange) (paires []bpkPaire, ambigus int) {
 	for _, c := range chg {
-		if c.Kind != HeldWeaponTaken && c.Kind != HeldWeaponSwapped {
+		if c.Kind != types.HeldWeaponTaken && c.Kind != types.HeldWeaponSwapped {
 			continue
 		}
 		var cand []bpkEvent

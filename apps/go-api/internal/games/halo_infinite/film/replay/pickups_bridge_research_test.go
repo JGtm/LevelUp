@@ -33,6 +33,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const pickupsBridgeEnv = "BIPED_PICKUP_FILM"
@@ -109,10 +110,10 @@ func TestPickupsBridgeNamesPickers(t *testing.T) {
 	}
 	paires, egaux, ambigus := 0, 0, 0
 	for _, c := range chg {
-		if c.Kind != grammar.HeldWeaponTaken && c.Kind != grammar.HeldWeaponSwapped {
+		if c.Kind != types.HeldWeaponTaken && c.Kind != types.HeldWeaponSwapped {
 			continue
 		}
-		var cand []grammar.BipedPickup
+		var cand []types.BipedPickup
 		for _, p := range pickups {
 			if p.CatalogID != c.Family {
 				continue

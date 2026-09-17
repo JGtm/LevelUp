@@ -7,7 +7,7 @@ package grammar
 // `equipment-charges-remaining` (i27), `equipment-activated` (i21), `equipment-energy`
 // (i24) et `equipment-creator` (i23). Son en-tete affirme depuis 2026-08-17 qu'« une
 // charge qui decroit DATE un usage », et personne n'y est retourne : le canal n'a jamais
-// ete JOINT a l'identite de l'objet (`EquipmentPlacement.Life` -> `GlobalID`), donc jamais
+// ete JOINT a l'identite de l'objet (`types.EquipmentPlacement.Life` -> `GlobalID`), donc jamais
 // confronte au repulseur ni au propulseur.
 //
 // LE TEMOIN POSITIF, ECRIT AVANT LA MESURE, et il est eliminatoire. Les instants d'usage
@@ -29,6 +29,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"path/filepath"
 	"sort"
@@ -143,7 +144,7 @@ type r8LifeStat struct {
 
 // r8ScanFilm decode UN film et rend, par vie ti=37, ce que le canal des composants dit.
 // Pose son observateur sur ses lecteurs.
-func r8ScanFilm(t *testing.T, dir string) map[EquipmentLifeKey]*r8LifeStat {
+func r8ScanFilm(t *testing.T, dir string) map[types.EquipmentLifeKey]*r8LifeStat {
 	t.Helper()
 	entry := r8MapEntry(t, dir)
 	wr := entry.Range()
@@ -154,7 +155,7 @@ func r8ScanFilm(t *testing.T, dir string) map[EquipmentLifeKey]*r8LifeStat {
 	if err != nil {
 		t.Fatalf("poses ti=37 illisibles dans %s : %v", dir, err)
 	}
-	ident := map[EquipmentLifeKey]uint32{}
+	ident := map[types.EquipmentLifeKey]uint32{}
 	for _, p := range pl {
 		ident[p.Life] = p.GlobalID
 	}
@@ -176,16 +177,16 @@ func r8ScanFilm(t *testing.T, dir string) map[EquipmentLifeKey]*r8LifeStat {
 
 // r8Aggregate replie les echantillons par vie et y cherche les TRANSITIONS.
 func r8Aggregate(
-	samples []EquipmentStateSample, ident map[EquipmentLifeKey]uint32,
-) map[EquipmentLifeKey]*r8LifeStat {
+	samples []EquipmentStateSample, ident map[types.EquipmentLifeKey]uint32,
+) map[types.EquipmentLifeKey]*r8LifeStat {
 	sort.SliceStable(samples, func(i, j int) bool {
 		return samples[i].TimestampUS < samples[j].TimestampUS
 	})
-	out := map[EquipmentLifeKey]*r8LifeStat{}
-	prevCharge := map[EquipmentLifeKey]uint64{}
-	prevAct := map[EquipmentLifeKey]uint64{}
+	out := map[types.EquipmentLifeKey]*r8LifeStat{}
+	prevCharge := map[types.EquipmentLifeKey]uint64{}
+	prevAct := map[types.EquipmentLifeKey]uint64{}
 	for _, s := range samples {
-		k := EquipmentLifeKey{Slot: s.Slot, Gen: s.Gen}
+		k := types.EquipmentLifeKey{Slot: s.Slot, Gen: s.Gen}
 		st := out[k]
 		if st == nil {
 			st = &r8LifeStat{family: r8FamilyOf(ident[k]), creator: map[uint64]bool{}}
@@ -207,8 +208,8 @@ func r8Aggregate(
 
 // r8Transitions met a jour les transitions d'une vie a partir d'un echantillon.
 func r8Transitions(
-	st *r8LifeStat, s EquipmentStateSample, k EquipmentLifeKey,
-	prevCharge, prevAct map[EquipmentLifeKey]uint64,
+	st *r8LifeStat, s EquipmentStateSample, k types.EquipmentLifeKey,
+	prevCharge, prevAct map[types.EquipmentLifeKey]uint64,
 ) {
 	if s.Present[EquipCreator] {
 		st.creator[s.Val[EquipCreator]] = true

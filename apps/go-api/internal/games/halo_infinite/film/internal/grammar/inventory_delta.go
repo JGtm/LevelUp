@@ -39,6 +39,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Les étiquettes de registre des deux composants. L'index d'itérateur est résolu PAR NOM dans
@@ -63,43 +64,19 @@ const invDeltaGrenadeSlots = 4
 // 255. C'est précisément ce qui en fait un test réfutable.
 const invDeltaMaxPerType = 2
 
-// InventoryDeltaNoSel est la valeur de [InventoryDelta.Sel] quand i47 ne désigne AUCUN type.
+// InventoryDeltaNoSel est la valeur de [types.InventoryDelta.Sel] quand i47 ne désigne AUCUN type.
 // Même convention que le canal des images-clés (`KeyframeInventory.SelectedGrenadeRank`) :
 // la grandeur publiée par les deux canaux est le RANG EN BASE 0, jamais le codage 1-base du
 // flux. Publier deux grandeurs différentes sous le même nom est le défaut qui a coûté le
 // chantier de la capacité d'armure (cf. replay/abilities.go).
 const InventoryDeltaNoSel = -1
 
-// InventoryDelta est UNE transmission d'inventaire de grenades, localisée dans le film.
-type InventoryDelta struct {
-	// Slot est l'identifiant bas du biped porteur — le même que celui des trajectoires, donc
-	// UNE VIE et non un joueur (le slot migre aux réapparitions).
-	Slot uint32
-	// Chunk / PacketIndex localisent la lecture dans le film.
-	Chunk, PacketIndex int
-	// TimestampUS est l'horodatage du paquet porteur — MÊME horloge que BipedPosition.
-	TimestampUS uint64
-	// Grenades porte le compteur de chaque rang (i22). NIL = i22 n'était pas au masque de ce
-	// record, ou sa lecture violait une borne : jamais « zéro grenade ».
-	Grenades []uint32
-	// Mask est le masque R(6) des types portés (i47), valide seulement si SelRead.
-	Mask uint32
-	// Sel est le rang SÉLECTIONNÉ en base 0, ou InventoryDeltaNoSel si i47 n'en désigne
-	// aucun. Valide seulement si SelRead.
-	Sel int
-	// SelRead dit si i47 a été lu sur ce record. Faux = non transmis ou non atteint.
-	SelRead bool
-	// Ammo porte l'état de munitions des emplacements que CE record transmet — jamais les
-	// quatre par défaut. Vide = aucun composant de munitions au masque.
-	Ammo []InventoryDeltaAmmo
-}
-
 // ScanFilmInventoryDeltas décode les transmissions d'inventaire de grenades (i22 compteurs,
 // i47 masque et sélection) dans les paquets delta du film de dir.
 //
 // ScanFilmInventoryDeltas est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanInventoryDeltas].
-func ScanFilmInventoryDeltas(dir string) ([]InventoryDelta, InventoryDeltaStats, error) {
+func ScanFilmInventoryDeltas(dir string) ([]types.InventoryDelta, InventoryDeltaStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, InventoryDeltaStats{}, err
@@ -108,7 +85,7 @@ func ScanFilmInventoryDeltas(dir string) ([]InventoryDelta, InventoryDeltaStats,
 }
 
 // ScanInventoryDeltas décode l'inventaire suivi dans les paquets delta d'un film DEJA CHARGE.
-func ScanInventoryDeltas(fc *FilmContext) ([]InventoryDelta, InventoryDeltaStats, error) {
+func ScanInventoryDeltas(fc *FilmContext) ([]types.InventoryDelta, InventoryDeltaStats, error) {
 	sc, err := newInvDeltaScanner(fc)
 	if err != nil {
 		return nil, InventoryDeltaStats{}, err
@@ -152,7 +129,7 @@ type invDeltaScanner struct {
 	lastRounds     uint32
 	lastRoundsRead bool
 
-	out []InventoryDelta
+	out []types.InventoryDelta
 	st  InventoryDeltaStats
 }
 
@@ -301,7 +278,7 @@ func (sc *invDeltaScanner) readRecord(
 		}
 		return seen < want
 	})
-	rec := InventoryDelta{Slot: slot, Chunk: chunk, PacketIndex: pk.Index, TimestampUS: pk.TimestampUS}
+	rec := types.InventoryDelta{Slot: slot, Chunk: chunk, PacketIndex: pk.Index, TimestampUS: pk.TimestampUS}
 	emit := sc.collectI22(&rec)
 	emit = sc.collectI47(&rec) || emit
 	emit = sc.collectAmmo(&rec) || emit
@@ -347,7 +324,7 @@ func (sc *invDeltaScanner) capture(r invDeltaRole) {
 }
 
 // collectI22 statue la lecture des compteurs : lue ou non, plausible ou non.
-func (sc *invDeltaScanner) collectI22(rec *InventoryDelta) bool {
+func (sc *invDeltaScanner) collectI22(rec *types.InventoryDelta) bool {
 	if !sc.got22 {
 		sc.st.I22Unread++
 		return false
@@ -381,7 +358,7 @@ func invDeltaPlausible(count uint64, vals []uint64) bool {
 
 // collectI47 statue la lecture du jeu de grenades, et convertit le codage 1-BASE du flux en
 // RANG BASE 0 — la grandeur du canal des images-clés.
-func (sc *invDeltaScanner) collectI47(rec *InventoryDelta) bool {
+func (sc *invDeltaScanner) collectI47(rec *types.InventoryDelta) bool {
 	if !sc.got47 {
 		sc.st.I47Unread++
 		return false
@@ -408,7 +385,7 @@ func (sc *invDeltaScanner) collectI47(rec *InventoryDelta) bool {
 // noteAccordI22I47 confronte, sur un record qui porte les DEUX composants, le masque d'i47 au
 // bitmap des compteurs d'i22. Cf. InventoryDeltaStats.Accord : c'est le contrôle croisé le
 // plus fort du balayage, et il ne coûte rien.
-func (sc *invDeltaScanner) noteAccordI22I47(rec InventoryDelta) {
+func (sc *invDeltaScanner) noteAccordI22I47(rec types.InventoryDelta) {
 	if rec.Grenades == nil || !rec.SelRead {
 		return
 	}

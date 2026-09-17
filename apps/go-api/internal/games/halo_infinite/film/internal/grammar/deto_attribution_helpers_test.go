@@ -6,6 +6,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
 	"testing"
 )
@@ -96,7 +97,7 @@ func detoScanProjectiles(t *testing.T, dir string, wr *profile.Vec3Range, n int)
 		lg = profilDeCarte(lay).LargeursObjetDuMonde()
 	}
 	type key struct{ slot, gen uint32 }
-	lives := map[key][]ProjectileSample{}
+	lives := map[key][]types.ProjectileSample{}
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)
 		if err != nil {
@@ -126,7 +127,7 @@ func detoScanProjectiles(t *testing.T, dir string, wr *profile.Vec3Range, n int)
 }
 
 // detoFromLife construit un point de detonation depuis une vie de projectile (>=3 points).
-func detoFromLife(seg []ProjectileSample) detoDeton {
+func detoFromLife(seg []types.ProjectileSample) detoDeton {
 	last := seg[len(seg)-1]
 	first := seg[0]
 	return detoDeton{

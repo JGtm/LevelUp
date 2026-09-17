@@ -39,6 +39,7 @@ import (
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -194,7 +195,7 @@ func (v d4Verdict) taux() float64 {
 
 // d4Mesure applique le predicat aux trous, publie le diagnostic, puis le verdict et son temoin.
 func d4Mesure(t *testing.T, id string, trous, libres []d4Intervalle,
-	perso map[int][]objectives.ScorePoint) {
+	perso map[int][]types.ScorePoint) {
 	t.Helper()
 	mes := d4Passe(trous, perso)
 	t.Logf("%s : %d trou(s) dont %d exploitable(s) (>= %d ms) — %d a porteur UNIQUE, %d sans "+
@@ -239,7 +240,7 @@ func d4Mesure(t *testing.T, id string, trous, libres []d4Intervalle,
 }
 
 // d4Passe applique le predicat a une liste d'intervalles.
-func d4Passe(ivs []d4Intervalle, perso map[int][]objectives.ScorePoint) d4Verdict {
+func d4Passe(ivs []d4Intervalle, perso map[int][]types.ScorePoint) d4Verdict {
 	var v d4Verdict
 	for _, iv := range ivs {
 		if iv.dureeMS() < d4TrancheMS {
@@ -263,7 +264,7 @@ func d4Passe(ivs []d4Intervalle, perso map[int][]objectives.ScorePoint) d4Verdic
 }
 
 // d4Qualifiants rend les slots dont le score personnel croit STRICTEMENT dans CHAQUE tranche.
-func d4Qualifiants(iv d4Intervalle, perso map[int][]objectives.ScorePoint) []int {
+func d4Qualifiants(iv d4Intervalle, perso map[int][]types.ScorePoint) []int {
 	var out []int
 	for slot := range perso {
 		if d4CroitPartout(perso[slot], iv) {
@@ -278,7 +279,7 @@ func d4Qualifiants(iv d4Intervalle, perso map[int][]objectives.ScorePoint) []int
 //
 // LA DERNIERE TRANCHE INCOMPLETE EST FUSIONNEE A LA PRECEDENTE : une tranche d'une seconde
 // n'attend qu'un increment, et l'exiger ferait echouer sur du bruit d'echantillonnage.
-func d4CroitPartout(pts []objectives.ScorePoint, iv d4Intervalle) bool {
+func d4CroitPartout(pts []types.ScorePoint, iv d4Intervalle) bool {
 	n := iv.dureeMS() / d4TrancheMS
 	if n == 0 {
 		return false
@@ -299,7 +300,7 @@ func d4CroitPartout(pts []objectives.ScorePoint, iv d4Intervalle) bool {
 // d4Delta rend la croissance du score sur un intervalle : dernier point dedans moins dernier
 // point AVANT le debut. Sans le point d'avant, un intervalle sans emission initiale rendrait une
 // croissance imaginaire egale a la valeur absolue du score.
-func d4Delta(pts []objectives.ScorePoint, iv d4Intervalle) int64 {
+func d4Delta(pts []types.ScorePoint, iv d4Intervalle) int64 {
 	var avant, dedans int64
 	vuAvant, vuDedans := false, false
 	for _, p := range pts {
@@ -324,7 +325,7 @@ func d4Delta(pts []objectives.ScorePoint, iv d4Intervalle) int64 {
 // LE TIRAGE EST DETERMINISTE (graine fixe) : un temoin qui bouge d'une execution a l'autre ne se
 // confronte a rien.
 func d4Temoin(trous, libres []d4Intervalle,
-	perso map[int][]objectives.ScorePoint) (unSeul, joueur, essais int) {
+	perso map[int][]types.ScorePoint) (unSeul, joueur, essais int) {
 	if len(libres) == 0 {
 		return 0, 0, 0
 	}

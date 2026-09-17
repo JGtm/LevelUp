@@ -8,6 +8,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // equipment_placements.go — LES POSES d'équipement sur la carte : le mur de protection, le
@@ -263,7 +264,7 @@ const equipmentFamilyOther = "other"
 // HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmPlacements(
 	fc *grammar.FilmContext, matchID string, worldRange *profile.Vec3Range,
-) ([]grammar.EquipmentPlacement, grammar.EquipmentPlacementStats) {
+) ([]types.EquipmentPlacement, grammar.EquipmentPlacementStats) {
 	pl, st, err := grammar.ScanEquipmentPlacements(fc, worldRange)
 	if st.FormatSansProfil {
 		// SITE 1 DU REPLI `repli_largeurs_mpp_calibrees_sur_le_film` : le compteur, pas le
@@ -301,7 +302,7 @@ func decodeFilmPlacements(
 // HORS LIGNE — appelee par le balayage, sous le meme verrou que le reste de la cuisson.
 func decodeFilmSpawnEvents(
 	fc *grammar.FilmContext, matchID string,
-) ([]grammar.EquipmentSpawnEvent, grammar.EquipmentSpawnStats) {
+) ([]types.EquipmentSpawnEvent, types.EquipmentSpawnStats) {
 	ev, st, err := grammar.ScanEquipmentSpawnEvents(fc)
 	if err != nil {
 		slog.Warn("evenements de piece engendree illisibles — l'origine des poses retombe sur ses replis",
@@ -340,7 +341,7 @@ func logPlacementCoverage(c *EquipmentPlacementCoverage) {
 // AUCUN réglage : l'horloge et le compteur de replis restent dans `replayClock`.
 type equipmentInputs struct {
 	// Raw / Stats : le balayage des créations `ti=37` et sa calibration.
-	Raw   []grammar.EquipmentPlacement
+	Raw   []types.EquipmentPlacement
 	Stats grammar.EquipmentPlacementStats
 	// Positions est le nuage NON décimé, TRIÉ par instant : la recherche du poseur est une
 	// fenêtre glissante, pas un balayage complet par pose.
@@ -350,13 +351,13 @@ type equipmentInputs struct {
 	// Spawns sont les événements 103 `EquipmentSpawnedObject` : « une PIÈCE a été engendrée » ;
 	// SpawnStats porte les DÉNOMINATEURS de leur balayage, sans lesquels un zéro d'événement ne
 	// se distingue pas d'un film que le lecteur n'a pas su lire.
-	Spawns     []grammar.EquipmentSpawnEvent
-	SpawnStats grammar.EquipmentSpawnStats
+	Spawns     []types.EquipmentSpawnEvent
+	SpawnStats types.EquipmentSpawnStats
 	// Lives sont les vies NOMMÉES du registre d'identité : leur `cause` porte la mort ÉCRITE.
 	Lives []lifeSpan
 	// Changes sont les ramassages et consommations d'équipement : leurs `taken` portent la prise
 	// ÉCRITE du poseur.
-	Changes []grammar.EquipmentChange
+	Changes []types.EquipmentChange
 }
 
 // buildEquipmentPlacements assemble les poses : famille par le manifeste, poseur par

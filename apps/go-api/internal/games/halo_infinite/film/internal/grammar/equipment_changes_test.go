@@ -6,7 +6,10 @@ package grammar
 // Ces règles ne sont couvertes par AUCUN autre test : le balayage lui-même a besoin d'un film,
 // que le dépôt ne versionne pas. Ce qui se teste sans film, c'est ce qui décide.
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 func TestCompteurDeRotationDenonceLesEmissionsManquees(t *testing.T) {
 	cases := []struct {
@@ -24,7 +27,7 @@ func TestCompteurDeRotationDenonceLesEmissionsManquees(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.nom, func(t *testing.T) {
-			var st EquipmentChangeStats
+			var st types.EquipmentChangeStats
 			countEquipmentCounterStep(&st, c.from, c.to)
 			if st.Repeats != c.repeats || st.CounterJumps != c.jumps ||
 				st.MissedEstimate != c.estimated {
@@ -42,37 +45,37 @@ func TestClassementDUneEmissionDEquipement(t *testing.T) {
 	born := func(uint32) (uint64, bool) { return birth, true }
 
 	t.Run("porte ouverte = consommation", func(t *testing.T) {
-		ch := EquipmentChange{TimestampUS: birth + 30_000_000, Rank: AbilitySetNoRank}
-		if got := classifyEquipmentChange(ch, true, born); got != EquipmentSpent {
+		ch := types.EquipmentChange{TimestampUS: birth + 30_000_000, Rank: AbilitySetNoRank}
+		if got := classifyEquipmentChange(ch, true, born); got != types.EquipmentSpent {
 			t.Errorf("nature = %q, attendu %q : un emplacement qui se vide est une "+
-				"consommation — la mesure exclut la mort", got, EquipmentSpent)
+				"consommation — la mesure exclut la mort", got, types.EquipmentSpent)
 		}
 	})
 	t.Run("emission suivante = ramassage", func(t *testing.T) {
-		ch := EquipmentChange{TimestampUS: birth, Rank: 6}
-		if got := classifyEquipmentChange(ch, true, born); got != EquipmentTaken {
+		ch := types.EquipmentChange{TimestampUS: birth, Rank: 6}
+		if got := classifyEquipmentChange(ch, true, born); got != types.EquipmentTaken {
 			t.Errorf("nature = %q, attendu %q : une vie qui a deja emis ne peut plus "+
-				"reapparaitre", got, EquipmentTaken)
+				"reapparaitre", got, types.EquipmentTaken)
 		}
 	})
 	t.Run("premiere emission a la naissance = reapparition", func(t *testing.T) {
-		ch := EquipmentChange{TimestampUS: birth, Rank: 4}
-		if got := classifyEquipmentChange(ch, false, born); got != EquipmentSpawned {
-			t.Errorf("nature = %q, attendu %q", got, EquipmentSpawned)
+		ch := types.EquipmentChange{TimestampUS: birth, Rank: 4}
+		if got := classifyEquipmentChange(ch, false, born); got != types.EquipmentSpawned {
+			t.Errorf("nature = %q, attendu %q", got, types.EquipmentSpawned)
 		}
 	})
 	t.Run("premiere emission tardive = ramassage", func(t *testing.T) {
-		ch := EquipmentChange{TimestampUS: birth + equipmentSpawnWindowUS + 1, Rank: 4}
-		if got := classifyEquipmentChange(ch, false, born); got != EquipmentTaken {
+		ch := types.EquipmentChange{TimestampUS: birth + equipmentSpawnWindowUS + 1, Rank: 4}
+		if got := classifyEquipmentChange(ch, false, born); got != types.EquipmentTaken {
 			t.Errorf("nature = %q, attendu %q : hors de la fenetre de naissance, le joueur "+
-				"est alle CHERCHER cet equipement", got, EquipmentTaken)
+				"est alle CHERCHER cet equipement", got, types.EquipmentTaken)
 		}
 	})
 	t.Run("sans temoin de naissance, la premiere emission est un ramassage", func(t *testing.T) {
-		ch := EquipmentChange{TimestampUS: birth, Rank: 4}
-		if got := classifyEquipmentChange(ch, false, nil); got != EquipmentTaken {
+		ch := types.EquipmentChange{TimestampUS: birth, Rank: 4}
+		if got := classifyEquipmentChange(ch, false, nil); got != types.EquipmentTaken {
 			t.Errorf("nature = %q, attendu %q : sans temoin le balayage SURESTIME les "+
-				"ramassages, et le contrat de ScanFilmEquipmentChanges le dit", got, EquipmentTaken)
+				"ramassages, et le contrat de ScanFilmEquipmentChanges le dit", got, types.EquipmentTaken)
 		}
 	})
 }

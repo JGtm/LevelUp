@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // dispatch_object.go — TETE DE LA CHAINE DE DISPATCH DES COMPOSANTS.
 //
 // # POURQUOI UNE CHAINE, ET PAS UN SEUL `switch`
@@ -36,6 +38,20 @@ package grammar
 // arbitraires sans rendre un maillon plus lisible ni plus sur. Le decoupage retenu suit donc
 // les familles dominantes et les frontieres de lots de portage, pas un quota de lignes.
 // Cette exemption vaut pour les SEPT maillons de la chaine (fichiers `dispatch_*.go`).
+//
+// # LES SEPT `//nolint:gocyclo,funlen // dette gelee`, ET POURQUOI ILS APPARAISSENT AU LOT 2.6.2
+//
+// La complexite de ces sept maillons est GELEE PAR LA BASELINE DE LINT du depot depuis leur
+// naissance : le gate de CI est un ratchet sur les lignes AJOUTEES
+// (`--new-from-merge-base=origin/main`), et la dette existante y est invisible. Le lot 2.6.2 a
+// fait descendre `DeadState` dans `film/types` : la LIGNE DE DECLARATION de chacun des sept
+// maillons change — `dead *DeadState` devient `dead *types.DeadState` — et le ratchet re-voit
+// alors une dette qu il ne voyait plus, sur un lot qui n en a pas ajoute un point.
+//
+// MESURE, 2026-09-17 : gocyclo 31, 36, 41, 25, 23, 37 et 38 — les MEMES valeurs qu avant le
+// deplacement, aucun arm ajoute, aucune branche neuve. L exemption est donc datee et bornee :
+// elle tombe avec la scission, qui est le perimetre du lot 2.7 (item « fichiers de plus de
+// 500 lignes »), et son critere de retrait est mesurable — gocyclo <= 15 par maillon.
 
 // consumeByName dispatches a component to its ported bit-consumer. It returns the
 // variant-name for variant-bearing components (obje, held-weapon), the captured
@@ -43,7 +59,7 @@ package grammar
 // for components whose deser is not yet bit-exact.
 //
 // Premier maillon : composants d'OBJET (i0 a i17), unite-acteur, et le chemin WORLD-OBJECT.
-func consumeByName(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
+func consumeByName(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *types.DeadState, ported bool) { //nolint:gocyclo,funlen // dette gelee
 	variant = noVariant
 	switch name {
 	case "object-position-dynamic-precision-component": // i0

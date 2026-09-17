@@ -40,6 +40,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // kothTicksDesaccord est un joueur dont le compteur du film contredit l'oracle de l'API.
@@ -58,16 +59,16 @@ type kothTicksDesaccord struct {
 // Un slot SANS EMISSION est la lecture « zero » du compteur, pas une absence de mesure : le
 // joueur n'a jamais tenu la colline. C'est la meme convention que la phase 2 du releve E1-bis.
 func kothTicksVerdict(
-	recs []objectives.StatRecord, oracle []e1bJoueur,
+	recs []types.StatRecord, oracle []e1bJoueur,
 ) (apparies int, desaccords []kothTicksDesaccord) {
-	lines := make([]objectives.PlayerLine, 0, len(oracle))
+	lines := make([]types.PlayerLine, 0, len(oracle))
 	attendu := map[string]int{}
 	for _, j := range oracle {
 		attendu[j.xuid] = j.tics
 		if j.kills < 0 {
 			continue // bot sans ligne de match : aucun pont possible, et c'est dit
 		}
-		lines = append(lines, objectives.PlayerLine{
+		lines = append(lines, types.PlayerLine{
 			XUID: j.xuid, Kills: j.kills, Deaths: j.deaths, Assists: j.assists,
 		})
 	}

@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 func decodeGoldenInputs(blob []byte, entry profile.MapQuantEntry) (*goldenInputs, error) {
@@ -109,9 +110,9 @@ func decodeGoldenEvenements(r *greader, g *goldenInputs) {
 	}
 
 	n = int(r.u())
-	g.Loadouts = make([]grammar.KeyframeLoadout, 0, n)
+	g.Loadouts = make([]types.KeyframeLoadout, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
-		l := grammar.KeyframeLoadout{TimestampUS: r.u(), Slot: uint32(r.u())}
+		l := types.KeyframeLoadout{TimestampUS: r.u(), Slot: uint32(r.u())}
 		nf := int(r.u())
 		for j := 0; j < nf && r.err == nil; j++ {
 			l.Families = append(l.Families, uint32(r.u()))
@@ -154,11 +155,11 @@ func decodeGoldenInventaire(r *greader, g *goldenInputs) {
 	}
 
 	n = int(r.u())
-	g.InventoryDeltas = make([]grammar.InventoryDelta, 0, n)
+	g.InventoryDeltas = make([]types.InventoryDelta, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		d := grammar.InventoryDelta{TimestampUS: lastTS, Slot: uint32(r.u())}
+		d := types.InventoryDelta{TimestampUS: lastTS, Slot: uint32(r.u())}
 		if gn := int(r.u()); gn > 0 {
 			d.Grenades = make([]uint32, 0, gn)
 			for j := 0; j < gn && r.err == nil; j++ {
@@ -177,29 +178,29 @@ func decodeGoldenInventaire(r *greader, g *goldenInputs) {
 func decodeGoldenCanauxDelta(r *greader, g *goldenInputs) {
 	var lastTS uint64
 	n := int(r.u())
-	g.AbilityRanks = make([]grammar.AbilityRank, 0, n)
+	g.AbilityRanks = make([]types.AbilityRank, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
 		g.AbilityRanks = append(g.AbilityRanks,
-			grammar.AbilityRank{TimestampUS: lastTS, Slot: uint32(r.u()), Rank: int(r.i())})
+			types.AbilityRank{TimestampUS: lastTS, Slot: uint32(r.u()), Rank: int(r.i())})
 	}
 
 	n = int(r.u())
-	g.CamoStates = make([]grammar.CamoRead, 0, n)
+	g.CamoStates = make([]types.CamoRead, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
 		g.CamoStates = append(g.CamoStates,
-			grammar.CamoRead{TimestampUS: lastTS, Slot: uint32(r.u()), Q: uint16(r.u())})
+			types.CamoRead{TimestampUS: lastTS, Slot: uint32(r.u()), Q: uint16(r.u())})
 	}
 
 	n = int(r.u())
-	g.GrappleReads = make([]grammar.GrappleRead, 0, n)
+	g.GrappleReads = make([]types.GrappleRead, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		gr := grammar.GrappleRead{TimestampUS: lastTS, Slot: uint32(r.u()), Heavy: r.bool8()}
+		gr := types.GrappleRead{TimestampUS: lastTS, Slot: uint32(r.u()), Heavy: r.bool8()}
 		for a := 0; a < 3; a++ {
 			gr.PosQ[a] = uint32(r.u())
 		}
@@ -207,11 +208,11 @@ func decodeGoldenCanauxDelta(r *greader, g *goldenInputs) {
 	}
 
 	n = int(r.u())
-	g.Translocations = make([]grammar.TranslocatorTeleport, 0, n)
+	g.Translocations = make([]types.TranslocatorTeleport, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		tr := grammar.TranslocatorTeleport{TimestampUS: lastTS, Slot: uint32(r.u())}
+		tr := types.TranslocatorTeleport{TimestampUS: lastTS, Slot: uint32(r.u())}
 		tr.HasPositions = r.bool8()
 		for a := 0; a < 3; a++ {
 			tr.From[a] = r.f32()
@@ -228,29 +229,29 @@ func decodeGoldenCanauxDelta(r *greader, g *goldenInputs) {
 func decodeGoldenCapacites(r *greader, g *goldenInputs) {
 	var lastTS uint64
 	n := int(r.u())
-	g.AbilityImpulses = make([]grammar.AbilityImpulse, 0, n)
+	g.AbilityImpulses = make([]types.AbilityImpulse, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		g.AbilityImpulses = append(g.AbilityImpulses, grammar.AbilityImpulse{
+		g.AbilityImpulses = append(g.AbilityImpulses, types.AbilityImpulse{
 			TimestampUS: lastTS, Slot: uint32(r.u()), Predicted: r.bool8()})
 	}
-	g.AbilityImpulseStats = grammar.AbilityImpulseStats{
+	g.AbilityImpulseStats = types.AbilityImpulseStats{
 		Records: int(r.u()), WithI57: int(r.u()), WithI59: int(r.u()),
 		Read: int(r.u()), Unread: int(r.u()), Tag1: int(r.u()), Absent: r.bool8(),
 		Scanned: r.bool8(),
 	}
 
 	n = int(r.u())
-	g.AbilityCharges = make([]grammar.AbilityCharge, 0, n)
+	g.AbilityCharges = make([]types.AbilityCharge, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		g.AbilityCharges = append(g.AbilityCharges, grammar.AbilityCharge{
+		g.AbilityCharges = append(g.AbilityCharges, types.AbilityCharge{
 			TimestampUS: lastTS, Slot: uint32(r.u()),
 			Emplacement: int(r.u()), Charges: int(r.u()), Low: int(r.u())})
 	}
-	g.AbilityChargeStats = grammar.AbilityChargeStats{
+	g.AbilityChargeStats = types.AbilityChargeStats{
 		Records: int(r.u()), WithI56: int(r.u()),
 		Read: int(r.u()), Unread: int(r.u()), Armed: int(r.u()),
 		Absent: r.bool8(), Scanned: r.bool8(),
@@ -262,12 +263,12 @@ func decodeGoldenCapacites(r *greader, g *goldenInputs) {
 func decodeGoldenMonde(r *greader, g *goldenInputs) {
 	var lastTS uint64
 	n := int(r.u())
-	g.Placements = make([]grammar.EquipmentPlacement, 0, n)
+	g.Placements = make([]types.EquipmentPlacement, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		p := grammar.EquipmentPlacement{T0US: lastTS, T1US: r.u()}
-		p.Life = grammar.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		p := types.EquipmentPlacement{T0US: lastTS, T1US: r.u()}
+		p.Life = types.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		p.X, p.Y, p.Z = r.f32(), r.f32(), r.f32()
 		p.GlobalID, p.Points = uint32(r.u()), int(r.u())
 		g.Placements = append(g.Placements, p)
@@ -291,20 +292,20 @@ func decodeGoldenMonde(r *greader, g *goldenInputs) {
 // decodeGoldenSpawnEvents relit les evenements 103 et leurs denominateurs.
 func decodeGoldenSpawnEvents(r *greader, g *goldenInputs) {
 	n := int(r.u())
-	g.SpawnEvents = make([]grammar.EquipmentSpawnEvent, 0, n)
+	g.SpawnEvents = make([]types.EquipmentSpawnEvent, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		e := grammar.EquipmentSpawnEvent{TimestampUS: lastTS}
+		e := types.EquipmentSpawnEvent{TimestampUS: lastTS}
 		e.Chunk, e.PacketIndex = int(r.i()), int(r.i())
-		e.Spawned = grammar.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		e.Spawned = types.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		e.SpawnedValid = r.bool8()
-		e.Source = grammar.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		e.Source = types.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		e.SourceValid = r.bool8()
 		e.Ref2Present = r.bool8()
 		g.SpawnEvents = append(g.SpawnEvents, e)
 	}
-	g.SpawnStats = grammar.EquipmentSpawnStats{
+	g.SpawnStats = types.EquipmentSpawnStats{
 		Chunks: int(r.u()), Packets: int(r.u()), Lists: int(r.u()), Events: int(r.u()),
 		WithSpawned: int(r.u()), WithSource: int(r.u()), Ref2: int(r.u()),
 	}

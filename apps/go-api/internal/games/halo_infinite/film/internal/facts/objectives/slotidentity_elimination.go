@@ -1,5 +1,7 @@
 package objectives
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // slotidentity_elimination.go — L'IDENTITE D'UN SLOT D'ENTITE PAR ELIMINATION, MANCHE PAR MANCHE.
 //
 // # LE TROU QUE CE FICHIER FERME (diagnostic R4, `.ai/V7.5/v2/RESTES_R4_R5_2026-09-08.md` §2-§4)
@@ -58,7 +60,7 @@ func (ri RoundIdentity) Origin(round, slot int) string {
 // EmittingPlayerSlots rend, pour une manche, les slots de JOUEUR qui emettent au moins un
 // enregistrement porteur des compteurs de base. C'est le denominateur de l'elimination : un
 // slot qui ne parle pas n'a rien a nommer.
-func EmittingPlayerSlots(recs []StatRecord, round int) []int {
+func EmittingPlayerSlots(recs []types.StatRecord, round int) []int {
 	vus := map[int]bool{}
 	for _, r := range recs {
 		if r.Round != round || IsTeamSlot(r.Slot) {
@@ -80,7 +82,7 @@ func EmittingPlayerSlots(recs []StatRecord, round int) []int {
 // TROIS GARDES, AUCUNE NEGOCIABLE : completer sans jamais contredire (un slot deja nomme garde
 // son nom) ; aucun xuid deux fois dans la meme manche ; le residu de la feuille doit egaler le
 // segment du slot candidat.
-func (ri RoundIdentity) CompletedByElimination(recs []StatRecord, lines []PlayerLine) RoundIdentity {
+func (ri RoundIdentity) CompletedByElimination(recs []types.StatRecord, lines []types.PlayerLine) RoundIdentity {
 	if len(lines) == 0 || len(ri.byRound) == 0 {
 		return ri
 	}
@@ -102,8 +104,8 @@ func (ri RoundIdentity) CompletedByElimination(recs []StatRecord, lines []Player
 
 // candidatUniqueDeManche rend le couple (slot, xuid) quand la manche n'a qu'UNE affectation
 // possible : exactement un slot emetteur non nomme, exactement un xuid de la feuille libre.
-func candidatUniqueDeManche(byRound map[int]map[int]string, recs []StatRecord,
-	lines []PlayerLine, round int) (int, string, bool) {
+func candidatUniqueDeManche(byRound map[int]map[int]string, recs []types.StatRecord,
+	lines []types.PlayerLine, round int) (int, string, bool) {
 	nommes := byRound[round]
 	var muets []int
 	for _, slot := range EmittingPlayerSlots(recs, round) {
@@ -133,7 +135,7 @@ type segmentKDA struct{ kills, deaths, assists int }
 // segmentsParManche rend, par manche et par slot de joueur, le segment (frags, morts,
 // assistances) de la manche — la DERNIERE valeur emise, les compteurs repartant de zero a
 // chaque manche.
-func segmentsParManche(recs []StatRecord) map[int]map[int]segmentKDA {
+func segmentsParManche(recs []types.StatRecord) map[int]map[int]segmentKDA {
 	out := map[int]map[int]segmentKDA{}
 	poser := func(c StatComponent, set func(*segmentKDA, int)) {
 		for slot, byRound := range SeriesByRound(recs, c, false) {
@@ -167,7 +169,7 @@ func segmentsParManche(recs []StatRecord) map[int]map[int]segmentKDA {
 // voie par residu de manche le PRODUIT, celle-ci le CONTROLE, et deux ecritures du meme calcul
 // divergeraient (regle n° 6 du depot).
 func residuConcorde(seg map[int]map[int]segmentKDA, byRound map[int]map[int]string,
-	lines []PlayerLine, round, slot int, xuid string) bool {
+	lines []types.PlayerLine, round, slot int, xuid string) bool {
 	if !porteLeXUID(lines, xuid) {
 		return false
 	}
@@ -176,7 +178,7 @@ func residuConcorde(seg map[int]map[int]segmentKDA, byRound map[int]map[int]stri
 
 // porteLeXUID dit que la feuille contient bien ce joueur — un xuid absent n'a pas de residu, et
 // un residu nul n'est pas la meme chose qu'une absence de ligne.
-func porteLeXUID(lines []PlayerLine, xuid string) bool {
+func porteLeXUID(lines []types.PlayerLine, xuid string) bool {
 	for _, l := range lines {
 		if l.XUID == xuid {
 			return true

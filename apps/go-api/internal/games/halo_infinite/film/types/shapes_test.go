@@ -27,9 +27,9 @@ package types_test
 //
 // Une forme de contrat qui change sans que la revision de sa couche bouge est une rupture
 // SILENCIEUSE pour le parc deja decode. Le golden porte donc, sur sa premiere ligne de donnees,
-// les valeurs COURANTES de `source.Rev` et de `facts.Rev` — les deux couches qui produisent ces
-// types. Le message d echec pose la question dans l ordre ou elle se decide : la forme a change,
-// la sortie peut-elle avoir change ?
+// les valeurs COURANTES de `source.Rev`, `grammar.Rev` et `facts.Rev` — les trois couches qui
+// produisent ces types. Le message d echec pose la question dans l ordre ou elle se decide : la
+// forme a change, la sortie peut-elle avoir change ?
 
 import (
 	"flag"
@@ -44,6 +44,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -72,13 +73,47 @@ type typeDeContrat struct {
 	valeur any
 }
 
-// formesFigees — LES TYPES DE CONTRAT DES COUCHES `source` ET `facts`, dans l ordre du golden.
+// formesFigees — LES TYPES DE CONTRAT DES COUCHES `source`, `grammar` ET `facts`, dans l ordre
+// du golden.
 //
 // Un type ajoute a `film/types` sans entree ici serait fige par personne : c est ce que
 // `TestTousLesTypesDuPaquetSontFiges` interdit.
 var formesFigees = []typeDeContrat{
 	{"source", types.ChunkMeta{}},
 	{"source", types.Packet{}},
+	{"grammar", types.AbilityCharge{}},
+	{"grammar", types.AbilityChargeStats{}},
+	{"grammar", types.AbilityImpulse{}},
+	{"grammar", types.AbilityImpulseStats{}},
+	{"grammar", types.AbilityRank{}},
+	{"grammar", types.AbilityRankStats{}},
+	{"grammar", types.BipedCreationStats{}},
+	{"grammar", types.BipedPickup{}},
+	{"grammar", types.BipedPickupStats{}},
+	{"grammar", types.CamoRead{}},
+	{"grammar", types.DeadState{}},
+	{"grammar", types.EquipmentChange{}},
+	{"grammar", types.EquipmentChangeStats{}},
+	{"grammar", types.EquipmentCreation{}},
+	{"grammar", types.EquipmentCreationStats{}},
+	{"grammar", types.EquipmentLifeKey{}},
+	{"grammar", types.EquipmentPlacement{}},
+	{"grammar", types.EquipmentSpawnEvent{}},
+	{"grammar", types.EquipmentSpawnStats{}},
+	{"grammar", types.GrappleRead{}},
+	{"grammar", types.GroundWeaponAmmo{}},
+	{"grammar", types.HeldWeaponChange{}},
+	{"grammar", types.InventoryDelta{}},
+	{"grammar", types.InventoryDeltaAmmo{}},
+	{"grammar", types.KeyframeLoadout{}},
+	{"grammar", types.NavpointRadialRead{}},
+	{"grammar", types.ObjectDeath{}},
+	{"grammar", types.PlayerSlot{}},
+	{"grammar", types.PlayerSlotShorts{}},
+	{"grammar", types.ProjectileSample{}},
+	{"grammar", types.ProjectileTrack{}},
+	{"grammar", types.TranslocatorTeleport{}},
+	{"grammar", types.VehicleEvent{}},
 	{"facts/killsource", types.ApparStats{}},
 	{"facts/killsource", types.Assist{}},
 	{"facts/killsource", types.CoupleStats{}},
@@ -92,9 +127,29 @@ var formesFigees = []typeDeContrat{
 	{"facts/objectives", types.StatValue{}},
 }
 
+// typesSansForme — LES TYPES DU PAQUET QUI NE SONT PAS DES STRUCTURES, ET QUI N ONT DONC PAS DE
+// FORME A FIGER PAR REFLEXION SUR LEURS CHAMPS.
+//
+// Ce sont deux enumerations de chaines (`EquipmentChangeKind`, `HeldWeaponChangeKind`) : ce qui
+// fait leur contrat n est pas une liste de champs mais la liste de leurs VALEURS, et cette liste
+// est figee par les tests des couches qui les produisent. Les inscrire dans `formesFigees`
+// rendrait une section vide, donc un golden qui n affirme rien — pire qu une absence declaree.
+//
+// ELLES NE SONT PAS POUR AUTANT HORS CONTROLE : `TestTousLesTypesDuPaquetSontFiges` exige que
+// tout type exporte soit dans l une des deux listes, et une entree qui ne designe plus un type
+// declare est refusee.
+var typesSansForme = map[string]string{
+	"EquipmentChangeKind":  "enumeration de chaines (taken / spent / spawned) — pas de champs",
+	"HeldWeaponChangeKind": "enumeration de chaines (taken / dropped / swapped / restated)",
+}
+
 // ligneDesRevisions : la premiere ligne de donnees du golden.
+//
+// LES TROIS COUCHES QUI PRODUISENT CES TYPES, et elles seules : `profile` n en produit aucun.
+// Une forme de contrat qui change sans que la revision de sa couche bouge est une rupture
+// SILENCIEUSE pour le parc deja decode — d ou le figeage cote a cote.
 func ligneDesRevisions() string {
-	return fmt.Sprintf("revisions\tsource=%s\tfacts=%s", source.Rev, facts.Rev)
+	return fmt.Sprintf("revisions\tsource=%s\tgrammar=%s\tfacts=%s", source.Rev, grammar.Rev, facts.Rev)
 }
 
 // corpsAttendu rend le contenu de donnees du golden : la ligne des revisions, puis une section
@@ -168,20 +223,32 @@ func TestTousLesTypesDuPaquetSontFiges(t *testing.T) {
 	}
 	var manquants []string
 	for _, nom := range declares {
-		if !figes[nom] {
+		if !figes[nom] && typesSansForme[nom] == "" {
 			manquants = append(manquants, nom)
 		}
 	}
 	if len(manquants) > 0 {
 		t.Fatalf("types exportes par `film/types` et figes par personne : %s\n"+
 			"Les inscrire dans `formesFigees` — un type de contrat dont la forme n est pas figee "+
-			"peut changer sans que rien ne le dise aux couches qui le nomment.",
+			"peut changer sans que rien ne le dise aux couches qui le nomment. Un type SANS "+
+			"champs (une enumeration) se declare dans `typesSansForme`, avec sa raison.",
 			strings.Join(manquants, ", "))
 	}
-	if len(declares) != len(formesFigees) {
-		t.Errorf("`formesFigees` porte %d entrees pour %d types declares : une entree en trop "+
-			"designe un type disparu, et le golden garde alors une forme que personne ne sert.",
-			len(formesFigees), len(declares))
+	declaresConnus := map[string]bool{}
+	for _, nom := range declares {
+		declaresConnus[nom] = true
+	}
+	for nom := range typesSansForme {
+		if !declaresConnus[nom] {
+			t.Errorf("`typesSansForme` cite %s, que `film/types` ne declare plus : entree "+
+				"perimee, la retirer.", nom)
+		}
+	}
+	if len(declares) != len(formesFigees)+len(typesSansForme) {
+		t.Errorf("`formesFigees` porte %d entrees et `typesSansForme` %d, pour %d types "+
+			"declares : une entree en trop designe un type disparu, et le golden garde alors une "+
+			"forme que personne ne sert.",
+			len(formesFigees), len(typesSansForme), len(declares))
 	}
 }
 

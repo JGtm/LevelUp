@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 60
-empreinte-stockee a7eacd24a04c3100
-empreinte-servie a7eacd24a04c3100
-empreinte-cuite 75c16ed91571227a
+schema 61
+empreinte-stockee ad3867e2236d4865
+empreinte-servie ad3867e2236d4865
+empreinte-cuite 9ce58fe1aa1123b5
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -38,7 +38,15 @@ AbilityImpulseCoverage
   OtherFamily json:"otherFamily" int
   Published json:"published" int
   Reads json:"reads" int
+  Scan json:"scan,omitempty" *AbilityImpulseScanCoverage
   Unpublished json:"unpublished" int
+AbilityImpulseScanCoverage
+  Read json:"read" int
+  Records json:"records" int
+  Tag1 json:"tag1" int
+  Unread json:"unread" int
+  WithI57 json:"withI57" int
+  WithI59 json:"withI59" int
 AbilityRead
   R json:"r" int
   Slot json:"slot" uint32
@@ -161,6 +169,7 @@ Coverage
   BombArmings json:"bombArmings,omitempty" *BombArmingsCoverage
   BombCarries json:"bombCarries,omitempty" *BombCarriesCoverage
   Bridge json:"bridge" BridgeHealth
+  Decoder json:"decoder,omitempty" *DecoderCoverage
   Equipment json:"equipment,omitempty" *EquipmentCoverage
   EquipmentChanges json:"equipmentChanges,omitempty" *EquipmentChangeCoverage
   Fallbacks json:"fallbacks,omitempty" []FallbackHit
@@ -192,6 +201,13 @@ Coverage
   VipCrown json:"vipCrown,omitempty" *VipCrownCoverage
   WeaponChanges json:"weaponChanges,omitempty" *WeaponChangeCoverage
   Zones json:"zones,omitempty" *ZonesCoverage
+DecoderCoverage
+  Build json:"build" string
+  FactsRev json:"factsRev" string
+  GrammarRev json:"grammarRev" string
+  ProfileRev json:"profileRev" string
+  Registry json:"registry,omitempty" *RegistryCoverage
+  SourceRev json:"sourceRev" string
 EquipmentChange
   From json:"from" int
   Gap json:"gap,omitempty" int
@@ -626,6 +642,11 @@ ProjectileCoverage
   Published json:"published" int
   Tracks json:"tracks" int
   Truncated json:"truncated" int
+RegistryCoverage
+  Blocks json:"blocks" int
+  Fingerprint json:"fingerprint" string
+  NamedSlots json:"namedSlots" int
+  Status json:"status" string
 ReplayDocument
   Abilities json:"abilities,omitempty" []AbilityRead
   AbilityCharges json:"abilityCharges,omitempty" []AbilityCharge

@@ -6,7 +6,7 @@ package grammar
 // LE VERROU QUE CE LOT FAIT SAUTER. R8 a instruit les composants d'etat de ti=37
 // (`equipment-activated`, `equipment-charges-remaining`) et les a trouves bavards — 856
 // lectures de charges et 45 baisses sur `00ba2e1c` — mais son verdict est reste FAIBLE parce
-// que la jointure d'IDENTITE passait par `EquipmentPlacement.Life` -> `GlobalID`, qui ne
+// que la jointure d'IDENTITE passait par `types.EquipmentPlacement.Life` -> `GlobalID`, qui ne
 // nomme que 217 des 1 641 vies porteuses d'un record d'etat (13 %).
 //
 // LA JOINTURE NEUVE. i26 `unit-equipment-component` du BIPEDE publie jusqu'a 7 handles
@@ -44,15 +44,16 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"path/filepath"
 	"sort"
 	"testing"
 )
 
 // r9Ent identifie UNE VIE d'entite ti=37 : la paire (slot, generation), jamais le seul slot
-// (le pool reboucle et la generation ne fait que 2 bits). C'est `EquipmentLifeKey`, repris
+// (le pool reboucle et la generation ne fait que 2 bits). C'est `types.EquipmentLifeKey`, repris
 // tel quel pour que la jointure avec les poses se fasse sans conversion.
-type r9Ent = EquipmentLifeKey
+type r9Ent = types.EquipmentLifeKey
 
 // r9Owner est UNE observation de portage : ce bipede tenait cette entite a cet instant.
 type r9Owner struct {
@@ -104,7 +105,7 @@ func r9CollectOwners(
 // r9Identify attribue a chaque entite le RANG DE CAPACITE majoritaire de ses porteurs, lu
 // dans la vie du porteur et anterieurement a l'observation (meme regle qu'au lot R8).
 func r9Identify(
-	owners map[r9Ent][]r9Owner, ranks []AbilityRank, lives map[uint32][]r8LifeSpan,
+	owners map[r9Ent][]r9Owner, ranks []types.AbilityRank, lives map[uint32][]r8LifeSpan,
 ) map[r9Ent]int {
 	out := map[r9Ent]int{}
 	for ent, obs := range owners {

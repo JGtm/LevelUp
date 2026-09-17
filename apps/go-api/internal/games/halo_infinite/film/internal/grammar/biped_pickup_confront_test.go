@@ -14,6 +14,7 @@ package grammar
 // Garde BIPED_PICKUP_FILM, comme le reste du chantier.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
 	"testing"
 )
@@ -98,14 +99,14 @@ func bpkPire(v []int) int {
 
 // bpkAccord mesure (a) : chaque prise vue par i43..i46 a-t-elle un biped_pickup qui porte LA
 // MEME arme, a moins de bpkTolUS ? Rend (prises, appariees, pire temoin) et remplit familles.
-func bpkAccord(evs []bpkEvent, chg []HeldWeaponChange, familles map[uint32]bool) (int, int, int) {
+func bpkAccord(evs []bpkEvent, chg []types.HeldWeaponChange, familles map[uint32]bool) (int, int, int) {
 	prises, appariees := 0, 0
 	temoin := make([]int, len(bpkDecalages))
 	for _, c := range chg {
 		if c.Family != NoWeaponVariant {
 			familles[c.Family] = true
 		}
-		if c.Kind != HeldWeaponTaken && c.Kind != HeldWeaponSwapped {
+		if c.Kind != types.HeldWeaponTaken && c.Kind != types.HeldWeaponSwapped {
 			continue
 		}
 		prises++
@@ -135,10 +136,10 @@ type bpkRappelStats struct {
 
 // bpkRappel mesure (b) : les ARRIVEES d'arme revelees par les images-cles que i43..i46
 // n'explique pas sont-elles NOMMEES par un biped_pickup de la fenetre portant cette arme ?
-func bpkRappel(t *testing.T, evs []bpkEvent, chg []HeldWeaponChange,
-	kf []KeyframeLoadout) bpkRappelStats {
+func bpkRappel(t *testing.T, evs []bpkEvent, chg []types.HeldWeaponChange,
+	kf []types.KeyframeLoadout) bpkRappelStats {
 	t.Helper()
-	bySlot := map[uint32][]KeyframeLoadout{}
+	bySlot := map[uint32][]types.KeyframeLoadout{}
 	for _, k := range kf {
 		bySlot[k.Slot] = append(bySlot[k.Slot], k)
 	}

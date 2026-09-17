@@ -42,6 +42,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // vehicleTypeIndex : l'archetype VEHICULE du registre film.
@@ -58,7 +59,7 @@ type v10Dead struct {
 	us   uint64
 	slot int
 	ti   uint32
-	dead grammar.DeadState
+	dead types.DeadState
 }
 
 // v10Couverture compte, par archetype, les records PROPRES que la marche atteint — le
