@@ -26,6 +26,14 @@ import type { WeaponRangeSide } from '@/lib/api/types'
 
 import { weaponRangeCategoryLabel, type WeaponRangeLine } from './_weaponRangeChart'
 
+/*
+ * `WeaponRangeLine.top` / `.bottom` ET NON `.kills` / `.deaths` DEPUIS LE 2026-09-17 : la
+ * ligne partagée est devenue title-agnostic pour servir aussi le Face-à-face, où les deux
+ * mesures superposées sont deux JOUEURS. Ce graphe-ci reste propre à la Synthèse, où le haut
+ * EST « mes frags » et le bas « mes morts » — ses libellés gardent donc ces noms, et la
+ * correspondance se lit ici, en un seul endroit.
+ */
+
 /** Les trois classes, dans l'ordre de lecture de la pile (haut → bas). */
 export const ELEVATION_KEYS = ['above', 'level', 'below'] as const
 export type ElevationKey = (typeof ELEVATION_KEYS)[number]
@@ -74,7 +82,7 @@ export function buildWeaponElevationOption({
   const ordered = [...lines].reverse()
   const axis = getAxisBase(tc)
 
-  const segment = (key: ElevationKey, side: 'kills' | 'deaths', stack: string) => ({
+  const segment = (key: ElevationKey, side: 'top' | 'bottom', stack: string) => ({
     name: labels.segments[key],
     type: 'bar',
     stack,
@@ -117,8 +125,8 @@ export function buildWeaponElevationOption({
         if (!line) return ''
         return [
           `<b>${escapeHtml(line.label)}</b>`,
-          sideLine(labels.kills, line.kills),
-          sideLine(labels.deaths, line.deaths),
+          sideLine(labels.kills, line.top),
+          sideLine(labels.deaths, line.bottom),
         ].join('<br/>')
       },
     },
@@ -137,8 +145,8 @@ export function buildWeaponElevationOption({
     // Deux piles côte à côte : ECharts les dispose dans l'ordre des séries, frags AU-DESSUS
     // — le même ordre que les deux bâtons du graphe de portée.
     series: [
-      ...ELEVATION_KEYS.map((k) => segment(k, 'kills', 'kills')),
-      ...ELEVATION_KEYS.map((k) => segment(k, 'deaths', 'deaths')),
+      ...ELEVATION_KEYS.map((k) => segment(k, 'top', 'kills')),
+      ...ELEVATION_KEYS.map((k) => segment(k, 'bottom', 'deaths')),
     ],
   }
 }

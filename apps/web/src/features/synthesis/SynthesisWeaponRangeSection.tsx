@@ -249,14 +249,17 @@ function useWeaponRangeOptions(lines: WeaponRangeLine[], f: RangeFormats, t: Tra
     return buildWeaponRangeOption({
       lines,
       tc,
-      killsColor: resolveToken(KILLS_TOKEN),
-      deathsColor: resolveToken(DEATHS_TOKEN),
+      topColor: resolveToken(KILLS_TOKEN),
+      bottomColor: resolveToken(DEATHS_TOKEN),
       medianColor: resolveToken(MEDIAN_TOKEN),
       cardColor: tc.card,
       fmtDistance: f.distance,
       labels: {
-        kills: t('synthesis.weapon_range.side_kills'),
-        deaths: t('synthesis.weapon_range.side_deaths'),
+        // La Synthèse nomme les deux bandes « mes frags » et « mes morts ». Le libellé
+        // `observed` n'est PAS fourni : min et max restent hors de son infobulle, dont
+        // l'affichage est donc strictement inchangé par la généralisation du module.
+        top: t('synthesis.weapon_range.side_kills'),
+        bottom: t('synthesis.weapon_range.side_deaths'),
         percentiles: t('synthesis.weapon_range.percentiles'),
         noMeasure: t('synthesis.weapon_range.no_measure'),
       },

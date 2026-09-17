@@ -19,6 +19,7 @@ import type { CompareMetricRow, CompareResponse, MatchEncounterBadge } from '@/l
 
 import { CompareBar } from './CompareBar'
 import { CompareMirrorRow } from './CompareMirrorRow'
+import { CompareWeaponsSection } from './CompareWeaponsSection'
 import { getCompareText, normalizeCompareLocale, resolveMetricLabel, type CompareText } from './i18n'
 import { useCompare } from './queries'
 import type { Locale } from '@/lib/i18n/locale'
@@ -428,6 +429,10 @@ export function ComparePage() {
               metricsRight={rightData.metrics}
               text={text}
             />
+            {/* Après « Bilan & Rang » : le profil d'armes décrit un STYLE, il se lit une fois
+                les chiffres de performance parcourus. Le composant se retire de lui-même
+                quand aucune des deux réponses ne porte de profil. */}
+            <CompareWeaponsSection left={leftData} right={rightData} text={text} locale={locale} />
           </div>
         </div>
       )}
@@ -469,6 +474,11 @@ export function ComparePage() {
               />
             </div>
           )}
+
+          {/* Après « Bilan & Rang » : le profil d'armes décrit un STYLE, il se lit une fois
+              les chiffres de performance parcourus. Le composant se retire de lui-même quand
+              la réponse ne porte pas de profil (titre sans registre, B absent de la base). */}
+          <CompareWeaponsSection left={leftData} text={text} locale={locale} />
         </div>
       )}
     </div>
