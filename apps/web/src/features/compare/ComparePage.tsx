@@ -99,7 +99,7 @@ function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryCol
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="border-b border-border px-3 py-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
+        <h2 className="text-sm font-semibold">{title}</h2>
       </div>
       <div className="p-3 space-y-3">
         {rows.map((row) => {
@@ -166,7 +166,7 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="border-b border-border px-3 py-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
+        <h2 className="text-sm font-semibold">{title}</h2>
       </div>
       <div className="p-3 space-y-3">
         {rows.map(({ left, right }) => {
