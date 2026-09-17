@@ -13,17 +13,17 @@ corrections (sync/ touché). Merge final dans feat/v75 après CI verte.
 
 ## Étape 1 — Go (branche fix/revue-lots-v75-go)
 
-- [ ] 1.1 P1-1 Voleur : Q32e écarte les victimes bots sur la branche « candidat au vol »
+- [x] 1.1 P1-1 Voleur : Q32e écarte les victimes bots sur la branche « candidat au vol »
       (`victim_xuid IS NOT NULL`), + test Q32e qui rougit sans le filtre.
-- [ ] 1.2 P1-2 Dominance : durée absente (NULL/0) → WARN structuré + `ComputeFragContrastDominance`
+- [x] 1.2 P1-2 Dominance : durée absente (NULL/0) → WARN structuré + `ComputeFragContrastDominance`
       reçoit 0 explicitement ; test sync « durée NULL » qui vérifie le repli ET la trace.
-- [ ] 1.3 P1-3 Dominance : garde « exactement 2 équipes » par `COUNT(DISTINCT team_id)` sur
+- [x] 1.3 P1-3 Dominance : garde « exactement 2 équipes » par `COUNT(DISTINCT team_id)` sur
       `match_participants` ; retrait du filtre `IN (0,1)` comme seule garde ; test à 3 équipes.
-- [ ] 1.4 P1-6 : tests aux bornes des trois seuils (10/9 frags, 1,15/1,149, 75 %/74 %) des deux
+- [x] 1.4 P1-6 : tests aux bornes des trois seuils (10/9 frags, 1,15/1,149, 75 %/74 %) des deux
       côtés.
-- [ ] 1.5 P2-1 : commentaire « exclusion volontaire des flags 6/7 » dans
+- [x] 1.5 P2-1 : commentaire « exclusion volontaire des flags 6/7 » dans
       `career_repo_top_matches.go`.
-- [ ] 1.6 P2-2 : doc de `steps_player_reset_dominance_none.go` corrigée (le recalcul rejoue toute
+- [x] 1.6 P2-2 : doc de `steps_player_reset_dominance_none.go` corrigée (le recalcul rejoue toute
       la chaîne ; les 0 dont les données ont évolué peuvent recevoir 3/4/5 ; livrer avec 1.2/1.3).
 - Gate : `go test -count=1 -tags=integration ./internal/analysis/... ./internal/sync/...
   ./internal/platform/duckdb/... ./internal/migration/... ./internal/service/...` vert ;
@@ -32,15 +32,15 @@ corrections (sync/ touché). Merge final dans feat/v75 après CI verte.
 
 ## Étape 2 — Web (branche fix/revue-lots-v75)
 
-- [ ] 2.1 P1-4 : colonne « Assistances » conditionnelle dans `MatchEncountersTable` (absente sur
+- [x] 2.1 P1-4 : colonne « Assistances » conditionnelle dans `MatchEncountersTable` (absente sur
       Carrière > Joueurs les plus croisés), test de rendu.
-- [ ] 2.2 P1-5 : composant `CopyButton` partagé (4 sites migrés : ShareLinkButton,
+- [x] 2.2 P1-5 : composant `CopyButton` partagé (4 sites migrés : ShareLinkButton,
       IdentitiesSection, MatchHeader.card, CopyCodeButton), durée 2 s unique, timer nettoyé,
       échec presse-papier journalisé (log.error) sans faux « copié », garde-rail grep interdisant
       `setCopied(false)` hors du composant, tests (échec presse-papier, retour à l'état initial).
-- [ ] 2.3 P1-7 : commentaire daté sur `squadPerformanceLineCharts.ts` (exception lisibilité,
+- [x] 2.3 P1-7 : commentaire daté sur `squadPerformanceLineCharts.ts` (exception lisibilité,
       décision utilisateur 2026-09-17).
-- [ ] 2.4 Cividis : `assist-received` / `assist-given` re-choisis pour passer le contraste 3:1 sur
+- [x] 2.4 Cividis : `assist-received` / `assist-given` re-choisis pour passer le contraste 3:1 sur
       les DEUX surfaces + dE >= 15 avec les autres jetons de la famille ; `contrast: 'both'` pour
       cividis dans `combatStatTokens.test.ts` ; snapshot de palette mis à jour.
 - Gate : `npm run typecheck`, `npm run lint` (0 erreur), `npm run lint:colors`, `npm run
@@ -49,7 +49,7 @@ corrections (sync/ touché). Merge final dans feat/v75 après CI verte.
 
 ## Étape 3 — Clôture (pilote)
 
-- [ ] 3.1 Fusion `fix/revue-lots-v75-go` → `fix/revue-lots-v75`, gates complets rejoués.
+- [x] 3.1 Fusion `fix/revue-lots-v75-go` → `fix/revue-lots-v75`, gates complets rejoués.
 - [ ] 3.2 Ronde 2 de relecture adversariale sur les seules corrections (1 relecteur Go, 1 web).
 - [ ] 3.3 Push, CI verte au niveau job.
 - [ ] 3.4 Journal thought_log (entrée revue + entrée correctifs), plan statué.
@@ -65,3 +65,15 @@ corrections (sync/ touché). Merge final dans feat/v75 après CI verte.
 ## Journal
 
 - 2026-09-17 : plan créé, exécution lancée.
+- 2026-09-17 : étape 1 (Go) close — 6 commits 9df0fcff6..fa50f4be1, gates verts (go test
+  -tags=integration 39 paquets ok, golangci --new-from-rev 0 issue), chaque correctif prouvé
+  rouge sans lui ; étape 2 (web) close — 4 commits d25307036..624762c21, typecheck 0, lint 0
+  erreur, lint:colors 0, lint:fields 0, vitest 342 fichiers / 3 196 tests ; Cividis :
+  assist-received #686B00 (5,59:1 / 3,15:1), assist-given #AA4499 (5,16:1 / 3,41:1), dE paire
+  26,5, dE min famille 16,2 ; fusion Go -> fix/revue-lots-v75 (3.1).
+- Découvertes exécutants : glose « 15 % de frags de plus » vs formule dominé <= 0,85 x dominant
+  (+17,6 %) dans comeback_frag_contrast.go l.15 (décision produit) ; test
+  TestGetMatchFilm_ParallelDownloadFasterThanSequential flaky sous charge ; DDL recopiée dans
+  les helpers de test sync (highlight_events) ; seedComebackMatch 8 paramètres ;
+  WatcherCard.tsx:110 copie sans retour visuel et catch muet ; ExplorerEncounterBriefing.tsx:51
+  helpers copiés de MatchEncountersTable ; 2 stash préexistants dans le dépôt.
