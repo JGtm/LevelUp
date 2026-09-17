@@ -5,8 +5,10 @@
  * Vit dans `_shared` parce que deux features l'affichent (palmares, match-view) ; parité
  * FR/EN par typage `Record<Locale, AssistsText>`.
  *
- * Bornes des tranches (0-25 / 25-50 / plus de 50 %) : miroir de
- * `domain.AssistTierLowMaxPct` / `AssistTierMidMaxPct` côté Go.
+ * Bornes des tranches : miroir de `domain.AssistTierLowMaxPct` (25) et
+ * `AssistTierMidMaxPct` (50) côté Go. La requête Q28c range `pct < 25` en basse,
+ * `25 <= pct <= 50` en moyenne et `pct > 50` en haute : 25 % est donc une part
+ * MOYENNE, d'où « moins de 25 % » et non « 0 à 25 % » sur la tranche basse.
  */
 import type { Locale } from '@/lib/i18n/locale'
 
@@ -33,13 +35,13 @@ export interface AssistsText {
 }
 
 const TIER_FR: Record<AssistTier, string> = {
-  low: '0 à 25 % des dégâts',
+  low: 'moins de 25 % des dégâts',
   mid: '25 à 50 % des dégâts',
   high: 'plus de 50 % des dégâts',
 }
 
 const TIER_EN: Record<AssistTier, string> = {
-  low: '0 to 25% of the damage',
+  low: 'under 25% of the damage',
   mid: '25 to 50% of the damage',
   high: 'more than 50% of the damage',
 }
