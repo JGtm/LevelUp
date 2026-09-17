@@ -3,6 +3,11 @@ package main
 // deux_passes_test.go — LES GARDES DU MODE S8, SANS UN OCTET DE FILM.
 
 import (
+	"bytes"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"os"
 	"strings"
 	"testing"
 
@@ -108,4 +113,68 @@ func contient(liste []string, v string) bool {
 		}
 	}
 	return false
+}
+
+// TestModeS8NePeutPasEcrireUneReference : LE MODE S8 NE TOUCHE JAMAIS LES 20 TSV DE REFERENCE.
+//
+// # CE QU IL GARDE, ET POURQUOI PAR LA SOURCE
+//
+// Les references du regime ordinaire (`film/replay/testdata/equivalence/<short8>.tsv`) sont
+// l ORACLE de tout le chantier : les re-figer par accident est le mode de panne le plus couteux du
+// harnais, parce qu il ne se voit pas — un oracle re-fige compare pour toujours du faux a du faux.
+// Le mode S8 n a AUCUNE raison d y ecrire (il compare deux passes du meme commit), et ce test
+// l etablit de deux facons independantes :
+//
+//  1. LE CHEMIN. Le seul `os.WriteFile` vers le dossier des references vit dans `traiterFilm`
+//     (`parent.go`), sous `if p.update`. Ni `parentDeuxPasses` ni ses fonctions n appellent
+//     `traiterFilm`, ne construisent une `passe` et ne citent `dossierEquivalence`.
+//  2. LA LIGNE DE COMMANDE. `-deux-passes -update` est refuse (cf.
+//     `TestDeuxPassesEtUpdateSontExclusifs`), donc meme la branche gardee est hors d atteinte.
+//
+// Les enfants, eux, ecrivent leur TSV dans le dossier que le PARENT leur designe (`-out`) : un
+// dossier temporaire, ou celui de `-out-dir`. Jamais celui des references.
+func TestModeS8NePeutPasEcrireUneReference(t *testing.T) {
+	src, err := os.ReadFile("deux_passes.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "deux_passes.go", src, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// LES APPELS, PAR AST ET NON PAR GREP : ce fichier CITE `traiterFilm` et `dossierEquivalence`
+	// dans son en-tete — c est ainsi qu il explique la regle — et un grep rougirait sur sa propre
+	// documentation.
+	interdits := map[string]string{
+		"traiterFilm":        "la seule fonction qui ECRIT une reference (sous `if p.update`)",
+		"dossierEquivalence": "le dossier des references ET des faits figes",
+		"WriteFile":          "toute ecriture de fichier depuis le parent S8",
+	}
+	ast.Inspect(f, func(n ast.Node) bool {
+		appel, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		var nom string
+		switch fn := appel.Fun.(type) {
+		case *ast.Ident:
+			nom = fn.Name
+		case *ast.SelectorExpr:
+			nom = fn.Sel.Name
+		}
+		if raison, interdit := interdits[nom]; interdit {
+			t.Errorf("deux_passes.go:%d appelle %q (%s) : le mode S8 ne doit RIEN ecrire dans "+
+				"`film/replay/testdata/equivalence/` — ses references sont l oracle du chantier, "+
+				"et un oracle re-fige par accident compare du faux a du faux pour toujours.",
+				fset.Position(appel.Pos()).Line, nom, raison)
+		}
+		return true
+	})
+	// La `passe` (qui PORTE le dossier des references et le drapeau `update`) ne doit pas non plus
+	// se construire ici.
+	if bytes.Contains(src, []byte("passe{")) {
+		t.Error("deux_passes.go construit une `passe` : c est elle qui porte `dir` (le dossier " +
+			"des references) et `update`. Le mode S8 n en a pas besoin.")
+	}
 }
