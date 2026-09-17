@@ -183,7 +183,11 @@ servie que si la rangée offre deux lignes au-delà de la base. Ensuite la note 
 (zéro code mort). `measured_kills` et `scope_kills` RESTENT au contrat et servis par l'API :
 ils restent vrais et pourront porter une infobulle plus tard — champs non affichés, pas
 code mort ; le backend n'a pas été touché. Les quatre tests de placement du Strip et le
-describe DP-3 passent sans retouche (aucun ne dépendait de la forme compacte).
+describe DP-3 passent sans retouche (aucun ne dépendait de la forme compacte). Second
+passage du gate, même jour : chaque arme tient désormais sur UNE ligne — nom, barre et
+compteur côte à côte au lieu de la barre empilée sous le nom ; le libellé prend une part
+fixe (`basis-[50%] shrink-0`) pour aligner verticalement les barres des deux armes, la
+barre prend le reste, le compteur reste à droite. Flex seulement, jamais de grille (D10).
 
 **Prochaine étape** : gate visuel de l'utilisateur, cinq écrans (scope complet Infinite,
 scope réduit à une carte, scope 2023 pour la note de couverture, scope sans « Par contexte »,
