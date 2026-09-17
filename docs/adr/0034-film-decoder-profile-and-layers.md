@@ -397,26 +397,35 @@ The three binding rules hold: every row carries its provenance and its date, `Te
 lists **and freezes** the six presumed entries, all of them movement, and removing one demands the
 table row pass to *read* or *measured*.
 
-**Partial, and the measure says why.** The versioned catalog exists
+**Reached at lot 3.1.1 (2026-09-17, `4bf62211f`).** The versioned catalog exists
 (`data/titles/halo_infinite/reference/film_profiles.json`, written by `cmd/film-profiles-build`
-under the `gamefiles` tag, read by `games/halo_infinite/filmprofile`), but the decoder does not read
-it and must not: that would be a layer importing a catalog package, which the one-way rule forbids.
-`profile_table.go` carries **no registry fingerprint** today, so the third registry status
-`presumee` is not delivered — the copy is lot 3.1.1.
+under the `gamefiles` tag, read by `games/halo_infinite/filmprofile`), and the decoder does not read
+it — that would be a layer importing a catalog package, which the one-way rule forbids. It **copies**
+it instead: `profile/registre_empreintes.go` carries the nine keys of `registryFingerprints`, and
+`filmprofile.TestCatalogueConformeALaTableDesEmpreintes` keeps the two equal value for value,
+proofs included. The third registry status `presumee` is therefore delivered, and the three cases
+live in one place, `profile.ClasserEmpreinteRegistre`.
 
-### D-4 — An unknown build fails loudly. **Half reached: the film is not set aside.**
+### D-4 — An unknown build fails loudly. **Reached at lot 3.1.1 (2026-09-17, `f6b37a662`).**
 
-Held: the typed sentinels (`profile.ErrUnknownBuild`, `profile.ErrUnknownFormat`, both wrapped with
-the refused key), the per-build expvar counter, the single log line at the context constructor, and
-the rule that an unknown key is **never** decoded with another film's profile — the profile falls
-back to the *invariants*, never to a neighbouring build.
+Held since lot 1.5: the typed sentinels (`profile.ErrUnknownBuild`, `profile.ErrUnknownFormat`,
+both wrapped with the refused key), the per-key expvar counters, the log line, and the rule that an
+unknown key is **never** decoded with another film's profile.
 
-Not held: **no film is set aside.** `FilmContext.ProfileErr()` carries the typed error to the
-caller, and on the tree of 2026-09-17 no production caller reads it — the only occurrence outside
-tests is its own declaration. The cook proceeds, and what the artifact says is that the key did not
-serve: `coverage.decoder.build` is emptied while everything actually read, the `registry` block in
-particular, stays published. Recorded as a discovery of this closure in section 4 of the plan, and
-as correction 5 below.
+Now held too: **the film is set aside.** Both orchestrators read one shared verdict
+(`replay.CleDuFilm`) before any read — `sync/killcollector` before `decfilm.Decode`, `replaybuild`
+right after loading the film and before the death feed — and stop there: no kill-source fact, no
+positions, no shots, no artefact. Each names the refused key in one `WARN`, publishes the counters
+`grammar` names, and reports a *status of its own pipeline*: the outcome `ecarte-cle-inconnue` for
+the collector, `filmproc.CodeSkipped` for the cooking child. No registry marker is set, on purpose:
+`MBitFilmAbsent` is terminal, while a set-aside film must come back the day the table learns its
+key.
+
+One measured subtlety, written here because it is the trap: the verdict is **not**
+`Profile.Err() != nil`. That error is also raised, with an empty build, for the films whose
+`chunk_00` carries no identification section — and the table knows those, under `majeure=31` /
+`majeure=33`. Setting them aside would have dropped five cache films, two of them corpus-gate
+witnesses. The verdict bears on the key the film *writes* (`profile.CleConnue`).
 
 ### D-5 — No package-level mutable state. **Reached; the binding criterion is "zero written".**
 
@@ -506,12 +515,13 @@ exemptions for the game writer's own fallbacks.
 
 ### What M2 leaves partial, named here so it is not re-discovered
 
-- the registry status `presumee` — waits on the profile table copying the catalog fingerprints
-  (lot 3.1.1);
+- ~~the registry status `presumee`~~ — **closed at lot 3.1.1** (2026-09-17): the profile table
+  copies the catalog fingerprints, and the three cases are decided in one place;
 - the facade's surface — 163 symbols, an alias rather than a boundary, reduction measured and
   referred to M4;
 - `film/revision` outside `film/internal/` — a pure move nobody's fingerprint sees;
-- a film with an unknown key is not set aside (D-4 above, correction 5 below);
+- ~~a film with an unknown key is not set aside~~ — **closed at lot 3.1.1** (D-4 above,
+  correction 5 below);
 - the persisted facts and the single published type — M4 and past-M4 by decision.
 
 ## Corrections to statements made elsewhere
@@ -556,7 +566,10 @@ Found on the tree during lot 0.B (2026-09-13), written here so the wrong sentenc
    correction stays written because the wrong path still appears in the plan and in the briefs
    derived from it.
 5. **A film whose key the profile does not know is not set aside.** Added 2026-09-17, measured at
-   the M2 closure. D-4 says the film "is set aside". On the tree, the typed error exists and is
+   the M2 closure. **CONSUMED on 2026-09-17 by lot 3.1.1** (`f6b37a662`): both orchestrators now
+   read the verdict and set the film aside — D-4 above says what they do and what they leave
+   behind. The paragraph stays written because it names the defect and the measurement that found
+   it; what follows is the state it described, not the state of the tree. D-4 says the film "is set aside". On the tree, the typed error exists and is
    carried to the caller (`FilmContext.ProfileErr`), the per-build expvar counter exists, the
    constructor logs one line — and no production caller reads that error: the only occurrence of
    `ProfileErr()` outside tests is its own declaration. The cook proceeds on the invariants

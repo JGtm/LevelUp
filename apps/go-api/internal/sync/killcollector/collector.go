@@ -208,4 +208,16 @@ const (
 	OutcomeTimeout KillSourceOutcome = "abandon-delai"
 	// OutcomeNotSupported : le titre n expose pas la capability. Le cycle continue.
 	OutcomeNotSupported KillSourceOutcome = "capability-absente"
+	// OutcomeUnknownKey : la cle que le film ECRIT (format, build, version majeure) est absente
+	// de la table de profil du decodeur — le film est MIS DE COTE (D-4 d ADR 0034, lot 3.1.1).
+	//
+	// CE N EST NI UN FILM ABSENT NI UNE PANNE, et les trois ne se soignent pas pareil : le film
+	// est la, il est lisible, et ce qui manque est UNE LIGNE DE TABLE cote depot
+	// (`docs/RUNBOOK_FILM_PROFILES.md`). Le decoder au profil du build le plus proche
+	// produirait des faits FAUX et silencieux — c est precisement ce que D-4 interdit.
+	//
+	// IL NE POSE AUCUN MARQUEUR DE REGISTRE, pour la meme raison qu `OutcomeNoKillFeed` (cf.
+	// registry_flags.go) : `MBitFilmAbsent` est TERMINAL, et le film reviendra au rattrapage
+	// des que la ligne de profil sera ecrite.
+	OutcomeUnknownKey KillSourceOutcome = "ecarte-cle-inconnue"
 )
