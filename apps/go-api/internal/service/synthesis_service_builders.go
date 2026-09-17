@@ -224,6 +224,42 @@ const synthesisWeaponChartTopN = 20
 // le harnais de régression visuelle (e2e/visual/app-pages, canvas « classement
 // des armes » de la page Session).
 func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWeaponKillEntry {
+	resolved := topWeaponKillRows(rows, n)
+	out := make([]domain.SynthesisWeaponKillEntry, len(resolved))
+	for i, r := range resolved {
+		// Class/Role portés depuis le registre (résolus dans la même passe
+		// ResolveRoles) pour recolorer le breakdown par arme par classe (P1.5).
+		out[i] = domain.SynthesisWeaponKillEntry{Label: r.Label, Kills: r.Kills, Class: r.Class, Role: r.Role}
+	}
+	return out
+}
+
+// topWeaponKillRows rend les N lignes d'arme les plus meurtrières, filtrées et triées.
+//
+// # LA DÉFINITION CANONIQUE DU « TOP ARMES » DU DÉPÔT (D11 du plan
+// # .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md)
+//
+// Elle vivait INLINE dans `buildTopWeaponKills`, et `buildWeaponAccuracy` en porte déjà une
+// variante sur sa propre métrique : le profil d'armes du Face-à-face en aurait été la
+// TROISIÈME copie, ce que la règle n°6 du dépôt interdit. Elle est donc extraite ici, et le
+// garde-rail `compare_weapons_guard_test.go` interdit que le littéral de tri réapparaisse
+// ailleurs dans `internal/service/`.
+//
+// # LES DEUX FILTRES NE SONT PAS DES DÉTAILS
+//
+// Une ligne sans libellé est une arme que le registre n'a pas su nommer : la publier
+// afficherait une barre anonyme. Une ligne `IsGrenadeMelee` vient des compteurs natifs
+// (grenade, mêlée) et non de l'arsenal : la ranger parmi les armes ferait concourir « Mêlée »
+// contre un fusil de précision, dans un classement qui prétend nommer des ARMES.
+//
+// # LE DÉPARTAGE ALPHABÉTIQUE EST L'ESSENTIEL DU CONTRAT
+//
+// Sans lui, deux armes à frags égaux permutent d'une réponse à l'autre — classement non
+// déterministe, constaté sur le harnais de régression visuelle (canvas « classement des
+// armes » de la page Session). `SliceStable` conserve en plus l'ordre d'entrée à clés égales.
+//
+// PUR : l'entrée n'est ni triée ni mutée (le tri porte sur la tranche filtrée, qui est neuve).
+func topWeaponKillRows(rows []port.WeaponKillRow, n int) []port.WeaponKillRow {
 	resolved := make([]port.WeaponKillRow, 0, len(rows))
 	for _, r := range rows {
 		if r.Label != "" && !r.IsGrenadeMelee {
@@ -239,13 +275,7 @@ func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWea
 	if len(resolved) > n {
 		resolved = resolved[:n]
 	}
-	out := make([]domain.SynthesisWeaponKillEntry, len(resolved))
-	for i, r := range resolved {
-		// Class/Role portés depuis le registre (résolus dans la même passe
-		// ResolveRoles) pour recolorer le breakdown par arme par classe (P1.5).
-		out[i] = domain.SynthesisWeaponKillEntry{Label: r.Label, Kills: r.Kills, Class: r.Class, Role: r.Role}
-	}
-	return out
+	return resolved
 }
 
 // buildWeaponAccuracy construit le classement précision par arme : armes

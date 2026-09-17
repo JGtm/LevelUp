@@ -551,3 +551,44 @@ func (r *ServiceRegistry) killDistanceRepoFor(pdb *duckdb.PlayerDB) port.KillDis
 	}
 	return duckdb.NewKillDistanceRepo(pdb, classifier)
 }
+
+// WeaponImageURLFromAdapter rend LA fonction canonique « identifiant d'arme -> icône » du
+// dépôt : son URL, et si cette icône est un MASQUE à teinter plutôt qu'un dessin fini.
+//
+// # POURQUOI UNE FONCTION EXPORTÉE, ET NON UNE CLOSURE RECOPIÉE (D11 du plan
+// # .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md)
+//
+// Elle vivait INLINE dans `api/server.go` (drawer d'assets). Le profil d'armes du Face-à-face
+// en aurait été la deuxième écriture, et la règle du dépôt veut une définition unique dès
+// qu'un motif se répète. Elle est donc ici, appelée par la méthode du registry ET par
+// `server.go` — qui vit dans un autre paquet, d'où l'export.
+//
+// # L'URL ET LE MASQUE VONT ENSEMBLE, TOUJOURS
+//
+// Les séparer est le piège : une icône-masque rendue comme un dessin fini apparaît en
+// silhouette noire. Les deux valeurs sortent donc du MÊME appel, et un appelant ne peut pas
+// obtenir l'une sans l'autre.
+//
+// Adapter nil (titre sans résolveur d'assets) -> fonction qui rend ("", false). Jamais nil :
+// un appelant qui doit tester la fonction avant de l'appeler finira par oublier.
+func WeaponImageURLFromAdapter(a games.TitleAssetURLAdapter) func(weaponID int64) (string, bool) {
+	if a == nil {
+		return func(int64) (string, bool) { return "", false }
+	}
+	return func(weaponID int64) (string, bool) {
+		url := a.WeaponImageURL(weaponID)
+		return url, url != "" && a.WeaponImageIsTinted(weaponID)
+	}
+}
+
+// weaponImageURLFor rend la fonction d'icône du titre d'un PlayerDB.
+//
+// Title-agnostic : le slug traverse `assetURLFor`, qui interroge le résolveur d'adapters —
+// aucune comparaison de slug littéral (ratchet no_slug_comparison_test.go). Titre sans
+// adapter d'assets -> fonction neutre, donc profil d'armes SANS icônes plutôt que sans profil.
+func (r *ServiceRegistry) weaponImageURLFor(pdb *duckdb.PlayerDB) func(weaponID int64) (string, bool) {
+	if pdb == nil {
+		return WeaponImageURLFromAdapter(nil)
+	}
+	return WeaponImageURLFromAdapter(r.assetURLFor(pdb.TitleSlug))
+}

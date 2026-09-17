@@ -5678,6 +5678,13 @@ export interface components {
             start_time: string;
             were_teammates: boolean;
         };
+        CompareFragClass: {
+            class: string;
+            /** Format: int64 */
+            kills: number;
+            /** Format: double */
+            share_pct: number;
+        };
         CompareMetricRow: {
             /** Format: double */
             delta: number;
@@ -5706,6 +5713,31 @@ export interface components {
             player_a: components["schemas"]["NormalizedPlayerStats"];
             player_b: components["schemas"]["NormalizedPlayerStats"];
             title_slug: string;
+            weapons?: components["schemas"]["CompareWeaponProfile"];
+        };
+        CompareTopWeapon: {
+            class?: string;
+            image_tinted?: boolean;
+            image_url?: string;
+            /** Format: int64 */
+            kills: number;
+            label: string;
+            label_en?: string;
+            role?: string;
+        };
+        CompareWeaponProfile: {
+            player_a: components["schemas"]["CompareWeaponSide"];
+            player_b: components["schemas"]["CompareWeaponSide"];
+        };
+        CompareWeaponSide: {
+            frag_classes: components["schemas"]["CompareFragClass"][] | null;
+            is_sample?: boolean;
+            /** Format: int64 */
+            matches: number;
+            range?: components["schemas"]["SynthesisWeaponRange"];
+            top_weapons: components["schemas"]["CompareTopWeapon"][] | null;
+            /** Format: int64 */
+            total_kills: number;
         };
         ComparisonMetricItem: {
             label: string;
@@ -13331,10 +13363,14 @@ export interface components {
             below_pct: number;
             /** Format: double */
             level_pct: number;
+            /** Format: double */
+            max_m: number;
             /** Format: int64 */
             measured: number;
             /** Format: double */
             median: number;
+            /** Format: double */
+            min_m: number;
             /** Format: double */
             p10: number;
             /** Format: double */
