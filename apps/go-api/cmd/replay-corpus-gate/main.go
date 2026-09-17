@@ -366,6 +366,7 @@ func finaliser(lignes []ligneRapport, refLabel string, o executerOptions) (int, 
 	imprimerTableau(os.Stdout, lignes, refLabel)
 	imprimerDetailPertes(os.Stdout, lignes)
 	imprimerDetailChangements(os.Stdout, lignes)
+	imprimerTelemetrie(os.Stdout, lignes)
 	errCouverture := verifierCouverture(lignes, o.AllowMissing)
 	if o.SortieJSON != "" {
 		if err := ecrireRapportJSON(o.SortieJSON, lignes, errCouverture != nil); err != nil {

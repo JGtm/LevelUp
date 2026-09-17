@@ -1,0 +1,712 @@
+[
+  {
+    "temoin": "bcb6d393",
+    "famille": "ctf_mono_manche",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "fb1a1a72",
+    "famille": "ctf_multi_manche",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "d9781168",
+    "famille": "oddball",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "c75f33b8",
+    "famille": "assaut_bombe",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "bf15f7ab",
+    "famille": "slayer",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "51ebbc0f",
+    "famille": "deux_manches",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "084a804d",
+    "famille": "vehicules",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.available",
+        "ancien": "0",
+        "nouveau": "289",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.attached",
+        "ancien": "0",
+        "nouveau": "235",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.noSlot",
+        "ancien": "0",
+        "nouveau": "54",
+        "sens": "perte"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.verdict.grenades",
+        "ancien": "aucune donnée",
+        "nouveau": "nominal",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "0797ce72",
+    "famille": "region_index_2_bits",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "111fa685",
+    "famille": "version_39",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.available",
+        "ancien": "0",
+        "nouveau": "159",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.attached",
+        "ancien": "0",
+        "nouveau": "152",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.noSlot",
+        "ancien": "0",
+        "nouveau": "7",
+        "sens": "perte"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.verdict.grenades",
+        "ancien": "aucune donnée",
+        "nouveau": "nominal",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "e5adf7b2",
+    "famille": "version_40_build_1_11",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.available",
+        "ancien": "0",
+        "nouveau": "138",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.attached",
+        "ancien": "0",
+        "nouveau": "133",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.noSlot",
+        "ancien": "0",
+        "nouveau": "5",
+        "sens": "perte"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.verdict.grenades",
+        "ancien": "aucune donnée",
+        "nouveau": "nominal",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "60ae07c4",
+    "famille": "version_37",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.available",
+        "ancien": "0",
+        "nouveau": "310",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.attached",
+        "ancien": "0",
+        "nouveau": "310",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.verdict.grenades",
+        "ancien": "aucune donnée",
+        "nouveau": "nominal",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "a349fea8",
+    "famille": "version_33_sans_identification",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.available",
+        "ancien": "0",
+        "nouveau": "386",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.attached",
+        "ancien": "0",
+        "nouveau": "257",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.noSlot",
+        "ancien": "0",
+        "nouveau": "129",
+        "sens": "perte"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.verdict.grenades",
+        "ancien": "aucune donnée",
+        "nouveau": "nominal",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "a521164d",
+    "famille": "version_33_build_1_4_1",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.available",
+        "ancien": "0",
+        "nouveau": "105",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.attached",
+        "ancien": "0",
+        "nouveau": "100",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.noSlot",
+        "ancien": "0",
+        "nouveau": "5",
+        "sens": "perte"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.verdict.grenades",
+        "ancien": "aucune donnée",
+        "nouveau": "nominal",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "11de8353",
+    "famille": "version_38_build_1_9_0",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.available",
+        "ancien": "0",
+        "nouveau": "145",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.attached",
+        "ancien": "0",
+        "nouveau": "139",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.noSlot",
+        "ancien": "0",
+        "nouveau": "6",
+        "sens": "perte"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.verdict.grenades",
+        "ancien": "aucune donnée",
+        "nouveau": "nominal",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "50247b26",
+    "famille": "version_31_sans_identification",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.available",
+        "ancien": "0",
+        "nouveau": "95",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.attached",
+        "ancien": "0",
+        "nouveau": "55",
+        "sens": "gain"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.grenades.noSlot",
+        "ancien": "0",
+        "nouveau": "40",
+        "sens": "perte"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.verdict.grenades",
+        "ancien": "aucune donnée",
+        "nouveau": "partiel : moins des deux tiers rattachés",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "bfecd02b",
+    "famille": "vehicules_v41_utilisateur",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      }
+    ]
+  },
+  {
+    "temoin": "4f77afc1",
+    "famille": "equipement_origine_utilisateur",
+    "schemaAncien": 61,
+    "schemaNouveau": 61,
+    "differences": [
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.factsRev",
+        "ancien": "killsource-2026-09-16.6",
+        "nouveau": "killsource-2026-09-16.7",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.grammarRev",
+        "ancien": "grammar-2026-09-15.39",
+        "nouveau": "grammar-2026-09-15.40",
+        "sens": "changement"
+      },
+      {
+        "axe": "couverture",
+        "metrique": "coverage.decoder.profileRev",
+        "ancien": "profile-2026-09-17",
+        "nouveau": "profile-2026-09-17.2",
+        "sens": "changement"
+      }
+    ]
+  }
+]
