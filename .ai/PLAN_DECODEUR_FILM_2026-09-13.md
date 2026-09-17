@@ -5164,18 +5164,18 @@ code, l'ADR amendé, le triage du §4 — les deux dernières étant le lot docu
       — triage du §4 » ci-dessus. 57 découvertes nommées (52 au triage initial + 5 arrivées avec le lot 3.7), **19 TRAITEES / 1 RETENUE /
       37 NON RETENUES** (32 au triage initial + `D6`..`D10 (3.7)` arrivées avec la fusion du lot 3.7), plus 2 reprises hors §4. Le troisième état est le défaut (méthode de
       l'utilisateur) ; aucune ligne du §4 n'est supprimée.
-- [ ] **références d'équivalence re-figées** — pilote, à la fusion, sur la classification du §5
+- [x] **références d'équivalence re-figées** — pilote, à la fusion, sur la classification du §5 FAIT le 2026-09-17 sur 746867516 (commit bff43c447) : 20 films identiques après re-figeage ; étapes re-figées = killsource / vehicles / artifact ×20, grenades ×9 (films anciens), grappleReads.stats ×8, abilityImpulses ×7, pads ×3 — exactement la liste autorisée, rien d autre.
       (`replay-equiv -update` CONTRÔLÉ, puis `git diff -U0 -- equivalence/*.tsv`). Ce que la
       classification autorise à bouger : `artifact` (les trois chaînes de révision),
       `grenades` sur les neuf films de grammaire ancienne, `vehicles` (D6 (3.6.a) : entrée de
       balayage, aucune sortie publiée), `abilityImpulses` / `grappleReads.stats` / `pads`
       (classés au §5 du lot 3.4.2). Rien d'autre.
-- [ ] **corpus gate final consigné** — pilote, régime COMPLET de clôture de jalon (V2), 17
+- [x] **corpus gate final consigné** — pilote, régime COMPLET de clôture de jalon (V2), 17 FAIT le 2026-09-17 : `replay-corpus-gate --base=d620a1a56` (clôture M2) sur bff43c447, 17/17 présents, schéma 61 -> 61, exit 1 : 106 gains, 32 pertes, 24 changements ; 8 témoins `ok`, 9 `PERTE`, 3 `CHANGEMENT`. Les pertes sont TOUTES dans les deux familles assumées au §5 de 3.4.2 — morts de véhicule (deathsRead/Matched/Unmatched/TailDesync/endDestroyed/samplesAfterEnd, et les deux lignes publiées vehicles.tEnd/presents 4->3, vehicles/par-end/destroyed 4->3 sur 4f77afc1) et compteurs derrière i0 (abilityImpulses.*, grapple.heavyReads, à une unité) ; les 7 `noSlot` 0 -> N sont classés CHANGEMENT par l outil (3.3.3). Changements : 8 `coverage.verdict.grenades` aucune donnée -> nominal, 6 `registry.status` inconnue -> connue. Télémétrie hors verdict : factsRev .6 -> killsource-2026-09-17.2, grammarRev .39 -> .42, profileRev -> .3. Rapport : scratchpad `corpus_final_m3.{txt,json}`.
       témoins, sur l'intégration après la fusion de 3.7. Attendu écrit d'avance : schéma
       61 -> 61, les gains de `grenades` sur les témoins anciens, et les **8 pertes de morts de
       véhicule** déjà attribuées et assumées (D7 (3.4.2)) — un gate qui ne les retrouverait pas
       serait le signal d'un changement non mesuré, pas une bonne nouvelle.
-- [ ] **entrée `.ai/thought_log.md`** — pilote. Brouillon RÉDIGÉ par le lot documents, hors
+- [x] **entrée `.ai/thought_log.md`** — pilote. Brouillon RÉDIGÉ par le lot documents, hors FAIT le 2026-09-17 : entrée en tête de `.ai/thought_log.md`, ce commit.
       dépôt, avec deux placeholders à remplir avec les chiffres des gates finaux :
       `__REFIGEAGE__` (les étapes re-figées) et `__CORPUS__` (le verdict du corpus gate final).
 - [ ] **recuisson du parc sur signal** — pilote. REPORTÉE ici depuis la clôture M2 par V20 (1) ;
