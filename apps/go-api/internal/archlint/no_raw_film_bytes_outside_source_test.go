@@ -222,6 +222,15 @@ var exclusionsOctetsBruts = []exclusionOctets{
 	{chemin: "internal/games/halo_infinite/film/replay/mapvar", raison: "lit les VARIANTES " +
 		"DE CARTE `.mvar` (Bond CompactBinary v2, stockage UGC), jamais les chunks d un " +
 		"film. Le paquet vit sous `film/` par proximite d usage, pas par format."},
+	{chemin: "internal/games/halo_infinite/film/research/reapparition", raison: "lit " +
+		"`HaloInfinite.exe` — l EXECUTABLE DE L INSTALLATION DU JEU (en-tetes PE, sections, " +
+		"repertoire d exceptions `.pdata`), jamais un film. Meme nature que `cmd/weapon-sounds` " +
+		"et `cmd/weapon-icons-build` ci-dessus. Pose au lot 3.7 (2026-09-17) : l instrument y " +
+		"rejoue la chaine descripteur -> ecrivain de `NOTE_3_6_METHODE_DESCRIPTEURS` quand " +
+		"Ghidra n est pas disponible. C est le PREMIER paquet `//go:build research` de ces " +
+		"racines qui ne soit pas un `_test.go` — l en-tete de ce fichier annonce l inverse, et " +
+		"c est cette exclusion qui le corrige plutot qu une regle sur le tag de build : un " +
+		"instrument de recherche qui lirait un FILM hors de la source doit rougir comme le reste."},
 }
 
 // constructeursDeLecteurDeBits : les fonctions dont l APPEL ou la DECLARATION ouvre la porte
