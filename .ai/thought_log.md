@@ -1,3 +1,97 @@
+## [2026-09-17] Correctifs de la revue adversariale des 8 lots feat/v75 — Complété (branche `fix/revue-lots-v75`, en attente de merge)
+
+**Demande** : corriger les P1 de la revue (décisions utilisateur du 2026-09-17 : P1-1, P1-2, P1-4,
+P1-5 à corriger ; P1-3 par comptage des équipes ; P1-6 tests aux bornes ; P1-7 = exception datée ;
+P2-1 laissé + commentaire ; P2-2 doc + ordre de livraison ; Cividis « deux surfaces »). Plan :
+`.ai/PLAN_CORRECTIFS_REVUE_LOTS_V75_2026-09-17.md`. Exécution par deux exécutants Opus en
+worktrees séparés (Go sur `fix/revue-lots-v75-go`, web sur `fix/revue-lots-v75`), pilote =
+session principale, vérification sur pièces de chaque compte rendu.
+
+**Décisions techniques** : Q32e exige `victim_xuid IS NOT NULL` sur la branche « candidat au
+vol » (NULL = bot ou nom non résolu, même règle que Q32c) ; `fragContrastDominanceFlag` compte
+les équipes du match (`COUNT(DISTINCT team_id)` sur match_participants, != 2 → aucun badge,
+Debug) et trace en WARN la durée absente (repli « dernière frag » conservé, extraction
+`matchEndFromDurationMS`) ; tests aux bornes des trois seuils des deux côtés (10/9 frags,
+17/18 contre 20 pour 0,85, 75,0/74,9999 % du temps), prouvés par mutation ; colonne
+« Assistances » derrière une prop `showAssists` (Carrière la passe à false) ; hook partagé
+`lib/clipboard/useCopyToClipboard` (2 s, timer nettoyé, échec journalisé) pour les 4 sites +
+garde-rail grep avec témoin positif et allowlist datée de 5 sites ; Cividis `assist-received`
+#686B00 (5,59:1 clair / 3,15:1 sombre), `assist-given` #AA4499 (5,16 / 3,41), dE paire 26,5, dE
+min famille 16,2, `contrast: 'both'` (aucune valeur de la rampe ne tient : le gris des
+assistances exclut les tons peu saturés de la bande de luminance utile).
+
+**Résultats observés** : Go `go test -tags=integration` 39 paquets ok (1 flake hors lot
+`TestGetMatchFilm_ParallelDownloadFasterThanSequential`, vert rejoué seul), golangci
+`--new-from-rev` 0 issue ; web typecheck 0, lint 0 erreur, lint:colors 0, lint:fields 0, vitest
+342 fichiers / 3 196 tests. Ronde 2 (corrections seules) : 0 P0/P1 ; 3 P2 doc Go corrigés dans
+la foulée ; 1 P2 web consigné (test « démontage » du hook creux sous React 19). Découvertes
+non traitées : glose « 15 % de frags de plus » vs formule 0,85 (+17,6 %) — décision produit ;
+WatcherCard copie sans retour visuel ; helpers copiés dans ExplorerEncounterBriefing ; DDL
+recopiée dans les helpers de test sync ; `seedComebackMatch` 8 paramètres.
+
+**Conclusion / prochaine étape** : CI de la branche au niveau job, puis merge dans feat/v75 sur
+accord utilisateur. La migration de reset ne doit être déployée qu'avec ces correctifs (doc du
+fichier mise à jour en ce sens).
+
+## [2026-09-17] Revue adversariale des 8 lots livrés sur feat/v75 (ea9ba1b4e..016703f8e, 17 commits) — Complété (revue seule, aucune correction)
+
+**Demande** : récupérer la branche distante feat/v75 et vérifier les ajustements livrés (périmètre
+fermé, pas de correction). Fast-forward local ea9ba1b4e -> 016703f8e. Hors revue : les 204 commits
+de la clôture M2 du décodeur (fusion inverse integration -> feat/v75) déjà relus par leur jalon.
+
+**Méthode** : skill `adversarial-review`, 8 relecteurs Opus en parallèle, aveugles, lecture seule
+(un contrat par lot, une lentille par relecteur : L1 anti-ART + L4 algo pour les badges de
+dominance, L4/L1 badge Voleur, L1/L4/L5 assistances par relation, L5/L3 export vidéo, L5/L3
+sprites + bouton de copie, L5 + skill color-tokens pour la famille de couleurs, L6 couverture
+de tests sur les 8 lots). Gates rejoués par le pilote : go test -tags=integration sur les 10
+paquets Go touchés (vert), tsc (0), lint:colors (0), vitest sur les dossiers touchés (501
+fichiers / 5 577 tests verts), eslint 0 erreur, CI GitHub verte au niveau job sur 016703f8e.
+Chaque constat P1 ci-dessous a été re-vérifié sur pièces par le pilote.
+
+**Constats recevables (triés) — 7 P1, ~20 P2, 1 jeté** :
+- P1 `internal/platform/duckdb/squad_repo_kill_log.go:38-41` : Q32e n'écarte pas les victimes
+  bots (victim_xuid NULL) sur la branche « candidat au vol » ; un frag de bot assisté (<= 10 %)
+  décerne le badge Voleur et -1 au score, alors que Q32c écarte les bots explicitement.
+- P1 `internal/sync/comeback.go:143-151` : duration_seconds NULL (cas réel, parsePTDuration nil)
+  -> Scan réussi, aucun WARN, fin de match = dernière frag ; le seuil « 75 % du temps » se mesure
+  jusqu'à la dernière frag et un flag terminal peut être écrit à tort (règle 3 CLAUDE.md).
+- P1 `internal/sync/comeback.go:131,169` : la garde « 2 équipes » ne vérifie que myTeamID in
+  {0,1} ; en Multi Team à objectifs les équipes 2+ sont retirées de la timeline, pas le match.
+- P1 `apps/web/src/features/match-view/MatchEncountersTable.tsx:425` : la colonne
+  « Assistances » est inconditionnelle ; Carrière > « Joueurs les plus croisés » (même tableau,
+  chargeur GetTopEncounters qui ne pose jamais Assists) affiche une colonne toujours à « — ».
+- P1 `apps/web/src/features/auth/CopyCodeButton.tsx` : 4e copie du motif copier + coche +
+  setTimeout (ShareLinkButton 2000, IdentitiesSection 1500, MatchHeader.card 1500) sans helper
+  ni garde-rail (règle 6).
+- P1 `internal/analysis/comeback_frag_contrast.go:70-76` : les seuils 75 % / 15 % / 10 frags
+  (décision user sur mesure) ne sont verrouillés par aucun test aux bornes (le ratio peut glisser
+  dans [0,80 ; 0,869], la part de temps dans [0,25 ; 0,89], le volume dans [7 ; 12] en vert).
+- P1 `apps/web/src/features/squad/charts/squadPerformanceLineCharts.ts:277` : le segment Bonus
+  passe de `bonus` (violet, distinct des joueurs) à `stat-assists` (#0284C7) empilé dans la barre
+  du joueur : dE 5,6 avec squad-player-4, 10,7 avec squad-player-1 (seuil projet 15) ; aucun
+  test ne compare la famille stat aux couleurs d'escouade.
+- P2 (dette à consigner, non corrigée) : top matchs carrière ignore 6/7
+  (`career_repo_top_matches.go:149,157`) ; le reset `player_dominance_flag_reset_none_v1`
+  rejoue toute la chaîne (un 0 historique peut devenir 3/4/5 si la courbe objectif a été écrite
+  depuis) alors que sa doc affirme le contraire ; `match-card-presentation.ts:47-48` 2 libellés
+  FR seuls ; véhicule non dessiné pendant le GET de sa bordure (`useReplayVehicles.ts:290`) et
+  chemin d'échec d'outline sans test ; CopyCodeButton timer non nettoyé + catch muet + échec
+  presse-papier non testé ; Q32e `assist_known` non testé ; Q28c dénominateur `publishable` et
+  prédicat bot non testés ; `assistExchange.ts:73` diviseur non discriminé ; ratchet OKLab sans
+  témoin positif ; ratchet anti-emprunt aveugle à `text-*` et `var(--ac-…)`
+  (`SynthesisHighlightsSection.tsx:48-49` emprunte, composant mort) ; `ReplayCountersBadge.tsx:173`
+  jetons non typés ; Cividis `contrast: 'any'` -> un côté du papillon d'assistances illisible sur
+  une surface ; stat-deaths = outcome-loss dans 3 palettes sur 4 (décision) ; tests
+  outcomeSequence / briefing / instances non étendus à 6/7 ; « killstreak » passe le garde-rail
+  anti-anglicismes (préexistant) ; `waitForExportLayout` : condition de taille et timeout non
+  discriminés par les tests.
+- Jeté : « tsc rouge sur b7801a83b » (faux : les jetons étaient compare-a/b à ce commit).
+- Sans constat : export vidéo (18 conditions tiennent), garde-rail anti-anglicismes (6).
+
+**Conclusion / prochaine étape** : verdict remis à l'utilisateur ; corrections non entamées
+(périmètre fermé). À trancher : quels P1 corriger avant v7.5 ; les P2 « décision » (top matchs,
+stat-deaths = outcome-loss, cividis) sont des choix produit.
+
 ## [2026-09-17] Couleurs dédiées des stats de combat (frags, morts, assistances, sens d'assistance) — Complété (branche `claude/couleurs-stats-combat`, fusionnée dans feat/v75)
 
 **Demande** : que les deux couleurs du sens d'assistance (« il te sert » / « tu le sers ») de la
