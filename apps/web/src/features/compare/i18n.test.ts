@@ -91,15 +91,12 @@ describe('compare — parité FR/EN du dictionnaire entier', () => {
     }
   })
 
-  it('les onze clés du profil d’armes existent dans les deux langues', () => {
+  it('les neuf clés du profil d’armes existent dans les deux langues', () => {
     const attendues = [
       'catWeapons',
-      'weaponsClassesTitle',
       'weaponsRangeKills',
       'weaponsRangeDeaths',
       'weaponsTopTitle',
-      'weaponsCoverage',
-      'weaponsBelowThreshold',
       'weaponsObserved',
       'weaponsNoRange',
       'weaponsPercentiles',
@@ -123,7 +120,6 @@ describe('compare — parité FR/EN du dictionnaire entier', () => {
     const interdits = /\b(kills?|assists?|range|top weapons?|streak|win rate)\b/i
     const valeurs = [
       fr.catWeapons,
-      fr.weaponsClassesTitle,
       fr.weaponsRangeKills,
       fr.weaponsRangeDeaths,
       fr.weaponsTopTitle,
@@ -131,8 +127,6 @@ describe('compare — parité FR/EN du dictionnaire entier', () => {
       fr.weaponsNoRange,
       fr.weaponsPercentiles,
       fr.weaponsNoMeasure,
-      (fr.weaponsCoverage as (a: number, b: number) => string)(1, 2),
-      (fr.weaponsBelowThreshold as (s: string) => string)('X'),
       (fr.weaponsMatches as (n: number) => string)(3),
     ] as string[]
     for (const v of valeurs) expect(v, `« ${v} »`).not.toMatch(interdits)

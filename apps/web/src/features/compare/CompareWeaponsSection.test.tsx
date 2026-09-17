@@ -104,7 +104,7 @@ describe('CompareWeaponsSection — deux joueurs', () => {
       />,
     )
     expect(screen.getByText(text.catWeapons)).toBeInTheDocument()
-    expect(screen.getByText(text.weaponsClassesTitle)).toBeInTheDocument()
+    // Le sous-titre « Part des frags par classe » a ete retire : la carte porte le titre.
     expect(screen.getByText(text.weaponsTopTitle)).toBeInTheDocument()
     // Les deux cartes de portée, nommées par leur question.
     expect(screen.getByText(text.weaponsRangeKills)).toBeInTheDocument()
@@ -122,18 +122,23 @@ describe('CompareWeaponsSection — deux joueurs', () => {
     expect(screen.getAllByText(text.weaponsMatches(4)).length).toBeGreaterThan(0)
   })
 
-  it('publie la couverture ET les rôles écartés, NOMMÉS', () => {
-    renderWithProviders(
+  /**
+   * NI COUVERTURE NI LISTE « SOUS LE SEUIL » sous les graphes (gate visuel 2026-09-17,
+   * amendement D6). Ce témoin est l'INVERSE de celui qu'il remplace : il garantit que ces deux
+   * phrases ne reviennent pas par mégarde. La fixture porte pourtant les deux faits —
+   * `measured_kills: 80` sur `total_kills: 100`, et un rôle écarté à 6 mesures — donc leur
+   * absence à l'écran est bien un choix d'affichage, pas un manque de donnée.
+   */
+  it('n’affiche ni la couverture ni les rôles sous le seuil', () => {
+    const { container } = renderWithProviders(
       <CompareWeaponsSection
         left={reponse('Alpha', 'Bravo', avecPortee(20), avecPortee(25))}
         text={text}
         locale="fr"
       />,
     )
-    // « 80 frags mesurés sur 100 », pour chaque joueur et chaque côté.
-    expect(screen.getAllByText(/80 frags mesurés sur 100/).length).toBeGreaterThan(0)
-    // Le rôle sous le seuil est nommé avec son effectif, jamais compté en silence.
-    expect(screen.getAllByText(/\(6\)/).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/frags mesurés sur/)).toBeNull()
+    expect(container.textContent).not.toContain('Sous le seuil')
   })
 
   it('n’affiche JAMAIS une clé de manifeste brute', () => {
@@ -180,7 +185,8 @@ describe('CompareWeaponsSection — dégradations', () => {
         locale="fr"
       />,
     )
-    expect(screen.getByText(text.weaponsClassesTitle)).toBeInTheDocument()
+    // Les classes n ont plus de sous-titre (gate visuel 2026-09-17) : la carte porte le titre.
+    expect(screen.getByText(text.catWeapons)).toBeInTheDocument()
     expect(screen.getByText(text.weaponsTopTitle)).toBeInTheDocument()
     expect(screen.queryByText(text.weaponsRangeKills)).toBeNull()
     expect(screen.queryByText(text.weaponsRangeDeaths)).toBeNull()
