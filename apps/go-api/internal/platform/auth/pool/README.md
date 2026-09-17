@@ -23,8 +23,10 @@ Package `pool` manages a shared pool of Halo API tokens with two acquisition pol
 
 4. **Client Adapter** (`../../../sync/pooled_client.go`)
    - Implements `sync.HaloClient` interface
-   - Uses `PolicyAnyPublic` for public endpoints (round-robin)
-   - Uses `PolicyPinnedPlayer` for privacy-gated endpoints (token owner only)
+   - Uses `PolicyAnyPublic` for EVERY endpoint it serves (round-robin), career rank included
+     since the 2026-09-16 measurement
+   - Pins no player at all: pinning lives where an endpoint truly requires the owner token
+     (Spartan customization cron, Halo 5 live-sync)
 
 ---
 
@@ -55,7 +57,7 @@ if err != nil {
 defer pool.Close()
 
 // Use with sync engine
-client := sync.NewPooledHaloClient(pool, gamertag, xuid)
+client := sync.NewPooledHaloClient(pool, 0) // 0 = default fallback RPS
 engine := sync.NewSyncEngine(repoRoot, gamertag, xuid, &domain.HaloTokens{}, provider)
 engine.SetCustomClient(client)
 syncResult, err := engine.RunDelta(ctx, opts)
@@ -67,6 +69,7 @@ syncResult, err := engine.RunDelta(ctx, opts)
 - `GetMatchHistory(gamertag, ...)` — accepts any gamertag in URL
 - `GetMatchStats(matchID)` — public stats
 - `GetMatchFilm(matchID)` — public film
+- `GetCareerRank(xuid)` — public too, measured 2026-09-16 (see below)
 
 ```go
 lease, err := pool.Acquire(ctx, auth.PolicyAnyPublic, "")
@@ -78,9 +81,11 @@ client := halo.NewHaloAPIClient(lease.Tokens)
 stats, err := client.GetMatchStats(ctx, matchID)
 ```
 
-**PolicyPinnedPlayer** — Token of specific player only:
-- `GetCareerRank(xuid)` — privacy-gated to token owner
-- Fails gracefully with `(nil, nil)` if token absent or stale
+**PolicyPinnedPlayer** — Token of specific player only, for the two endpoints that really
+are gated on the token owner:
+- Spartan customization (`/customization/appearance`) — the scheduler cron; a third-party
+  token gets 403 (measured 2026-09-16)
+- Halo 5 live-sync (`games/halo_5/livesync`)
 
 ```go
 lease, err := pool.Acquire(ctx, auth.PolicyPinnedPlayer, gamertag)
@@ -90,8 +95,36 @@ if err != nil {
 }
 defer lease.Release()
 client := halo.NewHaloAPIClient(lease.Tokens)
-rank, err := client.GetCareerRank(ctx, xuid)
+appearance, err := client.GetSpartanCustomization(ctx, xuid)
 ```
+
+**The career rank is NOT privacy-gated.** Measured on 2026-09-16: `GET /careerranks` for a
+THIRD-PARTY xuid, with three different lender tokens (JGtm, DankerGlue, Trimbutton), returns
+200 with the SAME rank and XP as the owner own call (JGtm: `rank=202 xp=2555` seen by two
+lenders; Nuzzles: `rank=272 xp=0` — 272 is the maximum rank and the zero XP is its true value).
+`PooledHaloClient.GetCareerRank` therefore acquires in `PolicyAnyPublic`, and
+`sync.ErrNoPinnedToken` no longer exists (D4, sync robustness plan 2026-09-16).
+
+---
+
+## Callers — who takes a token, and under which policy
+
+Updated 2026-09-16 (decision D1: *a followed profile without its own token is synced through
+the pool*).
+
+| Caller | Policy | Requires the player's own token? |
+|---|---|---|
+| `cmd/levelup sync-delta` / `sync-full`, `--gamertag` **and** `--all` | `PolicyAnyPublic` | **No** |
+| `cmd/levelup backfill --csr` / `--shared-csr` | `PolicyAnyPublic` | **No** |
+| `cmd/levelup archive-films`, `backfill-killsource --online`, `replay-events` | `PolicyAnyPublic` | **No** |
+| `internal/scheduler` auto-sync cycle (`checkSyncPreconditions` → `BuildEngine`) | `PolicyAnyPublic` | **No** |
+| `PooledHaloClient.GetCareerRank` | `PolicyAnyPublic` | **No** — `/careerranks` is fully public (measured 2026-09-16, D4 of the sync robustness plan) |
+| `internal/scheduler` Spartan customization cron | `PolicyPinnedPlayer` | **Yes** — the only legitimate `HasPlayer(` guard left outside this package (ratchet: `internal/archlint/no_pool_hasplayer_gate_test.go`) |
+
+Before 2026-09-16 three call sites short-circuited the doctrine with `if !pool.HasPlayer(gt) {
+skip }` — the two `--all` CLI loops and the auto-sync cycle — and the single-player CLI resolved
+the player's own refresh token directly. A followed profile that had never signed in was
+therefore never synced at all, although only its career rank was out of reach.
 
 ---
 

@@ -21,7 +21,10 @@ const defaultPooledRPS = 5
 
 // PooledHaloClient implémente HaloClient en utilisant un pool de tokens partagés.
 // Chaque appel Acquire() crée un HaloAPIClient avec un token frais du pool.
-// PolicyAnyPublic pour endpoints publics, PolicyPinnedPlayer pour endpoints privacy.
+// TOUS ses endpoints sont acquis en PolicyAnyPublic (round-robin) : depuis la mesure du
+// 2026-09-16 (D4, plan robustesse), le rang de carrière lui aussi est public. Ce client
+// n'épingle plus aucun joueur ; l'épinglage vit là où un endpoint l'exige réellement
+// (cron de personnalisation Spartan, live-sync Halo 5).
 //
 // Rate-limiting (Option 2 de l'audit 2026-05-21) : chaque slot du pool a son
 // propre *rate.Limiter (PerTokenRPS) — throughput global = PerTokenRPS × Size().
@@ -29,10 +32,6 @@ const defaultPooledRPS = 5
 // fallback sur fallbackLimiter local.
 type PooledHaloClient struct {
 	p pool.Pool
-
-	// Si non-vide : token pinned sur ce gamertag (pour endpoints privacy).
-	pinnedGamertag string
-	pinnedXUID     string
 
 	// fallbackLimiter est utilisé uniquement quand Lease.Limiter est nil
 	// (mocks de test). En prod, le pool fournit le limiter par-token.
@@ -43,18 +42,15 @@ type PooledHaloClient struct {
 }
 
 // NewPooledHaloClient crée un client pooled.
-// pinnedGamertag/pinnedXUID : si non-vides, les endpoints privacy utilisent ce token (ex: GetCareerRank).
 // requestsPerSecond : utilisé uniquement comme fallback si le pool ne fournit
 // pas de Lease.Limiter (≤ 0 → defaultPooledRPS). En prod, c'est PerTokenRPS
 // configuré à NewPool() qui pilote le throughput.
-func NewPooledHaloClient(p pool.Pool, pinnedGamertag, pinnedXUID string, requestsPerSecond int) *PooledHaloClient {
+func NewPooledHaloClient(p pool.Pool, requestsPerSecond int) *PooledHaloClient {
 	if requestsPerSecond <= 0 {
 		requestsPerSecond = defaultPooledRPS
 	}
 	return &PooledHaloClient{
 		p:               p,
-		pinnedGamertag:  pinnedGamertag,
-		pinnedXUID:      pinnedXUID,
 		fallbackLimiter: rate.NewLimiter(rate.Limit(requestsPerSecond), 1),
 	}
 }
@@ -98,8 +94,8 @@ func isAuthError(err error) bool {
 //
 // RC-1 (2026-06-04) : avant, seuls 429/503 étaient gérés et le 401/403 était
 // ignoré — un token expiré/révoqué était re-servi en boucle (sync 18:19 →
-// matches_inserted:0). On marque le bon slot via lease.Gamertag, JAMAIS le
-// pinnedGamertag (vide pour les appels PolicyAnyPublic round-robin).
+// matches_inserted:0). Le slot marqué est TOUJOURS celui du lease
+// (lease.Gamertag), le seul que le round-robin ait réellement servi.
 func (pc *PooledHaloClient) notifyPoolOnError(lease *pool.Lease, err error) {
 	if err == nil {
 		return
@@ -284,32 +280,28 @@ func (pc *PooledHaloClient) GetHighlightEventsChunk(ctx context.Context, matchID
 	return result, ver, ok, err
 }
 
-// GetCareerRank implémente HaloClient.GetCareerRank() avec PolicyPinnedPlayer.
-// Retourne (nil, nil) si le token pinned est absent ou si la requête est 401/403 (privacy-gated).
-// Note : HaloAPIClient.GetCareerRank gère déjà le silent-skip 401/403 en interne.
+// GetCareerRank implémente HaloClient.GetCareerRank() avec PolicyAnyPublic.
+//
+// MESURE DU 2026-09-16 (D4, plan robustesse) : `/careerranks` est ENTIÈREMENT PUBLIC.
+// Interrogé pour un xuid TIERS avec trois prêteurs différents (JGtm, DankerGlue,
+// Trimbutton), il rend 200 et les MÊMES rang et XP que l'appel du propriétaire
+// (JGtm : rank=202 xp=2555 vu par deux prêteurs ; Nuzzles : rank=272 xp=0, 272 étant le
+// rang maximal et l'XP nulle sa vraie valeur). La politique `PolicyPinnedPlayer` reposait
+// donc sur une prémisse fausse, déjà contredite par `service/career_live_target.go`.
+// Restent légitimement épinglés, hors de ce client : le cron de personnalisation Spartan
+// (`/customization/appearance`, 403 mesuré pour un tiers) et le live-sync Halo 5.
+//
+// Un 401/403 reste géré en interne par HaloAPIClient.GetCareerRank (silent-skip privacy).
 func (pc *PooledHaloClient) GetCareerRank(ctx context.Context, xuid string) (*CareerRankData, error) {
-	// Si pas de token pinned, silent-skip.
-	if pc.pinnedGamertag == "" {
-		slog.DebugContext(ctx, "pooled: GetCareerRank skipped (no pinned token)",
-			"xuid", xuid)
-		return nil, nil
-	}
-
-	lease, err := pc.p.Acquire(ctx, pool.PolicyPinnedPlayer, pc.pinnedGamertag)
-	if err != nil {
-		// Token malsain ou absent → silent-skip (comportement identique à halo_client.go:434).
-		slog.DebugContext(ctx, "pooled: GetCareerRank skipped (token unavailable)",
-			"xuid", xuid, "gamertag", pc.pinnedGamertag, "err", err)
-		return nil, nil
-	}
-	defer lease.Release()
-
-	client := pc.newAPIClient(lease)
-	// HaloAPIClient handles 401/403 internally (returns nil, nil)
 	callStart := time.Now()
-	rank, rankErr := client.GetCareerRank(ctx, xuid)
-	observeHaloCall(ctxkeys.TitleSlug(ctx), "career_rank", xuid, callStart, rankErr)
-	return rank, rankErr
+	var rank *CareerRankData
+	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
+		var e error
+		rank, e = c.GetCareerRank(ctx, xuid)
+		return e
+	})
+	observeHaloCall(ctxkeys.TitleSlug(ctx), "career_rank", xuid, callStart, err)
+	return rank, err
 }
 
 // GetPlayerCSRs implémente HaloClient.GetPlayerCSRs() avec PolicyAnyPublic.

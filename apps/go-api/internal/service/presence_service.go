@@ -13,7 +13,7 @@
 // à chaque utilisateur : deux utilisateurs d'une même instance, sur le même état
 // de watcher, obtiennent deux valeurs différentes, et un utilisateur étranger à
 // mon groupe n'entre jamais dans mon compte (il n'est pas dans ma liste visible).
-// La liste `friend_gamertags` des Réglages n'a plus AUCUN rôle dans la présence.
+// La liste d'amis d'un joueur n'a plus AUCUN rôle dans la présence.
 //
 // Ce que la réponse expose de ces amis : un ENTIER, rien d'autre. Les identités
 // servies restent celles de la liste `players`, filtrée par visibilité comme

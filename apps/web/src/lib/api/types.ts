@@ -404,7 +404,6 @@ export interface SettingsResponse {
   spnkr_auto_sync_interval_minutes: number
   watcher_presence_enabled: boolean
   watcher_subscribed_players: string[]
-  friend_gamertags: string[]
   // --- Règles de sessions ---
   session_gap_minutes: number
   session_split_on_ranked_change: boolean
@@ -426,6 +425,12 @@ export interface SettingsResponse {
   coach_proactive_mode: boolean
   // --- Fournisseur d'authentification (admin uniquement) ---
   auth_provider: string
+  // --- Verrou d'instance (admin uniquement, ADR 0035 D5) ---
+  // Instance fermée : un compte Xbox inconnu ne peut plus créer de compte ni de
+  // profil. Le serveur l'expose (domain.SettingsResponse:87) et accepte son
+  // PATCH sous rôle admin depuis le verrou centralisé — il manquait ici, donc
+  // aucune page ne pouvait le proposer (la prod a dû être verrouillée à la main).
+  instance_locked: boolean
   // --- Sons d'armes du rejeu 2D (réglages d'instance, page admin) ---
   // Les .wav extraits du jeu sont purs : ces deux pourcentages rejouent côté app ce que
   // le moteur fait à chaque coup. Variation 100 = fourchettes du jeu telles quelles ;
@@ -1378,7 +1383,7 @@ export interface TeammatesPageResponse {
   teammates: TeammateRow[]
   total_matches: number
   session_labels: SessionLabelsList
-  /** Nombre total d'amis configurés (settings.friend_gamertags). Sert au label UI "parmi N amis". */
+  /** Nombre total d'amis configurés du joueur. Sert au label UI "parmi N amis". */
   friends_count: number
   timeseries?: SquadTimeseriesPoint[]
   map_breakdown?: MapBreakdownRow[]
@@ -2329,12 +2334,10 @@ export type AdminUserSummary = components['schemas']['AdminUserSummary']
 
 export type AdminInviteSummary = components['schemas']['AdminInviteSummary']
 
-// Base = schéma OpenAPI généré (source unique : code/created_by/created_at/
-// expires_at/used_at/used_by). On ajoute group_id (rattachement à un groupe,
-// live-fetch) tant que l'OpenAPI ne l'a pas régénéré.
-export type InviteCode = components['schemas']['InviteCode'] & {
-  group_id?: string
-}
+// Contrat GÉNÉRÉ depuis Huma : `group_id` (rattachement à un groupe) et
+// `join_url` (lien relatif /join?invite=, rendu par le serveur) y figurent
+// depuis 2026-09-15 — plus aucun champ à rajouter à la main.
+export type InviteCode = components['schemas']['InviteCode']
 
 // ---------------------------------------------------------------------------
 // Groupes / familles (accès mutuel aux données)
@@ -2480,6 +2483,26 @@ export type TokenStatus = 'ok' | 'expiring' | 'expired' | 'absent' | 'reauth'
 export type PlayerTokenHealth = components['schemas']['PlayerTokenHealth']
 
 export type TokenHealthResponse = components['schemas']['TokenHealthResponse']
+
+// ─── Admin — Annuaire des joueurs (ADR 0035) ─────────────────────────────────
+// Miroirs de domain.AdminIdentitiesResponse (GET /admin/identities). Une ligne
+// par identité (xuid), avec ce que chacun des quatre registres en sait.
+// `xuid` peut être vide : un dossier joueur orphelin ou un profil sans identité
+// Xbox résolue reste VISIBLE, c'est même la raison d'être de cette vue.
+
+export type IdentityProfileRef = components['schemas']['ProfileRef']
+
+export type IdentityAccountRef = components['schemas']['AccountRef']
+
+export type IdentityTokenRef = components['schemas']['TokenRef']
+
+export type IdentityOrphanDirRef = components['schemas']['OrphanDirRef']
+
+export type IdentityAnomaly = components['schemas']['IdentityAnomaly']
+
+export type IdentityRecord = components['schemas']['IdentityRecord']
+
+export type AdminIdentitiesResponse = components['schemas']['AdminIdentitiesResponse']
 
 // ─── Admin — Dashboard monitoring ─────────────────────────────────────────────
 // Miroirs de domain.AdminMonitoringOverview (GET /admin/monitoring/overview),

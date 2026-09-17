@@ -17,6 +17,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { AppShell } from '@/components/shell/AppShell'
 import { log } from '@/components/shell/_logger'
 import { isAnonymousPath } from '@/components/shell/shellNavigation'
+import { needsOwnProfile, SETUP_PATH, setupRedirectPath } from '@/features/setup/setupRouting'
 import type { BootstrapResponse } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -30,6 +31,8 @@ export function RootLayout() {
   const authMode = useAppShellStore((s) => s.authMode)
   const currentUsername = useAppShellStore((s) => s.currentUsername)
   const firstLaunch = useAppShellStore((s) => s.firstLaunch)
+  const isAdmin = useAppShellStore((s) => s.isAdmin)
+  const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
@@ -153,6 +156,27 @@ export function RootLayout() {
 
     if (data.setup_required) {
       navigate({ to: '/setup' })
+      return
+    }
+
+    // ADR 0035 D3 : un compte connecté qui n'a AUCUN profil accessible n'a rien à
+    // consulter, et depuis l'ADR plus rien ne tourne pour lui tant qu'aucun profil
+    // n'existe (ni poller, ni sync). On le conduit au wizard, seule sortie de cet
+    // état. `setup_required` ci-dessus ne couvre que l'instance VIDE : sur une
+    // instance déjà peuplée, ce compte atterrissait sur « on synchronise tes
+    // derniers matchs » et n'en sortait jamais.
+    const setupPath = setupRedirectPath(
+      {
+        authMode: data.auth_mode ?? 'none',
+        currentUsername: data.current_username ?? null,
+        isAdmin: data.is_admin ?? false,
+        availablePlayerCount: data.available_players?.length ?? 0,
+      },
+      window.location.pathname,
+      isAnonymousPath,
+    )
+    if (setupPath) {
+      navigate({ to: setupPath })
     }
   }, [data, hydrateFromBootstrap, navigate])
 
@@ -191,8 +215,18 @@ export function RootLayout() {
     )
   }
 
-  // Setup en cours → pas de shell
+  // Setup en cours → pas de shell. Idem pour le wizard d'un compte sans profil à
+  // lui (ADR 0035 D3) : le shell n'a ni joueur ni titre à afficher pour lui.
   if (!isBootstrapped || setupRequired) {
+    return <Outlet />
+  }
+  const ownProfileMissing = needsOwnProfile({
+    authMode,
+    currentUsername,
+    isAdmin,
+    availablePlayerCount: availablePlayers.length,
+  })
+  if (pathname === SETUP_PATH && ownProfileMissing) {
     return <Outlet />
   }
 

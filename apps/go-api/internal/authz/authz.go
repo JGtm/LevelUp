@@ -9,6 +9,8 @@
 package authz
 
 import (
+	"log/slog"
+
 	"levelup/go-api/internal/domain"
 )
 
@@ -95,4 +97,37 @@ func CurrentUser(sess *domain.SessionData, lookup UserLookup) *domain.User {
 		}
 	}
 	return nil
+}
+
+// InstanceLocked résout le verrou « instance fermée » (lockdown) en un SEUL
+// point de décision (ADR 0035, D5). Le verrou effectif est le OU de deux
+// sources : `envLocked` (LEVELUP_INSTANCE_LOCKED, verrou forcé au boot,
+// immuable) et la clé `instance_locked` d'app_settings.json (mutable à chaud
+// via PATCH /settings), lue par le callback `load`.
+//
+// Le callback est fourni par le caller : le package authz reste PUR (il ne peut
+// pas importer platform/settings ni config sans créer un cycle et perdre sa
+// testabilité). `load` nil ⇒ seule la source env compte.
+//
+// Repli sur erreur : settings illisibles ⇒ WARN puis `false` (non verrouillé).
+// C'est le comportement historique de server_apiv1.go, conservé tel quel — un
+// app_settings.json corrompu ne doit pas fermer l'instance à son administrateur.
+// LOGUE AVANT DE DÉGRADER (CLAUDE.md règle 3).
+//
+// Trois copies de ce calcul existaient le 2026-09-15 (handlers/setup.go,
+// api/server_apiv1.go, service/bootstrap_service.go) : garde-rail
+// internal/archlint/no_bare_instance_lock_read_test.go.
+func InstanceLocked(envLocked bool, load func() (bool, error)) bool {
+	if envLocked {
+		return true
+	}
+	if load == nil {
+		return false
+	}
+	locked, err := load()
+	if err != nil {
+		slog.Warn("instance_locked: settings illisibles, repli sur non verrouillé", "err", err)
+		return false
+	}
+	return locked
 }

@@ -218,7 +218,9 @@ linters:
       # `internal/analysis/` ou dans `filmdec` — donc sous l'une ou l'autre des deux exemptions
       # ci-dessus. Sans cette ligne, le meme code se remettrait a rougir au seul motif d'avoir
       # change de repertoire, exactement ce que le paragraphe precedent refuse.
-      - path: "internal/games/halo_infinite/film/(replay|facts|source|grammar|profile)/"
+      # 2026-09-17 (lot 2.5.e) : les quatre couches passent sous `film/internal/` — meme regle,
+      # meme code, nouveau prefixe ; `replay` reste exportee au meme endroit.
+      - path: "internal/games/halo_infinite/film/(replay|internal/(facts|source|grammar|profile))/"
         linters:
           - gocyclo
           - funlen

@@ -26,7 +26,8 @@ import (
 type CareerRankData = domain.CareerRankSnapshot
 
 // syncCareerRank récupère la progression du rang carrière via le client Halo.
-// Si le token joueur est absent, la sync est sautée proprement (nil, nil).
+// Aucune dégradation « sans token propre » : `/careerranks` est public et servi par
+// n'importe quel token du pool (mesuré le 2026-09-16, D4 du plan robustesse).
 // Utilisée uniquement par career_integration_test.go (-tags=integration) ;
 // le code prod passe par syncEngine.fetchCareerRank — preserve pour les
 // tests d'intégration sans modification d'API.

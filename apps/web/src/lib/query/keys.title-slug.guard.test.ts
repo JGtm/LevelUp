@@ -160,6 +160,10 @@ const agnosticKeys = new Set<string>([
   'job',
   'settings',
   'groups',
+  // Amis d'un profil : un ami est une PERSONNE, transverse aux titres — la même
+  // liste vaut pour Halo Infinite et Halo 5 (décision PMT-4 : le cercle de
+  // confiance ne varie pas par jeu). Clé scopée par JOUEUR, pas par titre.
+  'playerFriends',
   'changelog',
   'releaseNotes',
   'feedbackSimilarIssues',
@@ -168,6 +172,8 @@ const agnosticKeys = new Set<string>([
   'gamertagSearch', // recherche Xbox globale
   // Préfixes larges (invalidation « tout le joueur »).
   'matchHistoryAll',
+  'careerAll',
+  'homeAll',
   'mediaBase',
   'feedVersion',
   'notificationsAll',
@@ -179,6 +185,11 @@ const agnosticKeys = new Set<string>([
   'adminInvariants',
   'adminDbContention',
   'adminTokenHealth',
+  // Annuaire des joueurs (ADR 0035) : CROSS-TITRE PAR NATURE — une identité
+  // porte ses profils de TOUS les titres, et c'est précisément la question
+  // posée (« ce xuid est-il suivi, et où ? »). La scoper par titre masquerait
+  // le profil d'un autre jeu, donc l'anomalie qu'on cherche.
+  'adminIdentities',
   'adminMonitoringOverview',
   'adminMonitoringScheduler',
   'adminMonitoringJobs',
@@ -204,6 +215,8 @@ const agnosticKeys = new Set<string>([
   'adminTitleDetail',
   'adminTitleDiagnostic',
   'adminUsers',
+  'adminInvites', // invitations d'instance : un compte, pas un titre
+
   'adminAppearanceDiagMutation',
   // Namespaces imbriqués agnostiques.
   'prestige.meAll', // préfixe large (userId)
