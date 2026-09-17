@@ -55,8 +55,13 @@ const ecsProbeBytes = 512
 // bienvenu, et c'est un progres de portage. Vers le bas : c'est qu'un deser a gagne une porte —
 // a expliquer avant de reecrire le chiffre. La somme des deux, elle, vaut le nombre de lignes a
 // largeur entiere de la table.
+// 2026-09-17 (lot 3.6.a) : 114 -> 115 largeurs FIXES, gardees inchangees. La ligne neuve est
+// `ti=9 i4 managed-player-forge-weather-effect-overrides-component`, qui passe de `non_porte`
+// (aucun entier en `bits_typ`, donc hors du controle) a `porte` a 64 bits inconditionnels. C est
+// une montee de la bonne categorie : un composant de plus dont la table dit la largeur et dont le
+// deser la consomme.
 const (
-	ecsLargeursFixes   = 114
+	ecsLargeursFixes   = 115
 	ecsLargeursGardees = 65
 )
 

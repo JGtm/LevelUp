@@ -27,89 +27,12 @@ package grammar
 // commit par commit sur l integration (`git log --first-parent`), la suite reelle est celle-ci —
 // un lot, un rang, dans l ordre ou les merges sont tombes.
 //
-// LES RANGS `.12` A `.26` VIVENT DANS `rev_chronique_archive.go` : la chronique se
+// LES RANGS `.12` A `.27` VIVENT DANS `rev_chronique_archive.go` : la chronique se
 // ROTATIONNE quand ce fichier atteint 500 lignes, comme `.ai/thought_log.md`. Le geste a ete
-// refait le 2026-09-16 (lot 2.5.b), sur les rangs `.21` a `.26` (les six lots de la famille
-// 2.2) : c est le geste ordinaire que l en-tete de l archive annonce, pas un incident. Ce qui
-// suit est la suite VIVANTE, a partir du `.27`.
-//
-// ENTREE `grammar-2026-09-15.27` (2026-09-17, lot 2.3 — RANG PROVISOIRE) : `.26` -> `.27`.
-// AUCUN OCTET N EST LU AUTREMENT.
-//
-// LE PROFIL DE BALAYAGE REMPLACE L HERITAGE PAR L ETAT DU PROCESSUS. La variable `herite`
-// (`profil_herite.go`, lots 2.2.a/b/e) — traversee, largeur d axe absolue, largeurs des objets
-// du monde, decoupage MPP, `param_4` force — disparait. Ce qu elle portait devient
-// [ProfilDeBalayage], une VALEUR : le lecteur en tient une copie (`Lecteur.p`), le contexte du
-// film celle du decodage courant, et `FrameConfig.Profil` la passe aux portes de balayage.
-//
-// LA CALIBRATION DE `killsource` VOYAGE DESORMAIS PAR LES OPTIONS (condition D1 du pilote).
-// `replaybuild.BuildBytes` decode `killsource` PUIS appelle `replay.BuildFromFilm` dans le MEME
-// processus ; jusqu ici la cuisson heritait des largeurs calibrees par l ETAT DU PROCESSUS —
-// heritage REEL et VOULU, mais invisible et incompatible avec deux decodages en parallele. Le
-// chemin est explicite : `killsource.Result.ProfilCalibre` -> `replay.Options.ProfilDeBalayage`
-// -> `FilmContext`. Kill-feed non decode : `killsource.ProfilDeDepart()` — l invariant plus le
-// `param_4` force a zero, ce que `Decode` laissait derriere lui meme en echec. Pas STRUCTUREL.
-//
-// LA DOUBLE ECRITURE DATEE EST RETIREE A SA DATE CIBLE : `replay.doubleEcritureGlobales`
-// (bascule 2026-09-17, cible « lot 2.3 », critere « 0 variable mutable ») disparait avec la
-// variable qu elle alimentait ; `installWorldObjectPrecision` pose sur le CONTEXTE.
-//
-// LES ENVELOPPES D2 (`ScanFilm*(dir)`) POSENT LE DECOUPAGE LU DANS LE FILM sur leur propre
-// contexte — le geste que chaque instrument repetait a la main, et dont l oubli « desalignait les
-// desers sans lever d erreur ». La CUISSON prend les largeurs du CATALOGUE, jamais l auto-detection.
-//
-// LES DOUZE BASCULES DE GRAMMAIRE SUIVENT LE MEME CHEMIN (famille 2 du lot) : les A/B de
-// retro-ingenierie — corruption per-composant, queue d un record NEW, deser d etat par
-// archetype, `simulation-state` complet, portee baseline, grammaire d ECRIVAIN du chemin absolu
-// d i0, corps i54 et i59, inference de chaine, generation stricte, et les DEUX tables de
-// largeurs — deviennent [GrammaireBalayage], un champ du profil. Ratchet : 42 -> 30.
-//
-// LA GENERATION STRICTE ETAIT LE SECOND HERITAGE SILENCIEUX, desormais ecrit :
-// `killsource.resetGlobals` levait `SetStrictGeneration(true)` pour tout le PROCESSUS sans
-// jamais le rabaisser. [killsource.ProfilDeDepart] le porte, `replaybuild` le passe.
-//
-// UN CADRE DE TRAME SE PREND AU CONTEXTE ([FilmContext.CadreDeBalayage]), plus a
-// `DefaultFrameConfig()` seul, qui rend l INVARIANT : s en contenter decoderait aux largeurs
-// d une autre carte — ce que l heritage masquait (`ScanObjectDeaths`).
-//
-// LA CAPTURE DE POSITION SUIT (famille 3 du lot). Six variables de paquet decrivaient UN record
-// en cours de decodage — ou le composant i0 a commence, son slot, le monde d accumulation et son
-// slot, le repli d absolue : elles deviennent `captureDePosition`, un champ du LECTEUR. La
-// septieme, l histogramme des index de plage absolus, est un COMPTEUR et rejoint `Observation`.
-// `lastRepVersion` / `LastRepVersion()` : SUPPRIMES (aucun appelant). Ratchet 30 -> 23, dont
-// UNE SEULE encore ecrite (`observateur`).
-//
-// L OBSERVATEUR EST LA DERNIERE A PARTIR (famille 4 du lot), avec les VINGT-HUIT reglages
-// publics qui l ecrivaient. Chaque balayage construit le SIEN et le pose AVEC son profil par un
-// porteur unique — `ContexteDeLecture{Profil, Obs}` — dont les deux champs ont une nature
-// OPPOSEE : le profil DECIDE des largeurs, l observateur ne fait que RECEVOIR. Les onze
-// `publishXxx` et les compteurs d issue de chaine deviennent des methodes nil-safe
-// d `Observation` ; `ChainStats`, `ResetChainStats`, `ChainRepairedCount`, `InferResyncCount`
-// (accesseurs DE PROCESSUS sans appelant) sont supprimes.
-//
-// RATCHET : 23 -> 22 puis 21 (resserre a la revue), et surtout **ZERO variable de paquet
-// ECRITE** : quatre erreurs sentinelles, seize tables de grammaire, un dedoublonneur.
-//
-// LE VERROU DE PROCESSUS DISPARAIT (famille 5, item 2.3.1) : `LockProcessDecode` et son fichier
-// `decode_gate.go` sont SUPPRIMES, avec les 373 sites d appel (276 fichiers) qui le prenaient.
-// Son en-tete nommait DEUX raisons d exister — l etat de paquet du decodeur, et « la table sans
-// verrou » des largeurs de bouchon ; les quatre familles precedentes ont retire l une (devenue
-// VALEUR du lecteur) et l autre (CHAMP de l observation). Un verrou prive de ses deux raisons
-// n est plus une protection mais une serialisation. Le verrou INTER-PROCESSUS
-// `filmproc.AcquireSolo` n est PAS concerne : il garde la RAM de la machine, et il reste.
-//
-// DEUX RATCHETS FIGENT LE RESULTAT (item 2.3.2). `TestAucunVarDePaquetEcriteDansFilmdec` refuse
-// par AST toute ecriture visant une variable de paquet de `filmdec`.
-// `TestAucunVerrouDeDecodageDePaquet` remplace l ancien ratchet INVERSE qui EXIGEAIT le verrou :
-// il interdit `LockProcessDecode`, `processDecodeMu` et un fichier nomme `decode_gate.go`.
-//
-// DEUX FILMS SE DECODENT EN PARALLELE (item 2.3.3) : `TestDeuxFilmsEnParallele` decode
-// `a521164d` (HI_1_4_1) et `fb1a1a72` (HI_1_13_0) en serie puis dans deux goroutines ;
-// empreintes identiques a l octet, sous `-race`.
-//
-// `facts.Rev` ne bouge PAS : `killsource/` change de FORME (la calibration rend un
-// profil, `resetGlobals` disparait) mais les lignes PRODUITES sont identiques a l octet. Son
-// golden est regenere pour refiger le couple (revision, empreinte). `SchemaVersion` reste 60.
+// refait le 2026-09-16 (lot 2.5.b) sur les rangs `.21` a `.26`, puis le 2026-09-17 (lot 3.6.a)
+// sur le rang `.27` : c est le geste ordinaire que l en-tete de l archive annonce, pas un
+// incident, et il etait du — le fichier etait a 500 lignes PILE, donc au plafond du ratchet de
+// taille (decouverte D2 (3.3.1) du plan). Ce qui suit est la suite VIVANTE, a partir du `.28`.
 //
 // ENTREE `grammar-2026-09-15.28` (2026-09-18, lot 2.4.1 — RANG PROVISOIRE) : `.27` -> `.28`.
 // AUCUN OCTET N EST LU AUTREMENT, et c est PROUVE bit a bit, pas suppose.
@@ -498,3 +421,29 @@ package grammar
 // `profile/grenade.go`), derive le motif du `ti` projectile RESOLU PAR NOM dans le registre du
 // film, et ecarte par le sixieme bit d index les naissances de `managed-player`, comptees.
 // `profile.Rev` monte avec elle ; `facts.Rev` derriere ; `SchemaVersion` ne bouge PAS.
+//
+// ENTREE `grammar-2026-09-15.41` (2026-09-17, lot 3.6.a — RANG PROVISOIRE, LE PILOTE
+// RENUMEROTE A LA FUSION) : `.40` -> `.41`. UNE GRAMMAIRE DE COMPOSANT DE PLUS EST LUE, ET LE
+// BLOQUANT DE `ti=9` TOMBE.
+//
+// UN LECTEUR NEUF, RELEVE CHEZ L ECRIVAIN (`components_managed_player.go`) : `i4
+// managed-player-forge-weather-effect-overrides-component`, ecrivain `FUN_142ed5bc8`, `R(32)` +
+// `R(32)`, 64 bits INCONDITIONNELS. AUCUNE ENTREE DE PROFIL : les deux largeurs sont des
+// litteraux d instruction, rien n y depend d une carte, d une table du jeu ni d un build.
+//
+// CE QUE LA MESURE DIT. Fermeture d image-cle de `ti=9` sur les sept bobines du ratchet 0.A.3 :
+// `0 / 1 717` (bloquant `i4` sur les SEPT) -> `1 716 / 1 717`, et plus AUCUN bloquant nomme sur
+// aucune bobine. Le 1 717e n est pas un record : c est une ancre fortuite de `111fa685`
+// (`n1 = 2 154 823 696` contre `12` sur les 1 716 autres), la population que
+// `default_state_n2_constant_test.go` ecarte deja par ce critere.
+//
+// `facts.Rev` NE MONTE PAS, ET C EST UNE DECISION ECRITE : aucune source de `facts/` n est
+// touchee et aucun fait publie ne change. Son golden est refige AU MEME RANG
+// (`killsource-2026-09-16.7`) parce qu il hache la VALEUR de cette constante — c est la branche
+// « la sortie ne peut PAS changer » que son propre gate nomme, et elle laisse `decoder_rev`
+// intacte en base, donc AUCUNE ligne de `match_kill_events` candidate au backlog. La preuve
+// attendue est celle des deux gates avec decodage (equivalence 20 films, corpus gate 17
+// temoins) : toute etape qui bouge est un ARRET, pas un ajustement.
+//
+// `SchemaVersion` reste 61 : aucun consommateur ne publie ce composant, l artefact cuit est
+// inchange.

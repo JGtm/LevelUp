@@ -39,11 +39,16 @@ import (
 
 // worldObjectPrecisionReaders — ALLOWLIST DATÉE (2026-08-15). Chemin relatif à apps/go-api.
 var worldObjectPrecisionReaders = map[string]string{
-	"internal/games/halo_infinite/film/internal/grammar/rev_chronique.go": "CITATION dans " +
-		"l'ENTRÉE DE CHRONIQUE du lot 2.3 (2026-09-17) : elle dit ce que le profil de balayage " +
-		"a remplacé, donc elle nomme les largeurs world-object. Aucune lecture de la valeur — " +
-		"ce fichier ne porte QUE la chronique de la révision de grammaire (sortie de " +
-		"`rev.go` le 2026-09-18, lot 2.4.1, au seuil des 500 lignes)",
+	// L'ENTRÉE SUIT LA CHRONIQUE : le rang `.27` (lot 2.3) a été ROTATIONNÉ de
+	// `rev_chronique.go` vers l'archive le 2026-09-17 (lot 3.6.a) parce que le fichier vivant
+	// était à 500 lignes PILE, donc au plafond du ratchet de taille. La citation a déménagé
+	// avec lui ; l'allowlist désigne donc l'archive, et plus la suite vivante.
+	"internal/games/halo_infinite/film/internal/grammar/rev_chronique_archive.go": "CITATION " +
+		"dans l'ENTRÉE DE CHRONIQUE du lot 2.3 (2026-09-17, rang `.27`) : elle dit ce que le " +
+		"profil de balayage a remplacé, donc elle nomme les largeurs world-object. Aucune " +
+		"lecture de la valeur — ce fichier ne porte QUE la chronique de la révision de " +
+		"grammaire (sortie de `rev.go` le 2026-09-18, lot 2.4.1, au seuil des 500 lignes ; " +
+		"rotationnée vers l'archive le 2026-09-17, lot 3.6.a, pour la même raison)",
 	"internal/games/halo_infinite/film/types/grammar_bipede.go": "CITATION dans la godoc du champ " +
 		"`GrappleRead.PosQ` (2026-09-17, lot 2.6.2) : elle dit que les trois quanta sont aux " +
 		"largeurs d'axe INSTALLÉES AU MOMENT DU BALAYAGE, ce qui est précisément la question " +

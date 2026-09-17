@@ -61,9 +61,6 @@ func consumePlayerAndSceneComponent(br *Lecteur, name string, typeIndex uint32, 
 			}
 		}
 		return variant, nil, true
-	case "managed-player-team-designator-component": // ti=9 i0 (FUN_140f581e8) — R(4)
-		br.ReadBits(4)
-		return variant, nil, true
 	case compGameEngineCurrentState: // ti=0 i2 (FUN_14116d1d0) — publie
 		consumeGameEngineCurrentState(br)
 		return variant, nil, true
@@ -180,17 +177,6 @@ func consumeCrewFlockAndMusicComponent(br *Lecteur, name string, typeIndex uint3
 	case compPlayerLivesRemaining: // ti=5 i14 (FUN_141055734) — R(7), publie
 		consumePlayerLivesRemaining(br)
 		return variant, nil, true
-	case "managed-player-color-override-component": // ti=9 i1 (FUN_142ed5b54) — 8xR(8)=64 (2 couleurs RGBA quant)
-		for i := 0; i < 8; i++ {
-			br.ReadBits(8)
-		}
-		return variant, nil, true
-	case "managed-player-flags-component": // ti=9 i2 (FUN_142ed5bac) — R(4)
-		br.ReadBits(4)
-		return variant, nil, true
-	case "managed-player-back-button-scoreboard-flair-component": // ti=9 i3 (FUN_142ed5af4) — R(32)
-		br.ReadBits(32)
-		return variant, nil, true
 	case "music-state-component": // ti=17 i1 (FUN_142ed5ef0) — R1+R32+R33+R33+gate1{R1+R16+R16}+gate2{6xR16}
 		br.ReadBit()
 		br.ReadBits(32)
@@ -284,32 +270,6 @@ func consumePlayerTailAndGameEngineComponent(br *Lecteur, name string, typeIndex
 	case "player-allowed-to-quit-component": // ti=5 i26 (FUN_142f04138) — R(1)
 		br.ReadBit()
 		return variant, nil, true
-	case "managed-player-active-mission-name-component": // ti=9 i5 (FUN_142ed5ab0) — R(32)+R(32)
-		br.ReadBits(32)
-		br.ReadBits(32)
-		return variant, nil, true
-	case "managed-player-show-active-mission-name-in-hud-component": // ti=9 i6 (FUN_142ed5d68) — R(1)
-		br.ReadBit()
-		return variant, nil, true
-	case "managed-player-campaign-progress-component": // ti=9 i7 (FUN_142ed5b18) — R(8)
-		br.ReadBits(8)
-		return variant, nil, true
-	case "managed-player-current-season-component": // ti=9 i8 (FUN_142ed5b88) — R(32)
-		br.ReadBits(32)
-		return variant, nil, true
-	case "managed-player-custom-input-prompt-widget": // ti=9 i9 (FUN_141fcf160) — gates+R(32)+R(3)count[si>0:union -> desync]
-		if !br.ReadBit() { // gate_present==0 -> stop
-			return variant, nil, true
-		}
-		br.ReadBits(2)
-		if !br.ReadBit() { // gate_sub==0 -> stop
-			return variant, nil, true
-		}
-		br.ReadBits(32)
-		if br.ReadBits(3) != 0 { // count>0 -> boucle variant taggee, desync propre
-			return variant, nil, false
-		}
-		return variant, nil, true
 	case compGameEngineGracePeriod: // ti=0 i7 (FUN_141165d24) — R(16)+R(16)+R(5), publie
 		consumeGameEngineGracePeriod(br)
 		return variant, nil, true
@@ -357,6 +317,78 @@ func consumePlayerTailAndGameEngineComponent(br *Lecteur, name string, typeIndex
 		return variant, nil, true
 	case compSplashMessageStatic: // ti=47 i0 (FUN_141085d50) — sonde sur le R(24) inconditionnel
 		br.obs.publishProbe(typeIndex, ProbeSplashStatic, consumeManagedSplashMessage(br))
+		return variant, nil, true
+	default:
+		return consumeManagedPlayerComponent(br, name, typeIndex, level)
+	}
+}
+
+// consumeManagedPlayerComponent porte l ARCHETYPE `managed-player` (ti=9) EN ENTIER — le profil
+// du joueur tel que le moteur le replique.
+//
+// # POURQUOI UN MAILLON A LUI (lot 3.6.a, 2026-09-17)
+//
+// Les dix composants de `ti=9` etaient EPARPILLES sur trois maillons de la chaine — `i0` dans le
+// premier, `i1` a `i3` dans le deuxieme, `i5` a `i9` dans le troisieme — par pur hasard d ordre
+// de portage. Les trois maillons etaient AU PLAFOND du ratchet de longueur
+// (`archlint/film_function_length_test.go`, table datee du 2026-09-16) : porter `i4` n avait donc
+// litteralement pas de place, et le ratchet dit lui-meme quoi faire — « sortir autant de lignes
+// ailleurs dans la fonction, ou l extraire ».
+//
+// L EXTRACTION EST CELLE-CI, ET ELLE EST SANS EFFET SUR LES BITS. Un `switch` sur un nom de
+// composant, dont les branches sont DISJOINTES, redistribue sur des maillons chaines par leur
+// `default` : chaque nom tombe exactement sur la meme branche qu avant. Les trois maillons
+// d origine perdent leurs `case` `ti=9` et rien d autre. Le garde-rail G1
+// (`ecs_table_guard_test.go`) confronte la chaine entiere a `ecs_table.tsv` et rougirait sur un
+// `case` perdu en route.
+//
+// Les grammaires elles-memes vivent dans `components_managed_player.go` des qu elles font plus
+// d une lecture — c est la convention du paquet.
+func consumeManagedPlayerComponent(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *types.DeadState, ported bool) { //nolint:gocyclo // un case par composant du registre
+	variant = noVariant
+	switch name {
+	case "managed-player-team-designator-component": // ti=9 i0 (FUN_140f581e8) — R(4)
+		br.ReadBits(4)
+		return variant, nil, true
+	case "managed-player-color-override-component": // ti=9 i1 (FUN_142ed5b54) — 8xR(8)=64 (2 couleurs RGBA quant)
+		for i := 0; i < 8; i++ {
+			br.ReadBits(8)
+		}
+		return variant, nil, true
+	case "managed-player-flags-component": // ti=9 i2 (FUN_142ed5bac) — R(4)
+		br.ReadBits(4)
+		return variant, nil, true
+	case "managed-player-back-button-scoreboard-flair-component": // ti=9 i3 (FUN_142ed5af4) — R(32)
+		br.ReadBits(32)
+		return variant, nil, true
+	case compManagedPlayerForgeWeather: // ti=9 i4 (FUN_142ed5bc8) — R(32)+R(32), lot 3.6.a
+		consumeManagedPlayerForgeWeatherOverrides(br)
+		return variant, nil, true
+	case "managed-player-active-mission-name-component": // ti=9 i5 (FUN_142ed5ab0) — R(32)+R(32)
+		br.ReadBits(32)
+		br.ReadBits(32)
+		return variant, nil, true
+	case "managed-player-show-active-mission-name-in-hud-component": // ti=9 i6 (FUN_142ed5d68) — R(1)
+		br.ReadBit()
+		return variant, nil, true
+	case "managed-player-campaign-progress-component": // ti=9 i7 (FUN_142ed5b18) — R(8)
+		br.ReadBits(8)
+		return variant, nil, true
+	case "managed-player-current-season-component": // ti=9 i8 (FUN_142ed5b88) — R(32)
+		br.ReadBits(32)
+		return variant, nil, true
+	case "managed-player-custom-input-prompt-widget": // ti=9 i9 (FUN_141fcf160) — gates+R(32)+R(3)count[si>0:union -> desync]
+		if !br.ReadBit() { // gate_present==0 -> stop
+			return variant, nil, true
+		}
+		br.ReadBits(2)
+		if !br.ReadBit() { // gate_sub==0 -> stop
+			return variant, nil, true
+		}
+		br.ReadBits(32)
+		if br.ReadBits(3) != 0 { // count>0 -> boucle variant taggee, desync propre
+			return variant, nil, false
+		}
 		return variant, nil, true
 	default:
 		return consumeCaptureAndBipedComponent(br, name, typeIndex, level)
