@@ -21,14 +21,17 @@ package domain
 // sur un scope potentiellement différent (une écriture concurrente entre les deux lectures
 // suffit) ; ils sont donc agrégés SUR LES MÊMES LIGNES que les match_id.
 //
-// # LES DEUX SCOPES POSSIBLES, ET POURQUOI ILS NE SE MÉLANGENT PAS (D2)
+// # UN SEUL SCOPE, LE MÊME POUR LES DEUX JOUEURS (D2, amendé au lot 3-bis le 2026-09-17)
 //
-// Un joueur LOCAL est mesuré sur TOUS ses matchs (campagne exclue) : c'est la même doctrine
-// que les métriques déjà publiées par la page. Un joueur NON local n'existe localement que
-// dans les matchs qu'il a joués AVEC le joueur courant : son scope est l'intersection, et ce
-// n'est pas la même population — d'où `IsSample` côté réponse et la note « sur N matchs ».
-// Confondre les deux publierait un profil d'arme de carrière là où seule une poignée de
-// matchs a été observée.
+// Tous les matchs du joueur PRÉSENTS DANS LA BASE PARTAGÉE, campagne exclue — la même doctrine
+// que les métriques déjà publiées par la page. Un second scope « croisé » (l'intersection avec
+// les matchs du joueur courant) était prévu pour un joueur non suivi ; il a été retiré parce
+// qu'il lisait la même table avec la même exclusion et n'y ajoutait qu'un `EXISTS` : son
+// résultat était un SOUS-ENSEMBLE du scope lifetime, donc « croisé non vide » impliquait
+// « lifetime non vide » et la branche qui l'appelait ne pouvait jamais être prise.
+//
+// Ce qu'il fallait dire au lecteur — « ce joueur, on ne l'a vu que quelques fois » — est porté
+// par `Matches`, publié pour les deux joueurs.
 type CompareWeaponScope struct {
 	// MatchIDs borne les deux lectures d'armes. Jamais vide quand le scope existe : un
 	// scope sans match n'est pas construit (le repo rend (nil, nil)).
@@ -63,13 +66,17 @@ type CompareWeaponProfile struct {
 // top 3 mais a ses compteurs natifs. Faire tomber le profil entier au premier bloc manquant
 // cacherait ce qui est pourtant mesuré.
 type CompareWeaponSide struct {
-	// Matches est la taille du scope (D2) — publiée telle quelle avec IsSample.
+	// Matches est la taille du scope (D2) — le nombre de matchs de ce joueur PRÉSENTS DANS
+	// LA BASE PARTAGÉE, campagne exclue.
+	//
+	// IL EST PUBLIÉ POUR LES DEUX JOUEURS, TOUJOURS, et c'est lui qui porte le « sur N
+	// matchs » du front. Un drapeau `is_sample` a existé ici jusqu'au lot 3-bis
+	// (2026-09-17) pour distinguer une carrière d'un échantillon croisé ; il a été retiré
+	// avec le scope croisé, qui était un sous-ensemble du scope lifetime et n'était donc
+	// jamais atteint. Ce qu'il prétendait dire, ce nombre le dit déjà : un joueur peu vu
+	// affiche un petit N, et le lecteur en tire la même conclusion sans qu'on la lui
+	// qualifie.
 	Matches int `json:"matches"`
-	// IsSample dit que ce profil décrit un ÉCHANTILLON CROISÉ et non une carrière : le
-	// joueur n'est pas suivi localement, et n'existe ici que par les matchs joués avec le
-	// joueur courant. Le front l'annonce (« sur N matchs »), même règle d'affichage que
-	// `sample_size_b`. Omis (false) pour un joueur local.
-	IsSample bool `json:"is_sample,omitempty"`
 	// TotalKills est le DÉNOMINATEUR des parts de FragClasses — les frags du joueur sur le
 	// scope, tels que les compte la base, jamais la somme des classes (qui, elle, peut
 	// laisser un résidu « non attribué » et c'est précisément ce que la part doit montrer).

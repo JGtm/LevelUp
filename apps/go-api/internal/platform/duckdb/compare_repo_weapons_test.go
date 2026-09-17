@@ -1,23 +1,26 @@
 //go:build integration
 
-// Package duckdb — compare_repo_weapons_test.go : les deux scopes du profil d'armes du
-// Face-à-face (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 2, item 2.3).
+// Package duckdb — compare_repo_weapons_test.go : le scope du profil d'armes du Face-à-face
+// (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 2 item 2.3, amendé au lot 3-bis).
 //
 // Même régime de tag que les autres tests du paquet (`integration`) : ils montent de vraies
 // DB DuckDB `:memory:`.
 //
 // # CE QUE CES TESTS VERROUILLENT, ET QUI SE TROMPE EN SILENCE SANS EUX
 //
-//  1. LA CAMPAGNE EST EXCLUE DES DEUX CÔTÉS. Elle l'est par un fragment SQL qui est un NO-OP
-//     sur un titre sans mode masqué — un test mené sur le titre par défaut serait donc vert
-//     quelle que soit l'implémentation. Ces tests passent par `halo_5`, le seul titre qui
-//     déclare des game_variant de Campagne, pour que l'exclusion ait quelque chose à exclure.
-//  2. LE SCOPE CROISÉ COMPTE LES TOTAUX DE B, PAS CEUX DE A. Les deux joueurs sont dans la
-//     même table et la même requête ; intervertir les alias rend un scope plausible et faux.
-//     Les fixtures donnent donc à A et à B des compteurs DIFFÉRENTS sur le match commun.
-//  3. ZÉRO MATCH REND (nil, nil), jamais un scope vide — qui passerait ensuite le
+//  1. LA CAMPAGNE EST EXCLUE. Elle l'est par un fragment SQL qui est un NO-OP sur un titre
+//     sans mode masqué — un test mené sur le titre par défaut serait donc vert quelle que
+//     soit l'implémentation. Ces tests passent par `halo_5`, le seul titre qui déclare des
+//     game_variant de Campagne, pour que l'exclusion ait quelque chose à exclure.
+//  2. ZÉRO MATCH REND (nil, nil), jamais un scope vide — qui passerait ensuite le
 //     `Validate()` des lecteurs d'armes et remonterait une erreur de filtres là où la vérité
 //     est « ce joueur n'a aucun match ici ».
+//
+// DEUX TESTS ONT ÉTÉ RETIRÉS AU LOT 3-BIS (2026-09-17) avec la méthode qu'ils couvraient,
+// `GetCrossWeaponScope`. Sa requête lisait la même table avec la même exclusion et n'y
+// ajoutait qu'un `EXISTS` sur le joueur courant : son résultat était un SOUS-ENSEMBLE de celui
+// testé ici, donc la branche de service qui l'appelait ne pouvait jamais être prise. Les tests
+// passaient — c'est précisément ce qui rendait le chemin mort invisible.
 package duckdb
 
 import (
@@ -33,9 +36,6 @@ const slugCampagne = "halo_5"
 // `analysis.campaignExcludedVariantIDs`. Écrit ici en clair et non lu depuis la source : ce
 // test doit rougir si la source change sans que l'exclusion suive.
 const variantCampagne = "00000003-0000-0010-8000-00aa00389b71"
-
-// xuidCompareB : le second joueur des scénarios croisés.
-const xuidCompareB = "xuid_player_002"
 
 // seedScopeMatch pose un match au registre (avec son variant) et la ligne d'un participant.
 type scopeParticipant struct {
@@ -120,70 +120,5 @@ func TestGetWeaponScope_AucunMatch(t *testing.T) {
 	if scope != nil {
 		t.Fatalf("scope = %+v, attendu nil : un scope vide passerait les lecteurs d'armes et "+
 			"remonterait une erreur de filtres", scope)
-	}
-}
-
-// TestGetCrossWeaponScope_MatchsCommunsTotauxDeB : A joue trois matchs, B deux, un seul est
-// commun. Le scope croisé ne retient que celui-là, et porte les compteurs de B.
-func TestGetCrossWeaponScope_MatchsCommunsTotauxDeB(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	ctx := context.Background()
-	wipeScopeTables(t, pdb, ctx)
-
-	for _, p := range []scopeParticipant{
-		// Le match commun : A et B y ont des compteurs DIFFÉRENTS, pour que l'inversion
-		// des deux alias de l'auto-jointure se voie.
-		{matchID: "m_commun", xuid: pTestXUID, kills: 20, deaths: 1, melee: 9, grndes: 9},
-		{matchID: "m_commun", xuid: xuidCompareB, kills: 5, deaths: 8, melee: 2, grndes: 1},
-		// A seul.
-		{matchID: "m_a_seul", xuid: pTestXUID, kills: 30, deaths: 2, melee: 7, grndes: 7},
-		// B seul : hors du scope croisé, il décrirait une carrière que la page n'a pas vue.
-		{matchID: "m_b_seul", xuid: xuidCompareB, kills: 40, deaths: 3, melee: 6, grndes: 6},
-		// Commun mais de Campagne : exclu comme côté A.
-		{matchID: "m_commun_campagne", xuid: pTestXUID, variantID: variantCampagne, kills: 1},
-		{matchID: "m_commun_campagne", xuid: xuidCompareB, variantID: variantCampagne,
-			kills: 99, deaths: 99, melee: 99, grndes: 99},
-	} {
-		seedScopeMatch(t, pdb, ctx, p)
-	}
-
-	scope, err := NewCompareRepo(pdb).GetCrossWeaponScope(ctx, pTestXUID, xuidCompareB, slugCampagne)
-	if err != nil {
-		t.Fatalf("GetCrossWeaponScope: %v", err)
-	}
-	if scope == nil {
-		t.Fatal("scope nil : un match commun existe")
-	}
-	if scope.Matches != 1 || len(scope.MatchIDs) != 1 || scope.MatchIDs[0] != "m_commun" {
-		t.Fatalf("matchs = %v, attendu [m_commun] (m_a_seul, m_b_seul et le commun de "+
-			"Campagne sont hors scope)", scope.MatchIDs)
-	}
-	if scope.Kills != 5 || scope.Deaths != 8 || scope.MeleeKills != 2 || scope.GrenadeKills != 1 {
-		t.Fatalf("totaux = k%d d%d m%d g%d, attendu k5 d8 m2 g1 (ceux de B sur le match "+
-			"commun — ceux de A y valent k20 d1 m9 g9)",
-			scope.Kills, scope.Deaths, scope.MeleeKills, scope.GrenadeKills)
-	}
-}
-
-// TestGetCrossWeaponScope_JamaisCroise : deux joueurs sans match commun rendent (nil, nil) —
-// c'est le cas produit « B jamais croisé », où la section entière disparaît proprement.
-func TestGetCrossWeaponScope_JamaisCroise(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	ctx := context.Background()
-	wipeScopeTables(t, pdb, ctx)
-
-	for _, p := range []scopeParticipant{
-		{matchID: "m_a_seul", xuid: pTestXUID, kills: 30, deaths: 2},
-		{matchID: "m_b_seul", xuid: xuidCompareB, kills: 40, deaths: 3},
-	} {
-		seedScopeMatch(t, pdb, ctx, p)
-	}
-
-	scope, err := NewCompareRepo(pdb).GetCrossWeaponScope(ctx, pTestXUID, xuidCompareB, slugCampagne)
-	if err != nil {
-		t.Fatalf("GetCrossWeaponScope: %v", err)
-	}
-	if scope != nil {
-		t.Fatalf("scope = %+v, attendu nil : aucun match commun", scope)
 	}
 }

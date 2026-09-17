@@ -494,24 +494,19 @@ type CompareRepository interface {
 	// Retourne (nil, nil) si aucun match croisé exploitable — best-effort.
 	GetCrossMatchSample(ctx context.Context, xuidA, xuidB string) (*domain.CrossMatchSample, error)
 
-	// GetWeaponScope rend le scope LIFETIME d'un joueur local : tous ses matchs (campagne
-	// exclue, mêmes clauses que GetLocalStats) et ses totaux sur cet ensemble.
+	// GetWeaponScope rend le scope du profil d'armes d'un joueur : TOUS ses matchs présents
+	// dans la base partagée (campagne exclue, mêmes clauses que GetLocalStats) et ses
+	// totaux sur cet ensemble.
 	//
-	// C'est le scope du profil d'armes d'un joueur LOCAL (plan
-	// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, D2). (nil, nil) si le joueur n'a aucun
-	// match — best-effort : le profil est alors simplement absent, jamais un bloc à zéro.
+	// C'EST LE SEUL SCOPE, POUR LES DEUX JOUEURS (plan
+	// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, D2 amendé au lot 3-bis, 2026-09-17). Un
+	// second scope « croisé » (les matchs communs à A et B) a été retiré : il lisait la
+	// même table avec la même exclusion et n'y ajoutait qu'un EXISTS, donc son résultat
+	// était un SOUS-ENSEMBLE de celui-ci et la branche qui l'appelait était morte.
+	//
+	// (nil, nil) si le joueur n'a aucun match — best-effort : le profil est alors simplement
+	// absent, jamais un bloc à zéro.
 	GetWeaponScope(ctx context.Context, xuid, titleSlug string) (*domain.CompareWeaponScope, error)
-
-	// GetCrossWeaponScope rend le scope CROISÉ : les matchs communs à xuidA et xuidB, avec
-	// les totaux de xuidB sur ces matchs seuls.
-	//
-	// POURQUOI UNE SECONDE MÉTHODE ET NON UN DRAPEAU. Un joueur non local n'a pas de
-	// carrière lisible ici : il n'existe dans la base partagée QUE par les matchs qu'il a
-	// joués avec le joueur courant. Son profil décrit donc un ÉCHANTILLON, que la réponse
-	// annonce (« sur N matchs »). Une méthode unique à drapeau ferait de cette distinction
-	// un détail d'appel, alors qu'elle change ce que le nombre publié veut dire.
-	// (nil, nil) si aucun match commun.
-	GetCrossWeaponScope(ctx context.Context, xuidA, xuidB, titleSlug string) (*domain.CompareWeaponScope, error)
 }
 
 // LeaderboardRepository fournit les données pour la page Classement.
@@ -591,9 +586,6 @@ func (n *noopCompareRepo) GetCrossMatchSample(_ context.Context, _, _ string) (*
 	return nil, nil
 }
 func (n *noopCompareRepo) GetWeaponScope(_ context.Context, _, _ string) (*domain.CompareWeaponScope, error) {
-	return nil, nil
-}
-func (n *noopCompareRepo) GetCrossWeaponScope(_ context.Context, _, _, _ string) (*domain.CompareWeaponScope, error) {
 	return nil, nil
 }
 
