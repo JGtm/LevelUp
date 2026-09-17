@@ -42,16 +42,14 @@ en = "suicides"
 fr = "Frags parfaits"
 en = "Perfect kills"
 
-# Libellé « vol à la tire » PAR TITRE (le terme officiel diffère) : Halo Infinite =
-# « Dépositaire », Halo 5 = « Vol à la tire ». EN commun = « Hijacks ». La sélection se
-# fait côté SynthesisPage via currentTitleSlug (précédent NavL2 — le gating slug== est
-# interdit côté Go, autorisé côté front pour un simple choix de libellé).
-[synthesis.combat_profile.hijacks_infinite]
-fr = "Dépositaire"
-en = "Hijacks"
-
-[synthesis.combat_profile.hijacks_h5]
-fr = "Vol à la tire"
+# Véhicules détournés : éjecter le pilote ennemi et prendre son véhicule (awards
+# `hijacked_*` côté Halo Infinite, médailles Hijack et Skyjack côté Halo 5). Libellé
+# UNIQUE pour tous les titres — aucune sélection par slug côté front.
+# « Dépositaire » (ancien libellé Halo Infinite) est abandonné depuis le 2026-09-17 :
+# c'est le nom officiel FR de la médaille Reclaimer (« s'emparer d'un véhicule ennemi
+# qui vous appartenait »), qui compte autre chose que le détournement.
+[synthesis.combat_profile.hijacks]
+fr = "Détournements"
 en = "Hijacks"
 
 [synthesis.section.top_stats]
