@@ -16,17 +16,18 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // grenPos fabrique un echantillon de position de biped exploitable (HasWorld).
-func grenPos(slot uint32, tsUS uint64, x, y float32) filmdec.BipedPosition {
-	return filmdec.BipedPosition{Slot: slot, TimestampUS: tsUS, X: x, Y: y, HasWorld: true}
+func grenPos(slot uint32, tsUS uint64, x, y float32) grammar.BipedPosition {
+	return grammar.BipedPosition{Slot: slot, TimestampUS: tsUS, X: x, Y: y, HasWorld: true}
 }
 
 // grenNaissance fabrique une piste de projectile d'UN point : seule sa naissance compte ici.
-func grenNaissance(slot uint32, tsUS uint64, x, y float32) filmdec.ProjectileTrack {
-	return filmdec.ProjectileTrack{Slot: slot, Gen: 1, Pts: []filmdec.ProjectileSample{
+func grenNaissance(slot uint32, tsUS uint64, x, y float32) types.ProjectileTrack {
+	return types.ProjectileTrack{Slot: slot, Gen: 1, Pts: []types.ProjectileSample{
 		{TimestampUS: tsUS, X: x, Y: y},
 	}}
 }
@@ -35,11 +36,11 @@ func TestLancerUneSeuleNaissanceEtUnAuteurConnu(t *testing.T) {
 	// UNE candidate, un auteur a portee : lecture par projectile, et le SLOT est publie.
 	// Il ne l'etait pas — la branche projectile rendait un Grenade sans Slot, donc a zero,
 	// et zero RESSEMBLE a un slot.
-	pos := []filmdec.BipedPosition{grenPos(1024, 2_000_000, 10, 10)}
-	throws := []filmdec.GrenadeThrow{
-		{TimestampUS: 2_000_000, FilmIndex: 3, TypeID: filmdec.GrenadeFragmentation},
+	pos := []grammar.BipedPosition{grenPos(1024, 2_000_000, 10, 10)}
+	throws := []grammar.GrenadeThrow{
+		{TimestampUS: 2_000_000, FilmIndex: 3, TypeID: grammar.GrenadeFragmentation},
 	}
-	proj := []filmdec.ProjectileTrack{grenNaissance(2048, 2_050_000, 10.3, 10.2)}
+	proj := []types.ProjectileTrack{grenNaissance(2048, 2_050_000, 10.3, 10.2)}
 	gren, cov := buildGrenades(pos, throws, 1_000_000, 100_000,
 		map[uint32]int{1024: 3}, proj, nil)
 	if len(gren) != 1 {
@@ -64,15 +65,15 @@ func TestDeuxLanceursDansLaMemeFenetreRecoiventChacunLaLeur(t *testing.T) {
 	// de la carte. Sur le temps seul, les deux naissances tombent dans les deux fenetres et le
 	// departage venait du tri par X — donc le lanceur de gauche recevait le projectile de
 	// droite une fois sur deux.
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		grenPos(1024, 2_000_000, -20, 0),
 		grenPos(2048, 2_000_000, 40, 0),
 	}
-	throws := []filmdec.GrenadeThrow{
-		{TimestampUS: 2_000_000, FilmIndex: 3, TypeID: filmdec.GrenadeFragmentation},
-		{TimestampUS: 2_020_000, FilmIndex: 7, TypeID: filmdec.GrenadeFragmentation},
+	throws := []grammar.GrenadeThrow{
+		{TimestampUS: 2_000_000, FilmIndex: 3, TypeID: grammar.GrenadeFragmentation},
+		{TimestampUS: 2_020_000, FilmIndex: 7, TypeID: grammar.GrenadeFragmentation},
 	}
-	proj := []filmdec.ProjectileTrack{
+	proj := []types.ProjectileTrack{
 		grenNaissance(11, 2_030_000, 40.4, 0.2),  // celle du joueur 7 (slot 2048)
 		grenNaissance(12, 2_040_000, -19.7, 0.1), // celle du joueur 3 (slot 1024)
 	}
@@ -97,11 +98,11 @@ func TestNaissanceTropLoinDeSonAuteurReplieSurLeBiped(t *testing.T) {
 	// UNE naissance a 30 m du lanceur n'est pas la sienne : c'est la signature du repli de
 	// quantum mesure sur Live Fire (la moitie de l'etendue Y de la carte). On refuse, et on
 	// lit la position du biped — la meme grandeur, lue ailleurs.
-	pos := []filmdec.BipedPosition{grenPos(1024, 2_000_000, 10, 10)}
-	throws := []filmdec.GrenadeThrow{
-		{TimestampUS: 2_000_000, FilmIndex: 3, TypeID: filmdec.GrenadeFragmentation},
+	pos := []grammar.BipedPosition{grenPos(1024, 2_000_000, 10, 10)}
+	throws := []grammar.GrenadeThrow{
+		{TimestampUS: 2_000_000, FilmIndex: 3, TypeID: grammar.GrenadeFragmentation},
 	}
-	proj := []filmdec.ProjectileTrack{grenNaissance(2048, 2_050_000, 10.2, 41.9)}
+	proj := []types.ProjectileTrack{grenNaissance(2048, 2_050_000, 10.2, 41.9)}
 	gren, _ := buildGrenades(pos, throws, 1_000_000, 100_000,
 		map[uint32]int{1024: 3}, proj, nil)
 	if len(gren) != 1 {
@@ -122,10 +123,10 @@ func TestSansAuteurDeuxCandidatesSAbstient(t *testing.T) {
 	// SANS le biped de l'auteur, rien ne departage deux naissances simultanees. Une seule
 	// candidate reste une lecture (cf. TestGrenadePlacedFromProjectileWithoutBridge) ;
 	// plusieurs sont un tirage au sort, et le lancer n'est pas publie.
-	throws := []filmdec.GrenadeThrow{
-		{TimestampUS: 2_000_000, FilmIndex: 3, TypeID: filmdec.GrenadeFragmentation},
+	throws := []grammar.GrenadeThrow{
+		{TimestampUS: 2_000_000, FilmIndex: 3, TypeID: grammar.GrenadeFragmentation},
 	}
-	proj := []filmdec.ProjectileTrack{
+	proj := []types.ProjectileTrack{
 		grenNaissance(11, 2_030_000, 40.4, 0.2),
 		grenNaissance(12, 2_040_000, -19.7, 0.1),
 	}

@@ -16,8 +16,8 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
@@ -63,7 +63,7 @@ func decodeFilm(cache, id string) error {
 	if !ok {
 		return fmt.Errorf("film absent du cache (%s)", cache)
 	}
-	recs, truncated := objectiveevents.StatRecordsCtx(context.Background(), film, id)
+	recs, truncated := decfilm.StatRecordsCtx(context.Background(), film, id)
 	deaths, err := replay.ScanDeaths(film)
 	if err != nil {
 		return fmt.Errorf("fil des morts : %w", err)
@@ -103,8 +103,8 @@ func emitDeaths(id string, deaths []replay.Death) {
 }
 
 // emitRounds emet les manches REELLES du film.
-func emitRounds(id string, recs []objectiveevents.StatRecord) {
-	real := objectiveevents.RealRounds(recs)
+func emitRounds(id string, recs []decfilm.StatRecord) {
+	real := decfilm.RealRounds(recs)
 	var rs []int
 	for r, ok := range real {
 		if ok {
@@ -117,11 +117,11 @@ func emitRounds(id string, recs []objectiveevents.StatRecord) {
 
 // emitSeries emet, par slot de joueur, par manche, par emplacement (comp,cote), la suite
 // filtree des points (t:valeur). Non vide seulement — les emplacements muets ne sortent pas.
-func emitSeries(id string, recs []objectiveevents.StatRecord) {
+func emitSeries(id string, recs []decfilm.StatRecord) {
 	for comp := 0; comp <= sweepMaxComp; comp++ {
 		for _, sideB := range []bool{false, true} {
-			c := objectiveevents.StatComponent{Comp: comp, SideB: sideB}
-			byslot := objectiveevents.SeriesByRound(recs, c, false)
+			c := decfilm.StatComponent{Comp: comp, SideB: sideB}
+			byslot := decfilm.SeriesByRound(recs, c, false)
 			for _, slot := range sortedSeriesSlots(byslot) {
 				for _, round := range sortedKeysInt2(byslot[slot]) {
 					pts := byslot[slot][round]
@@ -144,7 +144,7 @@ func sideLabel(sideB bool) string {
 }
 
 // joinPoints serialise une suite de points en "t:v;t:v;...", bornee par emitCap.
-func joinPoints(pts []objectiveevents.ScorePoint) string {
+func joinPoints(pts []decfilm.ScorePoint) string {
 	var b strings.Builder
 	n := len(pts)
 	if n > emitCap {
@@ -188,7 +188,7 @@ func sortedKeysInt(m map[uint64][]int) []uint64 {
 	return out
 }
 
-func sortedKeysInt2(m map[int][]objectiveevents.ScorePoint) []int {
+func sortedKeysInt2(m map[int][]decfilm.ScorePoint) []int {
 	out := make([]int, 0, len(m))
 	for k := range m {
 		out = append(out, k)
@@ -206,7 +206,7 @@ func sortedU64(m map[uint64]string) []uint64 {
 	return out
 }
 
-func sortedSeriesSlots(m map[int]map[int][]objectiveevents.ScorePoint) []int {
+func sortedSeriesSlots(m map[int]map[int][]decfilm.ScorePoint) []int {
 	out := make([]int, 0, len(m))
 	for k := range m {
 		out = append(out, k)

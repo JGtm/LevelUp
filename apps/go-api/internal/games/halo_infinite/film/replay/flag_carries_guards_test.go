@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // TestFlagCarriesPriseSansPontComptee — une prise dont le slot statborg n'est pas nomme ne publie
@@ -12,11 +12,11 @@ func TestFlagCarriesPriseSansPontComptee(t *testing.T) {
 	tracks := []Track{flagTestTrack(10, "aaa", 0, 99, 30, 40)}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 2000, Slot: 20, Stat: objectiveevents.StatFlagSteals}, // slot non apparie
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 2000, Slot: 20, Stat: objectives.StatFlagSteals}, // slot non apparie
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "aaa"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "aaa"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	_, cov := buildFlagCarries(scan, flagTestCtx(tracks, nil, 100))
@@ -38,12 +38,12 @@ func TestFlagCarriesPorteurTueAmbigu(t *testing.T) {
 	}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 1000, Slot: 14, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 3000, Slot: 16, Stat: objectiveevents.StatFlagCarriersKilled},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 1000, Slot: 14, Stat: objectives.StatFlagSteals},
+			{TimeMS: 3000, Slot: 16, Stat: objectives.StatFlagCarriersKilled},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	got, cov := buildFlagCarries(scan, flagTestCtx(tracks, nil, 100))
@@ -70,12 +70,12 @@ func TestFlagCarriesSimultaneiteFermeeComptee(t *testing.T) {
 	}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 1000, Slot: 14, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 1000, Slot: 16, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 1000, Slot: 14, Stat: objectives.StatFlagSteals},
+			{TimeMS: 1000, Slot: 16, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	_, cov := buildFlagCarries(scan, flagTestCtx(tracks, nil, 100))
@@ -93,11 +93,11 @@ func TestFlagCarriesSimultaneiteFermeeComptee(t *testing.T) {
 func TestFlagCarriesFilmNonCTF(t *testing.T) {
 	scan := FlagCarryScan{
 		Scanned: true,
-		Signals: objectiveevents.FlagFilmSignals{Bursts: 2, Captures: 6, Steals: 994, Grabs: 1470},
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+		Signals: objectives.FlagFilmSignals{Bursts: 2, Captures: 6, Steals: 994, Grabs: 1470},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "aaa"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "aaa"}),
 	}
 	got, cov := buildFlagCarries(scan, flagTestCtx(nil, nil, 100))
 	if got != nil {

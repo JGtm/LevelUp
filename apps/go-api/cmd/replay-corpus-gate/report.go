@@ -2,18 +2,41 @@ package main
 
 // report.go — LE TABLEAU RECAPITULATIF ET LE VERDICT.
 //
-// En mode BASE (defaut), une perte sur QUELQUE AXE QUE CE SOIT fait sortir le gate en code 1 —
-// c'est le seul signal qu'un merge qui touche au decodeur ou au constructeur de rejeu doit
-// bloquer sur : la reference est une cuisson du MEME code, un commit plus tot, donc toute perte
-// est necessairement due au diff en cours de revue. En mode PARC (balayage de release,
-// `--reference=parc`), le parc n'est jamais a jour et une perte peut n'etre que l'age de la
-// reference — le tableau reste informatif SAUF `--strict`. Un gain (calque neuf, schema bumpe)
-// n'est jamais un echec dans aucun mode : c'est l'evolution attendue du format.
+// En mode BASE (defaut), une perte sur QUELQUE AXE QUE CE SOIT fait sortir le gate en code
+// `codePerte` — c'est le seul signal qu'un merge qui touche au decodeur ou au constructeur de
+// rejeu doit bloquer sur : la reference est une cuisson du MEME code, un commit plus tot, donc
+// toute perte est necessairement due au diff en cours de revue. En mode PARC (balayage de
+// release, `--reference=parc`), le parc n'est jamais a jour et une perte peut n'etre que l'age
+// de la reference — le tableau reste informatif SAUF `--strict`. Un gain (calque neuf, schema
+// bumpe) n'est jamais un echec dans aucun mode : c'est l'evolution attendue du format.
 //
-// LE DETAIL DES PERTES EST IMPRIME, PAS SEULEMENT LEUR COMPTE : un operateur qui lit « 27
-// pertes » sans savoir LESQUELLES ne peut pas distinguer un correctif deja documente (bornes
-// de scene assainies, drapeau neutre...) d'une regression neuve — exactement le risque que ce
-// gate existe pour eliminer (CLAUDE.md, anti-pattern « rapporter, pas masquer »).
+// LE DETAIL DES PERTES ET DES CHANGEMENTS EST IMPRIME, PAS SEULEMENT LEUR COMPTE : un operateur
+// qui lit « 27 pertes » sans savoir LESQUELLES ne peut pas distinguer un correctif deja
+// documente (bornes de scene assainies, drapeau neutre...) d'une regression neuve — exactement
+// le risque que ce gate existe pour eliminer (CLAUDE.md, anti-pattern « rapporter, pas
+// masquer »).
+//
+// # LA REGLE DE PRIORITE DES STATUTS (2026-09-17, lot 2.8.1)
+//
+// Un temoin porte UN SEUL statut, et il se choisit dans CET ORDRE — le premier qui s'applique
+// gagne, les suivants ne sont meme pas consultes :
+//
+//	1. ABSENT      le temoin n'a pas ete compare du tout (film, faits ou artefact manquants).
+//	   ERREUR      la cuisson ou la comparaison a echoue. ABSENT et ERREUR s'excluent par
+//	               construction (orchestrate.go les pose dans des branches disjointes) ; ils
+//	               partagent ce rang parce qu'ils disent la meme chose : PAS DE MESURE.
+//	2. PERTE       au moins une mesure a baisse ou disparu. PRIME SUR `CHANGEMENT` : un temoin
+//	               qui porte les deux est un temoin en perte, et c'est la perte qu'on instruit.
+//	3. CHANGEMENT  aucune perte, mais au moins une valeur publiee a BOUGE (reattribution, voie
+//	               de nommage qui cede a une autre — `replaydiff/polarite.go`). Statut DISTINCT
+//	               de la perte depuis le 2026-09-17 : jusque-la un changement sortait `PERTE`,
+//	               ce qui envoyait chercher une regression la ou une valeur avait seulement
+//	               change de main. Il reste BLOQUANT (`estBloquant`) : un changement se
+//	               justifie (divergence prouvee) ou il se corrige, jamais il ne se tait.
+//	4. ok          ni perte ni changement. Des GAINS peuvent s'y trouver : un gain n'est jamais
+//	               un echec.
+//
+// Les gains n'entrent nulle part dans ce choix — ils se lisent dans leur colonne.
 
 import (
 	"fmt"
@@ -22,6 +45,45 @@ import (
 	"time"
 
 	"levelup/go-api/internal/replaydiff"
+)
+
+// Les codes de sortie du gate, NOMMES — le seul canal qu'une CI, un agregateur ou un pilote
+// lisent sans parser le tableau. Avant le 2026-09-17 ils etaient des litteraux `1` et `2`
+// disperses, et le `2` disait DEUX choses incomparables : « le manifeste est invalide » et
+// « un temoin du corpus est absent ». Un appelant ne pouvait pas distinguer « ce gate n'a pas
+// demarre » de « ce gate a demarre mais n'a pas tout compare ».
+const (
+	// codeOK : tout le manifeste a ete compare, aucun temoin bloquant.
+	codeOK = 0
+	// codePerte : au moins un temoin compare porte une PERTE ou un CHANGEMENT bloquant
+	// (`estBloquant`) — le verdict que ce gate existe pour rendre.
+	codePerte = 1
+	// codeUsage : le gate n'a pas pu DEMARRER (drapeau invalide, manifeste illisible, racine
+	// introuvable, capability absente, worktree de base impossible). Aucun temoin n'a ete
+	// compare, et rien n'a ete mesure du diff sous revue.
+	codeUsage = 2
+	// codeErreurCuisson : le gate a demarre, mais au moins un temoin CUIT a echoue a la
+	// cuisson ou a la comparaison. Distinct de `codePerte` : le gate n'a pas pu poser la
+	// question sur ce temoin, il n'a pas repondu « il a perdu ».
+	codeErreurCuisson = 3
+	// codeCouvertureIncomplete : au moins un temoin du manifeste est ABSENT (film, faits ou
+	// artefact de reference manquants) et `--allow-missing` n'a pas ete passe. Distinct de
+	// `codePerte` (D2 (cloture M1), 2026-09-17 : l'export des faits peut tomber sur la base
+	// tenue en ecriture, et un pilote doit pouvoir relancer les seuls absents — `--temoins` —
+	// au lieu de chercher une regression qui n'existe pas) ET de `codeUsage` (le manifeste,
+	// lui, est valide).
+	codeCouvertureIncomplete = 4
+)
+
+// Les statuts d'un temoin, tels qu'ils s'impriment au tableau et s'ecrivent au JSON. Ils sont
+// nommes ici parce que le tableau, le JSON et les tests les partagent : trois litteraux
+// separes divergeraient au premier renommage.
+const (
+	statutOK         = "ok"
+	statutChangement = "CHANGEMENT"
+	statutPerte      = "PERTE"
+	statutAbsent     = "ABSENT"
+	statutErreur     = "ERREUR"
 )
 
 // ligneRapport est le resultat d'UN temoin, pret a s'imprimer. `SchemaReference` porte le
@@ -41,33 +103,67 @@ type ligneRapport struct {
 	// AJOUTE LE 2026-09-16 (lot 1.9.1 bis, cloture) : `replaydiff.BilanAxe` les compte depuis
 	// toujours, et ce rapport les jetait — ni le tableau ni le JSON ne les montraient. Un gate
 	// aveugle a une valeur qui bouge est exactement le compteur lu a l envers que le depot
-	// interdit : un changement se classe comme une perte (divergence prouvee ou regression).
+	// interdit.
 	Changements int
 	Duree       time.Duration
-	// PertesDetail : les differences de sens PERTE ou DISPARU seulement (jamais les gains ni
-	// les changements) — c'est LE FAIT a rapporter, jamais a resumer en un seul compte.
+	// PertesDetail : les differences de sens PERTE ou DISPARU seulement — c'est LE FAIT a
+	// rapporter, jamais a resumer en un seul compte.
 	PertesDetail []replaydiff.Difference
+	// ChangementsDetail : les differences de sens CHANGEMENT, symetrique de PertesDetail
+	// (2026-09-17, D5 (1.9.9)). Sans lui, le JSON du gate disait « 2 changements » et le
+	// pilote devait relancer `replay-diff` a la main sur les artefacts conserves pour savoir
+	// LESQUELS — ce qui est arrive a la cloture M1 (plan §5, les 7 changements nommes).
+	ChangementsDetail []replaydiff.Difference
 }
 
-// aUnePerte dit si CE temoin porte au moins une perte sur un axe quelconque.
-// aUnePerte dit si CE temoin porte au moins une perte OU un changement : une valeur publiee qui
-// bouge sans etre un gain se classe comme une perte (2026-09-16).
-func (l ligneRapport) aUnePerte() bool { return l.Pertes > 0 || l.Changements > 0 }
+// aUnePerte dit si CE temoin porte au moins une mesure qui a baisse ou disparu.
+func (l ligneRapport) aUnePerte() bool { return l.Pertes > 0 }
 
-// bilanDepuisRapport peuple gains/pertes/schemas depuis un replaydiff.Rapport, et extrait le
-// DETAIL des pertes (sens Perte ou Disparu uniquement).
-func bilanDepuisRapport(rap replaydiff.Rapport) (schemaReference, schemaHEAD, gains, pertes, changements int, detail []replaydiff.Difference) {
-	for _, b := range rap.Bilans {
-		gains += b.Gains
-		pertes += b.Pertes
-		changements += b.Changements
+// aUnChangement dit si CE temoin porte au moins une valeur publiee qui a BOUGE sans etre ni un
+// gain ni une perte.
+func (l ligneRapport) aUnChangement() bool { return l.Changements > 0 }
+
+// estBloquant dit si CE temoin doit faire echouer le gate : une perte OU un changement. Les
+// deux bloquent, et ils ne se confondent pas pour autant — cf. la regle de priorite en tete.
+func (l ligneRapport) estBloquant() bool { return l.aUnePerte() || l.aUnChangement() }
+
+// statut rend le statut du temoin selon la regle de priorite de l'en-tete de ce fichier.
+func (l ligneRapport) statut() string {
+	switch {
+	case l.Absent:
+		return statutAbsent
+	case l.Erreur != nil:
+		return statutErreur
+	case l.aUnePerte():
+		return statutPerte
+	case l.aUnChangement():
+		return statutChangement
 	}
+	return statutOK
+}
+
+// remplirBilan peuple schemas, comptes et LES DEUX DETAILS depuis un `replaydiff.Rapport`.
+//
+// C'etait une fonction a six valeurs de retour ; la septieme (le detail des changements)
+// l'aurait rendue illisible a l'appel. Une methode qui peuple la ligne dit la meme chose sans
+// aligner sept resultats anonymes (CLAUDE.md n°5).
+func (l *ligneRapport) remplirBilan(rap replaydiff.Rapport) {
+	l.SchemaReference, l.SchemaHEAD = rap.SchemaAncien, rap.SchemaNouveau
+	l.Gains, l.Pertes, l.Changements = 0, 0, 0
+	for _, b := range rap.Bilans {
+		l.Gains += b.Gains
+		l.Pertes += b.Pertes
+		l.Changements += b.Changements
+	}
+	l.PertesDetail, l.ChangementsDetail = nil, nil
 	for _, d := range rap.Differences {
-		if d.Sens == replaydiff.SensPerte || d.Sens == replaydiff.SensDisparu {
-			detail = append(detail, d)
+		switch d.Sens {
+		case replaydiff.SensPerte, replaydiff.SensDisparu:
+			l.PertesDetail = append(l.PertesDetail, d)
+		case replaydiff.SensChangement:
+			l.ChangementsDetail = append(l.ChangementsDetail, d)
 		}
 	}
-	return rap.SchemaAncien, rap.SchemaNouveau, gains, pertes, changements, detail
 }
 
 // imprimerTableau ecrit le recapitulatif — un temoin par ligne, dans l'ordre du manifeste.
@@ -79,19 +175,17 @@ func imprimerTableau(w io.Writer, lignes []ligneRapport, refLabel string) {
 	for _, l := range lignes {
 		switch {
 		case l.Absent:
-			_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s  ABSENT (%s)\n",
-				l.Temoin.ID, l.Temoin.Famille, "-", "-", "-", "-", "-", "-", l.AbsentCause)
+			_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s  %s (%s)\n",
+				l.Temoin.ID, l.Temoin.Famille, "-", "-", "-", "-", "-", "-",
+				statutAbsent, l.AbsentCause)
 		case l.Erreur != nil:
-			_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s  ERREUR : %v\n",
-				l.Temoin.ID, l.Temoin.Famille, "-", "-", "-", "-", "-", "-", l.Erreur)
+			_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s  %s : %v\n",
+				l.Temoin.ID, l.Temoin.Famille, "-", "-", "-", "-", "-", "-",
+				statutErreur, l.Erreur)
 		default:
-			statut := "ok"
-			if l.aUnePerte() {
-				statut = "PERTE"
-			}
 			_, _ = fmt.Fprintf(w, "%-12s %-16s %6d %6d %8d %8d %8d %10s  %s\n",
 				l.Temoin.ID, l.Temoin.Famille, l.SchemaReference, l.SchemaHEAD,
-				l.Gains, l.Pertes, l.Changements, l.Duree.Round(10*time.Millisecond), statut)
+				l.Gains, l.Pertes, l.Changements, l.Duree.Round(10*time.Millisecond), l.statut())
 		}
 	}
 }
@@ -99,19 +193,38 @@ func imprimerTableau(w io.Writer, lignes []ligneRapport, refLabel string) {
 // imprimerDetailPertes ecrit, POUR CHAQUE TEMOIN EN PERTE, la liste nommee de ses ecarts —
 // axe, metrique, ancien -> nouveau. Rien n'est resume : « rapporter, pas masquer ».
 func imprimerDetailPertes(w io.Writer, lignes []ligneRapport) {
-	var enPerte []ligneRapport
+	imprimerDetail(w, lignes, "DETAIL DES PERTES",
+		func(l ligneRapport) []replaydiff.Difference { return l.PertesDetail })
+}
+
+// imprimerDetailChangements ecrit, POUR CHAQUE TEMOIN QUI EN PORTE, la liste nommee de ses
+// changements (2026-09-17, D5 (1.9.9)) — la section symetrique de celle des pertes. Un
+// changement se JUSTIFIE (reattribution documentee, voie de nommage qui cede) ou il se
+// corrige ; dans les deux cas il faut le NOMMER, et le compte ne le nomme pas.
+func imprimerDetailChangements(w io.Writer, lignes []ligneRapport) {
+	imprimerDetail(w, lignes, "DETAIL DES CHANGEMENTS",
+		func(l ligneRapport) []replaydiff.Difference { return l.ChangementsDetail })
+}
+
+// imprimerDetail est LE rendu partage des deux sections de detail : meme en-tete, meme
+// colonnes, meme silence quand il n'y a rien a dire. Ecrire deux fois ces quinze lignes les
+// ferait diverger au premier ajout de colonne (CLAUDE.md n°6).
+func imprimerDetail(w io.Writer, lignes []ligneRapport, titre string,
+	detailDe func(ligneRapport) []replaydiff.Difference) {
+	var concernes []ligneRapport
 	for _, l := range lignes {
-		if l.aUnePerte() {
-			enPerte = append(enPerte, l)
+		if len(detailDe(l)) > 0 {
+			concernes = append(concernes, l)
 		}
 	}
-	if len(enPerte) == 0 {
+	if len(concernes) == 0 {
 		return
 	}
-	_, _ = fmt.Fprintf(w, "\nDETAIL DES PERTES (%d temoin(s)) :\n", len(enPerte))
-	for _, l := range enPerte {
-		_, _ = fmt.Fprintf(w, "\n  [%s] %s (schema %d -> %d)\n", l.Temoin.ID, l.Temoin.Famille, l.SchemaReference, l.SchemaHEAD)
-		for _, d := range l.PertesDetail {
+	_, _ = fmt.Fprintf(w, "\n%s (%d temoin(s)) :\n", titre, len(concernes))
+	for _, l := range concernes {
+		_, _ = fmt.Fprintf(w, "\n  [%s] %s (schema %d -> %d)\n",
+			l.Temoin.ID, l.Temoin.Famille, l.SchemaReference, l.SchemaHEAD)
+		for _, d := range detailDe(l) {
 			_, _ = fmt.Fprintf(w, "    %-9s %-16s %-50s %10s -> %-10s\n",
 				d.Sens, d.Axe, d.Metrique, vide(d.Ancien), vide(d.Nouveau))
 		}
@@ -125,26 +238,32 @@ func vide(s string) string {
 	return s
 }
 
-// codeSortie rend 1 si un temoin CUIT porte une erreur de cuisson/comparaison (TOUJOURS
-// bloquant, quel que soit le mode : le gate n'a alors pas pu faire son travail), ou si
-// `pertesBloquent` est vrai et qu'un temoin porte une perte. `pertesBloquent` vaut
-// `reference == "base"` (toujours) ou `--strict` (mode parc) — cf. l'en-tete du fichier. Un
-// temoin ABSENT n'est jamais un echec ICI (avertissement deja emis en slog) : la COUVERTURE
-// (au moins un temoin absent = un gate qui ne compare rien) est verifiee separement par
-// [verifierCouverture], AVANT ce calcul — les deux ne se substituent pas l'une a l'autre.
+// codeSortie rend `codeErreurCuisson` si un temoin CUIT porte une erreur de cuisson ou de
+// comparaison (TOUJOURS bloquant, quel que soit le mode : le gate n'a alors pas pu faire son
+// travail), `codePerte` si `pertesBloquent` est vrai et qu'un temoin est bloquant (perte OU
+// changement), `codeOK` sinon. `pertesBloquent` vaut `reference == "base"` (toujours) ou
+// `--strict` (mode parc) — cf. l'en-tete du fichier.
+//
+// L'ERREUR DE CUISSON PRIME SUR LA PERTE : elle se rencontre en premier dans la boucle et rend
+// tout de suite, parce qu'un gate qui n'a pas pu cuire un temoin ne sait PAS si les autres
+// auraient perdu. Un temoin ABSENT n'est jamais un echec ICI (avertissement deja emis en
+// slog) : la COUVERTURE (au moins un temoin absent = un gate qui ne compare pas tout) est
+// verifiee separement par [verifierCouverture] et rend `codeCouvertureIncomplete` — les deux ne
+// se substituent pas l'une a l'autre.
 func codeSortie(lignes []ligneRapport, pertesBloquent bool) int {
+	code := codeOK
 	for _, l := range lignes {
 		if l.Absent {
 			continue
 		}
 		if l.Erreur != nil {
-			return 1
+			return codeErreurCuisson
 		}
-		if pertesBloquent && l.aUnePerte() {
-			return 1
+		if pertesBloquent && l.estBloquant() {
+			code = codePerte
 		}
 	}
-	return 0
+	return code
 }
 
 // verifierCouverture impose qu'AUCUN temoin du manifeste ne soit ABSENT, sauf si `allowMissing`
@@ -152,9 +271,9 @@ func codeSortie(lignes []ligneRapport, pertesBloquent bool) int {
 // ABSENT, et `codeSortie` ci-dessus les saute tous (`continue`) sans jamais rencontrer ni
 // erreur ni perte — le gate sortait alors en 0 SANS RIEN COMPARER, le silence le plus dangereux
 // qu'un gate de non-regression puisse rendre. Par defaut, un seul temoin absent est donc une
-// ERREUR DE COUVERTURE (distincte d'une perte ou d'une erreur de cuisson) — `--allow-missing`
-// restaure l'ancien comportement (avertissement seul) pour un usage delibere (par exemple un
-// manifeste dont un temoin vient d'etre ajoute avant que son film soit copie localement).
+// ERREUR DE COUVERTURE (`codeCouvertureIncomplete`, distincte d'une perte, d'une erreur de
+// cuisson et d'un usage invalide) — `--allow-missing` restaure l'ancien comportement
+// (avertissement seul) pour un usage delibere.
 func verifierCouverture(lignes []ligneRapport, allowMissing bool) error {
 	if allowMissing {
 		return nil

@@ -39,7 +39,7 @@ package replay
 // power-up de socle sur 12 films » etait une propriete du filtre, pas du corpus.
 //
 // LECTURE SEULE, aucune base (les cartes se lisent hors de cet instrument, dans l'instantane
-// parquet du registre). UN SEUL decodage filmdec par process (`LockProcessDecode`), largeurs
+// parquet du registre). Largeurs
 // d'axe restaurees (`installWorldObjectPrecision`).
 //
 // USAGE (depuis apps/go-api) :
@@ -56,7 +56,9 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -77,15 +79,12 @@ func TestGroundWeaponPads(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", gwPadsEnv)
 	}
 	entry := mapQuantEntryFromEnv(t, gwPadsMapEnv, gwPadsBoundsEnv)
-	release := filmdec.LockProcessDecode()
-	defer release()
-	defer installWorldObjectPrecision(entry, dir, nil)()
 
 	wr := entry.Range()
 	film, mapName := filepath.Base(dir), os.Getenv(gwPadsMapEnv)
 	t.Logf("FILM %s · carte %q (module %s) · largeurs %v", film, mapName, entry.Module, entry.AxisWidths)
 
-	positions, err := filmdec.ScanFilmBipedPositions(dir, gwPadsScanOptions(&wr))
+	positions, err := grammar.ScanFilmBipedPositions(dir, gwPadsScanOptions(&wr))
 	if err != nil {
 		t.Fatalf("nuage des bipedes indisponible : %v", err)
 	}
@@ -108,8 +107,8 @@ func TestGroundWeaponPads(t *testing.T) {
 // gwPadsScanOptions rend les options de balayage du nuage des bipedes : les bornes de la carte,
 // rien de plus. Le CAP n'est PAS capture — cet instrument ne mesure aucune orientation, et
 // `CaptureDirs` couterait un decodage supplementaire par record.
-func gwPadsScanOptions(wr *filmdec.Vec3Range) filmdec.ScanFilmOptions {
-	o := filmdec.DefaultScanFilmOptions()
+func gwPadsScanOptions(wr *profile.Vec3Range) grammar.ScanFilmOptions {
+	o := grammar.DefaultScanFilmOptions()
 	o.WorldRange = wr
 	return o
 }
@@ -117,29 +116,29 @@ func gwPadsScanOptions(wr *filmdec.Vec3Range) filmdec.ScanFilmOptions {
 // gwPadsWeapons rend les apparitions d'ARMES AU SOL retenues, et publie les denominateurs de
 // l'item 1.0 : ancres, acceptees, croisees, ecartees, temoin fantome, part sans vie delta.
 func gwPadsWeapons(
-	t *testing.T, dir string, wr *filmdec.Vec3Range, lives map[uint32][]equipLife,
+	t *testing.T, dir string, wr *profile.Vec3Range, lives map[uint32][]equipLife,
 ) []gwPadApparition {
 	t.Helper()
-	band := filmdec.GroundWeaponSlotBand(dir)
-	cre, st, err := filmdec.ScanFilmGroundWeaponCreationsForBand(dir, wr, band)
+	band := grammar.GroundWeaponSlotBand(dir)
+	cre, st, err := grammar.ScanFilmGroundWeaponCreationsForBand(dir, wr, band)
 	if err != nil {
 		t.Fatalf("creations ti=42 : %v", err)
 	}
 	// TEMOIN FANTOME par le MEME code, meme cardinalite : sans lui, un compte d'acceptations
 	// ne dit pas si le balayage lit des records ou en invente (decouverte 2 du plan).
 	census := gwKeyframeCensus(t, dir)
-	pcre, pst, err := filmdec.ScanFilmGroundWeaponCreationsForBand(
+	pcre, pst, err := grammar.ScanFilmGroundWeaponCreationsForBand(
 		dir, wr, gwPhantomBand(band, census.allSlots))
 	if err != nil {
 		t.Fatalf("creations ti=42 (fantome) : %v", err)
 	}
 	known := loadoutFamilies()
 	fam := gwPadsKeyframeFamilies(t, dir, known)
-	tracks, err := filmdec.ScanFilmWorldObjects(dir, wr, filmdec.GroundWeaponTypeIndex)
+	tracks, err := grammar.ScanFilmWorldObjects(dir, wr, grammar.GroundWeaponTypeIndex)
 	if err != nil {
 		t.Fatalf("vies delta ti=42 : %v", err)
 	}
-	spans := filmdec.EquipmentLifeSpans(tracks)
+	spans := grammar.EquipmentLifeSpans(tracks)
 
 	out := make([]gwPadApparition, 0, len(cre))
 	crossed, pairs, agree, noDelta := 0, 0, 0, 0
@@ -149,7 +148,7 @@ func gwPadsWeapons(
 			continue
 		}
 		crossed++
-		if f, seen := fam[filmdec.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}]; seen {
+		if f, seen := fam[types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}]; seen {
 			pairs++
 			if f == w {
 				agree++
@@ -158,7 +157,7 @@ func gwPadsWeapons(
 		a := gwPadApparition{
 			Kind: gwPadKindWeapon, Family: gwPadsWeaponFamily(w),
 			X: c.X, Y: c.Y, Z: c.Z, TUS: c.TimestampUS,
-			HasDelta: len(spans[filmdec.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}]) > 0,
+			HasDelta: len(spans[types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}]) > 0,
 		}
 		if !a.HasDelta {
 			noDelta++
@@ -195,11 +194,11 @@ func gwPadsWeapons(
 // LA CALIBRATION DU BLOC MPP VIENT TOUJOURS DE LA CHAINE DES POSES, comme en production : sans
 // elle, aucune identite `eqip` ne se resout et le balayage rendrait zero en silence.
 func gwPadsPowerups(
-	t *testing.T, dir string, wr *filmdec.Vec3Range, pos []filmdec.BipedPosition,
+	t *testing.T, dir string, wr *profile.Vec3Range, pos []grammar.BipedPosition,
 	lives map[uint32][]equipLife,
 ) []gwPadApparition {
 	t.Helper()
-	_, st, err := filmdec.ScanFilmEquipmentPlacements(dir, wr)
+	_, st, err := grammar.ScanFilmEquipmentPlacements(dir, wr)
 	if err != nil {
 		t.Logf("1.0 POWER-UPS — calibration ti=37 impossible : %v", err)
 		return nil
@@ -222,17 +221,17 @@ func gwPadsPowerups(
 // la chaine independante qui CONTROLE le filtre d'identite.
 func gwPadsKeyframeFamilies(
 	t *testing.T, dir string, known map[uint32]bool,
-) map[filmdec.EquipmentLifeKey]uint32 {
+) map[types.EquipmentLifeKey]uint32 {
 	t.Helper()
-	out := map[filmdec.EquipmentLifeKey]uint32{}
-	kf, err := filmdec.ScanFilmKeyframeGroundWeapons(dir, known)
+	out := map[types.EquipmentLifeKey]uint32{}
+	kf, err := grammar.ScanFilmKeyframeGroundWeapons(dir, known)
 	if err != nil {
 		t.Logf("familles d'image-cle illisibles (%v) : le controle d'identite sera vide", err)
 		return out
 	}
 	for _, g := range kf {
 		if len(g.Families) > 0 {
-			out[filmdec.EquipmentLifeKey{Slot: g.Slot, Gen: g.Gen}] = g.Families[0]
+			out[types.EquipmentLifeKey{Slot: g.Slot, Gen: g.Gen}] = g.Families[0]
 		}
 	}
 	return out
@@ -343,7 +342,7 @@ func gwPadsPart(k, n int) string {
 //
 // LE CHEMIN PASSE PAR `PathResolver`, jamais par un `filepath.Join(..., "data", ...)` a la main
 // (regle du depot). `boundsEnv` ne sert qu'a pointer un catalogue de rechange.
-func mapQuantEntryFromEnv(t *testing.T, mapEnv, boundsEnv string) filmdec.MapQuantEntry {
+func mapQuantEntryFromEnv(t *testing.T, mapEnv, boundsEnv string) profile.MapQuantEntry {
 	t.Helper()
 	nom := os.Getenv(mapEnv)
 	if nom == "" {
@@ -354,7 +353,7 @@ func mapQuantEntryFromEnv(t *testing.T, mapEnv, boundsEnv string) filmdec.MapQua
 	if chemin == "" {
 		chemin = title.NewPathResolver(repoRootForTest(t)).MapQuantBoundsPath(title.DefaultSlug)
 	}
-	cat, err := filmdec.LoadMapQuantCatalog(chemin)
+	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible (%s) : %v", chemin, err)
 	}

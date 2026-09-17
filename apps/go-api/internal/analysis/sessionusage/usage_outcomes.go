@@ -29,15 +29,16 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/domain/equipmentusage"
 )
 
 // equipmentBilanFamilies — les familles qui portent une ligne d'issue. SOURCE
-// UNIQUE : la table de reconnaissance du résumé (`replay.EquipmentOutcomeFamilies`),
-// jamais une seconde liste écrite ici. C'est elle qui garantit que le répulseur n'a
+// UNIQUE : le périmètre du bilan (`equipmentusage.EquipmentOutcomeFamilies`), que ce
+// paquet et le résumé du décodeur lisent tous les deux, jamais une seconde liste
+// écrite ici. C'est elle qui garantit que le répulseur n'a
 // pas de ligne (décision P4 : son usage n'est mesuré par aucun canal, une ligne
 // dirait « 0 utilisation » là où la vérité est « non mesuré »).
-var equipmentBilanFamilies = replay.EquipmentOutcomeFamilies()
+var equipmentBilanFamilies = equipmentusage.EquipmentOutcomeFamilies()
 
 // outcomeCounts — les trois issues d'une famille, pour un compteur quelconque
 // (un joueur, un camp, un lobby), plus les prises qui servent de dénominateur
@@ -84,7 +85,7 @@ func equipmentOutcomeOf(p *PlayerRow, family string) outcomeCounts {
 // cette BASCULE (règle CLAUDE.md n°6). La fonction elle-même ne peut pas être
 // partagée — là-bas elle lit une ligne de projection, ici une ligne de base — mais LA
 // CONNAISSANCE, elle, l'est : les familles à pièce engendrée viennent de
-// [replay.UsageFamilySpawnsPiece], jamais d'une liste réécrite ici. Garde-rail :
+// [equipmentusage.UsageFamilySpawnsPiece], jamais d'une liste réécrite ici. Garde-rail :
 // usage_outcomes_guard_test.go.
 //
 // CORRIGÉ LE 2026-09-10 (constat C1 de la revue de la vague 5). Cette fonction
@@ -96,11 +97,11 @@ func equipmentOutcomeOf(p *PlayerRow, family string) outcomeCounts {
 // chargée par le repo et n'avait aucun lecteur.
 func equipmentUsedOf(p *PlayerRow, family string) int {
 	switch {
-	case family == replay.EquipmentFamilyPowerupCamo:
+	case family == equipmentusage.EquipmentFamilyPowerupCamo:
 		return p.CamoEpisodes
-	case family == replay.EquipmentFamilyPowerupOvershield:
+	case family == equipmentusage.EquipmentFamilyPowerupOvershield:
 		return p.OvershieldEpisodes
-	case replay.UsageFamilySpawnsPiece(family):
+	case equipmentusage.UsageFamilySpawnsPiece(family):
 		// Le MUR seul : son `spent` tombe sur la pose de PANNEAU, jamais sur la
 		// création de l'appareil porté (rapport E0 du 2026-09-10, question 5).
 		return p.DeployedByFamily[family]

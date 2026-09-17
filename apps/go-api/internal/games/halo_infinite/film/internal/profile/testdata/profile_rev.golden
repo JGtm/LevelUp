@@ -1,0 +1,51 @@
+# GOLDEN — LE COUPLE (REVISION DE LA COUCHE PROFIL, EMPREINTE DE SES SOURCES). Ne PAS editer a la main.
+#
+# Une ligne de donnees par rang : la revision, une TABULATION, l empreinte SHA-256 des sources
+# NON-TEST de internal/games/halo_infinite/film/internal/profile/ (fins de ligne normalisees en
+# LF, chemin relatif A LA RACINE hache a cote du contenu, `rev.go` exclu — il DECRIT la couche),
+# precedees de la VALEUR de `source.Rev` (V15 (12)). Les lignes vides et celles qui commencent
+# par # sont de la prose. LA DERNIERE LIGNE DE DONNEES EST LA COURANTE.
+#
+# CE QUE CE FICHIER GARDE, ET POURQUOI IL PORTE LES DEUX VALEURS. Un gate qui ne compare que
+# l empreinte laisse remettre la revision a sa valeur d avant en restant vert (revue adversariale
+# du 2026-09-12, constat P1-4, cote killsource). Les deux valeurs figees ensemble rendent les deux
+# derives visibles :
+#
+#   empreinte differente            la couche a change  -> DECIDER, monter la revision si le
+#                                   decodage change, puis regenerer.
+#   empreinte egale, revision non   la revision a bouge sans la couche -> geste sans effet, ou
+#                                   golden non regenere apres une montee legitime.
+#
+# CE QU UNE MONTEE VEUT DIRE ICI : la couche `profile` ne lit aucun octet, elle dit COMMENT les
+# lire (ADR 0034 D-1 et D-3). Une largeur, une borne ou une provenance qui change fait lire
+# d autres bits aux memes offsets. `grammar.Rev` hache la VALEUR de cette revision et `facts.Rev`
+# celle de `grammar.Rev` : une montee remonte mecaniquement jusqu au backlog killsource, qui part
+# sur SIGNAL UTILISATEUR (D6), jamais automatiquement.
+#
+# CE QUI N EST PAS HACHE, ET C EST ASSUME : le catalogue des cartes, charge depuis
+# `data/titles/halo_infinite/reference/`. Hacher un repertoire de donnees de production ferait
+# dependre un gate de source de l etat du poste ; ce que le catalogue change, le corpus gate le
+# voit.
+#
+# REGENERATION (les deux valeurs a la fois, jamais l une sans l autre) :
+#
+#   LEVELUP_UPDATE_PROFILE_REV=1 go test ./internal/games/halo_infinite/film/internal/profile/ \
+#     -run TestProfileRevSuitLaCoucheProfil -update-profile-rev
+#
+# HISTORIQUE DES MOUVEMENTS DE CE COUPLE
+#
+#   2026-09-17  NAISSANCE (lot 2.6.1). La couche existait depuis le lot 2.5.b et n etait hachee
+#               que dans l empreinte de la GRAMMAIRE : le gate mordait, mais il rendait le meme
+#               diagnostic pour une borne de carte et pour un ordre de composants. Aucune ligne
+#               de la table ne change a ce rang.
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.6.3), ET LE CHOIX EST
+#               EXPLICITE. `FilmIdentity` gagne DEUX CHAMPS LUS : `RegistryFingerprint` et
+#               `RegistryNamedSlots`. Ils etaient CALCULES PUIS JETES par
+#               `grammar.ReadFilmIdentity` (decouverte D4 (3.2)) — le parse du registre les
+#               produit pendant sa passe, et les rendre ne coute pas un cycle. La table du
+#               profil, elle, ne bouge pas d une ligne : aucune largeur, aucune borne, aucune
+#               provenance ne change, et le decodage est identique a l octet. Ce que ces deux
+#               champs servent est l ARTEFACT : `coverage.decoder.registry` classe desormais
+#               l empreinte du registre ECS (schema 61).
+profile-2026-09-17	923c8ad7d9495662e97c1240b1c3e77abcffd04d9b3ae38e5748b859e8623e63

@@ -23,9 +23,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/himap"
 )
 
@@ -261,27 +262,27 @@ func avertitSiEcarte(name, mod string, q himap.BSP, candidats []himap.BSP) {
 // `ds/globals` (module sans sbsp, région jouée déclarée). La largeur de l'index d'i0 est
 // ceilLog2(nb de régions), jamais moins de 1 — la loi du moteur (himap.BSPQuantification,
 // i0RegionIndexBits).
-func entreeRegionExterne(name, mod, modulePath, levels string, region uint32) (filmdec.MapQuantEntry, error) {
+func entreeRegionExterne(name, mod, modulePath, levels string, region uint32) (decfilm.MapQuantEntry, error) {
 	globals, err := filepath.Glob(filepath.Join(levels, "..", "..", "globals", "*.module"))
 	if err != nil || len(globals) == 0 {
-		return filmdec.MapQuantEntry{}, fmt.Errorf("globals introuvables sous %s (%w)", levels, err)
+		return decfilm.MapQuantEntry{}, fmt.Errorf("globals introuvables sous %s (%w)", levels, err)
 	}
 	regions, err := himap.RegionsBSPExternes(modulePath, globals)
 	if err != nil {
-		return filmdec.MapQuantEntry{}, err
+		return decfilm.MapQuantEntry{}, err
 	}
 	if int(region) >= len(regions) {
-		return filmdec.MapQuantEntry{}, fmt.Errorf("région déclarée %d hors des %d régions résolues", region, len(regions))
+		return decfilm.MapQuantEntry{}, fmt.Errorf("région déclarée %d hors des %d régions résolues", region, len(regions))
 	}
 	b := regions[region].BSP
 	if !b.Bounds.Valid() {
-		return filmdec.MapQuantEntry{}, fmt.Errorf("AABB dégénérée (région %d)", region)
+		return decfilm.MapQuantEntry{}, fmt.Errorf("AABB dégénérée (région %d)", region)
 	}
 	bits := uint(1)
 	for (1 << bits) < len(regions) {
 		bits++
 	}
-	e := filmdec.MapQuantEntry{Module: mod, Region: region, RegionIndexBits: bits}
+	e := decfilm.MapQuantEntry{Module: mod, Region: region, RegionIndexBits: bits}
 	w := b.Bounds.AxisWidths()
 	for ax := 0; ax < 3; ax++ {
 		e.Min[ax] = float32(b.Bounds.Min[ax])
@@ -293,6 +294,37 @@ func entreeRegionExterne(name, mod, modulePath, levels string, region uint32) (f
 		"indexBits", bits, "W", fmt.Sprintf("%d/%d/%d", w[0], w[1], w[2]),
 		"extent", fmt.Sprintf("%.3f/%.3f/%.3f", b.Bounds.Extent(0), b.Bounds.Extent(1), b.Bounds.Extent(2)))
 	return e, nil
+}
+
+// methodeDesBornes : la MÉTHODE de dérivation, invariante d'un poste à l'autre. C'est elle qui
+// vaut provenance dans le fichier commis ; le dossier n'est qu'une précision.
+const methodeDesBornes = "world bounds x/y/z du tag sbsp de la RÉGION 0 " +
+	"(ordre du bloc structure-BSP du tag de niveau), lus dans "
+
+// sourceDuCatalogue rend la valeur du champ `source` du catalogue : la méthode, puis le dossier
+// des niveaux RELATIF à la racine de l'installation (`ds/levels/multi`).
+//
+// POURQUOI RELATIF (découverte D2 (3.1.2), 2026-09-16) : le fichier est VERSIONNÉ, et il portait
+// le chemin d'installation ABSOLU du poste qui l'a produit
+// (`D:\<bibliotheque>\<jeux>\common\Halo Infinite\deploy\ds\levels\multi`). Deux postes qui
+// régénèrent le MÊME catalogue rendaient donc deux fichiers différents alors qu'aucune borne
+// n'avait bougé — un gate « commis = régénéré » à l'octet rougissait pour une trace de
+// fabrication. Le lot 3.1.2 l'avait contourné en excluant `source` de l'empreinte du profil
+// (`TestEmpreinteDesBornesIgnoreLaTraceDeFabrication`) ; ceci en retire la cause.
+//
+// Quand le dossier n'est PAS sous l'installation détectée (`--levels` pointé ailleurs, ou aucune
+// installation), aucun chemin n'est écrit : mieux vaut une provenance qui ne dit que la méthode
+// qu'une provenance qui dit le disque de quelqu'un.
+func sourceDuCatalogue(levels string) string {
+	root, err := himap.DeployRoot()
+	if err != nil {
+		return methodeDesBornes + "le dossier des niveaux passé par --levels"
+	}
+	rel, err := filepath.Rel(root, levels)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return methodeDesBornes + "le dossier des niveaux passé par --levels"
+	}
+	return methodeDesBornes + filepath.ToSlash(rel) + " (relatif à la racine de l'installation)"
 }
 
 func main() {
@@ -321,11 +353,10 @@ func main() {
 		outPath = title.NewPathResolver(root).MapQuantBoundsPath(*titleSlug)
 	}
 
-	cat := filmdec.MapQuantCatalog{
-		SchemaVersion: filmdec.MapQuantSchemaVersion,
-		Source: "world bounds x/y/z du tag sbsp de la RÉGION 0 (ordre du bloc structure-BSP " +
-			"du tag de niveau), lus dans " + *levels,
-		Maps: map[string]filmdec.MapQuantEntry{},
+	cat := decfilm.MapQuantCatalog{
+		SchemaVersion: decfilm.MapQuantSchemaVersion,
+		Source:        sourceDuCatalogue(*levels),
+		Maps:          map[string]decfilm.MapQuantEntry{},
 	}
 	names := make([]string, 0, len(mapModule))
 	for n := range mapModule {
@@ -360,7 +391,7 @@ func main() {
 				missing++
 				continue
 			}
-			cat.Maps[filmdec.NormalizeMapName(name)] = e
+			cat.Maps[decfilm.NormalizeMapName(name)] = e
 			continue
 		}
 		if !q.Bounds.Valid() {
@@ -369,14 +400,14 @@ func main() {
 			continue
 		}
 		avertitSiEcarte(name, mod, q, candidats)
-		e := filmdec.MapQuantEntry{Module: mod}
+		e := decfilm.MapQuantEntry{Module: mod}
 		w := q.Bounds.AxisWidths()
 		for ax := 0; ax < 3; ax++ {
 			e.Min[ax] = float32(q.Bounds.Min[ax])
 			e.Max[ax] = float32(q.Bounds.Max[ax])
 			e.AxisWidths[ax] = uint(w[ax])
 		}
-		cat.Maps[filmdec.NormalizeMapName(name)] = e
+		cat.Maps[decfilm.NormalizeMapName(name)] = e
 		slog.Info("bornes lues", "carte", name, "module", mod,
 			"W", fmt.Sprintf("%d/%d/%d", w[0], w[1], w[2]),
 			"extent", fmt.Sprintf("%.3f/%.3f/%.3f", q.Bounds.Extent(0), q.Bounds.Extent(1), q.Bounds.Extent(2)))

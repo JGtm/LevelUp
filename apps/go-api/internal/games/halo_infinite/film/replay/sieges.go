@@ -55,7 +55,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // SeatSourceLu / SeatSourceApparie : les deux provenances d'un siege publie.

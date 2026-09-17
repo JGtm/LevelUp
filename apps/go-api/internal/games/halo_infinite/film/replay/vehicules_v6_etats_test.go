@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // TestV6EtatsOccupation : le bilan chiffre de la machine d etats, film par film.
@@ -32,10 +32,6 @@ func TestV6EtatsOccupation(t *testing.T) {
 
 func v6EtatsUnFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
 	ctx, ok := v4Decode(t, root, f)
 	if !ok {
 		return
@@ -63,7 +59,7 @@ func v6EtatsUnFilm(t *testing.T, root string, f v0Film) {
 
 // v6EtatsEpisodes detaille la construction et le rattachement des episodes d evenement.
 func v6EtatsEpisodes(
-	t *testing.T, eps []vehicleEpisode, bySlot map[uint32][]filmdec.BipedPosition,
+	t *testing.T, eps []vehicleEpisode, bySlot map[uint32][]grammar.BipedPosition,
 	in vehicleRideInputs,
 ) {
 	t.Helper()
@@ -111,7 +107,7 @@ func v6EtatsEpisodes(
 // v6EtatsDistances rend la distance au vehicule le plus proche AUX DEUX ANCRES, episode par
 // episode, avec son temoin decale. C est la MESURE qui doit preceder tout choix de rayon.
 func v6EtatsDistances(
-	eps []vehicleEpisode, bySlot map[uint32][]filmdec.BipedPosition, in vehicleRideInputs,
+	eps []vehicleEpisode, bySlot map[uint32][]grammar.BipedPosition, in vehicleRideInputs,
 ) string {
 	s := "distances (m) au vehicule le plus proche — debut / fin / temoin+60s :"
 	for _, ep := range eps {
@@ -139,7 +135,7 @@ var v6RayonsM = []float64{1.5, 2, 3, 5, 8, 12}
 // vehicule sous le meme rayon), avec le temoin decale de 60 s. C est la table qui justifie — ou
 // refuse — d ouvrir le rayon de l ancre d evenement.
 func v6EtatsRayons(
-	eps []vehicleEpisode, bySlot map[uint32][]filmdec.BipedPosition, in vehicleRideInputs,
+	eps []vehicleEpisode, bySlot map[uint32][]grammar.BipedPosition, in vehicleRideInputs,
 ) string {
 	s := "rattachement par rayon (ancre d evenement) :"
 	for _, r := range v6RayonsM {
@@ -171,7 +167,7 @@ func v6EtatsRayons(
 }
 
 // v6CountWithin compte les vehicules FRAIS sous le rayon a l instant de l echantillon.
-func v6CountWithin(e filmdec.BipedPosition, has bool, in vehicleRideInputs, r float64) int {
+func v6CountWithin(e grammar.BipedPosition, has bool, in vehicleRideInputs, r float64) int {
 	if !has {
 		return 0
 	}
@@ -190,7 +186,7 @@ func v6CountWithin(e filmdec.BipedPosition, has bool, in vehicleRideInputs, r fl
 
 // v6Dist rend la distance en plan au vehicule le plus proche a l instant de l echantillon, ou
 // « - » quand il n y a pas d ancre / pas de vehicule frais.
-func v6Dist(e filmdec.BipedPosition, has bool, in vehicleRideInputs) string {
+func v6Dist(e grammar.BipedPosition, has bool, in vehicleRideInputs) string {
 	if !has {
 		return "-"
 	}
@@ -216,7 +212,7 @@ func itoa32(v uint32) string { return fmt.Sprintf("%d", v) }
 
 // v6EtatsTrous compte les trous et ceux que la regle anti-doublon laisse passer.
 func v6EtatsTrous(
-	t *testing.T, eps []vehicleEpisode, bySlot map[uint32][]filmdec.BipedPosition,
+	t *testing.T, eps []vehicleEpisode, bySlot map[uint32][]grammar.BipedPosition,
 	in vehicleRideInputs,
 ) {
 	t.Helper()

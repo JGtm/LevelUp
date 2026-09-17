@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/testutil"
 )
@@ -192,7 +192,7 @@ func TestMapBackground_ForgeJamaisViaCanevas(t *testing.T) {
 // PAS UN SUFFIXE À RABOTER.
 //
 // Contrat d'origine (jusqu'au 2026-08-27) : le service rabotait « - Ranked » via
-// filmdec.NormalizeMapName, comme le build. CE RABOTAGE A ÉTÉ RETIRÉ, et pas par confort — il
+// decfilm.NormalizeMapName, comme le build. CE RABOTAGE A ÉTÉ RETIRÉ, et pas par confort — il
 // est FAUX sur les cartes Forge. Mesuré le 2026-08-27 sur les 84 fonds publiés : « Insolence »
 // et « Insolence Heavies » sont DEUX assets distincts avec DEUX fonds distincts (idem
 // Fortitude, Thunderhead, Refuge, Obituary, Origin, Solitude). Raboter le suffixe les rendrait
@@ -457,7 +457,7 @@ func TestMapBackground_TousLesModulesDuCatalogue(t *testing.T) {
 		t.Fatalf("racine du dépôt introuvable : %v", err)
 	}
 	res := title.NewPathResolver(root)
-	cat, err := filmdec.LoadMapQuantCatalog(res.MapQuantBoundsPath(title.DefaultSlug))
+	cat, err := decfilm.LoadMapQuantCatalog(res.MapQuantBoundsPath(title.DefaultSlug))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

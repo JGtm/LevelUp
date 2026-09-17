@@ -34,7 +34,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // classeDeVie : les trois verdicts de l'oracle, et rien d'autre.
@@ -163,7 +163,7 @@ func classerViesDUnEchantillon(t *testing.T, g *goldenInputs, opt Options,
 // registreDuDocument reconstruit le registre d'identite du document, avec le MEME axe de frames.
 func registreDuDocument(g *goldenInputs, opt Options,
 	doc ReplayDocument) (IdentityRegistry, IdentityClock) {
-	sorted := append([]filmdec.BipedPosition(nil), g.Positions...)
+	sorted := append([]grammar.BipedPosition(nil), g.Positions...)
 	sort.SliceStable(sorted, func(i, j int) bool {
 		return sorted[i].TimestampUS < sorted[j].TimestampUS
 	})

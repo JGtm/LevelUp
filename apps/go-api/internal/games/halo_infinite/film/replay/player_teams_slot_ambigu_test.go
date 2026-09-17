@@ -23,7 +23,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // Les deux slots du cas : 900 partage par deux joueurs d'equipes OPPOSEES, 901 tenu par un seul
@@ -56,7 +56,7 @@ func equipesDeReference() map[int]int { return map[int]int{0: 0, 1: 1, 2: 0} }
 // TestEquipeDuSlotSAbstientSurUnSlotAmbigu — la propriete, au niveau du pont.
 func TestEquipeDuSlotSAbstientSurUnSlotAmbigu(t *testing.T) {
 	p := newTeamPublication(registreDeuxEquipesSurUnSlot(), equipesDeReference(),
-		filmdec.TeamScanReport{Component: "team_designator", Records: 3}, nil)
+		grammar.TeamScanReport{Component: "team_designator", Records: 3}, nil)
 
 	if eq, lue, ambigu := p.equipeDuSlot(slotPartageL4); lue || !ambigu || eq != 0 {
 		t.Errorf("slot partage : equipe=%d lue=%v ambigu=%v — attendu une ABSTENTION"+
@@ -76,7 +76,7 @@ func TestEquipeDuSlotSAbstientSurUnSlotAmbigu(t *testing.T) {
 // publiee et sur le compte de couverture.
 func TestVieDuSecondOccupantNeRecoitPasLEquipeDuPremier(t *testing.T) {
 	p := newTeamPublication(registreDeuxEquipesSurUnSlot(), equipesDeReference(),
-		filmdec.TeamScanReport{Component: "team_designator", Records: 3}, nil)
+		grammar.TeamScanReport{Component: "team_designator", Records: 3}, nil)
 	// Deux vies SANS xuid (le seul regime ou le pont par slot decide) : celle du slot partage,
 	// celle du temoin.
 	tracks := []Track{
@@ -112,7 +112,7 @@ func TestLeXUIDPRIMESURLeSlotAmbigu(t *testing.T) {
 	reg := registreDeuxEquipesSurUnSlot()
 	reg.filmTable.table = PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1, 333: 2}}
 	p := newTeamPublication(reg, equipesDeReference(),
-		filmdec.TeamScanReport{Component: "team_designator", Records: 3}, nil)
+		grammar.TeamScanReport{Component: "team_designator", Records: 3}, nil)
 
 	tracks := []Track{{Slot: slotPartageL4, XUID: "222", Team: -1}}
 	total, nommees, slotAmbigu := p.poserSurLesTraces(tracks)

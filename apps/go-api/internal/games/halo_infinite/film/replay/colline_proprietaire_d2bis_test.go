@@ -29,7 +29,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 const (
@@ -167,12 +167,12 @@ func TestCollineProprietaireD2Bis(t *testing.T) {
 // auteur resolu par le ROSTER FIGE du corpus (aucune base ouverte).
 func d2bPrises(t *testing.T, e ctEntree) []d2bPrise {
 	t.Helper()
-	evs, _ := objectiveevents.Extract(e.short, "KOTH:Arena", p2aBobine(t, e.dir),
-		objectiveevents.MapRoster(e.film.p2aTeams()))
+	evs, _ := objectives.Extract(e.short, "KOTH:Arena", p2aBobine(t, e.dir),
+		objectives.MapRoster(e.film.p2aTeams()))
 	var out []d2bPrise
 	horsAxe, sansCamp := 0, 0
 	for _, ev := range evs {
-		if ev.EventType != objectiveevents.EventTypeHillCapture || ev.TimeMS == nil {
+		if ev.EventType != objectives.EventTypeHillCapture || ev.TimeMS == nil {
 			continue
 		}
 		if ev.TeamID == nil {

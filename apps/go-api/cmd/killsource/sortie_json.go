@@ -16,7 +16,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // sortieJSON : la racine du document.
@@ -214,12 +214,12 @@ func afficherJSON(r *rapport) error {
 
 func construireJSON(r *rapport) sortieJSON {
 	res := r.result
-	p := killsource.CatalogueProvenance()
+	p := decfilm.CatalogueProvenance()
 	out := sortieJSON{
 		Film:        r.film,
 		Calibration: res.Calibration,
 		Catalogue: catalogueJSON{
-			Identifiants: killsource.CatalogueSize(), GenereLe: p.IDsDate,
+			Identifiants: decfilm.CatalogueSize(), GenereLe: p.IDsDate,
 			EtiquettesDu: p.LabelsDate, FichiersDuJeu: false, NombreLibelles: p.LabelCount,
 		},
 		Couverture:  couvertureDeJSON(res.Coverage),
@@ -235,7 +235,7 @@ func construireJSON(r *rapport) sortieJSON {
 
 // assistDeJSON : les trois etats, explicites. La note DIT lequel, pour qu un lecteur presse ne
 // puisse pas confondre << pas d assistant >> avec << on ne sait pas >>.
-func assistDeJSON(a killsource.Assist) assistJSON {
+func assistDeJSON(a decfilm.Assist) assistJSON {
 	j := assistJSON{
 		Connu: a.Known, Joueur: a.Name, IndiceReplication: a.Index,
 		Refus: a.Rejected, Surplus: a.Extra,
@@ -266,7 +266,7 @@ func assistDeJSON(a killsource.Assist) assistJSON {
 // total applicable vaut 100 quand le tueur est seul, mais 99 des qu un assistant est nomme — deux
 // troncatures d entiers y perdent un point. Un consommateur qui recopierait la formule aurait une
 // chance sur deux de se tromper de constante.
-func partsDeJSON(k killsource.Kill) partsJSON {
+func partsDeJSON(k decfilm.Kill) partsJSON {
 	j := partsJSON{Note: "null = NON MESURE, jamais zero. Aucun plafond a 100 n est impose."}
 	if k.KillerDamage.Known {
 		v := k.KillerDamage.Pct
@@ -297,7 +297,7 @@ func partsDeJSON(k killsource.Kill) partsJSON {
 	return j
 }
 
-func couvertureDeJSON(c killsource.Coverage) couvertureJSON {
+func couvertureDeJSON(c decfilm.Coverage) couvertureJSON {
 	return couvertureJSON{
 		Couvertes: c.Covered, CouplesReels: c.RealPairs,
 		CouplesReconstruits: c.ReconstructedPairs, MortsDuKillFeed: c.FeedDeaths,
@@ -318,7 +318,7 @@ func couvertureDeJSON(c killsource.Coverage) couvertureJSON {
 	}
 }
 
-func mortDeJSON(k killsource.Kill) mortJSON {
+func mortDeJSON(k decfilm.Kill) mortJSON {
 	m := mortJSON{
 		TempsMS: k.TimeMS, Temps: mmss(k.TimeMS), Victime: k.Victim,
 		Credit: creditJSON{Joueur: k.Feed.Killer, PresentAuFeed: k.Feed.Present},
@@ -342,7 +342,7 @@ func mortDeJSON(k killsource.Kill) mortJSON {
 		m.Credit.NoteAbsenceFeed = "mort absente du kill-feed (victime bot) : la victime vient du " +
 			"roster de replication, le tueur vient bien du kill-feed"
 	}
-	if k.Read.Origin == killsource.OriginBotKiller {
+	if k.Read.Origin == decfilm.OriginBotKiller {
 		m.Credit.NoteAbsenceFeed = "kill absent du kill-feed (TUEUR bot) : la mort y est bien, " +
 			"c est le kill qui manque — le nom du tueur vient du roster de replication"
 	}

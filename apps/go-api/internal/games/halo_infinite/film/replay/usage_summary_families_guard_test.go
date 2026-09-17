@@ -19,6 +19,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/domain/equipmentusage"
 )
 
 // familleConnueDuResume dit si la famille est couverte par UNE décision écrite du
@@ -176,7 +178,7 @@ func famillesEngendrantUnePieceDuManifeste(t *testing.T, raw []byte) map[string]
 //
 // `usageWallPanelIDs` transcrit les objets `kind = "deployed"` du manifeste, et depuis l item
 // H.2 cette table decide de l ORIGINE PUBLIEE d une pose. Rien cote Go ne la recollait au
-// manifeste : le garde-rail existant recolle les FAMILLES (`usageFamiliesWithSpawnedPiece`), et
+// manifeste : le garde-rail existant recolle les FAMILLES (`equipmentusage.UsageFamilySpawnsPiece`), et
 // seul le garde WEB (`placementPanels.guard.test.ts`) verifiait les identifiants — il nomme la
 // table du web, pas celle-ci, et un depot qui ne jouerait que ses tests Go ne verrait rien.
 //
@@ -232,7 +234,7 @@ func lireManifesteRejeu(t *testing.T) []byte {
 
 // TestUsageFamiliesWithSpawnedPieceMatchManifest — CINQUIÈME LISTE ÉCRITE (lot 5.5) :
 // les familles qui ENGENDRENT UNE PIÈCE, seules dont le canal des poses voit le
-// déploiement (usageFamiliesWithSpawnedPiece). Elle décide du côté « utilisé » de tout
+// déploiement (equipmentusage.UsageFamiliesSpawningPiece). Elle décide du côté « utilisé » de tout
 // le bilan d'équipement, et sa donnée source est le MANIFESTE : la famille de chaque
 // objet `kind = "deployed"`.
 //
@@ -248,13 +250,13 @@ func TestUsageFamiliesWithSpawnedPieceMatchManifest(t *testing.T) {
 			"adapté, pas supprimé : la règle d'usage_summary_outcomes.go n'aurait plus de source")
 	}
 	for f := range duManifeste {
-		if !usageFamiliesWithSpawnedPiece[f] {
+		if !equipmentusage.UsageFamilySpawnsPiece(f) {
 			t.Errorf("la famille %q engendre une pièce au manifeste (`kind = deployed`) mais "+
-				"n'est pas dans usageFamiliesWithSpawnedPiece : son « utilisé » est lu sur ses "+
-				"CONSOMMATIONS alors que ses POSES le mesurent (cf. usage_summary_families.go)", f)
+				"n'est pas dans equipmentusage.UsageFamiliesSpawningPiece : son « utilisé » est lu sur ses "+
+				"CONSOMMATIONS alors que ses POSES le mesurent (cf. domain/equipmentusage)", f)
 		}
 	}
-	for f := range usageFamiliesWithSpawnedPiece {
+	for _, f := range equipmentusage.UsageFamiliesSpawningPiece() {
 		if !duManifeste[f] {
 			t.Errorf("la famille %q est déclarée engendrer une pièce, mais AUCUN objet "+
 				"`kind = deployed` du manifeste ne la porte — son « utilisé » serait lu sur des "+

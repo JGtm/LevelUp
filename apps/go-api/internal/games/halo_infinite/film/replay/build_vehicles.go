@@ -36,12 +36,14 @@ package replay
 // `object-dead-state` de l entite elle-meme ; le detail vit dans `vehicle_end.go`.
 //
 // HORS LIGNE : `decodeFilmVehicleScan` consomme le film DEJA CHARGE et n est appelee que
-// par `BuildFromFilm`, sous `LockProcessDecode`. `attachVehicles` est PUR.
+// par `BuildFromFilm`. `attachVehicles` est PUR.
 
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // VehicleScan porte ce qu une lecture du film rend sur les VEHICULES (`ti=40`).
@@ -53,32 +55,32 @@ type VehicleScan struct {
 	// images-cles, creations illisibles, ou pas de film du tout (assemblage sur positions figees).
 	Scanned bool
 	// Keyframes porte la BANDE de slots `ti=40` et le RECENSEMENT qui borne les fins de vie.
-	Keyframes filmdec.WorldObjectKeyframes
+	Keyframes grammar.WorldObjectKeyframes
 	// Creations sont les records de creation acceptes : position de naissance + bloc MPP.
-	Creations []filmdec.EquipmentCreation
-	Stats     filmdec.EquipmentCreationStats
+	Creations []types.EquipmentCreation
+	Stats     types.EquipmentCreationStats
 	// Positions est le nuage NON decime des positions de vehicule, lu a la grammaire bipede
 	// (porte 5 bits) sur la bande `ti=40` — la seule qui rende 99,4 a 100 % de pas sous 35 m/s
 	// (cadrage vehicules du 2026-08-31).
-	Positions []filmdec.BipedPosition
+	Positions []grammar.BipedPosition
 	// Events sont les embarquements et les sorties de la liste d evenements des paquets delta.
 	// Absents = episodes d occupation bornes par le seul trou de position (repli mesure).
-	Events []filmdec.VehicleEvent
+	Events []types.VehicleEvent
 	// Aims sont les lectures de VISEE des bipedes qui ne repliquent PLUS leur position — celles
 	// des occupants, donc. Bande `ti=35` (les joueurs), PAS `ti=40` : la visee publiee sur un
 	// episode est celle de l HOMME a bord, jamais du chassis. Absentes = episodes sans serie de
 	// visee, le client retombe sur le cap du chassis (cf. vehicle_rides_aim.go).
-	Aims []filmdec.BipedAim
+	Aims []grammar.BipedAim
 	// Deaths sont les MORTS ECRITES des entites `ti=40` : le composant `object-dead-state` lu
-	// par la MARCHE (`filmdec.ScanObjectDeaths`), seule voie qui l atteigne — les balayages
+	// par la MARCHE (`grammar.ScanObjectDeaths`), seule voie qui l atteigne — les balayages
 	// ancres de ce paquet n acceptent qu un masque ouvrant sur `i0` et n arrivent jamais a
 	// `i11`. C est ce qui DATE la fin de vie d un vehicule (lot 1.9.10) ; sans elles, la fin
 	// n est plus qu une borne de recensement.
-	Deaths []filmdec.ObjectDeath
+	Deaths []types.ObjectDeath
 	// DeathStats porte les denominateurs de cette lecture (cadre retenu, paquets localises,
 	// records par archetype, controle de masque). ILS VOYAGENT AVEC LA LISTE : une liste vide
 	// sans eux serait indistinguable d un film ou aucun vehicule ne meurt.
-	DeathStats filmdec.ObjectDeathStats
+	DeathStats grammar.ObjectDeathStats
 }
 
 // decodeFilmVehicleScan decode les CINQ lectures du calque des vehicules sur le meme film et
@@ -89,28 +91,28 @@ type VehicleScan struct {
 // les creations sont illisibles, et ni l un ni l autre n est un film dont le nuage de positions
 // manque. Le calque se tait entierement plutot que de publier des vehicules sans trajectoire.
 //
-// HORS LIGNE — appelee par BuildFromFilm, sous LockProcessDecode. Elle ne TOUCHE PAS le disque :
+// HORS LIGNE — appelee par BuildFromFilm. Elle ne TOUCHE PAS le disque :
 // le film est deja charge et le contexte deja ouvert (lots 1 et 2 de PLAN_CUISSON_PERF), et
 // c'est lui qui porte la bande bipede, le decoupage d'i0 et le registre que les cinq lectures
 // ci-dessous partagent.
 func decodeFilmVehicleScan(
-	fc *filmdec.FilmContext, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
+	fc *grammar.FilmContext, matchID string, wr *profile.Vec3Range, mpp profile.MPPWidths,
 ) VehicleScan {
-	defer gwInstallMPPWidths(gwWidthsForFilm(fc, mpp))()
-	kf := filmdec.ScanWorldObjectKeyframes(fc.Film(), filmdec.VehicleTypeIndex)
+	defer gwInstallMPPWidths(fc, gwWidthsForFilm(fc, mpp))()
+	kf := grammar.ScanWorldObjectKeyframes(fc.Film(), grammar.VehicleTypeIndex)
 	if len(kf.Band) == 0 {
 		slog.Info("vehicules : aucun slot ti=40 aux images-cles — rejeu sans ce calque",
 			"match_id", matchID, "imagesCles", len(kf.TimesUS))
 		return VehicleScan{}
 	}
-	cre, st, err := filmdec.ScanVehicleCreationsForBand(fc, wr, kf.Band)
+	cre, st, err := grammar.ScanVehicleCreationsForBand(fc, wr, kf.Band)
 	if err != nil {
 		slog.Warn("vehicules : records de creation illisibles — rejeu sans ce calque",
 			"err", err, "match_id", matchID)
 		return VehicleScan{}
 	}
-	pos, err := filmdec.ScanBipedPositionsForBand(
-		fc.Film(), filmdec.NewSlotBand(kf.Band), vehicleScanOptions(fc, wr))
+	pos, err := grammar.ScanBipedPositionsForBand(
+		fc, grammar.NewSlotBand(kf.Band), vehicleScanOptions(fc, wr))
 	if err != nil {
 		slog.Warn("vehicules : nuage de positions illisible — AUCUN vehicule publie (sans lui, une"+
 			" vie recensee n aurait ni trajectoire ni cap)", "err", err, "match_id", matchID)
@@ -140,17 +142,17 @@ func decodeFilmVehicleScan(
 // `ti=40` par un record NEW en cours de flux est donc garde, alors que la bande des images-cles
 // l aurait perdu (2 a 5 morts par film chez le bipede, mesure V13 gate G1a).
 func decodeFilmVehicleDeaths(
-	fc *filmdec.FilmContext, matchID string,
-) ([]filmdec.ObjectDeath, filmdec.ObjectDeathStats) {
-	all, st, err := filmdec.ScanObjectDeaths(fc)
+	fc *grammar.FilmContext, matchID string,
+) ([]types.ObjectDeath, grammar.ObjectDeathStats) {
+	all, st, err := grammar.ScanObjectDeaths(fc)
 	if err != nil {
 		slog.Warn("vehicules : morts ecrites illisibles — fins de vie bornees par le seul"+
 			" recensement", "err", err, "match_id", matchID)
 		return nil, st
 	}
-	out := make([]filmdec.ObjectDeath, 0, len(all))
+	out := make([]types.ObjectDeath, 0, len(all))
 	for _, d := range all {
-		if d.TypeIndex == uint32(filmdec.VehicleTypeIndex) {
+		if d.TypeIndex == uint32(grammar.VehicleTypeIndex) {
 			out = append(out, d)
 		}
 	}
@@ -172,8 +174,8 @@ func decodeFilmVehicleDeaths(
 // 22 963 lectures sur `0d76e8f1`, invisibles au premier). Les fusionner reviendrait a relacher la
 // porte du nuage de positions, qui est celle sous laquelle TOUT le calque a ete mesure. La BANDE,
 // elle, est partagee : c'est celle du contexte, relevee une seule fois.
-func decodeFilmOccupantAims(fc *filmdec.FilmContext, matchID string) []filmdec.BipedAim {
-	aims, err := filmdec.ScanBipedAimOnly(fc)
+func decodeFilmOccupantAims(fc *grammar.FilmContext, matchID string) []grammar.BipedAim {
+	aims, err := grammar.ScanBipedAimOnly(fc)
 	if err != nil {
 		slog.Warn("vehicules : visees sans position illisibles — episodes d occupation sans serie"+
 			" de visee, le cone retombe sur le cap du chassis", "err", err, "match_id", matchID)
@@ -186,8 +188,8 @@ func decodeFilmOccupantAims(fc *filmdec.FilmContext, matchID string) []filmdec.B
 // absence rend les episodes d occupation au seul trou de position, qui est la primitive de repli
 // MESUREE (86,3 % des trous portent leur sortie, et 100 % de ces sorties ferment le trou a
 // +/-2 s — rapport V3_DESTRUCTION_DATEE_2026-09-02, gate 6).
-func decodeFilmVehicleEvents(fc *filmdec.FilmContext, matchID string) []filmdec.VehicleEvent {
-	ev, err := filmdec.ScanVehicleEvents(fc)
+func decodeFilmVehicleEvents(fc *grammar.FilmContext, matchID string) []types.VehicleEvent {
+	ev, err := grammar.ScanVehicleEvents(fc)
 	if err != nil {
 		slog.Warn("vehicules : liste d evenements illisible — episodes d occupation bornes par le"+
 			" seul trou de position", "err", err, "match_id", matchID)
@@ -216,8 +218,8 @@ func decodeFilmVehicleEvents(fc *filmdec.FilmContext, matchID string) []filmdec.
 //     que les positions bipedes du meme film — sur une carte a plus de deux regions,
 //     l'auto-detection lit l'index de region comme un bit d'axe. Nil (catalogue sans largeurs) :
 //     l'auto-detection reprend, comme pour le bipede.
-func vehicleScanOptions(fc *filmdec.FilmContext, wr *filmdec.Vec3Range) filmdec.ScanFilmOptions {
-	opt := filmdec.DefaultScanFilmOptions()
+func vehicleScanOptions(fc *grammar.FilmContext, wr *profile.Vec3Range) grammar.ScanFilmOptions {
+	opt := grammar.DefaultScanFilmOptions()
 	opt.RequireTag1 = false
 	opt.CaptureDirs = true
 	opt.DynPrecOrientation = true
@@ -235,7 +237,7 @@ func vehicleScanOptions(fc *filmdec.FilmContext, wr *filmdec.Vec3Range) filmdec.
 // slot -> xuid, sans lequel un episode reste anonyme (il est publie quand meme : le vehicule est
 // occupe, seul son occupant est inconnu).
 func attachVehicles(
-	doc *ReplayDocument, scan VehicleScan, bipeds []filmdec.BipedPosition,
+	doc *ReplayDocument, scan VehicleScan, bipeds []grammar.BipedPosition,
 	reg IdentityRegistry, clock replayClock,
 ) {
 	tracks, cov, st := buildVehicleTracks(scan, bipeds, reg, clock)

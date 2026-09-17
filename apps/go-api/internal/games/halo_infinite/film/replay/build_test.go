@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // pos construit une position décodée à ts millisecondes du départ.
-func pos(slot uint32, ms int, x, y, z float32) filmdec.BipedPosition {
+func pos(slot uint32, ms int, x, y, z float32) grammar.BipedPosition {
 	// HasWorld : les points sans coordonnée monde ne sont pas publiés (une position n'est
 	// une coordonnée que si les bornes de la carte étaient connues au décodage).
-	return filmdec.BipedPosition{Slot: slot, TimestampUS: uint64(ms) * 1000, X: x, Y: y, Z: z, HasWorld: true}
+	return grammar.BipedPosition{Slot: slot, TimestampUS: uint64(ms) * 1000, X: x, Y: y, Z: z, HasWorld: true}
 }
 
 // TestBuildFromPositions_Timeline valide le mappage du temps RÉEL sur l'axe de frames :
@@ -21,7 +21,7 @@ func pos(slot uint32, ms int, x, y, z float32) filmdec.BipedPosition {
 // beaucoup trop court).
 func TestBuildFromPositions_Timeline(t *testing.T) {
 	const slot uint32 = 512
-	in := []filmdec.BipedPosition{
+	in := []grammar.BipedPosition{
 		pos(slot, 10_000, 1, 1, 0.5),
 		pos(slot, 10_100, 2, 2, 0.5),
 		// +10 s : au-delà de lifeGapUS, ce point ouvre une NOUVELLE VIE du même slot
@@ -69,7 +69,7 @@ func TestBuildFromPositions_Timeline(t *testing.T) {
 // exactement ce qui a changé. L'exclusion reste testée, mais par le seuil que l'APPELANT règle
 // (`Options.MinPoints`), seule voie qui la déclenche désormais.
 func TestBuildFromPositions_Decimation(t *testing.T) {
-	in := []filmdec.BipedPosition{
+	in := []grammar.BipedPosition{
 		pos(512, 0, 10, 20, 1),
 		pos(512, 30, 11, 21, 1), // même frame (0..99 ms) -> écrasé
 		pos(512, 60, 12, 22, 1), // idem

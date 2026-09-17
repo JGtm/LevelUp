@@ -32,7 +32,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 // psTIRecenses — les archetypes dont on suit le recensement. Memes que la phase 2 : un
@@ -51,18 +52,18 @@ type psKF struct {
 // HORS LIGNE : une seule passe sur les chunks, aucun decodage de corps de record.
 func psRecenseKF(dir string) []psKF {
 	var out []psKF
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	for c := 1; c <= n; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, pk := range filmdec.WalkPackets(data) {
-			if pk.Type != filmdec.PacketTypeKeyframe {
+		for _, pk := range grammar.WalkPackets(data) {
+			if pk.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			kf := psKF{US: pk.TimestampUS, Slots: map[int]map[uint32]bool{}}
-			for _, r := range filmdec.WalkKeyframeWorld(pk.Payload(data)) {
+			for _, r := range grammar.WalkKeyframeWorld(pk.Payload(data)) {
 				if kf.Slots[r.TI] == nil {
 					kf.Slots[r.TI] = map[uint32]bool{}
 				}
@@ -133,9 +134,9 @@ func psProfils(kfs []psKF, ti int) []psPresence {
 // psSlotsAvecDelta rend les slots d'un archetype qui ont AU MOINS une position dans les
 // paquets delta. Le complementaire — recense aux images-cles, jamais vu en delta — est la
 // population « invisible » : la forme meme de H1.
-func psSlotsAvecDelta(dir string, wr *filmdec.Vec3Range, ti int) map[uint32]bool {
+func psSlotsAvecDelta(dir string, wr *profile.Vec3Range, ti int) map[uint32]bool {
 	out := map[uint32]bool{}
-	tracks, err := filmdec.ScanFilmWorldObjects(dir, wr, ti)
+	tracks, err := grammar.ScanFilmWorldObjects(dir, wr, ti)
 	if err != nil {
 		return out
 	}
@@ -153,12 +154,9 @@ func TestPowerupSocleImagesCles(t *testing.T) {
 	for _, f := range psFilmsCatalyst {
 		t.Run(f.ID+"_"+f.Mode, func(t *testing.T) {
 			dir := filepath.Join(root, "film_chunks", f.ID)
-			if filmdec.CountFilmChunks(dir) == 0 {
+			if grammar.CountFilmChunks(dir) == 0 {
 				t.Skipf("aucun chunk dans %s", dir)
 			}
-			release := filmdec.LockProcessDecode()
-			defer release()
-			defer installWorldObjectPrecision(entry, dir, nil)()
 			wr := entry.Range()
 
 			kfs := psRecenseKF(dir)
@@ -177,7 +175,7 @@ func TestPowerupSocleImagesCles(t *testing.T) {
 
 // psRapportTI ecrit le recensement d'UN archetype : ses denominateurs, sa population
 // invisible, et les slots a trou interieur.
-func psRapportTI(t *testing.T, kfs []psKF, dir string, wr *filmdec.Vec3Range, ti int, t0 uint64) {
+func psRapportTI(t *testing.T, kfs []psKF, dir string, wr *profile.Vec3Range, ti int, t0 uint64) {
 	t.Helper()
 	profils := psProfils(kfs, ti)
 	if len(profils) == 0 {

@@ -26,8 +26,8 @@ package replay
 import (
 	"strconv"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // IdentitySection est la section `identity` du document de rejeu.
@@ -299,7 +299,7 @@ func identityStatborgSlots(in IdentityInput) []IdentityStatborgSlot {
 	}
 	var out []IdentityStatborgSlot
 	for _, round := range id.Rounds() {
-		for _, slot := range objectiveevents.EmittingPlayerSlots(in.Statborg.Records, round) {
+		for _, slot := range objectives.EmittingPlayerSlots(in.Statborg.Records, round) {
 			xuid := id.AtRound(round, slot)
 			lien := canonical.Link{From: 0, To: in.Clock.lastFrame()}
 			if xuid == "" {
@@ -314,14 +314,14 @@ func identityStatborgSlots(in IdentityInput) []IdentityStatborgSlot {
 	return out
 }
 
-// methodeStatborg traduit la voie de `objectiveevents` en voie canonique.
+// methodeStatborg traduit la voie de `objectives` en voie canonique.
 func methodeStatborg(origin string) canonical.LinkMethod {
 	switch origin {
-	case objectiveevents.OriginDeathInstants:
+	case objectives.OriginDeathInstants:
 		return canonical.MethodDeathInstants
-	case objectiveevents.OriginSheetTriplet:
+	case objectives.OriginSheetTriplet:
 		return canonical.MethodSheetTriplet
-	case objectiveevents.OriginElimination:
+	case objectives.OriginElimination:
 		return canonical.MethodRosterElimination
 	}
 	return canonical.MethodNone

@@ -4,7 +4,7 @@ package ingest
 // Infinite du mapper natif Halo 5 (internal/games/halo_5/ingest/weapon_accuracy.go) : la ou H5
 // derive shots_fired/shots_landed des events natifs `weapon_drop`, Infinite n a AUCUN compteur
 // natif — le numerateur (touches) se reconstruit du film par l appariement tir<->degat
-// (filmdec.PairWeaponHits, methode PAR LE TIR, NOTE_ATTRIBUTION_ARME_TIR_2026-08-31).
+// (decfilm.PairWeaponHits, methode PAR LE TIR, NOTE_ATTRIBUTION_ARME_TIR_2026-08-31).
 //
 // ENTREE : les stats du film par (FilmIndex, WeaponID) + LE PONT FilmIndex->xuid (le film ne porte
 // aucun xuid cote replication : l identite se resout par l indice, cf. killcollector).
@@ -24,7 +24,7 @@ package ingest
 import (
 	"encoding/json"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
 )
 
@@ -46,7 +46,7 @@ type filmAccuracyAgg struct {
 // Une cle sans xuid resolu, sans arme, ou sans aucun tir appariable est ecartee.
 func MapWeaponAccuracyFilm(
 	matchID string,
-	stats []filmdec.WeaponHitStats,
+	stats []decfilm.WeaponHitStats,
 	resolveXUID func(filmIndex int) string,
 	decoderRev string,
 ) ([]persist.WeaponAccuracyInsert, persist.WeaponHitDistanceBatch) {
@@ -62,7 +62,7 @@ func MapWeaponAccuracyFilm(
 		k := filmAccuracyKey{xuid: xuid, weapon: s.WeaponID}
 		a := acc[k]
 		if a == nil {
-			a = &filmAccuracyAgg{buckets: make([]int, filmdec.WeaponHitBucketCount())}
+			a = &filmAccuracyAgg{buckets: make([]int, decfilm.WeaponHitBucketCount())}
 			acc[k] = a
 			order = append(order, k)
 		}

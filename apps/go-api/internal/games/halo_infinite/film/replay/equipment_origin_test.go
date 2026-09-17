@@ -3,7 +3,8 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // equipment_origin_test.go — LA CLASSIFICATION D'ORIGINE, sur donnees synthetiques.
@@ -17,16 +18,16 @@ import (
 // AUCUN OCTET DE FILM N'EST LU.
 
 // origPos fabrique un echantillon de bipede en coordonnees monde.
-func origPos(slot uint32, frame int, x, y, z float32) filmdec.BipedPosition {
-	p := filmdec.BipedPosition{Slot: slot, TimestampUS: eqTS(frame), X: x, Y: y, Z: z}
+func origPos(slot uint32, frame int, x, y, z float32) grammar.BipedPosition {
+	p := grammar.BipedPosition{Slot: slot, TimestampUS: eqTS(frame), X: x, Y: y, Z: z}
 	p.HasWorld = true
 	return p
 }
 
 // origPose fabrique une pose brute a l'instant de la frame donnee.
-func origPose(frame int, x, y, z float32) filmdec.EquipmentPlacement {
-	return filmdec.EquipmentPlacement{
-		Life: filmdec.EquipmentLifeKey{}, T0US: eqTS(frame), T1US: eqTS(frame + 10),
+func origPose(frame int, x, y, z float32) types.EquipmentPlacement {
+	return types.EquipmentPlacement{
+		Life: types.EquipmentLifeKey{}, T0US: eqTS(frame), T1US: eqTS(frame + 10),
 		X: x, Y: y, Z: z, GlobalID: 0x2974c233, Points: 4,
 	}
 }
@@ -37,7 +38,7 @@ func origPose(frame int, x, y, z float32) filmdec.EquipmentPlacement {
 // precedentes seraient classes `deployed`.
 func TestEquipmentLivesDecoupeSurLeTrouDeCinqSecondes(t *testing.T) {
 	// Frames de 100 ms : 60 frames = 6 s > lifeGapUS.
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		origPos(512, 0, 0, 0, 0),
 		origPos(512, 10, 1, 0, 0),
 		origPos(512, 70, 50, 0, 0), // 6 s plus tard : autre vie
@@ -55,7 +56,7 @@ func TestEquipmentLivesDecoupeSurLeTrouDeCinqSecondes(t *testing.T) {
 // TestEquipmentLivesIgnoreLesQuantaSansBornes — sans bornes de carte, un echantillon ne porte
 // pas de coordonnee : le compter fixerait la fin de vie a une position qui n'existe pas.
 func TestEquipmentLivesIgnoreLesQuantaSansBornes(t *testing.T) {
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		origPos(512, 0, 0, 0, 0),
 		{Slot: 512, TimestampUS: eqTS(5)}, // HasWorld faux
 		origPos(512, 10, 1, 0, 0),
@@ -111,16 +112,16 @@ func TestPlacementCoverageEquilibreLesOrigines(t *testing.T) {
 // TestBuildEquipmentPlacementsPubliUneOrigineToujours — aucune pose publiee sans origine. Une
 // chaine vide serait lue comme « pas de mesure » par un client, alors que `unknown` le DIT.
 func TestBuildEquipmentPlacementsPublieUneOrigineToujours(t *testing.T) {
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		origPos(512, 0, 0, 0, 0),
 		origPos(512, 40, 4, 0, 0),
 	}
-	raw := []filmdec.EquipmentPlacement{
+	raw := []types.EquipmentPlacement{
 		origPose(40, 4, 0, 0),   // lache : poseur a 0 m, fin de vie
 		origPose(20, 300, 0, 0), // aucun bipede a moins de 3 m -> sans poseur
 	}
-	st := filmdec.EquipmentPlacementStats{Lives: 2, Anchors: 9, Confirmed: 2}
-	st.Calibration.Widths = filmdec.CurrentMPPWidths()
+	st := grammar.EquipmentPlacementStats{Lives: 2, Anchors: 9, Confirmed: 2}
+	st.Calibration.Widths = grammar.ProfilDeBalayageParDefaut().MPP
 	clock := replayClock{origin: eqOrigin, step: eqStep, frames: 200,
 		families: map[uint32]string{0x2974c233: "wall"}}
 	out, cov := buildEquipmentPlacements(
@@ -139,7 +140,7 @@ func TestBuildEquipmentPlacementsPublieUneOrigineToujours(t *testing.T) {
 }
 
 // origPoseOf — la meme pose brute, pour un GlobalID choisi (le `eqip` de l'objet).
-func origPoseOf(frame int, globalID uint32, x, y, z float32) filmdec.EquipmentPlacement {
+func origPoseOf(frame int, globalID uint32, x, y, z float32) types.EquipmentPlacement {
 	p := origPose(frame, x, y, z)
 	p.GlobalID = globalID
 	return p
@@ -177,10 +178,10 @@ func TestPieceEngendreeEstToujoursDeployee(t *testing.T) {
 	// Une vie de 0 a la frame 40, qui s'acheve en (4, 0, 0). L'echantillon de la frame 20 est ce
 	// qui donne un POSEUR aux poses de mi-vie : sans lui elles sortiraient toutes sans poseur, et
 	// le temoin negatif ne temoignerait de rien.
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
 	}
-	raw := []filmdec.EquipmentPlacement{
+	raw := []types.EquipmentPlacement{
 		// 1. PANNEAU ne a la fin de la vie de son poseur, a ses pieds : `dropped` avant H.2.
 		origPoseOf(40, wallPanelGlobalID, 4, 0, 0),
 		// 2. PANNEAU sans poseur mesure (300 m de tout bipede) : `unknown` avant H.2.
@@ -192,8 +193,8 @@ func TestPieceEngendreeEstToujoursDeployee(t *testing.T) {
 		//    `unknown` depuis le 2026-09-15 : la fenetre qui la classait ne classe plus.
 		origPoseOf(20, wallDeviceGlobalID, 2, 0, 0),
 	}
-	st := filmdec.EquipmentPlacementStats{Lives: 4, Anchors: 12, Confirmed: 4}
-	st.Calibration.Widths = filmdec.CurrentMPPWidths()
+	st := grammar.EquipmentPlacementStats{Lives: 4, Anchors: 12, Confirmed: 4}
+	st.Calibration.Widths = grammar.ProfilDeBalayageParDefaut().MPP
 	clock := replayClock{origin: eqOrigin, step: eqStep, frames: 200, families: map[uint32]string{
 		wallPanelGlobalID: usageFamilyWall, wallDeviceGlobalID: usageFamilyWall,
 	}}

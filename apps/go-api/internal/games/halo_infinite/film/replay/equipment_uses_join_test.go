@@ -29,19 +29,20 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // eqLife est une VIE d'objet d'equipement IDENTIFIEE : sa pose lui donne un GlobalID `eqip`,
 // donc une famille, et ses lectures lui donnent des signaux datables.
 type eqLife struct {
-	key      filmdec.EquipmentLifeKey
+	key      types.EquipmentLifeKey
 	inst     int
 	globalID uint32
 	family   string
 	t0US     uint64
 	t1US     uint64
-	samples  []filmdec.EquipmentStateSample
+	samples  []grammar.EquipmentStateSample
 }
 
 // eqSignal est UN instant candidat porte par une vie identifiee — le grain de l'appariement.
@@ -54,12 +55,12 @@ type eqSignal struct {
 // eqUsesBuildLives rattache chaque lecture d'etat a la pose qui la precede sur la meme cle.
 // Rend aussi, par indice de lecture, si elle a trouve une vie (le partage reel / fantome).
 func eqUsesBuildLives(
-	placements []filmdec.EquipmentPlacement, families map[uint32]string,
-	samples []filmdec.EquipmentStateSample,
+	placements []types.EquipmentPlacement, families map[uint32]string,
+	samples []grammar.EquipmentStateSample,
 ) ([]eqLife, []bool) {
-	byKey := map[filmdec.EquipmentLifeKey][]int{}
+	byKey := map[types.EquipmentLifeKey][]int{}
 	lives := make([]eqLife, 0, len(placements))
-	sorted := append([]filmdec.EquipmentPlacement(nil), placements...)
+	sorted := append([]types.EquipmentPlacement(nil), placements...)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].T0US < sorted[j].T0US })
 	for _, p := range sorted {
 		fam := families[p.GlobalID]
@@ -74,7 +75,7 @@ func eqUsesBuildLives(
 	}
 	attached := make([]bool, len(samples))
 	for i, s := range samples {
-		k := filmdec.EquipmentLifeKey{Slot: s.Slot, Gen: s.Gen}
+		k := types.EquipmentLifeKey{Slot: s.Slot, Gen: s.Gen}
 		idx := -1
 		for _, li := range byKey[k] {
 			if lives[li].t0US <= s.TimestampUS+eqUsesCreationSlackUS {
@@ -108,12 +109,12 @@ func eqUsesLogLives(t *testing.T, lives []eqLife) {
 		}
 		r.vies++
 		attached += len(l.samples)
-		n := eqUsesCountField(l, filmdec.EquipCharges)
+		n := eqUsesCountField(l, grammar.EquipCharges)
 		r.i27lect += n
 		if n > 0 {
 			r.i27vies++
 		}
-		if eqUsesCountField(l, filmdec.EquipEnergyDelay) > 0 {
+		if eqUsesCountField(l, grammar.EquipEnergyDelay) > 0 {
 			r.i26vies++
 		}
 	}
@@ -130,7 +131,7 @@ func eqUsesLogLives(t *testing.T, lives []eqLife) {
 	}
 }
 
-func eqUsesCountField(l eqLife, f filmdec.EquipmentField) int {
+func eqUsesCountField(l eqLife, f grammar.EquipmentField) int {
 	n := 0
 	for _, s := range l.samples {
 		if s.Present[f] {
@@ -142,17 +143,17 @@ func eqUsesCountField(l eqLife, f filmdec.EquipmentField) int {
 
 // eqUsesChargeDrops extrait les DECROISSANCES de `charges-remaining` par vie identifiee.
 func eqUsesChargeDrops(lives []eqLife) []eqSignal {
-	return eqUsesSteps(lives, filmdec.EquipCharges, false)
+	return eqUsesSteps(lives, grammar.EquipCharges, false)
 }
 
 // eqUsesDelayRises extrait les HAUSSES d'`energy-delay-ticks-left` : un compte a rebours qui
 // REPART. C'est le repli prescrit par le plan quand les charges ne datent rien.
 func eqUsesDelayRises(lives []eqLife) []eqSignal {
-	return eqUsesSteps(lives, filmdec.EquipEnergyDelay, true)
+	return eqUsesSteps(lives, grammar.EquipEnergyDelay, true)
 }
 
 // eqUsesSteps rend les marches d'un champ sur chaque vie : hausses si `up`, sinon baisses.
-func eqUsesSteps(lives []eqLife, f filmdec.EquipmentField, up bool) []eqSignal {
+func eqUsesSteps(lives []eqLife, f grammar.EquipmentField, up bool) []eqSignal {
 	var out []eqSignal
 	for i, l := range lives {
 		prev, has := uint64(0), false
@@ -227,7 +228,7 @@ type eqPair struct {
 // (a) les memes evenements decales de +7 s, (b) les memes evenements contre les signaux des
 // AUTRES familles. Le seuil est celui du plan, ecrit avant la mesure.
 func eqUsesOracle(
-	t *testing.T, nom string, reads []filmdec.GrappleRead, sig, autres []eqSignal,
+	t *testing.T, nom string, reads []types.GrappleRead, sig, autres []eqSignal,
 ) []eqPair {
 	t.Helper()
 	n, wit, cross := 0, 0, 0
@@ -252,8 +253,8 @@ func eqUsesOracle(
 }
 
 // eqUsesGrappleUses compte les GESTES : une paire tir/accroche a <= 0,5 s vaut un usage.
-func eqUsesGrappleUses(reads []filmdec.GrappleRead) int {
-	bySlot := map[uint32][]filmdec.GrappleRead{}
+func eqUsesGrappleUses(reads []types.GrappleRead) int {
+	bySlot := map[uint32][]types.GrappleRead{}
 	for _, r := range reads {
 		bySlot[r.Slot] = append(bySlot[r.Slot], r)
 	}
@@ -296,7 +297,7 @@ func eqUsesGrappleIDs(lives []eqLife) (string, int) {
 
 // eqUsesBridge joue D.0.3 : l'objet apparie a >= 2 evenements du MEME slot est « celui de S ».
 // La coherence mesuree est l'absence de second pretendant sur la meme vie.
-func eqUsesBridge(t *testing.T, nom string, pairs []eqPair, reads []filmdec.GrappleRead) {
+func eqUsesBridge(t *testing.T, nom string, pairs []eqPair, reads []types.GrappleRead) {
 	t.Helper()
 	bySlot := map[int]map[uint32]int{}
 	for _, p := range pairs {
@@ -333,7 +334,7 @@ func eqUsesBridge(t *testing.T, nom string, pairs []eqPair, reads []filmdec.Grap
 // eqUsesGeneralise joue D.0.4 : usages par famille, et controle croise pose <-> decrement.
 func eqUsesGeneralise(
 	t *testing.T, lives []eqLife, drops []eqSignal,
-	placements []filmdec.EquipmentPlacement, families map[uint32]string,
+	placements []types.EquipmentPlacement, families map[uint32]string,
 ) {
 	t.Helper()
 	t.Log("== D.0.4 GENERALISATION == decroissances de charge par vie d'objet et par famille")
@@ -370,10 +371,10 @@ func eqUsesGeneralise(
 // consomme une charge, ou bien la these ne tient pas.
 func eqUsesCross(
 	t *testing.T, drops []eqSignal, lives []eqLife,
-	placements []filmdec.EquipmentPlacement, families map[uint32]string,
+	placements []types.EquipmentPlacement, families map[uint32]string,
 ) {
 	t.Helper()
-	byFam := map[string][]filmdec.EquipmentPlacement{}
+	byFam := map[string][]types.EquipmentPlacement{}
 	for _, p := range placements {
 		fam := families[p.GlobalID]
 		if fam == "" {
@@ -430,7 +431,7 @@ func eqUsesEnergyDelay(t *testing.T, lives []eqLife, drops, rises []eqSignal) {
 		byLife[d.life] = true
 	}
 	for i := range lives {
-		if !byLife[i] && eqUsesCountField(lives[i], filmdec.EquipEnergyDelay) > 0 {
+		if !byLife[i] && eqUsesCountField(lives[i], grammar.EquipEnergyDelay) > 0 {
 			seul++
 		}
 	}
@@ -444,7 +445,7 @@ func eqUsesEnergyDelay(t *testing.T, lives []eqLife, drops, rises []eqSignal) {
 // Sans bornes monde, la distance n'est pas une distance : la mesure est declaree non
 // calculable plutot que rendue dans une unite muette.
 func eqUsesOwners(
-	t *testing.T, pos []filmdec.BipedPosition, placements []filmdec.EquipmentPlacement,
+	t *testing.T, pos []grammar.BipedPosition, placements []types.EquipmentPlacement,
 	families map[uint32]string,
 ) {
 	t.Helper()
@@ -533,10 +534,10 @@ func eqUsesWriteTSV(t *testing.T, short string, lives []eqLife, drops []eqSignal
 	for i, l := range lives {
 		n, lo, hi := 0, uint64(0), uint64(0)
 		for _, s := range l.samples {
-			if !s.Present[filmdec.EquipCharges] {
+			if !s.Present[grammar.EquipCharges] {
 				continue
 			}
-			v := s.Val[filmdec.EquipCharges]
+			v := s.Val[grammar.EquipCharges]
 			if n == 0 || v < lo {
 				lo = v
 			}
@@ -547,7 +548,7 @@ func eqUsesWriteTSV(t *testing.T, short string, lives []eqLife, drops []eqSignal
 		}
 		fmt.Fprintf(&b, "%d\t%d\t%d\t0x%08x\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
 			l.key.Slot, l.key.Gen, l.inst, l.globalID, l.family, l.t0US, l.t1US,
-			len(l.samples), n, lo, hi, eqUsesCountField(l, filmdec.EquipEnergyDelay), count[i])
+			len(l.samples), n, lo, hi, eqUsesCountField(l, grammar.EquipEnergyDelay), count[i])
 	}
 	eqUsesWriteFile(t, filepath.Join(out, short+"_vies.tsv"), b.String())
 

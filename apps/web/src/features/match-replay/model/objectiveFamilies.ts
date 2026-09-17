@@ -5,7 +5,7 @@
  * CE QUE `doc.objectives` PORTE, ET QUI N'EST PAS UN OBJECTIF. Le contrat de transport
  * (`ObjectiveAction`) n'a qu'un champ `stat` — aucun `kind`, aucune `family` : c'est le NOM de
  * la statistique qui dit la famille, et il est posé côté Go par
- * `internal/analysis/objectiveevents/named.go`. Or les tables de ce fichier ne contiennent pas
+ * `internal/games/halo_infinite/film/facts/objectives/named.go`. Or les tables de ce fichier ne contiennent pas
  * que des objectifs : `kills` (`comp 2 A`) y est l'ANCRE D'IDENTITÉ du balayage et `assists`
  * (`comp 3 A`) son voisin de contrôle croisé. Les deux sont publiés comme les autres — et sur
  * `8bc6074f` ils font 99 % du calque (15 648 actions sur 15 808, audit du 2026-09-10 §12-1).

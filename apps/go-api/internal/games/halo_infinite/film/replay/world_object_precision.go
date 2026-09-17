@@ -3,15 +3,15 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // world_object_precision.go — LES LARGEURS D'AXE DU CHEMIN WORLD-OBJECT, POSÉES DEPUIS LA
 // CARTE DU MATCH.
 //
 // LE DÉFAUT DE PAQUET EST CELUI DE CLIFFHANGER, et ce n'est pas un repli neutre :
-// `filmdec.WorldObjectPrecision = {13,13,14}` est EXACTEMENT l'entrée `cliffhanger` du
+// `grammar.WorldObjectPrecision = {13,13,14}` est EXACTEMENT l'entrée `cliffhanger` du
 // catalogue `map_quant_bounds.json` (module `ridgeline`). Jusqu'au 2026-08-15, aucun chemin de
 // production ne l'écrasait — toutes les autres cartes déquantifiaient leurs objets du monde
 // (projectiles ti=41, équipement ti=37, armes au sol ti=42, corps rigides ti=38) aux largeurs
@@ -30,34 +30,42 @@ import (
 //
 // POURQUOI LE CATALOGUE ET NON `DetectI0Layout`. Les largeurs sont `AxisWidths`, déduit des
 // bornes par la loi du moteur, porté par la MÊME entrée qui fournit déjà les bornes. Le
-// découpage lu dans le bitstream (`filmdec.DetectI0Layout`) est le CONTRÔLE que le commentaire
+// découpage lu dans le bitstream (`grammar.DetectI0Layout`) est le CONTRÔLE que le commentaire
 // d'`AxisWidths` réclame — accord 7 films sur 7 le 2026-08-15 — jamais l'entrée : s'il
 // contredisait le catalogue, ce seraient les BORNES qui seraient fausses.
 
 // installWorldObjectPrecision installe, pour la durée du décodage, les largeurs d'axe de la
-// CARTE DU MATCH sur le chemin world-object, et rend la fonction de restauration.
+// CARTE DU MATCH sur le chemin world-object — SUR LE PROFIL DE BALAYAGE DU CONTEXTE DU FILM.
 //
-// PRÉ-REQUIS : l'appelant détient `filmdec.LockProcessDecode` — le descripteur est un global
-// de paquet, et deux films décodés en parallèle se voleraient leurs largeurs.
+// IL LIT LE PROFIL DU FILM DEPUIS LE LOT 2.1 (item 2.1.3) : la carte du match n'arrive plus par
+// un paramètre à part, elle est un CHAMP du profil résolu une fois par `BuildFromFilm`.
+//
+// IL ÉCRIT SUR LE CONTEXTE DEPUIS LE LOT 2.3, plus dans le processus. La double écriture datée
+// (`doubleEcritureGlobales`, posée au lot 2.1 avec « retrait cible : lot 2.3 ») est RETIRÉE avec
+// la variable de paquet qu'elle alimentait : les quarante balayages de `BuildFromFilm`
+// construisent leurs lecteurs par le contexte (`FilmContext.NouveauLecteur`, ou en recevant son
+// profil), donc le canal existe sans état de processus — et deux films peuvent se décoder en
+// parallèle. Aucune restauration n'est nécessaire : le contexte meurt avec la cuisson.
 //
 // Largeurs absentes de l'entrée (catalogue antérieur au champ, entrée fabriquée à la main) :
 // le défaut est CONSERVÉ et l'écart est LOGGÉ. Jamais de dégradation silencieuse.
 //
 // `slog.Warn` et non `WarnContext` : `BuildFromFilm` — le seul appelant — ne prend pas de
 // `ctx`, et tout le fichier `build.go` journalise ainsi.
-func installWorldObjectPrecision(e filmdec.MapQuantEntry, matchID string, fb *fallback.Compteur) (restore func()) {
+func installWorldObjectPrecision(fc *grammar.FilmContext, matchID string, fb *fallback.Compteur) {
+	e := fc.Profile().Map()
 	if e.AxisWidths[0] == 0 || e.AxisWidths[1] == 0 || e.AxisWidths[2] == 0 {
 		// REPLI NOMME ET COMPTE (D14) : le defaut conserve est celui d'UNE carte, applique a
 		// toutes. Le journal le disait deja ; le compte le fait voyager avec l'artefact.
 		fb.Declenche(fallback.NomLargeursAxeParDefautConservees)
 		slog.Warn("largeurs d'axe absentes de l'entrée de catalogue — objets du monde déquantifiés aux largeurs par défaut",
 			"module", e.Module, "match_id", matchID,
-			"defaut", filmdec.WorldObjectPrecision.AxisW)
-		return func() {}
+			"defaut", fc.ProfilDeBalayage().LargeursObjetDuMonde().AxisW)
+		return
 	}
-	prev := filmdec.WorldObjectPrecision
 	// e.Layout() porte les largeurs d'axe ET la largeur de l'index de région (2 bits sur
 	// Live Fire — lot C catalogues, 2026-08-27) : les deux sont des constantes par carte.
-	filmdec.SetWorldObjectPrecisionFromLayout(e.Layout())
-	return func() { filmdec.WorldObjectPrecision = prev }
+	bal := fc.ProfilDeBalayage()
+	bal.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout())
+	fc.PoserProfilDeBalayage(bal)
 }

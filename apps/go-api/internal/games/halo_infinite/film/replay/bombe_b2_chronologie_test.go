@@ -71,10 +71,11 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -96,7 +97,7 @@ const (
 func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, map[uint32]uint64, []Death) {
 	t.Helper()
 	dir := filepath.Join(cache, "film_chunks", id)
-	changes, _, err := filmdec.ScanFilmHeldWeaponChanges(dir, nil)
+	changes, _, err := grammar.ScanFilmHeldWeaponChanges(dir, nil)
 	if err != nil {
 		t.Fatalf("%s : canal des armes tenues illisible : %v", id, err)
 	}
@@ -130,9 +131,9 @@ func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, 
 	}
 	sort.Slice(xuids, func(i, j int) bool { return xuids[i] < xuids[j] })
 
-	opt := filmdec.DefaultScanFilmOptions()
+	opt := grammar.DefaultScanFilmOptions()
 	opt.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, opt)
+	pos, err := grammar.ScanFilmBipedPositions(dir, opt)
 	if err != nil {
 		t.Fatalf("%s : positions bipeds illisibles : %v", id, err)
 	}
@@ -177,23 +178,23 @@ func b2Detonateurs(t *testing.T, cache, id string) map[int]string {
 	if err != nil || !ok {
 		t.Fatalf("%s : film absent du cache : %v", id, err)
 	}
-	recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, id)
-	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeBomb)
+	recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
+	named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)
 	dir := filepath.Join(cache, "film_chunks", id)
 	deaths, err := ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
-	di := make([]objectiveevents.DeathInstant, 0, len(deaths))
+	di := make([]types.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
-		di = append(di, objectiveevents.DeathInstant{
+		di = append(di, types.DeathInstant{
 			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS)})
 	}
-	identity := objectiveevents.ResolveRoundIdentity(recs, di)
+	identity := objectives.ResolveRoundIdentity(recs, di)
 	out := map[int]string{}
-	ident, _ := objectiveevents.IdentifyNamedEventsByRound(named, identity)
+	ident, _ := objectives.IdentifyNamedEventsByRound(named, identity)
 	for _, e := range ident {
-		if e.Stat == objectiveevents.StatBombDetonations {
+		if e.Stat == objectives.StatBombDetonations {
 			out[e.TimeMS] = e.XUID
 		}
 	}
@@ -207,8 +208,6 @@ func TestBombeB2Assaut(t *testing.T) {
 		t.Skip("mesure non demandée : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestBombeB2Assaut")()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	films := make([]string, 0, len(a5Explosions))
 	for id := range a5Explosions {
@@ -329,18 +328,18 @@ func b2JugeExplosion(t *testing.T, id string, tE int, evs []HeldObjectEvent,
 func b2Kills(t *testing.T, cache, id string) []analysishl {
 	t.Helper()
 	dir := filepath.Join(cache, "film_chunks", id)
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	raw, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("chunk_%02d.bin", n)))
 	if err != nil {
 		t.Fatalf("%s : chunk highlight illisible : %v", id, err)
 	}
-	evs, err := analysis.ParseHighlightEvents(raw, 0)
+	evs, err := grammar.ParseHighlightEvents(raw, 0)
 	if err != nil {
 		t.Fatalf("%s : highlights illisibles : %v", id, err)
 	}
 	var out []analysishl
 	for _, e := range evs {
-		if e.EventType == analysis.EventTypeKill {
+		if e.EventType == highlightevent.EventTypeKill {
 			out = append(out, analysishl{xuid: e.XUID, tMS: e.TimeMS})
 		}
 	}
@@ -382,8 +381,6 @@ func TestBombeB2TemoinOddball(t *testing.T) {
 		t.Skip("mesure non demandée : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestBombeB2TemoinOddball")()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	evs, slotXUID, deaths := b2Timeline(t, cache, b1Temoin, b1Crane)
 	periodes := b2Periodes(evs, slotXUID, deaths)
@@ -399,9 +396,9 @@ func TestBombeB2TemoinOddball(t *testing.T) {
 	}
 	carries, couverts, accords := 0, 0, 0
 	tueurs, sansIdentite := 0, 0
-	evenements, _ := objectiveevents.Extract(b1Temoin, "Oddball:Arena", src, objectiveevents.MapRoster{})
+	evenements, _ := objectives.Extract(b1Temoin, "Oddball:Arena", src, objectives.MapRoster{})
 	for _, ev := range evenements {
-		if ev.EventType != objectiveevents.EventTypeSkullCarry || ev.TimeMS == nil || len(ev.Players) == 0 {
+		if ev.EventType != objectives.EventTypeSkullCarry || ev.TimeMS == nil || len(ev.Players) == 0 {
 			continue
 		}
 		carries++

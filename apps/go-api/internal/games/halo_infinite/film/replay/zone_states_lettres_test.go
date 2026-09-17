@@ -22,7 +22,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // lettreDe rend la lettre publiee d'une zone, ou "-" quand elle n'en porte pas.
@@ -81,18 +81,18 @@ func TestZoneLettresSuiventLeSlotPasLeZoneRef(t *testing.T) {
 // desormais portee par le slot 10 et la zone 0 par le slot 20. Les canaux de proprietaire ne
 // bougent pas (leur election se fait sur l'accord avec le roster, pas sur le voisinage de slot).
 func bastionCaseSlotsEchanges() (ZoneInput, zoneCtx) {
-	var reads []filmdec.ManagedPropertyRead
+	var reads []grammar.ManagedPropertyRead
 	reads = append(reads, zoneRampAt(20, 100, 900)...) // zone 101 (ref 0), desormais slot 20
 	reads = append(reads, zoneRampAt(20, 300, 950)...)
 	reads = append(reads, zoneRampAt(10, 200, 800)...) // zone 102 (ref 1), desormais slot 10
 	reads = append(reads, zoneRampAt(10, 400, 820)...)
 	reads = append(reads,
-		zoneReadAt(11, 0, filmdec.ManagedPropertyTagU32, zoneNeutralOwner),
-		zoneReadAt(11, 101, filmdec.ManagedPropertyTagU32, 0),
-		zoneReadAt(11, 301, filmdec.ManagedPropertyTagU32, 1),
-		zoneReadAt(21, 0, filmdec.ManagedPropertyTagU32, zoneNeutralOwner),
-		zoneReadAt(21, 201, filmdec.ManagedPropertyTagU32, 1),
-		zoneReadAt(21, 401, filmdec.ManagedPropertyTagU32, 0),
+		zoneReadAt(11, 0, grammar.ManagedPropertyTagU32, zoneNeutralOwner),
+		zoneReadAt(11, 101, grammar.ManagedPropertyTagU32, 0),
+		zoneReadAt(11, 301, grammar.ManagedPropertyTagU32, 1),
+		zoneReadAt(21, 0, grammar.ManagedPropertyTagU32, zoneNeutralOwner),
+		zoneReadAt(21, 201, grammar.ManagedPropertyTagU32, 1),
+		zoneReadAt(21, 401, grammar.ManagedPropertyTagU32, 0),
 	)
 	actions := []ObjectiveAction{action("2533", 100), action("2535", 200), action("2535", 300),
 		action("2533", 400)}
@@ -110,13 +110,13 @@ func bastionCaseSlotsEchanges() (ZoneInput, zoneCtx) {
 // muette est peut-etre celle que le jeu nomme A, l'ecran afficherait une lettre credible et
 // fausse. Le silence est la seule reponse honnete.
 func TestZoneLettresBijectionExigee(t *testing.T) {
-	var reads []filmdec.ManagedPropertyRead
+	var reads []grammar.ManagedPropertyRead
 	reads = append(reads, zoneRampAt(10, 100, 900)...)
 	reads = append(reads, zoneRampAt(10, 300, 950)...)
 	reads = append(reads,
-		zoneReadAt(11, 0, filmdec.ManagedPropertyTagU32, zoneNeutralOwner),
-		zoneReadAt(11, 101, filmdec.ManagedPropertyTagU32, 0),
-		zoneReadAt(11, 301, filmdec.ManagedPropertyTagU32, 1),
+		zoneReadAt(11, 0, grammar.ManagedPropertyTagU32, zoneNeutralOwner),
+		zoneReadAt(11, 101, grammar.ManagedPropertyTagU32, 0),
+		zoneReadAt(11, 301, grammar.ManagedPropertyTagU32, 1),
 	)
 	in := zoneTestInput(reads)
 	// Seules les captures de la zone 0 : la zone 1 du catalogue reste muette sur ce match.
@@ -141,7 +141,7 @@ func TestZoneLettresBijectionExigee(t *testing.T) {
 
 // TestZoneLettresJamaisSurUneColline : un mode a colline ne publie aucune lettre.
 func TestZoneLettresJamaisSurUneColline(t *testing.T) {
-	var reads []filmdec.ManagedPropertyRead
+	var reads []grammar.ManagedPropertyRead
 	reads = append(reads, zoneRampAt(40, 100, 900)...)
 	reads = append(reads, zoneRampAt(40, 400, 900)...)
 	in := zoneTestInput(reads)

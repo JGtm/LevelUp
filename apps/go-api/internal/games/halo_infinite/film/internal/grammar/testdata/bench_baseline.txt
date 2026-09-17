@@ -1,0 +1,56 @@
+# LIGNE DE BASE DES BANCS DU DECODEUR — lot 0.A.5, re-figee a la revue R1 (P2-6), -count 10.
+#
+# LE BUDGET DE +10 % NE S APPLIQUE QU AUX DEUX BANCS SERRES :
+#   BenchmarkBitReaderReadBits   mediane stable a 0,5 % du minimum ; un outlier isole peut
+#                                porter le max a +56 %, la MEDIANE est la lecture (benchstat
+#                                compare les medianes, pas les extremes).
+#   BenchmarkTraverseEntity      dispersion +7 % sur cette passe.
+#
+# BenchmarkKeyframeClosure EST INFORMATIF, PAS UN GATE. Mesure de la revue R1 : 71 % d ecart
+# entre mesures d une meme passe, et +21 % de mediane d une passe a l autre SANS AUCUN
+# CHANGEMENT DE CODE (relance sur le meme commit). Une passe mesuree ici a rendu +62 % de
+# dispersion, une autre +5 % : l ecart depend de la charge de la machine, pas du decodeur.
+# Trancher un budget de +10 % dessus ferait rougir des lots innocents et passer des vrais
+# ralentissements. Il sert a voir un ordre de grandeur bouger (un facteur 2), rien de plus.
+#
+# Re-figee a la cloture de M2 (2026-09-17, tete c794c0877) : medianes BitReaderReadBits +8,7 % (112,6 -> 122,3 us,
+# dans le budget ; la dispersion de la base etait de 22 %, celle-ci de 1 %), TraverseEntity -3,8 %,
+# KeyframeClosure -5,0 % (informatif). Le paquet mesure est desormais film/internal/grammar.
+#
+# Regeneration : go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/
+goos: windows
+goarch: amd64
+pkg: levelup/go-api/internal/games/halo_infinite/film/internal/grammar
+cpu: AMD Ryzen 7 9850X3D 8-Core Processor           
+BenchmarkBitReaderReadBits-16    	    9982	    124645 ns/op	 525.78 MB/s
+BenchmarkBitReaderReadBits-16    	    9651	    122349 ns/op	 535.65 MB/s
+BenchmarkBitReaderReadBits-16    	    9952	    124204 ns/op	 527.65 MB/s
+BenchmarkBitReaderReadBits-16    	    9670	    123796 ns/op	 529.39 MB/s
+BenchmarkBitReaderReadBits-16    	    9926	    122793 ns/op	 533.71 MB/s
+BenchmarkBitReaderReadBits-16    	    9921	    122190 ns/op	 536.34 MB/s
+BenchmarkBitReaderReadBits-16    	    9915	    122201 ns/op	 536.30 MB/s
+BenchmarkBitReaderReadBits-16    	    9740	    122051 ns/op	 536.96 MB/s
+BenchmarkBitReaderReadBits-16    	    9830	    121320 ns/op	 540.19 MB/s
+BenchmarkBitReaderReadBits-16    	    9643	    122286 ns/op	 535.92 MB/s
+BenchmarkTraverseEntity-16       	       3	 349992200 ns/op
+BenchmarkTraverseEntity-16       	       3	 352819667 ns/op
+BenchmarkTraverseEntity-16       	       3	 356162233 ns/op
+BenchmarkTraverseEntity-16       	       3	 359276767 ns/op
+BenchmarkTraverseEntity-16       	       3	 349745700 ns/op
+BenchmarkTraverseEntity-16       	       3	 350172333 ns/op
+BenchmarkTraverseEntity-16       	       3	 353061467 ns/op
+BenchmarkTraverseEntity-16       	       3	 351941300 ns/op
+BenchmarkTraverseEntity-16       	       3	 348576100 ns/op
+BenchmarkTraverseEntity-16       	       3	 353006800 ns/op
+BenchmarkKeyframeClosure-16      	       3	 362289000 ns/op
+BenchmarkKeyframeClosure-16      	       3	 360804733 ns/op
+BenchmarkKeyframeClosure-16      	       3	 362167333 ns/op
+BenchmarkKeyframeClosure-16      	       3	 359052200 ns/op
+BenchmarkKeyframeClosure-16      	       3	 362445400 ns/op
+BenchmarkKeyframeClosure-16      	       3	 361969400 ns/op
+BenchmarkKeyframeClosure-16      	       3	 363427933 ns/op
+BenchmarkKeyframeClosure-16      	       3	 361739300 ns/op
+BenchmarkKeyframeClosure-16      	       3	 369632067 ns/op
+BenchmarkKeyframeClosure-16      	       3	 368836500 ns/op
+PASS
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/grammar	55.902s

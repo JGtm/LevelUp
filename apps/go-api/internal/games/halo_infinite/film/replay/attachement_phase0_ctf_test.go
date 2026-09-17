@@ -27,8 +27,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // attTolerancesMS — les tolérances d'appariement publiées, de la plus stricte à la plus
@@ -103,9 +103,9 @@ func attOracleCTF(t *testing.T, root, id string) attOracle {
 		t.Fatalf("%s : film absent du cache", id)
 	}
 	b := objBridgeOf(t, root, id)
-	identity := objectiveevents.SlotIdentityFromDeaths(src, objDeathInstants(b.Deaths))
-	evs := objectiveevents.IdentifyNamedEvents(
-		objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag), identity)
+	identity := objectives.SlotIdentityFromDeaths(src, objDeathInstants(b.Deaths))
+	evs := objectives.IdentifyNamedEvents(
+		objectives.NamedEvents(src, objectives.ObjectiveTypeFlag), identity)
 	wins, _ := objPortageWindows(evs, b.Deaths, objFinMatch(evs, b.Deaths))
 	inv := map[uint64]map[uint32]bool{}
 	for slot, x := range b.SlotXUID {
@@ -422,7 +422,7 @@ func attPorteursGate(o attOracle, lectures []attI10) (dedans, ouvDedans, dehors,
 		parXUID[w.XUID] = append(parXUID[w.XUID], w)
 	}
 	for _, l := range lectures {
-		if l.TI != uint32(filmdec.BipedTypeIndex) {
+		if l.TI != uint32(grammar.BipedTypeIndex) {
 			continue
 		}
 		x, nomme := o.Bridge.SlotXUID[l.Slot]

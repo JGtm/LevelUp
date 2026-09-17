@@ -62,7 +62,7 @@ type EnrichmentRow struct {
 // `raw_json VARCHAR`, et le croisement historique des deux vaut d'être écrit :
 //
 //   - TypeHint : le canal NUMÉRIQUE canonique. Halo Infinite y met l'octet
-//     `type_hint` du bloc event du film (analysis.HighlightEvent.TypeHint), qui
+//     `type_hint` du bloc event du film (highlightevent.HighlightEvent.TypeHint), qui
 //     dit la nature de l'event (50 kill, 20 mort, 10 mode, poids de médaille).
 //   - DetailsJSON : le canal numérique HÉRITÉ, au nom trompeur. Halo 5 y met
 //     l'identifiant de médaille sous forme de chaîne, et le persister le verse
@@ -121,7 +121,7 @@ type WeaponAccuracyInsert struct {
 // WeaponHitDistanceRow — UNE arme d un joueur, et l histogramme des distances tireur<->victime
 // de ses touches (numerateur film Infinite, Lot 3). Grain `match x xuid x weapon_id`, pendant
 // distance de weapon_accuracy. dist_bucket_json = les comptes par tranche (bornes
-// filmdec.WeaponHitDistanceEdges) serialises ; dist_n = effectif (touches dont LES DEUX positions
+// grammar.WeaponHitDistanceEdges) serialises ; dist_n = effectif (touches dont LES DEUX positions
 // se sont resolues). Le lecteur tranche la publiabilite sur dist_n (>= WeaponHitsMinShots).
 type WeaponHitDistanceRow struct {
 	XUID           string `json:"xuid"`

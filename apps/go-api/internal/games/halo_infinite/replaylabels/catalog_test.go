@@ -7,7 +7,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/weapons"
 )
 
@@ -184,7 +184,7 @@ var famillesSansWeaponKey = map[string]bool{
 func TestFamillesDArmeConnuesDuDecodeurSontAuRegistre(t *testing.T) {
 	registre := weapons.FilmshellWeaponKeysByFamily()
 	var nouvelles []string
-	for high, nom := range weaponv3.KnownWeaponHigh32 {
+	for high, nom := range decfilm.KnownWeaponHigh32 {
 		if _, ok := registre[high]; ok {
 			continue
 		}
@@ -203,7 +203,7 @@ func TestFamillesDArmeConnuesDuDecodeurSontAuRegistre(t *testing.T) {
 	// c'est elle qui est périmée (leçon J4.0 — un garde qui ne peut pas échouer ne garde rien).
 	for nom := range famillesSansWeaponKey {
 		trouvee := false
-		for high, n := range weaponv3.KnownWeaponHigh32 {
+		for high, n := range decfilm.KnownWeaponHigh32 {
 			if n != nom {
 				continue
 			}

@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // objectives.go — LE CALQUE DES ACTIONS D'OBJECTIF : ce que chaque joueur a FAIT, nomme et
@@ -25,8 +25,8 @@ import (
 //
 // # Le pont d'identite est deja fait, PAR MANCHE, et il n'est pas le numero de slot
 //
-// Les evenements arrivent deja identifies par xuid (`objectiveevents.IdentifiedEvent`), resolus
-// PAR MANCHE par les seuls INSTANTS DE MORT ([objectiveevents.ResolveRoundIdentity]) chez
+// Les evenements arrivent deja identifies par xuid (`objectives.IdentifiedEvent`), resolus
+// PAR MANCHE par les seuls INSTANTS DE MORT ([objectives.ResolveRoundIdentity]) chez
 // l'appelant hors ligne — comme la couronne VIP, le drapeau vivant et le porteur du crane. Ce
 // n'est pas un detail de commodite : le slot d'entite statborg et le slot de biped du rejeu sont
 // DEUX ESPACES DIFFERENTS, et le slot d'entite est REATTRIBUE d'une manche a l'autre — les
@@ -87,14 +87,14 @@ type ObjectiveAction struct {
 // de 100 % dont la majorite n'etait pas un objectif (audit du 2026-09-10, §12-1). L'invariant
 // [LayerCoverage.Balanced] tient toujours — il tient desormais SUR LES FAMILLES D'OBJECTIF, et
 // `unnamed` comme `refused` arrivent deja restreints de l'appelant (replaybuild.identifiedEvents).
-func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, unnamed, refused int,
+func buildObjectiveActions(evs []objectives.IdentifiedEvent, unnamed, refused int,
 	c scoreClock) ([]ObjectiveAction, LayerCoverage) {
 	// LA GARDE D'EFFECTIF EST DEJA TOMBEE CHEZ L'APPELANT : `evs` est vide et `refused` porte
 	// ce que le film nommait. Le calque n'a rien a poser, et la couverture dit POURQUOI.
 	if refused > 0 {
 		return nil, LayerCoverage{Available: refused, RefusedByRoster: refused}
 	}
-	objectifs := objectiveevents.CountObjectiveFamily(evs)
+	objectifs := objectives.CountObjectiveFamily(evs)
 	cov := LayerCoverage{Available: objectifs + unnamed, NoSlot: unnamed}
 	if c.intervalMS <= 0 || c.frames <= 0 {
 		cov.OutOfWindow = objectifs
@@ -104,12 +104,12 @@ func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, unnamed, refus
 	for _, e := range evs {
 		// La publication porte TOUT ce que le film nommait ; la couverture, elle, ne compte que
 		// les familles d'objectif (cf. l'en-tete). Les deux ne se confondent pas.
-		compte := objectiveevents.IsObjectiveFamilyStat(e.Stat)
+		compte := objectives.IsObjectiveFamilyStat(e.Stat)
 		if e.XUID == "" {
 			// Un evenement sans identite n'est pas posable : le rattacher a un slot
 			// arbitraire serait exactement l'erreur que le pont existe pour eviter. La
 			// population de production de CETTE branche est nulle (les deux ponts
-			// d'`objectiveevents` ecartent deja le xuid vide) : elle garde l'invariant du
+			// d'`objectives` ecartent deja le xuid vide) : elle garde l'invariant du
 			// champ publie `ObjectiveAction.XUID`, jamais vide, contre une entree malformee.
 			// Le vrai peuplement de `NoSlot` vient d'`unnamed`, ci-dessus.
 			if compte {
@@ -178,7 +178,7 @@ func countActionsWithoutTrack(actions []ObjectiveAction, tracks []Track,
 // couverture.
 //
 // LES ACTIONS ARRIVENT DEJA IDENTIFIEES PAR XUID, ET PAR MANCHE : leur pont passe desormais par les
-// seuls INSTANTS DE MORT ([objectiveevents.ResolveRoundIdentity]), resolu chez l'appelant hors
+// seuls INSTANTS DE MORT ([objectives.ResolveRoundIdentity]), resolu chez l'appelant hors
 // ligne (cf. Options.Objectives) — aucune base, et JUSTE en multi-manche (le slot d'entite est
 // reattribue d'une manche a l'autre). L'horloge, elle, demande une soustraction — celle de
 // l'origine (cf. buildObjectiveActions et build_score.go).

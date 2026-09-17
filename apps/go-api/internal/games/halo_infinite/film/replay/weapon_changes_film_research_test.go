@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 func TestWeaponChangesSurFilmReel(t *testing.T) {
@@ -22,7 +22,7 @@ func TestWeaponChangesSurFilmReel(t *testing.T) {
 	}
 	path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")
-	cat, err := filmdec.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -30,7 +30,7 @@ func TestWeaponChangesSurFilmReel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("carte %q : %v", mapName, err)
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks du film illisibles : %v", err)
 	}
@@ -74,7 +74,7 @@ func TestGroundWeaponsSurFilmReel(t *testing.T) {
 	}
 	path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")
-	cat, err := filmdec.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -82,7 +82,7 @@ func TestGroundWeaponsSurFilmReel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("carte %q : %v", mapName, err)
 	}
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks du film illisibles : %v", err)
 	}

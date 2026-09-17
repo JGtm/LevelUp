@@ -7382,6 +7382,8 @@ components:
         reads:
           format: int64
           type: integer
+        scan:
+          $ref: '#/components/schemas/AbilityImpulseScanCoverage'
         unpublished:
           format: int64
           type: integer
@@ -7394,6 +7396,35 @@ components:
         - noIdentity
         - otherFamily
         - noResolver
+      type: object
+    AbilityImpulseScanCoverage:
+      additionalProperties: false
+      properties:
+        read:
+          format: int64
+          type: integer
+        records:
+          format: int64
+          type: integer
+        tag1:
+          format: int64
+          type: integer
+        unread:
+          format: int64
+          type: integer
+        withI57:
+          format: int64
+          type: integer
+        withI59:
+          format: int64
+          type: integer
+      required:
+        - records
+        - withI57
+        - withI59
+        - read
+        - unread
+        - tag1
       type: object
     AbilityRead:
       additionalProperties: false
@@ -11537,6 +11568,8 @@ components:
           $ref: '#/components/schemas/BombCarriesCoverage'
         bridge:
           $ref: '#/components/schemas/BridgeHealth'
+        decoder:
+          $ref: '#/components/schemas/DecoderCoverage'
         equipment:
           $ref: '#/components/schemas/EquipmentCoverage'
         equipmentChanges:
@@ -11866,6 +11899,28 @@ components:
       required:
         - name
         - exists
+      type: object
+    DecoderCoverage:
+      additionalProperties: false
+      properties:
+        build:
+          type: string
+        factsRev:
+          type: string
+        grammarRev:
+          type: string
+        profileRev:
+          type: string
+        registry:
+          $ref: '#/components/schemas/RegistryCoverage'
+        sourceRev:
+          type: string
+      required:
+        - sourceRev
+        - profileRev
+        - grammarRev
+        - factsRev
+        - build
       type: object
     DetectionPatchInputBody:
       additionalProperties: false
@@ -21822,6 +21877,25 @@ components:
       required:
         - username
         - role
+      type: object
+    RegistryCoverage:
+      additionalProperties: false
+      properties:
+        blocks:
+          format: int64
+          type: integer
+        fingerprint:
+          type: string
+        namedSlots:
+          format: int64
+          type: integer
+        status:
+          type: string
+      required:
+        - fingerprint
+        - status
+        - blocks
+        - namedSlots
       type: object
     RegistryNamesBackfillResult:
       additionalProperties: false

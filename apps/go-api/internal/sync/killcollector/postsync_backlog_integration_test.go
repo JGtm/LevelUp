@@ -17,13 +17,13 @@ package killcollector
 import (
 	"context"
 	"database/sql"
+	_ "github.com/duckdb/duckdb-go/v2"
 	"path/filepath"
 	"testing"
 	"time"
 
-	_ "github.com/duckdb/duckdb-go/v2"
-
 	"levelup/go-api/internal/domain/killscope"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/sync/matchflags"
@@ -86,9 +86,9 @@ func TestBacklogAJour_SelectionOrdreEtJauge(t *testing.T) {
 
 	inscrireMatch(t, db, "vieux-nofilm", t0, int64(matchflags.MBitFilmAbsent)) // (1)
 	inscrireMatch(t, db, "deja-decode", t0.AddDate(0, 1, 0), 0)                // (2)
-	inscrirePasseFilm(t, db, "deja-decode", KillSourceDecoderRev, killscope.ReadPathFilmWalk, "p1", t0)
+	inscrirePasseFilm(t, db, "deja-decode", decfilm.Rev, killscope.ReadPathFilmWalk, "p1", t0)
 	inscrireMatch(t, db, "via-credit", t0.AddDate(0, 2, 0), 0) // (3)
-	inscrirePasseFilm(t, db, "via-credit", KillSourceDecoderRev, killscope.ReadPathCreditBackfill, "p1", t0)
+	inscrirePasseFilm(t, db, "via-credit", decfilm.Rev, killscope.ReadPathCreditBackfill, "p1", t0)
 	inscrireMatch(t, db, "vierge-ancien", t0.AddDate(0, 3, 0), 0)
 	inscrireMatch(t, db, "vierge-recent", t0.AddDate(0, 4, 0), 0)
 
@@ -143,7 +143,7 @@ func TestBacklogAJour_PasseCouranteSupplanteLaPerimee(t *testing.T) {
 	quand := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
 	inscrireMatch(t, db, "redecode", quand, 0)
 	inscrirePasseFilm(t, db, "redecode", "killsource-2020-01-01", killscope.ReadPathFilmWalk, "p1", quand)
-	inscrirePasseFilm(t, db, "redecode", KillSourceDecoderRev, killscope.ReadPathFilmWalk, "p2", quand.Add(time.Hour))
+	inscrirePasseFilm(t, db, "redecode", decfilm.Rev, killscope.ReadPathFilmWalk, "p2", quand.Add(time.Hour))
 
 	if ids, total := backlogAJour(context.Background(), db, 10); total != 0 || len(ids) != 0 {
 		t.Errorf("liste = %v (total %d) ; la passe COURANTE doit faire sortir le match", ids, total)

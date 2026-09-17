@@ -109,7 +109,7 @@ const (
 	// DU DÉGÂT FATAL (lue dans le dead-state de la victime). Gouverne le
 	// collecteur `internal/sync` qui remplit `shared.match_kill_events`.
 	//
-	// Halo Infinite : supported (décodeur `games/halo_infinite/film/killsource`).
+	// Halo Infinite : supported (décodeur `games/halo_infinite/film/internal/facts/killsource`).
 	// Halo 5 : ABSENTE — son format de film est différent ET ses mécaniques de
 	// kill sont natives dans le carnage (CapNativeKillMechanics), donc il n'a
 	// aucun besoin d'un décodeur de film pour la même information.
@@ -211,7 +211,7 @@ const (
 	// CE QUE « NETTE » VEUT DIRE : le compteur officiel `flag_grabs` compte chaque ramassage,
 	// donc aussi le JONGLAGE — un porteur qui lance le drapeau devant lui pour courir plus
 	// vite et le reprend une seconde plus tard gagne une prise à chaque aller-retour. Les
-	// prises nettes replient ces allers-retours (`objectiveevents.NetFlagGrabs`) ; la mesure
+	// prises nettes replient ces allers-retours (`objectives.NetFlagGrabs`) ; la mesure
 	// du 2026-09-13 chiffre l'écart à 40 % du compteur officiel.
 	//
 	// POURQUOI UNE CLÉ NEUVE PLUTÔT QUE `match.objective.stats`. Même raison que
@@ -270,7 +270,7 @@ const (
 	// (`film.usage_summary`, `film.bomb_stats`, la timeline d'objectif et les positions
 	// keyframe servies à la Match View) sont les projections.
 	//
-	// Halo Infinite : supported (décodeur `games/halo_infinite/film/filmdec` + `replaybuild`). Halo 5 :
+	// Halo Infinite : supported (décodeur `games/halo_infinite/film/internal/grammar` + `replaybuild`). Halo 5 :
 	// not_exposed — autre format de film, aucun décodeur, donc aucun artefact possible.
 	//
 	// ⚠ ELLE GOUVERNE LA PRODUCTION, ET L'AFFICHAGE SUIT (décision utilisateur du

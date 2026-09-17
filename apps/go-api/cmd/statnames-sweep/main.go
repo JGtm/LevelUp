@@ -1,7 +1,7 @@
 // cmd/statnames-sweep — INVENTAIRE DES EMPLACEMENTS DU STATBORG d'un film, en CLI durable.
 //
 // Il remplace `cmd/tmp_statnames` (l'outil jetable du balayage de 2026-08-05, disparu du
-// depot — c'est lui que cite l'en-tete d'`objectiveevents/named.go`). La methode est la
+// depot — c'est lui que cite l'en-tete d'`objectives/named.go`). La methode est la
 // meme : la valeur FINALE de chaque emplacement (composant 0..27, cotes A et B), par slot
 // de joueur, l'identite des slots par le pont des INSTANTS DE MORT — puis la confrontation
 // a un oracle par joueur sur MOITIES DISJOINTES de films (une moitie pour chercher, une
@@ -23,7 +23,7 @@
 //
 // `SlotIdentityByDeaths` est le pont que la garde de mode du calque CTF refuse de payer
 // hors CTF (19-22 Go avant le correctif). Le correctif reel est le plafond
-// `objectiveevents.maxDeathsPerSlot`, qui borne le deroulage SUR TOUT FILM ; les
+// `objectives.maxDeathsPerSlot`, qui borne le deroulage SUR TOUT FILM ; les
 // instruments D4-D9 l'appellent deja sur Oddball sous filmproc. Ce CLI fait de meme :
 // enfant borne + plafond de deroulage — les deux moities de la correction.
 //

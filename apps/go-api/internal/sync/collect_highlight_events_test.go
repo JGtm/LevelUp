@@ -10,14 +10,14 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 // TestHighlightEventInserts_MedailleConnue — le couple mesure (50,26) est Killjoy :
 // la ligne part avec son type_hint ET son document d identite.
 func TestHighlightEventInserts_MedailleConnue(t *testing.T) {
-	events := []analysis.HighlightEvent{
-		{XUID: 2533274792574872, Gamertag: "JGtm", EventType: analysis.EventTypeMedal,
+	events := []highlightevent.HighlightEvent{
+		{XUID: 2533274792574872, Gamertag: "JGtm", EventType: highlightevent.EventTypeMedal,
 			TypeHint: 50, IsMedal: true, TimeMS: 12345, MedalType: 26},
 	}
 	inserts, sansNom := highlightEventInserts(context.Background(), "m1", events)
@@ -48,10 +48,10 @@ func TestHighlightEventInserts_MedailleConnue(t *testing.T) {
 // TestHighlightEventInserts_KillSansRawJSON — un kill porte son type_hint et RIEN
 // dans raw_json : l identite n existe que pour les medailles.
 func TestHighlightEventInserts_KillSansRawJSON(t *testing.T) {
-	events := []analysis.HighlightEvent{
-		{XUID: 2533274792574872, EventType: analysis.EventTypeKill, TypeHint: 50, TimeMS: 900},
-		{XUID: 2533274792574872, EventType: analysis.EventTypeDeath, TypeHint: 20, TimeMS: 950},
-		{XUID: 2533274792574872, EventType: analysis.EventTypeMode, TypeHint: 10, TimeMS: 980},
+	events := []highlightevent.HighlightEvent{
+		{XUID: 2533274792574872, EventType: highlightevent.EventTypeKill, TypeHint: 50, TimeMS: 900},
+		{XUID: 2533274792574872, EventType: highlightevent.EventTypeDeath, TypeHint: 20, TimeMS: 950},
+		{XUID: 2533274792574872, EventType: highlightevent.EventTypeMode, TypeHint: 10, TimeMS: 980},
 	}
 	inserts, sansNom := highlightEventInserts(context.Background(), "m1", events)
 	if sansNom != 0 {
@@ -74,12 +74,12 @@ func TestHighlightEventInserts_KillSansRawJSON(t *testing.T) {
 // TestHighlightEventInserts_CoupleInconnuCompte — DEGRADATION MESUREE : un couple
 // hors table ne recoit pas un nom voisin, il ne recoit RIEN, et le compteur le dit.
 func TestHighlightEventInserts_CoupleInconnuCompte(t *testing.T) {
-	events := []analysis.HighlightEvent{
-		{XUID: 2533274792574872, EventType: analysis.EventTypeMedal,
+	events := []highlightevent.HighlightEvent{
+		{XUID: 2533274792574872, EventType: highlightevent.EventTypeMedal,
 			TypeHint: 50, IsMedal: true, TimeMS: 100, MedalType: 255},
-		{XUID: 2533274792574872, EventType: analysis.EventTypeMedal,
+		{XUID: 2533274792574872, EventType: highlightevent.EventTypeMedal,
 			TypeHint: 100, IsMedal: true, TimeMS: 200, MedalType: 254},
-		{XUID: 2533274792574872, EventType: analysis.EventTypeMedal,
+		{XUID: 2533274792574872, EventType: highlightevent.EventTypeMedal,
 			TypeHint: 150, IsMedal: true, TimeMS: 300, MedalType: 1}, // Triple Kill, connu
 	}
 	inserts, sansNom := highlightEventInserts(context.Background(), "m1", events)

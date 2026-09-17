@@ -22,7 +22,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 func TestViseeOctet0(t *testing.T) {
@@ -30,16 +30,16 @@ func TestViseeOctet0(t *testing.T) {
 	if dir == "" {
 		t.Skipf("OCTET0_FILM absent : instrument saute")
 	}
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	parOctet := map[byte]int{}
 	armes := map[byte]map[uint64]int{0xD2: {}, 0xD3: {}}
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 16 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 16 {
 				continue
 			}
 			pay := p.Payload(chunk)
@@ -47,8 +47,8 @@ func TestViseeOctet0(t *testing.T) {
 			if pay[0] != 0xD2 && pay[0] != 0xD3 {
 				continue
 			}
-			w := uint64(filmdec.ReadBitsAtForDiag(pay, 44, 32))<<32 |
-				uint64(filmdec.ReadBitsAtForDiag(pay, 76, 32))
+			w := uint64(grammar.ReadBitsAtForDiag(pay, 44, 32))<<32 |
+				uint64(grammar.ReadBitsAtForDiag(pay, 76, 32))
 			armes[pay[0]][w]++
 		}
 	}
@@ -111,18 +111,18 @@ func TestViseeOctet0Corpus(t *testing.T) {
 		}
 		dir := filepath.Join(root, e.Name())
 		var loc [256]int
-		n := filmdec.CountFilmChunks(dir)
+		n := grammar.CountFilmChunks(dir)
 		if n == 0 {
 			continue
 		}
 		nFilms++
 		for c := 1; c <= n; c++ {
-			chunk, err := filmdec.ReadFilmChunk(dir, c)
+			chunk, err := grammar.ReadFilmChunk(dir, c)
 			if err != nil {
 				continue
 			}
-			for _, p := range filmdec.WalkPackets(chunk) {
-				if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+			for _, p := range grammar.WalkPackets(chunk) {
+				if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 					continue
 				}
 				loc[p.Payload(chunk)[0]]++
@@ -185,14 +185,14 @@ func TestViseeTaillesPaquets(t *testing.T) {
 	total, sous2o := 0, 0
 	tailleMin := map[byte]int{}
 	for _, dir := range dirs {
-		n := filmdec.CountFilmChunks(dir)
+		n := grammar.CountFilmChunks(dir)
 		for c := 1; c <= n; c++ {
-			chunk, err := filmdec.ReadFilmChunk(dir, c)
+			chunk, err := grammar.ReadFilmChunk(dir, c)
 			if err != nil {
 				continue
 			}
-			for _, p := range filmdec.WalkPackets(chunk) {
-				if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+			for _, p := range grammar.WalkPackets(chunk) {
+				if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 					continue
 				}
 				b := p.Payload(chunk)[0]

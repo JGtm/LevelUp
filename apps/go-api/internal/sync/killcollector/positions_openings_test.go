@@ -22,7 +22,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 )
@@ -36,7 +36,7 @@ import (
 // POURQUOI IL REMPLACE UNE TABLE slot -> xuid (lot 6.1, 2026-09-10) : `composerPassePositions`
 // prend desormais le registre, qui repond A L'INSTANT. Lui passer une table aplatie serait
 // exactement ce que ce lot a retire du chemin de production.
-func registreSynthetique(positions []filmdec.BipedPosition,
+func registreSynthetique(positions []decfilm.BipedPosition,
 	slotXUID map[uint32]uint64) replay.IdentityRegistry {
 	sieges := make([]uint32, 0, len(slotXUID))
 	for s := range slotXUID {
@@ -44,10 +44,10 @@ func registreSynthetique(positions []filmdec.BipedPosition,
 	}
 	sort.Slice(sieges, func(i, j int) bool { return sieges[i] < sieges[j] })
 	idx := replay.PlayerIndexTable{ByXUID: map[uint64]int{}, Readings: 1}
-	creations := make([]filmdec.BipedCreation, 0, len(sieges))
+	creations := make([]decfilm.BipedCreation, 0, len(sieges))
 	for i, s := range sieges {
 		idx.ByXUID[slotXUID[s]] = i
-		creations = append(creations, filmdec.BipedCreation{
+		creations = append(creations, decfilm.BipedCreation{
 			Slot: s, Generation: 1, ParticipantIndex: uint32(i), HasIndex: true})
 	}
 	return replay.BuildIdentityRegistry(replay.IdentityInput{
@@ -55,8 +55,8 @@ func registreSynthetique(positions []filmdec.BipedPosition,
 }
 
 // bipedAt fabrique un échantillon de trajectoire monde — le type que `ScanBipedPositions` rend.
-func bipedAt(slot uint32, tMS int64, x, y, z float32) filmdec.BipedPosition {
-	return filmdec.BipedPosition{
+func bipedAt(slot uint32, tMS int64, x, y, z float32) decfilm.BipedPosition {
+	return decfilm.BipedPosition{
 		Slot: slot, TimestampUS: uint64(tMS) * 1000,
 		X: x, Y: y, Z: z, HasWorld: true,
 	}
@@ -66,8 +66,8 @@ func bipedAt(slot uint32, tMS int64, x, y, z float32) filmdec.BipedPosition {
 // tolérance de 120 ms du placement) de 0 à finMS — donc UNE SEULE vie chacun, sans trou. Le
 // tueur (slot 1) avance : son X vaut le temps en SECONDES, ce qui rend chaque instant
 // identifiable par sa seule coordonnée. La victime (slot 2) ne bouge pas.
-func trajectoiresSynthetiques(finMS int64) []filmdec.BipedPosition {
-	var out []filmdec.BipedPosition
+func trajectoiresSynthetiques(finMS int64) []decfilm.BipedPosition {
+	var out []decfilm.BipedPosition
 	for t := int64(0); t <= finMS; t += 100 {
 		out = append(out, bipedAt(1, t, float32(t)/1000, 0, 0))
 		out = append(out, bipedAt(2, t, 20, 0, 0))
@@ -141,7 +141,7 @@ func TestComposerPassePositions_ReapparitionEcarteLEntameEtLaCompte(t *testing.T
 	// Victime : une vie continue. Tueur : une vie qui s'arrête à 10 s, puis une NOUVELLE vie
 	// à partir de 18,56 s (trou de 8,5 s, bien au-delà de lifeGapUS). L'entame tombe à 18,5 s,
 	// à portée de tolérance du PREMIER échantillon de la vie neuve — exactement le piège.
-	var positions []filmdec.BipedPosition
+	var positions []decfilm.BipedPosition
 	for tMS := int64(0); tMS <= mortMS+1000; tMS += 100 {
 		positions = append(positions, bipedAt(2, tMS, 20, 0, 0))
 	}

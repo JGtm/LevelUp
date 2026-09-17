@@ -4,7 +4,8 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // grenades.go — LANCERS DE GRENADE.
@@ -86,8 +87,8 @@ type Grenade struct {
 // `pubProjByRaw` traduit l'index BRUT d'une piste de projectile (rang dans `proj`) vers son
 // index PUBLIÉ (cf. buildProjectiles) : c'est lui qui alimente Grenade.Proj. Nil = aucun
 // projectile publié, les lancers sortent sans lien — jamais un index qui ne pointe rien.
-func buildGrenades(pos []filmdec.BipedPosition, throws []filmdec.GrenadeThrow,
-	origin, step uint64, owner map[uint32]int, proj []filmdec.ProjectileTrack,
+func buildGrenades(pos []grammar.BipedPosition, throws []grammar.GrenadeThrow,
+	origin, step uint64, owner map[uint32]int, proj []types.ProjectileTrack,
 	pubProjByRaw map[int]int) ([]Grenade, LayerCoverage) {
 	cov := LayerCoverage{Available: len(throws)}
 	if len(throws) == 0 {
@@ -164,7 +165,7 @@ func buildGrenades(pos []filmdec.BipedPosition, throws []filmdec.GrenadeThrow,
 // fenêtre, on retient celle qui est à portée de sa main, et aucune si elle n'y est pas. Sans
 // pont, la source reste utilisable — c'était sa raison d'être — mais une fenêtre qui porte
 // PLUSIEURS naissances n'est plus tranchée au hasard : elle n'est pas publiée.
-func locateThrow(g filmdec.GrenadeThrow, births []projectileBirth,
+func locateThrow(g grammar.GrenadeThrow, births []projectileBirth,
 	tracks map[uint32]slotTrack, owner map[uint32]int) (Grenade, int, bool) {
 	slot, author := authorBiped(g, tracks, owner)
 	if b, ok := birthForThrow(births, g.TimestampUS, author); ok {
@@ -184,8 +185,8 @@ func locateThrow(g filmdec.GrenadeThrow, births []projectileBirth,
 // authorBiped rend le slot du lanceur et sa position répliquée, quand le pont et le film les
 // donnent tous les deux. Le slot peut être connu sans que la position le soit (réplication trop
 // lointaine) : le premier retour vaut alors le slot, le second nil.
-func authorBiped(g filmdec.GrenadeThrow, tracks map[uint32]slotTrack,
-	owner map[uint32]int) (uint32, *filmdec.BipedPosition) {
+func authorBiped(g grammar.GrenadeThrow, tracks map[uint32]slotTrack,
+	owner map[uint32]int) (uint32, *grammar.BipedPosition) {
 	slot, reason := slotFor(tracks, owner, g.FilmIndex, g.TimestampUS)
 	if reason != reasonAttached {
 		return 0, nil
@@ -219,7 +220,7 @@ const grenadeAuthorRadiusM = 4
 // l'auteur : une seule candidate est une lecture, plusieurs sont un tirage au sort — on
 // s'abstient plutôt que de poser un lancer sur le projectile du voisin.
 func birthForThrow(births []projectileBirth, at uint64,
-	author *filmdec.BipedPosition) (projectileBirth, bool) {
+	author *grammar.BipedPosition) (projectileBirth, bool) {
 	cands := birthsInWindow(births, at)
 	if len(cands) == 0 {
 		return projectileBirth{}, false
@@ -267,7 +268,7 @@ func birthsInWindow(births []projectileBirth, at uint64) []projectileBirth {
 // (rang dans la tranche décodée) : c'est cette clé que buildProjectiles sait traduire en
 // index publié.
 type projectileBirth struct {
-	s   filmdec.ProjectileSample
+	s   types.ProjectileSample
 	raw int
 }
 
@@ -284,7 +285,7 @@ type projectileBirth struct {
 // parmi les naissances d'une même fenêtre revient au biped de l'auteur, pas au rang dans la
 // tranche. L'ordre reste requis — il rend `birthsInWindow` reproductible — mais il n'arbitre
 // plus rien.
-func projectileBirths(proj []filmdec.ProjectileTrack) []projectileBirth {
+func projectileBirths(proj []types.ProjectileTrack) []projectileBirth {
 	out := make([]projectileBirth, 0, len(proj))
 	for raw, p := range proj {
 		if len(p.Pts) > 0 {

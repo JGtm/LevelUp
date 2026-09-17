@@ -36,7 +36,7 @@ type EquipmentKillRef struct {
 	// AssistXUID / AssistKnown : l'assistant NOMMÉ, si la résolution a abouti.
 	//
 	// AssistKnown=false NE VEUT PAS DIRE « pas d'assistant » (même règle que
-	// killsource.Assist.Known) : ça veut dire qu'aucune identité résolue n'est disponible
+	// types.Assist.Known) : ça veut dire qu'aucune identité résolue n'est disponible
 	// pour ce frag — silence, jamais un zéro imposé à l'assistant.
 	AssistXUID  uint64
 	AssistKnown bool

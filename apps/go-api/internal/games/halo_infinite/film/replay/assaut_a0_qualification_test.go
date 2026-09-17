@@ -33,8 +33,9 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -116,12 +117,12 @@ func TestAssautA0Qualification(t *testing.T) {
 // a0RelevesScore publie les manches reelles et chaque increment du score de MODE par equipe.
 func a0RelevesScore(t *testing.T, id string, src *objDiskFilm) {
 	t.Helper()
-	recs, truncated := objectiveevents.StatRecordsCtx(context.Background(), src, id)
+	recs, truncated := objectives.StatRecordsCtx(context.Background(), src, id)
 	if truncated {
 		t.Logf("%s : lecture des enregistrements TRONQUEE — les releves de score sont partiels "+
 			"et cela se reporte au protocole", id)
 	}
-	real := objectiveevents.RealRounds(recs)
+	real := objectives.RealRounds(recs)
 	rounds := make([]int, 0, len(real))
 	for r, ok := range real {
 		if ok {
@@ -146,7 +147,7 @@ func a0RelevesScore(t *testing.T, id string, src *objDiskFilm) {
 	}
 
 	// Increments du score de mode, PAR MANCHE (la forme que l'ecran affiche) puis en cumule.
-	parManche := objectiveevents.SeriesByRound(recs, objectiveevents.ModeScoreComponent, true)
+	parManche := objectives.SeriesByRound(recs, objectives.ModeScoreComponent, true)
 	slots := make([]int, 0, len(parManche))
 	for s := range parManche {
 		slots = append(slots, s)
@@ -159,7 +160,7 @@ func a0RelevesScore(t *testing.T, id string, src *objDiskFilm) {
 			}
 		}
 	}
-	total := objectiveevents.SeriesTotal(recs, objectiveevents.ModeScoreComponent, true)
+	total := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true)
 	for _, s := range slots {
 		pts := total[s]
 		if len(pts) == 0 {
@@ -181,14 +182,14 @@ func a0RelevesScore(t *testing.T, id string, src *objDiskFilm) {
 // de mode filtre est PARTIEL sur ces films. Le brut ci-dessous rend chaque emission datee
 // avec sa manche, dedoublonnee par valeur (une reemission de la meme valeur n'est pas un
 // increment) — les parasites eventuels restent visibles, c'est un RELEVE, pas un calque.
-func a0RelevesScoreBrut(t *testing.T, id string, recs []objectiveevents.StatRecord,
+func a0RelevesScoreBrut(t *testing.T, id string, recs []types.StatRecord,
 	real map[int]bool) {
 	t.Helper()
 	type cle struct{ slot, round int }
 	vu := map[cle]int64{}
 	// Les enregistrements sont deja tries par temps puis par slot (contrat de StatRecords).
 	for _, r := range recs {
-		if !objectiveevents.IsTeamSlot(r.Slot) {
+		if !objectives.IsTeamSlot(r.Slot) {
 			continue
 		}
 		v, ok := r.Comps[0]

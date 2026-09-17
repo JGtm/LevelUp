@@ -69,10 +69,10 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 const (
@@ -123,7 +123,7 @@ type adsPop struct {
 	ecartAB float64
 }
 
-func (p *adsPop) ajoute(s filmdec.BipedPosition) {
+func (p *adsPop) ajoute(s grammar.BipedPosition) {
 	p.n++
 	if s.AimFlag0 {
 		p.f0++
@@ -171,8 +171,6 @@ func TestViseeLunette(t *testing.T) {
 	// notre propre section verrouillee, jamais dedans (le verrou n'est pas reentrant).
 	armes := adsArmesParInstant(t, dir)
 
-	release := filmdec.LockProcessDecode()
-	defer release()
 	pos, tracks, own := adsBalayage(t, dir)
 	couples, nKills, ambigus := aimCouples(t, dir)
 	t.Logf("FIL — %d instants de kill, %d couples retenus, %d ambigus ecartes", nKills, len(couples), ambigus)
@@ -199,7 +197,7 @@ func TestViseeLunette(t *testing.T) {
 
 // adsTotal totalise TOUS les records i21 du film, sans decoupage : c'est le denominateur du
 // controle de constance.
-func adsTotal(pos []filmdec.BipedPosition) adsPop {
+func adsTotal(pos []grammar.BipedPosition) adsPop {
 	p := adsPop{nom: "FILM ENTIER (tous les records i21)"}
 	for _, e := range pos {
 		if e.HasYaw {
@@ -259,13 +257,13 @@ func adsConstat(constant bool, num, den int) string {
 
 // adsBalayage lit les positions du film et construit le pont slot -> joueur. Les bornes de carte
 // ne sont PAS demandees : cette mesure ne porte que sur des drapeaux, aucun metre n'y intervient.
-func adsBalayage(t *testing.T, dir string) ([]filmdec.BipedPosition, map[uint32]slotTrack, IdentityRegistry) {
+func adsBalayage(t *testing.T, dir string) ([]grammar.BipedPosition, map[uint32]slotTrack, IdentityRegistry) {
 	t.Helper()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.CaptureDirs = true
 	scan.QuantaOnly = true // aucun metre n'intervient ici : les bornes de carte seraient du poids mort
 	debut := time.Now()
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("balayage des positions : %v", err)
 	}
@@ -293,7 +291,7 @@ func adsBalayage(t *testing.T, dir string) ([]filmdec.BipedPosition, map[uint32]
 // une arme unique serait une invention.
 func adsArmesParInstant(t *testing.T, dir string) map[int]killsource.SourceTruth {
 	t.Helper()
-	src, err := filmsource.LoadDir(dir, nil)
+	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks du film : %v", err)
 	}
@@ -384,7 +382,7 @@ func adsCollecte(tracks map[uint32]slotTrack, slots []uint32, f adsFenetre, p *a
 }
 
 // adsFond construit le temoin FOND : tous les echantillons i21 hors de TOUTE fenetre de kill.
-func adsFond(pos []filmdec.BipedPosition, fenetres []adsFenetre) adsPop {
+func adsFond(pos []grammar.BipedPosition, fenetres []adsFenetre) adsPop {
 	p := adsPop{nom: "TEMOIN FOND (hors fenetre de kill)"}
 	sort.Slice(fenetres, func(i, j int) bool { return fenetres[i].debut < fenetres[j].debut })
 	for _, e := range pos {

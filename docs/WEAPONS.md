@@ -69,8 +69,8 @@ surfaced in the match view and the favorite-weapon home KPI.
 |---------|----------|
 | Pipeline orchestration (per match / all participants / batch) | `internal/sync/backfill_weapons.go` |
 | DB write (append-only INSERT) | `internal/sync/writes.go` — `InsertWeaponKills`, `MarkWeaponKillsDone` |
-| Chunk scan (fire events, held-weapon timeline) | `internal/analysis/weapon_scanner.go`, `internal/analysis/weapon_parser.go` |
-| Weapon ID map, timings, fusions, sentinels | `internal/analysis/weapon_data.go` |
+| Chunk scan (fire events, held-weapon timeline) | `internal/games/halo_infinite/film/internal/grammar/weaponscan/scanner.go`, `internal/analysis/weapon_parser.go` |
+| Weapon ID map, timings, fusions, sentinels | `internal/games/weapons/filmshell/catalogue.go` |
 | Kill -> weapon correlation | `internal/analysis/weapon_correlation.go` |
 | API reconciliation | `internal/analysis/weapon_reconciliation.go` |
 | Attribution result struct | `internal/analysis/kill_attribution.go` |
@@ -143,7 +143,7 @@ the `melee_kills` / `grenade_kills` columns on `match_participants`
 
 Constants in `internal/analysis/weapon_correlation.go`
 (`confidenceHigh/Medium/Low/None`). `ComputeConfidence(weaponID, deltaMS)` uses
-the weapon's timing window (`GetTiming`, from `weapon_data.go`):
+the weapon's timing window (`GetTiming`, from `filmshell/catalogue.go`):
 
 | Value | Meaning |
 |-------|---------|
@@ -162,7 +162,7 @@ totals.
 ## Weapon ID (WID) Structure
 
 A WID is the 8 filmshell weapon bytes read as a **big-endian `uint64`**
-(`hexToUint64` in `internal/analysis/weapon_data.go`). DuckDB stores it as
+(`hexToUint64` in `internal/games/weapons/filmshell/catalogue.go`). DuckDB stores it as
 `UBIGINT` — some real WIDs (e.g. `f408190f42c9679f`) have bit 63 set and exceed
 `2^63`, which is why the write path casts a decimal string to `UBIGINT` rather
 than binding a Go `uint64` (the duckdb-go driver rejects high-bit-set uint64s).
@@ -172,7 +172,7 @@ Structure of the 8 bytes:
 - **Bytes 1-4 (high 32 bits): the weapon identity** — unique per weapon
   type/variant.
 - **Bytes 5-8 (low 32 bits): a family/variant suffix.** The common suffix
-  `42c9679f` (`CommonWeaponSuffix` in `weapon_data.go`) covers most standard
+  `42c9679f` (`CommonWeaponSuffix` in `filmshell/catalogue.go`) covers most standard
   weapons; special families share their high bytes but differ in the suffix:
 
 | Family | High bytes (identity) | Behaviour |
@@ -185,7 +185,7 @@ Cosmetic variants are folded onto their canonical weapon via `WeaponFusionMap`
 are reserved and excluded from weapon aggregation.
 
 The authoritative WID list (confirmed hex -> name) lives in `weaponEntries`
-inside `weapon_data.go`, and is mirrored as research notes in
+inside `filmshell/catalogue.go`, and is mirrored as research notes in
 `.ai/REFERENCE_WEAPON_IDS.md`.
 
 ---
@@ -329,7 +329,7 @@ go run -tags cgo ./cmd/seed-weapon-labels
 When a new weapon ships, or an unresolved WID is positively identified:
 
 1. Add the entry to `weaponEntries` in
-   `apps/go-api/internal/analysis/weapon_data.go` (hex -> name). Place it in the
+   `apps/go-api/internal/games/weapons/filmshell/catalogue.go` (hex -> name). Place it in the
    right group (standard / Energy Sword family / Gravity Hammer family /
    grenade). If the weapon class is new, add a `WeaponTimingByName` entry.
 2. Add the weapon to the canonical registry (`weaponRegistryWeapons` +

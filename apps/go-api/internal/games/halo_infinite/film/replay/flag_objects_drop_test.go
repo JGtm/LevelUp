@@ -18,7 +18,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // flagTestClosedScan monte un portage FERME PAR UN FAIT : une prise a 1 000 ms, puis la mort du
@@ -26,10 +26,10 @@ import (
 func flagTestClosedScan(free []flagFreeLife) FlagCarryScan {
 	return FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns:   flagTestSpawns(),
 		Free:     free,
 	}
@@ -90,8 +90,8 @@ func TestUneVieLibreDementLaCapture(t *testing.T) {
 	tracks := []Track{flagTestTrack(10, "1", 0, 99, 50, 50)}
 	ctx := flagTestCtx(tracks, nil, 100)
 	scan := flagTestClosedScan(nil)
-	scan.Events = append(scan.Events, objectiveevents.NamedEvent{
-		TimeMS: 6000, Slot: 12, Stat: objectiveevents.StatFlagCaptures})
+	scan.Events = append(scan.Events, objectives.NamedEvent{
+		TimeMS: 6000, Slot: 12, Stat: objectives.StatFlagCaptures})
 
 	// TEMOIN — sans vie libre, la capture borne le portage et l'etat suivant est `home`.
 	got, cov := buildFlagCarries(scan, ctx)

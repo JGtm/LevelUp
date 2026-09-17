@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // TestToutDeclenchementEstAUnSiteDuRegistre — DIRECTION (C) : déclenchement -> site.
@@ -47,7 +47,7 @@ func TestToutDeclenchementEstAUnSiteDuRegistre(t *testing.T) {
 				if fichiersParNom[nom][rel] {
 					continue
 				}
-				t.Errorf("%s : le repli %q y est déclenché, mais aucun [fallback.Site] de son "+
+				t.Errorf("%s : le repli %q y est déclenché, mais aucun [decfilm.Site] de son "+
 					"entrée ne cite ce fichier (sites : %v).\n"+
 					"  Un repli déclenché depuis un endroit que le registre ne décrit pas porte une\n"+
 					"  condition d'ouverture non déclarée (D14 b). Ajouter le site à l'entrée, avec\n"+
@@ -81,7 +81,7 @@ func TestChaqueNomConstantEstAuRegistre(t *testing.T) {
 			"est casse", len(noms), plancherNomsConstants)
 	}
 	for id, nom := range noms {
-		if _, ok := fallback.Lire(nom); !ok {
+		if _, ok := decfilm.Lire(nom); !ok {
 			t.Errorf("la constante %s vaut %q, qui n'est au registre d'AUCUNE entree — "+
 				"retirer la constante avec l'entree (D14 d)", id, nom)
 		}
@@ -147,14 +147,14 @@ func dateExemptionConforme(d string) bool {
 // PAR L'AST, ET NON PAR REFLEXION : un test d'`archlint` ne peut pas enumerer les constantes d'un
 // paquet importe. Le fichier est une simple liste de `NomXxx Nom = "repli_..."` ; le parser la
 // relit sans que personne n'ait a la recopier.
-func nomsDuPaquetFallback(t *testing.T, racine string) map[string]fallback.Nom {
+func nomsDuPaquetFallback(t *testing.T, racine string) map[string]decfilm.Nom {
 	t.Helper()
 	chemin := filepath.Join(racine, filepath.FromSlash(cheminNomsFallback))
 	f, err := parser.ParseFile(token.NewFileSet(), chemin, nil, 0)
 	if err != nil {
 		t.Fatalf("parse de %s : %v", cheminNomsFallback, err)
 	}
-	out := map[string]fallback.Nom{}
+	out := map[string]decfilm.Nom{}
 	ast.Inspect(f, func(n ast.Node) bool {
 		vs, ok := n.(*ast.ValueSpec)
 		if !ok || len(vs.Names) != 1 || len(vs.Values) != 1 {
@@ -168,19 +168,19 @@ func nomsDuPaquetFallback(t *testing.T, racine string) map[string]fallback.Nom {
 		if errU != nil {
 			return true
 		}
-		out[vs.Names[0].Name] = fallback.Nom(v)
+		out[vs.Names[0].Name] = decfilm.Nom(v)
 		return true
 	})
 	return out
 }
 
 // cheminNomsFallback : le fichier des constantes de noms, relatif a `apps/go-api/`.
-const cheminNomsFallback = "internal/games/halo_infinite/film/replay/fallback/noms.go"
+const cheminNomsFallback = "internal/games/halo_infinite/film/internal/facts/fallback/noms.go"
 
 // fichiersDesSites : `nom de repli -> ensemble des fichiers que ses sites citent`.
-func fichiersDesSites() map[fallback.Nom]map[string]bool {
-	out := map[fallback.Nom]map[string]bool{}
-	for _, r := range fallback.Table() {
+func fichiersDesSites() map[decfilm.Nom]map[string]bool {
+	out := map[decfilm.Nom]map[string]bool{}
+	for _, r := range decfilm.Table() {
 		if out[r.Nom] == nil {
 			out[r.Nom] = map[string]bool{}
 		}

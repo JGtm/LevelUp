@@ -29,7 +29,7 @@ package replay
 //	     Il ajoute au film TROIS lectures (fil des morts, index de joueur, events de tir), qui
 //	     sont exactement celles que `BuildFromFilm` fait pour construire ce pont.
 //
-// LECTURE SEULE, aucune base. UN SEUL decodage filmdec par process (`LockProcessDecode`),
+// LECTURE SEULE, aucune base.
 // largeurs d'axe restaurees (`installWorldObjectPrecision`).
 //
 // USAGE (depuis apps/go-api) :
@@ -44,7 +44,9 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -63,15 +65,15 @@ const (
 // de plus.
 type gwPickupFilm struct {
 	film, mapName string
-	positions     []filmdec.BipedPosition
-	bySlot        map[uint32][]filmdec.BipedPosition
+	positions     []grammar.BipedPosition
+	bySlot        map[uint32][]grammar.BipedPosition
 	lives         map[uint32][]equipLife
 	kfTimes       []uint64
-	seen          map[filmdec.EquipmentLifeKey][]uint64
+	seen          map[types.EquipmentLifeKey][]uint64
 	loadouts      map[uint64]map[uint32][]string
-	keyframes     filmdec.WorldObjectKeyframes
-	tracks        []filmdec.ProjectileTrack
-	spans         map[filmdec.EquipmentLifeKey][]filmdec.EquipmentLifeSpan
+	keyframes     grammar.WorldObjectKeyframes
+	tracks        []types.ProjectileTrack
+	spans         map[types.EquipmentLifeKey][]grammar.EquipmentLifeSpan
 	filmEndUS     uint64
 	rng           *rand.Rand
 }
@@ -82,9 +84,6 @@ func TestGroundWeaponPickups(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", gwPickupEnv)
 	}
 	entry := mapQuantEntryFromEnv(t, gwPickupMapEnv, gwPickupBoundsEnv)
-	release := filmdec.LockProcessDecode()
-	defer release()
-	defer installWorldObjectPrecision(entry, dir, nil)()
 
 	wr := entry.Range()
 	f := gwPickupRead(t, dir, &wr)
@@ -107,16 +106,16 @@ func TestGroundWeaponPickups(t *testing.T) {
 
 // gwPickupRead lit le film : nuage des bipedes, recensement et instants des images-cles,
 // loadouts d'image-cle, pistes delta `ti=42`.
-func gwPickupRead(t *testing.T, dir string, wr *filmdec.Vec3Range) *gwPickupFilm {
+func gwPickupRead(t *testing.T, dir string, wr *profile.Vec3Range) *gwPickupFilm {
 	t.Helper()
-	pos, err := filmdec.ScanFilmBipedPositions(dir, gwPadsScanOptions(wr))
+	pos, err := grammar.ScanFilmBipedPositions(dir, gwPadsScanOptions(wr))
 	if err != nil {
 		t.Fatalf("nuage des bipedes indisponible : %v", err)
 	}
 	sort.Slice(pos, func(i, j int) bool { return pos[i].TimestampUS < pos[j].TimestampUS })
 	f := &gwPickupFilm{
 		positions: pos,
-		bySlot:    map[uint32][]filmdec.BipedPosition{},
+		bySlot:    map[uint32][]grammar.BipedPosition{},
 		lives:     equipmentLives(pos),
 		rng:       rand.New(rand.NewSource(gwPickupWitnessSeed)), //nolint:gosec // temoin reproductible
 	}
@@ -129,18 +128,18 @@ func gwPickupRead(t *testing.T, dir string, wr *filmdec.Vec3Range) *gwPickupFilm
 	// Le recensement des images-cles vient de la PRODUCTION (`ScanFilmWorldObjectKeyframes`,
 	// qui rend la bande de slots dans la MEME marche) : la mesure et l'artefact bornent avec le
 	// meme recensement, ou l'ancrage ne prouverait rien.
-	f.keyframes = filmdec.ScanFilmWorldObjectKeyframes(dir, filmdec.GroundWeaponTypeIndex)
+	f.keyframes = grammar.ScanFilmWorldObjectKeyframes(dir, grammar.GroundWeaponTypeIndex)
 	f.kfTimes, f.seen = f.keyframes.TimesUS, f.keyframes.SeenUS
 	if n := len(f.kfTimes); n > 0 && f.kfTimes[n-1] > f.filmEndUS {
 		f.filmEndUS = f.kfTimes[n-1]
 	}
 	f.loadouts = gwPickupLoadouts(t, dir)
-	tracks, err := filmdec.ScanFilmWorldObjectsForBand(dir, wr, f.keyframes.Band)
+	tracks, err := grammar.ScanFilmWorldObjectsForBand(dir, wr, f.keyframes.Band)
 	if err != nil {
 		t.Fatalf("vies delta ti=42 : %v", err)
 	}
 	f.tracks = tracks
-	f.spans = filmdec.EquipmentLifeSpans(tracks)
+	f.spans = grammar.EquipmentLifeSpans(tracks)
 	t.Logf("LECTURE — %d positions de bipede · %d slots · %d vies · %d cles `ti=42` recensees"+
 		" · %d cles a piste delta", len(pos), len(f.bySlot), gwPadsCountLives(f.lives),
 		len(f.seen), len(f.spans))
@@ -153,7 +152,7 @@ func gwPickupRead(t *testing.T, dir string, wr *filmdec.Vec3Range) *gwPickupFilm
 // echouer l'oracle sur la moitie des armes (piege documente par `buildLoadouts`).
 func gwPickupLoadouts(t *testing.T, dir string) map[uint64]map[uint32][]string {
 	t.Helper()
-	raw, err := filmdec.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
+	raw, err := grammar.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("loadouts d'image-cle illisibles : %v", err)
 	}
@@ -185,10 +184,10 @@ func gwPickupHasFamily(in []string, want string) bool {
 // PRODUCTION (`padObjects`), celle-la meme que l'artefact de rejeu publie. Cet
 // instrument n'ajoute que les denominateurs au journal.
 func gwPickupObjects(
-	t *testing.T, dir string, wr *filmdec.Vec3Range, f *gwPickupFilm,
+	t *testing.T, dir string, wr *profile.Vec3Range, f *gwPickupFilm,
 ) []gwPickupObject {
 	t.Helper()
-	cre, st, err := filmdec.ScanFilmGroundWeaponCreationsForBand(dir, wr, f.keyframes.Band)
+	cre, st, err := grammar.ScanFilmGroundWeaponCreationsForBand(dir, wr, f.keyframes.Band)
 	if err != nil {
 		t.Fatalf("creations ti=42 : %v", err)
 	}

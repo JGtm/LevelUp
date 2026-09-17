@@ -7,8 +7,8 @@ package replay
 //
 // Avant le lot 1, chaque balayage rouvrait le repertoire de chunks pour son propre compte : le
 // film entier etait relu et redecompresse une trentaine de fois par artefact. Le lot a fait
-// passer tout le monde a un `*filmsource.Film` charge UNE fois. Ce test est la preuve
-// STRUCTURELLE de ce contrat : le film arrive en MEMOIRE (`filmsource.Load` sur des
+// passer tout le monde a un `*source.Film` charge UNE fois. Ce test est la preuve
+// STRUCTURELLE de ce contrat : le film arrive en MEMOIRE (`source.Load` sur des
 // `MemoryChunks`, jamais `LoadDir`), et le decodage s'execute depuis un REPERTOIRE COURANT VIDE.
 // Un balayage qui reouvrirait la bobine par le seul chemin qu'il pourrait connaitre — le chemin
 // relatif que les enveloppes `dir` recoivent — ne trouverait rien, et le test le verrait.
@@ -32,7 +32,7 @@ package replay
 // racine du depot, par exemple) reussirait sans que ce test le voie. Elle est bornee par
 // construction — `BuildFromFilm(matchID, titleSlug, film, opt)` ne recoit AUCUN chemin de film,
 // et l'entree de catalogue de la carte lui est FOURNIE (`opt.MapQuant`) — et par le garde-rail
-// `archlint/no_film_reread_test.go`, qui interdit `os.*` dans `filmdec` hors allowlist datee.
+// `archlint/no_film_reread_test.go`, qui interdit `os.*` dans `grammar` hors allowlist datee.
 //
 // # POURQUOI DEUX TESTS
 //
@@ -50,8 +50,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // miniBobineChunks : les NUMEROS de fichier des chunks de la mini-bobine, dans l'ordre. Ce sont
@@ -59,14 +60,14 @@ import (
 // et numero ferait marcher son premier chunk de DONNEES comme un registre.
 var miniBobineChunks = []int{1, 2, 3}
 
-// chargerMiniBobineEnMemoire lit les trois chunks et rend le film charge par [filmsource.Load].
+// chargerMiniBobineEnMemoire lit les trois chunks et rend le film charge par [source.Load].
 //
 // A APPELER AVANT TOUT `t.Chdir` : c'est la SEULE lecture disque autorisee par ce fichier, et
 // elle est celle du HARNAIS, pas du decodeur.
-func chargerMiniBobineEnMemoire(t *testing.T) *filmsource.Film {
+func chargerMiniBobineEnMemoire(t *testing.T) *source.Film {
 	t.Helper()
-	chunks := make(filmsource.MemoryChunks, 0, len(miniBobineChunks))
-	meta := make([]filmsource.ChunkMeta, 0, len(miniBobineChunks))
+	chunks := make(source.MemoryChunks, 0, len(miniBobineChunks))
+	meta := make([]types.ChunkMeta, 0, len(miniBobineChunks))
 	for _, num := range miniBobineChunks {
 		path := filepath.Join(MiniFilmDir, fmt.Sprintf("chunk_%02d.bin", num))
 		raw, err := os.ReadFile(path) //nolint:gosec // chemin de fixture fige dans le code
@@ -74,16 +75,16 @@ func chargerMiniBobineEnMemoire(t *testing.T) *filmsource.Film {
 			t.Fatalf("mini-bobine illisible (%s) : %v", path, err)
 		}
 		chunks = append(chunks, raw)
-		// ChunkType et StartMS restent nuls : ils ne servent qu'a `objectiveevents` (type de
+		// ChunkType et StartMS restent nuls : ils ne servent qu'a `objectives` (type de
 		// chunk, horloge), qui n'est pas sur le chemin de `BuildFromFilm`, et la mini-bobine
 		// n'a de toute facon pas de manifeste pour les porter.
-		meta = append(meta, filmsource.ChunkMeta{Index: num})
+		meta = append(meta, types.ChunkMeta{Index: num})
 	}
-	film, err := filmsource.Load(chunks, meta)
+	film, err := source.Load(chunks, meta)
 	if err != nil {
 		t.Fatalf("chargement en memoire de la mini-bobine : %v", err)
 	}
-	if got := filmdec.FilmChunkNumbers(film); len(got) != len(miniBobineChunks) {
+	if got := grammar.FilmChunkNumbers(film); len(got) != len(miniBobineChunks) {
 		t.Fatalf("chunks de donnees vus par le decodeur : %v, attendus %v — les metadonnees "+
 			"portent les NUMEROS de fichier, pas les positions", got, miniBobineChunks)
 	}
@@ -125,7 +126,7 @@ func TestZeroDisqueBuildFromFilm(t *testing.T) {
 	entrerDansUnRepertoireVide(t)
 
 	_, err = BuildFromFilm("minifilm", "halo_infinite", film, Options{MapQuant: &entry})
-	attendu := fmt.Sprintf("aucun slot biped (ti=%d) dans les keyframes du film", filmdec.BipedTypeIndex)
+	attendu := fmt.Sprintf("aucun slot biped (ti=%d) dans les keyframes du film", grammar.BipedTypeIndex)
 	switch {
 	case err == nil:
 		t.Fatal("BuildFromFilm a rendu un document sur la mini-bobine : elle n'a aucune image-cle " +
@@ -134,7 +135,7 @@ func TestZeroDisqueBuildFromFilm(t *testing.T) {
 		t.Fatalf("erreur INATTENDUE : %v\n  attendue : %s\n"+
 			"Depuis un repertoire courant VIDE, la seule issue admise est ce refus de decodage. "+
 			"Une erreur d'ouverture de fichier signifie qu'un balayage a tente de RELIRE le film "+
-			"(ou un catalogue) au lieu d'utiliser le `*filmsource.Film` deja charge : c'est "+
+			"(ou un catalogue) au lieu d'utiliser le `*source.Film` deja charge : c'est "+
 			"exactement ce que le lot 1 de PLAN_CUISSON_PERF a supprime.", err, attendu)
 	}
 
@@ -161,22 +162,19 @@ func TestZeroDisqueBalayagesSupportes(t *testing.T) {
 	// MEME GESTE QUE LA PRODUCTION (cf. installWorldObjectPrecision) : les largeurs d'axe du
 	// chemin world-object sont un global de paquet, installe depuis l'entree de catalogue et
 	// restaure ensuite — sans quoi ce test contaminerait le film suivant du meme process.
-	prev := filmdec.WorldObjectPrecision
-	t.Cleanup(func() { filmdec.WorldObjectPrecision = prev })
-	filmdec.SetWorldObjectPrecisionFromLayout(filmdec.I0Layout{AxisW: entry.AxisWidths})
 	wr := entry.Range()
 
 	entrerDansUnRepertoireVide(t)
 
-	fire, err := filmdec.ScanFireEvents(film)
+	fire, err := grammar.ScanFireEvents(film)
 	if err != nil {
 		t.Fatalf("tirs : %v", err)
 	}
-	grenades, err := filmdec.ScanGrenadeThrows(film)
+	grenades, err := grammar.ScanGrenadeThrows(film)
 	if err != nil {
 		t.Fatalf("lancers de grenade : %v", err)
 	}
-	loadouts, err := filmdec.ScanKeyframeLoadouts(film, loadoutFamilies())
+	loadouts, err := grammar.ScanKeyframeLoadouts(film, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("armes portees : %v", err)
 	}
@@ -192,7 +190,7 @@ func TestZeroDisqueBalayagesSupportes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("indices joueur : %v", err)
 	}
-	proj, err := filmdec.ScanProjectiles(film, &wr)
+	proj, err := grammar.ScanProjectiles(grammar.NewFilmContext(film), &wr)
 	if err != nil {
 		t.Fatalf("projectiles : %v", err)
 	}

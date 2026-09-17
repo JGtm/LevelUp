@@ -8,7 +8,7 @@ package migration
 // confronté à des octets de films réels et sa courbe Strongholds s'est révélée ne
 // PAS être un score per-équipe (valeur brute plafonnée quel que soit le final réel,
 // qui ne « retombait dessus » que par calibration). Son successeur
-// analysis/objectiveevents.ScoreCurve fait mieux sur tous les axes — per-joueur, à
+// analysis/objectives.ScoreCurve fait mieux sur tous les axes — per-joueur, à
 // la milliseconde, sans calibration.
 //
 // ÉTABLI SUR PIÈCES AVANT DE COUPER (2026-08-08) :

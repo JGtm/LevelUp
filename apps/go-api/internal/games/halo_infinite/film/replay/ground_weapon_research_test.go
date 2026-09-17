@@ -52,8 +52,9 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/weaponv3"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 const (
@@ -76,17 +77,13 @@ func TestGroundWeaponCoverage(t *testing.T) {
 	}
 	// UN SEUL DÉCODAGE filmdec PAR PROCESS, ET LES LARGEURS SE RESTAURENT. `gwWorldRange`
 	// installe les largeurs d'axe de la carte dans un global de paquet
-	// (`filmdec.WorldObjectPrecision`) : sans verrou ni restauration, un second test du même
+	// (`grammar.WorldObjectPrecision`) : sans verrou ni restauration, un second test du même
 	// binaire déquantifierait aux largeurs du film précédent — le défaut même que le correctif
 	// du 2026-08-15 a mesuré sur la production.
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prevPrec := filmdec.WorldObjectPrecision
-	t.Cleanup(func() { filmdec.WorldObjectPrecision = prevPrec })
 	known := loadoutFamilies()
 
 	// --- IDENTITÉ -----------------------------------------------------------------------
-	ground, err := filmdec.ScanFilmKeyframeGroundWeapons(filmDir, known)
+	ground, err := grammar.ScanFilmKeyframeGroundWeapons(filmDir, known)
 	if err != nil {
 		t.Fatalf("balayage des armes au sol : %v", err)
 	}
@@ -105,8 +102,8 @@ func TestGroundWeaponCoverage(t *testing.T) {
 	}
 	t.Logf("IDENTITÉ — keyframes %d · records ti=42 %d (slots distincts %d) · lectures avec famille %d"+
 		" · occurrences de famille %d · vies (slot,gen) %d · armes nommées distinctes %d",
-		census.keyframes, census.recordsTI[filmdec.GroundWeaponTypeIndex],
-		len(census.slotsTI[filmdec.GroundWeaponTypeIndex]), len(ground), occ, len(lives), len(named))
+		census.keyframes, census.recordsTI[grammar.GroundWeaponTypeIndex],
+		len(census.slotsTI[grammar.GroundWeaponTypeIndex]), len(ground), occ, len(lives), len(named))
 	for _, n := range gwTopNames(named, 12) {
 		t.Logf("    %-34s %d", n.name, n.count)
 	}
@@ -114,7 +111,7 @@ func TestGroundWeaponCoverage(t *testing.T) {
 	// L'en-tête de keyframe_loadout.go annonce 495 occurrences biped et 397 au sol ; si le compte
 	// biped mesuré ici retombe lui aussi à ~la moitié de 495, l'écart vient de la RÈGLE DE COMPTE
 	// de la mesure d'origine (occurrences brutes, alias compris), pas d'occurrences manquées.
-	if worn, err := filmdec.ScanFilmKeyframeLoadouts(filmDir, known); err == nil {
+	if worn, err := grammar.ScanFilmKeyframeLoadouts(filmDir, known); err == nil {
 		wornOcc := 0
 		for _, l := range worn {
 			wornOcc += len(l.Families)
@@ -130,9 +127,9 @@ func TestGroundWeaponCoverage(t *testing.T) {
 		t.Logf("POSITION — bornes de carte absentes (%s/%s) : mesure d'identité seule", gwBoundsEnv, gwMapEnv)
 		return
 	}
-	band := filmdec.GroundWeaponSlotBand(filmDir)
-	real := filmdec.WorldObjectPositionsForBand(filmDir, &wr, band)
-	phantom := filmdec.WorldObjectPositionsForBand(filmDir, &wr, gwPhantomBand(band, census.allSlots))
+	band := grammar.GroundWeaponSlotBand(filmDir)
+	real := grammar.WorldObjectPositionsForBand(filmDir, &wr, band)
+	phantom := grammar.WorldObjectPositionsForBand(filmDir, &wr, gwPhantomBand(band, census.allSlots))
 	t.Logf("POSITION — bande ti=42 %d slots -> %d slots peuplés / %d échantillons"+
 		" || TÉMOIN FANTÔME %d slots -> %d slots peuplés / %d échantillons",
 		len(band), len(real), gwTotalSamples(real),
@@ -143,7 +140,7 @@ func TestGroundWeaponCoverage(t *testing.T) {
 	none := 0
 	for _, g := range ground {
 		pts := real[g.Slot]
-		_, gap, found := filmdec.NearestWorldObjectSample(pts, g.TimestampUS)
+		_, gap, found := grammar.NearestWorldObjectSample(pts, g.TimestampUS)
 		if !found {
 			none++
 			continue
@@ -181,7 +178,7 @@ func TestGroundWeaponAliasLeak(t *testing.T) {
 	if filmDir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", gwFilmEnv)
 	}
-	ground, err := filmdec.ScanFilmKeyframeGroundWeapons(filmDir, loadoutFamilies())
+	ground, err := grammar.ScanFilmKeyframeGroundWeapons(filmDir, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("balayage des armes au sol : %v", err)
 	}
@@ -211,7 +208,7 @@ func TestGroundWeaponAliasLeak(t *testing.T) {
 // échantillons, et parmi eux la répartition de la diagonale de leur boîte englobante. Les seuils
 // sont en unités monde (~mètres) : 0,5 = un objet immobile au quantum près, 5 = déjà une pièce
 // entière, 20+ = la carte.
-func gwDispersion(m map[uint32][]filmdec.WorldObjectSample) string {
+func gwDispersion(m map[uint32][]grammar.WorldObjectSample) string {
 	buckets := []float32{0.5, 2, 5, 20}
 	counts := make([]int, len(buckets)+1)
 	eligible := 0
@@ -246,7 +243,7 @@ func fmtGwDispersion(eligible int, counts []int) string {
 }
 
 // gwBoxDiagonal rend la diagonale de la boîte englobante des échantillons d'un slot.
-func gwBoxDiagonal(pts []filmdec.WorldObjectSample) float32 {
+func gwBoxDiagonal(pts []grammar.WorldObjectSample) float32 {
 	mn, mx := [3]float32{pts[0].X, pts[0].Y, pts[0].Z}, [3]float32{pts[0].X, pts[0].Y, pts[0].Z}
 	for _, p := range pts[1:] {
 		for a, v := range [3]float32{p.X, p.Y, p.Z} {
@@ -278,21 +275,21 @@ type gwCensus struct {
 // validé (249/250 entités) plutôt que de relire la table à la main.
 func gwKeyframeCensus(t *testing.T, dir string) gwCensus {
 	c := gwCensus{recordsTI: map[int]int{}, slotsTI: map[int]map[uint32]bool{}, allSlots: map[uint32]bool{}}
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	if n == 0 {
 		t.Fatalf("aucun chunk film dans %s", dir)
 	}
 	for i := 1; i <= n; i++ {
-		data, err := filmdec.ReadFilmChunk(dir, i)
+		data, err := grammar.ReadFilmChunk(dir, i)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(data) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(data) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			c.keyframes++
-			for _, r := range filmdec.WalkKeyframeWorld(p.Payload(data)) {
+			for _, r := range grammar.WalkKeyframeWorld(p.Payload(data)) {
 				c.recordsTI[r.TI]++
 				if c.slotsTI[r.TI] == nil {
 					c.slotsTI[r.TI] = map[uint32]bool{}
@@ -319,7 +316,7 @@ func gwPhantomBand(band, seen map[uint32]bool) map[uint32]bool {
 	return out
 }
 
-func gwTotalSamples(m map[uint32][]filmdec.WorldObjectSample) int {
+func gwTotalSamples(m map[uint32][]grammar.WorldObjectSample) int {
 	n := 0
 	for _, v := range m {
 		n += len(v)
@@ -353,12 +350,12 @@ func gwTopNames(named map[string]int, max int) []gwNameCount {
 
 // gwWorldRange lit les bornes de la carte dans le catalogue versionné. Absentes, la mesure de
 // position est simplement sautée : un quantum sans bornes n'est pas une position.
-func gwWorldRange(t *testing.T) (filmdec.Vec3Range, bool) {
+func gwWorldRange(t *testing.T) (profile.Vec3Range, bool) {
 	boundsPath, mapName := os.Getenv(gwBoundsEnv), os.Getenv(gwMapEnv)
 	if boundsPath == "" || mapName == "" {
-		return filmdec.Vec3Range{}, false
+		return profile.Vec3Range{}, false
 	}
-	cat, err := filmdec.LoadMapQuantCatalog(boundsPath)
+	cat, err := profile.LoadMapQuantCatalog(boundsPath)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", boundsPath, err)
 	}
@@ -366,7 +363,5 @@ func gwWorldRange(t *testing.T) (filmdec.Vec3Range, bool) {
 	if err != nil {
 		t.Fatalf("carte %s absente du catalogue : %v", mapName, err)
 	}
-	filmdec.SetWorldObjectPrecisionFromLayout(filmdec.I0Layout{AxisW: [3]uint{
-		uint(entry.AxisWidths[0]), uint(entry.AxisWidths[1]), uint(entry.AxisWidths[2])}})
 	return entry.Range(), true
 }

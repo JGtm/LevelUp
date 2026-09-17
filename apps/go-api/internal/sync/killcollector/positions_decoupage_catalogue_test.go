@@ -3,7 +3,7 @@ package killcollector
 // positions_decoupage_catalogue_test.go — LOT 1.9.2 : LE DÉCOUPAGE D'i0 DES POSITIONS VIENT DU
 // CATALOGUE, ET FAUSSER LE CATALOGUE SE VOIT.
 //
-// # CE QUE CE FICHIER TIENT, ET CE QU'IL LAISSE À `filmdec`
+// # CE QUE CE FICHIER TIENT, ET CE QU'IL LAISSE À `grammar`
 //
 // Ici : LE CÂBLAGE. Le collecteur tient l'entrée de carte du match (`resolveMapBounds`) ; ce
 // qu'il en fait — les bornes ET le découpage d'i0 — est ce que ce fichier verrouille. La lecture
@@ -13,7 +13,7 @@ package killcollector
 // # LE DÉFAUT QUE LE LOT FERME
 //
 // `optionsDeBalayageDesPositions` partait de `DefaultScanFilmOptions()` et ne posait QUE
-// `WorldRange` : `Layout` restait nil, donc `filmdec.DetectI0LayoutOf` décidait du découpage en
+// `WorldRange` : `Layout` restait nil, donc `decfilm.DetectI0LayoutOf` décidait du découpage en
 // mesurant le film. Le découpage d'axe est une DONNÉE DE PROFIL (D-3 d'ADR 0034) : la seule
 // source est le catalogue de carte, et le chemin de cuisson l'imposait déjà depuis le
 // 2026-09-03. Deux producteurs du même fait, deux règles — c'est exactement ce que D13 interdit.
@@ -30,14 +30,14 @@ import (
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // catalogueDeBornesVersionne charge le catalogue de bornes RÉEL du dépôt — DONNÉE DE RÉFÉRENCE
 // VERSIONNÉE (`data/titles/halo_infinite/reference/map_quant_bounds.json`, commitée), pas une
 // sortie de sync : elle est disponible même dans un worktree sans `data/` de travail. Chemin
 // résolu par `PathResolver` (CLAUDE.md : jamais de `filepath.Join(..., "data", ...)` à la main).
-func catalogueDeBornesVersionne(t *testing.T) *filmdec.MapQuantCatalog {
+func catalogueDeBornesVersionne(t *testing.T) *decfilm.MapQuantCatalog {
 	t.Helper()
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -45,7 +45,7 @@ func catalogueDeBornesVersionne(t *testing.T) *filmdec.MapQuantCatalog {
 	}
 	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "..")
 	pr := titlePkg.NewPathResolver(repoRoot)
-	cat, err := filmdec.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titlePkg.DefaultSlug))
+	cat, err := decfilm.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titlePkg.DefaultSlug))
 	if err != nil {
 		t.Skipf("catalogue de bornes indisponible (%v) — positions non testables sans lui", err)
 	}
@@ -55,8 +55,8 @@ func catalogueDeBornesVersionne(t *testing.T) *filmdec.MapQuantCatalog {
 // optionsPourEntree rejoue le câblage de production : le contexte de film sous la règle du
 // catalogue, puis les réglages de balayage qu'il en tire. Le film est nil — `NewFilmContextForMap`
 // l'accepte, et le découpage imposé ne dépend que de l'entrée de carte.
-func optionsPourEntree(entry filmdec.MapQuantEntry) filmdec.ScanFilmOptions {
-	return optionsDeBalayageDesPositions(filmdec.NewFilmContextForMap(nil, &entry, nil), entry)
+func optionsPourEntree(entry decfilm.MapQuantEntry) decfilm.ScanFilmOptions {
+	return optionsDeBalayageDesPositions(decfilm.NewFilmContextForMap(nil, &entry, nil), entry)
 }
 
 // TestPositionsImposentLeDecoupageDuCatalogue : pour CHAQUE carte du catalogue versionné, les
@@ -108,20 +108,20 @@ func TestMutationDuCatalogueChangeLeDecoupageDesPositions(t *testing.T) {
 	// plus près des bits : `filmdec/i0_catalogue_mutation_test.go`,
 	// `decoupageDeReferenceLiveFire` ; les deux se mettent à jour ensemble le jour où le
 	// découpage de cette carte change VOLONTAIREMENT.
-	attendu := filmdec.I0Layout{GateBits: 6, AxisW: [3]uint{12, 12, 11}, Region: 1}
+	attendu := decfilm.I0Layout{GateBits: 6, AxisW: [3]uint{12, 12, 11}, Region: 1}
 	if *reference.Layout != attendu {
 		t.Fatalf("le catalogue donne %s a Live Fire, attendu %s (valeur du 2026-09-15). "+
-			"Si le changement est voulu, reecrire cette reference et son jumeau `filmdec."+
+			"Si le changement est voulu, reecrire cette reference et son jumeau `grammar."+
 			"decoupageDeReferenceLiveFire` dans le meme commit", *reference.Layout, attendu)
 	}
 	for _, cas := range []struct {
 		nom   string
-		muter func(*filmdec.MapQuantEntry)
+		muter func(*decfilm.MapQuantEntry)
 	}{
-		{"axisWidths X decale d un bit", func(m *filmdec.MapQuantEntry) { m.AxisWidths[0]++ }},
-		{"axisWidths Z decale d un bit", func(m *filmdec.MapQuantEntry) { m.AxisWidths[2]-- }},
-		{"regionIndexBits rabaissee a 1", func(m *filmdec.MapQuantEntry) { m.RegionIndexBits = 1 }},
-		{"region attendue remise a 0", func(m *filmdec.MapQuantEntry) { m.Region = 0 }},
+		{"axisWidths X decale d un bit", func(m *decfilm.MapQuantEntry) { m.AxisWidths[0]++ }},
+		{"axisWidths Z decale d un bit", func(m *decfilm.MapQuantEntry) { m.AxisWidths[2]-- }},
+		{"regionIndexBits rabaissee a 1", func(m *decfilm.MapQuantEntry) { m.RegionIndexBits = 1 }},
+		{"region attendue remise a 0", func(m *decfilm.MapQuantEntry) { m.Region = 0 }},
 	} {
 		mute := entry
 		cas.muter(&mute)

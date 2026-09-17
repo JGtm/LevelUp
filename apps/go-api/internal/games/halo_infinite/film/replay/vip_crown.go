@@ -3,7 +3,8 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // vip_crown.go — LA REGLE : de quoi est faite une periode de port de la COURONNE VIP.
@@ -46,7 +47,7 @@ type VipInput struct {
 	// drapeau : ils portent les selections VIP (`comp 22 A`) et les progressions du compteur de
 	// morts qui identifient les slots. Aucun fait de match n'entre : le VIP se nomme par les
 	// instants de mort, et le calque est donc publiable hors ligne.
-	Records []objectiveevents.StatRecord
+	Records []types.StatRecord
 }
 
 // VipCrownScan porte ce que le film rend du VIP. Les lectures voyagent ensemble, et `Scanned`
@@ -54,11 +55,11 @@ type VipInput struct {
 type VipCrownScan struct {
 	Scanned bool
 	// Events sont les evenements nommes de la table VIP (`vip_selected`), PAR SLOT statborg.
-	Events []objectiveevents.NamedEvent
+	Events []objectives.NamedEvent
 	// Identity est le pont slot statborg -> xuid, PAR MANCHE (le slot est reattribue d'une
 	// manche a l'autre). Une selection est nommee par l'identite de SA manche, choisie sur
 	// l'instant de la selection. Sur un film mono-manche c'est le pont plat, a l'octet pres.
-	Identity objectiveevents.RoundIdentity
+	Identity objectives.RoundIdentity
 	// Deaths est le fil des morts du film (horloge du MATCH, comme les evenements nommes).
 	Deaths []Death
 }
@@ -78,7 +79,7 @@ type vipRawPeriod struct {
 // vipReconstructPeriods borne chaque selection au PREMIER de : la MORT du VIP, la selection
 // suivante du meme slot, la fin (`endMS`). C'est le coeur PUR, partage par la mesure
 // (`TestVIPPeriodes`) et par le build — une seule regle, une seule source.
-func vipReconstructPeriods(events []objectiveevents.NamedEvent, identity objectiveevents.RoundIdentity,
+func vipReconstructPeriods(events []objectives.NamedEvent, identity objectives.RoundIdentity,
 	deaths []Death, endMS int64) []vipRawPeriod {
 	sels := vipSelectionOpenings(events, identity)
 	byXUID := deathTimesByXUID(deaths)
@@ -99,10 +100,10 @@ func vipReconstructPeriods(events []objectiveevents.NamedEvent, identity objecti
 }
 
 // vipSelectionOpenings rend les selections VIP nommees, triees par instant puis slot.
-func vipSelectionOpenings(events []objectiveevents.NamedEvent, identity objectiveevents.RoundIdentity) []vipRawPeriod {
+func vipSelectionOpenings(events []objectives.NamedEvent, identity objectives.RoundIdentity) []vipRawPeriod {
 	out := make([]vipRawPeriod, 0, len(events))
 	for _, e := range events {
-		if e.Stat != objectiveevents.StatVipSelected {
+		if e.Stat != objectives.StatVipSelected {
 			continue
 		}
 		out = append(out, vipRawPeriod{slot: e.Slot, xuid: identity.At(e.Slot, e.TimeMS), t0MS: int64(e.TimeMS)})
@@ -131,7 +132,7 @@ func vipNextSelectionOfSlot(sels []vipRawPeriod) map[int]int64 {
 }
 
 // vipMatchEndMS rend une borne STRICTEMENT posterieure a tout fait date (selection ou mort).
-func vipMatchEndMS(events []objectiveevents.NamedEvent, deaths []Death) int64 {
+func vipMatchEndMS(events []objectives.NamedEvent, deaths []Death) int64 {
 	var end int64
 	for _, e := range events {
 		if int64(e.TimeMS) > end {
@@ -196,8 +197,8 @@ func attachVipCrown(doc *ReplayDocument, opt Options, reg IdentityRegistry, cloc
 	}
 	scan := VipCrownScan{
 		Scanned:  true,
-		Events:   objectiveevents.NamedEventsFrom(in.Records, objectiveevents.ObjectiveTypeVip),
-		Identity: objectiveevents.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths)),
+		Events:   objectives.NamedEventsFrom(in.Records, objectives.ObjectiveTypeVip),
+		Identity: objectives.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths)),
 		Deaths:   opt.Deaths,
 	}
 	periods, cov := buildVipCrown(scan, matchClock{

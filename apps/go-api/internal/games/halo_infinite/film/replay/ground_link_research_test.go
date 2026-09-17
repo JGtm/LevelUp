@@ -35,14 +35,16 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // glSetup porte les entrees communes aux trois mesures, decodees une fois par test.
 type glSetup struct {
 	dir string
-	wr  filmdec.Vec3Range
-	pos map[uint32][]filmdec.BipedPosition
+	wr  profile.Vec3Range
+	pos map[uint32][]grammar.BipedPosition
 }
 
 func glResolve(t *testing.T) glSetup {
@@ -53,7 +55,7 @@ func glResolve(t *testing.T) glSetup {
 	}
 	path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")
-	cat, err := filmdec.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -65,14 +67,12 @@ func glResolve(t *testing.T) glSetup {
 	// les largeurs d'axe DE LA CARTE pour le chemin world-object. La troisieme version de cette
 	// mesure tournait aux largeurs par defaut (13/13/14) : toutes les positions ti=42 etaient
 	// dequantifiees faux — mediane 42 m, temoin egal, zero verdict.
-	t.Cleanup(filmdec.LockProcessDecode())
-	t.Cleanup(installWorldObjectPrecision(entry, dir, nil))
 	wr := entry.Range()
-	raw, err := filmdec.ScanFilmBipedPositions(dir, filmdec.ScanFilmOptions{WorldRange: &wr})
+	raw, err := grammar.ScanFilmBipedPositions(dir, grammar.ScanFilmOptions{WorldRange: &wr})
 	if err != nil {
 		t.Fatalf("positions : %v", err)
 	}
-	pos := map[uint32][]filmdec.BipedPosition{}
+	pos := map[uint32][]grammar.BipedPosition{}
 	for _, p := range raw {
 		pos[p.Slot] = append(pos[p.Slot], p)
 	}
@@ -83,9 +83,9 @@ func glResolve(t *testing.T) glSetup {
 }
 
 // glAt rend la position d'un slot a l'instant demande (echantillon le plus proche, <= 300 ms).
-func glAt(pos map[uint32][]filmdec.BipedPosition, slot uint32, at uint64) (filmdec.BipedPosition, bool) {
+func glAt(pos map[uint32][]grammar.BipedPosition, slot uint32, at uint64) (grammar.BipedPosition, bool) {
 	list := pos[slot]
-	best, ok := filmdec.BipedPosition{}, false
+	best, ok := grammar.BipedPosition{}, false
 	var bestGap uint64 = 300_001
 	for _, p := range list {
 		gap := at - p.TimestampUS
@@ -109,16 +109,16 @@ func glDist(ax, ay, az, bx, by, bz float32) float64 {
 type glLife struct{ firstSeen, lastSeen uint64 }
 
 // glCensus recense les vies ti=42 aux images-cles, par paire (slot, generation).
-func glCensus(t *testing.T, dir string) (map[filmdec.EquipmentLifeKey]*glLife, []uint64) {
+func glCensus(t *testing.T, dir string) (map[types.EquipmentLifeKey]*glLife, []uint64) {
 	t.Helper()
-	kf, err := filmdec.ScanFilmKeyframeGroundWeapons(dir, loadoutFamilies())
+	kf, err := grammar.ScanFilmKeyframeGroundWeapons(dir, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("recensement images-cles : %v", err)
 	}
-	lives := map[filmdec.EquipmentLifeKey]*glLife{}
+	lives := map[types.EquipmentLifeKey]*glLife{}
 	seen := map[uint64]bool{}
 	for _, g := range kf {
-		k := filmdec.EquipmentLifeKey{Slot: g.Slot, Gen: g.Gen}
+		k := types.EquipmentLifeKey{Slot: g.Slot, Gen: g.Gen}
 		l := lives[k]
 		if l == nil {
 			l = &glLife{firstSeen: g.TimestampUS, lastSeen: g.TimestampUS}
@@ -163,12 +163,12 @@ func glRestLives(t *testing.T, s glSetup) []glRestLife {
 	if !gw.Scanned || len(gw.Tracks) == 0 {
 		t.Fatalf("chaine des socles muette : scanned=%v pistes=%d", gw.Scanned, len(gw.Tracks))
 	}
-	byPair := map[filmdec.EquipmentLifeKey][]filmdec.ProjectileTrack{}
+	byPair := map[types.EquipmentLifeKey][]types.ProjectileTrack{}
 	for _, tr := range gw.Tracks {
 		if len(tr.Pts) == 0 {
 			continue
 		}
-		k := filmdec.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}
+		k := types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}
 		byPair[k] = append(byPair[k], tr)
 	}
 	var out []glRestLife
@@ -207,11 +207,11 @@ func TestLienPickupObjetAuSol(t *testing.T) {
 		"ecrase son temoin (un autre bipede vivant au meme instant). Reference : le poseur " +
 		"d'equipement, 0,52-0,60 m contre 11-36 m.")
 
-	loadouts, err := filmdec.ScanFilmKeyframeLoadouts(s.dir, loadoutFamilies())
+	loadouts, err := grammar.ScanFilmKeyframeLoadouts(s.dir, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("loadouts : %v", err)
 	}
-	changes, _, err := filmdec.ScanFilmHeldWeaponChanges(s.dir, spawnSetFrom(loadouts))
+	changes, _, err := grammar.ScanFilmHeldWeaponChanges(s.dir, spawnSetFrom(loadouts))
 	if err != nil {
 		t.Fatalf("changements d arme : %v", err)
 	}
@@ -232,7 +232,7 @@ func TestLienPickupObjetAuSol(t *testing.T) {
 	var dists, witness []float64
 	var noPos, noCand int
 	for _, ch := range changes {
-		if ch.Kind != filmdec.HeldWeaponTaken && ch.Kind != filmdec.HeldWeaponSwapped {
+		if ch.Kind != types.HeldWeaponTaken && ch.Kind != types.HeldWeaponSwapped {
 			continue
 		}
 		p, ok := glAt(s.pos, ch.Slot, ch.TimestampUS)
@@ -322,7 +322,7 @@ func TestEquipementTombeALaMort(t *testing.T) {
 		"importante des poses ti=37 a pour plus-proche-bipede (<= 3 m, +-300 ms) un bipede " +
 		"dont la vie SE TERMINE dans la meme seconde et demie.")
 
-	poses, st, err := filmdec.ScanFilmEquipmentPlacements(s.dir, &s.wr)
+	poses, st, err := grammar.ScanFilmEquipmentPlacements(s.dir, &s.wr)
 	if err != nil {
 		t.Fatalf("poses ti=37 : %v", err)
 	}
@@ -392,19 +392,19 @@ func TestLienPriseEquipementPose(t *testing.T) {
 		}
 		return list[0].TimestampUS, true
 	}
-	changes, _, err := filmdec.ScanFilmEquipmentChanges(s.dir, born)
+	changes, _, err := grammar.ScanFilmEquipmentChanges(s.dir, born)
 	if err != nil {
 		t.Fatalf("changements d equipement : %v", err)
 	}
-	poses, pst, err := filmdec.ScanFilmEquipmentPlacements(s.dir, &s.wr)
+	poses, pst, err := grammar.ScanFilmEquipmentPlacements(s.dir, &s.wr)
 	if err != nil || !pst.Scanned {
 		t.Fatalf("poses ti=37 : err=%v scanned=%v", err, pst.Scanned)
 	}
-	kf := filmdec.ScanFilmWorldObjectKeyframes(s.dir, filmdec.EquipmentTypeIndex)
+	kf := grammar.ScanFilmWorldObjectKeyframes(s.dir, grammar.EquipmentTypeIndex)
 
 	// Fenetre de vie d'une pose : de sa creation a sa derniere image-cle recensee AVANT la
 	// pose suivante de la meme cle (le pool de cles reboucle), plus un intervalle de grace.
-	byLife := map[filmdec.EquipmentLifeKey][]int{}
+	byLife := map[types.EquipmentLifeKey][]int{}
 	for i, p := range poses {
 		byLife[p.Life] = append(byLife[p.Life], i)
 	}
@@ -457,7 +457,7 @@ func TestLienPriseEquipementPose(t *testing.T) {
 	matrix := map[string]map[int]int{}
 	var takes, noPos, noCand int
 	for _, ch := range changes {
-		if ch.Kind != filmdec.EquipmentTaken {
+		if ch.Kind != types.EquipmentTaken {
 			continue
 		}
 		takes++
@@ -545,11 +545,11 @@ func TestLienPriseEquipementPose(t *testing.T) {
 func TestI26ResolutionDesHandles(t *testing.T) {
 	s := glResolve(t)
 
-	i26, err := filmdec.ScanFilmUnitEquipment(s.dir)
+	i26, err := grammar.ScanFilmUnitEquipment(s.dir)
 	if err != nil {
 		t.Fatalf("balayage i26 : %v", err)
 	}
-	i26BySlot := map[uint32][]filmdec.UnitEquipmentEmission{}
+	i26BySlot := map[uint32][]grammar.UnitEquipmentEmission{}
 	for _, e := range i26 {
 		i26BySlot[e.Slot] = append(i26BySlot[e.Slot], e)
 	}
@@ -560,21 +560,21 @@ func TestI26ResolutionDesHandles(t *testing.T) {
 		}
 		return list[0].TimestampUS, true
 	}
-	changes, _, err := filmdec.ScanFilmEquipmentChanges(s.dir, born)
+	changes, _, err := grammar.ScanFilmEquipmentChanges(s.dir, born)
 	if err != nil {
 		t.Fatalf("changements d equipement : %v", err)
 	}
-	poses, pst, err := filmdec.ScanFilmEquipmentPlacements(s.dir, &s.wr)
+	poses, pst, err := grammar.ScanFilmEquipmentPlacements(s.dir, &s.wr)
 	if err != nil || !pst.Scanned {
 		t.Fatalf("poses ti=37 : err=%v scanned=%v", err, pst.Scanned)
 	}
-	bySlot37 := map[uint32][]filmdec.EquipmentPlacement{}
+	bySlot37 := map[uint32][]types.EquipmentPlacement{}
 	for _, p := range poses {
 		bySlot37[p.Life.Slot] = append(bySlot37[p.Life.Slot], p)
 	}
 
 	// newHandles rend les entrees nouvelles de la fenetre [-1 s, +1 s] autour de la prise.
-	newHandles := func(slot uint32, at uint64) []filmdec.UnitEquipmentEntry {
+	newHandles := func(slot uint32, at uint64) []grammar.UnitEquipmentEntry {
 		list := i26BySlot[slot]
 		before := map[uint64]bool{}
 		for _, e := range list {
@@ -588,7 +588,7 @@ func TestI26ResolutionDesHandles(t *testing.T) {
 				}
 			}
 		}
-		var out []filmdec.UnitEquipmentEntry
+		var out []grammar.UnitEquipmentEntry
 		for _, e := range list {
 			if e.TimestampUS < at-1_000_000 || e.TimestampUS > at+1_000_000 {
 				continue
@@ -606,7 +606,7 @@ func TestI26ResolutionDesHandles(t *testing.T) {
 	var dists []float64
 	matrix := map[string]map[int]int{}
 	for _, ch := range changes {
-		if ch.Kind != filmdec.EquipmentTaken && ch.Kind != filmdec.EquipmentSpawned {
+		if ch.Kind != types.EquipmentTaken && ch.Kind != types.EquipmentSpawned {
 			continue
 		}
 		takes++
@@ -618,8 +618,8 @@ func TestI26ResolutionDesHandles(t *testing.T) {
 		// La pose candidate : meme slot d'objet, la plus recente NEE AVANT la prise (+1 s de
 		// marge d'horodatage). Le test de generation se COMPTE a part — c'est lui qui dira si
 		// la queue R(2) est bien la generation.
-		var best *filmdec.EquipmentPlacement
-		var bestEntry filmdec.UnitEquipmentEntry
+		var best *types.EquipmentPlacement
+		var bestEntry grammar.UnitEquipmentEntry
 		for _, en := range hs {
 			for i := range bySlot37[en.Val] {
 				p := &bySlot37[en.Val][i]
@@ -684,11 +684,11 @@ func TestI26ResolutionDesHandles(t *testing.T) {
 func TestI26HandleVersCreation(t *testing.T) {
 	s := glResolve(t)
 
-	i26, err := filmdec.ScanFilmUnitEquipment(s.dir)
+	i26, err := grammar.ScanFilmUnitEquipment(s.dir)
 	if err != nil {
 		t.Fatalf("balayage i26 : %v", err)
 	}
-	i26BySlot := map[uint32][]filmdec.UnitEquipmentEmission{}
+	i26BySlot := map[uint32][]grammar.UnitEquipmentEmission{}
 	for _, e := range i26 {
 		i26BySlot[e.Slot] = append(i26BySlot[e.Slot], e)
 	}
@@ -699,7 +699,7 @@ func TestI26HandleVersCreation(t *testing.T) {
 		}
 		return list[0].TimestampUS, true
 	}
-	changes, _, err := filmdec.ScanFilmEquipmentChanges(s.dir, born)
+	changes, _, err := grammar.ScanFilmEquipmentChanges(s.dir, born)
 	if err != nil {
 		t.Fatalf("changements d equipement : %v", err)
 	}
@@ -709,20 +709,18 @@ func TestI26HandleVersCreation(t *testing.T) {
 	if !pst.Calibration.Widths.Valid() {
 		t.Fatal("calibration MPP non tranchee : la mesure ne peut pas lire les identites")
 	}
-	restore := gwInstallMPPWidths(pst.Calibration.Widths)
-	defer restore()
-	kf := filmdec.ScanFilmWorldObjectKeyframes(s.dir, filmdec.EquipmentTypeIndex)
-	cre, _, err := filmdec.ScanFilmEquipmentCreationsForBand(s.dir, &s.wr, kf.Band)
+	kf := grammar.ScanFilmWorldObjectKeyframes(s.dir, grammar.EquipmentTypeIndex)
+	cre, _, err := grammar.ScanFilmEquipmentCreationsForBand(s.dir, &s.wr, kf.Band)
 	if err != nil {
 		t.Fatalf("creations ti=37 : %v", err)
 	}
 	type creKey struct{ slot, gen uint32 }
-	byKey := map[creKey][]filmdec.EquipmentCreation{}
+	byKey := map[creKey][]types.EquipmentCreation{}
 	for _, c := range cre {
 		byKey[creKey{c.Slot, c.Gen}] = append(byKey[creKey{c.Slot, c.Gen}], c)
 	}
 
-	newHandles := func(slot uint32, at uint64) []filmdec.UnitEquipmentEntry {
+	newHandles := func(slot uint32, at uint64) []grammar.UnitEquipmentEntry {
 		list := i26BySlot[slot]
 		before := map[uint64]bool{}
 		for _, e := range list {
@@ -736,7 +734,7 @@ func TestI26HandleVersCreation(t *testing.T) {
 				}
 			}
 		}
-		var out []filmdec.UnitEquipmentEntry
+		var out []grammar.UnitEquipmentEntry
 		for _, e := range list {
 			if e.TimestampUS < at-1_000_000 || e.TimestampUS > at+1_000_000 {
 				continue
@@ -754,7 +752,7 @@ func TestI26HandleVersCreation(t *testing.T) {
 	var gaps []float64
 	matrix := map[string]map[int]int{}
 	for _, ch := range changes {
-		if ch.Kind != filmdec.EquipmentTaken && ch.Kind != filmdec.EquipmentSpawned {
+		if ch.Kind != types.EquipmentTaken && ch.Kind != types.EquipmentSpawned {
 			continue
 		}
 		takes++
@@ -763,7 +761,7 @@ func TestI26HandleVersCreation(t *testing.T) {
 			continue
 		}
 		withHandle++
-		var best *filmdec.EquipmentCreation
+		var best *types.EquipmentCreation
 		for _, en := range hs {
 			for i := range byKey[creKey{en.Val, en.Tail}] {
 				c := &byKey[creKey{en.Val, en.Tail}][i]
@@ -777,14 +775,14 @@ func TestI26HandleVersCreation(t *testing.T) {
 				}
 			}
 		}
-		if best == nil || !best.MPPPresent[filmdec.MPPWord32] {
+		if best == nil || !best.MPPPresent[grammar.MPPWord32] {
 			continue
 		}
 		resolved++
 		gaps = append(gaps,
 			float64(equipTimeGap(best.TimestampUS, ch.TimestampUS))/1000)
 		if ch.Rank >= 0 {
-			key := fmt.Sprintf("%08x", uint32(best.MPPVal[filmdec.MPPWord32]))
+			key := fmt.Sprintf("%08x", uint32(best.MPPVal[grammar.MPPWord32]))
 			if matrix[key] == nil {
 				matrix[key] = map[int]int{}
 			}

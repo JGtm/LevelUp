@@ -18,26 +18,28 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // TestGwInstallMPPWidthsInstalleEtRestaure : les largeurs mesurees valent pour le balayage, et
-// pour lui seul — ce sont des globaux de paquet, les rendre est un contrat.
+// pour lui seul — elles se posent sur le CONTEXTE du film (lot 2.3), et les rendre reste un
+// contrat : la cuisson enchaine plusieurs archetypes sur le MEME contexte.
 func TestGwInstallMPPWidthsInstalleEtRestaure(t *testing.T) {
-	release := filmdec.LockProcessDecode()
-	defer release()
-	avant := filmdec.CurrentMPPWidths()
-	// Le decoupage d'un film BTB mesure (8/3), qui n'est PAS le defaut de paquet (9/5).
-	btb := filmdec.MPPWidths{Lead: 8, Index: 3}
+	fc := grammar.NewFilmContext(nil)
+	avant := fc.ProfilDeBalayage().MPP
+	// Le decoupage d'un film BTB mesure (8/3), qui n'est PAS l'invariant du profil (9/5).
+	btb := profile.MPPWidths{Lead: 8, Index: 3}
 	if btb == avant {
-		t.Fatalf("le decoupage temoin %s est deja le defaut : le test ne verifie plus rien", btb)
+		t.Fatalf("le decoupage temoin %s est deja l'invariant : le test ne verifie plus rien", btb)
 	}
-	restore := gwInstallMPPWidths(btb)
-	if got := filmdec.CurrentMPPWidths(); got != btb {
+	restore := gwInstallMPPWidths(fc, btb)
+	if got := fc.ProfilDeBalayage().MPP; got != btb {
 		t.Fatalf("largeurs installees %s, attendu %s", got, btb)
 	}
 	restore()
-	if got := filmdec.CurrentMPPWidths(); got != avant {
+	if got := fc.ProfilDeBalayage().MPP; got != avant {
 		t.Fatalf("largeurs NON restaurees : %s, attendu %s", got, avant)
 	}
 }
@@ -46,15 +48,14 @@ func TestGwInstallMPPWidthsInstalleEtRestaure(t *testing.T) {
 // rend un decoupage nul. L'installer lirait zero bit de tete et zero bit d'index — pire que le
 // defaut, qui a au moins ete mesure ailleurs.
 func TestGwInstallMPPWidthsIgnoreUnDecoupageNonMesure(t *testing.T) {
-	release := filmdec.LockProcessDecode()
-	defer release()
-	avant := filmdec.CurrentMPPWidths()
-	restore := gwInstallMPPWidths(filmdec.MPPWidths{})
-	if got := filmdec.CurrentMPPWidths(); got != avant {
+	fc := grammar.NewFilmContext(nil)
+	avant := fc.ProfilDeBalayage().MPP
+	restore := gwInstallMPPWidths(fc, profile.MPPWidths{})
+	if got := fc.ProfilDeBalayage().MPP; got != avant {
 		t.Fatalf("un decoupage non mesure a ete installe : %s", got)
 	}
 	restore()
-	if got := filmdec.CurrentMPPWidths(); got != avant {
+	if got := fc.ProfilDeBalayage().MPP; got != avant {
 		t.Fatalf("largeurs abimees par une restauration inutile : %s", got)
 	}
 }
@@ -69,12 +70,12 @@ func TestGwInstallMPPWidthsIgnoreUnDecoupageNonMesure(t *testing.T) {
 func TestCouvertureAvertitQuandAucuneIdentiteNeResout(t *testing.T) {
 	fausse := WorldObjectScan{
 		Scanned: true,
-		Stats:   filmdec.EquipmentCreationStats{Slots: 8, Anchors: 400, Accepted: 12},
-		Creations: []filmdec.EquipmentCreation{
+		Stats:   types.EquipmentCreationStats{Slots: 8, Anchors: 400, Accepted: 12},
+		Creations: []types.EquipmentCreation{
 			gwTestCreation(60, 0, 1_000_000, 0xDEADBEEF, 1, 1),
 			gwTestCreation(61, 0, 2_000_000, 0xBADC0FFE, 2, 2),
 		},
-		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
+		Keyframes: grammar.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
 	_, _, cov, _ := buildWeaponPads(PadScans{Weapons: fausse}, nil, gwTestClock(), padCatalogs{})
 	if cov.Kept != 0 || cov.Accepted == 0 {

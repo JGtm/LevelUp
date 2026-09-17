@@ -61,12 +61,12 @@ func parentEquivalence(o options) int {
 		fmt.Println("lanceur :", err)
 		return 1
 	}
-	tmp, err := os.MkdirTemp("", "replay-equiv")
+	tmp, nettoyer, err := dossierDesDigests(o.outDir)
 	if err != nil {
-		fmt.Println("dossier temporaire :", err)
+		fmt.Println("dossier des digests de l'enfant :", err)
 		return 1
 	}
-	defer func() { _ = os.RemoveAll(tmp) }()
+	defer nettoyer()
 
 	p := passe{dir: dossierEquivalence(o.repoRoot), attendues: etapesAttendues(), update: o.update}
 	fmt.Printf("%d film(s), %d etape(s) attendues par film, reference %s\n",
@@ -86,6 +86,31 @@ func parentEquivalence(o options) int {
 		return 1
 	}
 	return 0
+}
+
+// dossierDesDigests rend ou poser les TSV que les enfants ecrivent, et la fonction qui en
+// dispose.
+//
+// SANS `-out-dir`, ils vivent dans un dossier temporaire efface a la sortie : c'est le regime
+// normal, le parent n'a besoin d'eux que le temps de comparer. AVEC, ils sont CONSERVES — ce
+// que demande une divergence qu'on instruit : le TSV obtenu se compare alors ligne a ligne
+// avec la reference, hors du harnais, sans re-decoder le film (une a trois minutes par film).
+// Le dossier demande n'est jamais efface, meme s'il vient d'etre cree : effacer ce qu'un
+// operateur a explicitement demande de garder serait le contraire du drapeau.
+func dossierDesDigests(outDir string) (string, func(), error) {
+	if outDir != "" {
+		if err := os.MkdirAll(outDir, 0o750); err != nil {
+			return "", func() {}, err
+		}
+		return outDir, func() {
+			fmt.Printf("digests des enfants CONSERVES sous %s\n", outDir)
+		}, nil
+	}
+	tmp, err := os.MkdirTemp("", "replay-equiv")
+	if err != nil {
+		return "", func() {}, err
+	}
+	return tmp, func() { _ = os.RemoveAll(tmp) }, nil
 }
 
 // compterIssue traduit l'issue d'un enfant en ligne de bilan, et compare quand il a reussi.
@@ -246,21 +271,40 @@ func verifierEtapes(lignes, attendues []string) error {
 	return fmt.Errorf("%d etape(s) en TROP apres %q", len(noms)-len(attendues), attendues[len(attendues)-1])
 }
 
-// comparer nomme la PREMIERE ligne qui differe.
+// comparer nomme TOUTES les etapes qui different, pas seulement la premiere.
+//
+// # POURQUOI TOUTES, ET PAS LA PREMIERE (D2 (pilote), 2026-09-17)
+//
+// Ce harnais rendait la premiere divergence et s'arretait la. Sur un refacto qui touche
+// plusieurs balayages, cela impose un aller-retour PAR ETAPE : corriger, relancer le film
+// entier (une a trois minutes de decodage, un enfant borne par film), decouvrir la suivante.
+// Trois etapes divergentes = trois decodages complets pour apprendre ce qu'un seul disait
+// deja. La liste complete ne coute rien a produire — les deux fichiers sont en memoire — et
+// elle dit du premier coup si la divergence est LOCALE (une etape) ou GENERALE (toutes), ce
+// qu'une premiere ligne ne dira jamais.
+//
+// Le format des TSV de reference n'est PAS touche : ce qui change est le MESSAGE rendu.
 func comparer(attendu, obtenu []string) error {
+	var ecarts []string
 	for i := range max(len(attendu), len(obtenu)) {
 		switch {
 		case i >= len(obtenu):
-			return fmt.Errorf("ECART : l'etape %q de la reference n'a pas ete produite", champ(attendu[i], 0))
+			ecarts = append(ecarts, fmt.Sprintf("  %-28s de la reference n'a pas ete produite",
+				champ(attendu[i], 0)))
 		case i >= len(attendu):
-			return fmt.Errorf("ECART : etape %q produite en trop (absente de la reference)", champ(obtenu[i], 0))
+			ecarts = append(ecarts, fmt.Sprintf("  %-28s produite en trop (absente de la reference)",
+				champ(obtenu[i], 0)))
 		case attendu[i] != obtenu[i]:
-			return fmt.Errorf("ECART a l'etape %q : attendu compte=%s sha=%s, obtenu compte=%s sha=%s",
+			ecarts = append(ecarts, fmt.Sprintf("  %-28s attendu compte=%s sha=%s, obtenu compte=%s sha=%s",
 				champ(obtenu[i], 0), champ(attendu[i], 1), champ(attendu[i], 2),
-				champ(obtenu[i], 1), champ(obtenu[i], 2))
+				champ(obtenu[i], 1), champ(obtenu[i], 2)))
 		}
 	}
-	return nil
+	if len(ecarts) == 0 {
+		return nil
+	}
+	return fmt.Errorf("ECART sur %d etape(s) sur %d :\n%s",
+		len(ecarts), max(len(attendu), len(obtenu)), strings.Join(ecarts, "\n"))
 }
 
 // champ rend la n-ieme colonne d'une ligne TSV, vide si elle manque.

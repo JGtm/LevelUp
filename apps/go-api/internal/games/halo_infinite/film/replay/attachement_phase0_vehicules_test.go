@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // attVehiculeTI est l'archétype « véhicule (présumé) » de la table ECS. Présumé est le mot
@@ -63,23 +63,23 @@ const attCandidatsEnv = "ATT_CANDIDATS"
 // slots distincts par archétype. Lecture des seuls chunks demandés : un recensement n'a pas
 // besoin du film entier pour dire si un archétype y vit.
 func attCensusTI(dir string, maxChunks int) (map[int]map[int]bool, int) {
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	if maxChunks > 0 && n > maxChunks {
 		n = maxChunks
 	}
 	out := map[int]map[int]bool{}
 	images := 0
 	for c := 1; c <= n; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(data) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(data) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			images++
-			for _, r := range filmdec.WalkKeyframeWorld(p.Payload(data)) {
+			for _, r := range grammar.WalkKeyframeWorld(p.Payload(data)) {
 				if r.Slot < 0 {
 					continue
 				}

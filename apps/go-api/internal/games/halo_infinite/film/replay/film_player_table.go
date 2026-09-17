@@ -6,8 +6,8 @@ package replay
 //
 // Le film porte sa PROPRE table d'identite : `chunk_00` ouvre sur le registre, puis sur une
 // section d'identification (build, version, horodatage) et enfin sur trente-deux enregistrements
-// de slot qui portent chacun un XUID et un gamertag (lot 1.5, `filmdec.ReadFilmIdentity` /
-// `filmdec.ReadPlayerTable`). C'est le lien DIRECT `index <-> xuid <-> gamertag`, ecrit par le
+// de slot qui portent chacun un XUID et un gamertag (lot 1.5, `grammar.ReadFilmIdentity` /
+// `grammar.ReadPlayerTable`). C'est le lien DIRECT `index <-> xuid <-> gamertag`, ecrit par le
 // jeu ; ce fichier est son seul appelant de production.
 //
 // # CE QUE LA MESURE DU 2026-09-14 A APPRIS, ET QUI COMMANDE TOUTE LA SUITE
@@ -50,8 +50,9 @@ import (
 	"errors"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/observability"
 )
 
@@ -65,7 +66,7 @@ const (
 	// FilmTableNoRegistry : le film ne porte pas son `chunk_00` (bobine partielle).
 	FilmTableNoRegistry FilmTableRefusal = "sans_registre"
 	// FilmTableNoSection : le `chunk_00` ne porte aucune section d'identification — 5 films du
-	// cache, nommes dans `filmdec.ErrNoFilmIdentity`.
+	// cache, nommes dans `grammar.ErrNoFilmIdentity`.
 	FilmTableNoSection FilmTableRefusal = "sans_section"
 	// FilmTableUnknownBuild : le build du film n'est pas dans la table de profil. Le film est mis
 	// de cote, JAMAIS lu au profil du build le plus proche (D-4), et un compteur expvar le dit.
@@ -78,7 +79,7 @@ const (
 
 // FilmPlayerSeat est un siege OCCUPE de la table du film, reduit a ce que l'assemblage consomme.
 //
-// LES NEUF CHAMPS COURTS ET LE JETON DE SESSION QUE `filmdec.PlayerSlot` PUBLIE N'ENTRENT PAS :
+// LES NEUF CHAMPS COURTS ET LE JETON DE SESSION QUE `types.PlayerSlot` PUBLIE N'ENTRENT PAS :
 // aucun consommateur ne les lit, et ce type voyage dans le fixture d'entrees fige — porter ce
 // qu'on ne consomme pas est exactement ce que la doctrine du fixture interdit.
 type FilmPlayerSeat struct {
@@ -122,10 +123,10 @@ func (t FilmPlayerTable) Lue() bool {
 // appelee une fois par cuisson, dans l'etage de balayage.
 //
 // ELLE NE REND JAMAIS D'ERREUR, et ce n'est pas une erreur avalee : chaque cause d'echec est
-// TYPEE chez `filmdec`, traduite ici en [FilmTableRefusal] NOMMEE, journalisee, et publiee dans
+// TYPEE chez `grammar`, traduite ici en [FilmTableRefusal] NOMMEE, journalisee, et publiee dans
 // la couverture de l'artefact. Un refus se compte ; il ne se tait pas.
-func ScanFilmPlayerTable(film *filmsource.Film, matchID string) FilmPlayerTable {
-	chunk0, ok := filmdec.FilmRegistryChunk(film)
+func ScanFilmPlayerTable(film *source.Film, matchID string) FilmPlayerTable {
+	chunk0, ok := grammar.FilmRegistryChunk(film)
 	if !ok {
 		return refusTable(matchID, "", FilmTableNoRegistry, nil)
 	}
@@ -136,13 +137,13 @@ func ScanFilmPlayerTable(film *filmsource.Film, matchID string) FilmPlayerTable 
 // registre. Separe pour qu'un test puisse muter ces octets — le refus pour build inconnu, en
 // particulier, ne se provoque pas autrement (aucun film du cache n'a de build hors profil).
 func lireTableDeChunk0(chunk0 []byte, matchID string) FilmPlayerTable {
-	ident, err := filmdec.ReadFilmIdentity(chunk0)
+	ident, err := grammar.ReadFilmIdentity(chunk0)
 	if err != nil {
 		return refusTable(matchID, "", causeIdentite(err), err)
 	}
-	slots, rep, err := filmdec.ReadPlayerTable(chunk0, ident)
+	slots, rep, err := grammar.ReadPlayerTable(chunk0, ident)
 	if err != nil {
-		if errors.Is(err, filmdec.ErrUnknownBuild) {
+		if errors.Is(err, profile.ErrUnknownBuild) {
 			// D-4 : le film est mis de cote AVEC son compteur, pour que le refus se voie en
 			// production et non seulement dans le journal du jour de la cuisson.
 			publierBuildInconnu(ident.Build)
@@ -175,20 +176,20 @@ func refusTable(matchID, build string, cause FilmTableRefusal, err error) FilmPl
 	return FilmPlayerTable{Build: build, Refusal: cause}
 }
 
-// causeIdentite traduit l'erreur de [filmdec.ReadFilmIdentity] en cause nommee.
+// causeIdentite traduit l'erreur de [grammar.ReadFilmIdentity] en cause nommee.
 func causeIdentite(err error) FilmTableRefusal {
-	if errors.Is(err, filmdec.ErrNoFilmIdentity) {
+	if errors.Is(err, grammar.ErrNoFilmIdentity) {
 		return FilmTableNoSection
 	}
 	return FilmTableTruncated
 }
 
-// causeTable traduit l'erreur de [filmdec.ReadPlayerTable] en cause nommee.
+// causeTable traduit l'erreur de [grammar.ReadPlayerTable] en cause nommee.
 func causeTable(err error) FilmTableRefusal {
 	switch {
-	case errors.Is(err, filmdec.ErrUnknownBuild):
+	case errors.Is(err, profile.ErrUnknownBuild):
 		return FilmTableUnknownBuild
-	case errors.Is(err, filmdec.ErrPlayerTableNotFound):
+	case errors.Is(err, grammar.ErrPlayerTableNotFound):
 		return FilmTableNotFound
 	default:
 		return FilmTableTruncated
@@ -196,14 +197,14 @@ func causeTable(err error) FilmTableRefusal {
 }
 
 // publierBuildInconnu expose sur `/debug/vars` le refus d'un film pour build inconnu (D-4 d'ADR
-// 0034, compteur nomme par `filmdec.UnknownBuildExpvarPairs`).
+// 0034, compteur nomme par `grammar.UnknownBuildExpvarPairs`).
 //
 // C'EST ICI QUE LE COMPTEUR DU LOT 1.5 TROUVE SON CABLEUR, et c'etait ecrit : « le premier
 // appelant de production de ReadPlayerTable est le registre d'identite du lot 1.6, et c'est lui
 // qui publiera cette paire » (player_table_profile.go). Meme patron que
-// `publierFermetureImageCle` : `filmdec` NOMME ses compteurs, le consommateur les CABLE.
+// `publierFermetureImageCle` : `grammar` NOMME ses compteurs, le consommateur les CABLE.
 func publierBuildInconnu(build string) {
-	for _, p := range filmdec.UnknownBuildExpvarPairs(build) {
+	for _, p := range grammar.UnknownBuildExpvarPairs(build) {
 		observability.AddInt(p.Name, p.Value)
 	}
 }

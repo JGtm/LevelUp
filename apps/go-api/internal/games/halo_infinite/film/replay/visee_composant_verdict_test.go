@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vfCalibChunks : nombre de chunks deroules par largeur candidate pendant la calibration.
@@ -53,8 +53,6 @@ func TestViseeComposantOffsetVariable(t *testing.T) {
 	if filepath.Base(dir) != "00162144" {
 		t.Fatalf("la chronologie relevee est celle de 00162144 ; film fourni : %s", filepath.Base(dir))
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	pont := vfPontPublie(t, dir, chronoGT)
 	src := vfSourcePubliee(t, dir)
@@ -161,7 +159,7 @@ func vfSourcePubliee(t *testing.T, dir string) vfSource {
 		t.Fatalf("ouverture du film : %v", err)
 	}
 	t.Logf("SOURCE — decoupage d'i0 %s · registre %d blocs · archetype bipede (ti=%d) %d composants",
-		s.lay.String(), s.blocs, filmdec.BipedTypeIndex, len(s.arch.Components))
+		s.lay.String(), s.blocs, grammar.BipedTypeIndex, len(s.arch.Components))
 	return s
 }
 

@@ -22,7 +22,7 @@ package replay
 //
 // # LA FONCTION EST PURE, ET C'EST UNE CONTRAINTE D'ARCHITECTURE (decision D11)
 //
-// Aucune I/O, aucune base, aucun `filmsource.Film` : l'entree est ce que le DECODAGE a deja
+// Aucune I/O, aucune base, aucun `source.Film` : l'entree est ce que le DECODAGE a deja
 // rendu. C'est ce qui permet aux DEUX producteurs de l'appeler — `replaybuild` a la cuisson, et
 // `sync/killcollector` au sync, ou les donnees d'un match sont deja completes. Une seule
 // fonction, donc un seul nommage : deux tables du meme film ne peuvent plus diverger.
@@ -30,9 +30,10 @@ package replay
 import (
 	"strconv"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // IdentityClock est l'axe de frames du document, quand l'appelant en a un.
@@ -56,16 +57,16 @@ type IdentityClock struct {
 // Une structure unique parce que le depot borne a cinq parametres, et parce qu'un appelant qui
 // ajoute une source ne doit pas casser les autres.
 type IdentityInput struct {
-	// Positions : les positions de bipede DEJA decodees (`filmdec.ScanBipedPositions`).
-	Positions []filmdec.BipedPosition
+	// Positions : les positions de bipede DEJA decodees (`grammar.ScanBipedPositions`).
+	Positions []grammar.BipedPosition
 	// BipedCreations : les records de CREATION de bipede deja decodes
-	// (`filmdec.ScanBipedCreations`). C'est le lien DIRECT corps -> joueur : le film ECRIT
+	// (`grammar.ScanBipedCreations`). C'est le lien DIRECT corps -> joueur : le film ECRIT
 	// l'index de participant du proprietaire dans le default-state du record.
 	//
 	// VIDE = LE REGISTRE N'A AUCUNE LECTURE DIRECTE, et il le publie
 	// (`BridgeHealth.BridgeNamedLives` non nul). Ce n'est pas une option : c'est la degradation
 	// declaree d'un producteur qui ne porte pas encore ce canal.
-	BipedCreations []filmdec.BipedCreation
+	BipedCreations []grammar.BipedCreation
 	// Deaths : le fil des morts du film — il nomme chaque vie par sa victime.
 	Deaths []Death
 	// PlayerIndices : le lien DIRECT identite -> index de joueur, lu dans les chunks de
@@ -106,13 +107,13 @@ type IdentityInput struct {
 // StatborgIdentityInput porte l'identite des slots d'entite statborg et les enregistrements qui
 // en sont le DENOMINATEUR.
 //
-// POURQUOI ELLE ARRIVE RESOLUE. La resolution vit dans `objectiveevents`, feuille du decodage,
+// POURQUOI ELLE ARRIVE RESOLUE. La resolution vit dans `objectives`, feuille du decodage,
 // et deux calques la partagent deja, memorisee (cf. `replaybuild.pontParManche`). La recalculer
 // ici serait un second deroulage complet du compteur de morts par cuisson — le cout que la
 // memorisation existe pour eviter.
 type StatborgIdentityInput struct {
-	Identity objectiveevents.RoundIdentity
-	Records  []objectiveevents.StatRecord
+	Identity objectives.RoundIdentity
+	Records  []types.StatRecord
 }
 
 // IdentityRegistry est la table d'identite d'UN film : les liens, leur provenance, et les
@@ -244,7 +245,7 @@ func (r IdentityRegistry) PontDeSlot(slot uint32) string {
 
 // scoreRecordsOf rend les enregistrements de statborg que l'appelant a deja decodes, ou rien.
 // Le registre ne decode jamais : il PUBLIE ce que la lecture a rendu.
-func scoreRecordsOf(in *ScoreInput) []objectiveevents.StatRecord {
+func scoreRecordsOf(in *ScoreInput) []types.StatRecord {
 	if in == nil {
 		return nil
 	}

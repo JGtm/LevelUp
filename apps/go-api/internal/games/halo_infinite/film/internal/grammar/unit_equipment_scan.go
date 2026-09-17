@@ -1,0 +1,98 @@
+package grammar
+
+// unit_equipment_scan.go — LE BALAYAGE d'i26 `unit-equipment-component` : la liste de
+// références que le porteur émet sur son équipement.
+//
+// CE QUE LA MESURE DU 2026-08-30 A ÉTABLI (equipment_i26_research_test.go), et qui fonde
+// l'export : à 70,2 % des prises d'équipement (i48), la liste i26 du même slot gagne une
+// entrée NOUVELLE dans la seconde (témoin décalé de 30 s : 0 %). Chaque entrée est un
+// optionnel `porte(1) + valeur(13) + queue(2)` — les largeurs d'un slot d'entité et d'une
+// génération — et les valeurs tombent dans la zone des objets du monde (0 % dans la bande
+// bipède). C'est le canal côté PORTEUR qui référence l'objet, celui que la proximité ne sait
+// pas donner (l'équipement tombe en tas avec les grenades, mesure D).
+//
+// HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+
+import (
+	"fmt"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
+// UnitEquipmentEmission est UNE lecture d'i26 rattachée à son record bipède.
+type UnitEquipmentEmission struct {
+	// Slot est le slot du bipède émetteur — une VIE, pas un joueur.
+	Slot uint32
+	// TimestampUS est l'horodatage du paquet — même horloge que BipedPosition.
+	TimestampUS uint64
+	// Read est la lecture publiée par le déserialiseur (en-tête + liste).
+	Read UnitEquipmentRead
+}
+
+// ScanFilmUnitEquipment décode toutes les émissions d'i26 des paquets delta du film de dir.
+//
+// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `observateur.UnitEquipmentHook`,
+// sortie, y compris en cas d'erreur.
+//
+// ScanFilmUnitEquipment est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanUnitEquipment].
+func ScanFilmUnitEquipment(dir string) ([]UnitEquipmentEmission, error) {
+	film, err := source.LoadDir(dir, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ScanUnitEquipment(contexteDeBobine(film))
+}
+
+// ScanUnitEquipment décode les émissions d'i26 d'un film DEJA CHARGE.
+func ScanUnitEquipment(fc *FilmContext) ([]UnitEquipmentEmission, error) {
+	chunks := fc.ChunkNumbers()
+	if len(chunks) == 0 {
+		return nil, ErrNoFilmChunk
+	}
+	slots := fc.BipedSlots()
+	if slots.Count() == 0 {
+		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
+	}
+	lay, err := fc.I0Layout()
+	if err != nil {
+		return nil, fmt.Errorf("découpage i0 illisible : %w", err)
+	}
+	arch, err := fc.bipedArchetype()
+	if err != nil {
+		return nil, err
+	}
+	idx26 := -1
+	for id := 0; id < archetypeBlockSlots; id++ {
+		if arch.component(id) == "unit-equipment-component" {
+			idx26 = id
+			break
+		}
+	}
+	if idx26 < 0 {
+		return nil, fmt.Errorf("aucun unit-equipment-component dans l'archétype biped du film")
+	}
+
+	var last struct {
+		read UnitEquipmentRead
+		got  bool
+	}
+	obs := NouvelleObservation()
+	obs.UnitEquipmentHook = func(r UnitEquipmentRead) { last.read, last.got = r, true }
+
+	var out []UnitEquipmentEmission
+	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage(), obs: obs}
+	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
+		if !maskHas(r.Mask, idx26) {
+			return
+		}
+		last.got = false
+		if walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, gram, idx26) && last.got {
+			out = append(out, UnitEquipmentEmission{
+				Slot: r.Slot, TimestampUS: r.Packet.TimestampUS, Read: last.read,
+			})
+		}
+		last.got = false
+	})
+	return out, nil
+}

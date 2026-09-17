@@ -10,7 +10,7 @@ package killcollector
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 )
 
@@ -18,7 +18,7 @@ import (
 // et le controle par le kill-feed. Les compteurs sont cumulatifs : le test mesure des DELTAS.
 func TestProvenanceDeLaBijectionEstPubliee(t *testing.T) {
 	avant := lireProvenance()
-	publishBijectionProvenance(killsource.FilmTablePinning{
+	publishBijectionProvenance(decfilm.FilmTablePinning{
 		Build: "HI_1_13_0", Seats: 8, Pinned: 7, Inferred: 1,
 		Agree: 5, Contradict: 1, Silent: 1,
 	})
@@ -39,8 +39,8 @@ func TestProvenanceDeLaBijectionEstPubliee(t *testing.T) {
 // diagnostic : la cause entre dans le NOM du compteur, comme `filmdec_unknown_build_<build>`.
 func TestRefusDeTableCompteSaCause(t *testing.T) {
 	avant := observability.LoadCounter(metricBijTableRefusee + "sans_section")
-	publishBijectionProvenance(killsource.FilmTablePinning{
-		Refusal: killsource.FilmTableNoSection, Inferred: 24,
+	publishBijectionProvenance(decfilm.FilmTablePinning{
+		Refusal: decfilm.FilmTableNoSection, Inferred: 24,
 	})
 	if got := observability.LoadCounter(metricBijTableRefusee+"sans_section") - avant; got != 1 {
 		t.Errorf("le refus `sans_section` n est pas compte (delta %d)", got)
@@ -55,8 +55,8 @@ func TestRefusDeTableCompteSaCause(t *testing.T) {
 func TestBuildInconnuPublieSonCompteurNomme(t *testing.T) {
 	const nom = "filmdec_unknown_build_hi_9_99_0"
 	avant := observability.LoadCounter(nom)
-	publishBijectionProvenance(killsource.FilmTablePinning{
-		Refusal: killsource.FilmTableUnknownBuild, Build: "HI_9_99_0", Inferred: 8,
+	publishBijectionProvenance(decfilm.FilmTablePinning{
+		Refusal: decfilm.FilmTableUnknownBuild, Build: "HI_9_99_0", Inferred: 8,
 	})
 	if got := observability.LoadCounter(nom) - avant; got != 1 {
 		t.Errorf("%s : delta %d, attendu 1 — le compteur de build inconnu n est pas cable", nom, got)
@@ -83,21 +83,21 @@ func TestBuildInconnuPublieSonCompteurNomme(t *testing.T) {
 func TestAmbiguiteNeCompteQueLesFilmsQuiBascule(t *testing.T) {
 	for _, cas := range []struct {
 		nom     string
-		pinning killsource.FilmTablePinning
+		pinning decfilm.FilmTablePinning
 		attendu int64
 	}{
 		{
 			// AUCUN NOM LIBRE EN TROP : un indice a inferer, un seul nom pour lui.
 			// L affectation est FORCEE — les deux portes publient, rien ne bascule.
 			nom:     "1 indice libre / 1 nom libre",
-			pinning: killsource.FilmTablePinning{Seats: 8, Pinned: 7, Inferred: 1, FreeNames: 1},
+			pinning: decfilm.FilmTablePinning{Seats: 8, Pinned: 7, Inferred: 1, FreeNames: 1},
 			attendu: 0,
 		},
 		{
 			// LA POPULATION QUI BASCULE : un indice pour deux noms. L ancienne porte
 			// (`Inferred <= 1`) publiait un occupant tire au sort ; la corrigee refuse.
 			nom:     "1 indice libre / 2 noms libres",
-			pinning: killsource.FilmTablePinning{Seats: 8, Pinned: 7, Inferred: 1, FreeNames: 2},
+			pinning: decfilm.FilmTablePinning{Seats: 8, Pinned: 7, Inferred: 1, FreeNames: 2},
 			attendu: 1,
 		},
 		{
@@ -106,7 +106,7 @@ func TestAmbiguiteNeCompteQueLesFilmsQuiBascule(t *testing.T) {
 			// et ce compteur-ci ne doit pas bouger. C est `killsource_bijection_inference`
 			// qui porte ces indices devines.
 			nom:     "2 indices libres / 3 noms libres",
-			pinning: killsource.FilmTablePinning{Seats: 8, Pinned: 6, Inferred: 2, FreeNames: 3},
+			pinning: decfilm.FilmTablePinning{Seats: 8, Pinned: 6, Inferred: 2, FreeNames: 3},
 			attendu: 0,
 		},
 	} {

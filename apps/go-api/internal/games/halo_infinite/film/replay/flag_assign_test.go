@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // flag_assign_test.go — A QUEL DRAPEAU UN PORTAGE APPARTIENT, sans film.
@@ -89,14 +89,14 @@ func TestFlagAssignLeSolSuitLeTempsEtNonLOrdreDesPrises(t *testing.T) {
 	}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 500, Slot: 18, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 3000, Slot: 14, Stat: objectiveevents.StatFlagGrabs},
-			{TimeMS: 5000, Slot: 16, Stat: objectiveevents.StatFlagGrabs},
-			{TimeMS: 7000, Slot: 16, Stat: objectiveevents.StatFlagCaptures},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 500, Slot: 18, Stat: objectives.StatFlagSteals},
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 3000, Slot: 14, Stat: objectives.StatFlagGrabs},
+			{TimeMS: 5000, Slot: 16, Stat: objectives.StatFlagGrabs},
+			{TimeMS: 7000, Slot: 16, Stat: objectives.StatFlagCaptures},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(
+		Identity: objectives.FlatRoundIdentity(
 			map[int]string{12: "1", 14: "2", 16: "3", 18: "4"}),
 		Spawns: flagAssignSpawns(),
 	}
@@ -150,11 +150,11 @@ func TestFlagAssignPriseVaAuSeulDrapeauEnJeu(t *testing.T) {
 	}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 3000, Slot: 14, Stat: objectiveevents.StatFlagGrabs},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 3000, Slot: 14, Stat: objectives.StatFlagGrabs},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
 		Spawns:   flagAssignSpawns(),
 	}
 
@@ -183,12 +183,12 @@ func TestFlagAssignADeuxDrapeauxEnJeuLaRegleSeTait(t *testing.T) {
 	}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 2000, Slot: 14, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 3000, Slot: 16, Stat: objectiveevents.StatFlagGrabs},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 2000, Slot: 14, Stat: objectives.StatFlagSteals},
+			{TimeMS: 3000, Slot: 16, Stat: objectives.StatFlagGrabs},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
 		Spawns:   flagAssignSpawns(),
 	}
 
@@ -216,11 +216,11 @@ func TestFlagAssignLeVolResteAuSocle(t *testing.T) {
 	}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 3000, Slot: 14, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 3000, Slot: 14, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
 		Spawns:   flagAssignSpawns(),
 	}
 	deaths := []Death{{XUID: 1, TimeMS: 2000}}

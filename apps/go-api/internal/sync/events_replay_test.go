@@ -4,7 +4,7 @@
 // CGO_ENABLED=1 requis (duckdb-go) — pas de tag `integration` pour rester
 // cohérent avec engine_e2e_test.go (même contrainte). Pas d'appel réseau
 // réel : le chunk highlight events est lu depuis le fixture commité
-// `internal/analysis/testdata/v41_chunk_he.bin`, servi par le mock client.
+// `internal/games/halo_infinite/film/internal/grammar/testdata/v41_chunk_he.bin`, servi par le mock client.
 package sync
 
 import (
@@ -196,11 +196,11 @@ func TestFindBrokenHighlightEventMatches_EmptyDB_ReturnsNil(t *testing.T) {
 // ─── ReplayHighlightEventsForMatches ─────────────────────────────────────────
 
 // loadV41Fixture lit le chunk v41 réel commité dans
-// internal/analysis/testdata/v41_chunk_he.bin. Le path est relatif au dossier
+// internal/games/halo_infinite/film/internal/grammar/testdata/v41_chunk_he.bin. Le path est relatif au dossier
 // du package sync (les tests Go s'exécutent depuis le dossier du package).
 func loadV41Fixture(t *testing.T) []byte {
 	t.Helper()
-	path := filepath.Join("..", "analysis", "testdata", "v41_chunk_he.bin")
+	path := filepath.Join("..", "games", "halo_infinite", "film", "internal", "grammar", "testdata", "v41_chunk_he.bin")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read v41 fixture: %v", err)

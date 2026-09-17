@@ -26,7 +26,7 @@ package replay
 //	(2) OCCUPANT COURANT. Il existe un bipede O dont un TROU du flux de position s'OUVRE a
 //	    moins de attBordRayonM (1,5 m) de V pendant la fenetre de vie (primitive V1a.4/V1c,
 //	    rejouee telle quelle), dont le trou COUVRE t_fin (ouvert avant, non referme apres), et
-//	    qui n'a AUCUN evenement de SORTIE (filmdec.ScanFilmVehicleEvents) entre l'ouverture du
+//	    qui n'a AUCUN evenement de SORTIE (grammar.ScanFilmVehicleEvents) entre l'ouverture du
 //	    trou et t_fin. Autrement dit : O est encore a bord quand la vie de V s'arrete.
 //	(3) MORT DE L'OCCUPANT. O meurt (fil des morts du film, cale sur l'horloge du film par le
 //	    pont de production buildOwners : t = Death.TimeMS + DeathOffsetMS) a t_mort tel que
@@ -69,7 +69,7 @@ package replay
 // v1cVies/v1cGapStartsNearVehicles/v1cAttribue (la primitive conducteur de V1c),
 // indexBySlot/slotTrack.at (index temporel), v2dTightEnd (fin serree) et v2dDist (adaptateur
 // dist3), ScanFilmDeaths/ScanFilmPlayerIndices/injectiveOrEmpty/buildOwners (fil des morts et
-// CALAGE d'horloge prouve), filmdec.ScanFilmVehicleEvents (sorties datees a la ms).
+// CALAGE d'horloge prouve), grammar.ScanFilmVehicleEvents (sorties datees a la ms).
 //
 // UN SEUL decodage filmdec par process : le verrou est pris par film.
 //
@@ -83,7 +83,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // Gardes d'environnement de l'instrument.
@@ -125,8 +125,8 @@ var v3dFenetresMS = []int64{1000, 3000, 10000, 20000}
 // que celui de la primitive V1c (v1cGapStartsNearVehicles ne compte les trous que sur les points
 // `HasWorld`) : sans lui, la FERMETURE d'un trou se lirait sur un point sans position et tout
 // occupant paraitrait avoir quitte le vehicule aussitot.
-func v3dMondeSeul(pos []filmdec.BipedPosition) []filmdec.BipedPosition {
-	out := make([]filmdec.BipedPosition, 0, len(pos))
+func v3dMondeSeul(pos []grammar.BipedPosition) []grammar.BipedPosition {
+	out := make([]grammar.BipedPosition, 0, len(pos))
 	for _, p := range pos {
 		if p.HasWorld {
 			out = append(out, p)
@@ -203,14 +203,10 @@ func v3dCorpus(t *testing.T) []v0Film {
 func v3dUnFilm(t *testing.T, root string, f v0Film, ag *v3dAgg) {
 	t.Helper()
 	dir := objChunkDir(root, f.ID)
-	if filmdec.CountFilmChunks(dir) == 0 {
+	if grammar.CountFilmChunks(dir) == 0 {
 		t.Logf("V3d %s : film absent du cache — saute", f.ID)
 		return
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return
@@ -224,15 +220,15 @@ func v3dUnFilm(t *testing.T, root string, f v0Film, ag *v3dAgg) {
 	// IsolationGapMS desarmes, cf. v1aOptions) : il ne change aucune grammaire, il cesse
 	// seulement d'ECARTER des echantillons. Le defaut reste le reglage de V1c, pour que les
 	// comptes de candidats restent comparables au rapport V1.
-	vehPos, err := filmdec.ScanFilmBipedPositionsForBand(dir, filmdec.NewSlotBand(bande),
+	vehPos, err := grammar.ScanFilmBipedPositionsForBand(dir, grammar.NewSlotBand(bande),
 		v1aOptions(&wr, os.Getenv("V3_DESTR_BRUT") == ""))
 	if err != nil {
 		t.Logf("V3d %s : nuage vehicule : %v", f.ID, err)
 		return
 	}
-	optBip := filmdec.DefaultScanFilmOptions()
+	optBip := grammar.DefaultScanFilmOptions()
 	optBip.WorldRange = &wr
-	bip, err := filmdec.ScanFilmBipedPositions(dir, optBip)
+	bip, err := grammar.ScanFilmBipedPositions(dir, optBip)
 	if err != nil {
 		t.Logf("V3d %s : nuage bipede : %v", f.ID, err)
 		return
@@ -254,13 +250,13 @@ func v3dUnFilm(t *testing.T, root string, f v0Film, ag *v3dAgg) {
 
 // v3dContexte assemble le contexte d'un film : pont slot->xuid + calage d'horloge (production),
 // morts par joueur, sorties datees, index temporels.
-func v3dContexte(t *testing.T, dir string, bip, vehPos []filmdec.BipedPosition) v3dCtx {
+func v3dContexte(t *testing.T, dir string, bip, vehPos []grammar.BipedPosition) v3dCtx {
 	t.Helper()
 	tousBipedes := indexBySlot(bip)
 	ctx := v3dCtx{
 		ptracks: indexBySlot(v3dMondeSeul(bip)),
 		vtracks: indexBySlot(v3dMondeSeul(vehPos)),
-		times:   filmdec.ScanFilmWorldObjectKeyframes(dir, int(attVehiculeTI)).TimesUS,
+		times:   grammar.ScanFilmWorldObjectKeyframes(dir, int(attVehiculeTI)).TimesUS,
 		morts:   map[uint64][]uint64{},
 		sorties: map[uint32][]uint64{},
 	}
@@ -295,7 +291,7 @@ func v3dContexte(t *testing.T, dir string, bip, vehPos []filmdec.BipedPosition) 
 // v3dLitSorties remplit les sorties datees (liste d'evenements, occupant a la ms).
 func v3dLitSorties(t *testing.T, dir string, ctx *v3dCtx) {
 	t.Helper()
-	evs, err := filmdec.ScanFilmVehicleEvents(dir)
+	evs, err := grammar.ScanFilmVehicleEvents(dir)
 	if err != nil {
 		t.Logf("V3d %s : liste d'evenements illisible (%v) — sorties non lues", shortOf(dir), err)
 		return
@@ -304,7 +300,7 @@ func v3dLitSorties(t *testing.T, dir string, ctx *v3dCtx) {
 		if !e.OccupantPresent {
 			continue
 		}
-		if e.Kind == filmdec.EventUnitExitVehicle {
+		if e.Kind == grammar.EventUnitExitVehicle {
 			ctx.sorties[e.OccupantSlot] = append(ctx.sorties[e.OccupantSlot], e.TimestampUS)
 			continue
 		}

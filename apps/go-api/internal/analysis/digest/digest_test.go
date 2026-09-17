@@ -38,7 +38,7 @@ func TestUnChampNonExporteChangeLEmpreinte(t *testing.T) {
 	_, sans := Of(exemple{Nom: "film", cache: 8})
 	if avec == sans {
 		t.Fatal("un champ NON exporte different rend la meme empreinte : le digest est aveugle " +
-			"la ou un refacto peut casser en silence (cf. filmdec.BipedPosition.componentDirs)")
+			"la ou un refacto peut casser en silence (cf. grammar.BipedPosition.componentDirs)")
 	}
 }
 
