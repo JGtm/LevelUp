@@ -426,16 +426,35 @@ package grammar
 // RENUMEROTE A LA FUSION) : `.40` -> `.41`. UNE GRAMMAIRE DE COMPOSANT DE PLUS EST LUE, ET LE
 // BLOQUANT DE `ti=9` TOMBE.
 //
-// UN LECTEUR NEUF, RELEVE CHEZ L ECRIVAIN (`components_managed_player.go`) : `i4
-// managed-player-forge-weather-effect-overrides-component`, ecrivain `FUN_142ed5bc8`, `R(32)` +
-// `R(32)`, 64 bits INCONDITIONNELS. AUCUNE ENTREE DE PROFIL : les deux largeurs sont des
-// litteraux d instruction, rien n y depend d une carte, d une table du jeu ni d un build.
+// DEUX LECTEURS NEUFS, RELEVES CHEZ L ECRIVAIN (`components_managed_player.go`), ET LE DIXIEME
+// COMPOSANT DE L ARCHETYPE EST PORTE :
+//
+//	i4  `managed-player-forge-weather-effect-overrides-component`, ecrivain `FUN_142ed5bc8` :
+//	    `R(32)` + `R(32)`, 64 bits INCONDITIONNELS.
+//	i9  `managed-player-custom-input-prompt-widget`, ecrivain `FUN_141fcf160` : `R(1)` present,
+//	    `R(2)` mode, puis le SAC TEXTE `FUN_14080b034` (`R(1)` + `R(32)` nom + `n = R(3)` +
+//	    `n` corps `FUN_1407f0ebc` a largeurs litterales). Le depot rendait `ported = false` des
+//	    que `n` depassait 0 — une desynchronisation propre sur une grammaire entierement
+//	    decidable hors ligne.
+//
+// AUCUNE ENTREE DE PROFIL : toutes ces largeurs sont des litteraux d instruction, rien n y depend
+// d une carte, d une table du jeu ni d un build. Le sac texte devient le SEUL lecteur du depot
+// pour `FUN_14080b034` : les deux instruments qui en portaient leur propre copie
+// (`playergameevent_0xe9_helpers_test.go`, `r7_charges_lot2_research_test.go`) l appellent, et
+// l un des deux lisait le sous-type 2 a zero bit en le disant « quantifie a largeur runtime »,
+// ce qui est faux sur pieces.
 //
 // CE QUE LA MESURE DIT. Fermeture d image-cle de `ti=9` sur les sept bobines du ratchet 0.A.3 :
 // `0 / 1 717` (bloquant `i4` sur les SEPT) -> `1 716 / 1 717`, et plus AUCUN bloquant nomme sur
 // aucune bobine. Le 1 717e n est pas un record : c est une ancre fortuite de `111fa685`
 // (`n1 = 2 154 823 696` contre `12` sur les 1 716 autres), la population que
 // `default_state_n2_constant_test.go` ecarte deja par ce critere.
+//
+// `i9` NE FAIT MONTER AUCUN COMPTE, ET C EST MESURE : il n existe au registre que sur les DEUX
+// bobines les plus recentes (`bcb6d393`, `fb1a1a72` — neuf composants sur les cinq autres), et
+// sur celles-la aucun record n atteignait la branche refusee (`d0` a l instrument
+// `imagecle_fermeture`). Ce qu il ferme est un cas que ce corpus ne porte pas ; sa grammaire est
+// donc tenue par un test de largeur sur tampon synthetique, onze chemins.
 //
 // `facts.Rev` NE MONTE PAS, ET C EST UNE DECISION ECRITE : aucune source de `facts/` n est
 // touchee et aucun fait publie ne change. Son golden est refige AU MEME RANG

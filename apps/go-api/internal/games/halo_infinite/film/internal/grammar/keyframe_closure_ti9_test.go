@@ -18,6 +18,21 @@ package grammar
 //
 //	avant 3.6.a       0 / 1 717   bloquant `i4 managed-player-forge-weather-effect-overrides-component`
 //	apres `i4`        1 716 / 1 717   AUCUN bloquant sur aucune des sept bobines
+//	apres `i9`        1 716 / 1 717   INCHANGE, et c est la mesure, pas une deception
+//
+// # POURQUOI `i9` NE FAIT MONTER AUCUN COMPTE ICI, ET CE QU IL FERME QUAND MEME
+//
+// Mesure du 2026-09-17 sur les sept registres : `ti=9` porte NEUF composants sur cinq bobines
+// (`a521164d`, `60ae07c4`, `11de8353`, `111fa685`, `e5adf7b2`) et DIX sur les deux plus recentes
+// (`bcb6d393` = `HI_1_12_0`, `fb1a1a72` = `HI_1_13_0`). `i9` n existe donc pas au registre de
+// cinq bobines sur sept ; sur les deux autres, la mesure d avant le port ne comptait AUCUNE
+// desynchronisation (`d0` a l instrument `imagecle_fermeture`), c est-a-dire qu aucun record n y
+// atteignait la branche `compteur > 0` que le depot refusait de lire.
+//
+// Ce que `i9` ferme est donc un cas que CE corpus ne porte pas : un sac texte non vide. Le
+// mesurer ici serait impossible, et c est pour cela que sa grammaire est tenue par un test de
+// largeur sur tampon synthetique ([TestTI9InputPromptLargeursDuSacTexte]) — la seule forme qui
+// puisse juger une branche que le corpus ne visite pas.
 //
 // # LE 1 717e RECORD N EST PAS UN RECORD, ET C EST MESURE
 //
@@ -114,4 +129,154 @@ func TestTI9ForgeWeatherConsommeSoixanteQuatreBits(t *testing.T) {
 				motif, got)
 		}
 	}
+}
+
+// TestTI9InputPromptLargeursDuSacTexte fige la largeur de CHAQUE chemin d `i9
+// managed-player-custom-input-prompt-widget` (`FUN_141fcf160` -> `FUN_14080b034` ->
+// `FUN_1407f0ebc`).
+//
+// # POURQUOI UN TAMPON SYNTHETIQUE, ET PAS UN FILM
+//
+// Les sept bobines du ratchet ne portent AUCUN sac texte non vide (cf. l en-tete de ce fichier) :
+// la boucle a etiquette que ce lot porte n y est jamais visitee. Un oracle de fermeture ne peut
+// donc rien en dire, ni en bien ni en mal. Le tampon synthetique pose chaque branche a la main et
+// compte les bits consommes — c est la seule forme qui juge une branche que le corpus ne visite
+// pas, et elle est directement confrontable au desassemblage cite dans
+// `components_managed_player.go`.
+//
+// Largeurs attendues, toutes relevees chez l ecrivain :
+//
+//	present = 0                       1 bit
+//	present = 1, texte = 0            1 + 2 + 1              = 4
+//	present = 1, texte = 1, n = 0     4 + 32 + 3             = 39
+//	un corps, `k` compris             k=0 : 3 · k=1 : 4 ou 9 · k=2 : 28 ou 36 · k=3 : 35 · k>=4 : 35
+func TestTI9InputPromptLargeursDuSacTexte(t *testing.T) {
+	cas := []struct {
+		nom     string
+		ecrire  func(w *bitWriterMSB)
+		attendu int
+	}{
+		{
+			nom:     "absent : la porte de presence a 0 arrete tout",
+			ecrire:  func(w *bitWriterMSB) { w.put(0, 1) },
+			attendu: 1,
+		},
+		{
+			nom: "present sans texte : porte, mode, porte du sac",
+			ecrire: func(w *bitWriterMSB) {
+				w.put(1, 1) // present
+				w.put(3, 2) // mode
+				w.put(0, 1) // texte = 0
+			},
+			attendu: 4,
+		},
+		{
+			nom: "sac vide : nom lu, compteur a zero",
+			ecrire: func(w *bitWriterMSB) {
+				ti9SacTexteEnTete(w, 0)
+			},
+			attendu: 39,
+		},
+		{
+			nom: "corps k = 0 : etiquette seule, zero bit de charge",
+			ecrire: func(w *bitWriterMSB) {
+				ti9SacTexteEnTete(w, 1)
+				w.put(0, 3)
+			},
+			attendu: 39 + 3,
+		},
+		{
+			nom: "corps k = 1, porte posee : la reference de participant est absente",
+			ecrire: func(w *bitWriterMSB) {
+				ti9SacTexteEnTete(w, 1)
+				w.put(1, 3)
+				w.put(1, 1) // FUN_1407f2058 : polarite INVERSEE, 1 = absent
+			},
+			attendu: 39 + 4,
+		},
+		{
+			nom: "corps k = 1, porte a zero : R(5) d index de participant",
+			ecrire: func(w *bitWriterMSB) {
+				ti9SacTexteEnTete(w, 1)
+				w.put(1, 3)
+				w.put(0, 1)
+				w.put(29, 5)
+			},
+			attendu: 39 + 9,
+		},
+		{
+			nom: "corps k = 2, porte a 1 : R(24) quantifie",
+			ecrire: func(w *bitWriterMSB) {
+				ti9SacTexteEnTete(w, 1)
+				w.put(2, 3)
+				w.put(1, 1)
+				w.put(0x123456, 24)
+			},
+			attendu: 39 + 28,
+		},
+		{
+			nom: "corps k = 2, porte a 0 : R(32) brut",
+			ecrire: func(w *bitWriterMSB) {
+				ti9SacTexteEnTete(w, 1)
+				w.put(2, 3)
+				w.put(0, 1)
+				w.put(0xdeadbeef, 32)
+			},
+			attendu: 39 + 36,
+		},
+		{
+			nom: "corps k = 3 : string_id",
+			ecrire: func(w *bitWriterMSB) {
+				ti9SacTexteEnTete(w, 1)
+				w.put(3, 3)
+				w.put(0x01020304, 32)
+			},
+			attendu: 39 + 35,
+		},
+		{
+			nom: "corps k = 7 : la branche 4..7 lit un R(32) comme les autres",
+			ecrire: func(w *bitWriterMSB) {
+				ti9SacTexteEnTete(w, 1)
+				w.put(7, 3)
+				w.put(0x0a0b0c0d, 32)
+			},
+			attendu: 39 + 35,
+		},
+		{
+			nom: "quatre corps : le compteur mene la boucle, sans borne a quatre",
+			ecrire: func(w *bitWriterMSB) {
+				ti9SacTexteEnTete(w, 4)
+				for i := 0; i < 4; i++ {
+					w.put(0, 3)
+				}
+			},
+			attendu: 39 + 4*3,
+		},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			w := &bitWriterMSB{}
+			c.ecrire(w)
+			// Queue de zeros : le lecteur ne doit JAMAIS y mordre, et s il y mord le compte le dit.
+			w.put(0, 64)
+			br := LecteurSur(w.buf)
+			_, _, porte := consumeByName(br, compManagedPlayerInputPrompt, ti9TypeIndex, 1)
+			if !porte {
+				t.Fatalf("le composant n est plus porte — la boucle a etiquette est portee depuis 3.6.a")
+			}
+			if got := br.BitPos(); got != c.attendu {
+				t.Errorf("%d bits consommes, %d attendus", got, c.attendu)
+			}
+		})
+	}
+}
+
+// ti9SacTexteEnTete ecrit la tete commune d un `i9` a sac texte PRESENT : present, mode, porte du
+// sac, nom de 32 bits, puis le compteur de 3 bits. 39 bits.
+func ti9SacTexteEnTete(w *bitWriterMSB, n uint64) {
+	w.put(1, 1)           // present
+	w.put(2, 2)           // mode
+	w.put(1, 1)           // texte
+	w.put(0x4a4b4c4d, 32) // nom « text »
+	w.put(n, 3)           // compteur d emplacements
 }

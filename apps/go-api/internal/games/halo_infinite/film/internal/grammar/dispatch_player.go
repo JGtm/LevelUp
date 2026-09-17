@@ -377,18 +377,8 @@ func consumeManagedPlayerComponent(br *Lecteur, name string, typeIndex uint32, l
 	case "managed-player-current-season-component": // ti=9 i8 (FUN_142ed5b88) — R(32)
 		br.ReadBits(32)
 		return variant, nil, true
-	case "managed-player-custom-input-prompt-widget": // ti=9 i9 (FUN_141fcf160) — gates+R(32)+R(3)count[si>0:union -> desync]
-		if !br.ReadBit() { // gate_present==0 -> stop
-			return variant, nil, true
-		}
-		br.ReadBits(2)
-		if !br.ReadBit() { // gate_sub==0 -> stop
-			return variant, nil, true
-		}
-		br.ReadBits(32)
-		if br.ReadBits(3) != 0 { // count>0 -> boucle variant taggee, desync propre
-			return variant, nil, false
-		}
+	case compManagedPlayerInputPrompt: // ti=9 i9 (FUN_141fcf160) — portes + sac texte, lot 3.6.a
+		consumeManagedPlayerInputPrompt(br)
 		return variant, nil, true
 	default:
 		return consumeCaptureAndBipedComponent(br, name, typeIndex, level)
