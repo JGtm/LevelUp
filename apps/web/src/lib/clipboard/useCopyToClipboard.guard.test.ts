@@ -49,10 +49,6 @@ const ALLOWED = new Map<string, string>([
     'features/admin/titles/TitleDetailCards.tsx',
     'état persistant idle/done/error du brouillon TOML, sans minuteur — 2026-09-17',
   ],
-  [
-    'features/settings/WatcherCard.tsx',
-    'copie du code appareil sans aucun retour visuel, hors périmètre du hook — 2026-09-17',
-  ],
 ])
 
 function walk(dir: string, out: string[]): string[] {
