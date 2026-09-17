@@ -76,6 +76,12 @@ frags alignés + barre fine colorée par `fragClassColor`). Pas d'icône d'arme 
 visuel ni le payload ne la portent). Une grenade PEUT être l'arme favorite — c'est déjà le
 cas dans le top armes de la Synthèse ; on garde la cohérence entre surfaces.
 
+**Gate visuel 2026-09-17 : nom, barre et compteur sur une seule ligne** (le gabarit
+`TopArmes` empilait la barre sous le nom). Le libellé prend une part fixe
+(`basis-[50%] shrink-0`) pour que les barres des deux armes démarrent au même endroit, la
+barre occupe le reste (`flex-1`), le compteur reste à droite. Flex seulement, jamais de
+grille à colonnes nommées (D10).
+
 **D3 — La hauteur est décidée AVANT le rendu, jamais mesurée.** Le nombre de lignes de
 chaque cellule est une donnée connue du composant : carte de dimension = `entries.length`
 (1..6, `selectTopFlop(…, 3)`), « Par contexte » = 2, Classement = `kinds.length` (1..3)
