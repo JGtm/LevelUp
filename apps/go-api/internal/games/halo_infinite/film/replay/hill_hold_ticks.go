@@ -47,6 +47,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // holdTicksComponent est l'emplacement du compteur de garde : composant 23, valeur A.
@@ -57,7 +58,7 @@ var holdTicksComponent = objectives.StatComponent{Comp: 23}
 //
 // `teamByXUID` vient du ROSTER, jamais du film (meme regle que le proprietaire de zone) : le
 // film numerote ses entites, il ne dit pas quel camp elles servent.
-func buildHoldTicks(recs []objectives.StatRecord, identity map[int]string,
+func buildHoldTicks(recs []types.StatRecord, identity map[int]string,
 	teamByXUID map[string]int, c scoreClock,
 ) []TeamHold {
 	slotsParCamp := holdSlotsByTeam(identity, teamByXUID)
@@ -103,7 +104,7 @@ func buildHoldTicks(recs []objectives.StatRecord, identity map[int]string,
 
 // holdCursor lit une serie cumulative en avancant, et rend l'increment depuis le dernier appel.
 type holdCursor struct {
-	pts []objectives.ScorePoint
+	pts []types.ScorePoint
 	i   int
 	val int
 }
@@ -139,7 +140,7 @@ func holdSlotsByTeam(identity map[int]string, teamByXUID map[string]int) map[int
 
 // holdInstants rend les instants d'emission du compteur, tous camps confondus, tries et
 // dedoublonnes. Ce sont les bornes des tranches sur lesquelles l'union se calcule.
-func holdInstants(series map[int][]objectives.ScorePoint, slotsParCamp map[int][]int) []int {
+func holdInstants(series map[int][]types.ScorePoint, slotsParCamp map[int][]int) []int {
 	vus := map[int]bool{}
 	for _, slots := range slotsParCamp {
 		for _, slot := range slots {

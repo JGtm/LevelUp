@@ -20,6 +20,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // TestGwInstallMPPWidthsInstalleEtRestaure : les largeurs mesurees valent pour le balayage, et
@@ -69,8 +70,8 @@ func TestGwInstallMPPWidthsIgnoreUnDecoupageNonMesure(t *testing.T) {
 func TestCouvertureAvertitQuandAucuneIdentiteNeResout(t *testing.T) {
 	fausse := WorldObjectScan{
 		Scanned: true,
-		Stats:   grammar.EquipmentCreationStats{Slots: 8, Anchors: 400, Accepted: 12},
-		Creations: []grammar.EquipmentCreation{
+		Stats:   types.EquipmentCreationStats{Slots: 8, Anchors: 400, Accepted: 12},
+		Creations: []types.EquipmentCreation{
 			gwTestCreation(60, 0, 1_000_000, 0xDEADBEEF, 1, 1),
 			gwTestCreation(61, 0, 2_000_000, 0xBADC0FFE, 2, 2),
 		},

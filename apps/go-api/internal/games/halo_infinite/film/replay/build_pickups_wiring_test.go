@@ -26,9 +26,8 @@ package replay
 // AUCUNE GARDE D'ENVIRONNEMENT : ce test tourne en CI, sur des entrées synthétiques.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // Les deux identifiants du câblage, choisis DISJOINTS comme ils le sont en production, et
@@ -53,7 +52,7 @@ func TestBuildWiresEachCatalogToItsOwnKind(t *testing.T) {
 	}
 	// Les ramassages tombent DANS la fenêtre des positions (origine 2 s), sinon ils seraient
 	// écartés comme antérieurs à la première frame et le test ne mesurerait rien.
-	pickups := []grammar.BipedPickup{
+	pickups := []types.BipedPickup{
 		{TimestampUS: 2_000_000, Slot: 1, CatalogID: wirIDArme, Class: 0},       // arme
 		{TimestampUS: 2_100_000, Slot: 1, CatalogID: wirIDEquipement, Class: 2}, // grenade
 	}
@@ -105,7 +104,7 @@ func TestBuildWiresEachCatalogToItsOwnKind(t *testing.T) {
 func TestBuildLeavesFamilyEmptyWithoutCatalogs(t *testing.T) {
 	doc := BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, Options{
 		FilmClockOriginUS: 1_000_000,
-		Pickups: []grammar.BipedPickup{
+		Pickups: []types.BipedPickup{
 			{TimestampUS: 2_000_000, Slot: 1, CatalogID: wirIDArme, Class: 0},
 			{TimestampUS: 2_100_000, Slot: 1, CatalogID: wirIDEquipement, Class: 2},
 		},

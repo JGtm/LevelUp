@@ -56,6 +56,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // navpointRadialArchIndex est l'archetype des points de navigation geres.
@@ -66,24 +67,9 @@ const navpointRadialArchIndex = 12
 // une garde, pas une optimisation. Il est ANNONCE quand il mord (champ Truncated).
 const navpointRadialMaxReads = 3_000_000
 
-// NavpointRadialRead est UNE lecture de `managed-navpoint-radial-progress` (ti=12 i14), datee
-// sur l'horloge du MANIFESTE (la meme que `objectives.StatRecords`, donc que les
-// explosions du statborg).
-type NavpointRadialRead struct {
-	// Slot identifie le point de navigation. Les navpoints vont par paires (+12, un par camp).
-	Slot uint32
-	// TMS est l'instant en millisecondes de MATCH (horloge du manifeste).
-	TMS int32
-	// Q est le quantum de progression, plage R(8) : 0..255.
-	Q uint8
-	// Chained dit que le record porteur se termine sur un en-tete de record valide — le seul
-	// temoin de fiabilite PAR LECTURE que le balayage possede.
-	Chained bool
-}
-
 // NavpointRadialScan est ce qu'un balayage rend : les lectures, et de quoi juger.
 type NavpointRadialScan struct {
-	Reads []NavpointRadialRead
+	Reads []types.NavpointRadialRead
 	// SlotsObserved / SlotsBand : la bande utilisee (slots observes), et celle qu'un
 	// comblement aurait rendue (temoin de ce que le comblement aurait coute).
 	SlotsObserved, SlotsBand int
@@ -197,7 +183,7 @@ type navpointRadialWalk struct {
 	prof ProfilDeBalayage
 	arch Archetype
 	reg  *Registry
-	cur  NavpointRadialRead
+	cur  types.NavpointRadialRead
 	got  bool
 	sc   *NavpointRadialScan
 	key  bool
@@ -224,7 +210,7 @@ func (w *navpointRadialWalk) install() *Observation {
 }
 
 // ajouter range une lecture sous le plafond de recolte.
-func (s *NavpointRadialScan) ajouter(r NavpointRadialRead) {
+func (s *NavpointRadialScan) ajouter(r types.NavpointRadialRead) {
 	if len(s.Reads) >= navpointRadialMaxReads {
 		s.Truncated = true
 		return

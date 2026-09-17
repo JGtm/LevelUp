@@ -1,11 +1,10 @@
 package replay
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"sort"
 	"strconv"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // abilities.go — LA CAPACITÉ D'ARMURE PORTÉE, portée à la grille du rejeu.
@@ -76,7 +75,7 @@ type AbilityRead struct {
 // les départager quand elles divergent supposerait de savoir laquelle a tort, ce qu'on ne
 // sait pas — et le client, lui, prend simplement la plus récente.
 func buildAbilityReads(
-	ranks []grammar.AbilityRank, inv []KeyframeInventory, origin, step uint64,
+	ranks []types.AbilityRank, inv []KeyframeInventory, origin, step uint64,
 ) []AbilityRead {
 	out := make([]AbilityRead, 0, len(ranks)+len(inv))
 	for _, r := range ranks {

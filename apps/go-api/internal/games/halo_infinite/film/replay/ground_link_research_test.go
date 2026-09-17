@@ -37,6 +37,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // glSetup porte les entrees communes aux trois mesures, decodees une fois par test.
@@ -108,16 +109,16 @@ func glDist(ax, ay, az, bx, by, bz float32) float64 {
 type glLife struct{ firstSeen, lastSeen uint64 }
 
 // glCensus recense les vies ti=42 aux images-cles, par paire (slot, generation).
-func glCensus(t *testing.T, dir string) (map[grammar.EquipmentLifeKey]*glLife, []uint64) {
+func glCensus(t *testing.T, dir string) (map[types.EquipmentLifeKey]*glLife, []uint64) {
 	t.Helper()
 	kf, err := grammar.ScanFilmKeyframeGroundWeapons(dir, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("recensement images-cles : %v", err)
 	}
-	lives := map[grammar.EquipmentLifeKey]*glLife{}
+	lives := map[types.EquipmentLifeKey]*glLife{}
 	seen := map[uint64]bool{}
 	for _, g := range kf {
-		k := grammar.EquipmentLifeKey{Slot: g.Slot, Gen: g.Gen}
+		k := types.EquipmentLifeKey{Slot: g.Slot, Gen: g.Gen}
 		l := lives[k]
 		if l == nil {
 			l = &glLife{firstSeen: g.TimestampUS, lastSeen: g.TimestampUS}
@@ -162,12 +163,12 @@ func glRestLives(t *testing.T, s glSetup) []glRestLife {
 	if !gw.Scanned || len(gw.Tracks) == 0 {
 		t.Fatalf("chaine des socles muette : scanned=%v pistes=%d", gw.Scanned, len(gw.Tracks))
 	}
-	byPair := map[grammar.EquipmentLifeKey][]grammar.ProjectileTrack{}
+	byPair := map[types.EquipmentLifeKey][]types.ProjectileTrack{}
 	for _, tr := range gw.Tracks {
 		if len(tr.Pts) == 0 {
 			continue
 		}
-		k := grammar.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}
+		k := types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}
 		byPair[k] = append(byPair[k], tr)
 	}
 	var out []glRestLife
@@ -231,7 +232,7 @@ func TestLienPickupObjetAuSol(t *testing.T) {
 	var dists, witness []float64
 	var noPos, noCand int
 	for _, ch := range changes {
-		if ch.Kind != grammar.HeldWeaponTaken && ch.Kind != grammar.HeldWeaponSwapped {
+		if ch.Kind != types.HeldWeaponTaken && ch.Kind != types.HeldWeaponSwapped {
 			continue
 		}
 		p, ok := glAt(s.pos, ch.Slot, ch.TimestampUS)
@@ -403,7 +404,7 @@ func TestLienPriseEquipementPose(t *testing.T) {
 
 	// Fenetre de vie d'une pose : de sa creation a sa derniere image-cle recensee AVANT la
 	// pose suivante de la meme cle (le pool de cles reboucle), plus un intervalle de grace.
-	byLife := map[grammar.EquipmentLifeKey][]int{}
+	byLife := map[types.EquipmentLifeKey][]int{}
 	for i, p := range poses {
 		byLife[p.Life] = append(byLife[p.Life], i)
 	}
@@ -456,7 +457,7 @@ func TestLienPriseEquipementPose(t *testing.T) {
 	matrix := map[string]map[int]int{}
 	var takes, noPos, noCand int
 	for _, ch := range changes {
-		if ch.Kind != grammar.EquipmentTaken {
+		if ch.Kind != types.EquipmentTaken {
 			continue
 		}
 		takes++
@@ -567,7 +568,7 @@ func TestI26ResolutionDesHandles(t *testing.T) {
 	if err != nil || !pst.Scanned {
 		t.Fatalf("poses ti=37 : err=%v scanned=%v", err, pst.Scanned)
 	}
-	bySlot37 := map[uint32][]grammar.EquipmentPlacement{}
+	bySlot37 := map[uint32][]types.EquipmentPlacement{}
 	for _, p := range poses {
 		bySlot37[p.Life.Slot] = append(bySlot37[p.Life.Slot], p)
 	}
@@ -605,7 +606,7 @@ func TestI26ResolutionDesHandles(t *testing.T) {
 	var dists []float64
 	matrix := map[string]map[int]int{}
 	for _, ch := range changes {
-		if ch.Kind != grammar.EquipmentTaken && ch.Kind != grammar.EquipmentSpawned {
+		if ch.Kind != types.EquipmentTaken && ch.Kind != types.EquipmentSpawned {
 			continue
 		}
 		takes++
@@ -617,7 +618,7 @@ func TestI26ResolutionDesHandles(t *testing.T) {
 		// La pose candidate : meme slot d'objet, la plus recente NEE AVANT la prise (+1 s de
 		// marge d'horodatage). Le test de generation se COMPTE a part — c'est lui qui dira si
 		// la queue R(2) est bien la generation.
-		var best *grammar.EquipmentPlacement
+		var best *types.EquipmentPlacement
 		var bestEntry grammar.UnitEquipmentEntry
 		for _, en := range hs {
 			for i := range bySlot37[en.Val] {
@@ -714,7 +715,7 @@ func TestI26HandleVersCreation(t *testing.T) {
 		t.Fatalf("creations ti=37 : %v", err)
 	}
 	type creKey struct{ slot, gen uint32 }
-	byKey := map[creKey][]grammar.EquipmentCreation{}
+	byKey := map[creKey][]types.EquipmentCreation{}
 	for _, c := range cre {
 		byKey[creKey{c.Slot, c.Gen}] = append(byKey[creKey{c.Slot, c.Gen}], c)
 	}
@@ -751,7 +752,7 @@ func TestI26HandleVersCreation(t *testing.T) {
 	var gaps []float64
 	matrix := map[string]map[int]int{}
 	for _, ch := range changes {
-		if ch.Kind != grammar.EquipmentTaken && ch.Kind != grammar.EquipmentSpawned {
+		if ch.Kind != types.EquipmentTaken && ch.Kind != types.EquipmentSpawned {
 			continue
 		}
 		takes++
@@ -760,7 +761,7 @@ func TestI26HandleVersCreation(t *testing.T) {
 			continue
 		}
 		withHandle++
-		var best *grammar.EquipmentCreation
+		var best *types.EquipmentCreation
 		for _, en := range hs {
 			for i := range byKey[creKey{en.Val, en.Tail}] {
 				c := &byKey[creKey{en.Val, en.Tail}][i]

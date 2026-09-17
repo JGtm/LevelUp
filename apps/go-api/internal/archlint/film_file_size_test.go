@@ -110,10 +110,17 @@ var plafondsParFichier = map[string]int{
 	"internal/games/halo_infinite/film/internal/facts/fallback/registre_killsource.go":                         555,
 	"internal/games/halo_infinite/film/replay/document_shape_test.go":                                          511,
 	"internal/games/halo_infinite/film/internal/facts/killsource/e197_identite_paquet_mesure_research_test.go": 654,
-	"internal/games/halo_infinite/film/internal/facts/objectives/e1911_manches_mesure_research_test.go":        523,
+	"internal/games/halo_infinite/film/internal/facts/objectives/e1911_manches_mesure_research_test.go":        524,
 	"internal/games/halo_infinite/film/internal/facts/objectives/statborg.go":                                  687,
 	"internal/replaybuild/replaybuild.go":                                                                      577,
-	"internal/games/halo_infinite/film/internal/grammar/equipment_creation.go":                                 508,
+	// `equipment_creation.go` EST SORTI DE CETTE TABLE LE 2026-09-17 (lot 2.6.2, volet grammaire /
+	// rejeu), pour la meme raison qu `assist.go` au volet facts : `EquipmentCreation` et
+	// `EquipmentCreationStats` ont descendu dans `film/types`, le fichier est passe de 508 a 434
+	// lignes — sous le seuil de 500, donc la table n a plus a le connaitre.
+	//
+	// TROIS PLAFONDS DE TEST MONTENT D UNE LIGNE le meme jour (523 -> 524, 655 -> 656,
+	// 570 -> 571), et c est le meme mouvement vu de l autre cote : ces fichiers gagnent LA LIGNE
+	// D IMPORT de `film/types`. C est la seule montee admise par ce lot, et elle est mecanique.
 	// --- tests et instruments de mesure : tables de fixtures et balayages de recherche.
 	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":                            1202,
 	"internal/games/halo_infinite/film/internal/grammar/i59_anchor_test.go":                       1152,
@@ -122,7 +129,7 @@ var plafondsParFichier = map[string]int{
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,
 	"internal/games/halo_infinite/film/replay/ctf_retour_zone_research_test.go":                   812,
-	"internal/games/halo_infinite/film/replay/assaut_manches_research_test.go":                    655,
+	"internal/games/halo_infinite/film/replay/assaut_manches_research_test.go":                    656,
 	"internal/games/halo_infinite/film/replay/mapvar/noms_lieux_hunt_test.go":                     627,
 	"internal/games/halo_infinite/film/killicon/killicon_test.go":                                 610,
 	"internal/games/halo_infinite/film/internal/grammar/components_hooks_test.go":                 600,
@@ -131,7 +138,7 @@ var plafondsParFichier = map[string]int{
 	"internal/games/halo_infinite/film/internal/grammar/vehicules_v13_deadstate_test.go":          583,
 	"internal/games/halo_infinite/film/replay/minifilm_test.go":                                   581,
 	"internal/games/halo_infinite/film/internal/grammar/ground_weapon_lifecycle_research_test.go": 574,
-	"internal/games/halo_infinite/film/replay/equipment_uses_join_test.go":                        570,
+	"internal/games/halo_infinite/film/replay/equipment_uses_join_test.go":                        571,
 	"internal/games/halo_infinite/film/internal/facts/objectives/assaut_pied_ancre_test.go":       558,
 	"internal/sync/killcollector/positions_test.go":                                               557,
 	"internal/games/halo_infinite/film/internal/grammar/golden_minibobine_test.go":                553,

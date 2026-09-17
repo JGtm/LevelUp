@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // dispatch_biped.go — SIXIEME ET SEPTIEME MAILLONS : les composants captes, le bipede, et la
 // fin de la chaine.
 //
@@ -10,7 +12,7 @@ package grammar
 // remontee a l'appelant (obje, arme tenue, vitalites de corps et de bouclier, etat de mort —
 // cf. `capture.go`), puis les composants d'ARME, de BIPEDE (i47 a i63) et d'ETAT DE
 // SIMULATION. C'est le seul maillon qui rend un `variant` non nul et un `dead` non nil.
-func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
+func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *types.DeadState, ported bool) { //nolint:gocyclo,funlen // dette gelee
 	variant = noVariant
 	switch name {
 	case compObjectMultiplayerProperties: // i9 = the 'obje' (FUN_1407d4c94 TLV blob)
@@ -38,7 +40,7 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 			ds := consumeObjectDeadStateBipedTI(br, typeIndex)
 			return variant, &ds, true
 		}
-		ds := DeadState{Mort: consumeObjectDeadState(br), GlobalID: 0xFFFFFFFF,
+		ds := types.DeadState{Mort: consumeObjectDeadState(br), GlobalID: 0xFFFFFFFF,
 			EnumA: -1, EnumB: -1, Val18: -1, SrcTag0: 0xFFFFFFFF, SrcTag4c: 0xFFFFFFFF}
 		return variant, &ds, true
 	case "weapon-state-ammo":
@@ -130,7 +132,7 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 //
 // Il ne prend PAS `typeIndex` : aucun de ses arms ne le lit, et il n'a plus de maillon a qui
 // le passer.
-func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32) (variant uint32, dead *DeadState, ported bool) {
+func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32) (variant uint32, dead *types.DeadState, ported bool) { //nolint:gocyclo,funlen // dette gelee
 	variant = noVariant
 	switch name {
 	case compManagedObjectBoundaryVisibility: // ti=10 i0 (FUN_141169e90 -> FUN_14080ae28) — 32xR(1), publie

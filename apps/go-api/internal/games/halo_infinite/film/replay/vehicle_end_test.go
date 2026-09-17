@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // horlogeDeTest : une grille de 100 ms sur `frames` frames, origine a zero.
@@ -21,7 +22,7 @@ func horlogeDeTest(frames int) replayClock {
 // vieDeTest : une vie bornee a la main, deja fenetree (c est ce que fait `assignVehicleWindows`).
 func vieDeTest(slot, gen uint32, firstUS, lastUS, goneByUS, loUS, hiUS uint64) vehicleLife {
 	return vehicleLife{
-		key: grammar.EquipmentLifeKey{Slot: slot, Gen: gen}, firstUS: firstUS, lastUS: lastUS,
+		key: types.EquipmentLifeKey{Slot: slot, Gen: gen}, firstUS: firstUS, lastUS: lastUS,
 		goneByUS: goneByUS, loUS: loUS, hiUS: hiUS, census: 2,
 	}
 }
@@ -35,7 +36,7 @@ func TestAssignVehicleDeathsAttribueParLaFenetre(t *testing.T) {
 		vieDeTest(777, 1, 10_000_000, 40_000_000, 60_000_000, 0, 60_000_000),
 		vieDeTest(777, 1, 100_000_000, 140_000_000, 0, 60_000_000, ^uint64(0)),
 	}
-	deaths := []grammar.ObjectDeath{
+	deaths := []types.ObjectDeath{
 		{TimestampUS: 55_000_000, Slot: 777, Gen: 1},
 		{TimestampUS: 56_000_000, Slot: 777, Gen: 1},
 		{TimestampUS: 150_000_000, Slot: 777, Gen: 1, TailDesync: true},
@@ -58,7 +59,7 @@ func TestAssignVehicleDeathsAttribueParLaFenetre(t *testing.T) {
 // TestAssignVehicleDeathsSansVie : une mort que personne ne reprend est COMPTEE, jamais jetee —
 // c est le signal qu une vie manque au recensement.
 func TestAssignVehicleDeathsSansVie(t *testing.T) {
-	tally := assignVehicleDeaths(nil, []grammar.ObjectDeath{{TimestampUS: 1, Slot: 5}})
+	tally := assignVehicleDeaths(nil, []types.ObjectDeath{{TimestampUS: 1, Slot: 5}})
 	if tally.read != 1 || tally.unmatched != 1 || tally.matched != 0 {
 		t.Errorf("bilan = %+v, attendu read=1 unmatched=1 matched=0", tally)
 	}
@@ -143,7 +144,7 @@ func TestTallyVehicleEndsCompteLaContradiction(t *testing.T) {
 // vivant — c est elle qui effacait les vehicules avant la fin du rejeu.
 func TestAssignVehicleWindowsSansBorneHaute(t *testing.T) {
 	lives := []vehicleLife{
-		{key: grammar.EquipmentLifeKey{Slot: 777, Gen: 1}, firstUS: 0, lastUS: 200_000_000, goneByUS: 0},
+		{key: types.EquipmentLifeKey{Slot: 777, Gen: 1}, firstUS: 0, lastUS: 200_000_000, goneByUS: 0},
 	}
 	assignVehicleWindows(lives)
 	if lives[0].hiUS != ^uint64(0) {
@@ -157,8 +158,8 @@ func TestAssignVehicleWindowsSansBorneHaute(t *testing.T) {
 // decoupage legitime d une fenetre sans borne haute.
 func TestAssignVehicleWindowsFrontiereEntreDeuxVies(t *testing.T) {
 	lives := []vehicleLife{
-		{key: grammar.EquipmentLifeKey{Slot: 777, Gen: 1}, firstUS: 0, lastUS: 40_000_000, goneByUS: 0},
-		{key: grammar.EquipmentLifeKey{Slot: 777, Gen: 2}, firstUS: 100_000_000, lastUS: 140_000_000},
+		{key: types.EquipmentLifeKey{Slot: 777, Gen: 1}, firstUS: 0, lastUS: 40_000_000, goneByUS: 0},
+		{key: types.EquipmentLifeKey{Slot: 777, Gen: 2}, firstUS: 100_000_000, lastUS: 140_000_000},
 	}
 	assignVehicleWindows(lives)
 	if lives[0].hiUS != 100_000_000 {
@@ -175,12 +176,12 @@ func TestAssignVehicleWindowsFrontiereEntreDeuxVies(t *testing.T) {
 func TestVehicleLivesPoseLaMortEcrite(t *testing.T) {
 	kf := grammar.WorldObjectKeyframes{
 		TimesUS: []uint64{0, 20_000_000, 40_000_000, 60_000_000},
-		SeenUS: map[grammar.EquipmentLifeKey][]uint64{
+		SeenUS: map[types.EquipmentLifeKey][]uint64{
 			{Slot: 777, Gen: 1}: {0, 20_000_000, 40_000_000},
 			{Slot: 778, Gen: 1}: {0, 20_000_000, 40_000_000, 60_000_000},
 		},
 	}
-	deaths := []grammar.ObjectDeath{{TimestampUS: 45_000_000, Slot: 777, Gen: 1}}
+	deaths := []types.ObjectDeath{{TimestampUS: 45_000_000, Slot: 777, Gen: 1}}
 	lives, tally := vehicleLives(kf, deaths)
 	if tally.matched != 1 {
 		t.Fatalf("bilan = %+v : la lecture n est pas cablee dans `vehicleLives`", tally)
@@ -213,7 +214,7 @@ func TestFinDeVieIgnorerLeDeadStateRendUneFinFausse(t *testing.T) {
 	clock := horlogeDeTest(5033)
 	const mortUS = 282_100_000
 	vie := vieDeTest(777, 1, 0, 268_000_000, 287_400_000, 0, 287_400_000)
-	deaths := []grammar.ObjectDeath{{TimestampUS: mortUS, Slot: 777, Gen: 1}}
+	deaths := []types.ObjectDeath{{TimestampUS: mortUS, Slot: 777, Gen: 1}}
 
 	lu := []vehicleLife{vie}
 	assignVehicleDeaths(lu, deaths)

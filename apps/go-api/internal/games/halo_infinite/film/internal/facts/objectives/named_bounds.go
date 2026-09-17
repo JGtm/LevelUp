@@ -10,6 +10,7 @@ package objectives
 // rejet des ancrages parasites, cumul des manches).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 )
 
@@ -123,7 +124,7 @@ func newEventBudget(origine string) *eventBudget {
 }
 
 // rejeter enregistre un deroulage hors borne et le journalise (detail borne, compte exact).
-func (b *eventBudget) rejeter(key statSlotKey, p ScorePoint, n int64) {
+func (b *eventBudget) rejeter(key statSlotKey, p types.ScorePoint, n int64) {
 	b.rejetes++
 	if b.journalises >= maxRejectLogs {
 		return
@@ -136,7 +137,7 @@ func (b *eventBudget) rejeter(key statSlotKey, p ScorePoint, n int64) {
 
 // epuiser marque le solde consomme. Une seule ligne de journal : les appels suivants sortent
 // immediatement, il n'y a rien de nouveau a dire a chacun d'eux.
-func (b *eventBudget) epuiser(key statSlotKey, p ScorePoint, n int64) {
+func (b *eventBudget) epuiser(key statSlotKey, p types.ScorePoint, n int64) {
 	b.tronque = true
 	slog.Warn("objectives: plafond d'evenements du film atteint, deroulage interrompu",
 		"passe", b.origine, "comp", key.Comp, "cote", key.Side, "slot", p.Slot,
@@ -159,7 +160,7 @@ func (b *eventBudget) resume() {
 // de la borne par pas. C'est l'unite de la DERIVATION UNIQUE des increments filtres.
 type boundedStep struct {
 	// Point est l'emission telle qu'elle sort de [cumulateRounds] / [longestRun].
-	Point ScorePoint
+	Point types.ScorePoint
 	// Unroll est le deroulage BRUT demande par ce point (`p.Value - prev`). ZERO quand le
 	// point est un palier : il ne fait pas avancer le compteur.
 	Unroll int64
@@ -196,7 +197,7 @@ func (s boundedStep) rejected() bool { return s.Unroll > 0 && s.Kept == 0 }
 // TOUS les points d'entree ressortent, paliers compris : c'est ce qui permet a
 // [boundedSeries] de rendre une suite de MEME cardinalite que celle qu'elle assainit, donc de
 // ne jamais faire disparaitre un compteur reste a zero.
-func boundSteps(pts []ScorePoint) []boundedStep {
+func boundSteps(pts []types.ScorePoint) []boundedStep {
 	out := make([]boundedStep, 0, len(pts))
 	prev := int64(0)
 	for _, p := range pts {
@@ -225,15 +226,15 @@ func boundSteps(pts []ScorePoint) []boundedStep {
 // `slot_identity` journalise deja chaque deroulage refuse sur ces trois memes emplacements
 // (cf. [eventBudget.rejeter]). Une seconde ligne par serie ne dirait rien de neuf et noierait
 // la premiere.
-func boundedSeries(pts []ScorePoint) []ScorePoint {
+func boundedSeries(pts []types.ScorePoint) []types.ScorePoint {
 	if len(pts) == 0 {
 		return nil
 	}
-	out := make([]ScorePoint, 0, len(pts))
+	out := make([]types.ScorePoint, 0, len(pts))
 	var total int64
 	for _, s := range boundSteps(pts) {
 		total += s.Kept
-		out = append(out, ScorePoint{TimeMS: s.Point.TimeMS, Slot: s.Point.Slot, Value: total})
+		out = append(out, types.ScorePoint{TimeMS: s.Point.TimeMS, Slot: s.Point.Slot, Value: total})
 	}
 	return out
 }
@@ -253,7 +254,7 @@ func boundedSeries(pts []ScorePoint) []ScorePoint {
 // ce qui est materialise en memoire : le solde de la passe est consomme au fur et a mesure, et
 // quand un deroulage n'y tient plus la passe est TRONQUEE et n'emet plus rien, ici comme dans
 // ses appels suivants.
-func incrementTimes(pts []ScorePoint, key statSlotKey, b *eventBudget) []int {
+func incrementTimes(pts []types.ScorePoint, key statSlotKey, b *eventBudget) []int {
 	if b.tronque {
 		return nil
 	}

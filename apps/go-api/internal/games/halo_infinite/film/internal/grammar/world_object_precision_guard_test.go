@@ -44,6 +44,13 @@ var worldObjectPrecisionReaders = map[string]string{
 		"a remplacé, donc elle nomme les largeurs world-object. Aucune lecture de la valeur — " +
 		"ce fichier ne porte QUE la chronique de la révision de grammaire (sortie de " +
 		"`rev.go` le 2026-09-18, lot 2.4.1, au seuil des 500 lignes)",
+	"internal/games/halo_infinite/film/types/grammar_bipede.go": "CITATION dans la godoc du champ " +
+		"`GrappleRead.PosQ` (2026-09-17, lot 2.6.2) : elle dit que les trois quanta sont aux " +
+		"largeurs d'axe INSTALLÉES AU MOMENT DU BALAYAGE, ce qui est précisément la question " +
+		"que cette garde pose — et la réponse y est écrite. Aucune lecture de la valeur : " +
+		"`film/types` est une FEUILLE sans aucun import du dépôt (garde-rail " +
+		"`archlint/film_types_leaf_test.go`), elle ne décode rien. Le type a descendu ici par " +
+		"déplacement pur, sa godoc comprise",
 	"internal/games/halo_infinite/film/internal/grammar/profil_balayage.go": "le PORTEUR (2026-09-17, " +
 		"lot 2.3) : le champ `Mouvement.WorldObject` du profil de balayage, son accesseur et " +
 		"les deux poses (brute, et depuis le découpage d'une carte). C'est ici que vivaient " +

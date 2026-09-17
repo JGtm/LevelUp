@@ -26,6 +26,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // rangsGrenade : le nombre de rangs de grenade du titre, c est-a-dire la longueur des compteurs
@@ -102,7 +103,7 @@ func LireDecrements(racine, id string) ([]DecrementI22, StatsI22, error) {
 		I22Read:     st.I22Read,
 		I22Unread:   st.I22Unread,
 	}
-	parPorteur := map[uint32][]grammar.InventoryDelta{}
+	parPorteur := map[uint32][]types.InventoryDelta{}
 	for _, d := range lectures {
 		if len(d.Grenades) != rangsGrenade {
 			continue
@@ -126,7 +127,7 @@ func LireDecrements(racine, id string) ([]DecrementI22, StatsI22, error) {
 
 // decrementsDUnPorteur parcourt la suite chronologique d UN porteur et retient les transitions
 // ou un seul rang perd exactement une unite.
-func decrementsDUnPorteur(slot uint32, suite []grammar.InventoryDelta) []DecrementI22 {
+func decrementsDUnPorteur(slot uint32, suite []types.InventoryDelta) []DecrementI22 {
 	var out []DecrementI22
 	for i := 1; i < len(suite); i++ {
 		avant, apres := compteurs(suite[i-1]), compteurs(suite[i])
@@ -147,7 +148,7 @@ func decrementsDUnPorteur(slot uint32, suite []grammar.InventoryDelta) []Decreme
 }
 
 // compteurs recopie les quatre compteurs d une lecture.
-func compteurs(d grammar.InventoryDelta) [rangsGrenade]uint32 {
+func compteurs(d types.InventoryDelta) [rangsGrenade]uint32 {
 	var out [rangsGrenade]uint32
 	copy(out[:], d.Grenades)
 	return out

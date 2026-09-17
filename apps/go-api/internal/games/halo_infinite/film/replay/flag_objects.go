@@ -59,10 +59,9 @@ package replay
 // monte a 15. Un artefact 14 se lit « a re-cuire », pas « a jour ».
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
 	"sort"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // flagFreeLife est UNE vie libre : la creation, puis la piste repliquee jusqu'a sa fin.
@@ -70,7 +69,7 @@ type flagFreeLife struct {
 	// ID est l'identifiant d'objet du manifeste (le mot MPP de 32 bits).
 	ID uint32
 	// Key est la vie au sens du film — LA PAIRE (slot, generation), jamais le slot seul.
-	Key grammar.EquipmentLifeKey
+	Key types.EquipmentLifeKey
 	// T0US est l'instant de CREATION, T1US le dernier instant REPLIQUE. Egaux quand la vie
 	// n'a laisse aucun echantillon de position : l'objet est ne immobile (a son socle) et n'a
 	// jamais bouge, ce qui est une vie libre parfaitement reelle, reduite a un point.
@@ -117,14 +116,14 @@ func flagFreeLives(scan WorldObjectScan, flags map[uint32]Label) []flagFreeLife 
 	if !scan.Scanned || len(flags) == 0 {
 		return nil
 	}
-	byKey := map[grammar.EquipmentLifeKey][]grammar.EquipmentCreation{}
-	ids := map[grammar.EquipmentLifeKey]uint32{}
+	byKey := map[types.EquipmentLifeKey][]types.EquipmentCreation{}
+	ids := map[types.EquipmentLifeKey]uint32{}
 	for _, c := range scan.Creations {
 		w, ok := gwPadsIdentity(c)
 		if !ok || flags[w] == (Label{}) {
 			continue
 		}
-		k := grammar.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
+		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
 		byKey[k], ids[k] = append(byKey[k], c), w
 	}
 	tracks := gwTracksByKey(scan.Tracks)
@@ -144,8 +143,8 @@ func flagFreeLives(scan WorldObjectScan, flags map[uint32]Label) []flagFreeLife 
 }
 
 // flagFreeLifeOf assemble UNE vie libre : sa creation, puis sa piste si elle en a une.
-func flagFreeLifeOf(id uint32, k grammar.EquipmentLifeKey, c grammar.EquipmentCreation,
-	tracks []grammar.ProjectileTrack, lifeEnd uint64) flagFreeLife {
+func flagFreeLifeOf(id uint32, k types.EquipmentLifeKey, c types.EquipmentCreation,
+	tracks []types.ProjectileTrack, lifeEnd uint64) flagFreeLife {
 	l := flagFreeLife{ID: id, Key: k, T0US: c.TimestampUS, T1US: c.TimestampUS,
 		Pts: []flagFreeSample{{TUS: c.TimestampUS, X: c.X, Y: c.Y}}}
 	tr, moved := gwPickupLifeTrack(tracks, c.TimestampUS, lifeEnd)

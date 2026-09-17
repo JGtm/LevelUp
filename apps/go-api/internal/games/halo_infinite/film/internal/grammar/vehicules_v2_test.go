@@ -39,6 +39,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -177,7 +178,7 @@ func v2ProcessFilm(t *testing.T, dir, short8 string, entry profile.MapQuantEntry
 }
 
 // v2BirthsPerLife dedup les creations a UNE naissance par vie (slot, gen) : la plus precoce.
-func v2BirthsPerLife(cre []EquipmentCreation, film string, rng profile.Vec3Range) []v2Birth {
+func v2BirthsPerLife(cre []types.EquipmentCreation, film string, rng profile.Vec3Range) []v2Birth {
 	best := map[[2]uint32]v2Birth{}
 	for _, c := range cre {
 		key := [2]uint32{c.Slot, c.Gen}

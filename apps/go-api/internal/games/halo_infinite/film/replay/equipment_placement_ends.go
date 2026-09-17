@@ -14,6 +14,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // placEnd est la fin d'affichage observée d'UNE pose, sur l'axe du document.
@@ -29,9 +30,9 @@ type placEnd struct {
 // Rendu INDEXÉ sur `raw` : l'appelant filtre les poses hors axe après coup, l'index doit
 // survivre au filtre.
 func placementEnds(
-	raw []grammar.EquipmentPlacement, census grammar.WorldObjectKeyframes, clock replayClock,
+	raw []types.EquipmentPlacement, census grammar.WorldObjectKeyframes, clock replayClock,
 ) []placEnd {
-	byLife := map[grammar.EquipmentLifeKey][]int{}
+	byLife := map[types.EquipmentLifeKey][]int{}
 	for i, p := range raw {
 		byLife[p.Life] = append(byLife[p.Life], i)
 	}

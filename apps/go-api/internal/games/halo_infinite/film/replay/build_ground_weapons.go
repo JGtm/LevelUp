@@ -26,6 +26,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // padArchetype dit CE QUI CHANGE d'un archétype d'objet du monde à l'autre : son typeIndex, le
@@ -37,7 +38,7 @@ type padArchetype struct {
 	ti    int
 	label string
 	scan  func(fc *grammar.FilmContext, wr *profile.Vec3Range, band map[uint32]bool) (
-		[]grammar.EquipmentCreation, grammar.EquipmentCreationStats, error)
+		[]types.EquipmentCreation, types.EquipmentCreationStats, error)
 }
 
 // groundWeaponArchetype / worldEquipmentArchetype : les deux voies de la chaîne des socles.

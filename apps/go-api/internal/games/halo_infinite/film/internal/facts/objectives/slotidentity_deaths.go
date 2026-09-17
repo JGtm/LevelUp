@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // slotidentity_deaths.go — LE SECOND PONT slot statborg -> joueur : par les INSTANTS DE
@@ -85,13 +86,13 @@ const (
 // disjointes, un desaccord signale que l'une des deux lit de travers, et rien ne dit laquelle.
 //
 // `deaths` vide (fil des morts illisible) : seul le pont par totaux repond, comme avant.
-func SlotIdentityResolved(film *source.Film, lines []PlayerLine, deaths []DeathInstant) (map[int]string, IdentityStats) {
+func SlotIdentityResolved(film *source.Film, lines []types.PlayerLine, deaths []types.DeathInstant) (map[int]string, IdentityStats) {
 	return slotIdentityResolvedFrom(StatRecords(film), lines, deaths)
 }
 
 // slotIdentityResolvedFrom est le coeur pur : il travaille sur des enregistrements deja
 // decodes, donc testable sans film.
-func slotIdentityResolvedFrom(recs []StatRecord, lines []PlayerLine, deaths []DeathInstant) (map[int]string, IdentityStats) {
+func slotIdentityResolvedFrom(recs []types.StatRecord, lines []types.PlayerLine, deaths []types.DeathInstant) (map[int]string, IdentityStats) {
 	byTotals := SlotIdentityFrom(recs, lines)
 	byDeaths := slotIdentityFromDeaths(recs, deaths)
 	st := IdentityStats{ByTotals: len(byTotals), ByDeaths: len(byDeaths), Source: IdentitySourceTotals}
@@ -113,7 +114,7 @@ func slotIdentityResolvedFrom(recs []StatRecord, lines []PlayerLine, deaths []De
 // SlotIdentityFromDeaths apparie chaque slot statborg a un xuid par les seuls INSTANTS DE MORT
 // du film. Aucune ligne de match, aucune base — c'est ce qui le rend employable sur un film
 // tronque.
-func SlotIdentityFromDeaths(film *source.Film, deaths []DeathInstant) map[int]string {
+func SlotIdentityFromDeaths(film *source.Film, deaths []types.DeathInstant) map[int]string {
 	return slotIdentityFromDeaths(StatRecords(film), deaths)
 }
 
@@ -122,12 +123,12 @@ func SlotIdentityFromDeaths(film *source.Film, deaths []DeathInstant) map[int]st
 // « FromDeathsFrom ». Elle existe pour l'appelant qui a deja balaye le film une fois : le calque
 // du drapeau vivant du rejeu 2D le fait, et rebalayer coutait 0,6 a 2,4 s et jusqu'a 21 Mo par
 // film.
-func SlotIdentityByDeaths(recs []StatRecord, deaths []DeathInstant) map[int]string {
+func SlotIdentityByDeaths(recs []types.StatRecord, deaths []types.DeathInstant) map[int]string {
 	return slotIdentityFromDeaths(recs, deaths)
 }
 
 // slotIdentityFromDeaths est le coeur pur du pont par instants.
-func slotIdentityFromDeaths(recs []StatRecord, deaths []DeathInstant) map[int]string {
+func slotIdentityFromDeaths(recs []types.StatRecord, deaths []types.DeathInstant) map[int]string {
 	if len(deaths) == 0 {
 		return map[int]string{}
 	}
@@ -142,7 +143,7 @@ func slotIdentityFromDeaths(recs []StatRecord, deaths []DeathInstant) map[int]st
 }
 
 // deathThreadByXUID range les morts du fil par joueur, chaque serie triee.
-func deathThreadByXUID(deaths []DeathInstant) map[string][]int {
+func deathThreadByXUID(deaths []types.DeathInstant) map[string][]int {
 	out := map[string][]int{}
 	for _, d := range deaths {
 		if d.XUID == "" {
@@ -180,7 +181,7 @@ const maxDeathsPerSlot = 1000
 // Les emissions negatives (ancrages parasites), celles qui depassent [maxDeathsPerSlot] et les
 // reculs sont ecartes : le compteur d'un joueur ne redescend pas, ne s'envole pas, et une valeur
 // qui fait l'un ou l'autre est une lecture fausse.
-func deathProgressions(recs []StatRecord) map[int][]int {
+func deathProgressions(recs []types.StatRecord) map[int][]int {
 	// StatRecords trie par instant : la serie d'un slot arrive donc deja chronologique.
 	raw := map[int][]deathCount{}
 	for _, r := range recs {

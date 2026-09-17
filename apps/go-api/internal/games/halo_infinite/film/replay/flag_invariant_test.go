@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // flag_invariant_test.go — L'INVARIANT DUR ET LES RETOURS (revue DRAPEAUX-R1).
@@ -302,9 +303,9 @@ func TestFlagOverlapsComptesParDrapeau(t *testing.T) {
 // verifie que l'invariant A REFUSE. Il ne peut refuser que si la table est arrivee.
 func TestAttachFlagCarriesDescendLesEquipesJusquAuScan(t *testing.T) {
 	// Un compteur du statborg qui monte a 1 : c'est l'increment que l'oracle date.
-	rec := func(ms, slot, comp int) objectives.StatRecord {
-		return objectives.StatRecord{TimeMS: ms, Slot: slot, Round: 0,
-			Comps: map[int]objectives.StatValue{comp: {A: 1}}}
+	rec := func(ms, slot, comp int) types.StatRecord {
+		return types.StatRecord{TimeMS: ms, Slot: slot, Round: 0,
+			Comps: map[int]types.StatValue{comp: {A: 1}}}
 	}
 	const (
 		compCaptures = 21
@@ -313,7 +314,7 @@ func TestAttachFlagCarriesDescendLesEquipesJusquAuScan(t *testing.T) {
 	)
 	in := FlagInput{
 		Scanned: true,
-		Records: []objectives.StatRecord{
+		Records: []types.StatRecord{
 			rec(1000, 12, compSteals),   // « 1 » (equipe 0) vole le drapeau de l'equipe 1
 			rec(2000, 14, compSteals),   // « 2 » (equipe 1) vole celui de l'equipe 0
 			rec(5000, 16, compGrabs),    // « 3 » (equipe 0) ramasse A SON PROPRE SOCLE

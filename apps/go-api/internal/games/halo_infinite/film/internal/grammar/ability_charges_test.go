@@ -8,7 +8,10 @@ package grammar
 // AUCUN ORACLE CIRCULAIRE (leçon H1 de la revue P3) : les valeurs attendues sont écrites
 // EN DUR — jamais lues des constantes de production ni recalculées par ses formules.
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 func TestAbilityChargeResolutionParNomExact(t *testing.T) {
 	// LA RÉSOLUTION EST EXACTE, jamais par préfixe : « biped-spartan-ability » (i57) est un
@@ -54,7 +57,7 @@ func TestAbilityChargePublieLesQuartetsEnDur(t *testing.T) {
 		{47, 2, 15, "une recharge fractionnaire non nulle voyage dans le quartet bas"},
 	}
 	for _, c := range cas {
-		var st AbilityChargeStats
+		var st types.AbilityChargeStats
 		sc := &abilityChargeScanner{st: &st, mask: 0b001}
 		sc.ch[0] = c.v
 		sc.publish(512, 3, FilmPacket{Index: 7, TimestampUS: 1_234_000})
@@ -77,7 +80,7 @@ func TestAbilityChargePublieLesQuartetsEnDur(t *testing.T) {
 // emplacement non armé fabriquerait une charge pleine à chaque record — le film ne
 // transmet rien au ramassage.
 func TestAbilityChargeMasqueNonArmeNePublieRien(t *testing.T) {
-	var st AbilityChargeStats
+	var st types.AbilityChargeStats
 	sc := &abilityChargeScanner{st: &st, mask: 0b101}
 	sc.ch = [AbilityEnergyCharges]int{32, AbilityEnergyUnarmed, 16}
 	sc.publish(512, 3, FilmPacket{Index: 7, TimestampUS: 1_000})
@@ -91,7 +94,7 @@ func TestAbilityChargeMasqueNonArmeNePublieRien(t *testing.T) {
 	}
 	// Masque 000 : le composant a parlé — « aucun emplacement armé » — et rien ne sort.
 	// C'est le zéro que R11 §4 mesure 485 fois sur les six films sans grappin ni propulseur.
-	st, sc.out = AbilityChargeStats{}, nil
+	st, sc.out = types.AbilityChargeStats{}, nil
 	sc.st, sc.mask = &st, 0
 	sc.ch = [AbilityEnergyCharges]int{AbilityEnergyUnarmed, AbilityEnergyUnarmed, AbilityEnergyUnarmed}
 	sc.publish(512, 3, FilmPacket{Index: 8})
@@ -105,7 +108,7 @@ func TestAbilityChargeMasqueNonArmeNePublieRien(t *testing.T) {
 // PERDUE, comptée à part : sans ce dénominateur, une liste courte ne se distingue pas d'un
 // film pauvre en changements de charge.
 func TestAbilityChargeDenominateurs(t *testing.T) {
-	var st AbilityChargeStats
+	var st types.AbilityChargeStats
 	sc := &abilityChargeScanner{st: &st, idx: 56}
 	// La marche n'atteint pas i56 (hook jamais déclenché) : Unread, rien de publié.
 	sc.got = false
@@ -125,14 +128,14 @@ func TestSortAbilityChargesOrdreTotal(t *testing.T) {
 	// L'ORDRE EST TOTAL — instant, puis slot, puis emplacement : sans le troisième critère,
 	// deux emplacements armés du même record sortiraient dans l'ordre du parcours, et
 	// l'artefact dépendrait de rien de mesurable.
-	out := []AbilityCharge{
+	out := []types.AbilityCharge{
 		{Slot: 20, TimestampUS: 5, Emplacement: 0},
 		{Slot: 10, TimestampUS: 5, Emplacement: 2},
 		{Slot: 10, TimestampUS: 5, Emplacement: 0},
 		{Slot: 10, TimestampUS: 1, Emplacement: 1},
 	}
 	sortAbilityCharges(out)
-	want := []AbilityCharge{
+	want := []types.AbilityCharge{
 		{Slot: 10, TimestampUS: 1, Emplacement: 1},
 		{Slot: 10, TimestampUS: 5, Emplacement: 0},
 		{Slot: 10, TimestampUS: 5, Emplacement: 2},

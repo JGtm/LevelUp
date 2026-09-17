@@ -58,6 +58,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Le bloc de référence, et d'où il vient. Ces constantes sont la provenance MISE EN CODE : le
@@ -262,7 +263,7 @@ func piedFilmEnMemoire(t *testing.T) *source.Film {
 	if err := os.WriteFile(nom, bloc, 0o600); err != nil {
 		t.Fatalf("écriture de %s : %v", nom, err)
 	}
-	film, err := source.LoadDir(dir, []source.ChunkMeta{
+	film, err := source.LoadDir(dir, []types.ChunkMeta{
 		{Index: piedChunk, ChunkType: chunkTypePied},
 	})
 	if err != nil {
@@ -386,7 +387,7 @@ func TestPiedBlocProvenance(t *testing.T) {
 // piedMetaDuManifeste lit `<cache>/film_manifests/<id>.json` et rend les métadonnées de chunk.
 // Il EXIGE que le chunk nommé par la provenance ([piedChunk]) y soit déclaré de type 3 : sans
 // cette vérification, la porte de régénération devinerait le pied par sa position.
-func piedMetaDuManifeste(t *testing.T, dir string) []source.ChunkMeta {
+func piedMetaDuManifeste(t *testing.T, dir string) []types.ChunkMeta {
 	t.Helper()
 	chemin := filepath.Join(filepath.Dir(filepath.Dir(dir)), "film_manifests", piedFilm+".json")
 	blob, err := os.ReadFile(chemin) //nolint:gosec // chemin dérivé de PIED_FILM_DIR, poste de dev
@@ -404,10 +405,10 @@ func piedMetaDuManifeste(t *testing.T, dir string) []source.ChunkMeta {
 	if err := json.Unmarshal(blob, &doc); err != nil {
 		t.Fatalf("manifeste %s illisible : %v", chemin, err)
 	}
-	out := make([]source.ChunkMeta, 0, len(doc.Chunks))
+	out := make([]types.ChunkMeta, 0, len(doc.Chunks))
 	typeDuPied := -1
 	for _, c := range doc.Chunks {
-		out = append(out, source.ChunkMeta{Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS})
+		out = append(out, types.ChunkMeta{Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS})
 		if c.Index == piedChunk {
 			typeDuPied = c.ChunkType
 		}

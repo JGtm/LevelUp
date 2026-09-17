@@ -13,6 +13,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"sort"
 	"strconv"
@@ -44,7 +45,7 @@ func TestF0Sonde103(t *testing.T) {
 		t.Logf("")
 		t.Logf("######## SONDE FILM %s ########", id)
 		f0SondeBandes(t, f)
-		cre := append([]EquipmentCreation(nil), f.Creations...)
+		cre := append([]types.EquipmentCreation(nil), f.Creations...)
 		sort.SliceStable(cre, func(i, j int) bool { return cre[i].TimestampUS < cre[j].TimestampUS })
 		for i, ev := range f.Ev103 {
 			if i >= n {
@@ -78,7 +79,7 @@ func f0RefsTexte(refs [3]r7RefVal) string {
 }
 
 // f0CreationsAutour rend les creations `ti=37` a moins de `rayon` µs de l instant donne.
-func f0CreationsAutour(cre []EquipmentCreation, at uint64, rayon uint64) []string {
+func f0CreationsAutour(cre []types.EquipmentCreation, at uint64, rayon uint64) []string {
 	var out []string
 	for _, c := range cre {
 		d := int64(c.TimestampUS) - int64(at)

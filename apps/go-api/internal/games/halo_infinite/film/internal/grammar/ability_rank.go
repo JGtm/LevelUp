@@ -28,49 +28,17 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // i48Index est l'index d'itérateur du composant `biped-desired-ability-set-component` dans
 // l'archétype biped (cf. components_biped_ability.go, section i48).
 const i48Index = 48
 
-// AbilityRank est UNE transmission d'identité de capacité, localisée dans le film.
-type AbilityRank struct {
-	// Slot est l'identifiant bas du biped porteur — le même que celui des trajectoires, donc
-	// UNE VIE et non un joueur (le slot migre aux réapparitions).
-	Slot uint32
-	// Chunk / PacketIndex localisent la lecture dans le film.
-	Chunk, PacketIndex int
-	// TimestampUS est l'horodatage du paquet porteur — MÊME horloge que BipedPosition.
-	TimestampUS uint64
-	// Counter est le compteur de rotation R(3). Il n'identifie rien à lui seul ; il est
-	// conservé parce qu'il BORNE l'interprétation (une valeur hors 0..7 dirait que la lecture
-	// est mal placée).
-	Counter uint32
-	// Rank est le rang dans la palette du match. Jamais AbilitySetNoRank : les lectures dont
-	// la porte est ouverte ne sont pas émises — une identité non transmise n'est pas une
-	// identité nulle.
-	Rank int
-}
-
-// AbilityRankStats compte ce que la marche a rencontré. Sans ces dénominateurs, un
-// histogramme de rangs ne se juge pas.
-type AbilityRankStats struct {
-	// Records est le nombre de records delta biped reconnus.
-	Records int
-	// WithI48 est le nombre de ces records dont le masque annonce i48.
-	WithI48 int
-	// Read / Unread : lectures abouties, et records dont la marche n'a pas atteint i48 (un
-	// composant intermédiaire non porté, ou un débordement du payload).
-	Read, Unread int
-	// Gated est le nombre de lectures abouties SANS identité (porte à 1).
-	Gated int
-}
-
 // ScanFilmAbilityRanks décode les identités de capacité transmises par i48 dans les paquets
 // delta du film de dir.
 //
-// LES LECTURES À PORTE OUVERTE SONT ÉCARTÉES ici, et c'est le contrat d'AbilityRank.Rank :
+// LES LECTURES À PORTE OUVERTE SONT ÉCARTÉES ici, et c'est le contrat d'types.AbilityRank.Rank :
 // une identité non transmise n'est pas une identité nulle. L'autre vue du même composant,
 // `ScanFilmEquipmentChanges`, les GARDE — pour elle, « le joueur n'a plus d'équipement » EST
 // l'événement. Les deux vues partagent le balayage `walkAbilityEmissions` : le composant n'a
@@ -82,18 +50,18 @@ type AbilityRankStats struct {
 // ScanFilmAbilityRanks est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film, ouvre un
 // contexte pour elle seule, puis appelle [ScanAbilityRanks]. La cuisson, elle, passe le contexte
 // qu'elle partage entre tous ses balayages.
-func ScanFilmAbilityRanks(dir string) ([]AbilityRank, AbilityRankStats, error) {
+func ScanFilmAbilityRanks(dir string) ([]types.AbilityRank, types.AbilityRankStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, AbilityRankStats{}, err
+		return nil, types.AbilityRankStats{}, err
 	}
 	return ScanAbilityRanks(contexteDeBobine(film))
 }
 
 // ScanAbilityRanks decode les identites de capacite d'un film DEJA CHARGE. Cf.
 // [ScanFilmAbilityRanks] pour la doctrine du balayage.
-func ScanAbilityRanks(fc *FilmContext) ([]AbilityRank, AbilityRankStats, error) {
-	var out []AbilityRank
+func ScanAbilityRanks(fc *FilmContext) ([]types.AbilityRank, types.AbilityRankStats, error) {
+	var out []types.AbilityRank
 	st, err := walkAbilityEmissions(fc, func(e abilityEmission) {
 		if e.Rank == AbilitySetNoRank {
 			return
@@ -101,7 +69,7 @@ func ScanAbilityRanks(fc *FilmContext) ([]AbilityRank, AbilityRankStats, error) 
 		// Les deux types ont la MÊME forme et des CONTRATS différents — l'un peut porter la
 		// porte ouverte, l'autre jamais —, ce qui est exactement pourquoi ils restent deux :
 		// la conversion est le point où le contrat se resserre, juste après le filtre.
-		out = append(out, AbilityRank(e))
+		out = append(out, types.AbilityRank(e))
 	})
 	if err != nil {
 		return nil, st, err
@@ -172,10 +140,10 @@ func resolveAbilityScan(fc *FilmContext) (abilityScanSetup, error) {
 //
 // Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit pas les
 // bits à côté de lui. Deux lecteurs du même champ divergeraient.
-func walkAbilityEmissions(fc *FilmContext, visit func(abilityEmission)) (AbilityRankStats, error) {
+func walkAbilityEmissions(fc *FilmContext, visit func(abilityEmission)) (types.AbilityRankStats, error) {
 	s, err := resolveAbilityScan(fc)
 	if err != nil {
-		return AbilityRankStats{}, err
+		return types.AbilityRankStats{}, err
 	}
 	return walkAbilityEmissionsWith(s, visit), nil
 }
@@ -183,8 +151,8 @@ func walkAbilityEmissions(fc *FilmContext, visit func(abilityEmission)) (Ability
 // walkAbilityEmissionsWith est le corps du balayage, sur un contexte déjà résolu — c'est ce
 // qui permet à `ScanEquipmentChanges` de résoudre le film UNE fois pour ses deux passes
 // (balayage strict, puis récupération gatée des fenêtres de saut).
-func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) AbilityRankStats {
-	var st AbilityRankStats
+func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) types.AbilityRankStats {
+	var st types.AbilityRankStats
 	chunks, slots, gram := s.chunks, s.slots, s.gram
 
 	var last struct {

@@ -48,6 +48,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // eqlLife est la fenêtre de présence d'un objet du monde et sa position de repos.
@@ -65,13 +66,13 @@ type eqlLife struct {
 // delta, bornée en fin par le recensement des images-clés de la MÊME paire (slot, génération),
 // contenu à la fenêtre de la vie — la paire reboucle, son recensement mêle plusieurs vies.
 func eqlLivesFromScan(scan WorldObjectScan) []eqlLife {
-	byPair := map[grammar.EquipmentLifeKey][]grammar.ProjectileTrack{}
+	byPair := map[types.EquipmentLifeKey][]types.ProjectileTrack{}
 	for _, tr := range scan.Tracks {
 		if len(tr.Pts) == 0 {
 			continue
 		}
-		byPair[grammar.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}] = append(
-			byPair[grammar.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}], tr)
+		byPair[types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}] = append(
+			byPair[types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}], tr)
 	}
 	var out []eqlLife
 	for k, list := range byPair {

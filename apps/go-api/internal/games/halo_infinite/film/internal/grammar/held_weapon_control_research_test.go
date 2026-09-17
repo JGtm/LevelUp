@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // hwCatalogue rend le predicat d'appartenance au catalogue de production.
@@ -117,7 +118,7 @@ func hwScanEvents(s hwSetup) []hwEvent {
 }
 
 // hwFamilies rend l'ensemble des familles d'un releve d'image-cle.
-func hwFamilies(k KeyframeLoadout) map[uint32]bool {
+func hwFamilies(k types.KeyframeLoadout) map[uint32]bool {
 	m := map[uint32]bool{}
 	for _, f := range k.Families {
 		m[f] = true
@@ -150,7 +151,7 @@ func TestHeldWeaponDeltaCorrobore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("images-cles illisibles : %v", err)
 	}
-	bySlotKF := map[uint32][]KeyframeLoadout{}
+	bySlotKF := map[uint32][]types.KeyframeLoadout{}
 	for _, k := range kf {
 		bySlotKF[k.Slot] = append(bySlotKF[k.Slot], k)
 	}
@@ -228,7 +229,7 @@ func hwCountIn(ev []hwEvent, lo, hi uint64) int {
 // hwKFRef donne, pour un slot et un instant, l'ensemble des familles portees au dernier
 // releve d'image-cle qui precede — c'est-a-dire l'etat de SPAWN vu de plus pres.
 type hwKFRef struct {
-	bySlot map[uint32][]KeyframeLoadout
+	bySlot map[uint32][]types.KeyframeLoadout
 }
 
 // hwKeyframeRef charge les images-cles du film et les indexe par slot.
@@ -238,7 +239,7 @@ func hwKeyframeRef(t *testing.T, dir string) hwKFRef {
 	if err != nil {
 		t.Fatalf("images-cles illisibles : %v", err)
 	}
-	r := hwKFRef{bySlot: map[uint32][]KeyframeLoadout{}}
+	r := hwKFRef{bySlot: map[uint32][]types.KeyframeLoadout{}}
 	for _, k := range kf {
 		r.bySlot[k.Slot] = append(r.bySlot[k.Slot], k)
 	}

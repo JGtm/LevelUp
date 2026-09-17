@@ -13,6 +13,7 @@ package grammar
 // d'entree, doivent rendre UNE SEULE sortie.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"reflect"
 	"sort"
 	"testing"
@@ -20,9 +21,9 @@ import (
 
 // poseExAequo fabrique une pose qui partage le triplet de tete (instant de pose, slot,
 // generation) avec ses soeurs : seul le contenu la distingue.
-func poseExAequo(t1us uint64, x float32, globalID uint32, points int) EquipmentPlacement {
-	return EquipmentPlacement{
-		Life:     EquipmentLifeKey{Slot: 7, Gen: 1},
+func poseExAequo(t1us uint64, x float32, globalID uint32, points int) types.EquipmentPlacement {
+	return types.EquipmentPlacement{
+		Life:     types.EquipmentLifeKey{Slot: 7, Gen: 1},
 		T0US:     1000,
 		T1US:     t1us,
 		X:        x,
@@ -43,15 +44,15 @@ func TestLessPlacementEstTotalSurDesPosesExAequo(t *testing.T) {
 	d := poseExAequo(2000, 10, 99, 5) // meme position, autre identite d'objet
 	e := poseExAequo(2000, 10, 42, 9) // tout pareil, plus d'echantillons
 
-	ordres := [][]EquipmentPlacement{
+	ordres := [][]types.EquipmentPlacement{
 		{a, b, c, d, e},
 		{e, d, c, b, a},
 		{c, a, e, b, d},
 		{b, e, a, d, c},
 	}
-	var reference []EquipmentPlacement
+	var reference []types.EquipmentPlacement
 	for i, entree := range ordres {
-		copie := append([]EquipmentPlacement(nil), entree...)
+		copie := append([]types.EquipmentPlacement(nil), entree...)
 		sort.Slice(copie, func(x, y int) bool { return lessPlacement(copie[x], copie[y]) })
 		if i == 0 {
 			reference = copie
@@ -80,16 +81,16 @@ func TestLessPlacementRespecteLesCriteresDeTete(t *testing.T) {
 		t.Error("la pose la plus precoce doit passer devant, quel que soit son contenu")
 	}
 	memeInstant := poseExAequo(9000, 99, 999, 99)
-	memeInstant.Life = EquipmentLifeKey{Slot: 2, Gen: 0}
+	memeInstant.Life = types.EquipmentLifeKey{Slot: 2, Gen: 0}
 	autreSlot := poseExAequo(0, 0, 0, 0)
-	autreSlot.Life = EquipmentLifeKey{Slot: 3, Gen: 0}
+	autreSlot.Life = types.EquipmentLifeKey{Slot: 3, Gen: 0}
 	if !lessPlacement(memeInstant, autreSlot) {
 		t.Error("a instant de pose egal, le plus petit slot passe devant")
 	}
 	gen0 := poseExAequo(9000, 99, 999, 99)
-	gen0.Life = EquipmentLifeKey{Slot: 2, Gen: 0}
+	gen0.Life = types.EquipmentLifeKey{Slot: 2, Gen: 0}
 	gen1 := poseExAequo(0, 0, 0, 0)
-	gen1.Life = EquipmentLifeKey{Slot: 2, Gen: 1}
+	gen1.Life = types.EquipmentLifeKey{Slot: 2, Gen: 1}
 	if !lessPlacement(gen0, gen1) {
 		t.Error("a instant de pose et slot egaux, la plus petite generation passe devant")
 	}

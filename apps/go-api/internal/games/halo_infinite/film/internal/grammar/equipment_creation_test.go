@@ -42,6 +42,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
 	"os"
 	"sort"
@@ -102,7 +103,7 @@ func TestEquipmentCreationRecord(t *testing.T) {
 		t.Log("VERDICT PHASE 0 : aucun record de création lu — le canal ne porte rien ici")
 		return
 	}
-	clean := equipCreationFilter(cre, func(c EquipmentCreation) bool { return c.MaskFull && c.MaskHasI0 })
+	clean := equipCreationFilter(cre, func(c types.EquipmentCreation) bool { return c.MaskFull && c.MaskHasI0 })
 	equipCreationLogFields(t, "TOUS", cre)
 	equipCreationLogFields(t, "COHORTE PROPRE (masque plein + i0)", clean)
 	equipCreationLogLives(t, clean)
@@ -150,7 +151,7 @@ func equipCreationBands(t *testing.T, dir string) (real, phantom map[uint32]bool
 	return real, phantom
 }
 
-func equipCreationLogStats(t *testing.T, label string, st EquipmentCreationStats) {
+func equipCreationLogStats(t *testing.T, label string, st types.EquipmentCreationStats) {
 	t.Helper()
 	t.Logf("== %s — %d slots · ancres NEW ti=%d %d · ACCEPTÉS %d ==",
 		label, st.Slots, EquipmentTypeIndex, st.Anchors, st.Accepted)
@@ -165,7 +166,7 @@ func equipCreationLogStats(t *testing.T, label string, st EquipmentCreationStats
 // equipCreationLogFields publie la DISTRIBUTION des deux champs. C'est la mesure du gate 0 :
 // une poignée de valeurs stables dit une énumération ou un identifiant de définition ; autant
 // de valeurs que d'entités dit du bruit, et le plan s'arrête là.
-func equipCreationLogFields(t *testing.T, label string, cre []EquipmentCreation) {
+func equipCreationLogFields(t *testing.T, label string, cre []types.EquipmentCreation) {
 	t.Helper()
 	ids := map[uint32]int{}
 	refs := map[uint32]int{}
@@ -195,7 +196,7 @@ func equipCreationLogFields(t *testing.T, label string, cre []EquipmentCreation)
 // `object-multiplayer-properties` du MÊME record. C'est là que se trouve le SEUL champ de
 // 32 bits transmis sur tous les records de création : si l'identité de l'objet est écrite
 // quelque part dans son record de naissance, c'est le premier endroit où la chercher.
-func equipCreationLogMPP(t *testing.T, cre []EquipmentCreation) {
+func equipCreationLogMPP(t *testing.T, cre []types.EquipmentCreation) {
 	t.Helper()
 	for f := 0; f < MPPFieldCount; f++ {
 		h := map[uint32]int{}
@@ -238,7 +239,7 @@ func equipCreationLine(h map[uint32]int, limit int) string {
 
 // equipCreationLogLives compte les VIES d'objet (slot, génération) et dit combien portent un
 // identifiant — le dénominateur sans lequel « N records » ne se juge pas.
-func equipCreationLogLives(t *testing.T, cre []EquipmentCreation) {
+func equipCreationLogLives(t *testing.T, cre []types.EquipmentCreation) {
 	t.Helper()
 	type key struct{ slot, gen uint32 }
 	lives := map[key]bool{}
@@ -269,14 +270,14 @@ func equipCreationLogLives(t *testing.T, cre []EquipmentCreation) {
 // (ScanFilmWorldObjects) : une création dont le couple (slot, génération) n'existe dans aucune
 // trajectoire, ou dont la position ne retombe pas sur le premier point de la vie, est un faux
 // positif. C'est la chaîne indépendante qui juge l'ancre.
-func equipCreationCrossCheck(t *testing.T, fc *FilmContext, cre []EquipmentCreation) {
+func equipCreationCrossCheck(t *testing.T, fc *FilmContext, cre []types.EquipmentCreation) {
 	t.Helper()
 	tracks, err := ScanWorldObjects(fc, &equipCreationUnitRange, EquipmentTypeIndex)
 	if err != nil {
 		t.Logf("CONTRÔLE CROISÉ non calculable : %v", err)
 		return
 	}
-	firstPt := map[equipCreationLifeKey]ProjectileSample{}
+	firstPt := map[equipCreationLifeKey]types.ProjectileSample{}
 	for _, tr := range tracks {
 		k := equipCreationLifeKey{tr.Slot, tr.Gen}
 		if p, ok := firstPt[k]; !ok || tr.Pts[0].TimestampUS < p.TimestampUS {
@@ -286,15 +287,15 @@ func equipCreationCrossCheck(t *testing.T, fc *FilmContext, cre []EquipmentCreat
 	t.Logf("== CONTRÔLE CROISÉ — %d créations contre %d vies delta ==", len(cre), len(firstPt))
 	equipCreationCohort(t, "TOUTES", cre, firstPt)
 	equipCreationCohort(t, "masque PLEIN", equipCreationFilter(cre,
-		func(c EquipmentCreation) bool { return c.MaskFull }), firstPt)
+		func(c types.EquipmentCreation) bool { return c.MaskFull }), firstPt)
 	equipCreationCohort(t, "masque éparse", equipCreationFilter(cre,
-		func(c EquipmentCreation) bool { return !c.MaskFull }), firstPt)
+		func(c types.EquipmentCreation) bool { return !c.MaskFull }), firstPt)
 	equipCreationCohort(t, "i0 AU masque", equipCreationFilter(cre,
-		func(c EquipmentCreation) bool { return c.MaskHasI0 }), firstPt)
+		func(c types.EquipmentCreation) bool { return c.MaskHasI0 }), firstPt)
 	equipCreationCohort(t, "i0 ABSENT du masque", equipCreationFilter(cre,
-		func(c EquipmentCreation) bool { return !c.MaskHasI0 }), firstPt)
+		func(c types.EquipmentCreation) bool { return !c.MaskHasI0 }), firstPt)
 	equipCreationCohort(t, "PROPRE + id transmis", equipCreationFilter(cre,
-		func(c EquipmentCreation) bool { return c.MaskFull && c.MaskHasI0 && c.HasID }), firstPt)
+		func(c types.EquipmentCreation) bool { return c.MaskFull && c.MaskHasI0 && c.HasID }), firstPt)
 }
 
 type equipCreationLifeKey struct{ slot, gen uint32 }
@@ -303,8 +304,8 @@ type equipCreationLifeKey struct{ slot, gen uint32 }
 // antériorité, et écart de position. Séparer les cohortes est ce qui dit LAQUELLE des formes
 // acceptées porte du signal — une moyenne globale les mélangerait.
 func equipCreationCohort(
-	t *testing.T, label string, cre []EquipmentCreation,
-	firstPt map[equipCreationLifeKey]ProjectileSample,
+	t *testing.T, label string, cre []types.EquipmentCreation,
+	firstPt map[equipCreationLifeKey]types.ProjectileSample,
 ) {
 	t.Helper()
 	if len(cre) == 0 {
@@ -334,8 +335,8 @@ func equipCreationCohort(
 		100*float64(matched)/float64(len(cre)), before, d[len(d)/2], d[(len(d)*9)/10])
 }
 
-func equipCreationFilter(cre []EquipmentCreation, keep func(EquipmentCreation) bool) []EquipmentCreation {
-	var out []EquipmentCreation
+func equipCreationFilter(cre []types.EquipmentCreation, keep func(types.EquipmentCreation) bool) []types.EquipmentCreation {
+	var out []types.EquipmentCreation
 	for _, c := range cre {
 		if keep(c) {
 			out = append(out, c)
@@ -344,7 +345,7 @@ func equipCreationFilter(cre []EquipmentCreation, keep func(EquipmentCreation) b
 	return out
 }
 
-func equipCreationDist(c EquipmentCreation, p ProjectileSample) float64 {
+func equipCreationDist(c types.EquipmentCreation, p types.ProjectileSample) float64 {
 	dx, dy, dz := float64(c.X-p.X), float64(c.Y-p.Y), float64(c.Z-p.Z)
 	return math.Sqrt(dx*dx + dy*dy + dz*dz)
 }

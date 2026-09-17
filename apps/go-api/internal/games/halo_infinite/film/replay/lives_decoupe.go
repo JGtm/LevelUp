@@ -48,6 +48,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // buildLifeSpans découpe les trajectoires en SÉJOURS DE RÉPLICATION : un slot qui disparaît plus
@@ -234,7 +235,7 @@ func mortsParJoueur(deaths []Death, offsetMS int64) map[uint64][]int64 {
 //
 // LES BORNES VIENNENT D'`objectives`, QUI LES MESURE DEJA (`ResolveRoundBounds`) : les
 // re-mesurer ici ferait deux mesures de la meme grandeur, qui divergeraient.
-func manchesEnFilmUS(records []objectives.StatRecord, offsetMS int64) []int64 {
+func manchesEnFilmUS(records []types.StatRecord, offsetMS int64) []int64 {
 	if len(records) == 0 {
 		return nil
 	}

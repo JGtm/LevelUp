@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Gardes d environnement du lot V4.
@@ -46,7 +47,7 @@ type v4Ctx struct {
 	// recalculer a chaque etage.
 	lives     []vehicleLife
 	vehBySlot map[uint32][]grammar.BipedPosition
-	spawns    map[grammar.EquipmentLifeKey]grammar.EquipmentCreation
+	spawns    map[types.EquipmentLifeKey]types.EquipmentCreation
 	// lifeBySlot indexe les vies par slot, et slots liste TOUS les slots de vehicule (ceux du
 	// nuage ET ceux qui n ont qu une naissance), TRIES. Les deux existent pour le cout : la
 	// mesure interroge le voisin le plus proche des dizaines de milliers de fois, et un balayage

@@ -116,7 +116,7 @@ func TestR8PosesSocles(t *testing.T) {
 }
 
 // r8OriginOrUnknown : un artefact anterieur au schema 10 ne porte pas d'origine — la
-// lecture est `unknown`, JAMAIS `deployed` (cf. EquipmentPlacement.Origin).
+// lecture est `unknown`, JAMAIS `deployed` (cf. types.EquipmentPlacement.Origin).
 func r8OriginOrUnknown(o string) string {
 	if o == "" {
 		return "unknown"

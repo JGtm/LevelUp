@@ -38,7 +38,10 @@ package killsource
 // AUCUNE FUSION DE VALEURS, aucune moyenne, aucun vote : si les deux voies decodaient un tag
 // different au meme instant, la marche gagnerait et l ecart serait COMPTE, jamais lisse.
 
-import "sort"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"sort"
+)
 
 // sourcedCandidate : un candidat, avec la voie qui l a produit.
 type sourcedCandidate struct {
@@ -68,7 +71,7 @@ type pass struct {
 	// seul comptage des inexpliques : un candidat a indice de bot qui a servi n en est pas un.
 	botUsed map[[3]int]bool
 	// appar : D OU VIENT L APPARIEMENT de chaque ligne PUBLIEE (lot 1.9.7).
-	appar     ApparStats
+	appar     types.ApparStats
 	redundant int
 	noBit     int
 	agree     int

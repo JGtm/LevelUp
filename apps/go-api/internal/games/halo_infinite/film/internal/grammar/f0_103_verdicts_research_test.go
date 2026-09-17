@@ -8,7 +8,7 @@ package grammar
 // Trois references gardees, domaines {0,0,7}, index de 13 bits + generation de 2 bits. La
 // resolution testee est un APPARIEMENT EXACT, jamais une fenetre de temps : `(base + index,
 // generation)` est-il la cle d une VIE d objet `ti=37` reellement creee dans le film
-// (`EquipmentCreation.Slot/Gen`) ? Deux bases sont mesurees cote a cote — 0 et 512 (R1 avait
+// (`types.EquipmentCreation.Slot/Gen`) ? Deux bases sont mesurees cote a cote — 0 et 512 (R1 avait
 // etabli la base 512 sur le type 117) — et c est l ecart entre elles, contre le TEMOIN, qui
 // tranche.
 //

@@ -46,6 +46,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -138,7 +139,7 @@ func v2cProcessFilm(t *testing.T, dir, short8 string, entry profile.MapQuantEntr
 }
 
 // v2cLivesPerBirth dedup une naissance par vie (slot,gen), la plus precoce, en metres monde.
-func v2cLivesPerBirth(cre []grammar.EquipmentCreation) []*v2cLife {
+func v2cLivesPerBirth(cre []types.EquipmentCreation) []*v2cLife {
 	best := map[[2]uint32]*v2cLife{}
 	for _, c := range cre {
 		key := [2]uint32{c.Slot, c.Gen}
@@ -159,7 +160,7 @@ func v2cLivesPerBirth(cre []grammar.EquipmentCreation) []*v2cLife {
 // v2cAttachCensus pose goneBy (premiere image-cle apres le dernier recensement) par vie.
 func v2cAttachCensus(lives []*v2cLife, kf grammar.WorldObjectKeyframes) {
 	for _, l := range lives {
-		seen := kf.SeenUS[grammar.EquipmentLifeKey{Slot: l.slot, Gen: l.gen}]
+		seen := kf.SeenUS[types.EquipmentLifeKey{Slot: l.slot, Gen: l.gen}]
 		if len(seen) == 0 {
 			continue
 		}

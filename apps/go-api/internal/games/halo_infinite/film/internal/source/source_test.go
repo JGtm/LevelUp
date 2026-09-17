@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // miniBobine : la mini-bobine du film 000d5950 (Cliffhanger, Fiesta), fixture de `replay` avec sa
@@ -146,15 +147,15 @@ func TestLoadDirMiniBobine(t *testing.T) {
 // « taille 0 » et « CHUNK_END » y sont le MEME paquet, en derniere position, mesure sur 1 378
 // films (cf. l en-tete de paquet). C est cette mesure que le temoin re-joue a chaque CI, sur
 // tous les chunks de la bobine.
-func refWalkPackets(chunk []byte) []source.Packet {
-	var out []source.Packet
+func refWalkPackets(chunk []byte) []types.Packet {
+	var out []types.Packet
 	off := 0
 	for off+16 <= len(chunk) {
 		taille := int(binary.LittleEndian.Uint32(chunk[off+4:]))
 		if taille < 0 || off+16+taille > len(chunk) {
 			break
 		}
-		out = append(out, source.Packet{
+		out = append(out, types.Packet{
 			Index:   len(out),
 			Type:    int(binary.LittleEndian.Uint16(chunk[off:])),
 			TS:      binary.LittleEndian.Uint64(chunk[off+8:]),
@@ -185,7 +186,7 @@ func TestDeuxMarcheursDePaquetsSAccordent(t *testing.T) {
 }
 
 // comparerAuxDeuxMarcheurs oppose le decoupage obtenu a celui de [refWalkPackets].
-func comparerAuxDeuxMarcheurs(t *testing.T, chunk []byte, obtenus []source.Packet) {
+func comparerAuxDeuxMarcheurs(t *testing.T, chunk []byte, obtenus []types.Packet) {
 	t.Helper()
 	attendus := refWalkPackets(chunk)
 	if len(attendus) == 0 {
@@ -261,7 +262,7 @@ func TestLoadDirFusionneLeManifestePARNUMERO(t *testing.T) {
 		}
 	}
 	// Le manifeste decrit TROIS chunks ; le 01 n'est pas descendu.
-	manifeste := []source.ChunkMeta{
+	manifeste := []types.ChunkMeta{
 		{Index: 0, ChunkType: 1, StartMS: 0},
 		{Index: 1, ChunkType: 2, StartMS: 1000},
 		{Index: 2, ChunkType: 2, StartMS: 2000},
@@ -274,10 +275,10 @@ func TestLoadDirFusionneLeManifestePARNUMERO(t *testing.T) {
 	if len(meta) != 2 {
 		t.Fatalf("Meta = %d entrees, attendu 2 (une par FICHIER, pas par entree de manifeste)", len(meta))
 	}
-	if meta[0] != (source.ChunkMeta{Index: 0, ChunkType: 1, StartMS: 0}) {
+	if meta[0] != (types.ChunkMeta{Index: 0, ChunkType: 1, StartMS: 0}) {
 		t.Fatalf("Meta[0] = %+v, attendu l'entree de manifeste du chunk 0", meta[0])
 	}
-	if meta[1] != (source.ChunkMeta{Index: 2, ChunkType: 2, StartMS: 2000}) {
+	if meta[1] != (types.ChunkMeta{Index: 2, ChunkType: 2, StartMS: 2000}) {
 		t.Fatalf("Meta[1] = %+v — un alignement PAR POSITION aurait rendu l'entree du chunk 1", meta[1])
 	}
 }

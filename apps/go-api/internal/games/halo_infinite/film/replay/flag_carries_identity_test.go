@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // flag_carries_identity_test.go — QUI NOMME LE PORTEUR : ce paquet, ou son appelant ?
@@ -16,12 +17,12 @@ import (
 // flagIdentityRecs — deux slots dont le pont PAR MORTS ne nomme que le premier : le slot 10
 // aligne trois progressions du compteur de morts sur le fil de "aaa", le slot 12 n'en aligne
 // que deux (sous `deathInstantMin` = 3).
-func flagIdentityRecs() ([]objectives.StatRecord, []Death) {
-	rec := func(t, slot int, kills, deaths int64) objectives.StatRecord {
-		return objectives.StatRecord{TimeMS: t, Slot: slot, Round: 0,
-			Comps: map[int]objectives.StatValue{2: {A: kills, B: deaths}}}
+func flagIdentityRecs() ([]types.StatRecord, []Death) {
+	rec := func(t, slot int, kills, deaths int64) types.StatRecord {
+		return types.StatRecord{TimeMS: t, Slot: slot, Round: 0,
+			Comps: map[int]types.StatValue{2: {A: kills, B: deaths}}}
 	}
-	recs := []objectives.StatRecord{
+	recs := []types.StatRecord{
 		rec(1000, 10, 1, 1), rec(2000, 10, 2, 2), rec(3000, 10, 3, 3),
 		rec(5000, 12, 1, 1), rec(6000, 12, 2, 2),
 	}

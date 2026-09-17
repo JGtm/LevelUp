@@ -17,6 +17,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
 	"os"
 	"path/filepath"
@@ -101,7 +102,7 @@ func TestP1bisPositionsDynasty(t *testing.T) {
 }
 
 // p1bisCompare confronte UN événement décodé à son ancre et chiffre les écarts.
-func p1bisCompare(t *testing.T, i int, want p1bisAncre, got TranslocatorTeleport) {
+func p1bisCompare(t *testing.T, i int, want p1bisAncre, got types.TranslocatorTeleport) {
 	t.Helper()
 	if got.Slot != want.slot {
 		t.Errorf("événement %d : slot %d, attendu %d", i, got.Slot, want.slot)

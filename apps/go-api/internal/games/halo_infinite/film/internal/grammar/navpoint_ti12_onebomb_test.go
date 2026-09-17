@@ -37,6 +37,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"path/filepath"
 	"sort"
@@ -99,9 +100,9 @@ func TestNavpointTi12OneBombInspection(t *testing.T) {
 // `tpMonteesContigues` — a l'identique, le plancher A/B/C en temoigne) : l'inspection
 // One Bomb juge ainsi le code qui publie, pas une copie.
 func obFinsContigues(slot uint32, s []ti12Ech) []int32 {
-	reads := make([]NavpointRadialRead, 0, len(s))
+	reads := make([]types.NavpointRadialRead, 0, len(s))
 	for _, e := range s {
-		reads = append(reads, NavpointRadialRead{Slot: slot, TMS: e.tMS, Q: e.q})
+		reads = append(reads, types.NavpointRadialRead{Slot: slot, TMS: e.tMS, Q: e.q})
 	}
 	var fins []int32
 	for _, m := range NavpointContiguousRises(reads) {
@@ -174,9 +175,9 @@ func obTousSegments(series map[uint32][]ti12Ech) []obSeg {
 // ne s'est pas dupliquee) : l'inspection juge le code qui publie, jamais une copie qui
 // derivera. Seul `gapAvant` reste local, il ne sert qu'a l'impression.
 func obSegmenter(slot uint32, s []ti12Ech) []obSeg {
-	reads := make([]NavpointRadialRead, 0, len(s))
+	reads := make([]types.NavpointRadialRead, 0, len(s))
 	for _, e := range s {
-		reads = append(reads, NavpointRadialRead{Slot: slot, TMS: e.tMS, Q: e.q})
+		reads = append(reads, types.NavpointRadialRead{Slot: slot, TMS: e.tMS, Q: e.q})
 	}
 	segs := NavpointSegments(reads)
 	out := make([]obSeg, 0, len(segs))

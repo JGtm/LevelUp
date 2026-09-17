@@ -40,6 +40,7 @@ package grammar
 //	  -timeout 120m -v
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -146,7 +147,7 @@ func r8Bursts(speeds r8SpeedIndex) []r8Anchor {
 }
 
 // r8SplitByGrapple separe les ancres selon leur proximite d'une lecture de grappin.
-func r8SplitByGrapple(anchors []r8Anchor, gr []GrappleRead) (withG, without []r8Anchor) {
+func r8SplitByGrapple(anchors []r8Anchor, gr []types.GrappleRead) (withG, without []r8Anchor) {
 	for _, a := range anchors {
 		near := false
 		for _, g := range gr {

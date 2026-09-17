@@ -82,7 +82,7 @@ func goldenInputsPath() string {
 // lue par `ScanFilmPlayerTable` dans `chunk_00`) — le lien DIRECT `index <-> xuid <-> gamertag`
 // dont le registre d identite fait sa source premiere. Elle porte son REFUS comme elle porte ses
 // sieges : une table non lue n est pas une table vide, et le document publie la difference.
-// Les neuf champs courts et le jeton de session que `grammar.PlayerSlot` expose N ENTRENT PAS —
+// Les neuf champs courts et le jeton de session que `types.PlayerSlot` expose N ENTRENT PAS —
 // aucun assemblage ne les lit, et la doctrine de ce fichier est que le fixture porte ce que
 // l assemblage CONSOMME.
 //

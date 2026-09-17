@@ -1,6 +1,9 @@
 package grammar
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 // inventory_delta_test.go — LES GARDE-RAILS PURS du suivi delta de l'inventaire (aucun film,
 // aucune I/O : ils valent en CI, contrairement à l'instrument de corpus
@@ -128,7 +131,7 @@ func TestCollectI47RameneLaSelectionEnBase0(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.nom, func(t *testing.T) {
 			sc := &invDeltaScanner{got47: true, last47mask: c.mask, last47sel: c.sel}
-			var rec InventoryDelta
+			var rec types.InventoryDelta
 			if !sc.collectI47(&rec) {
 				t.Fatal("collectI47 a rendu false alors que la lecture a abouti")
 			}
@@ -151,7 +154,7 @@ func TestCollectI47RameneLaSelectionEnBase0(t *testing.T) {
 // inventées sans qu'aucun test ne rougisse.
 func TestCollectI22NePubliePasUneLectureImplausible(t *testing.T) {
 	sc := &invDeltaScanner{got22: true, last22c: 4, last22v: []uint64{0, 200, 0, 0}}
-	var rec InventoryDelta
+	var rec types.InventoryDelta
 	if sc.collectI22(&rec) {
 		t.Fatal("une lecture implausible a été publiée")
 	}
@@ -268,7 +271,7 @@ func TestCollectAmmoAppliqueLesEnveloppes(t *testing.T) {
 		sc := &invDeltaScanner{}
 		sc.ammo[0] = invDeltaAmmoAcc{Read: true, HasMag: true, Mag: 36, HasFrac: true, FracQ: 2048}
 		sc.rounds[0], sc.roundsRead[0] = 240, true
-		var rec InventoryDelta
+		var rec types.InventoryDelta
 		if !sc.collectAmmo(&rec) {
 			t.Fatal("collectAmmo a rendu false")
 		}
@@ -286,7 +289,7 @@ func TestCollectAmmoAppliqueLesEnveloppes(t *testing.T) {
 	t.Run("chargeur hors enveloppe : compté, pas publié", func(t *testing.T) {
 		sc := &invDeltaScanner{}
 		sc.ammo[1] = invDeltaAmmoAcc{Read: true, HasMag: true, Mag: 200}
-		var rec InventoryDelta
+		var rec types.InventoryDelta
 		if sc.collectAmmo(&rec) {
 			t.Fatal("une valeur hors enveloppe a été publiée")
 		}
@@ -297,7 +300,7 @@ func TestCollectAmmoAppliqueLesEnveloppes(t *testing.T) {
 	t.Run("porte fermée : ni valeur ni dépassement", func(t *testing.T) {
 		sc := &invDeltaScanner{}
 		sc.ammo[0] = invDeltaAmmoAcc{Read: true}
-		var rec InventoryDelta
+		var rec types.InventoryDelta
 		if sc.collectAmmo(&rec) {
 			t.Fatal("un emplacement sans contenu a été publié")
 		}
@@ -308,7 +311,7 @@ func TestCollectAmmoAppliqueLesEnveloppes(t *testing.T) {
 	t.Run("réserve seule, sans composant de chargeur au masque", func(t *testing.T) {
 		sc := &invDeltaScanner{}
 		sc.rounds[1], sc.roundsRead[1] = 12, true
-		var rec InventoryDelta
+		var rec types.InventoryDelta
 		if !sc.collectAmmo(&rec) {
 			t.Fatal("une réserve seule doit être publiée")
 		}

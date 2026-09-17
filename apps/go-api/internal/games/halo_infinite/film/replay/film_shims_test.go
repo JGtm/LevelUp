@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // filmDeDir charge le film d'un repertoire, ou rend nil. Les decodeurs rendent alors leur
@@ -52,7 +53,7 @@ func buildFromFilmDir(matchID, titleSlug, dir string, opt Options) (ReplayDocume
 // decodeFilmPlacementsDir : [decodeFilmPlacements] depuis un repertoire.
 func decodeFilmPlacementsDir(
 	dir string, wr *profile.Vec3Range,
-) ([]grammar.EquipmentPlacement, grammar.EquipmentPlacementStats) {
+) ([]types.EquipmentPlacement, grammar.EquipmentPlacementStats) {
 	return decodeFilmPlacements(grammar.NewFilmContext(filmDeDir(dir)), dir, wr)
 }
 

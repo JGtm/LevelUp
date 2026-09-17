@@ -43,7 +43,7 @@ import "encoding/binary"
 // profil de largeurs, un observateur, un drapeau de debordement — jamais pour le recopier.
 //
 // Il ne possede pas son tampon : la tranche est celle du chunk decompresse ou du payload de
-// paquet ([Packet.Payload] est une SOUS-TRANCHE du chunk, jamais une copie).
+// paquet ([types.Packet.Payload] est une SOUS-TRANCHE du chunk, jamais une copie).
 type Bits struct {
 	buf []byte
 	pos int // position EN BITS du prochain bit a lire

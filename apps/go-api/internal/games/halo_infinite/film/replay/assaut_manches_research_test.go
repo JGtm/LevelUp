@@ -45,6 +45,7 @@ import (
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // amCorpus : film -> manches REELLES connues du releve A0.3 (ou du mode pour les temoins).
@@ -118,7 +119,7 @@ func amLigne(f struct {
 	id      string
 	libelle string
 	reelles int
-}, recs []objectives.StatRecord, round int, retenues map[int]bool) string {
+}, recs []types.StatRecord, round int, retenues map[int]bool) string {
 	var enr, enrJoueur, tmin, tmax int
 	tmin = -1
 	slots := map[int]bool{}
@@ -161,7 +162,7 @@ func amLigne(f struct {
 
 // amSuiteMax rend, pour une manche, la plus longue suite STRICTEMENT croissante d'un canal,
 // prise au meilleur slot de JOUEUR — exactement la forme du critere de `RealRounds`.
-func amSuiteMax(recs []objectives.StatRecord, round, comp int, sideB bool, maxOK int64) int {
+func amSuiteMax(recs []types.StatRecord, round, comp int, sideB bool, maxOK int64) int {
 	series := map[int][]int64{}
 	tempsPar := map[int][]int{}
 	for _, r := range recs {
@@ -230,7 +231,7 @@ func amLIS(vals []int64) int {
 }
 
 // amManchesBrutes rend les numeros de manche presents dans les enregistrements, tries.
-func amManchesBrutes(recs []objectives.StatRecord) []int {
+func amManchesBrutes(recs []types.StatRecord) []int {
 	vu := map[int]bool{}
 	for _, r := range recs {
 		vu[r.Round] = true
@@ -347,7 +348,7 @@ const (
 )
 
 // amEnrJoueurParManche compte, par manche brute, les enregistrements de slot JOUEUR.
-func amEnrJoueurParManche(recs []objectives.StatRecord) map[int]int {
+func amEnrJoueurParManche(recs []types.StatRecord) map[int]int {
 	out := map[int]int{}
 	for _, r := range recs {
 		if objectives.IsTeamSlot(r.Slot) {
@@ -410,7 +411,7 @@ func TestAssautPointsDeModeParJoueur(t *testing.T) {
 }
 
 // amPremierIncrement rend l'instant du premier point ou la valeur depasse la premiere.
-func amPremierIncrement(pts []objectives.ScorePoint) int {
+func amPremierIncrement(pts []types.ScorePoint) int {
 	if len(pts) == 0 {
 		return -1
 	}
@@ -597,9 +598,9 @@ func TestAssautPontIdentite(t *testing.T) {
 			t.Logf("%s : fil des morts illisible (%v)", f.id, err)
 			continue
 		}
-		var di []objectives.DeathInstant
+		var di []types.DeathInstant
 		for _, d := range deaths {
-			di = append(di, objectives.DeathInstant{
+			di = append(di, types.DeathInstant{
 				XUID: fmt.Sprint(d.XUID), TimeMS: int(d.TimeMS)})
 		}
 		named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)

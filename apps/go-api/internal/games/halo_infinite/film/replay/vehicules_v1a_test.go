@@ -35,6 +35,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // v1aSeuilContinuite est le gate de fonction de V1.2, ecrit avant mesure : le cadrage a releve
@@ -464,7 +465,7 @@ func v1aIntersectionBandes(t *testing.T, f v0Film, dir string, bande map[uint32]
 // C'EST LE DENOMINATEUR QUI MANQUAIT A L'ORACLE DU 18/08. « 46 % des trous du flux s'ouvrent
 // pres d'un vehicule » ne dit rien tant qu'on ignore quelle part du TEMPS un bipede passe pres
 // d'un vehicule : si c'est 45 %, le chiffre est du hasard ; si c'est 3 %, il est massif.
-func v1aPresenceDeFond(veh []grammar.ProjectileTrack, bip []grammar.BipedPosition) (int, int) {
+func v1aPresenceDeFond(veh []types.ProjectileTrack, bip []grammar.BipedPosition) (int, int) {
 	pres, total := 0, 0
 	for _, b := range bip {
 		if !b.HasWorld {
@@ -479,13 +480,13 @@ func v1aPresenceDeFond(veh []grammar.ProjectileTrack, bip []grammar.BipedPositio
 }
 
 // v1aPistes regroupe des positions par slot en pistes triees — la forme qu'attend l'oracle.
-func v1aPistes(pos []grammar.BipedPosition) []grammar.ProjectileTrack {
-	parSlot := map[uint32][]grammar.ProjectileSample{}
+func v1aPistes(pos []grammar.BipedPosition) []types.ProjectileTrack {
+	parSlot := map[uint32][]types.ProjectileSample{}
 	for _, p := range pos {
 		if !p.HasWorld {
 			continue
 		}
-		parSlot[p.Slot] = append(parSlot[p.Slot], grammar.ProjectileSample{
+		parSlot[p.Slot] = append(parSlot[p.Slot], types.ProjectileSample{
 			TimestampUS: p.TimestampUS, Chunk: p.Chunk, X: p.X, Y: p.Y, Z: p.Z,
 		})
 	}
@@ -494,17 +495,17 @@ func v1aPistes(pos []grammar.BipedPosition) []grammar.ProjectileTrack {
 		slots = append(slots, s)
 	}
 	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
-	out := make([]grammar.ProjectileTrack, 0, len(slots))
+	out := make([]types.ProjectileTrack, 0, len(slots))
 	for _, s := range slots {
 		pts := parSlot[s]
 		sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimestampUS < pts[j].TimestampUS })
-		out = append(out, grammar.ProjectileTrack{Slot: s, Pts: pts})
+		out = append(out, types.ProjectileTrack{Slot: s, Pts: pts})
 	}
 	return out
 }
 
 // v1aPublieOracle applique l'oracle et publie ce qu'il rend.
-func v1aPublieOracle(t *testing.T, f v0Film, quoi string, veh []grammar.ProjectileTrack,
+func v1aPublieOracle(t *testing.T, f v0Film, quoi string, veh []types.ProjectileTrack,
 	bip []grammar.BipedPosition) {
 	t.Helper()
 	periodes := attPeriodesABord(veh, bip)

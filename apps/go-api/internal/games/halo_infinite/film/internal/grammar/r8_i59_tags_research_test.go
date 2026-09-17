@@ -35,6 +35,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -147,7 +148,7 @@ func r8Lives(speeds r8SpeedIndex) map[uint32][]r8LifeSpan {
 
 // r8RankInLife rend le rang de capacite lu pour ce slot DANS LA MEME VIE que `at`, ou -1.
 func r8RankInLife(
-	ranks []AbilityRank, lives map[uint32][]r8LifeSpan, slot uint32, at uint64,
+	ranks []types.AbilityRank, lives map[uint32][]r8LifeSpan, slot uint32, at uint64,
 ) int {
 	var span r8LifeSpan
 	found := false
@@ -232,7 +233,7 @@ func r8I59TagsOneFilm(t *testing.T, dir string) {
 // r8LogTag1Dump detaille les lectures i57 tag==1, une par ligne : c'est la population qui
 // porte une charge utile, et elle est assez petite pour se lire en entier. Bornee a 60
 // lignes — un instrument ne deverse pas un film dans un journal.
-func r8LogTag1Dump(t *testing.T, i57 []r8TagRead, ranks []AbilityRank,
+func r8LogTag1Dump(t *testing.T, i57 []r8TagRead, ranks []types.AbilityRank,
 	lives map[uint32][]r8LifeSpan, speeds r8SpeedIndex) {
 	t.Helper()
 	n := 0
@@ -253,7 +254,7 @@ func r8LogTag1Dump(t *testing.T, i57 []r8TagRead, ranks []AbilityRank,
 
 // r8LogTagTable croise tag x rang porte x pic de vitesse.
 func r8LogTagTable(
-	t *testing.T, titre string, reads []r8TagRead, ranks []AbilityRank,
+	t *testing.T, titre string, reads []r8TagRead, ranks []types.AbilityRank,
 	lives map[uint32][]r8LifeSpan, speeds r8SpeedIndex,
 ) {
 	t.Helper()
@@ -347,7 +348,7 @@ func r8NearestAt(list []BipedPosition, at uint64) (BipedPosition, bool) {
 // porte l'identite, pas celui du bipede qui recoit. Les deux lectures sont publiees cote a
 // cote pour que le croisement se voie.
 func r8LogTag1Neighbours(
-	t *testing.T, i57 []r8TagRead, ranks []AbilityRank,
+	t *testing.T, i57 []r8TagRead, ranks []types.AbilityRank,
 	lives map[uint32][]r8LifeSpan, pos map[uint32][]BipedPosition,
 ) {
 	t.Helper()
@@ -414,7 +415,7 @@ func r8LogTag1Neighbours(
 // deux faits opposes. C'est exactement la question du REPULSEUR : ses porteurs sont-ils
 // nombreux et muets, ou absents du film ?
 func r8LogImpulsionsParVie(
-	t *testing.T, i57 []r8TagRead, ranks []AbilityRank, lives map[uint32][]r8LifeSpan,
+	t *testing.T, i57 []r8TagRead, ranks []types.AbilityRank, lives map[uint32][]r8LifeSpan,
 ) {
 	t.Helper()
 	vies := map[int]int{}

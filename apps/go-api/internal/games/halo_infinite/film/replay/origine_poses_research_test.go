@@ -41,6 +41,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -173,7 +174,7 @@ func origineNbVies(vies map[uint32][]origineVie) int {
 
 // origineMesure croise chaque pose avec la vie de son poseur.
 func origineMesure(
-	raw []grammar.EquipmentPlacement, positions []grammar.BipedPosition,
+	raw []types.EquipmentPlacement, positions []grammar.BipedPosition,
 	familles map[uint32]string, vies map[uint32][]origineVie,
 ) []originePose {
 	out := make([]originePose, 0, len(raw))
@@ -224,7 +225,7 @@ func origineVieDe(vs []origineVie, at uint64) (origineVie, bool) {
 
 // origineDist : un ADAPTATEUR de types vers la distance canonique du paquet, jamais une seconde
 // ecriture de la formule (garde-rail `TestUneSeuleFormuleDeDistance3D`).
-func origineDist(p grammar.EquipmentPlacement, x, y, z float32) float64 {
+func origineDist(p types.EquipmentPlacement, x, y, z float32) float64 {
 	return dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{x, y, z})
 }
 

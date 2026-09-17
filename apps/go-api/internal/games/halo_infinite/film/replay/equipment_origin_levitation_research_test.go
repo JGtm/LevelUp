@@ -80,6 +80,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -310,7 +311,7 @@ func TestOriginBirthRecurrenceClusters(t *testing.T) {
 	t.Logf("carte %q · %d pose(s) ti=37 · calibration MPP : %s", module, len(poses), pst.Calibration)
 
 	// Regroupement par nature, pour R3. Le préfixe `grenade_` est la convention du manifeste.
-	parNature := map[string][]grammar.EquipmentPlacement{}
+	parNature := map[string][]types.EquipmentPlacement{}
 	for _, p := range poses {
 		nature := "equipement"
 		fam, ok := familles[p.GlobalID]
@@ -362,8 +363,8 @@ type recAmasPoint struct {
 // GLOUTON ET NON ITÉRATIF, À DESSEIN : on cherche à savoir S'IL EXISTE des points réutilisés,
 // pas à produire un partitionnement optimal. Un algorithme plus fin ne changerait pas le verdict
 // et ajouterait des paramètres à justifier.
-func recAmas(poses []grammar.EquipmentPlacement) []recAmasPoint {
-	reste := append([]grammar.EquipmentPlacement(nil), poses...)
+func recAmas(poses []types.EquipmentPlacement) []recAmasPoint {
+	reste := append([]types.EquipmentPlacement(nil), poses...)
 	var out []recAmasPoint
 	for len(reste) > 0 {
 		meilleur, meilleurN := 0, 0
@@ -379,7 +380,7 @@ func recAmas(poses []grammar.EquipmentPlacement) []recAmasPoint {
 			}
 		}
 		centre := reste[meilleur]
-		var garde []grammar.EquipmentPlacement
+		var garde []types.EquipmentPlacement
 		for _, q := range reste {
 			if glDist(centre.X, centre.Y, centre.Z, q.X, q.Y, q.Z) > recRayonAmas {
 				garde = append(garde, q)
@@ -398,14 +399,14 @@ func recAmas(poses []grammar.EquipmentPlacement) []recAmasPoint {
 
 // recAmasTemoin rend le nombre d'amas qu'on obtient en tirant le MÊME nombre de points
 // uniformément dans les bornes de la carte — le plancher du hasard pour R2.
-func recAmasTemoin(poses []grammar.EquipmentPlacement, wr profile.Vec3Range, graine int64) int {
+func recAmasTemoin(poses []types.EquipmentPlacement, wr profile.Vec3Range, graine int64) int {
 	if len(poses) == 0 {
 		return 0
 	}
 	rng := rand.New(rand.NewSource(graine))
-	faux := make([]grammar.EquipmentPlacement, len(poses))
+	faux := make([]types.EquipmentPlacement, len(poses))
 	for i := range faux {
-		faux[i] = grammar.EquipmentPlacement{
+		faux[i] = types.EquipmentPlacement{
 			X: recEntre(wr[0], rng),
 			Y: recEntre(wr[1], rng),
 			Z: recEntre(wr[2], rng),

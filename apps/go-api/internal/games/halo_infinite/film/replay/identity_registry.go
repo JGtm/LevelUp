@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // IdentityClock est l'axe de frames du document, quand l'appelant en a un.
@@ -112,7 +113,7 @@ type IdentityInput struct {
 // memorisation existe pour eviter.
 type StatborgIdentityInput struct {
 	Identity objectives.RoundIdentity
-	Records  []objectives.StatRecord
+	Records  []types.StatRecord
 }
 
 // IdentityRegistry est la table d'identite d'UN film : les liens, leur provenance, et les
@@ -244,7 +245,7 @@ func (r IdentityRegistry) PontDeSlot(slot uint32) string {
 
 // scoreRecordsOf rend les enregistrements de statborg que l'appelant a deja decodes, ou rien.
 // Le registre ne decode jamais : il PUBLIE ce que la lecture a rendu.
-func scoreRecordsOf(in *ScoreInput) []objectives.StatRecord {
+func scoreRecordsOf(in *ScoreInput) []types.StatRecord {
 	if in == nil {
 		return nil
 	}

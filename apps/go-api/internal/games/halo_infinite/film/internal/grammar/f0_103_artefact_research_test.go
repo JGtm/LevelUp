@@ -33,6 +33,7 @@ import (
 	"sort"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -135,7 +136,7 @@ func f0Joint(f f0Film, a f0Art) ([]f0Pose, int, int) {
 		t0 int
 		id uint32
 	}
-	seaux := map[cle][]EquipmentPlacement{}
+	seaux := map[cle][]types.EquipmentPlacement{}
 	for _, p := range f.Places {
 		t0 := f0Frame(p.T0US, origin, step)
 		if t0 < 0 {

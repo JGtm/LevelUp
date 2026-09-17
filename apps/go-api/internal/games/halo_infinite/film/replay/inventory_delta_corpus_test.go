@@ -35,6 +35,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -219,7 +220,7 @@ func invConfrontOneFilm(dir string) (invConfrontation, []float64, []float64, err
 		c.FilmsAmmoRefused = 1
 	}
 
-	bySlot := map[uint32][]grammar.InventoryDelta{}
+	bySlot := map[uint32][]types.InventoryDelta{}
 	for _, d := range deltas {
 		bySlot[d.Slot] = append(bySlot[d.Slot], d)
 	}
@@ -266,8 +267,8 @@ func invConfrontOneFilm(dir string) (invConfrontation, []float64, []float64, err
 // invLastDeltaBefore rend la dernière lecture delta PORTEUSE DE COMPTEURS antérieure à `at`.
 // Une lecture qui ne porte qu'i47 ne dit rien des compteurs : la retenir masquerait la vraie
 // dernière mesure.
-func invLastDeltaBefore(seq []grammar.InventoryDelta, at uint64) (grammar.InventoryDelta, bool) {
-	var out grammar.InventoryDelta
+func invLastDeltaBefore(seq []types.InventoryDelta, at uint64) (types.InventoryDelta, bool) {
+	var out types.InventoryDelta
 	found := false
 	for _, d := range seq {
 		if d.TimestampUS > at {
@@ -283,7 +284,7 @@ func invLastDeltaBefore(seq []grammar.InventoryDelta, at uint64) (grammar.Invent
 // invConfrontAmmo confronte, pour chaque emplacement d'arme, le dernier CHARGEUR transmis en
 // delta au chargeur de l'image-clé — a la seule condition que les deux lectures soient proches
 // dans le temps (cf. invAmmoWindowUS).
-func invConfrontAmmo(c *invConfrontation, seq []grammar.InventoryDelta, k KeyframeInventory) {
+func invConfrontAmmo(c *invConfrontation, seq []types.InventoryDelta, k KeyframeInventory) {
 	for slot := 0; slot < 2 && slot < len(k.Ammo); slot++ {
 		if k.Ammo[slot].Mag == nil {
 			continue
@@ -332,7 +333,7 @@ func invConfrontAmmo(c *invConfrontation, seq []grammar.InventoryDelta, k Keyfra
 // quand l'inventaire d'un joueur CHANGE reellement, le canal delta le rapporte-t-il ? Un
 // rappel bas ne rend pas les lectures fausses (la concordance le mesure a part) ; il borne le
 // gain de fraicheur qu'on peut promettre.
-func invRecall(c *invConfrontation, kf []KeyframeInventory, bySlot map[uint32][]grammar.InventoryDelta) {
+func invRecall(c *invConfrontation, kf []KeyframeInventory, bySlot map[uint32][]types.InventoryDelta) {
 	bySlotKF := map[uint32][]KeyframeInventory{}
 	for _, k := range kf {
 		if k.GrenadesRead {
@@ -375,7 +376,7 @@ func invSameGrenades(delta []uint32, kfv [4]uint32) bool {
 // invFreshness échantillonne à 1 Hz, sur la durée de vie de chaque slot, l'âge de la dernière
 // lecture connue — d'abord avec les images-clés seules, puis les deux canaux fusionnés.
 func invFreshness(
-	kf []KeyframeInventory, bySlot map[uint32][]grammar.InventoryDelta,
+	kf []KeyframeInventory, bySlot map[uint32][]types.InventoryDelta,
 ) (ageKF, ageMerged []float64, between int) {
 	kfBySlot := map[uint32][]uint64{}
 	for _, k := range kf {

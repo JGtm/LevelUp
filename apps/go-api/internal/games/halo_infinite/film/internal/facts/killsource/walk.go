@@ -33,6 +33,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // deadRecord : un dead-state atteint par la marche, avec sa position.
@@ -41,7 +42,7 @@ type deadRecord struct {
 	chunk, pidx int
 	slot        int
 	bit         int // position du composant dead-state, -1 si non enregistree
-	dead        grammar.DeadState
+	dead        types.DeadState
 }
 
 // walkResult : ce que la passe de marche produit.

@@ -38,6 +38,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
 	"os"
 	"sort"
@@ -152,7 +153,7 @@ func translocBeaconID(t *testing.T) uint32 {
 	return uint32(v)
 }
 
-func translocSplit(pl []EquipmentPlacement, beacon uint32) (balises, autres []EquipmentPlacement) {
+func translocSplit(pl []types.EquipmentPlacement, beacon uint32) (balises, autres []types.EquipmentPlacement) {
 	for _, p := range pl {
 		if p.GlobalID == beacon {
 			balises = append(balises, p)
@@ -255,7 +256,7 @@ func translocDist(a, b [3]float32) float64 {
 // Le témoin n'est pas décoratif : les poses d'équipement sont nombreuses et réparties sur la
 // carte, donc « une arrivée près d'une pose » arrive par hasard. C'est l'ÉCART entre les deux
 // taux qui dirait quelque chose, jamais le taux seul.
-func translocRapport(t *testing.T, sauts []translocSaut, balises, autres []EquipmentPlacement) {
+func translocRapport(t *testing.T, sauts []translocSaut, balises, autres []types.EquipmentPlacement) {
 	t.Helper()
 	if len(sauts) == 0 {
 		t.Log("AUCUN saut : rien à confronter")
@@ -291,7 +292,7 @@ func translocRapport(t *testing.T, sauts []translocSaut, balises, autres []Equip
 
 // translocProches rend les sauts dont l'ARRIVÉE tombe à moins de translocArriveM d'une pose
 // VIVANTE à cet instant.
-func translocProches(sauts []translocSaut, poses []EquipmentPlacement) []translocSaut {
+func translocProches(sauts []translocSaut, poses []types.EquipmentPlacement) []translocSaut {
 	var out []translocSaut
 	for _, s := range sauts {
 		for _, p := range poses {

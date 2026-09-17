@@ -48,6 +48,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // agFenetreMS est la tolérance du critère (b) : 4 930 ± 600 ms, la demi-fenêtre sous laquelle
@@ -200,7 +201,7 @@ func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCover
 // agDiagnostiquerSegments publie CHAQUE armement dédupliqué avec ses quanta, et CHAQUE tenue
 // de désarmement avec sa pente : c'est la matière brute de la lecture pausable, montrée avant
 // tout verdict. Le marqueur `<- EXPLOSION` dit quels armements une explosion suit de près.
-func agDiagnostiquerSegments(t *testing.T, id string, reads []grammar.NavpointRadialRead, explosions []int) {
+func agDiagnostiquerSegments(t *testing.T, id string, reads []types.NavpointRadialRead, explosions []int) {
 	t.Helper()
 	cov := &BombArmingsCoverage{}
 	full, pauses := classifyBombSegments(grammar.NavpointSegments(reads), cov)

@@ -227,7 +227,7 @@ func keepInventoryOfPublishedTracks(inv []Inventory, tracks []Track) []Inventory
 // rencontré. Sans ces dénominateurs, une fiche clairsemée ne se diagnostique pas : rien ne
 // distingue « peu de keyframes dans le film » de « chunks corrompus » (audit
 // AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 3). Même vocabulaire que les scanners frères
-// (grammar.AbilityRankStats, CamoStateStats, GrappleStats). Vit ici, avec InventoryCoverage
+// (types.AbilityRankStats, CamoStateStats, GrappleStats). Vit ici, avec InventoryCoverage
 // qu'elle alimente, et non dans inventory_decode.go (seuil de taille du dépôt, CLAUDE.md n°5).
 type KeyframeInventoryStats struct {
 	// Chunks est le nombre total de chunks du film (CountFilmChunks).

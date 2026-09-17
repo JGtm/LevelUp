@@ -19,7 +19,7 @@ package objectives
 //
 // Pour chaque enregistrement retenu par la production ([scanFrameForRecords]) :
 //
-//	chunk / pidx     le paquet, tel que `source.Packet` le nomme deja (Chunk, Index).
+//	chunk / pidx     le paquet, tel que `types.Packet` le nomme deja (Chunk, Index).
 //	bit              le bit de l'en-tete d'enregistrement dans la charge du paquet.
 //	at               le bit du CHAMP DE 5 BITS (le premier des deux en-tetes du composant).
 //	at-bit           LE DEPLACEMENT. C'est la reponse directe a la question : la grammaire le
@@ -54,6 +54,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -159,7 +160,7 @@ func e1911Sites(film *source.Film) []e1911Site {
 
 // e1911SitesDuPaquet balaie UN paquet et rend ses enregistrements retenus, chevauchements
 // calcules.
-func e1911SitesDuPaquet(f source.Packet) []e1911Site {
+func e1911SitesDuPaquet(f types.Packet) []e1911Site {
 	pay := f.Payload
 	var out []e1911Site
 	lim := len(pay)*8 - statTailBits
@@ -182,7 +183,7 @@ func e1911SitesDuPaquet(f source.Packet) []e1911Site {
 
 // e1911SiteDe assemble le releve d'UN enregistrement : sa position, sa forme, ses deux en-tetes
 // et les bits autour du champ.
-func e1911SiteDe(f source.Packet, pay []byte, b, at int, idx []int) e1911Site {
+func e1911SiteDe(f types.Packet, pay []byte, b, at int, idx []int) e1911Site {
 	return e1911Site{
 		Chunk: f.Chunk, Pidx: f.Index, Bit: b, At: at,
 		Dense: source.BitsTronques(pay, b+statIDBits+statGenBits, 1) == 1,

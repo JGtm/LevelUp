@@ -27,6 +27,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // ScanFilmGroundWeaponCreations décode les records de création des ARMES AU SOL du film de dir,
@@ -39,10 +40,10 @@ import (
 // [ScanGroundWeaponCreations].
 func ScanFilmGroundWeaponCreations(
 	dir string, wr *profile.Vec3Range,
-) ([]EquipmentCreation, EquipmentCreationStats, error) {
+) ([]types.EquipmentCreation, types.EquipmentCreationStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, EquipmentCreationStats{}, err
+		return nil, types.EquipmentCreationStats{}, err
 	}
 	return ScanGroundWeaponCreations(contexteDeBobine(film), wr)
 }
@@ -50,8 +51,8 @@ func ScanFilmGroundWeaponCreations(
 // ScanGroundWeaponCreations décode les records de création des armes au sol d'un film DEJA CHARGE.
 func ScanGroundWeaponCreations(
 	fc *FilmContext, wr *profile.Vec3Range,
-) ([]EquipmentCreation, EquipmentCreationStats, error) {
-	var st EquipmentCreationStats
+) ([]types.EquipmentCreation, types.EquipmentCreationStats, error) {
+	var st types.EquipmentCreationStats
 	if len(fc.ChunkNumbers()) == 0 {
 		return nil, st, ErrNoFilmChunk
 	}
@@ -72,10 +73,10 @@ func ScanGroundWeaponCreations(
 // [ScanGroundWeaponCreationsForBand].
 func ScanFilmGroundWeaponCreationsForBand(
 	dir string, wr *profile.Vec3Range, band map[uint32]bool,
-) ([]EquipmentCreation, EquipmentCreationStats, error) {
+) ([]types.EquipmentCreation, types.EquipmentCreationStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, EquipmentCreationStats{}, err
+		return nil, types.EquipmentCreationStats{}, err
 	}
 	return ScanGroundWeaponCreationsForBand(contexteDeBobine(film), wr, band)
 }
@@ -83,8 +84,8 @@ func ScanFilmGroundWeaponCreationsForBand(
 // ScanGroundWeaponCreationsForBand balaye une bande de slots donnée dans un film DEJA CHARGE.
 func ScanGroundWeaponCreationsForBand(
 	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
-) ([]EquipmentCreation, EquipmentCreationStats, error) {
-	var st EquipmentCreationStats
+) ([]types.EquipmentCreation, types.EquipmentCreationStats, error) {
+	var st types.EquipmentCreationStats
 	if wr == nil {
 		return nil, st, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
 	}

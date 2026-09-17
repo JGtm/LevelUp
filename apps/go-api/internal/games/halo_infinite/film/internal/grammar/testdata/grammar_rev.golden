@@ -594,5 +594,17 @@
 # revision constante. Les rangs anterieurs au `.38` n ont pas de ligne — l ancienne porte
 # reecrivait l unique ligne du fichier, et leurs empreintes sont perdues ; leur histoire est
 # ci-dessus.
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.6.2, volet grammaire /
+#               rejeu), ET LE CHOIX EST EXPLICITE — c est ce que le gate exige quand l empreinte
+#               bouge sans la revision. TRENTE-CINQ types de DONNEES purs descendent dans
+#               `film/types` (feuille sans aucun import du depot) : la couche les nomme desormais
+#               `types.X`. UN ALIAS DE TYPE EST LE MEME TYPE pour le compilateur, et un
+#               deplacement de declaration n en change pas un bit : aucune largeur, aucun cadre,
+#               aucun ordre de composants, aucun lecteur ne bouge. Huit litteraux positionnels de
+#               `EquipmentLifeKey` passent en champs nommes (D2 (2.6) : `go vet composites`
+#               refuse un litteral non nomme des que le type vient d ailleurs). La FORME des
+#               35 types est desormais figee par `film/types/testdata/shapes.golden`, a cote de
+#               cette revision.
 grammar-2026-09-15.38	7994ce195de82e8ca161ad32cc3ccfab5969a41aa635fb906183ecaf2c4f940e
-grammar-2026-09-15.39	966e3f3e7202d70b292261834ea7d5af1846b3c1b1e07c5db2806219aec26407
+grammar-2026-09-15.39	a44c8f91a4867847be7955ef72da65c8c7d55b81e27510f2db840b2200bc4b80

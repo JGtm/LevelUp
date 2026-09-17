@@ -7,6 +7,7 @@ package objectives
 // d'ordre soit bien ce qui produit la contradiction (mutation).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"reflect"
 	"testing"
 )
@@ -19,8 +20,8 @@ import (
 // 23 des 24 films qui portent ce motif ont fini de 38 a 442 s DANS leur temps reglementaire sur
 // un mode SANS manche. Le designateur est donc ECRIT, MATERIEL, et CONTREDIT par l'ordre — et
 // c'est cela que l'artefact doit dire.
-func fixtureManche2SansManche1() []StatRecord {
-	var recs []StatRecord
+func fixtureManche2SansManche1() []types.StatRecord {
+	var recs []types.StatRecord
 	recs = append(recs, joueurSerie(0, 1_000, 900, 200)...)
 	// Pas de manche 1 : aucun enregistrement, d'aucune sorte — comme sur `fb1a1a72`.
 	recs = append(recs, joueurSerie(2, 60_000, 148, 0)...)
@@ -112,7 +113,7 @@ func TestResolveRoundsDecreteLaManche0QuandLeFilmEstMuet(t *testing.T) {
 // des deux criteres d'admission, donc l'ordre n'a rien refuse.
 func TestResolveRoundsNeContreditPasUnAncrageFortuit(t *testing.T) {
 	recs := append(joueurSerie(0, 1_000, 900, 200),
-		StatRecord{TimeMS: 42_000, Slot: 12, Round: 5, Comps: map[int]StatValue{modeScoreComp: {A: 3}}})
+		types.StatRecord{TimeMS: 42_000, Slot: 12, Round: 5, Comps: map[int]types.StatValue{modeScoreComp: {A: 3}}})
 
 	d := ResolveRounds(recs)
 	if want := []int{0, 5}; !reflect.DeepEqual(d.Written, want) {
@@ -129,7 +130,7 @@ func TestResolveRoundsNeContreditPasUnAncrageFortuit(t *testing.T) {
 // Le lot ne devait changer AUCUNE manche retenue. Les deux portes doivent donc rendre le meme
 // ensemble sur chaque forme du corpus de fixtures du paquet.
 func TestRealRoundsRendLeMemeEnsembleQueResolveRounds(t *testing.T) {
-	cas := map[string][]StatRecord{
+	cas := map[string][]types.StatRecord{
 		"manche 2 sans manche 1": fixtureManche2SansManche1(),
 		"film muet":              nil,
 		"trois manches pleines": append(append(

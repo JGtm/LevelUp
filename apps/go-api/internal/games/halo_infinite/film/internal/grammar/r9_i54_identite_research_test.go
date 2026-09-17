@@ -42,6 +42,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -99,7 +100,7 @@ func r9I54OneFilm(t *testing.T, dir string) {
 
 // r9MobCtx porte le contexte de jugement (regle des <= 5 parametres).
 type r9MobCtx struct {
-	ranks  []AbilityRank
+	ranks  []types.AbilityRank
 	lives  map[uint32][]r8LifeSpan
 	speeds r8SpeedIndex
 	pos    map[uint32][]BipedPosition

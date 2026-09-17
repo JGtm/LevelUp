@@ -30,12 +30,13 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // eqLife est une VIE d'objet d'equipement IDENTIFIEE : sa pose lui donne un GlobalID `eqip`,
 // donc une famille, et ses lectures lui donnent des signaux datables.
 type eqLife struct {
-	key      grammar.EquipmentLifeKey
+	key      types.EquipmentLifeKey
 	inst     int
 	globalID uint32
 	family   string
@@ -54,12 +55,12 @@ type eqSignal struct {
 // eqUsesBuildLives rattache chaque lecture d'etat a la pose qui la precede sur la meme cle.
 // Rend aussi, par indice de lecture, si elle a trouve une vie (le partage reel / fantome).
 func eqUsesBuildLives(
-	placements []grammar.EquipmentPlacement, families map[uint32]string,
+	placements []types.EquipmentPlacement, families map[uint32]string,
 	samples []grammar.EquipmentStateSample,
 ) ([]eqLife, []bool) {
-	byKey := map[grammar.EquipmentLifeKey][]int{}
+	byKey := map[types.EquipmentLifeKey][]int{}
 	lives := make([]eqLife, 0, len(placements))
-	sorted := append([]grammar.EquipmentPlacement(nil), placements...)
+	sorted := append([]types.EquipmentPlacement(nil), placements...)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].T0US < sorted[j].T0US })
 	for _, p := range sorted {
 		fam := families[p.GlobalID]
@@ -74,7 +75,7 @@ func eqUsesBuildLives(
 	}
 	attached := make([]bool, len(samples))
 	for i, s := range samples {
-		k := grammar.EquipmentLifeKey{Slot: s.Slot, Gen: s.Gen}
+		k := types.EquipmentLifeKey{Slot: s.Slot, Gen: s.Gen}
 		idx := -1
 		for _, li := range byKey[k] {
 			if lives[li].t0US <= s.TimestampUS+eqUsesCreationSlackUS {
@@ -227,7 +228,7 @@ type eqPair struct {
 // (a) les memes evenements decales de +7 s, (b) les memes evenements contre les signaux des
 // AUTRES familles. Le seuil est celui du plan, ecrit avant la mesure.
 func eqUsesOracle(
-	t *testing.T, nom string, reads []grammar.GrappleRead, sig, autres []eqSignal,
+	t *testing.T, nom string, reads []types.GrappleRead, sig, autres []eqSignal,
 ) []eqPair {
 	t.Helper()
 	n, wit, cross := 0, 0, 0
@@ -252,8 +253,8 @@ func eqUsesOracle(
 }
 
 // eqUsesGrappleUses compte les GESTES : une paire tir/accroche a <= 0,5 s vaut un usage.
-func eqUsesGrappleUses(reads []grammar.GrappleRead) int {
-	bySlot := map[uint32][]grammar.GrappleRead{}
+func eqUsesGrappleUses(reads []types.GrappleRead) int {
+	bySlot := map[uint32][]types.GrappleRead{}
 	for _, r := range reads {
 		bySlot[r.Slot] = append(bySlot[r.Slot], r)
 	}
@@ -296,7 +297,7 @@ func eqUsesGrappleIDs(lives []eqLife) (string, int) {
 
 // eqUsesBridge joue D.0.3 : l'objet apparie a >= 2 evenements du MEME slot est « celui de S ».
 // La coherence mesuree est l'absence de second pretendant sur la meme vie.
-func eqUsesBridge(t *testing.T, nom string, pairs []eqPair, reads []grammar.GrappleRead) {
+func eqUsesBridge(t *testing.T, nom string, pairs []eqPair, reads []types.GrappleRead) {
 	t.Helper()
 	bySlot := map[int]map[uint32]int{}
 	for _, p := range pairs {
@@ -333,7 +334,7 @@ func eqUsesBridge(t *testing.T, nom string, pairs []eqPair, reads []grammar.Grap
 // eqUsesGeneralise joue D.0.4 : usages par famille, et controle croise pose <-> decrement.
 func eqUsesGeneralise(
 	t *testing.T, lives []eqLife, drops []eqSignal,
-	placements []grammar.EquipmentPlacement, families map[uint32]string,
+	placements []types.EquipmentPlacement, families map[uint32]string,
 ) {
 	t.Helper()
 	t.Log("== D.0.4 GENERALISATION == decroissances de charge par vie d'objet et par famille")
@@ -370,10 +371,10 @@ func eqUsesGeneralise(
 // consomme une charge, ou bien la these ne tient pas.
 func eqUsesCross(
 	t *testing.T, drops []eqSignal, lives []eqLife,
-	placements []grammar.EquipmentPlacement, families map[uint32]string,
+	placements []types.EquipmentPlacement, families map[uint32]string,
 ) {
 	t.Helper()
-	byFam := map[string][]grammar.EquipmentPlacement{}
+	byFam := map[string][]types.EquipmentPlacement{}
 	for _, p := range placements {
 		fam := families[p.GlobalID]
 		if fam == "" {
@@ -444,7 +445,7 @@ func eqUsesEnergyDelay(t *testing.T, lives []eqLife, drops, rises []eqSignal) {
 // Sans bornes monde, la distance n'est pas une distance : la mesure est declaree non
 // calculable plutot que rendue dans une unite muette.
 func eqUsesOwners(
-	t *testing.T, pos []grammar.BipedPosition, placements []grammar.EquipmentPlacement,
+	t *testing.T, pos []grammar.BipedPosition, placements []types.EquipmentPlacement,
 	families map[uint32]string,
 ) {
 	t.Helper()

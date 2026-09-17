@@ -11,6 +11,7 @@ package objectives
 // 2026-09-11 — le seuil de 500 lignes etait de nouveau atteint).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"sort"
 )
@@ -21,12 +22,12 @@ import (
 //
 // Les emplacements redondants sont ecartes ICI : ils n'emettent aucun evenement, et les
 // grouper serait du travail jete.
-func rawSeriesByKey(recs []StatRecord, table map[statSlotKey]statSlot) map[statSlotKey]map[int]map[int][]ScorePoint {
+func rawSeriesByKey(recs []types.StatRecord, table map[statSlotKey]statSlot) map[statSlotKey]map[int]map[int][]types.ScorePoint {
 	bornes := ResolveRoundBounds(recs)
-	out := make(map[statSlotKey]map[int]map[int][]ScorePoint, len(table))
+	out := make(map[statSlotKey]map[int]map[int][]types.ScorePoint, len(table))
 	for key, slot := range table {
 		if !slot.Redundant {
-			out[key] = map[int]map[int][]ScorePoint{}
+			out[key] = map[int]map[int][]types.ScorePoint{}
 		}
 	}
 	for _, r := range recs {
@@ -52,10 +53,10 @@ func rawSeriesByKey(recs []StatRecord, table map[statSlotKey]statSlot) map[statS
 				continue
 			}
 			if raw[r.Slot] == nil {
-				raw[r.Slot] = map[int][]ScorePoint{}
+				raw[r.Slot] = map[int][]types.ScorePoint{}
 			}
 			raw[r.Slot][r.Round] = append(raw[r.Slot][r.Round],
-				ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: val})
+				types.ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: val})
 		}
 	}
 	return out
@@ -70,13 +71,13 @@ func rawSeriesByKey(recs []StatRecord, table map[statSlotKey]statSlot) map[statS
 // et il est reemis des que l'UNE des deux bouge, donc la meme valeur revient legitimement.
 // # Les MANCHES, et pourquoi la suite est cumulee (2026-08-18)
 //
-// Un compteur repart de zero a chaque manche (`StatRecord.Round`). Concatener les manches sans
+// Un compteur repart de zero a chaque manche (`types.StatRecord.Round`). Concatener les manches sans
 // rien faire donnerait une suite qui RECULE, et le filtre de plus longue sous-suite n'en
 // garderait qu'une — c'est exactement ce que faisait la version d'avant, qui ne voyait de toute
 // facon que la manche 1. Chaque manche est donc filtree separement, puis DECALEE du total des
 // manches precedentes : la suite rendue est croissante sur tout le match et son dernier point
 // est le total du match. Mesure : les frags d'un Oddball passent de 48 a 87 sur 88 attendus.
-func seriesBySlot(recs []StatRecord, key statSlotKey) map[int][]ScorePoint {
+func seriesBySlot(recs []types.StatRecord, key statSlotKey) map[int][]types.ScorePoint {
 	return cumulateRounds(rawSeriesByRound(recs, key, false), RealRounds(recs))
 }
 
@@ -88,9 +89,9 @@ func seriesBySlot(recs []StatRecord, key statSlotKey) map[int][]ScorePoint {
 // declare a une manche mal lue et n'alimente aucune serie. C'est le filtre qui manquait pour
 // que [longestRun] ne soit pas trompe — une valeur mal lue mais PLUS GRANDE prolonge la suite
 // non decroissante au lieu de la rompre.
-func rawSeriesByRound(recs []StatRecord, key statSlotKey, teams bool) map[int]map[int][]ScorePoint {
+func rawSeriesByRound(recs []types.StatRecord, key statSlotKey, teams bool) map[int]map[int][]types.ScorePoint {
 	bornes := ResolveRoundBounds(recs)
-	raw := map[int]map[int][]ScorePoint{}
+	raw := map[int]map[int][]types.ScorePoint{}
 	for _, r := range recs {
 		if IsTeamSlot(r.Slot) != teams || bornes.Excludes(r) {
 			continue
@@ -123,10 +124,10 @@ func rawSeriesByRound(recs []StatRecord, key statSlotKey, teams bool) map[int]ma
 			continue
 		}
 		if raw[r.Slot] == nil {
-			raw[r.Slot] = map[int][]ScorePoint{}
+			raw[r.Slot] = map[int][]types.ScorePoint{}
 		}
 		raw[r.Slot][r.Round] = append(raw[r.Slot][r.Round],
-			ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: val})
+			types.ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: val})
 	}
 	return raw
 }
@@ -137,11 +138,11 @@ func rawSeriesByRound(recs []StatRecord, key statSlotKey, teams bool) map[int]ma
 //
 // La suite assemblee passe par [ChronologicalTotal] : le cumul suppose que l'ordre des MANCHES
 // est l'ordre du TEMPS, et cette supposition doit etre verifiee, pas presumee.
-func cumulateRounds(raw map[int]map[int][]ScorePoint, real map[int]bool) map[int][]ScorePoint {
-	out := make(map[int][]ScorePoint, len(raw))
+func cumulateRounds(raw map[int]map[int][]types.ScorePoint, real map[int]bool) map[int][]types.ScorePoint {
+	out := make(map[int][]types.ScorePoint, len(raw))
 	for slot, byRound := range raw {
 		var offset int64
-		var serie []ScorePoint
+		var serie []types.ScorePoint
 		for _, round := range sortedIntKeys(byRound) {
 			if !real[round] {
 				continue
@@ -153,7 +154,7 @@ func cumulateRounds(raw map[int]map[int][]ScorePoint, real map[int]bool) map[int
 				continue
 			}
 			for _, p := range kept {
-				serie = append(serie, ScorePoint{
+				serie = append(serie, types.ScorePoint{
 					TimeMS: p.TimeMS, Slot: slot, Value: p.Value + offset})
 			}
 			offset += kept[len(kept)-1].Value
@@ -186,8 +187,8 @@ func cumulateRounds(raw map[int]map[int][]ScorePoint, real map[int]bool) map[int
 // un cas nominal, et il ne doit jamais etre avale. Le journal vit dans la fonction plutot que
 // chez ses appelants pour que les DEUX cumuls (par slot ici, par joueur dans `games/halo_infinite/film/replay`)
 // le rendent de la meme facon, sans dupliquer ni le message ni la decision.
-func ChronologicalTotal(pts []ScorePoint) []ScorePoint {
-	out := make([]ScorePoint, 0, len(pts))
+func ChronologicalTotal(pts []types.ScorePoint) []types.ScorePoint {
+	out := make([]types.ScorePoint, 0, len(pts))
 	last, dropped, recul := 0, 0, 0
 	for i, p := range pts {
 		if i > 0 && p.TimeMS < last {
@@ -218,7 +219,7 @@ func ChronologicalTotal(pts []ScorePoint) []ScorePoint {
 //
 // Anciennement `sortedRounds` : le nom disait la premiere des deux, ce qui aurait fait
 // ecrire une seconde copie identique pour la seconde.
-func sortedIntKeys(bySlot map[int][]ScorePoint) []int {
+func sortedIntKeys(bySlot map[int][]types.ScorePoint) []int {
 	out := make([]int, 0, len(bySlot))
 	for r := range bySlot {
 		out = append(out, r)

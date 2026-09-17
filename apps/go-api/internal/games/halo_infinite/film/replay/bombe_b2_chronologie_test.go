@@ -75,6 +75,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -184,9 +185,9 @@ func b2Detonateurs(t *testing.T, cache, id string) map[int]string {
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
-	di := make([]objectives.DeathInstant, 0, len(deaths))
+	di := make([]types.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
-		di = append(di, objectives.DeathInstant{
+		di = append(di, types.DeathInstant{
 			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS)})
 	}
 	identity := objectives.ResolveRoundIdentity(recs, di)

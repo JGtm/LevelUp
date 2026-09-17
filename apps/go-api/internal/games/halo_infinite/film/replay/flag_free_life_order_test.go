@@ -16,11 +16,10 @@ package replay
 // d'entree, doivent rendre UNE SEULE sortie.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"reflect"
 	"sort"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vieLibreExAequo fabrique une vie libre qui partage le triplet de tete (instant de creation,
@@ -28,7 +27,7 @@ import (
 func vieLibreExAequo(id uint32, t1us uint64, pts []flagFreeSample) flagFreeLife {
 	return flagFreeLife{
 		ID:   id,
-		Key:  grammar.EquipmentLifeKey{Slot: 33, Gen: 2},
+		Key:  types.EquipmentLifeKey{Slot: 33, Gen: 2},
 		T0US: 1_000_000,
 		T1US: t1us,
 		Pts:  pts,
@@ -80,16 +79,16 @@ func TestFlagFreeLessRespecteLesCriteresDeTete(t *testing.T) {
 		t.Error("la vie la plus precoce doit passer devant, quel que soit son contenu")
 	}
 	memeInstant := vieLibreExAequo(999, 9_000_000, unPoint(99, 99))
-	memeInstant.Key = grammar.EquipmentLifeKey{Slot: 2, Gen: 3}
+	memeInstant.Key = types.EquipmentLifeKey{Slot: 2, Gen: 3}
 	autreSlot := vieLibreExAequo(0, 0, unPoint(0, 0))
-	autreSlot.Key = grammar.EquipmentLifeKey{Slot: 3, Gen: 0}
+	autreSlot.Key = types.EquipmentLifeKey{Slot: 3, Gen: 0}
 	if !flagFreeLess(memeInstant, autreSlot) {
 		t.Error("a instant egal, le plus petit slot passe devant")
 	}
 	gen0 := vieLibreExAequo(999, 9_000_000, unPoint(99, 99))
-	gen0.Key = grammar.EquipmentLifeKey{Slot: 2, Gen: 0}
+	gen0.Key = types.EquipmentLifeKey{Slot: 2, Gen: 0}
 	gen1 := vieLibreExAequo(0, 0, unPoint(0, 0))
-	gen1.Key = grammar.EquipmentLifeKey{Slot: 2, Gen: 1}
+	gen1.Key = types.EquipmentLifeKey{Slot: 2, Gen: 1}
 	if !flagFreeLess(gen0, gen1) {
 		t.Error("a instant et slot egaux, la plus petite generation passe devant")
 	}

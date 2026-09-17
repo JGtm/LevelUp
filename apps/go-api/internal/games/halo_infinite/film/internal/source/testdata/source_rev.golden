@@ -40,5 +40,14 @@
 #               largeur, aucune borne ne change : la sortie est identique a l octet et aucun
 #               match deja decode n est candidat au backlog. La FORME de ces types est desormais
 #               figee par `film/types/testdata/shapes.golden`, a cote de cette revision.
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.6.2, volet grammaire / rejeu).
+#               Les ALIAS DATES de `types_alias.go` sont SUPPRIMES : la couche nomme desormais
+#               `types.ChunkMeta` et `types.Packet` en direct, comme tous leurs consommateurs.
+#               Un alias de type est LE MEME type pour le compilateur — aucune lecture, aucune
+#               largeur, aucune borne ne change, la sortie est identique a l octet et aucun match
+#               deja decode n est candidat a quoi que ce soit. Le critere de retrait ecrit dans
+#               le fichier supprime est tenu : plus aucun `source.ChunkMeta` ni `source.Packet`
+#               dans le depot.
 source-2026-09-16	4d8427e406555c7cca2bbe0e94c3658a639cb394c4be305a08d7e413ab998913
-source-2026-09-16.2	2e12d4618db00edc2ab5f396c97534f2372c3fbc1ea43e2e6bef0370cdbfd7b8
+source-2026-09-16.2	1eba2c7257e9b9f5d0e26a48fd63067a008d7294dabb18e6f29276dea3e97c6a

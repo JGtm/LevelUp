@@ -45,6 +45,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // FlagInput est CE QUE L'APPELANT FOURNIT du drapeau, plus ce que `BuildFromFilm` y depose.
@@ -58,7 +59,7 @@ type FlagInput struct {
 	// Records sont les enregistrements d'entite du film (`objectives.StatRecordsCtx`), le
 	// MEME balayage que celui de la courbe de score : ils portent les evenements nommes du
 	// drapeau et les progressions du compteur de morts qui identifient les slots.
-	Records []objectives.StatRecord
+	Records []types.StatRecord
 	// Bursts sont les instants des BURSTS DE CAPTURE (`objectives.CaptureBurstTimes`) —
 	// une autre grammaire du film, et le signal sans lequel le discriminant de mode ne tient
 	// pas (un film Oddball rend 1 470 « prises » a la table du drapeau).
@@ -238,10 +239,10 @@ func attachFlagLayer(doc *ReplayDocument, carries []FlagCarry, cov *FlagCarriesC
 }
 
 // deathInstantsOf traduit le fil des morts du rejeu dans la forme qu'attend le pont d'identite.
-func deathInstantsOf(deaths []Death) []objectives.DeathInstant {
-	out := make([]objectives.DeathInstant, 0, len(deaths))
+func deathInstantsOf(deaths []Death) []types.DeathInstant {
+	out := make([]types.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
-		out = append(out, objectives.DeathInstant{
+		out = append(out, types.DeathInstant{
 			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS),
 		})
 	}

@@ -33,10 +33,9 @@ package replay
 // que le canal possède, et il vient d'un relevé, pas d'un modèle.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"sort"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // abilityImpulseEpisodeGapUS : deux lectures du même slot séparées de moins d'une seconde
@@ -112,11 +111,11 @@ type AbilityImpulseCoverage struct {
 // portait ce joueur quand il a fait ce geste ? »).
 type abilityImpulseInputs struct {
 	// reads : les lectures brutes du film (filmdec).
-	reads []grammar.AbilityImpulse
+	reads []types.AbilityImpulse
 	// stats : les dénominateurs du balayage — c'est d'eux que vient `ComponentAbsent`.
-	stats grammar.AbilityImpulseStats
+	stats types.AbilityImpulseStats
 	// ranks : les identités de capacité transmises par i48, le SEUL canal d'identité.
-	ranks []grammar.AbilityRank
+	ranks []types.AbilityRank
 	// lives : le découpage des vies, tel que le pont l'a déjà fait sur les positions BRUTES.
 	lives []lifeSpan
 	// palette : la palette du match, qui nomme le rang. Nil = film non classé -> aucune
@@ -219,8 +218,8 @@ type abilityImpulseEpisode struct {
 // foldAbilityImpulses replie les lectures en gestes : deux lectures du même slot à moins
 // d'abilityImpulseEpisodeGapUS l'une de l'autre n'en font qu'un. La sortie est TRIÉE par
 // instant puis par slot — l'ordre du document, déterministe.
-func foldAbilityImpulses(reads []grammar.AbilityImpulse) []abilityImpulseEpisode {
-	ordered := make([]grammar.AbilityImpulse, len(reads))
+func foldAbilityImpulses(reads []types.AbilityImpulse) []abilityImpulseEpisode {
+	ordered := make([]types.AbilityImpulse, len(reads))
 	copy(ordered, reads)
 	sort.SliceStable(ordered, func(i, j int) bool {
 		if ordered[i].Slot != ordered[j].Slot {
@@ -253,13 +252,13 @@ func foldAbilityImpulses(reads []grammar.AbilityImpulse) []abilityImpulseEpisode
 // abilityRankIndex répond à « quel rang ce slot portait-il à cet instant, dans CETTE vie ? ».
 // Il indexe une fois ce que la question relirait pour chaque impulsion.
 type abilityRankIndex struct {
-	ranks map[uint32][]grammar.AbilityRank
+	ranks map[uint32][]types.AbilityRank
 	lives map[uint32][]lifeSpan
 }
 
-func newAbilityRankIndex(ranks []grammar.AbilityRank, lives []lifeSpan) *abilityRankIndex {
+func newAbilityRankIndex(ranks []types.AbilityRank, lives []lifeSpan) *abilityRankIndex {
 	idx := &abilityRankIndex{
-		ranks: make(map[uint32][]grammar.AbilityRank, len(ranks)),
+		ranks: make(map[uint32][]types.AbilityRank, len(ranks)),
 		lives: make(map[uint32][]lifeSpan, len(lives)),
 	}
 	for _, r := range ranks {

@@ -10,11 +10,12 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // vehEvt fabrique un evenement de la liste, occupant en bande.
-func vehEvt(kind int, slot uint32, tUS uint64, seat uint32) grammar.VehicleEvent {
-	return grammar.VehicleEvent{
+func vehEvt(kind int, slot uint32, tUS uint64, seat uint32) types.VehicleEvent {
+	return types.VehicleEvent{
 		Kind: kind, TimestampUS: tUS, OccupantPresent: true, OccupantInBand: true,
 		OccupantSlot: slot, Seat: seat, SeatValid: true,
 	}
@@ -30,7 +31,7 @@ func TestVehicleEpisodeMachineForms(t *testing.T) {
 	bySlot := map[uint32][]grammar.BipedPosition{slot: pts}
 	cases := []struct {
 		name    string
-		evs     []grammar.VehicleEvent
+		evs     []types.VehicleEvent
 		want    int
 		borders []int
 		open    []bool
@@ -38,7 +39,7 @@ func TestVehicleEpisodeMachineForms(t *testing.T) {
 	}{
 		{
 			name: "embarquement puis sortie = deux bords",
-			evs: []grammar.VehicleEvent{
+			evs: []types.VehicleEvent{
 				vehEvt(grammar.EventBipedBoardVehicle, slot, 3_000_000, 0),
 				vehEvt(grammar.EventUnitExitVehicle, slot, 8_000_000, 0),
 			},
@@ -46,21 +47,21 @@ func TestVehicleEpisodeMachineForms(t *testing.T) {
 		},
 		{
 			name: "sortie seule : le debut est le dernier point replique avant elle",
-			evs: []grammar.VehicleEvent{
+			evs: []types.VehicleEvent{
 				vehEvt(grammar.EventUnitExitVehicle, slot, 8_000_000, 0),
 			},
 			want: 1, borders: []int{1}, open: []bool{false}, starts: []uint64{2_000_000},
 		},
 		{
 			name: "embarquement seul = SILENCE TERMINAL",
-			evs: []grammar.VehicleEvent{
+			evs: []types.VehicleEvent{
 				vehEvt(grammar.EventBipedBoardVehicle, slot, 3_000_000, 0),
 			},
 			want: 1, borders: []int{1}, open: []bool{true}, starts: []uint64{3_000_000},
 		},
 		{
 			name: "deux embarquements sans sortie : le premier se ferme au second",
-			evs: []grammar.VehicleEvent{
+			evs: []types.VehicleEvent{
 				vehEvt(grammar.EventBipedBoardVehicle, slot, 3_000_000, 0),
 				vehEvt(grammar.EventBipedBoardVehicle, slot, 6_000_000, 0),
 			},
@@ -93,7 +94,7 @@ func TestVehicleEpisodeCarriesEventVehicle(t *testing.T) {
 	board := vehEvt(grammar.EventBipedBoardVehicle, occ, 3_000_000, 0)
 	exit := vehEvt(grammar.EventUnitExitVehicle, occ, 8_000_000, 0)
 	exit.VehicleSlot, exit.VehicleSlotValid, exit.VehicleGen = veh, true, 1
-	boards, exits := vehicleEventsByOccupant([]grammar.VehicleEvent{board, exit})
+	boards, exits := vehicleEventsByOccupant([]types.VehicleEvent{board, exit})
 	got := vehicleEventEpisodes(boards, exits, nil)
 	if len(got) != 1 || !got[0].vehValid || got[0].vehSlot != veh ||
 		got[0].vehAtUS != exit.TimestampUS {
@@ -101,7 +102,7 @@ func TestVehicleEpisodeCarriesEventVehicle(t *testing.T) {
 			exit.TimestampUS)
 	}
 	// TEMOIN : le seul embarquement ne nomme rien — ses references sont en domaines 2/3/7.
-	bo, ex := vehicleEventsByOccupant([]grammar.VehicleEvent{board})
+	bo, ex := vehicleEventsByOccupant([]types.VehicleEvent{board})
 	if seul := vehicleEventEpisodes(bo, ex, nil); len(seul) != 1 || seul[0].vehValid {
 		t.Fatalf("episode d embarquement seul = %+v, attendu SANS vehicule nomme", seul)
 	}
@@ -115,8 +116,8 @@ func TestVehicleEpisodeCarriesEventVehicle(t *testing.T) {
 // c est bien le nom qui a decide, et rien d autre.
 func TestVehicleRideFromEventName(t *testing.T) {
 	const occ = uint32(500)
-	nomme := grammar.EquipmentLifeKey{Slot: 770, Gen: 1}
-	proche := grammar.EquipmentLifeKey{Slot: 771, Gen: 1}
+	nomme := types.EquipmentLifeKey{Slot: 770, Gen: 1}
+	proche := types.EquipmentLifeKey{Slot: 771, Gen: 1}
 	in := vehicleRideInputs{
 		vehBySlot: map[uint32][]grammar.BipedPosition{
 			770: {vehPos(770, 2_000_000, 100, 100)},
@@ -126,7 +127,7 @@ func TestVehicleRideFromEventName(t *testing.T) {
 			{key: nomme, loUS: 0, hiUS: 30_000_000},
 			{key: proche, loUS: 0, hiUS: 30_000_000},
 		},
-		drawable: map[grammar.EquipmentLifeKey]bool{nomme: true, proche: true},
+		drawable: map[types.EquipmentLifeKey]bool{nomme: true, proche: true},
 		clock:    vehClock(),
 	}
 	bySlot := map[uint32][]grammar.BipedPosition{occ: {
@@ -138,7 +139,7 @@ func TestVehicleRideFromEventName(t *testing.T) {
 		name     string
 		muette   bool
 		nomValid bool
-		want     grammar.EquipmentLifeKey
+		want     types.EquipmentLifeKey
 		wantSrc  vehicleResolvedBy
 	}{
 		{"le nom prime sur la distance", false, true, nomme, vehicleResolvedByEvent},
@@ -149,7 +150,7 @@ func TestVehicleRideFromEventName(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			cin := in
 			if c.muette {
-				cin.drawable = map[grammar.EquipmentLifeKey]bool{proche: true}
+				cin.drawable = map[types.EquipmentLifeKey]bool{proche: true}
 			}
 			ep := base
 			ep.vehValid = c.nomValid
@@ -168,8 +169,8 @@ func TestVehicleRideFromEventName(t *testing.T) {
 // TestVehicleLifeNamedByEventNearest : quand l instant de la sortie tombe HORS de toutes les
 // fenetres du slot nomme, la vie la plus proche DANS LE TEMPS est retenue, et la voie le dit.
 func TestVehicleLifeNamedByEventNearest(t *testing.T) {
-	tot := grammar.EquipmentLifeKey{Slot: 770, Gen: 1}
-	tard := grammar.EquipmentLifeKey{Slot: 770, Gen: 2}
+	tot := types.EquipmentLifeKey{Slot: 770, Gen: 1}
+	tard := types.EquipmentLifeKey{Slot: 770, Gen: 2}
 	lives := []vehicleLife{
 		{key: tot, loUS: 0, hiUS: 10_000_000},
 		{key: tard, loUS: 60_000_000, hiUS: 90_000_000},
@@ -177,7 +178,7 @@ func TestVehicleLifeNamedByEventNearest(t *testing.T) {
 	cases := []struct {
 		name string
 		atUS uint64
-		want grammar.EquipmentLifeKey
+		want types.EquipmentLifeKey
 		src  vehicleResolvedBy
 	}{
 		{"dans la fenetre", 5_000_000, tot, vehicleResolvedByEvent},
@@ -205,7 +206,7 @@ func TestVehicleLifeNamedByEventNearest(t *testing.T) {
 // TestVehicleEpisodeSeatFromExit : le siege de la SORTIE prime sur celui de l embarquement.
 func TestVehicleEpisodeSeatFromExit(t *testing.T) {
 	const slot = uint32(500)
-	evs := []grammar.VehicleEvent{
+	evs := []types.VehicleEvent{
 		vehEvt(grammar.EventBipedBoardVehicle, slot, 3_000_000, 3),
 		vehEvt(grammar.EventUnitExitVehicle, slot, 8_000_000, 0),
 	}
@@ -219,8 +220,8 @@ func TestVehicleEpisodeSeatFromExit(t *testing.T) {
 // TestMergeVehicleEventsOrder : a instant EGAL la sortie passe avant l embarquement — sinon
 // « descendre puis remonter » fabriquerait un episode de duree nulle.
 func TestMergeVehicleEventsOrder(t *testing.T) {
-	b := []grammar.VehicleEvent{vehEvt(grammar.EventBipedBoardVehicle, 1, 5_000_000, 0)}
-	e := []grammar.VehicleEvent{vehEvt(grammar.EventUnitExitVehicle, 1, 5_000_000, 0)}
+	b := []types.VehicleEvent{vehEvt(grammar.EventBipedBoardVehicle, 1, 5_000_000, 0)}
+	e := []types.VehicleEvent{vehEvt(grammar.EventUnitExitVehicle, 1, 5_000_000, 0)}
 	got := mergeVehicleEvents(b, e)
 	if len(got) != 2 || got[0].Kind != grammar.EventUnitExitVehicle {
 		t.Fatalf("ordre attendu [sortie, embarquement], obtenu %+v", got)
@@ -253,7 +254,7 @@ func TestVehicleEpisodeCoversGap(t *testing.T) {
 // lui, le test ne prouverait pas que la porte existe.
 func TestVehicleRideFromEpisodeAnchors(t *testing.T) {
 	const occ, veh = uint32(500), uint32(770)
-	key := grammar.EquipmentLifeKey{Slot: veh, Gen: 1}
+	key := types.EquipmentLifeKey{Slot: veh, Gen: 1}
 	in := vehicleRideInputs{
 		vehBySlot: map[uint32][]grammar.BipedPosition{veh: {
 			vehPos(veh, 2_000_000, 10, 10), vehPos(veh, 9_000_000, 10, 10),
@@ -301,7 +302,7 @@ func TestVehicleRideFromEpisodeAnchors(t *testing.T) {
 // DE VIE du vehicule, pas a l instant de l embarquement.
 func TestVehicleRideTerminalSilenceClosesAtLifeEnd(t *testing.T) {
 	const occ, veh = uint32(500), uint32(770)
-	key := grammar.EquipmentLifeKey{Slot: veh, Gen: 1}
+	key := types.EquipmentLifeKey{Slot: veh, Gen: 1}
 	in := vehicleRideInputs{
 		vehBySlot: map[uint32][]grammar.BipedPosition{veh: {vehPos(veh, 2_000_000, 10, 10)}},
 		lives:     []vehicleLife{{key: key, loUS: 0, hiUS: 21_000_000}},
@@ -334,13 +335,13 @@ func TestVehicleEpisodeReappearanceClosesOpenEnd(t *testing.T) {
 	pts := []grammar.BipedPosition{
 		vehPos(occ, 2_000_000, 10.5, 10), vehPos(occ, 11_000_000, 30, 30),
 	}
-	evs := []grammar.VehicleEvent{vehEvt(grammar.EventBipedBoardVehicle, occ, 3_000_000, 0)}
+	evs := []types.VehicleEvent{vehEvt(grammar.EventBipedBoardVehicle, occ, 3_000_000, 0)}
 	boards, exits := vehicleEventsByOccupant(evs)
 	eps := vehicleEventEpisodes(boards, exits, map[uint32][]grammar.BipedPosition{occ: pts})
 	if len(eps) != 1 || !eps[0].openEnd || eps[0].reappearUS != 11_000_000 {
 		t.Fatalf("episode = %+v, attendu ouvert avec reapparition a 11000000", eps)
 	}
-	key := grammar.EquipmentLifeKey{Slot: veh, Gen: 1}
+	key := types.EquipmentLifeKey{Slot: veh, Gen: 1}
 	in := vehicleRideInputs{
 		vehBySlot: map[uint32][]grammar.BipedPosition{veh: {vehPos(veh, 2_000_000, 10, 10)}},
 		lives:     []vehicleLife{{key: key, loUS: 0, hiUS: 90_000_000}},

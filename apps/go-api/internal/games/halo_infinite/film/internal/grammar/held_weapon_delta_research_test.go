@@ -22,6 +22,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"sort"
 	"testing"
@@ -282,7 +283,7 @@ func TestHeldWeaponChangesProduction(t *testing.T) {
 		t.Fatalf("production=%d emissions, instrument=%d : les deux chemins divergent",
 			len(got), len(want))
 	}
-	byKind := map[HeldWeaponChangeKind]int{}
+	byKind := map[types.HeldWeaponChangeKind]int{}
 	for i, c := range got {
 		if c.TimestampUS != want[i].TimestampUS || c.Slot != want[i].Slot ||
 			c.SlotIndex != want[i].CompIndex || c.Family != want[i].IDHigh {

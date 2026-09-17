@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // statborg_rounds_test.go — les corrections de production du 2026-08-18 (lot A, item A.1.0),
@@ -29,13 +30,13 @@ type statVector struct {
 	bits  int
 	slot  int
 	round int
-	comps map[int]StatValue
+	comps map[int]types.StatValue
 }
 
 // round0 : slot 8, manche 0, 3 composants
 var vecRound0 = statVector{
 	bits: 1, slot: 8, round: 0,
-	comps: map[int]StatValue{22: {A: 10, B: 10}, 23: {A: 1, B: 0}, 0: {A: 1, B: 0}},
+	comps: map[int]types.StatValue{22: {A: 10, B: 10}, 23: {A: 1, B: 0}, 0: {A: 1, B: 0}},
 	data:  []byte{0x80, 0x11, 0x18, 0x0b, 0x2e, 0x00, 0x00, 0x20, 0x00, 0x00, 0x01, 0x40, 0x50, 0x00, 0x00, 0x20, 0x01, 0x00, 0x4a, 0x30, 0x16, 0x5c, 0x00, 0x00, 0x40, 0x00, 0x00, 0x02, 0x80, 0xa0, 0x00, 0x00, 0x40, 0x02, 0x07, 0xb4, 0x20, 0x60, 0x44, 0x00, 0x8c, 0x00, 0x59, 0x02, 0xf6, 0xdc, 0xfd, 0x44, 0x40, 0xce, 0x01, 0x6a, 0x18, 0x65, 0xf0, 0x11, 0x00, 0xa3, 0x00, 0x56, 0x40, 0xbd, 0xd0, 0xbf},
 }
 
@@ -48,7 +49,7 @@ var vecDense = statVector{
 	// deux bits de drapeau) et rendent pourtant des valeurs differentes (114 pour l'un, 300 pour
 	// l'autre). Qu'ils EGALENT ici A et B est une coincidence de ce vecteur, pas une identite :
 	// un compteur et son maximum de session coincident tant que le maximum vient d'etre atteint.
-	comps: map[int]StatValue{
+	comps: map[int]types.StatValue{
 		1: {A: 0, B: 535}, 2: {A: 3, B: 1},
 		3:  {A: 3, B: 300, D: 300, HasD: true},
 		5:  {A: 114, B: 2, C: 114, HasC: true},
@@ -61,7 +62,7 @@ var vecDense = statVector{
 // round1 : slot 8, manche 1, 3 composants
 var vecRound1 = statVector{
 	bits: 1, slot: 8, round: 1,
-	comps: map[int]StatValue{23: {A: 1, B: 0}, 0: {A: 1, B: 0}, 22: {A: 10, B: 10}},
+	comps: map[int]types.StatValue{23: {A: 1, B: 0}, 0: {A: 1, B: 0}, 22: {A: 10, B: 10}},
 	data:  []byte{0x80, 0x11, 0x18, 0x0b, 0x2e, 0x10, 0x80, 0x20, 0x00, 0x10, 0x81, 0x40, 0x50, 0x10, 0x80, 0x20, 0x01, 0x00, 0x62, 0x30, 0x16, 0x5c, 0x21, 0x00, 0x40, 0x00, 0x21, 0x02, 0x80, 0xa0, 0x21, 0x00, 0x40, 0x02, 0x07, 0xc4, 0x20, 0x51, 0xc4, 0x6a, 0x94, 0x00, 0x45, 0x55, 0x90, 0x2f, 0x9d, 0x90, 0x01, 0x8c, 0x09, 0x20, 0xb1, 0xea, 0x44, 0x58, 0x78, 0x00, 0x03, 0x3a, 0x63, 0x0f, 0xda, 0x34},
 }
 
@@ -158,11 +159,11 @@ func TestStatRecordsPlafond(t *testing.T) {
 func filmRepete(t *testing.T, data []byte) *source.Film {
 	t.Helper()
 	chunks := make(source.MemoryChunks, repeatChunks)
-	meta := make([]source.ChunkMeta, repeatChunks)
+	meta := make([]types.ChunkMeta, repeatChunks)
 	brut := chunkRepete(data)
 	for i := range chunks {
 		chunks[i] = brut
-		meta[i] = source.ChunkMeta{Index: i + 1, ChunkType: 2, StartMS: i * 1000}
+		meta[i] = types.ChunkMeta{Index: i + 1, ChunkType: 2, StartMS: i * 1000}
 	}
 	film, err := source.Load(chunks, meta)
 	if err != nil {

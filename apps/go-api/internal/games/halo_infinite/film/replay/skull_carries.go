@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // skull_carries.go — LA REGLE : de quoi est faite une periode de portage du CRANE d'Oddball.
@@ -74,7 +75,7 @@ const skullTickGapMS = 3000
 // Seuls les ecarts INTRA-TRAIN entrent (au-dela de [skullTickGapMS] ce n'est plus un ecart
 // entre deux tics mais la separation de deux periodes). Zero quand aucun ecart n'est mesurable
 // — un film dont tous les trains tiennent en un seul tic, ou un axe sans echelle.
-func skullTickWidthFrames(recs []objectives.StatRecord, ctx matchClock) int {
+func skullTickWidthFrames(recs []types.StatRecord, ctx matchClock) int {
 	var ecarts []int
 	for _, byRound := range objectives.SeriesByRound(recs, objectives.SkullTicksComponent, false) {
 		for _, pts := range byRound {
@@ -101,7 +102,7 @@ func skullTickWidthFrames(recs []objectives.StatRecord, ctx matchClock) int {
 // porteur passerait au-dessus de son propre oracle (mesure : 2 joueurs sur 28, +0,1 s chacun).
 // (w-1)/2 est la plus grande fenetre symetrique en images ENTIERES qui ne depasse jamais
 // n largeurs de tic — le sens dans lequel on veut se tromper.
-func skullHalfTickFrames(recs []objectives.StatRecord, ctx matchClock) int {
+func skullHalfTickFrames(recs []types.StatRecord, ctx matchClock) int {
 	w := skullTickWidthFrames(recs, ctx)
 	if w <= 1 {
 		return 0
@@ -122,7 +123,7 @@ type SkullInput struct {
 	// (`comp 21 B`) et les progressions du compteur de morts qui identifient les slots. Aucun fait
 	// de match n'entre : le porteur se nomme par les instants de mort, et le calque est donc
 	// publiable hors ligne.
-	Records []objectives.StatRecord
+	Records []types.StatRecord
 	// Identity est le pont slot statborg -> xuid que l'APPELANT a deja resolu, PAR MANCHE.
 	// Valeur zero : ce paquet le resout lui-meme par les seuls instants de mort (cf.
 	// [skullIdentityOf]), et l'artefact reste publiable hors ligne.
@@ -146,7 +147,7 @@ type SkullInput struct {
 type SkullCarryScan struct {
 	Scanned bool
 	// Records : les enregistrements d'entite (tics de score de mode + prises).
-	Records []objectives.StatRecord
+	Records []types.StatRecord
 	// Identity est le pont slot statborg -> xuid PAR MANCHE (par les instants de mort).
 	Identity objectives.RoundIdentity
 }
@@ -375,7 +376,7 @@ func unionOverlap(spans []presenceSpan, f0, f1 int) (presenceSpan, bool) {
 // PAR MANCHE et par slot, chaque train nomme par l'identite de sa manche. Ordre TOTAL (instant,
 // puis manche, puis xuid) : sans lui le parcours de map rendrait une sortie differente a chaque
 // execution.
-func skullCarryIntervals(recs []objectives.StatRecord, identity objectives.RoundIdentity) []skullRawCarry {
+func skullCarryIntervals(recs []types.StatRecord, identity objectives.RoundIdentity) []skullRawCarry {
 	bySlot := objectives.SeriesByRound(recs, objectives.SkullTicksComponent, false)
 	var out []skullRawCarry
 	for slot, byRound := range bySlot {
@@ -411,7 +412,7 @@ func skullCarryIntervals(recs []objectives.StatRecord, identity objectives.Round
 // skullTickInstants rend un instant par UNITE gagnee par le compteur de tics (deroulage par
 // valeur : la meme valeur reemise ne rajoute rien, si bien que chaque tic est date a sa PREMIERE
 // emission).
-func skullTickInstants(pts []objectives.ScorePoint) []int {
+func skullTickInstants(pts []types.ScorePoint) []int {
 	var out []int
 	prev := int64(0)
 	for _, p := range pts {
@@ -424,7 +425,7 @@ func skullTickInstants(pts []objectives.ScorePoint) []int {
 
 // skullGrabCount rend le nombre total de PRISES du crane (`comp 21 B`), toutes manches — le
 // denominateur de couverture, independant des trains de tics.
-func skullGrabCount(recs []objectives.StatRecord) int {
+func skullGrabCount(recs []types.StatRecord) int {
 	total := 0
 	for _, byRound := range objectives.SeriesByRound(recs, objectives.SkullGrabsComponent, false) {
 		for _, pts := range byRound {
