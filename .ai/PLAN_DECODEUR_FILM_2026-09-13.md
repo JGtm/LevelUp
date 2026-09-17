@@ -5161,8 +5161,8 @@ code, l'ADR amendé, le triage du §4 — les deux dernières étant le lot docu
       `docs/SYNC_GUIDE` FR + EN NON TOUCHÉS et c'est une MESURE (aucune phrase devenue fausse,
       parité 196/196 et numéros de titre identiques).
 - [x] **triage du §4 (les découvertes de M3)** — FAIT le 2026-09-17, même lot : bloc « Clôture M3
-      — triage du §4 » ci-dessus. 52 découvertes nommées, **19 TRAITEES / 1 RETENUE /
-      32 NON RETENUES**, plus 2 reprises hors §4. Le troisième état est le défaut (méthode de
+      — triage du §4 » ci-dessus. 57 découvertes nommées (52 au triage initial + 5 arrivées avec le lot 3.7), **19 TRAITEES / 1 RETENUE /
+      37 NON RETENUES** (32 au triage initial + `D6`..`D10 (3.7)` arrivées avec la fusion du lot 3.7), plus 2 reprises hors §4. Le troisième état est le défaut (méthode de
       l'utilisateur) ; aucune ligne du §4 n'est supprimée.
 - [ ] **références d'équivalence re-figées** — pilote, à la fusion, sur la classification du §5
       (`replay-equiv -update` CONTRÔLÉ, puis `git diff -U0 -- equivalence/*.tsv`). Ce que la
@@ -5203,7 +5203,7 @@ L'état porte sur ce qui RESTE à faire. Quand la moitié bloquante d'une ligne 
 son lot et que le reste ne l'est pas, la ligne le dit. **Aucune ligne du §4 n'est supprimée** :
 ce bloc est une synthèse qui les cite par leur nom.
 
-**Périmètre et comptes.** Les lots 3.x et « clôture M2 » portent **52 découvertes nommées**
+**Périmètre et comptes.** Les lots 3.x et « clôture M2 » portent **57 découvertes nommées (52 au triage initial + 5 arrivées avec le lot 3.7)**
 (55 lignes du tableau : trois d'entre elles sont la clôture d'une découverte ouverte plus haut —
 `D7 (3.4.2)`, `D3 (3.4.1)`, `D5 (3.4.1)`). Verdict : **19 TRAITEES, 1 RETENUE,
 32 NON RETENUES**. S'y ajoutent **2 reprises hors §4** déjà tranchées par le pilote, NON
@@ -5277,6 +5277,11 @@ sont triées ici pour que la clôture soit complète.
 | `D3 (3.7)` `ti=29 respawn-block` ferme à 100 % et personne ne le lit | archétype entièrement lisible, **sans consommateur** : aucun usage produit identifié, et le blocage de réapparition par joueur n'a jamais été demandé |
 | `D4 (3.7)` le recensement par masque ne vaut pas sur une image-clé | rien à corriger dans le code ; la réserve est écrite à l'en-tête de `reapparition_37_bassin_research_test.go` et au §6 de la note 3.7, exactement là où elle se redécouvrirait |
 | `D5 (3.7)` `ti=40` véhicule : 777 records d'image-clé bornés, marche complète, zéro fermé | c'est une LARGEUR fausse, matière pour le lot qui rouvrirait 3.6.e — **NON RETENUE par V22** (« beaucoup d'inutiles », décision utilisateur) ; l'archétype n'est de surcroît pas dimensionné, faute de preuve bornante sur film |
+| `D6 (3.7)` `VehicleTrack.TEnd` renseigné 1 fois sur 109 et 1 sur 42 par la cuisson : la fin de vie des véhicules n est presque jamais attribuée | NON RETENUE pour M3 : aucun gate ne bouge ; c est le PRÉALABLE nommé de tout cycle de réapparition des véhicules (V23), à porter par le lot post-M4 qui voudra ce cycle — pas avant |
+| `D7 (3.7)` la lecture du bassin de minuteurs échoue sur les deux builds BTB Heavies (masques de fente tout-à-un) | NON RETENUE : instrument de recherche, profil par build à établir le jour du port |
+| `D8 (3.7)` `Options.MapQuant` seul ne publie pas `flagCarries`, et aucun commentaire ne le dit | NON RETENUE : une ligne de godoc quand un lot rouvrira `BuildFromFilm`, rien de plus |
+| `D9 (3.7)` l entité moteur est déclarée deux fois au registre (`ti=0` et `ti=2`) ; prendre le premier candidat rend « 0 record marché » | NON RETENUE : piège écrit dans la note 3.7, à relire au port du bassin |
+| `D10 (3.7)` les minuteurs du bassin sont génériques (mêmes durées en CTF et en Oddball, fentes ~ nombre de joueurs) ; une jointure démarrage de fente / mort datée les nommerait sans port | NON RETENUE : recherche, hors chantier ; le minuteur du drapeau n est pas dans le bassin (446/446 records sans fente), seule forme identifiée = navpoint `ti=12 i11`/`i12` |
 
 **Deux reprises hors §4 des lots 3.x, tranchées par le pilote — NON RETENUES.**
 
