@@ -11,15 +11,29 @@ package grenadeids
 // reference decrit sauter 47 bits sans dire depuis quoi »). Sur les builds anciens, ni +103 ni
 // +102 ne rendent un index plausible : il faut donc le CHERCHER, pas le deduire.
 //
-// LE TEST EST CELUI QUI A ETABLI +103 : le champ fait cinq bits et le film compte au plus huit
-// joueurs par equipe indexes 0..7, donc la bonne position est celle ou TOUTES les valeurs
-// tombent dans 0..7 — un decalage faux rend des valeurs au-dela une fois sur deux. L instrument
-// balaye les decalages autour de +103 et publie, pour chacun, la part des lancers CONFIRMES
-// (identifiant reconnu, a +24 ou a +23) dont l index tient dans 0..7.
+// LE TEST QUI A ETABLI +103 — ET POURQUOI IL NE SUFFIT PAS (mesure du 2026-09-17, lot 3.3.1).
+// Le champ fait cinq bits et un match d arene compte huit joueurs indexes 0..7 : la position
+// juste est donc celle ou TOUTES les valeurs tombent dans 0..7. Ce critere ne discrimine RIEN
+// sur les films anciens — sur `60ae07c4` (Ranked:Oddball, huit joueurs), TRENTE decalages sur
+// 81 rendent 310/310. La cause est mesuree : ce sont des SUITES DE ZEROS de l etat par defaut,
+// ou le champ lu vaut 0 a chaque lancer.
+//
+// LE CRITERE FORT EST LA DISPERSION, ET IL EST GRATUIT. Un champ d index de joueur prend
+// PLUSIEURS valeurs sur un match — autant que de lanceurs — tandis qu une suite de zeros n en
+// prend qu UNE. L instrument publie donc, par decalage, le nombre de valeurs DISTINCTES et le
+// MAXIMUM, a cote de la part dans 0..7 :
+//
+//	film d arene (8 joueurs)  la position juste rend max <= 7 ET plusieurs distincts
+//	film BTB (jusqu a 24)     la MEME position doit rendre un max > 7 : un decalage qui rend
+//	                          0..7 des deux cotes est une suite de zeros, pas un index
+//
+// C est le recoupement que la decouverte D5 (3.3r) reclamait, et il se lit sans le pont
+// d identite du rejeu.
 
 import (
 	"fmt"
 	"io"
+	"math/bits"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -34,9 +48,24 @@ const indexAuteurBits = 5
 // indexAuteurMax : la plus grande valeur qu un index de joueur peut prendre dans un film a huit.
 const indexAuteurMax = 7
 
-// CompteIndex porte, pour un decalage, combien de lancers confirmes y rendent un index plausible.
+// CompteIndex porte, pour un decalage, combien de lancers confirmes y rendent un index plausible,
+// et QUELLES valeurs y ont ete vues — c est la dispersion qui separe un index d une suite de
+// zeros.
 type CompteIndex struct {
 	Dans0a7, Total int
+	// Vues est le masque des valeurs rencontrees (le champ fait cinq bits : 0..31).
+	Vues uint32
+}
+
+// Distincts rend le nombre de valeurs differentes vues a ce decalage.
+func (c CompteIndex) Distincts() int { return bits.OnesCount32(c.Vues) }
+
+// Max rend la plus grande valeur vue, ou -1 quand aucune ne l a ete.
+func (c CompteIndex) Max() int {
+	if c.Vues == 0 {
+		return -1
+	}
+	return 31 - bits.LeadingZeros32(c.Vues)
 }
 
 // balayerIndexAuteur accumule, pour une occurrence CONFIRMEE, la plausibilite de chaque decalage.
@@ -55,7 +84,9 @@ func balayerIndexAuteur(pay []byte, o Occurrence, fenetre int, r *Releve) {
 			r.IndexParDecalage[d] = c
 		}
 		c.Total++
-		if grammar.PeekBits(pay, o.BitPos+indexAuteurBit+d, indexAuteurBits) <= indexAuteurMax {
+		v := grammar.PeekBits(pay, o.BitPos+indexAuteurBit+d, indexAuteurBits)
+		c.Vues |= 1 << uint(v&0x1F)
+		if v <= indexAuteurMax {
 			c.Dans0a7++
 		}
 	}
@@ -72,6 +103,10 @@ func occurrenceConfirmee(o Occurrence) bool {
 }
 
 // EcrireIndexAuteur publie le balayage, du decalage le plus plausible au moins plausible.
+//
+// L ORDRE EST CELUI DU CRITERE FORT : la part dans 0..7 d abord, puis la DISPERSION — un
+// decalage qui rend 100 % avec UNE seule valeur distincte est une suite de zeros, et il tombe
+// donc derriere un decalage qui rend 100 % avec huit valeurs.
 func EcrireIndexAuteur(w io.Writer, r *Releve, top int) {
 	if r.LancersConfirmes == 0 {
 		return
@@ -85,10 +120,15 @@ func EcrireIndexAuteur(w io.Writer, r *Releve, top int) {
 		lignes = append(lignes, ligne{d: d, c: *c})
 	}
 	sort.Slice(lignes, func(i, j int) bool {
-		if lignes[i].c.Dans0a7 != lignes[j].c.Dans0a7 {
-			return lignes[i].c.Dans0a7 > lignes[j].c.Dans0a7
+		a, b := lignes[i], lignes[j]
+		switch {
+		case a.c.Dans0a7 != b.c.Dans0a7:
+			return a.c.Dans0a7 > b.c.Dans0a7
+		case a.c.Distincts() != b.c.Distincts():
+			return a.c.Distincts() > b.c.Distincts()
+		default:
+			return abs(a.d) < abs(b.d)
 		}
-		return abs(lignes[i].d) < abs(lignes[j].d)
 	})
 	fmt.Fprintf(w, "   INDEX AUTEUR  %d lancer(s) confirme(s) ; part des index dans 0..7 par decalage depuis +%d\n",
 		r.LancersConfirmes, indexAuteurBit)
@@ -96,6 +136,7 @@ func EcrireIndexAuteur(w io.Writer, r *Releve, top int) {
 		if top > 0 && i >= top {
 			break
 		}
-		fmt.Fprintf(w, "     decalage=%+d  %d/%d\n", l.d, l.c.Dans0a7, l.c.Total)
+		fmt.Fprintf(w, "     decalage=%+d  %d/%d  distincts=%d max=%d\n",
+			l.d, l.c.Dans0a7, l.c.Total, l.c.Distincts(), l.c.Max())
 	}
 }

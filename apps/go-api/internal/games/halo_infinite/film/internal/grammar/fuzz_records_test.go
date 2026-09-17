@@ -84,7 +84,7 @@ func FuzzFilmRecordReaders(f *testing.F) {
 			t.Skip("entree hors du domaine borne du harnais")
 		}
 		_ = WalkPackets(payload)
-		_ = scanGrenadeThrows(payload)
+		_ = scanGrenadesDeReference(payload)
 		_ = scanProjectileRecords(payload, band, &wr, ProfilDeBalayageParDefaut().LargeursObjetDuMonde())
 		_ = WalkKeyframeWorld(payload)
 		// Lecture DELIBEREMENT a cheval sur les DEUX bouts du buffer : c est la tolerance que
