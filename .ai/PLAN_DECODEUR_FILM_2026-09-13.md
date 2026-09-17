@@ -5324,13 +5324,14 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 
 Branche `feat/decfilm-adr`, base `92c83b333` (l'intégration avec 2.6 fusionné : la fin du code de
 M2). **Aucun décodage, aucune jonction, aucun fichier Go** — c'est la contrainte du lot, et c'est
-aussi ce qui rend les gates de ce lot documentaires. Quatre commits, un par point du brief.
+aussi ce qui rend les gates de ce lot documentaires. Un commit par point du brief, plus un
+commit de relecture (langue de l'ADR, aucun fait changé) et celui de clôture.
 
 | Date | Point | Gate | Résultat |
 |---|---|---|---|
 | 2026-09-17 | tous | `git diff --name-only 92c83b333..HEAD` | **3 fichiers, tous `.md`** : `docs/adr/0034-film-decoder-profile-and-layers.md`, `CLAUDE.md`, `.ai/project_map.md` (+ ce fichier au commit de clôture). `grep -v '\.md$'` : **0**. `grep -c '\.go$'` : **0** |
-| 2026-09-17 | tous | `go build ./...` inchangé | `[~]` TENU PAR CONSTRUCTION et mesuré par le gate ci-dessus : zéro fichier Go au diff. Les étapes `gofmt` et `go-vet` du hook pre-commit se sont d'ailleurs déclarées `skip / no matching staged files` aux quatre commits, ce qui est la même mesure prise par un autre instrument. Un `go build` à froid (CGO, DuckDB) sur ce poste aurait coûté des minutes pour re-prouver un diff vide, et la mémoire du dépôt interdit deux builds Go concurrents |
-| 2026-09-17 | tous | hooks pre-commit (lefthook) | **verts aux quatre commits** : `check-merge-conflict`, `docs-fr-sync`, `gitleaks` (`no leaks found`) passés ; `gofmt` et `go-vet` skippés faute de fichier Go |
+| 2026-09-17 | tous | `go build ./...` inchangé | `[~]` TENU PAR CONSTRUCTION et mesuré par le gate ci-dessus : zéro fichier Go au diff. Les étapes `gofmt` et `go-vet` du hook pre-commit se sont d'ailleurs déclarées `skip / no matching staged files` à chaque commit, ce qui est la même mesure prise par un autre instrument. Un `go build` à froid (CGO, DuckDB) sur ce poste aurait coûté des minutes pour re-prouver un diff vide, et la mémoire du dépôt interdit deux builds Go concurrents |
+| 2026-09-17 | tous | hooks pre-commit (lefthook) | **verts à CHAQUE commit du lot** : `check-merge-conflict`, `docs-fr-sync`, `gitleaks` (`no leaks found`) passés ; `gofmt` et `go-vet` skippés faute de fichier Go |
 | 2026-09-17 | (1) | ADR : titres, largeur, mojibake | 599 lignes ; balayage des motifs de mojibake classiques (double encodage UTF-8) : **0 occurrence** ; toutes les lignes de la section neuve sous 100 caractères hors les 2 lignes de tableau (les 3 lignes > 100 du fichier sont antérieures au lot) ; aucun emoji |
 | 2026-09-17 | (3) | parité `docs/SYNC_GUIDE` FR/EN | **194 / 194 lignes**, et `diff` des NUMÉROS DE LIGNE de tous les titres : **identique**. Fichiers NON TOUCHÉS par ce lot : la sous-section « révisions » est déjà au présent depuis 2.6.1 |
 | 2026-09-17 | (3) | `conditionBacklog` : le nom cité par les guides est le nom RÉEL | vérifié sur pièces — `internal/sync/killcollector/postsync.go:402`, `const conditionBacklog`, et sa godoc porte les trois conditions. Les deux guides le citent avec le bon chemin |
