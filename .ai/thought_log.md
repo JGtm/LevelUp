@@ -110867,3 +110867,25 @@ Découvertes consignées au plan §10 : le serveur ne bascule jamais un job de s
 (décision produit) ; `PolicyPinnedPlayer` du live-sync Halo 5 non instruit ; trois sites
 `citations_*` ouvrent metadata en `ro:` hors run (préexistant) ; plafond de hot-add du pool
 compte tous les slots (sans appelant à `MaxSize > 0`).
+
+## [2026-09-16] Sprites véhicules redessinés (Claude Design) — bordure en couche séparée — Complété (gate visuel utilisateur à faire)
+
+**Statut** : Complété côté code et tests ; vérification visuelle dans le rejeu à faire par l'utilisateur.
+
+**Décision technique principale** : les 18 sprites de `static/vehicles-assets/halo_infinite/replay/`
+sont remplacés par le lot « souple » livré par Claude Design (arêtes intérieures grises, pointillé
+retiré) et accompagnés de 18 `*_outline.png` (anneau blanc + liseré noir, jamais teinté). Le canevas
+a grandi de `pad` px de chaque côté (3 à 10 px, 10 mm/px inchangé) ; `index.json` gagne `outline` et
+`pad` par famille (l'entrée `tourelle_auto_bannie` sans asset est inchangée). Côté web :
+`model/vehicleSpriteManifest.ts` (lecture pure du manifeste + `vehicleBodyPx`) ; `sizeOf` rend la
+BOÎTE DU VÉHICULE (image − 2·pad), si bien que longueur à l'écran, ancres d'armes, rayon
+d'explosion et place des noms sont strictement ceux d'avant (boîte redessinée = sprite historique
+au pixel près pour les 18 familles, vérifié) ; la bordure est chargée à la demande et cuite SOUS le
+sprite teint dans la même vignette (`replayDraw.outlinedSpriteCanvas`), teinte `multiply`
+conservée. Bordure indisponible = sprite sans bordure + `console.warn`.
+
+**Résultats observés** : `tsc` OK ; vitest `src/features/match-replay` 2 892 verts (dont 6 nouveaux) ;
+eslint : 1 avertissement `preserve-manual-memoization` sur `isEmbarkedAt`, ligne non modifiée.
+
+**Conclusion / prochaine étape** : gate visuel utilisateur sur un match à véhicules (teinte d'équipe
+lisible sur arêtes grises, bordure blanche non teintée, tailles inchangées).
