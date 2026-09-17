@@ -71,6 +71,17 @@ type ExplorerEncounterStats struct {
 	// par duel contre la cible, ancien→récent — même métrique que les cartes revanche
 	// du hub Relations (CumulativeFragGapChart). Vide si jamais affrontés en ennemi.
 	FragGapSeries []ExplorerFragGapPoint `json:"frag_gap_series,omitempty"`
+	// Assists = assistances ÉCHANGÉES avec la cible sur les matchs joués dans la même
+	// équipe dont le film a été décodé (relation_assists.go). Nil = aucun match mesuré
+	// ensemble : l'écran affiche « — », JAMAIS « 0 assistance ». Même agrégat que la
+	// carte Binôme du hub Relations.
+	Assists *RelationAssists `json:"assists,omitempty"`
+	// AssistVolumeMax = plus gros volume d'un sens (reçues ou données) parmi TOUTES les
+	// relations mesurées du joueur : borne de l'échelle logarithmique des barres papillon.
+	// Servie par le backend parce que l'Explorer n'affiche qu'une paire — se borner à
+	// cette paire remplirait toujours la demi-barre (échec documenté côté web dans
+	// assistExchange.ts). 0 si aucune relation mesurée.
+	AssistVolumeMax int `json:"assist_volume_max,omitempty"`
 }
 
 // ExplorerFragGapPoint = un point de la courbe « écart de frags cumulé » de

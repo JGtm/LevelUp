@@ -13108,6 +13108,11 @@ components:
         ally_count:
           format: int64
           type: integer
+        assist_volume_max:
+          format: int64
+          type: integer
+        assists:
+          $ref: '#/components/schemas/RelationAssists'
         count_together:
           format: int64
           type: integer

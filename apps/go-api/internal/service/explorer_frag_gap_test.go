@@ -38,10 +38,12 @@ func TestBuildExplorerFragGapSeries(t *testing.T) {
 
 // mockExplorerRelations : provider relationnel de test (WR historique + timeline).
 type mockExplorerRelations struct {
-	wr     *float64
-	duels  []domain.RelationDuelRawRow
-	engErr error
-	tlErr  error
+	wr         *float64
+	duels      []domain.RelationDuelRawRow
+	assists    map[string]domain.RelationAssists
+	engErr     error
+	tlErr      error
+	assistsErr error
 }
 
 func (m *mockExplorerRelations) GetCoreEngagement(_ context.Context, _ []string, _ []string, _ int) (domain.CoreEngagement, error) {
@@ -50,6 +52,10 @@ func (m *mockExplorerRelations) GetCoreEngagement(_ context.Context, _ []string,
 
 func (m *mockExplorerRelations) GetRivalTimeline(_ context.Context, _ string, _ []string, _ int) ([]domain.RelationDuelRawRow, error) {
 	return m.duels, m.tlErr
+}
+
+func (m *mockExplorerRelations) GetRelationAssists(_ context.Context, _ []string) (map[string]domain.RelationAssists, error) {
+	return m.assists, m.assistsErr
 }
 
 // TestEnrichEncounterRelations : le WR historique alimente PlayerWinRate (repère
@@ -88,8 +94,9 @@ func TestEnrichEncounterRelations_NoProvider(t *testing.T) {
 	svc := NewExplorerService(&mockExplorerRepo{}, "self")
 	stats := &domain.ExplorerEncounterStats{CountTogether: 1}
 	svc.enrichEncounterRelations(context.Background(), stats, "target-x")
-	if stats.PlayerWinRate != nil || stats.FragGapSeries != nil {
-		t.Errorf("no-op attendu sans provider, got wr=%v series=%v", stats.PlayerWinRate, stats.FragGapSeries)
+	if stats.PlayerWinRate != nil || stats.FragGapSeries != nil || stats.Assists != nil || stats.AssistVolumeMax != 0 {
+		t.Errorf("no-op attendu sans provider, got wr=%v series=%v assists=%v volumeMax=%d",
+			stats.PlayerWinRate, stats.FragGapSeries, stats.Assists, stats.AssistVolumeMax)
 	}
 	// stats nil → no-op (pas de panic).
 	svc.enrichEncounterRelations(context.Background(), nil, "target-x")

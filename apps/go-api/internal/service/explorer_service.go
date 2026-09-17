@@ -146,6 +146,10 @@ type ExplorerService struct {
 type ExplorerRelationsProvider interface {
 	GetCoreEngagement(ctx context.Context, coreXUIDs []string, scope []string, limit int) (domain.CoreEngagement, error)
 	GetRivalTimeline(ctx context.Context, rivalXUID string, scope []string, limit int) ([]domain.RelationDuelRawRow, error)
+	// GetRelationAssists : assistances échangées avec CHAQUE coéquipier sur les matchs
+	// mesurés. L'Explorer n'en affiche qu'une (la cible) mais lit la map entière : elle
+	// porte aussi la borne d'échelle des barres papillon (cf. explorer_service_assists.go).
+	GetRelationAssists(ctx context.Context, scope []string) (map[string]domain.RelationAssists, error)
 }
 
 // ExplorerTargetProfileDeps regroupe les dépendances de l'encart "Profil joueur
@@ -529,7 +533,8 @@ const explorerFragGapTimelineLimit = 20
 
 // enrichEncounterRelations complète best-effort la section « matchs joués
 // ensemble » : PlayerWinRate (repère « moyenne perso » des donuts, WR historique
-// du joueur) + FragGapSeries (écart de frags cumulé duel par duel contre la cible).
+// du joueur) + FragGapSeries (écart de frags cumulé duel par duel contre la cible)
+// + Assists (« Part des assistances », cf. explorer_service_assists.go).
 // no-op si stats nil (aucun match commun) ou provider non injecté. Chaque source
 // est indépendante : un échec est loggé puis ignoré (dégradation gracieuse), la
 // réponse reste servie sans le repère / le graphe.
@@ -553,6 +558,9 @@ func (s *ExplorerService) enrichEncounterRelations(ctx context.Context, stats *d
 			stats.FragGapSeries = buildExplorerFragGapSeries(duels)
 		}
 	}
+	// Assistances échangées avec la cible + borne d'échelle des barres papillon
+	// (bloc « Part des assistances »). Même best-effort que ci-dessus.
+	s.enrichEncounterAssists(ctx, stats, otherXUID)
 }
 
 // explorerCombatProfileLimit : nombre de matchs PvP récents de la cible exposés

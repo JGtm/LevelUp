@@ -9,6 +9,13 @@
  *  - ExplorerTargetCareerStats (si career_stats dispo)
  *  - ExplorerTargetSampleStats (si sample_stats dispo et sample_size > 0)
  *
+ * Section « Sur N matchs joués ensemble » : rangée de KPI puis TROIS rangées de 3
+ * colonnes (2026-09-17) —
+ *   1. Répartition des frags (2/3) | Cadence (1/3)
+ *   2. Donuts de taux de victoire (1/3) | Écart de frags cumulé (2/3)
+ *   3. Répartition des résultats + Part des assistances (2/3) | Portée des frags (1/3)
+ * Dans chaque rangée, la colonne gauche impose la hauteur et le bloc de droite s'étire.
+ *
  * Cas no-tokens (auth_available=false) :
  *  - Identity locale toujours résolue (indépendante des tokens)
  *  - CareerStats masquée + hint "Connexion Halo requise"
@@ -24,6 +31,8 @@ import { ExplorerTargetCareerStats } from './ExplorerTargetCareerStats'
 import { ExplorerTargetSampleStats, ExplorerTargetSampleKpis, ExplorerTargetOutcome } from './ExplorerTargetSampleStats'
 import { ExplorerTargetCadence } from './ExplorerTargetCadence'
 import { ExplorerTargetVersusDonuts } from './ExplorerTargetVersusDonuts'
+import { ExplorerTargetAssists } from './ExplorerTargetAssists'
+import { ExplorerTargetFragRange } from './ExplorerTargetFragRange'
 import { ExplorerTargetMedals } from './ExplorerTargetMedals'
 import { ExplorerTargetSeasonCSR } from './ExplorerTargetSeasonCSR'
 import { ExplorerTargetSeasonMatches } from './ExplorerTargetSeasonMatches'
@@ -155,7 +164,9 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
       )}
 
       {/* "Sur N matchs joués ensemble" : titre en en-tête de section hors bloc
-          (style "Profil de combat"), puis stats (2/3) + Cadence (1/3) à droite. */}
+          (style "Profil de combat"), rangée de KPI, puis TROIS rangées en grille de 3
+          colonnes — frags + cadence, donuts + écart de frags cumulé, résultats +
+          assistances + portée. */}
       {showSample && sampleStats && (
         <section className="space-y-3">
           <header>
@@ -165,21 +176,36 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
           </header>
           {/* Rangée de KPI cards sous le titre (parité "Carrière complète"). */}
           <ExplorerTargetSampleKpis sampleStats={sampleStats} />
+
+          {/* Rangée 1 : « Répartition des frags » (2/3, seule dans sa colonne) +
+              Cadence (1/3). La colonne gauche impose la hauteur, la cadence s'y adapte. */}
           <div className="grid gap-4 lg:grid-cols-3">
-            {/* Colonne gauche (2/3) : donut "Répartition des frags" + bilan V/N/D empilés. */}
-            <div className="flex flex-col gap-4 lg:col-span-2">
+            <div className="lg:col-span-2">
               <ExplorerTargetSampleStats sampleStats={sampleStats} />
-              <ExplorerTargetOutcome sampleStats={sampleStats} />
             </div>
             <div className="lg:col-span-1">
               <ExplorerTargetCadence sampleStats={sampleStats} />
             </div>
           </div>
 
-          {/* En DERNIER : donuts « taux de victoires ensemble / face à lui »
-              (repère = moyenne perso historique) + écart de frags cumulé. Briques
-              réutilisées du hub Relations. Rendu seulement si encounter_stats fourni. */}
+          {/* Rangée 2 : donuts « taux de victoires ensemble / face à lui » (repère =
+              moyenne perso historique, 1/3) + écart de frags cumulé (2/3). Briques
+              réutilisées du hub Relations. Rendue seulement si encounter_stats fourni. */}
           {encounterStats && <ExplorerTargetVersusDonuts encounterStats={encounterStats} />}
+
+          {/* Rangée 3 : bilan V/N/D puis « Part des assistances » empilés (2/3) +
+              « Portée des frags » (1/3, placeholder en attendant la mesure). Même
+              mécanique de hauteur que la rangée 1 : la colonne gauche décide, le bloc
+              de droite s'étire. */}
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="flex flex-col gap-4 lg:col-span-2">
+              <ExplorerTargetOutcome sampleStats={sampleStats} />
+              <ExplorerTargetAssists encounterStats={encounterStats} />
+            </div>
+            <div className="lg:col-span-1">
+              <ExplorerTargetFragRange />
+            </div>
+          </div>
         </section>
       )}
     </div>

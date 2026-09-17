@@ -1,6 +1,7 @@
 /**
- * ExplorerTargetVersusDonuts — dernière rangée de la section « matchs joués
- * ensemble » de l'encart adversaire.
+ * ExplorerTargetVersusDonuts — 2e rangée de la section « matchs joués ensemble » de
+ * l'encart adversaire (entre la rangée frags + cadence et la rangée résultats +
+ * assistances + portée).
  *
  * À GAUCHE : deux donuts de taux de victoire empilés — « ensemble » (en allié)
  * et « face à lui » (en ennemi) — chacun avec le REPÈRE de la moyenne perso
