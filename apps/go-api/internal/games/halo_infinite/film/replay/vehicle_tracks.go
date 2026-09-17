@@ -5,7 +5,7 @@ package replay
 //
 // L OBJET PUBLIE EST LA VIE, PAS LE SLOT, et c est une lecon du chantier : le pool de slots
 // reboucle et la generation ne fait que 2 bits, donc `(slot, gen)` est la seule cle. Le NUAGE
-// de positions, lui, ne porte PAS de generation (`filmdec.BipedPosition`) : les vies d un meme
+// de positions, lui, ne porte PAS de generation (`grammar.BipedPosition`) : les vies d un meme
 // slot y sont fondues. C est le RECENSEMENT qui les separe, et la fenetre de chaque vie qui
 // decoupe le nuage — limite structurelle deja ecrite au rapport V1 (item 1), reprise telle
 // quelle ici plutot que contournee.
@@ -25,8 +25,9 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // vehicleCensusTolUS est la TOLERANCE de la fenetre d une vie, de part et d autre de son
@@ -90,7 +91,7 @@ const vehicleMinSpeedMPS = 5.0
 // vehicleLife est une vie de vehicule telle que le recensement la borne, decoupee de sa voisine
 // du meme slot.
 type vehicleLife struct {
-	key filmdec.EquipmentLifeKey
+	key types.EquipmentLifeKey
 	// firstUS / lastUS : premiere et derniere image-cle qui RECENSE la vie.
 	firstUS, lastUS uint64
 	// goneByUS est la premiere image-cle qui ne la recense PLUS : la premiere preuve d absence.
@@ -109,7 +110,7 @@ type vehicleLife struct {
 
 // buildVehicleTracks assemble les vies publiables, leur couverture et le bilan de rattachement.
 func buildVehicleTracks(
-	scan VehicleScan, bipeds []filmdec.BipedPosition, reg IdentityRegistry, clock replayClock,
+	scan VehicleScan, bipeds []grammar.BipedPosition, reg IdentityRegistry, clock replayClock,
 ) ([]VehicleTrack, VehicleCoverage, vehicleRideStats) {
 	// `AimReads` compte ce que le FILM a rendu, pas ce que les episodes en retiennent : c est lui
 	// qui distingue « aucun occupant ne visait » de « le decodeur n a rien lu ».
@@ -158,7 +159,7 @@ func buildVehicleTracks(
 // ECRIT (cf. vehicle_end.go). L ordre est celui de D14 (b) : les fenetres d abord, la lecture
 // ensuite, parce que c est la fenetre qui departage deux vies de meme `(slot, gen)`.
 func vehicleLives(
-	kf filmdec.WorldObjectKeyframes, deaths []filmdec.ObjectDeath,
+	kf grammar.WorldObjectKeyframes, deaths []types.ObjectDeath,
 ) ([]vehicleLife, vehicleDeathTally) {
 	out := make([]vehicleLife, 0, len(kf.SeenUS))
 	for key, seen := range kf.SeenUS {
@@ -209,10 +210,10 @@ func assignVehicleWindows(lives []vehicleLife) {
 // vehicleSpawnsByLife retient, par vie, le record de creation le PLUS PRECOCE : c est la
 // naissance. Les records suivants d une meme vie sont des re-annonces, et le mot d identite y est
 // constant (gate 1 de V1.5 : 100 % de constance par vie sur les deux films mesures).
-func vehicleSpawnsByLife(cre []filmdec.EquipmentCreation) map[filmdec.EquipmentLifeKey]filmdec.EquipmentCreation {
-	out := map[filmdec.EquipmentLifeKey]filmdec.EquipmentCreation{}
+func vehicleSpawnsByLife(cre []types.EquipmentCreation) map[types.EquipmentLifeKey]types.EquipmentCreation {
+	out := map[types.EquipmentLifeKey]types.EquipmentCreation{}
 	for _, c := range cre {
-		k := filmdec.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
+		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
 		if prev, ok := out[k]; ok && prev.TimestampUS <= c.TimestampUS {
 			continue
 		}
@@ -223,8 +224,8 @@ func vehicleSpawnsByLife(cre []filmdec.EquipmentCreation) map[filmdec.EquipmentL
 
 // vehiclePositionsBySlot indexe le nuage par slot et TRIE chaque liste par instant : le
 // decoupage par fenetre de vie et la regle « le premier observe gagne » en dependent.
-func vehiclePositionsBySlot(pos []filmdec.BipedPosition) map[uint32][]filmdec.BipedPosition {
-	out := map[uint32][]filmdec.BipedPosition{}
+func vehiclePositionsBySlot(pos []grammar.BipedPosition) map[uint32][]grammar.BipedPosition {
+	out := map[uint32][]grammar.BipedPosition{}
 	for _, p := range pos {
 		if !p.HasWorld {
 			continue
@@ -242,7 +243,7 @@ func vehiclePositionsBySlot(pos []filmdec.BipedPosition) map[uint32][]filmdec.Bi
 // une vie sans la moindre position n a rien a dessiner, et lui inventer un point serait pire que
 // de la taire.
 func vehicleTrackOf(
-	l vehicleLife, spawn filmdec.EquipmentCreation, pos []filmdec.BipedPosition,
+	l vehicleLife, spawn types.EquipmentCreation, pos []grammar.BipedPosition,
 	rides []VehicleRide, clock replayClock,
 ) (VehicleTrack, bool) {
 	samples, lastSeenUS := vehicleSamplesOf(pos, l, clock)
@@ -254,9 +255,9 @@ func vehicleTrackOf(
 	tr.End, tr.TEnd = vehicleEndOf(l, clock)
 	if hasSpawn {
 		tr.Spawn = &VehicleSpawn{X: round2(spawn.X), Y: round2(spawn.Y), Z: round2(spawn.Z)}
-		if spawn.MPPPresent[filmdec.MPPWord32] {
-			tr.Chassis = formatChassisID(uint32(spawn.MPPVal[filmdec.MPPWord32]))
-			tr.Family = vehicleFamilyOf(uint32(spawn.MPPVal[filmdec.MPPWord32]))
+		if spawn.MPPPresent[grammar.MPPWord32] {
+			tr.Chassis = formatChassisID(uint32(spawn.MPPVal[grammar.MPPWord32]))
+			tr.Family = vehicleFamilyOf(uint32(spawn.MPPVal[grammar.MPPWord32]))
 		}
 	}
 	tr.Samples = samples
@@ -345,7 +346,7 @@ func clampVehicleRides(rides []VehicleRide, t0, t1max int) []VehicleRide {
 // `T0` prefere l instant du record de CREATION quand il existe (date a la milliseconde) au
 // premier recensement (borne a ~20 s pres).
 func vehicleBounds(
-	l vehicleLife, spawn filmdec.EquipmentCreation, lastSeenUS uint64, clock replayClock,
+	l vehicleLife, spawn types.EquipmentCreation, lastSeenUS uint64, clock replayClock,
 ) (t0, t1, t1max int) {
 	bornUS := l.firstUS
 	if spawn.TimestampUS > 0 && spawn.TimestampUS < bornUS {
@@ -383,7 +384,7 @@ func vehicleBounds(
 // Rend aussi l instant du dernier echantillon retenu — la derniere preuve de presence que le
 // flux de position apporte, souvent posterieure au dernier recensement.
 func vehicleSamplesOf(
-	pos []filmdec.BipedPosition, l vehicleLife, clock replayClock,
+	pos []grammar.BipedPosition, l vehicleLife, clock replayClock,
 ) ([]VehicleSample, uint64) {
 	var (
 		out      []VehicleSample
@@ -417,7 +418,7 @@ func vehicleSamplesOf(
 // vehicleHeadingOf rend le CAP en degres [0,360[ d un echantillon, quand sa velocite `i1` depasse
 // le seuil de l oracle. Meme origine et meme sens que `atan2(Y, X)` des positions dequantifiees,
 // donc la MEME convention que `Point.H` — le client n a qu une regle d orientation a connaitre.
-func vehicleHeadingOf(p filmdec.BipedPosition) (float32, bool) {
+func vehicleHeadingOf(p grammar.BipedPosition) (float32, bool) {
 	v, ok := p.VelocityVector()
 	if !ok {
 		return 0, false

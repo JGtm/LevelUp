@@ -144,7 +144,7 @@ func TestCompositionRefuseUnVacantIntercale(t *testing.T) {
 	}
 }
 
-// TestCompositionPublieLaCauseDuRefus (T-REFUS) : les cinq causes de `filmdec` traversent jusqu a
+// TestCompositionPublieLaCauseDuRefus (T-REFUS) : les cinq causes de `grammar` traversent jusqu a
 // la couverture, parce qu un artefact doit dire POURQUOI il a ete cuit sans la table du film.
 func TestCompositionPublieLaCauseDuRefus(t *testing.T) {
 	for _, cause := range []FilmTableRefusal{

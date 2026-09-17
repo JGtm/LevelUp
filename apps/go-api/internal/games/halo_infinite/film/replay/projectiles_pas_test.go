@@ -12,33 +12,34 @@ package replay
 // bascule. 3 907 pas sur 4 901 sont de cette forme.
 //
 // CE QUI EST CORRIGE ICI EST LA PUBLICATION, PAS LA CAUSE. La cause est en amont, dans la
-// dequantification (`filmdec`) — elle est caracterisee dans le rapport du lot, pas traitee. Ce
+// dequantification (`grammar`) — elle est caracterisee dans le rapport du lot, pas traitee. Ce
 // qui est traite : le client tracait une droite en travers de la carte, a 300 m/s et plus.
 
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // projPas fabrique une piste de projectile a partir de positions X (Y et Z fixes), un point
 // toutes les 100 ms — un point par frame de la grille du rejeu.
-func projPas(origine uint64, repos bool, xs ...float32) filmdec.ProjectileTrack {
-	pts := make([]filmdec.ProjectileSample, len(xs))
+func projPas(origine uint64, repos bool, xs ...float32) types.ProjectileTrack {
+	pts := make([]types.ProjectileSample, len(xs))
 	for i, x := range xs {
-		pts[i] = filmdec.ProjectileSample{
+		pts[i] = types.ProjectileSample{
 			TimestampUS: origine + uint64(i)*100_000, X: x, Y: 0, Z: 0,
 		}
 	}
 	pts[len(pts)-1].AtRest = repos
-	return filmdec.ProjectileTrack{Slot: 4096, Gen: 1, Pts: pts}
+	return types.ProjectileTrack{Slot: 4096, Gen: 1, Pts: pts}
 }
 
 func TestVolCoupeAuPremierPasImpossible(t *testing.T) {
 	// Trois pas lisibles, puis un saut de 40 m en 100 ms (400 m/s). Le vol s'arrete au dernier
 	// point LISIBLE : rien ne dit ou le projectile est reellement passe apres, et le recoudre
 	// reviendrait a inventer la suite.
-	tracks := []filmdec.ProjectileTrack{projPas(1_000_000, true, 0, 1, 2, 42, 43, 44)}
+	tracks := []types.ProjectileTrack{projPas(1_000_000, true, 0, 1, 2, 42, 43, 44)}
 	out, _, tronquees := buildProjectiles(tracks, 1_000_000, 100_000)
 	if len(out) != 1 {
 		t.Fatalf("une trajectoire attendue, obtenu %d", len(out))
@@ -58,7 +59,7 @@ func TestVolCoupeAuPremierPasImpossible(t *testing.T) {
 
 func TestVolLisibleResteIntactEtGardeSonRepos(t *testing.T) {
 	// LE TEMOIN : sans pas impossible, rien ne change — ni les points, ni `Rest`, ni le compte.
-	tracks := []filmdec.ProjectileTrack{projPas(1_000_000, true, 0, 2, 4, 6, 8)}
+	tracks := []types.ProjectileTrack{projPas(1_000_000, true, 0, 2, 4, 6, 8)}
 	out, _, tronquees := buildProjectiles(tracks, 1_000_000, 100_000)
 	if len(out) != 1 || len(out[0].P) != 5 {
 		t.Fatalf("la trajectoire doit sortir entiere (5 points) : %+v", out)
@@ -75,7 +76,7 @@ func TestVolCoupeTropTotNEstPasPublie(t *testing.T) {
 	// Une trajectoire coupee des son deuxieme point n'a qu'UN point de grille : elle ne se
 	// dessine pas. Elle n'est pas publiee — mais la coupure est comptee quand meme, sans quoi
 	// le compteur mentirait par omission.
-	tracks := []filmdec.ProjectileTrack{projPas(1_000_000, true, 0, 60, 61, 62)}
+	tracks := []types.ProjectileTrack{projPas(1_000_000, true, 0, 60, 61, 62)}
 	out, _, tronquees := buildProjectiles(tracks, 1_000_000, 100_000)
 	if len(out) != 0 {
 		t.Fatalf("une trajectoire d'un seul point de grille ne se publie pas : %+v", out)
@@ -88,11 +89,11 @@ func TestVolCoupeTropTotNEstPasPublie(t *testing.T) {
 func TestCouvertureDesProjectilesRemonteLesTronquees(t *testing.T) {
 	// LE COMPTE VOYAGE JUSQU'AU DOCUMENT. Un decodeur qui coupe sans le dire est un rejet
 	// avale — l'anti-patron que `coverage.go` existe pour interdire.
-	opt := Options{Projectiles: []filmdec.ProjectileTrack{
+	opt := Options{Projectiles: []types.ProjectileTrack{
 		projPas(2_000_000, true, 0, 1, 2, 42, 43, 44),
 		projPas(2_000_000, true, 0, 2, 4, 6, 8),
 	}}
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		{Slot: 1024, TimestampUS: 2_000_000, X: 0, Y: 0, HasWorld: true},
 		{Slot: 1024, TimestampUS: 2_100_000, X: 1, Y: 0, HasWorld: true},
 		{Slot: 1024, TimestampUS: 2_200_000, X: 2, Y: 0, HasWorld: true},

@@ -42,9 +42,10 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // amCorpus : film -> manches REELLES connues du releve A0.3 (ou du mode pour les temoins).
@@ -100,8 +101,8 @@ func TestAssautManchesRecherche(t *testing.T) {
 			t.Logf("FILM %s ABSENT (%v) — saute", f.id, err)
 			continue
 		}
-		recs, tronque := objectiveevents.StatRecordsCtx(context.Background(), src, f.id)
-		retenues := objectiveevents.RealRounds(recs)
+		recs, tronque := objectives.StatRecordsCtx(context.Background(), src, f.id)
+		retenues := objectives.RealRounds(recs)
 		t.Logf("FILM %s — %s : %d enregistrements, tronque=%v, manches retenues actuellement=%v",
 			f.id, f.libelle, len(recs), tronque, amTriRetenues(retenues))
 		for _, round := range amManchesBrutes(recs) {
@@ -118,7 +119,7 @@ func amLigne(f struct {
 	id      string
 	libelle string
 	reelles int
-}, recs []objectiveevents.StatRecord, round int, retenues map[int]bool) string {
+}, recs []types.StatRecord, round int, retenues map[int]bool) string {
 	var enr, enrJoueur, tmin, tmax int
 	tmin = -1
 	slots := map[int]bool{}
@@ -129,7 +130,7 @@ func amLigne(f struct {
 		}
 		enr++
 		slots[r.Slot] = true
-		if !objectiveevents.IsTeamSlot(r.Slot) {
+		if !objectives.IsTeamSlot(r.Slot) {
 			slotsJoueur[r.Slot] = true
 			enrJoueur++
 		}
@@ -161,11 +162,11 @@ func amLigne(f struct {
 
 // amSuiteMax rend, pour une manche, la plus longue suite STRICTEMENT croissante d'un canal,
 // prise au meilleur slot de JOUEUR — exactement la forme du critere de `RealRounds`.
-func amSuiteMax(recs []objectiveevents.StatRecord, round, comp int, sideB bool, maxOK int64) int {
+func amSuiteMax(recs []types.StatRecord, round, comp int, sideB bool, maxOK int64) int {
 	series := map[int][]int64{}
 	tempsPar := map[int][]int{}
 	for _, r := range recs {
-		if r.Round != round || objectiveevents.IsTeamSlot(r.Slot) {
+		if r.Round != round || objectives.IsTeamSlot(r.Slot) {
 			continue
 		}
 		v, ok := r.Comps[comp]
@@ -207,7 +208,7 @@ func amOrdreParTemps(temps []int) []int {
 }
 
 // amLIS rend la longueur de la plus longue sous-suite STRICTEMENT croissante — la meme
-// mesure que `longestRun(pts, true)` du paquet `objectiveevents`.
+// mesure que `longestRun(pts, true)` du paquet `objectives`.
 func amLIS(vals []int64) int {
 	var tails []int64
 	for _, v := range vals {
@@ -230,7 +231,7 @@ func amLIS(vals []int64) int {
 }
 
 // amManchesBrutes rend les numeros de manche presents dans les enregistrements, tries.
-func amManchesBrutes(recs []objectiveevents.StatRecord) []int {
+func amManchesBrutes(recs []types.StatRecord) []int {
 	vu := map[int]bool{}
 	for _, r := range recs {
 		vu[r.Round] = true
@@ -303,7 +304,7 @@ func TestAssautManchesControleHorsEchantillon(t *testing.T) {
 			t.Logf("film %s absent — saute", id)
 			continue
 		}
-		recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, id)
+		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
 		if len(recs) == 0 {
 			t.Logf("film %s : 0 enregistrement — saute", id)
 			continue
@@ -347,10 +348,10 @@ const (
 )
 
 // amEnrJoueurParManche compte, par manche brute, les enregistrements de slot JOUEUR.
-func amEnrJoueurParManche(recs []objectiveevents.StatRecord) map[int]int {
+func amEnrJoueurParManche(recs []types.StatRecord) map[int]int {
 	out := map[int]int{}
 	for _, r := range recs {
-		if objectiveevents.IsTeamSlot(r.Slot) {
+		if objectives.IsTeamSlot(r.Slot) {
 			continue
 		}
 		out[r.Round]++
@@ -375,11 +376,11 @@ func TestAssautPointsDeModeParJoueur(t *testing.T) {
 			t.Logf("film %s absent — saute", f.id)
 			continue
 		}
-		recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, f.id)
+		recs, _ := objectives.StatRecordsCtx(context.Background(), src, f.id)
 		t.Logf("=== %s (%s) — manches retenues %v", f.id, f.libelle,
-			amTriRetenues(objectiveevents.RealRounds(recs)))
-		byRound := objectiveevents.SeriesByRound(recs,
-			objectiveevents.StatComponent{Comp: 0, SideB: false}, false)
+			amTriRetenues(objectives.RealRounds(recs)))
+		byRound := objectives.SeriesByRound(recs,
+			objectives.StatComponent{Comp: 0, SideB: false}, false)
 		rounds := make([]int, 0, len(byRound))
 		for r := range byRound {
 			rounds = append(rounds, r)
@@ -401,7 +402,7 @@ func TestAssautPointsDeModeParJoueur(t *testing.T) {
 			}
 		}
 		// Ce que la production publierait.
-		named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeBomb)
+		named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)
 		t.Logf("  -> %d evenement(s) nomme(s) publie(s) :", len(named))
 		for _, n := range named {
 			t.Logf("     slot %2d a %d ms (%s)", n.Slot, n.TimeMS, n.Stat)
@@ -410,7 +411,7 @@ func TestAssautPointsDeModeParJoueur(t *testing.T) {
 }
 
 // amPremierIncrement rend l'instant du premier point ou la valeur depasse la premiere.
-func amPremierIncrement(pts []objectiveevents.ScorePoint) int {
+func amPremierIncrement(pts []types.ScorePoint) int {
 	if len(pts) == 0 {
 		return -1
 	}
@@ -443,7 +444,7 @@ func TestAssautMancheSansPorteur(t *testing.T) {
 		if err != nil || !ok {
 			continue
 		}
-		recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, c.id)
+		recs, _ := objectives.StatRecordsCtx(context.Background(), src, c.id)
 		t.Logf("=== %s manche %d (explosion attendue a %d ms)", c.id, c.round, c.msEsp)
 		parSlot := map[int][]string{}
 		for _, r := range recs {
@@ -466,7 +467,7 @@ func TestAssautMancheSansPorteur(t *testing.T) {
 		sort.Ints(slots)
 		for _, s := range slots {
 			equipe := ""
-			if objectiveevents.IsTeamSlot(s) {
+			if objectives.IsTeamSlot(s) {
 				equipe = " (EQUIPE)"
 			}
 			t.Logf("  slot %2d%s : %s", s, equipe, strings.Join(parSlot[s], " | "))
@@ -489,8 +490,8 @@ func TestAssautParasiteCe083875(t *testing.T) {
 	if err != nil || !ok {
 		t.Skip("film absent")
 	}
-	recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, "ce083875")
-	t.Logf("manches retenues : %v", amTriRetenues(objectiveevents.RealRounds(recs)))
+	recs, _ := objectives.StatRecordsCtx(context.Background(), src, "ce083875")
+	t.Logf("manches retenues : %v", amTriRetenues(objectives.RealRounds(recs)))
 	for _, r := range recs {
 		if r.TimeMS < 218_000 || r.TimeMS > 221_000 {
 			continue
@@ -502,7 +503,7 @@ func TestAssautParasiteCe083875(t *testing.T) {
 		t.Logf("  %d ms slot %2d manche %d : comp0 A=%d B=%d (%d composants)",
 			r.TimeMS, r.Slot, r.Round, v.A, v.B, len(r.Comps))
 	}
-	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeBomb)
+	named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)
 	t.Logf("%d evenements nommes ; les 8 premiers :", len(named))
 	for i, n := range named {
 		if i >= 8 {
@@ -537,10 +538,10 @@ func TestAssautDomaineComp0(t *testing.T) {
 		if err != nil || !ok {
 			continue
 		}
-		recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, f)
+		recs, _ := objectives.StatRecordsCtx(context.Background(), src, f)
 		for _, r := range recs {
 			v, ok := r.Comps[0]
-			if !ok || objectiveevents.IsTeamSlot(r.Slot) {
+			if !ok || objectives.IsTeamSlot(r.Slot) {
 				continue
 			}
 			total++
@@ -591,20 +592,20 @@ func TestAssautPontIdentite(t *testing.T) {
 		if err != nil || !ok {
 			continue
 		}
-		recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, f.id)
+		recs, _ := objectives.StatRecordsCtx(context.Background(), src, f.id)
 		deaths, err := ScanFilmDeaths(filepath.Join(cache, "film_chunks", f.id))
 		if err != nil {
 			t.Logf("%s : fil des morts illisible (%v)", f.id, err)
 			continue
 		}
-		var di []objectiveevents.DeathInstant
+		var di []types.DeathInstant
 		for _, d := range deaths {
-			di = append(di, objectiveevents.DeathInstant{
+			di = append(di, types.DeathInstant{
 				XUID: fmt.Sprint(d.XUID), TimeMS: int(d.TimeMS)})
 		}
-		named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeBomb)
-		identity := objectiveevents.ResolveRoundIdentity(recs, di)
-		ident, _ := objectiveevents.IdentifyNamedEventsByRound(named, identity)
+		named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)
+		identity := objectives.ResolveRoundIdentity(recs, di)
+		ident, _ := objectives.IdentifyNamedEventsByRound(named, identity)
 		nomme := 0
 		for _, e := range ident {
 			if e.XUID != "" {
@@ -619,7 +620,7 @@ func TestAssautPontIdentite(t *testing.T) {
 				manques += fmt.Sprintf(" [slot %d a %d ms SANS identite]", e.Slot, e.TimeMS)
 			}
 		}
-		plat := objectiveevents.SlotIdentityByDeaths(recs, di)
+		plat := objectives.SlotIdentityByDeaths(recs, di)
 		platOK := 0
 		for _, e := range named {
 			if plat[e.Slot] != "" {

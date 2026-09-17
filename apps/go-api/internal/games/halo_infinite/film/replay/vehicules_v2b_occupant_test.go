@@ -16,7 +16,7 @@ package replay
 //
 // CE QUI EST REUTILISE, sans copie : attScanI10 (attachement_phase0_socle_test.go) — la marche
 // stateful DecodeFrameViews + la sonde SetObjectParentStateHook + la resolution du parent dans le
-// World (ParentTI, ParentLie) + le temoin decorrele (TemoinLie). Et filmdec.ScanFilmVehicleEvents
+// World (ParentTI, ParentLie) + le temoin decorrele (TemoinLie). Et grammar.ScanFilmVehicleEvents
 // (event_list.go, NON MODIFIE) : le RELAIS board/exit qui resout l'occupant a la ms.
 //
 // LES SEUILS, ECRITS AVANT LA MESURE.
@@ -45,7 +45,8 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -64,7 +65,6 @@ func TestV2bOccupantI10(t *testing.T) {
 	params := []int{-1, 0, 2, 3, 4} // -1 = defaut (pas d'override, param_4=1 pour i10)
 	for _, pv := range params {
 		if pv >= 0 {
-			filmdec.SetRecordStateParam(uint32(pv))
 		}
 		reads, st, err := attScanI10(dir)
 		if err != nil {
@@ -72,11 +72,10 @@ func TestV2bOccupantI10(t *testing.T) {
 		}
 		v2boReportI10(t, pv, reads, st)
 	}
-	filmdec.SetRecordStateParam(1) // remise a la valeur par defaut effective
 
 	// --- 2) le RELAIS : event-list board/exit ---
 	t.Logf("\n############## RELAIS — event-list board/exit (occupant a la ms) ##############")
-	evs, err := filmdec.ScanFilmVehicleEvents(dir)
+	evs, err := grammar.ScanFilmVehicleEvents(dir)
 	if err != nil {
 		t.Fatalf("event-list : %v", err)
 	}
@@ -129,13 +128,13 @@ func v2boReportI10(t *testing.T, pv int, reads []attI10, st attStat) {
 }
 
 // v2boReportRelay juge le relais event-list et le recoupe avec le trou V1a.4.
-func v2boReportRelay(t *testing.T, dir string, evs []filmdec.VehicleEvent) {
+func v2boReportRelay(t *testing.T, dir string, evs []types.VehicleEvent) {
 	var board, exit, exitInBand int
 	for _, e := range evs {
 		switch e.Kind {
-		case filmdec.EventBipedBoardVehicle:
+		case grammar.EventBipedBoardVehicle:
 			board++
-		case filmdec.EventUnitExitVehicle:
+		case grammar.EventUnitExitVehicle:
 			exit++
 			if e.OccupantInBand {
 				exitInBand++
@@ -152,7 +151,7 @@ func v2boReportRelay(t *testing.T, dir string, evs []filmdec.VehicleEvent) {
 	tracks := v2boBipedTracks(t, dir)
 	real, wit, sampled := 0, 0, 0
 	for _, e := range evs {
-		if e.Kind != filmdec.EventUnitExitVehicle || !e.OccupantInBand {
+		if e.Kind != grammar.EventUnitExitVehicle || !e.OccupantInBand {
 			continue
 		}
 		ts := int64(e.TimestampUS / 1000)
@@ -175,8 +174,8 @@ func v2boReportRelay(t *testing.T, dir string, evs []filmdec.VehicleEvent) {
 
 // v2boBipedTracks rend les instants (ms) de position par slot bipede (QuantaOnly, sans bornes).
 func v2boBipedTracks(t *testing.T, dir string) map[uint32][]int64 {
-	opt := filmdec.ScanFilmOptions{RequireTag1: true, DropSaturated: true, QuantaOnly: true}
-	pos, err := filmdec.ScanFilmBipedPositions(dir, opt)
+	opt := grammar.ScanFilmOptions{RequireTag1: true, DropSaturated: true, QuantaOnly: true}
+	pos, err := grammar.ScanFilmBipedPositions(dir, opt)
 	if err != nil {
 		t.Logf("    positions bipede illisibles (%v) — recoupement saute", err)
 		return map[uint32][]int64{}

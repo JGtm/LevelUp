@@ -26,19 +26,20 @@ import { staticAssetURL } from '@/lib/staticAssets'
 import { useTitleSlug } from '@/lib/title-routing'
 
 import type { FxInk } from './fxInk'
+import { withLoadedImage } from './loadedImage'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { PlacementView } from './placementShapes'
-import { tintedIconCanvas } from './replayDraw'
+import { outlinedSpriteCanvas, tintedIconCanvas } from './replayDraw'
 import { frameToMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import {
+  parseVehicleManifest,
+  vehicleBodyPx,
+  vehicleManifestAssetId,
+  type VehicleManifestEntry,
+} from '../model/vehicleSpriteManifest'
 import { buildEmbarkedPredicate, vehicleIsDecor } from '../model/vehiclesLayer'
 import { drawVehiclesLayer, type VehicleSpriteSize } from './vehiclesPaint'
-
-/** Une entrée de `index.json` (lot A) : seuls les deux champs utiles ici sont lus. */
-interface VehicleManifestEntry {
-  famille?: string
-  scale_mm_per_px?: number
-}
 
 export interface VehiclesInput {
   doc: ReplayDocumentReady
@@ -196,12 +197,10 @@ export function useReplayVehicles({
       // qui évite un 404 par match — et le calque a déjà son pictogramme pour elle.
       const url = labels?.[family]?.img
       if (!url) continue
-      const im = new Image()
-      im.onload = () => {
+      withLoadedImage(url, (im) => {
         map.set(family, im)
         redraw()
-      }
-      im.src = url
+      })
     }
   }, [enabled, labels, redraw])
 
@@ -209,7 +208,7 @@ export function useReplayVehicles({
   // toutes les familles quel que soit le match). Une absence (404, réseau) dégrade en « aucune
   // famille dimensionnée » — les véhicules restent NON DESSINÉS (jamais une taille inventée),
   // exactement le même contrat que `replayAudio.ts` sur un son manquant.
-  const manifestRef = useRef<Map<string, number> | null>(null)
+  const manifestRef = useRef<Map<string, VehicleManifestEntry> | null>(null)
   useEffect(() => {
     if (!enabled || manifestRef.current) return
     let cancelled = false
@@ -219,15 +218,7 @@ export function useReplayVehicles({
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
       .then((raw: unknown) => {
         if (cancelled) return
-        const map = new Map<string, number>()
-        if (Array.isArray(raw)) {
-          for (const entry of raw as VehicleManifestEntry[]) {
-            if (entry.famille && typeof entry.scale_mm_per_px === 'number') {
-              map.set(entry.famille, entry.scale_mm_per_px)
-            }
-          }
-        }
-        manifestRef.current = map
+        manifestRef.current = parseVehicleManifest(raw)
         redraw()
       })
       .catch((err: unknown) => {
@@ -240,27 +231,84 @@ export function useReplayVehicles({
     }
   }, [enabled, titleSlug, redraw])
 
+  // LES BORDURES (sprites redessinés du 2026-09-16) : `{famille}_outline.png`, nommée par le
+  // manifeste, chargée À LA DEMANDE au premier tracé de la famille (une famille absente du match
+  // ne coûte aucune requête). Valeur `null` = chargement lancé ; échec = entrée retirée de la
+  // table d'attente et marquée dans `outlineFailedRef` : le sprite se dessine alors SANS bordure
+  // plutôt que jamais (la bordure est un habillage, pas une donnée).
+  const outlineImagesRef = useRef<Map<string, HTMLImageElement | null>>(new Map())
+  const outlineFailedRef = useRef<Set<string>>(new Set())
+  const outlineOf = useCallback(
+    (family: string, entry: VehicleManifestEntry): HTMLImageElement | null | 'none' => {
+      if (!entry.outline || outlineFailedRef.current.has(family)) return 'none'
+      const images = outlineImagesRef.current
+      if (images.has(family)) return images.get(family) ?? null
+      const url = staticAssetURL('vehicle', vehicleManifestAssetId(entry.outline), '.png', titleSlug)
+      images.set(family, null)
+      // CHARGEMENT PAR `withLoadedImage` (garde-rail loadedImage.guard.test.ts). Il rend une image
+      // DEJA chargee SYNCHRONEMENT, et `outlineOf` est appele PENDANT le trace : redessiner a ce
+      // moment-la relancerait le trace dans le trace. On ne redessine donc que sur un chargement
+      // asynchrone ; le cas synchrone rend l'image directement.
+      let pending = true
+      withLoadedImage(
+        url,
+        (im) => {
+          images.set(family, im)
+          if (pending) return
+          redraw()
+        },
+        () => {
+          console.warn('[replay-vehicles] bordure indisponible, sprite sans bordure :', url)
+          images.delete(family)
+          outlineFailedRef.current.add(family)
+          redraw()
+        },
+      )
+      pending = false
+      return images.get(family) ?? null
+    },
+    [titleSlug, redraw],
+  )
+
   // LES VIGNETTES TEINTÉES, cuites HORS ÉCRAN à la demande, par famille × COULEUR RÉSOLUE — la
   // couleur d'équipe d'un véhicule change rarement en cours de lecture (changement de
   // conducteur), le cache grossit donc lentement. `multiply`, jamais `source-in` : les sprites
-  // véhicules sont des silhouettes à traits noirs (décision de cadrage, cf. `tintedIconCanvas`).
+  // véhicules sont des silhouettes à arêtes sombres (décision de cadrage, cf. `tintedIconCanvas`).
+  // LA BORDURE EST CUITE DANS LA MÊME VIGNETTE, SOUS le sprite et APRÈS sa teinte : c'est ce qui
+  // la garde blanche (la teinte `multiply` ne voit que le sprite) sans seconde passe au tracé.
   const tintedRef = useRef<Map<string, HTMLCanvasElement>>(new Map())
-  const spriteOf = useCallback((family: string, color: string): CanvasImageSource | null => {
-    const key = `${family}|${color}`
-    const cached = tintedRef.current.get(key)
-    if (cached) return cached
-    const raw = rawImagesRef.current.get(family)
-    if (!raw) return null
-    const tinted = tintedIconCanvas(raw, color, { composite: 'multiply' })
-    tintedRef.current.set(key, tinted)
-    return tinted
-  }, [])
+  const spriteOf = useCallback(
+    (family: string, color: string): CanvasImageSource | null => {
+      const key = `${family}|${color}`
+      const cached = tintedRef.current.get(key)
+      if (cached) return cached
+      const raw = rawImagesRef.current.get(family)
+      const entry = manifestRef.current?.get(family)
+      if (!raw || !entry) return null
+      const outline = outlineOf(family, entry)
+      if (outline === null) return null
+      const tinted = tintedIconCanvas(raw, color, { composite: 'multiply' })
+      const sprite = outline === 'none' ? tinted : outlinedSpriteCanvas(outline, tinted)
+      tintedRef.current.set(key, sprite)
+      return sprite
+    },
+    [outlineOf],
+  )
 
+  // LA TAILLE EST CELLE DE LA BOÎTE DU VÉHICULE, marge de bordure retirée
+  // (`vehicleSpriteManifest.vehicleBodyPx`) : longueur à l'écran, ancres d'armes et rayon
+  // d'explosion restent ceux du sprite d'avant la bordure. L'échelle qui en découle est un
+  // facteur par pixel source : appliquée à l'image entière, elle pose la bordure AUTOUR du
+  // véhicule sans le grossir.
   const sizeOf = useCallback((family: string): VehicleSpriteSize | null => {
     const raw = rawImagesRef.current.get(family)
-    const mmPerPx = manifestRef.current?.get(family)
-    if (!raw || mmPerPx === undefined) return null
-    return { naturalWidthPx: raw.naturalWidth, naturalHeightPx: raw.naturalHeight, mmPerPx }
+    const entry = manifestRef.current?.get(family)
+    if (!raw || !entry) return null
+    return {
+      naturalWidthPx: vehicleBodyPx(raw.naturalWidth, entry.pad),
+      naturalHeightPx: vehicleBodyPx(raw.naturalHeight, entry.pad),
+      mmPerPx: entry.mmPerPx,
+    }
   }, [])
 
   const paint = useCallback(

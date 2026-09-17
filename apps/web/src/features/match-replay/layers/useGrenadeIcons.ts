@@ -20,6 +20,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 
 import { tintedIconCanvas } from './replayDraw'
+import { withLoadedImage } from './loadedImage'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
@@ -42,12 +43,10 @@ export function useGrenadeIcons(
     iconsRef.current = map
     grenadeLabels.forEach((lbl, rank) => {
       if (!lbl.img) return
-      const im = new Image()
-      im.onload = () => {
+      withLoadedImage(lbl.img, (im) => {
         map.set(rank, tintedIconCanvas(im, ink))
         redraw()
-      }
-      im.src = lbl.img
+      })
     })
   }, [grenadeLabels, ink, redraw])
   return iconsRef

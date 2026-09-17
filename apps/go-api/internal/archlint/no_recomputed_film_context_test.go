@@ -21,9 +21,9 @@
 //
 // # LES DEUX REGLES
 //
-//  1. Dans `filmdec` (hors _test), les trois calculs ne s'appellent QUE depuis l'allowlist
+//  1. Dans `grammar` (hors _test), les trois calculs ne s'appellent QUE depuis l'allowlist
 //     ci-dessous — le contexte, et les deux sites qui calculent une valeur DIFFERENTE, ecrite.
-//  2. Hors `filmdec`, aucun paquet de PRODUCTION de la chaine de cuisson n'analyse le registre
+//  2. Hors `grammar`, aucun paquet de PRODUCTION de la chaine de cuisson n'analyse le registre
 //     lui-meme (`filmdec.ParseRegistryChunk`), sauf l'allowlist datee.
 //
 // LES DEUX SONT VERIFIEES DANS LES DEUX SENS : un site en trop echoue, une entree MORTE de
@@ -32,7 +32,7 @@
 //
 // # POURQUOI go/ast ET PAS UN GREP
 //
-// `filmdec` CITE ces trois noms dans ses commentaires — abondamment, puisque c'est la migration
+// `grammar` CITE ces trois noms dans ses commentaires — abondamment, puisque c'est la migration
 // qu'il documente. Un test grep rougirait sur la documentation du garde-rail lui-meme. Le test
 // parse donc les fichiers et ne regarde que les APPELS, en nommant la FONCTION ENGLOBANTE : une
 // allowlist par fichier laisserait passer un second appel ajoute dans le meme fichier.
@@ -51,7 +51,7 @@ import (
 // detecter).
 //
 // `DetectI0Layout` RESTE DANS CETTE TABLE ALORS QU'ELLE N'EXISTE PLUS EN PRODUCTION (revue de
-// jalon M1, 2026-09-16 : elle est devenue `detectI0Layout` dans un fichier de test de `filmdec`,
+// jalon M1, 2026-09-16 : elle est devenue `detectI0Layout` dans un fichier de test de `grammar`,
 // faute d'appelant de production depuis le lot 1.9.4). C'est voulu : le scan ne lit que les
 // fichiers NON-test, donc l'entree ne coute rien, et elle rougirait immediatement si quelqu'un
 // reintroduisait l'enveloppe en production — ce qui est exactement le ratchet qu'on veut.
@@ -107,11 +107,13 @@ var calculsDuContexteFilm = map[string]bool{
 //	                      (Live Fire designe `aquarius`). La fonction est SUPPRIMEE, la carte vient
 //	                      du nom (`killcollector/map_identity.go`), et `DetectI0Layout` n'a plus
 //	                      AUCUN appelant de production : toute reapparition d'un appel dans
-//	                      `filmdec` rougit ici, faute d'entree d'allowlist.
+//	                      `grammar` rougit ici, faute d'entree d'allowlist.
 var appelsAutorisesDuContexte = map[string]string{
 	"film_context.go/(*FilmContext).BipedSlots -> bipedSlotBand":    "le releve unique de la bande du film",
 	"film_context.go/(*FilmContext).I0Layout -> DetectI0LayoutOf":   "la detection unique du decoupage d'i0",
 	"film_context.go/(*FilmContext).Registry -> ParseRegistryChunk": "l'analyse unique du registre chunk_00",
+	"film_context.go/contexteDeBobine -> DetectI0LayoutOf":          "le contexte des ENVELOPPES D2 (2026-09-17, lot 2.3) : il y pose le decoupage LU DANS LE FILM, ce que chaque instrument faisait a la main par une variable de paquet. C'est bien LA detection du contexte — `NewFilmContext` la memorise —, mais elle a lieu a la CONSTRUCTION et non a la premiere demande, donc l'analyseur la voit comme un second site. La cuisson ne passe pas par la : elle prend les largeurs du CATALOGUE",
+	"film_context.go/ContexteDeFilm -> DetectI0LayoutOf":            "la meme, depuis un REPERTOIRE (2026-09-17, lot 2.3) : l'enveloppe D2 rend aussi le decoupage a son appelant, qui s'en sert pour journaliser",
 	"i0_layout.go/DetectI0LayoutOf -> bipedSlotBand":                "bande REDUITE aux 6 premiers chunks : autre valeur",
 	"offline_biped.go/ScanBipedPositions -> bipedSlotBand":          "bande sur opt.Chunks : hors perimetre du lot 2",
 	"offline_biped_band.go/bipedI0Layout -> DetectI0LayoutOf":       "repli quand opt.Layout est nil : hors perimetre du lot 2 (le site a change de nom le 2026-09-05 quand `ScanBipedPositionsForBand` a extrait le helper partage par les deux entrees, puis de FICHIER le meme jour — offline_biped.go franchissait les 500 lignes, la plomberie de balayage a ete deplacee dans offline_biped_band.go, sans changement de logique)",
@@ -119,7 +121,7 @@ var appelsAutorisesDuContexte = map[string]string{
 
 // TestContexteFilmCalculeUneFois — REGLE 1.
 func TestContexteFilmCalculeUneFois(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/filmdec"))
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/internal/grammar"))
 	vus := map[string]bool{}
 	var enTrop []string
 	for nom, f := range fichiersGoNonTest(t, pkgDir) {
@@ -172,13 +174,13 @@ func TestContexteFilmCalculeUneFois(t *testing.T) {
 	}
 }
 
-// paquetsSansAnalyseDeRegistre : les paquets de la chaine de cuisson qui, hors `filmdec`, ne
+// paquetsSansAnalyseDeRegistre : les paquets de la chaine de cuisson qui, hors `grammar`, ne
 // doivent pas analyser le registre eux-memes — la cuisson passe par le contexte du film.
 var paquetsSansAnalyseDeRegistre = []string{
 	"internal/games/halo_infinite/film/replay",
 	"internal/replaybuild",
-	"internal/analysis/objectiveevents",
-	"internal/games/halo_infinite/film/killsource",
+	"internal/games/halo_infinite/film/internal/facts/objectives",
+	"internal/games/halo_infinite/film/internal/facts/killsource",
 	"internal/sync/killcollector",
 	"internal/api/wire",
 }
@@ -186,7 +188,7 @@ var paquetsSansAnalyseDeRegistre = []string{
 // analysesDeRegistreAutorisees : L'ALLOWLIST FERMEE de la regle 2 (2026-09-03, lot 2). Chemins
 // relatifs a la racine du module, separateur `/`.
 var analysesDeRegistreAutorisees = map[string]string{
-	"internal/games/halo_infinite/film/killsource/world.go": "`World.Snapshot` analyse le " +
+	"internal/games/halo_infinite/film/internal/facts/killsource/world.go": "`World.Snapshot` analyse le " +
 		"registre du film pour son propre monde. HORS PERIMETRE SANS CONDITION (decision D14 de " +
 		"PLAN_CUISSON_PERF) : `killsource` n'est pas dans ce plan. Note §8 — c'est la DERNIERE " +
 		"analyse de registre de la chaine de cuisson qui ne passe pas par `FilmContext`.",

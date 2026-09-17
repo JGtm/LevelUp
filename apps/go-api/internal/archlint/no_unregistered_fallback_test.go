@@ -23,7 +23,7 @@ package archlint
 //	    disparaît, ce test rougit, et l'entrée DOIT sortir du registre dans le même commit.
 //
 //	(C) DÉCLENCHEMENT -> SITE. Tout appel `Declenche(NomX)` / `DeclencheN(NomX, …)` du dépôt
-//	    vit dans un fichier que les [fallback.Site] de l'entrée X CITENT. Sans cette direction,
+//	    vit dans un fichier que les [decfilm.Site] de l'entrée X CITENT. Sans cette direction,
 //	    un repli peut se déclencher depuis un endroit que le registre ne décrit pas : c'est
 //	    exactement ce qui est arrivé à `repli_vie_coupee_au_trou_de_replication`, déclenché
 //	    depuis `tracks_publication.go` pendant que son entrée ne citait que `lives_decoupe.go`
@@ -74,16 +74,15 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-
 	"strings"
 	"testing"
 	"unicode"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // perimetreReplis : les répertoires où un repli de production peut vivre — ceux de l'audit 0.E,
-// plus `filmdec` pour ses inférences qui décident en production.
+// plus `grammar` pour ses inférences qui décident en production.
 //
 // Chemins relatifs à `apps/go-api/`. Un répertoire neuf du décodeur s'ajoute ici : c'est le bon
 // sens de la faute (oublier d'étendre le périmètre laisse passer, l'oublier au registre rougit).
@@ -91,7 +90,7 @@ var perimetreReplis = []string{
 	"internal/games/halo_infinite/film",
 	"internal/replaybuild",
 	"internal/sync/killcollector",
-	"internal/analysis/objectiveevents",
+	"internal/games/halo_infinite/film/internal/facts/objectives",
 }
 
 // replisDeLEcrivainDuJeu : les identifiants qui portent `fallback` SANS être un repli de
@@ -130,10 +129,12 @@ var replisDeLEcrivainDuJeu = map[string]exemptionEcrivain{
 		"la projection du rapport du compteur vers ce type publie. Meme raison."},
 	"toFallbackHits": {"internal/service/replayview/convert_coverage.go", "2026-09-14",
 		"la projection vers le document SERVI. Meme raison."},
-	"PosKindAbsFallback": {"internal/games/halo_infinite/film/filmdec/position_capture.go", "2026-09-14",
+	"PosKindAbsFallback": {"internal/games/halo_infinite/film/internal/grammar/position_capture.go", "2026-09-14",
 		"la NATURE d'une capture de position telle que l'ecrivain du jeu la produit (absolu atteint par l'absence du delta predit). Grammaire, pas decision."},
-	"absViaFallback": {"internal/games/halo_infinite/film/filmdec/position_capture.go", "2026-09-14",
-		"le drapeau qui marque cette meme branche de l'ecrivain pendant la traversee."},
+	"viaRepli": {"internal/games/halo_infinite/film/internal/grammar/position_capture.go", "2026-09-14",
+		"le drapeau qui marque cette meme branche de l'ecrivain pendant la traversee. " +
+			"S'appelait `absViaFallback` jusqu'au lot 2.3 (2026-09-17), qui en a fait un CHAMP de " +
+			"`captureDePosition` au lieu d'une variable de paquet — meme branche, meme raison."},
 }
 
 // TestToutReplinNommeEstAuRegistre — DIRECTION (A) : code -> registre, FICHIER PAR FICHIER.
@@ -166,7 +167,7 @@ func TestToutReplinNommeEstAuRegistre(t *testing.T) {
 	sort.Strings(orphelins)
 	t.Errorf("REPLI HORS REGISTRE (%d) :\n  %s\n\n"+
 		"Un repli est NOMMÉ, ordonné, compté, daté, et il porte son critère de retrait (D14).\n"+
-		"Ajouter son entrée dans `internal/games/halo_infinite/film/replay/fallback/registre_*.go`,\n"+
+		"Ajouter son entrée dans `internal/games/halo_infinite/film/internal/facts/fallback/registre_*.go`,\n"+
 		"avec une ancre qui cite ce site. Si l'identifiant nomme une branche de la grammaire DU JEU\n"+
 		"et non une décision de LevelUp, l'inscrire dans `replisDeLEcrivainDuJeu` avec sa date.",
 		len(orphelins), strings.Join(orphelins, "\n  "))
@@ -181,7 +182,7 @@ const plancherFichiersPerimetreReplis = 250
 func TestToutSiteDuRegistreExiste(t *testing.T) {
 	racine := racineGoAPI(t)
 	cache := map[string]string{}
-	for _, r := range fallback.Table() {
+	for _, r := range decfilm.Table() {
 		for _, s := range r.Sites {
 			contenu, ok := cache[s.Fichier]
 			if !ok {
@@ -209,7 +210,7 @@ func TestToutSiteDuRegistreExiste(t *testing.T) {
 // `archlint`. Le paquet `fallback` les tient déjà ; les rejouer ici garantit qu'un contournement
 // ne passe pas par la suppression du test voisin.
 func TestRegistreDesReplisEstValide(t *testing.T) {
-	for _, pb := range fallback.VerifierRegistre() {
+	for _, pb := range decfilm.VerifierRegistre() {
 		t.Errorf("registre des replis : %s", pb)
 	}
 }
@@ -229,7 +230,7 @@ func TestRegistreDesReplisEstValide(t *testing.T) {
 // aussi.
 func couvertureParFichier() map[string]map[string]bool {
 	out := map[string]map[string]bool{}
-	for _, r := range fallback.Table() {
+	for _, r := range decfilm.Table() {
 		for _, s := range r.Sites {
 			if out[s.Fichier] == nil {
 				out[s.Fichier] = map[string]bool{}

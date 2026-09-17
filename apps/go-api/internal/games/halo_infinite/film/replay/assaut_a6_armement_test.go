@@ -11,7 +11,7 @@ package replay
 // A 28 composants, ce sont 56 emplacements que rien n'avait jamais vus.
 //
 // L'utilisateur, le 2026-08-31 : « pour l'armement a mon avis ca doit etre dans le statborg ».
-// Les canaux C et D sont depuis ce jour decodes ([objectiveevents.StatValue]) ; cet instrument
+// Les canaux C et D sont depuis ce jour decodes ([types.StatValue]) ; cet instrument
 // les balaie.
 //
 // # LE CRITERE, ecrit AVANT la mesure, et il se valide LUI-MEME
@@ -48,8 +48,9 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -73,7 +74,7 @@ func (c a6Canal) String() string { return fmt.Sprintf("comp %2d %s", c.comp, c.c
 
 // a6Valeur rend la valeur d'un canal, et si elle est PRESENTE. La distinction compte : un canal
 // conditionnel ABSENT et un canal a zero sont deux choses differentes.
-func a6Valeur(v objectiveevents.StatValue, canal string) (int64, bool) {
+func a6Valeur(v types.StatValue, canal string) (int64, bool) {
 	switch canal {
 	case "A":
 		return v.A, true
@@ -110,7 +111,7 @@ func TestAssautA6Armement(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}
-		recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, id)
+		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
 		exps := a5Explosions[id]
 		totalExplosions += len(exps)
 
@@ -174,13 +175,13 @@ func TestAssautA6Armement(t *testing.T) {
 
 // a6Progressions rend les instants ou le canal PROGRESSE, sur les slots de JOUEUR. Un armement
 // est un geste de joueur ; les slots d'equipe portent des totaux, pas des gestes.
-func a6Progressions(recs []objectiveevents.StatRecord, comp int, canal string) []int {
+func a6Progressions(recs []types.StatRecord, comp int, canal string) []int {
 	type cle struct{ slot, round int }
 	dernier := map[cle]int64{}
 	vus := map[cle]bool{}
 	var out []int
 	for _, r := range recs {
-		if objectiveevents.IsTeamSlot(r.Slot) {
+		if objectives.IsTeamSlot(r.Slot) {
 			continue
 		}
 		v, ok := r.Comps[comp]
@@ -289,7 +290,7 @@ func TestAssautA6Minuterie(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}
-		recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, id)
+		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
 		for _, T := range a5Explosions[id] {
 			for comp := 0; comp <= 27; comp++ {
 				for _, canal := range []string{"A", "B", "C", "D"} {
@@ -340,7 +341,7 @@ func TestAssautA6Minuterie(t *testing.T) {
 
 // a6CorrelationsParSlot rend, pour chaque slot ayant au moins 4 emissions dans la fenetre, la
 // correlation entre la valeur du canal et le TEMPS RESTANT avant l'explosion.
-func a6CorrelationsParSlot(recs []objectiveevents.StatRecord, comp int, canal string, T int) []float64 {
+func a6CorrelationsParSlot(recs []types.StatRecord, comp int, canal string, T int) []float64 {
 	parSlot := map[int][][2]float64{}
 	for _, r := range recs {
 		if r.TimeMS >= T || r.TimeMS < T-a6FenetreMecheMS {
@@ -426,7 +427,7 @@ func TestAssautA6TemoinMinuterie(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}
-		recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, id)
+		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
 		for _, T := range a5Explosions[id] {
 			faux := T - a6DecalageTemoinMS
 			for comp := 0; comp <= 27; comp++ {

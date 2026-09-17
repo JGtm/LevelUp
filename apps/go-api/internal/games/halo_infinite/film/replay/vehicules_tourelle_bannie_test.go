@@ -23,8 +23,9 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // tourelleBannieChassis : le mot d identite lu dans le default-state des records `ti=40` de
@@ -59,14 +60,14 @@ var tourellesDeBfecd02b = []tourelleBannieVie{
 // scanDesTourelles rejoue l entree du constructeur de vehicules pour les neuf vies du temoin.
 func scanDesTourelles() VehicleScan {
 	const naissanceUS = 1_200_000
-	kf := filmdec.WorldObjectKeyframes{
+	kf := grammar.WorldObjectKeyframes{
 		Band:    map[uint32]bool{},
 		TimesUS: []uint64{2_000_000, 22_000_000, 42_000_000},
-		SeenUS:  map[filmdec.EquipmentLifeKey][]uint64{},
+		SeenUS:  map[types.EquipmentLifeKey][]uint64{},
 	}
 	scan := VehicleScan{Scanned: true}
 	for _, v := range tourellesDeBfecd02b {
-		key := filmdec.EquipmentLifeKey{Slot: v.slot, Gen: 1}
+		key := types.EquipmentLifeKey{Slot: v.slot, Gen: 1}
 		kf.Band[v.slot] = true
 		kf.SeenUS[key] = []uint64{2_000_000, 22_000_000, 42_000_000}
 		c := vehCreation(key, naissanceUS, v.x, v.y, tourelleBannieChassis)
@@ -164,11 +165,11 @@ func TestTourelleBannieNEstPasPilotable(t *testing.T) {
 // MOBILE, `0xae845375`, 18 vies sur quatre films. Ils ne sont PAS nommes par ce lot (regle 7 :
 // zero fix opportuniste) : ils doivent donc continuer de se compter, sous leur nom de repli.
 func TestChassisInconnuCompteLeRepli(t *testing.T) {
-	key := filmdec.EquipmentLifeKey{Slot: 700, Gen: 1}
+	key := types.EquipmentLifeKey{Slot: 700, Gen: 1}
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000}, key, []uint64{2_000_000}),
-		Creations: []filmdec.EquipmentCreation{vehCreation(key, 1_500_000, 1, 2, vehChassisUnknown)},
+		Creations: []types.EquipmentCreation{vehCreation(key, 1_500_000, 1, 2, vehChassisUnknown)},
 	}
 	fb := fallback.NouveauCompteur()
 	clock := vehClock()
@@ -226,25 +227,25 @@ func TestSecondsChassisDuManifesteSontEnTable(t *testing.T) {
 // `ae845375` en portent ZERO malgre 376 a 2 352 echantillons de trajectoire chacune.
 func TestChassisWraithPublieSesOccupants(t *testing.T) {
 	const wraithDuFilm = uint32(0xae845375)
-	key := filmdec.EquipmentLifeKey{Slot: 700, Gen: 1}
+	key := types.EquipmentLifeKey{Slot: 700, Gen: 1}
 	const bipedSlot = uint32(42)
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000}, key, []uint64{2_000_000, 22_000_000}),
-		Creations: []filmdec.EquipmentCreation{vehCreation(key, 1_500_000, 0, 0, wraithDuFilm)},
-		Positions: []filmdec.BipedPosition{
+		Creations: []types.EquipmentCreation{vehCreation(key, 1_500_000, 0, 0, wraithDuFilm)},
+		Positions: []grammar.BipedPosition{
 			vehPos(700, 5_000_000, 0, 0),
 			vehPos(700, 12_000_000, 0, 0),
 			vehPos(700, 20_000_000, 0, 0),
 		},
-		Events: []filmdec.VehicleEvent{
-			{Kind: filmdec.EventBipedBoardVehicle, TimestampUS: 5_200_000, OccupantPresent: true,
+		Events: []types.VehicleEvent{
+			{Kind: grammar.EventBipedBoardVehicle, TimestampUS: 5_200_000, OccupantPresent: true,
 				OccupantInBand: true, OccupantSlot: bipedSlot, Seat: 0, SeatValid: true},
-			{Kind: filmdec.EventUnitExitVehicle, TimestampUS: 16_800_000, OccupantPresent: true,
+			{Kind: grammar.EventUnitExitVehicle, TimestampUS: 16_800_000, OccupantPresent: true,
 				OccupantInBand: true, OccupantSlot: bipedSlot, Seat: 0, SeatValid: true},
 		},
 	}
-	bipeds := []filmdec.BipedPosition{
+	bipeds := []grammar.BipedPosition{
 		vehPos(bipedSlot, 4_500_000, 0.4, 0),
 		vehPos(bipedSlot, 5_000_000, 0.4, 0),
 		vehPos(bipedSlot, 17_000_000, 3, 3),

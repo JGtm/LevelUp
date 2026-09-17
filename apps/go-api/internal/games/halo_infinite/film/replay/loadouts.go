@@ -2,7 +2,7 @@ package replay
 
 // Rattachement des ARMES PORTÉES (loadout de keyframe) aux trajectoires du rejeu.
 //
-// SOURCE : filmdec.ScanFilmKeyframeLoadouts — les familles d'arme trouvées dans le record
+// SOURCE : grammar.ScanFilmKeyframeLoadouts — les familles d'arme trouvées dans le record
 // biped de chaque slot, à chaque keyframe type-2 (~un toutes les 18-20 s). Le slot vient des
 // bornes de record de WalkKeyframeWorld : la jointure loadout -> trajectoire est donc DIRECTE
 // (même numérotation de slot que Track.Slot), sans passer par un champ « joueur » du record —
@@ -35,12 +35,12 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/weaponv3"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // loadoutFamilies est le catalogue de familles interrogé par le balayage : la table de
-// production dérivée de l'enum d'armes (weaponv3, elle-même dérivée de analysis.WeaponIDToName).
+// production dérivée de l'enum d'armes (weaponv3, elle-même dérivée de filmshell.WeaponIDToName).
 // C'est la SEULE source de vérité sur ce qu'est une arme ici — pas de liste parallèle.
 func loadoutFamilies() map[uint32]bool {
 	m := make(map[uint32]bool, len(weaponv3.KnownWeaponHigh32))
@@ -56,7 +56,7 @@ func loadoutFamilies() map[uint32]bool {
 // de famille distincts (le second à +97 bits) qui résolvent au MÊME nom canonique. On replie
 // sur le nom et on publie UN identifiant par arme — sans quoi le client afficherait deux fois
 // le même fusil.
-func buildLoadouts(raw []filmdec.KeyframeLoadout, origin, step uint64) []Loadout {
+func buildLoadouts(raw []types.KeyframeLoadout, origin, step uint64) []Loadout {
 	if len(raw) == 0 {
 		return nil
 	}

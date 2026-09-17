@@ -12,11 +12,11 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // zoneChainedReadAt fabrique une lecture dont le record CHAINE — la seule que le designateur lit.
-func zoneChainedReadAt(slot uint32, frame, tag int, value uint64) filmdec.ManagedPropertyRead {
+func zoneChainedReadAt(slot uint32, frame, tag int, value uint64) grammar.ManagedPropertyRead {
 	r := zoneReadAt(slot, frame, tag, value)
 	r.Chained = true
 	return r
@@ -31,11 +31,11 @@ func hillDesignatorCase(chained bool) (ZoneInput, zoneCtx) {
 	if chained {
 		mk = zoneChainedReadAt
 	}
-	var reads []filmdec.ManagedPropertyRead
-	reads = append(reads, mk(40, 200, filmdec.ManagedPropertyTagStringID, 0x78F81557))
-	reads = append(reads, mk(40, 400, filmdec.ManagedPropertyTagStringID, 0x8727C0FF))
-	reads = append(reads, zoneReadAt(41, 50, filmdec.ManagedPropertyTagU32, zoneNeutralOwner))
-	reads = append(reads, zoneReadAt(41, 120, filmdec.ManagedPropertyTagU32, 0))
+	var reads []grammar.ManagedPropertyRead
+	reads = append(reads, mk(40, 200, grammar.ManagedPropertyTagStringID, 0x78F81557))
+	reads = append(reads, mk(40, 400, grammar.ManagedPropertyTagStringID, 0x8727C0FF))
+	reads = append(reads, zoneReadAt(41, 50, grammar.ManagedPropertyTagU32, zoneNeutralOwner))
+	reads = append(reads, zoneReadAt(41, 120, grammar.ManagedPropertyTagU32, 0))
 	reads = append(reads, zoneRampAt(43, 100, 900_000)...)
 	reads = append(reads, zoneRampAt(43, 300, 910_000)...)
 	in := zoneTestInput(reads)
@@ -145,9 +145,9 @@ func TestZoneStatesCollineDesignateurNonChaineRetombeSurLesRampes(t *testing.T) 
 // consecutifs a la fin du match (le trio de fin de match des 4 films) ne font pas un
 // designateur : aucun proprietaire ne parle sur leur slot suivant.
 func TestZoneStatesCollineDesignateurExigeUnProprietaireVoisin(t *testing.T) {
-	var reads []filmdec.ManagedPropertyRead
+	var reads []grammar.ManagedPropertyRead
 	for i, v := range []uint64{0x6050ABD7, 0x3327C7DA, 0xF2F9EB27} {
-		reads = append(reads, zoneChainedReadAt(uint32(60+i), 590, filmdec.ManagedPropertyTagStringID, v))
+		reads = append(reads, zoneChainedReadAt(uint32(60+i), 590, grammar.ManagedPropertyTagStringID, v))
 	}
 	reads = append(reads, zoneRampAt(43, 100, 900_000)...)
 	in := zoneTestInput(reads)

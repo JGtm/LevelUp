@@ -104,8 +104,8 @@ func stripComments(src string) string {
 // prochain passage sur ces paquets, remplacer l'echelle par testutil.RepoRoot() et retirer
 // l'entree ici.
 var repoRootLadderAllowlist = map[string]bool{
-	"internal/games/halo_infinite/film/filmdec/map_bounds_test.go": true, // echelle + Skip sur map_quant_bounds.json (versionne)
-	"internal/ops/seed_citation_assets_test.go":                    true, // const citationRepoRoot, racine des image_path seedes
+	"internal/games/halo_infinite/film/internal/grammar/map_bounds_test.go": true, // echelle + Skip sur map_quant_bounds.json (versionne)
+	"internal/ops/seed_citation_assets_test.go":                             true, // const citationRepoRoot, racine des image_path seedes
 }
 
 // TestNoAdHocRepoRootLadderInTests : un test qui lit un fichier VERSIONNE localise la

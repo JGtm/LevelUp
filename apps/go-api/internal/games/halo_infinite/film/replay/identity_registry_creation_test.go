@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // identity_registry_creation_test.go — LES PROPRIETES DU LIEN DIRECT CORPS -> JOUEUR.
@@ -18,10 +18,10 @@ import (
 // echange —, et elle exige que le film fasse foi.
 
 // creationDe fabrique un record de creation lu, a la date et pour l'index donnes.
-func creationDe(slot uint32, tUS uint64, index uint32) filmdec.BipedCreation {
-	return filmdec.BipedCreation{
+func creationDe(slot uint32, tUS uint64, index uint32) grammar.BipedCreation {
+	return grammar.BipedCreation{
 		Slot: slot, Generation: 1, ParticipantIndex: index, HasIndex: true,
-		TimestampUS: tUS, Version: 13, Representation: filmdec.BipedRepresentationName,
+		TimestampUS: tUS, Version: 13, Representation: grammar.BipedRepresentationName,
 	}
 }
 
@@ -29,7 +29,7 @@ func creationDe(slot uint32, tUS uint64, index uint32) filmdec.BipedCreation {
 // plus de `lifeGapUS` — la figure (a) de l'instruction du residu. Un seul record de creation par
 // corps, comme les cinq films mesures.
 func filmDeuxCorps() IdentityInput {
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	for t := uint64(1_000_000); t <= 4_000_000; t += 500_000 {
 		pos = append(pos, posAt(100, t, 1, 1, 1))
 	}
@@ -42,7 +42,7 @@ func filmDeuxCorps() IdentityInput {
 	}
 	return IdentityInput{
 		Positions: pos,
-		BipedCreations: []filmdec.BipedCreation{
+		BipedCreations: []grammar.BipedCreation{
 			creationDe(100, 1_000_000, 0),
 			creationDe(200, 1_000_000, 1),
 		},
@@ -184,7 +184,7 @@ func TestCreationPartageUnSlotRecycleEntreSesDeuxCorps(t *testing.T) {
 func TestCreationSeTaitSurUneVieAnterieureAuxLecturesDivergentes(t *testing.T) {
 	in := filmDeuxCorps()
 	// Les DEUX records du slot 100 sont posterieurs a sa premiere vie ([1 s..4 s]).
-	in.BipedCreations = []filmdec.BipedCreation{
+	in.BipedCreations = []grammar.BipedCreation{
 		creationDe(100, 12_000_000, 0),
 		creationDe(100, 30_000_000, 1),
 		creationDe(200, 1_000_000, 1),
@@ -211,7 +211,7 @@ func TestCreationSeTaitSurUneVieAnterieureAuxLecturesDivergentes(t *testing.T) {
 // MUTATION : rattacher l'index inconnu au xuid le plus proche -> rouge.
 func TestCreationNeRattachePasUnIndexHorsTable(t *testing.T) {
 	in := filmDeuxCorps()
-	in.BipedCreations = []filmdec.BipedCreation{
+	in.BipedCreations = []grammar.BipedCreation{
 		creationDe(100, 1_000_000, 0),
 		creationDe(200, 1_000_000, 8), // 8 : l'index de `c75f33b8` que rien ne publie
 	}
@@ -254,7 +254,7 @@ func entreeDivergente() IdentityInput {
 
 func entreeHorsTable() IdentityInput {
 	in := filmDeuxCorps()
-	in.BipedCreations = []filmdec.BipedCreation{
+	in.BipedCreations = []grammar.BipedCreation{
 		creationDe(100, 1_000_000, 0), creationDe(200, 1_000_000, 8),
 	}
 	return in
@@ -265,7 +265,7 @@ func entreeHorsTable() IdentityInput {
 // le porte : c'est ce qui donne au nommage des pistes de bot une source DIRECTE.
 func TestCreationPubliePourLeSlotDUnBotSonIndexSansXuid(t *testing.T) {
 	in := filmDeuxCorps()
-	in.BipedCreations = []filmdec.BipedCreation{
+	in.BipedCreations = []grammar.BipedCreation{
 		creationDe(100, 1_000_000, 0), creationDe(200, 1_000_000, 9),
 	}
 	in.Bots = []BotIdentity{{FilmIndex: 9, Name: "343 Flippant [bot]", BotID: 7}}

@@ -67,7 +67,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // oriEps est le rayon d'appariement à un emplacement catalogué. C'est le seuil DE PRODUCTION
@@ -147,8 +148,8 @@ func oriStats(ds []float64, seuil float64) (float64, float64) {
 }
 
 // oriFlat aplatit la carte slot -> positions en un seul nuage.
-func oriFlat(m map[uint32][]filmdec.BipedPosition) []filmdec.BipedPosition {
-	var out []filmdec.BipedPosition
+func oriFlat(m map[uint32][]grammar.BipedPosition) []grammar.BipedPosition {
+	var out []grammar.BipedPosition
 	for _, l := range m {
 		out = append(out, l...)
 	}
@@ -156,7 +157,7 @@ func oriFlat(m map[uint32][]filmdec.BipedPosition) []filmdec.BipedPosition {
 }
 
 // oriLifeEnds rend les fins de vie de bipède : position d'arrêt et instant.
-func oriLifeEnds(pos []filmdec.BipedPosition) []equipLife {
+func oriLifeEnds(pos []grammar.BipedPosition) []equipLife {
 	var out []equipLife
 	for _, lives := range equipmentLives(pos) {
 		out = append(out, lives...)
@@ -232,7 +233,7 @@ func TestOrigineEquipementSocleOuSol(t *testing.T) {
 
 	var b oriBucket
 	var dPad []float64
-	var orphelins []filmdec.EquipmentCreation
+	var orphelins []types.EquipmentCreation
 	tPermute, tDecale := 0, 0
 	for _, c := range pu.Creations {
 		d := oriNearest(pads, c.X, c.Y, c.Z, 0, 0)
@@ -268,7 +269,7 @@ func TestOrigineEquipementSocleOuSol(t *testing.T) {
 
 // oriClusters regroupe les abstentions et publie celles qui RÉCURRENT — les points
 // d'apparition présumés que le catalogue ne connaît pas (E3).
-func oriClusters(t *testing.T, orph []filmdec.EquipmentCreation) {
+func oriClusters(t *testing.T, orph []types.EquipmentCreation) {
 	t.Helper()
 	type cl struct {
 		x, y, z float32

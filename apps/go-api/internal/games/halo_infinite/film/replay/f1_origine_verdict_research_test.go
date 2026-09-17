@@ -19,7 +19,9 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // f1Change est UNE pose dont l'origine bascule.
@@ -97,18 +99,15 @@ func TestF1OrigineAvantApres(t *testing.T) {
 
 // f1PosesEtPositions rend les poses de production du film et le nuage TRIE des bipedes — les
 // deux entrees exactes de `buildEquipmentPlacements`.
-func f1PosesEtPositions(t *testing.T, dir string, e *filmdec.MapQuantEntry) (
-	[]filmdec.EquipmentPlacement, []filmdec.BipedPosition, bool) {
+func f1PosesEtPositions(t *testing.T, dir string, e *profile.MapQuantEntry) (
+	[]types.EquipmentPlacement, []grammar.BipedPosition, bool) {
 	t.Helper()
 	pos, ok := f1Positions(t, dir, *e)
 	if !ok {
 		return nil, nil, false
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
-	defer installWorldObjectPrecision(*e, dir, nil)()
 	wr := e.Range()
-	raw, st, err := filmdec.ScanFilmEquipmentPlacements(dir, &wr)
+	raw, st, err := grammar.ScanFilmEquipmentPlacements(dir, &wr)
 	if err != nil || !st.Calibration.Widths.Valid() {
 		return nil, nil, false
 	}
@@ -119,7 +118,7 @@ func f1PosesEtPositions(t *testing.T, dir string, e *filmdec.MapQuantEntry) (
 //
 // LE POSEUR EST CELUI DE LA PRODUCTION (`equipmentOwner`) : sans lui, l'origine est `unknown`
 // des deux cotes, et la compter ailleurs fabriquerait une transition qui n'existe pas.
-func f1Compare(id string, raw []filmdec.EquipmentPlacement, positions []filmdec.BipedPosition,
+func f1Compare(id string, raw []types.EquipmentPlacement, positions []grammar.BipedPosition,
 	familles map[uint32]string) (map[string]int, map[string]int, map[string]int, []f1Change) {
 	avant, apres, trans := map[string]int{}, map[string]int{}, map[string]int{}
 	lives := equipmentLives(positions)

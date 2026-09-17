@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
@@ -118,7 +118,7 @@ func p2aVoletAppariement(t *testing.T, sb *strings.Builder, e p2aEntree) p2aAppa
 }
 
 // p2aActions pose les captures sur l'axe de frames du rejeu (origine retranchee).
-func p2aActions(doc ReplayDocument, caps []objectiveevents.IdentifiedEvent) ([]ObjectiveAction, int) {
+func p2aActions(doc ReplayDocument, caps []objectives.IdentifiedEvent) ([]ObjectiveAction, int) {
 	out := make([]ObjectiveAction, 0, len(caps))
 	n := 0
 	for _, c := range caps {

@@ -39,9 +39,9 @@ func runReplayEvents(cfg *config.AppConfig, args []string) error {
 
 	ctx := context.Background()
 
-	// 1. Résoudre le joueur.
-	player, err := loadPlayerSummary(cfg, *gamertag)
-	if err != nil {
+	// 1. Vérifier que le joueur est un profil suivi (précondition ; le client poolé ne
+	// prend plus de joueur, ses endpoints sont tous publics).
+	if _, err := loadPlayerSummary(cfg, *gamertag); err != nil {
 		return err
 	}
 	// 2. Ouvrir la shared DB en RW (échoue si serveur tient le lock).
@@ -81,7 +81,7 @@ func runReplayEvents(cfg *config.AppConfig, args []string) error {
 	// 4. Client Halo servi par le POOL (source unique ADR 0023 ; D1 du plan 2026-09-16) :
 	// le rejeu ne lit que des endpoints publics (film, chunks d'evenements), donc le
 	// joueur vise n'a pas besoin de son propre refresh token.
-	client, closePool, err := newPooledClient(ctx, cfg, player.Gamertag, *rps)
+	client, closePool, err := newPooledClient(ctx, cfg, *rps)
 	if err != nil {
 		return err
 	}

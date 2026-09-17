@@ -14,7 +14,8 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // wcOrigin / wcStep : une origine et un pas ronds, pour que les frames attendues se lisent.
@@ -24,11 +25,11 @@ const (
 )
 
 func TestBuildWeaponChangesEcarteLesReannonces(t *testing.T) {
-	in := []filmdec.HeldWeaponChange{
-		{TimestampUS: wcOrigin, Slot: 7, Family: 0xAABBCCDD, Previous: filmdec.NoWeaponVariant,
-			Kind: filmdec.HeldWeaponTaken},
+	in := []types.HeldWeaponChange{
+		{TimestampUS: wcOrigin, Slot: 7, Family: 0xAABBCCDD, Previous: grammar.NoWeaponVariant,
+			Kind: types.HeldWeaponTaken},
 		{TimestampUS: wcOrigin + 500_000, Slot: 7, Family: 0x11223344,
-			Previous: filmdec.NoWeaponVariant, Kind: filmdec.HeldWeaponRestated},
+			Previous: grammar.NoWeaponVariant, Kind: types.HeldWeaponRestated},
 	}
 	got, cov := buildWeaponChanges(in, wcOrigin, wcStep)
 	if len(got) != 1 {
@@ -45,8 +46,8 @@ func TestBuildWeaponChangesEcarteLesReannonces(t *testing.T) {
 }
 
 func TestBuildWeaponChangesEcarteAvantOrigine(t *testing.T) {
-	in := []filmdec.HeldWeaponChange{
-		{TimestampUS: wcOrigin - 1, Slot: 3, Family: 0xAABBCCDD, Kind: filmdec.HeldWeaponTaken},
+	in := []types.HeldWeaponChange{
+		{TimestampUS: wcOrigin - 1, Slot: 3, Family: 0xAABBCCDD, Kind: types.HeldWeaponTaken},
 	}
 	got, cov := buildWeaponChanges(in, wcOrigin, wcStep)
 	if len(got) != 0 || cov.BeforeOrigin != 1 {
@@ -57,9 +58,9 @@ func TestBuildWeaponChangesEcarteAvantOrigine(t *testing.T) {
 
 func TestBuildWeaponChangesFrameEtLacher(t *testing.T) {
 	// Le lâcher tombe à 2 s après l'origine, soit la frame 20 au pas de 100 ms.
-	in := []filmdec.HeldWeaponChange{
-		{TimestampUS: wcOrigin + 2_000_000, Slot: 5, Family: filmdec.NoWeaponVariant,
-			Previous: 0x2C0E7F6C, Kind: filmdec.HeldWeaponDropped},
+	in := []types.HeldWeaponChange{
+		{TimestampUS: wcOrigin + 2_000_000, Slot: 5, Family: grammar.NoWeaponVariant,
+			Previous: 0x2C0E7F6C, Kind: types.HeldWeaponDropped},
 	}
 	got, cov := buildWeaponChanges(in, wcOrigin, wcStep)
 	if len(got) != 1 {
@@ -81,7 +82,7 @@ func TestBuildWeaponChangesFrameEtLacher(t *testing.T) {
 }
 
 func TestSpawnSetFromRendLeRelevePrecedent(t *testing.T) {
-	pred := spawnSetFrom([]filmdec.KeyframeLoadout{
+	pred := spawnSetFrom([]types.KeyframeLoadout{
 		{Slot: 9, TimestampUS: 100, Families: []uint32{1, 2}},
 		{Slot: 9, TimestampUS: 300, Families: []uint32{3}},
 	})

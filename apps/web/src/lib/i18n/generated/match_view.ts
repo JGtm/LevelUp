@@ -72,11 +72,13 @@ export const matchViewManifest = {
   "match_view.team.section_nemesis": { fr: "Duels Némésis", en: "Nemesis duels" },
   "match_view.team.section_roster": { fr: "Composition d'équipe", en: "Team roster" },
   "match_view.team.section_scoreboard": { fr: "Tableau des scores", en: "Scoreboard" },
+  "narrative.dominance.abnegation": { fr: "Abnégation", en: "Selfless" },
   "narrative.dominance.contre_remontada": { fr: "Contre-remontada", en: "Counter-comeback" },
   "narrative.dominance.debandade": { fr: "Débandade", en: "Collapse" },
   "narrative.dominance.domination": { fr: "Domination", en: "Domination" },
   "narrative.dominance.humiliation": { fr: "Humiliation", en: "Humiliation" },
   "narrative.dominance.remontada": { fr: "Remontada", en: "Comeback" },
+  "narrative.dominance.sabordage": { fr: "Sabordage", en: "Scuttled" },
   "narrative.overtime.label": { fr: "Prolongation", en: "Overtime" },
   "narrative.overtime.tooltip": { fr: "Prolongation : +{duration}", en: "Overtime: +{duration}" },
 } as const

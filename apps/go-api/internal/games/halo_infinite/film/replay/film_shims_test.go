@@ -4,7 +4,7 @@ package replay
 //
 // Le lot 1 de PLAN_CUISSON_PERF (2026-09-02) a fait passer `BuildFromFilm` et ses decodeurs de
 // calque (`decodeFilmPlacements`, `decodeFilmPadScans`, `decodeFilmPadScan`) d'un REPERTOIRE a un
-// `*filmsource.Film` deja charge : la cuisson ne decompresse plus le film une fois par balayage.
+// `*source.Film` deja charge : la cuisson ne decompresse plus le film une fois par balayage.
 // Une vingtaine d'instruments de mesure de ce paquet les appellent avec un chemin de film sous
 // garde d'environnement.
 //
@@ -17,14 +17,16 @@ package replay
 // `start_ms` par chunk, et son instrument de mesure charge le film lui-meme.
 
 import (
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // filmDeDir charge le film d'un repertoire, ou rend nil. Les decodeurs rendent alors leur
 // degradation habituelle (journalisee), exactement comme un repertoire illisible avant le lot 1.
-func filmDeDir(dir string) *filmsource.Film {
-	film, err := filmsource.LoadDir(dir, nil)
+func filmDeDir(dir string) *source.Film {
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil
 	}
@@ -41,7 +43,7 @@ func filmDeDir(dir string) *filmsource.Film {
 // Un repertoire illisible fait ECHOUER l'appel plutot que de construire sur un film nil : ces
 // instruments comparent des sorties a des releves Theater, un document vide leur mentirait.
 func buildFromFilmDir(matchID, titleSlug, dir string, opt Options) (ReplayDocument, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return ReplayDocument{}, err
 	}
@@ -50,24 +52,24 @@ func buildFromFilmDir(matchID, titleSlug, dir string, opt Options) (ReplayDocume
 
 // decodeFilmPlacementsDir : [decodeFilmPlacements] depuis un repertoire.
 func decodeFilmPlacementsDir(
-	dir string, wr *filmdec.Vec3Range,
-) ([]filmdec.EquipmentPlacement, filmdec.EquipmentPlacementStats) {
-	return decodeFilmPlacements(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr)
+	dir string, wr *profile.Vec3Range,
+) ([]types.EquipmentPlacement, grammar.EquipmentPlacementStats) {
+	return decodeFilmPlacements(grammar.NewFilmContext(filmDeDir(dir)), dir, wr)
 }
 
 // decodeFilmPadScansDir : [decodeFilmPadScans] depuis un repertoire.
-func decodeFilmPadScansDir(dir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths) PadScans {
-	return decodeFilmPadScans(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
+func decodeFilmPadScansDir(dir string, wr *profile.Vec3Range, mpp profile.MPPWidths) PadScans {
+	return decodeFilmPadScans(grammar.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
 }
 
 // decodeFilmPadScanDir : [decodeFilmPadScan] depuis un repertoire.
 func decodeFilmPadScanDir(
-	dir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths, arch padArchetype,
+	dir string, wr *profile.Vec3Range, mpp profile.MPPWidths, arch padArchetype,
 ) WorldObjectScan {
-	return decodeFilmPadScan(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr, mpp, arch)
+	return decodeFilmPadScan(grammar.NewFilmContext(filmDeDir(dir)), dir, wr, mpp, arch)
 }
 
 // decodeFilmVehicleScanDir : [decodeFilmVehicleScan] depuis un repertoire.
-func decodeFilmVehicleScanDir(dir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths) VehicleScan {
-	return decodeFilmVehicleScan(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
+func decodeFilmVehicleScanDir(dir string, wr *profile.Vec3Range, mpp profile.MPPWidths) VehicleScan {
+	return decodeFilmVehicleScan(grammar.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
 }

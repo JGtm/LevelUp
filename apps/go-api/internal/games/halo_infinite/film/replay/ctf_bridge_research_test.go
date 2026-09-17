@@ -26,7 +26,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 const ctfBridgeFilmsEnv = "CTF_BRIDGE_FILMS"
@@ -61,16 +62,16 @@ func TestCTFBridgeAnatomy(t *testing.T) {
 	}
 }
 
-func ctfBridgeReport(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapName string) string {
+func ctfBridgeReport(t *testing.T, cat *profile.MapQuantCatalog, dir, short, mapName string) string {
 	t.Helper()
 	entry, err := cat.Lookup(mapName)
 	if err != nil {
 		t.Fatalf("bornes de %s : %v", mapName, err)
 	}
 	world := entry.Range()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.WorldRange, scan.CaptureDirs = &world, true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("positions : %v", err)
 	}
@@ -78,7 +79,7 @@ func ctfBridgeReport(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, map
 	if err != nil {
 		t.Fatalf("morts : %v", err)
 	}
-	fire, err := filmdec.ScanFilmFireEvents(dir)
+	fire, err := grammar.ScanFilmFireEvents(dir)
 	if err != nil {
 		t.Fatalf("tirs : %v", err)
 	}
@@ -148,7 +149,7 @@ func ctfNameWithWindow(lives []lifeSpan, deaths []Death, off, windowMS int64) in
 
 // ctfWriteUnnamedLives donne l'anatomie de chaque vie non nommée : quand elle commence, combien
 // elle dure, et combien de tirs tombent dedans. C'est le compte qui relie le pont au calque.
-func ctfWriteUnnamedLives(b *strings.Builder, lives []lifeSpan, fire []filmdec.FireEvent, origin uint64) {
+func ctfWriteUnnamedLives(b *strings.Builder, lives []lifeSpan, fire []grammar.FireEvent, origin uint64) {
 	fmt.Fprintf(b, "\n# vies non nommees (t relatif au debut du film)\n")
 	var unnamed []lifeSpan
 	for _, l := range lives {

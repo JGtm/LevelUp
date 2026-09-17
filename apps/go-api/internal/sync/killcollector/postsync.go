@@ -44,6 +44,7 @@ import (
 	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -428,7 +429,7 @@ var requeteBacklogTaille = `SELECT COUNT(*)` + conditionBacklog
 // ⚠ LECTURE PAR LA VUE `_latest` (ADR 0026) : une lecture brute servirait des passes perimees
 // et ferait sauter des matchs a redecoder.
 func backlogAJour(ctx context.Context, db *sql.DB, horizon int) (ids []string, total int) {
-	args := []any{matchflags.MBitFilmAbsent, KillSourceDecoderRev, killscope.ReadPathCreditBackfill}
+	args := []any{matchflags.MBitFilmAbsent, decfilm.Rev, killscope.ReadPathCreditBackfill}
 
 	if err := db.QueryRowContext(ctx, requeteBacklogTaille, args...).Scan(&total); err != nil {
 		slog.WarnContext(ctx, "post-sync: killsource taille du backlog illisible", "err", err)

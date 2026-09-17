@@ -45,8 +45,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -75,18 +74,16 @@ func TestViseeChronologie(t *testing.T) {
 	if filepath.Base(dir) != "00162144" {
 		t.Fatalf("la chronologie relevee est celle de 00162144 ; film fourni : %s", filepath.Base(dir))
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	xuid := chronoXUID(t, dir, chronoGT)
 	xuidV := chronoXUID(t, dir, chronoGTVictime)
 	t.Logf("IDENTITES — %s xuid=%d · %s xuid=%d", chronoGT, xuid, chronoGTVictime, xuidV)
 
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.CaptureDirs = true
 	scan.QuantaOnly = true
 	debut := time.Now()
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("balayage des positions : %v", err)
 	}
@@ -173,7 +170,7 @@ func TestViseeChronologie(t *testing.T) {
 // d'ecrire un decodeur — c'est un instrument d'observation, pas encore de verdict.
 func chronoMesure114(t *testing.T, dir string, eps [][2]int64, trans []int64) {
 	t.Helper()
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	type rec114 struct {
 		tMS          int64
 		cle          uint32
@@ -185,12 +182,12 @@ func chronoMesure114(t *testing.T, dir string, eps [][2]int64, trans []int64) {
 	comptesSiege := map[uint32]int{}
 	total := 0
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 8 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 8 {
 				continue
 			}
 			pay := p.Payload(chunk)
@@ -200,9 +197,9 @@ func chronoMesure114(t *testing.T, dir string, eps [][2]int64, trans []int64) {
 			total++
 			r := rec114{
 				tMS:          int64(p.TimestampUS / 1000),
-				bitsEnvelope: filmdec.ReadBitsAtForDiag(pay, 7, 2),
-				cle:          filmdec.ReadBitsAtForDiag(pay, 9, 27),
-				siege:        filmdec.ReadBitsAtForDiag(pay, 36, 6),
+				bitsEnvelope: grammar.ReadBitsAtForDiag(pay, 7, 2),
+				cle:          grammar.ReadBitsAtForDiag(pay, 9, 27),
+				siege:        grammar.ReadBitsAtForDiag(pay, 36, 6),
 				taille:       len(pay),
 			}
 			comptesSiege[r.siege]++
@@ -251,12 +248,12 @@ func chronoMesure114(t *testing.T, dir string, eps [][2]int64, trans []int64) {
 	}
 	compte := 0
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 10 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 10 {
 				continue
 			}
 			pay := p.Payload(chunk)
@@ -272,7 +269,7 @@ func chronoMesure114(t *testing.T, dir string, eps [][2]int64, trans []int64) {
 				if b == 7 || b == 8 || b == 24 || b == 40 || b == 56 {
 					sb.WriteByte(' ')
 				}
-				sb.WriteByte('0' + byte(filmdec.ReadBitsAtForDiag(pay, b, 1)))
+				sb.WriteByte('0' + byte(grammar.ReadBitsAtForDiag(pay, b, 1)))
 			}
 			t.Logf("    t=%d : %s", tMS, sb.String())
 			compte++
@@ -283,12 +280,12 @@ func chronoMesure114(t *testing.T, dir string, eps [][2]int64, trans []int64) {
 // chronoXUID resout un gamertag en xuid via le feed (kills, morts et medailles le portent).
 func chronoXUID(t *testing.T, dir, gt string) uint64 {
 	t.Helper()
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	raw, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("chunk_%02d.bin", n)))
 	if err != nil {
 		t.Fatalf("chunk d'evenements : %v", err)
 	}
-	evs, err := analysis.ParseHighlightEvents(raw, 0)
+	evs, err := grammar.ParseHighlightEvents(raw, 0)
 	if err != nil {
 		t.Fatalf("feed illisible : %v", err)
 	}
@@ -418,7 +415,7 @@ func chronoMesureTypes(t *testing.T, types [][2]int64, trans []int64) {
 }
 
 // chronoMesureComposants — mesure C : les emissions de chaque composant du bipede de Nilton.
-func chronoMesureComposants(t *testing.T, pos []filmdec.BipedPosition, lives []lifeSpan,
+func chronoMesureComposants(t *testing.T, pos []grammar.BipedPosition, lives []lifeSpan,
 	xuid uint64, eps [][2]int64, trans []int64) {
 	t.Helper()
 	dansVie := func(tMS int64) bool {
@@ -430,7 +427,7 @@ func chronoMesureComposants(t *testing.T, pos []filmdec.BipedPosition, lives []l
 		}
 		return false
 	}
-	slotOK := func(p filmdec.BipedPosition) bool {
+	slotOK := func(p grammar.BipedPosition) bool {
 		us := int64(p.TimestampUS)
 		for _, l := range lives {
 			if l.xuid == xuid && l.slot == p.Slot && us >= l.from && us <= l.to {

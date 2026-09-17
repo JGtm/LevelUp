@@ -31,7 +31,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // v4TemoinUS est le decalage du temoin. 60 s : plus d une vie de joueur, moins qu une partie —
@@ -110,10 +111,6 @@ func TestV4CouvertureEpisodes(t *testing.T) {
 
 func v4CouvertureUnFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
 	ctx, ok := v4Decode(t, root, f)
 	if !ok {
 		return
@@ -129,7 +126,7 @@ func v4CouvertureUnFilm(t *testing.T, root string, f v0Film) {
 }
 
 // v4Compte somme les evenements d une table par occupant.
-func v4Compte(m map[uint32][]filmdec.VehicleEvent) int {
+func v4Compte(m map[uint32][]types.VehicleEvent) int {
 	n := 0
 	for _, v := range m {
 		n += len(v)
@@ -140,7 +137,7 @@ func v4Compte(m map[uint32][]filmdec.VehicleEvent) int {
 // v4MesureSeuil publie, pour UN seuil de trou, la distribution des distances des trous confirmes
 // par evenement, des trous non confirmes, et du temoin decale.
 func v4MesureSeuil(
-	t *testing.T, ctx v4Ctx, boards, exits map[uint32][]filmdec.VehicleEvent, seuilMS uint64,
+	t *testing.T, ctx v4Ctx, boards, exits map[uint32][]types.VehicleEvent, seuilMS uint64,
 ) {
 	t.Helper()
 	var confirme, autre, temoin v4Classe
@@ -167,8 +164,8 @@ func v4MesureSeuil(
 }
 
 // v4Gaps releve les trous du flux bipede a un seuil DONNE (la production fige le sien).
-func v4Gaps(bipeds []filmdec.BipedPosition, seuilMS uint64) []vehicleGap {
-	bySlot := map[uint32][]filmdec.BipedPosition{}
+func v4Gaps(bipeds []grammar.BipedPosition, seuilMS uint64) []vehicleGap {
+	bySlot := map[uint32][]grammar.BipedPosition{}
 	for _, b := range bipeds {
 		if b.HasWorld {
 			bySlot[b.Slot] = append(bySlot[b.Slot], b)
@@ -197,7 +194,7 @@ func v4Gaps(bipeds []filmdec.BipedPosition, seuilMS uint64) []vehicleGap {
 
 // v4Confirme dit si un trou porte un evenement d embarquement a son ouverture ou de sortie a sa
 // fermeture — l ORACLE du lot.
-func v4Confirme(g vehicleGap, boards, exits []filmdec.VehicleEvent) bool {
+func v4Confirme(g vehicleGap, boards, exits []types.VehicleEvent) bool {
 	for _, ev := range boards {
 		if gapUS(ev.TimestampUS, g.startUS) <= v4EventTolUS {
 			return true

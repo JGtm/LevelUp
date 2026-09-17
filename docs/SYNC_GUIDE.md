@@ -138,6 +138,29 @@ Selectors (one or more required):
 
 Backfill is also exposed over HTTP (`POST /backfill/start`); the CLI is the local, server-free path.
 
+#### Film decoder revisions and the killsource backlog
+
+The film decoder is five layers (ADR 0034, D-1), and four of them carry a revision of their own (D-6): `source.Rev`, `profile.Rev`, `grammar.Rev` and `facts.Rev`, one per layer, each in its layer's `rev.go`. It is `facts.Rev` that commands the backlog.
+
+A revision is a string frozen in a golden beside the fingerprint of that layer's non-test sources: a source that changes without its revision reddens the fingerprint test, and a revision that changes without its source reddens it too. The calculation, the chronicle, the regeneration door and the failure messages are shared (`internal/games/halo_infinite/film/revision`); a layer only declares its roots, its upstream values, its golden, its door and the question its failure asks.
+
+| Revision | What it hashes | It rises when |
+|---|---|---|
+| `source.Rev` | the source layer: loading, decompression, chunk and packet cutting, the canonical bit reader | the way the bytes are reached changes — everything is re-decoded |
+| `profile.Rev` | the profile layer (the table per build and per map), plus the **value** of `source.Rev` | one row of the profile table changes |
+| `grammar.Rev` | the grammar layer, plus the **values** of `profile.Rev` and of `source.Rev` | a width, a frame, a component order, a new reader |
+| `facts.Rev` | the whole facts tree (killsource, objectives, fallback), plus the **values** of `source.Rev` and of `grammar.Rev` | the facts output can change |
+
+Each layer hashes ITS bytes and the VALUES of the layers it depends on — never their bytes. That is the one link that does not go without saying, and the defect it closes is measured: a grammar fix can change the kill-source output without touching a byte of the facts layer, the revision then stood still, and the rows already written carried the running revision — excluded from the backlog for good. Chaining the values makes it mechanical: the lowest layer that rises raises every layer above it, up to the backlog. A false positive costs one re-decode; a false negative costs a fleet of wrong rows.
+
+**What the backlog is** (in force, under `facts.Rev`). Every row of `match_kill_events` carries in `decoder_rev` the revision that produced it. A match whose current pass — read through the `match_kill_events_latest` view, never the raw table (ADR 0026) — does not carry the running revision becomes a candidate again (`conditionBacklog`, `internal/sync/killcollector/postsync.go`). The post-sync step catches up at a bounded pace (8 films per cycle, a five-minute budget) and publishes what is left in the expvar `killsource_postsync_backlog_restant`; `levelup backfill-killsource --online` drains it deliberately. A re-cook of the whole park stays a separate gesture, taken on user signal, never per lot.
+
+**What does not open a backlog.** Moving a file, splitting one, moving a type down into the contract package `film/types`, passing a value by parameter instead of through a package variable: the fingerprints see the sources, so they change, but a rise of the REVISION opens the backlog only when the *output* can change — and a structural step is closed at zero difference of content, proven by the corpus gate. When such a step only changes the form, the revision stays put, the golden is regenerated and the choice is written in the commit: the gate demands that it be explicit. At its birth on 2026-09-16 `facts.Rev` **took over the value of `KillSourceDecoderRev`** (`killsource-2026-09-16.2`) instead of starting a new series, precisely because nothing in the decoding had changed — and the series keeps that prefix, because the rows in the database carry those very strings. The rule "a rise of `facts.Rev` opens the killsource backlog" holds from the first change of output that follows.
+
+**Reading the revisions off an artifact** (schema 61). A cooked replay document carries `coverage.decoder.{sourceRev, profileRev, grammarRev, factsRev, build}` (`GET /players/{player_slug}/matches/{match_id}/replay`): the artifact says under which revisions it was cooked, instead of being guessed from its schema version. `build` is the profile key, read in clear text in `chunk_00` (D-3); it is the empty string — the block staying present — both when the film writes no build at all and when the profile table does not know the one it wrote (`ErrUnknownBuild`). The **absence** of the block means "artifact cooked before schema 61", never "unknown build". The sub-block `coverage.decoder.registry` classifies the film's ECS registry fingerprint (`fingerprint`, `status` = `connue` / `inconnue`, `blocks`, `namedSlots`); it is absent when the registry was not read.
+
+References: [adr/0034-film-decoder-profile-and-layers.md](adr/0034-film-decoder-profile-and-layers.md) — D-1 (the five layers and their one-way dependency), D-6 (one revision per thing that can change), D-10 and D-10 bis (the grammar decides, a fallback is named, counted and retired) — and the fallback registry itself, `internal/games/halo_infinite/film/internal/facts/fallback`, which carries for each fallback its typed trigger, its date posted, its target and its retirement criterion.
+
 ## Auth
 
 Tokens are the single source described in [adr/0023-auth-tokens-single-source.md](adr/0023-auth-tokens-single-source.md): `data/auth/watcher_tokens/{xuid}.json` via `MultiUserTokenStore`. The player must be declared in `db_profiles.json` (with `xuid`) first.

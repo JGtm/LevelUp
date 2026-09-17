@@ -10,9 +10,8 @@ package replay
 // en retirant la matiere de la mesure.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
-
-	"levelup/go-api/internal/analysis/objectiveevents"
 )
 
 // La fixture partagee ([skullFixture]) cadence ses tics a 1 000 ms ; l'axe des tests vaut
@@ -87,21 +86,21 @@ func TestSkullCarriesDemiFenetreBorneeParLAxe(t *testing.T) {
 // porte deux tics ne donne AUCUNE cadence a mesurer : les bornes restent celles des tics. Si la
 // largeur etait une constante ecrite dans le code, ce test rougirait.
 func TestSkullCarriesSansCadenceMesurableNeDeplaceRien(t *testing.T) {
-	tick := func(tms, slot, round int, v int64) objectiveevents.StatRecord {
-		return objectiveevents.StatRecord{TimeMS: tms, Slot: slot, Round: round,
-			Comps: map[int]objectiveevents.StatValue{0: {A: v}}}
+	tick := func(tms, slot, round int, v int64) types.StatRecord {
+		return types.StatRecord{TimeMS: tms, Slot: slot, Round: round,
+			Comps: map[int]types.StatValue{0: {A: v}}}
 	}
-	death := func(tms, slot, round int, v int64) objectiveevents.StatRecord {
-		return objectiveevents.StatRecord{TimeMS: tms, Slot: slot, Round: round,
-			Comps: map[int]objectiveevents.StatValue{2: {B: v}}}
+	death := func(tms, slot, round int, v int64) types.StatRecord {
+		return types.StatRecord{TimeMS: tms, Slot: slot, Round: round,
+			Comps: map[int]types.StatValue{2: {B: v}}}
 	}
 	// Trois tics du meme slot, tous separes de plus de `skullTickGapMS` : trois trains d'UN tic,
 	// donc aucun ecart intra-train a mesurer.
-	recs := []objectiveevents.StatRecord{
+	recs := []types.StatRecord{
 		tick(1000, 22, 0, 1), tick(10000, 22, 0, 2), tick(20000, 22, 0, 3),
 		death(30000, 22, 0, 1), death(30100, 22, 0, 2), death(30200, 22, 0, 3),
 	}
-	deaths := []objectiveevents.DeathInstant{
+	deaths := []types.DeathInstant{
 		{XUID: "A", TimeMS: 30000}, {XUID: "A", TimeMS: 30100}, {XUID: "A", TimeMS: 30200},
 	}
 	ctx := matchClock{origin: 0, step: 1000, frames: 100000}

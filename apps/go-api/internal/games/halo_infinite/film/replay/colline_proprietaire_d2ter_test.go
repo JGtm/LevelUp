@@ -26,7 +26,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -98,12 +99,12 @@ func TestCollineProprietaireD2Ter(t *testing.T) {
 
 	// LE PONT, ET SES DENOMINATEURS. Sans eux, un accord ne se juge pas : un pont qui ne nomme
 	// que la moitie des slots mesurerait la moitie du match sans le dire.
-	recs := objectiveevents.StatRecords(p2aBobine(t, e.dir))
+	recs := objectives.StatRecords(p2aBobine(t, e.dir))
 	deaths, err := ScanFilmDeaths(e.dir)
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", e.short, err)
 	}
-	identity := objectiveevents.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
+	identity := objectives.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
 	teams := e.film.p2aTeams()
 	slotTeam := map[int]int{}
 	for slot, xuid := range identity {
@@ -120,7 +121,7 @@ func TestCollineProprietaireD2Ter(t *testing.T) {
 			"peut rien trancher", e.short, len(slotTeam))
 	}
 
-	perso := objectiveevents.SeriesTotal(recs, objectiveevents.PersonalScoreComponent, false)
+	perso := objectives.SeriesTotal(recs, objectives.PersonalScoreComponent, false)
 	minFrames := d2tMinRunSec * 1000 / max(e.doc.FrameIntervalMS, 1)
 	runs := d2Runs(ser.owner[ownerSlot], e.doc.FrameCount, minFrames)
 	sig := d2tConfronte(runs, perso, slotTeam, e)
@@ -173,7 +174,7 @@ func TestCollineProprietaireD2Ter(t *testing.T) {
 
 // d2tConfronte confronte chaque intervalle de propriete au camp dont le score personnel DOMINE,
 // et rend l'accord sous la meilleure bijection valeur <-> camp.
-func d2tConfronte(runs []d2Run, perso map[int][]objectiveevents.ScorePoint, slotTeam map[int]int,
+func d2tConfronte(runs []d2Run, perso map[int][]types.ScorePoint, slotTeam map[int]int,
 	e ctEntree,
 ) d2tVerdict {
 	v := d2tVerdict{runs: len(runs)}

@@ -15,24 +15,25 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // bipedeA place un bipede a une position monde donnee, dans la fenetre du poseur.
-func bipedeA(slot uint32, x, y float32, tUS uint64) filmdec.BipedPosition {
-	return filmdec.BipedPosition{
+func bipedeA(slot uint32, x, y float32, tUS uint64) grammar.BipedPosition {
+	return grammar.BipedPosition{
 		Slot: slot, TimestampUS: tUS, X: x, Y: y, Z: 0, HasWorld: true,
 	}
 }
 
 func TestEquipmentOwnerDepartageDeuxBipedesEquidistants(t *testing.T) {
-	pose := filmdec.EquipmentPlacement{T0US: 1_000_000, X: 0, Y: 0, Z: 0}
+	pose := types.EquipmentPlacement{T0US: 1_000_000, X: 0, Y: 0, Z: 0}
 	// Trois slots a EXACTEMENT un metre de la pose, sur trois axes : la regle de distance ne
 	// les separe pas, et c'est le cas qui tirait au sort.
 	slots := []uint32{9, 4, 17}
 	xy := map[uint32][2]float32{9: {1, 0}, 4: {-1, 0}, 17: {0, 1}}
 	for tour := 0; tour < 50; tour++ {
-		var positions []filmdec.BipedPosition
+		var positions []grammar.BipedPosition
 		// L'ordre d'ENTREE change de tour en tour ; l'ordre d'iteration de la map interne
 		// change de lui-meme.
 		for i := range slots {
@@ -55,15 +56,15 @@ func TestEquipmentOwnerDepartageDeuxBipedesEquidistants(t *testing.T) {
 // contourne pas la regle — un slot plus petit mais plus loin ne gagne pas, et au-dela du seuil
 // personne ne gagne.
 func TestEquipmentOwnerNePrendPasLePlusPetitSlotHorsRegle(t *testing.T) {
-	pose := filmdec.EquipmentPlacement{T0US: 1_000_000}
-	positions := []filmdec.BipedPosition{
+	pose := types.EquipmentPlacement{T0US: 1_000_000}
+	positions := []grammar.BipedPosition{
 		bipedeA(1, 2, 0, pose.T0US), // plus petit slot, mais deux fois plus loin
 		bipedeA(8, 1, 0, pose.T0US),
 	}
 	if slot, _, ok := equipmentOwner(positions, pose); !ok || slot != 8 {
 		t.Errorf("le plus proche doit gagner : attendu (8, true), obtenu (%d, %v)", slot, ok)
 	}
-	loin := []filmdec.BipedPosition{bipedeA(1, equipOwnerMaxDist+1, 0, pose.T0US)}
+	loin := []grammar.BipedPosition{bipedeA(1, equipOwnerMaxDist+1, 0, pose.T0US)}
 	if _, _, ok := equipmentOwner(loin, pose); ok {
 		t.Error("au-dela du seuil, aucun poseur ne doit etre nomme")
 	}

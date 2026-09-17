@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // lives_test.go — le repli « nommer la vie par la mort qui la termine ».
@@ -15,7 +15,7 @@ import (
 
 // tracksOf construit l'index par slot attendu par buildLifeSpans. Le helper posAt vit
 // dans shots_test.go : une seconde copie divergerait (regle du depot sur les doublons).
-func tracksOf(pts ...filmdec.BipedPosition) map[uint32]slotTrack {
+func tracksOf(pts ...grammar.BipedPosition) map[uint32]slotTrack {
 	return indexBySlot(pts)
 }
 
@@ -37,7 +37,7 @@ func TestBuildLifeSpansSplitsOnGap(t *testing.T) {
 func TestBuildLifeSpansKeepsContinuousTrackWhole(t *testing.T) {
 	// Des échantillons rapprochés ne doivent JAMAIS être coupés : un découpage trop
 	// agressif fabriquerait des vies sans mort, donc des vies jamais nommées.
-	var pts []filmdec.BipedPosition
+	var pts []grammar.BipedPosition
 	for i := 0; i < 50; i++ {
 		pts = append(pts, posAt(512, uint64(i)*16_000, 0, 0, 0))
 	}

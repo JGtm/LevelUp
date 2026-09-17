@@ -32,7 +32,8 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Les instants du siege 900, en microsecondes de l'horloge du film. Le pas de grille des tests
@@ -87,7 +88,7 @@ func TestRegistreNommeLOccupantDuSiegeALInstant(t *testing.T) {
 // L'INSTANT du ramassage, jamais par le premier occupant du film.
 func TestRamassageSuitLOccupantDuSiege(t *testing.T) {
 	reg := registreSiegeRecycle()
-	pickups := []filmdec.BipedPickup{
+	pickups := []types.BipedPickup{
 		{TimestampUS: siegeLectureUS, Slot: 900, CatalogID: 0x1234, Class: 0},
 		{TimestampUS: siegeTrouUS, Slot: 900, CatalogID: 0x1234, Class: 0},
 		{TimestampUS: siegeLectureUS, Slot: 901, CatalogID: 0x1234, Class: 0},
@@ -180,7 +181,7 @@ func TestInventaireMortSuitLOccupantDuSiege(t *testing.T) {
 // occupe A L'INSTANT du coup fatal — le second occupant d'un siege recycle n'est plus invisible.
 func TestPositionDeKillSuitLOccupantDuSiege(t *testing.T) {
 	reg := registreSiegeRecycle()
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		posAt(900, siegeLectureUS, 7, 8, 0),
 		posAt(901, siegeLectureUS, 1, 2, 0),
 	}
@@ -206,7 +207,7 @@ func TestPositionDeKillSuitLOccupantDuSiege(t *testing.T) {
 // rendre une vraie.
 func TestPositionDeKillSeTaitHorsDesVies(t *testing.T) {
 	reg := registreSiegeRecycle()
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		posAt(900, siegeLectureUS, 7, 8, 0),
 		posAt(901, siegeLectureUS, 1, 2, 0),
 	}

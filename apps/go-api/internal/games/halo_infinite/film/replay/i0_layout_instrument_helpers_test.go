@@ -7,12 +7,12 @@ package replay
 //
 // `detecterI0Layout(dir)` etait une enveloppe EXPORTEE et de PRODUCTION dont aucun
 // appelant de production ne subsistait depuis le lot 1.9.4 : ses 48 appels etaient tous des
-// tests. Elle est devenue `detectI0Layout`, non exportee, dans un fichier de test de `filmdec`
+// tests. Elle est devenue `detectI0Layout`, non exportee, dans un fichier de test de `grammar`
 // (regle 7 du depot : « 0 code mort »).
 //
 // Un symbole de test n est pas importable d un autre paquet. Les huit instruments de `replay`
 // qui l appelaient passent donc par cette fonction-ci, qui refait ses deux lignes : charger le
-// film, puis appeler la forme de production [filmdec.DetectI0LayoutOf], qui prend un film deja
+// film, puis appeler la forme de production [grammar.DetectI0LayoutOf], qui prend un film deja
 // charge. Deux copies d un appel de deux lignes restent sous le plafond de la regle 6 du depot ;
 // l alternative — garder une enveloppe en production pour que des tests l atteignent — est
 // precisement la dette que ce deplacement solde.
@@ -22,15 +22,16 @@ package replay
 // tague, regle du 2026-09-16, §2.3 du plan).
 
 import (
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // detecterI0Layout lit le decoupage d i0 DANS le film de `dir`.
-func detecterI0Layout(dir string) (filmdec.I0Layout, filmdec.I0LayoutReport, error) {
-	film, err := filmsource.LoadDir(dir, nil)
+func detecterI0Layout(dir string) (profile.I0Layout, grammar.I0LayoutReport, error) {
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return filmdec.I0Layout{}, filmdec.I0LayoutReport{}, err
+		return profile.I0Layout{}, grammar.I0LayoutReport{}, err
 	}
-	return filmdec.DetectI0LayoutOf(film)
+	return grammar.DetectI0LayoutOf(film)
 }

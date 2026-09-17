@@ -29,7 +29,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // v8Bilan accumule les comptes de tous les films.
@@ -108,10 +109,6 @@ func v8FamillesTriees(m map[string][2]int) []string {
 // v8UnFilm depouille un film.
 func v8UnFilm(t *testing.T, root string, f v0Film, tot *v8Bilan) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
 	ctx, ok := v4Decode(t, root, f)
 	if !ok {
 		return
@@ -137,7 +134,7 @@ func v8UnFilm(t *testing.T, root string, f v0Film, tot *v8Bilan) {
 // trajectoire — c est-a-dire si les deux entites sont les deux faces d un meme vehicule.
 func v8Muettes(t *testing.T, ctx v4Ctx) {
 	t.Helper()
-	pleine := map[filmdec.EquipmentLifeKey]bool{}
+	pleine := map[types.EquipmentLifeKey]bool{}
 	for _, l := range ctx.lives {
 		_, hasSpawn := ctx.spawns[l.key]
 		if hasSpawn || len(ctx.vehBySlot[l.key.Slot]) > 0 {
@@ -152,7 +149,7 @@ func v8Muettes(t *testing.T, ctx v4Ctx) {
 		muettes++
 		voisins := ""
 		for _, d := range []int{1, -1} {
-			v := filmdec.EquipmentLifeKey{Slot: uint32(int(l.key.Slot) + d), Gen: l.key.Gen}
+			v := types.EquipmentLifeKey{Slot: uint32(int(l.key.Slot) + d), Gen: l.key.Gen}
 			for _, o := range ctx.lives {
 				if o.key != v || !pleine[v] {
 					continue
@@ -176,18 +173,18 @@ func v8Muettes(t *testing.T, ctx v4Ctx) {
 }
 
 // v8Famille rend la famille de chassis d une vie, ou « - ».
-func v8Famille(ctx v4Ctx, key filmdec.EquipmentLifeKey) string {
+func v8Famille(ctx v4Ctx, key types.EquipmentLifeKey) string {
 	sp, ok := ctx.spawns[key]
-	if !ok || !sp.MPPPresent[filmdec.MPPWord32] {
+	if !ok || !sp.MPPPresent[grammar.MPPWord32] {
 		return "famille -"
 	}
-	return "famille " + vehicleFamilyOf(uint32(sp.MPPVal[filmdec.MPPWord32]))
+	return "famille " + vehicleFamilyOf(uint32(sp.MPPVal[grammar.MPPWord32]))
 }
 
 // v8Episodes compare les deux voies, episode par episode.
 func v8Episodes(
-	t *testing.T, eps []vehicleEpisode, bySlot map[uint32][]filmdec.BipedPosition,
-	in vehicleRideInputs, spawns map[filmdec.EquipmentLifeKey]filmdec.EquipmentCreation,
+	t *testing.T, eps []vehicleEpisode, bySlot map[uint32][]grammar.BipedPosition,
+	in vehicleRideInputs, spawns map[types.EquipmentLifeKey]types.EquipmentCreation,
 	tot *v8Bilan,
 ) {
 	t.Helper()
@@ -226,8 +223,8 @@ func v8Episodes(
 			tot.nommeMuet++
 		}
 		fam := "-"
-		if sp, ok := spawns[geo.key]; ok && sp.MPPPresent[filmdec.MPPWord32] {
-			fam = vehicleFamilyOf(uint32(sp.MPPVal[filmdec.MPPWord32]))
+		if sp, ok := spawns[geo.key]; ok && sp.MPPPresent[grammar.MPPWord32] {
+			fam = vehicleFamilyOf(uint32(sp.MPPVal[grammar.MPPWord32]))
 		}
 		c := tot.parFamille[fam]
 		if evLife.key == geo.key {
@@ -309,8 +306,8 @@ func v8Permute(ep vehicleEpisode, nommes []uint32, i int) (vehicleEpisode, bool)
 // vehicule qu on quitte.
 func v8Desaccord(
 	t *testing.T, ep vehicleEpisode, ev, geo vehicleLife,
-	bySlot map[uint32][]filmdec.BipedPosition, in vehicleRideInputs,
-	spawns map[filmdec.EquipmentLifeKey]filmdec.EquipmentCreation,
+	bySlot map[uint32][]grammar.BipedPosition, in vehicleRideInputs,
+	spawns map[types.EquipmentLifeKey]types.EquipmentCreation,
 ) {
 	t.Helper()
 	pts := bySlot[ep.slot]
@@ -333,12 +330,12 @@ func v8Desaccord(
 // v8Vie decrit une vie candidate : identite, chassis, famille, nuage, fenetre, naissance.
 func v8Vie(
 	l vehicleLife, in vehicleRideInputs,
-	spawns map[filmdec.EquipmentLifeKey]filmdec.EquipmentCreation,
+	spawns map[types.EquipmentLifeKey]types.EquipmentCreation,
 ) string {
 	chassis, famille, naissance := "-", "-", "aucune"
 	if sp, ok := spawns[l.key]; ok {
-		if sp.MPPPresent[filmdec.MPPWord32] {
-			id := uint32(sp.MPPVal[filmdec.MPPWord32])
+		if sp.MPPPresent[grammar.MPPWord32] {
+			id := uint32(sp.MPPVal[grammar.MPPWord32])
 			chassis, famille = formatChassisID(id), vehicleFamilyOf(id)
 		}
 		naissance = fmt.Sprintf("(%.1f, %.1f)", sp.X, sp.Y)
@@ -353,8 +350,8 @@ func v8Vie(
 // qui ne replique jamais sa position (objet attache, vehicule jamais conduit) n a que celle-la, et
 // la taire ferait passer pour « introuvable » un vehicule dont on sait exactement ou il est.
 func v8DistTo(
-	e filmdec.BipedPosition, has bool, l vehicleLife, in vehicleRideInputs,
-	spawns map[filmdec.EquipmentLifeKey]filmdec.EquipmentCreation,
+	e grammar.BipedPosition, has bool, l vehicleLife, in vehicleRideInputs,
+	spawns map[types.EquipmentLifeKey]types.EquipmentCreation,
 ) string {
 	if !has {
 		return "pas d ancre"
@@ -373,7 +370,7 @@ func v8DistTo(
 // v8CountWithinAnchor compte les vehicules FRAIS sous le rayon de l ancre d evenement — la mesure
 // d AMBIGUITE du lot V6, reprise a l identique.
 func v8CountWithinAnchor(
-	ep vehicleEpisode, bySlot map[uint32][]filmdec.BipedPosition, in vehicleRideInputs,
+	ep vehicleEpisode, bySlot map[uint32][]grammar.BipedPosition, in vehicleRideInputs,
 ) int {
 	pts := bySlot[ep.slot]
 	a0, h0 := vehicleAnchorAt(pts, ep.startUS, false)
@@ -415,8 +412,8 @@ func v8Artefact(t *testing.T, ctx v4Ctx, tot *v8Bilan) {
 
 // v8SansReference rend les memes evenements, prives de leur reference de vehicule : le regime
 // D AVANT le lot V8, ou seule la geometrie pouvait repondre.
-func v8SansReference(evs []filmdec.VehicleEvent) []filmdec.VehicleEvent {
-	out := make([]filmdec.VehicleEvent, len(evs))
+func v8SansReference(evs []types.VehicleEvent) []types.VehicleEvent {
+	out := make([]types.VehicleEvent, len(evs))
 	copy(out, evs)
 	for i := range out {
 		out[i].VehicleSlot, out[i].VehicleSlotValid, out[i].VehicleGen = 0, false, 0

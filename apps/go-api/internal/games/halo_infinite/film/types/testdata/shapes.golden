@@ -1,0 +1,421 @@
+# GOLDEN — LA FORME PUBLIQUE DES TYPES DE CONTRAT DU DECODEUR DE FILM. Ne PAS editer a la main.
+#
+# UN SEUL FICHIER POUR TOUS LES TYPES (decision V15 (13) du PLAN_DECODEUR_FILM_2026-09-13) : un
+# golden par type ferait autant de fichiers que de types pour UNE seule question. Modele :
+# film/replay/testdata/document_shape.golden, qui fige un arbre entier de 989 lignes.
+#
+# CE QU IL PORTE
+#
+#   ligne 1 de donnees   les REVISIONS des TROIS couches qui produisent ces types, au moment ou
+#                        la forme a ete figee :
+#                        `revisions<TAB>source=...<TAB>grammar=...<TAB>facts=...`.
+#                        `profile` n y figure pas : elle ne produit aucun type de contrat.
+#   une section par type `## <Nom> (<couche>)`, puis une ligne par champ :
+#                        `<Nom><TAB><type Go><TAB><tag JSON, ou - quand il n y en a pas>`.
+#
+# L ORDRE DES CHAMPS FAIT PARTIE DE LA FORME : il fixe la lecture d un litteral non nomme et
+# l ordre de serialisation. Un champ ajoute, retire, renomme ou retype est VISIBLE depuis les
+# autres couches — c est une rupture de contrat, pas un detail interne.
+#
+# CE QU IL NE GARDE PAS : ni le comportement, ni les commentaires. Un godoc reformule fait rougir
+# le gate d EMPREINTE de la couche (qui hache les octets), pas celui-ci. Les deux sont
+# complementaires : l empreinte dit « quelque chose a bouge », ce golden dit QUOI.
+#
+# REGENERATION (formes ET revisions a la fois) :
+#
+#   LEVELUP_UPDATE_TYPES_SHAPES=1 go test ./internal/games/halo_infinite/film/types/ \
+#     -run TestFormesDesTypesEgalentLeGolden -update-types-shapes
+revisions	source=source-2026-09-16.2	grammar=grammar-2026-09-15.39	facts=killsource-2026-09-16.6
+
+## ChunkMeta (source)
+Index	int	-
+ChunkType	int	-
+StartMS	int	-
+
+## Packet (source)
+Chunk	int	-
+Index	int	-
+Type	int	-
+TS	uint64	-
+Payload	[]uint8	-
+
+## AbilityCharge (grammar)
+Slot	uint32	-
+Chunk	int	-
+PacketIndex	int	-
+TimestampUS	uint64	-
+Emplacement	int	-
+Charges	int	-
+Low	int	-
+
+## AbilityChargeStats (grammar)
+Records	int	-
+WithI56	int	-
+Read	int	-
+Unread	int	-
+Armed	int	-
+Absent	bool	-
+Scanned	bool	-
+
+## AbilityImpulse (grammar)
+Slot	uint32	-
+Chunk	int	-
+PacketIndex	int	-
+TimestampUS	uint64	-
+Predicted	bool	-
+
+## AbilityImpulseStats (grammar)
+Records	int	-
+WithI57	int	-
+WithI59	int	-
+Read	int	-
+Unread	int	-
+Tag1	int	-
+Absent	bool	-
+Scanned	bool	-
+
+## AbilityRank (grammar)
+Slot	uint32	-
+Chunk	int	-
+PacketIndex	int	-
+TimestampUS	uint64	-
+Counter	uint32	-
+Rank	int	-
+
+## AbilityRankStats (grammar)
+Records	int	-
+WithI48	int	-
+Read	int	-
+Unread	int	-
+Gated	int	-
+
+## BipedCreationStats (grammar)
+Slots	int	-
+Anchors	int	-
+Truncated	int	-
+ShapeBad	int	-
+SignatureMismatch	int	-
+OtherWord	uint32	-
+OtherWordCount	int	-
+GateClosed	int	-
+Accepted	int	-
+
+## BipedPickup (grammar)
+TimestampUS	uint64	-
+Chunk	int	-
+Slot	uint32	-
+CatalogID	uint32	-
+Class	uint8	-
+
+## BipedPickupStats (grammar)
+Packets	int	-
+Type9	int	-
+Type8	int	-
+OtherType	int	-
+Published	int	-
+MultiEvent	int	-
+RefusedNoRef	int	-
+RefusedNoCatalog	int	-
+RefusedOffBand	int	-
+UnexpectedWideRef	int	-
+
+## CamoRead (grammar)
+Slot	uint32	-
+Chunk	int	-
+PacketIndex	int	-
+TimestampUS	uint64	-
+Q	uint16	-
+
+## DeadState (grammar)
+Mort	bool	-
+EnumA	int32	-
+EnumB	int32	-
+Val0c	uint8	-
+Val0e	uint8	-
+HasRef	bool	-
+GIDPresent	bool	-
+GlobalID	uint32	-
+Val14	uint8	-
+Val18	int8	-
+SrcTag0	uint32	-
+SrcTag4c	uint32	-
+
+## EquipmentChange (grammar)
+TimestampUS	uint64	-
+Chunk	int	-
+PacketIndex	int	-
+Slot	uint32	-
+Counter	uint32	-
+Rank	int	-
+Previous	int	-
+Kind	types.EquipmentChangeKind	-
+Recovered	bool	-
+Gap	int	-
+
+## EquipmentChangeStats (grammar)
+Walk	types.AbilityRankStats	-
+Lives	int	-
+Repeats	int	-
+CounterJumps	int	-
+MissedEstimate	int	-
+LivesFirstOffSpec	int	-
+Spawned	int	-
+Taken	int	-
+Spent	int	-
+Recovered	int	-
+
+## EquipmentCreation (grammar)
+Slot	uint32	-
+Gen	uint32	-
+Chunk	int	-
+PacketIndex	int	-
+TimestampUS	uint64	-
+BitPos	int	-
+HasRef	bool	-
+Ref	uint32	-
+HasID	bool	-
+AbilityID	uint32	-
+MPPPresent	[4]bool	-
+MPPVal	[4]uint64	-
+X	float32	-
+Y	float32	-
+Z	float32	-
+Mask	[]int	-
+MaskFull	bool	-
+MaskHasI0	bool	-
+DefaultStateBits	int	-
+HasAmmo	bool	-
+Ammo	types.GroundWeaponAmmo	-
+AfterBit	int	-
+
+## EquipmentCreationStats (grammar)
+Slots	int	-
+Anchors	int	-
+Overflow	int	-
+MaskBad	int	-
+PosBad	int	-
+Accepted	int	-
+MaskSparse	int	-
+MaskFull	int	-
+NoI0	int	-
+WithRef	int	-
+WithID	int	-
+WithAmmo	int	-
+
+## EquipmentLifeKey (grammar)
+Slot	uint32	-
+Gen	uint32	-
+
+## EquipmentPlacement (grammar)
+Life	types.EquipmentLifeKey	-
+T0US	uint64	-
+T1US	uint64	-
+X	float32	-
+Y	float32	-
+Z	float32	-
+GlobalID	uint32	-
+Points	int	-
+
+## EquipmentSpawnEvent (grammar)
+Chunk	int	-
+PacketIndex	int	-
+TimestampUS	uint64	-
+Spawned	types.EquipmentLifeKey	-
+SpawnedValid	bool	-
+Source	types.EquipmentLifeKey	-
+SourceValid	bool	-
+Ref2Present	bool	-
+
+## EquipmentSpawnStats (grammar)
+Chunks	int	-
+Packets	int	-
+Lists	int	-
+Events	int	-
+WithSpawned	int	-
+WithSource	int	-
+Ref2	int	-
+
+## GrappleRead (grammar)
+Slot	uint32	-
+Chunk	int	-
+PacketIndex	int	-
+TimestampUS	uint64	-
+Heavy	bool	-
+PosQ	[3]uint32	-
+
+## GroundWeaponAmmo (grammar)
+Mag	uint32	-
+Res	uint32	-
+
+## HeldWeaponChange (grammar)
+TimestampUS	uint64	-
+Chunk	int	-
+Slot	uint32	-
+SlotIndex	int	-
+Family	uint32	-
+Low	uint32	-
+Previous	uint32	-
+Kind	types.HeldWeaponChangeKind	-
+
+## InventoryDelta (grammar)
+Slot	uint32	-
+Chunk	int	-
+PacketIndex	int	-
+TimestampUS	uint64	-
+Grenades	[]uint32	-
+Mask	uint32	-
+Sel	int	-
+SelRead	bool	-
+Ammo	[]types.InventoryDeltaAmmo	-
+
+## InventoryDeltaAmmo (grammar)
+WeaponSlot	int	-
+Mag	*uint32	-
+FracQ	*uint32	-
+Res	*uint32	-
+
+## KeyframeLoadout (grammar)
+TimestampUS	uint64	-
+Chunk	int	-
+PacketIndex	int	-
+Slot	uint32	-
+Families	[]uint32	-
+
+## NavpointRadialRead (grammar)
+Slot	uint32	-
+TMS	int32	-
+Q	uint8	-
+Chained	bool	-
+
+## ObjectDeath (grammar)
+TimestampUS	uint64	-
+Slot	uint32	-
+Gen	uint32	-
+TypeIndex	uint32	-
+Dead	types.DeadState	-
+TailDesync	bool	-
+
+## PlayerSlot (grammar)
+FilmIndex	int	-
+XUID	uint64	-
+Gamertag	string	-
+SessionToken	uint64	-
+Bit	int	-
+TotalBits	int	-
+Shorts	types.PlayerSlotShorts	-
+
+## PlayerSlotShorts (grammar)
+Tete	uint32	-
+Deux	uint32	-
+Repr	uint32	-
+Q64	uint64	-
+F10	uint32	-
+F14	uint32	-
+F6	int	-
+F8	uint32	-
+F7	uint32	-
+F1	uint32	-
+
+## ProjectileSample (grammar)
+TimestampUS	uint64	-
+Chunk	int	-
+X	float32	-
+Y	float32	-
+Z	float32	-
+AtRest	bool	-
+
+## ProjectileTrack (grammar)
+Slot	uint32	-
+Gen	uint32	-
+Pts	[]types.ProjectileSample	-
+
+## TranslocatorTeleport (grammar)
+TimestampUS	uint64	-
+Slot	uint32	-
+From	[3]float32	-
+To	[3]float32	-
+HasPositions	bool	-
+
+## VehicleEvent (grammar)
+Kind	int	-
+Chunk	int	-
+PacketIndex	int	-
+TimestampUS	uint64	-
+OccupantPresent	bool	-
+OccupantSonde	int	-
+OccupantSlot	uint32	-
+OccupantInBand	bool	-
+VehicleSlot	uint32	-
+VehicleSlotValid	bool	-
+VehicleGen	uint32	-
+Seat	uint32	-
+SeatValid	bool	-
+
+## ApparStats (facts/killsource)
+Identite	int	-
+Fenetre	int	-
+BotFenetre	int	-
+NonRevendiqueeFenetre	int	-
+CouplesSansIdentite	int	-
+
+## Assist (facts/killsource)
+Name	string	-
+Index	int	-
+Rejected	string	-
+Known	bool	-
+Extra	int	-
+
+## CoupleStats (facts/killsource)
+MemeInstant	int	-
+Lus	int	-
+Recolles	int	-
+Perdus	int	-
+VictimesBotLues	int	-
+Muet	int	-
+Ambigu	int	-
+Accord	int	-
+Contradiction	int	-
+
+## DeathInstant (facts/objectives)
+XUID	string	-
+TimeMS	int	-
+
+## FlagGrabsNetPlayer (facts/objectives)
+XUID	string	-
+Raw	int	-
+Net	int	-
+
+## FlagSpan (facts/objectives)
+State	string	-
+StartMS	int	-
+EndMS	int	-
+XUID	string	-
+
+## FlagTrack (facts/objectives)
+Team	int	-
+Spans	[]types.FlagSpan	-
+
+## PlayerLine (facts/objectives)
+XUID	string	-
+Kills	int	-
+Deaths	int	-
+Assists	int	-
+
+## ScorePoint (facts/objectives)
+TimeMS	int	-
+Slot	int	-
+Value	int64	-
+
+## StatRecord (facts/objectives)
+TimeMS	int	-
+Slot	int	-
+Round	int	-
+Comps	map[int]types.StatValue	-
+
+## StatValue (facts/objectives)
+A	int64	-
+B	int64	-
+C	int64	-
+D	int64	-
+HasC	bool	-
+HasD	bool	-

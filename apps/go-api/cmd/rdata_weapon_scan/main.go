@@ -11,32 +11,21 @@ package main
 
 import (
 	"bufio"
-	"bytes"
-	"compress/zlib"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 const cache = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950`
 
 func inflate(p string) []byte {
 	raw, _ := os.ReadFile(p)
-	if len(raw) >= 2 && raw[0] == 0x78 {
-		if zr, e := zlib.NewReader(bytes.NewReader(raw)); e == nil {
-			if d, e2 := io.ReadAll(zr); e2 == nil || len(d) > 0 {
-				return d
-			}
-		}
-	}
-	return raw
+	return decfilm.Inflate(raw)
 }
 
 // loadWorld parses world_dump.txt -> slot:typeIndex map and typeIndex->slots.
@@ -98,7 +87,7 @@ func bitsAt(d []byte, bp, n int) uint64 {
 }
 
 func knownHigh32(v uint32) (string, bool) {
-	for id, n := range analysis.WeaponIDToName {
+	for id, n := range filmshell.WeaponIDToName {
 		if uint32(id>>32) == v {
 			return n, true
 		}
@@ -114,18 +103,16 @@ type packet struct {
 	payload []byte
 }
 
+// listPackets : le decoupage de [decfilm.Paquets], dans la forme locale de cet outil. Il
+// recopiait l en-tete de seize octets — un marcheur de plus — jusqu au lot 2.4.2.
 func listPackets(d []byte) []packet {
-	var out []packet
+	pks := decfilm.Paquets(d, 0)
+	out := make([]packet, 0, len(pks))
 	off := 0
-	for off+16 <= len(d) {
-		typ := binary.LittleEndian.Uint16(d[off:])
-		sz := int(binary.LittleEndian.Uint32(d[off+4:]))
-		ts := binary.LittleEndian.Uint64(d[off+8:])
-		if sz < 0 || off+16+sz > len(d) {
-			break
-		}
-		out = append(out, packet{typ, off, sz, ts, d[off+16 : off+16+sz]})
-		off += 16 + sz
+	for i := range pks {
+		taille := len(pks[i].Payload)
+		out = append(out, packet{uint16(pks[i].Type), off, taille, pks[i].TS, pks[i].Payload})
+		off += 16 + taille
 	}
 	return out
 }
@@ -157,7 +144,7 @@ func litScan(chunkIdx int) {
 			}
 			lo := uint32(bitsAt(p.payload, bp+32, 32))
 			id64 := (uint64(hi) << 32) | uint64(lo)
-			if real, ok := analysis.WeaponIDToName[id64]; ok {
+			if real, ok := filmshell.WeaponIDToName[id64]; ok {
 				hitsByType[p.typ]++
 				hitsByWeapon[real]++
 				totalLits++
@@ -211,14 +198,14 @@ func litScan(chunkIdx int) {
 // typeIndex, type) et à quelle position relative il tombe. But : les armes complètes
 // vivent-elles dans des records NEW d'entité-arme (ti=42) ou loadout (ti=5), ou dans
 // les bipeds (ti=35), ou hors de tout record décodé ?
-func litLoc(reg *filmdec.Registry, worldPath string, chunkIdx, maxPkts int) {
+func litLoc(reg *decfilm.Registry, worldPath string, chunkIdx, maxPkts int) {
 	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
 	pkts := listPackets(d)
-	cfg := filmdec.FrameConfig{HasExtraFields: false, IDLowBits: 11}
-	filmdec.SetRecordStateParam(2)
+	cfg := decfilm.FrameConfig{HasExtraFields: false, IDLowBits: 11,
+		Profil: decfilm.ProfilDeBalayageParDefaut()}
+	cfg.Profil.PoserParamEtat(2)
 	// stub i63 pour franchir le dernier composant biped et enchaîner les records.
-	filmdec.SetUnportedStubWidth("biped-action-component", 48)
-	defer filmdec.SetUnportedStubWidth("biped-action-component", -1)
+	cfg.Profil.Grammaire.LargeursBouchon = map[string]int{"biped-action-component": 48}
 
 	var t0 []packet
 	for _, p := range pkts {
@@ -244,7 +231,7 @@ func litLoc(reg *filmdec.Registry, worldPath string, chunkIdx, maxPkts int) {
 			}
 			lo := uint32(bitsAt(p.payload, bp+32, 32))
 			id64 := (uint64(hi) << 32) | uint64(lo)
-			if nm, ok := analysis.WeaponIDToName[id64]; ok {
+			if nm, ok := filmshell.WeaponIDToName[id64]; ok {
 				litBits = append(litBits, bp)
 				litNames = append(litNames, nm)
 			}
@@ -254,8 +241,8 @@ func litLoc(reg *filmdec.Registry, worldPath string, chunkIdx, maxPkts int) {
 		}
 		// décode les records de ce paquet
 		w := freshWorld(reg, worldPath)
-		br := filmdec.NewBitReader(p.payload)
-		recs, _ := filmdec.DecodeFrameRecords(br, w, cfg)
+		br := decfilm.LecteurSur(p.payload)
+		recs, _ := decfilm.DecodeFrameRecords(br, w, cfg)
 		// borne chaque record [startBit?, endBit]. On reconstruit les bornes via re-décodage :
 		// approxime par la séquence cumulée des EndBit (Trace.EndBit) — chaque record finit là.
 		type span struct {
@@ -352,7 +339,7 @@ func upstreamScan(chunkIdx int) {
 				continue
 			}
 			lo := uint32(bitsAt(p.payload, bp+32, 32))
-			if _, ok := analysis.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; !ok {
+			if _, ok := filmshell.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; !ok {
 				continue
 			}
 			totalWST++
@@ -444,7 +431,7 @@ func litPlayer(chunkIdx int) {
 				continue
 			}
 			lo := uint32(bitsAt(p.payload, b+32, 32))
-			if nm, ok := analysis.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
+			if nm, ok := filmshell.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
 				hits = append(hits, hit{pktIdx, p.ts, slot, bipedSlot[slot], nm, b})
 			}
 		}
@@ -512,7 +499,7 @@ func litPattern(chunks []int) {
 					continue
 				}
 				lo := uint32(bitsAt(p.payload, bp+32, 32))
-				if _, ok := analysis.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
+				if _, ok := filmshell.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
 					lits = append(lits, bp)
 				}
 			}
@@ -569,7 +556,7 @@ func sizesMode(chunkIdx int) {
 				continue
 			}
 			lo := uint32(bitsAt(p.payload, bp+32, 32))
-			if nm, ok := analysis.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
+			if nm, ok := filmshell.WeaponIDToName[(uint64(hi)<<32)|uint64(lo)]; ok {
 				armes = append(armes, nm)
 			}
 		}
@@ -620,7 +607,7 @@ func ratio(a, b int) float64 {
 // idLowBits=11) et, pour chaque littéral d'arme, le contexte de bits autour (les 32
 // bits avant le high32, le high32, le low32, et les bits après) pour comprendre la
 // structure du record qui le porte (NEW d'entité-arme ? autre ?).
-func litCtx(reg *filmdec.Registry, chunkIdx, pktIdx int) {
+func litCtx(reg *decfilm.Registry, chunkIdx, pktIdx int) {
 	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
 	pkts := listPackets(d)
 	var t0 []packet
@@ -663,7 +650,7 @@ func litCtx(reg *filmdec.Registry, chunkIdx, pktIdx int) {
 		}
 		lo := uint32(bitsAt(p.payload, bp+32, 32))
 		id64 := (uint64(hi) << 32) | uint64(lo)
-		nm, ok := analysis.WeaponIDToName[id64]
+		nm, ok := filmshell.WeaponIDToName[id64]
 		if !ok {
 			continue
 		}
@@ -679,9 +666,9 @@ func litCtx(reg *filmdec.Registry, chunkIdx, pktIdx int) {
 	}
 }
 
-func freshWorld(reg *filmdec.Registry, path string) *filmdec.World {
+func freshWorld(reg *decfilm.Registry, path string) *decfilm.World {
 	raw, _ := os.ReadFile(path)
-	w := filmdec.NewWorld(reg)
+	w := decfilm.NewWorld(reg)
 	for _, line := range strings.Split(string(raw), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
@@ -704,15 +691,6 @@ func freshWorld(reg *filmdec.Registry, path string) *filmdec.World {
 }
 
 func main() {
-	// LE VERROU DE DÉCODAGE, POUR TOUTE LA DURÉE DU PROCESS (2026-09-06, correction C4 de la revue
-	// du lot E). `litLoc` appelle `filmdec.DecodeFrameRecords`, qui lit les globaux de réplication
-	// du décodeur : le contrat de `filmdec/decode_gate.go:16-18` exige que le verrou soit tenu
-	// pour toute la durée du décodage d'un film, jamais par sous-appel. Cet outil est un binaire
-	// mono-tâche ; le prendre en tête de `main` est la forme la plus simple qui satisfait le
-	// contrat, et c'est celle que le ratchet `archlint/decode_lock_held_test.go` mesure.
-	release := filmdec.LockProcessDecode()
-	defer release()
-
 	// Mode upstream : pour chaque WST gate=1 (littéral d'arme), cherche en AMONT un header
 	// de record dont le slot ∈ 512-519 (biped joueur). Teste l'attribution par remontée.
 	if len(os.Args) >= 2 && os.Args[1] == "upstream" {
@@ -753,7 +731,7 @@ func main() {
 	// Mode litctx : dump du contexte de bits autour des littéraux d'un paquet précis.
 	// usage: litctx <chunk> <pktIndex>
 	if len(os.Args) >= 2 && os.Args[1] == "litctx" {
-		reg, _ := filmdec.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
+		reg, _ := decfilm.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
 		chunkIdx, _ := strconv.Atoi(os.Args[2])
 		pktIdx, _ := strconv.Atoi(os.Args[3])
 		litCtx(reg, chunkIdx, pktIdx)
@@ -762,7 +740,7 @@ func main() {
 
 	// Mode litloc : localise les littéraux dans les records décodés.
 	if len(os.Args) >= 2 && os.Args[1] == "litloc" {
-		reg, err := filmdec.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
+		reg, err := decfilm.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
 		if err != nil {
 			panic(err)
 		}
@@ -795,7 +773,7 @@ func main() {
 		return
 	}
 
-	reg, err := filmdec.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
+	reg, err := decfilm.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
 	if err != nil {
 		panic(err)
 	}

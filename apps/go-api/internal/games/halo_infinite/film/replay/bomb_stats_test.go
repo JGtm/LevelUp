@@ -16,14 +16,14 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // bombDeton fabrique une action d'objectif identifiée « explosion de bombe ».
-func bombDeton(timeMS int, xuid string) objectiveevents.IdentifiedEvent {
-	return objectiveevents.IdentifiedEvent{
-		NamedEvent: objectiveevents.NamedEvent{
-			TimeMS: timeMS, Slot: 10, Stat: objectiveevents.StatBombDetonations,
+func bombDeton(timeMS int, xuid string) objectives.IdentifiedEvent {
+	return objectives.IdentifiedEvent{
+		NamedEvent: objectives.NamedEvent{
+			TimeMS: timeMS, Slot: 10, Stat: objectives.StatBombDetonations,
 		},
 		XUID: xuid,
 	}
@@ -50,22 +50,22 @@ func bombCarryDe(periods ...HeldObjectPeriod) HeldObjectCarry {
 // TestBombStatsDetonations : le compte par joueur et les faits datés viennent des actions
 // identifiées, et rien d'autre du flux n'y entre.
 func TestBombStatsDetonations(t *testing.T) {
-	autre := objectiveevents.IdentifiedEvent{
-		NamedEvent: objectiveevents.NamedEvent{
-			TimeMS: 1500, Slot: 12, Stat: objectiveevents.StatKills,
+	autre := objectives.IdentifiedEvent{
+		NamedEvent: objectives.NamedEvent{
+			TimeMS: 1500, Slot: 12, Stat: objectives.StatKills,
 		},
 		XUID: "7",
 	}
 	cases := []struct {
 		nom       string
 		read      bool
-		objs      []objectiveevents.IdentifiedEvent
+		objs      []objectives.IdentifiedEvent
 		veutCount map[string]int // nil = champ absent attendu
 		veutEvts  []BombEvent
 	}{
 		{
 			nom: "source non lue : aucun compte, aucun evenement",
-			objs: []objectiveevents.IdentifiedEvent{
+			objs: []objectives.IdentifiedEvent{
 				bombDeton(1000, "7"),
 			},
 		},
@@ -75,7 +75,7 @@ func TestBombStatsDetonations(t *testing.T) {
 		},
 		{
 			nom: "deux joueurs, une autre stat ignoree", read: true,
-			objs: []objectiveevents.IdentifiedEvent{
+			objs: []objectives.IdentifiedEvent{
 				bombDeton(9000, "8"), autre, bombDeton(1000, "7"), bombDeton(4000, "7"),
 			},
 			veutCount: map[string]int{"7": 2, "8": 1},
@@ -279,7 +279,7 @@ func TestBombStatsCarriersKilled(t *testing.T) {
 // zéros. C'est la garde centrale de la règle « absent n'est pas zéro ».
 func TestBombStatsAucuneSourceLue(t *testing.T) {
 	got, evts := BuildBombStats(BombStatsInput{
-		Objectives: []objectiveevents.IdentifiedEvent{bombDeton(1000, "7")},
+		Objectives: []objectives.IdentifiedEvent{bombDeton(1000, "7")},
 		Carry:      bombCarryDe(bombPeriode(7, 1000, 3000)),
 		Kills:      []KillRef{{KillerXUID: 5, VictimXUID: 7, TimeMS: 2000}},
 	})

@@ -14,7 +14,7 @@ package replay
 //
 // La bobine de VERSION 40 posee a cote du decodeur de source de degat
 // (`killsource/testdata/minibobine_e5adf7b2`, 888 Kio, provenance versionnee avec elle). Elle est
-// designee par un chemin relatif, comme `filmdec` designe deja `replay/testdata/minifilm_000d5950`
+// designee par un chemin relatif, comme `grammar` designe deja `replay/testdata/minifilm_000d5950`
 // dans l autre sens : un second exemplaire des memes octets serait de la dette.
 //
 // Mesure du 2026-09-12 sur cette bobine : 26 gamertags distincts sous la version lue, 2 sous la
@@ -26,12 +26,12 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // miniBobineV40 : la bobine de version 40, relative a CE paquet.
-const miniBobineV40 = "../killsource/testdata/minibobine_e5adf7b2"
+const miniBobineV40 = "../internal/facts/killsource/testdata/minibobine_e5adf7b2"
 
 // miniBobineV40Version : la version que son registre declare.
 const miniBobineV40Version = 40
@@ -43,12 +43,12 @@ const miniBobineV40NomsPlancher = 20
 // TestScanDeathsSuitLaVersionDuFilm — LE GARDE. Sans variable d environnement et sans fixture hors
 // depot : il tourne en CI.
 func TestScanDeathsSuitLaVersionDuFilm(t *testing.T) {
-	film, err := filmsource.LoadDir(miniBobineV40, nil)
+	film, err := source.LoadDir(miniBobineV40, nil)
 	if err != nil {
 		t.Fatalf("bobine v40 illisible sous %s : %v — elle est VERSIONNEE, son absence est une "+
 			"erreur, pas une raison d ignorer le test", miniBobineV40, err)
 	}
-	version, lue := filmdec.FilmMajorVersion(film)
+	version, lue := grammar.FilmMajorVersion(film)
 	if !lue || version != miniBobineV40Version {
 		t.Fatalf("la bobine v40 declare la version %d (lue=%v), %d attendue : son registre "+
 			"(`chunk_00.bin`) a change ou manque", version, lue, miniBobineV40Version)
@@ -74,8 +74,8 @@ Sur un film de version 39-40 le gamertag vit a l OCTET 12 du bloc d event. Passe
 rend ici 2 noms pour 199 morts : l artefact de rejeu nomme alors ses vies avec du rembourrage
 (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md).
 
-Verifier que ScanDeaths passe la version lue par filmdec.FilmMajorVersion a
-analysis.ParseHighlightEvents.`,
+Verifier que ScanDeaths passe la version lue par grammar.FilmMajorVersion a
+grammar.ParseHighlightEvents.`,
 			miniBobineV40, version, len(deaths), len(noms), miniBobineV40NomsPlancher)
 	}
 }

@@ -29,7 +29,8 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // eqcGrenadeWindowUS : la fenêtre dans laquelle un ramassage de grenade doit se voir sur le
@@ -41,7 +42,7 @@ const eqcGrenadeWindowUS = 2_000_000
 //
 // LA COMPARAISON SE FAIT ENTRE LA DERNIÈRE LECTURE AVANT ET LA PREMIÈRE APRÈS, rang par rang :
 // i22 porte le vecteur complet des compteurs, et une prise ne touche qu'un rang.
-func eqcGrenadeRise(deltas []filmdec.InventoryDelta, slot uint32, at uint64, decalUS int64) bool {
+func eqcGrenadeRise(deltas []types.InventoryDelta, slot uint32, at uint64, decalUS int64) bool {
 	var avant, apres []uint32
 	var gapAvant, gapApres uint64 = eqcGrenadeWindowUS + 1, eqcGrenadeWindowUS + 1
 	for _, d := range deltas {
@@ -88,18 +89,16 @@ func TestEquipmentPickupClassSemantics(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", pickupsBridgeEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
-	pickups, _, err := filmdec.ScanFilmBipedPickups(dir)
+	pickups, _, err := grammar.ScanFilmBipedPickups(dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
-	ranks, _, err := filmdec.ScanFilmAbilityRanks(dir)
+	ranks, _, err := grammar.ScanFilmAbilityRanks(dir)
 	if err != nil {
 		t.Fatalf("rangs de capacité illisibles : %v", err)
 	}
-	deltas, dStats, err := filmdec.ScanFilmInventoryDeltas(dir)
+	deltas, dStats, err := grammar.ScanFilmInventoryDeltas(dir)
 	if err != nil {
 		t.Fatalf("inventaire delta illisible : %v", err)
 	}
@@ -147,7 +146,7 @@ func TestEquipmentPickupClassSemantics(t *testing.T) {
 			continue
 		}
 		nature := "NON-ARME"
-		if filmdec.BipedPickupIsWeaponClass(c) {
+		if grammar.BipedPickupIsWeaponClass(c) {
 			nature = "arme"
 		}
 		t.Logf("  classe %d (%s) n=%d · J1 rang i48 : %.1f %% (témoin %.1f %%) · J2 compteur de grenade en HAUSSE : %.1f %% (témoin %.1f %%)",

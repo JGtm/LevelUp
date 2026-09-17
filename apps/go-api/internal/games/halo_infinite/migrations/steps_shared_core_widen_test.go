@@ -28,6 +28,9 @@ import (
 
 // ddlLegacyMatchRegistry — la forme réelle des bases d'avant la correction : PK sur match_id
 // (index ART) et scores d'équipe en SMALLINT.
+//
+// match_registry-ddl: legacy — c'est le SUJET du test : l'étape d'élargissement doit partir
+// d'une base réellement périmée. Aligner cette DDL sur la production rendrait le test vide.
 const ddlLegacyMatchRegistry = `
 CREATE TABLE match_registry (
 	match_id VARCHAR PRIMARY KEY,

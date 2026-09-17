@@ -37,7 +37,7 @@ package replay
 // la fenêtre jugée.
 //
 // RÉGIME : garde `ASSAUT_CACHE`. Aucune base, aucun réseau, sentinelle mémoire armée, UN
-// SEUL décodage à la fois (`filmdec.LockProcessDecode`). Jamais `cmd/replay-build` :
+// SEUL décodage à la fois sur la machine (verrou INTER-PROCESSUS `filmproc.AcquireSolo`). Jamais `cmd/replay-build` :
 // l'extraction est en processus.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
@@ -50,7 +50,7 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // bpFilms : les deux films du gate, et le compte d'explosions attendu du relevé.
@@ -69,8 +69,6 @@ func TestBombePortageGate(t *testing.T) {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestBombePortageGate")()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	for _, f := range bpFilms {
 		periodes, carries, cov, _ := bpExtraire(t, cache, f.id)
@@ -113,7 +111,7 @@ func bpExtraire(t *testing.T, cache, id string) (
 ) {
 	t.Helper()
 	dir := filepath.Join(cache, "film_chunks", id)
-	changes, _, err := filmdec.ScanFilmHeldWeaponChanges(dir, nil)
+	changes, _, err := grammar.ScanFilmHeldWeaponChanges(dir, nil)
 	if err != nil {
 		t.Fatalf("%s : canal des armes tenues illisible : %v", id, err)
 	}
@@ -130,9 +128,9 @@ func bpExtraire(t *testing.T, cache, id string) (
 		xuids = append(xuids, x)
 	}
 	sort.Slice(xuids, func(i, j int) bool { return xuids[i] < xuids[j] })
-	opt := filmdec.DefaultScanFilmOptions()
+	opt := grammar.DefaultScanFilmOptions()
 	opt.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, opt)
+	pos, err := grammar.ScanFilmBipedPositions(dir, opt)
 	if err != nil {
 		t.Fatalf("%s : positions bipeds illisibles : %v", id, err)
 	}

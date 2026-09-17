@@ -28,7 +28,7 @@ package replay
 //
 // Ce que la lecture ajoute, et d'où vient chaque terme (toutes MESURES du 2026-09-01) :
 //
-//	SEGMENT     le fait brut (`filmdec.NavpointSegments`) : suite contiguë d'un slot, SANS
+//	SEGMENT     le fait brut (`grammar.NavpointSegments`) : suite contiguë d'un slot, SANS
 //	            exigence de monotonie. Le cycle de RECHARGE du marqueur (130 -> 253 -> 127)
 //	            finit à son minimum et sort de lui-même — un découpage en montées le prenait
 //	            pour un armement.
@@ -62,9 +62,10 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/observability"
 )
 
@@ -128,7 +129,7 @@ type BombInput struct {
 	ChunkStartMS map[int]int
 	// Reads est déposé par `BuildFromFilm` : les lectures de l'anneau. L'appelant ne le
 	// remplit pas.
-	Reads []filmdec.NavpointRadialRead
+	Reads []types.NavpointRadialRead
 }
 
 // bombFuseVerdict est ce que la confrontation locale a MESURÉ sur le film : la mèche retenue,
@@ -149,8 +150,8 @@ type bombFuseVerdict struct {
 // film, et hors Assaut le calque est vide de toute façon. L'échec n'est pas fatal : le rejeu
 // sort sans compte à rebours, jamais avec un compte à rebours deviné.
 //
-// HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
-func decodeFilmBombReads(fc *filmdec.FilmContext, matchID string, in BombInput) []filmdec.NavpointRadialRead {
+// HORS LIGNE — appelée par BuildFromFilm.
+func decodeFilmBombReads(fc *grammar.FilmContext, matchID string, in BombInput) []types.NavpointRadialRead {
 	if !in.Scanned {
 		return nil
 	}
@@ -159,7 +160,7 @@ func decodeFilmBombReads(fc *filmdec.FilmContext, matchID string, in BombInput) 
 			"match_id", matchID)
 		return nil
 	}
-	sc, err := filmdec.ScanNavpointRadial(fc, in.ChunkStartMS)
+	sc, err := grammar.ScanNavpointRadial(fc, in.ChunkStartMS)
 	if err != nil {
 		slog.Warn("armement : anneau ti=12 illisible — rejeu sans compte a rebours",
 			"err", err, "match_id", matchID)
@@ -190,9 +191,9 @@ func decodeFilmBombReads(fc *filmdec.FilmContext, matchID string, in BombInput) 
 // parse le corps d'un record d'image-cle est celle-ci, et sa sante ne sortait pas du processus.
 // Un cadre corrige qu'on ne peut pas observer en production n'est pas un cadre tenu.
 //
-// `filmdec` NOMME ses compteurs et ne depend pas d'`observability` — meme patron que
+// `grammar` NOMME ses compteurs et ne depend pas d'`observability` — meme patron que
 // `KillSourceHealth.ExpvarPairs`, cable par `killcollector`.
-func publierFermetureImageCle(sc *filmdec.NavpointRadialScan) {
+func publierFermetureImageCle(sc *grammar.NavpointRadialScan) {
 	for _, p := range sc.KeyframeExpvarPairs() {
 		observability.AddInt(p.Name, p.Value)
 	}
@@ -216,10 +217,10 @@ func attachBombArmings(doc *ReplayDocument, opt Options, c scoreClock) {
 // buildBombArmings applique la chaîne mesurée : segments -> armements pleins et pauses ->
 // déduplication de paire -> confrontation locale (mèche MESURÉE) -> grille de frames. Pur,
 // testable sans film.
-func buildBombArmings(reads []filmdec.NavpointRadialRead, detonations []int,
+func buildBombArmings(reads []types.NavpointRadialRead, detonations []int,
 	c scoreClock, fb *fallback.Compteur) ([]BombArming, *BombArmingsCoverage, bombFuseVerdict) {
 	cov := &BombArmingsCoverage{Scanned: true, Reads: len(reads), Detonations: len(detonations)}
-	segments := filmdec.NavpointSegments(reads)
+	segments := grammar.NavpointSegments(reads)
 	cov.Rises = len(segments)
 	full, pauses := classifyBombSegments(segments, cov)
 	armed := dedupPairedSegments(full, cov)
@@ -260,10 +261,10 @@ func buildBombArmings(reads []filmdec.NavpointRadialRead, detonations []int,
 //
 // L'ordre du `switch` n'est pas indifférent : un segment qui aurait les deux formes est un
 // armement. C'est celui de l'instrument de mesure, gardé à l'identique.
-func classifyBombSegments(segments []filmdec.NavpointSegment, cov *BombArmingsCoverage,
-) ([]filmdec.NavpointSegment, map[uint32][]filmdec.NavpointSegment) {
-	armed := make([]filmdec.NavpointSegment, 0, len(segments))
-	pauses := map[uint32][]filmdec.NavpointSegment{}
+func classifyBombSegments(segments []grammar.NavpointSegment, cov *BombArmingsCoverage,
+) ([]grammar.NavpointSegment, map[uint32][]grammar.NavpointSegment) {
+	armed := make([]grammar.NavpointSegment, 0, len(segments))
+	pauses := map[uint32][]grammar.NavpointSegment{}
 	for _, g := range segments {
 		switch {
 		case g.EndsAtSummit():
@@ -283,9 +284,9 @@ func classifyBombSegments(segments []filmdec.NavpointSegment, cov *BombArmingsCo
 // en UN armement : le début retenu est le plus tôt (le hold a commencé là), la fin la plus
 // tardive (la statistique du protocole — « dernière fin d'armement avant l'explosion » — date
 // la mèche sur le miroir le plus tardif de la paire). L'entrée arrive triée par (EndMS, Slot).
-func dedupPairedSegments(armed []filmdec.NavpointSegment,
-	cov *BombArmingsCoverage) []filmdec.NavpointSegment {
-	var out []filmdec.NavpointSegment
+func dedupPairedSegments(armed []grammar.NavpointSegment,
+	cov *BombArmingsCoverage) []grammar.NavpointSegment {
+	var out []grammar.NavpointSegment
 	for _, r := range armed {
 		if n := len(out); n > 0 && r.EndMS-out[n-1].EndMS <= bombPairToleranceMS {
 			cov.PairMerged++
@@ -305,7 +306,7 @@ func dedupPairedSegments(armed []filmdec.NavpointSegment,
 // entier si une explosion reste orpheline ou si les délais se contredisent.
 //
 // Rend le verdict (mèche retenue, dispersion, mesurée ou déduite) et s'il tient.
-func measureBombFuse(armed []filmdec.NavpointSegment, pauses map[uint32][]filmdec.NavpointSegment,
+func measureBombFuse(armed []grammar.NavpointSegment, pauses map[uint32][]grammar.NavpointSegment,
 	detonations []int, cov *BombArmingsCoverage) (bombFuseVerdict, bool) {
 	delays := make([]float64, 0, len(detonations))
 	for _, det := range detonations {
@@ -346,8 +347,8 @@ func measureBombFuse(armed []filmdec.NavpointSegment, pauses map[uint32][]filmde
 // cible, DIMINUÉ des pauses du même slot strictement entre les deux — la mèche est suspendue
 // pendant une tenue de désarmement. Faux si aucun armement ne précède la cible dans la
 // fenêtre de sens, ou si les pauses consomment tout le délai.
-func bombCorrectedDelay(armed []filmdec.NavpointSegment,
-	pauses map[uint32][]filmdec.NavpointSegment, target int32) (int32, bool) {
+func bombCorrectedDelay(armed []grammar.NavpointSegment,
+	pauses map[uint32][]grammar.NavpointSegment, target int32) (int32, bool) {
 	i := sort.Search(len(armed), func(k int) bool { return armed[k].EndMS >= target })
 	if i == 0 {
 		return 0, false
@@ -393,7 +394,7 @@ func bombMedianCV(xs []float64) (float64, float64) {
 func bombDetonationTimes(actions []ObjectiveAction) []int {
 	var out []int
 	for _, a := range actions {
-		if a.Stat == objectiveevents.StatBombDetonations {
+		if a.Stat == objectives.StatBombDetonations {
 			out = append(out, a.TimeMS)
 		}
 	}

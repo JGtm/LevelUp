@@ -485,7 +485,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   n'ont aucune émission i48 du même slot à moins de 500 ms (témoin décalé 0,0 %) — elles
 	//   comblent un trou, elles ne doublonnent pas `equipmentChanges`.
 	//   Détail : internal/games/halo_infinite/film/replay/document_pickups.go, pad_pickup_dating.go,
-	//   internal/games/halo_infinite/film/filmdec/biped_pickups.go, .ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md.
+	//   internal/games/halo_infinite/film/internal/grammar/biped_pickups.go, .ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md.
 	// v31 — LE NOM DE L'OBJET RAMASSÉ (`pickups[].family`), ET UNE NATURE À TROIS VALEURS.
 	//   Le schéma 30 publiait un identifiant BRUT que rien ne nommait pour les classes non-arme.
 	//   LE NOM VIENT DES FICHIERS DU JEU, PAS D'UNE STATISTIQUE — et c'est la raison de la
@@ -809,7 +809,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   règle des montées v3/v4/v5/v14/v22/v25/39 (« un artefact vN doit se voir comme à
 	//   re-cuire »), pas l'exception du lot P5, qui ne valait que parce qu'aucun artefact 38
 	//   n'existait alors hors témoins de gate.
-	//   Détail : internal/analysis/objectiveevents/slotidentity_rounds.go (CompletedByLines).
+	//   Détail : internal/games/halo_infinite/film/internal/facts/objectives/slotidentity_rounds.go (CompletedByLines).
 	// v41 — TROIS CALQUES RATTRAPENT « UNE TRACK = UNE VIE » (2026-09-06). Aucun champ ajouté.
 	//   `48cf4905d` a découpé les pistes à `lifeGapUS` ; trois consommateurs supposaient encore
 	//   « un slot = une piste » et ne gardaient que la DERNIÈRE : le nommage des vies fermées
@@ -866,7 +866,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact 1 à 43 d'un film multi-manche porte des compteurs
 	//   gonflés sans que sa forme le dise, et `backfill-replay` saute un artefact à la version
 	//   courante.
-	//   Détail : internal/analysis/objectiveevents/round_bounds.go et
+	//   Détail : internal/games/halo_infinite/film/internal/facts/objectives/round_bounds.go et
 	//   .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
 	// v45 — UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE (2026-09-06). Aucun champ
 	//   ajouté : c'est le CONTENU de `equipmentEpisodes` et de `flagCarries` qui change, sur la
@@ -1046,7 +1046,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   c'est-à-dire le découpage « gamertag en tête » (`b[0:32]`) ; sur ces films le gamertag
 	//   vit à `b[12:44]` et la lecture ramenait du rembourrage — la même chaîne pour tous les
 	//   joueurs. La version est désormais LUE dans l'en-tête du registre du film : les quatre
-	//   premiers octets de `chunk_00.bin`, u32 little-endian (`filmdec.FilmMajorVersionFromHeader`),
+	//   premiers octets de `chunk_00.bin`, u32 little-endian (`grammar.FilmMajorVersionFromHeader`),
 	//   la même valeur que l'API publie dans `CustomData.FilmMajorVersion`.
 	//   Mesuré sur `gamertagsOf`, la table qui nomme `roster[]` : `e5adf7b2` (v40) passe de 17
 	//   identités nommées / 2 noms distincts à 26 / 26, `111fa685` (v39) de 16 / 2 à 24 / 24.
@@ -1106,7 +1106,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	// - v58 (lot 1.9.0) : L'ARTEFACT DIT QUELLE PART DE LUI VIENT D'UN REPLI. `coverage.fallbacks`
 	//   est NEUF : la liste `{name, hits}` des replis DÉCLENCHÉS pendant la cuisson, triée par
 	//   nom, absente quand aucun ne s'est déclenché. Un repli est une décision de secours prise
-	//   quand la lecture du film ne tranche pas ; le REGISTRE (`film/replay/fallback`) porte pour
+	//   quand la lecture du film ne tranche pas ; le REGISTRE (`film/facts/fallback`) porte pour
 	//   chacun sa condition typée, sa date de pose, sa cible et son critère de retrait (D14).
 	//   POURQUOI LA VERSION MONTE alors que le champ est optionnel : un artefact 57 ne peut pas
 	//   dire qu'il ne doit RIEN à un repli — il peut seulement ne rien en dire, et les deux se
@@ -1144,8 +1144,25 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   champs neufs) ET le CONTENU change sur tout le parc (335 vies fusionnées sur les 14
 	//   témoins, fins de véhicule lues, occupants des Wraith revenus). Un artefact 59 ne peut ni
 	//   porter une lacune, ni une fin lue, ni nommer un Wraith. Détail : `document_chronicle.go`.
-	if SchemaVersion != 60 {
-		t.Fatalf("SchemaVersion = %d, attendu 60 : incrémenter exige une raison écrite ci-dessus "+
+	// - v61 (lot 2.6.3 du PLAN_DECODEUR_FILM, 2026-09-17) : L'ARTEFACT DIT SOUS QUELLES RÉVISIONS
+	//   IL A ÉTÉ CUIT. `coverage.decoder` est NEUF et porte LES QUATRE révisions de calque
+	//   (`sourceRev`, `profileRev`, `grammarRev`, `factsRev` — décision V15 (11)), plus `build`,
+	//   la clé du profil lue en clair dans `chunk_00` section 2. Son sous-bloc `registry` CLASSE
+	//   l'empreinte du registre ECS (`fingerprint`, `status` connue / inconnue, `blocks`,
+	//   `namedSlots`) : elle était calculée puis jetée, et ne survivait que dans un avertissement
+	//   de journal dédupliqué par processus. `coverage.abilityImpulses.scan` publie les
+	//   dénominateurs du balayage du canal d'impulsion (`records`, `withI57`, `withI59`, `read`,
+	//   `unread`, `tag1`) — sans eux, `reads=0` était indistinguable d'une marche cassée, ce que
+	//   la validation de la recuisson M1 a payé d'un jour de mesure.
+	//   POURQUOI LA VERSION MONTE alors que TOUT y est optionnel et que c'est de la TÉLÉMÉTRIE
+	//   PURE : un artefact 60 ne peut pas dire sous quelle grammaire il a été cuit — il peut
+	//   seulement ne rien en dire, et l'ABSENCE du bloc est précisément ce qui doit signifier
+	//   « antérieur à 61 ». Lui laisser un second sens rouvrirait l'ambiguïté « entre deux
+	//   versions de schéma » que D-7 interdit. AUCUNE des quatre révisions ne monte dans ce lot,
+	//   donc aucun match ne devient candidat au backlog killsource, et aucune recuisson n'est
+	//   requise. Détail : `document_chronicle.go`.
+	if SchemaVersion != 61 {
+		t.Fatalf("SchemaVersion = %d, attendu 61 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

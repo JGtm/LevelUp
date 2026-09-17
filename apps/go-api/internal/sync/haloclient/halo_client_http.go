@@ -4,8 +4,6 @@
 package haloclient
 
 import (
-	"bytes"
-	"compress/zlib"
 	"context"
 	"errors"
 	"fmt"
@@ -17,6 +15,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/netguard"
 )
@@ -132,14 +131,9 @@ func (c *HaloAPIClient) fetchBlobOnce(ctx context.Context, blobURL string, reval
 // inflateBlob décompresse le corps zlib d'un blob (le CDN Azure des films Halo
 // Infinite renvoie du zlib brut).
 func inflateBlob(raw []byte) ([]byte, error) {
-	zr, err := zlib.NewReader(bytes.NewReader(raw))
+	out, err := decfilm.Decompresser(raw)
 	if err != nil {
-		return nil, fmt.Errorf("downloadBlob zlib header: %w", err)
-	}
-	defer zr.Close()
-	out, err := io.ReadAll(zr)
-	if err != nil {
-		return nil, fmt.Errorf("downloadBlob zlib: %w", err)
+		return nil, fmt.Errorf("downloadBlob: %w", err)
 	}
 	return out, nil
 }

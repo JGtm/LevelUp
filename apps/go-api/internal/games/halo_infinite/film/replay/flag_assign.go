@@ -10,7 +10,7 @@ import "sort"
 // SLOT, plus la trajectoire de son porteur. L'OBJET drapeau n'y figure jamais : il ne se lit que
 // LIBRE (`flag_objects.go`), et meme alors il ne porte que son type et sa vie, jamais l'equipe
 // qui le possede. L'EQUIPE DU PORTEUR, elle, EST DANS LE FILM depuis le lot 1.7 (cf.
-// `Track.Team` et `filmdec.ScanPlayerTeams`) — ce fichier a longtemps dit le contraire, et
+// `Track.Team` et `grammar.ScanPlayerTeams`) — ce fichier a longtemps dit le contraire, et
 // c'etait l'etat du savoir. Le rattachement reste GEOMETRIQUE faute d'objet identifie, et
 // l'etiquette d'equipe vient du catalogue de carte (`flag_spawn.team_index`,
 // `replaybuild/flagspawns.go`), par le socle retenu.
@@ -31,7 +31,7 @@ import "sort"
 // les resolvait. Sur une carte a deux socles, filtrer rend exactement l'ancien repli.
 //
 // L'EQUIPE DU PORTEUR VIENT DU FILM (lot 1.7) : `FlagCarryScan.TeamOf` est la projection de
-// `filmdec.ScanPlayerTeams` sur les xuids du registre d'identite, et plus une table fournie par
+// `grammar.ScanPlayerTeams` sur les xuids du registre d'identite, et plus une table fournie par
 // l'appelant. C'est ce qui fait tenir l'invariant sur une cuisson HORS LIGNE, ou il se taisait
 // faute de lignes de match. Table vide (film non lu, aucun xuid apparie) : l'invariant se tait,
 // comme avant.

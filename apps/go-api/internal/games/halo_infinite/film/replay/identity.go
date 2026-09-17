@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // nameTracksByLives pose le xuid du porteur sur chaque trace PAR VIE : une trace est nommée

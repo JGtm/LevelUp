@@ -9,7 +9,7 @@ package replay
 // le statborg.
 //
 // CE QUI EST VERIFIE AVANT DE COMMENCER : les emplacements statborg de KOTH n'ont JAMAIS ete
-// nommes. Le code le dit lui-meme (`objectiveevents/named.go` : « Un mode sans table (KOTH,
+// nommes. Le code le dit lui-meme (`objectives/named.go` : « Un mode sans table (KOTH,
 // Oddball) rend nil [...] les emplacements de `hill` et `ball` n'ont pas encore ete nommes : le
 // balayage est le meme, c'est le corpus qui manque »). Le corpus, lui, existe : l'API donne PAR
 // JOUEUR `StrongholdScoringTicks` et `StrongholdOccupationTime`, persistes en base, renseignes
@@ -33,7 +33,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // e1bJoueur est la ligne d'oracle d'un joueur : ce que l'API dit de sa garde, et le triplet qui
@@ -144,12 +145,12 @@ func TestCollineStatborgE1Bis(t *testing.T) {
 		t.Skipf("film %s hors corpus E1-bis (aucun oracle gele pour lui)", short)
 	}
 
-	recs := objectiveevents.StatRecords(p2aBobine(t, dir))
+	recs := objectives.StatRecords(p2aBobine(t, dir))
 	if len(recs) == 0 {
 		t.Fatalf("%s : aucun enregistrement de statistiques — rien a balayer", short)
 	}
 	t.Logf("%s : %d enregistrements, %d manches retenues, oracle a %d joueurs",
-		short, len(recs), len(objectiveevents.RealRounds(recs)), len(oracle))
+		short, len(recs), len(objectives.RealRounds(recs)), len(oracle))
 
 	cibleTics := e1bMultiset(oracle, func(j e1bJoueur) int { return j.tics })
 	cibleSec := e1bMultiset(oracle, func(j e1bJoueur) int { return j.secondes })
@@ -159,7 +160,7 @@ func TestCollineStatborgE1Bis(t *testing.T) {
 	for comp := 0; comp <= e1bMaxComp; comp++ {
 		for _, sideB := range []bool{false, true} {
 			for _, strict := range []bool{false, true} {
-				c := objectiveevents.StatComponent{Comp: comp, SideB: sideB, Strict: strict}
+				c := objectives.StatComponent{Comp: comp, SideB: sideB, Strict: strict}
 				totaux := e1bTotaux(recs, c)
 				if len(totaux) == 0 {
 					continue
@@ -191,22 +192,22 @@ func TestCollineStatborgE1Bis(t *testing.T) {
 //
 // C'est le discriminant qui a tranche VIP, et il est plus dur que la phase 1 : une permutation
 // des slots le fait echouer alors qu'elle laisse l'ensemble intact.
-func e1bPhase2(t *testing.T, short string, recs []objectiveevents.StatRecord, oracle []e1bJoueur) {
+func e1bPhase2(t *testing.T, short string, recs []types.StatRecord, oracle []e1bJoueur) {
 	t.Helper()
-	lines := make([]objectiveevents.PlayerLine, 0, len(oracle))
+	lines := make([]types.PlayerLine, 0, len(oracle))
 	attendu := map[string]int{}
 	for _, j := range oracle {
 		attendu[j.xuid] = j.tics
 		if j.kills < 0 {
 			continue // bot sans ligne de match : aucun pont possible, et c'est dit
 		}
-		lines = append(lines, objectiveevents.PlayerLine{
+		lines = append(lines, types.PlayerLine{
 			XUID: j.xuid, Kills: j.kills, Deaths: j.deaths, Assists: j.assists,
 		})
 	}
-	identity := objectiveevents.SlotIdentityFrom(recs, lines)
-	series := objectiveevents.SeriesTotal(recs,
-		objectiveevents.StatComponent{Comp: 23, SideB: false}, false)
+	identity := objectives.SlotIdentityFrom(recs, lines)
+	series := objectives.SeriesTotal(recs,
+		objectives.StatComponent{Comp: 23, SideB: false}, false)
 
 	justes, faux, sansSerie := 0, 0, 0
 	for slot, xuid := range identity {
@@ -247,16 +248,16 @@ func e1bPhase2(t *testing.T, short string, recs []objectiveevents.StatRecord, or
 //
 // C'est un RELEVE, pas un gate : il dit si un denominateur EN TICS existe, et il ouvre (ou
 // ferme) l'etape suivante.
-func e1bParPoint(t *testing.T, short string, recs []objectiveevents.StatRecord, oracle []e1bJoueur,
-	identity map[int]string, series map[int][]objectiveevents.ScorePoint,
+func e1bParPoint(t *testing.T, short string, recs []types.StatRecord, oracle []e1bJoueur,
+	identity map[int]string, series map[int][]types.ScorePoint,
 ) {
 	t.Helper()
 	team := map[string]int{}
 	for _, j := range oracle {
 		team[j.xuid] = j.team
 	}
-	score := objectiveevents.SeriesTotal(recs, objectiveevents.ModeScoreComponent, true)
-	var pts []objectiveevents.ScorePoint
+	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true)
+	var pts []types.ScorePoint
 	slots := make([]int, 0, len(score))
 	for s := range score {
 		slots = append(slots, s)
@@ -267,7 +268,7 @@ func e1bParPoint(t *testing.T, short string, recs []objectiveevents.StatRecord, 
 		for _, p := range score[s] {
 			if p.Value > prev {
 				prev = p.Value
-				pts = append(pts, objectiveevents.ScorePoint{TimeMS: p.TimeMS, Slot: s, Value: p.Value})
+				pts = append(pts, types.ScorePoint{TimeMS: p.TimeMS, Slot: s, Value: p.Value})
 			}
 		}
 	}
@@ -311,7 +312,7 @@ func e1bParPoint(t *testing.T, short string, recs []objectiveevents.StatRecord, 
 // prend le maximum PAR TRANCHE, et on somme — ce qui vaut exactement « le nombre de secondes ou
 // au moins un joueur du camp a marque un tic », relais compris.
 func e1cUnion(identity map[int]string, team map[string]int,
-	series map[int][]objectiveevents.ScorePoint, deMS, aMS int,
+	series map[int][]types.ScorePoint, deMS, aMS int,
 ) map[int]int {
 	// Les instants d'emission de la fenetre, tous slots confondus, tries et dedoublonnes.
 	vus := map[int]bool{}
@@ -361,8 +362,8 @@ func e1cUnion(identity map[int]string, team map[string]int,
 // e1bTotaux rend le total par slot de JOUEUR d'un composant : la derniere valeur cumulee de sa
 // serie, manches sommees (`SeriesTotal` s'en charge). Les slots d'equipe sont exclus — l'oracle
 // est par joueur.
-func e1bTotaux(recs []objectiveevents.StatRecord, c objectiveevents.StatComponent) []int {
-	series := objectiveevents.SeriesTotal(recs, c, false)
+func e1bTotaux(recs []types.StatRecord, c objectives.StatComponent) []int {
+	series := objectives.SeriesTotal(recs, c, false)
 	out := make([]int, 0, len(series))
 	for _, pts := range series {
 		if len(pts) == 0 {
@@ -398,12 +399,12 @@ func e1bEgal(a, b []int) bool {
 
 // e1bCandidats journalise les composants de la BONNE CARDINALITE, ecartes par leur contenu. Sans
 // eux, un negatif dirait « rien ne colle » sans dire ce qui a ete regarde.
-func e1bCandidats(t *testing.T, short string, recs []objectiveevents.StatRecord, n int) {
+func e1bCandidats(t *testing.T, short string, recs []types.StatRecord, n int) {
 	t.Helper()
 	vus := 0
 	for comp := 0; comp <= e1bMaxComp; comp++ {
 		for _, sideB := range []bool{false, true} {
-			c := objectiveevents.StatComponent{Comp: comp, SideB: sideB}
+			c := objectives.StatComponent{Comp: comp, SideB: sideB}
 			totaux := e1bTotaux(recs, c)
 			if len(totaux) != n {
 				continue

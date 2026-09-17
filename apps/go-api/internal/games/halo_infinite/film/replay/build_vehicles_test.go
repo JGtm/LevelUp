@@ -11,7 +11,8 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // vehClock : origine 1 s, pas 100 ms, 1 200 frames (2 minutes) — les frames attendues se lisent
@@ -29,32 +30,32 @@ const (
 
 // vehKeyframes fabrique un recensement : `timesUS` sont TOUTES les images-cles du film, `seen`
 // celles qui recensent la vie (slot, gen).
-func vehKeyframes(timesUS []uint64, key filmdec.EquipmentLifeKey, seen []uint64) filmdec.WorldObjectKeyframes {
-	return filmdec.WorldObjectKeyframes{
+func vehKeyframes(timesUS []uint64, key types.EquipmentLifeKey, seen []uint64) grammar.WorldObjectKeyframes {
+	return grammar.WorldObjectKeyframes{
 		Band:    map[uint32]bool{key.Slot: true},
 		TimesUS: timesUS,
-		SeenUS:  map[filmdec.EquipmentLifeKey][]uint64{key: seen},
+		SeenUS:  map[types.EquipmentLifeKey][]uint64{key: seen},
 	}
 }
 
 // vehCreation fabrique un record de creation : naissance datee, position, mot d identite.
-func vehCreation(key filmdec.EquipmentLifeKey, tUS uint64, x, y float32, chassis uint32) filmdec.EquipmentCreation {
-	c := filmdec.EquipmentCreation{Slot: key.Slot, Gen: key.Gen, TimestampUS: tUS, X: x, Y: y}
-	c.MPPPresent[filmdec.MPPWord32] = true
-	c.MPPVal[filmdec.MPPWord32] = uint64(chassis)
+func vehCreation(key types.EquipmentLifeKey, tUS uint64, x, y float32, chassis uint32) types.EquipmentCreation {
+	c := types.EquipmentCreation{Slot: key.Slot, Gen: key.Gen, TimestampUS: tUS, X: x, Y: y}
+	c.MPPPresent[grammar.MPPWord32] = true
+	c.MPPVal[grammar.MPPWord32] = uint64(chassis)
 	return c
 }
 
 // vehPos fabrique un echantillon de position monde IMMOBILE (aucune velocite lue).
-func vehPos(slot uint32, tUS uint64, x, y float32) filmdec.BipedPosition {
-	return filmdec.BipedPosition{Slot: slot, TimestampUS: tUS, X: x, Y: y, HasWorld: true}
+func vehPos(slot uint32, tUS uint64, x, y float32) grammar.BipedPosition {
+	return grammar.BipedPosition{Slot: slot, TimestampUS: tUS, X: x, Y: y, HasWorld: true}
 }
 
 // vehMoving fabrique un echantillon PORTEUR d une velocite : direction `dir` (cubemap 19 bits) et
 // magnitude quantifiee. C est ce que `CaptureDirs` remplit sur un record `ti=40`.
-func vehMoving(t *testing.T, slot uint32, tUS uint64, x, y float32, dir [3]float32, mps float64) filmdec.BipedPosition {
+func vehMoving(t *testing.T, slot uint32, tUS uint64, x, y float32, dir [3]float32, mps float64) grammar.BipedPosition {
 	t.Helper()
-	raw, ok := filmdec.EncodeAimVector(dir, vehTestDirBits)
+	raw, ok := grammar.EncodeAimVector(dir, vehTestDirBits)
 	if !ok {
 		t.Fatalf("direction %v non encodable en cubemap %d bits", dir, vehTestDirBits)
 	}
@@ -78,7 +79,7 @@ const (
 func vehVelScale(mps float64) uint32 {
 	n := uint32(1) << vehTestScaleBits
 	for s := uint32(0); s < n; s++ {
-		if float64(filmdec.DecodeVelocityMagnitude(uint64(s), vehTestScaleBits)) >= mps {
+		if float64(grammar.DecodeVelocityMagnitude(uint64(s), vehTestScaleBits)) >= mps {
 			return s
 		}
 	}
@@ -88,12 +89,12 @@ func vehVelScale(mps float64) uint32 {
 // --- Vie SANS occupant : elle sort quand meme, avec sa naissance et sa trajectoire ------------
 
 func TestVehiculeVieSansOccupant(t *testing.T) {
-	key := filmdec.EquipmentLifeKey{Slot: 700, Gen: 1}
+	key := types.EquipmentLifeKey{Slot: 700, Gen: 1}
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000, 42_000_000}, key, []uint64{2_000_000, 22_000_000}),
-		Creations: []filmdec.EquipmentCreation{vehCreation(key, 1_500_000, -100.7, 53.7, vehChassisKnown)},
-		Positions: []filmdec.BipedPosition{
+		Creations: []types.EquipmentCreation{vehCreation(key, 1_500_000, -100.7, 53.7, vehChassisKnown)},
+		Positions: []grammar.BipedPosition{
 			vehPos(700, 3_000_000, -100.7, 53.7),
 			vehPos(700, 4_000_000, -100.7, 53.7),
 		},
@@ -133,27 +134,27 @@ func TestVehiculeVieSansOccupant(t *testing.T) {
 // --- Vie AVEC episodes board -> exit : bornes datees a la milliseconde ------------------------
 
 func TestVehiculeEpisodeBoardExit(t *testing.T) {
-	key := filmdec.EquipmentLifeKey{Slot: 700, Gen: 1}
+	key := types.EquipmentLifeKey{Slot: 700, Gen: 1}
 	const bipedSlot = uint32(42)
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000}, key, []uint64{2_000_000, 22_000_000}),
-		Creations: []filmdec.EquipmentCreation{vehCreation(key, 1_500_000, 0, 0, vehChassisKnown)},
-		Positions: []filmdec.BipedPosition{
+		Creations: []types.EquipmentCreation{vehCreation(key, 1_500_000, 0, 0, vehChassisKnown)},
+		Positions: []grammar.BipedPosition{
 			vehPos(700, 5_000_000, 0, 0),
 			vehPos(700, 12_000_000, 0, 0),
 			vehPos(700, 20_000_000, 0, 0),
 		},
-		Events: []filmdec.VehicleEvent{
-			{Kind: filmdec.EventBipedBoardVehicle, TimestampUS: 5_200_000, OccupantPresent: true,
+		Events: []types.VehicleEvent{
+			{Kind: grammar.EventBipedBoardVehicle, TimestampUS: 5_200_000, OccupantPresent: true,
 				OccupantInBand: true, OccupantSlot: bipedSlot, Seat: 0, SeatValid: true},
-			{Kind: filmdec.EventUnitExitVehicle, TimestampUS: 16_800_000, OccupantPresent: true,
+			{Kind: grammar.EventUnitExitVehicle, TimestampUS: 16_800_000, OccupantPresent: true,
 				OccupantInBand: true, OccupantSlot: bipedSlot, Seat: 0, SeatValid: true},
 		},
 	}
 	// Le bipede est SUR le vehicule a 5 s, puis son flux s interrompt 12 s (le trou), puis il
 	// reapparait a 17 s : la signature exacte d un occupant attache.
-	bipeds := []filmdec.BipedPosition{
+	bipeds := []grammar.BipedPosition{
 		vehPos(bipedSlot, 4_500_000, 0.4, 0),
 		vehPos(bipedSlot, 5_000_000, 0.4, 0),
 		vehPos(bipedSlot, 17_000_000, 3, 3),
@@ -189,15 +190,15 @@ func TestVehiculeEpisodeBoardExit(t *testing.T) {
 // TestVehiculeEpisodeSansEvenement : sans liste d evenements, le TROU DE POSITION seul borne
 // l episode — c est le repli mesure (86,3 % des trous portent leur sortie, mais 13,7 % non).
 func TestVehiculeEpisodeSansEvenement(t *testing.T) {
-	key := filmdec.EquipmentLifeKey{Slot: 700, Gen: 1}
+	key := types.EquipmentLifeKey{Slot: 700, Gen: 1}
 	const bipedSlot = uint32(42)
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000}, key, []uint64{2_000_000, 22_000_000}),
-		Creations: []filmdec.EquipmentCreation{vehCreation(key, 1_500_000, 0, 0, vehChassisKnown)},
-		Positions: []filmdec.BipedPosition{vehPos(700, 5_000_000, 0, 0), vehPos(700, 20_000_000, 0, 0)},
+		Creations: []types.EquipmentCreation{vehCreation(key, 1_500_000, 0, 0, vehChassisKnown)},
+		Positions: []grammar.BipedPosition{vehPos(700, 5_000_000, 0, 0), vehPos(700, 20_000_000, 0, 0)},
 	}
-	bipeds := []filmdec.BipedPosition{
+	bipeds := []grammar.BipedPosition{
 		vehPos(bipedSlot, 5_000_000, 0.4, 0),
 		vehPos(bipedSlot, 17_000_000, 3, 3),
 	}
@@ -224,14 +225,14 @@ func TestVehiculeEpisodeSansEvenement(t *testing.T) {
 // n est pas un episode. Sans ce refus, tout joueur qui se deconnecte ou entre dans un ascenseur
 // deviendrait le conducteur du vehicule le plus proche de la carte.
 func TestVehiculeTrouLoinDuVehicule(t *testing.T) {
-	key := filmdec.EquipmentLifeKey{Slot: 700, Gen: 1}
+	key := types.EquipmentLifeKey{Slot: 700, Gen: 1}
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000}, key, []uint64{2_000_000, 22_000_000}),
-		Creations: []filmdec.EquipmentCreation{vehCreation(key, 1_500_000, 0, 0, vehChassisKnown)},
-		Positions: []filmdec.BipedPosition{vehPos(700, 5_000_000, 0, 0), vehPos(700, 20_000_000, 0, 0)},
+		Creations: []types.EquipmentCreation{vehCreation(key, 1_500_000, 0, 0, vehChassisKnown)},
+		Positions: []grammar.BipedPosition{vehPos(700, 5_000_000, 0, 0), vehPos(700, 20_000_000, 0, 0)},
 	}
-	bipeds := []filmdec.BipedPosition{
+	bipeds := []grammar.BipedPosition{
 		vehPos(42, 5_000_000, 12, 0), // 12 m du vehicule : bien au-dela des 1,5 m
 		vehPos(42, 17_000_000, 12, 0),
 	}
@@ -247,12 +248,12 @@ func TestVehiculeTrouLoinDuVehicule(t *testing.T) {
 // --- Famille inconnue : la vie sort, sans sprite, et le compteur le DIT ------------------------
 
 func TestVehiculeFamilleInconnue(t *testing.T) {
-	key := filmdec.EquipmentLifeKey{Slot: 701, Gen: 0}
+	key := types.EquipmentLifeKey{Slot: 701, Gen: 0}
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000}, key, []uint64{2_000_000}),
-		Creations: []filmdec.EquipmentCreation{vehCreation(key, 1_800_000, 5, 5, vehChassisUnknown)},
-		Positions: []filmdec.BipedPosition{vehPos(701, 3_000_000, 5, 5)},
+		Creations: []types.EquipmentCreation{vehCreation(key, 1_800_000, 5, 5, vehChassisUnknown)},
+		Positions: []grammar.BipedPosition{vehPos(701, 3_000_000, 5, 5)},
 	}
 	got, cov, _ := buildVehicleTracks(scan, nil, IdentityRegistry{}, vehClock())
 	if len(got) != 1 {
@@ -277,13 +278,13 @@ func TestVehiculeFamilleInconnue(t *testing.T) {
 // --- Cap : la velocite i1 oriente, l arret reporte le dernier cap -----------------------------
 
 func TestVehiculeCapParVelocite(t *testing.T) {
-	key := filmdec.EquipmentLifeKey{Slot: 700, Gen: 1}
+	key := types.EquipmentLifeKey{Slot: 700, Gen: 1}
 	// Direction +Y a 10 m/s : cap attendu 90 deg. Puis un echantillon a l ARRET : il doit garder
 	// le cap precedent, pas en perdre l orientation.
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000}, key, []uint64{2_000_000, 22_000_000}),
-		Positions: []filmdec.BipedPosition{
+		Positions: []grammar.BipedPosition{
 			vehPos(700, 3_000_000, 0, 0),
 			vehMoving(t, 700, 4_000_000, 0, 5, [3]float32{0, 1, 0}, 10),
 			vehMoving(t, 700, 5_000_000, 0, 10, [3]float32{0, 1, 0}, 0.2), // quasi a l arret
@@ -312,12 +313,12 @@ func TestVehiculeCapParVelocite(t *testing.T) {
 // --- Deux vies d un meme slot : le recensement les separe, la fenetre les decoupe --------------
 
 func TestVehiculeDeuxViesDunMemeSlot(t *testing.T) {
-	k0 := filmdec.EquipmentLifeKey{Slot: 700, Gen: 0}
-	k1 := filmdec.EquipmentLifeKey{Slot: 700, Gen: 1}
-	kf := filmdec.WorldObjectKeyframes{
+	k0 := types.EquipmentLifeKey{Slot: 700, Gen: 0}
+	k1 := types.EquipmentLifeKey{Slot: 700, Gen: 1}
+	kf := grammar.WorldObjectKeyframes{
 		Band:    map[uint32]bool{700: true},
 		TimesUS: []uint64{2_000_000, 22_000_000, 42_000_000, 62_000_000},
-		SeenUS: map[filmdec.EquipmentLifeKey][]uint64{
+		SeenUS: map[types.EquipmentLifeKey][]uint64{
 			k0: {2_000_000, 22_000_000},
 			k1: {42_000_000, 62_000_000},
 		},
@@ -325,11 +326,11 @@ func TestVehiculeDeuxViesDunMemeSlot(t *testing.T) {
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: kf,
-		Creations: []filmdec.EquipmentCreation{
+		Creations: []types.EquipmentCreation{
 			vehCreation(k0, 1_500_000, 0, 0, vehChassisKnown),
 			vehCreation(k1, 41_000_000, 9, 9, vehChassisKnown),
 		},
-		Positions: []filmdec.BipedPosition{
+		Positions: []grammar.BipedPosition{
 			vehPos(700, 3_000_000, 0, 0),
 			vehPos(700, 50_000_000, 9, 9),
 		},
@@ -366,7 +367,7 @@ func TestVehiculeNonBalayeNePublieRien(t *testing.T) {
 // TestVehiculeVieSansPositionNiNaissance : une vie recensee dont rien ne donne la position n a
 // rien a dessiner. Elle est ECARTEE et COMPTEE — jamais inventee a l origine du repere.
 func TestVehiculeVieSansPositionNiNaissance(t *testing.T) {
-	key := filmdec.EquipmentLifeKey{Slot: 702, Gen: 2}
+	key := types.EquipmentLifeKey{Slot: 702, Gen: 2}
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000}, key, []uint64{2_000_000}),

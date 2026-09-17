@@ -3,7 +3,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // killpos.go — OÙ CHAQUE MORT A EU LIEU.
@@ -57,7 +57,7 @@ type KillRef struct {
 //
 // C'est le point qui décidait de tout ce lot, et il se lit sur pièces plutôt qu'il ne s'estime :
 // `killsource.Kill.TimeMS` et `Death.TimeMS` sont LE MÊME CHAMP DU MÊME ENREGISTREMENT du chunk
-// highlight (`analysis.HighlightEvent.TimeMS`), lu par `ScanDeaths` d'un côté
+// highlight (`highlightevent.HighlightEvent.TimeMS`), lu par `ScanDeaths` d'un côté
 // (deaths_source.go) et par `killsource.buildFeed` de l'autre. Or « l'horloge du match » de ce
 // paquet EST celle du fil des morts, par définition — c'est elle que `deathOffsetMS` sert à
 // rejoindre depuis les horodatages de paquet (`matchMS = TimestampUS/1000 − deathOffsetMS`,
@@ -137,7 +137,7 @@ type KillPosReport struct {
 // ELLE NE CONNAÎT AUCUNE FRONTIÈRE DE VIE, et c'est licite ICI : l'instant demandé est celui du
 // coup fatal, donc à l'intérieur des deux vies concernées par construction. Pour un instant
 // DÉCALÉ — l'entame — cette ignorance devient un piège, d'où `BuildKillOpenings`.
-func BuildKillPositions(pos []filmdec.BipedPosition, reg IdentityRegistry,
+func BuildKillPositions(pos []grammar.BipedPosition, reg IdentityRegistry,
 	kills []KillRef, offsetUS int64) ([]KillPosition, KillPosReport) {
 	p := placeKillPositions(pos, reg, kills, offsetUS)
 	return p.positions, p.report
@@ -160,7 +160,7 @@ type killPlacement struct {
 }
 
 // placeKillPositions est LE placement, et le seul.
-func placeKillPositions(pos []filmdec.BipedPosition, reg IdentityRegistry,
+func placeKillPositions(pos []grammar.BipedPosition, reg IdentityRegistry,
 	kills []KillRef, offsetUS int64) killPlacement {
 	out := killPlacement{report: KillPosReport{Kills: len(kills)}}
 	if len(pos) == 0 || !reg.PontEtabli() || len(kills) == 0 {
@@ -261,7 +261,7 @@ func siegesDe(reg IdentityRegistry, sieges []uint32, xuid uint64, tUS uint64) []
 // dans la tolérance, on ne tranche pas — deux corps pour un joueur signifie que le découpage des
 // vies est faux à cet instant, et poser la mort sur l'un des deux serait un coup de dé.
 func positionOf(tracks map[uint32]slotTrack, slots []uint32, tUS uint64) (*Vec3, uint32) {
-	var found filmdec.BipedPosition
+	var found grammar.BipedPosition
 	var slot uint32
 	n := 0
 	for _, s := range slots {

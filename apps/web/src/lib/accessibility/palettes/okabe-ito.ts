@@ -126,6 +126,15 @@ export const okabePalette: Palette = {
   'narrative-debacle-text':          '#FFFFFF', // blanc sur vermillion sombre (6.2) — noir tombe à 3.40
   'narrative-contre-remontada':      '#E69F00', // Orange (remplace cyan #33D6FF trop proche)
   'narrative-contre-remontada-text': '#000000', // noir sur orange
+  // Blue BRUT est outcome-win : un badge de défaite ne peut pas porter la couleur de
+  // la victoire. Les 8 teintes étant affectées, même technique que narrative-debacle :
+  // teinte gardée, luminosité baissée. Reddish Purple × 0.60 — assez sombre pour ne
+  // pas se confondre avec narrative-humiliation (Reddish Purple brut).
+  'narrative-sabordage':             '#7A4964', // Reddish Purple assombri (× 0.60)
+  'narrative-sabordage-text':        '#FFFFFF',
+  // Yellow BRUT est outcome-draw : couleur propre par la même technique (× 0.75).
+  'narrative-abnegation':            '#B4AB32', // Yellow assombri (× 0.75)
+  'narrative-abnegation-text':       '#000000',
 
   // ── Badges encounter — axe blue/vermillion daltonisme-safe ────────────────
   // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts ;

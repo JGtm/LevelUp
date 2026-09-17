@@ -131,9 +131,11 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 		return achievementsFailed
 	}
 	if accessToken == "" {
-		// Skip bénin, attendu et récurrent (H5) : Debug uniquement, pas d'erreur
-		// remontée — le token se resynchronisera à un cycle ultérieur.
-		slog.DebugContext(ctx, "achievements: aucun access_token disponible — sync ignorée",
+		// Skip bénin et attendu : un profil suivi sans token propre n'a pas de succès Xbox
+		// Live à lire, tout le reste de sa passe est servi par le pool. UN SEUL journal par
+		// passe, ici, au niveau Info — le helper de résolution ne journalise plus ce cas
+		// (avant : un ERROR par passe côté auth ET un Debug ici, C-E du 2026-09-16).
+		slog.InfoContext(ctx, "post-sync: succès Xbox Live sautés — aucun token propre pour ce profil",
 			"gamertag", e.gamertag)
 		return achievementsSkipped
 	}
@@ -167,14 +169,24 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	}
 	defer metadataLease.Release()
 
-	metadataHandle, err := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
-	if err != nil {
-		slog.WarnContext(ctx, "achievements: ouverture metadata DB échouée",
-			"gamertag", e.gamertag, "err", err)
-		return achievementsFailed
+	// Réutiliser le handle du run (engine.go, clé "rw:") quand il existe : rouvrir ici
+	// dupliquait l'ouverture pour rien et, avant que le run n'ouvre lui-même en RW,
+	// entrait en conflit de configuration avec lui (C-E, 2026-09-16).
+	metadataDB := e.metaDB
+	if metadataDB == nil {
+		metadataHandle, err := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
+		if err != nil {
+			slog.WarnContext(ctx, "achievements: ouverture metadata DB échouée",
+				"gamertag", e.gamertag, "err", err)
+			return achievementsFailed
+		}
+		defer func() {
+			if cerr := metadataHandle.Close(); cerr != nil {
+				slog.WarnContext(ctx, "achievements: fermeture metadata DB échouée", "err", cerr)
+			}
+		}()
+		metadataDB = metadataHandle.SQLDb()
 	}
-	defer metadataHandle.Close()
-	metadataDB := metadataHandle.SQLDb()
 
 	client := NewXboxHTTPClient(xstsResult, titlePkg.XboxTitleIDFor(e.titleSlug))
 	if err := SyncAchievements(ctx, client, e.resolver, metadataDB, playerDB, e.xuid, e.titleSlug); err != nil {
@@ -302,13 +314,22 @@ func (e *SyncEngine) seedCatalogFromCSRs(ctx context.Context, csrs []PlayerPlayl
 	}
 	defer metadataLease.Release()
 
+	// Handle du run s'il existe (clé "rw:" posée par engine.go), sinon ouverture propre.
+	if e.metaDB != nil {
+		seedPlaylistsCatalog(ctx, e.metaDB, csrs, e.titleSlug)
+		return
+	}
 	mh, err := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: catalog seed désactivé (metadata inaccessible)",
 			"gamertag", e.gamertag, "err", err)
 		return
 	}
-	defer mh.Close()
+	defer func() {
+		if cerr := mh.Close(); cerr != nil {
+			slog.WarnContext(ctx, "post-sync: fermeture metadata DB échouée", "err", cerr)
+		}
+	}()
 	seedPlaylistsCatalog(ctx, mh.SQLDb(), csrs, e.titleSlug)
 }
 

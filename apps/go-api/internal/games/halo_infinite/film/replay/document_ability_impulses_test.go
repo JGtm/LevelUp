@@ -12,9 +12,8 @@ package replay
 //   - LE REFUS D'UNE FAMILLE NON MESURÉE, qui est ce qui garde le répulseur dehors.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 const (
@@ -45,17 +44,17 @@ func aiTrack(slot uint32) Track {
 		Points: []Point{{T: 0}, {T: 10_000}}}
 }
 
-func aiRead(slot uint32, tsUS uint64, predicted bool) filmdec.AbilityImpulse {
-	return filmdec.AbilityImpulse{Slot: slot, TimestampUS: tsUS, Predicted: predicted}
+func aiRead(slot uint32, tsUS uint64, predicted bool) types.AbilityImpulse {
+	return types.AbilityImpulse{Slot: slot, TimestampUS: tsUS, Predicted: predicted}
 }
 
-func aiRank(slot uint32, tsUS uint64, rank int) filmdec.AbilityRank {
-	return filmdec.AbilityRank{Slot: slot, TimestampUS: tsUS, Rank: rank}
+func aiRank(slot uint32, tsUS uint64, rank int) types.AbilityRank {
+	return types.AbilityRank{Slot: slot, TimestampUS: tsUS, Rank: rank}
 }
 
 // aiInputs assemble une entrée de test : une vie qui couvre [0, 600 s], le rang donné, et
 // la seule famille `thruster` déclarée mesurée.
-func aiInputs(reads []filmdec.AbilityImpulse, ranks []filmdec.AbilityRank,
+func aiInputs(reads []types.AbilityImpulse, ranks []types.AbilityRank,
 	lives []lifeSpan) abilityImpulseInputs {
 	if lives == nil {
 		lives = []lifeSpan{{slot: 10, from: 0, to: 600_000_000}}
@@ -67,13 +66,13 @@ func aiInputs(reads []filmdec.AbilityImpulse, ranks []filmdec.AbilityRank,
 }
 
 func TestBuildAbilityImpulses_ReplieLesLecturesCoTransmisesEnUnSeulGeste(t *testing.T) {
-	reads := []filmdec.AbilityImpulse{
+	reads := []types.AbilityImpulse{
 		aiRead(10, 10_000_000, true),  // i57
 		aiRead(10, 10_000_000, false), // i59, MEME instant : le meme geste
 		aiRead(10, 10_600_000, true),  // retransmission a 0,6 s : encore le meme geste
 		aiRead(10, 30_000_000, false), // 19,4 s plus tard : un SECOND geste
 	}
-	ranks := []filmdec.AbilityRank{aiRank(10, 5_000_000, aiRankThruster)}
+	ranks := []types.AbilityRank{aiRank(10, 5_000_000, aiRankThruster)}
 	out, cov := buildAbilityImpulses(aiInputs(reads, ranks, nil), []Track{aiTrack(10)}, 0, aiStep)
 	if cov.Reads != 4 || cov.Episodes != 2 {
 		t.Fatalf("lectures=%d gestes=%d, attendu 4 et 2 — le repliement a bouge (cov=%+v)",
@@ -93,8 +92,8 @@ func TestBuildAbilityImpulses_LeRangPosterieurNIdentifiePas(t *testing.T) {
 	// LA MORSURE : le joueur ramasse le propulseur APRES l'impulsion. Sans la contrainte
 	// d'anteriorite, l'impulsion lui serait creditee — c'est le defaut que R8 par. 8.4 mesure
 	// (4 des 8 lectures de `00ba2e1c` changent de rang quand on l'oublie).
-	reads := []filmdec.AbilityImpulse{aiRead(10, 10_000_000, true)}
-	ranks := []filmdec.AbilityRank{aiRank(10, 12_000_000, aiRankThruster)}
+	reads := []types.AbilityImpulse{aiRead(10, 10_000_000, true)}
+	ranks := []types.AbilityRank{aiRank(10, 12_000_000, aiRankThruster)}
 	out, cov := buildAbilityImpulses(aiInputs(reads, ranks, nil), []Track{aiTrack(10)}, 0, aiStep)
 	if len(out) != 0 || cov.NoIdentity != 1 {
 		t.Fatalf("out=%+v cov=%+v : un rang POSTERIEUR a identifie l'impulsion", out, cov)
@@ -110,8 +109,8 @@ func TestBuildAbilityImpulses_LeRangDeLaViePrecedenteNIdentifiePas(t *testing.T)
 		{slot: 10, from: 0, to: 20_000_000},
 		{slot: 10, from: 100_000_000, to: 200_000_000},
 	}
-	reads := []filmdec.AbilityImpulse{aiRead(10, 150_000_000, true)}
-	ranks := []filmdec.AbilityRank{aiRank(10, 10_000_000, aiRankThruster)}
+	reads := []types.AbilityImpulse{aiRead(10, 150_000_000, true)}
+	ranks := []types.AbilityRank{aiRank(10, 10_000_000, aiRankThruster)}
 	out, cov := buildAbilityImpulses(aiInputs(reads, ranks, lives), []Track{aiTrack(10)}, 0, aiStep)
 	if len(out) != 0 || cov.NoIdentity != 1 {
 		t.Fatalf("out=%+v cov=%+v : le rang de la vie PRECEDENTE a identifie l'impulsion", out, cov)
@@ -128,8 +127,8 @@ func TestBuildAbilityImpulses_UneFamilleNonMesureeEstEcarteeEtComptee(t *testing
 	// LE REPULSEUR RESTE DEHORS, et il est COMPTE : le canal n'est prouve que pour les
 	// familles que le titre declare (R8 par. 8.8, R9). Le publier ferait dessiner un geste que
 	// le film n'enregistre pas.
-	reads := []filmdec.AbilityImpulse{aiRead(10, 10_000_000, true)}
-	ranks := []filmdec.AbilityRank{aiRank(10, 5_000_000, aiRankRepulsor)}
+	reads := []types.AbilityImpulse{aiRead(10, 10_000_000, true)}
+	ranks := []types.AbilityRank{aiRank(10, 5_000_000, aiRankRepulsor)}
 	out, cov := buildAbilityImpulses(aiInputs(reads, ranks, nil), []Track{aiTrack(10)}, 0, aiStep)
 	if len(out) != 0 || cov.OtherFamily != 1 || cov.NoIdentity != 0 {
 		t.Fatalf("out=%+v cov=%+v : le repulseur devait etre ecarte SOUS otherFamily", out, cov)
@@ -139,8 +138,8 @@ func TestBuildAbilityImpulses_UneFamilleNonMesureeEstEcarteeEtComptee(t *testing
 func TestBuildAbilityImpulses_UnRangSansFamilleEstEcarte(t *testing.T) {
 	// Un rang nomme mais SANS famille (les power-ups du manifeste) ne se joint a rien : il ne
 	// se publie pas, et il ne passe pas non plus pour une absence d'identite.
-	reads := []filmdec.AbilityImpulse{aiRead(10, 10_000_000, true)}
-	ranks := []filmdec.AbilityRank{aiRank(10, 5_000_000, 8)}
+	reads := []types.AbilityImpulse{aiRead(10, 10_000_000, true)}
+	ranks := []types.AbilityRank{aiRank(10, 5_000_000, 8)}
 	out, cov := buildAbilityImpulses(aiInputs(reads, ranks, nil), []Track{aiTrack(10)}, 0, aiStep)
 	if len(out) != 0 || cov.OtherFamily != 1 {
 		t.Fatalf("out=%+v cov=%+v : un rang sans famille devait etre ecarte", out, cov)
@@ -156,8 +155,8 @@ func TestBuildAbilityImpulses_UnRangSansFamilleEstEcarte(t *testing.T) {
 // n'a pas ete lu dans la vie » la ou il n'y a pas de vie. Les deux se liraient comme des
 // mesures. `noResolver` dit ce qui s'est reellement passe : la lecture n'a pas pu tourner.
 func TestBuildAbilityImpulses_AttributionIndisponibleNEstPasUnAutreEquipement(t *testing.T) {
-	reads := []filmdec.AbilityImpulse{aiRead(10, 10_000_000, true)}
-	ranks := []filmdec.AbilityRank{aiRank(10, 5_000_000, aiRankThruster)}
+	reads := []types.AbilityImpulse{aiRead(10, 10_000_000, true)}
+	ranks := []types.AbilityRank{aiRank(10, 5_000_000, aiRankThruster)}
 	cas := []struct {
 		nom   string
 		casse func(*abilityImpulseInputs)
@@ -194,7 +193,7 @@ func TestBuildAbilityImpulses_AttributionIndisponibleNEstPasUnAutreEquipement(t 
 // rendrait DEUX. Les deux verdicts different, donc ce test les separe — ce que le cas
 // 10,0 / 10,0 / 10,6 / 30,0 s ne faisait pas.
 func TestFoldAbilityImpulses_LaFenetreGLISSE_ElleNeSAncrePasSurLaPremiere(t *testing.T) {
-	eps := foldAbilityImpulses([]filmdec.AbilityImpulse{
+	eps := foldAbilityImpulses([]types.AbilityImpulse{
 		aiRead(10, 0, true),
 		aiRead(10, 900_000, false),
 		aiRead(10, 1_800_000, true),
@@ -209,7 +208,7 @@ func TestFoldAbilityImpulses_LaFenetreGLISSE_ElleNeSAncrePasSurLaPremiere(t *tes
 			eps[0].tsUS)
 	}
 	// La borne, elle, separe bien : 1,1 s apres la derniere lecture ouvre un SECOND geste.
-	eps = foldAbilityImpulses([]filmdec.AbilityImpulse{
+	eps = foldAbilityImpulses([]types.AbilityImpulse{
 		aiRead(10, 0, true), aiRead(10, 1_100_000, true),
 	})
 	if len(eps) != 2 {
@@ -224,14 +223,14 @@ func TestBuildAbilityImpulses_LaCouvertureBoucle(t *testing.T) {
 	lives := []lifeSpan{
 		{slot: 10, from: 0, to: 600_000_000}, {slot: 99, from: 0, to: 600_000_000},
 	}
-	reads := []filmdec.AbilityImpulse{
+	reads := []types.AbilityImpulse{
 		aiRead(10, 1_000_000, true),  // avant l'origine
 		aiRead(99, 20_000_000, true), // sans piste publiee
 		aiRead(10, 20_000_000, true), // publiee (propulseur)
 		aiRead(10, 40_000_000, true), // famille non mesuree (repulseur)
 		aiRead(10, 60_000_000, true), // sans identite (aucun rang avant, dans la vie)
 	}
-	ranks := []filmdec.AbilityRank{
+	ranks := []types.AbilityRank{
 		aiRank(10, 6_000_000, aiRankThruster), aiRank(10, 30_000_000, aiRankRepulsor),
 		aiRank(99, 6_000_000, aiRankThruster),
 	}
@@ -257,12 +256,12 @@ func TestBuildAbilityImpulses_LaCouvertureBoucle(t *testing.T) {
 }
 
 func TestBuildAbilityImpulses_EcarteAvantOrigineEtSansPiste(t *testing.T) {
-	reads := []filmdec.AbilityImpulse{
+	reads := []types.AbilityImpulse{
 		aiRead(10, 1_000_000, true),  // avant l'origine (fixee a 5 s ci-dessous)
 		aiRead(99, 10_000_000, true), // slot sans trajectoire publiee
 		aiRead(10, 10_000_000, true), // celle qui doit sortir
 	}
-	ranks := []filmdec.AbilityRank{
+	ranks := []types.AbilityRank{
 		aiRank(10, 6_000_000, aiRankThruster), aiRank(99, 6_000_000, aiRankThruster),
 	}
 	lives := []lifeSpan{
@@ -282,7 +281,7 @@ func TestBuildAbilityImpulses_TemoinComposantAbsentVoyageJusquALaCouverture(t *t
 	// UN ZERO N'EST PAS L'AUTRE : un film qui ne declare NI i57 NI i59 ne se lit pas comme un
 	// film ou personne ne s'est servi de son propulseur.
 	in := aiInputs(nil, nil, nil)
-	in.stats = filmdec.AbilityImpulseStats{Absent: true}
+	in.stats = types.AbilityImpulseStats{Absent: true}
 	out, cov := buildAbilityImpulses(in, []Track{aiTrack(10)}, 0, aiStep)
 	if len(out) != 0 || !cov.ComponentAbsent {
 		t.Fatalf("out=%+v cov=%+v : le temoin d'absence de composant s'est perdu", out, cov)
@@ -292,7 +291,7 @@ func TestBuildAbilityImpulses_TemoinComposantAbsentVoyageJusquALaCouverture(t *t
 func TestFoldAbilityImpulses_OrdreTotalParInstantPuisSlot(t *testing.T) {
 	// L'ORDRE DU DOCUMENT EST DETERMINISTE : deux slots au meme instant sortent par slot
 	// croissant, sans quoi l'artefact dependrait de l'ordre de parcours du film.
-	eps := foldAbilityImpulses([]filmdec.AbilityImpulse{
+	eps := foldAbilityImpulses([]types.AbilityImpulse{
 		aiRead(30, 5_000_000, true), aiRead(10, 5_000_000, false), aiRead(20, 1_000_000, true),
 	})
 	if len(eps) != 3 {
@@ -334,7 +333,7 @@ func TestBuildFromPositions_PasDeCouvertureQuandLeBalayageNAPasTourne(t *testing
 
 	// (b) BALAYAGE ABOUTI SUR UN FILM QUI NE DECLARE PAS LE COMPOSANT : la couverture EST
 	// publiee, et elle porte `componentAbsent`. Un zero de balayage n'est pas l'autre.
-	base.AbilityImpulseStats = filmdec.AbilityImpulseStats{Scanned: true, Absent: true}
+	base.AbilityImpulseStats = types.AbilityImpulseStats{Scanned: true, Absent: true}
 	doc = BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
 	cov := doc.Coverage.AbilityImpulses
 	if cov == nil {
@@ -347,7 +346,7 @@ func TestBuildFromPositions_PasDeCouvertureQuandLeBalayageNAPasTourne(t *testing
 	// (c) BALAYAGE ABOUTI SUR UN FILM QUI DECLARE LE COMPOSANT SANS AUCUNE IMPULSION : la
 	// couverture est publiee, a zero et SANS `componentAbsent` — le troisieme zero, distinct
 	// des deux autres.
-	base.AbilityImpulseStats = filmdec.AbilityImpulseStats{Scanned: true, Records: 1234}
+	base.AbilityImpulseStats = types.AbilityImpulseStats{Scanned: true, Records: 1234}
 	doc = BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
 	cov = doc.Coverage.AbilityImpulses
 	if cov == nil || cov.ComponentAbsent || cov.Reads != 0 {

@@ -9,7 +9,8 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // peClock : origine 1 s, pas 100 ms, 200 frames.
@@ -17,16 +18,16 @@ func peClock() replayClock {
 	return replayClock{origin: 1_000_000, step: 100_000, frames: 200}
 }
 
-func pePose(life filmdec.EquipmentLifeKey, t0US uint64) filmdec.EquipmentPlacement {
-	return filmdec.EquipmentPlacement{Life: life, T0US: t0US, T1US: t0US}
+func pePose(life types.EquipmentLifeKey, t0US uint64) types.EquipmentPlacement {
+	return types.EquipmentPlacement{Life: life, T0US: t0US, T1US: t0US}
 }
 
 func TestPlacementEndsDisparitionBornee(t *testing.T) {
-	life := filmdec.EquipmentLifeKey{Slot: 900, Gen: 1}
-	raw := []filmdec.EquipmentPlacement{pePose(life, 2_000_000)}
-	census := filmdec.WorldObjectKeyframes{
+	life := types.EquipmentLifeKey{Slot: 900, Gen: 1}
+	raw := []types.EquipmentPlacement{pePose(life, 2_000_000)}
+	census := grammar.WorldObjectKeyframes{
 		TimesUS: []uint64{5_000_000, 9_000_000, 13_000_000},
-		SeenUS:  map[filmdec.EquipmentLifeKey][]uint64{life: {5_000_000}},
+		SeenUS:  map[types.EquipmentLifeKey][]uint64{life: {5_000_000}},
 	}
 	ends := placementEnds(raw, census, peClock())
 	if ends[0].end != GroundWeaponEndSeen {
@@ -40,11 +41,11 @@ func TestPlacementEndsDisparitionBornee(t *testing.T) {
 }
 
 func TestPlacementEndsEncoreRecenseeALaFin(t *testing.T) {
-	life := filmdec.EquipmentLifeKey{Slot: 900, Gen: 1}
-	raw := []filmdec.EquipmentPlacement{pePose(life, 2_000_000)}
-	census := filmdec.WorldObjectKeyframes{
+	life := types.EquipmentLifeKey{Slot: 900, Gen: 1}
+	raw := []types.EquipmentPlacement{pePose(life, 2_000_000)}
+	census := grammar.WorldObjectKeyframes{
 		TimesUS: []uint64{5_000_000, 9_000_000},
-		SeenUS:  map[filmdec.EquipmentLifeKey][]uint64{life: {5_000_000, 9_000_000}},
+		SeenUS:  map[types.EquipmentLifeKey][]uint64{life: {5_000_000, 9_000_000}},
 	}
 	ends := placementEnds(raw, census, peClock())
 	if ends[0].end != GroundWeaponEndOpen || ends[0].until != 199 {
@@ -56,15 +57,15 @@ func TestPlacementEndsEncoreRecenseeALaFin(t *testing.T) {
 func TestPlacementEndsLaPoseSuivanteFermeLaVie(t *testing.T) {
 	// Le pool de cles reboucle : deux poses successives de la MEME cle sont deux objets. Le
 	// recensement posterieur a la seconde ne doit pas prolonger la premiere.
-	life := filmdec.EquipmentLifeKey{Slot: 900, Gen: 1}
-	raw := []filmdec.EquipmentPlacement{
+	life := types.EquipmentLifeKey{Slot: 900, Gen: 1}
+	raw := []types.EquipmentPlacement{
 		pePose(life, 2_000_000),
 		pePose(life, 10_000_000),
 	}
-	census := filmdec.WorldObjectKeyframes{
+	census := grammar.WorldObjectKeyframes{
 		TimesUS: []uint64{5_000_000, 12_000_000, 16_000_000},
 		// 12 s et 16 s recensent la SECONDE vie ; la premiere n est vue qu a 5 s.
-		SeenUS: map[filmdec.EquipmentLifeKey][]uint64{life: {5_000_000, 12_000_000, 16_000_000}},
+		SeenUS: map[types.EquipmentLifeKey][]uint64{life: {5_000_000, 12_000_000, 16_000_000}},
 	}
 	ends := placementEnds(raw, census, peClock())
 	if ends[0].end != GroundWeaponEndSeen || ends[0].until != 40 {
@@ -80,9 +81,9 @@ func TestPlacementEndsLaPoseSuivanteFermeLaVie(t *testing.T) {
 func TestPlacementEndsSansRecensement(t *testing.T) {
 	// Sans recensement du tout (census vide — le cas des tests d assemblage sur positions
 	// figees), rien ne prouve aucune disparition : tout sort `open`, jamais une borne inventee.
-	life := filmdec.EquipmentLifeKey{Slot: 900, Gen: 1}
-	raw := []filmdec.EquipmentPlacement{pePose(life, 2_000_000)}
-	ends := placementEnds(raw, filmdec.WorldObjectKeyframes{}, peClock())
+	life := types.EquipmentLifeKey{Slot: 900, Gen: 1}
+	raw := []types.EquipmentPlacement{pePose(life, 2_000_000)}
+	ends := placementEnds(raw, grammar.WorldObjectKeyframes{}, peClock())
 	if ends[0].end != GroundWeaponEndOpen {
 		t.Fatalf("end = %q, attendu %q : sans image-cle, aucune absence n est prouvable",
 			ends[0].end, GroundWeaponEndOpen)
@@ -92,13 +93,13 @@ func TestPlacementEndsSansRecensement(t *testing.T) {
 func TestBuildEquipmentPlacementsPublieLesFins(t *testing.T) {
 	// Le bout-en-bout du tally : la pose publiee porte until/untilMax/end, et la couverture
 	// les compte — sans quoi « 229 poses » se lirait comme « 229 fins mesurees ».
-	life := filmdec.EquipmentLifeKey{Slot: 900, Gen: 1}
-	raw := []filmdec.EquipmentPlacement{pePose(life, 2_000_000)}
-	census := filmdec.WorldObjectKeyframes{
+	life := types.EquipmentLifeKey{Slot: 900, Gen: 1}
+	raw := []types.EquipmentPlacement{pePose(life, 2_000_000)}
+	census := grammar.WorldObjectKeyframes{
 		TimesUS: []uint64{5_000_000, 9_000_000, 13_000_000},
-		SeenUS:  map[filmdec.EquipmentLifeKey][]uint64{life: {5_000_000}},
+		SeenUS:  map[types.EquipmentLifeKey][]uint64{life: {5_000_000}},
 	}
-	st := filmdec.EquipmentPlacementStats{Scanned: true}
+	st := grammar.EquipmentPlacementStats{Scanned: true}
 	out, cov := buildEquipmentPlacements(equipmentInputs{Raw: raw, Stats: st, Census: census}, peClock())
 	if len(out) != 1 {
 		t.Fatalf("poses publiees = %d, attendu 1", len(out))

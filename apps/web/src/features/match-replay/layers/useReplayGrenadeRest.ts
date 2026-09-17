@@ -11,9 +11,9 @@
  * ne fait que rassembler ce que le canvas recopiait, et pas une ligne de logique ne bouge.
  *
  * POURQUOI `dpr` EST UN ARGUMENT DE `paint` ET PAS DU HOOK : il est calculé DANS la boucle de
- * tracé, à chaque image, depuis `devicePixelRatio` et l'échelle d'export courante. Le figer à
- * la construction du hook servirait une épaisseur de trait périmée dès le premier export ou le
- * premier changement d'écran.
+ * tracé, à chaque image, depuis `canvasPixelRatio` (densité de l'écran, ou du format pendant un
+ * export). Le figer à la construction du hook servirait une épaisseur de trait périmée dès le
+ * premier export ou le premier changement d'écran.
  */
 import { useCallback } from 'react'
 

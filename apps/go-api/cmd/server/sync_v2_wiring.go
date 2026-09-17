@@ -132,7 +132,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 
 	// HaloClient factory : pinned client par joueur via pool.
 	clientFactory := func(gamertag, xuid string) syncv2.HaloClient {
-		c := syncpkg.NewPooledHaloClient(deps.TokenPool, gamertag, xuid, 0)
+		c := syncpkg.NewPooledHaloClient(deps.TokenPool, 0)
 		return c
 	}
 	matchListProvider := syncv2.NewMatchListProvider(clientFactory, "matchmaking", 25, 20)
@@ -334,7 +334,7 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 
 		// 3. Custom client pinned via pool
 		if deps.TokenPool != nil {
-			pooledClient := syncpkg.NewPooledHaloClient(deps.TokenPool, p.Gamertag, p.XUID, 0)
+			pooledClient := syncpkg.NewPooledHaloClient(deps.TokenPool, 0)
 			engine.SetCustomClient(pooledClient)
 		}
 

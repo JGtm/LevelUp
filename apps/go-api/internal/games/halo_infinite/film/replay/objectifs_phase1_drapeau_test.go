@@ -30,9 +30,10 @@ import (
 
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
@@ -70,7 +71,7 @@ var objCTFMapIDs = map[string]string{
 }
 
 // objCTFCarteNom — le NOM AFFICHE de la carte de chaque film, la cle du catalogue de bornes de
-// quantification (`filmdec.MapQuantCatalog.Lookup`, qui normalise lui-meme).
+// quantification (`profile.MapQuantCatalog.Lookup`, qui normalise lui-meme).
 var objCTFCarteNom = map[string]string{
 	"64e8adfa": "Catalyst", "530820e5": "Catalyst", "53ce4390": "Behemoth",
 	"bcb6d393": "Cliffhanger", "000d5950": "Cliffhanger",
@@ -156,14 +157,14 @@ func objDocumentDe(t *testing.T, root, id string, b objBridge, src *objDiskFilm)
 	if d, ok := objDocMemo[id]; ok {
 		return d
 	}
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	quant := objMapQuant(t, id)
 	if quant == nil {
 		t.Skipf("%s : bornes de carte absentes — la mesure exige des coordonnees MONDE", id)
 	}
 	wr := quant.Range()
 	scan.WorldRange = &wr
-	pos, err := filmdec.ScanFilmBipedPositions(objChunkDir(root, id), scan)
+	pos, err := grammar.ScanFilmBipedPositions(objChunkDir(root, id), scan)
 	if err != nil {
 		t.Fatalf("%s : positions : %v", id, err)
 	}
@@ -176,7 +177,7 @@ func objDocumentDe(t *testing.T, root, id string, b objBridge, src *objDiskFilm)
 		t.Fatalf("%s : index de joueur : %v", id, err)
 	}
 	table, _ := injectiveOrEmpty(idx)
-	marks, err := filmdec.ScanFilmCarrierMarks(objChunkDir(root, id))
+	marks, err := grammar.ScanFilmCarrierMarks(objChunkDir(root, id))
 	if err != nil {
 		t.Fatalf("%s : marqueurs de portage : %v", id, err)
 	}
@@ -185,8 +186,8 @@ func objDocumentDe(t *testing.T, root, id string, b objBridge, src *objDiskFilm)
 		Deaths: b.Deaths, PlayerIndices: table, MapQuant: quant,
 		Labels: goldenCatalog(t), Pads: PadScans{Weapons: gw},
 		Flag: FlagInput{
-			Scanned: true, Records: objectiveevents.StatRecords(src),
-			Bursts: objectiveevents.CaptureBurstTimes(src), Spawns: objFlagSpawns(t, id), Marks: marks,
+			Scanned: true, Records: objectives.StatRecords(src),
+			Bursts: objectives.CaptureBurstTimes(src), Spawns: objFlagSpawns(t, id), Marks: marks,
 		},
 	})
 	out := objDoc{doc: doc, originUS: pos[0].TimestampUS, gw: gw}
@@ -196,13 +197,13 @@ func objDocumentDe(t *testing.T, root, id string, b objBridge, src *objDiskFilm)
 
 // objMapQuant rend les bornes de quantification de la carte du film, lues dans le catalogue
 // VERSIONNE. nil si la racine du depot n'est pas fournie ou la carte hors catalogue.
-func objMapQuant(t *testing.T, id string) *filmdec.MapQuantEntry {
+func objMapQuant(t *testing.T, id string) *profile.MapQuantEntry {
 	t.Helper()
 	repo, carte := os.Getenv(objRepoEnv), objCTFCarteNom[id]
 	if repo == "" || carte == "" {
 		return nil
 	}
-	cat, err := filmdec.LoadMapQuantCatalog(
+	cat, err := profile.LoadMapQuantCatalog(
 		filepath.Join(repo, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json"))
 	if err != nil {
 		t.Logf("%s : catalogue de bornes illisible (%v)", id, err)
@@ -322,7 +323,7 @@ func objVerifieOracle(t *testing.T, root, id string, src *objDiskFilm, res objPo
 		return
 	}
 	b := objBridgeOf(t, root, id)
-	evs := objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag)
+	evs := objectives.NamedEvents(src, objectives.ObjectiveTypeFlag)
 	identity := objRoundIdentites(src, b.Deaths)
 	porteurs := map[string]int{}
 	for _, f := range carries {
@@ -423,18 +424,15 @@ func objMax(v []int) int {
 // LA CALIBRATION VIENT DES POSES `ti=37`, comme en production : le mot d'identite de 32 bits se
 // lit derriere deux champs de largeur VARIABLE, mesures sur CE film. Balayer aux largeurs par
 // defaut d'un film calibre autrement ne rend pas une mesure fausse, il rend du bruit.
-func objGroundWeapons(t *testing.T, root, id string, quant *filmdec.MapQuantEntry) WorldObjectScan {
+func objGroundWeapons(t *testing.T, root, id string, quant *profile.MapQuantEntry) WorldObjectScan {
 	t.Helper()
 	dir := objChunkDir(root, id)
-	release := filmdec.LockProcessDecode()
-	defer release()
-	defer installWorldObjectPrecision(*quant, id, nil)()
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks du film %s illisibles : %v", id, err)
 	}
 	wr := quant.Range()
-	fc := filmdec.NewFilmContext(film)
+	fc := grammar.NewFilmContext(film)
 	_, st := decodeFilmPlacements(fc, id, &wr)
 	return decodeFilmPadScan(fc, id, &wr, st.Calibration.Widths, groundWeaponArchetype())
 }

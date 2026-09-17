@@ -3,7 +3,7 @@
 //
 // Sérialise les positions joueurs keyframe v3 (décodées du film, match-level —
 // §N de .ai/RESEARCH_THEATER_RE.md) en JSON camelCase. On NE sérialise PAS
-// positions.PlayerPosition brut (struct sans tags json → clés PascalCase non
+// playerposition.PlayerPosition brut (struct sans tags json → clés PascalCase non
 // consommables par le front) : un DTO dédié porte les tags.
 //
 // LIMITE (honnête, §N) : v1 = MATCH-LEVEL — pas d'attribution xuid (la
@@ -15,11 +15,11 @@ import (
 	"context"
 	"net/http"
 
-	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/domain/playerposition"
 )
 
-// matchPositionDTO est la projection JSON camelCase d'une positions.PlayerPosition.
+// matchPositionDTO est la projection JSON camelCase d'une playerposition.PlayerPosition.
 // team vaut -1 (TeamUnknown) quand aucun clustering spatial net ne permet de
 // l'attribuer ; 0/1 sinon (best-effort, non garanti).
 type matchPositionDTO struct {
@@ -30,9 +30,9 @@ type matchPositionDTO struct {
 	Team   int     `json:"team"`
 }
 
-// toMatchPositionsDTO mappe []positions.PlayerPosition → []matchPositionDTO.
+// toMatchPositionsDTO mappe []playerposition.PlayerPosition → []matchPositionDTO.
 // Retourne un slice non-nil vide pour sérialiser `[]` plutôt que `null`.
-func toMatchPositionsDTO(pos []positions.PlayerPosition) []matchPositionDTO {
+func toMatchPositionsDTO(pos []playerposition.PlayerPosition) []matchPositionDTO {
 	out := make([]matchPositionDTO, 0, len(pos))
 	for _, p := range pos {
 		out = append(out, matchPositionDTO{

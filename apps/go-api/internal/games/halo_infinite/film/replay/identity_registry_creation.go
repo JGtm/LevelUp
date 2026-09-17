@@ -5,7 +5,7 @@ package replay
 // # CE QUE LE FILM DIT, ET QU'ON NE LUI DEMANDAIT PAS
 //
 // Le record de CREATION d'un bipede (`ti=35`) porte, dans son default-state, l'index de
-// participant de son proprietaire — `filmdec.ScanBipedCreations` le lit (specification
+// participant de son proprietaire — `grammar.ScanBipedCreations` le lit (specification
 // bit-exacte : `.ai/V7.5/film_re/SONDAGE_E2_BIPEDE_INDEX_2026-09-08.md` §2.2). C'est une
 // LECTURE : le film ECRIT a qui appartient ce corps. Jusqu'au lot E2, le registre l'ignorait et
 // devinait la meme chose par le fil des morts.
@@ -53,7 +53,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // Les DEUX voies de nommage par le record de creation. Elles repondent a « comment sait-on a qui
@@ -116,7 +116,7 @@ func (r IdentityRegistry) CauseNonResolue(i int) canonical.LinkMethod {
 // Elle n'ecrase jamais rien : elle est la PREMIERE etape de [BuildIdentityRegistry], les vies y
 // arrivent anonymes. Elle rend le rapport, jamais une decision — le registre en tire la
 // couverture et les alarmes.
-func nommerViesParCreations(lives []lifeSpan, creations []filmdec.BipedCreation,
+func nommerViesParCreations(lives []lifeSpan, creations []grammar.BipedCreation,
 	idx PlayerIndexTable, bots []BotIdentity) creationReport {
 	rep := creationReport{Records: len(creations), causes: map[int]canonical.LinkMethod{},
 		indexLu: map[int]uint32{}}
@@ -299,7 +299,7 @@ type dateDeCreation struct {
 
 // corpsParSlot groupe les records de creation par slot. Les records SANS index ne sont pas des
 // lectures : ils ne fondent aucun lien et n'entrent pas dans le groupe.
-func corpsParSlot(creations []filmdec.BipedCreation) map[uint32]corpsLu {
+func corpsParSlot(creations []grammar.BipedCreation) map[uint32]corpsLu {
 	if len(creations) == 0 {
 		return nil
 	}
@@ -345,7 +345,7 @@ func corpsParSlot(creations []filmdec.BipedCreation) map[uint32]corpsLu {
 // un xuid, donc il ignore les corps de bot. Le record de creation, lui, porte l'index quel que
 // soit le participant — c'est ce qui donne au nommage des pistes de bot un pont DIRECT plutot
 // qu'une fermeture.
-func ownersFromCreations(creations []filmdec.BipedCreation) map[uint32]int {
+func ownersFromCreations(creations []grammar.BipedCreation) map[uint32]int {
 	out := map[uint32]int{}
 	for s, c := range corpsParSlot(creations) {
 		if len(c.index) == 1 {

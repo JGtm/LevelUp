@@ -13,14 +13,14 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // positionsPourVersion : le plus petit jeu de positions qui produise un document assemble (deux
 // echantillons d un meme slot, l origine etant le premier paquet).
-func positionsPourVersion() []filmdec.BipedPosition {
+func positionsPourVersion() []grammar.BipedPosition {
 	const slot uint32 = 512
-	return []filmdec.BipedPosition{
+	return []grammar.BipedPosition{
 		pos(slot, 10_000, 1, 1, 0.5),
 		pos(slot, 10_100, 2, 2, 0.5),
 	}
@@ -44,7 +44,7 @@ func TestCoverageFilmMajorVersionPubliee(t *testing.T) {
 
 // TestCoverageFilmMajorVersionAbsente : sans option, le champ reste nil — jamais 0.
 //
-// 0 EST UNE VALEUR SIGNIFIANTE AILLEURS (`filmdec.FilmMajorVersionUnknown`, le decoupage
+// 0 EST UNE VALEUR SIGNIFIANTE AILLEURS (`grammar.FilmMajorVersionUnknown`, le decoupage
 // historique du gamertag) : la publier ici ferait passer « on ne sait pas » pour « version 0 ».
 func TestCoverageFilmMajorVersionAbsente(t *testing.T) {
 	doc := BuildFromPositions("m", "halo_infinite", positionsPourVersion(), nil, Options{
@@ -52,7 +52,7 @@ func TestCoverageFilmMajorVersionAbsente(t *testing.T) {
 	})
 	if doc.Coverage.FilmMajorVersion != nil {
 		t.Fatalf("Coverage.FilmMajorVersion = %d alors qu aucune version n a ete lue : nil est le "+
-			"seul rendu correct de l inconnu (cf. filmdec.FilmMajorVersionUnknown = %d)",
-			*doc.Coverage.FilmMajorVersion, filmdec.FilmMajorVersionUnknown)
+			"seul rendu correct de l inconnu (cf. grammar.FilmMajorVersionUnknown = %d)",
+			*doc.Coverage.FilmMajorVersion, grammar.FilmMajorVersionUnknown)
 	}
 }
