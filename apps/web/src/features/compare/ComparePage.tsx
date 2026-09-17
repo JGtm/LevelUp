@@ -18,6 +18,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import type { CompareMetricRow, CompareResponse, MatchEncounterBadge } from '@/lib/api/types'
 
 import { CompareBar } from './CompareBar'
+import { CompareBlock } from './CompareBlock'
 import { CompareMirrorRow } from './CompareMirrorRow'
 import { CompareWeaponsSection } from './CompareWeaponsSection'
 import { getCompareText, normalizeCompareLocale, resolveMetricLabel, type CompareText } from './i18n'
@@ -97,11 +98,8 @@ interface CategoryColumnProps {
 function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryColumnProps) {
   if (rows.length === 0) return null
   return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-3 py-2">
-        <h2 className="text-sm font-semibold">{title}</h2>
-      </div>
-      <div className="p-3 space-y-3">
+    <CompareBlock title={title}>
+      <div className="space-y-3">
         {rows.map((row) => {
           const label = resolveMetricLabel(text, row.metric)
           const availableA = row.value_a_available !== false
@@ -137,7 +135,7 @@ function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryCol
           )
         })}
       </div>
-    </div>
+    </CompareBlock>
   )
 }
 
@@ -164,11 +162,8 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
 
   if (rows.length === 0) return null
   return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-3 py-2">
-        <h2 className="text-sm font-semibold">{title}</h2>
-      </div>
-      <div className="p-3 space-y-3">
+    <CompareBlock title={title}>
+      <div className="space-y-3">
         {rows.map(({ left, right }) => {
           const label = resolveMetricLabel(text, left.metric)
           // Player A est partagé entre left/right ; on prend le OR pour considérer
@@ -209,7 +204,7 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
           )
         })}
       </div>
-    </div>
+    </CompareBlock>
   )
 }
 

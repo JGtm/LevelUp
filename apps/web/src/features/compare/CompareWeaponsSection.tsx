@@ -27,6 +27,7 @@ import type { CompareResponse, CompareWeaponSide, CompareTopWeapon } from '@/lib
 import type { Locale } from '@/lib/i18n/locale'
 
 import { CompareBar } from './CompareBar'
+import { CompareBlock } from './CompareBlock'
 import { CompareMirrorRow } from './CompareMirrorRow'
 import { CompareWeaponsRange } from './CompareWeaponsRange'
 import { fragClassRows, hasWeaponProfile } from './compareWeapons_logic'
@@ -80,7 +81,6 @@ function FragClassBars({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-medium text-muted-foreground">{text.weaponsClassesTitle}</p>
       {cles.map((key) => {
         const ab = parAB.get(key)
         const ac = parAC.get(key)
@@ -189,37 +189,42 @@ export function CompareWeaponsSection({ left, right, text, locale }: CompareWeap
   const nomC = right?.player_b.gamertag ?? ''
 
   return (
-    <section className="space-y-5">
-      <h2 className="text-sm font-semibold">{text.catWeapons}</h2>
-
-      <FragClassBars
-        left={left}
-        right={right}
-        names={{ a: nomA, b: nomB, c: nomC }}
-        text={text}
-        locale={locale}
-      />
-
-      <div className={right ? 'grid grid-cols-1 gap-4 xl:grid-cols-2' : undefined}>
-        <CompareWeaponsRange
-          sideA={sideA}
-          sideB={sideB}
-          names={{ a: nomA, b: nomB }}
-          colorBottomToken={TOKEN_B}
-          text={text}
-          locale={locale}
-        />
-        {right && (
-          <CompareWeaponsRange
-            sideA={sideA}
-            sideB={sideC}
-            names={{ a: nomA, b: nomC }}
-            colorBottomToken={TOKEN_C}
+    <div className="space-y-5">
+      {/* DEUX CARTES, MÊME GABARIT QUE LES TROIS BLOCS DE MÉTRIQUES (`CompareBlock`) :
+          le profil d'armes se lit dans la même grammaire que le reste de la page, et son
+          titre vit dans l'en-tête de carte — plus de titre de section flottant au-dessus. */}
+      <CompareBlock title={text.catWeapons}>
+        <div className="space-y-5">
+          <FragClassBars
+            left={left}
+            right={right}
+            names={{ a: nomA, b: nomB, c: nomC }}
             text={text}
             locale={locale}
           />
-        )}
-      </div>
+
+          <div className={right ? 'grid grid-cols-1 gap-4 xl:grid-cols-2' : undefined}>
+            <CompareWeaponsRange
+              sideA={sideA}
+              sideB={sideB}
+              names={{ a: nomA, b: nomB }}
+              colorBottomToken={TOKEN_B}
+              text={text}
+              locale={locale}
+            />
+            {right && (
+              <CompareWeaponsRange
+                sideA={sideA}
+                sideB={sideC}
+                names={{ a: nomA, b: nomC }}
+                colorBottomToken={TOKEN_C}
+                text={text}
+                locale={locale}
+              />
+            )}
+          </div>
+        </div>
+      </CompareBlock>
 
       <TopWeaponsRow
         colonnes={
@@ -239,11 +244,15 @@ export function CompareWeaponsSection({ left, right, text, locale }: CompareWeap
         locale={locale}
         fmtCount={f.count}
       />
-    </section>
+    </div>
   )
 }
 
-/** TopWeaponsRow — le bloc 3 : une colonne d'armes par joueur, dans l'ordre de la page. */
+/**
+ * TopWeaponsRow — le bloc 3, EN CARTE : une colonne d'armes par joueur, dans l'ordre de la
+ * page. Le titre vit dans l'en-tête de la carte (gate visuel 2026-09-17) et non plus dans un
+ * paragraphe gris au-dessus d'une grille nue.
+ */
 function TopWeaponsRow({
   colonnes,
   text,
@@ -256,8 +265,7 @@ function TopWeaponsRow({
   fmtCount: (n: number) => string
 }) {
   return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground">{text.weaponsTopTitle}</p>
+    <CompareBlock title={text.weaponsTopTitle}>
       <div
         className="grid gap-6"
         style={{ gridTemplateColumns: `repeat(${colonnes.length}, minmax(0, 1fr))` }}
@@ -273,6 +281,6 @@ function TopWeaponsRow({
           />
         ))}
       </div>
-    </div>
+    </CompareBlock>
   )
 }

@@ -96,6 +96,14 @@ portée). La Synthèse ignore les deux champs (aucun changement d'affichage là-
 **D6 — Seuil.** `analysis.WeaponRangeMinMeasured` (8) par couple (rôle, côté) et par joueur.
 Les rôles sous le seuil sont NOMMÉS avec leur effectif, jamais cachés (D9 du plan portée).
 
+> **AMENDEMENT D6 — 2026-09-17, gate visuel (décision utilisateur).** La liste des rôles sous
+> le seuil et la couverture (« N frags mesurés sur M ») NE SONT PAS AFFICHÉES sur le
+> Face-à-face : deux lignes grises par carte, répétées sur quatre cartes en mode miroir,
+> alourdissaient la page sans être lues. Le CONTRAT les porte toujours
+> (`below_threshold_kills` / `_deaths`, `measured_kills` / `total_kills`...) et la SYNTHÈSE les
+> affiche toujours — c'est un choix d'affichage de cette page, pas un retrait de mesure. Le
+> seuil de publication continue d'écarter les rôles trop rares côté Go, à l'identique.
+
 **D7 — Mode miroir (3 joueurs).** Même section, disposition B | A | C : classes via
 `CompareMirrorRow`, portée = deux paires de graphes côte à côte (A vs B, A vs C), top 3 sur
 trois colonnes. A est identique dans les deux réponses ; le front lit A dans la réponse gauche.
@@ -356,6 +364,13 @@ Fichiers : `features/compare/ComparePage.tsx`, `features/compare/i18n.ts` (+ tes
       Bloc 3 : colonnes top 3 (`WeaponIcon` + nom via locale + frags), B | A | C en miroir.
       Section entière absente si `weapons` absent des deux réponses ; chaque bloc absent
       indépendamment si son côté est vide.
+      **Lot 5-ui2 (2026-09-17, gate visuel)** : le bloc 1 perd son sous-titre, le bloc 3 perd
+      son `<p>` gris, et les deux deviennent des CARTES du même gabarit que les trois blocs de
+      métriques (`CompareBlock`, extrait pour ne pas laisser quatre copies du markup). Sous
+      chaque graphe, la couverture et la liste des rôles sous le seuil sont RETIRÉES (voir
+      amendement D6) : `weaponsClassesTitle`, `weaponsCoverage` et `weaponsBelowThreshold`
+      disparaissent de `i18n.ts`, `belowThresholdText` et `coverageOf` de
+      `compareWeapons_logic.ts` — 0 code mort.
 - [x] 4.5 `ComparePage.tsx` : la section s'insère après « Bilan & Rang » dans les deux modes.
       Titre `text.catWeapons`. Aucune couleur hex ni classe Tailwind couleur (skill
       `color-tokens`) ; tokens `compare-a/b/c` uniquement.
@@ -1052,6 +1067,26 @@ occurrence ; aucun test ne monte `CategoryColumn` ni `CategoryMirrorSection`). L
 `node_modules/.tmp`), `npm run lint` EXIT=0 (0 erreur, 27 avertissements préexistants, aucun
 sur `ComparePage`), `npm run test -- --run src/features/compare` 4 fichiers / 47 tests,
 0 ligne `^ FAIL`, EXIT=0.
+
+
+**2026-09-17 — Lot 5-ui2 (deuxième retour du gate visuel).** « Profil d'armes » et « Armes les
+plus utilisées » deviennent deux CARTES du gabarit des blocs de métriques. Le markup vivait
+inline deux fois dans `ComparePage.tsx` ; ces deux usages neufs en auraient fait quatre copies,
+d'où l'extraction de `CompareBlock({ title, children })`, utilisé par les QUATRE — les deux
+anciens gardent leur rendu (leur `space-y-3` reste chez l'appelant, le gabarit ne l'impose
+pas). Retirés : le sous-titre « Part des frags par classe », le `<p>` gris du top 3, et les
+deux phrases sous les légendes des graphes (couverture + rôles sous le seuil, amendement D6).
+Le nettoyage va jusqu'au bout — clés `weaponsClassesTitle`, `weaponsCoverage`,
+`weaponsBelowThreshold` retirées FR ET EN, fonctions `belowThresholdText` et `coverageOf`
+supprimées du module pur avec leurs tests, `RangeChart` allégé de `sideA`/`sideB`/`roleName`
+devenus inutiles : 0 code mort. Le contrat API ne bouge pas. Gate : typecheck EXIT=0 (après
+purge de `node_modules/.tmp`), lint EXIT=0 (0 erreur, 27 avertissements préexistants, aucun sur
+`features/compare/`), vitest `src/features/compare` 4 fichiers / 43 tests EXIT=0, suite
+COMPLÈTE 732 fichiers / 7 864 tests / 0 ligne `^ FAIL` EXIT=0. Un test a dû être RETOURNÉ :
+« publie la couverture ET les rôles écartés » vérifiait exactement ce que le gate visuel
+demande de retirer ; il devient un témoin d'ABSENCE, sur une fixture qui porte pourtant les
+deux faits (80 mesurés sur 100, un rôle écarté à 6) — leur absence à l'écran est donc bien un
+choix d'affichage, pas un manque de donnée.
 
 ## Reprise de session
 

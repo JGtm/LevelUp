@@ -16,8 +16,6 @@ import { describe, expect, it } from 'vitest'
 import type { CompareWeaponSide, WeaponRangeSide } from '@/lib/api/types'
 
 import {
-  belowThresholdText,
-  coverageOf,
   fragClassRows,
   hasWeaponProfile,
   roleLabel,
@@ -176,58 +174,6 @@ describe('roleLabel — rôle, puis classe, puis la clé NUE', () => {
     const label = roleLabel('role_inconnu', resolveManifeste)
     expect(label).toBe('role_inconnu')
     expect(label).not.toContain('frags.')
-  })
-})
-
-describe('belowThresholdText — les rôles écartés, NOMMÉS', () => {
-  const avecSeuil = profil({
-    range: {
-      weapons: [],
-      median_kills_m: 0,
-      median_deaths_m: 0,
-      measured_kills: 0,
-      total_kills: 0,
-      measured_deaths: 0,
-      total_deaths: 0,
-      below_threshold_kills: [
-        { weapon_key: 'sniper', measured: 6 },
-        { weapon_key: 'grenade', measured: 4 },
-      ],
-    },
-  })
-
-  it('nomme chaque rôle avec son effectif, dans l’ordre du backend', () => {
-    expect(belowThresholdText(avecSeuil, 'kills', nomDeRole, (n) => String(n))).toBe(
-      'Tir de précision (6) · Grenade (4)',
-    )
-  })
-
-  it('rend null quand rien n’est écarté — pas une chaîne vide', () => {
-    expect(belowThresholdText(avecSeuil, 'deaths', nomDeRole, String)).toBeNull()
-    expect(belowThresholdText(null, 'kills', nomDeRole, String)).toBeNull()
-  })
-})
-
-describe('coverageOf — deux dénominateurs, jamais interchangeables', () => {
-  const s = profil({
-    range: {
-      weapons: [],
-      median_kills_m: 0,
-      median_deaths_m: 0,
-      measured_kills: 100,
-      total_kills: 130,
-      measured_deaths: 80,
-      total_deaths: 95,
-    },
-  })
-
-  it('côté frags, le total est celui des frags ; côté morts, celui des morts', () => {
-    expect(coverageOf(s, 'kills')).toEqual({ measured: 100, total: 130 })
-    expect(coverageOf(s, 'deaths')).toEqual({ measured: 80, total: 95 })
-  })
-
-  it('rend null sans bloc de portée', () => {
-    expect(coverageOf(profil({}), 'kills')).toBeNull()
   })
 })
 

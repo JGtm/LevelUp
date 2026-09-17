@@ -154,46 +154,6 @@ export function roleLabel(key: string, resolve: (manifestKey: string) => string)
 }
 
 /**
- * belowThresholdText — la liste NOMMÉE des rôles écartés par le seuil, ou `null`.
- *
- * « 3 rôles sous le seuil » n'apprend rien ; « Puissance (6) · Spéciale (4) » dit à quoi le
- * joueur a touché sans y rester (D9). L'ordre vient du backend (effectif décroissant) et n'est
- * pas rejoué : deux tris du même fait divergeraient.
- *
- * `null` plutôt qu'une chaîne vide : l'appelant ne rend alors AUCUN nœud, plutôt qu'un
- * paragraphe vide qui prendrait de la place et se lirait comme un chargement en cours.
- */
-export function belowThresholdText(
-  side: CompareWeaponSide | null | undefined,
-  which: RangeSideKey,
-  roleName: (key: string) => string,
-  fmtCount: (n: number) => string,
-): string | null {
-  const rows =
-    (which === 'kills' ? side?.range?.below_threshold_kills : side?.range?.below_threshold_deaths) ??
-    []
-  if (rows.length === 0) return null
-  return rows.map((r) => `${roleName(r.weapon_key)} (${fmtCount(r.measured)})`).join(' · ')
-}
-
-/**
- * coverageOf — les deux nombres de couverture d'un côté (« N frags mesurés sur M »).
- *
- * `null` si le bloc de portée est absent. Les deux dénominateurs ne sont PAS interchangeables :
- * côté frags le total est celui des frags du joueur, côté morts celui de ses morts.
- */
-export function coverageOf(
-  side: CompareWeaponSide | null | undefined,
-  which: RangeSideKey,
-): { measured: number; total: number } | null {
-  const r = side?.range
-  if (!r) return null
-  return which === 'kills'
-    ? { measured: r.measured_kills, total: r.total_kills }
-    : { measured: r.measured_deaths, total: r.total_deaths }
-}
-
-/**
  * hasWeaponProfile — la section a-t-elle quoi que ce soit à montrer ?
  *
  * Les trois blocs sont indépendants côté contrat : il suffit qu'UN des deux joueurs porte une

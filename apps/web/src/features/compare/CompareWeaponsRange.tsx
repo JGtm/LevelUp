@@ -30,12 +30,7 @@ import {
   type WeaponRangeLine,
 } from '@/features/synthesis/_weaponRangeChart'
 
-import {
-  belowThresholdText,
-  coverageOf,
-  roleRangeLines,
-  type RangeSideKey,
-} from './compareWeapons_logic'
+import { roleRangeLines, type RangeSideKey } from './compareWeapons_logic'
 import type { CompareText } from './i18n'
 import { TOKEN_A, TOKEN_MEDIAN, useRoleName, useWeaponFormats, type SideNames } from './compareWeaponsShared'
 
@@ -96,8 +91,6 @@ function useRangeOption({
 function RangeChart({
   title,
   lines,
-  sideA,
-  sideB,
   which,
   names,
   colorTopToken,
@@ -107,8 +100,6 @@ function RangeChart({
 }: {
   title: string
   lines: WeaponRangeLine[]
-  sideA: CompareWeaponSide | null | undefined
-  sideB: CompareWeaponSide | null | undefined
   which: RangeSideKey
   names: SideNames
   colorTopToken: SemanticToken
@@ -117,7 +108,6 @@ function RangeChart({
   locale: Locale
 }) {
   const f = useWeaponFormats(locale)
-  const roleName = useRoleName(locale)
   const buildOption = useRangeOption({
     lines,
     colorTopToken,
@@ -133,10 +123,6 @@ function RangeChart({
     { label: names.b, color: tokenCssVar(colorBottomToken) },
   ]
 
-  const couvA = coverageOf(sideA, which)
-  const couvB = coverageOf(sideB, which)
-  const seuilA = belowThresholdText(sideA, which, roleName, f.count)
-  const seuilB = belowThresholdText(sideB, which, roleName, f.count)
 
   return (
     <SectionCard title={title} label={title}>
@@ -151,38 +137,7 @@ function RangeChart({
           legend={<ChartLegend items={legend} ariaLabel={title} />}
         />
       )}
-      <div className="space-y-0.5 px-3 pb-2 text-2xs text-muted-foreground">
-        <CoverageNote name={names.a} coverage={couvA} below={seuilA} text={text} />
-        <CoverageNote name={names.b} coverage={couvB} below={seuilB} text={text} />
-      </div>
     </SectionCard>
-  )
-}
-
-/**
- * CoverageNote — « N frags mesurés sur M », et les rôles écartés par le seuil.
- *
- * LES DEUX SE LISENT ENSEMBLE : la couverture dit ce que le décodeur a su placer, la liste dit
- * ce que le seuil de publication a retiré. Publier l'une sans l'autre laisserait croire que
- * l'écart entre le numérateur et le dénominateur est la seule réserve.
- */
-function CoverageNote({
-  name,
-  coverage,
-  below,
-  text,
-}: {
-  name: string
-  coverage: { measured: number; total: number } | null
-  below: string | null
-  text: CompareText
-}) {
-  if (!coverage) return null
-  return (
-    <p>
-      {name} — {text.weaponsCoverage(coverage.measured, coverage.total)}
-      {below ? ` · ${text.weaponsBelowThreshold(below)}` : ''}
-    </p>
   )
 }
 
@@ -213,7 +168,7 @@ export function CompareWeaponsRange({
   )
   if (!sideA?.range && !sideB?.range) return null
 
-  const commun = { sideA, sideB, names, colorTopToken: TOKEN_A, colorBottomToken, text, locale }
+  const commun = { names, colorTopToken: TOKEN_A, colorBottomToken, text, locale }
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <RangeChart
