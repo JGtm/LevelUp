@@ -1,7 +1,8 @@
 # ADR 0034 — Film decoder: an immutable profile per build, five layers, one gate to the bytes
 
-**Status**: Accepted (2026-09-13). To be amended at the M2 and M4 closures of
-`.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, when the layers exist and the publication path is built.
+**Status**: Accepted (2026-09-13), amended at the M2 closure (2026-09-17) with the state reached,
+decision by decision. To be amended once more at the M4 closure of
+`.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, when the publication path is built.
 
 **Branch**: `feat/decfilm-0C` (lot 0.C of that plan)
 
@@ -309,6 +310,210 @@ fallback path of *the game's own writer* (grammar read from the executable, not 
 decision), plus the registry's own publication machinery. A LevelUp fallback never goes there; it
 goes into the registry.
 
+## State reached at M2 (2026-09-17)
+
+Measured on the tree at the closure of milestone M2 of `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`
+(base `92c83b333`). Go paths below are relative to `apps/go-api/internal/`. The plan holds the
+lots, the gates and their numbers; this section holds only what the tree shows, decision by
+decision, and where a decision above reads differently from the tree **the tree wins and the
+difference is written here**.
+
+The ADR carries ten decisions plus D-10 bis. The "principle 11" that several godocs cite
+(`film/decfilm/decfilm.go`, `film/internal/facts/rev.go`) is principle 11 of the target
+architecture note, not an eleventh decision of this ADR: its substance is the enforcement
+paragraph of D-1, and it is now held literally.
+
+### D-1 — Five layers, one dependency direction. **Reached, with three precisions.**
+
+The four inner layers live under `games/halo_infinite/film/internal/`: `source` (6 production
+files), `profile` (11), `grammar` (146, with the sub-packages `positions`, `weaponscan` and
+`weaponv3`, which came down from `analysis/`), `facts` (54, with `killsource`, `objectives` and
+`fallback`). Nothing outside `film/` can import them at all — the compiler, not a ratchet, and it
+cannot be allowlisted.
+
+1. **`film/replay` stays exported, and that is the written decision.** It is the publication
+   layer, 239 of its symbols are cited outside the decoder (`sync/replayartifacts`,
+   `sync/killcollector`, `service/*`, `api/*`, `replaybuild`, `ops`) and the replay document is
+   the public contract. `film/types`, `film/revision`, `film/filmcache` and the three label
+   catalogs (`damagetag`, `killicon`, `medalname`) stay exported for the same reason of nature:
+   they declare shapes or name things, they decode nothing.
+2. **The facade is `film/decfilm`, and it re-exports 163 symbols.** It carries, under one package
+   name, the surface the outside consumers cited, which is what made the move under `internal/`
+   feasible in one commit. The count is the point and it is written in its godoc: **a facade of
+   163 symbols is an alias, not a boundary — the reduction is M4 material.** Types cross as
+   aliases, constants and variables as values, functions as one-line forwards whose signatures
+   name the layer types, so a caller can circulate a value without being able to name it.
+3. **`film/revision` sits outside `film/internal/` with no reason left.** It was there to stay
+   importable by `sync/killcollector` while the facts revision lived in that package; the constant
+   came down to `film/internal/facts/rev.go`, and the only importers left are the four layer gates,
+   all under `film/`. The measure is written in the package header. Pure move, no fingerprint
+   touched, not taken in M2.
+
+**Enforcement.** `archlint/film_layers_deps_test.go` carries four axes. R1 (direction), R2 (place)
+and R3 (population) are **strict with no table at all** — each tolerance mechanism was deleted
+with its last entry, because an empty table that is kept invites being filled. R4 ("the
+publication layer does not load the film", born with lot 2.5.e-d) carries a dated allowlist of
+the four `ScanFilmXxx` D2 wrappers, whose retirement criterion is the one
+`archlint/no_film_reread_test.go` already writes for that family.
+
+`analysis/` imports no title package, in production **and** in test: the `franchissementsToleres`
+table of `archlint/no_title_package_in_analysis_test.go` is **empty, and it is now a ratchet**. The
+correction dated 2026-09-17 in the section below counted five entries; the five fell with lots
+2.4.2, 2.5.d.2, 2.5.e-a and 2.5.f, each by the port it announced or by its package moving.
+
+### D-2 — One gate to the bytes. **Reached, allowlist never opened.**
+
+`film/internal/source` owns the canonical reader (`Lecteur` / `LecteurSur`) and its four named
+edge conventions (`BitsAt`, `BitAt`, `BitsTolerants`, `BitsTronques`), the film integers, the
+packet walker, the two decompression contracts and the 64-bit pattern scan. `killsource.evReader`
+**and** `filmdec.BitReader` were both absorbed — the measure corrected the item: `BitReader` was
+itself not canonical, and the two came down into the source layer. Equivalence was proven call by
+call on the real bit positions of the event chains, then against a golden produced by the code of
+the base, before the absorption.
+
+`archlint/no_raw_film_bytes_outside_source_test.go` went from 78 tolerated pairs to nine to zero,
+and **the allowlist mechanism was deleted with its last entry** (lot 2.5.e-a). What remains is
+the list of *exclusions* — "these bytes are not a film's" — each dated and kept alive by its
+own test.
+
+### D-3 — The profile is immutable, resolved once, keyed by build. **Reached, key corrected.**
+
+`film/internal/profile` is a **leaf**: `go list -deps` returns only itself. It carries the value
+types, the table (`profile_table.go`, columns `Cle / Champ / Valeur / Source / Preuve / Date`), the
+map catalog and the `Profile` type with its invariants; the **detection** that produces a profile
+value stays in `grammar` and returns a `profile` type, so the dependency reads `grammar -> profile`
+and never the reverse. That split is decision V19 (1) of the plan and it amends this decision: the
+profile is **data**, and the lot that created the layer was an extraction with a dependency
+inversion, not the pure move the ADR implied.
+
+**The key is not the build alone.** The table is keyed by the **three keys the film writes** —
+format version (`chunk_00+4`), build (section 2 in clear text), major version (`chunk_00+0`) — and
+the gamertag layout is keyed by a fourth. Format and build do not say the same thing: format 24
+carries three builds, two of them with different customization widths. This decision said "the
+build, with the major version as fallback"; the tree says three keys, and there is a second typed
+sentinel to match (`profile.ErrUnknownFormat` beside `profile.ErrUnknownBuild`).
+
+The three binding rules hold: every row carries its provenance and its date, `TestProfilPresumes`
+lists **and freezes** the six presumed entries, all of them movement, and removing one demands the
+table row pass to *read* or *measured*.
+
+**Partial, and the measure says why.** The versioned catalog exists
+(`data/titles/halo_infinite/reference/film_profiles.json`, written by `cmd/film-profiles-build`
+under the `gamefiles` tag, read by `games/halo_infinite/filmprofile`), but the decoder does not read
+it and must not: that would be a layer importing a catalog package, which the one-way rule forbids.
+`profile_table.go` carries **no registry fingerprint** today, so the third registry status
+`presumee` is not delivered — the copy is lot 3.1.1.
+
+### D-4 — An unknown build fails loudly. **Half reached: the film is not set aside.**
+
+Held: the typed sentinels (`profile.ErrUnknownBuild`, `profile.ErrUnknownFormat`, both wrapped with
+the refused key), the per-build expvar counter, the single log line at the context constructor, and
+the rule that an unknown key is **never** decoded with another film's profile — the profile falls
+back to the *invariants*, never to a neighbouring build.
+
+Not held: **no film is set aside.** `FilmContext.ProfileErr()` carries the typed error to the
+caller, and on the tree of 2026-09-17 no production caller reads it — the only occurrence outside
+tests is its own declaration. The cook proceeds, and what the artifact says is that the key did not
+serve: `coverage.decoder.build` is emptied while everything actually read, the `registry` block in
+particular, stays published. Recorded as a discovery of this closure in section 4 of the plan, and
+as correction 5 below.
+
+### D-5 — No package-level mutable state. **Reached; the binding criterion is "zero written".**
+
+`LockProcessDecode` and `decode_gate.go` are deleted with their 373 call sites in 276 files;
+`archlint/decode_lock_held_test.go` is gone, replaced by `decode_lock_interdit_test.go`, which
+forbids taking such a lock at all and forbids the file coming back. Readers take their values from
+the profile, carried by the bit reader or read at the head of a scan; the dated double-write
+kill-switch was removed at its target lot, as written. `TestDeuxFilmsEnParallele` decodes two films
+of different builds in two goroutines under `-race` and refuses two equal fingerprints, so it cannot
+pass on a silent witness.
+
+This decision announced `filmdec_package_vars_test.go` ratcheted "from 96 to 0 mutable variables".
+On the tree the frozen count is **21** and the count that binds is the other one:
+`TestAucunVarDePaquetEcriteDansFilmdec` walks the AST and refuses any assignment, increment or
+mutable address-of on a package variable — **zero written**. The 21 survivors are tables and
+sentinels the scan proves are never assigned.
+
+The 29 observation hooks became fields of `grammar.Observation`, and the package-level observer
+itself is gone with its 28 public setters. One exception is named and bounded: a **test** harness
+(`grammar/harnais_observation_test.go`) keeps a package observer and its setters for the research
+instruments; it lives in a `_test.go` file, outside the ratchet's perimeter, and its header says so.
+
+### D-6 — One revision per thing that can change. **Reached and widened: four, not two.**
+
+| Revision | Value at the closure | Hashes |
+|---|---|---|
+| `source.Rev` | `source-2026-09-16.2` | the source layer, no upstream value (it is the root of the one-way) |
+| `profile.Rev` | `profile-2026-09-17` | the profile layer, plus the **value** of `source.Rev` |
+| `grammar.Rev` | `grammar-2026-09-15.39` | the grammar layer, plus the **values** of `profile.Rev` and `source.Rev` |
+| `facts.Rev` | `killsource-2026-09-16.6` | the whole facts tree, plus the **values** of `source.Rev` and `grammar.Rev` |
+
+Each layer hashes its own non-test sources and the **values** of the layers it depends on, never
+their bytes (plan decision V15 (12)): the lowest layer that rises raises every layer above it,
+up to the backlog, and the chaining is proven by mutation in both directions. `GrammarRev`
+became `grammar.Rev`; **`KillSourceDecoderRev` no longer exists** — `facts.Rev` took over its
+value as is, so M2 opened no backlog, and the series keeps the `killsource-` prefix because the
+rows in the database carry those very strings. The row of the table above naming `SchemaVersion`
+at 54 reads **61** on the tree.
+
+The calculation, the chronicle, the regeneration door and the failure messages are shared
+(`film/revision`, lot 2.6.0, posted before the third copy);
+`archlint/no_ad_hoc_source_fingerprint_test.go` forbids an ad hoc fingerprint elsewhere and its
+allowlist is **empty**, which turns it into a ratchet. The backlog rule — a rise of `facts.Rev`
+opens the killsource backlog, on user signal — lives in the failure message of
+`TestFactsRevSuitLesFaits`, in the predicate `conditionBacklog`
+(`sync/killcollector/postsync.go`) and, at the present tense, in `docs/SYNC_GUIDE.md` and its French
+twin.
+
+The rule that a structural step is judged at zero difference and a behaviour lot by the corpus gate
+held for every lot of M2. At the closure, the corpus gate returned **17 witnesses out of 17 at zero
+loss and zero change** (schema 60 to 61) and `replay-equiv` returned, on the 20 films of the corpus,
+a single divergent step out of 53 — the publication step, its difference limited to the two
+telemetry blocks 2.6.3 adds and proven field by field.
+
+### D-7 — Facts and publication are separate. **Not reached, by design: it is M4.**
+
+`data/cache/film_facts/` does not exist, publication still re-decodes, and the two published twins
+are still kept in step by the shape fingerprint and by `service/replayview/parity_test.go`. What M2
+delivers is the producer side of the rule "the presence of a layer is read in its revision, never in
+the absence of a field": the artifact carries `coverage.decoder.{sourceRev, profileRev, grammarRev,
+factsRev, build}` plus the `registry` sub-block, at schema 61. Lot 4.3 (one published type) is
+deferred past M4 by a user decision of 2026-09-17, in a clean stop.
+
+### D-8 — The Go / web contract. **Unchanged by M2, and its numbers moved as prescribed.**
+
+`MIN_RENDERABLE_SCHEMA_VERSION` is still 27, still pinned by test; the v61 chronicle entry was
+written **in the commit that raised the version**, as correction 2 below demands; the shape golden
+was regenerated by its single door; `api/openapi.yaml` and the web types were regenerated last. The
+contract types of the decoder gained a golden of their own —
+`film/types/testdata/shapes.golden`, 46 sections, carrying on its first data line the revisions of
+the three producing layers — so a form that moves without its revision reddens to the field.
+
+### D-9 — The team of a player comes from the film. **Reached at M1, unchanged by M2.**
+
+The designator is read from the state frame, FFA publishes "no team", a silent film counts as
+unknown, and the database stays a control counter under `coverage.teams`.
+
+### D-10 and D-10 bis — Grammar decides; a fallback is named and counted. **Reached as written.**
+
+The registry moved to the facts layer by a pure move, exactly as D-10 bis announced; its path is
+`film/internal/facts/fallback` — one segment more than the ADR wrote, the `internal/` the layers
+gained at lot 2.5.e-c. It carries **98 entries** across six files, sorted by the fact they decide,
+each with its typed trigger, its order, its sites and anchors, its date posted, its target and its
+retirement criterion. `coverage.fallbacks[]` publishes the ones that fired, per cooking;
+`archlint/no_unregistered_fallback_test.go` still binds in both directions, with its two dated
+exemptions for the game writer's own fallbacks.
+
+### What M2 leaves partial, named here so it is not re-discovered
+
+- the registry status `presumee` — waits on the profile table copying the catalog fingerprints
+  (lot 3.1.1);
+- the facade's surface — 163 symbols, an alias rather than a boundary, reduction measured and
+  referred to M4;
+- `film/revision` outside `film/internal/` — a pure move nobody's fingerprint sees;
+- a film with an unknown key is not set aside (D-4 above, correction 5 below);
+- the persisted facts and the single published type — M4 and past-M4 by decision.
+
 ## Corrections to statements made elsewhere
 
 Found on the tree during lot 0.B (2026-09-13), written here so the wrong sentence is not repeated:
@@ -345,6 +550,21 @@ Found on the tree during lot 0.B (2026-09-13), written here so the wrong sentenc
    package, so the gate of D-2 cannot simply be imported from there — which is why its own bit
    reader (`pi_resolver.go`) and its divergent copy of `wordBitsAt` are a perimeter question of
    step 2.4, not a licence to leave them outside the single gate to the bytes.
+   **Consumed on 2026-09-17 (M2 closure).** Lot 2.5.c brought the package down with the grammar
+   layer: it is now `internal/games/halo_infinite/film/internal/grammar/weaponv3/` (7 files), it no
+   longer sits under `analysis/`, and its bit reader is the canonical one of the source layer. The
+   correction stays written because the wrong path still appears in the plan and in the briefs
+   derived from it.
+5. **A film whose key the profile does not know is not set aside.** Added 2026-09-17, measured at
+   the M2 closure. D-4 says the film "is set aside". On the tree, the typed error exists and is
+   carried to the caller (`FilmContext.ProfileErr`), the per-build expvar counter exists, the
+   constructor logs one line — and no production caller reads that error: the only occurrence of
+   `ProfileErr()` outside tests is its own declaration. The cook proceeds on the invariants
+   profile — never on another build's, which is the half of the decision that matters most — and
+   the artifact says the key did not serve, by emptying `coverage.decoder.build` while keeping
+   everything actually read. So the behaviour is "loud and traced, decoded on invariants", not
+   "set aside", and deciding whether a film must really be set aside is an orchestration question
+   (`sync/killcollector`, `replaybuild`) that no lot of M2 opened.
 
 ## Non-goals
 
