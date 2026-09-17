@@ -367,8 +367,8 @@ correction dated 2026-09-17 in the section below counted five entries; the five 
 edge conventions (`BitsAt`, `BitAt`, `BitsTolerants`, `BitsTronques`), the film integers, the
 packet walker, the two decompression contracts and the 64-bit pattern scan. `killsource.evReader`
 **and** `filmdec.BitReader` were both absorbed — the measure corrected the item: `BitReader` was
-itself not canonical, and the two came down into the source layer. Equivalence was proven appeal by
-appeal on the real bit positions of the event chains, then against a golden produced by the code of
+itself not canonical, and the two came down into the source layer. Equivalence was proven call by
+call on the real bit positions of the event chains, then against a golden produced by the code of
 the base, before the absorption.
 
 `archlint/no_raw_film_bytes_outside_source_test.go` went from 78 tolerated pairs to nine to zero,
@@ -395,7 +395,7 @@ sentinel to match (`profile.ErrUnknownFormat` beside `profile.ErrUnknownBuild`).
 
 The three binding rules hold: every row carries its provenance and its date, `TestProfilPresumes`
 lists **and freezes** the six presumed entries, all of them movement, and removing one demands the
-row pass to read or measured.
+table row pass to *read* or *measured*.
 
 **Partial, and the measure says why.** The versioned catalog exists
 (`data/titles/halo_infinite/reference/film_profiles.json`, written by `cmd/film-profiles-build`
