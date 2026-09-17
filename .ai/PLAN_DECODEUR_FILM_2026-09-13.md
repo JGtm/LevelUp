@@ -5299,14 +5299,76 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 
 #### Lot 4.1 — Les faits persistés par film avec leur révision — L, high
 
-- [ ] 4.1.1 Sérialisation des faits (généralisation de `inputs_*.bin.gz`) dans
+- [x] 4.1.1 Sérialisation des faits (généralisation de `inputs_*.bin.gz`) dans
       `data/cache/film_facts/{slug}/{short8}.facts.bin` via `PathResolver`, en-tête
       `{grammarRev, factsRev, build, schéma de faits}`.
-- [ ] 4.1.2 `replaybuild` rejoue depuis les faits quand ils existent à la révision courante,
-      décode sinon ; verrou solo respecté ; aucun second puits d'artefact
-      (`no_second_artifact_sink_test`).
+      **FAIT le 2026-09-17** en trois commits — `b948ed52f` (4.1.1-a), `aa8a57747` (4.1.1-c),
+      `25eb30596` (4.1.1-b).
+      **LE NOM DU FICHIER EST `<short8>.filmfacts.bin`, PAS `.facts.bin`** : `<short8>.facts.json`
+      existe déjà et veut dire l'INVERSE (les faits que la BASE sait du match,
+      `replaybuild/facts_file.go`). La distinction est écrite en tête de
+      `domain/title/registry_film_facts.go` et épinglée par un test.
+      **L'EN-TÊTE PORTE `replay.DecoderCoverage` VERBATIM**, pas un second bloc de révisions (ce
+      serait la troisième copie) : d'où l'invariant gratuit « en-tête relu ==
+      `coverage.decoder` de l'artefact », testé SANS film. Plus deux numéros distincts —
+      `VersionCodecFaits` (le conteneur) et `SchemaDesFaits` (la charge) — et la CLÉ DE CUISSON
+      (module de carte, largeurs d'axe, `LayoutDetected`) vérifiée dans les DEUX SENS par
+      `verifierCleDeCuisson`, la MÊME fonction que le blob des entrées (une seule copie).
+      **LE CODEC PASSE EN PRODUCTION DANS `package replay`, SANS PAQUET NEUF** (mesure de la note
+      de préparation §2.7) : `filmfacts_{codec,flux,encode,decode,canaux}.go` + `filmfacts.go`.
+      ZÉRO ligne de baseline touchée, ZÉRO octet de fixture changé.
+      **LES CINQ SECTIONS**, à longueur préfixée (un lecteur saute une section inconnue) : entrées
+      (blob + les QUATRE canaux gardés par l'appelant — `champsNonTransportes` VIDÉE et son
+      mécanisme SUPPRIMÉ), identité du film, rapport des replis DU BALAYAGE, statborg
+      (+ l'horloge des chunks du manifeste, nécessaire à `bombInput`), killsource.
+      **MESURES** : ventilation des replis **2 balayage / 16 assemblage** sur 18 sites, jamais
+      écrite ailleurs — c'est elle qui interdit de persister le rapport d'après-assemblage ;
+      population `[]StatRecord` **583** (`000d5950`) et **1 629** (`084a804d`) ; les 8 fixtures
+      **11 049 200 o** (commentaire de budget corrigé, il annonçait 11 044 446). `encoding/gob`
+      essayé et REJETÉ sur mesure (perte silencieuse de 32 % du volume).
+      **UN COMPTEUR DE SURFACE** (`archlint/film_facade_surface_test.go`) : façade **166**,
+      compagnon `replay.<Symbole>` hors de `film/` **245 → 253**, méthode de comptage écrite et
+      reproductible en une commande, mutation prouvée dans les deux sens.
+- [x] 4.1.2 `replaybuild` rejoue depuis les faits quand ils existent à la révision courante,
+      décode sinon ; verrou solo respecté ; aucun second puits d'artefact.
+      **CORRECTION DE CET ITEM (2026-09-17)** : il citait `no_second_artifact_sink_test` comme
+      garde de l'unicité du puits. C'est FAUX — ce ratchet compte les câblages du puits de
+      NOTIFICATION (`SetArtifactStoredSink`, Discord groupé, deux appelants autorisés). Le
+      garde-rail des OCTETS restait à écrire : c'est
+      `replaybuild.TestBrancheDesFaitsTraverseLeMemePuits`, qui exige que les appelants de
+      `writeArtifactBytes` soient exactement les trois de son allowlist datée ET que les trois
+      fonctions de la bascule n'en appellent aucun.
+      **FAIT le 2026-09-17** (`ea2cc5d52`). `replay.BuildFromFacts` exporté ;
+      `replay.BuildFromFilmAvecFaits` rend en plus les faits à persister et `BuildFromFilm` n'est
+      plus qu'un appel qui les jette (UN SEUL étage de balayage). Bascule dans `BuildBytes` APRÈS
+      `ResolveMapEntry` (l'entrée de catalogue sert aux deux branches ET valide l'en-tête) et
+      AVANT tout chargement de film. Ce qui diffère entre les branches tient dans un type
+      (`entreesDeCuisson`) : `assemblerFilmStats`, `collecterEntreesCatalogue` et
+      `serialiserDocument` sont COMMUNS, donc la suite des étapes observées n'existe qu'une fois
+      dans le source. Fraîcheur TOUT OU RIEN (codec, schéma, les QUATRE révisions, clé de
+      cuisson) ; `build` et `registry` NE SONT PAS comparés — faits du film, pas du binaire.
+      **VERROU SOLO INCHANGÉ**, et un ratchet le tient : `replaybuild` ne prend ni ne relâche
+      `AcquireSolo`. Écriture des faits ATOMIQUE, non fatale, jamais muette.
+      **ÉQUIVALENCE PROUVÉE SANS FILM** : `TestBuildFromFactsEgaleLAssemblageDirect` — le document
+      rejoué depuis un fichier de faits est identique (`renderAssembly`) à l'assemblage direct sur
+      les mêmes entrées, replis du balayage compris.
 - [ ] 4.1.3 Test S8 : sur le corpus, document depuis les faits ≡ document depuis le film, à
       l'octet ; durée consignée (attendu : secondes contre 15 s).
+      **LE CODE EST LIVRÉ le 2026-09-18, LE GATE AVEC DÉCODAGE ATTEND LA « VOIE LIBRE »** (un seul
+      décodage à la fois sur la machine, et 4.2 en a besoin aussi). `cmd/replay-equiv
+      -deux-passes` joue LES DEUX PASSES DU MÊME COMMIT par film (décodage forcé, puis rejeu
+      depuis les faits) et compare : **le verdict porte sur la ligne `artifact` et sur elle
+      seule**, les 52 autres étapes LOCALISENT. Aucune référence n'est lue ni écrite, donc aucun
+      `-update` réflexe n'est possible ; `-deux-passes -update` est refusé explicitement.
+      **GARDE ANTI-ÉQUIVALENCE-VACUANTE** : l'enfant vérifie l'étape `filmFactsRejoue` et REFUSE
+      quand la branche servie n'est pas celle demandée — sans elle, une passe `faits` dont la
+      fraîcheur échoue redécoderait en silence et le harnais rendrait un vert qui ne prouve rien.
+      **RESTE À JOUER, sur signal** : régime COURT (10 films au plus, `artifact` identique à
+      l'octet), puis régime COMPLET (20/20) et `replay-corpus-gate --reference=base` sur les
+      témoins. Le tableau des cinq phases `logPhase` et la durée réelle de la passe-faits se
+      lisent dans le journal de ces passes (l'enfant les émet, le parent les relaie, et le mode
+      imprime les deux durées par film) : **le « secondes contre 15 s » se prouvera là, il n'est
+      pas annoncé ici**.
 
 #### Lot 4.2 — La révision par calque portée par le document — M, high
 
@@ -5338,6 +5400,10 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-17 | 4.1 | **D1 (4.1) — `encoding/gob` PERD SILENCIEUSEMENT, ET C'EST MESURÉ.** Essayé comme format intermédiaire d'un transcodage des 8 fixtures d'entrées : aller-retour à **7 498 871 octets contre 11 049 200** (−32 %), sans une erreur. Cause : il ignore les champs NON EXPORTÉS des types imbriqués. | TRAITÉ PAR LE REFUS : le format des sections ii-v est `encoding/json`, avec un ratchet de réflexion (`TestFilmFactsFichierNePerdQueLePaquetDeKillsource`) qui n'autorise QU'UN champ non exporté, daté et justifié. La mesure est écrite en tête de `filmfacts_fichier.go` pour que `gob` ne se re-propose pas |
+| 2026-09-17 | 4.1 | **D2 (4.1) — `DecoderCoverage` PORTE UN POINTEUR, DONC `==` COMPARE DES ADRESSES.** La première porte de fraîcheur comparait `e.Coverage != courante` : deux couvertures identiques sorties de deux appels sont TOUJOURS différentes, et la porte refusait donc TOUS les faits en silence. Attrapé par son propre test à la pose. | TRAITÉ dans le lot (`memesRevisionsDeCouche`, comparaison par valeur sur les quatre révisions). Consigné parce que le motif est général : tout `==` sur un type du décodeur qui porte un pointeur a ce défaut |
+| 2026-09-17 | 4.1 | **D3 (4.1) — LES TROIS COMMENTAIRES QUI COMPTENT LA FAÇADE SONT PÉRIMÉS.** `decfilm.go:22` et l'ADR 0034 `:340` / `:511` annoncent 163 symboles ; la mesure du jour en rend **166** (3.4.1 en a ajouté trois). | NON TRAITÉ dans ce lot : le compteur (`archlint/film_facade_surface_test.go`) rend désormais la valeur VIVANTE et son en-tête nomme les trois commentaires. Leur correction appartient à l'amendement de l'ADR 0034, à la clôture de M4 |
+| 2026-09-18 | 4.1 | **D4 (4.1) — L'HORLOGE DES CHUNKS DU MANIFESTE EST UN FAIT DU FILM, ET LE BRIEF NE LA LISTAIT PAS.** La section statborg devait porter trois choses (`[]StatRecord`, `CaptureBurstTimes`, `truncated`) ; `bombInput` date l'anneau d'armement sur `index de chunk -> start_ms`, et un rejeu depuis les faits n'ouvre pas le manifeste. Sans elle, tout film d'Assaut rejoué perdrait son calque d'armement. | TRAITÉE : quatrième champ de `replay.FilmStatborg`, avec la raison écrite chez le type. Consignée parce qu'elle illustre la règle : la liste des faits se VÉRIFIE sur les consommateurs, elle ne se recopie pas d'un brief |
 | 2026-09-17 | 3.7 | **D1 (3.7) — `ecs_table.tsv` MÉLANGE DEUX CONVENTIONS DANS `deser_addr`.** La colonne porte `FUN_142edbac8` pour `ti=11 i0` et `FUN_142ed6a20` pour `ti=29 i0` : ce sont les COMPAGNONS `+0x28` (sérialiseurs), alors que la vague 3.6 y a mis des `+0x40` (désérialiseurs). Mesuré par la chaîne du descripteur, six calibrations vertes (note 3.7 §7.2-7.3). Aucune grammaire n'est fausse — le moteur est symétrique — mais la colonne est ambiguë et un lecteur ne peut pas savoir laquelle des deux il lit. | NON TRAITÉ (règle 7). Lot de table : soit normaliser sur `+0x40`, soit ajouter une colonne `ser_addr`. À faire dans le commit qui porte un composant, jamais seul (garde-rails `ecs_table_guard_test.go`) |
 | 2026-09-17 | 3.7 | **D2 (3.7) — LA SIGNATURE DE FAMILLE DE `NOTE_3_6_METHODE_DESCRIPTEURS` §2 PORTE DEUX TRANSPOSITIONS DE CHIFFRES** (`0x141c8f880` pour `0x1411c8f80`, `0x14049b600` pour `0x1404ab600`). Le §17 pt 7 de `NOTE_3_6_TI12_GRAMMAIRES_A` les avait relevées ; la note de méthode n'a pas été corrigée. Re-mesuré indépendamment ici sur les six témoins. | NON TRAITÉ : correction d'une note de recherche, à faire par le lot qui rouvre `NOTE_3_6_METHODE_DESCRIPTEURS` |
 | 2026-09-17 | 3.7 | **D3 (3.7) — `ti=29 respawn-block` FERME À 100 % ET PERSONNE NE LE LIT.** 11/11, 16/16, 14/14, 18/18, 10/10 sur cinq mini-bobines sur sept ; les 32 instances de `managed-object-participant-respawn-block-component` sont portées (`FUN_142ed6a20`). Un archétype entièrement lisible, sans consommateur. | NON TRAITÉ. Signalé au cas où un lot voudrait le blocage de réapparition par joueur ; aucun usage produit identifié |
@@ -7890,6 +7956,18 @@ mêmes références, seul le code change.
 | 2026-09-17 | 3.6.a (`vehicles`, ARRÊT puis instruction) | `replay-equiv -films 084a804d` × 2 sur la tête, × 1 sur la base | **Déterminisme** : deux runs de la tête, même sha sur les 53 étapes. **Imputation** : la base rend **exactement** la référence (`a78431ed…`), la tête rend `fac28aa9…` — **l'écart est de ce lot**. **Portée** : document cuit base → tête identique sur TOUS ses chemins sauf `/coverage/decoder/grammarRev` (9 335 637 octets des deux côtés), et **aucune ligne de journal de balayage ne diffère**. Découverte D6 (3.6.a) |
 | 2026-09-17 | 3.6.a (corpus gate, 17 témoins) | `replay-corpus-gate --base=492cb0923 --parc-root <parc> --source-root <worktree> --json --work-root <hors git> --keep-work` | **17/17 `ok`, 0 gain / 0 perte / 0 changement, schéma 61 → 61, `couverture_incomplete=false`, exit 0.** `084a804d` (famille `vehicules`) : 61 feuilles des deux côtés, 0/0/0 · `bcb6d393` : 0/0/0. Seule valeur rendue : **TÉLÉMÉTRIE** `coverage.decoder.grammarRev` `.40` → `.41` sur 17 témoins, affichée et jamais comptée au verdict (règle 3.3.3) |
 | 2026-09-17 | 3.6.a (état du poste après les gates) | `find`, `dir /AL /S`, `ls` | Work-root supprimé APRèS contrôle : **0 lien symbolique, 0 point de réanalyse** sous lui, et ses caches étaient de vraies COPIES (inodes distincts de ceux du parc), 17 films par côté. Caches **1 589 / 1 589** avant et après, jonctions intactes, arbre propre |
+| 2026-09-17 | 4.1.1-a (promotion du codec) | `gofmt -l ./internal ./cmd` · `go build ./... && go vet ./...` · `go test -count=1` sur 31 paquets · `golangci-lint run --new-from-rev=a5d15e634` · `git diff --stat` | Tout VERT, **0 issue** de lint. `git diff --stat -- film/replay/testdata/` **VIDE** et `-- .ai/baselines/` **VIDE** : ni le paquet ni un nom de test ne changent (la baseline est indexée par (Package, Test)). AUCUN DÉCODAGE |
+| 2026-09-17 | 4.1.1-a (compteur de surface, mutation) | ajout puis retrait d'un symbole de `decfilm.go`, à la main | **Les deux sens rougissent** : un symbole de PLUS → `167 contre 166` (+ `famille "facts" : 2 contre 1`) ; un symbole de MOINS sans baisser la constante → `165 contre 166` (+ `famille "fallback" : 10 contre 11`). Arbre restauré, `git diff --stat -- film/decfilm/` vide |
+| 2026-09-17 | 4.1.1-a (mesures de surface) | `grep -cE '^(const\|type\|var\|func) [A-Z]'` · `find … \| xargs grep -hoE '\breplay\.[A-Z]…' \| sort -u \| wc -l` | Façade **166** (163 avant 3.4.1) ; compagnon **245** (242 sur `492cb0923`), occurrences 1 277. Contrôle croisé restreint aux importeurs : **244**, et l'unique écart est NOMMÉ (un nom de test cité en commentaire de `killcollector/cle_inconnue_test.go:13`). Ventilation par famille : grammar 46 · objectives 37 · killsource 35 · fallback 11 · types 10 · profile 8 · source 7 · weaponscan 5 · weaponv3 4 · positions 2 · facts 1 |
+| 2026-09-17 | 4.1.1-c (ratchet du littéral, mutation) | copie de `"film_facts"` posée dans `replaybuild/facts_file.go` | **ROUGE, fichier et ligne nommés** ; l'allowlist gagne `domain/title/registry_film_facts.go` (la définition canonique n'est PAS dans `filmcache`, qui range à plat et ne connaît pas de titre — sans l'entrée le ratchet mordrait sa propre source). Arbre restauré |
+| 2026-09-17 | 4.1.1-c (contrat OpenAPI) | `make openapi-gen` puis `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate -count=1` | `api/openapi.yaml` **+32 lignes** (738 850 o), gate VERT après régénération. `make generate-types` et la ligne de rendu de `ResourcesSection.tsx` APPARTIENNENT AU LOT 4.2 (`apps/web/` est sa frontière) ; aucun gate de CI ne vérifie la fraîcheur de `generated.ts` |
+| 2026-09-17 | 4.1.1-b (fixtures, taille) | `go test -run GoldenInputsTiennentDansLeBudget -v` | **11 049 200 o** pour 8 fixtures (10,54 Mio), 12,2 % de marge sous le plafond de 12 Mio. Le commentaire annonçait 11 044 446 (dérive de 4 754 o, test vert parce qu'il n'assertit que le plafond) : **corrigé**. Les 8 fixtures sont INCHANGÉES à l'octet — les quatre canaux gardés entrent au FICHIER de faits, pas dans ce blob |
+| 2026-09-17 | 4.1.1-b (replis, ventilation) | `grep -rn '\.Declenche(\|\.DeclencheN('` sur la production, puis classement par fonction englobante | **18 appels, tous dans `film/replay/` : 2 du BALAYAGE** (`ScanKeyframeInventory` ; la pose des largeurs d'axe de la carte) **et 16 de l'ASSEMBLAGE**, répartis sur 15 fichiers. C'est cette mesure qui interdit de persister le rapport d'APRÈS assemblage : les seize se re-déclenchent tout seuls quand l'assemblage rejoue, et les compter deux fois changerait `coverage.fallbacks` |
+| 2026-09-17 | 4.1.1-b (population statborg) | `statnames-sweep -child -match <film>`, UN film à la fois (CLI existante, testée) | `000d5950` (Arena Fiesta, 8 joueurs) **583 enregistrements**, `084a804d` (BTB, le plus long témoin) **1 629**, `tronque=false` sur les deux. Aucune étape du TSV d'équivalence n'expose cette population : elle n'était mesurée nulle part |
+| 2026-09-17 | 4.1.1-b (en-tête, taille) | test ciblé sur le témoin du fichier de faits | **En-tête 110 octets**, fichier 2 376 441 o. La décision « décoder ou relire » se prend donc sur 110 octets, jamais sur le mégaoctet de positions — et le test le prouve en TRONQUANT le fichier à son en-tête |
+| 2026-09-17 | 4.1.2 (bascule) | `go test -count=1` sur 31 paquets · `go test -tags=integration ./... -p 1` · `golangci-lint --new-from-rev=a5d15e634` | Tout VERT. **Intégration jouée intégralement** (344 lignes de sortie, `internal/persist`, `internal/replaybuild` et `internal/sync` compris), **0 FAIL** — le code de sortie de CE run n'a pas été capturé proprement (commande détachée) ; celui de la clôture du lot l'est, ligne suivante. Lint **0 issue**. `facts_rev.golden` régénéré, **révision INCHANGÉE** (`killsource-2026-09-17.2`) : la seule modification de la couche est le godoc de `Cumuler`, donc aucune ligne de `match_kill_events` ne devient candidate au backlog |
+| 2026-09-17 | 4.1.2 (équivalence SANS film) | `go test -run TestBuildFromFactsEgaleLAssemblageDirect` | **VERT** : le document rejoué depuis un fichier de faits est identique (`renderAssembly`) à l'assemblage direct sur les mêmes entrées, replis du balayage compris. C'est la moitié de S8 qui se mesure sans décoder un film |
+| 2026-09-18 | 4.1.3 (S8, code seul) | `go test -count=1 ./cmd/replay-equiv/` | **VERT**. Le mode `-deux-passes` est livré et ses gardes sont testées sans film (garde anti-équivalence-vacuante dans les deux sens, étape de branche venue de la production, exclusion de cette étape des divergences, `-deux-passes -update` refusé). **LES GATES AVEC DÉCODAGE NE SONT PAS JOUÉS** : ils attendent la « voie libre » du pilote (un seul décodage à la fois, et 4.2 en a besoin). **L'INTÉGRATION DE CLÔTURE EST À RELIRE AVANT FUSION** : `go test -tags=integration ./... -p 1` a été joué en entier sur l'arbre de 4.1.2 (0 FAIL) ; le run relancé sur l'arbre de clôture donne `internal/replaybuild` **VERT** (0,99 s) et **0 FAIL** sur 309 lignes, mais n'avait pas fini à la remise de main — restaient `internal/service/*` et `internal/sync/*` (il a passé ~10 min sur `internal/platform/duckdb`, paquet que le lot ne touche pas, cache de test froid) |
 
 ## 6. Protocole de reprise de session
 

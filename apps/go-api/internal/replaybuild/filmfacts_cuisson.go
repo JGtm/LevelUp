@@ -137,6 +137,11 @@ func (b *Builder) filmFactsPath(matchID string) string {
 func (b *Builder) lireLesFaitsFrais(ctx context.Context, matchID string,
 	entry decfilm.MapQuantEntry,
 ) *replay.FilmFactsFile {
+	if b.sansFaitsPersistes {
+		slog.DebugContext(ctx, "cuisson: faits de film IGNORES sur demande (harnais S8)",
+			"match_id", matchID)
+		return nil
+	}
 	chemin := b.filmFactsPath(matchID)
 	blob, err := os.ReadFile(chemin) //nolint:gosec // chemin resolu par PathResolver
 	if err != nil {
@@ -181,9 +186,8 @@ func (b *Builder) ecrireLesFaits(ctx context.Context, matchID string, f *replay.
 			"err", err)
 		return
 	}
-	pr := title.NewPathResolver(b.repoRoot)
-	chemin := pr.FilmFactsPath(b.titleSlug, matchID)
-	if err := os.MkdirAll(pr.FilmFactsDir(b.titleSlug), 0o750); err != nil {
+	chemin := b.filmFactsPath(matchID)
+	if err := os.MkdirAll(title.NewPathResolver(b.repoRoot).FilmFactsDir(b.titleSlug), 0o750); err != nil {
 		slog.ErrorContext(ctx, "cuisson: dossier des faits de film non cree", "match_id", matchID,
 			"path", chemin, "err", err)
 		return
@@ -236,4 +240,23 @@ func (b *Builder) serialiserDocument(matchID string, entry decfilm.MapQuantEntry
 	slog.Info("cuisson: octets construits", "match_id", matchID, "depuis_les_faits", depuisLesFaits,
 		"duration", time.Since(debutTotal), "tracks", len(doc.Tracks), "bytes", len(blob))
 	return Built{Blob: blob, Module: entry.Module, Tracks: len(doc.Tracks)}, nil
+}
+
+// SansFaitsPersistes force la branche DECODE : les faits sur disque sont IGNORES, le film est
+// relu, et les faits sont RE-ECRITS a la sortie. Chainable.
+//
+// # CE N EST PAS UN INTERRUPTEUR DE FONCTIONNALITE (CLAUDE.md regle 11)
+//
+// La bascule est ACTIVE par defaut et le reste ; ce reglage existe pour UNE raison, et elle est
+// mesurable : le test S8 (`cmd/replay-equiv -deux-passes`) doit jouer LES DEUX BRANCHES DU MEME
+// COMMIT et comparer leurs artefacts a l octet. Sans lui, la seconde passe relirait les faits
+// ecrits par la premiere et le harnais comparerait « faits contre faits » — une equivalence
+// VACUANTE, exactement le defaut contre lequel `alerterCatalogueVide` a ete ecrit.
+//
+// CRITERE DE RETRAIT : le jour ou le harnais saurait forcer la branche autrement (deux racines de
+// cache, par exemple), ce reglage se retire avec son dernier appelant. Il n a qu UN appelant, et
+// `TestReglageDuDecodageForceNAQuUnAppelant` le tient.
+func (b *Builder) SansFaitsPersistes() *Builder {
+	b.sansFaitsPersistes = true
+	return b
 }

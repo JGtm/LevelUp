@@ -79,6 +79,9 @@ type Builder struct {
 	// VICTOIRE publiee avec la courbe de score. Chargee une fois au NewBuilder, best-effort :
 	// table absente ou illisible = aucune cible, jamais un echec (le client a son repli).
 	regulation *mappings.RegulationSet
+	// sansFaitsPersistes force la branche DECODE : les faits sur disque sont IGNORES (cf.
+	// `SansFaitsPersistes`).
+	sansFaitsPersistes bool
 	// observer recoit chaque etape de BuildBytes et de BuildFromFilm avec sa sortie (cf.
 	// replay/observe.go et cmd/replay-equiv). Nil = aucun appel, aucun cout.
 	observer replay.Observer
