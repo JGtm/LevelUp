@@ -47,7 +47,7 @@ func consumeObjectPositionDynamicPrecisionD(br *Lecteur, pd profile.PrecisionDes
 			if fullPrecisionGate(br) {
 				br.ReadBits(rawVec3Bits) // FUN_1407eb61c sous DAT_144e61ea0 : vec3 BRUT
 			} else {
-				consumeAbsolutePayload(br, pd)
+				consumeAbsolutePayload(br)
 			}
 			consumePositionHandleTail(br, h, pd)
 			br.ReadBits(2) // FUN_14076e304, EN DERNIER
@@ -81,7 +81,7 @@ func consumeObjectPositionDynamicPrecisionD(br *Lecteur, pd profile.PrecisionDes
 			consumePredictedDelta(br, pd) // FUN_14076f3ec
 		}
 	} else {
-		consumePredictedAbsolute(br, pd) // FUN_140f7ea14
+		consumePredictedAbsolute(br) // FUN_140f7ea14
 	}
 	if br.deltaHasHandleTail() { // runtime bVar16 = (precIndex != -1)
 		if br.ReadBit() { // FUN_1406cf008 -> FUN_1408f0ac4 handle resolve
@@ -126,7 +126,7 @@ func skipCalibratedPosition(br *Lecteur) {
 // exactement une fonction de l executable, comme `consumePredictedDelta` (FUN_14076f3ec),
 // `consumeAbsoluteWithGate` et `consumePositionHandleTail` le sont deja pour les leurs. Le
 // fichier gardait donc une fonction du moteur inline au milieu d une autre.
-func consumePredictedAbsolute(br *Lecteur, pd profile.PrecisionDescriptor) {
+func consumePredictedAbsolute(br *Lecteur) {
 	// predFlag==1: FUN_140f7ea14 -> FUN_14076e4ec -> FUN_14076e524 = lecteur de POSITION
 	// ABSOLUE quantisée. Ancien port : "width unmodeled" (0 bit) = LE bug i0 delta (lisait 3
 	// bits au lieu de 47, mesuré par capture CE). Grammaire (FUN_140f7ea14 + FUN_14076e524) :
@@ -144,14 +144,22 @@ func consumePredictedAbsolute(br *Lecteur, pd profile.PrecisionDescriptor) {
 	} else if !cVar1 { // 0 -> lit la position absolue quantifiée
 		pidx := -1
 		if !br.ReadBit() { // FUN_14076e524 index-sel ; 0 -> lit l'index
-			pidx = int(br.ReadBits(pd.IndexW))
+			// MEME LARGEUR D'INDEX QUE PARTOUT AILLEURS (`DAT_144632be0`, lot 3.4.1) :
+			// c'est une donnée de la CARTE, pas du descripteur de l'appelant.
+			pidx = int(br.ReadBits(br.worldObjectPrecision().IndexW))
 		}
 		var v [3]float32
 		for i := 0; i < 3; i++ {
-			w := absAxisWFor(br, pidx, i)                     // largeur par index (7ter.54) ou uniforme
-			v[i] = dequantWorldAxis(br, br.ReadBits(w), w, i) // FUN_140cc5128 axe i
+			w := absAxisWFor(br, pidx, i)                           // table DEFAUT ou table PAR INDEX
+			v[i] = dequantWorldAxis(br, pidx, br.ReadBits(w), w, i) // FUN_140cc5128 axe i
 		}
-		br.seedAbsolute(PosKindAbsolute, v) // predFlag==1 = position absolue = seed d'accumulation
+		// MEME REGLE QUE `consumeAbsolutePayload` (correctif D1 (3.4)) : seule la plage
+		// CATALOGUEE porte des bornes connues. `pidx == -1` est la boite monde du build, un
+		// autre index une plage dont on n a pas l AABB — dans les deux cas la coordonnee
+		// serait fausse en silence.
+		if pidx >= 0 && uint32(pidx) == br.worldObjectPrecision().Region {
+			br.seedAbsolute(PosKindAbsolute, v) // predFlag==1 = absolue = seed d'accumulation
+		}
 	}
 }
 
@@ -257,7 +265,7 @@ func consumeAbsoluteWithGate(br *Lecteur, pd profile.PrecisionDescriptor) {
 	if precHigh {
 		return // default vector (FUN_141f85880), 0 payload bits
 	}
-	consumeAbsolutePayload(br, pd)
+	consumeAbsolutePayload(br)
 	// Champ « fini » de 2 bits — FUN_14076e304, appelé en LAB_1406cffd7 sous un prédicat
 	// (FUN_140492128) qui ne consomme AUCUN bit : il est donc lu systématiquement.
 	//
@@ -277,26 +285,46 @@ func consumeAbsoluteWithGate(br *Lecteur, pd profile.PrecisionDescriptor) {
 // d'index de plage, son mot éventuel, puis les trois axes quantisés. Il ne lit NI le bit de
 // tête, NI le champ de 2 bits de queue — les deux appelants ne les posent pas au même endroit
 // (cf. `keyframeWriterI0Grammar`).
-func consumeAbsolutePayload(br *Lecteur, pd profile.PrecisionDescriptor) {
-	// The index selects the dequant RANGE (DAT_14462cbe0): index 0 = the map replication
-	// bounds (real in-map position) ; index 1 / no-index = ±20000 (off-map, non-player).
-	idx := -1 // no index (index-select bit set) -> fallback ±20000
+// CORRECTIF D1 (3.4), 2026-09-17 — « index 1 / no-index = ±20000 » ÉTAIT FAUX, ET LE FILTRE
+// `if idx != 0 { return }` AVEC LUI.
+//
+// Le désassemblage de `FUN_14076e524` (note 3.4 §1.3) ne donne les bornes `±20000`
+// (`DAT_1445cc9c8`, copie de `DAT_143b8c6b8`) QUE pour `index == -1`, c'est-à-dire quand le bit
+// de porte est posé ; tout `index >= 0` adresse `DAT_14462cbe0 + index*0x18`, une plage RÉELLE
+// de la carte. Le catalogue le disait déjà de son côté : `live fire` porte `region = 1` et
+// `regionIndexBits = 2` (4 régions déclarées par `ds/globals/common`, l'arène est la 1). Sur
+// cette carte le filtre gardait donc exactement ce qu'il fallait jeter et jetait ce qu'il
+// fallait garder — 59 376 des 59 377 records i0 de ses deux films portent l'index 01.
+//
+// LA RÈGLE EST DONC CELLE DU CATALOGUE, PAS UN ZÉRO EN DUR : la position n'est émise que si
+// l'index lu désigne la plage CATALOGUÉE (`Region`, nulle sur 78 cartes sur 79). Un index
+// d'une autre plage n'a pas de bornes connues — le déquantifier avec celles de l'arène
+// produirait une coordonnée fausse silencieuse — et `index == -1` désigne la boîte monde du
+// build, pas une position de carte. Les deux se comptent à l'histogramme
+// [Observation.IndexAbsolus] : jamais un zéro muet.
+func consumeAbsolutePayload(br *Lecteur) {
+	// L'index sélectionne la plage de déquantification (`DAT_14462cbe0 + index*0x18`) ; la
+	// porte posée (pas d'index) sélectionne la boîte monde du build (`DAT_1445cc9c8`).
+	//
+	// SA LARGEUR EST CELLE DE LA CARTE, PAS CELLE DU DESCRIPTEUR DE L'APPELANT (lot 3.4.1) :
+	// `DAT_144632be0` est UNE valeur, posée une fois au chargement de la carte
+	// (`ceilLog2(nb de plages)`, 2 bits sur Live Fire) et lue par TOUS les chemins de
+	// `FUN_14076e524` — le chemin world-object la lisait déjà ainsi
+	// (`consumeSimStateHandleTail`, `dispatch_object.go`), le chemin du bipède prenait celle
+	// du descripteur de traversée, que la calibration de `killsource` balayait à l'aveugle.
+	idx := -1
 	if !br.ReadBit() {
-		idx = int(br.ReadBits(pd.IndexW)) // DAT_144632be0 index width
+		idx = int(br.ReadBits(br.worldObjectPrecision().IndexW)) // DAT_144632be0
 	}
 	var v [3]float32
 	for i := 0; i < 3; i++ {
-		// Les deux lignées se rejoignent ici sans se contredire : `absAxisWFor` cherche
-		// d'abord la largeur PAR INDEX de plage (7ter.54), et retombe sur `absAxisW` —
-		// la table de région 13/13/14 qui ferme le compte à 47 bits — quand aucune table
-		// par index n'est installée, ce qui est le défaut. La mesure du rejeu est donc
-		// préservée telle quelle, et le chemin par index reste disponible.
-		w := absAxisWFor(br, idx, i)                      // par index (7ter.54), sinon région 13/13/14
-		v[i] = dequantWorldAxis(br, br.ReadBits(w), w, i) // FUN_140cc5128 axis i
+		// LARGEUR ET BORNES SUIVENT LE MÊME INDEX, et c'est le point : elles sortent de la
+		// même AABB (`FUN_140be9b88` dérive les unes des autres). Les dissocier était la
+		// forme que prenait le défaut corrigé ici.
+		w := absAxisWFor(br, idx, i)                           // table DEFAUT ou table PAR INDEX
+		v[i] = dequantWorldAxis(br, idx, br.ReadBits(w), w, i) // FUN_140cc5128 axis i
 	}
-	// Only index-0 positions are in the map bounds (real player positions). index!=0
-	// dequantizes against ±20000 (off-map) and is noise for a trajectory -> don't emit.
-	if idx != 0 {
+	if idx < 0 || uint32(idx) != br.worldObjectPrecision().Region {
 		return
 	}
 	kind := PosKindAbsolute

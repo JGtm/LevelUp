@@ -161,7 +161,7 @@ func TestKillSourceWalkArchetypes(t *testing.T) {
 		t.Fatalf("timeline de %s : %v", dir, err)
 	}
 	tl.rewind()
-	calib := calibrate(f, tl, DefaultOptions().Views)
+	calib := calibrate(f, tl, DefaultOptions().Views, nil)
 	t.Logf("== FILM %s ==", dir)
 	t.Logf("  calibration : %s", calib)
 

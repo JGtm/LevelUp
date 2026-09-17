@@ -29,33 +29,54 @@ import (
 )
 
 const (
-	btb2025RootEnv = "KS_BTB2025_ROOT"
-	btb2025IDsEnv  = "KS_BTB2025_IDS"
+	btb2025RootEnv   = "KS_BTB2025_ROOT"
+	btb2025IDsEnv    = "KS_BTB2025_IDS"
+	btb2025CartesEnv = "KS_BTB2025_CARTES"
 )
 
+// TestBTB2025Abstention : le banc, film par film.
+//
+// `KS_BTB2025_CARTES` (lot 3.4.1) est une liste PARALLELE a `KS_BTB2025_IDS` : le nom de carte
+// de chaque film, ou une chaine vide pour mesurer SANS carte — c est-a-dire le comportement
+// d avant le lot 3.4.1, quand `killsource` n en recevait aucune. La liste absente laisse tous
+// les films sans carte, et le banc mesure alors exactement ce qu il mesurait.
+//
+// POURQUOI LA CARTE EST UNE ENTREE DE CE BANC : la ligne `CALIB` qu il publie porte desormais
+// la SOURCE des largeurs (`[CARTE]` ou `[DEFAUT (carte absente)]`), et la ligne `MARCHE` porte
+// les morts credibles. Le couple AVANT / APRES du lot 3.4.1 se lit donc dans le meme
+// instrument, au meme vocabulaire — ce que Q9 (note M3) reprochait a l etat anterieur.
 func TestBTB2025Abstention(t *testing.T) {
 	root := os.Getenv(btb2025RootEnv)
 	ids := strings.Split(os.Getenv(btb2025IDsEnv), ",")
 	if root == "" || len(ids) == 0 || ids[0] == "" {
 		t.Skipf("banc de diagnostic : %s et %s requis", btb2025RootEnv, btb2025IDsEnv)
 	}
-	for _, id := range ids {
+	cartes := strings.Split(os.Getenv(btb2025CartesEnv), ",")
+	for i, id := range ids {
 		id = strings.TrimSpace(id)
 		if id == "" {
 			continue
 		}
-		t.Run(id, func(t *testing.T) { diagnostiquerFilm(t, filepath.Join(root, id)) })
+		nom := ""
+		if i < len(cartes) {
+			nom = strings.TrimSpace(cartes[i])
+		}
+		t.Run(id, func(t *testing.T) { diagnostiquerFilm(t, filepath.Join(root, id), nom) })
 	}
 }
 
 // diagnostiquerFilm : une passe `prepare` complete, puis le detail de ce que chaque etape voit.
-func diagnostiquerFilm(t *testing.T, dir string) {
+func diagnostiquerFilm(t *testing.T, dir, carte string) {
 	t.Helper()
 	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chargement %s : %v", dir, err)
 	}
 	o := DefaultOptions()
+	if carte != "" {
+		e := carteDuCatalogue(t, carte)
+		o.Carte = &e
+	}
 	o.normalize()
 	c := &decodeCtx{name: filepath.Base(dir), opts: o}
 	if err := c.prepare(context.Background(), src); err != nil {

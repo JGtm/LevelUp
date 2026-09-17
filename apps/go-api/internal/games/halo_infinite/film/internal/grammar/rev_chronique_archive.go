@@ -1,6 +1,6 @@
 package grammar
 
-// rev_chronique_archive.go — LA CHRONIQUE DE [Rev], RANGS `.12` A `.27`.
+// rev_chronique_archive.go — LA CHRONIQUE DE [Rev], RANGS `.12` A `.28`.
 //
 // # POURQUOI UNE ARCHIVE (2026-09-18, lot 2.4.2)
 //
@@ -335,6 +335,7 @@ package grammar
 // declarations a deplace des fonctions, et le garde-rail G1 lit ces ancres sur pieces.
 //
 // `facts.Rev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
+
 // ENTREE `grammar-2026-09-15.27` (2026-09-17, lot 2.3 — RANG PROVISOIRE) : `.26` -> `.27`.
 // AUCUN OCTET N EST LU AUTREMENT.
 //
@@ -412,3 +413,44 @@ package grammar
 // `facts.Rev` ne bouge PAS : `killsource/` change de FORME (la calibration rend un
 // profil, `resetGlobals` disparait) mais les lignes PRODUITES sont identiques a l octet. Son
 // golden est regenere pour refiger le couple (revision, empreinte). `SchemaVersion` reste 60.
+//
+// ENTREE `grammar-2026-09-15.28` (2026-09-18, lot 2.4.1 — RANG PROVISOIRE) : `.27` -> `.28`.
+// AUCUN OCTET N EST LU AUTREMENT, et c est PROUVE bit a bit, pas suppose.
+//
+// LE LECTEUR DE BITS DESCEND DANS LA COUCHE SOURCE. `source.Bits` est desormais LE lecteur
+// du depot : MSB-first big-endian, bourrage a zero au-dela du tampon, lecture par mot de 64
+// bits. [Lecteur] ne porte plus ni tampon ni position — il EMBARQUE `*source.Bits` et n y
+// ajoute que ce qui appartient a la grammaire : le profil de largeurs, la capture de position,
+// l observateur, et le codec [Lecteur.ReadSignedVarWidth]. `filmdec/bits_word.go` disparait :
+// sa lecture par mot est [source.BitsAt], et ses trois derniers appelants directs
+// (`PeekBits`, `kfReadBits`, `readBitsAt`) y passent.
+//
+// `killsource.evReader` EST ABSORBE (item 2.4.1). Le deuxieme des sept lecteurs de bits du
+// depot — son type, sa boucle `bitsWide`, et les trois primitives de position du paquet
+// `bitAt` / `bits32` / `bitsN` — est SUPPRIME ; ses 23 sites passent par [source.BitAt] et
+// [source.BitsAt]. `bits32` lisait CINQ octets puis decalait, ce qui n est pas la boucle de
+// la lecture par mot : son equivalence est prouvee comme les autres.
+//
+// LE DRAPEAU DE DEBORDEMENT RESTE AU MARCHEUR, PAS AU LECTEUR (arbitrage V15 (3)). Le lecteur
+// canonique garde la semantique du MOTEUR (bourrage a zero) ; la MEFIANCE de la chaine
+// d evenements — sans laquelle une chaine desynchronisee lit des evenements valides apres la
+// fin du paquet — vit dans `killsource.curseurEv`, qui teste `Remaining()` avant chaque lecture.
+// `bp+n > len(pl)*8` et `Remaining() < n` sont la MEME condition : aucune valeur lue ne change,
+// et `Skip` reste borne exactement la ou `evReader.skip` le bornait (chez le marcheur).
+//
+// LES DEUX PREUVES. (1) Appel par appel, sur les positions REELLES des chaines des dix bobines
+// versionnees — 1 114 paquets a events, 109 168 positions, 72 largeurs par position — les copies
+// de reference des anciens lecteurs et le lecteur canonique rendent la meme valeur, la meme
+// position de sortie et le meme drapeau (`killsource/equivalence_lecteur_test.go`). (2) De bout
+// en bout, les triplets (code, bit de debut, bit de fin) de chaque chaine, plus les six champs
+// de chaque kill-event, sont IDENTIQUES a un golden produit par le code de la BASE, avant
+// l absorption (`killsource/testdata/chaines_evenements.golden`, sans porte `-update`).
+//
+// L EMPREINTE HACHE DESORMAIS QUATRE RACINES : `internal/analysis/filmsource` rejoint `filmdec`,
+// `killsource` et `objectiveevents`. Sans cela ce lot aurait OUVERT UN TROU — la lecture de bits
+// qui vient d y descendre aurait pu changer sans que `grammar.Rev` bouge.
+//
+// `facts.Rev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet (c est
+// exactement ce que les deux preuves ci-dessus etablissent), seule sa source change. Son golden
+// est regenere pour refiger le couple (revision, empreinte). `SchemaVersion` reste 60.
+//

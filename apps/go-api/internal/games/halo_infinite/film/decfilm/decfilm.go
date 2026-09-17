@@ -232,6 +232,13 @@ type CoupleStats = types.CoupleStats
 type Coverage = killsource.Coverage
 type DamageShare = killsource.DamageShare
 
+// Options / DefaultOptions : LA CONFIGURATION GELEE du decodage des morts, et la CARTE du match
+// (`Options.Carte`, lot 3.4.1 — une donnee, pas une bascule). Re-exportees parce que les deux
+// appelants de production qui resolvent la carte — `replaybuild` et `sync/killcollector` —
+// n atteignent le decodeur que par cette facade.
+type Options = killsource.Options
+
+func DefaultOptions() Options { return killsource.DefaultOptions() }
 func Decode(ctx context.Context, name string, film *source.Film, opts *killsource.Options) (*killsource.Result, error) {
 	return killsource.Decode(ctx, name, film, opts)
 }
@@ -390,6 +397,11 @@ type MapQuantEntry = profile.MapQuantEntry
 const MapQuantSchemaVersion = profile.MapQuantSchemaVersion
 
 func NormalizeMapName(s string) string { return profile.NormalizeMapName(s) }
+
+// LargeurIndexDePlage : la LOI de `DAT_144632be0`, pour le PRODUCTEUR hors ligne du catalogue
+// (`cmd/mapquant-build`), qui la recopiait en boucle a la main (lot 3.4.1, CLAUDE.md regle 6 :
+// une meme largeur du jeu n a qu une ecriture).
+func LargeurIndexDePlage(nbPlages int) uint { return profile.LargeurIndexDePlage(nbPlages) }
 
 // ---- source ----
 type ChunkMeta = types.ChunkMeta

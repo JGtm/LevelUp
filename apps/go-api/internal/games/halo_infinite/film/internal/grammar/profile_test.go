@@ -88,7 +88,7 @@ func TestProfilSansCleRendUneErreurTypeeEtPoseQuandMeme(t *testing.T) {
 		t.Errorf("le cadre d image-cle ne depend d aucune cle : %d bits au lieu de 172",
 			p.Keyframe().CadreBits())
 	}
-	if p.Movement().DeltaQuantum == 0 || p.Movement().AbsoluteAxisW == 0 {
+	if p.Movement().DeltaQuantum == 0 || p.Movement().WorldObject.AxisW[0] == 0 {
 		t.Errorf("les invariants de mouvement ne dependent d aucune cle : %+v", p.Movement())
 	}
 	if p.Slots().Connu || p.MPP().Valid() {
@@ -197,7 +197,10 @@ func TestProfilTableComplete(t *testing.T) {
 // qu elle a ete relue chez l ecrivain ou mesuree sur un temoin) est le travail du lot 3.
 var presumesGeles = []string{
 	"toutes / Movement.Traversal",
-	"toutes / Movement.AbsoluteAxisW",
+	// `toutes / Movement.AbsoluteAxisW` EST SORTIE LE 2026-09-17 (lot 3.4.1-a), et c est
+	// exactement le travail que ce ratchet annonce : la largeur UNIFORME devinee n est pas
+	// devenue RELUE, elle a DISPARU au profit de la table par index de plage de la carte, dont
+	// la loi est relue (`toutes / Movement.LoiLargeursAxe`, ligne RELUE de la table).
 	"toutes / Movement.DeltaAxisWidth",
 	"toutes / Movement.Range",
 	"toutes / Movement.CalibratedSkip",
