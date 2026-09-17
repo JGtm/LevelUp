@@ -123,6 +123,17 @@ type ImpactEventRow struct {
 	TimeMS    int64
 }
 
+// SquadKillLogRow : une mort publiable de `match_kill_events_latest`, lue pour le badge
+// d'impact « Voleur » (analysis.ComputeThiefBadge). Chaîne vide / nil = non mesuré.
+type SquadKillLogRow struct {
+	MatchID         string
+	TimeMS          int64
+	KillerXUID      string
+	VictimXUID      string
+	AssistXUID      string
+	KillerDamagePct *int
+}
+
 // AllyParticipant est une ligne participant côté équipe alliée d'un match.
 // Chargé par SquadRepository.LoadMainTeamParticipants pour alimenter le calcul
 // des badges d'impact (analysis.ComputeMatchImpactFull) en périmètre team-wide
