@@ -41,6 +41,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { tokenVar } from '@/lib/accessibility'
 import { AllyEnemySplitBar, KDSplitBar } from '@/features/_shared/EncounterSplitBars'
+import { formatKDCross, formatKDRatio, formatRelativeFor } from '@/features/_shared/encounters/format'
 import { AssistExchangeCell } from '@/features/_shared/assists/AssistExchangeCell'
 import { assistSortValue } from '@/features/_shared/assists/assistExchange'
 import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
@@ -150,17 +151,6 @@ function EncounterBadgesInline({
   )
 }
 
-function formatKDCross(kills: number | null | undefined, deaths: number | null | undefined): string {
-  if (kills == null && deaths == null) return '—'
-  return `${kills ?? 0}/${deaths ?? 0}`
-}
-
-function formatKDRatio(kills: number | null | undefined, deaths: number | null | undefined): string {
-  if (kills == null || deaths == null) return '—'
-  if (deaths === 0) return kills > 0 ? '∞' : '—'
-  return (kills / deaths).toFixed(2)
-}
-
 /** Valeur numérique triable du ratio F/D (I16) — même logique que formatKDRatio,
  *  0 mort + 0 frag → non triable (`undefined`, rangé en bas), 0 mort + N frags →
  *  `Infinity` (ratio le plus favorable possible, en tête en tri descendant). */
@@ -198,46 +188,6 @@ function EncounterTh({ header, idx }: { header: Header<MatchEncounterRow, unknow
 // SplitBar / AllyEnemySplitBar / KDSplitBar : extraits vers
 // features/_shared/EncounterSplitBars.tsx (dédup #6 — cf. import ci-dessus).
 
-function formatRelativeFR(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
-  const diffMs = Date.now() - date.getTime()
-  const minutes = Math.round(diffMs / 60_000)
-  if (minutes < 1) return "à l'instant"
-  if (minutes < 60) return `il y a ${minutes} min`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return hours <= 1 ? 'il y a 1 h' : `il y a ${hours} h`
-  const days = Math.round(hours / 24)
-  if (days === 1) return 'hier'
-  if (days < 7) return `il y a ${days} j`
-  const weeks = Math.round(days / 7)
-  if (weeks < 5) return weeks <= 1 ? 'il y a 1 sem.' : `il y a ${weeks} sem.`
-  const months = Math.round(days / 30)
-  if (months < 12) return months <= 1 ? 'il y a 1 mois' : `il y a ${months} mois`
-  const years = Math.round(days / 365)
-  return years <= 1 ? 'il y a 1 an' : `il y a ${years} ans`
-}
-
-function formatRelativeEN(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
-  const diffMs = Date.now() - date.getTime()
-  const minutes = Math.round(diffMs / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes} min ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} h ago`
-  const days = Math.round(hours / 24)
-  if (days === 1) return 'yesterday'
-  if (days < 7) return `${days} d ago`
-  const weeks = Math.round(days / 7)
-  if (weeks < 5) return `${weeks} w ago`
-  const months = Math.round(days / 30)
-  if (months < 12) return `${months} mo ago`
-  const years = Math.round(days / 365)
-  return years <= 1 ? '1 y ago' : `${years} y ago`
-}
-
 export function MatchEncountersTable({
   rows,
   locale = 'fr',
@@ -248,7 +198,7 @@ export function MatchEncountersTable({
   const { playerSlug } = useParams({ strict: false }) as { playerSlug?: string }
   const navigate = useNavigate()
   const titleSlug = useTitleSlug()
-  const formatRelative = locale === 'en' ? formatRelativeEN : formatRelativeFR
+  const formatRelative = formatRelativeFor(locale)
   // Libellé de colonne « Assistances » title-aware (mappings du titre, champ `assists`).
   const assistsLabel = useFieldLabel('assists')
 
