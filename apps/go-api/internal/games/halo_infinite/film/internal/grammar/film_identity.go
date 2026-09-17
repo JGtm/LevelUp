@@ -167,6 +167,11 @@ func ReadFilmIdentity(chunk0 []byte) (profile.FilmIdentity, error) {
 		RegistryBlocks: len(reg.Archetypes),
 		BuildOffset:    buildOff,
 		BodyBit:        corpsOctet*8 + identDecalageBit,
+		// L EMPREINTE DU REGISTRE ETAIT CALCULEE ICI PUIS JETEE (D4 (3.2), 2026-09-16) : le parse
+		// ci-dessus la produit pendant sa passe de lecture, et la rendre ne coute pas un cycle.
+		// C est elle que `replay` classe et publie en `coverage.decoder.registry` (lot 2.6.3).
+		RegistryFingerprint: RegistryFingerprint(reg),
+		RegistryNamedSlots:  RegistryNamedSlots(reg),
 	}
 	id.MatchStartUnix = lireHorodatage(chunk0, buildOff)
 	return id, nil

@@ -127,6 +127,9 @@ type Registry struct {
 	// fingerprint est l'empreinte FNV-1a des entrees nommees, calculee pendant la passe de
 	// lecture (registry_fingerprint.go). Se lit par RegistryFingerprint.
 	fingerprint uint64
+	// namedSlots est le nombre d entrees NOMMEES hachees — le denominateur de l empreinte.
+	// Se lit par RegistryNamedSlots.
+	namedSlots int
 	// Truncated : le parse a EPUISE le tampon sans rencontrer la fin structurelle du registre.
 	// C'est CELA, une troncature — pas la presence d'octets de queue.
 	//
@@ -286,8 +289,8 @@ func parseRegistry(data []byte) *Registry {
 	if !epuise {
 		reg.TruncatedBytes = 0 // la queue est la section suivante du chunk, pas une coupure
 	}
-	reg.fingerprint = fp.sum()
-	warnUnknownRegistry(reg.fingerprint, len(reg.Archetypes), fp.slots)
+	reg.fingerprint, reg.namedSlots = fp.sum(), fp.slots
+	warnUnknownRegistry(reg.fingerprint, len(reg.Archetypes), reg.namedSlots)
 	return reg
 }
 

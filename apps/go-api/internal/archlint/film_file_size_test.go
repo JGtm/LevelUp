@@ -74,12 +74,20 @@ const plancherFichiersBalayesTaille = 1200
 // derive que la mesure C1 / C2 a constatee ; la reponse a « mon lot ajoute vingt lignes ici »
 // est de sortir vingt lignes ailleurs dans le fichier, ou de le scinder.
 //
-// UNE SEULE EXCEPTION, ECRITE : `replay/document_chronicle.go`. C est une CHRONIQUE — une entree
-// par version de schema, ajoutee en meme temps que la montee de `SchemaVersion`, et le depot a
-// deja tranche qu elle ne se scinde pas (item 2.7.1 du PLAN_DECODEUR_FILM : « c est une
-// chronique : exemption ecrite en tete, pas de scission »). Son plafond monte donc du volume de
-// l entree ajoutee, DANS LE COMMIT QUI MONTE `SchemaVersion`, et jamais autrement. Toute autre
-// montee de cette ligne est le meme abus que pour les autres.
+// UNE SEULE EXCEPTION, ECRITE, ET ELLE COUVRE DEUX FICHIERS : `replay/document_chronicle.go` et
+// `replay/structure_test.go`. Le premier est une CHRONIQUE — une entree par version de schema,
+// ajoutee en meme temps que la montee de `SchemaVersion`, et le depot a deja tranche qu elle ne
+// se scinde pas (item 2.7.1 du PLAN_DECODEUR_FILM : « c est une chronique : exemption ecrite en
+// tete, pas de scission »). Le second porte la JUSTIFICATION que
+// `TestStructureIsOptionalInDocument` exige avant d accepter une montee : le test refuse
+// `SchemaVersion + 1` tant que la raison n est pas ecrite au-dessus de lui, donc la montee de
+// schema ajoute mecaniquement un paragraphe ici aussi. Leur plafond monte du volume de l entree
+// ajoutee, DANS LE COMMIT QUI MONTE `SchemaVersion`, et JAMAIS autrement.
+//
+// `structure_test.go` EST ENTRE DANS L EXCEPTION LE 2026-09-17 (lot 2.6.3, schema 60 -> 61,
+// 1 151 -> 1 168) : il etait en table depuis la fusion du lot 2.7g sans que l exception le nomme,
+// et la premiere montee de schema qui a suivi l a fait rougir pour la raison meme qui la rendait
+// obligatoire. Toute autre montee de ces deux lignes est le meme abus que pour les autres.
 //
 // RE-MESURE A L ENTREE DANS L INTEGRATION (2026-09-17, fusion du lot 2.7g) : la table a ete
 // figee sur la base du lot (f950b7179) ; entre cette base et la fusion, l integration a recu la
@@ -96,7 +104,7 @@ var plafondsParFichier = map[string]int{
 	// document_vehicles 505 -> 371 — tous sous le seuil, sortis de la table). La chronique porte
 	// desormais son exemption ECRITE EN TETE (item 2.7.1, 28 lignes de commentaire) : 1541 -> 1569,
 	// la seule montee admise par cette exemption hors montee de SchemaVersion.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1569,
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1626,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -124,7 +132,7 @@ var plafondsParFichier = map[string]int{
 	// --- tests et instruments de mesure : tables de fixtures et balayages de recherche.
 	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":                            1202,
 	"internal/games/halo_infinite/film/internal/grammar/i59_anchor_test.go":                       1152,
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1151,
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1168,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

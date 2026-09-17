@@ -38,4 +38,14 @@
 #               que dans l empreinte de la GRAMMAIRE : le gate mordait, mais il rendait le meme
 #               diagnostic pour une borne de carte et pour un ordre de composants. Aucune ligne
 #               de la table ne change a ce rang.
-profile-2026-09-17	a3c2aa5b35fc03826d2c14be4c2fc1ddef1c72219594b8913a1507e32a77a3a7
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.6.3), ET LE CHOIX EST
+#               EXPLICITE. `FilmIdentity` gagne DEUX CHAMPS LUS : `RegistryFingerprint` et
+#               `RegistryNamedSlots`. Ils etaient CALCULES PUIS JETES par
+#               `grammar.ReadFilmIdentity` (decouverte D4 (3.2)) — le parse du registre les
+#               produit pendant sa passe, et les rendre ne coute pas un cycle. La table du
+#               profil, elle, ne bouge pas d une ligne : aucune largeur, aucune borne, aucune
+#               provenance ne change, et le decodage est identique a l octet. Ce que ces deux
+#               champs servent est l ARTEFACT : `coverage.decoder.registry` classe desormais
+#               l empreinte du registre ECS (schema 61).
+profile-2026-09-17	923c8ad7d9495662e97c1240b1c3e77abcffd04d9b3ae38e5748b859e8623e63

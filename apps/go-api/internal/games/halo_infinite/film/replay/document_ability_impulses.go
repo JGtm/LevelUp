@@ -104,6 +104,56 @@ type AbilityImpulseCoverage struct {
 	// transmet pas ce canal du tout. Sans ce témoin, un zéro se lirait comme « personne ne
 	// s'est servi de son propulseur ».
 	ComponentAbsent bool `json:"componentAbsent,omitempty"`
+	// Scan publie LES DÉNOMINATEURS DU BALAYAGE, ceux d'avant l'entonnoir ci-dessus (schéma 61,
+	// lot 2.6.3, découverte D3 (validation) point 2).
+	//
+	// LE DÉFAUT QU'IL FERME EST MESURÉ. `Reads` compte les lectures brutes `tag == 1` du canal
+	// i57/i59 : un `reads` qui baisse est une impulsion NON LUE, et c'est ce qu'a montré la
+	// validation de la recuisson M1 — huit lectures disparues sur six films du parc entre les
+	// schémas 54 et 60, sans qu'aucun champ publié ne puisse dire si la marche avait atteint sa
+	// cible, si le composant était déclaré, ou si le canal avait été refusé. La mesure a fini par
+	// trancher (bruit d'état de processus, `param_4`), mais elle a demandé deux arbres détachés
+	// et un jour : `reads=0` était indistinguable d'une marche cassée, ce que la doctrine de
+	// `coverage.go` interdit.
+	//
+	// Absent quand le balayage n'a pas tourné du tout : un bloc de zéros affirmerait « la marche
+	// a tourné, elle n'a rien rencontré », qui est l'autre moitié du même défaut.
+	Scan *AbilityImpulseScanCoverage `json:"scan,omitempty"`
+}
+
+// AbilityImpulseScanCoverage porte les dénominateurs du BALAYAGE du canal d'impulsion — ce que la
+// marche a rencontré, avant tout repliement en épisodes.
+type AbilityImpulseScanCoverage struct {
+	// Records est le nombre de records delta bipède reconnus par la marche.
+	Records int `json:"records"`
+	// WithI57 / WithI59 : records dont le masque annonce l'une ou l'autre étiquette du canal.
+	// Les DEUX sont publiées : c'est le seul moyen de voir qu'un build a changé d'étiquette.
+	WithI57 int `json:"withI57"`
+	WithI59 int `json:"withI59"`
+	// Read / Unread : lectures abouties, et records dont la marche n'a PAS atteint la cible (un
+	// composant intermédiaire non porté, ou un débordement du payload). `Unread` non nul sur un
+	// film qui déclare le composant est le signe d'une grammaire incomplète.
+	Read   int `json:"read"`
+	Unread int `json:"unread"`
+	// Tag1 est le nombre de lectures dont le tag vaut 1 — celles que `Reads` publie. Le couple
+	// (`Read`, `Tag1`) dit combien de lectures abouties portaient effectivement une impulsion.
+	Tag1 int `json:"tag1"`
+}
+
+// scanCoverageDesImpulsions rend les dénominateurs du balayage, ou nil quand il n'a PAS TOURNÉ.
+//
+// `Scanned` est le témoin que le balayage pose lui-même quand il aboutit (`Absent` compris) :
+// faux veut dire qu'une des quatre portes de résolution a refusé, et tout le reste de la
+// structure est alors un zéro SANS SIGNIFICATION. Publier ce bloc dans ce cas affirmerait « la
+// marche a tourné, elle n'a rien rencontré » — le défaut exact que ce bloc existe pour fermer.
+func scanCoverageDesImpulsions(st types.AbilityImpulseStats) *AbilityImpulseScanCoverage {
+	if !st.Scanned {
+		return nil
+	}
+	return &AbilityImpulseScanCoverage{
+		Records: st.Records, WithI57: st.WithI57, WithI59: st.WithI59,
+		Read: st.Read, Unread: st.Unread, Tag1: st.Tag1,
+	}
 }
 
 // abilityImpulseInputs rassemble ce dont la jointure a besoin. Une structure plutôt que sept
@@ -130,7 +180,10 @@ type abilityImpulseInputs struct {
 func buildAbilityImpulses(
 	in abilityImpulseInputs, tracks []Track, origin, step uint64,
 ) ([]AbilityImpulse, AbilityImpulseCoverage) {
-	cov := AbilityImpulseCoverage{Reads: len(in.reads), ComponentAbsent: in.stats.Absent}
+	cov := AbilityImpulseCoverage{
+		Reads: len(in.reads), ComponentAbsent: in.stats.Absent,
+		Scan: scanCoverageDesImpulsions(in.stats),
+	}
 	if len(in.reads) == 0 || step == 0 {
 		return nil, cov
 	}
