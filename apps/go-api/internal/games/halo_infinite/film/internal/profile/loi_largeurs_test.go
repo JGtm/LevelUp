@@ -20,21 +20,16 @@ package profile_test
 // Aucun film n est ouvert, aucune installation du jeu n est requise : ces tests lisent le
 // catalogue versionne et des constantes.
 //
-// LE PAQUET DE TEST EST EXTERNE (`profile_test`) ET IL IMPORTE `himap` : la couche `profile`
-// est une FEUILLE — elle n importe rien du depot, `TestCoucheProfileEstUneFeuille` le garde —
-// donc la loi ne PEUT PAS etre centralisee entre le producteur hors ligne (`himap`, qui lit les
-// `.module`) et le consommateur a l execution (`profile`). Les deux copies sont donc
-// CONFRONTEES ici, ce qui est le garde-rail que CLAUDE.md regle 6 exige quand la centralisation
-// est impossible.
+// LA CONFRONTATION AVEC `himap` (la seconde copie de la loi, chez le producteur hors ligne) vit
+// dans `loi_largeurs_himap_test.go`, derriere le tag `cgo` : `himap` tire `ooz`, et le vet de la CI
+// sans CGO ne doit pas faire tomber les tests ci-dessous, qui n ouvrent rien.
 
 import (
 	"fmt"
-	"math"
 	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/himap"
 	"levelup/go-api/internal/testutil"
 )
 
@@ -214,35 +209,5 @@ func TestLesDeuxGardesDeLaLoiSontModelises(t *testing.T) {
 	if got := profile.LargeursAxeDuNiveau(minuscule, 23); got != [3]uint{26, 26, 26} {
 		t.Errorf("niveau 23 : %v, attendu 26/26/26 (pas = %g < 1e-4)",
 			got, profile.PasDuNiveau(23))
-	}
-}
-
-// TestLoiHimapEtLoiDuProfilSAccordent — LE GARDE-RAIL DES DEUX COPIES.
-//
-// `himap.Bounds.AxisWidths` (le PRODUCTEUR hors ligne, qui lit les `.module` en `float64`) et
-// `profile.LargeursAxeDuNiveau` (le CONSOMMATEUR a l execution, en `float32` comme le moteur)
-// portent la meme loi et ne peuvent pas la partager : `profile` est une feuille. Elles sont
-// donc confrontees sur les 79 cartes commises ET sur les deux gardes.
-func TestLoiHimapEtLoiDuProfilSAccordent(t *testing.T) {
-	cat := chargerCatalogueDesCartes(t)
-	for nom, e := range cat.Maps {
-		var b himap.Bounds
-		for ax := 0; ax < 3; ax++ {
-			b.Min[ax], b.Max[ax] = float64(e.Min[ax]), float64(e.Max[ax])
-		}
-		h := b.AxisWidths()
-		p := profile.LargeursAxeDuNiveau(bornesDe(e), profile.NiveauPositionDObjet)
-		for ax := 0; ax < 3; ax++ {
-			if uint(h[ax]) != p[ax] {
-				t.Errorf("%s axe %d : himap %d, profile %d", nom, ax, h[ax], p[ax])
-			}
-		}
-	}
-	// LES DEUX GARDES, sur la meme carte synthetique que le test ci-dessus.
-	for _, etendue := range []float64{4194304.0 / 60 * 0.99, 4194304.0 / 60 * 4, math.Exp2(30)} {
-		b := himap.Bounds{Max: [3]float64{etendue, etendue, etendue}}
-		if got := b.AxisWidths(); got != [3]int{22, 22, 22} {
-			t.Errorf("himap, etendue %.0f : %v, attendu 22/22/22 (garde 2^22)", etendue, got)
-		}
 	}
 }
