@@ -542,7 +542,7 @@ extended to the scans themselves. The lots and their merge shas: 3.1 data (3.1.2
 3.6.a `2b68aa165`, 3.1.1 `fe38d2e35`. Lot 3.7 is research only (`feat/decfilm-37r`), no
 production file, so it moves nothing here.
 
-### D-3 — The profile is immutable, resolved once, keyed by build. **Spent: three families of data entered the table.**
+### D-3 — The profile is immutable, resolved once, keyed by build. **Spent.**
 
 The table grew from **23 rows to 33** (`profile/profile_table.go`, counted on the tree: **7**
 read at the writer, **21** measured on a witness, **5** presumed) and it gained a second table
@@ -597,7 +597,7 @@ catch-up candidate and costs one download per cycle until the key is added — w
 because `MBitFilmAbsent` is terminal — and adding the key is the runbook procedure with measured
 values on a witness, that is a lot and not a line.
 
-### D-5 — No package-level mutable state in the decoder. **Reached at M2; M3 adds the companion rule: a scan does not decide what it cannot discriminate.**
+### D-5 — No package-level mutable state. **Extended to the scans themselves.**
 
 M2 removed the mutable state. M3 met the next form of the same defect: a *scan* that writes the
 value a reader will use, with a criterion blind to the quantity it decides. Two cases, both
@@ -631,7 +631,7 @@ measured, and the plan holds the outputs.
   path in the repository receiving no catalog entry — and its absence is a fallback that is
   **named, counted and warned per film**.
 
-### D-6 — One revision per thing that can change. **Four revisions, three of them raised, and no schema bump.**
+### D-6 — One revision per thing that can change. **Three of four raised, no schema bump.**
 
 | Revision | Value at the M3 closure | Moved by |
 |---|---|---|
@@ -650,8 +650,9 @@ M4's single rise 61 to 62, by a pilot decision written at the lot.
 
 The consequence of `facts.Rev` rising is the rule of this decision, and it is in force: the rows
 of `match_kill_events` already written became backlog candidates. The user deferred the
-deliberate drain — "it is a very long step, so we do it as late as possible" — to after M4 at the
-earliest, on an explicit signal, grouped with any later rise so the base is passed over once.
+deliberate drain — "it is a very long step, so we do it as late as possible" — to after M4 at
+the earliest, on an explicit signal, grouped with any later rise so the base is passed over
+once.
 The bounded post-sync catch-up is unchanged and needs no decision.
 
 The chronicle door held under load: at the 3.3 merge `grammar/rev_chronique.go` stood at exactly
@@ -663,7 +664,7 @@ leaves — `coverage.decoder.{sourceRev, profileRev, grammarRev, factsRev}`, `bu
 that says which decoder cooked the artifact is not a datum of the match; and a rejection counter
 declared with its denominator is a **loss** only if the ratio degrades.
 
-### D-10 and D-10 bis — Grammar decides; a fallback is named, counted and retired. **Three retired, four posted, 99 entries.**
+### D-10 and D-10 bis — A fallback is named, counted and retired. **Three retired, four posted.**
 
 The registry carries **99 entries across seven files** on the tree (98 across six at M2), the
 seventh slice being the calibration family that lot 3.4 split out. M3 is the first milestone
