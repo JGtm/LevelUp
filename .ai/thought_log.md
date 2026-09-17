@@ -110930,3 +110930,31 @@ worktree `LevelUp-wt-copie-sabordage`. Suite du 16/09 : couleur PROPRE des deux 
 ne partage leurs valeurs). GO utilisateur le 2026-09-17 : fusion dans `feat/v75` (conflit
 `sync/comeback.go` résolu sur `decfilm.ObjectiveTypeOf`, le paquet objectiveevents ayant migré
 sous `film/internal/facts/objectives`).
+
+## [2026-09-16] Badge « Voleur » dans la matrice d'impact de la page Escouade — Complété
+
+**Statut** : Complété (code + tests). Branche `claude/badge-voleur-escouade-9513dc` (72afc662c), fusionnée dans `feat/v75` le 2026-09-17 (GO utilisateur).
+Aucune base sous `data/` ouverte : preuves par tests (`:memory:`, mocks).
+
+**Décision technique principale** : critère utilisateur — par match, le membre de l'escouade
+qui a le plus de frags « volés » : tueur crédité ET assistant membres de l'escouade, part de
+dégâts du tueur MESURÉE et <= 10 %, assistant vivant avant et après le kill. Le minuteur de
+réapparition n'étant pas décodé, « vivant » = aucune mort de l'assistant dans
+[kill - 500 ms, kill + 500 ms] (précision utilisateur : la demi-seconde suffit). Algo pur
+`analysis.ComputeThiefBadge` (`match_impact_thief.go`) ; lecture dédiée Q32e
+(`platform/duckdb/squad_repo_kill_log.go`, vue `match_kill_events_latest`, `publishable`,
+`assist_known` exigé pour les candidats) ; port `LoadSquadKillLog` ; branchement
+`teammates_squad_impact_thief.go`. Calcul HORS de `ComputeMatchImpactFull` : ce dernier
+travaille en périmètre équipe alliée, le voleur en périmètre escouade stricte. Poids -1.0,
+badge inversé (taquinerie, comme kamikaze). Picto : Fluent Emoji Flat « no-entry » (choix utilisateur, même set
+Iconify 32x32 que les autres), `assets/badges/fluent-flat/thief.svg`. Libellés FR/EN.
+
+**Résultats observés** : tests `analysis` (critère, bornes 500 ms incluses, départage),
+Q32e sur DuckDB mémoire, builder de la matrice (badge dans cellules + agrégats), vitest
+SquadImpactScoreboard 5/5, `tsc -b` à froid vert, archlint vert. Suite `go test ./...` :
+voir compte rendu de session.
+
+**Conclusion / prochaine étape** : gate visuel utilisateur sur la page Escouade (matchs
+avec film décodé uniquement — sans film, jamais de badge Voleur). Spec historique
+`.ai/charts_specs/teammates/07_impact_taquinerie.yaml` non mise à jour (déjà périmée : ignore
+kamikaze, référence le Python supprimé).

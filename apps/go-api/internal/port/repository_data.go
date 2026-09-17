@@ -53,6 +53,11 @@ type SquadRepository interface {
 	// Entrées vides ou titre sans décodeur de film → (nil, 0, nil), jamais une erreur.
 	LoadSquadAssistPairs(ctx context.Context, matchIDs, squadXUIDs []string) ([]domain.SquadAssistPairRaw, int, error)
 
+	// LoadSquadKillLog charge les morts publiables (match_kill_events_latest) des matchs
+	// fournis qui concernent l'escouade : victime membre, ou tueur ET assistant membres.
+	// Source du badge d'impact « Voleur ». Titre sans décodeur de film → (nil, nil).
+	LoadSquadKillLog(ctx context.Context, matchIDs, squadXUIDs []string) ([]domain.SquadKillLogRow, error)
+
 	// LoadMainTeamParticipants charge tous les participants de l'équipe alliée
 	// du joueur principal pour une liste de matchs (Q34, scoreboard impact
 	// team-wide). Pour chaque match dans matchIDs, retourne les rows
@@ -320,6 +325,9 @@ func (n *noopSquadRepo) LoadKVPairs(_ context.Context, _ []string) ([]domain.KVP
 }
 func (n *noopSquadRepo) LoadSquadAssistPairs(_ context.Context, _, _ []string) ([]domain.SquadAssistPairRaw, int, error) {
 	return nil, 0, nil
+}
+func (n *noopSquadRepo) LoadSquadKillLog(_ context.Context, _, _ []string) ([]domain.SquadKillLogRow, error) {
+	return nil, nil
 }
 func (n *noopSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
 	return nil, nil
