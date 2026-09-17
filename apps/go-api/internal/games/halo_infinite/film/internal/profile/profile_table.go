@@ -60,7 +60,30 @@ const (
 	dateTranspositionSlots = "2026-09-13"
 	// dateProfilPose : le lot 2.1, jour ou ces valeurs entrent au profil avec leur provenance.
 	dateProfilPose = "2026-09-17"
+	// dateLoiLargeursAxe : lecture du remplisseur des largeurs d axe dans Ghidra (lot 3.4,
+	// volet preparation), consignee par `.ai/V7.5/film_re/NOTE_3_4_REMPLISSEUR_LARGEURS_*`.
+	dateLoiLargeursAxe = "2026-09-16"
 )
+
+// preuveLoiLargeursAxe : la preuve de la ligne `Movement.LoiLargeursAxe`, SORTIE DE LA TABLE.
+//
+// ELLE EST UNE CONSTANTE DE FICHIER, comme les libelles repetes : c est la plus longue preuve
+// de la table (trois fonctions, quatre constantes de `.rdata`, un accord numerique), et la
+// laisser dans le litteral poussait `tableProfilInvariants` au-dela du plafond de lignes
+// physiques que le ratchet `archlint/TestLongueurDesFonctionsDuFilmNeCroitPas` fige — un
+// plafond qui ne peut que DESCENDRE. Le lecteur du catalogue commis
+// (`filmprofile/conformite_table21_test.go`) evalue les constantes du fichier : la conformite
+// est prouvee de la meme facon qu avec un litteral.
+const preuveLoiLargeursAxe = "FUN_140be9a14 (le remplisseur, fin de chargement de carte) -> " +
+	"FUN_140be9b88 (les trois largeurs d une plage) -> FUN_140be9c78 (le pas du niveau) ; " +
+	"W = min(26, ceilLog2(min(ceil(etendue/(2*pas(L))), 2^22))), pas(L) = 2^(16-L)/120, et " +
+	"26/26/26 si pas(L) < 1e-4. Constantes en .rdata : DAT_143cd9758 = 0x3c088889 = 1/120, " +
+	"DAT_143cd975c = 0x4a800000 = 2^22, DAT_143cd837c = 0x38d1b717 = 1e-4, plafond 0x1a = 26 " +
+	"(CMOVG en 140be9c34), bornes par defaut DAT_143b8c6b8 = +/-20000 ; NIVEAU = immediat de " +
+	"site d appel (MOV R9D,0x10 sur les 9 sites de position). Accord loi / catalogue : 79 " +
+	"cartes sur 79 (TestLaLoiRendLesLargeursDuCatalogue). Le BUILD n entre dans les largeurs " +
+	"que par ces cinq constantes : le jour ou l une d elles change, cette ligne se dedouble " +
+	"par `build` et rien d autre ne bouge"
 
 // Provenance dit d ou vient une valeur de profil. Cf. l en-tete du fichier.
 type Provenance string
@@ -252,11 +275,9 @@ func tableProfilInvariants() []LigneProfil {
 			Date: dateProfilPose,
 		},
 		{
-			Cle: cleToutes, Champ: "Movement.AbsoluteAxisW", Valeur: "14",
-			Source: ProvenancePresumee,
-			Preuve: "uniforme applique a defaut de table par index de plage ; `absAxisWFor` " +
-				"retombe dessus (repli inscrit au registre, ancre `if w := br.absoluteAxisW(); w > 0 {`)",
-			Date: dateProfilPose,
+			Cle: cleToutes, Champ: "Movement.LoiLargeursAxe",
+			Valeur: "L=16 C=1/120 cap=26 garde=2^22 eps=1e-4",
+			Source: ProvenanceRelue, Preuve: preuveLoiLargeursAxe, Date: dateLoiLargeursAxe,
 		},
 		{
 			Cle: cleToutes, Champ: "Movement.WorldObject", Valeur: "IndexW=1 AxisW=13/13/14 Region=0",

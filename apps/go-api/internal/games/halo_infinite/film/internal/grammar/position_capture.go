@@ -184,98 +184,75 @@ const (
 // 22 reglages morts, et c est la valeur que la production decode.
 const absDequantMode = AbsDequantRange
 
-// `profile.MovementProfile.AbsoluteAxisW`, si > 0, OVERRIDE la largeur d'axe des CHEMINS ABSOLUS i0 (consumeAbsoluteWithGate
-// + predFlag==1) — distincte de pd.AxisW (qui garde 6/6/6 pour le default-state et le delta
-// axis-width). La capture CE mesure 3×14 sur predFlag==1 (total i0 predicted = 47 bits). 0 =
-// utilise pd.AxisW[i] (comportement historique). Changer cette largeur CHANGE la consommation de
-// bits des chemins absolus — intentionnel (le juge devient la boîte oracle, pas offline-vs-CE).
-//
-// VALEUR PAR DEFAUT 14 (2026-07-25) : mesuree contre l'oracle de POSITION Rosette du film
-// 000d5950 (cmd/tmp_deadstate, modes `split` et `solvechain`). Le chemin i0 d'un record
-// DELTA biped est le chemin absolu (bUsePred=0, bDelta=0 sur 3090/3090 records) et sa
-// largeur vraie est 47 bits = 2 + 1(precHigh) + 1(index-sel) + 1(IndexW) + 3x14. La table
-// de precision du jeu (DAT_1445cc9e0, dumpee dans ce_prec_widths_1445cc9e0.bin) donne
-// 14/14/14 au niveau 8 (largeur = 6+L) : 14 est donc une entree REELLE de la table du .exe,
-// pas une constante ad hoc. Verification croisee : a i0=47, les desers PORTES de i1 et i21
-// consomment exactement leurs largeurs vraies sur 100.0% de 15 529 records, et le deser
-// porte de i25 finit exactement a la fin vraie sur 100.0% de 3 090 records.
-// C'ÉTAIT LA VARIABLE DE PAQUET `absoluteAxisW` (et son réglage public `SetAbsoluteAxisW`)
-// JUSQU'AU LOT 2.2.a : la largeur vient désormais du PROFIL que le lecteur porte
-// ([Lecteur.poserMouvement]), et le balayage de calibration de `killsource` la passe par
-// `FrameConfig.Mouvement` au lieu de l'écrire dans le processus entier.
-func (b *Lecteur) absoluteAxisW() uint { return b.p.Mouvement.AbsoluteAxisW }
-
-// absAxisW retourne la largeur d'axe effective d'un chemin ABSOLU i0.
-//
-// CORRECTION DU 2026-07-27 — le repli était `pd.AxisW`, c'est-à-dire 6/6/6, et c'était FAUX.
-//
-// `pd.AxisW` est la largeur du chemin DELTA. Le chemin ABSOLU lit la table de région
-// (`FUN_140cc5128` après `FUN_14076e524`), dont les largeurs sont 13/13/14 — les mêmes que
-// celles du chemin world-object, qui les porte correctement depuis toujours
-// (`WorldObjectPrecision`, cf. traverse.go). Les deux chemins lisent la MÊME table ; c'est
-// leur double implémentation qui les avait laissés diverger.
-//
-// LA MESURE QUI TRANCHE : la capture CE du dispatch donne i0 du bipède à **47 bits, une
-// seule valeur distincte, 100 % de 154 158 dispatches**. Le compte se ferme à l'unité :
-//
-//	1 bUsePred + 1 bDelta + 1 precHigh + 1 indexSel + 1 IndexW + (13+13+14) + 2 finite = 47
-//
-// Avec 6/6/6 et sans le champ « finite » on consommait 23 bits — 24 de moins, sur un
-// composant présent dans 96,8 % des records et lu EN PREMIER. Le déficit décalait donc
-// l'en-tête du record SUIVANT, d'où des masques lus n'importe où et un i22 vu 63 fois trop
-// souvent. Chercher la faute dans les grammaires de composants ne pouvait rien donner :
-// elles étaient justes.
-//
-// POURQUOI L'ESSAI PRÉCÉDENT AVAIT ÉCHOUÉ : régler `Traversal.AxisW` à 13/13/14
-// changeait AUSSI la largeur du delta — le chemin dominant — et dégradait la mesure. Le
-// commentaire de traverse.go le disait déjà : « le vrai correctif doit distinguer les deux
-// largeurs le long de chaque branche, et non régler une globale. »
-// (Le descripteur de précision n'entre PAS dans ce choix : la largeur absolue vient soit
-// du réglage global, soit de WorldObjectPrecision — jamais du descripteur de l'appelant.)
-func absAxisW(br *Lecteur, i int) uint {
-	if w := br.absoluteAxisW(); w > 0 {
-		return w
-	}
-	return br.worldObjectPrecision().AxisW[i]
-}
-
 // absAxisWFor retourne la largeur de l axe i pour l index de plage idx.
 //
-// LARGEURS D AXE PAR INDEX DE PLAGE DE REPLICATION (7ter.54 axe 3) — LE SAVOIR, GARDE ICI.
+// LARGEURS D AXE PAR INDEX DE PLAGE DE REPLICATION — LE SAVOIR, ET DESORMAIS LA LECTURE.
 //
 // SOURCE, DESASSEMBLAGE : `FUN_14076e524(out, reader, outIndexPtr, LEVEL)` choisit ses trois
 // largeurs dans DEUX tables distinctes selon l'index lu au flux :
 //
-//	index == -1 (bit de gate pose)  ->  DAT_1445cc9e0 + LEVEL*0xc          (table << defaut >>)
-//	index >= 0                     ->  DAT_1445ccbe0 + (index*0x20 + LEVEL)*0xc  (table << par index >>)
+//	index == -1 (bit de porte pose)  ->  DAT_1445cc9e0 + LEVEL*0xc                (table DEFAUT)
+//	index >= 0                       ->  DAT_1445ccbe0 + (index*0x20 + LEVEL)*0xc (table PAR INDEX)
 //
-// et LEVEL est un IMMEDIAT STATIQUE 0x10 = 16 sur les trois sites d'appel du composant
-// position (`MOV R9D,0x10` a 1406d008a dans FUN_1406cfe44 ; `MOV R8D,0x10` a 140f7ea50 dans
-// FUN_140f7ea14, que FUN_14076e4ec deplace en R9 a 14076e505 ; 14226a6b8 dans FUN_14076f3ec).
-// Les trois largeurs ne sont donc PAS uniformes et PAS les memes pour tous les index — ce que
-// l'override uniforme `AbsoluteAxisW` suppose.
+// et LEVEL est un IMMEDIAT STATIQUE 0x10 = 16 aux neuf sites d'appel du composant de position
+// (`MOV R9D,0x10` en 1406d008a, 140f04dd5, 140f04f32, 140f04f80, 140f04fe5, 140f05018,
+// 140fb8b33, 140ee7288, 14226a6b8). Les deux tables sont remplies par la MEME loi
+// (`FUN_140be9b88`, cf. `profile/loi_largeurs.go`) sur DEUX jeux de bornes : celles du BUILD
+// (`+/-20000`, `.rdata`) pour la table defaut, celles de la CARTE pour la table par index.
 //
-// LA TABLE `absPerIndexAxisW` QUI PORTAIT CE MODELE A ETE SUPPRIMEE le 2026-09-06 (lot E, item
-// E.8) : elle etait nil et le restait — son unique installateur, le reglage public
-// `SetAbsPerIndexAxisW`, n avait aucun appelant et est parti au lot E.2. Elle ne portait AUCUNE
-// valeur mesuree, seulement le modele ci-dessus, qui reste donc ecrit ici, a l endroit ou un
-// futur portage viendra le lire. La largeur rendue est celle du chemin uniforme, comme avant.
+// CE QUE LE LOT 3.4.1 CHANGE, ET C'EST LE LOT ENTIER. La largeur UNIFORME de 14 bits
+// (`Movement.AbsoluteAxisW`), qui ecrasait les trois largeurs de la carte des qu'elle etait
+// posee — c'est-a-dire toujours, en production — A DISPARU, et `idx` cesse d'etre jete :
+//
+//	idx == -1  la table DEFAUT au niveau du composant de position, soit `22/22/22` sur ce
+//	           build ([profile.LargeursAxeParDefautDuBuild]) — et surtout PAS les largeurs de
+//	           la carte ;
+//	idx >= 0   la table PAR INDEX de la carte, portee par le descripteur absolu du profil
+//	           ([profile.MapQuantEntry.PrecisionAbsolue], pose par `replay`). C'est la MEME
+//	           table que le chemin world-object : les deux la lisent, et c'est leur double
+//	           implantation qui les avait laisses diverger.
+//
+// LE COMPTE SE FERME A L'UNITE SUR LA MESURE QUI FAISAIT AUTORITE, et il ne se fermait pas
+// avant : la capture CE du dispatch donne i0 du bipede a 47 bits, une seule valeur distincte,
+// 100 % de 154 158 dispatches, et
+//
+//	1 bUsePred + 1 bDelta + 1 precHigh + 1 indexSel + 1 IndexW + (13+13+14) + 2 finite = 47
+//
+// avec les largeurs de Cliffhanger. Avec l'uniforme 14 on lisait 49.
+//
+// LE CATALOGUE NE PORTE QUE LA PLAGE JOUEE, et c'est une limite ASSUMEE, ecrite ici parce
+// qu'elle se voit dans le compte : une carte qui declare plusieurs plages n'a d'entree que pour
+// celle de l'arene (`Region`). Un record d'une AUTRE plage est donc lu aux largeurs de
+// celle-la — le moins mauvais choix, et le seul qui garde l'alignement du record suivant — puis
+// sa position n'est PAS emise (`consumeAbsolutePayload`). L'histogramme
+// [Observation.IndexAbsolus] compte les index rencontres : jamais un zero muet.
 func absAxisWFor(br *Lecteur, idx, i int) uint {
 	if i == 0 {
 		br.obs.compterIndexAbsolu(idx)
 	}
-	return absAxisW(br, i)
+	if idx < 0 {
+		return profile.LargeursAxeParDefautDuBuild(profile.NiveauPositionDObjet)[i]
+	}
+	return br.worldObjectPrecision().AxisW[i]
 }
 
 // dequantWorldAxis dequantizes one absolute quantized axis word (width bits). Deux formes :
-//   - AbsDequantRange (défaut) : min + step*(q+0.5) via WorldPositionRange (FUN_140c1e978).
+//   - AbsDequantRange (défaut) : min + step*(q+0.5) via la plage de l'index (FUN_140c1e978).
 //   - AbsDequantCenteredQuantum : (q - 2^(bits-1)) * DeltaQuantum — grille fine centrée sur 0.
-func dequantWorldAxis(br *Lecteur, q uint64, bits uint, axis int) float32 {
+//
+// LA PLAGE SUIT L'INDEX DEPUIS LE LOT 3.4.1, exactement comme la largeur (`absAxisWFor`) et
+// comme chez `FUN_14076e524` : bornes et largeurs voyagent ENSEMBLE, elles sortent de la meme
+// AABB. `idx == -1` (porte posee) dequantifie dans la boite monde du BUILD (`+/-20000`) ; tout
+// `idx >= 0` dequantifie dans la plage de la CARTE que le profil porte.
+func dequantWorldAxis(br *Lecteur, idx int, q uint64, bits uint, axis int) float32 {
 	if absDequantMode == AbsDequantCenteredQuantum {
 		half := float32(uint64(1) << (bits - 1))
 		return (float32(q) - half) * br.deltaQuantum()
 	}
 	wr := br.worldPositionRange()
+	if idx < 0 {
+		wr = profile.QuantRangeParDefautDuBuild()
+	}
 	scale := float32(uint64(1) << bits)
 	step := (wr[axis].Max - wr[axis].Min) / scale
 	return float32(q)*step + wr[axis].Min + step*quantCenter

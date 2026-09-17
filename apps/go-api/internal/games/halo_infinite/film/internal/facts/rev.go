@@ -277,7 +277,29 @@ package facts
 // aucune largeur, aucun appariement ne change, les lignes produites sont identiques a l octet et
 // aucun match deja decode n est candidat au backlog. Le critere de retrait ecrit dans les deux
 // fichiers supprimes est tenu, et il etait mesurable au `grep`.
-const Rev = "killsource-2026-09-16.6"
+// ENTREE `killsource-2026-09-17` (2026-09-17, lot 3.4.1) : LA REVISION MONTE, `.6` -> le rang
+// du jour.
+// LA SORTIE DES FAITS CHANGE, ET C EST LE BUT DU LOT.
+//
+// DEUX CAUSES, chacune mesurable :
+//
+//	LA GRAMMAIRE   `grammar.Rev` passe au `.40` (le chemin absolu d i0 lit les largeurs et les
+//	               bornes de la table PAR INDEX de la carte au lieu d une largeur UNIFORME de
+//	               14 bits ; correctif D1 (3.4) sur la regle d emission). `facts.Rev` hache sa
+//	               VALEUR : elle monterait meme si rien de `facts/` n avait bouge.
+//	LA CALIBRATION `killsource/calibrate.go` : l inference des largeurs NE DECIDE PLUS. Les
+//	               largeurs viennent du profil — c est-a-dire du catalogue de la carte, dont la
+//	               loi est verifiee 79 cartes sur 79 — et le balayage devient un ORACLE qui
+//	               compte les desaccords (`calibration.Desaccords`, publie dans
+//	               `Result.Calibration`, qui ne sort pas de la CLI). Arbitrage utilisateur V17,
+//	               M3-Q8 : « la valeur LUE prime sur la valeur mesuree ».
+//
+// LES LIGNES DE KILL DEJA EN BASE DEVIENNENT CANDIDATES AU BACKLOG DE REDECODAGE, et ce
+// backlog part sur SIGNAL UTILISATEUR (D6), JAMAIS automatiquement : chaque ligne de
+// `match_kill_events` porte cette revision dans `decoder_rev`, `conditionBacklog`
+// (`sync/killcollector/postsync.go`) rend candidate toute ligne qui en porte une anterieure, et
+// le redecodage du parc reste un geste de PRODUCTION pris par le pilote.
+const Rev = "killsource-2026-09-17"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/facts_rev.golden` porte le couple (revision, empreinte) avec son historique, et
