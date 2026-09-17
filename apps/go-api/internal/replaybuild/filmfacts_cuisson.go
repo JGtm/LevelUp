@@ -260,3 +260,32 @@ func (b *Builder) SansFaitsPersistes() *Builder {
 	b.sansFaitsPersistes = true
 	return b
 }
+
+// completerLesFaits pose les DEUX SECTIONS QUE `replay` NE PEUT PAS CONNAITRE.
+//
+// # LE TROU QUE CETTE FONCTION FERME, ET C EST S8 QUI L A TROUVE (2026-09-18)
+//
+// `replay.faitsDuBalayage` remplit ce que la couche de PUBLICATION sait : la couverture,
+// les entrees, l identite du film, le rapport de replis du balayage. Elle ne peut pas remplir le
+// STATBORG ni le resultat KILLSOURCE — les deux naissent ICI (`statborgDuFilm`,
+// `decodeKillSource`), dans le paquet d ASSEMBLAGE, et la couche de publication ne les voit
+// jamais passer. Personne ne les posait : le fichier ecrit portait deux sections VIDES.
+//
+// LA CONSEQUENCE ETAIT SILENCIEUSE ET TOTALE. Un rejeu depuis de tels faits reconstruit ses
+// entrees de calque sur une section statborg vide, donc `assemblerFilmStats` rend un `filmStats`
+// VIDE : le document perd sa courbe de score, ses actions d objectif, son drapeau, sa couronne,
+// son crane et son armement — et rien ne l aurait dit, parce que l en-tete etait FRAIS. Le seul
+// gate qui pouvait l attraper est le S8 (deux passes du meme commit comparees a l octet), et il
+// l a attrape a la PREMIERE ecriture.
+//
+// LE GARDE-RAIL QUI LE TIENT MAINTENANT, ET QUI N A PAS BESOIN DE FILM :
+// [TestLesFaitsEcritsPortentLeursCinqSections] balaie PAR REFLEXION tous les champs exportes de
+// `replay.FilmFactsFile` apres la chaine complete de production. Une section ajoutee au type que
+// personne ne remplirait le fait rougir.
+func completerLesFaits(f *replay.FilmFactsFile, src entreesDeCuisson) {
+	if f == nil {
+		return
+	}
+	f.Statborg = src.statborg
+	f.Kills = src.kills
+}
