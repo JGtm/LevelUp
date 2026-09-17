@@ -92,6 +92,8 @@ function formatHeading(item: MediaItemRow, index: number, total: number, locale:
 
 interface ClipPlayerProps {
   filePath: string
+  /** Vignette du clip : sert de poster au <video> (voisins HLS sans segment chargé). */
+  thumbnailPath: string | null
   basename: string | null
   isCenter: boolean
   relPos: number
@@ -114,10 +116,18 @@ interface ClipPlayerProps {
  * qui est PROPRE au coverflow : le pilotage du chargement par le centrage, et les
  * interrupteurs Jeu/Voix des renditions pré-mixées.
  */
-function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, audioLabels }: ClipPlayerProps) {
+function ClipPlayer({ filePath, thumbnailPath, basename, isCenter, relPos, videoRef, onEnded, audioLabels }: ClipPlayerProps) {
   const [error, setError] = useState<string | null>(null)
   const [lastFilePath, setLastFilePath] = useState(filePath)
   const videoElRef = useRef<HTMLVideoElement | null>(null)
+  // Vrai dès que startLoad() a été appelé sur l'instance hls.js courante. stopLoad()
+  // n'est légitime que sur une instance démarrée (cf. effet de centrage ci-dessous).
+  // Une instance par montage de ClipPlayer : la key du slot est `item.file_path`
+  // (côté parent), donc un changement de source démonte ce composant et ce ref
+  // repart à false avec lui. ANGLE MORT ASSUMÉ : si cette key devenait stable
+  // entre deux sources, `useHlsVideo` recréerait l'instance sans que ce ref soit
+  // remis à zéro — il faudrait alors le réinitialiser sur `filePath`.
+  const startedRef = useRef(false)
   const [audioTracks, setAudioTracks] = useState<HlsAudioTrack[]>([])
   const [activeAudio, setActiveAudio] = useState(-1)
   // Deux interrupteurs indépendants Jeu/Voix (les deux ON par défaut). N'ont de
@@ -145,13 +155,18 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
     [videoRef],
   )
 
-  // autoStartLoad:false → loadSource charge le manifest (ce qui peuple le
-  // sélecteur de pistes via AUDIO_TRACKS_UPDATED, y compris pour les voisins)
-  // mais NE télécharge AUCUN segment tant que startLoad() n'est pas appelé.
-  // Le chargement des segments est réservé au clip centré (effet dédié
-  // ci-dessous) : sinon les jusqu'à 5 slots HLS rendus (±2) préchargeraient
-  // ~30 s de segments en parallèle (l'attribut preload du <video> est sans
-  // effet en MSE).
+  // autoStartLoad:false → loadSource lance IMMÉDIATEMENT la requête du manifest
+  // (master.m3u8), qui est lu et conservé, mais NE télécharge AUCUN segment tant
+  // que startLoad() n'est pas appelé. Ce seul réglage suffit donc à ce qu'un
+  // voisin ne précharge rien : sans lui, les jusqu'à 5 slots HLS rendus (±2)
+  // chargeraient ~30 s de segments en parallèle (l'attribut preload du <video>
+  // est sans effet en MSE). Les pistes audio n'arrivent PAS avec le manifest :
+  // hls.js n'émet AUDIO_TRACKS_UPDATED que depuis AudioTrackController.switchLevel(),
+  // appelé sur LEVEL_LOADING / LEVEL_SWITCHING, donc seulement après le premier
+  // startLoad() — c'est-à-dire au centrage, ce qui suffit puisque le sélecteur
+  // n'est affiché que pour le clip centré. Corollaire (2026-09-17) : il ne faut
+  // JAMAIS appeler stopLoad() sur une instance qui n'a pas été démarrée, sous
+  // peine d'avorter ce manifest en vol — détail dans l'effet de centrage ci-dessous.
   const { isHls, hlsRef } = useHlsVideo({
     videoRef: videoElRef,
     src: filePath,
@@ -177,16 +192,29 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
   })
 
   // Chargement des segments réservé au clip centré : startLoad() au centrage,
-  // stopLoad() au décentrage. Les instances hls.js sont créées autoStartLoad:false
-  // (cf. l'attache dans useHlsVideo, dont l'effet est déclaré AVANT celui-ci →
-  // hlsRef.current est déjà posé quand cet effet s'exécute au montage). Sans ce
-  // pilotage, tous les slots HLS rendus (±2) chargeraient leurs segments en parallèle.
+  // stopLoad() au décentrage — mais UNIQUEMENT sur une instance déjà démarrée.
+  // L'instance est créée autoStartLoad:false par `useHlsVideo`, dont l'effet est
+  // déclaré AVANT celui-ci → `hlsRef.current` est déjà posé quand cet effet
+  // s'exécute au montage, dans le MÊME commit React.
+  // PIÈGE CORRIGÉ LE 2026-09-17 : dans hls.js, stopLoad() parcourt
+  // networkControllers, dont le PlaylistLoader est le PREMIER, et détruit ses
+  // loaders internes — la requête du manifest lancée par loadSource, encore en
+  // vol, est donc AVORTÉE (NS_BINDING_ABORTED côté navigateur). Un voisin perdait
+  // ainsi son master.m3u8 dès le montage ; au recentrage, startLoad() trouvait
+  // « levels » vide, posait _forceStartLoad et restait STOPPED, et plus rien ne
+  // relançait MANIFEST_LOADING : le clip ne lisait JAMAIS. Le garde startedRef
+  // réserve stopLoad aux clips qui QUITTENT le centre (arrêt de leurs segments),
+  // seul cas où il est utile.
   // `hlsRef` est une ref STABLE : la déclarer en dépendance ne relance rien.
   useEffect(() => {
     const hls = hlsRef.current
     if (!hls) return
-    if (isCenter) hls.startLoad()
-    else hls.stopLoad()
+    if (isCenter) {
+      hls.startLoad()
+      startedRef.current = true
+    } else if (startedRef.current) {
+      hls.stopLoad()
+    }
   }, [hlsRef, isHls, isCenter])
 
   function selectAudioTrack(id: number) {
@@ -252,6 +280,9 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
       <video
         ref={setRefs}
         src={isHls ? undefined : filePath}
+        // La vignette évite le cadre noir : les voisins HLS ne chargent aucun
+        // segment, et le clip centré n'a pas encore décodé sa première image.
+        poster={thumbnailPath ?? undefined}
         controls={isCenter}
         // On retire le bouton plein écran NATIF du <video> : le plein écran
         // passe par notre bouton (sur le conteneur stage). Sinon le natif
@@ -809,6 +840,7 @@ export function CoverFlowModal({
                   {item.kind === 'clip' ? (
                     <ClipPlayer
                       filePath={item.file_path}
+                      thumbnailPath={item.thumbnail_path}
                       basename={item.basename}
                       isCenter={isCenter}
                       relPos={relPos}
