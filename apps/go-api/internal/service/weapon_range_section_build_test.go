@@ -134,3 +134,59 @@ func TestMergeWeaponSides_LaMedianeDesFragsPrimeSurCelleDesMorts(t *testing.T) {
 		t.Errorf("le BR75 doit porter ses deux côtés : %+v", block.Weapons[0])
 	}
 }
+
+// TestWeaponRangeSideOf_MinEtMaxPortesJusquAuContrat — D5 du plan
+// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md : les deux extrêmes observés traversent
+// l'agrégat jusqu'au contrat de réponse, où ils servent l'INFOBULLE du Face-à-face.
+//
+// LA FIXTURE EST À DISTANCES VARIÉES, ET C'EST TOUT L'ENJEU : `wrKills` pose n frags à la MÊME
+// distance, où min == max == p10 == p90 == médiane — un test bâti dessus resterait vert si les
+// deux champs étaient câblés sur les percentiles. Ici les frags vont de 2 à 40 m : min et max
+// ENCADRENT strictement le bâton p10 -> p90, et toute confusion de câblage se voit.
+func TestWeaponRangeSideOf_MinEtMaxPortesJusquAuContrat(t *testing.T) {
+	var kills []analysis.MeasuredKill
+	for i, d := range []float64{40, 2, 9, 15, 4, 30, 7, 12} {
+		kills = append(kills, wrKill("hinf_br75", analysis.SideKiller, int64(i), d, 0))
+	}
+	repo := &mockWeaponRangeRepo{kills: kills}
+
+	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 8, 0)))
+	if block == nil || len(block.Weapons) != 1 || block.Weapons[0].Kills == nil {
+		t.Fatalf("une ligne avec son côté frags attendue, obtenu %+v", block)
+	}
+	side := block.Weapons[0].Kills
+	if math.Abs(side.MinM-2) > epsRange || math.Abs(side.MaxM-40) > epsRange {
+		t.Fatalf("min/max = %v/%v m, attendu 2/40 m", side.MinM, side.MaxM)
+	}
+	if !(side.MinM < side.P10 && side.P90 < side.MaxM) {
+		t.Fatalf("min < p10 <= p90 < max attendu, obtenu min=%v p10=%v p90=%v max=%v"+
+			" (min/max câblés sur les percentiles ?)", side.MinM, side.P10, side.P90, side.MaxM)
+	}
+}
+
+// TestWeaponRangeSideOf_MinEtMaxCoteMorts — le côté MORTS porte ses propres extrêmes, lus sur
+// sa propre série. Sans ce témoin, un câblage qui recopierait les extrêmes du côté frags sur
+// les deux côtés passerait inaperçu : les deux côtés d'une même arme partagent leur ligne.
+func TestWeaponRangeSideOf_MinEtMaxCoteMorts(t *testing.T) {
+	var kills []analysis.MeasuredKill
+	for i, d := range []float64{40, 2, 9, 15, 4, 30, 7, 12} {
+		kills = append(kills, wrKill("hinf_br75", analysis.SideKiller, int64(i), d, 0))
+	}
+	for i, d := range []float64{60, 50, 55, 52, 58, 51, 57, 53} {
+		kills = append(kills, wrKill("hinf_br75", analysis.SideVictim, int64(1000+i), d, 0))
+	}
+	repo := &mockWeaponRangeRepo{kills: kills}
+
+	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 8, 8)))
+	if block == nil || len(block.Weapons) != 1 {
+		t.Fatalf("une ligne attendue, obtenu %+v", block)
+	}
+	w := block.Weapons[0]
+	if w.Kills == nil || w.Deaths == nil {
+		t.Fatalf("les deux côtés attendus, obtenu %+v", w)
+	}
+	if math.Abs(w.Deaths.MinM-50) > epsRange || math.Abs(w.Deaths.MaxM-60) > epsRange {
+		t.Fatalf("morts : min/max = %v/%v m, attendu 50/60 m (côté frags : %v/%v)",
+			w.Deaths.MinM, w.Deaths.MaxM, w.Kills.MinM, w.Kills.MaxM)
+	}
+}

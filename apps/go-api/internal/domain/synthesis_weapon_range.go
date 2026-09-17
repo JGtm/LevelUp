@@ -101,6 +101,16 @@ type WeaponRangeSide struct {
 	Median float64 `json:"median"`
 	P90    float64 `json:"p90"`
 
+	// MinM / MaxM : les distances EXTRÊMES observées, en mètres — POUR L'INFOBULLE SEULE
+	// (D5 du plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md). Elles répondent à « jusqu'où
+	// est-il allé », que p10 -> p90 ne dit pas. Elles NE SE TRACENT JAMAIS : les porter dans
+	// la géométrie du bâton ferait exactement ce que D6 refuse — décrire deux accidents.
+	// Sur une ligne d'une seule mesure, min == max == médiane, et c'est exact.
+	//
+	// La Synthèse les IGNORE : la section existante n'affiche rien de plus qu'avant.
+	MinM float64 `json:"min_m"`
+	MaxM float64 `json:"max_m"`
+
 	// AbovePct / LevelPct / BelowPct : la ventilation du dénivelé, EN POURCENTAGE 0..100
 	// (convention `*Pct` du dépôt), VUE DU CÔTÉ DEMANDÉ. Côté morts, « d'en haut » veut
 	// donc dire que J'ÉTAIS au-dessus du tueur — pas l'inverse. Leur somme vaut 100 aux

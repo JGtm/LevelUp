@@ -102,6 +102,16 @@ type WeaponRange struct {
 	Measured int
 	// P10, Median, P90 sont les percentiles de distance, en mètres (D6).
 	P10, Median, P90 float64
+	// Min, Max sont les distances EXTRÊMES observées, en mètres.
+	//
+	// ELLES NE SE TRACENT JAMAIS (D5 du plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
+	// Tout le fichier explique pourquoi le bâton va de p10 à p90 : sur des centaines de
+	// frags, le minimum et le maximum décrivent deux accidents — un tir de mêlée et un tir
+	// chanceux à travers la carte. Les publier n'annule pas ce constat, il le complète :
+	// ils vont dans l'INFOBULLE, où ils répondent à « jusqu'où est-il allé », jamais dans
+	// la géométrie du graphe, qui décrirait alors deux accidents. Sur un groupe d'une
+	// seule mesure, Min == Max == Median, et c'est exact.
+	Min, Max float64
 	// Above, Level, Below ventilent le dénivelé VU DU CÔTÉ DEMANDÉ : au-dessus de
 	// l'adversaire, à niveau, en dessous. Leur somme vaut Measured.
 	Above, Level, Below int
@@ -230,7 +240,54 @@ func weaponRangeOf(g weaponSideKey, grp []MeasuredKill) WeaponRange {
 	wr.P10 = percentileLinear(dist, 10)
 	wr.Median = percentileLinear(dist, 50)
 	wr.P90 = percentileLinear(dist, 90)
+	// Min et Max se lisent aux DEUX BOUTS DE LA MÊME SÉRIE TRIÉE que les percentiles —
+	// pas d'un second parcours de `grp`, qui divergerait le jour où la série se filtrerait.
+	// `dist` n'est jamais vide ici : un groupe naît d'au moins un frag.
+	wr.Min, wr.Max = dist[0], dist[len(dist)-1]
 	return wr
+}
+
+// RegroupMeasuredKills REKEYE des frags mesurés : chaque `WeaponKey` est remplacée par
+// `keyOf(WeaponKey)`, et les frags dont la nouvelle clé est VIDE sont écartés et comptés.
+//
+// # POURQUOI CETTE FONCTION EXISTE, ET POURQUOI ELLE EST PURE
+//
+// `WeaponRangeAggregate` groupe par (clé, côté) — quelle que soit la clé. Publier la portée
+// par RÔLE plutôt que par arme (D1 du plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md) ne
+// demande donc aucune seconde agrégation : il suffit de changer la clé AVANT d'agréger. Faire
+// l'inverse — fusionner des lignes déjà agrégées — mélangerait des percentiles, ce qui n'a
+// aucun sens : la médiane d'un ensemble ne se déduit pas des médianes de ses parties.
+//
+// `keyOf` est une FONCTION et non une map parce que la résolution vit chez le repo (registre
+// d'armes en metadata) : ce paquet n'a le droit ni d'y toucher ni de la connaître.
+//
+// # UNE CLÉ SANS RÔLE EST ÉCARTÉE, JAMAIS REGROUPÉE SOUS UN SEAU FOURRE-TOUT (D8)
+//
+// Une arme absente du registre n'a pas de rôle. La ranger sous « autre » créerait une ligne
+// qui n'est pas une portée mais un mélange (une épée et un fusil de précision s'y
+// retrouveraient). Elle sort donc du corpus, et le COMPTE des écartés est rendu pour que
+// l'appelant le journalise plutôt que de prendre un silence pour un zéro — même doctrine que
+// `WeaponRangeSummary`.
+//
+// PUR : l'entrée n'est pas mutée (chaque frag est COPIÉ avant que sa clé change). `keyOf` nil
+// écarte tout : aucune clé n'est résoluble, et un panic ne dirait rien de plus.
+func RegroupMeasuredKills(
+	kills []MeasuredKill, keyOf func(weaponKey string) string,
+) (out []MeasuredKill, dropped int) {
+	if keyOf == nil {
+		return nil, len(kills)
+	}
+	out = make([]MeasuredKill, 0, len(kills))
+	for _, k := range kills {
+		cle := keyOf(k.WeaponKey)
+		if cle == "" {
+			dropped++
+			continue
+		}
+		k.WeaponKey = cle // `k` est la copie de boucle : l'entrée reste intacte
+		out = append(out, k)
+	}
+	return out, dropped
 }
 
 // signedElevation ramène le dénivelé AU POINT DE VUE DU CÔTÉ DEMANDÉ, en mètres.
