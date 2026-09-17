@@ -43,9 +43,9 @@
  *
  * 1. LES DIMENSIONS SONT PAIRES. H.264 échantillonne la chrominance à 4:2:0, c'est-à-dire un
  *    demi-pixel sur chaque axe : une largeur impaire n'a pas de représentation, et l'encodeur
- *    la refuse. La toile du rejeu est dimensionnée en pixels physiques (largeur CSS × DPR) et
- *    tombe donc sur des nombres impairs une fois sur deux. On arrondit VERS LE BAS — rogner une
- *    colonne de pixels est invisible, l'étirer ne l'est pas.
+ *    la refuse. Depuis le 2026-09-16 l'export ne demande que des formats pairs (`exportFormats.ts`) ;
+ *    l'arrondi reste le garde-fou de tout appelant qui passerait une taille de toile brute. On
+ *    arrondit VERS LE BAS — rogner une colonne de pixels est invisible, l'étirer ne l'est pas.
  * 2. LE NIVEAU H.264 SE CALCULE, il ne se choisit pas au jugé. Un niveau déclaré trop bas
  *    produit un fichier que les lecteurs stricts refusent ; trop haut, il ferme la porte aux
  *    lecteurs anciens sans rien apporter. `avcLevelFor` prend le plus BAS qui accepte la
@@ -421,8 +421,8 @@ function makeSink(
     const frame = new VideoFrame(canvas, {
       timestamp: index * frameDurationUs,
       duration: frameDurationUs,
-      // LE RECADRAGE EST EXPLICITE. La toile fait souvent une taille IMPAIRE (largeur CSS x DPR
-      // fractionnaire) alors que la config est paire : sans `visibleRect`, on pousse une image
+      // LE RECADRAGE EST EXPLICITE. Une toile d'une autre taille que la config (impaire, ou pas
+      // encore au format) ne doit pas passer implicitement : sans `visibleRect`, on pousse une image
       // 1919x601 dans un encodeur configuré en 1918x600, et le comportement dépend alors de la
       // version du navigateur — mise à l'échelle implicite ici, erreur d'encodeur ailleurs.
       visibleRect: { x: 0, y: 0, width: size.width, height: size.height },

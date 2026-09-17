@@ -99,6 +99,8 @@ export interface ReplayCaptureOptions {
   /** La piste sonore du rejeu et son volume, pour le mixage hors ligne (`useReplaySound`). */
   soundTrack?: ReplayExportOptions['soundTrack']
   soundVolume?: number
+  /** Le palier de zoom de l'écran, pour le choix du cadrage de l'export (cf. `useReplayExport`). */
+  zoomLevel?: number
 }
 
 /** Ce que la barre de lecture reçoit (même forme que `ReplaySound` : un objet, pas des props). */
@@ -322,6 +324,7 @@ function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
     locale: o.locale ?? 'fr',
     soundTrack: o.soundTrack,
     soundVolume: o.soundVolume,
+    zoomLevel: o.zoomLevel,
   })
   return redraw ? exportable : null
 }

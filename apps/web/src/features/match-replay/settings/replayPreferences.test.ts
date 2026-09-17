@@ -5,7 +5,14 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { persistPreference, readStoredFlag, readStoredNumber } from './replayPreferences'
+import {
+  EXPORT_FORMAT_KEY,
+  persistExportFormat,
+  persistPreference,
+  readExportFormat,
+  readStoredFlag,
+  readStoredNumber,
+} from './replayPreferences'
 
 describe('readStoredFlag', () => {
   it('rend le fallback quand rien n est stocké', () => {
@@ -23,6 +30,30 @@ describe('readStoredFlag', () => {
   it('une valeur qui n est ni "true" ni "false" retombe sur false, jamais une erreur', () => {
     persistPreference('rp-flag-garbage', 'garbage')
     expect(readStoredFlag('rp-flag-garbage', true)).toBe(false)
+  })
+})
+
+describe('le format de l’export video (D4)', () => {
+  afterEach(() => {
+    window.localStorage.removeItem(EXPORT_FORMAT_KEY)
+  })
+
+  it('rend 1080p quand rien n’est retenu', () => {
+    expect(readExportFormat()).toBe('1080p')
+  })
+
+  it('relit le format retenu', () => {
+    persistExportFormat('720p')
+    expect(readExportFormat()).toBe('720p')
+    persistExportFormat('1080p')
+    expect(readExportFormat()).toBe('1080p')
+  })
+
+  it('une valeur hors catalogue retombe sur 1080p, jamais dans l’etat', () => {
+    for (const brut of ['4k', '720P', '', '{"id":"720p"}']) {
+      persistPreference(EXPORT_FORMAT_KEY, brut)
+      expect(readExportFormat()).toBe('1080p')
+    }
   })
 })
 
@@ -74,5 +105,10 @@ describe('storage indisponible (navigation privée) — fail-open, jamais une er
 
   it('persistPreference ne lève rien', () => {
     expect(() => persistPreference('k', 'v')).not.toThrow()
+  })
+
+  it('readExportFormat -> 1080p, persistExportFormat ne lève rien', () => {
+    expect(readExportFormat()).toBe('1080p')
+    expect(() => persistExportFormat('720p')).not.toThrow()
   })
 })

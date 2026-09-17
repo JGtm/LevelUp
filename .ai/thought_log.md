@@ -447,6 +447,42 @@ sync/migration) et la CI. Ensuite seulement, la reprise du sync de Nuzzles (anne
 cuisson ; les deux matchs rejetés rentreront d'eux-mêmes grâce à l'étape 3. Aucune base sous
 `data/` n'a été ouverte pendant tout le chantier.
 
+## [2026-09-16] Export video du rejeu — formats standard 1080p / 720p au lieu de dimensions variables — Complete (720c62a33, gate visuel valide par l utilisateur le 2026-09-17)
+
+**Decision technique principale.** L'export encodait la toile telle qu'affichee (hauteur ~960 x
+DPR, largeur = fenetre) : dimensions et proportions variaient d'une machine a l'autre. Decisions
+utilisateur (plan `.ai/PLAN_EXPORT_FORMATS_VIDEO_2026-09-16.md`) : rendu DIRECT au format cible
+(pas de bandes ajoutees apres coup), deux formats 16:9 (1920x1080 defaut, 1280x720), pas de
+H.265 (gain negligeable sur aplats 2D, lecture partielle Firefox/Discord), choix memorise dans le
+navigateur (`replayPreferences.ts`, cle `replay-export-format`) et non cote serveur. Mise en
+oeuvre : cadre logique 960x540 rendu a x2 / x4/3 sans lire le DPR (`export/exportFormats.ts`),
+magasin `export/exportLayoutStore.ts` (demandee/appliquee) qui remplace `exportRenderScale` ;
+`useReplayView` substitue le cadre a l'offre d'ecran, la boucle attend que la toile fasse
+exactement le format avant d'ouvrir l'encodeur ; fond `--card` sous l'image (bandes 16:9). A
+l'ecran, `object-fit: contain` dans la boite d'ecran. `exportScaleFor`/`EXPORT_TARGET_HEIGHT`/
+`EXPORT_SUPERSAMPLE` supprimes avec leurs tests.
+E2b (meme jour, decision utilisateur) : choix « Cadrage » dans le dialogue, visible seulement si la
+carte est zoomee — « Carte entiere » (defaut, rendu au palier 1 sans toucher l etat du zoom) /
+« Cadrage actuel (xN) », non memorise ; gestes de cadrage neutralises pendant l export
+(`lockedZoom`, survol muet via `isExportActive`), des la phase prepare.
+E2c (meme jour, decision utilisateur) : video TOUJOURS fond noir pur (token
+`--replay-export-backdrop`) et encres du theme SOMBRE quel que soit le theme de la page, sans
+basculer `data-theme` : `layers/themeInk.ts` reconstitue la cascade sombre depuis les feuilles de
+style pendant l export (seul lecteur de `readInk`/`readFxInk`) ; `withLoadedImage` centralise le
+chargement des vignettes (4 copies migrees + garde-rail) pour qu elles soient reteintes avant la
+1re image. Selecteurs verifies dans le CSS de PRODUCTION (vite build : `:root[data-theme=dark]`
+sans guillemets, pas de `@supports` sur les variables de theme).
+
+**Resultats observes.** Executeur : suite web complete 7707 tests verts (1 flaky Palmares sous
+charge, vert isole), typecheck 0, lint 0 erreur, lint:colors 0. Contre-verification pilote :
+vitest export+hooks+settings 26 fichiers / 355 tests verts ; apres E2b vitest match-replay 193 fichiers / 2916 tests verts ; apres E2c 195 fichiers / 2925 tests verts, lint:colors 0, typecheck exit 0, lint 0 erreur (25 avertissements preexistants).
+720p en rendu direct : raisonnement ecrit, NON mesure.
+
+**Conclusion / prochaine etape.** Gate visuel VALIDE par l utilisateur le 2026-09-17 (dimensions reelles, bandes couleur du
+bloc, nettete texte 720p, affichage pendant l export, cadrage, theme clair -> clip noir et sombre), puis commit sur autorisation et fusion
+vers feat/v75. Decouvertes non traitees : gestes de cadrage actifs pendant un export (preexistant,
+soldees par E2b) ; test Palmares flaky.
+
 ## [2026-09-17] Chantier decodeur — CLOTURE M1, gate de jalon en regime complet (equivalence 20 films + corpus gate vs base de fusion feat/v75), re-figeage unique des references — Complete (intégration 170ecaab5)
 
 **Decision technique principale.** Le gate de jalon se joue contre la BASE DE FUSION avec feat/v75

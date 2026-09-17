@@ -27,6 +27,7 @@ import { drawHeatmapLayer, type HeatGrid } from '../../../lib/replay/heatPaint'
 import type { ReplayLocale } from '../i18n/i18n'
 import { drawObjectivesLayer, type ObjectiveElementReady } from './objectivesLayer'
 import { projectTo, scaleOf as viewScale, type CanvasView } from '../model/replayView'
+import { canvasPixelRatio } from '../export/exportLayoutStore'
 
 /** Ce que chaque calque statique a besoin de savoir, regroupé par calque. */
 export interface StaticLayersInput {
@@ -75,15 +76,15 @@ export interface StaticLayers {
 }
 
 /**
- * cookLayer — l'amorce commune : un canvas à la densité de l'écran, la transformation posée,
- * puis le tracé. Rend null quand le contexte n'est pas disponible (le canvas est alors éteint
+ * cookLayer — l'amorce commune : un canvas à la densité de la toile (celle de l'écran, ou celle
+ * du format pendant un export — cf. `canvasPixelRatio`), la transformation posée, puis le tracé. Rend null quand le contexte n'est pas disponible (le canvas est alors éteint
  * plutôt que laissé dans un état intermédiaire).
  */
 function cookLayer(
   view: CanvasView,
   paint: (ctx: CanvasRenderingContext2D, dpr: number) => void,
 ): HTMLCanvasElement | null {
-  const dpr = window.devicePixelRatio || 1
+  const dpr = canvasPixelRatio()
   const off = document.createElement('canvas')
   off.width = Math.round(view.width * dpr)
   off.height = Math.round(view.height * dpr)

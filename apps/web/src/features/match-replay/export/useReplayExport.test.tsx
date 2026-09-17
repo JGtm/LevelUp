@@ -8,12 +8,15 @@
  * l'export est REPOSÉE quoi qu'il arrive. Cette dernière est le genre de garantie qui casse en
  * silence : l'utilisateur retrouverait son rejeu à la fin du match sans savoir pourquoi.
  */
+import { useEffect } from 'react'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useReplayExport } from './useReplayExport'
+import { useReplayExport, type ReplayExportOptions } from './useReplayExport'
 import type { ReplayWindowBounds } from '../model/replayWindow'
-import { EXPORT_SUPERSAMPLE, exportRenderScale } from '../hooks/useReplayView'
+import type { ExportLayout } from './exportFormats'
+import { readInk } from '../layers/canvasInk'
+import { canvasPixelRatio, isExportActive, isExportLayoutApplied, useExportLayout } from './exportLayoutStore'
 import { testReplayDoc } from '../test/testDoc'
 
 // La SIGNATURE est portee par le TYPE du mock, pas par des parametres nommes : sans elle,
@@ -25,13 +28,16 @@ const abort = vi.fn()
 const addAudioTracks = vi.fn<(t: readonly { name: string; buffer: AudioBuffer }[]) => Promise<void>>(async () => {})
 /** Les noms de pistes DECLARES a l'ouverture du conteneur (leur ordre y est fige). */
 const nomsDeclares: string[] = []
+/** Les dimensions avec lesquelles l'encodeur a ete OUVERT, par export. */
+const dimsOuvertes: { width: number; height: number }[] = []
 /** Le navigateur accepte-t-il la piste sonore ? Pilote par test (cf. le repli muet). */
 const audioOk = { value: true }
 
 vi.mock('./replayVideoEncoder', async (orig) => ({
   ...(await orig<typeof import('./replayVideoEncoder')>()),
   canExportVideo: () => true,
-  openVideoExport: async (o: { audioTracks?: readonly string[] }) => {
+  openVideoExport: async (o: { width: number; height: number; audioTracks?: readonly string[] }) => {
+    dimsOuvertes.push({ width: o.width, height: o.height })
     nomsDeclares.length = 0
     nomsDeclares.push(...(o.audioTracks ?? []))
     return { addFrame, addAudioTracks, finish, abort, audioEnabled: audioOk.value }
@@ -51,15 +57,43 @@ import { mixReplayAudio } from '../sound/replayAudioMix'
 
 const DOC = testReplayDoc({ frameIntervalMs: 50, frameCount: 200 })
 
+/** La mise en page que le dernier rendu du montage a lue — ce que `ReplayCanvas` en recevrait. */
+const miseEnPageVue: { current: ExportLayout | null } = { current: null }
+
+/**
+ * LE MONTAGE AVEC SA TOILE : l'export ne peint sa premiere image qu'une fois la mise en page
+ * APPLIQUEE par le cadrage React (`useReplayView` -> `useExportLayout`). Ce montage tient ce
+ * role, et rien d'autre.
+ */
+function useExportWithView(o: ReplayExportOptions) {
+  const layout = useExportLayout()
+  useEffect(() => {
+    miseEnPageVue.current = layout
+  }, [layout])
+  return useReplayExport(o)
+}
+
+/**
+ * LA TOILE SIMULEE : le dimensionnement de `ReplayCanvas.draw`, a l'identique — taille de
+ * dessin (celle de l'ecran, ou le cadre du format) fois `canvasPixelRatio`, arrondie.
+ */
+function toileSimulee(canvas: HTMLCanvasElement, ecran = { width: 320, height: 180 }) {
+  return vi.fn(() => {
+    const cadre = miseEnPageVue.current ?? ecran
+    canvas.width = Math.round(cadre.width * canvasPixelRatio())
+    canvas.height = Math.round(cadre.height * canvasPixelRatio())
+  })
+}
+
 function setup() {
   const canvas = document.createElement('canvas')
   canvas.width = 320
   canvas.height = 180
   const frameRef = { current: 42 }
-  const redraw = vi.fn()
+  const redraw = toileSimulee(canvas)
   const pause = vi.fn()
   const hook = renderHook(() =>
-    useReplayExport({
+    useExportWithView({
       canvasRef: { current: canvas },
       frameRef,
       redraw,
@@ -84,6 +118,9 @@ beforeEach(() => {
   finish.mockClear()
   abort.mockClear()
   addAudioTracks.mockClear()
+  dimsOuvertes.length = 0
+  // jsdom n'a pas de contexte 2D : sans ce double, chaque image ecrirait « Not implemented ».
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
   audioOk.value = true
   vi.mocked(triggerDownload).mockClear()
   // Le mock du mixage est PARTAGE entre les tests : sans ce nettoyage, `mock.calls[0]`
@@ -144,6 +181,10 @@ describe('useReplayExport', () => {
     expect(triggerDownload).not.toHaveBeenCalled()
     expect(abort).toHaveBeenCalledTimes(1)
     expect(finish).not.toHaveBeenCalled()
+    // La mise en page d'ecran revient aussi sur ce chemin-la (meme `finally`), gestes rendus.
+    expect(miseEnPageVue.current).toBeNull()
+    expect(isExportActive()).toBe(false)
+    expect(isExportLayoutApplied()).toBe(true)
   })
 
   it('revient à l’état inerte une fois terminé', async () => {
@@ -157,6 +198,8 @@ describe('useReplayExport', () => {
 
   it('propose par défaut le film entier quand il n’y a pas de cadrage', () => {
     const { hook } = setup()
+    // Sans palier transmis, la carte est a 1x : le dialogue ne proposera pas de cadrage.
+    expect(hook.result.current.zoomLevel).toBe(1)
     expect(hook.result.current.defaultBounds()).toEqual({ startFrame: 0, endFrame: 199 })
   })
 })
@@ -184,10 +227,10 @@ describe('useReplayExport — non-régressions de la revue adversariale', () => 
     canvas.height = 180
     const frameRef = { current: 0 }
     return renderHook(() =>
-      useReplayExport({
+      useExportWithView({
         canvasRef: { current: canvas },
         frameRef,
-        redraw: vi.fn(),
+        redraw: toileSimulee(canvas),
         pause: vi.fn(),
         doc: DOC,
         playWindow,
@@ -258,10 +301,10 @@ describe('useReplayExport — le repli MUET quand le navigateur refuse la piste'
     canvas.width = 320
     canvas.height = 180
     const hook = renderHook(() =>
-      useReplayExport({
+      useExportWithView({
         canvasRef: { current: canvas },
         frameRef: { current: 0 },
-        redraw: vi.fn(),
+        redraw: toileSimulee(canvas),
         pause: vi.fn(),
         doc: DOC,
         playWindow: null,
@@ -283,18 +326,18 @@ describe('useReplayExport — le repli MUET quand le navigateur refuse la piste'
   })
 })
 
-describe('useReplayExport — le surechantillonnage', () => {
-  it('rend la toile plus grande pendant l’export, et la REPOSE a la fin', async () => {
-    const vues: number[] = []
+describe('useReplayExport — le format du fichier', () => {
+  /** Monte un export sur une toile d'ECRAN donnee, sous une densite d'ecran donnee. */
+  function monter(ecran: { width: number; height: number }, dpr: number) {
+    Object.defineProperty(window, 'devicePixelRatio', { value: dpr, configurable: true })
     const canvas = document.createElement('canvas')
-    canvas.width = 320
-    canvas.height = 180
+    canvas.width = Math.round(ecran.width * dpr)
+    canvas.height = Math.round(ecran.height * dpr)
     const hook = renderHook(() =>
-      useReplayExport({
+      useExportWithView({
         canvasRef: { current: canvas },
         frameRef: { current: 0 },
-        // Le trace note l'echelle en vigueur au moment ou on lui demande de peindre.
-        redraw: () => vues.push(exportRenderScale.current),
+        redraw: toileSimulee(canvas, ecran),
         pause: vi.fn(),
         doc: DOC,
         playWindow: null,
@@ -305,19 +348,156 @@ describe('useReplayExport — le surechantillonnage', () => {
         locale: 'fr',
       }),
     )
-    await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
-    expect(vues).toContain(EXPORT_SUPERSAMPLE)
-    // Laissee levee, elle rendrait la PAGE en double resolution jusqu'au prochain remontage.
-    expect(exportRenderScale.current).toBe(1)
-    expect(vues[vues.length - 1]).toBe(1)
+    return { hook, canvas }
+  }
+  /** La taille de la toile au moment de CHAQUE image poussee a l'encodeur. */
+  function taillesPoussees(): string[] {
+    return addFrame.mock.calls.map(([c]) => `${c.width}x${c.height}`)
+  }
+
+  afterEach(() => {
+    Object.defineProperty(window, 'devicePixelRatio', { value: 1, configurable: true })
   })
 
-  it('la repose meme quand l’export ECHOUE', async () => {
-    const canvas = document.createElement('canvas')
-    canvas.width = 320
-    canvas.height = 180
+  it('sans choix : 1920x1080, quelle que soit la toile de l’ecran', async () => {
+    const { hook } = monter({ width: 1234, height: 567 }, 1)
+    await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
+    expect(dimsOuvertes).toEqual([{ width: 1920, height: 1080 }])
+    expect(new Set(taillesPoussees())).toEqual(new Set(['1920x1080']))
+  })
+
+  it.each([
+    { format: '1080p' as const, attendu: '1920x1080', ecran: { width: 502, height: 480 }, dpr: 1 },
+    { format: '1080p' as const, attendu: '1920x1080', ecran: { width: 1400, height: 720 }, dpr: 2.5 },
+    { format: '720p' as const, attendu: '1280x720', ecran: { width: 502, height: 480 }, dpr: 1 },
+    { format: '720p' as const, attendu: '1280x720', ecran: { width: 1400, height: 720 }, dpr: 3 },
+  ])('$format sur une toile $ecran.width x $ecran.height a DPR $dpr -> $attendu', async ({ format, attendu, ecran, dpr }) => {
+    const { hook } = monter(ecran, dpr)
+    await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }, { format }))
+    const [w, h] = attendu.split('x').map(Number)
+    expect(dimsOuvertes).toEqual([{ width: w, height: h }])
+    // CHAQUE image, pas seulement la premiere : une toile qui changerait de taille en cours de
+    // route serait rognee par l'encodeur.
+    expect(addFrame).toHaveBeenCalledTimes(16)
+    expect(new Set(taillesPoussees())).toEqual(new Set([attendu]))
+  })
+
+  it('rend la mise en page d’ECRAN a la fin : densite de l’ecran, plus aucun cadre de format', async () => {
+    const { hook } = monter({ width: 800, height: 450 }, 2)
+    await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }, { format: '720p' }))
+    expect(miseEnPageVue.current).toBeNull()
+    expect(isExportLayoutApplied()).toBe(true)
+    expect(canvasPixelRatio()).toBe(2)
+  })
+
+  it('la rend meme quand l’export ECHOUE', async () => {
+    const { hook } = monter({ width: 800, height: 450 }, 1)
     addFrame.mockRejectedValueOnce(new Error('boum'))
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const trace = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
+    expect(hook.result.current.state.phase).toBe('failed')
+    expect(miseEnPageVue.current).toBeNull()
+    expect(isExportActive()).toBe(false)
+    expect(canvasPixelRatio()).toBe(1)
+    trace.mockRestore()
+  })
+
+  it('fond NOIR PUR et encres du THEME SOMBRE, meme page en theme clair ; la page n’en sait rien', async () => {
+    // Un pixel transparent n'a pas de sens pour H.264 : le fond est PEINT sous toute l'image,
+    // bandes du cadre 16:9 comprises, et il est noir quel que soit le theme (D8). Les encres
+    // lues pendant l'encodage sont celles du theme sombre (D9).
+    const theme = document.createElement('style')
+    theme.textContent = [
+      ":root, :root[data-theme='dark'], :root[data-theme='light'] { --replay-export-backdrop: rgb(0 0 0); }",
+      ":root, :root[data-theme='dark'] { --foreground: rgb(250 250 250); }",
+      ":root[data-theme='light'] { --foreground: rgb(20 20 20); }",
+    ].join(' ')
+    document.head.appendChild(theme)
+    const avant = document.documentElement.getAttribute('data-theme')
+    document.documentElement.setAttribute('data-theme', 'light')
+    const peint: string[] = []
+    const encres: string[] = []
+    const ctx = {
+      globalCompositeOperation: 'source-over',
+      fillStyle: '',
+      setTransform: () => {},
+      fillRect: (x: number, y: number, w: number, h: number) =>
+        peint.push(`${ctx.globalCompositeOperation} ${ctx.fillStyle} ${x},${y},${w},${h}`),
+    }
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(ctx as unknown as CanvasRenderingContext2D)
+    addFrame.mockImplementation(async () => {
+      encres.push(readInk('--foreground'))
+    })
+    try {
+      const { hook } = monter({ width: 700, height: 700 }, 1)
+      await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
+      expect(peint).toHaveLength(16)
+      expect(new Set(peint)).toEqual(new Set(['destination-over rgb(0 0 0) 0,0,1920,1080']))
+      // Le mode de composition est RENDU : le trace suivant peindrait sinon sous l'image.
+      expect(ctx.globalCompositeOperation).toBe('source-over')
+      expect(new Set(encres)).toEqual(new Set(['rgb(250 250 250)']))
+      // LA PAGE : toujours en theme clair, et ses encres redeviennent les siennes.
+      expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+      expect(readInk('--foreground')).toBe('rgb(20 20 20)')
+    } finally {
+      addFrame.mockImplementation(async () => {})
+      theme.remove()
+      if (avant === null) document.documentElement.removeAttribute('data-theme')
+      else document.documentElement.setAttribute('data-theme', avant)
+    }
+  })
+
+  it('transmet le CADRAGE a la mise en page : carte entiere par defaut, cadrage actuel sur demande', async () => {
+    const cadrages: string[] = []
+    const { hook } = monter({ width: 800, height: 450 }, 1)
+    addFrame.mockImplementation(async () => {
+      cadrages.push(miseEnPageVue.current?.framing ?? 'aucun')
+    })
+    await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
+    await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }, { framing: 'current' }))
+    addFrame.mockImplementation(async () => {})
+    expect(cadrages.slice(0, 16)).toEqual(Array(16).fill('whole'))
+    expect(cadrages.slice(16)).toEqual(Array(16).fill('current'))
+  })
+
+  it('tient la toile DES la preparation (gestes eteints avant le mixage du son)', async () => {
+    let actifPendantLeMixage = false
+    vi.mocked(mixReplayAudio).mockImplementationOnce(async () => {
+      actifPendantLeMixage = isExportActive()
+      return null
+    })
+    const canvas = document.createElement('canvas')
+    const hook = renderHook(() =>
+      useExportWithView({
+        canvasRef: { current: canvas },
+        frameRef: { current: 0 },
+        redraw: toileSimulee(canvas),
+        pause: vi.fn(),
+        doc: DOC,
+        playWindow: null,
+        scoreboard: [],
+        outcome: null,
+        viewpoint: null,
+        titleSlug: 'halo_infinite',
+        locale: 'fr',
+        soundTrack: () => ({ timeline: [{ ms: 0, stem: 'x' }], endMatchStems: [], variationPercent: 0, distancePercent: 0, families: { voice: [], music: [] }, engines: [] }),
+        zoomLevel: 2,
+      }),
+    )
+    // Le palier de l'ecran est RELAYE au dialogue, qui decide d'y proposer le cadrage.
+    expect(hook.result.current.zoomLevel).toBe(2)
+    await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
+    expect(actifPendantLeMixage).toBe(true)
+    expect(isExportActive()).toBe(false)
+  })
+
+  it('une toile qui ne prend JAMAIS le format : echec dit, encodeur jamais ouvert', async () => {
+    // Aucun cadrage monte : la mise en page demandee ne s'applique pas. Le temps est avance
+    // artificiellement pour ne pas attendre le delai reel.
+    const canvas = document.createElement('canvas')
+    let t = 0
+    const horloge = vi.spyOn(performance, 'now').mockImplementation(() => (t += 1000))
+    const trace = vi.spyOn(console, 'error').mockImplementation(() => {})
     const hook = renderHook(() =>
       useReplayExport({
         canvasRef: { current: canvas },
@@ -334,7 +514,11 @@ describe('useReplayExport — le surechantillonnage', () => {
       }),
     )
     await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
-    expect(exportRenderScale.current).toBe(1)
+    expect(hook.result.current.state.phase).toBe('failed')
+    expect(hook.result.current.state.message).toContain("mise en page d'export non appliquee")
+    expect(dimsOuvertes).toEqual([])
+    horloge.mockRestore()
+    trace.mockRestore()
   })
 })
 
@@ -352,10 +536,10 @@ describe('useReplayExport — les pistes sonores separees', () => {
     canvas.width = 320
     canvas.height = 180
     const hook = renderHook(() =>
-      useReplayExport({
+      useExportWithView({
         canvasRef: { current: canvas },
         frameRef: { current: 0 },
-        redraw: vi.fn(),
+        redraw: toileSimulee(canvas),
         pause: vi.fn(),
         doc: DOC,
         playWindow: null,
