@@ -93,7 +93,7 @@ func collectSelectedXUIDs(teammates []domain.TeammateRow) []string {
 	return out
 }
 
-// resolveFriendXUIDs traduit les gamertags amis (settings.friend_gamertags) en
+// resolveFriendXUIDs traduit les gamertags amis du joueur consulté en
 // xuids via la table gamertag→xuid des top coéquipiers déjà chargés (Q29). Les
 // amis hors top-50 ne sont pas résolus ici (co-jouer avec eux serait de toute
 // façon marginal ; le pool top les couvre pour l'essentiel). Case-insensitive.

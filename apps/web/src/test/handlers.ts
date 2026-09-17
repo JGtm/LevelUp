@@ -166,7 +166,6 @@ const settingsFixture = {
   spnkr_auto_sync_interval_minutes: 360,
   watcher_presence_enabled: false,
   watcher_subscribed_players: [],
-  friend_gamertags: [],
 }
 
 const emptyKPIs = {
@@ -269,6 +268,19 @@ export const handlers = [
 
   // Players list
   http.get(p('/players'), () => HttpResponse.json({ items: [playerFixture], default_player_slug: 'test-player' })),
+
+  // Amis du joueur (liste par profil). Défaut : liste vide et modifiable ; les
+  // tests qui veulent des amis ou un profil en lecture seule surchargent.
+  http.get(p(`/players/${SLUG}/friends`), () =>
+    HttpResponse.json({ xuid: '0000000000000001', gamertags: [], can_edit: true })),
+  http.put(p(`/players/${SLUG}/friends`), async ({ request }) => {
+    const body = (await request.json()) as { gamertags?: string[] }
+    return HttpResponse.json({
+      xuid: '0000000000000001',
+      gamertags: body?.gamertags ?? [],
+      can_edit: true,
+    })
+  }),
 
   // Présence en jeu (sélecteur de joueur du shell) — défaut « personne en jeu » :
   // les tests qui veulent une manette ou un compteur surchargent ce handler.

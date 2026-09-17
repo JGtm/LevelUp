@@ -63,7 +63,7 @@ func (s *TimeseriesService) attachMigratedSections(
 	})
 }
 
-// timeseriesFriendGamertags résout les amis configurés (nil = aucun ami déclaré).
+// timeseriesFriendGamertags résout les amis du joueur (nil = aucun ami déclaré).
 func (s *TimeseriesService) timeseriesFriendGamertags(ctx context.Context) []string {
 	if s.usageFriends == nil {
 		return nil

@@ -223,6 +223,7 @@ func (s *Store) List() ([]domain.AdminUserSummary, error) {
 			Username:    u.Username,
 			Role:        u.Role,
 			Gamertag:    u.Gamertag,
+			XUID:        u.XUID,
 			CreatedAt:   u.CreatedAt,
 			LastLoginAt: u.LastLoginAt,
 		})
@@ -326,6 +327,32 @@ func (s *Store) SetRole(username string, role domain.UserRole) error {
 	}
 
 	user.Role = role
+	f.Users[slug] = user
+
+	return s.save(f)
+}
+
+// SetProvisionGrant pose (ou efface, avec une chaîne vide) le droit à usage
+// unique de créer son profil joueur sur instance verrouillée (D3, ADR 0029).
+// Écrire "" après la création réussie du profil est ce qui rend le droit
+// NON rejouable : sans cet effacement, l'invité pourrait recréer un profil à
+// chaque passage sur le Setup.
+func (s *Store) SetProvisionGrant(username, code string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	f, err := s.load()
+	if err != nil {
+		return err
+	}
+
+	slug := slugify(username)
+	user, exists := f.Users[slug]
+	if !exists {
+		return ErrUserNotFound
+	}
+
+	user.ProvisionGrant = code
 	f.Users[slug] = user
 
 	return s.save(f)

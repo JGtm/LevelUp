@@ -48,6 +48,33 @@
 # contrôle de présence ne les voyait pas, leur retrait ne relâche donc rien — il
 # garde seulement la baseline en phase avec l'arbre.
 #
+# RETRAIT DU 2026-09-16 (lot annuaire des joueurs, ADR 0035, commit 53d19824c) : 3 tests de
+# `internal/api/handlers` retirés — TestFileExists_Exists, TestFileExists_NotExists et
+# TestSetupHandler_CreatePlayer_ProfileServiceError. Le lot a fait d Onboard le SEUL chemin de
+# création de profil : le mockProfileService et le test d erreur du ProfileService côté
+# handler n ont plus d objet (remplacés par TestSetupHandler_CreatePlayer_ViaAnnuaire /
+# _SansAnnuaire, présents dans le run courant), et les deux TestFileExists suivaient le
+# helper supprimé. 13 lignes JSONL, exactement 3 paires (Package, Test), vérifié par
+# différence avant/après. Compte PARTIEL d absences volontaires → remède prescrit ici même.
+#
+# RETRAIT DU 2026-09-16 (lots amis/invitations et sync par le pool) : 2 tests RENOMMÉS parce que
+# leur assertion s est inversée — `internal/service::TestXboxSSOLinkStrategy_LegacyInviteNoGroup_Locked_Rejected`
+# (une invitation sans groupe LÈVE désormais le verrou d instance : remplacé par
+# `..._InviteWithoutGroup_Locked_CreatesUserAndGrant`) et
+# `internal/scheduler::TestRunOnce_PlayerNotInPool_Skipped` (un joueur hors pool est désormais
+# synchronisé par le pool : remplacé par `TestPreconditions_JoueurHorsPoolAccepte`). Les deux
+# remplaçants sont dans le run courant. Exactement 2 paires (Package, Test), vérifié par
+# différence avant/après.
+#
+# RETRAIT DU 2026-09-16 (lot robustesse du sync, etape 3, D4) : 2 tests RENOMMES de
+# `internal/sync` — TestPooledHaloClientGetCareerRank_PinnedToken et
+# TestPooledHaloClientGetCareerRank_NoPinnedToken. La mesure du 2026-09-16 (trois preteurs sur
+# un xuid TIERS rendent le meme rang et la meme XP que le proprietaire) a fait passer
+# GetCareerRank en PolicyAnyPublic : il n y a plus de token « epingle », donc plus de branche a
+# tester. Remplaces par TestPooledHaloClientGetCareerRank_AcquiertEnPublic, present dans le run
+# courant. 8 lignes JSONL, exactement 2 paires (Package, Test), verifie par difference
+# avant/apres. Compte PARTIEL d absences volontaires -> remede prescrit ici meme.
+#
 # Le contrôle 2 a été ajouté le 2026-07-26 : le `|| true` sur le `go test -json`
 # (nécessaire pour pouvoir analyser le JSONL même quand la suite échoue) rendait
 # le gate MENTEUR — un test FAIL était compté comme « présent » par le contrôle 1

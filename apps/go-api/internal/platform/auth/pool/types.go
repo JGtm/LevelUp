@@ -178,7 +178,11 @@ type Pool interface {
 
 // PoolOptions configure le comportement du pool.
 type PoolOptions struct {
-	// MaxSize limite le nombre de tokens dans le pool (0 = tous les sources découverts).
+	// MaxSize est le nombre maximal de slots SAINS du pool (0 = tous les slots sains
+	// que les sources découvertes permettent de créer). Le plafond porte sur les slots
+	// RÉSOLUS, pas sur les sources TENTÉES (D2, plan robustesse 2026-09-16) : le scan
+	// est parcouru en entier, dans l'ordre alphabétique des gamertags, et une source
+	// dont le refresh token ne se résout pas ne consomme pas le quota.
 	MaxSize int
 
 	// PerTokenRPS est le nombre de requêtes par seconde **par token**.

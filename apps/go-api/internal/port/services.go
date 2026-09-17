@@ -30,7 +30,7 @@ type CareerService interface {
 	// handler via MatchHistoryService.
 	GetHighlightMatchIDs(ctx context.Context, input domain.HighlightFilterInput) (domain.HighlightMatchesData, error)
 	// GetTopEncounters : 10 joueurs les plus croisés au niveau carrière,
-	// hors amis configurés (FriendGamertags), avec badges narratifs.
+	// hors amis configurés du joueur, avec badges narratifs.
 	GetTopEncounters(ctx context.Context) (domain.CareerTopEncountersResponse, error)
 	// GetRivals : top 10 némésis + top 10 souffre-douleur via killer_victim_pairs.
 	GetRivals(ctx context.Context) (domain.CareerRivalsResponse, error)
@@ -414,21 +414,6 @@ type BootstrapService interface {
 // GamertagSearchService cherche des gamertags dans la base partagée.
 type GamertagSearchService interface {
 	Search(ctx context.Context, query string) ([]domain.GamertagSearchResult, error)
-}
-
-// ProfileService gère la création de profils joueur (extrait de setup.go).
-type ProfileService interface {
-	CreatePlayer(req domain.CreatePlayerProfileRequest) (playerKey string, warnings []string, err error)
-}
-
-// FriendsOrchestrator déclenche le recompute is_with_friends sur toutes les
-// player DBs configurées (multi-titres). §4 du plan Squad/Sessions overhaul.
-//
-// Implémenté par *service.FriendsOrchestratorService. Le résultat n'est pas
-// typé ici pour éviter une fuite de service vers port — les handlers le
-// consomment via le type concret quand ils ont besoin du détail.
-type FriendsOrchestrator interface {
-	OnFriendsChanged(ctx context.Context) error
 }
 
 // ─── Asset Drawer ────────────────────────────────────────────────────────────

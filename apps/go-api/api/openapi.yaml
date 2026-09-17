@@ -724,6 +724,25 @@ paths:
       summary: Diagnostic apparence Spartan ID — verdict par composant (bannière/emblème/backdrop/service tag) d'un joueur suivi, à la demande (auth admin requis)
       tags:
         - admin
+  /admin/identities:
+    get:
+      operationId: getAdminIdentities
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminIdentitiesResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: 'Annuaire des joueurs : comptes, profils, credentials, suivi live et anomalies (auth admin requis)'
+      tags:
+        - admin
   /admin/invariants:
     get:
       operationId: getAdminInvariants
@@ -3318,6 +3337,55 @@ paths:
       summary: Résoudre le contexte de filtres
       tags:
         - filters
+  /players/{player_slug}/friends:
+    get:
+      operationId: getPlayerFriends
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerFriends'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Friends list of the player (readable by the owner, a group co-member or an admin)
+      tags:
+        - friends
+    put:
+      operationId: putPlayerFriends
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerFriends'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Replaces the player friends list (direct owner or admin only)
+      tags:
+        - friends
   /players/{player_slug}/matches/{match_id}:
     get:
       description: |
@@ -7397,6 +7465,21 @@ components:
       required:
         - status
       type: object
+    AccountRef:
+      additionalProperties: false
+      properties:
+        created_at:
+          type: string
+        last_login_at:
+          type: string
+        role:
+          type: string
+        username:
+          type: string
+      required:
+        - username
+        - role
+      type: object
     AccuracyPoint:
       additionalProperties: false
       properties:
@@ -7841,6 +7924,27 @@ components:
         - generated_at
         - titles
         - critical_total
+      type: object
+    AdminIdentitiesResponse:
+      additionalProperties: false
+      properties:
+        counts:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+        generated_at:
+          type: string
+        identities:
+          items:
+            $ref: '#/components/schemas/IdentityRecord'
+          type:
+            - array
+            - "null"
+      required:
+        - generated_at
+        - identities
+        - counts
       type: object
     AdminInvariantsResponse:
       additionalProperties: false
@@ -8382,6 +8486,8 @@ components:
         role:
           type: string
         username:
+          type: string
+        xuid:
           type: string
       required:
         - username
@@ -13475,6 +13581,12 @@ components:
           type:
             - array
             - "null"
+        top_medals_local:
+          items:
+            $ref: '#/components/schemas/MedalDigestItem'
+          type:
+            - array
+            - "null"
       required:
         - auth_available
         - live_status
@@ -14928,6 +15040,22 @@ components:
         spartan_id:
           type: string
       type: object
+    IdentityAnomaly:
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+        severity:
+          enum:
+            - warning
+            - info
+          type: string
+      required:
+        - code
+        - severity
+      type: object
     IdentityBipedSlot:
       additionalProperties: false
       properties:
@@ -14979,6 +15107,52 @@ components:
       required:
         - filmIndex
         - link
+      type: object
+    IdentityRecord:
+      additionalProperties: false
+      properties:
+        account:
+          $ref: '#/components/schemas/AccountRef'
+        anomalies:
+          items:
+            $ref: '#/components/schemas/IdentityAnomaly'
+          type:
+            - array
+            - "null"
+        duplicate_accounts:
+          items:
+            $ref: '#/components/schemas/AccountRef'
+          type:
+            - array
+            - "null"
+        gamertag:
+          type: string
+        orphan_dirs:
+          items:
+            $ref: '#/components/schemas/OrphanDirRef'
+          type:
+            - array
+            - "null"
+        profiles:
+          items:
+            $ref: '#/components/schemas/ProfileRef'
+          type:
+            - array
+            - "null"
+        token:
+          $ref: '#/components/schemas/TokenRef'
+        watched:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        xuid:
+          type: string
+      required:
+        - profiles
+        - watched
+        - anomalies
       type: object
     IdentitySection:
       additionalProperties: false
@@ -15353,6 +15527,8 @@ components:
         expires_at:
           type: string
         group_id:
+          type: string
+        join_url:
           type: string
         used_at:
           type:
@@ -20041,6 +20217,17 @@ components:
         - fwdX
         - fwdY
       type: object
+    OrphanDirRef:
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        title_slug:
+          type: string
+      required:
+        - title_slug
+        - name
+      type: object
     OutcomesPeriodPoint:
       additionalProperties: false
       properties:
@@ -20598,6 +20785,24 @@ components:
         - gamertag
         - xuid
         - status
+      type: object
+    PlayerFriends:
+      additionalProperties: false
+      properties:
+        can_edit:
+          type: boolean
+        gamertags:
+          items:
+            type: string
+          type: array
+        updated_at:
+          type: string
+        xuid:
+          type: string
+      required:
+        - xuid
+        - gamertags
+        - can_edit
       type: object
     PlayerIdentity:
       additionalProperties: false
@@ -21392,6 +21597,29 @@ components:
         - acceptance_rate
         - completion_rate
         - abandon_rate
+      type: object
+    ProfileRef:
+      additionalProperties: false
+      properties:
+        auth_only:
+          type: boolean
+        db_exists:
+          type: boolean
+        dir_exists:
+          type: boolean
+        key:
+          type: string
+        sync_enabled:
+          type: boolean
+        title_slug:
+          type: string
+      required:
+        - title_slug
+        - key
+        - sync_enabled
+        - auth_only
+        - dir_exists
+        - db_exists
       type: object
     ProgressionDiag:
       additionalProperties: false
@@ -24256,10 +24484,6 @@ components:
           type: boolean
         discord_webhook_url_present:
           type: boolean
-        friend_gamertags:
-          items:
-            type: string
-          type: array
         lang:
           enum:
             - fr
@@ -28454,6 +28678,21 @@ components:
         - has_refresh_token
         - resolve_ok
         - refresh_token_was_rotated
+      type: object
+    TokenRef:
+      additionalProperties: false
+      properties:
+        has_refresh_token:
+          type: boolean
+        last_auth_error:
+          type: string
+        reauth_required:
+          type: boolean
+        updated_at:
+          type: string
+      required:
+        - has_refresh_token
+        - reauth_required
       type: object
     TopMatchDTO:
       additionalProperties: false

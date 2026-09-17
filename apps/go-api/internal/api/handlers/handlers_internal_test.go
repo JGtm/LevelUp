@@ -1,7 +1,7 @@
 // handlers_internal_test.go — tests internes (package handlers) pour les helpers privés.
 //
 // encode/decodeExportToken, formatOptFloat, optStr,
-// filterCitationsByCategory, filterCommendationsByCategory, fileExists,
+// filterCitationsByCategory, filterCommendationsByCategory,
 // resolveCapturesDir, deviceFlowStartResponse, deviceFlowStatusResponse,
 // writeJSONCached.
 package handlers
@@ -9,7 +9,6 @@ package handlers
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -183,26 +182,6 @@ func TestFilterCommendationsByCategory_NoMatch(t *testing.T) {
 	}
 	if got.TotalCount != 0 {
 		t.Errorf("TotalCount = %d, want 0", got.TotalCount)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// fileExists
-// ---------------------------------------------------------------------------
-
-func TestFileExists_Exists(t *testing.T) {
-	tmp := filepath.Join(t.TempDir(), "test.txt")
-	if err := os.WriteFile(tmp, []byte("x"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if !fileExists(tmp) {
-		t.Error("expected true for existing file")
-	}
-}
-
-func TestFileExists_NotExists(t *testing.T) {
-	if fileExists(filepath.Join(t.TempDir(), "no-such-file")) {
-		t.Error("expected false for non-existing file")
 	}
 }
 

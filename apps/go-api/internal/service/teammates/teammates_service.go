@@ -36,8 +36,8 @@ import (
 	"levelup/go-api/internal/service/squadagg"
 )
 
-// FriendGamertagsResolver retourne la liste courante des amis configurés
-// (app_settings.friend_gamertags). Appelé à chaque requête pour refléter les
+// FriendGamertagsResolver retourne la liste courante des amis DU JOUEUR
+// consulté (data/global/player_friends.json). Appelé à chaque requête pour refléter les
 // PATCH settings sans redémarrage.
 type FriendGamertagsResolver func(ctx context.Context) []string
 
@@ -227,7 +227,7 @@ func (s *TeammatesService) GetPage(
 	}
 
 	// §3 plan Squad/Sessions : filtre top dropdown aux amis configurés
-	// (settings.friend_gamertags). Hors amis = exclus du dropdown mais
+	// (liste d'amis du joueur). Hors amis = exclus du dropdown mais
 	// toujours requêtables explicitement via SelectedGamertags + alias.
 	var friendGTs []string
 	if s.friendGamertags != nil {

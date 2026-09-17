@@ -409,6 +409,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Annuaire des joueurs : comptes, profils, credentials, suivi live et anomalies (auth admin requis) */
+        get: operations["getAdminIdentities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/invariants": {
         parameters: {
             query?: never;
@@ -1926,6 +1943,24 @@ export interface paths {
          *     - Les listes vides dans cascade = « tout coché » (pas de filtre restrictif)
          */
         post: operations["resolveFilters"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/friends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Friends list of the player (readable by the owner, a group co-member or an admin) */
+        get: operations["getPlayerFriends"];
+        /** Replaces the player friends list (direct owner or admin only) */
+        put: operations["putPlayerFriends"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4141,6 +4176,12 @@ export interface components {
             challenge_ids?: string[] | null;
             status: string;
         };
+        AccountRef: {
+            created_at?: string;
+            last_login_at?: string;
+            role: string;
+            username: string;
+        };
         AccuracyPoint: {
             /** Format: double */
             accuracy: number;
@@ -4300,6 +4341,13 @@ export interface components {
             critical_total: number;
             generated_at: string;
             titles: components["schemas"]["TitleFreshnessReport"][] | null;
+        };
+        AdminIdentitiesResponse: {
+            counts: {
+                [key: string]: number;
+            };
+            generated_at: string;
+            identities: components["schemas"]["IdentityRecord"][] | null;
         };
         AdminInvariantsResponse: {
             generated_at: string;
@@ -4496,6 +4544,7 @@ export interface components {
             last_login_at?: string;
             role: string;
             username: string;
+            xuid?: string;
         };
         AdminWeaponCoverage: {
             /** Format: double */
@@ -6624,6 +6673,7 @@ export interface components {
             sample_stats?: components["schemas"]["ExplorerTargetSampleStats"];
             season_csrs?: components["schemas"]["CareerPlaylistCSR"][] | null;
             top_medals?: components["schemas"]["MedalDigestItem"][] | null;
+            top_medals_local?: components["schemas"]["MedalDigestItem"][] | null;
         };
         ExplorerTargetRecentMatch: {
             /** Format: int64 */
@@ -7273,6 +7323,12 @@ export interface components {
             highest_lusr?: components["schemas"]["HomeSkillPeakSummary"];
             spartan_id?: string;
         };
+        IdentityAnomaly: {
+            code: string;
+            detail?: string;
+            /** @enum {string} */
+            severity: "warning" | "info";
+        };
         IdentityBipedSlot: {
             bid?: string;
             link: components["schemas"]["Link"];
@@ -7292,6 +7348,17 @@ export interface components {
             filmIndex: number;
             link: components["schemas"]["Link"];
             name?: string;
+            xuid?: string;
+        };
+        IdentityRecord: {
+            account?: components["schemas"]["AccountRef"];
+            anomalies: components["schemas"]["IdentityAnomaly"][] | null;
+            duplicate_accounts?: components["schemas"]["AccountRef"][] | null;
+            gamertag?: string;
+            orphan_dirs?: components["schemas"]["OrphanDirRef"][] | null;
+            profiles: components["schemas"]["ProfileRef"][] | null;
+            token?: components["schemas"]["TokenRef"];
+            watched: string[] | null;
             xuid?: string;
         };
         IdentitySection: {
@@ -7440,6 +7507,7 @@ export interface components {
             created_by: string;
             expires_at: string;
             group_id?: string;
+            join_url?: string;
             used_at: string | null;
             used_by: string | null;
         };
@@ -9451,6 +9519,10 @@ export interface components {
             /** Format: float */
             z: number;
         };
+        OrphanDirRef: {
+            name: string;
+            title_slug: string;
+        };
         OutcomesPeriodPoint: {
             /** Format: int64 */
             dnf: number;
@@ -9697,6 +9769,12 @@ export interface components {
             status: string;
             /** Format: int64 */
             sync_age_seconds?: number;
+            xuid: string;
+        };
+        PlayerFriends: {
+            can_edit: boolean;
+            gamertags: string[];
+            updated_at?: string;
             xuid: string;
         };
         PlayerIdentity: {
@@ -10020,6 +10098,14 @@ export interface components {
             /** Format: int64 */
             rejected: number;
             source: string;
+        };
+        ProfileRef: {
+            auth_only: boolean;
+            db_exists: boolean;
+            dir_exists: boolean;
+            key: string;
+            sync_enabled: boolean;
+            title_slug: string;
         };
         ProgressionDiag: {
             /** Format: int64 */
@@ -11142,7 +11228,6 @@ export interface components {
             discord_notify_new_version?: boolean;
             discord_notify_sync?: boolean;
             discord_webhook_url_present?: boolean;
-            friend_gamertags?: string[];
             /** @enum {string} */
             lang: "fr" | "en";
             media_captures_base_dir?: string;
@@ -12795,6 +12880,12 @@ export interface components {
             /** Format: int64 */
             spartan_token_len?: number;
         };
+        TokenRef: {
+            has_refresh_token: boolean;
+            last_auth_error?: string;
+            reauth_required: boolean;
+            updated_at?: string;
+        };
         TopMatchDTO: {
             /** Format: int64 */
             deaths: number;
@@ -14241,6 +14332,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getAdminIdentities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminIdentitiesResponse"];
+                };
             };
             /** @description Error */
             default: {
@@ -17399,6 +17519,68 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPlayerFriends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerFriends"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    putPlayerFriends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerFriends"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {

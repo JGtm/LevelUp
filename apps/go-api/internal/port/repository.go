@@ -364,6 +364,12 @@ type ExplorerRepository interface {
 	// sur les matchs donnés (shared.v_weapon_kills, COUNT(*) par effective_weapon_id)
 	// + labels metadata.weapon_labels. Retourne nil si entrée vide — best-effort.
 	GetTopWeaponsForMatches(ctx context.Context, xuid string, matchIDs []string, limit int) ([]domain.WeaponHighlight, error)
+
+	// GetTopMedalsForMatches retourne le top `limit` médailles (SUM(count) par
+	// medal_name_id, tri décroissant) du joueur sur les matchs donnés — lecture
+	// shared.medals_earned. Les identifiants bruts sont enrichis (label/image)
+	// plus haut, côté service. Retourne nil si entrée vide — best-effort.
+	GetTopMedalsForMatches(ctx context.Context, xuid string, matchIDs []string, limit int) ([]domain.RemoteMedalCount, error)
 }
 
 // GamertagRepository fournit la recherche de gamertags.
@@ -561,6 +567,9 @@ func (n *noopExplorerRepo) GetTargetRecentMatches(_ context.Context, _ string, _
 func (n *noopExplorerRepo) TranslateModeUIsFR(_ context.Context, _ []domain.ExplorerTargetRecentMatch) {
 }
 func (n *noopExplorerRepo) GetTopWeaponsForMatches(_ context.Context, _ string, _ []string, _ int) ([]domain.WeaponHighlight, error) {
+	return nil, nil
+}
+func (n *noopExplorerRepo) GetTopMedalsForMatches(_ context.Context, _ string, _ []string, _ int) ([]domain.RemoteMedalCount, error) {
 	return nil, nil
 }
 

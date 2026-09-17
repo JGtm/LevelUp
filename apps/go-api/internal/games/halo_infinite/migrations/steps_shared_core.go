@@ -604,6 +604,7 @@ func sharedCoreSteps() []migration.Migration {
 				return migration.AddColumnIfMissing(db, "match_registry", "player_count", "SMALLINT DEFAULT 0")
 			},
 		},
+		widenMatchRegistryTeamScoresStep,
 		{
 			Name:        "add_weapon_accuracy",
 			TargetDB:    migration.TargetShared,

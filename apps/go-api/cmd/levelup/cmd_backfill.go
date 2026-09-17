@@ -30,7 +30,6 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
-	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -369,19 +368,6 @@ func runBackfillCitationsOne(ctx context.Context, cfg *config.AppConfig, gamerta
 	return engine.RunBackfillCitations(ctx, force)
 }
 
-// applyMigrationsOnDB ouvre une DB en RW et applique les migrations enregistrees
-// pour la cible. Idempotent — DuckDB tolere une migration deja appliquee via
-// schema_migrations.
-func applyMigrationsOnDB(path string, target migration.TargetDB) error {
-	_ = migration.All()
-	db, err := duckdbpkg.OpenReadWrite(path)
-	if err != nil {
-		return fmt.Errorf("open rw %s: %w", path, err)
-	}
-	defer db.Close()
-	return migration.RunForDB(db.SQLDb(), target)
-}
-
 // ── LUSR backfill ─────────────────────────────────────────────────────────────
 
 func runBackfillAllLUSR(ctx context.Context, cfg *config.AppConfig) error {
@@ -608,167 +594,6 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n-1] + "…"
-}
-
-// ── CSR backfill ───────────────────────────────────────────────────────────────
-//
-// Re-fetche GetMatchSkill pour chaque match classé en DB et persiste la ligne
-// CSR dans match_skill_rank. Nécessite des tokens Halo valides (OAuth refresh
-// via MSAL).
-
-func runBackfillAllCSR(ctx context.Context, cfg *config.AppConfig, force bool) error {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return fmt.Errorf("chargement db_profiles.json: %w", err)
-	}
-	if len(players) == 0 {
-		return fmt.Errorf("aucun joueur configure")
-	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	total, processed, skipped, failed, totalInserted := len(players), 0, 0, 0, 0
-	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
-		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
-			skipped++
-			fmt.Printf("backfill csr SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
-			continue
-		}
-		if err := applyMigrationsOnDB(dbPath, migration.TargetPlayer); err != nil {
-			failed++
-			fmt.Printf("backfill csr FAIL: gamertag=%s err=migrations: %v\n", player.Gamertag, err)
-			continue
-		}
-
-		tokens, tokErr := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
-		if tokErr != nil {
-			skipped++
-			fmt.Printf("backfill csr SKIP: gamertag=%s reason=%v\n", player.Gamertag, tokErr)
-			continue
-		}
-
-		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
-		res, runErr := engine.RunBackfillCSR(ctx, force)
-		if runErr != nil {
-			failed++
-			fmt.Printf("backfill csr FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
-			continue
-		}
-		processed++
-		totalInserted += res.Inserted
-		fmt.Printf("backfill csr OK: gamertag=%s inserted=%d already=%d no_recap=%d errors=%d\n",
-			player.Gamertag, res.Inserted, res.AlreadyHadCSR, res.SkippedNoRankRecap, res.SkillErrors)
-	}
-	fmt.Printf("backfill csr batch: total=%d processed=%d skipped=%d failed=%d total_inserted=%d\n",
-		total, processed, skipped, failed, totalInserted)
-	if failed > 0 {
-		return fmt.Errorf("backfill csr: %d joueur(s) en echec", failed)
-	}
-	return nil
-}
-
-func runBackfillCSRForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, force bool) error {
-	tokens, err := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
-	if err != nil {
-		return fmt.Errorf("backfill csr: tokens Halo indisponibles pour %s: %w", player.Gamertag, err)
-	}
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
-	res, err := engine.RunBackfillCSR(ctx, force)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("backfill csr OK: gamertag=%s inserted=%d already=%d no_recap=%d errors=%d force=%t\n",
-		player.Gamertag, res.Inserted, res.AlreadyHadCSR, res.SkippedNoRankRecap, res.SkillErrors, force)
-	return nil
-}
-
-// ── Shared CSR backfill (Option A — all participants per match) ────────────
-//
-// Persiste le CSR de TOUS les joueurs d'un match ranked dans shared.match_csrs
-// (vs. legacy --csr qui n'écrit que le CSR du joueur sync dans sa player DB).
-// Mode --dry-run : compte les matchs nécessitant un backfill sans appel API
-// ni écriture — idéal pour valider l'ampleur avant exécution réelle.
-
-func runBackfillAllSharedCSR(ctx context.Context, cfg *config.AppConfig, force, dryRun bool) error {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return fmt.Errorf("chargement db_profiles.json: %w", err)
-	}
-	if len(players) == 0 {
-		return fmt.Errorf("aucun joueur configure")
-	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	total, processed, skipped, failed, totalInserted := len(players), 0, 0, 0, 0
-	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
-		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
-			skipped++
-			fmt.Printf("backfill shared-csr SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
-			continue
-		}
-		sharedDBPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
-		if err := applyMigrationsOnDB(sharedDBPath, migration.TargetShared); err != nil {
-			failed++
-			fmt.Printf("backfill shared-csr FAIL: gamertag=%s err=migrations shared: %v\n", player.Gamertag, err)
-			continue
-		}
-
-		var tokens *domain.HaloTokens
-		if !dryRun {
-			t, tokErr := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
-			if tokErr != nil {
-				skipped++
-				fmt.Printf("backfill shared-csr SKIP: gamertag=%s reason=%v (try --dry-run)\n", player.Gamertag, tokErr)
-				continue
-			}
-			tokens = t
-		}
-
-		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
-		res, runErr := engine.RunBackfillSharedCSR(ctx, go_sync.SharedCSRBackfillOpts{Force: force, DryRun: dryRun})
-		if runErr != nil {
-			failed++
-			fmt.Printf("backfill shared-csr FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
-			continue
-		}
-		processed++
-		totalInserted += res.Inserted
-		fmt.Printf("backfill shared-csr OK: gamertag=%s ranked=%d already_complete=%d need_backfill=%d fetched=%d inserted=%d no_recap=%d errors=%d dry_run=%t\n",
-			player.Gamertag, res.RankedMatches, res.AlreadyComplete, res.NeedBackfill,
-			res.Fetched, res.Inserted, res.SkippedNoRankRecap, res.SkillErrors+res.UpsertErrors, res.DryRun)
-	}
-	fmt.Printf("backfill shared-csr batch: total=%d processed=%d skipped=%d failed=%d total_inserted=%d dry_run=%t\n",
-		total, processed, skipped, failed, totalInserted, dryRun)
-	if failed > 0 {
-		return fmt.Errorf("backfill shared-csr: %d joueur(s) en echec", failed)
-	}
-	return nil
-}
-
-func runBackfillSharedCSRForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, force, dryRun bool) error {
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	sharedDBPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
-	if err := applyMigrationsOnDB(sharedDBPath, migration.TargetShared); err != nil {
-		return fmt.Errorf("backfill shared-csr: migrations shared: %w", err)
-	}
-
-	var tokens *domain.HaloTokens
-	if !dryRun {
-		t, err := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
-		if err != nil {
-			return fmt.Errorf("backfill shared-csr: tokens Halo indisponibles pour %s: %w (utiliser --dry-run pour compter sans appel API)", player.Gamertag, err)
-		}
-		tokens = t
-	}
-
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
-	res, err := engine.RunBackfillSharedCSR(ctx, go_sync.SharedCSRBackfillOpts{Force: force, DryRun: dryRun})
-	if err != nil {
-		return err
-	}
-	fmt.Printf("backfill shared-csr OK: gamertag=%s ranked=%d already_complete=%d need_backfill=%d fetched=%d inserted=%d no_recap=%d errors=%d force=%t dry_run=%t\n",
-		player.Gamertag, res.RankedMatches, res.AlreadyComplete, res.NeedBackfill,
-		res.Fetched, res.Inserted, res.SkippedNoRankRecap, res.SkillErrors+res.UpsertErrors, force, res.DryRun)
-	return nil
 }
 
 // ── Performance score backfill ─────────────────────────────────────────────────

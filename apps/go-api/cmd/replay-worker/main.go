@@ -50,6 +50,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/titleseams"
 )
 
 // defaultPollInterval : cadence d'interrogation de la file quand elle est vide.
@@ -69,6 +70,12 @@ type workerIdentity struct {
 }
 
 func main() {
+	// Seams title-owned : ce binaire embarque le moteur de sync TRANSITIVEMENT (ratchet
+	// titleseams_wired_test.go, 2026-09-16). Sans ce câblage, tout chemin qui atteindrait un
+	// classifier ou une étape de migration title-owned partirait en panic fail-loud MT-15 ou
+	// en scores muets.
+	titleseams.RegisterAll("")
+
 	url := flag.String("url", "http://127.0.0.1:8000/api/v1/internal", "racine des routes internes du serveur web")
 	token := flag.String("token", os.Getenv("LEVELUP_BUILD_WORKER_TOKEN"), "jeton d'ouvrier (défaut : LEVELUP_BUILD_WORKER_TOKEN)")
 	id := flag.String("id", "", "identifiant de cet ouvrier (défaut : nom de la machine)")
