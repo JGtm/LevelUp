@@ -55,10 +55,6 @@ func decodeEntete(blob []byte, entry profile.MapQuantEntry) (
 	r := &greader{b: blob, off: len(filmFactsMagic)}
 	g := &FilmFacts{Film: r.str()}
 	g.MapModule = r.str()
-	if g.MapModule != entry.Module {
-		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, fmt.Errorf("%w : fixture cuit pour %q, entree de catalogue fournie %q",
-			ErrFilmFactsCarte, g.MapModule, entry.Module)
-	}
 	for a := 0; a < 3; a++ {
 		g.AxisW[a] = uint(r.u())
 	}
@@ -68,23 +64,8 @@ func decodeEntete(blob []byte, entry profile.MapQuantEntry) (
 		v := int(r.i())
 		g.FilmMajorVersion = &v
 	}
-	// CONTRADICTION BLOB / CATALOGUE = ERREUR TYPEE. Quand le fixture dit tenir son decoupage
-	// du CATALOGUE, il doit etre celui que la regle de production tranche aujourd hui : sinon le
-	// catalogue a bouge sous le fixture, et les quanta se dequantifieraient avec un autre pas.
-	// LE BLOB ET LE CATALOGUE DOIVENT DIRE LA MEME CHOSE, DANS LES DEUX SENS (revue R1,
-	// constat R1-2). Un fixture qui se dit « catalogue » doit porter le decoupage que la regle
-	// tranche aujourd hui ; un fixture qui se dit « detecte » doit venir d une carte dont
-	// l entree est INVALIDE — sinon il a ete cuit hors de la regle, et ses quanta se
-	// dequantifieraient avec un autre pas sans que rien ne le dise.
-	impose := grammar.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()
-	switch {
-	case !g.LayoutDetected && (impose == nil || impose.AxisW != g.AxisW):
-		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, fmt.Errorf("%w : fixture au decoupage %v (dit du CATALOGUE), catalogue %v",
-			ErrFilmFactsDecoupage, g.AxisW, imposeAxisW(impose))
-	case g.LayoutDetected && impose != nil:
-		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, fmt.Errorf(
-			"%w : fixture dit son decoupage %v AUTO-DETECTE, or le catalogue en impose un (%v)",
-			ErrFilmFactsDecoupage, g.AxisW, impose.AxisW)
+	if err := verifierCleDeCuisson(g.MapModule, g.AxisW, g.LayoutDetected, entry); err != nil {
+		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, err
 	}
 	// LE DECOUPAGE VIENT DU BLOB, LES BORNES DU CATALOGUE : le premier dit comment le film a
 	// quantifie, le second ou la carte commence et finit. Melanger les deux sources est ce qui
@@ -92,6 +73,43 @@ func decodeEntete(blob []byte, entry profile.MapQuantEntry) (
 	lay, world := profile.I0Layout{AxisW: g.AxisW}, entry.Range()
 	g.FilmClockOriginUS = r.u()
 	return g, r, lay, world, nil
+}
+
+// verifierCleDeCuisson confronte la CLE DE CUISSON relue a l entree de catalogue fournie.
+//
+// # POURQUOI DES ERREURS TYPEES, ET DANS LES DEUX SENS
+//
+// Les positions sont des QUANTA : `DequantBipedAxis` les rendrait avec les bornes de la mauvaise
+// carte ou le pas du mauvais decoupage sans rien signaler — des coordonnees FAUSSES, pas
+// approximatives.
+//
+// LE BLOB ET LE CATALOGUE DOIVENT DIRE LA MEME CHOSE, DANS LES DEUX SENS (revue R1, constat
+// R1-2) : un blob qui se dit « du CATALOGUE » doit porter le decoupage que la regle tranche
+// aujourd hui — sinon le catalogue a bouge sous lui ; un blob qui se dit « AUTO-DETECTE » doit
+// venir d une carte dont l entree est INVALIDE — sinon il a ete cuit hors de la regle. Sur
+// `60ae07c4` la detection rendait `13/12/11` la ou le catalogue rend `12/12/11`.
+//
+// UNE SEULE COPIE (CLAUDE.md regle 6) : l en-tete du blob des entrees ET l en-tete du FICHIER de
+// faits ([FilmFactsEntete.Utilisable]) appellent cette fonction. Deux copies de cette regle
+// auraient divergé au premier ajustement de catalogue.
+func verifierCleDeCuisson(mapModule string, axisW [3]uint, layoutDetected bool,
+	entry profile.MapQuantEntry,
+) error {
+	if mapModule != entry.Module {
+		return fmt.Errorf("%w : faits cuits pour %q, entree de catalogue fournie %q",
+			ErrFilmFactsCarte, mapModule, entry.Module)
+	}
+	impose := grammar.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()
+	switch {
+	case !layoutDetected && (impose == nil || impose.AxisW != axisW):
+		return fmt.Errorf("%w : faits au decoupage %v (dit du CATALOGUE), catalogue %v",
+			ErrFilmFactsDecoupage, axisW, imposeAxisW(impose))
+	case layoutDetected && impose != nil:
+		return fmt.Errorf(
+			"%w : faits disant leur decoupage %v AUTO-DETECTE, or le catalogue en impose un (%v)",
+			ErrFilmFactsDecoupage, axisW, impose.AxisW)
+	}
+	return nil
 }
 
 // decodeEvenements relit tirs, equipements de depart, lancers et projectiles.

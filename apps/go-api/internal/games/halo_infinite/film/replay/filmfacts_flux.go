@@ -161,3 +161,21 @@ func (r *greader) bool8() bool { return r.byte8() == 1 }
 func cmOf(v float32) int64 { return int64(math.Round(float64(v) * cmScale)) }
 
 func fromCM(v int64) float32 { return float32(float64(v) / cmScale) }
+
+// tranche rend les `n` prochains octets SANS copie, et pose l erreur si le flux est plus court.
+//
+// C est la primitive du CADRE A LONGUEUR PREFIXEE du fichier de faits : une section se lit comme
+// une tranche, ce qui permet d en SAUTER une inconnue sans savoir la decoder.
+func (r *greader) tranche(n int) []byte {
+	if r.err != nil {
+		return nil
+	}
+	if n < 0 || r.off+n > len(r.b) {
+		r.err = fmt.Errorf("tranche de %d octet(s) a l offset %d : %d disponible(s)",
+			n, r.off, len(r.b)-r.off)
+		return nil
+	}
+	out := r.b[r.off : r.off+n]
+	r.off += n
+	return out
+}

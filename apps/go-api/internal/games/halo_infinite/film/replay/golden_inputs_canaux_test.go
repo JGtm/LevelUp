@@ -2,10 +2,10 @@ package replay
 
 // golden_inputs_canaux_test.go — L INVENTAIRE DU TYPE, TENU PAR LE COMPILATEUR ET LA REFLEXION.
 //
-// Le CODEC lui-meme est passe en production au lot 4.1.1-a (`filmfacts_canaux.go` et ses trois
-// freres) : il n est plus un instrument de fixture mais la porte d ecriture et de lecture des
-// faits persistes par film. Ce qui reste ici est ce qui doit rester un test — la garde qui exige
-// que TOUT champ de [FilmInputs] soit soit serialise, soit NOMME comme deliberement absent.
+// Le CODEC lui-meme est passe en production au lot 4.1.1-a (`filmfacts_canaux.go` et ses freres) :
+// il n est plus un instrument de fixture mais la porte d ecriture et de lecture des faits
+// persistes par film. Ce qui reste ici est ce qui doit rester un test — la garde qui exige que
+// TOUT champ de [FilmInputs] soit transporte.
 
 import (
 	"reflect"
@@ -17,37 +17,44 @@ import (
 // L INVENTAIRE, TENU PAR LE COMPILATEUR
 // ---------------------------------------------------------------------------
 
-// champsNonTransportes : les champs de [FilmInputs] que le codec ne porte PAS, avec la raison.
-//
-// LES TROIS SONT DES CALQUES GARDES PAR L APPELANT : le marqueur de portage du drapeau, l etat
-// des zones et l anneau de la bombe ne se balaient que si `Options.Flag` / `.Zone` / `.Bomb`
-// portent la garde de mode correspondante. Le fixture n en fournit AUCUNE (il ne connait ni la
-// variante du match ni le catalogue de zones de la carte), donc ces champs sont vides des deux
-// cotes — frais comme relus — et les serialiser figerait des zeros. Le jour ou un fixture
-// porterait un catalogue de zones, ils devraient entrer au codec : c est ce que ce test force a
-// decider.
-var champsNonTransportes = map[string]string{
-	"FlagMarks":   "calque garde par Options.Flag — vide sans garde de mode CTF",
-	"ZoneReads":   "calque garde par Options.Zone.Zones — vide sans catalogue de zones",
-	"ZoneScanned": "temoin du precedent",
-	"BombReads":   "calque garde par Options.Bomb.Scanned — vide sans garde de mode Assaut",
-}
-
-// TestCodecCouvreFilmInputs : TOUT champ de [FilmInputs] est soit serialise, soit NOMME comme
-// deliberement absent.
+// TestCodecCouvreFilmInputs : TOUT champ de [FilmInputs] est serialise. SANS EXCEPTION.
 //
 // # CE QU IL FERME, ET IL A DEJA COUTE
 //
-// Le fixture porte le type de la PRODUCTION depuis le lot 1.0 : un canal ajoute a l etage de
-// balayage apparait donc tout seul dans `FilmFacts`, et l assemblage le lira — mais le CODEC,
-// lui, ne l apprend pas. Le fixture relu rendrait alors un calque vide la ou la production en
-// publie un plein, exactement le defaut que la decouverte D9 avait mesure sur sept builds.
+// Le codec porte le type de la PRODUCTION depuis le lot 1.0 : un canal ajoute a l etage de
+// balayage apparait donc tout seul dans [FilmFacts], et l assemblage le lira — mais le CODEC, lui,
+// ne l apprend pas. Les faits relus rendraient alors un calque vide la ou la production en publie
+// un plein, exactement le defaut que la decouverte D9 avait mesure sur sept builds.
 // `TestGoldenInputsFidelite` l attrape, mais il EXIGE LE CACHE DE FILMS : il saute en CI. Ce
 // test-ci, lui, ne lit aucun octet de film et tourne partout.
 //
+// # LA TABLE D EXCEPTIONS A DISPARU (lot 4.1.1-b, 2026-09-17)
+//
+// `champsNonTransportes` nommait QUATRE champs deliberement absents — `FlagMarks`, `ZoneReads`,
+// `ZoneScanned`, `BombReads` — au motif que « le fixture ne fournit AUCUNE garde » de mode. Le
+// motif etait vrai POUR UN FIXTURE et faux EN PRODUCTION (tout CTF remplit `FlagMarks`, tout
+// KOTH/Strongholds `ZoneReads`, tout Assaut armable `BombReads`), et le codec est en production
+// depuis le lot 4.1.1-a. Les quatre sont entres, la table est VIDEE et SON MECANISME EST SUPPRIME
+// avec sa derniere entree (meme doctrine que les trois allowlists de `film_layers_deps_test.go`) :
+// une table vide qu on garde « au cas ou » invite a la remplir, et une exception neuve doit etre
+// une DECISION ecrite, pas une ligne a remplir.
+//
+// # LA MESURE PORTE SUR LE FICHIER DE FAITS, PAS SUR LE SEUL BLOB DES ENTREES
+//
+// Les quatre canaux gardes voyagent dans la SECTION 1 du fichier de faits, a la suite du blob
+// delta-code (`encodeGardesDeMode`), et pas DANS ce blob. La raison est ecrite et mesurable : le
+// blob des entrees est aussi le format des HUIT FIXTURES versionnees
+// (`testdata/inputs_<short8>.bin.gz`), qui sont les entrees d un fixture — lequel ne fournit
+// JAMAIS de garde de mode, donc n a jamais rien a y mettre. Changer leur format aurait exige de
+// re-decoder huit films pour ajouter huit suites de zeros.
+//
+// CE QUI EMPECHE LA DERIVE est que ce test mesure le FICHIER : un champ ajoute a [FilmInputs] doit
+// etre transporte, que ce soit par le blob (sa place naturelle, pres de sa famille) ou par le
+// complement de la section 1. Les deux satisfont la garde ; aucun oubli ne la satisfait.
+//
 // IL SE FONDE SUR L ALLER-RETOUR, PAS SUR UNE LISTE ECRITE A LA MAIN : une valeur non nulle est
-// posee dans chaque champ, le blob est encode puis relu, et un champ qui revient VIDE n a pas ete
-// transporte. Une liste de noms aurait derive du codec au premier oubli.
+// posee dans chaque champ, le fichier est encode puis relu, et un champ qui revient VIDE n a pas
+// ete transporte. Une liste de noms aurait derive du codec au premier oubli.
 func TestCodecCouvreFilmInputs(t *testing.T) {
 	entry := goldenEntryPourTest(t)
 	champs := reflect.VisibleFields(reflect.TypeOf(FilmInputs{}))
@@ -64,23 +71,26 @@ func TestCodecCouvreFilmInputs(t *testing.T) {
 			if !remplirChampTemoin(v) {
 				t.Skipf("aucun temoin fabricable pour %s (%s)", f.Name, f.Type)
 			}
-			relu, err := DecodeFilmFacts(EncodeFilmFacts(g), entry)
+			blob, err := EncodeFilmFactsFile(&FilmFactsFile{Facts: *g})
+			if err != nil {
+				t.Fatalf("encodage du fichier de faits sur %s : %v", f.Name, err)
+			}
+			relu, err := DecodeFilmFactsFile(blob, entry)
 			if err != nil {
 				t.Fatalf("aller-retour sur %s : %v", f.Name, err)
 			}
-			transporte := !reflect.ValueOf(relu.FilmInputs).FieldByName(f.Name).IsZero()
-			raison, nomme := champsNonTransportes[f.Name]
-			switch {
-			case transporte && nomme:
-				t.Fatalf("%s est transporte par le codec ET declare absent (%q) : retirer l entree "+
-					"de champsNonTransportes", f.Name, raison)
-			case !transporte && !nomme:
-				t.Fatalf("FilmInputs.%s N EST PAS TRANSPORTE par le codec du fixture.\n"+
-					"L assemblage le consomme (cf. FilmInputs.applyTo) : relu vide, le golden "+
-					"figerait un calque que la production publie plein.\n"+
-					"Soit l ajouter au codec (golden_inputs_canaux_test.go) et monter "+
-					"filmFactsMagic, soit l inscrire dans champsNonTransportes avec sa raison.",
-					f.Name)
+			if reflect.ValueOf(relu.Facts.FilmInputs).FieldByName(f.Name).IsZero() {
+				t.Fatalf("FilmInputs.%s N EST PAS TRANSPORTE par le fichier de faits.\n"+
+					"L assemblage le consomme (cf. FilmInputs.applyTo) : relu vide, un artefact "+
+					"rejoue depuis les faits publierait un calque VIDE la ou la production en "+
+					"publie un plein.\n"+
+					"DEUX PLACES LEGITIMES, et il en faut UNE : le blob des entrees (pres de sa "+
+					"famille — monter `filmFactsMagic` DANS LE MEME COMMIT, et les huit fixtures "+
+					"de testdata/ se re-decodent alors), ou `encodeGardesDeMode` (le complement "+
+					"de la section 1 — monter `SchemaDesFaits`).\n"+
+					"IL N Y A PLUS DE TABLE D EXCEPTIONS : elle s est videe au lot 4.1.1-b avec "+
+					"sa derniere entree, et rouvrir une exception est une DECISION a ecrire, pas "+
+					"une ligne a remplir.", f.Name)
 			}
 		})
 	}
