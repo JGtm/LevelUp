@@ -22,6 +22,7 @@ import { tokenCssVar, tokenVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { composeTierLabel } from '@/lib/skillTiers'
 import type { FilterContextInput, RelationCSR, RelationInsight } from '@/lib/api/types'
+import { useFieldLabel } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useRelationsPrefsStore } from '@/stores/relationsPrefsStore'
 
@@ -637,6 +638,8 @@ function RelationsContent({
   const nemesisRelation = findRelation(relations, ov.top_nemesis?.gamertag)
   // Une seule échelle pour les barres d'assistances de toutes les cartes : binôme et
   // fidèles se comparent (assistExchange.ts, échelle log du volume).
+  // Libellé title-aware de la colonne « Assistances » (champ `assists` des mappings).
+  const assistsLabel = useFieldLabel('assists')
   const assistVolumeMax = useMemo(() => computeAssistVolumeMax(relations.map((r) => r.assists)), [relations])
   // Série en cours de la bête noire : réutilise la donnée Moments (même queryKey →
   // dédupliquée par TanStack Query, pas d'appel réseau supplémentaire). La sparkline
@@ -713,6 +716,7 @@ function RelationsContent({
         locale={locale}
         onPlayerClick={onPlayerClick}
         emptyMessage={rel.filterEmptyDescription}
+        assistsLabel={assistsLabel}
       />
 
       <RelationsMomentsSection

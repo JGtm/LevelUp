@@ -13,8 +13,8 @@ import type { Locale } from '@/lib/i18n/locale'
 export type AssistTier = 'low' | 'mid' | 'high'
 
 export interface AssistsText {
-  /** En-tête de colonne des tableaux et son infobulle. */
-  column: string
+  /** Infobulle d'en-tête de colonne des tableaux. Le libellé de colonne lui-même vient du
+   *  champ `assists` des mappings du titre (useFieldLabel), pas de ce dictionnaire. */
   columnTooltip: string
   /** Infobulle d'une cellule de tableau. */
   cellGiven: (count: string) => string
@@ -46,7 +46,6 @@ const TIER_EN: Record<AssistTier, string> = {
 
 export const ASSISTS_TEXT: Record<Locale, AssistsText> = {
   fr: {
-    column: 'Assistances',
     columnTooltip:
       "Assistances données (à gauche) et reçues (à droite), sur les matchs joués dans la même équipe dont le film a été analysé.",
     cellGiven: (count) => `Tu l'as assisté ${count} fois`,
@@ -60,7 +59,6 @@ export const ASSISTS_TEXT: Record<Locale, AssistsText> = {
     notMeasured: 'Aucun match ensemble avec film analysé',
   },
   en: {
-    column: 'Assists',
     columnTooltip:
       'Assists given (left) and received (right), over matches played on the same team whose film was analyzed.',
     cellGiven: (count) => `You assisted them ${count} times`,
