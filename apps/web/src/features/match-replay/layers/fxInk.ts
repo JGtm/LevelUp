@@ -25,6 +25,7 @@
  * une teinte ajoutée côté serveur et non stylée retomberait sinon en neutre, en silence.
  */
 import { log } from '@/lib/accessibility/_logger'
+import { readThemeVar } from './themeInk'
 
 /** Natures de décharge. `neutral` n'est pas une nature : c'est l'absence de nature connue. */
 export type FxTint =
@@ -73,7 +74,7 @@ export interface FxInk {
 }
 
 /**
- * readFxInk lit les teintes sur :root. À appeler UNE fois par thème (pas par image) : un
+ * readFxInk lit les teintes du thème (thème SOMBRE pendant un export, cf. `themeInk.ts`). À appeler UNE fois par thème (pas par image) : un
  * `getComputedStyle` par effet et par frame coûterait bien plus que le dessin lui-même.
  *
  * Une variable absente rend une chaîne vide — un `fillStyle` vide laisse le contexte
@@ -82,7 +83,7 @@ export interface FxInk {
 export function readFxInk(): FxInk {
   const read = (name: string): string => {
     if (typeof document === 'undefined') return ''
-    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    const value = readThemeVar(name)
     if (!value) {
       log.error(`replay-fx:${name}`, `Teinte d'effet "${name}" absente du thème.`)
       return ''

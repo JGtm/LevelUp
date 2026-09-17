@@ -16,6 +16,8 @@
  */
 import { log } from '@/lib/accessibility/_logger'
 
+import { readThemeVar } from './themeInk'
+
 /** Variables de mise en page du système de design employées par le canvas. */
 export type InkVar =
   | '--muted-foreground'
@@ -26,15 +28,18 @@ export type InkVar =
   | '--card'
   /** Contour des noms sous les marqueurs (sombre dans les deux thèmes, cf. globals.css). */
   | '--replay-label-stroke'
+  /** Fond de la VIDÉO exportée : noir pur, identique dans les deux thèmes (décision D8). */
+  | '--replay-export-backdrop'
 
 /**
- * readInk lit une variable de mise en page sur :root. Rend une chaîne vide côté serveur ou si
+ * readInk lit une variable de mise en page du thème — celle du thème SOMBRE pendant un export
+ * (cf. `themeInk.ts`, décision D9), celle du thème actif sinon. Rend une chaîne vide côté serveur ou si
  * la variable manque — un `fillStyle` vide laisse le contexte inchangé plutôt que de peindre
  * une couleur inventée.
  */
 export function readInk(name: InkVar): string {
   if (typeof document === 'undefined') return ''
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  const value = readThemeVar(name)
   if (!value) {
     log.error(`replay-ink:${name}`, `Variable de mise en page "${name}" absente du thème.`)
     return ''

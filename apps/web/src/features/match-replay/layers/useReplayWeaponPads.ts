@@ -38,6 +38,7 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { refinePadPresence } from '../model/padPresenceRefine'
 import type { ReplayText } from '../i18n/i18nContract'
 import type { PlacementView } from './placementShapes'
+import { withLoadedImage } from './loadedImage'
 import { tintedIconCanvas } from './replayDraw'
 import { weaponFullIcon } from '../model/weaponFullIcon'
 import { frameToMs, type XY } from '../../../lib/replay/replayLogic'
@@ -392,15 +393,13 @@ export function useReplayWeaponPads({
       const tinted = ref.tinted
       const mirrored = ref.mirrored
       const outlineInk = inkOf(weapon)
-      const im = new Image()
-      im.onload = () => {
+      withLoadedImage(ref.url, (im) => {
         map.set(weapon, {
           fill: tinted || mirrored ? tintedIconCanvas(im, ink.fill, { mirrored, tinted }) : im,
           outline: tintedIconCanvas(im, outlineInk, { mirrored }),
         })
         redraw()
-      }
-      im.src = ref.url
+      })
     }
   }, [pads, labels, titleSlug, ink.fill, inkOf, redraw])
 

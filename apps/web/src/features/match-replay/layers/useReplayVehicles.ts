@@ -26,6 +26,7 @@ import { staticAssetURL } from '@/lib/staticAssets'
 import { useTitleSlug } from '@/lib/title-routing'
 
 import type { FxInk } from './fxInk'
+import { withLoadedImage } from './loadedImage'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { PlacementView } from './placementShapes'
 import { outlinedSpriteCanvas, tintedIconCanvas } from './replayDraw'
@@ -196,12 +197,10 @@ export function useReplayVehicles({
       // qui évite un 404 par match — et le calque a déjà son pictogramme pour elle.
       const url = labels?.[family]?.img
       if (!url) continue
-      const im = new Image()
-      im.onload = () => {
+      withLoadedImage(url, (im) => {
         map.set(family, im)
         redraw()
-      }
-      im.src = url
+      })
     }
   }, [enabled, labels, redraw])
 
@@ -246,19 +245,27 @@ export function useReplayVehicles({
       if (images.has(family)) return images.get(family) ?? null
       const url = staticAssetURL('vehicle', vehicleManifestAssetId(entry.outline), '.png', titleSlug)
       images.set(family, null)
-      const im = new Image()
-      im.onload = () => {
-        images.set(family, im)
-        redraw()
-      }
-      im.onerror = () => {
-        console.warn('[replay-vehicles] bordure indisponible, sprite sans bordure :', url)
-        images.delete(family)
-        outlineFailedRef.current.add(family)
-        redraw()
-      }
-      im.src = url
-      return null
+      // CHARGEMENT PAR `withLoadedImage` (garde-rail loadedImage.guard.test.ts). Il rend une image
+      // DEJA chargee SYNCHRONEMENT, et `outlineOf` est appele PENDANT le trace : redessiner a ce
+      // moment-la relancerait le trace dans le trace. On ne redessine donc que sur un chargement
+      // asynchrone ; le cas synchrone rend l'image directement.
+      let pending = true
+      withLoadedImage(
+        url,
+        (im) => {
+          images.set(family, im)
+          if (pending) return
+          redraw()
+        },
+        () => {
+          console.warn('[replay-vehicles] bordure indisponible, sprite sans bordure :', url)
+          images.delete(family)
+          outlineFailedRef.current.add(family)
+          redraw()
+        },
+      )
+      pending = false
+      return images.get(family) ?? null
     },
     [titleSlug, redraw],
   )
