@@ -50,6 +50,11 @@ type Coverage struct {
 	// révisions de calque, la clé du profil, et la classification de l empreinte du registre ECS.
 	// Absent = artefact antérieur au schéma 61 — c est une réponse, pas un trou.
 	Decoder *DecoderCoverage `json:"decoder,omitempty"`
+	// DeathsPaths dit CE QUE CHAQUE VOIE de lecture des morts a propose, apparie et publie
+	// (schema 62) : la MARCHE et le SCAN DIRECT lisent le meme champ par deux localisateurs, de
+	// precisions differentes, et un consommateur doit pouvoir ponderer ce qu il lit. Absent =
+	// artefact anterieur au schema 62, ou morts non lues sur ce match.
+	DeathsPaths *DeathsPathsCoverage `json:"deathsPaths,omitempty"`
 }
 
 // FallbackHit est un repli du décodeur et son nombre de déclenchements sur la cuisson qui a
@@ -420,4 +425,31 @@ type AbilityImpulseScanCoverage struct {
 	Read    int `json:"read"`
 	Unread  int `json:"unread"`
 	Tag1    int `json:"tag1"`
+}
+
+// DeathsPathsCoverage dit CE QUE CHAQUE VOIE DE LECTURE DES MORTS A PROPOSE, APPARIE ET PUBLIE
+// (schéma 62). Les deux voies lisent le MÊME champ par deux localisateurs, et quand les deux
+// répondent elles répondent au même bit : ce n'est pas un arbitrage, c'est une préférence — mais
+// leurs précisions diffèrent (98,2 % contre 78,4 % au gate d'appariement sur la série de
+// référence), d'où la publication du compte par voie.
+type DeathsPathsCoverage struct {
+	// Walk : la MARCHE, qui déroule les records depuis le début du paquet.
+	Walk DeathsPathTally `json:"walk"`
+	// Scan : le SCAN DIRECT, qui balaie les positions de bit — la voie de rattrapage.
+	// LA CLE N EST PAS `scan`, ET C EST UN RATCHET DU DEPOT QUI LE DECIDE : `"scan"` en litteral
+	// brut est interdit hors de `domain/killscope` et de `killsource` (J4R-3,
+	// `archlint/no_raw_kill_scope_literal_test.go`) — c est sur cette valeur que se decide la
+	// PRESEANCE des ecrivains de `shared.match_kill_events`, et une seconde copie libre de deriver
+	// y rendrait la preseance du film aveugle SANS erreur ni compteur. `directScan` est le nom que
+	// le code donne deja a cette voie (« le SCAN DIRECT »).
+	Scan DeathsPathTally `json:"directScan"`
+}
+
+// DeathsPathTally : les trois dénominateurs d'une voie de lecture des morts. La somme des deux
+// `published` ne se lit pas comme un total de morts — une mort couverte par la voie la plus
+// contrainte ne l'est pas deux fois.
+type DeathsPathTally struct {
+	Population int `json:"population"`
+	Matched    int `json:"matched"`
+	Published  int `json:"published"`
 }

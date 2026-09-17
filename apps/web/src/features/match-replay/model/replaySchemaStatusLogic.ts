@@ -42,10 +42,27 @@ import type { ReplayContractIssue } from '@/lib/replay/replayDocumentSchema'
  */
 export const MIN_RENDERABLE_SCHEMA_VERSION = 27
 
+/**
+ * COUCHE_PUBLICATION — le nom de la couche que ce module sait DÉSIGNER, et le seul.
+ *
+ * C'EST UNE DONNÉE, PAS UNE PHRASE (constat R2-2 de la ronde 2) : ce module rend des noms de
+ * couche, le badge les met en mots par `i18n.ts`, dans les deux langues.
+ *
+ * POURQUOI UNE SEULE, ET C'EST MESURÉ. Nommer les QUATRE couches de décodage (`source`,
+ * `profile`, `grammar`, `facts`) exigerait de connaître leurs révisions COURANTES — or elles ne
+ * sont pas transportées : un balayage de `apps/web/src` ne rend aucun `grammarRev` hors du
+ * contrat généré, et l'en-tête `X-Replay-Latest-Schema-Version` est le seul précédent
+ * (`api/handlers/replay.go`). Un second en-tête sur son modèle serait la sortie complète ; elle
+ * est NON RETENUE (§4 du plan, 2026-09-18). La couche de PUBLICATION, elle, se prouve sans rien
+ * transporter : sa révision EST `publication-<schemaVersion>`, et la version courante du
+ * producteur arrive déjà.
+ */
+export const COUCHE_PUBLICATION = 'publication'
+
 export type ReplaySchemaStatus =
   | { kind: 'unknown'; schemaVersion: number }
   | { kind: 'upToDate'; schemaVersion: number }
-  | { kind: 'stale'; schemaVersion: number; latestSchemaVersion?: number }
+  | { kind: 'stale'; schemaVersion: number; latestSchemaVersion?: number; couches: string[] }
   | { kind: 'invalid'; schemaVersion: number; issue: ReplayContractIssue }
 
 /**
@@ -71,6 +88,7 @@ export function computeReplaySchemaStatus(
   schemaVersion: number,
   latestSchemaVersion: number | undefined,
   contractIssue?: ReplayContractIssue,
+  layers?: Record<string, string>,
 ): ReplaySchemaStatus {
   if (contractIssue) {
     return { kind: 'invalid', schemaVersion, issue: contractIssue }
@@ -79,13 +97,44 @@ export function computeReplaySchemaStatus(
     // `latestSchemaVersion` est RECOPIÉE telle quelle, absente comprise : le badge nomme une
     // cible quand il en connaît une, et se tait sinon. Mettre le minimum à sa place ferait
     // passer un seuil de compatibilité pour la version du producteur.
-    return { kind: 'stale', schemaVersion, latestSchemaVersion }
+    //
+    // AUCUNE COUCHE NOMMÉE ICI : sous le seuil de compatibilité, l'artefact appartient à une
+    // génération dont des champs promis n'existent plus — dire « seule la publication a changé »
+    // y serait faux, et son `layers` est de toute façon absent (le champ naît au schéma 62).
+    return { kind: 'stale', schemaVersion, latestSchemaVersion, couches: [] }
   }
   if (latestSchemaVersion === undefined) {
     return { kind: 'unknown', schemaVersion }
   }
   if (latestSchemaVersion > schemaVersion) {
-    return { kind: 'stale', schemaVersion, latestSchemaVersion }
+    const couches = couchesPerimees(schemaVersion, layers)
+    return { kind: 'stale', schemaVersion, latestSchemaVersion, couches }
   }
   return { kind: 'upToDate', schemaVersion }
+}
+
+/**
+ * couchesPerimees rend les couches dont ce module PROUVE qu'elles ont bougé — au plus une.
+ *
+ * LE RAISONNEMENT TIENT EN UNE LIGNE : la révision de la couche de publication EST
+ * `publication-<schemaVersion>` de l'artefact, et `latestSchemaVersion` dit celle du producteur.
+ * Quand la seconde dépasse la première, la publication a changé — sans rien transporter de plus.
+ *
+ * DEUX CONDITIONS, ET CHACUNE FERME UN MENSONGE. `layers` doit être PRÉSENT : sur un artefact
+ * antérieur au schéma 62 le producteur ne déclarait aucune couche, et nommer la publication
+ * reviendrait à lui attribuer une déclaration qu'il n'a pas faite. Et la table doit porter au
+ * moins une entrée attribuée à la publication : c'est ce qui distingue un artefact qui DÉCLARE
+ * cette couche d'un artefact dont la table existe sans la nommer.
+ *
+ * CE QUE CETTE FONCTION NE DIRA JAMAIS, tant que les révisions courantes des quatre couches de
+ * décodage ne sont pas transportées : « la grammaire a bougé ». Le silence est la bonne réponse —
+ * un badge qui nommerait une couche sur une supposition ferait recuire le parc pour rien.
+ */
+function couchesPerimees(schemaVersion: number, layers?: Record<string, string>): string[] {
+  if (!layers) {
+    return []
+  }
+  const revisionDeLaPublication = `${COUCHE_PUBLICATION}-${schemaVersion}`
+  const declaree = Object.values(layers).some((rev) => rev === revisionDeLaPublication)
+  return declaree ? [COUCHE_PUBLICATION] : []
 }

@@ -17,6 +17,8 @@ import type { ReplayContractIssue } from '@/lib/replay/replayDocumentSchema'
 
 import { racineDuDepot } from '../test/featureFiles'
 import { goFixtureEntries, goFixtureSchemaVersion } from '../test/goFixtures'
+import { testReplayDoc } from '../test/testDoc'
+import { calquePresent, couchesDesCalquesProduits, revisionDuCalque } from './calquePresent'
 import {
   computeReplaySchemaStatus,
   MIN_RENDERABLE_SCHEMA_VERSION,
@@ -24,6 +26,9 @@ import {
 
 /** La version que le producteur écrit aujourd'hui. */
 const PRODUCTEUR = goFixtureSchemaVersion()
+
+/** La version d AVANT celle du producteur : jamais un numero ecrit a la main. */
+const AVANT_LAYERS = PRODUCTEUR - 1
 
 /** Une version ANCIENNE, mais au-dessus du seuil d'affichage. */
 const ANCIENNE = MIN_RENDERABLE_SCHEMA_VERSION + 1
@@ -48,6 +53,7 @@ describe('computeReplaySchemaStatus', () => {
       kind: 'stale',
       schemaVersion: ANCIENNE,
       latestSchemaVersion: PRODUCTEUR,
+      couches: [],
     })
   })
 
@@ -68,6 +74,8 @@ describe('la matrice de compatibilité (MIN_RENDERABLE_SCHEMA_VERSION)', () => {
       kind: 'stale',
       schemaVersion: MIN_RENDERABLE_SCHEMA_VERSION - 1,
       latestSchemaVersion: undefined,
+
+      couches: [],
     })
   })
 
@@ -76,6 +84,7 @@ describe('la matrice de compatibilité (MIN_RENDERABLE_SCHEMA_VERSION)', () => {
       kind: 'stale',
       schemaVersion: MIN_RENDERABLE_SCHEMA_VERSION - 1,
       latestSchemaVersion: PRODUCTEUR,
+      couches: [],
     })
   })
 
@@ -210,6 +219,7 @@ describe('la matrice appliquée à CHAQUE fixture publiée par Go', () => {
           kind: 'stale',
           schemaVersion: f.schemaVersion,
           latestSchemaVersion: apres,
+          couches: [],
         })
       })
 
@@ -221,4 +231,50 @@ describe('la matrice appliquée à CHAQUE fixture publiée par Go', () => {
       })
     })
   }
+})
+
+/**
+ * LA MATRICE DE COMPATIBILITÉ GAGNE UN AXE (2026-09-17, lot 4.2.2, schéma 62) : la présence d'un
+ * calque.
+ *
+ * POURQUOI ICI, À CÔTÉ DU STATUT DE VERSION. Les deux répondent à la même famille de question —
+ * « que vaut CE document face à ce que le producteur sait faire aujourd'hui ? » — et ils ont la
+ * même structure à trois issues, dont une est l'ABSENCE DE RÉPONSE. Un artefact antérieur à 62 ne
+ * dit rien de ses calques, exactement comme une réponse sans en-tête ne dit rien de sa version :
+ * dans les deux cas le badge doit se taire, pas trancher. Les regrouper est ce qui rend la
+ * symétrie visible en revue.
+ *
+ * LE STATUT DE VERSION NE DÉPEND PAS DE `layers`, et ces cas le prouvent : les trois passent le
+ * même document par `computeReplaySchemaStatus`, dont la sortie est IDENTIQUE dans les trois.
+ */
+describe('la présence d’un calque — le troisième axe de la matrice (schéma 62)', () => {
+  const REVISION_GRAMMAIRE = 'grammar-2026-09-15.42'
+
+  it('`layers` ABSENT : la question n’a pas de réponse, et le statut de version est intact', () => {
+    const doc = testReplayDoc({ schemaVersion: AVANT_LAYERS })
+    expect(calquePresent(doc, 'zoneStates')).toBe('inconnu')
+    expect(couchesDesCalquesProduits(doc)).toEqual([])
+    expect(computeReplaySchemaStatus(doc.schemaVersion, PRODUCTEUR).kind).toBe('stale')
+  })
+
+  it('entrée ABSENTE dans un `layers` présent : « pas produit » est une réponse', () => {
+    const doc = testReplayDoc({ layers: { tracks: REVISION_GRAMMAIRE } })
+    expect(calquePresent(doc, 'vipCrown')).toBe('nonProduit')
+    expect(revisionDuCalque(doc, 'vipCrown')).toBeUndefined()
+    expect(computeReplaySchemaStatus(doc.schemaVersion, PRODUCTEUR).kind).toBe('upToDate')
+  })
+
+  it('entrée PRÉSENTE : produit, sous la révision nommée, et la couche est lisible', () => {
+    const doc = testReplayDoc({ layers: { tracks: REVISION_GRAMMAIRE } })
+    expect(calquePresent(doc, 'tracks')).toBe('produit')
+    expect(revisionDuCalque(doc, 'tracks')).toBe(REVISION_GRAMMAIRE)
+    expect(couchesDesCalquesProduits(doc)).toEqual([REVISION_GRAMMAIRE])
+    expect(computeReplaySchemaStatus(doc.schemaVersion, PRODUCTEUR).kind).toBe('upToDate')
+  })
+
+  it('les fixtures que Go publie portent TOUTES leur table de calques', () => {
+    for (const f of goFixtureEntries()) {
+      expect(f.schemaVersion, `${f.file} : version de la fixture`).toBe(PRODUCTEUR)
+    }
+  })
 })

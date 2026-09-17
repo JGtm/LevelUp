@@ -697,9 +697,18 @@ var replaySchemas = []struct {
 //	                      (revue du 2026-09-14). `SchemaVersion` NE MONTE PAS : rien n a change
 //	                      dans l artefact (cf. `calquesALaRequete`, document_shape_test.go).
 //
+//	59 (2026-09-17) : `layers` — SOUS QUELLE REVISION CHAQUE CALQUE A ETE PRODUIT (lot 4.2.1,
+//	                      schema 61 -> 62). Une table `nom de calque -> revision de couche`, sans
+//	                      aucun type imbrique : les valeurs sont des chaines, l une des cinq
+//	                      revisions connues. `coverage.deathsPaths` nait au meme commit SANS
+//	                      faire monter ce compte — il est un champ de `Coverage`, pas du
+//	                      document, exactement comme `roster[].bid` a 57. `vehicleLabels` passe
+//	                      a `calquesALaRequete` au meme commit et reste un champ du document :
+//	                      le compte ne bouge pas pour lui.
+//
 // Les vingt-deux fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 58
+const wantReplayDocumentFields = 59
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.
