@@ -30,9 +30,18 @@ import {
   type WeaponRangeLine,
 } from '@/features/synthesis/_weaponRangeChart'
 
-import { roleRangeLines, type RangeSideKey } from './compareWeapons_logic'
+import {
+  roleRangeLines,
+  type RangeSideKey,
+  type RoleAxisEntry,
+} from './compareWeapons_logic'
 import type { CompareText } from './i18n'
-import { TOKEN_A, TOKEN_MEDIAN, useRoleName, useWeaponFormats, type SideNames } from './compareWeaponsShared'
+import {
+  TOKEN_A,
+  TOKEN_MEDIAN,
+  useWeaponFormats,
+  type SideNames,
+} from './compareWeaponsShared'
 
 /**
  * useRangeOption — le constructeur d'option ECharts d'UN graphe.
@@ -141,8 +150,16 @@ function RangeChart({
   )
 }
 
-/** CompareWeaponsRange — les deux graphes (frags, morts) d'UNE comparaison. */
+/**
+ * CompareWeaponsRange — les deux graphes (frags, morts) d'UNE comparaison.
+ *
+ * L'AXE EST IMPOSÉ PAR LA SECTION, pas recalculé ici (gate visuel 2026-09-17) : en miroir, les
+ * deux paires côte à côte doivent porter EXACTEMENT les mêmes lignes dans le même ordre, y
+ * compris celles où ce couple-ci n'a aucune mesure. Le recalculer par paire était précisément
+ * ce qui les décalait.
+ */
 export function CompareWeaponsRange({
+  axis,
   sideA,
   sideB,
   names,
@@ -150,6 +167,7 @@ export function CompareWeaponsRange({
   text,
   locale,
 }: {
+  axis: readonly RoleAxisEntry[]
   sideA: CompareWeaponSide | null | undefined
   sideB: CompareWeaponSide | null | undefined
   names: SideNames
@@ -157,14 +175,13 @@ export function CompareWeaponsRange({
   text: CompareText
   locale: Locale
 }) {
-  const roleName = useRoleName(locale)
   const lignesFrags = useMemo(
-    () => roleRangeLines(sideA, sideB, 'kills', roleName),
-    [sideA, sideB, roleName],
+    () => roleRangeLines(axis, sideA, sideB, 'kills'),
+    [axis, sideA, sideB],
   )
   const lignesMorts = useMemo(
-    () => roleRangeLines(sideA, sideB, 'deaths', roleName),
-    [sideA, sideB, roleName],
+    () => roleRangeLines(axis, sideA, sideB, 'deaths'),
+    [axis, sideA, sideB],
   )
   if (!sideA?.range && !sideB?.range) return null
 
