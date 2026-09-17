@@ -115,6 +115,8 @@ export interface SettingsText {
   watcherAuthReconnect: string
   watcherAuthInstructions: string
   watcherAuthCopyCode: string
+  /** Libellé du MÊME bouton pendant la fenêtre de confirmation (2 s) qui suit la copie. */
+  watcherAuthCodeCopied: string
   watcherAuthOpenLink: string
   watcherAuthPending: string
   watcherAuthSuccess: string
@@ -408,6 +410,7 @@ const FR_TEXT: SettingsText = {
   watcherAuthReconnect: 'Rafraîchir Xbox',
   watcherAuthInstructions: 'Rendez-vous sur {url} et entrez le code ci-dessous :',
   watcherAuthCopyCode: 'Copier le code',
+  watcherAuthCodeCopied: 'Code copié',
   watcherAuthOpenLink: 'Ouvrir le lien',
   watcherAuthPending: 'En attente de validation…',
   watcherAuthSuccess: 'Connexion réussie ! Token XSTS valide.',
@@ -738,6 +741,7 @@ const EN_TEXT: SettingsText = {
   watcherAuthReconnect: 'Refresh Xbox',
   watcherAuthInstructions: 'Go to {url} and enter the code below:',
   watcherAuthCopyCode: 'Copy code',
+  watcherAuthCodeCopied: 'Code copied',
   watcherAuthOpenLink: 'Open link',
   watcherAuthPending: 'Waiting for validation…',
   watcherAuthSuccess: 'Connected! XSTS token valid.',

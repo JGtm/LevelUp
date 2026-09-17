@@ -20,4 +20,19 @@ describe('match-card-presentation', () => {
     })
     expect(getMatchNarrativeBadgeMeta('unknown')).toBeNull()
   })
+
+  it('sert les libellés anglais quand la locale est en', () => {
+    expect(getMatchNarrativeBadgeMeta('sabordage', 'en')?.label).toBe('SCUTTLED')
+    expect(getMatchNarrativeBadgeMeta('abnegation', 'en')?.label).toBe('SELFLESS')
+    expect(getMatchNarrativeBadgeMeta('remontada', 'en')?.label).toBe('COMEBACK')
+    expect(getMatchNarrativeBadgeMeta('contre_remontada', 'en')?.label).toBe('COUNTER-COMEBACK')
+    expect(getMatchNarrativeBadgeMeta('debacle', 'en')?.label).toBe('COLLAPSE')
+  })
+
+  it('garde les libellés français inchangés, locale explicite ou par défaut', () => {
+    expect(getMatchNarrativeBadgeMeta('sabordage', 'fr')?.label).toBe('SABORDAGE')
+    expect(getMatchNarrativeBadgeMeta('abnegation', 'fr')?.label).toBe('ABNÉGATION')
+    expect(getMatchNarrativeBadgeMeta('debacle', 'fr')?.label).toBe('DÉBÂCLE')
+    expect(getMatchNarrativeBadgeMeta('debacle')?.label).toBe('DÉBÂCLE')
+  })
 })

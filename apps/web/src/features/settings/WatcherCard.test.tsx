@@ -13,8 +13,9 @@ import { screen, waitFor, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { WatcherCard } from './WatcherCard'
-import type { SettingsText } from './i18n'
+import { WATCHER_TEST_TEXT as t } from './watcherCardTestText'
 import type { WatcherStatusResponse } from '@/lib/api/types'
+import { log } from '@/lib/clipboard/_logger'
 
 // ---------------------------------------------------------------------------
 // Mock des hooks watcher-queries
@@ -32,92 +33,6 @@ vi.mock('./watcher-queries', () => ({
   useUpdateWatcherSubscriptions: () => ({ mutate: mockUpdateSubsMutate, isPending: false }),
 }))
 
-// ---------------------------------------------------------------------------
-// Fixture i18n (subset des clés utilisées par WatcherCard)
-// ---------------------------------------------------------------------------
-const t = {
-  pageTitle: 'Paramètres',
-  pageSubtitle: "Configuration de l'application",
-  savedStatus: '✓ Enregistré',
-  errorStatus: '✗ Erreur',
-  loading: 'Chargement…',
-  tabSync: 'Sync',
-  manualSyncTitle: 'Sync manuelle',
-  manualSyncButton: 'Synchroniser',
-  manualSyncRunning: 'En cours…',
-  manualSyncDescription: '',
-  instanceTitle: 'Lab',
-  instanceDescription: '',
-  openLabButton: 'Ouvrir',
-  usersTitle: 'Utilisateurs',
-  usersDescription: '',
-  openUsersButton: 'Ouvrir',
-  interfaceTitle: 'Interface',
-  langLabel: 'Langue',
-  langFr: 'FR',
-  langEn: 'EN',
-  timezoneLabel: 'Fuseau',
-  showRecords: 'Records',
-  normalizeModeLabels: 'Normaliser modes',
-  excludeBTB: 'Exclure BTB',
-  refreshClearsCaches: 'Vider caches',
-  discordTitle: 'Discord',
-  discordEnabled: 'Activé',
-  discordNotifySync: 'Notifier sync',
-  discordNotifyBackfill: 'Notifier backfill',
-  discordNoWebhook: 'Webhook absent',
-  mediaTitle: 'Médias',
-  mediaWatcherEnabled: 'Surveillance médias',
-  mediaToleranceLabel: 'Tolérance',
-  mediaNoBaseDir: 'Aucun dossier',
-  spnkrTitle: 'SPNKr',
-  spnkrAutoSync: 'Auto-sync',
-  spnkrAutoSyncInterval: 'Intervalle',
-  spnkrAutoSyncIntervalUnit: 'h',
-  spnkrAutoSyncIntervalMinutes: 'Intervalle (min)',
-  spnkrAutoSyncIntervalMinutesUnit: 'min',
-  watcherTitle: 'Détection de présence',
-  watcherPresenceEnabled: 'Détection automatique',
-  watcherPresenceDescription: 'Description',
-  watcherAuthButton: 'Connecter via Xbox',
-  watcherAuthReconnect: 'Rafraîchir Xbox',
-  watcherAuthInstructions: 'Rendez-vous sur {url}',
-  watcherAuthCopyCode: 'Copier le code',
-  watcherAuthOpenLink: 'Ouvrir le lien',
-  watcherAuthPending: 'En attente…',
-  watcherAuthSuccess: 'Connexion réussie !',
-  watcherAuthFailed: 'Échec de la connexion.',
-  watcherTokenValid: 'Jeton valide jusqu\'au {date} ({gamertag})',
-  watcherTokenExpired: 'Jeton expiré',
-  watcherTokenMissing: 'Aucun jeton Xbox',
-  watcherPlayersLabel: 'Joueurs surveillés',
-  watcherPlayersAll: 'Tous les joueurs',
-  watcherSubscriptionsUpdated: 'Mis à jour',
-  watcherRtaConnected: 'RTA connecté',
-  watcherRtaDisconnected: 'RTA déconnecté',
-  watcherSubscribeError: 'Échec surveillance',
-  watcherStateIdle: 'Absent',
-  watcherStateWatching: 'En surveillance',
-  watcherStateSyncing: 'Synchronisation',
-  watcherStateCooling: 'Cooldown',
-  watcherInGame: 'En jeu',
-  watcherPresenceOnline: 'En ligne',
-  watcherPresenceAway: 'Absent',
-  watcherPresenceOffline: 'Hors-ligne',
-  watcherPresenceUnknown: '—',
-  watcherTitleXboxDashboard: "l'accueil Xbox",
-  watcherLastSeenRelative: 'Vu il y a {duration} sur {title}',
-  watcherLastSeenAbsolute: 'Vu le {date} sur {title}',
-  watcherNeverSeen: 'Jamais vu en jeu',
-  backfillTitle: 'Backfill',
-  backfillMedals: 'Médailles',
-  backfillSkill: 'CSR/MMR',
-  backfillAliases: 'Alias',
-  backfillPersonalScores: 'Scores',
-  backfillPerfScores: 'Perf',
-  backfillLUSR: 'LUSR',
-  backfillEvents: 'Événements',
-} as unknown as SettingsText
 
 const baseStatusData: WatcherStatusResponse = {
   daemon_running: false,
@@ -572,5 +487,75 @@ describe('resolveTitleDisplayName', () => {
 
   it('garde une chaîne vide telle quelle', () => {
     expect(resolveTitleDisplayName('', t)).toBe('')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Bouton « Copier le code » du Device Code Flow — retour visuel (item 7, 2026-09-17)
+//
+// Le bouton copiait en silence et avalait son échec (`catch(() => {})`) : rien ne disait
+// à l'utilisateur que le code était dans le presse-papier. Il passe par le hook partagé
+// `lib/clipboard/useCopyToClipboard`, comme `features/auth/CopyCodeButton.tsx`.
+// ---------------------------------------------------------------------------
+
+describe('AuthFlow — bouton « Copier le code »', () => {
+  /** Ouvre le flux d'auth : `startAuth.mutate` rend la main par son `onSuccess`. */
+  function ouvrirLeFlux() {
+    mockStatusData = { ...baseStatusData }
+    mockStartAuthMutate.mockImplementation(
+      (_vars: unknown, opts: { onSuccess: (d: Record<string, unknown>) => void }) => {
+        opts.onSuccess({
+          attempt_id: 'a1',
+          user_code: 'ABCD-1234',
+          verification_url: 'https://example.invalid/link',
+          expires_in: 900,
+        })
+      },
+    )
+    renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
+    fireEvent.click(screen.getByText('Connecter via Xbox'))
+  }
+
+  function stubPressePapier(): ReturnType<typeof vi.fn> {
+    const fn = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      value: { writeText: fn },
+      configurable: true,
+    })
+    return fn
+  }
+
+  it('écrit le code dans le presse-papier et confirme « copié »', async () => {
+    const writeText = stubPressePapier()
+    ouvrirLeFlux()
+
+    const bouton = await screen.findByText('Copier le code')
+    fireEvent.click(bouton)
+
+    expect(writeText).toHaveBeenCalledWith('ABCD-1234')
+    // La confirmation remplace le libellé du bouton le temps de la fenêtre de feedback.
+    await waitFor(() => expect(screen.getByText(/Code copié/)).toBeInTheDocument())
+    expect(screen.queryByText('Copier le code')).not.toBeInTheDocument()
+  })
+
+  it("échec du presse-papier : aucune confirmation, et l'erreur est JOURNALISÉE", async () => {
+    log._resetForTests()
+    const erreurConsole = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const writeText = vi.fn().mockRejectedValue(new Error('presse-papier indisponible'))
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    })
+    ouvrirLeFlux()
+
+    fireEvent.click(await screen.findByText('Copier le code'))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalled())
+    // Jamais de fausse confirmation : le code reste sélectionnable à la main.
+    expect(screen.queryByText(/Code copié/)).not.toBeInTheDocument()
+    expect(screen.getByText('Copier le code')).toBeInTheDocument()
+    // Et l'échec ne se perd pas en silence (c'était le `catch(() => {})` d'avant).
+    await waitFor(() => expect(erreurConsole).toHaveBeenCalled())
+    erreurConsole.mockRestore()
   })
 })
