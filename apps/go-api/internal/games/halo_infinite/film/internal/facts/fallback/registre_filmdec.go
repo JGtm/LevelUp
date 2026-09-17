@@ -281,4 +281,31 @@ var registreFilmdec = []Repli{
 		CompteurBranche: false,
 		CibleComptage:   "lot 3.1",
 	},
+	{
+		Nom:       "repli_amorce_grenade_profil_de_reference",
+		Fait:      "l amorce du record de creation de projectile — sa largeur, sa valeur et la position du champ d index de l auteur — sous laquelle les lancers de grenade de CE film se lisent",
+		Mecanisme: "la clef du film (build de la section 2, ou version majeure pour les films sans section) n a pas de ligne dans la table du profil : la grammaire du build de REFERENCE s applique (24 bits, 0x40C00, index a +103)",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgProfile + "grenade.go",
+			Ancre:   "func AmorceGrenadeDeReference() AmorceGrenade {",
+		}, {
+			Fichier: pkgFilmdec + "grenade_events.go",
+			Ancre:   "g := grammaireDeReference()",
+		}},
+		DatePose: dateM3,
+		// POURQUOI LE REFUS SERAIT PIRE QUE LE REPLI. D-4 d ADR 0034 interdit de lire un film au
+		// profil du build VOISIN ; ici la reference n est pas un voisin choisi au jugement, c est
+		// la grammaire de 1 269 des 1 351 films du cache. Refuser eteindrait les lancers de tout
+		// le parc au premier patch du jeu, c est-a-dire exactement le defaut que le lot 3.3.1
+		// vient de fermer sur les builds anciens.
+		CibleRetrait: "retrait sec des que la table du profil couvre toutes les clefs du parc : le prochain patch du jeu ajoute sa clef d amorce en meme temps que son empreinte de registre",
+		// Le compte n est pas branche pour la meme raison que les autres replis de `grammar` : le
+		// decodeur ne porte pas de compteur de replis, et le cablage passe par le `FilmContext`.
+		// D ici la, le declenchement sort en AVERTISSEMENT par film, avec la clef refusee.
+		CritereRetrait:  "0 film cuit sous le profil de reference ; chaque clef du parc porte sa ligne d amorce",
+		CompteurBranche: false,
+		CibleComptage:   comptageParFilmContext,
+	},
 }

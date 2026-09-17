@@ -826,6 +826,23 @@ and the M1 closure had to re-run `replay-diff` by hand on the kept artifacts to 
 while a witness in ERROR was written as `{"gains":0,"pertes":0,"changements":0}`, i.e. read
 from the JSON alone, as a clean witness.
 
+**Telemetry and rejection counters are not losses (2026-09-17, lot 3.3.3)**: the verdict used to
+count two families it should not. **Telemetry** — `coverage.decoder.{sourceRev, profileRev,
+grammarRev, factsRev}`, `coverage.decoder.build`, `coverage.decoder.registry.fingerprint` — says
+which VERSION of the decoder baked the artifact, not what the match contains. Those leaves were
+NEW at lot 2.6, hence counted as gains; since schema 61 they are shared, so any lot that raises a
+revision made them "move" on every witness and the gate exited 1 with nothing else wrong (lot
+3.3.2: 51 of 59 changes were those three strings). They are now printed in their own `TELEMETRIE`
+section and counted nowhere. **Rejection counters** — `noSlot`, `unread`, `truncated`,
+`unnamedLives`… — are already read backwards by `replaydiff/polarite.go` (down is a gain); what
+that layer cannot see is their DENOMINATOR. A rise is a `PERTE` only when the RATIO to its
+denominator degrades, with a non-zero denominator on both sides; a counter rising from zero
+because the denominator went from 0 to N is a `CHANGEMENT` — printed, investigated by the pilot,
+still blocking. The table of counters and their denominators is
+`cmd/replay-corpus-gate/verdict_metriques.go`, one line per coverage block, each citing where the
+denominator was read. Everything else is unchanged: a real loss and a non-telemetry change both
+exit 1.
+
 **All flags** (`cd apps/go-api && go run ./cmd/replay-corpus-gate -h` for the live list):
 
 | Flag | Default | Meaning |

@@ -42,7 +42,7 @@ var registreKillsourceCalibration = []Repli{
 			Fichier: pkgKillsource + "calibrate.go",
 			Ancre:   "res.Profil.Mouvement.Traversal.IndexW = res.PoigneeIndexW",
 		}},
-		DatePose: "2026-09-17",
+		DatePose: dateM3,
 		// POSE APRES UNE MESURE, ET APRES UNE ERREUR. Le lot 3.4.1 a rendu les largeurs d AXE a
 		// la carte et demote leur balayage en oracle ; il avait emporte avec elles cette
 		// largeur-ci, qui n a AUCUNE source lue. `replay-equiv` l a vu : sur `a521164d`,
@@ -66,7 +66,7 @@ var registreKillsourceCalibration = []Repli{
 			Fichier: pkgKillsource + "calibrate.go",
 			Ancre:   "best, bestN = r, n",
 		}},
-		DatePose:        "2026-09-17",
+		DatePose:        dateM3,
 		CibleRetrait:    "lot qui trouvera la source LUE de `param_4` (registre ECS par composant, ou table du build)",
 		CritereRetrait:  "la valeur vient d une lecture ; le balayage devient oracle comme celui des largeurs, ou disparait",
 		CompteurBranche: false,

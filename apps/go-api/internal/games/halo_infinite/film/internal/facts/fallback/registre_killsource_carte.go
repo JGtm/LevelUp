@@ -32,7 +32,7 @@ var registreKillsourceCarte = []Repli{
 			Fichier: pkgKillsource + "decode.go",
 			Ancre:   "if !c.calib.CarteLue {",
 		}},
-		DatePose: "2026-09-17",
+		DatePose: dateM3,
 		// POSE PAR LE LOT 3.4.1, QUI FERME LE DEFAUT DONT IL EST LE RESTE. Jusqu a ce lot,
 		// `killsource` ne recevait AUCUNE entree de catalogue et INFERAIT ces largeurs par
 		// balayage ; l inference est devenue ORACLE (V17, M3-Q8 : la valeur LUE prime), et la

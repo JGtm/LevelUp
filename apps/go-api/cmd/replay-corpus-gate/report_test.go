@@ -54,12 +54,26 @@ func TestCodeSortieAbsentNEstPasUnEchec(t *testing.T) {
 
 // TestBilanDepuisRapportSommeLesAxes — gains et pertes s'additionnent sur TOUS les axes du
 // rapport, pas seulement le premier.
+//
+// IL PART DES ECARTS ET NON DES `Bilans` DEPUIS LE LOT 3.3.3, et ce n'est pas un affaiblissement :
+// `remplirBilan` reclasse desormais chaque ecart (telemetrie, rejet rapporte a son denominateur —
+// `verdict_metriques.go`), donc les bilans par axe ne sont plus la source du verdict. Les deux
+// populations sont les memes (`replaydiff.Rapport.ajouter` alimente bilans ET ecarts d'un seul
+// geste) ; ce que ce test garde est inchange : la somme porte sur TOUS les axes.
 func TestBilanDepuisRapportSommeLesAxes(t *testing.T) {
+	ecart := func(axe, metrique, sens string) replaydiff.Difference {
+		return replaydiff.Difference{Axe: axe, Metrique: metrique, Sens: sens,
+			Ancien: "1", Nouveau: "2"}
+	}
 	rap := replaydiff.Rapport{
 		SchemaAncien: 20, SchemaNouveau: 41,
-		Bilans: map[string]replaydiff.BilanAxe{
-			"objectifs":  {Gains: 3, Pertes: 1},
-			"equipement": {Gains: 0, Pertes: 2},
+		Differences: []replaydiff.Difference{
+			ecart("objectifs", "objectives.a", replaydiff.SensGain),
+			ecart("objectifs", "objectives.b", replaydiff.SensGain),
+			ecart("objectifs", "objectives.c", replaydiff.SensGain),
+			ecart("objectifs", "objectives.d", replaydiff.SensPerte),
+			ecart("equipement", "equipment.e", replaydiff.SensPerte),
+			ecart("equipement", "equipment.f", replaydiff.SensPerte),
 		},
 	}
 	var l ligneRapport

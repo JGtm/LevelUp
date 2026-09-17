@@ -56,25 +56,13 @@ const (
 // marqueursEmpreinteDeSources : les trois marqueurs, TOUS requis.
 var marqueursEmpreinteDeSources = []string{"sha256", "filepath.Walk", `"_test.go"`}
 
-// empreinteAdHocToleree : un mecanisme ANTERIEUR a la centralisation, avec la date de sa mise en
-// table, le lot qui le fait heriter et la forme de la reprise. Ce n est pas un blanc-seing :
-// c est la liste de travail de 2.6.1, et le test refuse toute entree devenue sans objet
-// (`TestAllowlistDesEmpreintesAdHocNEstPasPerimee`).
-type empreinteAdHocToleree struct {
-	fichier string
-	pose    string
-	lot     string
-	reprise string
-}
-
-// empreintesAdHocTolerees — VIDE, ET C EST UN RATCHET (lot 2.6.1, 2026-09-17).
+// LA TABLE DES EMPREINTES AD HOC TOLEREES N EXISTE PLUS (cloture M2, 2026-09-17). Elle etait la
+// liste de travail de 2.6.1 ; videe par ce lot, elle a ete SUPPRIMEE avec son type et son test de
+// peremption, comme les tables de `no_raw_film_bytes` et de `film_layers_deps` avant elle : une
+// table vide qu on garde invite a etre remplie (`golangci-lint` le disait a sa maniere : champ
+// `reprise` inutilise). Le ratchet est STRICT : tout porteur hors de `film/revision` est une
+// violation, sans mecanisme d exception.
 //
-// Les QUATRE couches passent par `film/revision`. Cette table n est plus une liste de travail :
-// elle est le ratchet qui interdit la cinquieme copie. Y ajouter une entree n est PAS une reponse
-// a un echec de ce test — c est rouvrir le defaut que la centralisation a ferme (deux cadres de
-// hachage divergents, donc une renumerotation de revision pour rien).
-var empreintesAdHocTolerees []empreinteAdHocToleree
-
 // LES DEUX ENTREES ONT ETE RETIREES DANS LES COMMITS QUI LES ONT RESOLUES.
 //
 //	2026-09-16  `killcollector/decoder_rev_fingerprint_test.go` (lot 2.6.1, volet facts + source).
@@ -87,7 +75,7 @@ var empreintesAdHocTolerees []empreinteAdHocToleree
 //	            retrait datee le prevoyait.
 //
 // Dans les deux cas les ~120 lignes de `sha256` + `filepath.WalkDir` n existent plus : l entree
-// ne decrivait plus aucun porteur, et `TestAllowlistDesEmpreintesAdHocNEstPasPerimee` l aurait
+// ne decrivait plus aucun porteur, et le test de peremption de la table (supprime avec elle) l aurait
 // dit.
 
 // TestAucuneEmpreinteDeSourcesAdHoc : personne ne recalcule une empreinte de sources hors de
@@ -98,17 +86,7 @@ func TestAucuneEmpreinteDeSourcesAdHoc(t *testing.T) {
 		t.Fatalf("balayage muet : %d fichiers .go vus, plancher %d — l arborescence a bouge et "+
 			"ce ratchet ne garde plus rien", fichiers, plancherFichiersEmpreinte)
 	}
-	tolerees := map[string]bool{}
-	for _, e := range empreintesAdHocTolerees {
-		tolerees[e.fichier] = true
-	}
-	var violations []string
-	for _, rel := range porteurs {
-		if !tolerees[rel] {
-			violations = append(violations, rel)
-		}
-	}
-	if len(violations) == 0 {
+	if len(porteurs) == 0 {
 		return
 	}
 	t.Errorf("empreinte de sources recalculee hors de `%s` :\n  %s\n"+
@@ -116,27 +94,10 @@ func TestAucuneEmpreinteDeSourcesAdHoc(t *testing.T) {
 		"pour le calcul, `revision.Chronique` pour la chronique, `revision.Porte` pour la "+
 		"regeneration, `revision.Messages` pour le message. Une copie de plus, c est un "+
 		"cinquieme cadre de hachage — et deux cadres differents ne se comparent pas, donc une "+
-		"renumerotation de revision pour rien. Ajouter une entree a `empreintesAdHocTolerees` "+
-		"N EST PAS une reponse : cette table est VIDE depuis le lot 2.6.1 et c est un ratchet — "+
+		"renumerotation de revision pour rien. Il n existe AUCUNE table d exception : "+
+		"la liste de travail de 2.6.1 a ete supprimee avec sa derniere entree et c est un ratchet — "+
 		"les quatre couches passent par le mecanisme central, aucune copie ne reste.",
-		paquetCanoniqueEmpreinte, strings.Join(violations, "\n  "))
-}
-
-// TestAllowlistDesEmpreintesAdHocNEstPasPerimee : une entree qui ne decrit plus un porteur se
-// RETIRE, dans le commit meme qui la resout.
-func TestAllowlistDesEmpreintesAdHocNEstPasPerimee(t *testing.T) {
-	porteurs, _ := balayerPorteursDEmpreinte(t)
-	vivants := map[string]bool{}
-	for _, rel := range porteurs {
-		vivants[rel] = true
-	}
-	for _, e := range empreintesAdHocTolerees {
-		if vivants[e.fichier] {
-			continue
-		}
-		t.Errorf("`empreintesAdHocTolerees` cite %s (pose %s, lot %s), qui ne recalcule plus "+
-			"d empreinte de sources : entree perimee, la retirer.", e.fichier, e.pose, e.lot)
-	}
+		paquetCanoniqueEmpreinte, strings.Join(porteurs, "\n  "))
 }
 
 // TestDetecteurDEmpreinteMord : LA PREUVE QUE LE GARDE-RAIL MORD. Un ratchet qui ne detecte

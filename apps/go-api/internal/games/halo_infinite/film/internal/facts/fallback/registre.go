@@ -88,6 +88,13 @@ const dateAudit0E = "2026-09-13"
 // le défaut inverse — elle nommait un LOT, et ses quatre citations ont divergé.
 const dateVague2 = "2026-09-15"
 
+// dateM3 : le jour des lots de M3 qui posent des replis (3.3.1 et 3.4.1). QUATRE entrees y sont
+// nees — deux par lot — et `goconst` refuse a juste titre une quatrieme occurrence du litteral.
+//
+// C EST UNE DATE, PAS UN LOT, exactement comme [dateVague2] : elle ne dit RIEN de la cible de
+// retrait ni du critere, que chaque entree porte a part.
+const dateM3 = "2026-09-17"
+
 // comptageFamille19 : la raison, écrite une fois, pour laquelle le compteur d'un repli hérité
 // n'est pas câblé au lot 1.9.0.
 //

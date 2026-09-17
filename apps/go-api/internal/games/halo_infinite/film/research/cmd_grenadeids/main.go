@@ -114,6 +114,8 @@ func traiter(racine, id string, opt grenadeids.Options, rg reglages) error {
 	grenadeids.EcrireEntete(os.Stdout, b)
 	rel := grenadeids.Balayer(b, opt)
 	grenadeids.EcrireReleve(os.Stdout, rel, rg.top)
+	grenadeids.EcrireAmorce(os.Stdout, rel)
+	grenadeids.EcrireIndexDepuisIdentifiant(os.Stdout, rel, rg.top)
 	grenadeids.EcrireTranches(os.Stdout, rel)
 	grenadeids.EcrireIndexAuteur(os.Stdout, rel, rg.top)
 	if !rg.apparier {
