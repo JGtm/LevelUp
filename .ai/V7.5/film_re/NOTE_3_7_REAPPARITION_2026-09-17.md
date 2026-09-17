@@ -432,6 +432,29 @@ port de `i11`.
    emplacement`, avec les regles de stabilite de `PadCycle` (>= 2 ecarts, `missing` compte). C'est
    la mesure qui remplace le `IQR/mediane 0,87-0,98` de 2026-09-01.
 
+5. **LE CANAL QUE CE LOT N'A PAS ECARTE, ET QU'IL FAUT NOMMER : `ti=13`,
+   `managed-object-property`.** Ce n'est pas un composant DE minuteur — c'est un sac de
+   proprietes NOMMEES qu'un script de mode attache a un objet (`Engine_CreateFloatNetworkedProperty`,
+   `NetworkedProperty_SetFloatProperty` : le NOM est un `StringId` choisi par le script, donc
+   il n'apparait PAS dans l'univers des noms de composant du § 4 — le negatif de ce paragraphe
+   ne le couvre pas). Trois faits le rendent candidat au retour de drapeau, et aucun ne suffit :
+   (a) le tag 3, DOMINANT a 85,7-95,4 % des slots mesures, est un flottant quantifie `R(24)` sur
+   **`[-100, +100]`** (`components_managed_property.go`) ; (b) l'echelle de la jauge de retour de
+   drapeau vaut **100** dans `parcel_deliver_object.lua` (memoire `reference_ctf_flag_lua_mechanics`,
+   avec `flagReturnTimer`, `flagReturnTimerRate`, `onReturnProgress`, `flagResetSeconds`) ;
+   (c) le meme canal porte deja la JAUGE DE CAPTURE des zones en production
+   (`zone_state_scan.go`, `document_zones.go`). Ce que ce lot NE peut pas faire : `ti=13 i0`
+   (`managed-object-property-name-component`, le `StringId` du nom) est MARCHE mais **pas
+   recolte** — le balayage l'a retire comme sortie morte a la revue R1 de la phase 2b — et le
+   golden de fermeture 0.A.3 mesure que l'ETAT PAR DEFAUT de `ti=13` est DESALIGNE (oracle `n2` :
+   `n1` constant a 136, `n2` du bruit), donc sa voie image-cle ne vaut rien ; seule la voie DELTA
+   parle, et elle n'existe pas dans les mini-bobines par build. Preuve demandee, sur un **CTF**
+   entier : recolter `i0` par la voie delta, hacher les noms Lua candidats (`flagReturnTimer`,
+   `flagResetSeconds`, `onReturnProgress`) par le hacheur de `StringId` du jeu, et regarder si un
+   slot porte un tag 3 qui monte vers 100 pendant un intervalle `dropped` de `flagCarries`.
+   **Ne pas conclure sans ce test** : c'est un canal generique, et un tag 3 qui varie ne dit pas
+   de lui-meme qu'il parle du drapeau.
+
 **Films souhaites, cinq au plus, un par un** : 2 CTF (dont un recent), 1 Oddball (le crane a-t-il
 un minuteur de remise a zero ?), 2 BTB a vehicules (dont un Heavies). Aucun KOTH ni Strongholds :
 les zones ne reapparaissent pas, et le lot 3.6 a mesure qu'un Strongholds ne porte aucun slot
