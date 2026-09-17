@@ -30,6 +30,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // eqcGrenadeWindowUS : la fenêtre dans laquelle un ramassage de grenade doit se voir sur le
@@ -41,7 +42,7 @@ const eqcGrenadeWindowUS = 2_000_000
 //
 // LA COMPARAISON SE FAIT ENTRE LA DERNIÈRE LECTURE AVANT ET LA PREMIÈRE APRÈS, rang par rang :
 // i22 porte le vecteur complet des compteurs, et une prise ne touche qu'un rang.
-func eqcGrenadeRise(deltas []grammar.InventoryDelta, slot uint32, at uint64, decalUS int64) bool {
+func eqcGrenadeRise(deltas []types.InventoryDelta, slot uint32, at uint64, decalUS int64) bool {
 	var avant, apres []uint32
 	var gapAvant, gapApres uint64 = eqcGrenadeWindowUS + 1, eqcGrenadeWindowUS + 1
 	for _, d := range deltas {

@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // named.go — les EVENEMENTS DE JOUEUR NOMMES, lus par le COMPOSANT et non par la valeur.
@@ -226,7 +227,7 @@ func NamedEvents(film *source.Film, objectiveType string) []NamedEvent {
 // decode le film UNE fois (`StatRecordsCtx`) puis en tire la courbe de score, l'identite des
 // slots ET les evenements nommes. Passer par [NamedEvents] rejouerait le decodage complet a
 // chaque appel — trois fois le cout sur une machine qui paie deja le decodage des positions.
-func NamedEventsFrom(recs []StatRecord, objectiveType string) []NamedEvent {
+func NamedEventsFrom(recs []types.StatRecord, objectiveType string) []NamedEvent {
 	table, ok := namedStatSlots[objectiveType]
 	if !ok {
 		return nil
@@ -331,7 +332,7 @@ func CrossCheckNamedEvents(film *source.Film, objectiveType string) map[int]map[
 }
 
 // crossCheckFrom est le coeur pur de [CrossCheckNamedEvents].
-func crossCheckFrom(recs []StatRecord, objectiveType string) map[int]map[string][2]int {
+func crossCheckFrom(recs []types.StatRecord, objectiveType string) map[int]map[string][2]int {
 	table, ok := namedStatSlots[objectiveType]
 	if !ok {
 		return nil
@@ -374,7 +375,7 @@ func crossCheckFrom(recs []StatRecord, objectiveType string) map[int]map[string]
 // [incrementTimes], et le laisser hors budget aurait laisse une porte ouverte a l'explosion
 // memoire que les bornes ferment chez [NamedEventsFrom]. Le budget vient de l'appelant :
 // le pont d'identite en ouvre un pour ses trois compteurs, le controle croise un pour sa passe.
-func countsOf(recs []StatRecord, key statSlotKey, b *eventBudget) map[int]int {
+func countsOf(recs []types.StatRecord, key statSlotKey, b *eventBudget) map[int]int {
 	out := map[int]int{}
 	series := seriesBySlot(recs, key)
 	for _, slot := range sortedIntKeys(series) {

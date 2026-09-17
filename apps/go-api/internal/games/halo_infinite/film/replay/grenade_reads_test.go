@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // grenade_reads_test.go — LES GARDE-RAILS DE L'AXE DES GRENADES.
@@ -22,7 +23,7 @@ func kfGren(ts uint64, slot uint32, g [4]uint32, sel int) KeyframeInventory {
 
 func TestBuildGrenadeReadsPublieLesDeuxCanauxAvecLeurSource(t *testing.T) {
 	kf := []KeyframeInventory{kfGren(1_000_000, 7, [4]uint32{1, 0, 2, 0}, 2)}
-	deltas := []grammar.InventoryDelta{{
+	deltas := []types.InventoryDelta{{
 		Slot: 7, TimestampUS: 1_500_000, Grenades: []uint32{1, 0, 1, 0},
 		SelRead: true, Sel: 2, Mask: 0b0101,
 	}}
@@ -50,7 +51,7 @@ func TestBuildGrenadeReadsPublieLesDeuxCanauxAvecLeurSource(t *testing.T) {
 // mesurée.
 func TestBuildGrenadeReadsEcarteCeQuiPrecedeLOrigine(t *testing.T) {
 	kf := []KeyframeInventory{kfGren(500_000, 7, [4]uint32{1, 0, 0, 0}, -1)}
-	deltas := []grammar.InventoryDelta{
+	deltas := []types.InventoryDelta{
 		{Slot: 7, TimestampUS: 400_000, Grenades: []uint32{2, 0, 0, 0}},
 		{Slot: 7, TimestampUS: 2_000_000, Grenades: []uint32{0, 0, 0, 0}},
 	}
@@ -68,7 +69,7 @@ func TestBuildGrenadeReadsEcarteCeQuiPrecedeLOrigine(t *testing.T) {
 // quadruplet. Une lecture delta qui ne porte que la sélection n'a rien à y dire — publier un
 // tableau vide se lirait « plus aucune grenade ».
 func TestBuildGrenadeReadsTaitUneLectureDeltaSansCompteurs(t *testing.T) {
-	deltas := []grammar.InventoryDelta{
+	deltas := []types.InventoryDelta{
 		{Slot: 3, TimestampUS: 2_000_000, Grenades: nil, SelRead: true, Sel: 1, Mask: 0b0010},
 	}
 	if out := buildGrenadeReads(nil, deltas, 1_000_000, 100_000); out != nil {
@@ -80,7 +81,7 @@ func TestBuildGrenadeReadsTaitUneLectureDeltaSansCompteurs(t *testing.T) {
 // désigne AUCUN type. Le publier comme un rang mettrait une grenade sélectionnée là où le film
 // n'en désigne pas.
 func TestBuildGrenadeReadsNePubliePasDeSelectionDevinee(t *testing.T) {
-	deltas := []grammar.InventoryDelta{{
+	deltas := []types.InventoryDelta{{
 		Slot: 3, TimestampUS: 2_000_000, Grenades: []uint32{0, 0, 0, 0},
 		SelRead: true, Sel: grammar.InventoryDeltaNoSel,
 	}}
@@ -107,7 +108,7 @@ func TestGrenadeReadsNAffectePasLInventaire(t *testing.T) {
 		t.Fatalf("inventaire %+v (écartés %d)", inv, dropped)
 	}
 	before := len(inv)
-	_ = buildGrenadeReads(kf, []grammar.InventoryDelta{
+	_ = buildGrenadeReads(kf, []types.InventoryDelta{
 		{Slot: 7, TimestampUS: 1_500_000, Grenades: []uint32{0, 0, 0, 0}},
 	}, 1_000_000, 100_000)
 	inv2, _ := buildInventory(kf, 1_000_000, 100_000)

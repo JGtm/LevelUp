@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // statborg.go — le decodage des ENREGISTREMENTS D'ENTITE des paquets FRAME, d'ou sortent
@@ -162,7 +163,7 @@ func IsTeamSlot(slot int) bool { return slot <= statTeamSlotMax }
 // [StatRecordsCtx] et JETTE le drapeau de troncature. Tout appelant qui publie ce qu'il lit
 // doit utiliser [StatRecordsCtx] et propager `truncated` — publier un score tronque sans le
 // dire serait un mensonge silencieux.
-func StatRecords(film *source.Film) []StatRecord {
+func StatRecords(film *source.Film) []types.StatRecord {
 	recs, _ := StatRecordsCtx(context.Background(), film, "")
 	return recs
 }
@@ -174,8 +175,8 @@ func StatRecords(film *source.Film) []StatRecord {
 // matchID n'est utilise que pour le journal ; il peut etre vide.
 //
 // LE FILM ARRIVE DEJA CHARGE, et seuls les chunks du MANIFESTE sont balayes (cf. [manifestChunks]).
-func StatRecordsCtx(ctx context.Context, film *source.Film, matchID string) (recs []StatRecord, truncated bool) {
-	var out []StatRecord
+func StatRecordsCtx(ctx context.Context, film *source.Film, matchID string) (recs []types.StatRecord, truncated bool) {
+	var out []types.StatRecord
 	for _, c := range chunksDatables(ctx, film, matchID) {
 		frames := framesOf(film, c.pos)
 		if len(frames) == 0 {
@@ -198,7 +199,7 @@ func StatRecordsCtx(ctx context.Context, film *source.Film, matchID string) (rec
 }
 
 // sortRecords ordonne les enregistrements par temps puis par slot.
-func sortRecords(out []StatRecord) []StatRecord {
+func sortRecords(out []types.StatRecord) []types.StatRecord {
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].TimeMS != out[j].TimeMS {
 			return out[i].TimeMS < out[j].TimeMS
@@ -212,8 +213,8 @@ func sortRecords(out []StatRecord) []StatRecord {
 }
 
 // scanFrameForRecords balaie un paquet FRAME et rend les enregistrements qu'il porte.
-func scanFrameForRecords(pay []byte, tMS int) []StatRecord {
-	var out []StatRecord
+func scanFrameForRecords(pay []byte, tMS int) []types.StatRecord {
+	var out []types.StatRecord
 	lim := len(pay)*8 - statTailBits
 	for b := 1; b < lim; b++ {
 		slot, idx, at, ok := matchRecordHeader(pay, b)
@@ -224,7 +225,7 @@ func scanFrameForRecords(pay []byte, tMS int) []StatRecord {
 		if len(comps) == 0 || !statCountersInDomain(comps) {
 			continue
 		}
-		out = append(out, StatRecord{TimeMS: tMS, Slot: slot, Round: round, Comps: comps})
+		out = append(out, types.StatRecord{TimeMS: tMS, Slot: slot, Round: round, Comps: comps})
 	}
 	return out
 }
@@ -233,7 +234,7 @@ func scanFrameForRecords(pay []byte, tMS int) []StatRecord {
 // domaine des compteurs. Un seul canal hors domaine condamne l'enregistrement ENTIER : un
 // ancrage fortuit ne produit pas une valeur fausse, il produit un record qui n'existe pas, et
 // ses autres composants sont du bruit au meme titre (cf. [statMaxCounter]).
-func statCountersInDomain(comps map[int]StatValue) bool {
+func statCountersInDomain(comps map[int]types.StatValue) bool {
 	for _, v := range comps {
 		if v.A > statMaxCounter || v.A < -statMaxCounter ||
 			v.B > statMaxCounter || v.B < -statMaxCounter {
@@ -314,13 +315,13 @@ func denseComponentList(pay []byte, p int) ([]int, bool) {
 //
 // Les composants suivants ne sont pas re-contraints — leurs largeurs sont chainees, une lecture
 // qui derape s'arrete d'elle-meme.
-func decodeComponents(pay []byte, at int, idx []int) (map[int]StatValue, int) {
+func decodeComponents(pay []byte, at int, idx []int) (map[int]types.StatValue, int) {
 	h1 := int(source.BitsTronques(pay, at, statHdrBits))
 	h2 := int(source.BitsTronques(pay, at+statHdrBits, statHdrBits))
 	if h1 != h2 || h1 > statMaxRound {
 		return nil, 0
 	}
-	out := make(map[int]StatValue, len(idx))
+	out := make(map[int]types.StatValue, len(idx))
 	q := at
 	for _, i := range idx {
 		v, w, ok := decodeStatComponent(pay, q)
@@ -336,34 +337,34 @@ func decodeComponents(pay []byte, at int, idx []int) (map[int]StatValue, int) {
 // decodeStatComponent lit un composant et rend sa largeur consommee. Reproduit
 // FUN_140C18794 : deux en-tetes de 5 bits, deux valeurs a longueur variable, deux drapeaux
 // commandant chacun une valeur conditionnelle.
-func decodeStatComponent(pay []byte, p int) (StatValue, int, bool) {
+func decodeStatComponent(pay []byte, p int) (types.StatValue, int, bool) {
 	q := p + 2*statHdrBits
 	a, n1, ok := readStatVarWidth(pay, q)
 	if !ok {
-		return StatValue{}, 0, false
+		return types.StatValue{}, 0, false
 	}
 	b, n2, ok := readStatVarWidth(pay, q+n1)
 	if !ok {
-		return StatValue{}, 0, false
+		return types.StatValue{}, 0, false
 	}
 	q += n1 + n2
 	if q+2 > len(pay)*8 {
-		return StatValue{}, 0, false
+		return types.StatValue{}, 0, false
 	}
 	flags := [2]uint64{source.BitsTronques(pay, q, 1), source.BitsTronques(pay, q+1, 1)}
 	q += 2
 	// LES DEUX CANAUX CONDITIONNELS SONT DESORMAIS GARDES (2026-08-31). Ils etaient lus pour
 	// avancer le curseur, puis JETES — 56 emplacements que rien n'avait jamais regardes (cf.
-	// l'en-tete de [StatValue]). Rien d'autre ne change : le curseur avance de la meme facon,
+	// l'en-tete de [types.StatValue]). Rien d'autre ne change : le curseur avance de la meme facon,
 	// et aucun lecteur existant ne consulte C ou D.
-	out := StatValue{A: a, B: b}
+	out := types.StatValue{A: a, B: b}
 	for i, f := range flags {
 		if f != 1 {
 			continue
 		}
 		v, n, ok := readStatVarWidth(pay, q)
 		if !ok {
-			return StatValue{}, 0, false
+			return types.StatValue{}, 0, false
 		}
 		if i == 0 {
 			out.C, out.HasC = v, true
@@ -429,22 +430,22 @@ const statMinRoundRun = 3
 // ELLE DELEGUE A [ResolveRounds] DEPUIS LE LOT 1.9.11 et n'en garde que l'ensemble : le verdict
 // COMPLET — ce que le film a ecrit, ce que l'ordre a CONTREDIT, et le decret de la manche 0 —
 // se lit la, et c'est lui que l'artefact publie.
-func RealRounds(recs []StatRecord) map[int]bool {
+func RealRounds(recs []types.StatRecord) map[int]bool {
 	return ResolveRounds(recs).RealSet()
 }
 
 // modeScoreRunsByRound rend, par manche, la plus longue suite STRICTEMENT croissante du score de
 // mode, tous slots confondus — le premier des deux criteres d'admission.
-func modeScoreRunsByRound(recs []StatRecord) map[int]int {
+func modeScoreRunsByRound(recs []types.StatRecord) map[int]int {
 	type key struct{ slot, round int }
-	series := map[key][]ScorePoint{}
+	series := map[key][]types.ScorePoint{}
 	for _, r := range recs {
 		v, ok := r.Comps[modeScoreComp]
 		if !ok || !modeScoreInDomain(v) {
 			continue
 		}
 		k := key{r.Slot, r.Round}
-		series[k] = append(series[k], ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
+		series[k] = append(series[k], types.ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
 	}
 	runs := map[int]int{}
 	for k, pts := range series {
@@ -463,7 +464,7 @@ func modeScoreRunsByRound(recs []StatRecord) map[int]int {
 // « cette manche a-t-elle assez de matiere pour etre une manche » mais « cette manche
 // a-t-elle laisse la moindre trace ». Une manche dont pas un seul enregistrement ne porte le
 // numero n'a pas ete jouee — elle n'est meme pas courte, elle est absente.
-func presentRounds(recs []StatRecord) map[int]bool {
+func presentRounds(recs []types.StatRecord) map[int]bool {
 	out := make(map[int]bool, 4)
 	for _, r := range recs {
 		out[r.Round] = true
@@ -525,7 +526,7 @@ const statMinRoundRecords = 25
 //
 // Les slots d'EQUIPE sont exclus du comptage : ils emettent sur un rythme propre, independant
 // du nombre de joueurs, et deux slots suffiraient a faire passer un ancrage.
-func materialRounds(recs []StatRecord) map[int]bool {
+func materialRounds(recs []types.StatRecord) map[int]bool {
 	parRound := map[int]int{}
 	for _, r := range recs {
 		if IsTeamSlot(r.Slot) {

@@ -48,6 +48,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // fsJoueur est la ligne d'oracle d'un joueur : ce que l'API dit de ses securisations, le
@@ -242,7 +243,7 @@ type fsCandidat struct {
 //
 // Un slot SANS EMISSION est la lecture « zero » du compteur, pas une absence de mesure.
 func fsVerdict(
-	recs []objectives.StatRecord, identity map[int]string,
+	recs []types.StatRecord, identity map[int]string,
 	c objectives.StatComponent, cible map[string]int,
 ) fsCandidat {
 	series := objectives.SeriesTotal(recs, c, false)
@@ -286,17 +287,17 @@ func fsStrict(s bool) string {
 }
 
 // fsIdentity construit le pont slot -> xuid par le triplet, et la cible par xuid.
-func fsIdentity(recs []objectives.StatRecord, oracle []fsJoueur,
+func fsIdentity(recs []types.StatRecord, oracle []fsJoueur,
 	cible func(fsJoueur) int,
 ) (map[int]string, map[string]int) {
-	lines := make([]objectives.PlayerLine, 0, len(oracle))
+	lines := make([]types.PlayerLine, 0, len(oracle))
 	par := map[string]int{}
 	for _, j := range oracle {
 		par[j.xuid] = cible(j)
 		if j.kills < 0 {
 			continue // bot sans ligne de match : aucun pont possible, et c'est dit
 		}
-		lines = append(lines, objectives.PlayerLine{
+		lines = append(lines, types.PlayerLine{
 			XUID: j.xuid, Kills: j.kills, Deaths: j.deaths, Assists: j.assists,
 		})
 	}

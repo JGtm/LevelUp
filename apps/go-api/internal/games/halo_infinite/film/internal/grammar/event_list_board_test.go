@@ -47,6 +47,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Seuils du gate, écrits avant mesure.
@@ -193,7 +194,7 @@ func evbUnFilm(t *testing.T, dir, id string, tot *evbTotaux) {
 
 // evbNoteSortie impute une SORTIE au contrôle de non-régression (gate B3) : la sortie FERME un
 // trou.
-func evbNoteSortie(e VehicleEvent, trous []evbTrou, tot *evbTotaux) {
+func evbNoteSortie(e types.VehicleEvent, trous []evbTrou, tot *evbTotaux) {
 	tot.exits++
 	if !e.OccupantInBand {
 		return
@@ -250,7 +251,7 @@ func (c evbCadre) trouOuvertA(slot uint32, at uint64) (evbTrou, bool) {
 // largeurs balayé, et impute : occupant en bande, ouverture de trou, témoin, siège, et
 // l'APPARIEMENT embarquement -> sortie du même occupant (avec accord des sièges et trajet
 // complet ouverture/fermeture du même trou).
-func evbNoteEmbarquement(dir string, e VehicleEvent, c evbCadre, tot *evbTotaux) {
+func evbNoteEmbarquement(dir string, e types.VehicleEvent, c evbCadre, tot *evbTotaux) {
 	tot.boardTotal++
 	pay := evbPayload(dir, e)
 	if pay == nil {
@@ -312,7 +313,7 @@ func evbNoteEmbarquement(dir string, e VehicleEvent, c evbCadre, tot *evbTotaux)
 // différentes, l'occupant d'embarquement et celui de la sortie qui referme SON trou diffèrent
 // d'une constante. On relève donc, pour chaque embarquement qui ouvre un trou, l'écart entre le
 // slot des sorties qui tombent à la fermeture de ce trou et le slot lu à l'embarquement.
-func evbEcartsDeBase(e VehicleEvent, slot uint32, g evbTrou, ouvre bool, c evbCadre, tot *evbTotaux) {
+func evbEcartsDeBase(e types.VehicleEvent, slot uint32, g evbTrou, ouvre bool, c evbCadre, tot *evbTotaux) {
 	if !ouvre {
 		return
 	}
@@ -327,7 +328,7 @@ func evbEcartsDeBase(e VehicleEvent, slot uint32, g evbTrou, ouvre bool, c evbCa
 }
 
 // evbPayload relit le payload du paquet qui porte l'événement (le décodeur ne le conserve pas).
-func evbPayload(dir string, e VehicleEvent) []byte {
+func evbPayload(dir string, e types.VehicleEvent) []byte {
 	data, err := ReadFilmChunk(dir, e.Chunk)
 	if err != nil {
 		return nil

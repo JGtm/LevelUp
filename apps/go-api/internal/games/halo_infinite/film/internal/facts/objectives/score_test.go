@@ -1,6 +1,9 @@
 package objectives
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 // Les tests de ce fichier sont adosses au cache film de dev (meme convention que
 // extract_test.go : SKIP propre si le film est absent, donc verts en CI sans films).
@@ -10,7 +13,7 @@ import "testing"
 // (.ai/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md §15).
 
 // finalScores rend le dernier score connu de chaque slot d'equipe.
-func finalScores(pts []ScorePoint) map[int]int64 {
+func finalScores(pts []types.ScorePoint) map[int]int64 {
 	out := map[int]int64{}
 	for _, p := range pts {
 		if IsTeamSlot(p.Slot) {
@@ -21,7 +24,7 @@ func finalScores(pts []ScorePoint) map[int]int64 {
 }
 
 // scoreAt rend le score de chaque slot d'equipe a l'instant tMS.
-func scoreAt(pts []ScorePoint, tMS int) map[int]int64 {
+func scoreAt(pts []types.ScorePoint, tMS int) map[int]int64 {
 	out := map[int]int64{}
 	for _, p := range pts {
 		if p.TimeMS <= tMS && IsTeamSlot(p.Slot) {
@@ -82,7 +85,7 @@ func TestScoreCurveMatchesCTFCaptures(t *testing.T) {
 		t.Skipf("film 530820e5 absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
 	events, _ := Extract("530820e5", "CTF:Arena", bobine, MapRoster{})
-	teamPts := []ScorePoint{}
+	teamPts := []types.ScorePoint{}
 	for _, p := range ScoreCurve(bobine) {
 		if IsTeamSlot(p.Slot) {
 			teamPts = append(teamPts, p)

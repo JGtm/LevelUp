@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Kill : une mort, et LES DEUX REPONSES a << qu est-ce qui l a tuee >>.
@@ -45,8 +46,8 @@ type Kill struct {
 
 	// Assist : l assistant declare par le KILL-EVENT. Ce n est PAS une troisieme verite : c est
 	// un attribut de la verite KILL-FEED — le jeu credite un tueur et declare un assistant a
-	// cote. `Assist.Known = false` veut dire QU ON NE SAIT PAS, jamais << pas d assistant >>.
-	Assist Assist
+	// cote. `types.Assist.Known = false` veut dire QU ON NE SAIT PAS, jamais << pas d assistant >>.
+	Assist types.Assist
 
 	// KillerDamage : la part de degats du TUEUR, en pourcentage entier, lue dans le MEME
 	// kill-event que l assistant. `Known = false` veut dire NON MESURE — c est le cas des morts
@@ -443,10 +444,10 @@ type Stats struct {
 	Assist AssistStats
 	// Couples : D OU VIENT LE COUPLE (tueur, victime) de chaque instant du kill-feed — ecrit au
 	// meme instant, LU au kill-event 85, ou RECOLLE sur le voisin (le repli). Lot 1.9.3.
-	Couples CoupleStats
+	Couples types.CoupleStats
 	// Appariement : D OU VIENT L APPARIEMENT dead-state <-> kill-feed de chaque ligne publiee —
 	// l identite de paquet, ou la fenetre de 2,5 s (le repli). Lot 1.9.7.
-	Appariement ApparStats
+	Appariement types.ApparStats
 }
 
 // PathStats : le gate (b) d une voie. `Population` est ce qu elle a propose, `Matched` ce dont

@@ -36,7 +36,10 @@ package grammar
 // L'instrument de mesure et la production appellent les MEMES fonctions — c'est la condition
 // pour que le gate juge le code livre et non une copie qui derivera.
 
-import "sort"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"sort"
+)
 
 const (
 	// NavpointSummitToleranceQ est la tolerance de fin de segment, en quanta : un armement
@@ -69,8 +72,8 @@ type NavpointSegment struct {
 // NavpointSegments decoupe les lectures en segments contigus, tous slots, et les rend triees
 // par (EndMS, Slot) — deterministe, et dans l'ordre qu'attend la confrontation (« le dernier
 // armement avant l'explosion »).
-func NavpointSegments(reads []NavpointRadialRead) []NavpointSegment {
-	series := map[uint32][]NavpointRadialRead{}
+func NavpointSegments(reads []types.NavpointRadialRead) []NavpointSegment {
+	series := map[uint32][]types.NavpointRadialRead{}
 	for _, r := range reads {
 		series[r.Slot] = append(series[r.Slot], r)
 	}
@@ -90,7 +93,7 @@ func NavpointSegments(reads []NavpointRadialRead) []NavpointSegment {
 
 // navpointSegmentsOfSeries decoupe UNE serie triee : un trou de plus de NavpointRiseMaxGapMS
 // entre deux echantillons ferme le segment courant et ouvre le suivant.
-func navpointSegmentsOfSeries(slot uint32, s []NavpointRadialRead) []NavpointSegment {
+func navpointSegmentsOfSeries(slot uint32, s []types.NavpointRadialRead) []NavpointSegment {
 	var out []NavpointSegment
 	for i := 0; i < len(s); {
 		j := i

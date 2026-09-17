@@ -43,9 +43,9 @@ package grammar
 // # LA LIMITE DU GATE PAR SIGNATURE, ÉCRITE ICI PARCE QU'ELLE EST RÉELLE
 //
 // Un bipède dont la représentation différerait (autre corps que le Spartan multijoueur) ne
-// serait pas lu. Le lecteur COMPTE donc, dans [BipedCreationStats.SignatureMismatch], les ancres
+// serait pas lu. Le lecteur COMPTE donc, dans [types.BipedCreationStats.SignatureMismatch], les ancres
 // qui ont toute la FORME d'une création de bipède mais un autre mot de 32 bits, et publie le mot
-// alternatif le plus fréquent ([BipedCreationStats.OtherWord]). Ce compteur a un plancher de
+// alternatif le plus fréquent ([types.BipedCreationStats.OtherWord]). Ce compteur a un plancher de
 // bruit — un ancrage bit à bit accroche par hasard — : il se juge en ORDRE DE GRANDEUR contre
 // `Accepted`, et l'alarme que l'appelant arme est `Anchors > 0 && Accepted == 0`, le cas d'un
 // film dont les bipèdes ne portent jamais la constante.
@@ -53,7 +53,7 @@ package grammar
 // # LE LECTEUR N'A BESOIN D'AUCUNE HORLOGE
 //
 // La création DÉSIGNE sa vie par le couple `(slot, génération)` du handle — la même clé que
-// `EquipmentLifeKey` pour les objets du monde. L'horodatage publié sert au rattachement et aux
+// `types.EquipmentLifeKey` pour les objets du monde. L'horodatage publié sert au rattachement et aux
 // journaux, jamais à une décision de lecture.
 //
 // HORS LIGNE (parcours de tous les paquets delta du film) — jamais depuis un chemin de requête.
@@ -61,6 +61,7 @@ package grammar
 import (
 	"errors"
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
 )
 
@@ -91,7 +92,7 @@ const bipedCreationPrologueBits = 1 + 8 + 1 + 32 + 1 + bipedCreationIndexBits
 type BipedCreation struct {
 	// Slot et Generation identifient LA VIE du corps — la paire, pas le slot seul : le pool de
 	// slots reboucle et la génération ne fait que deux bits. C'est la même clé de vie que
-	// `EquipmentLifeKey` emploie pour les objets du monde.
+	// `types.EquipmentLifeKey` emploie pour les objets du monde.
 	Slot, Generation uint32
 	// ParticipantIndex est l'index de participant ABSOLU du propriétaire du corps, dans l'espace
 	// que `PlayerIndexTable` publie pour les humains et que `BOT_METADATA` emploie pour les bots
@@ -115,52 +116,21 @@ type BipedCreation struct {
 // consommateurs comparent. Un slot seul désignerait toutes les vies du corps à la fois.
 func (c BipedCreation) LifeKey() uint32 { return c.Slot | (c.Generation << 16) }
 
-// BipedCreationStats compte ce que le balayage a rencontré. Sans ces dénominateurs, une
-// couverture ne se juge pas — et sans le détail des rejets, on ne sait pas si le balayage rate
-// des records ou en invente.
-type BipedCreationStats struct {
-	// Slots est le nombre de slots de la bande passée au balayage.
-	Slots int
-	// Anchors est le nombre d'en-têtes NEW `ti=35` reconnus (trois constantes de format + la
-	// bande de slots). C'est le DÉNOMINATEUR du gate, pas un nombre de records.
-	Anchors int
-	// Truncated : le prologue déborde du payload — le curseur n'est plus digne de confiance.
-	Truncated int
-	// ShapeBad : l'ancre n'a pas la forme d'une création de bipède (porte de version fermée,
-	// version ≠ 13, ou porte de représentation fermée). Le rejet ORDINAIRE de l'ancrage bit à
-	// bit ; il n'alarme rien.
-	ShapeBad int
-	// SignatureMismatch : l'ancre a toute la FORME d'une création de bipède, mais son mot de
-	// 32 bits n'est pas [BipedRepresentationName]. C'est LE compteur à surveiller — cf.
-	// l'en-tête du fichier pour son plancher de bruit et pour l'alarme que l'appelant arme.
-	SignatureMismatch int
-	// OtherWord est le mot de 32 bits alternatif le plus fréquent parmi les
-	// `SignatureMismatch`, et OtherWordCount son compte. Zéro quand il n'y en a aucun.
-	OtherWord      uint32
-	OtherWordCount int
-	// GateClosed : signature reconnue, mais la porte INVERSÉE de l'index s'est FERMÉE — le
-	// record ne porte pas d'index. Mesuré à ZÉRO sur 529 records ; s'il devient non nul, c'est
-	// un fait à instruire, pas un défaut de lecture.
-	GateClosed int
-	// Accepted est le nombre de records rendus (signature reconnue ET index transmis).
-	Accepted int
-}
-
 // ScanBipedCreations décode les records de création de bipède d'un film DÉJÀ CHARGÉ, sur la
 // bande de slots `ti=35` relevée aux images-clés — la MÊME que celle des trajectoires
 // (`FilmContext.BipedSlots`), pour que les deux lectures parlent des mêmes corps.
 //
 // HORS LIGNE (parcours de tous les paquets delta du film) — jamais depuis un chemin de requête.
-func ScanBipedCreations(fc *FilmContext) ([]BipedCreation, BipedCreationStats, error) {
+func ScanBipedCreations(fc *FilmContext) ([]BipedCreation, types.BipedCreationStats, error) {
 	if fc == nil {
-		return nil, BipedCreationStats{}, errors.New("contexte de film absent")
+		return nil, types.BipedCreationStats{}, errors.New("contexte de film absent")
 	}
 	if len(fc.ChunkNumbers()) == 0 {
-		return nil, BipedCreationStats{}, ErrNoFilmChunk
+		return nil, types.BipedCreationStats{}, ErrNoFilmChunk
 	}
 	band := fc.BipedSlots()
 	if band.Count() == 0 {
-		return nil, BipedCreationStats{}, fmt.Errorf(
+		return nil, types.BipedCreationStats{}, fmt.Errorf(
 			"aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
 	return ScanBipedCreationsForBand(fc, band)
@@ -174,8 +144,8 @@ func ScanBipedCreations(fc *FilmContext) ([]BipedCreation, BipedCreationStats, e
 // décodeur mais une variante de lui (règle établie par `WorldObjectPositionsForBand`).
 func ScanBipedCreationsForBand(
 	fc *FilmContext, band SlotBand,
-) ([]BipedCreation, BipedCreationStats, error) {
-	var st BipedCreationStats
+) ([]BipedCreation, types.BipedCreationStats, error) {
+	var st types.BipedCreationStats
 	if fc == nil {
 		return nil, st, errors.New("contexte de film absent")
 	}
@@ -215,7 +185,7 @@ type bipedCreationWalk struct {
 	// (lot 2.3) : c est par lui que les largeurs de la carte et du format atteignent les feuilles.
 	prof   ProfilDeBalayage
 	band   SlotBand
-	st     *BipedCreationStats
+	st     *types.BipedCreationStats
 	autres map[uint32]int
 }
 

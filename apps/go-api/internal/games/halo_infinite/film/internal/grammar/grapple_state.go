@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // grappleComponentName / grappleComponentNameAlt : les deux étiquettes de registre d'i59
@@ -37,23 +38,6 @@ const (
 	grappleComponentName    = "biped-spartan-ability-non-predicted-state-component"
 	grappleComponentNameAlt = "biped-spartan-ability-non-predicted-state"
 )
-
-// GrappleRead est UNE lecture d'événement de grappin, localisée dans le film.
-type GrappleRead struct {
-	// Slot est l'identifiant bas du biped porteur — le même que celui des trajectoires,
-	// donc UNE VIE et non un joueur (le slot migre aux réapparitions).
-	Slot uint32
-	// Chunk / PacketIndex localisent la lecture dans le film.
-	Chunk, PacketIndex int
-	// TimestampUS est l'horodatage du paquet porteur — MÊME horloge que BipedPosition.
-	TimestampUS uint64
-	// Heavy dit si la lecture est le corps LOURD (l'accroche, second membre de la paire).
-	// Le corps léger est le tir.
-	Heavy bool
-	// PosQ : les trois quanta de la position de l'ancre, aux largeurs d'axe de la carte
-	// installées au moment du balayage (WorldObjectPrecision.AxisW).
-	PosQ [3]uint32
-}
 
 // GrappleStats compte ce que la marche a rencontré. Sans ces dénominateurs, une liste de
 // lectures ne se juge pas.
@@ -77,7 +61,7 @@ type GrappleStats struct {
 //
 // ScanFilmGrappleReads est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanGrappleReads].
-func ScanFilmGrappleReads(dir string) ([]GrappleRead, GrappleStats, error) {
+func ScanFilmGrappleReads(dir string) ([]types.GrappleRead, GrappleStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, GrappleStats{}, err
@@ -86,7 +70,7 @@ func ScanFilmGrappleReads(dir string) ([]GrappleRead, GrappleStats, error) {
 }
 
 // ScanGrappleReads décode les événements de grappin d'un film DEJA CHARGE.
-func ScanGrappleReads(fc *FilmContext) ([]GrappleRead, GrappleStats, error) {
+func ScanGrappleReads(fc *FilmContext) ([]types.GrappleRead, GrappleStats, error) {
 	var st GrappleStats
 	chunks := fc.ChunkNumbers()
 	if len(chunks) == 0 {
@@ -135,7 +119,7 @@ func ScanGrappleReads(fc *FilmContext) ([]GrappleRead, GrappleStats, error) {
 // grappleScanner porte l'état du balayage : compteurs, capture du hook, et sortie.
 type grappleScanner struct {
 	st     *GrappleStats
-	out    []GrappleRead
+	out    []types.GrappleRead
 	gram   grammaireRecord
 	i59idx int
 	last   AbilityNonPredictedState
@@ -167,7 +151,7 @@ func (sc *grappleScanner) account(pay []byte, i0, total int, idx []int,
 	if !heavy && sc.last.Inner != anchorInnerLight {
 		return // valeur interne connue mais hors des deux corps de grappin : rien à publier
 	}
-	sc.out = append(sc.out, GrappleRead{
+	sc.out = append(sc.out, types.GrappleRead{
 		Slot: slot, Chunk: chunk, PacketIndex: pk.Index, TimestampUS: pk.TimestampUS,
 		Heavy: heavy, PosQ: sc.last.PosQ,
 	})

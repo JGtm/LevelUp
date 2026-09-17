@@ -34,10 +34,9 @@ package replay
 // prédicat de famille.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"strconv"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // bombHeldFamily est la FAMILLE de l'objet bombe dans le canal des armes tenues (moitié
@@ -50,7 +49,7 @@ const bombHeldFamily = uint32(0x3fee4fcf)
 // transition sur l'horloge du MATCH. PRISE = transition VERS la famille ; LÂCHER =
 // transition DEPUIS — le protocole B2, à l'identique (les kinds du décodeur ne sont pas
 // consultés : une ré-annonce de bombe n'existe pas, elle n'est jamais une arme de spawn).
-func bombHeldEventsOf(changes []grammar.HeldWeaponChange, deathOffsetMS int64) []HeldObjectEvent {
+func bombHeldEventsOf(changes []types.HeldWeaponChange, deathOffsetMS int64) []HeldObjectEvent {
 	var out []HeldObjectEvent
 	for _, ch := range changes {
 		matchMS := int(int64(ch.TimestampUS)/1000 - deathOffsetMS)

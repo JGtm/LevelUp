@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // equipment_episodes.go — L'ÉTAT ACTIF D'UN ÉQUIPEMENT, daté PAR VIE sur l'axe du rejeu.
@@ -323,7 +324,7 @@ func frameOf(ts, origin, step uint64) int {
 // elles ne changent pas l'état — on n'interprète pas un troisième niveau d'un
 // interrupteur — mais elles se COMPTENT, pour que leur apparition se voie au journal.
 func buildEquipmentEpisodes(
-	sorted []grammar.BipedPosition, camo []grammar.CamoRead, origin, step uint64, tracks []Track,
+	sorted []grammar.BipedPosition, camo []types.CamoRead, origin, step uint64, tracks []Track,
 	closedByDeath map[int]bool,
 ) ([]EquipmentEpisode, int) {
 	if len(tracks) == 0 || step == 0 {
@@ -352,9 +353,9 @@ func buildEquipmentEpisodes(
 // regroupées par slot puis rejouées en ordre de temps — l'ordre du balayage suit déjà les
 // chunks, le tri est là pour que la machine ne dépende pas d'un ordre d'itération.
 func buildCamoEpisodes(
-	camo []grammar.CamoRead, origin, step uint64, windows map[uint32][]lifeWindow, out *[]EquipmentEpisode,
+	camo []types.CamoRead, origin, step uint64, windows map[uint32][]lifeWindow, out *[]EquipmentEpisode,
 ) int {
-	bySlot := map[uint32][]grammar.CamoRead{}
+	bySlot := map[uint32][]types.CamoRead{}
 	for _, r := range camo {
 		if _, ok := windows[r.Slot]; !ok {
 			continue // vie non publiée : aucune fiche où poser l'épisode

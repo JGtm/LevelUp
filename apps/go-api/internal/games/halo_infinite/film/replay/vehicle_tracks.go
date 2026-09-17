@@ -27,6 +27,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // vehicleCensusTolUS est la TOLERANCE de la fenetre d une vie, de part et d autre de son
@@ -90,7 +91,7 @@ const vehicleMinSpeedMPS = 5.0
 // vehicleLife est une vie de vehicule telle que le recensement la borne, decoupee de sa voisine
 // du meme slot.
 type vehicleLife struct {
-	key grammar.EquipmentLifeKey
+	key types.EquipmentLifeKey
 	// firstUS / lastUS : premiere et derniere image-cle qui RECENSE la vie.
 	firstUS, lastUS uint64
 	// goneByUS est la premiere image-cle qui ne la recense PLUS : la premiere preuve d absence.
@@ -158,7 +159,7 @@ func buildVehicleTracks(
 // ECRIT (cf. vehicle_end.go). L ordre est celui de D14 (b) : les fenetres d abord, la lecture
 // ensuite, parce que c est la fenetre qui departage deux vies de meme `(slot, gen)`.
 func vehicleLives(
-	kf grammar.WorldObjectKeyframes, deaths []grammar.ObjectDeath,
+	kf grammar.WorldObjectKeyframes, deaths []types.ObjectDeath,
 ) ([]vehicleLife, vehicleDeathTally) {
 	out := make([]vehicleLife, 0, len(kf.SeenUS))
 	for key, seen := range kf.SeenUS {
@@ -209,10 +210,10 @@ func assignVehicleWindows(lives []vehicleLife) {
 // vehicleSpawnsByLife retient, par vie, le record de creation le PLUS PRECOCE : c est la
 // naissance. Les records suivants d une meme vie sont des re-annonces, et le mot d identite y est
 // constant (gate 1 de V1.5 : 100 % de constance par vie sur les deux films mesures).
-func vehicleSpawnsByLife(cre []grammar.EquipmentCreation) map[grammar.EquipmentLifeKey]grammar.EquipmentCreation {
-	out := map[grammar.EquipmentLifeKey]grammar.EquipmentCreation{}
+func vehicleSpawnsByLife(cre []types.EquipmentCreation) map[types.EquipmentLifeKey]types.EquipmentCreation {
+	out := map[types.EquipmentLifeKey]types.EquipmentCreation{}
 	for _, c := range cre {
-		k := grammar.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
+		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
 		if prev, ok := out[k]; ok && prev.TimestampUS <= c.TimestampUS {
 			continue
 		}
@@ -242,7 +243,7 @@ func vehiclePositionsBySlot(pos []grammar.BipedPosition) map[uint32][]grammar.Bi
 // une vie sans la moindre position n a rien a dessiner, et lui inventer un point serait pire que
 // de la taire.
 func vehicleTrackOf(
-	l vehicleLife, spawn grammar.EquipmentCreation, pos []grammar.BipedPosition,
+	l vehicleLife, spawn types.EquipmentCreation, pos []grammar.BipedPosition,
 	rides []VehicleRide, clock replayClock,
 ) (VehicleTrack, bool) {
 	samples, lastSeenUS := vehicleSamplesOf(pos, l, clock)
@@ -345,7 +346,7 @@ func clampVehicleRides(rides []VehicleRide, t0, t1max int) []VehicleRide {
 // `T0` prefere l instant du record de CREATION quand il existe (date a la milliseconde) au
 // premier recensement (borne a ~20 s pres).
 func vehicleBounds(
-	l vehicleLife, spawn grammar.EquipmentCreation, lastSeenUS uint64, clock replayClock,
+	l vehicleLife, spawn types.EquipmentCreation, lastSeenUS uint64, clock replayClock,
 ) (t0, t1, t1max int) {
 	bornUS := l.firstUS
 	if spawn.TimestampUS > 0 && spawn.TimestampUS < bornUS {

@@ -24,6 +24,7 @@ package grammar
 // GARDE : HW_FILM, meme convention que les autres instruments du lot.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"sort"
 	"testing"
@@ -102,7 +103,7 @@ func TestI26HandlesAppartenance(t *testing.T) {
 			if biped.Has(en.Val) {
 				inBiped++
 			}
-			if seen := kf.SeenUS[EquipmentLifeKey{Slot: en.Val, Gen: en.Tail}]; len(seen) > 0 {
+			if seen := kf.SeenUS[types.EquipmentLifeKey{Slot: en.Val, Gen: en.Tail}]; len(seen) > 0 {
 				inLives++
 			}
 		}
@@ -175,7 +176,7 @@ func TestI26FilDuRamassage(t *testing.T) {
 
 	var takes, hits, witnessHits int
 	for _, ch := range changes {
-		if ch.Kind != EquipmentTaken && ch.Kind != EquipmentSpawned {
+		if ch.Kind != types.EquipmentTaken && ch.Kind != types.EquipmentSpawned {
 			continue
 		}
 		takes++

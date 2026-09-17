@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // score_measure_rounds_test.go — la grammaire d'ancrage ETENDUE de l'item A.0b.1 : lire les
@@ -375,13 +376,13 @@ func roundsTotal(recs []statRecordExt, comp int) map[int]int64 {
 		}
 	}
 	// Manche en cours : les emissions posterieures a la derniere finalisation.
-	cur := map[int][]ScorePoint{}
+	cur := map[int][]types.ScorePoint{}
 	for _, r := range recs {
 		v, ok := r.Cur[comp]
 		if !ok || v.A < 0 || r.TimeMS < lastFin[r.Slot] {
 			continue
 		}
-		cur[r.Slot] = append(cur[r.Slot], ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
+		cur[r.Slot] = append(cur[r.Slot], types.ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
 	}
 	for slot, pts := range cur {
 		kept := longestRun(pts, true)

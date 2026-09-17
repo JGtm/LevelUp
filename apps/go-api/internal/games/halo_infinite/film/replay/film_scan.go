@@ -18,6 +18,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // balayerPositions lit la version du film, les teleportations, les positions, les creations de
@@ -101,7 +102,7 @@ func (s *filmScan) balayerCreations() {
 	if err != nil {
 		slog.Warn("creations de bipede illisibles — le registre degrade sur le pont par morts",
 			"err", err, "match_id", s.matchID)
-		creations, creaStats = nil, grammar.BipedCreationStats{}
+		creations, creaStats = nil, types.BipedCreationStats{}
 	} else {
 		slog.Info("creation de bipede : records lus",
 			"corps", creaStats.Slots, "ancres", creaStats.Anchors, "acceptes", creaStats.Accepted,
@@ -150,7 +151,7 @@ func (s *filmScan) balayerPortage() {
 	pickups, pStats, err := grammar.ScanBipedPickups(s.fc)
 	if err != nil {
 		slog.Warn("ramassages natifs illisibles — rejeu sans ramassages natifs", "err", err, "match_id", s.matchID)
-		pickups, pStats = nil, grammar.BipedPickupStats{}
+		pickups, pStats = nil, types.BipedPickupStats{}
 	} else {
 		slog.Info("ramassage natif : evenements lus",
 			"paquets", pStats.Packets, "type9", pStats.Type9, "type8", pStats.Type8,
@@ -230,7 +231,7 @@ func (s *filmScan) balayerCapacites() {
 	if err != nil {
 		slog.Warn("changements d equipement illisibles — rejeu sans ramassages d equipement",
 			"err", err, "match_id", s.matchID)
-		equipChanges, eStats = nil, grammar.EquipmentChangeStats{}
+		equipChanges, eStats = nil, types.EquipmentChangeStats{}
 	} else {
 		slog.Info("equipement : changements lus",
 			"emissions", eStats.Walk.Read, "vies", eStats.Lives,
@@ -288,7 +289,7 @@ func (s *filmScan) balayerImpulsionsEtCharges() {
 	impulses, iStats, err := grammar.ScanAbilityImpulses(s.fc)
 	if err != nil {
 		slog.Warn("impulsions de capacite illisibles — rejeu sans impulsions", "err", err, "match_id", s.matchID)
-		impulses, iStats = nil, grammar.AbilityImpulseStats{}
+		impulses, iStats = nil, types.AbilityImpulseStats{}
 	} else {
 		slog.Info("capacites : lectures de tag d i57/i59",
 			"recordsDelta", iStats.Records, "masqueAvecI57", iStats.WithI57,
@@ -304,7 +305,7 @@ func (s *filmScan) balayerImpulsionsEtCharges() {
 	charges, chStats, err := grammar.ScanAbilityCharges(s.fc)
 	if err != nil {
 		slog.Warn("charges d equipement illisibles — rejeu sans releve de charges", "err", err, "match_id", s.matchID)
-		charges, chStats = nil, grammar.AbilityChargeStats{}
+		charges, chStats = nil, types.AbilityChargeStats{}
 	} else {
 		slog.Info("capacites : lectures d i56",
 			"recordsDelta", chStats.Records, "masqueAvecI56", chStats.WithI56,

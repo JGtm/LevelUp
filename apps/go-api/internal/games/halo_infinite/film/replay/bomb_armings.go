@@ -65,6 +65,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/observability"
 )
 
@@ -128,7 +129,7 @@ type BombInput struct {
 	ChunkStartMS map[int]int
 	// Reads est déposé par `BuildFromFilm` : les lectures de l'anneau. L'appelant ne le
 	// remplit pas.
-	Reads []grammar.NavpointRadialRead
+	Reads []types.NavpointRadialRead
 }
 
 // bombFuseVerdict est ce que la confrontation locale a MESURÉ sur le film : la mèche retenue,
@@ -150,7 +151,7 @@ type bombFuseVerdict struct {
 // sort sans compte à rebours, jamais avec un compte à rebours deviné.
 //
 // HORS LIGNE — appelée par BuildFromFilm.
-func decodeFilmBombReads(fc *grammar.FilmContext, matchID string, in BombInput) []grammar.NavpointRadialRead {
+func decodeFilmBombReads(fc *grammar.FilmContext, matchID string, in BombInput) []types.NavpointRadialRead {
 	if !in.Scanned {
 		return nil
 	}
@@ -216,7 +217,7 @@ func attachBombArmings(doc *ReplayDocument, opt Options, c scoreClock) {
 // buildBombArmings applique la chaîne mesurée : segments -> armements pleins et pauses ->
 // déduplication de paire -> confrontation locale (mèche MESURÉE) -> grille de frames. Pur,
 // testable sans film.
-func buildBombArmings(reads []grammar.NavpointRadialRead, detonations []int,
+func buildBombArmings(reads []types.NavpointRadialRead, detonations []int,
 	c scoreClock, fb *fallback.Compteur) ([]BombArming, *BombArmingsCoverage, bombFuseVerdict) {
 	cov := &BombArmingsCoverage{Scanned: true, Reads: len(reads), Detonations: len(detonations)}
 	segments := grammar.NavpointSegments(reads)

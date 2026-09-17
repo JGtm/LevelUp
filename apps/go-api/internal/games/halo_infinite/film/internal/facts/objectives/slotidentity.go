@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // slotidentity.go — QUI est le joueur derriere un slot d'entite du statborg.
@@ -61,7 +62,7 @@ const (
 // Ne depend d'AUCUN mode : les frags, morts et assistances sont des statistiques de base,
 // repliquees quel que soit le type de partie. L'appariement fonctionne donc aussi en
 // Slayer, KOTH ou Oddball, ou aucun emplacement d'objectif n'est nomme.
-func SlotIdentity(film *source.Film, lines []PlayerLine) map[int]string {
+func SlotIdentity(film *source.Film, lines []types.PlayerLine) map[int]string {
 	return SlotIdentityFrom(StatRecords(film), lines)
 }
 
@@ -70,7 +71,7 @@ func SlotIdentity(film *source.Film, lines []PlayerLine) map[int]string {
 // EXPORTE POUR LA PRODUCTION (meme raison que [NamedEventsFrom]) : le constructeur
 // d'artefact decode le film une seule fois et fait servir les memes enregistrements a la
 // courbe de score, a l'identite des slots et aux evenements nommes.
-func SlotIdentityFrom(recs []StatRecord, lines []PlayerLine) map[int]string {
+func SlotIdentityFrom(recs []types.StatRecord, lines []types.PlayerLine) map[int]string {
 	// UN budget pour les trois compteurs (lot 4b) : ce pont deroule lui aussi des compteurs,
 	// et les bornes qui protegent le nommage doivent le proteger de la meme facon.
 	b := newEventBudget("slot_identity")

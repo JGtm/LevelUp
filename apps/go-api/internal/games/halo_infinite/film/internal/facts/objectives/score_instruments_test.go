@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // score_instruments_test.go — LES COURBES QUI NE SERVENT QU AUX INSTRUMENTS DE MESURE.
@@ -25,7 +26,7 @@ import (
 // En Strongholds le composant n'est emis que par les 2 entites d'equipe ; en CTF les 8
 // entites de joueur l'emettent aussi, ou il vaut leur compte de captures. Ce que porte le
 // composant depend donc du mode — c'est une mesure, pas une supposition.
-func ScoreCurve(film *source.Film) []ScorePoint {
+func ScoreCurve(film *source.Film) []types.ScorePoint {
 	return ScoreCurveFrom(StatRecords(film))
 }
 
@@ -41,8 +42,8 @@ func ScoreCurve(film *source.Film) []ScorePoint {
 //
 // Sur un match a une seule manche, le resultat est identique a l'ancien (verifie par les tests
 // de verite terrain Strongholds et CTF).
-func ScoreCurveFrom(recs []StatRecord) []ScorePoint {
-	var all []ScorePoint
+func ScoreCurveFrom(recs []types.StatRecord) []types.ScorePoint {
+	var all []types.ScorePoint
 	for _, teams := range []bool{true, false} {
 		for _, pts := range SeriesTotal(recs, ModeScoreComponent, teams) {
 			all = append(all, pts...)
@@ -68,14 +69,14 @@ func ScoreCurveFrom(recs []StatRecord) []ScorePoint {
 // Autre limite mesuree : les increments ne sont pas atomiques. Plusieurs actions tombant
 // dans le meme paquet se somment (125 = 100 + 25 observe en CTF). Un increment ne se lit
 // donc pas comme UNE action.
-func PersonalScoreCurve(film *source.Film) []ScorePoint {
+func PersonalScoreCurve(film *source.Film) []types.ScorePoint {
 	return collectComponent(StatRecords(film), personalScoreComp, true)
 }
 
 // collectComponent extrait un composant des enregistrements ; useB choisit la valeur B
 // plutot que la valeur A.
-func collectComponent(recs []StatRecord, comp int, useB bool) []ScorePoint {
-	var out []ScorePoint
+func collectComponent(recs []types.StatRecord, comp int, useB bool) []types.ScorePoint {
+	var out []types.ScorePoint
 	for _, r := range recs {
 		v, ok := r.Comps[comp]
 		if !ok {
@@ -85,7 +86,7 @@ func collectComponent(recs []StatRecord, comp int, useB bool) []ScorePoint {
 		if useB {
 			val = v.B
 		}
-		out = append(out, ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: val})
+		out = append(out, types.ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: val})
 	}
 	return out
 }
@@ -99,8 +100,8 @@ func collectComponent(recs []StatRecord, comp int, useB bool) []ScorePoint {
 // defaut inverse : un parasite a valeur enorme arrivant en PREMIER masque toute la vraie
 // courbe derriere lui. Mesure sur les 951 films du cache, a contraintes egales : 10 films
 // a valeur aberrante en glouton, **5** avec ce critere.
-func keepMonotoneBySlot(pts []ScorePoint) []ScorePoint {
-	bySlot := map[int][]ScorePoint{}
+func keepMonotoneBySlot(pts []types.ScorePoint) []types.ScorePoint {
+	bySlot := map[int][]types.ScorePoint{}
 	var order []int
 	for _, p := range pts {
 		if _, seen := bySlot[p.Slot]; !seen {

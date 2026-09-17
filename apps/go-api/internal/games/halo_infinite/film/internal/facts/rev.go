@@ -269,6 +269,14 @@ package facts
 // `grammar.LecteurSur` (l ancien `NewBitReader`, renomme parce que le type ne lit plus, il
 // decore). Aucune largeur, aucun ordre de bits, aucune borne ne change : les lignes produites
 // sont identiques a l octet, et aucun match deja decode n est candidat au backlog.
+// 2026-09-17, LOT 2.6.2 (volet grammaire / rejeu) — REVISION INCHANGEE, EMPREINTE SEULE
+// RECOPIEE, ET LE CHOIX EST ECRIT. Les DEUX alias dates de l arbre des faits
+// (`killsource/types_alias.go`, `objectives/types_alias.go`, poses au volet facts du meme lot)
+// sont SUPPRIMES : les onze types de contrat se nomment `types.X` partout, y compris dans la
+// couche qui les produit. Un alias de type est LE MEME type pour le compilateur — aucune lecture,
+// aucune largeur, aucun appariement ne change, les lignes produites sont identiques a l octet et
+// aucun match deja decode n est candidat au backlog. Le critere de retrait ecrit dans les deux
+// fichiers supprimes est tenu, et il etait mesurable au `grep`.
 const Rev = "killsource-2026-09-16.6"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :

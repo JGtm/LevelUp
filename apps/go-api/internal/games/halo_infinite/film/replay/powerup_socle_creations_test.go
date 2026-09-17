@@ -37,6 +37,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // padPowerupPrefix — le prefixe de famille du manifeste qui designe un power-up
@@ -80,7 +81,7 @@ func psBandeFantome(kfs []psKF, taille int) map[uint32]bool {
 // psRetientCreations projette les creations sur le catalogue d'identite et rend celles qui s'y
 // resolvent, plus le compte de celles qui ne s'y resolvent pas.
 func psRetientCreations(
-	cre []grammar.EquipmentCreation, familles map[uint32]string, c psCible,
+	cre []types.EquipmentCreation, familles map[uint32]string, c psCible,
 ) ([]psCreationVue, int) {
 	var out []psCreationVue
 	rejetees := 0

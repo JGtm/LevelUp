@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // Couche de CAPTURE : elle rend les valeurs des composants que le décodeur ne faisait
 // jusqu'ici que traverser.
 //
@@ -28,7 +30,7 @@ var captureNames = []string{
 // valeur décodée (payload) pour les composants de captureNames. payload est nil partout
 // ailleurs — le champ CompResult.Payload est donc absent par défaut, sans coût.
 func consumeByNameCapturing(br *Lecteur, name string, typeIndex, level uint32) (
-	variant uint32, dead *DeadState, payload any, ported bool) {
+	variant uint32, dead *types.DeadState, payload any, ported bool) {
 	switch name {
 	case compObjectBodyVitality: // i4
 		return noVariant, nil, decodeObjectBodyVitality(br), true

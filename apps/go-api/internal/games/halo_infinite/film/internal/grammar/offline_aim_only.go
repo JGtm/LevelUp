@@ -55,7 +55,7 @@ type BipedAim struct {
 	// Chunk / PacketIndex localisent la lecture dans le film.
 	Chunk, PacketIndex int
 	// TimestampUS est l'horodatage du paquet porteur (horloge du film), donc la MEME horloge
-	// que BipedPosition, VehicleEvent et FireEvent.
+	// que BipedPosition, types.VehicleEvent et FireEvent.
 	TimestampUS uint64
 	// YawRaw / PitchRaw sont les deux scalaires bruts d'`i21` : R(12) puis R(11).
 	YawRaw, PitchRaw uint32

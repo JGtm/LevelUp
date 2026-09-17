@@ -15,9 +15,8 @@ package replay
 //     d'usages dérivé (piège (b) de R11).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -45,13 +44,13 @@ func acPalette() *AbilityPalette {
 	}
 }
 
-func acRead(slot uint32, tsUS uint64, charges int) grammar.AbilityCharge {
-	return grammar.AbilityCharge{Slot: slot, TimestampUS: tsUS, Charges: charges}
+func acRead(slot uint32, tsUS uint64, charges int) types.AbilityCharge {
+	return types.AbilityCharge{Slot: slot, TimestampUS: tsUS, Charges: charges}
 }
 
 // acInputs assemble une entrée de test : une vie qui couvre [0, 600 s], les rangs donnés,
 // et les familles `grapple` + `thruster` déclarées mesurées — celles du manifeste réel.
-func acInputs(reads []grammar.AbilityCharge, ranks []grammar.AbilityRank,
+func acInputs(reads []types.AbilityCharge, ranks []types.AbilityRank,
 	lives []lifeSpan) abilityChargeInputs {
 	if lives == nil {
 		lives = []lifeSpan{{slot: 10, from: 0, to: 600_000_000}}
@@ -66,11 +65,11 @@ func TestBuildAbilityCharges_PublieLesLecturesTellesQuelles(t *testing.T) {
 	// LA SÉRIE DU TÉMOIN R11 (4, 3, 2, 1, 0) sort EN CINQ LECTURES — jamais repliée, jamais
 	// convertie en « 5 usages » : le compte d'usages est un dérivé que le contrat interdit
 	// (une baisse peut valoir plusieurs usages, le film ne transmet pas les intermédiaires).
-	reads := []grammar.AbilityCharge{
+	reads := []types.AbilityCharge{
 		acRead(10, 10_000_000, 4), acRead(10, 13_000_000, 3), acRead(10, 21_000_000, 2),
 		acRead(10, 23_000_000, 1), acRead(10, 33_000_000, 0),
 	}
-	ranks := []grammar.AbilityRank{{Slot: 10, TimestampUS: 5_000_000, Rank: acRankThruster}}
+	ranks := []types.AbilityRank{{Slot: 10, TimestampUS: 5_000_000, Rank: acRankThruster}}
 	out, cov := buildAbilityCharges(acInputs(reads, ranks, nil), []Track{aiTrack(10)}, 0, aiStep)
 	if cov.Reads != 5 || cov.Published != 5 || len(out) != 5 {
 		t.Fatalf("lectures=%d publiees=%d out=%d, attendu 5/5/5 (cov=%+v)",
@@ -95,8 +94,8 @@ func TestBuildAbilityCharges_LeRangPosterieurNIdentifiePas(t *testing.T) {
 	// contrainte d'antériorité, la lecture lui serait créditée — le défaut que R8 §8.4
 	// mesure, et que R11 §6 a payé sous une autre forme (rangs vieux de 65 à 162 s qui
 	// nommaient « répulseur » des accroches de grappin).
-	reads := []grammar.AbilityCharge{acRead(10, 10_000_000, 3)}
-	ranks := []grammar.AbilityRank{{Slot: 10, TimestampUS: 12_000_000, Rank: acRankThruster}}
+	reads := []types.AbilityCharge{acRead(10, 10_000_000, 3)}
+	ranks := []types.AbilityRank{{Slot: 10, TimestampUS: 12_000_000, Rank: acRankThruster}}
 	out, cov := buildAbilityCharges(acInputs(reads, ranks, nil), []Track{aiTrack(10)}, 0, aiStep)
 	if len(out) != 0 || cov.NoIdentity != 1 {
 		t.Fatalf("out=%+v cov=%+v : un rang POSTERIEUR a identifie la lecture", out, cov)
@@ -110,14 +109,14 @@ func TestBuildAbilityCharges_LeRangDeLaViePrecedenteNIdentifiePas(t *testing.T) 
 		{slot: 10, from: 0, to: 20_000_000},
 		{slot: 10, from: 100_000_000, to: 200_000_000},
 	}
-	reads := []grammar.AbilityCharge{acRead(10, 150_000_000, 2)}
-	ranks := []grammar.AbilityRank{{Slot: 10, TimestampUS: 10_000_000, Rank: acRankGrapple}}
+	reads := []types.AbilityCharge{acRead(10, 150_000_000, 2)}
+	ranks := []types.AbilityRank{{Slot: 10, TimestampUS: 10_000_000, Rank: acRankGrapple}}
 	out, cov := buildAbilityCharges(acInputs(reads, ranks, lives), []Track{aiTrack(10)}, 0, aiStep)
 	if len(out) != 0 || cov.NoIdentity != 1 {
 		t.Fatalf("out=%+v cov=%+v : le rang de la vie PRECEDENTE a identifie la lecture", out, cov)
 	}
 	// Contrôle POSITIF sur la même entrée : une lecture dans LA BONNE vie identifie bien.
-	ranks = append(ranks, grammar.AbilityRank{Slot: 10, TimestampUS: 110_000_000, Rank: acRankGrapple})
+	ranks = append(ranks, types.AbilityRank{Slot: 10, TimestampUS: 110_000_000, Rank: acRankGrapple})
 	out, cov = buildAbilityCharges(acInputs(reads, ranks, lives), []Track{aiTrack(10)}, 0, aiStep)
 	if len(out) != 1 || cov.NoIdentity != 0 || out[0].Family != "grapple" {
 		t.Fatalf("out=%+v cov=%+v : le rang de la MEME vie aurait du identifier", out, cov)
@@ -128,14 +127,14 @@ func TestBuildAbilityCharges_UneFamilleNonMesureeEstEcarteeEtComptee(t *testing.
 	// LE RÉPULSEUR RESTE DEHORS, et il est COMPTÉ : le canal n'est prouvé que pour les
 	// familles que le titre déclare (R11 §4-5 — 218 vies de répulseur, 0 baisse). Publier
 	// une lecture sous cette famille affirmerait une mesure que le film ne porte pas.
-	reads := []grammar.AbilityCharge{acRead(10, 10_000_000, 3)}
-	ranks := []grammar.AbilityRank{{Slot: 10, TimestampUS: 5_000_000, Rank: acRankRepulsor}}
+	reads := []types.AbilityCharge{acRead(10, 10_000_000, 3)}
+	ranks := []types.AbilityRank{{Slot: 10, TimestampUS: 5_000_000, Rank: acRankRepulsor}}
 	out, cov := buildAbilityCharges(acInputs(reads, ranks, nil), []Track{aiTrack(10)}, 0, aiStep)
 	if len(out) != 0 || cov.OtherFamily != 1 || cov.NoIdentity != 0 {
 		t.Fatalf("out=%+v cov=%+v : le repulseur devait etre ecarte SOUS otherFamily", out, cov)
 	}
 	// Un rang nommé mais SANS famille (les power-ups du manifeste) tombe au même compteur.
-	ranks = []grammar.AbilityRank{{Slot: 10, TimestampUS: 5_000_000, Rank: 8}}
+	ranks = []types.AbilityRank{{Slot: 10, TimestampUS: 5_000_000, Rank: 8}}
 	out, cov = buildAbilityCharges(acInputs(reads, ranks, nil), []Track{aiTrack(10)}, 0, aiStep)
 	if len(out) != 0 || cov.OtherFamily != 1 {
 		t.Fatalf("out=%+v cov=%+v : un rang sans famille devait etre ecarte", out, cov)
@@ -145,8 +144,8 @@ func TestBuildAbilityCharges_UneFamilleNonMesureeEstEcarteeEtComptee(t *testing.
 // TestBuildAbilityCharges_AttributionIndisponibleNEstPasUnAutreEquipement — la leçon H2 de
 // la revue P3, appliquée d'emblée : une indisponibilité ne se déguise jamais en mesure.
 func TestBuildAbilityCharges_AttributionIndisponibleNEstPasUnAutreEquipement(t *testing.T) {
-	reads := []grammar.AbilityCharge{acRead(10, 10_000_000, 3)}
-	ranks := []grammar.AbilityRank{{Slot: 10, TimestampUS: 5_000_000, Rank: acRankThruster}}
+	reads := []types.AbilityCharge{acRead(10, 10_000_000, 3)}
+	ranks := []types.AbilityRank{{Slot: 10, TimestampUS: 5_000_000, Rank: acRankThruster}}
 	cas := []struct {
 		nom   string
 		casse func(*abilityChargeInputs)
@@ -185,14 +184,14 @@ func TestBuildAbilityCharges_LaCouvertureBoucle(t *testing.T) {
 		{slot: 99, from: 0, to: 600_000_000},
 		{slot: 11, from: 55_000_000, to: 70_000_000},
 	}
-	reads := []grammar.AbilityCharge{
+	reads := []types.AbilityCharge{
 		acRead(10, 1_000_000, 3),  // avant l'origine (fixee a 5 s)
 		acRead(99, 20_000_000, 3), // sans piste publiee
 		acRead(10, 20_000_000, 3), // publiee (grappin)
 		acRead(10, 40_000_000, 2), // famille non mesuree (repulseur ramasse entre-temps)
 		acRead(11, 60_000_000, 1), // sans identite (aucun rang dans SA vie)
 	}
-	ranks := []grammar.AbilityRank{
+	ranks := []types.AbilityRank{
 		{Slot: 10, TimestampUS: 6_000_000, Rank: acRankGrapple},
 		{Slot: 10, TimestampUS: 30_000_000, Rank: acRankRepulsor},
 		{Slot: 99, TimestampUS: 6_000_000, Rank: acRankGrapple},
@@ -218,7 +217,7 @@ func TestBuildAbilityCharges_TemoinComposantAbsentVoyageJusquALaCouverture(t *te
 	// UN ZÉRO N'EST PAS L'AUTRE : un film qui ne déclare pas i56 ne se lit pas comme un film
 	// où personne n'use ses charges.
 	in := acInputs(nil, nil, nil)
-	in.stats = grammar.AbilityChargeStats{Absent: true}
+	in.stats = types.AbilityChargeStats{Absent: true}
 	out, cov := buildAbilityCharges(in, []Track{aiTrack(10)}, 0, aiStep)
 	if len(out) != 0 || !cov.ComponentAbsent {
 		t.Fatalf("out=%+v cov=%+v : le temoin d'absence de composant s'est perdu", out, cov)
@@ -244,7 +243,7 @@ func TestBuildFromPositions_PasDeCouvertureDeChargesQuandLeBalayageNAPasTourne(t
 
 	// (b) BALAYAGE ABOUTI SUR UN FILM QUI NE DÉCLARE PAS LE COMPOSANT : la couverture EST
 	// publiée, et elle porte `componentAbsent`. Un zéro de balayage n'est pas l'autre.
-	base.AbilityChargeStats = grammar.AbilityChargeStats{Scanned: true, Absent: true}
+	base.AbilityChargeStats = types.AbilityChargeStats{Scanned: true, Absent: true}
 	doc = BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
 	cov := doc.Coverage.AbilityCharges
 	if cov == nil {
@@ -257,7 +256,7 @@ func TestBuildFromPositions_PasDeCouvertureDeChargesQuandLeBalayageNAPasTourne(t
 	// (c) BALAYAGE ABOUTI SUR UN FILM QUI DÉCLARE LE COMPOSANT SANS AUCUNE LECTURE ARMÉE :
 	// la couverture est publiée, à zéro et SANS `componentAbsent` — le troisième zéro,
 	// distinct des deux autres (c'est celui que R11 §4 mesure 485 fois sur six films).
-	base.AbilityChargeStats = grammar.AbilityChargeStats{Scanned: true, Records: 1234}
+	base.AbilityChargeStats = types.AbilityChargeStats{Scanned: true, Records: 1234}
 	doc = BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
 	cov = doc.Coverage.AbilityCharges
 	if cov == nil || cov.ComponentAbsent || cov.Reads != 0 {

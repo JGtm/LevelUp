@@ -1,6 +1,9 @@
 package objectives
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 // slotidentity_test.go — la verite terrain du pont slot d'entite -> joueur.
 //
@@ -73,12 +76,12 @@ func TestSlotIdentityMatchesKnownOwners(t *testing.T) {
 // Se taire est le comportement voulu. Attribuer les frags d'un joueur a un autre serait,
 // sur une carte, une erreur invisible et credible.
 func TestSlotIdentityRefusesAmbiguousTriplets(t *testing.T) {
-	recs := []StatRecord{
-		{TimeMS: 1000, Slot: 10, Comps: map[int]StatValue{2: {A: 5, B: 3}, 3: {A: 2}}},
-		{TimeMS: 1000, Slot: 12, Comps: map[int]StatValue{2: {A: 5, B: 3}, 3: {A: 2}}},
-		{TimeMS: 1000, Slot: 14, Comps: map[int]StatValue{2: {A: 9, B: 1}, 3: {A: 4}}},
+	recs := []types.StatRecord{
+		{TimeMS: 1000, Slot: 10, Comps: map[int]types.StatValue{2: {A: 5, B: 3}, 3: {A: 2}}},
+		{TimeMS: 1000, Slot: 12, Comps: map[int]types.StatValue{2: {A: 5, B: 3}, 3: {A: 2}}},
+		{TimeMS: 1000, Slot: 14, Comps: map[int]types.StatValue{2: {A: 9, B: 1}, 3: {A: 4}}},
 	}
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "a", Kills: 5, Deaths: 3, Assists: 2},
 		{XUID: "b", Kills: 5, Deaths: 3, Assists: 2},
 		{XUID: "c", Kills: 9, Deaths: 1, Assists: 4},
@@ -108,14 +111,14 @@ func TestSlotIdentityRefusesAmbiguousTriplets(t *testing.T) {
 //
 // Mutation qui doit le faire rougir : renvoyer `claim` au lieu de `out`.
 func TestSlotIdentityRefuseUnXuidRevendiqueParDeuxSlots(t *testing.T) {
-	recs := []StatRecord{
-		{TimeMS: 1000, Slot: 10, Comps: map[int]StatValue{2: {A: 5, B: 3}, 3: {A: 2}}},
-		{TimeMS: 1000, Slot: 12, Comps: map[int]StatValue{2: {A: 5, B: 3}, 3: {A: 2}}},
-		{TimeMS: 1000, Slot: 14, Comps: map[int]StatValue{2: {A: 9, B: 1}, 3: {A: 4}}},
+	recs := []types.StatRecord{
+		{TimeMS: 1000, Slot: 10, Comps: map[int]types.StatValue{2: {A: 5, B: 3}, 3: {A: 2}}},
+		{TimeMS: 1000, Slot: 12, Comps: map[int]types.StatValue{2: {A: 5, B: 3}, 3: {A: 2}}},
+		{TimeMS: 1000, Slot: 14, Comps: map[int]types.StatValue{2: {A: 9, B: 1}, 3: {A: 4}}},
 	}
 	// UNE seule ligne porte le triplet (5, 3, 2) : les slots 10 et 12 le revendiquent
 	// chacun sans ambiguite, la premiere passe les accepte donc tous les deux.
-	lines := []PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "a", Kills: 5, Deaths: 3, Assists: 2},
 		{XUID: "c", Kills: 9, Deaths: 1, Assists: 4},
 	}

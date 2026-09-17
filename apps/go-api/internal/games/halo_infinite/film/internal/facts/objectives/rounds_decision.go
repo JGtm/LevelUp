@@ -1,6 +1,9 @@
 package objectives
 
-import "sort"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"sort"
+)
 
 // rounds_decision.go — LE VERDICT COMPLET DE LA LECTURE DES DESIGNATEURS DE MANCHE.
 //
@@ -65,7 +68,7 @@ func (d RoundsDecision) RealSet() map[int]bool {
 }
 
 // ResolveRounds rend le verdict complet. Fonction PURE, sans etat de paquet.
-func ResolveRounds(recs []StatRecord) RoundsDecision {
+func ResolveRounds(recs []types.StatRecord) RoundsDecision {
 	runs := modeScoreRunsByRound(recs)
 	material, present := materialRounds(recs), presentRounds(recs)
 	real, decreed := contiguousRounds(runs, material, present)
@@ -93,7 +96,7 @@ func admissibleRound(runs map[int]int, material map[int]bool, round int) bool {
 }
 
 // recordsOfRounds compte les enregistrements portant l'un des designateurs nommes.
-func recordsOfRounds(recs []StatRecord, rounds []int) int {
+func recordsOfRounds(recs []types.StatRecord, rounds []int) int {
 	if len(rounds) == 0 {
 		return 0
 	}

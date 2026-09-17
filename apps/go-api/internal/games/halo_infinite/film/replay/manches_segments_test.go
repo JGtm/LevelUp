@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // manches_segments_test.go — LA GARDE PAR SLOT, ET LE JOURNAL DES BORNES DE MANCHE.
@@ -22,7 +23,7 @@ import (
 // la borne a 70 s, et tout le bloc de manche 1 des trois slots precoces (12 enregistrements) tombe
 // hors fenetre — sans la garde par slot il disparaissait, `rounds[1]` restait VIDE pour eux et le
 // total d'assistances passait de 8 a 5.
-func manchesFixtureRelecteur() []objectives.StatRecord {
+func manchesFixtureRelecteur() []types.StatRecord {
 	precoces, tardifs := manchesSlots[:3], manchesSlots[3:]
 	recs := manchesCorps(0, manchesDebutR0)
 	recs = append(recs, modeRamp(6, 1, 70_000, 500, 1, 2, 3)...)
@@ -135,7 +136,7 @@ func manchesClocheRelecteur() scoreClock {
 
 // journalDeCuisson capte les lignes que `logRoundBounds` emet pour un jeu d'enregistrements, en
 // detournant le journal par defaut le temps de l'appel.
-func journalDeCuisson(t *testing.T, recs []objectives.StatRecord, manches int) string {
+func journalDeCuisson(t *testing.T, recs []types.StatRecord, manches int) string {
 	t.Helper()
 	var tampon bytes.Buffer
 	precedent := slog.Default()
@@ -200,12 +201,12 @@ const (
 // mode par manche (sans lui `RealRounds` n'en reconnait aucune, et la fixture ne prouverait rien),
 // un slot minoritaire qui declare la manche 1 en avance, et un slot REATTRIBUE d'une manche a
 // l'autre.
-func identiteFixture() ([]objectives.StatRecord, []Death) {
+func identiteFixture() ([]types.StatRecord, []Death) {
 	recs := manchesCorps(0, manchesDebutR0)
 	recs = append(recs, manchesCorps(1, identiteDebutR1)...)
 	// LE FAUX POSITIF : un enregistrement isole, slot 10, qui declare la manche 1 a 85 s.
 	recs = append(recs, statRec(identiteEgarePre, 10, 1,
-		map[int]objectives.StatValue{3: {A: 0}}))
+		map[int]types.StatValue{3: {A: 0}}))
 
 	var deaths []Death
 	for j, slot := range manchesSlots {

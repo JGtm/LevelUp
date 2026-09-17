@@ -28,6 +28,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // LES SEUILS, ÉCRITS AVANT LA MESURE (plan, items 1.2-1.4, 2.1, et décisions 2-4).
@@ -385,7 +386,7 @@ func gwPadsClass(lives map[uint32][]equipLife, a gwPadApparition) (string, int) 
 // balayage de créations n'est PAS discriminant à lui seul (sur `00162144`, la bande fantôme rend
 // 398 créations acceptées contre 366 pour la bande réelle). Après le filtre d'identité : 13
 // fantômes croisées contre 1 785 réelles sur huit films, un facteur 137.
-func gwPadsIdentity(c grammar.EquipmentCreation) (uint32, bool) {
+func gwPadsIdentity(c types.EquipmentCreation) (uint32, bool) {
 	if !c.MPPPresent[grammar.MPPWord32] {
 		return 0, false
 	}

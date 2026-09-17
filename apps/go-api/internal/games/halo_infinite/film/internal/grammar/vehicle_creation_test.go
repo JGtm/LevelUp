@@ -43,6 +43,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const vehicleCreationFilmEnv = "VEHICLE_CREATION_FILM"
@@ -121,7 +122,7 @@ func TestVehicleCreationIdentity(t *testing.T) {
 
 // scan balaye `band` avec `deser` : gate i0 dyn.-prec. DURCI par le nuage des positions reelles.
 func (pr vehProbe) scan(band map[uint32]bool, deser func(*Lecteur)) (
-	[]EquipmentCreation, EquipmentCreationStats, error) {
+	[]types.EquipmentCreation, types.EquipmentCreationStats, error) {
 	var cur equipCreationRead
 	w := equipCreationWalk{
 		prof:  profilDeCarte(pr.lay),
@@ -136,7 +137,7 @@ func (pr vehProbe) scan(band map[uint32]bool, deser func(*Lecteur)) (
 		},
 		posBits: pr.lay.TotalBits(),
 	}
-	var st EquipmentCreationStats
+	var st types.EquipmentCreationStats
 	st.Slots = len(band)
 	w.obs = installCreationHooks(&cur)
 	return runCreationWalk(pr.fc, w, &st), st, nil
@@ -203,7 +204,7 @@ func vehicleCalibrateMPP(t *testing.T, fc *FilmContext, dir string, lay profile.
 	}
 }
 
-func vehicleLogStats(t *testing.T, label string, st EquipmentCreationStats) {
+func vehicleLogStats(t *testing.T, label string, st types.EquipmentCreationStats) {
 	t.Helper()
 	t.Logf("== %s — %d slots · ancres NEW %d · ACCEPTES %d ==", label, st.Slots, st.Anchors, st.Accepted)
 	t.Logf("   rejets : default-state hors payload %d · masque invalide %d · position rejetee %d",
@@ -247,7 +248,7 @@ func vehicleFalseWitnesses(t *testing.T, pr vehProbe, band map[uint32]bool, real
 }
 
 // vehicleIdentityVerdict applique les trois gates V1.5 sur MPPWord32 des records ACCEPTES.
-func vehicleIdentityVerdict(t *testing.T, cre []EquipmentCreation, accepted int) {
+func vehicleIdentityVerdict(t *testing.T, cre []types.EquipmentCreation, accepted int) {
 	t.Helper()
 	values := map[uint32]int{}
 	lives := map[equipCreationLifeKey]map[uint32]bool{}

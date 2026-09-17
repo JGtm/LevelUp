@@ -35,6 +35,7 @@ import (
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -153,7 +154,7 @@ func d3iSerieDe(t *testing.T, dir, short string) (d3iSerie, bool) {
 }
 
 // d3iBornesMatch rend les bornes du match sur l'horloge des enregistrements d'entite.
-func d3iBornesMatch(recs []objectives.StatRecord) (int64, int64, bool) {
+func d3iBornesMatch(recs []types.StatRecord) (int64, int64, bool) {
 	if len(recs) == 0 {
 		return 0, 0, false
 	}

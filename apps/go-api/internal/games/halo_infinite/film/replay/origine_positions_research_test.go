@@ -68,6 +68,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // oriEps est le rayon d'appariement à un emplacement catalogué. C'est le seuil DE PRODUCTION
@@ -232,7 +233,7 @@ func TestOrigineEquipementSocleOuSol(t *testing.T) {
 
 	var b oriBucket
 	var dPad []float64
-	var orphelins []grammar.EquipmentCreation
+	var orphelins []types.EquipmentCreation
 	tPermute, tDecale := 0, 0
 	for _, c := range pu.Creations {
 		d := oriNearest(pads, c.X, c.Y, c.Z, 0, 0)
@@ -268,7 +269,7 @@ func TestOrigineEquipementSocleOuSol(t *testing.T) {
 
 // oriClusters regroupe les abstentions et publie celles qui RÉCURRENT — les points
 // d'apparition présumés que le catalogue ne connaît pas (E3).
-func oriClusters(t *testing.T, orph []grammar.EquipmentCreation) {
+func oriClusters(t *testing.T, orph []types.EquipmentCreation) {
 	t.Helper()
 	type cl struct {
 		x, y, z float32

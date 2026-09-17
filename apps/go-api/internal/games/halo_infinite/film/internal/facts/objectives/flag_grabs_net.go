@@ -51,7 +51,10 @@ package objectives
 // FRAMES : son lecteur multiplie par `frameIntervalMs` avant d appeler ici. Faire voyager des
 // frames dans une fonction title-agnostic y ferait entrer la cadence d un format de film.
 
-import "time"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"time"
+)
 
 // Les QUATRE etats d un drapeau, dans le vocabulaire de cette fonction. Ce sont les MEMES
 // chaines que `replay.FlagState*` — une recopie volontaire (faire dependre `analysis` du
@@ -84,7 +87,7 @@ type FlagGrabsNetResult struct {
 	// fonction ne connait pas le roster du match. C est a l appelant, qui le connait, de
 	// completer a ZERO les joueurs presents — un zero mesure est une mesure, mais elle ne
 	// peut pas se deduire de pistes ou le joueur n apparait pas.
-	Players []FlagGrabsNetPlayer
+	Players []types.FlagGrabsNetPlayer
 }
 
 // NetFlagGrabs compte, par joueur, les prises brutes et les prises nettes d un match.
@@ -99,7 +102,7 @@ type FlagGrabsNetResult struct {
 // il vit.
 //
 // Fonction PURE : aucune horloge, aucune base, aucune chaine de langue.
-func NetFlagGrabs(tracks []FlagTrack, window time.Duration) FlagGrabsNetResult {
+func NetFlagGrabs(tracks []types.FlagTrack, window time.Duration) FlagGrabsNetResult {
 	out := FlagGrabsNetResult{}
 	if window <= 0 {
 		return out
@@ -107,7 +110,7 @@ func NetFlagGrabs(tracks []FlagTrack, window time.Duration) FlagGrabsNetResult {
 	out.Measured = true
 	out.WindowMS = int(window / time.Millisecond)
 
-	counts := map[string]*FlagGrabsNetPlayer{}
+	counts := map[string]*types.FlagGrabsNetPlayer{}
 	for _, tr := range tracks {
 		accumulateFlagTrack(tr, out.WindowMS, counts)
 	}
@@ -116,9 +119,9 @@ func NetFlagGrabs(tracks []FlagTrack, window time.Duration) FlagGrabsNetResult {
 }
 
 // accumulateFlagTrack applique la regle a UNE piste de drapeau.
-func accumulateFlagTrack(tr FlagTrack, windowMS int, counts map[string]*FlagGrabsNetPlayer) {
+func accumulateFlagTrack(tr types.FlagTrack, windowMS int, counts map[string]*types.FlagGrabsNetPlayer) {
 	spans := sortedFlagSpans(tr.Spans)
-	var prev *FlagSpan // dernier PORTAGE rencontre sur cette piste
+	var prev *types.FlagSpan // dernier PORTAGE rencontre sur cette piste
 	for i := range spans {
 		sp := &spans[i]
 		if !isFlagCarry(sp.State) {
@@ -133,7 +136,7 @@ func accumulateFlagTrack(tr FlagTrack, windowMS int, counts map[string]*FlagGrab
 		}
 		c := counts[sp.XUID]
 		if c == nil {
-			c = &FlagGrabsNetPlayer{XUID: sp.XUID}
+			c = &types.FlagGrabsNetPlayer{XUID: sp.XUID}
 			counts[sp.XUID] = c
 		}
 		c.Raw++
@@ -145,7 +148,7 @@ func accumulateFlagTrack(tr FlagTrack, windowMS int, counts map[string]*FlagGrab
 }
 
 // flagGrabEstNette applique la definition (cf. l en-tete) a UNE prise.
-func flagGrabEstNette(prev, cur *FlagSpan, spans []FlagSpan, windowMS int) bool {
+func flagGrabEstNette(prev, cur *types.FlagSpan, spans []types.FlagSpan, windowMS int) bool {
 	if prev == nil || prev.XUID != cur.XUID {
 		return true
 	}
@@ -163,7 +166,7 @@ func flagGrabEstNette(prev, cur *FlagSpan, spans []FlagSpan, windowMS int) bool 
 // flagRentreEntre dit si le drapeau est repasse par SON SOCLE entre deux instants. Un etat
 // `home` qui CHEVAUCHE l intervalle suffit : le drapeau y etait, la reprise qui suit est une
 // vraie prise.
-func flagRentreEntre(spans []FlagSpan, deMS, aMS int) bool {
+func flagRentreEntre(spans []types.FlagSpan, deMS, aMS int) bool {
 	for i := range spans {
 		if spans[i].State != FlagSpanHome {
 			continue
@@ -182,8 +185,8 @@ func isFlagCarry(state string) bool {
 
 // sortedFlagSpans rend une COPIE triee par instant de debut : l appelant garde son ordre, et
 // deux artefacts ranges differemment rendent le meme compte.
-func sortedFlagSpans(in []FlagSpan) []FlagSpan {
-	out := make([]FlagSpan, len(in))
+func sortedFlagSpans(in []types.FlagSpan) []types.FlagSpan {
+	out := make([]types.FlagSpan, len(in))
 	copy(out, in)
 	for i := 1; i < len(out); i++ {
 		for j := i; j > 0 && out[j].StartMS < out[j-1].StartMS; j-- {
@@ -195,8 +198,8 @@ func sortedFlagSpans(in []FlagSpan) []FlagSpan {
 
 // sortedNetPlayers rend les joueurs tries par xuid — un contrat stable, jamais l ordre
 // d arrivee d une map.
-func sortedNetPlayers(counts map[string]*FlagGrabsNetPlayer) []FlagGrabsNetPlayer {
-	out := make([]FlagGrabsNetPlayer, 0, len(counts))
+func sortedNetPlayers(counts map[string]*types.FlagGrabsNetPlayer) []types.FlagGrabsNetPlayer {
+	out := make([]types.FlagGrabsNetPlayer, 0, len(counts))
 	for _, c := range counts {
 		out = append(out, *c)
 	}

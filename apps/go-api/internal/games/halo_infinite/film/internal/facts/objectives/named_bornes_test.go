@@ -24,11 +24,12 @@ package objectives
 //	                          descendre DANS l'appel.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
 )
 
 // pt abrege la construction d'un point de serie.
-func pt(ms int, v int64) ScorePoint { return ScorePoint{TimeMS: ms, Slot: 12, Value: v} }
+func pt(ms int, v int64) types.ScorePoint { return types.ScorePoint{TimeMS: ms, Slot: 12, Value: v} }
 
 // TestIncrementTimesSerieSaineIntacte — le pire pas SAIN mesure passe sans etre touche.
 //
@@ -38,7 +39,7 @@ func pt(ms int, v int64) ScorePoint { return ScorePoint{TimeMS: ms, Slot: 12, Va
 // parc vaut 3 (`kills`, un joueur), et 376 des 379 triples d'action d'objectif valent 1.
 func TestIncrementTimesSerieSaineIntacte(t *testing.T) {
 	const pireSaut = 3 // parc de 68 artefacts, 2026-09-11 : le plus gros pas confirme par l'oracle
-	pts := []ScorePoint{pt(100, 1), pt(200, 2), pt(345931, 2+pireSaut)}
+	pts := []types.ScorePoint{pt(100, 1), pt(200, 2), pt(345931, 2+pireSaut)}
 	b := newEventBudget("test")
 	out := incrementTimes(pts, statSlotKey{20, sideB}, b)
 
@@ -63,7 +64,7 @@ func TestIncrementTimesSerieSaineIntacte(t *testing.T) {
 // MUTATION : remettre `maxUnrollPerStep` a 100 000 rougit ce test — les 64 unites ressortent.
 func TestIncrementTimesPasAberrantDeSoixanteQuatreRejete(t *testing.T) {
 	const aberrant = 64 // parc de 68 artefacts : le PLUS PETIT pas que l'oracle refute
-	pts := []ScorePoint{pt(100, 1), pt(200, 1+aberrant)}
+	pts := []types.ScorePoint{pt(100, 1), pt(200, 1+aberrant)}
 	b := newEventBudget("test")
 	out := incrementTimes(pts, statSlotKey{24, sideA}, b)
 
@@ -79,7 +80,7 @@ func TestIncrementTimesPasAberrantDeSoixanteQuatreRejete(t *testing.T) {
 // trois films a `assists` explosives, reproduite a l'unite : six assistances reelles, puis un
 // pas de 9 482 (`16ea3668`, comp 3 A). L'oracle de la feuille dit SIX.
 func TestIncrementTimesAssistsExplosivesRamenentLaFeuilleDeMatch(t *testing.T) {
-	pts := []ScorePoint{pt(100, 1), pt(200, 2), pt(300, 3), pt(400, 4), pt(500, 5), pt(600, 6),
+	pts := []types.ScorePoint{pt(100, 1), pt(200, 2), pt(300, 3), pt(400, 4), pt(500, 5), pt(600, 6),
 		pt(700, 9488)}
 	b := newEventBudget("test")
 	out := incrementTimes(pts, statSlotKey{3, sideA}, b)
@@ -96,7 +97,7 @@ func TestIncrementTimesAssistsExplosivesRamenentLaFeuilleDeMatch(t *testing.T) {
 // point porte deja le deroulage geant, `prev` valant zero.
 func TestIncrementTimesPremierTermeEnormeRejete(t *testing.T) {
 	const bombe = 2163333610 // mesure 4b.1 : `51101d1d`, comp 20 B, slot 24, t = 136 636 ms
-	pts := []ScorePoint{pt(136636, bombe), pt(200000, bombe+3)}
+	pts := []types.ScorePoint{pt(136636, bombe), pt(200000, bombe+3)}
 	b := newEventBudget("test")
 	out := incrementTimes(pts, statSlotKey{20, sideB}, b)
 
@@ -119,7 +120,7 @@ func TestIncrementTimesPremierTermeEnormeRejete(t *testing.T) {
 // TestIncrementTimesSautIntermediaireRejete — la meme borne au milieu d'une serie saine.
 func TestIncrementTimesSautIntermediaireRejete(t *testing.T) {
 	const bombe = 537698416 // mesure 4b.1 : la PLUS PETITE bombe (`1c4c63c2`, comp 22 A)
-	pts := []ScorePoint{pt(100, 1), pt(200, 2), pt(300, 2+bombe), pt(400, 2+bombe+2)}
+	pts := []types.ScorePoint{pt(100, 1), pt(200, 2), pt(300, 2+bombe), pt(400, 2+bombe+2)}
 	b := newEventBudget("test")
 	out := incrementTimes(pts, statSlotKey{22, sideA}, b)
 
@@ -142,7 +143,7 @@ func TestIncrementTimesSautIntermediaireRejete(t *testing.T) {
 func TestIncrementTimesBudgetEpuiseEnCoursDeRoute(t *testing.T) {
 	b := newEventBudget("test")
 	b.reste = 5 // solde reduit : le plafond reel demanderait un million d'evenements pour rien
-	pts := []ScorePoint{pt(100, 3), pt(200, 6), pt(300, 20)}
+	pts := []types.ScorePoint{pt(100, 3), pt(200, 6), pt(300, 20)}
 	out := incrementTimes(pts, statSlotKey{21, sideA}, b)
 
 	// Le premier pas (3) tient ; le second (3) ne tient plus dans les 2 restants : le
@@ -157,7 +158,7 @@ func TestIncrementTimesBudgetEpuiseEnCoursDeRoute(t *testing.T) {
 		t.Fatalf("solde %d, attendu 2 (le pas refuse n'est pas debite)", b.reste)
 	}
 	// Une passe tronquee n'emet plus rien du tout, meme une serie qui tiendrait.
-	if reste := incrementTimes([]ScorePoint{pt(400, 1)}, statSlotKey{2, sideA}, b); reste != nil {
+	if reste := incrementTimes([]types.ScorePoint{pt(400, 1)}, statSlotKey{2, sideA}, b); reste != nil {
 		t.Fatalf("appel apres troncature : %v, attendu nil", reste)
 	}
 }
@@ -168,14 +169,14 @@ func TestBudgetTraverseLesAppels(t *testing.T) {
 	b := newEventBudget("test")
 	b.reste = 10
 
-	if n := len(incrementTimes([]ScorePoint{pt(100, 8)}, statSlotKey{2, sideA}, b)); n != 8 {
+	if n := len(incrementTimes([]types.ScorePoint{pt(100, 8)}, statSlotKey{2, sideA}, b)); n != 8 {
 		t.Fatalf("premier appel : %d evenements, attendu 8", n)
 	}
 	if b.reste != 2 {
 		t.Fatalf("solde apres le premier appel : %d, attendu 2", b.reste)
 	}
 	// Le SECOND appel voit le solde du premier : son pas de 5 n'y tient pas.
-	if n := len(incrementTimes([]ScorePoint{pt(200, 5)}, statSlotKey{3, sideA}, b)); n != 0 {
+	if n := len(incrementTimes([]types.ScorePoint{pt(200, 5)}, statSlotKey{3, sideA}, b)); n != 0 {
 		t.Fatalf("second appel : %d evenements, attendu 0 (solde epuise)", n)
 	}
 	if !b.tronque {
@@ -195,9 +196,9 @@ func TestNamedEventsFromNeutraliseUneBombe(t *testing.T) {
 
 	// `comp 20 B` = flag_capture_assists, l'emplacement fautif de `51101d1d`. La valeur est
 	// posee sur le slot 12, qui porte deja une serie saine du meme emplacement.
-	bombe := append(append([]StatRecord{}, sain...),
-		StatRecord{TimeMS: 9000, Slot: 12, Round: 0,
-			Comps: map[int]StatValue{20: {A: 0, B: 2163333610}}})
+	bombe := append(append([]types.StatRecord{}, sain...),
+		types.StatRecord{TimeMS: 9000, Slot: 12, Round: 0,
+			Comps: map[int]types.StatValue{20: {A: 0, B: 2163333610}}})
 
 	apres := NamedEventsFrom(bombe, ObjectiveTypeFlag)
 	if len(apres) != len(avant) {

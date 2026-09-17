@@ -35,6 +35,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // psTIBalayes — les archetypes d'objet du monde du balayage, temoin compris.
@@ -93,7 +94,7 @@ func psDist3(x, y, z float32, cible psPoint, cz float32) float64 {
 }
 
 // psVieDansLaBoite resume une vie et dit si elle passe par la boite large autour de `cible`.
-func psVieDansLaBoite(ti int, tr grammar.ProjectileTrack, cible psPoint, cz float32) (psVieBoite, bool) {
+func psVieDansLaBoite(ti int, tr types.ProjectileTrack, cible psPoint, cz float32) (psVieBoite, bool) {
 	if len(tr.Pts) == 0 {
 		return psVieBoite{}, false
 	}

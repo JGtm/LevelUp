@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // coverage_test.go — L'INVARIANT « rien ne se jette en silence ».
@@ -213,7 +214,7 @@ func TestGrenadePlacedFromProjectileWithoutBridge(t *testing.T) {
 	throws := []grammar.GrenadeThrow{
 		{TimestampUS: 2_000_000, FilmIndex: 5, TypeID: grammar.GrenadeFragmentation},
 	}
-	proj := []grammar.ProjectileTrack{{Slot: 1024, Gen: 1, Pts: []grammar.ProjectileSample{
+	proj := []types.ProjectileTrack{{Slot: 1024, Gen: 1, Pts: []types.ProjectileSample{
 		{TimestampUS: 2_050_000, X: 12, Y: 34, Z: 5},
 	}}}
 	// AUCUNE position de biped, AUCUN pont : le lancer doit quand meme etre situe.
@@ -253,7 +254,7 @@ func TestGrenadeLinksItsPublishedProjectile(t *testing.T) {
 	throws := []grammar.GrenadeThrow{
 		{TimestampUS: 2_000_000, FilmIndex: 5, TypeID: grammar.GrenadeFragmentation},
 	}
-	proj := []grammar.ProjectileTrack{{Slot: 1024, Gen: 1, Pts: []grammar.ProjectileSample{
+	proj := []types.ProjectileTrack{{Slot: 1024, Gen: 1, Pts: []types.ProjectileSample{
 		{TimestampUS: 2_050_000, X: 12, Y: 34, Z: 5},
 		{TimestampUS: 2_150_000, X: 13, Y: 35, Z: 4},
 		{TimestampUS: 2_250_000, X: 14, Y: 36, Z: 3, AtRest: true},

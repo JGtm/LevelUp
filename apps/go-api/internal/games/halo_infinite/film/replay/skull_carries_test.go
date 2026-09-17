@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // skull_carries_test.go — LE PORTEUR DU CRANE, sur des enregistrements synthetiques (CI, sans
@@ -18,20 +19,20 @@ import (
 //
 // Le score de mode (`comp 0 A`) porte les tics ; le compteur de morts (`comp 2 B`) et le fil des
 // morts nomment les slots par manche ; les prises (`comp 21 B`) alimentent la couverture.
-func skullFixture() ([]objectives.StatRecord, []objectives.DeathInstant) {
-	tick := func(t, slot, round int, v int64) objectives.StatRecord {
-		return objectives.StatRecord{TimeMS: t, Slot: slot, Round: round,
-			Comps: map[int]objectives.StatValue{0: {A: v}}}
+func skullFixture() ([]types.StatRecord, []types.DeathInstant) {
+	tick := func(t, slot, round int, v int64) types.StatRecord {
+		return types.StatRecord{TimeMS: t, Slot: slot, Round: round,
+			Comps: map[int]types.StatValue{0: {A: v}}}
 	}
-	death := func(t, slot, round int, v int64) objectives.StatRecord {
-		return objectives.StatRecord{TimeMS: t, Slot: slot, Round: round,
-			Comps: map[int]objectives.StatValue{2: {B: v}}}
+	death := func(t, slot, round int, v int64) types.StatRecord {
+		return types.StatRecord{TimeMS: t, Slot: slot, Round: round,
+			Comps: map[int]types.StatValue{2: {B: v}}}
 	}
-	grab := func(t, slot, round int, v int64) objectives.StatRecord {
-		return objectives.StatRecord{TimeMS: t, Slot: slot, Round: round,
-			Comps: map[int]objectives.StatValue{21: {B: v}}}
+	grab := func(t, slot, round int, v int64) types.StatRecord {
+		return types.StatRecord{TimeMS: t, Slot: slot, Round: round,
+			Comps: map[int]types.StatValue{21: {B: v}}}
 	}
-	recs := []objectives.StatRecord{
+	recs := []types.StatRecord{
 		// Manche 0 — slot 22 (A) : deux portages separes par un trou (4000 -> 9000, > 3 s).
 		tick(1000, 22, 0, 1), tick(2000, 22, 0, 2), tick(3000, 22, 0, 3), tick(4000, 22, 0, 4),
 		tick(9000, 22, 0, 5), tick(10000, 22, 0, 6),
@@ -47,7 +48,7 @@ func skullFixture() ([]objectives.StatRecord, []objectives.DeathInstant) {
 		grab(1000, 22, 0, 1), grab(9000, 22, 0, 2), grab(5000, 20, 0, 1), grab(20000, 22, 1, 1),
 	}
 	sort.SliceStable(recs, func(i, j int) bool { return recs[i].TimeMS < recs[j].TimeMS })
-	deaths := []objectives.DeathInstant{
+	deaths := []types.DeathInstant{
 		{XUID: "A", TimeMS: 4500}, {XUID: "A", TimeMS: 4600}, {XUID: "A", TimeMS: 4700},
 		{XUID: "C", TimeMS: 7500}, {XUID: "C", TimeMS: 7600}, {XUID: "C", TimeMS: 7700},
 		{XUID: "B", TimeMS: 22500}, {XUID: "B", TimeMS: 22600}, {XUID: "B", TimeMS: 22700},
@@ -56,7 +57,7 @@ func skullFixture() ([]objectives.StatRecord, []objectives.DeathInstant) {
 }
 
 // skullTestScan construit le scan de production a partir de la fixture.
-func skullTestScan(recs []objectives.StatRecord, deaths []objectives.DeathInstant) SkullCarryScan {
+func skullTestScan(recs []types.StatRecord, deaths []types.DeathInstant) SkullCarryScan {
 	return SkullCarryScan{
 		Scanned:  true,
 		Records:  recs,

@@ -1,6 +1,7 @@
 package grammar
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
 	"sort"
 )
@@ -99,7 +100,7 @@ type TeleportExemptions map[uint32][]uint64
 // TeleportExemptionsOf construit les fenêtres d'exemption depuis les événements du scan
 // (ScanFilmTranslocatorTeleports rend les instants triés ; la construction re-trie par slot
 // pour ne pas dépendre de ce contrat).
-func TeleportExemptionsOf(evts []TranslocatorTeleport) TeleportExemptions {
+func TeleportExemptionsOf(evts []types.TranslocatorTeleport) TeleportExemptions {
 	if len(evts) == 0 {
 		return nil
 	}

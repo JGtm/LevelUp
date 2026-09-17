@@ -1,6 +1,7 @@
 package objectives
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"strconv"
 	"testing"
 )
@@ -29,28 +30,28 @@ import (
 // `emis` est le nombre de morts que le STATBORG a eu le temps de repliquer : le passer plus
 // petit que le total simule un film TRONQUE (les compteurs s'arretent avant la fin, alors que
 // la ligne de match, elle, porte le total).
-func deathBridgeFixture(emis func(i int) int) ([]StatRecord, []PlayerLine, []DeathInstant) {
-	var recs []StatRecord
-	var lines []PlayerLine
-	var deaths []DeathInstant
+func deathBridgeFixture(emis func(i int) int) ([]types.StatRecord, []types.PlayerLine, []types.DeathInstant) {
+	var recs []types.StatRecord
+	var lines []types.PlayerLine
+	var deaths []types.DeathInstant
 	for i := 0; i < 8; i++ {
 		slot, xuid, total := 10+2*i, "100"+strconv.Itoa(i), i+6
 		for k := 0; k < total; k++ {
 			t := 10000*(k+1) + 500*(i+1)
-			deaths = append(deaths, DeathInstant{XUID: xuid, TimeMS: t})
+			deaths = append(deaths, types.DeathInstant{XUID: xuid, TimeMS: t})
 			if k < emis(i) {
-				recs = append(recs, StatRecord{TimeMS: t, Slot: slot,
-					Comps: map[int]StatValue{coreKillsComp: {A: int64(i), B: int64(k + 1)}}})
+				recs = append(recs, types.StatRecord{TimeMS: t, Slot: slot,
+					Comps: map[int]types.StatValue{coreKillsComp: {A: int64(i), B: int64(k + 1)}}})
 			}
 		}
 		// L'emission finale porte le triplet complet du joueur : c'est elle que le pont par
 		// TOTAUX compare a la ligne de match.
-		recs = append(recs, StatRecord{TimeMS: 900000 + i, Slot: slot,
-			Comps: map[int]StatValue{
+		recs = append(recs, types.StatRecord{TimeMS: 900000 + i, Slot: slot,
+			Comps: map[int]types.StatValue{
 				coreKillsComp:   {A: int64(i), B: int64(emis(i))},
 				coreAssistsComp: {A: int64(i)},
 			}})
-		lines = append(lines, PlayerLine{XUID: xuid, Kills: i, Deaths: total, Assists: i})
+		lines = append(lines, types.PlayerLine{XUID: xuid, Kills: i, Deaths: total, Assists: i})
 	}
 	return recs, lines, deaths
 }
@@ -109,15 +110,15 @@ func TestSlotIdentityResolvedFilmTronque(t *testing.T) {
 // C'est la regle de prudence du paquet, et elle vaut plus que la couverture : sur une carte,
 // un drapeau attribue au mauvais joueur serait invisible et credible.
 func TestSlotIdentityFromDeathsSeTaitSansMarge(t *testing.T) {
-	var recs []StatRecord
-	var deaths []DeathInstant
+	var recs []types.StatRecord
+	var deaths []types.DeathInstant
 	for k := 0; k < 5; k++ {
 		t0 := 1000 * (k + 1)
-		recs = append(recs, StatRecord{TimeMS: t0, Slot: 10,
-			Comps: map[int]StatValue{coreKillsComp: {B: int64(k + 1)}}})
+		recs = append(recs, types.StatRecord{TimeMS: t0, Slot: 10,
+			Comps: map[int]types.StatValue{coreKillsComp: {B: int64(k + 1)}}})
 		deaths = append(deaths,
-			DeathInstant{XUID: "jumeau-a", TimeMS: t0},
-			DeathInstant{XUID: "jumeau-b", TimeMS: t0})
+			types.DeathInstant{XUID: "jumeau-a", TimeMS: t0},
+			types.DeathInstant{XUID: "jumeau-b", TimeMS: t0})
 	}
 	if got := slotIdentityFromDeaths(recs, deaths); len(got) != 0 {
 		t.Errorf("le pont nomme %v alors que deux joueurs meurent aux memes instants", got)
@@ -127,13 +128,13 @@ func TestSlotIdentityFromDeathsSeTaitSansMarge(t *testing.T) {
 // TestSlotIdentityFromDeathsSeTaitSousLeMinimum — moins de morts communes que le minimum, et
 // le pont ne conclut pas.
 func TestSlotIdentityFromDeathsSeTaitSousLeMinimum(t *testing.T) {
-	var recs []StatRecord
-	var deaths []DeathInstant
+	var recs []types.StatRecord
+	var deaths []types.DeathInstant
 	for k := 0; k < deathInstantMin-1; k++ {
 		t0 := 1000 * (k + 1)
-		recs = append(recs, StatRecord{TimeMS: t0, Slot: 10,
-			Comps: map[int]StatValue{coreKillsComp: {B: int64(k + 1)}}})
-		deaths = append(deaths, DeathInstant{XUID: "solitaire", TimeMS: t0})
+		recs = append(recs, types.StatRecord{TimeMS: t0, Slot: 10,
+			Comps: map[int]types.StatValue{coreKillsComp: {B: int64(k + 1)}}})
+		deaths = append(deaths, types.DeathInstant{XUID: "solitaire", TimeMS: t0})
 	}
 	if got := slotIdentityFromDeaths(recs, deaths); len(got) != 0 {
 		t.Errorf("le pont nomme %v sur %d morts communes seulement (minimum %d)",
@@ -163,8 +164,8 @@ func TestSlotIdentityResolvedEcarteLesDesaccords(t *testing.T) {
 	recs, lines, deaths := deathBridgeFixture(func(i int) int { return i + 3 })
 	// Le slot 10 devient nommable par les TOTAUX, sur un AUTRE joueur que celui que ses
 	// instants de mort designent : le triplet complet de "1007" est emis sur le slot 10.
-	recs = append(recs, StatRecord{TimeMS: 950000, Slot: 10,
-		Comps: map[int]StatValue{coreKillsComp: {A: 7, B: 13}, coreAssistsComp: {A: 7}}})
+	recs = append(recs, types.StatRecord{TimeMS: 950000, Slot: 10,
+		Comps: map[int]types.StatValue{coreKillsComp: {A: 7, B: 13}, coreAssistsComp: {A: 7}}})
 	got, st := slotIdentityResolvedFrom(recs, lines, deaths)
 	if st.Conflicts != 1 {
 		t.Fatalf("%d desaccords comptes, attendu 1 (ByTotals=%d, ByDeaths=%d)",

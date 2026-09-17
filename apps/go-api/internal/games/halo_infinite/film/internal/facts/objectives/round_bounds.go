@@ -1,6 +1,9 @@
 package objectives
 
-import "sort"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"sort"
+)
 
 // round_bounds.go — LES BORNES DE MANCHE, ET LA QUESTION QU'ELLES TRANCHENT : « cet
 // enregistrement peut-il appartenir a la manche qu'il DECLARE ? »
@@ -136,7 +139,7 @@ type RoundBounds struct {
 // ResolveRoundBounds mesure l'intervalle de chaque manche du film (cf. l'en-tete de fichier
 // pour la regle et les mesures qui la fondent), puis EXEMPTE les blocs par slot qu'elle
 // exclurait entierement (cf. GARDE PAR SLOT).
-func ResolveRoundBounds(recs []StatRecord) RoundBounds {
+func ResolveRoundBounds(recs []types.StatRecord) RoundBounds {
 	marks := chainedRounds(recs)
 	if len(marks) < 2 || !increasingStarts(marks) {
 		return RoundBounds{}
@@ -177,7 +180,7 @@ func ResolveRoundBounds(recs []StatRecord) RoundBounds {
 // Un bloc dont une PARTIE tombe dans la fenetre, lui, n'est pas exempte : les emissions hors
 // fenetre y sont contredites par les emissions du meme slot pour la meme manche, et c'est le cas
 // de l'egare (`51ebbc0f` slot 12 : un enregistrement a 316 777 ms contre 24 dans la fenetre).
-func keptSegmentsOf(recs []StatRecord, spans map[int]roundSpan) map[slotRound]KeptSegment {
+func keptSegmentsOf(recs []types.StatRecord, spans map[int]roundSpan) map[slotRound]KeptSegment {
 	type bilan struct {
 		dedans, dehors int
 		fromMS, toMS   int
@@ -264,7 +267,7 @@ func increasingStarts(marks []roundMark) bool {
 // dont une MAJORITE des slots parlent (cf. l'en-tete, MANCHE UTILISABLE). Les autres — sans
 // enregistrement, ou declarees par une poignee de slots — sont retirees de la chaine : leurs
 // voisines s'enchainent alors directement.
-func chainedRounds(recs []StatRecord) []roundMark {
+func chainedRounds(recs []types.StatRecord) []roundMark {
 	real := RealRounds(recs)
 	parSlot := map[int]map[int]int{}
 	instants := map[int][]int{}
@@ -336,7 +339,7 @@ func medianOfSlice(v []int) int {
 //  2. un bloc (slot, manche) qui tombe ENTIEREMENT hors de la fenetre n'est pas un egare mais un
 //     desaccord sur les bornes : il est garde dans sa manche declaree, et l'appelant le
 //     journalise (cf. [keptSegmentsOf] et [RoundBounds.KeptSegments]).
-func (w RoundBounds) Excludes(r StatRecord) bool {
+func (w RoundBounds) Excludes(r types.StatRecord) bool {
 	span, ok := w.byRound[r.Round]
 	if !ok {
 		return false
@@ -363,7 +366,7 @@ const OutliersNominalMax = 27
 
 // Outliers compte les enregistrements qu'[Excludes] ecarte. Sert au journal de cuisson ; la
 // fourchette nominale est [OutliersNominalMax].
-func (w RoundBounds) Outliers(recs []StatRecord) int {
+func (w RoundBounds) Outliers(recs []types.StatRecord) int {
 	if len(w.byRound) == 0 {
 		return 0
 	}
@@ -391,7 +394,7 @@ func (w RoundBounds) Outliers(recs []StatRecord) int {
 //
 // Les manches que le consensus ne peut pas fixer (sans enregistrement, sans majorite de slots)
 // sont ABSENTES du resultat : l'appelant decide quoi en faire, il n'y a rien a mesurer.
-func RoundStartsMS(recs []StatRecord) map[int]int {
+func RoundStartsMS(recs []types.StatRecord) map[int]int {
 	marks := chainedRounds(recs)
 	out := make(map[int]int, len(marks))
 	for _, m := range marks {

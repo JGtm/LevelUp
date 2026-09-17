@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -39,10 +40,10 @@ const (
 // copie, et personne ne doit y ecrire. Il n'est pas protege contre l'usage concurrent en ecriture,
 // ce qui n'a pas d'objet ici (aucune methode ne mute).
 type Film struct {
-	chunks [][]byte // par indice de chunk, decompresses
-	all    []Packet // tous les paquets, ordre chunk PUIS index
-	bounds [][2]int // par indice de chunk : [debut, fin) dans all
-	meta   []ChunkMeta
+	chunks [][]byte       // par indice de chunk, decompresses
+	all    []types.Packet // tous les paquets, ordre chunk PUIS index
+	bounds [][2]int       // par indice de chunk : [debut, fin) dans all
+	meta   []types.ChunkMeta
 }
 
 // NumChunks : nombre de chunks du film.
@@ -59,7 +60,7 @@ func (f *Film) Chunk(i int) []byte {
 // Packets : les paquets du chunk `i` dans l'ordre du chunk, ou nil hors bornes. La tranche rendue
 // est une vue sur le stockage interne : la lire est gratuit, y ajouter est interdit (la capacite
 // est bornee a sa longueur, un append allouera au lieu d'ecraser le chunk suivant).
-func (f *Film) Packets(i int) []Packet {
+func (f *Film) Packets(i int) []types.Packet {
 	if i < 0 || i >= len(f.bounds) {
 		return nil
 	}
@@ -71,7 +72,7 @@ func (f *Film) Packets(i int) []Packet {
 }
 
 // AllPackets : tous les paquets du film, ordre chunk PUIS index.
-func (f *Film) AllPackets() []Packet { return f.all }
+func (f *Film) AllPackets() []types.Packet { return f.all }
 
 // Meta : les metadonnees de chunk, INDEXEES PAR POSITION dans le film (`Meta()[i]` decrit le
 // chunk `i`), ou nil si l'appelant n'en a pas donne et que la source n'en synthetise pas.
@@ -83,7 +84,7 @@ func (f *Film) AllPackets() []Packet { return f.all }
 //
 // La tranche est une copie faite au chargement (l'appelant peut disposer de la sienne), mais elle
 // n'est pas a modifier.
-func (f *Film) Meta() []ChunkMeta { return f.meta }
+func (f *Film) Meta() []types.ChunkMeta { return f.meta }
 
 // errNoChunk : une source sans chunk n'est pas un film.
 var errNoChunk = errors.New("source: aucun chunk dans la source")
@@ -99,7 +100,7 @@ var ErrEnTeteZlib = errors.New("source: en-tete zlib")
 // consommateur qui en a besoin (numero, type de chunk, start_ms) de le dire par une erreur
 // explicite plutot que par un resultat vide. Les appelants qui lisent un REPERTOIRE passent par
 // [LoadDir], qui construit cet alignement lui-meme depuis les noms de fichiers.
-func Load(src Source, meta []ChunkMeta) (*Film, error) {
+func Load(src Source, meta []types.ChunkMeta) (*Film, error) {
 	if src == nil {
 		return nil, errors.New("source: source nulle")
 	}
@@ -120,7 +121,7 @@ func Load(src Source, meta []ChunkMeta) (*Film, error) {
 		f.bounds[ch] = [2]int{start, len(f.all)}
 	}
 	if len(meta) > 0 {
-		f.meta = append(make([]ChunkMeta, 0, len(meta)), meta...)
+		f.meta = append(make([]types.ChunkMeta, 0, len(meta)), meta...)
 	}
 	return f, nil
 }
@@ -138,7 +139,7 @@ func Load(src Source, meta []ChunkMeta) (*Film, error) {
 // absent du manifeste garde son index synthetise avec un type et un debut a zero. Aligner par
 // position serait faux des le premier telechargement partiel — le manifeste liste ce que le
 // serveur a, le repertoire porte ce qui est descendu.
-func LoadDir(dir string, meta []ChunkMeta) (*Film, error) {
+func LoadDir(dir string, meta []types.ChunkMeta) (*Film, error) {
 	src, err := newDirSource(dir)
 	if err != nil {
 		return nil, err
@@ -146,19 +147,19 @@ func LoadDir(dir string, meta []ChunkMeta) (*Film, error) {
 	return Load(src, alignMetaOnNumbers(src.nums, meta))
 }
 
-// alignMetaOnNumbers construit les metadonnees POSITIONNELLES d'un repertoire : un [ChunkMeta] par
+// alignMetaOnNumbers construit les metadonnees POSITIONNELLES d'un repertoire : un [types.ChunkMeta] par
 // fichier, dans l'ordre de la source, portant le numero du fichier et — s'il figure au manifeste —
 // le type et le debut que celui-ci lui donne.
-func alignMetaOnNumbers(nums []int, meta []ChunkMeta) []ChunkMeta {
-	byIndex := make(map[int]ChunkMeta, len(meta))
+func alignMetaOnNumbers(nums []int, meta []types.ChunkMeta) []types.ChunkMeta {
+	byIndex := make(map[int]types.ChunkMeta, len(meta))
 	for _, m := range meta {
 		if _, seen := byIndex[m.Index]; !seen {
 			byIndex[m.Index] = m
 		}
 	}
-	out := make([]ChunkMeta, len(nums))
+	out := make([]types.ChunkMeta, len(nums))
 	for i, n := range nums {
-		out[i] = ChunkMeta{Index: n}
+		out[i] = types.ChunkMeta{Index: n}
 		if m, ok := byIndex[n]; ok && n != ChunkNumberUnknown {
 			out[i].ChunkType, out[i].StartMS = m.ChunkType, m.StartMS
 		}
@@ -244,9 +245,9 @@ func inflate(raw []byte) []byte {
 // forme `grammar.FilmPacket`. Les deux grammaires sont opposees sur des chunks REELS par
 // `TestDeuxMarcheursDePaquetsSAccordent` (`source_test.go`).
 //
-// `ch` est l indice de chunk a inscrire dans [Packet.Chunk] ; un appelant qui n en a pas
+// `ch` est l indice de chunk a inscrire dans [types.Packet.Chunk] ; un appelant qui n en a pas
 // (lecteur d un chunk isole) passe 0.
-func Paquets(chunk []byte, ch int) []Packet { return appendPackets(nil, chunk, ch) }
+func Paquets(chunk []byte, ch int) []types.Packet { return appendPackets(nil, chunk, ch) }
 
 // appendPackets : decoupe un chunk decompresse et ajoute ses paquets a `dst`. UNE tranche pour
 // tout le film (les vues par chunk sont des sous-tranches), donc une seule croissance amortie.
@@ -257,7 +258,7 @@ func Paquets(chunk []byte, ch int) []Packet { return appendPackets(nil, chunk, c
 //	(2) le paquet est emis, taille 0 comprise ;
 //	(3) arret APRES un paquet de type 7 (CHUNK_END) ;
 //	(4) arret AVANT emission sur une taille 0 qui n'est pas de type 7 (en-tete degenere).
-func appendPackets(dst []Packet, d []byte, ch int) []Packet {
+func appendPackets(dst []types.Packet, d []byte, ch int) []types.Packet {
 	off, k := 0, 0
 	for off+packetHeaderSize <= len(d) {
 		typ := int(binary.LittleEndian.Uint16(d[off:]))
@@ -274,7 +275,7 @@ func appendPackets(dst []Packet, d []byte, ch int) []Packet {
 			break
 		}
 		// (2) emission, taille 0 comprise.
-		dst = append(dst, Packet{
+		dst = append(dst, types.Packet{
 			Chunk:   ch,
 			Index:   k,
 			Type:    typ,

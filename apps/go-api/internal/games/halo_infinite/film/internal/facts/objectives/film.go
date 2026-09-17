@@ -45,13 +45,14 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // packetFrame = le type de paquet consommé ici : FRAME, snapshot/delta d'état horodaté (us).
 // Le découpage lui-même (en-tête 16 octets, terminateur CHUNK_END) appartient à `source`.
 const packetFrame = 0
 
-// Types de chunk du MANIFESTE, tels que [source.ChunkMeta.ChunkType] les porte.
+// Types de chunk du MANIFESTE, tels que [types.ChunkMeta.ChunkType] les porte.
 //
 // ZÉRO N'EST PAS UN TYPE : c'est ce que `source.LoadDir` synthétise pour un `chunk_NN.bin`
 // PRÉSENT au cache mais ABSENT du manifeste. Mesure du 2026-09-02 sur les 1 380 manifestes du
@@ -68,7 +69,7 @@ const (
 // que prennent [source.Film.Chunk] et [source.Film.Packets]) et ses métadonnées.
 type manifestChunk struct {
 	pos  int
-	meta source.ChunkMeta
+	meta types.ChunkMeta
 }
 
 // manifestChunks rend les chunks du film décrits par le manifeste, dans l'ordre du film.
@@ -122,9 +123,9 @@ func filmChunkCount(film *source.Film) int {
 // framesOf rend les paquets FRAME (type 0) du chunk à la POSITION `pos` dans le film, dans
 // l'ordre du chunk. C'est tout ce qui reste de l'ancien `walkFrames` : le découpage est fait
 // une fois par `source`, il ne reste qu'à choisir le type.
-func framesOf(film *source.Film, pos int) []source.Packet {
+func framesOf(film *source.Film, pos int) []types.Packet {
 	pks := film.Packets(pos)
-	out := make([]source.Packet, 0, len(pks))
+	out := make([]types.Packet, 0, len(pks))
 	for _, p := range pks {
 		if p.Type == packetFrame {
 			out = append(out, p)
@@ -331,7 +332,7 @@ type captureBurst struct {
 // (type 2). startMS = start_ms du chunk (manifest) ; on convertit l'us de chaque FRAME en ms
 // match via le premier FRAME comme ancre (la première frame du chunk = état complet, ignorée).
 // Adapté de ctfcap detect.
-func scanCaptureBursts(frames []source.Packet, startMS int) []captureBurst {
+func scanCaptureBursts(frames []types.Packet, startMS int) []captureBurst {
 	if len(frames) == 0 {
 		return nil
 	}

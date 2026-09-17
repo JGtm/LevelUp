@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // ecOrigin / ecStep : une origine et un pas ronds, pour que les frames attendues se lisent.
@@ -22,13 +23,13 @@ const (
 )
 
 func TestBuildEquipmentChangesEcarteLesReapparitions(t *testing.T) {
-	in := []grammar.EquipmentChange{
+	in := []types.EquipmentChange{
 		{TimestampUS: ecOrigin, Slot: 7, Rank: 4, Previous: grammar.AbilitySetNoRank,
-			Kind: grammar.EquipmentSpawned},
+			Kind: types.EquipmentSpawned},
 		{TimestampUS: ecOrigin + 2_000_000, Slot: 7, Rank: 6, Previous: 4,
-			Kind: grammar.EquipmentTaken},
+			Kind: types.EquipmentTaken},
 	}
-	got, cov := buildEquipmentChanges(in, grammar.EquipmentChangeStats{Lives: 1}, ecOrigin, ecStep)
+	got, cov := buildEquipmentChanges(in, types.EquipmentChangeStats{Lives: 1}, ecOrigin, ecStep)
 	if len(got) != 1 {
 		t.Fatalf("publiés = %d, attendu 1 : une réapparition équipée n'est PAS un ramassage et "+
 			"ne doit pas gonfler le compte", len(got))
@@ -46,11 +47,11 @@ func TestBuildEquipmentChangesEcarteLesReapparitions(t *testing.T) {
 }
 
 func TestBuildEquipmentChangesConsommation(t *testing.T) {
-	in := []grammar.EquipmentChange{
+	in := []types.EquipmentChange{
 		{TimestampUS: ecOrigin, Slot: 3, Rank: grammar.AbilitySetNoRank, Previous: 9,
-			Kind: grammar.EquipmentSpent},
+			Kind: types.EquipmentSpent},
 	}
-	got, cov := buildEquipmentChanges(in, grammar.EquipmentChangeStats{Lives: 1}, ecOrigin, ecStep)
+	got, cov := buildEquipmentChanges(in, types.EquipmentChangeStats{Lives: 1}, ecOrigin, ecStep)
 	if len(got) != 1 || got[0].Kind != EquipmentSpent {
 		t.Fatalf("publiés = %v, attendu une consommation", got)
 	}
@@ -69,10 +70,10 @@ func TestBuildEquipmentChangesConsommation(t *testing.T) {
 }
 
 func TestBuildEquipmentChangesEcarteAvantOrigine(t *testing.T) {
-	in := []grammar.EquipmentChange{
-		{TimestampUS: ecOrigin - 1, Slot: 3, Rank: 4, Previous: 6, Kind: grammar.EquipmentTaken},
+	in := []types.EquipmentChange{
+		{TimestampUS: ecOrigin - 1, Slot: 3, Rank: 4, Previous: 6, Kind: types.EquipmentTaken},
 	}
-	got, cov := buildEquipmentChanges(in, grammar.EquipmentChangeStats{}, ecOrigin, ecStep)
+	got, cov := buildEquipmentChanges(in, types.EquipmentChangeStats{}, ecOrigin, ecStep)
 	if len(got) != 0 || cov.BeforeOrigin != 1 {
 		t.Fatalf("publiés=%d beforeOrigin=%d : un rejeu ne montre pas ce qui précède sa "+
 			"première frame", len(got), cov.BeforeOrigin)
@@ -83,7 +84,7 @@ func TestBuildEquipmentChangesReporteLeTemoinDeCompletude(t *testing.T) {
 	// Le témoin de complétude ne se recalcule PAS ici : il est lu par le décodeur, qui seul
 	// voit le compteur de rotation. Ce test verrouille son passage jusqu'à la couverture —
 	// une couverture qui ne le porterait pas laisserait croire que tout a été vu.
-	st := grammar.EquipmentChangeStats{
+	st := types.EquipmentChangeStats{
 		Lives: 44, MissedEstimate: 3, CounterJumps: 2, LivesFirstOffSpec: 1, Repeats: 0,
 	}
 	_, cov := buildEquipmentChanges(nil, st, ecOrigin, ecStep)
@@ -94,16 +95,16 @@ func TestBuildEquipmentChangesReporteLeTemoinDeCompletude(t *testing.T) {
 }
 
 func TestBuildEquipmentChangesPublieRecuperationEtGap(t *testing.T) {
-	in := []grammar.EquipmentChange{
+	in := []types.EquipmentChange{
 		// Une émission RÉCUPÉRÉE (schéma 38) : la provenance voyage jusqu'au document.
 		{TimestampUS: ecOrigin + 1_000_000, Slot: 7, Rank: 11, Previous: 4,
-			Kind: grammar.EquipmentTaken, Recovered: true},
+			Kind: types.EquipmentTaken, Recovered: true},
 		// Une émission sous GAP résiduel : deux émissions manquent encore juste avant elle,
 		// son `from` n'est pas une identité fiable et le document doit le dire.
 		{TimestampUS: ecOrigin + 3_000_000, Slot: 7, Rank: grammar.AbilitySetNoRank,
-			Previous: 11, Kind: grammar.EquipmentSpent, Gap: 2},
+			Previous: 11, Kind: types.EquipmentSpent, Gap: 2},
 	}
-	st := grammar.EquipmentChangeStats{Lives: 1, Recovered: 1, CounterJumps: 1, MissedEstimate: 2}
+	st := types.EquipmentChangeStats{Lives: 1, Recovered: 1, CounterJumps: 1, MissedEstimate: 2}
 	got, cov := buildEquipmentChanges(in, st, ecOrigin, ecStep)
 	if len(got) != 2 {
 		t.Fatalf("publiés = %d, attendu 2", len(got))

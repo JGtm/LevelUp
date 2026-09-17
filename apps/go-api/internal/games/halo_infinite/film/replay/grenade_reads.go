@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // grenade_reads.go — LES GRENADES PORTÉES, sur leur propre axe, alimentées par DEUX canaux.
@@ -78,7 +79,7 @@ type GrenadeRead struct {
 // l'axe, et leur en inventer une les poserait sur la première image comme si elles y avaient
 // été mesurées.
 func buildGrenadeReads(
-	kf []KeyframeInventory, deltas []grammar.InventoryDelta, origin, step uint64,
+	kf []KeyframeInventory, deltas []types.InventoryDelta, origin, step uint64,
 ) []GrenadeRead {
 	out := make([]GrenadeRead, 0, len(kf)+len(deltas))
 	for _, r := range kf {

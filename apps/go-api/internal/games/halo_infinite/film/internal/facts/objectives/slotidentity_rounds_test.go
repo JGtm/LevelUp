@@ -1,6 +1,7 @@
 package objectives
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"reflect"
 	"sort"
 	"testing"
@@ -19,20 +20,20 @@ import (
 // deux ponts lisent et le score de mode (`comp 0 A`) que [RealRounds] exige pour reconnaitre une
 // manche. Le test tourne en CI, sans film.
 
-// roundBridgeRec est une emission synthetique (raccourci pour construire un [StatRecord]).
-func modeRec(t, slot, round int, score int64) StatRecord {
-	return StatRecord{TimeMS: t, Slot: slot, Round: round, Comps: map[int]StatValue{modeScoreComp: {A: score}}}
+// roundBridgeRec est une emission synthetique (raccourci pour construire un [types.StatRecord]).
+func modeRec(t, slot, round int, score int64) types.StatRecord {
+	return types.StatRecord{TimeMS: t, Slot: slot, Round: round, Comps: map[int]types.StatValue{modeScoreComp: {A: score}}}
 }
 
-func deathRec(t, slot, round int, deaths int64) StatRecord {
-	return StatRecord{TimeMS: t, Slot: slot, Round: round, Comps: map[int]StatValue{coreKillsComp: {B: deaths}}}
+func deathRec(t, slot, round int, deaths int64) types.StatRecord {
+	return types.StatRecord{TimeMS: t, Slot: slot, Round: round, Comps: map[int]types.StatValue{coreKillsComp: {B: deaths}}}
 }
 
 // twoRoundReassignedFixture fabrique un film a DEUX manches ou le slot 22 est REATTRIBUE :
 // joueur "A" en manche 0, joueur "B" en manche 1. Le slot 20 reste le joueur "C" aux deux
 // manches. Chaque manche porte un train de score de mode (>= 3 emissions) pour etre reconnue.
-func twoRoundReassignedFixture() ([]StatRecord, []DeathInstant) {
-	recs := []StatRecord{
+func twoRoundReassignedFixture() ([]types.StatRecord, []types.DeathInstant) {
+	recs := []types.StatRecord{
 		// Score de mode : trois emissions croissantes par manche => manches 0 et 1 reelles.
 		modeRec(900, 22, 0, 10), modeRec(1900, 22, 0, 20), modeRec(2900, 22, 0, 30),
 		modeRec(10900, 22, 1, 10), modeRec(11900, 22, 1, 20), modeRec(12900, 22, 1, 30),
@@ -44,7 +45,7 @@ func twoRoundReassignedFixture() ([]StatRecord, []DeathInstant) {
 		deathRec(11500, 20, 1, 1), deathRec(12500, 20, 1, 2), deathRec(13500, 20, 1, 3),
 	}
 	sort.SliceStable(recs, func(i, j int) bool { return recs[i].TimeMS < recs[j].TimeMS })
-	deaths := []DeathInstant{
+	deaths := []types.DeathInstant{
 		{XUID: "A", TimeMS: 1000}, {XUID: "A", TimeMS: 2000}, {XUID: "A", TimeMS: 3000},
 		{XUID: "B", TimeMS: 11000}, {XUID: "B", TimeMS: 12000}, {XUID: "B", TimeMS: 13000},
 		{XUID: "C", TimeMS: 1500}, {XUID: "C", TimeMS: 2500}, {XUID: "C", TimeMS: 3500},
@@ -146,13 +147,13 @@ func TestIdentifyNamedEventsByRoundReassignedSlot(t *testing.T) {
 // par manche rend EXACTEMENT ce que rend le pont plat par instants de mort. C'est la garantie
 // que le calque objectifs mono-manche ne bouge pas.
 func TestIdentifyNamedEventsByRoundMonoNeutral(t *testing.T) {
-	recs := []StatRecord{
+	recs := []types.StatRecord{
 		modeRec(900, 22, 0, 10), modeRec(1900, 22, 0, 20), modeRec(2900, 22, 0, 30),
 		deathRec(1000, 22, 0, 1), deathRec(2000, 22, 0, 2), deathRec(3000, 22, 0, 3),
 		deathRec(1500, 20, 0, 1), deathRec(2500, 20, 0, 2), deathRec(3500, 20, 0, 3),
 	}
 	sort.SliceStable(recs, func(i, j int) bool { return recs[i].TimeMS < recs[j].TimeMS })
-	deaths := []DeathInstant{
+	deaths := []types.DeathInstant{
 		{XUID: "A", TimeMS: 1000}, {XUID: "A", TimeMS: 2000}, {XUID: "A", TimeMS: 3000},
 		{XUID: "C", TimeMS: 1500}, {XUID: "C", TimeMS: 2500}, {XUID: "C", TimeMS: 3500},
 	}
@@ -171,13 +172,13 @@ func TestIdentifyNamedEventsByRoundMonoNeutral(t *testing.T) {
 // pont plat, sous la seule manche. C'est ce qui garantit que la couronne VIP et le drapeau CTF
 // mono-manche ne bougent pas.
 func TestSlotIdentityByRoundMonoRoundNeutral(t *testing.T) {
-	recs := []StatRecord{
+	recs := []types.StatRecord{
 		modeRec(900, 22, 0, 10), modeRec(1900, 22, 0, 20), modeRec(2900, 22, 0, 30),
 		deathRec(1000, 22, 0, 1), deathRec(2000, 22, 0, 2), deathRec(3000, 22, 0, 3),
 		deathRec(1500, 20, 0, 1), deathRec(2500, 20, 0, 2), deathRec(3500, 20, 0, 3),
 	}
 	sort.SliceStable(recs, func(i, j int) bool { return recs[i].TimeMS < recs[j].TimeMS })
-	deaths := []DeathInstant{
+	deaths := []types.DeathInstant{
 		{XUID: "A", TimeMS: 1000}, {XUID: "A", TimeMS: 2000}, {XUID: "A", TimeMS: 3000},
 		{XUID: "C", TimeMS: 1500}, {XUID: "C", TimeMS: 2500}, {XUID: "C", TimeMS: 3500},
 	}

@@ -79,7 +79,7 @@ const (
 
 // FilmPlayerSeat est un siege OCCUPE de la table du film, reduit a ce que l'assemblage consomme.
 //
-// LES NEUF CHAMPS COURTS ET LE JETON DE SESSION QUE `grammar.PlayerSlot` PUBLIE N'ENTRENT PAS :
+// LES NEUF CHAMPS COURTS ET LE JETON DE SESSION QUE `types.PlayerSlot` PUBLIE N'ENTRENT PAS :
 // aucun consommateur ne les lit, et ce type voyage dans le fixture d'entrees fige — porter ce
 // qu'on ne consomme pas est exactement ce que la doctrine du fixture interdit.
 type FilmPlayerSeat struct {

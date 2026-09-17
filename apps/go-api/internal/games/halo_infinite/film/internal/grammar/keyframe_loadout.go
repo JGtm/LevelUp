@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // keyframe_loadout.go — ARMES PORTÉES par chaque biped, lues dans les keyframes type-2.
@@ -40,23 +41,6 @@ import (
 // leur propre archétype (cf. keyframe_ground_weapons.go).
 const keyframeBipedTI = 35
 
-// KeyframeLoadout est l'ensemble des identifiants de FAMILLE d'arme trouvés dans le record
-// biped d'un slot, à l'instant d'un keyframe.
-type KeyframeLoadout struct {
-	// TimestampUS est l'horodatage du paquet keyframe — MÊME horloge que
-	// BipedPosition.TimestampUS et FireEvent.TimestampUS.
-	TimestampUS uint64
-	// Chunk / PacketIndex localisent le keyframe dans le film.
-	Chunk, PacketIndex int
-	// Slot est le slot du biped porteur (celui des trajectoires).
-	Slot uint32
-	// Families liste les familles (high-32 du weapon-id) dans l'ORDRE DES BITS du record.
-	// Les alias ne sont PAS repliés ici : deux familles distinctes peuvent désigner le même
-	// canon. Le repli est une question de NOMMAGE, il appartient à la couche qui possède le
-	// catalogue d'armes (cf. replay/loadouts.go).
-	Families []uint32
-}
-
 // ScanFilmKeyframeLoadouts décode les armes portées de tous les keyframes du film de dir.
 // `known` est le prédicat d'appartenance au catalogue de familles : c'est LUI qui fait la
 // sélectivité du balayage (un prédicat trop large rendrait du bruit — cf. l'ancrage
@@ -66,7 +50,7 @@ type KeyframeLoadout struct {
 //
 // ScanFilmKeyframeLoadouts est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanKeyframeLoadouts].
-func ScanFilmKeyframeLoadouts(dir string, known map[uint32]bool) ([]KeyframeLoadout, error) {
+func ScanFilmKeyframeLoadouts(dir string, known map[uint32]bool) ([]types.KeyframeLoadout, error) {
 	if len(known) == 0 {
 		return nil, nil // catalogue vide : rien a chercher, et rien a charger
 	}
@@ -78,11 +62,11 @@ func ScanFilmKeyframeLoadouts(dir string, known map[uint32]bool) ([]KeyframeLoad
 }
 
 // ScanKeyframeLoadouts décode les armes portées aux images-clés d'un film DEJA CHARGE.
-func ScanKeyframeLoadouts(film *source.Film, known map[uint32]bool) ([]KeyframeLoadout, error) {
+func ScanKeyframeLoadouts(film *source.Film, known map[uint32]bool) ([]types.KeyframeLoadout, error) {
 	if len(known) == 0 {
 		return nil, nil
 	}
-	var out []KeyframeLoadout
+	var out []types.KeyframeLoadout
 	read := 0
 	for _, c := range FilmChunkNumbers(film) {
 		chunk, pks, ok := FilmChunkAt(film, c)
@@ -108,14 +92,14 @@ func ScanKeyframeLoadouts(film *source.Film, known map[uint32]bool) ([]KeyframeL
 
 // keyframeLoadouts balaye un payload de keyframe et rend un loadout par record biped
 // porteur d'au moins une famille connue. PUR (aucune I/O).
-func keyframeLoadouts(pay []byte, known map[uint32]bool) []KeyframeLoadout {
+func keyframeLoadouts(pay []byte, known map[uint32]bool) []types.KeyframeLoadout {
 	rf := familiesByRecord(pay, known, keyframeBipedTI)
 	if len(rf) == 0 {
 		return nil
 	}
-	out := make([]KeyframeLoadout, 0, len(rf))
+	out := make([]types.KeyframeLoadout, 0, len(rf))
 	for _, r := range rf {
-		out = append(out, KeyframeLoadout{Slot: uint32(r.Rec.Slot), Families: r.Families})
+		out = append(out, types.KeyframeLoadout{Slot: uint32(r.Rec.Slot), Families: r.Families})
 	}
 	return out
 }
@@ -130,7 +114,7 @@ type recordFamilies struct {
 // familiesByRecord attribue chaque occurrence de famille connue au record de keyframe qui la
 // CONTIENT et ne retient que les records d'archétype wantTI. L'ordre de sortie est celui de la
 // PREMIÈRE occurrence de famille dans chaque record ; les alias ne sont PAS repliés (cf.
-// KeyframeLoadout.Families). PUR (aucune I/O).
+// types.KeyframeLoadout.Families). PUR (aucune I/O).
 //
 // C'est le cœur partagé des deux lectures d'armes du keyframe : les armes PORTÉES
 // (wantTI = keyframeBipedTI, cf. keyframeLoadouts) et les armes AU SOL

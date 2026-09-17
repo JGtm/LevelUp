@@ -32,6 +32,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -379,7 +380,7 @@ func v0ScanBipedeSurBande(dir string, bande map[uint32]bool, lay profile.I0Layou
 }
 
 // v0ContinuiteTracks mesure la continuite des trajectoires rendues par le chemin objet du monde.
-func v0ContinuiteTracks(tracks []grammar.ProjectileTrack) (int, float64) {
+func v0ContinuiteTracks(tracks []types.ProjectileTrack) (int, float64) {
 	pas, bons := 0, 0
 	for _, tr := range tracks {
 		for i := 1; i < len(tr.Pts); i++ {

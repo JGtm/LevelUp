@@ -56,7 +56,7 @@ import "sort"
 
 // DamageShare : une part de degats en POURCENTAGE ENTIER, avec son etat de mesure.
 //
-// TROIS ETATS, JAMAIS DEUX — exactement comme [Assist.Known], et pour la meme raison : NULL n est
+// TROIS ETATS, JAMAIS DEUX — exactement comme [types.Assist.Known], et pour la meme raison : NULL n est
 // jamais zero. `Known == false` veut dire QU ON N A PAS MESURE, jamais << 0 % de degats >>. Une
 // part de 0 % mesuree existe et se dit `{Pct: 0, Known: true}`.
 //
@@ -103,7 +103,7 @@ const (
 // STRICTEMENT INFERIEUR a 30. TROIS ASSISTANCES MANQUANTES QUI NE PEUVENT PAS VENIR DES MORTS
 // RATEES. Il ne reste donc que deux issues, et aucune n est tranchee :
 //
-//	(a) une mort porte DEUX assistants — l hypothese du champ simple tombe (voir [Assist.Extra],
+//	(a) une mort porte DEUX assistants — l hypothese du champ simple tombe (voir [types.Assist.Extra],
 //	    qui est structurellement aveugle a ce cas s il ne se manifeste pas par un second
 //	    kill-event attache) ;
 //	(b) certains << pas d assistant >> sont FAUX — et c est alors la distinction elle-meme qui
@@ -376,7 +376,7 @@ func (c *decodeCtx) killEventsOu(k *Kill, s *assistScan, used []bool, ou func(in
 //	    compteurs figes dans `assist_test.go` donnent le meme ordre de grandeur : 286 morts sans
 //	    assistant sur 370 attachees, 77 %.
 //
-// PIEGE POUR LE COLLECTEUR : un assistant REFUSE (`Rejected` non vide) laisse `Assist.Name` VIDE
+// PIEGE POUR LE COLLECTEUR : un assistant REFUSE (`Rejected` non vide) laisse `types.Assist.Name` VIDE
 // alors que `AssistDamage.Known` vaut vrai — le champ etait present, la part est mesuree, c est
 // son PORTEUR qu on refuse de nommer. `persist.KillEventInsert.AssistDamagePct` doit alors rester
 // nil : le persister refuse une part sans assistant nomme, et il a raison. Les trois rejets valent
@@ -460,7 +460,7 @@ type AssistStats struct {
 	// ARITHMETIQUE sur `9b191a7f` (plus haut dans ce fichier) donne une raison arithmetique de ne
 	// pas la tenir pour acquise.
 	AssistMulti int
-	// AssistExtraTotal : somme des [Assist.Extra] de la passe. Meme portee que `AssistMulti`, mais
+	// AssistExtraTotal : somme des [types.Assist.Extra] de la passe. Meme portee que `AssistMulti`, mais
 	// il compte les assistants en surplus et non les morts — une mort pourrait en porter deux.
 	// C est la quantite qui alimente `assist_extra_count` en base.
 	AssistExtraTotal int

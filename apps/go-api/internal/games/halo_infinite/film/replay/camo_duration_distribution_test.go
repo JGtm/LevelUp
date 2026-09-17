@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // camo_duration_distribution_test.go — LA DISTRIBUTION DES DUREES DES EPISODES CAMO DU
@@ -77,7 +78,7 @@ func TestCamoEpisodeDurationDistributionDuGolden(t *testing.T) {
 	}
 	step := uint64(doc.FrameIntervalMS) * 1000
 
-	bySlot := map[uint32][]grammar.CamoRead{}
+	bySlot := map[uint32][]types.CamoRead{}
 	for _, r := range g.CamoStates {
 		bySlot[r.Slot] = append(bySlot[r.Slot], r)
 	}

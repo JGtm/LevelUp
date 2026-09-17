@@ -1,6 +1,9 @@
 package grammar
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 func bp(slot uint32, ms int, x, y float32) BipedPosition {
 	return BipedPosition{Slot: slot, TimestampUS: uint64(ms) * 1000, X: x, Y: y}
@@ -81,7 +84,7 @@ func TestDropTeleportsExcept(t *testing.T) {
 		bp(535, 34, 22, 0),   // arrivée de téléportation : ~1290 m/s
 		bp(535, 51, 22.1, 0), // la trajectoire continue au nouvel endroit
 	}
-	evt := []TranslocatorTeleport{{Slot: 535, TimestampUS: 30_000}} // 4 ms avant l'arrivée
+	evt := []types.TranslocatorTeleport{{Slot: 535, TimestampUS: 30_000}} // 4 ms avant l'arrivée
 
 	t.Run("dans la fenetre : accepte, et l ancre suit", func(t *testing.T) {
 		got := DropTeleportsExcept(in, DefaultMaxSpeedMPS, TeleportExemptionsOf(evt))
@@ -92,21 +95,21 @@ func TestDropTeleportsExcept(t *testing.T) {
 	// Sans exemption applicable, le filtre actuel rejette l'arrivée PUIS le point suivant
 	// (la vitesse se mesure depuis la dernière position ACCEPTÉE) : 2 positions restent.
 	t.Run("autre slot : jamais exempte", func(t *testing.T) {
-		autre := []TranslocatorTeleport{{Slot: 600, TimestampUS: 30_000}}
+		autre := []types.TranslocatorTeleport{{Slot: 600, TimestampUS: 30_000}}
 		got := DropTeleportsExcept(in, DefaultMaxSpeedMPS, TeleportExemptionsOf(autre))
 		if len(got) != len(DropTeleports(in, DefaultMaxSpeedMPS)) {
 			t.Fatalf("un événement d'un AUTRE slot a levé le filtre : %d positions (%+v)", len(got), got)
 		}
 	})
 	t.Run("hors fenetre : jamais exempte", func(t *testing.T) {
-		loin := []TranslocatorTeleport{{Slot: 535, TimestampUS: 300_000}} // à +266 ms du saut
+		loin := []types.TranslocatorTeleport{{Slot: 535, TimestampUS: 300_000}} // à +266 ms du saut
 		got := DropTeleportsExcept(in, DefaultMaxSpeedMPS, TeleportExemptionsOf(loin))
 		if len(got) != len(DropTeleports(in, DefaultMaxSpeedMPS)) {
 			t.Fatalf("un événement hors ±200 ms a levé le filtre : %d positions (%+v)", len(got), got)
 		}
 	})
 	t.Run("bord de fenetre : ±200 ms inclus, pas au-dela", func(t *testing.T) {
-		x := TeleportExemptionsOf([]TranslocatorTeleport{{Slot: 5, TimestampUS: 1_000_000}})
+		x := TeleportExemptionsOf([]types.TranslocatorTeleport{{Slot: 5, TimestampUS: 1_000_000}})
 		if !x.covers(5, 1_000_000-translocExemptToleranceUS) ||
 			!x.covers(5, 1_000_000+translocExemptToleranceUS) {
 			t.Error("la borne ±200 ms doit être couverte (51/51 rejets mesurés y tombent)")
@@ -121,7 +124,7 @@ func TestDropTeleportsExcept(t *testing.T) {
 	// PREMIER événement du slot couvrirait le milieu, et ces assertions la tuent.
 	t.Run("deux evenements du meme slot : rien entre les ilots", func(t *testing.T) {
 		e1, e2 := uint64(1_000_000), uint64(10_000_000)
-		x := TeleportExemptionsOf([]TranslocatorTeleport{
+		x := TeleportExemptionsOf([]types.TranslocatorTeleport{
 			{Slot: 5, TimestampUS: e2}, // désordre volontaire : la construction re-trie
 			{Slot: 5, TimestampUS: e1},
 		})
@@ -147,7 +150,7 @@ func TestDropTeleportsExcept(t *testing.T) {
 			bp(535, 2_500, 60, 0), // aberration à ~3500 m/s, LOIN des deux événements
 			bp(535, 2_517, 0.3, 0),
 		}
-		x := TeleportExemptionsOf([]TranslocatorTeleport{
+		x := TeleportExemptionsOf([]types.TranslocatorTeleport{
 			{Slot: 535, TimestampUS: 30_000}, {Slot: 535, TimestampUS: 5_000_000},
 		})
 		got := DropTeleportsExcept(serie, DefaultMaxSpeedMPS, x)

@@ -39,6 +39,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // EquipmentCreationField désigne l'un des deux champs que le default-state de ti=37 lisait et jetait ; l'ordre est celui du flux.
@@ -86,81 +87,6 @@ const (
 	woNewHeaderBits = woNewTypeBits + woNewSlotBits + woNewGenBits + woNewTIBits
 )
 
-// EquipmentCreation est UN record de création d'objet d'équipement, lu jusqu'à sa position.
-type EquipmentCreation struct {
-	// Slot et Gen identifient la vie de l'objet — LA PAIRE, comme partout ailleurs : le pool de
-	// slots reboucle et la génération ne fait que 2 bits.
-	Slot, Gen uint32
-	// Chunk / PacketIndex / TimestampUS localisent la lecture (même horloge que BipedPosition).
-	Chunk, PacketIndex int
-	TimestampUS        uint64
-	// BitPos est la position de l'en-tête dans le payload, en bits (traçabilité).
-	BitPos int
-	// HasRef / Ref : la référence d'entité 5 bits, si la porte l'a transmise.
-	HasRef bool
-	Ref    uint32
-	// HasID / AbilityID : l'identifiant 32 bits « ability-enabled-id », si transmis.
-	HasID     bool
-	AbilityID uint32
-	// MPP porte les quatre champs du bloc `object-multiplayer-properties` du MÊME record
-	// (cf. MPPField). Ils sont là parce que le default-state de ti=37 les contient : chercher
-	// l'identité de l'objet ailleurs que dans son propre record de création n'aurait pas de sens.
-	MPPPresent [MPPFieldCount]bool
-	MPPVal     [MPPFieldCount]uint64
-	// X, Y, Z est la position du composant i0 du MÊME record : le lieu de la pose.
-	X, Y, Z float32
-	// Mask est la liste des index de composant du masque, strictement croissante.
-	Mask []int
-	// MaskFull dit que le masque était la branche PLEINE (R(64)) et non la branche éparse.
-	MaskFull bool
-	// MaskHasI0 dit que le masque annonçait i0 explicitement. Faux = i0 a été décodé quand
-	// même, parce que le masque par défaut {i0} est OR'd en amont par le moteur
-	// (vtable[0xa0], cf. consumeBipedDefaultStateMovement) : la position est alors le PREMIER
-	// composant décodé sans figurer au masque du flux.
-	MaskHasI0 bool
-	// DefaultStateBits est le nombre de bits qu'a consommés consumeDefaultStateTI37 sur CE
-	// record. Publié parce qu'un déserialiseur mal porté se voit à une largeur qui s'éparpille.
-	DefaultStateBits int
-	// HasAmmo / Ammo : les MUNITIONS de l'objet à sa naissance, lues dans le composant i20
-	// `weapon-ammo-component` du MÊME record (arme au sol uniquement — cf. ground_weapon_ammo.go,
-	// qui porte la mesure et la RÉSERVE DE LECTURE qui borne `HasAmmo`). Faux partout ailleurs :
-	// aucun autre archétype de cette marche ne demande la lecture.
-	HasAmmo bool
-	Ammo    GroundWeaponAmmo
-	// AfterBit est la position du premier bit après le composant i0 (traçabilité du balayage).
-	AfterBit int
-}
-
-// EquipmentCreationStats compte ce que le balayage a rencontré. Sans ces dénominateurs, une
-// distribution de valeurs ne se juge pas — et sans le détail des rejets, on ne sait pas si le
-// balayage rate des records ou en invente.
-type EquipmentCreationStats struct {
-	// Slots est le nombre de slots de la bande passée au balayage.
-	Slots int
-	// Anchors est le nombre d'en-têtes NEW ti=37 reconnus (les quatre constantes + la bande).
-	Anchors int
-	// Overflow : le default-state déborde du payload — le curseur n'est plus digne de confiance.
-	Overflow int
-	// MaskBad : compte hors bornes, index non croissants, ou index >= nombre de composants.
-	MaskBad int
-	// PosBad : position rejetée (porte non nulle, ou quantum saturé — cf. decodeWorldObjectPos).
-	PosBad int
-	// Accepted est le nombre de records rendus.
-	Accepted int
-	// MaskSparse / MaskFull : branche du masque des records acceptés.
-	MaskSparse, MaskFull int
-	// NoI0 : records acceptés dont le masque du flux n'annonçait PAS i0 (position décodée par
-	// le masque par défaut OR'd en amont). Comptés à part : ce sont les moins sûrs.
-	NoI0 int
-	// WithRef / WithID : records acceptés dont la porte a transmis la valeur du champ.
-	WithRef, WithID int
-	// WithAmmo : records acceptés dont les MUNITIONS ont pu être lues (composant i20 au masque
-	// ET marche prouvée bit-exacte — cf. ground_weapon_ammo.go). L'écart avec `Accepted` n'est
-	// pas une anomalie : il MESURE la réserve de lecture, et c'est lui qui doit tomber le jour
-	// où le portage d'i9 sera corrigé.
-	WithAmmo int
-}
-
 // ScanFilmEquipmentCreations décode les records de création des objets d'équipement du film de
 // dir, sur la bande de slots de ti=37 lue dans les images-clés.
 //
@@ -171,17 +97,17 @@ type EquipmentCreationStats struct {
 //
 // ScanFilmEquipmentCreations est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanEquipmentCreations].
-func ScanFilmEquipmentCreations(dir string, wr *profile.Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
+func ScanFilmEquipmentCreations(dir string, wr *profile.Vec3Range) ([]types.EquipmentCreation, types.EquipmentCreationStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, EquipmentCreationStats{}, err
+		return nil, types.EquipmentCreationStats{}, err
 	}
 	return ScanEquipmentCreations(contexteDeBobine(film), wr)
 }
 
 // ScanEquipmentCreations décode les records de création d'équipement d'un film DEJA CHARGE.
-func ScanEquipmentCreations(fc *FilmContext, wr *profile.Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
-	var st EquipmentCreationStats
+func ScanEquipmentCreations(fc *FilmContext, wr *profile.Vec3Range) ([]types.EquipmentCreation, types.EquipmentCreationStats, error) {
+	var st types.EquipmentCreationStats
 	if len(fc.ChunkNumbers()) == 0 {
 		return nil, st, ErrNoFilmChunk
 	}
@@ -203,10 +129,10 @@ func ScanEquipmentCreations(fc *FilmContext, wr *profile.Vec3Range) ([]Equipment
 // [ScanEquipmentCreationsForBand].
 func ScanFilmEquipmentCreationsForBand(
 	dir string, wr *profile.Vec3Range, band map[uint32]bool,
-) ([]EquipmentCreation, EquipmentCreationStats, error) {
+) ([]types.EquipmentCreation, types.EquipmentCreationStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, EquipmentCreationStats{}, err
+		return nil, types.EquipmentCreationStats{}, err
 	}
 	return ScanEquipmentCreationsForBand(contexteDeBobine(film), wr, band)
 }
@@ -214,8 +140,8 @@ func ScanFilmEquipmentCreationsForBand(
 // ScanEquipmentCreationsForBand balaye une bande de slots donnée dans un film DEJA CHARGE.
 func ScanEquipmentCreationsForBand(
 	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
-) ([]EquipmentCreation, EquipmentCreationStats, error) {
-	var st EquipmentCreationStats
+) ([]types.EquipmentCreation, types.EquipmentCreationStats, error) {
+	var st types.EquipmentCreationStats
 	if wr == nil {
 		return nil, st, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
 	}
@@ -338,9 +264,9 @@ func (w equipCreationWalk) posAdvance() int {
 
 // scanPayload balaye UN payload delta et rend les records de création reconnus.
 func (w equipCreationWalk) scanPayload(
-	pay []byte, st *EquipmentCreationStats, pk FilmPacket, chunk int,
-) []EquipmentCreation {
-	var out []EquipmentCreation
+	pay []byte, st *types.EquipmentCreationStats, pk FilmPacket, chunk int,
+) []types.EquipmentCreation {
+	var out []types.EquipmentCreation
 	total := len(pay) * 8
 	limit := total - woNewHeaderBits
 	for p := 0; p <= limit; p++ {
@@ -426,9 +352,9 @@ func matchWorldObjectNewHeaderIn(
 // probablement un faux positif du balayage bit à bit ; le dire par un compteur, plutôt que par
 // un rejet silencieux, est ce qui permet de juger la sélectivité de l'ancre.
 func (w equipCreationWalk) readCreation(
-	pay []byte, p, total int, st *EquipmentCreationStats,
-) (EquipmentCreation, bool) {
-	var cre EquipmentCreation
+	pay []byte, p, total int, st *types.EquipmentCreationStats,
+) (types.EquipmentCreation, bool) {
+	var cre types.EquipmentCreation
 	*w.cur = equipCreationRead{}
 	br := LecteurSur(pay)
 	br.PoserContexte(w.contexte())

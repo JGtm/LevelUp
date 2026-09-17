@@ -38,6 +38,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // corpusPlancher : en dessous de ce nombre de films lus, le test ne mesure rien et le dit. Le
@@ -134,7 +135,7 @@ func mesurerFilmCorpus(t *testing.T, dir string, b *bilanCorpus) {
 }
 
 // rangerFilmCorpus verifie les invariants d'un film lu et le confronte a l'oracle.
-func rangerFilmCorpus(t *testing.T, nom string, slots []PlayerSlot, rep PlayerTableReport,
+func rangerFilmCorpus(t *testing.T, nom string, slots []types.PlayerSlot, rep PlayerTableReport,
 	d []byte, b *bilanCorpus) {
 	t.Helper()
 	b.fermes++

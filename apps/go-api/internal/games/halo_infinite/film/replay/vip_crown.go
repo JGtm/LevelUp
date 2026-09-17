@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // vip_crown.go — LA REGLE : de quoi est faite une periode de port de la COURONNE VIP.
@@ -46,7 +47,7 @@ type VipInput struct {
 	// drapeau : ils portent les selections VIP (`comp 22 A`) et les progressions du compteur de
 	// morts qui identifient les slots. Aucun fait de match n'entre : le VIP se nomme par les
 	// instants de mort, et le calque est donc publiable hors ligne.
-	Records []objectives.StatRecord
+	Records []types.StatRecord
 }
 
 // VipCrownScan porte ce que le film rend du VIP. Les lectures voyagent ensemble, et `Scanned`

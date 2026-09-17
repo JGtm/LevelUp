@@ -36,6 +36,7 @@ import (
 	"errors"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Les trois refus d'un film charge. Ils sont NOMMES parce que quinze balayages les rendaient
@@ -159,7 +160,7 @@ func filmChunkPos(f *source.Film, num int) int {
 // avance de `16 + taille` a chaque paquet emis et ne SAUTE jamais d'octet — ses deux regles
 // d'arret (en-tete qui deborde, en-tete degenere) arretent la marche, elles ne la font pas
 // avancer. `TestFilmChunkAtEgaleWalkPackets` le verifie sur un vrai chunk, borne comprise.
-func filmPacketsOf(pkts []source.Packet) []FilmPacket {
+func filmPacketsOf(pkts []types.Packet) []FilmPacket {
 	if len(pkts) == 0 {
 		return nil
 	}

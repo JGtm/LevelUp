@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // poJuge fabrique un juge a partir de points et de poses litteraux.
@@ -44,8 +45,8 @@ func poPos(slot uint32, ts uint64, x, y, z float32) grammar.BipedPosition {
 }
 
 // poRamassage fabrique un ramassage. `class` est ecrit en clair par l'appelant.
-func poRamassage(slot uint32, ts uint64, class uint8) grammar.BipedPickup {
-	return grammar.BipedPickup{Slot: slot, TimestampUS: ts, Class: class, CatalogID: 0xbcabbe43}
+func poRamassage(slot uint32, ts uint64, class uint8) types.BipedPickup {
+	return types.BipedPickup{Slot: slot, TimestampUS: ts, Class: class, CatalogID: 0xbcabbe43}
 }
 
 func poClock() replayClock {
@@ -63,13 +64,13 @@ func TestPickupOriginSeauxEtInvariant(t *testing.T) {
 		poPos(3, 3_000_000, 200, 200, 0),   // nulle part   -> abstention
 		poPos(4, 4_000_000, 10.1, 10.0, 0), // sur le point, mais c'est une ARME
 	}
-	in := []grammar.BipedPickup{
+	in := []types.BipedPickup{
 		poRamassage(1, 1_000_000, 2), // grenade
 		poRamassage(2, 2_000_000, 3), // equipement
 		poRamassage(3, 3_000_000, 2), // grenade
 		poRamassage(4, 4_000_000, 0), // ARME (classe 0, ecrite en clair)
 	}
-	got, cov := buildPickups(in, poClock(), pickupInputs{occupant: nil, st: grammar.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(points, SpawnPointsEstablished, pos, dropped)})
+	got, cov := buildPickups(in, poClock(), pickupInputs{occupant: nil, st: types.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(points, SpawnPointsEstablished, pos, dropped)})
 	if len(got) != 4 {
 		t.Fatalf("4 ramassages publies attendus, obtenu %d", len(got))
 	}
@@ -113,8 +114,8 @@ func TestPickupOriginSocleLEmporteSurLeSol(t *testing.T) {
 	points := []MapSpawnPoint{{X: 10, Y: 10, Z: 0, Kind: "equipment"}}
 	dropped := []droppedSpot{{t: 0, jusqua: -1, x: 10, y: 10, z: 0}}
 	pos := []grammar.BipedPosition{poPos(1, 1_000_000, 10, 10, 0)}
-	in := []grammar.BipedPickup{poRamassage(1, 1_000_000, 3)}
-	got, _ := buildPickups(in, poClock(), pickupInputs{occupant: nil, st: grammar.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(points, SpawnPointsEstablished, pos, dropped)})
+	in := []types.BipedPickup{poRamassage(1, 1_000_000, 3)}
+	got, _ := buildPickups(in, poClock(), pickupInputs{occupant: nil, st: types.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(points, SpawnPointsEstablished, pos, dropped)})
 	if len(got) != 1 || got[0].Origin != PickupOriginSpawner {
 		t.Fatalf("point et pose au meme endroit : origine %q, attendu %q — un fait de carte "+
 			"au centimetre l'emporte sur une inference de film", got[0].Origin,
@@ -122,7 +123,7 @@ func TestPickupOriginSocleLEmporteSurLeSol(t *testing.T) {
 	}
 	// LE TEMOIN DE L'ORDRE : sans le point, le meme ramassage doit devenir `ground`. Sans ce
 	// second appel, le test ne distinguerait pas « spawner gagne » de « ground ne marche pas ».
-	gotSansPoint, _ := buildPickups(in, poClock(), pickupInputs{occupant: nil, st: grammar.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(nil, SpawnPointsEstablished, pos, dropped)})
+	gotSansPoint, _ := buildPickups(in, poClock(), pickupInputs{occupant: nil, st: types.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(nil, SpawnPointsEstablished, pos, dropped)})
 	if gotSansPoint[0].Origin != PickupOriginGround {
 		t.Fatalf("sans point catalogue, la meme pose doit rendre %q, obtenu %q",
 			PickupOriginGround, gotSansPoint[0].Origin)
@@ -138,7 +139,7 @@ func TestPickupOriginSocleLEmporteSurLeSol(t *testing.T) {
 // bien, et precisement la ou l'origine est le moins fiable.
 func TestPickupOriginTroisEtatsDuCatalogue(t *testing.T) {
 	pos := []grammar.BipedPosition{poPos(1, 1_000_000, 200, 200, 0)}
-	in := []grammar.BipedPickup{poRamassage(1, 1_000_000, 2)}
+	in := []types.BipedPickup{poRamassage(1, 1_000_000, 2)}
 	// LES ATTENDUS SONT DES LITTERAUX, JAMAIS LES CONSTANTES TESTEES. Ecrits avec les
 	// constantes des deux cotes, ces cas etaient TAUTOLOGIQUES : renommer la valeur de
 	// `SpawnPointsNotEstablished` en `"established"` — c'est-a-dire replier l'etat sur celui
@@ -194,7 +195,7 @@ func TestPickupOriginComptePointsEtablis(t *testing.T) {
 		poPos(1, 1_000_000, 10, 10, 0),
 		poPos(2, 2_000_000, 50, 50, 0),
 	}
-	in := []grammar.BipedPickup{poRamassage(1, 1_000_000, 2), poRamassage(2, 2_000_000, 3)}
+	in := []types.BipedPickup{poRamassage(1, 1_000_000, 2), poRamassage(2, 2_000_000, 3)}
 	_, cov := buildPickups(in, poClock(), pickupInputs{
 		judge: poJuge(points, SpawnPointsEstablished, pos, nil)})
 	if cov.MapCatalogPoints != 3 {
@@ -215,8 +216,8 @@ func TestPickupOriginRefuseUnePositionTropLointaineDansLeTemps(t *testing.T) {
 	points := []MapSpawnPoint{{X: 10, Y: 10, Z: 0, Kind: "grenade"}}
 	// La position est sur le point, mais une SECONDE avant le ramassage — dix fois la garde.
 	pos := []grammar.BipedPosition{poPos(1, 1_000_000, 10, 10, 0)}
-	in := []grammar.BipedPickup{poRamassage(1, 1_000_000+10*PickupOriginPosMaxUS, 2)}
-	got, cov := buildPickups(in, poClock(), pickupInputs{occupant: nil, st: grammar.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(points, SpawnPointsEstablished, pos, nil)})
+	in := []types.BipedPickup{poRamassage(1, 1_000_000+10*PickupOriginPosMaxUS, 2)}
+	got, cov := buildPickups(in, poClock(), pickupInputs{occupant: nil, st: types.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(points, SpawnPointsEstablished, pos, nil)})
 	if got[0].Origin != "" {
 		t.Fatalf("position trop vieille : origine %q, attendu l'abstention — sinon on invente "+
 			"un lieu au ramassage", got[0].Origin)
@@ -256,7 +257,7 @@ func TestPickupOriginGroundEstBorneAuxDeuxBOUTS(t *testing.T) {
 			// L'horloge : step 100 ms, donc frame N <=> N * 100_000 us.
 			ts := uint64(c.frame) * 100_000
 			pos := []grammar.BipedPosition{poPos(1, ts, 10, 10, 0)}
-			in := []grammar.BipedPickup{poRamassage(1, ts, 2)}
+			in := []types.BipedPickup{poRamassage(1, ts, 2)}
 			got, _ := buildPickups(in, poClock(), pickupInputs{
 				judge: poJuge(nil, SpawnPointsEstablished, pos, dropped)})
 			if len(got) != 1 {
@@ -280,7 +281,7 @@ func TestPickupOriginGroundSansPreuveDeDisparitionNEstPasBorne(t *testing.T) {
 	dropped := []droppedSpot{{t: 100, jusqua: -1, x: 10, y: 10, z: 0}}
 	ts := uint64(2990) * 100_000
 	pos := []grammar.BipedPosition{poPos(1, ts, 10, 10, 0)}
-	in := []grammar.BipedPickup{poRamassage(1, ts, 2)}
+	in := []types.BipedPickup{poRamassage(1, ts, 2)}
 	got, _ := buildPickups(in, poClock(), pickupInputs{
 		judge: poJuge(nil, SpawnPointsEstablished, pos, dropped)})
 	if got[0].Origin != PickupOriginGround {

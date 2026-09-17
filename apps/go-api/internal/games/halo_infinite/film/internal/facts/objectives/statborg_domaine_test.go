@@ -20,7 +20,10 @@ package objectives
 // 2^20 vaut 102 934, et 32 518 sur dix films sur onze ; la population aberrante commence a
 // 2 415 919 104. Entre les deux, RIEN.
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"testing"
+)
 
 // TestDomaineAccepteUnEnregistrementREEL — LE TEMOIN POSITIF, et il est indispensable : un
 // filtre qui refuserait tout « n'aurait plus de faux positifs » sans rien prouver. Le vecteur
@@ -50,7 +53,7 @@ func TestDomaineAccepteUnEnregistrementREEL(t *testing.T) {
 // [scanFrameForRecords] a ses propres temoins depuis la revue 6.R — `statborg_domaine_branche_test.go`,
 // ou retirer `!statCountersInDomain(comps)` du balayage rougit.
 func TestDomaineRefuseLEnregistrementDeFb1a1a72(t *testing.T) {
-	rec := map[int]StatValue{
+	rec := map[int]types.StatValue{
 		7:  {A: 1, B: 2415919104},
 		14: {A: 0, B: 0},
 		19: {A: 0, B: 0},
@@ -70,7 +73,7 @@ func TestDomaineRefuseLEnregistrementDeFb1a1a72(t *testing.T) {
 	}
 	// Le MEME enregistrement prive de son seul canal hors domaine redevient recevable : le
 	// filtre ne juge que le domaine, jamais la forme ni le nombre de composants.
-	rec[7] = StatValue{A: 1, B: 2}
+	rec[7] = types.StatValue{A: 1, B: 2}
 	if !statCountersInDomain(rec) {
 		t.Error("le filtre refuse un enregistrement dont tous les canaux tiennent dans le " +
 			"domaine : il juge autre chose que le domaine")
@@ -84,16 +87,16 @@ func TestDomaineRefuseLEnregistrementDeFb1a1a72(t *testing.T) {
 func TestDomaineEstUneBorneEtPasUnSigne(t *testing.T) {
 	for _, cas := range []struct {
 		nom    string
-		v      StatValue
+		v      types.StatValue
 		accept bool
 	}{
-		{"pire valeur saine mesuree", StatValue{A: 102934}, true},
-		{"exactement a la borne", StatValue{A: statMaxCounter}, true},
-		{"un cran au-dela", StatValue{A: statMaxCounter + 1}, false},
-		{"negatif au-dela", StatValue{B: -(statMaxCounter + 1)}, false},
-		{"negatif plausible", StatValue{B: -333}, true},
+		{"pire valeur saine mesuree", types.StatValue{A: 102934}, true},
+		{"exactement a la borne", types.StatValue{A: statMaxCounter}, true},
+		{"un cran au-dela", types.StatValue{A: statMaxCounter + 1}, false},
+		{"negatif au-dela", types.StatValue{B: -(statMaxCounter + 1)}, false},
+		{"negatif plausible", types.StatValue{B: -333}, true},
 	} {
-		if got := statCountersInDomain(map[int]StatValue{22: cas.v}); got != cas.accept {
+		if got := statCountersInDomain(map[int]types.StatValue{22: cas.v}); got != cas.accept {
 			t.Errorf("%s : %+v accepte=%v, attendu %v", cas.nom, cas.v, got, cas.accept)
 		}
 	}

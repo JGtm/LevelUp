@@ -1,6 +1,7 @@
 package objectives
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
 	"strings"
 )
@@ -96,8 +97,8 @@ func (e LabelledEvent) Resolved() bool { return e.Award != "" }
 // que l'API attribue au joueur de ce slot sur ce match (la correspondance slot -> joueur
 // est du ressort de l'appelant). Un slot sans quota est ignore : sans quota il n'y a pas de
 // nommage possible, et inventer un nom serait pire que se taire.
-func LabelPersonalScore(points []ScorePoint, quotas map[int][]Award) []LabelledEvent {
-	bySlot := map[int][]ScorePoint{}
+func LabelPersonalScore(points []types.ScorePoint, quotas map[int][]Award) []LabelledEvent {
+	bySlot := map[int][]types.ScorePoint{}
 	for _, p := range points {
 		if _, ok := quotas[p.Slot]; !ok {
 			continue
@@ -139,7 +140,7 @@ func LabelPersonalScore(points []ScorePoint, quotas map[int][]Award) []LabelledE
 // que le garde se reduisait au `d == 0` teste deux lignes plus bas. Il ne faisait rien.
 // Retire avec sa variable ; le comportement, lui, est desormais epingle par
 // TestLabelPersonalScorePremiereLectureEstUnIncrementDepuisZero.)
-func labelSlot(slot int, ps []ScorePoint, awards []Award) []LabelledEvent {
+func labelSlot(slot int, ps []types.ScorePoint, awards []Award) []LabelledEvent {
 	units := unitIndex(awards)
 	var out []LabelledEvent
 	prev := int64(0)

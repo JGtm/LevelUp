@@ -26,6 +26,7 @@ package objectives
 import (
 	"fmt"
 	"io/fs"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,8 +38,8 @@ import (
 // en porte zero — la forme exacte du slot 12 de `c0a82e88`.
 //
 // `assistsAberrant` est parametre pour que le test du cas SAIN reutilise la meme table.
-func derivRecs(assistsAberrant int) []StatRecord {
-	var out []StatRecord
+func derivRecs(assistsAberrant int) []types.StatRecord {
+	var out []types.StatRecord
 	// Le slot 10 progresse normalement : 3 frags, 3 morts, 3 assistances.
 	for n := 1; n <= 3; n++ {
 		out = append(out, recKDA(1_000+n*1_000, 10, 0, n, n, n))
@@ -52,13 +53,13 @@ func derivRecs(assistsAberrant int) []StatRecord {
 }
 
 // derivFeuille : la feuille de match des deux slots — le slot 12 y porte ZERO assistance.
-var derivFeuille = []PlayerLine{
+var derivFeuille = []types.PlayerLine{
 	{XUID: "aaa", Kills: 3, Deaths: 3, Assists: 3},
 	{XUID: "bbb", Kills: 5, Deaths: 0, Assists: 0},
 }
 
 // finalDe rend la derniere valeur d'une serie, ou -1 quand elle est absente.
-func finalDe(pts []ScorePoint) int64 {
+func finalDe(pts []types.ScorePoint) int64 {
 	if len(pts) == 0 {
 		return -1
 	}
@@ -141,7 +142,7 @@ func TestSerieSaineTraverseLaDerivationIntacte(t *testing.T) {
 // points a zero, et `replay.PlayerScore.empty()` lit cette presence. Une derivation qui jetterait
 // les paliers ferait DISPARAITRE du document un joueur dont les quatre compteurs sont a zero.
 func TestBoundedSeriesGardeLaFormeDeLaSuite(t *testing.T) {
-	pts := []ScorePoint{pt(100, 0), pt(200, 1), pt(300, 1), pt(400, 1_000), pt(500, 1_002)}
+	pts := []types.ScorePoint{pt(100, 0), pt(200, 1), pt(300, 1), pt(400, 1_000), pt(500, 1_002)}
 	got := boundedSeries(pts)
 
 	if len(got) != len(pts) {
@@ -166,7 +167,7 @@ func TestBoundedSeriesGardeLaFormeDeLaSuite(t *testing.T) {
 // echantillon de formes : le dernier point de [boundedSeries] vaut toujours le nombre d'instants
 // rendus par [incrementTimes]. C'est l'invariant que le defaut 6.R violait.
 func TestBoundedSeriesEtIncrementTimesNeDiventJamaisDeuxChoses(t *testing.T) {
-	cas := map[string][]ScorePoint{
+	cas := map[string][]types.ScorePoint{
 		"serie vide":           {},
 		"palier seul":          {pt(100, 0), pt(200, 0)},
 		"progression douce":    {pt(100, 1), pt(200, 2), pt(300, 5)},

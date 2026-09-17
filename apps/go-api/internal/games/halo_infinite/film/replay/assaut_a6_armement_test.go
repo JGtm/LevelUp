@@ -11,7 +11,7 @@ package replay
 // A 28 composants, ce sont 56 emplacements que rien n'avait jamais vus.
 //
 // L'utilisateur, le 2026-08-31 : « pour l'armement a mon avis ca doit etre dans le statborg ».
-// Les canaux C et D sont depuis ce jour decodes ([objectives.StatValue]) ; cet instrument
+// Les canaux C et D sont depuis ce jour decodes ([types.StatValue]) ; cet instrument
 // les balaie.
 //
 // # LE CRITERE, ecrit AVANT la mesure, et il se valide LUI-MEME
@@ -50,6 +50,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -73,7 +74,7 @@ func (c a6Canal) String() string { return fmt.Sprintf("comp %2d %s", c.comp, c.c
 
 // a6Valeur rend la valeur d'un canal, et si elle est PRESENTE. La distinction compte : un canal
 // conditionnel ABSENT et un canal a zero sont deux choses differentes.
-func a6Valeur(v objectives.StatValue, canal string) (int64, bool) {
+func a6Valeur(v types.StatValue, canal string) (int64, bool) {
 	switch canal {
 	case "A":
 		return v.A, true
@@ -174,7 +175,7 @@ func TestAssautA6Armement(t *testing.T) {
 
 // a6Progressions rend les instants ou le canal PROGRESSE, sur les slots de JOUEUR. Un armement
 // est un geste de joueur ; les slots d'equipe portent des totaux, pas des gestes.
-func a6Progressions(recs []objectives.StatRecord, comp int, canal string) []int {
+func a6Progressions(recs []types.StatRecord, comp int, canal string) []int {
 	type cle struct{ slot, round int }
 	dernier := map[cle]int64{}
 	vus := map[cle]bool{}
@@ -340,7 +341,7 @@ func TestAssautA6Minuterie(t *testing.T) {
 
 // a6CorrelationsParSlot rend, pour chaque slot ayant au moins 4 emissions dans la fenetre, la
 // correlation entre la valeur du canal et le TEMPS RESTANT avant l'explosion.
-func a6CorrelationsParSlot(recs []objectives.StatRecord, comp int, canal string, T int) []float64 {
+func a6CorrelationsParSlot(recs []types.StatRecord, comp int, canal string, T int) []float64 {
 	parSlot := map[int][][2]float64{}
 	for _, r := range recs {
 		if r.TimeMS >= T || r.TimeMS < T-a6FenetreMecheMS {

@@ -37,6 +37,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 func TestGroundWeaponAfter(t *testing.T) {
@@ -89,7 +90,7 @@ func TestGroundWeaponAfter(t *testing.T) {
 // quelles générations étaient des armes au sol. Le record de création les nomme.
 func gwLogLifeDispersion(
 	t *testing.T, dir string, wr *profile.Vec3Range, band map[uint32]bool,
-	cre []grammar.EquipmentCreation,
+	cre []types.EquipmentCreation,
 ) {
 	t.Helper()
 	lives := map[[2]uint32]bool{}
@@ -129,7 +130,7 @@ func gwSplitByLife(
 }
 
 // gwConfirmedSlots rend les slots dont AU MOINS un record de création ti=42 a été accepté.
-func gwConfirmedSlots(cre []grammar.EquipmentCreation) map[uint32]bool {
+func gwConfirmedSlots(cre []types.EquipmentCreation) map[uint32]bool {
 	out := map[uint32]bool{}
 	for _, c := range cre {
 		out[c.Slot] = true
@@ -170,7 +171,7 @@ func gwGhostOfSize(band map[uint32]bool, n int) map[uint32]bool {
 // DEUX CHAÎNES INDÉPENDANTES : le mot MPP vient du default-state d'un record delta, la famille
 // d'un balayage de motifs dans le payload d'image-clé. Leur accord ne peut pas être un artefact
 // commun — et leur DÉSACCORD dirait que le mot de 32 bits n'est pas ce qu'on croit.
-func gwLogIdentity(t *testing.T, dir string, cre []grammar.EquipmentCreation) {
+func gwLogIdentity(t *testing.T, dir string, cre []types.EquipmentCreation) {
 	t.Helper()
 	known := loadoutFamilies()
 	kf, err := grammar.ScanFilmKeyframeGroundWeapons(dir, known)

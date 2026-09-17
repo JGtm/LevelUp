@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // manches_compteurs_test.go — LA DECOUPE PAR MANCHE CONFRONTEE AU TEMPS.
@@ -63,11 +64,11 @@ var manchesSlots = []int{10, 12, 14, 16, 18, 20, 22, 24}
 //
 // `egare` ajoute L'ECHANTILLON EGARE : un enregistrement date DANS la manche 1 (14 000 ms) qui
 // declare la manche 0 et porte [manchesEgareAssists] assistances pour le slot 12.
-func deuxManchesFixture(egare bool) []objectives.StatRecord {
+func deuxManchesFixture(egare bool) []types.StatRecord {
 	recs := manchesCorps(0, manchesDebutR0)
 	recs = append(recs, manchesCorps(1, manchesDebutR1)...)
 	if egare {
-		recs = append(recs, statRec(14_000, 12, 0, map[int]objectives.StatValue{
+		recs = append(recs, statRec(14_000, 12, 0, map[int]types.StatValue{
 			2: {A: 0, B: 0}, 3: {A: manchesEgareAssists},
 		}))
 	}
@@ -76,15 +77,15 @@ func deuxManchesFixture(egare bool) []objectives.StatRecord {
 
 // manchesCorps rend une manche complete : le train de score de mode du slot d'equipe, puis le
 // bloc des huit slots de joueur.
-func manchesCorps(round, debut int) []objectives.StatRecord {
+func manchesCorps(round, debut int) []types.StatRecord {
 	return append(modeRamp(6, round, debut, 500, 1, 2, 3),
 		manchesBloc(round, debut, 3, manchesSlots)...)
 }
 
 // manchesBloc rend, pour chaque slot donne, l'ouverture a zero de la manche puis `n`
 // progressions espacees de [manchesPasProgression], decalees slot par slot.
-func manchesBloc(round, debut, n int, slots []int) []objectives.StatRecord {
-	var recs []objectives.StatRecord
+func manchesBloc(round, debut, n int, slots []int) []types.StatRecord {
+	var recs []types.StatRecord
 	for j, slot := range slots {
 		recs = append(recs, coreLine(slot, round, debut, 0, 0, 0, 0)...)
 		for i := 0; i < n; i++ {
@@ -122,12 +123,12 @@ func manchesMorts() []Death {
 
 // assistsDuSlot rend la serie d'assistances par manche d'un slot, telle que la production la
 // decoupe.
-func assistsDuSlot(recs []objectives.StatRecord, slot int) map[int][]objectives.ScorePoint {
+func assistsDuSlot(recs []types.StatRecord, slot int) map[int][]types.ScorePoint {
 	return objectives.SeriesByRound(recs, objectives.AssistsComponent, false)[slot]
 }
 
 // dernierPoint rend l'instant et la valeur du dernier point d'une suite, ou (-1, -1).
-func dernierPoint(pts []objectives.ScorePoint) (int, int64) {
+func dernierPoint(pts []types.ScorePoint) (int, int64) {
 	if len(pts) == 0 {
 		return -1, -1
 	}
@@ -194,7 +195,7 @@ func TestEchantillonEgareNeGonflePasLeTotalDuJoueur(t *testing.T) {
 // MUTATION : retirer l'appel a `ChronologicalTotal` dans `cumulateRounds` ou dans
 // `seriesOfRounds` laisse passer le point qui recule.
 func TestTotalNonChronologiqueEstRefuse(t *testing.T) {
-	pts := []objectives.ScorePoint{
+	pts := []types.ScorePoint{
 		{TimeMS: 1_412, Slot: 12, Value: 1},
 		{TimeMS: 3_167, Slot: 12, Value: 60},
 		{TimeMS: 3_057, Slot: 12, Value: 61},
@@ -255,7 +256,7 @@ func TestSerieCumuleeParSlotResteChronologique(t *testing.T) {
 // eventuelle se voie.
 func TestMonoMancheInchangeParLesBornes(t *testing.T) {
 	recs := manchesCorps(0, manchesDebutR0)
-	tardif := statRec(20_000, 12, 0, map[int]objectives.StatValue{3: {A: manchesEgareAssists}})
+	tardif := statRec(20_000, 12, 0, map[int]types.StatValue{3: {A: manchesEgareAssists}})
 	recs = append(recs, tardif)
 
 	if objectives.ResolveRoundBounds(recs).Excludes(tardif) {
@@ -285,11 +286,11 @@ func TestMancheSansConsensusNeFixeAucuneBorne(t *testing.T) {
 	// le parasite jetterait (sur `a4083bd2`, 153 enregistrements sur 719).
 	for j, slot := range manchesSlots {
 		recs = append(recs, statRec(25_000+j*manchesDecalageSlot, slot, 0,
-			map[int]objectives.StatValue{3: {A: 4}}))
+			map[int]types.StatValue{3: {A: 4}}))
 	}
 	// Le parasite : UN enregistrement, UN slot, date ENTRE les deux vraies manches — la
 	// chaine des debuts reste donc croissante, et seule la majorite de slots peut le refuser.
-	recs = append(recs, statRec(20_000, 10, 1, map[int]objectives.StatValue{3: {A: 7}}))
+	recs = append(recs, statRec(20_000, 10, 1, map[int]types.StatValue{3: {A: 7}}))
 	recs = append(recs, manchesCorps(2, 40_000)...)
 
 	if n := objectives.ResolveRoundBounds(recs).Outliers(recs); n != 0 {
@@ -340,7 +341,7 @@ func TestDebutsNonCroissantsNePosentAucuneBorne(t *testing.T) {
 // du slot 10 a 5 000 ms.
 func TestEchantillonPrecoceNAlimentePasSaMancheDeclaree(t *testing.T) {
 	recs := deuxManchesFixture(false)
-	precoce := statRec(5_000, 10, 1, map[int]objectives.StatValue{3: {A: 0}})
+	precoce := statRec(5_000, 10, 1, map[int]types.StatValue{3: {A: 0}})
 	recs = append(recs, precoce)
 
 	if !objectives.ResolveRoundBounds(recs).Excludes(precoce) {
@@ -386,7 +387,7 @@ func TestBorneNonCredibleNestPasPosee(t *testing.T) {
 func TestEchantillonEgareNeNommeAucuneAction(t *testing.T) {
 	recs := deuxManchesFixture(false)
 	// L'egare : date DANS la manche 1, declare la manche 0, porte 58 vols de drapeau.
-	recs = append(recs, statRec(14_000, 12, 0, map[int]objectives.StatValue{24: {A: 58}}))
+	recs = append(recs, statRec(14_000, 12, 0, map[int]types.StatValue{24: {A: 58}}))
 
 	vols := 0
 	for _, e := range objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeFlag) {
@@ -410,7 +411,7 @@ func TestMedianeBasseNeCoupePasLOuvertureDUneManche(t *testing.T) {
 	recs := modeRamp(10, 0, 1_000, 500, 1, 2, 3)
 	recs = append(recs, coreLine(10, 0, 1_000, 1, 1, 1, 10)...)
 	recs = append(recs, coreLine(12, 0, 1_500, 1, 1, 1, 10)...)
-	ouverture := statRec(20_000, 10, 1, map[int]objectives.StatValue{3: {A: 1}})
+	ouverture := statRec(20_000, 10, 1, map[int]types.StatValue{3: {A: 1}})
 	recs = append(recs, modeRamp(10, 1, 20_000, 500, 1, 2, 3)...)
 	recs = append(recs, ouverture)
 	recs = append(recs, coreLine(12, 1, 20_050, 1, 1, 1, 10)...)

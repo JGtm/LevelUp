@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // equipment_spawn_events.go — LE FAIT ÉCRIT « une PIÈCE a été engendrée » : l'événement de
 // liste de type 103 `EquipmentSpawnedObject`, et la vie d'objet que sa deuxième référence
 // DÉSIGNE.
@@ -47,7 +49,7 @@ package grammar
 // table des largeurs de charge des 123 types (lot R7, six fichiers d'instruments) et une
 // dérive de marche y coûterait tout le paquet. Or **927 des 931 occurrences du type 103 sont en
 // position 1** (rapport F.0 §1.1) : la marche complète n'en ajoute que quatre. Les occurrences
-// non lues sont un manque MESURÉ, compté par [EquipmentSpawnStats] au travers du dénominateur
+// non lues sont un manque MESURÉ, compté par [types.EquipmentSpawnStats] au travers du dénominateur
 // de listes, et la lecture ne dérive jamais — le cadrage de tête est certain.
 
 // EventEquipmentSpawnedObject est le type de liste « une pièce a été engendrée ».
@@ -61,59 +63,17 @@ const EventEquipmentSpawnedObject = 103
 // `EquipmentTranslocatorTeleportEffects`, établie indépendamment par le lot R1.
 const equipmentSpawnRefBase = 512
 
-// EquipmentSpawnEvent est UNE occurrence du type 103, avec la vie d'objet qu'elle désigne.
-type EquipmentSpawnEvent struct {
-	// Chunk / PacketIndex localisent l'événement dans le film.
-	Chunk, PacketIndex int
-	// TimestampUS est l'horodatage du paquet — MÊME horloge que
-	// [EquipmentPlacement.T0US] et [EquipmentCreation.TimestampUS], donc croisable sans
-	// recalage.
-	TimestampUS uint64
-	// Spawned est la vie d'objet ENGENDRÉE, telle que la référence 1 la désigne : la paire
-	// (slot, génération), exactement la clé qu'un record de création écrit. Ne vaut que si
-	// [EquipmentSpawnEvent.SpawnedValid].
-	Spawned EquipmentLifeKey
-	// SpawnedValid : la référence 1 portait sa garde. Faux sur 6 occurrences sur 931.
-	SpawnedValid bool
-	// Source est la PREMIÈRE référence, rendue BRUTE et non interprétée : elle désigne un
-	// `ti=37` de longue durée que les images-clés voient et qu'aucune création delta ne porte.
-	// PISTE pour l'équipement source d'un déploiement, non instruite (table D du registre 0.E).
-	Source EquipmentLifeKey
-	// SourceValid : la référence 0 portait sa garde (929 sur 931).
-	SourceValid bool
-	// Ref2Present : la TROISIÈME référence portait sa garde. Comptée et JAMAIS LUE : la mesure
-	// du parc en trouve 3 sur 931, donc rien ne permet d'établir ce qu'elle désigne. Le compte
-	// laisse un futur lot voir si un build la pose davantage, sans qu'aucune décision ne repose
-	// dessus aujourd'hui.
-	Ref2Present bool
-}
-
-// EquipmentSpawnStats dit ce que le balayage a vu — les dénominateurs sans lesquels un compte
-// de zéro ne se distingue pas d'un film muet.
-type EquipmentSpawnStats struct {
-	// Chunks est le nombre de chunks lus ; Packets le nombre de paquets delta traversés.
-	Chunks, Packets int
-	// Lists est le nombre de paquets dont la liste d'événements n'est PAS vide — le
-	// dénominateur de la lecture de tête.
-	Lists int
-	// Events est le nombre d'occurrences du type 103 lues en tête de liste.
-	Events int
-	// WithSpawned / WithSource comptent les références présentes ; Ref2 compte les troisièmes
-	// références posées (attendu : ~3 sur 931, cf. l'en-tête).
-	WithSpawned, WithSource, Ref2 int
-}
-
 // ScanEquipmentSpawnEvents lit les événements 103 de tête de liste d'un film DÉJÀ CHARGÉ.
 //
 // HORS LIGNE, LECTURE PURE : aucune décision, aucun seuil, aucune fenêtre. Ce que ce balayage
 // rend est ce que le film écrit ; le rapprochement avec une pose est le travail de l'appelant.
-func ScanEquipmentSpawnEvents(fc *FilmContext) ([]EquipmentSpawnEvent, EquipmentSpawnStats, error) {
-	var st EquipmentSpawnStats
+func ScanEquipmentSpawnEvents(fc *FilmContext) ([]types.EquipmentSpawnEvent, types.EquipmentSpawnStats, error) {
+	var st types.EquipmentSpawnStats
 	nums := fc.ChunkNumbers()
 	if len(nums) == 0 {
 		return nil, st, ErrNoFilmChunk
 	}
-	var out []EquipmentSpawnEvent
+	var out []types.EquipmentSpawnEvent
 	for _, c := range nums {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
@@ -157,10 +117,10 @@ func ScanEquipmentSpawnEvents(fc *FilmContext) ([]EquipmentSpawnEvent, Equipment
 // Rend `present` (la liste d'événements n'est pas vide : le dénominateur de la lecture) et `ok`
 // (la tête EST un 103). Les deux sont distincts parce qu'un zéro d'événements sur un film sans
 // liste ne dit pas la même chose qu'un zéro sur un film qui en porte des milliers.
-func decodeEquipmentSpawnEvent(pay []byte) (ev EquipmentSpawnEvent, present, ok bool) {
+func decodeEquipmentSpawnEvent(pay []byte) (ev types.EquipmentSpawnEvent, present, ok bool) {
 	typ, present := PacketHeadEventType(pay)
 	if !present || typ != EventEquipmentSpawnedObject {
-		return EquipmentSpawnEvent{}, present, false
+		return types.EquipmentSpawnEvent{}, present, false
 	}
 	// Domaines {0, 0, 7} : trois références SANS sonde, index de dom7RefWidth bits.
 	r0 := readPlainRef(pay, eventPayloadStartBit, dom7RefWidth)
@@ -176,6 +136,6 @@ func decodeEquipmentSpawnEvent(pay []byte) (ev EquipmentSpawnEvent, present, ok 
 }
 
 // spawnLifeKey applique la base mesurée à l'index d'une référence et rend la clé de vie.
-func spawnLifeKey(r guardedRef) EquipmentLifeKey {
-	return EquipmentLifeKey{Slot: r.Index + equipmentSpawnRefBase, Gen: r.Gen}
+func spawnLifeKey(r guardedRef) types.EquipmentLifeKey {
+	return types.EquipmentLifeKey{Slot: r.Index + equipmentSpawnRefBase, Gen: r.Gen}
 }

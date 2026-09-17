@@ -18,6 +18,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
 )
 
@@ -314,7 +315,7 @@ func TestAscendingComponentsIsStrict(t *testing.T) {
 // concatenation de dizaines de vols. Un projectile est repliqué a ~60 Hz : un trou de plus de
 // 250 ms est une frontiere de vie, pas une lacune.
 func TestSplitLivesSeparatesFlights(t *testing.T) {
-	pts := []ProjectileSample{
+	pts := []types.ProjectileSample{
 		{TimestampUS: 0}, {TimestampUS: 16_000}, {TimestampUS: 32_000},
 		{TimestampUS: 1_000_000}, {TimestampUS: 1_016_000}, {TimestampUS: 1_032_000},
 	}
@@ -329,7 +330,7 @@ func TestSplitLivesSeparatesFlights(t *testing.T) {
 
 // TestSplitLivesClosesOnAtRest : un record « au repos » clot la vie, meme sans trou.
 func TestSplitLivesClosesOnAtRest(t *testing.T) {
-	pts := []ProjectileSample{
+	pts := []types.ProjectileSample{
 		{TimestampUS: 0}, {TimestampUS: 16_000}, {TimestampUS: 32_000, AtRest: true},
 		{TimestampUS: 48_000}, {TimestampUS: 64_000}, {TimestampUS: 80_000},
 	}
@@ -341,7 +342,7 @@ func TestSplitLivesClosesOnAtRest(t *testing.T) {
 
 // TestSplitLivesDropsTooShort : deux points ne dessinent pas une trajectoire.
 func TestSplitLivesDropsTooShort(t *testing.T) {
-	if segs := splitLives([]ProjectileSample{{TimestampUS: 0}, {TimestampUS: 16_000}}); len(segs) != 0 {
+	if segs := splitLives([]types.ProjectileSample{{TimestampUS: 0}, {TimestampUS: 16_000}}); len(segs) != 0 {
 		t.Errorf("%d vie(s) pour deux points : une trajectoire de deux points ne se dessine pas",
 			len(segs))
 	}

@@ -1,5 +1,7 @@
 package killsource
 
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
 // feed_couples.go — LE COUPLE (TUEUR, VICTIME) EST LU AU KILL-EVENT 85, PLUS RECOLLE SUR LE
 // VOISIN (lot 1.9.3 du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, D13).
 //
@@ -65,7 +67,7 @@ type killDeBot struct {
 // Elle remplit `pairs`, `real`, `lus`, `fab`, `botLus`, `orphK` et `orphD`, et rend ses
 // compteurs. `recs` nil ou `r` sans epinglage = la lecture se tait partout, et le comportement
 // est EXACTEMENT celui d avant le lot : c est ce que les tests purs exercent.
-func (kf *killFeed) resoudreCouples(recs []killEventRec, r *roster) CoupleStats {
+func (kf *killFeed) resoudreCouples(recs []killEventRec, r *roster) types.CoupleStats {
 	res := &resolveurDeCouples{kf: kf, recs: recs, r: r,
 		pris: make([]bool, len(recs)), prisMort: make([]bool, len(kf.events))}
 	res.consommerLesCouplesDuMemeInstant()
@@ -83,7 +85,7 @@ type resolveurDeCouples struct {
 	pris []bool
 	// prisMort : les instants du feed dont la MORT a ete consommee par un couple.
 	prisMort []bool
-	stats    CoupleStats
+	stats    types.CoupleStats
 }
 
 // consommerLesCouplesDuMemeInstant : temps 1. Chaque couple que le FEED ecrit prend le

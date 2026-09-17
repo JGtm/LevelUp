@@ -29,6 +29,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Emplacements de base du statborg, pour le seul DIAGNOSTIC des triplets ci-dessous (les
@@ -41,10 +42,10 @@ const (
 
 // objDeathInstants traduit le fil des morts du rejeu dans la forme qu'attend le pont de
 // production.
-func objDeathInstants(deaths []Death) []objectives.DeathInstant {
-	out := make([]objectives.DeathInstant, 0, len(deaths))
+func objDeathInstants(deaths []Death) []types.DeathInstant {
+	out := make([]types.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
-		out = append(out, objectives.DeathInstant{
+		out = append(out, types.DeathInstant{
 			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS),
 		})
 	}
@@ -65,7 +66,7 @@ func objRoundIdentites(film *source.Film, deaths []Death) objectives.RoundIdenti
 
 // objTriplets rend, par slot statborg, le triplet final (frags, morts, assistances).
 // Diagnostic : c'est lui qui montre POURQUOI l'appariement par totaux echoue sur un film.
-func objTriplets(recs []objectives.StatRecord) map[int][3]int64 {
+func objTriplets(recs []types.StatRecord) map[int][3]int64 {
 	out := map[int][3]int64{}
 	for _, r := range recs {
 		if objectives.IsTeamSlot(r.Slot) {
@@ -139,10 +140,10 @@ func TestObjectifsPhase0PontStatborg(t *testing.T) {
 
 // objPlayerLines rend les lignes de match gelees du corpus dans la forme qu'attend le pont
 // par totaux.
-func objPlayerLines(f objFilm) []objectives.PlayerLine {
-	out := make([]objectives.PlayerLine, 0, len(f.Players))
+func objPlayerLines(f objFilm) []types.PlayerLine {
+	out := make([]types.PlayerLine, 0, len(f.Players))
 	for _, p := range f.Players {
-		out = append(out, objectives.PlayerLine{
+		out = append(out, types.PlayerLine{
 			XUID: p.XUID, Kills: p.Kills, Deaths: p.Deaths, Assists: p.Assists,
 		})
 	}

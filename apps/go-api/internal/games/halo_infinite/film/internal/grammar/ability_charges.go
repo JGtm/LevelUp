@@ -43,7 +43,10 @@ package grammar
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 // un global de paquet.
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // abilityEnergyName / abilityEnergyNameAlt : les deux étiquettes de registre d'i56 — les
 // films portent l'une OU l'autre (avec ou sans le suffixe `-component`, même dualité que
@@ -56,61 +59,6 @@ const (
 	abilityEnergyNameAlt = "biped-spartan-ability-energy"
 )
 
-// AbilityCharge est UNE lecture d'emplacement de charge ARMÉ, localisée dans le film.
-type AbilityCharge struct {
-	// Slot est l'identifiant bas du bipède porteur — le même que celui des trajectoires,
-	// donc UNE VIE et non un joueur (le slot migre aux réapparitions).
-	Slot uint32
-	// Chunk / PacketIndex localisent la lecture dans le film.
-	Chunk, PacketIndex int
-	// TimestampUS est l'horodatage du paquet porteur — MÊME horloge que BipedPosition.
-	TimestampUS uint64
-	// Emplacement est l'index (0..2) du bit de masque R(3) qui a armé cette lecture.
-	// C'est une donnée de DÉBOGAGE : la spécialisation mesurée par R11 (e0 propulseur,
-	// e2 grappin) est une observation, jamais une identité — l'identité vient d'i48.
-	Emplacement int
-	// Charges est le quartet HAUT de la valeur 7 bits : le compte de charges ENTIÈRES
-	// restantes (lecture discrète du consommateur de l'exe, validée R11 §2).
-	Charges int
-	// Low est le quartet bas : la recharge fractionnaire. Publié pour que la mesure reste
-	// relisible (les témoins de R11 l'avaient à zéro sur toute la série validée).
-	Low int
-}
-
-// AbilityChargeStats compte ce que la marche a rencontré. Sans ces dénominateurs, une
-// liste de lectures ne se juge pas : « 12 lectures armées » ne dit rien sans « sur combien
-// de records annonçant le composant ».
-type AbilityChargeStats struct {
-	// Records est le nombre de records delta biped reconnus.
-	Records int
-	// WithI56 : records dont le masque annonce le composant d'énergie.
-	WithI56 int
-	// Read / Unread : lectures i56 abouties, et records dont la marche n'a pas atteint la
-	// cible (un composant intermédiaire non porté, ou un débordement du payload).
-	Read, Unread int
-	// Armed est le nombre d'emplacements ARMÉS publiés — la sortie. Une lecture aboutie au
-	// masque 000 compte dans Read et pas ici : « le composant a parlé, aucun emplacement
-	// n'est armé » est le zéro que R11 §4 mesure sur les films sans grappin ni propulseur.
-	Armed int
-	// Absent dit que le composant d'énergie n'est déclaré par AUCUNE des deux étiquettes
-	// dans l'archétype biped du film. C'est une information, pas une erreur : le film ne
-	// transmet alors pas ce canal, et une liste vide sans ce témoin serait indistinguable
-	// d'un film où personne n'use ses charges.
-	Absent bool
-	// Scanned dit que LE BALAYAGE A TOURNÉ. Faux = il n'a jamais commencé (une des quatre
-	// portes de résolution a refusé : aucun chunk, aucun slot biped aux images-clés,
-	// découpage i0 indétectable, registre illisible) — l'appelant reçoit alors une erreur,
-	// et tout ce qui suit dans cette structure est un zéro SANS SIGNIFICATION.
-	//
-	// POURQUOI UN TÉMOIN PLUTÔT QUE L'ERREUR SEULE : l'erreur meurt chez l'appelant
-	// immédiat, et le zéro qu'il laisse derrière voyage jusqu'à l'artefact. Sans ce champ,
-	// une couverture de zéros affirmerait « le balayage a tourné, personne n'a usé de
-	// charge » sur un film où rien n'a jamais été lu — la faute exacte que la doctrine de
-	// coverage.go interdit (leçon H1 de la seconde passe de revue P3, recopiée d'
-	// AbilityImpulseStats.Scanned). Un balayage qui aboutit le pose, `Absent` compris.
-	Scanned bool
-}
-
 // ScanFilmAbilityCharges décode les lectures de charge d'équipement (les emplacements
 // ARMÉS du composant i56) dans les paquets delta du film de dir. Les lectures sortent
 // TRIÉES par instant, puis par slot, puis par emplacement — un ordre total, pour que deux
@@ -119,18 +67,18 @@ type AbilityChargeStats struct {
 // ScanFilmAbilityCharges est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film, ouvre un
 // contexte pour elle seule, puis appelle [ScanAbilityCharges]. La cuisson, elle, passe le
 // contexte qu'elle partage entre tous ses balayages.
-func ScanFilmAbilityCharges(dir string) ([]AbilityCharge, AbilityChargeStats, error) {
+func ScanFilmAbilityCharges(dir string) ([]types.AbilityCharge, types.AbilityChargeStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, AbilityChargeStats{}, err
+		return nil, types.AbilityChargeStats{}, err
 	}
 	return ScanAbilityCharges(contexteDeBobine(film))
 }
 
 // ScanAbilityCharges décode les lectures de charge d'équipement d'un film DEJA CHARGE. Cf.
 // [ScanFilmAbilityCharges] pour la doctrine du balayage.
-func ScanAbilityCharges(fc *FilmContext) ([]AbilityCharge, AbilityChargeStats, error) {
-	var st AbilityChargeStats
+func ScanAbilityCharges(fc *FilmContext) ([]types.AbilityCharge, types.AbilityChargeStats, error) {
+	var st types.AbilityChargeStats
 	s, err := resolveAbilityScan(fc)
 	if err != nil {
 		return nil, st, err
@@ -166,8 +114,8 @@ func ScanAbilityCharges(fc *FilmContext) ([]AbilityCharge, AbilityChargeStats, e
 // l'archétype du film (portés ici et non passés à chaque record — même patron que
 // abilityImpulseScanner), et la sortie.
 type abilityChargeScanner struct {
-	st   *AbilityChargeStats
-	out  []AbilityCharge
+	st   *types.AbilityChargeStats
+	out  []types.AbilityCharge
 	gram grammaireRecord
 	idx  int
 	mask uint32
@@ -204,7 +152,7 @@ func (sc *abilityChargeScanner) publish(slot uint32, chunk int, pk FilmPacket) {
 		}
 		v := sc.ch[i]
 		sc.st.Armed++
-		sc.out = append(sc.out, AbilityCharge{
+		sc.out = append(sc.out, types.AbilityCharge{
 			Slot: slot, Chunk: chunk, PacketIndex: pk.Index, TimestampUS: pk.TimestampUS,
 			Emplacement: i, Charges: (v >> 4) & 0xF, Low: v & 0xF,
 		})
@@ -214,11 +162,11 @@ func (sc *abilityChargeScanner) publish(slot uint32, chunk int, pk FilmPacket) {
 // sortAbilityCharges ordonne les lectures sur (instant, slot, emplacement) — un ordre
 // TOTAL. Un tri partiel laisserait l'ordre des lectures d'un même paquet dépendre du
 // parcours, donc l'artefact dépendre de rien de mesurable.
-func sortAbilityCharges(out []AbilityCharge) {
+func sortAbilityCharges(out []types.AbilityCharge) {
 	if len(out) < 2 {
 		return
 	}
-	lessCharge := func(a, b AbilityCharge) bool {
+	lessCharge := func(a, b types.AbilityCharge) bool {
 		if a.TimestampUS != b.TimestampUS {
 			return a.TimestampUS < b.TimestampUS
 		}

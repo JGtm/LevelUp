@@ -54,7 +54,7 @@ func (m MemoryChunks) Chunk(i int) ([]byte, error) {
 //
 // `nums[i]` est le NUMERO DE FICHIER du chunk a l'indice `i` (le NN de `chunk_NN.bin`), ou
 // [ChunkNumberUnknown] quand le nom ne porte pas de numero lisible. C'est ce numero, et pas la
-// position, que [LoadDir] publie en [ChunkMeta.Index] — cf. l'en-tete de paquet, section
+// position, que [LoadDir] publie en [types.ChunkMeta.Index] — cf. l'en-tete de paquet, section
 // « L'INDEXATION DES CHUNKS ».
 type dirSource struct {
 	files []string
