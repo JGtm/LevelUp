@@ -8,11 +8,6 @@ import (
 	"levelup/go-api/internal/analysis"
 )
 
-// seedKillTimeline insère une frag toutes les 10 s : l'équipe qui a le plus de frags
-// prend d'entrée toute son avance, puis les deux équipes alternent (elle reste devant
-// tout le match) ; dup=true insère
-// deux fois chaque frag de l'équipe dominée (doublons exacts observés dans
-// highlight_events) : sans dédoublonnage elle passerait devant aux frags.
 // ensureHighlightEvents crée la table minimale des events, SANS contrainte d'unicité : les
 // doublons exacts existent en base réelle (cf. loadDistinctTeamKillEvents).
 func ensureHighlightEvents(t *testing.T, db *sql.DB) {
@@ -35,6 +30,10 @@ func insertKillEvent(t *testing.T, db *sql.DB, matchID, xuid string, ms int64, c
 	}
 }
 
+// seedKillTimeline insère une frag toutes les 10 s : l'équipe qui a le plus de frags
+// prend d'entrée toute son avance, puis les deux équipes alternent (elle reste devant
+// tout le match) ; dup=true insère deux fois chaque frag de l'équipe dominée (doublons
+// exacts observés dans highlight_events) : sans dédoublonnage elle passerait devant aux frags.
 func seedKillTimeline(t *testing.T, db *sql.DB, matchID string, myFrags, enemyFrags int, dup bool) {
 	t.Helper()
 	ensureHighlightEvents(t, db)

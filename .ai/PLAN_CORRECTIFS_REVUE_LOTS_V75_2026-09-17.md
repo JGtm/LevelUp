@@ -50,7 +50,7 @@ corrections (sync/ touché). Merge final dans feat/v75 après CI verte.
 ## Étape 3 — Clôture (pilote)
 
 - [x] 3.1 Fusion `fix/revue-lots-v75-go` → `fix/revue-lots-v75`, gates complets rejoués.
-- [ ] 3.2 Ronde 2 de relecture adversariale sur les seules corrections (1 relecteur Go, 1 web).
+- [x] 3.2 Ronde 2 de relecture adversariale sur les seules corrections (1 relecteur Go, 1 web).
 - [ ] 3.3 Push, CI verte au niveau job.
 - [ ] 3.4 Journal thought_log (entrée revue + entrée correctifs), plan statué.
 - [ ] 3.5 Merge dans feat/v75 (demander avant).
@@ -77,3 +77,11 @@ corrections (sync/ touché). Merge final dans feat/v75 après CI verte.
   les helpers de test sync (highlight_events) ; seedComebackMatch 8 paramètres ;
   WatcherCard.tsx:110 copie sans retour visuel et catch muet ; ExplorerEncounterBriefing.tsx:51
   helpers copiés de MatchEncountersTable ; 2 stash préexistants dans le dépôt.
+- 2026-09-17 : ronde 2 (corrections seules, 1 relecteur Go + 1 web) : 0 P0/P1. P2 Go : commentaire
+  Q32e disait « bot » là où la DDL dit « bot ou nom non résolu » ; doc du reset disait 3/4/5 là
+  où 1/2 sont aussi possibles ; bloc de doc de seedKillTimeline collé à ensureHighlightEvents —
+  les trois corrigés (doc seule, commit suivant). P2 web consigné, NON corrigé : le test
+  « démontage pendant le délai » de useCopyToClipboard.test.tsx reste vert sans les gardes
+  mountedRef ni le clearTimeout (React 19 n'avertit plus ; le callback n'est jamais atteint).
+  Limite notée par le relecteur Go : deux camps numérotés hors {0,1} passeraient le comptage
+  puis seraient tronqués par IN (0,1) — pas de preuve qu'une telle numérotation existe.
