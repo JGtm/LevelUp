@@ -331,7 +331,48 @@ package facts
 // `match_kill_events` porte cette revision dans `decoder_rev`, `conditionBacklog`
 // (`sync/killcollector/postsync.go`) rend candidate toute ligne qui en porte une anterieure, et
 // le redecodage du parc reste un geste de PRODUCTION pris par le pilote.
-const Rev = "killsource-2026-09-17"
+// ENTREE `killsource-2026-09-17.2` (2026-09-17, lot 3.4.2) : LA REVISION MONTE PARCE QUE LE
+// BALAYAGE CESSE DE DECIDER CE QU IL NE MESURE PAS.
+//
+// LA SORTIE DES FAITS CHANGE, et le changement est un RETRAIT DE BRUIT, pas un gain de lecture.
+//
+// CE QUE `replay-equiv` A MESURE (20 films, sans `-update`, §5 du plan) : le lot 3.4.1 faisait
+// bouger `abilityImpulses` sur 7 films, `grappleReads.stats` sur 9 et `pads` sur 3 — 19 ecarts
+// hors liste sur 14 films, dont QUATRE lectures publiees perdues. Aucune de ces etapes n aurait
+// du bouger.
+//
+// LA CAUSE, INSTRUITE SUR DEUX FILMS EN LECTURE SEULE. `infererLargeurs` balayait ENSEMBLE la
+// largeur d axe et la largeur du mot de poignee, et retenait le COUPLE de meilleur score sous
+// une largeur d axe UNIFORME — celle que la production a CESSE de lire au lot 3.4.1, quand les
+// largeurs sont passees au triplet de la carte. Le `iw` retenu etait donc l argmax dans un monde
+// que le decodeur n habite plus. Et le garde-fou ne pouvait pas le voir : `flatRatio` teste la
+// nettete de la largeur d AXE, puis le code prenait le `iw` du MEME gagnant sans verifier qu il
+// fut discrimine — une seule mesure, deux grandeurs, un seul garde.
+//
+//	a521164d  au TRIPLET LU [17 17 15]   iw=1 272 · iw=2 272 · iw=3 272   AVEUGLE
+//	          sous l UNIFORME            iw=1 226 · iw=2 226 · iw=3 230   4 records sur 226
+//	64e8adfa  au TRIPLET LU [15 15 15]   61 · 61 · 61                     EGALITE PARFAITE
+//
+// Le critere est AVEUGLE a la grandeur qu il decidait : la valeur publiee roulait sur un ex aequo
+// tranche par un `sort.Slice` INSTABLE, et elle voyageait jusqu au rejeu
+// (`profilDeBalayageDeLaCuisson`, `replaybuild/kills.go`) ou tous les lecteurs derriere i0 en
+// heritaient.
+//
+// CE QUE CE LOT FAIT : DEUX MESURES SEPAREES. L oracle d axe balaie ses 21 largeurs a mot de
+// poignee FIGE et n ecrit rien ; la decision du mot de poignee score ses 3 candidats AU TRIPLET
+// LU et ne les retient QUE s ils dominent la mediane d un facteur `flatRatio`. Sur les deux
+// films instruits la mesure ne discrimine pas : l invariant 1 tient, sous le repli
+// `repli_largeur_mot_de_poignee_inferee` re-motive au registre. Les deux tris sont rendus
+// DETERMINISTES (score decroissant, puis largeur croissante).
+//
+// BACKLOG KILLSOURCE SUR SIGNAL UTILISATEUR (D6), JAMAIS AUTOMATIQUE : chaque ligne de
+// `match_kill_events` porte cette revision dans `decoder_rev`, `conditionBacklog`
+// (`sync/killcollector/postsync.go`) rend candidate toute ligne qui en porte une anterieure, et
+// le redecodage du parc reste un geste de PRODUCTION pris par le pilote.
+//
+// `SchemaVersion` NE MONTE PAS : aucun champ n est ajoute au document. `grammar.Rev` et
+// `profile.Rev` NE MONTENT PAS : aucun octet de ces deux couches n est touche.
+const Rev = "killsource-2026-09-17.2"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/facts_rev.golden` porte le couple (revision, empreinte) avec son historique, et
