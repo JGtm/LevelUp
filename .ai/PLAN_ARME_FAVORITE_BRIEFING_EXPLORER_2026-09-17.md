@@ -250,18 +250,18 @@ local est le seul filet) PUIS `make check-types` après purge de
 ### Étape 6 — Tests de rendu
 
 Dans `ExplorerBriefingWeapons.test.tsx` (nouveau) :
-- [ ] `slots = 2` → deux lignes avec barre ; `slots = 1` → une ligne avec barre ;
+- [x] `slots = 2` → deux lignes avec barre ; `slots = 1` → une ligne avec barre ;
       `slots = 0` → forme compacte sans barre.
-- [ ] Note de couverture présente quand `measured < scope`, absente quand
+- [x] Note de couverture présente quand `measured < scope`, absente quand
       `measured == scope` (cas Halo 5) ET quand `measured > scope`.
 
 Dans `ExplorerBriefingStrip.test.tsx` (à côté du describe DP-3, qui reste tel quel) :
-- [ ] Dimensions pleines + `context_split` + `weapons` → le bloc est DANS la cellule
+- [x] Dimensions pleines + `context_split` + `weapons` → le bloc est DANS la cellule
       « Par contexte » (assertion de parenté, miroir du test DP-3).
-- [ ] `weapons` sans `context_split` → le bloc est un enfant DIRECT de la grille.
-- [ ] `weapons` SEUL (ni dimension, ni contexte, ni classé) → la grille est rendue avec une
+- [x] `weapons` sans `context_split` → le bloc est un enfant DIRECT de la grille.
+- [x] `weapons` SEUL (ni dimension, ni contexte, ni classé) → la grille est rendue avec une
       cellule (gardes D1).
-- [ ] `weapons` absent → aucune trace du bloc, grille inchangée.
+- [x] `weapons` absent → aucune trace du bloc, grille inchangée.
 
 **Gate 6** : `make test-web` vert.
 
@@ -362,6 +362,14 @@ Un écart de hauteur observé se traite par la formule D3, pas par une mesure.
   seul, 15/15 verts, sortie 0. Flake de charge, consigné en Découvertes.
   `ExplorerBriefingStrip.test.tsx` (dont DP-3, intouché) + les deux garde-rails du briefing
   rejoués ensemble : 35 tests verts, sortie 0.
+
+- **Étape 6 (2026-09-17)** — `ExplorerBriefingWeapons.test.tsx` (6 tests : trois formes,
+  trois états de la note) et 4 tests ajoutés à `ExplorerBriefingStrip.test.tsx` À CÔTÉ du
+  describe DP-3, qui n'a pas été touché. Les tests de placement comptent les cellules de la
+  grille : 2 avec « Par contexte », 2 sans, 1 quand l'arme favorite est seule — la preuve
+  qu'aucune cellule n'est ajoutée. Gate 6 : `make check-types` sortie 0 (cache purgé) puis
+  `make test-web` sortie 0 — 732 fichiers, 7 858 tests verts, 17 ignorés. Le flake
+  `PalmaresRelationsPage` de l'étape 5 ne s'est pas reproduit.
 
 ## Protocole de reprise de session
 

@@ -534,3 +534,66 @@ describe('ExplorerBriefingStrip — triptyques, accents & centrage (V5 : DP-1/DP
     expect(centered.length).toBe(5)
   })
 })
+
+// ─── Bloc « Arme favorite » : placement dans la rangée « Par… » (D1) ───────────
+// Miroir du describe DP-3 ci-dessus, qui reste tel quel : le bloc s'empile dans la
+// cellule « Par contexte » quand elle existe et la remplace sinon — jamais une
+// cellule de plus.
+
+const weaponsBriefing = {
+  entries: [
+    { label: 'Fusil de combat', kills: 40, class: 'shoulder' },
+    { label: 'Pistolet', kills: 25, class: 'sidearm' },
+  ],
+  measured_kills: 65,
+  scope_kills: 120,
+}
+
+/** Dernière grille « Par… » du bandeau (même repère que le test DP-3). */
+function modulesGridOf(container: HTMLElement): Element | undefined {
+  const grids = container.querySelectorAll('[class*="grid-template-columns"]')
+  return grids[grids.length - 1]
+}
+
+describe('ExplorerBriefingStrip — bloc « Arme favorite » (D1)', () => {
+  it('s’empile DANS la cellule « Par contexte » quand ce bloc existe', () => {
+    const briefing = {
+      ...makeBriefing(120, 120),
+      context_split: contextSplit,
+      weapons: weaponsBriefing,
+    }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const cells = Array.from(modulesGridOf(container)?.children ?? [])
+    const ctxCell = cells.find((c) => c.textContent?.includes('explorer.briefing.context_split_title'))
+    expect(ctxCell?.textContent).toContain('explorer.briefing.weapons_title')
+    expect(ctxCell?.textContent).toContain('Fusil de combat')
+    // Jamais de cellule supplémentaire : une carte de dimension + la cellule contexte.
+    expect(cells).toHaveLength(2)
+  })
+
+  it('devient une cellule PROPRE de la grille quand « Par contexte » est absent', () => {
+    const briefing = { ...makeBriefing(120, 120), weapons: weaponsBriefing }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const cells = Array.from(modulesGridOf(container)?.children ?? [])
+    const weaponCell = cells.find((c) => c.textContent?.includes('explorer.briefing.weapons_title'))
+    expect(weaponCell).toBeDefined()
+    expect(cells).toHaveLength(2) // carte de dimension + arme favorite
+  })
+
+  it('peint la grille à lui seul (ni dimension, ni contexte, ni classé)', () => {
+    const briefing = { ...makeBriefing(120, 120), dimensions: [], weapons: weaponsBriefing }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const cells = Array.from(modulesGridOf(container)?.children ?? [])
+    expect(cells).toHaveLength(1)
+    expect(cells[0]?.textContent).toContain('explorer.briefing.weapons_title')
+  })
+
+  it('ne laisse aucune trace quand le backend omet le bloc', () => {
+    const { container } = renderWithProviders(
+      <ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />,
+    )
+    const text = container.textContent ?? ''
+    expect(text).not.toContain('explorer.briefing.weapons_title')
+    expect(Array.from(modulesGridOf(container)?.children ?? [])).toHaveLength(1)
+  })
+})
