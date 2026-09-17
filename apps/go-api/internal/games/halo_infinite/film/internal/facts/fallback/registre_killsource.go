@@ -217,29 +217,6 @@ var registreKillsource = []Repli{
 		CompteurBranche: false,
 		CibleComptage:   "lot 1.9.8",
 	},
-	// LES DEUX ENTREES DE CALIBRATION DES LARGEURS SONT RETIREES LE 2026-09-17 (lot 3.4.1-b),
-	// ET REMPLACEES PAR UNE SEULE, SOUS SON VRAI NOM. `repli_calibration_paquet_exclu` et
-	// `repli_calibration_paquet_non_localise` decrivaient le MECANISME d echantillonnage d un
-	// balayage qui DECIDAIT les largeurs ; il ne decide plus — elles se lisent au catalogue de
-	// la carte ([profile.MapQuantEntry.PrecisionAbsolue], loi verifiee 79 cartes sur 79) — et
-	// une mesure qui ne decide rien ne peut corrompre aucun fait publie. Mais le second nommait
-	// AUSSI un fait qui, lui, est toujours infere : `param_4`. L entree ci-dessous le dit.
-	{
-		Nom:       "repli_parametre_etat_record_infere",
-		Fait:      "le `param_4` du moteur (largeur de trois composants) applique a tout le film",
-		Mecanisme: "aucune source lue : un balayage de 0 a 5 retient la valeur qui maximise la CROISSANCE DES SLOTS ; les paquets dont les records ne se localisent pas sont ignores",
-		Condition: CondNonResolu,
-		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
-			Fichier: pkgKillsource + "calibrate.go",
-			Ancre:   "best, bestN = r, n",
-		}},
-		DatePose:        "2026-09-17",
-		CibleRetrait:    "lot qui trouvera la source LUE de `param_4` (registre ECS par composant, ou table du build)",
-		CritereRetrait:  "la valeur vient d une lecture ; le balayage devient oracle comme celui des largeurs, ou disparait",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
 	{
 		Nom:       "repli_chaine_evenement_code_non_modelise",
 		Fait:      "la longueur du corps d'un evenement, donc la suite de la chaine",
