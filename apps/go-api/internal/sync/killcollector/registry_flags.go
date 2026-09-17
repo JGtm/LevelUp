@@ -67,11 +67,18 @@ func marquerRegistre(ctx context.Context, db *sql.DB, matchID string, bit int) e
 //	OutcomeWritten avec morts == 0     rien             bit-honnete : pas de ligne, pas de bit
 //	OutcomeNoKillFeed                  rien             le film EXISTE, il est juste muet
 //	OutcomeTimeout / NotSupported      rien             etat transitoire ou hors titre
+//	OutcomeUnknownKey                  rien             le film EXISTE, la TABLE lui manque
 //
 // ⚠ `OutcomeNoKillFeed` NE POSE PAS MBitFilmAbsent, et c est delibere : le film est bien
 // la, il ne porte simplement pas de chunk HIGHLIGHT. Le marquer « absent » le retirerait
 // pour toujours des deux rattrapages alors qu une revision de decodeur pourrait en tirer
 // quelque chose.
+//
+// ⚠ `OutcomeUnknownKey` (lot 3.1.1) NE POSE RIEN NON PLUS, ET POUR UNE RAISON PLUS FORTE
+// ENCORE : ce qui manque n est pas dans le film, c est une LIGNE DE TABLE cote depot
+// (`docs/RUNBOOK_FILM_PROFILES.md`). Poser `MBitFilmAbsent` retirerait a vie des films
+// parfaitement lisibles du jour ou le build sera ajoute au profil — l inverse exact de ce
+// que la politique veut : ecarter MAINTENANT, reprendre DES QUE la table sait lire.
 func marquerFilmParOutcome(outcome KillSourceOutcome, morts int) (bit int, aMarquer bool) {
 	switch {
 	case outcome == OutcomeNoFilm:

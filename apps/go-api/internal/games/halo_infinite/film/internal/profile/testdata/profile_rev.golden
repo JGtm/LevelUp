@@ -48,5 +48,17 @@
 #               provenance ne change, et le decodage est identique a l octet. Ce que ces deux
 #               champs servent est l ARTEFACT : `coverage.decoder.registry` classe desormais
 #               l empreinte du registre ECS (schema 61).
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 3.1.1), ET LE CHOIX EST
+#               EXPLICITE. La couche gagne `cle_du_film.go` : [CleConnue] dit si la table
+#               connait la clef ECRITE par un film, et [ErreurCleInconnue] compose l erreur
+#               typee que les orchestrateurs lisent pour METTRE LE FILM DE COTE (D-4).
+#               AUCUNE LIGNE DE TABLE NE CHANGE : pas une largeur, pas une borne, pas une
+#               provenance, pas une plage. Ce fichier ne fait que LIRE les tables existantes
+#               (`PersonnalisationOctets`, `MPPPourFormat`, les deux majeures sans section) —
+#               un film qui se decode aujourd hui se decode demain aux MEMES bits, et un film
+#               ecarte ne se decode plus du tout, ce qui est une decision d ORCHESTRATION
+#               (`sync/killcollector`, `replaybuild`), hors de cette couche. La monter aurait
+#               ouvert un backlog killsource pour une sortie identique a l octet.
 profile-2026-09-17	923c8ad7d9495662e97c1240b1c3e77abcffd04d9b3ae38e5748b859e8623e63
-profile-2026-09-17.2	cf0e50d2ca6d3dde6e8c954425da64b4433e282943f9d8999039c4b1e1f3b135
+profile-2026-09-17.2	ed7df93b151f59a1a545ab9f1289610ab427054a7349ffe92e36f5e02aa6f7de
