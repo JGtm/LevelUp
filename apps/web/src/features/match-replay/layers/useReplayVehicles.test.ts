@@ -48,7 +48,7 @@ const VUE = { bounds: { minX: -20, minY: -20, maxX: 20, maxY: 20 }, width: 200, 
 const ENCRE_FX: FxInk = {
   tint: {
     kinetic: 'k', plasma_cool: 'pc', plasma_hot: 'ph',
-    forerunner: 'f', electric: 'e', needle: 'n', blast: 'b',
+    forerunner: 'f', electric: 'e', needle: 'n', blast: 'b', neutral: 'x',
   },
   core: 'c',
 }
