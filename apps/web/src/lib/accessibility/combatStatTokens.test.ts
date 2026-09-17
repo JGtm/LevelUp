@@ -50,9 +50,12 @@ const CASES: PaletteCase[] = [
   // fond clair pour le bleu ciel et l'orange ET la séparation sous daltonisme. La
   // palette daltonisme garde la séparation, qui est sa raison d'être.
   { name: 'okabe-ito', palette: okabePalette, contrast: 'any', cvd: true },
-  // Exemptions Cividis et Tol : mêmes raisons que pour squad-player-* (rampe
-  // séquentielle ; schéma validé daltonisme par son auteur).
-  { name: 'cividis', palette: cividisPalette, contrast: 'any', cvd: false },
+  // Cividis tient le contraste sur les DEUX surfaces depuis le 2026-09-17 : ses deux sens
+  // d'assistance prenaient les extrémités de la rampe (1.65:1 sur fond clair, 1.39:1 sur
+  // fond sombre) alors qu'une palette sert les deux thèmes. L'exemption 'any' masquait la
+  // faille — cf. `palettes/cividis.ts`. Reste `cvd: false` : rampe séquentielle, schéma
+  // validé daltonisme par son auteur.
+  { name: 'cividis', palette: cividisPalette, contrast: 'both', cvd: false },
   { name: 'tol-bright', palette: tolBrightPalette, contrast: 'both', cvd: false },
 ]
 

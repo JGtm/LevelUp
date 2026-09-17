@@ -46,6 +46,21 @@ const SAFE_REDDISH_PURPLE = '#CC79A7'
 // de voler une valeur de la rampe séquentielle.
 const SAFE_VERMILLION_DEEP = '#A04700'
 
+// Sens d'assistance — seules valeurs de la palette qui doivent tenir 3:1 sur la surface
+// claire ET sur la surface sombre tout en restant à ΔE ≥ 15 des trois autres jetons de
+// stats de combat (bleu, vermillon, gris). Mesures du 2026-09-17 (surfaces `--card`
+// #FCFDFF et #171717, ΔE OKLab × 100) :
+//   ASSIST_RECEIVED_OLIVE : 5.59:1 clair, 3.15:1 sombre — ΔE 16.3 (gris), 19.4 (vermillon),
+//     22.4 (bleu), 26.5 (pourpre). Bout CHAUD de la rampe Cividis, saturé et assombri
+//     jusqu'à dégager le gris : la khaki de la rampe (T60 #928D6B) n'est qu'à ΔE 5.0.
+//   ASSIST_GIVEN_PURPLE : 5.16:1 clair, 3.41:1 sombre — ΔE 18.3 (gris), 21.2 (vermillon),
+//     21.5 (bleu). Cividis ne définit AUCUN pourpre (rampe bleu→jaune) et le Reddish
+//     Purple d'Okabe-Ito échoue l'écart au gris (ΔE 12.9) : on reprend le Muted Purple de
+//     Paul Tol, déjà la valeur d'`assist-given` dans `tol-bright.ts` — même jeton, même
+//     couleur d'une palette à l'autre.
+const ASSIST_RECEIVED_OLIVE = '#686B00'
+const ASSIST_GIVEN_PURPLE = '#AA4499'
+
 export const cividisPalette: Palette = {
   // ── Perf tiers — ramp Cividis monotone en L* (foncé = excellent) ───────────
   'perf-tier-1': CIVIDIS_DARKEST, // t=0.00 — excellent
@@ -101,12 +116,21 @@ export const cividisPalette: Palette = {
   //     joueurs {navy, jaune, gris, bleu} et non-vermillon (≠ morts). Ramp
   //     séquentielle bleu→jaune : pas de pourpre possible (limite CVD assumée).
   'bonus': CIVIDIS_T75, // #B6A855 (ocre)
-  // Stats de combat (2026-09-17) — rampe séquentielle : ΔE ≥ 15, contraste sur UNE surface.
+  // Stats de combat (2026-09-17) — ΔE ≥ 15 ET contraste ≥ 3:1 sur les DEUX surfaces.
   'stat-kills': SAFE_BLUE,
   'stat-deaths': SAFE_VERMILLION,
   'stat-assists': SAFE_GREY,
-  'assist-received': CIVIDIS_T90,
-  'assist-given': CIVIDIS_T10,
+  // Les deux sens d'assistance prenaient les extrémités de la rampe (T90 jaune clair,
+  // T10 bleu nuit). Une palette sert les DEUX thèmes — `applyPalette` écrit sur `:root` —
+  // et ces extrémités s'effondrent sur une des deux surfaces : T90 tombait à 1.65:1 sur
+  // fond clair, T10 à 1.39:1 sur fond sombre. Corrigé le 2026-09-17 : un jeton doit tenir
+  // 3:1 des deux côtés, donc vivre à mi-luminance, où la rampe Cividis ne fournit que du
+  // gris-olive trop proche de `stat-assists` (T60 olive : ΔE 5.0 du gris — écarté après
+  // mesure). On prolonge donc l'emprunt hors rampe que ce fichier pratique déjà
+  // (SAFE_BLUE, SAFE_VERMILLION, SAFE_REDDISH_PURPLE), en gardant la convention des
+  // autres palettes : reçu = chaud, donné = pourpre.
+  'assist-received': ASSIST_RECEIVED_OLIVE,
+  'assist-given': ASSIST_GIVEN_PURPLE,
 
   // ── Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) ──────
   // Extrémité chaude de la rampe (t=1.00) : la seule teinte "or" disponible dans
