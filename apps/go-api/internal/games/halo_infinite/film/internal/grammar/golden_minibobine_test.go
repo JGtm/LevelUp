@@ -358,7 +358,7 @@ func famillesObjetsDuMonde(r *recueil, fc *FilmContext, film *source.Film) {
 func famillesEvenementsEtImagesCles(r *recueil, fc *FilmContext, film *source.Film) {
 	fire, err := ScanFireEvents(film)
 	ajouterSlice(r, "fireEvents", fire, err)
-	gren, err := ScanGrenadeThrows(film)
+	gren, err := ScanGrenadeThrows(NewFilmContext(film))
 	ajouterSlice(r, "grenadeThrows", gren, err)
 	pickups, _, err := ScanBipedPickups(fc)
 	ajouterSlice(r, "bipedPickups", pickups, err)

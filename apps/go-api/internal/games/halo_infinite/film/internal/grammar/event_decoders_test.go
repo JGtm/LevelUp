@@ -145,16 +145,37 @@ func TestFireHeadingConventionMatchesPositions(t *testing.T) {
 // Le lancer de grenade
 // ---------------------------------------------------------------------------
 
-// buildGrenadeRecord ecrit [marqueur 24][identifiant 32][47 bits][index 5].
-func buildGrenadeRecord(lead int, id uint32, index uint32) []byte {
+// buildGrenadeRecordSous ecrit un record de naissance de projectile SOUS UNE AMORCE DONNEE :
+// [6e bit de typeIndex][motif d amorce][identifiant 32][bourrage][index 5].
+//
+// LE SIXIEME BIT DE TYPEINDEX EST ECRIT, ET IL LE DOIT : depuis le lot 3.3.1 le balayage le LIT
+// a `motif - 1` pour separer l archetype projectile (`ti=41`) de `managed-player` (`ti=9`), qui
+// produisent le MEME motif (decouverte D2 (3.3r)). Un banc d essai qui l omettrait construirait
+// une naissance de `managed-player` et ne prouverait plus rien.
+//
+// `lead` est le bourrage AVANT ce bit : le motif commence donc au bit `lead + 1`.
+func buildGrenadeRecordSous(a profile.AmorceGrenade, lead int, id, index uint32) []byte {
 	w := &bitw{}
 	w.pad(lead)
-	w.put(grenadeMarker, 24)
+	w.put(uint64(ProjectileTypeIndex)>>profile.AmorceGrenadeTypeIndexBits&1, 1)
+	w.put(a.MarqueurDe(ProjectileTypeIndex), a.Bits)
 	w.put(uint64(id), 32)
-	w.pad(47)
-	w.put(uint64(index), 5)
+	w.pad(a.IndexAuteurBit - a.Bits - 32)
+	w.put(uint64(index), profile.AmorceGrenadeIndexBits)
 	w.pad(32)
 	return w.buf
+}
+
+// buildGrenadeRecord ecrit un record sous l amorce de REFERENCE (24 bits, identifiant a +24,
+// index a +103).
+func buildGrenadeRecord(lead int, id uint32, index uint32) []byte {
+	return buildGrenadeRecordSous(profile.AmorceGrenadeDeReference(), lead, id, index)
+}
+
+// scanGrenadesDeReference balaye un payload sous l amorce de REFERENCE, en jetant la couverture.
+func scanGrenadesDeReference(pay []byte) []GrenadeThrow {
+	var cov grenadeCouverture
+	return scanGrenadeThrows(pay, grammaireDeReference(), &cov)
 }
 
 // TestGrenadeThrowLayout : l index de lanceur est a +103 bits du marqueur, pas a +102.
@@ -163,7 +184,7 @@ func buildGrenadeRecord(lead int, id uint32, index uint32) []byte {
 // tombent tous entre 16 et 19 (le bit de poids fort est a 1) ; a +103 ils sont tous dans 0..7.
 // Le test reproduit exactement ce contraste sur un flux construit.
 func TestGrenadeThrowLayout(t *testing.T) {
-	got := scanGrenadeThrows(buildGrenadeRecord(11, GrenadePlasma, 5))
+	got := scanGrenadesDeReference(buildGrenadeRecord(10, GrenadePlasma, 5))
 	if len(got) != 1 {
 		t.Fatalf("%d lancer(s) trouve(s), attendu 1", len(got))
 	}
@@ -181,7 +202,7 @@ func TestGrenadeThrowLayout(t *testing.T) {
 	// 16 et 19 — le contraste vient des bits REELS qui precedent le champ, et un flux construit
 	// ne peut pas le reproduire (le bourrage y est a zero). Ce qui se verifie ici est donc la
 	// seule chose qu un flux construit puisse dire : l offset n est pas interchangeable.
-	pay := buildGrenadeRecord(11, GrenadePlasma, 5)
+	pay := buildGrenadeRecord(10, GrenadePlasma, 5)
 	if v := PeekBits(pay, 11+24+32+47, 5); v != 5 {
 		t.Errorf("lecture a +103 : %d, attendu 5", v)
 	}
@@ -197,12 +218,12 @@ func TestGrenadeThrowLayout(t *testing.T) {
 // 24 bits apparait 1 416 fois dans le film de reference pour 70 lancers reels. Ce qui trie, c est
 // l appartenance de l identifiant 32 bits a la liste blanche des quatre grenades.
 func TestGrenadeWhitelistIsWhatMakesTheMarkerSelective(t *testing.T) {
-	if got := scanGrenadeThrows(buildGrenadeRecord(0, 0xDEADBEEF, 3)); len(got) != 0 {
+	if got := scanGrenadesDeReference(buildGrenadeRecord(0, 0xDEADBEEF, 3)); len(got) != 0 {
 		t.Errorf("%d lancer(s) sur un marqueur suivi d un identifiant HORS liste blanche : la "+
 			"selectivite ne vient plus de la liste, et le decodeur rendrait du bruit", len(got))
 	}
 	for want, id := range GrenadeTypeIDsByRank {
-		got := scanGrenadeThrows(buildGrenadeRecord(0, id, 1))
+		got := scanGrenadesDeReference(buildGrenadeRecord(0, id, 1))
 		if len(got) != 1 {
 			t.Errorf("identifiant %08x (rang %d) : %d lancer(s) reconnu(s)", id, want, len(got))
 			continue

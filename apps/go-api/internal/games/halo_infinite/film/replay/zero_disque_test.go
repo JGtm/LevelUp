@@ -170,7 +170,7 @@ func TestZeroDisqueBalayagesSupportes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("tirs : %v", err)
 	}
-	grenades, err := grammar.ScanGrenadeThrows(film)
+	grenades, err := grammar.ScanGrenadeThrows(grammar.NewFilmContext(film))
 	if err != nil {
 		t.Fatalf("lancers de grenade : %v", err)
 	}
