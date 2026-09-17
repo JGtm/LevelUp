@@ -385,11 +385,15 @@ cd apps/web && Remove-Item -Recurse -Force node_modules\.tmp ; npm run typecheck
 
 ## Lot 5 — Clôture (rapide)
 
-- [ ] 5.1 Gate complet : `cd apps/go-api && go test ./... && go vet ./...` ; gate 4 rejoué ;
+- [x] 5.1 Gate complet : `cd apps/go-api && go test ./... && go vet ./...` ; gate 4 rejoué ;
       `make go-api-lint` sur les paquets touchés.
 - [ ] 5.2 Entrée `.ai/thought_log.md` (date, titre, Complété, décision, résultats, suite).
-- [ ] 5.3 Commits par lot sur `wt/compare-armes` (préfixe `compare-armes(lotN):`), push de la
+- [!] 5.3 Commits par lot sur `wt/compare-armes` (préfixe `compare-armes(lotN):`), push de la
       branche, `gh run list --branch wt/compare-armes` vert au niveau job.
+      **Lot 5 (2026-09-17)** : commits FAITS (sept), push FAIT (EXIT_PUSH=0). Le verdict CI
+      est IMPOSSIBLE sur cette branche — `wt/**` n'est dans les declencheurs ni de `ci.yml`
+      ni de `gitleaks.yml`, et `ci.yml` n'a pas de `workflow_dispatch`. Ni echec ni rouge :
+      aucun run n'existe. Elargir les declencheurs est HORS PERIMETRE (voir journal).
 - [ ] 5.4 Gate visuel de l'utilisateur (serveur local, `/community/compare` avec un B local,
       un B croisé non local, un B jamais croisé, et le titre Halo 5) : l'utilisateur nomme
       les témoins. Aucune fusion avant son verdict.
@@ -465,6 +469,22 @@ cd apps/web && Remove-Item -Recurse -Force node_modules\.tmp ; npm run typecheck
   contrôlés que par relecture. Le lot 4 y répond LOCALEMENT (un témoin dans `i18n.test.ts`
   sur les douze libellés du profil d'armes) ; élargir le périmètre du garde-rail global au
   dictionnaire entier reste un lot à part.
+
+
+**Découverte du lot 5 (2026-09-17) — consignée, NON traitée**
+
+- **Les branches `wt/**` ne déclenchent AUCUNE CI.** `ci.yml` et `gitleaks.yml` partagent une
+  liste de préfixes (`main, feat/**, feature/**, fix/**, hotfix/**, refactor/**, perf/**,
+  docs/**, chore/**, integration/**`) où `wt/**` est absent, et `ci.yml` n'expose pas de
+  `workflow_dispatch`. Or `wt/*` est la convention des worktrees dédiés du dépôt
+  (`wt/ci-garde-rails-tstr`, `wt/vehicules-tourelles`, `wt/compare-armes`...) : tout chantier
+  mené sous ce préfixe pousse sans CI et sans scan de secrets, et ne s'en aperçoit qu'en
+  cherchant un run qui n'arrivera pas. C'est exactement le piège que le commentaire de
+  `gitleaks.yml` documente pour `feat/**` (« absent de `shared-social-gate.yml` pendant 45
+  runs »), reproduit un préfixe plus loin. Le refermer touche au moins deux workflows, doit se
+  faire simultanément des deux côtés, et croise l'invariant D29 (`paths-ignore` de `ci.yml`
+  sous-ensemble de celui de `deploy.yml`, gardé par
+  `archlint.TestCIPathsIgnoreSubsetOfDeployPathsIgnore`). Décision utilisateur.
 
 **Découvertes du lot 4 (2026-09-17) — consignées, NON traitées**
 
@@ -958,6 +978,65 @@ grep hex + classes Tailwind couleur dans features/compare/ -> aucun (hors tests)
   encres, les formateurs et le résolveur de libellé que les deux consomment). Les recopier
   aurait donné deux palettes et deux façons d'écrire « 12,4 m ». Fonction la plus longue après
   scission : 73 lignes.
+
+### 2026-09-17 — Lot 5 partiel : 5.1 clos, 5.3 BLOQUÉ par un trou de déclencheur CI
+
+**5.1 — gate complet, toutes les commandes jouées en avant-plan, logs persistants.**
+
+```
+cd apps/go-api && go test ./...        EXIT_GO_TEST=0   (aucun paquet hors ok/no-test-files)
+cd apps/go-api && go vet ./...         EXIT_GO_VET=0
+make go-api-lint  (DEPUIS LA RACINE)   « golangci-lint présent — lint complet (ratchet CI,
+                                         dette gelée exclue). »
+                                       golangci-lint run --timeout 5m
+                                         --new-from-merge-base=origin/main
+                                       0 issues.        EXIT_GO_LINT=0
+cd apps/web && rm -rf node_modules/.tmp
+npm run typecheck                      EXIT_TYPECHECK=0
+npm run lint                           27 problems (0 errors, 27 warnings)   EXIT_LINT=0
+                                       0 avertissement sur features/compare/ (grep)
+npm run test                           Test Files 732 passed | 1 skipped (733)
+                                       Tests 7868 passed | 17 skipped (7885)
+                                       0 ligne ^ FAIL     EXIT_VITEST=0
+```
+
+`origin/main` a été rafraîchi avant le lint (`cf333a388`) et vérifié ANCÊTRE de HEAD : le
+ratchet avait donc une vraie merge-base, et son « 0 issues » porte bien sur le diff du
+chantier. Aucune correction n'a été nécessaire — pas de commit `compare-armes(lot5)` de code.
+
+**5.3 — commits et push faits ; la vérification CI est IMPOSSIBLE sur cette branche.**
+
+Faits : sept commits `compare-armes(lotN)` sur `wt/compare-armes`, puis
+`git push -u origin wt/compare-armes` -> `* [new branch]`, EXIT_PUSH=0.
+
+Bloqué : `gh run list --branch wt/compare-armes` rend une liste VIDE, et le restera. Cause
+vérifiée sur pièces, ce n'est pas une latence — elle a été sondée en avant-plan pendant cinq
+minutes avant diagnostic :
+
+- `.github/workflows/ci.yml`, bloc `on.push.branches` :
+  `[main, feat/**, feature/**, fix/**, hotfix/**, refactor/**, perf/**, docs/**, chore/**,
+  integration/**]`. Le préfixe `wt/**` N'Y EST PAS.
+- `.github/workflows/gitleaks.yml` reprend cette liste « À L'IDENTIQUE » (son propre
+  commentaire le dit) — même trou.
+- `ci.yml` n'expose AUCUN `workflow_dispatch` : le run ne peut pas être déclenché à la main.
+- Le second déclencheur de `ci.yml` est `pull_request: branches: [main]` — ouvrir une PR vers
+  `main` déclencherait la CI, mais la cible de fusion de ce chantier est `feat/v75`, et aucune
+  PR n'a été autorisée.
+
+CE N'EST PAS UN ÉCHEC DE LA BRANCHE. La base est saine : `gh run list --branch feat/v75
+--limit 3` rend `CI`, `Secrets (gitleaks)` et `Deploy Pre-Check` tous en `completed success`
+(run CI 35254287872, 2026-09-17T17:41). Rien n'est rouge — il n'y a simplement rien à lire
+pour `wt/**`.
+
+HORS PÉRIMÈTRE, NON CORRIGÉ : ajouter `wt/**` aux deux workflows touche la CI du dépôt
+entier, doit se faire DES DEUX CÔTÉS en même temps (le commentaire de `gitleaks.yml` cite le
+piège déjà payé : `feat/**` absent de `shared-social-gate.yml` pendant 45 runs) et croise
+l'invariant D29 avec le `paths-ignore` de `deploy.yml`, gardé par
+`archlint.TestCIPathsIgnoreSubsetOfDeployPathsIgnore`. Décision utilisateur.
+
+Le verdict CI au niveau job reste donc À OBTENIR — il le sera mécaniquement à la fusion dans
+`feat/v75` (préfixe couvert), ou plus tôt si l'utilisateur veut élargir les déclencheurs.
+
 
 ## Reprise de session
 
