@@ -27,7 +27,7 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // gwPickupBounds encadre la disparition d'un objet au sol : ce que le recensement des images-clés

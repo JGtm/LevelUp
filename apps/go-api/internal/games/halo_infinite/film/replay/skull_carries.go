@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // skull_carries.go — LA REGLE : de quoi est faite une periode de portage du CRANE d'Oddball.

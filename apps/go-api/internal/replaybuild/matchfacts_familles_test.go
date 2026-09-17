@@ -14,18 +14,18 @@ import (
 	"errors"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // recordsCTFAvecFragsDeTest — la meme fixture que [recordsCTFDeTest], plus le compteur de FRAGS
 // (`comp 2 A`). C'est la forme reelle d'un film : les deux emplacements bougent cote a cote.
-func recordsCTFAvecFragsDeTest() []objectives.StatRecord {
-	var out []objectives.StatRecord
+func recordsCTFAvecFragsDeTest() []decfilm.StatRecord {
+	var out []decfilm.StatRecord
 	for i := 1; i <= 4; i++ {
 		for _, slot := range []int{10, 12} {
-			out = append(out, objectives.StatRecord{
+			out = append(out, decfilm.StatRecord{
 				TimeMS: i * 1_000, Slot: slot,
-				Comps: map[int]objectives.StatValue{
+				Comps: map[int]decfilm.StatValue{
 					22: {A: int64(i)},     // flag_grabs — famille d'objectif
 					2:  {A: int64(2 * i)}, // kills — ancre d'identite, JAMAIS un objectif
 				},
@@ -39,12 +39,12 @@ func recordsCTFAvecFragsDeTest() []objectives.StatRecord {
 // qui alimentent la couverture : le pont incomplet, le refus d'effectif et le fil des morts
 // illisible.
 //
-// MUTATION : rendre `len(named)` au lieu de `objectives.CountObjectiveFamily(named)` sur
+// MUTATION : rendre `len(named)` au lieu de `decfilm.CountObjectiveFamily(named)` sur
 // l'une des trois -> le compte remonte au total nomme, rouge.
 func TestComptesDeCouvertureNeGardentQueLesObjectifs(t *testing.T) {
 	recs := recordsCTFAvecFragsDeTest()
-	nommees := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeFlag)
-	objectifs := objectives.CountObjectiveFamily(nommees)
+	nommees := decfilm.NamedEventsFrom(recs, decfilm.ObjectiveTypeFlag)
+	objectifs := decfilm.CountObjectiveFamily(nommees)
 	if objectifs == 0 || objectifs == len(nommees) {
 		t.Fatalf("fixture non discriminante : %d objectif(s) sur %d nommee(s)",
 			objectifs, len(nommees))
@@ -55,7 +55,7 @@ func TestComptesDeCouvertureNeGardentQueLesObjectifs(t *testing.T) {
 	// PONT INCOMPLET — sans identite, tout le calque part en `noSlot` ; seuls les objectifs
 	// entrent au denominateur.
 	_, nonNommes, refuses := identifiedEvents(ctx, "m", filmDeaths{}, recs,
-		rosterDe(objectives.StatPlayerSlots), pont())
+		rosterDe(decfilm.StatPlayerSlots), pont())
 	if nonNommes != objectifs || refuses != 0 {
 		t.Errorf("pont incomplet : nonNommes = %d, refuses = %d ; attendu %d et 0",
 			nonNommes, refuses, objectifs)
@@ -64,7 +64,7 @@ func TestComptesDeCouvertureNeGardentQueLesObjectifs(t *testing.T) {
 	// REFUS D'EFFECTIF — le calque se tait entierement, et le compte du refus est le meme
 	// denominateur.
 	_, _, refuses = identifiedEvents(ctx, "m", filmDeaths{}, recs,
-		rosterDe(objectives.StatPlayerSlots+1), pont())
+		rosterDe(decfilm.StatPlayerSlots+1), pont())
 	if refuses != objectifs {
 		t.Errorf("refus d'effectif : refuses = %d, attendu %d", refuses, objectifs)
 	}
@@ -72,7 +72,7 @@ func TestComptesDeCouvertureNeGardentQueLesObjectifs(t *testing.T) {
 	// FIL DES MORTS ILLISIBLE — le calque est integralement perdu, et c'est cette perte-la,
 	// restreinte aux objectifs, qu'il faut publier.
 	_, nonNommes, _ = identifiedEvents(ctx, "m", filmDeaths{err: errors.New("fil illisible")},
-		recs, rosterDe(objectives.StatPlayerSlots), pont())
+		recs, rosterDe(decfilm.StatPlayerSlots), pont())
 	if nonNommes != objectifs {
 		t.Errorf("fil des morts illisible : nonNommes = %d, attendu %d", nonNommes, objectifs)
 	}

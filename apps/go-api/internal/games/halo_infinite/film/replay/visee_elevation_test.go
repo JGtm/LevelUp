@@ -33,7 +33,7 @@ package replay
 //
 //	positions + elevation  `grammar.ScanFilmBipedPositions` (CaptureDirs) — un seul balayage.
 //	fil des morts          `ScanFilmDeaths` (chunk highlight du film).
-//	fil des KILLS          `analysis.ParseHighlightEvents` sur le MEME chunk : la victime est un
+//	fil des KILLS          `grammar.ParseHighlightEvents` sur le MEME chunk : la victime est un
 //	                       event `death`, le tueur un event `kill` au MEME instant. On ne prend
 //	                       QUE les instants qui portent exactement un de chaque — aucun couple
 //	                       n'est reconstruit, aucun orphelin n'est recolle (`killsource` le fait,
@@ -69,8 +69,8 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 const (

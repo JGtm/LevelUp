@@ -24,7 +24,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // v4OracleCause nomme l etat du flux du tireur au moment d un tir de l oracle.

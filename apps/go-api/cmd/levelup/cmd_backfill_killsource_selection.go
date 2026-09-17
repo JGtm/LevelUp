@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/killscope"
-	"levelup/go-api/internal/games/halo_infinite/film/facts"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/sync/killcollector"
 )
@@ -98,7 +98,7 @@ func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 		    OR NOT EXISTS (SELECT 1 FROM match_participants mp
 		                   WHERE mp.match_id = e.match_id AND mp.team_id IS NOT NULL)
 		  )`,
-		facts.Rev, killscope.ReadPathCreditBackfill,
+		decfilm.Rev, killscope.ReadPathCreditBackfill,
 		killcollector.IsolationDecoderRev)
 	if err != nil {
 		return nil, fmt.Errorf("matchs deja a jour: %w", err)

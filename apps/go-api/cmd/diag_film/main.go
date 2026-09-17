@@ -14,7 +14,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -23,7 +22,8 @@ import (
 	"os"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/weapons/filmshell"
 	"levelup/go-api/internal/platform/auth"
 	gosync "levelup/go-api/internal/sync"
 )
@@ -92,7 +92,7 @@ func main() {
 		}
 
 		// Frame markers
-		frames := analysis.FindFramePositions(data)
+		frames := decfilm.FindFramePositions(data)
 		fmt.Printf("  Frame markers [A0 7B 42]  : %d\n", len(frames))
 
 		// Formula A patterns [20 00 02]
@@ -101,16 +101,16 @@ func main() {
 		fmt.Printf("  FormulaA patterns [20 00 02] : %d occurrences\n", faCount)
 
 		// Formula A results (parsed)
-		faResults := analysis.ScanFormulaA(data)
+		faResults := decfilm.ScanFormulaA(data)
 		fmt.Printf("  ScanFormulaA results      : %d\n", len(faResults))
 
 		// Formula A NS results
-		faNS := analysis.ScanFormulaANS(data)
+		faNS := decfilm.ScanFormulaANS(data)
 		fmt.Printf("  ScanFormulaANS results    : %d\n", len(faNS))
 
 		// Fire events via ScanFireEventsAll
-		estimateTS := analysis.TimestampEstimator(data, fc.StartMS, fc.DurationMS)
-		fireEvents := analysis.ScanFireEventsB5(data, estimateTS)
+		estimateTS := decfilm.TimestampEstimator(data, fc.StartMS, fc.DurationMS)
+		fireEvents := decfilm.ScanFireEventsB5(data, estimateTS)
 		fmt.Printf("  ScanFireEventsB5 events   : %d\n", len(fireEvents))
 
 		// Check if universal marker bits appear at all (raw search)
@@ -137,7 +137,7 @@ func main() {
 				if abs >= 4 {
 					wb := make([]byte, 8)
 					copy(wb, data[abs-4:abs+4])
-					wid := binary.BigEndian.Uint64(wb)
+					wid := filmshell.IDFromBytes([8]byte(wb))
 					fmt.Printf("    @%d: wid=%d  hex=%s\n", abs-4, wid, hex.EncodeToString(wb))
 				}
 				pos = abs + 1
@@ -156,13 +156,13 @@ func main() {
 			fmt.Printf("  Sample FormulaA snapshots (premières %d/%d):\n", n, len(faResults))
 			for i := 0; i < n; i++ {
 				r := faResults[i]
-				wid := binary.BigEndian.Uint64(r.WeaponBytes[:])
-				name := analysis.WeaponIDToName[wid]
+				wid := filmshell.IDFromBytes(r.WeaponBytes)
+				name := filmshell.WeaponIDToName[wid]
 				if name == "" {
 					name = "INCONNU"
 				}
 				fmt.Printf("    @%d  pi=%d  weapon=%-22s  hex=%s\n",
-					r.Offset, r.PlayerIndex, name, hex.EncodeToString(r.WeaponBytes[:]))
+					r.Offset, r.FilmIndex, name, hex.EncodeToString(r.WeaponBytes[:]))
 			}
 		}
 
@@ -175,16 +175,16 @@ func main() {
 			for i := 0; i < n; i++ {
 				ev := fireEvents[i]
 				fmt.Printf("    t=%.0fms  pi=%d  slot=%d  weapon=%-22s  fire_seq=%d  fire_counter=%d  hex=%s\n",
-					ev.TimestampMS, ev.PlayerIndex, ev.Slot, ev.WeaponName,
+					ev.TimestampMS, ev.FilmIndex, ev.Slot, ev.WeaponName,
 					ev.FireSeq, ev.FireCounter, hex.EncodeToString(ev.WeaponBytes[:]))
 			}
 		}
 
 		// Agrégats
 		for _, ev := range fireEvents {
-			weaponPlayerCounts[weaponPlayerKey{ev.WeaponName, ev.PlayerIndex}]++
+			weaponPlayerCounts[weaponPlayerKey{ev.WeaponName, ev.FilmIndex}]++
 			weaponTotals[ev.WeaponName]++
-			playerEventTotals[ev.PlayerIndex]++
+			playerEventTotals[ev.FilmIndex]++
 		}
 
 		fmt.Println()

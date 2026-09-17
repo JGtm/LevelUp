@@ -20,7 +20,7 @@ package archlint
 // # CE QUI EST COMPTE, EXACTEMENT
 //
 // Les NOMS declares par un `var` de NIVEAU PAQUET dans les fichiers non-test de
-// `internal/games/halo_infinite/film/grammar` — un bloc `var ( a = 1; b = 2 )` compte donc pour DEUX, parce que
+// `internal/games/halo_infinite/film/internal/grammar` — un bloc `var ( a = 1; b = 2 )` compte donc pour DEUX, parce que
 // c'est deux morceaux d'etat, pas une ligne de syntaxe. L'identifiant blanc (`var _ = ...`,
 // assertion de compilation) n'est PAS compte : il ne porte aucun etat. Le comptage se fait par
 // `go/ast` et non par grep — un `var` dans un commentaire ou dans un corps de fonction ne doit
@@ -222,7 +222,7 @@ const filmdecVarsGeles = 21
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/grammar"))
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/internal/grammar"))
 	compte, parFichier := compterVarsDePaquet(t, pkgDir)
 	switch {
 	case compte > filmdecVarsGeles:
@@ -325,7 +325,7 @@ func detailParFichier(parFichier map[string]int) string {
 // Aucune des vingt-deux restantes n est dans ce cas (elles sont lues par indexation ou par
 // `range`), et le compte TOTAL gele plus haut interdit d en ajouter sans le dire.
 func TestAucunVarDePaquetEcriteDansFilmdec(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/grammar"))
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/internal/grammar"))
 	ecrites := varsDePaquetEcrites(t, pkgDir)
 	if len(ecrites) == 0 {
 		return

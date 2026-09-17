@@ -7,7 +7,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vsClock est l'horloge des cas : origine 0, pas 100 ms, 1 000 frames.

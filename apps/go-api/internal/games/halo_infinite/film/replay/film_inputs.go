@@ -30,7 +30,7 @@ package replay
 // `FilmInputs` est exactement le troisieme tiers. `applyTo` les repose sur les `Options` que
 // l'assemblage recoit — c'est la seule ecriture, et elle est ecrite une fois.
 
-import "levelup/go-api/internal/games/halo_infinite/film/grammar"
+import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 
 // FilmInputs porte ce que l'etage de balayage d'un film rend a l'assemblage.
 //

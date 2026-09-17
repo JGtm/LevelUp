@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // pkClock construit l'horloge de test avec sa table d'équipement. Les trois quarts des cas de ce

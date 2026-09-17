@@ -29,7 +29,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // eqLife est une VIE d'objet d'equipement IDENTIFIEE : sa pose lui donne un GlobalID `eqip`,

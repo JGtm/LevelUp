@@ -14,7 +14,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // TestViseeZoomBoutEnBout verifie que le palier de lunette arrive jusqu'au document — au bon

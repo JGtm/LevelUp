@@ -9,8 +9,8 @@ package port
 import (
 	"context"
 
-	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -160,7 +160,7 @@ type ObjectiveEventsRepository interface {
 type PlayerPositionsRepository interface {
 	// LoadMatch relit toutes les positions full-state d'un match, ordonnées par
 	// time_ms ASC. Match-level : pas d'attribution xuid (Team best-effort).
-	LoadMatch(ctx context.Context, matchID string) ([]positions.PlayerPosition, error)
+	LoadMatch(ctx context.Context, matchID string) ([]playerposition.PlayerPosition, error)
 }
 
 // KillDistanceRepository — POC (LOT G.3, 2026-08-30, plan retours-utilisateur

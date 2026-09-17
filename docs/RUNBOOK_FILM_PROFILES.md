@@ -19,11 +19,11 @@ Related files:
   a build.
 - `apps/go-api/cmd/film-profiles-build/` — the fabrication chain for the **derived** block, and
   its `gamefiles` gate.
-- `apps/go-api/internal/games/halo_infinite/film/profile/profile_table.go` — the lot 2.1 table,
-  still the source of truth for the **content** of `entries` while both coexist (lot 3.1.1 makes
-  the decoder read the file and removes the copy). `TestCatalogueConformeALaTableDuLot21` keeps
-  them equal, line for line. It does **not** cover `registryFingerprints`: that section has no
-  copy in the decoder, and is validated on its own values.
+- `apps/go-api/internal/games/halo_infinite/film/internal/profile/profile_table.go` — the lot 2.1
+  table, still the source of truth for the **content** of `entries` while both coexist (lot 3.1.1
+  makes the decoder read the file and removes the copy). `TestCatalogueConformeALaTableDuLot21`
+  keeps them equal, line for line. It does **not** cover `registryFingerprints`: that section has
+  no copy in the decoder, and is validated on its own values.
 - `config/replay_corpus.toml` — the witness corpus (one `[[temoin]]` per grammar family, and
   since lot 3.2.3 at least one per registry key).
 
@@ -117,8 +117,7 @@ what is missing (for example: "widths captured at runtime on ONE session; no rea
 no per-build measurement"). A presumed line is legitimate — it is the honest state of
 knowledge — as long as it is *named* as such. What is not legitimate is a value with no line.
 
-While the lot 2.1 table and the catalogue coexist, the same line must be added to
-`film/profile/profile_table.go` in the **same commit**: `TestCatalogueConformeALaTableDuLot21` fails
+`film/internal/profile/profile_table.go` in the **same commit**: `TestCatalogueConformeALaTableDuLot21` fails
 otherwise, on purpose (two truths for one profile is worse than one gap).
 
 ### 4.3 Promote it to `relue` or `mesuree`

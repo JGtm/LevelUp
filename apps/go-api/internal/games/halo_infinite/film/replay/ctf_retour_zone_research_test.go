@@ -51,7 +51,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // ctfzRayons — les rayons candidats, en metres monde. La borne haute (15 m) est volontairement

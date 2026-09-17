@@ -13,7 +13,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // placEnd est la fin d'affichage observée d'UNE pose, sur l'axe du document.

@@ -9,7 +9,7 @@ package killcollector
 import (
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
@@ -60,7 +60,7 @@ type MatchIdentities struct {
 //	"Chocoboflor"           un GAMERTAG, tel que le kill-feed du film le porte. Il se resout
 //	                        contre le roster du match, et un nom inconnu reste sans xuid.
 //	"xuid:2535469190789936" LE XUID LUI-MEME, ecrit par le decodeur quand le film ne porte
-//	                        aucun gamertag pour ce joueur (cf. killsource.XUIDNamePrefix).
+//	                        aucun gamertag pour ce joueur (cf. decfilm.XUIDNamePrefix).
 //	                        C est l identite la PLUS FORTE, et la chercher dans une table de
 //	                        gamertags ne rend evidemment rien.
 //
@@ -69,7 +69,7 @@ type MatchIdentities struct {
 // vue canonique — sinon la table stockerait `xuid:2535...` comme pseudo, exactement l « xuid brut
 // a l affichage » que `v_gamertag_lookup` existe pour empecher.
 func (m MatchIdentities) Resoudre(nom string) (xuid, gamertag string) {
-	if reste, ok := strings.CutPrefix(nom, killsource.XUIDNamePrefix); ok {
+	if reste, ok := strings.CutPrefix(nom, decfilm.XUIDNamePrefix); ok {
 		if estDecimal(reste) {
 			if gt := m.ParXUID[reste]; gt != "" {
 				return reste, gt

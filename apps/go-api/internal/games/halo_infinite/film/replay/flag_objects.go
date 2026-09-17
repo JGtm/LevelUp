@@ -62,7 +62,7 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // flagFreeLife est UNE vie libre : la creation, puis la piste repliquee jusqu'a sa fin.

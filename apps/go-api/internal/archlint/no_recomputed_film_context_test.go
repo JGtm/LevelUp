@@ -121,7 +121,7 @@ var appelsAutorisesDuContexte = map[string]string{
 
 // TestContexteFilmCalculeUneFois — REGLE 1.
 func TestContexteFilmCalculeUneFois(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/grammar"))
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/internal/grammar"))
 	vus := map[string]bool{}
 	var enTrop []string
 	for nom, f := range fichiersGoNonTest(t, pkgDir) {
@@ -179,8 +179,8 @@ func TestContexteFilmCalculeUneFois(t *testing.T) {
 var paquetsSansAnalyseDeRegistre = []string{
 	"internal/games/halo_infinite/film/replay",
 	"internal/replaybuild",
-	"internal/games/halo_infinite/film/facts/objectives",
-	"internal/games/halo_infinite/film/facts/killsource",
+	"internal/games/halo_infinite/film/internal/facts/objectives",
+	"internal/games/halo_infinite/film/internal/facts/killsource",
 	"internal/sync/killcollector",
 	"internal/api/wire",
 }
@@ -188,7 +188,7 @@ var paquetsSansAnalyseDeRegistre = []string{
 // analysesDeRegistreAutorisees : L'ALLOWLIST FERMEE de la regle 2 (2026-09-03, lot 2). Chemins
 // relatifs a la racine du module, separateur `/`.
 var analysesDeRegistreAutorisees = map[string]string{
-	"internal/games/halo_infinite/film/facts/killsource/world.go": "`World.Snapshot` analyse le " +
+	"internal/games/halo_infinite/film/internal/facts/killsource/world.go": "`World.Snapshot` analyse le " +
 		"registre du film pour son propre monde. HORS PERIMETRE SANS CONDITION (decision D14 de " +
 		"PLAN_CUISSON_PERF) : `killsource` n'est pas dans ce plan. Note §8 — c'est la DERNIERE " +
 		"analyse de registre de la chaine de cuisson qui ne passe pas par `FilmContext`.",

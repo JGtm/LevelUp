@@ -52,7 +52,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // cheminDuPlanDecodeur : le plan est la SOURCE des cases. Chemin depuis `apps/go-api`.
@@ -80,7 +80,7 @@ func TestAucuneCibleDeRepliNeNommeUnLotClos(t *testing.T) {
 			len(clos)+len(ouverts), planchersLotsDuPlan, cheminDuPlanDecodeur)
 	}
 	var perimees []string
-	for _, r := range fallback.Table() {
+	for _, r := range decfilm.Table() {
 		for _, champ := range []struct{ nom, valeur string }{
 			{"CibleRetrait", r.CibleRetrait},
 			{"CibleComptage", r.CibleComptage},

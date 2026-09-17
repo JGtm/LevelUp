@@ -35,7 +35,7 @@ import (
 // `PlayerIndex` désigne autre chose (position dans une équipe pour le calcul de rating) et
 // n'a rien à voir avec cette confusion.
 var playerIndexScope = []string{
-	filepath.Join("games", "halo_infinite", "film", "grammar"),
+	filepath.Join("games", "halo_infinite", "film", "internal", "grammar"),
 	filepath.Join("games", "halo_infinite", "film", "replay"),
 }
 

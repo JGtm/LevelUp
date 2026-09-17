@@ -64,7 +64,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // epoFenetreUS est la fenêtre du juge temporel : la fin de vie doit tomber à moins de 500 ms

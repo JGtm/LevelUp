@@ -42,7 +42,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vehicleAimBySlot indexe les lectures de visee par slot d occupant et TRIE chaque liste par

@@ -17,7 +17,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // gwPickup21Tally compte le bornage, la datation et les deux temoins sur un sous-ensemble.

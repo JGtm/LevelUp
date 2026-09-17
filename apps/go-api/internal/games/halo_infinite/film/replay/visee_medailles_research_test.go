@@ -42,8 +42,8 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const adsFilmsDirEnv = "ADS_FILMS_DIR"
@@ -129,13 +129,13 @@ func adsRecenseFilm(root, name string) (adsMedailleFilm, bool) {
 	if err != nil {
 		return adsMedailleFilm{film: name, chunkIntrouvable: true}, false
 	}
-	evs, err := analysis.ParseHighlightEvents(raw, 0)
+	evs, err := grammar.ParseHighlightEvents(raw, 0)
 	if err != nil {
 		return adsMedailleFilm{film: name}, false
 	}
 	f := adsMedailleFilm{film: name}
 	for _, e := range evs {
-		if e.EventType != analysis.EventTypeMedal {
+		if e.EventType != highlightevent.EventTypeMedal {
 			continue
 		}
 		f.evenementsMedaux++

@@ -31,8 +31,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vfPropagationUS : ecart maximal entre deux fragments de meme slot consideres comme la meme
@@ -84,7 +83,7 @@ func vfXUID(dir, gt string) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("chunk d'evenements : %w", err)
 	}
-	evs, err := analysis.ParseHighlightEvents(raw, 0)
+	evs, err := grammar.ParseHighlightEvents(raw, 0)
 	if err != nil {
 		return 0, fmt.Errorf("feed illisible : %w", err)
 	}

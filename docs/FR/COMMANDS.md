@@ -593,12 +593,12 @@ refuse une bobine dont les images sont concaténées hors de leur continuité.)
 ```bash
 cd apps/go-api
 # la ligne de base commise (à régénérer seulement sur un changement déclaré)
-go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ \
-  > internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ \
+  > internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt
 
 # comparer après un changement, sur la MÉDIANE (ce que benchstat rapporte)
-go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ > /tmp/apres.txt
-benchstat internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt /tmp/apres.txt
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ > /tmp/apres.txt
+benchstat internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt /tmp/apres.txt
 # benchstat n'est pas vendorisé : go install golang.org/x/perf/cmd/benchstat@latest
 ```
 
@@ -818,7 +818,7 @@ jour) :
 | `--keep-work` | `false` | conserver la racine de travail après l'exécution (débogage) |
 | `--json` | (aucun) | chemin où écrire aussi le rapport complet en JSON |
 
-**À exécuter avant tout merge qui touche** `games/halo_infinite/film/replay`, `replaybuild`, `filmdec`, ou qui
+**À exécuter avant tout merge qui touche** `games/halo_infinite/film/replay`, `replaybuild`, `film/internal/grammar`, ou qui
 bumpe `SchemaVersion`. **Exige** : le parc local de développement (chunks de film ; + artefacts
 déjà cuits sous `data/cache/replays` en mode `--reference=parc`) et l'accès en lecture à la base
 partagée du titre (pour les faits du match, via `levelup replay-facts-export` lancé en

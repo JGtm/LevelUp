@@ -28,8 +28,8 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // SEUILS DE LA PHASE 2a — ecrits avant la mesure (arbitrage §Phase 2a).

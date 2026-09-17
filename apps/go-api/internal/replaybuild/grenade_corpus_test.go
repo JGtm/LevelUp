@@ -42,9 +42,8 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // ggglEntreeRe extrait l'entree de la liste des grenades du champ `detail` de labels.tsv.
@@ -241,7 +240,7 @@ func (b *balayage) compter(tag uint32, court string) {
 }
 
 // compterResultat ventile les deux populations de morts d'un decodage.
-func (b *balayage) compterResultat(res *killsource.Result, court string) {
+func (b *balayage) compterResultat(res *decfilm.Result, court string) {
 	for _, k := range res.Kills {
 		b.compter(k.Source.Tag, court)
 	}
@@ -292,7 +291,7 @@ func (b *balayage) publierFilmsAmbigus(t *testing.T) {
 // filmDeLArtefact : les deux lectures d'un meme match, cote a cote.
 type filmDeLArtefact struct {
 	doc      replay.ReplayDocument
-	res      *killsource.Result
+	res      *decfilm.Result
 	idParNom map[string]int
 	lancers  []lancerGrenade
 }
@@ -307,12 +306,12 @@ func chargerArtefactEtFilm(t *testing.T, path, cacheFilms string) (*filmDeLArtef
 		return nil, false
 	}
 	court := title.FilmShortMatchID(doc.MatchID)
-	src, err := source.LoadDir(filepath.Join(cacheFilms, court), nil)
+	src, err := decfilm.LoadDir(filepath.Join(cacheFilms, court), nil)
 	if err != nil {
 		t.Logf("  %s : chunks absents du cache (%v) — film ecarte", court, err)
 		return nil, false
 	}
-	res, err := killsource.Decode(context.Background(), doc.MatchID, src, nil)
+	res, err := decfilm.Decode(context.Background(), doc.MatchID, src, nil)
 	if err != nil {
 		t.Logf("  %s : source de degat non decodee (%v) — film ecarte", court, err)
 		return nil, false

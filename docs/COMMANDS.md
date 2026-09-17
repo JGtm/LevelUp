@@ -568,12 +568,12 @@ concatenated out of continuity.)
 ```bash
 cd apps/go-api
 # the committed baseline (regenerate only on a declared change)
-go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ \
-  > internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ \
+  > internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt
 
 # compare after a change, on the MEDIAN (what benchstat reports)
-go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ > /tmp/apres.txt
-benchstat internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt /tmp/apres.txt
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ > /tmp/apres.txt
+benchstat internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt /tmp/apres.txt
 # benchstat is not vendored: go install golang.org/x/perf/cmd/benchstat@latest
 ```
 
@@ -785,7 +785,7 @@ from the JSON alone, as a clean witness.
 | `--keep-work` | `false` | keep the working root after the run (debugging) |
 | `--json` | (none) | path to also write the full report as JSON |
 
-**Run it before merging anything that touches** `games/halo_infinite/film/replay`, `replaybuild`, `filmdec`, or
+**Run it before merging anything that touches** `games/halo_infinite/film/replay`, `replaybuild`, `film/internal/grammar`, or
 that bumps `SchemaVersion`. **Requires**: the local dev parc (film chunks; + already-baked
 artifacts under `data/cache/replays` in `--reference=parc` mode) and read access to the title's
 shared DB (for match facts, via `levelup replay-facts-export` run as a subprocess, per witness —

@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vgColonne est un composant transpose en colonnes de bits, avec le slot de chaque echantillon.

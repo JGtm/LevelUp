@@ -18,7 +18,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // projPas fabrique une piste de projectile a partir de positions X (Y et Z fixes), un point

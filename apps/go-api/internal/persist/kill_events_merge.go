@@ -17,7 +17,7 @@ package persist
 // ─── POURQUOI L APPARIEMENT EST SUR, ET POURQUOI LA TOLERANCE EST ZERO ─────────────────────
 //
 // LES DEUX SOURCES SONT LE MEME FLUX, LU A DEUX ENDROITS. Le kill-feed du film est decode par
-// `analysis.ParseHighlightEvents` — exactement le meme parseur que celui qui alimente
+// `grammar.ParseHighlightEvents` — exactement le meme parseur que celui qui alimente
 // `highlight_events` depuis l API. Ce ne sont pas deux mesures independantes d un meme evenement :
 // c est une seule mesure, livree par deux canaux. Il n y a donc AUCUN ecart d horloge a absorber,
 // et c est mesure : passer de 0 ms a 1 SECONDE ne gagne que 8 lignes sur 74 569 (0,01 %).

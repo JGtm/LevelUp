@@ -62,7 +62,7 @@ type EnrichmentRow struct {
 // `raw_json VARCHAR`, et le croisement historique des deux vaut d'être écrit :
 //
 //   - TypeHint : le canal NUMÉRIQUE canonique. Halo Infinite y met l'octet
-//     `type_hint` du bloc event du film (analysis.HighlightEvent.TypeHint), qui
+//     `type_hint` du bloc event du film (highlightevent.HighlightEvent.TypeHint), qui
 //     dit la nature de l'event (50 kill, 20 mort, 10 mode, poids de médaille).
 //   - DetailsJSON : le canal numérique HÉRITÉ, au nom trompeur. Halo 5 y met
 //     l'identifiant de médaille sous forme de chaîne, et le persister le verse

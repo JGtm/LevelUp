@@ -52,7 +52,7 @@ import (
 
 // cheminTableProfil : le fichier de la table du lot 2.1, relatif a la racine du depot.
 var cheminTableProfil = filepath.Join("apps", "go-api", "internal", "games", "halo_infinite",
-	"film", "profile", "profile_table.go")
+	"film", "internal", "profile", "profile_table.go")
 
 // tablesDuProfil : les sous-tables de la table, DANS L ORDRE ou `TableProfil()` les concatene,
 // avec le nombre de lignes mesure le 2026-09-16. Le compte est ecrit pour que l ajout d une

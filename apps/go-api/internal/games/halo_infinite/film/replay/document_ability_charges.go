@@ -36,7 +36,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // AbilityCharge est UNE lecture de charge publiée : qui, quand, quel équipement, et ce

@@ -1,4 +1,4 @@
-// filmsource_leaf_test.go — `internal/games/halo_infinite/film/source` EST UNE FEUILLE, ET ELLE DOIT LE RESTER.
+// filmsource_leaf_test.go — `internal/games/halo_infinite/film/internal/source` EST UNE FEUILLE, ET ELLE DOIT LE RESTER.
 //
 // # POURQUOI CE GARDE-RAIL EXISTE, ET IL A UNE DATE
 //
@@ -39,7 +39,7 @@ import (
 )
 
 // filmsourceLeafPkg : le paquet feuille, relatif a apps/go-api.
-const filmsourceLeafPkg = "internal/games/halo_infinite/film/source"
+const filmsourceLeafPkg = "internal/games/halo_infinite/film/internal/source"
 
 // filmsourceLeafPrefix : le prefixe du module. Tout import qui commence par la est un import DU
 // DEPOT, et il est interdit ici. La stdlib (et elle seule) est autorisee.

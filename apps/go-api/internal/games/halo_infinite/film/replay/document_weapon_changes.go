@@ -35,7 +35,7 @@ package replay
 import (
 	"fmt"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // WeaponChangeKind qualifie un changement d'arme en main, tel que le document le publie.

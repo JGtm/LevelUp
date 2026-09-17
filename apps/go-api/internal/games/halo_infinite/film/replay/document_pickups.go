@@ -31,7 +31,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // PickupKind qualifie ce qui a été ramassé.

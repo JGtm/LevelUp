@@ -9,8 +9,7 @@ package killcollector
 // OBSERVE.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
@@ -111,7 +110,7 @@ const (
 // ou il bouge, l hypothese de schema « un seul assistant » est en defaut. Il est publie ICI en
 // plus d etre stocke sur les lignes, parce qu un compteur qu il faut interroger en SQL pour voir
 // bouger n alerte personne.
-func publishKillSourceMetrics(res *killsource.Result, batch persist.KillSourceBatch) {
+func publishKillSourceMetrics(res *decfilm.Result, batch persist.KillSourceBatch) {
 	observability.AddInt(metricCollected, 1)
 	observability.AddInt(metricDeaths, int64(len(batch.Deaths)))
 	if !batch.Publishable {
@@ -141,7 +140,7 @@ func publishKillSourceMetrics(res *killsource.Result, batch persist.KillSourceBa
 // retrait est ecrit au registre (`repli_couple_recolle_sur_le_voisin`). Les trois compteurs de
 // diagnostic (`_muet`, `_ambigu`, `_contradiction`) disent POURQUOI il a fallu se replier — sans
 // eux, un compte de replis ne designe aucune correction.
-func publishCoupleProvenance(c killsource.CoupleStats) {
+func publishCoupleProvenance(c decfilm.CoupleStats) {
 	for _, p := range []struct {
 		nom string
 		val int
@@ -168,7 +167,7 @@ func publishCoupleProvenance(c killsource.CoupleStats) {
 // films du cache sans section d identification (`03af54c3`, `13b00e35`, `47d20b5d`, `50247b26`,
 // `a349fea8`) le tiennent au-dessus de zero, et c est la raison ECRITE pour laquelle l inference
 // reste.
-func publishBijectionProvenance(t killsource.FilmTablePinning) {
+func publishBijectionProvenance(t decfilm.FilmTablePinning) {
 	observability.AddInt(metricBijTableFilm, int64(t.Pinned))
 	observability.AddInt(metricBijInference, int64(t.Inferred))
 	observability.AddInt(metricBijSilence, int64(t.Silent))
@@ -176,16 +175,16 @@ func publishBijectionProvenance(t killsource.FilmTablePinning) {
 	if t.Inferred == 1 && t.FreeNames >= 2 {
 		observability.AddInt(metricBijAmbigue, 1)
 	}
-	if t.Refusal == killsource.FilmTableRead {
+	if t.Refusal == decfilm.FilmTableRead {
 		return
 	}
 	// La cause entre dans le NOM du compteur : « la table a ete refusee » sans dire pourquoi
 	// n oriente aucun diagnostic. Meme forme que `filmdec_unknown_build_<build>` (ADR 0009).
 	observability.AddInt(metricBijTableRefusee+string(t.Refusal), 1)
-	if t.Refusal == killsource.FilmTableUnknownBuild {
+	if t.Refusal == decfilm.FilmTableUnknownBuild {
 		// D-4 d ADR 0034 : un build hors profil est mis de cote AVEC son compteur nomme, pour
 		// que le refus se voie en production et pas seulement au journal.
-		for _, p := range grammar.UnknownBuildExpvarPairs(t.Build) {
+		for _, p := range decfilm.UnknownBuildExpvarPairs(t.Build) {
 			observability.AddInt(p.Name, p.Value)
 		}
 	}
@@ -198,7 +197,7 @@ func publishBijectionProvenance(t killsource.FilmTablePinning) {
 // `repli_appariement_par_fenetre_temporelle`, et son critere de retrait est ecrit au registre.
 // `killsource_couple_sans_identite_de_paquet` dit POURQUOI il a fallu se replier — sans lui, un
 // compte de replis ne designe aucune correction.
-func publishApparProvenance(a killsource.ApparStats) {
+func publishApparProvenance(a decfilm.ApparStats) {
 	for _, p := range []struct {
 		nom string
 		val int

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
+	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // deaths_source.go — LE FIL DES MORTS, LU DANS LE FILM.
@@ -22,7 +22,7 @@ import (
 // morts par `Options.Deaths`, comme il reçoit déjà les loadouts et les grenades.
 //
 // CE QU'ON NE FAIT PAS ICI, et c'est délibéré : on ne recopie pas le parseur. Il vit dans
-// `analysis.ParseHighlightEvents`, il est testé là-bas, et une seconde implémentation
+// `grammar.ParseHighlightEvents`, il est testé là-bas, et une seconde implémentation
 // divergerait — la règle du dépôt sur les copies vaut aussi pour les décodeurs.
 
 // ScanFilmDeaths lit le fil des morts du film de filmDir.
@@ -42,7 +42,7 @@ func ScanFilmDeaths(filmDir string) ([]Death, error) {
 
 // ScanDeaths lit le fil des morts d'un film DEJA CHARGE.
 //
-// LES OCTETS SONT DEJA DECOMPRESSES, et `analysis.ParseHighlightEvents` l'accepte : il tente un
+// LES OCTETS SONT DEJA DECOMPRESSES, et `grammar.ParseHighlightEvents` l'accepte : il tente un
 // `zlib.NewReader` et, s'il echoue, traite l'entree comme du clair — c'est la double tolerance
 // qu'il porte depuis l'incident du 2026-05-22 (le cache historique stockait les chunks
 // compresses, les telechargements recents ne le font plus). Lui donner le chunk deja inflate
@@ -77,13 +77,13 @@ func ScanDeaths(film *source.Film) ([]Death, error) {
 	// plutot que `ResolveProfile` : cette fonction est appelee deux fois par cuisson et n a pas
 	// de carte — lui faire resoudre le profil entier couterait une analyse de registre par appel
 	// pour une valeur qui tient dans les quatre premiers octets.
-	evs, err := analysis.ParseHighlightEvents(raw, grammar.HighlightProfileOfFilm(film).MajorVersion)
+	evs, err := grammar.ParseHighlightEvents(raw, grammar.HighlightProfileOfFilm(film).MajorVersion)
 	if err != nil {
 		return nil, fmt.Errorf("chunk highlight (%d) : %w", n, err)
 	}
 	out := make([]Death, 0, len(evs))
 	for _, e := range evs {
-		if e.EventType != analysis.EventTypeDeath {
+		if e.EventType != highlightevent.EventTypeDeath {
 			continue
 		}
 		out = append(out, Death{XUID: e.XUID, Gamertag: e.Gamertag, TimeMS: int64(e.TimeMS)})

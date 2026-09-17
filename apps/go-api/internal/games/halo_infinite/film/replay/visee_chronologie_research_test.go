@@ -45,8 +45,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -286,7 +285,7 @@ func chronoXUID(t *testing.T, dir, gt string) uint64 {
 	if err != nil {
 		t.Fatalf("chunk d'evenements : %v", err)
 	}
-	evs, err := analysis.ParseHighlightEvents(raw, 0)
+	evs, err := grammar.ParseHighlightEvents(raw, 0)
 	if err != nil {
 		t.Fatalf("feed illisible : %v", err)
 	}

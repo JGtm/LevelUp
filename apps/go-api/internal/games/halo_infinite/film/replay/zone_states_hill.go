@@ -37,7 +37,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // hillDesignatorMinOwnerSamples : un slot de tag 5 n'est un designateur que si le slot SUIVANT

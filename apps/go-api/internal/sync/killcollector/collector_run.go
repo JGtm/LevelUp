@@ -16,8 +16,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
-	"levelup/go-api/internal/games/halo_infinite/film/source"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/haloclient"
@@ -89,7 +88,7 @@ func (c *KillSourceCollector) CollectMatch(ctx context.Context, matchID string) 
 // de 91 a 53 lignes et lui rend la lecture que l en-tete du paquet annonce — telecharger,
 // decoder, ecrire, chacun a sa place.
 func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID string) (
-	[]haloclient.FilmChunk, *source.Film, *killsource.Result, KillSourceOutcome, error,
+	[]haloclient.FilmChunk, *decfilm.Film, *decfilm.Result, KillSourceOutcome, error,
 ) {
 	chunks, found, err := FilmChunksForMatch(ctx, c.client, matchID)
 	if err != nil {
@@ -126,11 +125,11 @@ func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID st
 
 	// `nil` = la CONFIGURATION GELEE, celle qui a produit les chiffres publies. Ne jamais
 	// passer d Options ici sans une raison ecrite : ce sont elles qui definissent le decodage.
-	res, err := killsource.Decode(ctx, matchID, film, nil)
+	res, err := decfilm.Decode(ctx, matchID, film, nil)
 	if err != nil {
 		// Un film sans kill-feed n est pas une panne : c est un film dont on ne peut rien
 		// publier. Le distinguer evite qu un backfill s arrete sur un vieux match.
-		if errors.Is(err, killsource.ErrNoKillFeed) {
+		if errors.Is(err, decfilm.ErrNoKillFeed) {
 			observability.AddInt(metricNoKillFeed, 1)
 			slog.InfoContext(ctx, "killsource: film sans kill-feed, rien a publier",
 				"match_id", matchID)

@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const gwCorpusEnv = "GW_CORPUS" // liste de répertoires de films, séparés par des virgules
