@@ -40,6 +40,176 @@ réellement touchés (`service`, `domain` : 0 échec), `go vet ./...` et la CI d
 **Prochaine étape** : gate visuel de l'utilisateur (Explorer > recherche joueur, une cible avec
 matchs filmés ensemble ET une cible sans), puis fusion dans `feat/v75`. Reste ouvert : le bloc
 « Portée des frags » attend la mesure par rôle du chantier « Profil d'armes ».
+## [2026-09-17] Suite de la revue des 8 lots — 7 petits items web (libellés EN de la tuile, « volé », tranche 25 %, tests sprite+bordure, garde anti-anglicismes, helpers de rencontre, bouton de copie du watcher) — Complété (branche `fix/revue-suite-v75`)
+
+**Demande** (décisions utilisateur du 2026-09-17, après le lot de correctifs) : traduire les deux
+libellés FR seuls de la tuile de match ; lever la double définition de « volé » (l'infobulle des
+paires du graphe d'assistances vs le badge Voleur) ; corriger le libellé de la tranche basse des
+assistances (25 tombe dans la tranche moyenne) ; tester le couple sprite + bordure des véhicules
+(comportement voulu : indissociables, pas de sprite sans bordure chargée) ; faire voir les mots
+soudés au garde anti-anglicismes ; centraliser les helpers de formatage copiés entre les deux
+tableaux de rencontres ; donner un retour visuel au bouton de copie du code du watcher. Puis arrêt.
+
+**Décisions techniques** : `NARRATIVE_LABELS` typé `Record<Locale, Record<NarrativeType, string>>`
+(FR inchangé, EN COMEBACK / COLLAPSE / COUNTER-COMEBACK / SCUTTLED / SELFLESS) ; clé
+`tooltipStolen` -> `tooltipAssistantOutdamaged` (« dont N où le larbin a fait plus de dégâts que le
+patron ») ; tranches « moins de 25 % » / « 25 à 50 % » / « plus de 50 % » FR+EN, logique inchangée ;
+`useReplayVehicles.test.ts` (attente -> null et rien en cache ; chargée -> bordure sous le sprite ;
+échec -> sprite seul, un seul warn, pas de nouvelle requête), aucun changement de code ; motifs
+`kill(streak|feed|cam)` et `(win|loss|kill)streak` dans le garde, aucune chaîne FR réelle touchée ;
+module `features/_shared/encounters/format.ts` (+ `formatRelativeFor`) avec garde-rail grep ;
+WatcherCard sur `useCopyToClipboard`, clé `watcherAuthCodeCopied`, retiré de l'allowlist.
+
+**Résultats observés** : typecheck 0, lint 0 erreur, lint:colors 0, lint:fields 0, vitest 301
+fichiers / 2 895 tests ; chaque test prouvé rouge par mutation. Découvertes non traitées :
+`ratioValue` de MatchEncountersTable duplique `formatKDRatio` en numérique ; bascule
+semaines -> mois à 5 semaines (« il y a 4 sem. » pour un mois) ; MatchEncountersTable 552 L sous
+exemption ; le garde anti-anglicismes ne scanne pas `match-replay/i18n`.
+
+**Conclusion / prochaine étape** : CI de branche, merge dans feat/v75, arrêt du chantier revue.
+
+## [2026-09-17] Noms d'armes de la Match view dans la locale de requête + rôles « Larbin / Patron » sur les assistances d'escouade — Complété (feat/v75, non committé)
+
+**Demande** : (1) sur la capture README anglaise `18-match-view`, « Tourelle LMG du Falcon » et
+« Apparition » sortent en français ; (2) sur le graphe empilé « Assistances dans l'escouade »
+(page Synergies), nommer celui qui a assisté « Larbin » et celui qui a eu le frag crédité
+« Patron », avec un équivalent anglais.
+
+**Diagnostic (1)** : ce n'est PAS un libellé en dur (`weapon_names.toml` porte bien en/fr) mais
+trois lecteurs de `MatchViewRepo` aveugles à la locale : `lookupWeaponMeta` /
+`lookupWeaponLabels` (kills par arme du viewer → `MatchWeaponKill.weapon_label`, arme favorite
+du scoreboard → `top_weapon_label`) et `bulkWeaponKillsFromSource` (sources de dégât du film)
+servaient `weaponResolved.label` (FR-first) quelle que soit la locale. Le sunburst par match en
+héritait aussi (`FragRoleEntry.label` FR, `label_en` vide → repli croisé côté web).
+
+**Décision (1)** : localiser côté serveur par `ctxkeys.Locale(ctx)` (en-tête X-LevelUp-Locale),
+même doctrine que `lookupMedalMeta` (GH-5b) dans le même repo — option 2 du plan
+`PLAN_LIBELLES_EN_DUR_GO` (transitionnelle, zéro changement de contrat). Helper unique
+`weaponResolved.displayLabel(locale)` / `weaponKeyResolved.displayLabel(locale)` (délègue à
+`resolvePlaylistNameForLocale`, pas de 3e copie du prédicat « en* »). Test
+`TestMatchViewWeaponLabels_FollowRequestLocale` (fr / en / en-US / locale absente = fr) sur les
+trois lecteurs. Second tour (question user « tu recommandes quoi ? ») : recommandation = traiter
+MAINTENANT les trois lecteurs restants de la même famille, même helper — fait :
+`weapon_accuracy_repo.go` (« Précision par arme » Synthèse/Session/Escouade, FR sous EN),
+`killsource_weapon_scope.go` (`WeaponHighlight.LabelEN` = libellé FR ; `labelEN` porté par
+`weaponScopeRow`, la re-requête de l'arme favorite Accueil disparaît),
+`home_repo_medals_citations.go` (arme favorite SQL : `nameEN` d'URL image → libellé TOML).
+Test étendu à `attachWeaponLabels`. Addendum daté dans le plan (§2.C).
+
+**Décision (2)** : deux options neuves sur `BarStackedChart` (rétro-compatibles : sans elles
+l'option ECharts est byte-identique) — `categoryAxisName` (titre d'axe au milieu sous les
+étiquettes, marge basse élargie de `CATEGORY_AXIS_NAME_GAP`) et `tooltipRoles`
+(`{category, component}` : en-tête « Larbin · X », lignes « Patron · Y : n » ; la note
+`tooltipComponentNote` reçoit toujours le nom NU). Sur `SquadAssistPairsChart` : axe = Larbin,
+infobulle = les deux rôles, description réécrite (« Une barre par larbin (celui qui prépare le
+frag), un segment par patron (celui qui l'encaisse) »). EN : Lackey / Boss (« Sidekick » écarté :
+c'est le nom d'un pistolet d'Infinite ; « Grunt » écarté : espèce covenante). 6 tests
+`buildBarStackedOption` ajoutés ; test de description de `SquadSynergiesPage` mis à jour.
+Second tour (user : « sur les axes, et la page Match aussi ») : option `valueAxisName`
+ajoutée (titre de l'axe des valeurs, marge gauche/basse selon l'orientation, `AXIS_NAME_GAP`
+commun) ; les deux graphes portent Larbin sur l'axe des catégories, « Assistances par patron » /
+« Assists per boss » sur l'axe des valeurs, et les rôles dans l'infobulle. `MatchAssistChart`
+(horizontal, page Match) branché avec trois clés neuves dans `match-view/i18n.ts`.
+
+**Gates (après second tour)** : `go test -tags=integration ./internal/platform/duckdb/
+./internal/service/...` verts ; golangci-lint `--new-from-merge-base=origin/main` 0 issue ;
+typecheck purgé 0 ; vitest charts + squad + match-view + synthesis + session-detail + i18n
+verts (1 571) ; eslint 0 erreur (4 warnings préexistants) ; lint:fields / lint:colors 0.
+Non fait : vérification visuelle (pas de serveur relancé) — verdict user attendu sur les
+titres d'axes et l'infobulle des deux graphes.
+## [2026-09-17] Correctifs de la revue adversariale des 8 lots feat/v75 — Complété (branche `fix/revue-lots-v75`, en attente de merge)
+
+**Demande** : corriger les P1 de la revue (décisions utilisateur du 2026-09-17 : P1-1, P1-2, P1-4,
+P1-5 à corriger ; P1-3 par comptage des équipes ; P1-6 tests aux bornes ; P1-7 = exception datée ;
+P2-1 laissé + commentaire ; P2-2 doc + ordre de livraison ; Cividis « deux surfaces »). Plan :
+`.ai/PLAN_CORRECTIFS_REVUE_LOTS_V75_2026-09-17.md`. Exécution par deux exécutants Opus en
+worktrees séparés (Go sur `fix/revue-lots-v75-go`, web sur `fix/revue-lots-v75`), pilote =
+session principale, vérification sur pièces de chaque compte rendu.
+
+**Décisions techniques** : Q32e exige `victim_xuid IS NOT NULL` sur la branche « candidat au
+vol » (NULL = bot ou nom non résolu, même règle que Q32c) ; `fragContrastDominanceFlag` compte
+les équipes du match (`COUNT(DISTINCT team_id)` sur match_participants, != 2 → aucun badge,
+Debug) et trace en WARN la durée absente (repli « dernière frag » conservé, extraction
+`matchEndFromDurationMS`) ; tests aux bornes des trois seuils des deux côtés (10/9 frags,
+17/18 contre 20 pour 0,85, 75,0/74,9999 % du temps), prouvés par mutation ; colonne
+« Assistances » derrière une prop `showAssists` (Carrière la passe à false) ; hook partagé
+`lib/clipboard/useCopyToClipboard` (2 s, timer nettoyé, échec journalisé) pour les 4 sites +
+garde-rail grep avec témoin positif et allowlist datée de 5 sites ; Cividis `assist-received`
+#686B00 (5,59:1 clair / 3,15:1 sombre), `assist-given` #AA4499 (5,16 / 3,41), dE paire 26,5, dE
+min famille 16,2, `contrast: 'both'` (aucune valeur de la rampe ne tient : le gris des
+assistances exclut les tons peu saturés de la bande de luminance utile).
+
+**Résultats observés** : Go `go test -tags=integration` 39 paquets ok (1 flake hors lot
+`TestGetMatchFilm_ParallelDownloadFasterThanSequential`, vert rejoué seul), golangci
+`--new-from-rev` 0 issue ; web typecheck 0, lint 0 erreur, lint:colors 0, lint:fields 0, vitest
+342 fichiers / 3 196 tests. Ronde 2 (corrections seules) : 0 P0/P1 ; 3 P2 doc Go corrigés dans
+la foulée ; 1 P2 web consigné (test « démontage » du hook creux sous React 19). Découvertes
+non traitées : glose « 15 % de frags de plus » vs formule 0,85 (+17,6 %) — décision produit ;
+WatcherCard copie sans retour visuel ; helpers copiés dans ExplorerEncounterBriefing ; DDL
+recopiée dans les helpers de test sync ; `seedComebackMatch` 8 paramètres.
+
+**Conclusion / prochaine étape** : CI de la branche au niveau job, puis merge dans feat/v75 sur
+accord utilisateur. La migration de reset ne doit être déployée qu'avec ces correctifs (doc du
+fichier mise à jour en ce sens).
+
+## [2026-09-17] Revue adversariale des 8 lots livrés sur feat/v75 (ea9ba1b4e..016703f8e, 17 commits) — Complété (revue seule, aucune correction)
+
+**Demande** : récupérer la branche distante feat/v75 et vérifier les ajustements livrés (périmètre
+fermé, pas de correction). Fast-forward local ea9ba1b4e -> 016703f8e. Hors revue : les 204 commits
+de la clôture M2 du décodeur (fusion inverse integration -> feat/v75) déjà relus par leur jalon.
+
+**Méthode** : skill `adversarial-review`, 8 relecteurs Opus en parallèle, aveugles, lecture seule
+(un contrat par lot, une lentille par relecteur : L1 anti-ART + L4 algo pour les badges de
+dominance, L4/L1 badge Voleur, L1/L4/L5 assistances par relation, L5/L3 export vidéo, L5/L3
+sprites + bouton de copie, L5 + skill color-tokens pour la famille de couleurs, L6 couverture
+de tests sur les 8 lots). Gates rejoués par le pilote : go test -tags=integration sur les 10
+paquets Go touchés (vert), tsc (0), lint:colors (0), vitest sur les dossiers touchés (501
+fichiers / 5 577 tests verts), eslint 0 erreur, CI GitHub verte au niveau job sur 016703f8e.
+Chaque constat P1 ci-dessous a été re-vérifié sur pièces par le pilote.
+
+**Constats recevables (triés) — 7 P1, ~20 P2, 1 jeté** :
+- P1 `internal/platform/duckdb/squad_repo_kill_log.go:38-41` : Q32e n'écarte pas les victimes
+  bots (victim_xuid NULL) sur la branche « candidat au vol » ; un frag de bot assisté (<= 10 %)
+  décerne le badge Voleur et -1 au score, alors que Q32c écarte les bots explicitement.
+- P1 `internal/sync/comeback.go:143-151` : duration_seconds NULL (cas réel, parsePTDuration nil)
+  -> Scan réussi, aucun WARN, fin de match = dernière frag ; le seuil « 75 % du temps » se mesure
+  jusqu'à la dernière frag et un flag terminal peut être écrit à tort (règle 3 CLAUDE.md).
+- P1 `internal/sync/comeback.go:131,169` : la garde « 2 équipes » ne vérifie que myTeamID in
+  {0,1} ; en Multi Team à objectifs les équipes 2+ sont retirées de la timeline, pas le match.
+- P1 `apps/web/src/features/match-view/MatchEncountersTable.tsx:425` : la colonne
+  « Assistances » est inconditionnelle ; Carrière > « Joueurs les plus croisés » (même tableau,
+  chargeur GetTopEncounters qui ne pose jamais Assists) affiche une colonne toujours à « — ».
+- P1 `apps/web/src/features/auth/CopyCodeButton.tsx` : 4e copie du motif copier + coche +
+  setTimeout (ShareLinkButton 2000, IdentitiesSection 1500, MatchHeader.card 1500) sans helper
+  ni garde-rail (règle 6).
+- P1 `internal/analysis/comeback_frag_contrast.go:70-76` : les seuils 75 % / 15 % / 10 frags
+  (décision user sur mesure) ne sont verrouillés par aucun test aux bornes (le ratio peut glisser
+  dans [0,80 ; 0,869], la part de temps dans [0,25 ; 0,89], le volume dans [7 ; 12] en vert).
+- P1 `apps/web/src/features/squad/charts/squadPerformanceLineCharts.ts:277` : le segment Bonus
+  passe de `bonus` (violet, distinct des joueurs) à `stat-assists` (#0284C7) empilé dans la barre
+  du joueur : dE 5,6 avec squad-player-4, 10,7 avec squad-player-1 (seuil projet 15) ; aucun
+  test ne compare la famille stat aux couleurs d'escouade.
+- P2 (dette à consigner, non corrigée) : top matchs carrière ignore 6/7
+  (`career_repo_top_matches.go:149,157`) ; le reset `player_dominance_flag_reset_none_v1`
+  rejoue toute la chaîne (un 0 historique peut devenir 3/4/5 si la courbe objectif a été écrite
+  depuis) alors que sa doc affirme le contraire ; `match-card-presentation.ts:47-48` 2 libellés
+  FR seuls ; véhicule non dessiné pendant le GET de sa bordure (`useReplayVehicles.ts:290`) et
+  chemin d'échec d'outline sans test ; CopyCodeButton timer non nettoyé + catch muet + échec
+  presse-papier non testé ; Q32e `assist_known` non testé ; Q28c dénominateur `publishable` et
+  prédicat bot non testés ; `assistExchange.ts:73` diviseur non discriminé ; ratchet OKLab sans
+  témoin positif ; ratchet anti-emprunt aveugle à `text-*` et `var(--ac-…)`
+  (`SynthesisHighlightsSection.tsx:48-49` emprunte, composant mort) ; `ReplayCountersBadge.tsx:173`
+  jetons non typés ; Cividis `contrast: 'any'` -> un côté du papillon d'assistances illisible sur
+  une surface ; stat-deaths = outcome-loss dans 3 palettes sur 4 (décision) ; tests
+  outcomeSequence / briefing / instances non étendus à 6/7 ; « killstreak » passe le garde-rail
+  anti-anglicismes (préexistant) ; `waitForExportLayout` : condition de taille et timeout non
+  discriminés par les tests.
+- Jeté : « tsc rouge sur b7801a83b » (faux : les jetons étaient compare-a/b à ce commit).
+- Sans constat : export vidéo (18 conditions tiennent), garde-rail anti-anglicismes (6).
+
+**Conclusion / prochaine étape** : verdict remis à l'utilisateur ; corrections non entamées
+(périmètre fermé). À trancher : quels P1 corriger avant v7.5 ; les P2 « décision » (top matchs,
+stat-deaths = outcome-loss, cividis) sont des choix produit.
 
 ## [2026-09-17] Couleurs dédiées des stats de combat (frags, morts, assistances, sens d'assistance) — Complété (branche `claude/couleurs-stats-combat`, fusionnée dans feat/v75)
 

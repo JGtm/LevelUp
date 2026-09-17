@@ -87,3 +87,66 @@ func TestComputeFragContrastDominance_EndFromDuration(t *testing.T) {
 		t.Errorf("fin = 900 s, devant 88 %% du temps : flag %d, attendu %d", got, DominanceFlagSabordage)
 	}
 }
+
+// boundaryEndMS : durée de match des tests aux bornes (1 000 s), choisie ronde pour que la
+// part de temps en tête se lise directement en millièmes.
+const boundaryEndMS = 1_000_000
+
+// burst construit une timeline à UNE SEULE porte variable : l'équipe 1 marque `enemyFrags`
+// frags, une par seconde depuis t=0 ; l'équipe 0 marque ses `myFrags` frags au MÊME instant
+// leadStartMS, elle passe donc devant à leadStartMS et le reste jusqu'à la fin du match.
+//
+// Sur un match de boundaryEndMS : part de temps en tête de l'équipe 0 =
+// (boundaryEndMS − leadStartMS) / boundaryEndMS, exactement.
+func burst(enemyFrags, myFrags int, leadStartMS int64) []KillEvent {
+	out := make([]KillEvent, 0, enemyFrags+myFrags)
+	for i := 0; i < enemyFrags; i++ {
+		out = append(out, KillEvent{TimeMS: int64(i) * 1000, TeamID: 1})
+	}
+	for i := 0; i < myFrags; i++ {
+		out = append(out, KillEvent{TimeMS: leadStartMS, TeamID: 0})
+	}
+	return out
+}
+
+// TestComputeFragContrastDominance_Bornes verrouille les TROIS seuils du critère mixte, des
+// deux côtés, une porte à la fois (les deux autres largement satisfaites). Sans ces cas, un
+// glissement de constante ou un `>=` changé en `>` passerait inaperçu.
+//
+// Contrat vérifié, tel qu'écrit dans comeback_frag_contrast.go :
+//
+//   - volume        : dominante >= FragContrastMinWinnerFrags (10) ;
+//   - écart final   : dominée <= FragContrastMaxEnemyRatio (0,85) x dominante ;
+//   - temps en tête : dominante >= FragContrastMinLeadShare (0,75) du temps de match.
+func TestComputeFragContrastDominance_Bornes(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name   string
+		events []KillEvent
+		want   int
+	}{
+		// Volume : 0 frag adverse, en tête 90 % du temps — seul le volume varie.
+		{"volume au seuil : 10 frags", burst(0, 10, 100_000), DominanceFlagSabordage},
+		{"volume sous le seuil : 9 frags", burst(0, 9, 100_000), DominanceFlagNone},
+		// Écart final : 20 frags, en tête 90 % du temps — seul le nombre de frags adverses varie.
+		{"ecart au seuil : 17 contre 20 (0,85)", burst(17, 20, 100_000), DominanceFlagSabordage},
+		{"ecart sous le seuil : 18 contre 20 (0,90)", burst(18, 20, 100_000), DominanceFlagNone},
+		// Temps en tête : 20 contre 10 — seul l'instant de prise de tête varie (1 ms d'écart).
+		{"temps en tete au seuil : 75,0 %", burst(10, 20, 250_000), DominanceFlagSabordage},
+		{"temps en tete sous le seuil : 74,9999 %", burst(10, 20, 250_001), DominanceFlagNone},
+	}
+	for _, c := range cases {
+		// L'équipe 0 domine aux frags et PERD au score : SABORDAGE de son point de vue.
+		if got := ComputeFragContrastDominance(c.events, boundaryEndMS, 0, OutcomeLoss); got != c.want {
+			t.Errorf("%s : flag = %d, attendu %d", c.name, got, c.want)
+		}
+		// Face opposée : l'équipe 1 gagne au score en étant dominée aux frags.
+		wantMirror := DominanceFlagNone
+		if c.want == DominanceFlagSabordage {
+			wantMirror = DominanceFlagAbnegation
+		}
+		if got := ComputeFragContrastDominance(c.events, boundaryEndMS, 1, OutcomeWin); got != wantMirror {
+			t.Errorf("%s (miroir abnegation) : flag = %d, attendu %d", c.name, got, wantMirror)
+		}
+	}
+}

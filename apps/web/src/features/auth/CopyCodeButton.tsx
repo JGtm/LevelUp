@@ -3,10 +3,10 @@
  * Xbox (Device Code Flow). Sans texte visible : le libellé porte sur
  * aria-label/title, l'icône bascule sur une coche ~2 s après la copie.
  */
-import { useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { useCopyToClipboard } from '@/lib/clipboard/useCopyToClipboard'
 
 export interface CopyCodeButtonProps {
   code: string
@@ -15,18 +15,11 @@ export interface CopyCodeButtonProps {
 export function CopyCodeButton({ code }: CopyCodeButtonProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
-  const [copied, setCopied] = useState(false)
+  // Mécanique « copier + coche transitoire » partagée (lib/clipboard). En cas
+  // d'échec du presse-papier le code reste sélectionnable à la main (select-all).
+  const { copy, copied } = useCopyToClipboard()
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(code)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Presse-papier indisponible (permissions, contexte non sécurisé) : le
-      // code reste sélectionnable à la main (select-all).
-    }
-  }
+  const handleCopy = () => void copy(code)
 
   const label = copied ? t('common.auth.xbox_code_copied') : t('common.auth.xbox_copy_code')
 

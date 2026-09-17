@@ -6,10 +6,10 @@
  * dans le presse-papier. Masqué si le store n'a pas le share-link activé
  * (`buildShareUrl()` → null, ex. store escouade).
  */
-import { useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { useCopyToClipboard } from '@/lib/clipboard/useCopyToClipboard'
 
 export interface ShareLinkButtonProps {
   /** Action du store : construit l'URL de partage du contexte courant, ou `null`
@@ -20,22 +20,16 @@ export interface ShareLinkButtonProps {
 export function ShareLinkButton({ buildShareUrl }: ShareLinkButtonProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
-  const [copied, setCopied] = useState(false)
+  // Mécanique « copier + coche transitoire » partagée (lib/clipboard).
+  const { copy, copied } = useCopyToClipboard()
 
   // Masqué si le store n'expose pas de share-link (buildShareUrl null → escouade).
   if (buildShareUrl() === null) return null
 
-  const handleCopy = async () => {
+  const handleCopy = () => {
     const url = buildShareUrl()
     if (!url) return
-    try {
-      await navigator.clipboard.writeText(url)
-      setCopied(true)
-      // Feedback transitoire ~2 s puis retour à l'icône « lien ».
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Silencieux : le presse-papier peut être indisponible (permissions).
-    }
+    void copy(url)
   }
 
   const label = copied

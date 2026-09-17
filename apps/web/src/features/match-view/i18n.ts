@@ -206,6 +206,12 @@ export interface MatchViewText {
   // Note d'infobulle d'un segment : la part moyenne de participation de l'assistant sur
   // ce couple. Vocabulaire « part » (comme le kill feed du rejeu), jamais « dégâts ».
   assistAvgShareNote: (pct: number) => string
+  // Les deux rôles du graphe (décision utilisateur 2026-09-17, même vocabulaire que la page
+  // Escouade) : la barre est le LARBIN (il a assisté), le segment le PATRON (frag crédité).
+  // Titres d'axes et infobulle.
+  assistRoleAssistant: string
+  assistRoleBeneficiary: string
+  assistValueAxis: string
   // Sections des onglets Chronologie et Joueurs (titres type-1 du catalogue
   // d'harmonisation)
   sectionFlow: string
@@ -482,6 +488,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     assistNoData: 'Aucune assistance sur ce match.',
     assistStolenNote: (n) => `dont ${n} volée${n > 1 ? 's' : ''}`,
     assistAvgShareNote: (pct) => `part moyenne ${pct} %`,
+    assistRoleAssistant: 'Larbin',
+    assistRoleBeneficiary: 'Patron',
+    assistValueAxis: 'Assistances par patron',
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
@@ -799,6 +808,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     assistNoData: 'No assists in this match.',
     assistStolenNote: (n) => `${n} stolen`,
     assistAvgShareNote: (pct) => `avg share ${pct}%`,
+    assistRoleAssistant: 'Lackey',
+    assistRoleBeneficiary: 'Boss',
+    assistValueAxis: 'Assists per boss',
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',

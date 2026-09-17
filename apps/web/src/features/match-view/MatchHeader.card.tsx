@@ -12,6 +12,7 @@ import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { AlertDialog } from '@/components/ui/alert-dialog'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility'
+import { useCopyToClipboard } from '@/lib/clipboard/useCopyToClipboard'
 import { asDominance } from '@/components/charts/outcomeSequence'
 import { DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
 import {
@@ -55,7 +56,8 @@ export function MatchHeaderCard({
   const t = MATCH_VIEW_TEXT[locale]
   const excludeMutation = useSetMatchExclusion(playerSlug)
   const favoriteMutation = useToggleMatchFavorite(playerSlug, matchId)
-  const [copied, setCopied] = useState(false)
+  // Mécanique « copier + coche transitoire » partagée (lib/clipboard).
+  const { copy, copied } = useCopyToClipboard()
   const [exclusionDialogOpen, setExclusionDialogOpen] = useState(false)
 
   // Un match classé (CSR officiel) ne peut pas être exclu — defense-in-depth :
@@ -71,10 +73,7 @@ export function MatchHeaderCard({
     : (header.performance_color ?? 'inherit')
 
   function handleCopyId() {
-    void navigator.clipboard.writeText(matchId).then(() => {
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1500)
-    })
+    void copy(matchId)
   }
 
   function errorCode(err: unknown): string | null {

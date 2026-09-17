@@ -25,6 +25,7 @@ import (
 	"log/slog"
 	"sort"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -75,6 +76,9 @@ func (r *MatchViewRepo) bulkWeaponKillsFromSource(
 		}
 	}
 	meta := resolveWeaponKeyDimensions(ctx, r.pdb.Metadata, pdbTitleSlug(r.pdb), keys)
+	// Le nom suit la locale de requête, comme les deux autres lecteurs d'armes de la vue
+	// (lookupWeaponMeta / lookupWeaponLabels) : « Apparition » ne sort plus sous UI EN.
+	locale := ctxkeys.Locale(ctx)
 
 	out := make([]domain.BulkWeaponKillRaw, 0, len(ordered))
 	for _, k := range ordered {
@@ -86,7 +90,7 @@ func (r *MatchViewRepo) bulkWeaponKillsFromSource(
 			XUID:        k.xuid,
 			WeaponID:    m.numericID,
 			Kills:       tally[k],
-			WeaponLabel: m.label,
+			WeaponLabel: m.displayLabel(locale),
 			Class:       m.class,
 			Role:        m.role,
 			Family:      m.family,

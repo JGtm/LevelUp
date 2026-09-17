@@ -30,7 +30,8 @@ import (
 type weaponScopeRow struct {
 	weaponID  int64 // 0 = objet hors arsenal (aucun identifiant numerique au registre)
 	weaponKey string
-	label     string
+	label     string // FR-first (repli EN)
+	labelEN   string // EN-first (repli FR) — 2026-09-17 : sert le lecteur EN des trois surfaces
 	kills     int
 }
 
@@ -72,7 +73,7 @@ func weaponKillsFromSourceForPlayer(
 			continue
 		}
 		out = append(out, weaponScopeRow{
-			weaponID: m.numericID, weaponKey: k, label: m.label, kills: kills,
+			weaponID: m.numericID, weaponKey: k, label: m.label, labelEN: m.labelEN, kills: kills,
 		})
 	}
 	// Tri TOTAL : kills decroissants puis cle — une sortie qui change d'ordre a chaque
@@ -171,12 +172,16 @@ func (r *ExplorerRepo) topWeaponsFromSource(
 		if w.weaponID == 0 {
 			continue
 		}
-		label := w.label
+		// Avant le 2026-09-17, LabelEN recevait le libelle FR : « Apparition » sous UI EN.
+		label, labelEN := w.label, w.labelEN
 		if label == "" {
 			label = strconv.FormatUint(uint64(w.weaponID), 10) //nolint:gosec
 		}
+		if labelEN == "" {
+			labelEN = label
+		}
 		out = append(out, domain.WeaponHighlight{
-			WeaponID: w.weaponID, Kills: w.kills, LabelFR: label, LabelEN: label,
+			WeaponID: w.weaponID, Kills: w.kills, LabelFR: label, LabelEN: labelEN,
 		})
 		if len(out) >= limit {
 			break
@@ -215,15 +220,11 @@ func (r *HomeRepo) favoriteWeaponFromDamageSource(ctx context.Context, locale st
 	if !ok {
 		return "", 0, nil
 	}
+	// Les deux libelles viennent de la MEME passe registre (weapon_name_labels) et voyagent
+	// dans weaponScopeRow depuis le 2026-09-17 : plus de seconde requete pour l'EN.
 	nom := w.label
-	if locale == "en" {
-		// Le libelle EN vient de la MEME passe registre que le FR (weapon_name_labels) ;
-		// on le redemande ici plutot que de l'entasser dans weaponScopeRow, qui sert trois
-		// surfaces dont deux n'en ont pas l'usage.
-		if m, found := resolveWeaponKeyDimensions(ctx, r.pdb.Metadata, pdbTitleSlug(r.pdb),
-			[]string{w.weaponKey})[w.weaponKey]; found && m.labelEN != "" {
-			nom = m.labelEN
-		}
+	if locale == "en" && w.labelEN != "" {
+		nom = w.labelEN
 	}
 	if nom == "" {
 		nom = "Inconnue"

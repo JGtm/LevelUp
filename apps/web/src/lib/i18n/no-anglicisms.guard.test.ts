@@ -109,6 +109,16 @@ const FORBIDDEN_PATTERNS: { name: string; re: RegExp }[] = [
   { name: 'kill(s)', re: /\bkills?(?![\p{L}\p{N}_])/iu },
   { name: 'assist(s)', re: /\bassists?(?![\p{L}\p{N}_])/iu },
   { name: 'streak', re: /\bstreak\b/i },
+  // LES COMPOSÉS SOUDÉS PASSAIENT (constat du 2026-09-17). `\bkills?(?!…)` et `\bstreak\b`
+  // exigent une frontière APRÈS le mot : « killstreak », « killfeed », « winstreak » les
+  // franchissaient tous les trois sans être vus. Deux motifs dédiés, parce que les deux
+  // familles se recouvrent sans se contenir (« killfeed » n'est pas un composé de streak,
+  // « winstreak » n'est pas un composé de kill).
+  // Ni « skill » ni « killer » ne sont visés : ils ne l'étaient pas avant (pas de frontière
+  // de mot avant le « kill » de « skill », et « killer » n'est aucun de ces composés), et
+  // l'ajout ne doit rien élargir d'autre que les soudures ci-dessus.
+  { name: 'kill composé (killstreak/killfeed/killcam)', re: /\bkill(streak|feed|cam)s?(?![\p{L}\p{N}_])/iu },
+  { name: 'streak composé (winstreak/lossstreak/killstreak)', re: /\b(win|loss|kill)streaks?(?![\p{L}\p{N}_])/iu },
   { name: 'win rate', re: /\bwin rate\b/i },
   { name: 'leaderboard', re: /\bleaderboard\b/i },
   // « heatmap » -> « carte de chaleur » (décision utilisateur du 2026-09-05, n°6).
@@ -273,5 +283,29 @@ describe("motifs anti-anglicismes — frontières de mot Unicode", () => {
     expect(pattern("assist(s)").test("3 assists")).toBe(true)
     expect(pattern("assist(s)").test("Assist")).toBe(true)
     expect(pattern("kill(s)").test("kills totaux")).toBe(true)
+  })
+  it("signale les composés soudés (killstreak, killfeed, winstreak)", () => {
+    const composeKill = pattern("kill composé (killstreak/killfeed/killcam)")
+    const composeStreak = pattern("streak composé (winstreak/lossstreak/killstreak)")
+    expect(composeKill.test("killstreak")).toBe(true)
+    expect(composeKill.test("Killfeed")).toBe(true)
+    expect(composeKill.test("killcams sauvegardées")).toBe(true)
+    expect(composeStreak.test("winstreak")).toBe(true)
+    expect(composeStreak.test("Winstreaks")).toBe(true)
+    expect(composeStreak.test("killstreak")).toBe(true)
+  })
+  it("n’élargit rien : skill, killer et le français ne sont pas signalés", () => {
+    const composeKill = pattern("kill composé (killstreak/killfeed/killcam)")
+    const composeStreak = pattern("streak composé (winstreak/lossstreak/killstreak)")
+    for (const re of [composeKill, composeStreak]) {
+      expect(re.test("skill")).toBe(false)
+      expect(re.test("killer")).toBe(false)
+      expect(re.test("frags en série")).toBe(false)
+      expect(re.test("fil des frags")).toBe(false)
+    }
+    // Rappel : ces deux-là n'étaient DÉJÀ pas détectés par les motifs simples — l'ajout
+    // des composés ne doit pas les faire entrer par la bande.
+    expect(pattern("kill(s)").test("skill")).toBe(false)
+    expect(pattern("kill(s)").test("killer")).toBe(false)
   })
 })

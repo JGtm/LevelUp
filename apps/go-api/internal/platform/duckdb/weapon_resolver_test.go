@@ -15,7 +15,9 @@ import (
 	"strconv"
 	"testing"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games/weapons"
+	"levelup/go-api/internal/port"
 )
 
 func resolverTestMeta(t *testing.T, withRegistry bool) *DB {
@@ -229,6 +231,53 @@ func TestResolveWeaponMeta_H5VehiclesDistinctPerEngine(t *testing.T) {
 		if m.role != m.class {
 			t.Errorf("%s : role=%q class=%q — le test suppose role == class (socle de la ventilation par engin)",
 				name, m.role, m.class)
+		}
+	}
+}
+
+// TestMatchViewWeaponLabels_FollowRequestLocale (2026-09-17) : les trois lecteurs d'armes de
+// la Match view qui ne publient qu'UN nom par arme (kills par arme du viewer, arme favorite
+// du scoreboard, sources de dégât du film) choisissent ce nom dans la LOCALE DE REQUÊTE.
+// Avant : label FR-first quelle que soit la locale — « Tourelle LMG du Falcon » et
+// « Apparition » sortaient sur la capture README anglaise de la vue de match.
+func TestMatchViewWeaponLabels_FollowRequestLocale(t *testing.T) {
+	meta := resolverTestMeta(t, true)
+	if _, err := meta.Exec(context.Background(),
+		"INSERT INTO weapon_name_labels VALUES ('halo_5', 'h5_vehicle_warthog', 'Warthog', 'Chariot de guerre')"); err != nil {
+		t.Fatalf("seed weapon_name_labels: %v", err)
+	}
+	repo := NewMatchViewRepo(&PlayerDB{Metadata: meta, TitleSlug: "halo_5"}, "xuid-test")
+	const warthogID = int64(4028516791)
+
+	cas := []struct {
+		locale string
+		want   string
+	}{
+		{"fr", "Chariot de guerre"},
+		{"en", "Warthog"},
+		{"en-US", "Warthog"},
+		{"", "Chariot de guerre"}, // locale absente = défaut ctxkeys ("fr")
+	}
+	for _, c := range cas {
+		ctx := context.Background()
+		if c.locale != "" {
+			ctx = ctxkeys.WithLocale(ctx, c.locale)
+		}
+		if got := repo.lookupWeaponLabels(ctx, []int64{warthogID})[warthogID]; got != c.want {
+			t.Errorf("locale %q : lookupWeaponLabels = %q, want %q", c.locale, got, c.want)
+		}
+		if got := repo.lookupWeaponMeta(ctx, []int64{warthogID})[warthogID].label; got != c.want {
+			t.Errorf("locale %q : lookupWeaponMeta.label = %q, want %q", c.locale, got, c.want)
+		}
+		// Lecteur keyé par weapon_key (sources de dégât du film) : même contrat.
+		if got := resolveWeaponKeyDimensions(ctx, meta, "halo_5", []string{"h5_vehicle_warthog"})["h5_vehicle_warthog"].displayLabel(ctxkeys.Locale(ctx)); got != c.want {
+			t.Errorf("locale %q : weaponKeyResolved.displayLabel = %q, want %q", c.locale, got, c.want)
+		}
+		// « Précision par arme » (Synthèse / Session / Escouade) : même défaut, même correction.
+		rows := []port.WeaponAccuracyRow{{WeaponID: warthogID, ShotsFired: 10, ShotsLanded: 5}}
+		NewWeaponAccuracyRepo(repo.pdb).attachWeaponLabels(ctx, "halo_5", rows)
+		if rows[0].Label != c.want {
+			t.Errorf("locale %q : attachWeaponLabels = %q, want %q", c.locale, rows[0].Label, c.want)
 		}
 	}
 }

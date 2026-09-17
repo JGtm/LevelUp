@@ -22,6 +22,15 @@ import (
 // « on ne sait pas », jamais « pas d'assistant ». Les parts ne sont ni plafonnées ni
 // complétées : NULL reste NULL (le vol exige une part mesurée).
 //
+// LES VICTIMES NON IDENTIFIÉES SONT ÉCARTÉES ICI, comme en Q32c (`queries_squad.go`) :
+// `victim_xuid` NULL signifie « bot OU nom non résolu / ambigu » (DDL de la table,
+// `migration/steps_shared_kill_events.go` ; résolution `killcollector/identities.go`). La
+// première branche les exclut déjà par construction (`IN (...)` est faux sur NULL) ; la
+// seconde ne parlant que du tueur et de l'assistant, elle les acceptait — un vol ne se compte
+// qu'entre joueurs identifiés, donc on écarte au plus près de la source, où l'intention est
+// lisible. Coût assumé : un vol sur un humain non résolu n'est pas compté (même règle que le
+// reste de la matrice).
+//
 // Les '%s' positionnels sont, DANS CET ORDRE : match_ids, xuids (victime), xuids (tueur),
 // xuids (assistant). Ne PAS utiliser directement — passer par LoadSquadKillLog().
 const Q32eSquadKillLogTemplate = `
@@ -37,7 +46,8 @@ WHERE match_id IN (%s)
   AND publishable
   AND (
         victim_xuid IN (%s)
-     OR (assist_known AND feed_killer_xuid IN (%s) AND assist_xuid IN (%s))
+     OR (victim_xuid IS NOT NULL
+         AND assist_known AND feed_killer_xuid IN (%s) AND assist_xuid IN (%s))
   )
 ORDER BY match_id, time_ms`
 

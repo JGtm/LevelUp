@@ -55,15 +55,12 @@ func (r *HomeRepo) LoadFavoriteWeapon(ctx context.Context, locale string) (strin
 	}
 
 	// PASSAGE PRINCIPAL P4 : résolution via le resolver unifié (registre +
-	// weapon_labels, parité). locale EN = name_en sinon le label FR (parité avec
-	// l'ancien COALESCE(name_en, name_fr)).
+	// weapon_labels). Le nom suit la locale par weaponResolved.displayLabel — depuis le
+	// 2026-09-17 l'EN vient de weapon_name_labels.name_en (le libellé du TOML), plus de
+	// weapon_labels.name_en (le nom brut d'URL image, jamais un libellé d'affichage).
 	weaponName := ""
 	if m, ok := resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, []int64{int64(weaponID)})[int64(weaponID)]; ok {
-		if locale == "en" && m.nameEN != "" {
-			weaponName = m.nameEN
-		} else {
-			weaponName = m.label
-		}
+		weaponName = m.displayLabel(locale)
 	}
 	if weaponName == "" {
 		weaponName = "Inconnue"
