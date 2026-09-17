@@ -5130,7 +5130,160 @@ revues (M1, M2), un agent Opus peut décompiler les écrivains des composants bl
 INSTRUMENTS et notes (`film_re/`), sans toucher un fichier de production ; 3.6 devient alors un
 port de grammaires déjà relevées. Jamais un troisième agent.
 
-**Clôture M3** : fusion (V3) ; recuisson + backlog sur signal ; corpus gate final consigné.
+**Clôture M3** — neuf parts, statuées séparément : **trois sont faites** (les fusions des lots de
+code, l'ADR amendé, le triage du §4 — les deux dernières étant le lot documents
+`feat/decfilm-clo3`), les **six autres sont des gestes du pilote** :
+
+- [x] **fusion des lots de CODE (V3, sur l'intégration)** — FAIT, neuf fusions, chacune avec son
+      sha : 3.1 volet données (3.1.2 + 3.1.3) `5cb7e558e` · 3.5 instruction + 3.6 préparation
+      `4feea2ea6` · 3.2 volet données et témoins `f84a9fbf8` · 3.4 préparation Ghidra
+      `6a360201b` · 3.3 volet recherche `8a62e7213` · 3.3 volet production (3.3.1, 3.3.2, et
+      3.3.3 `b43d4746f`) `492cb0923` · 3.4 (3.4.1 + 3.4.2) `accba88ac` avec son correctif CI
+      `5897eb3dd` · 3.6.a `2b68aa165` · 3.1.1 `fe38d2e35`. Le code de M3 est complet à
+      `fe38d2e35`.
+- [ ] **fusion du lot 3.7 (RECHERCHE SEULE)** — pilote. `feat/decfilm-37r`, deux commits
+      (`06881f9d0` + `fcee76fdc`), base `2fac0a4cf` : aucun fichier de production Go, aucun film
+      du cache ouvert, gate au §5. Il apporte au §4 les cinq lignes `D1..D5 (3.7)`, déjà triées
+      par le bloc « Clôture M3 — triage du §4 » ci-dessus.
+- [x] **ADR 0034 amendé (état atteint à M3)** — FAIT le 2026-09-17 (branche `feat/decfilm-clo3`,
+      base `fe38d2e35`, documents SEULEMENT, aucun décodage, aucun fichier Go). Section NEUVE
+      « State reached at M3 (2026-09-17) » (EN-only, règle 15), décision par décision : **D-3**
+      le profil est DÉPENSÉ (table 23 -> 33 lignes, la loi des largeurs d'axe relue chez
+      l'écrivain et 79/79 cartes, l'amorce de grenade par clef ÉCRITE et sa VALEUR, les
+      empreintes recopiées, `presumee` livré, 5 lignes présumées gelées contre 6 à M2) ·
+      **D-4** *reached* et exercé (1 film sur 1 589 à clef inconnue, `HI_1_5_1`, mis de côté) ·
+      **D-5** la règle compagnon de M3 — un balayage ne décide plus ce qu'il ne discrimine pas
+      (mot de poignée : oracle qui n'écrit rien ; `param_4` : décide encore, mais NOMMÉ, et le
+      remède mesuré puis écarté) · **D-6** les quatre rangs à la clôture et `SchemaVersion`
+      inchangée à 61 · **D-10** trois replis retirés, quatre posés, 99 entrées sur sept fichiers.
+      Les chiffres viennent du §5. **DOCS TRANSVERSES DU MÊME LOT** : `CLAUDE.md` ligne 0034
+      (« 163 symboles » devenu FAUX, 166 mesurés, plus une phrase de clôture M3) ;
+      `docs/SYNC_GUIDE` FR + EN NON TOUCHÉS et c'est une MESURE (aucune phrase devenue fausse,
+      parité 196/196 et numéros de titre identiques).
+- [x] **triage du §4 (les découvertes de M3)** — FAIT le 2026-09-17, même lot : bloc « Clôture M3
+      — triage du §4 » ci-dessus. 52 découvertes nommées, **19 TRAITEES / 1 RETENUE /
+      32 NON RETENUES**, plus 2 reprises hors §4. Le troisième état est le défaut (méthode de
+      l'utilisateur) ; aucune ligne du §4 n'est supprimée.
+- [ ] **références d'équivalence re-figées** — pilote, à la fusion, sur la classification du §5
+      (`replay-equiv -update` CONTRÔLÉ, puis `git diff -U0 -- equivalence/*.tsv`). Ce que la
+      classification autorise à bouger : `artifact` (les trois chaînes de révision),
+      `grenades` sur les neuf films de grammaire ancienne, `vehicles` (D6 (3.6.a) : entrée de
+      balayage, aucune sortie publiée), `abilityImpulses` / `grappleReads.stats` / `pads`
+      (classés au §5 du lot 3.4.2). Rien d'autre.
+- [ ] **corpus gate final consigné** — pilote, régime COMPLET de clôture de jalon (V2), 17
+      témoins, sur l'intégration après la fusion de 3.7. Attendu écrit d'avance : schéma
+      61 -> 61, les gains de `grenades` sur les témoins anciens, et les **8 pertes de morts de
+      véhicule** déjà attribuées et assumées (D7 (3.4.2)) — un gate qui ne les retrouverait pas
+      serait le signal d'un changement non mesuré, pas une bonne nouvelle.
+- [ ] **entrée `.ai/thought_log.md`** — pilote. Brouillon RÉDIGÉ par le lot documents, hors
+      dépôt, avec deux placeholders à remplir avec les chiffres des gates finaux :
+      `__REFIGEAGE__` (les étapes re-figées) et `__CORPUS__` (le verdict du corpus gate final).
+- [ ] **recuisson du parc sur signal** — pilote. REPORTÉE ici depuis la clôture M2 par V20 (1) ;
+      coût réel mesuré : **87 artefacts**, ~25 min, sans toucher la base. Le backlog killsource
+      ouvert par la montée de `facts.Rev` (`killsource-2026-09-17.2`) N'EN FAIT PAS PARTIE : il
+      est repoussé après M4 au plus tôt, sur signal explicite, et groupé avec toute montée
+      ultérieure (V24).
+- [ ] **fusion dans `feat/v75` (V3)** — pilote, CI verte au niveau job. Push sur `main` =
+      déploiement prod : prévenir l'utilisateur.
+
+#### Clôture M3 — triage du §4 (2026-09-17)
+
+Lot documents `feat/decfilm-clo3`, base `fe38d2e35`. **Règle appliquée** (méthode de
+l'utilisateur, 2026-09-17) : *une découverte hors plan initial ne devient pas un lot par
+défaut — seul développeur, pragmatisme, autres priorités.* Les trois états :
+
+- **TRAITEE** — un lot l'a fermée ; le lot et son sha sont nommés.
+- **RETENUE** — elle entre comme POINT d'un commit déjà prévu, et seulement si l'un des trois
+  filtres est passé : une régression MESURÉE d'un lot, un gate BLOQUÉ pour tous les lots
+  suivants, ou l'objectif ÉCRIT d'un lot empêché.
+- **NON RETENUE** — consignée et rien de plus. **C'est le DÉFAUT**, et c'est l'état de la
+  grande majorité.
+
+L'état porte sur ce qui RESTE à faire. Quand la moitié bloquante d'une ligne a été traitée dans
+son lot et que le reste ne l'est pas, la ligne le dit. **Aucune ligne du §4 n'est supprimée** :
+ce bloc est une synthèse qui les cite par leur nom.
+
+**Périmètre et comptes.** Les lots 3.x et « clôture M2 » portent **52 découvertes nommées**
+(55 lignes du tableau : trois d'entre elles sont la clôture d'une découverte ouverte plus haut —
+`D7 (3.4.2)`, `D3 (3.4.1)`, `D5 (3.4.1)`). Verdict : **19 TRAITEES, 1 RETENUE,
+32 NON RETENUES**. S'y ajoutent **2 reprises hors §4** déjà tranchées par le pilote, NON
+RETENUES elles aussi. Les cinq lignes `D1..D5 (3.7)` arrivent au §4 avec la fusion de
+`feat/decfilm-37r` (le lot 3.7 n'est pas dans la base `fe38d2e35` de ce lot-document) ; elles
+sont triées ici pour que la clôture soit complète.
+
+**TRAITEES — 19.**
+
+| Ligne | Fermée par | Ce qui la ferme |
+|---|---|---|
+| `D1 (3.1.2)` cible `gamefiles` bornée à `./internal/himap/` | lot 2.10, `04a5803e1` | la cible joue les trois `cmd/` en plus, liste EXPLICITE, et le ratchet `archlint.TestCibleMakefileGamefilesCouvreLeCorpus` rougit si un paquet entre au corpus sans entrer au `Makefile` (vérifié sur pièces : `Makefile:222-225`) |
+| `D2 (3.1.2)` chemin d'installation absolu dans `map_quant_bounds.json` | lot 2.10, `04a5803e1` | le champ `source` décrit désormais la MÉTHODE et un chemin RELATIF (« world bounds x/y/z du tag sbsp de la RÉGION 0 … relatif à la racine de l'installation ») |
+| `D1 (3.2)` la majeure 31 a un registre que personne n'avait mesuré | lot 3.2 volet données, `f84a9fbf8` | elle EST la donnée du lot : les 9 clefs / 5 empreintes de `registryFingerprints` (mesuré sur pièces : 9 entrées au catalogue commis) |
+| `D2 (3.2)` l'empreinte de registre ne sépare pas les builds | lots 3.3.1 `492cb0923` + 3.1.1 `fe38d2e35` | la contrainte est tenue : les deux tables du profil (amorce de grenade, empreintes) sont indexées par la CLEF ÉCRITE, jamais par l'empreinte ; le classement `connue` / `presumee` / `inconnue` porte sur la clef |
+| `D3 (3.2)` « un témoin sans artefact ne peut pas être gaté » est faux | lot 3.2, `f84a9fbf8` | correction de doctrine écrite au runbook — les trois conditions réelles d'un témoin (`RUNBOOK_FILM_PROFILES.md` §4.1 : chunks, manifeste, faits exportables) |
+| `D4 (3.2)` `ReadFilmIdentity` calcule l'empreinte puis la jette | lot 2.6.3, `92c83b333` | `profile.FilmIdentity.RegistryFingerprint` / `.RegistryNamedSlots` existent et sont publiés (`profile/identite.go:52-63`) |
+| `D5 (3.2)` le runbook citait `filmdec/profile_table.go`, chemin mort | lot 3.2 docs, `f84a9fbf8` | corrigé dans le lot, avec la précision que le test de conformité ne couvre pas la section neuve |
+| `D2 (3.3r)` le marqueur ne porte que cinq bits d'index (`ti=41` et `ti=9` le partagent) | lot 3.3.1, `492cb0923` | le sixième bit d'index est LU à `motif - 1`, et la découverte est devenue un point du brief de production |
+| `D3 (3.3r)` verdict du volet recherche : la grammaire a bougé d'un bit | lot 3.3.1, `492cb0923` | les cinq points (a) à (e) sont codés : amorce au profil par clef, motif dérivé du `ti` lu, liste blanche inchangée, aucun rang deviné, sixième bit lu |
+| `D5 (3.3r)` la position du champ d'index auteur n'est pas établie | lot 3.3.1, `492cb0923` | établie par un critère plus fort que « dans 0..7 » — la DISPERSION rapportée à l'effectif du match : **+100** sur `HI_1_8_0` à `HI_1_11_0`, **+99** sur `HI_1_4_1` et les deux majeures sans section |
+| `D1 (clôture M2)` un film à clé inconnue n'est pas mis de côté | lot 3.1.1, `f6b37a662` (fusion `fe38d2e35`) | porte unique `replay.CleDuFilm`, les deux orchestrateurs s'arrêtent avant toute lecture ; correction 5 de l'ADR CONSOMMÉE, D-4 « Reached » |
+| `D1 (3.3.1)` la majeure 31 n'a pas l'amorce des autres builds anciens | lot 3.3.1, `492cb0923` | le profil porte la VALEUR de l'amorce (`0x20400` sur la majeure 31) et pas seulement sa largeur ; mesurée 95/95 |
+| `D2 (3.3.1)` `rev_chronique.go` est à 500 lignes pile, au plafond du ratchet | lot 3.4, `accba88ac` | geste du pilote FAIT : des rangs anciens sont passés à `rev_chronique_archive.go`, et `fichiersDeChroniqueGrammar` porte les DEUX fichiers. Mesure sur pièces : 500 L à `492cb0923`, **451 L** à `fe38d2e35` (archive 456 L). Le pré-triage du pilote la disait NON RETENUE ; la mesure dit TRAITEE, et c'est la mesure qui fait foi |
+| `D5 (3.3.1)` le corpus gate sort en code 1 pour tout lot qui monte une révision | lot 3.3.3, `b43d4746f` (fusion `492cb0923`) | les six feuilles de télémétrie (`coverage.decoder.{sourceRev, profileRev, grammarRev, factsRev}`, `build`, `registry.fingerprint`) sont affichées dans leur propre section et comptées NULLE PART |
+| `D1 (3.4)` `consumeAbsolutePayload` jette les positions valides de Live Fire | lot 3.4.1, `accba88ac` | `absAxisWFor` suit l'index de plage (table DÉFAUT du build si `idx == -1`, table PAR INDEX de la carte sinon) et la position n'est émise que si l'index désigne la plage CATALOGUÉE |
+| `D2 (3.4)` la loi du moteur porte deux gardes que `himap` ne modélise pas | lot 3.4.1, `accba88ac` | les deux gardes sont modélisés des deux côtés (`himap/sbsp.go` : `maxBinCount = 4194304.0`, `quantStepEpsilon = 1e-4`) et confrontés d'une transcription à l'autre sur **79 cartes sur 79** |
+| `D3 (3.4)` deux énoncés du dépôt sont vrais et trompeurs | lot 3.4.1, `accba88ac` | réécrits dans le commit qui change la valeur qu'ils justifiaient (anti-pattern « doc inversée ») |
+| `D1 (3.4.1)` le chemin du rejeu porte-t-il le même défaut ailleurs ? | lot 3.4.1, `accba88ac` | FERMÉE le jour même PAR LA MESURE : **71 903** et **75 297** positions lues sur les deux films Live Fire contre 0 sous la règle fautive ; témoin de non-régression gardé au dépôt (`livefire_positions_test.go`) |
+| `D5 (3.4.1)` l'oracle balaie une largeur uniforme et un `indexW` qui n'est pas celui de la plage | lot 3.4.2, `accba88ac` | les deux mesures sont SÉPARÉES : un oracle d'axe à mot de poignée figé qui n'écrit rien, une décision du mot de poignée scorée au triplet LU ; `motDePoigneeRetenu` testée exhaustivement sans film, ratchet de source exigeant une écriture unique de `Traversal.IndexW` (vérifié : un seul fichier de production l'écrit) |
+
+**RETENUE — 1, et une seule.**
+
+| Ligne | Où elle entre | Le filtre qu'elle passe |
+|---|---|---|
+| `D3 (3.3.1)` les compteurs de couverture du balayage des lancers sont JOURNALISÉS, pas publiés | **M4, la montée de schéma unique 61 -> 62** (lots 4.2 + 4.4), comme POINT d'un commit déjà prévu : `.ai/PREPARATION_M4_ORDRE_ET_FRONTIERES_2026-09-17.md` §3.2 point 1 la retient nommément, avec les compteurs de 3.4.1 (positions gardées / jetées par index de plage) et la voie des morts (`PathWalk` / `PathScan`) | **objectif ÉCRIT d'un lot** : M4 ne porte qu'UNE montée de schéma et « tout ce qui attend un champ doit entrer dans la même » (§3.1) ; publier ces compteurs ailleurs coûterait une seconde recuisson du parc. La décision de pilote écrite dans la ligne — « les compteurs de couverture de M3 entreront en UNE SEULE montée de schéma à la clôture du jalon » — est donc tenue par M4, sans lot neuf. À RE-MESURER sur la base de M4 : publier ce que les lots M3 ont réellement ajouté, pas la liste écrite d'avance |
+
+**NON RETENUES — 32 lignes du §4, fermées sans travail, une ligne chacune.**
+
+| Ligne | Pourquoi elle est fermée |
+|---|---|
+| `D3 (3.1.2)` une valeur de profil indéterminée s'écrit en prose, pas en donnée | mesurée encore vraie (`profile_table.go:265` et le catalogue portent `INDETERMINEE (aucune largeur posee)`) ; aucun consommateur ne lit cette valeur et aucun besoin produit ne la demande |
+| `D4 (3.1.2)` les outils de catalogue ne trouvent pas la racine du dépôt depuis un worktree | mesurée encore vraie (`title/repo_root.go`, `repoRootMarker = "db_profiles.json"`) ; contournée par la doc et par les drapeaux `--out` / `--bounds`, et le défaut est celui de TOUS les outils de catalogue |
+| `D1 (3.5)` l'énumération de types d'objet de l'exécutable et le `ti` du film sont la même numérotation | clé de LECTURE, rien à corriger ; déjà citée par les notes 3.6 et par le lot 3.7 |
+| `D2 (3.5)` `kfTableCap = 8192` borne un slot de bipède par le domaine entier du monde | consignée au registre des reports avec sa condition de reprise (`.ai/V7.5/REGISTRE_REPORTS.md`) ; le correctif de bande n'a aucun consommateur produit |
+| `D3 (3.5)` la borne basse `128` est le même défaut que `7808`, par le bas | même famille, même registre, même absence d'usage produit |
+| `D4 (3.5)` le bit qui dit quel modèle de référence lire est écrit dans le film | rien à corriger ; c'est un argument de plus pour « le film est autoportant », et l'interdiction d'en faire une entrée de profil est déjà la doctrine |
+| `D1 (3.6-prep)` le `param_4` des lecteurs de composant est le niveau du registre, et le dépôt le tabule à la main | mesurée encore vraie (`grammar/component_param4.go:46`, `paramByComponent`) ; remplacer la table par `Archetype.Level(i)` change une largeur lue sur tous les archétypes, donc le contenu cuit — ce serait un lot de comportement, et plus aucun port de composant n'est retenu (V22) |
+| `D1 (3.3r)` les sept mini-bobines ne portent aucun paquet delta | constat honoré par les lots qui suivent : 3.3.1 a mesuré sur films entiers, et 3.7 écrit explicitement que les bobines ne portent que des images-clés. Rien à écrire de plus |
+| `D4 (3.3r)` l'appariement aux décréments d'i22 ne discrimine rien | l'ordre des rangs n'a jamais bougé (`D3 (3.3r)`), la voie n'a donc plus d'objet ; la péremption de la note M3 §2.3 et §2.5 sur ce point est consignée ici |
+| `D2 (clôture M2)` `decfilm.Rev` ne dit plus de quelle couche elle parle | la VALEUR est juste — c'est bien `facts.Rev` qui commande le backlog ; le renommage dépendait du lot « façade réduite », lui-même NON RETENU (note M4 §1.3 et §1.5). Un seul site de production, mesuré |
+| `D1 (3.1.1)` le parc porte désormais un film à clef inconnue (`HI_1_5_1`) | **1 film sur 1 589 (0,06 %)**, écarté proprement, et aucun gate n'en souffre (`grep -rn 58e6f72a config/ apps/ data/` rend ZÉRO ligne). Ajouter la clef demande des valeurs MESURÉES sur témoin, c'est-à-dire la procédure entière du runbook : un lot, pas une ligne |
+| `D2 (3.1.1)` `Profile.Err()` confond deux populations | la séparation qui servait est livrée (`profile.CleConnue`, documentée aux deux endroits) ; distinguer les deux cas DANS l'artefact serait un champ neuf, donc une montée de schéma, pour un besoin qui n'est écrit nulle part |
+| `D4 (3.3.1)` sur les builds récents, une poignée de lancers porte un index d'auteur hors du roster | antérieur au lot, 1 à 3 lancers par film sur 3 films de 17 ; `replay/grenades.go` les traite déjà sans dommage — un index qu'aucun siège ne porte ne trouve pas de slot, et le lancer reste situé par la naissance de son projectile |
+| `D6 (3.3.1)` `coverage.grenades.noSlot` monte de zéro et le gate le classe « perte » | **le côté GATE est fermé par le lot 3.3.3** (`b43d4746f`) : un compteur de rejet déclaré avec son dénominateur n'est une PERTE que si le rapport rejet / dénominateur se dégrade. **Le FOND — le pont d'identité des films sans section d'identification — est NON RETENU** : 169 lancers sur 481 non rattachés sur ces deux films contre 77 sur 1 146 ailleurs ; c'est le pont, pas le décodeur de lancers (`60ae07c4` rattache 310 sur 310), et sa réparation est un chantier à part déjà annoncé par le manifeste du corpus |
+| `D4 (3.4)` la table `DAT_143b8c6f0` a trois entrées, pas cinq | constat de vocabulaire, aucun défaut de code — `plages_quant.go` est juste ; la ligne du plan à reformuler est celle de l'item 2.5.b, clos |
+| `D2 (3.4.1)` `recordStateParam` (`param_4`) est toujours inféré par balayage | le repli est désormais NOMMÉ, compté et au registre avec sa cible et son critère (`repli_parametre_etat_record_infere`) ; la recherche de la source LUE n'est pas retenue, et la mesure de `D7 (3.4.2)` dit pourquoi — le remède codé faisait PERDRE des données publiées |
+| `D3 (3.4.1)` le chemin world-object ne suit pas l'index de plage, lui | statuée pendant l'instruction de `D7 (3.4.2)` : ce n'est PAS la cause de la baisse (histogramme des index absolus VIDE sur les deux marches, `dispatch_object.go` inchangé d'un octet depuis `492cb0923`), et **aucune conséquence ne lui est attribuable à ce jour** |
+| `D4 (3.4.1)` la ligne `Movement.Traversal` reste présumée | la déclarer relue sur la foi de la note serait une provenance FAUSSE : sa variabilité par build n'a jamais été mesurée, et la mesurer chez l'écrivain est un lot de recherche. `presumesGeles` porte **5** entrées à la clôture de M3 (6 à M2) |
+| `D6 (3.4.2)` la largeur du mot de poignée reste à relever chez l'écrivain | arbitrage du pilote CHIFFRÉ : l'enjeu est de 0 à 8 lectures d'impulsion par film sur des milliers de records, **aucune attribution fausse**, et les lectures publiées du grappin sont IDENTIQUES pour `iw` = 1, 2 et 3 sur les 15 films mesurés. Le repli porte sa cible et son critère mesurable |
+| `D7 (3.4.2)` le lot 3.4.1 fait baisser les morts de véhicule lues sur cinq témoins | **CANDIDAT POST-M3, NON RETENU** : la cause est établie (`param_4` sur les films sans région, le découpage i0 sur Live Fire), et le remède a été CODÉ puis MESURÉ — il fait perdre des données PUBLIÉES ailleurs (`grenadeReads/n` 193 -> 191 sur le témoin NÉGATIF, `weaponChanges/par-kind/taken` 67 -> 65 et 36 -> 32, `coverage.abilities.published` 187 -> 186) pour ne récupérer que 2 morts appariées sur 4. On ne remplace pas un bruit par une perte. Régression résiduelle ASSUMÉE et écrite : deux lignes publiées, `vehicles.tEnd/presents` et `vehicles/par-end/destroyed` |
+| `D8 (3.4.2)` le catalogue et le film ne découpent pas i0 de la même façon sur Live Fire | les deux découpages font **41 bits** : aucune mesure de LONGUEUR ne les départage, il faut une mesure de CONTENU, hors M3. Et la mesure justifie l'attente : les positions de bipède de ces deux films sont déjà JUSTES par le catalogue, et la perte se limite à 1 mort de véhicule appariée sur 8 |
+| `D1 (3.6.a)` `ti=9` ne peut pas fermer 1 717/1 717 : le 1 717e n'est pas un record | ancre fortuite du balayeur, pas une largeur — et la mesure sur films entiers le confirme par l'absurde (**1 679 / 1 679**, 100 %, dès qu'on quitte ce bruit). Resserrer le filtre du balayeur serait un changement de l'ORACLE ; inventer une largeur qui fermerait serait truquer l'oracle |
+| `D2 (3.6.a)` le nombre de composants d'un archétype dépend du build | conséquence pour les lots 3.6.b et suivants, tous NON RETENUS par V22 : il n'y a plus aucun compte de composants à relever |
+| `D3 (3.6.a)` les ancres `fichier:ligne` de `ecs_table.tsv` étaient périmées, et G1 ne le voit pas | les dix ancres de `ti=9` sont recalées par le lot ; les ~60 autres restent périmées et plus aucun port ne les consomme (V22). Durcir G1 est un lot d'outillage sans usage produit |
+| `D4 (3.6.a)` les quatre maillons de dispatch étaient tous au plafond du ratchet de longueur | traité DANS le lot 3.6.a parce qu'il bloquait son gate (un maillon par archétype porté) ; **sans objet depuis V22** — 3.6.b, 3.6.d et 3.6.e sont NON RETENUES, le mur ne revient pour personne |
+| `D5 (3.6.a)` le générateur du golden 0.A.3 ne connaissait pas son propre historique | la part bloquante est traitée dans le lot (le bloc d'historique et le chemin de régénération sont rendus au générateur) ; l'AUDIT des autres goldens à en-tête narratif (`grammar_rev.golden`, `facts_rev.golden`, `shapes.golden`, `bench_baseline.txt`) est un lot d'outillage NON RETENU. La leçon reste écrite : un historique que la porte d'écriture ne connaît pas est un sursis |
+| `D6 (3.6.a)` l'étape `vehicles` de `replay-equiv` bouge sur neuf films | mouvement confiné à l'ENTRÉE de balayage, dans un champ que seul `digest` voit : document cuit identique sur tous ses chemins sauf `/coverage/decoder/grammarRev`, aucune ligne de journal de balayage différente, corpus gate 0 gain / 0 perte / 0 changement. **Aucune sortie n'en dépend** ; l'instrument d'isolation se portera le jour où une sortie en dépendra (V14 : la seule ligne d'étape concernée se re-fige à la fusion) |
+| `D1 (3.7)` `ecs_table.tsv` mélange deux conventions dans `deser_addr` | aucune grammaire n'est fausse — le moteur est symétrique ; la normalisation doit se faire dans le commit qui porte un composant, « jamais seul », et plus aucun port n'est retenu (V22) |
+| `D2 (3.7)` la signature de famille de `NOTE_3_6_METHODE_DESCRIPTEURS` porte deux transpositions de chiffres | correction d'une NOTE DE RECHERCHE, sans effet sur le code ; la mesure juste est déjà écrite deux fois (note 3.6 ti=12 §17 pt 7, puis re-mesurée indépendamment par 3.7) |
+| `D3 (3.7)` `ti=29 respawn-block` ferme à 100 % et personne ne le lit | archétype entièrement lisible, **sans consommateur** : aucun usage produit identifié, et le blocage de réapparition par joueur n'a jamais été demandé |
+| `D4 (3.7)` le recensement par masque ne vaut pas sur une image-clé | rien à corriger dans le code ; la réserve est écrite à l'en-tête de `reapparition_37_bassin_research_test.go` et au §6 de la note 3.7, exactement là où elle se redécouvrirait |
+| `D5 (3.7)` `ti=40` véhicule : 777 records d'image-clé bornés, marche complète, zéro fermé | c'est une LARGEUR fausse, matière pour le lot qui rouvrirait 3.6.e — **NON RETENUE par V22** (« beaucoup d'inutiles », décision utilisateur) ; l'archétype n'est de surcroît pas dimensionné, faute de preuve bornante sur film |
+
+**Deux reprises hors §4 des lots 3.x, tranchées par le pilote — NON RETENUES.**
+
+| Ligne | Pourquoi elle est fermée |
+|---|---|
+| `D5 (2.6)` `film/revision` vit hors de `film/internal/` sans raison restante | déplacement PUR qu'aucune empreinte ne voit et que le compilateur ne réclame pas : ses seuls importateurs sont les quatre portes de couche, toutes sous `film/`. Consigné à l'ADR comme partiel de M2, sans date |
+| note M4 §5 n° 17 — le message d'erreur de `film_file_size_test.go` promet une exception que le code n'implémente pas | l'exception est PROCÉDURALE (le droit de relever l'entrée dans la table des plafonds), pas automatique ; ce droit est accordé explicitement au §3.3 de la note M4. Une ligne consignée, rien de plus |
 
 ---
 
@@ -5541,6 +5694,39 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-17 | 3.6.a | **D6 (3.6.a) — L'ÉTAPE `vehicles` DE `replay-equiv` BOUGE SUR NEUF FILMS, ET LE MOUVEMENT N'ATTEINT AUCUNE SORTIE PUBLIÉE.** Mesuré à la voie libre : sur `084a804d`, le digest de l'étape `vehicles` passe de `a78431ed…` à `fac28aa9…`. Trois contrôles. (1) DÉTERMINISME : deux exécutions de la tête rendent le même sha sur les 53 étapes — ce n'est pas un aléa. (2) IMPUTATION : le même film cuit avec le CODE DE LA BASE `492cb0923` (arbre extrait hors dépôt, même cache, mêmes références) rend **exactement** la référence figée `a78431ed…` — c'est donc bien le port de `ti=9`, et NON 3.3.1 (dont `grenades` rend le même sha à la base et à la tête). (3) PORTÉE : le document cuit base → tête est identique sur **tous ses chemins sauf un**, `/coverage/decoder/grammarRev` (diff structuré : 1 chemin sur 9 335 637 octets, taille identique des deux côtés) ; **aucune ligne de journal de balayage ne diffère** (`viesRecensees=180 publiees=97 …`, `episodes=74 vehiculesOccupes=45 …` identiques) ; le corpus gate classe 0 gain / 0 perte / 0 changement. Le mouvement est donc confiné à l'ENTRÉE de balayage `VehicleScan`, dans un champ que seul `digest` voit — il hache les champs NON EXPORTÉS, et `VehicleScan.Positions []grammar.BipedPosition` embarque précisément `componentDirs`, le struct non exporté que l'en-tête du paquet `digest` cite en exemple. **CE QUI N'EST PAS ÉTABLI, ET QUI EST DIT** : le champ exact n'est pas isolé — `digest` n'exporte aucun rendu, et l'isoler demanderait un instrument que ce lot n'a pas écrit. NON TRAITÉ : rien ne dépend de cette valeur aujourd'hui (aucune sortie ne la porte). Écarte au passage deux hypothèses testées et fausses : ce n'est PAS un effet de bord de 3.3.1 (`53ce4390` bouge sur `vehicles` sans bouger sur `grenades`), et ce n'est PAS la scission du maillon de dispatch (aucune étiquette `case` n'est dupliquée dans la chaîne — vérifié sur pièces, donc l'ordre des maillons ne décide de rien). | instrument d'isolation des entrées de balayage : exporter un rendu de `digest` (ou un mode `-out-dir` qui écrit la valeur et pas seulement son empreinte) rendrait ce genre d'écart lisible au champ près au lieu du seul sha. À porter le jour où une sortie dépendra de ces champs |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Clôture M3 — triage du §4 + ADR 0034 + brouillon de journal, DOCUMENTS SEULEMENT, 2026-09-17
+
+Branche `feat/decfilm-clo3`, base `fe38d2e35` (l'intégration avec 3.4, 3.6.a et 3.1.1 fusionnés :
+le code de M3 est complet). **Aucun décodage, aucune jonction, aucun fichier Go, aucun `--no-verify`**
+— c'est la contrainte du lot, et c'est ce qui rend ses gates documentaires. Un commit par point
+du brief. `npm ci` joué dans `apps/web` avant le premier commit.
+
+| Date | Point | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-17 | tous | `git diff --name-only fe38d2e35..HEAD` | **3 fichiers, tous `.md`** : `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, `docs/adr/0034-film-decoder-profile-and-layers.md`, `CLAUDE.md`. `grep -v '\.md$'` : **0** ligne. `grep -c '\.go$'` : **0** |
+| 2026-09-17 | tous | hooks lefthook (`core.hooksPath` du checkout principal) | **verts à CHAQUE commit** : `check-merge-conflict`, `docs-fr-sync`, `gitleaks` (`no leaks found`) ; `gofmt` et `go-vet` déclarés `skip / no matching staged files`, ce qui est la même mesure que la ligne ci-dessus prise par un autre chemin. Le premier commit a d'abord été passé avec un `core.hooksPath` relatif inexistant — donc sans hook : il a été **refait** (`reset --soft` puis re-commit) sous les vrais hooks |
+| 2026-09-17 | (1) | le triage cite CHAQUE ligne D-n, et n'en supprime aucune | **52 découvertes nommées** relevées une par une sur le §4 (55 lignes du tableau, trois étant la clôture d'une ligne ouverte plus haut) ; états : **19 TRAITEES / 1 RETENUE / 32 NON RETENUES**, plus 2 reprises hors §4. Contrôle : aucune ligne du §4 n'est touchée par le diff (le bloc est ajouté sous la ligne de clôture de la section M3) |
+| 2026-09-17 | (1) | chaque TRAITEE est vérifiée sur pièces, pas sur la prose du plan | `Makefile:222-225` (cible `gamefiles` élargie + ratchet) · `map_quant_bounds.json` `source` = méthode et chemin relatif · 9 `registryFingerprints` au catalogue commis · `profile/identite.go:52-63` (`RegistryFingerprint`, `RegistryNamedSlots`) · `RUNBOOK_FILM_PROFILES.md` §4.1 (les trois conditions d'un témoin) · `himap/sbsp.go` (`maxBinCount = 4194304.0`, `quantStepEpsilon = 1e-4`) · `profile/loi_largeurs.go` · `grammar/position_capture.go:229` (`absAxisWFor`) · `killsource/calibrate.go:293` (`motDePoigneeRetenu`) et une SEULE écriture de `Traversal.IndexW` dans le paquet |
+| 2026-09-17 | (1) | **une divergence avec le pré-triage du pilote, tranchée par la mesure** | `D2 (3.3.1)` (chronique de grammaire à 500 lignes pile) était annoncée NON RETENUE ; elle est **TRAITEE**. `wc -l` sur `…/grammar/rev_chronique.go` à deux shas : **500** à `492cb0923`, **451** à `fe38d2e35` ; `rev_chronique_archive.go` **456** ; `fichiersDeChroniqueGrammar` (`grammar/rev_test.go:93`) porte les DEUX fichiers. Le lot 3.4 a fait le geste. La mesure fait foi |
+| 2026-09-17 | (1) | la RETENUE passe un filtre écrit, et un seul | `D3 (3.3.1)` entre comme POINT de la montée unique 61 -> 62 de M4, que `.ai/PREPARATION_M4_ORDRE_ET_FRONTIERES_2026-09-17.md` §3.2 point 1 retient NOMMÉMENT (avec les compteurs de 3.4.1 et la voie des morts). Filtre : objectif ÉCRIT d'un lot (§3.1 : « tout ce qui attend un champ doit entrer dans la même »). **Aucune autre ligne ne passe**, et la note M4 §5 ne retient aucune autre ligne du §4 |
+| 2026-09-17 | (2) | chaque affirmation de la section ADR vérifiée AVANT d'être écrite | table du profil **33** lignes (`profile_table.go`, `Source: Provenance*` : 7 relues / 21 mesurées / 5 présumées) contre 23 à M2 · `TestProfilPresumes` **5** entrées gelées contre 6 · registre des replis **99** entrées sur **7** fichiers (`Tranches()`) contre 98 sur 6 · révisions lues dans les quatre `rev.go` : `source-2026-09-16.2`, `profile-2026-09-17.3`, `grammar-2026-09-15.42`, `killsource-2026-09-17.2` · `SchemaVersion = 61` (`film/replay/document.go:48`) · façade **166** déclarations exportées de premier niveau dans `film/decfilm/decfilm.go` (méthode (a) du §1.4 de la note M4, `grep -cE` sur les quatre mots-clés suivis d'une majuscule) et **245** identifiants `replay.X` distincts hors de `film/` (méthode du §1.4 de la note M4, qui mesurait 163 et 242 à M2) |
+| 2026-09-17 | (2) | ADR : langue, largeur, mojibake, emojis | EN-only (règle 15) ; 822 lignes ; balayage des motifs de double encodage UTF-8 : **0** ; **0** emoji ; lignes de la section neuve sous 100 caractères **hors 2 lignes de tableau** (les 13 lignes > 100 du fichier sont antérieures au lot) |
+| 2026-09-17 | (2) | `CLAUDE.md` ligne 0034 : encore vraie après 3.1.1 ? | la mise de côté y était DÉJÀ juste (« actif depuis le lot 3.1.1 ») — mais **« 163 symboles » est devenu FAUX**, mesuré à **166**. Corrigé, plus une phrase de clôture M3 (le profil dépensé, le balayage qui ne décide plus ce qu'il ne discrimine pas, `SchemaVersion` inchangée). Aucune autre réécriture |
+| 2026-09-17 | (2) | `docs/SYNC_GUIDE` FR/EN : une phrase est-elle devenue fausse ? | **NON TOUCHÉS, et c'est une MESURE.** `grep -niE` des termes de M3 (révisions par couche, `facts.Rev`, `SchemaVersion`, schéma 61, grenade, amorce, largeur, carte du match, mot de poignée, `param_4`, clé inconnue, `presumee`) : 6 lignes concernées, **toutes encore vraies** — la sous-section est écrite au présent et de façon générique, la valeur de naissance `killsource-2026-09-16.2` qu'elle cite est historique et juste, et le rattrapage post-sync borné qu'elle décrit est inchangé (`conditionBacklog`, `sync/killcollector/postsync.go:402`) : V24 reporte le drain DÉLIBÉRÉ (`levelup backfill-killsource --online`), pas le rattrapage borné. Parité : **196 / 196** lignes, et `diff` des numéros de ligne de tous les titres **identique** |
+| 2026-09-17 | (3) | brouillon de journal écrit HORS DÉPÔT, avec ses placeholders | `scratchpad/tl_cloture_m3.txt` : format des entrées existantes (titre `## [2026-09-17] Chantier decodeur — cloture M3 : …`, Statut, Décision technique principale, Gates, décisions V20-V24, triage du §4, ce que M4 ouvre, Prochaine étape). **Deux placeholders** que le pilote remplit : `__REFIGEAGE__` (les étapes re-figées à l'équivalence) et `__CORPUS__` (le verdict du corpus gate final de l'intégration). Contrôle : `git status` ne montre aucun fichier de journal — le brouillon n'entre pas au dépôt |
+| 2026-09-17 | (4) | la ligne « Clôture M3 » est éclatée en cases, chacune statuée | **9 cases, aucune vide** : **3 `[x]`** (fusion des lots de code avec leurs neuf shas ; ADR 0034 + docs transverses ; triage du §4) et **6 `[ ]`** réservées au pilote (fusion du lot 3.7, références re-figées, corpus gate final, entrée de journal, recuisson sur signal, fusion dans `feat/v75`) |
+
+**CE QUE CE LOT NE CLÔT PAS, et qui reste au pilote** : la fusion du lot 3.7 (recherche seule,
+`feat/decfilm-37r`), le re-figeage des références d'équivalence sur la classification du §5, le
+corpus gate final, la pose de l'entrée de journal, la recuisson des 87 artefacts sur signal et la
+fusion dans `feat/v75` — les six cases `[ ]` ci-dessus.
+
+**LA SEULE RÉSERVE DE CE LOT, écrite plutôt que cachée** : les cinq lignes `D1..D5 (3.7)` ont été
+triées sur un diff qui n'est PAS dans la base `fe38d2e35` (lecture de `06881f9d0` et `fcee76fdc`
+sur `feat/decfilm-37r`, jamais fusionnés ici). À la fusion du lot 3.7, vérifier que le texte
+qu'elles portent au §4 est bien celui qui a été trié — et que la fusion du bloc de triage avec
+leur insertion au §4 ne se résout pas de travers.
 
 ### Lot 3.4.1 + 3.4.2 (M3, P4) — la marche des morts calibrée par la carte, SANS AUCUN DÉCODAGE, 2026-09-17
 

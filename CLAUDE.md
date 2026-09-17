@@ -331,9 +331,13 @@ git commit -m "refactor(phase2): ..."
   `sync/killcollector` et `replaybuild` écartent le film, jamais un décodage au profil d'un
   voisin), faits / publication séparés, équipe = le film seul ; **amendé à
   la clôture M2, 2026-09-17** : les quatre couches internes sous `film/internal/` fermées
-  par le COMPILATEUR, façade `film/decfilm` (163 symboles = un alias, réduction en M4),
-  `film/replay` exportée comme couche de publication, une révision PAR COUCHE + le bloc
-  `coverage.decoder` au schéma 61 ; partiels et corrections nommés dans l'ADR) ·
+  par le COMPILATEUR, façade `film/decfilm` (**166** symboles mesurés à la clôture M3 =
+  un alias, réduction en M4), `film/replay` exportée comme couche de publication, une
+  révision PAR COUCHE + le bloc `coverage.decoder` au schéma 61 ; **puis à la clôture M3,
+  2026-09-17** : le profil est DÉPENSÉ (33 lignes — la loi des largeurs d'axe relue chez
+  l'écrivain, 79/79 cartes, et l'amorce de grenade par clef écrite) et un balayage ne décide
+  plus ce qu'il ne discrimine pas (mot de poignée, `param_4` : oracle qui n'écrit rien, sinon
+  repli nommé), `SchemaVersion` inchangée à 61 ; partiels et corrections nommés dans l'ADR) ·
   `0035` **annuaire des joueurs** (xuid = clé d'identité unique ; port `PlayerDirectory` ;
   aucun sync ni suivi sans profil suivi ; `Onboard` seul chemin de création ; verrou décidé
   en un point, défauts sûrs en mode appliqué ; purge sans toucher la base partagée).
