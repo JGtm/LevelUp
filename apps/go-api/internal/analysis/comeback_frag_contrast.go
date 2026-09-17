@@ -12,7 +12,7 @@ package analysis
 // l'utilisateur (« ni trop fréquents, mais de temps en temps ») :
 //
 //   - l'équipe dominante aux frags a MENÉ aux frags ≥ 75 % du temps de match ;
-//   - elle finit avec ≥ 15 % de frags de plus (frags adverses ≤ 85 % des siens) ;
+//   - elle finit avec les frags adverses ≤ 85 % des siens (soit ≥ 17,6 % de frags de plus) ;
 //   - elle totalise au moins 10 frags (garde contre les matchs abrégés).
 //
 // Résultat de la mesure : 10 matchs sur 349 (≈ 1 sur 35). Les critères écartés :
@@ -24,7 +24,8 @@ package analysis
 const FragContrastMinLeadShare = 0.75
 
 // FragContrastMaxEnemyRatio : frags de l'équipe dominée / frags de l'équipe
-// dominante, au plus (0.85 = au moins 15 % de frags de plus).
+// dominante, au plus (0.85 : le dominé fait au plus 85 % du dominant, soit au moins
+// 17,6 % de frags de plus pour le dominant — ce n est PAS « 15 % de plus », mesure 2026-09-17).
 const FragContrastMaxEnemyRatio = 0.85
 
 // FragContrastMinWinnerFrags : volume minimal de frags de l'équipe dominante.

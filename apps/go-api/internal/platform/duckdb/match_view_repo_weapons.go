@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/weapons/filmshell"
 )
@@ -29,7 +30,8 @@ type weaponMetaEntry struct {
 	weaponKey string
 }
 
-// lookupWeaponMeta résout label (FR>EN) + name_en + class/role depuis le registre.
+// lookupWeaponMeta résout le nom d'affichage DANS LA LOCALE DE REQUÊTE (ctxkeys.Locale,
+// cf. weaponResolved.displayLabel) + name_en + class/role depuis le registre.
 // name_en est nécessaire pour construire l'URL image via AssetURLAdapter.WeaponImageURL ;
 // class/role alimentent la FragDistribution par-match (sunburst v2).
 func (r *MatchViewRepo) lookupWeaponMeta(ctx context.Context, weaponIDs []int64) map[int64]weaponMetaEntry {
@@ -37,12 +39,13 @@ func (r *MatchViewRepo) lookupWeaponMeta(ctx context.Context, weaponIDs []int64)
 	if len(weaponIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return result
 	}
+	locale := ctxkeys.Locale(ctx)
 	// PASSAGE PRINCIPAL P4 : résolution via le registre + weapon_labels (parité du
 	// nom). On ne garde que les ids résolus (label non vide), comme l'ancien lookup.
 	for id, m := range resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponIDs) {
 		if m.label != "" {
 			result[id] = weaponMetaEntry{
-				label: m.label, nameEN: m.nameEN, class: m.class, role: m.role,
+				label: m.displayLabel(locale), nameEN: m.nameEN, class: m.class, role: m.role,
 				family: m.family, weaponKey: m.weaponKey,
 			}
 		}
@@ -50,14 +53,17 @@ func (r *MatchViewRepo) lookupWeaponMeta(ctx context.Context, weaponIDs []int64)
 	return result
 }
 
+// lookupWeaponLabels : le seul nom d'affichage d'une arme, dans la locale de requête
+// (arme favorite du scoreboard).
 func (r *MatchViewRepo) lookupWeaponLabels(ctx context.Context, weaponIDs []int64) map[int64]string {
 	labels := map[int64]string{}
 	if len(weaponIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return labels
 	}
+	locale := ctxkeys.Locale(ctx)
 	for id, m := range resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponIDs) {
 		if m.label != "" {
-			labels[id] = m.label
+			labels[id] = m.displayLabel(locale)
 		}
 	}
 	return labels

@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { useCopyToClipboard } from '@/lib/clipboard/useCopyToClipboard'
 import type {
   IdentityAnomaly,
   IdentityProfileRef,
@@ -50,19 +51,13 @@ const columnHelper = createColumnHelper<IdentityRecord>()
 
 /** Le xuid, en chiffres fixes et copiable d'un clic (il se recopie souvent). */
 function XuidCell({ xuid, tA }: { xuid?: string; tA: TAdmin }) {
-  const [copied, setCopied] = useState(false)
+  // Mécanique « copier + coche transitoire » partagée (lib/clipboard). Presse-papier
+  // refusé (contexte non sécurisé, permission) : le xuid reste affiché et
+  // sélectionnable à la main — pas d'état d'erreur à porter ici.
+  const { copy: copyText, copied } = useCopyToClipboard()
   if (!xuid) return <span className="text-muted-foreground">{EMPTY}</span>
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(xuid)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // Presse-papier refusé (contexte non sécurisé, permission) : le xuid reste
-      // affiché et sélectionnable à la main — pas d'état d'erreur à porter.
-    }
-  }
+  const copy = () => copyText(xuid)
 
   return (
     <button

@@ -1,10 +1,12 @@
 /**
  * SquadAssistPairsChart — « Assistances dans l'escouade » (page Synergies).
  *
- * BARRES VERTICALES EMPILÉES, une par ASSISTANT, segments = les BÉNÉFICIAIRES qu'il a
- * servis. C'est la forme déjà retenue pour le même fait sur la page Match
- * (`MatchAssistChart`) : à question identique, forme identique — un tableau ici et un
- * graphe là obligeaient à réapprendre la lecture d'un écran à l'autre.
+ * BARRES VERTICALES EMPILÉES, une par ASSISTANT — le LARBIN —, segments = les
+ * BÉNÉFICIAIRES qu'il a servis — les PATRONS (vocabulaire de l'écran, décision utilisateur
+ * du 2026-09-17 : titre d'axe, infobulle et description nomment les deux rôles). C'est la
+ * forme déjà retenue pour le même fait sur la page Match (`MatchAssistChart`) : à question
+ * identique, forme identique — un tableau ici et un graphe là obligeaient à réapprendre la
+ * lecture d'un écran à l'autre.
  *
  * Remplace `SquadAssistPairsTable` (retiré le 2026-09-13, décision utilisateur). Les deux
  * grandeurs du tableau survivent, dans l'infobulle : le COMPTE (hauteur du segment) ET LA
@@ -79,6 +81,15 @@ export function SquadAssistPairsChart({ block, roster }: SquadAssistPairsChartPr
     return out
   }, [roster, beneficiaires])
 
+  // Les deux rôles du graphe, nommés (décision utilisateur 2026-09-17) : la barre est le
+  // LARBIN (il a assisté), le segment le PATRON (il a eu le frag crédité). Les titres
+  // d'axes les portent (catégories = larbin, valeurs = assistances par patron), l'infobulle
+  // aussi.
+  const tooltipRoles = useMemo(
+    () => ({ category: labels.roleAssistant, component: labels.roleBeneficiary }),
+    [labels],
+  )
+
   const tooltipComponentNote = useMemo(
     () => (assistant: string, beneficiaire: string) => {
       const cle = assistCle(assistant, beneficiaire)
@@ -86,7 +97,7 @@ export function SquadAssistPairsChart({ block, roster }: SquadAssistPairsChartPr
       const part = parts.get(cle)
       if (part != null) notes.push(labels.tooltipShare(pctFmt.format(part)))
       const volee = volees.get(cle)
-      if (volee) notes.push(labels.tooltipStolen(volee))
+      if (volee) notes.push(labels.tooltipAssistantOutdamaged(volee))
       return notes.length > 0 ? notes.join(' · ') : undefined
     },
     [parts, volees, labels, pctFmt],
@@ -114,6 +125,9 @@ export function SquadAssistPairsChart({ block, roster }: SquadAssistPairsChartPr
         componentHexColors={componentHexColors}
         tooltipHideZero
         tooltipComponentNote={tooltipComponentNote}
+        categoryAxisName={labels.roleAssistant}
+        valueAxisName={labels.valueAxis}
+        tooltipRoles={tooltipRoles}
       />
     </div>
   )

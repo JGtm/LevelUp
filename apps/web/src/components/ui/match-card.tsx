@@ -198,7 +198,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
             className="min-h-[1.625rem] flex flex-wrap items-center justify-center gap-1.5 pt-1"
           >
             {narrativeBadges.map((badgeType) => {
-              const badgeMeta = getMatchNarrativeBadgeMeta(badgeType)
+              const badgeMeta = getMatchNarrativeBadgeMeta(badgeType, locale)
               if (!badgeMeta) return null
               return (
                 <span

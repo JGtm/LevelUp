@@ -2,8 +2,8 @@
 
 exports[`palette "cividis" > snapshot stable — toute modification doit être intentionnelle 1`] = `
 {
-  "assist-given": "#1B3158",
-  "assist-received": "#E1C752",
+  "assist-given": "#AA4499",
+  "assist-received": "#686B00",
   "bonus": "#B6A855",
   "chart-series-1": "#00224E",
   "chart-series-2": "#FEE838",

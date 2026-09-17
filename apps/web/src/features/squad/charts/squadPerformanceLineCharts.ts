@@ -274,7 +274,12 @@ export function buildKillsDeathsButterflyOption(
   const hiddenPlayers = opts.hiddenPlayers ?? new Set<string>()
   const hiddenTypes = opts.hiddenTypes ?? new Set<string>()
   const showBonus = !hiddenTypes.has('Bonus')
-  const bonusColor = resolveToken('stat-assists') // bonus = assistances / 3 : la couleur des assistances (famille des stats de combat)
+  // Bonus = assistances / 3 : il prend la couleur des assistances (famille des stats
+  // de combat). EXCEPTION ASSUMÉE le 2026-09-17 (décision utilisateur) : cette teinte
+  // est proche des bleus `squad-player-*` empilés dans la même barre, et on la garde
+  // quand même — c'est elle qui rend lisible la lecture « frags + bonus » d'une pile.
+  // Ne pas « corriger » vers un jeton plus distant.
+  const bonusColor = resolveToken('stat-assists')
   const emptyData = new Array<number | null>(n).fill(null)
   const seriesPerPlayer: Array<Record<string, unknown>> = []
   // Étendue d'axe calculée sur le JEU COMPLET (bonus + joueurs masqués inclus),

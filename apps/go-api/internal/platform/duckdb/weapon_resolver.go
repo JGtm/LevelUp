@@ -51,6 +51,19 @@ type weaponResolved struct {
 	faction string // dimension registre (human/covenant/…) ; "" si inconnu
 }
 
+// displayLabel rend le nom d'affichage dans la locale de requête : labelEN sous « en* »,
+// label (FR-first) sinon. Les deux champs portent déjà leur repli croisé (mêmes 4 sources,
+// ordre inversé) : ce choix ne peut pas rendre vide ce que l'autre champ aurait rempli.
+//
+// Sert les surfaces qui publient UN SEUL nom par arme (Match view : kills par arme du
+// viewer, arme favorite du scoreboard, sources de dégât du film) — avant le 2026-09-17
+// elles servaient label (FR) quelle que soit la locale, et « Tourelle LMG du Falcon » /
+// « Apparition » sortaient sous UI EN. Même doctrine que lookupMedalMeta (GH-5b) : la
+// locale de requête (ctxkeys.Locale ← X-LevelUp-Locale) décide côté serveur.
+func (w weaponResolved) displayLabel(locale string) string {
+	return resolvePlaylistNameForLocale(locale, w.label, w.labelEN)
+}
+
 // resolveWeaponMeta résout un lot de weapon_id (titre courant). Map vide si meta
 // nil ou ids vide. Best-effort.
 func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponIDs []int64) map[int64]weaponResolved {
@@ -268,6 +281,12 @@ type weaponKeyResolved struct {
 	label     string // FR-first (repli EN)
 	labelEN   string // EN-first (repli FR)
 	numericID int64  // 0 = cle sans identifiant numerique (hors arsenal)
+}
+
+// displayLabel : même contrat que weaponResolved.displayLabel, pour les lecteurs keyés par
+// weapon_key (sources de dégât du film).
+func (w weaponKeyResolved) displayLabel(locale string) string {
+	return resolvePlaylistNameForLocale(locale, w.label, w.labelEN)
 }
 
 // resolveWeaponKeyDimensions resout un lot de weapon_key vers leurs dimensions completes.
