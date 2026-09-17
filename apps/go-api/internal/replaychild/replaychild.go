@@ -123,6 +123,13 @@ func RunChild(args []string) int {
 		// ECHEC VOULU : carte hors catalogue (Forge). Le parent le journalise en debug.
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : carte hors catalogue (%v)\n", req.MapNames)
 		return filmproc.CodeSkipped
+	case strings.Contains(err.Error(), replaybuild.ErrUnknownFilmKey.Error()):
+		// FILM MIS DE COTE : la cle ecrite dans le film est absente de la table de profil
+		// (lot 3.1.1, D-4 d ADR 0034). C est un refus VOULU, du meme rang que la carte hors
+		// catalogue : le film est la et lisible, c est le depot qui n a pas encore sa ligne.
+		// `CodeFailed` ferait chercher une panne la ou il faut ecrire une ligne de table.
+		fmt.Fprintf(os.Stderr, "enfant de cuisson : cle du film absente de la table de profil (%v)\n", err)
+		return filmproc.CodeSkipped
 	default:
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : construction en echec : %v\n", err)
 		return filmproc.CodeFailed

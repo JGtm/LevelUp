@@ -55,9 +55,21 @@ const ecsProbeBytes = 512
 // bienvenu, et c'est un progres de portage. Vers le bas : c'est qu'un deser a gagne une porte —
 // a expliquer avant de reecrire le chiffre. La somme des deux, elle, vaut le nombre de lignes a
 // largeur entiere de la table.
+// 2026-09-17 (lot 3.6.a) : 114 -> 115 largeurs FIXES et 65 -> 66 gardees, DEUX lignes neuves,
+// toutes deux `ti=9` et toutes deux entrant dans le controle par le haut :
+//
+//	i4 managed-player-forge-weather-effect-overrides-component  `non_porte` -> `porte`, 64 bits
+//	   INCONDITIONNELS : les trois motifs s accordent, donc categorie FIXE.
+//	i9 managed-player-custom-input-prompt-widget  `partiel` -> `porte`. Sa colonne `bits_typ`
+//	   passe de « variable » (hors controle) a `1`, le cas commun `present = 0` ; la largeur
+//	   reelle est GARDEE par le flux (1, 4, ou 39 + la somme des corps), donc les trois motifs
+//	   divergent et la ligne tombe en categorie GARDEE — l entier y est nominal, ce que la
+//	   colonne `notes` de la table dit aussi.
+//
+// Aucune ligne ne CHANGE de categorie : les deux etaient hors du controle, elles y entrent.
 const (
-	ecsLargeursFixes   = 114
-	ecsLargeursGardees = 65
+	ecsLargeursFixes   = 115
+	ecsLargeursGardees = 66
 )
 
 // ecsEcartAdmis decrit un ecart CONNU entre la largeur fixe mesuree et l'entier de la table.

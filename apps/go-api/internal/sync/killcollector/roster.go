@@ -200,14 +200,17 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 // ENTIERS et chacun correspond a un outcome — pas de « erreurs » fourre-tout qui melangerait un
 // film absent (normal) et une base injoignable (panne).
 type KillSourceSummary struct {
-	Total       int
-	Written     int
-	Deaths      int
-	NoFilm      int
-	NoKillFeed  int
-	Timeouts    int
-	Errors      int
-	NotSupport  int
+	Total      int
+	Written    int
+	Deaths     int
+	NoFilm     int
+	NoKillFeed int
+	Timeouts   int
+	Errors     int
+	NotSupport int
+	// UnknownKey : films ECARTES parce que leur cle ecrite est absente de la table de profil
+	// (lot 3.1.1). Ni un ecrit, ni une erreur : la passe s est arretee AVANT tout decodage.
+	UnknownKey  int
 	ElapsedTime time.Duration
 }
 
@@ -266,6 +269,8 @@ func (c *KillSourceCollector) CollectMatches(ctx context.Context, matchIDs []str
 			sum.Timeouts++
 		case OutcomeNotSupported:
 			sum.NotSupport++
+		case OutcomeUnknownKey:
+			sum.UnknownKey++
 		}
 	}
 
@@ -274,6 +279,7 @@ func (c *KillSourceCollector) CollectMatches(ctx context.Context, matchIDs []str
 		"total", sum.Total, "ecrits", sum.Written, "films_absents", sum.NoFilm,
 		"sans_killfeed", sum.NoKillFeed, "abandons_delai", sum.Timeouts,
 		"erreurs", sum.Errors, "capability_absente", sum.NotSupport,
+		"ecartes_cle_inconnue", sum.UnknownKey,
 		"duration", sum.ElapsedTime)
 	return sum
 }
