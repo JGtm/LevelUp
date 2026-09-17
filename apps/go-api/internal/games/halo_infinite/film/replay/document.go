@@ -45,7 +45,7 @@ package replay
 // donc aux deux : le retrait de ces notes-ci a fait disparaitre la seule description de la v51,
 // restauree a la chronique le meme jour. Une entree de chronique se pose DANS LE COMMIT qui
 // monte la version, jamais apres.
-const SchemaVersion = 61
+const SchemaVersion = 62
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -441,4 +441,23 @@ type ReplayDocument struct {
 	//
 	// Absente des artefacts construits avant le schéma 50.
 	Identity *IdentitySection `json:"identity,omitempty"`
+	// Layers dit, CALQUE PAR CALQUE, SOUS QUELLE REVISION DE COUCHE il a ete produit (schema 62,
+	// lot 4.2.1 du PLAN_DECODEUR_FILM ; ADR 0034, D-6 et D-7).
+	//
+	// La cle est la BALISE JSON du calque a cette racine ; la valeur est la revision de la couche
+	// qui a decode ce que le calque publie — `source-...`, `profile-...`, `grammar-...`,
+	// `killsource-...` (la couche des faits) ou `publication-<SchemaVersion>`. La table, la regle
+	// d attribution et ses deux limites ecrites vivent dans `layers.go`.
+	//
+	// REGIME, IDENTIQUE A CELUI DE `coverage` :
+	//
+	//	objet ABSENT       artefact anterieur au schema 62
+	//	entree ABSENTE     ce calque n a PAS ete produit — une REPONSE, pas un trou
+	//	entree PRESENTE    produit, sous la revision nommee
+	//
+	// CE QU IL AJOUTE A `coverage`, ET POURQUOI CE N EST PAS LA MEME GRANDEUR : `coverage` dit CE
+	// QUI a ete lu et ce que la lecture a coute ; `layers` dit SOUS QUELLE REVISION. C est la
+	// seconde que la recuisson selective (lot 4.4) interroge — un artefact dont seule la
+	// `publication` a bouge se republie depuis les faits au lieu de se redecoder.
+	Layers map[string]string `json:"layers,omitempty"`
 }

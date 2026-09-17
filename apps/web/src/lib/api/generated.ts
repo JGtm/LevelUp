@@ -5792,6 +5792,7 @@ export interface components {
             bombArmings?: components["schemas"]["BombArmingsCoverage"];
             bombCarries?: components["schemas"]["BombCarriesCoverage"];
             bridge: components["schemas"]["BridgeHealth"];
+            deathsPaths?: components["schemas"]["DeathsPathsCoverage"];
             decoder?: components["schemas"]["DecoderCoverage"];
             equipment?: components["schemas"]["EquipmentCoverage"];
             equipmentChanges?: components["schemas"]["EquipmentChangeCoverage"];
@@ -5936,6 +5937,18 @@ export interface components {
             exists: boolean;
             name: string;
             tables?: components["schemas"]["TableStatus"][] | null;
+        };
+        DeathsPathTally: {
+            /** Format: int64 */
+            matched: number;
+            /** Format: int64 */
+            population: number;
+            /** Format: int64 */
+            published: number;
+        };
+        DeathsPathsCoverage: {
+            directScan: components["schemas"]["DeathsPathTally"];
+            walk: components["schemas"]["DeathsPathTally"];
         };
         DecoderCoverage: {
             build: string;
@@ -10398,6 +10411,9 @@ export interface components {
             identity?: components["schemas"]["IdentitySection"];
             inventory?: components["schemas"]["Inventory"][] | null;
             killEffects?: {
+                [key: string]: string;
+            };
+            layers?: {
                 [key: string]: string;
             };
             loadouts?: components["schemas"]["Loadout"][] | null;
