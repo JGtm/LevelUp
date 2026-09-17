@@ -112,6 +112,11 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 	case errors.Is(berr, replaybuild.ErrMapNotInCatalog):
 		fmt.Printf("  %s : carte hors catalogue (%v) — echec voulu\n", o.one, mapNames)
 		return filmproc.CodeSkipped
+	case errors.Is(berr, replaybuild.ErrUnknownFilmKey):
+		// FILM MIS DE COTE (lot 3.1.1) : la cle ecrite est absente de la table de profil. Refus
+		// VOULU — ajouter la ligne (docs/RUNBOOK_FILM_PROFILES.md), pas diagnostiquer une panne.
+		fmt.Printf("  %s : cle du film absente de la table de profil — film ecarte (%v)\n", o.one, berr)
+		return filmproc.CodeSkipped
 	default:
 		slog.ErrorContext(ctx, "backfill-replay (enfant): decodage en echec",
 			"err", berr, "match_id", o.one)

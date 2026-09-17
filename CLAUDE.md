@@ -326,8 +326,10 @@ git commit -m "refactor(phase2): ..."
   fin — quitter un match n'est pas quitter la session ; `composition_sessions[].match_count`
   seule source d'un compte de session, `/filters/resolve` en repli de chargement seulement ;
   2 ratchets) · `0034` **décodeur de film** (profil par build immuable, cinq couches
-  `source`→`profile`→`grammar`→`facts`→`replay`, porte unique aux octets, build inconnu =
-  erreur typée + compteur, faits / publication séparés, équipe = le film seul ; **amendé à
+  `source`→`profile`→`grammar`→`facts`→`replay`, porte unique aux octets, clé inconnue =
+  erreur typée + film mis de côté + compteur (actif depuis le lot 3.1.1, 2026-09-17 :
+  `sync/killcollector` et `replaybuild` écartent le film, jamais un décodage au profil d'un
+  voisin), faits / publication séparés, équipe = le film seul ; **amendé à
   la clôture M2, 2026-09-17** : les quatre couches internes sous `film/internal/` fermées
   par le COMPILATEUR, façade `film/decfilm` (163 symboles = un alias, réduction en M4),
   `film/replay` exportée comme couche de publication, une révision PAR COUCHE + le bloc
