@@ -5313,6 +5313,46 @@ le `bitAt` d'`analysis/positions` par [source.BitAt], en affirmant que les conve
 étaient identiques. Cette affirmation était une lecture de code ; ces vingt films la MESURENT, à
 l'octet, sur les 53 étapes de chaque cuisson. C'est la seule preuve qui valait.
 
+### Réconciliation 2.5.e × intégration 3.2/3.3/3.4 — gate de corpus à 17 témoins, 2026-09-17
+
+Joué sur le SHA RÉCONCILIÉ (`4a0b29270`), base `8a62e7213` — l'intégration d'avant la fusion, qui
+porte le manifeste à 17 témoins depuis le lot 3.2.3. C'est le gate qui compte : le lot 2.5.e a
+déplacé tout le décodeur, et le seul verdict qui vaille est celui du code fusionné contre le code
+d'où il part. Le gate à 14 témoins de ma tête d'avant fusion n'a jamais été lancé (décision du
+pilote) — il aurait mesuré un manifeste périmé.
+
+`replay-corpus-gate --base=8a62e7213 --parc-root <parc> --source-root <worktree> --json <rapport>
+--work-root <travail> --keep-work`, **sans `--allow-missing`**.
+
+| Gate | Résultat |
+|---|---|
+| `replay-corpus-gate`, 17 témoins | **17 `ok`, 0 gain / 0 perte / 0 changement**, schéma **60 → 60** sur chacun, `couverture_incomplete: false`, **code de sortie 0** |
+
+**LES DIX-SEPT TÉMOINS, PAR FAMILLE** (durée de la paire de cuissons) : `bcb6d393`
+ctf_mono_manche 12,3 s · `fb1a1a72` ctf_multi_manche 31,1 s · `d9781168` oddball 28,0 s ·
+`c75f33b8` assaut_bombe 16,4 s · `bf15f7ab` slayer 14,8 s · `51ebbc0f` deux_manches 20,3 s ·
+`084a804d` vehicules 2 min 14,5 s · `0797ce72` region_index_2_bits 14,5 s · `111fa685` version_39
+42,2 s · `e5adf7b2` version_40_build_1_11 47,3 s · `60ae07c4` version_37 30,7 s · `a349fea8`
+version_33_sans_identification 2 min 39,3 s · `a521164d` version_33_build_1_4_1 48,5 s ·
+`11de8353` version_38_build_1_9_0 39,7 s · `50247b26` version_31_sans_identification 1 min 25,2 s ·
+`bfecd02b` vehicules_v41_utilisateur 22,2 s · `4f77afc1` equipement_origine_utilisateur
+1 min 59,1 s. Aucun témoin absent, aucune couverture incomplète.
+
+**CE QUE CE VERT DIT, ET CE QU'IL NE DIT PAS.** Il dit que le CONTENU CUIT est identique entre
+l'intégration et la fusion, témoin par témoin, sur les trois clefs de registre que 3.2.3 a
+ajoutées (`a521164d`, `11de8353`, `50247b26`) comme sur les quatorze d'avant — donc que le
+déplacement des quatre couches sous `film/internal/`, la façade, le déménagement des instruments
+de recherche et les trois montées de révision n'ont rien changé à ce que l'utilisateur voit. Il
+ne dit rien du chemin `weapon_accuracy` / `match_weapon_hit_distance` (D1 (2.3) : ces fonctions
+écrivent EN BASE, ni ce gate ni `replay-equiv` ne les voient) — cette question reste ouverte où
+elle l'était, et ce lot ne l'a ni aggravée ni traitée.
+
+**LES DEUX GATES SE COMPLÈTENT, ET C'EST VOULU.** `replay-equiv` (20 films, joué avant la fusion)
+hache CHAQUE ÉTAPE de balayage et localise une divergence au balayage près ; le gate de corpus
+compare le DOCUMENT CUIT et sait dire « gagné / perdu / changé » par famille. Le premier a prouvé
+que les substitutions aux octets du 2.5.e-a ne changent pas une lecture ; le second, que la
+fusion ne change pas un artefact.
+
 ### Lot 3.2 (M3) — volet DONNÉES (3.2.1 données et 3.2.3), SANS AUCUN DÉCODAGE, 2026-09-16
 
 Worktree `LevelUp-wt-decfilm-32d`, branche `feat/decfilm-32d`, base `e7b9bd48e`. Aucune
