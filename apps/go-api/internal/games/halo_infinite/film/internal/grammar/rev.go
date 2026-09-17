@@ -102,9 +102,9 @@ package grammar
 // FUSION (2026-09-16) : l integration portait `.10` et la branche du lot 1.9.13 `.8` (accesseur
 // neuf dans objectives, faux positif d empreinte) ; reunies ici, au rang suivant.
 // LA CHRONIQUE DES RANGS, a partir du `.11`, vit dans `rev_chronique.go` — les rangs `.12` a
-// `.26` dans `rev_chronique_archive.go` : une entree par rang, et rien qu une. Elle EST la
+// `.27` dans `rev_chronique_archive.go` : une entree par rang, et rien qu une. Elle EST la
 // documentation de cette constante — elle en a seulement ete sortie le 2026-09-18 (lot 2.4.1)
 // parce que ce fichier avait atteint le seuil de 500 lignes et qu une chronique qui ne peut plus
 // grandir cesse d etre tenue. LE GATE LIT LES DEUX FICHIERS, dans l ordre chronologique, et
 // exige que les rangs s y suivent sans trou a partir du `.12`.
-const Rev = "grammar-2026-09-15.41"
+const Rev = "grammar-2026-09-15.42"

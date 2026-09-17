@@ -415,3 +415,37 @@ package grammar
 // `facts.Rev` MONTE (elle hache la valeur de celle-ci) : les lignes de kill deja en base
 // deviennent candidates au backlog de redecodage — sur SIGNAL UTILISATEUR (D6), jamais
 // automatiquement. `SchemaVersion` : cf. le volet 3.4.2.
+//
+// ENTREE `grammar-2026-09-15.42` (2026-09-17, lot 3.6.a — RANG PRIS A LA FUSION : la branche
+// portait `.41`, deja occupe par 3.4.1 sur l integration) : `.41` -> `.42`. LE JOUEUR GERE
+// (`ti=9`) N A PLUS AUCUN COMPOSANT SANS LECTEUR.
+//
+// DEUX LECTEURS NEUFS, RELEVES CHEZ L ECRIVAIN (`components_managed_player.go`) :
+//
+//	i4  `managed-player-forge-weather-effect-overrides-component`, ecrivain `FUN_142ed5bc8` :
+//	    `R(32)` + `R(32)`, 64 bits INCONDITIONNELS. C etait le BLOQUANT NOMME des sept bobines.
+//	i9  `managed-player-custom-input-prompt-widget`, ecrivain `FUN_141fcf160` : `R(1)` present,
+//	    `R(2)` mode, puis le SAC TEXTE `FUN_14080b034` (`R(1)` + `R(32)` nom + `n = R(3)` +
+//	    `n` corps `FUN_1407f0ebc` a largeurs litterales). Le depot rendait `ported = false` des
+//	    que `n` depassait 0 — une desynchronisation propre sur une grammaire entierement
+//	    decidable hors ligne.
+//
+// AUCUNE ENTREE DE PROFIL : toutes ces largeurs sont des litteraux d instruction. Le sac texte
+// devient le SEUL lecteur du depot pour `FUN_14080b034` : les deux instruments qui en portaient
+// leur propre copie l appellent desormais.
+//
+// LES DIX `case` DE `ti=9` SONT RASSEMBLES dans `consumeManagedPlayerComponent` — les trois
+// maillons qui se les partageaient etaient AU PLAFOND du ratchet de longueur, et porter `i4` n y
+// avait pas de place. La scission est NEUTRE PAR CONSTRUCTION : aucune etiquette `case` n est
+// dupliquee dans la chaine (verifie sur pieces), donc l ordre des maillons ne decide de rien.
+//
+// CE QUE LA MESURE DIT. Fermeture d image-cle de `ti=9` : sur les sept bobines du ratchet 0.A.3,
+// `0 / 1 717` (bloquant `i4` sur les SEPT) -> `1 716 / 1 717`, plus aucun bloquant nomme ; le
+// 1 717e est une ancre fortuite de `111fa685` (`n1 = 2 154 823 696` contre `12` sur les autres).
+// Sur les SIX FILMS DE RECHERCHE, `0 / 1 679` (100 % de desync) -> **`1 679 / 1 679`**, temoin de
+// hasard a `0 / 1 679` : l archetype ferme a 100 % des qu on quitte le bruit du balayeur d ancres.
+//
+// `facts.Rev` : ce lot ne la fait pas monter de son propre chef (aucune source de `facts/`
+// touchee, aucun fait publie change) ; elle vaut celle de 3.4.1, qui la monte pour sa raison.
+// `SchemaVersion` reste 61 : mesure sur pieces, le document cuit de `084a804d` est identique
+// base -> tete sur TOUS ses chemins sauf `/coverage/decoder/grammarRev`.
