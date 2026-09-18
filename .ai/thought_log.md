@@ -1,3 +1,49 @@
+## [2026-09-18] Rejeu 2D — bascule « Objectifs du mode » et son aide (lot 2bis) — Complété (non commité, worktree `LevelUp-wt-trois-lots`, branche `feat/intensite-objectifs-assists`)
+
+**Demande** : le commit `123d571fd` a donné aux objectifs du mode (socles, livraisons, collines,
+bases) des anneaux et contours d'ÉTAGE, mais le calque n'avait ni bascule ni description dans le
+tiroir : impossible de l'éteindre, rien n'expliquait ces formes. Décision utilisateur : bascule
+« Objectifs du mode » / « Mode objectives », infobulle FR + EN.
+
+**Décisions techniques** : (1) une seule porte, celle qui existait — `SceneToggles.modeObjectives`
+dans `layers/replayCompose.ts`, appliquée par `sceneLayers` aux TROIS calques `objectifs-cuits`,
+`etat-zones` et `pulses-objectif` (trois vues du même objet : géométrie cuite, état vivant des
+zones, pulses d'action) ; les objets PORTÉS (drapeaux, couronne, crâne, bombe) gardent leur
+bascule propre ; (2) état persisté `showModeObjectives` / `toggleModeObjectives` dans
+`useReplaySettings.ts` (`usePersistedFlag`, clé `replay-show-mode-objectives`, défaut `true`) ;
+(3) i18n : `layerModeObjectives` + `layerModeObjectivesHint` FR/EN au contrat
+(`i18nContract.ts`) et au dictionnaire, texte de l'infobulle tel que tranché (les anneaux et
+contours disent l'étage « comme pour les joueurs : plus il y en a, plus c'est haut ») ;
+(4) tiroir : `ReplayModeObjectivesControls` (`available` / `show` / `onToggle`) dans
+`ReplaySettingsLayers.tsx`, rendu EN PREMIER du groupe « Objectifs », qui s'ouvre désormais aussi
+sur `modeObjectives.available` ; propagation `ReplaySettingsDrawer.tsx` → `useReplayDrawer.ts`
+(`available.modeObjectives`) ; (5) canvas : `toggles.modeObjectives: showModeObjectives`,
+`available.modeObjectives = mapObjectives.length > 0` (le document normalisé porte au moins un
+élément), dépendance ajoutée au mémo de `buildScene` — 6 lignes nettes, pas d'extraction ;
+(6) aucun calque touché (`objectivesLayer.ts`, `floorRings.ts`, `zoneStates*` intacts), aucune
+couleur nouvelle.
+
+**Résultats observés** : `replayCompose.test.ts` (+1 cas dans `COUPE` : « exactement ces trois
+calques, et eux seuls ») rouge par mutation (condition retirée sur `etat-zones`) ;
+`useReplaySettings.test.tsx` (+1 : défaut `true`, survit au remontage, drapeaux intacts) rouge
+par deux mutations (défaut `false` ; clé partagée avec les drapeaux) ;
+`ReplaySettingsDrawer.test.tsx` (+4 : callback propre, EN PREMIER avant Drapeaux, groupe ouvert
+sans objet porté, absent sans objectif) rouge par deux mutations (bascule déplacée après les
+drapeaux ; groupe non ouvert par `modeObjectives.available`). Gates : `npm run typecheck` 0
+erreur ; `eslint src/features/match-replay` 0 erreur (8 avertissements préexistants hors lot :
+`useReplaySound.ts`, `ReplayFeedName.tsx`, véhicules) ; `lint:colors` et `lint:fields` propres ;
+`vitest run src/features/match-replay` : 199 fichiers / 2 951 tests verts (1 fichier perf sauté,
+préexistant). Aucun test renommé ni supprimé (baseline intacte).
+
+**Conclusion / prochaine étape** : le calque des objectifs est commandable et expliqué. À
+vérifier à l'oeil par l'utilisateur : sur un film à objectifs (Roi de la colline, Bastion, CTF),
+le tiroir montre « Objectifs du mode » en tête du groupe « Objectifs » ; éteinte, les formes, les
+anneaux d'étage, le remplissage vivant des zones ET les pulses disparaissent ensemble, les
+drapeaux restent ; l'infobulle FR/EN dit ce que sont les anneaux ; sur un Assassin sans objectif
+ni objet porté, le groupe n'apparaît pas. Hors périmètre, noté : le commentaire de
+`useReplayDrawer` (« ce mémo ne retient rien ») reste vrai, `useReplaySettings` n'est toujours
+pas mémoïsé.
+
 ## [2026-09-18] Tuile de match — part des frags assistés par un coéquipier, par tranche (lot 3) — Complété (non commité, worktree `LevelUp-wt-trois-lots`, branche `feat/intensite-objectifs-assists`)
 
 **Demande** : sur la tuile de match de l'Accueil (`match-card.tsx`), la part des frags du joueur
@@ -111479,3 +111525,4 @@ front ; `CompareResponse` manuscrit dans `types.ts`.
 
 **Conclusion / prochaine étape** : go de l'utilisateur, puis lot 0 (worktree dédié) et lots 1 à
 5 sous `plan-execution` ; gate visuel de l'utilisateur avant fusion dans `feat/v75`.
+
