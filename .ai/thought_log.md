@@ -1,3 +1,48 @@
+## [2026-09-18] Rejeu 2D — les objectifs du mode disent leur ÉTAGE comme les joueurs (lot 2) — Complété (non commité, worktree `LevelUp-wt-trois-lots`, branche `feat/intensite-objectifs-assists`)
+
+**Demande** : les zones (collines, bastions, zones de capture) et les marqueurs (socles,
+livraisons) du calque statique `objectivesLayer.ts` portaient un `z` que personne ne lisait ;
+les pions disent leur étage par des anneaux concentriques. Donner aux objectifs le MÊME langage,
+sans texte sur le canvas, sans couleur nouvelle. 100 % front, aucun changement Go.
+
+**Décisions techniques** : (1) une seule implémentation des anneaux d'étage,
+`layers/floorRings.ts` (`drawFloorRings`, `floorRingRadius`, constantes `FLOOR_RING_*`
+sorties de `replayMarkers.ts`, qui l'importe désormais) — fichier à part plutôt qu'un export
+des pions, pour que la cuisson hors écran n'importe pas le cône de visée et les étiquettes ;
+(2) marqueur d'objectif : `fl` anneaux au premier rayon `MARKER_RING + FLOOR_RING_GAP` = 10,8 px,
+au-delà de l'anneau de livraison (8 px), même pas que les pions ; (3) zone : `fl` contours
+concentriques EXTÉRIEURS par `traceZonePath(..., padPx)` (cylindre : rayon + pad ; boîte :
+`zoneCornersWorld(e, padPx / scale)`), pas de 2,8 px, trait 1 px, même pâlissement — extérieurs
+parce que le calque vivant repeint l'intérieur de la forme ; (4) `ObjectivesStyle.z` (amplitude
+du document), fourni par `useReplayStaticLayers` (dans les dépendances de cuisson) depuis
+`zRange` de `ReplayCanvas` ; `drawObjectivePulses` ne prend plus que `Pick<..., 'colorOfTeam'>` ;
+(5) terrain plat (`max - min <= 1e-6`) : étage forcé à 0 sur les objectifs (`objectiveFloor`).
+
+**Résultats observés** : typecheck 0 ; eslint 0 erreur (8 avertissements pré-existants hors
+périmètre) ; lint:colors 0 ; lint:fields 0 ; knip-ratchet 0/0/0 ; vitest rejeu + lib/replay +
+garde anglicismes : 214 fichiers, 3 227 tests verts. 7 tests neufs `objectivesFloor.test.ts`
+(fichier à part : `objectivesLayer.test.ts` était à 509 lignes de code) + 4 tests
+`floorRings.test.ts`, chacun prouvé rouge par 11 mutations (anneaux retirés, premier rayon sous
+la livraison, contours retirés / rétrécis / pad ignoré / opacité constante, garde plat retirée,
+texte écrit, helper : boucle tronquée / premier rayon ignoré / opacité constante).
+
+**Non traité `[!]`** : décision 5 (infobulle d'aide du calque) — le calque statique des objectifs
+n'a NI bascule NI description dans `i18n.ts` (le groupe « Objectifs » du tiroir ne porte que les
+objets vivants : drapeaux, VIP, crâne, bombe, et disparaît sur KOTH/Bastions). Il n'y a rien à
+compléter ; en créer un = une bascule ou une infobulle de groupe nouvelle, décision produit hors
+plan. À trancher par l'utilisateur.
+
+**Découvertes hors périmètre (non corrigées)** : (a) les PIONS ont le défaut du terrain plat :
+`floorIndex` -> `floorOf(z, min, max)` avec `min === max` (bornes Z absentes -> `?? 0`) rend
+l'étage 1, donc un anneau sur chaque joueur qui a un z ; (b) `FlagSpan` (`flagCarriesLayer`)
+n'a pas de `z` : un drapeau lâché ne peut pas dire son étage sans changement Go ; (c) l'entrée
+du lot 1 a été ajoutée en FIN de journal (L111331) alors que le journal est trié du plus récent
+en tête.
+
+**Conclusion / prochaine étape** : vérification visuelle par l'utilisateur (CTF à socles en
+hauteur, KOTH/Bastions à étages : anneaux autour des socles, contours extérieurs des zones,
+rien sur une carte plate), puis commit sur la branche du chantier.
+
 ## [2026-09-18] Escouade / Dynamique — Intensité : deux courbes de référence ÉQUIPE + LOBBY (lot 1) — Complété (non commité)
 
 **Statut** : Complété sur le worktree `LevelUp-wt-trois-lots` (branche
