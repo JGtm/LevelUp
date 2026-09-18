@@ -32,6 +32,7 @@
  */
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { drawAimCone } from './replayAimCone'
+import { drawFloorRings, FLOOR_RING_WIDTH, floorRingRadius } from './floorRings'
 import { drawNameLabel } from './replayLabels'
 import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 
@@ -94,15 +95,9 @@ const TRAIL_ALPHA_HEAD = 0.63
  */
 export const CORE_RADIUS = 3.4
 const CORE_PER_FLOOR = 0.7
-/**
- * Anneaux concentriques : un par étage au-dessus du sol (règle du COMPTE inchangée). Le
- * premier est posé à un rayon FIXE — la planche le veut détaché du point, pas collé à lui.
- */
-const RING_RADIUS = 6.5
-const RING_GAP = 2.8
-const RING_WIDTH = 1
-const RING_ALPHA = 0.9
-const RING_ALPHA_DECAY = 0.18
+// Les anneaux d'étage (un par étage au-dessus du sol, premier rayon FIXE et détaché du point)
+// vivent dans `floorRings.ts` depuis le 2026-09-18 : les objectifs du mode parlent le même
+// langage, et une seule boucle les trace.
 /** Liseré de lisibilité : la carte va du clair au sombre, un point coloré s'y perd sans lui. */
 const OUTLINE_PAD = 1.0
 /**
@@ -382,14 +377,9 @@ function drawLivingTrack(
  */
 function markerEdge(fl: number, k: number, shape: MarkerShape): number {
   const outline = CORE_RADIUS + CORE_PER_FLOOR * fl + OUTLINE_PAD
-  const ring = fl > 0 ? ringRadius(fl) + RING_WIDTH / 2 : 0
+  const ring = fl > 0 ? floorRingRadius(fl) + FLOOR_RING_WIDTH / 2 : 0
   const self = shape === 'ring' ? selfRingRadius2(fl) + SELF_HALO_PAD : 0
   return Math.max(outline, ring, self) * k
-}
-
-/** ringRadius : rayon de l'anneau d'étage n° `r` (1 = le premier au-dessus du sol). */
-function ringRadius(r: number): number {
-  return RING_RADIUS + RING_GAP * (r - 1)
 }
 
 /** selfRingRadius : rayon du PREMIER anneau d'identité du joueur de la page (forme 'ring'). */
@@ -490,14 +480,7 @@ function drawMarker(
   // LE HALO EN PREMIER, sous tout le reste : c'est une lueur, pas un trait.
   if (shape === 'ring') drawSelfHalo(ctx, c, style, fl)
 
-  ctx.strokeStyle = color
-  ctx.lineWidth = RING_WIDTH * style.k
-  for (let r = 1; r <= fl; r++) {
-    ctx.globalAlpha = RING_ALPHA - RING_ALPHA_DECAY * (r - 1)
-    ctx.beginPath()
-    ctx.arc(c.x, c.y, ringRadius(r) * style.k, 0, Math.PI * 2)
-    ctx.stroke()
-  }
+  drawFloorRings(ctx, c, fl, color, { k: style.k })
 
   ctx.globalAlpha = OUTLINE_ALPHA
   ctx.fillStyle = style.ink

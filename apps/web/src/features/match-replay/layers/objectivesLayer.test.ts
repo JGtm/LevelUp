@@ -88,18 +88,22 @@ function mockCtx() {
 }
 
 const VIEW = { bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 }, width: 480 + 48, height: 480 + 48, pad: 24 }
+/** Amplitude verticale 0..10 : la fixture MO est à z=1, soit l'étage 0 — aucun anneau d'étage. */
+const Z = { min: 0, max: 10 }
+const STYLE = { colorOfTeam: () => '#123456', neutralOutline: '#000000', z: Z }
+const PULSE_STYLE = { colorOfTeam: () => '#123456' }
 
 describe('drawObjectivesLayer', () => {
   it("n'écrit JAMAIS de texte — la lettre A/B/C n'existe pas dans la donnée", () => {
     const { ctx, calls } = mockCtx()
-    drawObjectivesLayer(ctx, normalizeMapObjectives(MO), VIEW, { colorOfTeam: () => '#123456', neutralOutline: '#000000' })
+    drawObjectivesLayer(ctx, normalizeMapObjectives(MO), VIEW, STYLE)
     expect(calls.filter((c) => c.method === 'fillText' || c.method === 'strokeText')).toHaveLength(0)
   })
 
   it('la boîte est ORIENTÉE : ses coins suivent le Forward servi', () => {
     const { ctx, calls } = mockCtx()
     const box = normalizeMapObjectives({ zones: MO.zones ? [MO.zones[0]] : [] })
-    drawObjectivesLayer(ctx, box, VIEW, { colorOfTeam: () => '#123456', neutralOutline: '#000000' })
+    drawObjectivesLayer(ctx, box, VIEW, STYLE)
     // VIEW cadre le monde [0,10]² sur 480 px utiles : 48 px par mètre, Y inversé.
     // Centre (5,5), fwd=(0,1), halfX=2 (porte sur Y), halfY=1 (porte sur X) :
     // coins monde (4,7) (4,3) (6,3) (6,7) -> le premier coin canvas est (24+4*48, 24+(10-7)*48).
@@ -116,7 +120,7 @@ describe('drawObjectivesLayer', () => {
   it('le cylindre se projette en cercle au RAYON MONDE (pixels = rayon × échelle)', () => {
     const { ctx, calls } = mockCtx()
     const cyl = normalizeMapObjectives({ zones: MO.zones ? [MO.zones[1]] : [] })
-    drawObjectivesLayer(ctx, cyl, VIEW, { colorOfTeam: () => '#123456', neutralOutline: '#000000' })
+    drawObjectivesLayer(ctx, cyl, VIEW, STYLE)
     const arcs = calls.filter((c) => c.method === 'arc')
     expect(arcs).toHaveLength(1)
     expect(arcs[0].args[2]).toBeCloseTo(3 * 48, 5) // rayon 3 m × 48 px/m
@@ -125,7 +129,7 @@ describe('drawObjectivesLayer', () => {
   it('une livraison ponctuelle gagne un ANNEAU, une apparition reste un losange', () => {
     const { ctx, calls } = mockCtx()
     const markers = normalizeMapObjectives({ markers: MO.markers })
-    drawObjectivesLayer(ctx, markers, VIEW, { colorOfTeam: () => '#123456', neutralOutline: '#000000' })
+    drawObjectivesLayer(ctx, markers, VIEW, STYLE)
     // 2 losanges (closePath) mais UN seul anneau (arc) : celui de la livraison.
     expect(calls.filter((c) => c.method === 'closePath')).toHaveLength(2)
     expect(calls.filter((c) => c.method === 'arc')).toHaveLength(1)
@@ -135,11 +139,11 @@ describe('drawObjectivesLayer', () => {
     const vus: number[] = []
     const { ctx } = mockCtx()
     drawObjectivesLayer(ctx, normalizeMapObjectives(MO), VIEW, {
+      ...STYLE,
       colorOfTeam: (team) => {
         vus.push(team)
         return '#123456'
       },
-      neutralOutline: '#000000',
     })
     expect(vus).toContain(OBJECTIVE_TEAM_NEUTRAL)
     expect(vus).toContain(0)
@@ -395,26 +399,26 @@ describe('drawObjectivePulses', () => {
 
   it("dessine dans la fenêtre, s'ouvre avec l'âge, rien hors fenêtre", () => {
     const { ctx, calls } = mockCtx()
-    drawObjectivePulses(ctx, pulses, VIEW, { frame: 12, hold: 14 }, { colorOfTeam: () => '#123456', neutralOutline: '#000000' }, false)
+    drawObjectivePulses(ctx, pulses, VIEW, { frame: 12, hold: 14 }, PULSE_STYLE, false)
     const arcs = calls.filter((c) => c.method === 'arc')
     expect(arcs).toHaveLength(1)
     const r1 = arcs[0].args[2] as number
 
     const encore = mockCtx()
-    drawObjectivePulses(encore.ctx, pulses, VIEW, { frame: 20, hold: 14 }, { colorOfTeam: () => '#123456', neutralOutline: '#000000' }, false)
+    drawObjectivePulses(encore.ctx, pulses, VIEW, { frame: 20, hold: 14 }, PULSE_STYLE, false)
     const r2 = encore.calls.filter((c) => c.method === 'arc')[0].args[2] as number
     expect(r2).toBeGreaterThan(r1) // l'anneau S'OUVRE
 
     const dehors = mockCtx()
-    drawObjectivePulses(dehors.ctx, pulses, VIEW, { frame: 40, hold: 14 }, { colorOfTeam: () => '#123456', neutralOutline: '#000000' }, false)
+    drawObjectivePulses(dehors.ctx, pulses, VIEW, { frame: 40, hold: 14 }, PULSE_STYLE, false)
     expect(dehors.calls.filter((c) => c.method === 'arc')).toHaveLength(0)
   })
 
   it('sous mouvement réduit : anneau statique, pas d’animation', () => {
     const a = mockCtx()
-    drawObjectivePulses(a.ctx, pulses, VIEW, { frame: 11, hold: 14 }, { colorOfTeam: () => '#123456', neutralOutline: '#000000' }, true)
+    drawObjectivePulses(a.ctx, pulses, VIEW, { frame: 11, hold: 14 }, PULSE_STYLE, true)
     const b = mockCtx()
-    drawObjectivePulses(b.ctx, pulses, VIEW, { frame: 23, hold: 14 }, { colorOfTeam: () => '#123456', neutralOutline: '#000000' }, true)
+    drawObjectivePulses(b.ctx, pulses, VIEW, { frame: 23, hold: 14 }, PULSE_STYLE, true)
     const ra = a.calls.filter((c) => c.method === 'arc')[0].args[2]
     const rb = b.calls.filter((c) => c.method === 'arc')[0].args[2]
     expect(ra).toBe(rb)
@@ -456,7 +460,7 @@ describe('objectifs SANS CAMP — le liseré (2026-09-08)', () => {
   it('une zone neutre reçoit un liseré à l’encre du fond, PLUS ÉPAIS que son contour', () => {
     const { ctx, traits } = ctxTracant()
     const neutre = normalizeMapObjectives({ zones: [MO.zones![0]] })
-    drawObjectivesLayer(ctx, neutre, VIEW, { colorOfTeam: () => '#123456', neutralOutline: '#ABCDEF' })
+    drawObjectivesLayer(ctx, neutre, VIEW, { ...STYLE, neutralOutline: '#ABCDEF' })
 
     const liseres = traits.filter((t) => t.ink === '#ABCDEF')
     const contours = traits.filter((t) => t.ink === '#123456')
@@ -469,7 +473,7 @@ describe('objectifs SANS CAMP — le liseré (2026-09-08)', () => {
   it('une zone TENUE n’en reçoit aucun — sa couleur d’équipe la détache déjà', () => {
     const { ctx, traits } = ctxTracant()
     const tenue = normalizeMapObjectives({ zones: [MO.zones![1]] })
-    drawObjectivesLayer(ctx, tenue, VIEW, { colorOfTeam: () => '#123456', neutralOutline: '#ABCDEF' })
+    drawObjectivesLayer(ctx, tenue, VIEW, { ...STYLE, neutralOutline: '#ABCDEF' })
 
     expect(traits.filter((t) => t.ink === '#ABCDEF')).toHaveLength(0)
     expect(traits.filter((t) => t.ink === '#123456').length).toBeGreaterThan(0)

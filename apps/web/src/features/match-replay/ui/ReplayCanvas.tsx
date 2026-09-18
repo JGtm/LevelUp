@@ -342,7 +342,7 @@ export function ReplayCanvas({
     frozen: drag.dragging,
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
-    objectives: { elements: mapObjectives, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline },
+    objectives: { elements: mapObjectives, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline, z: zRange },
   })
 
   // LES EMPLACEMENTS D'ARME (schéma 11) : tracé, survol et infobulle dans un seul hook. Ils
@@ -536,7 +536,7 @@ export function ReplayCanvas({
             }),
           'etat-zones': (_c, fr) => drawZoneStates(ctx, zones, doc.zoneStates, view, fr),
           'pulses-objectif': () =>
-            drawObjectivePulses(ctx, objectivePulses, view, win, { colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline }, reducedMotion),
+            drawObjectivePulses(ctx, objectivePulses, view, win, { colorOfTeam: zones.colorOfTeam }, reducedMotion),
           morts: (_c, _fr, k) =>
             drawKillFxLayer(ctx, killFx, view, win, {
               colorOfSlot: colorOfSlotOrLast, // FRONTIERE : kill posthume/echange apres la fin de vie.
