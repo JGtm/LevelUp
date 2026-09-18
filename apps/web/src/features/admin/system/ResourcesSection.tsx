@@ -71,6 +71,19 @@ function RuntimeSummary({ data, tA, locale }: { data: AdminResourcesResponse; tA
         {tA('admin.resources.restarts')}{' '}
         <span className="font-semibold tabular-nums text-foreground">{data.restarts}</span>
       </span>
+      {/* LES FAITS PERSISTES PAR FILM (M4-D1, lot 4.1.1-c cote Go) : ce que la republication
+          selective coute en disque. La ligne se TAIT quand le champ est absent — un serveur qui
+          n en mesure pas (titre sans faits, reponse d un binaire anterieur) ne doit pas afficher
+          un zero, qui se lirait comme « mesure faite, rien sur le disque ». */}
+      {data.film_facts_total_bytes !== undefined && data.film_facts_total_bytes !== null && (
+        <span className="cursor-help" title={tA('admin.resources.film_facts_help')}>
+          {tA('admin.resources.film_facts')}{' '}
+          <span className="font-semibold tabular-nums text-foreground">
+            {formatBytes(data.film_facts_total_bytes, locale)}
+          </span>
+          {' '}({(data.film_facts ?? []).reduce((n, f) => n + f.files, 0)})
+        </span>
+      )}
     </div>
   )
 }

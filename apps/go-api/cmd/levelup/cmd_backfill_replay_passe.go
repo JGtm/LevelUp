@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/replaybuild"
 )
 
 // replayBackfillReport : le rapport par categories.
@@ -24,8 +25,18 @@ import (
 // subite est un incident machine. Les fondre dans un seul compteur « erreurs » rendrait le
 // recap inutile le jour ou il sert vraiment.
 type replayBackfillReport struct {
-	construits    int
-	dejaAJour     int
+	construits int
+	dejaAJour  int
+	// LA VENTILATION DE M4-P4 : parmi les `construits`, ceux que le verdict avait classes
+	// `republier` (decodage intact, seule la publication avait bouge) et ceux qu il avait classes
+	// `redecoder`. Leur somme est INFERIEURE OU EGALE a `construits` : un film sans artefact
+	// prealable n est ni l un ni l autre, il est cuit pour la premiere fois.
+	//
+	// POURQUOI LE PARENT LES COMPTE ET PAS L ENFANT : c est le parent qui decide de lancer, et sur
+	// quelle base. L enfant relit les faits, juge leur en-tete et redecode si elle ne tient pas —
+	// il rend un code de sortie, jamais une categorie.
+	republies     int
+	redecodes     int
 	horsCatalogue int // echec VOULU (cartes Forge sans bornes), compte A PART
 	horsRegistre  int // film en cache sans ligne match_registry
 	sansArtefact  int // ecarte par --only-existing : aucun artefact sur disque
@@ -63,7 +74,7 @@ func executerPasseReplay(
 		if res.Peak > picMax {
 			picMax = res.Peak
 		}
-		traiterResultatEnfant(r, res, c.matchID, i+1, len(aFaire))
+		traiterResultatEnfant(r, res, c, i+1, len(aFaire))
 	}
 	fmt.Printf("passe terminee en %s (pic memoire max observe : %s)\n",
 		time.Since(debut).Round(time.Second), libelleOctets(picMax))
@@ -92,10 +103,20 @@ func argsEnfantReplay(o replayBackfillOptions, cacheRoot string, c replayCandida
 }
 
 // traiterResultatEnfant compte l'issue, la journalise et l'affiche.
-func traiterResultatEnfant(r *replayBackfillReport, res filmproc.Result, matchID string, rang, total int) {
+func traiterResultatEnfant(r *replayBackfillReport, res filmproc.Result, c replayCandidat, rang, total int) {
+	matchID := c.matchID
 	switch res.Issue {
 	case filmproc.IssueOK:
 		r.construits++
+		// LA VENTILATION NE COMPTE QUE LES SUCCES, et par le verdict que le filtre avait rendu : un
+		// echec ne republie ni ne redecode rien, et le compter ailleurs gonflerait un total qui sert
+		// a lire le COUT de la passe.
+		switch c.verdict {
+		case replaybuild.VerdictRepublier:
+			r.republies++
+		case replaybuild.VerdictRedecoder:
+			r.redecodes++
+		}
 	case filmproc.IssueSkipped:
 		r.horsCatalogue++
 	case filmproc.IssueFailed:
@@ -198,6 +219,11 @@ func afficherPlanReplay(candidats []replayCandidat) {
 func afficherRapportReplay(r replayBackfillReport) {
 	fmt.Println("rapport de passe :")
 	fmt.Printf("  construits           %d\n", r.construits)
+	// LES DEUX LIGNES DE M4-P4 : elles disent ce que la passe a COUTE, pas seulement ce qu elle a
+	// fait. Une passe d apres montee de schema qui republie tout se lit en secondes ; la meme qui
+	// redecode tout se lit en minutes, et c est le MEME nombre de `construits`.
+	fmt.Printf("  dont republies       %d (decodage intact, rejoues depuis les faits)\n", r.republies)
+	fmt.Printf("  dont redecodes       %d (couche perimee ou faits absents — film relu)\n", r.redecodes)
 	fmt.Printf("  deja a jour          %d\n", r.dejaAJour)
 	fmt.Printf("  carte hors catalogue %d (echec voulu : cartes sans bornes, Forge en tete)\n", r.horsCatalogue)
 	fmt.Printf("  hors registre        %d (film en cache sans match en base)\n", r.horsRegistre)

@@ -468,6 +468,8 @@ export const adminManifest = {
   "admin.resources.col_size": { fr: "Taille", en: "Size" },
   "admin.resources.col_wal": { fr: "WAL", en: "WAL" },
   "admin.resources.disk_free": { fr: "Disque libre :", en: "Free disk:" },
+  "admin.resources.film_facts": { fr: "Faits de film :", en: "Film facts:" },
+  "admin.resources.film_facts_help": { fr: "Faits decodes persistes par film (data/cache/film_facts) : ils permettent de republier un artefact sans relire le film.", en: "Decoded facts persisted per film (data/cache/film_facts): they allow republishing an artifact without re-reading the film." },
   "admin.resources.goroutines": { fr: "Goroutines :", en: "Goroutines:" },
   "admin.resources.heap": { fr: "Mémoire serveur (tas Go) :", en: "Server memory (Go heap):" },
   "admin.resources.heap_help": { fr: "Mémoire allouée par le processus du serveur.", en: "Memory allocated by the server process." },
