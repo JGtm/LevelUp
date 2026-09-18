@@ -5603,6 +5603,93 @@ retour ; rien n'est ouvert sur signal implicite.**
 | `D10 (4.4.1)` **six fixtures de test posaient un artefact qu'elles croyaient « à jour » et en vérifiaient l'inverse** : depuis que `UpToDate` juge AUSSI les révisions, un artefact muet sur ses couches se lit « à redécoder », et ces tests restaient verts en décrivant le contraire de leur intention (`cmd/levelup` ×2, `sync/replayartifacts` ×2, `api/wire` e2e, `replaybuild`) | **TRAITÉE** au commit 4.4.1 : chacune déclare ses couches, depuis `replay.RevisionsCourantesDesCouches()` et jamais un littéral — un littéral se périmerait au premier bump et ramènerait le défaut |
 | `D11 (4.4.1)` **`wouldDowngrade` ne refusait la rétrogradation qu'à schéma ÉGAL et se taisait délibérément à schéma différent** : or une republication venue d'un binaire en retard monte parfois AUSSI le schéma, et se glissait dans ce silence | **TRAITÉE** au même commit, avec le seul critère qu'on sache prouver (« en place intact, candidat qui ne l'est pas »). Ordonner deux révisions pour dire laquelle est la plus ancienne demanderait de comparer des dates dans des chaînes, ce que rien ne garde |
 | `D12 (M4-D1)` **la taille des faits ne peut pas s'afficher au badge de rejeu** : le document ne porte aucun champ de taille de faits, et l'endpoint admin mesure PAR TITRE, pas par film | **NON RETENUE** : l'afficher exigerait soit un champ de plus au document (donc une montée de schéma 63 pour de la télémétrie d'administrateur), soit un second aller-retour par match. Décision de pilote, hors de ce lot. La ligne de `/admin/system`, elle, EST livrée |
+### Post-chantier — lot 5.1 (la réapparition des objectifs et des véhicules), branche `feat/decfilm-51`, base `83a562ea1`
+
+Ouvert sur décision utilisateur V26 (2026-09-18) : « tu peux piloter le port des réapparitions ».
+Recherche préalable : `.ai/V7.5/film_re/NOTE_3_7_REAPPARITION_2026-09-17.md`.
+
+**LE LOT NE MONTE PAS `SchemaVersion`**, et c'est le résultat qui le décide : les deux calques
+qu'il devait publier sont bloqués, l'un par un négatif mesuré, l'autre par une grammaire absente.
+Le schéma reste **62**, les 8 fixtures de contrat sont inchangées, et aucun octet publié ne bouge.
+Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgress` (5.1.6, prouvé)
+**et** `VehicleCycle` (5.1.5) — un seul `SchemaVersion` par chantier.
+
+- [x] **5.1.1 — les navpoints jusqu'au minuteur** (`1fe3352ce`). `ti=12` porté de `i1` à `i12` :
+  douze lecteurs relevés chez le désérialiseur `+0x40` et recoupés par le sérialiseur `+0x28`
+  (NOTE_3_6_TI12_GRAMMAIRES_A §5-16), dont le bloc de filtres partagé de `i2`..`i6` (quinze tags)
+  et `paramByComponent` (`param_4` = 3 pour `i2`, = 2 pour `i3`..`i6`, valeur LUE au slot `+0x10`).
+  Aucune entrée de profil : la largeur de référence d'entité passe par `refDomWidth` et
+  `readRecordID`. Les cinq filtres sont `partiel` (tag hors [0, 14] = arrêt propre, jamais une
+  largeur devinée). **MESURE : le bloquant du ratchet 0.A.3 avance de `i1` à `i13` sur les SEPT
+  bobines** ; 0 ligne monte, 0 descend (la fermeture demande encore `i13`..`i27`). Les 8 fixtures
+  de contrat : **0 ligne de différence hors les chaînes de révision**. `grammar.Rev`
+  `.42` -> `grammar-2026-09-18` ; `facts.Rev` monte MÉCANIQUEMENT avec elle
+  (`killsource-2026-09-18`, backlog de DATATION : aucune source de `facts/` touchée) — montée
+  UNIQUE pour tout le lot. G4 : 115 -> 121 largeurs fixes.
+- [x] **5.1.2 — la preuve sur film : NÉGATIF MESURÉ, ARRÊT** (`9c59eaf41`). Critère écrit AVANT la
+  mesure : `i12` non nul PENDANT un lâcher, nul en dehors. **Falsifié.** Voie image-clé,
+  `bcb6d393` 156 lectures et `fb1a1a72` 432 : **588 sur 588 à ZÉRO**, dont **172 à l'intérieur
+  d'un lâcher** publié par `flagCarries` (13 lâchers / 56,8 s ; 33 lâchers / 299,6 s). Ce n'est
+  pas une lecture fausse : l'oracle de position `i10` (domaine légal du 2026-09-01) rend
+  **312/312** et **882/882** dans le domaine, 0 hors domaine. Les 41 valeurs non nulles sont du
+  bruit d'ancrage de la voie delta (1 seule chaînée, 27 au-delà de 1 000 s sur des matchs de 350
+  et 800 s). Deux instruments rejouables sous tag `research`.
+- [!] **5.1.3 — la publication des objectifs : TOMBE.** Rien de prouvé à publier, et le brief
+  l'interdit explicitement. Les DEUX voies de MINUTEUR nommées par la note 3.7 sont désormais des
+  négatifs mesurés : le bassin du moteur (`ti=11 i0` = « aucun minuteur », 446/446, §6 bis.3) et
+  le minuteur manuel du navpoint (5.1.2). **Ce que 5.1.6 remplace** : la donnée existe, mais c'est
+  une JAUGE et non un minuteur.
+- [x] **5.1.4 — la fin de vie des véhicules : instruite, et l'hypothèse du brief est RÉFUTÉE**
+  (`227b74998`). Le brief situait la perte « entre `deathsRead` / `deathsMatched` et
+  `VehicleTrack.TEnd` ». **Elle est AVANT : dans la marche de `ti=40`.**
+
+  | film | masque déclare | désynchronisés | morts lues | appariées | vies fermées | fins publiées |
+  |---|---|---|---|---|---|---|
+  | `a349fea8` | 52 | **47 (90 %)** | 20 | 3 | 3 | 1 |
+  | `a521164d` | 21 | **20 (95 %)** | 6 | 3 | 3 | 0 |
+  | `4f77afc1` | 11 | **11 (100 %)** | 11 | 11 | 11 | 3 |
+
+  Le contrôle de masque se lit AVANT toute consommation de corps : le film ANNONCE 52 / 21 / 11
+  dead-states de véhicule et la marche en perd 47 / 20 / 11. C'est mot pour mot la découverte 5 de
+  la note 3.7 §11 (« `ti=40` : marche complète, fin au mauvais bit — une largeur fausse »).
+  L'attribution, elle, FONCTIONNE ; les 13 vies fermées non publiées n'ont ni naissance ni
+  position, donc aucune piste à fermer et aucun emplacement utile à un cycle. **Deux compteurs
+  muets supprimés** (anti-patron 10) : ventilation des pertes par cause (écart max **340 s** —
+  ce n'est pas une fenêtre trop étroite, c'est un slot rebouclé) et contrôle de masque.
+  **Un durcissement annoncé NEUTRE** : une vie que le film déclare morte n'est plus relayable
+  (`mergeVehicleRelay` écrasait sa date de mort ; et une re-création après une mort EST une
+  réapparition) — **0 changement sur les trois films, 0 perte**.
+- [ ] **5.1.5 — le cycle des véhicules : ATTEND 5.1.7.** Avec 1, 0 et 3 fins datées publiées sur
+  109, 42 et 97 vies, `VehicleCycle` ne s'établirait sur AUCUN emplacement — les mêmes « 0 écart
+  sur 31 emplacements » que la note 3.7 §5. Le préalable qu'elle exigeait n'est pas ouvert : la
+  cause est la grammaire de `ti=40`. Publier maintenant donnerait une clé jamais établie.
+- [x] **5.1.6 — la jauge de retour du drapeau : PROUVÉE** (`168da4a50`, recherche seule, aucun
+  port). Le retour n'est pas un minuteur mais une JAUGE (`CalculateReturnRateHarmonic`), et elle
+  est dans `ti=13 i1` **tag 3**, mode A, voie DELTA — un slot par drapeau :
+
+  | film | slot | drapeau | échantillons dans un lâcher DE CE drapeau |
+  |---|---|---|---|
+  | `bcb6d393` | 1490 | 0 | **111 / 111 = 100,0 %** |
+  | `fb1a1a72` | 1614 | 0 | **453 / 453 = 100,0 %** |
+  | `fb1a1a72` | 1619 | 1 | **320 / 320 = 100,0 %** |
+
+  884 échantillons, tous dans un lâcher de LEUR drapeau, zéro en dehors (contraste fourni par le
+  film : le slot 1495 de `bcb6d393` n'y tombe qu'à 15,8 %). **L'oracle est binaire et sans
+  exception** : retour automatique (`home`) **13/13** atteignent le plein (≥ 0,99) ; repris avant
+  la fin **0/14**. Sur `bcb6d393`, lâcher 83604..99104 ms : 0,0208 -> 1,0000 sans redescendre sur
+  45 échantillons, et le plein tombe à 99298 ms quand le drapeau rentre à 99204 ms.
+  **DEUX PIÈGES POUR LE PORT** : l'échelle est **0 -> 1**, pas 0 -> 100 ([-100, +100] est la plage
+  de SÉRIALISATION) ; le taux n'est pas constant (série harmonique du nombre de défenseurs) et la
+  jauge se VIDE — rien de cela n'a besoin d'être modélisé, elle se LIT.
+  **PRÊT À PUBLIER**, non publié ici : `returnProgress` (0..1, par intervalle de lâcher, clé
+  ABSENTE quand le film ne la porte pas) dans `flagCarries[]`, à la montée 63.
+- [ ] **5.1.7 — LA GRAMMAIRE DE `ti=40` : OUVERT** (exécutant frais, décision du pilote du
+  2026-09-18). Trouver la largeur fausse AVANT `i11` dans l'archétype `ti=40`, de la même façon
+  que 5.1.1 l'a fait pour `ti=12`. **GATE, mesurable et déjà instrumenté** : sur `a349fea8`,
+  `a521164d` et `4f77afc1`, `masqueDeclareLeDeadState == mortsVehicules` — c'est-à-dire
+  `dontDesynchronises == 0` — dans la ligne `vehicules : lecture des morts ecrites`. Aujourd'hui
+  47/52, 20/21 et 11/11 sont perdus. 5.1.5 et la montée 63 en dépendent.
+
 
 
 ---
@@ -5988,6 +6075,10 @@ retour ; rien n'est ouvert sur signal implicite.**
 | 2026-09-17 | 3.6.a | **D3 (3.6.a) — LES ANCRES `fichier:ligne` DE `ecs_table.tsv` VERS `dispatch_player.go` ÉTAIENT PÉRIMÉES D'ENVIRON 25 LIGNES AVANT CE LOT, ET G1 NE LE VOIT PAS.** Vérifié sur pièces à l'entrée : la table donnait `dispatch_player.go:262` pour `ti=9 i5` alors que son `case` était à 287. `checkCodeSource` (G1) ne contrôle que l'EXISTENCE de la ligne dans le fichier, jamais ce qu'elle contient — une ancre périmée reste donc verte indéfiniment. Les dix ancres de `ti=9` sont recalées par ce lot (leurs `case` ont déménagé) ; **les ~60 autres ancres `dispatch_player.go` de la table restent périmées** (règle 7 : hors périmètre). NON TRAITÉ. | lot d'outillage de la table ECS : faire vérifier à G1 que la ligne citée porte bien le `case` du composant — le scanner d'AST le sait déjà (`scanConsumeByNameCases` rend `File` et `Line`), il suffit de confronter au lieu d'ignorer. Recalage global dans le même geste |
 | 2026-09-17 | 3.6.a | **D4 (3.6.a) — LES QUATRE MAILLONS DE DISPATCH DE `dispatch_player.go` ÉTAIENT TOUS AU PLAFOND DU RATCHET DE LONGUEUR, ET LE PROCHAIN LOT 3.6 Y REVIENDRA.** À l'entrée : `consumePlayerAndSceneComponent` 77/80, `consumeCrewFlockAndMusicComponent` 146/146, `consumePlayerTailAndGameEngineComponent` 122/122. Porter UN `case` de trois lignes n'avait littéralement pas de place. Traité **dans ce lot parce qu'il bloquait son gate** (règle 7, exception) : les dix `case` de `ti=9` sont rassemblés dans `consumeManagedPlayerComponent`, un maillon par archétype. Le mur revient pour 3.6.b (`ti=11` 1 composant, mais `ti=12` **26**) et 3.6.d (`ti=43` **22**) : ces lots doivent prévoir leur maillon dédié dès leur première ligne, et non le découvrir au gate. | lots 3.6.b, 3.6.d, 3.6.e : un maillon de dispatch par archétype porté, annoncé dans le brief du lot |
 | 2026-09-17 | 3.6.a | **D5 (3.6.a) — LE GÉNÉRATEUR DU GOLDEN 0.A.3 NE CONNAISSAIT PAS SON PROPRE HISTORIQUE.** `keyframe_closure.golden` portait un bloc d'historique de 32 lignes (lot 1.9.1 bis du 2026-09-15 : les deux mots de taille sont des gardes, les neuf catégories de `FUN_1406d3140`, les deux descentes documentées record par record) que `mesurerFermetureBobines` n'écrivait PAS : il avait été ajouté À LA MAIN au golden, ce que l'en-tête du ratchet interdit explicitement. La première régénération venue l'effaçait — et la commande de régénération inscrite dans l'en-tête du golden avait subi le sort inverse (corrigée à la main en `internal/grammar/`, le générateur écrivant encore `filmdec/`, périmé depuis le lot 2.5.e). Traité **dans ce lot parce que sa régénération l'exigeait** (règle 7, exception) : le bloc et le chemin sont rendus au générateur. Leçon générale : **un historique que la porte d'écriture ne connaît pas n'est pas un historique, c'est un sursis** — à vérifier sur les autres goldens à en-tête narratif. | lot d'outillage des oracles : auditer les goldens dont l'en-tête est narratif (`grammar_rev.golden`, `facts_rev.golden`, `shapes.golden`, `bench_baseline.txt`) — leur prose vit-elle dans la porte, ou seulement dans le fichier ? |
+| 2026-09-18 | 5.1.1 | **D1 (5.1) — LA COLONNE `level` D'`ecs_table.tsv` VAUT EXACTEMENT LE `param_4` DU DESCRIPTEUR, SUR TOUS LES TÉMOINS VÉRIFIÉS.** Les cinq `*-filter(s)` de `ti=12` portent `level` 3, 2, 2, 2, 2 — et leur slot `+0x10` rend `MOV EAX,0x3` / `MOV EAX,0x2`, donc `param_4` 3, 2, 2, 2, 2. Les cinq témoins `ti=35` dont `paramByComponent` porte la valeur de capture live concordent aussi (`object-maximum-vitalities` 3/3, `object-low-frequency` 2/2, `object-frame-configuration` 0/0, `unit-control` 2/2, `unit-malleable-property` 4/4). Si les deux grandeurs sont la MÊME valeur de runtime, `paramByComponent` est dérivable du registre du film et cesse d'être une table à tenir à la main. | NON TRAITÉE (règle 7). Un lot de table le mesurerait sur tout le registre de plusieurs builds avant de fondre les deux : une coïncidence sur dix témoins n'est pas une identité, et se tromper ici désynchronise silencieusement cinq composants |
+| 2026-09-18 | 5.1.2 | **D2 (5.1) — LES DEUX VOIES DE « MINUTEUR D'OBJECTIF » SONT MAINTENANT DES NÉGATIFS MESURÉS, ET LA DONNÉE EXISTE AILLEURS.** Le bassin du moteur (`ti=11 i0` = « aucun minuteur » sur 446/446, note 3.7 §6 bis.3) et le minuteur manuel du navpoint (`ti=12 i11`/`i12` nul sur 588/588, dont 172 lectures à l'intérieur d'un lâcher). La leçon n'est pas « le film ne l'écrit pas » mais « **le modèle était faux** » : le retour d'un drapeau est une JAUGE remplie au taux harmonique, pas un compte à rebours — et 5.1.6 l'a trouvée du premier coup une fois la question reposée dans les termes du jeu (`parcel_deliver_object.lua`). | TRAITÉE PAR 5.1.6. Consignée comme méthode : quand deux canaux du bon TYPE rendent zéro, rouvrir le vocabulaire du jeu avant de chercher un troisième canal |
+| 2026-09-18 | 5.1.4 | **D3 (5.1) — `4f77afc1` PUBLIE 106 ÉCHANTILLONS DE TRAJECTOIRE POSTÉRIEURS À UNE FIN DATÉE** (`coverage.vehicles.samplesAfterEnd`), contre 0 sur les deux BTB Heavies. Le champ existe précisément pour publier cette contradiction plutôt que de couper la trajectoire en silence — un véhicule que le film déclare mort ne devrait plus répliquer sa position. | NON TRAITÉE (règle 7). À reprendre avec 5.1.7 : si la marche de `ti=40` est fausse, l'instant de mort attribué peut l'être aussi, et ce compteur est l'oracle gratuit qui le dirait |
+| 2026-09-18 | 5.1.6 | **D4 (5.1) — LE SLOT `ti=13` DE LA JAUGE NE S'IDENTIFIE PAS PAR SON NOM, ET N'EN A PAS BESOIN.** `i0` (le `StringId` du nom de propriété) est marché mais jamais récolté, donc la jauge a été identifiée par sa CORRÉLATION aux intervalles du calque du drapeau (100,0 % sur trois jauges, contre 15,8 % pour le slot voisin). Un port qui voudrait la nommer sans oracle externe devrait récolter `i0` et hacher les noms Lua candidats. | NON TRAITÉE. Pour publier `returnProgress`, la corrélation suffit et elle est plus sûre qu'un hachage de nom : l'appariement se fait sur le drapeau que `flagCarries` porte déjà |
 | 2026-09-17 | 3.6.a | **D6 (3.6.a) — L'ÉTAPE `vehicles` DE `replay-equiv` BOUGE SUR NEUF FILMS, ET LE MOUVEMENT N'ATTEINT AUCUNE SORTIE PUBLIÉE.** Mesuré à la voie libre : sur `084a804d`, le digest de l'étape `vehicles` passe de `a78431ed…` à `fac28aa9…`. Trois contrôles. (1) DÉTERMINISME : deux exécutions de la tête rendent le même sha sur les 53 étapes — ce n'est pas un aléa. (2) IMPUTATION : le même film cuit avec le CODE DE LA BASE `492cb0923` (arbre extrait hors dépôt, même cache, mêmes références) rend **exactement** la référence figée `a78431ed…` — c'est donc bien le port de `ti=9`, et NON 3.3.1 (dont `grenades` rend le même sha à la base et à la tête). (3) PORTÉE : le document cuit base → tête est identique sur **tous ses chemins sauf un**, `/coverage/decoder/grammarRev` (diff structuré : 1 chemin sur 9 335 637 octets, taille identique des deux côtés) ; **aucune ligne de journal de balayage ne diffère** (`viesRecensees=180 publiees=97 …`, `episodes=74 vehiculesOccupes=45 …` identiques) ; le corpus gate classe 0 gain / 0 perte / 0 changement. Le mouvement est donc confiné à l'ENTRÉE de balayage `VehicleScan`, dans un champ que seul `digest` voit — il hache les champs NON EXPORTÉS, et `VehicleScan.Positions []grammar.BipedPosition` embarque précisément `componentDirs`, le struct non exporté que l'en-tête du paquet `digest` cite en exemple. **CE QUI N'EST PAS ÉTABLI, ET QUI EST DIT** : le champ exact n'est pas isolé — `digest` n'exporte aucun rendu, et l'isoler demanderait un instrument que ce lot n'a pas écrit. NON TRAITÉ : rien ne dépend de cette valeur aujourd'hui (aucune sortie ne la porte). Écarte au passage deux hypothèses testées et fausses : ce n'est PAS un effet de bord de 3.3.1 (`53ce4390` bouge sur `vehicles` sans bouger sur `grenades`), et ce n'est PAS la scission du maillon de dispatch (aucune étiquette `case` n'est dupliquée dans la chaîne — vérifié sur pièces, donc l'ordre des maillons ne décide de rien). | instrument d'isolation des entrées de balayage : exporter un rendu de `digest` (ou un mode `-out-dir` qui écrit la valeur et pas seulement son empreinte) rendrait ce genre d'écart lisible au champ près au lieu du seul sha. À porter le jour où une sortie dépendra de ces champs |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
@@ -8632,3 +8723,33 @@ Branche `feat/decfilm-42`, base `a5d15e634` (la tête de clôture de M3). Joncti
 | 2026-09-18 | (6) M4-P4 | la ventilation testée sur ses TROIS cas, plus le refus | `republier` -> 1/0, `redecoder` -> 0/1, **première cuisson (aucun artefact préalable) -> 0/0** (leur somme ne doit pas mentir), et un échec ne compte ni l'un ni l'autre |
 | 2026-09-18 | (d) M4-D1 web | `make check-types` ; `make test-web` ; knip ; couleurs | vert ; **722 fichiers / 7 779 tests** ; knip 0/0/0 ; `lint-no-hardcoded-colors` clean. Libellés FR **et** EN au manifeste `admin.toml`, `generated/admin.ts` REGÉNÉRÉ par `scripts/build_i18n_manifests.mjs` (22 manifestes, 3 385 clés) et jamais édité à la main |
 | 2026-09-18 | (b) (c) (d) | décodage | **AUCUN** : aucun `replay-equiv`, aucun corpus gate, aucun test ouvrant un film. Un re-figeage tourne sur l'intégration |
+
+### Post-chantier — lot 5.1 (réapparitions), gates SANS AUCUN DÉCODAGE DE CORPUS, 2026-09-18
+
+Branche `feat/decfilm-51`, base `83a562ea1`. **AUCUN `replay-equiv`, AUCUN corpus gate, AUCUN S8,
+et c'est justifié, pas différé** : aucun octet publié ne bouge de ce lot — `SchemaVersion` reste
+**62**, les 8 fixtures de contrat sont inchangées hors les deux chaînes de révision de 5.1.1
+(mesure : **0 ligne de différence** sur les huit films, à nombre de lignes identique), et 5.1.3
+comme 5.1.5 ne publient rien. Les gates avec décodage appartiennent à la montée 63, que
+5.1.7 puis 5.1.5 porteront.
+
+Les lectures de film ont toutes été faites **UN FILM À LA FOIS**, par test ciblé sous tag
+`research`, sans jamais ouvrir la base ni écrire d'artefact. Jonctions `film_chunks` et
+`film_manifests` intactes (**1 589 films**), `data/cache/replays` jamais touché, le dossier local
+`data/cache/film_facts` créé par les cuissons a été retiré à la clôture.
+
+| Date | Item | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-18 | 5.1.1 | `gofmt -l ./internal ./cmd` ; `go build ./...` ; `go vet ./...` | sortie vide ; vert ; vert |
+| 2026-09-18 | 5.1.1 | `go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api` | **30 paquets verts** |
+| 2026-09-18 | 5.1.1 | `go test -race` sur `grammar` | vert, **322,9 s** |
+| 2026-09-18 | 5.1.1 | ratchet 0.A.3 (`keyframe_closure.golden`) | bloquant `ti=12` **`i1` -> `i13`** sur les 7 bobines ; 0 monte, 0 descend, aucun total ne bouge. Golden régénéré par sa porte, historique rendu au générateur |
+| 2026-09-18 | 5.1.1 | contrôle G4 (`ecs_widths_guard_test.go`) | **115 -> 121** largeurs fixes (6 lignes neuves entrant par le haut), 66 gardées inchangées |
+| 2026-09-18 | 5.1.1 | les 8 fixtures de contrat, diff décompressé | **0 ligne hors `grammar-*` / `killsource-*`** sur les huit films |
+| 2026-09-18 | 5.1.1 | `make check-types` ; `make test-web` | vert ; **7 762 tests** |
+| 2026-09-18 | 5.1.2 | lecture de film : `bcb6d393` puis `fb1a1a72`, un à la fois | 588 lectures d'image-clé, **588 à zéro** ; oracle de position `i10` **312/312** et **882/882** légaux, 0 hors domaine |
+| 2026-09-18 | 5.1.2 | cuisson des deux CTF par `BuildBytes` (chaîne de production, faits d'équivalence + catalogue d'objectifs) | 2 drapeaux et 35 intervalles (`bcb6d393`) ; 2 et 83 (`fb1a1a72`) ; 13 et 33 lâchers |
+| 2026-09-18 | 5.1.4 | cuisson de `a349fea8`, `a521164d`, `4f77afc1`, un à la fois, avant **et** après le durcissement | **0 changement, 0 perte** sur les trois ; le contrôle de masque rend 47/52, 20/21, 11/11 désynchronisés |
+| 2026-09-18 | 5.1.6 | `bcb6d393` puis `fb1a1a72`, voie delta de `ti=13` | 884 échantillons de tag 3 ; **100,0 %** dans un lâcher de leur drapeau sur les trois jauges ; oracle binaire **13/13** contre **0/14** |
+| 2026-09-18 | 5.1.1 à 5.1.6 | `golangci-lint run --new-from-rev=83a562ea1` | **0 issues** à chaque commit |
+| 2026-09-18 | tous | décodage de corpus | **AUCUN**, et ce n'est pas un report : rien de publié ne bouge (voir l'en-tête de cette section) |
