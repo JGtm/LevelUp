@@ -1,3 +1,49 @@
+## [2026-09-18] Escouade / Dynamique — Intensité : deux courbes de référence ÉQUIPE + LOBBY (lot 1) — Complété (non commité)
+
+**Statut** : Complété sur le worktree `LevelUp-wt-trois-lots` (branche
+`feat/intensite-objectifs-assists`), aucun commit — au signal de l'utilisateur.
+
+**Décision technique principale** : la courbe libellée « Équipe » du profil d'intensité était
+la ligne `all` du payload, construite par `buildRows("")` = aucun filtre xuid sur les
+`highlight_events` du film → tout le LOBBY (les deux camps). Le payload porte désormais deux
+lignes agrégées (`domain.SquadIntensityKeyTeam` = "team", `SquadIntensityKeyLobby` =
+"lobby"), plus aucune clé `all`. `team` = frags des alliés du joueur principal (main inclus)
+par match, lus dans le set `match_id -> xuids` de Q32b ; un match sans équipe résolue = phases
+nulles. `lobby` = ex-`all`, même calcul. Q32b (`LoadMainTeamParticipants`) était appelé en deux
+endroits (filtre composition exacte + matrice d'impact) : à la 3e copie (CLAUDE.md n°6), un
+seul chargement dans `GetPage` (`loadMainTeamAllies`, `teammates_service_intersect.go`) sur
+l'union des matchs, passé aux trois consommateurs. Le filtre briefing reste gardé par une
+variable dédiée (`exactTeamByMatch`, non nil seulement sous l'option) : `exactCompositionFilter.enabled()`
+teste `teamByMatch != nil`, un chargement systématique l'aurait activé à l'insu de l'option.
+L'issue `DataIssueMainTeamParticipants` n'est posée que si l'option composition exacte la
+réclamait (son libellé UI décrit cette option) ; sinon `slog.WarnContext` et la courbe équipe
+est simplement absente. `buildSquadIntensityProfile` découpé (ordre des matchs, résolution des
+xuids, `intensityRowsBuilder` à filtre d'events injecté) : plus de `nolint:funlen` — celui-ci
+était d'ailleurs orphelin dans `teammates_squad_charts_synergy.go` (doc laissée derrière par le
+split de 2026-05-27), retiré. Front : `IntensityOverlay { key: 'team' | 'lobby', label, rows }`,
+`overlays?: IntensityOverlay[]` (remplace `teamOverlay`), styles neutres sur `tc.text`
+(équipe trait plein 1,5 / 0,85 ; lobby pointillé 1 / 0,55, z inférieur), borne Y sur les deux
+médianes, tooltip joueur → équipe → lobby. Composant : équipe dès 3 panneaux
+(`MIN_PLAYERS_FOR_TEAM_CURVE` inchangé), lobby dès 1. i18n `intensity.lobbyLabel` FR/EN
+(« Lobby », toléré par le garde anti-anglicismes, décision du 2026-09-05) ;
+`common.charts.intensity_tooltip_team` réécrit pour décrire les deux courbes, module généré par
+`scripts/build_i18n_manifests.mjs`.
+
+**Résultats observés** : Go — build, vet, `go test ./internal/service/teammates/ ./internal/domain/`
+verts ; 2 tests neufs (`teammates_squad_intensity_team_lobby_test.go`) prouvés rouges par
+3 mutations (team = lobby ; repli lobby si alliés absents ; lobby = team). Contrat OpenAPI
+inchangé (`openapi-gen -check` à jour, `contracttest` vert : la clé reste une `string`).
+Web — typecheck, eslint (2 avertissements préexistants hors périmètre : `useReactTable` dans
+`SquadImpactScoreboard` / `SquadSynergyHistoryTable`), lint:colors, lint:fields, vitest
+`features/squad` + `components/charts` : 96 fichiers / 881 tests verts ; 9 tests builder + 6
+tests composant neufs, chacun prouvé rouge (8 mutations). golangci-lint `--new-from-rev=HEAD` :
+0 issue neuve. Baseline JSONL : aucun test renommé ou supprimé, le paquet teammates n'y figure
+pas.
+
+**Conclusion / prochaine étape** : vérification visuelle par l'utilisateur (page Escouade,
+onglet Dynamique, 1 puis 3 joueurs : pointillé lobby toujours présent, trait plein équipe à
+partir de 3), puis commit au signal. Découvertes non traitées : voir le rapport du lot.
+
 ## [2026-09-17] Suite de la revue des 8 lots — 7 petits items web (libellés EN de la tuile, « volé », tranche 25 %, tests sprite+bordure, garde anti-anglicismes, helpers de rencontre, bouton de copie du watcher) — Complété (branche `fix/revue-suite-v75`)
 
 **Demande** (décisions utilisateur du 2026-09-17, après le lot de correctifs) : traduire les deux

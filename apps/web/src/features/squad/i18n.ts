@@ -254,8 +254,10 @@ export interface SquadText {
     envelopeLabel: string
     /** Libellé du repère 10 % (activité uniforme). */
     refLabel: string
-    /** Libellé de la courbe agrégée d'équipe (superposée à partir de 3 joueurs). */
+    /** Libellé de la courbe de référence ÉQUIPE (alliés du joueur principal, à partir de 3 joueurs). */
     teamLabel: string
+    /** Libellé de la courbe de référence LOBBY (tout le match, dès 1 joueur). */
+    lobbyLabel: string
   }
   efficiencySeries: {
     /** Titre COURT de la carte Rendement (la définition vit dans l'aide ⓘ). */
@@ -635,6 +637,7 @@ const FR_TEXT: SquadText = {
     envelopeLabel: 'Enveloppe P25–P75',
     refLabel: '10 %',
     teamLabel: 'Équipe',
+    lobbyLabel: 'Lobby',
   },
   efficiencySeries: {
     rendementCardTitle: 'Rendement',
@@ -992,6 +995,7 @@ const EN_TEXT: SquadText = {
     envelopeLabel: 'P25–P75 envelope',
     refLabel: '10%',
     teamLabel: 'Team',
+    lobbyLabel: 'Lobby',
   },
   efficiencySeries: {
     rendementCardTitle: 'Efficiency',

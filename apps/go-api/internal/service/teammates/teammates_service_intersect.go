@@ -13,6 +13,8 @@
 package teammates
 
 import (
+	"context"
+	"log/slog"
 	"sort"
 	"strings"
 
@@ -309,4 +311,32 @@ func (f *exactCompositionFilter) applyShared(matches []domain.SquadSharedMatch) 
 		}
 	}
 	return out
+}
+
+// loadMainTeamAllies charge UNE fois l'équipe alliée du main par match (Q32b,
+// LoadMainTeamParticipants) et l'indexe (buildMainTeamXUIDSet). C'est le SEUL
+// appel de Q32b du service : ses trois consommateurs (filtre composition
+// exacte, matrice d'impact, courbe « équipe » du profil d'intensité) lisent le
+// résultat (CLAUDE.md n°6). Sans xuid ni match : rien à charger. Best-effort :
+// en échec, warn + (nil, nil) — chaque consommateur dégrade seul ; l'issue
+// DataIssueMainTeamParticipants n'est posée que si l'option composition exacte
+// la réclamait (son libellé UI décrit cette option, pas la courbe).
+func (s *TeammatesService) loadMainTeamAllies(
+	ctx context.Context, playerXUID string, matchIDs []string, reportIssue bool, issues *dataIssues,
+) ([]domain.AllyParticipant, map[string]map[string]struct{}) {
+	if playerXUID == "" || len(matchIDs) == 0 {
+		return nil, nil
+	}
+	allies, err := s.repo.LoadMainTeamParticipants(ctx, playerXUID, matchIDs)
+	if err != nil {
+		if reportIssue {
+			// issues.add logge déjà en ErrorContext.
+			issues.add(ctx, domain.DataIssueMainTeamParticipants, "", err)
+		} else {
+			slog.WarnContext(ctx, "teammates_main_team_load_failed",
+				"main_xuid", playerXUID, "matches", len(matchIDs), "err", err)
+		}
+		return nil, nil
+	}
+	return allies, buildMainTeamXUIDSet(allies)
 }
