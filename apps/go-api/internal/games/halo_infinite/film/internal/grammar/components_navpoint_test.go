@@ -18,10 +18,22 @@ const navpointTi12 = navpointRadialArchIndex
 
 // consommerNavpoint fait passer `flux` par la chaine de dispatch pour le composant `nom` et rend
 // le nombre de bits consommes et le verdict de portage.
+//
+// LE NIVEAU EST CELUI DU REGISTRE DU FILM, et c'est ce qui a change au lot 5.1.7 : `param_4` EST
+// le `level` de l'entree de composant, et la chaine de dispatch le recoit par ce parametre. Le
+// harnais passait `1` en dur du temps ou la table par nom decidait ; il passe desormais la valeur
+// du composant, que `TestParamByComponentEgaleLeNiveauDuRegistre` tient egale au registre.
+// [consommerNavpointAuNiveau] sert aux cas qui veulent MESURER un autre niveau.
 func consommerNavpoint(t *testing.T, nom string, flux []byte) (int, bool) {
 	t.Helper()
+	return consommerNavpointAuNiveau(t, nom, flux, paramMesureDuComposant(nom))
+}
+
+// consommerNavpointAuNiveau fait la meme chose a un niveau IMPOSE.
+func consommerNavpointAuNiveau(t *testing.T, nom string, flux []byte, niveau uint32) (int, bool) {
+	t.Helper()
 	br := lecteurDInstrument(flux)
-	_, _, porte := consumeByName(br, nom, navpointTi12, 1)
+	_, _, porte := consumeByName(br, nom, navpointTi12, niveau)
 	return br.BitPos(), porte
 }
 
@@ -210,15 +222,27 @@ func TestNavpointParam4DecideLaLargeur(t *testing.T) {
 			}
 		})
 	}
-	// La consequence, mesuree : un bloc a masque vide vaut 5 bits avec le `param_4` de la
-	// table (4 + 1) et en vaudrait 36 avec le defaut (4 + 32).
-	n, porte := consommerNavpoint(t, compNavpointVisibilityFilter, fluxDeBits(func(w *bitw) {
-		w.put(0, 4)
-		w.put(0, 1)
-	}))
-	if !porte || n != navpointFilterMaskBits+navpointFilterFlagBitsRecent {
-		t.Fatalf("bloc a masque vide : %d bits (porte=%v), %d attendus", n, porte,
-			navpointFilterMaskBits+navpointFilterFlagBitsRecent)
+	// LA CONSEQUENCE, MESUREE DES DEUX COTES SUR LE MEME FLUX : un bloc a masque vide vaut 5 bits
+	// au niveau du registre (4 + 1) et 36 au niveau 1 (4 + 32), la mise en page LEGACY. C'est la
+	// difference que le lot 5.1.7 fait passer par le canal du FILM : le niveau n'est plus une
+	// entree de table consultee par nom, c'est le parametre que le traverseur descend.
+	flux := func() []byte {
+		return fluxDeBits(func(w *bitw) {
+			w.put(0, 4)
+			w.put(0, 1)
+		})
+	}
+	attendu := navpointFilterMaskBits + navpointFilterFlagBitsRecent
+	n, porte := consommerNavpoint(t, compNavpointVisibilityFilter, flux())
+	if !porte || n != attendu {
+		t.Fatalf("bloc a masque vide : %d bits (porte=%v), %d attendus", n, porte, attendu)
+	}
+	legacy := navpointFilterMaskBits + navpointFilterFlagBitsLegacy
+	n, porte = consommerNavpointAuNiveau(t, compNavpointVisibilityFilter, flux(), 1)
+	if !porte || n != legacy {
+		t.Fatalf("au niveau 1 le bloc a masque vide doit valoir %d bits (mise en page legacy) : "+
+			"%d obtenus (porte=%v). Si les deux niveaux rendent la meme largeur, le parametre "+
+			"`level` n'atteint plus le lecteur de filtres.", legacy, n, porte)
 	}
 }
 

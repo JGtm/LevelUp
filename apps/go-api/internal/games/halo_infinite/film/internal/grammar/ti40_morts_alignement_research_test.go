@@ -102,12 +102,10 @@ func TestTi40MortsAlignement(t *testing.T) {
 			Region: p.LargeursObjetDuMonde().Region,
 		})
 	})
-	for r := uint32(0); r <= 5; r++ {
-		v := r
-		mesure("carte, param_4="+strconv.Itoa(int(v)), func(p *ProfilDeBalayage) {
-			p.PoserParamEtat(v)
-		})
-	}
+	// LE TROISIEME AXE DE CET INSTRUMENT, `param_4`, A DISPARU AVEC LA GRANDEUR (lot 5.1.7,
+	// 2026-09-18) : elle est LUE dans le registre du film par composant (`Archetype.Level`), donc
+	// il n y a plus rien a balayer. Les deux autres axes — largeurs d axe de la carte, mot de
+	// poignee — restent, et c est toujours eux que D7 (3.4.2) sépare.
 	for iw := uint(2); iw <= 3; iw++ {
 		w := iw
 		mesure("carte, iw="+strconv.Itoa(int(w)), func(p *ProfilDeBalayage) {

@@ -197,9 +197,6 @@ func (c *FilmContext) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0Layou
 	c.bal.PoserLargeursObjetDuMondeDepuisDecoupage(l)
 }
 
-// PoserParamEtat force le `param_4` du moteur pour les lecteurs de ce contexte.
-func (c *FilmContext) PoserParamEtat(v uint32) { c.bal.PoserParamEtat(v) }
-
 // ContexteDeLecture rend ce que les lecteurs de ce contexte portent : son profil de balayage et
 // son observateur (nil tant qu aucun balayage n en a pose un).
 func (c *FilmContext) ContexteDeLecture() ContexteDeLecture {

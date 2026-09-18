@@ -227,6 +227,7 @@ func TestChroniqueLitLesArtefactsReelsDeFilmdec(t *testing.T) {
 		// multi-fichiers, et le seul du depot.
 		[]string{
 			filepath.Join(dir, "rev_chronique_archive.go"),
+			filepath.Join(dir, "rev_chronique_archive_2.go"),
 			filepath.Join(dir, "rev_chronique.go"),
 		},
 		filepath.Join(dir, "testdata", "grammar_rev.golden"))

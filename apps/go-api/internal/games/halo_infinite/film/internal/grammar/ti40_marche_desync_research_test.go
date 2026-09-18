@@ -57,8 +57,8 @@ func TestTi40MarcheDesync(t *testing.T) {
 	nom := filepath.Base(dir)
 	fc := ti40dContexte(t, dir, carte)
 	t.Logf("%s : MPP par defaut = %+v", nom, fc.ProfilDeBalayage().MPP)
-	ti40dTemoinProduction(t, nom+" [param_4 NON impose]", fc)
-	ti40dPasse(t, nom+" [param_4 NON impose]", fc)
+	ti40dTemoinProduction(t, nom+" [profil du contexte]", fc)
+	ti40dPasse(t, nom+" [profil du contexte]", fc)
 
 	ti40dMatrice(t, nom, fc)
 }
@@ -216,29 +216,30 @@ func ti40dHisto(h map[int]int, noms map[int]string) string {
 	return b.String()
 }
 
-// ti40dMatrice balaye les TROIS grandeurs que `killsource` impose a la marche de la cuisson :
-// la generation stricte (`ProfilDeDepart`), le mot de poignee `Traversal.IndexW` et le `param_4`
-// global. Le but est de NOMMER celle qui deplace les records `ti=40`.
+// ti40dMatrice balaye les grandeurs que `killsource` impose encore a la marche de la cuisson : la
+// generation stricte (`ProfilDeDepart`) et le mot de poignee `Traversal.IndexW`. Le but est de
+// NOMMER celle qui deplace les records `ti=40`.
+//
+// IL Y AVAIT UN TROISIEME AXE, `param_4`, ET IL A DISPARU AVEC LA GRANDEUR (lot 5.1.7) : la
+// valeur est le niveau que le registre du film porte par composant (`Archetype.Level`), elle se
+// LIT. Les six colonnes de la premiere mesure du 2026-09-18 sont au journal des gates du plan.
 func ti40dMatrice(t *testing.T, nom string, fc *FilmContext) {
 	t.Helper()
 	base := fc.ProfilDeBalayage()
 	for _, stricte := range []bool{false, true} {
 		for iw := uint(1); iw <= 3; iw++ {
-			for v := uint32(0); v <= 5; v++ {
-				p := base
-				p.Grammaire.GenerationStricte = stricte
-				p.Mouvement.Traversal.IndexW = iw
-				p.PoserParamEtat(v)
-				fc.PoserProfilDeBalayage(p)
-				ti40dPublierCourt(t, fmt.Sprintf("%s [stricte=%t iw=%d param_4=%d]", nom, stricte, iw, v),
-					ti40dBalayer(t, fc))
-			}
+			p := base
+			p.Grammaire.GenerationStricte = stricte
+			p.Mouvement.Traversal.IndexW = iw
+			fc.PoserProfilDeBalayage(p)
+			ti40dPublierCourt(t, fmt.Sprintf("%s [stricte=%t iw=%d]", nom, stricte, iw),
+				ti40dBalayer(t, fc))
 		}
 	}
 	fc.PoserProfilDeBalayage(base)
 }
 
-// ti40dPublierCourt rend UNE ligne par cadre : la matrice en compte trente-six.
+// ti40dPublierCourt rend UNE ligne par cadre.
 func ti40dPublierCourt(t *testing.T, etiquette string, rel ti40dReleve) {
 	t.Helper()
 	avant := 0

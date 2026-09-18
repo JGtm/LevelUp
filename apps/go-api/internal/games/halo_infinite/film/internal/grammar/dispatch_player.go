@@ -125,7 +125,7 @@ func consumeCrewFlockAndMusicComponent(br *Lecteur, name string, typeIndex uint3
 	case "flock-destination-component": // ti=21 i2-i11 — R(1)flag + vec3 quant(6+level) + R(2) si rsp>1
 		br.ReadBit()
 		consumeQuantVec3(br, quantAxisWidth(uint(level)))
-		if paramForComponent(br, name) > 1 {
+		if level > 1 {
 			br.ReadBits(2)
 		}
 		return variant, nil, true
