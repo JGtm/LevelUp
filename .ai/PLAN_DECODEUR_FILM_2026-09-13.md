@@ -6173,6 +6173,94 @@ decode a ce commit (les gates AVEC decodage suivent, sous « voie libre » du pi
 | 2026-09-18 | gates | `golangci-lint run --new-from-rev=2f04bc7b8 ./...` | **0 issues** (une remontee `goconst` traitee a la source : `object-parent-state-component` devient `compObjectParentState`, troisieme copie du litteral) |
 | 2026-09-18 | gates | `make check-types` · `make test-web` | `tsc -b` propre ; **7 762 tests verts**, 17 skips, 721 fichiers |
 
+
+### Lot 5.1.7 — LA PREUVE ECRIVAIN, L HYPOTHESE DU MIROIR, ET CE QU ELLE NE REGLE PAS, 2026-09-18
+
+#### La preuve ecrivain : DEUX boucles, DEUX sources (reponse (c))
+
+`objdump` sur `HaloInfinite.exe`. Win64 : arg5 en `[rsp+0x20]`.
+
+| boucle | ce qu elle passe en `param_4` | source |
+|---|---|---|
+| `FUN_142e2c690` (etat complet / image-cle) | `142e2c6e3 mov r12d,[r14+0x100]` puis `142e2c7c4 mov [rsp+0x20],r12d` | **le NIVEAU du registre du film** |
+| `FUN_14076cb60` (delta) | `14076cc6f call [rax]` (= `vtable[0]`) -> `r13d`, puis `14076cd11 mov [rsp+0x20],r13d` | **une CONSTANTE de l executable** |
+
+`vtable[0]` est une fonction de six octets. Chaine : nom -> accesseur (`LEA rax,[rip+str]; RET`) ->
+slot unique de `.rdata` -> `vtable = slot - 0x8` (la boucle image-cle lit le nom en
+`[vtable+0x8]`). **Calibration 13/13** : `object-forward-and-up-dynamic-precision` `0x141179610`
+`mov eax,2` · `object-parent-state` `0x14117e0e0` -> 3 · `unit-actor-control` -> 2 ·
+`unit-actor-state` `0x140c85020` -> 4 · `unit-malleable-property` -> 4 ·
+`biped-malleable-property` -> 2 · `biped-slide` `0x14117b4a0` -> 1 ·
+`object-maximum-vitalities` -> 3 · `object-low-frequency` -> 2 ·
+`object-frame-configuration` `0x1405f0ac0` `xor eax,eax` -> 0 · `unit-control` -> 2 ·
+`ti=12 i2` -> 3 · `ti=12 i3` -> 2. **Les treize concordent avec `paramByComponent`** : la table
+n etait pas un instantane statistique, ses valeurs SONT `vtable[0]`.
+
+#### L hypothese du miroir : CONFIRMEE, sans une exception
+
+`niveaux_registre_research_test.go`, chunk 0 seulement, 19 films, les 13 composants calibres
+confrontes a la constante de l executable :
+
+| build | films | verdict |
+|---|---|---|
+| HI_1_13_0 (format 27) | `000d5950` `fb1a1a72` `4f77afc1` `51ebbc0f` `bfecd02b` `c75f33b8` `bf15f7ab` `0797ce72` `d9781168` | **MIROIR 52/52** |
+| HI_1_12_0 | `bcb6d393` | **MIROIR 52/52** |
+| HI_1_11_0 | `e5adf7b2` | **MIROIR 52/52** |
+| HI_1_10_0 | `1c4c63c2` `084a804d` `111fa685` | ECART 51/52 — `ti=35 i53` registre 1, exe 2 |
+| HI_1_9_0 / HI_1_8_0 / HI_1_4_1 / format 20 | `11de8353` `60ae07c4` `a521164d` `a349fea8` | ECART 47/49 — + `ti=40 i2` registre 1, exe 2 |
+| format 20 | `50247b26` | ECART 45/49 — + `unit-malleable-property` registre 3, exe 4 |
+
+**Zero ecart sur onze films de build recent ; les ecarts sont MONOTONES dans le temps**
+(`ti=40 i2` : 1 jusqu a HI_1_9_0, 2 depuis HI_1_10_0 ; `biped-malleable-property` : 1 jusqu a
+HI_1_10_0, 2 depuis HI_1_11_0 ; `unit-malleable-property` : 3 au format 20, 4 ensuite). C est la
+signature d une constante d executable qui change au fil des versions et que le registre du film
+ENREGISTRE. **Le film porte la constante de son propre build.**
+
+#### Le bit C sur `a349fea8` : CONCORDE, et l ecart est massif
+
+Meme film, meme carte, meme profil de contexte ; seul `param_4` d `i2` change.
+
+| | BASE (table, param 2) | TETE (registre, param 1) |
+|---|---|---|
+| records `ti=40` atteints | 13 105 | **77 638** |
+| entierement portes | 12 508 (95,4 %) | **77 223 (99,47 %)** |
+| morts vehicule lues | 52 | 25 |
+
+Lire un bit de porte C que ce build n ecrit pas decale le record et tue la marche : elle n atteint
+qu un sixieme des records. **Les deux mesures concordent** : sur un vieux build, c est le registre
+qui a raison.
+
+#### CE QUE LE MIROIR NE REGLE PAS : la perte de `084a804d`
+
+`084a804d` est HI_1_10_0 et **son registre n a AUCUN ecart sur `ti=40`** (`i2` = 2 = l exe). Sa
+perte ne vient donc pas du bit C : elle vient de `i10` / `i19` / `i20`, qui passent du BALAYAGE de
+`killsource` aux valeurs du registre (3 / 2 / 4, que l ecrivain confirme).
+
+Preuve de CONTENU exigee, faite des deux cotes (cuisson de production, meme film, meme carte) :
+`recensees=180 publiees=97` **identiques des deux cotes** ; `finDatee` 9 -> 4 ;
+`echantillonsApresFin` 407 -> 243. Les CINQ fins qui disparaissent :
+
+| slot/gen | t0 | t1 | `tEnd` a la BASE | echantillons | fin a la TETE |
+|---|---:|---:|---:|---:|---|
+| 769/1 | 0 | 3341 | 3246 | 218 | `unknown` |
+| 791/1 | 0 | 4139 | 4042 | 464 | `unknown` |
+| 793/1 | 0 | 793 | 752 | 192 | `unknown` |
+| 834/1 | 3580 | 3981 | 3973 | 67 | `unknown` |
+| 841/1 | 4144 | 4939 | 4855 | 466 | `unknown` |
+
+**Les cinq vies sont PUBLIEES des deux cotes, avec les memes `t0`, `t1` et le meme nombre
+d echantillons**, et chaque `tEnd` de la base tombe DANS sa fenetre de vie, 8 a 97 ms avant le
+dernier echantillon — la forme d une destruction reelle.
+
+**ELLES NE SONT DONC PAS PROUVEES FAUSSES.** Par la regle du pilote (« une mort reelle perdue =
+pas de livraison »), le correctif ne peut pas etre livre en l etat.
+
+RESERVE DE METHODE, ecrite pour ne pas etre relue a l envers : `ObjectDeath.TimestampUS` est
+l instant du PAQUET et `Slot` vient de l en-tete du record — **aucun des deux ne sort des bits du
+dead-state**. Un `tEnd` plausible ne prouve donc pas que les bits d `i11` ont ete lus au bon
+endroit ; il ne prouve pas non plus le contraire. Le discriminant reste a mesurer : le DOMAINE de
+la charge utile `DeadState` (les deux poignees `SrcTag0` / `SrcTag4c`, `GlobalID`, les enums) sur
+ces cinq morts a la base contre les quatre qui subsistent.
 ### Lot 5.1.7-a — gates AVEC DECODAGE (voie libre du pilote), 2026-09-18 : **LE GATE DE CORPUS DIT PERTE**
 
 Les deux gates ont tourne, un decodage a la fois. **Aucune reference n'est re-figee** — le geste

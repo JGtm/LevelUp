@@ -48,6 +48,7 @@ func TestParam4PreuveDesLignes(t *testing.T) {
 	fc := p4Contexte(t, dir, carte)
 	p4EcrireRangs(t, fc, sortie+".ranks.tsv")
 	p4EcrireInventaire(t, fc, sortie+".inv.tsv")
+	p4EcrireMortsTi40(t, fc, sortie+".morts40.tsv")
 }
 
 // p4Contexte ouvre le contexte EXACTEMENT comme la cuisson : entree de catalogue de la carte
@@ -125,4 +126,38 @@ func p4EcrireInventaire(t *testing.T, fc *FilmContext, chemin string) {
 		t.Fatalf("ecriture de %s : %v", chemin, err)
 	}
 	t.Logf("INVENTAIRE : %d lignes -> %s (records=%d)", len(inv), chemin, st.Records)
+}
+
+// p4EcrireMortsTi40 ecrit une ligne par mort d entite `ti=40` LUE par la marche — c est la
+// matiere de la preuve de contenu exigee sur `084a804d` : une mort qui disparait entre deux
+// cuissons doit etre NOMMEE (instant, slot, generation) avant d etre appelee correction.
+func p4EcrireMortsTi40(t *testing.T, fc *FilmContext, chemin string) {
+	t.Helper()
+	morts, st, err := ScanObjectDeaths(fc)
+	if err != nil {
+		t.Fatalf("morts ecrites : %v", err)
+	}
+	ti := uint32(VehicleTypeIndex)
+	var b strings.Builder
+	n := 0
+	for _, m := range morts {
+		if m.TypeIndex != ti {
+			continue
+		}
+		n++
+	}
+	fmt.Fprintf(&b, "# mortsTi40=%d masqueDeclare=%d dontDesync=%d recordsAtteints=%d portes=%d\n",
+		n, st.MaskDeclared[ti], st.MaskDeclaredDesync[ti], st.Records[ti], st.CleanRecords[ti])
+	b.WriteString("tsUS\tslot\tgen\tqueueRompue\n")
+	for _, m := range morts {
+		if m.TypeIndex != ti {
+			continue
+		}
+		fmt.Fprintf(&b, "%d\t%d\t%d\t%t\n", m.TimestampUS, m.Slot, m.Gen, m.TailDesync)
+	}
+	if err := os.WriteFile(chemin, []byte(b.String()), 0o600); err != nil {
+		t.Fatalf("ecriture de %s : %v", chemin, err)
+	}
+	t.Logf("MORTS ti=40 : %d lignes -> %s (masqueDeclare=%d dontDesync=%d records=%d portes=%d)",
+		n, chemin, st.MaskDeclared[ti], st.MaskDeclaredDesync[ti], st.Records[ti], st.CleanRecords[ti])
 }
