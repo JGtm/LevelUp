@@ -60,18 +60,34 @@ export function assistVolumeLengthPct(total: number, volumeMax: number): number 
 const TIERS: AssistTier[] = ['low', 'mid', 'high']
 
 /**
- * Segments d'une demi-barre, du centre vers l'extérieur (coup de pouce → frag préparé).
- * La longueur totale vient du volume ; chaque tranche en prend sa proportion. Une
- * assistance sans part mesurée n'entre dans aucune tranche : elle n'est pas dessinée.
+ * Découpe une longueur de barre (0..100 %) en segments par tranche, du centre vers
+ * l'extérieur (coup de pouce → frag préparé) : chaque tranche prend sa proportion du
+ * total. Une assistance sans part mesurée n'entre dans aucune tranche : elle n'est pas
+ * dessinée (la somme des segments peut être inférieure à la longueur).
  */
-export function assistSegments(tiers: AssistTiers, volumeMax: number): AssistSegment[] {
-  const length = assistVolumeLengthPct(tiers.total, volumeMax)
-  if (length === 0) return []
+function splitByTier(tiers: AssistTiers, lengthPct: number): AssistSegment[] {
+  if (lengthPct === 0 || !(tiers.total > 0)) return []
   return TIERS.map((tier) => ({
     tier,
     count: tiers[tier],
-    widthPct: (length * tiers[tier]) / tiers.total,
+    widthPct: (lengthPct * tiers[tier]) / tiers.total,
   })).filter((s) => s.count > 0)
+}
+
+/** Segments d'une demi-barre du papillon : la longueur totale vient du VOLUME (échelle log). */
+export function assistSegments(tiers: AssistTiers, volumeMax: number): AssistSegment[] {
+  return splitByTier(tiers, assistVolumeLengthPct(tiers.total, volumeMax))
+}
+
+/**
+ * Segments d'une barre de PART (tuile de match) : la longueur totale est la part
+ * `total / frags` des frags assistés, bornée à 100 % ; chaque tranche en prend sa
+ * proportion — un segment mesure donc directement `count / frags`. Aucun frag → rien.
+ */
+export function assistShareSegments(tiers: AssistTiers, frags: number): AssistSegment[] {
+  const share = assistShare(tiers.total, frags)
+  if (share === null) return []
+  return splitByTier(tiers, Math.min(100, share * 100))
 }
 
 /** Clé de tri des tableaux : assistances échangées (données + reçues), undefined si non mesuré. */

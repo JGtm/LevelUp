@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"sort"
 
 	"levelup/go-api/internal/analysis"
@@ -83,6 +84,34 @@ func enrichMatchesWithMedals(ctx context.Context, repo port.HomeRepository, item
 	for i, item := range items {
 		if all, ok := medalsMap[item.MatchID]; ok {
 			items[i].TopMedals = selectTopMedals(all, 4)
+		}
+	}
+}
+
+// enrichMatchesWithAssistedFrags pose AssistedFrags (part des frags assistés par un
+// coéquipier, par tranche) sur chaque tuile dont le match est MESURÉ, via un appel
+// batch sur le repo. Un match absent de la map reste nil (« on ne sait pas »).
+//
+// En erreur : journalisée en WARN puis dégradation (tous les champs restent nil) — la
+// tuile n'affiche rien plutôt que de faire tomber la page. Contrairement aux voisins
+// (médailles, citations), l'erreur n'est PAS avalée en silence (CLAUDE.md règle 3).
+func enrichMatchesWithAssistedFrags(ctx context.Context, repo port.HomeRepository, items []domain.RecentMatchItem) {
+	if len(items) == 0 {
+		return
+	}
+	matchIDs := make([]string, len(items))
+	for i, item := range items {
+		matchIDs[i] = item.MatchID
+	}
+	byMatch, err := repo.LoadMatchAssistedFrags(ctx, matchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "home_assisted_frags_load_failed", "err", err, "matches", len(matchIDs))
+		return
+	}
+	for i, item := range items {
+		if a, ok := byMatch[item.MatchID]; ok {
+			af := a
+			items[i].AssistedFrags = &af
 		}
 	}
 }

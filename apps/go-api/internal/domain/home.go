@@ -310,6 +310,11 @@ type RecentMatchItem struct {
 	// (port.ReplayAvailability), jamais un accès disque par tuile. Faux/absent quand le
 	// titre n'a pas de rejeu construit : le front n'affiche alors rien (pas de lien mort).
 	HasReplay bool `json:"has_replay,omitempty"`
+	// AssistedFrags : part des frags du joueur assistés par un coéquipier sur ce match,
+	// par tranche de part de dégâts (relation_assists.go). Nil quand le match n'a aucune
+	// ligne mesurée pour ce joueur (film non décodé, titre sans décodeur) : la tuile
+	// n'affiche alors rien — jamais un « 0 » fabriqué pour une mesure absente.
+	AssistedFrags *MatchAssistedFrags `json:"assisted_frags,omitempty"`
 }
 
 // RecentMatchMedal est une médaille compacte pour l'affichage dans MatchCard.

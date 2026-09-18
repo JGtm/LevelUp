@@ -16,6 +16,7 @@ import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-ca
 import { CitationProgressRing } from './citation-progress-ring'
 import { citationMastery } from '@/lib/citations/mastery'
 import { CombatYieldDisplay } from './combat-yield-display'
+import { MatchCardAssistedFrags } from './match-card-assisted-frags'
 import { MedalIcon } from './MedalIcon'
 import { skillDeltaScale, kdaDivergentScale, mmrDeltaScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -365,6 +366,8 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
                     <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('stat-deaths') }}>{t('common.match_card.deaths')}</span>
                   </div>
                 </div>
+                {/* Part des frags assistés par un coéquipier (film analysé) — rien sans mesure */}
+                {m.assisted_frags && <MatchCardAssistedFrags assisted={m.assisted_frags} locale={locale} />}
               </div>
             )}
 
