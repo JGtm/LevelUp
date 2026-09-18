@@ -5718,7 +5718,7 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   Sur `4f77afc1` : 11 lues, 11 appariees, 11 fermees -> **11 fins publiees** si les 11 vies sont
   publiees (aujourd'hui **3**) ; et **97 / 256** vies publiees aujourd'hui, la ou les naissances
   et les positions se perdent. Sur `a349fea8` : 20 lues -> 3 appariees -> 1 publiee.
-- [!] **5.1.7-a — `param_4` VIENT DU REGISTRE DU FILM** (D2 (5.1.7), decision du pilote).
+- [!] **5.1.7-a — `param_4` VIENT DU REGISTRE DU FILM** (D2 (5.1.7)). **ECRIT, PAS LIVRE** : la case reste `[!]` tant que les CINQ fins de `084a804d` (769/1, 791/1, 793/1, 834/1, 841/1) ne sont pas tranchees a l oeil sur l artefact Theater — les quatre survivantes y servent de temoin.
   `param_4` EST le `level` que l'entree de composant porte en `entree + 0x100`, donc
   `Archetype.Level(i)`, que le traverseur descendait deja jusqu'a `consumeByName` sans que
   personne s'en serve. Trois sources concordent (capture live `ti=35` ; slot `+0x10` du
@@ -5746,7 +5746,7 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   et c'est bien ce que le code fait — mais l'effet sur les vieux builds est une PERTE mesuree, et
   le ratchet pose au meme commit ne garde rien contre cette variation (il compare la table au
   registre d'UN SEUL film). **Trois decisions attendent le pilote, ecrites au §5.**
-- [ ] **5.1.7-b — L'ETAT PAR DEFAUT DE `ti=40`** (D3 (5.1.7), decision du pilote) : la marche
+- [ ] **5.1.7-b — L'ETAT PAR DEFAUT DE `ti=40`** (D3 (5.1.7), decision du pilote ; tout se mesure sur la TETE `312d2e85b`, 5.1.7-a restant ecrit dans la branche) : la marche
   d'image-cle de `ti=40` ne lance jamais sa boucle de composants (`n2` lu a 0,
   `consumeFullStateDefaultBlock` faux), et c'est la que les vies recensees perdent naissance et
   position. Lire l'ecrivain de l'etat par defaut de `ti=40` (chaine descripteur -> ecrivain),
@@ -6151,6 +6151,66 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 | 2026-09-17 | 3.6.a | **D6 (3.6.a) — L'ÉTAPE `vehicles` DE `replay-equiv` BOUGE SUR NEUF FILMS, ET LE MOUVEMENT N'ATTEINT AUCUNE SORTIE PUBLIÉE.** Mesuré à la voie libre : sur `084a804d`, le digest de l'étape `vehicles` passe de `a78431ed…` à `fac28aa9…`. Trois contrôles. (1) DÉTERMINISME : deux exécutions de la tête rendent le même sha sur les 53 étapes — ce n'est pas un aléa. (2) IMPUTATION : le même film cuit avec le CODE DE LA BASE `492cb0923` (arbre extrait hors dépôt, même cache, mêmes références) rend **exactement** la référence figée `a78431ed…` — c'est donc bien le port de `ti=9`, et NON 3.3.1 (dont `grenades` rend le même sha à la base et à la tête). (3) PORTÉE : le document cuit base → tête est identique sur **tous ses chemins sauf un**, `/coverage/decoder/grammarRev` (diff structuré : 1 chemin sur 9 335 637 octets, taille identique des deux côtés) ; **aucune ligne de journal de balayage ne diffère** (`viesRecensees=180 publiees=97 …`, `episodes=74 vehiculesOccupes=45 …` identiques) ; le corpus gate classe 0 gain / 0 perte / 0 changement. Le mouvement est donc confiné à l'ENTRÉE de balayage `VehicleScan`, dans un champ que seul `digest` voit — il hache les champs NON EXPORTÉS, et `VehicleScan.Positions []grammar.BipedPosition` embarque précisément `componentDirs`, le struct non exporté que l'en-tête du paquet `digest` cite en exemple. **CE QUI N'EST PAS ÉTABLI, ET QUI EST DIT** : le champ exact n'est pas isolé — `digest` n'exporte aucun rendu, et l'isoler demanderait un instrument que ce lot n'a pas écrit. NON TRAITÉ : rien ne dépend de cette valeur aujourd'hui (aucune sortie ne la porte). Écarte au passage deux hypothèses testées et fausses : ce n'est PAS un effet de bord de 3.3.1 (`53ce4390` bouge sur `vehicles` sans bouger sur `grenades`), et ce n'est PAS la scission du maillon de dispatch (aucune étiquette `case` n'est dupliquée dans la chaîne — vérifié sur pièces, donc l'ordre des maillons ne décide de rien). | instrument d'isolation des entrées de balayage : exporter un rendu de `digest` (ou un mode `-out-dir` qui écrit la valeur et pas seulement son empreinte) rendrait ce genre d'écart lisible au champ près au lieu du seul sha. À porter le jour où une sortie dépendra de ces champs |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Lot 5.1.7 — le record NEW lu chez l ecrivain, et le RATCHET PAR BUILD, 2026-09-18
+
+#### (1) LE RECORD NEW PASSE PAR LA BOUCLE DELTA — RIEN A CHANGER
+
+Question : quelle boucle cree l entite dans un paquet delta, et d ou vient son `arg5` ?
+Reponse LUE, pas devinee. Balayage des appels directs (`E8 rel32`) sur tout `.text`, puis bornes
+de fonction par `.pdata` :
+
+| boucle de composants | appelants DIRECTS | fonction englobante |
+|---|---:|---|
+| `FUN_142e2c690` (etat complet, arg5 = `entree + 0x100`) | **1** | `FUN_1428e2b68` — la chaine de l image-cle, et elle seule |
+| `FUN_14076cb60` (delta, arg5 = `vtable[0]()`) | **6** | dont `FUN_141f86b58` (le DELTA) et **`FUN_141f86704` (le record NEW)** |
+
+Le site `0x141f869ab`, dans `FUN_141f86704`, appelle `0x14076cb60` — et juste avant, `141f8698b
+mov rax,[r14]` / `141f86998 call [rax]` est le meme motif de `vtable[0]`. **Le record NEW herite
+donc de la grammaire DELTA : son `param_4` est la constante de l EXECUTABLE, pas le niveau du
+registre.**
+
+**CONCLUSION : RIEN A CHANGER DANS `TraverseEntity`.** Par la decision de fond acquise, on lit
+cette constante DANS LE FILM — le registre en est le miroir PAR BUILD, et c est la seule source
+disponible pour un film enregistre par un build qu on n a plus. Les trois chemins (image-cle, NEW,
+delta) prennent donc `arch.Level(i)`, ce que le depot fait deja depuis `312d2e85b`. L ecrivain et
+la doctrine se rejoignent ; aucun geste.
+
+#### (2) LE RATCHET PAR BUILD REMPLACE LE FAUX VERT
+
+`component_param4_ratchet_test.go` est **SUPPRIME** : il confrontait la table au `level` d UN SEUL
+film, il etait vert, et il ne pouvait pas voir que `param_4` varie d un build a l autre.
+
+`param4_par_build_ratchet_test.go` le remplace, et il garde DEUX choses :
+
+1. **`TestParam4TableEgaleLExecutable`** — la table du depot vaut la constante de l executable
+   COURANT pour les treize composants calibres, chacun avec l adresse de la fonction de six octets
+   qui la rend (`0x141179610` -> 2, `0x14117e0e0` -> 3, `0x140c85020` -> 4, `0x14117b4a0` -> 1,
+   `0x1405f0ac0` -> `xor eax,eax` -> 0).
+2. **`TestParam4RegistreParBuild`** — le registre de SEPT mini-bobines versionnees, une par cle de
+   profil (HI_1_4_1, 1_8_0, 1_9_0, 1_10_0, 1_11_0, 1_12_0, 1_13_0), vaut cette meme constante SAUF
+   aux sept ecarts mesures, ecrits en table attendue : `ti=40 i2` = 1 sur `a521164d` / `60ae07c4` /
+   `11de8353` ; `biped-malleable-property` = 1 sur ces trois plus `111fa685`. **Toute AUTRE
+   divergence est rouge**, et un ecart attendu qui DISPARAIT est rouge aussi.
+
+Chunk 0 seulement, aucun paquet decode, aucun film du parc : il tourne partout, CI comprise.
+
+**CE QU IL NE GARDE PAS, ET C EST DIT** : les deux cles de FORMAT 20 (`a349fea8`, `50247b26`) n ont
+pas de mini-bobine au depot. Leur ecart est MESURE et ecrit en commentaire — `a349fea8` rend
+`ti=40 i2 = 1` et `biped-malleable-property = 1` ; `50247b26` ajoute `unit-malleable-property = 3`
+(sur `ti=35` ET `ti=40`) et porte `i52`/`i61` la ou les autres ont `i53`/`i62`. Sept cles gardees
+sur neuf, et les deux manquantes nommees.
+
+**LES MINI-BOBINES CONFIRMENT LA MESURE FAITE SUR LES FILMS ENTIERS** : les sept ecarts attendus
+sont tous retrouves (la branche « ecart attendu qui n existe plus » ne se declenche pas).
+
+| Date | Point | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-18 | (1) | appelants directs de `FUN_142e2c690` / `FUN_14076cb60` / `FUN_141f86b58`, bornes par `.pdata` | 1 / 6 / 1 — le NEW (`FUN_141f86704`) appelle la boucle DELTA. Rien a changer |
+| 2026-09-18 | (2) | `TestParam4TableEgaleLExecutable` · `TestParam4RegistreParBuild` | **PASS** tous deux, 7 bobines, 7 ecarts attendus tous retrouves |
+| 2026-09-18 | (2) | MUTATION : une ligne d ecart retiree de la table attendue | **ROUGE** — `a521164d (HI_1_4_1) ti=40 i2 : registre=1, executable=2 — DIVERGENCE NON ATTENDUE`. Le ratchet mord |
+| 2026-09-18 | gates | `gofmt -l` · `go build ./...` · les 7 chemins de test · `golangci --new-from-rev=2f04bc7b8` | 0 fichier, `BUILD_OK`, tout vert, **0 issues** |
+| 2026-09-18 | revisions | aucune | `grammar.Rev` et `facts.Rev` INCHANGEES : le lot n ajoute et ne retire que des `_test.go`, que l empreinte exclut. Aucune fixture regeneree |
 
 ### Lot 5.1.7-a — `param_4` vient du registre du film, gates SANS DECODAGE, 2026-09-18
 
