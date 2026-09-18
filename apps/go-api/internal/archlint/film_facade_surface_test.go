@@ -110,7 +110,14 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           inventaires : 2 ajouts, 0 disparition) — un
 //	                                           plafond gele sur la base d un lot rougit a la
 //	                                           fusion sur tout ce qui a grossi ailleurs.
-const plafondSurfaceReplay = 255 // 2026-09-18 — base a5d15e634 + 4.1 + integration 4.2
+//	257  4.4.1   (2026-09-18)                  le verdict par couche : `replaybuild` cite
+//	                                           `RevisionsCourantesDesCouches` et `FamilleDeRevision`,
+//	                                           les deux seuls symboles par lesquels un paquet hors du
+//	                                           decodeur peut connaitre les revisions courantes (les
+//	                                           quatre couches vivent sous `film/internal/`, le
+//	                                           compilateur les refuse). RE-MESURE A L ENTREE du lot :
+//	                                           255 sur la base fusionnee, 257 apres.
+const plafondSurfaceReplay = 257 // 2026-09-18 — base f9ba456b2 (4.1 + 4.2 fusionnes) + 4.4.1
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

@@ -13,6 +13,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/replaybuild"
 )
 
 // ecrireArtefact pose un artefact de rejeu portant la version de schema demandee.
@@ -23,7 +24,10 @@ func ecrireArtefact(t *testing.T, repoRoot, slug, matchID string, schema int) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	raw, err := json.Marshal(map[string]int{"schemaVersion": schema})
+	// LES COUCHES SONT DECLAREES (schema 62, lot 4.4.1) : depuis que `UpToDate` juge AUSSI les
+	// revisions, un artefact muet sur ses couches se lit « a redecoder » — c est la regle, et un
+	// fixture qui l ignorerait testerait l inverse de ce qu il annonce.
+	raw, err := json.Marshal(map[string]any{"schemaVersion": schema, "layers": couchesDeTest()})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
@@ -224,7 +228,7 @@ func TestTraiterResultatEnfant_Ventilation(t *testing.T) {
 		t.Run(c.nom, func(t *testing.T) {
 			var r replayBackfillReport
 			res := filmproc.Result{Code: c.code, Issue: filmproc.IssueForCode(c.code)}
-			traiterResultatEnfant(&r, res, idMoyen, 1, 1)
+			traiterResultatEnfant(&r, res, replayCandidat{matchID: idMoyen}, 1, 1)
 
 			if got := c.lire(r); got != 1 {
 				t.Fatalf("code %d : la ligne de recap attendue vaut %d, veut 1", c.code, got)
@@ -258,5 +262,61 @@ func TestLibelleOctets(t *testing.T) {
 	}
 	if got := libelleOctets(512 * 1024 * 1024); got != "512 MiB" {
 		t.Fatalf("libelleOctets(512 MiB) = %q", got)
+	}
+}
+
+// couchesDeTest rend une table `layers` aux revisions du binaire courant. Jamais de litteral :
+// elle suit toute montee de revision (cf. `replay.RevisionsCourantesDesCouches`).
+func couchesDeTest() map[string]string {
+	c := replay.RevisionsCourantesDesCouches()
+	return map[string]string{"tracks": c["grammar"], "matchId": c["publication"]}
+}
+
+// TestVentilationRepubliesRedecodes — M4-P4 : le rapport de passe distingue ce qui a ete REJOUE
+// DEPUIS LES FAITS de ce qui a ete REDECODE.
+//
+// CE QUE CETTE VENTILATION APPREND, ET QUE `construits` ne dit pas : le COUT de la passe. Une
+// passe d apres montee de schema qui republie tout se lit en secondes, la meme qui redecode tout
+// se lit en minutes — et les deux annoncent le meme nombre de constructions.
+//
+// TROIS CAS, ET LE TROISIEME EST CELUI QU ON OUBLIE : un film SANS artefact prealable n est ni
+// republie ni redecode, il est cuit pour la premiere fois. Il compte dans `construits` et dans
+// aucun des deux, sans quoi leur somme mentirait.
+func TestVentilationRepubliesRedecodes(t *testing.T) {
+	cas := []struct {
+		nom                  string
+		verdict              replaybuild.Verdict
+		republies, redecodes int
+	}{
+		{"republie", replaybuild.VerdictRepublier, 1, 0},
+		{"redecode", replaybuild.VerdictRedecoder, 0, 1},
+		{"premiere cuisson (aucun artefact prealable)", "", 0, 0},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			var r replayBackfillReport
+			res := filmproc.Result{Code: filmproc.CodeOK, Issue: filmproc.IssueForCode(filmproc.CodeOK)}
+			traiterResultatEnfant(&r, res, replayCandidat{matchID: idMoyen, verdict: c.verdict}, 1, 1)
+			if r.construits != 1 {
+				t.Fatalf("construits = %d, attendu 1", r.construits)
+			}
+			if r.republies != c.republies || r.redecodes != c.redecodes {
+				t.Errorf("republies/redecodes = %d/%d, attendu %d/%d",
+					r.republies, r.redecodes, c.republies, c.redecodes)
+			}
+		})
+	}
+}
+
+// TestVentilationNeCompteQueLesSucces : un echec ne republie ni ne redecode rien.
+func TestVentilationNeCompteQueLesSucces(t *testing.T) {
+	for _, code := range []int{filmproc.CodeMemory, 2, -1} {
+		var r replayBackfillReport
+		res := filmproc.Result{Code: code, Issue: filmproc.IssueForCode(code)}
+		traiterResultatEnfant(&r, res, replayCandidat{matchID: idMoyen, verdict: replaybuild.VerdictRepublier}, 1, 1)
+		if r.republies != 0 || r.redecodes != 0 {
+			t.Errorf("code %d : republies/redecodes = %d/%d, attendu 0/0 — un echec ne publie rien",
+				code, r.republies, r.redecodes)
+		}
 	}
 }
