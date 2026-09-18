@@ -237,6 +237,10 @@ package grammar
 // `TestParamByComponentEgaleLeNiveauDuRegistre` confronte chaque entree au `level` d
 // `ecs_table.tsv` et rougit aussi si un composant y porte deux niveaux — ce qui ferait tomber le
 // raisonnement de ce lot.
+// REMPLACE LE 2026-09-18 par `TestParam4TableEgaleLExecutable` et `TestParam4RegistreParBuild`
+// (`param4_par_build_ratchet_test.go`) : le premier garde-rail confrontait UN SEUL registre et ne
+// pouvait pas voir que `param_4` varie d un build a l autre. L entree ci-dessus reste ce qu elle
+// etait le jour ou elle a ete ecrite.
 //
 // `facts.Rev` NE MONTE PAS. Elle vaut `killsource-2026-09-18` depuis le lot 5.1.1, qui est le
 // rang de TOUT le lot 5.1 : ce volet le partage et RE-FIGE son golden. Aucune source de `facts/`

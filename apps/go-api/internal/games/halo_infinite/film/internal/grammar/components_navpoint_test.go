@@ -22,7 +22,8 @@ const navpointTi12 = navpointRadialArchIndex
 // LE NIVEAU EST CELUI DU REGISTRE DU FILM, et c'est ce qui a change au lot 5.1.7 : `param_4` EST
 // le `level` de l'entree de composant, et la chaine de dispatch le recoit par ce parametre. Le
 // harnais passait `1` en dur du temps ou la table par nom decidait ; il passe desormais la valeur
-// du composant, que `TestParamByComponentEgaleLeNiveauDuRegistre` tient egale au registre.
+// du composant, que `TestParam4TableEgaleLExecutable` tient egale a la constante de l executable
+// et `TestParam4RegistreParBuild` au registre de chaque build temoin.
 // [consommerNavpointAuNiveau] sert aux cas qui veulent MESURER un autre niveau.
 func consommerNavpoint(t *testing.T, nom string, flux []byte) (int, bool) {
 	t.Helper()
