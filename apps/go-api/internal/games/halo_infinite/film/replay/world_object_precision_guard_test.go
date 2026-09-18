@@ -105,9 +105,14 @@ func TestBuildFromFilmWiresWorldObjectPrecision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, ok := funcBody(string(src), "func BuildFromFilm(")
+	// LE CORPS EST CELUI DE `BuildFromFilmAvecFaits` DEPUIS LE LOT 4.1.2 (2026-09-17) :
+	// `BuildFromFilm` n est plus qu un appel a celle-ci qui jette les faits a persister. C est
+	// toujours LE SEUL etage de balayage du depot — le garde suit la fonction qui balaie, pas le
+	// nom historique.
+	body, ok := funcBody(string(src), "func BuildFromFilmAvecFaits(")
 	if !ok {
-		t.Fatal("BuildFromFilm introuvable dans build_from_film.go : ce garde-rail ne garde plus rien")
+		t.Fatal("BuildFromFilmAvecFaits introuvable dans build_from_film.go : ce garde-rail ne " +
+			"garde plus rien")
 	}
 	// LA SOURCE DES LARGEURS EST LE PROFIL DEPUIS LE LOT 2.1 (item 2.1.3), et c'est la MEME
 	// valeur : `fc.Profile().Map()` est l'entree `opt.MapQuant` que `NewFilmContextForMap` a
@@ -117,7 +122,7 @@ func TestBuildFromFilmWiresWorldObjectPrecision(t *testing.T) {
 	pose := regexp.MustCompile(`
 \s*poserProfilPuisCarte\(fc, `)
 	if !pose.MatchString(body) {
-		t.Fatal("BuildFromFilm n'appelle plus poserProfilPuisCarte(fc, …) : les largeurs d'axe " +
+		t.Fatal("BuildFromFilmAvecFaits n'appelle plus poserProfilPuisCarte(fc, …) : les largeurs d'axe " +
 			"ne sont plus posées sur le contexte du film, et les objets du monde de TOUTES les " +
 			"cartes repassent en silence aux largeurs de Cliffhanger (invariant du profil). " +
 			"Mesuré le 2026-08-15 : la part d'échantillons de projectile dans l'emprise des " +

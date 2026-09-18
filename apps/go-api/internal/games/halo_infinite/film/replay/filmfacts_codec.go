@@ -1,11 +1,13 @@
 package replay
 
-// golden_inputs_codec_test.go — LES PRIMITIVES DU CODEC : flux binaire et sous-codecs partages.
+// filmfacts_codec.go — LES SOUS-CODECS PARTAGES ENTRE SECTIONS : positions, pistes, objets du
+// monde, images-cles, munitions.
 //
-// Extrait de golden_inputs_test.go le 2026-09-14 (revue R1, constat R1-7). DEPLACEMENT PUR.
+// Extrait de golden_inputs_test.go le 2026-09-14 (revue R1, constat R1-7), passe en PRODUCTION
+// le 2026-09-17 (lot 4.1.1-a). DEPLACEMENTS PURS. Le FLUX d octets lui-meme (`gwriter`,
+// `greader`, varints, flottants, centimetre entier) vit dans `filmfacts_flux.go`.
 
 import (
-	"encoding/binary"
 	"fmt"
 	"math"
 	"sort"
@@ -14,106 +16,6 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
-
-const cmScale = 100
-
-// gwriter accumule un flux binaire. Les entiers sont en varint : les deltas d horodatage et de
-// position tiennent sur un a deux octets, ce qui fait tout le poids du fixture.
-type gwriter struct{ b []byte }
-
-func (w *gwriter) u(v uint64)   { w.b = binary.AppendUvarint(w.b, v) }
-func (w *gwriter) i(v int64)    { w.b = binary.AppendVarint(w.b, v) }
-func (w *gwriter) byte8(v byte) { w.b = append(w.b, v) }
-func (w *gwriter) f32(v float32) {
-	w.b = binary.LittleEndian.AppendUint32(w.b, math.Float32bits(v))
-}
-func (w *gwriter) str(s string) {
-	w.u(uint64(len(s)))
-	w.b = append(w.b, s...)
-}
-func (w *gwriter) bool8(v bool) {
-	if v {
-		w.byte8(1)
-		return
-	}
-	w.byte8(0)
-}
-
-// greader relit le flux. Toute incoherence est une ERREUR remontee, jamais une valeur nulle
-// servie en silence.
-type greader struct {
-	b   []byte
-	off int
-	err error
-}
-
-func (r *greader) u() uint64 {
-	if r.err != nil {
-		return 0
-	}
-	v, n := binary.Uvarint(r.b[r.off:])
-	if n <= 0 {
-		r.err = fmt.Errorf("uvarint illisible a l offset %d", r.off)
-		return 0
-	}
-	r.off += n
-	return v
-}
-
-func (r *greader) i() int64 {
-	if r.err != nil {
-		return 0
-	}
-	v, n := binary.Varint(r.b[r.off:])
-	if n <= 0 {
-		r.err = fmt.Errorf("varint illisible a l offset %d", r.off)
-		return 0
-	}
-	r.off += n
-	return v
-}
-
-func (r *greader) byte8() byte {
-	if r.err != nil {
-		return 0
-	}
-	if r.off >= len(r.b) {
-		r.err = fmt.Errorf("fin de flux prematuree a l offset %d", r.off)
-		return 0
-	}
-	v := r.b[r.off]
-	r.off++
-	return v
-}
-
-func (r *greader) f32() float32 {
-	if r.err != nil {
-		return 0
-	}
-	if r.off+4 > len(r.b) {
-		r.err = fmt.Errorf("float32 tronque a l offset %d", r.off)
-		return 0
-	}
-	v := math.Float32frombits(binary.LittleEndian.Uint32(r.b[r.off:]))
-	r.off += 4
-	return v
-}
-
-func (r *greader) str() string {
-	n := int(r.u())
-	if r.err != nil {
-		return ""
-	}
-	if r.off+n > len(r.b) {
-		r.err = fmt.Errorf("chaine tronquee a l offset %d", r.off)
-		return ""
-	}
-	s := string(r.b[r.off : r.off+n])
-	r.off += n
-	return s
-}
-
-func (r *greader) bool8() bool { return r.byte8() == 1 }
 
 // encodePositionSection / decodePositionSection serialisent UNE suite de positions de bipede AVEC
 // sa table de slots.
@@ -181,6 +83,7 @@ func encodePositionSection(w *gwriter, pos []grammar.BipedPosition) {
 			w.u(uint64(p.YawRaw))
 			w.u(uint64(p.PitchRaw))
 		}
+		encodeDirectionsDePosition(w, p)
 		if p.HasBody {
 			w.f32(p.Body.Health)
 		}
@@ -192,12 +95,12 @@ func encodePositionSection(w *gwriter, pos []grammar.BipedPosition) {
 }
 
 func decodePositionSection(r *greader, lay profile.I0Layout, world profile.Vec3Range) []grammar.BipedPosition {
-	nSlots := int(r.u())
+	nSlots := r.compte(1)
 	slots := make([]uint32, 0, nSlots)
 	for k := 0; k < nSlots && r.err == nil; k++ {
 		slots = append(slots, uint32(r.u()))
 	}
-	n := int(r.u())
+	n := r.compte(3) // horodatage + index de slot + drapeaux, au minimum
 	out := make([]grammar.BipedPosition, 0, n)
 	var lastTS uint64
 	lastXYZ := map[uint32][3]int64{}
@@ -230,6 +133,7 @@ func decodePositionSection(r *greader, lay profile.I0Layout, world profile.Vec3R
 			p.YawRaw = uint32(r.u())
 			p.PitchRaw = uint32(r.u())
 		}
+		decodeDirectionsDePosition(r, &p)
 		if fl&gpHasBody != 0 {
 			p.HasBody = true
 			p.Body.Health = r.f32()
@@ -244,6 +148,27 @@ func decodePositionSection(r *greader, lay profile.I0Layout, world profile.Vec3R
 	return out
 }
 
+// encodeTracks / decodeTracks : UNE SUITE DE POINTS, EN FLOAT32 EXACT.
+//
+// # POURQUOI PLUS AUCUNE QUANTIFICATION ICI (2026-09-18, lot 4.1.3)
+//
+// Ces pistes etaient arrondies au CENTIMETRE ENTIER, sur la foi d un commentaire qui affirmait que
+// « toute coordonnee publiee par l assemblage passe par round2 ». Le gate S8 a demonte cette
+// preuve en deux temps :
+//
+//	LES PISTES D OBJETS DU MONDE ne sont PAS arrondies a la publication.
+//	`document_ground_weapon_items.go:217` publie `X: o.Pos[0]` BRUT ; `groundWeapons[0]/x` valait
+//	24.479221 au decodage et 24.48 au rejeu, sur les dix films.
+//
+//	LES PROJECTILES le sont (`projectiles.go:110` publie `round2(p.X)`), et le centimetre y
+//	semblait donc gratuit. IL NE L EST PAS : `round2(-0.001)` vaut `-0`, et la quantification au
+//	centimetre perd le SIGNE de tout ce qui vit sous le demi-centimetre. Mesure sur `fb1a1a72` :
+//	trois points publies `[1,-0,2.13]` par la passe-film et `[1,0,2.13]` par la passe-faits — les
+//	TROIS DERNIERS OCTETS d ecart du gate, apres que tout le reste etait identique.
+//
+// LE PARAMETRE DE PRECISION A DONC DISPARU AVEC SA DERNIERE RAISON D ETRE, et `cmScale` / `cmOf` /
+// `fromCM` avec lui : un mecanisme dont il ne reste aucun appelant se supprime (CLAUDE.md regle 7).
+// Le prix est ecrit au budget des fixtures.
 func encodeTracks(w *gwriter, tracks []types.ProjectileTrack) {
 	w.u(uint64(len(tracks)))
 	for _, tr := range tracks {
@@ -251,38 +176,30 @@ func encodeTracks(w *gwriter, tracks []types.ProjectileTrack) {
 		w.u(uint64(tr.Gen))
 		w.u(uint64(len(tr.Pts)))
 		var pts uint64
-		var prev [3]int64
 		for _, s := range tr.Pts {
 			w.u(s.TimestampUS - pts)
 			pts = s.TimestampUS
-			cur := [3]int64{cmOf(s.X), cmOf(s.Y), cmOf(s.Z)}
-			for a := 0; a < 3; a++ {
-				w.i(cur[a] - prev[a])
-			}
-			prev = cur
+			w.f32(s.X)
+			w.f32(s.Y)
+			w.f32(s.Z)
 			w.bool8(s.AtRest)
+			w.u(uint64(s.Chunk))
 		}
 	}
 }
 
 func decodeTracks(r *greader) []types.ProjectileTrack {
-	n := int(r.u())
+	n := r.compte(3)
 	out := make([]types.ProjectileTrack, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		tr := types.ProjectileTrack{Slot: uint32(r.u()), Gen: uint32(r.u())}
-		np := int(r.u())
+		np := r.compte(2)
 		var ts uint64
-		var prev [3]int64
 		for j := 0; j < np && r.err == nil; j++ {
 			ts += r.u()
-			var cur [3]int64
-			for a := 0; a < 3; a++ {
-				cur[a] = prev[a] + r.i()
-			}
-			prev = cur
 			tr.Pts = append(tr.Pts, types.ProjectileSample{
-				TimestampUS: ts, X: fromCM(cur[0]), Y: fromCM(cur[1]), Z: fromCM(cur[2]),
-				AtRest: r.bool8(),
+				TimestampUS: ts, X: r.f32(), Y: r.f32(), Z: r.f32(),
+				AtRest: r.bool8(), Chunk: int(r.u()),
 			})
 		}
 		out = append(out, tr)
@@ -290,23 +207,10 @@ func decodeTracks(r *greader) []types.ProjectileTrack {
 	return out
 }
 
-// encodeWorldObjectScan / decodeWorldObjectScan serialisent ce que le film rend sur UN archetype
-// d objet du monde : les records de CREATION (position i0, instant, identite MPP), le
-// RECENSEMENT des images-cles qui borne les disparitions, et les pistes de position qui disent
-// si l objet a bouge.
-//
-// UN SEUL CODEC POUR LES DEUX VOIES (armes `ti=42`, power-ups `ti=37`) : elles ont la meme
-// forme, et un second codec aurait diverge du premier au premier champ ajoute.
-//
-// LA BANDE DE SLOTS N EST PAS SERIALISEE, et c est deliberé : l assemblage ne la lit pas (elle
-// sert au seul balayage, qui a deja eu lieu). Le fixture porte ce que l assemblage CONSOMME,
-// pas ce que le decodage a traverse.
 func encodeWorldObjectScan(w *gwriter, s WorldObjectScan) {
 	w.bool8(s.Scanned)
 	encodeCreations(w, s.Creations)
-	w.u(uint64(s.Stats.Slots))
-	w.u(uint64(s.Stats.Anchors))
-	w.u(uint64(s.Stats.Accepted))
+	encodeCreationStats(w, s.Stats)
 	encodeKeyframes(w, s.Keyframes)
 	encodeTracks(w, s.Tracks)
 }
@@ -314,7 +218,7 @@ func encodeWorldObjectScan(w *gwriter, s WorldObjectScan) {
 func decodeWorldObjectScan(r *greader) WorldObjectScan {
 	s := WorldObjectScan{Scanned: r.bool8()}
 	s.Creations = decodeCreations(r)
-	s.Stats.Slots, s.Stats.Anchors, s.Stats.Accepted = int(r.u()), int(r.u()), int(r.u())
+	s.Stats = decodeCreationStats(r)
 	s.Keyframes = decodeKeyframes(r)
 	s.Tracks = decodeTracks(r)
 	return s
@@ -329,6 +233,24 @@ func decodeWorldObjectScan(r *greader) WorldObjectScan {
 // L IDENTITE TIENT DANS `MPPWord32`, ET ELLE SEULE : c est le mot inconditionnel du bloc MPP —
 // le GlobalID du tag `eqip` pour ti=37, l identite du chassis pour ti=40 (cf.
 // filmdec/vehicle_creation.go). Les trois autres champs du bloc ne sont lus par aucun assemblage.
+// encodeCreations / decodeCreations : UN RECORD DE CREATION, ENTIER.
+//
+// # CE QUE LA VERSION PRECEDENTE PERDAIT, ET CE QUE CA A COUTE (2026-09-18, lot 4.1.3)
+//
+// Elle portait SEPT champs sur vingt : l instant, la vie (slot, gen), la position, et UN SEUL des
+// quatre mots MPP. Tombaient donc `HasAmmo` / `Ammo` (les MUNITIONS de l arme au sol, lues au
+// composant i20), `HasRef` / `Ref`, `HasID` / `AbilityID`, `Mask` et ses trois temoins,
+// `BitPos`, `Chunk`, `PacketIndex`, `DefaultStateBits`, `AfterBit`, et trois mots MPP sur quatre.
+//
+// LA CONSEQUENCE ETAIT MESUREE ET PUBLIEE : `document_ground_weapon_items.go:224` lit
+// `o.HasAmmo` pour publier `groundWeapons[].ammo` et compter `coverage.groundWeaponItems.ammoRead`.
+// Un artefact rejoue depuis les faits sortait donc SANS munitions d arme au sol, et son compteur
+// de couverture avec — sur les dix films du gate S8, sans une ligne pour le dire.
+//
+// LA REGLE EST DESORMAIS SIMPLE, ET C EST UN TEST QUI LA TIENT : ce codec porte TOUT le record.
+// `TestCodecCouvreFilmInputs` remplit chaque champ de chaque structure imbriquee (et non plus le
+// premier seulement, le trou par lequel ce defaut est passe) : un champ ajoute a
+// `types.EquipmentCreation` et non porte ici le fait rougir.
 func encodeCreations(w *gwriter, creations []types.EquipmentCreation) {
 	w.u(uint64(len(creations)))
 	var lastTS uint64
@@ -337,36 +259,91 @@ func encodeCreations(w *gwriter, creations []types.EquipmentCreation) {
 		lastTS = c.TimestampUS
 		w.u(uint64(c.Slot))
 		w.u(uint64(c.Gen))
+		w.i(int64(c.Chunk))
+		w.i(int64(c.PacketIndex))
+		w.i(int64(c.BitPos))
+		w.bool8(c.HasRef)
+		w.u(uint64(c.Ref))
+		w.bool8(c.HasID)
+		w.u(uint64(c.AbilityID))
+		for i := 0; i < types.MPPFieldCount; i++ {
+			w.bool8(c.MPPPresent[i])
+			w.u(c.MPPVal[i])
+		}
 		w.f32(c.X)
 		w.f32(c.Y)
 		w.f32(c.Z)
-		w.bool8(c.MPPPresent[grammar.MPPWord32])
-		w.u(c.MPPVal[grammar.MPPWord32])
+		w.u(uint64(len(c.Mask)))
+		for _, m := range c.Mask {
+			w.i(int64(m))
+		}
+		w.bool8(c.MaskFull)
+		w.bool8(c.MaskHasI0)
+		w.i(int64(c.DefaultStateBits))
+		w.bool8(c.HasAmmo)
+		w.u(uint64(c.Ammo.Mag))
+		w.u(uint64(c.Ammo.Res))
+		w.i(int64(c.AfterBit))
 	}
 }
 
 func decodeCreations(r *greader) []types.EquipmentCreation {
-	n := int(r.u())
+	n := r.compte(20) // vingt champs, un octet au minimum chacun
 	out := make([]types.EquipmentCreation, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		c := types.EquipmentCreation{TimestampUS: lastTS, Slot: uint32(r.u()), Gen: uint32(r.u())}
+		c := types.EquipmentCreation{TimestampUS: lastTS}
+		c.Slot, c.Gen = uint32(r.u()), uint32(r.u())
+		c.Chunk, c.PacketIndex, c.BitPos = int(r.i()), int(r.i()), int(r.i())
+		c.HasRef, c.Ref = r.bool8(), uint32(r.u())
+		c.HasID, c.AbilityID = r.bool8(), uint32(r.u())
+		for i := 0; i < types.MPPFieldCount; i++ {
+			c.MPPPresent[i] = r.bool8()
+			c.MPPVal[i] = r.u()
+		}
 		c.X, c.Y, c.Z = r.f32(), r.f32(), r.f32()
-		c.MPPPresent[grammar.MPPWord32] = r.bool8()
-		c.MPPVal[grammar.MPPWord32] = r.u()
+		if nm := int(r.u()); nm > 0 {
+			c.Mask = make([]int, 0, nm)
+			for j := 0; j < nm && r.err == nil; j++ {
+				c.Mask = append(c.Mask, int(r.i()))
+			}
+		}
+		c.MaskFull, c.MaskHasI0 = r.bool8(), r.bool8()
+		c.DefaultStateBits = int(r.i())
+		c.HasAmmo = r.bool8()
+		c.Ammo.Mag, c.Ammo.Res = uint32(r.u()), uint32(r.u())
+		c.AfterBit = int(r.i())
 		out = append(out, c)
 	}
 	return out
 }
 
-// encodeKeyframes / decodeKeyframes serialisent le RECENSEMENT d images-cles qui borne les
-// disparitions d un archetype : l axe des images-cles du film, et les instants ou chaque vie
-// d objet y est vue.
+// encodeCreationStats / decodeCreationStats : LES DENOMINATEURS DU BALAYAGE, ENTIERS.
 //
-// LA BANDE DE SLOTS N EST PAS SERIALISEE, et c est delibere : l assemblage ne la lit pas (elle
-// sert au seul balayage, qui a deja eu lieu). Le fixture porte ce que l assemblage CONSOMME, pas
-// ce que le decodage a traverse.
+// La version precedente n en portait que TROIS (`Slots`, `Anchors`, `Accepted`), inlines dans
+// `encodeWorldObjectScan`. Les huit autres tombaient — dont `WithAmmo`, le denominateur meme de
+// la lecture des munitions. Une couverture qui perd son denominateur ne se juge plus.
+func encodeCreationStats(w *gwriter, st types.EquipmentCreationStats) {
+	for _, v := range []int{
+		st.Slots, st.Anchors, st.Overflow, st.MaskBad, st.PosBad, st.Accepted,
+		st.MaskSparse, st.MaskFull, st.NoI0, st.WithRef, st.WithID, st.WithAmmo,
+	} {
+		w.i(int64(v))
+	}
+}
+
+func decodeCreationStats(r *greader) types.EquipmentCreationStats {
+	var st types.EquipmentCreationStats
+	for _, p := range []*int{
+		&st.Slots, &st.Anchors, &st.Overflow, &st.MaskBad, &st.PosBad, &st.Accepted,
+		&st.MaskSparse, &st.MaskFull, &st.NoI0, &st.WithRef, &st.WithID, &st.WithAmmo,
+	} {
+		*p = int(r.i())
+	}
+	return st
+}
+
 func encodeKeyframes(w *gwriter, kf grammar.WorldObjectKeyframes) {
 	w.u(uint64(len(kf.TimesUS)))
 	var lastTS uint64
@@ -413,7 +390,7 @@ func decodeKeyframes(r *greader) grammar.WorldObjectKeyframes {
 	kf.SeenUS = make(map[types.EquipmentLifeKey][]uint64, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		key := types.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
-		np := int(r.u())
+		np := r.compte(2)
 		seen := make([]uint64, 0, np)
 		lastTS = 0
 		for j := 0; j < np && r.err == nil; j++ {
@@ -438,7 +415,7 @@ func encodeAmmo(w *gwriter, a SlotAmmo) {
 	}
 	w.bool8(a.Gauge != nil)
 	if a.Gauge != nil {
-		w.b = binary.LittleEndian.AppendUint64(w.b, math.Float64bits(*a.Gauge))
+		w.b = ajouterPoidsFaibleDAbord(w.b, math.Float64bits(*a.Gauge), 8)
 	}
 	w.u(uint64(a.Overheat))
 	w.u(uint64(a.Flags))
@@ -459,7 +436,7 @@ func decodeAmmo(r *greader) SlotAmmo {
 			r.err = fmt.Errorf("jauge tronquee a l offset %d", r.off)
 			return a
 		}
-		v := math.Float64frombits(binary.LittleEndian.Uint64(r.b[r.off:]))
+		v := math.Float64frombits(lirePoidsFaibleDAbord(r.b[r.off:], 8))
 		r.off += 8
 		a.Gauge = &v
 	}
@@ -467,9 +444,3 @@ func decodeAmmo(r *greader) SlotAmmo {
 	a.Flags = uint32(r.u())
 	return a
 }
-
-// decodeGoldenInputs relit le fixture.
-
-func cmOf(v float32) int64 { return int64(math.Round(float64(v) * cmScale)) }
-
-func fromCM(v int64) float32 { return float32(float64(v) / cmScale) }

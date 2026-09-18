@@ -51,7 +51,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
-func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
+func decodeFilmInputs(film, dir string) (*FilmFacts, error) {
 	entry, err := goldenMapQuant()
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 // decodeFilmInputsForEntry est le MEME decodage, pour une carte quelconque (lot 0.A.2 : un
 // fixture d entrees par build, donc une carte par build). `decodeFilmInputs` en est le cas
 // particulier de Cliffhanger, et le seul chemin qui change est la LECTURE DU CATALOGUE.
-func decodeFilmInputsForEntry(film, dir string, entry profile.MapQuantEntry) (*goldenInputs, error) {
+func decodeFilmInputsForEntry(film, dir string, entry profile.MapQuantEntry) (*FilmFacts, error) {
 	// LE FILM SE CHARGE UNE FOIS, comme en production (`replaybuild.BuildBytes`) : c est ce
 	// chargement-la que l etage de balayage consomme, et c est lui aussi qui porte la version
 	// majeure du film.
@@ -93,7 +93,7 @@ func decodeFilmInputsForEntry(film, dir string, entry profile.MapQuantEntry) (*g
 	if err != nil {
 		return nil, err
 	}
-	return &goldenInputs{
+	return &FilmFacts{
 		Film: film, MapModule: entry.Module, AxisW: lay.AxisW, LayoutDetected: detecte,
 		FilmInputs: in,
 	}, nil

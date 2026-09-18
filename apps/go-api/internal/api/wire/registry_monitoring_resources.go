@@ -37,6 +37,7 @@ func (r *ServiceRegistry) ResourcesReport(ctx context.Context) (domain.AdminReso
 	}
 	resp.Disk = r.resourceDisk()
 	r.fillResourceDatabases(ctx, &resp)
+	r.fillResourceFilmFacts(&resp)
 	if r.monitoringStore != nil {
 		if n, err := r.monitoringStore.CronRunCount(ctx, "server_boot"); err == nil {
 			resp.Restarts = n
@@ -101,5 +102,27 @@ func (r *ServiceRegistry) fillResourceDatabases(ctx context.Context, resp *domai
 	)
 	for _, db := range resp.Databases {
 		resp.DBTotalBytes += db.SizeBytes + db.WalBytes
+	}
+}
+
+// fillResourceFilmFacts publie ce que les FAITS PERSISTES PAR FILM occupent, par titre actif
+// (M4-D1, decision V17 du PLAN_DECODEUR_FILM : « on conserve TOUT », aucun plafond et aucune
+// purge par age — mais la taille occupee est PUBLIEE).
+//
+// AUCUN DECODAGE, AUCUNE BASE : un `os.ReadDir` + `Stat` sur un dossier PLAT par titre. C'est ce
+// qui rend cette ligne servable dans un endpoint que l'UI interroge en polling.
+//
+// MEME TRAITEMENT QUE LE DISQUE ET LES BASES : best-effort, et un dossier illisible est LOGGE
+// chez `ops.FilmFactsInventory` plutot qu'avale.
+func (r *ServiceRegistry) fillResourceFilmFacts(resp *domain.AdminResourcesResponse) {
+	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
+	for _, desc := range titlePkg.DefaultRegistry().NonArchived() {
+		if desc.IsInternal || !desc.IsActive() {
+			continue
+		}
+		inv := ops.FilmFactsInventory(desc.Slug, pr.FilmFactsDir(desc.Slug),
+			titlePkg.ExtensionFilmFacts)
+		resp.FilmFacts = append(resp.FilmFacts, inv)
+		resp.FilmFactsTotalBytes += inv.SizeBytes
 	}
 }

@@ -48,6 +48,10 @@ const attenteVerrouMax = 10 * time.Minute
 type collecteur struct {
 	lignes  []string
 	comptes map[string]int
+	// booleens porte la valeur des etapes qui rendent un BOOLEEN — aujourd hui la seule etape
+	// de BRANCHE (`filmFactsRejoue`). Ni le compte ni le digest ne la rendraient lisible : c est
+	// elle qui arme la garde anti-equivalence-vacuante du mode S8.
+	booleens map[string]bool
 	// etats porte la valeur des etapes qui rendent une CHAINE (`spawnPointsState` et ses
 	// pareilles). Le compte, lui, ne dirait rien d'elles : `digest.Of` rend la LONGUEUR d'une
 	// chaine, donc « 15 » la ou l'operateur attend « not_established ».
@@ -62,11 +66,17 @@ func (c *collecteur) etape(step string, v any) {
 		c.comptes = map[string]int{}
 	}
 	c.comptes[step] = compte
-	if s, ok := v.(string); ok {
+	switch t := v.(type) {
+	case string:
 		if c.etats == nil {
 			c.etats = map[string]string{}
 		}
-		c.etats[step] = s
+		c.etats[step] = t
+	case bool:
+		if c.booleens == nil {
+			c.booleens = map[string]bool{}
+		}
+		c.booleens[step] = t
 	}
 }
 
@@ -124,14 +134,79 @@ func digestsDuFilm(o options, cacheRoot string) ([]string, error) {
 	}
 	var col collecteur
 	b.WithObserver(col.etape)
-	slog.Info("cuisson d'equivalence", "film", o.film, "match", faits.MatchID,
-		"cartes", faits.MapNames, "joueurs", len(faits.Players), "variante", faits.GameVariantName)
+	// LE DECODAGE EST FORCE PARTOUT SAUF DANS LA PASSE `faits`, ET C EST UNE CORRECTION MESUREE
+	// (2026-09-18, lot 4.1.3).
+	//
+	// Deux raisons, une par regime.
+	//
+	//   - MODE S8 : sans cela, la seconde passe relirait les faits que la premiere vient
+	//     d ecrire, et le harnais comparerait « faits contre faits » — une equivalence VACUANTE.
+	//   - REGIME ORDINAIRE : il compare a une reference FIGEE, donc il doit jouer la branche qui
+	//     a fige cette reference — LE DECODAGE —, quel que soit l etat du parc de faits. Sans
+	//     cela, la comparaison depend d une entree CACHEE : la passe du 2026-09-18 a rendu
+	//     « etape 14 : attendue "translocations", obtenue "filmFactsRejoue" » sur les 10 films
+	//     dont le S8 venait d ecrire les faits, et les 2 ecarts de FORME attendus sur les 10
+	//     autres. Le meme depot, le meme commit, deux verdicts : c est le parc qui decidait.
+	if brancheAttendue(o.passe) == passeFilm {
+		b.SansFaitsPersistes()
+	}
+	slog.Info("cuisson d equivalence", "film", o.film, "match", faits.MatchID,
+		"cartes", faits.MapNames, "joueurs", len(faits.Players), "variante", faits.GameVariantName,
+		"passe", o.passe)
 	if _, err := b.BuildBytes(faits.MatchID, faits.MapNames,
 		filmcache.ChunkDir(cacheRoot, o.film), faits.MatchFacts); err != nil {
 		return nil, err
 	}
+	if err := verifierLaBrancheServie(o.passe, col.booleens); err != nil {
+		return nil, err
+	}
 	alerterCatalogueVide(o.film, faits, col.comptes, col.etats)
 	return col.lignes, nil
+}
+
+// verifierLaBrancheServie REFUSE une cuisson qui n a pas joue la branche attendue.
+//
+// C EST LA GARDE ANTI-EQUIVALENCE-VACUANTE, et elle vaut plus que le confort : si la passe
+// `faits` echouait a relire (en-tete perime, fichier absent, cle de cuisson changee), elle
+// REDECODERAIT EN SILENCE. Le harnais comparerait alors deux decodages — identiques par
+// construction — et rendrait un vert qui ne prouve rien. Le meme raisonnement vaut dans l autre
+// sens : une cuisson qui aurait relu les faits ne mesurerait pas le decodage.
+//
+// ELLE VAUT DANS LES DEUX REGIMES, et pas seulement en mode S8 (correction du 2026-09-18) : le
+// regime ordinaire compare a une reference FIGEE par un DECODAGE, donc une cuisson qui relirait
+// les faits comparerait deux choses differentes sans le dire.
+func verifierLaBrancheServie(passe string, booleens map[string]bool) error {
+	etape := replaybuild.EtapeRejeuDepuisLesFaits
+	relu, vue := booleens[etape]
+	if !vue {
+		return fmt.Errorf("l etape `%s` n a pas ete observee : impossible de savoir quelle "+
+			"branche a servi, donc impossible de comparer quoi que ce soit", etape)
+	}
+	if veutRelu := brancheAttendue(passe) == passeFaits; relu != veutRelu {
+		return fmt.Errorf("branche %q attendue, branche servie %q : "+
+			"la comparaison serait VACUANTE (voir les lignes « faits de film perimes » du journal)",
+			brancheAttendue(passe), brancheDite(relu))
+	}
+	return nil
+}
+
+// brancheAttendue : quelle branche cette cuisson DOIT jouer.
+//
+// La passe `faits` du mode S8 est la SEULE a rejouer depuis les faits. Tout le reste — la passe
+// `film` du S8 et le regime ordinaire — decode, parce que c est ce que la reference figee mesure.
+func brancheAttendue(passe string) string {
+	if passe == passeFaits {
+		return passeFaits
+	}
+	return passeFilm
+}
+
+// brancheDite nomme la branche servie, pour un message qu un operateur comprend sans lire le code.
+func brancheDite(relu bool) string {
+	if relu {
+		return "rejeu depuis les faits"
+	}
+	return "decodage du film"
 }
 
 // alerterCatalogueVide CRIE quand un digest est celui du VIDE alors que le film avait de quoi le
