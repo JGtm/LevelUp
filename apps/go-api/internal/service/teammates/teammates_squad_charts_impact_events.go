@@ -17,12 +17,20 @@ import (
 	"levelup/go-api/internal/domain/highlightevent"
 )
 
+// buildSquadImpactMatrix construit la matrice d'impact (badges par match et
+// par joueur de l'escouade). `allies` = équipe alliée du main par match
+// (Q32b), chargée UNE fois par GetPage et partagée avec le filtre composition
+// exacte et le profil d'intensité (CLAUDE.md n°6 : trois appelants, un seul
+// chargement). Six paramètres : cinq identités de scope + le chargement partagé,
+// l'idiome des autres builders (ctx, rows, gamertag, xuid, teammates) ne
+// laisse pas de place pour regrouper sans struct ad hoc.
 func (s *TeammatesService) buildSquadImpactMatrix(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
 	mainXUID string,
 	mainGamertag string,
 	selectedGamertags []string,
+	allies []domain.AllyParticipant,
 ) *domain.SquadImpactMatrix {
 	if len(allSquadRows) == 0 || len(selectedGamertags) == 0 {
 		return nil
@@ -58,21 +66,16 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 	eventsByMatch := s.loadImpactEventsByMatch(
 		ctx, matchIDOrder, timeline.BuildTimelinesFromSquadRows(allSquadRows))
 
-	// 3. Charger les participants de l'ÉQUIPE ALLIÉE complète du main pour
-	//    chaque match (parité Python team_xuids dans compute_single_match_impact).
-	//    On passera tous ces alliés à analysis.ComputeMatchImpactFull → les
-	//    badges seront calculés en team-wide. Le filtre xuidToGT ci-dessous
-	//    ne contient QUE les squad members (main + selected) → les badges qui
-	//    tombent sur un allié non-squad sont silencieusement ignorés (cohérent
-	//    avec la sémantique de la matrice scoreboard où il n'y a pas de
-	//    ligne pour ces joueurs).
+	// 3. Indexer par match les participants de l'ÉQUIPE ALLIÉE complète du main
+	//    (parité Python team_xuids dans compute_single_match_impact). On passe
+	//    tous ces alliés à analysis.ComputeMatchImpactFull → les badges sont
+	//    calculés en team-wide. Le filtre xuidToGT ci-dessous ne contient QUE
+	//    les squad members (main + selected) → les badges qui tombent sur un
+	//    allié non-squad sont silencieusement ignorés (cohérent avec la
+	//    sémantique de la matrice scoreboard où il n'y a pas de ligne pour ces
+	//    joueurs). Sans xuid du main, aucune équipe n'est attribuable.
 	allyByMatch := map[string][]domain.AllyParticipant{}
 	if mainXUID != "" {
-		allies, err := s.repo.LoadMainTeamParticipants(ctx, mainXUID, matchIDOrder)
-		if err != nil {
-			slog.WarnContext(ctx, "teammates_impact_load_team_failed",
-				"main_xuid", mainXUID, "err", err)
-		}
 		for _, a := range allies {
 			allyByMatch[a.MatchID] = append(allyByMatch[a.MatchID], a)
 		}

@@ -1731,10 +1731,13 @@ fr = "Le match est découpé en 10 tranches. Le trait plein montre à quel momen
 en = "The match is split into 10 slices. The solid line shows when kills happen, from the start (left) to the end (right). The shaded band shows how much the profile varies from match to match."
 
 # Phrase AJOUTEE a la precedente sur la seule surface Escouade, la seule qui superpose
-# une courbe agregee d'equipe. Separee et non dupliquee : le tronc commun reste unique.
+# des courbes de reference. Separee et non dupliquee : le tronc commun reste unique.
+# Deux courbes depuis le lot « intensite : equipe + lobby » (2026-09-18) : ÉQUIPE =
+# les allies du joueur principal (des 3 joueurs), LOBBY = tout le match, les deux
+# camps (des 1 joueur).
 [common.charts.intensity_tooltip_team]
-fr = "À partir de 3 joueurs, la courbe « Équipe » superposée montre le même profil pour l'escouade entière : au-dessus, le joueur est plus actif que le groupe sur cette tranche."
-en = 'From 3 players on, the overlaid "Team" curve shows the same profile for the whole squad: above it, the player is more active than the group on that slice.'
+fr = "Deux repères neutres se superposent : la courbe « Lobby » en pointillé montre le même profil pour tout le match (les deux camps) ; à partir de 3 joueurs, la courbe « Équipe » en trait fin montre celui de l'équipe alliée. Au-dessus d'un repère, le joueur est plus actif que cette population sur la tranche."
+en = 'Two neutral references are overlaid: the dashed "Lobby" curve shows the same profile for the whole match (both sides); from 3 players on, the thin "Team" curve shows the allied team. Above a reference, the player is more active than that population on the slice.'
 
 # Axes du profil « Intensité » (Escouade / Séries temporelles / Sessions). L'axe X
 # ne montre que 3 repères (début / milieu / fin du match) ; rangeSuffix complète la
