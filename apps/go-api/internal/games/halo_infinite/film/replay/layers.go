@@ -92,9 +92,12 @@ package replay
 
 import (
 	"strconv"
+	"strings"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // revisionDeLaPublication est la revision de la couche de PUBLICATION : `film/replay` ne hache
@@ -300,4 +303,46 @@ func (a *assemblage) poserLesCalquesProduits() {
 	if calques := calquesProduits(&a.doc, a.opt); len(calques) > 0 {
 		a.doc.Layers = calques
 	}
+}
+
+// RevisionsCourantesDesCouches rend, PAR FAMILLE, la revision que le binaire courant applique.
+//
+// # POURQUOI CE PAQUET L EXPORTE, ET POURQUOI C EST LE SEUL QUI PEUT
+//
+// La recuisson selective (lot 4.4.1) doit comparer les revisions LUES dans un artefact a celles
+// du binaire courant. Les quatre revisions de couche vivent sous `film/internal/`, donc
+// inaccessibles a `internal/replaybuild` : le compilateur l interdit, et c est la frontiere qui le
+// veut (ADR 0034, D-1). `film/replay` est la couche de PUBLICATION — elle les importe deja toutes
+// pour composer `coverage.decoder` — donc elle est le seul point ou cette table peut se lire sans
+// ouvrir la frontiere.
+//
+// LA CLE EST LE NOM DE FAMILLE, et le prefixe d une revision est ce nom suivi d un tiret
+// (`grammar-2026-09-15.42` -> famille `grammar`). Un appelant classe donc une valeur lue dans un
+// artefact sans connaitre les cinq noms : il coupe au premier tiret. C est la forme qui evite une
+// seconde table de prefixes chez le consommateur — la troisieme copie qu interdit la regle 6.
+//
+// LA FAMILLE DES FAITS S APPELLE `killsource`, et pas `facts` : c est la valeur de `facts.Rev`
+// qui le decide, et la table dit ce que les artefacts PORTENT, pas ce que l architecture nomme.
+func RevisionsCourantesDesCouches() map[string]string {
+	return map[string]string{
+		"source":      source.Rev,
+		"profile":     profile.Rev,
+		"grammar":     grammar.Rev,
+		"killsource":  facts.Rev,
+		"publication": revisionDeLaPublication,
+	}
+}
+
+// FamilleDeRevision rend la famille d une revision de couche telle qu un artefact la porte, ou
+// la chaine vide quand la valeur n a pas la forme attendue.
+//
+// UNE FONCTION ET PAS UN `strings.Cut` CHEZ L APPELANT : la forme d une revision est une
+// propriete de CE paquet (c est lui qui les compose), et deux lectures du meme prefixe
+// divergeraient au premier renommage.
+func FamilleDeRevision(revision string) string {
+	i := strings.IndexByte(revision, '-')
+	if i <= 0 {
+		return ""
+	}
+	return revision[:i]
 }
