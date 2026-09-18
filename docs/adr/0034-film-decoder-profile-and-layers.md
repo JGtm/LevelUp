@@ -1,8 +1,9 @@
 # ADR 0034 — Film decoder: an immutable profile per build, five layers, one gate to the bytes
 
-**Status**: Accepted (2026-09-13), amended at the M2 closure (2026-09-17) with the state reached,
-decision by decision. To be amended once more at the M4 closure of
-`.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, when the publication path is built.
+**Status**: Accepted (2026-09-13), amended at the M2 closure (2026-09-17), at the M3 closure
+(2026-09-17) and at the **M4 closure (2026-09-18)** with the state reached, decision by decision.
+M4 is the last milestone of `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`: the publication path is built,
+and what the effort leaves open is named in the M4 section rather than promised to a next one.
 
 **Branch**: `feat/decfilm-0C` (lot 0.C of that plan)
 
@@ -340,7 +341,9 @@ cannot be allowlisted.
 2. **The facade is `film/decfilm`, and it re-exports 163 symbols.** It carries, under one package
    name, the surface the outside consumers cited, which is what made the move under `internal/`
    feasible in one commit. The count is the point and it is written in its godoc: **a facade of
-   163 symbols is an alias, not a boundary — the reduction is M4 material.** Types cross as
+   163 symbols is an alias, not a boundary — the reduction is M4 material.** (Read at the M4
+   closure: still an alias, 166 symbols, and the reduction is **not retained** — user decision
+   V25 of 2026-09-18, a dated surface ratchet instead. See the M4 section.) Types cross as
    aliases, constants and variables as values, functions as one-line forwards whose signatures
    name the layer types, so a caller can circulate a value without being able to name it.
 3. **`film/revision` sits outside `film/internal/` with no reason left.** It was there to stay
@@ -518,7 +521,7 @@ exemptions for the game writer's own fallbacks.
 - ~~the registry status `presumee`~~ — **closed at lot 3.1.1** (2026-09-17): the profile table
   copies the catalog fingerprints, and the three cases are decided in one place;
 - the facade's surface — 163 symbols, an alias rather than a boundary, reduction measured and
-  referred to M4;
+  referred to M4 (**where it was not retained**: V25, ratchet instead — M4 section);
 - `film/revision` outside `film/internal/` — a pure move nobody's fingerprint sees;
 - ~~a film with an unknown key is not set aside~~ — **closed at lot 3.1.1** (D-4 above,
   correction 5 below);
@@ -716,12 +719,16 @@ rest on.
   no length measurement can separate them), the remedy is measured and costlier than the defect,
   and the candidate lot is written rather than started.
 - **The coverage counters of M3's scans** are logged and not published; they enter M4's single
-  schema rise 61 to 62, to be re-measured there against what the lots actually added.
+  schema rise 61 to 62, to be re-measured there against what the lots actually added. (Read at
+  the M4 closure: **one family of the three entered**, the deaths path; the other two wait for the
+  next `facts.Rev` signal — M4 section, D-6.)
 - **The facade's surface grew instead of shrinking**: **166** exported top-level declarations in
   `film/decfilm/decfilm.go` (163 at M2), and **245** distinct `replay.X` identifiers cited
   outside `film/` (the M2 section wrote 239, and the reproducible measure of that same set gave
   242 then). The reduction stays M4 material; what M4 adds first is a dated ratchet on both
-  numbers, because nothing counts them today.
+  numbers, because nothing counts them today. (Read at the M4 closure: the ratchet was added in
+  lot 4.1.1-a, the facade stayed at **166** and the companion reached **257** — and the reduction
+  itself is **not retained**, V25.)
 - **`film/revision` outside `film/internal/`** — unchanged, a pure move nobody's fingerprint
   sees, and `decfilm.Rev` still carries a name from the time there was one decoder revision
   rather than four. Both are M4 material, and neither is a defect of value.
@@ -733,6 +740,208 @@ rest on.
   archetype's blocker, and the `default` of every dispatch link counting the unknown.
 - **The persisted facts and the single published type** — M4 and past-M4 by decision,
   unchanged.
+
+## State reached at M4 (2026-09-18)
+
+Measured on the tree at the closure of milestone M4 of `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`
+(base `896a9ce04`, the integration carrying lots 4.1, 4.2, 4.4 with the equivalence references
+re-frozen — the code of M4 is complete, and M4 is the last milestone of the effort). Go paths are
+relative to `apps/go-api/internal/`. Same rule as the two sections above: the plan holds the lots,
+the gates and their numbers; this section holds what the tree shows, decision by decision, and
+**where a decision reads differently from the tree the tree wins and the difference is written
+here**.
+
+M4 built the publication path and closed no decision it had not opened. The lots and their merge
+shas: 4.2 (4.2.1, 4.2.2) and 4.4.2 `73a4dc580`, 4.1 (4.1.1, 4.1.2, 4.1.3) `f9ba456b2`, the
+equivalence references re-frozen `ab345f537`, 4.4.1 and M4-P4 `896a9ce04`. Lot 4.3 (one published
+type) is **not in M4**: the user deferred it past the effort (V16, option iii), and its two items
+stay `[!]` with that reference.
+
+**The number that frames the whole milestone: no decode revision rose.** `source.Rev`
+(`source-2026-09-16.2`), `profile.Rev` (`profile-2026-09-17.3`), `grammar.Rev`
+(`grammar-2026-09-15.42`) and `facts.Rev` (`killsource-2026-09-17.2`) are byte for byte the ones
+M3 closed on; only `SchemaVersion` moved, 61 to 62. So M4 **opens no killsource backlog** — the
+rule of D-6 is that a rise of `facts.Rev` opens it, and none happened — and every artifact of the
+park is stale for one reason only: its publication.
+
+### D-7 — Facts and publication are separate. **Reached.**
+
+`data/cache/film_facts/{slug}/<short8>.filmfacts.bin` exists, resolved through `PathResolver`
+(`domain/title/registry_film_facts.go`, the literal `film_facts` held by a ratchet). The name is
+not the one the plan wrote — `<short8>.facts.json` was already taken and means the **inverse**
+(what the *database* knows of the match, `replaybuild/facts_file.go`), so the distinction is
+written at the head of the resolver and pinned by a test.
+
+**The file has five length-prefixed sections** (a reader skips an unknown one): the scan inputs
+(the blob plus the four channels its caller used to keep — the "not transported" mechanism is
+deleted), the film identity, the fallback report **of the scan only**, the statborg, and the
+kill-source. That fourth section carries a field the brief had not listed and a consumer needed:
+the manifest's chunk clock, without which every Assault film replayed from facts would lose its
+arming layer.
+
+**The header is `replay.DecoderCoverage` verbatim, not a second block of revisions** — a second
+one would have been the third copy — plus two distinct numbers, `VersionCodecFaits` (the
+container) and `SchemaDesFaits` (the payload), and the cooking key (map module, axis widths,
+detected layout) verified in **both** directions by the same function as the input blob. It is
+**110 bytes**, so the "decode or re-read" decision is taken on 110 bytes and never on the megabyte
+of positions: the test proves it by truncating the file to its header. Freshness is all or nothing
+(codec, facts schema, the four layer revisions, cooking key); `build` and `registry` are **not**
+compared, because these are facts of the film, not of the binary.
+
+**Publication replays from the facts.** `replay.BuildFromFacts` is exported;
+`replay.BuildFromFilmAvecFaits` also returns the facts to persist and `BuildFromFilm` is a call
+that throws them away, so there is **one** scan stage in the source. The switch sits in
+`replaybuild.BuildBytes`, after `ResolveMapEntry` (the catalog entry serves both branches and
+validates the header) and before any film is loaded; what differs between the branches is one type
+(`entreesDeCuisson`), while assembling, catalog collection and serialization are **common**. The
+solo lock is unchanged and a ratchet holds that `replaybuild` neither takes nor releases it.
+Writing the facts is atomic, non-fatal and never silent. One sink for artifact bytes is now
+actually guarded: `replaybuild.TestBrancheDesFaitsTraverseLeMemePuits` demands that the callers of
+`writeArtifactBytes` be exactly the three of its dated allowlist and that none of the three switch
+functions call one (`archlint/no_second_artifact_sink_test.go`, which the plan cited, counts the
+wiring of the *notification* sink — the measure corrected the item).
+
+**The equality is proven, and the gain is measured rather than announced.** Criterion S8:
+`cmd/replay-equiv -deux-passes` plays both branches of the **same commit** per film (forced
+decode, then replay from the facts) and compares; it can read and write no reference, and
+`-deux-passes -update` is refused explicitly. Verdict on ten films: **10 artifacts identical to
+the byte, 0 divergent**, with one real gap everywhere — `killsource`, the deliberate loss of
+`Kill.paquet`, an unexported field that `digest.Of` hashes anyway. Durations, decode against
+replay-from-facts: 15.5 s / 163 ms, 46.7 s / 166 ms, 32.5 s / 326 ms, 39.1 s / 255 ms, 42.4 s /
+277 ms, 47.6 s / 281 ms, 12.7 s / 122 ms, 32.4 s / 214 ms, **2 min 37 / 355 ms**, 18.0 s / 134 ms
+— ratios of 95x to 442x, for facts files of 2.7 to 11.9 MB. The plan expected "seconds against
+15 s"; the measure is hundreds of milliseconds against 13 s to 2 min 37.
+
+### D-6 — One revision per thing that can change. **Reached for the layer, and `layers` is how.**
+
+`SchemaVersion` is **62** (`film/replay/document.go`), a single rise for the whole milestone, with
+its chronicle entry written in the commit that raised it. The document carries `layers` at its
+root: **47** cooked root fields are attributed to a producing layer, **8** are exempt with a dated
+reason each (`coverage`, which measures all layers at once; `layers` itself, which would be
+circular; the catalogs no revision hashes), and **16** carry a production guard, so the table says
+which layer produced a field and a closed guard means the field is absent from `layers` rather
+than silently empty. Measured on a real artifact: `000d5950` declares **36 layers of the 47**, and
+the 11 missing ones are exactly the guarded passes that did not run on a cooking without caller
+facts — cross-checked on `zoneStates`, where `layers[zoneStates]`, `coverage.zones` and the array
+itself all say the same thing.
+
+The milestone's other new block is `coverage.deathsPaths` (`walk` and `directScan`, each with
+`population` / `matched` / `published`): **six leaves**, present on **10 of the 17** corpus
+witnesses — exactly those where `KillsInput.Read` is true. It is one third of what M3 had retained
+for this schema rise: the grenade-scan counters and the position counters of lot 3.4.1 are **not**
+published, and the plan's closure triage says why (exporting the first would move `grammar.Rev`,
+hence `facts.Rev`, hence the backlog the user deferred; the second do not exist in production).
+
+The proof that the rise added and removed nothing else was taken twice. Field by field, without
+decoding: on the 8 contract fixtures, removing exactly `layers` and `coverage.deathsPaths` from
+the schema-62 document and setting `schemaVersion` back to 61 gives a JSON **identical** to the
+schema-61 one, 8 out of 8. And on the machine: `replay-corpus-gate` over the 17 witnesses,
+**17/17 `ok`, 0 loss, 0 change**, gains exclusively under `layers.*` and
+`coverage.deathsPaths.*`, verified leaf by leaf on the 34 artifacts the run kept.
+
+### D-8 — The Go / web contract. **Unchanged in its rules, extended by one reading.**
+
+`MIN_RENDERABLE_SCHEMA_VERSION` is still **27** and still pinned by test: no bump of this
+milestone removes a field promised to the client. The web reads the new table at the same
+boundary, which is **two** files rather than the one D11 of the plan named —
+`lib/replay/replayNormalize.ts` fills and lets through, and `lib/replay/replayDocumentSchema.ts`
+must declare the key in its `z.strictObject`, or `tsc -b` reddens and the badge would say
+`invalid` in production. "Has this layer been produced?" is answered in one place,
+`features/match-replay/model/calquePresent.ts`, with **three** states — produced, not produced,
+unknown (an artifact older than 62 declares nothing, and claiming either answer for it would be a
+lie). The admin badge gained one key per language and no fifth state: it names the **publication**
+layer and only it, because that layer's revision *is* `publication-<schemaVersion>` and
+`latestSchemaVersion` says the producer's — the comparison needs nothing transported. Naming the
+four decode layers would require carrying their current revisions to the client; that is written
+in the plan's triage as not retained, and the function's godoc says what it will never claim.
+
+### D-1 — Five layers, one dependency direction. **Reached; the facade settled by decision.**
+
+The facade `film/decfilm` re-exports **166** top-level exported declarations — the same number as
+at the M3 closure, and the preparation note's projection that "M4 adds to the facade" is
+**refuted by the measure**: the new doors of 4.1 and the two revision accessors of 4.4.1 were
+needed by `replaybuild`, which imports the publication layer directly, so the facade did not grow.
+What grew is the companion surface: **257** distinct `replay.X` identifiers cited outside `film/`,
+against 245 at the M3 closure, every step dated in the ratchet (245 at its posting, 246, 253 for
+the facts switch, 255 for the schema rise, 257 for the layer verdict).
+
+Both numbers are counted by a test since lot 4.1.1-a — `archlint/film_facade_surface_test.go`,
+with its counting method written and reproducible in one command, a per-family breakdown by
+destination package, an anti-mute floor, and equality rather than inequality so that it reddens in
+**both** directions. "A facade of 166 symbols is an alias, not a boundary" therefore stays true,
+and it is now measured rather than asserted in three hand-written comments.
+
+**Decision V25 (2026-09-18, the user's): leave both facades as they are, with a surface ratchet.**
+The reduction is **not retained** — neither the facade's 166 nor the companion's 257. The
+preparation note had already set aside the "lot 4.0" on four measured grounds (no item of M4
+depends on it, zero user-visible gain, incoherent with deferring 4.3, and the real weight is the
+companion, not the facade); the user's decision closes the question for the effort. What holds the
+line is the dated ratchet, and nothing else: a symbol more reddens, a symbol less reddens too.
+
+### D-4 — An unknown build fails loudly. **Unchanged by M4, and the facts path inherits it.**
+
+No lot of M4 touched the gate: `replay.CleDuFilm` is still the single door, both orchestrators
+still stop before reading a byte, and the counters are unchanged. **The facts path does not carry
+the gate, and it does not need to** — and the reason is worth writing, because "the gate is on the
+other branch" would look like a hole. `ecarterSiCleInconnue` runs on the decode branch only
+(`replaybuild/filmfacts_cuisson.go`, right after the film is loaded), since the key is read *in
+the film*. A facts file can therefore only exist for a film that passed the gate; and the day the
+profile table changes — the only way a known key becomes unknown — `profile.Rev` moves too, so
+every facts header goes stale (freshness is all or nothing) and every film is decoded again,
+through the gate. The invariant holds by construction rather than by a second copy of the check,
+which is what D-1 asks for. D-10 and D-10 bis are unchanged too: the fallback registry carries
+**99 entries across seven files**, and the scan-only half of the report is what the facts file
+persists (measured: **2** of the 18 firing sites are in the scan, 16 in the assembly, which is why
+persisting the post-assembly report would double-count `coverage.fallbacks`).
+
+### Lot 4.4.1 — selective re-cook. **Half delivered, half out of reach, and measured.**
+
+Delivered: `replaybuild.Digest` carries `Layers` (a fifth parser key), `Verdict(faitsPresents)`
+returns `a-jour` / `republier` / `redecoder`, `ArtifactVerdict` is the shape of the decision sites,
+`UpToDate()` becomes a view of the verdict, and `wouldDowngrade` refuses to overwrite an intact
+artifact with a candidate cooked under a stale layer. "A publication change does not re-decode"
+**is** the `republier` verdict; it falls back to `redecoder` when the facts are missing, and there
+is deliberately **no fourth state** ("I would republish if I had the facts") because two callers
+would translate it differently.
+
+Out of reach: **"a grammar change re-cooks only what depends on it."** The four revisions are
+compile-time constants posed together (`coverage_decoder.go`), so the moment `grammar.Rev` moves,
+every artifact carries a different `grammarRev` and "what depends on it" is the whole park — the
+behaviour of today. A per-layer fingerprint, the only thing that would make the sentence true, is
+forbidden outside `film/revision` by a ratchet with no exception table: that is a lot of its own,
+not an item of 4.4. The limit is written in the godoc of `Verdict`, the plan's case is statused
+`[~]` with it, and **the reformulation proposed in the preparation note §3.8 was never validated by
+the user** — so the case stays as written rather than being rephrased into something easier to
+tick.
+
+### M4-P4 — the closing republication pass
+
+`levelup backfill-replay --only-existing` now says what it did: among the artifacts it rebuilt it
+splits `republies` (decode intact, replayed from the facts) from `redecodes` (a stale layer, or no
+facts on disk), fed by the verdict above and counted **on success only**, their sum at most equal
+to `construits` — a film with no prior artifact is cooked for the first time and is neither. The
+domain of the pass is the artifact park, **87 artifacts**, not the 1 589 cached films. **The pass
+itself is a pilot gesture**, played on signal after the merge; its result is recorded in the plan's
+§5 and in the closing journal entry, not here.
+
+### What M4 leaves partial, named here so it is not re-discovered
+
+- **One published type** — lot 4.3, deferred past the effort by the user (V16, option iii): the
+  two twins stay in step through the shape fingerprint and `service/replayview/parity_test.go`, and
+  `X-Replay-Latest-Schema-Version` still carries the producer version beside a converted document.
+- **The facade's surface** — 166 and 257, not reduced and not to be reduced (V25); held by a dated
+  ratchet in both directions. `film/revision` still sits outside `film/internal/`, and
+  `decfilm.Rev` still carries a name from the time there was one decoder revision rather than four:
+  both are pure moves nobody's fingerprint sees, and neither is a defect of value.
+- **Two counter families M3 had retained for this schema rise** — the grenade-scan and the
+  position counters of 3.4.1 — are not published, and they now wait for the next `facts.Rev`
+  signal rather than for a schema.
+- **Selective re-cook by grammar layer** — out of reach by construction while the four revisions
+  are constants posed together (above).
+- **The regression M3 assumed** is unchanged and still written: `vehicles.tEnd/presents` and
+  `vehicles/par-end/destroyed`, on two witnesses.
+- **The killsource backlog** opened by M3's `facts.Rev` rise is untouched: V24 defers it to an
+  explicit user signal, at the earliest after M4, grouped with any later rise.
 
 ## Corrections to statements made elsewhere
 
