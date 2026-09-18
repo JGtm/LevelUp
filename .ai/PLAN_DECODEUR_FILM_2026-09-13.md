@@ -5746,7 +5746,7 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   et c'est bien ce que le code fait — mais l'effet sur les vieux builds est une PERTE mesuree, et
   le ratchet pose au meme commit ne garde rien contre cette variation (il compare la table au
   registre d'UN SEUL film). **Trois decisions attendent le pilote, ecrites au §5.**
-- [ ] **5.1.7-b — L'ETAT PAR DEFAUT DE `ti=40`** (D3 (5.1.7), decision du pilote ; tout se mesure sur la TETE `312d2e85b`, 5.1.7-a restant ecrit dans la branche) : la marche
+- [!] **5.1.7-b — L'ETAT PAR DEFAUT DE `ti=40`** (D3 (5.1.7), decision du pilote ; tout se mesure sur la TETE `312d2e85b`, 5.1.7-a restant ecrit dans la branche) : la marche
   d'image-cle de `ti=40` ne lance jamais sa boucle de composants (`n2` lu a 0,
   `consumeFullStateDefaultBlock` faux), et c'est la que les vies recensees perdent naissance et
   position. Lire l'ecrivain de l'etat par defaut de `ti=40` (chaine descripteur -> ecrivain),
@@ -5755,6 +5755,17 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   datees publiees == morts appariees de vies publiees, ratchet 0.A.3 regenere par sa porte (le
   bloquant de `ti=40` doit enfin etre NOMME). Les 16 composants `vehicle-*` sans grammaire : NON
   portes, sauf si l'un d'eux bloque l'etat par defaut — auquel cas il est nomme.
+  **CAUSE RACINE TROUVEE, HYPOTHESE DE L ITEM REFUTEE** (§5, 2026-09-18). `ti=40` est absent de
+  `defaultStateDeserByTI`, donc `consumeKeyframeDefaultState` consomme ZERO bit la ou le jeu en
+  ecrit 79 au minimum : le `R(32) n2` se lit 79 bits trop tot et la boucle de composants n est
+  jamais lancee. Le deserialiseur EXISTE (`consumeDefaultStateTI40`, cinq feuilles, bit-exact au
+  chemin nominal) ; il n est pas cable, par la regle ecrite de `default_state_arch.go`. Sonde d UNE
+  LIGNE : le bloquant de `ti=40` passe de `(aucun)` a **`i30 vehicle-auto-turret-triggers`** et le
+  ratchet 0.A.3 reste VERT. **MAIS la cuisson de production ne bouge pas d un bit** — `4f77afc1`
+  reste a `recensees=256 publiees=97`, `finDatee=3` : le calque des vehicules passe par des
+  balayages ANCRES, pas par la marche d etat complet. `97/256` a une AUTRE cause, non instruite.
+  Sonde RETIREE : l inscription dans la table est un choix de grammaire que `default_state_ti40.go`
+  laisse au superviseur, sous condition de mesurer la part de records a `bVar14 == 1`.
 
 
 
@@ -6151,6 +6162,69 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 | 2026-09-17 | 3.6.a | **D6 (3.6.a) — L'ÉTAPE `vehicles` DE `replay-equiv` BOUGE SUR NEUF FILMS, ET LE MOUVEMENT N'ATTEINT AUCUNE SORTIE PUBLIÉE.** Mesuré à la voie libre : sur `084a804d`, le digest de l'étape `vehicles` passe de `a78431ed…` à `fac28aa9…`. Trois contrôles. (1) DÉTERMINISME : deux exécutions de la tête rendent le même sha sur les 53 étapes — ce n'est pas un aléa. (2) IMPUTATION : le même film cuit avec le CODE DE LA BASE `492cb0923` (arbre extrait hors dépôt, même cache, mêmes références) rend **exactement** la référence figée `a78431ed…` — c'est donc bien le port de `ti=9`, et NON 3.3.1 (dont `grenades` rend le même sha à la base et à la tête). (3) PORTÉE : le document cuit base → tête est identique sur **tous ses chemins sauf un**, `/coverage/decoder/grammarRev` (diff structuré : 1 chemin sur 9 335 637 octets, taille identique des deux côtés) ; **aucune ligne de journal de balayage ne diffère** (`viesRecensees=180 publiees=97 …`, `episodes=74 vehiculesOccupes=45 …` identiques) ; le corpus gate classe 0 gain / 0 perte / 0 changement. Le mouvement est donc confiné à l'ENTRÉE de balayage `VehicleScan`, dans un champ que seul `digest` voit — il hache les champs NON EXPORTÉS, et `VehicleScan.Positions []grammar.BipedPosition` embarque précisément `componentDirs`, le struct non exporté que l'en-tête du paquet `digest` cite en exemple. **CE QUI N'EST PAS ÉTABLI, ET QUI EST DIT** : le champ exact n'est pas isolé — `digest` n'exporte aucun rendu, et l'isoler demanderait un instrument que ce lot n'a pas écrit. NON TRAITÉ : rien ne dépend de cette valeur aujourd'hui (aucune sortie ne la porte). Écarte au passage deux hypothèses testées et fausses : ce n'est PAS un effet de bord de 3.3.1 (`53ce4390` bouge sur `vehicles` sans bouger sur `grenades`), et ce n'est PAS la scission du maillon de dispatch (aucune étiquette `case` n'est dupliquée dans la chaîne — vérifié sur pièces, donc l'ordre des maillons ne décide de rien). | instrument d'isolation des entrées de balayage : exporter un rendu de `digest` (ou un mode `-out-dir` qui écrit la valeur et pas seulement son empreinte) rendrait ce genre d'écart lisible au champ près au lieu du seul sha. À porter le jour où une sortie dépendra de ces champs |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Lot 5.1.7-b — LA CAUSE DE `n2 = 0` EST TROUVEE, ET ELLE N EXPLIQUE PAS `97/256`, 2026-09-18
+
+#### LA CAUSE RACINE, LUE DANS LE DEPOT
+
+`consumeKeyframeDefaultState(br, ti)` ne consomme QUE si `ti` est dans `defaultStateDeserByTI`.
+**`ti=40` n y est PAS** — par une regle explicite de `default_state_arch.go` : « un archetype dont
+UNE largeur de feuille n est pas etablie statiquement n est PAS inscrit », et la feuille 4 de
+`ti=40` (le quaternion derriere la porte `bVar14`) depend de globaux de configuration runtime.
+
+Consequence mecanique : le jeu ecrit l etat par defaut de `ti=40` (`FUN_1410A5A74`, **79 bits au
+chemin minimal**, `VehicleDefaultStateMinBits`), le lecteur en consomme **ZERO**, et le `R(32) n2`
+qui suit se lit 79 bits trop tot. Il rend une valeur quelconque, `<= 0` en pratique,
+`consumeFullStateDefaultBlock` rend faux, **et la boucle de composants n est jamais lancee**.
+C est exactement la signature mesuree : fermeture 5/1140 et colonne « bloquant » VIDE sur un
+archetype de 48 composants dont 16 non portes.
+
+**LE DESERIALISEUR EXISTE DEJA** : `consumeDefaultStateTI40` (`default_state_ti40.go`), cinq
+feuilles relevees, bit-exact sur le chemin nominal (`bVar14 == 0`), la feuille 4 modelisee absente
+(`vehicleMediaFrameBits = 0`) avec son bit de porte LU. Il n est simplement pas cable.
+
+#### LA SONDE : LE BLOQUANT DE `ti=40` EST ENFIN NOMME
+
+Une ligne (`40: consumeDefaultStateTI40` dans la table), puis mesure sur `4f77afc1` :
+
+| | avant | avec la sonde |
+|---|---|---|
+| `KeyframeClosureInventaire` `ti=40` | 5/1140, bloquant **(aucun)** | 5/1140, bloquant **`i30 vehicle-auto-turret-triggers-component`** |
+| ratchet 0.A.3, sept bobines | — | **VERT**, aucune ligne ne descend |
+
+La boucle TOURNE : elle atteint `i30`, le premier des seize `vehicle-*` non portes. La fermeture
+ne monte pas — elle ne peut pas monter tant que ces seize ne sont pas portes — mais **le golden
+0.A.3 cesse d etre muet sur `ti=40`**, ce qui etait la demande.
+
+#### CE QUE LA MESURE REFUTE
+
+L hypothese de l item — « c est la que les vies recensees perdent naissance et position » — est
+**FAUSSE**. Cuisson de production sur `4f77afc1` avec la sonde :
+
+```
+recensees=256 publiees=97 · MORTS lues=11 appariees=11 · FINS datee=3 film=1 inconnue=93
+```
+
+**Identique au bit pres a la tete sans la sonde.** Le calque des vehicules ne passe PAS par la
+marche d etat complet : son recensement (`ScanWorldObjectKeyframes`) et ses creations
+(`ScanVehicleCreationsForBand`) sont des balayages ANCRES. Cabler l etat par defaut de `ti=40`
+repare la FERMETURE D IMAGE-CLE et rien d autre. `97/256` a une autre cause, non instruite.
+
+**LA SONDE EST RETIREE** : l inscription dans `defaultStateDeserByTI` est un choix de grammaire que
+`default_state_ti40.go` laisse explicitement au superviseur, sous condition de MESURER la part de
+records a `bVar14 == 1` (« elle se mesure, elle ne se suppose pas »). Le bloquant stable a `i30`
+est un signal favorable — une largeur fausse sur une part des records ne bloquerait pas toujours au
+meme rang — mais ce n est pas la mesure demandee, et je ne l ai pas faite.
+
+| Date | Point | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-18 | 5.1.7-b | cause racine relue sur pieces (`keyframe_record_walk.go:270`, `default_state_arch.go:77`) | `ti=40` hors table -> 0 bit -> `n2` lu 79 bits trop tot -> boucle jamais lancee |
+| 2026-09-18 | 5.1.7-b | sonde : `KeyframeClosureInventaire` sur `4f77afc1` | bloquant `(aucun)` -> **`i30 vehicle-auto-turret-triggers-component`** |
+| 2026-09-18 | 5.1.7-b | sonde : ratchet 0.A.3 | **VERT**, 0 ligne en baisse |
+| 2026-09-18 | 5.1.7-b | sonde : cuisson de production `4f77afc1` | `256/97`, `finDatee=3` — **INCHANGE**. L hypothese de l item est refutee |
+| 2026-09-18 | dette | les trois commentaires citant le garde-rail supprime | purges (`component_param4.go`, `components_navpoint_test.go`, et UNE ligne « remplace le 2026-09-18 » dans `rev_chronique.go`, sans reecrire le passe) |
+| 2026-09-18 | revisions | `grammar_rev.golden` | `component_param4.go` est un fichier de PRODUCTION : l empreinte bouge. **Meme rang** `grammar-2026-09-18.2` (sortie inchangee), golden RE-FIGE par sa porte. `facts.Rev` intacte — elle hache la VALEUR de `grammar.Rev`, qui ne bouge pas |
+| 2026-09-18 | gates | `gofmt` · `go build` · les 7 chemins · `golangci --new-from-rev=2f04bc7b8` | 0 fichier, `BUILD_OK`, tout vert, **0 issues** |
 
 ### Lot 5.1.7 — le record NEW lu chez l ecrivain, et le RATCHET PAR BUILD, 2026-09-18
 

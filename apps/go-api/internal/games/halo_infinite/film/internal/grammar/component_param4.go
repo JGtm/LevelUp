@@ -59,10 +59,11 @@ package grammar
 // paramByComponent N EST PLUS UNE SOURCE : c est un RATCHET DE COHERENCE, et le seul appelant
 // qui la lit encore est celui qui n a pas d archetype sous la main (cf. [paramMesureDuComposant]).
 //
-// Le garde-rail `TestParamByComponentEgaleLeNiveauDuRegistre` compare CHAQUE entree au `level`
-// de `testdata/ecs_table.tsv` — la colonne que la porte `-update-ecs-table-level` regenere
-// depuis le registre d un film. Une entree qui s ecarte du film rougit ; une valeur mesuree a la
-// main ne peut donc plus diverger de ce que le film ecrit.
+// DEUX garde-rails la tiennent (`param4_par_build_ratchet_test.go`, 2026-09-18) :
+// `TestParam4TableEgaleLExecutable` compare chaque entree a la constante que `vtable[0]` du
+// descripteur rend dans l executable COURANT, et `TestParam4RegistreParBuild` compare le registre
+// de SEPT mini-bobines — une par cle de profil — a cette meme constante, aux ecarts connus et
+// dates pres. Une valeur ecrite a la main ne peut donc diverger ni de l executable, ni d un build.
 //
 // Provenance des vingt valeurs : capture live `param4` sur `ti=35` (464 010 mesures, aucune
 // valeur double pour un composant donne) pour les quinze premieres ; slot `+0x10` du descripteur
