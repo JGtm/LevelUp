@@ -4473,6 +4473,9 @@ export interface components {
             /** Format: int64 */
             db_total_bytes: number;
             disk: components["schemas"]["ResourceDisk"];
+            film_facts?: components["schemas"]["ResourceFilmFacts"][] | null;
+            /** Format: int64 */
+            film_facts_total_bytes?: number;
             generated_at: string;
             pool_stats?: {
                 [key: string]: unknown;
@@ -10475,6 +10478,16 @@ export interface components {
             status: string;
             /** Format: int64 */
             total_bytes: number;
+        };
+        ResourceFilmFacts: {
+            /** Format: int64 */
+            files: number;
+            newest_at?: string;
+            oldest_at?: string;
+            path: string;
+            /** Format: int64 */
+            size_bytes: number;
+            title_slug: string;
         };
         ResourceRuntime: {
             /** Format: int64 */

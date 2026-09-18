@@ -66,12 +66,12 @@ verdict : nominal
 1202 tir(s) publie(s) · 848 avec un cap de visee lisible · 1202 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
-0 rattache(s) / 0 disponible(s) = aucune donnee
-rejets : slot introuvable=0 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
-somme de controle : rattaches + rejets = disponibles -> 0 = 0 (equilibre : true)
-verdict : aucune donnée
-par source : projectile=0 (aucun pont) · biped=0 (le pont a servi)
-par type : aucun
+100 rattache(s) / 105 disponible(s) = 95.2 %
+rejets : slot introuvable=5 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+somme de controle : rattaches + rejets = disponibles -> 105 = 105 (equilibre : true)
+verdict : nominal
+par source : projectile=81 (aucun pont) · biped=19 (le pont a servi)
+par type : Dynamo=5 · Frag=76 · Plasma=16 · Spike=3
 
 ## PROJECTILES — le dernier point est la DERNIERE POSITION REPLIQUEE, jamais un impact
 169 trajectoire(s) · 2073 point(s) de grille

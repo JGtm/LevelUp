@@ -252,7 +252,7 @@ type e191Ctx struct {
 // e191Contexte assemble le contexte d un film : les vies de poseur (comme la production), les
 // MORTS ECRITES par slot (via le registre d identite, seul producteur de liens) et les PRISES
 // ECRITES par slot (`equipmentChanges` `taken`).
-func e191Contexte(g *goldenInputs) e191Ctx {
+func e191Contexte(g *FilmFacts) e191Ctx {
 	sorted := append([]grammar.BipedPosition(nil), g.Positions...)
 	sort.SliceStable(sorted, func(i, j int) bool {
 		return sorted[i].TimestampUS < sorted[j].TimestampUS
@@ -281,7 +281,7 @@ func e191Contexte(g *goldenInputs) e191Ctx {
 // e191ViesDuRegistre construit le registre d identite EXACTEMENT comme `BuildFromPositions` (les
 // memes entrees, la meme horloge) et rend ses vies : c est lui, et lui seul, qui apparie le fil
 // des morts aux slots (lots 1.6 et 1.8).
-func e191ViesDuRegistre(g *goldenInputs, sorted []grammar.BipedPosition) []lifeSpan {
+func e191ViesDuRegistre(g *FilmFacts, sorted []grammar.BipedPosition) []lifeSpan {
 	if len(sorted) == 0 {
 		return nil
 	}

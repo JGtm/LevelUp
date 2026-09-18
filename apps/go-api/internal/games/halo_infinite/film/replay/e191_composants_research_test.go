@@ -173,7 +173,7 @@ func e191ComposantsDUnFilm(t *testing.T, root string, f e191Film) (map[string]in
 
 // e191Creations balaie les records de CREATION ti=37 du film, aux memes largeurs MPP que la
 // chaine de production vient de mesurer — sans elles, aucune identite ne se resout.
-func e191Creations(dir string, e profile.MapQuantEntry, g *goldenInputs,
+func e191Creations(dir string, e profile.MapQuantEntry, g *FilmFacts,
 ) ([]types.EquipmentCreation, types.EquipmentCreationStats, bool) {
 	fc, _, err := grammar.ContexteDeFilm(dir)
 	if err != nil {
