@@ -5463,15 +5463,15 @@ pilote, nommés pour qu'aucune ne se perde.
 - [x] **Corpus gate final de l'intégration** — geste du pilote : 17 témoins contre `a5d15e634`, FAIT le 2026-09-18 sur 896a9ce04 : équivalence 20 films **20 identiques** (références re-figées ab345f537) ; corpus gate `--base=a5d15e634` **17/17 `ok`, 61 -> 62 partout, 0 perte, 0 changement**, gains confinés à `layers.*` et `coverage.deathsPaths.*` (2 ou 9 par témoin) ; S8 de contrôle sur 000d5950, 11de8353, a349fea8 : **3/3 identiques à l octet**, a349fea8 rejoué en 339 ms contre 2 min 38 de décodage (seul écart d étape : `killsource`, `Kill.paquet` non exporté, connu). Rapports : scratchpad `equiv_cloture_m4.log`, `corpus_final_m4.{txt,json}`, `s8_cloture_m4.log`.
       schéma 61 -> 62, et le contrôle que les gains restent confinés à `layers.*` et
       `coverage.deathsPaths.*`. À consigner au §5.
-- [ ] **Passe de republication M4-P4** — geste du pilote, sur signal :
+- [x] **Passe de republication M4-P4** — geste du pilote, sur signal : FAITE le 2026-09-18 (GO utilisateur) : `levelup backfill-replay --only-existing`, code c0b65b371 (`LEVELUP_REPO_ROOT` = checkout principal), **87 construits, 0 republié, 87 redécodés** (le checkout principal n avait aucun fichier de faits : première passe, qui les écrit — la prochaine sera une republication), 0 erreur, 0 carte hors catalogue, **27 min 47 s**, pic mémoire 784 MiB (3,30 GiB à la recuisson de M3) ; 87/87 artefacts au schéma 62 avec `layers` et les révisions de M4 ; 87 fichiers de faits écrits sous `data/cache/film_facts/halo_infinite/`.
       `levelup backfill-replay --only-existing` sur les **87 artefacts**, ventilation
       `republies` / `redecodes`, empreinte de chaque artefact republié, durée totale. À consigner
       au §5.
-- [ ] **Entrée de journal de clôture** — geste du pilote : brouillon rédigé hors dépôt
+- [x] **Entrée de journal de clôture** — geste du pilote : brouillon rédigé hors dépôt FAITE le 2026-09-18 : entrée en tête de `.ai/thought_log.md`, ce commit.
       (`scratchpad/tl_cloture_m4.txt`), deux placeholders à remplir (`__CORPUS__`,
       `__REPUBLICATION__`). C'est l'entrée de clôture DU CHANTIER, pas seulement du jalon.
-- [ ] **Fusion dans `feat/v75`** (V3) — geste du pilote, CI verte au niveau job, puis tag.
-- [ ] **Critères S1 à S9 re-vérifiés et consignés au §5** — geste du pilote, avec le gate final :
+- [x] **Fusion dans `feat/v75`** (V3) — geste du pilote, CI verte au niveau job, puis tag. FAITE le 2026-09-18 : code de M4 fusionné dans `origin/feat/v75` = b3d306f61 (97 commits, 0 conflit, batterie complète 185 paquets `ok`, CI verte) ; les commits de clôture (S1-S9, journal, cases) suivent par une dernière fusion sans code. Pas de tag : la branche `feat/v75` reste en mode branche unique jusqu à la release v7.5.0 (décision utilisateur du 08/08).
+- [x] **Critères S1 à S9 re-vérifiés et consignés au §5** — geste du pilote, avec le gate final : FAIT le 2026-09-18 sur 896a9ce04, sans décodage : **S1** `archlint` (variables de paquet, verrou de décodage) `ok` · **S2** `-race` sur `film/...`, `TestDeuxFilmsEnParallele` : `grammar` `ok` 34 s, aucune course · **S5** goldens d assemblage `ok` · **S6** fixtures de contrat, forme et zod : Go `ok`, vitest **721 fichiers, 7 762 tests passés** (1 fichier et 17 tests skippés, tous nommés) · **S7** clé inconnue : `killcollector` et `replaybuild` `ok` · **S9** ratchet `KeyframeClosure` `ok` · **S3 / S4 / S8** = le gate final ci-dessus.
       **S8 est déjà consigné** (4.1.3, 10 artefacts identiques à l'octet, durées mesurées) et
       S3 / S4 sont exactement ce que le gate final rejoue ; S1, S2, S5, S6, S7 et S9 sont des
       commandes SANS décodage, à rejouer en un bloc — ce lot-document ne les a pas lancées
