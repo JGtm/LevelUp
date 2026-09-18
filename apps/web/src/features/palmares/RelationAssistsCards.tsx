@@ -18,12 +18,9 @@
 import { Fragment } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
-import {
-  ASSIST_GIVEN_TOKEN,
-  ASSIST_RECEIVED_TOKEN,
-  AssistButterflyBar,
-} from '@/features/_shared/assists/AssistButterflyBar'
+import { AssistButterflyBar } from '@/features/_shared/assists/AssistButterflyBar'
 import { AssistExchangeSummary } from '@/features/_shared/assists/AssistExchangeSummary'
+import { ASSIST_GIVEN_TOKEN, ASSIST_RECEIVED_TOKEN } from '@/features/_shared/assists/AssistTierBar'
 import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
 import { tokenCssVar } from '@/lib/accessibility'
 import { winRateColor } from '@/lib/colors/outcomePalette'

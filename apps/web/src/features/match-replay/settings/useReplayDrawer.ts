@@ -45,6 +45,7 @@ export interface ReplayDrawerOptions {
     placements: { drawable: boolean; unnamed: boolean; dropped: boolean }
     weaponPads: boolean
     groundWeapons: boolean
+    modeObjectives: boolean
     flagCarries: boolean
     vipCrown: boolean
     skullCarrier: boolean
@@ -128,6 +129,11 @@ export function useReplayDrawer(o: ReplayDrawerOptions): ReplayDrawer {
         onToggle: s.toggleGroundWeapons,
         showSpecialOnly: s.showGroundWeaponsSpecialOnly,
         onToggleSpecialOnly: s.toggleGroundWeaponsSpecialOnly,
+      },
+      modeObjectives: {
+        available: available.modeObjectives,
+        show: s.showModeObjectives,
+        onToggle: s.toggleModeObjectives,
       },
       flagCarries: {
         available: available.flagCarries,

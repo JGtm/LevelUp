@@ -1046,6 +1046,19 @@ export interface RecentMatchItem {
   /** Un artefact de rejeu 2D existe pour ce match : la tuile porte le lien vers la page
    *  de rejeu (résolu côté back en un listing de dossier par requête, cf. Explorer). */
   has_replay?: boolean
+  /** Part des frags du joueur assistés par un coéquipier sur CE match, par tranche de
+   *  part de dégâts (le sens « reçues » de la page Relations, sur un seul match). Absent
+   *  quand le match n'a aucune ligne mesurée pour le joueur : la tuile n'affiche rien —
+   *  jamais un « 0 » fabriqué pour une mesure absente. */
+  assisted_frags?: MatchAssistedFrags | null
+}
+
+/** Miroir de `domain.MatchAssistedFrags` (Go). /pages/home n'a pas encore de schéma
+ *  OpenAPI dérivé (TODO Sprint 32 du contrat) : ce DTO est écrit à la main, comme
+ *  RecentMatchItem, sur l'AssistTiers généré (route Relations). */
+export interface MatchAssistedFrags {
+  frags_measured: number
+  received: AssistTiers
 }
 
 export type MatchCitationSnippet = components['schemas']['MatchCitationSnippet']

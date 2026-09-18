@@ -3,11 +3,12 @@
  *
  * Un panneau par joueur : médiane des parts de frags par phase + enveloppe
  * interquartile P25–P75 (irrégularité). Les PANNEAUX consomment
- * `intensity_profile.rows` par gamertag (jamais la ligne agrégée `all`),
- * couleurs `colorByPlayer`, titres de panneaux = gamertags. À partir de
- * `MIN_PLAYERS_FOR_TEAM_CURVE` joueurs, la ligne `all` — et elle seule — sert de
- * courbe de référence d'ÉQUIPE superposée à chaque panneau. Le layout
- * multi-grilles + l'agrégation vivent dans le builder
+ * `intensity_profile.rows` par gamertag (jamais les lignes agrégées `team` /
+ * `lobby`), couleurs `colorByPlayer`, titres de panneaux = gamertags. Deux
+ * courbes de référence neutres se superposent à chaque panneau : LOBBY (tout le
+ * match, dès 1 panneau — « le match était-il intense en général ? ») et ÉQUIPE
+ * (alliés du joueur principal, à partir de `MIN_PLAYERS_FOR_TEAM_CURVE`
+ * joueurs). Le layout multi-grilles + l'agrégation vivent dans le builder
  * `charts/squadIntensityProfileChart` (échelle Y partagée, repère 10 %).
  */
 import { useCallback, useMemo } from 'react'
@@ -20,8 +21,9 @@ import type { SquadIntensityProfile } from '@/lib/api/types'
 import {
   buildSquadIntensityProfileOption,
   intensityAxisLabels,
+  isIntensityOverlayKey,
+  type IntensityOverlay,
   type IntensityPanelInput,
-  type IntensityTeamOverlay,
 } from './charts/squadIntensityProfileChart'
 
 /**
@@ -35,13 +37,15 @@ interface SquadIntensityProfileChartProps {
   title: string
   /** Sous-titre sous le titre de la carte. */
   subtitle: string
-  /** Texte du tooltip d'aide (courbe / zone d'irrégularité / repère / équipe). */
+  /** Texte du tooltip d'aide (courbe / zone d'irrégularité / repère / équipe / lobby). */
   tooltip: string
   medianLabel: string
   envelopeLabel: string
   refLabel: string
-  /** Libellé de la courbe agrégée d'équipe (3 joueurs et plus). */
+  /** Libellé de la courbe de référence ÉQUIPE (3 joueurs et plus). */
   teamLabel: string
+  /** Libellé de la courbe de référence LOBBY (dès 1 joueur). */
+  lobbyLabel: string
   emptyMessage: string
   profile: SquadIntensityProfile
   /** gamertag → couleur hex résolue depuis les semantic tokens. */
@@ -65,6 +69,7 @@ export function SquadIntensityProfileChart({
   envelopeLabel,
   refLabel,
   teamLabel,
+  lobbyLabel,
   emptyMessage,
   profile,
   colorByPlayer,
@@ -75,11 +80,11 @@ export function SquadIntensityProfileChart({
     const order =
       playerOrder && playerOrder.length > 0
         ? playerOrder
-        : profile.options.filter((o) => o.key !== 'all').map((o) => o.key)
+        : profile.options.filter((o) => !isIntensityOverlayKey(o.key)).map((o) => o.key)
     const seen = new Set<string>()
     const out: IntensityPanelInput[] = []
     for (const key of order) {
-      if (key === 'all' || seen.has(key)) continue
+      if (isIntensityOverlayKey(key) || seen.has(key)) continue
       seen.add(key)
       const rows = profile.rows[key]
       if (!rows || !hasExploitableMatch(rows)) continue
@@ -100,15 +105,23 @@ export function SquadIntensityProfileChart({
     [panels],
   )
 
-  // Courbe d'équipe (3 joueurs et plus) : la ligne agrégée `all` du payload porte,
-  // pour chaque match, les frags de TOUTE l'escouade — c'est la seule population
-  // « équipe » disponible, et elle est agrégée par le même helper que les joueurs.
-  const teamOverlay = useMemo<IntensityTeamOverlay | undefined>(() => {
-    if (panels.length < MIN_PLAYERS_FOR_TEAM_CURVE) return undefined
-    const allRows = profile.rows['all']
-    if (!allRows || !hasExploitableMatch(allRows)) return undefined
-    return { label: teamLabel, rows: allRows }
-  }, [panels.length, profile.rows, teamLabel])
+  // Courbes de référence : `team` (alliés du joueur principal par match, 3 joueurs
+  // et plus) et `lobby` (tout le match, dès 1 panneau). Chaque ligne agrégée du
+  // payload porte, par match, les frags de toute la population visée ; elle est
+  // agrégée par le même helper que les joueurs. Une ligne absente ou sans frag
+  // n'est pas montée (aucune courbe plate).
+  const overlays = useMemo<IntensityOverlay[]>(() => {
+    const out: IntensityOverlay[] = []
+    const teamRows = profile.rows['team']
+    if (panels.length >= MIN_PLAYERS_FOR_TEAM_CURVE && teamRows && hasExploitableMatch(teamRows)) {
+      out.push({ key: 'team', label: teamLabel, rows: teamRows })
+    }
+    const lobbyRows = profile.rows['lobby']
+    if (panels.length >= 1 && lobbyRows && hasExploitableMatch(lobbyRows)) {
+      out.push({ key: 'lobby', label: lobbyLabel, rows: lobbyRows })
+    }
+    return out
+  }, [panels.length, profile.rows, teamLabel, lobbyLabel])
 
   const locale = useAppShellStore((s) => s.locale)
   const axisLabels = intensityAxisLabels(locale)
@@ -120,9 +133,9 @@ export function SquadIntensityProfileChart({
         envelopeLabel,
         refLabel,
         axisLabels,
-        teamOverlay,
+        overlays,
       }),
-    [panels, medianLabel, envelopeLabel, refLabel, axisLabels, teamOverlay],
+    [panels, medianLabel, envelopeLabel, refLabel, axisLabels, overlays],
   )
 
   const rowsCount = panels.length <= 1 ? 1 : Math.ceil(panels.length / 2)

@@ -12,6 +12,7 @@ import {
   ReplaySettingsDrawer,
   type ReplayGroundWeaponControls,
   type ReplayHeatmapControls,
+  type ReplayModeObjectivesControls,
   type ReplayPlacementControls,
   type ReplayFlagControls,
   type ReplayWeaponPadControls,
@@ -51,6 +52,12 @@ function makeGroundWeapons(
 }
 
 function makeFlagCarries(over: Partial<ReplayFlagControls> = {}): ReplayFlagControls {
+  return { available: true, show: true, onToggle: vi.fn(), ...over }
+}
+
+function makeModeObjectives(
+  over: Partial<ReplayModeObjectivesControls> = {},
+): ReplayModeObjectivesControls {
   return { available: true, show: true, onToggle: vi.fn(), ...over }
 }
 
@@ -111,6 +118,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       placements={makePlacements()}
       weaponPads={makeWeaponPads()}
       groundWeapons={makeGroundWeapons()}
+      modeObjectives={makeModeObjectives()}
       flagCarries={makeFlagCarries()}
       vipCrown={makeFlagCarries()}
       skullCarrier={makeFlagCarries()}
@@ -265,6 +273,55 @@ describe('ReplaySettingsDrawer — emplacements d arme', () => {
     fireEvent.click(btn)
     expect(onToggle).toHaveBeenCalledTimes(1)
     expect(onToggleAim).not.toHaveBeenCalled()
+  })
+})
+
+describe('ReplaySettingsDrawer — objectifs du mode (2026-09-18)', () => {
+  /** Les objets PORTÉS tous indisponibles : ce qu'un film sans drapeau, VIP, crâne ni bombe publie. */
+  const sansObjetsPortes = () => ({
+    flagCarries: makeFlagCarries({ available: false }),
+    vipCrown: makeFlagCarries({ available: false }),
+    skullCarrier: makeFlagCarries({ available: false }),
+    bombCarrier: makeFlagCarries({ available: false }),
+  })
+
+  it('bascule Objectifs du mode : reflète son état et appelle SON callback, jamais les drapeaux', () => {
+    const onToggle = vi.fn()
+    const onToggleFlags = vi.fn()
+    renderDrawer({
+      modeObjectives: makeModeObjectives({ show: false, onToggle }),
+      flagCarries: makeFlagCarries({ onToggle: onToggleFlags }),
+    })
+    const btn = screen.getByRole('switch', { name: 'Objectifs du mode' })
+    expect(btn).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(btn)
+    expect(onToggle).toHaveBeenCalledTimes(1)
+    expect(onToggleFlags).not.toHaveBeenCalled()
+  })
+
+  it('elle ouvre le groupe Objectifs, EN PREMIER, avant les drapeaux', () => {
+    renderDrawer()
+    const titre = screen.getByText('Objectifs')
+    const groupe = titre.parentElement
+    expect(groupe).not.toBeNull()
+    const bascules = Array.from(groupe!.querySelectorAll('[role="switch"]')).map((b) =>
+      b.getAttribute('aria-label') ?? b.textContent,
+    )
+    expect(bascules[0]).toContain('Objectifs du mode')
+    expect(bascules.findIndex((n) => n?.includes('Drapeaux'))).toBeGreaterThan(0)
+  })
+
+  it('le groupe Objectifs existe même sans drapeau, VIP, crâne ni bombe : le terrain de l enjeu suffit', () => {
+    renderDrawer(sansObjetsPortes())
+    expect(screen.getByText('Objectifs')).toBeTruthy()
+    expect(screen.getByRole('switch', { name: 'Objectifs du mode' })).toBeTruthy()
+    expect(screen.queryByRole('switch', { name: 'Drapeaux' })).toBeNull()
+  })
+
+  it('film sans objectif de mode ni objet porté : ni la bascule, ni le titre du groupe', () => {
+    renderDrawer({ ...sansObjetsPortes(), modeObjectives: makeModeObjectives({ available: false }) })
+    expect(screen.queryByRole('switch', { name: 'Objectifs du mode' })).toBeNull()
+    expect(screen.queryByText('Objectifs')).toBeNull()
   })
 })
 

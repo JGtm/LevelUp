@@ -5,6 +5,7 @@ import type { RelationAssists } from '@/lib/api/types'
 import {
   assistSegments,
   assistShare,
+  assistShareSegments,
   assistSortValue,
   assistVolumeLengthPct,
   assistVolumeMax,
@@ -58,6 +59,24 @@ describe('assistExchange', () => {
   it("ne dessine rien sans assistance ou sans borne", () => {
     expect(assistSegments({ total: 0, low: 0, mid: 0, high: 0 }, 10)).toEqual([])
     expect(assistSegments({ total: 1, low: 1, mid: 0, high: 0 }, 0)).toEqual([])
+  })
+
+  it("donne à chaque segment de PART sa largeur count / frags, bornée à 100 %", () => {
+    // 7 des 12 frags assistés : 2 / 3 / 1 par tranche, 1 sans part mesurée (non dessinée).
+    const segs = assistShareSegments({ total: 7, low: 2, mid: 3, high: 1 }, 12)
+    expect(segs.map((s) => s.tier)).toEqual(['low', 'mid', 'high'])
+    expect(segs[0].widthPct).toBeCloseTo((2 / 12) * 100)
+    expect(segs[1].widthPct).toBeCloseTo((3 / 12) * 100)
+    expect(segs[2].widthPct).toBeCloseTo((1 / 12) * 100)
+    // Mesures non plafonnées : plus d'assistances que de frags → la barre s'arrête à 100 %.
+    const full = assistShareSegments({ total: 6, low: 0, mid: 0, high: 6 }, 3)
+    expect(full).toHaveLength(1)
+    expect(full[0].widthPct).toBe(100)
+  })
+
+  it("ne dessine aucune part sans frag mesuré ni sans assistance", () => {
+    expect(assistShareSegments({ total: 2, low: 1, mid: 1, high: 0 }, 0)).toEqual([])
+    expect(assistShareSegments({ total: 0, low: 0, mid: 0, high: 0 }, 9)).toEqual([])
   })
 
   it('trie sur les assistances échangées, non mesuré en undefined', () => {

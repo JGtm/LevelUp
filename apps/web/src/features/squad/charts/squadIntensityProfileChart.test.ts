@@ -3,13 +3,15 @@
  *
  * Couvre : layout des grilles (N=1 pleine largeur, 2/3/4 → 2 colonnes), échelle
  * Y partagée entre panneaux, panneau absent si aucune manche exploitable, médiane
- * seule (pas d'enveloppe) sous MIN_MATCHES_FOR_ENVELOPE manches.
+ * seule (pas d'enveloppe) sous MIN_MATCHES_FOR_ENVELOPE manches, courbes de
+ * référence équipe / lobby (styles, ordre du tooltip, borne Y).
  */
 import { describe, it, expect } from 'vitest'
 
 import {
   buildSquadIntensityProfileOption,
   computeGrids,
+  type IntensityOverlay,
   type IntensityPanelInput,
 } from './squadIntensityProfileChart'
 
@@ -181,74 +183,118 @@ describe('buildSquadIntensityProfileOption', () => {
   })
 })
 
-describe('buildSquadIntensityProfileOption — courbe agrégée d équipe', () => {
-  const TEAM = { label: 'Équipe', rows: rows(8, 5) }
+describe('buildSquadIntensityProfileOption — courbes de référence équipe / lobby', () => {
+  const TEAM: IntensityOverlay = { key: 'team', label: 'Équipe', rows: rows(8, 5) }
+  const LOBBY: IntensityOverlay = { key: 'lobby', label: 'Lobby', rows: rows(8, 7) }
+  const THREE = [panel('A', 5), panel('B', 5), panel('C', 5)]
 
-  it('teamOverlay absent : rendu inchangé (aucune série team)', () => {
-    const opt = buildSquadIntensityProfileOption({
-      panels: [panel('A', 5), panel('B', 5), panel('C', 5)],
-      ...OPTS,
-    })
-    expect(seriesIds(opt).some((id) => id.startsWith('team-'))).toBe(false)
+  /** Séries de référence (team-* / lobby-*) avec leur style. */
+  function overlaySeries(opt: ReturnType<typeof buildSquadIntensityProfileOption>) {
+    return (
+      opt.series as Array<{
+        id?: string
+        name?: string
+        xAxisIndex?: number
+        data?: number[]
+        lineStyle?: { type?: string; width?: number; opacity?: number }
+      }>
+    ).filter((s) => /^(team|lobby)-/.test(String(s.id ?? '')))
+  }
+
+  it('overlays absent : rendu inchangé (aucune série team-/lobby-, ids identiques)', () => {
+    const opt = buildSquadIntensityProfileOption({ panels: THREE, ...OPTS })
+    expect(seriesIds(opt)).toEqual([
+      'base-0', 'band-0', 'median-0',
+      'base-1', 'band-1', 'median-1',
+      'base-2', 'band-2', 'median-2',
+    ])
   })
 
-  it('teamOverlay fourni : une courbe d équipe PAR panneau, liée à sa grille', () => {
-    const opt = buildSquadIntensityProfileOption({
-      panels: [panel('A', 5), panel('B', 5), panel('C', 5)],
-      ...OPTS,
-      teamOverlay: TEAM,
-    })
-    const team = (opt.series as Array<{ id?: string; xAxisIndex?: number; name?: string }>).filter((s) =>
-      String(s.id ?? '').startsWith('team-'),
-    )
-    expect(team).toHaveLength(3)
-    expect(team.map((s) => s.xAxisIndex)).toEqual([0, 1, 2])
-    expect(team[0].name).toBe('Équipe')
+  it('overlays vide : même rendu que sans overlays', () => {
+    const sans = buildSquadIntensityProfileOption({ panels: THREE, ...OPTS })
+    const vide = buildSquadIntensityProfileOption({ panels: THREE, ...OPTS, overlays: [] })
+    expect(seriesIds(vide)).toEqual(seriesIds(sans))
+    expect((vide.yAxis as Array<{ max: number }>)[0].max).toBe((sans.yAxis as Array<{ max: number }>)[0].max)
   })
 
-  it('la médiane d équipe vient du helper canonique (manches `all`, pas une moyenne de médianes)', () => {
+  it('deux overlays : une série équipe ET une série lobby PAR panneau, liées à leur grille', () => {
+    const opt = buildSquadIntensityProfileOption({ panels: THREE, ...OPTS, overlays: [TEAM, LOBBY] })
+    const refs = overlaySeries(opt)
+    expect(refs.map((s) => s.id)).toEqual(['team-0', 'lobby-0', 'team-1', 'lobby-1', 'team-2', 'lobby-2'])
+    expect(refs.map((s) => s.xAxisIndex)).toEqual([0, 0, 1, 1, 2, 2])
+    expect(refs[0].name).toBe('Équipe')
+    expect(refs[1].name).toBe('Lobby')
+  })
+
+  it('styles neutres : équipe en trait plein, lobby en pointillé plus fin et plus discret', () => {
+    const opt = buildSquadIntensityProfileOption({ panels: THREE, ...OPTS, overlays: [TEAM, LOBBY] })
+    const [team, lobby] = overlaySeries(opt)
+    expect(team.lineStyle?.type).toBe('solid')
+    expect(lobby.lineStyle?.type).toBe('dashed')
+    expect(lobby.lineStyle?.width as number).toBeLessThan(team.lineStyle?.width as number)
+    expect(lobby.lineStyle?.opacity as number).toBeLessThan(team.lineStyle?.opacity as number)
+  })
+
+  it('un seul overlay (lobby seul, escouade < 3) : une seule série de référence par panneau', () => {
+    const opt = buildSquadIntensityProfileOption({ panels: [panel('A', 5)], ...OPTS, overlays: [LOBBY] })
+    expect(overlaySeries(opt).map((s) => s.id)).toEqual(['lobby-0'])
+  })
+
+  it('les médianes viennent du helper canonique (manches agrégées, pas une moyenne de médianes)', () => {
     const opt = buildSquadIntensityProfileOption({
       panels: [panel('A', 5, 0), panel('B', 5, 0), panel('C', 5, 0)],
       ...OPTS,
-      teamOverlay: TEAM,
+      overlays: [TEAM, LOBBY],
     })
-    const team = (opt.series as Array<{ id?: string; data?: number[] }>).find((s) => s.id === 'team-0')
-    // TEAM = 8 manches concentrées sur la phase 5 → médiane 1 en phase 5, 0 ailleurs
-    // (une moyenne des médianes joueur aurait donné le profil de la phase 0).
-    expect(team?.data?.[5]).toBeCloseTo(1)
-    expect(team?.data?.[0]).toBeCloseTo(0)
+    const [team, lobby] = overlaySeries(opt)
+    // TEAM = 8 manches concentrées sur la phase 5, LOBBY sur la phase 7 (une moyenne
+    // des médianes joueur aurait donné le profil de la phase 0 pour les deux).
+    expect(team.data?.[5]).toBeCloseTo(1)
+    expect(team.data?.[0]).toBeCloseTo(0)
+    expect(lobby.data?.[7]).toBeCloseTo(1)
+    expect(lobby.data?.[0]).toBeCloseTo(0)
   })
 
-  it('échelle Y partagée : la courbe d équipe entre dans le cadre', () => {
-    const opt = buildSquadIntensityProfileOption({
-      panels: [panel('A', 5, 0), panel('B', 5, 0), panel('C', 5, 0)],
-      ...OPTS,
-      teamOverlay: TEAM,
-    })
-    const yMax = (opt.yAxis as Array<{ max: number }>)[0].max
-    expect(yMax).toBeGreaterThanOrEqual(1)
+  it('échelle Y partagée : la borne inclut les médianes des DEUX overlays', () => {
+    // Panneau et équipe ÉTALÉS (part 0,1 sur chaque phase → médiane basse) ; seul
+    // le lobby culmine à 1 → la borne doit le contenir même s'il n'est pas le
+    // premier overlay.
+    const spread = Array.from({ length: 5 }, () => ({ phases: new Array<number>(10).fill(1) }))
+    const flat = { key: 'A', label: 'A', color: '#ff8800', rows: spread }
+    const lowTeam: IntensityOverlay = { key: 'team', label: 'Équipe', rows: spread }
+    const sans = buildSquadIntensityProfileOption({ panels: [flat], ...OPTS, overlays: [lowTeam] })
+    const avec = buildSquadIntensityProfileOption({ panels: [flat], ...OPTS, overlays: [lowTeam, LOBBY] })
+    const yMax = (opt: ReturnType<typeof buildSquadIntensityProfileOption>) =>
+      (opt.yAxis as Array<{ max: number }>)[0].max
+    // Sans lobby : ~0,112 (0,1 + marge de tête) ; avec : 1 (le lobby entre dans le cadre).
+    expect(yMax(sans)).toBeLessThan(0.5)
+    expect(yMax(avec)).toBeGreaterThanOrEqual(1)
   })
 
-  it('manches d équipe sans frag : aucune courbe d équipe plate', () => {
+  it('overlay sans frag : aucune courbe plate, l autre overlay reste tracé', () => {
     const opt = buildSquadIntensityProfileOption({
-      panels: [panel('A', 5), panel('B', 5), panel('C', 5)],
+      panels: THREE,
       ...OPTS,
-      teamOverlay: { label: 'Équipe', rows: [{ phases: new Array<number>(10).fill(0) }] },
+      overlays: [{ key: 'team', label: 'Équipe', rows: [{ phases: new Array<number>(10).fill(0) }] }, LOBBY],
     })
-    expect(seriesIds(opt).some((id) => id.startsWith('team-'))).toBe(false)
+    expect(overlaySeries(opt).map((s) => s.id)).toEqual(['lobby-0', 'lobby-1', 'lobby-2'])
   })
 
-  it('tooltip : ligne « Équipe » ajoutée sous la médiane du joueur', () => {
-    const opt = buildSquadIntensityProfileOption({
-      panels: [panel('A', 5), panel('B', 5), panel('C', 5)],
-      ...OPTS,
-      teamOverlay: TEAM,
-    })
+  it('tooltip : lignes « Équipe » puis « Lobby » sous la médiane du joueur, dans cet ordre', () => {
+    const opt = buildSquadIntensityProfileOption({ panels: THREE, ...OPTS, overlays: [TEAM, LOBBY] })
     const formatter = (opt.tooltip as { formatter: (p: unknown) => string }).formatter
+    // Le lobby arrive AVANT l'équipe dans les params : l'ordre du tooltip ne
+    // dépend pas de l'ordre des séries survolées.
     const html = formatter([
+      { seriesId: 'lobby-0', seriesName: 'Lobby', dataIndex: 4, value: 0.15 },
       { seriesId: 'median-0', seriesName: 'A', dataIndex: 4, value: 0.3 },
       { seriesId: 'team-0', seriesName: 'Équipe', dataIndex: 4, value: 0.2 },
     ])
-    expect(html).toContain('Équipe : 20%')
+    const iPlayer = html.indexOf('Médiane')
+    const iTeam = html.indexOf('Équipe : 20%')
+    const iLobby = html.indexOf('Lobby : 15%')
+    expect(iPlayer).toBeGreaterThanOrEqual(0)
+    expect(iTeam).toBeGreaterThan(iPlayer)
+    expect(iLobby).toBeGreaterThan(iTeam)
   })
 })

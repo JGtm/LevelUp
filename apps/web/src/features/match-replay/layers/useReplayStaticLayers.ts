@@ -58,6 +58,12 @@ export interface StaticLayersInput {
     colorOfTeam: (team: number) => string
     /** Liseré des objectifs SANS CAMP (2026-09-08) : l'encre du fond, cf. `ObjectivesStyle`. */
     neutralOutline: string
+    /**
+     * L'amplitude verticale du document (2026-09-18) : les objectifs disent leur étage comme les
+     * pions, cf. `ObjectivesStyle.z`. Elle est mémoïsée en amont (`useReplayView`) : un nouvel
+     * objet ne vient qu'avec de nouvelles bornes, et recuit alors le calque.
+     */
+    z: { min: number; max: number }
   }
 }
 
@@ -149,7 +155,7 @@ export function useReplayStaticLayers({
     redraw()
   }, [heatGrid, ramp, view, redraw, frozen])
 
-  const { elements, colorOfTeam, neutralOutline } = objectives
+  const { elements, colorOfTeam, neutralOutline, z } = objectives
   useEffect(() => {
     if (frozen) return
     if (elements.length === 0 || view.width === 0) {
@@ -157,10 +163,10 @@ export function useReplayStaticLayers({
       return
     }
     objectivesRef.current = cookLayer(view, (ctx) =>
-      drawObjectivesLayer(ctx, [...elements], view, { colorOfTeam, neutralOutline }),
+      drawObjectivesLayer(ctx, [...elements], view, { colorOfTeam, neutralOutline, z }),
     )
     redraw()
-  }, [elements, colorOfTeam, neutralOutline, view, redraw, frozen])
+  }, [elements, colorOfTeam, neutralOutline, z, view, redraw, frozen])
 
   return { zonesRef, heatRef, objectivesRef, cookedRef }
 }
