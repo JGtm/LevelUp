@@ -15,11 +15,12 @@ import (
 	"levelup/go-api/internal/replaybuild"
 )
 
-// TestVerifierLaBrancheServie : LA GARDE ANTI-EQUIVALENCE-VACUANTE.
+// TestVerifierLaBrancheServie : LA GARDE ANTI-EQUIVALENCE-VACUANTE, DANS LES DEUX REGIMES.
 //
 // Les deux sens comptent. Une passe `faits` qui aurait redecode en silence ferait comparer deux
-// decodages — identiques par construction — et rendrait un vert qui ne prouve rien ; une passe
-// `film` qui aurait relu les faits ne mesurerait pas le decodage.
+// decodages — identiques par construction — et rendrait un vert qui ne prouve rien ; une cuisson
+// qui aurait relu les faits ne mesurerait pas le decodage. Et la garde vaut AUSSI hors mode S8 :
+// le regime ordinaire compare a une reference figee par un DECODAGE.
 func TestVerifierLaBrancheServie(t *testing.T) {
 	etape := replaybuild.EtapeRejeuDepuisLesFaits
 	cas := []struct {
@@ -28,7 +29,9 @@ func TestVerifierLaBrancheServie(t *testing.T) {
 		booleens map[string]bool
 		refuse   bool
 	}{
-		{"hors mode S8, rien n est exige", "", nil, false},
+		{"regime ordinaire, decodage servi", "", map[string]bool{etape: false}, false},
+		{"regime ordinaire, faits relus", "", map[string]bool{etape: true}, true},
+		{"regime ordinaire, etape jamais observee", "", map[string]bool{}, true},
 		{"passe film, decodage servi", passeFilm, map[string]bool{etape: false}, false},
 		{"passe faits, rejeu servi", passeFaits, map[string]bool{etape: true}, false},
 		{"passe faits, REDECODAGE silencieux", passeFaits, map[string]bool{etape: false}, true},
@@ -40,6 +43,24 @@ func TestVerifierLaBrancheServie(t *testing.T) {
 		if (err != nil) != c.refuse {
 			t.Errorf("%s : erreur = %v, refus attendu = %v", c.nom, err, c.refuse)
 		}
+	}
+}
+
+// TestBrancheAttendueNeRejoueQueDansLaPasseFaits : UNE SEULE branche rejoue, et c est ecrit ici.
+//
+// Le defaut que ce test ferme a ete MESURE le 2026-09-18 : le regime ordinaire laissait la
+// branche au hasard de l etat du parc de faits, et rendait donc deux verdicts differents pour le
+// meme depot au meme commit — « etape 14 : attendue "translocations", obtenue "filmFactsRejoue" »
+// sur les films dont les faits venaient d etre ecrits, les 2 ecarts de forme sur les autres.
+func TestBrancheAttendueNeRejoueQueDansLaPasseFaits(t *testing.T) {
+	for _, p := range []string{"", passeFilm} {
+		if got := brancheAttendue(p); got != passeFilm {
+			t.Errorf("brancheAttendue(%q) = %q, attendu %q : une comparaison a une reference "+
+				"figee doit DECODER, quel que soit l etat du parc de faits", p, got, passeFilm)
+		}
+	}
+	if got := brancheAttendue(passeFaits); got != passeFaits {
+		t.Errorf("brancheAttendue(%q) = %q : la passe des faits doit rejouer", passeFaits, got)
 	}
 }
 
