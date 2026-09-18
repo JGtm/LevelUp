@@ -104,7 +104,9 @@ var plafondsParFichier = map[string]int{
 	// document_vehicles 505 -> 371 — tous sous le seuil, sortis de la table). La chronique porte
 	// desormais son exemption ECRITE EN TETE (item 2.7.1, 28 lignes de commentaire) : 1541 -> 1569,
 	// la seule montee admise par cette exemption hors montee de SchemaVersion.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1626,
+	// SCHEMA 61 -> 62 (2026-09-17, lot 4.2.1-b) : 1626 -> 1687, l entree de chronique v62 (`layers`,
+	// `coverage.deathsPaths`, le reclassement de `vehicleLabels`, et ce qui n y entre PAS).
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1687,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -130,9 +132,11 @@ var plafondsParFichier = map[string]int{
 	// 570 -> 571), et c est le meme mouvement vu de l autre cote : ces fichiers gagnent LA LIGNE
 	// D IMPORT de `film/types`. C est la seule montee admise par ce lot, et elle est mecanique.
 	// --- tests et instruments de mesure : tables de fixtures et balayages de recherche.
-	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":                            1202,
-	"internal/games/halo_infinite/film/internal/grammar/i59_anchor_test.go":                       1152,
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1168,
+	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":      1202,
+	"internal/games/halo_infinite/film/internal/grammar/i59_anchor_test.go": 1152,
+	// SCHEMA 61 -> 62 (2026-09-17, lot 4.2.1-b) : 1168 -> 1183, la raison ecrite de v62 que
+	// `TestStructureIsOptionalInDocument` exige au-dessus de son epinglage dur.
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1183,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

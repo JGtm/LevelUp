@@ -4,6 +4,8 @@ package replayview
 // projectile et libelle. Jumeau de `domain/replaydoc/document.go`.
 
 import (
+	"maps"
+
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
@@ -68,6 +70,10 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		BombEvents:          sliceOf(v.BombEvents, toBombEvent),
 		Coverage:            ptrOf(v.Coverage, toCoverage),
 		Identity:            ptrOf(v.Identity, toIdentitySection),
+		// `layers` VOYAGE TEL QUEL : une table de chaines courtes, dont les cles sont les balises
+		// JSON des calques et les valeurs des revisions de couche. Rien a traduire — et surtout pas
+		// a completer : une entree absente est une reponse (« ce calque n a pas ete produit »).
+		Layers: maps.Clone(v.Layers),
 	}
 }
 

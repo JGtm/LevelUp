@@ -27,6 +27,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     schemaBadgeStaleFmt: (schemaVersion, latestSchemaVersion) =>
       `Schéma ${schemaVersion} · à recuire (dernier : ${latestSchemaVersion})`,
     schemaBadgeStaleNoTargetFmt: (schemaVersion) => `Schéma ${schemaVersion} · à recuire`,
+    schemaBadgeStalePublicationFmt: (schemaVersion, latestSchemaVersion) =>
+      `Schéma ${schemaVersion} · à recuire (dernier : ${latestSchemaVersion}) — seule la publication a changé`,
     schemaBadgeUnknownFmt: (schemaVersion) => `Schéma ${schemaVersion}`,
     schemaBadgeInvalidFmt: (schemaVersion, detail) =>
       `Schéma ${schemaVersion} · contrat non respecté (${detail})`,
@@ -471,6 +473,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     schemaBadgeStaleFmt: (schemaVersion, latestSchemaVersion) =>
       `Schema ${schemaVersion} · rebuild needed (latest: ${latestSchemaVersion})`,
     schemaBadgeStaleNoTargetFmt: (schemaVersion) => `Schema ${schemaVersion} · rebuild needed`,
+    schemaBadgeStalePublicationFmt: (schemaVersion, latestSchemaVersion) =>
+      `Schema ${schemaVersion} · rebuild needed (latest: ${latestSchemaVersion}) — publication layer only`,
     schemaBadgeUnknownFmt: (schemaVersion) => `Schema ${schemaVersion}`,
     schemaBadgeInvalidFmt: (schemaVersion, detail) =>
       `Schema ${schemaVersion} · contract violated (${detail})`,

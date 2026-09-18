@@ -205,6 +205,12 @@ export interface ReplayText {
    *    aujourd'hui ;
    *  - `schemaBadgeStaleFmt` : l'artefact est en retard — le second nombre est la version
    *    COURANTE du producteur, à recuire ;
+   *  - `schemaBadgeStalePublicationFmt` (2026-09-18, lot 4.4.2, schéma 62) : l'artefact est en
+   *    retard ET le module PROUVE que seule la couche de PUBLICATION a bougé — sa révision est
+   *    `publication-<schemaVersion>`, donc la comparaison des deux nombres suffit. Les quatre
+   *    couches de décodage ne sont PAS nommables : leurs révisions courantes ne sont pas
+   *    transportées (§4 du plan, non retenu). UNE SEULE clé de plus, et AUCUN cinquième état :
+   *    c'est le même `stale`, dit plus précisément ;
    *  - `schemaBadgeStaleNoTargetFmt` (2026-09-13, lot 0.B) : l'artefact est SOUS la version
    *    minimale que ce client déclare afficher, et aucune version de producteur n'est
    *    connue (en-tête absent). Il est à recuire, mais on ne peut nommer aucune cible :
@@ -226,6 +232,7 @@ export interface ReplayText {
   schemaBadgeUpToDateFmt: (schemaVersion: number) => string
   schemaBadgeStaleFmt: (schemaVersion: number, latestSchemaVersion: number) => string
   schemaBadgeStaleNoTargetFmt: (schemaVersion: number) => string
+  schemaBadgeStalePublicationFmt: (schemaVersion: number, latestSchemaVersion: number) => string
   schemaBadgeUnknownFmt: (schemaVersion: number) => string
   schemaBadgeInvalidFmt: (schemaVersion: number, detail: string) => string
   contractUnknownKeysFmt: (keys: string) => string

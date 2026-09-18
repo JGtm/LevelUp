@@ -23,24 +23,52 @@ import (
 	"testing"
 )
 
-// sousFonctionsObservantes : les fonctions de replaybuild.go dans lesquelles le garde descend
-// quand BuildBytes les appelle. Une sous-fonction ABSENTE de cette liste rendrait ses etapes
-// invisibles au garde — c'est pour cela que la liste est ecrite, et courte.
-var sousFonctionsObservantes = []string{"collecterEntreesCatalogue"}
+// fichiersDeLaSuiteObservee : les fichiers ou vit la suite d etapes de `BuildBytes`.
+//
+// DEUX FICHIERS DEPUIS LE LOT 4.1.2 (2026-09-17), et c est une consequence mesuree du plafond de
+// taille : `replaybuild.go` est gele a 577 lignes par `archlint/film_file_size_test.go`, donc la
+// bascule « relire les faits ou decoder » et la seconde moitie commune (`serialiserDocument`) ont
+// du naitre dans `filmfacts_cuisson.go`. Le garde lit LES DEUX : une suite d etapes qui se
+// verifierait sur un seul fichier declarerait disparues celles de l autre.
+var fichiersDeLaSuiteObservee = []string{"replaybuild.go", "filmfacts_cuisson.go"}
+
+// sousFonctionsObservantes : les fonctions dans lesquelles le garde descend quand BuildBytes les
+// appelle. Une sous-fonction ABSENTE de cette liste rendrait ses etapes invisibles au garde —
+// c est pour cela que la liste est ecrite, et courte.
+var sousFonctionsObservantes = []string{
+	"collecterEntreesCatalogue", "documentDeLaCuisson", "serialiserDocument",
+}
+
+// etapesParIdentifiant : les etapes observees par CONSTANTE et non par litteral.
+//
+// Le garde lit le SOURCE : `b.observe(EtapeRejeuDepuisLesFaits, …)` ne porte pas de chaine, donc
+// sans cette table l etape serait INVISIBLE au garde — et une etape invisible est exactement ce
+// que ce test existe pour interdire. Une entree par constante, resolue ici a la compilation :
+// renommer la constante casse le test, et c est le bon sens de la faute.
+var etapesParIdentifiant = map[string]string{
+	"EtapeRejeuDepuisLesFaits": EtapeRejeuDepuisLesFaits,
+}
+
+// marqueursDuDocument : les appels qui PRODUISENT le document, une branche chacun. Le garde en
+// emet UN SEUL marqueur `<BuildFromFilm>` — les deux branches sont au MEME point de la suite, et
+// exiger deux marqueurs consecutifs ne mesurerait que l ordre du `if`.
+var marqueursDuDocument = []string{"BuildFromFilmAvecFaits", "BuildFromFacts"}
 
 // profondeurInlineMax borne la descente : deux sous-fonctions qui s'appelleraient l'une l'autre
 // feraient boucler le garde au lieu de le faire echouer.
 const profondeurInlineMax = 4
 
 func TestObserveEtapesBuildBytes(t *testing.T) {
-	f, err := parser.ParseFile(token.NewFileSet(), "replaybuild.go", nil, 0)
-	if err != nil {
-		t.Fatalf("replaybuild.go illisible : %v", err)
-	}
 	parNom := map[string]*ast.FuncDecl{}
-	for _, d := range f.Decls {
-		if fn, ok := d.(*ast.FuncDecl); ok {
-			parNom[fn.Name.Name] = fn
+	for _, nom := range fichiersDeLaSuiteObservee {
+		f, err := parser.ParseFile(token.NewFileSet(), nom, nil, 0)
+		if err != nil {
+			t.Fatalf("%s illisible : %v", nom, err)
+		}
+		for _, d := range f.Decls {
+			if fn, ok := d.(*ast.FuncDecl); ok {
+				parNom[fn.Name.Name] = fn
+			}
 		}
 	}
 	fn := parNom["BuildBytes"]
@@ -80,16 +108,29 @@ func etapesObservees(t *testing.T, body *ast.BlockStmt, parNom map[string]*ast.F
 			if len(call.Args) != 2 {
 				return true
 			}
-			if lit, ok := call.Args[0].(*ast.BasicLit); ok && lit.Kind == token.STRING {
-				s, _ := strconv.Unquote(lit.Value)
-				out = append(out, s)
+			switch a := call.Args[0].(type) {
+			case *ast.BasicLit:
+				if a.Kind == token.STRING {
+					s, _ := strconv.Unquote(a.Value)
+					out = append(out, s)
+				}
+			case *ast.Ident:
+				etape, connue := etapesParIdentifiant[a.Name]
+				if !connue {
+					t.Fatalf("etape observee par l identifiant %q, absent de "+
+						"`etapesParIdentifiant` : le garde ne la verrait pas.", a.Name)
+				}
+				out = append(out, etape)
 			}
-		case nom == "BuildFromFilm":
-			out = append(out, "<BuildFromFilm>")
+		case slices.Contains(marqueursDuDocument, nom):
+			if len(out) == 0 || out[len(out)-1] != "<BuildFromFilm>" {
+				out = append(out, "<BuildFromFilm>")
+			}
 		case slices.Contains(sousFonctionsObservantes, nom):
 			sous := parNom[nom]
 			if sous == nil {
-				t.Fatalf("sous-fonction observante %q appelee mais introuvable dans replaybuild.go", nom)
+				t.Fatalf("sous-fonction observante %q appelee mais introuvable dans %v", nom,
+					fichiersDeLaSuiteObservee)
 			}
 			out = append(out, etapesObservees(t, sous.Body, parNom, profondeur+1)...)
 		}
