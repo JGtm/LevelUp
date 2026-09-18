@@ -232,7 +232,7 @@ export function ReplayCanvas({
   const {
     showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
-    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, speed: multiplier,
+    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showModeObjectives, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, speed: multiplier,
     markerColors,
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
@@ -342,7 +342,7 @@ export function ReplayCanvas({
     frozen: drag.dragging,
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
-    objectives: { elements: mapObjectives, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline },
+    objectives: { elements: mapObjectives, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline, z: zRange },
   })
 
   // LES EMPLACEMENTS D'ARME (schéma 11) : tracé, survol et infobulle dans un seul hook. Ils
@@ -437,7 +437,10 @@ export function ReplayCanvas({
       }
 
       return {
-        toggles: { zones: showZones, shotFx: showShotFx, placements: showPlacements, killFx: showKillFx },
+        toggles: {
+          zones: showZones, shotFx: showShotFx, placements: showPlacements, killFx: showKillFx,
+          modeObjectives: showModeObjectives,
+        },
         has: {
           background: !!mapImage && !!bgRect,
           floor: !!doc.geometry?.length,
@@ -536,7 +539,7 @@ export function ReplayCanvas({
             }),
           'etat-zones': (_c, fr) => drawZoneStates(ctx, zones, doc.zoneStates, view, fr),
           'pulses-objectif': () =>
-            drawObjectivePulses(ctx, objectivePulses, view, win, { colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline }, reducedMotion),
+            drawObjectivePulses(ctx, objectivePulses, view, win, { colorOfTeam: zones.colorOfTeam }, reducedMotion),
           morts: (_c, _fr, k) =>
             drawKillFxLayer(ctx, killFx, view, win, {
               colorOfSlot: colorOfSlotOrLast, // FRONTIERE : kill posthume/echange apres la fin de vie.
@@ -589,6 +592,7 @@ export function ReplayCanvas({
     reducedMotion,
     showAim,
     showZones,
+    showModeObjectives,
     showShotFx,
     showKillFx,
     mapImage,
@@ -663,6 +667,7 @@ export function ReplayCanvas({
       },
       weaponPads: weaponPads.available,
       groundWeapons: groundWeapons.available,
+      modeObjectives: mapObjectives.length > 0,
       flagCarries: flags.available,
       vipCrown: vipCrown.available,
       skullCarrier: skullCarrier.available,

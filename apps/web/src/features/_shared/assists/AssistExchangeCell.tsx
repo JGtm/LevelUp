@@ -11,7 +11,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import type { RelationAssists } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
-import { ASSIST_GIVEN_TOKEN, ASSIST_RECEIVED_TOKEN } from './AssistButterflyBar'
+import { ASSIST_GIVEN_TOKEN, ASSIST_RECEIVED_TOKEN } from './AssistTierBar'
 import { ASSISTS_TEXT } from './assistsI18n'
 
 export function AssistExchangeCell({

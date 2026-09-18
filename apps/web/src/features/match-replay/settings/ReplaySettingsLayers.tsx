@@ -80,6 +80,19 @@ export interface ReplayGroundWeaponControls {
 }
 
 /**
+ * Ce que le tiroir sait des OBJECTIFS DU MODE (2026-09-18) : une bascule, et si le film en porte.
+ * `available` suit la même règle que les drapeaux — un document sans zone ni point d'objectif
+ * (Assassin, par exemple) ne montre pas la bascule. Elle commande TROIS calques d'un coup
+ * (géométrie cuite, état vivant des zones, pulses d'action : cf. `SceneToggles.modeObjectives`),
+ * parce qu'ils sont trois vues du même objet ; les objets PORTÉS gardent chacun la leur.
+ */
+export interface ReplayModeObjectivesControls {
+  available: boolean
+  show: boolean
+  onToggle: () => void
+}
+
+/**
  * Ce que le tiroir sait des DRAPEAUX de capture : une bascule, et si le film en porte.
  * `available` suit la même règle que les zones et les socles — un film qui n'est pas reconnu
  * comme de la capture de drapeau ne publie aucun drapeau, et ne montre donc pas la bascule.
@@ -130,6 +143,7 @@ export interface LayersSectionProps {
   placements: ReplayPlacementControls
   weaponPads: ReplayWeaponPadControls
   groundWeapons: ReplayGroundWeaponControls
+  modeObjectives: ReplayModeObjectivesControls
   flagCarries: ReplayFlagControls
   vipCrown: ReplayVipCrownControls
   skullCarrier: ReplaySkullCarrierControls
@@ -139,8 +153,8 @@ export interface LayersSectionProps {
 
 export function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones,
-  showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, groundWeapons, flagCarries,
-  vipCrown, skullCarrier, bombCarrier, vehicles,
+  showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, groundWeapons, modeObjectives,
+  flagCarries, vipCrown, skullCarrier, bombCarrier, vehicles,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -246,15 +260,26 @@ export function LayersSection({
         </div>
       )}
 
-      {/* LES ENJEUX DU MODE : drapeau, couronne, crâne, bombe. Ils bougent, ils changent de
-          main, et leur position EST la lecture du match. LE GROUPE DISPARAÎT EN ENTIER hors des
-          modes concernés — sur un Slayer, il ne laisse même pas son titre. C'est le gain caché
-          du groupement : une liste plate y laissait un trou qu'on ne savait pas nommer. */}
-      {(flagCarries.available ||
+      {/* LES ENJEUX DU MODE : le TERRAIN de l'enjeu d'abord (collines, bases, socles, livraisons
+          — bascule « Objectifs du mode », 2026-09-18), puis ce qui se PORTE : drapeau, couronne,
+          crâne, bombe. Ils bougent, ils changent de main, et leur position EST la lecture du
+          match. LE GROUPE DISPARAÎT EN ENTIER hors des modes concernés — sur un Slayer, il ne
+          laisse même pas son titre. C'est le gain caché du groupement : une liste plate y
+          laissait un trou qu'on ne savait pas nommer. */}
+      {(modeObjectives.available ||
+        flagCarries.available ||
         vipCrown.available ||
         skullCarrier.available ||
         bombCarrier.available) && (
         <LayerGroup title={t.layerGroupObjectives}>
+          {modeObjectives.available && (
+            <SettingsToggle
+              label={t.layerModeObjectives}
+              pressed={modeObjectives.show}
+              onToggle={modeObjectives.onToggle}
+              hint={t.layerModeObjectivesHint}
+            />
+          )}
           {flagCarries.available && (
             <SettingsToggle
               label={t.layerFlagCarries}

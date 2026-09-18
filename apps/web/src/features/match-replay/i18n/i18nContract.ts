@@ -507,6 +507,13 @@ export interface ReplayText {
    * développe : l'intervalle court jusqu'à la fin du film, c'est une BORNE HAUTE. Une icône
    * atténuée seule se lirait comme un effet de style.
    */
+  /**
+   * LES OBJECTIFS DU MODE (2026-09-18) : le calque statique du terrain de l'enjeu — collines,
+   * bases, zones de capture, socles et points de livraison — et son aide, qui explique les
+   * ANNEAUX et les CONTOURS d'étage (le même langage que les pions). Premier du groupe.
+   */
+  layerModeObjectives: string
+  layerModeObjectivesHint: string
   layerFlagCarries: string
   layerFlagCarriesHint: string
   flagSide: Record<'ally' | 'enemy' | 'unknown', string>

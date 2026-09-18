@@ -238,6 +238,224 @@ réellement touchés (`service`, `domain` : 0 échec), `go vet ./...` et la CI d
 **Prochaine étape** : gate visuel de l'utilisateur (Explorer > recherche joueur, une cible avec
 matchs filmés ensemble ET une cible sans), puis fusion dans `feat/v75`. Reste ouvert : le bloc
 « Portée des frags » attend la mesure par rôle du chantier « Profil d'armes ».
+## [2026-09-18] Rejeu 2D — garde « terrain plat » alignée sur les pions (suite du lot 2) — Complété
+
+**Demande** (utilisateur, 2026-09-18) : aligner les pions sur la garde posée pour les objectifs —
+sur une carte sans amplitude verticale (bornes Z égales : vieux artefact sans Z, ou plateau sans
+relief), `floorOf` seul rend l'étage 1 à tout le monde (`altitudeRatio` = 0,5 par convention) et
+chaque joueur portait un anneau alors que rien n'est plus haut que rien.
+
+**Décision technique** : la garde ne reste pas chez les objectifs seuls — `floorInRange(z,
+{min,max})` + `FLAT_SPAN` vivent dans `layers/floorRings.ts` (le helper commun du langage
+d'étage), consommés par `floorIndex` (pions, `replayMarkers.ts`) et par le calque des objectifs
+(`objectiveFloor` privé supprimé). Deux copies auraient re-divergé au premier réglage.
+
+**Résultats observés** : typecheck 0 ; eslint `layers` 0 erreur ; lint:colors 0 ; vitest `layers`
+57 fichiers / 751 tests verts. Mutation (garde retirée) : 3 rouges — `floorRings.test.ts`
+(« terrain plat »), `replayMarkers.test.ts` (« ne pose AUCUN anneau sur un terrain plat »),
+`objectivesFloor.test.ts` (« TERRAIN PLAT ») — puis verts après restauration.
+
+**Conclusion / prochaine étape** : commit sur `feat/intensite-objectifs-assists`, CI, vérification
+visuelle utilisateur (carte plate : aucun anneau sur les pions).
+
+## [2026-09-18] Rejeu 2D — bascule « Objectifs du mode » et son aide (lot 2bis) — Complété (non commité, worktree `LevelUp-wt-trois-lots`, branche `feat/intensite-objectifs-assists`)
+
+**Demande** : le commit `123d571fd` a donné aux objectifs du mode (socles, livraisons, collines,
+bases) des anneaux et contours d'ÉTAGE, mais le calque n'avait ni bascule ni description dans le
+tiroir : impossible de l'éteindre, rien n'expliquait ces formes. Décision utilisateur : bascule
+« Objectifs du mode » / « Mode objectives », infobulle FR + EN.
+
+**Décisions techniques** : (1) une seule porte, celle qui existait — `SceneToggles.modeObjectives`
+dans `layers/replayCompose.ts`, appliquée par `sceneLayers` aux TROIS calques `objectifs-cuits`,
+`etat-zones` et `pulses-objectif` (trois vues du même objet : géométrie cuite, état vivant des
+zones, pulses d'action) ; les objets PORTÉS (drapeaux, couronne, crâne, bombe) gardent leur
+bascule propre ; (2) état persisté `showModeObjectives` / `toggleModeObjectives` dans
+`useReplaySettings.ts` (`usePersistedFlag`, clé `replay-show-mode-objectives`, défaut `true`) ;
+(3) i18n : `layerModeObjectives` + `layerModeObjectivesHint` FR/EN au contrat
+(`i18nContract.ts`) et au dictionnaire, texte de l'infobulle tel que tranché (les anneaux et
+contours disent l'étage « comme pour les joueurs : plus il y en a, plus c'est haut ») ;
+(4) tiroir : `ReplayModeObjectivesControls` (`available` / `show` / `onToggle`) dans
+`ReplaySettingsLayers.tsx`, rendu EN PREMIER du groupe « Objectifs », qui s'ouvre désormais aussi
+sur `modeObjectives.available` ; propagation `ReplaySettingsDrawer.tsx` → `useReplayDrawer.ts`
+(`available.modeObjectives`) ; (5) canvas : `toggles.modeObjectives: showModeObjectives`,
+`available.modeObjectives = mapObjectives.length > 0` (le document normalisé porte au moins un
+élément), dépendance ajoutée au mémo de `buildScene` — 6 lignes nettes, pas d'extraction ;
+(6) aucun calque touché (`objectivesLayer.ts`, `floorRings.ts`, `zoneStates*` intacts), aucune
+couleur nouvelle.
+
+**Résultats observés** : `replayCompose.test.ts` (+1 cas dans `COUPE` : « exactement ces trois
+calques, et eux seuls ») rouge par mutation (condition retirée sur `etat-zones`) ;
+`useReplaySettings.test.tsx` (+1 : défaut `true`, survit au remontage, drapeaux intacts) rouge
+par deux mutations (défaut `false` ; clé partagée avec les drapeaux) ;
+`ReplaySettingsDrawer.test.tsx` (+4 : callback propre, EN PREMIER avant Drapeaux, groupe ouvert
+sans objet porté, absent sans objectif) rouge par deux mutations (bascule déplacée après les
+drapeaux ; groupe non ouvert par `modeObjectives.available`). Gates : `npm run typecheck` 0
+erreur ; `eslint src/features/match-replay` 0 erreur (8 avertissements préexistants hors lot :
+`useReplaySound.ts`, `ReplayFeedName.tsx`, véhicules) ; `lint:colors` et `lint:fields` propres ;
+`vitest run src/features/match-replay` : 199 fichiers / 2 951 tests verts (1 fichier perf sauté,
+préexistant). Aucun test renommé ni supprimé (baseline intacte).
+
+**Conclusion / prochaine étape** : le calque des objectifs est commandable et expliqué. À
+vérifier à l'oeil par l'utilisateur : sur un film à objectifs (Roi de la colline, Bastion, CTF),
+le tiroir montre « Objectifs du mode » en tête du groupe « Objectifs » ; éteinte, les formes, les
+anneaux d'étage, le remplissage vivant des zones ET les pulses disparaissent ensemble, les
+drapeaux restent ; l'infobulle FR/EN dit ce que sont les anneaux ; sur un Assassin sans objectif
+ni objet porté, le groupe n'apparaît pas. Hors périmètre, noté : le commentaire de
+`useReplayDrawer` (« ce mémo ne retient rien ») reste vrai, `useReplaySettings` n'est toujours
+pas mémoïsé.
+
+## [2026-09-18] Tuile de match — part des frags assistés par un coéquipier, par tranche (lot 3) — Complété (non commité, worktree `LevelUp-wt-trois-lots`, branche `feat/intensite-objectifs-assists`)
+
+**Demande** : sur la tuile de match de l'Accueil (`match-card.tsx`), la part des frags du joueur
+assistés par un coéquipier sur CE match, découpée par tranche de part de dégâts de l'assistant —
+le sens « reçues » de la page Relations, ramené à un seul match. Go + web.
+
+**Décisions techniques** : (1) DTO `RecentMatchItem.AssistedFrags *domain.MatchAssistedFrags`
+(`assisted_frags,omitempty`), type dans `relation_assists.go` : `FragsMeasured` (frags du joueur
+sur les lignes `publishable AND assist_known` du match = dénominateur) + `Received AssistTiers` ;
+nil quand le match n'a aucune ligne mesurée pour le joueur (« on ne sait pas » n'est pas « 0 ») ;
+(2) `HomeRepository.LoadMatchAssistedFrags(ctx, matchIDs)` → `HomeRepo` dans
+`home_repo_assisted_frags.go` (Q26l, une requête `GROUP BY match_id` sur `match_kill_events_latest`
+filtrée `feed_killer_xuid = xuid du repo`, bornes injectées depuis `domain.AssistTier*MaxPct`
+comme Q28c, timeout 10 s, `SharedReadDB().Get`) — PAS d'exclusion des bots : le tueur est le
+joueur suivi, l'assistant n'est pas énuméré (Q28c exclut les bots côté coéquipier parce qu'il
+les énumère) ; noop du port + `mockHomeRepo` complétés ; (3) `enrichMatchesWithAssistedFrags`
+dans `home_service_enrichment.go`, appelé pour récents ET favoris dans l'`errgroup` existant ;
+erreur repo → `slog.WarnContext("home_assisted_frags_load_failed")` puis champs nil (pas de
+copie du défaut des voisins qui avalent l'erreur) ; (4) demi-barre du papillon extraite en
+`features/_shared/assists/AssistTierBar.tsx` (un sens, `segments`, `side`, `color`, `text`,
+`locale`, variantes `card` / `row` / `tile`, jetons `ASSIST_*_TOKEN` déplacés ici) ;
+`AssistButterflyBar` en compose deux — 0 copie, tests du papillon inchangés ;
+`assistExchange.ts` : découpage par tranche factorisé (`splitByTier`), `assistSegments`
+(volume, log) inchangé pour Relations, `assistShareSegments(tiers, frags)` = PART
+`count / frags` bornée à 100 % pour la tuile ; (5) `components/ui/match-card-assisted-frags.tsx`
+(fichier à part : `match-card.tsx` est exempté `max-lines` et « le découpage revient au lot qui
+touchera ce fichier » — non fait, hors périmètre, noté) : « 7 / 12 frags assistés · 58 % » +
+barre `tile` en `assist-received`, infobulle `ASSISTS_TEXT.segment` par segment ; rien du tout
+sans `assisted_frags` ; clé `common.match_card.assisted_frags` (placeholders ICU `{assisted}`,
+`{frags}`, `{share}`) FR + EN, générateur relancé ; part formatée `formatPercent(share, 0)` dans
+les deux locales, comme la carte Binôme (« 58 % ») ; (6) garde-rail neuf
+`features/_shared/assists/assistTiers.guard.test.ts` (aucun garde de tranche n'existait) :
+littéral `25` / `50` isolé interdit dans `components/ui/match-card*.tsx` et `AssistTierBar.tsx`,
+témoin positif sur `assistsI18n.ts` (seul foyer web des bornes) ; motif tolérant `/50`
+(opacité Tailwind) et `-50`.
+
+**Résultats observés** : gate 1 vert (gofmt, build, vet, tests domain/service/duckdb ciblés,
+contracttest, OpenAPI) + intégration `-tags=integration` (2 tests repo) ; gate 2 : `openapi-gen`
+et `generate-types` sans diff — `/pages/home` n'a PAS de schéma OpenAPI dérivé (« TODO Sprint 32 »
+dans le contrat) : `RecentMatchItem` et le nouveau `MatchAssistedFrags` sont écrits à la main dans
+`lib/api/types.ts` sur l'`AssistTiers` généré ; gate 3 : typecheck 0, eslint 0 erreur (4
+avertissements pré-existants, fichiers non touchés), lint:colors 0, lint:fields 0, vitest
+périmètre 69 fichiers / 466 tests verts ; gate 4 : golangci-lint `--new-from-rev=HEAD` 0 issue ;
+garde-rails ART/_latest (`internal/sync`, duckdb, archlint) verts. Mutations prouvées rouges :
+service (affectation sans `ok`, erreur → map fabriquée), repo (sans `publishable`, total en
+`COUNT(*)`, haute en `>= mid`, moyenne en `< mid` — fixture avec 25 et 50 exacts), tuile
+(dénominateur doublé, 1 décimale, rendu sans garde d'absence), `AssistTierBar` (ordre gauche non
+renversé, opacité haute 0,9), garde (borne recopiée dans `AssistTierBar` et dans la tuile).
+
+**Découvertes hors périmètre (non corrigées)** : (a) `enrichMatchesWithMedals` /
+`enrichMatchesWithCitations` / `enrichMatchesWithCommendations` et `LoadMatchMedals` /
+`LoadMatchCitations` avalent leurs erreurs sans log (« dégradation silencieuse »), contraire à la
+règle 3 ; (b) `/pages/home` sans schéma OpenAPI (contrat `type: object` + TODO Sprint 32) : les
+types de la Home ne sont pas générés, dérive possible entre Go et `types.ts` ; (c) `match-card.tsx`
+porte l'exemption `max-lines` datée du 2026-09-06 qui assigne le découpage « au lot qui touchera
+ce fichier » — ce lot l'a touché (3 lignes) sans le découper ; (d) `components/ui` importe
+désormais `features/_shared/assists` (première dépendance non-test composants → features) :
+aucun ratchet ne l'interdit, mais la direction mérite un arbitrage (déplacer `AssistTierBar` +
+`assistsI18n` sous `components/` ou accepter `_shared` comme couche partagée) ;
+(e) `home_service_test.go` fait 995 lignes (dette gelée, test service posé dans un fichier à part).
+
+## [2026-09-18] Rejeu 2D — les objectifs du mode disent leur ÉTAGE comme les joueurs (lot 2) — Complété (non commité, worktree `LevelUp-wt-trois-lots`, branche `feat/intensite-objectifs-assists`)
+
+**Demande** : les zones (collines, bastions, zones de capture) et les marqueurs (socles,
+livraisons) du calque statique `objectivesLayer.ts` portaient un `z` que personne ne lisait ;
+les pions disent leur étage par des anneaux concentriques. Donner aux objectifs le MÊME langage,
+sans texte sur le canvas, sans couleur nouvelle. 100 % front, aucun changement Go.
+
+**Décisions techniques** : (1) une seule implémentation des anneaux d'étage,
+`layers/floorRings.ts` (`drawFloorRings`, `floorRingRadius`, constantes `FLOOR_RING_*`
+sorties de `replayMarkers.ts`, qui l'importe désormais) — fichier à part plutôt qu'un export
+des pions, pour que la cuisson hors écran n'importe pas le cône de visée et les étiquettes ;
+(2) marqueur d'objectif : `fl` anneaux au premier rayon `MARKER_RING + FLOOR_RING_GAP` = 10,8 px,
+au-delà de l'anneau de livraison (8 px), même pas que les pions ; (3) zone : `fl` contours
+concentriques EXTÉRIEURS par `traceZonePath(..., padPx)` (cylindre : rayon + pad ; boîte :
+`zoneCornersWorld(e, padPx / scale)`), pas de 2,8 px, trait 1 px, même pâlissement — extérieurs
+parce que le calque vivant repeint l'intérieur de la forme ; (4) `ObjectivesStyle.z` (amplitude
+du document), fourni par `useReplayStaticLayers` (dans les dépendances de cuisson) depuis
+`zRange` de `ReplayCanvas` ; `drawObjectivePulses` ne prend plus que `Pick<..., 'colorOfTeam'>` ;
+(5) terrain plat (`max - min <= 1e-6`) : étage forcé à 0 sur les objectifs (`objectiveFloor`).
+
+**Résultats observés** : typecheck 0 ; eslint 0 erreur (8 avertissements pré-existants hors
+périmètre) ; lint:colors 0 ; lint:fields 0 ; knip-ratchet 0/0/0 ; vitest rejeu + lib/replay +
+garde anglicismes : 214 fichiers, 3 227 tests verts. 7 tests neufs `objectivesFloor.test.ts`
+(fichier à part : `objectivesLayer.test.ts` était à 509 lignes de code) + 4 tests
+`floorRings.test.ts`, chacun prouvé rouge par 11 mutations (anneaux retirés, premier rayon sous
+la livraison, contours retirés / rétrécis / pad ignoré / opacité constante, garde plat retirée,
+texte écrit, helper : boucle tronquée / premier rayon ignoré / opacité constante).
+
+**Non traité `[!]`** : décision 5 (infobulle d'aide du calque) — le calque statique des objectifs
+n'a NI bascule NI description dans `i18n.ts` (le groupe « Objectifs » du tiroir ne porte que les
+objets vivants : drapeaux, VIP, crâne, bombe, et disparaît sur KOTH/Bastions). Il n'y a rien à
+compléter ; en créer un = une bascule ou une infobulle de groupe nouvelle, décision produit hors
+plan. À trancher par l'utilisateur.
+
+**Découvertes hors périmètre (non corrigées)** : (a) les PIONS ont le défaut du terrain plat :
+`floorIndex` -> `floorOf(z, min, max)` avec `min === max` (bornes Z absentes -> `?? 0`) rend
+l'étage 1, donc un anneau sur chaque joueur qui a un z ; (b) `FlagSpan` (`flagCarriesLayer`)
+n'a pas de `z` : un drapeau lâché ne peut pas dire son étage sans changement Go ; (c) l'entrée
+du lot 1 a été ajoutée en FIN de journal (L111331) alors que le journal est trié du plus récent
+en tête.
+
+**Conclusion / prochaine étape** : vérification visuelle par l'utilisateur (CTF à socles en
+hauteur, KOTH/Bastions à étages : anneaux autour des socles, contours extérieurs des zones,
+rien sur une carte plate), puis commit sur la branche du chantier.
+
+## [2026-09-18] Escouade / Dynamique — Intensité : deux courbes de référence ÉQUIPE + LOBBY (lot 1) — Complété (non commité)
+
+**Statut** : Complété sur le worktree `LevelUp-wt-trois-lots` (branche
+`feat/intensite-objectifs-assists`), aucun commit — au signal de l'utilisateur.
+
+**Décision technique principale** : la courbe libellée « Équipe » du profil d'intensité était
+la ligne `all` du payload, construite par `buildRows("")` = aucun filtre xuid sur les
+`highlight_events` du film → tout le LOBBY (les deux camps). Le payload porte désormais deux
+lignes agrégées (`domain.SquadIntensityKeyTeam` = "team", `SquadIntensityKeyLobby` =
+"lobby"), plus aucune clé `all`. `team` = frags des alliés du joueur principal (main inclus)
+par match, lus dans le set `match_id -> xuids` de Q32b ; un match sans équipe résolue = phases
+nulles. `lobby` = ex-`all`, même calcul. Q32b (`LoadMainTeamParticipants`) était appelé en deux
+endroits (filtre composition exacte + matrice d'impact) : à la 3e copie (CLAUDE.md n°6), un
+seul chargement dans `GetPage` (`loadMainTeamAllies`, `teammates_service_intersect.go`) sur
+l'union des matchs, passé aux trois consommateurs. Le filtre briefing reste gardé par une
+variable dédiée (`exactTeamByMatch`, non nil seulement sous l'option) : `exactCompositionFilter.enabled()`
+teste `teamByMatch != nil`, un chargement systématique l'aurait activé à l'insu de l'option.
+L'issue `DataIssueMainTeamParticipants` n'est posée que si l'option composition exacte la
+réclamait (son libellé UI décrit cette option) ; sinon `slog.WarnContext` et la courbe équipe
+est simplement absente. `buildSquadIntensityProfile` découpé (ordre des matchs, résolution des
+xuids, `intensityRowsBuilder` à filtre d'events injecté) : plus de `nolint:funlen` — celui-ci
+était d'ailleurs orphelin dans `teammates_squad_charts_synergy.go` (doc laissée derrière par le
+split de 2026-05-27), retiré. Front : `IntensityOverlay { key: 'team' | 'lobby', label, rows }`,
+`overlays?: IntensityOverlay[]` (remplace `teamOverlay`), styles neutres sur `tc.text`
+(équipe trait plein 1,5 / 0,85 ; lobby pointillé 1 / 0,55, z inférieur), borne Y sur les deux
+médianes, tooltip joueur → équipe → lobby. Composant : équipe dès 3 panneaux
+(`MIN_PLAYERS_FOR_TEAM_CURVE` inchangé), lobby dès 1. i18n `intensity.lobbyLabel` FR/EN
+(« Lobby », toléré par le garde anti-anglicismes, décision du 2026-09-05) ;
+`common.charts.intensity_tooltip_team` réécrit pour décrire les deux courbes, module généré par
+`scripts/build_i18n_manifests.mjs`.
+
+**Résultats observés** : Go — build, vet, `go test ./internal/service/teammates/ ./internal/domain/`
+verts ; 2 tests neufs (`teammates_squad_intensity_team_lobby_test.go`) prouvés rouges par
+3 mutations (team = lobby ; repli lobby si alliés absents ; lobby = team). Contrat OpenAPI
+inchangé (`openapi-gen -check` à jour, `contracttest` vert : la clé reste une `string`).
+Web — typecheck, eslint (2 avertissements préexistants hors périmètre : `useReactTable` dans
+`SquadImpactScoreboard` / `SquadSynergyHistoryTable`), lint:colors, lint:fields, vitest
+`features/squad` + `components/charts` : 96 fichiers / 881 tests verts ; 9 tests builder + 6
+tests composant neufs, chacun prouvé rouge (8 mutations). golangci-lint `--new-from-rev=HEAD` :
+0 issue neuve. Baseline JSONL : aucun test renommé ou supprimé, le paquet teammates n'y figure
+pas.
+
+**Conclusion / prochaine étape** : vérification visuelle par l'utilisateur (page Escouade,
+onglet Dynamique, 1 puis 3 joueurs : pointillé lobby toujours présent, trait plein équipe à
+partir de 3), puis commit au signal. Découvertes non traitées : voir le rapport du lot.
+
 ## [2026-09-17] Suite de la revue des 8 lots — 7 petits items web (libellés EN de la tuile, « volé », tranche 25 %, tests sprite+bordure, garde anti-anglicismes, helpers de rencontre, bouton de copie du watcher) — Complété (branche `fix/revue-suite-v75`)
 
 **Demande** (décisions utilisateur du 2026-09-17, après le lot de correctifs) : traduire les deux

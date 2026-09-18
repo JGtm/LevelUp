@@ -241,16 +241,29 @@ type SquadIntensityMatchRow struct {
 	Phases  [10]float64 `json:"phases"`
 }
 
-// SquadIntensityOption est une entrée du segmented control du heatmap
-// d'intensité (toggle "all" ou un joueur).
+// Clés STABLES des deux lignes agrégées du profil d'intensité (le front les
+// lit telles quelles dans `intensity_profile.rows`, ce sont des clés, pas des
+// libellés) :
+//   - SquadIntensityKeyTeam  : frags de l'ÉQUIPE ALLIÉE du joueur principal,
+//     par match (main inclus) ;
+//   - SquadIntensityKeyLobby : frags de TOUT le match (les deux camps).
+//
+// Les autres clés sont des gamertags (un panneau par joueur).
+const (
+	SquadIntensityKeyTeam  = "team"
+	SquadIntensityKeyLobby = "lobby"
+)
+
+// SquadIntensityOption est une entrée du profil d'intensité (ligne agrégée
+// `team` / `lobby` ou un joueur).
 type SquadIntensityOption struct {
-	Key   string `json:"key"`   // "all" | gamertag (utilisé pour l'index `Rows`)
-	Label string `json:"label"` // texte affiché dans le toggle
+	Key   string `json:"key"`   // SquadIntensityKeyTeam | SquadIntensityKeyLobby | gamertag (index de `Rows`)
+	Label string `json:"label"` // texte affiché (= la clé pour les lignes agrégées, le front traduit)
 }
 
-// SquadIntensityProfile alimente teammates.15 (heatmap d'intensité avec
-// toggle Tous/joueur). Les phases sont déjà bucket-isées et normalisées
-// côté serveur.
+// SquadIntensityProfile alimente teammates.15 (profil d'intensité : un panneau
+// par joueur + deux courbes de référence `team` / `lobby`). Les phases sont
+// déjà bucket-isées et normalisées côté serveur.
 type SquadIntensityProfile struct {
 	Options []SquadIntensityOption              `json:"options"`
 	Rows    map[string][]SquadIntensityMatchRow `json:"rows"` // optionKey → lignes (1 par match)
@@ -526,8 +539,9 @@ type TeammatesPageResponse struct {
 	// SynergyRadar alimente teammates.06 (radar 6 axes par joueur sur les
 	// matchs PARTAGÉS). Nil si aucun match commun.
 	SynergyRadar []SquadSynergyRadarSeries `json:"synergy_radar,omitempty"`
-	// IntensityProfile alimente teammates.15 (heatmap d'intensité avec toggle
-	// Tous/joueur). Nil si <3 matchs ou aucun kill event.
+	// IntensityProfile alimente teammates.15 (profil d'intensité : un panneau par
+	// joueur + lignes de référence `team` / `lobby`). Nil si <3 matchs ou aucun
+	// kill event.
 	IntensityProfile *SquadIntensityProfile `json:"intensity_profile,omitempty"`
 	// PerformanceSeries alimente teammates.16 (8 sous-charts par joueur sur
 	// matchs partagés). Map gamertag → série triée par MatchOrder ASC. Nil

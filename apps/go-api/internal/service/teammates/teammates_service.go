@@ -332,27 +332,27 @@ func (s *TeammatesService) GetPage(
 	// résultat du filtre ci-dessous.
 	rosterRowsForTimeline := allSquadRowsForTimeline
 
-	// Option « composition exacte » (req.FilterExactComposition, défaut OFF —
-	// décision produit 2026-08-02) : restreint en plus aux matchs où AUCUN autre
-	// coéquipier connu (extraPool) n'était sur l'équipe alliée du main. On charge
-	// alors l'équipe alliée par match. Best-effort : si le chargement échoue, on
-	// garde l'intersection du roster (dégradation gracieuse), le filtre briefing
-	// est désactivé (mainTeamByMatch nil) et l'échec est remonté à l'UI.
+	// Équipe alliée du main par match (Q32b) : chargée UNE fois sur l'union des
+	// matchs et partagée par ses trois consommateurs (filtre composition exacte,
+	// matrice d'impact, courbe « équipe » du profil d'intensité) — cf. loadMainTeamAllies.
 	selectedXUIDs := collectSelectedXUIDs(teammates)
 	friendXUIDs := resolveFriendXUIDs(friendGTs, topRows)
 	extraPool := buildExtraPoolXUIDs(topRows, friendXUIDs, selectedXUIDs, playerXUID)
-	var mainTeamByMatch map[string]map[string]struct{}
+	allies, mainTeamByMatch := s.loadMainTeamAllies(
+		ctx, playerXUID, collectMatchIDs(allSquadRowsForTimeline, allSquadRows),
+		req.FilterExactComposition && len(selectedXUIDs) > 0, issues)
+
+	// Option « composition exacte » (req.FilterExactComposition, défaut OFF —
+	// décision produit 2026-08-02) : restreint en plus aux matchs où AUCUN autre
+	// coéquipier connu (extraPool) n'était sur l'équipe alliée du main. Alliés non
+	// chargés : intersection du roster gardée (dégradation gracieuse), filtre
+	// briefing désactivé (exactTeamByMatch nil), échec remonté à l'UI par loadMainTeamAllies.
+	var exactTeamByMatch map[string]map[string]struct{}
 	var excludedForTimeline []domain.SquadMatchRow
-	if req.FilterExactComposition && len(allSquadRowsForTimeline) > 0 && len(selectedXUIDs) > 0 {
-		allies, err := s.repo.LoadMainTeamParticipants(
-			ctx, playerXUID, collectMatchIDs(allSquadRowsForTimeline, allSquadRows))
-		if err != nil {
-			issues.add(ctx, domain.DataIssueMainTeamParticipants, "", err)
-		} else {
-			mainTeamByMatch = buildMainTeamXUIDSet(allies)
-			allSquadRows, _ = filterExactComposition(allSquadRows, mainTeamByMatch, extraPool, selectedXUIDs)
-			allSquadRowsForTimeline, excludedForTimeline = filterExactComposition(allSquadRowsForTimeline, mainTeamByMatch, extraPool, selectedXUIDs)
-		}
+	if req.FilterExactComposition && len(selectedXUIDs) > 0 && mainTeamByMatch != nil {
+		exactTeamByMatch = mainTeamByMatch
+		allSquadRows, _ = filterExactComposition(allSquadRows, mainTeamByMatch, extraPool, selectedXUIDs)
+		allSquadRowsForTimeline, excludedForTimeline = filterExactComposition(allSquadRowsForTimeline, mainTeamByMatch, extraPool, selectedXUIDs)
 	}
 
 	// Timeseries + MapBreakdown sur l'intersection des matchs escouade (composition exacte).
@@ -402,10 +402,10 @@ func (s *TeammatesService) GetPage(
 			s.replayAvailability(ctx), s.roundsDecide)
 		sessionTimeline = buildSquadSessionTimeline(allSquadRowsForTimeline)
 		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, issues)
-		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, playerXUID, s.gamertag, req.SelectedGamertags)
+		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, playerXUID, s.gamertag, req.SelectedGamertags, allies)
 		perMinuteStats = s.buildSquadPerMinuteStats(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, sessionMatchIDs)
 		synergyRadar = s.buildSquadSynergyRadar(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
-		intensityProfile = s.buildSquadIntensityProfile(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, "all")
+		intensityProfile = s.buildSquadIntensityProfile(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, mainTeamByMatch)
 		performanceSeries = s.buildSquadPerformanceSeries(ctx, allSquadRows, s.gamertag, playerXUID, req.SelectedGamertags, teammates)
 		weaponKills, fragClasses = s.buildSquadWeaponKills(ctx, allSquadRows, s.gamertag, playerXUID, teammates, performanceSeries)
 		weaponAccuracy = s.buildSquadWeaponAccuracy(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
@@ -426,7 +426,7 @@ func (s *TeammatesService) GetPage(
 	// selectionne ; mode squad complet sinon.
 	mainFilteredCanonical := filterCanonicalByMatchIDsSet(canonicalRows, filteredMatches)
 	compFilter := &exactCompositionFilter{
-		teamByMatch:   mainTeamByMatch,
+		teamByMatch:   exactTeamByMatch,
 		extraPool:     extraPool,
 		selectedXUIDs: selectedXUIDs,
 	}

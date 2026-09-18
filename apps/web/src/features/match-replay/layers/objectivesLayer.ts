@@ -44,11 +44,22 @@
  * normalisé ici) ; un cylindre en rayon monde. Les marqueurs sont des POINTS : un
  * losange (apparition/socle), doublé d'un anneau pour une livraison — jamais un disque
  * de zone inventé (règle shape.go).
+ *
+ * L'ALTITUDE SE DIT COMME CELLE DES JOUEURS (2026-09-18). Un objectif portait un `z` que
+ * personne ne lisait : un socle de drapeau à l'étage se dessinait exactement comme un socle au
+ * sol, pendant que les pions disaient leur étage par des anneaux. Le calque parle désormais le
+ * même langage, sans texte : un MARQUEUR porte `fl` anneaux concentriques (`floorRings.ts`,
+ * la boucle des pions), une ZONE porte `fl` contours concentriques EXTÉRIEURS — extérieurs
+ * parce que le calque vivant (`zoneStatesLayer`) repeint l'intérieur de la forme quand la zone
+ * est tenue, et recouvrirait tout ce qui y serait cuit. L'étage est celui de `floorOf`, sur
+ * l'amplitude verticale du document (`ObjectivesStyle.z`) ; un terrain PLAT n'en donne aucun
+ * (cf. `floorInRange`, garde commune aux pions).
  */
 import type { ReplayMapObjectives } from '@/lib/api/types'
 
 import { buildCarrierPosAt } from '../model/carrierPosition'
 import { objectiveFamilyOf } from '../model/objectiveFamilies'
+import { drawFloorRings, floorInRange, FLOOR_RING_ALPHA, FLOOR_RING_ALPHA_DECAY, FLOOR_RING_GAP } from './floorRings'
 import { type XY } from '../../../lib/replay/replayLogic'
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
@@ -146,6 +157,12 @@ export interface ObjectivesStyle {
    * et les marques (`useReplayInks.mark.outline`), et la seule qui marche dans les DEUX thèmes.
    */
   neutralOutline: string
+  /**
+   * L'AMPLITUDE VERTICALE DU DOCUMENT (`doc.bounds.minZ/maxZ`, la même que celle des pions) :
+   * c'est sur elle que `floorOf` range un `z` dans un étage. Sans elle, un objectif ne peut pas
+   * dire sa hauteur dans le langage des joueurs.
+   */
+  z: { min: number; max: number }
 }
 
 /** `team` d'un objectif que PERSONNE ne tient — arbitré côté serveur. */
@@ -161,7 +178,21 @@ const ZONE_RIM_PAD = 1.2
 const MARKER_SIZE = 5.5
 const MARKER_RING = 8
 const MARKER_ALPHA = 0.9
-
+/**
+ * Premier anneau d'ÉTAGE d'un marqueur : AU-DELÀ de l'anneau de livraison (8 px), sinon les
+ * deux se confondraient et une livraison au sol se lirait « à l'étage ». Le pas d'un anneau
+ * (`FLOOR_RING_GAP`) au-delà du rayon de livraison : l'écart entre l'anneau de livraison et le
+ * premier anneau d'étage est alors le même qu'entre deux anneaux d'étage.
+ */
+const MARKER_FLOOR_RING_FIRST = MARKER_RING + FLOOR_RING_GAP
+/**
+ * Pas d'un contour d'étage de zone, en PIXELS d'écran : le même que celui des anneaux, pour
+ * que l'œil compte la même chose. Le contour n° r est décalé de r fois ce pas vers l'extérieur,
+ * ce qui le laisse au-delà du trait le plus épais du calque vivant (3,5 px, soit 1,75 px de
+ * débord) — jamais recouvert.
+ */
+const ZONE_FLOOR_PAD_STEP = FLOOR_RING_GAP
+const ZONE_FLOOR_STROKE_WIDTH = 1
 /**
  * drawObjectivesLayer peint zones puis marqueurs. Calque STATIQUE — l'appelant le cuit
  * hors écran et le recopie, comme le sol et les callouts. AUCUN texte (cf. en-tête).
@@ -178,26 +209,38 @@ export function drawObjectivesLayer(
   for (const e of elements) {
     const color = style.colorOfTeam(e.team)
     const rim = e.team === TEAM_NONE ? style.neutralOutline : null
-    if (e.kind === 'zone') drawZone(ctx, e, px, scale, color, rim)
+    if (e.kind === 'zone') drawZone(ctx, e, { px, scale, color, rim, fl: floorInRange(e.z, style.z) })
   }
   // Les marqueurs par-dessus les zones : une livraison ponctuelle vit parfois DANS son
   // cylindre (mesuré sur Catalyst) et doit rester visible.
   for (const e of elements) {
     if (e.kind !== 'marker') continue
-    drawMarker(ctx, e, px, style.colorOfTeam(e.team), e.team === TEAM_NONE ? style.neutralOutline : null)
+    const rim = e.team === TEAM_NONE ? style.neutralOutline : null
+    drawMarker(ctx, e, px, { color: style.colorOfTeam(e.team), rim, fl: floorInRange(e.z, style.z) })
   }
   ctx.globalAlpha = 1
 }
 
-/** Zone : boîte ORIENTÉE (4 coins monde) ou cylindre (rayon monde -> pixels). */
+/** Ce qu'une zone doit savoir pour se peindre : projection, encres et étage. */
+interface ZoneDrawing {
+  px: (p: XY) => XY
+  scale: number
+  color: string
+  rim: string | null
+  /** Étage (0 = sol) : autant de contours concentriques extérieurs. */
+  fl: number
+}
+
+/**
+ * Zone : boîte ORIENTÉE (4 coins monde) ou cylindre (rayon monde -> pixels), puis ses contours
+ * d'étage à l'EXTÉRIEUR — un par étage, de plus en plus pâles, comme les anneaux d'un pion.
+ */
 function drawZone(
   ctx: CanvasRenderingContext2D,
   e: ObjectiveElementReady,
-  px: (p: XY) => XY,
-  scale: number,
-  color: string,
-  rim: string | null,
+  d: ZoneDrawing,
 ): void {
+  const { px, scale, color, rim } = d
   traceZonePath(ctx, e, px, scale)
   ctx.globalAlpha = ZONE_FILL_ALPHA
   ctx.fillStyle = color
@@ -214,21 +257,50 @@ function drawZone(
   ctx.strokeStyle = color
   ctx.lineWidth = ZONE_STROKE_WIDTH
   ctx.stroke()
+  drawZoneFloorContours(ctx, e, d)
+}
+
+/**
+ * drawZoneFloorContours : `fl` contours concentriques EXTÉRIEURS, décalés de `ZONE_FLOOR_PAD_STEP`
+ * pixels chacun, tracés par la MÊME géométrie que la zone (`traceZonePath` et son `padPx`).
+ * Trait fin, même couleur, opacité décroissante — le même pâlissement que les anneaux.
+ */
+function drawZoneFloorContours(
+  ctx: CanvasRenderingContext2D,
+  e: ObjectiveElementReady,
+  d: ZoneDrawing,
+): void {
+  if (d.fl <= 0) return
+  ctx.strokeStyle = d.color
+  ctx.lineWidth = ZONE_FLOOR_STROKE_WIDTH
+  for (let r = 1; r <= d.fl; r++) {
+    ctx.globalAlpha = FLOOR_RING_ALPHA - FLOOR_RING_ALPHA_DECAY * (r - 1)
+    traceZonePath(ctx, e, d.px, d.scale, ZONE_FLOOR_PAD_STEP * r)
+    ctx.stroke()
+  }
+}
+
+/** Ce qu'un marqueur doit savoir pour se peindre : encres et étage. */
+interface MarkerDrawing {
+  color: string
+  rim: string | null
+  /** Étage (0 = sol) : autant d'anneaux concentriques, au-delà de l'anneau de livraison. */
+  fl: number
 }
 
 /**
  * Marqueur : LOSANGE plein (apparition, socle) ; une LIVRAISON (`*_delivery`) gagne un
  * anneau — c'est un point d'arrivée, pas une apparition, et la différence se lit sans
- * texte.
+ * texte. Les anneaux d'ÉTAGE viennent en premier, sous la silhouette, comme sur un pion.
  */
 function drawMarker(
   ctx: CanvasRenderingContext2D,
   e: ObjectiveElementReady,
   px: (p: XY) => XY,
-  color: string,
-  rim: string | null,
+  { color, rim, fl }: MarkerDrawing,
 ): void {
   const c = px(e)
+  drawFloorRings(ctx, c, fl, color, { first: MARKER_FLOOR_RING_FIRST })
   ctx.globalAlpha = MARKER_ALPHA
   ctx.fillStyle = color
   ctx.strokeStyle = color
@@ -361,7 +433,7 @@ export function drawObjectivePulses(
   pulses: ObjectivePulse[],
   view: CanvasView,
   win: PulseWindow,
-  style: ObjectivesStyle,
+  style: Pick<ObjectivesStyle, 'colorOfTeam'>,
   reducedMotion: boolean,
 ): void {
   for (const p of pulses) {
@@ -390,13 +462,15 @@ export function drawObjectivePulses(
  * recopier ferait exactement ce que l'en-tête de `traceZonePath` interdisait déjà — deux
  * géométries qui divergent au premier correctif, avec un écart invisible parce que crédible.
  */
-export function zoneCornersWorld(e: ObjectiveElementReady): XY[] {
+export function zoneCornersWorld(e: ObjectiveElementReady, padWorld = 0): XY[] {
   const perp = { x: -e.fwd.y, y: e.fwd.x }
+  const hx = e.halfX + padWorld
+  const hy = e.halfY + padWorld
   return [
-    { x: e.x + e.fwd.x * e.halfX + perp.x * e.halfY, y: e.y + e.fwd.y * e.halfX + perp.y * e.halfY },
-    { x: e.x - e.fwd.x * e.halfX + perp.x * e.halfY, y: e.y - e.fwd.y * e.halfX + perp.y * e.halfY },
-    { x: e.x - e.fwd.x * e.halfX - perp.x * e.halfY, y: e.y - e.fwd.y * e.halfX - perp.y * e.halfY },
-    { x: e.x + e.fwd.x * e.halfX - perp.x * e.halfY, y: e.y + e.fwd.y * e.halfX - perp.y * e.halfY },
+    { x: e.x + e.fwd.x * hx + perp.x * hy, y: e.y + e.fwd.y * hx + perp.y * hy },
+    { x: e.x - e.fwd.x * hx + perp.x * hy, y: e.y - e.fwd.y * hx + perp.y * hy },
+    { x: e.x - e.fwd.x * hx - perp.x * hy, y: e.y - e.fwd.y * hx - perp.y * hy },
+    { x: e.x + e.fwd.x * hx - perp.x * hy, y: e.y + e.fwd.y * hx - perp.y * hy },
   ]
 }
 
@@ -417,20 +491,26 @@ export function zoneCanvasRadius(e: ObjectiveElementReady, scale: number): numbe
  * l'état vivant des zones (`zoneStatesLayer.ts`, repeint à chaque image). Deux copies de la
  * même forme divergeraient au premier correctif de géométrie — et l'écart serait invisible :
  * un contour légèrement faux reste crédible.
+ *
+ * `padPx` (2026-09-18) DILATE la forme de ce nombre de pixels d'écran, vers l'extérieur — c'est
+ * ce qui trace les contours d'étage sans une seconde copie de la géométrie : un cylindre
+ * gagne `padPx` sur son rayon écran, une boîte gagne `padPx / scale` sur chaque demi-côté
+ * monde. À 0 (défaut), la forme exacte.
  */
 export function traceZonePath(
   ctx: CanvasRenderingContext2D,
   e: ObjectiveElementReady,
   px: (p: XY) => XY,
   scale: number,
+  padPx = 0,
 ): void {
   ctx.beginPath()
   if (e.family === 'cylinder') {
     const c = px(e)
-    ctx.arc(c.x, c.y, zoneCanvasRadius(e, scale), 0, Math.PI * 2)
+    ctx.arc(c.x, c.y, zoneCanvasRadius(e, scale) + padPx, 0, Math.PI * 2)
     return
   }
-  zoneCornersWorld(e).forEach((w, i) => {
+  zoneCornersWorld(e, padPx / scale).forEach((w, i) => {
     const c = px(w)
     if (i === 0) ctx.moveTo(c.x, c.y)
     else ctx.lineTo(c.x, c.y)

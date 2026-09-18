@@ -7,7 +7,9 @@
  *   - la MÉDIANE des parts de frags par phase (trait épais, couleur joueur) ;
  *   - l'ENVELOPPE interquartile P25–P75 (aplat même teinte, opacité faible) —
  *     paire de séries empilées (base P25 transparente + (P75−P25) en areaStyle) ;
- *   - un repère pointillé à 10 % (activité uniforme sur 10 phases).
+ *   - un repère pointillé à 10 % (activité uniforme sur 10 phases) ;
+ *   - sur demande (Escouade), deux courbes de référence neutres : ÉQUIPE alliée
+ *     (trait plein) et LOBBY (pointillé discret), cf. `IntensityOverlay`.
  *
  * Échelle Y PARTAGÉE entre panneaux (max commun) pour comparer les joueurs. Un
  * joueur sans manche exploitable n'a pas de panneau. En-deçà de
@@ -89,16 +91,32 @@ export interface IntensityPanelInput {
 }
 
 /**
- * Courbe de référence d'ÉQUIPE superposée à chaque panneau (escouade de 3+
- * joueurs). Les manches attendues sont celles de la ligne agrégée `all` du
- * payload — un match y porte les frags de TOUS les joueurs sélectionnés — et non
- * une moyenne des médianes par joueur : l'agrégation reste faite par le helper
- * canonique `phaseProfile`, comme pour les panneaux joueur.
+ * Clés des deux lignes agrégées du payload (`intensity_profile.rows.team` /
+ * `.lobby`), miroir de `domain.SquadIntensityKeyTeam` / `Lobby` côté Go. Elles ne
+ * sont jamais des panneaux joueur.
  */
-export interface IntensityTeamOverlay {
+export const INTENSITY_OVERLAY_KEYS = ['team', 'lobby'] as const
+export type IntensityOverlayKey = (typeof INTENSITY_OVERLAY_KEYS)[number]
+
+export function isIntensityOverlayKey(key: string): key is IntensityOverlayKey {
+  return (INTENSITY_OVERLAY_KEYS as readonly string[]).includes(key)
+}
+
+/**
+ * Courbe de référence superposée à chaque panneau :
+ *   - `team`  : l'ÉQUIPE ALLIÉE du joueur principal, par match (main inclus) ;
+ *   - `lobby` : TOUT le match, les deux camps (« le match était-il intense en
+ *     général ? »).
+ * Les manches sont celles des lignes agrégées du payload — un match y porte les
+ * frags de toute la population visée — et non une moyenne des médianes par
+ * joueur : l'agrégation reste faite par le helper canonique `phaseProfile`,
+ * comme pour les panneaux joueur.
+ */
+export interface IntensityOverlay {
+  key: IntensityOverlayKey
   /** Libellé de la courbe (titre de la ligne dans le tooltip). */
   label: string
-  /** Manches d'équipe (`intensity_profile.rows.all`). */
+  /** Manches agrégées (`intensity_profile.rows[key]`). */
   rows: Array<{ phases: number[] | null }>
 }
 
@@ -112,11 +130,11 @@ export interface IntensityProfileOpts {
   /** Étiquettes de l'axe X (début / milieu / fin) + suffixe tooltip de tranche. */
   axisLabels: IntensityAxisLabels
   /**
-   * Repère d'équipe superposé à CHAQUE panneau. Absent (défaut) = rendu
-   * strictement identique à l'existant : Sessions et Timeseries, qui montent le
-   * même builder en solo, n'héritent de rien.
+   * Courbes de référence (équipe, lobby) superposées à CHAQUE panneau. Absent ou
+   * vide (défaut) = rendu strictement identique à l'existant : Sessions et
+   * Timeseries, qui montent le même builder en solo, n'héritent de rien.
    */
-  teamOverlay?: IntensityTeamOverlay
+  overlays?: IntensityOverlay[]
 }
 
 /** Panneau retenu (au moins une manche exploitable) + son profil agrégé. */
@@ -166,54 +184,73 @@ export function computeGrids(n: number): GridBox[] {
   return boxes
 }
 
-/** Repère d'équipe résolu : médiane par phase + habillage (label / couleur). */
-interface ResolvedTeam {
+/** Courbe de référence résolue : médiane par phase + habillage (clé / label / couleur). */
+interface ResolvedOverlay {
+  key: IntensityOverlayKey
   label: string
   color: string
   median: number[]
 }
 
 /**
- * Médiane par phase de l'ÉQUIPE, agrégée par le MÊME helper canonique que les
- * panneaux joueur (`phaseProfile`) sur les manches d'escouade fournies par
- * l'appelant. `undefined` si aucune manche n'est exploitable (0 frag sur toute la
- * sélection) → aucune courbe plate n'est tracée.
+ * Habillage neutre des courbes de référence — même encre `tc.text` pour les deux,
+ * sans couleur joueur : ÉQUIPE en trait plein, LOBBY en pointillé plus fin et
+ * plus discret (c'est la toile de fond, pas un concurrent de la courbe joueur).
+ */
+const OVERLAY_STYLE: Record<
+  IntensityOverlayKey,
+  { type: 'solid' | 'dashed'; width: number; opacity: number; z: number; symbolSize: number }
+> = {
+  team: { type: 'solid', width: 1.5, opacity: 0.85, z: 3, symbolSize: 6 },
+  lobby: { type: 'dashed', width: 1, opacity: 0.55, z: 2, symbolSize: 5 },
+}
+
+/**
+ * Médiane par phase de chaque courbe de référence, agrégée par le MÊME helper
+ * canonique que les panneaux joueur (`phaseProfile`) sur les manches fournies par
+ * l'appelant. Une courbe sans manche exploitable (0 frag sur toute la
+ * population) est écartée → aucune courbe plate n'est tracée.
  *
  * color-allow: `color` reçoit `tc.text`, neutre de thème réservé aux séries
  * partagées (précédent : courbe « MMR équipe » de squadPerformanceLineCharts) — il
  * ne peut entrer en collision avec aucune couleur joueur.
  */
-function resolveTeam(overlay: IntensityTeamOverlay | undefined, color: string): ResolvedTeam | undefined {
-  if (!overlay) return undefined
-  const profile = phaseProfile(overlay.rows)
-  if (profile.nMatches === 0) return undefined
-  return { label: overlay.label, color, median: profile.median }
+function resolveOverlays(overlays: IntensityOverlay[] | undefined, color: string): ResolvedOverlay[] {
+  if (!overlays) return []
+  const out: ResolvedOverlay[] = []
+  for (const overlay of overlays) {
+    const profile = phaseProfile(overlay.rows)
+    if (profile.nMatches === 0) continue
+    out.push({ key: overlay.key, label: overlay.label, color, median: profile.median })
+  }
+  return out
 }
 
-/** Contexte commun aux panneaux (repère 10 %, courbe d'équipe optionnelle). */
+/** Contexte commun aux panneaux (repère 10 %, courbes de référence). */
 interface PanelContext {
   refColor: string
   refLabel: string
-  team?: ResolvedTeam
+  overlays: ResolvedOverlay[]
 }
 
 /** Borne Y partagée : max des P75 (ou médianes si enveloppe omise) + le repère. */
-function sharedYMax(panels: ResolvedPanel[], team?: ResolvedTeam): number {
+function sharedYMax(panels: ResolvedPanel[], overlays: ResolvedOverlay[]): number {
   let max = UNIFORM_SHARE
   for (const p of panels) {
     const useEnvelope = p.profile.nMatches >= MIN_MATCHES_FOR_ENVELOPE
     const top = useEnvelope ? p.profile.p75 : p.profile.median
     for (const v of top) if (v > max) max = v
   }
-  // La courbe d'équipe est superposée aux panneaux : elle doit tenir dans l'échelle.
-  if (team) for (const v of team.median) if (v > max) max = v
+  // Les courbes de référence sont superposées aux panneaux : elles doivent tenir
+  // dans l'échelle.
+  for (const o of overlays) for (const v of o.median) if (v > max) max = v
   // Marge de tête ~12 %, plafonnée à 1 (100 % des frags).
   return Math.min(1, max * 1.12)
 }
 
-/** Séries d'un panneau (base P25 + bande + médiane + repère + équipe), liées à la grille i. */
+/** Séries d'un panneau (base P25 + bande + médiane + repère + équipe / lobby), liées à la grille i. */
 function buildPanelSeries(panel: ResolvedPanel, gi: number, ctx: PanelContext) {
-  const { refColor, refLabel, team } = ctx
+  const { refColor, refLabel, overlays } = ctx
   const { profile, color } = panel
   const axisBinding = { xAxisIndex: gi, yAxisIndex: gi } as const
   const noSymbol = { showSymbol: false, symbol: 'none' as const }
@@ -269,19 +306,20 @@ function buildPanelSeries(panel: ResolvedPanel, gi: number, ctx: PanelContext) {
     },
   })
 
-  // Courbe d'ÉQUIPE superposée (escouade de 3+ joueurs) : même médiane par phase,
-  // calculée sur les manches agrégées de l'escouade. Trait fin pointillé sous la
+  // Courbes de référence superposées (équipe, lobby) : même médiane par phase,
+  // calculée sur les manches agrégées de la population visée. Traits fins sous la
   // courbe du joueur (z inférieur) pour rester un repère, pas un concurrent.
-  if (team) {
+  for (const overlay of overlays) {
+    const style = OVERLAY_STYLE[overlay.key]
     series.push({
-      id: `team-${gi}`,
-      name: team.label,
+      id: `${overlay.key}-${gi}`,
+      name: overlay.label,
       type: 'line',
-      data: team.median,
-      lineStyle: { color: team.color, width: 1.5, type: 'dashed', opacity: 0.85 },
-      ...hoverRevealSymbol(team.color, 6),
+      data: overlay.median,
+      lineStyle: { color: overlay.color, width: style.width, type: style.type, opacity: style.opacity },
+      ...hoverRevealSymbol(overlay.color, style.symbolSize),
       ...axisBinding,
-      z: 3,
+      z: style.z,
     })
   }
   return series
@@ -308,6 +346,7 @@ function buildTooltipFormatter(medianLabel: string, envelopeLabel: string, range
     const base = arr.find((p) => String(p.seriesId ?? '').startsWith('base-'))
     const band = arr.find((p) => String(p.seriesId ?? '').startsWith('band-'))
     const team = arr.find((p) => String(p.seriesId ?? '').startsWith('team-'))
+    const lobby = arr.find((p) => String(p.seriesId ?? '').startsWith('lobby-'))
     const lines = [`<b>${escapeHtml(String(phase))}</b>`]
     if (median?.seriesName) lines.push(`<b>${escapeHtml(median.seriesName)}</b>`)
     if (median && Number.isFinite(median.value)) {
@@ -318,9 +357,12 @@ function buildTooltipFormatter(medianLabel: string, envelopeLabel: string, range
       const hi = lo + (band.value as number)
       lines.push(`${escapeHtml(envelopeLabel)} : ${asPct(lo)} – ${asPct(hi)}`)
     }
-    // Repère d'équipe (présent uniquement quand la courbe agrégée est montée).
-    if (team?.seriesName && Number.isFinite(team.value)) {
-      lines.push(`${escapeHtml(team.seriesName)} : ${asPct(team.value as number)}`)
+    // Courbes de référence (présentes uniquement quand elles sont montées), dans
+    // l'ordre joueur → équipe → lobby.
+    for (const ref of [team, lobby]) {
+      if (ref?.seriesName && Number.isFinite(ref.value)) {
+        lines.push(`${escapeHtml(ref.seriesName)} : ${asPct(ref.value as number)}`)
+      }
     }
     return lines.join('<br/>')
   }
@@ -340,8 +382,8 @@ export function buildSquadIntensityProfileOption(opts: IntensityProfileOpts): EC
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const grids = computeGrids(resolved.length)
-  const team = resolveTeam(opts.teamOverlay, tc.text)
-  const yMax = sharedYMax(resolved, team)
+  const overlays = resolveOverlays(opts.overlays, tc.text)
+  const yMax = sharedYMax(resolved, overlays)
   const refColor = tc.axisLabel
 
   const { start, mid, end } = opts.axisLabels
@@ -377,7 +419,7 @@ export function buildSquadIntensityProfileOption(opts: IntensityProfileOpts): EC
     textStyle: { color: resolved[gi].color, fontSize: 12, fontWeight: 600 as const },
   }))
   const series = resolved.flatMap((p, gi) =>
-    buildPanelSeries(p, gi, { refColor, refLabel: opts.refLabel, team }),
+    buildPanelSeries(p, gi, { refColor, refLabel: opts.refLabel, overlays }),
   )
 
   return {

@@ -57,3 +57,18 @@ type RelationAssists struct {
 	// Given : assistances du joueur sur les frags de l'autre.
 	Given AssistTiers `json:"given"`
 }
+
+// MatchAssistedFrags : sur UN match, la part des frags du joueur qui ont été assistés
+// par un coéquipier — le sens « reçues » de RelationAssists, ramené à un seul match
+// (tuile de match de l'Accueil). Mêmes lignes (`publishable AND assist_known`), mêmes
+// tranches, mêmes bornes.
+//
+// FragsMeasured : frags du joueur portés par ces lignes sur le match (DÉNOMINATEUR de la
+// part « N / M frags assistés »). Received : ceux dont `assist_xuid` est renseigné, par
+// tranche de part ; une assistance sans part mesurée compte dans Total et dans aucune
+// tranche. Zéro frag mesuré = pas d'objet (nil), même quand le joueur a 0 frag au match :
+// « on ne sait pas » n'est pas « 0 ».
+type MatchAssistedFrags struct {
+	FragsMeasured int         `json:"frags_measured"`
+	Received      AssistTiers `json:"received"`
+}

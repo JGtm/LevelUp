@@ -71,6 +71,7 @@ export function SquadDynamiquePage() {
         envelopeLabel={t.intensity.envelopeLabel}
         refLabel={t.intensity.refLabel}
         teamLabel={t.intensity.teamLabel}
+        lobbyLabel={t.intensity.lobbyLabel}
         emptyMessage={t.empty.noBlockData}
         profile={intensityProfile ?? { options: [], rows: {} }}
         colorByPlayer={playerColors}

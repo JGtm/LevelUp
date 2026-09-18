@@ -164,6 +164,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       powerup_overshield: 'Surbouclier',
       powerup_camo: 'Camouflage actif',
     },
+    layerModeObjectives: 'Objectifs du mode',
+    layerModeObjectivesHint:
+      "Zones et points d'objectif du mode joué (collines, bases, zones de capture, socles et points de livraison), aux couleurs des camps. Les anneaux autour d'un point et les contours autour d'une zone indiquent l'étage, comme pour les joueurs : plus il y en a, plus c'est haut.",
     layerFlagCarries: 'Drapeaux',
     layerFlagCarriesHint:
       "La vie des drapeaux de capture, lue dans le film : porté (le drapeau suit son porteur image par image), au sol à la dernière position mesurée, ou à sa base. La base garde un drapeau atténué tant que le sien est ailleurs. Un portage dont RIEN ne date la fin s'affiche atténué lui aussi : son intervalle court jusqu'à la fin du film, c'est une borne haute et non une mesure.",
@@ -608,6 +611,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       powerup_overshield: 'Overshield',
       powerup_camo: 'Active camouflage',
     },
+    layerModeObjectives: 'Mode objectives',
+    layerModeObjectivesHint:
+      "Zones and objective points of the mode being played (hills, bases, capture zones, stands and delivery points), in the colours of the teams. The rings around a point and the outlines around a zone show the floor, as for players: the more there are, the higher it is.",
     layerFlagCarries: 'Flags',
     layerFlagCarriesHint:
       'The life of capture flags, read from the film: carried (the flag follows its carrier frame by frame), on the ground at the last measured position, or at its base. A base keeps a faded flag for as long as its own is elsewhere. A carry whose end NOTHING dates is faded too: its interval runs to the end of the film, an upper bound rather than a measurement.',

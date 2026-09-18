@@ -89,6 +89,14 @@ export interface SceneToggles {
   placements: boolean
   /** « Effets d'élimination » — le DESSIN s'éteint, jamais la mesure (cf. la chaleur). */
   killFx: boolean
+  /**
+   * « Objectifs du mode » (2026-09-18) — TROIS calques pour UN objet : la géométrie cuite
+   * (socles, livraisons, collines, bases et leurs anneaux d'étage), l'état vivant des zones
+   * (qui tient quoi) et les pulses d'action. Les éteindre séparément laisserait une zone
+   * repeinte sans contour, ou un pulse sans lieu. Les objets PORTÉS (drapeau, couronne,
+   * crâne, bombe) restent hors de cette bascule : ils ont la leur.
+   */
+  modeObjectives: boolean
 }
 
 /**
@@ -181,7 +189,7 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
     'sol-forge': !h.background && h.floor,
     chaleur: h.heat,
     'zones-nommees': t.zones && h.zoneNames,
-    'objectifs-cuits': h.objectivesCooked,
+    'objectifs-cuits': t.modeObjectives && h.objectivesCooked,
     projectiles: h.projectiles,
     'socles-armes': true,
     'armes-au-sol': true,
@@ -193,14 +201,14 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
     tirs: t.shotFx && h.shotFx,
     grenades: h.grenades,
     'fin-de-vol': true,
-    'etat-zones': h.zoneStates,
+    'etat-zones': t.modeObjectives && h.zoneStates,
     drapeaux: true,
     'objets-objectif': true,
     'couronne-vip': true,
     'crane-porte': true,
     'bombe-portee': true,
     deflagration: true,
-    'pulses-objectif': h.objectivePulses,
+    'pulses-objectif': t.modeObjectives && h.objectivePulses,
     morts: t.killFx && h.killFx,
   }
   return LAYER_ORDER.map((id) => ({ id, on: on[id], paint: paint[id] }))
