@@ -33,6 +33,8 @@ package replay
 //	  go test ./internal/games/halo_infinite/film/replay/ -run GoldenInputsFidelite -v
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,10 +42,32 @@ import (
 )
 
 // TestGoldenInputsFidelite : assemblage sur entrees FRAICHES == assemblage sur entrees RELUES.
+//
+// # C EST UN GATE LOCAL OBLIGATOIRE, ET SON SKIP N EST PAS UNE PERMISSION (2026-09-18, lot 4.1.3)
+//
+// Ce test est LE SEUL qui compare ce que l assemblage rend sur des entrees fraichement decodees a
+// ce qu il rend sur les MEMES entrees passees par le codec. C est donc le seul qui puisse voir un
+// codec QUI PERD — et il n a rien vu pendant tout le chantier, parce qu il SKIPPE sans le cache de
+// films et que personne ne posait la variable.
+//
+// CE QUE CE SILENCE A COUTE, MESURE : le codec arrondissait les pistes d objets du monde au
+// centimetre et ne portait que sept champs sur vingt d un record de creation. Le defaut n a ete vu
+// qu au gate S8 du lot 4.1.3, au prix d un decodage de dix films, et il aurait ete publie en
+// production — `groundWeapons[].x` a la decimale pres et `groundWeapons[].ammo` absent.
+//
+// IL RESTE SKIPPE SANS CACHE (la CI n a pas de films, et un test qui echoue faute de donnees
+// n apprend rien), mais TOUT LOT QUI TOUCHE AU CODEC DOIT LE JOUER, localement, sur les huit
+// builds :
+//
+//	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks //	  go test ./internal/games/halo_infinite/film/replay/ -run GoldenInputsFidelite -v
 func TestGoldenInputsFidelite(t *testing.T) {
 	cache := os.Getenv(miniFilmCacheEnv)
 	if cache == "" {
-		t.Skipf("fidelite du codec : %s non defini (cache de films absent, CI comprise)", miniFilmCacheEnv)
+		t.Skipf("fidelite du codec : %s non defini (cache de films absent, CI comprise). "+
+			"CE SKIP N EST PAS UNE PERMISSION : ce test est le SEUL qui voit un codec qui PERD, "+
+			"et son silence a laisse passer l arrondi des pistes d objets du monde jusqu au gate "+
+			"S8 du lot 4.1.3. Tout lot qui touche au codec des faits le JOUE localement sur les "+
+			"huit builds.", miniFilmCacheEnv)
 	}
 	for _, b := range goldenBuilds() {
 		t.Run(b.Build+"/"+b.Short8, func(t *testing.T) {
@@ -65,9 +89,33 @@ func fideliteUnBuild(t *testing.T, b goldenBuild, dir string) {
 	}
 	relu, _ := chargerGoldenBuild(t, b)
 
-	renduFrais := renderAssembly(assemblerGoldenBuild(t, b, frais, entry))
-	renduRelu := renderAssembly(assemblerGoldenBuild(t, b, relu, entry))
+	docFrais := assemblerGoldenBuild(t, b, frais, entry)
+	docRelu := assemblerGoldenBuild(t, b, relu, entry)
+
+	// L ORACLE EST L ARTEFACT SERIALISE, ET PLUS LE RENDU TEXTE (2026-09-18, lot 4.1.3).
+	//
+	// CE QUE LE RENDU TEXTE LAISSAIT PASSER, MESURE : `renderAssembly` est un resume LISIBLE, pas
+	// le document. Il ne porte ni les munitions d une arme au sol, ni la cause de fin de vie d un
+	// vehicule, ni les compteurs de `coverage.vehicles`. Ce test etait donc VERT pendant que
+	// l artefact rejoue perdait jusqu a 223 064 octets sur un BTB, et c est le gate S8 — au prix
+	// d un decodage de dix films — qui l a trouve. Ce qu on compare desormais est ce qu on PUBLIE.
+	octetsFrais, errF := json.Marshal(docFrais)
+	if errF != nil {
+		t.Fatalf("serialisation du document sur entrees fraiches : %v", errF)
+	}
+	octetsRelu, errR := json.Marshal(docRelu)
+	if errR != nil {
+		t.Fatalf("serialisation du document sur entrees relues : %v", errR)
+	}
+	if bytes.Equal(octetsFrais, octetsRelu) {
+		return
+	}
+	renduFrais, renduRelu := renderAssembly(docFrais), renderAssembly(docRelu)
 	if renduFrais == renduRelu {
+		t.Errorf("l ARTEFACT sur entrees FRAICHES differe de l ARTEFACT sur entrees RELUES "+
+			"(%d octets contre %d), et le rendu texte ne montre AUCUN ecart : la perte n est "+
+			"visible que dans le document publie. Fixture %s.",
+			len(octetsFrais), len(octetsRelu), b.inputsPath())
 		return
 	}
 	t.Errorf("l assemblage sur entrees FRAICHES differe de l assemblage sur entrees RELUES —\n"+

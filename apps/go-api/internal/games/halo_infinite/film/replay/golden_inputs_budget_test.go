@@ -22,9 +22,9 @@ import (
 
 // goldenInputsBudget : LE PLAFOND DU JEU ENTIER, en octets compresses.
 //
-// POSE LE 2026-09-14 (lot 1.0) A 12 MIO (12 582 912 octets). UNE SEULE MESURE FAIT FOI, celle
-// que ce test lit sur le disque : **11 049 200 octets** compresses pour les huit fixtures, soit
-// 10,54 Mio. Il reste 1 533 712 octets libres, soit 12,2 % du plafond. (Le commentaire d origine
+// POSE LE 2026-09-14 (lot 1.0) A 12 MIO, RELEVE A 16 MIO LE 2026-09-18 (cf. ci-dessous). UNE
+// SEULE MESURE FAIT FOI, celle que ce test lit sur le disque : **14 072 829 octets** compresses
+// pour les huit fixtures, soit 13,42 Mio. Il reste 2 704 387 octets libres, soit 16 % du plafond. (Le commentaire d origine
 // citait TROIS totaux differents pour une seule mesure — un d avant regeneration, un du plan, un
 // mesure : revue R2, constat R2-2.)
 //
@@ -50,7 +50,35 @@ import (
 // LA MARGE EST VOULUE ETROITE : un canal de plus se voit. Elle n est PAS la pour absorber un
 // build supplementaire — un neuvieme build est precisement la decision que ce plafond existe
 // pour rendre explicite.
-const goldenInputsBudget = 12 << 20
+// RELEVE A 16 MIO LE 2026-09-18 (lot 4.1.3), PAR DECISION ECRITE — c'est ce que ce plafond
+// existe pour forcer, et la question qu'il a posee avait une bonne reponse.
+//
+// # CE QUI A GROSSI, ET POURQUOI ON PAIE
+//
+// Le codec CESSAIT DE PERDRE. La v23 porte les pistes d'objets du monde en float32 EXACT (elles
+// etaient arrondies au centimetre, et le document publie `groundWeapons[].x` brut), le record de
+// creation ENTIER (les munitions de l'arme au sol tombaient, avec la reference d'entite,
+// l'identifiant de capacite, le masque et trois mots MPP sur quatre) et les denominateurs du
+// balayage entiers. Le gate S8 a mesure la perte sur dix films avant ce lot.
+//
+// PRIX MESURE : 11 049 200 -> 14 072 829 octets, +27,4 %. Par fixture : 000d5950 +36,5 %,
+// fb1a1a72 +33,6 %, bcb6d393 +35,3 %, a521164d +27,2 %, e5adf7b2 +26,3 %, 11de8353 +23,8 %,
+// 60ae07c4 +23,5 %, 111fa685 +21,8 %. Le poste dominant est le float32 exact : 12 octets par
+// point de piste d'objet du monde contre deux ou trois en delta-varint.
+//
+// # L'ALTERNATIVE, ET POURQUOI ELLE EST ECARTEE
+//
+// On pourrait ne porter que ce que l'assemblage LIT : `ProjectileSample.Chunk`, par exemple,
+// n'est lu par personne (verifie le 2026-09-18, zero occurrence hors codec). Cela rendrait
+// quelques pourcents. C'est ECARTE parce que c'est exactement le raisonnement qui a produit le
+// defaut : le codec ne portait « que ce que l'assemblage consomme » d'apres un jugement fait a la
+// main, et ce jugement etait FAUX sur trois familles pendant tout le chantier. Le codec porte
+// desormais TOUT, et c'est la reflexion — non l'attention d'un relecteur — qui le tient
+// (`TestCodecCouvreFilmInputs`, qui remplit chaque champ de chaque structure imbriquee).
+//
+// LA MARGE RESTE ETROITE, ET C'EST VOULU : 2 704 387 octets libres, 16 % du plafond. Un neuvieme
+// build ne passe pas sans une nouvelle decision.
+const goldenInputsBudget = 16 << 20
 
 // TestGoldenInputsTiennentDansLeBudget : le jeu entier tient-il sous le plafond, et combien pese
 // chaque fixture ?

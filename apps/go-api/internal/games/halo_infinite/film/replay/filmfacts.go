@@ -181,7 +181,31 @@ import (
 // les denominateurs de leur balayage. Ils sont LE SIGNAL ECRIT de l origine d une pose de
 // panneau (D13) : sans eux, un golden d assemblage figerait des poses dont l origine vient d un
 // repli alors que la production la LIT.
-const filmFactsMagic = "REPLAYINPUTS22\n"
+// v23 (2026-09-18, lot 4.1.3) : LE CODEC CESSE DE PERDRE, ET C EST LE GATE S8 QUI L A MESURE.
+// Trois pertes, toutes sur la voie des OBJETS DU MONDE (armes au sol, socles de power-up), toutes
+// invisibles au fixture et toutes publiees en production :
+//
+//	les PISTES d objets du monde passent en float32 EXACT. Elles etaient arrondies au centimetre
+//	sur la foi d un commentaire qui affirmait que « toute coordonnee publiee passe par round2 » ;
+//	la mesure le CONTREDIT (`document_ground_weapon_items.go:217` publie `X: o.Pos[0]` brut).
+//	`groundWeapons[0]/x` valait 24.479221 au decodage et 24.48 au rejeu, sur les 10 films du S8.
+//	Les PROJECTILES, eux, gardent le centimetre : `projectiles.go:110` les publie `round2`, et
+//	c est prouve la ou la decision se prend (cf. `precisionDePiste`).
+//
+//	les RECORDS DE CREATION passent de sept champs a la totalite : `HasAmmo` / `Ammo` (les
+//	munitions de l arme au sol, que le document publie en `groundWeapons[].ammo`), `HasRef` /
+//	`Ref`, `HasID` / `AbilityID`, `Mask` et ses temoins, les QUATRE mots MPP au lieu d un,
+//	`BitPos`, `Chunk`, `PacketIndex`, `DefaultStateBits`, `AfterBit`.
+//
+//	les DENOMINATEURS du balayage (`EquipmentCreationStats`) passent de trois champs a la
+//	totalite — dont `WithAmmo`, le denominateur de la lecture des munitions.
+//
+// POURQUOI RIEN NE L AVAIT VU : `TestGoldenInputsFidelite`, le seul test qui compare l assemblage
+// sur entrees fraiches a celui sur entrees relues, SKIPPE sans le cache de films ; et
+// `TestCodecCouvreFilmInputs` ne remplissait que le PREMIER champ de chaque structure imbriquee,
+// si bien qu une structure de vingt champs passait au vert sur un seul. Les deux sont corriges
+// dans le meme commit que cette montee.
+const filmFactsMagic = "REPLAYINPUTS23\n"
 
 // ---------------------------------------------------------------------------
 // LES CHAMPS SERIALISES, PAR TYPE — ce sont ceux que l assemblage consomme :

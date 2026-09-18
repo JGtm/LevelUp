@@ -122,7 +122,15 @@ const VersionCodecFaits = 1
 // DISTINCTE DE [VersionCodecFaits] parce que les deux ne commandent pas la meme decision : un
 // lecteur qui ne connait pas le CONTENEUR ne sait rien lire ; un lecteur qui connait le conteneur
 // mais pas le SCHEMA sait lire l en-tete, donc sait dire « perime » proprement.
-const SchemaDesFaits = 1
+// SCHEMA 2 (2026-09-18, lot 4.1.3) : la CHARGE de la section 1 a change de forme — le blob des
+// entrees passe en v23 (pistes d objets du monde en float32 exact, record de creation entier,
+// denominateurs entiers). C EST CE NUMERO QUI DOIT PORTER LE CHANGEMENT, et pas la seule magie du
+// blob : la magie vit DANS la section 1, donc un fichier d une version anterieure passerait le
+// verdict de fraicheur (l en-tete est identique, les quatre revisions n ont pas bouge) et ne
+// serait refuse qu au decodage de la section, par le chemin « illisible malgre un en-tete frais ».
+// Un fichier PERIME doit se dire perime SUR SON EN-TETE, en 110 octets, pas apres avoir ete lu
+// jusqu au mega-octet de positions. [TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete] le prouve.
+const SchemaDesFaits = 2
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.
@@ -221,10 +229,16 @@ func EncodeFilmFactsFile(f *FilmFactsFile) ([]byte, error) {
 	w.b = append(w.b, entete.b...)
 
 	entrees := &gwriter{}
-	blob := EncodeFilmFacts(&f.Facts)
+	blob, err := EncodeFilmFactsAvecErreur(&f.Facts)
+	if err != nil {
+		return nil, err
+	}
 	entrees.u(uint64(len(blob)))
 	entrees.b = append(entrees.b, blob...)
 	encodeGardesDeMode(entrees, f.Facts.FilmInputs)
+	if entrees.echec != nil {
+		return nil, entrees.echec
+	}
 	ecrireSection(w, sectionEntrees, entrees.b)
 
 	for _, s := range []struct {
