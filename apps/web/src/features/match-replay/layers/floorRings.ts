@@ -21,7 +21,32 @@
  * de LIVRAISON à 8 px et doit poser le sien au-delà, sinon les deux se confondraient. Le PAS
  * entre anneaux, lui, est le même partout : c'est lui que l'œil compte.
  */
-import type { XY } from '../../../lib/replay/replayLogic'
+import { floorOf, type XY } from '../../../lib/replay/replayLogic'
+
+/**
+ * Amplitude verticale en deçà de laquelle le terrain est PLAT : `altitudeRatio` rend alors 0,5
+ * par convention et `floorOf` l'étage 1, ce qui poserait un anneau sur chaque pion et chaque
+ * objectif sans que rien ne soit plus haut que rien. Bornes égales = vieux artefact sans Z, ou
+ * plateau sans relief ; dans les deux cas le langage d'étage n'a rien à dire.
+ */
+export const FLAT_SPAN = 1e-6
+
+/** Les bornes verticales du document, telles que `useReplayView` les sert. */
+export interface FloorRange {
+  min: number
+  max: number
+}
+
+/**
+ * floorInRange : l'étage d'un `z` (0 = sol) dans le langage commun des pions et des objectifs —
+ * `floorOf` sur l'amplitude du document, et 0 sur un terrain plat (cf. `FLAT_SPAN`). Aligné le
+ * 2026-09-18 : la garde vivait chez les objectifs seuls, les pions portaient un anneau à tort
+ * sur toute carte sans amplitude.
+ */
+export function floorInRange(z: number, range: FloorRange): number {
+  if (!(range.max - range.min > FLAT_SPAN)) return 0
+  return floorOf(z, range.min, range.max)
+}
 
 /** Rayon du PREMIER anneau d'un pion (planche du 2026-08-16 : détaché du point, pas collé). */
 export const FLOOR_RING_RADIUS = 6.5

@@ -393,6 +393,19 @@ describe("style de la planche (§1bis)", () => {
     expect(strokeStyles).toContain("rgb(1 2 3)");
     expect(valuesOf(ops, "lineWidth")).toContain(1);
   });
+
+  it("ne pose AUCUN anneau sur un terrain plat (aligné sur les objectifs, 2026-09-18)", () => {
+    // Bornes Z égales (artefact sans Z, ou plateau sans relief) : `floorOf` seul rendrait
+    // l'étage 1 à tout le monde. Le pion porte un z, mais rien n'est plus haut que rien :
+    // liseré + noyau, et pas un arc de plus.
+    const ops = trace(
+      { z: { min: 0, max: 0 } },
+      singlePointTrack(512, {
+        points: [{ t: 50, x: 5, y: 5, z: 7, h: 90 }],
+      }),
+    );
+    expect(count(ops, "arc")).toBe(2);
+  });
 });
 
 describe("couleur par SLOT (D1)", () => {

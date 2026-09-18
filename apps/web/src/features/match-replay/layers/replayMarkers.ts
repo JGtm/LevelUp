@@ -32,13 +32,12 @@
  */
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { drawAimCone } from './replayAimCone'
-import { drawFloorRings, FLOOR_RING_WIDTH, floorRingRadius } from './floorRings'
+import { drawFloorRings, floorInRange, FLOOR_RING_WIDTH, floorRingRadius } from './floorRings'
 import { drawNameLabel } from './replayLabels'
 import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 
 import {
   altitudeAt,
-  floorOf,
   isAliveAt,
   positionAt,
   trackWindow,
@@ -560,7 +559,12 @@ function project(p: XY, view: CanvasView): XY {
   return projectTo(view, p)
 }
 
+/**
+ * floorIndex : l'étage du pion à l'image, par la garde COMMUNE aux objectifs (`floorInRange`) —
+ * un terrain plat ne pose aucun anneau (aligné le 2026-09-18 ; avant, `floorOf` seul rendait
+ * l'étage 1 à tout le monde sur une carte sans amplitude).
+ */
 function floorIndex(track: ReplayTrackReady, style: MarkerStyle): number {
   const z = altitudeAt(track.points, style.frame)
-  return z === null ? 0 : floorOf(z, style.z.min, style.z.max)
+  return z === null ? 0 : floorInRange(z, style.z)
 }

@@ -14,6 +14,8 @@ import {
   FLOOR_RING_GAP,
   FLOOR_RING_RADIUS,
   floorRingRadius,
+  floorInRange,
+  FLAT_SPAN,
 } from './floorRings'
 
 function ctxEnregistreur() {
@@ -65,5 +67,21 @@ describe('drawFloorRings', () => {
     expect(arcs[0].r).toBeCloseTo(10.8 * 2, 10)
     expect(arcs[1].r).toBeCloseTo((10.8 + FLOOR_RING_GAP) * 2, 10)
     expect(arcs[0].width).toBe(2)
+  })
+})
+
+describe('floorInRange', () => {
+  it('range un z dans un étage sur une amplitude connue (0 = sol)', () => {
+    const range = { min: 0, max: 30 }
+    expect(floorInRange(0, range)).toBe(0)
+    expect(floorInRange(15, range)).toBe(1)
+    expect(floorInRange(30, range)).toBe(2)
+  })
+
+  it('rend le sol sur un terrain plat, quel que soit le z porté', () => {
+    // Sans amplitude, `floorOf` seul rendrait l’étage 1 (altitudeRatio = 0,5 par convention).
+    expect(floorInRange(7, { min: 0, max: 0 })).toBe(0)
+    expect(floorInRange(7, { min: 5, max: 5 + FLAT_SPAN / 2 })).toBe(0)
+    expect(floorInRange(7, { min: 12, max: 3 })).toBe(0)
   })
 })
