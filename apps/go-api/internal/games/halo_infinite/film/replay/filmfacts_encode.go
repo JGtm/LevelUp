@@ -23,7 +23,22 @@ const (
 // EncodeFilmFacts serialise les faits d un film. Le format est decrit en tete de filmfacts.go ;
 // la SUITE DES SECTIONS est celle que `DecodeFilmFacts` relit, dans le meme ordre, et toute
 // insertion au milieu monte `filmFactsMagic` DANS LE MEME COMMIT.
+// EncodeFilmFactsAvecErreur est [EncodeFilmFacts] qui REND SON ECHEC.
+//
+// Le codec est sans erreur sur tout ce qu il ecrit a la main ; une seule charge peut echouer (les
+// morts d objet, en JSON), et un echec avale produirait un fichier qui se relit comme un fait
+// FAUX. Les appelants qui ECRIVENT sur le disque passent par ici ; [EncodeFilmFacts] reste la
+// forme sans erreur pour les tests et les aller-retours en memoire.
+func EncodeFilmFactsAvecErreur(g *FilmFacts) ([]byte, error) {
+	w := encodeurDeFaits(g)
+	return w.b, w.echec
+}
+
 func EncodeFilmFacts(g *FilmFacts) []byte {
+	return encodeurDeFaits(g).b
+}
+
+func encodeurDeFaits(g *FilmFacts) *gwriter {
 	w := &gwriter{b: []byte(filmFactsMagic)}
 	encodeEntete(w, g)
 	encodePositionSection(w, g.Positions)
@@ -39,7 +54,7 @@ func EncodeFilmFacts(g *FilmFacts) []byte {
 	encodeMonde(w, g)
 	encodeVehicleScan(w, g.Vehicles)
 	encodeQueue(w, g)
-	return w.b
+	return w
 }
 
 // encodeEntete ecrit l en-tete du blob.
@@ -101,7 +116,7 @@ func encodeEvenements(w *gwriter, g *FilmFacts) {
 		w.u(uint64(t.TypeID))
 	}
 
-	encodeTracks(w, g.Projectiles)
+	encodeTracks(w, g.Projectiles, precisionCentimetre)
 }
 
 // encodeInventaire ecrit les inventaires d image-cle et leurs deltas.

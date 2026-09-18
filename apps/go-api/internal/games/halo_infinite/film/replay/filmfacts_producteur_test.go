@@ -14,13 +14,17 @@ package replay
 // AUCUN OCTET DE FILM dans aucun de ces tests.
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // TestEnteteDesFaitsEgaleLaCouvertureDuDocument : L INVARIANT DU LOT 4.1.2, MESURE SANS FILM.
@@ -193,5 +197,133 @@ func TestFaitsDuBalayageLaisseExactementDeuxSectionsALAssemblage(t *testing.T) {
 				"`faitsDuBalayage` la remplit : entree perimee, la retirer — et verifier que "+
 				"`replaybuild.completerLesFaits` ne l ecrase pas.", c.Name, raison)
 		}
+	}
+}
+
+// TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete : UN FICHIER PERIME SE DIT PERIME EN 110
+// OCTETS, ET SANS UN OCTET DE FILM.
+//
+// # LE CAS REEL QUE CE TEST FERME (2026-09-18, lot 4.1.3)
+//
+// Le lot a ecrit 35,5 Mio de faits AVANT de corriger le codec : dix fichiers a l en-tete FRAIS
+// (les quatre revisions n avaient pas bouge) et au contenu APPAUVRI (pistes arrondies, munitions
+// absentes). Si le seul marqueur du changement avait ete la magie du blob des entrees — qui vit
+// DANS la section 1 —, ces fichiers auraient passe le verdict de fraicheur et n auraient ete
+// refuses qu au decodage de la section, par le chemin « illisible malgre un en-tete frais ».
+// Ils auraient donc coute une lecture complete chacun pour etre rejetes.
+//
+// `SchemaDesFaits` porte desormais ce changement, et le refus tombe sur l EN-TETE.
+func TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete(t *testing.T) {
+	entry := goldenEntryPourTest(t)
+	f := fichierTemoin(t)
+	f.Coverage.SourceRev, f.Coverage.ProfileRev = source.Rev, profile.Rev
+	f.Coverage.GrammarRev, f.Coverage.FactsRev = grammar.Rev, facts.Rev
+	blob, err := EncodeFilmFactsFile(f)
+	if err != nil {
+		t.Fatalf("encodage : %v", err)
+	}
+	e, err := DecodeFilmFactsEntete(blob)
+	if err != nil {
+		t.Fatalf("en-tete : %v", err)
+	}
+	if err := e.Utilisable(entry); err != nil {
+		t.Fatalf("des faits du schema courant sont refuses : %v", err)
+	}
+	// LE FICHIER D AVANT : meme conteneur, memes revisions, SCHEMA ANTERIEUR.
+	perime := e
+	perime.Schema = SchemaDesFaits - 1
+	if perime.Schema < 1 {
+		t.Skip("aucun schema anterieur a comparer")
+	}
+	err = perime.Utilisable(entry)
+	if !errors.Is(err, ErrFilmFactsVersion) {
+		t.Fatalf("un fichier du schema %d doit etre refuse SUR L EN-TETE par ErrFilmFactsVersion ; "+
+			"obtenu : %v", perime.Schema, err)
+	}
+	// ET LE REFUS NE COUTE QUE L EN-TETE : on tronque le fichier a ses 110 premiers octets, et le
+	// verdict tombe quand meme.
+	tronque, err := DecodeFilmFactsEntete(blob[:e.corps])
+	if err != nil {
+		t.Fatalf("en-tete du fichier tronque : %v", err)
+	}
+	tronque.Schema = SchemaDesFaits - 1
+	if !errors.Is(tronque.Utilisable(entry), ErrFilmFactsVersion) {
+		t.Error("le refus d un schema anterieur exige plus que l en-tete : un fichier perime " +
+			"couterait une lecture complete pour etre rejete")
+	}
+}
+
+// TestLObservateurNEstPasUnFaitPersiste : L OBSERVATEUR EST LE SEUL MEMBRE NON SERIALISABLE, ET
+// IL EST NEUTRALISE A L ECRITURE.
+//
+// # CE QUE CE TEST FERME (2026-09-18, lot 4.1.3)
+//
+// `grammar.ObjectDeathStats.Config` porte `Obs *Observation` : des CROCHETS de fonction qu un
+// instrument installe pour regarder passer un balayage. `encoding/json` refuse un type fonction —
+// donc si un jour `Obs` etait non nil a la cuisson, le marshal des morts d objet ECHOUERAIT. Le
+// code le neutralise a l ecriture et REMONTE tout autre echec (`gwriter.echec`) au lieu d ecrire
+// une charge vide, qui se relirait comme « aucune mort » : un fait FAUX.
+//
+// Ce test verifie les deux moities : avec `Obs` pose, l ecriture d un fichier de faits REUSSIT
+// (la neutralisation opere) ; et la charge, `Obs` mise a nil, se serialise — donc aucun AUTRE
+// membre du graphe n est refuse par `encoding/json`.
+func TestLObservateurNEstPasUnFaitPersiste(t *testing.T) {
+	entry := goldenEntryPourTest(t)
+	f := fichierTemoin(t)
+	// UN INSTRUMENT A POSE SES CROCHETS : c est le cas que la neutralisation doit absorber.
+	f.Facts.Vehicles.Deaths = []types.ObjectDeath{{TimestampUS: 1, Slot: 7}}
+	f.Facts.Vehicles.DeathStats.Keyframes = 3
+	f.Facts.Vehicles.DeathStats.Config.Obs = &grammar.Observation{}
+
+	blob, err := EncodeFilmFactsFile(f)
+	if err != nil {
+		t.Fatalf("l ecriture echoue alors qu un observateur est pose : la neutralisation "+
+			"n opere pas (%v)", err)
+	}
+	relu, err := DecodeFilmFactsFile(blob, entry)
+	if err != nil {
+		t.Fatalf("relecture : %v", err)
+	}
+	if len(relu.Facts.Vehicles.Deaths) != 1 || relu.Facts.Vehicles.DeathStats.Keyframes != 3 {
+		t.Errorf("les morts d objet ne survivent pas a l aller-retour : %d mort(s), keyframes=%d",
+			len(relu.Facts.Vehicles.Deaths), relu.Facts.Vehicles.DeathStats.Keyframes)
+	}
+	if relu.Facts.Vehicles.DeathStats.Config.Obs != nil {
+		t.Error("l observateur a ete PERSISTE : ce sont des crochets de fonction, pas un fait " +
+			"du film — ils ne doivent jamais traverser le disque")
+	}
+}
+
+// TestStatsDeMortDObjetSontToutesPortees : LA PROJECTION NE PERD PAS UN CHAMP EN SILENCE.
+//
+// `statsSansCadre` recopie a la main les champs de donnees de [grammar.ObjectDeathStats], parce
+// que le quatorzieme — `Config` — porte l observateur, que `encoding/json` refuse. Une liste
+// ecrite a la main est exactement la dette que ce lot repare : ce ratchet la tient.
+//
+// LE COMPTE, ET PAS LES NOMS : un champ ajoute au type d origine sans entrer dans la projection
+// fait rougir, et le message dit ou l ajouter.
+func TestStatsDeMortDObjetSontToutesPortees(t *testing.T) {
+	const cadre = 1 // `Config`, qui voyage a part sous `Cadre`
+	origine := reflect.TypeOf(grammar.ObjectDeathStats{}).NumField()
+	projection := reflect.TypeOf(statsSansCadre{}).NumField()
+	if origine-cadre != projection {
+		t.Errorf("grammar.ObjectDeathStats porte %d champ(s), la projection %d (+%d pour le "+
+			"cadre) : un champ n est pas porte.\nL ajouter a `statsSansCadre` ET aux DEUX sens "+
+			"de la conversion (`versStatsSansCadre`, `versObjectDeathStats`) — un champ qui "+
+			"manque revient a zero, et la couverture des vehicules perd un denominateur sans "+
+			"qu une ligne le dise.", origine, projection, cadre)
+	}
+	// ET L ALLER-RETOUR DE LA PROJECTION EST L IDENTITE, cadre compris.
+	st := grammar.ObjectDeathStats{
+		CadreParDefaut: true, CadreLocalises: 1, CadreDauphin: 2, CadreEvenements: 3,
+		Keyframes: 4, Deltas: 5, Packets: 6, EventPackets: 7, LocatedPackets: 8,
+		Records:      map[uint32]int{9: 10},
+		CleanRecords: map[uint32]int{11: 12},
+		MaskDeclared: map[uint32]int{13: 14}, MaskDeclaredDesync: map[uint32]int{15: 16},
+		Config: grammar.FrameConfig{IDLowBits: 17, IDBase: 18, PacketPreambleBits: 19},
+	}
+	rendu := versObjectDeathStats(versStatsSansCadre(st), st.Config)
+	if !reflect.DeepEqual(rendu, st) {
+		t.Errorf("la projection n est pas l identite :\n  avant : %+v\n  apres : %+v", st, rendu)
 	}
 }

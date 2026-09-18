@@ -151,7 +151,7 @@ func decodeEvenements(r *greader, g *FilmFacts) {
 		})
 	}
 
-	g.Projectiles = decodeTracks(r)
+	g.Projectiles = decodeTracks(r, precisionCentimetre)
 
 }
 

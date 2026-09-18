@@ -79,6 +79,13 @@ func TestCodecCouvreFilmInputs(t *testing.T) {
 			if err != nil {
 				t.Fatalf("aller-retour sur %s : %v", f.Name, err)
 			}
+			// PAS D EGALITE PROFONDE ICI, ET C EST MESURE : 19 des 40 champs ne font PAS un
+			// aller-retour bit-exact, par conception documentee — les positions voyagent en QUANTA
+			// et se redequantifient, et une dizaine de types laissent tomber leur tracabilite de
+			// balayage (`Chunk`, `PacketIndex`, `BitPos`). Une table de 19 exceptions ne garderait
+			// rien. L instrument de la FIDELITE est `TestGoldenInputsFidelite`, qui compare sur des
+			// films REELS l ARTEFACT SERIALISE des deux cotes (mesure du 2026-09-18 : son oracle ne
+			// comparait qu un rendu TEXTE, et c est ce qui a laisse passer la perte des vehicules).
 			if reflect.ValueOf(relu.Facts.FilmInputs).FieldByName(f.Name).IsZero() {
 				t.Fatalf("FilmInputs.%s N EST PAS TRANSPORTE par le fichier de faits.\n"+
 					"L assemblage le consomme (cf. FilmInputs.applyTo) : relu vide, un artefact "+
@@ -124,20 +131,32 @@ func remplirChampTemoin(v reflect.Value) bool {
 	return true
 }
 
-// remplirStructTemoin pose une valeur non nulle dans le PREMIER champ remplissable d une
-// structure (recursivement). Un seul suffit : ce qu on mesure est si le champ REVIENT vide.
+// remplirStructTemoin pose une valeur non nulle dans CHAQUE champ remplissable d une structure,
+// recursivement.
+//
+// # « CHAQUE », ET PLUS « LE PREMIER » : C EST LE TROU PAR LEQUEL UN DEFAUT EST PASSE
+//
+// Jusqu au 2026-09-18, cette fonction s arretait au PREMIER champ qu elle savait remplir et
+// rendait `true`. Une structure imbriquee de vingt champs passait donc au vert si UN SEUL faisait
+// l aller-retour — et c est exactement ce qui est arrive : `types.EquipmentCreation` voyageait sur
+// sept champs sur vingt (les munitions de l arme au sol, la reference d entite, l identifiant de
+// capacite, le masque et trois mots MPP sur quatre tombaient), et ce test le declarait
+// « transporte ». Le defaut n a ete vu que par le gate S8, au prix d un decodage de dix films.
+//
+// Le cout de remplir TOUT est nul : le temoin ne sert qu a etre relu.
 func remplirStructTemoin(v reflect.Value) bool {
 	if v.Kind() != reflect.Struct {
 		return remplirChampTemoin(v)
 	}
+	remplis := false
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
 		if !f.CanSet() {
 			continue
 		}
 		if remplirChampTemoin(f) {
-			return true
+			remplis = true
 		}
 	}
-	return false
+	return remplis
 }

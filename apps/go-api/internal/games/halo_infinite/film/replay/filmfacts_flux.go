@@ -62,7 +62,14 @@ const cmScale = 100
 
 // gwriter accumule un flux binaire. Les entiers sont en varint : les deltas d horodatage et de
 // position tiennent sur un a deux octets, ce qui fait tout le poids du fixture.
-type gwriter struct{ b []byte }
+type gwriter struct {
+	b []byte
+	// echec porte la PREMIERE erreur d encodage rencontree. Le codec est sans erreur par
+	// construction sur tout ce qu il ecrit a la main ; seules les charges JSON (les morts
+	// d objet) peuvent echouer, et un echec avale produirait un fichier de faits qui se relit
+	// comme un fait FAUX. `EncodeFilmFactsFile` le remonte a l appelant.
+	echec error
+}
 
 func (w *gwriter) u(v uint64)   { w.b = binary.AppendUvarint(w.b, v) }
 func (w *gwriter) i(v int64)    { w.b = binary.AppendVarint(w.b, v) }
@@ -178,4 +185,34 @@ func (r *greader) tranche(n int) []byte {
 	out := r.b[r.off : r.off+n]
 	r.off += n
 	return out
+}
+
+// compte lit un NOMBRE D ELEMENTS et REFUSE celui qui ne peut pas tenir dans ce qui reste.
+//
+// # POURQUOI CE GARDE-FOU EXISTE (2026-09-18, lot 4.1.3)
+//
+// Un `make([]T, 0, n)` sur un `n` lu dans un flux DESYNCHRONISE alloue des gigaoctets et fait
+// PANIQUER le processus. Mesure du jour : un fichier de faits d une version anterieure, relu par
+// le decodeur courant, a fait paniquer la cuisson dans `decodePositionSection` — au lieu de rendre
+// une erreur que l appelant traite en redecodant le film (`lireLesFaitsFrais`, chemin « illisible
+// malgre un en-tete frais »).
+//
+// UN FICHIER DE FAITS VIENT DU DISQUE, donc il peut etre perime, tronque ou corrompu : le
+// decodeur doit rendre une ERREUR, jamais tomber. `coutMinimal` est le nombre d octets qu un
+// element consomme AU MINIMUM (un varint vaut 1) : au-dela de ce que le flux porte encore, le
+// compte est faux par construction.
+func (r *greader) compte(coutMinimal int) int {
+	n := int(r.u())
+	if r.err != nil {
+		return 0
+	}
+	if coutMinimal < 1 {
+		coutMinimal = 1
+	}
+	if reste := len(r.b) - r.off; n < 0 || n > reste/coutMinimal {
+		r.err = fmt.Errorf("compte de %d element(s) a l offset %d : %d octet(s) restants, "+
+			"%d au minimum par element — flux desynchronise", n, r.off, reste, coutMinimal)
+		return 0
+	}
+	return n
 }
