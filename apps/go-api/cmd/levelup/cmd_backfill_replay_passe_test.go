@@ -23,7 +23,10 @@ func ecrireArtefact(t *testing.T, repoRoot, slug, matchID string, schema int) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	raw, err := json.Marshal(map[string]int{"schemaVersion": schema})
+	// LES COUCHES SONT DECLAREES (schema 62, lot 4.4.1) : depuis que `UpToDate` juge AUSSI les
+	// revisions, un artefact muet sur ses couches se lit « a redecoder » — c est la regle, et un
+	// fixture qui l ignorerait testerait l inverse de ce qu il annonce.
+	raw, err := json.Marshal(map[string]any{"schemaVersion": schema, "layers": couchesDeTest()})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
@@ -259,4 +262,11 @@ func TestLibelleOctets(t *testing.T) {
 	if got := libelleOctets(512 * 1024 * 1024); got != "512 MiB" {
 		t.Fatalf("libelleOctets(512 MiB) = %q", got)
 	}
+}
+
+// couchesDeTest rend une table `layers` aux revisions du binaire courant. Jamais de litteral :
+// elle suit toute montee de revision (cf. `replay.RevisionsCourantesDesCouches`).
+func couchesDeTest() map[string]string {
+	c := replay.RevisionsCourantesDesCouches()
+	return map[string]string{"tracks": c["grammar"], "matchId": c["publication"]}
 }

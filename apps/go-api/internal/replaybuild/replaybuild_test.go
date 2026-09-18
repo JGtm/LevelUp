@@ -1,6 +1,7 @@
 package replaybuild
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -20,10 +21,15 @@ func TestArtifactUpToDate(t *testing.T) {
 		contenu string
 		attendu bool
 	}{
-		"version courante":   {fmt.Sprintf(`{"schemaVersion":%d,"matchId":"m"}`, replay.SchemaVersion), true},
-		"version anterieure": {`{"schemaVersion":2,"matchId":"m"}`, false},
-		"json illisible":     {`{pas du json`, false},
-		"sans version":       {`{"matchId":"m"}`, false},
+		"version courante et couches courantes": {artefactCourantAvecCouches(), true},
+		// AU SCHEMA COURANT MAIS SANS `layers` : « a re-cuire » DEPUIS LE LOT 4.4.1, et c'est la
+		// regle, pas un effet de bord — un artefact qui ne declare pas ses couches ne permet pas
+		// de prouver que son decodage est intact (cf. `Digest.decodageIntact`). Tout le parc
+		// anterieur au schema 62 est dans ce cas, et il se recuit de toute facon par le schema.
+		"version courante sans couches": {fmt.Sprintf(`{"schemaVersion":%d,"matchId":"m"}`, replay.SchemaVersion), false},
+		"version anterieure":            {`{"schemaVersion":2,"matchId":"m"}`, false},
+		"json illisible":                {`{pas du json`, false},
+		"sans version":                  {`{"matchId":"m"}`, false},
 	}
 	for nom, c := range cas {
 		p := filepath.Join(dir, nom+".json")
@@ -109,4 +115,29 @@ func TestResolveMapEntry_SurLeCatalogueLivre(t *testing.T) {
 	if _, err := b.ResolveMapEntry(nil); !errors.Is(err, ErrMapNotInCatalog) {
 		t.Errorf("aucun candidat : attendu ErrMapNotInCatalog, obtenu %v", err)
 	}
+}
+
+// artefactCourantAvecCouches rend un artefact AU SCHEMA COURANT qui DECLARE les revisions de
+// couche du binaire courant — le seul etat qui vaut « a jour » depuis le lot 4.4.1.
+//
+// LES REVISIONS NE SONT PAS ECRITES A LA MAIN : elles viennent de
+// `replay.RevisionsCourantesDesCouches()`, donc ce fixture suit toute montee de revision sans
+// que personne n'y pense. Un litteral ici se serait perime au premier bump, et le test aurait
+// verifie l'inverse de ce qu'il annonce en restant vert.
+func artefactCourantAvecCouches() string {
+	courantes := replay.RevisionsCourantesDesCouches()
+	layers := map[string]string{
+		"tracks":     courantes["grammar"],
+		"objectives": courantes["killsource"],
+		"matchId":    courantes["publication"],
+	}
+	blob, err := json.Marshal(map[string]any{
+		"schemaVersion": replay.SchemaVersion,
+		"matchId":       "m",
+		"layers":        layers,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("artefactCourantAvecCouches: %v", err))
+	}
+	return string(blob)
 }

@@ -240,6 +240,7 @@ func ecrireArtefactAvecFaits(t *testing.T, repoRoot, matchID string) {
 		SchemaVersion: replay.SchemaVersion,
 		MatchID:       matchID,
 		ScoreTimeline: &replay.ScoreTimeline{Players: []replay.PlayerScore{{XUID: "2533274819954312"}}},
+		Layers:        couchesDeTest(),
 	})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
@@ -256,11 +257,24 @@ func ecrireArtefact(t *testing.T, repoRoot, matchID string) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	blob, err := json.Marshal(replay.ReplayDocument{SchemaVersion: replay.SchemaVersion, MatchID: matchID})
+	blob, err := json.Marshal(replay.ReplayDocument{
+		SchemaVersion: replay.SchemaVersion, MatchID: matchID, Layers: couchesDeTest(),
+	})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
 	if err := os.WriteFile(path, blob, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
+}
+
+// couchesDeTest rend une table `layers` aux revisions du binaire courant.
+//
+// POURQUOI ELLE EST NECESSAIRE DEPUIS LE LOT 4.4.1 : `Digest.UpToDate` juge desormais AUSSI les
+// revisions de couche, donc un artefact muet sur les siennes se lit « a redecoder ». Un fixture
+// qui l ignorerait ferait croire a ces tests qu ils posent un artefact a jour alors qu ils en
+// posent un a recuire — ils passeraient en verifiant l inverse de ce qu ils annoncent.
+func couchesDeTest() map[string]string {
+	c := replay.RevisionsCourantesDesCouches()
+	return map[string]string{"tracks": c["grammar"], "matchId": c["publication"]}
 }

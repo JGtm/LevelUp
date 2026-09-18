@@ -44,8 +44,10 @@ func poserArtefactCuisson(t *testing.T, repoRoot, matchID string, joueurs int) s
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
+	// LES COUCHES SONT DECLAREES (lot 4.4.1) : `UpToDate` juge desormais AUSSI les revisions, et
+	// un artefact muet sur les siennes se lit « a redecoder ».
 	doc := replay.ReplayDocument{SchemaVersion: replay.SchemaVersion, MatchID: matchID,
-		Tracks: []replay.Track{{Slot: 1, Team: -1}}}
+		Tracks: []replay.Track{{Slot: 1, Team: -1}}, Layers: couchesDeTest()}
 	doc.ScoreTimeline = &replay.ScoreTimeline{}
 	for i := range joueurs {
 		doc.ScoreTimeline.Players = append(doc.ScoreTimeline.Players,

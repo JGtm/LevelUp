@@ -72,12 +72,17 @@ func transportStack(t *testing.T) (*httptest.Server, *ServiceRegistry, string) {
 // transportDoc fabrique un artefact VALIDE pour un match (une trajectoire suffit :
 // ce qui est testé est le transport, pas le décodage).
 func transportDoc(matchID string) replay.ReplayDocument {
+	courantes := replay.RevisionsCourantesDesCouches()
 	return replay.ReplayDocument{
 		SchemaVersion: replay.SchemaVersion,
 		MatchID:       matchID,
-		TitleSlug:     titlePkg.DefaultSlug,
-		FrameCount:    2,
-		Bounds:        replay.Bounds{MinX: 0, MaxX: 10, MinY: 0, MaxY: 10},
+		// LES COUCHES SONT DECLAREES (lot 4.4.1) : le garde de fraicheur de la file juge desormais
+		// AUSSI les revisions, et un artefact muet sur les siennes se lit « a redecoder » — le job
+		// se faisait alors reprendre, et le compte rendu tombait en 409.
+		Layers:     map[string]string{"tracks": courantes["grammar"], "matchId": courantes["publication"]},
+		TitleSlug:  titlePkg.DefaultSlug,
+		FrameCount: 2,
+		Bounds:     replay.Bounds{MinX: 0, MaxX: 10, MinY: 0, MaxY: 10},
 		Tracks: []replay.Track{{
 			XUID:   "2533274000000001",
 			Points: []replay.Point{{T: 0, X: 1, Y: 1}, {T: 1, X: 2, Y: 2}},
