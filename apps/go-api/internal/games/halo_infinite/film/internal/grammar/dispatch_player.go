@@ -70,9 +70,6 @@ func consumePlayerAndSceneComponent(br *Lecteur, name string, typeIndex uint32, 
 	case compManagedObjectPropName: // ti=13 i0 (FUN_142ed69d8) — R(32), sonde
 		br.obs.publishProbe(typeIndex, ProbeManagedObjectPropertyName, br.ReadBits(32))
 		return variant, nil, true
-	case "managed-navpoint-sub-type-component": // ti=12 i0 (FUN_1410e0cac) — R(32)
-		br.ReadBits(32)
-		return variant, nil, true
 	case "player-early-respawn-requested-component": // ti=5 i8 (FUN_142f04034) — R(1)
 		br.ReadBit()
 		return variant, nil, true

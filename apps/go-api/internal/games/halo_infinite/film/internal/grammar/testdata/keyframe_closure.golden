@@ -76,6 +76,22 @@
 #     Les 6 films de recherche NE SONT PAS mesures a ce lot : la voie libre du pilote
 #     (un seul decodage a la fois sur la machine) n avait pas ete donnee. Ligne `[!]` du
 #     plan, a jouer avec les deux gates de decodage.
+#   2026-09-18 lot 5.1.1 : LE POINT DE NAVIGATION (ti=12) EST PORTE DE `i1` AU MINUTEUR.
+#     Douze composants portes d un bloc (`i1` a `i12`), grammaires relevees chez le
+#     deserialiseur `+0x40` de chaque descripteur et recoupees par son serialiseur `+0x28`
+#     (NOTE_3_6_TI12_GRAMMAIRES_A_2026-09-17, § 5 a § 16). Cible : `i11`/`i12`, la duree
+#     INITIALE et la duree COURANTE du minuteur manuel — le compte a rebours de retour
+#     d un objectif, `R(17)` au pas de 50 ms, sans indirection.
+#     CE QUE LA MESURE DIT, ET C EST EXACTEMENT CE QUE LE LOT VISAIT : le bloquant de
+#     ti=12 avance de `i1 managed-navpoint-flags-component` a
+#     `i13 managed-navpoint-top-progress` sur les SEPT bobines. 0 ligne monte, 0 descend,
+#     aucun total ne bouge : la FERMETURE de ti=12 demande encore `i13` a `i27` (quinze
+#     composants, dont les huit `visual-state-groups`), donc elle n etait pas atteignable
+#     a ce lot et ne l est pas. Le bloquant qui avance de douze rangs EST la mesure.
+#     Les 6 films de recherche ne sont pas mesures ici non plus (meme raison qu au 3.6.a :
+#     un backfill tenait la machine). Les largeurs sont tenues par un test sur tampon
+#     synthetique (`components_navpoint_test.go`, 6 largeurs plates + 9 formes du bloc de
+#     filtres + le tag invalide + la dequantification).
 a521164d	ti=0	0	1	
 a521164d	ti=2	0	11	i11 game-engine-soft-ceilings-component
 a521164d	ti=4	10	10	
@@ -84,7 +100,7 @@ a521164d	ti=6	0	528
 a521164d	ti=9	262	262	
 a521164d	ti=10	0	573	i2 managed-object-navpoint-component
 a521164d	ti=11	0	18	i4 managed-objective-interaction-filter-component
-a521164d	ti=12	0	298	i1 managed-navpoint-flags-component
+a521164d	ti=12	0	298	i13 managed-navpoint-top-progress
 a521164d	ti=13	0	220	
 a521164d	ti=14	352	352	
 a521164d	ti=15	11	11	
@@ -115,7 +131,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 60ae07c4	ti=9	240	240	
 60ae07c4	ti=10	1	376	i2 managed-object-navpoint-component
 60ae07c4	ti=11	0	135	i4 managed-objective-interaction-filter-component
-60ae07c4	ti=12	0	204	i1 managed-navpoint-flags-component
+60ae07c4	ti=12	0	204	i13 managed-navpoint-top-progress
 60ae07c4	ti=13	0	454	
 60ae07c4	ti=14	960	960	
 60ae07c4	ti=15	30	30	
@@ -147,7 +163,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 11de8353	ti=9	393	393	
 11de8353	ti=10	0	95	i2 managed-object-navpoint-component
 11de8353	ti=11	0	14	i4 managed-objective-interaction-filter-component
-11de8353	ti=12	0	31	i1 managed-navpoint-flags-component
+11de8353	ti=12	0	31	i13 managed-navpoint-top-progress
 11de8353	ti=13	0	112	
 11de8353	ti=14	512	512	
 11de8353	ti=15	16	16	
@@ -178,7 +194,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 111fa685	ti=9	336	337	
 111fa685	ti=10	0	103	i2 managed-object-navpoint-component
 111fa685	ti=11	0	13	i4 managed-objective-interaction-filter-component
-111fa685	ti=12	1	15	i1 managed-navpoint-flags-component
+111fa685	ti=12	1	15	i13 managed-navpoint-top-progress
 111fa685	ti=13	0	104	
 111fa685	ti=14	448	448	
 111fa685	ti=15	14	14	
@@ -208,7 +224,7 @@ e5adf7b2	ti=6	528	528
 e5adf7b2	ti=9	261	261	
 e5adf7b2	ti=10	0	262	i2 managed-object-navpoint-component
 e5adf7b2	ti=11	0	10	i4 managed-objective-interaction-filter-component
-e5adf7b2	ti=12	0	60	i1 managed-navpoint-flags-component
+e5adf7b2	ti=12	0	60	i13 managed-navpoint-top-progress
 e5adf7b2	ti=13	0	80	
 e5adf7b2	ti=14	352	352	
 e5adf7b2	ti=15	11	11	
@@ -241,7 +257,7 @@ bcb6d393	ti=6	910	911
 bcb6d393	ti=9	144	144	
 bcb6d393	ti=10	2	419	i2 managed-object-navpoint-component
 bcb6d393	ti=11	0	85	i4 managed-objective-interaction-filter-component
-bcb6d393	ti=12	4	160	i1 managed-navpoint-flags-component
+bcb6d393	ti=12	4	160	i13 managed-navpoint-top-progress
 bcb6d393	ti=13	0	331	
 bcb6d393	ti=14	576	576	
 bcb6d393	ti=15	19	19	
@@ -272,7 +288,7 @@ fb1a1a72	ti=6	574	575
 fb1a1a72	ti=9	80	80	
 fb1a1a72	ti=10	0	433	i2 managed-object-navpoint-component
 fb1a1a72	ti=11	0	50	i4 managed-objective-interaction-filter-component
-fb1a1a72	ti=12	0	111	i1 managed-navpoint-flags-component
+fb1a1a72	ti=12	0	111	i13 managed-navpoint-top-progress
 fb1a1a72	ti=13	0	190	
 fb1a1a72	ti=14	320	320	
 fb1a1a72	ti=15	12	12	
