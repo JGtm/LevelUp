@@ -53,14 +53,14 @@
  * parce que le calque vivant (`zoneStatesLayer`) repeint l'intérieur de la forme quand la zone
  * est tenue, et recouvrirait tout ce qui y serait cuit. L'étage est celui de `floorOf`, sur
  * l'amplitude verticale du document (`ObjectivesStyle.z`) ; un terrain PLAT n'en donne aucun
- * (cf. `objectiveFloor`).
+ * (cf. `floorInRange`, garde commune aux pions).
  */
 import type { ReplayMapObjectives } from '@/lib/api/types'
 
 import { buildCarrierPosAt } from '../model/carrierPosition'
 import { objectiveFamilyOf } from '../model/objectiveFamilies'
-import { drawFloorRings, FLOOR_RING_ALPHA, FLOOR_RING_ALPHA_DECAY, FLOOR_RING_GAP } from './floorRings'
-import { floorOf, type XY } from '../../../lib/replay/replayLogic'
+import { drawFloorRings, floorInRange, FLOOR_RING_ALPHA, FLOOR_RING_ALPHA_DECAY, FLOOR_RING_GAP } from './floorRings'
+import { type XY } from '../../../lib/replay/replayLogic'
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -193,19 +193,6 @@ const MARKER_FLOOR_RING_FIRST = MARKER_RING + FLOOR_RING_GAP
  */
 const ZONE_FLOOR_PAD_STEP = FLOOR_RING_GAP
 const ZONE_FLOOR_STROKE_WIDTH = 1
-/** Terrain PLAT : `altitudeRatio` rend 0,5 sans amplitude, donc l'étage 1 partout — cf. objectiveFloor. */
-const FLAT_SPAN = 1e-6
-
-/**
- * objectiveFloor : l'étage d'un objectif dans le langage des pions (`floorOf`, 0 = sol) — sauf
- * sur un terrain PLAT, où il vaut 0 : sans amplitude, `altitudeRatio` rend 0,5 et `floorOf` 1,
- * ce qui poserait un anneau sur chaque objectif sans qu'aucun ne soit plus haut qu'un autre.
- */
-function objectiveFloor(z: number, range: ObjectivesStyle['z']): number {
-  if (!(range.max - range.min > FLAT_SPAN)) return 0
-  return floorOf(z, range.min, range.max)
-}
-
 /**
  * drawObjectivesLayer peint zones puis marqueurs. Calque STATIQUE — l'appelant le cuit
  * hors écran et le recopie, comme le sol et les callouts. AUCUN texte (cf. en-tête).
@@ -222,14 +209,14 @@ export function drawObjectivesLayer(
   for (const e of elements) {
     const color = style.colorOfTeam(e.team)
     const rim = e.team === TEAM_NONE ? style.neutralOutline : null
-    if (e.kind === 'zone') drawZone(ctx, e, { px, scale, color, rim, fl: objectiveFloor(e.z, style.z) })
+    if (e.kind === 'zone') drawZone(ctx, e, { px, scale, color, rim, fl: floorInRange(e.z, style.z) })
   }
   // Les marqueurs par-dessus les zones : une livraison ponctuelle vit parfois DANS son
   // cylindre (mesuré sur Catalyst) et doit rester visible.
   for (const e of elements) {
     if (e.kind !== 'marker') continue
     const rim = e.team === TEAM_NONE ? style.neutralOutline : null
-    drawMarker(ctx, e, px, { color: style.colorOfTeam(e.team), rim, fl: objectiveFloor(e.z, style.z) })
+    drawMarker(ctx, e, px, { color: style.colorOfTeam(e.team), rim, fl: floorInRange(e.z, style.z) })
   }
   ctx.globalAlpha = 1
 }

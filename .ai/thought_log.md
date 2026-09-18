@@ -1,3 +1,23 @@
+## [2026-09-18] Rejeu 2D — garde « terrain plat » alignée sur les pions (suite du lot 2) — Complété
+
+**Demande** (utilisateur, 2026-09-18) : aligner les pions sur la garde posée pour les objectifs —
+sur une carte sans amplitude verticale (bornes Z égales : vieux artefact sans Z, ou plateau sans
+relief), `floorOf` seul rend l'étage 1 à tout le monde (`altitudeRatio` = 0,5 par convention) et
+chaque joueur portait un anneau alors que rien n'est plus haut que rien.
+
+**Décision technique** : la garde ne reste pas chez les objectifs seuls — `floorInRange(z,
+{min,max})` + `FLAT_SPAN` vivent dans `layers/floorRings.ts` (le helper commun du langage
+d'étage), consommés par `floorIndex` (pions, `replayMarkers.ts`) et par le calque des objectifs
+(`objectiveFloor` privé supprimé). Deux copies auraient re-divergé au premier réglage.
+
+**Résultats observés** : typecheck 0 ; eslint `layers` 0 erreur ; lint:colors 0 ; vitest `layers`
+57 fichiers / 751 tests verts. Mutation (garde retirée) : 3 rouges — `floorRings.test.ts`
+(« terrain plat »), `replayMarkers.test.ts` (« ne pose AUCUN anneau sur un terrain plat »),
+`objectivesFloor.test.ts` (« TERRAIN PLAT ») — puis verts après restauration.
+
+**Conclusion / prochaine étape** : commit sur `feat/intensite-objectifs-assists`, CI, vérification
+visuelle utilisateur (carte plate : aucun anneau sur les pions).
+
 ## [2026-09-18] Rejeu 2D — bascule « Objectifs du mode » et son aide (lot 2bis) — Complété (non commité, worktree `LevelUp-wt-trois-lots`, branche `feat/intensite-objectifs-assists`)
 
 **Demande** : le commit `123d571fd` a donné aux objectifs du mode (socles, livraisons, collines,
