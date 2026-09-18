@@ -5460,7 +5460,7 @@ pilote, nommés pour qu'aucune ne se perde.
       de clôture (166 et 257, vérifiés par AST et par grep) et ses trois messages d'erreur disent
       désormais qu'une hausse exige une justification datée dans le fichier — prouvé par mutation
       des trois constantes.
-- [ ] **Corpus gate final de l'intégration** — geste du pilote : 17 témoins contre `a5d15e634`,
+- [x] **Corpus gate final de l'intégration** — geste du pilote : 17 témoins contre `a5d15e634`, FAIT le 2026-09-18 sur 896a9ce04 : équivalence 20 films **20 identiques** (références re-figées ab345f537) ; corpus gate `--base=a5d15e634` **17/17 `ok`, 61 -> 62 partout, 0 perte, 0 changement**, gains confinés à `layers.*` et `coverage.deathsPaths.*` (2 ou 9 par témoin) ; S8 de contrôle sur 000d5950, 11de8353, a349fea8 : **3/3 identiques à l octet**, a349fea8 rejoué en 339 ms contre 2 min 38 de décodage (seul écart d étape : `killsource`, `Kill.paquet` non exporté, connu). Rapports : scratchpad `equiv_cloture_m4.log`, `corpus_final_m4.{txt,json}`, `s8_cloture_m4.log`.
       schéma 61 -> 62, et le contrôle que les gains restent confinés à `layers.*` et
       `coverage.deathsPaths.*`. À consigner au §5.
 - [ ] **Passe de republication M4-P4** — geste du pilote, sur signal :
