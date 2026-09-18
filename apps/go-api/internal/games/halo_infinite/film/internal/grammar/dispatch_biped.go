@@ -71,7 +71,7 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 		consumeBipedLowFrequencyData(br)
 		return variant, nil, true
 	case "biped-malleable-property", "biped-malleable-property-component": // i53 (FUN_140ff6764)
-		consumeBipedMalleableProperty(br)
+		consumeBipedMalleableProperty(br, level)
 		return variant, nil, true
 	case "biped-mobility-action", "biped-mobility-action-component": // i54 (FUN_1408f0264)
 		consumeBipedMobilityAction(br)
@@ -99,9 +99,9 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 	case grappleComponentNameAlt, grappleComponentName: // i59 (FUN_142f02994)
 		// Corps tag==3 (FUN_142f25e90, ancre du grappin) porté le 2026-08-16 : rend
 		// ported=false sur les seules valeurs internes jamais observées — désync propre,
-		// même contrat qu'i57 ci-dessus. param_4 vient de paramForComponent (i59 -> 2,
-		// la queue R(3) est lue — l'ancien global brut valait 0 et la sautait).
-		return variant, nil, consumeBipedSpartanAbilityNonPredictedState(br, paramForComponent(br, name))
+		// même contrat qu i57 ci-dessus. param_4 est le `level` du registre du film (i59 -> 2,
+		// la queue R(3) est lue — l ancien global brut valait 0 et la sautait).
+		return variant, nil, consumeBipedSpartanAbilityNonPredictedState(br, level)
 	case "simulation-state", "simulation-state-component": // i60 (thunk 142f02434 -> FUN_142ED6D88, vérifié live)
 		// GRAMMAIRE COMPLÈTE depuis le 2026-08-17 (lot R7-b) : structure connue (flag +
 		// 2×gate5 + 8×R16 + 2×R2 + R1[R19]+R8) PLUS la queue FUN_14076e494, dont le prédicat
@@ -114,7 +114,7 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 		consumeSimulationStatePlayback(br)
 		return variant, nil, true
 	case "biped-slide", "biped-slide-component": // i62 (FUN_142f02978 -> FUN_142f26ce8)
-		consumeBipedSlide(br)
+		consumeBipedSlide(br, level)
 		return variant, nil, true
 	case "biped-action", "biped-action-component": // i63 (FUN_142f027f4 -> FUN_142f26a20)
 		// Returns ported=false on the value-gated loop1 dispatch (count>0) so the
@@ -268,7 +268,7 @@ func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32)
 	// CONVERGE PAS sur le binding gap. Gardés comme référence ; câblage en attente d'un chemin
 	// de binding robuste (replay propre depuis keyframe = mur deser default-state, cf handoff L3).
 	default:
-		return consumeNavpointComponent(br, name)
+		return consumeNavpointComponent(br, name, level)
 	}
 }
 
@@ -292,7 +292,7 @@ func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32)
 // deserialiseur BRANCHE sur `param_4` : `2 < param_4` pour `i2`, `1 < param_4` pour `i3`..`i6`.
 // La valeur vient du slot `+0x10` de leur descripteur (`paramByComponent`), et le test se fait
 // la ou le nom du composant est connu — c est-a-dire ici, comme pour `i19`/`i20`/`i23` du bipede.
-func consumeNavpointComponent(br *Lecteur, name string) (variant uint32, dead *types.DeadState, ported bool) { //nolint:gocyclo // un case par composant du registre
+func consumeNavpointComponent(br *Lecteur, name string, level uint32) (variant uint32, dead *types.DeadState, ported bool) { //nolint:gocyclo // un case par composant du registre
 	variant = noVariant
 	switch name {
 	case compNavpointSubType: // ti=12 i0 (FUN_1410e0cac) — R(32)
@@ -300,11 +300,11 @@ func consumeNavpointComponent(br *Lecteur, name string) (variant uint32, dead *t
 	case compNavpointFlags: // ti=12 i1 (FUN_141094130) — R(8), lot 5.1.1
 		consumeNavpointFlags(br)
 	case compNavpointDistanceFilters: // ti=12 i2 (FUN_140dbde1c) — bloc de filtres + distances
-		return variant, nil, consumeNavpointVisibilityDistanceFilters(br, paramForComponent(br, name) > 2)
+		return variant, nil, consumeNavpointVisibilityDistanceFilters(br, level > 2)
 	case compNavpointOffscreenFilters, compNavpointOccludedFilters: // ti=12 i3 et i4 (FUN_140dbdfd8)
-		return variant, nil, consumeNavpointBoolFilters(br, paramForComponent(br, name) > 1)
+		return variant, nil, consumeNavpointBoolFilters(br, level > 1)
 	case compNavpointVisibilityFilter, compNavpointDockingFilter: // ti=12 i5 et i6 (FUN_140dbe400)
-		return variant, nil, consumeNavpointFilterOnly(br, paramForComponent(br, name) > 1)
+		return variant, nil, consumeNavpointFilterOnly(br, level > 1)
 	case compNavpointDockingOrder: // ti=12 i7 (FUN_142ed5050) — R(8)
 		consumeNavpointDockingOrder(br)
 	case compNavpointDockingGroupName: // ti=12 i8 (FUN_142ed5028) — R(32)

@@ -70,6 +70,9 @@ const (
 	compBipedAbilitySet       = "biped-desired-ability-set-component"
 	compBipedAbilitySetAlt    = "biped-desired-ability-set"
 	compGameEngineTeamMapping = "game-engine-team-mapping-component"
+	// UNE DE PLUS AU LOT 5.1.7 (2026-09-18) : `object-parent-state-component` entre dans la table
+	// du `param_4` (son `level` est 3), ce qui en fait la troisieme copie du litteral.
+	compObjectParentState = "object-parent-state-component"
 )
 
 // Archetype is one ECS archetype: an ordered list of component names. The slice

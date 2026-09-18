@@ -101,8 +101,8 @@ func consumeByName(br *Lecteur, name string, typeIndex uint32, level uint32) (va
 	case "object-constraint-component": // i8
 		consumeObjectConstraint(br)
 		return variant, nil, true
-	case "object-parent-state-component": // i10 (1st desync on typeIndex=40)
-		consumeObjectParentState(br, paramForComponent(br, name), typeIndex)
+	case compObjectParentState: // i10 (1st desync on typeIndex=40)
+		consumeObjectParentState(br, level, typeIndex)
 		return variant, nil, true
 	case "object-scale-component": // i12
 		consumeObjectScale(br)
@@ -123,13 +123,13 @@ func consumeByName(br *Lecteur, name string, typeIndex uint32, level uint32) (va
 		consumeObjectFrameConfiguration(br)
 		return variant, nil, true
 	case "unit-actor-control-component":
-		consumeUnitActorControl(br, paramForComponent(br, name))
+		consumeUnitActorControl(br, level)
 		return variant, nil, true
 	case "unit-actor-state-component":
-		consumeUnitActorState(br, paramForComponent(br, name))
+		consumeUnitActorState(br, level)
 		return variant, nil, true
 	case "unit-malleable-property-component":
-		consumeUnitMalleableProperty(br, paramForComponent(br, name))
+		consumeUnitMalleableProperty(br, level)
 		return variant, nil, true
 	case "biped-spartan-ability-malleable-property-component": // i58 (FUN_140fea4c0)
 		consumeBipedSpartanAbilityMalleableProperty(br)
@@ -173,7 +173,7 @@ func consumeByName(br *Lecteur, name string, typeIndex uint32, level uint32) (va
 		// FUN_14076e278). Le « reuse biped i2 deser » qui tenait ici était une
 		// réutilisation héritée de ti=38, jamais mesurée (CADRAGE_VEHICULES § 2), et
 		// elle amputait i2 de son ou ses bits de tête sur TOUS les records ti=40.
-		return variant, nil, consumeObjectForwardAndUpDynPrec(br, paramForComponent(br, name))
+		return variant, nil, consumeObjectForwardAndUpDynPrec(br, level)
 	default:
 		return consumeItemAndTacmapComponent(br, name, typeIndex, level)
 	}

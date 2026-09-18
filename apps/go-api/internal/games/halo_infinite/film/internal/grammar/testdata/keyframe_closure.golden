@@ -92,6 +92,27 @@
 #     un backfill tenait la machine). Les largeurs sont tenues par un test sur tampon
 #     synthetique (`components_navpoint_test.go`, 6 largeurs plates + 9 formes du bloc de
 #     filtres + le tag invalide + la dequantification).
+#   2026-09-18 lot 5.1.7-a : `param_4` EST LE `level` DU REGISTRE DU FILM, ET IL SE LIT.
+#     `param_4` — la propriete que le descripteur rend au deserialiseur, et dont huit
+#     lecteurs font une LARGEUR — venait d une table par nom plus, hors table, du BALAYAGE
+#     de `killsource.calibrateRSP` (0 a 5, la valeur qui maximisait la croissance des slots
+#     sur les records de BIPEDE). Il EST le `level` que le registre du film porte par
+#     composant (`entree + 0x100`, ce que `FUN_142e2c690` passe au deserialiseur), que le
+#     traverseur descendait deja jusqu a `consumeByName` sans que personne s en serve.
+#     TROIS lecteurs n avaient AUCUNE entree et prenaient donc la valeur balayee :
+#     `i10 object-parent-state` (vrai niveau 3), `i19 unit-actor-control` (2) et
+#     `i20 unit-actor-state` (4). `i10` est sur le chemin de TOUS les archetypes objet.
+#     NET SUR LES SEPT BOBINES : 14 lignes MONTENT (+627 records), 2 DESCENDENT (-2).
+#       ti=38 (arme au sol) : +575 — `fb1a1a72` 10/2147 -> 261/2147, `bcb6d393` 24 -> 129,
+#         `11de8353` 48 -> 99, `a521164d` 33 -> 122, `e5adf7b2` 12 -> 49, `111fa685` 30 -> 72
+#       ti=42 (objet pose)  : +51 sur les sept bobines
+#       ti=37 (equipement)  : `e5adf7b2` 0/489 -> 1/489
+#     LES DEUX BAISSES SONT D UN RECORD CHACUNE, ET ELLES SONT NOMMEES : `fb1a1a72` ti=37
+#     1/220 -> 0/220 et `a521164d` ti=37 4/762 -> 3/762. Meme archetype, meme lot, et
+#     `e5adf7b2` ti=37 MONTE de 1 dans le meme geste : a l echelle du record unique, une
+#     fermeture est une coincidence de frontiere, pas une largeur. Le bloquant de ti=37 ne
+#     bouge pas, et aucune ligne ne perd plus d un record contre +627 gagnes.
+#     Les 6 films de recherche ne sont pas mesures ici (un seul decodage a la fois).
 a521164d	ti=0	0	1	
 a521164d	ti=2	0	11	i11 game-engine-soft-ceilings-component
 a521164d	ti=4	10	10	
@@ -115,11 +136,11 @@ a521164d	ti=27	0	11	i0 supply-lines-item-unlocked-component
 a521164d	ti=29	11	11	
 a521164d	ti=34	0	11	i10 tacmap-mapdismissallock
 a521164d	ti=35	0	205	i60 simulation-state-component
-a521164d	ti=37	4	762	
-a521164d	ti=38	33	1303	
+a521164d	ti=37	3	762	
+a521164d	ti=38	122	1303	
 a521164d	ti=40	0	335	
 a521164d	ti=41	23	35	
-a521164d	ti=42	2	698	
+a521164d	ti=42	24	698	
 a521164d	ti=43	0	1559	i19 device-position-animation-name-component
 a521164d	ti=45	0	11	i0 matchflow-sequence-data-component
 a521164d	ti=47	0	262	i2 personal-ai-data-component
@@ -151,7 +172,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 60ae07c4	ti=38	30	2099	
 60ae07c4	ti=40	0	32	
 60ae07c4	ti=41	0	19	
-60ae07c4	ti=42	2	253	
+60ae07c4	ti=42	5	253	
 60ae07c4	ti=43	0	569	i19 device-position-animation-name-component
 60ae07c4	ti=45	0	30	i0 matchflow-sequence-data-component
 60ae07c4	ti=47	0	240	i2 personal-ai-data-component
@@ -180,10 +201,10 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 11de8353	ti=34	0	16	i10 tacmap-mapdismissallock
 11de8353	ti=35	1	255	i60 simulation-state-component
 11de8353	ti=37	1	514	
-11de8353	ti=38	48	2262	
+11de8353	ti=38	99	2262	
 11de8353	ti=40	0	220	
 11de8353	ti=41	5	19	
-11de8353	ti=42	1	155	
+11de8353	ti=42	3	155	
 11de8353	ti=43	0	380	i19 device-position-animation-name-component
 11de8353	ti=45	0	16	i0 matchflow-sequence-data-component
 11de8353	ti=47	0	393	i2 personal-ai-data-component
@@ -210,10 +231,10 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 111fa685	ti=34	0	14	i10 tacmap-mapdismissallock
 111fa685	ti=35	1	214	i60 simulation-state-component
 111fa685	ti=37	1	569	
-111fa685	ti=38	30	1366	
+111fa685	ti=38	72	1366	
 111fa685	ti=40	0	58	
 111fa685	ti=41	4	20	
-111fa685	ti=42	0	141	
+111fa685	ti=42	2	141	
 111fa685	ti=43	0	260	i19 device-position-animation-name-component
 111fa685	ti=45	0	14	i0 matchflow-sequence-data-component
 111fa685	ti=47	0	336	i2 personal-ai-data-component
@@ -240,11 +261,11 @@ e5adf7b2	ti=27	0	11	i0 supply-lines-item-unlocked-component
 e5adf7b2	ti=29	11	11	
 e5adf7b2	ti=34	0	11	i10 tacmap-mapdismissallock
 e5adf7b2	ti=35	0	237	i60 simulation-state-component
-e5adf7b2	ti=37	0	489	
-e5adf7b2	ti=38	12	1046	
+e5adf7b2	ti=37	1	489	
+e5adf7b2	ti=38	49	1046	
 e5adf7b2	ti=40	0	132	
 e5adf7b2	ti=41	1	6	
-e5adf7b2	ti=42	1	187	
+e5adf7b2	ti=42	13	187	
 e5adf7b2	ti=43	0	414	i19 device-position-animation-name-component
 e5adf7b2	ti=45	0	11	i0 matchflow-sequence-data-component
 e5adf7b2	ti=47	0	261	i2 personal-ai-data-component
@@ -273,9 +294,9 @@ bcb6d393	ti=29	18	18
 bcb6d393	ti=34	0	19	i10 tacmap-mapdismissallock
 bcb6d393	ti=35	3	137	i60 simulation-state-component
 bcb6d393	ti=37	5	352	
-bcb6d393	ti=38	24	1841	
+bcb6d393	ti=38	129	1841	
 bcb6d393	ti=41	0	5	
-bcb6d393	ti=42	4	437	
+bcb6d393	ti=42	5	437	
 bcb6d393	ti=43	0	594	i19 device-position-animation-name-component
 bcb6d393	ti=45	0	18	i0 matchflow-sequence-data-component
 bcb6d393	ti=47	0	144	i2 personal-ai-data-component
@@ -302,10 +323,10 @@ fb1a1a72	ti=27	0	12	i0 supply-lines-item-unlocked-component
 fb1a1a72	ti=29	10	10	
 fb1a1a72	ti=34	0	12	i10 tacmap-mapdismissallock
 fb1a1a72	ti=35	0	80	i60 simulation-state-component
-fb1a1a72	ti=37	1	220	
-fb1a1a72	ti=38	10	2147	
+fb1a1a72	ti=37	0	220	
+fb1a1a72	ti=38	261	2147	
 fb1a1a72	ti=41	1	6	
-fb1a1a72	ti=42	0	216	
+fb1a1a72	ti=42	9	216	
 fb1a1a72	ti=43	0	330	i19 device-position-animation-name-component
 fb1a1a72	ti=45	0	11	i0 matchflow-sequence-data-component
 fb1a1a72	ti=47	0	80	i2 personal-ai-data-component
