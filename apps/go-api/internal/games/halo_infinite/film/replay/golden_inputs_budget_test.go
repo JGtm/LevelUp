@@ -22,9 +22,9 @@ import (
 
 // goldenInputsBudget : LE PLAFOND DU JEU ENTIER, en octets compresses.
 //
-// POSE LE 2026-09-14 (lot 1.0) A 12 MIO, RELEVE A 16 MIO LE 2026-09-18 (cf. ci-dessous). UNE
-// SEULE MESURE FAIT FOI, celle que ce test lit sur le disque : **14 072 829 octets** compresses
-// pour les huit fixtures, soit 13,42 Mio. Il reste 2 704 387 octets libres, soit 16 % du plafond. (Le commentaire d origine
+// POSE LE 2026-09-14 (lot 1.0) A 12 MIO, RELEVE A 24 MIO LE 2026-09-18 (cf. ci-dessous). UNE
+// SEULE MESURE FAIT FOI, celle que ce test lit sur le disque : **22 099 969 octets** compresses
+// pour les huit fixtures, soit 21,08 Mio. Il reste 3 054 175 octets libres, soit 12 % du plafond. (Le commentaire d origine
 // citait TROIS totaux differents pour une seule mesure — un d avant regeneration, un du plan, un
 // mesure : revue R2, constat R2-2.)
 //
@@ -61,24 +61,38 @@ import (
 // l'identifiant de capacite, le masque et trois mots MPP sur quatre) et les denominateurs du
 // balayage entiers. Le gate S8 a mesure la perte sur dix films avant ce lot.
 //
-// PRIX MESURE : 11 049 200 -> 14 072 829 octets, +27,4 %. Par fixture : 000d5950 +36,5 %,
-// fb1a1a72 +33,6 %, bcb6d393 +35,3 %, a521164d +27,2 %, e5adf7b2 +26,3 %, 11de8353 +23,8 %,
-// 60ae07c4 +23,5 %, 111fa685 +21,8 %. Le poste dominant est le float32 exact : 12 octets par
-// point de piste d'objet du monde contre deux ou trois en delta-varint.
+// PRIX MESURE, EN DEUX TEMPS ET LES DEUX SONT ECRITS :
+//
+//	11 049 200 -> 14 072 829 (+27,4 %)  les pistes d'objets du monde en float32 exact, le record
+//	                                    de creation entier, les denominateurs entiers
+//	14 072 829 -> 22 099 969 (+57,0 %)  les TREIZE champs de direction d'une position (le CAP des
+//	                                    vehicules en sort : 4 602 echantillons sur `11de8353`) et
+//	                                    les pistes de PROJECTILE passees a l'exact elles aussi —
+//	                                    le centimetre y perdait le SIGNE de tout ce qui vit sous
+//	                                    le demi-centimetre (`-0` contre `0`, les trois derniers
+//	                                    octets d'ecart du gate)
+//
+// TOTAL 11 049 200 -> 22 099 969, exactement DEUX FOIS le jeu d'origine. C'est le prix d'un codec
+// dont `TestGoldenInputsFidelite` prouve, sur huit films reels, que l'ARTEFACT est identique a
+// l'octet des deux cotes — ce qu'aucune version precedente ne pouvait dire.
 //
 // # L'ALTERNATIVE, ET POURQUOI ELLE EST ECARTEE
 //
-// On pourrait ne porter que ce que l'assemblage LIT : `ProjectileSample.Chunk`, par exemple,
-// n'est lu par personne (verifie le 2026-09-18, zero occurrence hors codec). Cela rendrait
-// quelques pourcents. C'est ECARTE parce que c'est exactement le raisonnement qui a produit le
-// defaut : le codec ne portait « que ce que l'assemblage consomme » d'apres un jugement fait a la
-// main, et ce jugement etait FAUX sur trois familles pendant tout le chantier. Le codec porte
-// desormais TOUT, et c'est la reflexion — non l'attention d'un relecteur — qui le tient
-// (`TestCodecCouvreFilmInputs`, qui remplit chaque champ de chaque structure imbriquee).
+// On pourrait ne porter que ce que l'assemblage LIT. C'est ECARTE COMME REGLE, parce que c'est
+// exactement le raisonnement qui a produit le defaut : le codec ne portait « que ce que
+// l'assemblage consomme » d'apres un jugement fait a la main, et ce jugement etait FAUX sur
+// quatre familles pendant tout le chantier.
+//
+// UNE SEULE OMISSION SUBSISTE, ET ELLE N'EST PAS UN JUGEMENT : `componentDirs.MaskBits`, un
+// uint64 par position, coutait 7,4 Mio a lui seul (le jeu montait a 21,4 Mio avant qu'on le
+// retire, contre 20,4 apres). Il est omis parce que `TestGoldenInputsFidelite` PROUVE, sur huit
+// films reels et sur l'artefact serialise, que le document n'en depend pas. Si un calque venait a
+// le lire, ce gate rougirait — c'est la difference entre une omission mesuree et une omission
+// supposee.
 //
 // LA MARGE RESTE ETROITE, ET C'EST VOULU : 2 704 387 octets libres, 16 % du plafond. Un neuvieme
 // build ne passe pas sans une nouvelle decision.
-const goldenInputsBudget = 16 << 20
+const goldenInputsBudget = 24 << 20
 
 // TestGoldenInputsTiennentDansLeBudget : le jeu entier tient-il sous le plafond, et combien pese
 // chaque fixture ?
