@@ -17,11 +17,12 @@
 
 > 📘 **Onboarding nouveau dev** : `docs/FOUNDATIONS_GUIDE.md` (EN) + `docs/FR/FOUNDATIONS_GUIDE.md` — guide consolidé sur les 4 fondations transverses (canonical types + adapters + i18n manifests + ECharts wrappers). 4 ADRs dans `docs/adr/000{1,2,3,4}.md`.
 
-## Décodeur de film — cartographie À JOUR AU 2026-09-17 (îlot de fraîcheur)
+## Décodeur de film — cartographie À JOUR AU 2026-09-18 (îlot de fraîcheur)
 
 > Le reste de ce fichier est gelé (bandeau ci-dessus). Cette section-ci est mesurée sur l'arbre
-> à la clôture du jalon M2 du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md` (base `92c83b333`) et
-> porte sa date : elle existe parce que les briefs et les notes citaient encore des chemins morts.
+> à la clôture du jalon M4 — le dernier — du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`
+> (base `896a9ce04`) et porte sa date : elle existe parce que les briefs et les notes citaient
+> encore des chemins morts.
 > Doctrine inchangée : le code fait foi, l'ADR 0034 porte les décisions et l'état atteint.
 
 Chemins sous `apps/go-api/` sauf mention contraire.
@@ -31,9 +32,12 @@ Chemins sous `apps/go-api/` sauf mention contraire.
 | Porte aux octets : chargement, décompression, chunks et paquets, lecteur de bits canonique | `internal/games/halo_infinite/film/internal/source/` |
 | Profil = DONNÉES : types de valeur, table par version de format / build / majeure, catalogue de cartes | `internal/games/halo_infinite/film/internal/profile/` |
 | Grammaire : lecteurs de records et de composants (sous-paquets `positions/`, `weaponscan/`, `weaponv3/`) | `internal/games/halo_infinite/film/internal/grammar/` |
-| Faits : kill-source, objectifs, registre des replis (98 entrées) | `internal/games/halo_infinite/film/internal/facts/{,killsource,objectives,fallback}/` |
-| Publication : document de rejeu, `SchemaVersion` 61, chronique | `internal/games/halo_infinite/film/replay/` (EXPORTÉE, c'est le contrat public) |
-| Façade du décodeur : 163 symboles re-exportés (un alias, pas une frontière ; réduction en M4) | `internal/games/halo_infinite/film/decfilm/` |
+| Faits : kill-source, objectifs, registre des replis (99 entrées sur 7 fichiers) | `internal/games/halo_infinite/film/internal/facts/{,killsource,objectives,fallback}/` |
+| Publication : document de rejeu, `SchemaVersion` **62**, `layers` (une révision par calque : 47 calques attribués, 8 exemptions datées, 16 gardes), `coverage.deathsPaths`, chronique | `internal/games/halo_infinite/film/replay/` (EXPORTÉE, c'est le contrat public) — table des calques : `layers.go` |
+| Faits PERSISTÉS par film : codec, fichier à cinq sections, en-tête des quatre révisions, rejeu depuis les faits | `internal/games/halo_infinite/film/replay/filmfacts*.go` (13 fichiers) ; chemins par `PathResolver` : `internal/domain/title/registry_film_facts.go` ; bascule de cuisson : `internal/replaybuild/filmfacts_cuisson.go` |
+| Fichiers de faits sur le disque (NE PAS confondre avec `<short8>.facts.json`, qui est ce que la BASE sait du match) | `data/cache/film_facts/{slug}/<short8>.filmfacts.bin` |
+| Verdict de recuisson par couche (`a-jour` / `republier` / `redecoder`) | `internal/replaybuild/artifact_digest.go` (`Digest.Verdict`, `ArtifactVerdict`) |
+| Façade du décodeur : **166** symboles re-exportés (un alias, pas une frontière ; réduction NON RETENUE — V25, ratchet de surface à la place) | `internal/games/halo_infinite/film/decfilm/` |
 | Types de contrat inter-couches + golden de forme | `internal/games/halo_infinite/film/types/` (`testdata/shapes.golden`) |
 | Mécanisme d'empreinte, chronique, porte de régénération des quatre révisions | `internal/games/halo_infinite/film/revision/` |
 | Cache de films, catalogues de libellés, instruments de recherche | `internal/games/halo_infinite/film/{filmcache,damagetag,killicon,medalname,research}/` |
@@ -42,7 +46,8 @@ Chemins sous `apps/go-api/` sauf mention contraire.
 | Catalogue de profils versionné + son lecteur HORS décodeur + son outil | `data/titles/halo_infinite/reference/film_profiles.json` (racine du dépôt), `internal/games/halo_infinite/filmprofile/`, `cmd/film-profiles-build/` |
 | Outils des deux gates | `cmd/replay-equiv/`, `cmd/replay-corpus-gate/`, `internal/replaydiff/` |
 | Types sortis du décodeur vers `domain/` (feuilles) | `internal/domain/{highlightevent,equipmentusage,playerposition,replaydoc}/` |
-| Ratchets du décodeur | `internal/archlint/film_{layers_deps,file_size,function_length,types_leaf}_test.go`, `no_raw_film_bytes_outside_source_test.go`, `filmdec_package_vars_test.go`, `decode_lock_interdit_test.go`, `no_ad_hoc_source_fingerprint_test.go`, `no_unregistered_fallback_test.go` |
+| Ratchets du décodeur | `internal/archlint/film_{layers_deps,file_size,function_length,types_leaf,facade_surface}_test.go`, `no_raw_film_bytes_outside_source_test.go`, `filmdec_package_vars_test.go`, `decode_lock_interdit_test.go`, `no_ad_hoc_source_fingerprint_test.go`, `no_unregistered_fallback_test.go`, `no_hardcoded_film_cache_dirs_test.go` (le littéral `film_facts`) |
+| Lecture des calques côté web (trois états : produit / non produit / inconnu) | `apps/web/src/features/match-replay/model/calquePresent.ts` ; frontière de normalisation : `apps/web/src/lib/replay/{replayNormalize,replayDocumentSchema}.ts` |
 
 **Chemins MORTS — ne plus les citer** : `filmdec/` (devenu `film/internal/grammar/`),
 `internal/analysis/filmsource/` (devenu `film/internal/source/`),
