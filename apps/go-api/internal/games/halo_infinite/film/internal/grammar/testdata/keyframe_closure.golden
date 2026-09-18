@@ -113,6 +113,25 @@
 #     fermeture est une coincidence de frontiere, pas une largeur. Le bloquant de ti=37 ne
 #     bouge pas, et aucune ligne ne perd plus d un record contre +627 gagnes.
 #     Les 6 films de recherche ne sont pas mesures ici (un seul decodage a la fois).
+#   2026-09-18 lot 5.1.7-b : L ETAT PAR DEFAUT DE ti=40 EST LU, SA BOUCLE TOURNE.
+#     ti=40 n etait pas dans `defaultStateDeserByTI` : le jeu ecrivait 79 bits au
+#     minimum (FUN_1410A5A74), le lecteur en consommait ZERO, et le R(32) n2 se lisait
+#     79 bits trop tot -> consumeFullStateDefaultBlock faux -> LA BOUCLE DE COMPOSANTS
+#     N ETAIT JAMAIS LANCEE. C est ce que ce golden disait sans qu on le lise : 0 ferme
+#     sur 777 avec une colonne `bloquant` VIDE sur 48 composants dont 16 non portes.
+#     La feuille 4 (quaternion FUN_14076e494 + FUN_140c1e79c) portait la mention
+#     « largeur config-dependante » : PERIMEE. Ses deux globaux entrent par le catalogue
+#     de la carte depuis 3.4.1, ses deux fonctions sont portees depuis R7-b.
+#     MESURE ET TEMOIN NEGATIF (4f77afc1, 1 140 records ti=40 d image-cle) : la porte
+#     bVar14 vaut 1 sur 470 records (41,2 %). Feuille LUE : bVar14=0 661/661 a i30,
+#     bVar14=1 470/470 a i30 — meme rang, sans exception. Feuille modelisee ABSENTE :
+#     les 470 rendent DesyncAt == -1, la boucle ne tourne pas. Oracle binaire.
+#     CE QUI CHANGE ICI : le bloquant de ti=40 passe de VIDE a
+#     `i30 vehicle-auto-turret-triggers-component`. La fermeture NE MONTE PAS et ne le
+#     peut pas tant que les seize vehicle-* ne sont pas portes ; 0 ligne descend.
+#     Le document publie ne bouge d AUCUN octet (4f77afc1 : 256 recensees, 97 publiees,
+#     3 fins datees, avant comme apres) : le calque des vehicules passe par des
+#     balayages ANCRES, pas par la marche d etat complet.
 a521164d	ti=0	0	1	
 a521164d	ti=2	0	11	i11 game-engine-soft-ceilings-component
 a521164d	ti=4	10	10	
@@ -138,7 +157,7 @@ a521164d	ti=34	0	11	i10 tacmap-mapdismissallock
 a521164d	ti=35	0	205	i60 simulation-state-component
 a521164d	ti=37	3	762	
 a521164d	ti=38	122	1303	
-a521164d	ti=40	0	335	
+a521164d	ti=40	0	335	i30 vehicle-auto-turret-triggers-component
 a521164d	ti=41	23	35	
 a521164d	ti=42	24	698	
 a521164d	ti=43	0	1559	i19 device-position-animation-name-component
@@ -170,7 +189,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 60ae07c4	ti=35	1	236	i60 simulation-state-component
 60ae07c4	ti=37	3	425	
 60ae07c4	ti=38	30	2099	
-60ae07c4	ti=40	0	32	
+60ae07c4	ti=40	0	32	i30 vehicle-auto-turret-triggers-component
 60ae07c4	ti=41	0	19	
 60ae07c4	ti=42	5	253	
 60ae07c4	ti=43	0	569	i19 device-position-animation-name-component
@@ -202,7 +221,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 11de8353	ti=35	1	255	i60 simulation-state-component
 11de8353	ti=37	1	514	
 11de8353	ti=38	99	2262	
-11de8353	ti=40	0	220	
+11de8353	ti=40	0	220	i30 vehicle-auto-turret-triggers-component
 11de8353	ti=41	5	19	
 11de8353	ti=42	3	155	
 11de8353	ti=43	0	380	i19 device-position-animation-name-component
@@ -232,7 +251,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 111fa685	ti=35	1	214	i60 simulation-state-component
 111fa685	ti=37	1	569	
 111fa685	ti=38	72	1366	
-111fa685	ti=40	0	58	
+111fa685	ti=40	0	58	i30 vehicle-auto-turret-triggers-component
 111fa685	ti=41	4	20	
 111fa685	ti=42	2	141	
 111fa685	ti=43	0	260	i19 device-position-animation-name-component
@@ -263,7 +282,7 @@ e5adf7b2	ti=34	0	11	i10 tacmap-mapdismissallock
 e5adf7b2	ti=35	0	237	i60 simulation-state-component
 e5adf7b2	ti=37	1	489	
 e5adf7b2	ti=38	49	1046	
-e5adf7b2	ti=40	0	132	
+e5adf7b2	ti=40	0	132	i30 vehicle-auto-turret-triggers-component
 e5adf7b2	ti=41	1	6	
 e5adf7b2	ti=42	13	187	
 e5adf7b2	ti=43	0	414	i19 device-position-animation-name-component

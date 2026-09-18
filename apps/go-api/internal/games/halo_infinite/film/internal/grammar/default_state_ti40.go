@@ -24,22 +24,19 @@ package grammar
 //	                                                          MOV RDX,RSI @0x1424a3b09 + CALL
 //	                                                          0x14080d6f0 @0x1424a3b0c
 //
-// LA SEULE FEUILLE NON ETABLIE STATIQUEMENT est la 4 (le quaternion `FUN_14076e494`), derriere la
-// porte de flux `bVar14`. Sa largeur depend de globaux de configuration runtime : l'index
-// `DAT_144632be0` (FUN_14076e524) et les trois largeurs per-axe `DAT_1445cc9e0` (FUN_140cc5128).
-// C'est EXACTEMENT le bloc media-frame du BIPEDE (consumeBipedDefaultStateMediaFrame,
-// default_state.go:299), lui aussi modelise ABSENT. On le modelise absent ici de la meme facon
-// (vehicleMediaFrameBits, defaut 0) : bit-exact tant que `bVar14 == 0` (le cas nominal d'un spawn),
-// desaligne sinon. La part de records a `bVar14 == 1` se MESURE (oracle de position), elle ne se
-// suppose pas.
+// LES CINQ FEUILLES SONT LUES (2026-09-18, lot 5.1.7-b). La quatrieme — le quaternion
+// `FUN_14076e494` derriere la porte de flux `bVar14` — a longtemps porte la mention « largeur non
+// etablie statiquement, globaux de configuration runtime » et se modelisait ABSENTE. LA MENTION
+// ETAIT PERIMEE : les deux globaux qu elle nommait (l index `DAT_144632be0` de `FUN_14076e524`, les
+// trois largeurs per-axe `DAT_1445cc9e0` de `FUN_140cc5128`) entrent par le CATALOGUE DE LA CARTE
+// depuis le lot 3.4.1, et les deux fonctions de la feuille sont portees depuis le lot R7-b. La
+// feuille se lit donc a la largeur de la carte du match — cf. [consumeVehicleMediaFrame] pour la
+// mesure qui l etablit et son temoin negatif.
 //
-// POURQUOI ti=40 N'EST PAS DANS defaultStateDeserByTI. Par la regle de default_state_arch.go:30-32
-// (« un archetype dont UNE largeur de feuille n'est pas etablie statiquement n'est PAS inscrit »),
-// et parce que la feuille 4 est config-dependante, `ti=40` reste HORS de la table. L'inscription
-// est la meme etape post-oracle que pour ti=42 : elle attend la confirmation que le port atterrit
-// sur i0 (donc que bVar14 est nominalement 0). Elle est laissee au superviseur (cache Go partage).
+// `ti=40` EST DONC INSCRIT dans `defaultStateDeserByTI`, et la regle de `default_state_arch.go`
+// est tenue, pas contournee : plus aucune feuille n est devinee.
 //
-// L'IDENTITE DU CHASSIS voyage dans MPPWord32 (feuille 2), lue AVANT toute position et toute porte
+// L IDENTITE DU CHASSIS voyage dans MPPWord32 (feuille 2), lue AVANT toute position et toute porte
 // optionnelle : elle est donc lisible meme sans decoder i0 (dont la grammaire dyn.-prec. diverge
 // de la voie world-object, cf. § 6 du dossier RE).
 
@@ -48,29 +45,16 @@ package grammar
 // format (cadrage § 1.5 : six empreintes de registre, mais ti=40 stable a 48 composants).
 const VehicleTypeIndex = 40
 
-// vehicleMediaFrameBits est la largeur du bloc quaternion `FUN_14076e494` (feuille 4), atteint
-// quand la porte de flux `bVar14` vaut 1. Cette largeur depend de globaux de config runtime
-// (DAT_1445cc9e0 axis widths, DAT_144632be0 index) non recuperables statiquement — voir le § 3 du
-// dossier RE. Defaut 0 : le bloc est modelise ABSENT, comme le media-frame du bipede
-// (bipedDefaultStateTailBits).
-//
-// Le reglage public `SetVehicleMediaFrameBits` a ete supprime le 2026-09-05 (lot E, item E.2) :
-// aucun appelant. La largeur reste 0, c'est-a-dire le bloc modelise absent.
-// PROVENANCE : largeur MESUREE du bloc quaternion de la feuille 4 de ti=40 — 0, c est-a-dire le
-// bloc modelise ABSENT, ce qui est bit-exact sur le chemin nominal (bVar14 == 0, le cas d un
-// spawn). Constante depuis le 2026-09-06 (lot E, item E.8).
-const vehicleMediaFrameBits = 0
-
 // consumeDefaultStateTI40 porte FUN_1410a5a74 (archetype 40, « vehicule »).
 //
-// ATTENTION : la feuille 4 (quaternion, porte bVar14) n'est pas etablie statiquement ; ce port la
-// modelise absente (vehicleMediaFrameBits = 0). Le deser est donc bit-exact sur le CHEMIN NOMINAL
-// (bVar14 == 0) et NON inscrit dans defaultStateDeserByTI (cf. l'en-tete de fichier).
+// LES CINQ FEUILLES SONT LUES, ET L ARCHETYPE EST INSCRIT dans `defaultStateDeserByTI` depuis le
+// 2026-09-18 (lot 5.1.7-b). La feuille 4 ne se modelise plus absente : elle se LIT (cf.
+// [consumeVehicleMediaFrame]).
 func consumeDefaultStateTI40(br *Lecteur) {
 	consumeVersionPrefix(br)              // 1. V : R(1) ; si 1 -> R(8)
 	consumeMultiplayerPropertiesBlock(br) // 2. FUN_14080cfe8 : bloc MPP (publie MPPWord32)
 	if br.ReadBit() {                     // 3. porte bVar14 -> DST+0x60 (R(1) inconditionnel)
-		consumeVehicleMediaFrame(br) // 4. quaternion + FUN_140c1e79c : CONFIG-DEPENDANT
+		consumeVehicleMediaFrame(br) // 4. quaternion + FUN_140c1e79c, aux largeurs de la carte
 	}
 	br.ReadBits(19)    // 5. FUN_14076dc04 : R(19), largeur R9D=0x13
 	if !br.ReadBit() { // 6. porte cVar3 -> DST+0xac ; branche selon la valeur
@@ -84,13 +68,24 @@ func consumeDefaultStateTI40(br *Lecteur) {
 }
 
 // consumeVehicleMediaFrame porte la feuille 4 (bloc froid @0x1424a3a02) : le quaternion
-// `FUN_14076e494` (-> DST+0x64) puis `FUN_140c1e79c`. Sa largeur reelle depend de globaux de config
-// runtime (cf. § 3 du dossier RE), donc elle est modelisee par vehicleMediaFrameBits (defaut 0 ->
-// bloc absent). Le meme motif que consumeBipedDefaultStateTail (default_state.go:494).
+// `FUN_14076e494` (-> DST+0x64) puis `FUN_140c1e79c`.
+//
+// ELLE ETAIT MODELISEE ABSENTE JUSQU AU 2026-09-18, sous la mention « largeur config-dependante,
+// non etablie statiquement ». LA MENTION ETAIT PERIMEE : les deux globaux qu elle nommait —
+// l index `DAT_144632be0` et les trois largeurs per-axe `DAT_1445cc9e0` — entrent par le CATALOGUE
+// DE LA CARTE depuis le lot 3.4.1, et les DEUX fonctions de la feuille sont portees depuis le lot
+// R7-b : `FUN_14076e494` par [consumeSimStateHandleTail] et `FUN_140c1e79c` par [consume140c1e79c].
+// La feuille se lit donc, a la largeur de la carte du match, comme le chemin world-object.
+//
+// MESURE QUI L ETABLIT (`4f77afc1`, 1 140 records `ti=40` d image-cle, 2026-09-18) : la porte
+// `bVar14` vaut 1 sur **470 records (41,2 %)** — elle n est donc pas negligeable. Feuille LUE, les
+// deux populations butent au MEME rang, sans exception : `bVar14 == 0` 661/661 a `i30`,
+// `bVar14 == 1` 470/470 a `i30`. TEMOIN NEGATIF, feuille modelisee absente : les 470 partent de
+// travers et rendent `DesyncAt == -1` — la boucle de composants ne tourne pas, ce qui est
+// exactement le faux « aucun bloquant » que le golden 0.A.3 portait sur `ti=40`.
 func consumeVehicleMediaFrame(br *Lecteur) {
-	if vehicleMediaFrameBits > 0 {
-		br.Skip(vehicleMediaFrameBits)
-	}
+	consumeSimStateHandleTail(br) // FUN_14076e494
+	consume140c1e79c(br)          // FUN_140c1e79c
 }
 
 // VehicleDefaultStateMinBits est la largeur du chemin minimal de consumeDefaultStateTI40 (toutes

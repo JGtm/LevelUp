@@ -6163,6 +6163,57 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
+### Lot 5.1.7-b (1) — L ETAT PAR DEFAUT DE `ti=40` EST LU, gates SANS DECODAGE DE CORPUS, 2026-09-18
+
+#### LA MESURE QUI DECIDE, ET SON TEMOIN NEGATIF
+
+La condition posee par `default_state_ti40.go` : « La part de records a `bVar14 == 1` se MESURE,
+elle ne se suppose pas. » Mesure sur `4f77afc1`, 1 140 records `ti=40` d image-cle
+(`bvar14_ti40_research_test.go`, chunk 0 et paquets d image-cle seuls) :
+
+**`bVar14 == 1` sur 470 records — 41,2 %.** La porte n est PAS negligeable : la question ne pouvait
+pas se trancher en supposant le chemin nominal.
+
+Reste l autre branche de la condition : la feuille 4 est-elle lue bit-exact quand elle est
+presente ? **OUI, et l oracle est binaire** — ventilation de `DesyncAt` par la valeur de la porte :
+
+| feuille 4 | `bVar14 == 0` | `bVar14 == 1` |
+|---|---|---|
+| **LUE** (les deux lecteurs portes) | 661/661 a `i30` | **470/470 a `i30`** |
+| modelisee ABSENTE (temoin negatif) | 661/661 a `i30` | **470/470 a `DesyncAt == -1`** |
+
+Feuille lue, les deux populations butent au MEME rang sans exception. Feuille absente, les 470
+partent de travers et la boucle ne tourne pas — c est exactement le faux « aucun bloquant » que le
+golden 0.A.3 portait.
+
+**LA MENTION « largeur config-dependante, non etablie statiquement » ETAIT PERIMEE** : les deux
+globaux qu elle nommait (`DAT_144632be0` de `FUN_14076e524`, `DAT_1445cc9e0` de `FUN_140cc5128`)
+entrent par le CATALOGUE DE LA CARTE depuis le lot 3.4.1, et les deux fonctions de la feuille sont
+portees depuis le lot R7-b (`consumeSimStateHandleTail`, `consume140c1e79c`). La regle de
+`default_state_arch.go` est donc TENUE, pas contournee : plus aucune feuille n est devinee.
+`vehicleMediaFrameBits` disparait avec le modele qu il portait.
+
+| Date | Point | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-18 | mesure | `TestBVar14Ti40` sur `4f77afc1` | `bVar14 == 1` sur **470/1140 (41,2 %)** ; 9 records a `n1 <= 0` |
+| 2026-09-18 | oracle | ventilation de `DesyncAt` par la porte, feuille LUE | `bVar14=0` 661/661 `i30` · `bVar14=1` **470/470 `i30`** |
+| 2026-09-18 | temoin negatif | la meme, feuille modelisee ABSENTE | `bVar14=1` **470/470 `DesyncAt == -1`** — la boucle ne tourne pas |
+| 2026-09-18 | ratchet 0.A.3 | avant regeneration | **VERT**, 0 ligne en baisse |
+| 2026-09-18 | ratchet 0.A.3 | regenere par `-update-keyframe-closure`, historique DANS le generateur | les CINQ lignes `ti=40` passent de bloquant VIDE a **`i30 vehicle-auto-turret-triggers-component`**. Les comptes de fermeture ne bougent pas (0/335, 0/32, 0/220, 0/58, 0/132) : ils ne le peuvent pas tant que les seize `vehicle-*` ne sont pas portes |
+| 2026-09-18 | fixtures | 8 fixtures de contrat regenerees | **le premier ecart de chacune est `"grammarRev"`** — le document publie ne change que par la chaine de revision. 2 652 772 o (plafond 3 145 728) |
+| 2026-09-18 | revisions | `grammar.Rev` `.2` -> **`.3`** (la grammaire de LECTURE change), entree de chronique ecrite ; `facts.Rev` garde `killsource-2026-09-18` (rang du lot 5.1) et son golden est RE-FIGE ; `shapes.golden` re-fige | `SchemaVersion` reste **62** |
+| 2026-09-18 | gates | `gofmt -l` · `go build` · les 7 chemins · `-race` grammar (326 s) · `golangci --new-from-rev=2f04bc7b8` | 0 fichier, tout vert, **0 issues** |
+| 2026-09-18 | gates | `make check-types` · `make test-web` | `tsc -b` propre ; **7 762 tests verts**, 17 skips |
+
+#### CE QUE CE CORRECTIF NE FAIT PAS, ET IL FAUT LE LIRE
+
+**Le document publie ne gagne RIEN** : `4f77afc1` reste a `recensees=256 publiees=97`,
+`finDatee=3`, avant comme apres (mesure de production des deux cotes). Le calque des vehicules
+passe par des balayages ANCRES — `ScanWorldObjectKeyframes` pour le recensement,
+`ScanVehicleCreationsForBand` pour les creations — et non par la marche d etat complet. Ce lot
+repare la FERMETURE D IMAGE-CLE de `ti=40` et le mensonge du golden ; **il ne touche pas a
+`97/256`**, dont la cause reste a instruire (point (2) du lot).
+
 ### Lot 5.1.7-b — LA CAUSE DE `n2 = 0` EST TROUVEE, ET ELLE N EXPLIQUE PAS `97/256`, 2026-09-18
 
 #### LA CAUSE RACINE, LUE DANS LE DEPOT
