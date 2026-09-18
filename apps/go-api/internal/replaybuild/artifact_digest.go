@@ -265,10 +265,11 @@ const famillePublication = "publication"
 // presence du fichier de faits. ok=false quand l artefact est absent ou illisible : l appelant
 // cuit alors depuis le film, et il n y a pas de verdict a rendre sur un fichier qui n existe pas.
 //
-// C EST LA FORME QUE LES SITES DE DECISION EMPLOIENT : eux seuls connaissent la racine du depot,
-// et la presence des faits ne se devine pas depuis un digest.
-func ArtifactVerdict(repoRoot, titleSlug, matchID string) (Verdict, bool) {
-	res := title.NewPathResolver(repoRoot)
+// C EST LA FORME QUE LES SITES DE DECISION EMPLOIENT : eux seuls tiennent le resolveur de chemins,
+// et la presence des faits ne se devine pas depuis un digest. Le resolveur PLUTOT QUE LA RACINE
+// parce que les deux appelants de production en tiennent deja un — en reconstruire un ici ferait
+// une seconde source du meme chemin.
+func ArtifactVerdict(res *title.PathResolver, titleSlug, matchID string) (Verdict, bool) {
 	d, ok := ArtifactDigest(res.ReplayArtifactPath(titleSlug, matchID))
 	if !ok {
 		return VerdictRedecoder, false

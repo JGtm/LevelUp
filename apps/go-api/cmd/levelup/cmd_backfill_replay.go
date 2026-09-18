@@ -118,6 +118,13 @@ type replayCandidat struct {
 	matchID  string
 	mapNames []string // candidats du plus fiable au moins fiable (asset EN, puis brut)
 	chunks   int
+	// verdict : ce que le filtre a decide de CET artefact (lot M4-P4). Il voyage jusqu au
+	// comptage parce que c est le PARENT qui sait pourquoi il a lance l enfant — l enfant, lui,
+	// rejoue ou redecode selon la fraicheur des faits qu il relit, et ne rend qu un code de
+	// sortie. Vide quand aucun artefact n existait : la passe le compte alors en `construits`
+	// sans le ventiler, ce qui est la verite (rien n a ete ni republie ni redecode, tout a ete
+	// cuit pour la premiere fois).
+	verdict replaybuild.Verdict
 }
 
 // replayBackfillOptions : les reglages de la passe.
@@ -229,9 +236,17 @@ func filtrerEtTrierReplay(
 				continue
 			}
 		}
-		if !o.force && replaybuild.ArtifactUpToDate(path) {
+		// LE VERDICT REMPLACE L EGALITE DE SCHEMA (lot 4.4.1) : il dit AUSSI si les faits
+		// permettent de republier sans ouvrir le film. Le filtre ne change PAS de population — il
+		// ecarte toujours exactement les artefacts a jour — il RETIENT en plus pourquoi il garde
+		// les autres, ce que le rapport de passe ventile ensuite.
+		verdict, existe := replaybuild.ArtifactVerdict(pr, o.titleSlug, c.matchID)
+		if !o.force && existe && verdict == replaybuild.VerdictAJour {
 			report.dejaAJour++
 			continue
+		}
+		if existe {
+			c.verdict = verdict
 		}
 		aFaire = append(aFaire, c)
 	}

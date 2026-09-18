@@ -131,7 +131,7 @@ func TestArtifactVerdictLitLeDisqueEtLaPresenceDesFaits(t *testing.T) {
 		t.Fatalf("pose de l artefact : %v", err)
 	}
 	// SANS le fichier de faits : `redecoder`.
-	v, ok := ArtifactVerdict(repo, title.DefaultSlug, matchID)
+	v, ok := ArtifactVerdict(res, title.DefaultSlug, matchID)
 	if !ok || v != VerdictRedecoder {
 		t.Fatalf("faits absents : verdict %q (ok=%v), attendu %q", v, ok, VerdictRedecoder)
 	}
@@ -144,18 +144,18 @@ func TestArtifactVerdictLitLeDisqueEtLaPresenceDesFaits(t *testing.T) {
 	if err = os.WriteFile(faits, []byte("des octets quelconques"), 0o600); err != nil {
 		t.Fatalf("pose des faits : %v", err)
 	}
-	if v, ok = ArtifactVerdict(repo, title.DefaultSlug, matchID); !ok || v != VerdictRepublier {
+	if v, ok = ArtifactVerdict(res, title.DefaultSlug, matchID); !ok || v != VerdictRepublier {
 		t.Fatalf("faits presents : verdict %q (ok=%v), attendu %q", v, ok, VerdictRepublier)
 	}
 	// RETOUR : on retire les faits, le verdict rebascule.
 	if err = os.Remove(faits); err != nil {
 		t.Fatalf("retrait des faits : %v", err)
 	}
-	if v, ok = ArtifactVerdict(repo, title.DefaultSlug, matchID); !ok || v != VerdictRedecoder {
+	if v, ok = ArtifactVerdict(res, title.DefaultSlug, matchID); !ok || v != VerdictRedecoder {
 		t.Fatalf("faits retires : verdict %q (ok=%v), attendu %q", v, ok, VerdictRedecoder)
 	}
 	// ARTEFACT ABSENT : ok=false, et le verdict par defaut est le plus sur.
-	if v, ok = ArtifactVerdict(repo, title.DefaultSlug, "ffffffff-0000-0000-0000-000000000000"); ok {
+	if v, ok = ArtifactVerdict(res, title.DefaultSlug, "ffffffff-0000-0000-0000-000000000000"); ok {
 		t.Errorf("artefact absent : ok=true, attendu false (verdict %q)", v)
 	}
 }
