@@ -170,6 +170,38 @@ describe('MatchCard', () => {
     expect(screen.queryByTestId('match-card-kda-bar')).toBeNull()
   })
 
+  // Part des frags assistés par un coéquipier (film analysé) : ligne + barre à trois
+  // tons sous la barre frags / assistances / décès. Sans mesure : rien du tout.
+  describe('frags assistés', () => {
+    const MEASURED: RecentMatchItem = {
+      ...WIN_MATCH,
+      assisted_frags: { frags_measured: 12, received: { total: 7, low: 2, mid: 3, high: 1 } },
+    }
+
+    it('affiche « 7 / 12 frags assistés · 58 % » et les trois segments aux largeurs = parts', () => {
+      render(<MatchCard match={MEASURED} locale="fr" />)
+      const line = screen.getByTestId('match-card-assisted-frags')
+      expect(line.textContent).toContain('7 / 12 frags assistés · 58 %')
+      const widthOf = (tier: string) =>
+        parseFloat((screen.getByTestId(`match-card-assist-segment-${tier}`).closest('[style*="width"]') as HTMLElement).style.width)
+      expect(widthOf('low')).toBeCloseTo((2 / 12) * 100)
+      expect(widthOf('mid')).toBeCloseTo((3 / 12) * 100)
+      expect(widthOf('high')).toBeCloseTo((1 / 12) * 100)
+    })
+
+    it('dit « assisted kills » sous la locale EN', () => {
+      render(<MatchCard match={MEASURED} locale="en" />)
+      expect(screen.getByTestId('match-card-assisted-frags').textContent).toContain('7 / 12 assisted kills · 58 %')
+    })
+
+    it('n’affiche rien du tout sans mesure (ni ligne, ni segment, ni « — »)', () => {
+      render(<MatchCard match={WIN_MATCH} locale="fr" />)
+      expect(screen.queryByTestId('match-card-assisted-frags')).toBeNull()
+      expect(screen.queryByTestId('match-card-assist-segment-low')).toBeNull()
+      expect(screen.getByTestId('match-card-kda-bar').textContent).not.toContain('—')
+    })
+  })
+
   // Bouton rejeu 2D à droite du placement : rendu UNIQUEMENT si l'artefact existe
   // (has_replay) ET que la tuile connaît le joueur (playerSlug — route par joueur).
   describe('lien rejeu 2D', () => {

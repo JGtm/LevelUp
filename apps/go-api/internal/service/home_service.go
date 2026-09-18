@@ -481,12 +481,14 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		enrichMatchesWithMedals(ctx, s.repo, recentMatches)
 		enrichMatchesWithCitations(ctx, s.repo, recentMatches)
 		enrichMatchesWithCommendations(ctx, s.repo, recentMatches)
+		enrichMatchesWithAssistedFrags(ctx, s.repo, recentMatches)
 		return nil
 	})
 	enrichG.Go(func() error {
 		enrichMatchesWithMedals(ctx, s.repo, favoriteMatches)
 		enrichMatchesWithCitations(ctx, s.repo, favoriteMatches)
 		enrichMatchesWithCommendations(ctx, s.repo, favoriteMatches)
+		enrichMatchesWithAssistedFrags(ctx, s.repo, favoriteMatches)
 		return nil
 	})
 	_ = enrichG.Wait()

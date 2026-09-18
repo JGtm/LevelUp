@@ -1,3 +1,64 @@
+## [2026-09-18] Tuile de match — part des frags assistés par un coéquipier, par tranche (lot 3) — Complété (non commité, worktree `LevelUp-wt-trois-lots`, branche `feat/intensite-objectifs-assists`)
+
+**Demande** : sur la tuile de match de l'Accueil (`match-card.tsx`), la part des frags du joueur
+assistés par un coéquipier sur CE match, découpée par tranche de part de dégâts de l'assistant —
+le sens « reçues » de la page Relations, ramené à un seul match. Go + web.
+
+**Décisions techniques** : (1) DTO `RecentMatchItem.AssistedFrags *domain.MatchAssistedFrags`
+(`assisted_frags,omitempty`), type dans `relation_assists.go` : `FragsMeasured` (frags du joueur
+sur les lignes `publishable AND assist_known` du match = dénominateur) + `Received AssistTiers` ;
+nil quand le match n'a aucune ligne mesurée pour le joueur (« on ne sait pas » n'est pas « 0 ») ;
+(2) `HomeRepository.LoadMatchAssistedFrags(ctx, matchIDs)` → `HomeRepo` dans
+`home_repo_assisted_frags.go` (Q26l, une requête `GROUP BY match_id` sur `match_kill_events_latest`
+filtrée `feed_killer_xuid = xuid du repo`, bornes injectées depuis `domain.AssistTier*MaxPct`
+comme Q28c, timeout 10 s, `SharedReadDB().Get`) — PAS d'exclusion des bots : le tueur est le
+joueur suivi, l'assistant n'est pas énuméré (Q28c exclut les bots côté coéquipier parce qu'il
+les énumère) ; noop du port + `mockHomeRepo` complétés ; (3) `enrichMatchesWithAssistedFrags`
+dans `home_service_enrichment.go`, appelé pour récents ET favoris dans l'`errgroup` existant ;
+erreur repo → `slog.WarnContext("home_assisted_frags_load_failed")` puis champs nil (pas de
+copie du défaut des voisins qui avalent l'erreur) ; (4) demi-barre du papillon extraite en
+`features/_shared/assists/AssistTierBar.tsx` (un sens, `segments`, `side`, `color`, `text`,
+`locale`, variantes `card` / `row` / `tile`, jetons `ASSIST_*_TOKEN` déplacés ici) ;
+`AssistButterflyBar` en compose deux — 0 copie, tests du papillon inchangés ;
+`assistExchange.ts` : découpage par tranche factorisé (`splitByTier`), `assistSegments`
+(volume, log) inchangé pour Relations, `assistShareSegments(tiers, frags)` = PART
+`count / frags` bornée à 100 % pour la tuile ; (5) `components/ui/match-card-assisted-frags.tsx`
+(fichier à part : `match-card.tsx` est exempté `max-lines` et « le découpage revient au lot qui
+touchera ce fichier » — non fait, hors périmètre, noté) : « 7 / 12 frags assistés · 58 % » +
+barre `tile` en `assist-received`, infobulle `ASSISTS_TEXT.segment` par segment ; rien du tout
+sans `assisted_frags` ; clé `common.match_card.assisted_frags` (placeholders ICU `{assisted}`,
+`{frags}`, `{share}`) FR + EN, générateur relancé ; part formatée `formatPercent(share, 0)` dans
+les deux locales, comme la carte Binôme (« 58 % ») ; (6) garde-rail neuf
+`features/_shared/assists/assistTiers.guard.test.ts` (aucun garde de tranche n'existait) :
+littéral `25` / `50` isolé interdit dans `components/ui/match-card*.tsx` et `AssistTierBar.tsx`,
+témoin positif sur `assistsI18n.ts` (seul foyer web des bornes) ; motif tolérant `/50`
+(opacité Tailwind) et `-50`.
+
+**Résultats observés** : gate 1 vert (gofmt, build, vet, tests domain/service/duckdb ciblés,
+contracttest, OpenAPI) + intégration `-tags=integration` (2 tests repo) ; gate 2 : `openapi-gen`
+et `generate-types` sans diff — `/pages/home` n'a PAS de schéma OpenAPI dérivé (« TODO Sprint 32 »
+dans le contrat) : `RecentMatchItem` et le nouveau `MatchAssistedFrags` sont écrits à la main dans
+`lib/api/types.ts` sur l'`AssistTiers` généré ; gate 3 : typecheck 0, eslint 0 erreur (4
+avertissements pré-existants, fichiers non touchés), lint:colors 0, lint:fields 0, vitest
+périmètre 69 fichiers / 466 tests verts ; gate 4 : golangci-lint `--new-from-rev=HEAD` 0 issue ;
+garde-rails ART/_latest (`internal/sync`, duckdb, archlint) verts. Mutations prouvées rouges :
+service (affectation sans `ok`, erreur → map fabriquée), repo (sans `publishable`, total en
+`COUNT(*)`, haute en `>= mid`, moyenne en `< mid` — fixture avec 25 et 50 exacts), tuile
+(dénominateur doublé, 1 décimale, rendu sans garde d'absence), `AssistTierBar` (ordre gauche non
+renversé, opacité haute 0,9), garde (borne recopiée dans `AssistTierBar` et dans la tuile).
+
+**Découvertes hors périmètre (non corrigées)** : (a) `enrichMatchesWithMedals` /
+`enrichMatchesWithCitations` / `enrichMatchesWithCommendations` et `LoadMatchMedals` /
+`LoadMatchCitations` avalent leurs erreurs sans log (« dégradation silencieuse »), contraire à la
+règle 3 ; (b) `/pages/home` sans schéma OpenAPI (contrat `type: object` + TODO Sprint 32) : les
+types de la Home ne sont pas générés, dérive possible entre Go et `types.ts` ; (c) `match-card.tsx`
+porte l'exemption `max-lines` datée du 2026-09-06 qui assigne le découpage « au lot qui touchera
+ce fichier » — ce lot l'a touché (3 lignes) sans le découper ; (d) `components/ui` importe
+désormais `features/_shared/assists` (première dépendance non-test composants → features) :
+aucun ratchet ne l'interdit, mais la direction mérite un arbitrage (déplacer `AssistTierBar` +
+`assistsI18n` sous `components/` ou accepter `_shared` comme couche partagée) ;
+(e) `home_service_test.go` fait 995 lignes (dette gelée, test service posé dans un fichier à part).
+
 ## [2026-09-18] Rejeu 2D — les objectifs du mode disent leur ÉTAGE comme les joueurs (lot 2) — Complété (non commité, worktree `LevelUp-wt-trois-lots`, branche `feat/intensite-objectifs-assists`)
 
 **Demande** : les zones (collines, bastions, zones de capture) et les marqueurs (socles,

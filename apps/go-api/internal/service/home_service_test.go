@@ -133,6 +133,8 @@ type mockHomeRepo struct {
 	recentPlaylistRanksErr error
 	commendations          map[string][]domain.HomeMatchCommendationRaw
 	commendationsErr       error
+	assistedFrags          map[string]domain.MatchAssistedFrags
+	assistedFragsErr       error
 }
 
 func (m *mockHomeRepo) LoadHomeMatches(_ context.Context) ([]legacymatch.HomeMatchRow, error) {
@@ -173,6 +175,16 @@ func (m *mockHomeRepo) LoadMatchCommendations(_ context.Context, _ []string) (ma
 		return m.commendations, nil
 	}
 	return map[string][]domain.HomeMatchCommendationRaw{}, nil
+}
+
+func (m *mockHomeRepo) LoadMatchAssistedFrags(_ context.Context, _ []string) (map[string]domain.MatchAssistedFrags, error) {
+	if m.assistedFragsErr != nil {
+		return nil, m.assistedFragsErr
+	}
+	if m.assistedFrags != nil {
+		return m.assistedFrags, nil
+	}
+	return map[string]domain.MatchAssistedFrags{}, nil
 }
 
 func (m *mockHomeRepo) LoadFavoriteWeapon(_ context.Context, _ string) (string, int, error) {
