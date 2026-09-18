@@ -1,3 +1,19 @@
+## [2026-09-18] Chantier decodeur — fusion 4.1 x integration 4.2 : le schema 62 rejoue a l octet depuis les faits
+
+**Statut** : Complete (fusion `25e5950e6`, tous les gates joues) / En attente (fusion du pilote dans `feat/v75` ; les 20 references d equivalence restent a re-figer).
+
+**Ce que la fusion a vraiment coute.** Neuf conflits, TOUS dans les fixtures de contrat du web ; **zero conflit Go, zero conflit TypeScript**. `replaybuild.go` et `kills.go` ont fusionne seuls et portent les DEUX cotes — la bascule vers les faits et le `voiesDesMorts` de 4.2 — verifie sur pieces et non suppose. Point de conception qui tient sans travail : `KillsInput.Paths` se derive de `killsource.Result.Stats` sur les DEUX branches, donc `coverage.deathsPaths` ne depend pas de la branche servie ; **aucune section n a ete ajoutee au fichier de faits pour le schema 62**, `layers` et `deathsPaths` se derivant de ce qui y voyage deja.
+
+**Les fixtures de contrat de 4.2 etaient au bon schema et au mauvais codec.** Elles portaient le schema 62 mais avaient ete cuites avec l ANCIEN codec d entrees — donc sans les pistes exactes ni les 13 directions de composant. Les DEUX jeux ont ete supprimes et les 8 regenerees par leur porte : 2 652 796 o (plafond 3 145 728), 0 perime, `TestContractFixturesUnSeulJeuVivant` vert, un seul jeu au schema 62.
+
+**L auto-merge d un fichier GENERE perd en silence, et seule la regeneration le rattrape.** `openapi.yaml` regenere ne rend AUCUN diff (le fichier fusionne portait deja les deux cotes), mais `generated.ts` regenere depuis lui rend **+13 lignes** : `ResourceFilmFacts` et les deux champs de la mesure admin M4-D1, que l auto-merge avait perdues. Un fichier derive ne se fusionne pas, il se REGENERE depuis sa source de verite.
+
+**Le ratchet gele sur la base d un lot rougit a la fusion — re-mesurer, pas forcer.** Le plafond de surface de la facade etait fige a 253 sur ma base ; la fusion le porte a 255. Re-mesure a l entree par `comm` sur les deux inventaires : **2 ajouts nommes** (`replay.DeathsPathsCoverage`, `replay.DeathsPathTally`, cites par `replaybuild/kills.go` pour publier `coverage.deathsPaths`), **0 disparition**, raison datee dans le tableau des montees.
+
+**Gates sur l arbre fusionne.** `gofmt` vide · `go build` et `go vet` verts · `go test -count=1 ./...` **RC=0, 189 paquets** · `go test -tags=integration -p 1` sur `replaybuild/persist/sync` **RC=0, 13 paquets** · `golangci-lint --new-from-rev=73a4dc580` **0 issues** · web : `tsc` vert et **3 179 tests verts** · gate de fidelite du codec **8/8 en 191 s** · **S8 au schema 62 sur 3 films : 3 artefacts IDENTIQUES A L OCTET, 0 divergent, RC=0** (172 / 247 / 349 ms de rejeu contre 18,5 s / 55,3 s / 2 min 39 de decodage).
+
+**Prochaine etape** : la fusion du pilote dans `feat/v75`, puis le re-figeage des 20 references d equivalence (`artifact`, `killRefs`, plus l insertion de `filmFactsRejoue`).
+
 ## [2026-09-18] Chantier decodeur — lot 4.1 (M4) : le document se rejoue depuis les faits, A L OCTET, et le gate S8 a trouve quatre defauts avant de le dire
 
 **Statut** : Complete (les cinq points du brief, gates avec decodage joues a la voie libre) / En attente (fusion de l integration 4.2 — schema 62, layers, deathsPaths, openapi — dans la branche avant la fusion du pilote).
