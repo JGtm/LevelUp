@@ -92,7 +92,7 @@ const bornes = z.strictObject({
 })
 
 /**
- * replayDocumentSchema — les 57 clés de la racine, dans l'ordre du contrat généré.
+ * replayDocumentSchema — les 58 clés de la racine, dans l'ordre du contrat généré.
  *
  * L'ORDRE EST CELUI DU CONTRAT, et ce n'est pas de la coquetterie : c'est ce qui rend la
  * confrontation lisible en revue quand le contrat gagne une clé.
@@ -128,6 +128,11 @@ export const replayDocumentSchema = z.strictObject({
   identity: bloc<NonNullable<ReplayDocument['identity']>>(),
   inventory: calque<Elem<'inventory'>>(),
   killEffects: z.record(z.string(), z.string()).optional(),
+  // `layers` : nom de calque -> révision de la couche qui l'a produit (schéma 62). MÊME FORME
+  // que `killEffects` — une table plate de chaînes — et MÊME RÉGIME que `coverage` : l'objet
+  // garde le droit d'être ABSENT (artefact antérieur à 62), et une entrée absente dans un objet
+  // présent veut dire « ce calque n'a pas été produit ». Il n'est jamais comblé.
+  layers: z.record(z.string(), z.string()).optional(),
   loadouts: calque<Elem<'loadouts'>>(),
   mapObjectives: bloc<NonNullable<ReplayDocument['mapObjectives']>>(),
   mapWeaponPads: bloc<NonNullable<ReplayDocument['mapWeaponPads']>>(),

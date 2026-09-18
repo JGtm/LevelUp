@@ -11577,6 +11577,8 @@ components:
           $ref: '#/components/schemas/BombCarriesCoverage'
         bridge:
           $ref: '#/components/schemas/BridgeHealth'
+        deathsPaths:
+          $ref: '#/components/schemas/DeathsPathsCoverage'
         decoder:
           $ref: '#/components/schemas/DecoderCoverage'
         equipment:
@@ -11908,6 +11910,34 @@ components:
       required:
         - name
         - exists
+      type: object
+    DeathsPathTally:
+      additionalProperties: false
+      properties:
+        matched:
+          format: int64
+          type: integer
+        population:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+      required:
+        - population
+        - matched
+        - published
+      type: object
+    DeathsPathsCoverage:
+      additionalProperties: false
+      properties:
+        directScan:
+          $ref: '#/components/schemas/DeathsPathTally'
+        walk:
+          $ref: '#/components/schemas/DeathsPathTally'
+      required:
+        - walk
+        - directScan
       type: object
     DecoderCoverage:
       additionalProperties: false
@@ -22466,6 +22496,10 @@ components:
             - array
             - "null"
         killEffects:
+          additionalProperties:
+            type: string
+          type: object
+        layers:
           additionalProperties:
             type: string
           type: object

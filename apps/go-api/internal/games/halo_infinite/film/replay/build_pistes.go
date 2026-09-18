@@ -210,6 +210,10 @@ func (a *assemblage) composerLaCouverture() {
 	// « sur M vies » se lirait comme une exhaustivite.
 	a.doc.Coverage.Equipment = equipmentCoverage(a.doc.EquipmentEpisodes, a.doc.Tracks, a.clotureesParMort)
 	a.doc.Coverage.Equipment.KillsRead = a.killsRead
+	// CE QUE CHAQUE VOIE DE LECTURE DES MORTS A PROPOSE (schema 62, lot 4.2.1-b) : la mesure vient
+	// de l APPELANT, qui a decode les morts, et elle se pose ICI parce qu elle qualifie le meme
+	// decodage que `KillsRead` juste au-dessus. nil reste nil : le bloc absent dit « non lu ».
+	a.doc.Coverage.DeathsPaths = a.opt.Kills.Paths
 	// LE COUP D'ENVOI, date par le premier mouvement des pistes (cf. t0_film.go). Il se pose
 	// APRES la couverture et non a cote d'`OriginMs` (l. 528) pour deux raisons : son verdict
 	// vit dans `doc.Coverage`, qui n'existe qu'ici, et il se calcule sur les pistes PUBLIEES,

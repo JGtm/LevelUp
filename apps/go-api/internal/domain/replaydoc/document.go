@@ -68,6 +68,15 @@ type ReplayDocument struct {
 	BombEvents          []BombEvent             `json:"bombEvents,omitempty"`
 	Coverage            *Coverage               `json:"coverage,omitempty"`
 	Identity            *IdentitySection        `json:"identity,omitempty"`
+	// Layers dit, CALQUE PAR CALQUE, SOUS QUELLE REVISION DE COUCHE il a ete produit (schema 62).
+	// La cle est la balise JSON du calque a cette racine ; la valeur est `source-...`,
+	// `profile-...`, `grammar-...`, `killsource-...` ou `publication-<schemaVersion>`.
+	//
+	// Objet ABSENT = artefact anterieur au schema 62 ; entree ABSENTE dans un objet PRESENT = ce
+	// calque n a pas ete produit, et c est une reponse, pas un trou ; entree presente = produit
+	// sous la revision nommee. Les calques resolus a la requete (`mapObjectives`, `mapWeaponPads`,
+	// `weaponTiers`, `vehicleLabels`) n y figurent jamais : la cuisson ne les ecrit pas.
+	Layers map[string]string `json:"layers,omitempty"`
 }
 
 // Bounds est l'étendue alignée sur les axes de tous les points de trajectoire, dans le

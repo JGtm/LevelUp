@@ -1624,3 +1624,64 @@ package replay
 //	               60 ne peut pas dire sous quelle grammaire il a ete cuit : il peut seulement ne
 //	               rien en dire. Les artefacts deja cuits restent servis tels quels, leur bloc
 //	               `decoder` absent jusqu'a leur prochaine cuisson — aucune recuisson requise.
+
+// v62 (2026-09-17, lot 4.2.1 du PLAN_DECODEUR_FILM, jalon M4) : L'ARTEFACT DIT SOUS QUELLE
+// REVISION CHAQUE CALQUE A ETE PRODUIT, ET PAR QUELLE VOIE SES MORTS ONT ETE LUES.
+//
+//	ce qui etait   `coverage.decoder` (v61) dit les revisions de la CUISSON ENTIERE, pas celles
+//	hors du        d'un calque : rien ne relie un champ du document a la couche qui l'a produit.
+//	document       La recuisson selective de M4 (4.4) doit decider PAR COUCHE — « seule la
+//	               publication a bouge : republier depuis les faits » contre « la grammaire a
+//	               bouge : redecoder » — et cette decision n'avait aucune donnee a lire. Les
+//	               comptes PAR VOIE de lecture des morts, eux, etaient mesures par le decodage
+//	               (`killsource.Result.Stats`) et s'arretaient a la frontiere de l'artefact.
+//
+//	`layers`       NEUF, A LA RACINE : `nom de calque -> revision de la couche qui l'a produit`.
+//	               La cle est la balise JSON du calque ; la valeur l'une des CINQ revisions
+//	               connues (`source-...`, `profile-...`, `grammar-...`, `killsource-...`,
+//	               `publication-<schemaVersion>`). 47 champs racine attribues, la regle
+//	               d'attribution et ses deux limites ecrites dans `layers.go`. Objet ABSENT =
+//	               artefact anterieur a 62 ; entree ABSENTE dans un objet PRESENT = ce calque
+//	               n'a pas ete produit, et c'est une REPONSE (une garde de mode fermee, un
+//	               balayage qui n'a pas abouti) ; entree presente = produit sous la revision
+//	               nommee. C'est le meme regime que `coverage`, et D-7 de l'ADR 0034 le pose :
+//	               « la presence d'un calque se lit dans sa revision, jamais dans l'absence
+//	               d'un champ ».
+//
+//	`coverage.     NEUF : les trois denominateurs (`population`, `matched`, `published`) de
+//	deathsPaths`   CHACUNE des deux voies de lecture des morts — la MARCHE (`walk`) et le SCAN
+//	               DIRECT (`scan`). Les deux lisent le MEME champ et repondent au meme bit quand
+//	               les deux repondent (desaccord zero), mais leurs precisions different (98,2 %
+//	               contre 78,4 % au gate d'appariement) : sans le compte par voie, une ligne de
+//	               mort venue du rattrapage s'affichait comme une ligne nominale. Absent quand
+//	               les morts n'ont pas ete lues sur ce match (`KillsInput.Read` faux) — jamais
+//	               six zeros, qui se liraient comme « deux voies ont tourne, rien trouve ».
+//
+//	`vehicleLabels` RECLASSE, ET C'EST UNE CORRECTION MESUREE : ce champ est resolu A LA REQUETE
+//	passe a la     par `service/replay_vehicle_labels.go`, et AUCUN chemin de `build*.go` ne le
+//	requete        pose. Il manquait pourtant a `calquesALaRequete` (`document_shape_test.go`)
+//	               depuis son ajout, ce qui le comptait dans l'empreinte de forme CUITE. Le
+//	               reclassement change cette empreinte : il ne pouvait donc entrer que dans un
+//	               commit qui monte `SchemaVersion`. AUCUN OCTET D'ARTEFACT NE CHANGE — la
+//	               cuisson ne l'ecrivait deja pas, et le service continue de le poser a la requete.
+//
+//	CE QUI N'Y     les CINQ compteurs du balayage des lancers de grenade (D3 (3.3.1)) restent
+//	ENTRE PAS      journalises : `grammar` ne les exporte pas, et les faire sortir changerait des
+//	               octets de la couche, donc `grammar.Rev`, donc `facts.Rev` — c'est-a-dire le
+//	               backlog killsource que V24 a repousse sur signal explicite. Les compteurs de
+//	               3.4.1 (positions par index de plage) n'existent PAS en production : aucune
+//	               `Observation` n'est attachee par `NewFilmContextForMap`. Les deux sont statues
+//	               `[!]` au §4 du plan, avec leur mesure.
+//
+//	AUCUNE AUTRE   TELEMETRIE PURE des deux cotes : aucun rendu ne change, aucune decision de
+//	DIFFERENCE     decodage ne change, et AUCUNE des quatre revisions ne monte dans ce lot — donc
+//	               aucun match ne devient candidat au backlog killsource (D6). L'equivalence est
+//	               a zero difference hors les champs `layers` et `coverage.deathsPaths`.
+//
+//	POURQUOI LA    un champ apparait a la racine et un bloc dans `coverage`, donc la FORME change
+//	VERSION MONTE  (garde-rail `document_shape_test.go`, qui refuse la regeneration sans montee),
+//	               et le reclassement de `vehicleLabels` change l'empreinte de forme cuite. Un
+//	               artefact 61 ne peut pas dire sous quelle revision chacun de ses calques a ete
+//	               produit : il peut seulement ne rien en dire. Les artefacts deja cuits restent
+//	               servis tels quels, `layers` et `deathsPaths` absents jusqu'a leur prochaine
+//	               cuisson.
