@@ -248,3 +248,42 @@ package grammar
 // grandeur qu ils ne decidaient plus.
 //
 // `SchemaVersion` reste 62 : aucun champ neuf n est publie.
+//
+// ENTREE `grammar-2026-09-18.3` (2026-09-18, lot 5.1.7-b) : `.2` -> `.3`.
+// L ETAT PAR DEFAUT DE `ti=40` EST LU, ET SA BOUCLE DE COMPOSANTS TOURNE ENFIN.
+//
+// `consumeKeyframeDefaultState` ne consomme que si l archetype est dans `defaultStateDeserByTI`.
+// `ti=40` n y etait pas — par la regle de `default_state_arch.go` (« un archetype dont UNE largeur
+// de feuille n est pas etablie statiquement n est PAS inscrit »), sa feuille 4 portant la mention
+// « config-dependante ». Le jeu ecrivait donc 79 bits au minimum (`FUN_1410A5A74`), le lecteur en
+// consommait ZERO, le `R(32) n2` se lisait 79 bits trop tot et rendait une valeur `<= 0` :
+// `consumeFullStateDefaultBlock` rendait faux et LA BOUCLE DE COMPOSANTS N ETAIT JAMAIS LANCEE.
+// C est ce que le golden 0.A.3 disait sans qu on le lise : `ti=40` a 0 ferme sur 777, colonne
+// « bloquant » VIDE sur un archetype de 48 composants dont 16 non portes.
+//
+// LA MENTION ETAIT PERIMEE. Les deux globaux qu elle nommait — l index `DAT_144632be0`
+// (`FUN_14076e524`) et les trois largeurs per-axe `DAT_1445cc9e0` (`FUN_140cc5128`) — entrent par
+// le CATALOGUE DE LA CARTE depuis le lot 3.4.1, et les deux fonctions de la feuille sont portees
+// depuis le lot R7-b : `FUN_14076e494` par `consumeSimStateHandleTail`, `FUN_140c1e79c` par
+// `consume140c1e79c`. La feuille se LIT, a la largeur de la carte du match, comme le chemin
+// world-object. `vehicleMediaFrameBits` disparait avec le modele qu il portait.
+//
+// LA MESURE, ET SON TEMOIN NEGATIF (`4f77afc1`, 1 140 records `ti=40` d image-cle) : la porte
+// `bVar14` vaut 1 sur **470 records (41,2 %)** — elle n est pas negligeable, et la question ne
+// pouvait pas se trancher en la supposant nominale. Feuille LUE, les deux populations butent au
+// MEME rang sans exception : `bVar14 == 0` 661/661 a `i30`, `bVar14 == 1` 470/470 a `i30`. Feuille
+// modelisee ABSENTE, les 470 rendent `DesyncAt == -1` — la boucle ne tourne pas. C est l oracle
+// qui etablit la feuille, et il est binaire.
+//
+// CE QUI CHANGE, ET CE QUI NE CHANGE PAS. Le bloquant de `ti=40` passe de « (aucun) » a
+// `i30 vehicle-auto-turret-triggers-component` : la fermeture ne monte pas — elle ne le peut pas
+// tant que les seize `vehicle-*` ne sont pas portes — mais le golden cesse de mentir sur cet
+// archetype. Ratchet 0.A.3 : 0 ligne en baisse. **Le document publie ne bouge d AUCUN octet** :
+// mesure sur `4f77afc1`, `recensees=256 publiees=97`, `finDatee=3` avant comme apres. Le calque
+// des vehicules passe par des balayages ANCRES (`ScanWorldObjectKeyframes`,
+// `ScanVehicleCreationsForBand`), pas par la marche d etat complet — l hypothese qui attribuait
+// `97/256` a ce defaut est REFUTEE par la mesure, et la cause de `97/256` reste a instruire.
+//
+// `facts.Rev` suit par VALEUR (elle hache cette constante) et garde son rang
+// `killsource-2026-09-18`, qui est celui de tout le lot 5.1 : golden RE-FIGE, pas monte.
+// `SchemaVersion` reste 62 : aucun octet publie ne change.
