@@ -168,6 +168,21 @@ describe('useReplaySettings — préférences persistées (localStorage, comme l
     // Les poses, elles, n'ont pas bougé : deux clés distinctes, jamais une pour deux.
     expect(result.current.showPlacements).toBe(true)
   })
+
+  it('les objectifs du mode : ALLUMÉS par défaut, et le choix survit au remontage sur LEUR clé', () => {
+    // Le terrain de l'enjeu (collines, bases, socles, livraisons) se voit d'emblée ; l'éteindre
+    // est un choix du lecteur, qui doit tenir d'une page à l'autre.
+    const first = renderHook(() => useReplaySettings())
+    expect(first.result.current.showModeObjectives).toBe(true)
+    act(() => first.result.current.toggleModeObjectives())
+    expect(first.result.current.showModeObjectives).toBe(false)
+    first.unmount()
+
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showModeObjectives).toBe(false)
+    // Les drapeaux, eux, n'ont pas bougé : les objets PORTÉS ont leur propre bascule.
+    expect(result.current.showFlagCarries).toBe(true)
+  })
 })
 
 describe('useReplaySettings — couleur des points', () => {

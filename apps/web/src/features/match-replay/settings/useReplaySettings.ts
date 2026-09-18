@@ -35,6 +35,7 @@ const SHOW_DROPPED_PLACEMENTS_KEY = 'replay-show-dropped-placements'
 const SHOW_WEAPON_PADS_KEY = 'replay-show-weapon-pads'
 const SHOW_GROUND_WEAPONS_KEY = 'replay-show-ground-weapons'
 const SHOW_GROUND_WEAPONS_SPECIAL_ONLY_KEY = 'replay-show-ground-weapons-special-only'
+const SHOW_MODE_OBJECTIVES_KEY = 'replay-show-mode-objectives'
 const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
 const SHOW_VIP_CROWN_KEY = 'replay-show-vip-crown'
 const SHOW_SKULL_CARRIER_KEY = 'replay-show-skull-carrier'
@@ -203,6 +204,14 @@ const SHOW_BOMB_CARRIER_DEFAULT = true
  */
 const SHOW_VEHICLES_DEFAULT = true
 
+/**
+ * LES OBJECTIFS DU MODE SONT ALLUMÉS PAR DÉFAUT (2026-09-18) : collines, bases, zones de capture,
+ * socles et points de livraison sont le TERRAIN de l'enjeu — un Roi de la colline sans colline
+ * montrerait des joueurs qui se battent pour rien. Le film qui n'en porte aucun (Assassin) n'affiche
+ * ni calque ni bascule. Comme les drapeaux : un réglage d'affichage, pas un demi-livrable.
+ */
+const SHOW_MODE_OBJECTIVES_DEFAULT = true
+
 /** Les deux lectures de couleur des points, dans l'ordre où le tiroir les propose. */
 export type MarkerColorsMode = 'team' | 'player'
 export const MARKER_COLORS_MODES: readonly MarkerColorsMode[] = ['team', 'player']
@@ -284,6 +293,13 @@ export interface ReplaySettings {
    */
   showGroundWeaponsSpecialOnly: boolean
   toggleGroundWeaponsSpecialOnly: () => void
+  /**
+   * Calque des OBJECTIFS DU MODE (2026-09-18) : la géométrie cuite, l'état vivant des zones et
+   * les pulses d'action — trois calques pour un objet, une seule bascule (cf.
+   * `SceneToggles.modeObjectives`). Allumé par défaut (cf. SHOW_MODE_OBJECTIVES_DEFAULT).
+   */
+  showModeObjectives: boolean
+  toggleModeObjectives: () => void
   /**
    * Calque des DRAPEAUX de capture (schéma 15). Allumé par défaut : c'est l'enjeu du mode
    * (cf. SHOW_FLAG_CARRIES_DEFAULT). Un film hors capture n'en publie aucun.
@@ -402,6 +418,10 @@ export function useReplaySettings(): ReplaySettings {
     SHOW_GROUND_WEAPONS_SPECIAL_ONLY_KEY,
     SHOW_GROUND_WEAPONS_SPECIAL_ONLY_DEFAULT,
   )
+  const [showModeObjectives, toggleModeObjectives] = usePersistedFlag(
+    SHOW_MODE_OBJECTIVES_KEY,
+    SHOW_MODE_OBJECTIVES_DEFAULT,
+  )
   const [showFlagCarries, toggleFlagCarries] = usePersistedFlag(
     SHOW_FLAG_CARRIES_KEY,
     SHOW_FLAG_CARRIES_DEFAULT,
@@ -482,6 +502,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleGroundWeapons,
     showGroundWeaponsSpecialOnly,
     toggleGroundWeaponsSpecialOnly,
+    showModeObjectives,
+    toggleModeObjectives,
     showFlagCarries,
     toggleFlagCarries,
     showVipCrown,

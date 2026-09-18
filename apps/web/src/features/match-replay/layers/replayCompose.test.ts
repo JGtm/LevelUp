@@ -42,6 +42,7 @@ const TOUT_ALLUME: ReplayScene['toggles'] = {
   shotFx: true,
   placements: true,
   killFx: true,
+  modeObjectives: true,
 }
 
 const TOUT_A_PEINDRE: ReplayScene['has'] = {
@@ -176,6 +177,10 @@ describe('sceneLayers — chaque interrupteur du tiroir coupe SES calques, et eu
     ['shotFx', ['marques-de-tir', 'tirs']],
     ['placements', ['poses-equipement']],
     ['killFx', ['morts']],
+    // Trois calques pour UN objet (2026-09-18) : la géométrie cuite, l'état vivant des zones
+    // et les pulses d'action. Les objets PORTÉS (drapeaux, couronne, crâne, bombe) ne sont
+    // PAS dans cette liste : ils ont leur propre bascule, et le « exactement » le prouve.
+    ['modeObjectives', ['objectifs-cuits', 'etat-zones', 'pulses-objectif']],
   ]
 
   it.each(COUPE)('« %s » coupé retire exactement %s', (bascule, attendus) => {

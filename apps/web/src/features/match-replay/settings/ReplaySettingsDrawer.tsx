@@ -60,6 +60,7 @@ export type {
   ReplayBombCarrierControls,
   ReplayFlagControls,
   ReplayGroundWeaponControls,
+  ReplayModeObjectivesControls,
   ReplayPlacementControls,
   ReplaySkullCarrierControls,
   ReplayVehicleControls,
@@ -71,6 +72,7 @@ import type {
   ReplayBombCarrierControls,
   ReplayFlagControls,
   ReplayGroundWeaponControls,
+  ReplayModeObjectivesControls,
   ReplayPlacementControls,
   ReplaySkullCarrierControls,
   ReplayVehicleControls,
@@ -103,6 +105,8 @@ interface ReplaySettingsDrawerProps {
   weaponPads: ReplayWeaponPadControls
   /** Les ARMES AU SOL (schéma 27) : un seul calque, allumé par défaut. */
   groundWeapons: ReplayGroundWeaponControls
+  /** Les OBJECTIFS DU MODE (2026-09-18) : trois calques, une bascule, allumée par défaut. */
+  modeObjectives: ReplayModeObjectivesControls
   /** Les DRAPEAUX de capture (schéma 15) : un seul calque, allumé par défaut. */
   flagCarries: ReplayFlagControls
   /** La COURONNE VIP (schéma 22) : un seul calque, allumé par défaut. */
@@ -296,6 +300,7 @@ export function ReplaySettingsDrawer({
   placements,
   weaponPads,
   groundWeapons,
+  modeObjectives,
   flagCarries,
   vipCrown,
   skullCarrier,
@@ -358,6 +363,7 @@ export function ReplaySettingsDrawer({
         placements={placements}
         weaponPads={weaponPads}
         groundWeapons={groundWeapons}
+        modeObjectives={modeObjectives}
         flagCarries={flagCarries}
         vipCrown={vipCrown}
         skullCarrier={skullCarrier}

@@ -232,7 +232,7 @@ export function ReplayCanvas({
   const {
     showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
-    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, speed: multiplier,
+    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showModeObjectives, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, speed: multiplier,
     markerColors,
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
@@ -437,7 +437,10 @@ export function ReplayCanvas({
       }
 
       return {
-        toggles: { zones: showZones, shotFx: showShotFx, placements: showPlacements, killFx: showKillFx },
+        toggles: {
+          zones: showZones, shotFx: showShotFx, placements: showPlacements, killFx: showKillFx,
+          modeObjectives: showModeObjectives,
+        },
         has: {
           background: !!mapImage && !!bgRect,
           floor: !!doc.geometry?.length,
@@ -589,6 +592,7 @@ export function ReplayCanvas({
     reducedMotion,
     showAim,
     showZones,
+    showModeObjectives,
     showShotFx,
     showKillFx,
     mapImage,
@@ -663,6 +667,7 @@ export function ReplayCanvas({
       },
       weaponPads: weaponPads.available,
       groundWeapons: groundWeapons.available,
+      modeObjectives: mapObjectives.length > 0,
       flagCarries: flags.available,
       vipCrown: vipCrown.available,
       skullCarrier: skullCarrier.available,
