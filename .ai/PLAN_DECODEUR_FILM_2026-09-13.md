@@ -5471,7 +5471,7 @@ pilote, nommés pour qu'aucune ne se perde.
       (`scratchpad/tl_cloture_m4.txt`), deux placeholders à remplir (`__CORPUS__`,
       `__REPUBLICATION__`). C'est l'entrée de clôture DU CHANTIER, pas seulement du jalon.
 - [ ] **Fusion dans `feat/v75`** (V3) — geste du pilote, CI verte au niveau job, puis tag.
-- [ ] **Critères S1 à S9 re-vérifiés et consignés au §5** — geste du pilote, avec le gate final :
+- [x] **Critères S1 à S9 re-vérifiés et consignés au §5** — geste du pilote, avec le gate final : FAIT le 2026-09-18 sur 896a9ce04, sans décodage : **S1** `archlint` (variables de paquet, verrou de décodage) `ok` · **S2** `-race` sur `film/...`, `TestDeuxFilmsEnParallele` : `grammar` `ok` 34 s, aucune course · **S5** goldens d assemblage `ok` · **S6** fixtures de contrat, forme et zod : Go `ok`, vitest **721 fichiers, 7 762 tests passés** (1 fichier et 17 tests skippés, tous nommés) · **S7** clé inconnue : `killcollector` et `replaybuild` `ok` · **S9** ratchet `KeyframeClosure` `ok` · **S3 / S4 / S8** = le gate final ci-dessus.
       **S8 est déjà consigné** (4.1.3, 10 artefacts identiques à l'octet, durées mesurées) et
       S3 / S4 sont exactement ce que le gate final rejoue ; S1, S2, S5, S6, S7 et S9 sont des
       commandes SANS décodage, à rejouer en un bloc — ce lot-document ne les a pas lancées
