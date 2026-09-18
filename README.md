@@ -16,11 +16,11 @@
 
 **v7.5 — 2D replay, the Theater film decoded & a Tactics tab**
 
-The biggest release so far. Halo records a film of every match; until now the app never opened it. It does now — a match can be watched again from above, second by second, with everything the film knows written around it: who killed whom with what, at what range, who held the flag, who took the power weapon, who wasted the equipment they were carrying when they died.
+The biggest release so far. Halo Infinite records a film of every match; until now no one really managed to decode it. LevelUp does now — a match can be watched again from above, second by second, with everything the film knows written around it: who killed whom with what, at what range, who held the flag, who took the power weapon, who wasted the equipment they were carrying when they died.
 
 **2D replay**
 - **Every match, watched again from above** — all the players move on the real map background, under their own names, with a playback bar, four timeline tracks (You, Allies, Dominance, Media), speed control and 10-second jumps
-- **A kill feed that follows the cursor** — killer, weapon, victim, medal and assist with its damage share; a death nobody is credited for says so rather than inventing a killer
+- **A kill feed that follows the cursor** — killer, weapon, victim, medal and assist with its damage share
 - **Layers you switch on and off** — aim cone, trails, shot and kill effects, heat map, weapon spots, weapons on the ground, deployed equipment, vehicles, named zones, and the live objectives (flag, skull, hill, strongholds, bomb, VIP crown)
 - **The game's own sound**, muted by default and filtered by category, plus a PNG capture and a video recording of the replay with its soundtrack
 
@@ -28,20 +28,18 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **The weapon behind every elimination**, including the deaths with no firearm at all (repulsor, fall, the environment), and where on the map people kill and die
 - **Engagement range** — low (p10), median and high (p90) per weapon, with the signed height difference
 - **Weapon levels** — pad pickups split into starting, map and power weapons; what a spot is worth comes from the map, never from the weapon's name
-- **Net flag grabs**, Assault bomb statistics, and equipment read as used, kept or dropped on death
+- **Flag grabs**, Assault bomb statistics, and equipment read as used, kept or dropped on death
 - **Rounds counted as rounds** — on modes decided by rounds the score shown is the rounds won and lost, because the API's point score can hand the advantage to the side that lost
 
 **Tactics tab**
 - **The maps you play**, their record, and an analysis view on the map plan: where you spend your time, where you die, where you kill, where you die isolated, where wins and losses part ways, and the routes you take
-- **A cell opens the replay at the exact moment** it happened
 
 **Squad, sessions and match view**
-- **"The shapes you keep"** — six ways of reading a squad across nineteen cards, plus the equipment used / kept / wasted block on the Synthesis, the Squad and the Sessions
+- **"The shapes you keep"** — six ways of reading a squad across nineteen cards, plus the equipment used / kept / wasted block on the Squad and the Sessions
 - **Per-match cadence** everywhere, distance per weapon, frag distribution in two levels, and a score-over-time curve that respects the mode
 
 **Maps, media and repairs**
-- **109 map backgrounds** with Forge zones named 100 %, official callouts, medal images refreshed from the game catalog, likes per viewer
-- **The World ranking page is repaired** and can no longer degrade in silence; a corrupted Halo 5 LUSR rating is fixed at the source
+- **109 map backgrounds** with Forge zones named 100 %, official callouts
 
 Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages and never borrows another title's data.
 
@@ -49,7 +47,7 @@ Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages
 
 > Everything read from the Theater film — the 2D replay, the Tactics tab, weapon per kill, engagement range, weapon levels, equipment usage, net flag grabs, Assault statistics — is **Halo Infinite only**, gated behind fine-grained capabilities. Halo 5 keeps its own pages and never borrows another title's data.
 
-### Watch your match again — 2D replay
+### 2D replay — Watch your match again
 - **The whole match, from above** — every player moves on the real map background, under their own name, from kickoff to the final whistle, decoded from the Theater film the game records
 - **Playback bar with four tracks** — You, Allies, Dominance and Media on one timeline, with round pills, inter-round messages, a play/pause, 10-second jumps, a speed menu and keyboard shortcuts
 - **Kill feed synced to the cursor** — killer, weapon icon, victim, medal, and the assist with its damage share; a death nobody is credited for says so instead of inventing a killer, and says *what* you died of
@@ -60,7 +58,6 @@ Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages
 - **The game's own sound** — 177 sounds taken from the game (weapons, grenades, melee, equipment, objectives, announcer, end-of-match fanfare), muted by default, filtered by category
 - **Zoom, pan and framing** — steps, wheel, keyboard or a directional pad; the canvas takes the whole block and zooming never crops the map
 - **Capture and record** — a PNG in one click, or a full video export of the replay with its mixed soundtrack, encoded away from real time
-- **You get in from everywhere** — the match view, the home tiles, the Explorer and a Tactics cell, which opens the replay at the exact second
 
 ### Read a match
 - **Full scoreboard** — K/D, medals, weapons, performance score, impact badges, and an encounter history panel for recurring opponents
@@ -69,7 +66,6 @@ Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages
 - **Distance per weapon**, frag distribution in two levels, and special weapon control broken down by weapon level (starting / map / power weapons, power-up pads)
 - **Objectives section** — one column per statistic of the mode played, with a team total, for Capture the Flag, Strongholds, King of the Hill, Oddball, Stockpile, Extraction, VIP and Assault
 - **Rounds counted as rounds** — on modes decided by rounds the score shown is the rounds won and lost, with the API point score kept alongside because it can hand the advantage to the side that lost
-- **Overtime badge** — a match that went past regulation time is flagged, with the extra time played
 - **Kill cadence** — kills by 15-second intervals for you and the enemy team with a moving-average overlay, plus a tug-of-war curve and cumulative K/D
 - **Comeback badges** — *Remontada*, *Collapse* and *Contre-Remontada*
 - **Chronology and media tabs** — the match's events in order, and the clips and screenshots attached to it
@@ -77,7 +73,6 @@ Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages
 ### Track your career
 - **Rank history** — LUSR and CSR rating per playlist over time, with your rank name at each step
 - **Path to Hero** — projection chart showing how close you are to the Hero rank
-- **Career KPI cards** — 8 cards at a glance: matches played, total time, frags, deaths, assists, accuracy, time alive, W/L/T/DNF bar — each color-coded against your all-time average
 - **Commendations** — monitor your Halo commendations with medal grids and per-medal distributions
 - **Medals** — the full medal catalog with your counts, images served from the game's own catalog
 - **Season pass** — tier progression with the reward carousel and a content summary
@@ -87,7 +82,6 @@ Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages
 
 ### Analyze your matches
 - **Explorer** — browse all your matches with cascade filters (map, mode, playlist, outcome, date, session), partial match ID search, encounter badges, a briefing strip and a combat profile; also works on **another player** to scout them before a match
-- **Summary** — bipolar chart, outcomes by group, top weeks, weapon accuracy, activity heat map, and the **engagement range** section: low (p10) / median / high (p90) range per weapon with the signed height difference
 - **Time series** — KDA trend, density and bars, distribution histograms, skill progression, engagement gap, and first kill / first death on one lane per player
 - **Sessions** — per-session detail with frags, damage, intensity profile, mode breakdown, placement, net lives, participation, MMR dumbbell, career XP, and the equipment usage block
 - **Session comparison** — side-by-side analysis of two play sessions
@@ -128,7 +122,7 @@ Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages
 ### Clips & Media
 - **Media library** — browse screenshots and video clips linked to their match; filter by owner, map, mode, outcome, or solo/squad context
 - **Auto-indexing** — clips re-scanned automatically every few hours and after each sync
-- **Manual reassociation** — fix a wrongly linked clip in one click: a built-in picker suggests matches around the capture timestamp (±15 / ±60 / ±180 min) with map thumbnails, outcome and full lobby
+- **Media manageemnt** — fix a wrongly linked clip in one click: a built-in picker suggests matches around the capture timestamp (±15 / ±60 / ±180 min) with map thumbnails, outcome and full lobby or simply delete a media directly from the app
 - **Likes per viewer** — your like is yours, not the account's
 - **In the replay** — your captures sit on their own timeline track, at the second they were taken
 
@@ -136,7 +130,7 @@ Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages
 - **In-app notification center** — per-player feed with unread badge, category filters, day-grouped timeline, and bulk actions; 60-second live refresh; preferences per player
 - **Discord alerts** — configurable notifications after sync, after backfill and when replays are ready, independently
 - **One-click setup** — Xbox Device Code login (`xbox.com/activate`) with automatic player provisioning; no Azure account required
-- **Spartan customizer** — your armour and colours, recoloured live
+- **Halo 5 Spartan customizer** — your armour and colours, recoloured live
 - **Multi-title** — Halo Infinite and Halo 5: Guardians side by side, each with its own storage, its own catalogs and its own capabilities
 
 ---
