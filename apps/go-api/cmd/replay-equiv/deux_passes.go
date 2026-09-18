@@ -43,11 +43,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -62,9 +64,10 @@ const etapeArtefact = "artifact"
 
 // bilanDeuxPasses compte ce qu a donne la passe S8.
 //
-// `divergents` compte les films dont l ARTEFACT differe — les seuls echecs. `classes` compte les
-// films dont l artefact est identique mais qui portent au moins une etape divergente : ce sont des
-// DECOUVERTES a consigner, pas des regressions.
+// `identiques` compte les films dont l ARTEFACT est identique a l octet — LE verdict du lot.
+// `divergents` compte ceux dont il differe : les seuls echecs. `classes` est un SOUS-COMPTE des
+// identiques : ceux qui portent en plus au moins un ecart d etape reel (les absences de branche
+// n en sont pas, cf. `classerLesEcarts`) — des DECOUVERTES a consigner, pas des regressions.
 type bilanDeuxPasses struct {
 	identiques, divergents, classes, ecartes, echecs, infra int
 }
@@ -96,8 +99,9 @@ func parentDeuxPasses(o options) int {
 	for _, film := range films {
 		jouerLesDeuxPasses(o, runner, tmp, film, &b)
 	}
-	fmt.Printf("\nBILAN S8 : %d identique(s) a l octet, %d ARTEFACT DIVERGENT, %d avec ecart(s) "+
-		"classe(s), %d ecarte(s), %d echec(s), %d illisible(s) (harnais)\n",
+	fmt.Printf("\nBILAN S8 : %d artefact(s) IDENTIQUE(s) a l octet, %d ARTEFACT DIVERGENT, dont "+
+		"%d portant des ecart(s) d etape a classer, %d ecarte(s), %d echec(s), %d illisible(s) "+
+		"(harnais)\n",
 		b.identiques, b.divergents, b.classes, b.ecartes, b.echecs, b.infra)
 	if b.divergents+b.echecs+b.infra > 0 {
 		return 1
@@ -164,7 +168,7 @@ func comparerLesDeuxPasses(cheminFilm, cheminFaits, film string, b *bilanDeuxPas
 			"n a pas de support\n", film, etapeArtefact)
 		return
 	}
-	ecarts := etapesDivergentes(parFilm, parFaits)
+	absencesDeBalayage, ecarts := classerLesEcarts(parFilm, parFaits)
 	if artefactA != artefactB {
 		b.divergents++
 		fmt.Printf("  %s ARTEFACT DIVERGENT :\n    decodage %s\n    faits    %s\n",
@@ -174,38 +178,54 @@ func comparerLesDeuxPasses(cheminFilm, cheminFaits, film string, b *bilanDeuxPas
 		}
 		return
 	}
+	// L ARTEFACT EST LE VERDICT : il est identique, le film est compte comme tel. Les ecarts
+	// d etapes qui restent se classent (ci-dessous), ils ne retirent pas le verdict.
+	b.identiques++
 	if len(ecarts) == 0 {
-		b.identiques++
-		fmt.Printf("  %s : les deux passes rendent le MEME artefact, et aucune etape ne diverge\n",
-			film)
+		fmt.Printf("  %s : artefact IDENTIQUE a l octet ; aucun ecart d etape, hors les %d etape(s) "+
+			"du balayage que la branche des faits ne rejoue pas (par construction)\n",
+			film, absencesDeBalayage)
 		return
 	}
 	b.classes++
-	fmt.Printf("  %s : artefact IDENTIQUE a l octet ; %d etape(s) divergente(s) A CLASSER "+
-		"(forme / contenu, protocole V14) et a consigner au §5 : %s\n",
-		film, len(ecarts), strings.Join(ecarts, " "))
+	fmt.Printf("  %s : artefact IDENTIQUE a l octet ; %d etape(s) du balayage absente(s) de la "+
+		"passe-faits (par construction) ; %d ecart(s) A CLASSER (forme / contenu, protocole V14) "+
+		"et a consigner au §5 : %s\n",
+		film, absencesDeBalayage, len(ecarts), strings.Join(ecarts, " "))
 }
 
-// etapesDivergentes rend, triees par l ordre attendu, les etapes dont le digest differe entre les
-// deux passes — l etape de BRANCHE exclue, puisqu elle DOIT differer (c est son travail).
-func etapesDivergentes(a, b map[string]string) []string {
-	var out []string
+// classerLesEcarts trie les differences d etapes entre les deux passes en DEUX classes, parce
+// qu elles n ont pas le meme sens.
+//
+//  1. LES ABSENCES DE BRANCHE (comptees, pas listees). La passe-faits ne prend PAS la branche du
+//     decodage : elle n emet donc AUCUNE des etapes de `replay.BuildFromFilmSteps`. Leur absence
+//     n est pas une divergence, c est la DEFINITION de la branche — et l objet meme du lot. La
+//     liste vient du code de PRODUCTION (la meme que `etapesAttendues` concatene) : un balayage
+//     ajoute la-bas ne devient pas ici un faux ecart, et la loi n existe qu en un exemplaire.
+//  2. LES ECARTS REELS (listes, a classer). Un digest qui differe alors que les deux passes ont
+//     emis l etape ; ou une absence que la branche n explique pas — etape absente de la passe
+//     FILM, ou etape HORS balayage absente de la passe-faits.
+//
+// L etape de BRANCHE est exclue des deux : elle DOIT differer, c est son travail.
+func classerLesEcarts(film, faits map[string]string) (absencesDeBalayage int, ecarts []string) {
 	for _, etape := range etapesAttendues() {
 		if etape == etapeDeBranche() {
 			continue
 		}
-		va, oka := a[etape]
-		vb, okb := b[etape]
+		va, oka := film[etape]
+		vb, okb := faits[etape]
 		switch {
 		case !oka && !okb:
 			continue
+		case oka && !okb && slices.Contains(replay.BuildFromFilmSteps, etape):
+			absencesDeBalayage++
 		case oka != okb:
-			out = append(out, etape+"(absente d une passe)")
+			ecarts = append(ecarts, etape+"(absente d une passe)")
 		case va != vb:
-			out = append(out, etape)
+			ecarts = append(ecarts, etape)
 		}
 	}
-	return out
+	return absencesDeBalayage, ecarts
 }
 
 // etapeDeBranche : le nom de l etape qui NOMME la branche servie. Elle DOIT differer entre les

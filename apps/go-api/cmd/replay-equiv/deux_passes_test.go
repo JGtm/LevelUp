@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -58,8 +59,14 @@ func TestEtapeDeBrancheVientDeLaProduction(t *testing.T) {
 	}
 }
 
-// TestEtapesDivergentesExclutLaBranche : la branche DOIT differer, et n est pas une divergence.
-func TestEtapesDivergentesExclutLaBranche(t *testing.T) {
+// TestClasserLesEcartsSepareLaBrancheDuContenu : LES DEUX CLASSES, ET LA BRANCHE HORS DES DEUX.
+//
+// Le mode de panne que ce test ferme est un FAUX ROUGE de masse : la passe-faits n emet aucune des
+// quarante etapes du balayage (elle ne le rejoue pas — c est l objet du lot), et les compter comme
+// divergences faisait dire au bilan « 0 identique a l octet » alors que les dix films rendaient le
+// MEME artefact. Le mode de panne symetrique — avaler un ecart reel avec les absences — est ferme
+// par les deux derniers cas.
+func TestClasserLesEcartsSepareLaBrancheDuContenu(t *testing.T) {
 	memeChose := func(v string) map[string]string {
 		out := map[string]string{}
 		for _, e := range etapesAttendues() {
@@ -70,17 +77,37 @@ func TestEtapesDivergentesExclutLaBranche(t *testing.T) {
 	a, b := memeChose("1 aaa"), memeChose("1 aaa")
 	// La branche differe TOUJOURS entre les deux passes : c est son travail.
 	b[etapeDeBranche()] = "1 bbb"
-	if got := etapesDivergentes(a, b); len(got) != 0 {
-		t.Errorf("l etape de branche est comptee comme divergence : %v", got)
+	if absences, got := classerLesEcarts(a, b); len(got) != 0 || absences != 0 {
+		t.Errorf("l etape de branche est comptee : absences=%d ecarts=%v", absences, got)
 	}
-	b["killsource"] = "1 ccc"
-	got := etapesDivergentes(a, b)
-	if len(got) != 1 || got[0] != "killsource" {
-		t.Errorf("etapesDivergentes = %v, attendu [killsource]", got)
+	// LA PASSE-FAITS REELLE : aucune etape du balayage. Rien a classer, tout a compter.
+	faits := memeChose("1 aaa")
+	for _, e := range replay.BuildFromFilmSteps {
+		delete(faits, e)
 	}
-	delete(b, "zones")
-	if got := etapesDivergentes(a, b); !contient(got, "zones(absente d une passe)") {
-		t.Errorf("une etape ABSENTE d une passe doit se dire comme telle : %v", got)
+	absences, got := classerLesEcarts(a, faits)
+	if len(got) != 0 {
+		t.Errorf("les etapes du balayage sont classees comme ecarts : %v", got)
+	}
+	if absences != len(replay.BuildFromFilmSteps) {
+		t.Errorf("absences de branche = %d, attendu %d", absences, len(replay.BuildFromFilmSteps))
+	}
+	// UN ECART DE CONTENU ne se dilue pas dans les absences.
+	faits["killsource"] = "1 ccc"
+	if _, got := classerLesEcarts(a, faits); len(got) != 1 || got[0] != "killsource" {
+		t.Errorf("ecarts = %v, attendu [killsource]", got)
+	}
+	// UNE ABSENCE HORS BALAYAGE n est pas expliquee par la branche : elle se classe.
+	horsBalayage := memeChose("1 aaa")
+	delete(horsBalayage, "zones")
+	if absences, got := classerLesEcarts(a, horsBalayage); absences != 0 ||
+		!contient(got, "zones(absente d une passe)") {
+		t.Errorf("absence hors balayage : absences=%d ecarts=%v", absences, got)
+	}
+	// UNE ABSENCE DU COTE FILM non plus, meme sur une etape du balayage : le decodage DOIT les
+	// emettre, et son silence est une anomalie, pas une definition.
+	if absences, got := classerLesEcarts(faits, a); absences != 0 || len(got) == 0 {
+		t.Errorf("absence du cote FILM : absences=%d ecarts=%v", absences, got)
 	}
 }
 
