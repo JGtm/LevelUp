@@ -27,7 +27,8 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 //	consumePlayerTailAndGameEngineComponent  queue joueur, joueur gere (ti=9), moteur de partie
 //	consumeCaptureAndBipedComponent          composants CAPTES (obje, arme tenue, vitalites,
 //	                                         etat de mort), arme, bipede, etat de simulation
-//	consumeManagedAndObjectiveComponent      objet gere (ti=10/12/13), objectif (ti=11), unite
+//	consumeManagedAndObjectiveComponent      objet gere (ti=10/13), objectif (ti=11), unite
+//	consumeNavpointComponent                 point de navigation gere (ti=12), EN ENTIER de i0 a i14
 //
 // # EXEMPTION DE LONGUEUR (seuil de 80 lignes, CLAUDE.md regle 5)
 //

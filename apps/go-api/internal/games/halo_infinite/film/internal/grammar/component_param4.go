@@ -72,6 +72,25 @@ var paramByComponent = map[string]uint32{
 	// littéral de registre) : le lecteur d'i59 et cette table ne peuvent plus diverger.
 	grappleComponentNameAlt: 2,
 	grappleComponentName:    2,
+	// ti=12 i2..i6, les cinq `*-filter(s)-component` du point de navigation (lot 5.1.1,
+	// 2026-09-18). Leur deserialiseur BRANCHE sur `param_4` — `2 < param_4` pour i2,
+	// `1 < param_4` pour i3..i6 — et le bit de version qui en sort decide de DEUX largeurs du
+	// bloc de filtres : le drapeau qui suit le masque (`v ? 1 : 32`) et chaque entree d'ordre
+	// (`v ? 3 : 2`). Avec le defaut 1 le lecteur prend la mise en page LEGACY et se
+	// desynchronise des le premier filtre.
+	//
+	// LA VALEUR N EST PAS MESUREE STATISTIQUEMENT, elle est LUE : le slot `+0x10` du
+	// descripteur est une fonction de six octets qui rend une constante — `MOV EAX,0x3 ; RET`
+	// a `0x14117e0e0` pour i2, `MOV EAX,0x2 ; RET` a `0x141179610` pour les quatre autres
+	// (`.ai/V7.5/film_re/NOTE_3_6_TI12_GRAMMAIRES_A_2026-09-17.md` § 2, calibration 3/3 sur
+	// trois composants `ti=35` dont cette table porte deja la valeur de capture live).
+	// Si un film d une ANCIENNE version du composant apparait, la cle sera la version de
+	// format du film (`build_profile.go`), jamais une re-mesure statistique.
+	compNavpointDistanceFilters:  3,
+	compNavpointOffscreenFilters: 2,
+	compNavpointOccludedFilters:  2,
+	compNavpointVisibilityFilter: 2,
+	compNavpointDockingFilter:    2,
 }
 
 // paramForComponent rend le param_4 du composant `name`. Défaut 1 : c'est la valeur

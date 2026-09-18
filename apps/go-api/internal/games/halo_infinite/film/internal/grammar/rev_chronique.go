@@ -449,3 +449,52 @@ package grammar
 // touchee, aucun fait publie change) ; elle vaut celle de 3.4.1, qui la monte pour sa raison.
 // `SchemaVersion` reste 61 : mesure sur pieces, le document cuit de `084a804d` est identique
 // base -> tete sur TOUS ses chemins sauf `/coverage/decoder/grammarRev`.
+//
+// ENTREE `grammar-2026-09-18` (2026-09-18, lot 5.1.1) : `.42` -> le premier rang du 18.
+// LE POINT DE NAVIGATION (`ti=12`) EST LU DE `i1` AU MINUTEUR MANUEL.
+//
+// DOUZE LECTEURS NEUFS, RELEVES CHEZ LE DESERIALISEUR `+0x40` de chaque descripteur et recoupes
+// par son serialiseur `+0x28` (`NOTE_3_6_TI12_GRAMMAIRES_A_2026-09-17`, § 5 a § 16) :
+//
+//	i1        `flags`, `FUN_141094130` : `R(8)`. C ETAIT LE BLOQUANT NOMME de l archetype.
+//	i2..i6    les cinq `*-filter(s)`, qui partagent le bloc `FUN_140dbe400` — masque `R(4)`,
+//	          drapeau `R(v ? 1 : 32)`, puis par filtre present un tag `R(4)` et sa charge (quinze
+//	          tags, note § 3). `i2` y ajoute deux distances `R(16)` et deux par filtre ; `i3`/`i4`
+//	          un `R(1)` et un par filtre ; les trois ferment sur `K` ordres de `v ? 3 : 2` bits.
+//	i7/i8     `docking-order` `R(8)` (`FUN_142ed5050`), `docking-group-name` `R(32)`.
+//	i9        `formatted-text`, `FUN_1410e7b90` : `R(8)` de compte, puis par entree un `R(32)`
+//	          SUIVI DU SAC TEXTE DE `ti=11 i2` — reutilise, jamais recopie.
+//	i10       `timers`, `FUN_1410d9040` : `2 x R(7)`, valeur - 1. MEME CHAMP que `ti=11 i0`, donc
+//	          meme lecteur.
+//	i11/i12   `manual-timer-initial-duration` / `-current-duration`, `FUN_142ed5194` et
+//	          `FUN_142ed512c` : `R(17)` sur [-0,025 ; 6553,5752], soit un pas de 50 ms EXACT. CE
+//	          SONT LES DEUX QUE LE LOT VISE — duree totale et temps restant du compte a rebours
+//	          qu un objectif affiche. Le bassin du moteur, lui, ne le porte pas : `ti=11 i0` vaut
+//	          « aucun minuteur » sur 446 records sur 446 (NOTE_3_7_REAPPARITION § 6 bis.3).
+//
+// UNE ENTREE DE TABLE, ET ELLE N EST PAS COSMETIQUE : `paramByComponent` pose `param_4 = 3` pour
+// `i2` et `= 2` pour `i3`..`i6`. La valeur est LUE, pas ajustee — le slot `+0x10` du descripteur
+// rend une constante (`MOV EAX,0x3 ; RET` a `0x14117e0e0`, `MOV EAX,0x2 ; RET` a `0x141179610`),
+// et la meme chaine rend 3/3 sur trois composants `ti=35` dont la table porte deja la valeur de
+// capture live. Avec le defaut 1, le drapeau ferait 32 bits au lieu d un et l ordre 2 au lieu de
+// 3 : la marche se desynchroniserait des le premier filtre.
+//
+// AUCUNE ENTREE DE PROFIL. La seule largeur de RUNTIME du lot est celle de la reference d entite
+// du domaine 0 (tags 6, 12, 13, 14) : `refDomWidth` et `readRecordID` sont appeles, pas recodes.
+//
+// LES CINQ FILTRES SONT `partiel`, PAS `porte` : un tag hors [0, 14] tombe chez le jeu sur
+// `FUN_1411c8f80`, qui ne revient pas. Le lecteur rend `ported = false` — arret propre — plutot
+// que de deviner une largeur. Un film sain n en porte pas.
+//
+// CE QUE LA MESURE DIT. Ratchet 0.A.3 : le bloquant de `ti=12` avance de `i1` a
+// `i13 managed-navpoint-top-progress` sur les SEPT bobines. 0 ligne monte, 0 descend, aucun total
+// ne bouge — et c etait prevu : la FERMETURE de `ti=12` demande encore `i13` a `i27`, quinze
+// composants. Le bloquant qui avance de douze rangs EST la mesure du lot ; les largeurs sont
+// tenues par `components_navpoint_test.go`, via `consumeByName` (donc le cablage avec).
+//
+// `facts.Rev` MONTE — mecaniquement, parce qu elle hache la VALEUR de cette constante, et non
+// parce qu un fait change (`film/facts/` n est pas touche). Les lignes de kill en base deviennent
+// candidates au backlog de redecodage, sur SIGNAL UTILISATEUR (D6). C EST L UNIQUE MONTEE DE
+// `facts.Rev` DU LOT 5.1 : les volets suivants partagent ce rang.
+//
+// `SchemaVersion` reste 62 : aucun champ neuf n est publie (canal d observation seul).
