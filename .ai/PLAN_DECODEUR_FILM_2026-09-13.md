@@ -5683,12 +5683,31 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   jauge se VIDE — rien de cela n'a besoin d'être modélisé, elle se LIT.
   **PRÊT À PUBLIER**, non publié ici : `returnProgress` (0..1, par intervalle de lâcher, clé
   ABSENTE quand le film ne la porte pas) dans `flagCarries[]`, à la montée 63.
-- [ ] **5.1.7 — LA GRAMMAIRE DE `ti=40` : OUVERT** (exécutant frais, décision du pilote du
-  2026-09-18). Trouver la largeur fausse AVANT `i11` dans l'archétype `ti=40`, de la même façon
-  que 5.1.1 l'a fait pour `ti=12`. **GATE, mesurable et déjà instrumenté** : sur `a349fea8`,
-  `a521164d` et `4f77afc1`, `masqueDeclareLeDeadState == mortsVehicules` — c'est-à-dire
-  `dontDesynchronises == 0` — dans la ligne `vehicules : lecture des morts ecrites`. Aujourd'hui
-  47/52, 20/21 et 11/11 sont perdus. 5.1.5 et la montée 63 en dépendent.
+- [!] **5.1.7 — LA GRAMMAIRE DE `ti=40` : LE GATE EST MAL SPECIFIE, ET L'HYPOTHESE EST REFUTEE**
+  (mesure du 2026-09-18, instrument `ti40_marche_desync_research_test.go`). Le brief demandait la
+  largeur fausse AVANT `i11`. **Elle n'existe pas : sur les 36 cadres de profil balayes et sur
+  DEUX films, AUCUN record `ti=40` ne desynchronise a un index <= 11** (`avant_ou_a_i11 = 0`,
+  36/36 cellules sur `4f77afc1`, 29/29 jouees sur `a349fea8`). Le premier composant non consomme
+  est TOUJOURS `i30 vehicle-auto-turret-triggers-component` (ou `i38 vehicle-weapon-set`), c'est-a-dire
+  un des 16 `vehicle-*` non portes qui vivent APRES le dead-state.
+  **CONSEQUENCE : `dontDesynchronises` ne compte AUCUNE perte.** Ce sont des ruptures de QUEUE, et
+  `objectDeathHarvest.accept` les accepte deja (`DesyncAt > index(dead-state)`, `queueRompue=11`
+  au journal). La preuve est dans la ligne de production elle-meme sur `4f77afc1` :
+  `masqueDeclareLeDeadState=11 dontDesynchronises=11 mortsVehicules=11` — les onze declarations
+  donnent onze morts. Le gate `dontDesynchronises == 0` n'est atteignable qu'en portant les 16
+  composants `i30..i47`, que le brief met hors perimetre, et **son passage ne rendrait pas une
+  mort de plus**.
+  **LA PRODUCTION EST REPRODUITE A L'IDENTIQUE**, ce qui date la mesure : `killsource` calibre
+  `GenerationStricte=true`, `Traversal.IndexW=1`, `param_4=4`, et cette cellule rend exactement
+  `records=78491 portes=68772 masque=11 perdus=11 morts=11` sur `4f77afc1` et
+  `masque=52 perdus=47 morts=20` sur `a349fea8` — les deux lignes du tableau de 5.1.4.
+  **OU LA FIN DE VIE SE PERD REELLEMENT** (mesure de production du jour, meme instrument que
+  5.1.4) : `4f77afc1` 11 morts lues -> 11 appariees -> 11 vies fermees -> **3 fins datees
+  publiees** (97 vies publiees sur 256 recensees, `finInconnue=93`) ; `a349fea8` 20 lues ->
+  **3 appariees** (17 non appariees) -> 1 publiee. Deux pertes distinctes, toutes deux EN AVAL de
+  la marche : l'appariement sur `a349fea8`, la publication sur `4f77afc1`. Aucune ne se corrige
+  par une largeur de `ti=40`.
+  **ARBITRAGE DEMANDE AU PILOTE** avant tout correctif (cf. D2 (5.1.7) et D3 (5.1.7) au §4).
 
 
 
@@ -5698,6 +5717,9 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-18 | 5.1.7 | **D1 (5.1.7) — `dontDesynchronises` N'EST PAS UN COMPTEUR DE PERTE, ET LE GATE DU LOT REPOSAIT DESSUS.** `ObjectDeathStats.MaskDeclaredDesync` compte les records dont le masque declare le dead-state ET dont `DesyncAt != -1` — sans regarder OU. Sur `ti=40` la rupture est TOUJOURS a `i30..i47` (mesure : 65 cellules de profil, deux films, `avant_ou_a_i11 = 0` partout), c'est-a-dire dans la QUEUE que `accept` accepte deja. Le compteur melange donc « perdu » et « lu malgre une queue inconnue », et `logVehicleDeathReads` le journalise en `Warn` comme une perte. | NON TRAITE (regle 7). Le remede est d'un geste : compter la desynchronisation **AVANT OU A** l'index du dead-state, et laisser la queue a `DeathsTailDesync` qui existe deja. Il touche `object_deaths.go` (non-test) donc il fait monter `grammar.Rev` : a instruire par le pilote avec le correctif de fond |
+| 2026-09-18 | 5.1.7 | **D2 (5.1.7) — `param_4` EST LA COLONNE `level` DU REGISTRE DU FILM, ET TROIS COMPOSANTS QUI EN DEPENDENT SONT ABSENTS DE LA TABLE.** Recoupement a trois sources : (a) les 20 entrees de `paramByComponent`, mesurees par capture CE sur `ti=35`, valent TOUTES le `level` de la meme ligne d'`ecs_table.tsv` ; (b) les cinq filtres de `ti=12` que 5.1.1 a lus chez l'ecrivain au slot `+0x10` (3 pour `i2`, 2 pour `i3..i6`) sont EXACTEMENT leurs `level` ; (c) chaque nom de composant n'a qu'UN `level` sur tous les archetypes. Or `object-parent-state-component` (level 3, `i10` de `ti=40`, JUSTE avant le dead-state), `unit-actor-control-component` (2) et `unit-actor-state-component` (4) — les trois desers que la godoc de `component_param4.go` nomme comme branchant sur `param_4` — n'ont PAS d'entree : `paramForComponent` leur rend le `param_4` que le harnais de `killsource` a BALAYE (`calibrateRSP`, critere « records de BIPEDE lus »), sinon 1. | NON TRAITE (regle 7). MESURE SUR PIECES : sur `4f77afc1` et `a349fea8` la valeur balayee est 4, qui se comporte comme les vrais 3 / 2 / 4 (les trois desers ne testent que `< 2`, `> 1`, `> 2`, `>= 4`) — les trois entrees ajoutees en sonde ont rendu **0 difference d'octet en production**. C'est donc une faute LATENTE, pas la cause du jour : un film calibre a 0 ou 1 lirait les trois a la mauvaise largeur. Le correctif juste n'est pas une 21e entree ecrite a la main, c'est de prendre `arch.Level(i)` — deja passe a `consumeByName` sous le nom `level` — et de garder la table comme ratchet |
+| 2026-09-18 | 5.1.7 | **D3 (5.1.7) — LA MARCHE D'IMAGE-CLE DE `ti=40` NE LANCE JAMAIS SA BOUCLE DE COMPOSANTS, ET C'EST POURQUOI LE GOLDEN 0.A.3 EST MUET.** `keyframe_closure.golden` porte `ti=40` a 0/777 avec une colonne « bloquant » VIDE ; `KeyframeClosureInventaire` sur `4f77afc1` rend **5/1140 (0,4 %), bloquant (aucun)** sur un archetype de 48 composants dont 16 non portes. Or `traverseComponentLoop` desynchronise au PREMIER composant present non porte et l'image-cle pose `Mask = tous presents` : si la boucle tournait, `i30` serait nomme. Elle ne tourne donc pas — `consumeFullStateDefaultBlock` rend faux, c'est-a-dire que `n2` se lit a 0, et le record s'arrete sur son second mot de taille. La largeur fausse de D5 (3.7) est LA, dans l'en-tete / l'etat par defaut de `ti=40` (`consumeDefaultStateTI40`), pas au milieu des composants. Corollaire : la colonne « porte » de l'inventaire est DERIVEE de la mesure et affiche `porte` pour `i40..i47`, que la table ECS donne `non_porte` — elle dit « n'a jamais bloque », pas « a un lecteur ». | NON TRAITE (regle 7). C'est la vraie piste d'un lot « grammaire de `ti=40` », et elle est INDEPENDANTE des morts ecrites (le dead-state se lit par la marche DELTA, qui elle tourne). A instruire : mesurer `n1` / `n2` sur les records `ti=40` d'image-cle, puis l'etat par defaut chez l'ecrivain |
 | 2026-09-17 | 4.1 | **D1 (4.1) — `encoding/gob` PERD SILENCIEUSEMENT, ET C'EST MESURÉ.** Essayé comme format intermédiaire d'un transcodage des 8 fixtures d'entrées : aller-retour à **7 498 871 octets contre 11 049 200** (−32 %), sans une erreur. Cause : il ignore les champs NON EXPORTÉS des types imbriqués. | TRAITÉ PAR LE REFUS : le format des sections ii-v est `encoding/json`, avec un ratchet de réflexion (`TestFilmFactsFichierNePerdQueLePaquetDeKillsource`) qui n'autorise QU'UN champ non exporté, daté et justifié. La mesure est écrite en tête de `filmfacts_fichier.go` pour que `gob` ne se re-propose pas |
 | 2026-09-17 | 4.1 | **D2 (4.1) — `DecoderCoverage` PORTE UN POINTEUR, DONC `==` COMPARE DES ADRESSES.** La première porte de fraîcheur comparait `e.Coverage != courante` : deux couvertures identiques sorties de deux appels sont TOUJOURS différentes, et la porte refusait donc TOUS les faits en silence. Attrapé par son propre test à la pose. | TRAITÉ dans le lot (`memesRevisionsDeCouche`, comparaison par valeur sur les quatre révisions). Consigné parce que le motif est général : tout `==` sur un type du décodeur qui porte un pointeur a ce défaut |
 | 2026-09-17 | 4.1 | **D3 (4.1) — LES TROIS COMMENTAIRES QUI COMPTENT LA FAÇADE SONT PÉRIMÉS.** `decfilm.go:22` et l'ADR 0034 `:340` / `:511` annoncent 163 symboles ; la mesure du jour en rend **166** (3.4.1 en a ajouté trois). | NON TRAITÉ dans ce lot : le compteur (`archlint/film_facade_surface_test.go`) rend désormais la valeur VIVANTE et son en-tête nomme les trois commentaires. Leur correction appartient à l'amendement de l'ADR 0034, à la clôture de M4 |
@@ -6082,6 +6104,28 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 | 2026-09-17 | 3.6.a | **D6 (3.6.a) — L'ÉTAPE `vehicles` DE `replay-equiv` BOUGE SUR NEUF FILMS, ET LE MOUVEMENT N'ATTEINT AUCUNE SORTIE PUBLIÉE.** Mesuré à la voie libre : sur `084a804d`, le digest de l'étape `vehicles` passe de `a78431ed…` à `fac28aa9…`. Trois contrôles. (1) DÉTERMINISME : deux exécutions de la tête rendent le même sha sur les 53 étapes — ce n'est pas un aléa. (2) IMPUTATION : le même film cuit avec le CODE DE LA BASE `492cb0923` (arbre extrait hors dépôt, même cache, mêmes références) rend **exactement** la référence figée `a78431ed…` — c'est donc bien le port de `ti=9`, et NON 3.3.1 (dont `grenades` rend le même sha à la base et à la tête). (3) PORTÉE : le document cuit base → tête est identique sur **tous ses chemins sauf un**, `/coverage/decoder/grammarRev` (diff structuré : 1 chemin sur 9 335 637 octets, taille identique des deux côtés) ; **aucune ligne de journal de balayage ne diffère** (`viesRecensees=180 publiees=97 …`, `episodes=74 vehiculesOccupes=45 …` identiques) ; le corpus gate classe 0 gain / 0 perte / 0 changement. Le mouvement est donc confiné à l'ENTRÉE de balayage `VehicleScan`, dans un champ que seul `digest` voit — il hache les champs NON EXPORTÉS, et `VehicleScan.Positions []grammar.BipedPosition` embarque précisément `componentDirs`, le struct non exporté que l'en-tête du paquet `digest` cite en exemple. **CE QUI N'EST PAS ÉTABLI, ET QUI EST DIT** : le champ exact n'est pas isolé — `digest` n'exporte aucun rendu, et l'isoler demanderait un instrument que ce lot n'a pas écrit. NON TRAITÉ : rien ne dépend de cette valeur aujourd'hui (aucune sortie ne la porte). Écarte au passage deux hypothèses testées et fausses : ce n'est PAS un effet de bord de 3.3.1 (`53ce4390` bouge sur `vehicles` sans bouger sur `grenades`), et ce n'est PAS la scission du maillon de dispatch (aucune étiquette `case` n'est dupliquée dans la chaîne — vérifié sur pièces, donc l'ordre des maillons ne décide de rien). | instrument d'isolation des entrées de balayage : exporter un rendu de `digest` (ou un mode `-out-dir` qui écrit la valeur et pas seulement son empreinte) rendrait ce genre d'écart lisible au champ près au lieu du seul sha. À porter le jour où une sortie dépendra de ces champs |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Lot 5.1.7 (post-chantier) — la marche de `ti=40` MESUREE, UN FILM A LA FOIS, 2026-09-18
+
+Branche `feat/decfilm-51`, base `2f04bc7b8`. **Aucun octet de production Go n'est touche** : le lot
+n'ajoute qu'un `_test.go` sous `//go:build research`, que le mecanisme d'empreinte exclut
+explicitement (`revision/empreinte.go` saute les `_test.go` et les `testdata/`) — `grammar.Rev` et
+`facts.Rev` ne bougent pas, les 8 fixtures de contrat non plus. Aucune base DuckDB ouverte, aucun
+`replay-equiv`, aucun corpus gate, un seul decodage a la fois.
+
+| Date | Point | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-18 | perimetre | `git diff --name-only 2f04bc7b8..HEAD` | **2 fichiers** : `.ai/PLAN_DECODEUR_FILM_2026-09-13.md` et `apps/go-api/internal/games/halo_infinite/film/internal/grammar/ti40_marche_desync_research_test.go`. `grep -v -e '\.md$' -e '_test\.go$'` : **0** |
+| 2026-09-18 | mesure | `TI40D_FILM=.../4f77afc1 TI40D_CARTE="Flood Gulch" go test -tags=research ... -run TestTi40MarcheDesync` | **36 cellules sur 36** (`GenerationStricte` x `Traversal.IndexW` x `param_4`) : `avant_ou_a_i11 = 0` PARTOUT. Premier desync toujours `i30` ou `i38`. La cellule `stricte=true iw=1 param_4=4` rend `records=78491 portes=68772 masque=11 perdus=11 morts=11` — **au record pres la ligne de production** |
+| 2026-09-18 | mesure | idem sur `a349fea8` / `Fragmentation Heavies` | **29 cellules jouees sur 36** (coupure a 10 min, les 7 restantes sont `stricte=true iw=2/3 param_4>=5`) : `avant_ou_a_i11 = 0` partout. Cellule de production `stricte=true iw=1 param_4=4` : `masque=52 perdus=47 morts=20` — **la ligne du tableau de 5.1.4** |
+| 2026-09-18 | temoin | `VEH51_FILM=4f77afc1 VEH51_NOFACTS=1 VEH51_MAP="Flood Gulch" go test -tags=research ./internal/replaybuild/ -run Vehicules51FinDeVie` | `mortsToutesEntites=226 mortsVehicules=11 masqueDeclareLeDeadState=11 dontDesynchronises=11 recordsAtteints=78491 recordsEntierementPortes=68772` ; `recensees=256 publiees=97` ; `MORTS lues=11 appariees=11 nonAppariees=0 queueRompue=11` ; `FINS datee=3 film=1 inconnue=93 (echantillonsApresFin=106)` |
+| 2026-09-18 | sonde | les trois entrees manquantes de `paramByComponent` (3 / 2 / 4) posees, meme temoin rejoue | **0 difference** : ligne de journal IDENTIQUE au bit pres. Sonde RETIREE (`component_param4.go` restaure a l'octet). D2 (5.1.7) |
+| 2026-09-18 | mesure | `CHUNK00_FILMS=.../4f77afc1 go test ... -run KeyframeClosureInventaire` | `ti=40` : **5/1140 (0,4 %), bloquant (aucun)** sur 48 composants dont 16 non portes -> la boucle de composants d'image-cle ne tourne pas. D3 (5.1.7) |
+| 2026-09-18 | gates | `gofmt -l ./internal ./cmd` · `go build ./...` · `go vet` (dont `-tags=research` sur `grammar`) | **0 fichier**, `BUILD_OK`, `VET_OK` |
+| 2026-09-18 | gates | `go test -count=1 ./internal/games/halo_infinite/... ./internal/archlint/ ./internal/replaybuild/ ./internal/domain/replaydoc/ ./internal/service/replayview/ ./contracttest/ ./internal/api/` | **tout vert** (aucune ligne hors `ok` / `no test files`) |
+| 2026-09-18 | gates | `golangci-lint run --new-from-rev=2f04bc7b8 ./...` (cache isole) | **0 issues** |
+| 2026-09-18 | ratchet | `go test -run KeyframeClosureRatchet` (0.A.3) | **PASS**, inchange — attendu : aucun octet de grammaire ne bouge |
+| 2026-09-18 | non joues | `make check-types`, `make test-web` | **NON JOUES et assumes** : le lot ne touche aucun fichier de `apps/web/`, ni `openapi.yaml`, ni un type genere. A rejouer au premier commit qui touche le web |
 
 ### Clôture M4 — triage du §4 + ADR 0034 + journal + ratchet de surface, DOCUMENTS SEULEMENT, 2026-09-18
 
