@@ -6,6 +6,11 @@
 // cache film (levelup backfill-replay) ; les films, eux, sont IRREMPLAÇABLES une fois
 // expirés côté serveur Halo — le cron ne touche ni film_chunks/ ni film_manifests/.
 //
+// NI LES FAITS PERSISTÉS PAR FILM (film_facts/, lot 4.1.1-c du 2026-09-17). M4-D1 (décision
+// V17) tranche « on conserve TOUT » : aucun plafond, aucune purge par âge. Ce dossier est FRÈRE
+// de replays/ et non dedans, donc hors du parcours de ce cron par CONSTRUCTION ; ce qui remplace
+// la purge est la PUBLICATION de la taille occupée (section Ressources de /admin/system).
+//
 // La fenêtre `replay_retention_months` est relue à CHAQUE tick (patron scheduler,
 // settings live) : 0 = illimité → tick no-op, rapporté en succès (0 purgé). L'âge d'un
 // artefact est celui de SON MATCH (start_time canonique du registre), jamais le mtime du

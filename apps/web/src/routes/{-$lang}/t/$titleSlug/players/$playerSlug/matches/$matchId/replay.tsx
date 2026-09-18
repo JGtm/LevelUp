@@ -220,6 +220,7 @@ function ReplayPage() {
                 latestSchemaVersion={data.latestSchemaVersion}
                 contractIssue={data.contractIssue}
                 locale={locale}
+                layers={data.layers}
               />
             )}
           </h1>

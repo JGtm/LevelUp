@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 5399 frames · intervalle 100 ms · duree 539900 ms
-schema 61 · titre halo_infinite
+schema 62 · titre halo_infinite
 version majeure du film : 40
 origine de la frame 0 sur l horloge du fil : 15914 ms
 coup d envoi date par le film : 38514 ms · 212/217 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 22600 ms
@@ -66,12 +66,12 @@ verdict : nominal
 1492 tir(s) publie(s) · 1121 avec un cap de visee lisible · 1492 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
-0 rattache(s) / 0 disponible(s) = aucune donnee
-rejets : slot introuvable=0 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
-somme de controle : rattaches + rejets = disponibles -> 0 = 0 (equilibre : true)
-verdict : aucune donnée
-par source : projectile=0 (aucun pont) · biped=0 (le pont a servi)
-par type : aucun
+133 rattache(s) / 138 disponible(s) = 96.4 %
+rejets : slot introuvable=5 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+somme de controle : rattaches + rejets = disponibles -> 138 = 138 (equilibre : true)
+verdict : nominal
+par source : projectile=123 (aucun pont) · biped=10 (le pont a servi)
+par type : Dynamo=38 · Frag=27 · Plasma=39 · Spike=29
 
 ## PROJECTILES — le dernier point est la DERNIERE POSITION REPLIQUEE, jamais un impact
 551 trajectoire(s) · 5711 point(s) de grille

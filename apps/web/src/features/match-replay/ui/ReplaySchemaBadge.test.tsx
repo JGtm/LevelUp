@@ -166,3 +166,76 @@ describe('ReplaySchemaBadge', () => {
     expect(screen.getByText(`Schema ${PRODUCTEUR} · up to date`)).toBeInTheDocument()
   })
 })
+
+/**
+ * LA COUCHE NOMMÉE (schéma 62, lot 4.4.2) — et elle se dit dans LES DEUX LANGUES.
+ *
+ * CE QUE CES CAS PROTÈGENT, ET LE DÉFAUT QU'ILS FERMENT : le badge ne doit nommer une couche que
+ * lorsque le module la PROUVE. Trois situations, et une seule doit produire la phrase — l'artefact
+ * qui déclare sa couche de publication ET qui est en retard. Un artefact sans `layers` (antérieur
+ * à 62) doit garder le libellé d'avant ce lot, sans quoi le badge attribuerait au producteur une
+ * déclaration qu'il n'a pas faite ; un artefact à jour ne dit rien d'une couche, puisque rien n'a
+ * bougé.
+ */
+describe('ReplaySchemaBadge — la couche de publication', () => {
+  /** La table des calques telle que la cuisson l'écrit : la publication y porte SA version. */
+  const layersDeLArtefact = (schemaVersion: number) => ({
+    matchId: `publication-${schemaVersion}`,
+    tracks: 'grammar-2026-09-15.42',
+  })
+
+  it('nomme la publication, en FR, quand elle est la seule couche prouvée', () => {
+    render(
+      <ReplaySchemaBadge
+        isAdmin
+        schemaVersion={EN_RETARD}
+        latestSchemaVersion={PRODUCTEUR}
+        locale="fr"
+        layers={layersDeLArtefact(EN_RETARD)}
+      />,
+    )
+    expect(screen.getByText(/seule la publication a changé/)).toBeInTheDocument()
+  })
+
+  it('la nomme en EN par la même donnée — parité tenue par le typage', () => {
+    render(
+      <ReplaySchemaBadge
+        isAdmin
+        schemaVersion={EN_RETARD}
+        latestSchemaVersion={PRODUCTEUR}
+        locale="en"
+        layers={layersDeLArtefact(EN_RETARD)}
+      />,
+    )
+    expect(screen.getByText(/publication layer only/)).toBeInTheDocument()
+  })
+
+  it('ne nomme AUCUNE couche sans `layers` — le libellé d’avant ce lot, à la lettre', () => {
+    render(
+      <ReplaySchemaBadge
+        isAdmin
+        schemaVersion={EN_RETARD}
+        latestSchemaVersion={PRODUCTEUR}
+        locale="fr"
+      />,
+    )
+    expect(screen.queryByText(/publication/)).not.toBeInTheDocument()
+    expect(
+      screen.getByText(`Schéma ${EN_RETARD} · à recuire (dernier : ${PRODUCTEUR})`),
+    ).toBeInTheDocument()
+  })
+
+  it('ne nomme aucune couche sur un artefact À JOUR, même s’il déclare la sienne', () => {
+    render(
+      <ReplaySchemaBadge
+        isAdmin
+        schemaVersion={PRODUCTEUR}
+        latestSchemaVersion={PRODUCTEUR}
+        locale="fr"
+        layers={layersDeLArtefact(PRODUCTEUR)}
+      />,
+    )
+    expect(screen.queryByText(/publication/)).not.toBeInTheDocument()
+    expect(screen.getByText(/à jour/)).toBeInTheDocument()
+  })
+})

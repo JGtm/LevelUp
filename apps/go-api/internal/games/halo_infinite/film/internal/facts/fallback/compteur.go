@@ -113,15 +113,25 @@ func (c *Compteur) Rapport() []Declenchement {
 	return out
 }
 
-// Cumuler absorbe le rapport d'UNE AUTRE cuisson (ou d'une autre projection) dans ce compteur.
+// Cumuler absorbe un rapport DÉJÀ FAIT dans ce compteur.
 //
-// IL EXISTE POUR LES PASSES, ET POUR ELLES SEULES. Un producteur qui résume N matchs tient N
-// rapports et doit en publier UN pour la passe ; écrire la boucle d'addition chez chaque
-// producteur, c'est la voir diverger au troisième (règle 6 du dépôt). Le compteur SAIT déjà
-// additionner et trier : il lui manquait seulement d'accepter une somme déjà faite.
+// # DEUX EMPLOIS, ET SEULEMENT DEUX
 //
-// Ce n'est PAS un canal de cuisson : rien dans le décodeur ne doit s'en servir pour fusionner
-// deux films — un compteur voyage avec SA cuisson (cf. l'en-tête de ce fichier).
+//  1. LES PASSES. Un producteur qui résume N matchs tient N rapports et doit en publier UN pour
+//     la passe ; écrire la boucle d'addition chez chaque producteur, c'est la voir diverger au
+//     troisième (règle 6 du dépôt). Le compteur SAIT déjà additionner et trier : il lui manquait
+//     seulement d'accepter une somme déjà faite.
+//  2. LA REPRISE DES REPLIS DU BALAYAGE, depuis les faits persistés d'un film (lot 4.1.2 du
+//     2026-09-17, `replay.BuildFromFacts`). C'est le MÊME film et la MÊME cuisson, reprise là où
+//     le balayage l'avait laissée : le fichier de faits porte le rapport AU SORTIR DU BALAYAGE,
+//     et l'assemblage qui rejoue ajoute ses propres déclenchements dans ce même compteur. Le
+//     résultat est le rapport que le chemin du film aurait produit, déclenchement pour
+//     déclenchement — c'est l'oracle de l'équivalence S8.
+//
+// CE N'EST TOUJOURS PAS UN CANAL DE FUSION DE DEUX FILMS : rien dans le décodeur ne doit s'en
+// servir pour additionner les replis de films DIFFÉRENTS — un compteur voyage avec SA cuisson
+// (cf. l'en-tête de ce fichier). L'emploi 2 n'est pas une exception à cette règle, c'est la même
+// cuisson qui reprend son propre compte.
 func (c *Compteur) Cumuler(rapport []Declenchement) {
 	for _, d := range rapport {
 		c.DeclencheN(d.Nom, d.Declenchements)

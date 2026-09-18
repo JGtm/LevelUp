@@ -10,7 +10,11 @@
  * QUATRE RENDUS, un par `ReplaySchemaStatus.kind` (`model/replaySchemaStatusLogic.ts`) :
  *  - `upToDate` : ton `success` — l'artefact porte déjà la version courante du producteur ;
  *  - `stale` : ton `warning` — recuisson à faire ; le second nombre est la version cible
- *    QUAND on en connaît une (aucune sous la version minimale affichable, en-tête absent) ;
+ *    QUAND on en connaît une (aucune sous la version minimale affichable, en-tête absent). DEPUIS
+ *    LE SCHÉMA 62 il se dit plus précisément quand le module PROUVE que seule la couche de
+ *    PUBLICATION a bougé (`layers`, lot 4.4.2) — ce n'est PAS un cinquième état, c'est le même
+ *    `stale` avec une phrase de plus ; les quatre couches de décodage restent innommables faute
+ *    de transporter leurs révisions courantes ;
  *  - `invalid` : ton `destructive` (2026-09-13, lot 0.B) — le document ne respecte pas le
  *    contrat, et le badge NOMME le premier manquement. C'est la seule trace visible d'une
  *    dérive que TypeScript ne voit plus une fois compilé ; le rendu, lui, continue — une page
@@ -28,7 +32,11 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import type { ReplayContractIssue } from '@/lib/replay/replayDocumentSchema'
 
-import { computeReplaySchemaStatus, type ReplaySchemaStatus } from '../model/replaySchemaStatusLogic'
+import {
+  COUCHE_PUBLICATION,
+  computeReplaySchemaStatus,
+  type ReplaySchemaStatus,
+} from '../model/replaySchemaStatusLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
 /**
@@ -59,9 +67,18 @@ function libelleDe(status: ReplaySchemaStatus, t: (typeof REPLAY_TEXT)[ReplayLoc
     case 'invalid':
       return t.schemaBadgeInvalidFmt(status.schemaVersion, detailDe(status.issue, t))
     case 'stale':
-      return status.latestSchemaVersion === undefined
-        ? t.schemaBadgeStaleNoTargetFmt(status.schemaVersion)
-        : t.schemaBadgeStaleFmt(status.schemaVersion, status.latestSchemaVersion)
+      if (status.latestSchemaVersion === undefined) {
+        return t.schemaBadgeStaleNoTargetFmt(status.schemaVersion)
+      }
+      // LA COUCHE, QUAND LE MODULE LA PROUVE (schéma 62, lot 4.4.2). `couches` est une DONNÉE —
+      // des noms — et c'est ici qu'elle devient une phrase, dans la langue du lecteur. Une seule
+      // couche est nommable aujourd'hui, la publication : `COUCHE_PUBLICATION` le dit et
+      // `couchesPerimees` écrit pourquoi. Le `stale` ordinaire reste le cas par défaut, et
+      // l'absence de couche prouvée n'ajoute RIEN au badge — jamais un « couches : aucune ».
+      if (status.couches.includes(COUCHE_PUBLICATION)) {
+        return t.schemaBadgeStalePublicationFmt(status.schemaVersion, status.latestSchemaVersion)
+      }
+      return t.schemaBadgeStaleFmt(status.schemaVersion, status.latestSchemaVersion)
     default:
       return t.schemaBadgeUnknownFmt(status.schemaVersion)
   }
@@ -73,16 +90,27 @@ export function ReplaySchemaBadge({
   latestSchemaVersion,
   contractIssue,
   locale,
+  layers,
 }: {
   isAdmin: boolean
   schemaVersion: number
   latestSchemaVersion: number | undefined
   contractIssue?: ReplayContractIssue
   locale: ReplayLocale
+  /**
+   * La table des calques de l'artefact affiché (schéma 62) : nom de calque -> révision de la
+   * couche productrice. Absente = artefact antérieur, et le badge ne nomme alors aucune couche.
+   */
+  layers?: Record<string, string>
 }) {
   if (!isAdmin) return null
   const t = REPLAY_TEXT[locale]
-  const status = computeReplaySchemaStatus(schemaVersion, latestSchemaVersion, contractIssue)
+  const status = computeReplaySchemaStatus(
+    schemaVersion,
+    latestSchemaVersion,
+    contractIssue,
+    layers,
+  )
   const label = libelleDe(status, t)
   if (status.kind === 'unknown') {
     return (

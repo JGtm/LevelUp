@@ -47,8 +47,23 @@ import (
 // HORS LIGNE par construction — ne jamais appeler depuis un chemin de requête ; l'API sert
 // l'artefact pré-construit.
 func BuildFromFilm(matchID, titleSlug string, film *source.Film, opt Options) (ReplayDocument, error) {
+	doc, _, err := BuildFromFilmAvecFaits(matchID, titleSlug, film, opt)
+	return doc, err
+}
+
+// BuildFromFilmAvecFaits est le MEME decodage, qui rend EN PLUS les faits a persister
+// ([FilmFactsFile]) — la porte du lot 4.1.2. Cf. `build_from_facts.go` pour ce que les faits
+// portent et pour le chemin de retour.
+//
+// UN SEUL CHEMIN DE BALAYAGE, ET C EST LE POINT : [BuildFromFilm] n est plus qu un appel a
+// celle-ci qui jette les faits. Deux sequences de balayages ont deja diverge une fois dans ce
+// depot (decouverte D7, cinq canaux absents du fixture) — il n y en a qu une.
+func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Options) (
+	ReplayDocument, *FilmFactsFile, error,
+) {
 	if opt.MapQuant == nil {
-		return ReplayDocument{}, fmt.Errorf("%w (match %s) : le document de rejeu exige l'entrée de catalogue de la carte",
+		return ReplayDocument{}, nil, fmt.Errorf(
+			"%w (match %s) : le document de rejeu exige l'entrée de catalogue de la carte",
 			profile.ErrUnknownMapBounds, matchID)
 	}
 	// PLUS DE VERROU DE PAQUET ICI (lot 2.3) : `grammar` n'a plus aucune variable de paquet
@@ -81,10 +96,13 @@ func BuildFromFilm(matchID, titleSlug string, film *source.Film, opt Options) (R
 	opt.FilmIdentity = identiteDuFilm(fc)
 	in, err := scanFilmInputs(matchID, film, fc, opt)
 	if err != nil {
-		return ReplayDocument{}, err
+		return ReplayDocument{}, nil, err
 	}
+	// LES FAITS SE CAPTURENT ICI, ENTRE LE BALAYAGE ET L ASSEMBLAGE, et pas apres : le rapport
+	// de replis ne doit porter que les declenchements DU BALAYAGE (cf. `build_from_facts.go`).
+	faits := faitsDuBalayage(matchID, fc, opt, in)
 	in.applyTo(&opt)
-	return BuildFromPositions(matchID, titleSlug, in.Positions, in.Fire, opt), nil
+	return BuildFromPositions(matchID, titleSlug, in.Positions, in.Fire, opt), faits, nil
 }
 
 // poserProfilPuisCarte installe sur le contexte, DANS CET ORDRE, le profil de balayage calibre

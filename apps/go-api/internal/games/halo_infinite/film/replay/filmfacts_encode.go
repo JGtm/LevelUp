@@ -1,10 +1,11 @@
 package replay
 
-// golden_inputs_encode_test.go — L ENCODEUR DU FIXTURE D ENTREES.
+// filmfacts_encode.go — L ENCODEUR DES FAITS DE FILM.
 //
 // Extrait de golden_inputs_test.go le 2026-09-14 (revue R1, constat R1-7 : un fichier de
-// 1 560 lignes, deux fonctions de ~290). DEPLACEMENT PUR : aucune ligne de logique changee,
-// le decoupage suit les SECTIONS du blob, et chaque section a desormais sa fonction.
+// 1 560 lignes, deux fonctions de ~290), passe en PRODUCTION le 2026-09-17 (lot 4.1.1-a).
+// DEPLACEMENTS PURS : aucune ligne de logique changee, le decoupage suit les SECTIONS du blob,
+// et chaque section a sa fonction.
 
 import (
 	"sort"
@@ -19,29 +20,45 @@ const (
 	gpHasShield byte = 1 << 3
 )
 
-// encodeGoldenInputs serialise les entrees. Format decrit en tete de fichier.
-
-func encodeGoldenInputs(g *goldenInputs) []byte {
-	w := &gwriter{b: []byte(goldenInputsMagic)}
-	encodeGoldenEntete(w, g)
-	encodePositionSection(w, g.Positions)
-	encodeBipedCreations(w, g.BipedCreations)
-	encodeGoldenEvenements(w, g)
-	encodeWeaponChanges(w, g.WeaponChanges)
-	encodePickups(w, g.Pickups, g.PickupStats)
-	encodeGoldenInventaire(w, g)
-	encodeGoldenCanauxDelta(w, g)
-	encodeEquipmentChanges(w, g.EquipmentChanges, g.EquipmentChangeStats)
-	encodeGoldenCapacites(w, g)
-	encodeZoomEvents(w, g.ZoomEvents)
-	encodeGoldenMonde(w, g)
-	encodeVehicleScan(w, g.Vehicles)
-	encodeGoldenQueue(w, g)
-	return w.b
+// EncodeFilmFacts serialise les faits d un film. Le format est decrit en tete de filmfacts.go ;
+// la SUITE DES SECTIONS est celle que `DecodeFilmFacts` relit, dans le meme ordre, et toute
+// insertion au milieu monte `filmFactsMagic` DANS LE MEME COMMIT.
+// EncodeFilmFactsAvecErreur est [EncodeFilmFacts] qui REND SON ECHEC.
+//
+// Le codec est sans erreur sur tout ce qu il ecrit a la main ; une seule charge peut echouer (les
+// morts d objet, en JSON), et un echec avale produirait un fichier qui se relit comme un fait
+// FAUX. Les appelants qui ECRIVENT sur le disque passent par ici ; [EncodeFilmFacts] reste la
+// forme sans erreur pour les tests et les aller-retours en memoire.
+func EncodeFilmFactsAvecErreur(g *FilmFacts) ([]byte, error) {
+	w := encodeurDeFaits(g)
+	return w.b, w.echec
 }
 
-// encodeGoldenEntete ecrit l en-tete du blob.
-func encodeGoldenEntete(w *gwriter, g *goldenInputs) {
+func EncodeFilmFacts(g *FilmFacts) []byte {
+	return encodeurDeFaits(g).b
+}
+
+func encodeurDeFaits(g *FilmFacts) *gwriter {
+	w := &gwriter{b: []byte(filmFactsMagic)}
+	encodeEntete(w, g)
+	encodePositionSection(w, g.Positions)
+	encodeBipedCreations(w, g.BipedCreations)
+	encodeEvenements(w, g)
+	encodeWeaponChanges(w, g.WeaponChanges)
+	encodePickups(w, g.Pickups, g.PickupStats)
+	encodeInventaire(w, g)
+	encodeCanauxDelta(w, g)
+	encodeEquipmentChanges(w, g.EquipmentChanges, g.EquipmentChangeStats)
+	encodeCapacites(w, g)
+	encodeZoomEvents(w, g.ZoomEvents)
+	encodeMonde(w, g)
+	encodeVehicleScan(w, g.Vehicles)
+	encodeQueue(w, g)
+	return w
+}
+
+// encodeEntete ecrit l en-tete du blob.
+func encodeEntete(w *gwriter, g *FilmFacts) {
 	w.str(g.Film)
 	// LE MODULE DE LA CARTE OUVRE LE BLOB (lot 0.D.3 bis). Les positions y sont des QUANTA :
 	// sans l entree de catalogue qui les a produites, elles ne se dequantifient pas — et avec
@@ -64,8 +81,8 @@ func encodeGoldenEntete(w *gwriter, g *goldenInputs) {
 	w.u(g.FilmClockOriginUS)
 }
 
-// encodeGoldenEvenements ecrit tirs, equipements de depart, lancers et projectiles.
-func encodeGoldenEvenements(w *gwriter, g *goldenInputs) {
+// encodeEvenements ecrit tirs, equipements de depart, lancers et projectiles.
+func encodeEvenements(w *gwriter, g *FilmFacts) {
 	var lastTS uint64
 	w.u(uint64(len(g.Fire)))
 	lastTS = 0
@@ -102,8 +119,8 @@ func encodeGoldenEvenements(w *gwriter, g *goldenInputs) {
 	encodeTracks(w, g.Projectiles)
 }
 
-// encodeGoldenInventaire ecrit les inventaires d image-cle et leurs deltas.
-func encodeGoldenInventaire(w *gwriter, g *goldenInputs) {
+// encodeInventaire ecrit les inventaires d image-cle et leurs deltas.
+func encodeInventaire(w *gwriter, g *FilmFacts) {
 	var lastTS uint64
 	w.u(uint64(len(g.Inventory)))
 	for _, inv := range g.Inventory {
@@ -140,8 +157,8 @@ func encodeGoldenInventaire(w *gwriter, g *goldenInputs) {
 
 }
 
-// encodeGoldenCanauxDelta ecrit rangs de capacite, camouflage, grappin et translocations.
-func encodeGoldenCanauxDelta(w *gwriter, g *goldenInputs) {
+// encodeCanauxDelta ecrit rangs de capacite, camouflage, grappin et translocations.
+func encodeCanauxDelta(w *gwriter, g *FilmFacts) {
 	var lastTS uint64
 	w.u(uint64(len(g.AbilityRanks)))
 	lastTS = 0
@@ -195,8 +212,8 @@ func encodeGoldenCanauxDelta(w *gwriter, g *goldenInputs) {
 	// transmet pas le composant » de « personne ne s en est servi ».
 }
 
-// encodeGoldenCapacites ecrit les impulsions et les charges de capacite, stats comprises.
-func encodeGoldenCapacites(w *gwriter, g *goldenInputs) {
+// encodeCapacites ecrit les impulsions et les charges de capacite, stats comprises.
+func encodeCapacites(w *gwriter, g *FilmFacts) {
 	var lastTS uint64
 	w.u(uint64(len(g.AbilityImpulses)))
 	lastTS = 0
@@ -242,8 +259,8 @@ func encodeGoldenCapacites(w *gwriter, g *goldenInputs) {
 	// liste vide ne dit pas la meme chose selon que le film a tranche sa largeur ou non.
 }
 
-// encodeGoldenMonde ecrit les poses d equipement et les deux voies de socles.
-func encodeGoldenMonde(w *gwriter, g *goldenInputs) {
+// encodeMonde ecrit les poses d equipement et les deux voies de socles.
+func encodeMonde(w *gwriter, g *FilmFacts) {
 	var lastTS uint64
 	w.u(uint64(len(g.Placements)))
 	lastTS = 0
@@ -259,28 +276,22 @@ func encodeGoldenMonde(w *gwriter, g *goldenInputs) {
 		w.u(uint64(p.GlobalID))
 		w.u(uint64(p.Points))
 	}
-	w.i(int64(g.PlacementStats.Calibration.Widths.Lead))
-	w.i(int64(g.PlacementStats.Calibration.Widths.Index))
-	w.i(int64(g.PlacementStats.Calibration.Agree))
-	w.u(uint64(g.PlacementStats.Lives))
-	w.u(uint64(g.PlacementStats.Anchors))
-	w.u(uint64(g.PlacementStats.Accepted))
-	w.u(uint64(g.PlacementStats.Confirmed))
+	encodeStatsDePose(w, g.PlacementStats)
 
-	encodeGoldenSpawnEvents(w, g)
+	encodeSpawnEvents(w, g)
 
 	encodeWorldObjectScan(w, g.Pads.Weapons)
 	encodeWorldObjectScan(w, g.Pads.Powerups)
 }
 
-// encodeGoldenSpawnEvents ecrit les evenements 103 « une PIECE a ete engendree » et les
+// encodeSpawnEvents ecrit les evenements 103 « une PIECE a ete engendree » et les
 // denominateurs de leur balayage (lot 1.9.1, magie REPLAYINPUTS22).
 //
 // LES DENOMINATEURS SONT ECRITS AUTANT QUE LES EVENEMENTS, et ce n est pas du remplissage : un
 // fixture a ZERO evenement doit pouvoir dire s il vient d un film muet ou d un film que le
 // lecteur ne sait pas lire — c est exactement l ecart entre `a521164d` (0 sur 4 956 listes) et
 // un film sans mur.
-func encodeGoldenSpawnEvents(w *gwriter, g *goldenInputs) {
+func encodeSpawnEvents(w *gwriter, g *FilmFacts) {
 	w.u(uint64(len(g.SpawnEvents)))
 	var lastTS uint64
 	for _, e := range g.SpawnEvents {
@@ -304,8 +315,8 @@ func encodeGoldenSpawnEvents(w *gwriter, g *goldenInputs) {
 	}
 }
 
-// encodeGoldenQueue ecrit les morts et la table des index de joueur.
-func encodeGoldenQueue(w *gwriter, g *goldenInputs) {
+// encodeQueue ecrit les morts et la table des index de joueur.
+func encodeQueue(w *gwriter, g *FilmFacts) {
 
 	w.u(uint64(len(g.Deaths)))
 	for _, d := range g.Deaths {

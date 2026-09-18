@@ -28,16 +28,28 @@ import (
 
 // filmCacheDirAllowlist : fichiers (chemin relatif depuis apps/go-api) où le
 // littéral est TOLÉRÉ.
-//   - filmcache.go : définition canonique des constantes.
+//   - filmcache.go : définition canonique de `film_manifests` / `film_chunks`.
+//   - registry_film_facts.go : définition canonique de `film_facts` (constante
+//     `title.SousDossierFilmFacts`, lot 4.1.1-c du 2026-09-17). Ce troisième
+//     sous-dossier du cache film n'est PAS défini dans `filmcache` et il ne peut
+//     pas l'être : son chemin se construit sur `PathResolver.CacheRootDir()`
+//     (source unique de `data/cache`) et il est rangé PAR TITRE, alors que
+//     `filmcache` range les chunks à plat et ne connaît pas de titre. Sans cette
+//     entrée, le ratchet mordrait sa propre source.
 //   - pooled_client.go : "film_chunks" y est un NOM D'APPEL pour la métrique
 //     `observeHaloCall` (observabilité réseau), pas un chemin disque — rien à
 //     centraliser via filmcache pour cet usage.
 var filmCacheDirAllowlist = map[string]bool{
 	"internal/games/halo_infinite/film/filmcache/filmcache.go": true,
+	"internal/domain/title/registry_film_facts.go":             true,
 	"internal/sync/pooled_client.go":                           true,
 }
 
-var filmCacheDirRE = regexp.MustCompile(`"film_manifests"|"film_chunks"`)
+// filmCacheDirRE — les TROIS sous-dossiers du cache film. `film_facts` y est
+// entré au lot 4.1.1-c (2026-09-17), DANS LE COMMIT qui a créé le littéral :
+// apprendre le nom plus tard aurait laissé le temps à une copie de naître
+// (CLAUDE.md règle 6).
+var filmCacheDirRE = regexp.MustCompile(`"film_manifests"|"film_chunks"|"film_facts"`)
 
 func TestNoHardcodedFilmCacheDirs(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
@@ -85,8 +97,9 @@ func TestNoHardcodedFilmCacheDirs(t *testing.T) {
 		t.Fatalf("walk %s: %v", goAPIRoot, err)
 	}
 	if len(violations) > 0 {
-		t.Errorf("littéral \"film_manifests\"/\"film_chunks\" en dur interdit (lot hygiène 5.3, "+
-			"L62) — passer par filmcache.ManifestsRoot/ChunksRoot/ManifestPath/ChunkDir :\n  %s",
+		t.Errorf("littéral \"film_manifests\"/\"film_chunks\"/\"film_facts\" en dur interdit (lot hygiène 5.3, "+
+			"L62) — passer par filmcache.ManifestsRoot/ChunksRoot/ManifestPath/ChunkDir, ou par "+
+			"PathResolver.FilmFactsDir/FilmFactsPath pour \"film_facts\" :\n  %s",
 			strings.Join(violations, "\n  "))
 	}
 }

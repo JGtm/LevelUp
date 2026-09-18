@@ -1,8 +1,10 @@
 package replay
 
-// golden_inputs_decode_test.go — LE DECODEUR DU FIXTURE D ENTREES.
+// filmfacts_decode.go — LE DECODEUR DES FAITS DE FILM.
 //
-// Extrait de golden_inputs_test.go le 2026-09-14 (revue R1, constat R1-7). DEPLACEMENT PUR.
+// Extrait de golden_inputs_test.go le 2026-09-14 (revue R1, constat R1-7), passe en PRODUCTION
+// le 2026-09-17 (lot 4.1.1-a) sous son nom de production. DEPLACEMENTS PURS : aucune ligne de
+// logique changee, seuls les noms d API et les messages ont suivi (cf. filmfacts.go).
 
 import (
 	"fmt"
@@ -12,48 +14,47 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
-func decodeGoldenInputs(blob []byte, entry profile.MapQuantEntry) (*goldenInputs, error) {
-	g, r, lay, world, err := decodeGoldenEntete(blob, entry)
+// DecodeFilmFacts relit les faits d un film. `entry` est l entree de catalogue de SA carte : les
+// positions sont des quanta, et les relire avec une autre entree rendrait des coordonnees
+// FAUSSES — d ou les deux erreurs typees [ErrFilmFactsCarte] et [ErrFilmFactsDecoupage].
+func DecodeFilmFacts(blob []byte, entry profile.MapQuantEntry) (*FilmFacts, error) {
+	g, r, lay, world, err := decodeEntete(blob, entry)
 	if err != nil {
 		return nil, err
 	}
 	g.Positions = decodePositionSection(r, lay, world)
 	g.BipedCreations = decodeBipedCreations(r)
-	decodeGoldenEvenements(r, g)
+	decodeEvenements(r, g)
 	g.WeaponChanges = decodeWeaponChanges(r)
 	g.Pickups, g.PickupStats = decodePickups(r)
-	decodeGoldenInventaire(r, g)
-	decodeGoldenCanauxDelta(r, g)
+	decodeInventaire(r, g)
+	decodeCanauxDelta(r, g)
 	g.EquipmentChanges, g.EquipmentChangeStats = decodeEquipmentChanges(r)
-	decodeGoldenCapacites(r, g)
+	decodeCapacites(r, g)
 	g.ZoomEvents = decodeZoomEvents(r)
-	decodeGoldenMonde(r, g)
+	decodeMonde(r, g)
 	g.Vehicles = decodeVehicleScan(r, lay, world)
-	decodeGoldenQueue(r, g)
+	decodeQueue(r, g)
 	if r.err != nil {
 		return nil, r.err
 	}
 	if r.off != len(r.b) {
-		return nil, fmt.Errorf("fixture d entrees : %d octet(s) non consomme(s) — format desynchronise",
+		return nil, fmt.Errorf("faits de film : %d octet(s) non consomme(s) — format desynchronise",
 			len(r.b)-r.off)
 	}
 	return g, nil
 }
 
-// decodeGoldenEntete relit l en-tete, verifie carte et decoupage, et rend le lecteur arme.
-func decodeGoldenEntete(blob []byte, entry profile.MapQuantEntry) (
-	*goldenInputs, *greader, profile.I0Layout, profile.Vec3Range, error,
+// decodeEntete relit l en-tete, verifie carte et decoupage, et rend le lecteur arme.
+func decodeEntete(blob []byte, entry profile.MapQuantEntry) (
+	*FilmFacts, *greader, profile.I0Layout, profile.Vec3Range, error,
 ) {
-	if len(blob) < len(goldenInputsMagic) || string(blob[:len(goldenInputsMagic)]) != goldenInputsMagic {
-		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, fmt.Errorf("fixture d entrees : magie absente ou version inconnue — regenerer")
+	if len(blob) < len(filmFactsMagic) || string(blob[:len(filmFactsMagic)]) != filmFactsMagic {
+		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, fmt.Errorf("faits de film : magie absente ou version inconnue — redecoder le film")
 	}
-	r := &greader{b: blob, off: len(goldenInputsMagic)}
-	g := &goldenInputs{Film: r.str()}
+	r := &greader{b: blob, off: len(filmFactsMagic)}
+	g := &FilmFacts{Film: r.str()}
 	g.MapModule = r.str()
-	if g.MapModule != entry.Module {
-		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, fmt.Errorf("%w : fixture cuit pour %q, entree de catalogue fournie %q",
-			errGoldenInputsCarte, g.MapModule, entry.Module)
-	}
 	for a := 0; a < 3; a++ {
 		g.AxisW[a] = uint(r.u())
 	}
@@ -63,23 +64,8 @@ func decodeGoldenEntete(blob []byte, entry profile.MapQuantEntry) (
 		v := int(r.i())
 		g.FilmMajorVersion = &v
 	}
-	// CONTRADICTION BLOB / CATALOGUE = ERREUR TYPEE. Quand le fixture dit tenir son decoupage
-	// du CATALOGUE, il doit etre celui que la regle de production tranche aujourd hui : sinon le
-	// catalogue a bouge sous le fixture, et les quanta se dequantifieraient avec un autre pas.
-	// LE BLOB ET LE CATALOGUE DOIVENT DIRE LA MEME CHOSE, DANS LES DEUX SENS (revue R1,
-	// constat R1-2). Un fixture qui se dit « catalogue » doit porter le decoupage que la regle
-	// tranche aujourd hui ; un fixture qui se dit « detecte » doit venir d une carte dont
-	// l entree est INVALIDE — sinon il a ete cuit hors de la regle, et ses quanta se
-	// dequantifieraient avec un autre pas sans que rien ne le dise.
-	impose := grammar.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()
-	switch {
-	case !g.LayoutDetected && (impose == nil || impose.AxisW != g.AxisW):
-		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, fmt.Errorf("%w : fixture au decoupage %v (dit du CATALOGUE), catalogue %v",
-			errGoldenInputsDecoupage, g.AxisW, imposeAxisW(impose))
-	case g.LayoutDetected && impose != nil:
-		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, fmt.Errorf(
-			"%w : fixture dit son decoupage %v AUTO-DETECTE, or le catalogue en impose un (%v)",
-			errGoldenInputsDecoupage, g.AxisW, impose.AxisW)
+	if err := verifierCleDeCuisson(g.MapModule, g.AxisW, g.LayoutDetected, entry); err != nil {
+		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, err
 	}
 	// LE DECOUPAGE VIENT DU BLOB, LES BORNES DU CATALOGUE : le premier dit comment le film a
 	// quantifie, le second ou la carte commence et finit. Melanger les deux sources est ce qui
@@ -89,8 +75,45 @@ func decodeGoldenEntete(blob []byte, entry profile.MapQuantEntry) (
 	return g, r, lay, world, nil
 }
 
-// decodeGoldenEvenements relit tirs, equipements de depart, lancers et projectiles.
-func decodeGoldenEvenements(r *greader, g *goldenInputs) {
+// verifierCleDeCuisson confronte la CLE DE CUISSON relue a l entree de catalogue fournie.
+//
+// # POURQUOI DES ERREURS TYPEES, ET DANS LES DEUX SENS
+//
+// Les positions sont des QUANTA : `DequantBipedAxis` les rendrait avec les bornes de la mauvaise
+// carte ou le pas du mauvais decoupage sans rien signaler — des coordonnees FAUSSES, pas
+// approximatives.
+//
+// LE BLOB ET LE CATALOGUE DOIVENT DIRE LA MEME CHOSE, DANS LES DEUX SENS (revue R1, constat
+// R1-2) : un blob qui se dit « du CATALOGUE » doit porter le decoupage que la regle tranche
+// aujourd hui — sinon le catalogue a bouge sous lui ; un blob qui se dit « AUTO-DETECTE » doit
+// venir d une carte dont l entree est INVALIDE — sinon il a ete cuit hors de la regle. Sur
+// `60ae07c4` la detection rendait `13/12/11` la ou le catalogue rend `12/12/11`.
+//
+// UNE SEULE COPIE (CLAUDE.md regle 6) : l en-tete du blob des entrees ET l en-tete du FICHIER de
+// faits ([FilmFactsEntete.Utilisable]) appellent cette fonction. Deux copies de cette regle
+// auraient divergé au premier ajustement de catalogue.
+func verifierCleDeCuisson(mapModule string, axisW [3]uint, layoutDetected bool,
+	entry profile.MapQuantEntry,
+) error {
+	if mapModule != entry.Module {
+		return fmt.Errorf("%w : faits cuits pour %q, entree de catalogue fournie %q",
+			ErrFilmFactsCarte, mapModule, entry.Module)
+	}
+	impose := grammar.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()
+	switch {
+	case !layoutDetected && (impose == nil || impose.AxisW != axisW):
+		return fmt.Errorf("%w : faits au decoupage %v (dit du CATALOGUE), catalogue %v",
+			ErrFilmFactsDecoupage, axisW, imposeAxisW(impose))
+	case layoutDetected && impose != nil:
+		return fmt.Errorf(
+			"%w : faits disant leur decoupage %v AUTO-DETECTE, or le catalogue en impose un (%v)",
+			ErrFilmFactsDecoupage, axisW, impose.AxisW)
+	}
+	return nil
+}
+
+// decodeEvenements relit tirs, equipements de depart, lancers et projectiles.
+func decodeEvenements(r *greader, g *FilmFacts) {
 	var lastTS uint64
 	n := int(r.u())
 	g.Fire = make([]grammar.FireEvent, 0, n)
@@ -132,8 +155,8 @@ func decodeGoldenEvenements(r *greader, g *goldenInputs) {
 
 }
 
-// decodeGoldenInventaire relit les inventaires d image-cle et leurs deltas.
-func decodeGoldenInventaire(r *greader, g *goldenInputs) {
+// decodeInventaire relit les inventaires d image-cle et leurs deltas.
+func decodeInventaire(r *greader, g *FilmFacts) {
 	var lastTS uint64
 	n := int(r.u())
 	g.Inventory = make([]KeyframeInventory, 0, n)
@@ -174,8 +197,8 @@ func decodeGoldenInventaire(r *greader, g *goldenInputs) {
 
 }
 
-// decodeGoldenCanauxDelta relit rangs de capacite, camouflage, grappin et translocations.
-func decodeGoldenCanauxDelta(r *greader, g *goldenInputs) {
+// decodeCanauxDelta relit rangs de capacite, camouflage, grappin et translocations.
+func decodeCanauxDelta(r *greader, g *FilmFacts) {
 	var lastTS uint64
 	n := int(r.u())
 	g.AbilityRanks = make([]types.AbilityRank, 0, n)
@@ -225,8 +248,8 @@ func decodeGoldenCanauxDelta(r *greader, g *goldenInputs) {
 
 }
 
-// decodeGoldenCapacites relit les impulsions et les charges de capacite, stats comprises.
-func decodeGoldenCapacites(r *greader, g *goldenInputs) {
+// decodeCapacites relit les impulsions et les charges de capacite, stats comprises.
+func decodeCapacites(r *greader, g *FilmFacts) {
 	var lastTS uint64
 	n := int(r.u())
 	g.AbilityImpulses = make([]types.AbilityImpulse, 0, n)
@@ -259,8 +282,8 @@ func decodeGoldenCapacites(r *greader, g *goldenInputs) {
 
 }
 
-// decodeGoldenMonde relit les poses d equipement et les deux voies de socles.
-func decodeGoldenMonde(r *greader, g *goldenInputs) {
+// decodeMonde relit les poses d equipement et les deux voies de socles.
+func decodeMonde(r *greader, g *FilmFacts) {
 	var lastTS uint64
 	n := int(r.u())
 	g.Placements = make([]types.EquipmentPlacement, 0, n)
@@ -273,24 +296,17 @@ func decodeGoldenMonde(r *greader, g *goldenInputs) {
 		p.GlobalID, p.Points = uint32(r.u()), int(r.u())
 		g.Placements = append(g.Placements, p)
 	}
-	g.PlacementStats = grammar.EquipmentPlacementStats{ByID: map[uint32]int{}}
-	g.PlacementStats.Calibration.Widths = profile.MPPWidths{Lead: int(r.i()), Index: int(r.i())}
-	g.PlacementStats.Calibration.Agree = int(r.i())
-	g.PlacementStats.Lives = int(r.u())
-	g.PlacementStats.Anchors = int(r.u())
-	g.PlacementStats.Accepted = int(r.u())
-	g.PlacementStats.Confirmed = int(r.u())
-	g.PlacementStats.Placements = len(g.Placements)
+	g.PlacementStats = decodeStatsDePose(r)
 
-	decodeGoldenSpawnEvents(r, g)
+	decodeSpawnEvents(r, g)
 
 	g.Pads.Weapons = decodeWorldObjectScan(r)
 	g.Pads.Powerups = decodeWorldObjectScan(r)
 
 }
 
-// decodeGoldenSpawnEvents relit les evenements 103 et leurs denominateurs.
-func decodeGoldenSpawnEvents(r *greader, g *goldenInputs) {
+// decodeSpawnEvents relit les evenements 103 et leurs denominateurs.
+func decodeSpawnEvents(r *greader, g *FilmFacts) {
 	n := int(r.u())
 	g.SpawnEvents = make([]types.EquipmentSpawnEvent, 0, n)
 	var lastTS uint64
@@ -311,8 +327,8 @@ func decodeGoldenSpawnEvents(r *greader, g *goldenInputs) {
 	}
 }
 
-// decodeGoldenQueue relit les morts et la table des index de joueur.
-func decodeGoldenQueue(r *greader, g *goldenInputs) {
+// decodeQueue relit les morts et la table des index de joueur.
+func decodeQueue(r *greader, g *FilmFacts) {
 	n := int(r.u())
 	g.Deaths = make([]Death, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {

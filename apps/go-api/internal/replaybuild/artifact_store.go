@@ -87,11 +87,30 @@ func StoreArtifact(repoRoot, titleSlug, matchID string, blob []byte) (StoredArti
 // compare pas à celui-ci.
 func wouldDowngrade(outPath string, blob []byte) (enPlace Digest, oui bool) {
 	current, ok := ArtifactDigest(outPath)
-	if !ok || current.Players == 0 {
+	if !ok {
 		return Digest{}, false // rien à protéger
 	}
-	incoming, ok := digestFromBytes(blob)
-	if !ok || incoming.Players > 0 || incoming.SchemaVersion != current.SchemaVersion {
+	incoming, lisible := digestFromBytes(blob)
+	if !lisible {
+		return current, false
+	}
+	// LA RÉGRESSION DE DÉCODAGE, ET ELLE EST NEUVE AU LOT 4.4.1. Un artefact cuit par les
+	// révisions COURANTES ne se laisse pas écraser par un candidat cuit sous une couche périmée
+	// — quel que soit son schéma. Le garde de compteurs ci-dessous, lui, ne parle QU'À schéma
+	// égal, et c'est pour cela qu'il ne voyait pas ce cas : une republication venue d'un binaire
+	// en retard monte parfois AUSSI le schéma, et se glissait alors dans son silence.
+	//
+	// LE CRITÈRE EST CE QUE L'ON SAIT PROUVER, et rien de plus : « en place intact, candidat qui
+	// ne l'est pas ». Ordonner deux révisions pour dire laquelle est la plus ancienne
+	// demanderait de comparer des dates dans des chaînes — une comparaison que rien ne garde, et
+	// qui se tromperait au premier rang de la même journée.
+	if current.decodageIntact() && !incoming.decodageIntact() {
+		return current, true
+	}
+	if current.Players == 0 {
+		return current, false // rien à protéger sur l'axe des compteurs
+	}
+	if incoming.Players > 0 || incoming.SchemaVersion != current.SchemaVersion {
 		return current, false
 	}
 	return current, true

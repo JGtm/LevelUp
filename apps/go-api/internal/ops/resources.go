@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"strings"
+	"time"
 
 	"levelup/go-api/internal/domain"
 )
@@ -111,4 +113,56 @@ func DirTotalSize(root string) int64 {
 		}
 	}
 	return total
+}
+
+// FilmFactsInventory mesure, sur UN dossier PLAT, ce que les faits persistés d'un titre
+// occupent : nombre de fichiers, octets, plus vieux et plus récent (M4-D1, décision V17 du
+// PLAN_DECODEUR_FILM).
+//
+// # UN SEUL NIVEAU, ET UNE SEULE EXTENSION
+//
+// `os.ReadDir` sans récursion — le dossier est plat par construction
+// (`PathResolver.FilmFactsDir`). Seuls les fichiers en `title.ExtensionFilmFacts` comptent :
+// un temporaire abandonné par une écriture atomique interrompue n'est pas un fait, et le
+// compter ferait mentir la mesure.
+//
+// # BEST-EFFORT, MAIS JAMAIS SILENCIEUX
+//
+// Dossier absent = rien n'a encore été cuit : la mesure est un zéro légitime, sans log. Toute
+// autre erreur (permission, IO) est LOGGÉE — même règle que `statSizeOrLog`, et pour la même
+// raison : une table de tailles nulles a l'air d'un rendu cassé, pas d'un déploiement cassé.
+func FilmFactsInventory(titleSlug, dir, extension string) domain.ResourceFilmFacts {
+	out := domain.ResourceFilmFacts{TitleSlug: titleSlug, Path: dir}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			slog.Warn("resources: dossier des faits de film illisible",
+				"module", "monitoring", "title_slug", titleSlug, "path", dir, "err", err)
+		}
+		return out
+	}
+	var oldest, newest time.Time
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), extension) {
+			continue
+		}
+		info, infoErr := e.Info()
+		if infoErr != nil {
+			slog.Warn("resources: fait de film illisible",
+				"module", "monitoring", "title_slug", titleSlug, "name", e.Name(), "err", infoErr)
+			continue
+		}
+		out.Files++
+		out.SizeBytes += info.Size()
+		if mod := info.ModTime().UTC(); oldest.IsZero() || mod.Before(oldest) {
+			oldest = mod
+		}
+		if mod := info.ModTime().UTC(); newest.IsZero() || mod.After(newest) {
+			newest = mod
+		}
+	}
+	if !oldest.IsZero() {
+		out.OldestAt, out.NewestAt = oldest.Format(time.RFC3339), newest.Format(time.RFC3339)
+	}
+	return out
 }

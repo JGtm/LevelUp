@@ -331,13 +331,24 @@ git commit -m "refactor(phase2): ..."
   `sync/killcollector` et `replaybuild` écartent le film, jamais un décodage au profil d'un
   voisin), faits / publication séparés, équipe = le film seul ; **amendé à
   la clôture M2, 2026-09-17** : les quatre couches internes sous `film/internal/` fermées
-  par le COMPILATEUR, façade `film/decfilm` (**166** symboles mesurés à la clôture M3 =
-  un alias, réduction en M4), `film/replay` exportée comme couche de publication, une
-  révision PAR COUCHE + le bloc `coverage.decoder` au schéma 61 ; **puis à la clôture M3,
+  par le COMPILATEUR, façade `film/decfilm` (**166** symboles, un alias ; réduction NON
+  RETENUE — décision V25 du 2026-09-18, un ratchet de surface daté à la place :
+  `archlint/film_facade_surface_test.go`, 166 et **257** identifiants `replay.X` hors de
+  `film/`), `film/replay` exportée comme couche de publication, une
+  révision PAR COUCHE + le bloc `coverage.decoder` ; **puis à la clôture M3,
   2026-09-17** : le profil est DÉPENSÉ (33 lignes — la loi des largeurs d'axe relue chez
   l'écrivain, 79/79 cartes, et l'amorce de grenade par clef écrite) et un balayage ne décide
   plus ce qu'il ne discrimine pas (mot de poignée, `param_4` : oracle qui n'écrit rien, sinon
-  repli nommé), `SchemaVersion` inchangée à 61 ; partiels et corrections nommés dans l'ADR) ·
+  repli nommé) ; **puis à la clôture M4 — et du chantier —, 2026-09-18** : les faits d'un
+  film sont PERSISTÉS (`data/cache/film_facts/{slug}/<short8>.filmfacts.bin`, cinq sections,
+  en-tête de 110 o portant les quatre révisions) et la publication REJOUE depuis eux quand ils
+  sont frais, décode sinon (S8 : document depuis les faits ≡ document depuis le film à
+  l'octet sur 10 films, 95× à 442× plus rapide) ; `SchemaVersion` **62** porte `layers`
+  (une révision par calque : la présence d'un calque se lit dans sa révision) et
+  `coverage.deathsPaths` ; « à recuire » est un verdict à trois sorties (`a-jour` /
+  `republier` / `redecoder`) ; AUCUNE révision de décodage montée, donc aucun backlog
+  killsource ouvert ; lot 4.3 (un seul type publié) reporté après le chantier (V16) ;
+  partiels et corrections nommés dans l'ADR) ·
   `0035` **annuaire des joueurs** (xuid = clé d'identité unique ; port `PlayerDirectory` ;
   aucun sync ni suivi sans profil suivi ; `Onboard` seul chemin de création ; verrou décidé
   en un point, défauts sûrs en mode appliqué ; purge sans toucher la base partagée).
