@@ -5297,6 +5297,9 @@ sont triées ici pour que la clôture soit complète.
 | `D7 (4.2.1)` **la porte du golden de forme refuse une SECONDE régénération dans le même commit de montée** : elle compare la version du golden EN PLACE à `SchemaVersion`, donc après une première régénération sous 62 elle lit « 62 contre 62, la forme a changé » et refuse | **NON RETENUE** : le contournement légitime est de restaurer le golden committé (`git checkout`) pour que la porte revoie 61 -> 62. Jamais un forçage. Une ligne à l'en-tête du test le dirait, le jour où un lot y revient |
 | `D8 (4.2.2)` **nommer les quatre couches de DÉCODAGE dans le badge exigerait de transporter leurs révisions courantes** : elles n'atteignent pas le client (aucun `grammarRev` hors du contrat généré côté web), et le seul précédent est l'en-tête `X-Replay-Latest-Schema-Version` (`api/handlers/replay.go`, exposé par `middleware/cors.go`) | **NON RETENUE** (décision de pilote du 2026-09-18, sortie 2) : un second en-tête sur ce modèle serait la sortie complète. Le badge ne nomme que la couche de PUBLICATION, qui se prouve sans rien transporter |
 | `D9 (4.2.1)` **`coverage.grenadeReads` et `coverage.projectiles` sont gardés par le VIDE, pas par un témoin de balayage** (`grenade_reads.go:164` `len(built) == 0` ; `build_pistes.go:118` `len(opt.Projectiles) > 0`) : ces deux blocs ne savent donc pas distinguer « pas lu » de « rien trouvé », contrairement à la doctrine de `coverage.go` | **NON RETENUE** (décision de pilote) : ces conditions restent telles quelles. Elles n'ont PAS été reprises comme gardes de `layers`, qui mentiraient — `gardesDeProduction` ne porte que des refus écrits |
+| `D10 (4.4.1)` **six fixtures de test posaient un artefact qu'elles croyaient « à jour » et en vérifiaient l'inverse** : depuis que `UpToDate` juge AUSSI les révisions, un artefact muet sur ses couches se lit « à redécoder », et ces tests restaient verts en décrivant le contraire de leur intention (`cmd/levelup` ×2, `sync/replayartifacts` ×2, `api/wire` e2e, `replaybuild`) | **TRAITÉE** au commit 4.4.1 : chacune déclare ses couches, depuis `replay.RevisionsCourantesDesCouches()` et jamais un littéral — un littéral se périmerait au premier bump et ramènerait le défaut |
+| `D11 (4.4.1)` **`wouldDowngrade` ne refusait la rétrogradation qu'à schéma ÉGAL et se taisait délibérément à schéma différent** : or une republication venue d'un binaire en retard monte parfois AUSSI le schéma, et se glissait dans ce silence | **TRAITÉE** au même commit, avec le seul critère qu'on sache prouver (« en place intact, candidat qui ne l'est pas »). Ordonner deux révisions pour dire laquelle est la plus ancienne demanderait de comparer des dates dans des chaînes, ce que rien ne garde |
+| `D12 (M4-D1)` **la taille des faits ne peut pas s'afficher au badge de rejeu** : le document ne porte aucun champ de taille de faits, et l'endpoint admin mesure PAR TITRE, pas par film | **NON RETENUE** : l'afficher exigerait soit un champ de plus au document (donc une montée de schéma 63 pour de la télémétrie d'administrateur), soit un second aller-retour par match. Décision de pilote, hors de ce lot. La ligne de `/admin/system`, elle, EST livrée |
 **Deux reprises hors §4 des lots 3.x, tranchées par le pilote — NON RETENUES.**
 
 | Ligne | Pourquoi elle est fermée |
@@ -5422,19 +5425,36 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 
 #### Lot 4.4 — La recuisson sélective par couche — M, high
 
-- [ ] 4.4.1 `replaybuild.Digest` porte les révisions de couche ; « à recuire » se décide par
+- [~] 4.4.1 `replaybuild.Digest` porte les révisions de couche ; « à recuire » se décide par
       couche ; un changement de publication ne redécode pas ; un changement de grammaire ne
-      recuit que ce qui en dépend. **EN ATTENTE DE LA FUSION DE 4.1 (ARRÊT du 2026-09-18,
-      confirmé par le pilote)** : sans faits sur le disque, `republier` n'existe pas et le verdict
-      se réduirait à l'égalité d'aujourd'hui — livrer le troisième état maintenant produirait un
-      `republier` qui retombe TOUJOURS sur `redecoder`, c'est-à-dire le quatrième état « je
-      republierais si j'avais les faits » que la note interdit. Mesure du 2026-09-18 : aucun
-      `FilmFactsPath`, aucun fichier de faits, `replaybuild.go` intact sur la base du lot.
+      recuit que ce qui en dépend. **STATUÉE `[~]` LE 2026-09-18 : UNE MOITIÉ EST LIVRÉE, L'AUTRE
+      EST HORS D'ATTEINTE ET C'EST MESURÉ.** Livré : `Digest` porte `Layers` (cinquième clé du
+      parseur), `Verdict(faitsPresents)` rend `a-jour` / `republier` / `redecoder`,
+      `ArtifactVerdict` est la forme des sites de décision, `UpToDate()` devient une vue du
+      verdict, et `wouldDowngrade` refuse d'écraser un artefact intact par un candidat cuit sous
+      une couche périmée — « un changement de publication ne redécode pas » EST `republier`.
+      **Hors d'atteinte : « un changement de grammaire ne recuit que ce qui en dépend. »** Les
+      quatre révisions sont des CONSTANTES DE COMPILATION posées ensemble
+      (`coverage_decoder.go`) : dès que `grammar.Rev` bouge, TOUT artefact porte une `grammarRev`
+      différente et « ce qui en dépend » vaut tout le parc — le comportement d'aujourd'hui. Une
+      empreinte par calque, seule chose qui le rendrait vrai, est interdite hors de
+      `film/revision` (`archlint/no_ad_hoc_source_fingerprint_test.go`, aucune table
+      d'exception) : c'est un lot à part entière. La limite est écrite dans le godoc de
+      `Verdict`.
+
 - [x] 4.4.2 Badge admin : état par couche (chaîne FR + EN) — SORTIE 2 (décision de pilote du
       2026-09-18) : le badge ne nomme que la couche de PUBLICATION, qui se prouve par la seule
       comparaison `publication-<schemaVersion>` / `latestSchemaVersion`. Les quatre couches de
       décodage sont innommables sans transporter leurs révisions courantes (§4, D8 (4.2.2), non
       retenu). Une clé de plus par langue, aucun cinquième état.
+
+- [x] M4-P4 (V17) La passe de republication de clôture SAIT DIRE CE QU'ELLE A FAIT :
+      `levelup backfill-replay --only-existing` ventile `republies` / `redecodes` dans son
+      rapport, alimentés par le verdict de 4.4.1 et comptés AU SUCCÈS seulement. Leur somme est
+      inférieure ou égale à `construits` — un film sans artefact préalable est cuit pour la
+      première fois, ni republié ni redécodé. **La passe elle-même reste un geste du pilote**, sur
+      signal, après la fusion : son gate est écrit au §5 (87 artefacts, ventilation, empreinte de
+      chaque artefact republié, durée totale).
 
 **Clôture M4** : ADR 0034 amendé ; fusion (V3) ; recuisson sur signal ; §5 complet ; critères S1
 à S8 re-vérifiés et consignés.
@@ -8410,3 +8430,11 @@ Branche `feat/decfilm-42`, base `a5d15e634` (la tête de clôture de M3). Joncti
 | 2026-09-18 | (2) montée | **VERDICT DU PILOTE sur `killRefs`** | `killRefs` = différence de FORME au sens de V14, **un champ** (`Paths`) sur le type observé, cause établie, **51/53 étapes identiques sur les 20 films** et **8/8 fixtures identiques hors blocs neufs** — **CLASSÉE, pas une régression**. Le pilote re-fige `killRefs` et `artifact` à la fusion ; l'exécutant n'a jamais joué `-update` |
 | 2026-09-18 | (2) montée | **`replay-corpus-gate` sur les 17 témoins, `--reference=base --base=a5d15e634`** | **17/17 `ok`, schéma 61 -> 62 partout, 0 PERTE, 0 CHANGEMENT** sur tous les témoins (gains comptés par le gate : 2 sur six témoins, 9 sur onze). Durées 12,1 s à 2 min 34 ; `084a804d` (BTB 26 joueurs) 2 min 7 ; couverture complète (`couverture_incomplete: false`). Rapport JSON conservé hors dépôt |
 | 2026-09-18 | (2) montée | **les feuilles gagnées, mesurées FEUILLE PAR FEUILLE sur les 34 artefacts que `--keep-work` a conservés** (base et HEAD, 17 témoins) | **0 gain HORS les deux blocs neufs, sur 17/17, et 0 perte** : les gains sont exclusivement `layers.*` (39 à 43 feuilles selon le témoin — le compte varie avec les gardes ouvertes : `c75f33b8`, famille bombe, en déclare 43, `bcb6d393` et `fb1a1a72` 39) et `coverage.deathsPaths.*` (**6 feuilles** — `walk` et `directScan` × `population`/`matched`/`published`), **présent sur 10 témoins sur 17** : exactement ceux dont `KillsInput.Read` est vrai. Les sept autres ne portent pas le bloc, et c'est le régime écrit, pas un trou. `bcb6d393`, le témoin NÉGATIF : 39 gains `layers.*`, aucun `deathsPaths`, aucune perte |
+| 2026-09-18 | (4) 4.4.1 | fusion de 4.1 dans la branche du lot | `git merge f9ba456b2` : **FAST-FORWARD, 0 conflit** — les six commits du lot étaient déjà dans l'intégration, donc même le plan n'a pas divergé |
+| 2026-09-18 | (4) 4.4.1 | **le gate SANS DÉCODAGE : la mutation, dans les DEUX SENS** (7 tests neufs) | une révision de couche périmée bascule en `redecoder` ET la présence des faits n'y change rien ; le retour à la révision courante ramène `a-jour` ; le schéma précédent avec des couches courantes donne `republier`, le retrait des faits le fait retomber sur `redecoder`, leur retour le ramène ; une publication franchement périmée DANS `layers` ne change rien (sinon `republier` serait inatteignable) ; **sur FICHIERS**, `ArtifactVerdict` bascule dans les deux sens quand on pose puis retire le fichier de faits ; un candidat cuit sous une grammaire périmée est refusé à l'écriture, le même aux couches courantes passe |
+| 2026-09-18 | (4) 4.4.1 | le plafond de surface `replay.X` | **255 -> 257**, RE-MESURÉ à l'entrée (`find` + `grep -oE` + `sort -u`), avec sa ligne d'historique : `RevisionsCourantesDesCouches` et `FamilleDeRevision` sont les DEUX seuls symboles par lesquels un paquet hors du décodeur peut connaître les révisions courantes — les quatre couches vivent sous `film/internal/`, le compilateur les refuse |
+| 2026-09-18 | (4) et (6) | `gofmt` ; `go build` ; `go vet` ; `go test -count=1 ./internal/... ./cmd/levelup/ ./contracttest/` | sortie vide ; vert ; vert ; **EXIT=0, 152 paquets** aux deux commits |
+| 2026-09-18 | (4) 4.4.1 | `golangci-lint run --new-from-rev=f9ba456b2` | **0 issues** |
+| 2026-09-18 | (6) M4-P4 | la ventilation testée sur ses TROIS cas, plus le refus | `republier` -> 1/0, `redecoder` -> 0/1, **première cuisson (aucun artefact préalable) -> 0/0** (leur somme ne doit pas mentir), et un échec ne compte ni l'un ni l'autre |
+| 2026-09-18 | (d) M4-D1 web | `make check-types` ; `make test-web` ; knip ; couleurs | vert ; **722 fichiers / 7 779 tests** ; knip 0/0/0 ; `lint-no-hardcoded-colors` clean. Libellés FR **et** EN au manifeste `admin.toml`, `generated/admin.ts` REGÉNÉRÉ par `scripts/build_i18n_manifests.mjs` (22 manifestes, 3 385 clés) et jamais édité à la main |
+| 2026-09-18 | (b) (c) (d) | décodage | **AUCUN** : aucun `replay-equiv`, aucun corpus gate, aucun test ouvrant un film. Un re-figeage tourne sur l'intégration |

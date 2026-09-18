@@ -32,6 +32,10 @@ func ecrireArtefactAvecJoueurs(t *testing.T, repoRoot, slug, matchID string, sch
 		"matchId":       matchID,
 		"tracks":        []map[string]any{{}}, // au moins une trajectoire : artefact non « vide »
 		"scoreTimeline": map[string]any{"players": make([]map[string]any, nbJoueurs)},
+		// LES COUCHES SONT DECLAREES (lot 4.4.1) : sans elles, `UpToDate` classe l artefact « a
+		// redecoder » et le mode reparation ne verrait plus aucun artefact A JOUR ET APPAUVRI —
+		// c est-a-dire exactement la population qu il cible.
+		"layers": couchesDeTest(),
 	}
 	raw, err := json.Marshal(doc)
 	if err != nil {
