@@ -193,6 +193,11 @@ go run ./apps/go-api/cmd/levelup backfill-replay --repair-impoverished
 `--repair-impoverished` is mutually exclusive with `--force` (parse error: the mode is
 already a targeted selection). Do **not** substitute `--only-existing`, which skips an
 impoverished artifact as "already up to date" because it carries the current schema number.
+Since schema 62 that verdict reads the layer revisions as well (`replaybuild.Digest.Verdict`:
+`a-jour` / `republier` / `redecoder`), so an ordinary `--only-existing` pass republishes from
+the persisted facts where only the publication moved and re-decodes elsewhere — it still says
+"up to date" for an impoverished artifact cooked by the current binary, which is why this mode
+exists.
 
 Witness run of 2026-08-25 (dry-run, read-only, 951 cached films): 2 repairable artifacts
 (`24dbb67d...`, 29 chunks; `64e8adfa...`, 45 chunks), 32 already complete, 1 off-schema,
