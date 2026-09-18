@@ -38,6 +38,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 func TestParam4PreuveDesLignes(t *testing.T) {
@@ -148,16 +149,54 @@ func p4EcrireMortsTi40(t *testing.T, fc *FilmContext, chemin string) {
 	}
 	fmt.Fprintf(&b, "# mortsTi40=%d masqueDeclare=%d dontDesync=%d recordsAtteints=%d portes=%d\n",
 		n, st.MaskDeclared[ti], st.MaskDeclaredDesync[ti], st.Records[ti], st.CleanRecords[ti])
-	b.WriteString("tsUS\tslot\tgen\tqueueRompue\n")
+	b.WriteString("tsUS\tslot\tgen\tqueueRompue\tenumA\tenumB\tv0c\tv0e\tv14\tv18\t" +
+		"hasRef\tgidPresent\tglobalID\tsrcTag0\tsrcTag4c\thorsDomaine\n")
 	for _, m := range morts {
 		if m.TypeIndex != ti {
 			continue
 		}
-		fmt.Fprintf(&b, "%d\t%d\t%d\t%t\n", m.TimestampUS, m.Slot, m.Gen, m.TailDesync)
+		d := m.Dead
+		fmt.Fprintf(&b, "%d\t%d\t%d\t%t\t%d\t%d\t%d\t%d\t%d\t%d\t%t\t%t\t%#x\t%#x\t%#x\t%s\n",
+			m.TimestampUS, m.Slot, m.Gen, m.TailDesync, d.EnumA, d.EnumB, d.Val0c, d.Val0e,
+			d.Val14, d.Val18, d.HasRef, d.GIDPresent, d.GlobalID, d.SrcTag0, d.SrcTag4c,
+			p4HorsDomaine(d))
 	}
 	if err := os.WriteFile(chemin, []byte(b.String()), 0o600); err != nil {
 		t.Fatalf("ecriture de %s : %v", chemin, err)
 	}
 	t.Logf("MORTS ti=40 : %d lignes -> %s (masqueDeclare=%d dontDesync=%d records=%d portes=%d)",
 		n, chemin, st.MaskDeclared[ti], st.MaskDeclaredDesync[ti], st.Records[ti], st.CleanRecords[ti])
+}
+
+// p4HorsDomaine nomme ce qui, dans une charge utile de dead-state, ne peut pas sortir du flux.
+// Vide = rien a redire. Les criteres sont ceux du TYPE, ecrits avant la mesure :
+//
+//	poignee    `GlobalID`, `SrcTag0`, `SrcTag4c` : `0xFFFFFFFF` = ABSENT (contrat du champ) ;
+//	           sinon une poignee d entite, qui n est jamais nulle.
+//	enum       `EnumA` / `EnumB` sont des entiers signes de petite amplitude ; un negatif ou
+//	           un au-dela de 64 dit que les bits ont ete pris ailleurs.
+//	coherence  `GIDPresent` faux impose `GlobalID == 0xFFFFFFFF`, et reciproquement.
+func p4HorsDomaine(d types.DeadState) string {
+	var m []string
+	nul := func(nom string, v uint32) {
+		if v == 0 {
+			m = append(m, nom+"=0")
+		}
+	}
+	nul("globalID", d.GlobalID)
+	nul("srcTag0", d.SrcTag0)
+	nul("srcTag4c", d.SrcTag4c)
+	if d.EnumA < 0 || d.EnumA > 64 {
+		m = append(m, "enumA")
+	}
+	if d.EnumB < 0 || d.EnumB > 64 {
+		m = append(m, "enumB")
+	}
+	if d.GIDPresent != (d.GlobalID != 0xFFFFFFFF) {
+		m = append(m, "gidIncoherent")
+	}
+	if len(m) == 0 {
+		return "-"
+	}
+	return strings.Join(m, ",")
 }

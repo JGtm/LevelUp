@@ -6261,6 +6261,69 @@ dead-state**. Un `tEnd` plausible ne prouve donc pas que les bits d `i11` ont et
 endroit ; il ne prouve pas non plus le contraire. Le discriminant reste a mesurer : le DOMAINE de
 la charge utile `DeadState` (les deux poignees `SrcTag0` / `SrcTag4c`, `GlobalID`, les enums) sur
 ces cinq morts a la base contre les quatre qui subsistent.
+
+### Lot 5.1.7 — LES TROIS LECTURES SUR `084a804d` : ARRET, LE CORRECTIF NE SE LIVRE PAS, 2026-09-18
+
+Trois lectures demandees par le pilote, faites BASE (`2f04bc7b8`) contre TETE (`312d2e85b`), meme
+film, meme carte (`Fortitude Heavies`), un film a la fois.
+
+**(a) LE BALAYAGE DONNAIT `param_4 = 0`, ET IL NE DISCRIMINAIT RIEN.** `Result.Calibration` a la
+base sur `084a804d` :
+
+```
+LU axisW=[15 15 17] indexW_plage=1 [CARTE] | ORACLE axisW=26 [PROFIL PLAT (score 433, mediane 395)]
+desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 8070, mediane 8070]
+recordStateParam=0 [croissance x1.001]
+```
+
+`recordStateParam = 0` contre **3 / 2 / 4** au registre ET chez l'ecrivain, et un ratio de
+croissance de **1,001** : la valeur sortait d'un ex aequo, exactement la pathologie que le repli
+`repli_parametre_etat_record_infere` nommait. Avec 0, `i10 object-parent-state` prend la branche de
+LECTURE LIBRE (`param < 2`) et perd sa queue `R(3)` (`param > 2` faux), et `i19` perd son second
+identifiant de slot. **`i10` precede immediatement le dead-state `i11`** : a la base, les neuf
+morts de `ti=40` etaient lues derriere DEUX composants mal dimensionnes.
+
+**(b) LES QUATRE FINS DE LA TETE SONT QUATRE DES NEUF DE LA BASE, AU `tEnd` IDENTIQUE.**
+`775/1 = 417`, `820/1 = 6765`, `843/1 = 6562`, `855/1 = 6369` — les memes valeurs a la
+milliseconde des deux cotes. La tete n'invente aucune fin ; elle en retranche cinq.
+
+**(c) LE DOMAINE DE LA CHARGE UTILE `DeadState` NE SEPARE RIEN — ET MON PREMIER CRITERE ETAIT
+FAUX.** Premiere passe : « `EnumA < 0` = hors domaine » rendait 20/27 a la base et 13/15 a la tete,
+c'est-a-dire qu'il frappait AUSSI les fins qui subsistent. Relu sur les valeurs : **`-1` est un
+SENTINELLE D'ABSENCE** (15 des 27 a la base, 10 des 15 a la tete), au meme titre que `0xFFFFFFFF`
+pour les poignees. Critere corrige — poignee nulle, `GlobalID` incoherent avec `GIDPresent`, enum
+hors `[-1, 64]` :
+
+| | lignes `ti=40` | hors domaine |
+|---|---:|---:|
+| BASE | 27 | **0** |
+| TETE | 15 | **0** |
+
+Les cinq perdues et les quatre survivantes portent la MEME forme de charge utile (`gid` absent,
+une poignee `src0` non nulle, `src4c` absent, enums dans le domaine). **Le test ne discrimine
+pas.**
+
+#### VERDICT, PAR LA REGLE ECRITE AVANT LA MESURE
+
+La regle exigeait « 5 hors domaine ET 4 dans le domaine ET balayage != registre ». Obtenu :
+balayage != registre **OUI** (0 contre 3/2/4, et non discrimine) ; 5 hors / 4 dans **NON** (0 hors
+des deux cotes). **C'est une « autre configuration » : ARRET.** Le correctif de 5.1.7-a ne se livre
+pas, et `084a804d` part a l'artefact Theater de l'utilisateur.
+
+**POUR L'OEIL DE L'UTILISATEUR** — match `084a804d-25e1-4921-b624-c883f68b568b`, variante
+`BTB Heavies:CTF`, carte `Fortitude Heavies`. Les cinq fins de vehicule que la tete cesse de dater
+(instants en millisecondes de l'horloge du match, et la fenetre de vie qui les porte) :
+
+| slot/gen | naissance `t0` | dernier echantillon `t1` | fin datee a la BASE | echantillons |
+|---|---:|---:|---:|---:|
+| 769/1 | 0 | 3341 | **3246** | 218 |
+| 791/1 | 0 | 4139 | **4042** | 464 |
+| 793/1 | 0 | 793 | **752** | 192 |
+| 834/1 | 3580 | 3981 | **3973** | 67 |
+| 841/1 | 4144 | 4939 | **4855** | 466 |
+
+Question a trancher a l'oeil : ces cinq vehicules sont-ils DETRUITS a ces instants, ou
+disparaissent-ils autrement (despawn, fin de manche) ?
 ### Lot 5.1.7-a — gates AVEC DECODAGE (voie libre du pilote), 2026-09-18 : **LE GATE DE CORPUS DIT PERTE**
 
 Les deux gates ont tourne, un decodage a la fois. **Aucune reference n'est re-figee** — le geste
