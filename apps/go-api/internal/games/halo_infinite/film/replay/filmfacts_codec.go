@@ -83,6 +83,7 @@ func encodePositionSection(w *gwriter, pos []grammar.BipedPosition) {
 			w.u(uint64(p.YawRaw))
 			w.u(uint64(p.PitchRaw))
 		}
+		encodeDirectionsDePosition(w, p)
 		if p.HasBody {
 			w.f32(p.Body.Health)
 		}
@@ -132,6 +133,7 @@ func decodePositionSection(r *greader, lay profile.I0Layout, world profile.Vec3R
 			p.YawRaw = uint32(r.u())
 			p.PitchRaw = uint32(r.u())
 		}
+		decodeDirectionsDePosition(r, &p)
 		if fl&gpHasBody != 0 {
 			p.HasBody = true
 			p.Body.Health = r.f32()
@@ -146,87 +148,57 @@ func decodePositionSection(r *greader, lay profile.I0Layout, world profile.Vec3R
 	return out
 }
 
-// precisionDePiste dit COMMENT une suite de points se serialise, et la reponse n est pas la meme
-// pour toutes les pistes du decodeur. C EST UNE MESURE, PAS UN GOUT (2026-09-18, lot 4.1.3) :
+// encodeTracks / decodeTracks : UNE SUITE DE POINTS, EN FLOAT32 EXACT.
 //
-//	precisionCentimetre  la coordonnee est PUBLIEE arrondie au centieme (`round2`), donc le
-//	                     centimetre entier est exactement la precision que la sortie porte, et
-//	                     coder un float32 couterait 12 octets par point pour rien.
-//	                     PROUVE pour les PROJECTILES : `projectiles.go:110` publie
-//	                     `round2(p.X)`, `round2(p.Y)`.
-//	precisionExacte      la coordonnee est PUBLIEE TELLE QUELLE. L arrondi est alors une PERTE.
-//	                     PROUVE pour les PISTES D OBJETS DU MONDE : `o.Pos` sort des pistes
-//	                     (`gwPickupResolve`) et `document_ground_weapon_items.go:217` publie
-//	                     `X: o.Pos[0]` SANS `round2` — `ground_weapon_pads.go` n arrondit que
-//	                     ses statistiques de cadence.
+// # POURQUOI PLUS AUCUNE QUANTIFICATION ICI (2026-09-18, lot 4.1.3)
 //
-// # CE QUE L ABSENCE DE CE PARAMETRE A COUTE
+// Ces pistes etaient arrondies au CENTIMETRE ENTIER, sur la foi d un commentaire qui affirmait que
+// « toute coordonnee publiee par l assemblage passe par round2 ». Le gate S8 a demonte cette
+// preuve en deux temps :
 //
-// `encodeTracks` arrondissait TOUT au centimetre, sur la foi d un commentaire de `cmScale` qui
-// affirmait « toute coordonnee publiee par l assemblage passe par round2 ». La mesure du
-// 2026-09-18 (gate S8, diff structurel de deux artefacts du meme film) l a CONTREDIT :
-// `groundWeapons[0]/x` valait `24.479221` au decodage et `24.48` au rejeu, sur les 10 films.
-// Un artefact rejoue perdait donc ses positions d armes au sol a la decimale — silencieusement.
-type precisionDePiste bool
-
-const (
-	// precisionCentimetre : centimetre entier, delta-varint. Pour ce que `round2` publie.
-	precisionCentimetre precisionDePiste = false
-	// precisionExacte : float32 tel quel. Pour ce qui est publie brut.
-	precisionExacte precisionDePiste = true
-)
-
-func encodeTracks(w *gwriter, tracks []types.ProjectileTrack, prec precisionDePiste) {
+//	LES PISTES D OBJETS DU MONDE ne sont PAS arrondies a la publication.
+//	`document_ground_weapon_items.go:217` publie `X: o.Pos[0]` BRUT ; `groundWeapons[0]/x` valait
+//	24.479221 au decodage et 24.48 au rejeu, sur les dix films.
+//
+//	LES PROJECTILES le sont (`projectiles.go:110` publie `round2(p.X)`), et le centimetre y
+//	semblait donc gratuit. IL NE L EST PAS : `round2(-0.001)` vaut `-0`, et la quantification au
+//	centimetre perd le SIGNE de tout ce qui vit sous le demi-centimetre. Mesure sur `fb1a1a72` :
+//	trois points publies `[1,-0,2.13]` par la passe-film et `[1,0,2.13]` par la passe-faits — les
+//	TROIS DERNIERS OCTETS d ecart du gate, apres que tout le reste etait identique.
+//
+// LE PARAMETRE DE PRECISION A DONC DISPARU AVEC SA DERNIERE RAISON D ETRE, et `cmScale` / `cmOf` /
+// `fromCM` avec lui : un mecanisme dont il ne reste aucun appelant se supprime (CLAUDE.md regle 7).
+// Le prix est ecrit au budget des fixtures.
+func encodeTracks(w *gwriter, tracks []types.ProjectileTrack) {
 	w.u(uint64(len(tracks)))
 	for _, tr := range tracks {
 		w.u(uint64(tr.Slot))
 		w.u(uint64(tr.Gen))
 		w.u(uint64(len(tr.Pts)))
 		var pts uint64
-		var prev [3]int64
 		for _, s := range tr.Pts {
 			w.u(s.TimestampUS - pts)
 			pts = s.TimestampUS
-			if prec == precisionExacte {
-				w.f32(s.X)
-				w.f32(s.Y)
-				w.f32(s.Z)
-			} else {
-				cur := [3]int64{cmOf(s.X), cmOf(s.Y), cmOf(s.Z)}
-				for a := 0; a < 3; a++ {
-					w.i(cur[a] - prev[a])
-				}
-				prev = cur
-			}
+			w.f32(s.X)
+			w.f32(s.Y)
+			w.f32(s.Z)
 			w.bool8(s.AtRest)
 			w.u(uint64(s.Chunk))
 		}
 	}
 }
 
-func decodeTracks(r *greader, prec precisionDePiste) []types.ProjectileTrack {
+func decodeTracks(r *greader) []types.ProjectileTrack {
 	n := r.compte(3)
 	out := make([]types.ProjectileTrack, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		tr := types.ProjectileTrack{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		np := r.compte(2)
 		var ts uint64
-		var prev [3]int64
 		for j := 0; j < np && r.err == nil; j++ {
 			ts += r.u()
-			var x, y, z float32
-			if prec == precisionExacte {
-				x, y, z = r.f32(), r.f32(), r.f32()
-			} else {
-				var cur [3]int64
-				for a := 0; a < 3; a++ {
-					cur[a] = prev[a] + r.i()
-				}
-				prev = cur
-				x, y, z = fromCM(cur[0]), fromCM(cur[1]), fromCM(cur[2])
-			}
 			tr.Pts = append(tr.Pts, types.ProjectileSample{
-				TimestampUS: ts, X: x, Y: y, Z: z,
+				TimestampUS: ts, X: r.f32(), Y: r.f32(), Z: r.f32(),
 				AtRest: r.bool8(), Chunk: int(r.u()),
 			})
 		}
@@ -235,23 +207,12 @@ func decodeTracks(r *greader, prec precisionDePiste) []types.ProjectileTrack {
 	return out
 }
 
-// encodeWorldObjectScan / decodeWorldObjectScan serialisent ce que le film rend sur UN archetype
-// d objet du monde : les records de CREATION (position i0, instant, identite MPP), le
-// RECENSEMENT des images-cles qui borne les disparitions, et les pistes de position qui disent
-// si l objet a bouge.
-//
-// UN SEUL CODEC POUR LES DEUX VOIES (armes `ti=42`, power-ups `ti=37`) : elles ont la meme
-// forme, et un second codec aurait diverge du premier au premier champ ajoute.
-//
-// LA BANDE DE SLOTS N EST PAS SERIALISEE, et c est deliberé : l assemblage ne la lit pas (elle
-// sert au seul balayage, qui a deja eu lieu). Le fixture porte ce que l assemblage CONSOMME,
-// pas ce que le decodage a traverse.
 func encodeWorldObjectScan(w *gwriter, s WorldObjectScan) {
 	w.bool8(s.Scanned)
 	encodeCreations(w, s.Creations)
 	encodeCreationStats(w, s.Stats)
 	encodeKeyframes(w, s.Keyframes)
-	encodeTracks(w, s.Tracks, precisionExacte)
+	encodeTracks(w, s.Tracks)
 }
 
 func decodeWorldObjectScan(r *greader) WorldObjectScan {
@@ -259,7 +220,7 @@ func decodeWorldObjectScan(r *greader) WorldObjectScan {
 	s.Creations = decodeCreations(r)
 	s.Stats = decodeCreationStats(r)
 	s.Keyframes = decodeKeyframes(r)
-	s.Tracks = decodeTracks(r, precisionExacte)
+	s.Tracks = decodeTracks(r)
 	return s
 }
 

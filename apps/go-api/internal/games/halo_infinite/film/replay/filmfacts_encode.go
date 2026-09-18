@@ -116,7 +116,7 @@ func encodeEvenements(w *gwriter, g *FilmFacts) {
 		w.u(uint64(t.TypeID))
 	}
 
-	encodeTracks(w, g.Projectiles, precisionCentimetre)
+	encodeTracks(w, g.Projectiles)
 }
 
 // encodeInventaire ecrit les inventaires d image-cle et leurs deltas.
@@ -276,13 +276,7 @@ func encodeMonde(w *gwriter, g *FilmFacts) {
 		w.u(uint64(p.GlobalID))
 		w.u(uint64(p.Points))
 	}
-	w.i(int64(g.PlacementStats.Calibration.Widths.Lead))
-	w.i(int64(g.PlacementStats.Calibration.Widths.Index))
-	w.i(int64(g.PlacementStats.Calibration.Agree))
-	w.u(uint64(g.PlacementStats.Lives))
-	w.u(uint64(g.PlacementStats.Anchors))
-	w.u(uint64(g.PlacementStats.Accepted))
-	w.u(uint64(g.PlacementStats.Confirmed))
+	encodeStatsDePose(w, g.PlacementStats)
 
 	encodeSpawnEvents(w, g)
 

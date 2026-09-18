@@ -52,14 +52,6 @@ func lirePoidsFaibleDAbord(b []byte, n int) uint64 {
 	return v
 }
 
-// cmScale convertit une coordonnee en CENTIMETRES ENTIERS.
-//
-// CE N EST PAS UNE PERTE, ET C EST MESURABLE : toute coordonnee publiee par l assemblage passe
-// par `round2` (arrondi au centieme), sans exception — traces, tirs, lancers, projectiles. Le
-// centimetre entier est donc exactement la precision que la sortie porte. Coder un float32 brut
-// couterait 12 octets par position pour une decimale que personne ne lit.
-const cmScale = 100
-
 // gwriter accumule un flux binaire. Les entiers sont en varint : les deltas d horodatage et de
 // position tiennent sur un a deux octets, ce qui fait tout le poids du fixture.
 type gwriter struct {
@@ -164,10 +156,6 @@ func (r *greader) str() string {
 }
 
 func (r *greader) bool8() bool { return r.byte8() == 1 }
-
-func cmOf(v float32) int64 { return int64(math.Round(float64(v) * cmScale)) }
-
-func fromCM(v int64) float32 { return float32(float64(v) / cmScale) }
 
 // tranche rend les `n` prochains octets SANS copie, et pose l erreur si le flux est plus court.
 //

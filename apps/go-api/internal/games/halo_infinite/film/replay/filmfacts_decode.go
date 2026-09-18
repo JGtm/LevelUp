@@ -151,7 +151,7 @@ func decodeEvenements(r *greader, g *FilmFacts) {
 		})
 	}
 
-	g.Projectiles = decodeTracks(r, precisionCentimetre)
+	g.Projectiles = decodeTracks(r)
 
 }
 
@@ -296,14 +296,7 @@ func decodeMonde(r *greader, g *FilmFacts) {
 		p.GlobalID, p.Points = uint32(r.u()), int(r.u())
 		g.Placements = append(g.Placements, p)
 	}
-	g.PlacementStats = grammar.EquipmentPlacementStats{ByID: map[uint32]int{}}
-	g.PlacementStats.Calibration.Widths = profile.MPPWidths{Lead: int(r.i()), Index: int(r.i())}
-	g.PlacementStats.Calibration.Agree = int(r.i())
-	g.PlacementStats.Lives = int(r.u())
-	g.PlacementStats.Anchors = int(r.u())
-	g.PlacementStats.Accepted = int(r.u())
-	g.PlacementStats.Confirmed = int(r.u())
-	g.PlacementStats.Placements = len(g.Placements)
+	g.PlacementStats = decodeStatsDePose(r)
 
 	decodeSpawnEvents(r, g)
 
