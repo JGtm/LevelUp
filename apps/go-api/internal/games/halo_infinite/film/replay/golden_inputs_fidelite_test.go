@@ -59,7 +59,8 @@ import (
 // n apprend rien), mais TOUT LOT QUI TOUCHE AU CODEC DOIT LE JOUER, localement, sur les huit
 // builds :
 //
-//	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks //	  go test ./internal/games/halo_infinite/film/replay/ -run GoldenInputsFidelite -v
+//	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks \
+//	  go test ./internal/games/halo_infinite/film/replay/ -run GoldenInputsFidelite -v
 func TestGoldenInputsFidelite(t *testing.T) {
 	cache := os.Getenv(miniFilmCacheEnv)
 	if cache == "" {
