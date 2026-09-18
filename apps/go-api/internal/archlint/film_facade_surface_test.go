@@ -19,6 +19,21 @@ package archlint
 // facade reduite » : ce test MESURE, il ne prescrit pas. Un plafond qui descend est le sens de la
 // marche ; il se descend DANS LE COMMIT qui retire le symbole.
 //
+// # ET LA REDUCTION N ARRIVERA PAS : DECISION V25 (2026-09-18, utilisateur, cloture de M4)
+//
+// « Laisser les deux facades telles quelles, avec un ratchet. » La reduction de la facade (166) et
+// de la surface compagnon (257) est NON RETENUE — ce n est plus un report, c est une decision, et
+// elle est consignee au §1.4 du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md` ainsi qu a l ADR 0034
+// (section « State reached at M4 », D-1). CONSEQUENCE POUR CE FICHIER : il n est plus la mesure
+// d entree d un lot a venir, il est LA SEULE CHOSE qui tient la ligne — d ou la phrase
+// [exigenceDeJustificationDatee] dans ses trois messages d erreur.
+//
+// Mesure re-verifiee a la cloture de M4 (base `896a9ce04`) : facade **166**, INCHANGEE depuis la
+// cloture de M3 — la projection de la note de preparation (« M4 augmente la facade ») est refutee
+// par la mesure, les portes neuves de 4.1 et les deux accesseurs de revisions de 4.4.1 servant
+// `replaybuild`, qui importe la couche de publication directement. Le compagnon, lui, est passe de
+// 245 a **257**, chaque marche datee ci-dessous.
+//
 // # LA METHODE DE COMPTAGE, ECRITE ET REPRODUCTIBLE EN UNE COMMANDE
 //
 // Un plafond dont la valeur ne se reproduit pas n est pas un ratchet. Les deux mesures sont donc
@@ -82,6 +97,21 @@ import (
 
 // cheminDeLaFacade — le fichier mesure par (a), relatif a `apps/go-api`.
 const cheminDeLaFacade = "internal/games/halo_infinite/film/decfilm/decfilm.go"
+
+// exigenceDeJustificationDatee — LA PHRASE QUE LES TROIS MESSAGES D ERREUR DOIVENT DIRE.
+//
+// POURQUOI ELLE EST ECRITE UNE SEULE FOIS (regle des 2 copies du depot) : les trois plafonds de
+// ce fichier — surface de la facade, plafond compagnon, ventilation par famille — posent la MEME
+// exigence, et une phrase recopiee trois fois aurait derive au premier lot qui en reformule une.
+//
+// POURQUOI ELLE EXISTE (cloture M4, 2026-09-18, decision V25) : la reduction des deux facades est
+// NON RETENUE, et ce ratchet est DESORMAIS LA SEULE CHOSE qui tient la ligne. Un message qui dit
+// seulement « le plafond a bouge » laisse croire qu on le remonte en changeant le chiffre ; la
+// regle du depot est qu une hausse se JUSTIFIE, avec sa date, dans ce fichier — c est ce que
+// l historique des montees du plafond compagnon fait deja, ligne par ligne.
+const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE DANS CE FICHIER " +
+	"(une ligne : la date, le sha de la base re-mesuree, et les symboles qui la font monter) — " +
+	"jamais un chiffre change seul."
 
 // plafondSurfaceFacade — declarations exportees de premier niveau de la facade.
 const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
@@ -154,9 +184,9 @@ func TestSurfaceDeLaFacadeDuDecodeur(t *testing.T) {
 		t.Errorf("surface de la facade : %d declarations exportees, plafond gele a %d.\n"+
 			"Ce test rougit DANS LES DEUX SENS : au-dessus, la frontiere a grossi (c est ce que "+
 			"le compteur mesure) ; en dessous, baisser la constante DANS CE COMMIT — un plafond "+
-			"laisse au-dessus de la mesure reconstitue une marge en silence.\n"+
+			"laisse au-dessus de la mesure reconstitue une marge en silence.\n%s\n"+
 			"Controle croise : grep -cE '^(const|type|var|func) [A-Z]' apps/go-api/%s",
-			total, plafondSurfaceFacade, cheminDeLaFacade)
+			total, plafondSurfaceFacade, exigenceDeJustificationDatee, cheminDeLaFacade)
 	}
 	for famille, n := range parFamille {
 		plafond, connue := plafondsParFamilleFacade[famille]
@@ -167,7 +197,8 @@ func TestSurfaceDeLaFacadeDuDecodeur(t *testing.T) {
 			continue
 		}
 		if n != plafond {
-			t.Errorf("famille %q : %d symbole(s), plafond gele a %d.", famille, n, plafond)
+			t.Errorf("famille %q : %d symbole(s), plafond gele a %d.\n%s",
+				famille, n, plafond, exigenceDeJustificationDatee)
 		}
 	}
 	for famille, plafond := range plafondsParFamilleFacade {
@@ -193,11 +224,11 @@ func TestSurfaceDeReplayCiteeHorsDuDecodeur(t *testing.T) {
 			apercu = apercu[:12]
 		}
 		t.Errorf("surface de `film/replay` citee hors du decodeur : %d identifiants distincts, "+
-			"plafond gele a %d.\nCe test rougit DANS LES DEUX SENS (cf. en-tete).\n"+
+			"plafond gele a %d.\nCe test rougit DANS LES DEUX SENS (cf. en-tete).\n%s\n"+
 			"Controle croise : find apps/go-api -name '*.go' -not -path '*/film/*' -print0 "+
 			"| xargs -0 grep -hoE '\\breplay\\.[A-Z][A-Za-z0-9_]*' | sort -u | wc -l\n"+
 			"Douze premiers lus : %s",
-			len(ids), plafondSurfaceReplay, strings.Join(apercu, " "))
+			len(ids), plafondSurfaceReplay, exigenceDeJustificationDatee, strings.Join(apercu, " "))
 	}
 }
 
