@@ -103,7 +103,14 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           `FilmStatborg`, `DecodeFilmFactsEntete`,
 //	                                           `DecodeFilmFactsFile`, `EncodeFilmFactsFile`,
 //	                                           `BuildFromFacts`, `BuildFromFilmAvecFaits`)
-const plafondSurfaceReplay = 253 // 2026-09-17 — base a5d15e634 + 4.1.2
+//	255  fusion  (2026-09-18, integration 4.2)  la montee de schema 62 : `replaybuild/kills.go`
+//	                                           cite `DeathsPathsCoverage` et `DeathsPathTally`
+//	                                           pour publier `coverage.deathsPaths`. RE-MESURE A
+//	                                           L ENTREE de la fusion (`comm` sur les deux
+//	                                           inventaires : 2 ajouts, 0 disparition) — un
+//	                                           plafond gele sur la base d un lot rougit a la
+//	                                           fusion sur tout ce qui a grossi ailleurs.
+const plafondSurfaceReplay = 255 // 2026-09-18 — base a5d15e634 + 4.1 + integration 4.2
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
