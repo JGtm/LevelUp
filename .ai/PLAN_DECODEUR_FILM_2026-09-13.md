@@ -5718,7 +5718,7 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   Sur `4f77afc1` : 11 lues, 11 appariees, 11 fermees -> **11 fins publiees** si les 11 vies sont
   publiees (aujourd'hui **3**) ; et **97 / 256** vies publiees aujourd'hui, la ou les naissances
   et les positions se perdent. Sur `a349fea8` : 20 lues -> 3 appariees -> 1 publiee.
-- [x] **5.1.7-a — `param_4` VIENT DU REGISTRE DU FILM** (D2 (5.1.7), decision du pilote).
+- [!] **5.1.7-a — `param_4` VIENT DU REGISTRE DU FILM** (D2 (5.1.7), decision du pilote).
   `param_4` EST le `level` que l'entree de composant porte en `entree + 0x100`, donc
   `Archetype.Level(i)`, que le traverseur descendait deja jusqu'a `consumeByName` sans que
   personne s'en serve. Trois sources concordent (capture live `ti=35` ; slot `+0x10` du
@@ -5735,6 +5735,17 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   quand `e5adf7b2` y monte d'un dans le meme geste. Les 8 fixtures de contrat : **0 ligne de
   difference hors la chaine de revision**. `grammar.Rev` `grammar-2026-09-18` -> `.2` ;
   `facts.Rev` reste `killsource-2026-09-18` (rang du lot 5.1, golden RE-FIGE).
+  **CODE ECRIT (`312d2e85b`), MAIS NON LIVRE : LE GATE DE CORPUS DIT PERTE** (§5). Sur 17 temoins,
+  11 sont a 0/0/0 et **6 portent des pertes**, dont le temoin *vehicules* `084a804d` :
+  `coverage.vehicles.deathsRead` **9 -> 4**, `deathsMatched` 9 -> 4, `endDestroyed` 9 -> 4,
+  `vehicles.tEnd/presents` 9 -> 4 — c'est-a-dire la grandeur meme que le gate reecrit de 5.1.7
+  doit faire MONTER. La cause est mesuree et elle invalide une hypothese de ce volet :
+  **`param_4` VARIE D'UN BUILD A L'AUTRE** (`ti=40 i2` vaut 1 sur `a349fea8`, `a521164d`,
+  `11de8353`, `50247b26` et 2 sur les cinq autres films lus ; `ti=35 i53` vaut 1 ou 2 ;
+  `ti=35 i23` vaut 3 sur `50247b26`). Lire le registre DU FILM est donc plus juste qu'une table,
+  et c'est bien ce que le code fait — mais l'effet sur les vieux builds est une PERTE mesuree, et
+  le ratchet pose au meme commit ne garde rien contre cette variation (il compare la table au
+  registre d'UN SEUL film). **Trois decisions attendent le pilote, ecrites au §5.**
 - [ ] **5.1.7-b — L'ETAT PAR DEFAUT DE `ti=40`** (D3 (5.1.7), decision du pilote) : la marche
   d'image-cle de `ti=40` ne lance jamais sa boucle de composants (`n2` lu a 0,
   `consumeFullStateDefaultBlock` faux), et c'est la que les vies recensees perdent naissance et
@@ -6162,6 +6173,106 @@ decode a ce commit (les gates AVEC decodage suivent, sous « voie libre » du pi
 | 2026-09-18 | gates | `golangci-lint run --new-from-rev=2f04bc7b8 ./...` | **0 issues** (une remontee `goconst` traitee a la source : `object-parent-state-component` devient `compObjectParentState`, troisieme copie du litteral) |
 | 2026-09-18 | gates | `make check-types` · `make test-web` | `tsc -b` propre ; **7 762 tests verts**, 17 skips, 721 fichiers |
 
+### Lot 5.1.7-a — gates AVEC DECODAGE (voie libre du pilote), 2026-09-18 : **LE GATE DE CORPUS DIT PERTE**
+
+Les deux gates ont tourne, un decodage a la fois. **Aucune reference n'est re-figee** — le geste
+appartient au pilote, a la fusion ; ce qui suit est la CLASSIFICATION qu'il a demandee.
+
+#### `replay-equiv`, 20 films, jamais `-update`
+
+`BILAN : 0 identique(s), 20 different(s), 0 ecarte(s), 0 echec(s), 0 illisible(s)`
+
+**Les references sont perimees AVANT ce lot** : re-figees a la cloture M4 (`ab345f537`, sur
+`f9ba456b2`), elles n'ont pas ete retouchees par 5.1.1, qui a pourtant change la grammaire
+(`grammar.Rev` -> `grammar-2026-09-18`). `replay-equiv` seul ne sait donc pas separer ; c'est le
+gate de corpus qui attribue.
+
+| etape | films | classe |
+|---|---|---|
+| `artifact` | 20/20 | **FORME** — publie `grammarRev` dans `coverage.decoder` |
+| `killsource` | 20/20 | **FORME, prouvee au champ pres** — `Result.Calibration` (la chaine perd `recordStateParam=N [croissance xN]`) et `Result.ProfilCalibre`, un `ProfilDeBalayage` ampute de deux champs. Meme classe que `ad401f419` et `8e08d00ed` |
+| `vehicles` | 20/20 | **FORME** — `ObjectDeathStats.Config` est un `FrameConfig` qui porte `Profil ProfilDeBalayage`. Meme classe que `ad401f419` |
+| `pads` | 9/20 | CONTENU |
+| `killRefs` | 3/20 | CONTENU |
+| `inventoryDeltas` (+`.stats`), `abilityRanks` (+`.stats`), `equipmentChanges` (+`.stats`) | 1 (`1c4c63c2`) | CONTENU — `inventoryDeltas` 8 914 -> **8 915**, `abilityRanks` 103 -> **102** |
+| `bombReads` | 1 (`9f57c612`) | CONTENU |
+
+#### `replay-corpus-gate --base=2f04bc7b8`, 17 temoins, cuisson des DEUX cotes — **exit 1 (codePerte)**
+
+**11 temoins sur 17 a 0 gain / 0 perte / 0 changement** — dont `4f77afc1` et `bfecd02b`, les deux
+temoins vehicule recents. **6 temoins bougent, et TOUS portent des pertes** :
+
+| temoin | famille | gains | pertes |
+|---|---|---:|---:|
+| `51ebbc0f` | deux_manches | 1 | 1 |
+| `084a804d` | **vehicules** | 8 | **10** |
+| `a349fea8` | version_33_sans_identification | 9 | 6 |
+| `a521164d` | version_33_build_1_4_1 | 7 | 11 |
+| `11de8353` | version_38_build_1_9_0 | 6 | 4 |
+| `50247b26` | version_31_sans_identification | 7 | 3 |
+
+**LA PERTE QUI COMPTE, ET ELLE EST EXACTEMENT LA CIBLE DU LOT** — `084a804d`, le temoin
+*vehicules* : `coverage.vehicles.deathsRead` **9 -> 4**, `deathsMatched` **9 -> 4**,
+`endDestroyed` **9 -> 4**, `vehicles.tEnd/presents` **9 -> 4**, `samplesAfterEnd` 407 -> 243, et
+`coverage.deathsPaths.directScan.population` 99 -> 57. `11de8353` : `deathsRead` 5 -> 4.
+Telemetrie (jamais comptee) : `coverage.decoder.grammarRev` sur les 17 temoins.
+
+#### LA CAUSE, MESUREE : `param_4` VARIE D'UN BUILD A L'AUTRE — LA TABLE ETAIT UN INSTANTANE
+
+`niveaux_registre_research_test.go` lit le `level` de chaque film, chunk 0 seulement, sur neuf
+films. **Le niveau n'est PAS constant d'un build a l'autre** :
+
+| composant | table | valeurs LUES dans les films |
+|---|---|---|
+| `ti=40 i2 object-forward-and-up-dynamic-precision` | 2 | **2** sur `084a804d`, `51ebbc0f`, `4f77afc1`, `bcb6d393`, `1c4c63c2` — **1** sur `a349fea8`, `a521164d`, `11de8353`, `50247b26` |
+| `ti=35 i53 biped-malleable-property` | 2 | **2** sur `51ebbc0f`, `4f77afc1`, `bcb6d393` — **1** sur les six autres |
+| `ti=35 i23 unit-malleable-property` | 4 | **4** partout sauf `50247b26` : **3** |
+
+Les QUATRE films ou `ti=40 i2` vaut 1 sont EXACTEMENT quatre des six temoins qui bougent. Avec
+`param >= 2` le lecteur d'i2 lit un bit de porte C de plus : la table le faisait lire partout, le
+registre ne le fait plus lire sur ces builds, et tout ce qui suit dans le record `ti=40` — dont le
+dead-state `i11` — se decale. `50247b26` ne porte meme pas la meme liste de composants
+(`i52`/`i61` la ou les autres ont `i53`/`i62`).
+
+**CONSEQUENCE POUR LE RATCHET POSE AU MEME COMMIT** :
+`TestParamByComponentEgaleLeNiveauDuRegistre` compare la table a `ecs_table.tsv`, qui est le
+registre d'UN SEUL film. Il est VERT et il ne garde rien contre cette variation. Tel quel, il
+donne une fausse assurance.
+
+#### (ii) — LA LIGNE DISPARUE EST NOMMEE, ET ELLE N'EST **PAS** PROUVEE FAUSSE
+
+Separation faite sans `git stash` : arbre de base extrait hors depot par
+`git archive 2f04bc7b8 | tar -x`, meme instrument copie des deux cotes
+(`param4_preuve_lignes_research_test.go`), film `1c4c63c2`, carte Refuge. Les deux cotes
+reproduisent exactement les comptes de `replay-equiv` (103/8 914 a la base, 102/8 915 a la tete) :
+**les ecarts sont bien de CE lot, pas de 5.1.1**.
+
+`abilityRanks`, la ligne qui DISPARAIT (une seule) :
+
+```
+tsUS         slot  chunk  paquet  compteur  rang  compteurHorsR3  rangHorsR6
+7738775335   680   9      296     1         4     false           false
+```
+
+`Counter = 1` est dans `[0, 7]` (c'est un `R(3)`) et `Rank = 4` est dans `[0, 63]` (un `R(6)`) :
+**les deux criteres de rejet ecrits AVANT la mesure la declarent VALIDE**. Les denominateurs sont
+identiques des deux cotes (`avecI48 = 117`, `lues = 117`, `nonLues = 0`) : la marche est aussi
+saine a la base qu'a la tete, et ce qui a change est la porte de cette emission — fermee (rang 4)
+a la base, ouverte (aucun rang) a la tete.
+
+`inventoryDeltas`, une ligne qui APPARAIT et deux qui CHANGENT :
+
+```
++ 7681098046  512  6   578   masque=0   sel=0   selLu=false  grenades=[]  munitions=1
+- 8653725738  524  54  2038  masque=2   sel=-1  selLu=true                 -> masque=32
+- 8896209376  524  66  2326  masque=2   sel=-1  selLu=true                 -> masque=32
+```
+
+Le masque est un `R(6)` : `2` et `32` sont tous deux dans le domaine. **Aucun critere ne rejette
+l'une au profit de l'autre.**
+
+**VERDICT (ii), par la regle du pilote** : la preuve n'est pas faite. Ce n'est donc **pas** une
+correction, c'est **une perte a instruire**.
 ### Lot 5.1.7 (post-chantier) — la marche de `ti=40` MESUREE, UN FILM A LA FOIS, 2026-09-18
 
 Branche `feat/decfilm-51`, base `2f04bc7b8`. **Aucun octet de production Go n'est touche** : le lot
