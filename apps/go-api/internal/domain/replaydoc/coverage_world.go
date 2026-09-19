@@ -125,4 +125,9 @@ type VehicleCoverage struct {
 	ShotsUnplaced      int            `json:"shotsUnplaced"`
 	ShotsNoRide        int            `json:"shotsNoRide"`
 	ShotsVehicleWeapon int            `json:"shotsVehicleWeapon"`
+	// LES QUATRE DENOMINATEURS DU CYCLE DE REAPPARITION (schema 63).
+	CycleLocations int `json:"cycleLocations"`
+	Cycles         int `json:"cycles"`
+	CycleGaps      int `json:"cycleGaps"`
+	CycleMissing   int `json:"cycleMissing"`
 }

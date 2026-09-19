@@ -82,12 +82,13 @@ func toFlagCarry(v replay.FlagCarry) replaydoc.FlagCarry {
 
 func toFlagSpan(v replay.FlagSpan) replaydoc.FlagSpan {
 	return replaydoc.FlagSpan{
-		State: v.State,
-		T0:    v.T0,
-		T1:    v.T1,
-		XUID:  v.XUID,
-		X:     v.X,
-		Y:     v.Y,
+		State:          v.State,
+		T0:             v.T0,
+		T1:             v.T1,
+		XUID:           v.XUID,
+		X:              v.X,
+		Y:              v.Y,
+		ReturnProgress: sliceOf(v.ReturnProgress, toGaugePoint),
 	}
 }
 

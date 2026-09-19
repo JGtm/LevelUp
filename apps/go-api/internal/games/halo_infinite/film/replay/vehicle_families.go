@@ -250,6 +250,19 @@ var vehicleFamilyByChassis = map[uint32]string{
 	0x5159c8ef: familleWarthog,
 	0x75312e51: familleWarthog,
 	0x7617ff6e: familleWarthog,
+
+	// --- NOMME A L OEIL DANS THEATER PAR L UTILISATEUR (2026-09-19) ---
+	//
+	// `10754375`, sur `4f77afc1` (Flood Gulch), slot 864 generation 1. L utilisateur a rejoue le
+	// match dans Theater a la barre de temps et a NOMME le chassis : c est un WRAITH, et il
+	// explose a 6:49 (Feelgoodjoker le quitte vers 6:44 apres l alerte). C est une source
+	// DIRECTE — l image du jeu — et elle ne se discute pas contre une piece de manifeste.
+	//
+	// IL N ENTRE PAS PAR LA CHAINE HABITUELLE, et c est dit : ni `labels.tsv`, ni le manifeste
+	// des sons, ni la chaine de destruction ne le nomment. Il entre par l OEIL, avec sa date et
+	// son film. `8aab20b4`, l autre chassis irresolu du parc, RESTE irresolu : l utilisateur ne
+	// l a pas vu, et on ne devine pas le second parce qu on a nomme le premier.
+	0x10754375: familleWraith,
 }
 
 // vehicleFamilyOf rend la famille de chassis d un `MPPWord32`, ou la chaine VIDE quand la table

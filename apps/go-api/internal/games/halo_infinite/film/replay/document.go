@@ -45,7 +45,7 @@ package replay
 // donc aux deux : le retrait de ces notes-ci a fait disparaitre la seule description de la v51,
 // restauree a la chronique le meme jour. Une entree de chronique se pose DANS LE COMMIT qui
 // monte la version, jamais apres.
-const SchemaVersion = 62
+const SchemaVersion = 63
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -260,6 +260,14 @@ type ReplayDocument struct {
 	// service, sinon les artefacts déjà cuits resteraient muets). Absent quand aucune famille
 	// n'est résolue.
 	VehicleLabels map[string]VehicleLabel `json:"vehicleLabels,omitempty"`
+	// VehicleCycles est LE CYCLE DE REAPPARITION de chaque EMPLACEMENT de naissance de vehicule
+	// (cf. vehicle_cycles.go) : le delai mediane entre la destruction d un vehicule et la
+	// naissance du suivant au meme endroit, avec ses deciles et les deux moities de son
+	// denominateur. Le film n ecrit AUCUN minuteur de reapparition de vehicule (negatif mesure
+	// sur les 294 noms de composant) : le cycle se DEDUIT, exactement comme `PadCycle` pour les
+	// socles d arme, et seuls les emplacements dont le cycle est ETABLI y figurent. Absent quand
+	// aucun ne l est ; `coverage.vehicles.cycle*` dit lequel des silences.
+	VehicleCycles []VehicleCycle `json:"vehicleCycles,omitempty"`
 	// WeaponPads (les SOCLES D'ARME du match) et PadPickups (leurs occupations ACHEVÉES) : une
 	// donnée de MATCH et non de carte, publiée seulement là où la récurrence est mesurée.
 	// Forme, chronique et refus de publication : document_ground_weapons.go.

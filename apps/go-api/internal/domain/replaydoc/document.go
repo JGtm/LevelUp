@@ -43,6 +43,7 @@ type ReplayDocument struct {
 	GroundWeapons       []GroundWeapon          `json:"groundWeapons,omitempty"`
 	Vehicles            []VehicleTrack          `json:"vehicles,omitempty"`
 	VehicleLabels       map[string]VehicleLabel `json:"vehicleLabels,omitempty"`
+	VehicleCycles       []VehicleCycle          `json:"vehicleCycles,omitempty"`
 	WeaponPads          []WeaponPad             `json:"weaponPads,omitempty"`
 	PadPickups          []PadPickup             `json:"padPickups,omitempty"`
 	Grenades            []Grenade               `json:"grenades,omitempty"`

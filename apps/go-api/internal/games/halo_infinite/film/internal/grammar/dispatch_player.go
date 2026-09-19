@@ -70,9 +70,6 @@ func consumePlayerAndSceneComponent(br *Lecteur, name string, typeIndex uint32, 
 	case compManagedObjectPropName: // ti=13 i0 (FUN_142ed69d8) — R(32), sonde
 		br.obs.publishProbe(typeIndex, ProbeManagedObjectPropertyName, br.ReadBits(32))
 		return variant, nil, true
-	case "managed-navpoint-sub-type-component": // ti=12 i0 (FUN_1410e0cac) — R(32)
-		br.ReadBits(32)
-		return variant, nil, true
 	case "player-early-respawn-requested-component": // ti=5 i8 (FUN_142f04034) — R(1)
 		br.ReadBit()
 		return variant, nil, true
@@ -128,7 +125,7 @@ func consumeCrewFlockAndMusicComponent(br *Lecteur, name string, typeIndex uint3
 	case "flock-destination-component": // ti=21 i2-i11 — R(1)flag + vec3 quant(6+level) + R(2) si rsp>1
 		br.ReadBit()
 		consumeQuantVec3(br, quantAxisWidth(uint(level)))
-		if paramForComponent(br, name) > 1 {
+		if level > 1 {
 			br.ReadBits(2)
 		}
 		return variant, nil, true
