@@ -6166,6 +6166,70 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
+### Lot 5.1.8 — LE CORRECTIF : UN ARMEMENT EST UNE MONTEE QUI ATTEINT LE PLEIN, 2026-09-19
+
+#### LA SEMANTIQUE, MESUREE AVANT D ETRE CODEE
+
+`TestSommetBombe` sur `c75f33b8` : **8 segments atteignent le plein** — quatre armements vus sur
+leurs DEUX miroirs (slots 1459 et 1471) — et tous ont la MEME forme :
+
+```
+slot=1459/1471   89427..108948 ms  ech=193  qStart=131 qMin=127 qMax=254 qEnd=127
+slot=1459/1471  193703..213323 ms  ech=194  qStart=131 qMin=127 qMax=254 qEnd=127
+slot=1459/1471  250060..260270 ms  ech=100  qStart=165 qMin=127 qMax=254 qEnd=127
+slot=1459/1471  432030..450349 ms  ech=181  qStart=131 qMin=127 qMax=254 qEnd=127
+BILAN : 8 segments atteignent le plein, 0 y terminent
+```
+
+**L anneau redescend a mi-course et s y tient** : ni maintien au plein, ni retombee a zero, mais
+le PLANCHER DU CYCLE (`qEnd == qMin == qStart` a la tolerance pres). Ce n est pas un desamorcage —
+c est l anneau qui passe en mode meche.
+
+#### LE CORRECTIF, DANS `replay` SEUL
+
+`classifyBombSegments` TRONQUE chaque segment a son premier echantillon au plein avant tout
+jugement de forme, puis le predicat existant s applique au prefixe. Un segment qui n atteint pas
+le plein est rendu INTACT : la troncature ne cree pas d armement, elle borne celui que le plein a
+deja etabli. **Aucun octet de `grammar`, donc pas de `grammar.Rev`.**
+
+| `c75f33b8` | base `83a562ea1` | tete |
+|---|---|---|
+| armements publies | 4 | **4** |
+| `timeMs` | 92 330 · 196 605 · 252 163 · 434 933 | **identiques a la ms** |
+| `startMs` | 89 427 · 193 703 · 250 060 · 432 030 | **identiques** |
+| `fuseMs` | 4 930 x4 | **identiques** |
+| frames `t` / `startT` | 455/426, 1498/1469, 2054/2033, 3881/3852 | **identiques** |
+
+#### L INVARIANT REECRIT, ET POURQUOI
+
+`TestBuildBombArmingsEcarteLeCycleDeRecharge` figeait l INVERSE : « le cycle complet du marqueur
+(130 -> 254 -> 127) sort de lui-meme ». Son socle etait une lecture INCOMPLETE de `ti=12` — tant
+que l anneau n etait lu que sur les rares records propres, le segment s arretait au sommet faute
+d echantillons suivants. Le portage de `ti=12 i1..i12` (lot 5.1.1) rend 864 lectures de plus
+(1 148 -> 2 012) et la forme change de camp : celle que le test appelait « recharge » EST celle
+des quatre armements reels, meche identique de 4 930 ms sur les quatre.
+
+Il est REECRIT sous un nom qui dit la regle vraie —
+`TestBuildBombArmingsCycleCompletEstUnArmementDateAuPremierPlein` — avec sa justification datee et
+sa mesure. **Le cas negatif reste, et il est REEL** :
+`TestBuildBombArmingsEcarteLaMonteeQuiNAtteintPasLePlein` (plafond 240 puis redescente) — cela,
+c est une recharge ou un abandon. L ancien nom est RETIRE de `.ai/baselines/tests_pre_migration.jsonl`
+dans le MEME commit (regle du 16/09).
+
+#### LA SEULE LIGNE QUI RESTE, ET ELLE EST ACCEPTEE
+
+`coverage.bombArmings.rises` **73 -> 65**. C est un DENOMINATEUR : `cov.Rises = len(segments)`, et
+le gate compte des SEGMENTS, pas des armements. Les 864 lectures de plus comblent des trous, donc
+des segments auparavant separes fusionnent. **Aucun armement n est perdu, aucun instant ne bouge.**
+
+| Date | Point | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-19 | semantique | `TestSommetBombe` sur `c75f33b8` | 8 segments au plein, 0 y terminent ; `qMin 127 / qMax 254 / qEnd 127` |
+| 2026-09-19 | correctif | `replay-corpus-gate --base=83a562ea1 --temoins=c75f33b8` | **4 armements restaures, instants identiques a la ms** ; 1 gain / 1 perte / 0 changement, la perte etant `rises` |
+| 2026-09-19 | tampon synthetique | `TestArmementEstUneMonteeQuiAtteintLePlein` | montee qui atteint le plein puis continue = **1** · montee sous le plein = **0** · deux montees = **2** ; plus `TestArmementDateAuPremierPlein` (1 400 ms, pas 1 700) |
+| 2026-09-19 | invariant | ancien test reecrit + cas negatif reel + baseline JSONL purgee | vert |
+| 2026-09-19 | gates | `gofmt` · les 7 chemins · `golangci --new-from-rev=2f04bc7b8` | 0 fichier, tout vert, **0 issues** |
+
 ### Lot 5.1.8 — L ASSAUT ETEINT : COMMIT FAUTIF NOMME, CAUSE MESUREE, 2026-09-19
 
 #### LE BISECT, EN UN SEUL DECODAGE
