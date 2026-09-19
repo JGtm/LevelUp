@@ -60,6 +60,86 @@ func TestNormalizeModeLabel(t *testing.T) {
 	}
 }
 
+// TestNormalizeModeLabel_DeuxGrammaires — les pair_name de l'API existent sous DEUX
+// grammaires : « Conteneur:Mode on Carte » et la forme INVERSÉE « Mode:Conteneur
+// [qualificatif] on Carte ». Avant le 2026-09-19 la seconde rendait « Arena », « BTB Fiesta »
+// ou « Doubles » comme mode (jamais traduits, 531 matchs « Arena » mélangeant CTF et Slayer
+// dans le filtre Mode de l'Explorer).
+func TestNormalizeModeLabel_DeuxGrammaires(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		// Grammaire « Conteneur:Mode » — inchangée.
+		{"arena slayer", "Arena:Slayer on Bazaar", "Slayer"},
+		{"btb ctf", "BTB:CTF on Highpower", "CTF"},
+		{"ranked doubles slayer", "Ranked:Doubles Slayer on Live Fire", "Doubles Slayer"},
+		{"fiesta slayer sans carte", "Fiesta:Slayer", "Slayer"},
+		{"super fiesta identite forge", "Super Fiesta:Slayer on Prism - Forge", "Super Fiesta"},
+		{"btb heavies", "BTB Heavies:Slayer on Fortitude", "Slayer"},
+
+		// Forme inversée, reste vide → le mode est à gauche.
+		{"inv slayer arena carte", "Slayer:Arena on Live Fire", "Slayer"},
+		{"inv ctf arena carte", "CTF:Arena on Opulence", "CTF"},
+		{"inv team slayer arena", "Team Slayer:Arena", "Team Slayer"},
+		{"inv strongholds arena", "Strongholds:Arena", "Strongholds"},
+		{"inv slayer doubles carte", "Slayer:Doubles on Empyrean", "Slayer"},
+		{"inv gruntpocalypse fiesta", "Gruntpocalypse:Fiesta on Vallaheim Firefight", "Gruntpocalypse"},
+		{"inv slayer ranked", "Slayer:Ranked", "Slayer"},
+
+		// Forme inversée, reste = identité de playlist → identité canonique.
+		{"inv super fiesta carte", "Slayer:Arena Super Fiesta on Chasm", "Super Fiesta"},
+		{"inv super fiesta sans carte", "Slayer:Arena Super Fiesta", "Super Fiesta"},
+		{"inv husky raid", "CTF:Arena Husky Raid on Pharaoh", "Husky Raid"},
+
+		// Forme inversée, qualificatif → recollé devant le mode (ordre des clés mode_name_tr).
+		{"inv neutral flag carte", "CTF:Arena Neutral Flag on Cliffhanger", "Neutral Flag CTF"},
+		{"inv neutral flag sans carte", "CTF:Arena Neutral Flag", "Neutral Flag CTF"},
+		{"inv tactical", "Slayer:Arena Tactical", "Tactical Slayer"},
+		{"inv btb fiesta carte", "CTF:BTB Fiesta on Highpower", "Fiesta CTF"},
+		{"inv tactical carte forge", "Slayer:Arena Tactical on Prism - Forge", "Tactical Slayer"},
+		{"inv tactical forge sans carte", "Slayer:Arena Tactical - Forge", "Tactical Slayer"},
+		{"inv ctf arena forge", "CTF:Arena on Opulence - Forge", "CTF"},
+
+		// Casse : conteneurs et identités insensibles à la casse, le mode garde sa graphie.
+		{"inv casse conteneur", "slayer:ARENA on Live Fire", "slayer"},
+		{"inv casse qualificatif", "ctf:arena neutral flag", "neutral flag ctf"},
+		{"inv casse identite", "Slayer:arena SUPER FIESTA on Chasm", "Super Fiesta"},
+		{"conteneur casse gauche", "arena:Slayer on Bazaar", "Slayer"},
+
+		// Défaut inchangé : ni conteneur à gauche ni en tête à droite → partie droite.
+		{"infection alpha zombies", "Infection:Alpha Zombies", "Alpha Zombies"},
+		{"firefight classic", "Firefight:Classic", "Classic"},
+		// Mot entier : « Arenax » n'est pas un conteneur → défaut.
+		{"arenax mot entier", "Slayer:Arenax", "Arenax"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := NormalizeModeLabel(tc.raw); got != tc.want {
+				t.Errorf("NormalizeModeLabel(%q) = %q ; want %q", tc.raw, got, tc.want)
+			}
+		})
+	}
+}
+
+// Le strip de carte connue (mapLabels, étape 1) ne change pas le verdict de la forme inversée.
+func TestNormalizeModeLabel_DeuxGrammaires_CarteConnue(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ raw, mapLabel, want string }{
+		{"Slayer:Arena on Live Fire", "Live Fire", "Slayer"},
+		{"CTF:Arena Neutral Flag on Cliffhanger", "Cliffhanger", "Neutral Flag CTF"},
+		{"Slayer:Arena Super Fiesta on Chasm", "Chasm", "Super Fiesta"},
+	}
+	for _, tc := range cases {
+		if got := NormalizeModeLabel(tc.raw, tc.mapLabel); got != tc.want {
+			t.Errorf("NormalizeModeLabel(%q, %q) = %q ; want %q", tc.raw, tc.mapLabel, got, tc.want)
+		}
+	}
+}
+
 // TestResolveModeUIWithVariant couvre la convention pair-sinon-variant : pair
 // prioritaire (FR sinon EN), fallback game_variant (FR sinon EN) pour les titres
 // sans pair_name (Halo 5), normalisation appliquée, nil si aucune source.

@@ -70,7 +70,8 @@ func wholeWordIndex(haystack, needle string) int {
 	return -1
 }
 
-// isWordChar : caractère de mot ASCII (a-z, 0-9, _). haystack est déjà en minuscules.
+// isWordChar : caractère de mot ASCII (a-z, A-Z, 0-9, _). Les majuscules sont acceptées
+// parce que SplitContainer teste l'octet brut du libellé (« ArenaX » n'est pas « Arena »).
 func isWordChar(b byte) bool {
-	return b == '_' || (b >= 'a' && b <= 'z') || (b >= '0' && b <= '9')
+	return b == '_' || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9')
 }
