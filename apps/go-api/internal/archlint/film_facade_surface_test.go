@@ -32,7 +32,7 @@ package archlint
 // cloture de M3 — la projection de la note de preparation (« M4 augmente la facade ») est refutee
 // par la mesure, les portes neuves de 4.1 et les deux accesseurs de revisions de 4.4.1 servant
 // `replaybuild`, qui importe la couche de publication directement. Le compagnon, lui, est passe de
-// 245 a **257**, chaque marche datee ci-dessous.
+// 245 a **258**, chaque marche datee ci-dessous.
 //
 // # LA METHODE DE COMPTAGE, ECRITE ET REPRODUCTIBLE EN UNE COMMANDE
 //
@@ -147,7 +147,23 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           quatre couches vivent sous `film/internal/`, le
 //	                                           compilateur les refuse). RE-MESURE A L ENTREE du lot :
 //	                                           255 sur la base fusionnee, 257 apres.
-const plafondSurfaceReplay = 257 // 2026-09-18 — base f9ba456b2 (4.1 + 4.2 fusionnes) + 4.4.1
+//	258  5.1.7   (2026-09-19)                  la ventilation des vies de vehicule : l instrument
+//	                                           `replaybuild/ventilation_vies_research_test.go` cite
+//	                                           `replay.VehicleScan` — le type que l observateur rend
+//	                                           a l etape `vehicles`, et la SEULE facon de mesurer la
+//	                                           cause par vie sans redeviner une largeur. Un seul
+//	                                           symbole neuf. RE-MESURE A L ENTREE du lot : 257 sur
+//	                                           `50136328c`, 258 apres.
+//	259  5.1.5   (2026-09-19)                  la montee de schema 63 : `replay.VehicleCycle`, le
+//	                                           type publie du cycle de reapparition par
+//	                                           emplacement, cite par le convertisseur jumeau
+//	                                           `service/replayview/convert_vehicles.go`. Un seul
+//	                                           symbole neuf — `returnProgress` n en ajoute AUCUN,
+//	                                           il reutilise `replay.GaugePoint`, deja cite par le
+//	                                           meme convertisseur pour la jauge des zones.
+//	                                           RE-MESURE A L ENTREE du lot : 258 sur `8b8d93c87`,
+//	                                           259 apres.
+const plafondSurfaceReplay = 259 // 2026-09-19 — base 8b8d93c87 + montee 63 (replay.VehicleCycle)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

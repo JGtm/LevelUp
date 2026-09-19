@@ -95,6 +95,7 @@ var defaultStateDeserByTI = map[uint32]func(*Lecteur){
 	37: consumeDefaultStateTI37,
 	38: consumeDefaultStateTI38,
 	39: consumeDefaultStateTI38, // meme deser FUN_1408f0b48 que ti38
+	40: consumeDefaultStateTI40, // FUN_1410a5a74 (default_state_ti40.go) — CINQ FEUILLES LUES, lot 5.1.7-b
 	42: consumeDefaultStateTI42, // FUN_1407f0c68 (default_state_ti42.go) — VALIDE PAR ORACLE
 	43: consumeDefaultStateTI36, // FUN_140fe7630 : meme forme V + MPP que ti36
 	47: consumeDefaultStateTI14, // FUN_1410f44f8 : meme forme V + R(5) que ti14 (lot 1.3)

@@ -200,6 +200,11 @@ const NULLABLE_ARRAYS = [
   // vaut TOUJOURS `inconnue` : la datation de la destruction a été mesurée et RÉFUTÉE (le
   // conducteur sort vivant, le véhicule réplique encore 13-36 s après avoir été quitté).
   'vehicles',
+  // `vehicleCycles` : LE CYCLE DE RÉAPPARITION par EMPLACEMENT de naissance de véhicule (schéma
+  // 63, 2026-09-19). Seuls les emplacements dont le cycle est ÉTABLI y figurent — le film
+  // n'écrit aucun minuteur de réapparition de véhicule, le cycle se DÉDUIT de la mort datée à la
+  // naissance suivante au même endroit.
+  'vehicleCycles',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -300,8 +305,14 @@ const NULLABLE_ARRAY_PATHS = [
   // `bombStats` garde le droit d'être absent (comme `scoreTimeline`), son tableau non.
   'bombStats.players',
   'vehicles',
+  'vehicleCycles',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
+  // TROISIÈME NIVEAU (schéma 63) : LA JAUGE DE RETOUR d'un drapeau au sol — la série datée
+  // `[{t, v}]` du remplissage, publiée sur les seuls intervalles `dropped` que le film couvre.
+  // Absente partout ailleurs, et sur tout artefact antérieur à 63 : la frontière la comble à
+  // VIDE, et l'infobulle n'affiche alors aucune ligne de retour.
+  'flagCarries[].spans[].returnProgress',
   // La vie d'un véhicule (schéma 39) porte DEUX tableaux imbriqués nullables : sa trajectoire
   // (`samples`) et ses épisodes d'occupation (`rides`). `spawn`, lui, n'est PAS un tableau — un
   // objet optionnel absent quand le record de création n'a pas été lu — et ne figure donc pas ici.

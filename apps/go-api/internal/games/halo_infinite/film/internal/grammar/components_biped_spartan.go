@@ -25,8 +25,8 @@ package grammar
 // stores `value-1`, then ONLY if `value-1 == 2` (raw tag == 3) does it call the
 // heavy FUN_142f25e90 (the grapple-anchor block). For tag != 3 the body reads nothing.
 //
-// rsp est param_4 : le VRAI, celui du composant (paramForComponent — la capture CE donne
-// i59 -> 2, la queue R(3) EST lue). L'ancien code lisait le global recordStateParam brut,
+// rsp est param_4 : le VRAI, celui du composant — le `level` que le registre du film lui donne
+// (i59 -> 2, la queue R(3) EST lue). L ancien code lisait le global recordStateParam brut,
 // qui vaut 0 hors harnais : la queue R(3) manquait dans toutes les marches offline — le
 // « pied de 3 bits » mesuré entre chaque record i59 et le suivant (TestI59AnchorWalkProof,
 // écarts p10=p50=p90=3 sur 988 témoins) est exactement cette queue. Corrigé le 2026-08-16.
@@ -123,11 +123,11 @@ func consumeBipedSlideQuantNormal(br *Lecteur) {
 // param_4 (EBP=R9D) == recordStateParam. With recordStateParam==2 (>=1) the second
 // dequant R(8) IS taken. Common totals: 1 bit (gate==0) or 1+(1+{0|29})+8+8+8 =
 // 26 / 55 bits (gate==1). CONFIRMED bit-exact from the FUN_142f26ce8 disasm.
-func consumeBipedSlide(br *Lecteur) {
+func consumeBipedSlide(br *Lecteur, recordStateParam uint32) {
 	if br.ReadBit() { // FUN_1406cf008 = R(1) gate
 		consumeBipedSlideQuantNormal(br) // FUN_14076d4d0 -> FUN_14076d528
 		br.ReadBits(8)                   // FUN_1406d84b4(w=8) = R(8)
-		if br.recordStateParam() >= 1 {
+		if recordStateParam >= 1 {
 			br.ReadBits(8) // FUN_1406d84b4(w=8) = R(8), gated on param_4>=1
 		}
 		br.ReadBits(8) // inline R(8) -> [dst+2]

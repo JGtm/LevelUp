@@ -14267,6 +14267,23 @@ components:
           type: integer
         flagFilm:
           type: boolean
+        gaugePaired:
+          format: int64
+          type: integer
+        gaugePoints:
+          format: int64
+          type: integer
+        gaugeReads:
+          format: int64
+          type: integer
+        gaugeScanned:
+          type: boolean
+        gaugeSlots:
+          format: int64
+          type: integer
+        gaugeSpans:
+          format: int64
+          type: integer
         homeByObject:
           format: int64
           type: integer
@@ -14357,6 +14374,12 @@ components:
         - dropsWithheld
         - ownFlagRefused
         - unresolved
+        - gaugeScanned
+        - gaugeSlots
+        - gaugeReads
+        - gaugePaired
+        - gaugeSpans
+        - gaugePoints
       type: object
     FlagCarry:
       additionalProperties: false
@@ -14394,6 +14417,12 @@ components:
     FlagSpan:
       additionalProperties: false
       properties:
+        returnProgress:
+          items:
+            $ref: '#/components/schemas/GaugePoint'
+          type:
+            - array
+            - "null"
         state:
           type: string
         t0:
@@ -22767,6 +22796,12 @@ components:
           type:
             - array
             - "null"
+        vehicleCycles:
+          items:
+            $ref: '#/components/schemas/VehicleCycle'
+          type:
+            - array
+            - "null"
         vehicleLabels:
           additionalProperties:
             $ref: '#/components/schemas/VehicleLabel'
@@ -29274,6 +29309,18 @@ components:
         ambiguous:
           format: int64
           type: integer
+        cycleGaps:
+          format: int64
+          type: integer
+        cycleLocations:
+          format: int64
+          type: integer
+        cycleMissing:
+          format: int64
+          type: integer
+        cycles:
+          format: int64
+          type: integer
         deathsMatched:
           format: int64
           type: integer
@@ -29411,6 +29458,45 @@ components:
         - shotsUnplaced
         - shotsNoRide
         - shotsVehicleWeapon
+        - cycleLocations
+        - cycles
+        - cycleGaps
+        - cycleMissing
+      type: object
+    VehicleCycle:
+      additionalProperties: false
+      properties:
+        family:
+          type: string
+        gaps:
+          format: int64
+          type: integer
+        medianS:
+          format: float
+          type: number
+        missing:
+          format: int64
+          type: integer
+        p10S:
+          format: float
+          type: number
+        p90S:
+          format: float
+          type: number
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+      required:
+        - x
+        - "y"
+        - medianS
+        - p10S
+        - p90S
+        - gaps
+        - missing
       type: object
     VehicleLabel:
       additionalProperties: false

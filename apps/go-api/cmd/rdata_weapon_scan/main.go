@@ -203,7 +203,6 @@ func litLoc(reg *decfilm.Registry, worldPath string, chunkIdx, maxPkts int) {
 	pkts := listPackets(d)
 	cfg := decfilm.FrameConfig{HasExtraFields: false, IDLowBits: 11,
 		Profil: decfilm.ProfilDeBalayageParDefaut()}
-	cfg.Profil.PoserParamEtat(2)
 	// stub i63 pour franchir le dernier composant biped et enchaîner les records.
 	cfg.Profil.Grammaire.LargeursBouchon = map[string]int{"biped-action-component": 48}
 

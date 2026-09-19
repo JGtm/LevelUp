@@ -43,8 +43,8 @@ func TestRouteDuProfilCalibreJusquAuContexte(t *testing.T) {
 	}
 
 	// UN PROFIL CALIBRE RECONNAISSABLE. Les valeurs sont celles que `killsource` retient
-	// (descripteur de traversee, `param_4`) plus une valeur de mouvement QUE LA CARTE NE POSE
-	// PAS, toutes reglees sur des valeurs QUE NI L'INVARIANT NI LE CATALOGUE NE PRODUISENT :
+	// (descripteur de traversee, generation stricte) plus une valeur de mouvement QUE LA CARTE NE
+	// POSE PAS, toutes reglees sur des valeurs QUE NI L'INVARIANT NI LE CATALOGUE NE PRODUISENT :
 	// leur presence apres coup ne peut venir que de la route.
 	//
 	// C'ETAIT `Mouvement.AbsoluteAxisW` JUSQU'AU LOT 3.4.1-a : la largeur UNIFORME du chemin
@@ -53,7 +53,7 @@ func TestRouteDuProfilCalibreJusquAuContexte(t *testing.T) {
 	calibre := grammar.ProfilDeBalayageParDefaut()
 	calibre.Mouvement.DeltaAxisWidth = 17
 	calibre.Mouvement.Traversal.IndexW = 2
-	calibre.PoserParamEtat(3)
+	calibre.Grammaire.GenerationStricte = true
 	// ET UNE QUATRIEME, QUI REND LA MUTATION D ORDRE VISIBLE. Le descripteur world-object du
 	// profil par defaut est celui de `cliffhanger` — la MEME carte que l'entree de catalogue de
 	// ce test : les deux coincideraient, et intervertir les deux poses ne changerait rien. On le
@@ -77,10 +77,13 @@ func TestRouteDuProfilCalibreJusquAuContexte(t *testing.T) {
 		t.Errorf("index de traversee = %d, calibre a 2 (meme cause qu'au-dessus)",
 			got.Mouvement.Traversal.IndexW)
 	}
-	if !got.ParamEtatImpose || got.ParamEtat != 3 {
-		t.Errorf("param_4 = %d (impose=%t), calibre a 3 (impose).\n"+
-			"C'est la troisieme valeur que `killsource` retient, et elle voyage par le meme canal.",
-			got.ParamEtat, got.ParamEtatImpose)
+	// C'ETAIT `param_4` JUSQU'AU LOT 5.1.7 : la valeur ne se force plus, elle se LIT dans le
+	// registre du film (`grammar.Archetype.Level`), donc `killsource` ne la retient plus et le
+	// champ a disparu du profil. Le troisieme temoin est la GENERATION STRICTE, qui reste une
+	// valeur que `killsource` pose et qui voyage par le meme canal.
+	if !got.Grammaire.GenerationStricte {
+		t.Error("generation stricte = false, calibree a true.\n" +
+			"C'est la troisieme valeur que `killsource` retient, et elle voyage par le meme canal.")
 	}
 
 	// (2) LES LARGEURS DE LA CARTE ONT SURVECU. Poser le profil remplace la structure ENTIERE :

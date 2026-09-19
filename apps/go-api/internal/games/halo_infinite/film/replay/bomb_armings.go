@@ -222,7 +222,7 @@ func buildBombArmings(reads []types.NavpointRadialRead, detonations []int,
 	cov := &BombArmingsCoverage{Scanned: true, Reads: len(reads), Detonations: len(detonations)}
 	segments := grammar.NavpointSegments(reads)
 	cov.Rises = len(segments)
-	full, pauses := classifyBombSegments(segments, cov)
+	full, pauses := classifyBombSegments(segments, bombReadsBySlot(reads), cov)
 	armed := dedupPairedSegments(full, cov)
 	cov.Armed = len(armed)
 	// La confrontation juge les armements NON dédupliqués — l'instrument qui a mesuré la
@@ -256,16 +256,36 @@ func buildBombArmings(reads []types.NavpointRadialRead, detonations []int,
 	return out, cov, verdict
 }
 
-// classifyBombSegments trie les segments en ARMEMENTS (finissent à leur sommet ET atteignent
-// le quantum plein) et en PAUSES (tenues de désarmement, indexées par slot).
+// classifyBombSegments trie les segments en ARMEMENTS et en PAUSES (tenues de desarmement,
+// indexees par slot).
 //
-// L'ordre du `switch` n'est pas indifférent : un segment qui aurait les deux formes est un
-// armement. C'est celui de l'instrument de mesure, gardé à l'identique.
-func classifyBombSegments(segments []grammar.NavpointSegment, cov *BombArmingsCoverage,
+// UN ARMEMENT EST UNE MONTEE QUI ATTEINT LE PLEIN, QUOI QU IL ARRIVE APRES — et l instant
+// d armement est le PREMIER echantillon au plein. Le segment est donc TRONQUE la avant tout
+// jugement de forme : ce qui suit le sommet ne fait pas partie de l armement.
+//
+// POURQUOI LA TRONCATURE, ET CE QUE MESURE LA SUITE DU SEGMENT (`c75f33b8`, 2026-09-19).
+// Jusqu au 2026-09-19 le predicat exigeait que le segment FINISSE a son sommet. C etait vrai
+// tant que l anneau `ti=12` n etait lu que sur les rares records qui marchaient proprement ; le
+// portage de `ti=12 i1..i12` (lot 5.1.1) a fait passer les lectures de 1 148 a 2 012 sur ce
+// film, et les echantillons ajoutes suivent le sommet — le segment ne finit plus la, il
+// continue, et PLUS AUCUN armement n etait reconnu (4 -> 0).
+//
+// CE QUE SONT CES ECHANTILLONS, MESURE : les huit segments qui atteignent le plein (quatre
+// armements vus sur leurs DEUX miroirs, slots 1459 et 1471) ont tous la meme forme —
+// `qStart` 131 ou 165, `qMin` 127, `qMax` 254, `qEnd` 127. L anneau **redescend a mi-course et
+// s y tient** : ni maintien au plein, ni retombee a zero, mais le PLANCHER DU CYCLE
+// (`qEnd == qMin == qStart` a la tolerance pres). Ce n est donc pas un desamorcage — c est la
+// recharge qui suit l armement, et elle n appartient pas au predicat.
+//
+// L ordre du `switch` n est pas indifferent : un segment qui aurait les deux formes est un
+// armement. C est celui de l instrument de mesure, garde a l identique.
+func classifyBombSegments(segments []grammar.NavpointSegment,
+	parSlot map[uint32][]types.NavpointRadialRead, cov *BombArmingsCoverage,
 ) ([]grammar.NavpointSegment, map[uint32][]grammar.NavpointSegment) {
 	armed := make([]grammar.NavpointSegment, 0, len(segments))
 	pauses := map[uint32][]grammar.NavpointSegment{}
 	for _, g := range segments {
+		g = bombTronquerAuPremierPlein(g, parSlot[g.Slot])
 		switch {
 		case g.EndsAtSummit():
 			if int(g.QMax) < bombArmedFullQuantum {
@@ -418,4 +438,58 @@ func logBombArmings(matchID string, cov *BombArmingsCoverage, v bombFuseVerdict)
 		"publies", cov.Published, "horsFenetre", cov.OutOfWindow,
 		"explosions", cov.Detonations, "couvertes", cov.DetonationsCovered,
 		"meche_ms", v.FuseMS, "mecheMesuree", v.Measured, "cv", v.CV)
+}
+
+// bombReadsBySlot indexe les lectures de l anneau par slot, chacune TRIEE par instant — l ordre
+// que la troncature suppose pour trouver le PREMIER echantillon au plein.
+func bombReadsBySlot(reads []types.NavpointRadialRead) map[uint32][]types.NavpointRadialRead {
+	out := map[uint32][]types.NavpointRadialRead{}
+	for _, r := range reads {
+		out[r.Slot] = append(out[r.Slot], r)
+	}
+	for slot := range out {
+		s := out[slot]
+		sort.SliceStable(s, func(i, j int) bool { return s[i].TMS < s[j].TMS })
+	}
+	return out
+}
+
+// bombTronquerAuPremierPlein coupe un segment a son PREMIER echantillon au quantum plein et
+// recalcule sa forme sur ce prefixe. Un segment qui n atteint pas le plein est rendu INTACT :
+// la troncature ne cree pas d armement, elle borne celui que le plein a deja etabli.
+//
+// C EST ICI QUE L INSTANT D ARMEMENT SE DECIDE, et c est le premier plein — pas le dernier
+// echantillon du segment, pas le milieu du maintien. Mesure de reference (`c75f33b8`) : les
+// quatre armements partent de 89 427, 193 703, 250 060 et 432 030 ms et atteignent le plein a
+// 92 330, 196 605, 252 163 et 434 933 ms — exactement les instants que le calque publiait avant
+// que le portage de `ti=12` n allonge les segments.
+func bombTronquerAuPremierPlein(
+	g grammar.NavpointSegment, reads []types.NavpointRadialRead,
+) grammar.NavpointSegment {
+	if int(g.QMax) < bombArmedFullQuantum {
+		return g
+	}
+	out := grammar.NavpointSegment{Slot: g.Slot, StartMS: g.StartMS, QStart: g.QStart}
+	premier := true
+	for _, r := range reads {
+		if r.TMS < g.StartMS || r.TMS > g.EndMS {
+			continue
+		}
+		if premier {
+			out.QMin, out.QMax = r.Q, r.Q
+			premier = false
+		}
+		out.Samples++
+		out.EndMS, out.QEnd = r.TMS, r.Q
+		if r.Q < out.QMin {
+			out.QMin = r.Q
+		}
+		if r.Q > out.QMax {
+			out.QMax = r.Q
+		}
+		if int(r.Q) >= bombArmedFullQuantum {
+			return out
+		}
+	}
+	return g // le plein n est pas retrouve dans les lectures : le segment reste tel quel
 }

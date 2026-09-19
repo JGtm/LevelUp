@@ -298,11 +298,33 @@ var vehicleFamillesNonPilotables = map[string]bool{
 	familleTourelleAutoBannie: true,
 }
 
-// vehicleFamilyIsRideable dit si une famille peut porter un episode d occupation. Une famille
-// VIDE (chassis inconnu de la table) ne le peut pas non plus : on ne sait pas ce que c est, donc
-// on n affirme rien de qui serait a bord.
+// vehicleFamilyIsRideable dit si une famille peut porter un episode d occupation.
+//
+// SEULES LES FAMILLES EXPLICITEMENT NON PILOTABLES le refusent. Une famille VIDE — un chassis que
+// `vehicleFamilyByChassis` ne nomme pas ENCORE — n en fait PAS partie : c est une IGNORANCE, pas
+// une propriete du vehicule, et la confondre avec « non pilotable » supprime l occupant d un
+// vehicule parfaitement reel.
+//
+// CORRIGE LE 2026-09-19, ET LA MESURE EST LA RAISON. La regle disait « une famille vide ne le peut
+// pas non plus : on ne sait pas ce que c est, donc on n affirme rien de qui serait a bord ». Elle
+// etait tenable tant que les chassis inconnus etaient rares. Le cablage de l etat par defaut de
+// `ti=40` (lot 5.1.7-b) rend 18 naissances de plus sur `11de8353` — `withSpawn` 37 -> 55 — et
+// SEIZE de ces chassis sont inconnus de la table : `familyUnknown` passe de 5 a 21. Autant de vies
+// qui, sous l ancienne regle, ne pouvaient plus porter aucun occupant.
+//
+// CE QUE CELA COUTAIT, NOMME : sur `11de8353`, l episode de l occupant `585` dans le Warthog
+// `773/1` (frames 1 987..2 043, xuid 2533274898781893, siege 0) disparaissait, et avec lui les
+// SEPT tirs qu il portait (frames 2 005 a 2 039, `shots.v = 773`) — `shots/n` 1 690 -> 1 683 et
+// `coverage.shots.noSlot` 278 -> 285 au corpus gate. La vie `773/1` etait pourtant publiee a
+// l identique des deux cotes, famille `warthog` comprise : c est le rattachement geometrique qui,
+// avec 18 vehicules de plus comme candidats, elisait un voisin au chassis inconnu — lequel jetait
+// ensuite l episode.
+//
+// L IGNORANCE SE DIT, ELLE NE SE PROPAGE PAS. C est deja la regle du chassis a cote de la famille
+// (« un chassis absent de la table garde son hexadecimal a l ecran, et n emprunte pas le sprite
+// d un voisin ») : le client dessine un marqueur neutre et le document reste vrai.
 func vehicleFamilyIsRideable(family string) bool {
-	return family != "" && !vehicleFamillesNonPilotables[family]
+	return !vehicleFamillesNonPilotables[family]
 }
 
 // clampVehicleRides ramene chaque episode d occupation dans la fenetre d affichage de la vie
