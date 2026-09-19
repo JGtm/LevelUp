@@ -296,7 +296,7 @@ export const commonManifest = {
   "common.leaderboard.trend_tooltip": { fr: "Tendance vs saison précédente", en: "Trend vs previous season" },
   "common.leaderboard.world_hint": { fr: "Top mondial par sélection et saison classée (source Halo Waypoint).", en: "World top by ranked playlist and season (source: Halo Waypoint)." },
   "common.match_card.accuracy": { fr: "Précision", en: "Accuracy" },
-  "common.match_card.assisted_frags": { fr: "{assisted} / {frags} frags assistés · {share}", en: "{assisted} / {frags} assisted kills · {share}" },
+  "common.match_card.assisted_frags": { fr: "{assisted} / {frags} frags assistés", en: "{assisted} / {frags} assisted kills" },
   "common.match_card.assists": { fr: "assist.", en: "assists" },
   "common.match_card.avg_life": { fr: "Vie moy.", en: "Avg. life" },
   "common.match_card.date_label": { fr: "Date :", en: "Date:" },

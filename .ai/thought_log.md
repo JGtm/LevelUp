@@ -1,3 +1,46 @@
+## [2026-09-19] Tuile de match (accueil) : barre frags / assistances / morts, bloc des frags assistés, espacements — Complété (branche `feat/v75`)
+
+**Demande** : (1) le segment rouge des morts de la barre composite paraît « plus épais » ou
+décalé ; (2) la barre des frags assistés (livrée le 18/09) doit porter sa légende DESSOUS, sans
+la part en %, avec des tons moins ternes, et son emplacement doit être réservé pour que les
+tuiles voisines de la grille restent alignées ; (3) en cours de route : un peu plus d'air entre la
+légende frags / assistances / morts et la barre des frags assistés, un peu moins sous sa légende,
+moins entre la section MMR et les médailles, et entre les médailles et les citations.
+
+**Décision technique** :
+- Barre composite : les bouts arrondis passent sur les SEGMENTS (`rounded-l-full` sur le
+  premier, `rounded-r-full` sur le dernier, comme `combat-yield-bar`) et le conteneur ne rogne
+  plus (`rounded-full overflow-hidden` retiré). Un conteneur qui rogne ses enfants sans
+  anti-crénelage aux coins laisse le dernier segment (rose vif) dépasser de la pilule — la
+  seule différence structurelle possible entre le rouge et les deux autres, les trois `div`
+  étant identiques par ailleurs. Verdict visuel à l'utilisateur ; si l'effet persiste, la
+  cause est perceptive (rose-500 plus clair et plus saturé que emerald-600 / sky-600) et se
+  traite au niveau du jeton `stat-deaths`, pas de la tuile.
+- Tons des tranches d'assistance : les opacités 35 / 65 / 100 % sont remplacées par trois
+  clartés OKLCH du jeton (`assistTierTone`, `light-dark(oklch(from …))`, chroma relevée).
+  Mesuré avant de trancher : aucune variante plus vive de `assist-received` ne tient le
+  garde-rail `combatStatTokens.test.ts` (yellow-600, amber-600, orange-600, `#B27A00`… :
+  contraste OK mais ΔE deutéranopie 5-7 < 8) — le jeton est pinné, la barre s'éclaircit
+  donc par dérivation, même teinte. Le changement porte sur le composant partagé, donc
+  aussi sur le papillon de la page Relations (un seul langage visuel, un seul foyer).
+- Bloc des frags assistés : ordre barre → légende (comme la barre du dessus), `{share}`
+  retiré de la clé `common.match_card.assisted_frags` (manifeste régénéré), barre `h-2`
+  alignée sur la composite, emplacement réservé `h-[24px]` rendu vide (`aria-hidden`) sans
+  mesure — toujours aucun « — » ni « 0 » fabriqué.
+- Légende des frags assistés : ton FORT du sens (`assistTierTone(…, 'high')`, même teinte) au
+  lieu du jeton brut, trop terne en texte ; 6 px entre la barre et sa légende (slot 24 px).
+- Espacements : `mt-3` au-dessus du bloc assisté, `pb-1` sous lui (KDA `pt-2.5` au lieu de
+  `pt-3`), médailles et citations `mt-2 pt-2 pb-2.5` (au lieu de `mt-3 pt-2.5 pb-3`).
+
+**Résultats observés** : `tsc -b` vert, eslint 0 problème sur les fichiers touchés
+(`assistTierTone` extrait dans son module pour ne pas déclencher `react-refresh`), vitest
+ciblé 18 fichiers / 132 tests verts, garde-rails (`guard`, `ratchet`) 90 fichiers verts ;
+suite complète lancée. Tests ajoutés : bouts arrondis sur les segments, légende après la
+barre et sans %, gabarit identique mesuré / vide, tons `assistTierTone`.
+
+**Prochaine étape** : verdict visuel de l'utilisateur sur l'accueil (thème sombre) et sur le
+papillon de Relations ; commit sur son signal.
+
 ## [2026-09-17] Explorer : le bloc « Portée des frags » remplace son placeholder, et la famille du graphe est rangée — Complété (branche `wt/explorer-portee-frags`)
 
 **Demande** : mettre dans le placeholder de la 3e rangée de l'encart cible la même chose que le

@@ -105,6 +105,14 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
   const deaths = m.deaths ?? 0
   const hasKDA = m.kills != null || m.assists != null || m.deaths != null
   const kdaTotal = kills + assists + deaths
+  // Segments non vides de la barre composite, dans l'ordre frags / assistances / morts.
+  const kdaSegments = (
+    [
+      { token: 'stat-kills', count: kills },
+      { token: 'stat-assists', count: assists },
+      { token: 'stat-deaths', count: deaths },
+    ] as const
+  ).filter((seg) => seg.count > 0)
 
   const hasDamageBar = m.offensive_conversion != null || m.defensive_resistance != null
   // Dégâts par frag-équivalent (frags + assists/3) : aligné sur offensive_conversion
@@ -346,11 +354,19 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
 
             {/* Barre composite frags / assistances / décès */}
             {hasKDA && (
-              <div data-testid="match-card-kda-bar" className="px-3 pt-2.5 pb-2 space-y-1.5">
-                <div className="h-2 w-full rounded-full overflow-hidden flex">
-                  {kills > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(kills / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('stat-kills') }} />}
-                  {assists > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(assists / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('stat-assists') }} />}
-                  {deaths > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(deaths / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('stat-deaths') }} />}
+              <div data-testid="match-card-kda-bar" className="px-3 pt-2.5 pb-1">
+                {/* Les bouts arrondis sont portés par les SEGMENTS (premier / dernier), comme
+                    combat-yield-bar : un conteneur `rounded-full overflow-hidden` rognait ses
+                    enfants sans anti-crénelage aux coins — le dernier segment (morts) débordait
+                    de la pilule et se lisait plus épais / décalé (constaté 2026-09-19). */}
+                <div className="h-2 w-full flex">
+                  {kdaSegments.map((seg, i) => (
+                    <div
+                      key={seg.token}
+                      className={`h-full ${i === 0 ? 'rounded-l-full' : ''} ${i === kdaSegments.length - 1 ? 'rounded-r-full' : ''}`}
+                      style={{ width: `${(seg.count / kdaTotal) * 100}%`, backgroundColor: tokenCssVar(seg.token) }}
+                    />
+                  ))}
                 </div>
                 <div className="flex justify-center gap-5 mt-2">
                   <div className="flex flex-col items-center gap-0.5">
@@ -366,8 +382,10 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
                     <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('stat-deaths') }}>{t('common.match_card.deaths')}</span>
                   </div>
                 </div>
-                {/* Part des frags assistés par un coéquipier (film analysé) — rien sans mesure */}
-                {m.assisted_frags && <MatchCardAssistedFrags assisted={m.assisted_frags} locale={locale} />}
+                {/* Part des frags assistés par un coéquipier (film analysé). L'emplacement est
+                    RÉSERVÉ (même hauteur sans mesure) : sur la grille de l'accueil, les tuiles
+                    voisines gardent leurs stats alignées, qu'elles aient une mesure ou non. */}
+                <MatchCardAssistedFrags assisted={m.assisted_frags} locale={locale} />
               </div>
             )}
 
@@ -375,7 +393,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
             {hasDamageBar && (
               <>
                 {m.kda != null && (
-                  <div className="flex items-center justify-center gap-0 pt-3 pb-2">
+                  <div className="flex items-center justify-center gap-0 pt-2.5 pb-2">
                     {/* Colonne gauche : Tirs à la tête — espace réservé même si absent */}
                     <div className="w-16 flex flex-col items-center gap-0.5">
                       {m.headshot_kills != null && m.headshot_kills > 0 ? (
@@ -474,7 +492,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
             {m.top_medals && m.top_medals.length > 0 && (
               <div
                 data-testid="match-card-medals"
-                className="px-3 pb-3 pt-2.5 flex justify-center gap-3 border-t border-border/40 mt-3"
+                className="px-3 pb-2.5 pt-2 flex justify-center gap-3 border-t border-border/40 mt-2"
               >
                 {m.top_medals.slice(0, 4).map((medal) => (
                   <div
@@ -516,7 +534,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
             {m.top_citations && m.top_citations.length > 0 && (
               <div
                 data-testid="match-card-citations"
-                className="px-3 pb-3 pt-2.5 flex justify-center gap-3 border-t border-border/40 mt-3"
+                className="px-3 pb-2.5 pt-2 flex justify-center gap-3 border-t border-border/40 mt-2"
               >
                 {m.top_citations.map((cit) => {
                   // Maîtrisée = palier final franchi (cette partie OU avant), sinon

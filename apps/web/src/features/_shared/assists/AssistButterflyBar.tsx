@@ -8,7 +8,8 @@
  * « N frags assistés · tranche » par segment.
  *
  * Couleurs : `assist-received` (l'autre te sert) et `assist-given` (tu le sers), famille
- * des stats de combat. Les tons sont des opacités, pas des couleurs.
+ * des stats de combat. Les tons sont des clartés de cette couleur (`assistTierTone`), pas
+ * d'autres couleurs.
  */
 import { tokenCssVar } from '@/lib/accessibility'
 import type { AssistTiers, RelationAssists } from '@/lib/api/types'

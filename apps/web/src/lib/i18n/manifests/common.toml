@@ -1172,8 +1172,8 @@ en = "Open the 2D replay of the match"
 # {frags} sont des comptes déjà formatés, {share} un pourcentage déjà formaté (« 58 % »).
 # Les tranches de part (bornes) ne vivent que dans assistsI18n.ts (infobulles de segment).
 [common.match_card.assisted_frags]
-fr = "{assisted} / {frags} frags assistés · {share}"
-en = "{assisted} / {frags} assisted kills · {share}"
+fr = "{assisted} / {frags} frags assistés"
+en = "{assisted} / {frags} assisted kills"
 
 # ─── Setup wizard (StepDeviceCode, StepInitialSync, StepPlayer) ─────────
 

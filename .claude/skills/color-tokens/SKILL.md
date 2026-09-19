@@ -61,8 +61,11 @@ passe par ces cinq jetons, dans toutes les pages :
 | `assist-given` | tu assistes un autre joueur (« tu le sers ») |
 
 - **Part de dégâts d'une assistance** : jamais une autre teinte. Trois tons de la couleur du
-  sens (opacités 35 / 65 / 100 %) pour les tranches < 25 %, 25-50 %, > 50 %
-  (`features/_shared/assists/AssistButterflyBar.tsx`, bornes `domain.AssistTier*MaxPct`).
+  sens pour les tranches < 25 %, 25-50 %, > 50 % — trois CLARTÉS OKLCH du jeton, montant vers
+  le premier plan du thème (`light-dark`, chroma relevée), PAS des opacités (remplacées le
+  2026-09-19 : elles noyaient les tons faibles dans la piste ; le jeton lui-même ne peut pas
+  s'éclaircir, il est retenu par le contraste clair et la séparation deutéranopie) —
+  `features/_shared/assists/assistTierTone.ts`, bornes `domain.AssistTier*MaxPct`.
 - **Ne relèvent PAS de la famille** (garder la couleur de leur rôle) : couleur d'équipe par
   camp (`team-*`), couleur de joueur (`squad-player-*`), classe d'arme (`frag-*`), issue du
   match, échelle de qualité, accent de sous-type de frag (frags parfaits, tirs à la tête…).

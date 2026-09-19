@@ -2,21 +2,38 @@ import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 
 import { AssistTierBar } from './AssistTierBar'
+import { assistTierTone } from './assistTierTone'
 import { assistShareSegments } from './assistExchange'
 import { ASSISTS_TEXT } from './assistsI18n'
 
+describe('assistTierTone', () => {
+  it('garde la couleur du sens telle quelle pour le ton faible', () => {
+    expect(assistTierTone('var(--c)', 'low')).toBe('var(--c)')
+  })
+
+  it('monte les tons moyen et fort vers le premier plan du thème, chroma relevée, même teinte', () => {
+    // Jamais une autre teinte : la clarté bouge, `h` reste celui de la couleur du sens.
+    expect(assistTierTone('var(--c)', 'mid')).toBe(
+      'light-dark(oklch(from var(--c) calc(l - 0.12) calc(c * 1.12) h), oklch(from var(--c) calc(l + 0.12) calc(c * 1.12) h))',
+    )
+    expect(assistTierTone('var(--c)', 'high')).toBe(
+      'light-dark(oklch(from var(--c) calc(l - 0.24) calc(c * 1.24) h), oklch(from var(--c) calc(l + 0.24) calc(c * 1.24) h))',
+    )
+  })
+})
+
 describe('AssistTierBar', () => {
-  it('pose trois segments aux largeurs = parts, du ton clair au ton plein', () => {
+  it('pose trois segments aux largeurs = parts, du ton faible au ton fort', () => {
     // 7 des 12 frags assistés : 2 / 3 / 1 par tranche, 1 sans part mesurée (non dessinée).
     const segments = assistShareSegments({ total: 7, low: 2, mid: 3, high: 1 }, 12)
     const { getByTestId } = render(
       <AssistTierBar segments={segments} color="var(--c)" text={ASSISTS_TEXT.fr} locale="fr" variant="tile" testId="seg" />,
     )
-    // Tons = opacités 35 / 65 / 100 % de la couleur du sens (skill color-tokens).
-    const OPACITY = { low: '0.35', mid: '0.65', high: '1' } as const
+    // Tons = trois clartés de la couleur du sens (skill color-tokens), plus d'opacité.
     const widths = (['low', 'mid', 'high'] as const).map((tier) => {
       const el = getByTestId(`seg-${tier}`)
-      expect(el.style.opacity).toBe(OPACITY[tier])
+      expect(el.style.backgroundColor).toBe(assistTierTone('var(--c)', tier))
+      expect(el.style.opacity).toBe('')
       return parseFloat((el.closest('[style*="width"]') as HTMLElement).style.width)
     })
     expect(widths[0]).toBeCloseTo((2 / 12) * 100)

@@ -35,6 +35,8 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 })
 
 import { MatchCard } from './match-card'
+import { assistTierTone } from '@/features/_shared/assists/assistTierTone'
+import { tokenCssVar } from '@/lib/accessibility'
 import type { RecentMatchItem } from '@/lib/api/types'
 
 const WIN_MATCH: RecentMatchItem = {
@@ -152,6 +154,17 @@ describe('MatchCard', () => {
     expect(bar.textContent).toContain('2')
   })
 
+  it('arrondit les bouts de la barre KDA sur les segments eux-mêmes, pas par rognage du conteneur', () => {
+    render(<MatchCard match={WIN_MATCH} />)
+    const bar = screen.getByTestId('match-card-kda-bar').querySelector('.h-2.w-full') as HTMLElement
+    expect(bar.className).not.toContain('overflow-hidden')
+    const segments = [...bar.children] as HTMLElement[]
+    expect(segments).toHaveLength(3)
+    expect(segments[0].className).toContain('rounded-l-full')
+    expect(segments[2].className).toContain('rounded-r-full')
+    expect(segments[1].className).not.toMatch(/rounded-[lr]-full/)
+  })
+
   it('affiche la barre KDA même sans bloc perf/skill', () => {
     render(<MatchCard match={LOSS_MATCH} />)
     const bar = screen.getByTestId('match-card-kda-bar')
@@ -170,18 +183,26 @@ describe('MatchCard', () => {
     expect(screen.queryByTestId('match-card-kda-bar')).toBeNull()
   })
 
-  // Part des frags assistés par un coéquipier (film analysé) : ligne + barre à trois
-  // tons sous la barre frags / assistances / décès. Sans mesure : rien du tout.
+  // Part des frags assistés par un coéquipier (film analysé) : barre à trois tons sous la
+  // barre frags / assistances / décès, puis sa légende dessous (sans la part en %).
+  // Sans mesure : l'emplacement reste réservé (même hauteur), vide.
   describe('frags assistés', () => {
     const MEASURED: RecentMatchItem = {
       ...WIN_MATCH,
       assisted_frags: { frags_measured: 12, received: { total: 7, low: 2, mid: 3, high: 1 } },
     }
 
-    it('affiche « 7 / 12 frags assistés · 58 % » et les trois segments aux largeurs = parts', () => {
+    it('affiche « 7 / 12 frags assistés » sous la barre, sans la part en %, segments aux largeurs = parts', () => {
       render(<MatchCard match={MEASURED} locale="fr" />)
-      const line = screen.getByTestId('match-card-assisted-frags')
-      expect(line.textContent).toContain('7 / 12 frags assistés · 58 %')
+      const block = screen.getByTestId('match-card-assisted-frags')
+      expect(block.textContent).toContain('7 / 12 frags assistés')
+      expect(block.textContent).not.toContain('%')
+      // La légende vient APRÈS la barre (bar-then-legend, comme la barre du dessus).
+      const bar = screen.getByTestId('match-card-assist-segment-low').closest('.h-2') as HTMLElement
+      const legend = screen.getByText('7 / 12 frags assistés')
+      expect(bar.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      // Légende dans le ton fort du sens (pas le jeton brut, trop terne en texte).
+      expect(legend.style.color).toBe(assistTierTone(tokenCssVar('assist-received'), 'high'))
       const widthOf = (tier: string) =>
         parseFloat((screen.getByTestId(`match-card-assist-segment-${tier}`).closest('[style*="width"]') as HTMLElement).style.width)
       expect(widthOf('low')).toBeCloseTo((2 / 12) * 100)
@@ -191,14 +212,25 @@ describe('MatchCard', () => {
 
     it('dit « assisted kills » sous la locale EN', () => {
       render(<MatchCard match={MEASURED} locale="en" />)
-      expect(screen.getByTestId('match-card-assisted-frags').textContent).toContain('7 / 12 assisted kills · 58 %')
+      expect(screen.getByTestId('match-card-assisted-frags').textContent).toContain('7 / 12 assisted kills')
     })
 
-    it('n’affiche rien du tout sans mesure (ni ligne, ni segment, ni « — »)', () => {
+    it('réserve l’emplacement sans mesure (même hauteur, ni texte, ni segment, ni « — »)', () => {
       render(<MatchCard match={WIN_MATCH} locale="fr" />)
       expect(screen.queryByTestId('match-card-assisted-frags')).toBeNull()
       expect(screen.queryByTestId('match-card-assist-segment-low')).toBeNull()
       expect(screen.getByTestId('match-card-kda-bar').textContent).not.toContain('—')
+      const slot = screen.getByTestId('match-card-assisted-frags-slot')
+      expect(slot.textContent).toBe('')
+      expect(screen.getByTestId('match-card-kda-bar').contains(slot)).toBe(true)
+    })
+
+    it('le bloc mesuré et l’emplacement vide ont le même gabarit', () => {
+      const { unmount } = render(<MatchCard match={MEASURED} locale="fr" />)
+      const measured = screen.getByTestId('match-card-assisted-frags').className
+      unmount()
+      render(<MatchCard match={WIN_MATCH} locale="fr" />)
+      expect(screen.getByTestId('match-card-assisted-frags-slot').className).toBe(measured)
     })
   })
 
