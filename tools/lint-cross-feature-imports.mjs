@@ -164,10 +164,6 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'timeseries=>engagement',
   'timeseries=>squad',
   'timeseries=>explorer',
-  // TimeseriesPage.summary réutilise SynthesisWeaponAccuracyChart (graphe « Précision
-  // par arme », Halo 5) sous le sunburst frags — dépendance durable, analogue à
-  // session-detail=>synthesis.
-  'timeseries=>synthesis',
   // Explorer mode "Joueur" réutilise des composants Squad (synergy table,
   // visualisations partagées) — feature durable.
   'explorer=>squad',
@@ -217,10 +213,6 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // SessionMatchesTable réutilise ExplorerMatchesTable pour l'historique de session
   // — durable, strictement analogue à career=>explorer.
   'session-detail=>explorer',
-  // SessionFragCard réutilise SynthesisWeaponAccuracyChart (graphe « Précision par
-  // arme », Halo 5) au lieu de « Détails des frags » — dépendance durable, analogue à
-  // session-detail=>explorer.
-  'session-detail=>synthesis',
   // MatchEncountersTable réutilise RelationBadgeLegend (légende des badges de
   // relation) de palmarès — dépendance durable.
   'match-view=>palmares',
@@ -240,7 +232,7 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'media=>squad',
   // SessionIntensityProfile réutilise le constructeur d'option ECharts
   // `squad/charts/squadIntensityProfileChart` (courbe d'intensité) plutôt que de le
-  // recopier — durable, analogue à session-detail=>synthesis.
+  // recopier — durable, analogue à session-detail=>explorer.
   'session-detail=>squad',
 ])
 
