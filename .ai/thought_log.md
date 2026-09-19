@@ -42,7 +42,9 @@ sur une forme inversée (les `Team Slayer:Arena` / `CTF:Arena` des tests de `mod
 `objectives` et `home_recent_helpers` ne passent pas par `NormalizeModeLabel`). Nouveaux
 tests : `TestNormalizeModeLabel_DeuxGrammaires` (30 cas : les deux grammaires, reste vide /
 identité / recollé, casse, avec et sans carte, ` - Forge`, mot entier « Arenax »),
-`_CarteConnue` (mapLabels), `TestSplitContainer` (19 cas), `TestIsContainer`.
+`_CarteConnue` (mapLabels), `TestSplitContainer` (19 cas), `TestIsContainer`. CI : le cas de
+casse « ctf:arena neutral flag » écrivait le littéral marqueur du ratchet
+`TestNoDuplicateObjectiveSubModeList` (faux positif) — passé en casse mixte, allowlist intacte.
 
 **Hors périmètre, noté, non traité** : `Firefight:Classic` → « Classic » (Firefight n'est pas
 un conteneur de grammaire, la partie droite reste le mode — à trancher si l'Explorer doit

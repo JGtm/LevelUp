@@ -105,7 +105,7 @@ func TestNormalizeModeLabel_DeuxGrammaires(t *testing.T) {
 
 		// Casse : conteneurs et identités insensibles à la casse, le mode garde sa graphie.
 		{"inv casse conteneur", "slayer:ARENA on Live Fire", "slayer"},
-		{"inv casse qualificatif", "ctf:arena neutral flag", "neutral flag ctf"},
+		{"inv casse qualificatif", "ctf:ARENA Neutral flag", "Neutral flag ctf"},
 		{"inv casse identite", "Slayer:arena SUPER FIESTA on Chasm", "Super Fiesta"},
 		{"conteneur casse gauche", "arena:Slayer on Bazaar", "Slayer"},
 
