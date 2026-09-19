@@ -73,6 +73,11 @@ const (
 	// UNE DE PLUS AU LOT 5.1.7 (2026-09-18) : `object-parent-state-component` entre dans la table
 	// du `param_4` (son `level` est 3), ce qui en fait la troisieme copie du litteral.
 	compObjectParentState = "object-parent-state-component"
+	// TROIS DE PLUS A LA FUSION DE 5.1 (2026-09-19) : la table du `param_4`, le dispatch et le ratchet
+	// par build portent chacun ces trois noms — quatrieme copie, goconst en CI.
+	compObjectMaximumVitalities  = "object-maximum-vitalities-component"
+	compObjectLowFrequency       = "object-low-frequency-component"
+	compObjectFrameConfiguration = "object-frame-configuration-component"
 )
 
 // Archetype is one ECS archetype: an ordered list of component names. The slice

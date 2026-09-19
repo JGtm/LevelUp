@@ -55,19 +55,19 @@ type p4Constante struct {
 // p4ConstantesExe : les treize composants dont un deserialiseur du depot branche sur `param_4`.
 // `mov eax,K ; ret`, sauf `object-frame-configuration` qui fait `xor eax,eax ; ret`.
 var p4ConstantesExe = map[string]p4Constante{
-	compForwardUpDynPrec:                   {2, "0x141179610"},
-	compObjectParentState:                  {3, "0x14117e0e0"},
-	"unit-actor-control-component":         {2, "0x141179610"},
-	"unit-actor-state-component":           {4, "0x140c85020"},
-	"unit-malleable-property-component":    {4, "0x140c85020"},
-	"biped-malleable-property-component":   {2, "0x141179610"},
-	"biped-slide-component":                {1, "0x14117b4a0"},
-	"object-maximum-vitalities-component":  {3, "0x14117e0e0"},
-	"object-low-frequency-component":       {2, "0x141179610"},
-	"object-frame-configuration-component": {0, "0x1405f0ac0"},
-	"unit-control-component":               {2, "0x141179610"},
-	compNavpointDistanceFilters:            {3, "0x14117e0e0"},
-	compNavpointOffscreenFilters:           {2, "0x141179610"},
+	compForwardUpDynPrec:                 {2, "0x141179610"},
+	compObjectParentState:                {3, "0x14117e0e0"},
+	"unit-actor-control-component":       {2, "0x141179610"},
+	"unit-actor-state-component":         {4, "0x140c85020"},
+	"unit-malleable-property-component":  {4, "0x140c85020"},
+	"biped-malleable-property-component": {2, "0x141179610"},
+	"biped-slide-component":              {1, "0x14117b4a0"},
+	compObjectMaximumVitalities:          {3, "0x14117e0e0"},
+	compObjectLowFrequency:               {2, "0x141179610"},
+	compObjectFrameConfiguration:         {0, "0x1405f0ac0"},
+	"unit-control-component":             {2, "0x141179610"},
+	compNavpointDistanceFilters:          {3, "0x14117e0e0"},
+	compNavpointOffscreenFilters:         {2, "0x141179610"},
 }
 
 // p4BobinesParCle : une mini-bobine VERSIONNEE par cle de profil. Meme liste que le ratchet
