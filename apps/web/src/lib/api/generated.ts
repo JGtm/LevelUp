@@ -6919,6 +6919,17 @@ export interface components {
             dropsWithheld: number;
             flagFilm: boolean;
             /** Format: int64 */
+            gaugePaired: number;
+            /** Format: int64 */
+            gaugePoints: number;
+            /** Format: int64 */
+            gaugeReads: number;
+            gaugeScanned: boolean;
+            /** Format: int64 */
+            gaugeSlots: number;
+            /** Format: int64 */
+            gaugeSpans: number;
+            /** Format: int64 */
             homeByObject: number;
             /** Format: int64 */
             markerConfirmed: number;
@@ -6970,6 +6981,7 @@ export interface components {
             soloSeconds: number;
         };
         FlagSpan: {
+            returnProgress?: components["schemas"]["GaugePoint"][] | null;
             state: string;
             /** Format: int64 */
             t0: number;
@@ -10444,6 +10456,7 @@ export interface components {
             titleSlug: string;
             tracks: components["schemas"]["Track"][] | null;
             translocations?: components["schemas"]["Translocation"][] | null;
+            vehicleCycles?: components["schemas"]["VehicleCycle"][] | null;
             vehicleLabels?: {
                 [key: string]: components["schemas"]["VehicleLabel"];
             };
@@ -13077,6 +13090,14 @@ export interface components {
             /** Format: int64 */
             ambiguous: number;
             /** Format: int64 */
+            cycleGaps: number;
+            /** Format: int64 */
+            cycleLocations: number;
+            /** Format: int64 */
+            cycleMissing: number;
+            /** Format: int64 */
+            cycles: number;
+            /** Format: int64 */
             deathsMatched: number;
             /** Format: int64 */
             deathsRead: number;
@@ -13142,6 +13163,23 @@ export interface components {
             withHeading: number;
             /** Format: int64 */
             withSpawn: number;
+        };
+        VehicleCycle: {
+            family?: string;
+            /** Format: int64 */
+            gaps: number;
+            /** Format: float */
+            medianS: number;
+            /** Format: int64 */
+            missing: number;
+            /** Format: float */
+            p10S: number;
+            /** Format: float */
+            p90S: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
         };
         VehicleLabel: {
             en?: string;

@@ -43,10 +43,6 @@ type ProfilDeBalayage struct {
 	// MPP : le decoupage des deux champs de largeur variable du bloc
 	// `object-multiplayer-properties`, pose par la VERSION DE FORMAT du film.
 	MPP profile.MPPWidths
-	// ParamEtat / ParamEtatImpose : le `param_4` du moteur qu un harnais de balayage a force,
-	// et le drapeau qui dit qu il l a force. Hors balayage, la table par composant decide seule.
-	ParamEtat       uint32
-	ParamEtatImpose bool
 	// Grammaire : les bascules A/B de retro-ingenierie, chacune a son defaut de production.
 	Grammaire GrammaireBalayage
 }
@@ -101,11 +97,6 @@ func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0
 	// de l axe a chaque bascule (31,89 m sur Y, mesure sur quatre films).
 	p.Mouvement.WorldObject.Region = l.Region
 }
-
-// PoserParamEtat force le `param_4` du moteur (l actor-tick / weapon-set count que le
-// descripteur d un composant rend a FUN_14076cb60) pour les balayages qui prennent ce profil.
-// Cf. [paramForComponent] : le repli n est consulte que HORS de la table par composant.
-func (p *ProfilDeBalayage) PoserParamEtat(v uint32) { p.ParamEtat, p.ParamEtatImpose = v, true }
 
 // GrammaireBalayage porte les BASCULES DE GRAMMAIRE d un balayage : les choix de lecture qui
 // changent la consommation de bits sans venir du flux.

@@ -40,6 +40,8 @@ func TestVehicleFamilyOfResoutLesChassisObserves(t *testing.T) {
 		{0x3d4a8a5a, "chopper", "labels.tsv : deux entrees a porteur unique, sb_010_veh_bt_chopper"},
 		{0xfe32c0f4, "warthog", "V3D : vehi fe32c0f4 -> hlmt daf7f543 = hlmt du Warthog"},
 		{0xcb96ca07, "warthog", "V3D, meme table : meme hlmt daf7f543 ; non observe en film"},
+		{0x10754375, "wraith", "Theater, utilisateur 2026-09-19 : 4f77afc1 slot 864 gen 1, " +
+			"Wraith qui explose a 6:49 — nomme A L OEIL, aucune autre source ne le porte"},
 	} {
 		if got := vehicleFamilyOf(c.chassis); got != c.want {
 			t.Errorf("vehicleFamilyOf(%#08x) = %q, attendu %q (%s)", c.chassis, got, c.want, c.note)

@@ -56,6 +56,22 @@ func findVehicleRelay(tracks []VehicleTrack) (int, int, bool) {
 // aucune n est negociable : un chassis different est un autre vehicule, un point different est un
 // autre emplacement, et un debut hors de l intervalle non observe est une coexistence reelle.
 func isVehicleRelay(a, b VehicleTrack) bool {
+	// UNE VIE QUE LE FILM DECLARE MORTE N EST PAS RELAYABLE, et c est le correctif du lot 5.1.4.
+	//
+	// Les trois conditions ci-dessous sont des HEURISTIQUES de continuite — meme chassis, meme
+	// point, fenetre non observee. `End == destroyed` est un FAIT ECRIT : le film a ecrit le
+	// dead-state de `a`. La regle du chantier tranche dans ce sens (« la grammaire prime sur les
+	// heuristiques ») et la mesure disait le cout de l inverse : `mergeVehicleRelay` remplace la
+	// fin de `a` par celle de `b` (`out.End, out.TEnd = b.End, b.TEnd`), donc une vie MORTE
+	// fondue dans sa remplacante perdait sa date de mort — la seule donnee dont le cycle de
+	// reapparition a besoin.
+	//
+	// ET C EST LA MEME CHOSE VUE DE L AUTRE COTE : un vehicule detruit dont un autre renait au
+	// meme endroit n est pas « le meme vehicule qui continue », c est EXACTEMENT une
+	// reapparition. Les fondre effacait le fait que le lot 5.1.5 doit mesurer.
+	if a.End == VehicleEndDestroyed {
+		return false
+	}
 	if a.Chassis == "" || a.Chassis != b.Chassis {
 		return false
 	}

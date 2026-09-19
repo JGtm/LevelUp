@@ -134,5 +134,9 @@ func toVehicleCoverage(v replay.VehicleCoverage) replaydoc.VehicleCoverage {
 		ShotsUnplaced:      v.ShotsUnplaced,
 		ShotsNoRide:        v.ShotsNoRide,
 		ShotsVehicleWeapon: v.ShotsVehicleWeapon,
+		CycleLocations:     v.CycleLocations,
+		Cycles:             v.Cycles,
+		CycleGaps:          v.CycleGaps,
+		CycleMissing:       v.CycleMissing,
 	}
 }

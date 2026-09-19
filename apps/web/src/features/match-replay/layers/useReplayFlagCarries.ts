@@ -275,6 +275,7 @@ export function useReplayFlagCarries({
           prev.now.team === next.now.team &&
           prev.now.state === next.now.state &&
           prev.now.t0 === next.now.t0 &&
+          prev.now.returnProgress === next.now.returnProgress &&
           prev.at.x === next.at.x &&
           prev.at.y === next.at.y &&
           prev.sinceMs === next.sinceMs

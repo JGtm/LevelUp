@@ -67,8 +67,23 @@ const ecsProbeBytes = 512
 //	   colonne `notes` de la table dit aussi.
 //
 // Aucune ligne ne CHANGE de categorie : les deux etaient hors du controle, elles y entrent.
+// 2026-09-18 (lot 5.1.1) : 115 -> 121 largeurs FIXES, 66 gardees INCHANGEES. SIX lignes neuves,
+// toutes `ti=12` (l'archetype `managed-navpoint`), toutes entrant dans le controle PAR LE HAUT
+// depuis `non_porte` — aucune ligne existante ne change de categorie :
+//
+//	i1  managed-navpoint-flags-component                          R(8)        8
+//	i7  managed-navpoint-docking-order-component                  R(8)        8
+//	i8  managed-navpoint-docking-group-name-component             R(32)      32
+//	i10 managed-navpoint-timers-component                         2 x R(7)   14
+//	i11 managed-navpoint-manual-timer-initial-duration-component  R(17)      17
+//	i12 managed-navpoint-manual-timer-current-duration-component  R(17)      17
+//
+// Les SIX AUTRES composants portes par le meme lot (`i2`..`i6` et `i9`) ont une largeur GARDEE
+// par le flux — le masque de filtres pour les cinq premiers, le compte d'entrees pour `i9` — et
+// leur colonne `bits_typ` porte donc « variable », qui reste HORS du controle. Le compte des
+// gardees ne bouge pas pour cette raison, et pas parce qu'elles auraient ete oubliees.
 const (
-	ecsLargeursFixes   = 115
+	ecsLargeursFixes   = 121
 	ecsLargeursGardees = 66
 )
 

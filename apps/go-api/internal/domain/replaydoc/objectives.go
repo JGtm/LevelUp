@@ -74,6 +74,10 @@ type FlagSpan struct {
 	XUID  *string `json:"xuid"`
 	X     float32 `json:"x"`
 	Y     float32 `json:"y"`
+	// ReturnProgress est LA JAUGE DE RETOUR pendant cet intervalle (schema 63) : l escalier de
+	// remplissage que le film ecrit, sur l echelle du jeu 0 = vide, 1 = pleine. Seul un etat
+	// `dropped` peut en porter ; cle absente quand le film n emet rien sur l intervalle.
+	ReturnProgress []GaugePoint `json:"returnProgress,omitempty"`
 }
 
 // FlagReturnZone est LA REGLE DE RETOUR du drapeau, telle que le manifeste du titre la donne

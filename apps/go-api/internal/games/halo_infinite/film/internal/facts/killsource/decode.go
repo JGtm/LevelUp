@@ -93,14 +93,15 @@ func Decode(ctx context.Context, name string, film *source.Film, opts *Options) 
 }
 
 // ProfilDeDepart rend le PROFIL DE BALAYAGE dont ce paquet part, avant toute calibration :
-// l invariant du profil, plus le `param_4` du moteur FORCE A ZERO.
+// l invariant du profil, plus la GENERATION STRICTE.
 //
-// LE ZERO EST UNE VALEUR, PAS UNE ABSENCE, et c est pourquoi il est nomme ici. Hors forcage, la
-// table par composant (`grammar.paramByComponent`) rend 1 aux composants qu elle ne liste pas ;
-// forcer 0 les met tous a la forme conservatrice. C est ce que `SetRecordStateParam(0)` faisait
-// en tete de [Decode] jusqu au lot 2.3, pour tout le processus — y compris pour la cuisson du
-// rejeu qui suivait. Il est desormais porte par le profil, et `replaybuild` le passe
-// explicitement quand le decodage n a rien pu calibrer.
+// LE `param_4` N EN FAIT PLUS PARTIE (lot 5.1.7, 2026-09-18). Ce profil forcait le `param_4` du
+// moteur a ZERO, et la calibration le remplacait ensuite par la valeur d un balayage de 0 a 5 —
+// le repli `repli_parametre_etat_record_infere`, dont la cible de retrait etait « lot qui
+// trouvera la source LUE de `param_4` (registre ECS par composant, ou table du build) ». Elle
+// est trouvee : `param_4` EST le niveau que le registre du film porte par composant
+// (`grammar.Archetype.Level`, cf. `grammar/component_param4.go`). Il ne se force plus, il se lit,
+// et le balayage a disparu avec le champ qu il ecrivait.
 // LA GENERATION STRICTE EN FAIT PARTIE, et c est le second fait de production que ce lot rend
 // explicite : `resetGlobals` levait `SetStrictGeneration(true)` pour tout le PROCESSUS et ne le
 // rabaissait jamais — la cuisson du rejeu qui suivait decodait donc, elle aussi, en generation
@@ -110,7 +111,6 @@ func Decode(ctx context.Context, name string, film *source.Film, opts *Options) 
 // le seul ecrivain contraire est un instrument de mesure qui pose desormais SON profil.
 func ProfilDeDepart() grammar.ProfilDeBalayage {
 	p := grammar.ProfilDeBalayageParDefaut()
-	p.PoserParamEtat(0)
 	p.Grammaire.GenerationStricte = true
 	return p
 }

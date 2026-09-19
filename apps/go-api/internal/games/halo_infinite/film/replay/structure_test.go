@@ -1176,8 +1176,25 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   reclassement de `vehicleLabels` change en outre l'empreinte de forme CUITE, qui ne se
 	//   régénère que dans un commit qui monte la version. AUCUNE des quatre révisions ne monte,
 	//   donc aucun match ne devient candidat au backlog killsource. Détail : `document_chronicle.go`.
-	if SchemaVersion != 62 {
-		t.Fatalf("SchemaVersion = %d, attendu 62 : incrémenter exige une raison écrite ci-dessus "+
+	// - v63 (post-chantier lot 5.1 du PLAN_DECODEUR_FILM, 2026-09-19) : LES DEUX RÉAPPARITIONS QUI
+	//   MANQUAIENT. `flagCarries[].spans[].returnProgress` publie LA JAUGE DE RETOUR d'un drapeau
+	//   resté au sol — l'escalier que le film écrit (`ti=13 i1` tag 3, voie delta), sur l'échelle du
+	//   jeu 0..1, dans le type `GaugePoint` déjà employé par la jauge des zones — et `vehicleCycles`
+	//   LE CYCLE DE RÉAPPARITION par EMPLACEMENT de naissance de véhicule, même forme et même juge
+	//   que `PadCycle`. Neuf compteurs de couverture les accompagnent (six pour la jauge, quatre
+	//   moins un pour le cycle : `gaugeScanned`, `gaugeSlots`, `gaugeReads`, `gaugePaired`,
+	//   `gaugeSpans`, `gaugePoints` ; `cycleLocations`, `cycles`, `cycleGaps`, `cycleMissing`).
+	//   POURQUOI LA VERSION MONTE : deux champs naissent, donc la FORME change et le ratchet de
+	//   forme refuse de se régénérer sans montée. Ce n'est PAS de la télémétrie — le client dessine
+	//   la jauge du drapeau.
+	//   CE QUI NE MONTE PAS, ET C'EST LE POINT : aucune des quatre révisions de DÉCODAGE. `ti=13`
+	//   était déjà balayé en production pour les zones et `ti=40` l'a été au lot 5.1.7-b ; cette
+	//   montée PUBLIE ce qui était déjà décodé. Le fichier de FAITS, lui, s'étend (magie
+	//   `REPLAYINPUTS24`, schéma de faits 3) : la jauge y transite, parce que le document en dépend
+	//   et que « document depuis les faits ≡ document depuis le film » est la propriété du lot 4.1.
+	//   Détail : `document_chronicle.go`.
+	if SchemaVersion != 63 {
+		t.Fatalf("SchemaVersion = %d, attendu 63 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

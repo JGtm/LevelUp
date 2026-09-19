@@ -66,6 +66,13 @@ type FlagCarriesCoverage struct {
 	DropsWithheld     int `json:"dropsWithheld"`
 	OwnFlagRefused    int `json:"ownFlagRefused"`
 	Unresolved        int `json:"unresolved"`
+	// LES SIX DENOMINATEURS DE LA JAUGE DE RETOUR (schema 63).
+	GaugeScanned bool `json:"gaugeScanned"`
+	GaugeSlots   int  `json:"gaugeSlots"`
+	GaugeReads   int  `json:"gaugeReads"`
+	GaugePaired  int  `json:"gaugePaired"`
+	GaugeSpans   int  `json:"gaugeSpans"`
+	GaugePoints  int  `json:"gaugePoints"`
 }
 
 // VipCrownCoverage porte les denominateurs du calque. Sans eux, « 15 periodes » se lirait comme

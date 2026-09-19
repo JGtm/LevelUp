@@ -204,7 +204,7 @@ func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCover
 func agDiagnostiquerSegments(t *testing.T, id string, reads []types.NavpointRadialRead, explosions []int) {
 	t.Helper()
 	cov := &BombArmingsCoverage{}
-	full, pauses := classifyBombSegments(grammar.NavpointSegments(reads), cov)
+	full, pauses := classifyBombSegments(grammar.NavpointSegments(reads), bombReadsBySlot(reads), cov)
 	for _, r := range dedupPairedSegments(full, cov) {
 		lien := ""
 		for _, det := range explosions {
