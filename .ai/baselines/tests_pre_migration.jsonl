@@ -13633,10 +13633,6 @@
 {"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"output","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_Valid","Output":"=== RUN   TestCompareRequest_Validate_Valid\n"}
 {"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"output","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_Valid","Output":"--- PASS: TestCompareRequest_Validate_Valid (0.00s)\n"}
 {"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"pass","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_Valid","Elapsed":0}
-{"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"run","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_WithFilters"}
-{"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"output","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_WithFilters","Output":"=== RUN   TestCompareRequest_Validate_WithFilters\n"}
-{"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"output","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_WithFilters","Output":"--- PASS: TestCompareRequest_Validate_WithFilters (0.00s)\n"}
-{"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"pass","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_WithFilters","Elapsed":0}
 {"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"run","Package":"levelup/go-api/internal/domain","Test":"TestNewPrivacyWarning_None"}
 {"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"output","Package":"levelup/go-api/internal/domain","Test":"TestNewPrivacyWarning_None","Output":"=== RUN   TestNewPrivacyWarning_None\n"}
 {"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"output","Package":"levelup/go-api/internal/domain","Test":"TestNewPrivacyWarning_None","Output":"--- PASS: TestNewPrivacyWarning_None (0.00s)\n"}

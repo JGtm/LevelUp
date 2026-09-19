@@ -103,8 +103,7 @@ type PlayerATH struct {
 
 // CompareRequest est le body de POST .../pages/compare.
 type CompareRequest struct {
-	TargetGamertag string             `json:"target_gamertag"`
-	Filters        FilterContextInput `json:"filters,omitempty"`
+	TargetGamertag string `json:"target_gamertag"`
 }
 
 // Validate valide les champs de CompareRequest.
@@ -112,7 +111,7 @@ func (r CompareRequest) Validate() error {
 	if r.TargetGamertag == "" {
 		return fmt.Errorf("CompareRequest: target_gamertag requis")
 	}
-	return r.Filters.Validate()
+	return nil
 }
 
 // CompareMetricRow est une ligne de la table de comparaison.
