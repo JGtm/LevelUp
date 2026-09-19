@@ -266,6 +266,9 @@ func attachVehicles(
 ) {
 	tracks, cov, st := buildVehicleTracks(scan, bipeds, reg, clock)
 	doc.Vehicles = tracks
+	// LE CYCLE SE CALCULE SUR LES VIES PUBLIEES, ET APRES LA FUSION DES RELAIS : c est le
+	// document qui fait foi, pas le balayage (cf. vehicle_cycles.go).
+	doc.VehicleCycles = buildVehicleCycles(tracks, clock.step, &cov)
 	doc.Coverage.Vehicles = &cov
 	logVehicleCoverage(&cov)
 	logVehicleRideResolution(st)

@@ -5659,10 +5659,18 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   **Un durcissement annoncé NEUTRE** : une vie que le film déclare morte n'est plus relayable
   (`mergeVehicleRelay` écrasait sa date de mort ; et une re-création après une mort EST une
   réapparition) — **0 changement sur les trois films, 0 perte**.
-- [ ] **5.1.5 — le cycle des véhicules : ATTEND 5.1.7.** Avec 1, 0 et 3 fins datées publiées sur
-  109, 42 et 97 vies, `VehicleCycle` ne s'établirait sur AUCUN emplacement — les mêmes « 0 écart
-  sur 31 emplacements » que la note 3.7 §5. Le préalable qu'elle exigeait n'est pas ouvert : la
-  cause est la grammaire de `ti=40`. Publier maintenant donnerait une clé jamais établie.
+- [x] **5.1.5 — le cycle des véhicules : LIVRÉ À LA MONTÉE 63** (2026-09-19). Il ATTENDAIT 5.1.7,
+  et c'était juste : avec 1, 0 et 3 fins datées publiées sur 109, 42 et 97 vies, `VehicleCycle`
+  ne s'établissait sur AUCUN emplacement — les mêmes « 0 écart sur 31 emplacements » que la note
+  3.7 §5. **Le préalable est tombé avec 5.1.7-b** (l'état par défaut de `ti=40` est lu) :
+  `4f77afc1` passe de 3 à 11 fins datées, `a349fea8` à 14, et `finDatee == mortsAppariees` sur
+  les deux. Publié en **forme (b)**, arbitrage du pilote du 2026-09-19 : `vehicleCycles[]` **par
+  EMPLACEMENT de naissance** (barycentre, famille dominante si connue, médiane / p10 / p90 /
+  `gaps` / `missing`), agglomération **2 m**, écart = `TEnd` daté -> naissance suivante au même
+  endroit, juge `gwPadsCycleFromGaps` RÉUTILISÉ tel quel — clé absente quand rien n'est établi.
+  Couche `vehicles` garde sa révision : c'est une couche d'ANALYSE sur des vies déjà publiées.
+  **AUCUNE surface web dans ce lot** (décision du pilote) — l'affichage part au lot de rendu des
+  véhicules ; noté §4 comme item TRANSMIS.
 - [x] **5.1.6 — la jauge de retour du drapeau : PROUVÉE** (`168da4a50`, recherche seule, aucun
   port). Le retour n'est pas un minuteur mais une JAUGE (`CalculateReturnRateHarmonic`), et elle
   est dans `ti=13 i1` **tag 3**, mode A, voie DELTA — un slot par drapeau :
@@ -5681,8 +5689,14 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   **DEUX PIÈGES POUR LE PORT** : l'échelle est **0 -> 1**, pas 0 -> 100 ([-100, +100] est la plage
   de SÉRIALISATION) ; le taux n'est pas constant (série harmonique du nombre de défenseurs) et la
   jauge se VIDE — rien de cela n'a besoin d'être modélisé, elle se LIT.
-  **PRÊT À PUBLIER**, non publié ici : `returnProgress` (0..1, par intervalle de lâcher, clé
-  ABSENTE quand le film ne la porte pas) dans `flagCarries[]`, à la montée 63.
+  **PUBLIÉ À LA MONTÉE 63** (2026-09-19) : `flagCarries[].spans[].returnProgress`, la SÉRIE datée
+  du remplissage sur les seuls intervalles `dropped`, dans le type `GaugePoint` déjà employé par
+  la jauge des zones — même escalier, même allégement, même échelle (`gaugeProgressOf`). Une
+  SÉRIE et non un sommet : un sommet tenu pendant tout l'intervalle se lirait « le retour est
+  imminent » alors que la jauge est retombée à zéro, exactement l'erreur que la v18 a corrigée
+  sur les zones. L'appariement slot -> drapeau est la CORRÉLATION mesurée ici (seuil 0,80, dans
+  l'écart entre 15,8 % et 100 %), plancher de 8 échantillons contre la coïncidence. Web : la
+  ligne « Retour N % » / « Return N% » sur `ReplayFlagTip`, et rien d'autre.
 - [!] **5.1.7 — LA GRAMMAIRE DE `ti=40` : LE GATE EST MAL SPECIFIE, ET L'HYPOTHESE EST REFUTEE**
   (mesure du 2026-09-18, instrument `ti40_marche_desync_research_test.go`). Le brief demandait la
   largeur fausse AVANT `i11`. **Elle n'existe pas : sur les 36 cadres de profil balayes et sur
@@ -6163,8 +6177,149 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 | 2026-09-18 | 5.1.4 | **D3 (5.1) — `4f77afc1` PUBLIE 106 ÉCHANTILLONS DE TRAJECTOIRE POSTÉRIEURS À UNE FIN DATÉE** (`coverage.vehicles.samplesAfterEnd`), contre 0 sur les deux BTB Heavies. Le champ existe précisément pour publier cette contradiction plutôt que de couper la trajectoire en silence — un véhicule que le film déclare mort ne devrait plus répliquer sa position. | NON TRAITÉE (règle 7). À reprendre avec 5.1.7 : si la marche de `ti=40` est fausse, l'instant de mort attribué peut l'être aussi, et ce compteur est l'oracle gratuit qui le dirait |
 | 2026-09-18 | 5.1.6 | **D4 (5.1) — LE SLOT `ti=13` DE LA JAUGE NE S'IDENTIFIE PAS PAR SON NOM, ET N'EN A PAS BESOIN.** `i0` (le `StringId` du nom de propriété) est marché mais jamais récolté, donc la jauge a été identifiée par sa CORRÉLATION aux intervalles du calque du drapeau (100,0 % sur trois jauges, contre 15,8 % pour le slot voisin). Un port qui voudrait la nommer sans oracle externe devrait récolter `i0` et hacher les noms Lua candidats. | NON TRAITÉE. Pour publier `returnProgress`, la corrélation suffit et elle est plus sûre qu'un hachage de nom : l'appariement se fait sur le drapeau que `flagCarries` porte déjà |
 | 2026-09-17 | 3.6.a | **D6 (3.6.a) — L'ÉTAPE `vehicles` DE `replay-equiv` BOUGE SUR NEUF FILMS, ET LE MOUVEMENT N'ATTEINT AUCUNE SORTIE PUBLIÉE.** Mesuré à la voie libre : sur `084a804d`, le digest de l'étape `vehicles` passe de `a78431ed…` à `fac28aa9…`. Trois contrôles. (1) DÉTERMINISME : deux exécutions de la tête rendent le même sha sur les 53 étapes — ce n'est pas un aléa. (2) IMPUTATION : le même film cuit avec le CODE DE LA BASE `492cb0923` (arbre extrait hors dépôt, même cache, mêmes références) rend **exactement** la référence figée `a78431ed…` — c'est donc bien le port de `ti=9`, et NON 3.3.1 (dont `grenades` rend le même sha à la base et à la tête). (3) PORTÉE : le document cuit base → tête est identique sur **tous ses chemins sauf un**, `/coverage/decoder/grammarRev` (diff structuré : 1 chemin sur 9 335 637 octets, taille identique des deux côtés) ; **aucune ligne de journal de balayage ne diffère** (`viesRecensees=180 publiees=97 …`, `episodes=74 vehiculesOccupes=45 …` identiques) ; le corpus gate classe 0 gain / 0 perte / 0 changement. Le mouvement est donc confiné à l'ENTRÉE de balayage `VehicleScan`, dans un champ que seul `digest` voit — il hache les champs NON EXPORTÉS, et `VehicleScan.Positions []grammar.BipedPosition` embarque précisément `componentDirs`, le struct non exporté que l'en-tête du paquet `digest` cite en exemple. **CE QUI N'EST PAS ÉTABLI, ET QUI EST DIT** : le champ exact n'est pas isolé — `digest` n'exporte aucun rendu, et l'isoler demanderait un instrument que ce lot n'a pas écrit. NON TRAITÉ : rien ne dépend de cette valeur aujourd'hui (aucune sortie ne la porte). Écarte au passage deux hypothèses testées et fausses : ce n'est PAS un effet de bord de 3.3.1 (`53ce4390` bouge sur `vehicles` sans bouger sur `grenades`), et ce n'est PAS la scission du maillon de dispatch (aucune étiquette `case` n'est dupliquée dans la chaîne — vérifié sur pièces, donc l'ordre des maillons ne décide de rien). | instrument d'isolation des entrées de balayage : exporter un rendu de `digest` (ou un mode `-out-dir` qui écrit la valeur et pas seulement son empreinte) rendrait ce genre d'écart lisible au champ près au lieu du seul sha. À porter le jour où une sortie dépendra de ces champs |
+| 2026-09-19 | 5.1.5 | **TRANSMIS AU LOT DE RENDU DES VÉHICULES (décision du pilote, forme (b)) — L'AFFICHAGE DU CYCLE DE RÉAPPARITION.** `vehicleCycles` est PUBLIÉ au schéma 63 ; aucun client ne le dessine. Vérifié sur pièces le 2026-09-19 : le rejeu n'a **aucune** infobulle ni carte de véhicule — `ReplayCanvasTips.tsx` n'héberge que celles des poses, des socles, du drapeau et des armes au sol, et `useReplayVehicles.ts` ne porte aucun survol (0 occurrence de `hover`). La surface est donc un lot de RENDU, pas un alignement de libellé. | **ITEM TRANSMIS, PAS UNE DETTE** : il part au lot qui reprend déjà l'orientation, la taille et les tirs des véhicules — un marqueur d'emplacement avec « Réapparition dans ≈ N s », sur le modèle des socles d'arme, ou une infobulle |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Montée de schéma 62 -> 63 — LES DEUX RÉAPPARITIONS QUI MANQUAIENT, 2026-09-19
+
+#### CE QUE LA MONTÉE PUBLIE, ET CE QU'ELLE NE PUBLIE PAS
+
+| champ | d'où il sort | forme |
+|---|---|---|
+| `flagCarries[].spans[].returnProgress` | `ti=13 i1` tag 3, voie DELTA, **déjà lu en production** (jauge des zones) | `[]GaugePoint` — le TYPE existant, même escalier, même allégement, même échelle |
+| `vehicleCycles[]` | les vies DÉJÀ PUBLIÉES (`T0`, `TEnd`, `Spawn`) | `PadCycle` à l'identique, juge `gwPadsCycleFromGaps` RÉUTILISÉ |
+| `coverage.flagCarries.gauge*` (6) · `coverage.vehicles.cycle*` (4) | — | les dénominateurs qui séparent les silences |
+
+**AUCUNE DES QUATRE RÉVISIONS DE DÉCODAGE NE MONTE**, et c'est le point de la montée : `ti=13`
+était déjà balayé pour les zones, `ti=40` l'a été au lot 5.1.7-b. Cette version **PUBLIE ce qui
+était déjà décodé** — pas un octet de grammaire n'est touché.
+
+#### TROIS VÉRIFICATIONS SUR PIÈCES QUI ONT CHANGÉ LE PLAN BRIEFÉ
+
+1. **LA MAGIE DU BLOB D'ENTRÉES NE MONTE PAS** (briefé : « 8 fixtures d'entrées régénérées »).
+   La jauge voyage par `encodeGardesDeMode`, dans la **section 1 à la suite du blob** — exactement
+   là où `ZoneReads` vit depuis 4.1.1-b. Le format du blob est **inchangé à l'octet**, donc les
+   huit `testdata/inputs_<short8>.bin.gz` restent valides et **aucun film n'a eu à être redécodé**.
+   C'est `SchemaDesFaits` qui porte le changement (**2 -> 3**), et `TestCodecCouvreFilmInputs`
+   mesure le FICHIER, pas le blob : il couvre donc les deux champs neufs par aller-retour.
+2. **UNE SEULE LECTURE DE `ti=13`, DEUX GARDES.** Les zones et la jauge sont deux ENTRÉES
+   distinctes (deux `Scanned` publiés) mais un seul balayage — `ti13Partage` mémoïse. Deux
+   fonctions `decodeFilm*` et deux `observe` gardent l'invariant `scans == steps` de
+   `observe_test.go` **sans** payer deux marches bit à bit.
+3. **`appendGaugeWindow` A ÉTÉ SCINDÉ, PAS RECOPIÉ.** L'allégement seul devient
+   `appendGaugeThinned` ; la jauge du drapeau l'appelle SANS le retour à zéro, qui tomberait
+   **après** la fin du `dropped` (le drapeau est rentré ou repris) et publierait un point hors des
+   bornes du span. Règle des ≤ 2 copies tenue par extraction, pas par duplication.
+
+#### GATES
+
+| Date | Item | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-19 | 63 | `gofmt -l ./internal ./cmd ./contracttest` ; `go build ./...` ; `go vet ./...` | sortie vide ; vert ; vert |
+| 2026-09-19 | 63 | `go test -count=1 ./...` (suite Go complète) | **vert**. Un seul rouge, rejoué seul en `-count=3` et vert : `mapcatalog.TestAddOverlayEntryConcurrentDossierAbsentNePerdRien` — flake de concurrence connu, étranger au lot |
+| 2026-09-19 | 63 | `vehicle_cycles_test.go` — 8 cas sur tampon synthétique | vert : cycle établi sur 2 écarts ; **1 écart ne publie rien** ; fin non datée = manque ; fin `film_end` = manque ; 2 m sépare deux emplacements ; vie sans naissance ignorée ; écarts dispersés refusés ; famille inconnue **garde** son cycle |
+| 2026-09-19 | 63 | `flag_return_gauge_test.go` — 5 cas sur tampon synthétique | vert : escalier borné au `dropped`, T strictement croissant ; **le slot voisin à 15,8 % est REFUSÉ** ; 2 échantillons ne suffisent pas ; un slot par drapeau ; balayage absent = rien publié |
+| 2026-09-19 | 63 | ratchet de forme (`document_shape.golden`) | régénéré par sa porte : schéma 63, empreinte `bc742448caa3a8aa` ; les jumeaux STOCKÉE / SERVIE concordent |
+| 2026-09-19 | 63 | `contracttest` (`wantReplayDocumentFields` 59 -> **60**) ; `internal/api` | vert ; vert. `returnProgress` NE fait PAS monter le compte (champ d'un type imbriqué), les 10 compteurs non plus |
+| 2026-09-19 | 63 | 8 fixtures de contrat renommées `replay_schema_63_*` + manifeste, 8 goldens d'assemblage | régénérés par leurs portes ; les fixtures 62 supprimées par la même porte |
+| 2026-09-19 | 63 | plafonds `film_file_size_test.go` | `document_chronicle.go` 1687 -> **1762** et `structure_test.go` 1183 -> **1200** : la seule exception écrite, et elle n'est admise que dans le commit qui monte `SchemaVersion` |
+| 2026-09-19 | 63 | plafond de surface `film_facade_surface_test.go` | 258 -> **259**, re-mesuré à l'entrée sur `8b8d93c87` : un seul symbole neuf, `replay.VehicleCycle`. `returnProgress` n'en ajoute AUCUN — il réutilise `replay.GaugePoint` |
+| 2026-09-19 | 63 | jumeaux `domain/replaydoc` + `service/replayview` + `parity_test.go` | vert |
+| 2026-09-19 | 63 | `make openapi-gen` puis `make generate-types` (EN DERNIER) | contrat régénéré (741 544 octets), `generated.ts` dérivé |
+| 2026-09-19 | 63 | `make check-types` ; `npx vitest run` (suite web complète) | vert ; **7 769 tests verts**, 722 fichiers |
+| 2026-09-19 | 63 | `golangci-lint run --new-from-rev=83a562ea1` ; `eslint` sur `match-replay` + `lib/replay` | **0 issues** ; **0 erreur** (le nouveau `describe` sorti dans `flagReturnGauge.test.ts` pour tenir le plafond de 500 lignes) |
+| 2026-09-19 | 63 | `replay-corpus-gate --base=83a562ea1`, **17 témoins** (34 cuissons, un film à la fois) | **gains 593 -> 988, pertes 337 -> 104** par rapport au gate 17. **Aucune métrique NEUVE sauf une**, mesurée ligne à ligne contre `corpus_51.json` : `coverage.vehicles.ambiguous` +1 sur `e5adf7b2` (2 -> 3) et `50247b26` (8 -> 9) |
+| 2026-09-19 | 63 | **isolation** de cette perte : `--base=8b8d93c87 --temoins=e5adf7b2,50247b26` | **`ok` / `ok`, 0 perte, 0 changement, 23 gains.** La montée 62 -> 63 n'ajoute AUCUNE perte : le `+1 ambiguous` est imputable au correctif `8b8d93c87` (item (1)) |
+
+#### LA SEULE PERTE NON NOMMÉE, ET CE QU'ELLE EST
+
+`coverage.vehicles.ambiguous` **+1** sur deux témoins sur dix-sept. Elle n'était pas dans la liste
+nommée par le pilote, et elle est ATTRIBUÉE : le correctif du 2026-09-19 rend 16 à 21 vies de plus
+éligibles à porter un occupant sur ces films, et avec autant de candidats géométriques de plus, UN
+épisode de plus se retrouve disputé par deux véhicules.
+
+**CE N'EST PAS UNE DONNÉE PERDUE, C'EST UN DOUTE PUBLIÉ.** `Ambiguous` compte les épisodes « que
+DEUX véhicules distincts se disputent au même instant, artefact du pont, jamais tranché » — le
+champ existe précisément pour dire ce qu'on ne sait pas plutôt que de choisir au hasard. Il monte
+de 1 sur deux films, pendant que le même correctif rend des dizaines d'épisodes et leurs tirs
+(`11de8353` : 38 lignes de perte effacées, `shots/n` rendu à 1 704). Consignée ici, **non
+traitée** : la trancher demanderait un départage que le film ne porte pas.
+
+#### `replay-equiv` 20 FILMS, JAMAIS `-update` — L'ÉCART EST UN DÉCALAGE, ET IL SE PROUVE
+
+**BILAN : 0 identique, 20 différents, 0 écarté, 0 échec.** Et l'écart est le MÊME sur les vingt,
+14 à 22 étapes sur 55 selon le film. Il se lit en trois parts, et la première est arithmétique :
+
+1. **LE DÉCALAGE D'UN CRAN (11 étapes, 20/20).** L'étape NEUVE `flagGauge` s'insère entre
+   `zoneReads` et `bombReads`, si bien que chaque étape suivante se compare à la référence de sa
+   VOISINE DE GAUCHE. **Ce n'est pas une divergence, et le fichier le démontre** : sur `000d5950`,
+   `bombReads` obtient `1f8dc03d…` — exactement le sha *attendu ET obtenu* de `flagGauge` ;
+   `grenades` obtient `3deabdc5…`, le sha attendu de `bombReads` ; et ainsi de suite jusqu'à
+   `clockOrigin`. `artifact` est alors « produite en trop » : c'est la dernière poussée dehors.
+2. **CE QUE LA MONTÉE CHANGE VRAIMENT (2 étapes, 20/20)** : `flag` — le calque du drapeau porte
+   désormais `returnProgress` — et `artifact`, le document entier.
+3. **CE QUI VIENT DES LOTS 5.1 PRÉCÉDENTS, PAS DE LA MONTÉE.** Les références sont figées sous
+   `grammar-2026-09-15.42` et la tête cuit en `grammar-2026-09-18.3` / `killsource-2026-09-18`
+   (télémétrie du corpus gate) : `killsource` (20/20, la révision de faits de 5.1.1), `vehicles`
+   (20/20, la marche de `ti=40` de 5.1.7-b), `pads` (9/20), `killRefs` (3/20),
+   `inventoryDeltas` / `equipmentChanges` / `abilityRanks` (1/20 chacun, la grammaire `ti=12` de
+   5.1.1). **ATTRIBUTION PAR RAISONNEMENT ET TÉLÉMÉTRIE, pas par une seconde exécution** : la
+   dire mesurée demanderait de rejouer le harnais sur le code de chaque lot, ce que ce lot n'a
+   pas fait.
+
+**AUCUN RE-FIGEAGE**, et ce n'est pas un report : re-figer les références est le geste du pilote
+(décision du 2026-09-18), et `-update` n'a pas été passé une seule fois.
+
+#### S8 `-deux-passes` — L'ARTEFACT EST IDENTIQUE À L'OCTET, ET C'EST CE QUI PROUVE LE CODEC
+
+| film | mode | verdict |
+|---|---|---|
+| `fb1a1a72` | CTF multi-manche | **artefact IDENTIQUE à l'octet** (décodage 34,4 s / rejeu depuis les faits 221 ms) |
+| `a349fea8` | BTB Heavies | **artefact IDENTIQUE à l'octet** (2 m 51 s / 375 ms) |
+| `bcb6d393` | CTF mono-manche | **artefact IDENTIQUE à l'octet** (13,8 s / 125 ms) |
+
+**0 artefact divergent.** Le seul écart d'étape à classer est `killsource` sur les trois, et c'est
+la chaîne de révision de 5.1.1, pas un contenu. **DEUX DES TROIS SONT LES FILMS DE CTF DU CORPUS**,
+c'est-à-dire précisément ceux où la jauge existe : la passe-faits reconstruit `returnProgress` à
+l'identique, donc le canal transite bien par le fichier de faits et la propriété du lot 4.1 tient.
+
+*Un quatrième film avait été lancé par erreur (`4f77afc1`, absent du corpus d'équivalence, donc
+sans faits de référence) : échec du harnais, sans rapport avec le code — il est remplacé par
+`bcb6d393`.*
+
+#### CE QUE LES DEUX CALQUES PUBLIENT VRAIMENT (cuissons du gate, tête)
+
+**LA JAUGE DE RETOUR — elle publie, et l'appariement retrouve la mesure de 5.1.6 :**
+
+| film | slots candidats | **appariés** | lâchers publiés | **dont porteurs d'une série** | points | max `v` |
+|---|---:|---:|---:|---:|---:|---:|
+| `bcb6d393` | 3 | **1** | 13 | **4** | 84 | 0,983 |
+| `fb1a1a72` | 6 | **2** | 33 | **15** | 232 | **1,000** |
+
+Un slot apparié sur `bcb6d393` et DEUX sur `fb1a1a72` : exactement les slots 1490, puis 1614 et
+1619 que 5.1.6 avait nommés. Les lâchers sans série sont ceux que le film ne couvre pas — la clé
+y est ABSENTE, pas vide.
+
+**LE CYCLE DES VÉHICULES — il publie PEU, et les dénominateurs disent pourquoi :**
+
+| film | emplacements | écarts | manques | **cycles** | ce qui sort |
+|---|---:|---:|---:|---:|---|
+| `4f77afc1` | 28 | 4 | 117 | **1** | `ghost`, médiane **44,1 s** (2 écarts, 2 manques) |
+| `50247b26` | 19 | 4 | 37 | **1** | `mongoose`, médiane **70,6 s** (2 écarts, 1 manque) |
+| `084a804d` | 30 | 3 | 88 | 0 | — |
+| `a349fea8` | 32 | 4 | 121 | 0 | — |
+| `a521164d` · `11de8353` · `e5adf7b2` · `111fa685` · `bfecd02b` | 8 à 29 | 1 à 2 | 0 à 43 | 0 | — |
+
+**DEUX CYCLES SUR DIX-SEPT FILMS, ET C'EST LA MESURE, PAS UN DÉFAUT DE CÂBLAGE.** 5.1.7-b a fait
+passer les fins datées de « une sur cent » à des dizaines, ce qui rend le calcul POSSIBLE ; il ne
+l'a pas rendu ABONDANT. Les manques écrasent toujours les écarts (117 contre 4 sur `4f77afc1`) —
+il faut la fin datée de la vie PRÉCÉDENTE au même emplacement, et deux écarts stables. Le champ
+dit donc ce qu'il sait et se tait ailleurs ; ce sont `cycleLocations` / `cycleGaps` /
+`cycleMissing` qui portent le reste, et c'est exactement pour ça qu'ils existent. Les deux valeurs
+qui sortent sont plausibles pour du BTB (Ghost ~44 s, Mongoose ~71 s) — **aucune n'est validée à
+l'œil, et ce lot ne le prétend pas.**
+
 
 ### Lot 5.1.7 (1) — LES SEPT TIRS PERDUS : VERDICT PAR LE CONTENU, PUIS LE CORRECTIF, 2026-09-19
 

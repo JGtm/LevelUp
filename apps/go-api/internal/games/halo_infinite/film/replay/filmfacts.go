@@ -205,6 +205,14 @@ import (
 // `TestCodecCouvreFilmInputs` ne remplissait que le PREMIER champ de chaque structure imbriquee,
 // si bien qu une structure de vingt champs passait au vert sur un seul. Les deux sont corriges
 // dans le meme commit que cette montee.
+// LA MAGIE NE MONTE PAS A LA MONTEE DE SCHEMA 63 (2026-09-19, post-chantier lot 5.1), ET C EST
+// UNE VERIFICATION SUR PIECES, PAS UN OUBLI. Le lot fait entrer au fichier de faits LA JAUGE DE
+// RETOUR DU DRAPEAU (`FilmInputs.FlagGauge` + `FlagGaugeScanned`, `ti=13 i1` tag 3) — mais par
+// `encodeGardesDeMode`, c est-a-dire dans la SECTION 1 A LA SUITE DE CE BLOB, exactement la ou
+// `ZoneReads` / `ZoneScanned` vivent deja depuis le lot 4.1.1-b. Le format du blob lui-meme est
+// INCHANGE a l octet, donc les huit fixtures `testdata/inputs_<short8>.bin.gz` restent valides et
+// aucun film n a a etre redecode pour les regenerer. C est [SchemaDesFaits] qui porte le
+// changement (2 -> 3) : lui dit ce que les SECTIONS portent, la magie ce que le BLOB porte.
 const filmFactsMagic = "REPLAYINPUTS23\n"
 
 // ---------------------------------------------------------------------------

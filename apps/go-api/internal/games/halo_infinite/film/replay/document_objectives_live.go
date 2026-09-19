@@ -177,6 +177,19 @@ type FlagSpan struct {
 	// du porteur ; pour `home`, le socle `flag_spawn`.
 	X float32 `json:"x"`
 	Y float32 `json:"y"`
+	// ReturnProgress est LA JAUGE DE RETOUR pendant cet intervalle : l'escalier de remplissage
+	// que le film ECRIT (`ti=13 i1` tag 3), sur l'echelle du jeu 0 = vide, 1 = pleine — la MEME
+	// que `ZoneSpan.Gauge`, et le meme type publie.
+	//
+	// SEUL UN [FlagStateDropped] PEUT EN PORTER : la jauge ne se remplit que pour un drapeau AU
+	// SOL. Cle ABSENTE quand le film n'emet rien sur cet intervalle — un tableau vide se lirait
+	// « la jauge est restee a zero », ce qui est une affirmation, pas un silence.
+	//
+	// CE N'EST PAS UN COMPTE A REBOURS, ET LE CLIENT NE DOIT PAS EN FAIRE UN : le taux n'est pas
+	// constant (serie harmonique du nombre de defenseurs) et la jauge SE VIDE quand plus personne
+	// n'est dans la zone. L'escalier TIENT la derniere valeur jusqu'au point suivant, comme celui
+	// des zones. Preuve, appariement et pieges : flag_return_gauge.go.
+	ReturnProgress []GaugePoint `json:"returnProgress,omitempty"`
 }
 
 // FlagCarriesCoverage porte les denominateurs du calque. Sans eux, « 12 portages » se lirait
@@ -356,6 +369,26 @@ type FlagCarriesCoverage struct {
 	// publies sur aucun drapeau, plutot que sur un drapeau INVENTE. Ils restent comptes dans
 	// `carries` : le joueur a bel et bien porte quelque chose, c'est LEQUEL qui n'est pas su.
 	Unresolved int `json:"unresolved"`
+	// LES CINQ DENOMINATEURS DE LA JAUGE DE RETOUR (schema 63, cf. flag_return_gauge.go). Ils
+	// separent les QUATRE silences que `returnProgress` absent ne distingue pas : le canal n'a
+	// pas ete lu, il a ete lu et ne porte aucun slot de jauge, il en porte mais aucun ne
+	// correle a un drapeau, ou il correle et l'intervalle n'a simplement rien recu.
+	//
+	// GaugeScanned dit que `ti=13` A ETE BALAYE pour ce film. Faux : les quatre suivants valent
+	// zero, et cela ne dit RIEN du film (c'est le cas nominal hors CTF).
+	GaugeScanned bool `json:"gaugeScanned"`
+	// GaugeSlots / GaugeReads : les slots candidats retenus (variant scalaire au tag 3) et le
+	// nombre total d'echantillons qu'ils portent.
+	GaugeSlots int `json:"gaugeSlots"`
+	GaugeReads int `json:"gaugeReads"`
+	// GaugePaired est le nombre de DRAPEAUX auxquels un slot a ete apparie. Zero avec des slots
+	// non nuls est le cas qu'il faut voir arriver : le canal parle, et aucune de ses series ne
+	// suit les lachers publies.
+	GaugePaired int `json:"gaugePaired"`
+	// GaugeSpans / GaugePoints : les intervalles `dropped` qui portent une serie, et le nombre
+	// de points publies apres allegement.
+	GaugeSpans  int `json:"gaugeSpans"`
+	GaugePoints int `json:"gaugePoints"`
 }
 
 // Balanced verifie les TROIS invariants du calque : toute prise de l'oracle est soit publiee, soit

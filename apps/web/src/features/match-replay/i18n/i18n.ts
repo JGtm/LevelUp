@@ -180,6 +180,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     flagCarrierUnknown: 'Porteur non nommé',
     flagSinceFmt: (seconds) => `Depuis ${Math.round(seconds)} s`,
+    flagReturnFmt: (progress) => `Retour ${Math.round(progress * 100)} %`,
     flagOpenNote:
       "Rien ne date la fin de ce portage : l'intervalle court jusqu'à la fin du film — c'est une borne haute, pas une durée mesurée.",
     layerVipCrown: 'VIP',
@@ -619,6 +620,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     flagCarrierUnknown: 'Carrier not named',
     flagSinceFmt: (seconds) => `For ${Math.round(seconds)} s`,
+    flagReturnFmt: (progress) => `Return ${Math.round(progress * 100)}%`,
     flagOpenNote:
       'Nothing dates the end of this carry: the interval runs to the end of the film — an upper bound, not a measured duration.',
     layerVipCrown: 'VIP',

@@ -90,19 +90,35 @@ func zoneGaugeSeriesOf(ss []zoneSample, wins []zoneGaugeWindow, gap int) []Gauge
 // frames le dernier point publie — puis le RETOUR A ZERO qui ferme la rampe, quand le film le
 // porte (cf. appendGaugeReset).
 func appendGaugeWindow(out []GaugePoint, ss []zoneSample, w zoneGaugeWindow, gap int) []GaugePoint {
-	i := sort.Search(len(ss), func(k int) bool { return ss[k].t >= w.t0 })
+	out, i := appendGaugeThinned(out, ss, w.t0, w.t1, gap)
+	return appendGaugeReset(out, ss, i)
+}
+
+// appendGaugeThinned est L ALLEGEMENT SEUL, sans le retour a zero : le premier et le dernier
+// point de la fenetre toujours, et entre les deux ceux qui ont bouge d au moins
+// `zoneGaugeMinDeltaMilli` ou qui suivent d au moins `gap` frames le dernier point publie. Rend
+// aussi l index du PREMIER echantillon au-dela de la fenetre, pour que l appelant decide lui-meme
+// ce qu il en fait.
+//
+// EXTRAIT DE `appendGaugeWindow` LE 2026-09-19 (montee 63) POUR SON SECOND APPELANT : la jauge de
+// RETOUR DU DRAPEAU (`flag_return_gauge.go`) veut le meme allegement, la meme echelle et le meme
+// escalier, mais PAS le retour a zero — sa serie est publiee DANS un intervalle de lacher, et le
+// zero qui suit tombe apres la fin de cet intervalle (le drapeau est rentre ou repris). L y
+// pousser publierait un point hors des bornes du span.
+func appendGaugeThinned(out []GaugePoint, ss []zoneSample, t0, t1, gap int) ([]GaugePoint, int) {
+	i := sort.Search(len(ss), func(k int) bool { return ss[k].t >= t0 })
 	first, lastT, lastM := true, 0, 0
-	for ; i < len(ss) && ss[i].t <= w.t1; i++ {
+	for ; i < len(ss) && ss[i].t <= t1; i++ {
 		s := ss[i]
 		m := gaugeMilliOf(s.v)
-		last := i+1 >= len(ss) || ss[i+1].t > w.t1
+		last := i+1 >= len(ss) || ss[i+1].t > t1
 		if !first && !last && m-lastM < zoneGaugeMinDeltaMilli && s.t-lastT < gap {
 			continue
 		}
 		out = pushGaugePoint(out, GaugePoint{T: s.t, V: float32(m) / zoneGaugeMilli})
 		first, lastT, lastM = false, s.t, m
 	}
-	return appendGaugeReset(out, ss, i)
+	return out, i
 }
 
 // appendGaugeReset publie le RETOUR A ZERO qui suit une rampe : la premiere emission apres la

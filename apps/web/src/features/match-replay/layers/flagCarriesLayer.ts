@@ -82,6 +82,38 @@ export interface FlagNow {
   y: number
   /** Première image du span : c'est elle qui donne le « depuis quand » de l'infobulle. */
   t0: number
+  /**
+   * LA JAUGE DE RETOUR à cette image (schéma 63), dans [0, 1] — `null` quand l'artefact n'en
+   * publie pas pour cet intervalle, ou quand aucun point ne précède encore l'image.
+   *
+   * ESCALIER, PAS INTERPOLATION : le film émet par paliers et la valeur TIENT jusqu'au point
+   * suivant, exactement comme la jauge des zones. Interpoler inventerait un remplissage régulier
+   * que le jeu n'a pas — son taux suit une série harmonique et la jauge se VIDE quand plus
+   * personne n'est dans la zone.
+   */
+  returnProgress: number | null
+}
+
+/**
+ * flagReturnAt rend la valeur de la jauge de retour à l'image demandée : le DERNIER point dont
+ * l'instant ne dépasse pas l'image. `null` avant le premier point, et `null` quand l'artefact
+ * n'en publie aucun (artefact antérieur à 63, ou intervalle que le film n'a pas couvert).
+ *
+ * `undefined` ET tableau vide rendent la MÊME chose, et c'est voulu : le contrat n'écrit la clé
+ * que lorsqu'elle porte des points, donc un tableau vide ne devrait jamais arriver — s'il
+ * arrivait, il ne dirait toujours rien de plus.
+ */
+export function flagReturnAt(
+  points: ReadonlyArray<{ t: number; v: number }> | undefined | null,
+  frame: number,
+): number | null {
+  if (!points || points.length === 0) return null
+  let value: number | null = null
+  for (const p of points) {
+    if (p.t > frame) break
+    value = p.v
+  }
+  return value
 }
 
 /**
@@ -95,7 +127,15 @@ export interface FlagNow {
 export function flagSpanAt(carry: ReplayFlagCarryReady, frame: number): FlagNow | null {
   for (const sp of carry.spans) {
     if (frame < sp.t0 || frame > sp.t1) continue
-    return { team: carry.team, state: sp.state, xuid: sp.xuid ?? null, x: sp.x, y: sp.y, t0: sp.t0 }
+    return {
+      team: carry.team,
+      state: sp.state,
+      xuid: sp.xuid ?? null,
+      x: sp.x,
+      y: sp.y,
+      t0: sp.t0,
+      returnProgress: flagReturnAt(sp.returnProgress, frame),
+    }
   }
   return null
 }

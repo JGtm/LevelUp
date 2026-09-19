@@ -157,6 +157,7 @@ var couchesDesCalques = map[string]string{
 	"groundWeapons":       grammar.Rev, // build_calques.go `buildGroundWeaponItems` <- FilmInputs.Pads + WeaponChanges
 	"objectiveObjects":    grammar.Rev, // build_objective_objects.go <- FilmInputs.Pads.Weapons SEUL : son en-tete mesure « aucune lecture de film ajoutee », ni statborg ni morts
 	"vehicles":            grammar.Rev, // build_vehicles.go <- FilmInputs.Vehicles
+	"vehicleCycles":       grammar.Rev, // vehicle_cycles.go <- `doc.Vehicles` SEUL : une couche d ANALYSE sur les vies deja publiees, donc la MEME revision que le calque dont elle derive
 	"zoneStates":          grammar.Rev, // build_zones.go <- FilmInputs.ZoneReads (le catalogue de zones vient de l appelant, il ne decode rien)
 
 	// --- LES FAITS (`facts.Rev`, orthographiee `killsource-...`) : les calques dont les lignes
@@ -168,7 +169,7 @@ var couchesDesCalques = map[string]string{
 	"equipmentEpisodes": facts.Rev, // build_pistes.go : les episodes sortent de la grammaire, mais `attachAllEquipmentKills` y ECRIT `k`/`a` depuis opt.Kills (killsource)
 	"objectives":        facts.Rev, // objectives.go <- opt.Objectives (`objectives.IdentifiedEvent`)
 	"scoreTimeline":     facts.Rev, // build_score.go <- opt.Score.Records (enregistrements d entite du statborg)
-	"flagCarries":       facts.Rev, // build_objectives_live.go <- opt.Flag.Records (statborg)
+	"flagCarries":       facts.Rev, // build_objectives_live.go <- opt.Flag.Records (statborg) ; la jauge de retour vient de la grammaire (`FilmInputs.FlagGauge`), mais les LACHERS auxquels elle s apparie sortent du statborg — la revision la plus tardive gagne
 	"flagReturnZone":    facts.Rev, // build_objectives_live.go, meme entree que `flagCarries`
 	"vipCrown":          facts.Rev, // vip_crown.go <- opt.Vip.Records (statborg)
 	"skullCarries":      facts.Rev, // skull_carries.go <- opt.Skull.Records (statborg)
