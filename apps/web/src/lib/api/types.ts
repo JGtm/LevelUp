@@ -2290,7 +2290,6 @@ export type CompareMetricRow = components['schemas']['CompareMetricRow']
 
 export interface CompareRequest {
   target_gamertag: string
-  filters?: FilterContextInput
 }
 
 export interface CompareResponse {
