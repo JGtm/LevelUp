@@ -1255,7 +1255,7 @@ CE QUI FONDE LA PORTÉE DU LOT : ces sept étiquettes font **16 instances** dans
 **4 seulement changent de niveau — identiquement sur les sept builds** :
 
 | Instance | ancien L | L du jeu | Lecteur |
-|---|---|---|---|
+| 2026-09-19 | 5.1.7 | **D6 (5.1.7) — THEATER NE MONTRE QUE LES MATCHS DU COMPTE.** `084a804d`, `a521164d`, `a349fea8`, `111fa685` et `e5adf7b2` sont DEFINITIVEMENT non consultables a l oeil : ils ne sont pas des matchs de JGtm. Cinq des temoins du corpus echappent donc a toute verification visuelle. | NON TRAITE, et ce n est pas un defaut a corriger : c est une CONTRAINTE a respecter. Tout futur temoin dont un verdict doit etre confirme a l oeil **doit etre un match de JGtm** — a verifier AVANT de promettre une verification visuelle, pas apres |
 | ti=14 i0 `crew-order-component` | 0 | 1 | `quantAxisWidth(level)` |
 | ti=21 i2 `flock-destination-component` | 1 | 2 | `quantAxisWidth(level)` |
 | ti=30 i0 `tacmap-poiicon` | 0 | 1 | `quantAxisWidth(level)` |
@@ -5718,7 +5718,7 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   Sur `4f77afc1` : 11 lues, 11 appariees, 11 fermees -> **11 fins publiees** si les 11 vies sont
   publiees (aujourd'hui **3**) ; et **97 / 256** vies publiees aujourd'hui, la ou les naissances
   et les positions se perdent. Sur `a349fea8` : 20 lues -> 3 appariees -> 1 publiee.
-- [!] **5.1.7-a — `param_4` VIENT DU REGISTRE DU FILM** (D2 (5.1.7)). **ECRIT, PAS LIVRE** : la case reste `[!]` tant que les CINQ fins de `084a804d` (769/1, 791/1, 793/1, 834/1, 841/1) ne sont pas tranchees a l oeil sur l artefact Theater — les quatre survivantes y servent de temoin.
+- [x] **5.1.7-a — `param_4` VIENT DU REGISTRE DU FILM** (D2 (5.1.7), `312d2e85b`). **LIVRE le 2026-09-19 sur verdict Theater** : les cinq fins de `084a804d` ne seront JAMAIS verifiables (le match n est pas de JGtm), elles ont ete lues par une grammaire prouvee fausse, et le SEUL cas verifiable de « mort perdue par une grammaire plus juste » — le Razorback 776/1 de `4f77afc1` — s est revele une mort FAUSSE, la tete ayant raison la ou la base inventait. La grammaire prime ; les pertes `084a804d` 9 -> 4 et `11de8353` 5 -> 4 sont ACCEPTEES comme correction, non verifiables a l oeil, REVERSIBLES avant recuisson (§5).
   `param_4` EST le `level` que l'entree de composant porte en `entree + 0x100`, donc
   `Archetype.Level(i)`, que le traverseur descendait deja jusqu'a `consumeByName` sans que
   personne s'en serve. Trois sources concordent (capture live `ti=35` ; slot `+0x10` du
@@ -5775,6 +5775,9 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-19 | 5.1.7 | **D4 (5.1.7) — UN OCCUPANT FAUX, NOMME A L OEIL.** Theater (utilisateur, 2026-09-19) : sur `4f77afc1`, le rejeu publie « Yessireezy, siege 1 du vehicule 776/1, de 1:11.8 a 1:35.4 ». Yessireezy **ne monte jamais dans ce vehicule** — a 3:01 il est tue A COTE par un tir de mortier de Wraith, et il reapparait a 3:10. L appariement des sieges a pris un EVENEMENT VOISIN pour un embarquement. | NON TRAITE (regle 7). C est le calque d occupation (`vehicle_occupancy.go`, `decodeFilmVehicleEvents` et le pont morts -> siege), pas la grammaire de `ti=40`. A instruire par un lot d occupation, avec ce cas comme temoin nomme : un film consultable (`4f77afc1` est un match de JGtm), un slot, un instant |
+| 2026-09-19 | 5.1.7 | **D5 (5.1.7) — LE « DESPAWN SANS EXPLOSION » EST UNE FIN DE VIE REELLE QUE LE REJEU NE SAIT PAS NOMMER.** Meme verdict Theater : le Razorback 776/1 de `4f77afc1` n explose pas — il DISPARAIT vers 3:29, sans explosion, apres quelques degats vers 2:26. Le rejeu publie `end = "unknown"` pour cette vie, ce qui est honnete mais incomplet : la fin EXISTE et elle a une nature. | NON TRAITE (regle 7). Candidat `EndKind` **`despawn`**, a cote de `destroyed` / `film_end` / `unknown`. Il demande sa propre grammaire (qu est-ce que le film ECRIT quand un vehicule despawn ?) et une montee de schema : ni l une ni l autre n appartient a ce lot |
+| 2026-09-19 | 5.1.7 | **D6 (5.1.7) — THEATER NE MONTRE QUE LES MATCHS DU COMPTE.** `084a804d`, `a521164d`, `a349fea8`, `111fa685` et `e5adf7b2` sont DEFINITIVEMENT non consultables a l oeil : ils ne sont pas des matchs de JGtm. Cinq des temoins du corpus echappent donc a toute verification visuelle. | NON TRAITE, et ce n est pas un defaut a corriger : c est une CONTRAINTE a respecter. Tout futur temoin dont un verdict doit etre confirme a l oeil **doit etre un match de JGtm** — a verifier AVANT de promettre une verification visuelle, pas apres |
 | 2026-09-18 | 5.1.7 | **D1 (5.1.7) — `dontDesynchronises` N'EST PAS UN COMPTEUR DE PERTE, ET LE GATE DU LOT REPOSAIT DESSUS.** `ObjectDeathStats.MaskDeclaredDesync` compte les records dont le masque declare le dead-state ET dont `DesyncAt != -1` — sans regarder OU. Sur `ti=40` la rupture est TOUJOURS a `i30..i47` (mesure : 65 cellules de profil, deux films, `avant_ou_a_i11 = 0` partout), c'est-a-dire dans la QUEUE que `accept` accepte deja. Le compteur melange donc « perdu » et « lu malgre une queue inconnue », et `logVehicleDeathReads` le journalise en `Warn` comme une perte. | TRAITE PAR 5.1.7-a (le gate du lot est reecrit, decision du pilote 2026-09-18). Le remede est d'un geste : compter la desynchronisation **AVANT OU A** l'index du dead-state, et laisser la queue a `DeathsTailDesync` qui existe deja. Il touche `object_deaths.go` (non-test) donc il fait monter `grammar.Rev` : a instruire par le pilote avec le correctif de fond |
 | 2026-09-18 | 5.1.7 | **D2 (5.1.7) — `param_4` EST LA COLONNE `level` DU REGISTRE DU FILM, ET TROIS COMPOSANTS QUI EN DEPENDENT SONT ABSENTS DE LA TABLE.** Recoupement a trois sources : (a) les 20 entrees de `paramByComponent`, mesurees par capture CE sur `ti=35`, valent TOUTES le `level` de la meme ligne d'`ecs_table.tsv` ; (b) les cinq filtres de `ti=12` que 5.1.1 a lus chez l'ecrivain au slot `+0x10` (3 pour `i2`, 2 pour `i3..i6`) sont EXACTEMENT leurs `level` ; (c) chaque nom de composant n'a qu'UN `level` sur tous les archetypes. Or `object-parent-state-component` (level 3, `i10` de `ti=40`, JUSTE avant le dead-state), `unit-actor-control-component` (2) et `unit-actor-state-component` (4) — les trois desers que la godoc de `component_param4.go` nomme comme branchant sur `param_4` — n'ont PAS d'entree : `paramForComponent` leur rend le `param_4` que le harnais de `killsource` a BALAYE (`calibrateRSP`, critere « records de BIPEDE lus »), sinon 1. | TRAITE PAR 5.1.7-a (decision du pilote, 2026-09-18). MESURE SUR PIECES : sur `4f77afc1` et `a349fea8` la valeur balayee est 4, qui se comporte comme les vrais 3 / 2 / 4 (les trois desers ne testent que `< 2`, `> 1`, `> 2`, `>= 4`) — les trois entrees ajoutees en sonde ont rendu **0 difference d'octet en production**. C'est donc une faute LATENTE, pas la cause du jour : un film calibre a 0 ou 1 lirait les trois a la mauvaise largeur. Le correctif juste n'est pas une 21e entree ecrite a la main, c'est de prendre `arch.Level(i)` — deja passe a `consumeByName` sous le nom `level` — et de garder la table comme ratchet |
 | 2026-09-18 | 5.1.7 | **D3 (5.1.7) — LA MARCHE D'IMAGE-CLE DE `ti=40` NE LANCE JAMAIS SA BOUCLE DE COMPOSANTS, ET C'EST POURQUOI LE GOLDEN 0.A.3 EST MUET.** `keyframe_closure.golden` porte `ti=40` a 0/777 avec une colonne « bloquant » VIDE ; `KeyframeClosureInventaire` sur `4f77afc1` rend **5/1140 (0,4 %), bloquant (aucun)** sur un archetype de 48 composants dont 16 non portes. Or `traverseComponentLoop` desynchronise au PREMIER composant present non porte et l'image-cle pose `Mask = tous presents` : si la boucle tournait, `i30` serait nomme. Elle ne tourne donc pas — `consumeFullStateDefaultBlock` rend faux, c'est-a-dire que `n2` se lit a 0, et le record s'arrete sur son second mot de taille. La largeur fausse de D5 (3.7) est LA, dans l'en-tete / l'etat par defaut de `ti=40` (`consumeDefaultStateTI40`), pas au milieu des composants. Corollaire : la colonne « porte » de l'inventaire est DERIVEE de la mesure et affiche `porte` pour `i40..i47`, que la table ECS donne `non_porte` — elle dit « n'a jamais bloque », pas « a un lecteur ». | TRAITE PAR 5.1.7-b (decision du pilote, 2026-09-18). C'est la vraie piste d'un lot « grammaire de `ti=40` », et elle est INDEPENDANTE des morts ecrites (le dead-state se lit par la marche DELTA, qui elle tourne). A instruire : mesurer `n1` / `n2` sur les records `ti=40` d'image-cle, puis l'etat par defaut chez l'ecrivain |
@@ -6162,6 +6165,54 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 | 2026-09-17 | 3.6.a | **D6 (3.6.a) — L'ÉTAPE `vehicles` DE `replay-equiv` BOUGE SUR NEUF FILMS, ET LE MOUVEMENT N'ATTEINT AUCUNE SORTIE PUBLIÉE.** Mesuré à la voie libre : sur `084a804d`, le digest de l'étape `vehicles` passe de `a78431ed…` à `fac28aa9…`. Trois contrôles. (1) DÉTERMINISME : deux exécutions de la tête rendent le même sha sur les 53 étapes — ce n'est pas un aléa. (2) IMPUTATION : le même film cuit avec le CODE DE LA BASE `492cb0923` (arbre extrait hors dépôt, même cache, mêmes références) rend **exactement** la référence figée `a78431ed…` — c'est donc bien le port de `ti=9`, et NON 3.3.1 (dont `grenades` rend le même sha à la base et à la tête). (3) PORTÉE : le document cuit base → tête est identique sur **tous ses chemins sauf un**, `/coverage/decoder/grammarRev` (diff structuré : 1 chemin sur 9 335 637 octets, taille identique des deux côtés) ; **aucune ligne de journal de balayage ne diffère** (`viesRecensees=180 publiees=97 …`, `episodes=74 vehiculesOccupes=45 …` identiques) ; le corpus gate classe 0 gain / 0 perte / 0 changement. Le mouvement est donc confiné à l'ENTRÉE de balayage `VehicleScan`, dans un champ que seul `digest` voit — il hache les champs NON EXPORTÉS, et `VehicleScan.Positions []grammar.BipedPosition` embarque précisément `componentDirs`, le struct non exporté que l'en-tête du paquet `digest` cite en exemple. **CE QUI N'EST PAS ÉTABLI, ET QUI EST DIT** : le champ exact n'est pas isolé — `digest` n'exporte aucun rendu, et l'isoler demanderait un instrument que ce lot n'a pas écrit. NON TRAITÉ : rien ne dépend de cette valeur aujourd'hui (aucune sortie ne la porte). Écarte au passage deux hypothèses testées et fausses : ce n'est PAS un effet de bord de 3.3.1 (`53ce4390` bouge sur `vehicles` sans bouger sur `grenades`), et ce n'est PAS la scission du maillon de dispatch (aucune étiquette `case` n'est dupliquée dans la chaîne — vérifié sur pièces, donc l'ordre des maillons ne décide de rien). | instrument d'isolation des entrées de balayage : exporter un rendu de `digest` (ou un mode `-out-dir` qui écrit la valeur et pas seulement son empreinte) rendrait ce genre d'écart lisible au champ près au lieu du seul sha. À porter le jour où une sortie dépendra de ces champs |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### VERDICTS THEATER DE L UTILISATEUR, 2026-09-19 — LE LECTEUR DE MORTS DE LA TETE EST JUSTE 5/5
+
+> Colles tels quels. **Theater ne montre que les matchs du compte de l utilisateur (JGtm)** :
+> `084a804d`, `a521164d`, `a349fea8`, `111fa685` et `e5adf7b2` sont **NON CONSULTABLES,
+> definitivement**. Tout futur temoin a verifier a l oeil doit etre un match de JGtm.
+
+**`4f77afc1`, Flood Gulch** (temps de la barre Theater) :
+
+- **776/1 Razorback (famille Warthog)** : **PAS detruit a 2:30** (quelques degats vers 2:26) ;
+  **DESPAWN SANS EXPLOSION vers 3:29**. -> la mort que la BASE (lot 3.4) lisait etait **FAUSSE** ;
+  la TETE, qui disait « inconnue », avait raison.
+- **776/1, l occupant** : Yessireezy **ne monte PAS dedans a 3:01** — il est tue par un tir de
+  mortier de Wraith a 3:01 et reapparait a 3:10. -> notre episode « Yessireezy siege 1, match
+  1:11.8 -> 1:35.4 » est **FAUX**.
+- **800/1 Ghost** : **detruit a 4:34** (le pilote AJM002 est tue a 4:30, ejecte ; le Ghost bipe
+  puis explose).
+- **864/1, chassis `10754375`** : c est un **WRAITH**, il **explose a 6:49** (Feelgoodjoker le
+  quitte vers 6:44 apres l alerte).
+- **916/1 Ghost** : **explose a 10:26** sans personne a bord (Gucciguap1103 pilote, tue a 10:18).
+
+**`bfecd02b`, Snowbound** :
+
+- **777/1 Ghost** : JGtm le quitte a 4:43, **explose a 4:46**.
+
+**BILAN : le lecteur de morts de la TETE est juste 5 fois sur 5, a la seconde. Et la BASE a
+produit une mort FAUSSE la ou la tete disait « inconnue ».**
+
+#### DECISION DU PILOTE, ECRITE ET ASSUMEE (2026-09-19)
+
+Les cinq fins de `084a804d` **ne seront jamais verifiees a l oeil** — le match n est pas
+consultable. Elles ont ete lues par une grammaire **PROUVEE fausse** (`param_4 = 0` retenu par un
+ex aequo a `x1,001`, contre `3` chez l ecrivain), et le SEUL cas verifiable de « mort lue par la
+base, perdue par une grammaire plus juste » — le Razorback 776/1 de Flood Gulch — s est revele
+une **mort fausse**. **La grammaire prime.**
+
+- **5.1.7-a passe a `[x]`.**
+- La « perte » du corpus gate sur **`084a804d` (9 -> 4)** et **`11de8353` (5 -> 4)** est
+  **ACCEPTEE comme correction de grammaire**, avec le precedent Flood Gulch ci-dessus, et avec la
+  mention : **non verifiable a l oeil, REVERSIBLE avant recuisson**.
+
+#### CE QUE CE VERDICT FAIT ENTRER DANS LE CODE, ET RIEN D AUTRE
+
+`10754375` entre dans la table des familles de chassis comme **Wraith**, justification datee
+« Theater utilisateur 2026-09-19 », avec sa ligne de test. Il n entre par AUCUNE des chaines
+habituelles (ni `labels.tsv`, ni le manifeste des sons, ni la chaine de destruction) : il entre
+par l OEIL, et c est ecrit a l entree. **`8aab20b4` reste NON RESOLU** — l utilisateur ne l a pas
+vu, et on ne devine pas le second parce qu on a nomme le premier.
 
 ### Lot 5.1.7-b (1) — L ETAT PAR DEFAUT DE `ti=40` EST LU, gates SANS DECODAGE DE CORPUS, 2026-09-18
 
