@@ -17,8 +17,8 @@ import { ProportionalBar } from '@/components/ui/proportional-bar'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { FragSunburst } from '@/components/charts/FragSunburst'
 import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
-import { SynthesisWeaponAccuracyChart } from './SynthesisWeaponAccuracyChart'
-import { AccentCard, SectionSubtitle } from './SynthesisCards'
+import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'
+import { AccentCard, SectionSubtitle } from '@/components/ui/section-primitives'
 import { useSynthesisFragCharts } from './useSynthesisFragCharts'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
@@ -454,7 +454,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                 )}
                 {hasWeaponAccuracy && (
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <SynthesisWeaponAccuracyChart
+                    <WeaponAccuracyChart
                       weapons={weaponAccuracy ?? []}
                       weaponKills={topWeaponKills}
                       hoveredClass={frags.hovered}
