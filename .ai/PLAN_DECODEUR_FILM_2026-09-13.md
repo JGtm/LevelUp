@@ -5746,7 +5746,7 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   et c'est bien ce que le code fait — mais l'effet sur les vieux builds est une PERTE mesuree, et
   le ratchet pose au meme commit ne garde rien contre cette variation (il compare la table au
   registre d'UN SEUL film). **Trois decisions attendent le pilote, ecrites au §5.**
-- [!] **5.1.7-b — L'ETAT PAR DEFAUT DE `ti=40`** (D3 (5.1.7), decision du pilote ; tout se mesure sur la TETE `312d2e85b`, 5.1.7-a restant ecrit dans la branche) : la marche
+- [x] **5.1.7-b — L'ETAT PAR DEFAUT DE `ti=40`** (D3 (5.1.7), decision du pilote ; tout se mesure sur la TETE `312d2e85b`, 5.1.7-a restant ecrit dans la branche) : la marche
   d'image-cle de `ti=40` ne lance jamais sa boucle de composants (`n2` lu a 0,
   `consumeFullStateDefaultBlock` faux), et c'est la que les vies recensees perdent naissance et
   position. Lire l'ecrivain de l'etat par defaut de `ti=40` (chaine descripteur -> ecrivain),
@@ -5761,11 +5761,11 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   jamais lancee. Le deserialiseur EXISTE (`consumeDefaultStateTI40`, cinq feuilles, bit-exact au
   chemin nominal) ; il n est pas cable, par la regle ecrite de `default_state_arch.go`. Sonde d UNE
   LIGNE : le bloquant de `ti=40` passe de `(aucun)` a **`i30 vehicle-auto-turret-triggers`** et le
-  ratchet 0.A.3 reste VERT. **MAIS la cuisson de production ne bouge pas d un bit** — `4f77afc1`
-  reste a `recensees=256 publiees=97`, `finDatee=3` : le calque des vehicules passe par des
-  balayages ANCRES, pas par la marche d etat complet. `97/256` a une AUTRE cause, non instruite.
-  Sonde RETIREE : l inscription dans la table est un choix de grammaire que `default_state_ti40.go`
-  laisse au superviseur, sous condition de mesurer la part de records a `bVar14 == 1`.
+  ratchet 0.A.3 reste VERT. **RECTIFIE LE 2026-09-19** : la phrase « la cuisson de production ne bouge pas d un bit » qui
+  tenait ici etait FAUSSE — elle datait de la sonde d UNE LIGNE, feuille 4 encore modelisee
+  absente. Mesure refaite sur la tete livree : `4f77afc1` passe de `publiees=97` a **149**,
+  `sansPosition` de 103 a **0**, `finDatee` de 3 a **11**. **Le gate reecrit de 5.1.7 est ATTEINT**
+  (`finDatee == mortsAppariees`, 11 == 11 ; `a349fea8` 14 == 14). Cf. §5.
 
 
 
@@ -6165,6 +6165,64 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 | 2026-09-17 | 3.6.a | **D6 (3.6.a) — L'ÉTAPE `vehicles` DE `replay-equiv` BOUGE SUR NEUF FILMS, ET LE MOUVEMENT N'ATTEINT AUCUNE SORTIE PUBLIÉE.** Mesuré à la voie libre : sur `084a804d`, le digest de l'étape `vehicles` passe de `a78431ed…` à `fac28aa9…`. Trois contrôles. (1) DÉTERMINISME : deux exécutions de la tête rendent le même sha sur les 53 étapes — ce n'est pas un aléa. (2) IMPUTATION : le même film cuit avec le CODE DE LA BASE `492cb0923` (arbre extrait hors dépôt, même cache, mêmes références) rend **exactement** la référence figée `a78431ed…` — c'est donc bien le port de `ti=9`, et NON 3.3.1 (dont `grenades` rend le même sha à la base et à la tête). (3) PORTÉE : le document cuit base → tête est identique sur **tous ses chemins sauf un**, `/coverage/decoder/grammarRev` (diff structuré : 1 chemin sur 9 335 637 octets, taille identique des deux côtés) ; **aucune ligne de journal de balayage ne diffère** (`viesRecensees=180 publiees=97 …`, `episodes=74 vehiculesOccupes=45 …` identiques) ; le corpus gate classe 0 gain / 0 perte / 0 changement. Le mouvement est donc confiné à l'ENTRÉE de balayage `VehicleScan`, dans un champ que seul `digest` voit — il hache les champs NON EXPORTÉS, et `VehicleScan.Positions []grammar.BipedPosition` embarque précisément `componentDirs`, le struct non exporté que l'en-tête du paquet `digest` cite en exemple. **CE QUI N'EST PAS ÉTABLI, ET QUI EST DIT** : le champ exact n'est pas isolé — `digest` n'exporte aucun rendu, et l'isoler demanderait un instrument que ce lot n'a pas écrit. NON TRAITÉ : rien ne dépend de cette valeur aujourd'hui (aucune sortie ne la porte). Écarte au passage deux hypothèses testées et fausses : ce n'est PAS un effet de bord de 3.3.1 (`53ce4390` bouge sur `vehicles` sans bouger sur `grenades`), et ce n'est PAS la scission du maillon de dispatch (aucune étiquette `case` n'est dupliquée dans la chaîne — vérifié sur pièces, donc l'ordre des maillons ne décide de rien). | instrument d'isolation des entrées de balayage : exporter un rendu de `digest` (ou un mode `-out-dir` qui écrit la valeur et pas seulement son empreinte) rendrait ce genre d'écart lisible au champ près au lieu du seul sha. À porter le jour où une sortie dépendra de ces champs |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Lot 5.1.7 (2) — LA VENTILATION DES VIES, ET UNE RECTIFICATION QUE JE DOIS A CE JOURNAL, 2026-09-19
+
+#### RECTIFICATION : « LE DOCUMENT PUBLIE NE GAGNE RIEN » ETAIT FAUX
+
+Le journal de 5.1.7-b et le message de `5e9dd325f` affirment que cabler l etat par defaut de
+`ti=40` « ne gagne RIEN » sur le document publie. **C EST FAUX, et l erreur est la mienne** : cette
+mesure a ete faite avec la sonde d UNE LIGNE, c est-a-dire `ti=40` inscrit dans la table mais la
+feuille 4 encore modelisee ABSENTE. Je n ai pas relance la cuisson de production APRES avoir
+implemente la feuille 4, et j ai reporte le chiffre d avant. Mesure refaite sur la tete livree :
+
+| `4f77afc1` | base `2f04bc7b8` | tete `5e9dd325f` |
+|---|---:|---:|
+| vies recensees | 256 | 256 |
+| **vies publiees** | 97 | **149** |
+| `sansPosition` | 103 | **0** |
+| morts lues / appariees | 11 / 11 | 11 / 11 |
+| **fins datees** | **3** | **11** |
+
+**LE GATE REECRIT DE 5.1.7 EST ATTEINT SUR CE FILM** : `finDatee = 11 = mortsAppariees = 11`, et
+le rapport publiees / recensees monte de **97/256 a 149/256**. Ce n est pas la fermeture d image-cle
+qui le fait — c est la feuille 4 lue, qui re-aligne le record et rend au calque ses naissances.
+
+`a349fea8`, meme tete : 265 recensees, **169 publiees**, `sansPosition = 5`, morts lues 14,
+appariees 14, **fins datees 14**, non appariees 0. **Le gate y est atteint aussi.**
+
+#### LA VENTILATION, UNE CAUSE PAR VIE
+
+`ventilation_vies_research_test.go` cuit le film par le chemin de PRODUCTION et capte le
+`VehicleScan` reel par l observateur (`WithObserver`, etape `vehicles`) ; il ventile sur les seules
+donnees exportees. Approximation ecrite dans l instrument : la fenetre d appartenance est celle du
+CENSUS, sans la tolerance ni le decoupage de vies de la production.
+
+| cause | `4f77afc1` | `a349fea8` |
+|---|---:|---:|
+| **publiee** | **149** | **169** |
+| assemblable mais absorbee par un relais (`mergeVehicleRelays`) | 107 | 91 |
+| aucune naissance lue ET slot jamais replique | **0** | **5** |
+| positions hors de la fenetre de la vie | 0 | 0 |
+| **total** | **256** | **265** |
+
+**LA QUESTION D ORIGINE — « pourquoi 159 vies ne sont pas publiees » — N A PLUS D OBJET sur
+`4f77afc1`** : il n y a plus AUCUNE vie perdue faute de naissance ou de position. Les 107 restantes
+sont des relais FUSIONNES, c est-a-dire des vies absorbees dans une piste publiee par construction
+(`cov.Merged`), pas des pertes.
+
+**LES CINQ SEULES VIES REELLEMENT PERDUES DU CORPUS INSTRUIT** sont sur `a349fea8`, et elles sont
+nommees : slots **774, 876, 881, 984, 1017**, generation 1, 4 a 12 recensements chacune, et **zero
+position dans TOUT le film**. Ce sont des entites que les images-cles declarent et que les paquets
+delta ne repliquent jamais : ni naissance, ni trajectoire, rien a publier. Ce n est pas un defaut
+de lecture, c est une absence de donnee.
+
+| Date | Point | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-19 | rectification | cuisson de production sur la TETE livree, `4f77afc1` | `publiees` 97 -> **149**, `sansPosition` 103 -> **0**, `finDatee` 3 -> **11**. Le chiffre « inchange » du journal de 5.1.7-b datait de la sonde SANS la feuille 4 |
+| 2026-09-19 | gate 5.1.7 | `finDatee == mortsAppariees` et publiees/recensees monte | `4f77afc1` **11 == 11**, 97/256 -> 149/256 · `a349fea8` **14 == 14**, 169/265. **ATTEINT sur les deux** |
+| 2026-09-19 | ventilation | `TestVentilationDesVies`, une cause par vie, total = recensees | `4f77afc1` 149 + 107 + 0 + 0 = **256** · `a349fea8` 169 + 91 + 5 + 0 = **265** |
+| 2026-09-19 | pertes reelles | les seules vies sans rien | `a349fea8` slots 774, 876, 881, 984, 1017 gen 1 — 0 position dans tout le film |
 
 ### VERDICTS THEATER DE L UTILISATEUR, 2026-09-19 — LE LECTEUR DE MORTS DE LA TETE EST JUSTE 5/5
 
