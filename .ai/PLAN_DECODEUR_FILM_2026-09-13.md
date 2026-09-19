@@ -6166,6 +6166,61 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
+### Lot 5.1.7 (1) — LES SEPT TIRS PERDUS : VERDICT PAR LE CONTENU, PUIS LE CORRECTIF, 2026-09-19
+
+#### LE VERDICT : **OUI**, ET IL EST UNANIME SUR LES SEPT
+
+Les sept tirs que `11de8353` perd entre `312d2e85b` (base) et la tete ne sont pas sept cas : ils
+sont **UNE rafale**. Meme tireur (slot `585`), meme vehicule (`v = 773`), meme arme
+(`0xC7D5091200000000`), frames **2 005, 2 010, 2 015, 2 020, 2 030, 2 034, 2 039**.
+
+La question posee etait : *a l instant du tir, une vie PUBLIEE couvre-t-elle le slot tireur ?*
+
+| Ce qui est compare | Base `312d2e85b` | Tete | Verdict |
+|---|---|---|---|
+| Vie `773/1` : `t0` / `t1` / `end` | 0 / 2 336 / inconnu | 0 / 2 336 / inconnu | **identique** |
+| Vie `773/1` : chassis / famille / echantillons | `fe32c0f4` / `warthog` / 121 | `fe32c0f4` / `warthog` / 121 | **identique** |
+| Episode d occupation du slot `585` | `{t0:1987, t1:2043, slot:585, xuid:2533274898781893, seat:0, src:"mixed"}`, 50 echantillons de visee | **AUCUN, nulle part** | **PERDU** |
+| Les 7 frames tombent-elles dans `[1 987, 2 043]` ? | oui, les 7 | — | — |
+
+**Sept « oui ».** La vie qui porte la rafale est publiee a l identique des deux cotes, famille
+`warthog` comprise ; c est l EPISODE qui disparait, et les tirs avec lui. Par la regle du pilote :
+*defaut du calcul de la bande ou du rattachement, a corriger* — pas un ancien rattachement faux.
+
+#### LA CAUSE, ET POURQUOI 5.1.7-b LA REVELE SANS L AVOIR CREEE
+
+`vehicleFamilyIsRideable` (`replay/vehicle_tracks.go`) repondait `false` a la famille VIDE, en
+confondant deux choses : une famille NOMMEE non pilotable (`falcon`, `pelican`, `phantom`, `skiff`,
+tourelle auto — la garde du 2026-09-02, qui reste) et un chassis que `vehicleFamilyByChassis` ne
+nomme **pas encore**. La seconde est une IGNORANCE, pas une propriete du vehicule.
+
+Tant que les chassis inconnus etaient rares, la confusion ne coutait rien. Le cablage de l etat par
+defaut de `ti=40` (5.1.7-b) fait naitre **18 vehicules de plus** sur `11de8353` — `withSpawn`
+**37 -> 55** — et **seize** de ces chassis sont inconnus de la table : `familyUnknown` **5 -> 21**.
+Toutes ces vies perdaient alors le droit de porter un occupant, et le rattachement geometrique
+(`vehicleNearestTo`), qui a desormais 18 candidats de plus, elisait l un d eux — lequel jetait
+l episode. La vie `773/1`, elle, n avait pas bouge d un octet.
+
+**Le correctif est d une ligne** : `return !vehicleFamillesNonPilotables[family]`. L ignorance se
+dit, elle ne se propage pas — c est deja la regle du chassis affiche en hexadecimal a cote de sa
+famille inconnue.
+
+#### GATES
+
+| Date | Item | Gate | Resultat |
+|---|---|---|---|
+| 2026-09-19 | 5.1.7 (1) | verdict par le contenu, `11de8353` base `312d2e85b` contre tete | **7 « oui » / 7** : vie `773/1` identique, seul l episode `585` (frames 1 987..2 043) disparait |
+| 2026-09-19 | 5.1.7 (1) | `TestVehicleFamilyIsRideable`, cas `""` amende (justification datee) | ROUGE avant le correctif (`= true, attendu false`), VERT apres — **mutation verifiee dans les deux sens**. Les cinq familles NOMMEES restent refusees |
+| 2026-09-19 | 5.1.7 (1) | `go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api` | vert. 8 fixtures de contrat et 3 goldens d assemblage regeneres par leurs portes |
+| 2026-09-19 | 5.1.7 (1) | goldens d assemblage, la ligne qui dit le gain | `11de8353` **1 690 -> 1 704** rattaches / 1 968 · `a521164d` **1 202 -> 1 220** / 1 476 · `e5adf7b2` **1 492 -> 1 513** / 1 786 |
+| 2026-09-19 | 5.1.7 (1) | `replay-corpus-gate --base=83a562ea1 --temoins=11de8353` | **pertes 43 -> 5, gains 61 -> 101**. Les 38 lignes disparues sont EXACTEMENT la famille tirs/episodes (`shots/n`, `shots.*`, `coverage.shots.*`, `vehicles.rides.*`, `par-xuid/2533274898781893`) |
+| 2026-09-19 | 5.1.7 (1) | les 5 pertes restantes, comparees ligne a ligne au gate de corpus 17 | **AUCUNE nouvelle** : `deathsRead` 5 -> 4, `deathsUnmatched` 3 -> 0, `noPosition` 26 -> 1, `unknownChassis.00155903` et `vehicles/par-chassis/00155903` disparus, plus le seul changement `duree-totale/par-slot/826` — toutes presentes a l identique avant le correctif |
+| 2026-09-19 | 5.1.7 (1) | `make check-types` equivalent : `npx vitest run src/features/match-replay` | **2 903 tests verts**, 1 fichier passe (fixtures regenerees relues par leurs schemas) |
+
+**`grammar.Rev` NE MONTE PAS** : le correctif est dans `film/replay`, couche de publication, et ne
+touche aucun octet de grammaire. Le contenu publie, lui, MONTE (les 8 fixtures de contrat sont
+refigees) — `SchemaVersion` reste **62**, aucun champ n apparait ni ne disparait.
+
 ### Lot 5.1.8 — LE CORRECTIF : UN ARMEMENT EST UNE MONTEE QUI ATTEINT LE PLEIN, 2026-09-19
 
 #### LA SEMANTIQUE, MESUREE AVANT D ETRE CODEE

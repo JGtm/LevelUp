@@ -59,11 +59,11 @@ vies : 182/182 portent une equipe du film
 repartition des vies par designateur : 0 x108 · 1 x74
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-1690 rattache(s) / 1968 disponible(s) = 85.9 %
-rejets : slot introuvable=278 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+1704 rattache(s) / 1968 disponible(s) = 86.6 %
+rejets : slot introuvable=264 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 1968 = 1968 (equilibre : true)
 verdict : nominal
-1690 tir(s) publie(s) · 1336 avec un cap de visee lisible · 1690 avec une arme nommee
+1704 tir(s) publie(s) · 1347 avec un cap de visee lisible · 1704 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 139 rattache(s) / 145 disponible(s) = 95.9 %
