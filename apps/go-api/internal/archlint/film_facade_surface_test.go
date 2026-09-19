@@ -154,7 +154,16 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           cause par vie sans redeviner une largeur. Un seul
 //	                                           symbole neuf. RE-MESURE A L ENTREE du lot : 257 sur
 //	                                           `50136328c`, 258 apres.
-const plafondSurfaceReplay = 258 // 2026-09-19 — base 50136328c + lot 5.1.7 (replay.VehicleScan)
+//	259  5.1.5   (2026-09-19)                  la montee de schema 63 : `replay.VehicleCycle`, le
+//	                                           type publie du cycle de reapparition par
+//	                                           emplacement, cite par le convertisseur jumeau
+//	                                           `service/replayview/convert_vehicles.go`. Un seul
+//	                                           symbole neuf — `returnProgress` n en ajoute AUCUN,
+//	                                           il reutilise `replay.GaugePoint`, deja cite par le
+//	                                           meme convertisseur pour la jauge des zones.
+//	                                           RE-MESURE A L ENTREE du lot : 258 sur `8b8d93c87`,
+//	                                           259 apres.
+const plafondSurfaceReplay = 259 // 2026-09-19 — base 8b8d93c87 + montee 63 (replay.VehicleCycle)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

@@ -35,27 +35,65 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
-// decodeFilmZoneReads balaye les proprietes reseau de `ti=13` et JOURNALISE ce qu'il en est.
+// ti13Partage porte LA LECTURE PARTAGEE des proprietes reseau de `ti=13` : le premier
+// consommateur dont la garde est ouverte la fait, le second la recoit. `fait` distingue « pas
+// encore lu » de « lu et vide » — sans lui, un film sans propriete serait relu a chaque garde.
+type ti13Partage struct {
+	fc      *grammar.FilmContext
+	matchID string
+	fait    bool
+	reads   []grammar.ManagedPropertyRead
+}
+
+// lire rend les lectures, en ne balayant le film qu une fois.
 //
-// TOUT ECHEC EST NON FATAL : un film dont l'archetype n'est pas au registre, ou dont aucun slot
-// n'apparait aux images-cles, reste un rejeu parfaitement valide — simplement sans etat de zone.
-// Le refus est journalise, jamais avale.
-func decodeFilmZoneReads(fc *grammar.FilmContext, matchID string, zones int) []grammar.ManagedPropertyRead {
-	if zones == 0 {
-		slog.Debug("rejeu : aucune zone au catalogue — proprietes ti=13 non balayees",
-			"match_id", matchID)
-		return nil
+// TOUT ECHEC EST NON FATAL : un film dont l archetype n est pas au registre, ou dont aucun slot
+// n apparait aux images-cles, reste un rejeu parfaitement valide — simplement sans etat de zone
+// et sans jauge de retour. Le refus est journalise, jamais avale, et il n est journalise QU UNE
+// FOIS puisque la lecture n a lieu qu une fois.
+func (p *ti13Partage) lire() []grammar.ManagedPropertyRead {
+	if p.fait {
+		return p.reads
 	}
-	sc, err := grammar.ScanManagedProperties(fc)
+	p.fait = true
+	sc, err := grammar.ScanManagedProperties(p.fc)
 	if err != nil {
-		slog.Info("rejeu : proprietes ti=13 illisibles — rejeu sans etat de zone",
-			"err", err, "match_id", matchID)
+		slog.Info("rejeu : proprietes ti=13 illisibles — rejeu sans etat de zone ni jauge de retour",
+			"err", err, "match_id", p.matchID)
 		return nil
 	}
 	slog.Info("rejeu : proprietes ti=13 balayees",
-		"match_id", matchID, "slots", sc.Slots, "records", sc.Records, "marches", sc.Walked,
+		"match_id", p.matchID, "slots", sc.Slots, "records", sc.Records, "marches", sc.Walked,
 		"cassees", sc.Broken, "chainees", sc.Chained, "lectures", len(sc.Reads))
-	return sc.Reads
+	p.reads = sc.Reads
+	return p.reads
+}
+
+// decodeFilmZoneReads rend les lectures de `ti=13` POUR L ETAT DES ZONES — sur les seuls matchs
+// dont l appelant a fourni le catalogue de zones. Sans lui, aucun intervalle ne serait publiable
+// (la carte slot -> zone n aurait pas de cible) : c est la regle deja tenue par le marqueur de
+// portage du drapeau, qui ne balaye que les films de CTF.
+//
+// ET C EST L APPELANT QUI DECIDE PAR LE MODE, PAS PAR LA CARTE (`replaybuild/zones.go`,
+// `heldZoneRoles`) : il ne fournit de zones que pour les roles de zone TENUE — Bastion, colline
+// de KOTH. Un CTF sur une carte qui declare des livraisons en cylindre, une Extraction avec ses
+// zones, arrivent ici SANS catalogue et ne paient rien de ce cote.
+func decodeFilmZoneReads(p *ti13Partage, garde bool) []grammar.ManagedPropertyRead {
+	if !garde {
+		slog.Debug("rejeu : aucune zone au catalogue — proprietes ti=13 non consommees par les zones",
+			"match_id", p.matchID)
+		return nil
+	}
+	return p.lire()
+}
+
+// decodeFilmFlagReturnGauge rend les MEMES lectures POUR LA JAUGE DE RETOUR du drapeau — sur les
+// seuls films que les trois signaux reconnaissent CTF (cf. flag_return_gauge.go).
+func decodeFilmFlagReturnGauge(p *ti13Partage, garde bool) []grammar.ManagedPropertyRead {
+	if !garde {
+		return nil
+	}
+	return p.lire()
 }
 
 // attachZoneStates pose l'etat des zones sur le document, avec sa couverture et son journal.

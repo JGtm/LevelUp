@@ -130,7 +130,10 @@ const VersionCodecFaits = 1
 // serait refuse qu au decodage de la section, par le chemin « illisible malgre un en-tete frais ».
 // Un fichier PERIME doit se dire perime SUR SON EN-TETE, en 110 octets, pas apres avoir ete lu
 // jusqu au mega-octet de positions. [TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete] le prouve.
-const SchemaDesFaits = 2
+// SCHEMA 3 (2026-09-19, post-chantier lot 5.1) : la CHARGE de la section 1 change encore — le blob
+// des entrees passe en v24 (la JAUGE DE RETOUR du drapeau et son temoin). Meme raisonnement qu au
+// schema 2 : le refus doit tomber sur l EN-TETE, pas au decodage de la section.
+const SchemaDesFaits = 3
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.
