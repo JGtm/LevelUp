@@ -6166,6 +6166,67 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
+### Lot 5.1 — CORPUS GATE 17, base `83a562ea1` : DEUX PERTES NON ATTENDUES, ARRET, 2026-09-19
+
+`replay-corpus-gate --base=83a562ea1 --parc-root <main> --source-root <wt> --keep-work`. La base
+est celle de la BRANCHE : ce gate mesure tout `feat/decfilm-51`, pas le dernier commit.
+
+| temoin | famille | gains | pertes | chang. | statut |
+|---|---|---:|---:|---:|---|
+| `bcb6d393` | ctf_mono_manche | 0 | 0 | 0 | ok |
+| `fb1a1a72` | ctf_multi_manche | 0 | 0 | 0 | ok |
+| `d9781168` | oddball | 0 | 0 | 0 | ok |
+| `c75f33b8` | assaut_bombe | 1 | **22** | 1 | **PERTE** |
+| `bf15f7ab` | slayer | 0 | 0 | 0 | ok |
+| `51ebbc0f` | deux_manches | 1 | 1 | 0 | PERTE |
+| `084a804d` | vehicules | **78** | 65 | 5 | PERTE |
+| `0797ce72` | region_index_2_bits | 0 | 0 | 0 | ok |
+| `111fa685` | version_39 | 29 | 3 | 1 | PERTE |
+| `e5adf7b2` | version_40_build_1_11 | 51 | 25 | 1 | PERTE |
+| `60ae07c4` | version_37 | 0 | 0 | 0 | ok |
+| `a349fea8` | version_33_sans_identification | **134** | 55 | 7 | PERTE |
+| `a521164d` | version_33_build_1_4_1 | 81 | 32 | 0 | PERTE |
+| `11de8353` | version_38_build_1_9_0 | 61 | **43** | 1 | **PERTE** |
+| `50247b26` | version_31_sans_identification | 42 | 20 | 0 | PERTE |
+| `bfecd02b` | vehicules_v41_utilisateur | 0 | 0 | 0 | ok |
+| `4f77afc1` | equipement_origine_utilisateur | **115** | 71 | 9 | PERTE |
+
+Les GAINS sont ceux que le lot vise (fins de vehicule datees, vies publiees, couverture). `killsource`
+et `grenades` n apparaissent dans AUCUNE ligne de perte ; les positions de bipede non plus.
+
+#### LES DEUX PERTES NON ATTENDUES, ET LEUR ATTRIBUTION MESUREE
+
+**(1) L ASSAUT S ETEINT sur `c75f33b8`** — une DISPARITION, pas une baisse : `bombArmings/n` 4 -> —,
+`bombEvents/n` 4 -> —, `bombEvents/par-type/bomb_armed` 4 -> —, `bombStats.coverage.armings` 4 -> 0
+(et `armingsAttributed` / `ByDrop` / `NoCarrier` 2 -> 0). 15 lignes disparues, 4 en perte.
+
+**ATTRIBUTION : ANTERIEURE A MON LOT.** Le meme gate sur ce temoin avec `--base=2f04bc7b8` (la base
+de 5.1.7) rend **0 gain / 0 perte / 0 changement, `ok`**. La regression vient donc de `5.1.1`,
+`5.1.2`, `5.1.4` ou `5.1.6`, et elle n a jamais ete vue parce que le corpus gate 17 n avait pas
+retourne depuis la cloture M4.
+
+**(2) DES TIRS DE BIPEDE SE PERDENT** sur trois films : `084a804d` `shots/n` 3744 -> 3685,
+`4f77afc1` 2408 -> 2337, `11de8353` 1690 -> 1683.
+
+**ATTRIBUTION : 5.1.7-b, MON DERNIER COMMIT DE GRAMMAIRE.** Mesure en deux temps sur `11de8353` :
+avec `--base=2f04bc7b8` la perte est la (43 pertes) ; avec `--base=312d2e85b` — c est-a-dire APRES
+5.1.7-a, avant 5.1.7-b — **elle y est encore** (41 pertes, `shots/n` 1690 -> 1683). Ce n est donc
+pas le `param_4` du registre : c est le CABLAGE DE L ETAT PAR DEFAUT DE `ti=40`.
+
+**LA SIGNATURE EST PRECISE, ET ELLE DESIGNE LA BANDE DE SLOTS** : `shots/n` perd 7 et `shots.v`
+(le vehicule porteur du tir) perd exactement 7 (25 -> 18), pendant que `coverage.shots.noSlot`
+GAGNE 7 (278 -> 285). Les sept tirs perdus sont donc exactement ceux qui etaient rattaches a un
+vehicule, et ils passent a « sans slot ». Dans le meme mouvement `coverage.vehicles.aimRideFrames`
+1758 -> 1594 et `aimSamples` 1351 -> 1210.
+
+**HYPOTHESE A INSTRUIRE, NON VERIFIEE** : `ScanWorldObjectKeyframes(film, 40)` construit la BANDE
+de slots `ti=40` depuis les images-cles. Le cablage fait tourner la boucle de composants qui ne
+tournait pas, donc la bande peut changer — et le rattachement d un tir a son vehicule avec elle.
+Reste a mesurer : la bande a-t-elle change, et les sept rattachements d avant etaient-ils justes ?
+
+**ARRET.** Rien n est corrige, la montee 63 n est pas commencee. `shots` est dans la population
+que le contrat du lot declare intacte sans exception.
+
 ### Lot 5.1.7 (2) — LA VENTILATION DES VIES, ET UNE RECTIFICATION QUE JE DOIS A CE JOURNAL, 2026-09-19
 
 #### RECTIFICATION : « LE DOCUMENT PUBLIE NE GAGNE RIEN » ETAIT FAUX
