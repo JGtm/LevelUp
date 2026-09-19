@@ -9412,7 +9412,6 @@ export interface components {
             highest_csr_all_time_label?: string;
             highest_csr_label?: string;
             is_local: boolean;
-            is_local_sample?: boolean;
             /** Format: double */
             kda: number;
             /** Format: double */

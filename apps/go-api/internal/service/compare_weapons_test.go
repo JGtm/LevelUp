@@ -75,10 +75,6 @@ func (f *fakeCompareWeaponRepo) GetEncounterStats(_ context.Context, _, _ string
 	return nil, nil
 }
 
-func (f *fakeCompareWeaponRepo) GetCrossMatchSample(_ context.Context, _, _ string) (*domain.CrossMatchSample, error) {
-	return nil, nil
-}
-
 func (f *fakeCompareWeaponRepo) GetWeaponScope(_ context.Context, xuid, _ string) (*domain.CompareWeaponScope, error) {
 	f.scopeCalls++
 	if f.scopeErr != nil {
