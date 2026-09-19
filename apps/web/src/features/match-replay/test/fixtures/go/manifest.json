@@ -14,7 +14,7 @@
    "film": "a521164d",
    "build": "HI_1_4_1",
    "schemaVersion": 62,
-   "bytes": 338130,
+   "bytes": 340271,
    "pointsStride": 5
   },
   {
@@ -30,7 +30,7 @@
    "film": "11de8353",
    "build": "HI_1_9_0",
    "schemaVersion": 62,
-   "bytes": 428237,
+   "bytes": 438375,
    "pointsStride": 5
   },
   {
@@ -46,7 +46,7 @@
    "film": "e5adf7b2",
    "build": "HI_1_11_0",
    "schemaVersion": 62,
-   "bytes": 535131,
+   "bytes": 537969,
    "pointsStride": 5
   },
   {
