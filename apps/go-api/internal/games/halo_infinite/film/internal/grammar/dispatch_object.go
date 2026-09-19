@@ -107,19 +107,19 @@ func consumeByName(br *Lecteur, name string, typeIndex uint32, level uint32) (va
 	case "object-scale-component": // i12
 		consumeObjectScale(br)
 		return variant, nil, true
-	case "object-maximum-vitalities-component": // i13
+	case compObjectMaximumVitalities: // i13
 		consumeObjectMaximumVitalities(br)
 		return variant, nil, true
 	case compObjectDissolver: // i14
 		consumeObjectDissolver(br)
 		return variant, nil, true
-	case "object-low-frequency-component": // i15 = FUN_1407ef088 (validé, matche la table live)
+	case compObjectLowFrequency: // i15 = FUN_1407ef088 (validé, matche la table live)
 		consumeObjectLowFrequency(br)
 		return variant, nil, true
 	case "object-physics-flags-component": // i16
 		consumeObjectPhysicsFlags(br)
 		return variant, nil, true
-	case "object-frame-configuration-component": // i17
+	case compObjectFrameConfiguration: // i17
 		consumeObjectFrameConfiguration(br)
 		return variant, nil, true
 	case "unit-actor-control-component":

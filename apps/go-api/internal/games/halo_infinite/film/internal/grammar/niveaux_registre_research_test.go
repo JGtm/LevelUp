@@ -46,19 +46,19 @@ import (
 // nivConstanteExe : `vtable[0]` du descripteur, LU dans `HaloInfinite.exe` le 2026-09-18.
 // La cle est le nom de composant ; la valeur, la constante que la fonction rend.
 var nivConstanteExe = map[string]uint32{
-	compForwardUpDynPrec:                   2, // 0x141179610 mov eax,2
-	compObjectParentState:                  3, // 0x14117e0e0 mov eax,3
-	"unit-actor-control-component":         2, // 0x141179610
-	"unit-actor-state-component":           4, // 0x140c85020 mov eax,4
-	"unit-malleable-property-component":    4, // 0x140c85020
-	"biped-malleable-property-component":   2, // 0x141179610
-	"biped-slide-component":                1, // 0x14117b4a0 mov eax,1
-	"object-maximum-vitalities-component":  3, // 0x14117e0e0
-	"object-low-frequency-component":       2, // 0x141179610
-	"object-frame-configuration-component": 0, // 0x1405f0ac0 xor eax,eax
-	"unit-control-component":               2, // 0x141179610
-	compNavpointDistanceFilters:            3, // 0x14117e0e0
-	compNavpointOffscreenFilters:           2, // 0x141179610
+	compForwardUpDynPrec:                 2, // 0x141179610 mov eax,2
+	compObjectParentState:                3, // 0x14117e0e0 mov eax,3
+	"unit-actor-control-component":       2, // 0x141179610
+	"unit-actor-state-component":         4, // 0x140c85020 mov eax,4
+	"unit-malleable-property-component":  4, // 0x140c85020
+	"biped-malleable-property-component": 2, // 0x141179610
+	"biped-slide-component":              1, // 0x14117b4a0 mov eax,1
+	compObjectMaximumVitalities:          3, // 0x14117e0e0
+	compObjectLowFrequency:               2, // 0x141179610
+	compObjectFrameConfiguration:         0, // 0x1405f0ac0 xor eax,eax
+	"unit-control-component":             2, // 0x141179610
+	compNavpointDistanceFilters:          3, // 0x14117e0e0
+	compNavpointOffscreenFilters:         2, // 0x141179610
 }
 
 func TestNiveauxDuRegistre(t *testing.T) {

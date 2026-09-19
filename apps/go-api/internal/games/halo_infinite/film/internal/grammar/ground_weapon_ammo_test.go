@@ -28,9 +28,9 @@ func munAmmoArch() Archetype {
 		"object-region-state-component", "object-damage-sections-component",
 		"object-constraint-component", compObjectMultiplayerProperties,
 		"object-parent-state-component", "object-dead-state-component",
-		"object-scale-component", "object-maximum-vitalities-component",
-		"object-dissolver-component", "object-low-frequency-component",
-		"object-physics-flags-component", "object-frame-configuration-component",
+		"object-scale-component", compObjectMaximumVitalities,
+		"object-dissolver-component", compObjectLowFrequency,
+		"object-physics-flags-component", compObjectFrameConfiguration,
 		"item-at-rest-component", "item-ignore-player-component", compWeaponAmmo,
 	}
 	return Archetype{Index: GroundWeaponTypeIndex, Components: comps}
