@@ -109,6 +109,12 @@ type FilmInputs struct {
 	// FlagMarks est le CONTROLE independant du calque du drapeau. Vide hors CTF : le balayage est
 	// garde par ce que l'appelant a fourni (`Options.Flag`).
 	FlagMarks grammar.CarrierMarkScan
+	// FlagGauge / FlagGaugeScanned sont LA JAUGE DE RETOUR du drapeau (`ti=13 i1` tag 3), lue
+	// dans les paquets delta sur les SEULS films de CTF — meme garde que `FlagMarks`. Le canal
+	// est le MEME que celui des zones (`ScanManagedProperties`) ; ce sont les GARDES qui
+	// different, et un match n'est jamais CTF et colline a la fois.
+	FlagGauge        []grammar.ManagedPropertyRead
+	FlagGaugeScanned bool
 	// ZoneReads / ZoneScanned sont l'etat des zones (ti=13). Le CATALOGUE de zones vient de
 	// l'appelant et commande le balayage : sans zones, rien n'est lu et `ZoneScanned` est faux.
 	ZoneReads   []grammar.ManagedPropertyRead
@@ -190,6 +196,7 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.Pads = in.Pads
 	opt.Vehicles = in.Vehicles
 	opt.Flag.Marks = in.FlagMarks
+	opt.Flag.Gauge, opt.Flag.GaugeScanned = in.FlagGauge, in.FlagGaugeScanned
 	opt.Zone.Reads, opt.Zone.Scanned = in.ZoneReads, in.ZoneScanned
 	opt.Bomb.Reads = in.BombReads
 	opt.Grenades = in.Grenades

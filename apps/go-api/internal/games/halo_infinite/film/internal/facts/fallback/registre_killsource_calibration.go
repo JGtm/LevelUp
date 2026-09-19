@@ -66,20 +66,4 @@ var registreKillsourceCalibration = []Repli{
 		CompteurBranche: false,
 		CibleComptage:   comptageFamille19,
 	},
-	{
-		Nom:       "repli_parametre_etat_record_infere",
-		Fait:      "le `param_4` du moteur (largeur de trois composants) applique a tout le film",
-		Mecanisme: "aucune source lue : un balayage de 0 a 5 retient la valeur qui maximise la CROISSANCE DES SLOTS ; les paquets dont les records ne se localisent pas sont ignores",
-		Condition: CondNonResolu,
-		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
-			Fichier: pkgKillsource + "calibrate.go",
-			Ancre:   "best, bestN = r, n",
-		}},
-		DatePose:        dateM3,
-		CibleRetrait:    "lot qui trouvera la source LUE de `param_4` (registre ECS par composant, ou table du build)",
-		CritereRetrait:  "la valeur vient d une lecture ; le balayage devient oracle comme celui des largeurs, ou disparait",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
 }

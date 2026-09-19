@@ -33,6 +33,19 @@ const (
 	compManagedObjectBoundaryColor      = "managed-object-boundary-color-component"
 	compManagedObjectRTPC               = "managed-object-rtpc-component"
 	compNavpointRadialProgress          = "managed-navpoint-radial-progress"
+	compNavpointSubType                 = "managed-navpoint-sub-type-component"
+	compNavpointFlags                   = "managed-navpoint-flags-component"
+	compNavpointDistanceFilters         = "managed-navpoint-visibility-distance-filters-component"
+	compNavpointOffscreenFilters        = "managed-navpoint-visible-offscreen-filters-component"
+	compNavpointOccludedFilters         = "managed-navpoint-can-be-occluded-filters-component"
+	compNavpointVisibilityFilter        = "managed-navpoint-visibility-filter-component"
+	compNavpointDockingFilter           = "managed-navpoint-docking-filter-component"
+	compNavpointDockingOrder            = "managed-navpoint-docking-order-component"
+	compNavpointDockingGroupName        = "managed-navpoint-docking-group-name-component"
+	compNavpointFormattedText           = "managed-navpoint-formatted-text-component"
+	compNavpointTimers                  = "managed-navpoint-timers-component"
+	compNavpointManualTimerInitial      = "managed-navpoint-manual-timer-initial-duration-component"
+	compNavpointManualTimerCurrent      = "managed-navpoint-manual-timer-current-duration-component"
 )
 
 // -----------------------------------------------------------------------------------------
@@ -139,16 +152,26 @@ func ManagedObjectBoundaryColorValue(q uint64) float32 { return dequantMidpoint(
 // enumeration nommee, jamais un index de registre.
 type NavpointField int
 
-// Le champ publie, et son compte. Les 26 autres composants de l'archetype restent `non_porte`.
+// Les champs publies, et leur compte. Les composants de `i1` a `i12` sont PORTES depuis le lot
+// 5.1.1 ; seuls `i11` et `i12` publient, parce qu'eux seuls portent une valeur qu'un
+// consommateur lit (le compte a rebours du point de navigation). Les autres sont consommes en
+// bits sans publier — meme regle que les booleens de `ti=11`.
 const (
-	NavpointRadialProgress NavpointField = iota // i14 : R(8) -> progression radiale
-	NavpointFieldCount                   = 1
+	NavpointRadialProgress     NavpointField = iota // i14 : R(8) -> progression radiale
+	NavpointManualTimerInitial                      // i11 : R(17) -> duree INITIALE, en secondes
+	NavpointManualTimerCurrent                      // i12 : R(17) -> duree COURANTE, en secondes
+	NavpointFieldCount         = 3
 )
 
 // String rend l'etiquette de registre du champ.
 func (f NavpointField) String() string {
-	if f == NavpointRadialProgress {
+	switch f {
+	case NavpointRadialProgress:
 		return compNavpointRadialProgress
+	case NavpointManualTimerInitial:
+		return compNavpointManualTimerInitial
+	case NavpointManualTimerCurrent:
+		return compNavpointManualTimerCurrent
 	}
 	return champInconnu
 }

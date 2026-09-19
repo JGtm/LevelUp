@@ -103,8 +103,6 @@ type calibration struct {
 	Desaccords    int
 	Score, Median int
 	Flat          bool // le profil est plat : l inference n a rien designe de net
-	RSP           uint32
-	RSPRatio      float64
 	// Profil est le PROFIL DE BALAYAGE retenu, celui que toutes les passes qui suivent posent
 	// sur leur lecteur de bits (lot 2.2.a pour le mouvement, elargi au `param_4` au lot 2.3).
 	//
@@ -136,9 +134,9 @@ func (c calibration) String() string {
 			c.PoigneeScore, c.PoigneeMedian)
 	}
 	return fmt.Sprintf("LU axisW=%v indexW_plage=%d [%s] | ORACLE axisW=%d [%s] desaccords=%d "+
-		"| DECIDE indexW_poignee=%d %s recordStateParam=%d [croissance x%.3f]",
+		"| DECIDE indexW_poignee=%d %s",
 		c.LueAxisW, c.LueIndexW, source, c.AxisW, src, c.Desaccords,
-		c.PoigneeIndexW, poignee, c.RSP, c.RSPRatio)
+		c.PoigneeIndexW, poignee)
 }
 
 // bornes des DEUX espaces balayes, separes depuis le 2026-09-17 : 21 largeurs d axe pour
@@ -148,8 +146,6 @@ const (
 	axisWMin, axisWMax   = uint(6), uint(26)
 	indexWMin, indexWMax = uint(1), uint(3)
 	calibSampleSize      = 400
-	rspMax               = uint32(5)
-	rspStride            = 6
 	flatRatio            = 2.0
 )
 
@@ -165,7 +161,6 @@ func calibrate(f *film, tl *timeline, views int, carte *profile.MapQuantEntry) c
 	abs := profil.LargeursObjetDuMonde()
 	res := calibration{Profil: profil, CarteLue: carteLue, LueAxisW: abs.AxisW, LueIndexW: abs.IndexW}
 	infererLargeurs(f, tl, views, &res)
-	calibrateRSP(f, tl, views, &res)
 	return res
 }
 
@@ -370,71 +365,6 @@ func countBipedRecords(sample []*packet, tl *timeline, cfg grammar.FrameConfig, 
 		}
 	}
 	return n
-}
-
-// calibrateRSP : calibration de `recordStateParam` au critere de CROISSANCE DES SLOTS, sur un
-// sous-echantillon regulier des paquets type-0.
-func calibrateRSP(f *film, tl *timeline, views int, res *calibration) {
-	var sm []packet
-	for i := 0; i < len(f.t0); i += rspStride {
-		sm = append(sm, f.t0[i])
-	}
-	// LE CADRE PORTE LE PROFIL DEJA CALIBRE : le balayage de `recordStateParam` doit se juger
-	// aux largeurs retenues, pas aux largeurs par defaut. C etait vrai avant le lot 2.2.a
-	// parce que les largeurs vivaient dans le processus ; c est desormais ecrit.
-	cfg := grammar.DefaultFrameConfig()
-	cfg.Profil = res.Profil
-	best, bestN, worstN := uint32(0), -1, 1<<62
-	for r := uint32(0); r <= rspMax; r++ {
-		cfg.Profil.PoserParamEtat(r)
-		n := monotonicScore(sm, tl, cfg, views)
-		if n > bestN {
-			best, bestN = r, n
-		}
-		if n < worstN {
-			worstN = n
-		}
-	}
-	res.Profil.PoserParamEtat(best)
-	res.RSP = best
-	res.RSPRatio = float64(bestN) / float64(max1(worstN))
-}
-
-// monotonicScore : sur les paquets localises, nombre de records lus avant la premiere violation
-// STRUCTURELLE — desynchronisation, ou slot qui n augmente pas.
-//
-// DEUX CONTRAINTES INTERNES AU FLUX, aucune source externe :
-//
-//	FERMETURE   la boucle de records se termine par un marqueur de fin dans le dernier octet ;
-//	            un curseur decale n y tombe quasiment jamais.
-//	CROISSANCE  les slots d une meme boucle sont ordonnes CROISSANT ; un slot qui recule est la
-//	            signature d une lecture de bits de bourrage.
-func monotonicScore(t0 []packet, tl *timeline, cfg grammar.FrameConfig, views int) int {
-	records := 0
-	tl.rewind()
-	for i := range t0 {
-		p := &t0[i]
-		w := tl.advanceTo(p.ts)
-		start := 2
-		if hasEvents(p) {
-			s := locateRecords(p.payload, w, cfg)
-			if s < 0 {
-				continue
-			}
-			start = s
-		}
-		snap := w.Snapshot()
-		recs := walkFrom(p.payload, w, cfg, start, views)
-		w.Restore(snap)
-		for k := range recs {
-			if recs[k].DesyncAt != -1 || (k > 0 && recs[k].Slot <= recs[k-1].Slot) {
-				break
-			}
-			records++
-		}
-	}
-	tl.rewind()
-	return records
 }
 
 // max1 : denominateur jamais nul.

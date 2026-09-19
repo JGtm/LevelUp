@@ -70,7 +70,21 @@ export type ReplayWeaponPadReady = Filled<ReplayWeaponPad, 'spawns' | 'presence'
  * nullables au contrat, et un drapeau qui arriverait avec `spans: null` ferait tomber le calque
  * à l'exécution, pas à la compilation.
  */
-export type ReplayFlagCarryReady = Filled<ReplayFlagCarry, 'spans'>
+export type ReplayFlagCarryReady = Omit<ReplayFlagCarry, 'spans'> & {
+  spans: ReplayFlagSpanReady[]
+}
+/**
+ * ReplayFlagSpanReady — un intervalle d'état dont LA JAUGE DE RETOUR est comblée (schéma 63).
+ *
+ * TROISIÈME NIVEAU, même patron que `vehicles[].rides[].aim` : `returnProgress` est un tableau
+ * nullable DANS un tableau imbriqué. Il est comblé à VIDE — un artefact antérieur à 63, un état
+ * qui n'est pas `dropped`, ou un intervalle que le film n'a pas couvert arrivent sans jauge, et
+ * l'infobulle n'affiche alors aucune ligne de retour au lieu de tomber à l'exécution.
+ */
+export type ReplayFlagSpanReady = Filled<
+  NonNullable<ReplayFlagCarry['spans']>[number],
+  'returnProgress'
+>
 /**
  * ReplayObjectiveObjectReady — une vie libre d'objet d'objectif, trajectoire comblée.
  *
@@ -174,6 +188,7 @@ export type ReplayDocumentReady = Omit<
   | 'tracks'
   | 'translocations'
   | 'vehicles'
+  | 'vehicleCycles'
   | 'vehicleLabels'
   | 'vipCrown'
   | 'pickups'
@@ -346,6 +361,14 @@ export type ReplayDocumentReady = Omit<
    * table, pas un tableau) nomme les familles employées et pointe leur sprite.
    */
   vehicles: ReplayVehicleTrackReady[]
+  /**
+   * LE CYCLE DE RÉAPPARITION par EMPLACEMENT de naissance de véhicule (schéma 63) : médiane,
+   * déciles, écarts mesurés, manques comptés — la même forme et le même juge que `PadCycle`.
+   * Seuls les emplacements ÉTABLIS y figurent, donc un tableau VIDE ne dit pas « pas de
+   * véhicule » : `coverage.vehicles.cycleLocations` / `cycleGaps` / `cycleMissing` disent lequel
+   * des silences. Liste PLATE, aucun tableau imbriqué à combler.
+   */
+  vehicleCycles: NonNullable<ReplayDocument['vehicleCycles']>
   /**
    * LA TABLE DES FAMILLES DE CHÂSSIS employées par le document : sprite, teinte, et — depuis le
    * lot 1.9.9 — la NATURE d'une famille qui n'est PAS un véhicule (`kind`) avec son libellé

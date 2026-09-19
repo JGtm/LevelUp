@@ -109,6 +109,14 @@ func logVehicleCoverage(c *VehicleCoverage) {
 		"bornesParTrou", c.RidesFromGap, "avecSiege", c.RidesWithSeat, "ambigus", c.Ambiguous,
 		"lecturesDeViseeBrutes", c.AimReads, "episodesAvecVisee", c.RidesWithAim,
 		"pointsDeVisee", c.AimSamples, "framesDEpisode", c.AimRideFrames)
+	// LE CYCLE DE REAPPARITION porte ses deux moities de denominateur au journal comme il les
+	// porte a l artefact : `emplacements` et `ecarts` disent ce que le film offrait, `cycles` ce
+	// qui a passe la regle de stabilite, `manques` les occasions perdues faute d une fin datee.
+	// Sans eux, « 0 cycle » ne distinguerait pas un film sans emplacement d un film dont tous les
+	// ecarts etaient trop disperses.
+	slog.Info("rejeu : cycle de reapparition des vehicules",
+		"emplacements", c.CycleLocations, "cycles", c.Cycles,
+		"ecarts", c.CycleGaps, "manques", c.CycleMissing)
 	// LE SILENCE QU IL FAUT ROMPRE, et il est le pendant exact du warn de `logVehicleCoverage` :
 	// des episodes publies dont AUCUN ne porte de visee n est pas « un film ou personne ne
 	// regardait », c est le balayage `i21` sans position qui n a rien rendu. La mesure V11 rend

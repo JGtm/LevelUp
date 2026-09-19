@@ -158,22 +158,6 @@ var registreFilmdec = []Repli{
 		CibleComptage:   "lot 3.5",
 	},
 	{
-		Nom:       "repli_composant_hors_table_parametre_un",
-		Fait:      "le parametre d'etat d'un composant absent de la table mesuree",
-		Mecanisme: "la valeur 1 est rendue par defaut (0 etait un choix « conservateur » jamais mesure, et faux)",
-		Condition: CondLectureNonPortee,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgFilmdec + "component_param4.go",
-			Ancre:   "func paramForComponent(br *Lecteur, name string) uint32 {",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 3.6 (les composants manquants, archetype par archetype)",
-		CritereRetrait:  "0 composant hors table sur les 8 builds (la table `ecs_table.tsv` couvre alors tout ce que les films portent)",
-		CompteurBranche: false,
-		CibleComptage:   comptageParFilmContext,
-	},
-	{
 		Nom:       "repli_largeurs_monde_par_defaut_conservees",
 		Fait:      "les largeurs d'axe des objets du monde installees pour ce film",
 		Mecanisme: "layout non detecte : le defaut est conserve plutot que d'installer des zeros",

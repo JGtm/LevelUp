@@ -74,13 +74,15 @@ const fwdUpDynPrecMode2Bits = 2 * rawVec3Bits // 0xc0 = 192
 // FUN_140c5f9c8, appelé après FUN_140c5fa84 / FUN_14076e744, est de la déquantification
 // PURE : aucun bit de flux (aucun `+0x2c +=` dans son désassemblage).
 //
-// LIMITE ASSUMÉE, écrite avant la mesure : le chemin `mode == 1` (FUN_142e29bac)
-// n'est atteignable que si `param >= 2` (ou si la haute précision de process est
-// active, ce qu'elle n'est pas en retail). Il n'est PAS porté : paramForComponent
-// rend 1 pour ce composant, donc le bit C n'est jamais lu et le mode 1 jamais choisi.
-// S'il l'était, la fonction rend `false` (non porté) plutôt que de consommer une
-// largeur inventée — FUN_142e29bac vaut R(1) ; si 0 -> R(30) ; puis FUN_1406d84b4
-// dont la largeur n'est PAS figée au call-site.
+// LE CHEMIN `mode == 1` (FUN_142e29bac) EST PORTE, et il est EMPRUNTE. Il n est atteignable
+// que si `param >= 2` ; ce composant a `level = 2` dans le registre du film sur les quatre
+// archetypes qui le portent (ti=38/39/40/43), donc le bit de porte C EST lu et le mode 1 est
+// choisi quand il est pose. `consumeFwdUpDynPrecConfig` le consomme : R(1) ; si 0 -> R(30) ;
+// puis R(30) inconditionnel — 31 ou 61 bits.
+//
+// LE COMMENTAIRE QUI TENAIT ICI DISAIT LE CONTRAIRE (« paramForComponent rend 1 pour ce
+// composant, donc le bit C n est jamais lu ») : il decrivait l etat d avant le 2026-09-03, ou la
+// table ne portait pas ce composant. Corrige avec la source de `param_4` au lot 5.1.7.
 func consumeObjectForwardAndUpDynPrec(br *Lecteur, param uint32) bool {
 	_, ok := decodeObjectForwardAndUpDynPrec(br, param)
 	return ok
