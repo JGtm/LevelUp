@@ -6166,6 +6166,54 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
+### Lot 5.1.8 — L ASSAUT ETEINT : COMMIT FAUTIF NOMME, CAUSE MESUREE, 2026-09-19
+
+#### LE BISECT, EN UN SEUL DECODAGE
+
+`replay-corpus-gate --temoins=c75f33b8`, un `--base` a la fois :
+
+| base | statut | lecture |
+|---|---|---|
+| `83a562ea1` (base de branche) | **PERTE** (22) | la regression est dans la branche |
+| `2f04bc7b8` (cloture 5.1, apres 5.1.6) | **ok** 0/0/0 | elle est AVANT 5.1.7 |
+| **`1fe3352ce` (5.1.1)** | **ok** 0/0/0 | **rien ne change entre 5.1.1 et la tete** |
+
+`83a562ea1` est le PARENT de `1fe3352ce`. La regression est donc **DANS 5.1.1**, et les trois
+bases restantes (5.1.2, 5.1.4, 5.1.6) n ont pas eu a etre jouees.
+
+#### LA CAUSE, LUE DANS LE DOCUMENT — ET CE N EST PAS UNE PERTE DE LECTURE
+
+L armement de bombe ne vient pas d un composant d assaut : `buildBombArmings(opt.Bomb.Reads, ...)`
+consomme des **`types.NavpointRadialRead`**, c est-a-dire la progression radiale du POINT DE
+NAVIGATION (`ti=12 i14`). 5.1.1 a porte `ti=12` de `i1` a `i12` : il a donc change la population de
+records que le balayage radial retient — `navpoint_radial_scan.go` ne garde que les records dont la
+marche d etat complet est PROPRE (`DesyncAt == -1`).
+
+Couverture `bombArmings` lue dans les DEUX artefacts du gate (`--keep-work`) :
+
+| `c75f33b8` | base `83a562ea1` | tete |
+|---|---:|---:|
+| `reads` | 1 148 | **2 012** |
+| `rises` | 73 | 65 |
+| `belowFull` | 0 | 0 |
+| **`armed`** | **4** | **0** |
+| `published` | 4 | **0** |
+
+**LES LECTURES MONTENT DE 864** — c est le gain de 5.1.1, et il est reel. Ce qui casse est le
+CLASSEMENT : `classifyBombSegments` ne retient un segment que si `g.EndsAtSummit()`, et
+`belowFull = 0` des deux cotes dit que le second filtre (`QMax < bombArmedFullQuantum`) n est meme
+pas atteint. **Aucun segment ne finit plus au sommet.** Avec 864 echantillons de plus, une montee
+qui s arretait au sommet est desormais suivie d echantillons supplementaires : elle ne « finit »
+plus la, elle continue.
+
+**LE CORRECTIF N EST DONC PAS DANS `grammar`** — la grammaire s est AMELIOREE. Il est dans la
+couche de publication (`bomb_armings.go` : la segmentation et le predicat `EndsAtSummit`), calibree
+sur une population de lectures presque deux fois plus petite, celle d avant que `ti=12 i1..i12` ne
+soient portes.
+
+**C EST UN CHOIX QUI ENGAGE UNE VALEUR** (un predicat de classement, peut-etre un seuil) : il
+n est pas pris ici.
+
 ### Lot 5.1 — CORPUS GATE 17, base `83a562ea1` : DEUX PERTES NON ATTENDUES, ARRET, 2026-09-19
 
 `replay-corpus-gate --base=83a562ea1 --parc-root <main> --source-root <wt> --keep-work`. La base
