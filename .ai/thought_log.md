@@ -28,7 +28,10 @@ fermé : sur la forme inversée le suffixe de carte suit le qualificatif, il se 
 recollage (sinon l'étape 3 mangeait « on Cliffhanger CTF » et perdait le mode) ; `isWordChar`
 accepte les majuscules parce que `SplitContainer` teste l'octet brut (« ArenaX »).
 Lot B : seed `mode_name_tr` `Doubles Slayer` → « Assassin en duo » (INSERT OR IGNORE, rejoué au
-boot par `ReconcileMetadataSeeds`) ; « Castle Wars », « Oddball », « VIP » restent en anglais
+boot par `ReconcileMetadataSeeds`) ; complément sur relecture du pilote : `Tactical Slayer` → « Assassin
+tactique » (clé produite par le recollage `Slayer:Arena Tactical`, sans ligne dans `mode_name_tr` ;
+constantes `modeTacticalSlayer`/`modeTacticalSlayerFR` partagées avec la seed playlist, goconst) ;
+« Castle Wars », « Oddball », « VIP » restent en anglais
 par décision utilisateur (jamais traduits dans le jeu), rien à noter comme dette.
 
 **Résultats observés** : `go build ./...` EXIT 0 ; `go vet ./internal/analysis/...
