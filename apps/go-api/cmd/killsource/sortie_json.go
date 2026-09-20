@@ -59,6 +59,7 @@ type couvertureJSON struct {
 type santeJSON struct {
 	Verdict            string              `json:"verdict"`
 	Alertes            []string            `json:"alertes"`
+	Degradations       []string            `json:"degradations"`
 	TauxInexpliques    float64             `json:"taux_inexpliques"`
 	TauxCouverture     float64             `json:"taux_couverture"`
 	Compteurs          []compteurJSON      `json:"compteurs_expvar"`
