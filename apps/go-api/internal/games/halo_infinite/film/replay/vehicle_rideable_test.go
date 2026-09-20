@@ -27,7 +27,12 @@ func TestVehicleFamilyIsRideable(t *testing.T) {
 		{"pelican", false, "non jouable en multi (decision utilisateur : customs locales hors perimetre)"},
 		{"phantom", false, "transport scripte"},
 		{"skiff", false, "decor"},
-		{"", false, "chassis inconnu : on n affirme rien de qui serait a bord"},
+		// AMENDE LE 2026-09-19 : un chassis que la table ne nomme pas ENCORE est une IGNORANCE,
+		// pas une famille de decor. Sous l ancienne reponse (`false`), le cablage de l etat par
+		// defaut de `ti=40` — qui fait naitre 18 vehicules de plus sur `11de8353`, dont 16 au
+		// chassis inconnu — supprimait l occupant `585` du Warthog `773/1` et les sept tirs qu il
+		// portait. Les familles ci-dessus, elles, restent refusees : elles sont NOMMEES.
+		{"", true, "chassis inconnu : la table ne le nomme pas encore, ce n est pas du decor"},
 	} {
 		if got := vehicleFamilyIsRideable(c.famille); got != c.veut {
 			t.Errorf("vehicleFamilyIsRideable(%q) = %v, attendu %v (%s)", c.famille, got, c.veut, c.pourquoi)

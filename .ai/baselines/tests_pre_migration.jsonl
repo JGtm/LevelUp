@@ -59810,7 +59810,6 @@
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAttachementPhase0CensusVehicules","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildBombArmingsDedupliqueLaPaire","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildBombArmingsEcarteLesSegmentsSousLePlein","Elapsed":0}
-{"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildBombArmingsEcarteLeCycleDeRecharge","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildBombArmingsGardeDeuxArmementsDistincts","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildBombArmingsConfrontationRetientToutOuRien","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildBombArmingsMecheMesureeEtPausable","Elapsed":0}

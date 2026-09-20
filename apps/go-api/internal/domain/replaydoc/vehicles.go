@@ -54,3 +54,18 @@ type VehicleAim struct {
 	H float32 `json:"h,omitempty"`
 	P float32 `json:"p,omitempty"`
 }
+
+// VehicleCycle est LE CYCLE DE REAPPARITION d un emplacement de naissance de vehicule (schema
+// 63) : le delai, en secondes, entre la destruction d un vehicule et la naissance du suivant au
+// meme endroit. Meme forme et meme juge que `PadCycle` — cle absente quand le cycle n est pas
+// ETABLI.
+type VehicleCycle struct {
+	X       float32 `json:"x"`
+	Y       float32 `json:"y"`
+	Family  string  `json:"family,omitempty"`
+	MedianS float32 `json:"medianS"`
+	P10S    float32 `json:"p10S"`
+	P90S    float32 `json:"p90S"`
+	Gaps    int     `json:"gaps"`
+	Missing int     `json:"missing"`
+}

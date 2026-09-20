@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 62
-empreinte-stockee a6a9e5985745712b
-empreinte-servie a6a9e5985745712b
-empreinte-cuite ece713e460ff05f2
+schema 63
+empreinte-stockee e7f1ca09acd249ed
+empreinte-servie e7f1ca09acd249ed
+empreinte-cuite bc742448caa3a8aa
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -320,6 +320,12 @@ FlagCarriesCoverage
   DropsRepositioned json:"dropsRepositioned" int
   DropsWithheld json:"dropsWithheld" int
   FlagFilm json:"flagFilm" bool
+  GaugePaired json:"gaugePaired" int
+  GaugePoints json:"gaugePoints" int
+  GaugeReads json:"gaugeReads" int
+  GaugeScanned json:"gaugeScanned" bool
+  GaugeSlots json:"gaugeSlots" int
+  GaugeSpans json:"gaugeSpans" int
   HomeByObject json:"homeByObject" int
   MarkerConfirmed json:"markerConfirmed" int
   MarkerObserved json:"markerObserved" int
@@ -347,6 +353,7 @@ FlagReturnZone
   ResetSeconds json:"resetSeconds" float32
   SoloSeconds json:"soloSeconds" float32
 FlagSpan
+  ReturnProgress json:"returnProgress,omitempty" []GaugePoint
   State json:"state" string
   T0 json:"t0" int
   T1 json:"t1" int
@@ -707,6 +714,7 @@ ReplayDocument
   TitleSlug json:"titleSlug" string
   Tracks json:"tracks" []Track
   Translocations json:"translocations,omitempty" []Translocation
+  VehicleCycles json:"vehicleCycles,omitempty" []VehicleCycle
   VehicleLabels json:"vehicleLabels,omitempty" map[string]VehicleLabel
   Vehicles json:"vehicles,omitempty" []VehicleTrack
   VipCrown json:"vipCrown,omitempty" []VipPeriod
@@ -866,6 +874,10 @@ VehicleCoverage
   AimRideFrames json:"aimRideFrames" int
   AimSamples json:"aimSamples" int
   Ambiguous json:"ambiguous" int
+  CycleGaps json:"cycleGaps" int
+  CycleLocations json:"cycleLocations" int
+  CycleMissing json:"cycleMissing" int
+  Cycles json:"cycles" int
   DeathsMatched json:"deathsMatched" int
   DeathsRead json:"deathsRead" int
   DeathsTailDesync json:"deathsTailDesync" int
@@ -899,6 +911,15 @@ VehicleCoverage
   WithChassis json:"withChassis" int
   WithHeading json:"withHeading" int
   WithSpawn json:"withSpawn" int
+VehicleCycle
+  Family json:"family,omitempty" string
+  Gaps json:"gaps" int
+  MedianS json:"medianS" float32
+  Missing json:"missing" int
+  P10S json:"p10S" float32
+  P90S json:"p90S" float32
+  X json:"x" float32
+  Y json:"y" float32
 VehicleLabel
   En json:"en,omitempty" string
   Fr json:"fr,omitempty" string

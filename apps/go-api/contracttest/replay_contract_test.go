@@ -706,9 +706,17 @@ var replaySchemas = []struct {
 //	                      a `calquesALaRequete` au meme commit et reste un champ du document :
 //	                      le compte ne bouge pas pour lui.
 //
-// Les vingt-deux fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	60 (2026-09-19) : `vehicleCycles` — LE CYCLE DE REAPPARITION PAR EMPLACEMENT de naissance
+//	                      de vehicule (post-chantier lot 5.1, schema 62 -> 63). Une liste
+//	                      d emplacements ETABLIS, meme forme et meme juge que `PadCycle`.
+//	                      `flagCarries[].spans[].returnProgress` nait au meme commit SANS faire
+//	                      monter ce compte — il est un champ d un type imbrique, pas du document,
+//	                      exactement comme `roster[].bid` a 57 ; les neuf compteurs de couverture
+//	                      non plus, pour la meme raison que `coverage.deathsPaths` a 59.
+//
+// Les vingt-trois fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 59
+const wantReplayDocumentFields = 60
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

@@ -362,12 +362,14 @@ func (s *filmScan) balayerCalquesGardes() {
 	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
 	s.in.FlagMarks = decodeFilmCarrierMarks(s.film, s.matchID, s.opt.Flag)
 	s.opt.observe("carrierMarks", s.in.FlagMarks)
-	// PROPRIETES RESEAU ti=13 : l'etat des zones (jauge de capture, proprietaire), lu dans les
-	// paquets delta du MEME film — sur les seuls matchs dont l'appelant a fourni le catalogue de
-	// zones (cf. build_zones.go).
-	s.in.ZoneReads = decodeFilmZoneReads(s.fc, s.matchID, len(s.opt.Zone.Zones))
-	s.in.ZoneScanned = len(s.opt.Zone.Zones) > 0
-	s.opt.observe("zoneReads", s.in.ZoneReads)
+	// PROPRIETES RESEAU ti=13 : UN SEUL BALAYAGE, DEUX CONSOMMATEURS ET DEUX GARDES. L'etat des
+	// zones (jauge de capture, proprietaire) le veut sur les matchs dont l'appelant a fourni le
+	// catalogue de zones ; la JAUGE DE RETOUR du drapeau le veut sur les films de CTF. Les deux
+	// gardes s'excluent en pratique — un match n'est pas a la fois CTF et colline — mais elles ne
+	// sont pas la MEME garde, et chaque canal ne recoit que ce que SA garde autorise : un CTF ne
+	// doit pas se mettre a publier `coverage.zones.scanned = true` (cf. build_zones.go et
+	// flag_return_gauge.go).
+	s.balayerProprietesTi13()
 	// ANNEAU D'ARMEMENT ti=12 : la jauge d'armement de la bombe, lue dans les paquets delta du
 	// MEME film — sur les seuls matchs que l'appelant reconnait Assaut armable (cf.
 	// bomb_armings.go ; jamais One Bomb, ou le canal ne tient pas).
@@ -443,4 +445,28 @@ func (s *filmScan) balayerPont() {
 	}
 	s.in.FilmClockOriginUS = clockUS
 	s.opt.observe("clockOrigin", s.in.FilmClockOriginUS)
+}
+
+// balayerProprietesTi13 sert les DEUX consommateurs de `ti=13` — l etat des zones et la jauge de
+// retour du drapeau — a partir d UNE SEULE lecture du film.
+//
+// POURQUOI UNE SEULE LECTURE : le balayage est une marche bit a bit de tous les paquets delta —
+// le meme ordre de grandeur que celui des positions. Le payer deux fois sur un match qui
+// declencherait les deux gardes serait doubler la cuisson pour les memes octets. `ti13Partage` le
+// garantit : le premier appelant lit, le second recoit.
+//
+// POURQUOI DEUX ETAPES OBSERVEES MALGRE TOUT : ce sont DEUX ENTREES du document, gardees par deux
+// modes differents et consommees par deux calques. `ZoneScanned` et `GaugeScanned` sont publies,
+// et ils disent « ce calque a ete LU », pas « ces octets ont ete lus » — un CTF qui heriterait de
+// `ZoneScanned = true` ferait mentir `coverage.zones`.
+func (s *filmScan) balayerProprietesTi13() {
+	zones := len(s.opt.Zone.Zones) > 0
+	jauge := s.opt.Flag.Scanned && flagFilmSignalsOf(s.opt.Flag).IsFlagFilm()
+	partage := ti13Partage{fc: s.fc, matchID: s.matchID}
+	s.in.ZoneReads = decodeFilmZoneReads(&partage, zones)
+	s.in.ZoneScanned = zones
+	s.opt.observe("zoneReads", s.in.ZoneReads)
+	s.in.FlagGauge = decodeFilmFlagReturnGauge(&partage, jauge)
+	s.in.FlagGaugeScanned = jauge
+	s.opt.observe("flagGauge", s.in.FlagGauge)
 }
