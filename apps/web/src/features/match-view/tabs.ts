@@ -7,7 +7,11 @@
  */
 import { z } from 'zod'
 
-export const MATCH_VIEW_TABS = ['summary', 'chronology', 'players'] as const
+/**
+ * Quatre onglets depuis le 2026-09-19 : « Contrôle » (`control`) regroupe les usages
+ * d'équipement, le contrôle des armes et l'occupation du terrain, sortis de Chronologie.
+ */
+export const MATCH_VIEW_TABS = ['summary', 'chronology', 'control', 'players'] as const
 export type MatchViewTab = (typeof MATCH_VIEW_TABS)[number]
 
 /** Schéma des ids canoniques — utilisé par le `validateSearch` de la route. */

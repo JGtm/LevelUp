@@ -1,5 +1,11 @@
 /**
- * MatchPositionsHeatmap — « OÙ ÇA SE JOUE » : les positions du match, sur le PLAN du match.
+ * MatchPositionsHeatmap — « OCCUPATION DU TERRAIN » : les positions du match, sur son PLAN.
+ *
+ * RENOMMÉ ET RACCOURCI LE 2026-09-19 (lot 2 du plan d'ajustements pré-v7.5) : le titre
+ * l'ancien titre posait une question là où les autres blocs nomment une mesure, et le bloc
+ * a rejoint l'onglet « Contrôle » avec le bilan d'équipement et le contrôle des armes. La note
+ * de couverture (pas de la grille, part des positions dans le cadre, mode d'attribution des
+ * camps) a été RETIRÉE le même jour : elle décrivait la méthode, pas le match.
  *
  * CE BLOC A ÉTÉ REFAIT LE 2026-09-13, sur un constat de l'utilisateur : « "Carte de chaleur
  * des positions" est hideux comme graphe et je ne sais pas ce que ça rend, à quoi ça sert ou
@@ -15,8 +21,8 @@
  *
  * TROIS PORTES, ET ELLES DISENT TROIS CHOSES :
  *   1. aucune position décodée (titre sans film, match non backfillé) -> rien ;
- *   2. la carte du match n'a pas d'image figée (seules 21 en ont) -> rien : « Où ça se joue »
- *      est un plan, et un plan sans fond est le damier qu'on vient de retirer ;
+ *   2. la carte du match n'a pas d'image figée (seules 21 en ont) -> rien : ce bloc est un
+ *      plan, et un plan sans fond est le damier qu'on vient de retirer ;
  *   3. les positions tombent toutes hors du cadre du fond -> rien (rien à peindre).
  *
  * LES CAMPS SONT CEUX DU FILM, PAS CEUX DU TABLEAU DES SCORES. `team` vaut -1 (inconnu) ou
@@ -37,13 +43,17 @@ import type { Locale } from '@/lib/i18n/locale'
 import { drawTacticalHeatmap, heatRamp } from '@/lib/replay/heatPaint'
 import { useReplayMapBackground, useReplayMapImage } from '@/lib/replay/queries'
 
-import {
-  buildPositionsGrid,
-  coveredShare,
-  hasTeamSplit,
-  mapFrame,
-  positionsCellSize,
-} from './_positionsHeat'
+import { buildPositionsGrid, hasTeamSplit, mapFrame } from './_positionsHeat'
+
+/**
+ * PLAFOND DE HAUTEUR DU PLAN (2026-09-19, lot 2 du plan d'ajustements pré-v7.5). Le cadre
+ * prenait toute la largeur de la carte : sur un plan carré, cela donnait un pavé aussi haut
+ * que large, qui poussait le reste de l'onglet hors de l'écran. La hauteur est désormais bornée
+ * DEUX FOIS — par un plafond absolu et par 60 % de la place disponible — et c'est la LARGEUR
+ * qui se réduit pour la tenir, jamais le rapport du monde (un plan étiré désalignerait le
+ * calque de chaleur de son fond).
+ */
+const PLAN_MAX_HEIGHT_REM = 18
 
 type TeamFilter = 'all' | 0 | 1
 
@@ -56,24 +66,20 @@ interface MatchPositionsHeatmapProps {
 
 const TEXT = {
   fr: {
-    title: 'Où ça se joue',
+    title: 'Occupation du terrain',
     teamAll: 'Tous',
     team0: 'Camp A',
     team1: 'Camp B',
     narrative:
       'Les endroits de la carte les plus occupés pendant ce match, tous camps ou camp par camp. Lecture : plus c’est chaud, plus on y a passé de temps.',
-    coverageFmt: (cell: number, share: number, total: number) =>
-      `Grille de ${cell.toFixed(1).replace('.', ',')} m · ${Math.round(share * 100)} % des ${total} positions décodées tombent sur le plan. Camps attribués par regroupement spatial, sans nom de joueur.`,
   },
   en: {
-    title: 'Where it plays out',
+    title: 'Ground occupancy',
     teamAll: 'All',
     team0: 'Side A',
     team1: 'Side B',
     narrative:
       'The busiest spots of the map during this match, all sides or side by side. Read it this way: the hotter, the longer it was held.',
-    coverageFmt: (cell: number, share: number, total: number) =>
-      `${cell.toFixed(1)} m grid · ${Math.round(share * 100)}% of the ${total} decoded positions land on the plan. Sides inferred from spatial clustering, with no player name.`,
   },
 } as const satisfies Record<Locale, unknown>
 
@@ -136,15 +142,13 @@ export function MatchPositionsHeatmap({
   // Portes 1 à 3 : rien à montrer, et rien à promettre.
   if (all.length === 0 || !frame || !grid) return null
 
-  const share = coveredShare(all, frame)
   return (
     <SectionCard
       title={t.title}
       label={t.title}
       footer={
-        <div className="space-y-1 border-t border-border px-3 pb-2 pt-2 text-[11px] text-muted-foreground">
+        <div className="border-t border-border px-3 pb-2 pt-2 text-[11px] text-muted-foreground">
           <p>{t.narrative}</p>
-          <p>{t.coverageFmt(positionsCellSize(frame), share, all.length)}</p>
         </div>
       }
       titleAdornment={(label) => (
@@ -170,8 +174,11 @@ export function MatchPositionsHeatmap({
         {/* Le cadre prend le RAPPORT DU MONDE (bornes du fond), jamais un 16:9 : le calque et
             l'image se désaligneraient sur l'axe rogné (même règle que `TacticalPlanCard`). */}
         <div
-          className="relative w-full overflow-hidden rounded-md bg-muted"
-          style={{ aspectRatio: `${frame.widthM} / ${frame.heightM}` }}
+          className="relative mx-auto w-full overflow-hidden rounded-md bg-muted"
+          style={{
+            aspectRatio: `${frame.widthM} / ${frame.heightM}`,
+            maxWidth: `min(60%, calc(${PLAN_MAX_HEIGHT_REM}rem * ${frame.widthM} / ${frame.heightM}))`,
+          }}
           data-testid="match-positions-frame"
         >
           <canvas

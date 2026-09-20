@@ -1,5 +1,5 @@
 /**
- * MatchPositionsHeatmap.test.tsx — « Où ça se joue » : ses trois portes et son filtre.
+ * MatchPositionsHeatmap.test.tsx — « Occupation du terrain » : ses trois portes et son filtre.
  *
  * Le tracé lui-même (grille, échelle, projection) est testé PUR dans `_positionsHeat.test.ts`
  * et dans `lib/replay/heatPaint.test.ts` ; ici on vérifie ce que le composant DÉCIDE : pas de
@@ -51,16 +51,28 @@ describe('MatchPositionsHeatmap', () => {
     render(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
-    expect(screen.getByText('Où ça se joue')).toBeTruthy()
+    expect(screen.getByText('Occupation du terrain')).toBeTruthy()
     expect(screen.getByText(/plus c’est chaud/)).toBeTruthy()
     expect(screen.getByTestId('match-positions-canvas')).toBeTruthy()
   })
 
-  it('publie le pas de grille et la couverture en pied', () => {
+  it('ne publie AUCUNE note de méthode en pied (retrait du 2026-09-19)', () => {
     render(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
-    expect(screen.getByText(/Grille de 2,0 m · 100 % des 3 positions/)).toBeTruthy()
+    // Le pas de grille, la part des positions dans le cadre et le mode d'attribution des
+    // camps décrivaient la mesure, pas le match : ils ont été retirés (lot 2 du plan).
+    expect(screen.queryByText(/Grille de|regroupement spatial/)).toBeNull()
+  })
+
+  it('borne la HAUTEUR du plan : la largeur du cadre ne dépasse jamais 60 % de la carte', () => {
+    render(
+      <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
+    )
+    // Le cadre gardait le rapport du monde sur TOUTE la largeur de la carte : un plan carré
+    // y faisait un pavé aussi haut que large (lot 2, « hauteur réduite d'au moins 40 % »).
+    const cadre = screen.getByTestId('match-positions-frame')
+    expect(cadre.getAttribute('style')).toContain('min(60%')
   })
 
   it('propose le filtre par camp quand au moins une position porte un camp', () => {
@@ -90,7 +102,7 @@ describe('MatchPositionsHeatmap', () => {
     }
   })
 
-  // PORTE 2 — la carte du match n'a pas d'image figée : « Où ça se joue » est un plan.
+  // PORTE 2 — la carte du match n'a pas d'image figée : « Occupation du terrain » est un plan.
   it('se masque (null) quand la carte du match n’a pas de fond', () => {
     background.mockReturnValue({ data: undefined })
     const { container } = render(
@@ -112,6 +124,6 @@ describe('MatchPositionsHeatmap', () => {
     render(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="en" />,
     )
-    expect(screen.getByText('Where it plays out')).toBeTruthy()
+    expect(screen.getByText('Ground occupancy')).toBeTruthy()
   })
 })

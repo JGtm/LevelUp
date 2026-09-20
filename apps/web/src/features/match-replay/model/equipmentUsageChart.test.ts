@@ -80,13 +80,13 @@ const GROUPS: UsageColumnGroup[] = [
     ],
   },
   {
-    key: 'episodes',
-    label: 'États actifs',
-    hint: 'réserve états actifs',
+    key: 'equipment',
+    label: 'Équipement',
+    hint: 'réserve équipement',
     columns: [
       {
         key: 'camo.count',
-        label: 'Camouflage (épisodes)',
+        label: 'Camouflage',
         value: (x) => x.episodes.camo?.count ?? 0,
         format: (v) => String(v),
       },
@@ -97,13 +97,6 @@ const GROUPS: UsageColumnGroup[] = [
         value: () => null,
         format: (v) => String(v),
       },
-    ],
-  },
-  {
-    key: 'equipment',
-    label: 'Équipement',
-    hint: 'réserve équipement',
-    columns: [
       {
         key: 'wall',
         label: 'Mur de protection',
@@ -120,7 +113,7 @@ const VISUAL = {
 }
 
 describe('l’encre d’une famille de geste', () => {
-  it('donne une teinte DIFFÉRENTE à chacune des trois familles (E2 : deployed+dropped -> equipment)', () => {
+  it('donne une teinte DIFFÉRENTE à chacune des deux familles (E2 : deployed+dropped -> equipment)', () => {
     const encres = Object.values(USAGE_GROUP_TOKENS)
     expect(new Set(encres).size).toBe(encres.length)
   })
@@ -139,10 +132,6 @@ describe('l’encre d’une famille de geste', () => {
 })
 
 describe('usageGestureCount — la part se compte en GESTES', () => {
-  it('compte un épisode d’état actif pour UN geste, sans y ajouter sa durée ni ses frags', () => {
-    expect(usageGestureCount(ALPHA, 'episodes')).toBe(1)
-  })
-
   it('somme les familles déployées et lâchées de la colonne équipement fusionnée (E2)', () => {
     expect(usageGestureCount(tally({ deployed: { wall: 2, sensor: 1 } }), 'equipment')).toBe(3)
     expect(usageGestureCount(tally({ dropped: { wall: 1 } }), 'equipment')).toBe(1)
@@ -233,6 +222,6 @@ describe('buildUsageShares — la part de chaque équipe', () => {
 
   it('porte la réserve de mesure de la famille, pour que son nom puisse la dire', () => {
     const lignes = buildUsageShares({ teams: TEAMS, groups: GROUPS, ...VISUAL })
-    expect(lignes.find((l) => l.key === 'episodes')!.hint).toBe('réserve états actifs')
+    expect(lignes.find((l) => l.key === 'equipment')!.hint).toBe('réserve équipement')
   })
 })

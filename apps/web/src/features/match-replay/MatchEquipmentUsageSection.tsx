@@ -10,15 +10,18 @@
  * tableau à deux niveaux d'en-tête donnait la bonne mesure dans la mauvaise forme : une grille
  * de chiffres où l'œil ne trouve ni le geste dominant ni le camp qui s'en est servi. À sa place,
  * dans la même carte :
- * PLUS DE COLONNE DE GRENADES, ET UNE SEULE COLONNE PAR ÉTAT ACTIF (2026-09-13, cadrage
- * utilisateur) : les lancers restent mesurés et dessinés par le rejeu mais ne sont pas un
- * équipement ; la durée cumulée et les frags d'un état actif qualifient son compte en
- * infobulle, au lieu d'ouvrir deux colonnes d'unités différentes sur la même mesure.
+ * PLUS DE COLONNE DE GRENADES (2026-09-13, cadrage utilisateur) : les lancers restent mesurés
+ * et dessinés par le rejeu mais ne sont pas un équipement.
+ * PLUS DE GROUPE « ÉTATS ACTIFS » NON PLUS (2026-09-19, décision 6 du plan d'ajustements
+ * pré-v7.5) : « actif » et « utilisé » disaient la même chose — un épisode de camouflage ou de
+ * surbouclier alimente DÉJÀ le côté « utilisé » de la colonne d'équipement du power-up. Restent
+ * les trois issues d'une pile : Utilisé / Gardé / Lâché.
+ * PLUS DE REPLI « VOIR PLUS » (même jour) : tout ce que la donnée justifie s'affiche.
  *
  *   1. « Nombre de gestes par joueur » — la grille partagée `components/charts/ValueGrid` :
  *      lignes = joueurs dans l'ordre du roster, camp par camp, filet entre les deux camps ;
  *      colonnes = grandeurs, CHACUNE AVEC SON ÉCHELLE (un mur se compare à un mur) ;
- *   2. « Part de chaque équipe, geste par geste » — une barre 100 % par famille de geste, le
+ *   2. « Part de chaque équipe » — une barre 100 % par famille de geste, le
  *      compte brut ET le pourcentage écrits dans le segment.
  * Les colonnes restent DÉCIDÉES PAR LA DONNÉE (`usageColumnGroups`) : aucune liste en dur.
  *
@@ -36,19 +39,15 @@
  * les deux blocs de l'onglet partagent un seul téléchargement.
  *
  * CE QUE L'ÉCRAN DIT DE SA PROPRE MESURE, et il doit le dire :
- *   - les états actifs (camouflage, surbouclier) sont un PROXY — le film mesure que l'effet
- *     court, pas d'où il vient. La réserve est en infobulle, portée par le NOM DE LA FAMILLE
- *     dans la vue 2 (une famille y a exactement une ligne, donc exactement un endroit où sa
- *     réserve se lit) ;
  *   - les gestes que le film mesure sans en nommer l'auteur ou l'origine ne comptent dans
  *     aucune des deux vues : ils se disent en UNE PHRASE dans l'infobulle du TITRE de la carte.
  *     AUCUN TEXTE DE PIED (2026-09-14, décision utilisateur) — le pied de carte a porté
  *     successivement le paragraphe répulseur/propulseur (retiré le 2026-09-13), la ligne des
  *     socles de bonus vidés, les dénominateurs de couverture et les deux réserves ; il ne porte
- *     plus rien du tout. Les réserves qui survivent vivent au survol : celle des états actifs
- *     sur le nom de famille (vue 2), celle du répulseur et du propulseur dans
- *     `groupEquipmentHint`, celle des gestes hors vues sur le titre. Les socles de bonus vidés
- *     se lisent dans le bloc « Contrôle des socles », juste en dessous dans l'onglet ;
+ *     plus rien du tout. Les réserves qui survivent vivent au survol : celle du répulseur et du
+ *     propulseur dans `groupEquipmentHint`, celle des gestes hors vues sur le titre. Les socles
+ *     de bonus vidés se lisent dans le bloc « Contrôle des armes spéciales », juste en dessous
+ *     dans l'onglet « Contrôle » ;
  *
  * COULEURS. Les familles de geste prennent la table d'encres de `equipmentUsageChart` (jetons
  * sémantiques, jamais un hex) ; les camps prennent `teamTokenCssVar` — les jetons `team-ally` /
@@ -58,11 +57,10 @@
  * Aucun calcul ici : tout vient de `equipmentUsageLogic` (les mesures),
  * `equipmentUsageColumns` (les colonnes et leurs noms) et `equipmentUsageChart` (la projection).
  */
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 
 import { ChartLegend } from '@/components/charts/ChartLegend'
 import { ValueGrid } from '@/components/charts/ValueGrid'
-import { CollapsedItemsToggle } from '@/components/ui/collapsed-items-toggle'
 import { SectionCard } from '@/components/ui/section-card'
 import { Tooltip } from '@/components/ui/tooltip'
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
@@ -77,7 +75,6 @@ import {
   type UsageShareRow,
 } from './model/equipmentUsageChart'
 import {
-  partitionUsageGroups,
   uniqueUsageGroups,
   usageColumnGroups,
   type UsageColumnGroup,
@@ -108,16 +105,12 @@ export function MatchEquipmentUsageSection({
   const { data } = useMatchReplay(playerSlug, matchId, replayAvailable)
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const usage = useMemo(() => (data ? buildEquipmentUsage(data, board) : null), [data, board])
-  // REPLIÉ PAR DÉFAUT (plan 2026-09-05, décision D3) : état posé AU MONTAGE, jamais persisté.
-  // SAUF QUAND LE REPLI NE LAISSE RIEN À VOIR (2026-09-13) : zéro colonne élue = une carte qui
-  // n'affiche plus rien du tout, exactement le défaut que l'utilisateur a nommé sur le bloc
-  // voisin (« pourquoi il est constamment replié et n'affiche jamais rien par défaut ? »). Le
-  // cas est devenu courant depuis le retrait des grenades, qui étaient les seules colonnes hors
-  // vote donc toujours visibles. Le bouton reste, il sert alors à REPLIER.
-  const [expanded, setExpanded] = useState<boolean | null>(null)
-  const partition = useUsagePartition(usage, t)
-  const deplie = expanded ?? partition.forward.length === 0
-  const { groups, familles } = useUsageGroups(partition, deplie)
+  // PLUS DE REPLI DEPUIS LE 2026-09-19 (plan d'ajustements pré-v7.5, lot 2) : toutes les
+  // colonnes que la donnée justifie s'affichent au chargement. Le bouton « Voir plus (N) /
+  // Replier » et la partition « game changers » qui l'alimentait ont été retirés — la même
+  // décision que le bloc voisin (« Contrôle des armes spéciales ») avait déjà prise le
+  // 2026-09-13 : une carte qui cache sa mesure par défaut ne se lit pas.
+  const { groups, familles } = useUsageGroups(usage, t)
   const reserve = useMemo(() => usageReserve(usage), [usage])
   const meRow = useMemo(() => board.find((r) => r.is_me), [board])
   const meSide = meRow?.team_side ?? null
@@ -165,26 +158,14 @@ export function MatchEquipmentUsageSection({
       title={t.equipmentUsage.title}
       label={t.equipmentUsage.title}
       titleAdornment={(label) => (
-        // Le bouton du repli vit dans l'EN-TÊTE de la carte (plan 2026-09-05, G1.2) : visible
-        // sans dérouler les deux vues. Zéro colonne repliée = pas de bouton.
-        <span className="flex items-center justify-between gap-2">
-          {/* LA RÉSERVE EST AU SURVOL DU TITRE, et nulle part ailleurs : sans réserve à dire,
-              `HeaderLabelTooltip` rend le libellé nu (aucun nœud superflu). */}
-          <HeaderLabelTooltip
-            text={reserve > 0 ? u.coverageReserveFmt(reserve) : undefined}
-            focusable
-          >
-            <span>{label}</span>
-          </HeaderLabelTooltip>
-          <CollapsedItemsToggle
-            expanded={deplie}
-            count={partition.collapsedColumnCount}
-            onToggle={() => setExpanded(!deplie)}
-            showLabelFmt={t.collapsedColumnsShowFmt}
-            hideLabel={t.collapsedColumnsHide}
-            hint={t.collapsedColumnsHint}
-          />
-        </span>
+        // LA RÉSERVE EST AU SURVOL DU TITRE, et nulle part ailleurs : sans réserve à dire,
+        // `HeaderLabelTooltip` rend le libellé nu (aucun nœud superflu).
+        <HeaderLabelTooltip
+          text={reserve > 0 ? u.coverageReserveFmt(reserve) : undefined}
+          focusable
+        >
+          <span>{label}</span>
+        </HeaderLabelTooltip>
       )}
     >
       <UsageViews grid={grid} groups={groups} familles={familles} shares={shares} t={t} />
@@ -193,30 +174,14 @@ export function MatchEquipmentUsageSection({
 }
 
 /**
- * useUsagePartition — la partition « game changers » des groupes de colonnes.
+ * useUsageGroups — les colonnes réellement rendues : TOUTES celles que la donnée justifie,
+ * dans l'ordre écrit de `usageColumnGroups` (plus de repli depuis le 2026-09-19).
  *
- * Extraite du composant le 2026-09-05 (plafond de taille de fonction du dépôt). Elle ne dépend
- * PAS de l'état du repli : c'est elle qui décide de l'état INITIAL de ce repli (zéro colonne
- * élue = carte ouverte au montage, cf. le composant).
+ * `familles` sert la légende et la vue 2, qui raisonnent PAR FAMILLE DE GESTE : un groupe n'y a
+ * qu'une occurrence (cf. `uniqueUsageGroups`).
  */
-function useUsagePartition(usage: EquipmentUsage | null, t: ReplayText) {
-  return useMemo(
-    () => partitionUsageGroups(usage ? usageColumnGroups(usage, t) : []),
-    [usage, t],
-  )
-}
-
-/**
- * useUsageGroups — les colonnes réellement rendues. Déplié = les élus D'ABORD, les repliés
- * ENSUITE, l'ordre interne survivant dans chaque bloc. `familles` sert la légende et la vue 2,
- * qui raisonnent PAR FAMILLE DE GESTE : un groupe mixte redécoupé n'y a qu'une occurrence
- * (cf. `uniqueUsageGroups`).
- */
-function useUsageGroups(partition: ReturnType<typeof useUsagePartition>, expanded: boolean) {
-  const groups = useMemo(
-    () => (expanded ? [...partition.forward, ...partition.collapsed] : partition.forward),
-    [expanded, partition],
-  )
+function useUsageGroups(usage: EquipmentUsage | null, t: ReplayText) {
+  const groups = useMemo(() => (usage ? usageColumnGroups(usage, t) : []), [usage, t])
   const familles = useMemo(() => uniqueUsageGroups(groups), [groups])
   return { groups, familles }
 }
@@ -224,8 +189,8 @@ function useUsageGroups(partition: ReturnType<typeof useUsagePartition>, expande
 /**
  * UsageViews — le corps de la carte : les deux vues empilées, chacune gardée par son contenu.
  *
- * Replié avec ZÉRO colonne élue (tous les gestes mesurés sont hors vote) : les deux vues n'ont
- * rien à dessiner — le bouton de l'en-tête reste la porte vers tout.
+ * Aucune grandeur mesurée : les deux vues n'ont rien à dessiner et la carte entière est déjà
+ * fermée en amont par la double porte du composant.
  */
 function UsageViews({
   grid,
@@ -285,12 +250,20 @@ function ViewTitle({ children }: { children: string }) {
  */
 function UsageTeamShares({ rows, t }: { rows: UsageShareRow[]; t: ReplayText }) {
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[420px] space-y-2.5">
+    // PLUS DE DÉFILEMENT HORIZONTAL (2026-09-19, lot 2) : la vue tenait derrière un
+    // `overflow-x-auto` et une largeur plancher de 420 px, donc une barre de défilement sous la
+    // carte dès qu'elle était à l'étroit. Les deux colonnes (nom de famille, rail) se
+    // répartissent maintenant la largeur disponible, et le nom se tronque plutôt que de pousser
+    // le rail hors du cadre (`min-w-0` autorise la grille à passer sous la taille du contenu).
+    <div className="min-w-0">
+      <div className="space-y-2.5">
         {rows.map((row) => {
           const segTotal = row.segments.reduce((a, s) => a + s.count, 0)
           return (
-          <div key={row.key} className="grid grid-cols-[158px_1fr] items-center gap-3.5">
+          <div
+            key={row.key}
+            className="grid grid-cols-[minmax(0,158px)_minmax(0,1fr)] items-center gap-3.5"
+          >
             <div className="flex items-center justify-end gap-2 text-xs">
               <HeaderLabelTooltip text={row.hint} focusable>
                 <span className="truncate text-right">{row.label}</span>

@@ -79,7 +79,6 @@ interface Props {
   /** `header.replay_available` — le même gate que le lien rejeu et que la courbe de score. */
   replayAvailable: boolean
   scoreboard: MatchScoreboardRow[] | null | undefined
-| null
   locale: ReplayLocale
 }
 
@@ -184,8 +183,18 @@ function PadControlBody({
   )
 }
 
-/** La grille du graphe : nom d'arme + total | barre | annotation. */
-const ROW_GRID = { gridTemplateColumns: `${NAME_WIDTH}px 1fr ${NOTE_WIDTH}px`, gap: 12 }
+/**
+ * La grille du graphe : nom d'arme + total | barre | annotation.
+ *
+ * LES TROIS PISTES SONT EN `minmax(0, …)` DEPUIS LE 2026-09-19 (lot 2, retrait du défilement
+ * horizontal) : une piste de largeur fixe refuse de passer sous la taille de son contenu et
+ * pousse le rail hors du cadre. Avec le plancher à zéro, le nom d'arme se tronque (son `title`
+ * garde le nom entier) et la barre garde sa part de la largeur disponible.
+ */
+const ROW_GRID = {
+  gridTemplateColumns: `minmax(0, ${NAME_WIDTH}px) minmax(0, 1fr) minmax(0, ${NOTE_WIDTH}px)`,
+  gap: 12,
+}
 
 /**
  * PadControlBars — les lignes d'arme.
@@ -205,28 +214,32 @@ function PadControlBars({
 }) {
   const groupes = groupRowsByTier(model.rows, control)
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[560px]">
-        {groupes.map((groupe) => (
-          <section key={groupe.tier} className="mb-1">
-            {/* L'INTERTITRE N'APPARAÎT QUE SI LES NIVEAUX SONT ÉTABLIS : sans référence de
-                carte, un unique bandeau « Emplacement non identifié » au-dessus de tout le
-                bloc ferait lire une absence de mesure comme un résultat de mesure. La note
-                au-dessus du graphe le dit déjà, en toutes lettres. */}
-            {control.tiersMeasured && (
-              <h4 className="mb-2 flex items-baseline gap-2 border-b pb-1 text-3xs uppercase tracking-wide text-muted-foreground">
-                <span>{t.padControl.tierLabels[groupe.tier]}</span>
-                <span className="tabular-nums normal-case tracking-normal">
-                  {t.padControl.tierSubtotalFmt(groupe.total)}
-                </span>
-              </h4>
-            )}
-            {groupe.rows.map((row) => (
-              <PadWeaponRow key={row.weapon} row={row} t={t} />
-            ))}
-          </section>
-        ))}
-      </div>
+    // PLUS DE DÉFILEMENT HORIZONTAL (2026-09-19, lot 2) : le graphe tenait derrière un
+    // `overflow-x-auto` et une largeur plancher de 560 px, donc une barre de défilement sous la
+    // carte dès qu'il était à l'étroit. Depuis que ce bloc voisine « Usages d'équipement » dans
+    // l'onglet « Contrôle », il suit le MÊME modèle : les trois colonnes de la ligne se
+    // répartissent la largeur disponible et le nom d'arme se tronque (son `title` garde le nom
+    // entier), plutôt que de pousser le rail hors du cadre.
+    <div className="min-w-0">
+      {groupes.map((groupe) => (
+        <section key={groupe.tier} className="mb-1">
+          {/* L'INTERTITRE N'APPARAÎT QUE SI LES NIVEAUX SONT ÉTABLIS : sans référence de
+              carte, un unique bandeau « Emplacement non identifié » au-dessus de tout le
+              bloc ferait lire une absence de mesure comme un résultat de mesure. La note
+              au-dessus du graphe le dit déjà, en toutes lettres. */}
+          {control.tiersMeasured && (
+            <h4 className="mb-2 flex items-baseline gap-2 border-b pb-1 text-3xs uppercase tracking-wide text-muted-foreground">
+              <span>{t.padControl.tierLabels[groupe.tier]}</span>
+              <span className="tabular-nums normal-case tracking-normal">
+                {t.padControl.tierSubtotalFmt(groupe.total)}
+              </span>
+            </h4>
+          )}
+          {groupe.rows.map((row) => (
+            <PadWeaponRow key={row.weapon} row={row} t={t} />
+          ))}
+        </section>
+      ))}
     </div>
   )
 }

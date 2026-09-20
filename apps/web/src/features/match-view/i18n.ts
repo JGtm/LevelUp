@@ -181,9 +181,11 @@ export interface MatchViewText {
   impactBadgeNames: Record<string, string>
   // Breadcrumb retour (MatchBreadcrumb)
   back: string
-  // Onglets de la page (GH2-B2 ; « Détails » scindé en Chronologie + Joueurs)
+  // Onglets de la page (GH2-B2 ; « Détails » scindé en Chronologie + Joueurs ;
+  // « Contrôle » ajouté le 2026-09-19 : équipement, armes, occupation du terrain)
   tabGeneral: string
   tabChronology: string
+  tabControl: string
   tabPlayers: string
   // Titre du chart Antagonistes (GH2-B2)
   antagonistTitle: string
@@ -481,6 +483,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     back: 'Retour',
     tabGeneral: 'Général',
     tabChronology: 'Chronologie',
+    tabControl: 'Contrôle',
     tabPlayers: 'Joueurs',
     antagonistTitle: 'Antagonistes',
     assistTitle: 'Assistances',
@@ -801,6 +804,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     back: 'Back',
     tabGeneral: 'General',
     tabChronology: 'Timeline',
+    tabControl: 'Control',
     tabPlayers: 'Players',
     antagonistTitle: 'Antagonists',
     assistTitle: 'Assists',

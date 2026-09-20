@@ -1,4 +1,4 @@
-/** MatchViewPage — détail d'un match (3 onglets : Général, Chronologie, Joueurs). */
+/** MatchViewPage — détail d'un match (4 onglets : Général, Chronologie, Contrôle, Joueurs). */
 import { useParams, useSearch, useNavigate, useRouter } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ import {
   MatchNativeCommendationsSection,
 } from './MatchSummaryMedalsAndCitations'
 import { MatchViewTabChronology } from './MatchViewTabChronology'
+import { MatchViewTabControl } from './MatchViewTabControl'
 import { MatchViewTabPlayers } from './MatchViewTabPlayers'
 import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT } from './i18n'
@@ -73,9 +74,13 @@ function translatePartialReason(code: string, locale: string): string {
 
 // Libellés résolus au rendu via MATCH_VIEW_TEXT (GH2-B2 : bilingue). Les ids
 // canoniques et la rétro-compat des deep-links vivent dans `./tabs`.
-const TABS: { id: MatchViewTab; labelKey: 'tabGeneral' | 'tabChronology' | 'tabPlayers' }[] = [
+const TABS: {
+  id: MatchViewTab
+  labelKey: 'tabGeneral' | 'tabChronology' | 'tabControl' | 'tabPlayers'
+}[] = [
   { id: 'summary', labelKey: 'tabGeneral' },
   { id: 'chronology', labelKey: 'tabChronology' },
+  { id: 'control', labelKey: 'tabControl' },
   { id: 'players', labelKey: 'tabPlayers' },
 ]
 
@@ -96,11 +101,13 @@ export function MatchViewPage() {
   const { data, isPending, isError, error, refetch } = useMatchView(playerSlug, matchId)
   // Deux calques décodés du film, best-effort : un titre sans film répond 503 et
   // `data` reste undefined — la page s'affiche entière, sans placeholder mort.
-  // Tirés UNIQUEMENT sur l'onglet Chronologie : leurs seuls consommateurs (frags
-  // cumulés, dominance, heatmap des positions) y vivent.
+  // Chacun n'est tiré QUE sur l'onglet qui le consomme : les événements d'objectif
+  // sur Chronologie (frags cumulés, dominance), les positions sur Contrôle
+  // (occupation du terrain, 2026-09-19).
   const isChronology = activeTab === 'chronology'
+  const isControl = activeTab === 'control'
   const { data: objectiveEvents } = useMatchObjectiveEvents(playerSlug, matchId, isChronology)
-  const { data: matchPositions } = useMatchPositions(playerSlug, matchId, isChronology)
+  const { data: matchPositions } = useMatchPositions(playerSlug, matchId, isControl)
   const friendGamertags = useFriendGamertags(playerSlug)
   const locale = useAppShellStore((s) => s.locale)
   const t = MATCH_VIEW_TEXT[locale === 'en' ? 'en' : 'fr']
@@ -409,13 +416,22 @@ export function MatchViewPage() {
             scoreboard={scoreboard}
             meXUID={meXUID}
             objectiveEvents={objectiveEvents}
-            matchPositions={matchPositions}
             tugOfWar={tugOfWar}
             cadence={combat_tab.cadence}
             scoreTimelineKind={header.score_timeline_kind}
             t0Ms={header.t0_ms}
-            locale={locale}
             t={t}
+          />
+        )}
+
+        {activeTab === 'control' && (
+          <MatchViewTabControl
+            playerSlug={playerSlug}
+            matchId={matchId}
+            replayAvailable={header.replay_available === true}
+            scoreboard={scoreboard}
+            matchPositions={matchPositions}
+            locale={locale}
           />
         )}
 

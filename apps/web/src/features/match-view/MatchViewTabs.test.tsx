@@ -1,11 +1,15 @@
 /**
- * Page match — 3 onglets « Général / Chronologie / Joueurs » (2026-08-24).
+ * Page match — 4 onglets « Général / Chronologie / Contrôle / Joueurs ».
+ *
+ * « Contrôle » a été ajouté le 2026-09-19 (plan `.ai/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`,
+ * lot 2) : il prend à Chronologie les trois blocs qui disent QUI A TENU QUOI — bilan
+ * d'équipement, contrôle des armes, occupation du terrain.
  *
  * Couvre : la rétro-compat des deep-links (`?tab=details` → Chronologie, résolu au
- * décodage par le schéma de recherche de la route, sans redirection), la
- * répartition des sections entre les deux nouveaux onglets, et le fait que les
- * deux calques de film (événements d'objectif, positions) ne sont tirés que
- * lorsque l'onglet qui les affiche est actif.
+ * décodage par le schéma de recherche de la route, sans redirection), le deep-link
+ * `?tab=control`, la répartition des sections entre les onglets, et le fait que les
+ * deux calques de film ne sont tirés que lorsque l'onglet qui les affiche est actif —
+ * les événements d'objectif sur Chronologie, les positions sur Contrôle.
  *
  * Les feuilles lourdes (charts ECharts, tables) sont mockées : seule la structure
  * des onglets est testée ici.
@@ -105,11 +109,19 @@ vi.mock('./MatchScoreCurveChart', () => ({
 }))
 vi.mock('./MatchTugOfWarChart', () => ({ MatchTugOfWarChart: () => <div data-testid="tug-of-war" /> }))
 vi.mock('./MatchCadenceChart', () => ({ MatchCadenceChart: () => <div data-testid="cadence" /> }))
+vi.mock('@/features/engagement/EngagementMatchSection', () => ({
+  EngagementMatchSection: () => <div data-testid="engagement" />,
+}))
+
+// Feuilles mockées — onglet Contrôle (les trois blocs déplacés le 2026-09-19).
 vi.mock('./MatchPositionsHeatmap', () => ({
   MatchPositionsHeatmap: () => <div data-testid="positions-heatmap" />,
 }))
-vi.mock('@/features/engagement/EngagementMatchSection', () => ({
-  EngagementMatchSection: () => <div data-testid="engagement" />,
+vi.mock('@/features/match-replay/MatchEquipmentUsageSection', () => ({
+  MatchEquipmentUsageSection: () => <div data-testid="equipment-usage" />,
+}))
+vi.mock('@/features/match-replay/MatchPadControlSection', () => ({
+  MatchPadControlSection: () => <div data-testid="pad-control" />,
 }))
 
 // Feuilles mockées — onglet Joueurs.
@@ -135,9 +147,10 @@ beforeEach(() => {
 })
 
 describe('resolveMatchViewTab — ids canoniques et alias', () => {
-  it('accepte les trois ids canoniques', () => {
+  it('accepte les quatre ids canoniques', () => {
     expect(resolveMatchViewTab('summary')).toBe('summary')
     expect(resolveMatchViewTab('chronology')).toBe('chronology')
+    expect(resolveMatchViewTab('control')).toBe('control')
     expect(resolveMatchViewTab('players')).toBe('players')
   })
 
@@ -163,9 +176,10 @@ describe('schéma de recherche de la route match', () => {
     expect(parse({ tab: 'details' }).tab).toBe('chronology')
   })
 
-  it('laisse passer les trois ids canoniques', () => {
+  it('laisse passer les quatre ids canoniques', () => {
     expect(parse({ tab: 'summary' }).tab).toBe('summary')
     expect(parse({ tab: 'chronology' }).tab).toBe('chronology')
+    expect(parse({ tab: 'control' }).tab).toBe('control')
     expect(parse({ tab: 'players' }).tab).toBe('players')
   })
 
@@ -178,12 +192,13 @@ describe('schéma de recherche de la route match', () => {
   })
 })
 
-describe('MatchViewPage — barre des 3 onglets', () => {
-  it('affiche Général, Chronologie et Joueurs (FR)', () => {
+describe('MatchViewPage — barre des 4 onglets', () => {
+  it('affiche Général, Chronologie, Contrôle et Joueurs (FR)', () => {
     renderWithProviders(<MatchViewPage />)
 
     expect(screen.getByRole('button', { name: 'Général' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Chronologie' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Contrôle' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Joueurs' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Détails' })).not.toBeInTheDocument()
   })
@@ -204,13 +219,29 @@ describe('MatchViewPage — contenu par onglet', () => {
     renderWithProviders(<MatchViewPage />)
 
     expect(screen.getByText(SECTION_FLOW)).toBeInTheDocument()
-    for (const id of ['impact-badges', 'kd-cumul', 'score-curve', 'tug-of-war', 'cadence', 'positions-heatmap', 'engagement']) {
+    for (const id of ['impact-badges', 'kd-cumul', 'score-curve', 'tug-of-war', 'cadence', 'engagement']) {
       expect(screen.getByTestId(id)).toBeInTheDocument()
+    }
+    // Les trois blocs de « Contrôle » ont quitté cet onglet le 2026-09-19.
+    for (const id of ['positions-heatmap', 'equipment-usage', 'pad-control']) {
+      expect(screen.queryByTestId(id)).not.toBeInTheDocument()
     }
     expect(screen.queryByTestId('summary-cards')).not.toBeInTheDocument()
     for (const title of [SECTION_DUELS, SECTION_SCOREBOARD, SECTION_ENCOUNTERS]) {
       expect(screen.queryByText(title)).not.toBeInTheDocument()
     }
+  })
+
+  it('onglet Contrôle : équipement, armes et occupation du terrain, et rien d’autre', () => {
+    hoisted.search = { tab: 'control' }
+    renderWithProviders(<MatchViewPage />)
+
+    for (const id of ['equipment-usage', 'pad-control', 'positions-heatmap']) {
+      expect(screen.getByTestId(id)).toBeInTheDocument()
+    }
+    expect(screen.queryByText(SECTION_FLOW)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('summary-cards')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('kd-cumul')).not.toBeInTheDocument()
   })
 
   it('onglet Joueurs : duels, tableau des scores et rencontres', () => {
@@ -228,7 +259,7 @@ describe('MatchViewPage — contenu par onglet', () => {
   })
 })
 
-describe('MatchViewPage — calques de film tirés seulement sur Chronologie', () => {
+describe('MatchViewPage — chaque calque de film est tiré par le SEUL onglet qui le consomme', () => {
   it('onglet Général : les deux queries sont désactivées', () => {
     renderWithProviders(<MatchViewPage />)
 
@@ -244,11 +275,19 @@ describe('MatchViewPage — calques de film tirés seulement sur Chronologie', (
     expect(hoisted.positionsCalls[0]).toEqual(['test-player', 'm1', false])
   })
 
-  it('onglet Chronologie : les deux queries sont activées', () => {
+  it('onglet Chronologie : les événements d’objectif seuls', () => {
     hoisted.search = { tab: 'chronology' }
     renderWithProviders(<MatchViewPage />)
 
     expect(hoisted.objectiveEventsCalls[0]).toEqual(['test-player', 'm1', true])
+    expect(hoisted.positionsCalls[0]).toEqual(['test-player', 'm1', false])
+  })
+
+  it('onglet Contrôle : les positions seules', () => {
+    hoisted.search = { tab: 'control' }
+    renderWithProviders(<MatchViewPage />)
+
+    expect(hoisted.objectiveEventsCalls[0]).toEqual(['test-player', 'm1', false])
     expect(hoisted.positionsCalls[0]).toEqual(['test-player', 'm1', true])
   })
 })
