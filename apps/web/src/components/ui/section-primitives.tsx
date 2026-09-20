@@ -1,16 +1,20 @@
 /**
- * SynthesisCards — LES DEUX BRIQUES DE MISE EN PAGE DE LA SYNTHÈSE, extraites pour être
- * partagées.
+ * section-primitives — LES DEUX BRIQUES DE MISE EN PAGE D'UNE SECTION DE KPI.
  *
  * `AccentCard` (la tuile de KPI à filet coloré) et `SectionSubtitle` (le sous-titre à filet)
- * vivaient dans `SynthesisPage.tsx`, seul consommateur jusqu'au 2026-09-06. La section
- * « Portée des engagements » (lot 5 du plan `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`) est un
- * composant à part et en a besoin : les recopier en aurait fait deux gabarits pour la même
- * chose dans la même page — exactement ce que `SectionCard` a corrigé ailleurs. Elles sont
- * donc DÉPLACÉES ici (aucune modification de rendu), et `SynthesisPage` les importe.
+ * vivaient dans `SynthesisPage.tsx`, seul consommateur jusqu'au 2026-09-06, puis dans
+ * `features/synthesis/SynthesisCards.tsx` quand la section « Portée des engagements » (lot 5
+ * du plan `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`) en a eu besoin : les recopier en aurait fait
+ * deux gabarits pour la même chose, exactement ce que `SectionCard` a corrigé ailleurs.
  *
- * L'import inverse (la section important depuis la page qui la monte) aurait fermé un cycle :
- * un module tiers est la seule forme qui n'en crée pas.
+ * Elles sont DESCENDUES ici le 2026-09-19 (aucune modification de rendu) : ce sont des
+ * primitives d'habillage, pas un morceau de la Synthèse, et leurs consommateurs sont dans deux
+ * features distinctes — ce qui coûtait la dérogation `timeseries=>synthesis` à l'anti-import
+ * inter-features, retirée avec ce déplacement. Les deux voyagent ensemble parce que leurs deux
+ * consommateurs les montent ensemble (le sous-titre coiffe la grille de tuiles).
+ *
+ * Elles ne dépendent d'AUCUNE feature : tout arrive par props — la frontière inversée
+ * (gap #14) est respectée par construction.
  */
 import type { ReactNode } from 'react'
 

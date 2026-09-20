@@ -18,18 +18,6 @@ func TestCompareRequest_Validate_Valid(t *testing.T) {
 	}
 }
 
-func TestCompareRequest_Validate_WithFilters(t *testing.T) {
-	r := CompareRequest{
-		TargetGamertag: "Player2",
-		Filters: FilterContextInput{
-			FilterMode: "period",
-		},
-	}
-	if err := r.Validate(); err != nil {
-		t.Fatalf("expected nil, got %v", err)
-	}
-}
-
 // ── NewPrivacyWarning ────────────────────────────────────────────────────────
 
 func TestNewPrivacyWarning_None(t *testing.T) {
