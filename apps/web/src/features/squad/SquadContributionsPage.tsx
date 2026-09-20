@@ -8,6 +8,7 @@
  *
  * Multi-titres : strings UI via getSquadText.
  */
+import { useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -24,23 +25,39 @@ export function SquadContributionsPage() {
   const { confirmedGamertags, pageData, playerSlug } = useSquadContext()
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
-  const perMinuteRows = pageData?.per_minute_stats ?? []
-  const synergyRadar = pageData?.synergy_radar ?? []
+  // Tous les dérivés de cette page sont MÉMOÏSÉS : ils descendent en props dans
+  // des ChartCard, qui reconstruisent leur option ECharts (et rejouent donc leur
+  // animation d'entrée) dès qu'une prop change d'identité — même si sa valeur
+  // est la même. Les `?? []` / `?? {}` écrits à la volée en fabriquaient une
+  // neuve à chaque rendu.
+  const perMinuteRows = useMemo(() => pageData?.per_minute_stats ?? [], [pageData?.per_minute_stats])
+  const synergyRadar = useMemo(() => pageData?.synergy_radar ?? [], [pageData?.synergy_radar])
   const performanceSeries = pageData?.performance_series
+  const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
   // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
   // pour que le mapping couleurs matche les clés des SquadPerMinuteEntry.player
   // / SquadSynergyRadarSeries.player etc.
   const mainPlayerKey = pageData?.main_player ?? playerSlug
-  const playerColors = getSquadPlayerColors(mainPlayerKey, confirmedGamertags)
-  const synergyAxisLabels: Record<string, string> = {
-    combat: t.synergyRadar.axes.combat,
-    survival: t.synergyRadar.axes.survival,
-    support: t.synergyRadar.axes.support,
-    score: t.synergyRadar.axes.score,
-    objective: t.synergyRadar.axes.objective,
-    impact: t.synergyRadar.axes.impact,
-  }
+  const playerColors = useMemo(
+    () => getSquadPlayerColors(mainPlayerKey, confirmedGamertags),
+    [mainPlayerKey, confirmedGamertags],
+  )
+  const playerOrder = useMemo(
+    () => [mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p]),
+    [mainPlayerKey, confirmedGamertags, performanceSeries],
+  )
+  const synergyAxisLabels = useMemo<Record<string, string>>(
+    () => ({
+      combat: t.synergyRadar.axes.combat,
+      survival: t.synergyRadar.axes.survival,
+      support: t.synergyRadar.axes.support,
+      score: t.synergyRadar.axes.score,
+      objective: t.synergyRadar.axes.objective,
+      impact: t.synergyRadar.axes.impact,
+    }),
+    [t],
+  )
 
   return (
     <div className="space-y-4">
@@ -93,8 +110,8 @@ export function SquadContributionsPage() {
         <h3 className="text-base font-semibold text-foreground">{t.performanceCharts.title}</h3>
         <SquadPerformanceCharts
           emptyMessage={t.empty.noBlockData}
-          rowsByPlayer={performanceSeries ?? {}}
-          playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
+          rowsByPlayer={perfSeriesByPlayer}
+          playerOrder={playerOrder}
           colorByPlayer={playerColors}
           labels={t.performanceCharts}
         />
