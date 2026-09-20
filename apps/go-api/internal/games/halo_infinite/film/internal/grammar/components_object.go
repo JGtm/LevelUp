@@ -42,20 +42,25 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 //	R(1) gate (cVar5)
 //	if gate == 0: R(19)   (0x13: packed forward+up direction index)
 //	R(8)                  (always: trailing magnitude/roll word)
-func consumeObjectForwardAndUp(br *Lecteur) { _, _ = decodeObjectForwardAndUp(br) }
+func consumeObjectForwardAndUp(br *Lecteur) { _, _, _ = decodeObjectForwardAndUp(br) }
 
 // decodeObjectForwardAndUp lit EXACTEMENT les mêmes bits que consumeObjectForwardAndUp et
 // rend la direction packée quand elle est présente (gate == 0). Même contrat que
 // decodeObjectBodyVitality : la grammaire ne vit qu'ici, le sauteur de bits n'en est que
 // la façade.
-func decodeObjectForwardAndUp(br *Lecteur) (dir uint32, has bool) {
+//
+// LE R(8) DE QUEUE N EST PLUS JETE (lot 5.4) : c est l ANGLE DE ROULIS du couple
+// (direction, angle) que `FUN_140c5f9c8` passe a `FUN_1406d8678` pour construire le SECOND
+// vecteur du composant. La direction ecrite est le HAUT ; l AVANT est la perpendiculaire
+// reconstruite, et cet angle en est la moitie manquante. Cf. [ForwardFromUpRoll].
+func decodeObjectForwardAndUp(br *Lecteur) (dir uint32, has bool, roll uint32) {
 	gate := br.ReadBit() // FUN_140c5fa84 leading R(1)
 	if !gate {
 		dir = uint32(br.ReadBits(19)) // 0x13 packed direction
 		has = true
 	}
-	br.ReadBits(8) // trailing word (unconditional)
-	return dir, has
+	roll = uint32(br.ReadBits(8)) // FUN_1406d84b4(w=8, [-pi, +pi]) : l angle de roulis
+	return dir, has, roll
 }
 
 // consumeObjectBodyVitality (i4) mirrors FUN_140fb8978.

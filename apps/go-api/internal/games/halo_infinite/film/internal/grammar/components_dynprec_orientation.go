@@ -88,15 +88,66 @@ func consumeObjectForwardAndUpDynPrec(br *Lecteur, param uint32) bool {
 	return ok
 }
 
-// FwdUpDynPrec porte ce qu'un i2 dynamic-precision livre : la direction packée sur 19 bits
-// quand le chemin qui la porte est emprunté. HasDir est faux sur les chemins « keep »
-// (mode 2, deux vec3 bruts) et « delta » (quartets), qui n'écrivent pas de direction
-// absolue dans le flux.
+// FwdUpDynPrec porte ce qu'un i2 dynamic-precision livre : la direction packée — le vecteur
+// HAUT — et l ANGLE DE ROULIS qui, avec elle, reconstruit l AVANT ([ForwardFromUpRoll]).
+// HasDir est faux sur le chemin « keep » (mode 2, deux vec3 bruts, JAMAIS emprunte) et sur les
+// quartets du chemin « delta », qui n'écrivent pas de direction absolue dans le flux.
+//
+// LARGEURS PAR MODE, et c est le mode qui les decide : mode 0 -> direction R(19) et roulis
+// R(8) ; mode 1 (chemin « config », DOMINANT sur les builds recents) -> R(30) et R(30). Les
+// deux paires passent par la MEME reconstruction.
 type FwdUpDynPrec struct {
 	HasDir bool
-	DirRaw uint32 // R(19) : même encodage cubemap que l'i2 du bipède
-	Mode   uint8  // 0 = incrémental/absolu, 2 = keep (2 vec3 bruts)
+	DirRaw uint32 // direction cubemap du vecteur HAUT, a la largeur du mode
+	Mode   uint8  // 0 = incrémental/absolu, 1 = config, 2 = keep (2 vec3 bruts)
 	Delta  bool   // bit B : charge utile FUN_14076e744 au lieu de FUN_140c5fa84
+	// HasRoll / RollRaw : l angle de roulis ABSOLU, quand le chemin l ecrit. Le chemin
+	// « delta » ne l ecrit PAS (sa queue R(1)[+R(4)] est un increment sur l etat precedent),
+	// et c est la seule population ou l avant reste hors d atteinte sans suivi d etat.
+	HasRoll bool
+	RollRaw uint32
+	// DirDefault : la porte de direction est posee, donc le moteur prend `(0, 0, 1)` comme
+	// HAUT (`DAT_143b8f860` / `0x14472a654`). Le chassis est a plat : l avant vaut alors
+	// exactement l angle de roulis.
+	DirDefault bool
+}
+
+// FwdUpDirBits / FwdUpRollBits rendent les largeurs de la direction et du roulis pour un mode.
+// Elles vivent ici, avec la grammaire qui les impose, pour qu aucun lecteur ne les redevine.
+func FwdUpDirBits(mode uint8) uint {
+	if mode == 1 {
+		return 30
+	}
+	return 19
+}
+
+func FwdUpRollBits(mode uint8) uint {
+	if mode == 1 {
+		return 30
+	}
+	return 8
+}
+
+// Haut rend le vecteur HAUT du composant : la direction lue, ou le defaut `(0, 0, 1)` quand la
+// porte est posee. ok est faux quand le chemin n ecrit aucune direction absolue.
+func (v FwdUpDynPrec) Haut() ([3]float32, bool) {
+	if v.DirDefault {
+		return [3]float32{0, 0, 1}, true
+	}
+	if !v.HasDir {
+		return [3]float32{}, false
+	}
+	return DecodeAimVectorChecked(v.DirRaw, FwdUpDirBits(v.Mode))
+}
+
+// Avant rend l AVANT DU CHASSIS — la perpendiculaire que le moteur construit en `base+0x18`.
+// ok est faux des qu une des deux moities manque.
+func (v FwdUpDynPrec) Avant() ([3]float32, bool) {
+	up, ok := v.Haut()
+	if !ok || !v.HasRoll {
+		return [3]float32{}, false
+	}
+	return ForwardFromUpRoll(up, RollAngleFromRaw(v.RollRaw, FwdUpRollBits(v.Mode))), true
 }
 
 // decodeObjectForwardAndUpDynPrec est le SEUL détenteur de la grammaire d'i2 dyn.-préc. ;
@@ -118,12 +169,14 @@ func decodeObjectForwardAndUpDynPrec(br *Lecteur, param uint32) (FwdUpDynPrec, b
 	case out.Mode == 2:
 		br.ReadBits(fwdUpDynPrecMode2Bits)
 	case out.Mode == 1:
-		consumeFwdUpDynPrecConfig(br)
+		out.DirRaw, out.HasDir, out.RollRaw = decodeFwdUpDynPrecConfig(br)
+		out.HasRoll, out.DirDefault = true, !out.HasDir
 	case out.Delta:
 		dir, has := decodeFwdUpDynPrecDelta(br)
 		out.DirRaw, out.HasDir = dir, has
 	default:
-		out.DirRaw, out.HasDir = decodeObjectForwardAndUp(br) // FUN_140c5fa84, inchangé
+		out.DirRaw, out.HasDir, out.RollRaw = decodeObjectForwardAndUp(br) // FUN_140c5fa84
+		out.HasRoll, out.DirDefault = true, !out.HasDir
 	}
 	return out, true
 }
@@ -170,11 +223,16 @@ func decodeFwdUpDynPrecDelta(br *Lecteur) (dir uint32, has bool) {
 //	FUN_1406d8678 : math pure, 0 bit             JMP 0x1406d8678 @0x142e29cf3
 //
 // Coût : 31 bits (g == 1) ou 61 bits (g == 0).
-func consumeFwdUpDynPrecConfig(br *Lecteur) {
+//
+// LE « SCALAIRE DEQUANTIFIE » DE QUEUE EST L ANGLE DE ROULIS, et il n est plus jete (lot 5.4) :
+// `FUN_1406d84b4(n = 0x1e, min = -pi, max = +pi)` puis `FUN_1406d8678`, exactement la
+// reconstruction du chemin de 8 bits a une autre largeur. Quand g == 1, la direction vaut le
+// defaut `(0, 0, 1)` (`0x14472a654`) : le chassis est a plat.
+func decodeFwdUpDynPrecConfig(br *Lecteur) (dir uint32, hasDir bool, roll uint32) {
 	if !br.ReadBit() { // g
-		br.ReadBits(30) // 0x1e : direction packée
+		dir, hasDir = uint32(br.ReadBits(30)), true // 0x1e : direction packée du HAUT
 	}
-	br.ReadBits(30) // 0x1e : FUN_1406d84b4, scalaire déquantifié
+	return dir, hasDir, uint32(br.ReadBits(30)) // 0x1e : FUN_1406d84b4, angle de roulis
 }
 
 // consumeObjectAngularVelocityDynPrec consomme i3

@@ -314,3 +314,24 @@ package grammar
 //
 // `facts.Rev` MONTE (elle hache cette valeur, et le lot change aussi `facts/killsource/`) :
 // `killsource-2026-09-20`. `SchemaVersion` NE MONTE PAS — aucun champ n est ajoute au document.
+
+// ENTREE `grammar-2026-09-20.2` (2026-09-20, lot 5.4.1) : L ANGLE DE ROULIS D `i2` N EST PLUS
+// JETE — LA MOITIE MANQUANTE DE L AVANT DU CHASSIS.
+//
+// AUCUN BIT N EST LU AUTREMENT : `decodeObjectForwardAndUp` et le chemin « config » du mode 1
+// consomment EXACTEMENT les memes largeurs qu avant (R(1)[+R(19)]+R(8) et R(1)[+R(30)]+R(30)).
+// Ce qui change est ce qui est RENDU : le scalaire de queue, que le depot sautait, est l ANGLE
+// que `FUN_1406d8678` combine a la direction pour construire le SECOND vecteur du composant.
+// La direction ecrite est le vecteur HAUT (negatif mesure du lot 5.2b.2, |z| median 0,96 a
+// 0,98) ; l AVANT est la perpendiculaire reconstruite. Cf. `orientation_frame.go`.
+//
+// POURQUOI LA REVISION MONTE ALORS QUE LA GRAMMAIRE D OCTETS EST INCHANGEE : la SORTIE de la
+// couche change. `HasAim` / `AimRaw` etaient muets sur le chemin du mode 1 (la direction de
+// 30 bits etait sautee) ; ils sont desormais poses, et le codec des faits les porte. Sur un film
+// dont `i2` prend le mode 1 — le chemin DOMINANT des builds recents — les faits changent donc
+// d octets. `AimVector` suit la largeur du mode au lieu de 19 bits en dur, sans quoi une
+// direction de 30 bits se decoderait en vecteur arbitraire.
+//
+// `SchemaVersion` NE MONTE PAS : aucun champ neuf au document, et `vehicles[].samples[].h` reste
+// l atan2 de la velocite. La publication de l avant est un lot SEPARE (5.4.3), et elle ne sera
+// posee que si la preuve sur film tient.
