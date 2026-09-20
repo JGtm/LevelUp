@@ -6551,6 +6551,33 @@ méthode du lot 3.7 (§ 7) répond chez l'ÉCRIVAIN, avant tout film.
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
+### Post-chantier — lot 5.3 (états de mouvement), point 5.3.1, gates SANS AUCUN DÉCODAGE, 2026-09-20
+
+Branche `feat/decfilm-53`, base `6e86db356`. **AUCUN film lu, AUCUNE base DuckDB ouverte** — un
+backfill killsource tient le parc en écriture pendant tout le lot (verrou solo). Les jonctions
+`film_chunks` et `film_manifests` sont posées et intactes (**1 598 entrées** chacune),
+`data/cache/replays` n'a jamais été touché. `npm ci` joué dans `apps/web` avant le premier
+commit ; aucun `--no-verify`.
+
+**Aucun octet de production Go ne bouge** : les trois fichiers neufs et les deux fichiers
+touchés de `film/research/` sont tous sous `//go:build research`, et la racine d'empreinte de
+la couche grammaire est `film/internal/grammar/` — `film/research/` en est DEHORS. `grammar.Rev`
+et `facts.Rev` sont donc inchangés, et les 8 fixtures de contrat aussi.
+
+| Date | Point | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-20 | 5.3.1 | périmètre (`git status`) | **7 chemins**, tous du lot : le plan, la note 5.3, `archlint/film_layers_deps_test.go`, deux fichiers de `research/reapparition/`, deux paquets neufs de `research/` |
+| 2026-09-20 | 5.3.1 | calibration de la chaîne du descripteur (`cmd_mouvement`) | **6 témoins sur 6**, et les 5 cibles résolues sans un échec ; les 5 écrivains concordent À L'OCTET avec ceux que le décodeur porte (`142ed42a8`, `142f02978`, `1408f0264`, `142f0293c`, `14076d45c`) |
+| 2026-09-20 | 5.3.1 | négatif du vocabulaire (`cmd_mouvement -vocabulaire`) | univers des noms de composant balayé ; « sprint » **71 chaînes / 0 composant**, « jump » **94 / 0**, « clamber » **34 / 0**, « airborne » **68 / 0**, « vault » **14 / 0**, « mantle » **0 / 0** ; « crouch » 66 / **1**, « slide » 60 / **1**, « posture » 14 / **1**, « mobility » 10 / **1** |
+| 2026-09-20 | 5.3.1 | borne de déquantification lue dans l'image (`read_memory 143cd8374`) | `00 00 80 3f` = **1.0f** — les fractions d'`i29` et d'`i62` sont bien dans `[0.0, 1.0]` |
+| 2026-09-20 | 5.3.1 | `gofmt -l ./internal ./cmd` · `go build ./...` · `go vet ./...` · `go vet -tags=research ./…/film/...` | sortie vide · `BUILD_OK` · `VET_OK` · `VET_RESEARCH_OK` |
+| 2026-09-20 | 5.3.1 | `go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api` | **tout vert, code de sortie 0** (aucune ligne hors `ok` / `no test files`) |
+| 2026-09-20 | 5.3.1 | ratchet des couches (`TestCouchesDuDecodeurSontPeupleesEtALeurPlace`) | **A REFUSÉ le lot au premier passage** (deux paquets de `research/` hors couche) ; les deux sont déclarés `horsCoucheFilm` comme leurs voisins de 3.7, avec la raison écrite — le ratchet repasse vert. C'est le garde-rail qui fait son travail, pas un contournement |
+| 2026-09-20 | 5.3.1 | `golangci-lint run ./…/film/... ./internal/archlint/...` (cache isolé) | **0 issues** |
+| 2026-09-20 | 5.3.1 | `go test -race` sur `grammar` | **NON JOUÉ et assumé** : `film/internal/grammar/` n'est pas touché d'un octet (`git diff --name-only` le montre). À rejouer au premier commit qui touche la grammaire |
+| 2026-09-20 | 5.3.1 | `make check-types`, `make test-web` | **NON JOUÉS et assumés** : aucun fichier de `apps/web/`, ni `openapi.yaml`, ni un type généré. À rejouer au premier commit qui touche le web (5.3.3 si le port a lieu) |
+| 2026-09-20 | 5.3.1 | corpus gate, `replay-equiv`, re-figeage | **AUCUN, et ce n'est pas un report** : rien de publié ne bouge, et la contrainte de machine l'interdit (voir l'en-tête). Le pilote les joue à la fin de la série (décision utilisateur du 2026-09-20) |
+
 ### Lot 5.2b — LE ROSTER DES REMPLACANTS, ET L ORIENTATION REFUTEE PAR SA CAUSE, 2026-09-20
 
 #### 5.2b.1 — AVANT / APRES, QUATRE FILMS, CARTE DU MATCH (production-equivalent)
