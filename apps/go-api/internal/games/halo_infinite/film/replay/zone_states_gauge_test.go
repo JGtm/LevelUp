@@ -292,3 +292,107 @@ func TestZoneGaugeRetourAZeroFermeLaRampe(t *testing.T) {
 	}
 	checkGaugeSeries(t, pts, []zoneGaugeWindow{{t0: 10, t1: 14}, {t0: 15, t1: 43}})
 }
+
+// --- LE CAMP QUI POUSSE LA RAMPE (schema 64) -------------------------------------------------
+//
+// CE QUE CES TESTS EPINGLENT, c'est le SILENCE : une rampe qui avorte ne doit JAMAIS nommer un
+// camp, parce que le canal de propriete y porte encore le DEFENSEUR — publier sa valeur ferait
+// peindre la capture a la couleur de celui qui la subit, le defaut exact que ce champ repare.
+
+// rampeDeJauge fabrique une serie de jauge qui monte de zero au sommet `top` (en fraction de
+// l'echelle du jeu) sur `n` emissions, puis retombe a zero une frame apres — exactement la forme
+// que le film ecrit (cf. appendGaugeReset).
+func rampeDeJauge(n, t0 int, top float64) []zoneSample {
+	out := make([]zoneSample, 0, n+1)
+	for i := 0; i < n; i++ {
+		f := top * float64(i+1) / float64(n)
+		out = append(out, zoneSample{t: t0 + i, v: zoneGaugeQuantZero + uint64(f*zoneGaugeQuantUnit)})
+	}
+	return append(out, zoneSample{t: t0 + n, v: zoneGaugeQuantZero})
+}
+
+// camps : les deux camps mesures du canal.
+func camps() map[uint64]bool { return map[uint64]bool{0: true, 1: true} }
+
+// TestRampeAboutieNommeLeCampDeLIssue : une rampe qui atteint le plein publie le camp que le
+// canal de propriete porte apres son sommet — y compris quand c'est une RE-SECURISATION (le
+// canal ne change pas de valeur, et pourtant elle nomme bien le pousseur).
+func TestRampeAboutieNommeLeCampDeLIssue(t *testing.T) {
+	gauge := rampeDeJauge(10, 100, 0.99)
+	ramps := findZoneRamps(7, gauge)
+	if len(ramps) != 1 {
+		t.Fatalf("%d rampe(s) decoupee(s), attendu 1", len(ramps))
+	}
+	owner := []zoneSample{{t: 50, v: zoneNeutralOwner}, {t: 110, v: 1}}
+	out := zoneGaugeRampsOf(ramps, owner, camps(), 20)
+	if len(out) != 1 || out[0].CapturingTeam == nil || *out[0].CapturingTeam != 1 {
+		t.Fatalf("camp publie = %v, attendu 1 : la rampe aboutit et le canal nomme le camp 1", out)
+	}
+	if out[0].T0 != ramps[0].t0 || out[0].T1 != ramps[0].tPeak {
+		t.Errorf("bornes publiees (%d, %d), attendu (%d, %d) : le span SITUE la rampe",
+			out[0].T0, out[0].T1, ramps[0].t0, ramps[0].tPeak)
+	}
+}
+
+// TestRampeAvorteeNeNommePersonne : sous le seuil d'aboutissement, la cle est ABSENTE meme quand
+// le canal de propriete porte un camp parfaitement lisible — c'est le DEFENSEUR.
+func TestRampeAvorteeNeNommePersonne(t *testing.T) {
+	gauge := rampeDeJauge(10, 100, 0.80)
+	ramps := findZoneRamps(7, gauge)
+	owner := []zoneSample{{t: 50, v: 0}, {t: 110, v: 0}}
+	out := zoneGaugeRampsOf(ramps, owner, camps(), 20)
+	if len(out) != 1 {
+		t.Fatalf("%d span(s) publie(s), attendu 1 : une rampe avortee se publie quand meme, SANS camp", len(out))
+	}
+	if out[0].CapturingTeam != nil {
+		t.Fatalf("camp publie = %d sur une rampe avortee : le document devinerait le pousseur",
+			*out[0].CapturingTeam)
+	}
+}
+
+// TestRampeSansCampLisibleResteMuette : le canal NEUTRE et le canal MUET se taisent tous deux —
+// « personne » ne capture rien, et une valeur hors roster n'est pas un camp.
+func TestRampeSansCampLisibleResteMuette(t *testing.T) {
+	ramps := findZoneRamps(7, rampeDeJauge(10, 100, 0.99))
+	cas := []struct {
+		nom   string
+		owner []zoneSample
+	}{
+		{"canal neutre", []zoneSample{{t: 110, v: zoneNeutralOwner}}},
+		{"canal muet dans la fenetre", []zoneSample{{t: 50, v: 1}}},
+		{"valeur hors roster", []zoneSample{{t: 110, v: 7}}},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			out := zoneGaugeRampsOf(ramps, c.owner, camps(), 20)
+			if len(out) != 1 || out[0].CapturingTeam != nil {
+				t.Fatalf("camp publie sur %q : %v", c.nom, out)
+			}
+		})
+	}
+}
+
+// TestRampesPublieesSontCellesDeLaSerie : le decoupage publie est LE MEME que celui dont la serie
+// de jauge est tiree. Deux verites de rampe sur un meme calque, c'est la divergence assuree.
+func TestRampesPublieesSontCellesDeLaSerie(t *testing.T) {
+	gauge := append(rampeDeJauge(10, 100, 0.99), rampeDeJauge(10, 300, 0.60)...)
+	ramps := findZoneRamps(7, gauge)
+	out := zoneGaugeRampsOf(ramps, []zoneSample{{t: 110, v: 1}}, camps(), 20)
+	if len(out) != len(ramps) {
+		t.Fatalf("%d span(s) pour %d rampe(s) : les deux decoupages ont divergé", len(out), len(ramps))
+	}
+	wins := rampWindowsOf(ramps)
+	for i, w := range wins {
+		if out[i].T0 != w.t0 || out[i].T1 != w.t1 {
+			t.Errorf("rampe %d : span (%d, %d) contre fenetre (%d, %d)", i, out[i].T0, out[i].T1, w.t0, w.t1)
+		}
+	}
+}
+
+// TestAucuneRampeAucunSpan : sans rampe, le champ est nil — jamais un tableau vide, qui
+// s'afficherait dans le JSON et se lirait « mesure, rien trouve » au lieu de « pas de jauge ».
+func TestAucuneRampeAucunSpan(t *testing.T) {
+	if out := zoneGaugeRampsOf(nil, nil, camps(), 20); out != nil {
+		t.Fatalf("spans publies sans rampe : %v", out)
+	}
+}

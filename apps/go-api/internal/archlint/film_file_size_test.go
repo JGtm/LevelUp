@@ -110,7 +110,11 @@ var plafondsParFichier = map[string]int{
 	// (`flagCarries[].spans[].returnProgress`, `vehicleCycles`, leurs neuf compteurs de couverture,
 	// pourquoi la note 3.7 concluait « non mesurable » et ce qui a change depuis, et ce qui n y
 	// entre PAS — la surface web du cycle de vehicule, transmise au lot de rendu).
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1762,
+	// SCHEMA 63 -> 64 (2026-09-20, post-chantier lot 5.2-A) : 1762 -> 1825, l entree de chronique
+	// v64 (`zoneStates[].gaugeRamps` et son `capturingTeam`, le seuil d aboutissement mesure, la
+	// forme ECARTEE — un champ sur `GaugePoint`, type partage avec la jauge de retour du drapeau —
+	// et l archetype `zones` ti=23 qui reste non cable).
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1825,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -145,7 +149,9 @@ var plafondsParFichier = map[string]int{
 	// aucune des quatre revisions de decodage). C est l exception nommee en tete de ce fichier :
 	// `structure_test.go` porte une entree par version de schema, et elle entre dans le commit
 	// qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1200,
+	// SCHEMA 63 -> 64 (2026-09-20, lot 5.2-A) : 1200 -> 1215, la justification que
+	// `TestStructureIsOptionalInDocument` exige avant d accepter la montee.
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1215,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

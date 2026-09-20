@@ -129,6 +129,32 @@ describe('l’éclair de bouche', () => {
     expect(count(ops, 'arc')).toBe(2) // halo + cœur
   })
 
+  /**
+   * LA FAMILLE `plain` AVEC UNE DIRECTION (2026-09-20). Elle tombait sur la bouffée RONDE,
+   * c'est-à-dire qu'elle JETAIT l'axe qu'on connaissait. Les armes DE VÉHICULE sont exactement
+   * dans ce cas : absentes de `weaponLabels`, donc sans `fx` — 68 % des tirs de véhicule de
+   * `4f77afc1`. Un rond gris pâle centré sur un châssis ne se lit pas comme un tir.
+   */
+  it('famille inconnue AVEC direction : une bouffée ORIENTÉE, pas un rond', () => {
+    const ops = trace('plain', 'kinetic')
+    expect(count(ops, 'rotate')).toBe(1)
+    expect(count(ops, 'scale')).toBe(1)
+  })
+
+  it('famille inconnue SANS direction : le rond revient — on n’invente pas un axe', () => {
+    const ops = trace('plain', 'kinetic', { angle: null })
+    expect(count(ops, 'rotate')).toBe(0)
+    expect(count(ops, 'scale')).toBe(0)
+  })
+
+  it('la bouffée orientée n’AFFIRME aucune famille : moins étirée que la poudre', () => {
+    const etirement = (f: 'plain' | 'ballistic'): number => {
+      const s = trace(f, 'kinetic').find((o) => o.op === 'scale')
+      return s!.args[0] as number
+    }
+    expect(etirement('plain')).toBeLessThan(etirement('ballistic'))
+  })
+
   it('la MÊLÉE ne devrait jamais arriver ici, et si elle arrive elle ne ment pas', () => {
     // Le filtrage est en amont (buildShotFx). Le rendu de secours est la bouffée neutre,
     // jamais une flamme orientée qui affirmerait un tir.

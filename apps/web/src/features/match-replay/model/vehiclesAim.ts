@@ -26,7 +26,12 @@ import type { ReplayVehicleAim, ReplayVehicleRide } from '@/lib/api/types'
 
 import { lastIndexAt } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
-import { vehicleAimAngle, vehicleHeadingAt } from './vehiclesLayer'
+import {
+  vehicleAimAngle,
+  vehicleDriverAt,
+  vehicleHeadingAt,
+  FAMILLES_ARME_FIXE,
+} from './vehiclesLayer'
 
 /**
  * VEHICLE_AIM_HOLD_FRAMES — combien de frames une lecture de visée reste EN VIGUEUR après son
@@ -107,4 +112,60 @@ export function vehicleOccupantAimAt(
   // À PLAT EN REPLI, et c'est une mesure : le cap du châssis est la direction d'un DÉPLACEMENT,
   // qui est horizontal — lui prêter une élévation inventerait un second angle.
   return { ang: vehicleAimAngle(vehicleHeadingAt(track, frame)), pitchDeg: 0, measured: false }
+}
+/**
+ * vehicleChassisHeadingAt — LE CAP AUQUEL LE CHÂSSIS SE DESSINE : la visée du CONDUCTEUR sur les
+ * familles à arme fixe, la vélocité partout ailleurs.
+ *
+ * ## Pourquoi cette fonction existe (2026-09-20)
+ *
+ * LE CHÂSSIS ÉTAIT DESSINÉ À LA DIRECTION DE SA VÉLOCITÉ (`vehicleHeadingAt`) — c'est-à-dire
+ * « là où le véhicule se déplace », pas « là où il pointe ». Un véhicule qui recule, dérape,
+ * tourne, vole ou est à l'arrêt n'a pas son nez dans cette direction, et 16 à 31 % des points de
+ * trajectoire n'en portent aucune (sous le seuil de vitesse du producteur).
+ *
+ * L'ORIENTATION PROPRE DU FILM A ÉTÉ RÉFUTÉE, elle ne viendra pas combler ce trou : le lot 5.2-B
+ * a mesuré le composant candidat de `ti=40` (`i2`) et c'est un vecteur HAUT, pas un avant —
+ * médianes de 54 à 105 degrés contre la vélocité.
+ *
+ * LA DÉCISION DE L'UTILISATEUR (2026-09-20) est donc de prendre la seule direction que le
+ * véhicule porte en propre ET qui soit mesurée : « le châssis s'oriente là où l'ARME pointe ».
+ * Sur une famille à arme fixe, viser C'EST tourner le véhicule — la visée du conducteur est donc
+ * l'avant du châssis, à 0,2-0,5 degré près (schéma 31). Sur une famille à tourelle, elle ne l'est
+ * pas et le pilote n'est même pas le tireur : le repli reste la vélocité.
+ *
+ * ## Les quatre régimes, dans l'ordre
+ *
+ *   1. VISÉE DU CONDUCTEUR — famille à arme fixe (`FAMILLES_ARME_FIXE`), un épisode du SIÈGE 0
+ *      en vigueur à cette image, et une lecture de visée en vigueur dessus.
+ *   2. VÉLOCITÉ — tout le reste, exactement comme avant : famille à tourelle, siège 0 vide
+ *      (véhicule abandonné, ou conduit par personne), ou épisode sans lecture de visée en vigueur.
+ *   3. CAP VOISIN — aucun échantillon en arrière ne porte de cap (véhicule encore à quai).
+ *   4. DÉFAUT — `VEHICLE_DEFAULT_HEADING_DEG`, nez vers le haut.
+ *
+ * Les régimes 2 à 4 sont `vehicleHeadingAt` tel quel : cette fonction ne fait qu'AJOUTER le
+ * premier devant.
+ *
+ * ## Pourquoi ici et pas dans `vehiclesLayer`
+ *
+ * Ce module est le SEUL à lire `ReplayVehicleRide.aim` (cf. l'en-tête), et `vehiclesLayer` ne
+ * l'importe pas — l'y poser créerait un cycle entre les deux fichiers. La TABLE des familles,
+ * elle, reste chez les autres tables de familles (`FAMILLES_ARME_FIXE`).
+ *
+ * ## Ce que cette fonction NE change PAS
+ *
+ * Le REPLI DU CÔNE de visée (`vehicleOccupantAimAt`) garde `vehicleHeadingAt`, la vélocité nue :
+ * ce repli est marqué `measured: false`, et lui donner la visée d'un AUTRE occupant ferait passer
+ * une mesure d'autrui pour une approximation de soi.
+ */
+export function vehicleChassisHeadingAt(
+  track: ReplayVehicleTrackReady,
+  frame: number,
+): number {
+  if (track.family !== undefined && FAMILLES_ARME_FIXE.has(track.family)) {
+    const driver = vehicleDriverAt(track, frame)
+    const read = driver ? vehicleRideAimReading(driver, frame) : null
+    if (read?.h !== undefined) return read.h
+  }
+  return vehicleHeadingAt(track, frame)
 }

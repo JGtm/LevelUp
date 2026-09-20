@@ -31,14 +31,22 @@ import {
   vehicleSpriteScale,
   vehicleVisibleAt,
   VEHICLE_DEFAULT_HEADING_DEG,
-  VEHICLE_FLOOR_PX,
   VEHICLE_HUMAN_FAMILIES,
   VEHICLE_KIND_MAP_ELEMENT,
   VEHICLE_MAP_ELEMENT_RENDER,
   VEHICLE_PLASMA_FAMILIES,
-  VEHICLE_SOFT_CEIL_PX,
 } from './vehiclesLayer'
 import { CORE_RADIUS, PION_VISIBLE_DIAMETER_PX } from '../layers/replayMarkers'
+import { viewScale } from '../layers/placementShapes'
+import {
+  PION_SCREEN_PX,
+  PX_PAR_MM_MINIMUM_ECRAN,
+  screenScalePxPerMm,
+  vehicleTurretHalfPx,
+  vehicleUnknownHalfPx,
+  VEHICLE_SCREEN_BUMP,
+  VEHICLE_SOFT_CEIL_PX,
+} from './screenSizes'
 
 /** Une vie de véhicule minimale, complétée par le test. */
 function track(over: Partial<ReplayVehicleTrackReady> = {}): ReplayVehicleTrackReady {
@@ -369,83 +377,208 @@ describe('buildEmbarkedPredicate — pion embarqué, MULTI-PASSAGERS (C7, rappel
   })
 })
 
-describe('vehicleScreenLengthPx / vehicleSpriteScale — taille (manifeste factice, Mongoose vs Scorpion)', () => {
-  // Sprites FACTICES : mêmes dimensions et mm/px que les fichiers réels du lot A (statut
-  // "valide" au 2026-08-31), mais lus ici comme un pur couple de nombres — aucun fichier chargé.
+describe('vehicleScreenLengthPx / vehicleSpriteScale — l’échelle de la carte, planchée à l’ancien cadrage +20 %', () => {
+  // Sprites FACTICES : mêmes dimensions et mm/px que les fichiers réels du manifeste (statut
+  // "valide" au 2026-09-02), mais lus ici comme un pur couple de nombres — aucun fichier chargé.
   const MONGOOSE_H_PX = 128
   /** Largeur native du sprite Mongoose reel — celle qui decide s il parait plus fin qu un pion. */
   const MONGOOSE_W_PX = 78
   const SCORPION_H_PX = 388
+  const GHOST_H_PX = 169
+  const PELICAN_H_PX = 1122
   const MM_PER_PX = 10
 
-  it('le Mongoose (référence de calibration) mesure entre 1,5 et 2 pions de long', () => {
-    const pionLengthPx = VEHICLE_FLOOR_PX // = le pion VISIBLE, l’ancre de la règle
-    const mongoose = vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX)
-    expect(mongoose).toBeGreaterThanOrEqual(1.5 * pionLengthPx)
-    expect(mongoose).toBeLessThanOrEqual(2 * pionLengthPx)
+  /**
+   * LES DEUX CARTES TÉMOINS, mesurées sur les documents cuits du cache le 2026-09-20, pour un
+   * conteneur de 1 000 px CSS et la marge du rejeu (24 px) : l'échelle vaut (1000 − 48) / largeur
+   * de la scène en mètres.
+   *
+   *   `4f77afc1` Flood Gulch  272,8 m de large -> 3,49 px/m   (GRANDE : sous le plancher)
+   *   `bfecd02b` Snowbound     54,2 m de large -> 17,56 px/m  (PETITE : au-dessus du plancher)
+   *
+   * L'échelle de bascule vaut 14,44 px/m, soit une scène de 65,9 m de large.
+   */
+  const GRANDE_CARTE = 952 / 272.8
+  const PETITE_CARTE = 952 / 54.2
+
+  /**
+   * L'ANCIEN RENDU, reconstitué depuis la formule d'avant le 2026-09-20 :
+   * `longueur_mm × VEHICLE_PX_PER_MM`, plancher de lisibilité à un pion, puis plafond doux. Il
+   * est recalculé ici — jamais recopié en valeurs — pour que l'invariant « jamais plus petit
+   * qu'avant » porte sur la RÈGLE, pas sur dix-huit nombres figés.
+   */
+  const PX_PAR_MM_V1 = (PION_VISIBLE_DIAMETER_PX * 1.75) / 1280
+  const ancienneLongueurPx = (hauteurPx: number): number => {
+    const brut = Math.max(hauteurPx * MM_PER_PX * PX_PAR_MM_V1, PION_VISIBLE_DIAMETER_PX)
+    return brut <= VEHICLE_SOFT_CEIL_PX
+      ? brut
+      : VEHICLE_SOFT_CEIL_PX + Math.sqrt(brut - VEHICLE_SOFT_CEIL_PX)
+  }
+
+  /** Les DIX-HUIT familles du manifeste, par la hauteur native de leur sprite. */
+  const FAMILLES: ReadonlyArray<readonly [string, number]> = [
+    ['banshee', 256], ['chopper', 239], ['falcon', 390], ['ghost', 169],
+    ['gungoose', 128], ['mongoose', 128], ['pelican', 1122], ['phantom', 1080],
+    ['razorback', 250], ['rockethog', 222], ['scorpion', 388], ['shade', 153],
+    ['skiff', 534], ['tourelle_montee', 139], ['warthog', 222], ['warthog_gauss', 222],
+    ['wasp', 257], ['wraith', 313],
+  ]
+
+  /**
+   * L'INVARIANT QUI TIENT LA DEMANDE DE L'UTILISATEUR (2026-09-19 : « les véhicules sont trop
+   * petits »). Le premier modèle écrit le 2026-09-20 le VIOLAIT : son plancher portait sur la
+   * TAILLE, pas sur l'échelle, et rendait le Warthog à 18,5 px là où l'ancien le rendait à
+   * 26,7 — plus petit qu'avant, sur la carte même où le constat avait été fait.
+   */
+  it('sur TOUTE carte, AUCUNE famille n’est plus petite qu’avant', () => {
+    for (const echelle of [GRANDE_CARTE, PETITE_CARTE, GRANDE_CARTE * 3, 0]) {
+      for (const [nom, h] of FAMILLES) {
+        const apres = vehicleScreenLengthPx(h, MM_PER_PX, echelle)
+        expect(apres, `${nom} à ${echelle.toFixed(2)} px/m`).toBeGreaterThanOrEqual(
+          ancienneLongueurPx(h) - 1e-9,
+        )
+      }
+    }
   })
 
-  it('proportionnalité ENTRE véhicules : le Scorpion (3,03x la hauteur native) est visiblement plus grand', () => {
-    const mongoose = vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX)
-    const scorpion = vehicleScreenLengthPx(SCORPION_H_PX, MM_PER_PX)
-    expect(scorpion).toBeGreaterThan(mongoose)
-    // Sous le plafond doux, la proportion RÉELLE (mm-monde) est préservée exactement.
-    expect(scorpion / mongoose).toBeCloseTo(SCORPION_H_PX / MONGOOSE_H_PX, 5)
+  /**
+   * GRANDE CARTE = L'ANCIEN RENDU, EXACTEMENT +20 %. C'est la demande du 2026-09-19, rendue
+   * telle quelle partout où l'échelle de la carte est sous le plancher — donc sur toute carte de
+   * plus de 65,9 m de large, c'est-à-dire toutes les grandes.
+   */
+  it('GRANDE carte : chaque famille vaut EXACTEMENT l’ancienne × 1,2', () => {
+    for (const [nom, h] of FAMILLES) {
+      const brutAncien = h * MM_PER_PX * PX_PAR_MM_V1
+      // Le plafond doux n'est PAS un facteur : la comparaison se fait sur la grandeur qu'il
+      // comprime, sinon l'égalité ne vaudrait que pour les familles qui ne l'atteignent pas.
+      const attendu = brutAncien * VEHICLE_SCREEN_BUMP
+      const brutApres = h * MM_PER_PX * screenScalePxPerMm(GRANDE_CARTE)
+      expect(brutApres, nom).toBeCloseTo(attendu, 9)
+    }
+    // Et sur la grandeur RENDUE, plafond compris, le Mongoose passe bien de 15,40 à 18,48 px.
+    expect(vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX, GRANDE_CARTE)).toBeCloseTo(18.48, 6)
+    expect(ancienneLongueurPx(MONGOOSE_H_PX)).toBeCloseTo(15.4, 6)
   })
 
-  it('vehicleSpriteScale rend un facteur qui, appliqué à la hauteur native, redonne la longueur d’écran', () => {
-    const scale = vehicleSpriteScale(MONGOOSE_H_PX, MM_PER_PX)
-    expect(scale * MONGOOSE_H_PX).toBeCloseTo(vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX), 6)
+  /**
+   * LES PROPORTIONS SONT CONSERVÉES À TOUTE ÉCHELLE, et c'est ce que le plancher d'ÉCHELLE
+   * garantit là où un plancher en PIXELS l'aurait détruit : les dix-huit familles franchissent
+   * le seuil ENSEMBLE, jamais une par une.
+   */
+  it('les proportions entre familles sont EXACTES, sur la grande comme sur la petite carte', () => {
+    for (const echelle of [GRANDE_CARTE, PETITE_CARTE]) {
+      const mongoose = vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX, echelle)
+      const ghost = vehicleScreenLengthPx(GHOST_H_PX, MM_PER_PX, echelle)
+      // Sous le plafond doux, le rapport des tailles écran EST celui des longueurs monde.
+      expect(ghost / mongoose).toBeCloseTo(GHOST_H_PX / MONGOOSE_H_PX, 6)
+    }
   })
 
-  it('plancher de lisibilité : un sprite minuscule ne descend jamais sous VEHICLE_FLOOR_PX', () => {
-    expect(vehicleScreenLengthPx(1, 0.001)).toBe(VEHICLE_FLOOR_PX)
+  /**
+   * PETITE CARTE = LA PLUS GRANDE DES DEUX. Au-dessus du plancher, c'est l'échelle de la carte
+   * qui sert, et les véhicules y sont plus gros que l'ancien × 1,2.
+   */
+  it('PETITE carte : la taille réelle passe devant l’ancienne × 1,2', () => {
+    const mongoose = vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX, PETITE_CARTE)
+    expect(screenScalePxPerMm(PETITE_CARTE)).toBeGreaterThan(PX_PAR_MM_MINIMUM_ECRAN)
+    expect(mongoose).toBeCloseTo((MONGOOSE_H_PX * MM_PER_PX * PETITE_CARTE) / 1000, 6)
+    expect(mongoose).toBeGreaterThan(ancienneLongueurPx(MONGOOSE_H_PX) * VEHICLE_SCREEN_BUMP)
+  })
+
+  it('PETITE carte : le plafond doux redevient utile — le Pélican cesse de dominer l’écran', () => {
+    const brut = (PELICAN_H_PX * MM_PER_PX * PETITE_CARTE) / 1000
+    const rendu = vehicleScreenLengthPx(PELICAN_H_PX, MM_PER_PX, PETITE_CARTE)
+    expect(brut).toBeGreaterThan(VEHICLE_SOFT_CEIL_PX)
+    expect(rendu).toBeGreaterThan(VEHICLE_SOFT_CEIL_PX)
+    expect(rendu).toBeLessThan(brut)
+  })
+
+  /**
+   * LES DEUX GLYPHES SUIVENT LE MÊME FACTEUR (décision du 2026-09-20) : au minimum leur taille
+   * d'avant × 1,2, et la même croissance que les châssis quand l'échelle monte. Sans cela, un
+   * châssis non résolu ou une tourelle rétréciraient relativement au véhicule d'à côté.
+   */
+  it('les deux glyphes valent leur ancienne taille × 1,2 sur une grande carte', () => {
+    expect(vehicleUnknownHalfPx(GRANDE_CARTE)).toBeCloseTo(CORE_RADIUS * VEHICLE_SCREEN_BUMP, 9)
+    expect(vehicleTurretHalfPx(GRANDE_CARTE)).toBeCloseTo(
+      PION_VISIBLE_DIAMETER_PX * 0.75 * VEHICLE_SCREEN_BUMP,
+      9,
+    )
+    // Le rapport entre les deux est tenu : le glyphe d'ignorance reste le plus petit.
+    expect(vehicleUnknownHalfPx(GRANDE_CARTE)).toBeLessThan(vehicleTurretHalfPx(GRANDE_CARTE))
+  })
+
+  it('les deux glyphes suivent la carte, comme les châssis', () => {
+    const facteur = screenScalePxPerMm(PETITE_CARTE) / screenScalePxPerMm(GRANDE_CARTE)
+    expect(vehicleUnknownHalfPx(PETITE_CARTE) / vehicleUnknownHalfPx(GRANDE_CARTE)).toBeCloseTo(facteur, 6)
+    expect(vehicleTurretHalfPx(PETITE_CARTE) / vehicleTurretHalfPx(GRANDE_CARTE)).toBeCloseTo(facteur, 6)
+  })
+
+  /**
+   * LES PIXELS SONT LOGIQUES, JAMAIS PHYSIQUES. La densité (`k`, `devicePixelRatio`) est
+   * appliquée au TRACÉ par l'appelant ; ni l'échelle du cadrage (`scaleOf(view)`, calculée sur
+   * `view.width`, la largeur du CONTENEUR) ni le plancher ne la connaissent. Un écran à
+   * `dpr = 2` rend donc la même taille logique avec deux fois plus de pixels physiques.
+   */
+  it('DPR 2 : la taille LOGIQUE est inchangée', () => {
+    const view = { bounds: { minX: 0, minY: 0, maxX: 272.8, maxY: 100 }, width: 1000, height: 400, pad: 24 }
+    // La vue est décrite en pixels CSS : son échelle ne change pas avec la densité.
+    const echelle = viewScale(view)
+    expect(vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX, echelle)).toBe(
+      vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX, echelle),
+    )
+    // Et c'est bien l'appelant qui multiplie par la densité — le facteur de sprite est rendu
+    // SANS `k` (il est appelé partout comme `scale * k`).
+    const ratio = vehicleSpriteScale(MONGOOSE_H_PX, MM_PER_PX, echelle)
+    expect(ratio * MONGOOSE_H_PX).toBeCloseTo(
+      vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX, echelle),
+      6,
+    )
+  })
+
+  it('ZOOMER agrandit tout du même facteur : le zoom ne déforme pas la scène', () => {
+    const a = vehicleScreenLengthPx(SCORPION_H_PX, MM_PER_PX, PETITE_CARTE)
+    const b = vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX, PETITE_CARTE)
+    const a2 = vehicleScreenLengthPx(SCORPION_H_PX, MM_PER_PX, PETITE_CARTE * 2)
+    const b2 = vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX, PETITE_CARTE * 2)
+    // Le Scorpion est au-dessus du plafond doux : son rapport au Mongoose se resserre, mais
+    // les deux grandissent — aucun ne recule.
+    expect(a2).toBeGreaterThan(a)
+    expect(b2).toBeCloseTo(b * 2, 6)
   })
 
   it('plafond DOUX : au-delà du seuil, la croissance ralentit mais ne s’arrête jamais', () => {
-    const huge = vehicleScreenLengthPx(100000, MM_PER_PX)
-    const evenHuger = vehicleScreenLengthPx(200000, MM_PER_PX)
-    // Les deux sont bien dans la zone compressée (au-delà du plafond doux)...
+    const huge = vehicleScreenLengthPx(100000, MM_PER_PX, PETITE_CARTE)
+    const evenHuger = vehicleScreenLengthPx(200000, MM_PER_PX, PETITE_CARTE)
     expect(huge).toBeGreaterThan(VEHICLE_SOFT_CEIL_PX)
-    // ... toujours strictement croissant (le plafond n'est pas un mur)...
     expect(evenHuger).toBeGreaterThan(huge)
-    // ... mais SOUS-LINÉAIRE : doubler l'entrée est très loin de doubler la sortie, alors que la
-    // partie non compressée (`vehicleScreenLengthPx` sous le plafond) est, elle, EXACTEMENT
-    // linéaire (cf. le test de proportionnalité Mongoose/Scorpion ci-dessus).
     expect(evenHuger).toBeLessThan(huge * 1.5)
   })
 
   /**
-   * GARDE-RAIL DU 2026-09-09 (retour utilisateur : « le Ghost … est plus petit que le pion du
-   * joueur ça fait hyper bizarre »).
-   *
-   * L'ancre était `CORE_RADIUS * 2` — le NOYAU SEUL, 6,80 px — alors qu'un pion au
-   * rez-de-chaussée en mesure 8,80 de large, lisere compris. Tous les véhicules étaient donc
-   * calibrés 1,29 fois trop petit. CE N'ÉTAIT PAS LE PLANCHER : mesuré sur les PNG réels et le
-   * manifeste, aucune famille ne l'atteignait (la plus petite en était à 75 % au-dessus).
+   * L'INVARIANT QUE L'UTILISATEUR VOIT (2026-09-09, « le Ghost est plus petit que le pion du
+   * joueur ») : un véhicule se lit à sa LARGEUR autant qu'à sa longueur. Le Mongoose — la plus
+   * petite famille, donc le pire cas — ne doit jamais paraître plus mince qu'un pion, y compris
+   * sur la grande carte où c'est le PLANCHER qui le tient.
    */
-  it('l’ancre est le pion VISIBLE, jamais son seul noyau', () => {
-    expect(VEHICLE_FLOOR_PX).toBe(PION_VISIBLE_DIAMETER_PX)
-    expect(VEHICLE_FLOOR_PX).toBeGreaterThan(CORE_RADIUS * 2)
-  })
-
-  /**
-   * L'INVARIANT QUE L'UTILISATEUR VOIT, et que la longueur seule ne portait pas : un véhicule se
-   * lit à sa LARGEUR autant qu'à sa longueur. Le Mongoose — la plus petite famille, donc le pire
-   * cas — sortait à 7,25 px de large contre 8,80 pour le pion : plus étroit que le pion dont il
-   * est censé faire 1,75 fois la LONGUEUR. Un sprite allongé ne doit jamais paraître plus mince
-   * qu'un pion.
-   */
-  it('même la plus petite famille reste au moins aussi LARGE qu’un pion', () => {
-    const longueur = vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX)
+  it('même la plus petite famille, sur la plus grande carte, reste aussi LARGE qu’un pion', () => {
+    const longueur = vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX, GRANDE_CARTE)
     const largeur = longueur * (MONGOOSE_W_PX / MONGOOSE_H_PX)
     expect(largeur).toBeGreaterThanOrEqual(PION_VISIBLE_DIAMETER_PX)
   })
 
-  it('dimensions dégénérées (image pas encore chargée, manifeste absent) : longueur nulle', () => {
-    expect(vehicleScreenLengthPx(0, 10)).toBe(0)
-    expect(vehicleScreenLengthPx(128, 0)).toBe(0)
-    expect(vehicleSpriteScale(0, 10)).toBe(0)
+  it('l’ancre du plancher est le pion VISIBLE, jamais son seul noyau', () => {
+    expect(PION_SCREEN_PX).toBe(PION_VISIBLE_DIAMETER_PX)
+    expect(PION_SCREEN_PX).toBeGreaterThan(CORE_RADIUS * 2)
+  })
+
+  it('cadrage dégénéré ou dimensions absentes : le plancher, jamais zéro ni une taille inventée', () => {
+    // Échelle nulle (toile pas encore mesurée) : le véhicule se dessine, à l'échelle plancher.
+    expect(vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX, 0)).toBeCloseTo(18.48, 6)
+    // Sprite ou manifeste pas encore chargés : aucune taille, donc aucun tracé.
+    expect(vehicleScreenLengthPx(0, 10, PETITE_CARTE)).toBe(0)
+    expect(vehicleScreenLengthPx(128, 0, PETITE_CARTE)).toBe(0)
+    expect(vehicleSpriteScale(0, 10, PETITE_CARTE)).toBe(0)
   })
 })
 

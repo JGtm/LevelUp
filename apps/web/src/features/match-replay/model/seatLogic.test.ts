@@ -114,6 +114,105 @@ describe('buildSeats — le siège vient du document', () => {
     expect(groupes[0].seats).toHaveLength(2)
   })
 
+  /**
+   * LE CONSTAT UTILISATEUR DU 2026-09-19, sur le match `b1ad85eb` : « trois équipes, dont deux
+   * Cobra ». Le roster ci-dessous est celui du document cuit, recopié tel quel (schéma 62) :
+   * onze entrées, le film nomme l'équipe de neuf d'entre elles et se tait sur l'index 5
+   * (WNBA Fan A5, zéro vie) et sur l'index 8 (les trois bots qui s'y relaient). Le seul de ces
+   * deux à occuper un siège est le bot `343 Brew Dog`, remplaçant d'un joueur parti : il partait
+   * sous `s:t1` quand les humains de sa propre équipe étaient sous `f1`.
+   */
+  it('témoin b1ad85eb : le bot sans équipe de film rejoint la colonne de SON camp', () => {
+    const humainsT0 = ['MONEY', 'Namikidori', 'DRghie'].map((x) => joueur(x, 't0', [vie(0, FIN)]))
+    const humainsT1 = ['FairyNectar', 'Madina', 'Chocoboflor', 'JGtm'].map((x) =>
+      joueur(x, 't1', [vie(0, FIN)]),
+    )
+    // Le bot : la feuille le joint par gamertag nu et lui donne `t1` ; le film ne dit RIEN.
+    const bot = joueur('BrewDog', 't1', [vie(T2, FIN)])
+    const seats = buildSeats(
+      [...humainsT0, ...humainsT1, bot],
+      doc([
+        { xuid: 'MONEY', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0 },
+        { xuid: 'Namikidori', filmIndex: 3, seat: 3, seatSource: 'lu', team: 0 },
+        { xuid: 'DRghie', filmIndex: 6, seat: 6, seatSource: 'lu', team: 0 },
+        { xuid: 'FairyNectar', filmIndex: 1, seat: 1, seatSource: 'lu', team: 1 },
+        { xuid: 'Madina', filmIndex: 2, seat: 2, seatSource: 'lu', team: 1 },
+        { xuid: 'Chocoboflor', filmIndex: 4, seat: 4, seatSource: 'lu', team: 1 },
+        { xuid: 'JGtm', filmIndex: 7, seat: 7, seatSource: 'lu', team: 1 },
+        { xuid: 'BrewDog', filmIndex: 8, seat: 8, seatSource: 'lu' },
+      ]),
+    )
+    // Le bot est sous la clé du FILM de son camp, pas sous celle de la feuille.
+    const siegeDuBot = seats.find((s) => s.seat === 8)!
+    expect(siegeDuBot.teamKey).toBe('f1')
+    // DEUX groupes, pas trois.
+    const groupes = groupSeatsByTeam(seats)
+    expect(groupes).toHaveLength(2)
+    expect(groupes.map((g) => g.seats.length).sort()).toEqual([3, 5])
+  })
+
+  /**
+   * LE GARDE-RAIL, et il est indépendant du témoin : quel que soit le mélange de sources, deux
+   * groupes ne peuvent pas porter le MÊME libellé. C'est exactement ce que l'utilisateur a vu,
+   * et aucune règle de regroupement ne doit pouvoir le reproduire.
+   */
+  it('garde-rail : jamais deux groupes sous le même libellé', () => {
+    const seats = buildSeats(
+      [
+        joueur('A', 't0', [vie(0, FIN)]),
+        joueur('B', 't1', [vie(0, FIN)]),
+        joueur('SansFilm0', 't0', [vie(0, FIN)]),
+        joueur('SansFilm1', 't1', [vie(0, FIN)]),
+      ],
+      doc([
+        { xuid: 'A', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0 },
+        { xuid: 'B', filmIndex: 1, seat: 1, seatSource: 'lu', team: 1 },
+        { xuid: 'SansFilm0', filmIndex: 2, seat: 2, seatSource: 'lu' },
+        { xuid: 'SansFilm1', filmIndex: 3, seat: 3, seatSource: 'lu' },
+      ]),
+    )
+    const libelles = groupSeatsByTeam(seats).map((g) => g.side)
+    expect(new Set(libelles).size).toBe(libelles.length)
+    expect(libelles.sort()).toEqual(['t0', 't1'])
+  })
+
+  /**
+   * LA TRADUCTION NE SUPPOSE AUCUNE CONVENTION : elle est MESURÉE sur les sièges que les deux
+   * sources nomment. Ici la feuille dit `t0` là où le film dit 1 — l'inverse de l'ordre naïf —
+   * et le siège muet doit suivre la MESURE, pas l'ordre.
+   */
+  it('la traduction suit la mesure, pas l’ordre des camps', () => {
+    const seats = buildSeats(
+      [joueur('A', 't0', [vie(0, FIN)]), joueur('Muet', 't0', [vie(0, FIN)])],
+      doc([
+        { xuid: 'A', filmIndex: 0, seat: 0, seatSource: 'lu', team: 1 },
+        { xuid: 'Muet', filmIndex: 1, seat: 1, seatSource: 'lu' },
+      ]),
+    )
+    expect(new Set(seats.map((s) => s.teamKey))).toEqual(new Set(['f1']))
+  })
+
+  /**
+   * UN CÔTÉ CONTRADICTOIRE NE S'ARBITRE PAS : deux sièges du même `team_side` que le film place
+   * dans des camps DIFFÉRENTS rendent la jointure fausse pour ce côté. Le repli de feuille
+   * reprend alors la main — mieux vaut deux groupes qu'un mauvais regroupement.
+   */
+  it('côté contradictoire : la traduction se retire, le repli de feuille reprend', () => {
+    const seats = buildSeats(
+      [
+        joueur('A', 't0', [vie(0, FIN)]),
+        joueur('B', 't0', [vie(0, FIN)]),
+        joueur('Muet', 't0', [vie(0, FIN)]),
+      ],
+      doc([
+        { xuid: 'A', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0 },
+        { xuid: 'B', filmIndex: 1, seat: 1, seatSource: 'lu', team: 1 },
+        { xuid: 'Muet', filmIndex: 2, seat: 2, seatSource: 'lu' },
+      ]),
+    )
+    expect(seats.find((s) => s.seat === 2)!.teamKey).toBe('s:t0')
+  })
+
   it('sans camp du film, le regroupement retombe sur la feuille de match', () => {
     const seats = buildSeats(
       [joueur('P', 't0', [vie(0, FIN)]), joueur('Q', 't1', [vie(0, FIN)])],

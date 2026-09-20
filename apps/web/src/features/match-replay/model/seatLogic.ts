@@ -150,6 +150,10 @@ export function buildSeats(players: readonly ReplayPlayer[], doc: ReplayDocument
     const cle = rosterEntryKey(e)
     if (cle) parIdentite.set(cle, e as EntreeAvecSiege)
   }
+  // LA TABLE DE TRADUCTION FEUILLE -> FILM, construite AVANT la boucle (cf. `campsParCote`) :
+  // sans elle, un siège dont le film tait l'équipe partait dans un espace de clés distinct et
+  // formait un SECOND groupe portant le MÊME libellé.
+  const parCote = campsParCote(players, parIdentite)
   const sieges = new Map<string, ReplaySeat>()
   for (const p of players) {
     const presence = enveloppeDePresence(p)
@@ -164,7 +168,7 @@ export function buildSeats(players: readonly ReplayPlayer[], doc: ReplayDocument
     }
     s.occupants.push({ ...presence, player: p, apparie: e?.seatSource === 'apparie' })
     if (s.side === null) s.side = p.board?.team_side ?? null
-    if (s.teamKey === '') s.teamKey = cleDeCamp(e, p)
+    if (s.teamKey === '') s.teamKey = cleDeCamp(e, p, parCote)
   }
   const out = [...sieges.values()]
   for (const s of out) s.occupants.sort((a, b) => a.fromFrame - b.fromFrame)
@@ -185,16 +189,63 @@ function rangDeSiege(s: ReplaySeat): number {
 }
 
 /**
- * cleDeCamp — le camp du FILM d'abord, celui de la feuille ensuite, rien en dernier.
+ * campsParCote — LA TABLE QUI RÉCONCILIE LES DEUX ESPACES DE NOMMAGE DU CAMP.
  *
- * `team` vaut `-1` quand le film dit « aucune équipe » (FFA) : c'est une LECTURE, elle
- * regroupe comme une autre. Le champ ABSENT, lui, est un silence — on retombe alors sur la
- * feuille.
+ * LE DÉFAUT QU'ELLE FERME (constat utilisateur, match `b1ad85eb`, 2026-09-19 : « trois équipes,
+ * dont deux Cobra »). Le camp d'un siège se lit dans DEUX espaces jamais réconciliés : celui du
+ * FILM (`roster[].team`, un entier) et celui de la FEUILLE (`board.team_side`, une chaîne
+ * `t0`/`t1`). Le film ne nomme pas l'équipe de tout le monde — sur `b1ad85eb` il se tait sur
+ * deux index de roster sur onze (`coverage.teams.unread = 4`), dont le BOT qui remplace un
+ * joueur parti. Ce bot partait donc sous la clé `s:t1` quand les humains de SA propre équipe
+ * étaient sous `f1` : deux groupes distincts, un seul et même libellé « Équipe Cobra ».
+ *
+ * LA TRADUCTION SE MESURE, ELLE NE SE SUPPOSE PAS : un balayage des sièges dont le film DIT
+ * l'équipe ET que la feuille nomme donne l'appariement `t1 -> 1`, `t0 -> 0`. Aucune convention
+ * n'est codée en dur — l'ordre des camps de la feuille n'est pas celui du film, et le supposer
+ * échangerait les deux colonnes sur les matchs où il diffère.
+ *
+ * UN CÔTÉ CONTRADICTOIRE EST RETIRÉ DE LA TABLE, jamais arbitré : si deux sièges du même
+ * `team_side` portent des camps de film DIFFÉRENTS, la jointure est fausse pour ce côté et le
+ * repli de feuille reprend la main. Mieux vaut deux groupes qu'un mauvais regroupement.
  */
-function cleDeCamp(e: EntreeAvecSiege | undefined, p: ReplayPlayer): string {
+function campsParCote(
+  players: readonly ReplayPlayer[],
+  parIdentite: Map<string, EntreeAvecSiege>,
+): Map<string, number> {
+  const out = new Map<string, number>()
+  const douteux = new Set<string>()
+  for (const p of players) {
+    const team = parIdentite.get(p.xuid)?.team
+    const side = p.board?.team_side
+    if (team === undefined || team === null || side == null || douteux.has(side)) continue
+    const vu = out.get(side)
+    if (vu === undefined) out.set(side, team)
+    else if (vu !== team) {
+      out.delete(side)
+      douteux.add(side)
+    }
+  }
+  return out
+}
+
+/**
+ * cleDeCamp — le camp du FILM d'abord ; quand le film se tait, celui de la feuille TRADUIT vers
+ * l'espace du film (`campsParCote`) ; le côté de feuille brut en dernier repli, et rien du tout
+ * quand même lui manque.
+ *
+ * `team` vaut `-1` quand le film dit « aucune équipe » (FFA) : c'est une LECTURE, elle regroupe
+ * comme une autre. Le champ ABSENT, lui, est un silence — c'est là que la traduction opère.
+ */
+function cleDeCamp(
+  e: EntreeAvecSiege | undefined,
+  p: ReplayPlayer,
+  parCote: Map<string, number>,
+): string {
   if (e?.team !== undefined && e.team !== null) return `f${e.team}`
   const side = p.board?.team_side
-  return side != null ? `s:${side}` : ''
+  if (side == null) return ''
+  const film = parCote.get(side)
+  return film !== undefined ? `f${film}` : `s:${side}`
 }
 
 /** L'enveloppe des vies d'un joueur, ou `null` quand il n'en a aucune. */

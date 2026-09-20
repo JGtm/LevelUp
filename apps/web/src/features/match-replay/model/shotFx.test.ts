@@ -131,12 +131,17 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
     const fx = buildShotFx(d, 50)
     expect(fx).toHaveLength(1)
     expect(fx[0].vehicleShot).not.toBeNull()
-    expect(fx[0].vehicleShot?.mount.classe).toBe('fixe')
+    expect(fx[0].vehicleShot?.mount?.classe).toBe('fixe')
     expect(fx[0].vehicleShot?.family).toBe('ghost')
     expect(fx[0].vehicleShot?.headingDeg).toBe(45)
   })
 
-  it('v marqué mais arme SANS montage connu (arme de joueur tirée par un passager) : vehicleShot est null', () => {
+  /**
+   * LA GARDE DU REGISTRE (2026-09-20) : une arme DE JOUEUR tirée depuis un siège de passager
+   * garde son propre cap de regard. Le passager vise où il veut, et lui prêter la direction du
+   * châssis serait une invention — c'est pourquoi la source véhicule ne lui est PAS attachée.
+   */
+  it('arme du REGISTRE tirée par un passager : vehicleShot reste null', () => {
     const d = doc({
       vehicles: [
         { slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'ghost', samples: [], rides: [] },
@@ -145,6 +150,32 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
       shots: [{ slot: 1, t: 10, x: 5, y: 5, w: '0xBR', v: 700 }],
     })
     expect(buildShotFx(d, 50)[0].vehicleShot).toBeNull()
+  })
+
+  /**
+   * LE CORRECTIF DU 2026-09-20. Une arme DE VÉHICULE dont le tag n'est pas dans la table des
+   * montages (Wraith, Gungoose, Falcon, tourelle posée…) perdait TOUTE la source : plus de
+   * véhicule, plus de cap — et comme le bipède embarqué ne réplique plus, l'éclair tombait sur
+   * la bouffée ronde sans direction. Mesuré : le cap de regard est lisible pour 1 tir de
+   * véhicule sur 241 (`4f77afc1`). La source est désormais gardée, sans montage.
+   */
+  it('arme DE VÉHICULE sans montage documenté : la source est gardée, montage null', () => {
+    const d = doc({
+      vehicles: [
+        {
+          slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'wraith',
+          samples: [{ t: 0, x: 5, y: 5, h: 120 }],
+          rides: [],
+        },
+      ],
+      // `121b4009` = le mortier du Wraith : il SONNE (table de `vehicleShotSound`) mais n'a
+      // aucun montage documenté, et il est absent de `weaponLabels` comme toute arme de véhicule.
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: '0x121B400900000000', v: 700 }],
+    })
+    const fx = buildShotFx(d, 50)
+    expect(fx[0].vehicleShot).not.toBeNull()
+    expect(fx[0].vehicleShot?.mount).toBeNull()
+    expect(fx[0].vehicleShot?.headingDeg).toBe(120)
   })
 
   it('v marqué mais AUCUN véhicule de ce slot dans le document : vehicleShot est null', () => {

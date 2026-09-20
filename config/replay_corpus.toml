@@ -247,3 +247,35 @@ famille = "equipement_origine_utilisateur"
 mode    = "BTB:CTF"
 carte   = "Flood Gulch"
 raison  = "le film le plus dense du cache sur le calque des poses d'equipement (658 poses, 30 evenements 103, 13 panneaux de mur designes, 192 morts appariees, 98 prises) : seul temoin ou les TROIS signaux ecrits de l'origine d'une pose (evenement 103, mort du poseur, prise du poseur) sont simultanement en nombre. Ajoute au lot 1.9.1 avec la conversion de `equipmentOrigin`"
+
+# --- LES ZONES, LES DEUX FAMILLES (lot 5.2-A, 2026-09-20) -----------------------------------
+# POURQUOI CES DEUX TEMOINS ENTRENT, ET C'EST UNE LACUNE MESUREE, PAS UNE PRECAUTION. Au gate
+# du lot 5.2-A (17 temoins, base efca5ec31), `zoneStates` valait **0 sur les DIX-SEPT** artefacts
+# de tete : le corpus ne portait ni Bastion ni Roi de la colline. Un lot qui touche les zones y
+# sortait donc « 0 perte / 0 changement » SANS AVOIR EXERCE UNE SEULE RAMPE — le gate ne gardait
+# pas ce qu'il ne pouvait pas voir. Il a fallu cuire un Bastion a la main pour verifier
+# `gaugeRamps[].capturingTeam` (schema 64), ce qu'un temoin rend desormais automatique.
+#
+# DEUX TEMOINS ET PAS UN, parce que le calque des zones a DEUX regimes disjoints que le Go
+# traite par deux chemins separes (`zone_states_owner.go` / `zone_states_hill.go`) :
+#
+#   ZONES SIMULTANEES  la jauge de capture (tag 3) est la vraie rampe, `gauge` et `gaugeRamps`
+#   (Bastion)          sont publiees, `capturingTeam` a un sens. AUCUN intervalle `active`.
+#   COLLINE UNIQUE     le meme canal est un compteur de transfert d'environ une seconde : la
+#   (Roi de la         jauge n'est JAMAIS publiee (`coverage.zones.gaugePoints` vaut 0) et tout
+#   colline)           se joue sur les intervalles `active` et leur decoupage par proprietaire.
+#
+# Un seul des deux laisserait l'autre moitie du calque sans garde.
+[[temoin]]
+id      = "396cfc92"
+famille = "strongholds_zones"
+mode    = "Strongholds:Arena"
+carte   = "Illusion"
+raison  = "seul temoin a ZONES SIMULTANEES : 3 zones appariees, 39 rampes de jauge (30 abouties, 9 avortees) et 29 bascules de proprietaire lues — la matiere exacte de `gauge`, `gaugeRamps` et `capturingTeam` (schema 64). Cuit et verifie a la main au lot 5.2-A (29 rampes abouties conformes au proprietaire suivant, 0 desaccord ; 0 rampe avortee ne nomme un camp) parce que le corpus ne pouvait pas le faire ; ajoute ici pour que la verification cesse d'etre manuelle. ~25 s de gate"
+
+[[temoin]]
+id      = "f75e7053"
+famille = "koth_collines"
+mode    = "Ranked:King of the Hill"
+carte   = "Solitude - Ranked"
+raison  = "seul temoin a COLLINE UNIQUE : 3 zones, 72 intervalles `active` et zero point de jauge — le regime ou `buildHillStates` decoupe une periode par changement de proprietaire (`hillSpansOf`), et ou la jauge est ABSENTE par construction. C'est la moitie du calque des zones que le Bastion ne couvre pas, et celle dont depend le son de deplacement de colline (`newZone`, lot 5.2a.1). Choisi parmi les sept KOTH du cache pour sa densite d'intervalles et parce qu'il n'est PAS dans le corpus d'equivalence des 20 films (01e1f945 y est deja) : il ajoute de la matiere au lieu d'en doubler. ~30 s de gate"

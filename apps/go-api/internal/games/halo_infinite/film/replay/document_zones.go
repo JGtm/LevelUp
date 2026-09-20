@@ -180,6 +180,62 @@ type ZoneState struct {
 	// (lot C-ter volet 1) ; `coverage.zones.gaugePoints` y vaut 0. Un artefact de schema <= 17
 	// ne la porte jamais.
 	Gauge []GaugePoint `json:"gauge,omitempty"`
+	// GaugeRamps est LE DECOUPAGE DE `Gauge` EN RAMPES, et surtout LE CAMP QUI POUSSE chacune
+	// (schema 64). Une entree par montee de la jauge, dans l'ordre chronologique.
+	//
+	// POURQUOI CE CALQUE EXISTE, ET CE QU'IL REPARE. La serie de jauge est ANONYME par
+	// construction : le slot de rampe ne porte aucun proprietaire (mesure du lot C-bis). Le
+	// client en etait reduit a DEDUIRE le capteur — « le camp d'en face du proprietaire
+	// courant » —, ce qui ne vaut qu'a deux camps ET seulement sur une zone TENUE : sur une
+	// base NEUTRE la deduction n'existe pas, et le remplissage s'y peignait au neutre alors
+	// qu'une equipe poussait. Ce champ remplace la deduction par une MESURE.
+	//
+	// LE CAMP EST CELUI DE L'ISSUE, ET IL N'EST PUBLIE QUE QUAND LA RAMPE ABOUTIT. Une rampe
+	// qui atteint le PLEIN de la jauge a produit une capture : la valeur du canal de propriete
+	// juste apres son sommet EST le camp qui poussait. Une rampe qui AVORTE n'apprend rien sur
+	// le pousseur — le canal y porte encore le DEFENSEUR —, et `CapturingTeam` est alors
+	// ABSENT : le document ne devine pas.
+	//
+	// MESURE DE SEPARATION (2026-09-20, 8 documents a zones du cache, 241 rampes) : 160 rampes
+	// sont suivies d'une bascule de camp dans la fenetre, et leur sommet va de 0,976 a 0,999 ;
+	// les 81 autres n'en produisent AUCUNE, et leur sommet plafonne a 0,986 — dont deux seules
+	// au-dessus de 0,95 (0,983 et 0,986), qui sont des RE-SECURISATIONS par le camp deja en
+	// place : le canal n'y ouvre pas d'intervalle parce que sa valeur ne change pas, mais elle
+	// nomme bien le pousseur. Hors ces deux cas, le plus haut sommet sans bascule vaut 0,938 :
+	// le seuil de `zoneGaugeRampComplete` (0,95) tombe dans une marge mesuree de 0,038.
+	//
+	// ABSENT sur une colline (KOTH) comme `Gauge`, et sur tout artefact de schema <= 63.
+	GaugeRamps []ZoneGaugeRamp `json:"gaugeRamps,omitempty"`
+}
+
+// ZoneGaugeRamp est UNE montee de la jauge de capture, et le camp qui la pousse quand elle
+// aboutit (schema 64).
+//
+// POURQUOI UN SPAN DE RAMPE ET PAS UN CHAMP SUR `GaugePoint`. `GaugePoint` est un type PARTAGE
+// — la jauge de RETOUR DU DRAPEAU l'emploie depuis le schema 63 (`FlagSpan.ReturnProgress`) — et
+// un camp de capture de zone n'a aucun sens sur un retour de drapeau : y ajouter le champ
+// polluerait le second calque d'une cle qu'il ne remplit jamais. Le repeter sur chaque point
+// couterait en outre une cle PAR POINT (36 points pour la seule rampe temoin de `396cfc92`)
+// pour une valeur constante sur toute la rampe. Le span, lui, en porte UNE par rampe : 241
+// entrees pour les 8 documents a zones du cache.
+type ZoneGaugeRamp struct {
+	// T0 / T1 bornent la rampe en frames, telle que `findZoneRamps` la decoupe. T1 est le
+	// SOMMET, et il est INCLUS.
+	//
+	// CE N'EST PAS UNE DATATION DU GESTE, ET LE CLIENT NE DOIT PAS S'EN SERVIR COMME TELLE :
+	// `T0` est le debut de la suite NON DECROISSANTE, donc le RETOUR A ZERO qui ferme la rampe
+	// precedente quand le film en porte un (cf. `appendGaugeReset`). Ces bornes servent a
+	// SITUER la rampe — dire quelle rampe couvre une frame —, pas a dire quand la poussee
+	// commence ; la poussee commence au premier point NON NUL de `Gauge` dans ces bornes.
+	T0 int `json:"t0"`
+	T1 int `json:"t1"`
+	// CapturingTeam est LE CAMP QUI POUSSE LA JAUGE, mesure a l'issue de la rampe. ABSENT quand
+	// la rampe avorte, quand le canal de propriete se tait dans la fenetre qui suit le sommet,
+	// ou quand la valeur qu'il y porte n'est pas un camp du roster (neutre compris).
+	//
+	// POINTEUR ET `omitempty` : le camp 0 existe, et l'ABSENCE de la cle est le seul moyen de
+	// dire « non mesure » sans le confondre avec « camp 0 » — le client peint alors au neutre.
+	CapturingTeam *int `json:"capturingTeam,omitempty"`
 }
 
 // GaugePoint est UN point de la jauge en direct : la frame et la valeur lue a cet instant.

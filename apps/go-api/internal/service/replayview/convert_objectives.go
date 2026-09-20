@@ -126,6 +126,15 @@ func toZoneState(v replay.ZoneState) replaydoc.ZoneState {
 		Key:        v.Key,
 		Spans:      sliceOf(v.Spans, toZoneSpan),
 		Gauge:      sliceOf(v.Gauge, toGaugePoint),
+		GaugeRamps: sliceOf(v.GaugeRamps, toZoneGaugeRamp),
+	}
+}
+
+func toZoneGaugeRamp(v replay.ZoneGaugeRamp) replaydoc.ZoneGaugeRamp {
+	return replaydoc.ZoneGaugeRamp{
+		T0:            v.T0,
+		T1:            v.T1,
+		CapturingTeam: v.CapturingTeam,
 	}
 }
 

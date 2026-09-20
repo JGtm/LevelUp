@@ -74,8 +74,20 @@ const ZONE_STATES: ReplayZoneStateReady[] = [
       { t: 12, v: 0 }, { t: 14, v: 0.3 }, { t: 16, v: 0.55 }, { t: 18, v: 0.75 }, { t: 19, v: 0 },
       { t: 30, v: 0 }, { t: 32, v: 0.2 }, { t: 60, v: 0.5 }, { t: 62, v: 0 },
     ],
+    // Les deux rampes de la série, comme le producteur les publie (schéma 64). La PREMIÈRE
+    // aboutit — la zone passe du camp 0 au camp 1 à la frame 20 —, la SECONDE avorte et ne
+    // nomme donc personne : `capturingTeam` y est ABSENT.
+    gaugeRamps: [
+      { t0: 12, t1: 18, capturingTeam: 1 },
+      { t0: 19, t1: 60 },
+    ],
   },
-  { zoneRef: 1, spans: [{ t0: 5, t1: 40, owner: null, active: true, progress: 0.5 }], gauge: [] },
+  {
+    zoneRef: 1,
+    spans: [{ t0: 5, t1: 40, owner: null, active: true, progress: 0.5 }],
+    gauge: [],
+    gaugeRamps: [],
+  },
 ]
 
 describe('zoneGaugeAt — l’escalier de la jauge en direct', () => {
@@ -135,7 +147,9 @@ describe('zoneElementsOf', () => {
 describe('drawZoneStates', () => {
   const style = {
     colorOfOwner: (team: number) => (team === 0 ? '#allié' : '#adverse'),
-    colorOfCapturer: (owner: number) => (owner === 0 ? '#adverse' : '#allié'),
+    // MÊME RÈGLE QUE `colorOfOwner` DEPUIS LE SCHÉMA 64 : l'encre traduit l'identifiant du camp
+    // qui POUSSE, lu dans le document, et ne le déduit plus du propriétaire.
+    colorOfCapturer: (team: number) => (team === 0 ? '#allié' : '#adverse'),
     neutral: '#neutre',
   }
   const zones = () => zoneElementsOf(normalizeMapObjectives(MO))
@@ -521,11 +535,59 @@ describe('drawZoneStates', () => {
     }
   })
 
-  it('propriétaire inconnu (zone neutre) : la progression est NEUTRE, jamais une couleur devinée', () => {
-    const neutre = [{ ...ZONE_STATES[0], gauge: [{ t: 2, v: 0.4 }] }]
+  /**
+   * RÈGLE RETOURNÉE LE 2026-09-20 (schéma 64), ET C'EST UNE DÉCISION ADOSSÉE À UNE MESURE.
+   *
+   * Ce test tenait, depuis le lot C-bis, que « la progression sur une zone neutre est NEUTRE,
+   * jamais une couleur devinée ». Il avait raison TANT QUE le camp était une DÉDUCTION — « le
+   * camp d'en face du propriétaire », qui n'existe pas quand personne ne tient la zone. Le
+   * document publie désormais le camp, MESURÉ à l'issue de la rampe
+   * (`gaugeRamps[].capturingTeam`) : le peindre n'est plus deviner, c'est lire. La règle qui
+   * survit, et que le test suivant tient, est celle du SILENCE : clé absente = neutre.
+   *
+   * C'était exactement le constat de l'utilisateur du 2026-09-19 — une base neutre en cours de
+   * capture se remplissait au neutre pendant qu'une équipe poussait.
+   */
+  it('zone NEUTRE en cours de capture : la progression prend la couleur du camp MESURÉ', () => {
+    const neutre = [{
+      ...ZONE_STATES[0],
+      gauge: [{ t: 2, v: 0.4 }],
+      gaugeRamps: [{ t0: 2, t1: 8, capturingTeam: 0 }],
+    }]
     const { ctx, ops } = recordingContext()
     drawZoneStates(ctx, layer([zones()[0]]), neutre, VIEW, 3)
     expect(progressions(ops)).toBe(1)
+    expect(encreDeLaProgression(ops)).toBe('#allié')
+  })
+
+  it('rampe SANS camp mesuré (elle a avorté, ou artefact <= 63) : la progression reste NEUTRE', () => {
+    const muette = [{
+      ...ZONE_STATES[0],
+      gauge: [{ t: 2, v: 0.4 }],
+      gaugeRamps: [{ t0: 2, t1: 8 }],
+    }]
+    const { ctx, ops } = recordingContext()
+    drawZoneStates(ctx, layer([zones()[0]]), muette, VIEW, 3)
+    expect(progressions(ops)).toBe(1)
+    expect(encreDeLaProgression(ops)).toBe('#neutre')
+  })
+
+  it('aucune rampe publiée (schéma <= 63) : la progression reste NEUTRE, sans inférence', () => {
+    const ancien = [{ ...ZONE_STATES[0], gauge: [{ t: 2, v: 0.4 }], gaugeRamps: [] }]
+    const { ctx, ops } = recordingContext()
+    drawZoneStates(ctx, layer([zones()[0]]), ancien, VIEW, 3)
+    expect(progressions(ops)).toBe(1)
+    expect(encreDeLaProgression(ops)).toBe('#neutre')
+  })
+
+  it('hors de toute rampe, le camp ne DÉBORDE pas : la tenue s arrête au sommet + la tenue de jauge', () => {
+    const debord = [{
+      ...ZONE_STATES[0],
+      gauge: [{ t: 2, v: 0.4 }, { t: 40, v: 0.4 }],
+      gaugeRamps: [{ t0: 2, t1: 8, capturingTeam: 0 }],
+    }]
+    const { ctx, ops } = recordingContext()
+    drawZoneStates(ctx, layer([zones()[0]]), debord, VIEW, 8 + HOLD + 1)
     expect(encreDeLaProgression(ops)).toBe('#neutre')
   })
 

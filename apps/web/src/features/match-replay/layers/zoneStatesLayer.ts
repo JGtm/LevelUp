@@ -76,7 +76,7 @@ import type { ObjectiveElementReady } from './objectivesLayer'
 import { type XY } from '../../../lib/replay/replayLogic'
 import { paintZoneState, type ZoneStateNow } from './zoneStatesPaint'
 
-import type { ReplayGaugePoint } from '@/lib/api/types'
+import type { ReplayGaugePoint, ReplayZoneGaugeRamp } from '@/lib/api/types'
 import type { ReplayZoneStateReady } from '../../../lib/replay/replayNormalize'
 import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 
@@ -183,21 +183,65 @@ export function zoneCatalogMatches(catalog: number | null | undefined, served: n
   return catalog != null && catalog === served
 }
 
+/**
+ * capturingTeamAt — LE CAMP QUI POUSSE LA JAUGE à la frame demandée, ou `null` quand rien ne le
+ * mesure.
+ *
+ * LA LECTURE EST CELLE DE L'ESCALIER, exactement comme `zoneGaugeAt` : la rampe qui couvre la
+ * frame vaut jusqu'à son sommet, puis `holdFrames` de plus — la même tenue que la valeur qu'elle
+ * colore. Sans cette tolérance, l'arc resterait dessiné une seconde de plus en changeant de
+ * couleur, ce qui se lirait comme un changement de capteur.
+ *
+ * `null` DANS TROIS CAS, ET AUCUN N'EST UNE ERREUR : aucune rampe ne couvre la frame (la jauge
+ * est au repos), la rampe qui la couvre a AVORTÉ (le document ne nomme alors personne — le canal
+ * de propriété y porte encore le défenseur), ou l'artefact est antérieur au schéma 64. Le rendu
+ * repeint au neutre dans les trois.
+ */
+export function capturingTeamAt(
+  ramps: readonly ReplayZoneGaugeRamp[],
+  frame: number,
+  holdFrames: number,
+): number | null {
+  let lo = 0
+  let hi = ramps.length - 1
+  let idx = -1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (ramps[mid].t0 <= frame) {
+      idx = mid
+      lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+  if (idx < 0) return null
+  const r = ramps[idx]
+  if (frame > r.t1 + holdFrames) return null
+  return r.capturingTeam ?? null
+}
+
 /** Style du calque VIVANT : les encres sont RÉSOLUES par l'appelant (règle color-tokens). */
 export interface ZoneStateStyle {
   /** Encre d'un camp ; `null` = camp inconnu (aucune ligne « moi ») — le liseré reste neutre. */
   colorOfOwner: (team: number) => string | null
   /**
-   * Encre du camp QUI CAPTURE une zone tenue par `owner` : le camp d'en face. `null` = camp
-   * inconnu (aucune ligne « moi ») — l'arc reste neutre.
+   * Encre du camp QUI POUSSE LA JAUGE, par son identifiant d'équipe. `null` = camp inconnu
+   * (aucune ligne « moi ») — l'arc reste neutre.
    *
-   * POURQUOI C'EST UNE DÉDUCTION ET PAS UNE INVENTION. Le film ne dit pas qui pousse la jauge
-   * (les slots de rampe ne portent aucun propriétaire — mesure du lot C-bis) ; mais dans un mode
-   * à zones à DEUX camps, une zone TENUE ne se capture que par l'adversaire : le sien n'a rien à
-   * y capturer. Une zone que PERSONNE ne tient, elle, se prend par n'importe qui — l'arc y reste
-   * neutre, comme sur une colline de KOTH dont le propriétaire n'est jamais publié.
+   * CE N'EST PLUS UNE DÉDUCTION DEPUIS LE SCHÉMA 64 (2026-09-20), ET C'EST TOUT LE CHANGEMENT.
+   * Le rendu déduisait le capteur du propriétaire courant — « le camp d'en face » —, ce qui ne
+   * vaut qu'à deux camps ET seulement sur une zone TENUE : sur une base NEUTRE la déduction
+   * n'existe pas, et le remplissage s'y peignait au neutre pendant qu'une équipe poussait. Le
+   * document publie désormais le camp, MESURÉ à l'issue de la rampe
+   * (`zoneStates[].gaugeRamps[].capturingTeam`), et cette encre n'est plus que la traduction
+   * d'un identifiant d'équipe en couleur — la même que `colorOfOwner`.
+   *
+   * CLÉ ABSENTE = NEUTRE, sans exception : une rampe qui avorte n'apprend rien sur son pousseur
+   * (le canal y nomme encore le défenseur), et un artefact de schéma <= 63 n'en porte aucune.
+   * Aucune inférence géométrique ne vient la remplacer — ce serait exactement l'invention que le
+   * dépôt s'interdit ailleurs.
    */
-  colorOfCapturer: (owner: number) => string | null
+  colorOfCapturer: (team: number) => string | null
   /** Encre neutre : zone que personne ne tient, et arc de jauge sans camp connu. */
   neutral: string
 }
@@ -279,7 +323,8 @@ export function drawZoneStates(
     const capture = value !== null && value > 0 ? value : null
     if (now || capture !== null) {
       const ownerInk = now && now.owner !== null ? style.colorOfOwner(now.owner) : null
-      const capturerInk = now && now.owner !== null ? style.colorOfCapturer(now.owner) : null
+      const capturer = capturingTeamAt(st.gaugeRamps, frame, zones.gaugeHoldFrames)
+      const capturerInk = capturer !== null ? style.colorOfCapturer(capturer) : null
       paintZoneState(ctx, e, {
         px,
         scale,

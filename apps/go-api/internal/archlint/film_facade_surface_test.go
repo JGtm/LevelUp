@@ -163,7 +163,16 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           meme convertisseur pour la jauge des zones.
 //	                                           RE-MESURE A L ENTREE du lot : 258 sur `8b8d93c87`,
 //	                                           259 apres.
-const plafondSurfaceReplay = 259 // 2026-09-19 — base 8b8d93c87 + montee 63 (replay.VehicleCycle)
+//	260  5.2-A   (2026-09-20)                  la montee de schema 64 : `replay.ZoneGaugeRamp`, le
+//	                                           span de rampe de jauge qui porte `capturingTeam`,
+//	                                           cite par le convertisseur jumeau
+//	                                           `service/replayview/convert_objectives.go`. Un seul
+//	                                           symbole neuf : le champ `GaugeRamps` de
+//	                                           `ZoneState` n en ajoute AUCUN, `replay.ZoneState`
+//	                                           etant deja cite par le meme convertisseur.
+//	                                           RE-MESURE A L ENTREE du lot : 259 sur `65e5c0731`,
+//	                                           260 apres.
+const plafondSurfaceReplay = 260 // 2026-09-20 — base 65e5c0731 + montee 64 (replay.ZoneGaugeRamp)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

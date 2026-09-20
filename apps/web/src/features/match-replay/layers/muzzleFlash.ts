@@ -122,7 +122,13 @@ export function drawMuzzleFlash(
       case 'needles':
         drawSpray(ctx, s)
         break
+      case 'plain':
+        drawPlainFlash(ctx, s)
+        break
       default:
+        // LA MÊLÉE, ET ELLE SEULE. Elle n'arrive jamais ici (`buildShotFx` l'écarte), et si
+        // elle arrivait elle ne doit RIEN affirmer : un coup de marteau n'a pas d'éclair de
+        // bouche, donc jamais de forme orientée — la bouffée ronde, comme un regard illisible.
         drawPuff(ctx, shape, heat, color, ink.core)
     }
   }
@@ -296,6 +302,24 @@ function drawSpray(ctx: CanvasRenderingContext2D, s: Oriented): void {
     ctx.stroke()
   }
   glow(ctx, m, s, FLASH_R * 0.5, 1, 1)
+}
+
+/**
+ * drawPlainFlash — L'ÉCLAIR D'UNE ARME QUE LE REGISTRE NE NOMME PAS, mais dont on connaît la
+ * DIRECTION : une bouffée étirée dans l'axe, sans la forme d'aucune famille.
+ *
+ * POURQUOI ELLE EXISTE DEPUIS LE 2026-09-20. La famille `plain` tombait sur `drawPuff` — la
+ * bouffée RONDE du cas « regard illisible » —, ce qui jetait la seule chose qu'on savait :
+ * l'axe. Le cas n'était pas théorique : les armes DE VÉHICULE sont absentes de `weaponLabels`
+ * (donc sans `fx`), et elles font 68 % des tirs de véhicule de `4f77afc1`. Un rond gris pâle
+ * centré sur un châssis ne se lit pas comme un tir ; une bouffée orientée, si.
+ *
+ * ELLE N'AFFIRME AUCUNE FAMILLE, et c'est sa règle : ni la flamme de la poudre, ni la floraison
+ * du plasma, ni le rayon — l'étirement est volontairement PLUS FAIBLE que celui de la poudre
+ * (1,25 contre 1,7) pour qu'elle se lise comme « un tir, par là », pas comme « une balistique ».
+ */
+function drawPlainFlash(ctx: CanvasRenderingContext2D, s: Oriented): void {
+  glow(ctx, muzzle(s), s, FLASH_R * 0.85, 1.25, 0.9)
 }
 
 /**
