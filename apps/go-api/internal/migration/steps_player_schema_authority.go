@@ -67,7 +67,19 @@ import "database/sql"
 // partagé par le batch) + written_at + is_tombstone. Lecture via la vue
 // personal_score_awards_latest (DENSE_RANK, génération MAX, tombstones exclus) — créée
 // par applyAppendOnlyPersonalScoreAwards (steps_player_append_only_personal_score_awards.go).
+//
+// AUCUN COMMENTAIRE EN FIN DE SCRIPT. Ce DDL est découpé sur « ; » par deux splitters
+// naïfs (migration.execScript et sync.splitSQL) : un commentaire APRÈS le dernier « ; »
+// devient une instruction vide et fait échouer sync.EnsurePlayerSchema (« empty query »,
+// constaté en CI le 2026-09-20). Le commentaire ci-dessous est donc en TÊTE, attaché au
+// premier statement ; le reste de la justification vit dans ce commentaire Go.
 const PlayerPersonalScoreAwardsDDL = `
+-- AUCUN INDEX SECONDAIRE sur cette table (décisions 2026-08-05 puis 2026-09-20, cf.
+-- l'en-tête du fichier). Les lecteurs passent tous par personal_score_awards_latest,
+-- dont la fonction de fenêtre impose un balayage séquentiel : un index ne servait
+-- aucune lecture et se désynchronisait sur les insertions courantes (#23645).
+-- Convergence des DB existantes : steps drop_psa_xuid_art_index_v1,
+-- drop_psa_match_xuid_art_index_v1 et drop_psa_secondary_art_indexes_v1.
 CREATE SEQUENCE IF NOT EXISTS personal_score_awards_id_seq;
 CREATE SEQUENCE IF NOT EXISTS psa_generation_seq START 1;
 CREATE TABLE IF NOT EXISTS personal_score_awards (
@@ -83,12 +95,6 @@ CREATE TABLE IF NOT EXISTS personal_score_awards (
     written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     is_tombstone BOOLEAN DEFAULT FALSE
 );
--- AUCUN INDEX SECONDAIRE sur cette table (décisions 2026-08-05 puis 2026-09-20, cf.
--- l'en-tête du fichier). Les lecteurs passent tous par personal_score_awards_latest,
--- dont la fonction de fenêtre impose un balayage séquentiel : un index ne servait
--- aucune lecture et se désynchronisait sur les insertions courantes (#23645).
--- Convergence des DB existantes : steps drop_psa_xuid_art_index_v1,
--- drop_psa_match_xuid_art_index_v1 et drop_psa_secondary_art_indexes_v1.
 `
 
 // PlayerCSRSnapshotsDDL — schéma canonique de player_csr_snapshots (player DB).
