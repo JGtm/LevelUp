@@ -10,78 +10,36 @@
 
 ---
 
-### [web/frontières] Dérogation `timeseries=>synthesis` — deux modules partagés encore rangés sous une page
+### [garde-rail/campagne] `TestCampaignExclusionStructuralCoverage` ne voit pas le SQL local
 
-Noté le 2026-09-17 (chantier « Portée des frags » de l'Explorer). La famille du graphe de portée
-a été rangée là où elle se rend : le module de dessin dans `components/charts/weaponRangeChart.ts`
-(3 consommateurs), la section et ses satellites dans `features/timeseries/` (la page Synthèse ne
-les affiche plus depuis le 2026-09-13). La dérogation `compare=>synthesis/_weaponRangeChart` a
-disparu avec.
+Noté le 2026-09-19 (lot d'hygiène compare/armes, découverte non traitée). Le balayage AST de
+`apps/go-api/internal/platform/duckdb/campaign_exclusion_guard_test.go` ne scanne que les
+constantes/vars de paquet nommées `Q<...>` ; toute requête construite dans un `q :=` local à
+la fonction lui échappe, sans signalement ni dispense. `GetLocalStats` ET l'ancien
+`GetCrossMatchSample` (`compare_repo.go`) étaient dans ce cas : c'est ce qui a laissé vivre une
+lecture de `match_participants` SANS exclusion campagne (le repli « échantillon croisé »,
+supprimé le 2026-09-19 après preuve qu'il servait des stats de campagne coop Halo 5 comme
+échantillon matchmade). Le commentaire du test annonce « TOUTES les constantes de requête » :
+il n'est pas exhaustif.
 
-**Il reste `timeseries=>synthesis`**, qui ne tient plus qu'à deux imports de
-`features/timeseries/` :
-
-- `SynthesisWeaponAccuracyChart` — un graphe, rendu par l'onglet Résumé ET par la Synthèse ;
-- `SynthesisCards` (`AccentCard`, `SectionSubtitle`) — des primitives d'habillage, consommées
-  bien au-delà de la Synthèse.
-
-Les deux sont des composants PARTAGÉS logés dans le dossier d'une page, exactement ce que
-l'anti-import inter-features demande d'éviter. Le lint le dit lui-même : « les composants
-partagés doivent vivre dans `components/` ou `lib/` ».
-
-**Impact utilisateur : aucun.** **Intérêt : hygiène de frontières** — et un dossier qui ment sur
-qui rend quoi a déjà égaré deux agents sur ce même graphe (2026-09-17).
-**Correctif** : `SynthesisCards` → `components/ui/` (ce sont des primitives), le graphe de
-précision → `components/charts/`, puis retirer la paire de `ALLOWED_CROSS_IMPORTS` et vérifier
-que le ratchet retombe à 6. **Effort : S** (déplacements mécaniques + imports ; aucun des deux
-modules n'importe `@/features/**`, la frontière inversée est donc déjà respectée).
+**Impact utilisateur : aucun aujourd'hui** (plus de lecteur fautif connu). **Intérêt : c'est le
+garde-rail qui aurait dû attraper la fuite.** **Correctif** : étendre le balayage aux
+littéraux SQL locaux des méthodes de repo qui lisent `match_participants` / `mv_player_matches`
+avec un filtre `xuid`, puis statuer chaque nouvel entrant (exclusion ou allowlist justifiée).
+**Effort : S-M** (la partie coûteuse est le triage des entrants, pas le scan).
 
 ---
 
-### [compare/contrat] Champ `filters` de la requête du Face-à-face — jamais rempli, jamais lu
+### [web/lint] Deux inexactitudes mineures relevées au lot d'hygiène du 2026-09-19
 
-Noté le 2026-09-17 (chantier « Profil d'armes », découverte non traitée). `domain.CompareRequest`
-porte un champ `Filters FilterContextInput` (validé dans `Validate()`, exposé dans le contrat
-OpenAPI et dans `apps/web/src/lib/api/types.ts` `CompareRequest.filters`) que la page n'envoie
-jamais et que `CompareService` ne lit nulle part. Reste de squelette, jamais demandé.
+- `personal-stats=>synthesis` dans `ALLOWED_CROSS_IMPORTS` (`tools/lint-cross-feature-imports.mjs`)
+  est une dérogation morte : aucun fichier de `features/personal-stats/` n'importe
+  `@/features/synthesis`. À retirer à la prochaine retouche du script.
+- `apps/web/src/components/charts/README.md` : la note « Wrappers 10–11 are kept in
+  `features/timeseries/` » est fausse pour `FirstBloodLanes` (#11), qui vit dans
+  `components/charts/`.
 
-**Impact utilisateur : aucun.** **Intérêt : hygiène de contrat** (un champ qui ment dans l'API).
-**Correctif** : retirer le champ côté Go + web, `make openapi-gen && make generate-types`.
-**Effort : XS** (~10 lignes). À grouper avec les deux items suivants.
-
----
-
-### [compare/service] Repli « échantillon croisé » des 4 métriques locale-only — inatteignable
-
-Noté le 2026-09-17 (même chantier). `compare_service.go` :
-`enrichRemotePlayerBWithCrossSample` / `IsLocalSample` / `GetCrossMatchSample` calculent
-spree, durée de vie, frags parfaits et tirs à la tête d'un joueur B sur ses matchs communs avec
-A quand `GetLocalStats(xuidB)` ne rend rien. Or les deux lectures balaient la même table
-`shared.match_participants` : un B absent (pas de lifetime) n'a pas non plus de matchs communs.
-La branche ne tourne jamais en nominal ; le test qui la couvre entretient l'illusion (même
-argument que le scope croisé du profil d'armes, retiré au lot 3-bis du chantier). Nuance à
-vérifier avant retrait : `GetLocalStats` transforme `sql.ErrNoRows` en erreur, donc le chemin
-remote est bien ATTEINT pour un B absent, mais l'échantillon y est vide.
-
-**Impact utilisateur : aucun** (tout ce qui s'affiche vient du chemin nominal). **Intérêt :
-hygiène** (~40 lignes + une méthode de port + un test qui ne testent rien). Au passage,
-`GetCrossMatchSample` n'exclut pas la campagne, contrairement à `GetLocalStats` — sans effet
-tant que la branche est morte. **Effort : S.**
-
----
-
-### [service/armes] Troisième doctrine de tri des armes dans les séries temporelles
-
-Noté le 2026-09-17 (même chantier). `timeseries_service_aggregations.go` (~:360) trie les armes
-par frags décroissants avec départage sur `WeaponID`, là où `topWeaponKillRows`
-(`synthesis_service_builders.go`, helper canonique posé au chantier avec garde-rail
-`compare_weapons_guard_test.go`) et `buildWeaponAccuracy` départagent sur le libellé.
-
-**Impact utilisateur : à égalité de frags, deux armes peuvent s'afficher dans un ordre différent
-entre Séries temporelles et Synthèse / Face-à-face** — cas rare, invisible en pratique.
-**Intérêt : cohérence**, et le garde-rail ne voit pas cette copie (littéral différent).
-**Correctif** : appeler `topWeaponKillRows` (ou étendre le garde-rail à ce départage).
-**Effort : XS** (~3 lignes).
+**Effort : XS** chacune, à grouper avec la prochaine retouche de ces fichiers.
 
 ---
 
@@ -202,27 +160,16 @@ resolver) — elle ne suit pas le sort du maillon de nom. **Effort : S** (le rel
 
 ---
 
-### [ops/deps] Bump `echarts` 5.6.0 → 6.1.0 (alerte Dependabot moderate, CVE-2026-45249, XSS) — REPORTÉ
-
-Noté le 2026-07-25. Dependabot signale une alerte moderate (CVE-2026-45249, XSS) sur `echarts`
-5.6.0 (`apps/web/package.json`), corrigée en 6.1.0. **Non traité en v7.2.1** : bump MAJEUR du
-moteur de tous les graphes de l'app (11 wrappers `apps/web/src/components/charts/` + pages
-timeseries) — l'utilisateur a explicitement refusé le risque d'instabilité à ce stade.
-
-**Reporté (décision utilisateur 26/07) — à re-planifier** (n'a PAS été pris dans le lot v7.3).
-**Critère de go mesurable** : `make test-web` vert (suite charts/timeseries) +
-`make check-types` vert + tournée visuelle des pages les plus denses en graphes (Timeseries,
-Compare, Synthesis, Match view). **Effort : S-M** (bump + vérif, selon l'ampleur des breaking
-changes 6.x).
-
----
-
 ### [POST-V7] Housekeeping post-cutover (optionnel, non bloquant)
 
 > Le cutover Go (la branche Go est devenue `main`) est **terminé** — cf. archive « Récemment complété ».
-> Reste 2 micro-tâches optionnelles, non bloquantes :
-- [ ] Documenter le default async ON dans le README utilisateur
-- [ ] Tuning du janitor (24h → 12h ?) si la latence WAL le justifie en prod
+> Reste 1 micro-tâche optionnelle, non bloquante :
+- [x] Documenter le default async ON — fait : `LEVELUP_PERSIST_BATCH_ASYNC` (défaut on,
+      kill-switch `0`, retrait cible >= 2026-Q4) est documenté dans `docs/CONFIGURATION.md`
+      et `docs/FR/CONFIGURATION.md` (constaté le 2026-09-19).
+- [ ] Tuning du janitor (24h → 12h ?) si la latence WAL le justifie en prod — le janitor
+      tourne toujours 1×/24h (`cmd/server/main.go`, section « Phase 4.7 closure ») ; aucun
+      signal prod ne l'a justifié à ce jour.
 
 ---
 
@@ -285,6 +232,8 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-09-19 | **[hygiène] Lot compare / armes / frontières** (branche `feat/hygiene-compare-armes`, 4 commits `e4238dea6`→`aa1a8dc2c`, exécuté par Opus sous pilotage) — **A** champ `filters` de `CompareRequest` retiré (Go + `types.ts` ; le fragment OpenAPI manuel ne le déclarait déjà pas, `FilterContextInput` conservé : 7 autres consommateurs). **B** repli « échantillon croisé » SUPPRIMÉ — mais la prémisse du backlog était fausse : la branche n'était pas morte, elle était FAUTIVE. `GetCrossMatchSample` n'excluait pas la campagne alors que `GetLocalStats` le fait ; mesuré sur copie du shared Halo 5 : pour un B présent uniquement en coop campagne, `GetLocalStats` rend 0 ligne et l'échantillon croisé rend 1 match (stats de campagne servies sous un service record matchmade). Exclusion alignée ⇒ branche morte par construction ⇒ retrait complet (service, repo, port + noop, `domain.CrossMatchSample`, `IsLocalSample`/`is_local_sample` régénéré par Huma, 2 tests, 8 lignes de baseline). **C** `buildTopWeapons` des séries temporelles délègue à `topWeaponKillRows` (départage sur le libellé) ; garde-rail étendu au motif `WeaponID <` sans propriétaire ; changement assumé : une arme sans libellé résolu n'est plus publiée (barre anonyme avant). **D** `SynthesisCards` → `components/ui/section-primitives.tsx`, `SynthesisWeaponAccuracyChart` → `components/charts/WeaponAccuracyChart.tsx` ; DEUX dérogations retirées (`timeseries=>synthesis` et `session-detail=>synthesis`) ; le ratchet du script compte les violations non déclarées (7/7, inchangé), pas les dérogations. Gates : Go build/vet/test 22 paquets, openapi-gen -check, types frais, tsc -b (cache purgé), eslint 0 erreur, lint inter-features, vitest 7984 tests — tous verts, rejoués par le pilote. Découvertes → 2 items backlog ci-dessus. |
+| 2026-08-03 | **[ops/deps] Bump `echarts` 5.6.0 → 6.1.0** (CVE-2026-45249, XSS) — livré par `545b870de` (lot B4 echarts6, diff visuel joint). L'entrée « REPORTÉ » du backlog était restée après la livraison ; retirée le 2026-09-19. |
 | 2026-07-26 | **[ops/prod] Écritures `app_settings.json` dans le conteneur (bind-mount fichier → rename EBUSY)** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — point d'écriture unique `internal/platform/atomicfile.WriteFile` : atomique (temp + rename) d'abord, repli **in-place** (truncate + un seul Write + fsync) quand le rename répond EBUSY ou que le répertoire parent refuse le temporaire. Toute AUTRE erreur de rename reste remontée (le repli couvre une contrainte d'environnement connue, pas un diagnostic manquant). Audit des écritures runtime de settings : **3 call sites**, tous migrés — `settings.Store.Save` (chemin de TOUS les toggles admin `PATCH /settings`, qui faisait un `os.WriteFile` nu, donc jamais atomique), `settings.Store.SaveTitleOverlay`, `notify.writeLastNotifiedVersion` (le bug d'origine : notif Discord « nouvelle version » rejouée à chaque redémarrage). Limite ASSUMÉE et documentée : le repli n'est pas atomique — risque borné (contenu déjà sérialisé en mémoire, un seul Write, fsync, fichiers reconstructibles). Garde-rail `archlint/no_bare_settings_write_test.go` (interdit `os.WriteFile`/`os.Rename` nus dans les packages writers de settings). Tests : rename EBUSY → repli, rename ENOSPC → erreur non masquée, temporaire impossible → repli, troncature, création. |
 | 2026-07-26 | **[ops/notifs] Bruit WARN `app_release: emit` pour les comptes auth_only** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — filtre pur `appReleaseTargets` dans `internal/api/wire/notifications_boot.go` : les profils `auth_only` de `db_profiles.json` (5 en prod, `db_path` vide — ils n'existent que pour le pool de tokens) sont écartés AVANT toute résolution, avec une trace `DebugContext` groupée au lieu de 5 WARN par redémarrage. Découverte au passage, corrigée dans le même filtre : `LoadPlayers()` sans filtre de titre renvoie une entrée par (titre, joueur) alors que la notification est per-JOUEUR → un joueur déclaré sur 2 titres était traité deux fois ; déduplication par slug + ordre d'émission stable. 5 tests unitaires. |
 | 2026-07-26 | **[archi/contrat] Reliquats V72-01 — clos** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — (a) **`securitySchemes`** : le contrat ne déclarait AUCUN mécanisme d'auth ; `sessionCookie` (apiKey/cookie) est désormais posé côté Go (`internal/api/openapi_security.go`) en lisant le nom du cookie à sa source unique `session.CookieName` — aucune exigence `security` par opération n'est ajoutée (une part de la surface est publique par conception ; l'inventaire route→garde reste le ratchet `bare_routes`, qui est exécutable). (b) **UI `/docs`** : `internal/api/openapi_docs.go`, montée sur le routeur RACINE (le `DocsPath` de Huma aurait enregistré la route une fois par sous-routeur, sous son préfixe) et gatée sur `IsProduction() **OU** DemoMode` — la démo est publique et ne pose pas `LEVELUP_ENV`, la gater sur la seule production l'aurait exposée. Sert le document VIVANT (`/docs/openapi.{json,yaml}`), CSP dédiée. (c) **`ApiError.details`** : `huma.SchemaTransformer` sur `humacore.apiError` restaure `oneOf: [object(additionalProperties true), array]`, perdu par le type Go `any` — corps runtime inchangé. **Statués `[!]`, non traités et pourquoi** : validation automatique des inputs + résolveurs cross-champs = CLOS par décision produit (contrat `RawBody`/400 CONSERVÉ, pas de bascule 422) ; les **7 descriptions de schéma racine** restent au fragment manuel — les rapatrier exigerait un `SchemaTransformer` sur 7 types de `internal/domain`, donc d'y importer `huma` alors que ce package n'a **aucune** dépendance externe aujourd'hui : coût architectural disproportionné pour 7 chaînes déjà présentes au contrat publié. |
