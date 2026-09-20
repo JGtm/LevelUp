@@ -155,3 +155,39 @@ func TestRefreshUserXSTS_RotatedRTPersistedBeforeXSTS(t *testing.T) {
 		t.Errorf("RT persisté = %q, attendu rt-rotated (persist immédiat avant XSTS, AU1)", reloaded.OAuthRefreshToken)
 	}
 }
+
+// TestRefreshAccessTokenForUser_ProvenanceAmorceNEcrasePasLaMesure — la famille du
+// client OAuth qui a répondu n'est qu'une AMORCE : elle ne prédit pas le préfixe
+// RpsTicket accepté (constat du 2026-09-20 : les 13 refresh du poste passent par
+// l'app Azure et 5 comptes n'acceptent pourtant que « t= »). Elle ne doit donc
+// remplir la provenance que si RIEN n'a encore été mesuré — sinon le 401 revient à
+// chaque refresh, la mesure étant écrasée juste avant d'être relue.
+func TestRefreshAccessTokenForUser_ProvenanceAmorceNEcrasePasLaMesure(t *testing.T) {
+	withMockTokenEndpoint(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"access_token":"at-fresh","refresh_token":"rt-rotated","expires_in":3600}`))
+	}, "app-id", "s3cret")
+
+	t.Run("provenance inconnue : amorcée par le client OAuth", func(t *testing.T) {
+		tokens := &UserTokens{XUID: "12345", OAuthRefreshToken: "rt-old"}
+		if got := refreshAccessTokenForUser(context.Background(), nil, tokens); got != "at-fresh" {
+			t.Fatalf("access_token = %q, want at-fresh", got)
+		}
+		if tokens.TokenClientFamily != TokenFamilyAzure {
+			t.Errorf("provenance = %q, want %q (amorce)", tokens.TokenClientFamily, TokenFamilyAzure)
+		}
+	})
+
+	t.Run("provenance mesurée : préservée", func(t *testing.T) {
+		tokens := &UserTokens{
+			XUID: "12345", OAuthRefreshToken: "rt-old",
+			TokenClientFamily: TokenFamilyXboxNative, // mesurée à un échange précédent
+		}
+		if got := refreshAccessTokenForUser(context.Background(), nil, tokens); got != "at-fresh" {
+			t.Fatalf("access_token = %q, want at-fresh", got)
+		}
+		if tokens.TokenClientFamily != TokenFamilyXboxNative {
+			t.Errorf("provenance = %q, want %q — l'amorce a écrasé la mesure, le 401 reviendrait à chaque refresh",
+				tokens.TokenClientFamily, TokenFamilyXboxNative)
+		}
+	})
+}

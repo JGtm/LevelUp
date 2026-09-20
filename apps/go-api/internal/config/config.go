@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -268,6 +269,43 @@ func Load() (*AppConfig, error) {
 // ce qui active le garde-fou fail-fast de Validate().
 func (c *AppConfig) IsProduction() bool {
 	return strings.EqualFold(strings.TrimSpace(c.Environment), "production")
+}
+
+// IsExposedDeployment indique si cette instance est réellement JOIGNABLE depuis
+// l'extérieur — c'est-à-dire si les réglages listés par SecurityWarnings ont une
+// portée opérationnelle. Deux signaux suffisent :
+//
+//   - l'hôte d'écoute n'est pas une boucle locale (LEVELUP_API_HOST : vide =
+//     toutes les interfaces, "0.0.0.0", une IP publique… ; "127.0.0.1",
+//     "localhost" et "::1" sont des boucles) ;
+//   - LEVELUP_ENV est renseigné à autre chose que "development" (staging,
+//     production…), le déployeur ayant alors déclaré un environnement.
+//
+// Sert à choisir le NIVEAU du log de démarrage : un poste de dev qui écoute sur
+// 127.0.0.1 sans LEVELUP_ENV n'a rien d'exposé, et le WARN inconditionnel qui y
+// était émis à chaque boot n'était que du bruit (2026-09-20). Ne change RIEN au
+// garde-fou fail-fast : Validate() reste piloté par la seule production.
+func (c *AppConfig) IsExposedDeployment() bool {
+	env := strings.TrimSpace(c.Environment)
+	if env != "" && !strings.EqualFold(env, "development") {
+		return true
+	}
+	return !isLoopbackHost(c.APIHost)
+}
+
+// isLoopbackHost : l'hôte d'écoute est-il une boucle locale ? Un hôte VIDE écoute
+// sur toutes les interfaces — ce n'est donc pas une boucle.
+func isLoopbackHost(host string) bool {
+	h := strings.TrimSpace(host)
+	h = strings.TrimSuffix(strings.TrimPrefix(h, "["), "]")
+	if h == "" {
+		return false
+	}
+	if strings.EqualFold(h, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
 }
 
 // SecurityWarnings retourne la liste des réglages non sûrs pour un déploiement

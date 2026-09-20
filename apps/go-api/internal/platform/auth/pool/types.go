@@ -25,6 +25,13 @@ type CredentialSource struct {
 	PlayerDBPath string // data/titles/halo_infinite/players/Bob/stats.duckdb (pour logs/debuggage)
 	RefreshToken string // refresh token OAuth v2 (MultiUserTokenStore), "" si absent
 	Source       string // "watcher_oauth" (source unique ADR 0023) — pour logs
+
+	// TokenClientFamily : provenance MESURÉE au dernier échange XBL user-token
+	// (auth.TokenFamilyAzure → RpsTicket "d=", auth.TokenFamilyXboxNative → "t=").
+	// Lue du MultiUserTokenStore au scan, posée en ctx avant l'échange, ré-écrite
+	// par le Resolver quand la mesure change. "" = provenance inconnue (ordre
+	// historique, avec le filet du retry 401).
+	TokenClientFamily string
 }
 
 // Discovery scanne les sources de credentials disponibles.
@@ -82,11 +89,21 @@ type ReauthCallback func(ctx context.Context, gamertag, xuid string, required bo
 // Best-effort, non bloquant. msg ne contient jamais de token/secret.
 type AuthErrorCallback func(ctx context.Context, gamertag, xuid, class, msg string)
 
+// TokenFamilyCallback est invoqué par le Resolver quand l'échange XBL user-token
+// a MESURÉ une provenance différente de celle portée par la CredentialSource. Le
+// caller la persiste (MultiUserTokenStore) pour que l'échange suivant commence par
+// le bon préfixe RpsTicket au lieu d'encaisser un 401 puis de retenter.
+//
+// Best-effort comme TokenRotationCallback : une erreur n'interrompt pas le Resolve
+// (les tokens Halo sont déjà obtenus) mais elle est loguée par le Resolver.
+type TokenFamilyCallback func(ctx context.Context, gamertag, xuid, family string) error
+
 // ResolverCallbacks regroupe les callbacks optionnels du Resolver (tous nullables).
 type ResolverCallbacks struct {
-	OnRotated   TokenRotationCallback
-	OnReauth    ReauthCallback
-	OnAuthError AuthErrorCallback
+	OnRotated        TokenRotationCallback
+	OnReauth         ReauthCallback
+	OnAuthError      AuthErrorCallback
+	OnFamilyObserved TokenFamilyCallback
 }
 
 // AcquirePolicy détermine comment le pool sélectionne un token.

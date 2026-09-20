@@ -244,20 +244,20 @@ func (p *providerImpl) disarmRWWatchdogLocked() string {
 
 // waitForDrain attend que tous les readers en vol fassent leur release().
 // Borné par p.drainTimeout ou ctx.Done(), la première échéance gagne.
+//
+// Sur expiration, le drain est ABANDONNÉ explicitement (abandonDrain) : rien ne
+// survit à cet appel qui pourrait réveiller ou faire paniquer le drain suivant
+// — c'était la cause des deux crashs du 2026-09-16 (cf. reader_drain.go).
 func (p *providerImpl) waitForDrain(parentCtx context.Context) error {
 	ctx, cancel := context.WithTimeout(parentCtx, p.drainTimeout)
 	defer cancel()
 
-	done := make(chan struct{})
-	go func() {
-		p.readersWG.Wait()
-		close(done)
-	}()
-
+	done := p.beginDrain()
 	select {
 	case <-done:
 		return nil
 	case <-ctx.Done():
+		p.abandonDrain(done)
 		return ctx.Err()
 	}
 }

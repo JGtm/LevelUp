@@ -333,12 +333,7 @@ func main() {
 			"hint", "définir LEVELUP_SESSION_SECRET (>=32 octets), LEVELUP_AUTH_MODE=xbox|password et LEVELUP_CORS_ORIGINS, ou retirer LEVELUP_ENV=production")
 		os.Exit(1)
 	}
-	if warnings := cfg.SecurityWarnings(); len(warnings) > 0 {
-		slog.Warn("configuration non sûre pour un déploiement multi-user exposé",
-			"issues_count", len(warnings),
-			"issues", strings.Join(warnings, " | "),
-			"prod_guard", "LEVELUP_ENV=production refuserait de démarrer dans cet état")
-	}
+	logSecurityWarnings(cfg)
 
 	// Foot-gun rate-limit (incident "Too Many Requests" prod) : le limiter applicatif
 	// (httprate) clé sur RemoteAddr. En production derrière un reverse proxy SANS
@@ -1969,10 +1964,24 @@ func buildAutoSyncPool(
 		}
 	}
 
+	// Provenance MESURÉE à l'échange XBL : persistée pour que le boot suivant
+	// parte du bon préfixe RpsTicket (sinon 401 + retry à chaque échange pour les
+	// comptes qui n'acceptent pas « d= »).
+	onFamilyObserved := func(ctx context.Context, gamertag, xuid, family string) error {
+		if xuid == "" {
+			return nil
+		}
+		if err := multiUserStore.UpdateTokenClientFamily(xuid, family); err != nil {
+			return fmt.Errorf("onFamilyObserved %s: %w", gamertag, err)
+		}
+		return nil
+	}
+
 	resolver := pool.NewResolverWithCallbacks(tokenProvider, 0, pool.ResolverCallbacks{ // 0 = default TTL ~3h30
-		OnRotated:   onRotated,
-		OnReauth:    onReauth,
-		OnAuthError: onAuthError,
+		OnRotated:        onRotated,
+		OnReauth:         onReauth,
+		OnAuthError:      onAuthError,
+		OnFamilyObserved: onFamilyObserved,
 	})
 	p, err := pool.NewPool(ctx, resolver, sources, pool.PoolOptions{
 		MaxSize:     0, // 0 = tous les sources découverts
@@ -2099,7 +2108,10 @@ func startWatcherDaemon(
 	//    encore un refresh_token utilisable côté env var.
 	if freshAccessToken != "" {
 		slog.Info("watcher: refresh XSTS proactif avant démarrage…")
-		if freshResult, xerr := auth.AcquireXSTSForRTA(ctx, freshAccessToken); xerr == nil {
+		// Provenance du RpsTicket posée ET mesurée : ce chemin est l'un des 401
+		// « RpsTicket refusé » du boot (le compte du tracker n'accepte pas « d= »).
+		if freshResult, xerr := auth.AcquireXSTSForRTAWithProvenance(
+			ctx, multiStore, tokens.XSTSXUID, freshAccessToken); xerr == nil {
 			if storeErr := store.UpdateXSTS(freshResult, 55*time.Minute); storeErr == nil {
 				slog.Info("watcher: XSTS frais obtenu",
 					"gamertag", freshResult.Gamertag,

@@ -287,6 +287,40 @@ func (s *MultiUserTokenStore) UpdateOAuthRefreshToken(xuid, refreshToken string)
 	return s.upsertLocked(existing)
 }
 
+// UpdateTokenClientFamily écrit la provenance MESURÉE du token (préfixe RpsTicket
+// accepté par l'endpoint XBL user-token) pour un xuid. Read-modify-write atomique
+// préservant les autres champs ; crée l'entrée si absente.
+//
+// Appelée après un échange XBL réussi (cf. TokenFamilyObserver) : sans elle, le
+// prochain échange repart du préfixe par défaut « d= » et se fait refuser en 401
+// pour les comptes qui n'acceptent que « t= » — 5 WARN à chaque boot jusqu'au
+// 2026-09-20.
+func (s *MultiUserTokenStore) UpdateTokenClientFamily(xuid, family string) error {
+	if !xuidIsSafe(xuid) {
+		return fmt.Errorf("multi_user_token_store: xuid invalide: %q", xuid)
+	}
+	if family == "" {
+		return fmt.Errorf("multi_user_token_store: famille de client vide pour xuid=%q", xuid)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	existing, err := s.loadLocked(xuid)
+	if err != nil && !errors.Is(err, ErrUserTokensNotFound) {
+		return fmt.Errorf("multi_user_token_store: lecture pour update famille: %w", err)
+	}
+	if existing == nil {
+		existing = &UserTokens{XUID: xuid}
+	}
+	if existing.TokenClientFamily == family {
+		return nil // déjà à jour — pas de réécriture du fichier
+	}
+	existing.TokenClientFamily = family
+
+	return s.upsertLocked(existing)
+}
+
 // MarkReauthRequired positionne le flag de ré-authentification requise pour un
 // xuid (refresh_token mort). Read-modify-write atomique préservant les autres
 // champs. Crée l'entrée si absente. Idempotent : ReauthDetectedAt conserve la
