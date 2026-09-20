@@ -16,6 +16,17 @@
 // NE PAS DUPLIQUER : selon le besoin, choisir l'une ou l'autre fonction.
 // =============================================================================
 //
+// LES DEUX GRAMMAIRES D'UN pair_name, gérées par les DEUX niveaux :
+//
+//	« Conteneur:Mode on Carte »                   "Arena:Slayer on Bazaar", "BTB:CTF on Highpower"
+//	« Mode:Conteneur [qualificatif] on Carte »    "CTF:Arena on Opulence", "CTF:Arena Neutral Flag",
+//	                                              "CTF:BTB Fiesta on Highpower", "Slayer:Doubles"
+//
+// Ici, la forme inversée se résout en cherchant le préfixe à DROITE quand la gauche est
+// inconnue (InferModeCategoryFromPairName). Côté libellé, NormalizeModeLabel s'appuie sur
+// la liste des jetons de conteneur de `analysis/modelabel` (cf. renvoi sous
+// modePrefixToCategory).
+//
 // Une `mode_category` custom regroupe plusieurs préfixes de pair_name :
 //
 //	Assassin  : Arena, Tactical, Assault, Community
@@ -69,6 +80,12 @@ const (
 // La traduction FR éventuelle (ex: "Arène", "Communauté", "Classé") est gérée
 // côté inférence en testant les variantes via _CASE_MAP — ici on stocke les
 // préfixes EN canoniques (cf. Python _normalize_case).
+//
+// NE PAS CONFONDRE avec la liste des jetons de CONTENEUR de la grammaire des pair_name,
+// qui vit dans `analysis/modelabel/container.go` (paquet feuille, seul endroit) et sert
+// à NormalizeModeLabel pour la forme inversée. Les deux se recoupent mais leur sémantique
+// diffère : Firefight et Gruntpocalypse sont ici des CATÉGORIES, pas des conteneurs
+// ("Gruntpocalypse:Fiesta" a Gruntpocalypse pour mode). Ne pas ajouter une troisième liste.
 var modePrefixToCategory = map[string]string{
 	"Arena":                  ModeCategoryAssassin,
 	"Tactical":               ModeCategoryAssassin,
