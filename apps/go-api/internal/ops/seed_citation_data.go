@@ -124,6 +124,11 @@ func defaultCitationMappings() []CitationMapping {
 		// désormais le PNG définitif fourni par l'utilisateur (redimensionné à 100x100,
 		// la taille de tous les autres visuels de citation) ; « Vol du drapeau » n'a plus
 		// de visuel du tout car la citation est désactivée (voir son entrée).
+		// 2026-09-19 : le PNG de « Capture du drapeau » portait un damier de transparence
+		// CUIT dans les pixels (fond blanc/gris à l'écran) — fond retiré, alpha réel.
+		// « Crâne intouchable » pointait par erreur un visuel d'ARME Halo 5 (Éradicateur) ;
+		// Halo 5 n'a aucune citation Oddball : silhouette de crâne fournie par l'utilisateur,
+		// recadrée 100x100 avec une bordure noire de 2,5 px (HI_citation_Crane_intouchable.png).
 		{Norm: citationNormFlagCaptures, Display: "Capture du drapeau", MappingType: mappingTypeObjectiveStat,
 			StatName: "flag_captures", Enabled: true,
 			ImagePath:   wpHI + "HI_citation_Capture_du_drapeau.png",
@@ -149,9 +154,15 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatModeJeu,
 			Description: "Volez le drapeau ennemi à sa base dans n'importe quelle partie matchmaking Capture du drapeau.",
 			TierTargets: tierTargets25_50_100_175_300},
+		// DÉCISION UTILISATEUR (2026-09-19) : « Chasse au rapatrieur » DÉSACTIVÉE
+		// (Enabled=false) — citation maison (nom et définition inventés le 2026-07-25, seule
+		// la colonne est native), jugée source de confusion et sans intérêt à suivre. Même
+		// patron que « Vol du drapeau » : listée (inventaire + parité EN), ignorée par le
+		// moteur, ImagePath vidé (le visuel H5 « Not so fast » redevient libre), non enfant
+		// d'un composite. La colonne `flag_returners_killed` reste utilisée ailleurs (rôles
+		// d'objectif, radar de match) : seule la citation est retirée.
 		{Norm: citationNormReturnerTakedown, Display: "Chasse au rapatrieur", MappingType: mappingTypeObjectiveStat,
-			StatName: "flag_returners_killed", Enabled: true,
-			ImagePath:   wpH5 + "H5G_citation_Not_so_fast.png",
+			StatName: "flag_returners_killed", Enabled: false,
 			Category:    citationCatModeJeu,
 			Description: "Tuez les adversaires qui rapportent leur propre drapeau dans n'importe quelle partie matchmaking Capture du drapeau.",
 			TierTargets: tierTargets5_10_20_35_60},
@@ -175,7 +186,7 @@ func defaultCitationMappings() []CitationMapping {
 			TierTargets: tierTargets25_50_100_200_350},
 		{Norm: citationNormUntouchableCarrier, Display: "Crâne intouchable", MappingType: mappingTypeObjectiveStat,
 			StatName: "kills_as_skull_carrier", Enabled: true,
-			ImagePath:   wpH5 + "H5G_citation_Éradicateur.png",
+			ImagePath:   wpHI + "HI_citation_Crane_intouchable.png",
 			Category:    citationCatModeJeu,
 			Description: "Tuez un adversaire alors que vous portez le crâne dans n'importe quelle partie matchmaking Oddball.",
 			TierTargets: tierTargets1_2_3_5_10},

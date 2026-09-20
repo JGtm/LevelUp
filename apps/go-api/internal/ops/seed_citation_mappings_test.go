@@ -104,10 +104,10 @@ func TestObjectiveStatCitations_MappedToColumns(t *testing.T) {
 // génériques (10,20,30,50,100) rendrait « Porteur imparable », « Crâne intouchable »,
 // « Chasse au porteur » et « Prise du crâne » inatteignables (totaux réels : 3, 1, 4, 3).
 //
-// L'état actif/inactif fait partie de ce qui est figé : 9 actives sur les 10 depuis la
-// désactivation de « Vol du drapeau » (décision utilisateur 2026-09-10, cf.
-// TestFlagSteals_Disabled). Colonne et paliers restent pinés même désactivée, pour qu'une
-// réactivation reparte des valeurs calibrées.
+// L'état actif/inactif fait partie de ce qui est figé : 8 actives sur les 10 depuis les
+// désactivations de « Vol du drapeau » (2026-09-10) et « Chasse au rapatrieur »
+// (2026-09-19), décisions utilisateur, cf. TestDisabledCitations. Colonne et paliers
+// restent pinés même désactivée, pour qu'une réactivation reparte des valeurs calibrées.
 func TestObjectiveStatCitationsV721_MappedToColumns(t *testing.T) {
 	want := []struct {
 		norm    string
@@ -118,7 +118,7 @@ func TestObjectiveStatCitationsV721_MappedToColumns(t *testing.T) {
 		{citationNormFlagCaptures, "flag_captures", tierTargets10_25_50_75_125, true},
 		{citationNormFlagSecures, "flag_secures", tierTargets50_100_200_350_600, true},
 		{citationNormFlagSteals, "flag_steals", tierTargets25_50_100_175_300, false},
-		{citationNormReturnerTakedown, "flag_returners_killed", tierTargets5_10_20_35_60, true},
+		{citationNormReturnerTakedown, "flag_returners_killed", tierTargets5_10_20_35_60, false},
 		{citationNormUnstoppableCarrier, "kills_as_flag_carrier", tierTargets1_2_3_5_10, true},
 		{citationNormAggressiveReturn, "kills_as_flag_returner", tierTargets5_10_20_30_50, true},
 		{citationNormZoneDefense, "zone_defensive_kills", tierTargets25_50_100_200_350, true},
@@ -149,42 +149,43 @@ func TestObjectiveStatCitationsV721_MappedToColumns(t *testing.T) {
 	}
 }
 
-// TestFlagSteals_Disabled : « Vol du drapeau » désactivée sur décision utilisateur du
-// 2026-09-10 (« j'en veux plus »). Vérifie qu'elle n'est enfant d'aucun composite (sa
-// désactivation ne rend aucun palier inatteignable) et qu'elle ne porte plus de visuel :
-// son seul visuel était un SVG bouche-trou, supprimé du dépôt avec cette désactivation.
-func TestFlagSteals_Disabled(t *testing.T) {
-	m := citationByNorm(t, citationNormFlagSteals)
-	if m.Enabled {
-		t.Errorf("flag_steals.Enabled = true, want false (désactivée)")
+// TestDisabledCitations : les citations DÉSACTIVÉES par décision, avec la raison datée.
+// Pour chacune : Enabled=false, enfant d'aucun composite (sa désactivation ne rend aucun
+// palier inatteignable) et, quand `noImage` est vrai, aucun ImagePath (une citation
+// désactivée n'est jamais rendue ; TestCitationEnabled_HasImagePath n'exige un visuel que
+// sur les actives). Une seule table : à la troisième copie du test « X_Disabled » on
+// centralise (règle des ≤ 2 copies).
+//
+//   - flag_defender (I7, 2026-07-24) : aucun award d'ingestion ne mesure la défense de
+//     son propre drapeau. Garde son visuel H5 d'origine.
+//   - flag_steals (2026-09-10, « j'en veux plus ») : son seul visuel était un SVG
+//     bouche-trou, supprimé du dépôt avec la désactivation.
+//   - returner_takedown (2026-09-19) : citation maison jugée source de confusion et sans
+//     intérêt à suivre ; son visuel H5 « Not so fast » redevient libre.
+func TestDisabledCitations(t *testing.T) {
+	cases := []struct {
+		norm    string
+		noImage bool
+	}{
+		{"flag_defender", false},
+		{citationNormFlagSteals, true},
+		{citationNormReturnerTakedown, true},
 	}
-	if m.ImagePath != "" {
-		t.Errorf("flag_steals.ImagePath = %q, want vide (SVG bouche-trou supprimé)", m.ImagePath)
-	}
-	for _, c := range defaultCitationMappings() {
-		if c.MappingType != mappingTypeComposite {
-			continue
+	for _, tc := range cases {
+		m := citationByNorm(t, tc.norm)
+		if m.Enabled {
+			t.Errorf("%s.Enabled = true, want false (désactivée)", tc.norm)
 		}
-		if strings.Contains(c.CompositeChildren, `"`+citationNormFlagSteals+`"`) {
-			t.Errorf("composite %q référence flag_steals désactivée → potentiellement inatteignable", c.Norm)
+		if tc.noImage && m.ImagePath != "" {
+			t.Errorf("%s.ImagePath = %q, want vide (citation désactivée sans visuel)", tc.norm, m.ImagePath)
 		}
-	}
-}
-
-// TestFlagDefender_Disabled : « Défenseur du drapeau » désactivée — aucun award
-// d'ingestion ne mesure la défense de son propre drapeau (décision I7). Vérifie aussi
-// qu'elle n'est enfant d'aucun composite (sa désactivation ne rend rien inatteignable).
-func TestFlagDefender_Disabled(t *testing.T) {
-	m := citationByNorm(t, "flag_defender")
-	if m.Enabled {
-		t.Errorf("flag_defender.Enabled = true, want false (désactivée)")
-	}
-	for _, c := range defaultCitationMappings() {
-		if c.MappingType != mappingTypeComposite {
-			continue
-		}
-		if strings.Contains(c.CompositeChildren, `"flag_defender"`) {
-			t.Errorf("composite %q référence flag_defender désactivée → potentiellement inatteignable", c.Norm)
+		for _, c := range defaultCitationMappings() {
+			if c.MappingType != mappingTypeComposite {
+				continue
+			}
+			if strings.Contains(c.CompositeChildren, `"`+tc.norm+`"`) {
+				t.Errorf("composite %q référence %s désactivée → potentiellement inatteignable", c.Norm, tc.norm)
+			}
 		}
 	}
 }

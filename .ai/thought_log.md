@@ -112157,3 +112157,65 @@ dans `timeseries_service_aggregations.go` ; `WEAPON_KEYS_WITHOUT_RANGE` pis-alle
 **Conclusion / prochaine étape** : pile de dev locale basculée sur le worktree (données du dépôt
 principal via `LEVELUP_DATA_ROOT`) pour le gate visuel de l'utilisateur ; fusion dans `feat/v75`
 sur son signal, CI de `feat/v75` = verdict d'autorité.
+
+## [2026-09-19] Citations : « Chasse au rapatrieur » desactivee, visuels « Capture du drapeau » et « Crane intouchable » corriges — Complete (code + docs ; re-seed local et commit en attente du user)
+
+- Demande utilisateur : (1) « Chasse au rapatrieur » (`returner_takedown`) porte a confusion et
+  n'est pas une stat interessante a suivre -> desactiver ; (2) le visuel de « Capture du
+  drapeau » a un fond blanc au lieu d'un fond transparent ; (3) « Crane intouchable » sert une
+  image d'ARME -> generer un visuel maison s'il n'en existe pas.
+- Verification sur pieces : « Chasse au rapatrieur » est une citation MAISON (nom FR/EN et
+  definition fixes par l'utilisateur le 2026-07-25, plan V721-03 ; seule la colonne
+  `flag_returners_killed` est native). Le PNG de « Capture du drapeau » (redimensionne le
+  2026-09-10 depuis `E:\Sans titre.png`) portait un DAMIER de transparence cuit dans les pixels
+  (whites f6-fe + gris c4/e5, 396 pixels seulement en alpha < 255) : la source etait deja un
+  clipart a fond simule. `H5G_citation_Éradicateur.png` est bien une arme Halo 5 (JSON du wiki :
+  categorie « Arme », « Tuez un Spartan adverse a l'aide de l'eradicateur ») ; Halo 5 n'a
+  AUCUNE citation Oddball (« Is that my ball? » = medailles defensives Assaut/Grifball,
+  « Oddly specific » = grenade sur arme puissante) -> visuel a produire.
+- Decision technique principale :
+  - `returner_takedown` : `Enabled: false`, `ImagePath` vide — meme patron que `flag_steals`
+    (2026-09-10) et `flag_defender` (I7). Listee (inventaire + parite EN), ignoree par le moteur
+    (`WHERE enabled IS NOT FALSE`). Colonne intacte ailleurs (roles d'objectif, radar).
+  - Troisieme copie du test `TestX_Disabled` -> une seule table `TestDisabledCitations`
+    (flag_defender, flag_steals, returner_takedown) avec la raison datee par cas (regle des
+    <= 2 copies). Aucun des deux anciens noms dans `.ai/baselines/tests_pre_migration.jsonl`.
+  - « Capture du drapeau » : fond retire par remplissage depuis les bords (luminance > 140,
+    borne par le trait noir), frange anti-crenelee convertie en encre noire a alpha
+    proportionnel ; interieur blanc du drapeau conserve. 6 133 pixels vides, 667 de frange.
+    Outil jetable Go dans le scratchpad (pas dans le depot). 100x100, 9 658 -> 4 360 o.
+  - « Crane intouchable » : ecusson maison `static/commendations/halo_infinite/HI_citation_Crane_intouchable.png`
+    (ecu pointu + crane + bulle de bouclier, palette des citations H5 a5b9bf/6e8288/445156/2a3238),
+    SVG rasterise par Chrome headless (profil dedie, fond 00000000) en 400x400 puis reduit
+    par moyenne de boite a 100x100. Source SVG conservee dans le scratchpad de session
+    uniquement (regenerable ; pas de fichier servi inutile sous `static/`).
+- Docs : `docs/COMMENDATIONS_REFERENCE.md` (ligne, « 8 actives sur 10 », visuels, table des
+  desactivees), CHANGELOG EN+FR 7.5.0 (Changed + Ops re-seed), RELEASE_NOTES EN+FR
+  (« Huit nouvelles citations », listes sans Vol du drapeau ni Chasse au rapatrieur — la 7.5.0
+  n'est pas publiee, les notes disent l'etat reel).
+- Resultats observes : `go test ./internal/ops/ -run 'Citation|Disabled|V721|ImagePath'` vert
+  (16 tests dont `TestCitationImagePaths_ExistOnDisk`, `TestCitationEnabled_HasImagePath`,
+  `TestDisabledCitations`) ; `go vet` et `gofmt` propres.
+- Decouverte HORS perimetre (non traitee) : `static/commendations/halo_5_guardians/H5G_citation_What's_mine_is_mine.png`
+  n'est PAS un PNG mais le JSON du scrape wiki (201 Ko, 159 items). Inutilise par le seed ;
+  a corriger ou supprimer dans un lot dedie.
+- Conclusion / prochaine etape : re-seed LOCAL a jouer (air + server.exe arretes, un seul
+  writer sur metadata.duckdb) : `levelup seed citation-mappings`, puis relance air et
+  verification sur pieces ; meme seed en prod au deploiement (note Ops du changelog). Commit
+  sur `feat/v75` au signal de l'utilisateur, en ne stageant QUE les fichiers de ce lot (d'autres
+  sessions ont des modifications non commitees dans le meme arbre : match-card, BACKLOG,
+  skill color-tokens).
+- Complement 2026-09-19 (meme lot) : l'ecusson maison de « Crane intouchable » est REMPLACE par
+  la silhouette de crane fournie par l'utilisateur (`C:\Users\Guillaume\Downloads\Nouveau projet.png`,
+  PNG palette 247x308, blanc sur alpha) : recadree au carre, redimensionnee (silhouette ~71x89 px),
+  bordure noire de 2,5 px ajoutee par dilatation de l'alpha (disque) en 4x puis reduction par
+  moyenne de boite -> 100x100, 5 283 o. La dilatation borde aussi les evidements (orbites, nez,
+  cercle frontal) : ils apparaissent cercles de noir. Commentaire du seed, COMMENDATIONS_REFERENCE
+  et CHANGELOG EN/FR realignes. Tests ops re-joues verts (ExistOnDisk inclus).
+- Re-seed LOCAL joue le 2026-09-19 (BDD liberee par l'utilisateur, port 8000 libre, aucun
+  air/server) : `go run ./cmd/levelup seed citation-mappings` -> « 0 inserees, 106 mises a
+  jour ». Verification sur pieces (`cmd/diag_q`, lecture seule) : `returner_takedown`
+  enabled=false / image_path NULL, `flag_steals` idem, `flag_captures` et
+  `untouchable_carrier` actives sur leurs PNG `halo_infinite/` ; 99 actives sur 106. Air
+  relance detache (gcc sur le PATH), /health 200, les deux PNG servis en image/png
+  (5 283 o et 4 360 o). Reste : meme seed en prod au deploiement ; commit au signal.
