@@ -42,11 +42,9 @@ import {
   vehicleVisibleAt,
 } from '../model/vehiclesLayer'
 import {
-  VEHICLE_MIN_SCREEN_PX,
-  VEHICLE_TURRET_MIN_HALF_PX,
-  VEHICLE_UNKNOWN_MIN_HALF_PX,
-  screenLengthPx,
-  spriteWorldLengthM,
+  vehicleEdgeFallbackPx,
+  vehicleTurretHalfPx,
+  vehicleUnknownHalfPx,
 } from '../model/screenSizes'
 import { traceDiamond } from './weaponPadsLayer'
 
@@ -180,24 +178,13 @@ const VEHICLE_NAME_LINE_STEP_PX = 10
  * d'un véhicule voisin (décision de cadrage). Même vocabulaire que les socles (`weaponPadsLayer
  * .traceDiamond`, réutilisée) : un losange dit « objet de la carte, pas un joueur ».
  */
-function drawUnknownVehicleMarker(ctx: CanvasRenderingContext2D, c: XY, color: string, k: number): void {
+function drawUnknownVehicleMarker(
+  ctx: CanvasRenderingContext2D, c: XY, color: string, k: number, halfPx: number,
+): void {
   ctx.globalAlpha = 1
   ctx.fillStyle = color
-  traceDiamond(ctx, c, VEHICLE_UNKNOWN_MIN_HALF_PX * k)
+  traceDiamond(ctx, c, halfPx * k)
   ctx.fill()
-}
-
-/**
- * turretHalfPx — le demi-côté du pictogramme de tourelle à l'échelle du cadrage : sa
- * demi-longueur RÉELLE quand la famille en porte une au manifeste, son minimum d'écran sinon
- * (`VEHICLE_TURRET_MIN_HALF_PX`, cf. `screenSizes.ts`).
- *
- * `size` est ce que `sizeOf` a rendu pour la famille, ou `null` : le pictogramme se dessine
- * précisément quand aucun sprite n'est servi, et le manifeste peut alors être là sans l'image.
- */
-function turretHalfPx(size: VehicleSpriteSize | null, scalePxPerM: number): number {
-  const longueurM = size ? spriteWorldLengthM(size.naturalHeightPx, size.mmPerPx) : 0
-  return screenLengthPx(longueurM, scalePxPerM, VEHICLE_TURRET_MIN_HALF_PX * 2) / 2
 }
 
 /**
@@ -416,8 +403,8 @@ function vehicleExplosionSeed(track: ReplayVehicleTrackReady, destroyedFrame: nu
  * vehicleExplosionEdgePx — LA MÊME primitive de taille que le sprite (`sizeOf` +
  * `vehicleScreenLengthPx`), pour l'explosion : jamais un second calcul de gabarit. Le repli
  * (chassis non résolu, ou vignette/manifeste pas encore chargés) vaut
- * `VEHICLE_UNKNOWN_MIN_HALF_PX` — le glyphe d'ignorance lui-même — pour que l'explosion d'un
- * châssis inconnu ait la même ampleur que son losange, pas une taille inventée.
+ * `vehicleUnknownHalfPx` — le glyphe d'ignorance lui-même — pour que l'explosion d'un châssis
+ * inconnu ait la même ampleur que son losange, pas une taille inventée.
  */
 function vehicleExplosionEdgePx(
   track: ReplayVehicleTrackReady,
@@ -426,7 +413,7 @@ function vehicleExplosionEdgePx(
   scalePxPerM: number,
 ): number {
   const size = track.family ? style.sizeOf(track.family) : null
-  if (!size) return VEHICLE_UNKNOWN_MIN_HALF_PX * k
+  if (!size) return vehicleUnknownHalfPx(scalePxPerM) * k
   return (vehicleScreenLengthPx(size.naturalHeightPx, size.mmPerPx, scalePxPerM) / 2) * k
 }
 
@@ -468,7 +455,8 @@ function drawVehicleDestructionFx(
   // homonyme de `drawVehiclesLayer`) ; le diviser par SA propre valeur de repli (constante, sans
   // `k`) l'ANNULE et ne laisse que le facteur de taille relative — que `drawExplosion` reçoit
   // ensuite comme SON `k`, il multiplie déjà tout par ce facteur (cf. explosionFx.ts).
-  const k = vehicleExplosionEdgePx(track, style, time.k, viewScale(view)) / VEHICLE_UNKNOWN_MIN_HALF_PX
+  const echelle = viewScale(view)
+  const k = vehicleExplosionEdgePx(track, style, time.k, echelle) / vehicleUnknownHalfPx(echelle)
   const kind = vehicleExplosionKindOf(track.family)
   const fire =
     (kind === 'plasma' ? style.explosionInk.tint.plasma_cool : style.explosionInk.tint.blast) ||
@@ -534,13 +522,14 @@ export function drawVehiclesLayer(
         // lisibilité, seule mesure disponible avant qu'une taille réelle ne soit connue. TOUJOURS
         // MULTIPLIÉ PAR `time.k`, comme la branche sprite juste en dessous — un pixel d'écran
         // déclaré ici n'a de sens qu'à la densité du périphérique (même règle que `replayMarkers`).
-        let edgePx = (VEHICLE_MIN_SCREEN_PX / 2) * time.k
+        let edgePx = vehicleEdgeFallbackPx(echelle) * time.k
         const glyph = track.family
           ? vehicleMapElementGlyph(track.family, style.kindOf(track.family))
           : null
         if (!track.family) {
-          drawUnknownVehicleMarker(ctx, c, color, time.k)
-          edgePx = VEHICLE_UNKNOWN_MIN_HALF_PX * time.k
+          const demiLosange = vehicleUnknownHalfPx(echelle)
+          drawUnknownVehicleMarker(ctx, c, color, time.k, demiLosange)
+          edgePx = demiLosange * time.k
         } else {
           const size = style.sizeOf(track.family)
           const sprite = size ? style.spriteOf(track.family, color) : null
@@ -555,7 +544,7 @@ export function drawVehiclesLayer(
             // neutre — la décision utilisateur du 2026-09-14 veut ces objets visibles ET
             // reconnaissables. Le jour où un asset est servi, la branche du sprite ci-dessus
             // l'emporte d'elle-même : seule la table d'assets aura changé.
-            const demi = turretHalfPx(size, echelle)
+            const demi = vehicleTurretHalfPx(echelle)
             drawMapElementTurret(ctx, c, color, time.k,
               vehicleScreenAngle(vehicleHeadingAt(track, time.frame)), demi)
             edgePx = demi * time.k

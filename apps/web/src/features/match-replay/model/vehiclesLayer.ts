@@ -63,11 +63,7 @@
  */
 import type { ReplayVehicleRide } from '@/lib/api/types'
 
-import {
-  screenLengthPx,
-  spriteWorldLengthM,
-  VEHICLE_MIN_SCREEN_PX,
-} from './screenSizes'
+import { screenLengthPx, spriteWorldLengthMm } from './screenSizes'
 import { lastIndexAt, positionAt, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
@@ -391,10 +387,13 @@ export function vehiclePositionAt(track: ReplayVehicleTrackReady, frame: number)
  * deux ensemble donnent la longueur MONDE. `scalePxPerM` est l'échelle du cadrage
  * (`scaleOf(view)`).
  *
- * CE QUI A CHANGÉ LE 2026-09-20 : cette longueur dépend désormais de l'ÉCHELLE DE LA CARTE. Elle
- * était constante — la même à l'écran sur une carte de 54 m et sur une de 273 m —, ce qui
- * rendait le véhicule trop petit sur les grandes (retour utilisateur du 2026-09-19) et hors de
- * proportion sur les petites. Détail, mesures et raison du seuil : `screenSizes.ts`.
+ * CE QUI A CHANGÉ LE 2026-09-20 : cette longueur dépend désormais de l'ÉCHELLE DE LA CARTE,
+ * PLANCHÉE à l'ancien cadrage +20 % (`PX_PAR_MM_MINIMUM_ECRAN`). Elle était constante — la même
+ * à l'écran sur une carte de 54 m et sur une de 273 m —, ce qui rendait le véhicule trop petit
+ * sur les grandes (retour utilisateur du 2026-09-19) et hors de proportion sur les petites. Le
+ * plancher porte sur l'ÉCHELLE, pas sur la taille : les dix-huit familles le franchissent
+ * ENSEMBLE et restent donc proportionnelles à toute échelle. Détail et mesures :
+ * `screenSizes.ts`.
  */
 export function vehicleScreenLengthPx(
   naturalHeightPx: number,
@@ -402,11 +401,7 @@ export function vehicleScreenLengthPx(
   scalePxPerM: number,
 ): number {
   if (naturalHeightPx <= 0 || mmPerPx <= 0) return 0
-  return screenLengthPx(
-    spriteWorldLengthM(naturalHeightPx, mmPerPx),
-    scalePxPerM,
-    VEHICLE_MIN_SCREEN_PX,
-  )
+  return screenLengthPx(spriteWorldLengthMm(naturalHeightPx, mmPerPx), scalePxPerM)
 }
 
 /**

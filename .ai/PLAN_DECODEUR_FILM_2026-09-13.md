@@ -5825,43 +5825,70 @@ PUBLIE une lecture qui existait déjà.
         produit, consignée au §4.
   - [x] 10 cas vitest, dont le témoin `396cfc92` recopié du cache.
 
-- [x] **5.2a.2 — La taille des véhicules** (`464345758` puis `952a09013`, web seul).
-  - [!] La première livraison (`464345758`) appliquait le **+20 % aveugle** demandé le
-        2026-09-19 : `MONGOOSE_TO_PION_RATIO` 1,75 -> 2,10, glyphes dérivés de la même constante.
-        **Remplacée le 2026-09-20 sur nouvelle consigne de l'utilisateur** — elle corrigeait le
-        symptôme sans toucher la cause.
-  - [x] **Modèle de taille en ESPACE ÉCRAN** (`952a09013`), dans un seul fichier
-        `model/screenSizes.ts` :
-        `taille = plafond_doux( max( longueur_monde × échelle_px_par_m , minimum_écran[famille] ) )`.
-        Les véhicules étaient dessinés à taille CONSTANTE, sans aucun rapport avec l'échelle de
-        la carte — la même à l'écran sur une carte de 54 m et sur une de 273 m.
-  - [x] Minimums proposés, tous exprimés en PIONS (la seule grandeur que l'utilisateur compare
-        en permanence) : pion **8,80 px INCHANGÉ** (unité de tous les autres) ; véhicule
-        **18,48 px = 2,1 pions** (la valeur validée le 2026-09-19, qui change de RÔLE : plancher,
-        plus taille) ; châssis inconnu **4,40 px** de demi-diagonale = 0,5 pion (était 3,40, le
-        noyau d'un pion sans son liseré) ; tourelle **6,60 px** de demi-côté = 0,75 pion
-        (INCHANGÉ en valeur, devient un minimum) ; plafond doux **61,60 px = 7 pions** INCHANGÉ.
-  - [x] Mesure, conteneur 1 000 px CSS, marge 24, zoom 1, en px de long :
+- [x] **5.2a.2 — La taille des véhicules** (`464345758`, `952a09013`, puis `5.2a.2 (rev.)`, web seul).
+  - [!] **Deux écritures abandonnées, consignées parce qu'elles disent chacune une erreur de
+        modèle.** (a) `464345758` : le **+20 % aveugle** appliqué à la cible de cadrage
+        (`MONGOOSE_TO_PION_RATIO` 1,75 -> 2,10) — il corrigeait le symptôme sans toucher la
+        cause, la taille restant CONSTANTE quelle que soit la carte. (b) `952a09013` : un modèle
+        « taille réelle, plancher en PIXELS » — il **contredisait la demande** : l'ancien modèle
+        n'était pas réaliste mais RELATIF AU PION, et l'échelle de carte seule est plus petite
+        que lui sur les grandes cartes. Il rendait le Warthog à 18,5 px là où l'ancien le rendait
+        à 26,7, et écrasait 15 familles sur 18 à la même taille — sur la carte même où le constat
+        avait été fait.
+  - [x] **Modèle en ESPACE ÉCRAN, plancher sur l'ÉCHELLE** (`5.2a.2 (rev.)`, décision de
+        l'utilisateur du 2026-09-20), dans un seul fichier `model/screenSizes.ts` :
 
-        GRANDE CARTE `4f77afc1` Flood Gulch, 272,8 m -> 3,49 px/m
-          mongoose 15,4 -> 18,5 | ghost 20,3 -> 18,5 | warthog 26,7 -> 18,5 | wraith 37,7 -> 18,5
-          scorpion 46,7 -> 18,5 | pelican 70,2 -> 39,2 | phantom 69,9 -> 37,7 | skiff 63,2 -> 18,6
-          15 familles sur 18 au minimum ; les 3 qui le dépassent gardent leurs proportions EXACTES.
+            échelle_px_par_mm = max( échelle_carte_px_par_mm , PX_PAR_MM_MINIMUM_ECRAN )
+            taille_px         = plafond_doux( longueur_mm[famille] × échelle_px_par_mm )
 
-        PETITE CARTE `bfecd02b` Snowbound, 54,2 m -> 17,56 px/m
-          AUCUNE famille au minimum — la taille réelle passe telle quelle, et les véhicules y
-          sont plus gros qu'avant : ghost 20,3 -> 29,7 | mongoose 15,4 -> 22,5 |
-          warthog 26,7 -> 39,0 | wraith 37,7 -> 55,0. Le plafond doux devient utile :
-          pelican 197,1 -> 73,2, scorpion 68,2 -> 64,2.
+        avec `PX_PAR_MM_MINIMUM_ECRAN = ancien VEHICLE_PX_PER_MM × 1,2` = **0,0144375 px/mm**.
+  - [x] **Le plancher porte sur l'ÉCHELLE, pas sur la taille**, et c'est tout ce qui sépare cette
+        écriture de la précédente : les dix-huit familles franchissent le seuil ENSEMBLE, donc
+        elles restent entre elles dans le rapport EXACT de leurs longueurs monde à TOUTE échelle.
+  - [x] Échelle de bascule : **14,44 px/m**, soit une scène de **65,9 m** de large dans un
+        conteneur de 1 000 px CSS (marge 24). Toutes les grandes cartes sont sous le plancher.
+  - [x] Le pion garde sa référence (8,80 px, décision du 2026-09-19) : il n'est pas une
+        représentation mais un MARQUEUR, et c'est lui qui définit l'ancienne échelle donc le
+        plancher. Le plafond doux reste (61,60 px) ; sa compression étant monotone, il ne casse
+        pas l'invariant.
+  - [x] Les deux glyphes du calque suivent le **même facteur** : ils reçoivent une longueur monde
+        ÉQUIVALENTE — celle qui redonne leur taille d'avant à l'ancienne échelle —, donc
+        ancienne × 1,2 au minimum et la même croissance que les châssis. Losange d'un châssis non
+        résolu **3,40 -> 4,08 px** (4,96 sur Snowbound) ; pictogramme de tourelle
+        **6,60 -> 7,92 px** (9,64 sur Snowbound).
+  - [x] **Mesure, les 18 familles**, conteneur 1 000 px CSS, marge 24, zoom 1 (px de long) :
 
-        LE ZOOM RÉVÈLE, sur Flood Gulch : 3 familles sur 18 à leur taille réelle à 1×, 5 à 1,5×,
-        6 à 2×, **13 à 3×**.
-  - [x] Les pixels sont LOGIQUES : l'échelle se calcule sur `view.width` (largeur du CONTENEUR,
-        px CSS) et la densité `k` est appliquée au TRACÉ — dpr 2 rend la même taille logique.
-  - [x] `vehiclesLayer.test.ts` requalifié (grande carte -> minimum appliqué ; petite carte ->
-        taille réelle inchangée ; proportions conservées au-dessus du seuil ; DPR 2 -> même
-        taille logique ; le zoom fait passer le seuil ; cadrage dégénéré -> le minimum, jamais
-        zéro). `vehicleWeaponMounts.test.ts` suit la nouvelle signature.
+        | famille | mm | ANCIEN | Flood Gulch (3,49 px/m) | × | Snowbound (17,56 px/m) | × |
+        |---|---|---|---|---|---|---|
+        | banshee | 2 560 | 30,80 | 36,96 | 1,200 | 44,97 | 1,460 |
+        | chopper | 2 390 | 28,75 | 34,51 | 1,200 | 41,98 | 1,460 |
+        | falcon | 3 900 | 46,92 | 56,31 | 1,200 | 64,23 | 1,369 |
+        | ghost | 1 690 | 20,33 | 24,40 | 1,200 | 29,68 | 1,460 |
+        | gungoose | 1 280 | 15,40 | 18,48 | 1,200 | 22,48 | 1,460 |
+        | mongoose | 1 280 | 15,40 | 18,48 | 1,200 | 22,48 | 1,460 |
+        | pelican | 11 220 | 70,17 | 71,62 | 1,021 | 73,24 | 1,044 |
+        | phantom | 10 800 | 69,87 | 71,31 | 1,021 | 72,92 | 1,044 |
+        | razorback | 2 500 | 30,08 | 36,09 | 1,200 | 43,91 | 1,460 |
+        | rockethog | 2 220 | 26,71 | 32,05 | 1,200 | 38,99 | 1,460 |
+        | scorpion | 3 880 | 46,68 | 56,02 | 1,200 | 64,16 | 1,374 |
+        | shade | 1 530 | 18,41 | 22,09 | 1,200 | 26,87 | 1,460 |
+        | skiff | 5 340 | 63,23 | 65,54 | 1,037 | 67,27 | 1,064 |
+        | tourelle_montee | 1 390 | 16,72 | 20,07 | 1,200 | 24,41 | 1,460 |
+        | warthog | 2 220 | 26,71 | 32,05 | 1,200 | 38,99 | 1,460 |
+        | warthog_gauss | 2 220 | 26,71 | 32,05 | 1,200 | 38,99 | 1,460 |
+        | wasp | 2 570 | 30,92 | 37,10 | 1,200 | 45,14 | 1,460 |
+        | wraith | 3 130 | 37,66 | 45,19 | 1,200 | 54,98 | 1,460 |
+
+        **0 famille sur 18 plus petite qu'avant**, sur l'une ou l'autre carte. Sur Flood Gulch,
+        15 familles sur 18 sont EXACTEMENT à × 1,200 ; les 3 restantes (pelican, phantom, skiff)
+        dépassent le plafond doux et y sont compressées — leur × 1,2 brut est écrasé par un
+        plafond qui, lui, ne bouge pas.
+  - [x] Invariants tenus par vitest : *aucune famille plus petite qu'avant sur TOUTE carte* (les
+        18 familles × 4 échelles, l'ancien rendu étant RECALCULÉ depuis sa formule et jamais
+        recopié en valeurs) ; *grande carte = ancienne × 1,2 exactement* ; *petite carte = la
+        plus grande des deux* ; *proportions exactes à toute échelle* ; *les deux glyphes au même
+        facteur et suivant la carte* ; *DPR 2 inchangé en logique* ; *cadrage dégénéré -> le
+        plancher, jamais zéro*.
 
 - [x] **5.2a.3 — La couleur de la capture, c'est le camp qui pousse** (`70d247ed5`, Go + web,
       **schéma 63 -> 64**).
@@ -9581,8 +9608,9 @@ touché dans le worktree.
 |---|---|---|---|
 | 2026-09-20 | 5.2a.1 | mesure sur les 8 documents à zones du cache (241 rampes) | médiane d'avance du son **20,1 s -> 0,0 s** ; max 173,1 -> 0 ; > 2 s **207 -> 0** ; `zone_captures` **259 -> 160** émissions (= instants distincts par camp) ; `newZone` **351 -> 18** |
 | 2026-09-20 | 5.2a.1 | `make check-types` (cache purgé) ; `npm run test` ; eslint | vert ; **7 780 tests** ; 0 erreur |
-| 2026-09-20 | 5.2a.2 | mesure sur `4f77afc1` (272,8 m, 3,49 px/m) et `bfecd02b` (54,2 m, 17,56 px/m), 18 familles | grande carte : 15/18 au minimum, 3 à leur taille réelle avec proportions exactes ; petite carte : 0/18 au minimum, plafond doux actif sur 4 familles ; zoom 3× : 13/18 à leur taille réelle |
-| 2026-09-20 | 5.2a.2 | `make check-types` ; `npm run test` ; eslint | vert ; **7 790 tests** ; 0 erreur |
+| 2026-09-20 | 5.2a.2 | mesure des 18 familles sur `4f77afc1` (272,8 m, 3,49 px/m) et `bfecd02b` (54,2 m, 17,56 px/m) | **0/18 plus petite qu avant** ; Flood Gulch : 15/18 EXACTEMENT à × 1,200, les 3 autres compressées par le plafond doux ; Snowbound : × 1,04 à × 1,46, l échelle de la carte devant le plancher |
+| 2026-09-20 | 5.2a.2 | échelle de bascule du plancher | **14,44 px/m**, soit une scène de **65,9 m** de large — toutes les grandes cartes sont sous le plancher |
+| 2026-09-20 | 5.2a.2 | `make check-types` (cache purgé) ; `npm run test` ; eslint | vert ; **7 800 tests** ; 0 erreur |
 | 2026-09-20 | 5.2a.3 | mesure de séparation du seuil (241 rampes, 8 documents) | 160 rampes avec bascule de camp, sommets 0,976-0,999 ; 81 sans, sommets <= 0,986 dont 2 seulement > 0,95 ; marge **0,038** autour de 0,95 |
 | 2026-09-20 | 5.2a.3 | `gofmt -l ./internal ./cmd` ; `go build ./...` ; `go vet ./...` | sortie vide ; vert ; vert |
 | 2026-09-20 | 5.2a.3 | `go test -count=1` sur `film/replay`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api`, `archlint` | **7 paquets verts** |
