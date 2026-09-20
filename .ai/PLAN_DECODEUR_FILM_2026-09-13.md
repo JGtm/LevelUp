@@ -5849,11 +5849,19 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   `grammar.Rev` monte par l empreinte (`grammar-2026-09-20`, meme rang que 5.2b.1 : meme lot,
   meme jour, aucun backlog de plus). **Le document publie ne bouge d AUCUN octet** : les 8
   fixtures de contrat sont inchangees. La decision de repli produit est au §4.
-  **MAIS LA CAPTURE A UN COUT SUR LE HARNAIS D EQUIVALENCE, ET IL EST MESURE** : `digest.Of`
-  hache les champs exportes OU NON, donc les six champs ajoutes a `componentDirs` font diverger
-  les etapes `positions` (20/20 films) et `vehicles` (9/20) — a COMPTE IDENTIQUE, et sans qu un
-  octet publie ne change. C est ce qui a declenche la regle d arret du gate 2, et la question
-  « garder la capture et re-figer, ou la retirer » est posee au §5.
+  **LA CAPTURE A ETE MESUREE, PUIS RETIREE — ARBITRAGE DU PILOTE (B), `ab3868e40`.** `digest.Of`
+  hache les champs exportes OU NON : les six champs poses dans `componentDirs` faisaient diverger
+  les etapes `positions` (20 films sur 20) et `vehicles` (9 sur 20) A COMPTE IDENTIQUE, pour une
+  lecture qu AUCUN calque ne publie et au service d une hypothese REFUTEE. La regle d arret du
+  gate 2 s est appliquee ; le pilote a tranche : **un negatif ne laisse pas de champ dans une
+  structure hachee a chaque etape de chaque film.** Les six champs, `ForwardVector30`, les
+  lecteurs de vec3 bruts et le fichier `offline_aim_fwd.go` ont disparu ;
+  `readForwardComponentDynPrec`, lui, PRE-EXISTE au lot et est PORTANT (il aligne le curseur pour
+  i3/i4/i5/i21 sur `ti=38/39/40/43`) — il est restaure a son corps d origine, pas supprime.
+  L empreinte est revenue a celle de 5.2b.1 seul (`a36bbb7f...`, mesuree), et `positions` /
+  `vehicles` sont retombes a **0/20** au second passage du harnais. **LES CHIFFRES DU NEGATIF
+  RESTENT** : tableau complet en §4 (D2) et en §5. L instrument de recherche est conserve, reduit
+  au chemin de 19 bits — il ne lit que `componentDirs.AimRaw`, deja capture avant ce lot.
 
 ---
 
@@ -5862,7 +5870,7 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
 | 2026-09-20 | 5.2b | **D1 (5.2b) — LE REPLI PRODUIT POUR LE CAP DU CHASSIS EST UNE DECISION UTILISATEUR, ET ELLE RESTE OUVERTE.** `i2` est REFUTE comme avant du chassis par une mesure qui en nomme la cause (le champ porte le vecteur HAUT). Le cap publie reste donc l atan2 de la VELOCITE, faux en marche arriere, en derapage, en vol et a l arret. | NON TRAITE (regle 7) — c est un ARBITRAGE, pas un defaut de decodage. Candidat ecrit au brief : **la VISEE DU CONDUCTEUR (siege 0)** pour les chassis a arme FIXE (Ghost, Wraith, Banshee), ou elle EST l avant ; elle ne l est pas sur un chassis a tourelle (Warthog, Scorpion), ou le pilote n est pas le tireur. La donnee existe deja (`vehicles[].rides[].aim[]`, `i21` du bipede a bord) et le repli serait du RENDU pur, sans recuisson. A trancher par l utilisateur |
-| 2026-09-20 | 5.2b | **D2 (5.2b) — L AVANT DU CHASSIS N EST PAS DANS `i2`, ET LE FILM NE DIT PAS ENCORE OU IL EST.** Les trois chemins du composant sont desormais lus : le mode 2 (deux vec3 float32 exacts) n est JAMAIS emprunte (0 record sur 250 000, deux films), et les deux chemins reels portent une direction quasi verticale. Le moteur reconstruit donc l avant a partir du HAUT et d autre chose — l etat angulaire (`i3`), l orientation de l etat par defaut (feuille 4 de `ti=40`, quaternion lu depuis 5.1.7-b), ou un composant `vehicle-*` non porte. | NON TRAITE (regle 7). La piste la plus courte est la FEUILLE 4 DE L ETAT PAR DEFAUT, qui est un QUATERNION et que 5.1.7-b a rendue lisible : elle donne une orientation COMPLETE a l image-cle, la ou `i2` ne donne qu une direction par delta. A instruire par un lot d orientation, avec le meme oracle (le deplacement) et le meme temoin par permutation |
+| 2026-09-20 | 5.2b | **D2 (5.2b) — L AVANT DU CHASSIS N EST PAS DANS `i2`, ET LE FILM NE DIT PAS ENCORE OU IL EST.** Les trois chemins du composant ont ete lus UNE FOIS (capture retiree depuis, arbitrage du pilote — voir la case 5.2b.2). Le mode 2 (deux vec3 float32 EXACTS) n est **JAMAIS** emprunte : 0 record sur 144 385 (`4f77afc1`) et 0 sur 105 392 (`a349fea8`). Les deux chemins reels portent une direction **quasi VERTICALE** — c est le vecteur **HAUT** que le composant nomme (`object-forward-and-UP`), et son azimut au sol n est que la direction de la pente. Le tableau, avec son temoin par permutation, est le NEGATIF : <br><br>`4f77afc1` — 19 bits : mediane **53,6 deg**, p90 159,5, < 15 deg 16,4 %, temoin **93,0 deg**, \|z\| median **0,960** (77,2 % au-dessus de 0,9) · 30 bits (chemin DOMINANT, 113 242 records) : mediane **104,5 deg**, p90 172,5, < 15 deg 4,6 %, temoin **88,7 deg**, \|z\| median **0,981** (94,0 %).<br>`a349fea8` — 19 bits (102 552 records) : mediane **99,7 deg**, temoin **103,3 deg**, \|z\| median 0,581 · 30 bits (2 840 records) : mediane 57,6 deg, temoin 71,4 deg, \|z\| median 0,817.<br><br>Le critere du brief (mediane < 15 deg ET temoin ~90 deg) n est atteint sur AUCUN film, sur AUCUN chemin, sur la population qui compte. Le moteur reconstruit donc l avant a partir du HAUT et d autre chose. | NON TRAITE (regle 7). La piste la plus courte est la **FEUILLE 4 DE L ETAT PAR DEFAUT** de `ti=40`, qui est un QUATERNION et que 5.1.7-b a rendue lisible : elle donne une orientation COMPLETE a l image-cle, la ou `i2` ne donne qu une direction par delta — et c est une AUTRE lecture, qui n exige pas de re-poser la capture retiree. A instruire par un lot d orientation, avec le meme oracle (le deplacement) et le meme temoin par permutation |
 | 2026-09-20 | 5.2b | **D3 (5.2b) — LE CHEMIN DE PUBLICATION D `i2` DANS LE DISPATCH RESTE UN SAUTEUR DE BITS.** `consumeObjectForwardAndUpDynPrec` (dispatch_object.go) jette toujours la valeur ; seul le BALAYAGE OFFLINE la capture. Les deux appellent le meme detenteur de grammaire, donc aucune divergence de largeur n est possible — mais un futur calque qui lirait l orientation depuis la marche delta ne la trouverait pas. | NON TRAITE, et ce n est pas un defaut aujourd hui : aucun calque ne lit l orientation par cette voie. A rouvrir SI et SEULEMENT SI D2 aboutit et que la valeur doit remonter par le dispatch |
 | 2026-09-19 | 5.1.7 | **D4 (5.1.7) — UN OCCUPANT FAUX, NOMME A L OEIL.** Theater (utilisateur, 2026-09-19) : sur `4f77afc1`, le rejeu publie « Yessireezy, siege 1 du vehicule 776/1, de 1:11.8 a 1:35.4 ». Yessireezy **ne monte jamais dans ce vehicule** — a 3:01 il est tue A COTE par un tir de mortier de Wraith, et il reapparait a 3:10. L appariement des sieges a pris un EVENEMENT VOISIN pour un embarquement. | NON TRAITE (regle 7). C est le calque d occupation (`vehicle_occupancy.go`, `decodeFilmVehicleEvents` et le pont morts -> siege), pas la grammaire de `ti=40`. A instruire par un lot d occupation, avec ce cas comme temoin nomme : un film consultable (`4f77afc1` est un match de JGtm), un slot, un instant |
 | 2026-09-19 | 5.1.7 | **D5 (5.1.7) — LE « DESPAWN SANS EXPLOSION » EST UNE FIN DE VIE REELLE QUE LE REJEU NE SAIT PAS NOMMER.** Meme verdict Theater : le Razorback 776/1 de `4f77afc1` n explose pas — il DISPARAIT vers 3:29, sans explosion, apres quelques degats vers 2:26. Le rejeu publie `end = "unknown"` pour cette vie, ce qui est honnete mais incomplet : la fin EXISTE et elle a une nature. | NON TRAITE (regle 7). Candidat `EndKind` **`despawn`**, a cote de `destroyed` / `film_end` / `unknown`. Il demande sa propre grammaire (qu est-ce que le film ECRIT quand un vehicule despawn ?) et une montee de schema : ni l une ni l autre n appartient a ce lot |
@@ -6382,47 +6390,56 @@ Les 64 gains sont TOUS de la famille killsource, nommes par comparaison des deux
 Telemetrie (affichee, jamais comptee) : `factsRev` `killsource-2026-09-18 -> killsource-2026-09-20`
 et `grammarRev` `grammar-2026-09-18.3 -> grammar-2026-09-20` sur les 17.
 
-**(2) `replay-equiv`, 20 films — 20 DIFFERENTS, 0 ECHEC — ET IL DECLENCHE L ARRET.**
+**(2) `replay-equiv`, 20 films — JOUE DEUX FOIS, ET LA SECONDE EST LA BONNE.**
 
-| etape divergente | films | compte attendu == obtenu ? | classement |
-|---|---|---|---|
-| `killsource` | 20 / 20 | — | **CONTENU, attendu** (le sujet du lot) |
-| `artifact` | 20 / 20 | non (ex. 1 908 600 -> 1 908 846) | **CONTENU, attendu** (famille killsource + chaine de revision) |
-| `positions` | **20 / 20** | **OUI, 20/20** | **FORME** (voir ci-dessous) |
-| `vehicles` | **9 / 20** | **OUI, 9/9** | **FORME + valeurs captees non publiees** |
-| `killRefs` | 7 / 20 | — | **CONTENU, attendu** |
-| `neutralDeaths` | 3 / 20 | non (0 -> 1, 0 -> 3) | **CONTENU, attendu** |
-| `grenades`, `shots`, `zoneStates`, `objectives` | **0 / 20** | — | **AUCUNE divergence** |
+**Premiere passe (avec la capture d `i2`)** : 20 differents, 0 echec — mais `positions`
+divergeait sur 20/20 et `vehicles` sur 9/20, A COMPTE IDENTIQUE des deux cotes. Cause : `digest.Of`
+hache les champs exportes OU NON, et les six champs que 5.2b.2 avait poses dans `componentDirs`
+faisaient bouger l empreinte de toute etape qui porte une `BipedPosition`. **La regle d arret a
+ete appliquee** : S8 n a pas ete joue, aucune reference n a ete re-figee, `-update` jamais lance.
+**Arbitrage du pilote : (B), retirer la capture** — un negatif ne laisse pas de champ dans une
+structure hachee a chaque etape de chaque film.
 
-**`positions` EST UNE EMPREINTE DE FORME, ET C EST PROUVE AU CHAMP PRES, PAS ARGUMENTE.**
-`digest.Of` hache les champs exportes OU NON ; `grammar.BipedPosition` embarque `componentDirs`,
-qui gagne six champs au lot 5.2b.2 (`FwdMode`, `HasFwdDir30`, `FwdDir30Raw`, `HasFwdVecs`,
-`FwdVec1`, `FwdVec2`). Leur SEUL ecrivain est `readForwardComponentDynPrec`
-(`offline_aim.go:259`), appele UNIQUEMENT sous `dirsGrammar.fwdUpDynPrec`, lui-meme arme par
-`ScanFilmOptions.DynPrecOrientation` — dont il existe **UN SEUL site d affectation dans tout le
-depot** : `build_vehicles.go:249` (`vehicleScanOptions`). Le nuage BIPEDE, lui, n arme que
-`CaptureDirs` (`build_from_film.go:194`). **Sur le nuage bipede les six champs sont donc
-identiquement nuls, et le contenu ne peut pas avoir change.** Confirme deux fois : le COMPTE est
-identique sur 20/20, et `tracks` — la projection PUBLIEE de ces positions — est byte-identique
-entre les deux cuissons du gate de corpus sur 9/9 temoins.
+**Seconde passe (capture retiree, `ab3868e40`)** — les etapes divergentes sont EXACTEMENT celles
+qu on attendait :
 
-**`vehicles` : meme forme, PLUS les valeurs reellement captees** — ici `DynPrecOrientation` EST
-arme, donc `FwdMode` / `HasFwdDir30` / `FwdDir30Raw` portent des valeurs. AUCUN calque ne les
-publie : le compte est identique sur 9/9, et le calque `vehicles` du document est byte-identique
-sur les 9 temoins du gate de corpus.
+| etape divergente | films | classement |
+|---|---|---|
+| `killsource` | **20 / 20** | CONTENU, attendu — le sujet du lot |
+| `artifact` | **20 / 20** | CONTENU, attendu — famille killsource + chaine de revision |
+| `killRefs` | **7 / 20** | CONTENU, attendu |
+| `neutralDeaths` | **3 / 20** | CONTENU, attendu |
+| `positions` | **0 / 20** | — |
+| `vehicles` | **0 / 20** | — |
+| `grenades`, `shots`, `zoneStates`, `objectives` | **0 / 20** | — |
 
-**L ARRET EST RESPECTE.** La consigne dit « tout ecart `vehicles` / `grenades` / positions =
-arret ». `grenades` est vierge ; `positions` et `vehicles` divergent, classes FORME et prouves
-sans changement de contenu — mais la regle d arret ne se contourne pas par une demonstration.
-**Le gate S8 `-deux-passes` N A DONC PAS ETE JOUE**, aucune reference n a ete re-figee, et
-`-update` n a jamais ete lance. Deux issues, au pilote :
+`BILAN : 0 identique(s), 20 different(s), 0 ecarte(s), 0 echec(s), 0 illisible(s)`. Le code de
+sortie est 1 : le harnais sort en 1 des qu un film differe de son fige, ce qui est le cas voulu
+ici — les references portent l etat d avant le lot. **Elles n ont PAS ete re-figees** : c est un
+geste de pilote, a prendre a la fusion.
 
-- **(A) RE-FIGER les 20 references d equivalence** (geste de pilote, comme a la cloture de 5.1) :
-  les ecarts sont classes, prouves, et aucun ne porte de contenu hors famille killsource ;
-- **(B) RETIRER LA CAPTURE des six champs.** 5.2b.2 est un NEGATIF : rien n est publie, et le
-  seul consommateur de ces champs est l instrument de mesure. Les references `positions` et
-  `vehicles` redeviendraient vertes, et le negatif resterait ecrit ici avec ses chiffres. Le
-  cout : le negatif ne se rejoue plus sans re-poser la capture — et la suite nommee au §4 (D2,
+**L EMPREINTE EST REVENUE A CELLE DE 5.2b.1 SEUL**, `a36bbb7f...`, mesuree et non supposee : le
+retrait de la capture est byte-exact, et `positions`/`vehicles` a 0/20 le confirment de l autre
+bout de la chaine.
+
+**(3) S8 `-deux-passes`, 3 films — 3 ARTEFACTS IDENTIQUES A L OCTET, 0 ARTEFACT DIVERGENT.**
+
+| film | passe film | passe faits | artefact | etapes a classer |
+|---|---|---|---|---|
+| `a521164d` | ok 45,6 s | ok 175 ms | **IDENTIQUE a l octet** | 1 : `killsource` |
+| `bcb6d393` | ok 14,1 s | ok 130 ms | **IDENTIQUE a l octet** | 1 : `killsource` |
+| `111fa685` | ok 41,1 s | ok 284 ms | **IDENTIQUE a l octet** | 1 : `killsource` |
+
+L unique ecart d etape est `killsource`, et il est **DIVERGENT PAR CONSTRUCTION** — l en-tete de
+`deux_passes.go` le dit avant la mesure : `killsource.Kill.paquet` est un champ NON EXPORTE que
+`digest.Of` hache et que le fichier de faits perd deliberement a l aller-retour. Aucun octet du
+document publie ne change, et c est precisement ce que la ligne `artifact` verifie.
+
+**`b1ad85eb` N A PAS PU ETRE JOUE, et ce n est pas un echec de decodage** : le harnais exige le
+fixture `testdata/equivalence/<short8>.facts.json`, qui n existe que pour les 20 films du corpus
+d equivalence. L y inscrire demanderait de l enroler dans ce corpus (fixture de faits + TSV de
+reference) — hors perimetre de ce lot. Il a ete mesure autrement, et deux fois : par le decodeur
+seul (§5, tableau avant/apres) et par la lecture SQL de `match_kill_events_latest`.
   la feuille 4 de l etat par defaut) est de toute facon une AUTRE lecture.
 #### GATES JOUES
 
@@ -6436,12 +6453,12 @@ sans changement de contenu — mais la regle d arret ne se contourne pas par une
 | 2026-09-20 | ratchets 0.A.3, surface de facade, `param_4` par build, taille des fichiers | verts |
 | 2026-09-20 | goldens regeneres par leurs portes | `facts_rev`, `grammar_rev`, `types/shapes`, `golden_minibobine_familles` (EMPREINTE DE FORME : compte 28 004 inchange), 8 fixtures de contrat (chaine de revision seule) |
 
-**JOUES DEPUIS** (les deux bilans ci-dessus) : corpus gate 17 temoins `--base=65e5c0731`
-(0 perte, 64 gains, 5 changements — un seul et meme booleen) et `replay-equiv` 20 films
-(20 differents, 0 echec, tous les ecarts classes). **NON JOUE** : S8 `-deux-passes`, la regle
-d arret ayant ete declenchee par `positions` et `vehicles` — decision (A) ou (B) au pilote.
-**JAMAIS LANCE** : `-update` sur les references d equivalence, et le backfill `killsource` du
-parc (UNE passe, apres le lot, sur signal utilisateur — D6).
+**LES TROIS GATES SONT JOUES** (bilans ci-dessus) : corpus gate 17 temoins `--base=65e5c0731`
+(0 perte, 64 gains, 5 changements — un seul et meme booleen), `replay-equiv` 20 films
+(`positions` et `vehicles` a 0/20 apres le retrait de la capture) et S8 `-deux-passes` 3 films
+(3 artefacts identiques a l octet). **JAMAIS LANCE** : `-update` sur les references
+d equivalence — les re-figer est un geste de pilote, a prendre a la fusion — et le backfill
+`killsource` du parc (UNE passe, apres le lot, sur signal utilisateur — D6).
 
 ### Montée de schéma 62 -> 63 — LES DEUX RÉAPPARITIONS QUI MANQUAIENT, 2026-09-19
 
