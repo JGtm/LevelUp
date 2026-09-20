@@ -1,112 +1,112 @@
 package grammar
 
-// component_param4.go — LE param_4 DU MOTEUR, PAR COMPOSANT.
+// component_param4.go — LE param_4 DU MOTEUR : LE FILM L ECRIT, ON LE LIT.
 //
-// Sorti de `traverse.go` par deplacement pur au lot 2.7 (scission des fichiers de plus de
-// 500 lignes) : aucune ligne de logique n'a change. Ce fichier porte la seule chose dont il
-// parle — la propriete externe `param_4` que le descripteur d'un composant rend a
-// FUN_14076cb60, et que quatre desers (i10, i19, i20, i23) lisent comme une largeur.
+// # CE QUE C EST
+//
+// `param_4` est la propriete externe que le descripteur d un composant rend a `FUN_14076cb60`
+// avant que son deserialiseur ne tourne. Huit desers du depot branchent dessus, et la valeur
+// decide alors d une LARGEUR :
+//
+//	i2  object-forward-and-up-dynamic-precision  >= 2 : un bit de porte C de plus, qui bascule
+//	                                             la charge utile sur FUN_142e29bac
+//	i10 object-parent-state                      < 2 : la lecture libre ; > 2 : la queue R(3)
+//	i19 unit-actor-control                       > 1 : l identifiant de second slot
+//	i20 unit-actor-state                         la table de largeur (1->8, 2->10, 3->11, >=4->12)
+//	i23 unit-malleable-property                  > 2 et > 3 : quelques R(1)
+//	i53 biped-malleable-property                 > 1 : un drapeau
+//	i62 biped-slide                              >= 1 : un second R(8) dequantifie
+//	i59 biped-spartan-ability-non-predicted      > 1 : la queue R(3)
+//	ti=12 i2..i6 les cinq filtres du navpoint    decide DEUX largeurs du bloc de filtres
+//	ti=21 flock-destination                      > 1 : un R(2)
+//
+// # SA SOURCE, ETABLIE LE 2026-09-18 (lot 5.1.7) : LA COLONNE `level` DU REGISTRE DU FILM
+//
+// `param_4` EST le niveau que l entree de registre du composant porte en `entree + 0x100` —
+// celui que `FUN_142e2c690` passe au deserialiseur, et que [Archetype.Level] rend deja. Le
+// traverseur le descend jusqu ici sous le nom `level` : aucun appelant n a besoin d une table,
+// d un balayage ni d un defaut.
+//
+// TROIS SOURCES INDEPENDANTES LE DISENT, ET ELLES CONCORDENT :
+//
+//  1. LA CAPTURE LIVE. Les vingt entrees que cette table portait etaient mesurees sur la colonne
+//     `param4` de `.ai/V7.5/dumps/ce_capture_delta.csv` (464 010 mesures sur `ti=35`). Elles
+//     valent TOUTES le `level` de la meme ligne de `testdata/ecs_table.tsv`.
+//  2. L ECRIVAIN. Le lot 5.1.1 a LU la valeur des cinq filtres de `ti=12` au slot `+0x10` du
+//     descripteur — `MOV EAX,0x3 ; RET` a `0x14117e0e0` pour `i2`, `MOV EAX,0x2 ; RET` a
+//     `0x141179610` pour `i3..i6`. Ce sont exactement leurs `level`.
+//  3. LA TABLE ECS. Un nom de composant n a qu UN `level` sur tous les archetypes du registre
+//     (mesure du 2026-09-18 sur les 48 lignes concernees), ce qu une propriete de descripteur
+//     doit avoir et qu une valeur par archetype n aurait pas.
+//
+// # CE QUI A DISPARU LE 2026-09-18, ET POURQUOI
+//
+// `paramForComponent(br, name)` consultait d abord CETTE table, puis — hors table — le `param_4`
+// qu un harnais avait FORCE sur le profil du lecteur, sinon 1. Le harnais etait
+// `killsource.calibrateRSP` : un balayage de 0 a 5 qui retenait la valeur maximisant la
+// CROISSANCE DES SLOTS sur les records de BIPEDE, et que `replaybuild` passait ensuite a la
+// cuisson du rejeu. C etait le repli nomme `repli_parametre_etat_record_infere`, dont la cible
+// de retrait etait ecrite d avance : « lot qui trouvera la source LUE de `param_4` (registre ECS
+// par composant, ou table du build) ». C est ce lot ; la valeur est LUE ; le repli est retire.
+//
+// TROIS DESERS N AVAIENT AUCUNE ENTREE et prenaient donc la valeur BALAYEE : `i10
+// object-parent-state` (vrai `level` 3), `i19 unit-actor-control` (2), `i20 unit-actor-state`
+// (4). Sur `4f77afc1` et `a349fea8` le balayage retenait 4, qui se comporte comme 3 / 2 / 4 pour
+// les seuls tests que ces desers font (`< 2`, `> 1`, `> 2`, `>= 4`) — mesure du 2026-09-18 :
+// zero difference d octet. La faute etait LATENTE, pas active : un film dont le balayage aurait
+// retenu 0 ou 1 aurait lu les trois a la mauvaise largeur.
 
-// recordStateParam is the engine's per-component param_4 (the actor-tick /
-// weapon-set count returned by the descriptor's vtable[0] in FUN_14076cb60). It is
-// NOT read from the bitstream: it is an external descriptor property computed per
-// component before its deser runs. Three biped components branch on it:
+// paramByComponent N EST PLUS UNE SOURCE : c est un RATCHET DE COHERENCE, et le seul appelant
+// qui la lit encore est celui qui n a pas d archetype sous la main (cf. [paramMesureDuComposant]).
 //
-//	unit-actor-control  (i19): gates the optional 2nd slot id (param_4 > 1).
-//	unit-actor-state    (i20): selects the width-table read (1->8,2->10,3->11,>=4->12,
-//	                           default 12 when param_4 == 0).
-//	unit-malleable-property (i23): gates a few R(1) flags (param_4 > 2, > 3).
+// DEUX garde-rails la tiennent (`param4_par_build_ratchet_test.go`, 2026-09-18) :
+// `TestParam4TableEgaleLExecutable` compare chaque entree a la constante que `vtable[0]` du
+// descripteur rend dans l executable COURANT, et `TestParam4RegistreParBuild` compare le registre
+// de SEPT mini-bobines — une par cle de profil — a cette meme constante, aux ecarts connus et
+// dates pres. Une valeur ecrite a la main ne peut donc diverger ni de l executable, ni d un build.
 //
-// The default (0) is the conservative shape: actor-state reads width 12, and the
-// optional slot / flag reads are absent. When a real descriptor count is known it
-// must be supplied (it cannot be recovered from the bits alone).
-//
-// IL VIT DANS LE PROFIL QUE LE LECTEUR PORTE DEPUIS LE LOT 2.2.e ([ProfilDeBalayage]), plus
-// dans deux variables de paquet : un harnais de calibration peut toujours balayer {0,1,2,3} pour trouver
-// la valeur qui resynchronise le composant APRES un composant qui en depend (i10
-// object-parent-state, i19/i20/i23 unit-*), mais ce qu il pose voyage desormais avec le lecteur.
-// Verdict du workflow deser-fix : la desynchronisation d i10 en image-cle est CE parametre, pas
-// un defaut de code.
-
-// paramByComponent porte le VRAI param_4, par composant, tel que la capture live le
-// mesure (colonne `param4` de .ai/V7.5/dumps/ce_capture_delta.csv). Extraction sur
-// l'archétype bipède (ti=35) : la valeur est CONSTANTE pour un composant donné —
-// aucun composant n'y présente deux valeurs sur 464 010 mesures.
-//
-//	i13 object-maximum-vitalities  -> 3       i23 unit-malleable-property     -> 4
-//	i15 object-low-frequency       -> 2       i43..i46 weapon-state-type-info -> 2
-//	i17 object-frame-configuration -> 0       i53 biped-malleable-property    -> 2
-//	i18 unit-control               -> 2       i57/i59 biped-spartan-ability*  -> 2
-//	tout le reste                  -> 1
-//
-// AVANT ce correctif, une SEULE variable globale valant 0 servait tous les composants —
-// c'est-à-dire la valeur juste pour le seul i17, et fausse pour tous les autres.
-// La table ne change QUE les composants dont le déser branche sur param_4 (i10, i19,
-// i20, i23 et flock-destination) ; elle est neutre partout ailleurs.
+// Provenance des vingt valeurs : capture live `param4` sur `ti=35` (464 010 mesures, aucune
+// valeur double pour un composant donne) pour les quinze premieres ; slot `+0x10` du descripteur
+// (lot 5.1.1) pour les cinq filtres de `ti=12`.
 var paramByComponent = map[string]uint32{
-	"object-maximum-vitalities-component":  3,
-	"object-low-frequency-component":       2,
-	"object-frame-configuration-component": 0,
-	"unit-control-component":               2,
-	"unit-malleable-property-component":    4,
-	compWeaponStateTypeInfo:                2,
-	"biped-malleable-property":             2,
-	"biped-malleable-property-component":   2,
-	abilityPredictedNameAlt:                2,
-	abilityPredictedName:                   2,
-	// i2 dyn.-prec. (ti=38/39/40/43) : arg5 de FUN_140c5f7ec. >= 2 fait lire un bit de
-	// porte C supplémentaire qui, posé, bascule la charge utile sur FUN_142e29bac
-	// (R(1)[+R(30)] + R(30)) au lieu de FUN_140c5fa84. MESURÉ le 2026-09-03 sur la bande
-	// ti=40 de `0d76e8f1` et `fccc61cd` : avec param=1 l'histogramme des quanta i4 qui
-	// suit reste étalé (27,7 % / 39,3 % de quanta au-dessus de 192) ; avec param=2 il se
-	// concentre au plein — 93,6 % / 98,5 %, au-dessus même du témoin bipède (82,9 %
-	// / 86,2 %), et sans perdre un seul record (1249/1249 et 201/201 atteignent i4).
-	// Même nature de mesure que la clé i59 ci-dessous.
-	compForwardUpDynPrec: 2,
-	// i59 manquait à la table (2026-08-16, plan PLAN_GRAPPIN_LIGNE) : le commentaire
-	// ci-dessus disait « i57/i59 -> 2 » mais seules les clés d'i57 existaient, donc la
-	// queue R(3) d'i59 (FUN_140fc147c, param_4>1) n'était JAMAIS lue offline. Mesure :
-	// chaque record i59 finissait à 3 bits exactement du record suivant (écarts
-	// p10=p50=p90=3, n=988, TestI59AnchorWalkProof) ; avec la clé, l'écart tombe à 0.
-	// Les deux étiquettes viennent des constantes de `grapple_state.go` (une seule source par
-	// littéral de registre) : le lecteur d'i59 et cette table ne peuvent plus diverger.
-	grappleComponentNameAlt: 2,
-	grappleComponentName:    2,
+	compObjectMaximumVitalities:          3,
+	compObjectLowFrequency:               2,
+	compObjectFrameConfiguration:         0,
+	"unit-control-component":             2,
+	"unit-malleable-property-component":  4,
+	compObjectParentState:                3,
+	"unit-actor-control-component":       2,
+	"unit-actor-state-component":         4,
+	compWeaponStateTypeInfo:              2,
+	"biped-malleable-property":           2,
+	"biped-malleable-property-component": 2,
+	abilityPredictedNameAlt:              2,
+	abilityPredictedName:                 2,
+	compForwardUpDynPrec:                 2,
+	grappleComponentNameAlt:              2,
+	grappleComponentName:                 2,
+	compNavpointDistanceFilters:          3,
+	compNavpointOffscreenFilters:         2,
+	compNavpointOccludedFilters:          2,
+	compNavpointVisibilityFilter:         2,
+	compNavpointDockingFilter:            2,
 }
 
-// paramForComponent rend le param_4 du composant `name`. Défaut 1 : c'est la valeur
-// mesurée pour l'écrasante majorité des composants (0 était un choix « conservateur »
-// jamais mesuré, et faux).
-func paramForComponent(br *Lecteur, name string) uint32 {
-	if v, ok := paramByComponent[name]; ok {
-		return v
-	}
-	// LE REPLI DU HARNAIS N'EST CONSULTE QUE HORS TABLE, et c'est ce qui rend
-	// [paramMesureDuComposant] equivalent pour un nom TABULE — cf. sa godoc.
-	if br.p.ParamEtatImpose { // un harnais de balayage a forcé la valeur, et le lecteur la porte
-		return br.p.ParamEtat
-	}
-	return 1
-}
-
-// paramMesureDuComposant rend le `param_4` MESURÉ d'un composant, sans le repli du harnais.
+// paramMesureDuComposant rend le `param_4` d un composant PAR SON NOM.
 //
-// POUR LES APPELANTS QUI N'ONT PAS DE LECTEUR DE BITS — un seul, la grammaire d'orientation
-// des archétypes `ti=38/39/40/43` (`offline_aim.go`), qui compose une grammaire AVANT d'ouvrir
-// le moindre lecteur. Le nom qu'elle passe (`object-forward-and-up-dynamic-precision`) est DANS
-// la table : `paramForComponent` rend donc la même valeur par la même branche, et le repli du
-// harnais — la seule chose que cette fonction n'a pas — lui est inatteignable.
+// UN SEUL APPELANT, ET C EST SA RAISON D ETRE : la grammaire d orientation des archetypes
+// `ti=38/39/40/43` (`offline_aim.go`) compose sa grammaire AVANT d ouvrir le moindre lecteur et
+// sans registre, donc sans `Archetype.Level`. Partout ailleurs la valeur descend du FILM, par le
+// parametre `level` du traverseur — c est la seule source.
+//
+// Le nom qu il passe (`object-forward-and-up-dynamic-precision-component`) a le meme `level` (2)
+// sur les quatre archetypes qui le portent ; le ratchet ci-dessus le tient.
+//
+// DEFAUT 1 pour un nom hors table : c est la valeur du `level` de l ecrasante majorite des
+// composants du registre. Il n est atteignable par aucun appelant d aujourd hui.
 func paramMesureDuComposant(name string) uint32 {
 	if v, ok := paramByComponent[name]; ok {
 		return v
 	}
 	return 1
 }
-
-// recordStateParam rend le `param_4` que le harnais a forcé sur ce lecteur, 0 sinon. Les deux
-// seuls désérialiseurs qui le lisent SANS passer par la table par composant
-// (`consumeBipedMalleableProperty`, `consumeBipedSlide`) le prennent ici.
-//
-// C'ÉTAIT LA VARIABLE DE PAQUET `recordStateParam`, avec son drapeau
-// `recordStateParamOverride`, JUSQU'AU LOT 2.2.e.
-func (b *Lecteur) recordStateParam() uint32 { return b.p.ParamEtat }

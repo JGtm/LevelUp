@@ -13633,10 +13633,6 @@
 {"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"output","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_Valid","Output":"=== RUN   TestCompareRequest_Validate_Valid\n"}
 {"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"output","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_Valid","Output":"--- PASS: TestCompareRequest_Validate_Valid (0.00s)\n"}
 {"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"pass","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_Valid","Elapsed":0}
-{"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"run","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_WithFilters"}
-{"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"output","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_WithFilters","Output":"=== RUN   TestCompareRequest_Validate_WithFilters\n"}
-{"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"output","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_WithFilters","Output":"--- PASS: TestCompareRequest_Validate_WithFilters (0.00s)\n"}
-{"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"pass","Package":"levelup/go-api/internal/domain","Test":"TestCompareRequest_Validate_WithFilters","Elapsed":0}
 {"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"run","Package":"levelup/go-api/internal/domain","Test":"TestNewPrivacyWarning_None"}
 {"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"output","Package":"levelup/go-api/internal/domain","Test":"TestNewPrivacyWarning_None","Output":"=== RUN   TestNewPrivacyWarning_None\n"}
 {"Time":"2026-06-26T23:46:12.4535229+02:00","Action":"output","Package":"levelup/go-api/internal/domain","Test":"TestNewPrivacyWarning_None","Output":"--- PASS: TestNewPrivacyWarning_None (0.00s)\n"}
@@ -33363,10 +33359,6 @@
 {"Time":"2026-06-26T23:49:47.1665527+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetEncounterStats_NoCommonMatches","Output":"=== RUN   TestCompareRepo_GetEncounterStats_NoCommonMatches\n"}
 {"Time":"2026-06-26T23:49:47.1752693+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetEncounterStats_NoCommonMatches","Output":"--- PASS: TestCompareRepo_GetEncounterStats_NoCommonMatches (0.01s)\n"}
 {"Time":"2026-06-26T23:49:47.1752693+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetEncounterStats_NoCommonMatches","Elapsed":0.01}
-{"Time":"2026-06-26T23:49:47.1752693+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetCrossMatchSample_WithData"}
-{"Time":"2026-06-26T23:49:47.1752693+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetCrossMatchSample_WithData","Output":"=== RUN   TestCompareRepo_GetCrossMatchSample_WithData\n"}
-{"Time":"2026-06-26T23:49:47.1913752+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetCrossMatchSample_WithData","Output":"--- PASS: TestCompareRepo_GetCrossMatchSample_WithData (0.02s)\n"}
-{"Time":"2026-06-26T23:49:47.1913752+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetCrossMatchSample_WithData","Elapsed":0.02}
 {"Time":"2026-06-26T23:49:47.1913752+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetPlayerATHFor_NotInPool"}
 {"Time":"2026-06-26T23:49:47.1913752+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetPlayerATHFor_NotInPool","Output":"=== RUN   TestCompareRepo_GetPlayerATHFor_NotInPool\n"}
 {"Time":"2026-06-26T23:49:47.201938+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetPlayerATHFor_NotInPool","Output":"--- PASS: TestCompareRepo_GetPlayerATHFor_NotInPool (0.01s)\n"}
@@ -44086,10 +44078,6 @@
 {"Time":"2026-06-26T23:51:30.8008158+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildMetrics_AvailabilityATHZero","Output":"=== RUN   TestBuildMetrics_AvailabilityATHZero\n"}
 {"Time":"2026-06-26T23:51:30.8008158+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildMetrics_AvailabilityATHZero","Output":"--- PASS: TestBuildMetrics_AvailabilityATHZero (0.00s)\n"}
 {"Time":"2026-06-26T23:51:30.8008158+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildMetrics_AvailabilityATHZero","Elapsed":0}
-{"Time":"2026-06-26T23:51:30.8008158+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildMetrics_IsLocalSample"}
-{"Time":"2026-06-26T23:51:30.8008158+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildMetrics_IsLocalSample","Output":"=== RUN   TestBuildMetrics_IsLocalSample\n"}
-{"Time":"2026-06-26T23:51:30.8008158+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildMetrics_IsLocalSample","Output":"--- PASS: TestBuildMetrics_IsLocalSample (0.00s)\n"}
-{"Time":"2026-06-26T23:51:30.8013435+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildMetrics_IsLocalSample","Elapsed":0}
 {"Time":"2026-06-26T23:51:30.8013435+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestCompareService_Latency_P95"}
 {"Time":"2026-06-26T23:51:30.8013435+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestCompareService_Latency_P95","Output":"=== RUN   TestCompareService_Latency_P95\n"}
 {"Time":"2026-06-26T23:51:31.8119788+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestCompareService_Latency_P95","Output":"--- PASS: TestCompareService_Latency_P95 (1.01s)\n"}
@@ -59822,7 +59810,6 @@
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAttachementPhase0CensusVehicules","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildBombArmingsDedupliqueLaPaire","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildBombArmingsEcarteLesSegmentsSousLePlein","Elapsed":0}
-{"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildBombArmingsEcarteLeCycleDeRecharge","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildBombArmingsGardeDeuxArmementsDistincts","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildBombArmingsConfrontationRetientToutOuRien","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildBombArmingsMecheMesureeEtPausable","Elapsed":0}

@@ -1,3 +1,167 @@
+## [2026-09-19] Modes : la forme INVERSÉE des pair_name donne enfin un mode, et « Doubles Slayer » a son FR — Complété (branche `feat/mode-label-grammaire-inversee`, worktree `../LevelUp-wt-mode-label`)
+
+**Demande** : la liste déroulante « Mode » de l'Explorer affiche des entrées en anglais qui ne
+sont pas des modes (« Arena », « Arena Neutral Flag », « BTB Fiesta », « Doubles »). Diagnostic
+vérifié sur pièces par le pilote : les pair_name de l'API existent sous DEUX grammaires —
+« Conteneur:Mode on Carte » (`Arena:Slayer on Bazaar`) et la forme INVERSÉE « Mode:Conteneur
+[qualificatif] on Carte » (`Slayer:Arena on Live Fire`, `CTF:Arena Neutral Flag on Cliffhanger`,
+`CTF:BTB Fiesta on Highpower`, `Slayer:Doubles on Empyrean`). `NormalizeModeLabel` prenait
+TOUJOURS la partie après le dernier « : », donc rendait le conteneur comme mode sur la forme
+inversée — jamais traduit par `mode_name_tr`, et 531 matchs « Arena » de la base partagée
+mélangeaient CTF et Slayer dans un même item de filtre. `InferModeCategoryFromPairName`
+gérait déjà la forme inversée pour la CATÉGORIE ; le LIBELLÉ non.
+
+**Décision technique** (lot A) : la grammaire est corrigée au chokepoint unique
+(`analysis.NormalizeModeLabel`, 39 appelants inchangés). Les jetons de CONTENEUR vivent en UN
+seul endroit, le paquet feuille `analysis/modelabel` (`container.go` : `SplitContainer`,
+`IsContainer` — mot entier, insensible à la casse, jeton le plus long gagne) : `analysis` ne
+peut pas importer `games/halo_infinite` (cycle), et `modePrefixToCategory` porte une
+sémantique différente (Gruntpocalypse/Firefight y sont des catégories, pas des conteneurs) —
+renvoi posé dans son commentaire, pas de troisième liste. L'étape 2 est extraite dans
+`extractModeFromPairName` + `invertedModeLabel` (limite des 80 lignes) : identité de playlist
+à gauche → identité (règle intacte, testée AVANT le conteneur car Super Fiesta est aussi un
+conteneur) ; gauche = conteneur → droite (inchangé) ; droite COMMENCE par un conteneur → forme
+inversée : reste vide → gauche ; reste = identité → identité ; sinon `reste + " " + gauche`
+(ordre des clés `mode_name_tr` : « Neutral Flag CTF », « Tactical Slayer », « Fiesta CTF ») ;
+sinon → droite (défaut, `Infection:Alpha Zombies` → « Alpha Zombies »). Piège rencontré et
+fermé : sur la forme inversée le suffixe de carte suit le qualificatif, il se retire AVANT le
+recollage (sinon l'étape 3 mangeait « on Cliffhanger CTF » et perdait le mode) ; `isWordChar`
+accepte les majuscules parce que `SplitContainer` teste l'octet brut (« ArenaX »).
+Lot B : seed `mode_name_tr` `Doubles Slayer` → « Assassin en duo » (INSERT OR IGNORE, rejoué au
+boot par `ReconcileMetadataSeeds`) ; complément sur relecture du pilote : `Tactical Slayer` → « Assassin
+tactique » (clé produite par le recollage `Slayer:Arena Tactical`, sans ligne dans `mode_name_tr` ;
+constantes `modeTacticalSlayer`/`modeTacticalSlayerFR` partagées avec la seed playlist, goconst) ;
+« Castle Wars », « Oddball », « VIP » restent en anglais
+par décision utilisateur (jamais traduits dans le jeu), rien à noter comme dette.
+
+**Résultats observés** : `go build ./...` EXIT 0 ; `go vet ./internal/analysis/...
+./internal/games/...` EXIT 0 ; `go test` sur analysis/games/platform/duckdb/service/ops/
+replaybuild/api : EXIT 0 (72 paquets ok, 0 FAIL) ; `make go-api-lint`
+EXIT 0 (après extraction de trois constantes `ContainerArena`/`ContainerDoubles`/`ContainerSuperFiesta` réclamées par goconst), zéro nouvelle issue. Aucun test existant n'attendait l'ancien comportement
+sur une forme inversée (les `Team Slayer:Arena` / `CTF:Arena` des tests de `modelabel`,
+`objectives` et `home_recent_helpers` ne passent pas par `NormalizeModeLabel`). Nouveaux
+tests : `TestNormalizeModeLabel_DeuxGrammaires` (30 cas : les deux grammaires, reste vide /
+identité / recollé, casse, avec et sans carte, ` - Forge`, mot entier « Arenax »),
+`_CarteConnue` (mapLabels), `TestSplitContainer` (19 cas), `TestIsContainer`. CI : le cas de
+casse « ctf:arena neutral flag » écrivait le littéral marqueur du ratchet
+`TestNoDuplicateObjectiveSubModeList` (faux positif) — passé en casse mixte, allowlist intacte.
+
+**Hors périmètre, noté, non traité** : `Firefight:Classic` → « Classic » (Firefight n'est pas
+un conteneur de grammaire, la partie droite reste le mode — à trancher si l'Explorer doit
+dire « Firefight » ou « Classic ») ; doctrine `ExtractKnownMode` (fiche de match) vs libellé
+Explorer non revisitée ; `mode_category.go` a son propre `stripMapSuffix` (2e copie du
+retrait de carte, sur « on » seulement, existait avant ce lot).
+
+**Prochaine étape** : fusion dans `feat/v75` sur signal utilisateur ; vérifier visuellement la
+liste « Mode » de l'Explorer après redémarrage du serveur (les libellés viennent de la
+normalisation à la lecture, aucune migration de données).
+## [2026-09-20] Le ton derive d'un jeton quitte les features pour le systeme de jetons (`tokenTone`) — Complete (branche `feat/v75`)
+
+**Demande** : la session `levelup-go-migration-ad` signale que mon fichier `assistTierTone.ts`
+(commit a1fe8c1c8) fait rougir le gate `lint-no-hardcoded-colors` (2 occurrences de `oklch(`,
+plafond P8.1 = 0) et bloque sa propre poussee. Deux sorties proposees : marqueur `color-allow`
+sur les deux lignes, ou deplacement dans le systeme de jetons.
+
+**Decision technique** : la deuxieme. Le gate ne balaye que `features/`, `components/` et
+`lib/replay/` — le produit, celui qui CONSOMME des jetons ; `lib/accessibility/` est l'endroit ou
+la couleur se CALCULE (precedent `hexComplement`, et les palettes y portent des hex). La
+derivation generique part donc dans `lib/accessibility/tokenTone.ts` (`tokenTone(color, step)` :
+meme teinte, clarte decalee vers le premier plan du theme via `light-dark(oklch(from …))`, chroma
+relevee, ecart plafonne a 0.3 au-dela duquel le ton ne se lit plus comme le meme role), exportee
+par le barrel. `features/_shared/assists/assistTierTone.ts` ne garde que la correspondance
+tranche -> ecart (0 / 0.12 / 0.24), qui est du domaine des assistances. Deux `color-allow` nommes
+restent sur les deux lignes de `tokenTone.ts` : la fonction y est le foyer legitime du calcul,
+et le marqueur dit pourquoi. Ma faute a l'origine : au lot de la tuile j'avais joue `eslint` et
+`vitest` mais PAS `npm run lint:colors`, qui est un gate de pre-poussee ET un job CI.
+
+**Resultats observes** : `lint:colors` clean (0 violation), `tsc -b` a cache purge vert,
+`lint:fields` 2008 fichiers sans violation, knip sans nouvelle entree, vitest cible 29 fichiers /
+312 tests verts. Test ajoute (`tokenTone.test.ts`) : ecart nul, decalage dans les deux themes,
+plafonnement, et surtout « la sortie ne contient que le jeton recu, aucune couleur litterale ».
+
+**Prochaine etape** : pousser sur `feat/v75`, surveiller la CI, et rendre la main a
+`levelup-go-migration-ad` qui attend pour fusionner sa branche.
+
+## [2026-09-19] Tuile de match (accueil) : barre frags / assistances / morts, bloc des frags assistés, espacements — Complété (branche `feat/v75`)
+
+**Demande** : (1) le segment rouge des morts de la barre composite paraît « plus épais » ou
+décalé ; (2) la barre des frags assistés (livrée le 18/09) doit porter sa légende DESSOUS, sans
+la part en %, avec des tons moins ternes, et son emplacement doit être réservé pour que les
+tuiles voisines de la grille restent alignées ; (3) en cours de route : un peu plus d'air entre la
+légende frags / assistances / morts et la barre des frags assistés, un peu moins sous sa légende,
+moins entre la section MMR et les médailles, et entre les médailles et les citations.
+
+**Décision technique** :
+- Barre composite : les bouts arrondis passent sur les SEGMENTS (`rounded-l-full` sur le
+  premier, `rounded-r-full` sur le dernier, comme `combat-yield-bar`) et le conteneur ne rogne
+  plus (`rounded-full overflow-hidden` retiré). Un conteneur qui rogne ses enfants sans
+  anti-crénelage aux coins laisse le dernier segment (rose vif) dépasser de la pilule — la
+  seule différence structurelle possible entre le rouge et les deux autres, les trois `div`
+  étant identiques par ailleurs. Verdict visuel à l'utilisateur ; si l'effet persiste, la
+  cause est perceptive (rose-500 plus clair et plus saturé que emerald-600 / sky-600) et se
+  traite au niveau du jeton `stat-deaths`, pas de la tuile.
+- Tons des tranches d'assistance : les opacités 35 / 65 / 100 % sont remplacées par trois
+  clartés OKLCH du jeton (`assistTierTone`, `light-dark(oklch(from …))`, chroma relevée).
+  Mesuré avant de trancher : aucune variante plus vive de `assist-received` ne tient le
+  garde-rail `combatStatTokens.test.ts` (yellow-600, amber-600, orange-600, `#B27A00`… :
+  contraste OK mais ΔE deutéranopie 5-7 < 8) — le jeton est pinné, la barre s'éclaircit
+  donc par dérivation, même teinte. Le changement porte sur le composant partagé, donc
+  aussi sur le papillon de la page Relations (un seul langage visuel, un seul foyer).
+- Bloc des frags assistés : ordre barre → légende (comme la barre du dessus), `{share}`
+  retiré de la clé `common.match_card.assisted_frags` (manifeste régénéré), barre `h-2`
+  alignée sur la composite, emplacement réservé `h-[24px]` rendu vide (`aria-hidden`) sans
+  mesure — toujours aucun « — » ni « 0 » fabriqué.
+- Légende des frags assistés : ton FORT du sens (`assistTierTone(…, 'high')`, même teinte) au
+  lieu du jeton brut, trop terne en texte ; 6 px entre la barre et sa légende (slot 24 px).
+- Espacements : `mt-3` au-dessus du bloc assisté, `pb-1` sous lui (KDA `pt-2.5` au lieu de
+  `pt-3`), médailles et citations `mt-2 pt-2 pb-2.5` (au lieu de `mt-3 pt-2.5 pb-3`).
+
+**Résultats observés** : `tsc -b` vert, eslint 0 problème sur les fichiers touchés
+(`assistTierTone` extrait dans son module pour ne pas déclencher `react-refresh`), vitest
+ciblé 18 fichiers / 132 tests verts, garde-rails (`guard`, `ratchet`) 90 fichiers verts ;
+suite complète lancée. Tests ajoutés : bouts arrondis sur les segments, légende après la
+barre et sans %, gabarit identique mesuré / vide, tons `assistTierTone`.
+
+**Prochaine étape** : verdict visuel de l'utilisateur sur l'accueil (thème sombre) et sur le
+papillon de Relations ; commit sur son signal.
+
+## [2026-09-19] Lot d'hygiène compare / armes / frontières (4 items du backlog) + nettoyage du backlog — Complété (branche `feat/hygiene-compare-armes`, worktree `LevelUp-wt-hygiene`, exécuté par Opus sous pilotage, CI de branche VERTE au niveau job le 2026-09-19 : 9 jobs verts, E2E Playwright skippé par condition)
+
+**Demande** : chiffrer l'item « Hermétisme FICHIERS du mode démo » (verdict : S-M, post-release,
+détail au message du 2026-09-19 — les fuites tombent dans la couche éphémère du conteneur en prod,
+seule une démo lancée sur un poste de dev écrit dans le dépôt vivant), lancer maintenant les
+petits lots faisables, purger du backlog ce qui était déjà fait.
+
+**Décision technique** : quatre items en un lot, un commit chacun, dans un worktree dédié.
+A retrait de `CompareRequest.Filters` (jamais envoyé, jamais lu) ; C `buildTopWeapons`
+(séries temporelles) délègue le classement à `topWeaponKillRows` et le garde-rail
+`compare_weapons_guard_test.go` interdit désormais le départage `WeaponID <` partout ; D les
+deux modules partagés quittent `features/synthesis/` (`components/ui/section-primitives.tsx`,
+`components/charts/WeaponAccuracyChart.tsx`), deux dérogations inter-features tombent.
+B a changé de nature en cours de route : l'agent a REFUSÉ la suppression sur la prémisse du
+backlog (« les deux lectures balaient la même table ») et l'a mesurée fausse sur une copie du
+shared Halo 5 — `GetLocalStats` exclut la campagne, `GetCrossMatchSample` non ; pour un B
+présent uniquement en coop campagne le repli tirait et servait des stats de campagne comme
+échantillon matchmade. Décision du pilote : c'est un défaut ; exclusion alignée ⇒ branche
+morte par construction ⇒ retrait complet plutôt qu'une version alignée conservée en code mort.
+
+**Résultats observés** : 4 commits `e4238dea6`→`aa1a8dc2c`, 23 fichiers, +214/−344 ; 12 lignes
+retirées de la baseline JSONL (3 tests supprimés) ; contrat régénéré (`is_local_sample` venait
+de la réflexion Huma : 2 lignes d'`openapi.yaml`, 1 de `generated.ts`). Gates rejoués par le
+pilote dans le worktree : go vet/test (service, domain, duckdb, port, api, archlint) 0 `--- FAIL`,
+tsc -b après purge du cache, lint inter-features 7/7. Agent : eslint 0 erreur, vitest 7984 tests
+verts, openapi-gen -check et types frais. Changement de comportement assumé (C) : une arme sans
+libellé résolu n'est plus publiée dans le top armes des séries temporelles (barre anonyme avant),
+conforme à la doctrine déjà appliquée par la Synthèse et le Face-à-face.
+Backlog : entrée echarts (livré le 2026-08-03) et doc du défaut async (déjà dans
+`docs/CONFIGURATION.md`) retirées ; 4 sections du lot fermées avec la correction de prémisse de B ;
+2 items neufs issus des découvertes — le garde-rail `TestCampaignExclusionStructuralCoverage` ne
+voit pas le SQL construit localement (c'est lui qui aurait dû attraper B), et deux inexactitudes
+web mineures (dérogation morte `personal-stats=>synthesis`, note fausse du README des charts).
+
+**Prochaine étape** : CI de branche verte au niveau job, puis fusion dans `feat/v75` au signal de
+l'utilisateur ; `.ai/` (backlog + journal) commité sur `feat/v75` à la fusion.
+
 ## [2026-09-17] Explorer : le bloc « Portée des frags » remplace son placeholder, et la famille du graphe est rangée — Complété (branche `wt/explorer-portee-frags`)
 
 **Demande** : mettre dans le placeholder de la 3e rangée de l'encart cible la même chose que le
@@ -696,6 +860,28 @@ Nilton410 15 → 47, SirAvlas 3 → 22 ; binôme MASTER551446 3 → 43/189 px au
 désynchronisé pour JGtm (2 clés) — préexistant, hors périmètre.
 
 **Prochaine étape** : GO utilisateur du 2026-09-17 (échelle log validée) — commit, fusion de origin/feat/v75 et push vers feat/v75 ; CI de branche à confirmer au niveau job.
+## [2026-09-19] Post-chantier decodeur — lot 5.1 (reapparition des objectifs et des vehicules) FUSIONNE dans l integration, schema 63
+
+**Statut** : Complete (fusion `350af7c9f`, references d equivalence re-figees `ce commit`). Branche `feat/decfilm-51` (base 83a562ea1, 22 commits), executant Opus pilote par le superviseur.
+
+**Ce que le lot livre** (plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, section « Post-chantier — lot 5.1 ») :
+- 5.1.1 : le point de navigation `ti=12` lu de `i1` au minuteur manuel (douze lecteurs, `param_4` des cinq filtres) ; 5.1.2 : NEGATIF MESURE — le film n ecrit pas le compte a rebours de retour du drapeau dans `i11`/`i12` (0/588) ; 5.1.3 tombe (rien de prouve a publier).
+- 5.1.6 : la jauge de retour du drapeau PROUVEE = `ti=13 i1` tag 3 (884 echantillons, 100 % dans un lacher, 13/13 au plein a l auto-retour, 0/14 si repris) -> publiee `flagCarries[].spans[].returnProgress` (serie de `GaugePoint`), web : ligne « Retour N % » / « Return N% » sur `ReplayFlagTip`.
+- 5.1.7-a : `param_4` (largeur de 13 composants) VIENT DU REGISTRE DU FILM (`+0x100` de l entree) — preuve chez l ecrivain (objdump, 13/13 : chemin image-cle = niveau du registre, chemin delta = `vtable[0]` constante de l exe), hypothese du miroir CONFIRMEE sur 19 films (le registre = la constante du build enregistreur ; ecarts monotones : `ti=40 i2` = 1 jusqu a HI_1_9_0, 2 depuis) ; le film est autoportant. Ratchet PAR BUILD (7 mini-bobines, table vs exe vs registre) remplace un ratchet mono-registre qui etait un faux vert.
+- 5.1.7-b : l etat par defaut de `ti=40` CABLE (`consumeDefaultStateTI40`, feuille 4 lue — ses globaux viennent du catalogue de carte depuis 3.4.1) : `4f77afc1` vies de vehicule publiees 97 -> 149, `sansPosition` 103 -> 0, fins datees 3 -> 11 = morts appariees 11 ; `a349fea8` 14 = 14, 169/265. Golden 0.A.3 : le bloquant de `ti=40` est enfin nomme (`i30`).
+- 5.1.7 (1) : un chassis INCONNU peut porter un occupant (`vehicleFamilyIsRideable("") == true`) — 7 tirs d un Warthog retrouves sur `11de8353`.
+- 5.1.8 : regression de 5.1.1 sur l ASSAUT (calque eteint sur `c75f33b8`) : l armement de bombe = progression radiale du navpoint `ti=12 i14`, dont les lectures ont presque double (1 148 -> 2 012) ; le classement exigeait « finit au sommet » alors que l anneau atteint 254 puis redescend a 127 (mode meche). Regle reecrite : un armement = une montee qui ATTEINT le plein, datee au premier plein ; 4 armements retrouves aux memes ms (meche 4 930 ms x4). Test inverse reecrit avec justification datee (decision de mecanique de jeu : l utilisateur garde le dernier mot).
+- 5.1.5 : `vehicleCycles[]` PAR EMPLACEMENT de naissance (miroir de `weaponPads`/`PadCycle`, agglomeration 2 m, juge `gwPadsCycleFromGaps` reutilise) ; 2 cycles etablis sur 17 films (`4f77afc1` ghost 44,1 s ; `50247b26` mongoose 70,6 s), les manques dominent — aucune surface web vehicule dans ce lot (aucune infobulle vehicule n existe : transmis au lot de rendu).
+- Schema 62 -> 63 ; `SchemaDesFaits` 2 -> 3 (la jauge voyage par les gardes de mode, blob d entrees inchange : aucun film redecode) ; `grammar.Rev` -> `grammar-2026-09-18.3`, `facts.Rev` par valeur (meme rang `killsource-2026-09-18`) ; Wraith = chassis `10754375` (Theater utilisateur).
+
+**Verdicts Theater de l utilisateur (2026-09-19)** : lecteur de morts de vehicule juste 5/5 a la seconde (`4f77afc1` 800/1, 864/1 = Wraith, 916/1 ; `bfecd02b` 777/1) ; la mort de la BASE M2 sur le Razorback 776/1 etait FAUSSE (despawn sans explosion a 3:29) — la question du lot 3.4 est fermee dans le sens de la tete. Occupant « Yessireezy siege 1 » FAUX (tue a cote par un mortier de Wraith) -> decouverte. Theater ne montre que les matchs du compte : `084a804d` et 4 autres non consultables ; les 5 fins contestees de `084a804d` sont acceptees comme correction de grammaire (lues par une largeur prouvee fausse : `param` 0 par ex aequo contre 3 chez l ecrivain), reversible avant recuisson.
+
+**Gates avec decodage** : corpus 17 temoins `--base=83a562ea1` : gains 988, pertes 104 toutes NOMMEES (`084a804d` deathsRead 9 -> 4 et derives, `11de8353` deathsRead 5 -> 4 / noPosition 26 -> 1, `bombArmings.rises` 73 -> 65 = denominateur, `vehicles.ambiguous` +1 sur deux films = doute publie) ; `killsource`, `grenades`, positions de bipede intacts sans exception. `replay-equiv` 20 : 20 differents, meme ecart partout (etape `flagGauge` inseree = decalage positionnel + flag/artifact/killsource/vehicles/pads/killRefs), re-figes par le pilote : 20 x vehicles / killsource / flagGauge / flag / artifact, 9 x pads, 3 x killRefs, et sur UN film chacun abilityRanks / inventoryDeltas / equipmentChanges (+-1 ligne : largeur de `biped-malleable-property` lue au registre sur un build HI_1_10_0 — correction par la doctrine du film autoportant) et bombReads (5.1.8). S8 `-deux-passes` 3 films : identiques a l octet.
+
+**Lecon de pilotage** : six commits de grammaire (5.1.1 a 5.1.6) livres sans corpus gate parce que la voie de decodage etait prise par le backfill -> la regression d assaut a ete vue quatre commits plus tard. Regle : corpus gate cible a CHAQUE commit de grammaire ; on suspend le travail long, on ne saute pas le gate. Seconde lecon : un chiffre « ne gagne rien » mesure avec une sonde partielle a ete reporte sans re-cuisson (5.1.7-b) — rectifie par l executant, le diagnostic initial (l en-tete d image-cle) etait juste.
+
+**Reste** : fusion dans `feat/v75` ; retrait du worktree `wt-decfilm-51` ; backfill killsource UNE fois (le plus tard possible, apres le lot de rendu qui peut encore faire bouger `grammar.Rev`) ; republication des artefacts au schema 63 sur accord de l utilisateur ; lot de rendu du rejeu (4 constats du 2026-09-19 : orientation/taille/tirs des vehicules, sons des bases, couleur de capture, remplacements + kill feed de `b1ad85eb`) ; recherche « etats de mouvement du Spartan » a la toute fin.
+
 ## [2026-09-18] Chantier decodeur de film — CLOTURE DE M4 ET DU CHANTIER : les faits d un film sont persistes, la publication rejoue depuis eux, et « a recuire » devient un verdict par couche
 
 **Statut** : Complete (code M4, documents de cloture) / En cours (gestes du pilote : corpus gate final, passe de republication M4-P4, fusion dans `feat/v75`).
@@ -112102,3 +112288,64 @@ de 45 % — à juger au gate visuel ; worktree `LevelUp-wt-explorer-rangee3` ent
 **Conclusion / prochaine étape** : pile de dev basculée sur le worktree (`make dev
 LEVELUP_DATA_ROOT=C:/Users/Guillaume/Projects/LevelUp`) pour le gate visuel ; sur signal,
 fusion dans `feat/v75` (CI = verdict d'autorité), suppression des trois worktrees de lot.
+## [2026-09-19] Citations : « Chasse au rapatrieur » desactivee, visuels « Capture du drapeau » et « Crane intouchable » corriges — Complete (code + docs ; re-seed local et commit en attente du user)
+
+- Demande utilisateur : (1) « Chasse au rapatrieur » (`returner_takedown`) porte a confusion et
+  n'est pas une stat interessante a suivre -> desactiver ; (2) le visuel de « Capture du
+  drapeau » a un fond blanc au lieu d'un fond transparent ; (3) « Crane intouchable » sert une
+  image d'ARME -> generer un visuel maison s'il n'en existe pas.
+- Verification sur pieces : « Chasse au rapatrieur » est une citation MAISON (nom FR/EN et
+  definition fixes par l'utilisateur le 2026-07-25, plan V721-03 ; seule la colonne
+  `flag_returners_killed` est native). Le PNG de « Capture du drapeau » (redimensionne le
+  2026-09-10 depuis `E:\Sans titre.png`) portait un DAMIER de transparence cuit dans les pixels
+  (whites f6-fe + gris c4/e5, 396 pixels seulement en alpha < 255) : la source etait deja un
+  clipart a fond simule. `H5G_citation_Éradicateur.png` est bien une arme Halo 5 (JSON du wiki :
+  categorie « Arme », « Tuez un Spartan adverse a l'aide de l'eradicateur ») ; Halo 5 n'a
+  AUCUNE citation Oddball (« Is that my ball? » = medailles defensives Assaut/Grifball,
+  « Oddly specific » = grenade sur arme puissante) -> visuel a produire.
+- Decision technique principale :
+  - `returner_takedown` : `Enabled: false`, `ImagePath` vide — meme patron que `flag_steals`
+    (2026-09-10) et `flag_defender` (I7). Listee (inventaire + parite EN), ignoree par le moteur
+    (`WHERE enabled IS NOT FALSE`). Colonne intacte ailleurs (roles d'objectif, radar).
+  - Troisieme copie du test `TestX_Disabled` -> une seule table `TestDisabledCitations`
+    (flag_defender, flag_steals, returner_takedown) avec la raison datee par cas (regle des
+    <= 2 copies). Aucun des deux anciens noms dans `.ai/baselines/tests_pre_migration.jsonl`.
+  - « Capture du drapeau » : fond retire par remplissage depuis les bords (luminance > 140,
+    borne par le trait noir), frange anti-crenelee convertie en encre noire a alpha
+    proportionnel ; interieur blanc du drapeau conserve. 6 133 pixels vides, 667 de frange.
+    Outil jetable Go dans le scratchpad (pas dans le depot). 100x100, 9 658 -> 4 360 o.
+  - « Crane intouchable » : ecusson maison `static/commendations/halo_infinite/HI_citation_Crane_intouchable.png`
+    (ecu pointu + crane + bulle de bouclier, palette des citations H5 a5b9bf/6e8288/445156/2a3238),
+    SVG rasterise par Chrome headless (profil dedie, fond 00000000) en 400x400 puis reduit
+    par moyenne de boite a 100x100. Source SVG conservee dans le scratchpad de session
+    uniquement (regenerable ; pas de fichier servi inutile sous `static/`).
+- Docs : `docs/COMMENDATIONS_REFERENCE.md` (ligne, « 8 actives sur 10 », visuels, table des
+  desactivees), CHANGELOG EN+FR 7.5.0 (Changed + Ops re-seed), RELEASE_NOTES EN+FR
+  (« Huit nouvelles citations », listes sans Vol du drapeau ni Chasse au rapatrieur — la 7.5.0
+  n'est pas publiee, les notes disent l'etat reel).
+- Resultats observes : `go test ./internal/ops/ -run 'Citation|Disabled|V721|ImagePath'` vert
+  (16 tests dont `TestCitationImagePaths_ExistOnDisk`, `TestCitationEnabled_HasImagePath`,
+  `TestDisabledCitations`) ; `go vet` et `gofmt` propres.
+- Decouverte HORS perimetre (non traitee) : `static/commendations/halo_5_guardians/H5G_citation_What's_mine_is_mine.png`
+  n'est PAS un PNG mais le JSON du scrape wiki (201 Ko, 159 items). Inutilise par le seed ;
+  a corriger ou supprimer dans un lot dedie.
+- Conclusion / prochaine etape : re-seed LOCAL a jouer (air + server.exe arretes, un seul
+  writer sur metadata.duckdb) : `levelup seed citation-mappings`, puis relance air et
+  verification sur pieces ; meme seed en prod au deploiement (note Ops du changelog). Commit
+  sur `feat/v75` au signal de l'utilisateur, en ne stageant QUE les fichiers de ce lot (d'autres
+  sessions ont des modifications non commitees dans le meme arbre : match-card, BACKLOG,
+  skill color-tokens).
+- Complement 2026-09-19 (meme lot) : l'ecusson maison de « Crane intouchable » est REMPLACE par
+  la silhouette de crane fournie par l'utilisateur (`C:\Users\Guillaume\Downloads\Nouveau projet.png`,
+  PNG palette 247x308, blanc sur alpha) : recadree au carre, redimensionnee (silhouette ~71x89 px),
+  bordure noire de 2,5 px ajoutee par dilatation de l'alpha (disque) en 4x puis reduction par
+  moyenne de boite -> 100x100, 5 283 o. La dilatation borde aussi les evidements (orbites, nez,
+  cercle frontal) : ils apparaissent cercles de noir. Commentaire du seed, COMMENDATIONS_REFERENCE
+  et CHANGELOG EN/FR realignes. Tests ops re-joues verts (ExistOnDisk inclus).
+- Re-seed LOCAL joue le 2026-09-19 (BDD liberee par l'utilisateur, port 8000 libre, aucun
+  air/server) : `go run ./cmd/levelup seed citation-mappings` -> « 0 inserees, 106 mises a
+  jour ». Verification sur pieces (`cmd/diag_q`, lecture seule) : `returner_takedown`
+  enabled=false / image_path NULL, `flag_steals` idem, `flag_captures` et
+  `untouchable_carrier` actives sur leurs PNG `halo_infinite/` ; 99 actives sur 106. Air
+  relance detache (gcc sur le PATH), /health 200, les deux PNG servis en image/png
+  (5 283 o et 4 360 o). Reste : meme seed en prod au deploiement ; commit au signal.

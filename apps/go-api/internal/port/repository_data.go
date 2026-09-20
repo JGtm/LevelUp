@@ -488,12 +488,6 @@ type CompareRepository interface {
 	// Retourne nil si aucun match commun ou en cas d'erreur (best-effort).
 	GetEncounterStats(ctx context.Context, xuidA, xuidB string) (*domain.CompareEncounterStats, error)
 
-	// GetCrossMatchSample agrège les 4 métriques locale-only (max_killing_spree,
-	// avg_life_secs, perfect_kills_per_game, headshot_kills_per_game) du joueur
-	// xuidB calculées sur les matchs où xuidA et xuidB sont tous deux participants.
-	// Retourne (nil, nil) si aucun match croisé exploitable — best-effort.
-	GetCrossMatchSample(ctx context.Context, xuidA, xuidB string) (*domain.CrossMatchSample, error)
-
 	// GetWeaponScope rend le scope du profil d'armes d'un joueur : TOUS ses matchs présents
 	// dans la base partagée (campagne exclue, mêmes clauses que GetLocalStats) et ses
 	// totaux sur cet ensemble.
@@ -580,9 +574,6 @@ func (n *noopCompareRepo) GetPlayerATHFor(_ context.Context, _, _ string) (*doma
 	return nil, nil
 }
 func (n *noopCompareRepo) GetEncounterStats(_ context.Context, _, _ string) (*domain.CompareEncounterStats, error) {
-	return nil, nil
-}
-func (n *noopCompareRepo) GetCrossMatchSample(_ context.Context, _, _ string) (*domain.CrossMatchSample, error) {
 	return nil, nil
 }
 func (n *noopCompareRepo) GetWeaponScope(_ context.Context, _, _ string) (*domain.CompareWeaponScope, error) {

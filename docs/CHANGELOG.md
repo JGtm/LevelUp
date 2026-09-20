@@ -53,6 +53,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **ADR 0023 Phase 5** — the legacy auth fallbacks are gone: `MultiUserTokenStore` is the only source of a refresh token. No `SPNKR_*` env, no `sync_meta.oauth_refresh_token`, no single-user store. Sentinel allowlists are empty ratchets.
 - **Dependencies** — js-yaml 4.3.1 (CVE-2026-59870, high), 20 npm minor/patch bumps, kin-openapi 0.147.0, chi 5.3.2, x/crypto 0.55.0; the react-table major and TypeScript 7 are deliberately deferred, with the reason written down.
 - **`GET /admin/monitoring/errors` removed** — soak settled, 0 hits in the retained logs since 2026-06-13 and UI-orphaned.
+- **Two objective citations disabled, two visuals fixed** — `flag_steals` (user decision 2026-09-10) and `returner_takedown` (user decision 2026-09-19: an in-house commendation — name and definition invented on 2026-07-25, only the `flag_returners_killed` column is native — judged confusing and not worth tracking) ship with `Enabled: false`, no `image_path`, still listed for inventory and EN parity, ignored by the engine; 8 of the 10 v7.2.1 objective citations remain active. The `flag_captures` PNG had a transparency checkerboard baked into its pixels (it rendered on a white square): background stripped, real alpha. `untouchable_carrier` pointed by mistake at a Halo 5 **weapon** visual (`Éradicateur`); Halo 5 has no Oddball commendation, so it now serves a user-supplied skull silhouette, squared to 100x100 with a 2.5 px black outline (`HI_citation_Crane_intouchable.png`). The three `*_Disabled` tests fold into one `TestDisabledCitations` table.
 
 ### Fixed
 
@@ -71,6 +72,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Re-cook the replay artifacts** — `ReplayDocument.SchemaVersion` is 54; artifacts cooked at an older schema are served with a "needs re-cooking" badge and some layers stay empty. Run `backfill-replay` on the park after deployment (one film = one child process; **never** cook in batch without an explicit go).
 - **Refresh the metadata catalogs** — `refresh-metadata medal-images` for the medal sprite sheet, and the objective / weapon-pad / callout catalogs ship with the release under `data/titles/halo_infinite/reference/`.
+- **Re-seed the citation mappings** — `levelup seed citation-mappings` (server stopped: single writer on `metadata.duckdb`) so that `flag_steals` and `returner_takedown` read `enabled = false` and `untouchable_carrier` / `flag_captures` serve their new visuals. No recompute needed: stored progress is ignored for a disabled citation.
 - **The remote replay worker is deployed but not activated** — the `deploy-worker` job runs on `main` only and requires its secrets; nothing changes until it is switched on.
 - **`gamefiles` tests stay out of CI** — the `internal/himap` corpus requires a local Halo install; the tag is enforced module-wide by `internal/archlint/gamefiles_tag_test.go`. `go vet` on `himap` / `himodule` needs `CGO_ENABLED=1` (`ooz` is a CGO package).
 

@@ -231,13 +231,13 @@ func TestBuildMetrics_AvailabilityRemoteB(t *testing.T) {
 // dès value>0, y compris pour un non-local (rang récupéré en live), tandis que les
 // autres métriques ATH restent local-only.
 func TestMetricAvailability_CareerRankLiveNonLocal(t *testing.T) {
-	if !metricAvailability(compareMetricCareerRank, 152, false, false) {
+	if !metricAvailability(compareMetricCareerRank, 152, false) {
 		t.Error("career_rank value>0 doit être disponible même pour un non-local (live)")
 	}
-	if metricAvailability(compareMetricCareerRank, 0, true, false) {
+	if metricAvailability(compareMetricCareerRank, 0, true) {
 		t.Error("career_rank value 0 ne doit pas être disponible (ATH non calculé)")
 	}
-	if metricAvailability(compareMetricPerfATH, 98, false, false) {
+	if metricAvailability(compareMetricPerfATH, 98, false) {
 		t.Error("perf_ath non-local ne doit pas être disponible (local-only)")
 	}
 }
@@ -475,57 +475,6 @@ func TestBuildMetrics_AvailabilityATHZero(t *testing.T) {
 	}
 }
 
-// TestBuildMetrics_IsLocalSample vérifie que les métriques locale-only
-// deviennent disponibles côté B quand B est remote mais enrichi par un
-// échantillon de matchs croisés (IsLocalSample=true).
-func TestBuildMetrics_IsLocalSample(t *testing.T) {
-	a := domain.NormalizedPlayerStats{
-		IsLocal: true, Matches: 100, WinRate: 0.6, KDA: 1.4, KDR: 1.25,
-		KillsPerGame: 10, DeathsPerGame: 8, Accuracy: 0.45, DamagePerGame: 2500,
-		MaxKillingSpree: 12, AvgLifeSecs: 30, PerfectKillsPerGame: 0.2, HeadshotKillsPerGame: 3.0,
-		PerfATH: 98, LusrATH: 1600, CareerRank: 150,
-	}
-	// B remote (IsLocal=false) mais enrichi par échantillon croisé.
-	b := domain.NormalizedPlayerStats{
-		IsLocal: false, IsLocalSample: true,
-		Matches: 5, WinRate: 0.5, KDA: 1.0, KDR: 1.0,
-		KillsPerGame: 9, DeathsPerGame: 9, Accuracy: 0.4, DamagePerGame: 2200,
-		MaxKillingSpree: 8, AvgLifeSecs: 25, PerfectKillsPerGame: 0.1, HeadshotKillsPerGame: 2.5,
-	}
-
-	rows := buildMetrics(a, b, 225)
-	byKey := make(map[string]domain.CompareMetricRow, len(rows))
-	for _, r := range rows {
-		byKey[r.Metric] = r
-	}
-
-	// Les 4 métriques locale-only doivent être marquées disponibles côté B.
-	for _, metric := range []string{"max_killing_spree", "avg_life_secs", "perfect_kills_per_game", "headshot_kills_per_game"} {
-		row, ok := byKey[metric]
-		if !ok {
-			t.Errorf("metric %q absente", metric)
-			continue
-		}
-		if !row.ValueBAvailable {
-			t.Errorf("metric %q : ValueBAvailable=false, attendu true (IsLocalSample)", metric)
-		}
-		if row.Winner == "" {
-			t.Errorf("metric %q : Winner vide, attendu calculé (les deux côtés dispo)", metric)
-		}
-	}
-
-	// L'ATH reste indisponible côté B même avec IsLocalSample.
-	for _, metric := range []string{"perf_ath", "lusr_ath", "career_rank"} {
-		row, ok := byKey[metric]
-		if !ok {
-			continue
-		}
-		if row.ValueBAvailable {
-			t.Errorf("metric %q : ValueBAvailable=true, attendu false (ATH non dérivable d'un échantillon)", metric)
-		}
-	}
-}
-
 // mockCompareRepoAB — retourne stats différentes selon le xuid demandé.
 type mockCompareRepoAB struct {
 	a       *domain.NormalizedPlayerStats
@@ -569,10 +518,6 @@ func (m *mockCompareRepoAB) GetPlayerATHFor(_ context.Context, _, _ string) (*do
 }
 
 func (m *mockCompareRepoAB) GetEncounterStats(_ context.Context, _, _ string) (*domain.CompareEncounterStats, error) {
-	return nil, nil
-}
-
-func (m *mockCompareRepoAB) GetCrossMatchSample(_ context.Context, _, _ string) (*domain.CrossMatchSample, error) {
 	return nil, nil
 }
 

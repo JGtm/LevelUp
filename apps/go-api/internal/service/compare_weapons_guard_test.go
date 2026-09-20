@@ -21,9 +21,22 @@ package service
 //
 // Le motif vise la FORME COMPLÈTE du comparateur (kills décroissants PUIS libellé croissant),
 // pas la seule comparaison de frags : `internal/service/` porte plusieurs tris par frags
-// décroissants légitimes et différents — la répartition des frags trie des rôles, les séries
-// temporelles départagent sur l'identifiant d'arme et non sur le libellé. Les signaler
+// décroissants légitimes et différents — la répartition des frags trie des rôles. Les signaler
 // ferait désactiver ce garde-rail dans le mois.
+//
+// # ET LA VARIANTE DÉPARTAGÉE SUR L'IDENTIFIANT D'ARME
+//
+// Les séries temporelles ont longtemps départagé sur `WeaponID` : MÊME classement, TROISIÈME
+// doctrine — à frags égaux, deux armes s'affichaient dans un ordre différent entre Séries
+// temporelles et Synthèse / Face-à-face, et le motif ci-dessus ne la voyait pas (littéral
+// différent). `buildTopWeapons` appelle désormais `topWeaponKillRows` comme les autres, et
+// `topWeaponSortByIDInline` interdit le retour de cette variante — dans N'IMPORTE QUEL fichier
+// non-test du paquet, propriétaire compris : elle n'a plus de site légitime.
+//
+// Elle ne capte QUE la forme sur `.Kills` : le tableau d'armes de l'escouade
+// (`squad_service_v2_weapons_medals.go`) trie un `.Total` et départage sur `WeaponID` — autre
+// classement (table exhaustive, grenades incluses), légitime, et couvert par le contrôle
+// positif ci-dessous.
 //
 // Il ne capte PAS un comparateur écrit avec des variables intermédiaires
 // (`a, b := rows[i], rows[j]`). Ce trou est ACCEPTÉ : le contrôle positif ci-dessous garantit
@@ -50,6 +63,13 @@ var topWeaponSortInline = regexp.MustCompile(
 	`(?s)\[i\]\.Kills\s*!=\s*\w+\[j\]\.Kills.{0,120}?\[i\]\.Kills\s*>\s*\w+\[j\]\.Kills` +
 		`.{0,120}?\[i\]\.Label\s*<\s*\w+\[j\]\.Label`)
 
+// topWeaponSortByIDInline matche la MÊME doctrine départagée sur l'identifiant d'arme —
+// la troisième écriture retirée le 2026-09-19 (`buildTopWeapons`). Aucun propriétaire :
+// ce départage n'a plus de site légitime dans le paquet.
+var topWeaponSortByIDInline = regexp.MustCompile(
+	`(?s)\[i\]\.Kills\s*!=\s*\w+\[j\]\.Kills.{0,120}?\[i\]\.Kills\s*>\s*\w+\[j\]\.Kills` +
+		`.{0,120}?\[i\]\.WeaponID\s*<\s*\w+\[j\]\.WeaponID`)
+
 // TestTriTopArmesEcritUneSeuleFois : hors de son propriétaire, aucun fichier Go non-test du
 // paquet `service` ne réécrit le comparateur.
 func TestTriTopArmesEcritUneSeuleFois(t *testing.T) {
@@ -62,6 +82,17 @@ func TestTriTopArmesEcritUneSeuleFois(t *testing.T) {
 	}
 }
 
+// TestTriTopArmesJamaisDepartageSurIdentifiant : la variante « frags décroissants, départage
+// sur l'identifiant d'arme » ne revient nulle part — propriétaire compris.
+func TestTriTopArmesJamaisDepartageSurIdentifiant(t *testing.T) {
+	fautifs := scanMotifTri(t, ".", topWeaponSortByIDInline, "")
+	if len(fautifs) > 0 {
+		t.Fatalf("top armes départagé sur l'identifiant d'arme dans %v.\n"+
+			"Appeler topWeaponKillRows (D11) : le départage se fait sur le LIBELLÉ, sinon "+
+			"deux armes à frags égaux s'ordonnent différemment d'une page à l'autre", fautifs)
+	}
+}
+
 // TestTriTopArmesDetecteUneCopie est le CONTRÔLE POSITIF. Sans lui, le test ci-dessus reste
 // vert même si le motif ne matche plus rien — un détecteur mort affirme « zéro fautif » avec
 // la même sérénité qu'un détecteur vivant.
@@ -71,6 +102,7 @@ func TestTriTopArmesEcritUneSeuleFois(t *testing.T) {
 func TestTriTopArmesDetecteUneCopie(t *testing.T) {
 	racine := t.TempDir()
 	const fautif = "copie_tri.go"
+	const fautifID = "copie_tri_identifiant.go"
 	const licite = "tri_legitime.go"
 	contenus := map[string]string{
 		fautif: "package faux\n\nimport \"sort\"\n\n" +
@@ -79,13 +111,22 @@ func TestTriTopArmesDetecteUneCopie(t *testing.T) {
 			"\t\tif rows[i].Kills != rows[j].Kills {\n" +
 			"\t\t\treturn rows[i].Kills > rows[j].Kills\n\t\t}\n" +
 			"\t\treturn rows[i].Label < rows[j].Label\n\t})\n}\n",
-		// Tri par frags décroissants départagé AUTREMENT : légitime, et il en existe
-		// plusieurs dans le paquet. Le signaler ferait désactiver ce garde-rail.
-		licite: "package faux\n\nimport \"sort\"\n\n" +
+		// La TROISIÈME doctrine retirée le 2026-09-19 : même classement, départage sur
+		// l'identifiant d'arme. Elle n'a plus de site légitime → elle doit être signalée.
+		fautifID: "package faux\n\nimport \"sort\"\n\n" +
 			"func g(rows []struct {\n\tKills int\n\tWeaponID int64\n}) {\n" +
 			"\tsort.SliceStable(rows, func(i, j int) bool {\n" +
 			"\t\tif rows[i].Kills != rows[j].Kills {\n" +
 			"\t\t\treturn rows[i].Kills > rows[j].Kills\n\t\t}\n" +
+			"\t\treturn rows[i].WeaponID < rows[j].WeaponID\n\t})\n}\n",
+		// Le tableau d'armes de l'escouade : classement d'un TOTAL (table exhaustive,
+		// grenades incluses), départagé sur l'identifiant. Autre classement, légitime —
+		// le signaler ferait désactiver ce garde-rail.
+		licite: "package faux\n\nimport \"sort\"\n\n" +
+			"func h(rows []struct {\n\tTotal int\n\tWeaponID int64\n}) {\n" +
+			"\tsort.SliceStable(rows, func(i, j int) bool {\n" +
+			"\t\tif rows[i].Total != rows[j].Total {\n" +
+			"\t\t\treturn rows[i].Total > rows[j].Total\n\t\t}\n" +
 			"\t\treturn rows[i].WeaponID < rows[j].WeaponID\n\t})\n}\n",
 	}
 	for nom, src := range contenus {
@@ -101,9 +142,24 @@ func TestTriTopArmesDetecteUneCopie(t *testing.T) {
 	if !vus[fautif] {
 		t.Errorf("copie NON DÉTECTÉE : %s — le détecteur ne détecte plus rien", fautif)
 	}
+	if vus[fautifID] {
+		t.Errorf("%s départage sur l'identifiant : c'est l'AUTRE motif qui doit le voir, "+
+			"pas celui du libellé", fautifID)
+	}
 	if vus[licite] {
-		t.Errorf("%s départage sur l'identifiant d'arme : tri légitime, ne doit pas être signalé",
-			licite)
+		t.Errorf("%s trie un total : classement distinct, ne doit pas être signalé", licite)
+	}
+
+	vusID := map[string]bool{}
+	for _, f := range scanMotifTri(t, racine, topWeaponSortByIDInline, "") {
+		vusID[f] = true
+	}
+	if !vusID[fautifID] {
+		t.Errorf("copie NON DÉTECTÉE : %s — le détecteur du départage sur l'identifiant "+
+			"ne détecte plus rien", fautifID)
+	}
+	if vusID[licite] {
+		t.Errorf("%s trie un total, pas des frags : ne doit pas être signalé", licite)
 	}
 }
 
@@ -125,10 +181,18 @@ func verifierProprietaireTriTopArmes(t *testing.T) {
 	}
 }
 
-// scanTriTopArmes marche la racine donnée et rend les fichiers fautifs, en chemin RELATIF.
-// La racine est un paramètre pour que le contrôle positif lui soumette de vraies copies sans
-// les écrire dans le dépôt.
+// scanTriTopArmes marche la racine donnée et rend les fichiers qui réécrivent le comparateur
+// départagé sur le LIBELLÉ, propriétaire exempté. Alias de scanMotifTri.
 func scanTriTopArmes(t *testing.T, racine string) []string {
+	t.Helper()
+	return scanMotifTri(t, racine, topWeaponSortInline, topWeaponSortOwner)
+}
+
+// scanMotifTri marche la racine donnée et rend les fichiers Go non-test que `motif` matche,
+// en chemin RELATIF, hors `exempt` (chemin relatif du seul propriétaire autorisé ; "" =
+// aucun). La racine est un paramètre pour que le contrôle positif lui soumette de vraies
+// copies sans les écrire dans le dépôt.
+func scanMotifTri(t *testing.T, racine string, motif *regexp.Regexp, exempt string) []string {
 	t.Helper()
 	var fautifs []string
 	err := filepath.WalkDir(racine, func(path string, d fs.DirEntry, err error) error {
@@ -143,14 +207,14 @@ func scanTriTopArmes(t *testing.T, racine string) []string {
 		}
 		rel := filepath.ToSlash(strings.TrimPrefix(path, racine+string(filepath.Separator)))
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") ||
-			rel == topWeaponSortOwner {
+			(exempt != "" && rel == exempt) {
 			return nil
 		}
 		raw, rerr := os.ReadFile(filepath.Clean(path))
 		if rerr != nil {
 			t.Fatalf("lecture %s : %v", path, rerr)
 		}
-		if topWeaponSortInline.Match(raw) {
+		if motif.Match(raw) {
 			fautifs = append(fautifs, rel)
 		}
 		return nil

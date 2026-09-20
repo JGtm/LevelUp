@@ -113,8 +113,8 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **VIP** — VIPs killed, times you were selected as VIP, kills while being the VIP, total VIP time and your longest run as VIP
 - **Where you read them** — the "Objectives" section of the match view, exactly like Capture the Flag, Strongholds, King of the Hill and Oddball: one column per stat of the mode played, with a "Team total" line
 
-**Ten new objective citations**
-- **Flag play** — Flag Captures, Flag Secures, Flag Steals, Returner Takedown, Unstoppable Carrier and Aggressive Return
+**Eight new objective citations**
+- **Flag play** — Flag Captures, Flag Secures, Unstoppable Carrier and Aggressive Return
 - **Zones and Oddball** — Zone Defense, Untouchable Carrier, Skull Carrier Takedown and Skull Grabs
 - **Tiers set on real play** — every ladder is calibrated on actual match data instead of a generic scale, so the rare feats (killing while carrying the flag or the skull) stay within reach
 

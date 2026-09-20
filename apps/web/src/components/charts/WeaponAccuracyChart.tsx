@@ -1,3 +1,17 @@
+/**
+ * WeaponAccuracyChart — « Précision par arme », le graphe et ses TROIS consommateurs.
+ *
+ * Il s'appelait `SynthesisWeaponAccuracyChart` et vivait dans `features/synthesis/` alors que
+ * la Synthèse n'est qu'une de ses trois pages : l'onglet Résumé des Séries temporelles et la
+ * fiche de frags d'une Session le montent aussi. Un composant partagé rangé sous une page fait
+ * mentir le dossier sur qui rend quoi — et coûtait DEUX dérogations à l'anti-import
+ * inter-features (`timeseries=>synthesis`, `session-detail=>synthesis`), retirées avec ce
+ * déplacement (2026-09-19).
+ *
+ * Il ne dépend d'AUCUNE feature : tout arrive par props, le reste vient de `components/charts`,
+ * `lib/` et du store de coquille — la frontière inversée (gap #14) est respectée par
+ * construction.
+ */
 import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
@@ -97,7 +111,7 @@ function buildWeaponAccuracyOption(
   }
 }
 
-export function SynthesisWeaponAccuracyChart({ weapons, weaponKills, height, fillHeight, hoveredClass = null, onClassHover }: Props) {
+export function WeaponAccuracyChart({ weapons, weaponKills, height, fillHeight, hoveredClass = null, onClassHover }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const title = formatMessage(synthesisManifest, 'synthesis.charts.weapon_accuracy_title', locale)
   const emptyMessage = formatMessage(synthesisManifest, 'synthesis.empty.no_data', locale)

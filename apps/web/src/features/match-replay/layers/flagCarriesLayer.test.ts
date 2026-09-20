@@ -47,10 +47,10 @@ const OUTLINE = '#fedcba'
 const FLAG_0: ReplayFlagCarryReady = {
   team: 0,
   spans: [
-    { state: 'home', t0: 0, t1: 9, xuid: null, x: 1, y: 9 },
-    { state: 'carried', t0: 10, t1: 19, xuid: 'A', x: 2, y: 8 },
-    { state: 'dropped', t0: 20, t1: 29, xuid: null, x: 5, y: 5 },
-    { state: 'home', t0: 30, t1: 39, xuid: null, x: 1, y: 9 },
+    { state: 'home', t0: 0, t1: 9, xuid: null, x: 1, y: 9, returnProgress: [] },
+    { state: 'carried', t0: 10, t1: 19, xuid: 'A', x: 2, y: 8, returnProgress: [] },
+    { state: 'dropped', t0: 20, t1: 29, xuid: null, x: 5, y: 5, returnProgress: [] },
+    { state: 'home', t0: 30, t1: 39, xuid: null, x: 1, y: 9, returnProgress: [] },
   ],
 }
 
@@ -58,8 +58,8 @@ const FLAG_0: ReplayFlagCarryReady = {
 const FLAG_1: ReplayFlagCarryReady = {
   team: 1,
   spans: [
-    { state: 'home', t0: 0, t1: 9, xuid: null, x: 9, y: 1 },
-    { state: 'carried_open', t0: 10, t1: 99, xuid: 'B', x: 8, y: 2 },
+    { state: 'home', t0: 0, t1: 9, xuid: null, x: 9, y: 1, returnProgress: [] },
+    { state: 'carried_open', t0: 10, t1: 99, xuid: 'B', x: 8, y: 2, returnProgress: [] },
   ],
 }
 
@@ -632,7 +632,7 @@ describe('bornage hors cadre (D3) — le drapeau PORTÉ est plaqué à la marge'
   it('AU SOL / À LA BASE, hors cadre : reste à sa position PROJETÉE, pas bornée (hors périmètre)', () => {
     const loin: ReplayFlagCarryReady = {
       team: 0,
-      spans: [{ state: 'dropped', t0: 0, t1: 9, xuid: null, x: 1000, y: 5 }],
+      spans: [{ state: 'dropped', t0: 0, t1: 9, xuid: null, x: 1000, y: 5, returnProgress: [] }],
     }
     const { ctx, calls } = mockCtx()
     drawFlagCarries(ctx, layerWith(null), [loin], VIEW, 5)

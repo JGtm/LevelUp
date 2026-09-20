@@ -132,7 +132,10 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // LE TABLEAU IMBRIQUÉ SE COMBLE AUSSI (`spans`), comme pour `weaponPads` et `tracks` : le
     // contrat le déclare nullable, et un drapeau qui arriverait avec `spans: null` ferait
     // tomber le calque à l'exécution — pas à la compilation.
-    flagCarries: (raw.flagCarries ?? []).map((f) => ({ ...f, spans: f.spans ?? [] })),
+    flagCarries: (raw.flagCarries ?? []).map((f) => ({
+      ...f,
+      spans: (f.spans ?? []).map((sp) => ({ ...sp, returnProgress: sp.returnProgress ?? [] })),
+    })),
     // LES PÉRIODES DE PORT DE LA COURONNE VIP (schéma 22) : une entrée plate par période
     // (xuid, t0, t1, closed), aucun tableau imbriqué. Absent = artefact antérieur, ou film
     // non reconnu VIP — `layers[vipCrown]` / `coverage.vipCrown` distinguent les deux, et c'est
@@ -227,6 +230,8 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // IMBRIQUÉS SE COMBLENT AUSSI
     // (`samples`, `rides`), même patron que `tracks` et `weaponPads` : `spawn`, lui, N'EST PAS un
     // tableau et reste tel quel (absent = record de création non lu, jamais un objet inventé).
+    // `vehicleCycles` (schéma 63) : une LISTE PLATE d'emplacements, aucun tableau imbriqué.
+    vehicleCycles: raw.vehicleCycles ?? [],
     vehicles: (raw.vehicles ?? []).map((v) => ({
       ...v,
       samples: v.samples ?? [],
