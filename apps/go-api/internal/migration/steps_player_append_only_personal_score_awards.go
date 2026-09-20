@@ -74,21 +74,20 @@ func applyAppendOnlyPersonalScoreAwards(db *sql.DB) error {
 		ExtraSeqs:     []string{"psa_generation_seq"},
 		SyntheticCols: "0::BIGINT AS generation_id, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) AS written_at, FALSE AS is_tombstone",
 		MarkerColumn:  "generation_id",
-		// idx_psa_xuid N'EST PLUS recréé après le swap (décision 2026-08-05, miroir
-		// d'idx_career_xuid) : xuid est quasi constant dans une player DB (une DB = un
-		// joueur) → sélectivité nulle, coût d'écriture pur. Les DB qui le portent encore
-		// le perdent via le step drop_psa_xuid_art_index_v1 (steps_player_schema_authority.go).
-		// idx_psa_match_xuid non plus (décision 2026-08-05, même arbitrage) : ce PostSwap
-		// était sa SEULE autorité (absent de PlayerPersonalScoreAwardsDDL → divergence
-		// latente entre DB fraîche et DB convertie), et il est un pur préfixe
-		// d'idx_psa_gen(match_id, xuid, generation_id) → redondant. Convergence des DB
-		// existantes : step drop_psa_match_xuid_art_index_v1.
+		// LE POSTSWAP NE CRÉE PLUS AUCUN INDEX. Historique : idx_psa_xuid et
+		// idx_psa_match_xuid sont partis le 2026-08-05 (sélectivité nulle pour le premier,
+		// pur préfixe d'idx_psa_gen pour le second) ; les trois derniers (idx_psa_match,
+		// idx_psa_category, idx_psa_gen) le 2026-09-20 — la sonde data-health les trouvait
+		// DÉSYNCHRONISÉS à chaque boot et les clés en écart étaient des match_id du mois
+		// courant, donc le défaut #23645 se reforme sur les insertions COURANTES. Aucun
+		// lecteur n'y perd : tous passent par personal_score_awards_latest, dont la
+		// fonction de fenêtre impose un Sequential Scan (mesure sur 5 000 lignes :
+		// 0,800 ms avec index, 0,841 ms sans, même plan). Convergence des DB existantes :
+		// steps drop_psa_xuid_art_index_v1, drop_psa_match_xuid_art_index_v1 et
+		// drop_psa_secondary_art_indexes_v1 (steps_player_schema_authority.go).
 		PostSwap: []string{
 			`ALTER TABLE personal_score_awards ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
 			`ALTER TABLE personal_score_awards ALTER COLUMN is_tombstone SET DEFAULT FALSE`,
-			`CREATE INDEX IF NOT EXISTS idx_psa_match     ON personal_score_awards(match_id)`,
-			`CREATE INDEX IF NOT EXISTS idx_psa_category  ON personal_score_awards(award_category)`,
-			`CREATE INDEX IF NOT EXISTS idx_psa_gen       ON personal_score_awards(match_id, xuid, generation_id)`,
 		},
 		ViewSQL: psaLatestViewSQL,
 	})

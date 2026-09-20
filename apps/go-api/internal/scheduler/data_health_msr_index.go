@@ -12,8 +12,9 @@ package scheduler
 // applicatif qui filtre `match_skill_rank` par un prédicat indexé a pu servir des
 // lignes amputées, en silence.
 //
-// CE QUE CETTE GARDE FAIT — ET NE FAIT PAS. Strictement la même doctrine que la
-// garde PSA voisine :
+// CE QUE CETTE GARDE FAIT — ET NE FAIT PAS. Strictement la doctrine posée par la
+// garde jumelle de personal_score_awards (retirée le 2026-09-20 en même temps que
+// les index qu'elle surveillait) :
 //   - DÉTECTE et ALERTE (slog + compteurs + jauge expvar) ; le signal remonte au
 //     panneau monitoring via DataHealthCheckResult.WarningsTotal ;
 //   - NE RÉPARE JAMAIS. La réparation d'un index sur une base dont la corruption
@@ -32,8 +33,8 @@ package scheduler
 // cf. TestScanMSRIndexDesyncCout.
 //
 // TITLE-AGNOSTIC. Aucun `slug == "..."` : la garde boucle sur les titres du
-// registre et sonde la PRÉSENCE de la table dans chaque player DB — même
-// prédicat structurel que la garde PSA (aucune clé de `capabilities.toml` ne
+// registre et sonde la PRÉSENCE de la table dans chaque player DB — la présence de
+// la table est le prédicat structurel correct (aucune clé de `capabilities.toml` ne
 // décrit `match_skill_rank` ; un titre qui ne note pas ses matchs est skippé).
 
 import (
@@ -105,7 +106,7 @@ func scanMSRIndexDesync(ctx context.Context, db *sql.DB, sampleKeys int) (msrInd
 }
 
 // auditTitleMSRIndex contrôle les player DB d'UN titre et AGRÈGE dans res.
-// Best-effort, sémantique « unmeasured ≠ sain » alignée sur auditTitlePSAIndex.
+// Best-effort, sémantique « unmeasured ≠ sain » alignée sur auditTitleLUSRGaps.
 func (s *HealthScheduler) auditTitleMSRIndex(ctx context.Context, pr *titlePkg.PathResolver, slug string, res *DataHealthCheckResult) {
 	entries, err := os.ReadDir(pr.PlayersRootDir(slug))
 	if err != nil {
@@ -177,7 +178,7 @@ func (s *HealthScheduler) auditPlayerMSRIndex(ctx context.Context, slug, gamerta
 // publishMSRIndexGaugeIfComplete republie la jauge expvar — SEULEMENT si le
 // contrôle a été COMPLET. Un contrôle partiel (player DB tenue RW, sonde en
 // échec) sous-compte : republier éteindrait le signal à tort (« unmeasured ≠
-// sain », même invariant que les jauges LUSR et PSA).
+// sain », même invariant que la jauge LUSR).
 func publishMSRIndexGaugeIfComplete(ctx context.Context, res *DataHealthCheckResult) {
 	if res.MSRIndexPlayersUnmeasured == 0 {
 		observability.SetInt(msrIndexGauge, int64(res.MSRIndexDesyncKeys))

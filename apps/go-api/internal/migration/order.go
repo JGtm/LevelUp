@@ -126,6 +126,7 @@ var canonicalOrder = []string{
 	"drop_career_xuid_art_index_v1",                    // player (DERNIER du bloc : doit suivre tout créateur de l'index, dont la baseline)
 	"drop_psa_xuid_art_index_v1",                       // player (idem — miroir d'idx_career_xuid ; suit create_personal_score_awards_player_v1)
 	"drop_psa_match_xuid_art_index_v1",                 // player (idem — préfixe redondant d'idx_psa_gen, posé par le seul PostSwap legacy)
+	"drop_psa_secondary_art_indexes_v1",                // player (2026-09-20 : les 3 derniers index de personal_score_awards — récidive #23645 sur les insertions courantes, aucun lecteur ne les emprunte)
 	"create_base_shared_schema",                        // shared
 	"add_film_match_start",                             // shared
 	"add_highlight_events_autoincrement",               // shared
