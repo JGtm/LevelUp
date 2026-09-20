@@ -128,3 +128,30 @@ rencontré (nos joueurs suivis, sauf un, ne tiennent pas les positions pro).
 4. Compléter les zones nommées des cartes Forge du circuit (vocabulaire de l'oracle).
 5. Sélection bornée, verdict par mode contre l'oracle v2, puis production selon le plan
    d'origine (étapes 3 à 7, inchangées).
+
+## 6. Précisions de l'utilisateur (échange du 2026-09-20, après la première rédaction)
+
+1. **La position de force est RELATIVE, pas absolue.** « Une power position peut être
+   simplement une meilleure position que toutes les autres sur la map ; elle ne répond pas
+   vraiment à tous nos critères, c'est juste la moins pire. » La formule doit donc produire un
+   CLASSEMENT à l'intérieur d'une carte et d'un mode, et retenir les lieux qui se DÉTACHENT du
+   reste de la carte (par un écart), jamais ceux qui dépassent une valeur fixe. Les réglages v1
+   et v2 faisaient un quantile par carte mais y ajoutaient un plancher absolu et un plafond de
+   huit positions : les deux contredisent cette définition. Une position peut aussi être « la
+   meilleure pour une tâche » (surveiller un socle, tenir une colline) : la couche Valeur
+   définit la tâche, le classement se fait parmi les candidats pour cette tâche.
+2. **À niveau Onyx, peu de matchs suffisent.** Les bons joueurs convergent vers les mêmes
+   lieux : le signal est la DENSITÉ D'OCCUPATION (temps passé), pas les frags, et la convergence
+   elle-même se mesure (concentration des positions d'une équipe). Dix à vingt matchs Onyx par
+   carte devraient suffire. Notre échec vient des joueurs, pas du nombre de matchs.
+3. **Modes non classés et leurs cartes : pas de corpus Onyx.** Pistes, par ordre de solidité :
+   (a) la géométrie, seul signal disponible partout — et les cartes Forge publient un vrai
+   maillage de navigation, contrairement aux natives ; (b) le rang classé d'un joueur existe
+   PAR IDENTITÉ ET PAR DATE même quand il joue en social (instantanés de CSR) — à vérifier sur
+   pièces, mais ça pondérerait l'occupation des matchs sociaux par le niveau réel des joueurs
+   présents ; (c) à défaut, la convergence des joueurs qui GAGNENT le match contre ceux qui le
+   perdent, sur un corpus bien plus large que les 3-6 rejeux par carte mesurés en v1.
+
+Socle corrigé : la géométrie CLASSE les lieux d'une carte, la valeur du mode dit POUR QUELLE
+TÂCHE, la convergence des bons joueurs CONFIRME — avec peu de matchs quand ils sont bons, avec
+plus de matchs pondérés par le niveau quand ils ne le sont pas.
