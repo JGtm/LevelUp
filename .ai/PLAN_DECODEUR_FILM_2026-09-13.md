@@ -6103,6 +6103,42 @@ PUBLIE une lecture qui existait déjà.
   RESTENT** : tableau complet en §4 (D2) et en §5. L instrument de recherche est conserve, reduit
   au chemin de 19 bits — il ne lit que `componentDirs.AimRaw`, deja capture avant ce lot.
 
+### Post-chantier — lot 5.3 (états de mouvement du Spartan), branche `feat/decfilm-53`, base `6e86db356`
+
+Ouvert sur demande utilisateur du 2026-09-19 (« on a les évènements de joueurs comme les slide,
+crouch, sprint et saut ? ») et décision du 2026-09-20 (petit lot de recherche, port SEULEMENT si
+la preuve tient). Recherche : `.ai/V7.5/film_re/NOTE_5_3_ETATS_DE_MOUVEMENT_2026-09-20.md`.
+
+**CONTRAINTE DE MACHINE** : le backfill killsource décode le parc pendant ce lot (verrou solo).
+Aucun film n'est lu et aucune base n'est ouverte avant la « voie libre » du pilote — 5.3.1 se
+joue donc ENTIÈREMENT sur l'exécutable et les documents, ce qui n'est pas un pis-aller : la
+méthode du lot 3.7 (§ 7) répond chez l'ÉCRIVAIN, avant tout film.
+
+- [x] **5.3.1 — l'écrivain d'abord, et le négatif mesuré**. Chaîne du descripteur rejouée sur
+  cinq cibles (`ti=35` `i29`, `i54`, `i55`, `i62`, `i1`), **6 calibrations sur 6**, cinq
+  écrivains retombant à l'octet sur ceux que le décodeur porte déjà. Résultat : **l'accroupi
+  (`i29`) et la glissade (`i62`) sont des ÉTATS répliqués par image**, booléen + fraction
+  quantifiée dans `[0.0, 1.0]` (borne `143cd8374` = `1.0f`, lue dans l'image), décodés
+  aujourd'hui et jetés ; **`i54` est une INITIATION d'action** (`initiate_mobility_action` dans
+  l'image), pas un niveau ; **aucun composant du moteur ne porte « sprint » ni « jump »** — ni
+  sur les 64 composants de `ti=35`, ni sur le pool complet des chaînes de l'image (71 chaînes
+  « sprint », 94 « jump », **0 nom de composant**). Instruments : `film/research/mouvement/`
+  (neuf) + deux ajouts à `film/research/reapparition/` (`ChainesContenant`, export de
+  `Calibrer`). **Aucun octet de production Go touché** : tout est sous `//go:build research`.
+- [ ] **5.3.2 — la preuve sur film** (EN ATTENTE DE LA VOIE LIBRE DU PILOTE). Un film à la fois,
+  test ciblé sous tag `research`, sur `bfecd02b` (Snowbound, Team Slayer, match de JGtm) puis
+  `4f77afc1` : ventilation de `i29`/`i54`/`i55`/`i62` par joueur et par instant, intervalles
+  d'état reconstruits, cohérence avec la vitesse au sol (`i1`) et la composante verticale.
+  Livrable pour l'œil de l'utilisateur : 5 instants par état sur `bfecd02b` (temps de barre
+  Theater = temps film). Tranche aussi D1 (5.3) ci-dessous.
+- [ ] **5.3.3 — le port** (CONDITIONNEL : seulement si 5.3.2 prouve). Intervalles d'état par
+  joueur dans le document (`players[].stances[]`), couche d'analyse sur les faits, **montée de
+  schéma 64 -> 65** avec la checklist complète (chronique, `structure_test`,
+  `document_shape.golden`, plafonds justifiés, jumeaux `replaydoc`/`replayview` + parité, zod
+  web, 8 fixtures renommées `replay_schema_65_*` + manifeste, layers, OpenAPI en dernier +
+  `make generate-types`), et un rendu MINIMAL sur la fiche du joueur du rejeu (FR/EN :
+  « Accroupi »/« Crouched », « Glissade »/« Slide », « Sprint »/« Sprint », « Saut »/« Jump »).
+
 ---
 
 ## 4. Découvertes (consignées, NON traitées — règle 7)
@@ -6509,6 +6545,9 @@ PUBLIE une lecture qui existait déjà.
 | 2026-09-18 | 5.1.6 | **D4 (5.1) — LE SLOT `ti=13` DE LA JAUGE NE S'IDENTIFIE PAS PAR SON NOM, ET N'EN A PAS BESOIN.** `i0` (le `StringId` du nom de propriété) est marché mais jamais récolté, donc la jauge a été identifiée par sa CORRÉLATION aux intervalles du calque du drapeau (100,0 % sur trois jauges, contre 15,8 % pour le slot voisin). Un port qui voudrait la nommer sans oracle externe devrait récolter `i0` et hacher les noms Lua candidats. | NON TRAITÉE. Pour publier `returnProgress`, la corrélation suffit et elle est plus sûre qu'un hachage de nom : l'appariement se fait sur le drapeau que `flagCarries` porte déjà |
 | 2026-09-17 | 3.6.a | **D6 (3.6.a) — L'ÉTAPE `vehicles` DE `replay-equiv` BOUGE SUR NEUF FILMS, ET LE MOUVEMENT N'ATTEINT AUCUNE SORTIE PUBLIÉE.** Mesuré à la voie libre : sur `084a804d`, le digest de l'étape `vehicles` passe de `a78431ed…` à `fac28aa9…`. Trois contrôles. (1) DÉTERMINISME : deux exécutions de la tête rendent le même sha sur les 53 étapes — ce n'est pas un aléa. (2) IMPUTATION : le même film cuit avec le CODE DE LA BASE `492cb0923` (arbre extrait hors dépôt, même cache, mêmes références) rend **exactement** la référence figée `a78431ed…` — c'est donc bien le port de `ti=9`, et NON 3.3.1 (dont `grenades` rend le même sha à la base et à la tête). (3) PORTÉE : le document cuit base → tête est identique sur **tous ses chemins sauf un**, `/coverage/decoder/grammarRev` (diff structuré : 1 chemin sur 9 335 637 octets, taille identique des deux côtés) ; **aucune ligne de journal de balayage ne diffère** (`viesRecensees=180 publiees=97 …`, `episodes=74 vehiculesOccupes=45 …` identiques) ; le corpus gate classe 0 gain / 0 perte / 0 changement. Le mouvement est donc confiné à l'ENTRÉE de balayage `VehicleScan`, dans un champ que seul `digest` voit — il hache les champs NON EXPORTÉS, et `VehicleScan.Positions []grammar.BipedPosition` embarque précisément `componentDirs`, le struct non exporté que l'en-tête du paquet `digest` cite en exemple. **CE QUI N'EST PAS ÉTABLI, ET QUI EST DIT** : le champ exact n'est pas isolé — `digest` n'exporte aucun rendu, et l'isoler demanderait un instrument que ce lot n'a pas écrit. NON TRAITÉ : rien ne dépend de cette valeur aujourd'hui (aucune sortie ne la porte). Écarte au passage deux hypothèses testées et fausses : ce n'est PAS un effet de bord de 3.3.1 (`53ce4390` bouge sur `vehicles` sans bouger sur `grenades`), et ce n'est PAS la scission du maillon de dispatch (aucune étiquette `case` n'est dupliquée dans la chaîne — vérifié sur pièces, donc l'ordre des maillons ne décide de rien). | instrument d'isolation des entrées de balayage : exporter un rendu de `digest` (ou un mode `-out-dir` qui écrit la valeur et pas seulement son empreinte) rendrait ce genre d'écart lisible au champ près au lieu du seul sha. À porter le jour où une sortie dépendra de ces champs |
 | 2026-09-19 | 5.1.5 | **TRANSMIS AU LOT DE RENDU DES VÉHICULES (décision du pilote, forme (b)) — L'AFFICHAGE DU CYCLE DE RÉAPPARITION.** `vehicleCycles` est PUBLIÉ au schéma 63 ; aucun client ne le dessine. Vérifié sur pièces le 2026-09-19 : le rejeu n'a **aucune** infobulle ni carte de véhicule — `ReplayCanvasTips.tsx` n'héberge que celles des poses, des socles, du drapeau et des armes au sol, et `useReplayVehicles.ts` ne porte aucun survol (0 occurrence de `hover`). La surface est donc un lot de RENDU, pas un alignement de libellé. | **ITEM TRANSMIS, PAS UNE DETTE** : il part au lot qui reprend déjà l'orientation, la taille et les tirs des véhicules — un marqueur d'emplacement avec « Réapparition dans ≈ N s », sur le modèle des socles d'arme, ou une infobulle |
+| 2026-09-20 | 5.3.1 | **D1 (5.3) — `ti=35 i55 biped-posture-physics` : LE DÉCODEUR LIT LE TAG DE 2 BITS ET SAUTE SES QUATRE CHARGES, QUE LE JEU LIT TOUTES.** `FUN_142f0293c` -> `FUN_142f1f630` lit `R(2)` puis appelle `FUN_141fd997c`, qui écrit un octet de discriminant en `+0x2c` de la cible et dispatche sur QUATRE lecteurs distincts (`FUN_142f265dc`, `FUN_142f25a3c`, `FUN_142f263ac`, `FUN_142f264f4`) ; les quatre appellent des feuilles consommatrices de bits (`1406cf008`, `1406d310c`, `14076dc04`, `14076e494`, `1408f0ac4`). Le port est `br.Skip(2)`. Le corpus décode pourtant au bit près : soit `i55` n'est jamais parcouru, soit son tag vaut toujours la valeur dont la charge est vide — et aucune des deux hypothèses n'est mesurée. | **NON TRAITÉE (règle 7)**, mais elle est DANS le périmètre de 5.3.2 : la mesure à la voie libre compte les occurrences de `i55` et la distribution de son tag. Tant que ce compte n'est pas fait, aucune conclusion de posture ne s'appuie sur `i55` |
+| 2026-09-20 | 5.3.1 | **D2 (5.3) — LES COMMENTAIRES DE PORTAGE DE `i54` ET `i62` NOMMENT « DESCRIPTEUR » L'ADRESSE DU SLOT DE NOM.** `components_biped_ability.go` écrit `Descriptor @143d0c9d8` et `components_biped_spartan.go` `Descripteur @143d0ca80` ; la chaîne calibrée rend `143d0c9c0` et `143d0ca68` — l'écart est exactement `0x18`, l'offset du slot de nom dans le descripteur. Aucune grammaire n'est fausse (les écrivains `+0x40` concordent à l'octet) ; c'est la même incohérence de convention que la découverte de bord du lot 3.7 (§ 7.3, `deser_addr` mélangeant `+0x40` et `+0x28`). | **NON TRAITÉE.** Un lot de table qui reprendrait `ecs_table.tsv` corrigerait les deux conventions d'un coup, avec un garde-rail qui rejoue la chaîne sur chaque ligne |
+| 2026-09-20 | 5.3.1 | **D3 (5.3) — `MobilityActionHook` N'A TOUJOURS AUCUN CONSOMMATEUR.** Le crochet publie `flag1`/`flag2` de chaque lecture d'`i54` depuis la sonde qui a réfuté l'usage d'équipement ; aucun appelant ne s'y abonne aujourd'hui. | **NON TRAITÉE.** Soit 5.3.3 le consomme (c'est le chemin naturel du sprint/escalade), soit un lot d'hygiène le supprime : un crochet sans consommateur est du code mort au sens de la règle 7 du dépôt |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
