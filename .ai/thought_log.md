@@ -55,6 +55,85 @@ retrait de carte, sur « on » seulement, existait avant ce lot).
 **Prochaine étape** : fusion dans `feat/v75` sur signal utilisateur ; vérifier visuellement la
 liste « Mode » de l'Explorer après redémarrage du serveur (les libellés viennent de la
 normalisation à la lecture, aucune migration de données).
+## [2026-09-19] Tuile de match (accueil) : barre frags / assistances / morts, bloc des frags assistés, espacements — Complété (branche `feat/v75`)
+
+**Demande** : (1) le segment rouge des morts de la barre composite paraît « plus épais » ou
+décalé ; (2) la barre des frags assistés (livrée le 18/09) doit porter sa légende DESSOUS, sans
+la part en %, avec des tons moins ternes, et son emplacement doit être réservé pour que les
+tuiles voisines de la grille restent alignées ; (3) en cours de route : un peu plus d'air entre la
+légende frags / assistances / morts et la barre des frags assistés, un peu moins sous sa légende,
+moins entre la section MMR et les médailles, et entre les médailles et les citations.
+
+**Décision technique** :
+- Barre composite : les bouts arrondis passent sur les SEGMENTS (`rounded-l-full` sur le
+  premier, `rounded-r-full` sur le dernier, comme `combat-yield-bar`) et le conteneur ne rogne
+  plus (`rounded-full overflow-hidden` retiré). Un conteneur qui rogne ses enfants sans
+  anti-crénelage aux coins laisse le dernier segment (rose vif) dépasser de la pilule — la
+  seule différence structurelle possible entre le rouge et les deux autres, les trois `div`
+  étant identiques par ailleurs. Verdict visuel à l'utilisateur ; si l'effet persiste, la
+  cause est perceptive (rose-500 plus clair et plus saturé que emerald-600 / sky-600) et se
+  traite au niveau du jeton `stat-deaths`, pas de la tuile.
+- Tons des tranches d'assistance : les opacités 35 / 65 / 100 % sont remplacées par trois
+  clartés OKLCH du jeton (`assistTierTone`, `light-dark(oklch(from …))`, chroma relevée).
+  Mesuré avant de trancher : aucune variante plus vive de `assist-received` ne tient le
+  garde-rail `combatStatTokens.test.ts` (yellow-600, amber-600, orange-600, `#B27A00`… :
+  contraste OK mais ΔE deutéranopie 5-7 < 8) — le jeton est pinné, la barre s'éclaircit
+  donc par dérivation, même teinte. Le changement porte sur le composant partagé, donc
+  aussi sur le papillon de la page Relations (un seul langage visuel, un seul foyer).
+- Bloc des frags assistés : ordre barre → légende (comme la barre du dessus), `{share}`
+  retiré de la clé `common.match_card.assisted_frags` (manifeste régénéré), barre `h-2`
+  alignée sur la composite, emplacement réservé `h-[24px]` rendu vide (`aria-hidden`) sans
+  mesure — toujours aucun « — » ni « 0 » fabriqué.
+- Légende des frags assistés : ton FORT du sens (`assistTierTone(…, 'high')`, même teinte) au
+  lieu du jeton brut, trop terne en texte ; 6 px entre la barre et sa légende (slot 24 px).
+- Espacements : `mt-3` au-dessus du bloc assisté, `pb-1` sous lui (KDA `pt-2.5` au lieu de
+  `pt-3`), médailles et citations `mt-2 pt-2 pb-2.5` (au lieu de `mt-3 pt-2.5 pb-3`).
+
+**Résultats observés** : `tsc -b` vert, eslint 0 problème sur les fichiers touchés
+(`assistTierTone` extrait dans son module pour ne pas déclencher `react-refresh`), vitest
+ciblé 18 fichiers / 132 tests verts, garde-rails (`guard`, `ratchet`) 90 fichiers verts ;
+suite complète lancée. Tests ajoutés : bouts arrondis sur les segments, légende après la
+barre et sans %, gabarit identique mesuré / vide, tons `assistTierTone`.
+
+**Prochaine étape** : verdict visuel de l'utilisateur sur l'accueil (thème sombre) et sur le
+papillon de Relations ; commit sur son signal.
+
+## [2026-09-19] Lot d'hygiène compare / armes / frontières (4 items du backlog) + nettoyage du backlog — Complété (branche `feat/hygiene-compare-armes`, worktree `LevelUp-wt-hygiene`, exécuté par Opus sous pilotage, CI de branche VERTE au niveau job le 2026-09-19 : 9 jobs verts, E2E Playwright skippé par condition)
+
+**Demande** : chiffrer l'item « Hermétisme FICHIERS du mode démo » (verdict : S-M, post-release,
+détail au message du 2026-09-19 — les fuites tombent dans la couche éphémère du conteneur en prod,
+seule une démo lancée sur un poste de dev écrit dans le dépôt vivant), lancer maintenant les
+petits lots faisables, purger du backlog ce qui était déjà fait.
+
+**Décision technique** : quatre items en un lot, un commit chacun, dans un worktree dédié.
+A retrait de `CompareRequest.Filters` (jamais envoyé, jamais lu) ; C `buildTopWeapons`
+(séries temporelles) délègue le classement à `topWeaponKillRows` et le garde-rail
+`compare_weapons_guard_test.go` interdit désormais le départage `WeaponID <` partout ; D les
+deux modules partagés quittent `features/synthesis/` (`components/ui/section-primitives.tsx`,
+`components/charts/WeaponAccuracyChart.tsx`), deux dérogations inter-features tombent.
+B a changé de nature en cours de route : l'agent a REFUSÉ la suppression sur la prémisse du
+backlog (« les deux lectures balaient la même table ») et l'a mesurée fausse sur une copie du
+shared Halo 5 — `GetLocalStats` exclut la campagne, `GetCrossMatchSample` non ; pour un B
+présent uniquement en coop campagne le repli tirait et servait des stats de campagne comme
+échantillon matchmade. Décision du pilote : c'est un défaut ; exclusion alignée ⇒ branche
+morte par construction ⇒ retrait complet plutôt qu'une version alignée conservée en code mort.
+
+**Résultats observés** : 4 commits `e4238dea6`→`aa1a8dc2c`, 23 fichiers, +214/−344 ; 12 lignes
+retirées de la baseline JSONL (3 tests supprimés) ; contrat régénéré (`is_local_sample` venait
+de la réflexion Huma : 2 lignes d'`openapi.yaml`, 1 de `generated.ts`). Gates rejoués par le
+pilote dans le worktree : go vet/test (service, domain, duckdb, port, api, archlint) 0 `--- FAIL`,
+tsc -b après purge du cache, lint inter-features 7/7. Agent : eslint 0 erreur, vitest 7984 tests
+verts, openapi-gen -check et types frais. Changement de comportement assumé (C) : une arme sans
+libellé résolu n'est plus publiée dans le top armes des séries temporelles (barre anonyme avant),
+conforme à la doctrine déjà appliquée par la Synthèse et le Face-à-face.
+Backlog : entrée echarts (livré le 2026-08-03) et doc du défaut async (déjà dans
+`docs/CONFIGURATION.md`) retirées ; 4 sections du lot fermées avec la correction de prémisse de B ;
+2 items neufs issus des découvertes — le garde-rail `TestCampaignExclusionStructuralCoverage` ne
+voit pas le SQL construit localement (c'est lui qui aurait dû attraper B), et deux inexactitudes
+web mineures (dérogation morte `personal-stats=>synthesis`, note fausse du README des charts).
+
+**Prochaine étape** : CI de branche verte au niveau job, puis fusion dans `feat/v75` au signal de
+l'utilisateur ; `.ai/` (backlog + journal) commité sur `feat/v75` à la fusion.
 
 ## [2026-09-17] Explorer : le bloc « Portée des frags » remplace son placeholder, et la famille du graphe est rangée — Complété (branche `wt/explorer-portee-frags`)
 

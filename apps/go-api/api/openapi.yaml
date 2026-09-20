@@ -20000,8 +20000,6 @@ components:
           type: string
         is_local:
           type: boolean
-        is_local_sample:
-          type: boolean
         kda:
           format: double
           type: number

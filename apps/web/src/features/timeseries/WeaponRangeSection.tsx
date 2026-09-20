@@ -37,7 +37,7 @@ import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { AccentCard, SectionSubtitle } from '@/features/synthesis/SynthesisCards'
+import { AccentCard, SectionSubtitle } from '@/components/ui/section-primitives'
 import {
   ELEVATION_KEYS,
   buildWeaponElevationOption,
