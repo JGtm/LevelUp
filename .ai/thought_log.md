@@ -1,3 +1,41 @@
+## [2026-09-20] Récidive des index ART de `personal_score_awards` (retrait) + provisioning multi-titre qui abandonnait ses bases — Complété (branche `feat/psa-provisioning`, 5 commits, CI verte au niveau job, fusionnée dans `feat/v75`)
+
+**Demande** : les deux découvertes du lot « anomalies de boot » du même jour, à régler avant
+d'arrêter (décision utilisateur) : la désynchronisation des index de `personal_score_awards`
+récidive sur les matchs récents ; `provisionAdditionalTitle` abandonne les autres bases d'un
+titre à la première erreur.
+
+**Décision technique** (exécuté par Opus dans `LevelUp-wt-psa-provisioning`) :
+- Les trois derniers index secondaires de `personal_score_awards` sont RETIRÉS des deux
+  autorités DDL et des DB existantes (`drop_psa_secondary_art_indexes_v1`, idempotente) : la
+  désynchro #23645 se reforme sur les insertions COURANTES (clés en écart = match_id de
+  septembre) et aucun lecteur ne les emprunte — les six lecteurs applicatifs passent par la vue
+  `_latest`, dont la fonction de fenêtre impose un Sequential Scan (`EXPLAIN` identique avec et
+  sans index ; 0,800 ms avec / 0,841 ms sans sur 5 000 lignes fichier). La sonde
+  `data_health_psa_index.go` et `cmd/repair_psa_index` sont SUPPRIMÉS avec ce qu'ils
+  surveillaient (−1 246 L) ; le jumeau `match_skill_rank` (sonde, `repair_msr_index`,
+  paquet `indexcheck`) reste. Ratchet : la table entre dans `noSecondaryIndexTables` du garde
+  existant `TestNoARTSurfaceIndexInMigrations` (mutation vérifiée).
+- `provisionAdditionalTitle` traite désormais TOUTES les bases d'un titre (extraction
+  `cmd/server/provision_title.go`), logue chaque échec au moment où il survient et joint les
+  erreurs ; le log non-fatal du boot porte `targets_failed`. Tests purs (l'échec de la première
+  base n'empêche pas les suivantes) + integration (metadata en échec → shared et social créées
+  ET migrées), vérifiés rouges sur l'ancien comportement.
+
+**Résultats observés** : gates locaux verts (build, vet, tests des paquets touchés + archlint,
+`-tags=integration -p 1 ./...` complet 190 paquets, golangci 0 issue, web tsc/eslint/vitest 8 009
+tests). Trois rouges CI réparés en route : une régression du lot (commentaire après le dernier
+`;` du DDL — `sync.splitSQL` ne tolère pas un fragment purement commentaire, contrairement à
+`migration.splitSQL`) et deux HÉRITÉS de `feat/v75` (goconst `environmental` → constantes
+`domain.FragClass*` ; garde-rail couleur sur `WeaponRecordsRuler.tsx` → helper
+`fragClassCssVar`), qui rougissaient la CI de `feat/v75` (run sur 68fb3035a).
+
+**Prochaine étape** : redémarrage local — plus d'ERROR « index personal_score_awards
+DÉSYNCHRONISÉ ». Découvertes non traitées : unifier les deux splitters SQL (`sync` importe déjà
+`migration`) ; `.ai/V7.5/REGISTRE_REPORTS.md` cite encore `repair_psa_index` comme détecteur
+périodique (seul `repair_msr_index` subsiste) ; le harnais `psa_index_repro_*_test.go` (tag
+`psarepro`) est conservé comme véhicule de reproduction du bug sur `match_skill_rank`.
+
 ## [2026-09-20] Escouade : la barre de filtres quitte le layout + anomalies de boot (Halo 5, drain du provider, provenance RpsTicket, WARN de configuration, index PSA) — Complété (deux branches NON fusionnées : `feat/squad-filterbar`, `feat/boot-anomalies` ; CI verte au niveau job sur chacune)
 
 **Demande** : (1) sur `/squad`, toucher un filtre de la barre « recharge » la page sans rien
