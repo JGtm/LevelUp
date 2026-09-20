@@ -4,8 +4,9 @@
 > `6e86db356`. Question de l'utilisateur (2026-09-19) : « on a les evenements de joueurs comme
 > les slide, crouch, sprint et saut ? ».
 >
-> **ETAT : point 1 (L'ECRIVAIN) FAIT. Point 2 (preuve sur film) EN ATTENTE DE VOIE LIBRE** — un
-> backfill tient le parc ; aucun film n'a ete lu, aucune base ouverte.
+> **ETAT : point 1 (L'ECRIVAIN) FAIT ; D1 MESUREE sur les sept mini-bobines (§ 2.4 bis).
+> Point 2 (preuve sur film entier) EN ATTENTE DE VOIE LIBRE** — un backfill tient le parc ;
+> aucun film du cache n'a ete lu, aucune base ouverte.
 
 ---
 
@@ -162,11 +163,72 @@ Les charges ecrivent des vecteurs a 3 flottants et des handles a sentinelle `0xf
 libelle de posture. Le vocabulaire de l'image le confirme du cote animation :
 `biped_ground_transient_posture`, `biped_posture_animation`, `character_posture`.
 
-> **DECOUVERTE (§ 6, NON TRAITEE)** : `consumeBipedPosturePhysics` fait `br.Skip(2)` — il lit le
-> tag et **ne consomme AUCUNE des quatre charges**, alors que les quatre en consomment chez le
-> jeu. Le corpus decode pourtant au bit pres. Mesure a faire a la voie libre : compter les
-> occurrences de `ti=35 i55` et la distribution de son tag sur un film. Si le compte est non
-> nul, la grammaire de `i55` est incomplete et le corpus ne tient que par chance de valeur.
+> **DECOUVERTE D1 (§ 6)** : `consumeBipedPosturePhysics` fait `br.Skip(2)` — il lit le tag et
+> **ne consomme AUCUNE des quatre charges**, alors que les quatre en consomment chez le jeu.
+> **MESUREE le 2026-09-20 sur les sept mini-bobines : § 2.4 bis.**
+
+### 2.4 bis LA MESURE DE D1 — SEPT MINI-BOBINES, AUCUN FILM DU CACHE
+
+Instrument : `grammar/mouvement_i55_d1_research_test.go` (tag `research`, aucun octet de
+production). Le tag est relu DIRECTEMENT dans le payload a `CompResult.StartBit`, la position
+que la marche de production publie — donc sans crochet d'observation, donc sans toucher
+`observateur.go` ni `components_probe.go` (qui feraient bouger `grammar.Rev`).
+
+**CE QUE LES MINI-BOBINES PERMETTENT, ET CE QU'ELLES INTERDISENT.** Leur `PROVENANCE.txt` est
+formel : chunk de REGISTRE + douze paquets d'IMAGE-CLE + PIED, et **aucun paquet de
+replication**. Le chemin DELTA du bipede n'y est donc pas exercable — mesure a l'appui,
+`ScanFilmBipedPositions` refuse les sept (« aucun slot biped (ti=35) dans les keyframes »). La
+mesure se fait sur le chemin d'IMAGE-CLE, qui marche les memes composants par la meme boucle et
+le meme `case`.
+
+| bobine | records `ti=35` bornes | `i55` franchi | t0 | t1 | t2 | t3 |
+|---|---|---|---|---|---|---|
+| a521164d | 205 | 77 | 64 | 6 | 2 | 5 |
+| 60ae07c4 | 236 | 50 | 40 | 6 | 2 | 2 |
+| 11de8353 | 255 | 214 | 170 | 16 | 10 | 18 |
+| 111fa685 | 214 | 158 | 119 | 12 | 12 | 15 |
+| e5adf7b2 | 237 | 182 | 135 | 24 | 8 | 15 |
+| bcb6d393 | 137 | 134 | 97 | 10 | 9 | 18 |
+| fb1a1a72 | 80 | 80 | 60 | 5 | 9 | 6 |
+| **TOTAL** | **1 364** | **895** | **685** | **79** | **52** | **79** |
+
+**LE TAG EST NON NUL 210 FOIS SUR 895 (23,5 %).** Ce n'est donc pas un negatif : le `Skip(2)`
+saute bel et bien, une fois sur quatre, une charge que le jeu lit.
+
+**CONTROLE INTERNE (necessaire).** Si le curseur avait derive AVANT `i55`, les deux bits relus
+seraient du bruit — et du bruit rend quatre valeurs equiprobables. L'ecart a l'uniforme vaut
+**1 270** pour 895 lectures (un bruit en rendrait environ 3) : les deux bits sont un champ
+structure, lu au bon endroit. Corroboration : `i29`, `i54` et `i55` sont declares par
+**exactement les memes 895 records** (65,6 %), et `i62` par **aucun** — le masque d'un record
+d'image-cle n'est pas du hasard.
+
+**CE QUE CHAQUE TAG COUTE CHEZ LE JEU** (feuilles relevees au desassemblage ; les deux
+occurrences d'un meme `ADD [reg+0x2c], n` sont les deux branches d'UNE lecture) :
+
+| tag | lecteur | feuilles consommatrices | cout plancher |
+|---|---|---|---|
+| 0 | `FUN_142f265dc` | `1406cf008` x3 = 3 x R(1) ; une largeur variable via `1406d310c` | **≥ 3 bits + un champ a largeur variable** |
+| 1 | `FUN_142f25a3c` | trois largeurs variables via `1406d310c` ; `14076e494` position ; `14076dc04(0x13)` = R(19) | **≥ 19 bits + position + 3 champs variables** |
+| 2 | `FUN_142f263ac` | `14076e494` position ; `14076dc04` ; `1406cf008` = R(1) ; `1408f0ac4` handle ; une R(32) | **≥ 52 bits + position** |
+| 3 | `FUN_142f264f4` | `1406cf008` x3 ; `14076e494` position ; `14076dc04(0x13)` = R(19) | **≥ 22 bits + position** |
+
+`14076e494` est la position du port (`consumeE494Position`) : porte de pleine precision puis
+`R(96)` brut, ou le corps quantifie. **Aucun des quatre tags ne coute zero bit.**
+
+**« POURQUOI LA MARCHE RESTE-T-ELLE ALIGNEE ? » — SUR CES BOBINES, ELLE NE L'EST PAS, ET ELLE NE
+L'A JAMAIS ETE.** L'oracle de fermeture le dit : sur les 1 364 records `ti=35` bornes, **6
+ferment** (0,4 %), et **AUCUN de ces 6 n'a franchi `i55`**. La marche du bipede s'arrete plus
+loin sur `i60 simulation-state-component`, non porte (c'est exactement ce que le golden
+`keyframe_closure.golden` fige depuis le lot 0.A.3) — donc rien, sur le chemin d'image-cle,
+n'a jamais verifie le curseur au-dela de `i55`. Il n'y a pas de paradoxe a expliquer ici : il
+n'y avait pas d'alignement prouve.
+
+**CE QUI RESTE OUVERT, ET C'EST 5.3.2.** La bit-exactitude du corpus concerne le chemin DELTA,
+que les mini-bobines ne portent pas. Trois hypotheses, toutes mesurables sur un film entier :
+(a) `i55` n'est pas declare dans les masques delta ; (b) il l'est, et son tag y est toujours 0
+avec une charge de tag 0 nulle en pratique ; (c) il l'est avec des tags non nuls, et la marche
+delta derive sans qu'aucun oracle actuel ne le voie. **Tant que ce compte n'est pas fait,
+aucune conclusion de posture ne doit s'appuyer sur `i55`.**
 
 ### 2.5 `ti=35 i1 object-translational-velocity` — LA VITESSE, DEJA DECODEE ET JETEE
 
@@ -220,7 +282,9 @@ d'action de `i54`, tag de `i55`, action de `i63`, ou derivation de la vitesse `i
    vitesse elevee decroissante ?
 3. `i54` : combien d'evenements par joueur et par match ; `+0x08`, `+0x98` et `+0x9c`
    se partagent-ils en classes stables (sprint / escalade / poussee) ?
-4. `i55` : **compte d'occurrences** et distribution du tag (voir la decouverte du § 2.4).
+4. `i55` : le compte et la distribution du tag sont FAITS sur les mini-bobines (§ 2.4 bis) ; ce
+   qui reste est le chemin DELTA — `i55` y est-il declare, avec quels tags, et la marche y
+   ferme-t-elle apres l'avoir franchi ?
 5. `i1` : la composante verticale signe-t-elle le saut (vz > 0 puis < 0) ? La vitesse au sol
    separe-t-elle sprint et marche par un seuil net ?
 
@@ -237,7 +301,15 @@ MOUV_EXE="..." go run -tags=research ./internal/games/halo_infinite/film/researc
   -vocabulaire -plafond=25
 ```
 
+```bash
+# La mesure de D1, sur les sept mini-bobines — aucun film du cache, aucune base.
+go test -tags=research -count=1 -v -run TestMouvementI55D1 \
+  ./internal/games/halo_infinite/film/internal/grammar/
+```
+
 - `film/research/mouvement/` — cibles du lot, vocabulaire, rapport.
+- `grammar/mouvement_i55_d1_research_test.go` — la mesure de D1 (`_test.go`, donc HORS de
+  l'empreinte de la couche grammaire : `grammar.Rev` ne bouge pas).
 - `film/research/reapparition/` — deux ajouts SEULEMENT : `Executable.ChainesContenant`
   (le pool complet des chaines, que l'en-tete de `univers.go` appelait deja) et l'export de
   `Calibrer` (la garde de publication, reutilisee au lieu d'etre recopiee).
@@ -247,7 +319,11 @@ MOUV_EXE="..." go run -tags=research ./internal/games/halo_infinite/film/researc
 ## 6. DECOUVERTES HORS PERIMETRE (consignees, NON traitees)
 
 - **D1 (5.3)** — `consumeBipedPosturePhysics` (`ti=35 i55`) saute les quatre charges du tag de
-  2 bits, que le jeu lit toutes. Voir § 2.4. A MESURER a la voie libre avant toute conclusion.
+  2 bits, que le jeu lit toutes. **MESUREE sur les sept mini-bobines (§ 2.4 bis) : le tag est
+  NON NUL 210 fois sur 895 franchissements (23,5 %)**, et aucun des quatre tags ne coute zero
+  bit chez le jeu. La question « pourquoi la marche reste-t-elle alignee ? » ne se pose pas sur
+  ces bobines — elle ne l'est pas : 6 fermetures sur 1 364 records, **0** parmi ceux qui
+  franchissent `i55`. RESTE OUVERT pour le chemin DELTA, mesure de 5.3.2.
 - **D2 (5.3)** — les commentaires de portage de `i54` et `i62` donnent comme « descripteur »
   l'adresse du SLOT de nom (`descripteur + 0x18`) : `143d0c9d8` au lieu de `143d0c9c0`,
   `143d0ca80` au lieu de `143d0ca68`. Aucune grammaire n'est fausse ; c'est la meme
