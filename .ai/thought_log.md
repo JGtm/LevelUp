@@ -1,3 +1,71 @@
+## [2026-09-20] Escouade : la barre de filtres quitte le layout + anomalies de boot (Halo 5, drain du provider, provenance RpsTicket, WARN de configuration, index PSA) — Complété (deux branches NON fusionnées : `feat/squad-filterbar`, `feat/boot-anomalies` ; CI verte au niveau job sur chacune)
+
+**Demande** : (1) sur `/squad`, toucher un filtre de la barre « recharge » la page sans rien
+changer, seul « Analyser » sert les bonnes stats ; (2) relancer le serveur sur `feat/v75` et
+relever toutes les anomalies des logs de boot (`make restart`).
+
+**Décision technique** :
+- Escouade (diagnostic sur pièces, exécuté par Opus dans `LevelUp-wt-squad-filterbar`) :
+  `SquadLayout` portait dans le PARENT de `<Outlet />` et du `SquadContext.Provider` tout
+  l'état transitoire de la barre (pending cascade/période, popover, preview, presets,
+  compteurs de session) ; la valeur du contexte était un littéral neuf à chaque rendu et
+  `selectedRows` non mémoïsé → chaque case cochée re-rendait les trois onglets jusqu'aux
+  `ChartCard` ; `echarts-for-react` compare l'option en profondeur (closures `formatter`
+  inégales) → `setOption(notMerge)` → animation d'entrée rejouée à donnée constante. Partout
+  ailleurs cet état vit dans `FilterOmnibar`, frère du contenu. Correctif : `SquadFilterBar` +
+  `useSquadFilterBarState` (la barre devient un enfant), mémoïsation du contexte, de
+  `selectedRows` et des dérivés des trois onglets, `buildOption` inline en `useCallback`, test
+  de rendu (9 rendus → 0 sur la séquence cocher/popover/période, vérifié rouge sur l'avant) +
+  garde-rail grep `filterBarBoundary.guard.test.ts`. `SquadLayout.tsx` 902 → 629 L,
+  exemption max-lines du 2026-09-06 retirée. Contre le diagnostic initial : `TopProgressBar`
+  n'est PAS en cause (`keepPreviousData` → statut `success`).
+- Boot (logs lus dans `logs/` RACINE — c'est là qu'écrit `make restart`, `apps/go-api/logs`
+  ne reçoit que les boots sans `LEVELUP_REPO_ROOT` ; exécuté par Opus dans
+  `LevelUp-wt-boot-anomalies`, 7 commits) :
+  1. Halo 5 en ERROR à chaque boot depuis le 2026-09-12 : la migration
+     `purge_weapon_families_labels_columns` n'était pas dans le jeu h5 (`OwnsTarget`
+     metadata) → `name_en NOT NULL` violé par le seed du registre d'armes ; effet aggravant :
+     `provisionAdditionalTitle` sort à la première erreur, donc plus aucune migration shared /
+     social h5 ni `ReconcileNameLabels`. Correctif : `migration.ByName()` + la MÊME étape
+     insérée après `h5_add_weapon_registry` ; test bout en bout (mutation vérifiée : sans le
+     correctif, le message exact du boot).
+  2. Deux crashs du 2026-09-16 (`server.crash.log`, `panic: sync: WaitGroup is reused before
+     previous Wait has returned` dans `sharedprovider.waitForDrain`) : la goroutine `Wait`
+     fuyait au timeout de drain (constaté aussi à ce boot : « drain timeout, rollback vers RO »
+     sur le snapshot du classement mondial, dont la persistance a échoué). Correctif :
+     `reader_drain.go`, compteur sous `p.mu` + canal fermé par le dernier `release()`, abandonné
+     au timeout ; test `-count=50` + `-race` ; gate `-tags=integration` vert.
+  3. 11 WARN « RpsTicket refusé (401) — retry » par boot : aucun fichier de token ne portait
+     `token_client_family`. Constat de l'exécutant contre l'hypothèse initiale : la famille du
+     client OAuth ne PRÉDIT PAS le préfixe accepté (13/13 refresh Azure, 5 comptes n'acceptent
+     que `t=`). La provenance est désormais MESURÉE au chokepoint XBL (`TokenFamilyObserver`),
+     persistée (`UpdateTokenClientFamily`) et rejouée : pool, `RefreshUserXSTS`, watcher.
+  4. WARN « configuration non sûre » émis sans condition : `IsExposedDeployment()` (hôte non
+     loopback ou `LEVELUP_ENV` ≠ vide/development) → WARN si exposé, INFO sinon ; `Validate()`
+     inchangé et verrouillé par ratchet.
+  5. Index `personal_score_awards` DÉSYNCHRONISÉ (3 joueurs) : réparé par le superviseur avec
+     `cmd/repair_psa_index -repair` serveur arrêté (0 écart après, lignes intactes). Les clés en
+     écart étaient des match_id de septembre → la désynchro RÉCIDIVE sur les insertions courantes
+     (index secondaires ART) ; correctif de fond à instruire (retrait des index, recette ADR 0026).
+
+**Résultats observés** : web — tsc, eslint 0, vitest 749 fichiers / 8005 tests verts (1er
+passage : 5 garde-rails balayant `src/` en timeout 5 s sous charge, verts seuls), lints
+couleurs/fields/inter-features/knip verts, CI verte après relance du job Go Coverage annulé à
+45 min (diff 100 % web). Go — build/vet/tests + archlint + integration sharedprovider verts,
+CI verte (un ratchet `shared_social` attrapé sur un COMMENTAIRE, corrigé). Tokens morts
+(Chocoboflor, Madina97294, XxDaemonGamerxX, AADSTS70000 depuis le 2026-06-14) : ignorés sur
+décision utilisateur. Classement mondial : Waypoint HTTP 500 le 19/09, persistance échouée
+le 20/09 (drain), cron quotidien.
+
+**Prochaine étape** : verdict visuel utilisateur sur `/t/halo_infinite/players/JGtm/squad/synergies`
+(cocher une playlist, changer un preset → aucun rejeu d'animation ; Analyser → rechargement
+unique) ; fusion des deux branches dans `feat/v75` au signal, puis redémarrage local : le 2e
+boot ne doit plus porter ni l'ERROR h5, ni les 401, ni le WARN de configuration. Découvertes
+non traitées : `provisionAdditionalTitle` abandonne les autres targets à la première erreur ;
+5 garde-rails web près du `testTimeout` ; job CI Go Coverage près de son plafond ; récidive PSA.
+Worktrees conservés (`LevelUp-wt-squad-filterbar` : jonction node_modules à délier AVANT tout
+`worktree remove` ; `LevelUp-wt-boot-anomalies` : node_modules réel via `npm ci`).
+
 ## [2026-09-20] Records de distance — retouche : libellés des deux côtés de l'axe, note sous le graphe retirée — Complété (branche `wt/records-distance`)
 
 **Demande** : après la première capture sur données réelles, l'utilisateur trouve la règle
