@@ -113,8 +113,8 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **VIP** — VIP adverses abattus, nombre de fois désigné VIP, frags réalisés en étant le VIP, temps cumulé et plus longue survie en VIP
 - **Où les lire** — dans la section « Objectifs » de la vue de match, exactement comme la Capture de drapeau, les Bases, le Roi de la colline et Oddball : une colonne par statistique du mode joué, avec une ligne « Total équipe »
 
-**Dix nouvelles citations d'objectif**
-- **Autour du drapeau** — Capture du drapeau, Sécurisation du drapeau, Vol du drapeau, Chasse au rapatrieur, Porteur imparable et Rapatriement agressif
+**Huit nouvelles citations d'objectif**
+- **Autour du drapeau** — Capture du drapeau, Sécurisation du drapeau, Porteur imparable et Rapatriement agressif
 - **Zones et Oddball** — Défense de zone, Crâne intouchable, Chasse au porteur et Prise du crâne
 - **Des paliers réglés sur le jeu réel** — chaque palier est calibré sur vos vraies données de match plutôt que sur une échelle générique, pour que les exploits rares (réaliser des frags en portant le drapeau ou le crâne) restent atteignables
 
