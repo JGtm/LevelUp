@@ -205,10 +205,47 @@ func (h KillSourceHealth) Verdict() string {
 	if len(h.Alerts()) > 0 {
 		return VerdictAlerte
 	}
-	if h.UnexplainedRatio() > UnexplainedWarnRatio || h.CoverageRatio() < CoverageWarnRatio {
+	if len(h.Degradations()) > 0 ||
+		h.UnexplainedRatio() > UnexplainedWarnRatio || h.CoverageRatio() < CoverageWarnRatio {
 		return VerdictHorsDomaine
 	}
 	return VerdictNominal
+}
+
+// Degradations : les conditions qui SORTENT LE FILM DU DOMAINE MESURE sans rien dire de faux sur
+// les lignes qui restent. Elles se lisent comme les alertes ; elles n eteignent pas la
+// publication ligne par ligne.
+//
+// # POURQUOI `OutOfRoster` EST ICI ET PLUS DANS [Alerts] (lot 5.2b.1, 2026-09-20)
+//
+// Ce compteur dit « un participant n est pas compte ». C est vrai, et c est utile. Mais il ne dit
+// RIEN sur la justesse des lignes publiees, et la mecanique le prouve : les dead-states qu il
+// compte sont DEJA refuses un par un, en amont, par le filtre de credibilite de la marche
+// (`selectCredible` : tout indice `>= nPlayers` est ecarte AVANT de devenir un candidat). Une
+// ligne comptee ici n atteint jamais la publication. Le porter en alerte DURE faisait donc
+// exactement l inverse de ce qu il mesurait : il eteignait `LineByLinePublishable` pour le MATCH
+// ENTIER — c est-a-dire les lignes dont l indice est PARFAITEMENT dans le roster — a cause de
+// celles qui etaient deja jetees.
+//
+// LE COUT MESURE DE CE CHOIX, SUR `b1ad85eb` (match a remplacement, 2026-09-20) : huit
+// dead-states a l indice d un remplacant, `publishable = FALSE` sur les 77 lignes ecrites en
+// base, et un kill-feed produit ou aucune mort ne porte son arme (la requete Q21b filtre sur
+// `publishable`). La cause premiere — le roster qui ignorait les remplacants — est corrigee a la
+// racine par `killsource/index_motif.go` ; CE changement-ci est le second filet : quand un
+// participant echappe encore aux trois lectures d identite, seules SES morts se perdent.
+//
+// CE QUI PROTEGE ENCORE LA PUBLICATION LIGNE PAR LIGNE : la bijection. Un participant non compte
+// ne peut deplacer une attribution que par la part INFEREE du roster, et c est precisement ce que
+// `BijectionMargin` / `BijectionDetermined` mesurent (cf. `killsource.Result.LineByLinePublishable`).
+func (h KillSourceHealth) Degradations() []string {
+	if h.OutOfRoster <= 0 {
+		return nil
+	}
+	return []string{fmt.Sprintf(
+		"%d dead-state(s) a tag `jpt!` valide portent un indice hors du roster retenu : un "+
+			"participant n'est pas compte (remplacant que les trois lectures d'identite ne "+
+			"nomment pas ? bot non declare ?). CES MORTS-LA SONT REFUSEES, les autres publient",
+		h.OutOfRoster)}
 }
 
 // Alerts : les conditions dures, chacune avec le chiffre qui la declenche et ce qu'elle signifie.
@@ -221,17 +258,16 @@ func (h KillSourceHealth) Verdict() string {
 // son bruit est MESURE NUL sur cinq films (et non nul par construction, cf. son champ), et son
 // controle positif est passe 20 fois sur 20 SUR LES TAGS QUE LA MARCHE PORTE. Hors de cette
 // population il a un point aveugle mesure, et c'est `CoverageRatio` qui prend le relais.
+//
+// `OutOfRoster` N'Y FIGURE PLUS DEPUIS LE LOT 5.2b.1 (2026-09-20), et le raisonnement complet est
+// sur [KillSourceHealth.Degradations] : il compte des lignes DEJA refusees une par une en amont,
+// donc l'eriger en alerte dure eteignait la publication de toutes les AUTRES lignes du match.
 func (h KillSourceHealth) Alerts() []string {
 	var out []string
 	if h.TagOutOfCatalogueWalk > 0 {
 		out = append(out, fmt.Sprintf(
 			"%d enregistrement(s) de la marche portent un tag HORS catalogue : la table `jpt!` est PERIMEE, regenerer (recette : paquet damagetag)",
 			h.TagOutOfCatalogueWalk))
-	}
-	if h.OutOfRoster > 0 {
-		out = append(out, fmt.Sprintf(
-			"%d dead-state(s) a tag `jpt!` valide portent un indice hors du roster retenu : un participant n'est pas compte (bots non declares ? roster plus grand ?)",
-			h.OutOfRoster))
 	}
 	if h.UnexplainedRatio() > UnexplainedAlertRatio {
 		out = append(out, fmt.Sprintf(
