@@ -21,6 +21,7 @@ export {
   FRAG_CLASS_TOKENS,
   fragClassToken,
   fragClassColor,
+  fragClassCssVar,
   fragRoleColor,
   fragLeafColor,
   shiftLightness,
