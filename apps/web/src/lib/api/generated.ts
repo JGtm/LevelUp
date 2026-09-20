@@ -12356,6 +12356,7 @@ export interface components {
             top_weapon_kills?: components["schemas"]["SynthesisWeaponKillEntry"][] | null;
             top_weeks: components["schemas"]["TopWeekEntry"][] | null;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
+            weapon_records?: components["schemas"]["SynthesisWeaponRecords"];
         };
         SynthesisScope: {
             /** Format: date-time */
@@ -12400,6 +12401,14 @@ export interface components {
             /** Format: int64 */
             total_kills: number;
             weapons: components["schemas"]["WeaponRangeRow"][] | null;
+        };
+        SynthesisWeaponRecords: {
+            excluded?: components["schemas"]["WeaponExcludedFromRecords"][] | null;
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: int64 */
+            total_kills: number;
+            weapons: components["schemas"]["WeaponDistanceRecordRow"][] | null;
         };
         T0FilmCoverage: {
             /** Format: int64 */
@@ -13397,6 +13406,27 @@ export interface components {
             /** Format: int64 */
             taken: number;
         };
+        WeaponDistanceRecordRow: {
+            class?: string;
+            label?: string;
+            label_en?: string;
+            /** Format: int64 */
+            measured: number;
+            /** Format: double */
+            median_m: number;
+            record: components["schemas"]["WeaponRecordFrag"];
+            /** Format: double */
+            record_m: number;
+            weapon_key: string;
+        };
+        WeaponExcludedFromRecords: {
+            class: string;
+            label?: string;
+            label_en?: string;
+            /** Format: int64 */
+            measured: number;
+            weapon_key: string;
+        };
         WeaponHighlight: {
             /** Format: int64 */
             kills: number;
@@ -13453,6 +13483,15 @@ export interface components {
             p10: number;
             /** Format: double */
             p90: number;
+        };
+        WeaponRecordFrag: {
+            map_label?: string;
+            map_label_en?: string;
+            match_id: string;
+            /** Format: date-time */
+            started_at?: string;
+            /** Format: int64 */
+            time_ms: number;
         };
         WeaponTiersInfo: {
             randomStarts: boolean;

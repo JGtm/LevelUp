@@ -74,6 +74,12 @@ type SynthesisService struct {
 	// scope. Câblé UNIQUEMENT pour les titres à capability match.objective.stats
 	// (Infinite ; nil pour Halo 5 → bloc objective_stats omis). Best-effort.
 	objectiveStatsRepo port.ObjectiveStatsRepository
+	// weaponRangeRepo : les frags mesurés (positions par kill) dont la section « Records
+	// de distance par arme » tire le frag le plus lointain de chaque arme. Câblé
+	// INCONDITIONNELLEMENT (SynthesisCtx) : le repo seul décide, via
+	// games.ErrCapabilityNotSupported, qu'un titre n'a pas de positions — nil ou titre
+	// sans décodeur → bloc weapon_records omis. Best-effort.
+	weaponRangeRepo port.WeaponRangeRepository
 	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
 	titleSlug  string
@@ -142,6 +148,13 @@ func (s *SynthesisService) WithVehicleDestructionStatsRepo(repo port.VehicleDest
 // (SynthesisCtx) ; nil → bloc objective_stats omis de la réponse.
 func (s *SynthesisService) WithObjectiveStatsRepo(repo port.ObjectiveStatsRepository) *SynthesisService {
 	s.objectiveStatsRepo = repo
+	return s
+}
+
+// WithWeaponRangeRepo injecte la source des frags mesurés pour la section « Records de
+// distance par arme » (synthesis_weapon_records.go). nil → bloc weapon_records omis.
+func (s *SynthesisService) WithWeaponRangeRepo(repo port.WeaponRangeRepository) *SynthesisService {
+	s.weaponRangeRepo = repo
 	return s
 }
 
@@ -234,6 +247,12 @@ func (s *SynthesisService) GetSynthesisPage(
 	// match à objectif → bloc omis.
 	objectiveStats := s.loadObjectiveStats(ctx, filteredCanon)
 
+	// Records de distance par arme : best-effort, nil si repo absent, titre sans positions
+	// par kill (capability absente → Debug) ou scope sans frag mesuré → bloc omis.
+	weaponRecords := buildWeaponRecordsSection(ctx, weaponRecordsQuery{
+		Repo: s.weaponRangeRepo, TitleSlug: s.titleSlug, Gamertag: s.gamertag, Rows: filteredCanon,
+	})
+
 	scope := domain.SynthesisScope{
 		Period:         period,
 		MatchCount:     matchCount,
@@ -269,6 +288,7 @@ func (s *SynthesisService) GetSynthesisPage(
 		WeaponAccuracy:    weaponAccuracy,
 		CombatProfile:     combatProfile,
 		ObjectiveStats:    objectiveStats,
+		WeaponRecords:     weaponRecords,
 	}, nil
 }
 

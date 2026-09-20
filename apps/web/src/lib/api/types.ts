@@ -1570,7 +1570,18 @@ export interface SynthesisPageResponse {
   // KPI objectifs (cumul CTF/Zones/Oddball sur le scope) — omis pour un titre sans
   // capability match.objective.stats (Halo 5) ou un scope sans match à objectif.
   objective_stats?: ObjectiveAggregate | null
+  // Records de distance par arme (le frag mesuré le plus lointain de chaque arme, identifié
+  // pour ouvrir le rejeu à cet instant) — omis pour un titre sans positions par kill (Halo 5)
+  // ou un scope sans frag mesuré. Cf. PLAN_RECORDS_DISTANCE_2026-09-20.md.
+  weapon_records?: SynthesisWeaponRecords | null
 }
+
+// Records de distance par arme : le bloc, une ligne, le frag du record, une arme écartée.
+// Re-exports du contrat OpenAPI (`domain.SynthesisWeaponRecords`), jamais un mirror manuel.
+export type SynthesisWeaponRecords = components['schemas']['SynthesisWeaponRecords']
+export type WeaponDistanceRecordRow = components['schemas']['WeaponDistanceRecordRow']
+export type WeaponRecordFrag = components['schemas']['WeaponRecordFrag']
+export type WeaponExcludedFromRecords = components['schemas']['WeaponExcludedFromRecords']
 
 // Cumul des stats objectifs (CTF/Zones/Oddball) sur un scope — partagé Synthèse/Escouade.
 export type ObjectiveAggregate = components['schemas']['ObjectiveAggregate']

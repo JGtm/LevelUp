@@ -561,3 +561,50 @@ en = "No weapon reaches the {min, number} measurement threshold over this period
 [synthesis.weapon_range.empty_below_threshold_elevation]
 fr = "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les dénivelés mesurés restent trop rares pour être publiés arme par arme."
 en = "No weapon reaches the {min, number} measurement threshold over this period: measured elevations are still too rare to publish weapon by weapon."
+
+# ── Records de distance par arme (la règle) — plan PLAN_RECORDS_DISTANCE_2026-09-20.md.
+# Aucune clé ne dit « portée de l'arme » : c'est un usage mesuré du joueur. Ce qui est écarté
+# est nommé (D9). Le compte porte le dénominateur (frags mesurés sur frags du scope).
+[synthesis.weapon_records.title]
+fr = "Records de distance par arme"
+en = "Distance records by weapon"
+
+[synthesis.weapon_records.count]
+fr = "{weapons, number} armes · {measured, number} frags mesurés sur {total, number}"
+en = "{weapons, number} weapons · {measured, number} measured kills out of {total, number}"
+
+[synthesis.weapon_records.subtitle]
+fr = "Frag le plus lointain — un losange par arme, couleur par classe ; survolez pour le match, cliquez pour le rejeu."
+en = "Farthest kill — one diamond per weapon, colour by class; hover for the match, click for the replay."
+
+[synthesis.weapon_records.tooltip_record]
+fr = "frag le plus lointain"
+en = "farthest kill"
+
+[synthesis.weapon_records.tooltip_context]
+fr = "médiane {median} · {measured, number} frags mesurés"
+en = "median {median} · {measured, number} measured kills"
+
+[synthesis.weapon_records.tooltip_open]
+fr = "Cliquer : ouvrir le rejeu à cet instant"
+en = "Click: open the replay at this moment"
+
+[synthesis.weapon_records.open_replay_label]
+fr = "{weapon} : record {record} — ouvrir le rejeu du match à cet instant"
+en = "{weapon}: record {record} — open the match replay at this moment"
+
+[synthesis.weapon_records.excluded]
+fr = "Écartés : {list} — une distance n'y a pas de sens."
+en = "Excluded: {list} — distance is meaningless there."
+
+[synthesis.weapon_records.excluded_item]
+fr = "{label} ({measured, number})"
+en = "{label} ({measured, number})"
+
+[synthesis.weapon_records.coverage_note]
+fr = "Ne compte que les frags dont la position du tueur et de la victime est mesurée."
+en = "Only kills where both the killer and the victim positions are measured count."
+
+[synthesis.weapon_records.empty_all_excluded]
+fr = "Toutes les armes mesurées sont écartées sur cette période : aucun record à tracer."
+en = "Every measured weapon is excluded over this period: no record to draw."

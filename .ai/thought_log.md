@@ -1,3 +1,78 @@
+## [2026-09-20] Synthèse : records de distance de frag par arme — maquette de cinq rendus (conseil, aucun code) — Complété (branche `feat/v75`, fichier `.ai/` seul)
+
+**Demande** : l'utilisateur regrette l'absence de la « portée » sur la Synthèse (partie sur
+Séries temporelles le 2026-09-13, item B.2) mais ne veut pas la même forme. Il pense aux
+joueurs : la distance de frag record par arme. Conseil demandé, puis une maquette d'au moins
+quatre rendus de l'option retenue (« la règle des records »). Décisions prises par lui : grain
+PAR ARME, tous frags mesurés (aucun seuil d'effectif), Halo 5 non couvert.
+
+**Ce que l'inventaire a établi** (agent Explore, sur pièces) : aucune distance stockée, calcul
+à la lecture depuis `kill_positions_latest` (`platform/duckdb/kill_measured.go`, formule unique,
+mètres) ; aucun « frag le plus lointain » n'existe (min/max par arme interdits au tracé, doctrine
+D6) ; le contrat de portée ne porte ni la classe de l'arme ni le match source ; la traduction
+`source_tag -> weapon_key` vit dans des tables Go embarquées (`killsource_registry.go`), donc
+pas de tirage SQL des vrais records sans programme jetable — maquette sur données d'illustration.
+La route de vue de match n'accepte que `tab`, pas d'horodatage : le « saut au frag » dans le
+rejeu est une extension à prévoir.
+
+**Décision technique de la maquette** (`.ai/V7.5/MAQUETTE_REGLE_RECORDS_2026-09-20.html`,
+SVG vanille, jetons de l'app repris à l'identique dont la famille `frag-*` par classe d'arme,
+thème clair/sombre, infobulle et clic vers le match) — cinq rendus : A règle à une ligne
+(losange par arme, couleur par classe, libellés étagés par placement glouton) ; B haltères
+médiane -> record par ligne avec match source ; C règle en miroir frags / morts ; D essaim
+(tous les frags, record en losange, 10 armes) ; E trois tuiles « Meilleures stats » + la règle.
+Chaque rendu porte pour / contre, et un tableau final compare hauteur, information ajoutée et
+coût Go. Doctrines respectées : jamais « portée de l'arme », corps à corps écarté ET nommé
+(mêlée, épée, marteau, environnement), dénominateur affiché.
+
+**Résultats observés** : capture pleine page à 1280 px, deux thèmes. Deux défauts corrigés
+après la première capture : chevauchement vertical des libellés à deux lignes (rang porté de
+18 à 28 px, largeur estimée relevée) et faux amas sous le record dans l'essaim (plafonnement
+remplacé par un tirage par rejet).
+
+**Prochaine étape** : choix du rendu par l'utilisateur. Chantier ensuite : une lecture Go
+« top 1 par arme avec match_id + time_ms » sur la jointure canonique de `kill_measured.go`,
+champ neuf sur la réponse Synthèse (contrat OpenAPI + types générés), i18n FR/EN, puis un
+paramètre d'horodatage sur la route de match pour ouvrir le rejeu au frag.
+
+## [2026-09-20] Synthèse : « Records de distance par arme » (rendu A, la règle) — Complété (branche `wt/records-distance`, worktree `LevelUp-wt-records-distance`, non commité)
+
+**Demande** : après la maquette de cinq rendus (entrée précédente), l'utilisateur retient le
+rendu A — une ligne graduée, un losange par arme à son record, couleur par classe — avec deux
+exigences : la légende EN DESSOUS et CENTRÉE, et le même chrome de bloc que le reste de la
+page. Décisions fermes : grain par arme, tous les frags mesurés (aucun seuil), Halo 5 non
+couvert. Plan : `.ai/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md`.
+
+**Décision technique** : le record est un OBJET, pas une statistique — `analysis.WeaponDistanceRecords`
+(pur) garde la clé du frag (match, tueur, instant) là où `WeaponRangeAggregate` ne rend qu'un
+`Max` anonyme ; la section `service/synthesis_weapon_records.go` est une fonction libre (même
+régime best-effort et de journalisation que la portée), écarte PAR CLASSE de registre (`melee`,
+`environmental`, `equipment` — via `ResolveWeaponDimensions`, jamais une liste de clés en Go)
+et NOMME ce qu'elle écarte ; carte et date du match source lues dans le scope canonique déjà
+chargé (aucune requête neuve) ; câblage inconditionnel dans `SynthesisCtx` (le repo seul décide
+via `ErrCapabilityNotSupported`). Côté web : SVG React (`WeaponRecordsRuler.tsx`) et non
+ECharts — le graphe est du texte étagé dont la hauteur dépend de la largeur mesurée, ce qu'une
+série `custom` ne sait pas réserver ; géométrie et étagement glouton dans
+`weaponRecords_logic.ts` (pur, 11 tests) ; `SectionCard` + pied de légende au chrome de
+`ChartCard`, `ChartLegend` centrée ; clic = `navigate` vers le REJEU avec `?t=<time_ms>&clock=match`
+(l'instant est sur l'horloge du match, la route recale). Contrat OpenAPI régénéré
+(`SynthesisWeaponRecords`, `weapon_records` sur la réponse Synthèse), types web régénérés,
+11 clés i18n FR/EN.
+
+**Résultats observés** : Go — `go test` analysis/domain/service/api/contracttest verts, golden
+OpenAPI vert, vet propre ; web — `tsc -b --force` vert, `npm run lint` vert, `lint:colors` 0
+violation, lint champs 0 violation, vitest synthèse 13 fichiers / 119 tests verts (dont 8 sur
+le composant, 11 sur la géométrie). Vérification sur données réelles (API du worktree lancée
+sur la base locale, Vite du worktree) : 30 armes, 6 130 frags mesurés sur 11 232, cinq
+pseudo-armes écartées et nommées (bobines, chute et environnement), infobulle correcte, clic
+ouvrant le rejeu du bon match à l'instant du frag, rendu clair et sombre. Un défaut corrigé
+sur pièces : le record du rang le plus bas touchait les losanges (écart axe relevé de 14 à
+24 px). Constat à trancher avec l'utilisateur : l'épée et le marteau (classe `heavy` par
+décision du 2026-09-01) restent sur la règle (1,3 m et 4,5 m).
+
+**Prochaine étape** : décision utilisateur sur épée/marteau, puis commit (sur demande) et
+restauration du serveur air de la session partagée (faite en fin de session).
+
 ## [2026-09-20] Le ton derive d'un jeton quitte les features pour le systeme de jetons (`tokenTone`) — Complete (branche `feat/v75`)
 
 **Demande** : la session `levelup-go-migration-ad` signale que mon fichier `assistTierTone.ts`
