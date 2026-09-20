@@ -222,7 +222,7 @@ go-api-test:
 go-api-test-gamefiles:
 	cd $(GO_API_DIR) && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
 		./internal/himap/ \
-		./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
+		./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ ./cmd/mapgeo-build/ -v
 
 ## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin. DEFAUT
 ## (--reference=base) : cuit chaque temoin DEUX FOIS (code du HEAD, code d'une revision de

@@ -10,6 +10,31 @@
 
 ---
 
+### [ops/données] Recuisson des positions de kills de Live Fire (variante classée)
+
+Noté le 2026-09-20. Les positions de kills de « Live Fire - Ranked » écrites avant le lot
+1.9.2 (2026-09-15) portent un X faux (décalage ~10 m, 13 matchs sur 30 hors emprise) ; elles
+faussent la page Tactique et les distances de frags sur cette carte. Le décodeur est juste ;
+le correctif `backfill-killsource --carte` (branche `wt/livefire-killpos`, commit `202a0075e`,
+prouvé sur copie : écart des variantes 9,87 → 0,40 m) reste à FUSIONNER puis à JOUER en prod,
+serveur arrêté, un seul writer : `levelup backfill-killsource --films-only --force --carte
+"live fire"` (`--dry-run` d'abord). La même passe régénère `kill_openings`, `match_lives`,
+`match_death_context` de ces matchs.
+
+### [recherche/cartes] Positions de force — chantier clos, reprise possible
+
+Recherche du 2026-09-20 conservée sur `wt/power-positions` (branche non fusionnée ; plan
+`.ai/PLAN_POSITIONS_DE_FORCE_2026-09-20.md`, documents `.ai/V7.5/positions_de_force/`).
+Acquis : oracle pro v2 (28 positions fortes sur 8 cartes HCS), outils de mesure empirique et
+géométrique, harnais de verdict. Verdict : aucune lignée ne tient (nos matchs ne montrent pas
+les positions pro ; la géométrie retrouve 10/13 positions de hauteur / ligne de vue mais rate
+« arme / objectif » ; la fusion sans borne colorie des salles). Voie de reprise recommandée :
+géométrie comme moteur de candidats + validation humaine par carte + oracle témoin.
+Découvertes transverses à traiter à part : le module d'une carte Forge est celui de son
+CANEVAS (`fo11_blank` = Solitude ET Empyrean) ; les callouts sont des emprises 2D et les
+étages se superposent (nommage par zone dominante ambigu tant que Z n'entre pas) ;
+`mode_category` de `match_registry` est périmée (« Other » sur des matchs classés).
+
 ### [garde-rail/campagne] `TestCampaignExclusionStructuralCoverage` ne voit pas le SQL local
 
 Noté le 2026-09-19 (lot d'hygiène compare/armes, découverte non traitée). Le balayage AST de
