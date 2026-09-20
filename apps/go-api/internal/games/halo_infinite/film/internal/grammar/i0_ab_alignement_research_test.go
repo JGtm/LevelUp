@@ -1,3 +1,6 @@
+// LE BALAYAGE DE `param_4` A DISPARU AVEC LA GRANDEUR (lot 5.1.7, 2026-09-18) : `param_4` est
+// le niveau que le registre du film porte par composant (`Archetype.Level`), il se LIT et ne
+// se force plus. Il n y a plus d axe a balayer ici.
 package grammar
 
 // i0_ab_alignement_research_test.go — QUELLE VALEUR DU PROFIL DEPLACE LES LECTEURS DERRIERE i0.
@@ -117,19 +120,9 @@ func TestI0AlignementAB(t *testing.T) {
 		t.Logf("traversal.IndexW=%d : impulsions lues=%d rendues=%d · grappin lues=%d tag3=%d casses=%d rendues=%d",
 			iw, st.Read, len(imp), g.Read, g.Tag3, g.BodyBroken, len(gr))
 	}
-	for r := uint32(0); r <= 5; r++ {
-		p := apres.ProfilDeBalayage()
-		p.PoserParamEtat(r)
-		fc := contexteDeBobine(film)
-		fc.PoserProfilDeBalayage(p)
-		imp, st, e := ScanAbilityImpulses(fc)
-		gr, g, e2 := ScanGrappleReads(fc)
-		if e != nil || e2 != nil {
-			t.Fatalf("param_4=%d : %v / %v", r, e, e2)
-		}
-		t.Logf("param_4=%d : impulsions lues=%d rendues=%d · grappin lues=%d tag3=%d casses=%d rendues=%d",
-			r, st.Read, len(imp), g.Read, g.Tag3, g.BodyBroken, len(gr))
-	}
+	// LE BALAYAGE DE `param_4` A DISPARU AVEC LA GRANDEUR (lot 5.1.7, 2026-09-18) : `param_4` est
+	// le niveau que le registre du film porte par composant (`Archetype.Level`), il se LIT et ne
+	// se force plus. Il n y a plus d axe a balayer ici.
 }
 
 // diffImpulsions nomme les lectures qui apparaissent et celles qui disparaissent.

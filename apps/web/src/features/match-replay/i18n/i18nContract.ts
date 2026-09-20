@@ -524,6 +524,12 @@ export interface ReplayText {
   flagSinceFmt: (seconds: number) => string
   /** La réserve de `carried_open`, en toutes lettres. */
   flagOpenNote: string
+  /**
+   * LA JAUGE DE RETOUR d'un drapeau au sol (schéma 63), en fraction [0, 1] — c'est un
+   * REMPLISSAGE, jamais un compte à rebours : le taux suit une série harmonique et la jauge se
+   * vide quand plus personne n'est dans la zone.
+   */
+  flagReturnFmt: (progress: number) => string
   /** LA COURONNE VIP (schéma 22) : le nom du calque et sa réserve, identiques FR/EN (« VIP »). */
   layerVipCrown: string
   layerVipCrownHint: string

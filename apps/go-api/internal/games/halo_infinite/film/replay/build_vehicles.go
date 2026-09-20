@@ -156,10 +156,34 @@ func decodeFilmVehicleDeaths(
 			out = append(out, d)
 		}
 	}
+	logVehicleDeathReads(matchID, len(all), len(out), st)
 	if len(out) == 0 {
 		return nil, st
 	}
 	return out, st
+}
+
+// logVehicleDeathReads dit CE QUE LA MARCHE A VU, et c est le denominateur sans lequel « 20 morts
+// lues » ne se lit pas.
+//
+// LE CONTROLE DE MASQUE EST LA SEULE CHOSE QUI TRANCHE entre « ce film n ecrit que vingt morts de
+// vehicule » et « il en ecrit davantage, et la marche en jette ». Il se lit AVANT toute
+// consommation de corps : `MaskDeclared` compte les records dont le masque ANNONCE le dead-state,
+// `MaskDeclaredDesync` ceux d entre eux que la marche a perdus. Un ecart entre les deux est une
+// PERTE DE LECTURE ; leur egalite dit que le film n en ecrit pas plus.
+func logVehicleDeathReads(matchID string, tous, vehicules int, st grammar.ObjectDeathStats) {
+	ti := uint32(grammar.VehicleTypeIndex)
+	declares, perdus := st.MaskDeclared[ti], st.MaskDeclaredDesync[ti]
+	niveau := slog.Info
+	if perdus > 0 {
+		niveau = slog.Warn
+	}
+	niveau("vehicules : lecture des morts ecrites",
+		"match_id", matchID, "mortsToutesEntites", tous, "mortsVehicules", vehicules,
+		"masqueDeclareLeDeadState", declares, "dontDesynchronises", perdus,
+		"recordsAtteints", st.Records[ti], "recordsEntierementPortes", st.CleanRecords[ti],
+		"paquetsAEvenements", st.EventPackets, "paquetsLocalises", st.LocatedPackets,
+		"cadreParDefaut", st.CadreParDefaut)
 }
 
 // decodeFilmOccupantAims lit la VISEE des bipedes dans les records qui ne portent AUCUNE
@@ -242,6 +266,9 @@ func attachVehicles(
 ) {
 	tracks, cov, st := buildVehicleTracks(scan, bipeds, reg, clock)
 	doc.Vehicles = tracks
+	// LE CYCLE SE CALCULE SUR LES VIES PUBLIEES, ET APRES LA FUSION DES RELAIS : c est le
+	// document qui fait foi, pas le balayage (cf. vehicle_cycles.go).
+	doc.VehicleCycles = buildVehicleCycles(tracks, clock.step, &cov)
 	doc.Coverage.Vehicles = &cov
 	logVehicleCoverage(&cov)
 	logVehicleRideResolution(st)

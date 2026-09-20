@@ -81,21 +81,60 @@ func TestBuildBombArmingsEcarteLesSegmentsSousLePlein(t *testing.T) {
 	}
 }
 
-// TestBuildBombArmingsEcarteLeCycleDeRecharge est ce que la lecture SEGMENT apporte face à la
-// lecture MONTÉE : le cycle complet du marqueur (130 -> 254 -> 127, sans trou) finit à son
-// MINIMUM. Découpé en montées, sa moitié montante passait pour un armement plein ; comme
-// segment, il sort de lui-même — et il ne devient pas une pause non plus (il remonte
-// au-dessus de son départ).
-func TestBuildBombArmingsEcarteLeCycleDeRecharge(t *testing.T) {
-	reads := baMontee(30, 10_000, 9) // 126 -> 254
-	for i := 1; i <= 8; i++ {        // redescente immédiate, même segment : 254 -> 126
+// TestBuildBombArmingsCycleCompletEstUnArmementDateAuPremierPlein fige LA REGLE VRAIE, etablie
+// le 2026-09-19 : le cycle complet du marqueur — il part de son plancher, ATTEINT LE PLEIN, puis
+// redescend au plancher — EST un armement, et il se date au PREMIER echantillon au plein.
+//
+// CE TEST S APPELAIT `TestBuildBombArmingsEcarteLeCycleDeRecharge` ET IL FIGEAIT L INVERSE.
+// Son socle etait une lecture INCOMPLETE de `ti=12` : tant que l anneau n etait lu que sur les
+// rares records qui marchaient proprement, le segment s arretait au sommet faute d echantillons
+// suivants, et « finir a son minimum » designait vraiment autre chose qu un armement. Le portage
+// de `ti=12 i1..i12` (lot 5.1.1) a rendu 864 lectures de plus sur `c75f33b8` — 1 148 -> 2 012 —
+// et la forme a change de camp.
+//
+// LA MESURE QUI TRANCHE (`c75f33b8`, 2026-09-19) : les HUIT segments qui atteignent le plein
+// (quatre armements vus sur leurs deux miroirs, slots 1459 et 1471) ont tous
+// `qMin = 127, qMax = 254, qEnd = 127` — exactement la forme que l ancien test declarait
+// « recharge ». Ce sont les quatre armements REELS du match : meche identique de 4 930 ms sur les
+// quatre, et les memes instants que la publication validee du lot d assaut (92 330, 196 605,
+// 252 163, 434 933 ms). Le retour au plancher n est pas la negation de l armement : c est
+// l anneau qui passe en mode meche.
+//
+// LE CAS NEGATIF RESTE, ET IL EST REEL : une montee qui N ATTEINT PAS le plein puis redescend.
+// Celle-la est une recharge ou un abandon, et elle ne publie rien.
+func TestBuildBombArmingsCycleCompletEstUnArmementDateAuPremierPlein(t *testing.T) {
+	reads := baMontee(30, 10_000, 9) // 126 -> 254, le plein atteint au neuvieme echantillon
+	for i := 1; i <= 8; i++ {        // redescente immediate, meme segment : 254 -> 126
 		reads = append(reads, types.NavpointRadialRead{
 			Slot: 30, TMS: 10_800 + int32(i)*100, Q: uint8(254 - 16*i),
 		})
 	}
 	armings, cov, _ := buildBombArmings(reads, nil, baClock(), nil)
-	if len(armings) != 0 || cov.Rises != 1 || cov.Armed != 0 || cov.BelowFull != 0 {
-		t.Fatalf("cycle de recharge pris pour un armement : publies=%d segments=%d armed=%d belowFull=%d",
+	if len(armings) != 1 || cov.Rises != 1 || cov.Armed != 1 || cov.BelowFull != 0 {
+		t.Fatalf("cycle complet non arme : publies=%d segments=%d armed=%d belowFull=%d",
+			len(armings), cov.Rises, cov.Armed, cov.BelowFull)
+	}
+	// Le neuvieme echantillon (index 8) est le PREMIER au plein : 10 000 + 8 x 100.
+	if armings[0].TimeMS != 10_800 {
+		t.Errorf("armement date a %d ms, 10800 attendu (le PREMIER echantillon au plein).\n"+
+			"Le dernier echantillon du segment est a 11 600 ms : le retenir daterait l armement "+
+			"sur la recharge qui le suit.", armings[0].TimeMS)
+	}
+}
+
+// TestBuildBombArmingsEcarteLaMonteeQuiNAtteintPasLePlein est le CAS NEGATIF REEL du predicat :
+// une montee qui plafonne sous le plein puis redescend ne publie rien. C est cela, une recharge
+// ou un armement abandonne — pas la forme que l ancien test decrivait.
+func TestBuildBombArmingsEcarteLaMonteeQuiNAtteintPasLePlein(t *testing.T) {
+	reads := baMonteeVers(30, 10_000, 9, 240) // plafonne a 240, sous les 254 du plein
+	for i := 1; i <= 8; i++ {                 // redescente immediate, meme segment
+		reads = append(reads, types.NavpointRadialRead{
+			Slot: 30, TMS: 10_800 + int32(i)*100, Q: uint8(240 - 14*i),
+		})
+	}
+	armings, cov, _ := buildBombArmings(reads, nil, baClock(), nil)
+	if len(armings) != 0 || cov.Rises != 1 || cov.Armed != 0 {
+		t.Fatalf("montee sous le plein publiee : publies=%d segments=%d armed=%d belowFull=%d",
 			len(armings), cov.Rises, cov.Armed, cov.BelowFull)
 	}
 }

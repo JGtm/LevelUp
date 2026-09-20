@@ -40,18 +40,13 @@ import (
 // le temoin `Scanned` de la v13).
 func encodeGardesDeMode(w *gwriter, in FilmInputs) {
 	encodeCarrierMarkScan(w, in.FlagMarks)
-	w.u(uint64(len(in.ZoneReads)))
-	for _, z := range in.ZoneReads {
-		w.u(uint64(z.Slot))
-		w.u(z.TimestampUS)
-		w.i(int64(z.Field))
-		w.i(int64(z.FilmIndex))
-		w.i(int64(z.Tag))
-		w.u(z.Value)
-		w.bool8(z.HasValue)
-		w.bool8(z.Chained)
-	}
+	encodeManagedPropertyReads(w, in.ZoneReads)
 	w.bool8(in.ZoneScanned)
+	// LA JAUGE DE RETOUR DU DRAPEAU VOYAGE ICI, ET PAS AVEC `ZoneReads` : c est le MEME canal
+	// de film (`ti=13`), mais ce sont DEUX entrees, gardees par deux modes differents et lues
+	// par deux calques. Les fondre ferait publier a un CTF la couverture de zones d un KOTH.
+	encodeManagedPropertyReads(w, in.FlagGauge)
+	w.bool8(in.FlagGaugeScanned)
 	w.u(uint64(len(in.BombReads)))
 	for _, b := range in.BombReads {
 		w.u(uint64(b.Slot))
@@ -63,25 +58,11 @@ func encodeGardesDeMode(w *gwriter, in FilmInputs) {
 
 func decodeGardesDeMode(r *greader, in *FilmInputs) {
 	in.FlagMarks = decodeCarrierMarkScan(r)
-	n := int(r.u())
-	in.ZoneReads = make([]grammar.ManagedPropertyRead, 0, n)
-	for k := 0; k < n && r.err == nil; k++ {
-		in.ZoneReads = append(in.ZoneReads, grammar.ManagedPropertyRead{
-			Slot:        uint32(r.u()),
-			TimestampUS: r.u(),
-			Field:       grammar.ManagedPropertyField(r.i()),
-			FilmIndex:   int(r.i()),
-			Tag:         int(r.i()),
-			Value:       r.u(),
-			HasValue:    r.bool8(),
-			Chained:     r.bool8(),
-		})
-	}
-	if len(in.ZoneReads) == 0 {
-		in.ZoneReads = nil
-	}
+	in.ZoneReads = decodeManagedPropertyReads(r)
 	in.ZoneScanned = r.bool8()
-	n = int(r.u())
+	in.FlagGauge = decodeManagedPropertyReads(r)
+	in.FlagGaugeScanned = r.bool8()
+	n := int(r.u())
 	in.BombReads = make([]types.NavpointRadialRead, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		in.BombReads = append(in.BombReads, types.NavpointRadialRead{
@@ -139,4 +120,43 @@ func decodeCarrierMarkScan(r *greader) grammar.CarrierMarkScan {
 	}
 	s.Records, s.BipedRecords = int(r.u()), int(r.u())
 	return s
+}
+
+// encodeManagedPropertyReads / decodeManagedPropertyReads serialisent UNE liste de lectures de
+// `ti=13`. DEUX CANAUX LES EMPLOIENT — l etat des zones et la jauge de retour du drapeau — et
+// c est exactement pourquoi la boucle est ecrite ICI, une seule fois : deux copies de huit champs
+// divergeraient au premier champ ajoute, et le fichier de faits se relirait decale.
+func encodeManagedPropertyReads(w *gwriter, rs []grammar.ManagedPropertyRead) {
+	w.u(uint64(len(rs)))
+	for _, z := range rs {
+		w.u(uint64(z.Slot))
+		w.u(z.TimestampUS)
+		w.i(int64(z.Field))
+		w.i(int64(z.FilmIndex))
+		w.i(int64(z.Tag))
+		w.u(z.Value)
+		w.bool8(z.HasValue)
+		w.bool8(z.Chained)
+	}
+}
+
+func decodeManagedPropertyReads(r *greader) []grammar.ManagedPropertyRead {
+	n := int(r.u())
+	out := make([]grammar.ManagedPropertyRead, 0, n)
+	for k := 0; k < n && r.err == nil; k++ {
+		out = append(out, grammar.ManagedPropertyRead{
+			Slot:        uint32(r.u()),
+			TimestampUS: r.u(),
+			Field:       grammar.ManagedPropertyField(r.i()),
+			FilmIndex:   int(r.i()),
+			Tag:         int(r.i()),
+			Value:       r.u(),
+			HasValue:    r.bool8(),
+			Chained:     r.bool8(),
+		})
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }

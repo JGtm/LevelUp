@@ -76,6 +76,62 @@
 #     Les 6 films de recherche NE SONT PAS mesures a ce lot : la voie libre du pilote
 #     (un seul decodage a la fois sur la machine) n avait pas ete donnee. Ligne `[!]` du
 #     plan, a jouer avec les deux gates de decodage.
+#   2026-09-18 lot 5.1.1 : LE POINT DE NAVIGATION (ti=12) EST PORTE DE `i1` AU MINUTEUR.
+#     Douze composants portes d un bloc (`i1` a `i12`), grammaires relevees chez le
+#     deserialiseur `+0x40` de chaque descripteur et recoupees par son serialiseur `+0x28`
+#     (NOTE_3_6_TI12_GRAMMAIRES_A_2026-09-17, § 5 a § 16). Cible : `i11`/`i12`, la duree
+#     INITIALE et la duree COURANTE du minuteur manuel — le compte a rebours de retour
+#     d un objectif, `R(17)` au pas de 50 ms, sans indirection.
+#     CE QUE LA MESURE DIT, ET C EST EXACTEMENT CE QUE LE LOT VISAIT : le bloquant de
+#     ti=12 avance de `i1 managed-navpoint-flags-component` a
+#     `i13 managed-navpoint-top-progress` sur les SEPT bobines. 0 ligne monte, 0 descend,
+#     aucun total ne bouge : la FERMETURE de ti=12 demande encore `i13` a `i27` (quinze
+#     composants, dont les huit `visual-state-groups`), donc elle n etait pas atteignable
+#     a ce lot et ne l est pas. Le bloquant qui avance de douze rangs EST la mesure.
+#     Les 6 films de recherche ne sont pas mesures ici non plus (meme raison qu au 3.6.a :
+#     un backfill tenait la machine). Les largeurs sont tenues par un test sur tampon
+#     synthetique (`components_navpoint_test.go`, 6 largeurs plates + 9 formes du bloc de
+#     filtres + le tag invalide + la dequantification).
+#   2026-09-18 lot 5.1.7-a : `param_4` EST LE `level` DU REGISTRE DU FILM, ET IL SE LIT.
+#     `param_4` — la propriete que le descripteur rend au deserialiseur, et dont huit
+#     lecteurs font une LARGEUR — venait d une table par nom plus, hors table, du BALAYAGE
+#     de `killsource.calibrateRSP` (0 a 5, la valeur qui maximisait la croissance des slots
+#     sur les records de BIPEDE). Il EST le `level` que le registre du film porte par
+#     composant (`entree + 0x100`, ce que `FUN_142e2c690` passe au deserialiseur), que le
+#     traverseur descendait deja jusqu a `consumeByName` sans que personne s en serve.
+#     TROIS lecteurs n avaient AUCUNE entree et prenaient donc la valeur balayee :
+#     `i10 object-parent-state` (vrai niveau 3), `i19 unit-actor-control` (2) et
+#     `i20 unit-actor-state` (4). `i10` est sur le chemin de TOUS les archetypes objet.
+#     NET SUR LES SEPT BOBINES : 14 lignes MONTENT (+627 records), 2 DESCENDENT (-2).
+#       ti=38 (arme au sol) : +575 — `fb1a1a72` 10/2147 -> 261/2147, `bcb6d393` 24 -> 129,
+#         `11de8353` 48 -> 99, `a521164d` 33 -> 122, `e5adf7b2` 12 -> 49, `111fa685` 30 -> 72
+#       ti=42 (objet pose)  : +51 sur les sept bobines
+#       ti=37 (equipement)  : `e5adf7b2` 0/489 -> 1/489
+#     LES DEUX BAISSES SONT D UN RECORD CHACUNE, ET ELLES SONT NOMMEES : `fb1a1a72` ti=37
+#     1/220 -> 0/220 et `a521164d` ti=37 4/762 -> 3/762. Meme archetype, meme lot, et
+#     `e5adf7b2` ti=37 MONTE de 1 dans le meme geste : a l echelle du record unique, une
+#     fermeture est une coincidence de frontiere, pas une largeur. Le bloquant de ti=37 ne
+#     bouge pas, et aucune ligne ne perd plus d un record contre +627 gagnes.
+#     Les 6 films de recherche ne sont pas mesures ici (un seul decodage a la fois).
+#   2026-09-18 lot 5.1.7-b : L ETAT PAR DEFAUT DE ti=40 EST LU, SA BOUCLE TOURNE.
+#     ti=40 n etait pas dans `defaultStateDeserByTI` : le jeu ecrivait 79 bits au
+#     minimum (FUN_1410A5A74), le lecteur en consommait ZERO, et le R(32) n2 se lisait
+#     79 bits trop tot -> consumeFullStateDefaultBlock faux -> LA BOUCLE DE COMPOSANTS
+#     N ETAIT JAMAIS LANCEE. C est ce que ce golden disait sans qu on le lise : 0 ferme
+#     sur 777 avec une colonne `bloquant` VIDE sur 48 composants dont 16 non portes.
+#     La feuille 4 (quaternion FUN_14076e494 + FUN_140c1e79c) portait la mention
+#     « largeur config-dependante » : PERIMEE. Ses deux globaux entrent par le catalogue
+#     de la carte depuis 3.4.1, ses deux fonctions sont portees depuis R7-b.
+#     MESURE ET TEMOIN NEGATIF (4f77afc1, 1 140 records ti=40 d image-cle) : la porte
+#     bVar14 vaut 1 sur 470 records (41,2 %). Feuille LUE : bVar14=0 661/661 a i30,
+#     bVar14=1 470/470 a i30 — meme rang, sans exception. Feuille modelisee ABSENTE :
+#     les 470 rendent DesyncAt == -1, la boucle ne tourne pas. Oracle binaire.
+#     CE QUI CHANGE ICI : le bloquant de ti=40 passe de VIDE a
+#     `i30 vehicle-auto-turret-triggers-component`. La fermeture NE MONTE PAS et ne le
+#     peut pas tant que les seize vehicle-* ne sont pas portes ; 0 ligne descend.
+#     Le document publie ne bouge d AUCUN octet (4f77afc1 : 256 recensees, 97 publiees,
+#     3 fins datees, avant comme apres) : le calque des vehicules passe par des
+#     balayages ANCRES, pas par la marche d etat complet.
 a521164d	ti=0	0	1	
 a521164d	ti=2	0	11	i11 game-engine-soft-ceilings-component
 a521164d	ti=4	10	10	
@@ -84,7 +140,7 @@ a521164d	ti=6	0	528
 a521164d	ti=9	262	262	
 a521164d	ti=10	0	573	i2 managed-object-navpoint-component
 a521164d	ti=11	0	18	i4 managed-objective-interaction-filter-component
-a521164d	ti=12	0	298	i1 managed-navpoint-flags-component
+a521164d	ti=12	0	298	i13 managed-navpoint-top-progress
 a521164d	ti=13	0	220	
 a521164d	ti=14	352	352	
 a521164d	ti=15	11	11	
@@ -99,11 +155,11 @@ a521164d	ti=27	0	11	i0 supply-lines-item-unlocked-component
 a521164d	ti=29	11	11	
 a521164d	ti=34	0	11	i10 tacmap-mapdismissallock
 a521164d	ti=35	0	205	i60 simulation-state-component
-a521164d	ti=37	4	762	
-a521164d	ti=38	33	1303	
-a521164d	ti=40	0	335	
+a521164d	ti=37	3	762	
+a521164d	ti=38	122	1303	
+a521164d	ti=40	0	335	i30 vehicle-auto-turret-triggers-component
 a521164d	ti=41	23	35	
-a521164d	ti=42	2	698	
+a521164d	ti=42	24	698	
 a521164d	ti=43	0	1559	i19 device-position-animation-name-component
 a521164d	ti=45	0	11	i0 matchflow-sequence-data-component
 a521164d	ti=47	0	262	i2 personal-ai-data-component
@@ -115,7 +171,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 60ae07c4	ti=9	240	240	
 60ae07c4	ti=10	1	376	i2 managed-object-navpoint-component
 60ae07c4	ti=11	0	135	i4 managed-objective-interaction-filter-component
-60ae07c4	ti=12	0	204	i1 managed-navpoint-flags-component
+60ae07c4	ti=12	0	204	i13 managed-navpoint-top-progress
 60ae07c4	ti=13	0	454	
 60ae07c4	ti=14	960	960	
 60ae07c4	ti=15	30	30	
@@ -133,9 +189,9 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 60ae07c4	ti=35	1	236	i60 simulation-state-component
 60ae07c4	ti=37	3	425	
 60ae07c4	ti=38	30	2099	
-60ae07c4	ti=40	0	32	
+60ae07c4	ti=40	0	32	i30 vehicle-auto-turret-triggers-component
 60ae07c4	ti=41	0	19	
-60ae07c4	ti=42	2	253	
+60ae07c4	ti=42	5	253	
 60ae07c4	ti=43	0	569	i19 device-position-animation-name-component
 60ae07c4	ti=45	0	30	i0 matchflow-sequence-data-component
 60ae07c4	ti=47	0	240	i2 personal-ai-data-component
@@ -147,7 +203,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 11de8353	ti=9	393	393	
 11de8353	ti=10	0	95	i2 managed-object-navpoint-component
 11de8353	ti=11	0	14	i4 managed-objective-interaction-filter-component
-11de8353	ti=12	0	31	i1 managed-navpoint-flags-component
+11de8353	ti=12	0	31	i13 managed-navpoint-top-progress
 11de8353	ti=13	0	112	
 11de8353	ti=14	512	512	
 11de8353	ti=15	16	16	
@@ -164,10 +220,10 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 11de8353	ti=34	0	16	i10 tacmap-mapdismissallock
 11de8353	ti=35	1	255	i60 simulation-state-component
 11de8353	ti=37	1	514	
-11de8353	ti=38	48	2262	
-11de8353	ti=40	0	220	
+11de8353	ti=38	99	2262	
+11de8353	ti=40	0	220	i30 vehicle-auto-turret-triggers-component
 11de8353	ti=41	5	19	
-11de8353	ti=42	1	155	
+11de8353	ti=42	3	155	
 11de8353	ti=43	0	380	i19 device-position-animation-name-component
 11de8353	ti=45	0	16	i0 matchflow-sequence-data-component
 11de8353	ti=47	0	393	i2 personal-ai-data-component
@@ -178,7 +234,7 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 111fa685	ti=9	336	337	
 111fa685	ti=10	0	103	i2 managed-object-navpoint-component
 111fa685	ti=11	0	13	i4 managed-objective-interaction-filter-component
-111fa685	ti=12	1	15	i1 managed-navpoint-flags-component
+111fa685	ti=12	1	15	i13 managed-navpoint-top-progress
 111fa685	ti=13	0	104	
 111fa685	ti=14	448	448	
 111fa685	ti=15	14	14	
@@ -194,10 +250,10 @@ a521164d	ti=47	0	262	i2 personal-ai-data-component
 111fa685	ti=34	0	14	i10 tacmap-mapdismissallock
 111fa685	ti=35	1	214	i60 simulation-state-component
 111fa685	ti=37	1	569	
-111fa685	ti=38	30	1366	
-111fa685	ti=40	0	58	
+111fa685	ti=38	72	1366	
+111fa685	ti=40	0	58	i30 vehicle-auto-turret-triggers-component
 111fa685	ti=41	4	20	
-111fa685	ti=42	0	141	
+111fa685	ti=42	2	141	
 111fa685	ti=43	0	260	i19 device-position-animation-name-component
 111fa685	ti=45	0	14	i0 matchflow-sequence-data-component
 111fa685	ti=47	0	336	i2 personal-ai-data-component
@@ -208,7 +264,7 @@ e5adf7b2	ti=6	528	528
 e5adf7b2	ti=9	261	261	
 e5adf7b2	ti=10	0	262	i2 managed-object-navpoint-component
 e5adf7b2	ti=11	0	10	i4 managed-objective-interaction-filter-component
-e5adf7b2	ti=12	0	60	i1 managed-navpoint-flags-component
+e5adf7b2	ti=12	0	60	i13 managed-navpoint-top-progress
 e5adf7b2	ti=13	0	80	
 e5adf7b2	ti=14	352	352	
 e5adf7b2	ti=15	11	11	
@@ -224,11 +280,11 @@ e5adf7b2	ti=27	0	11	i0 supply-lines-item-unlocked-component
 e5adf7b2	ti=29	11	11	
 e5adf7b2	ti=34	0	11	i10 tacmap-mapdismissallock
 e5adf7b2	ti=35	0	237	i60 simulation-state-component
-e5adf7b2	ti=37	0	489	
-e5adf7b2	ti=38	12	1046	
-e5adf7b2	ti=40	0	132	
+e5adf7b2	ti=37	1	489	
+e5adf7b2	ti=38	49	1046	
+e5adf7b2	ti=40	0	132	i30 vehicle-auto-turret-triggers-component
 e5adf7b2	ti=41	1	6	
-e5adf7b2	ti=42	1	187	
+e5adf7b2	ti=42	13	187	
 e5adf7b2	ti=43	0	414	i19 device-position-animation-name-component
 e5adf7b2	ti=45	0	11	i0 matchflow-sequence-data-component
 e5adf7b2	ti=47	0	261	i2 personal-ai-data-component
@@ -241,7 +297,7 @@ bcb6d393	ti=6	910	911
 bcb6d393	ti=9	144	144	
 bcb6d393	ti=10	2	419	i2 managed-object-navpoint-component
 bcb6d393	ti=11	0	85	i4 managed-objective-interaction-filter-component
-bcb6d393	ti=12	4	160	i1 managed-navpoint-flags-component
+bcb6d393	ti=12	4	160	i13 managed-navpoint-top-progress
 bcb6d393	ti=13	0	331	
 bcb6d393	ti=14	576	576	
 bcb6d393	ti=15	19	19	
@@ -257,9 +313,9 @@ bcb6d393	ti=29	18	18
 bcb6d393	ti=34	0	19	i10 tacmap-mapdismissallock
 bcb6d393	ti=35	3	137	i60 simulation-state-component
 bcb6d393	ti=37	5	352	
-bcb6d393	ti=38	24	1841	
+bcb6d393	ti=38	129	1841	
 bcb6d393	ti=41	0	5	
-bcb6d393	ti=42	4	437	
+bcb6d393	ti=42	5	437	
 bcb6d393	ti=43	0	594	i19 device-position-animation-name-component
 bcb6d393	ti=45	0	18	i0 matchflow-sequence-data-component
 bcb6d393	ti=47	0	144	i2 personal-ai-data-component
@@ -272,7 +328,7 @@ fb1a1a72	ti=6	574	575
 fb1a1a72	ti=9	80	80	
 fb1a1a72	ti=10	0	433	i2 managed-object-navpoint-component
 fb1a1a72	ti=11	0	50	i4 managed-objective-interaction-filter-component
-fb1a1a72	ti=12	0	111	i1 managed-navpoint-flags-component
+fb1a1a72	ti=12	0	111	i13 managed-navpoint-top-progress
 fb1a1a72	ti=13	0	190	
 fb1a1a72	ti=14	320	320	
 fb1a1a72	ti=15	12	12	
@@ -286,10 +342,10 @@ fb1a1a72	ti=27	0	12	i0 supply-lines-item-unlocked-component
 fb1a1a72	ti=29	10	10	
 fb1a1a72	ti=34	0	12	i10 tacmap-mapdismissallock
 fb1a1a72	ti=35	0	80	i60 simulation-state-component
-fb1a1a72	ti=37	1	220	
-fb1a1a72	ti=38	10	2147	
+fb1a1a72	ti=37	0	220	
+fb1a1a72	ti=38	261	2147	
 fb1a1a72	ti=41	1	6	
-fb1a1a72	ti=42	0	216	
+fb1a1a72	ti=42	9	216	
 fb1a1a72	ti=43	0	330	i19 device-position-animation-name-component
 fb1a1a72	ti=45	0	11	i0 matchflow-sequence-data-component
 fb1a1a72	ti=47	0	80	i2 personal-ai-data-component

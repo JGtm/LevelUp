@@ -1685,3 +1685,78 @@ package replay
 //	               produit : il peut seulement ne rien en dire. Les artefacts deja cuits restent
 //	               servis tels quels, `layers` et `deathsPaths` absents jusqu'a leur prochaine
 //	               cuisson.
+
+// v63 (2026-09-19, post-chantier lot 5.1, montee UNIQUE de la branche `feat/decfilm-51`) : DEUX
+// REAPPARITIONS QUI MANQUAIENT — celle du DRAPEAU et celle des VEHICULES.
+//
+//	`flagCarries[] LA JAUGE DE RETOUR d'un drapeau reste au sol, en serie datee sur l'echelle du
+//	.spans[]       jeu (0 = vide, 1 = pleine) et sur les SEULS intervalles `dropped`. Le type
+//	.returnProgress` publie est `GaugePoint`, le MEME que celui des zones : meme escalier, meme
+//	               allegement, meme lecture cote client. Cle ABSENTE quand le film n'emet rien
+//	               sur l'intervalle.
+//
+//	               CE QUE LA VERSION REPARE, ET C'EST UN MODELE ET NON UN CANAL. Ce fichier
+//	               portait, depuis la v14, « LE RETOUR AUTOMATIQUE d'un drapeau reste au sol.
+//	               [...] Aucune minuterie ne se deduit de cette dispersion ». C'etait vrai et ca
+//	               le reste : le retour N'EST PAS un minuteur. Le jeu remplit une JAUGE au taux
+//	               `1/reset + H(n)/solo` (`CalculateReturnRateHarmonic`), et cette jauge est
+//	               ECRITE dans le film — `ti=13 i1` tag 3, voie delta, le MEME canal que la
+//	               jauge de capture des zones. Deux voies de minuteur avaient ete cherchees et
+//	               REFUTEES par la mesure (le bassin du moteur, 446/446 a « aucun minuteur » ;
+//	               le minuteur manuel du navpoint, 588/588 a zero) : la lecon n'est pas « le film
+//	               ne l'ecrit pas », c'est que la QUESTION etait mal posee.
+//
+//	               L'APPARIEMENT EST UNE CORRELATION TOTALE, pas un nom : 884 echantillons sur
+//	               trois jauges et deux films tombent A 100,0 % dans un lacher de LEUR drapeau,
+//	               contre 15,8 % pour le meilleur slot voisin. L'oracle qui la valide est binaire
+//	               et sans exception — retour automatique 13/13 au plein, repris avant la fin
+//	               0/14. Preuve, seuils et pieges : flag_return_gauge.go.
+//
+//	`coverage.     CINQ denominateurs NEUFS (`gaugeScanned`, `gaugeSlots`, `gaugeReads`,
+//	flagCarries`   `gaugePaired`, `gaugeSpans`, `gaugePoints`) : ils separent les quatre silences
+//	               qu'un `returnProgress` absent ne distingue pas — canal non lu, lu sans slot de
+//	               jauge, slots sans correlation, correlation sans emission sur l'intervalle.
+//
+//	`vehicleCycles` LE CYCLE DE REAPPARITION par EMPLACEMENT de naissance de vehicule : mediane,
+//	               deciles, ecarts mesures, manques comptes — la FORME de `PadCycle`, et le MEME
+//	               juge (`gwPadsCycleFromGaps`). Le film n'ecrit aucun minuteur de reapparition
+//	               de vehicule (negatif mesure sur les 294 noms de composant) : le cycle se
+//	               DEDUIT de la mort datee a la naissance suivante au meme endroit, les
+//	               naissances etant agglomerees a 2 m. Seuls les emplacements ETABLIS y figurent.
+//
+//	               POURQUOI MAINTENANT, ALORS QUE LA NOTE 3.7 CONCLUAIT « NON MESURABLE ». Elle
+//	               avait raison AU 2026-09-17 : avec 1 fin datee sur 109 vies, le compte des
+//	               ecarts etait ZERO sur 31 emplacements. Ce n'etait pas l'appariement mais la
+//	               GRAMMAIRE — la marche de `ti=40` perdait 90 a 100 % des dead-states que le
+//	               film ANNONCE, faute de lire l'etat par defaut de l'archetype. Le lot 5.1.7-b
+//	               l'a pose : `4f77afc1` passe de 3 a 11 fins datees et de 97 a 149 vies
+//	               publiees, `a349fea8` a 14, et `finDatee == mortsAppariees` sur les deux.
+//
+//	`coverage.     QUATRE denominateurs NEUFS (`cycleLocations`, `cycles`, `cycleGaps`,
+//	vehicles`      `cycleMissing`) : une liste `vehicleCycles` vide ne dit pas si le film n'a
+//	               aucun emplacement, si aucun n'a rendu d'ecart, ou si les ecarts etaient trop
+//	               disperses pour etablir quoi que ce soit.
+//
+//	CE QUI N'Y     LA SURFACE WEB DU CYCLE DE VEHICULE. Le champ est publie, le client ne le
+//	ENTRE PAS      dessine pas encore : le rejeu n'a AUCUNE infobulle ni carte de vehicule (les
+//	               quatre infobulles existantes sont celles des poses, des socles, du drapeau et
+//	               des armes au sol), et en creer une est un lot de RENDU — celui qui reprend
+//	               deja l'orientation, la taille et les tirs des vehicules. Decision de pilote du
+//	               2026-09-19, consignee au §4 du plan comme item TRANSMIS, pas comme dette : le
+//	               contrat est pose, l'affichage suit.
+//
+//	AUCUNE AUTRE   les quatre revisions de DECODAGE ne bougent pas. `ti=13` etait deja lu en
+//	DIFFERENCE     production (jauge des zones) et `ti=40` l'a ete au lot 5.1.7-b : cette montee
+//	               n'ajoute AUCUN octet de grammaire, elle PUBLIE ce qui etait deja decode. Le
+//	               fichier de FAITS, lui, s'etend — la jauge y transite, comme toute entree dont
+//	               le document depend (propriete du lot 4.1 : « document depuis les faits ≡
+//	               document depuis le film », a l'octet). La MAGIE DU BLOB d'entrees ne monte
+//	               PAS, et c'est verifie sur pieces : la jauge voyage par `encodeGardesDeMode`,
+//	               dans la section 1 A LA SUITE du blob — exactement la ou `ZoneReads` vit deja —,
+//	               donc le format du blob est inchange a l'octet et les huit fixtures d'entrees
+//	               restent valides. C'est `SchemaDesFaits` qui porte le changement (2 -> 3).
+//
+//	POURQUOI LA    deux champs apparaissent (un a la racine, un dans `flagCarries[].spans[]`) et
+//	VERSION MONTE  neuf compteurs entrent dans `coverage` : la FORME change, et le garde-rail de
+//	               forme refuse la regeneration sans montee. Les artefacts deja cuits restent
+//	               servis tels quels, les deux champs absents jusqu'a leur prochaine cuisson.

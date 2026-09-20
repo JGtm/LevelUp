@@ -92,6 +92,7 @@ describe('garde-rail : chaque état de drapeau a son libellé, en FR et en EN', 
       expect(t.flagCarrierUnknown, `porteur inconnu ${locale}`).toBeTruthy()
       expect(t.flagSinceFmt(12.4), `durée ${locale}`).toContain('12')
       expect(t.flagOpenNote, `réserve ${locale}`).toBeTruthy()
+      expect(t.flagReturnFmt(0.62), `jauge de retour ${locale}`).toContain('62')
     }
   })
 
@@ -112,6 +113,31 @@ describe('garde-rail : la réserve de `carried_open` est DITE, pas seulement des
   it('la note dit BORNE HAUTE, et non une durée mesurée', () => {
     expect(REPLAY_TEXT.fr.flagOpenNote.toLowerCase()).toContain('borne haute')
     expect(REPLAY_TEXT.en.flagOpenNote.toLowerCase()).toContain('upper bound')
+  })
+})
+
+describe('garde-rail : la jauge de retour est un REMPLISSAGE, jamais un compte à rebours', () => {
+  /**
+   * LE PIÈGE EST MESURÉ, pas théorique : le jeu remplit la jauge au taux `1/reset + H(n)/solo`
+   * — série harmonique du nombre de défenseurs — et elle SE VIDE quand plus personne n'est dans
+   * la zone. Deux lâchers de même durée montent à 1,0000 et à 0,3209 sur le corpus. Un libellé
+   * qui promettrait des secondes serait donc faux, et faux de façon invérifiable à l'œil.
+   */
+  it("ni l'un ni l'autre libellé ne promet une durée", () => {
+    for (const locale of ['fr', 'en'] as const) {
+      const rendu = REPLAY_TEXT[locale].flagReturnFmt(0.62).toLowerCase()
+      expect(rendu, `secondes ${locale}`).not.toContain('sec')
+      expect(rendu, `unité s ${locale}`).not.toMatch(/[ 0-9]s$/)
+      expect(rendu, `compte à rebours ${locale}`).not.toContain('≈')
+      expect(rendu, `pourcentage ${locale}`).toContain('%')
+    }
+  })
+
+  it('les deux langues diffèrent, et les bornes se disent 0 % et 100 %', () => {
+    expect(REPLAY_TEXT.fr.flagReturnFmt(0.5)).not.toBe(REPLAY_TEXT.en.flagReturnFmt(0.5))
+    expect(REPLAY_TEXT.fr.flagReturnFmt(0)).toContain('0 %')
+    expect(REPLAY_TEXT.fr.flagReturnFmt(1)).toContain('100 %')
+    expect(REPLAY_TEXT.en.flagReturnFmt(1)).toContain('100%')
   })
 })
 

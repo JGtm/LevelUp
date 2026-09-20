@@ -203,8 +203,8 @@ func consumeBipedMalleablePropertyBlock(br *Lecteur, recordStateParam uint32) {
 //
 // CONFIRMED bit-exact: FUN_1424e2f20 is a flat 5-bit reader returning the width n;
 // the subsequent inline read consumes exactly n bits (0 when n==0).
-func consumeBipedMalleableProperty(br *Lecteur) {
-	consumeBipedMalleablePropertyBlock(br, br.recordStateParam())
+func consumeBipedMalleableProperty(br *Lecteur, recordStateParam uint32) {
+	consumeBipedMalleablePropertyBlock(br, recordStateParam)
 	n := uint(br.ReadBits(5)) // FUN_1424e2f20 = R(5) -> width n
 	if n > 0 {
 		br.ReadBits(n) // R(n) malleable field
