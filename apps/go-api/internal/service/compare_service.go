@@ -292,7 +292,6 @@ func (s *CompareService) loadPlayerB(ctx context.Context, targetGamertag string)
 		return nil, xuidB, fmt.Errorf("CompareService.GetPage: stats joueur B introuvables: %w", err)
 	}
 	if xuidB != "" {
-		s.enrichRemotePlayerBWithCrossSample(ctx, remote, xuidB, targetGamertag)
 		s.fillCareerRankLive(ctx, remote, xuidB)
 		remote.CareerRankLabel = s.careerRankTitle(ctx, remote.CareerRank)
 		applyCSRSummary(remote, s.fetchCSRSummary(ctx, xuidB))
@@ -335,29 +334,6 @@ func (s *CompareService) enrichLocalPlayerB(ctx context.Context, local *domain.N
 		local.PerfATH = athB.PerfATH
 		local.LusrATH = athB.LusrATH
 	}
-}
-
-// enrichRemotePlayerBWithCrossSample calcule les 4 métriques locale-only sur
-// l'échantillon croisé (matchs en commun avec le joueur A).
-func (s *CompareService) enrichRemotePlayerBWithCrossSample(
-	ctx context.Context, remote *domain.NormalizedPlayerStats, xuidB, targetGamertag string,
-) {
-	sample, sErr := s.repo.GetCrossMatchSample(ctx, s.xuidA, xuidB)
-	if sErr != nil {
-		logBestEffortErr(ctx, "CompareService: cross-match sample non disponible", sErr, "xuidA", s.xuidA, "xuidB", xuidB)
-		return
-	}
-	if sample == nil || sample.MatchesCount == 0 {
-		return
-	}
-	remote.IsLocalSample = true
-	remote.MaxKillingSpree = sample.MaxKillingSpree
-	remote.AvgLifeSecs = sample.AvgLifeSecs
-	remote.PerfectKillsPerGame = sample.PerfectKillsPerGame
-	remote.HeadshotKillsPerGame = sample.HeadshotKillsPerGame
-	remote.Matches = sample.MatchesCount
-	slog.DebugContext(ctx, "CompareService: stats B enrichies par échantillon croisé",
-		"gamertag_b", targetGamertag, "matches", sample.MatchesCount)
 }
 
 // attachEncounterBadges calcule les badges historiques de rencontre. Best-effort.
@@ -443,12 +419,10 @@ var athMetrics = map[string]bool{
 //   - career_rank : disponible dès que valeur>0 (ATH local côté A OU rang récupéré
 //     en live côté B non-local via FetchLiveIdentity).
 //   - athMetrics (perf_ath/lusr_ath) : exigent IsLocal=true ET valeur>0.
-//     L'échantillon croisé ne donne pas l'ATH (stats de carrière globales).
-//   - localOnlyMetrics (spree/life/perfect/headshots) : IsLocal OU IsLocalSample
-//     (le service alimente IsLocalSample pour un joueur B remote ayant un échantillon
-//     de matchs croisés avec A — métriques alors calculées sur cet échantillon).
+//   - localOnlyMetrics (spree/life/perfect/headshots) : exigent IsLocal — elles se
+//     lisent dans la stats.duckdb du joueur, un joueur B remote n'en a aucune.
 //   - Autres : toujours disponibles (alimentées par Waypoint ou les agrégats locaux).
-func metricAvailability(key string, value float64, isLocal, isLocalSample bool) bool {
+func metricAvailability(key string, value float64, isLocal bool) bool {
 	if key == compareMetricCareerRank {
 		// Disponible dès value>0 : rang connu côté A (local/live) comme côté B
 		// non-local (fetch live). (Le CSR est traité à part dans buildMetrics, via
@@ -459,7 +433,7 @@ func metricAvailability(key string, value float64, isLocal, isLocalSample bool) 
 		return isLocal && value > 0
 	}
 	if localOnlyMetrics[key] {
-		return isLocal || isLocalSample
+		return isLocal
 	}
 	return true
 }
@@ -522,8 +496,8 @@ func buildMetrics(a, b domain.NormalizedPlayerStats, effectiveHpToKill float64) 
 		// CSR : la disponibilité est portée par le LIBELLÉ (tri-état) pour distinguer
 		// "unranked" (récupéré) de N/A (non récupéré). dispX == "" → non récupéré.
 		isCSR := d.key == compareMetricCSR || d.key == compareMetricCSRAllTime
-		aAvail := metricAvailability(d.key, d.va, a.IsLocal, a.IsLocalSample)
-		bAvail := metricAvailability(d.key, d.vb, b.IsLocal, b.IsLocalSample)
+		aAvail := metricAvailability(d.key, d.va, a.IsLocal)
+		bAvail := metricAvailability(d.key, d.vb, b.IsLocal)
 		if isCSR {
 			aAvail = d.dispA != ""
 			bAvail = d.dispB != ""

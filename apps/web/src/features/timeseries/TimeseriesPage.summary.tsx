@@ -21,7 +21,7 @@ import { buildFragDetailBreakdown } from '@/components/charts/fragDetailBreakdow
 // — même choix que SessionFragCard. Import cross-feature durable déclaré
 // (timeseries=>synthesis, cf. tools/lint-cross-feature-imports.mjs), analogue à
 // session-detail=>synthesis.
-import { SynthesisWeaponAccuracyChart } from '@/features/synthesis/SynthesisWeaponAccuracyChart'
+import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'
 // Portée des engagements : section migrée de la Synthèse vers cet onglet le 2026-09-13
 // (pendant de la précision par arme). Même import cross-feature déclaré que ci-dessus.
 import { WeaponRangeSection } from './WeaponRangeSection'
@@ -257,7 +257,7 @@ export function TimeseriesSummaryTab({
           et exclut `expected_stats` → le chart Écart (masqué sur H5) ne s'insère pas ici. */}
       {accuracy.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <SynthesisWeaponAccuracyChart
+          <WeaponAccuracyChart
             weapons={accuracy}
             weaponKills={topWeaponsMapped}
             hoveredClass={hoveredClass}
