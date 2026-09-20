@@ -35,6 +35,23 @@ package replay
 //
 //	ATT_FILM=<depot>/data/cache V0_FILMS=4f77afc1:flood gulch \
 //	  go test ./internal/games/halo_infinite/film/replay/ -run TestOrientationChassis -v -count=1
+//
+// # CE QUE CET INSTRUMENT MESURE, ET CE QU IL NE MESURE PLUS (arbitrage du pilote, 2026-09-20)
+//
+// Il ne lit QUE le chemin deja capture par le balayage offline : la direction cubemap de 19 bits
+// du mode 0 (`componentDirs.AimRaw`, arme par `CaptureDirs` + `DynPrecOrientation` dans
+// `vehicleScanOptions`). Il n ajoute AUCUN champ, donc aucune empreinte d etape ne bouge.
+//
+// LES DEUX AUTRES CHEMINS ONT ETE MESURES PUIS LEUR CAPTURE RETIREE. Le lot 5.2b.2 les a lus une
+// fois — mode 1 (cubemap 30 bits, chemin DOMINANT) et mode 2 (deux vec3 float32, JAMAIS
+// emprunte : 0 record sur 250 000, deux films). Leurs six champs vivaient dans `componentDirs`,
+// que `digest.Of` hache a chaque etape de chaque film : ils faisaient diverger `positions`
+// (20/20 films) et `vehicles` (9/20) A COMPTE IDENTIQUE, pour un negatif qui ne publie rien.
+// Arbitrage du pilote : un negatif ne laisse pas de champ dans une structure hachee partout.
+// LES CHIFFRES RESTENT, au §4 (D2) et au §5 du plan — |z| median 0,981 et ecart au deplacement
+// de 104,5 deg contre un temoin a 88,7 sur le chemin de 30 bits. Les rejouer demanderait de
+// re-poser la capture ; la suite nommee en D2 (la feuille 4 de l etat par defaut) ne l exige
+// pas : c est une AUTRE lecture.
 
 import (
 	"fmt"
@@ -90,7 +107,6 @@ func mesurerOrientationChassis(t *testing.T, id string, ctx v4Ctx) {
 		journaliserPopulation(t, fmt.Sprintf("VITESSE >= %.0fx seuil", mult), vite)
 	}
 	journaliserVerticalite(t, ctx)
-	mesurerVecteursBruts(t, ctx)
 }
 
 // journaliserVerticalite : LA QUESTION QUI TRANCHE CE QUE LE CHAMP PORTE. Le composant s appelle
@@ -237,112 +253,4 @@ func denomNonNul(n int) int {
 		return 1
 	}
 	return n
-}
-
-// mesurerVecteursBruts : LE CHEMIN « KEEP » (mode 2) D i2, ses DEUX vec3 float32 — la seule
-// lecture EXACTE de ce composant. Elle repond a la question que la direction de 19 bits laisse
-// ouverte : l avant du chassis est-il DANS ce composant, sur un autre de ses chemins ?
-//
-// Le premier vecteur est confronte au deplacement ; le second aussi. Celui qui est l AVANT doit
-// coller a la velocite quand le vehicule avance ; celui qui est le HAUT doit etre vertical.
-func mesurerVecteursBruts(t *testing.T, ctx v4Ctx) {
-	t.Helper()
-	var n int
-	parMode := map[uint8]int{}
-	var z1, z2 []float64
-	var e1, e2 []float64
-	for _, p := range ctx.scan.Positions {
-		parMode[p.FwdMode]++
-		if !p.HasFwdVecs {
-			continue
-		}
-		n++
-		z1 = append(z1, math.Abs(float64(p.FwdVec1[2])))
-		z2 = append(z2, math.Abs(float64(p.FwdVec2[2])))
-		v, ok := p.VelocityVector()
-		if !ok || math.Hypot(float64(v[0]), float64(v[1])) < vehicleMinSpeedMPS {
-			continue
-		}
-		capVel := degres(math.Atan2(float64(v[1]), float64(v[0])))
-		e1 = append(e1, ecartAngulaire(degres(math.Atan2(float64(p.FwdVec1[1]), float64(p.FwdVec1[0]))), capVel))
-		e2 = append(e2, ecartAngulaire(degres(math.Atan2(float64(p.FwdVec2[1]), float64(p.FwdVec2[0]))), capVel))
-	}
-	t.Logf("   %-24s ventilation des chemins d i2 : mode0 %d · mode1 %d · mode2 %d ; %d vec3 LUS",
-		"MODE 2 (keep)", parMode[0], parMode[1], parMode[2], n)
-	if n == 0 {
-		return
-	}
-	journaliserSerie(t, "     vec1 |z|", z1)
-	journaliserSerie(t, "     vec2 |z|", z2)
-	journaliserSerie(t, "     vec1 vs deplacement", e1)
-	journaliserSerie(t, "     vec2 vs deplacement", e2)
-}
-
-// journaliserSerie rend mediane / p90 / part sous 15 d une serie de mesures.
-func journaliserSerie(t *testing.T, nom string, vals []float64) {
-	t.Helper()
-	if len(vals) == 0 {
-		t.Logf("   %-26s aucune valeur", nom)
-		return
-	}
-	sort.Float64s(vals)
-	t.Logf("   %-26s n=%-6d mediane %6.3f · p90 %6.3f · < 15 : %5.1f %%",
-		nom, len(vals), quantile(vals, 0.50), quantile(vals, 0.90),
-		100*part(vals, func(v float64) bool { return v < 15 }))
-}
-
-// TestOrientationChassisChemin30Bits — LE CHEMIN DOMINANT d i2 sur `ti=40` : la direction de
-// 30 bits du mode « config ». Meme mesure, meme oracle, meme temoin que la direction de 19 bits.
-func TestOrientationChassisChemin30Bits(t *testing.T) {
-	root := attRequireRoot(t)
-	for _, f := range v0Corpus(t) {
-		ctx, ok := v4Decode(t, root, f)
-		if !ok {
-			continue
-		}
-		mesurerChemin30Bits(t, f.ID, ctx)
-	}
-}
-
-func mesurerChemin30Bits(t *testing.T, id string, ctx v4Ctx) {
-	t.Helper()
-	var ech []echantillonOrientation
-	var zs []float64
-	porteurs := 0
-	for _, p := range ctx.scan.Positions {
-		fwd, okF := p.ForwardVector30()
-		if !okF {
-			continue
-		}
-		porteurs++
-		zs = append(zs, math.Abs(float64(fwd[2])))
-		v, okV := p.VelocityVector()
-		if !okV || (fwd[0] == 0 && fwd[1] == 0) {
-			continue
-		}
-		vitesse := math.Hypot(float64(v[0]), float64(v[1]))
-		if vitesse == 0 {
-			continue
-		}
-		ech = append(ech, echantillonOrientation{
-			slot: p.Slot, tUS: p.TimestampUS, vitesse: vitesse,
-			capVel: degres(math.Atan2(float64(v[1]), float64(v[0]))),
-			capFwd: degres(math.Atan2(float64(fwd[1]), float64(fwd[0]))),
-		})
-	}
-	t.Logf("FILM %s — CHEMIN 30 BITS : %d record(s) le portent, %d avec velocite", id, porteurs, len(ech))
-	if len(ech) == 0 {
-		return
-	}
-	sort.Float64s(zs)
-	t.Logf("   %-24s |z| mediane %.3f · p90 %.3f · part |z| > 0.9 : %.1f %%",
-		"NATURE DU VECTEUR", quantile(zs, 0.50), quantile(zs, 0.90),
-		100*part(zs, func(v float64) bool { return v > 0.9 }))
-	rapide := filtrer(ech, func(e echantillonOrientation) bool { return e.vitesse >= vehicleMinSpeedMPS })
-	avance := filtrer(rapide, func(e echantillonOrientation) bool {
-		return math.Cos(radians(ecartAngulaire(e.capFwd, e.capVel))) > 0
-	})
-	journaliserPopulation(t, "TOUTE VITESSE >= seuil", rapide)
-	journaliserPopulation(t, "AVANCE (scalaire > 0)", avance)
-	journaliserTemoin(t, rapide)
 }

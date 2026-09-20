@@ -92,21 +92,6 @@ type componentDirs struct {
 	// DropTeleports), donc un appelant qui appaire ses appels aux positions renvoyées
 	// s'appaire à côté dès qu'un record est écarté. Renseigné sous CaptureDirs.
 	MaskBits uint64
-	// HasFwdVecs / FwdVec1 / FwdVec2 : LES DEUX VEC3 BRUTS du chemin « keep » d i2 dyn.-prec.
-	// (mode 2). Renseignes sous CaptureDirs + DynPrecOrientation, et SEULEMENT la : le bipede
-	// n emprunte pas ce chemin. Ils ne sont pas serialises dans les faits — c est une lecture
-	// d INSTRUMENT (lot 5.2b.2), a promouvoir le jour ou un calque la publie.
-	// FwdMode : le MODE retenu par i2 dyn.-prec. sur ce record (0 absolu/incremental, 1 config,
-	// 2 keep). Publie pour que la VENTILATION des chemins se mesure, et pas seulement leur
-	// resultat : un chemin jamais emprunte et un chemin emprunte mais illisible sont deux faits
-	// differents, et le second seul est un defaut.
-	FwdMode uint8
-	// HasFwdDir30 / FwdDir30Raw : la direction de 30 bits du chemin « config » (mode 1) d i2
-	// dyn.-prec. Meme depaqueteur cubemap que `AimRaw`, largeur 30 au lieu de 19.
-	HasFwdDir30      bool
-	FwdDir30Raw      uint32
-	HasFwdVecs       bool
-	FwdVec1, FwdVec2 [3]float32
 	// MaskOver signale qu'un index >= 64 a été déclaré et n'a donc pas pu entrer dans MaskBits.
 	// Jamais vu sur les archétypes bipèdes (i0..i58) ; sans ce drapeau, un masque tronqué se
 	// lirait comme un masque complet.
@@ -391,6 +376,22 @@ func readForwardComponent(pay []byte, at, total int, out *componentDirs) (int, b
 		return at, false
 	}
 	return at + 8, true
+}
+
+// readForwardComponentDynPrec consomme i2 `object-forward-and-up-DYNAMIC-PRECISION-component`
+// (FUN_140c5f7ec, ti=38/39/40/43). La grammaire n'est PAS réécrite ici : on repositionne le
+// lecteur de l'appelant et on appelle son unique détenteur (components_dynprec_orientation.go).
+func readForwardComponentDynPrec(br *Lecteur, at, total int, out *componentDirs, param uint32) (int, bool) {
+	br.SetBitPos(at)
+	v, ok := decodeObjectForwardAndUpDynPrec(br, param)
+	if !ok || br.BitPos() > total {
+		return at, false
+	}
+	if v.HasDir {
+		out.HasAim = true
+		out.AimRaw = v.DirRaw
+	}
+	return br.BitPos(), true
 }
 
 // readAngularVelocityComponentDynPrec consomme i3
