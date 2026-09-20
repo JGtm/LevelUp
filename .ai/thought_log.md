@@ -41,6 +41,43 @@ barre et sans %, gabarit identique mesuré / vide, tons `assistTierTone`.
 **Prochaine étape** : verdict visuel de l'utilisateur sur l'accueil (thème sombre) et sur le
 papillon de Relations ; commit sur son signal.
 
+## [2026-09-19] Lot d'hygiène compare / armes / frontières (4 items du backlog) + nettoyage du backlog — Complété (branche `feat/hygiene-compare-armes`, worktree `LevelUp-wt-hygiene`, exécuté par Opus sous pilotage, CI de branche VERTE au niveau job le 2026-09-19 : 9 jobs verts, E2E Playwright skippé par condition)
+
+**Demande** : chiffrer l'item « Hermétisme FICHIERS du mode démo » (verdict : S-M, post-release,
+détail au message du 2026-09-19 — les fuites tombent dans la couche éphémère du conteneur en prod,
+seule une démo lancée sur un poste de dev écrit dans le dépôt vivant), lancer maintenant les
+petits lots faisables, purger du backlog ce qui était déjà fait.
+
+**Décision technique** : quatre items en un lot, un commit chacun, dans un worktree dédié.
+A retrait de `CompareRequest.Filters` (jamais envoyé, jamais lu) ; C `buildTopWeapons`
+(séries temporelles) délègue le classement à `topWeaponKillRows` et le garde-rail
+`compare_weapons_guard_test.go` interdit désormais le départage `WeaponID <` partout ; D les
+deux modules partagés quittent `features/synthesis/` (`components/ui/section-primitives.tsx`,
+`components/charts/WeaponAccuracyChart.tsx`), deux dérogations inter-features tombent.
+B a changé de nature en cours de route : l'agent a REFUSÉ la suppression sur la prémisse du
+backlog (« les deux lectures balaient la même table ») et l'a mesurée fausse sur une copie du
+shared Halo 5 — `GetLocalStats` exclut la campagne, `GetCrossMatchSample` non ; pour un B
+présent uniquement en coop campagne le repli tirait et servait des stats de campagne comme
+échantillon matchmade. Décision du pilote : c'est un défaut ; exclusion alignée ⇒ branche
+morte par construction ⇒ retrait complet plutôt qu'une version alignée conservée en code mort.
+
+**Résultats observés** : 4 commits `e4238dea6`→`aa1a8dc2c`, 23 fichiers, +214/−344 ; 12 lignes
+retirées de la baseline JSONL (3 tests supprimés) ; contrat régénéré (`is_local_sample` venait
+de la réflexion Huma : 2 lignes d'`openapi.yaml`, 1 de `generated.ts`). Gates rejoués par le
+pilote dans le worktree : go vet/test (service, domain, duckdb, port, api, archlint) 0 `--- FAIL`,
+tsc -b après purge du cache, lint inter-features 7/7. Agent : eslint 0 erreur, vitest 7984 tests
+verts, openapi-gen -check et types frais. Changement de comportement assumé (C) : une arme sans
+libellé résolu n'est plus publiée dans le top armes des séries temporelles (barre anonyme avant),
+conforme à la doctrine déjà appliquée par la Synthèse et le Face-à-face.
+Backlog : entrée echarts (livré le 2026-08-03) et doc du défaut async (déjà dans
+`docs/CONFIGURATION.md`) retirées ; 4 sections du lot fermées avec la correction de prémisse de B ;
+2 items neufs issus des découvertes — le garde-rail `TestCampaignExclusionStructuralCoverage` ne
+voit pas le SQL construit localement (c'est lui qui aurait dû attraper B), et deux inexactitudes
+web mineures (dérogation morte `personal-stats=>synthesis`, note fausse du README des charts).
+
+**Prochaine étape** : CI de branche verte au niveau job, puis fusion dans `feat/v75` au signal de
+l'utilisateur ; `.ai/` (backlog + journal) commité sur `feat/v75` à la fusion.
+
 ## [2026-09-17] Explorer : le bloc « Portée des frags » remplace son placeholder, et la famille du graphe est rangée — Complété (branche `wt/explorer-portee-frags`)
 
 **Demande** : mettre dans le placeholder de la 3e rangée de l'encart cible la même chose que le
