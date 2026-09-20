@@ -333,12 +333,7 @@ func main() {
 			"hint", "définir LEVELUP_SESSION_SECRET (>=32 octets), LEVELUP_AUTH_MODE=xbox|password et LEVELUP_CORS_ORIGINS, ou retirer LEVELUP_ENV=production")
 		os.Exit(1)
 	}
-	if warnings := cfg.SecurityWarnings(); len(warnings) > 0 {
-		slog.Warn("configuration non sûre pour un déploiement multi-user exposé",
-			"issues_count", len(warnings),
-			"issues", strings.Join(warnings, " | "),
-			"prod_guard", "LEVELUP_ENV=production refuserait de démarrer dans cet état")
-	}
+	logSecurityWarnings(cfg)
 
 	// Foot-gun rate-limit (incident "Too Many Requests" prod) : le limiter applicatif
 	// (httprate) clé sur RemoteAddr. En production derrière un reverse proxy SANS

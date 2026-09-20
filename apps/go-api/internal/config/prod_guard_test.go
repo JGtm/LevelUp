@@ -108,3 +108,66 @@ func TestCorsAllLocalhost(t *testing.T) {
 		})
 	}
 }
+
+// TestIsExposedDeployment : l'instance est-elle réellement joignable ? Pilote le
+// NIVEAU du journal de démarrage des réglages non sûrs (WARN si exposée, INFO
+// sinon) — jamais le garde-fou fail-fast, qui ne dépend que de la production.
+func TestIsExposedDeployment(t *testing.T) {
+	cases := []struct {
+		name string
+		host string
+		env  string
+		want bool
+	}{
+		{"dev local par défaut", "127.0.0.1", "", false},
+		{"dev local, env development", "127.0.0.1", "development", false},
+		{"dev local, casse indifférente", "127.0.0.1", "Development", false},
+		{"localhost", "localhost", "", false},
+		{"IPv6 loopback", "::1", "", false},
+		{"IPv6 loopback entre crochets", "[::1]", "", false},
+		{"boucle 127.0.0.2", "127.0.0.2", "", false},
+		{"hôte vide = toutes les interfaces", "", "", true},
+		{"0.0.0.0", "0.0.0.0", "", true},
+		{"IP de LAN", "192.168.1.20", "", true},
+		{"IPv6 non loopback", "::", "", true},
+		{"env production même en loopback", "127.0.0.1", "production", true},
+		{"env staging même en loopback", "127.0.0.1", "staging", true},
+		{"env avec espaces", "127.0.0.1", "  ", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &AppConfig{APIHost: tc.host, Environment: tc.env}
+			if got := cfg.IsExposedDeployment(); got != tc.want {
+				t.Errorf("IsExposedDeployment(host=%q, env=%q) = %v, want %v", tc.host, tc.env, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestIsExposedDeployment_NAffectePasValidate — RATCHET. Le refus de démarrer en
+// production ne dépend QUE de LEVELUP_ENV : l'hôte d'écoute ne doit jamais le
+// relâcher (une prod qui écoute en loopback derrière un proxy reste une prod).
+func TestIsExposedDeployment_NAffectePasValidate(t *testing.T) {
+	unsafe := func(host string) *AppConfig {
+		return &AppConfig{
+			Environment:   "production",
+			APIHost:       host,
+			SessionSecret: DefaultSessionSecret,
+			AuthMode:      "none",
+			CORSOrigins:   []string{"http://localhost:5173"},
+		}
+	}
+	for _, host := range []string{"127.0.0.1", "localhost", "::1", "", "0.0.0.0"} {
+		if err := unsafe(host).Validate(); err == nil {
+			t.Errorf("Validate accepte une prod non sûre avec APIHost=%q — le garde-fou a été relâché", host)
+		}
+	}
+	// Et hors production, Validate reste permissif quel que soit l'hôte.
+	for _, host := range []string{"127.0.0.1", "0.0.0.0"} {
+		cfg := unsafe(host)
+		cfg.Environment = ""
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("Validate refuse hors production avec APIHost=%q: %v", host, err)
+		}
+	}
+}
