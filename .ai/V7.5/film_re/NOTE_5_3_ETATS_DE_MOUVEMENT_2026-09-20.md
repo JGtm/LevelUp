@@ -17,7 +17,7 @@
 | **Accroupi** | **OUI, directement** | `ti=35 i29 unit-crouch-component` | ETAT par image : booleen + fraction 0..1 |
 | **Glissade** | **OUI, directement** | `ti=35 i62 biped-slide-component` | ETAT par image : booleen + direction/intensite + 2 fractions 0..1 + un octet |
 | **Sprint** | **OUI, mais sans son nom** | `ti=35 i54 biped-mobility-action-component` — l'ACTION DE MOBILITE, dont le corps est PARTAGE avec l'evenement de fil 43 `initiate_mobility_action` (§ 2.7) | EVENEMENT date : flag1 = « une action est transmise », puis un identifiant et une transformation. **Quelle** action reste a nommer (§ 2.8) ; repli mesurable par la vitesse `i1` |
-| **Saut** | **NON — ni composant, ni evenement de joueur** | les seuls evenements de saut sont `ai_jump` (78) et `AILand` (72), **prefixes AI**, dans le vocabulaire de navigation des bots (§ 2.7) | **NEGATIF MESURE.** Le saut du joueur se DERIVE de la composante verticale d'`i1` ; candidats secondaires `i55` (§ 2.4) et `i63` (partiel) |
+| **Saut** | **PAS SOUS SON NOM — ni composant, ni evenement de joueur** | negatif mesure (§ 2.7) : seuls `ai_jump` (78) et `AILand` (72), prefixes AI. **Candidats vivants** : le mot de 32 bits optionnel d'`i18 unit-control +0x544` (§ 2.9.1, deja decode et jete), `i55` (§ 2.4), `i63`, et la composante verticale d'`i1` | Theater rejoue l'animation depuis un ETAT REPLIQUE, pas depuis les entrees (§ 2.9.4). Le bit de saut, s'il existe, est dans le mot de 32 bits — **mesurable en 5.3.2, non nommable avant** |
 
 **LE NEGATIF EST MESURE, PAS SUPPOSE** (§ 3) : sur les **64 composants** de l'archetype bipede
 (`ti=35`), **aucun** ne porte « sprint » ni « jump » dans son nom ; et sur le pool **complet**
@@ -349,6 +349,108 @@ voies suivantes, et la premiere est de loin la moins chere :
 
 **LA VENTILATION DE L'ENUM PAR JOUEUR S'AJOUTE DONC AU TABLEAU DE 5.3.2.**
 
+### 2.9 L'OBJECTION DE L'UTILISATEUR — THEATER REJOUE L'ESCALADE, DONC LE FILM PORTE DE QUOI LA DECLENCHER
+
+**L'objection est juste, et elle vaut mieux que ma formulation du § 2.7.** Theater rejoue
+l'animation de saut et d'escalade : le joueur s'agrippe au rebord. Quelque chose declenche cela.
+L'hypothese proposee : les ENTREES repliquees (les bits d'action de la structure de controle
+d'unite, comme dans les Halo precedents). Les quatre candidats ont ete lus CHEZ L'ECRIVAIN.
+
+#### 2.9.1 `ti=35 i18 unit-control-component` — DEUX INDEX BORNES ET UN MOT DE 32 BITS
+
+`FUN_141017084`, relu champ par champ (decompilation + desassemblage du site d'appel de queue) :
+
+| bits | -> champ | forme |
+|---|---|---|
+| `R(1)` porte | — | a 0 : `+0x548` et `+0x726` recoivent la sentinelle `0xFFFF`, rien d'autre n'est lu |
+| `R(5)` | `+0x548` (ushort) | **borne : `> 0x20` fait ECHOUER la lecture** (`return 0`) |
+| `R(1)` puis `R(6)` | `+0x726` (ushort) | meme borne `<= 0x20`, meme sentinelle |
+| `R(1)` puis `R(32)` | **`+0x544` (dword)** | optionnel ; defaut **0** quand la porte est fermee (`LEA R8,[RBP+0x544]`, `FUN_14080d69c`) |
+
+**CE QUE CELA DIT.** `+0x548` et `+0x726` sont des **INDEX** : plage 0..32, sentinelle `0xFFFF`,
+et une valeur hors plage arrete la lecture. Ce ne sont pas des drapeaux d'action. En revanche
+**`+0x544` est un mot de 32 bits optionnel, de defaut 0** — c'est **exactement la forme d'un
+champ de bits de commande**, et c'est le SEUL champ de cette forme sur tout l'archetype bipede.
+
+**CE QUE CELA NE DIT PAS.** L'ecrivain ne le nomme pas : `FUN_14080d69c` est la feuille
+generique « porte + valeur », aucune constante ni enumere ne l'accompagne, et le balayage du
+pool des chaines (§ 3) ne rend aucune etiquette attachee a cet offset. Un mot de 32 bits a
+defaut 0 est aussi bien un horodatage, un compteur, une graine ou un handle.
+
+> Le glose d'`ecs_table.tsv` pour `i18` — « les ENTREES DE COMMANDE de l'unite (ce que le joueur
+> appuie) » — porte deja la mention **« Non mesure »**. Cette note ne la confirme ni ne
+> l'infirme : elle la REDUIT a un champ precis, `+0x544`, et la rend mesurable.
+
+**LE DECODEUR LE LIT DEJA ET LE JETTE** (`consumeUnitControl` -> `consumeOpt32`). La ventilation
+de ses 32 bits ne coute donc aucun octet de grammaire : c'est une sonde, pas un port.
+
+#### 2.9.2 Les trois autres candidats, ecartes chez l'ecrivain
+
+| composant | ce que l'ecrivain ecrit | verdict |
+|---|---|---|
+| `i19 unit-actor-control` | des handles resolus en RAM | **DEJA REFUTE par le depot** comme pont vers le joueur (`ecs_table.tsv`) |
+| `i25 unit-command-tick` | `R(10)` = le NUMERO d'image d'entree | le film garde le TICK de commande **sans** le champ de boutons qui l'accompagnerait |
+| `i49 biped-control-context` | `R(w)` avec **w = 4 si pleine precision, sinon 2** (`DAT_145121140`), puis `R(1)` -> `ctx+0xa33` / `+0xa36` | un CONTEXTE etroit, pas une pression de bouton. **Au passage : le glose « 3 bits (5 valeurs) » d'`ecs_table.tsv` est FAUX** — l'ecrivain lit 2 ou 4 bits selon un reglage de processus (D6) |
+
+**Aucun champ de bits d'action replique n'a ete trouve sur le bipede**, hors le mot de 32 bits
+d'`i18`.
+
+#### 2.9.3 `i55` : les quatre tags sont-ils la machine d'etat de posture ?
+
+L'hypothese de l'utilisateur (au sol / aerien / accroupi / escalade) a ete confrontee a l'image.
+
+**L'ENUMERE DE POSTURE DU MOTEUR EXISTE, ET IL NE TIENT PAS SUR DEUX BITS.** Le cluster
+`0x1437d6870` porte, dans l'ordre, l'enumere d'etat de personnage de Havok :
+
+```
+HK_CHARACTER_ON_GROUND · HK_CHARACTER_JUMPING · HK_CHARACTER_IN_AIR
+HK_CHARACTER_CLIMBING  · HK_CHARACTER_FLYING  · HK_CHARACTER_USER_STATE_0..2
+```
+
+**CINQ etats au moins, donc trois bits au minimum.** Le tag d'`i55` en a deux : il ne PEUT pas
+porter cet enumere. C'est un negatif de cardinal, pas une opinion.
+
+**CE QUE LES QUATRE CHARGES DISENT VRAIMENT.** Elles ecrivent des vecteurs a trois flottants et
+des handles a sentinelle (`0xffff` / `0xffffffff`), et le tag `2` lit en plus un HANDLE
+(`FUN_1408f0ac4`) — c'est-a-dire une REFERENCE D'ENTITE. La forme est celle d'un **ANCRAGE** :
+« contre quoi, et ou, le bipede se tient » — rien (t0), un ancrage simple (t1), **un ancrage a
+une ENTITE** (t2), un ancrage a une POSITION du monde (t3). L'intuition « ca sent l'accrochage »
+vise juste sur cette moitie-la : s'agripper a un rebord EST un ancrage. Mais l'etat aerien, lui,
+n'y tient pas : il n'a pas de vecteur d'ancrage. **Nommer les quatre tags reste une mesure de
+5.3.2** (§ 2.4 bis : le tag est non nul 23,5 % du temps).
+
+#### 2.9.4 CE QUE LE GRAPHE D'ANIMATION DU JEU DIT DU DECLENCHEMENT
+
+Le pool des chaines porte les noeuds du graphe d'animation, et ils tranchent la question du
+MECANISME :
+
+```
+EntryNode_objects_animation_graphs_transition_conditions_is_sprinting_tlg
+EntryNode_objects_animation_graphs_transition_conditions_is_not_sprinting_tlg
+EntryNode_objects_animation_graphs_transition_conditions_is_airborne_tlg
+EntryNode_objects_animation_graphs_transition_conditions_is_leap_airborne_tlg
+EntryNode_objects_animation_graphs_character_sprint_ang
+EntryNode_objects_animation_graphs_character_airborne_default_ang
+```
+
+Les transitions du graphe sont gardees par des **CONDITIONS D'ETAT** — `is_sprinting`,
+`is_airborne` — et non par des pressions de bouton. Les accesseurs de script vont dans le meme
+sens : `SpartanAbilityIsSprinting`, `SpartanAbilityGetSprintFraction`,
+`SpartanAbilityIsClambering`, `IsAirborne`, `Unit_IsAirborne`.
+
+**CONCLUSION DU § 2.9, ET CORRECTION DU § 2.7.** Theater ne rejoue pas des ENTREES : il rejoue
+un ETAT REPLIQUE, et cet etat est precisement ce que le lot 5.3 a trouve — l'accroupissement et
+sa progression (`i29`), la glissade et son vecteur (`i62`), l'ACTION DE MOBILITE avec sa
+transformation d'ancrage (`i54`, 365 a 447 bits : c'est la pose de l'accrochage), la posture
+physique et son ancrage (`i55`), l'action en cours (`i63`). **L'utilisateur a raison sur le
+fond — le film porte de quoi rejouer l'escalade — et le mecanisme est l'etat, pas l'entree.**
+
+La formulation a corriger est celle du saut : **« le saut n'a pas d'evenement » reste vrai et
+mesure (§ 2.7), mais il ne faut pas en conclure que le film n'en sait rien.** Il reste UN
+candidat de forme « entree » — le mot de 32 bits d'`i18 +0x544` — et trois candidats d'etat
+(`i55`, `i63`, la composante verticale d'`i1`). Tous sont mesurables a la voie libre, aucun
+n'est nommable avant.
+
 ---
 
 ## 3. LE NEGATIF, MESURE DEUX FOIS
@@ -402,6 +504,11 @@ d'action de `i54`, tag de `i55`, action de `i63`, ou derivation de la vitesse `i
    ferme-t-elle apres l'avoir franchi ?
 5. `i1` : la composante verticale signe-t-elle le saut (vz > 0 puis < 0) ? La vitesse au sol
    separe-t-elle sprint et marche par un seuil net ?
+6. **`i18 unit-control +0x544`** : ventiler les **32 bits un par un** contre la
+   composante verticale d'`i1`, l'etat d'`i29` (accroupi), celui d'`i62` (glissade) et les
+   initiations d'`i54`. **Un bit de saut se signerait par lui-meme** : il s'allume une
+   image AVANT que `vz` ne devienne positif. Le champ est deja decode et jete
+   (`consumeOpt32`) : la sonde ne coute aucun octet de grammaire.
 
 ---
 
@@ -464,3 +571,14 @@ go test -tags=research -count=1 -v -run TestMouvementI55D1 \
   documents le propagent (`RECAP_STATS_EXPLOITABLES.md:229`,
   `HANDOFF_FILM_EXTRACTION_EXTERNAL_DEV.md:595`). **NON TRAITEE** : les corriger demande de
   toucher deux documents hors perimetre de ce lot ; la presente note fait foi en attendant.
+- **D6 (5.3)** — **`ecs_table.tsv` DONNE A `i49 biped-control-context` « 3 bits (5 valeurs) » ;
+  L'ECRIVAIN EN LIT 2 OU 4.** `FUN_14107166c` calcule sa largeur depuis `DAT_145121140` (le
+  reglage de pleine precision du processus) : `w = 4` s'il vaut 1, `w = 2` sinon, puis `R(1)`.
+  Le port du depot (`consumeBipedControlContext`) est juste ; c'est la TABLE qui ment. **NON
+  TRAITEE** (regle 7) : une ligne de table, a corriger par le lot qui reprendra `ecs_table.tsv`
+  avec son garde-rail (voir D2).
+- **D7 (5.3)** — **UN MOT DE 32 BITS OPTIONNEL, DEJA DECODE ET JETE, N'A AUCUN SENS ETABLI.**
+  `i18 unit-control +0x544` (§ 2.9.1) est le seul champ de tout l'archetype bipede ayant la forme
+  d'un champ de bits de commande. `consumeUnitControl` le consomme par `consumeOpt32` et
+  l'abandonne. **NON TRAITEE ICI, mais c'est un item de 5.3.2** : sa ventilation bit a bit est la
+  mesure la moins chere du lot, et elle tranche la question du saut.

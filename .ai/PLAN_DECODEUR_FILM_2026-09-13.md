@@ -6146,12 +6146,36 @@ méthode du lot 3.7 (§ 7) répond chez l'ÉCRIVAIN, avant tout film.
   l'image** : la ventilation par joueur passe en 5.3.2. Confirmation croisée du champ-à-champ : la
   grammaire du type 43 portée par le lot R7 finit par `Skip(1 + 7 + 2 + 1)`, exactement les
   `+0xa1`/`+0x98`/`+0x9c`/`+0x9f` relevés indépendamment au 5.3.1.
+- [x] **5.3.1 ter — l'objection de l'utilisateur : Theater rejoue l'escalade, donc le film porte de
+  quoi la déclencher.** Quatre candidats « entrée répliquée » lus CHEZ L'ÉCRIVAIN, sans film.
+  **`i18 unit-control` (`FUN_141017084`)** : porte `R(1)` ; `R(5)` -> `+0x548` et `R(1)+R(6)` ->
+  `+0x726`, deux **INDEX** bornés à `0x20` avec sentinelle `0xFFFF` (hors plage = la lecture
+  ÉCHOUE) ; puis **`R(1)` + `R(32)` -> `+0x544`, défaut 0** — **le seul champ de tout l'archetype
+  bipède ayant la forme d'un champ de bits de commande**, et l'écrivain ne le nomme pas (D7). Il
+  est **déjà décodé et jeté** (`consumeOpt32`) : le ventiler ne coûte aucun octet de grammaire.
+  **`i19`** déjà réfuté par le dépôt (handles RAM) ; **`i25`** = le TICK de commande seul
+  (`R(10)`), sans champ de boutons ; **`i49`** = `R(2)` ou `R(4)` selon un réglage de processus
+  + `R(1)` — un contexte étroit, et le glose « 3 bits (5 valeurs) » de la table est faux (D6).
+  **`i55` n'est PAS l'énuméré de posture du moteur** : celui de Havok est dans l'image
+  (`HK_CHARACTER_ON_GROUND`/`JUMPING`/`IN_AIR`/`CLIMBING`/`FLYING`, **cinq états au moins**) et ne
+  tient pas sur deux bits ; ses quatre charges ont la forme d'un **ANCRAGE** (vecteurs + un
+  HANDLE d'entité au tag 2), ce qui vise juste pour l'accrochage à un rebord mais pas pour l'état
+  aérien. **LE MÉCANISME EST TRANCHÉ PAR LE GRAPHE D'ANIMATION DU JEU** : ses transitions sont
+  gardées par des CONDITIONS D'ÉTAT (`transition_conditions_is_sprinting_tlg`,
+  `..._is_airborne_tlg`, `..._is_leap_airborne_tlg`), pas par des pressions de bouton. **Theater
+  rejoue donc un ÉTAT RÉPLIQUÉ, pas des entrées** — et cet état est exactement ce que 5.3.1 a
+  trouvé (`i29`, `i54` et sa transformation d'ancrage, `i55`, `i62`, `i63`). L'utilisateur a
+  raison sur le fond ; la correction porte sur le mécanisme, et elle est écrite au § 2.9 de la
+  note.
 - [ ] **5.3.2 — la preuve sur film** (EN ATTENTE DE LA VOIE LIBRE DU PILOTE). Un film à la fois,
   test ciblé sous tag `research`, sur `bfecd02b` (Snowbound, Team Slayer, match de JGtm) puis
   `4f77afc1` : ventilation de `i29`/`i54`/`i55`/`i62` par joueur et par instant, intervalles
   d'état reconstruits, cohérence avec la vitesse au sol (`i1`) et la composante verticale.
   **La ventilation de l'ENUM d'action d'`i54` (`+0x9c`, `+0x08`) par joueur s'ajoute au tableau**
   (5.3.1 bis (d)).
+  **S'y ajoute la ventilation BIT A BIT du mot de 32 bits d'`i18 unit-control +0x544`** contre
+  la composante verticale d'`i1` : un bit de saut s'allume une image avant que `vz` ne devienne
+  positif (5.3.1 ter, D7). C'est la mesure la moins chère du lot.
   Livrable pour l'œil de l'utilisateur : 5 instants par état sur `bfecd02b` (temps de barre
   Theater = temps film). Tranche aussi D1 (5.3) ci-dessous.
 - [ ] **5.3.3 — le port** (CONDITIONNEL : seulement si 5.3.2 prouve). Intervalles d'état par
@@ -6573,6 +6597,8 @@ méthode du lot 3.7 (§ 7) répond chez l'ÉCRIVAIN, avant tout film.
 | 2026-09-20 | 5.3.1 | **D3 (5.3) — `MobilityActionHook` N'A TOUJOURS AUCUN CONSOMMATEUR.** Le crochet publie `flag1`/`flag2` de chaque lecture d'`i54` depuis la sonde qui a réfuté l'usage d'équipement ; aucun appelant ne s'y abonne aujourd'hui. | **NON TRAITÉE.** Soit 5.3.3 le consomme (c'est le chemin naturel du sprint/escalade), soit un lot d'hygiène le supprime : un crochet sans consommateur est du code mort au sens de la règle 7 du dépôt |
 | 2026-09-20 | 5.3.1 bis | **D4 (5.3) — LES DEUX TABLES DE TYPES D'ÉVÉNEMENT DU DÉPÔT NE SONT PAS INDEXÉES PAREIL, ET C'ÉTAIT UNE QUESTION OUVERTE.** `event_types_catalogue_test.go` (types 50..127, base `0x144724A90`) porte son propre avertissement : « valable SEULEMENT si les deux espaces d'index coincident (non etabli) ». **Ils ne coïncident pas, et l'arithmétique de la colonne « Objet » de l'annexe A le montre sans Ghidra** : l'objet du type de FIL 43 est `0x144724d18` = `0x144724A90 + 81*8` (slot 81), celui du type 78 est `0x144724d50` (slot 88) — et `eventTypeNames` rend bien `initiate_mobility_action` en 81 et `ai_jump` en 88. Le piège est réel : nommer un type de fil avec cette table rend « MusicTrigger » pour ce qui est `ai_jump`. Les instruments qui comptent utilisent la bonne table (celle du registrar `FUN_140e453b4`). | **NON TRAITÉE (règle 7).** Un lot d'outillage renommerait la carte en `eventSlotNames` et poserait le garde-rail qui interdit de la cléer par un type de fil |
 | 2026-09-20 | 5.3.1 bis | **D5 (5.3) — LE CATALOGUE D'AOÛT RANGE `i56` SOUS « SPRINT », ET C'EST FAUX.** `biped-spartan-ability-energy` est la jauge des trois emplacements de charge de la capacité d'armure (`R(3)` masque + `R(7)` par charge armée, défaut `0x7F` = pleine), donc de l'ÉQUIPEMENT — le sprint de Halo Infinite ne coûte aucune énergie. Deux documents propagent l'erreur : `RECAP_STATS_EXPLOITABLES.md:229` et `HANDOFF_FILM_EXTRACTION_EXTERNAL_DEV.md:595`. | **NON TRAITÉE** : corriger deux documents est hors périmètre du lot ; `NOTE_5_3_ETATS_DE_MOUVEMENT_2026-09-20.md` § 2.6 fait foi en attendant |
+| 2026-09-20 | 5.3.1 ter | **D6 (5.3) — `ecs_table.tsv` DONNE A `i49 biped-control-context` « 3 bits (5 valeurs) » ; L'ÉCRIVAIN EN LIT 2 OU 4.** `FUN_14107166c` calcule sa largeur depuis `DAT_145121140` (le réglage de pleine précision du processus) : `w = 4` s'il vaut 1, `w = 2` sinon, puis `R(1)`. Le port du dépôt est juste ; c'est la TABLE qui ment — et la valeur « 5 valeurs » avait fait naître une hypothèse (les cinq états Havok) que la lecture de l'écrivain a tuée. | **NON TRAITÉE (règle 7)** : une ligne de table, à corriger par le lot qui reprendra `ecs_table.tsv` avec son garde-rail (voir D2) |
+| 2026-09-20 | 5.3.1 ter | **D7 (5.3) — UN MOT DE 32 BITS OPTIONNEL, DÉJÀ DÉCODÉ ET JETÉ, N'A AUCUN SENS ÉTABLI.** `i18 unit-control +0x544` : `R(1)` puis `R(32)`, défaut 0 — le seul champ de tout l'archetype bipède ayant la forme d'un champ de bits de commande, et l'écrivain ne le nomme pas (`FUN_14080d69c` est la feuille générique « porte + valeur » ; aucune étiquette dans le pool des chaînes). `consumeUnitControl` le consomme et l'abandonne. | **NON TRAITÉE ICI, mais c'est un item de 5.3.2** : sa ventilation bit à bit contre la composante verticale d'`i1` est la mesure la moins chère du lot et elle tranche la question du saut |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -6602,6 +6628,7 @@ et `facts.Rev` sont donc inchangés, et les 8 fixtures de contrat aussi.
 | 2026-09-20 | 5.3.1 | `go test -race` sur `grammar` | **NON JOUÉ et assumé** : `film/internal/grammar/` n'est pas touché d'un octet (`git diff --name-only` le montre). À rejouer au premier commit qui touche la grammaire |
 | 2026-09-20 | 5.3.1 | `make check-types`, `make test-web` | **NON JOUÉS et assumés** : aucun fichier de `apps/web/`, ni `openapi.yaml`, ni un type généré. À rejouer au premier commit qui touche le web (5.3.3 si le port a lieu) |
 | 2026-09-20 | 5.3.1 (D1) | `go test -tags=research -run TestMouvementI55D1` sur les 7 mini-bobines | **1 364 records `ti=35` bornés · `i55` franchi 895 · tags t0=685 t1=79 t2=52 t3=79 (23,5 % non nuls)** ; écart à l'uniforme **1 270** ; fermetures **6/1 364, dont 0 après `i55`**. `i29`/`i54`/`i55` présents sur les mêmes 895 records, `i62` sur **0**. Aucun film du cache, aucune base — les mini-bobines ne portent que registre + 12 images-clés + pied |
+| 2026-09-20 | 5.3.1 ter | lecture des écrivains `i18`/`i19`/`i25`/`i49`/`i55` (Ghidra en lecture seule, aucun film) | `i18` = `R(1)` ; `R(5)`->`+0x548` et `R(1)+R(6)`->`+0x726` (index bornés à `0x20`, sentinelle `0xFFFF`, hors plage = échec) ; `R(1)+R(32)`->**`+0x544`, défaut 0**. `i49` = `R(2 ou 4)` + `R(1)` (et non « 3 bits »). Énuméré Havok lu dans l'image à `0x1437d6870` : **cinq états au moins**, donc PAS le tag de 2 bits d'`i55`. Graphe d'animation : transitions gardées par `is_sprinting` / `is_airborne` — des CONDITIONS D'ÉTAT |
 | 2026-09-20 | 5.3.1 bis | vérification sur pièces (documents + exe, Ghidra en lecture seule) | `FUN_142ef8f04` (événement 43) appelle **`FUN_1408f02c8`**, le corps d'`i54` ; **xrefs = 2 appelants exactement**. R5/R7 : type 43 **ABSENT du film** (0 tête / 325 160 paquets ; 0 pour 16,3 attendues en liste entière). Table des 123 types : **seuls `ai_jump` (78) et `AILand` (72)** au vocabulaire du saut, tous deux AI. `i56` = `R(3)` + `R(7)` x popcount, trois charges, défaut `0x7F`. **Aucun film lu, aucune base ouverte** |
 | 2026-09-20 | 5.3.1 | corpus gate, `replay-equiv`, re-figeage | **AUCUN, et ce n'est pas un report** : rien de publié ne bouge, et la contrainte de machine l'interdit (voir l'en-tête). Le pilote les joue à la fin de la série (décision utilisateur du 2026-09-20) |
 
