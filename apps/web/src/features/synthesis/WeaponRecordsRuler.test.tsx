@@ -72,11 +72,16 @@ describe('WeaponRecordsRuler', () => {
     expect(within(legend).getAllByRole('listitem')).toHaveLength(2)
   })
 
-  it('nomme ce qui est écarté, avec son effectif, et la réserve de couverture', () => {
+  it("nomme ce qui est écarté, avec son effectif, et la réserve de couverture — dans le (i) du titre, pas sous le graphe", () => {
     renderWithProviders(<WeaponRecordsRuler records={records} playerSlug="JGtm" />)
-    const note = flat(screen.getByTestId('weapon-records-note').textContent)
-    expect(note).toContain('Chute et environnement (11)')
-    expect(note).toContain('position du tueur et de la victime')
+    // Aucune note sous le graphe (retrait demandé le 2026-09-20)…
+    expect(screen.queryByTestId('weapon-records-help')).not.toBeInTheDocument()
+    // …mais l'information n'est pas tue : elle vit dans l'infobulle du titre.
+    const info = within(screen.getByRole('heading', { level: 3 })).getByRole('button')
+    fireEvent.mouseEnter(info)
+    const help = flat(screen.getByTestId('weapon-records-help').textContent)
+    expect(help).toContain('Chute et environnement (11)')
+    expect(help).toContain('position du tueur et de la victime')
   })
 
   it("ouvre le rejeu du match du record à l'instant du frag, sur l'horloge du match", () => {
@@ -116,7 +121,21 @@ describe('WeaponRecordsRuler', () => {
     )
     expect(screen.getByTestId('weapon-records-empty')).toBeInTheDocument()
     expect(screen.queryByTestId('weapon-records-ruler')).not.toBeInTheDocument()
-    expect(flat(screen.getByTestId('weapon-records-note').textContent)).toContain('Chute et environnement (11)')
+    fireEvent.mouseEnter(within(screen.getByRole('heading', { level: 3 })).getByRole('button'))
+    expect(flat(screen.getByTestId('weapon-records-help').textContent)).toContain('Chute et environnement (11)')
+  })
+
+  it('pose les libellés des deux côtés de l axe quand ils se serrent', () => {
+    const serres: SynthesisWeaponRecords = {
+      ...records,
+      weapons: [9.8, 12.4, 15.2, 18.3, 19.4, 22.9, 26.1, 27.5, 33.8, 96.4].map((m, i) => ({
+        weapon_key: `w${i}`, label: `Arme numero ${i}`, label_en: `Weapon ${i}`, class: 'shoulder',
+        measured: 3, median_m: m / 2, record_m: m, record: { match_id: `m${i}`, time_ms: 1000 * i },
+      })),
+    }
+    renderWithProviders(<WeaponRecordsRuler records={serres} playerSlug="JGtm" />)
+    const sides = new Set(screen.getAllByTestId('weapon-record-item').map((el) => el.getAttribute('data-side')))
+    expect(sides).toEqual(new Set(['top', 'bottom']))
   })
 
   it('en anglais, les libellés et les nombres suivent la locale', () => {

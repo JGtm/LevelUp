@@ -27,6 +27,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 
 import { ChartLegend, type ChartLegendItem } from '@/components/charts/ChartLegend'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { FRAG_CLASS_ORDER, fragClassToken } from '@/lib/accessibility/scales/fragClass'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
@@ -126,6 +127,14 @@ export function WeaponRecordsRuler({ records, playerSlug }: WeaponRecordsRulerPr
     .map((w) => t('synthesis.weapon_records.excluded_item', { label: resolveRecordLabel(w, locale), measured: w.measured }))
     .join(' · ')
   const legend = legendItems(weapons, locale)
+  // Les armes écartées et la réserve de couverture vivent dans le (i) du titre, pas sous
+  // le graphe (retrait de la note demandé le 2026-09-20) : ce qui est écarté reste NOMMÉ.
+  const help = (
+    <span data-testid="weapon-records-help">
+      {excludedList ? `${t('synthesis.weapon_records.excluded', { list: excludedList })} ` : ''}
+      {t('synthesis.weapon_records.coverage_note')}
+    </span>
+  )
 
   return (
     <SectionCard
@@ -133,16 +142,15 @@ export function WeaponRecordsRuler({ records, playerSlug }: WeaponRecordsRulerPr
       label={t('synthesis.weapon_records.title')}
       titleAdornment={(label) => (
         <span className="flex flex-wrap items-baseline justify-between gap-2">
-          <span>{label}</span>
+          <span className="inline-flex items-center gap-1.5">
+            {label}
+            <InfoTooltip content={help} iconClass="w-3.5 h-3.5" />
+          </span>
           <span className="text-xs font-normal tabular-nums text-muted-foreground">{count}</span>
         </span>
       )}
       footer={
         <>
-          <p className="px-3 pb-2 text-xs text-muted-foreground" data-testid="weapon-records-note">
-            {excludedList ? `${t('synthesis.weapon_records.excluded', { list: excludedList })} ` : ''}
-            {t('synthesis.weapon_records.coverage_note')}
-          </p>
           {legend.length > 0 && (
             <div className="flex-none border-t border-border px-3 py-2" data-testid="weapon-records-legend">
               <ChartLegend items={legend} align="center" />
@@ -201,8 +209,13 @@ function RulerSvg({ layout, locale, t, onMove, onOpen, onKey }: RulerSvgProps) {
         <line key={`tick-${m}`} x1={x(m)} x2={x(m)} y1={axisY - 4} y2={axisY + 4} stroke="currentColor" className="text-muted-foreground" />
       ))}
       {items.map((it) => {
-        const ly = labelBaselineY(layout, it.rank)
+        const ly = labelBaselineY(layout, it)
         const color = tokenCssVar(fragClassToken(it.row.class))
+        // Le trait de rappel relie le losange au libellé, vers le haut ou vers le bas.
+        const leader =
+          it.side === 'top'
+            ? { y1: ly + 4, y2: axisY - DIAMOND_PX - 1 }
+            : { y1: axisY + DIAMOND_PX + 1, y2: ly - 10 }
         return (
           <g
             key={it.row.weapon_key}
@@ -214,8 +227,9 @@ function RulerSvg({ layout, locale, t, onMove, onOpen, onKey }: RulerSvgProps) {
             onClick={() => onOpen(it.row)}
             onKeyDown={onKey(it.row)}
             data-testid="weapon-record-item"
+            data-side={it.side}
           >
-            <line x1={it.cx} x2={it.cx} y1={ly + 4} y2={axisY - DIAMOND_PX - 1} stroke="currentColor" className="text-border" />
+            <line x1={it.cx} x2={it.cx} y1={leader.y1} y2={leader.y2} stroke="currentColor" className="text-border" />
             <text x={it.labelX} y={ly - 1} textAnchor="middle" fill="currentColor" className="text-foreground">
               {it.label}
             </text>

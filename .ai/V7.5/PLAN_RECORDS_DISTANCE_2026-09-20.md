@@ -91,3 +91,5 @@ rendus ». Contrat d'exécution : skill `plan-execution`.
   vérification sur données réelles (API du worktree sur la base locale, 30 armes) —
   écart axe/libellés relevé de 14 à 24 px après capture ; clic → rejeu du bon match à
   l'instant du frag ; thèmes clair et sombre. Commit en attente de l'utilisateur.
+- 2026-09-20 : retouche utilisateur après capture — libellés répartis des deux côtés de
+  l axe (`staggerLabelsTwoSided`), note sous le graphe déplacée dans le (i) du titre.

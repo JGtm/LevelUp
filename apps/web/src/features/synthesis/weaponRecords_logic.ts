@@ -67,10 +67,25 @@ export function rulerMaxMeters(rows: readonly { record_m: number }[]): number {
   return Math.max(RULER_TICK_STEP_M, Math.ceil(max / RULER_TICK_STEP_M) * RULER_TICK_STEP_M)
 }
 
+/** Écart entre le bas de la zone des graduations et la ligne de base du premier rang bas. */
+export const RULER_BOTTOM_OFFSET_PX = 10
+/** Marge basse sous le dernier rang bas. */
+export const RULER_BOTTOM_PAD_PX = 6
+
+/** Le côté de l'axe où un libellé est posé. */
+export type RulerSide = 'top' | 'bottom'
+
+/** Premier rang d'un côté où une boîte tient sans toucher la précédente (écart `minGap`). */
+function firstFreeRank(ends: number[], x0: number, minGap: number): number {
+  let rank = 0
+  while (ends[rank] != null && ends[rank] + minGap > x0) rank += 1
+  return rank
+}
+
 /**
- * staggerLabels — le placement GLOUTON : chaque boîte prend le premier rang où la boîte
- * précédente de ce rang ne la touche pas (écart `minGap`). Les boîtes arrivent triées par
- * `x0` croissant ; le rang 0 est le plus bas (le plus proche de l'axe).
+ * staggerLabels — le placement GLOUTON sur UN côté : chaque boîte prend le premier rang où la
+ * boîte précédente de ce rang ne la touche pas (écart `minGap`). Les boîtes arrivent triées
+ * par `x0` croissant ; le rang 0 est le plus proche de l'axe.
  */
 export function staggerLabels(
   boxes: readonly { x0: number; x1: number }[],
@@ -78,10 +93,33 @@ export function staggerLabels(
 ): number[] {
   const ends: number[] = []
   return boxes.map((b) => {
-    let rank = 0
-    while (ends[rank] != null && ends[rank] + minGap > b.x0) rank += 1
+    const rank = firstFreeRank(ends, b.x0, minGap)
     ends[rank] = b.x1
     return rank
+  })
+}
+
+/**
+ * staggerLabelsTwoSided — le même glouton, sur les DEUX côtés de l'axe (retour utilisateur du
+ * 2026-09-20 : tout au-dessus était trop dense). Chaque boîte va du côté où elle tient au
+ * rang le plus bas ; à égalité, du côté qui porte le moins de libellés, puis en haut. Deux
+ * files indépendantes : un libellé du haut ne contraint jamais un libellé du bas.
+ */
+export function staggerLabelsTwoSided(
+  boxes: readonly { x0: number; x1: number }[],
+  minGap: number = RULER_LABEL_MIN_GAP_PX,
+): { side: RulerSide; rank: number }[] {
+  const ends: Record<RulerSide, number[]> = { top: [], bottom: [] }
+  const count: Record<RulerSide, number> = { top: 0, bottom: 0 }
+  return boxes.map((b) => {
+    const top = firstFreeRank(ends.top, b.x0, minGap)
+    const bottom = firstFreeRank(ends.bottom, b.x0, minGap)
+    let side: RulerSide = 'top'
+    if (bottom < top || (bottom === top && count.bottom < count.top)) side = 'bottom'
+    const rank = side === 'top' ? top : bottom
+    ends[side][rank] = b.x1
+    count[side] += 1
+    return { side, rank }
   })
 }
 
@@ -95,6 +133,8 @@ export interface RulerItem {
   cx: number
   /** Centre du libellé, en pixels — recentré si la boîte sortait de la vue. */
   labelX: number
+  /** Côté de l'axe où le libellé est posé. */
+  side: RulerSide
   /** Rang d'étagement, 0 = le plus proche de l'axe. */
   rank: number
 }
@@ -103,7 +143,9 @@ export interface RulerLayout {
   width: number
   height: number
   axisY: number
-  rowCount: number
+  /** Nombre de rangs au-dessus et en dessous de l'axe. */
+  topRows: number
+  bottomRows: number
   maxMeters: number
   ticks: number[]
   items: RulerItem[]
@@ -115,8 +157,9 @@ export interface RulerLayout {
  *
  * Un libellé dont la boîte sort de la vue est recentré à l'intérieur ; le losange, lui, ne
  * bouge jamais (le trait de rappel relie les deux). La hauteur totale dépend du nombre de
- * rangs qu'exige l'étagement : elle est CALCULÉE, pas fixée — une règle de 18 armes serrées à
- * gauche demande plus de rangs qu'une règle de 6.
+ * rangs qu'exige l'étagement, de chaque côté de l'axe : elle est CALCULÉE, pas fixée — une
+ * règle de 30 armes serrées à gauche demande plus de rangs qu'une règle de 6. Sous l'axe, la
+ * zone des graduations est réservée avant le premier rang bas.
  */
 export function weaponRecordsLayout(
   rows: readonly WeaponDistanceRecordRow[],
@@ -140,10 +183,17 @@ export function weaponRecordsLayout(
     }
     return { row, label, valueText, cx, x0, x1 }
   })
-  const ranks = staggerLabels(prepared)
-  const rowCount = prepared.length === 0 ? 0 : Math.max(...ranks) + 1
-  const axisY = RULER_TOP_PX + rowCount * RULER_LABEL_ROW_PX + RULER_AXIS_GAP_PX
-  const height = axisY + RULER_AXIS_LABEL_PX
+  const placed = staggerLabelsTwoSided(prepared)
+  const rowsOf = (side: RulerSide) =>
+    placed.reduce((acc, p) => (p.side === side ? Math.max(acc, p.rank + 1) : acc), 0)
+  const topRows = rowsOf('top')
+  const bottomRows = rowsOf('bottom')
+  const axisY = RULER_TOP_PX + topRows * RULER_LABEL_ROW_PX + RULER_AXIS_GAP_PX
+  const bottomStart = axisY + RULER_AXIS_LABEL_PX
+  const height =
+    bottomRows > 0
+      ? bottomStart + RULER_BOTTOM_OFFSET_PX + bottomRows * RULER_LABEL_ROW_PX + RULER_BOTTOM_PAD_PX
+      : bottomStart
 
   const ticks: number[] = []
   for (let m = 0; m <= maxMeters; m += RULER_TICK_STEP_M) ticks.push(m)
@@ -152,7 +202,8 @@ export function weaponRecordsLayout(
     width,
     height,
     axisY,
-    rowCount,
+    topRows,
+    bottomRows,
     maxMeters,
     ticks,
     x,
@@ -162,12 +213,23 @@ export function weaponRecordsLayout(
       valueText: p.valueText,
       cx: p.cx,
       labelX: (p.x0 + p.x1) / 2,
-      rank: ranks[i],
+      side: placed[i].side,
+      rank: placed[i].rank,
     })),
   }
 }
 
-/** Ordonnée de la ligne de base du libellé d'un item : le rang 0 est juste au-dessus de l'axe. */
-export function labelBaselineY(layout: Pick<RulerLayout, 'axisY'>, rank: number): number {
-  return layout.axisY - RULER_AXIS_GAP_PX - rank * RULER_LABEL_ROW_PX
+/**
+ * Ordonnée de la ligne de base du NOM d'un libellé (le record se pose 11 px plus bas). En
+ * haut, le rang 0 est juste au-dessus de l'axe ; en bas, le rang 0 est juste sous la zone
+ * des graduations.
+ */
+export function labelBaselineY(
+  layout: Pick<RulerLayout, 'axisY'>,
+  item: Pick<RulerItem, 'side' | 'rank'>,
+): number {
+  if (item.side === 'top') {
+    return layout.axisY - RULER_AXIS_GAP_PX - item.rank * RULER_LABEL_ROW_PX
+  }
+  return layout.axisY + RULER_AXIS_LABEL_PX + RULER_BOTTOM_OFFSET_PX + item.rank * RULER_LABEL_ROW_PX
 }

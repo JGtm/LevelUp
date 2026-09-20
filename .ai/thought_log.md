@@ -1,3 +1,23 @@
+## [2026-09-20] Records de distance — retouche : libellés des deux côtés de l'axe, note sous le graphe retirée — Complété (branche `wt/records-distance`)
+
+**Demande** : après la première capture sur données réelles, l'utilisateur trouve la règle
+trop dense avec tous les libellés au-dessus, et demande le retrait de la phrase sous le
+graphe (armes écartées + réserve de couverture).
+
+**Décision technique** : `staggerLabelsTwoSided` (pur) — le même placement glouton, mais
+sur deux files indépendantes ; chaque libellé va du côté où il tient au rang le plus bas,
+à égalité du côté le moins chargé. La zone des graduations reste réservée sous l'axe avant
+le premier rang bas ; la hauteur se calcule des deux côtés. La note ne disparaît pas de la
+page : elle devient le contenu du (i) du titre (précédent du bloc de portée, 2026-09-13),
+donc ce qui est écarté reste NOMMÉ (D9) sans peser sous le graphe.
+
+**Résultats observés** : sur données réelles, 15 libellés en haut et 15 en bas au lieu de
+30 en haut, quatre rangs par côté au lieu de six ; typecheck à froid vert, ESLint vert,
+vitest synthèse 6 fichiers / 62 tests verts (deux tests neufs : répartition des deux côtés,
+information dans le (i)).
+
+**Prochaine étape** : aucune ; fusion dans `feat/v75` à la main de l'utilisateur.
+
 ## [2026-09-20] Synthèse : records de distance de frag par arme — maquette de cinq rendus (conseil, aucun code) — Complété (branche `feat/v75`, fichier `.ai/` seul)
 
 **Demande** : l'utilisateur regrette l'absence de la « portée » sur la Synthèse (partie sur

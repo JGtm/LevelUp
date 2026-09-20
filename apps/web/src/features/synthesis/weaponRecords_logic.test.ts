@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { WeaponDistanceRecordRow } from '@/lib/api/types'
 
 import {
+  RULER_AXIS_LABEL_PX,
   RULER_LABEL_MIN_GAP_PX,
   RULER_LABEL_ROW_PX,
   RULER_PADDING_X,
@@ -86,15 +87,18 @@ describe('weaponRecordsLayout', () => {
     expect(layout.ticks).toEqual([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
   })
 
-  it('aucun libellé ne chevauche un autre du même rang, et la hauteur suit le nombre de rangs', () => {
+  it('aucun libellé ne chevauche un autre du même côté et du même rang, et la hauteur suit les rangs', () => {
     // Dix armes serrées entre 9 et 28 m : impossible sur un seul rang à 1000 px.
     const rows = [9.8, 12.4, 15.2, 18.3, 19.4, 22.9, 26.1, 27.5, 33.8, 96.4].map((m, i) =>
       row(`w${i}`, m, `Arme numero ${i}`),
     )
     const layout = weaponRecordsLayout(rows, 'fr', 1000)
-    expect(layout.rowCount).toBeGreaterThan(1)
-    const byRank = new Map<number, typeof layout.items>()
-    for (const it of layout.items) byRank.set(it.rank, [...(byRank.get(it.rank) ?? []), it])
+    expect(layout.topRows + layout.bottomRows).toBeGreaterThan(1)
+    const byRank = new Map<string, typeof layout.items>()
+    for (const it of layout.items) {
+      const k = `${it.side}:${it.rank}`
+      byRank.set(k, [...(byRank.get(k) ?? []), it])
+    }
     for (const items of byRank.values()) {
       const sorted = [...items].sort((a, b) => a.labelX - b.labelX)
       for (let i = 1; i < sorted.length; i += 1) {
@@ -106,7 +110,28 @@ describe('weaponRecordsLayout', () => {
       }
     }
     const one = weaponRecordsLayout([row('a', 50)], 'fr', 1000)
-    expect(layout.height - one.height).toBe((layout.rowCount - 1) * RULER_LABEL_ROW_PX)
+    expect(one.topRows).toBe(1)
+    expect(one.bottomRows).toBe(0)
+    expect(layout.height).toBeGreaterThan(one.height)
+    expect(layout.axisY - one.axisY).toBe((layout.topRows - 1) * RULER_LABEL_ROW_PX)
+  })
+
+  it('répartit les libellés des deux côtés de l axe quand ils se serrent, moins de rangs par côté', () => {
+    const rows = [9.8, 12.4, 15.2, 18.3, 19.4, 22.9, 26.1, 27.5, 33.8, 96.4].map((m, i) =>
+      row(`w${i}`, m, `Arme numero ${i}`),
+    )
+    const layout = weaponRecordsLayout(rows, 'fr', 1000)
+    const sides = new Set(layout.items.map((i) => i.side))
+    expect(sides).toEqual(new Set(['top', 'bottom']))
+    // Sur un seul côté, le même paquet demande strictement plus de rangs.
+    const single = Math.max(...staggerLabels(layout.items.map((i) => {
+      const half = (Math.max(i.label.length, i.valueText.length) * 6.8 + 12) / 2
+      return { x0: i.labelX - half, x1: i.labelX + half }
+    }))) + 1
+    expect(Math.max(layout.topRows, layout.bottomRows)).toBeLessThan(single)
+    // Les deux côtés portent un nombre de libellés voisin (écart d un au plus).
+    const top = layout.items.filter((i) => i.side === 'top').length
+    expect(Math.abs(top - (layout.items.length - top))).toBeLessThanOrEqual(1)
   })
 
   it('recentre un libellé qui sortirait de la vue, sans déplacer le losange', () => {
@@ -120,13 +145,18 @@ describe('weaponRecordsLayout', () => {
   it('une liste vide donne une règle sans rang, jamais une exception', () => {
     const layout = weaponRecordsLayout([], 'fr', 800)
     expect(layout.items).toEqual([])
-    expect(layout.rowCount).toBe(0)
+    expect(layout.topRows).toBe(0)
+    expect(layout.bottomRows).toBe(0)
     expect(layout.height).toBeGreaterThan(0)
   })
 
-  it('les rangs montent depuis l axe', () => {
+  it('les rangs s éloignent de l axe, vers le haut comme vers le bas, sous la zone des graduations', () => {
     const layout = weaponRecordsLayout([row('a', 10)], 'fr', 800)
-    expect(labelBaselineY(layout, 0)).toBeLessThan(layout.axisY)
-    expect(labelBaselineY(layout, 1)).toBe(labelBaselineY(layout, 0) - RULER_LABEL_ROW_PX)
+    const top0 = labelBaselineY(layout, { side: 'top', rank: 0 })
+    expect(top0).toBeLessThan(layout.axisY)
+    expect(labelBaselineY(layout, { side: 'top', rank: 1 })).toBe(top0 - RULER_LABEL_ROW_PX)
+    const bottom0 = labelBaselineY(layout, { side: 'bottom', rank: 0 })
+    expect(bottom0).toBeGreaterThan(layout.axisY + RULER_AXIS_LABEL_PX)
+    expect(labelBaselineY(layout, { side: 'bottom', rank: 1 })).toBe(bottom0 + RULER_LABEL_ROW_PX)
   })
 })
