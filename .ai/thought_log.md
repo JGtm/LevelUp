@@ -1,3 +1,60 @@
+## [2026-09-19] Modes : la forme INVERSÉE des pair_name donne enfin un mode, et « Doubles Slayer » a son FR — Complété (branche `feat/mode-label-grammaire-inversee`, worktree `../LevelUp-wt-mode-label`)
+
+**Demande** : la liste déroulante « Mode » de l'Explorer affiche des entrées en anglais qui ne
+sont pas des modes (« Arena », « Arena Neutral Flag », « BTB Fiesta », « Doubles »). Diagnostic
+vérifié sur pièces par le pilote : les pair_name de l'API existent sous DEUX grammaires —
+« Conteneur:Mode on Carte » (`Arena:Slayer on Bazaar`) et la forme INVERSÉE « Mode:Conteneur
+[qualificatif] on Carte » (`Slayer:Arena on Live Fire`, `CTF:Arena Neutral Flag on Cliffhanger`,
+`CTF:BTB Fiesta on Highpower`, `Slayer:Doubles on Empyrean`). `NormalizeModeLabel` prenait
+TOUJOURS la partie après le dernier « : », donc rendait le conteneur comme mode sur la forme
+inversée — jamais traduit par `mode_name_tr`, et 531 matchs « Arena » de la base partagée
+mélangeaient CTF et Slayer dans un même item de filtre. `InferModeCategoryFromPairName`
+gérait déjà la forme inversée pour la CATÉGORIE ; le LIBELLÉ non.
+
+**Décision technique** (lot A) : la grammaire est corrigée au chokepoint unique
+(`analysis.NormalizeModeLabel`, 39 appelants inchangés). Les jetons de CONTENEUR vivent en UN
+seul endroit, le paquet feuille `analysis/modelabel` (`container.go` : `SplitContainer`,
+`IsContainer` — mot entier, insensible à la casse, jeton le plus long gagne) : `analysis` ne
+peut pas importer `games/halo_infinite` (cycle), et `modePrefixToCategory` porte une
+sémantique différente (Gruntpocalypse/Firefight y sont des catégories, pas des conteneurs) —
+renvoi posé dans son commentaire, pas de troisième liste. L'étape 2 est extraite dans
+`extractModeFromPairName` + `invertedModeLabel` (limite des 80 lignes) : identité de playlist
+à gauche → identité (règle intacte, testée AVANT le conteneur car Super Fiesta est aussi un
+conteneur) ; gauche = conteneur → droite (inchangé) ; droite COMMENCE par un conteneur → forme
+inversée : reste vide → gauche ; reste = identité → identité ; sinon `reste + " " + gauche`
+(ordre des clés `mode_name_tr` : « Neutral Flag CTF », « Tactical Slayer », « Fiesta CTF ») ;
+sinon → droite (défaut, `Infection:Alpha Zombies` → « Alpha Zombies »). Piège rencontré et
+fermé : sur la forme inversée le suffixe de carte suit le qualificatif, il se retire AVANT le
+recollage (sinon l'étape 3 mangeait « on Cliffhanger CTF » et perdait le mode) ; `isWordChar`
+accepte les majuscules parce que `SplitContainer` teste l'octet brut (« ArenaX »).
+Lot B : seed `mode_name_tr` `Doubles Slayer` → « Assassin en duo » (INSERT OR IGNORE, rejoué au
+boot par `ReconcileMetadataSeeds`) ; complément sur relecture du pilote : `Tactical Slayer` → « Assassin
+tactique » (clé produite par le recollage `Slayer:Arena Tactical`, sans ligne dans `mode_name_tr` ;
+constantes `modeTacticalSlayer`/`modeTacticalSlayerFR` partagées avec la seed playlist, goconst) ;
+« Castle Wars », « Oddball », « VIP » restent en anglais
+par décision utilisateur (jamais traduits dans le jeu), rien à noter comme dette.
+
+**Résultats observés** : `go build ./...` EXIT 0 ; `go vet ./internal/analysis/...
+./internal/games/...` EXIT 0 ; `go test` sur analysis/games/platform/duckdb/service/ops/
+replaybuild/api : EXIT 0 (72 paquets ok, 0 FAIL) ; `make go-api-lint`
+EXIT 0 (après extraction de trois constantes `ContainerArena`/`ContainerDoubles`/`ContainerSuperFiesta` réclamées par goconst), zéro nouvelle issue. Aucun test existant n'attendait l'ancien comportement
+sur une forme inversée (les `Team Slayer:Arena` / `CTF:Arena` des tests de `modelabel`,
+`objectives` et `home_recent_helpers` ne passent pas par `NormalizeModeLabel`). Nouveaux
+tests : `TestNormalizeModeLabel_DeuxGrammaires` (30 cas : les deux grammaires, reste vide /
+identité / recollé, casse, avec et sans carte, ` - Forge`, mot entier « Arenax »),
+`_CarteConnue` (mapLabels), `TestSplitContainer` (19 cas), `TestIsContainer`. CI : le cas de
+casse « ctf:arena neutral flag » écrivait le littéral marqueur du ratchet
+`TestNoDuplicateObjectiveSubModeList` (faux positif) — passé en casse mixte, allowlist intacte.
+
+**Hors périmètre, noté, non traité** : `Firefight:Classic` → « Classic » (Firefight n'est pas
+un conteneur de grammaire, la partie droite reste le mode — à trancher si l'Explorer doit
+dire « Firefight » ou « Classic ») ; doctrine `ExtractKnownMode` (fiche de match) vs libellé
+Explorer non revisitée ; `mode_category.go` a son propre `stripMapSuffix` (2e copie du
+retrait de carte, sur « on » seulement, existait avant ce lot).
+
+**Prochaine étape** : fusion dans `feat/v75` sur signal utilisateur ; vérifier visuellement la
+liste « Mode » de l'Explorer après redémarrage du serveur (les libellés viennent de la
+normalisation à la lecture, aucune migration de données).
 ## [2026-09-20] Le ton derive d'un jeton quitte les features pour le systeme de jetons (`tokenTone`) — Complete (branche `feat/v75`)
 
 **Demande** : la session `levelup-go-migration-ad` signale que mon fichier `assistTierTone.ts`
