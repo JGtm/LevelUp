@@ -59,3 +59,24 @@ func TestSortByCanonicalIsNoOpOnCurrentRegistry(t *testing.T) {
 		}
 	}
 }
+
+// TestByName : lookup d'un step du registre global par son nom. Support de la
+// réutilisation d'un step CROSS-TITRE par un TitleMigrationSet (halo_5 réutilise
+// purge_weapon_families_labels_columns au lieu d'en recopier le DDL).
+func TestByName(t *testing.T) {
+	const known = "purge_weapon_families_labels_columns"
+	m, ok := ByName(known)
+	if !ok {
+		t.Fatalf("ByName(%q) : introuvable alors que le step est enregistré", known)
+	}
+	if m.Name != known {
+		t.Errorf("ByName(%q) rend le step %q", known, m.Name)
+	}
+	if m.TargetDB != TargetMetadata || m.ApplySchema == nil {
+		t.Errorf("ByName(%q) rend un step incomplet (target=%q, applySchema nil=%v)",
+			known, m.TargetDB, m.ApplySchema == nil)
+	}
+	if _, ok := ByName("step_qui_n_existe_pas"); ok {
+		t.Error("ByName rend ok=true pour un nom inconnu")
+	}
+}

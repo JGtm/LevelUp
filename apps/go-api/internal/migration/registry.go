@@ -100,6 +100,30 @@ func IsRegistered(name string) bool {
 	return false
 }
 
+// ByName retourne la migration enregistrée sous ce Name, telle quelle.
+//
+// POURQUOI. Un jeu de migrations title-owned (TitleMigrationSet) est
+// all-or-nothing par target : quand il POSSÈDE un target, aucun step du registre
+// global ne s'y applique. Certains steps du registre global ne sont pourtant PAS
+// title-specific — une purge de colonne sur une table de référentiel CROSS-TITRE
+// (weapon_families, seedée à l'identique pour tous les titres) doit s'appliquer à
+// chaque titre, sinon le schéma du titre possédant son target dérive de celui que
+// le seed cross-titre attend (incident du 2026-09-12 : provisioning halo_5 en
+// échec à chaque boot sur `NOT NULL constraint failed: weapon_families.name_en`).
+//
+// Le set réutilise alors LA MÊME Migration, référencée par son nom, plutôt qu'une
+// copie : une seule définition du DDL, un seul foyer à maintenir (règle dépôt
+// « ≤ 2 copies d'un même pattern »). L'ordre canonique du set doit lister ce nom
+// comme n'importe quel autre step.
+func ByName(name string) (Migration, bool) {
+	for _, m := range registry {
+		if m.Name == name {
+			return m, true
+		}
+	}
+	return Migration{}, false
+}
+
 // ForTarget filtre les migrations par target_db.
 func ForTarget(target TargetDB) []Migration {
 	var out []Migration
