@@ -161,10 +161,15 @@ type providerImpl struct {
 	// AUCUN lock (valeurs capturées) — pas de deadlock possible.
 	rwWatchdog *time.Timer
 
-	// readersWG track les Get en vol. Add(1) sous p.mu quand state=RO,
-	// Done() dans le release retourné. AcquireWriter Wait() avant le close
-	// du handle pour éviter "database is closed" côté caller.
-	readersWG sync.WaitGroup
+	// readers compte les Get en vol : incrémenté sous p.mu quand state=RO,
+	// décrémenté par le release retourné. AcquireWriter attend qu'il retombe à
+	// zéro avant de fermer le handle, sinon le caller verrait "database is
+	// closed". drainCh est le canal d'attente de ce drain, créé à la demande et
+	// fermé par le DERNIER release — cf. reader_drain.go pour le motif (un
+	// sync.WaitGroup ici a fait paniquer le serveur le 2026-09-16).
+	// Tous deux protégés par p.mu.
+	readers int
+	drainCh chan struct{}
 
 	readyTimeout     time.Duration
 	retryBaseBackoff time.Duration
@@ -257,15 +262,11 @@ func (p *providerImpl) Get(ctx context.Context) (*sql.DB, func(), error) {
 			}
 			// Track le reader AVANT de relâcher mu — sinon race possible
 			// avec un swap qui drain trop tôt (sans nous attendre).
-			p.readersWG.Add(1)
-			readersInUse.Add(1)
+			p.trackReaderLocked()
 			p.mu.Unlock()
 
 			db := handle.SQLDb()
-			release := sync.OnceFunc(func() {
-				p.readersWG.Done()
-				readersInUse.Add(-1)
-			})
+			release := sync.OnceFunc(p.releaseReader)
 			return db, release, nil
 		}
 
@@ -325,14 +326,15 @@ func (p *providerImpl) Close() error {
 	p.mu.Unlock()
 
 	// Best-effort drain — ne pas bloquer le shutdown sur des readers stuck.
-	drainDone := make(chan struct{})
-	go func() {
-		p.readersWG.Wait()
-		close(drainDone)
-	}()
+	drainDone := p.beginDrain()
+	timer := time.NewTimer(defaultCloseDrainTimeout)
 	select {
 	case <-drainDone:
-	case <-time.After(defaultCloseDrainTimeout):
+		timer.Stop()
+	case <-timer.C:
+		// Drain abandonné : on ne laisse AUCUNE attente derrière soi (le canal
+		// n'est plus écouté et ne sera jamais fermé).
+		p.abandonDrain(drainDone)
 		slog.Warn("sharedprovider: Close drain timeout, forcing handle close",
 			"path", p.path)
 	}
