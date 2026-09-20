@@ -76,8 +76,8 @@ func metadataStepNames() []string {
 // jamais jouée sur la metadata h5, qui conservait `name_en NOT NULL` alors que le
 // seed cross-titre `weapons.ApplyRegistry` n'insère plus que `family_key` →
 // « NOT NULL constraint failed: weapon_families.name_en » à CHAQUE boot, et
-// provisioning halo_5 en échec (non-fatal, mais les targets suivants — shared,
-// shared_social — ne sont alors plus migrés du tout).
+// provisioning halo_5 en échec (non-fatal, mais les targets suivants — la base
+// des matchs partagés et celle du social — ne sont alors plus migrés du tout).
 //
 // Le step est idempotent (garde `columnExists(name_en)`) : no-op sur une metadata
 // h5 neuve, où `h5_add_weapon_registry` a déjà créé la table au schéma courant.
