@@ -25,6 +25,15 @@ package sharedprovider
 //
 // Les métriques (`readersInUse`) et la machine à états (ADR 0013/0016) sont
 // inchangées.
+//
+// CONSÉQUENCE SUR LA RÉENTRANCE : `release()` prend désormais `p.mu`, ce que la
+// version WaitGroup ne faisait pas. Le contrat des Subscribers de
+// `DirectionPreSwapToRW` (notifyAfterSwapLocked, notifié SOUS `p.mu`) s'étend
+// donc au relâchement d'un lecteur : ni `Get`, ni `AcquireWriter`, ni le
+// `release()` d'un lecteur dans ce callback. L'invariant tient aujourd'hui sans
+// effort — cette notification n'a lieu qu'après un drain RÉUSSI, donc à zéro
+// lecteur en vol et avec les `Get` gatés en Draining — mais il doit rester vrai
+// si un Subscriber change.
 
 // trackReaderLocked comptabilise un lecteur qui vient d'obtenir le handle.
 // Doit être appelé avec p.mu tenu, AVANT de le relâcher — sinon un swap
