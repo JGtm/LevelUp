@@ -2108,7 +2108,10 @@ func startWatcherDaemon(
 	//    encore un refresh_token utilisable côté env var.
 	if freshAccessToken != "" {
 		slog.Info("watcher: refresh XSTS proactif avant démarrage…")
-		if freshResult, xerr := auth.AcquireXSTSForRTA(ctx, freshAccessToken); xerr == nil {
+		// Provenance du RpsTicket posée ET mesurée : ce chemin est l'un des 401
+		// « RpsTicket refusé » du boot (le compte du tracker n'accepte pas « d= »).
+		if freshResult, xerr := auth.AcquireXSTSForRTAWithProvenance(
+			ctx, multiStore, tokens.XSTSXUID, freshAccessToken); xerr == nil {
 			if storeErr := store.UpdateXSTS(freshResult, 55*time.Minute); storeErr == nil {
 				slog.Info("watcher: XSTS frais obtenu",
 					"gamertag", freshResult.Gamertag,
