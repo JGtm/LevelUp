@@ -340,6 +340,11 @@ const NULLABLE_ARRAY_PATHS = [
   // jauge pendant ses rampes. Absente sur un artefact de schéma <= 17 : la frontière la comble
   // à VIDE, et le rendu ne dessine alors aucun arc.
   'zoneStates[].gauge',
+  // `zoneStates[].gaugeRamps` : LE DÉCOUPAGE DE LA JAUGE EN RAMPES et LE CAMP QUI POUSSE chacune
+  // (schéma 64, 2026-09-20). Absent sur un artefact de schéma <= 63 : la frontière le comble à
+  // VIDE, et le rendu repeint alors la progression au neutre — exactement ce qu'il fait d'une
+  // rampe dont le camp n'est pas mesuré.
+  'zoneStates[].gaugeRamps',
   // `grenadeReads[].g` : le quadruplet de compteurs de l'axe des grenades (schema 20). Comble
   // a VIDE par la frontiere, comme `inventory[].g` : une lecture qui arriverait avec `g: null`
   // ferait tomber la boite de grenades a l'execution — pas a la compilation.
@@ -490,6 +495,7 @@ describe('la frontière du document de rejeu', () => {
     // La jauge en direct (schéma 18) : un artefact plus ancien ne la porte pas, et elle se
     // comble à VIDE — « aucun arc », jamais le sommet statique à sa place.
     expect(ready.zoneStates[0].gauge, 'zoneStates[].gauge').toEqual([])
+    expect(ready.zoneStates[0].gaugeRamps, 'zoneStates[].gaugeRamps').toEqual([])
     expect(ready.weaponPads[0].spawns, 'weaponPads[].spawns').toEqual([])
     expect(ready.weaponPads[0].presence, 'weaponPads[].presence').toEqual([])
     expect(ready.tracks[0].points, 'tracks[].points').toEqual([])

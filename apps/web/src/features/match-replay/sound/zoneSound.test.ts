@@ -146,6 +146,54 @@ describe('capture en cours — la jauge dit QUAND, le propriétaire d arrivée d
     expect(zoneSoundEvents(d, 1)).toEqual([{ ms: 1000, stem: ZONE_SOUND_STEMS.capturing.ally }])
   })
 
+  /**
+   * LE CAMP MESURÉ (schéma 64). `proprietaireApres` rend `null` quand l intervalle qui s ouvre
+   * après la rampe est NEUTRE — le son se taisait alors complètement, alors que la rampe a bien
+   * été poussée par quelqu un. Le document le nomme désormais.
+   */
+  it('rampe suivie d un intervalle NEUTRE : le camp vient du document, et le son sonne', () => {
+    const d = doc([
+      {
+        spans: [span(0, 49, 1), span(50, 200, null)],
+        gauge: [
+          { t: 10, v: 0 },
+          { t: 20, v: 0.4 },
+          { t: 49, v: 0.99 },
+        ],
+        gaugeRamps: [{ t0: 10, t1: 49, capturingTeam: 0 }],
+      },
+    ])
+    expect(zoneSoundEvents(d, 1)).toEqual([
+      { ms: 2000, stem: ZONE_SOUND_STEMS.capturing.enemy },
+    ])
+  })
+
+  it('le camp MESURÉ prime sur le propriétaire d arrivée', () => {
+    const d = doc([
+      {
+        spans: [span(0, 49, null), span(50, 200, 1)],
+        gauge: [{ t: 10, v: 0.1 }, { t: 30, v: 0.9 }],
+        gaugeRamps: [{ t0: 10, t1: 30, capturingTeam: 0 }],
+      },
+    ])
+    expect(zoneSoundEvents(d, 1)).toEqual([
+      { ms: 1000, stem: ZONE_SOUND_STEMS.capturing.enemy },
+    ])
+  })
+
+  it('rampe SANS camp mesuré : on retombe sur le propriétaire d arrivée (artefact <= 63)', () => {
+    const d = doc([
+      {
+        spans: [span(0, 49, null), span(50, 200, 1)],
+        gauge: [{ t: 10, v: 0.1 }, { t: 30, v: 0.9 }],
+        gaugeRamps: [{ t0: 10, t1: 30 }],
+      },
+    ])
+    expect(zoneSoundEvents(d, 1)).toEqual([
+      { ms: 1000, stem: ZONE_SOUND_STEMS.capturing.ally },
+    ])
+  })
+
   it('la CONTESTATION garde l instant du sommet : la correction ne déplace que le début', () => {
     const d = doc([
       {

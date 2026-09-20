@@ -13411,6 +13411,14 @@ export interface components {
             /** Format: int64 */
             xp_total: number;
         };
+        ZoneGaugeRamp: {
+            /** Format: int64 */
+            capturingTeam?: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
         ZoneSpan: {
             active: boolean;
             /** Format: int64 */
@@ -13424,6 +13432,7 @@ export interface components {
         };
         ZoneState: {
             gauge?: components["schemas"]["GaugePoint"][] | null;
+            gaugeRamps?: components["schemas"]["ZoneGaugeRamp"][] | null;
             /** Format: int32 */
             key?: number;
             /** Format: int64 */

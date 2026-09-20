@@ -147,9 +147,16 @@ interface GaugeLike {
   v: number
 }
 
+interface RampLike {
+  t0: number
+  t1: number
+  capturingTeam?: number | null
+}
+
 interface ZoneStateLike {
   spans: readonly SpanLike[]
   gauge?: readonly GaugeLike[] | null
+  gaugeRamps?: readonly RampLike[] | null
 }
 
 /**
@@ -180,7 +187,11 @@ export function zoneSoundEvents(
         out.push(soundEvent(frameToMs(r.fin, doc), ZONE_SOUND_STEMS.contested))
         continue
       }
-      const c = cote(arrivee)
+      // LE CAMP VIENT DU DOCUMENT QUAND IL LE MESURE (schéma 64), et du propriétaire d'arrivée
+      // sinon. La différence n'est pas cosmétique : `proprietaireApres` rend `null` quand
+      // l'intervalle qui s'ouvre est NEUTRE, et le son se taisait alors complètement — une base
+      // neutralisée ne sonnait ni la capture ni la contestation.
+      const c = cote(campDeLaRampe(z.gaugeRamps, r.fin) ?? arrivee)
       if (!c) continue
       out.push(soundEvent(frameToMs(r.debut, doc), ZONE_SOUND_STEMS.capturing[c]))
     }
@@ -268,6 +279,26 @@ function rampesDeJauge(g: readonly GaugeLike[]): { debut: number; fin: number }[
     i = j + 1
   }
   return out
+}
+
+/**
+ * campDeLaRampe rend le camp que le DOCUMENT mesure pour la rampe dont le sommet tombe à `fin`
+ * (schéma 64), ou `undefined` quand il n'en mesure aucun : rampe avortée, canal muet, ou
+ * artefact antérieur au schéma.
+ *
+ * LA JOINTURE SE FAIT PAR LE SOMMET, pas par le début : les bornes publiées sont celles de
+ * `findZoneRamps` côté Go, dont le `t0` est le retour à zéro qui ferme la rampe PRÉCÉDENTE
+ * (c'est exactement le défaut que `rampesDeJauge` corrige ici). Le sommet, lui, est le même des
+ * deux côtés — c'est le dernier point publié de la rampe.
+ */
+function campDeLaRampe(
+  ramps: readonly RampLike[] | null | undefined,
+  fin: number,
+): number | undefined {
+  for (const r of ramps ?? []) {
+    if (r.t1 === fin) return r.capturingTeam ?? undefined
+  }
+  return undefined
 }
 
 /**

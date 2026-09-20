@@ -160,6 +160,65 @@ func pushGaugePoint(out []GaugePoint, p GaugePoint) []GaugePoint {
 	return append(out, p)
 }
 
+// zoneGaugeRampComplete est LE SOMMET A PARTIR DUQUEL UNE RAMPE A ABOUTI, sur l'echelle du jeu.
+//
+// LA VALEUR VIENT D'UNE MESURE, PAS D'UN REGLAGE (2026-09-20, 8 documents a zones du cache,
+// 241 rampes). Separees par ce que le canal de PROPRIETE fait apres leur sommet :
+//
+//	160 rampes  suivies d'une bascule de camp dans la fenetre — sommets de 0,976 a 0,999 ;
+//	 81 rampes  aucune bascule — sommets de 0,060 a 0,986, mais deux seulement au-dessus de
+//	            0,95 (0,983 et 0,986). Ces deux-la sont des RE-SECURISATIONS par le camp deja
+//	            en place : le canal ne change pas de valeur, donc `mergeZoneRuns` n'ouvre pas
+//	            d'intervalle — et pourtant la valeur qu'il porte EST celle du pousseur.
+//
+// Hors ces deux cas, le plus haut sommet SANS bascule vaut 0,938 : le seuil tombe dans une marge
+// mesuree de 0,038. Une capture menee a terme culmine juste sous 1,0 (cf. l'en-tete de l'echelle
+// dans zone_states.go), jamais a 1,0 exactement — d'ou un seuil et non une egalite.
+const zoneGaugeRampComplete = 0.95
+
+// zoneGaugeRampsOf rend les rampes PUBLIEES d'une zone : les memes que celles dont la serie de
+// jauge est tiree (`findZoneRamps`), chacune portant le camp qui la pousse quand elle aboutit.
+//
+// LE CAMP N'EST PAS DEDUIT, IL EST LU : c'est la valeur du canal de PROPRIETE de la zone a la
+// frame du sommet ou juste apres, dans la meme fenetre d'appariement que partout ailleurs dans
+// ce volet (`zoneValueAfter`). Une rampe qui AVORTE ne le porte pas — le canal y nomme encore le
+// defenseur, et le publier ferait peindre le remplissage a la couleur de celui qui SUBIT la
+// capture, exactement le defaut que ce champ repare.
+func zoneGaugeRampsOf(ramps []zoneRamp, owner []zoneSample, teams map[uint64]bool,
+	win int,
+) []ZoneGaugeRamp {
+	if len(ramps) == 0 {
+		return nil
+	}
+	out := make([]ZoneGaugeRamp, 0, len(ramps))
+	for _, r := range ramps {
+		out = append(out, ZoneGaugeRamp{
+			T0: r.t0, T1: r.tPeak,
+			CapturingTeam: rampCapturingTeam(r, owner, teams, win),
+		})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].T0 < out[j].T0 })
+	return out
+}
+
+// rampCapturingTeam rend le camp qui a pousse la rampe, ou nil quand rien ne le mesure : rampe
+// avortee, canal muet dans la fenetre, ou valeur qui n'est pas un camp du roster (neutre
+// compris — « personne » ne capture rien).
+func rampCapturingTeam(r zoneRamp, owner []zoneSample, teams map[uint64]bool, win int) *int {
+	if gaugeProgressOf(r.top) < zoneGaugeRampComplete {
+		return nil
+	}
+	v, ok := zoneValueAfter(owner, r.tPeak, win)
+	if !ok {
+		return nil
+	}
+	team, known := zoneOwnerTeam(v, teams)
+	if !known {
+		return nil
+	}
+	return team
+}
+
 // rampWindowsOf traduit des rampes en fenetres de jauge.
 func rampWindowsOf(ramps []zoneRamp) []zoneGaugeWindow {
 	out := make([]zoneGaugeWindow, 0, len(ramps))

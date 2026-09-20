@@ -65,7 +65,12 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 		// LA JAUGE EN DIRECT (schema 18) : TOUTES les rampes du slot de jauge de la zone, pas
 		// seulement celles qu'une capture a rattachees — une montee interrompue est une capture
 		// en cours que le film montre, et l'ecran doit la montrer aussi.
-		st.Gauge = zoneGaugeSeriesOf(gauge, rampWindowsOf(findZoneRamps(slot, gauge)), gap)
+		ramps := findZoneRamps(slot, gauge)
+		st.Gauge = zoneGaugeSeriesOf(gauge, rampWindowsOf(ramps), gap)
+		// LE CAMP QUI POUSSE CHAQUE RAMPE (schema 64) : lu sur le MEME canal de propriete que
+		// les intervalles, a l issue de la rampe. Le client ne le deduit plus (cf.
+		// ZoneState.GaugeRamps).
+		st.GaugeRamps = zoneGaugeRampsOf(ramps, ser.owner[ownerSlot[ref]], teams, win)
 		out = append(out, st)
 	}
 	checkOwnerAgreement(ser, ownerSlot, pairs, in.TeamByXUID, win, cov)

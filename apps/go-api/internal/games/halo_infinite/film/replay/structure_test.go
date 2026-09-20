@@ -1193,8 +1193,23 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `REPLAYINPUTS24`, schéma de faits 3) : la jauge y transite, parce que le document en dépend
 	//   et que « document depuis les faits ≡ document depuis le film » est la propriété du lot 4.1.
 	//   Détail : `document_chronicle.go`.
-	if SchemaVersion != 63 {
-		t.Fatalf("SchemaVersion = %d, attendu 63 : incrémenter exige une raison écrite ci-dessus "+
+	// - v64 (post-chantier lot 5.2-A du PLAN_DECODEUR_FILM, 2026-09-20) : LA COULEUR DE LA
+	//   CAPTURE. `zoneStates[].gaugeRamps` publie une entrée par RAMPE de la jauge — les mêmes
+	//   rampes dont `gauge` est tirée — avec ses bornes et, quand elle ABOUTIT, `capturingTeam` :
+	//   le camp qui l'a poussée, LU sur le canal de propriété de la zone à l'issue de la rampe et
+	//   non plus déduit côté client (« le camp d'en face du propriétaire »), déduction qui
+	//   n'existe pas sur une base NEUTRE — où le remplissage se peignait donc au neutre pendant
+	//   qu'une équipe poussait. Le type `ZoneGaugeRamp` naît avec le champ.
+	//   POURQUOI LA VERSION MONTE : un champ et un type naissent, donc la FORME change et le
+	//   ratchet de forme refuse de se régénérer sans montée. Ce n'est PAS de la télémétrie — le
+	//   client peint avec. L'absence de la clé est ce qui doit signifier « antérieur à 64 ».
+	//   CE QUI NE MONTE PAS : aucune des quatre révisions de DÉCODAGE, et aucun octet de
+	//   `film/internal/`. Le canal de propriété des zones est lu en production depuis la v16 ;
+	//   cette montée PUBLIE une lecture existante. `layers` est inchangé, le blob d'entrées est
+	//   inchangé à l'octet, aucune recuisson n'est requise pour les autres calques.
+	//   Détail, seuil mesuré et forme écartée : `document_chronicle.go`.
+	if SchemaVersion != 64 {
+		t.Fatalf("SchemaVersion = %d, attendu 64 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

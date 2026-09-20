@@ -116,10 +116,13 @@ export function useZoneStates(
     () => ({
       colorOfOwner: (team: number) =>
         allyTeamID === null ? null : teamColorOf(team === allyTeamID),
-      // Le camp QUI CAPTURE une zone tenue est le camp d'en face (cf. ZoneStateStyle) : allié
-      // si le propriétaire est adverse, adverse s'il est allié.
-      colorOfCapturer: (owner: number) =>
-        allyTeamID === null ? null : teamColorOf(owner !== allyTeamID),
+      // Le camp QUI POUSSE LA JAUGE est désormais LU dans le document (schéma 64,
+      // `gaugeRamps[].capturingTeam`) et non plus déduit du propriétaire : cette encre n'est
+      // que la traduction d'un identifiant d'équipe, la MÊME règle que `colorOfOwner`. Les deux
+      // restent deux entrées du style parce qu'elles répondent à deux questions distinctes
+      // (« qui tient » / « qui pousse ») et que le calque les pose à deux endroits.
+      colorOfCapturer: (team: number) =>
+        allyTeamID === null ? null : teamColorOf(team === allyTeamID),
       neutral,
     }),
     [allyTeamID, teamColorOf, neutral],

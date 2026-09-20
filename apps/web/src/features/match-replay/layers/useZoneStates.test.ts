@@ -96,11 +96,19 @@ describe('useZoneStates', () => {
     expect(result.current.style.colorOfOwner(0)).toBe('#adverse')
   })
 
-  it("le camp QUI CAPTURE une zone tenue est le camp d'en face du propriétaire", () => {
+  /**
+   * RÈGLE RETOURNÉE LE 2026-09-20 (schéma 64) : l'argument n'est plus le PROPRIÉTAIRE de la
+   * zone — dont on déduisait « le camp d'en face » —, c'est le camp QUI POUSSE, lu dans
+   * `gaugeRamps[].capturingTeam`. L'encre est donc la même que celle du propriétaire, et c'est
+   * le point : la couleur ne dépend plus de qui tient la base.
+   */
+  it('le camp QUI POUSSE la jauge est peint à SA couleur, pas à celle de son adversaire', () => {
     const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC, null))
-    // Ma zone (camp 1) se fait capturer : l'arc est ADVERSE ; leur zone (camp 0) : l'arc est ALLIÉ.
-    expect(result.current.style.colorOfCapturer(1)).toBe('#adverse')
-    expect(result.current.style.colorOfCapturer(0)).toBe('#allie')
+    // Le camp 1 est l'allié (ligne « moi ») : c'est lui qui pousse -> encre ALLIÉE.
+    expect(result.current.style.colorOfCapturer(1)).toBe('#allie')
+    expect(result.current.style.colorOfCapturer(0)).toBe('#adverse')
+    // ...et elle coïncide avec celle du propriétaire, par construction.
+    expect(result.current.style.colorOfCapturer(1)).toBe(result.current.style.colorOfOwner(1))
   })
 
   it('la tenue de la jauge en direct est UNE seconde, en frames de ce document', () => {
