@@ -108,5 +108,8 @@ func (d *discoveryImpl) scanPlayer(ctx context.Context, player domain.PlayerSumm
 		PlayerDBPath: d.resolver.PlayerDBPath(d.titleSlug, player.Gamertag),
 		RefreshToken: ut.OAuthRefreshToken,
 		Source:       credSourceWatcherOAuth,
+
+		// Provenance mesurée au dernier échange XBL (vide tant qu'aucun n'a eu lieu).
+		TokenClientFamily: ut.TokenClientFamily,
 	}
 }

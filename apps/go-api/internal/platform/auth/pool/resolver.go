@@ -46,6 +46,11 @@ type resolverImpl struct {
 	// Nullable : si nil, aucune notification.
 	onAuthError AuthErrorCallback
 
+	// onFamilyObserved signale la provenance MESURÉE à l'échange XBL quand elle
+	// diffère de celle de la source, pour que le caller la persiste.
+	// Nullable : si nil, la mesure n'est gardée qu'en mémoire (sources).
+	onFamilyObserved TokenFamilyCallback
+
 	// negative = cache négatif par gamertag : un échec PERMANENT (config/revoked)
 	// court-circuite les Resolve suivants pendant sa fenêtre (aucun appel réseau,
 	// log Debug). Une nouvelle CredentialSource (RT différent, ex. post
@@ -116,14 +121,15 @@ func NewResolverWithCallbacks(provider auth.TokenProvider, cacheTTL time.Duratio
 		cacheTTL = 3*time.Hour + 30*time.Minute
 	}
 	return &resolverImpl{
-		provider:    provider,
-		cache:       make(map[string]*cachedToken),
-		cacheTTL:    cacheTTL,
-		sources:     make(map[string]CredentialSource),
-		onRotated:   cbs.OnRotated,
-		onReauth:    cbs.OnReauth,
-		onAuthError: cbs.OnAuthError,
-		negative:    make(map[string]*negativeEntry),
+		provider:         provider,
+		cache:            make(map[string]*cachedToken),
+		cacheTTL:         cacheTTL,
+		sources:          make(map[string]CredentialSource),
+		onRotated:        cbs.OnRotated,
+		onReauth:         cbs.OnReauth,
+		onAuthError:      cbs.OnAuthError,
+		onFamilyObserved: cbs.OnFamilyObserved,
+		negative:         make(map[string]*negativeEntry),
 	}
 }
 
@@ -371,6 +377,13 @@ func (r *resolverImpl) tryOAuthRefreshAndPropagateRotation(ctx context.Context, 
 // exchangeAndCache appelle Exchange et insère le résultat dans le cache + sources.
 func (r *resolverImpl) exchangeAndCache(ctx context.Context, src CredentialSource, accessToken string) (*ResolvedTokens, error) {
 	start := time.Now()
+	// Provenance connue → bon préfixe RpsTicket du premier coup ; observateur →
+	// on apprend celle que l'endpoint XBL accepte réellement. Sans ces deux lignes
+	// le pool repartait de « d= » à chaque boot et encaissait un 401 par compte
+	// qui n'accepte que « t= » (5 WARN par boot jusqu'au 2026-09-20).
+	ctx = auth.WithTokenClientFamily(ctx, src.TokenClientFamily)
+	ctx, observer := auth.WithTokenFamilyObserver(ctx)
+
 	result, err := r.provider.Exchange(ctx, accessToken)
 	if err != nil {
 		slog.ErrorContext(ctx, "pool/resolver: Exchange échoué",
@@ -379,6 +392,7 @@ func (r *resolverImpl) exchangeAndCache(ctx context.Context, src CredentialSourc
 	}
 	slog.InfoContext(ctx, "pool/resolver: Exchange OK",
 		"gamertag", src.Gamertag, "duration_ms", time.Since(start).Milliseconds())
+	src.TokenClientFamily = r.propagateObservedFamily(ctx, src, observer.Observed())
 
 	resolved := &ResolvedTokens{
 		Gamertag:  src.Gamertag,
@@ -400,6 +414,25 @@ func (r *resolverImpl) exchangeAndCache(ctx context.Context, src CredentialSourc
 		"gamertag", src.Gamertag, "ttl_s", r.cacheTTL.Seconds())
 
 	return resolved, nil
+}
+
+// propagateObservedFamily rend la provenance à mémoriser sur la source et la
+// persiste (callback) si la mesure de cet échange diffère de ce qu'on savait.
+// Rend la provenance inchangée si rien n'a été mesuré (Exchange servi sans passer
+// par l'échange XBL, par exemple).
+func (r *resolverImpl) propagateObservedFamily(ctx context.Context, src CredentialSource, observed string) string {
+	if observed == "" || observed == src.TokenClientFamily {
+		return src.TokenClientFamily
+	}
+	slog.InfoContext(ctx, "pool/resolver: provenance du token mesurée",
+		"gamertag", src.Gamertag, "family", observed, "previous", src.TokenClientFamily)
+	if r.onFamilyObserved != nil {
+		if cbErr := r.onFamilyObserved(ctx, src.Gamertag, src.XUID, observed); cbErr != nil {
+			slog.WarnContext(ctx, "pool/resolver: persistance de la provenance échouée",
+				"gamertag", src.Gamertag, "err", cbErr)
+		}
+	}
+	return observed
 }
 
 // Refresh force un re-échange du token pour un gamertag donné (par ex après un 401/403).

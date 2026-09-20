@@ -45,14 +45,20 @@ func RefreshUserXSTS(ctx context.Context, store *MultiUserTokenStore, xuid strin
 	}
 
 	// Provenance connue (AU4/F12) → préfixe RpsTicket déterministe pour l'échange XBL
-	// user-token en aval (withTokenClientFamily lu par requestUserToken). Vide = repli
+	// user-token en aval (WithTokenClientFamily lu par requestUserToken). Vide = repli
 	// sur le retry d=→t= (migration douce).
-	ctx = withTokenClientFamily(ctx, tokens.TokenClientFamily)
+	ctx = WithTokenClientFamily(ctx, tokens.TokenClientFamily)
+	// ... et on MESURE le préfixe réellement accepté, seule donnée fiable : la
+	// famille du client OAuth ne le prédit pas (constat du 2026-09-20).
+	ctx, observer := WithTokenFamilyObserver(ctx)
 
 	// Étape 2 : acquérir un nouveau XSTS RTA.
 	xstsResult, err := AcquireXSTSForRTA(ctx, accessToken)
 	if err != nil {
 		return "", fmt.Errorf("refresh_user_xsts: AcquireXSTSForRTA: %w", err)
+	}
+	if observed := observer.Observed(); observed != "" {
+		tokens.TokenClientFamily = observed // persisté par le Upsert ci-dessous
 	}
 
 	// Étape 3 : persister les nouveaux tokens.
@@ -96,9 +102,12 @@ func refreshAccessTokenForUser(ctx context.Context, store *MultiUserTokenStore, 
 				"xuid", tokens.XUID, "err", err)
 		}
 		if token != "" {
-			// Provenance apprise (AU4/F12) : le client qui a répondu fixe le préfixe
-			// RpsTicket du prochain échange XBL. Persisté par le Upsert du caller.
-			if family != "" {
+			// Provenance SUPPOSÉE (AU4/F12) : le client OAuth qui a répondu. Simple
+			// AMORCE tant qu'aucun échange XBL n'a mesuré le préfixe accepté — elle
+			// ne le prédit PAS (constat du 2026-09-20 : 13 refresh sur 13 par l'app
+			// Azure, et pourtant 5 comptes n'acceptent que « t= »). Elle ne doit donc
+			// JAMAIS écraser une mesure, sinon le 401 revient à chaque refresh.
+			if family != "" && tokens.TokenClientFamily == "" {
 				tokens.TokenClientFamily = family
 			}
 			// RT à usage unique : écrire la rotation dans tokens AVANT le Upsert

@@ -537,3 +537,50 @@ func TestMultiUserTokenStore_FilePermissions(t *testing.T) {
 		t.Errorf("file perms = %o, want 0600 strict", infoFile.Mode().Perm())
 	}
 }
+
+// TestUpdateTokenClientFamily : écriture atomique de la provenance mesurée, sans
+// toucher aux autres champs (le refresh_token notamment), et idempotente.
+func TestUpdateTokenClientFamily(t *testing.T) {
+	s := NewMultiUserTokenStore(tempTokenDir(t))
+
+	if err := s.Upsert(&UserTokens{
+		XUID: "111", Gamertag: "Alice", OAuthRefreshToken: "rt_frais",
+	}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	if err := s.UpdateTokenClientFamily("111", TokenFamilyXboxNative); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	got, err := s.Load("111")
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if got.TokenClientFamily != TokenFamilyXboxNative {
+		t.Errorf("TokenClientFamily = %q, want %q", got.TokenClientFamily, TokenFamilyXboxNative)
+	}
+	if got.OAuthRefreshToken != "rt_frais" {
+		t.Errorf("refresh_token = %q — l'update de provenance a écrasé un autre champ", got.OAuthRefreshToken)
+	}
+
+	// Idempotent : re-écrire la même valeur ne casse rien.
+	if err := s.UpdateTokenClientFamily("111", TokenFamilyXboxNative); err != nil {
+		t.Fatalf("update idempotent: %v", err)
+	}
+	// Une mesure différente remplace la précédente.
+	if err := s.UpdateTokenClientFamily("111", TokenFamilyAzure); err != nil {
+		t.Fatalf("update 2: %v", err)
+	}
+	got, _ = s.Load("111")
+	if got.TokenClientFamily != TokenFamilyAzure {
+		t.Errorf("TokenClientFamily = %q, want %q", got.TokenClientFamily, TokenFamilyAzure)
+	}
+
+	// Garde-fous.
+	if err := s.UpdateTokenClientFamily("111", ""); err == nil {
+		t.Error("famille vide doit être refusée")
+	}
+	if err := s.UpdateTokenClientFamily("../evil", TokenFamilyAzure); err == nil {
+		t.Error("xuid non sûr doit être refusé")
+	}
+}

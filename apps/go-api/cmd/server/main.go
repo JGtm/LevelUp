@@ -1969,10 +1969,24 @@ func buildAutoSyncPool(
 		}
 	}
 
+	// Provenance MESURÉE à l'échange XBL : persistée pour que le boot suivant
+	// parte du bon préfixe RpsTicket (sinon 401 + retry à chaque échange pour les
+	// comptes qui n'acceptent pas « d= »).
+	onFamilyObserved := func(ctx context.Context, gamertag, xuid, family string) error {
+		if xuid == "" {
+			return nil
+		}
+		if err := multiUserStore.UpdateTokenClientFamily(xuid, family); err != nil {
+			return fmt.Errorf("onFamilyObserved %s: %w", gamertag, err)
+		}
+		return nil
+	}
+
 	resolver := pool.NewResolverWithCallbacks(tokenProvider, 0, pool.ResolverCallbacks{ // 0 = default TTL ~3h30
-		OnRotated:   onRotated,
-		OnReauth:    onReauth,
-		OnAuthError: onAuthError,
+		OnRotated:        onRotated,
+		OnReauth:         onReauth,
+		OnAuthError:      onAuthError,
+		OnFamilyObserved: onFamilyObserved,
 	})
 	p, err := pool.NewPool(ctx, resolver, sources, pool.PoolOptions{
 		MaxSize:     0, // 0 = tous les sources découverts
