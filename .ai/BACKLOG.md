@@ -10,6 +10,64 @@
 
 ---
 
+### [scheduler/leaderboard] Le cron du classement mondial tire à boot+30 s et perd son snapshot sur expiration du B-swap
+
+Noté le 2026-09-20 (diagnostic des anomalies de boot). `world_leaderboard_cron` démarre 30 s
+après le boot ; sa persistance demande le basculement RO→RW de `shared_matches_v2.duckdb`
+(`sharedprovider`, drain des lecteurs borné à 5 s) au moment où le boot tient encore des
+lecteurs (sync, killsource, data_health). Constaté deux fois le 2026-09-20 dans `logs/` :
+`provider: drain timeout, rollback vers RO` (label `world_leaderboard_snapshot`) puis
+`world_leaderboard_cron: persistance échouée — sharedprovider: drain inflight readers: context
+deadline exceeded`. Le crash qui suivait ce timeout (WaitGroup réutilisée, deux fois le 16/09)
+est corrigé (`reader_drain.go`, lot du 2026-09-20) ; le timeout lui-même et la perte du
+snapshot du jour ne le sont pas. Le cron ne réessaie qu'au cycle suivant (24 h).
+
+**Impact utilisateur : un jour de classement mondial manqué** à chaque boot qui tombe ainsi.
+**Correctif** : différer le premier tir du cron (après le boot chaud, ou sur signal de fin de
+sync initiale) ET/OU réessayer la persistance sur `ErrDrainTimeout` avec un délai borné
+(2-3 tentatives), en gardant le scrape déjà fait en mémoire pour ne pas re-solliciter Waypoint.
+**Effort : S.**
+
+---
+
+### [data/ART] `match_skill_rank` garde ses index secondaires ART — même défaut que `personal_score_awards`
+
+Noté le 2026-09-20 (lot « retrait des index ART de personal_score_awards »). Le bug DuckDB
+#23645 désynchronise les index ART des player DB sur les insertions COURANTES : sur
+`personal_score_awards`, les clés en écart du 20/09 étaient des match_id de septembre, et les
+trois index ont été retirés (`drop_psa_secondary_art_indexes_v1`) après preuve que les six
+lecteurs passent par la vue `_latest`, dont la fonction de fenêtre impose un scan séquentiel
+(0,800 ms avec index / 0,841 ms sans, même plan). `match_skill_rank` porte encore les siens
+(`idx_msr_playlist` mesuré désynchronisé le 2026-09-13 sur JGtm), avec sa sonde
+`data_health_msr_index.go`, `cmd/repair_msr_index` et le paquet `platform/duckdb/indexcheck`
+conservés pour lui seul.
+
+**Impact utilisateur** : lookups indexés amputés en silence sur cette table tant que la sonde
+n'a pas alerté, réparation manuelle serveur arrêté. **Correctif** : reproduire l'instruction
+faite pour PSA — inventaire des lecteurs (passent-ils tous par `match_skill_rank_latest` ?),
+`EXPLAIN` avec et sans index, mesure sur DB fichier ; si le plan est un scan dans les deux cas,
+retirer les index par migration idempotente, supprimer sonde + outil + `indexcheck` (plus aucun
+consommateur) et étendre le ratchet `noSecondaryIndexTables` ; sinon consigner pourquoi ils
+restent. **Effort : S-M** (la recette existe, commits `ceea58b39`).
+
+---
+
+### [migration/sync] Deux découpeurs SQL divergents — `sync.splitSQL` n'est pas `migration.splitSQL`
+
+Noté le 2026-09-20 (rouge CI attrapé sur le lot PSA). `migration.splitSQL` ignore un fragment
+purement commentaire après le dernier `;` d'un script ; `sync.splitSQL`
+(`internal/sync/schema.go`, ~L532) le passe tel quel à DuckDB → `execScript: empty query`.
+Or `sync.EnsurePlayerSchema` rejoue le DDL d'autorité à CHAQUE `OpenPlayerDB` : un commentaire
+mal placé dans `PlayerPersonalScoreAwardsDDL` cassait l'ouverture des player DB en prod, pas
+seulement un test (corrigé en déplaçant le commentaire, commit `84f2c8620`). `sync` importe
+déjà `migration`.
+
+**Correctif** : faire consommer `migration.ExecScript` (ou son découpeur exporté) par `sync`
+et supprimer `sync.splitSQL` avec ses tests (0 copie), plus un test qui prouve qu'un
+commentaire de fin de script passe sur le chemin `EnsurePlayerSchema`. **Effort : XS-S.**
+
+---
+
 ### [garde-rail/campagne] `TestCampaignExclusionStructuralCoverage` ne voit pas le SQL local
 
 Noté le 2026-09-19 (lot d'hygiène compare/armes, découverte non traitée). Le balayage AST de
