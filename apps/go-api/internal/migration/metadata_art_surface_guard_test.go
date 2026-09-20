@@ -44,6 +44,17 @@ var noSecondaryIndexTables = []string{
 	"battlepass_track_definitions",
 	"battlepass_item_definitions",
 	"engagement_coefficients", // PK (xuid,mode_category) ; idx_xuid redondant retiré (surface ART)
+	// personal_score_awards (2026-09-20) — SEUL membre de la liste qui n'est PAS muté
+	// (append-only INSERT-only, ADR 0026) : il y entre pour une raison MESURÉE, pas
+	// doctrinale. La sonde data-health trouvait ses index DÉSYNCHRONISÉS à chaque boot et
+	// la réparation manuelle du 2026-09-20 (3 joueurs) a montré que les clés en écart
+	// étaient des match_id du mois courant : le défaut #23645 se reforme sur les
+	// insertions COURANTES, un INSERT pur suffit. Aucun lecteur n'y perd — tous passent
+	// par personal_score_awards_latest, dont la fonction de fenêtre impose un Sequential
+	// Scan (mesuré sur 5 000 lignes : 0,800 ms avec index, 0,841 ms sans, même plan).
+	// Cinq index retirés en tout : idx_psa_xuid et idx_psa_match_xuid (2026-08-05),
+	// idx_psa_match, idx_psa_category et idx_psa_gen (2026-09-20).
+	"personal_score_awards",
 }
 
 // Règle 2 — colonnes mutées par un UPDATE qui ne doivent jamais être indexées.

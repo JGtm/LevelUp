@@ -13,7 +13,7 @@
 // C'est la signature exacte du bug DuckDB #23645, déjà constatée le 2026-08-27 sur
 // personal_score_awards — la famille touche donc aussi match_skill_rank.
 //
-// **Ce que l'outil fait** (calqué sur cmd/repair_psa_index) :
+// **Ce que l outil fait** :
 //  1. DIAGNOSTIC — pour chaque axe indexé, compare le comptage par scan forcé au
 //     comptage par lookup indexé, clé à clé ;
 //  2. RÉPARATION (option `-repair`) — DROP INDEX + CREATE INDEX avec la DDL
@@ -59,7 +59,7 @@ const (
 	maxListedDivergent = 20 // au-delà, la liste est tronquée (le total reste exact)
 )
 
-// defaultPlayers — les 4 joueurs suivis (mêmes gamertags que cmd/repair_psa_index).
+// defaultPlayers — les 4 joueurs suivis (mêmes gamertags que cmd/diag_perfsim).
 var defaultPlayers = []string{"JGtm", "Chocoboflor", "Madina97294", "XxDaemonGamerxX"}
 
 func main() {

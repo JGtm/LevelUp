@@ -30,10 +30,12 @@ import (
 // avec un point de décor, un répulseur pousse. Elles sortent de la règle mais restent NOMMÉES
 // dans la section (D9). Posé le 2026-09-20 avec la section ; toute autre classe (véhicule,
 // tourelle, grenade) tire ou projette, et son record se lit.
+// Les clés viennent des constantes canoniques de domain (source unique des classes),
+// jamais de littéraux recopiés.
 var weaponRecordsExcludedClasses = map[string]bool{
-	"melee":         true,
-	"environmental": true,
-	"equipment":     true,
+	domain.FragClassMelee:         true,
+	domain.FragClassEnvironmental: true,
+	domain.FragClassEquipment:     true,
 }
 
 // weaponRecordsQuery — le repo, le titre, le joueur et le scope canonique DÉJÀ FILTRÉ.

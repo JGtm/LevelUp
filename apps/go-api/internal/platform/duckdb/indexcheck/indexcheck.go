@@ -12,11 +12,14 @@
 // `col = NULL` ne matche jamais et produirait un faux écart.
 //
 // POURQUOI UN PAQUET. La règle vivait en double : dans la sonde data-health de
-// `personal_score_awards` et dans le diagnostic de `cmd/repair_msr_index`. La
+// `personal_score_awards` et dans le diagnostic de `cmd/repair_psa_index`. La
 // sonde data-health de `match_skill_rank` (G.3, 2026-09-13) en aurait fait une
 // troisième et une quatrième copie — seuil de la règle CLAUDE.md n°6. Le paquet
 // est la source unique pour `match_skill_rank` ; le garde-rail qui interdit d'en
 // recopier la carte d'axes est `internal/archlint/no_local_msr_axes_test.go`.
+// (Les deux consommateurs côté personal_score_awards ont été SUPPRIMÉS le
+// 2026-09-20 avec les index qu'ils surveillaient : ce paquet ne sert plus que
+// `match_skill_rank` — sonde data-health + `cmd/repair_msr_index`.)
 //
 // CE PAQUET NE RÉPARE RIEN. Il lit, il compare, il rend un rapport. La DDL de
 // réparation est capturée dans la base par l'appelant (`cmd/repair_msr_index`),

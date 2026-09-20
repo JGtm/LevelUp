@@ -28,6 +28,24 @@ package migration
 // de l'invariant no-op) et pur préfixe d'idx_psa_gen. Retiré du PostSwap + step
 // drop_psa_match_xuid_art_index_v1.
 //
+// CLÔTURE 2026-09-20 — personal_score_awards n'a PLUS AUCUN index secondaire. Les
+// trois derniers (idx_psa_match, idx_psa_category, idx_psa_gen) sont retirés des deux
+// autorités (ce DDL + le PostSwap) et des DB existantes par le step
+// drop_psa_secondary_art_indexes_v1. Motif MESURÉ, pas doctrinal :
+//   - RÉCIDIVE. La sonde data-health alertait « index personal_score_awards
+//     DÉSYNCHRONISÉ » à chaque boot ; la réparation manuelle du 2026-09-20 (DROP +
+//     CREATE, 3 joueurs, 0 écart après) a montré que les clés en écart étaient des
+//     match_id de SEPTEMBRE 2026 — la désynchronisation se reforme sur les insertions
+//     COURANTES. Un index ART sur cette table est structurellement non fiable
+//     (duckdb/duckdb#23645, toujours ouvert en 1.5.5 embarquée).
+//   - AUCUN LECTEUR NE LES UTILISE. Toute lecture applicative passe par la vue
+//     personal_score_awards_latest (règle ADR 0026), dont la fonction de fenêtre
+//     impose un SEQ_SCAN : mesuré sur DB fichier de 5 000 lignes, la lecture par
+//     match_id coûte 0,800 ms avec index et 0,841 ms sans, MÊME PLAN (Sequential
+//     Scan) dans les deux cas. Les index n'étaient donc que du coût d'écriture et
+//     une surface de corruption.
+// Les seuls index restants sur la table sont ceux de la PK technique id.
+//
 // Ensure GARDE ses créations en SOIN DE TRANSITION (les player DB legacy en dépendent),
 // mais n'est plus une autorité : son action réelle est désormais BRUYANTE
 // (schema_drift_healed, internal/sync/schemadrift) et l'invariant « Ensure est un no-op
@@ -49,7 +67,19 @@ import "database/sql"
 // partagé par le batch) + written_at + is_tombstone. Lecture via la vue
 // personal_score_awards_latest (DENSE_RANK, génération MAX, tombstones exclus) — créée
 // par applyAppendOnlyPersonalScoreAwards (steps_player_append_only_personal_score_awards.go).
+//
+// AUCUN COMMENTAIRE EN FIN DE SCRIPT. Ce DDL est découpé sur « ; » par deux splitters
+// naïfs (migration.execScript et sync.splitSQL) : un commentaire APRÈS le dernier « ; »
+// devient une instruction vide et fait échouer sync.EnsurePlayerSchema (« empty query »,
+// constaté en CI le 2026-09-20). Le commentaire ci-dessous est donc en TÊTE, attaché au
+// premier statement ; le reste de la justification vit dans ce commentaire Go.
 const PlayerPersonalScoreAwardsDDL = `
+-- AUCUN INDEX SECONDAIRE sur cette table (décisions 2026-08-05 puis 2026-09-20, cf.
+-- l'en-tête du fichier). Les lecteurs passent tous par personal_score_awards_latest,
+-- dont la fonction de fenêtre impose un balayage séquentiel : un index ne servait
+-- aucune lecture et se désynchronisait sur les insertions courantes (#23645).
+-- Convergence des DB existantes : steps drop_psa_xuid_art_index_v1,
+-- drop_psa_match_xuid_art_index_v1 et drop_psa_secondary_art_indexes_v1.
 CREATE SEQUENCE IF NOT EXISTS personal_score_awards_id_seq;
 CREATE SEQUENCE IF NOT EXISTS psa_generation_seq START 1;
 CREATE TABLE IF NOT EXISTS personal_score_awards (
@@ -65,16 +95,6 @@ CREATE TABLE IF NOT EXISTS personal_score_awards (
     written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     is_tombstone BOOLEAN DEFAULT FALSE
 );
-CREATE INDEX IF NOT EXISTS idx_psa_match    ON personal_score_awards(match_id);
--- idx_psa_xuid : SUPPRIMÉ (décision 2026-08-05, miroir exact d'idx_career_xuid). Dans une
--- player DB, xuid est QUASI CONSTANT (une DB = un joueur) → sélectivité nulle, l'index
--- n'accélère aucun filtre. Sa surface ART #23645 est déjà éteinte par construction
--- (personal_score_awards est append-only INSERT-only, ADR 0026), mais un index sans
--- lecteur ni gain est du coût d'écriture pur + une surface à rallumer au premier DELETE
--- de régression. La convergence des DB EXISTANTES est assurée par le step
--- drop_psa_xuid_art_index_v1 (ci-dessous).
-CREATE INDEX IF NOT EXISTS idx_psa_category ON personal_score_awards(award_category);
-CREATE INDEX IF NOT EXISTS idx_psa_gen      ON personal_score_awards(match_id, xuid, generation_id);
 `
 
 // PlayerCSRSnapshotsDDL — schéma canonique de player_csr_snapshots (player DB).
@@ -111,7 +131,7 @@ CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
 `
 
 // L'ordre de Register() dans cet init() est CONTRAINT : il doit reproduire l'ordre de ces
-// 3 steps dans canonicalOrder (order.go) — cf. TestSortByCanonicalIsNoOpOnCurrentRegistry.
+// 6 steps dans canonicalOrder (order.go) — cf. TestSortByCanonicalIsNoOpOnCurrentRegistry.
 // Ils y occupent les positions qui suivent immédiatement repair_match_citations_primary_key
 // (fin du bloc player).
 func init() {
@@ -156,14 +176,32 @@ func init() {
 			return execScript(db, `DROP INDEX IF EXISTS idx_psa_match_xuid;`)
 		},
 	})
+	Register(Migration{
+		Name:     "drop_psa_secondary_art_indexes_v1",
+		TargetDB: TargetPlayer,
+		Description: "Retire les 3 derniers index secondaires de personal_score_awards " +
+			"(idx_psa_match, idx_psa_category, idx_psa_gen) : aucun lecteur ne les emprunte " +
+			"(tout passe par la vue _latest, plan Sequential Scan) et ils se désynchronisent " +
+			"sur les insertions courantes (#23645, récidive constatée le 2026-09-20)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+DROP INDEX IF EXISTS idx_psa_match;
+DROP INDEX IF EXISTS idx_psa_category;
+DROP INDEX IF EXISTS idx_psa_gen;`)
+		},
+	})
 }
 
 // applyCreatePersonalScoreAwards : réparer — créer — garantir la vue.
 //
-//  1. conversion append-only idempotente AVANT le DDL. L'ORDRE EST CRITIQUE : le DDL
-//     indexe generation_id (idx_psa_gen) ; sur une table legacy résiduelle qui ne porte
-//     pas encore cette colonne, CREATE TABLE IF NOT EXISTS no-operait et le CREATE INDEX
-//     casserait le boot. No-op sur DB vierge (table absente) et sur table déjà convertie.
+//  1. conversion append-only idempotente AVANT le DDL : sur une table legacy résiduelle,
+//     CREATE TABLE IF NOT EXISTS no-ope et ne rattraperait donc jamais les colonnes
+//     append-only (generation_id, written_at, is_tombstone) — c'est la conversion qui les
+//     pose. No-op sur DB vierge (table absente) et sur table déjà convertie.
+//     (Jusqu'au 2026-09-20 cet ordre était de surcroît une question de BOOT : le DDL
+//     créait idx_psa_gen sur generation_id, donc un CREATE INDEX sur une colonne absente.
+//     Le DDL ne crée plus aucun index — l'ordre reste néanmoins celui-ci, pour les
+//     colonnes.)
 //  2. le DDL crée la table DIRECTEMENT en forme append-only si elle est absente.
 //  3. second passage de la conversion : sur DB vierge, l'étape 1 n'avait rien à faire —
 //     c'est ce passage qui pose la vue personal_score_awards_latest sur la table qui vient

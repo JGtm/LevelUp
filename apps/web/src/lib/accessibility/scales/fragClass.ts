@@ -21,7 +21,7 @@
  * fragClass.colorSource.guard.test.ts.
  */
 import { resolveToken } from '../resolveToken'
-import type { SemanticToken } from '../semantic-tokens'
+import { tokenCssVar, type SemanticToken } from '../semantic-tokens'
 
 /**
  * Ordre canonique FIXE des classes (miroir de canonicalFragClassOrder côté Go,
@@ -98,6 +98,20 @@ export function fragClassToken(className: string | null | undefined): SemanticTo
  */
 export function fragClassColor(className: string | null | undefined): string {
   return resolveToken(fragClassToken(className))
+}
+
+/**
+ * Couleur de la classe sous forme de VAR CSS (`var(--ac-…)`) — pour un SVG écrit
+ * directement dans le DOM, où la couleur doit suivre le thème et la palette SANS
+ * re-rendu (contrairement à fragClassColor, qui résout une valeur au moment de
+ * l'appel et convient au canvas ECharts).
+ *
+ * Existe pour que les features n'aient JAMAIS à composer `tokenCssVar(fragClassToken(x))`
+ * elles-mêmes : la référence au mapping brut reste dans ce fichier, seule source de
+ * vérité classe→couleur (garde-rail fragClass.colorSource.guard.test.ts).
+ */
+export function fragClassCssVar(className: string | null | undefined): string {
+  return tokenCssVar(fragClassToken(className))
 }
 
 // ── Teintes de rôle (P1.2) ──────────────────────────────────────────────────────

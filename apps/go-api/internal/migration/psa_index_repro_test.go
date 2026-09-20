@@ -7,8 +7,16 @@
 //
 // Objectif : rejouer sur DuckDB FICHIER (jamais :memory:) le pattern d'ecriture
 // reel de personal_score_awards et detecter, apres chaque phase, l'ecart
-// « lookup indexe < scan sequentiel » avec exactement le controle de
-// cmd/repair_psa_index/diag.go.
+// « lookup indexe < scan sequentiel » avec exactement le controle qu'appliquait
+// cmd/repair_psa_index/diag.go (outil supprime le 2026-09-20).
+//
+// POURQUOI CE HARNAIS SURVIT A SON SUJET (2026-09-20). personal_score_awards n'a
+// plus d'index secondaire : la cible d'origine a disparu. Le harnais reste parce
+// que le DEFAUT, lui, est toujours ouvert (duckdb#23645, 1.5.5 embarquee) et
+// toujours ARME sur match_skill_rank, qui garde ses index (idx_msr_playlist
+// mesure desynchronise le 2026-09-13). La table interrogee ici est le VEHICULE de
+// la reproduction, pas son sujet : c'est le banc d'essai du defaut. A retirer le
+// jour ou plus aucune table d'une player DB ne porte d'index secondaire.
 package migration
 
 import (
@@ -43,17 +51,22 @@ func reproExec(t *testing.T, db *sql.DB, sqlText string, args ...any) {
 	}
 }
 
-// reproCreateFresh pose le schema canonique (PlayerPersonalScoreAwardsDDL) +
-// la vue _latest, comme applyCreatePersonalScoreAwards sur DB vierge.
+// reproCreateFresh pose le schema canonique (PlayerPersonalScoreAwardsDDL), LES
+// INDEX et la vue _latest. Les index sont poses ICI depuis le 2026-09-20 : le DDL
+// canonique n'en cree plus aucun (ils ont ete retires de la table), or c'est
+// precisement une table INDEXEE que ce harnais doit reproduire.
 func reproCreateFresh(t *testing.T, db *sql.DB) {
 	t.Helper()
 	if err := execScript(db, PlayerPersonalScoreAwardsDDL); err != nil {
 		t.Fatalf("DDL fraiche: %v", err)
 	}
+	reproCreateIndexes(t, db)
 	reproExec(t, db, psaLatestViewSQL)
 }
 
-// reproCreateNoIndex pose la table SANS index (pour tester CREATE INDEX apres peuplement).
+// reproCreateNoIndex pose la table SANS index (pour tester CREATE INDEX apres
+// peuplement). Depuis le 2026-09-20 le DDL canonique n'en porte plus : le filtre
+// ci-dessous ne retire donc plus rien, il reste comme garde si un index revenait.
 func reproCreateNoIndex(t *testing.T, db *sql.DB) {
 	t.Helper()
 	for _, s := range splitSQL(PlayerPersonalScoreAwardsDDL) {
@@ -137,7 +150,8 @@ func reproTombstone(t *testing.T, db *sql.DB, xuid string, matchIDs []string) {
 	}
 }
 
-// ── controle (copie fidele de cmd/repair_psa_index/diag.go) ──────────────────
+// ── controle (copie fidele du diagnostic de cmd/repair_psa_index/diag.go,
+//    outil supprime le 2026-09-20 — la regle, elle, vit dans indexcheck) ───────
 
 type reproAxis struct {
 	name        string

@@ -16,7 +16,8 @@ import (
 // ── S0b : QUAND DuckDB utilise-t-il reellement l'index ART ? ─────────────────
 //
 // Enjeu de methode : si le plan du lookup est un SEQ_SCAN, le controle de
-// repair_psa_index ne mesure PAS l'index. On sonde le plan a chaque etape.
+// le controle de repair_psa_index ne mesurait PAS l'index. On sonde le plan a
+// chaque etape. (L'outil a ete supprime le 2026-09-20 avec les index PSA.)
 func TestPSAReproS0bPlanProbe(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "stats.duckdb")

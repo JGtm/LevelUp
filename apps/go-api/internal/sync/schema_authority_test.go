@@ -250,6 +250,30 @@ func TestPlayerSchemaAuthority_NoPersonalScoreAwardsMatchXuidIndex(t *testing.T)
 	}
 }
 
+// TestPlayerSchemaAuthority_NoPersonalScoreAwardsSecondaryIndex — clôture du
+// 2026-09-20 : personal_score_awards n'a plus AUCUN index secondaire. Les trois
+// derniers (idx_psa_match, idx_psa_category, idx_psa_gen) ont été retirés des deux
+// autorités (PlayerPersonalScoreAwardsDDL, PostSwap d'EnsurePersonalScoreAwardsAppendOnly)
+// et des DB existantes par le step drop_psa_secondary_art_indexes_v1. Motif : la sonde
+// data-health les trouvait DÉSYNCHRONISÉS à chaque boot et les clés en écart étaient des
+// match_id du mois courant — le défaut #23645 se reforme sur les insertions COURANTES.
+// Aucun lecteur n'y perd (tout passe par la vue _latest, plan Sequential Scan).
+func TestPlayerSchemaAuthority_NoPersonalScoreAwardsSecondaryIndex(t *testing.T) {
+	db := freshMigratedPlayerDB(t)
+	if err := sync.EnsurePlayerSchema(context.Background(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	keys := snapshotSchemaKeys(t, db)
+	for _, idx := range []string{"idx_psa_match", "idx_psa_category", "idx_psa_gen"} {
+		if keys["index "+idx+" ON personal_score_awards"] {
+			t.Errorf("%s présent après migrations + soin — les index secondaires de "+
+				"personal_score_awards sont supprimés partout (step "+
+				"drop_psa_secondary_art_indexes_v1 + retrait de PlayerPersonalScoreAwardsDDL "+
+				"et du PostSwap d'applyAppendOnlyPersonalScoreAwards)", idx)
+		}
+	}
+}
+
 // ── MORSURE ──────────────────────────────────────────────────────────────────
 
 // TestPlayerSchemaAuthority_BiteProof — preuve que l'invariant MORD. On reproduit dans la

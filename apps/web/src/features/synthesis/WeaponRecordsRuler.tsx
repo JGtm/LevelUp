@@ -29,8 +29,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEve
 import { ChartLegend, type ChartLegendItem } from '@/components/charts/ChartLegend'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
-import { FRAG_CLASS_ORDER, fragClassToken } from '@/lib/accessibility/scales/fragClass'
-import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { FRAG_CLASS_ORDER, fragClassCssVar } from '@/lib/accessibility/scales/fragClass'
 import type { SynthesisWeaponRecords, WeaponDistanceRecordRow } from '@/lib/api/types'
 import { formatDate, intlLocale } from '@/lib/formatters'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
@@ -82,7 +81,7 @@ function legendItems(rows: readonly WeaponDistanceRecordRow[], locale: ManifestL
   return FRAG_CLASS_ORDER.filter((c) => present.has(c)).map((c) => ({
     key: c,
     label: formatMessage(fragsManifest, `frags.class.${c}` as never, locale),
-    color: tokenCssVar(fragClassToken(c)),
+    color: fragClassCssVar(c),
   }))
 }
 
@@ -210,7 +209,7 @@ function RulerSvg({ layout, locale, t, onMove, onOpen, onKey }: RulerSvgProps) {
       ))}
       {items.map((it) => {
         const ly = labelBaselineY(layout, it)
-        const color = tokenCssVar(fragClassToken(it.row.class))
+        const color = fragClassCssVar(it.row.class)
         // Le trait de rappel relie le losange au libellé, vers le haut ou vers le bas.
         const leader =
           it.side === 'top'
