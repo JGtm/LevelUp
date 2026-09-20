@@ -1,3 +1,30 @@
+## [2026-09-20] Le ton derive d'un jeton quitte les features pour le systeme de jetons (`tokenTone`) — Complete (branche `feat/v75`)
+
+**Demande** : la session `levelup-go-migration-ad` signale que mon fichier `assistTierTone.ts`
+(commit a1fe8c1c8) fait rougir le gate `lint-no-hardcoded-colors` (2 occurrences de `oklch(`,
+plafond P8.1 = 0) et bloque sa propre poussee. Deux sorties proposees : marqueur `color-allow`
+sur les deux lignes, ou deplacement dans le systeme de jetons.
+
+**Decision technique** : la deuxieme. Le gate ne balaye que `features/`, `components/` et
+`lib/replay/` — le produit, celui qui CONSOMME des jetons ; `lib/accessibility/` est l'endroit ou
+la couleur se CALCULE (precedent `hexComplement`, et les palettes y portent des hex). La
+derivation generique part donc dans `lib/accessibility/tokenTone.ts` (`tokenTone(color, step)` :
+meme teinte, clarte decalee vers le premier plan du theme via `light-dark(oklch(from …))`, chroma
+relevee, ecart plafonne a 0.3 au-dela duquel le ton ne se lit plus comme le meme role), exportee
+par le barrel. `features/_shared/assists/assistTierTone.ts` ne garde que la correspondance
+tranche -> ecart (0 / 0.12 / 0.24), qui est du domaine des assistances. Deux `color-allow` nommes
+restent sur les deux lignes de `tokenTone.ts` : la fonction y est le foyer legitime du calcul,
+et le marqueur dit pourquoi. Ma faute a l'origine : au lot de la tuile j'avais joue `eslint` et
+`vitest` mais PAS `npm run lint:colors`, qui est un gate de pre-poussee ET un job CI.
+
+**Resultats observes** : `lint:colors` clean (0 violation), `tsc -b` a cache purge vert,
+`lint:fields` 2008 fichiers sans violation, knip sans nouvelle entree, vitest cible 29 fichiers /
+312 tests verts. Test ajoute (`tokenTone.test.ts`) : ecart nul, decalage dans les deux themes,
+plafonnement, et surtout « la sortie ne contient que le jeton recu, aucune couleur litterale ».
+
+**Prochaine etape** : pousser sur `feat/v75`, surveiller la CI, et rendre la main a
+`levelup-go-migration-ad` qui attend pour fusionner sa branche.
+
 ## [2026-09-19] Tuile de match (accueil) : barre frags / assistances / morts, bloc des frags assistés, espacements — Complété (branche `feat/v75`)
 
 **Demande** : (1) le segment rouge des morts de la barre composite paraît « plus épais » ou

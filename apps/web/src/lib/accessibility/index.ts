@@ -29,6 +29,9 @@ export { getSeriesColors } from './plotlyColorscale'
 // Couleur complémentaire (usage : barres négatives des charts, hue +180°)
 export { hexComplement } from './hexComplement'
 
+// Ton derive d'un jeton (meme teinte, clarte decalee vers le premier plan du theme).
+export { tokenTone } from './tokenTone'
+
 // Helpers de contraste WCAG 2.0 (usage : tests de palette, sélection texte readable)
 export { relLuminance, contrastRatio, wcagGrade } from './wcagContrast'
 export type { WcagGrade } from './wcagContrast'
