@@ -71,8 +71,9 @@ rendus ». Contrat d'exécution : skill `plan-execution`.
       survol, clic vers le rejeu.
 - [x] 4.2 Maquette HTML copiée dans ce worktree (`.ai/V7.5/`), entrée thought_log,
       plan statué.
-- [!] 4.3 Commit : en attente de l'accord de l'utilisateur (règle CLAUDE.md n°16 —
-      demander avant tout commit). Tout est prêt sur le worktree, rien n'est perdu.
+- [x] 4.3 Commit `6a49543ce` sur `wt/records-distance` (accord utilisateur du
+      2026-09-20). Décision utilisateur du même jour : épée et marteau RESTENT sur la
+      règle. Fusion dans `feat/v75` : à la main de l'utilisateur.
 
 ## Découvertes (hors périmètre, non traitées)
 - `WEAPON_KEYS_WITHOUT_RANGE` côté web (`weaponRangeChart.ts`) reste un pis-aller : la
