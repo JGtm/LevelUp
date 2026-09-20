@@ -366,22 +366,13 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     equipmentUsage: {
       title: "Usages d'équipement",
       viewByPlayer: 'Nombre de gestes par joueur',
-      viewTeamShare: "Part de chaque équipe, geste par geste",
+      viewTeamShare: "Part de chaque équipe",
       gridTipFmt: (player, column, value) => `${player} — ${column} : ${value}`,
       shareTipFmt: (team, family, count, total) =>
         `${team} — ${family} : ${count} sur ${total}`,
       groupGrapple: 'Grappin',
       groupGrappleHint:
         "Tractions de grappin lues dans le film — la seule activation de capacité que la mesure sait attribuer à un joueur. Un tir sans accroche n'est pas une traction : il est compté à part et n'entre pas dans cette colonne.",
-      groupActive: 'États actifs',
-      groupActiveHint:
-        "Épisodes de camouflage et de surbouclier. Le film mesure que l'effet COURT ; il ne dit pas d'où il vient — un bonus ramassé au socle et une capacité déclenchée produisent le même épisode, et la source n'est pas distinguée. Le nombre et la durée cumulée se lisent ensemble : six épisodes d'une seconde et un épisode de six secondes ne racontent pas la même partie. Les frags sous effet actif se lisent à la précision de la retransmission près (les bornes de l'épisode) ; le camo seul reste sous le seuil de mesure en lecture large (26,2 % des épisodes avec au moins un frag).",
-      activeFamily: { camo: 'Camouflage', overshield: 'Surbouclier' },
-      activeColumnFmt: (family) => `${family} utilisé`,
-      activeCellTipFmt: (uses, duration, kills) =>
-        `${uses} utilisation${uses > 1 ? 's' : ''} · durée cumulée ${duration} · ${
-          kills === null ? "frags sous l'effet non mesurés" : `${kills} frag${kills > 1 ? 's' : ''} sous l'effet`
-        }`,
       groupEquipment: 'Équipement',
       groupEquipmentHint:
         "Chaque objet ramassé finit d'une seule façon : utilisé, gardé sans l'utiliser, ou lâché en mourant. « Utilisé » veut dire ACTIVÉ pour le camouflage et le surbouclier, POSÉ pour le reste (mur, capteur, écran occultant, traqueur, champ de réparation, balise du translocateur). Un mur déployé publie deux poses (l'appareil et ses panneaux) et n'en compte qu'une. Le grappin, le propulseur et le répulseur agissent sur leur porteur et n'ont pas de colonne ici — le répulseur parce qu'aucun canal du film ne mesure son activation, jamais parce qu'il ne sert à rien.",
@@ -418,10 +409,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       tiersUnmeasuredNote:
         "Les emplacements de cette carte ne sont pas dans la référence : le niveau de chaque arme n'a pas pu être établi. Les prises restent comptées.",
     },
-    collapsedColumnsShowFmt: (count) => `Voir plus (${count})`,
-    collapsedColumnsHide: 'Replier',
-    collapsedColumnsHint:
-      'Les colonnes les moins décisives sont repliées. Rien n’est retiré : les totaux, les dénominateurs et les notes de mesure les comptent toujours.',
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
     exportVideo: 'Exporter la vidéo',
@@ -810,21 +797,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     equipmentUsage: {
       title: 'Equipment usage',
       viewByPlayer: 'Gesture count by player',
-      viewTeamShare: "Each team's share, gesture by gesture",
+      viewTeamShare: "Each team's share",
       gridTipFmt: (player, column, value) => `${player} — ${column}: ${value}`,
       shareTipFmt: (team, family, count, total) => `${team} — ${family}: ${count} of ${total}`,
       groupGrapple: 'Grappleshot',
       groupGrappleHint:
         'Grapple pulls read from the film — the only ability activation the measurement can attribute to a player. A shot with no anchor is not a pull: it is counted separately and never enters this column.',
-      groupActive: 'Active states',
-      groupActiveHint:
-        "Camo and overshield episodes. The film measures that the effect IS RUNNING; it never says where it came from — a power-up picked up from a pad and a triggered ability produce the same episode, and the source is not told apart. Count and cumulative duration read together: six one-second episodes and one six-second episode are not the same game. Kills under active effect read at the precision of the broadcast (the episode's bounds); camo alone stays under the measurement threshold in broad reading (26.2% of episodes with at least one kill).",
-      activeFamily: { camo: 'Camo', overshield: 'Overshield' },
-      activeColumnFmt: (family) => `${family} used`,
-      activeCellTipFmt: (uses, duration, kills) =>
-        `${uses} use${uses > 1 ? 's' : ''} · ${duration} in total · ${
-          kills === null ? 'kills under the effect not measured' : `${kills} kill${kills > 1 ? 's' : ''} under the effect`
-        }`,
       groupEquipment: 'Equipment',
       groupEquipmentHint:
         "Every object picked up ends exactly one way: used, kept without using it, or dropped on death. \"Used\" means ACTIVATED for camo and overshield, PLACED for everything else (drop wall, sensor, shroud screen, seeker, repair field, translocator beacon). A deployed drop wall publishes two placements (the device and its panels) and counts as one. The grappleshot, thruster and repulsor act on their carrier and have no column here — the repulsor because no channel of the film measures its activation, never because it does nothing.",
@@ -861,10 +839,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       tiersUnmeasuredNote:
         'This map’s weapon spots are not in the reference: each weapon’s level could not be established. The pickups are still counted.',
     },
-    collapsedColumnsShowFmt: (count) => `Show more (${count})`,
-    collapsedColumnsHide: 'Collapse',
-    collapsedColumnsHint:
-      'The least game-changing columns are folded away. Nothing is removed: totals, denominators and measurement notes still count them.',
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',
     exportVideo: 'Export video',

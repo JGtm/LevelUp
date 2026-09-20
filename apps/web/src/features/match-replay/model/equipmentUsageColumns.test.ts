@@ -1,17 +1,21 @@
 /**
- * Tests — equipmentUsageColumns : LA PARTITION DU REPLI « GAME CHANGERS » (plan 2026-09-05).
+ * Tests — equipmentUsageColumns : LES GROUPES DE COLONNES QUE LA DONNÉE JUSTIFIE.
  *
- * CE QU'ILS PROTÈGENT, mutation par mutation (G1.3 du plan) :
- *   - la PARTITION n'est pas inversée : les élus du vote en avant, le reste replié — et
- *     l'ordre écrit des tables de référence SURVIT à l'intérieur de chaque partition ;
- *   - le PONT D5 est employé : les épisodes `camo`/`overshield` (vocabulaire d'ÉPISODE) sont
- *     en avant PARCE QUE `powerup_camo`/`powerup_overshield` (vocabulaire de SOCLE) sont élus
- *     — retirer le pont les fait tomber du bloc en avant ;
- *   - les GRENADES restent TOUJOURS visibles (décision D4), jamais dans le bloc replié ;
- *   - zéro colonne repliée = compte à zéro : le rendu n'affiche alors AUCUN bouton.
+ * LE REPLI « GAME CHANGERS » ET LE GROUPE « ÉTATS ACTIFS » ONT ÉTÉ RETIRÉS LE 2026-09-19
+ * (plan `.ai/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`, lot 2, décision 6) : tout ce que la
+ * donnée justifie s'affiche, et l'épisode de camouflage ou de surbouclier ne fait plus de
+ * colonne à lui — il alimente le côté « utilisé » de la colonne d'équipement du power-up. Les
+ * tests de la partition et du pont D5 sont partis avec le code qu'ils protégeaient.
  *
- * La partition est une HIÉRARCHIE D'AFFICHAGE : elle ne touche ni aux mesures ni aux totaux
- * (`EquipmentUsage` ne passe pas par elle) — c'est éprouvé chez `equipmentUsageLogic.test.ts`.
+ * CE QU'ILS PROTÈGENT DÉSORMAIS :
+ *   - l'ORDRE ÉCRIT des groupes (grappin, puis équipement) et l'ordre INTERNE des colonnes,
+ *     celui des tables de référence (`PLACEMENT_RENDER` : sensor avant seeker) ;
+ *   - AUCUN groupe « états actifs », quel que soit le document ;
+ *   - `uniqueUsageGroups`, qui ne garde qu'une occurrence par famille de geste ;
+ *   - la PILE d'issues d'une colonne d'équipement (utilisé / gardé / lâché).
+ *
+ * Les colonnes sont une HIÉRARCHIE D'AFFICHAGE : elles ne touchent ni aux mesures ni aux totaux
+ * (`EquipmentUsage` ne passe pas par elles) — c'est éprouvé chez `equipmentUsageLogic.test.ts`.
  * Les fixtures passent par `testReplayDoc`, la seule porte du document de test.
  */
 import { describe, expect, it } from 'vitest'
@@ -19,7 +23,6 @@ import { describe, expect, it } from 'vitest'
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
 import {
-  partitionUsageGroups,
   uniqueUsageGroups,
   usageColumnGroups,
   type UsageColumnGroup,
@@ -97,103 +100,60 @@ const TEMOIN: Partial<ReplayDocument> = {
   grenadeLabels: [{ fr: 'Fragmentation', en: 'Frag' }],
 } as unknown as Partial<ReplayDocument>
 
-/** Les clés de colonnes d'un groupe d'une partition, ou [] s'il n'y figure pas. */
+/** Les clés de colonnes d'un groupe, ou [] s'il n'y figure pas. */
 function colonnes(groupes: UsageColumnGroup[], key: string): string[] {
   return groupes.find((g) => g.key === key)?.columns.map((c) => c.key) ?? []
 }
 
-describe('partitionUsageGroups — les élus en avant, le reste replié', () => {
-  const partition = partitionUsageGroups(groupesDe(TEMOIN))
+describe('usageColumnGroups — tout ce que la donnée justifie, dans l’ordre écrit', () => {
+  const groupes = groupesDe(TEMOIN)
 
-  it('met EN AVANT les familles élues, dans l’ordre écrit des groupes', () => {
+  it('rend le grappin puis l’équipement, et RIEN d’autre', () => {
+    // Plus de groupe « états actifs » depuis le 2026-09-19 (décision 6) : le témoin porte
+    // pourtant des épisodes de camouflage et de surbouclier — ils ne font plus de groupe.
+    expect(groupes.map((g) => g.key)).toEqual(['grapple', 'equipment'])
+  })
+
+  it('garde l’ordre INTERNE que la logique a posé, dans la colonne fusionnée', () => {
     // E2 (2026-09-09) : `deployed`/`dropped` ont fusionné en `equipment` — une colonne par
-    // famille, empilée sur ses issues (P2/P3). Le vote continue de juger PAR FAMILLE : sensor
-    // et threat_seeker (élus) entrent en avant, wall et translocator_beacon (non élus) se
-    // replient — même mécanique qu'avant la fusion, sur un groupe unique.
-    expect(partition.forward.map((g) => g.key)).toEqual(['episodes', 'equipment'])
-    // L'ordre INTERNE de PLACEMENT_RENDER survit dans la partition (sensor avant seeker) ;
-    // les deux power-ups (élus par le pont D5) suivent, dans l'ordre de `EPISODE_FAMILIES`.
-    expect(colonnes(partition.forward, 'equipment')).toEqual([
+    // famille, empilée sur ses issues (P2/P3). L'ordre est celui de `usage.columns.equipment`
+    // (equipmentUsageLogic) ; les deux power-ups ferment la marche, dans l'ordre de
+    // `EPISODE_FAMILIES`. La mise en colonnes ne trie JAMAIS ce que la logique a rangé.
+    expect(colonnes(groupes, 'equipment')).toEqual([
+      'equipment.wall',
       'equipment.sensor',
+      'equipment.translocator_beacon',
       'equipment.threat_seeker',
+      'equipment.repair_field',
       'equipment.camo',
       'equipment.overshield',
     ])
   })
 
-  it('REPLIE le grappin et les familles votées non, dans le même ordre écrit', () => {
-    expect(partition.collapsed.map((g) => g.key)).toEqual(['grapple', 'equipment'])
-    // L'ordre INTERNE survit aussi côté replié (wall avant translocator, avant field) — les
-    // TROIS issues de `wall` (posé au moins une fois ET lâché une fois dans TEMOIN) tiennent
-    // dans SA SEULE colonne fusionnée, plus besoin de la retrouver dans deux groupes.
-    expect(colonnes(partition.collapsed, 'equipment')).toEqual([
-      'equipment.wall',
-      'equipment.translocator_beacon',
-      'equipment.repair_field',
-    ])
-  })
-
-  it('compte les colonnes masquées — le N du bouton « Voir plus (N) »', () => {
-    // 1 grappin + 3 familles d'équipement non élues (wall, translocator_beacon, repair_field).
-    expect(partition.collapsedColumnCount).toBe(4)
-  })
-
-  it('ne perd AUCUNE colonne : partition = repartition exacte des groupes d’entrée', () => {
-    const total = (gs: UsageColumnGroup[]) => gs.reduce((n, g) => n + g.columns.length, 0)
-    expect(total(partition.forward) + total(partition.collapsed)).toBe(total(groupesDe(TEMOIN)))
-  })
-})
-
-describe('partitionUsageGroups — le pont D5 (socle -> épisode)', () => {
-  it('met les épisodes camo/surbouclier EN AVANT — par le pont, pas par leur propre nom', () => {
-    // `camo`/`overshield` ne figurent PAS dans GAME_CHANGER_EQUIPMENT_FAMILIES (vocabulaire
-    // de socle) : seuls `powerup_camo`/`powerup_overshield` y sont. Retirer le pont
-    // EPISODE_FAMILY_OF_POWERUP fait donc tomber ces colonnes du bloc en avant (mutation G1.3).
-    const partition = partitionUsageGroups(groupesDe(TEMOIN))
-    // UNE colonne par famille depuis le 2026-09-13 : durée cumulée et frags sous l'effet
-    // passent dans l'infobulle de la cellule, ils n'ouvrent plus deux colonnes de plus.
-    expect(colonnes(partition.forward, 'episodes')).toEqual(['camo.count', 'overshield.count'])
-    expect(partition.collapsed.map((g) => g.key)).not.toContain('episodes')
-    // Le MÊME pont élit AUSSI leur colonne dans le groupe `equipment` fusionné (E2) : deux
-    // effets d'un seul et même pont, jamais une seconde règle.
-    expect(colonnes(partition.forward, 'equipment')).toEqual(
-      expect.arrayContaining(['equipment.camo', 'equipment.overshield']),
-    )
-  })
-})
-
-describe('partitionUsageGroups — le cas sans repli', () => {
   // LES LANCERS DE GRENADE N'ONT PLUS DE GROUPE (2026-09-13, retrait demandé par l'utilisateur) :
-  // un document qui n'apporte QUE des grenades et un grappin ne rend donc que le grappin, replié.
-  it('un document sans autre geste que des grenades ne rend que le grappin, replié', () => {
-    const partition = partitionUsageGroups(
-      groupesDe({
-        grappleLines: [{ slot: 1, t0: 1, t1: 5, ax: 0, ay: 0 }],
-        grenades: [{ slot: 1, rank: 0, t: 5, i: 0, s: 'x', x: 0, y: 0 }],
-        grenadeLabels: [{ fr: 'Fragmentation', en: 'Frag' }],
-      } as unknown as Partial<ReplayDocument>),
-    )
-    expect(partition.forward.map((g) => g.key)).toEqual([])
-    expect(partition.collapsed.map((g) => g.key)).toEqual(['grapple'])
+  // un document qui n'apporte QUE des grenades et un grappin ne rend donc que le grappin.
+  it('un document sans autre geste que des grenades ne rend que le grappin', () => {
+    const seul = groupesDe({
+      grappleLines: [{ slot: 1, t0: 1, t1: 5, ax: 0, ay: 0 }],
+      grenades: [{ slot: 1, rank: 0, t: 5, i: 0, s: 'x', x: 0, y: 0 }],
+      grenadeLabels: [{ fr: 'Fragmentation', en: 'Frag' }],
+    } as unknown as Partial<ReplayDocument>)
+    expect(seul.map((g) => g.key)).toEqual(['grapple'])
   })
 
-  it('zéro colonne repliée = compte à zéro (le rendu n’affiche alors aucun bouton)', () => {
-    const partition = partitionUsageGroups(
-      groupesDe({
-        equipmentPlacements: [pose('sensor', 'deployed', 1)],
-      } as unknown as Partial<ReplayDocument>),
-    )
-    expect(partition.collapsed).toEqual([])
-    expect(partition.collapsedColumnCount).toBe(0)
-    expect(partition.forward.map((g) => g.key)).toEqual(['equipment'])
+  it('un groupe sans colonne n’est pas rendu', () => {
+    const pose_seule = groupesDe({
+      equipmentPlacements: [pose('sensor', 'deployed', 1)],
+    } as unknown as Partial<ReplayDocument>)
+    expect(pose_seule.map((g) => g.key)).toEqual(['equipment'])
   })
 })
 
 describe('uniqueUsageGroups — une famille de geste, une occurrence', () => {
-  it('fusionne les deux morceaux d’un groupe mixte pour la légende et la vue des parts', () => {
-    const partition = partitionUsageGroups(groupesDe(TEMOIN))
-    const deplie = uniqueUsageGroups([...partition.forward, ...partition.collapsed])
-    expect(deplie.map((g) => g.key)).toEqual(['episodes', 'equipment', 'grapple'])
+  it('ne garde que la première occurrence d’une même clé de famille', () => {
+    const groupes = groupesDe(TEMOIN)
+    const double = uniqueUsageGroups([...groupes, ...groupes])
+    expect(double.map((g) => g.key)).toEqual(['grapple', 'equipment'])
   })
 })
 

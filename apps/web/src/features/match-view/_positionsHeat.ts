@@ -7,7 +7,7 @@
  * sert ou quel est le narratif ». La donnée, elle, est bonne — ce qui manquait est le PLAN. Le
  * match porte déjà son fond (`…/replay/background`, le même que le rejeu 2D et l'onglet
  * Tactique) et son CALAGE monde↔pixels : la grille se pose donc sur la carte, à l'échelle du
- * jeu, et la question devient lisible — où ça se joue.
+ * jeu, et la question devient lisible — quels endroits du terrain ont été tenus.
  *
  * LE PAS EST LE RAYON D'ENGAGEMENT DU REJEU (`HEAT_SIGMA_M`, 2 m — cf. `POSITIONS_CELL_M`), et
  * c'est un PLANCHER : sur une très grande carte il grandit pour que la grille reste sous son
@@ -126,24 +126,4 @@ export function buildPositionsGrid(
 /** hasTeamSplit : au moins une position porte un camp attribué (0/1). */
 export function hasTeamSplit(positions: readonly MatchPlayerPosition[]): boolean {
   return positions.some((p) => p.team !== TEAM_UNKNOWN)
-}
-
-/**
- * coveredShare — la part des positions que le fond de carte contient réellement.
- *
- * C'est la note de couverture du bloc : une carte dont un tiers des points tombe hors cadre
- * ne montre pas le match entier, et le lecteur doit le savoir plutôt que le deviner.
- */
-export function coveredShare(
-  positions: readonly MatchPlayerPosition[],
-  frame: MapFrame,
-): number {
-  if (positions.length === 0) return 0
-  let inside = 0
-  for (const p of positions) {
-    const dx = p.x - frame.originX
-    const dy = frame.originY - p.y
-    if (dx >= 0 && dx < frame.widthM && dy >= 0 && dy < frame.heightM) inside++
-  }
-  return inside / positions.length
 }

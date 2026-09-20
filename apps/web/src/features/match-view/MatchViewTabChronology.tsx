@@ -4,26 +4,26 @@
  * Extrait de MatchViewPage.tsx au passage à 3 onglets (Général / Chronologie /
  * Joueurs, 2026-08-24) : les blocs sont DÉPLACÉS tels quels depuis la sous-section
  * « Déroulé du match » de l'ancien onglet Détails, dont le sous-titre est conservé.
+ *
+ * TROIS BLOCS L'ONT QUITTÉ LE 2026-09-19 (plan `.ai/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`,
+ * lot 2) pour le nouvel onglet « Contrôle » : le bilan d'équipement, le contrôle des armes et
+ * l'occupation du terrain. Aucun des trois n'est une lecture chronologique — ils disent QUI A
+ * TENU QUOI, pas QUAND. Cet onglet ne garde que ce qui se lit sur un axe de temps.
  */
 import { EngagementMatchSection } from '@/features/engagement/EngagementMatchSection'
-import { MatchEquipmentUsageSection } from '@/features/match-replay/MatchEquipmentUsageSection'
-import { MatchPadControlSection } from '@/features/match-replay/MatchPadControlSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import type {
   MatchHighlightEvent,
   MatchImpactBadge,
   MatchObjectiveEvent,
-  MatchPlayerPosition,
   MatchScoreboardRow,
   MatchTugOfWarBin,
   MatchViewCadence,
 } from '@/lib/api/types'
-import type { Locale } from '@/lib/i18n/locale'
 import { DetailSection } from './DetailSection'
 import { MatchCadenceChart } from './MatchCadenceChart'
 import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
 import { MatchKDCumulChart } from './MatchKDCumulChart'
-import { MatchPositionsHeatmap } from './MatchPositionsHeatmap'
 import { MatchScoreCurveChart } from './MatchScoreCurveChart'
 import { MatchScoreEventsChart } from './MatchScoreEventsChart'
 import { MatchTugOfWarChart } from './MatchTugOfWarChart'
@@ -39,7 +39,6 @@ interface Props {
   scoreboard: MatchScoreboardRow[]
   meXUID: string | null
   objectiveEvents: MatchObjectiveEvent[] | undefined
-  matchPositions: MatchPlayerPosition[] | undefined
   tugOfWar: MatchTugOfWarBin[]
   cadence: MatchViewCadence | null | undefined
   /**
@@ -57,7 +56,6 @@ interface Props {
    * −24 à +4,5 s (registre 2026-09-05, P0-7). La conversion vit dans `lib/replay/matchClock`.
    */
   t0Ms?: number
-  locale: Locale
   t: MatchViewText
 }
 
@@ -70,12 +68,10 @@ export function MatchViewTabChronology({
   scoreboard,
   meXUID,
   objectiveEvents,
-  matchPositions,
   tugOfWar,
   cadence,
   scoreTimelineKind,
   t0Ms,
-  locale,
   t,
 }: Props) {
   return (
@@ -136,29 +132,6 @@ export function MatchViewTabChronology({
         />
       )}
 
-      {/* Le BILAN d'équipement du match (film), juste après la courbe : même artefact, même
-          clé de cache, aucun appel de plus. Le rejeu montre ces gestes image par image ; ce
-          tableau les compte. Sans artefact ou sans grandeur mesurée, il ne rend rien. */}
-      <MatchEquipmentUsageSection
-        playerSlug={playerSlug}
-        matchId={matchId}
-        replayAvailable={replayAvailable}
-        scoreboard={scoreboard}
-        locale={locale}
-      />
-
-      {/* Le CONTRÔLE DES ARMES SPÉCIALES (film), juste après le bilan d'équipement dont il est
-          le complément : celui-ci compte les socles vidés SANS ramasseur, celui-là les nomme
-          (padPickups[].xuid, schéma 30). Même artefact, même clé de cache, aucun appel de
-          plus. Sans artefact, sans socle ou sans prise attribuée, il ne rend rien. */}
-      <MatchPadControlSection
-        playerSlug={playerSlug}
-        matchId={matchId}
-        replayAvailable={replayAvailable}
-        scoreboard={scoreboard}
-        locale={locale}
-      />
-
       {/* Dominance | Cadence des frags */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <MatchTugOfWarChart
@@ -176,17 +149,6 @@ export function MatchViewTabChronology({
           t={t}
         />
       </div>
-
-      {/* « Où ça se joue » — les positions keyframe du film posées sur le PLAN du match
-          (même fond et même noyau de tracé que le rejeu 2D et l'onglet Tactique). Le
-          composant se masque lui-même sans position décodée, sans fond de carte pour
-          cette carte-là, ou si rien ne tombe sur le plan. */}
-      <MatchPositionsHeatmap
-        playerSlug={playerSlug}
-        matchId={matchId}
-        positions={matchPositions}
-        locale={locale}
-      />
 
       {/* Engagement — remonté ici (avant Frags différentiel cumulé).
           Gaté sur `engagement` : évite le fetch + la carte placeholder

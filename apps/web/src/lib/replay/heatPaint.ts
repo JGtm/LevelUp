@@ -584,7 +584,7 @@ export function drawTacticalHeatmap(
  * publiée avec le calage : `yMonde = originY - (py + 0.5) * metersPerPixel`).
  *
  * Déplacé ici depuis `features/match-view/_positionsHeat.ts` le 2026-09-13 : trois calques
- * en dépendent désormais (rejeu 2D, « Où ça se joue », plan de l'onglet Tactique), et la
+ * en dépendent désormais (rejeu 2D, « Occupation du terrain », plan de l'onglet Tactique), et la
  * règle du dépôt veut qu'à la troisième copie la définition remonte dans le noyau partagé.
  */
 export interface MapFrame {

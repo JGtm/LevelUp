@@ -3,19 +3,13 @@
  *
  * Ce que ces tests verrouillent : le cadre monde déduit du calage, le pas (plancher 0,5 m),
  * le dépôt avec la ligne 0 EN HAUT, le rejet (jamais le rabattement) des positions hors
- * cadre, l'échelle quantile et son repli dégénéré, la couverture publiée en pied.
+ * cadre, l'échelle quantile et son repli dégénéré.
  */
 import { describe, expect, it } from 'vitest'
 
 import type { MatchPlayerPosition, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
-import {
-  buildPositionsGrid,
-  coveredShare,
-  hasTeamSplit,
-  mapFrame,
-  positionsCellSize,
-} from './_positionsHeat'
+import { buildPositionsGrid, hasTeamSplit, mapFrame, positionsCellSize } from './_positionsHeat'
 
 /** Calage synthétique : 1 px = 1 m, image 10×10, coin monde (0, 10). */
 const CAL: ReplayMapBackgroundCalibration = {
@@ -91,14 +85,9 @@ describe('buildPositionsGrid', () => {
   })
 })
 
-describe('hasTeamSplit / coveredShare', () => {
+describe('hasTeamSplit', () => {
   it('détecte un camp attribué', () => {
     expect(hasTeamSplit([at(1, 1), at(2, 2)])).toBe(false)
     expect(hasTeamSplit([at(1, 1), at(2, 2, 1)])).toBe(true)
-  })
-
-  it('publie la part des positions qui tombent sur le plan', () => {
-    expect(coveredShare([], FRAME)).toBe(0)
-    expect(coveredShare([at(1, 5), at(50, 50)], FRAME)).toBe(0.5)
   })
 })

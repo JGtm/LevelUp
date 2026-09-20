@@ -289,7 +289,7 @@ export function positionCategorie(
 // LE PLANCHER N'Y EST POUR RIEN, et c'est mesuré : 417 morts localisées sur 433 (96 %),
 // 54 cellules retenues à 2 m. La carte avait de quoi être peinte.
 //
-// CE QU'ON FAIT MAINTENANT — exactement ce que fait « Où ça se joue » (`_positionsHeat.ts`),
+// CE QU'ON FAIT MAINTENANT — exactement ce que fait « Occupation du terrain » (`_positionsHeat.ts`),
 // qui pose 100 % de ses positions sur le plan : le repère est LE CADRE DU FOND, les cellules
 // serveur y sont réindexées en 0-based, et Y est inversé.
 
@@ -367,7 +367,7 @@ function adresseDansLeRepere(
  *
  * Chaque cellule serveur est replacée par son CENTRE monde, puis adressée en 0-based dans le
  * cadre (Y inversé). Une cellule hors du cadre est IGNORÉE, jamais rabattue sur un bord : un
- * point hors carte n'a rien à dire d'un bord (même règle que « Où ça se joue »).
+ * point hors carte n'a rien à dire d'un bord (même règle que « Occupation du terrain »).
  */
 export function grilleDuPlan(
   cellules: readonly CelluleTactique[],

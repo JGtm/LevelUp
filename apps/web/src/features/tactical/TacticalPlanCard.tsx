@@ -10,7 +10,7 @@
  * l'axe Y n'était pas inversé.
  *
  * Le plan projette désormais sur LE CADRE DU FOND (`useTacticalMapBackgroundFrame`, le
- * calage publié avec chaque image), exactement comme « Où ça se joue » de la vue Match et
+ * calage publié avec chaque image), exactement comme « Occupation du terrain » de la vue Match et
  * comme le rejeu 2D. Une carte sans fond figé retombe sur ses propres bornes : elle
  * n'affiche aucune image, le calque s'y lit seul.
  *
