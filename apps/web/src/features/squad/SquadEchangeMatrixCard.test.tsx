@@ -20,11 +20,15 @@ beforeEach(() => useAppShellStore.setState({ locale: 'fr' }))
 afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
 
 describe('SquadEchangeMatrixCard', () => {
-  it('affiche le bandeau de couverture AU-DESSUS du graphe (« mesuré sur N des M »)', () => {
+  // 2026-09-19 : le bandeau « Mesuré sur N des M matchs », la mention « Échanges réalisés
+  // sur N matchs », la légende de rampe et les axes « Vengeur × Vengé » ont quitté l'écran.
+  // Ce qui porte la lecture — l'orientation ligne/colonne et la définition d'un échange —
+  // vit dans l'infobulle du titre.
+  it('ne rend plus de bandeau de couverture ni de légende de rampe', () => {
     renderWithProviders(<SquadEchangeMatrixCard echange={echangeDe()} />)
-    const bandeau = screen.getByTestId('squad-echange-coverage')
-    expect(bandeau.textContent).toContain('9')
-    expect(bandeau.textContent).toContain('12')
+    expect(screen.queryByTestId('squad-echange-coverage')).toBeNull()
+    expect(screen.queryByTestId('squad-echange-ramp')).toBeNull()
+    expect(screen.queryByText(/Vengeur/)).toBeNull()
   })
 
   it('pose une ligne narrative chiffrée au-dessus du graphe', () => {
@@ -37,8 +41,6 @@ describe('SquadEchangeMatrixCard', () => {
   it('ÉTAT VIDE, jamais un graphe à zéro, quand aucune vengeance interne', () => {
     renderWithProviders(<SquadEchangeMatrixCard echange={echangeDe({ cellules: [] })} />)
     expect(screen.getByText(/Aucune vengeance/i)).toBeTruthy()
-    // La couverture RESTE affichée : sans elle, « aucune » se lirait « rien mesuré ».
-    expect(screen.getByTestId('squad-echange-coverage')).toBeTruthy()
   })
 
   it('pose la réserve « échantillon faible » sous le plancher, et la tait au-dessus', () => {
@@ -51,11 +53,11 @@ describe('SquadEchangeMatrixCard', () => {
 
   it('PARITÉ FR/EN : les deux langues rendent un texte, et deux textes différents', () => {
     const { unmount } = renderWithProviders(<SquadEchangeMatrixCard echange={echangeDe()} />)
-    const fr = screen.getByTestId('squad-echange-coverage').textContent ?? ''
+    const fr = screen.getByTestId('squad-echange-narrative').textContent ?? ''
     unmount()
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<SquadEchangeMatrixCard echange={echangeDe()} />)
-    const en = screen.getByTestId('squad-echange-coverage').textContent ?? ''
+    const en = screen.getByTestId('squad-echange-narrative').textContent ?? ''
     expect(fr.length).toBeGreaterThan(0)
     expect(en.length).toBeGreaterThan(0)
     expect(en).not.toBe(fr)

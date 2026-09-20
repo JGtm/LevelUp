@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import {
   GRID_BOTTOM,
   GRID_TOP,
+  LEGEND_HEIGHT,
   LANE_HEIGHT,
   buildFirstBloodLanes,
   firstBloodLanesHeight,
@@ -187,8 +188,8 @@ describe('formats', () => {
 
 describe('firstBloodLanesHeight', () => {
   it('dérive la hauteur du nombre de lanes (marges du grid incluses)', () => {
-    expect(firstBloodLanesHeight(4)).toBe(4 * LANE_HEIGHT + GRID_TOP + GRID_BOTTOM)
+    expect(firstBloodLanesHeight(4)).toBe(4 * LANE_HEIGHT + GRID_TOP + GRID_BOTTOM + LEGEND_HEIGHT)
     // Aucune lane → une hauteur de bande minimale (état vide lisible).
-    expect(firstBloodLanesHeight(0)).toBe(LANE_HEIGHT + GRID_TOP + GRID_BOTTOM)
+    expect(firstBloodLanesHeight(0)).toBe(LANE_HEIGHT + GRID_TOP + GRID_BOTTOM + LEGEND_HEIGHT)
   })
 })

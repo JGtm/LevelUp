@@ -5,9 +5,10 @@
  * LIGNE = celui qui venge, COLONNE = celui qui est vengé — la même orientation que le
  * graphe des assistances (Assistant / Bénéficiaire), son voisin immédiat.
  *
- * LE BANDEAU DE COUVERTURE VIT AU-DESSUS DU GRAPHE, pas en note de bas de page, et pour la
- * raison exacte du graphe des assistances : le journal des morts vient du film du match, et
- * les films Theater EXPIRENT côté serveur. Le manque est DÉFINITIF, pas un retard.
+ * L'ORIENTATION ET LA DÉFINITION DE L'ÉCHANGE VIVENT DANS L'INFOBULLE ⓘ DU TITRE
+ * (2026-09-19) : deux paragraphes de texte gris sous la grille, lus une fois puis jamais.
+ * Le bandeau de couverture, la mention « échanges réalisés sur N matchs » et la légende de
+ * rampe ont été retirés avec eux — la grille porte déjà ses nombres.
  *
  * RAMPE 0 → MAX, ET PAS « MIN OBSERVÉ » → MAX (correction 2026-09-13, maquette 4c520da6).
  * Le wrapper ajuste par défaut le bas de l'échelle à la plus petite valeur : sur un roster
@@ -34,16 +35,15 @@
 import { useMemo } from 'react'
 
 import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
-import { heatmapRampTokens } from '@/components/charts/heatmapColors'
 import { getEChartsThemeColors } from '@/components/charts/_utils'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { resolveToken, tokenVar } from '@/lib/accessibility'
+import { tokenVar } from '@/lib/accessibility'
 import { intlLocale } from '@/lib/formatters'
 import type { SquadEchange } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 import {
   couvertureParJoueur,
@@ -64,7 +64,6 @@ export interface SquadEchangeMatrixCardProps {
 
 export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps) {
   const locale = useAppShellStore((s) => s.locale)
-  const colorPalette = useSettingsDraftStore((s) => s.localUiPrefs.colorPalette)
   const t = getSquadEchangeText(locale)
   const numLoc = intlLocale(locale)
 
@@ -93,12 +92,6 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
     [echange.cellules],
   )
 
-  // Les deux bouts de la rampe : la légende DOM peint exactement le dégradé du graphe.
-  const [rampeBas, rampeHaut] = useMemo(() => {
-    const tokens = heatmapRampTokens('frequency', colorPalette)
-    return [resolveToken(tokens[0]), resolveToken(tokens[tokens.length - 1])]
-  }, [colorPalette])
-
   // Tooltip PROPRE à cette lecture : le libellé par défaut du wrapper parle de taux de
   // victoire et de matchs, ce qu'une case de cette matrice n'est pas.
   const formatTooltip = useMemo(
@@ -126,29 +119,30 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
     rate: pctFmt.format(echange.couverture.taux),
   })
 
-  const footer = (
-    <div className="space-y-1 border-t border-border px-3 py-2">
-      <p className="text-xs text-muted-foreground">{t.matrixFootOrientation}</p>
-      <p className="text-xs text-muted-foreground">{t.definition(secondes)}</p>
-      {echange.couverture.echantillon_faible && (
-        <p className="text-xs text-muted-foreground" data-testid="squad-echange-low-sample">
-          {t.lowSample} — {t.lowSampleHint(PLANCHER_MORTS)}
-        </p>
-      )}
+  // La RÉSERVE d'échantillon faible reste : elle n'explique pas la lecture, elle interdit
+  // de la comparer. Le reste du pied (orientation, définition de l'échange) est passé en
+  // infobulle ⓘ du titre le 2026-09-19 — un pavé lu une fois puis jamais.
+  const footer = echange.couverture.echantillon_faible ? (
+    <div className="border-t border-border px-3 py-2">
+      <p className="text-xs text-muted-foreground" data-testid="squad-echange-low-sample">
+        {t.lowSample} — {t.lowSampleHint(PLANCHER_MORTS)}
+      </p>
     </div>
-  )
+  ) : undefined
 
   return (
-    <SectionCard title={t.sectionTitle} label={t.sectionLabel} footer={footer}>
+    <SectionCard
+      title={t.sectionTitle}
+      label={t.sectionLabel}
+      footer={footer}
+      titleAdornment={(label) => (
+        <span className="flex items-center gap-1.5">
+          {label}
+          <InfoTooltip content={t.matrixHelp(secondes)} />
+        </span>
+      )}
+    >
       <div className="space-y-2 px-3 py-2" data-testid="squad-echange-matrix">
-        {/* Bandeau de couverture AU-DESSUS du graphe (doctrine de la page). */}
-        <p
-          className="text-xs text-muted-foreground"
-          data-testid="squad-echange-coverage"
-          title={t.coverageHint}
-        >
-          {t.coverage(echange.matchs_mesures, echange.matchs_total)}
-        </p>
         <p
           className="border-l-2 border-info pl-3 text-sm text-foreground"
           data-testid="squad-echange-narrative"
@@ -159,7 +153,6 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
           <EmptyStateNotice title={t.emptyTitle} description={t.noPairs} />
         ) : (
           <>
-            <p className="text-xs text-muted-foreground">{t.matrixFigure(echange.matchs_total)}</p>
             <Heatmap2DChart
               series={series}
               paletteMode="frequency"
@@ -200,24 +193,6 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
                 </div>
               ))}
             </div>
-            {/* Légende de rampe : le dégradé du graphe, avec les MOTS que la réglette
-                ECharts ne porte pas (« 0 … N échanges »). */}
-            <div
-              className="flex items-center gap-2 text-2xs text-muted-foreground"
-              data-testid="squad-echange-ramp"
-            >
-              <span>{t.matrixRampZero}</span>
-              <span
-                className="h-2 w-32 rounded-full"
-                style={{ background: `linear-gradient(90deg, ${rampeBas}, ${rampeHaut})` }}
-              />
-              <span>{t.matrixRampMax(maxEchanges)}</span>
-            </div>
-            {/* Axes nommés : sans eux, « ligne » et « colonne » sont deux gamertags et
-                rien ne dit lequel venge l'autre. */}
-            <p className="text-2xs uppercase tracking-wide text-muted-foreground">
-              {t.axisAvenger} × {t.axisAvenged}
-            </p>
           </>
         )}
       </div>

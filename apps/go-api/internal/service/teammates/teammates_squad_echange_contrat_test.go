@@ -103,3 +103,43 @@ func TestBucketDelai_IntervalleServiContientLeDelai(t *testing.T) {
 		t.Fatal("la borne de la fenetre ne separe plus rien : le garde ne garde rien")
 	}
 }
+
+// ─── LE NUAGE « POURQUOI LA VENGEANCE NE VIENT PAS » ───────────────────────────────────
+
+// TestSquadNuageIsolement_Contrat — GARDE-RAIL du contrat refondu le 2026-09-19
+// (PLAN_AJUSTEMENTS_PRE_V75, decision 4).
+//
+// Deux invariants, et ils sont de nature differente :
+//
+//	UNE MORT SAIT SE TAIRE. Une mort sans coequipier visible n'a pas d'abscisse, une mort
+//	jamais vengee n'a pas de delai. Les deux champs sont donc des POINTEURS : un float64 ou
+//	un int64 nu forcerait un zero, qui se lirait « colle au coequipier » et « vengee
+//	instantanement » — les deux contresens exacts que la bande nommee evite a l'ecran.
+//
+//	UN TAUX NE SORT QUE SOUS domain.Couverture. Les deux taux du repere (part isolee, taux
+//	d'echange) voyagent sous leur forme canonique, jamais en float64 nu.
+func TestSquadNuageIsolement_Contrat(t *testing.T) {
+	mort := champsFloatDe(domain.SquadIsolementMort{})
+	if mort["DistanceRatio"] != "*float64" {
+		t.Errorf("SquadIsolementMort.DistanceRatio = %q, attendu *float64 : une mort hors de "+
+			"vue n'a PAS de distance, et un zero se lirait « colle au coequipier »",
+			mort["DistanceRatio"])
+	}
+	if mort["DelaiMs"] != "*int64" {
+		t.Errorf("SquadIsolementMort.DelaiMs = %q, attendu *int64 : une mort jamais vengee "+
+			"n'a PAS de delai, et un zero se lirait « vengee instantanement »", mort["DelaiMs"])
+	}
+
+	repere := champsFloatDe(domain.SquadIsolementRepere{})
+	for _, champ := range []string{"PartIsolee", "Couverture"} {
+		if repere[champ] != "domain.Couverture" {
+			t.Errorf("SquadIsolementRepere.%s = %q, attendu domain.Couverture : un taux ne "+
+				"sort jamais seul", champ, repere[champ])
+		}
+	}
+	if repere["MedianeDistanceRatio"] != "*float64" || repere["MedianeDelaiMs"] != "*int64" {
+		t.Errorf("SquadIsolementRepere : medianes = %q / %q, attendues *float64 / *int64 — "+
+			"un joueur dont aucune mort n'est vengee n'a PAS de mediane de delai",
+			repere["MedianeDistanceRatio"], repere["MedianeDelaiMs"])
+	}
+}

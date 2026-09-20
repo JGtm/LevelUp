@@ -22,168 +22,199 @@ func isolementMatches(variant string, ids ...string) []domain.TacticalMatch {
 	return out
 }
 
-func isolementRows(session string, ids ...string) []domain.SquadMatchRow {
-	lbl := session
+func isolementRows(ids ...string) []domain.SquadMatchRow {
 	start := time.Date(2026, 9, 1, 20, 0, 0, 0, time.UTC)
 	out := make([]domain.SquadMatchRow, 0, len(ids))
 	for i, id := range ids {
 		out = append(out, domain.SquadMatchRow{
 			MatchID: id, StartTime: start.Add(time.Duration(i) * time.Minute),
-			SessionLabel: &lbl,
 		})
 	}
 	return out
 }
 
-// mortsAccompagnees rend n morts EXAMINEES et NON isolees : un coequipier visible a 5 m
-// (sous les deux rayons de isolementRadar).
-func mortsAccompagnees(matchIDs []string, xuid string, n int) []domain.MortContexte {
-	proche := 5.0
-	out := make([]domain.MortContexte, 0, n)
-	for i := 0; i < n; i++ {
-		out = append(out, domain.MortContexte{
-			MatchID: matchIDs[i%len(matchIDs)], VictimXUID: xuid,
-			Visibles: 1, HorsDeVue: 0, PlusProcheM: &proche,
-		})
+// mortContexte pose UNE mort localisee : `proche` nil = aucun coequipier visible (bande
+// « hors de vue »).
+func mortContexte(matchID, xuid string, timeMs int64, proche *float64, visibles, horsDeVue int) domain.MortContexte {
+	return domain.MortContexte{
+		MatchID: matchID, VictimXUID: xuid, TimeMs: timeMs,
+		PlusProcheM: proche, Visibles: visibles, HorsDeVue: horsDeVue,
 	}
-	return out
 }
 
-// mortsIsolees rend n morts EXAMINEES et ISOLEES : un coequipier hors de vue (pas
-// « equipe a terre »), aucun visible a portee.
-func mortsIsolees(matchIDs []string, xuid string, n int) []domain.MortContexte {
-	out := make([]domain.MortContexte, 0, n)
-	for i := 0; i < n; i++ {
-		out = append(out, domain.MortContexte{
-			MatchID: matchIDs[i%len(matchIDs)], VictimXUID: xuid,
-			Visibles: 0, HorsDeVue: 1, PlusProcheM: nil,
-		})
-	}
-	return out
-}
-
-// mortsEquipeATerre rend n morts ECARTEES du denominateur : personne ne pouvait
-// accompagner (Visibles + HorsDeVue == 0).
-func mortsEquipeATerre(matchIDs []string, xuid string, n int) []domain.MortContexte {
-	out := make([]domain.MortContexte, 0, n)
-	for i := 0; i < n; i++ {
-		out = append(out, domain.MortContexte{
-			MatchID: matchIDs[i%len(matchIDs)], VictimXUID: xuid,
-			Visibles: 0, HorsDeVue: 0, PlusProcheM: nil,
-		})
-	}
-	return out
-}
+func metres(v float64) *float64 { return &v }
 
 // ─── LE NUAGE ──────────────────────────────────────────────────────────────────────────
 
-// TestBuildSquadIsolementNuage couvre les quatre regles d'exclusion du plancher de
-// publication, sur cinq sessions distinctes :
+// TestBuildSquadIsolementNuage_UnPointParMort couvre la jointure exacte
+// (match_id, victim_xuid, time_ms) entre le contexte de mort et la riposte, et les trois
+// cas limites du contrat :
 //
-//	S1  5 morts examinees (3 accompagnees + 2 isolees)      -> point publie, echantillon
-//	                                                            faible (N < 30).
-//	S2  4 morts examinees, SOUS le plancher de 5             -> aucun point.
-//	S3  5 morts, TOUTES « equipe a terre »                   -> 0 examinee -> aucun point.
-//	S4  4 morts mesurables + 1 mort SANS RAYON (variante Husky, absente de la table)
-//	                                                          -> 4 examinees -> aucun point.
-//	S5  30 morts examinees (18 accompagnees + 12 isolees)    -> point publie, PAS
-//	                                                            d'echantillon faible.
-func TestBuildSquadIsolementNuage(t *testing.T) {
-	s1 := []string{"m1", "m2", "m3", "m4", "m5"}
-	s2 := []string{"m6", "m7", "m8", "m9"}
-	s3 := []string{"m10", "m11", "m12", "m13", "m14"}
-	s4Arene := []string{"m15", "m16", "m17", "m18"}
-	s4Husky := []string{"m19"}
-	s5 := []string{"m20", "m21", "m22"}
-
-	var matchs []domain.TacticalMatch
-	matchs = append(matchs, isolementMatches("Arena", s1...)...)
-	matchs = append(matchs, isolementMatches("Arena", s2...)...)
-	matchs = append(matchs, isolementMatches("Arena", s3...)...)
-	matchs = append(matchs, isolementMatches("Arena", s4Arene...)...)
-	matchs = append(matchs, isolementMatches("Husky", s4Husky...)...)
-	matchs = append(matchs, isolementMatches("Arena", s5...)...)
-
-	var scopeRows []domain.SquadMatchRow
-	scopeRows = append(scopeRows, isolementRows("S1", s1...)...)
-	scopeRows = append(scopeRows, isolementRows("S2", s2...)...)
-	scopeRows = append(scopeRows, isolementRows("S3", s3...)...)
-	s4Tout := append(append([]string{}, s4Arene...), s4Husky...)
-	scopeRows = append(scopeRows, isolementRows("S4", s4Tout...)...)
-	scopeRows = append(scopeRows, isolementRows("S5", s5...)...)
-
-	var morts []domain.MortContexte
-	morts = append(morts, mortsAccompagnees(s1[:3], "x_main", 3)...)
-	morts = append(morts, mortsIsolees(s1[3:], "x_main", 2)...)
-	morts = append(morts, mortsAccompagnees(s2, "x_main", 4)...)
-	morts = append(morts, mortsEquipeATerre(s3, "x_main", 5)...)
-	morts = append(morts, mortsAccompagnees(s4Arene, "x_main", 4)...)
-	morts = append(morts, mortsAccompagnees(s4Husky, "x_main", 1)...)
-	morts = append(morts, mortsAccompagnees(s5, "x_main", 18)...)
-	morts = append(morts, mortsIsolees(s5, "x_main", 12)...)
+//	m1 @ 10 000 ms   coequipier a 9 m (rayon 18) -> ratio 0,5 ; vengee a 3 000 ms.
+//	m1 @ 40 000 ms   aucun coequipier visible    -> hors de vue, ratio absent ; jamais vengee.
+//	m2 @ 20 000 ms   coequipier a 27 m (rayon 18)-> ratio 1,5 ; mort ABSENTE du journal des
+//	                                                kills -> ni vengee ni delai.
+func TestBuildSquadIsolementNuage_UnPointParMort(t *testing.T) {
+	ids := []string{"m1", "m2"}
+	univers := domain.TacticalUnivers{
+		Matchs:  isolementMatches("Arena", ids...),
+		Equipes: equipesDeuxContreDeux(ids...),
+	}
+	// Journal des kills : m1 @ 10 000 ms le joueur tombe sous adv1, puis Ami venge a
+	// 13 000 ms (delai 3 000). m1 @ 40 000 ms : tombe sous adv2, jamais venge.
+	events := []domain.KillEvent{
+		{MatchID: "m1", KillerXUID: "x_adv1", VictimXUID: "x_main", TimeMs: 10_000},
+		{MatchID: "m1", KillerXUID: "x_Ami", VictimXUID: "x_adv1", TimeMs: 13_000},
+		{MatchID: "m1", KillerXUID: "x_adv2", VictimXUID: "x_main", TimeMs: 40_000},
+	}
+	morts := []domain.MortContexte{
+		mortContexte("m1", "x_main", 10_000, metres(9), 1, 0),
+		mortContexte("m1", "x_main", 40_000, nil, 0, 1),
+		mortContexte("m2", "x_main", 20_000, metres(27), 1, 0),
+	}
 
 	repo := &mockTacticalRepo{
-		lecture: domain.TacticalKillEvents{
-			Univers: domain.TacticalUnivers{Matchs: matchs, Equipes: domain.EquipesParMatch{}},
-		},
-		morts: domain.TacticalMortsContexte{Morts: morts},
+		lecture: domain.TacticalKillEvents{Univers: univers, Events: events},
+		morts:   domain.TacticalMortsContexte{Morts: morts},
 	}
 	svc := &TeammatesService{
 		titleSlug: "halo_infinite", gamertag: "main",
 		tacticalRepo: repo, caps: capsFiables(), radarRange: isolementRadar(),
 	}
 
-	got := svc.buildSquadEchange(context.Background(), scopeRows, scopeRows, "main", "x_main", nil)
-	if got == nil {
-		t.Fatal("section echange attendue, obtenu nil")
-	}
-	if got.NuageIsolement == nil {
+	rows := isolementRows(ids...)
+	got := svc.buildSquadEchange(context.Background(), rows, rows, "main", "x_main", nil)
+	if got == nil || got.NuageIsolement == nil {
 		t.Fatal("nuage isolement attendu, obtenu nil")
 	}
-	if got.NuageIsolement.PlancherMortsSession != domain.PlancherMortsSessionIsolement {
-		t.Errorf("plancher_morts_session = %d, attendu %d",
-			got.NuageIsolement.PlancherMortsSession, domain.PlancherMortsSessionIsolement)
+	nuage := got.NuageIsolement
+	if len(nuage.Morts) != 3 {
+		t.Fatalf("morts publiees = %d, attendues 3 : %+v", len(nuage.Morts), nuage.Morts)
 	}
 
-	parSession := map[string]domain.SquadIsolementPoint{}
-	for _, p := range got.NuageIsolement.Points {
-		parSession[p.SessionLabel] = p
-	}
-	if len(got.NuageIsolement.Points) != 2 {
-		t.Fatalf("points = %d, attendus 2 (S1 et S5 seulement) : %+v",
-			len(got.NuageIsolement.Points), got.NuageIsolement.Points)
+	parInstant := map[int64]domain.SquadIsolementMort{}
+	for _, m := range nuage.Morts {
+		parInstant[m.TimeMs] = m
 	}
 
-	p1, ok := parSession["S1"]
-	if !ok {
-		t.Fatal("point S1 attendu, absent")
+	// Mort vengee, coequipier visible a 9 m sur un rayon de 18 -> ratio 0,5.
+	a := parInstant[10_000]
+	if a.DistanceRatio == nil || *a.DistanceRatio != 0.5 {
+		t.Errorf("mort @10 000 : ratio = %v, attendu 0,5", a.DistanceRatio)
 	}
-	if p1.MortsExaminees != 5 || p1.MortsIsolees != 2 {
-		t.Errorf("S1 = %d examinees / %d isolees, attendu 5/2", p1.MortsExaminees, p1.MortsIsolees)
+	if a.HorsDeVue {
+		t.Error("mort @10 000 : hors_de_vue attendu faux (coequipier visible)")
 	}
-	if !p1.PartIsolee.EchantillonFaible {
-		t.Error("S1 (N=5) attendu EchantillonFaible=true")
-	}
-
-	if _, ok := parSession["S2"]; ok {
-		t.Error("S2 (4 morts, sous le plancher de 5) ne devrait publier aucun point")
-	}
-	if _, ok := parSession["S3"]; ok {
-		t.Error("S3 (toutes equipe a terre) ne devrait publier aucun point")
-	}
-	if _, ok := parSession["S4"]; ok {
-		t.Error("S4 (4 morts mesurables + 1 sans rayon) ne devrait publier aucun point")
+	if !a.Vengee || a.DelaiMs == nil || *a.DelaiMs != 3_000 {
+		t.Errorf("mort @10 000 : vengee=%v delai=%v, attendu vengee a 3 000 ms", a.Vengee, a.DelaiMs)
 	}
 
-	p5, ok := parSession["S5"]
-	if !ok {
-		t.Fatal("point S5 attendu, absent")
+	// Aucun coequipier visible : bande « hors de vue », aucune abscisse inventee.
+	b := parInstant[40_000]
+	if b.DistanceRatio != nil {
+		t.Errorf("mort @40 000 : ratio = %v, attendu absent", *b.DistanceRatio)
 	}
-	if p5.MortsExaminees != 30 || p5.MortsIsolees != 12 {
-		t.Errorf("S5 = %d examinees / %d isolees, attendu 30/12", p5.MortsExaminees, p5.MortsIsolees)
+	if !b.HorsDeVue {
+		t.Error("mort @40 000 : hors_de_vue attendu vrai")
 	}
-	if p5.PartIsolee.EchantillonFaible {
-		t.Error("S5 (N=30) attendu EchantillonFaible=false")
+	if b.Vengee || b.DelaiMs != nil {
+		t.Errorf("mort @40 000 : attendue jamais vengee, obtenu vengee=%v delai=%v", b.Vengee, b.DelaiMs)
+	}
+
+	// Mort ABSENTE du journal des kills : la jointure ne trouve rien -> non vengee.
+	c := parInstant[20_000]
+	if c.DistanceRatio == nil || *c.DistanceRatio != 1.5 {
+		t.Errorf("mort @20 000 : ratio = %v, attendu 1,5", c.DistanceRatio)
+	}
+	if c.Vengee || c.DelaiMs != nil {
+		t.Errorf("mort @20 000 (hors journal) : attendue non vengee, obtenu vengee=%v delai=%v",
+			c.Vengee, c.DelaiMs)
+	}
+
+	// Un repere par joueur ayant des morts : medianes et volume.
+	if len(nuage.Reperes) != 1 {
+		t.Fatalf("reperes = %d, attendu 1 : %+v", len(nuage.Reperes), nuage.Reperes)
+	}
+	r := nuage.Reperes[0]
+	if r.XUID != "x_main" || r.NbMorts != 3 {
+		t.Errorf("repere = %s / %d morts, attendu x_main / 3", r.XUID, r.NbMorts)
+	}
+	// Ratios presents : 0,5 et 1,5 -> mediane 1,0.
+	if r.MedianeDistanceRatio == nil || *r.MedianeDistanceRatio != 1.0 {
+		t.Errorf("mediane ratio = %v, attendu 1,0", r.MedianeDistanceRatio)
+	}
+	// Une seule mort vengee (3 000 ms) -> mediane 3 000.
+	if r.MedianeDelaiMs == nil || *r.MedianeDelaiMs != 3_000 {
+		t.Errorf("mediane delai = %v, attendu 3 000 ms", r.MedianeDelaiMs)
+	}
+	// PartIsolee : 3 morts examinees, 2 isolees (la mort a 27 m est hors portee du radar
+	// de 18 m, celle sans coequipier visible aussi).
+	if r.PartIsolee.N != 3 || r.PartIsolee.Brut != 2 {
+		t.Errorf("part isolee = %d/%d, attendu 2/3", r.PartIsolee.Brut, r.PartIsolee.N)
+	}
+}
+
+// TestBuildSquadIsolementNuage_AucunCoequipierVisible : un roster dont TOUTES les morts
+// sont hors de vue publie ses points, sans mediane d'abscisse (aucun ratio a mediane).
+func TestBuildSquadIsolementNuage_AucunCoequipierVisible(t *testing.T) {
+	univers := domain.TacticalUnivers{
+		Matchs:  isolementMatches("Arena", "m1"),
+		Equipes: equipesDeuxContreDeux("m1"),
+	}
+	repo := &mockTacticalRepo{
+		lecture: domain.TacticalKillEvents{Univers: univers},
+		morts: domain.TacticalMortsContexte{Morts: []domain.MortContexte{
+			mortContexte("m1", "x_main", 5_000, nil, 0, 1),
+			mortContexte("m1", "x_main", 9_000, nil, 0, 1),
+		}},
+	}
+	svc := &TeammatesService{
+		titleSlug: "halo_infinite", gamertag: "main",
+		tacticalRepo: repo, caps: capsFiables(), radarRange: isolementRadar(),
+	}
+
+	rows := isolementRows("m1")
+	got := svc.buildSquadEchange(context.Background(), rows, rows, "main", "x_main", nil)
+	if got == nil || got.NuageIsolement == nil {
+		t.Fatal("nuage isolement attendu, obtenu nil")
+	}
+	if len(got.NuageIsolement.Morts) != 2 {
+		t.Fatalf("morts = %d, attendues 2", len(got.NuageIsolement.Morts))
+	}
+	r := got.NuageIsolement.Reperes[0]
+	if r.MedianeDistanceRatio != nil {
+		t.Errorf("mediane ratio = %v, attendue absente (aucun coequipier visible)", *r.MedianeDistanceRatio)
+	}
+	if r.MedianeDelaiMs != nil {
+		t.Errorf("mediane delai = %v, attendue absente (aucune mort vengee)", *r.MedianeDelaiMs)
+	}
+}
+
+// TestBuildSquadIsolementNuage_MatchSansRayon : une mort survenue sur un match dont la
+// variante n'a pas de rayon n'entre PAS dans le nuage — aucune abscisse ne peut s'y lire.
+func TestBuildSquadIsolementNuage_MatchSansRayon(t *testing.T) {
+	matchs := append(isolementMatches("Arena", "m1"), isolementMatches("Husky", "m2")...)
+	univers := domain.TacticalUnivers{Matchs: matchs, Equipes: equipesDeuxContreDeux("m1", "m2")}
+	repo := &mockTacticalRepo{
+		lecture: domain.TacticalKillEvents{Univers: univers},
+		morts: domain.TacticalMortsContexte{Morts: []domain.MortContexte{
+			mortContexte("m1", "x_main", 5_000, metres(9), 1, 0),
+			mortContexte("m2", "x_main", 6_000, metres(9), 1, 0),
+		}},
+	}
+	svc := &TeammatesService{
+		titleSlug: "halo_infinite", gamertag: "main",
+		tacticalRepo: repo, caps: capsFiables(), radarRange: isolementRadar(),
+	}
+
+	rows := isolementRows("m1", "m2")
+	got := svc.buildSquadEchange(context.Background(), rows, rows, "main", "x_main", nil)
+	if got == nil || got.NuageIsolement == nil {
+		t.Fatal("nuage isolement attendu, obtenu nil")
+	}
+	if len(got.NuageIsolement.Morts) != 1 || got.NuageIsolement.Morts[0].MatchID != "m1" {
+		t.Errorf("morts = %+v, attendue la seule mort de m1 (Husky n'a pas de rayon)",
+			got.NuageIsolement.Morts)
 	}
 }
 

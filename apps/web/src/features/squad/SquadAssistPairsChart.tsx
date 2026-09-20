@@ -1,7 +1,7 @@
 /**
  * SquadAssistPairsChart — « Assistances dans l'escouade » (page Synergies).
  *
- * BARRES VERTICALES EMPILÉES, une par ASSISTANT — le LARBIN —, segments = les
+ * BARRES HORIZONTALES EMPILÉES, une par ASSISTANT — le LARBIN —, segments = les
  * BÉNÉFICIAIRES qu'il a servis — les PATRONS (vocabulaire de l'écran, décision utilisateur
  * du 2026-09-17 : titre d'axe, infobulle et description nomment les deux rôles). C'est la
  * forme déjà retenue pour le même fait sur la page Match (`MatchAssistChart`) : à question
@@ -16,13 +16,15 @@
  * COULEURS PAR JOUEUR (`getSquadPlayerColors`) : un joueur garde la même teinte partout sur
  * la page. Un segment désigne donc le bénéficiaire par sa couleur, sans lecture de légende.
  *
- * LE BANDEAU DE COUVERTURE VIT AU-DESSUS DU GRAPHE, comme avant et pour la même raison :
- * l'assistance se lit dans le film du match, et les films Theater EXPIRENT côté serveur —
- * le manque est DÉFINITIF, pas un retard.
+ * STYLE DE BLOC CANONIQUE (`SectionCard`) ET LECTURE EN INFOBULLE ⓘ (2026-09-19) : le bloc
+ * se rend comme les autres de la page, et la phrase qui dit ce qu'on lit vit dans l'aide du
+ * titre — plus de bandeau de couverture ni de description en texte gris.
  */
 import { useMemo } from 'react'
 
 import { BarStackedChart } from '@/components/charts/BarStackedChart'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { SectionCard } from '@/components/ui/section-card'
 import { intlLocale } from '@/lib/formatters'
 import type { SquadAssistPairs } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -103,32 +105,31 @@ export function SquadAssistPairsChart({ block, roster }: SquadAssistPairsChartPr
     [parts, volees, labels, pctFmt],
   )
 
-  const coverage = (
-    <p
-      className="text-xs text-muted-foreground"
-      data-testid="squad-assist-pairs-coverage"
-      title={labels.coverageHint}
-    >
-      {labels.coverage(block.matches_measured, block.matches_total)}
-    </p>
-  )
-
   return (
-    <div className="space-y-2" data-testid="squad-assist-pairs-chart">
-      {/* Bandeau de couverture AU-DESSUS du graphe (doctrine de la page). */}
-      {coverage}
-      <BarStackedChart
-        series={series}
-        height={320}
-        emptyMessage={labels.noPairs}
-        componentOrder={beneficiaires}
-        componentHexColors={componentHexColors}
-        tooltipHideZero
-        tooltipComponentNote={tooltipComponentNote}
-        categoryAxisName={labels.roleAssistant}
-        valueAxisName={labels.valueAxis}
-        tooltipRoles={tooltipRoles}
-      />
-    </div>
+    <SectionCard
+      title={labels.title}
+      titleAdornment={(label) => (
+        <span className="flex items-center gap-1.5">
+          {label}
+          <InfoTooltip content={labels.description} />
+        </span>
+      )}
+    >
+      <div className="px-3 py-2" data-testid="squad-assist-pairs-chart">
+        <BarStackedChart
+          series={series}
+          height={320}
+          orientation="horizontal"
+          emptyMessage={labels.noPairs}
+          componentOrder={beneficiaires}
+          componentHexColors={componentHexColors}
+          tooltipHideZero
+          tooltipComponentNote={tooltipComponentNote}
+          categoryAxisName={labels.roleAssistant}
+          valueAxisName={labels.valueAxis}
+          tooltipRoles={tooltipRoles}
+        />
+      </div>
+    </SectionCard>
   )
 }

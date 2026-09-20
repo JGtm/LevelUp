@@ -1,11 +1,11 @@
 /**
- * FormesRetenuesSection.test.tsx — LA SECTION ENTIÈRE.
+ * FormesRetenuesSection.test.tsx — LA SECTION ENTIÈRE, DANS SES DEUX CONTEXTES.
  *
  * CE TEST EXISTE POUR UNE RAISON PRÉCISE : le lot a été demandé parce que ce qui
- * avait été livré ne portait PAS les cartes de l'artefact. Le test vérifie donc
- * la LISTE : les dix-neuf titres, les trois blocs, les deux contextes répétés,
- * et les textes qui n'ont pas le droit de disparaître (constats, lexiques,
- * réserve des occupations sans nom).
+ * avait été livré ne portait PAS les cartes de l'artefact. Le test vérifie donc la LISTE —
+ * les dix-neuf titres, répartis entre le contexte SOLO (neuf cartes, page Timeseries) et
+ * le contexte ESCOUADE (dix cartes, page Escouade) depuis le 2026-09-19 — les trois blocs,
+ * et les textes qui n'ont pas le droit de disparaître (réserve des occupations sans nom).
  */
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
@@ -21,57 +21,97 @@ const frCards = FORMES_CARDS_TEXT.fr
 const ALL_CARDS = Object.keys(frCards.cards) as FormesCardKey[]
 
 describe('FormesRetenuesSection', () => {
-  it('rend les DIX-NEUF cartes de l’artefact', () => {
-    render(<FormesRetenuesSection block={formesFixture()} locale="fr" />)
+  it('les DIX-NEUF cartes de l’artefact se répartissent entre les deux contextes', () => {
     expect(ALL_CARDS).toHaveLength(19)
+    const { container: solo } = render(
+      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
+    )
+    const { container: squad } = render(
+      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="squad" />,
+    )
+    const textes = `${solo.textContent ?? ''}${squad.textContent ?? ''}`
     for (const key of ALL_CARDS) {
-      const title = frCards.cards[key].title
-      // Deux cartes portent le même titre dans deux contextes (« Écart à la
-      // parité, par famille d'arme ») : on exige AU MOINS une occurrence.
-      expect(screen.getAllByText(title).length).toBeGreaterThan(0)
+      expect(textes).toContain(frCards.cards[key].title)
     }
   })
 
-  it('rend les trois blocs et les deux contextes de chacun', () => {
-    render(<FormesRetenuesSection block={formesFixture()} locale="fr" />)
+  it('le contexte SOLO ne monte AUCUNE carte du contexte escouade, et réciproquement', () => {
+    const { container: solo } = render(
+      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
+    )
+    const texteSolo = solo.textContent ?? ''
+    expect(texteSolo).toContain(frCards.cards.equipmentShares.title)
+    expect(texteSolo).not.toContain(frCards.cards.equipmentSquadGrid.title)
+    expect(texteSolo).not.toContain(frCards.cards.padsTwoFriezes.title)
+
+    const { container: squad } = render(
+      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="squad" />,
+    )
+    const texteSquad = squad.textContent ?? ''
+    expect(texteSquad).toContain(frCards.cards.equipmentSquadGrid.title)
+    expect(texteSquad).not.toContain(frCards.cards.equipmentShares.title)
+  })
+
+  it('rend les trois blocs, chacun avec son titre — plus aucun intertitre de contexte', () => {
+    const { container } = render(
+      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
+    )
     expect(screen.getByText(fr.blocks.equipment.title)).toBeInTheDocument()
     expect(screen.getByText(fr.blocks.weapons.title)).toBeInTheDocument()
     expect(screen.getByText(fr.blocks.objectives.title)).toBeInTheDocument()
-    // Trois blocs, deux contextes chacun.
-    expect(screen.getAllByText(fr.contexts.solo)).toHaveLength(3)
-    expect(screen.getAllByText(fr.contexts.squad)).toHaveLength(3)
+    const texte = container.textContent ?? ''
+    expect(texte).not.toContain('Contexte Solo')
+    expect(texte).not.toContain('Contexte Escouade')
   })
 
-  it('rend le lexique de chaque bloc et la réserve des occupations sans nom', () => {
-    const { container } = render(<FormesRetenuesSection block={formesFixture()} locale="fr" />)
+  it('l’aide de chaque bloc reste CONCISE (trois phrases au plus) et n’est plus un pavé à l’écran', () => {
+    const { container } = render(
+      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
+    )
+    const texte = container.textContent ?? ''
+    // Les deux pavés (constat, lexique) ont quitté l'écran : l'aide vit dans l'infobulle.
+    expect(texte).not.toContain('Six familles')
+    expect(texte).not.toContain('Ce que le décodeur prend en charge')
+    for (const bloc of [fr.blocks.equipment, fr.blocks.weapons, fr.blocks.objectives]) {
+      const phrases = bloc.aide.split('.').filter((p) => p.trim().length > 0)
+      expect(phrases.length).toBeLessThanOrEqual(3)
+    }
+  })
+
+  it('garde la réserve des occupations sans ramasseur nommé (contexte escouade)', () => {
+    const { container } = render(
+      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="squad" />,
+    )
     const text = container.textContent ?? ''
-    expect(text).toContain('Six familles')
-    expect(text).toContain('Un socle')
-    expect(text).toContain('La table rôle')
     // La réserve : 5 occupations sans ramasseur, 9 prises nommées sur 14.
     expect(text).toContain('5 occupations de socle')
     expect(text).toContain('9 prises sur 14')
   })
 
   it('nomme les cinq gestes d’équipement, et JAMAIS les grenades', () => {
-    const { container } = render(<FormesRetenuesSection block={formesFixture()} locale="fr" />)
+    const { container } = render(
+      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
+    )
     const text = container.textContent ?? ''
     for (const label of Object.values(fr.axes)) expect(text).toContain(label)
     expect(text).not.toContain('Grenades lancées')
   })
 
   it('affiche la couverture « mesurés sur total » du bandeau', () => {
-    render(<FormesRetenuesSection block={formesFixture()} locale="fr" />)
+    render(<FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />)
     expect(screen.getByText(fr.header.scopeMeasuredFmt(2, 3))).toBeInTheDocument()
   })
 
   it('se retire quand le bloc est absent ou indisponible', () => {
-    const { container: empty } = render(<FormesRetenuesSection block={undefined} locale="fr" />)
+    const { container: empty } = render(
+      <FormesRetenuesSection block={undefined} locale="fr" contexte="solo" />,
+    )
     expect(empty).toBeEmptyDOMElement()
     const { container: down } = render(
       <FormesRetenuesSection
         block={{ available: false, matches_total: 3, matches_measured: 0 }}
         locale="fr"
+        contexte="solo"
       />,
     )
     expect(down).toBeEmptyDOMElement()
@@ -93,7 +133,7 @@ describe('FormesRetenuesSection', () => {
     ]
     block.matches_total = block.matches.length
     block.matches_measured = block.matches.filter((m) => m.measured).length
-    render(<FormesRetenuesSection block={block} locale="fr" />)
+    render(<FormesRetenuesSection block={block} locale="fr" contexte="squad" />)
     // Une ligne par match mesuré affiché, jamais une par match du scope.
     const grip = screen.getByLabelText(frCards.cards.padsSquadByMatch.title)
     expect(grip.querySelectorAll('[role="img"][aria-label*="Prises de socle"]').length).toBe(0)
@@ -104,7 +144,7 @@ describe('FormesRetenuesSection', () => {
   })
 
   it('rend aussi en anglais, sans clé manquante', () => {
-    render(<FormesRetenuesSection block={formesFixture()} locale="en" />)
+    render(<FormesRetenuesSection block={formesFixture()} locale="en" contexte="solo" />)
     expect(screen.getByText(FORMES_TEXT.en.blocks.weapons.title)).toBeInTheDocument()
     expect(
       screen.getAllByText(FORMES_CARDS_TEXT.en.cards.equipmentShares.title).length,
@@ -114,10 +154,9 @@ describe('FormesRetenuesSection', () => {
   it('retire les cartes d’objectif quand aucun match n’en porte', () => {
     const block = formesFixture()
     block.matches = (block.matches ?? []).map((m) => ({ ...m, objective: undefined }))
-    render(<FormesRetenuesSection block={block} locale="fr" />)
-    // Le bloc reste, avec son constat d'absence — les cartes, elles, partent.
+    render(<FormesRetenuesSection block={block} locale="fr" contexte="solo" />)
+    // Le bloc garde son titre et son aide — les cartes, elles, partent.
     expect(screen.getByText(fr.blocks.objectives.title)).toBeInTheDocument()
     expect(screen.queryByText(frCards.cards.objectivesGapRole.title)).not.toBeInTheDocument()
-    expect(screen.getAllByText(fr.contexts.solo)).toHaveLength(2)
   })
 })

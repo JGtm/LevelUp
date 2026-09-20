@@ -631,6 +631,20 @@ en = "P25–P75 envelope"
 fr = "10 %"
 en = "10%"
 
+# Les deux courbes de référence du profil (2026-09-19) : l'équipe alliée et le lobby
+# entier. Mêmes libellés que la page Escouade, qui les montre depuis le lot Intensité.
+[timeseries.progression.intensity_player]
+fr = "Joueur"
+en = "Player"
+
+[timeseries.progression.intensity_team]
+fr = "Équipe"
+en = "Team"
+
+[timeseries.progression.intensity_lobby]
+fr = "Lobby"
+en = "Lobby"
+
 [timeseries.progression.match_history_title]
 fr = "Historique des matchs"
 en = "Match history"

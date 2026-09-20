@@ -1,20 +1,18 @@
 /**
- * SquadIsolementNuageCard — « Isolement et couverture » (onglet Synergies, item 7.7).
+ * SquadIsolementNuageCard — « Pourquoi la vengeance ne vient pas » (onglet Synergies).
  *
- * Un point par (joueur, session) : en abscisse la part de morts sans coéquipier visible à
- * portée du radar, en ordonnée le taux d'échange de la MÊME session (`squadEchange.logic`
- * mesure déjà ce taux pour tout le camp ; ici c'est la même mesure, par joueur et par
- * session — cf. `domain.SquadIsolementPoint` côté contrat). Taille du point = morts
- * examinées, couleur = joueur (`getSquadPlayerColors`, mêmes tokens que le reste de la
- * page). Deux lignes pointillées tracent les MÉDIANES du nuage et découpent quatre
- * quadrants nommés — libellés repris à l'identique de la maquette
- * echange-escouade.html.
+ * UN PETIT POINT PAR MORT, UN GROS POINT PAR JOUEUR (contrat refondu le 2026-09-19,
+ * PLAN_AJUSTEMENTS_PRE_V75 décision 4). En abscisse la distance au coéquipier visible le
+ * plus proche RAPPORTÉE à la portée du radar du match (1,0 = à la portée, repère vertical
+ * tracé) ; en ordonnée le délai avant vengeance, en secondes. Deux bandes nommées portent
+ * ce qui n'a pas de valeur : « hors de vue » à droite (aucun coéquipier visible), « jamais
+ * vengée » en haut. Le gros point d'un joueur est la médiane de ses deux axes, sa taille
+ * dit combien de morts.
  *
  * PAS LE WRAPPER `<ScatterChart>` GÉNÉRIQUE : ce nuage a besoin d'un encodage PAR POINT
  * (taille, opacité, infobulle) que `ChartSeries<ChartPointScatter>` ne porte pas — le
  * wrapper partagé n'expose qu'un `symbolSize` UNIFORME par série. Même pattern que
- * `FirstBloodLanes` (composer `<ChartCard>` directement avec un `buildOption` custom)
- * plutôt que de modifier un wrapper partagé et ses tests pour un seul consommateur.
+ * `FirstBloodLanes` (composer `<ChartCard>` directement avec un `buildOption` custom).
  *
  * La carte n'est pas montée quand la section est absente du contrat (cf.
  * SquadSynergiesPage) : une section omise n'est pas une section à zéro.
@@ -38,21 +36,27 @@ import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { intlLocale } from '@/lib/formatters'
 import { withLowSampleNote } from '@/lib/formatters/lowSampleNote'
-import type { SquadEchangeJoueur, SquadNuageIsolement, SquadIsolementPoint } from '@/lib/api/types'
+import type {
+  SquadEchangeJoueur,
+  SquadIsolementMort,
+  SquadIsolementRepere,
+  SquadNuageIsolement,
+} from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { getSquadPlayerColors } from './colors'
 import {
-  medianesNuage,
-  OPACITE_SESSION,
-  plafondAxe,
-  PLANCHER_MORTS_SESSION,
-  pointAttenue,
-  pointMedianJoueur,
-  quadrantDuPoint,
-  tailleMedianeEchelle,
-  TAILLE_SESSION,
-  type MedianesNuage,
+  contrasteIsolement,
+  delaiSecondes,
+  echellesNuage,
+  OPACITE_MORT,
+  positionMort,
+  positionRepere,
+  repereAttenue,
+  REPERE_PORTEE_RADAR,
+  TAILLE_MORT,
+  tailleRepere,
+  type EchellesNuage,
 } from './squadIsolement.logic'
 import { getSquadIsolementText, type SquadIsolementText } from './squadIsolementStrings'
 
@@ -75,70 +79,61 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
       }),
     [numLoc],
   )
+  const numFmt = useMemo(
+    () => new Intl.NumberFormat(numLoc, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+    [numLoc],
+  )
 
-  const points = useMemo(() => nuage.points ?? [], [nuage.points])
-  const vide = points.length === 0
+  const morts = useMemo(() => nuage.morts ?? [], [nuage.morts])
+  const reperes = useMemo(() => nuage.reperes ?? [], [nuage.reperes])
+  const vide = morts.length === 0
 
   const playerColors = useMemo(() => {
     const [main, ...teammates] = joueurs
     return getSquadPlayerColors(main?.gamertag ?? '', teammates.map((j) => j.gamertag))
   }, [joueurs])
 
-  const series = useMemo(() => seriesParJoueur(points, joueurs), [points, joueurs])
-  const medianes = useMemo(() => medianesNuage(points), [points])
+  const series = useMemo(() => seriesParJoueur(morts, joueurs), [morts, joueurs])
+  const echelles = useMemo(() => echellesNuage(morts), [morts])
+  const repereParXUID = useMemo(() => {
+    const map = new Map<string, SquadIsolementRepere>()
+    for (const r of reperes) map.set(r.xuid, r)
+    return map
+  }, [reperes])
 
-  // Les extremes REELS du nuage : la taille des gros points s'y projette, et la legende de
-  // taille les nomme. Une echelle absolue ne dirait plus rien au-dela de son plafond.
-  const totaux = useMemo(
-    () => series.map((s) => pointMedianJoueur(s.datapoints)?.mortsExaminees ?? 0).filter((n) => n > 0),
-    [series],
-  )
-  const mortsMin = totaux.length > 0 ? Math.min(...totaux) : 0
-  const mortsMax = totaux.length > 0 ? Math.max(...totaux) : 0
+  // Les extrêmes RÉELS du roster : la taille des gros points s'y projette, et la légende
+  // de taille les nomme. Une échelle absolue ne dirait plus rien au-delà de son plafond.
+  const volumes = reperes.map((r) => r.nb_morts).filter((n) => n > 0)
+  const mortsMin = volumes.length > 0 ? Math.min(...volumes) : 0
+  const mortsMax = volumes.length > 0 ? Math.max(...volumes) : 0
 
-  // La phrase du haut compare les DEUX EXTREMES d'isolement du roster : le plus expose et
-  // le moins expose. Sur un seul joueur, il n'y a rien a opposer.
-  const contraste = useMemo(() => contrasteIsolement(series), [series])
-
-  // Les axes s'ajustent aux donnees (bas ancre a zero) : bornes a 100 % en dur, la moitie
-  // du canvas restait vide et les trois reperes se chevauchaient.
-  const maxX = useMemo(() => plafondAxe(points.map((p) => p.part_isolee.taux)), [points])
-  const maxY = useMemo(() => plafondAxe(points.map((p) => p.couverture.taux)), [points])
+  // La phrase du haut compare les DEUX EXTRÊMES d'isolement du roster : le plus exposé et
+  // le moins exposé. Sur un seul joueur, il n'y a rien à opposer.
+  const contraste = useMemo(() => contrasteIsolement(reperes), [reperes])
 
   const buildOption = useMemo(
-    () => (s: ChartSeries<SquadIsolementPoint>[]) =>
-      buildNuageOption(s, { playerColors, medianes, t, pctFmt, mortsMin, mortsMax, maxX, maxY }),
-    [playerColors, medianes, t, pctFmt, mortsMin, mortsMax, maxX, maxY],
-  )
-
-  // Planchers et définition en infobulle ⓘ plutôt qu'en pied de carte (retour utilisateur
-  // 2026-09-09) : deux paragraphes de texte gris sous le nuage, lus une fois puis jamais,
-  // qui poussaient le graphe suivant hors de l'écran.
-  const help = (
-    <span className="space-y-1.5">
-      <span className="block">{t.floor(PLANCHER_MORTS_SESSION, nuage.plancher_echantillon_faible)}</span>
-      <span className="block">{t.definition}</span>
-    </span>
-  )
-
-  const footer = (
-    <div className="space-y-1 border-t border-border px-3 py-2">
-      <p className="text-xs text-muted-foreground">{t.footRadar}</p>
-      <p className="text-xs text-muted-foreground">
-        {t.footDenominator(nuage.plancher_echantillon_faible)}
-      </p>
-    </div>
+    () => (s: ChartSeries<SquadIsolementMort>[]) =>
+      buildNuageOption(s, {
+        playerColors,
+        echelles,
+        repereParXUID,
+        t,
+        pctFmt,
+        numFmt,
+        mortsMin,
+        mortsMax,
+      }),
+    [playerColors, echelles, repereParXUID, t, pctFmt, numFmt, mortsMin, mortsMax],
   )
 
   return (
     <SectionCard
       title={t.cardTitle}
       label={t.sectionLabel}
-      footer={footer}
       titleAdornment={(label) => (
         <span className="flex items-center gap-1.5">
           {label}
-          <InfoTooltip content={help} />
+          <InfoTooltip content={t.help} />
         </span>
       )}
     >
@@ -162,8 +157,8 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
             )}
             <p className="text-xs text-muted-foreground">{t.figure}</p>
             <ChartCard series={series} buildOption={buildOption} height={380} />
-            {/* LEGENDE DE TAILLE, en DOM : ECharts n'en a pas pour un encodage de taille.
-                Elle porte les VRAIES valeurs extremes du roster — un encodage qu'on ne
+            {/* LÉGENDE DE TAILLE, en DOM : ECharts n'en a pas pour un encodage de taille.
+                Elle porte les VRAIES valeurs extrêmes du roster — un encodage qu'on ne
                 nomme pas ne se lit pas. */}
             <div
               className="flex flex-wrap items-center gap-4 text-2xs text-muted-foreground"
@@ -186,9 +181,9 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
               <span className="flex items-center gap-1.5">
                 <span
                   className="inline-block rounded-full bg-muted-foreground/50"
-                  style={{ width: TAILLE_SESSION, height: TAILLE_SESSION }}
+                  style={{ width: TAILLE_MORT, height: TAILLE_MORT }}
                 />
-                {t.legendSession}
+                {t.legendDeath}
               </span>
               <span className="flex items-center gap-1.5">
                 <span
@@ -208,103 +203,58 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
 /** Une série ECharts PAR JOUEUR du roster — la couleur et le nom viennent de la série,
  *  pas du point (cohérent avec le reste de la page : un joueur = une couleur stable). */
 function seriesParJoueur(
-  points: SquadIsolementPoint[],
+  morts: SquadIsolementMort[],
   joueurs: SquadEchangeJoueur[],
-): ChartSeries<SquadIsolementPoint>[] {
+): ChartSeries<SquadIsolementMort>[] {
   return joueurs
     .map((j) => ({
       key: j.xuid,
       meta: { gamertag: j.gamertag },
-      datapoints: points.filter((p) => p.xuid === j.xuid),
+      datapoints: morts.filter((m) => m.xuid === j.xuid),
     }))
     .filter((s) => s.datapoints.length > 0)
 }
 
 interface BuildOpts {
   playerColors: Record<string, string>
-  medianes: MedianesNuage | null
+  echelles: EchellesNuage
+  repereParXUID: Map<string, SquadIsolementRepere>
   t: SquadIsolementText
   pctFmt: Intl.NumberFormat
-  /** Extremes REELS des morts examinees par joueur — l'echelle de taille des gros points. */
+  numFmt: Intl.NumberFormat
+  /** Extrêmes RÉELS du nombre de morts par joueur — l'échelle de taille des gros points. */
   mortsMin: number
   mortsMax: number
-  /** Plafonds des axes en pourcents (le bas reste a zero). */
-  maxX: number
-  maxY: number
 }
 
-/** Diametres (px) des pastilles de la legende de taille — les deux bouts de l'echelle. */
+/** Diamètres (px) des pastilles de la légende de taille — les deux bouts de l'échelle. */
 const TAILLE_MIN_LEGENDE = 12
 const TAILLE_MAX_LEGENDE = 22
 
-/** Le joueur le PLUS et le MOINS expose hors radar — les deux bouts de la phrase du haut. */
-interface ContrasteIsolement {
-  loin: { gamertag: string; isolement: number; couverture: number }
-  proche: { gamertag: string; isolement: number; couverture: number }
-}
-
-/**
- * contrasteIsolement designe les deux extremes d'isolement du roster.
- *
- * `null` sous deux joueurs agregeables : une phrase qui compare a besoin de deux termes, et
- * un roster d'un seul joueur n'oppose rien.
- */
-function contrasteIsolement(
-  series: ChartSeries<SquadIsolementPoint>[],
-): ContrasteIsolement | null {
-  const agreges = series
-    .map((s) => {
-      const agg = pointMedianJoueur(s.datapoints)
-      if (!agg) return null
-      const gamertag = (s.meta as { gamertag?: string } | undefined)?.gamertag ?? s.key
-      return { gamertag, isolement: agg.isolement, couverture: agg.couverture }
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null)
-  if (agreges.length < 2) return null
-  const trie = [...agreges].sort((a, b) => b.isolement - a.isolement)
-  return { loin: trie[0], proche: trie[trie.length - 1] }
-}
-
-/** Un point de la donnée ECharts : la valeur [x,y] en POURCENTS (0..100, lisible sur les
- *  axes), le style par point, et le point BRUT pour l'infobulle. */
-interface EchartScatterDatum {
+/** Un point de la donnée ECharts : la position [x, y] bandes comprises, et la mort BRUTE
+ *  pour l'infobulle. */
+interface EchartMortDatum {
   value: [number, number]
   symbolSize: number
   itemStyle: Record<string, unknown>
-  raw: SquadIsolementPoint
+  raw: SquadIsolementMort
 }
 
-/** Le GROS point médian d'un joueur (D4, lot C3) : une agrégation, pas un match — son
- *  tooltip et son étiquette sont distincts d'un point de session (`EchartScatterDatum`). */
-interface EchartMedianDatum {
+/** Le GROS point médian d'un joueur : une agrégation, pas une mort — son infobulle est
+ *  distincte de celle d'un petit point (`EchartMortDatum`). */
+interface EchartRepereDatum {
   value: [number, number]
   symbolSize: number
   itemStyle: Record<string, unknown>
   label: Record<string, unknown>
-  medianRaw: { gamertag: string; mortsExaminees: number; isolement: number; couverture: number }
-}
-
-/** Style d'un point de session : cercle plein à l'échantillon suffisant, cercle POINTILLÉ
- *  (bordure en tirets, pas de remplissage) à l'échantillon faible — décision C3, remplace
- *  l'ancienne opacité réduite (`opaciteDuPoint`, retirée, plus fiable pour le contraste). */
-function itemStyleDuPoint(point: SquadIsolementPoint, color: string): Record<string, unknown> {
-  if (pointAttenue(point)) {
-    return {
-      color: 'transparent',
-      borderColor: color,
-      borderWidth: 1.5,
-      borderType: 'dashed',
-      opacity: OPACITE_SESSION,
-    }
-  }
-  return { color, opacity: OPACITE_SESSION }
+  repereRaw: SquadIsolementRepere
 }
 
 function buildNuageOption(
-  series: ChartSeries<SquadIsolementPoint>[],
+  series: ChartSeries<SquadIsolementMort>[],
   opts: BuildOpts,
 ): EChartsCoreOption {
-  const { playerColors, medianes, t, pctFmt, mortsMin, mortsMax, maxX, maxY } = opts
+  const { playerColors, echelles, repereParXUID, t, pctFmt, numFmt, mortsMin, mortsMax } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -315,13 +265,11 @@ function buildNuageOption(
   const echartsSeries = series.flatMap((s, idx) => {
     const gamertag = (s.meta as { gamertag?: string } | undefined)?.gamertag ?? s.key
     const color = playerColors[gamertag] ?? resolveToken('info')
-    const data: EchartScatterDatum[] = s.datapoints.map((p) => ({
-      value: [p.part_isolee.taux * 100, p.couverture.taux * 100],
-      // TAILLE FIXE, opacite 0,45 : les sessions disent la DISPERSION, jamais le volume.
-      // Un seul encodage de taille par graphe, et c'est celui du gros point par joueur.
-      symbolSize: TAILLE_SESSION,
-      itemStyle: itemStyleDuPoint(p, color),
-      raw: p,
+    const data: EchartMortDatum[] = s.datapoints.map((m) => ({
+      value: positionMort(m, echelles),
+      symbolSize: TAILLE_MORT,
+      itemStyle: { color, opacity: OPACITE_MORT },
+      raw: m,
     }))
     const serie: Record<string, unknown> = {
       type: 'scatter',
@@ -329,61 +277,63 @@ function buildNuageOption(
       data,
       itemStyle: { color },
     }
-    // Les deux médianes + le quadrant d'alerte sont posés UNE SEULE FOIS, sur la
-    // première série : ce sont des overlays du graphe entier, pas d'une série.
-    if (idx === 0 && medianes) {
-      const mx = medianes.isolement * 100
-      const my = medianes.couverture * 100
+    // Le repère de portée du radar et les deux bandes nommées sont posés UNE SEULE FOIS,
+    // sur la première série : ce sont des overlays du graphe entier, pas d'une série.
+    if (idx === 0) {
       serie.markLine = {
         silent: true,
         symbol: 'none',
-        lineStyle: { type: 'dashed', color: tc.axisLine },
-        label: { show: false },
-        data: [{ xAxis: mx }, { yAxis: my }],
+        lineStyle: { type: 'dashed', color: warningColor },
+        label: {
+          show: true,
+          formatter: t.radarLine,
+          color: warningColor,
+          fontSize: 10,
+          position: 'insideEndTop',
+        },
+        data: [{ xAxis: REPERE_PORTEE_RADAR }],
       }
       serie.markArea = {
         silent: true,
         label: { show: true, fontSize: 10, color: tc.axisLabel },
         data: [
           [
-            { coord: [0, my], name: t.quadrant('procheCouvert'),
-              itemStyle: { color: 'transparent' }, label: { position: 'insideTopLeft' } },
-            { coord: [mx, maxY] },
+            {
+              coord: [echelles.distance.bandeDebut, 0],
+              name: t.bandOutOfSight,
+              itemStyle: { color: tc.axisLine, opacity: 0.08 },
+              label: { position: 'insideTop' },
+            },
+            { coord: [echelles.distance.max, echelles.delai.max] },
           ],
           [
-            { coord: [mx, my], name: t.quadrant('loinCouvert'),
-              itemStyle: { color: 'transparent' }, label: { position: 'insideTopRight' } },
-            { coord: [maxX, maxY] },
-          ],
-          [
-            { coord: [0, 0], name: t.quadrant('procheSeul'),
-              itemStyle: { color: 'transparent' }, label: { position: 'insideBottomLeft' } },
-            { coord: [mx, my] },
-          ],
-          [
-            { coord: [mx, 0], name: t.quadrant('loinSansSecours'),
-              itemStyle: { color: warningColor, opacity: 0.08 },
-              label: { position: 'insideBottomRight', color: warningColor, fontWeight: 600 } },
-            { coord: [maxX, my] },
+            {
+              coord: [0, echelles.delai.bandeDebut],
+              name: t.bandNever,
+              itemStyle: { color: tc.axisLine, opacity: 0.08 },
+              label: { position: 'insideTopLeft' },
+            },
+            { coord: [echelles.distance.bandeDebut, echelles.delai.max] },
           ],
         ],
       }
     }
-    // Gros point médian du joueur (D4) : une seconde série ECharts, MÊME nom (partage
-    // l'entrée de légende — toggler l'un cache l'autre) et MÊME couleur que la série de
-    // session, mais nettement plus grande et étiquetée du gamertag. `z` la pose au-dessus
-    // du nuage de points pour qu'elle ne se fasse pas recouvrir par une session voisine.
-    const medianAgg = pointMedianJoueur(s.datapoints)
-    const medianSerie: Record<string, unknown> | null = medianAgg
+    // Gros point médian du joueur : une seconde série ECharts, MÊME nom (partage l'entrée
+    // de légende — toggler l'un cache l'autre) et MÊME couleur que la série des morts,
+    // mais nettement plus grande et étiquetée du gamertag. `z` la pose au-dessus du nuage.
+    const repere = repereParXUID.get(s.key)
+    const repereSerie: Record<string, unknown> | null = repere
       ? {
           type: 'scatter',
           name: gamertag,
           z: 5,
           data: [
             {
-              value: [medianAgg.isolement * 100, medianAgg.couverture * 100],
-              symbolSize: tailleMedianeEchelle(medianAgg.mortsExaminees, mortsMin, mortsMax),
-              itemStyle: { color, borderColor: tc.card, borderWidth: 2 },
+              value: positionRepere(repere, echelles),
+              symbolSize: tailleRepere(repere.nb_morts, mortsMin, mortsMax),
+              itemStyle: repereAttenue(repere)
+                ? { color: 'transparent', borderColor: color, borderWidth: 2, borderType: 'dashed' }
+                : { color, borderColor: tc.card, borderWidth: 2 },
               label: {
                 show: true,
                 formatter: gamertag,
@@ -392,12 +342,12 @@ function buildNuageOption(
                 fontSize: 10,
                 fontWeight: 600,
               },
-              medianRaw: { gamertag, ...medianAgg },
-            } satisfies EchartMedianDatum,
+              repereRaw: repere,
+            } satisfies EchartRepereDatum,
           ],
         }
       : null
-    return medianSerie ? [serie, medianSerie] : [serie]
+    return repereSerie ? [serie, repereSerie] : [serie]
   })
 
   return {
@@ -408,45 +358,15 @@ function buildNuageOption(
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'item',
-      formatter: (params: unknown) => {
-        const data = (params as { data?: EchartScatterDatum | EchartMedianDatum }).data
-        if (!data) return ''
-        if ('medianRaw' in data) {
-          const mr = data.medianRaw
-          return t.tooltipMedian({
-            gamertag: escapeHtml(mr.gamertag),
-            n: mr.mortsExaminees,
-            isoRate: pctFmt.format(mr.isolement),
-            covRate: pctFmt.format(mr.couverture),
-          })
-        }
-        const p = data.raw
-        if (!p) return ''
-        const base = t.tooltip({
-          gamertag: escapeHtml((p.gamertag ?? '') as string),
-          session: escapeHtml(p.session_label ?? ''),
-          isoRate: pctFmt.format(p.part_isolee.taux),
-          isoBrut: p.morts_isolees,
-          isoN: p.morts_examinees,
-          covRate: pctFmt.format(p.couverture.taux),
-          covBrut: p.couverture.brut,
-          covN: p.couverture.n,
-        })
-        // `quadrantDuPoint` rebranché (lot C3) : le tooltip d'un point NOMME le quadrant
-        // auquel il appartient, en plus des quatre libellés déjà affichés dans les coins
-        // (markArea ci-dessus). Rien à nommer sans médianes calculées (nuage vide — cas
-        // déjà exclu plus haut, mais `medianes` reste nullable au niveau du type).
-        const withQuadrant = medianes ? `${base}<br/>${t.pointQuadrant(quadrantDuPoint(p, medianes))}` : base
-        // L'opacité réduite n'est plus utilisée pour l'échantillon faible (remplacée par un
-        // cercle pointillé, décision C3) : le tooltip reste la seule mention textuelle
-        // fiable (contraste, daltonisme), par la forme unique du dépôt (`withLowSampleNote`,
-        // séparateur HTML : le tooltip ECharts est du HTML).
-        return withLowSampleNote(withQuadrant, pointAttenue(p), t.lowSample, '<br/>')
-      },
+      formatter: (params: unknown) =>
+        formatTooltip((params as { data?: EchartMortDatum | EchartRepereDatum }).data, {
+          t,
+          pctFmt,
+          numFmt,
+        }),
     },
     // Socle de légende COMMUN à tous les graphes de l'app (`getLegendBase` : en pied,
-    // pastille et texte au même gabarit). Elle portait jusqu'ici sa propre mise en forme,
-    // et se lisait donc autrement que partout ailleurs (retour utilisateur 2026-09-09).
+    // pastille et texte au même gabarit).
     legend: {
       ...getLegendBase(tc),
       data: legendEntries(
@@ -460,25 +380,53 @@ function buildNuageOption(
       ...axis,
       type: 'value',
       min: 0,
-      max: maxX,
+      max: echelles.distance.max,
       name: t.xAxis,
       nameLocation: 'middle',
       nameGap: 32,
       nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
-      axisLabel: { ...axis.axisLabel, formatter: '{value}%' },
+      axisLabel: { ...axis.axisLabel, formatter: '{value}×' },
     },
     yAxis: {
       ...axis,
       type: 'value',
       min: 0,
-      max: maxY,
+      max: echelles.delai.max,
       name: t.yAxis,
       nameLocation: 'middle',
       nameGap: 40,
       nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
-      axisLabel: { ...axis.axisLabel, formatter: '{value}%' },
+      axisLabel: { ...axis.axisLabel, formatter: '{value} s' },
     },
     series: echartsSeries,
   }
 }
 
+/** L'infobulle d'un point : une mort, ou le repère médian d'un joueur. */
+function formatTooltip(
+  data: EchartMortDatum | EchartRepereDatum | undefined,
+  opts: { t: SquadIsolementText; pctFmt: Intl.NumberFormat; numFmt: Intl.NumberFormat },
+): string {
+  const { t, pctFmt, numFmt } = opts
+  if (!data) return ''
+  // LE RETOUR À LA LIGNE EST POSÉ ICI, jamais dans le message : un `<br>` isolé dans une
+  // chaîne ICU fait échouer le parseur, qui rend alors le gabarit brut à l'écran.
+  if ('repereRaw' in data) {
+    const r = data.repereRaw
+    const base = [
+      t.tooltipRepereHead({ gamertag: escapeHtml(r.gamertag), n: r.nb_morts }),
+      t.tooltipRepereIso(pctFmt.format(r.part_isolee.taux)),
+      t.tooltipRepereCov(pctFmt.format(r.couverture.taux)),
+    ].join('<br/>')
+    return withLowSampleNote(base, repereAttenue(r), t.lowSample, '<br/>')
+  }
+  const m = data.raw
+  if (!m) return ''
+  const delai = delaiSecondes(m)
+  const delay = delai == null ? t.tooltipNever : t.tooltipAvenged(numFmt.format(delai))
+  const couverture =
+    m.distance_ratio == null
+      ? t.tooltipDeathOutOfSight
+      : t.tooltipDeathCoverage(numFmt.format(m.distance_ratio))
+  return [escapeHtml(m.gamertag ?? ''), couverture, delay].join('<br/>')
+}

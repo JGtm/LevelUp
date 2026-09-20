@@ -4,11 +4,9 @@
  * `DonutChart`, JAMAIS un donut écrit à la main) + une légende COULEUR SEULE (P11 : la
  * légende ne dit que la couleur) + les sous-totaux emboîtés, séparés par un filet.
  *
- * LE LIBELLÉ D'UNITÉ VIT SOUS L'ANNEAU, PAS DEDANS (2026-09-13). ECharts pose le texte
- * central en `graphic`, sur UNE ligne, sans largeur : « objets pris dans le lobby » sortait
- * du trou du donut et passait derrière la couronne, illisible. Le centre ne garde donc que
- * le NOMBRE — ce qu'on lit en un coup d'œil — et l'unité devient une légende HTML centrée
- * sous le graphe, qui se replie sur deux lignes plutôt que de se faire couper.
+ * LE CENTRE NE PORTE QUE LE NOMBRE. Le libellé d'unité sous l'anneau a été retiré le
+ * 2026-09-19 : le titre de la carte dit déjà de quoi il s'agit, et ECharts
+ * posait ce texte sur une ligne sans largeur, derrière la couronne.
  *
  * Aucun calcul ici : `usageEquipmentPartiesModel.ts` construit le modèle complet.
  */
@@ -32,7 +30,6 @@ export function UsageEquipmentDonutCard({ model }: { model: UsageDonutModel | nu
           centerValue={model.centerValue}
           arcLabelKind="value"
         />
-        <p className="text-center text-xs text-muted-foreground">{model.centerLabel}</p>
       </div>
       <div className="flex min-w-[190px] flex-col gap-1.5 text-xs">
         {model.legendRows.map((row) => (

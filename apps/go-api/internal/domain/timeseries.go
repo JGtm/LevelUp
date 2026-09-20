@@ -297,6 +297,13 @@ type TimeseriesPageResponse struct {
 	// IntensityRows : 1 ligne par match × 10 phases normalisées (0..1) — frags
 	// du joueur sur la timeline du match, source highlight_events.
 	IntensityRows []IntensityMatchRow `json:"intensity_rows,omitempty"`
+	// IntensityRowsTeam / IntensityRowsLobby : les deux COURBES DE RÉFÉRENCE du même
+	// profil (2026-09-19) — les frags de l'ÉQUIPE ALLIÉE du joueur, et ceux de TOUT le
+	// lobby. Même forme, même normalisation, même producteur que `IntensityRows` : seule
+	// la population de tueurs retenue change. `IntensityRowsTeam` est absent quand le
+	// titre ne publie pas ses participants — la courbe manque alors, jamais à plat.
+	IntensityRowsTeam  []IntensityMatchRow `json:"intensity_rows_team,omitempty"`
+	IntensityRowsLobby []IntensityMatchRow `json:"intensity_rows_lobby,omitempty"`
 	// SoloSessionPerf : agrégat par session/semaine/mois sur la population
 	// solo complète (ignore filtres period/sessions/cascade). Alimente
 	// "Performance solo par session" sur l'onglet Synthèse. Granularité
@@ -329,4 +336,11 @@ type TimeseriesPageResponse struct {
 	// n'a aucun match ; Available=false avec raison machine pour un titre sans
 	// film.usage_summary.
 	EquipmentUsage *EquipmentUsageBlock `json:"equipment_usage,omitempty"`
+	// SquadFormes : bloc « Les formes retenues » — les MÊMES cartes que l'Escouade, sur le
+	// scope SOLO de cette page (PLAN_AJUSTEMENTS_PRE_V75, item 1.E du 2026-09-19 : les
+	// neuf cartes du contexte solo ont quitté l'Escouade, qui ne garde que son contexte
+	// escouade). MÊME producteur (`squadagg.BuildSquadFormesBlock`) et MÊME scope que
+	// `EquipmentUsage` — aucune seconde doctrine de périmètre. nil quand le scope est
+	// vide ; Available=false avec raison machine pour un titre sans film.usage_summary.
+	SquadFormes *SquadFormesBlock `json:"formes_retenues,omitempty"`
 }

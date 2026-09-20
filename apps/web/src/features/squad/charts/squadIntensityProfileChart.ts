@@ -22,7 +22,10 @@ import {
   escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
+  getLegendBase,
   getTooltipBase,
+  LEGEND_ITEM_WIDTH_LINE,
+  legendEntries,
   hexToRgba,
   hoverRevealSymbol,
 } from '@/components/charts/_utils'
@@ -156,7 +159,9 @@ interface GridBox {
 // Marges de layout (pourcentages du conteneur). Le conteneur grandit avec le
 // nombre de rangées (hauteur pilotée par le composant), ces ratios restent donc
 // lisibles jusqu'à 2 rangées.
-const LAYOUT = { top: 9, bottom: 7, vGap: 13, left: 6, right: 3, hGap: 7 } as const
+// `bottom: 12` (au lieu de 7) depuis le 2026-09-19 : la LÉGENDE joueur / équipe / lobby
+// se pose au ras du bas comme sur tous les autres graphes, et il lui faut sa place.
+const LAYOUT = { top: 9, bottom: 12, vGap: 13, left: 6, right: 3, hGap: 7 } as const
 
 /** Positions des grilles (2 colonnes, N panneaux). N=1 → pleine largeur. */
 export function computeGrids(n: number): GridBox[] {
@@ -425,6 +430,23 @@ export function buildSquadIntensityProfileOption(opts: IntensityProfileOpts): EC
   return {
     backgroundColor: CHART_BG,
     title: titles,
+    // LÉGENDE JOUEUR / ÉQUIPE / LOBBY (2026-09-19) : trois courbes se superposent dans
+    // chaque panneau et rien ne les nommait — le trait plein épais est le JOUEUR du
+    // panneau, le trait fin plein l'ÉQUIPE, le pointillé le LOBBY. `selectedMode: false` :
+    // c'est une légende, pas un interrupteur — masquer un joueur viderait son panneau.
+    legend: {
+      ...getLegendBase(tc),
+      selectedMode: false,
+      itemWidth: LEGEND_ITEM_WIDTH_LINE,
+      data: legendEntries([
+        ...resolved.map((p) => ({ name: p.label, color: p.color })),
+        ...overlays.map((o) => ({
+          name: o.label,
+          color: o.color,
+          dashed: OVERLAY_STYLE[o.key].type === 'dashed',
+        })),
+      ]),
+    },
     grid: grids.map((g) => ({
       left: g.left,
       width: g.width,

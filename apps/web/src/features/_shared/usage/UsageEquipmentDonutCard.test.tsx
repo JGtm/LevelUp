@@ -27,7 +27,7 @@ describe('UsageEquipmentDonutCard', () => {
       rest_of_team: 32,
       opponents: 48,
     }
-    const model = buildPartiesDonutModel(parties, [], t.donutEquipmentCenterLabel, t, 'fr')
+    const model = buildPartiesDonutModel(parties, [], t, 'fr')
     render(<UsageEquipmentDonutCard model={model} />)
     expect(screen.getByText('Moi')).toBeInTheDocument()
     expect(screen.getByText('Mon équipe')).toBeInTheDocument()

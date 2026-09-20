@@ -50,7 +50,6 @@ export interface UsageDonutModel {
   series: ChartSeries<ChartPointDonut>[]
   sliceColors: Record<string, SemanticToken>
   centerValue: string
-  centerLabel: string
   legendRows: UsageDonutLegendRow[]
   subtotals: UsageDonutSubtotal[]
 }
@@ -77,7 +76,6 @@ interface Slice {
 export function buildPartiesDonutModel(
   parties: EquipmentUsageParties | null | undefined,
   trackedPlayers: SessionUsageSquadPlayer[],
-  centerLabel: string,
   t: UsageText,
   locale: Locale,
 ): UsageDonutModel | null {
@@ -130,7 +128,6 @@ export function buildPartiesDonutModel(
     series: [{ key: 'parties', datapoints }],
     sliceColors,
     centerValue: count(parties.lobby_total),
-    centerLabel,
     legendRows,
     subtotals,
   }

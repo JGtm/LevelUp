@@ -46,14 +46,8 @@ export function SquadEchangeDonneRecuCard({ echange }: SquadEchangeDonneRecuCard
     return top.recu > top.donne ? top : null
   }, [rows])
 
-  const footer = (
-    <div className="border-t border-border px-3 py-2">
-      <p className="text-xs text-muted-foreground">{t.donneRecuFoot}</p>
-    </div>
-  )
-
   return (
-    <SectionCard title={t.donneRecuTitle} label={t.donneRecuLabel} footer={footer}>
+    <SectionCard title={t.donneRecuTitle} label={t.donneRecuLabel}>
       <div className="space-y-2 px-3 py-2" data-testid="squad-echange-donne-recu">
         {matriceVide(echange) ? (
           <EmptyStateNotice title={t.emptyTitle} description={t.noPairs} />
@@ -68,7 +62,6 @@ export function SquadEchangeDonneRecuCard({ echange }: SquadEchangeDonneRecuCard
                   })
                 : t.donneRecuSayEquilibre}
             </p>
-            <p className="text-xs text-muted-foreground">{t.donneRecuFigure}</p>
             <BarGroupedChart series={series} height={280} showValues />
           </>
         )}

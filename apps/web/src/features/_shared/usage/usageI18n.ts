@@ -200,9 +200,9 @@ export interface UsageText {
   donutMe: string
   /** Sous-total « moi + mes amis » — absent quand aucun ami suivi n'est présent. */
   donutSquadSubtotal: string
-  /** Unité au centre du donut, sous le volume total du lobby. */
-  donutEquipmentCenterLabel: string
-  donutWeaponCenterLabel: string
+  /** La carte de part du lobby se rend toujours : ce texte tient lieu de donut quand la
+   *  répartition n'est pas mesurée. */
+  donutPartsEmpty: string
 }
 
 export const USAGE_TEXT: Record<Locale, UsageText> = {
@@ -336,8 +336,7 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     countsTipFmt: (label, value) => `${label} — ${value}`,
     donutMe: 'Moi',
     donutSquadSubtotal: 'Mon escouade',
-    donutEquipmentCenterLabel: 'objets pris dans le lobby',
-    donutWeaponCenterLabel: 'prises dans le lobby',
+    donutPartsEmpty: "Aucune répartition mesurée sur cette période.",
   },
   en: {
     blockEquipment: 'Equipment usage',
@@ -469,8 +468,7 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     countsTipFmt: (label, value) => `${label} — ${value}`,
     donutMe: 'Me',
     donutSquadSubtotal: 'My squad',
-    donutEquipmentCenterLabel: 'items taken in the lobby',
-    donutWeaponCenterLabel: 'pickups in the lobby',
+    donutPartsEmpty: 'No breakdown measured over this period.',
   },
 }
 

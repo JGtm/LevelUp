@@ -33,6 +33,7 @@ import type {
 import {
   buildSquadIntensityProfileOption,
   intensityAxisLabels,
+  type IntensityOverlay,
 } from '@/features/squad/charts/squadIntensityProfileChart'
 import {
   ONE_LIFE_RATE_BOUNDS,
@@ -284,22 +285,44 @@ type RateDatum = { value: number; perEvent: number | null } | null
 
 export interface TimeseriesIntensityProfileProps {
   rows: IntensityMatchRow[]
+  /** Les frags de l'ÉQUIPE ALLIÉE du joueur, par match — courbe de référence. */
+  teamRows?: IntensityMatchRow[]
+  /** Les frags de TOUT le lobby, par match — seconde courbe de référence. */
+  lobbyRows?: IntensityMatchRow[]
   height?: number
   title?: ReactNode
   emptyMessage?: string
   medianLabel: string
   envelopeLabel: string
   refLabel: string
+  /** Les trois entrées de la légende : le joueur, son équipe, le lobby. */
+  playerLabel: string
+  teamLabel: string
+  lobbyLabel: string
 }
 
+/**
+ * TimeseriesIntensityProfile — le profil d'intensité SOLO, avec ses deux courbes de
+ * référence depuis le 2026-09-19 : l'ÉQUIPE alliée et le LOBBY entier (item 1.G du plan
+ * PLAN_AJUSTEMENTS_PRE_V75). Même modèle que `SquadIntensityProfileChart` et MÊME builder :
+ * une courbe seule ne dit pas si le match était intense en général.
+ *
+ * Une courbe de référence absente du contrat (titre sans participants publiés, scope sans
+ * frag) n'est tout simplement pas montée — jamais une courbe plate.
+ */
 export function TimeseriesIntensityProfile({
   rows,
+  teamRows,
+  lobbyRows,
   height = 340,
   title,
   emptyMessage,
   medianLabel,
   envelopeLabel,
   refLabel,
+  playerLabel,
+  teamLabel,
+  lobbyLabel,
 }: TimeseriesIntensityProfileProps) {
   const themeVersion = useThemeVersion()
   const locale = useAppShellStore((s) => s.locale)
@@ -307,19 +330,39 @@ export function TimeseriesIntensityProfile({
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
     const color = resolveToken('chart-series-2')
+    const overlays: IntensityOverlay[] = []
+    if (teamRows && teamRows.length > 0) {
+      overlays.push({ key: 'team', label: teamLabel, rows: teamRows })
+    }
+    if (lobbyRows && lobbyRows.length > 0) {
+      overlays.push({ key: 'lobby', label: lobbyLabel, rows: lobbyRows })
+    }
     const opt = buildSquadIntensityProfileOption({
       panels: [
-        { key: 'solo', label: '', color, rows: rows as Array<{ phases: number[] | null }> },
+        { key: 'solo', label: playerLabel, color, rows: rows as Array<{ phases: number[] | null }> },
       ],
       medianLabel,
       envelopeLabel,
       refLabel,
       axisLabels: intensityAxisLabels(locale),
+      overlays,
     })
     // Pas de manche exploitable (aucun frag) → le builder omet `series` : vide.
     return (opt as { series?: unknown }).series ? opt : null
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, medianLabel, envelopeLabel, refLabel, themeVersion, locale])
+  }, [
+    rows,
+    teamRows,
+    lobbyRows,
+    medianLabel,
+    envelopeLabel,
+    refLabel,
+    playerLabel,
+    teamLabel,
+    lobbyLabel,
+    themeVersion,
+    locale,
+  ])
   return (
     <ChartRender
       option={option}

@@ -1388,13 +1388,15 @@ export type SquadEchangeJoueur = components['schemas']['SquadEchangeJoueur']
 export type SquadEchangeSessionPoint = components['schemas']['SquadEchangeSessionPoint']
 
 /**
- * Le nuage « isolement x couverture » de l'onglet Synergies (`SquadEchange.nuage_isolement`,
- * plan tactique item 7.7) : un point par (joueur, session). `part_isolee` et `couverture`
- * sont des `Couverture` (taux + brut + par match + N + échantillon faible), jamais un float
- * nu.
+ * Le nuage « Pourquoi la vengeance ne vient pas » (`SquadEchange.nuage_isolement`) : UN
+ * POINT PAR MORT (`morts`, distance au coéquipier visible rapportée à la portée du radar ×
+ * délai avant vengeance) et un repère médian par joueur (`reperes`). `part_isolee` et
+ * `couverture` du repère sont des `Couverture` (taux + brut + par match + N + échantillon
+ * faible), jamais un float nu.
  */
 export type SquadNuageIsolement = components['schemas']['SquadNuageIsolement']
-export type SquadIsolementPoint = components['schemas']['SquadIsolementPoint']
+export type SquadIsolementMort = components['schemas']['SquadIsolementMort']
+export type SquadIsolementRepere = components['schemas']['SquadIsolementRepere']
 
 export interface TeammatesPageResponse {
   options: TeammateOption[]

@@ -5,6 +5,8 @@ export const firstBloodManifest = {
   "first_blood.empty": { fr: "Aucun premier frag ni première mort sur ce périmètre", en: "No first kill or first death in this scope" },
   "first_blood.label.advance": { fr: "{gap} d'avance", en: "{gap} ahead" },
   "first_blood.label.median_prefix": { fr: "méd.", en: "med." },
+  "first_blood.legend.first_death": { fr: "Première mort", en: "First death" },
+  "first_blood.legend.first_kill": { fr: "Premier frag", en: "First kill" },
   "first_blood.title": { fr: "Premier frag / première mort", en: "First kill / first death" },
   "first_blood.tooltip.first_death": { fr: "{player} · {map} · {mode} · {date} · première mort {time}", en: "{player} · {map} · {mode} · {date} · first death {time}" },
   "first_blood.tooltip.first_kill": { fr: "{player} · {map} · {mode} · {date} · premier frag {time}", en: "{player} · {map} · {mode} · {date} · first kill {time}" },

@@ -13,7 +13,7 @@
  */
 import { Fragment } from 'react'
 
-import { COLUMN_GAP, GAUGE_MIN, LABEL_WIDTH, UsageGauge } from './UsageForms'
+import { COLUMN_GAP, LABEL_WIDTH, UsageGauge } from './UsageForms'
 import type { UsageCountsGridModel } from './usageCountsModel'
 
 /** L'axe gradué 0 · milieu · max+unité d'une grille en comptes. */
@@ -29,14 +29,17 @@ function CountsAxis({ axisMaxText }: { axisMaxText: string }) {
 export function UsageCountsGrid({ grid }: { grid: UsageCountsGridModel }) {
   if (grid.rows.length === 0) return null
 
+  // PLUS DE SCROLL HORIZONTAL (2026-09-19) : la colonne de jauge part de ZÉRO
+  // (`minmax(0, 1fr)`) et la grille n'a plus de largeur plancher — elle se répartit dans
+  // la carte au lieu de la déborder. Une grille de comptes qui défile latéralement cache
+  // la moitié de ses lignes sans le dire.
   const gridStyle = {
-    gridTemplateColumns: `${LABEL_WIDTH}px minmax(${GAUGE_MIN}px, 1fr) max-content`,
-    minWidth: LABEL_WIDTH + GAUGE_MIN + COLUMN_GAP,
+    gridTemplateColumns: `${LABEL_WIDTH}px minmax(0, 1fr) max-content`,
     columnGap: COLUMN_GAP,
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="min-w-0">
       <div className="grid items-center gap-y-[6px]" style={gridStyle}>
         {grid.rows.map((row) => (
           <Fragment key={row.key}>
