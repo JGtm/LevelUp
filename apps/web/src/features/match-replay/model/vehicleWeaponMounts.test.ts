@@ -78,7 +78,11 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
   const size = { naturalWidthPx: 100, naturalHeightPx: 200, mmPerPx: 10 }
   // `vehicleSpriteScale` n'est PAS l'identité (plancher/plafond doux de `vehiclesLayer.ts`) :
   // la même primitive que le tracé du sprite, donc le même facteur ici — jamais recalculé.
-  const SCALE = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx)
+  // L'ECHELLE DU CADRAGE : 20 px/m. Le sprite mesure 200 px x 10 mm/px = 2 m de long, donc
+  // 40 px a l'ecran — au-dessus du minimum garanti (18,48 px), le terme REALISTE s'applique
+  // et ces tests de geometrie portent bien sur le cas nominal (cf. model/screenSizes.ts).
+  const ECHELLE = 20
+  const SCALE = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, ECHELLE)
   // Ancre nez pur (ax=0, ay=-0,5) : au bord haut du sprite AVANT rotation, comme
   // `drawRotatedSprite` dessine `drawImage(img, -w/2, -h/2, w, h)` (ay=-0,5 -> y local = -h/2).
   const nose: VehicleWeaponMount = { classe: 'fixe', ax: 0, ay: -0.5 }
@@ -86,32 +90,32 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
   const rightSide: VehicleWeaponMount = { classe: 'fixe', ax: 0.5, ay: 0 }
 
   it('cap 90° (vehicleScreenAngle = 0) : repère local = repère écran, sans rotation', () => {
-    const p = vehicleShotPlacement(nose, 90, size, 1)
+    const p = vehicleShotPlacement(nose, 90, size, 1, ECHELLE)
     // localY = -0,5 * 200 = -100 ; screenAngle(90) = 0 -> offset = (0, -100) * SCALE.
     expect(p.offset.x).toBeCloseTo(0, 6)
     expect(p.offset.y).toBeCloseTo(-100 * SCALE, 6)
   })
 
   it('cap 0° (monde +X = droite écran) : le nez pointe vers +X', () => {
-    const p = vehicleShotPlacement(nose, 0, size, 1)
+    const p = vehicleShotPlacement(nose, 0, size, 1, ECHELLE)
     expect(p.offset.x).toBeCloseTo(100 * SCALE, 6)
     expect(p.offset.y).toBeCloseTo(0, 6)
   })
 
   it('cap 180° (monde -X = gauche écran) : le nez pointe vers -X', () => {
-    const p = vehicleShotPlacement(nose, 180, size, 1)
+    const p = vehicleShotPlacement(nose, 180, size, 1, ECHELLE)
     expect(p.offset.x).toBeCloseTo(-100 * SCALE, 6)
     expect(p.offset.y).toBeCloseTo(0, 6)
   })
 
   it('cap 270° (monde -Y = bas écran) : le nez pointe vers +Y écran (bas)', () => {
-    const p = vehicleShotPlacement(nose, 270, size, 1)
+    const p = vehicleShotPlacement(nose, 270, size, 1, ECHELLE)
     expect(p.offset.x).toBeCloseTo(0, 6)
     expect(p.offset.y).toBeCloseTo(100 * SCALE, 6)
   })
 
   it('une ancre latérale tourne comme une ancre longitudinale (même transform)', () => {
-    const p = vehicleShotPlacement(rightSide, 0, size, 1)
+    const p = vehicleShotPlacement(rightSide, 0, size, 1, ECHELLE)
     // localX = 0,5 * 100 = 50 ; screenAngle(0) = 90° -> (localX*cos90 - localY*sin90, localX*sin90+...)
     // = (0 - 0, 50 + 0) = (0, 50) * SCALE.
     expect(p.offset.x).toBeCloseTo(0, 6)
@@ -119,19 +123,19 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
   })
 
   it('la densité k met le décalage à l’échelle (aucune rotation supplémentaire)', () => {
-    const p1 = vehicleShotPlacement(nose, 90, size, 1)
-    const p2 = vehicleShotPlacement(nose, 90, size, 2)
+    const p1 = vehicleShotPlacement(nose, 90, size, 1, ECHELLE)
+    const p2 = vehicleShotPlacement(nose, 90, size, 2, ECHELLE)
     expect(p2.offset.y).toBeCloseTo(p1.offset.y * 2, 6)
   })
 
   it('classe tourelle : direction TOUJOURS null, quel que soit le cap', () => {
     const turret: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: 0 }
-    expect(vehicleShotPlacement(turret, 45, size, 1).angle).toBeNull()
-    expect(vehicleShotPlacement(turret, 270, size, 1).angle).toBeNull()
+    expect(vehicleShotPlacement(turret, 45, size, 1, ECHELLE).angle).toBeNull()
+    expect(vehicleShotPlacement(turret, 270, size, 1, ECHELLE).angle).toBeNull()
   })
 
   it('classe fixe : direction = vehicleAimAngle(cap), jamais null', () => {
-    const p = vehicleShotPlacement(nose, 33, size, 1)
+    const p = vehicleShotPlacement(nose, 33, size, 1, ECHELLE)
     expect(p.angle).not.toBeNull()
     expect(p.angle).toBeCloseTo((-33 * Math.PI) / 180, 10)
   })

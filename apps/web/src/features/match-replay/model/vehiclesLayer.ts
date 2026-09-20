@@ -63,7 +63,11 @@
  */
 import type { ReplayVehicleRide } from '@/lib/api/types'
 
-import { CORE_RADIUS, PION_VISIBLE_DIAMETER_PX } from '../layers/replayMarkers'
+import {
+  screenLengthPx,
+  spriteWorldLengthM,
+  VEHICLE_MIN_SCREEN_PX,
+} from './screenSizes'
 import { lastIndexAt, positionAt, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
@@ -371,99 +375,38 @@ export function vehiclePositionAt(track: ReplayVehicleTrackReady, frame: number)
   return track.spawn ? { x: track.spawn.x, y: track.spawn.y } : null
 }
 
-// --- TAILLE (décision de cadrage : ancrée sur le pion) ---------------------------------------
+// --- TAILLE (taille réelle si l'échelle le permet, minimum d'écran sinon) --------------------
+//
+// LE MODÈLE ET SES CONSTANTES VIVENT DANS `model/screenSizes.ts` — un seul fichier pour toutes
+// les familles dessinées sur la carte, avec la décision de l'utilisateur du 2026-09-19, ses
+// mesures et l'inventaire des familles qui n'ont pas de longueur monde. Ce qui suit ne fait que
+// l'appliquer aux véhicules, la seule famille dont la longueur monde EST mesurée.
 
 /**
- * PION_REFERENCE_PX — la taille VISIBLE d'un pion, ancre de toute la règle de taille des
- * véhicules.
+ * vehicleScreenLengthPx — la longueur d'écran (pixels CSS, avant densité `k`) d'un véhicule à
+ * l'échelle de cadrage courante.
  *
- * CORRIGÉ LE 2026-09-09 (retour utilisateur : « le Ghost est plus petit que le pion du
- * joueur, ça fait hyper bizarre »). L'ancre valait `CORE_RADIUS * 2` = 6,80 px, le NOYAU
- * SEUL — or un pion au rez-de-chaussée mesure 8,80 px de large, lisere compris, et bien
- * plus avec ses anneaux d'étage. La cible « Mongoose = 1,75 pion de long » se calculait
- * donc contre une référence 1,29 fois trop petite : le Mongoose sortait à 11,90 px de long
- * pour 7,25 px de LARGE, plus étroit que le pion dont il est censé faire 1,75 fois la
- * longueur, et le Ghost à 13,02 px de large se lisait plus petit qu'un pion à anneaux.
+ * `naturalHeightPx` est la hauteur NATIVE du sprite chargé (nez-en-haut : la hauteur EST l'axe
+ * de longueur du véhicule) ; `mmPerPx` vient du manifeste (`index.json`) pour SA famille ; les
+ * deux ensemble donnent la longueur MONDE. `scalePxPerM` est l'échelle du cadrage
+ * (`scaleOf(view)`).
  *
- * CE N'ÉTAIT PAS LE PLANCHER. La mesure du 2026-09-09 sur les PNG réels et le manifeste le
- * dit sans ambiguïté : AUCUNE famille n'atteint `VEHICLE_FLOOR_PX` (la plus petite, le
- * Mongoose, en était à 75 % au-dessus). Le plancher n'a jamais servi — c'est l'ancre qui
- * était fausse, et la corriger grossit toutes les familles du même facteur 1,29, sans
- * toucher à leurs proportions relatives.
+ * CE QUI A CHANGÉ LE 2026-09-20 : cette longueur dépend désormais de l'ÉCHELLE DE LA CARTE. Elle
+ * était constante — la même à l'écran sur une carte de 54 m et sur une de 273 m —, ce qui
+ * rendait le véhicule trop petit sur les grandes (retour utilisateur du 2026-09-19) et hors de
+ * proportion sur les petites. Détail, mesures et raison du seuil : `screenSizes.ts`.
  */
-const PION_REFERENCE_PX = PION_VISIBLE_DIAMETER_PX
-
-/**
- * VEHICLE_CADRAGE_BUMP — LE GROSSISSEMENT DE CADRAGE demandé par l'utilisateur le 2026-09-19
- * (« les véhicules sont trop petits, +20 % »). C'est une DÉCISION DE CADRAGE, pas une mesure :
- * la règle de taille était déjà juste au sens des millimètres-monde (cf. `VEHICLE_PX_PER_MM`),
- * elle rendait simplement des sprites que l'oeil lit trop petits à côté des pions.
- *
- * IL VIT ICI, EN UN SEUL LITTÉRAL, parce que TROIS grandeurs doivent grossir ENSEMBLE, sans
- * quoi les proportions relatives de la couche se défont : la cible de cadrage du Mongoose
- * (donc toute l'échelle des châssis et son plafond doux, tous deux dérivés du ratio), le
- * losange neutre d'un châssis non résolu (`VEHICLE_UNKNOWN_HALF_PX`) et le pictogramme de
- * tourelle (`VEHICLE_TURRET_HALF_PX`, `vehiclesPaint.ts`). Une révision ultérieure du cadrage
- * change CE nombre, jamais les trois grandeurs une à une.
- */
-export const VEHICLE_CADRAGE_BUMP = 1.2
-
-/**
- * Milieu de la fourchette demandée à l'origine (1,5-2 pions de long pour le Mongoose), grossi
- * du cadrage du 2026-09-19 : 2,10 pions.
- */
-const MONGOOSE_TO_PION_RATIO = 1.75 * VEHICLE_CADRAGE_BUMP
-
-/**
- * MONGOOSE_REFERENCE_LENGTH_MM — la longueur RÉELLE (nez-en-haut) du sprite Mongoose :
- * 128 px de sprite × 10 mm/px. Ce chiffre n'a PAS besoin de charger le sprite au runtime,
- * il est dérivé une fois, ici, de sa mesure connue.
- *
- * LA NOTE « SEULE FAMILLE GARANTIE AVEC LE WARTHOG » A ÉTÉ RETIRÉE LE 2026-09-09 : elle
- * était périmée. Le manifeste `static/vehicles-assets/halo_infinite/replay/index.json`
- * porte les DIX-HUIT familles en `statut: "valide"`, mesurées le 2026-09-02
- * (`ECHELLES_SPRITES_2026-09-02.md`) — le Ghost à 9,99 mm/px vérifié, par exemple. Le
- * Mongoose reste l'ancre de calibration parce qu'il est la RÉFÉRENCE DE CADRAGE (« 1,5-2
- * pions de long »), plus parce qu'il serait le seul mesuré.
- */
-const MONGOOSE_REFERENCE_LENGTH_MM = 1280
-
-/**
- * VEHICLE_PX_PER_MM — LA CONSTANTE NOMMÉE UNIQUE de la règle de taille (décision de cadrage) :
- * un millimètre-monde vaut CE NOMBRE de pixels-écran, POUR TOUTE FAMILLE. Parce qu'elle est
- * UNIQUE et appliquée à `naturalHeightPx × mmPerPx` (une propriété du COUPLE sprite×manifeste,
- * jamais couplée à une famille précise dans la formule), les tailles RELATIVES entre véhicules
- * suivent le manifeste : le jour où les 12 familles non garanties reçoivent leur propre mm/px
- * mesuré, leur taille à l'écran devient juste SANS toucher à cette constante.
- */
-const VEHICLE_PX_PER_MM = (PION_REFERENCE_PX * MONGOOSE_TO_PION_RATIO) / MONGOOSE_REFERENCE_LENGTH_MM
-
-/** Plancher de lisibilité : aucun véhicule ne descend sous le noyau d'un pion. */
-export const VEHICLE_FLOOR_PX = PION_REFERENCE_PX
-
-/**
- * Plafond DOUX : au-delà, la croissance ralentit (racine carrée) au lieu de s'arrêter net — un
- * véhicule très long reste visiblement plus grand qu'un plus petit, mais cesse de dominer
- * l'écran. Choisi à 4× la cible du Mongoose : rien du corpus mesuré aujourd'hui (Warthog,
- * Mongoose, mm/px identique) ne l'atteint — il protège la lecture pour le jour où une famille
- * hors gabarit (le Pelican, dropship, nommé par la décision de cadrage) recevra sa propre
- * mesure et non plus la valeur provisoire des 12 familles non garanties.
- */
-export const VEHICLE_SOFT_CEIL_PX = 4 * MONGOOSE_TO_PION_RATIO * PION_REFERENCE_PX
-
-/**
- * vehicleScreenLengthPx — la longueur d'écran (pixels CSS fixes, avant densité `k`) d'un
- * véhicule, plancher et plafond doux appliqués. `naturalHeightPx` est la hauteur NATIVE du
- * sprite chargé (nez-en-haut : la hauteur EST l'axe de longueur du véhicule) ; `mmPerPx` vient
- * du manifeste (`index.json`) pour SA famille.
- */
-export function vehicleScreenLengthPx(naturalHeightPx: number, mmPerPx: number): number {
+export function vehicleScreenLengthPx(
+  naturalHeightPx: number,
+  mmPerPx: number,
+  scalePxPerM: number,
+): number {
   if (naturalHeightPx <= 0 || mmPerPx <= 0) return 0
-  const raw = naturalHeightPx * mmPerPx * VEHICLE_PX_PER_MM
-  const floored = Math.max(raw, VEHICLE_FLOOR_PX)
-  return floored <= VEHICLE_SOFT_CEIL_PX
-    ? floored
-    : VEHICLE_SOFT_CEIL_PX + Math.sqrt(floored - VEHICLE_SOFT_CEIL_PX)
+  return screenLengthPx(
+    spriteWorldLengthM(naturalHeightPx, mmPerPx),
+    scalePxPerM,
+    VEHICLE_MIN_SCREEN_PX,
+  )
 }
 
 /**
@@ -471,17 +414,14 @@ export function vehicleScreenLengthPx(naturalHeightPx: number, mmPerPx: number):
  * `k`, que l'appelant applique en plus) pour que le sprite atteigne `vehicleScreenLengthPx` sur
  * son axe de hauteur, aspect ratio préservé.
  */
-export function vehicleSpriteScale(naturalHeightPx: number, mmPerPx: number): number {
+export function vehicleSpriteScale(
+  naturalHeightPx: number,
+  mmPerPx: number,
+  scalePxPerM: number,
+): number {
   if (naturalHeightPx <= 0) return 0
-  return vehicleScreenLengthPx(naturalHeightPx, mmPerPx) / naturalHeightPx
+  return vehicleScreenLengthPx(naturalHeightPx, mmPerPx, scalePxPerM) / naturalHeightPx
 }
-
-/**
- * Demi-diagonale du petit losange neutre d'un châssis non résolu — le noyau d'un pion, grossi
- * du cadrage du 2026-09-19 comme les châssis (`VEHICLE_CADRAGE_BUMP`) : un châssis non résolu
- * ne doit pas rétrécir relativement à celui qui est dessiné à côté de lui.
- */
-export const VEHICLE_UNKNOWN_HALF_PX = CORE_RADIUS * VEHICLE_CADRAGE_BUMP
 
 // --- OCCUPATION -------------------------------------------------------------------------------
 

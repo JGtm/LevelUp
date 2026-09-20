@@ -190,8 +190,9 @@ export function vehicleShotPlacement(
   headingDeg: number,
   size: VehicleMountSpriteSize,
   k: number,
+  scalePxPerM: number,
 ): VehicleShotPlacement {
-  const scale = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx) * k
+  const scale = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, scalePxPerM) * k
   const localX = mount.ax * size.naturalWidthPx
   const localY = mount.ay * size.naturalHeightPx
   const screenAngle = vehicleScreenAngle(headingDeg)
@@ -229,12 +230,14 @@ export function vehicleShotOrigin(args: {
   center: XY
   sizeOf: ((family: string) => VehicleMountSpriteSize | null) | undefined
   k: number
+  /** L'échelle du cadrage (pixels CSS par mètre) : le montage suit la taille du sprite. */
+  scalePxPerM: number
 }): { origin: XY; angle: number | null } {
   const { h, vehicleShot, center, sizeOf, k } = args
   if (!vehicleShot) return { origin: center, angle: h === null ? null : (-h * Math.PI) / 180 }
   const { mount, family, headingDeg } = vehicleShot
   const size = family ? sizeOf?.(family) : null
   if (!size) return { origin: center, angle: mount.classe === 'tourelle' ? null : vehicleAimAngle(headingDeg) }
-  const { offset, angle } = vehicleShotPlacement(mount, headingDeg, size, k)
+  const { offset, angle } = vehicleShotPlacement(mount, headingDeg, size, k, args.scalePxPerM)
   return { origin: { x: center.x + offset.x, y: center.y + offset.y }, angle }
 }
