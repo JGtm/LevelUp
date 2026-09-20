@@ -11,7 +11,7 @@
  * (capability, jamais slug==) plutôt que sonder les rows. Même pattern que
  * SquadFdaGapCumulativeCard.
  */
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -58,6 +58,15 @@ export function SquadNetLivesChart({
     return merged.length > 0 ? [{ key: 'net-lives-flat', datapoints: merged }] : []
   }, [players, rowsByPlayer])
 
+  // `buildOption` fait partie des dépendances du useMemo de ChartCard : une
+  // lambda écrite dans le JSX est neuve à chaque rendu, donc l'option ECharts
+  // est rebâtie et l'animation d'entrée REJOUÉE même à donnée inchangée.
+  // Déclaré avant le retour anticipé (règle des hooks).
+  const buildOption = useCallback(
+    () => buildNetLivesCumulativeOption(rowsByPlayer, { colorByPlayer, playerOrder: players, hp }),
+    [rowsByPlayer, colorByPlayer, players, hp],
+  )
+
   // Titre sans dégâts subis (ex. Halo 5) → masquage silencieux (pas de carte vide).
   if (!providesDamageTaken) return null
 
@@ -72,13 +81,7 @@ export function SquadNetLivesChart({
       series={series}
       height={height}
       emptyMessage={emptyMessage}
-      buildOption={() =>
-        buildNetLivesCumulativeOption(rowsByPlayer, {
-          colorByPlayer,
-          playerOrder: players,
-          hp,
-        })
-      }
+      buildOption={buildOption}
     />
   )
 }

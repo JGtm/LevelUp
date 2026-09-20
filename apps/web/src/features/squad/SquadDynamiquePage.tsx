@@ -29,13 +29,35 @@ export function SquadDynamiquePage() {
   const { selectedRows, confirmedGamertags, pageData, playerSlug } = useSquadContext()
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
-  const intensityProfile = pageData?.intensity_profile
   const performanceSeries = pageData?.performance_series
+  // Dérivés MÉMOÏSÉS : ils descendent en props dans des ChartCard, qui
+  // reconstruisent leur option ECharts (et rejouent leur animation d'entrée) dès
+  // qu'une prop change d'identité, même à valeur égale. Les objets/tableaux
+  // fabriqués à la volée dans le JSX (`?? {}`, `[main, ...co].filter(...)`)
+  // étaient neufs à chaque rendu.
+  const intensityProfile = useMemo(
+    () => pageData?.intensity_profile ?? { options: [], rows: {} },
+    [pageData?.intensity_profile],
+  )
+  const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
   // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
   // pour que le mapping couleurs matche les clés des séries par joueur.
   const mainPlayerKey = pageData?.main_player ?? playerSlug
-  const playerColors = getSquadPlayerColors(mainPlayerKey, confirmedGamertags)
+  const playerColors = useMemo(
+    () => getSquadPlayerColors(mainPlayerKey, confirmedGamertags),
+    [mainPlayerKey, confirmedGamertags],
+  )
+  /** Roster complet — ordre des bandes du profil d'intensité. */
+  const roster = useMemo(
+    () => [mainPlayerKey, ...confirmedGamertags],
+    [mainPlayerKey, confirmedGamertags],
+  )
+  /** Roster restreint aux joueurs ayant une série de performance. */
+  const playerOrder = useMemo(
+    () => roster.filter((p) => performanceSeries?.[p]),
+    [roster, performanceSeries],
+  )
   const engagementTeammates = useMemo<SquadTeammateEntry[]>(
     () =>
       selectedRows
@@ -73,9 +95,9 @@ export function SquadDynamiquePage() {
         teamLabel={t.intensity.teamLabel}
         lobbyLabel={t.intensity.lobbyLabel}
         emptyMessage={t.empty.noBlockData}
-        profile={intensityProfile ?? { options: [], rows: {} }}
+        profile={intensityProfile}
         colorByPlayer={playerColors}
-        playerOrder={[mainPlayerKey, ...confirmedGamertags]}
+        playerOrder={roster}
       />
 
       {/* Premier frag / première mort — bandes par joueur (2 à 4 joueurs).
@@ -92,15 +114,15 @@ export function SquadDynamiquePage() {
           l'explication partagée EfficiencyTooltipText décrit les dégâts bruts
           des charts Timeseries/Session. */}
       <SquadEfficiencyChart
-        rowsByPlayer={performanceSeries ?? {}}
-        playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
+        rowsByPlayer={perfSeriesByPlayer}
+        playerOrder={playerOrder}
         colorByPlayer={playerColors}
         labels={t.efficiencySeries}
       />
 
       <SquadNetLivesChart
-        rowsByPlayer={performanceSeries ?? {}}
-        playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
+        rowsByPlayer={perfSeriesByPlayer}
+        playerOrder={playerOrder}
         colorByPlayer={playerColors}
         t={t}
         emptyMessage={t.empty.noBlockData}

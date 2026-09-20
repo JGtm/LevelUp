@@ -21,14 +21,24 @@ export const SQUAD_MAIN_PLAYER_TOKEN: SemanticToken = 'squad-player-1'
 
 /**
  * Tokens couleur des 3 slots coéquipiers (ordre = ordre d'affichage dans
- * GamertagCombobox). Doit rester aligné avec `CHART_COLORS` dans
- * SquadLayout.tsx.
+ * GamertagCombobox).
  */
 export const SQUAD_TEAMMATE_COLOR_TOKENS: SemanticToken[] = [
   'squad-player-2',
   'squad-player-3',
   'squad-player-4',
 ]
+
+/**
+ * Nombre maximum de coéquipiers sélectionnables en plus du joueur actif.
+ *
+ * Défini ICI parce que c'est exactement le nombre de slots de couleur
+ * coéquipier : un 4e coéquipier n'aurait pas de teinte propre. Vit dans un
+ * module partagé (et non dans un `.tsx`) depuis l'extraction de
+ * `SquadFilterBar` le 2026-09-20 — la barre et le layout en ont tous deux
+ * besoin (plafond du combobox d'un côté, init depuis les amis de l'autre).
+ */
+export const MAX_SELECTION = SQUAD_TEAMMATE_COLOR_TOKENS.length
 
 /**
  * Retourne les couleurs hex résolues (palette active) pour les coéquipiers.

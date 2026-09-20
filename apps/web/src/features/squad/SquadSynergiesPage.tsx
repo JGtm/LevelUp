@@ -57,6 +57,53 @@ export function SquadSynergiesPage() {
   // retours anticipés (règle des hooks).
   const tapeDominanceLabels = useMemo(() => buildDominanceLabels(locale), [locale])
 
+  // Ordre / couleurs / libellés de résultat — MÉMOÏSÉS et déclarés AVANT les
+  // retours anticipés (règle des hooks). Sans mémo, un simple rendu de la page
+  // (changement de contexte, refetch qui rend la même donnée) fabriquait des
+  // props neuves pour SquadFragSection, SquadAssistPairsChart et
+  // OutcomeSequenceTape : les `useMemo` de ces graphes se re-déclenchaient, la
+  // ChartCard rebâtissait son option ECharts (dont les `formatter`, comparés par
+  // référence par echarts-for-react) et l'animation d'entrée REJOUAIT sans
+  // qu'aucune valeur n'ait bougé.
+  // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
+  // playerSlug est l'URL param (souvent lowercase) : on aligne sur main_player.
+  const mainPlayerKey = pageData?.main_player ?? playerSlug
+  const fragClasses = pageData?.frag_classes
+  const performanceSeries = pageData?.performance_series
+  // Repli stable : `?? {}` écrit dans le JSX fabriquait un objet neuf à CHAQUE
+  // rendu quand le bloc est absent — même symptôme, en pire (rien à afficher).
+  const fragClassesByPlayer = useMemo(() => fragClasses ?? {}, [fragClasses])
+  const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
+  const playerColors = useMemo(
+    () => getSquadPlayerColors(mainPlayerKey, confirmedGamertags),
+    [mainPlayerKey, confirmedGamertags],
+  )
+  // Section « frags » (relocalisée depuis Contributions) : mêmes couleurs/ordre
+  // que SquadContributionsPage — main_player (casse serveur) puis coéquipiers,
+  // restreint aux joueurs ayant des frag_classes ou une performance_series.
+  const playerOrder = useMemo(
+    () =>
+      [mainPlayerKey, ...confirmedGamertags].filter((p) => fragClasses?.[p] || performanceSeries?.[p]),
+    [mainPlayerKey, confirmedGamertags, fragClasses, performanceSeries],
+  )
+  // Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers. Le
+  // graphe des assistances s'en sert pour l'ordre des barres ET pour les couleurs par
+  // joueur — mêmes teintes que partout ailleurs sur la page.
+  const roster = useMemo(
+    () => [mainPlayerKey, ...confirmedGamertags],
+    [mainPlayerKey, confirmedGamertags],
+  )
+  const outcomes = mappings?.outcomes
+  const outcomeLabels = useMemo(
+    () => ({
+      win: outcomes?.['win']?.label ?? t.history.outcomeLabel.win,
+      loss: outcomes?.['loss']?.label ?? t.history.outcomeLabel.loss,
+      tie: outcomes?.['tie']?.label ?? t.history.outcomeLabel.draw,
+      dnf: outcomes?.['dnf']?.label ?? t.history.outcomeLabel.dnf,
+    }),
+    [outcomes, t],
+  )
+
   const hasSelection = confirmedGamertags.length > 0
   const hasRows = selectedRows.length > 0
 
@@ -86,20 +133,6 @@ export function SquadSynergiesPage() {
     )
   }
 
-  // Section « frags » (relocalisée depuis Contributions) : mêmes couleurs/ordre
-  // que SquadContributionsPage — main_player (casse serveur) puis coéquipiers,
-  // restreint aux joueurs ayant des frag_classes ou une performance_series.
-  const mainPlayerKey = pageData?.main_player ?? playerSlug
-  const playerColors = getSquadPlayerColors(mainPlayerKey, confirmedGamertags)
-  const playerOrder = [mainPlayerKey, ...confirmedGamertags].filter(
-    (p) => pageData?.frag_classes?.[p] || pageData?.performance_series?.[p],
-  )
-
-  // Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers. Le
-  // graphe des assistances s'en sert pour l'ordre des barres ET pour les couleurs par
-  // joueur — mêmes teintes que partout ailleurs sur la page.
-  const roster = [mainPlayerKey, ...confirmedGamertags]
-
   const mapAssets = mappings?.assets?.['map']
   const mapLabelOf = (mapUI: string) => mapAssets?.[mapUI]?.label ?? mapUI
   const mapBreakdown = pageData?.map_breakdown ?? []
@@ -115,13 +148,6 @@ export function SquadSynergiesPage() {
   // ETAT (titre qui ne nomme pas le tueur de chaque mort, ou aucun match mesure) et
   // non un zero. Les blocs ne sont alors pas montes du tout.
   const echange = pageData?.echange
-
-  const outcomeLabels = {
-    win: mappings?.outcomes?.['win']?.label ?? t.history.outcomeLabel.win,
-    loss: mappings?.outcomes?.['loss']?.label ?? t.history.outcomeLabel.loss,
-    tie: mappings?.outcomes?.['tie']?.label ?? t.history.outcomeLabel.draw,
-    dnf: mappings?.outcomes?.['dnf']?.label ?? t.history.outcomeLabel.dnf,
-  }
 
   return (
     <div className="space-y-4">
@@ -253,7 +279,7 @@ export function SquadSynergiesPage() {
           Le card FDA porte ses propres pastilles KPI « écart moyen / match » et
           garde son self-gate capability (défense en profondeur). */}
       <SquadFragSection
-        fragClassesByPlayer={pageData?.frag_classes ?? {}}
+        fragClassesByPlayer={fragClassesByPlayer}
         weaponKills={pageData?.weapon_kills}
         weaponAccuracy={pageData?.weapon_accuracy}
         playerColors={playerColors}
@@ -263,7 +289,7 @@ export function SquadSynergiesPage() {
         leftOfBreakdown={
           hasExpectedStats ? (
             <SquadFdaGapCumulativeCard
-              rowsByPlayer={pageData?.performance_series ?? {}}
+              rowsByPlayer={perfSeriesByPlayer}
               playerOrder={playerOrder}
               colorByPlayer={playerColors}
               t={t}
