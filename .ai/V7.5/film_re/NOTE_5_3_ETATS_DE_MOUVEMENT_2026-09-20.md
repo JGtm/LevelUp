@@ -16,8 +16,8 @@
 |---|---|---|---|
 | **Accroupi** | **OUI, directement** | `ti=35 i29 unit-crouch-component` | ETAT par image : booleen + fraction 0..1 |
 | **Glissade** | **OUI, directement** | `ti=35 i62 biped-slide-component` | ETAT par image : booleen + direction/intensite + 2 fractions 0..1 + un octet |
-| **Sprint** | **PAS DE COMPOSANT DE CE NOM** | candidat `ti=35 i54 biped-mobility-action-component` ; repli `ti=35 i1` (vitesse) | i54 = signal d'INITIATION + transformation ; la vitesse est un etat continu |
-| **Saut** | **PAS DE COMPOSANT DE CE NOM** | candidats `ti=35 i55 biped-posture-physics-component` (2 bits), `ti=35 i63 biped-action-component` (partiel), `ti=35 i1` (vitesse verticale) | a trancher par la mesure sur film |
+| **Sprint** | **OUI, mais sans son nom** | `ti=35 i54 biped-mobility-action-component` — l'ACTION DE MOBILITE, dont le corps est PARTAGE avec l'evenement de fil 43 `initiate_mobility_action` (§ 2.7) | EVENEMENT date : flag1 = « une action est transmise », puis un identifiant et une transformation. **Quelle** action reste a nommer (§ 2.8) ; repli mesurable par la vitesse `i1` |
+| **Saut** | **NON — ni composant, ni evenement de joueur** | les seuls evenements de saut sont `ai_jump` (78) et `AILand` (72), **prefixes AI**, dans le vocabulaire de navigation des bots (§ 2.7) | **NEGATIF MESURE.** Le saut du joueur se DERIVE de la composante verticale d'`i1` ; candidats secondaires `i55` (§ 2.4) et `i63` (partiel) |
 
 **LE NEGATIF EST MESURE, PAS SUPPOSE** (§ 3) : sur les **64 composants** de l'archetype bipede
 (`ti=35`), **aucun** ne porte « sprint » ni « jump » dans son nom ; et sur le pool **complet**
@@ -236,6 +236,119 @@ aucune conclusion de posture ne doit s'appuyer sur `i55`.**
 direction + `R(10)` magnitude. C'est la voie du SAUT par derivation (composante verticale) et
 du SPRINT par seuil de vitesse au sol.
 
+### 2.6 `ti=35 i56 biped-spartan-ability-energy` — L'ENERGIE DE LA CAPACITE D'ARMURE, ET NON LE SPRINT
+
+Le catalogue d'aout (`RECAP_STATS_EXPLOITABLES.md:229`, `HANDOFF_FILM_EXTRACTION_EXTERNAL_DEV.md:595`)
+range `i56` sous « crouch / sprint / slide / mobilite ». **Le lecteur du depot dit autre chose, et
+il a ete relu au desassemblage** (`ability_energy.go`, deser `FUN_140fc1410` -> `FUN_140fc147c`) :
+
+```
+R(3) masque ; puis, POUR CHAQUE BIT ARME, R(7)   -> [bipede + 0x12ea + i]
+bit a 0 -> valeur par defaut 0x7F, AUCUN bit lu
+cout total : 3 + 7 x popcount(masque) = 3 a 24 bits
+```
+
+C'est **la jauge des TROIS EMPLACEMENTS DE CHARGE de la capacite d'armure**, compagnon d'`i48`
+`biped-desired-ability-set` (la capacite SELECTIONNEE). Le sprint de Halo Infinite ne consomme
+aucune energie — le propulseur, le grappin, le repulseur, le mur, le camo et le surbouclier si.
+**`i56` mesure donc l'usage d'EQUIPEMENT, pas le sprint** ; le classer sous « sprint » est une
+erreur du catalogue d'aout, que la presente note corrige.
+
+> Le fichier du depot portait deja la lecon : « le DECOMPILE MENT ICI » — Ghidra supprimait le
+> bloc froid qui lit les 7 bits, et un portage anterieur en avait conclu « 3 bits, bit-exact ».
+> Seul le desassemblage fait foi.
+
+### 2.7 LE CANAL D'EVENEMENTS — UN SEUL CORPS POUR DEUX CANAUX, ET UN CANAL MESURE VIDE
+
+Le film porte, a cote des composants, une liste d'EVENEMENTS. Deux types y touchent au
+mouvement (`GRAMMAIRE_EVENTS_FILM_2026-08-30.md`, annexe A, table reconstruite depuis le
+registrar `FUN_140e453b4`) :
+
+| type de fil | nom | tampon | lecteur `vtable+0x68` |
+|---|---|---|---|
+| **43** | `initiate_mobility_action` | 164 octets | `0x142ef8f04` |
+| **78** | `ai_jump` | 28 octets | `0x142ef8df0` |
+
+> **CORRECTION DE LECTURE** : les nombres « 164 » et « 28 » sont la **TAILLE DU TAMPON DE
+> RECEPTION** (`vtable+0x10`), pas un nombre d'occurrences — l'en-tete de l'annexe A le dit
+> mot pour mot. Aucun comptage de corpus ne se lit dans cette table.
+
+**LE FAIT DECISIF : L'EVENEMENT 43 ET LE COMPOSANT `i54` PARTAGENT LE MEME CORPS.**
+
+```c
+undefined1 FUN_142ef8f04(..., longlong param_3, undefined8 param_4) {
+  uVar1 = FUN_1406cf008(param_4);          // R(1)  -> +0x9d   == flag1
+  *(undefined1 *)(param_3 + 0x9d) = uVar1;
+  *(undefined1 *)(param_3 + 0x9e) = 0;     //          +0x9e   == flag2, FORCE A 0
+  FUN_1408f02c8(param_3, param_4);         // LE MEME CORPS QUE i54
+  return 1;
+}
+```
+
+`FUN_1408f02c8` n'a **que deux appelants** (xrefs Ghidra) : `FUN_1408f0264` (le deser du
+composant `i54`) et `FUN_142ef8f04` (le lecteur de l'evenement 43). Meme structure, memes
+champs, meme enum — **ce qui se decode une fois sert les deux canaux**.
+
+**MAIS LE CANAL D'EVENEMENTS EST MESURE VIDE POUR CE TYPE.** Le lot R5 (2026-09-03) :
+« Treize types suspects ont ZERO tete sur les 325 160 paquets » — dont 42 et 43. Le lot R7,
+ecrit exactement pour lever le doute en marchant la LISTE ENTIERE de chaque paquet, conclut
+(`RAPPORT_R7_TRAME_COMPLETE_2026-09-03.md`) :
+
+| type | verdict R7 | mesure |
+|---|---|---|
+| 42 `biped_dodge` | **ABSENT du film** | 0 tete pour 30,3 attendues |
+| 43 `initiate_mobility_action` | **ABSENT du film** | 0 tete pour 16,3 attendues |
+
+**CONSEQUENCE POUR LE LOT** : la voie vivante de l'action de mobilite est le **COMPOSANT
+`i54`**, pas l'evenement. C'est coherent avec ce que le depot a deja mesure sur `i54` — « le
+temoin sans capacite porte quand meme 631 evenements » (`ecs_table.tsv`, ligne 743) : l'action
+de mobilite circule, mais dans le flux d'etat.
+
+> Confirmation croisee du champ-a-champ : le lot R7 portait DEJA la grammaire du type 43
+> (`r7_charges_lot5_research_test.go:70`) et elle finit par `Skip(1 + 7 + 2 + 1)` — exactement
+> les `+0xa1`, `+0x98`, `+0x9c`, `+0x9f` du § 2.3, releves independamment. Deux lectures, une
+> grammaire.
+
+**LE SAUT DU JOUEUR N'EST PAS UN EVENEMENT — NEGATIF MESURE SUR LA TABLE ENTIERE.** Sur les 123
+types, les seuls au vocabulaire du saut sont **`ai_jump` (78)** et **`AILand` (72)**, tous deux
+prefixes `AI`. Le vocabulaire de l'image qui les entoure est celui de la NAVIGATION DES BOTS :
+`AI Jump Action: relevance = %5.3f`, `ai_clamber_from_jump`, `ai_clamber_max_jump_height`,
+`Bot_EnablePathlessMeleeJump`, `BotTuning_JumpUpExceedsMaxHeightAddedCost`,
+`HKAI_TRAVERSAL_TYPE_JUMP` (une categorie de traversee du moteur de navigation Havok). Aucun
+type `biped_jump` ni `player_jump` n'existe. **Le saut du joueur reste donc a deriver de `i1`**
+(composante verticale), et c'est ce que 5.3.2 mesure.
+
+### 2.8 L'ENUM DE L'ACTION DE MOBILITE — LES TROIS CANDIDATS, ET CE QUI LES DEPARTAGERA
+
+Le corps partage porte trois champs susceptibles de nommer l'action :
+
+| champ | largeur | forme | lecture |
+|---|---|---|---|
+| `+0x08` | `R(1)` puis `R(10)` | sentinelle `0xFFFFFFFF` quand absent ; plage `FUN_1406d310c(0x400)` = 1 024 | **index de definition** d'action, le plus probable |
+| `+0x98` | `R(7)` | entier nu 0..127 | |
+| `+0x9c` | `R(2)` | entier nu 0..3, masque `& 0x03` | **candidat n°1 pour l'enum**, voir ci-dessous |
+
+**CE QUI DESIGNE `+0x9c`** : la table d'actions d'entree du moteur (`143d03c40`, § 3) aligne
+**exactement quatre** actions de mobilite consecutives — `Sprint` (`143d03c40`), `Thruster`
+(`143d03c48`), `Clamber` (`143d03c58`), `Slide` (`143d03c60`) — et `+0x9c` a exactement quatre
+valeurs. Ce n'est PAS une preuve : c'est une coincidence de cardinal, et la table d'entree est
+une table de LIAISON DE COMMANDES, pas forcement l'enum reseau.
+
+**AUCUN DES TROIS CHAMPS N'EST NOMME DANS L'IMAGE** : le balayage du pool complet des chaines
+(§ 3) ne rend aucune etiquette attachee a ces offsets. Les nommer demande donc l'une des deux
+voies suivantes, et la premiere est de loin la moins chere :
+
+1. **LA VENTILATION SUR FILM (5.3.2)** — croiser, par joueur et par instant, la valeur de
+   `+0x9c` (et de `+0x08`) avec la vitesse au sol d'`i1`, l'etat d'`i62` (glissade) et la
+   variation d'altitude. Une classe qui coincide avec « vitesse > marche et pas de glissade »
+   est le sprint ; une classe qui coincide avec `i62` actif est la glissade ; une classe qui
+   coincide avec une montee franche en z contre un mur est l'escalade ; le reste est le
+   propulseur, recoupable par `i56` (§ 2.6) et `i48`.
+2. la chasse au CONSOMMATEUR du champ dans l'executable (quel code du jeu branche sur
+   `bipede + 0x1294`), plus couteuse et sans garantie.
+
+**LA VENTILATION DE L'ENUM PAR JOUEUR S'AJOUTE DONC AU TABLEAU DE 5.3.2.**
+
 ---
 
 ## 3. LE NEGATIF, MESURE DEUX FOIS
@@ -280,8 +393,10 @@ d'action de `i54`, tag de `i55`, action de `i63`, ou derivation de la vitesse `i
 1. `i29` : distribution du booleen et de la fraction ; les intervalles accroupis tiennent-ils ?
 2. `i62` : le booleen de glissade donne-t-il des intervalles courts (< 2 s) coherents avec une
    vitesse elevee decroissante ?
-3. `i54` : combien d'evenements par joueur et par match ; `+0x08`, `+0x98` et `+0x9c`
-   se partagent-ils en classes stables (sprint / escalade / poussee) ?
+3. `i54` : combien d'evenements par joueur et par match, et **LA VENTILATION DE L'ENUM** —
+   `+0x9c` (2 bits) et `+0x08` (10 bits) croises avec la vitesse au sol d'`i1`, l'etat de
+   glissade d'`i62` et la variation d'altitude, pour NOMMER les classes (sprint / escalade /
+   glissade / propulseur). Voir § 2.8 : c'est la voie la moins chere pour nommer l'enum.
 4. `i55` : le compte et la distribution du tag sont FAITS sur les mini-bobines (§ 2.4 bis) ; ce
    qui reste est le chemin DELTA — `i55` y est-il declare, avec quels tags, et la marche y
    ferme-t-elle apres l'avoir franchi ?
@@ -328,4 +443,24 @@ go test -tags=research -count=1 -v -run TestMouvementI55D1 \
   l'adresse du SLOT de nom (`descripteur + 0x18`) : `143d0c9d8` au lieu de `143d0c9c0`,
   `143d0ca80` au lieu de `143d0ca68`. Aucune grammaire n'est fausse ; c'est la meme
   incoherence de convention que la decouverte de bord du lot 3.7 (§ 7.3).
-- **D3 (5.3)** — `MobilityActionHook` (`observateur.go`) n'a toujours aucun consommateur.
+- **D3 (5.3)** — `MobilityActionHook` (`observateur.go`) n'a toujours aucun consommateur. **Il prend son sens
+  au § 2.7** : c'est le seul point d'ecoute existant de l'action de mobilite, et le canal
+  d'evenements qui porterait la meme chose est mesure VIDE.
+- **D4 (5.3)** — **LES DEUX TABLES DE TYPES D'EVENEMENT DU DEPOT NE SONT PAS INDEXEES PAREIL, ET
+  C'ETAIT UNE QUESTION OUVERTE.** `event_types_catalogue_test.go` (types 50..127, base
+  `0x144724A90`) porte son propre avertissement : « valable SEULEMENT si les deux espaces
+  d'index coincident (non etabli) ». **Ils ne coincident pas, et l'arithmetique de la colonne
+  « Objet » de l'annexe A le montre sans Ghidra** : l'objet du type de fil 43 est `0x144724d18`,
+  soit `0x144724A90 + 81*8` — donc le SLOT 81 ; celui du type 78 est `0x144724d50`, soit le
+  SLOT 88. Or `eventTypeNames[81]` vaut bien `initiate_mobility_action` et `eventTypeNames[88]`
+  vaut `ai_jump`. **Le piege est reel** : nommer un type de FIL avec cette table rend
+  « MusicTrigger » pour ce qui est `ai_jump`. Les instruments de recherche qui comptent
+  (`lot1_tirs`, `r7_grammaire`, `r7_charges_lot5`) utilisent la bonne table, celle du
+  registrar. **NON TRAITEE** : un lot d'outillage renommerait la carte en `eventSlotNames` et
+  poserait le garde-rail.
+- **D5 (5.3)** — **LE CATALOGUE D'AOUT RANGE `i56` SOUS « SPRINT », ET C'EST FAUX** (§ 2.6) :
+  `biped-spartan-ability-energy` est la jauge des trois emplacements de charge de la capacite
+  d'armure (masque `R(3)` + `R(7)` par charge armee, defaut `0x7F`), donc de l'EQUIPEMENT. Deux
+  documents le propagent (`RECAP_STATS_EXPLOITABLES.md:229`,
+  `HANDOFF_FILM_EXTRACTION_EXTERNAL_DEV.md:595`). **NON TRAITEE** : les corriger demande de
+  toucher deux documents hors perimetre de ce lot ; la presente note fait foi en attendant.
