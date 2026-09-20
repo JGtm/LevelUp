@@ -63,7 +63,7 @@
  */
 import type { ReplayVehicleRide } from '@/lib/api/types'
 
-import { CORE_RADIUS, PION_VISIBLE_DIAMETER_PX } from '../layers/replayMarkers'
+import { screenLengthPx, spriteWorldLengthMm } from './screenSizes'
 import { lastIndexAt, positionAt, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
@@ -239,6 +239,45 @@ export const VEHICLE_HUMAN_FAMILIES: ReadonlySet<string> = new Set([
 ])
 
 /**
+ * FAMILLES_ARME_FIXE — LES CHÂSSIS DONT L'ARME EST SOLIDAIRE DU CORPS, et dont le nez suit donc
+ * ce que le CONDUCTEUR vise.
+ *
+ * LA DÉCISION EST DE L'UTILISATEUR (2026-09-20) : « le châssis s'oriente là où l'ARME pointe ».
+ * Elle tranche un problème que la mesure a fermé dans l'autre sens — le lot 5.2-B a RÉFUTÉ
+ * l'orientation propre du film : le composant candidat de `ti=40` (`i2`) est un vecteur HAUT,
+ * pas un avant (médianes de 54 à 105 degrés contre la vélocité). Le cap du châssis ne viendra
+ * donc pas du film ; il vient de la seule direction MESURÉE que le véhicule porte en propre, la
+ * visée de son conducteur (`rides[].aim`, schéma 31 — justesse 0,2 à 0,5 degré contre la
+ * référence publiée, couverture 35 épisodes attestés sur 35).
+ *
+ * POURQUOI CES NEUF FAMILLES, ET PAS LES AUTRES. Sur un Ghost, une Banshee, un Wraith, une Wasp,
+ * un Chopper, une Shade ou une tourelle montée, l'arme NE TOURNE PAS par rapport au corps :
+ * viser, c'est tourner le véhicule, donc la visée EST l'avant du châssis. Le Mongoose et le
+ * Gungoose n'ont pas d'arme de conducteur mais leur avant suit le conducteur de la même façon.
+ *
+ * TOUTE AUTRE FAMILLE EST À TOURELLE, ET REÇOIT LE REPLI — c'est-à-dire la vélocité, comme
+ * avant : Warthog (et ses variantes Gauss et rockethog), Razorback, Scorpion, Falcon, Pélican,
+ * Phantom, Skiff. Sur ces châssis le tireur n'est pas le pilote et l'arme tourne seule : prêter
+ * la visée au corps le ferait pivoter à chaque balayage de tourelle.
+ *
+ * UNE SEULE TABLE ACTIVE, et c'est la même doctrine que `VEHICLE_PLASMA_FAMILIES` : la liste à
+ * tourelle est ÉCRITE ci-dessus mais n'est pas consultée par le code — deux tables actives
+ * pourraient diverger (une famille absente des deux, par exemple un futur châssis) sans qu'aucun
+ * test ne le voie. Une famille inconnue de ce calque reçoit donc la vélocité, le repli neutre.
+ */
+export const FAMILLES_ARME_FIXE: ReadonlySet<string> = new Set([
+  'ghost',
+  'banshee',
+  'wraith',
+  'wasp',
+  'chopper',
+  'shade',
+  'tourelle_montee',
+  'mongoose',
+  'gungoose',
+])
+
+/**
  * vehicleExplosionKindOf — LA FACTION DE LA DÉFLAGRATION. `undefined`/`''` (châssis non résolu)
  * et toute famille absente de `VEHICLE_PLASMA_FAMILIES` (y compris une famille future, inconnue
  * de ce calque) reçoivent `'normal'` — le repli neutre documenté ci-dessus.
@@ -371,81 +410,37 @@ export function vehiclePositionAt(track: ReplayVehicleTrackReady, frame: number)
   return track.spawn ? { x: track.spawn.x, y: track.spawn.y } : null
 }
 
-// --- TAILLE (décision de cadrage : ancrée sur le pion) ---------------------------------------
+// --- TAILLE (taille réelle si l'échelle le permet, minimum d'écran sinon) --------------------
+//
+// LE MODÈLE ET SES CONSTANTES VIVENT DANS `model/screenSizes.ts` — un seul fichier pour toutes
+// les familles dessinées sur la carte, avec la décision de l'utilisateur du 2026-09-19, ses
+// mesures et l'inventaire des familles qui n'ont pas de longueur monde. Ce qui suit ne fait que
+// l'appliquer aux véhicules, la seule famille dont la longueur monde EST mesurée.
 
 /**
- * PION_REFERENCE_PX — la taille VISIBLE d'un pion, ancre de toute la règle de taille des
- * véhicules.
+ * vehicleScreenLengthPx — la longueur d'écran (pixels CSS, avant densité `k`) d'un véhicule à
+ * l'échelle de cadrage courante.
  *
- * CORRIGÉ LE 2026-09-09 (retour utilisateur : « le Ghost est plus petit que le pion du
- * joueur, ça fait hyper bizarre »). L'ancre valait `CORE_RADIUS * 2` = 6,80 px, le NOYAU
- * SEUL — or un pion au rez-de-chaussée mesure 8,80 px de large, lisere compris, et bien
- * plus avec ses anneaux d'étage. La cible « Mongoose = 1,75 pion de long » se calculait
- * donc contre une référence 1,29 fois trop petite : le Mongoose sortait à 11,90 px de long
- * pour 7,25 px de LARGE, plus étroit que le pion dont il est censé faire 1,75 fois la
- * longueur, et le Ghost à 13,02 px de large se lisait plus petit qu'un pion à anneaux.
+ * `naturalHeightPx` est la hauteur NATIVE du sprite chargé (nez-en-haut : la hauteur EST l'axe
+ * de longueur du véhicule) ; `mmPerPx` vient du manifeste (`index.json`) pour SA famille ; les
+ * deux ensemble donnent la longueur MONDE. `scalePxPerM` est l'échelle du cadrage
+ * (`scaleOf(view)`).
  *
- * CE N'ÉTAIT PAS LE PLANCHER. La mesure du 2026-09-09 sur les PNG réels et le manifeste le
- * dit sans ambiguïté : AUCUNE famille n'atteint `VEHICLE_FLOOR_PX` (la plus petite, le
- * Mongoose, en était à 75 % au-dessus). Le plancher n'a jamais servi — c'est l'ancre qui
- * était fausse, et la corriger grossit toutes les familles du même facteur 1,29, sans
- * toucher à leurs proportions relatives.
+ * CE QUI A CHANGÉ LE 2026-09-20 : cette longueur dépend désormais de l'ÉCHELLE DE LA CARTE,
+ * PLANCHÉE à l'ancien cadrage +20 % (`PX_PAR_MM_MINIMUM_ECRAN`). Elle était constante — la même
+ * à l'écran sur une carte de 54 m et sur une de 273 m —, ce qui rendait le véhicule trop petit
+ * sur les grandes (retour utilisateur du 2026-09-19) et hors de proportion sur les petites. Le
+ * plancher porte sur l'ÉCHELLE, pas sur la taille : les dix-huit familles le franchissent
+ * ENSEMBLE et restent donc proportionnelles à toute échelle. Détail et mesures :
+ * `screenSizes.ts`.
  */
-const PION_REFERENCE_PX = PION_VISIBLE_DIAMETER_PX
-
-/** Milieu de la fourchette demandée (1,5-2 pions de long pour le Mongoose). */
-const MONGOOSE_TO_PION_RATIO = 1.75
-
-/**
- * MONGOOSE_REFERENCE_LENGTH_MM — la longueur RÉELLE (nez-en-haut) du sprite Mongoose :
- * 128 px de sprite × 10 mm/px. Ce chiffre n'a PAS besoin de charger le sprite au runtime,
- * il est dérivé une fois, ici, de sa mesure connue.
- *
- * LA NOTE « SEULE FAMILLE GARANTIE AVEC LE WARTHOG » A ÉTÉ RETIRÉE LE 2026-09-09 : elle
- * était périmée. Le manifeste `static/vehicles-assets/halo_infinite/replay/index.json`
- * porte les DIX-HUIT familles en `statut: "valide"`, mesurées le 2026-09-02
- * (`ECHELLES_SPRITES_2026-09-02.md`) — le Ghost à 9,99 mm/px vérifié, par exemple. Le
- * Mongoose reste l'ancre de calibration parce qu'il est la RÉFÉRENCE DE CADRAGE (« 1,5-2
- * pions de long »), plus parce qu'il serait le seul mesuré.
- */
-const MONGOOSE_REFERENCE_LENGTH_MM = 1280
-
-/**
- * VEHICLE_PX_PER_MM — LA CONSTANTE NOMMÉE UNIQUE de la règle de taille (décision de cadrage) :
- * un millimètre-monde vaut CE NOMBRE de pixels-écran, POUR TOUTE FAMILLE. Parce qu'elle est
- * UNIQUE et appliquée à `naturalHeightPx × mmPerPx` (une propriété du COUPLE sprite×manifeste,
- * jamais couplée à une famille précise dans la formule), les tailles RELATIVES entre véhicules
- * suivent le manifeste : le jour où les 12 familles non garanties reçoivent leur propre mm/px
- * mesuré, leur taille à l'écran devient juste SANS toucher à cette constante.
- */
-const VEHICLE_PX_PER_MM = (PION_REFERENCE_PX * MONGOOSE_TO_PION_RATIO) / MONGOOSE_REFERENCE_LENGTH_MM
-
-/** Plancher de lisibilité : aucun véhicule ne descend sous le noyau d'un pion. */
-export const VEHICLE_FLOOR_PX = PION_REFERENCE_PX
-
-/**
- * Plafond DOUX : au-delà, la croissance ralentit (racine carrée) au lieu de s'arrêter net — un
- * véhicule très long reste visiblement plus grand qu'un plus petit, mais cesse de dominer
- * l'écran. Choisi à 4× la cible du Mongoose : rien du corpus mesuré aujourd'hui (Warthog,
- * Mongoose, mm/px identique) ne l'atteint — il protège la lecture pour le jour où une famille
- * hors gabarit (le Pelican, dropship, nommé par la décision de cadrage) recevra sa propre
- * mesure et non plus la valeur provisoire des 12 familles non garanties.
- */
-export const VEHICLE_SOFT_CEIL_PX = 4 * MONGOOSE_TO_PION_RATIO * PION_REFERENCE_PX
-
-/**
- * vehicleScreenLengthPx — la longueur d'écran (pixels CSS fixes, avant densité `k`) d'un
- * véhicule, plancher et plafond doux appliqués. `naturalHeightPx` est la hauteur NATIVE du
- * sprite chargé (nez-en-haut : la hauteur EST l'axe de longueur du véhicule) ; `mmPerPx` vient
- * du manifeste (`index.json`) pour SA famille.
- */
-export function vehicleScreenLengthPx(naturalHeightPx: number, mmPerPx: number): number {
+export function vehicleScreenLengthPx(
+  naturalHeightPx: number,
+  mmPerPx: number,
+  scalePxPerM: number,
+): number {
   if (naturalHeightPx <= 0 || mmPerPx <= 0) return 0
-  const raw = naturalHeightPx * mmPerPx * VEHICLE_PX_PER_MM
-  const floored = Math.max(raw, VEHICLE_FLOOR_PX)
-  return floored <= VEHICLE_SOFT_CEIL_PX
-    ? floored
-    : VEHICLE_SOFT_CEIL_PX + Math.sqrt(floored - VEHICLE_SOFT_CEIL_PX)
+  return screenLengthPx(spriteWorldLengthMm(naturalHeightPx, mmPerPx), scalePxPerM)
 }
 
 /**
@@ -453,13 +448,14 @@ export function vehicleScreenLengthPx(naturalHeightPx: number, mmPerPx: number):
  * `k`, que l'appelant applique en plus) pour que le sprite atteigne `vehicleScreenLengthPx` sur
  * son axe de hauteur, aspect ratio préservé.
  */
-export function vehicleSpriteScale(naturalHeightPx: number, mmPerPx: number): number {
+export function vehicleSpriteScale(
+  naturalHeightPx: number,
+  mmPerPx: number,
+  scalePxPerM: number,
+): number {
   if (naturalHeightPx <= 0) return 0
-  return vehicleScreenLengthPx(naturalHeightPx, mmPerPx) / naturalHeightPx
+  return vehicleScreenLengthPx(naturalHeightPx, mmPerPx, scalePxPerM) / naturalHeightPx
 }
-
-/** Demi-diagonale du petit losange neutre d'un châssis non résolu — le noyau d'un pion. */
-export const VEHICLE_UNKNOWN_HALF_PX = CORE_RADIUS
 
 // --- OCCUPATION -------------------------------------------------------------------------------
 

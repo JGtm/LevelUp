@@ -12,22 +12,35 @@ var killHealthSeries = []struct {
 	h            KillSourceHealth
 	wantVerdict  string
 	wantAlertsGE int
+	// wantDegradsGE : les conditions qui sortent le film du DOMAINE sans rien dire de faux sur
+	// les lignes qui restent ([KillSourceHealth.Degradations], lot 5.2b.1). Le BTB est passe de
+	// l ALERTE a la DEGRADATION le 2026-09-20 : voir le commentaire de son cas.
+	wantDegradsGE int
 }{
 	{KillSourceHealth{Film: "000d5950", Candidates: 100, Published: 93,
-		UnexplainedPair: 4, UnexplainedSelf: 3, DeathsReal: 93, DeathsCovered: 93}, VerdictNominal, 0},
+		UnexplainedPair: 4, UnexplainedSelf: 3, DeathsReal: 93, DeathsCovered: 93}, VerdictNominal, 0, 0},
 	{KillSourceHealth{Film: "9b191a7f", Candidates: 96, Published: 84,
-		UnexplainedPair: 4, UnexplainedSelf: 2, UnexplainedBotIdx: 3, DeathsReal: 84, DeathsCovered: 84}, VerdictNominal, 0},
+		UnexplainedPair: 4, UnexplainedSelf: 2, UnexplainedBotIdx: 3, DeathsReal: 84, DeathsCovered: 84}, VerdictNominal, 0, 0},
 	{KillSourceHealth{Film: "78919882", Candidates: 112, Published: 99,
-		UnexplainedPair: 4, UnexplainedSelf: 9, DeathsReal: 99, DeathsCovered: 99}, VerdictNominal, 0},
+		UnexplainedPair: 4, UnexplainedSelf: 9, DeathsReal: 99, DeathsCovered: 99}, VerdictNominal, 0, 0},
 	{KillSourceHealth{Film: "fccc61cd", Candidates: 118, Published: 95,
-		UnexplainedPair: 2, UnexplainedSelf: 17, UnexplainedBotIdx: 2, DeathsReal: 95, DeathsCovered: 95}, VerdictNominal, 0},
+		UnexplainedPair: 2, UnexplainedSelf: 17, UnexplainedBotIdx: 2, DeathsReal: 95, DeathsCovered: 95}, VerdictNominal, 0, 0},
 	// BTB : CONTROLE POSITIF DE DOMAINE. Il doit sortir, et par plusieurs criteres.
 	// Son taux d'inexpliques vaut 79/304 = 26.0 % depuis le correctif de denominateur du
 	// 2026-07-27 (le 27.0 % du journal comptait `OutOfRoster` au numerateur sans l'avoir au
 	// denominateur — RE_LOG 7ter.73 (4e)).
+	//
+	// LE VERDICT ATTENDU EST PASSE D `ALERTE` A `HORS DOMAINE MESURE` LE 2026-09-20 (lot 5.2b.1),
+	// ET CE N EST PAS UN ASSOUPLISSEMENT : `OutOfRoster` compte des dead-states que le filtre de
+	// credibilite a DEJA refuses un par un ; l eriger en alerte dure eteignait la publication
+	// ligne par ligne de TOUTES LES AUTRES morts du match (cout mesure sur `b1ad85eb` : 77 lignes
+	// a `publishable = FALSE`, kill-feed sans armes). Il sort desormais par
+	// [KillSourceHealth.Degradations], et le CONTROLE POSITIF reste entier — ce film sort du
+	// domaine par TROIS criteres independants, verifies un par un dans
+	// [TestKillSourceHealthRatioNInclutPasLeHorsRoster].
 	{KillSourceHealth{Film: "4f77afc1", Candidates: 304, Published: 224,
 		UnexplainedPair: 26, UnexplainedSelf: 15, UnexplainedBotIdx: 38, OutOfRoster: 3,
-		DeathsReal: 293, DeathsCovered: 224}, VerdictAlerte, 1},
+		DeathsReal: 293, DeathsCovered: 224}, VerdictHorsDomaine, 0, 1},
 }
 
 func TestKillSourceHealthSerieDeReference(t *testing.T) {
@@ -38,6 +51,9 @@ func TestKillSourceHealthSerieDeReference(t *testing.T) {
 		}
 		if n := len(c.h.Alerts()); n < c.wantAlertsGE {
 			t.Errorf("%s : %d alerte(s), au moins %d attendue(s)", c.h.Film, n, c.wantAlertsGE)
+		}
+		if n := len(c.h.Degradations()); n < c.wantDegradsGE {
+			t.Errorf("%s : %d degradation(s), au moins %d attendue(s)", c.h.Film, n, c.wantDegradsGE)
 		}
 	}
 }
@@ -120,10 +136,27 @@ func TestKillSourceHealthRatioNInclutPasLeHorsRoster(t *testing.T) {
 		t.Errorf("taux corrige = %.1f %%, attendu 26.0 %% (79/304) — la mesure du journal a bouge",
 			100*sansRoster)
 	}
-	// Le BTB reste le CONTROLE POSITIF DE DOMAINE : la correction ne doit pas le faire rentrer.
-	if btb.Verdict() != VerdictAlerte {
-		t.Errorf("verdict du BTB = %q apres correction, attendu ALERTE (hors roster = %d)",
-			btb.Verdict(), btb.OutOfRoster)
+	// LE BTB RESTE LE CONTROLE POSITIF DE DOMAINE, ET LES TROIS CRITERES SE VERIFIENT UN PAR UN.
+	// Depuis le lot 5.2b.1 le hors-roster DEGRADE au lieu d ALERTER ; le controle ne vaudrait
+	// plus rien si le film rentrait dans le domaine, ou s il n en sortait QUE par la degradation.
+	if btb.Verdict() != VerdictHorsDomaine {
+		t.Errorf("verdict du BTB = %q, attendu %q (hors roster = %d)",
+			btb.Verdict(), VerdictHorsDomaine, btb.OutOfRoster)
+	}
+	if len(btb.Degradations()) == 0 {
+		t.Errorf("le hors-roster %d ne produit aucune degradation nommee", btb.OutOfRoster)
+	}
+	if btb.UnexplainedRatio() <= UnexplainedWarnRatio {
+		t.Errorf("inexpliques %.3f sous le seuil de sortie de domaine %.3f : le controle positif "+
+			"ne tiendrait plus que par la degradation", btb.UnexplainedRatio(), UnexplainedWarnRatio)
+	}
+	if btb.CoverageRatio() >= CoverageWarnRatio {
+		t.Errorf("couverture %.3f au-dessus du plancher %.3f : idem", btb.CoverageRatio(), CoverageWarnRatio)
+	}
+	// ... et il ne doit PAS alerter : une alerte eteindrait la publication ligne par ligne de
+	// tout le match, ce que le lot 5.2b.1 retire precisement.
+	if n := len(btb.Alerts()); n != 0 {
+		t.Errorf("%d alerte(s) sur le BTB : le hors-roster est revenu en alerte dure", n)
 	}
 }
 

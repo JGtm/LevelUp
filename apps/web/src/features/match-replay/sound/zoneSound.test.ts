@@ -104,6 +104,110 @@ describe('capture en cours — la jauge dit QUAND, le propriétaire d arrivée d
     const d = doc([{ spans: [span(0, 49, null), span(50, 200, 1)], gauge: [{ t: 10, v: 0.9 }] }])
     expect(zoneSoundEvents(d, 1)).toEqual([])
   })
+
+  /**
+   * LE ZÉRO DE FERMETURE N'EST PAS LE DÉBUT DE LA RAMPE SUIVANTE (correction du 2026-09-20).
+   *
+   * TÉMOIN `396cfc92`, ZONE A, recopié tel quel du cache : la rampe publiée court de 73 600 à
+   * 103 900 ms, mais son premier point vaut ZÉRO — c'est le retour à zéro que le Go pose à la
+   * fin de la capture PRÉCÉDENTE (le camp adverse vient d aboutir à 73 500 ms). La poussée
+   * réelle commence à 97 000 ms. Le son partait donc 23,4 s trop tôt, et il annonçait « une
+   * capture démarre » à l instant où une capture se terminait.
+   */
+  it('témoin 396cfc92 : la rampe 73 600 -> 103 900 ms sonne à 97 000, pas à 73 600', () => {
+    const d = doc([
+      {
+        spans: [span(735, 1038, 1), span(1039, 1284, 0)],
+        gauge: [
+          { t: 736, v: 0 },
+          { t: 970, v: 0.012 },
+          { t: 972, v: 0.04 },
+          { t: 1038, v: 0.983 },
+          { t: 1039, v: 0.998 },
+        ],
+      },
+    ])
+    expect(zoneSoundEvents(d, 1)).toEqual([
+      { ms: 97_000, stem: ZONE_SOUND_STEMS.capturing.enemy },
+    ])
+  })
+
+  it('une rampe qui ne commence PAS par un zéro garde son premier point', () => {
+    const d = doc([
+      {
+        spans: [span(0, 49, null), span(50, 200, 1)],
+        gauge: [
+          { t: 10, v: 0.1 },
+          { t: 20, v: 0.4 },
+          { t: 30, v: 0.9 },
+        ],
+      },
+    ])
+    expect(zoneSoundEvents(d, 1)).toEqual([{ ms: 1000, stem: ZONE_SOUND_STEMS.capturing.ally }])
+  })
+
+  /**
+   * LE CAMP MESURÉ (schéma 64). `proprietaireApres` rend `null` quand l intervalle qui s ouvre
+   * après la rampe est NEUTRE — le son se taisait alors complètement, alors que la rampe a bien
+   * été poussée par quelqu un. Le document le nomme désormais.
+   */
+  it('rampe suivie d un intervalle NEUTRE : le camp vient du document, et le son sonne', () => {
+    const d = doc([
+      {
+        spans: [span(0, 49, 1), span(50, 200, null)],
+        gauge: [
+          { t: 10, v: 0 },
+          { t: 20, v: 0.4 },
+          { t: 49, v: 0.99 },
+        ],
+        gaugeRamps: [{ t0: 10, t1: 49, capturingTeam: 0 }],
+      },
+    ])
+    expect(zoneSoundEvents(d, 1)).toEqual([
+      { ms: 2000, stem: ZONE_SOUND_STEMS.capturing.enemy },
+    ])
+  })
+
+  it('le camp MESURÉ prime sur le propriétaire d arrivée', () => {
+    const d = doc([
+      {
+        spans: [span(0, 49, null), span(50, 200, 1)],
+        gauge: [{ t: 10, v: 0.1 }, { t: 30, v: 0.9 }],
+        gaugeRamps: [{ t0: 10, t1: 30, capturingTeam: 0 }],
+      },
+    ])
+    expect(zoneSoundEvents(d, 1)).toEqual([
+      { ms: 1000, stem: ZONE_SOUND_STEMS.capturing.enemy },
+    ])
+  })
+
+  it('rampe SANS camp mesuré : on retombe sur le propriétaire d arrivée (artefact <= 63)', () => {
+    const d = doc([
+      {
+        spans: [span(0, 49, null), span(50, 200, 1)],
+        gauge: [{ t: 10, v: 0.1 }, { t: 30, v: 0.9 }],
+        gaugeRamps: [{ t0: 10, t1: 30 }],
+      },
+    ])
+    expect(zoneSoundEvents(d, 1)).toEqual([
+      { ms: 1000, stem: ZONE_SOUND_STEMS.capturing.ally },
+    ])
+  })
+
+  it('la CONTESTATION garde l instant du sommet : la correction ne déplace que le début', () => {
+    const d = doc([
+      {
+        spans: [span(0, 600, 0)],
+        gauge: [
+          { t: 100, v: 0 },
+          { t: 300, v: 0.2 },
+          { t: 400, v: 0.8 },
+          { t: 410, v: 0 },
+        ],
+      },
+    ])
+    expect(zoneSoundEvents(d, 1)).toEqual([{ ms: 40_000, stem: ZONE_SOUND_STEMS.contested }])
+  })
 })
 
 describe('tic de score — un par seconde tant qu un camp tient TOUTES les zones', () => {
@@ -168,6 +272,35 @@ describe('nouvelle colline — chaque déplacement, jamais le premier intervalle
 
   it('une seule colline ne sonne pas — ce n est pas un déplacement', () => {
     expect(zoneSoundEvents(doc([{ spans: [span(0, 200, null, true)] }]), 1)).toEqual([])
+  })
+
+  /**
+   * UNE COLLINE QUI CHANGE DE MAINS N EST PAS UNE NOUVELLE COLLINE (correction du 2026-09-20).
+   * Le Go découpe une période de colline en sous-intervalles `active` CONTIGUS, un par
+   * changement de propriétaire (`hillSpansOf`) : les sonner un par un faisait entendre le
+   * déplacement à chaque reprise de la même colline.
+   */
+  it('une colline qui change trois fois de mains ne sonne AUCUN déplacement', () => {
+    const d = doc([
+      { spans: [span(0, 99, 1, true), span(100, 199, 0, true), span(200, 300, 1, true)] },
+    ])
+    const news = zoneSoundEvents(d, 1).filter((e) => e.stem === ZONE_SOUND_STEMS.newZone)
+    expect(news).toEqual([])
+  })
+
+  it('la colline qui se DÉPLACE sur une autre zone sonne, changements de mains compris', () => {
+    const d = doc([
+      { spans: [span(0, 99, 1, true), span(100, 199, 0, true)] },
+      { spans: [span(300, 399, 0, true), span(400, 499, 1, true)] },
+    ])
+    const news = zoneSoundEvents(d, 1).filter((e) => e.stem === ZONE_SOUND_STEMS.newZone)
+    expect(news).toEqual([{ ms: 30_000, stem: ZONE_SOUND_STEMS.newZone }])
+  })
+
+  it('la MÊME zone reprise APRÈS un trou est un déplacement : la colline est revenue', () => {
+    const d = doc([{ spans: [span(0, 99, 1, true), span(300, 399, 1, true)] }])
+    const news = zoneSoundEvents(d, 1).filter((e) => e.stem === ZONE_SOUND_STEMS.newZone)
+    expect(news).toEqual([{ ms: 30_000, stem: ZONE_SOUND_STEMS.newZone }])
   })
 })
 

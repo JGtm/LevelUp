@@ -1760,3 +1760,66 @@ package replay
 //	VERSION MONTE  neuf compteurs entrent dans `coverage` : la FORME change, et le garde-rail de
 //	               forme refuse la regeneration sans montee. Les artefacts deja cuits restent
 //	               servis tels quels, les deux champs absents jusqu'a leur prochaine cuisson.
+// v64 (2026-09-20, post-chantier lot 5.2-A, demandes utilisateur du 2026-09-19) : LA COULEUR DE
+// LA CAPTURE, C'EST-A-DIRE LE CAMP QUI POUSSE LA JAUGE.
+//
+//	`zoneStates[]  UNE ENTREE PAR RAMPE de la jauge de capture — les memes rampes dont `gauge`
+//	.gaugeRamps`   est tiree (`findZoneRamps`) —, avec ses bornes et, quand elle ABOUTIT, le
+//	               camp qui l'a poussee. Le type publie est neuf, `ZoneGaugeRamp`.
+//
+//	               CE QUE LA VERSION REPARE. La serie de jauge est ANONYME par construction :
+//	               le slot de rampe ne porte aucun proprietaire (mesure du lot C-bis, deja
+//	               ecrite dans `zoneStatesLayer.ts`). Le client en etait donc reduit a DEDUIRE
+//	               le capteur — « le camp d'en face du proprietaire courant » —, une deduction
+//	               qui ne vaut qu'a deux camps ET seulement sur une zone TENUE. Sur une base
+//	               NEUTRE elle n'existe pas : le remplissage s'y peignait au neutre alors
+//	               qu'une equipe poussait, et c'est exactement le constat de l'utilisateur du
+//	               2026-09-19. La deduction est remplacee par une MESURE.
+//
+//	               LE CAMP EST CELUI DE L'ISSUE, ET IL N'EST PUBLIE QUE QUAND LA RAMPE ABOUTIT.
+//	               Le canal de PROPRIETE de la zone — celui-la meme qui produit les intervalles
+//	               — est relu a la frame du sommet ou juste apres, dans la fenetre
+//	               d'appariement du volet (`zoneValueAfter`). Une rampe qui avorte n'apprend
+//	               rien sur le pousseur : le canal y nomme encore le DEFENSEUR, et le publier
+//	               ferait peindre la capture a la couleur de celui qui la subit. La cle est
+//	               alors ABSENTE, et le client repeint au neutre.
+//
+//	               LE SEUIL D'ABOUTISSEMENT EST MESURE, PAS REGLE (8 documents a zones du
+//	               cache, 241 rampes, 2026-09-20). Separees par ce que le canal de propriete
+//	               fait apres le sommet : 160 rampes sont suivies d'une bascule de camp et
+//	               leurs sommets vont de 0,976 a 0,999 ; les 81 autres n'en produisent AUCUNE
+//	               et plafonnent a 0,986 — dont DEUX seulement au-dessus de 0,95 (0,983 et
+//	               0,986), qui sont des RE-SECURISATIONS par le camp deja en place : le canal
+//	               n'y change pas de valeur, donc `mergeZoneRuns` n'ouvre pas d'intervalle,
+//	               mais la valeur qu'il porte EST celle du pousseur. Hors ces deux cas, le plus
+//	               haut sommet sans bascule vaut 0,938 : `zoneGaugeRampComplete` (0,95) tombe
+//	               dans une marge mesuree de 0,038.
+//
+//	POURQUOI UN    `GaugePoint` est un type PARTAGE depuis la v63 — la jauge de retour du
+//	SPAN ET PAS    drapeau l'emploie (`flagCarries[].spans[].returnProgress`) — et un camp de
+//	UN CHAMP SUR   capture de zone n'a aucun sens sur un retour de drapeau : y poser le champ
+//	`GaugePoint`   polluerait le second calque d'une cle qu'il ne remplira jamais. Le repeter
+//	               sur chaque point couterait en outre UNE CLE PAR POINT (36 pour la seule
+//	               rampe temoin de `396cfc92`) pour une valeur constante sur toute la rampe ;
+//	               le span en porte UNE par rampe, soit 241 entrees pour les 8 documents.
+//
+//	AUCUNE AUTRE   les quatre revisions de DECODAGE ne bougent pas, et AUCUN octet de
+//	DIFFERENCE     `film/internal/` n'est touche. Le canal de propriete des zones etait deja lu
+//	               en production depuis la v16 : cette montee PUBLIE une lecture existante, elle
+//	               n'en ouvre aucune. `layers` est inchange — les zones gardent leur couche —,
+//	               le format du blob d'entrees est inchange a l'octet, et aucune recuisson
+//	               n'est requise pour les autres calques.
+//
+//	CE QUI RESTE   la grammaire porte un archetype `zones` dedie (`ti=23`,
+//	OUVERT          `selectable-zone-data-component`, 32 instances) dont le deserialiseur est
+//	               ECRIT mais NON CABLE (`status=deser_non_cable`, `doc_field` vide,
+//	               `product_use=aucun`) et dont la table dit qu'il porte « l'identifiant, la
+//	               POSITION et l'ETAT » d'une zone de mode. Lire l'etat a la source plutot que
+//	               de le reconstituer par vote de canal est donc possible — c'est un lot de
+//	               GRAMMAIRE, hors du perimetre de celui-ci (§4 du plan).
+//
+//	POURQUOI LA    un champ naît dans `zoneStates[]` et un TYPE naît avec lui : la FORME change,
+//	VERSION MONTE  et le ratchet de forme refuse de se regenerer sans montee. Ce n'est pas de la
+//	               telemetrie — le client peint avec. Les artefacts deja cuits restent servis
+//	               tels quels, la cle absente jusqu'a leur prochaine cuisson, et le repli neutre
+//	               du client est exactement celui d'aujourd'hui.

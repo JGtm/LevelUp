@@ -186,12 +186,16 @@ export interface VehicleShotPlacement {
  * donc une ancre au nez (`ay = -0,5`) tombe bien sur le bord haut du sprite, PAS le bas.
  */
 export function vehicleShotPlacement(
-  mount: VehicleWeaponMount,
+  mount: VehicleWeaponMount | null,
   headingDeg: number,
   size: VehicleMountSpriteSize,
   k: number,
+  scalePxPerM: number,
 ): VehicleShotPlacement {
-  const scale = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx) * k
+  // MONTAGE INCONNU : aucun décalage — l'éclair reste au CENTRE du châssis, la seule position
+  // que le document donne —, mais la DIRECTION du véhicule lui revient (cf. `vehicleShotOrigin`).
+  if (!mount) return { offset: { x: 0, y: 0 }, angle: vehicleAimAngle(headingDeg) }
+  const scale = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, scalePxPerM) * k
   const localX = mount.ax * size.naturalWidthPx
   const localY = mount.ay * size.naturalHeightPx
   const screenAngle = vehicleScreenAngle(headingDeg)
@@ -225,16 +229,27 @@ export function vehicleShotPlacement(
  */
 export function vehicleShotOrigin(args: {
   h: number | null
-  vehicleShot: { mount: VehicleWeaponMount; family: string | undefined; headingDeg: number } | null
+  vehicleShot: {
+    mount: VehicleWeaponMount | null
+    family: string | undefined
+    headingDeg: number
+  } | null
   center: XY
   sizeOf: ((family: string) => VehicleMountSpriteSize | null) | undefined
   k: number
+  /** L'échelle du cadrage (pixels CSS par mètre) : le montage suit la taille du sprite. */
+  scalePxPerM: number
 }): { origin: XY; angle: number | null } {
   const { h, vehicleShot, center, sizeOf, k } = args
   if (!vehicleShot) return { origin: center, angle: h === null ? null : (-h * Math.PI) / 180 }
   const { mount, family, headingDeg } = vehicleShot
   const size = family ? sizeOf?.(family) : null
-  if (!size) return { origin: center, angle: mount.classe === 'tourelle' ? null : vehicleAimAngle(headingDeg) }
-  const { offset, angle } = vehicleShotPlacement(mount, headingDeg, size, k)
+  // LA DIRECTION SANS LE SPRITE : une TOURELLE dont on connaît le montage ne dit rien de la
+  // visée de son tourelleur et reste sans direction ; tout le reste — montage fixe, ou montage
+  // INCONNU (2026-09-20) — prend le cap du véhicule.
+  if (!size) {
+    return { origin: center, angle: mount?.classe === 'tourelle' ? null : vehicleAimAngle(headingDeg) }
+  }
+  const { offset, angle } = vehicleShotPlacement(mount, headingDeg, size, k, args.scalePxPerM)
   return { origin: { x: center.x + offset.x, y: center.y + offset.y }, angle }
 }

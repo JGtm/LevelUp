@@ -30202,6 +30202,22 @@ components:
         - current_xp
         - xp_total
       type: object
+    ZoneGaugeRamp:
+      additionalProperties: false
+      properties:
+        capturingTeam:
+          format: int64
+          type: integer
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+      required:
+        - t0
+        - t1
+      type: object
     ZoneSpan:
       additionalProperties: false
       properties:
@@ -30233,6 +30249,12 @@ components:
         gauge:
           items:
             $ref: '#/components/schemas/GaugePoint'
+          type:
+            - array
+            - "null"
+        gaugeRamps:
+          items:
+            $ref: '#/components/schemas/ZoneGaugeRamp'
           type:
             - array
             - "null"

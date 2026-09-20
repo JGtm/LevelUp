@@ -115,6 +115,19 @@ type ZoneState struct {
 	Key        uint32       `json:"key,omitempty"`
 	Spans      []ZoneSpan   `json:"spans"`
 	Gauge      []GaugePoint `json:"gauge,omitempty"`
+	// GaugeRamps est le decoupage de la jauge en rampes, et LE CAMP QUI POUSSE chacune
+	// (schema 64). Absent sur une colline et sur tout artefact de schema <= 63.
+	GaugeRamps []ZoneGaugeRamp `json:"gaugeRamps,omitempty"`
+}
+
+// ZoneGaugeRamp est UNE montee de la jauge de capture, et le camp qui la pousse quand elle
+// aboutit. `T0`/`T1` SITUENT la rampe (T1 = le sommet, inclus) ; ils ne datent pas le debut de
+// la poussee, que le premier point NON NUL de `Gauge` donne. `CapturingTeam` est ABSENT quand la
+// rampe avorte : le document ne devine pas un capteur.
+type ZoneGaugeRamp struct {
+	T0            int  `json:"t0"`
+	T1            int  `json:"t1"`
+	CapturingTeam *int `json:"capturingTeam,omitempty"`
 }
 
 // ZoneSpan est UN intervalle d'etat d'une zone.

@@ -260,6 +260,11 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // LES TABLEAUX IMBRIQUÉS SE COMBLENT AUSSI (`spans`, et `gauge` — la jauge en direct du
     // schéma 18), comme pour `flagCarries` et `weaponPads`. Une jauge absente (schéma <= 17, ou
     // zone sans rampe) devient VIDE : aucun arc, jamais le sommet statique à sa place.
-    zoneStates: (raw.zoneStates ?? []).map((z) => ({ ...z, spans: z.spans ?? [], gauge: z.gauge ?? [] })),
+    zoneStates: (raw.zoneStates ?? []).map((z) => ({
+      ...z,
+      spans: z.spans ?? [],
+      gauge: z.gauge ?? [],
+      gaugeRamps: z.gaugeRamps ?? [],
+    })),
   }
 }

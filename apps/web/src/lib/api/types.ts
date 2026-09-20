@@ -2990,6 +2990,16 @@ export type ReplayObjectiveObjectPoint = components['schemas']['ObjectiveObjectP
 export type ReplayZoneState = components['schemas']['ZoneState']
 export type ReplayZoneSpan = components['schemas']['ZoneSpan']
 export type ReplayGaugePoint = components['schemas']['GaugePoint']
+// UNE RAMPE DE LA JAUGE DE CAPTURE (schéma 64) : ses bornes, et `capturingTeam` — LE CAMP QUI LA
+// POUSSE — quand elle ABOUTIT. La clé est ABSENTE quand la rampe avorte, et c'est une mesure :
+// le canal de propriété y nomme encore le DÉFENSEUR. Le rendu repeint alors au neutre, et il
+// n'infère JAMAIS le capteur d'une autre source (ni « le camp d'en face du propriétaire », qui
+// n'existe pas sur une base neutre, ni les joueurs présents dans le volume de la zone).
+//
+// `t0`/`t1` SITUENT la rampe, ils ne datent pas le geste : `t0` est le début de la suite non
+// décroissante, donc le retour à zéro qui ferme la rampe précédente. La poussée commence au
+// premier point NON NUL de `gauge` dans ces bornes (cf. `zoneSound.rampesDeJauge`).
+export type ReplayZoneGaugeRamp = components['schemas']['ZoneGaugeRamp']
 // La COUVERTURE du calque du drapeau : le verdict de mode et les trois signaux du film qui le
 // fondent, les prises de l'oracle, les portages publiés partagés en fermés / ouverts, les rejets
 // par cause, le contrôle du marqueur (sur les FERMÉS ; les ouverts ont leur propre compte) et

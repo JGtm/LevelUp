@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 63
-empreinte-stockee e7f1ca09acd249ed
-empreinte-servie e7f1ca09acd249ed
-empreinte-cuite bc742448caa3a8aa
+schema 64
+empreinte-stockee 8d8c588f07e7e9fe
+empreinte-servie 8d8c588f07e7e9fe
+empreinte-cuite 09b866553ec8007f
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -1006,6 +1006,10 @@ WeaponPad
   Z json:"z,omitempty" float32
 WeaponTiersInfo
   RandomStarts json:"randomStarts" bool
+ZoneGaugeRamp
+  CapturingTeam json:"capturingTeam,omitempty" *int
+  T0 json:"t0" int
+  T1 json:"t1" int
 ZoneSpan
   Active json:"active" bool
   Owner json:"owner" *int
@@ -1014,6 +1018,7 @@ ZoneSpan
   T1 json:"t1" int
 ZoneState
   Gauge json:"gauge,omitempty" []GaugePoint
+  GaugeRamps json:"gaugeRamps,omitempty" []ZoneGaugeRamp
   Key json:"key,omitempty" uint32
   LetterRank json:"letterRank,omitempty" *int
   Spans json:"spans" []ZoneSpan

@@ -398,7 +398,50 @@ package facts
 // tour, ce que l utilisateur a accepte en ouvrant le lot (V26).
 //
 // `SchemaVersion` reste 62 ; `profile.Rev` ne monte pas (aucun octet de `profile/` touche).
-const Rev = "killsource-2026-09-18"
+// ENTREE `killsource-2026-09-20` (2026-09-20, lot 5.2b.1) : LE ROSTER DU DECODEUR VOIT LES
+// REMPLACANTS, ET UN PARTICIPANT NON COMPTE N ETEINT PLUS LE MATCH.
+//
+// DEUX SOURCES POUR CETTE MONTEE, et elles vont dans le meme sens.
+//
+//	`facts/killsource/` CHANGE      une TROISIEME lecture d identite entre dans le roster
+//	                                (`index_motif.go`) : les cinq bits qui precedent le motif du
+//	                                xuid dans les chunks de replication, c est-a-dire ce que le
+//	                                rejeu publie sous le nom `PlayerIndexTable`, par le MEME
+//	                                resolveur (`weaponv3.ResolveXuidToPI`). Elle voit les joueurs
+//	                                qui REMPLACENT un partant en cours de match, que la table de
+//	                                `chunk_00` — ecrite a l ouverture du film — ignore.
+//	`grammar.Rev` MONTE             `grammar-2026-09-20`, et cette couche hache sa valeur.
+//
+// CE QUE LA MESURE DIT, SUR `b1ad85eb` (Domicile, HI_1_13_0, 2026-09-20) : la table de
+// `chunk_00` nomme HUIT sieges (0..7), BOT_METADATA tient le 8, et le kill-feed nomme un
+// NEUVIEME humain — `Claudors` — que rien ne pouvait placer. Le motif du xuid le lit a l indice
+// 10, UNANIME sur 22 chunks de replication sur 27, et il CONFIRME les huit sieges de la table
+// (`MotifAgree = 8`, zero contradiction). Les huit dead-states hors roster disparaissent, la
+// publication ligne par ligne s ouvre, 77 lignes sortent dont 63 a source NOMMEE.
+//
+// LA TABLE DE `chunk_00` GARDE LA MAIN quand les deux lectures se contredisent : elle est la
+// plus eprouvee (314 accords sur 322 sieges, 30 films). Une contradiction se COMPTE
+// (`FilmTablePinning.MotifContradict`), elle ne deplace rien — meme doctrine que le controle par
+// les votes du kill-feed (D14 b).
+//
+// TROISIEME CHANGEMENT DE SORTIE, MESURE AU MEME ENDROIT : plusieurs bots declares sur un MEME
+// slot ajoutaient chacun un nom au roster pour un seul indice, et les perdants restaient des
+// NOMS LIBRES — de la matiere a inference. Deux noms de bot fantomes suffisaient a rendre
+// `FilmTablePinning.AffectationUnique` faux des qu un indice se liberait, donc a refermer la
+// publication que l epinglage du remplacant venait d ouvrir. Le vainqueur du slot ne change pas
+// (le dernier declare) ; la succession REMPLACE le nom en place et se compte
+// (`Roster.BotsSuccedes`).
+//
+// BACKLOG KILLSOURCE SUR SIGNAL UTILISATEUR (D6), JAMAIS AUTOMATIQUE : chaque ligne de
+// `match_kill_events` porte cette revision dans `decoder_rev`, `conditionBacklog`
+// (`sync/killcollector/postsync.go`) rend candidate toute ligne qui en porte une anterieure, et
+// le redecodage du parc reste un geste de PRODUCTION pris par le pilote. CELUI-CI EST UN
+// BACKLOG DE CORRECTION, pas de datation : les matchs a remplacement changent de verdict de
+// publication.
+//
+// `SchemaVersion` NE MONTE PAS : aucun champ n est ajoute au document.
+
+const Rev = "killsource-2026-09-20"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/facts_rev.golden` porte le couple (revision, empreinte) avec son historique, et

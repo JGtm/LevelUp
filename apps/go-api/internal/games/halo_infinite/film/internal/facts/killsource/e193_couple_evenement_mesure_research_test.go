@@ -349,7 +349,7 @@ func e193Mesurer(dir string) e193Ligne {
 		return l
 	}
 	table := readFilmTable(f)
-	r := buildRoster(kf, loadBotMeta(f), true, table)
+	r := buildRoster(kf, loadBotMeta(f), true, table, indexParMotif{})
 	nom, bot := e193Epinglage(r)
 	recs := scanKillEvents(f).recs
 

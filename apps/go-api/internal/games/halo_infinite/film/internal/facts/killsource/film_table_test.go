@@ -102,7 +102,7 @@ func TestTableDuFilmEpingleTousLesIndicesDeLaBobine(t *testing.T) {
 func TestUnSiegeDuFilmNEstPasUnBot(t *testing.T) {
 	kf := &killFeed{names: []string{"A", "B"}}
 	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 2, BotID: 39, Name: "343 Aloysius"}}}
-	r := buildRoster(kf, bm, true, FilmTable{Build: "b", Seats: map[int]string{0: "A", 1: "B"}})
+	r := buildRoster(kf, bm, true, FilmTable{Build: "b", Seats: map[int]string{0: "A", 1: "B"}}, indexParMotif{})
 	if r.isBotIndex(0) || r.isBotIndex(1) {
 		t.Errorf("un siege de la table du film est pris pour un bot (pin=%v seatPin=%v)",
 			r.pin, r.seatPin)
@@ -124,7 +124,7 @@ func TestSiegeQueLeKillFeedIgnoreEntreAuRoster(t *testing.T) {
 	kf := &killFeed{names: []string{"A", "B"}}
 	r := buildRoster(kf, botMeta{}, true, FilmTable{
 		Build: "b", Seats: map[int]string{0: "A", 1: "MuetAuFeed", 2: "B"},
-	})
+	}, indexParMotif{})
 	if r.table.AddedNames != 1 || r.table.Pinned != 3 {
 		t.Fatalf("provenance = %+v, attendu 1 ajout et 3 indices lus", r.table)
 	}
@@ -150,7 +150,7 @@ func TestSiegeQueLeKillFeedIgnoreEntreAuRoster(t *testing.T) {
 func TestSiegeRefuseQuandUnBotTientDejaLIndice(t *testing.T) {
 	kf := &killFeed{names: []string{"A", "B"}}
 	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 2, BotID: 7, Name: "343 Bot"}}}
-	r := buildRoster(kf, bm, true, FilmTable{Build: "b", Seats: map[int]string{2: "Humain"}})
+	r := buildRoster(kf, bm, true, FilmTable{Build: "b", Seats: map[int]string{2: "Humain"}}, indexParMotif{})
 	if r.table.BotConflict != 1 || r.table.Pinned != 0 {
 		t.Fatalf("provenance = %+v, attendu 1 conflit et 0 indice lu", r.table)
 	}
@@ -163,7 +163,7 @@ func TestSiegeRefuseQuandUnBotTientDejaLIndice(t *testing.T) {
 // siege est refuse et compte, jamais ecrase en silence.
 func TestSiegeRefuseQuandLeNomEstDejaEpingle(t *testing.T) {
 	kf := &killFeed{names: []string{"A"}}
-	r := buildRoster(kf, botMeta{}, true, FilmTable{Build: "b", Seats: map[int]string{0: "A", 1: "A"}})
+	r := buildRoster(kf, botMeta{}, true, FilmTable{Build: "b", Seats: map[int]string{0: "A", 1: "A"}}, indexParMotif{})
 	if r.table.Pinned != 1 || r.table.DuplicateName != 1 {
 		t.Fatalf("provenance = %+v, attendu 1 epingle et 1 doublon refuse", r.table)
 	}
@@ -173,7 +173,7 @@ func TestSiegeRefuseQuandLeNomEstDejaEpingle(t *testing.T) {
 // lecture, ils ne la corrigent pas. Une contradiction se compte, la valeur publiee ne bouge pas.
 func TestControleParLeKillFeedNeCorrigeJamais(t *testing.T) {
 	kf := &killFeed{names: []string{"A", "B"}}
-	r := buildRoster(kf, botMeta{}, true, FilmTable{Build: "b", Seats: map[int]string{0: "A", 1: "B"}})
+	r := buildRoster(kf, botMeta{}, true, FilmTable{Build: "b", Seats: map[int]string{0: "A", 1: "B"}}, indexParMotif{})
 	// Votes fabriques : l indice 0 est massivement vote pour "B" (position 1), l indice 1 n a
 	// aucun vote. La table, elle, dit "A" a l indice 0.
 	r.controlerEpinglage([][]int{{1, 9}, {0, 0}})
@@ -240,7 +240,7 @@ func TestRefusDeTableNommeEtRepliComplet(t *testing.T) {
 // sont tous inferes et la porte de publication reprend son critere d avant le lot.
 func TestRefusFaitTomberLaBijectionSurLInferenceEntiere(t *testing.T) {
 	kf := &killFeed{names: []string{"A", "B", "C"}}
-	r := buildRoster(kf, botMeta{}, true, FilmTable{Refusal: FilmTableNoSection})
+	r := buildRoster(kf, botMeta{}, true, FilmTable{Refusal: FilmTableNoSection}, indexParMotif{})
 	r.perm, _ = solveBijection(r, nil, nil, 1)
 	if r.table.Pinned != 0 || r.table.Inferred != 3 {
 		t.Fatalf("provenance = %+v, attendu 0 lu et 3 inferes", r.table)
@@ -280,7 +280,7 @@ func TestUnIndiceLibrePourDeuxNomsLibresNEstPasDETERMINE(t *testing.T) {
 		t.Run(cas.nom, func(t *testing.T) {
 			kf := &killFeed{names: []string{"A", "B", "C"}}
 			r := buildRoster(kf, botMeta{}, true,
-				FilmTable{Build: "b", Seats: map[int]string{0: "A", 1: cas.siege1}})
+				FilmTable{Build: "b", Seats: map[int]string{0: "A", 1: cas.siege1}}, indexParMotif{})
 			r.perm, _ = solveBijection(r, nil, nil, 1)
 			if r.table.Pinned != 2 || r.table.Inferred != 1 {
 				t.Fatalf("provenance = %+v, attendu 2 indices LUS et 1 infere", r.table)

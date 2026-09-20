@@ -18,20 +18,19 @@ import type { ReplayVehicleRide } from '@/lib/api/types'
 import { drawExplosion, EXPLOSION_MS } from './explosionFx'
 import type { FxInk } from './fxInk'
 import { drawOffscreenChevron, drawOffscreenLabel } from './offscreenChevron'
-import { project, type PlacementView } from './placementShapes'
+import { project, viewScale, type PlacementView } from './placementShapes'
 import { aimLengthScale, drawAimSector } from './replayAimCone'
 import { drawRotatedSprite } from './replayDraw'
 import { drawNameLabel, type LabelStyle } from './replayLabels'
 import type { XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { edgeMarkFor, OFFSCREEN_MARGIN_PX, type EdgeMark } from '../model/edgeClamp'
-import { vehicleOccupantAimAt } from '../model/vehiclesAim'
+import { vehicleChassisHeadingAt, vehicleOccupantAimAt } from '../model/vehiclesAim'
 import {
   vehicleActiveRides,
   vehicleColorAt,
   vehicleDestructionFrame,
   vehicleExplosionKindOf,
-  vehicleHeadingAt,
   vehicleIsDecor,
   vehicleMapElementGlyph,
   vehiclePositionAt,
@@ -40,9 +39,12 @@ import {
   vehicleScreenLengthPx,
   vehicleSpriteScale,
   vehicleVisibleAt,
-  VEHICLE_FLOOR_PX,
-  VEHICLE_UNKNOWN_HALF_PX,
 } from '../model/vehiclesLayer'
+import {
+  vehicleEdgeFallbackPx,
+  vehicleTurretHalfPx,
+  vehicleUnknownHalfPx,
+} from '../model/screenSizes'
 import { traceDiamond } from './weaponPadsLayer'
 
 export type { PlacementView as VehicleView } from './placementShapes'
@@ -175,21 +177,14 @@ const VEHICLE_NAME_LINE_STEP_PX = 10
  * d'un véhicule voisin (décision de cadrage). Même vocabulaire que les socles (`weaponPadsLayer
  * .traceDiamond`, réutilisée) : un losange dit « objet de la carte, pas un joueur ».
  */
-function drawUnknownVehicleMarker(ctx: CanvasRenderingContext2D, c: XY, color: string, k: number): void {
+function drawUnknownVehicleMarker(
+  ctx: CanvasRenderingContext2D, c: XY, color: string, k: number, halfPx: number,
+): void {
   ctx.globalAlpha = 1
   ctx.fillStyle = color
-  traceDiamond(ctx, c, VEHICLE_UNKNOWN_HALF_PX * k)
+  traceDiamond(ctx, c, halfPx * k)
   ctx.fill()
 }
-
-/**
- * VEHICLE_TURRET_HALF_PX — le demi-côté du pictogramme de tourelle, en pixels d'écran avant
- * densité. Calé sur `VEHICLE_FLOOR_PX` (le plancher de lisibilité d'un véhicule) : une tourelle
- * de la carte doit se lire comme un objet du terrain, pas comme un pion de joueur — elle est
- * donc SENSIBLEMENT plus grande que le losange neutre (`VEHICLE_UNKNOWN_HALF_PX`, le noyau d'un
- * pion), sans atteindre la taille d'un châssis conduit.
- */
-const VEHICLE_TURRET_HALF_PX = VEHICLE_FLOOR_PX * 0.75
 
 /**
  * drawMapElementTurret — LE PICTOGRAMME DE LA TOURELLE AUTOMATIQUE (lot 1.9.9, décision
@@ -209,9 +204,9 @@ const VEHICLE_TURRET_HALF_PX = VEHICLE_FLOOR_PX * 0.75
  * connaît aucune couleur, même règle que tout le calque.
  */
 function drawMapElementTurret(
-  ctx: CanvasRenderingContext2D, c: XY, color: string, k: number, angle: number,
+  ctx: CanvasRenderingContext2D, c: XY, color: string, k: number, angle: number, halfPx: number,
 ): void {
-  const half = VEHICLE_TURRET_HALF_PX * k
+  const half = halfPx * k
   ctx.save()
   ctx.translate(c.x, c.y)
   ctx.rotate(angle)
@@ -406,18 +401,19 @@ function vehicleExplosionSeed(track: ReplayVehicleTrackReady, destroyedFrame: nu
 /**
  * vehicleExplosionEdgePx — LA MÊME primitive de taille que le sprite (`sizeOf` +
  * `vehicleScreenLengthPx`), pour l'explosion : jamais un second calcul de gabarit. Le repli
- * (chassis non résolu, ou vignette/manifeste pas encore chargés) vaut `VEHICLE_UNKNOWN_HALF_PX`
- * — EXACTEMENT la moitié du plancher de lisibilité d'un véhicule (`VEHICLE_FLOOR_PX`) — pour que
- * l'explosion d'un châssis inconnu ait la même ampleur qu'une grenade, pas une taille inventée.
+ * (chassis non résolu, ou vignette/manifeste pas encore chargés) vaut
+ * `vehicleUnknownHalfPx` — le glyphe d'ignorance lui-même — pour que l'explosion d'un châssis
+ * inconnu ait la même ampleur que son losange, pas une taille inventée.
  */
 function vehicleExplosionEdgePx(
   track: ReplayVehicleTrackReady,
   style: Pick<VehicleStyle, 'sizeOf'>,
   k: number,
+  scalePxPerM: number,
 ): number {
   const size = track.family ? style.sizeOf(track.family) : null
-  if (!size) return VEHICLE_UNKNOWN_HALF_PX * k
-  return (vehicleScreenLengthPx(size.naturalHeightPx, size.mmPerPx) / 2) * k
+  if (!size) return vehicleUnknownHalfPx(scalePxPerM) * k
+  return (vehicleScreenLengthPx(size.naturalHeightPx, size.mmPerPx, scalePxPerM) / 2) * k
 }
 
 /**
@@ -458,7 +454,8 @@ function drawVehicleDestructionFx(
   // homonyme de `drawVehiclesLayer`) ; le diviser par SA propre valeur de repli (constante, sans
   // `k`) l'ANNULE et ne laisse que le facteur de taille relative — que `drawExplosion` reçoit
   // ensuite comme SON `k`, il multiplie déjà tout par ce facteur (cf. explosionFx.ts).
-  const k = vehicleExplosionEdgePx(track, style, time.k) / VEHICLE_UNKNOWN_HALF_PX
+  const echelle = viewScale(view)
+  const k = vehicleExplosionEdgePx(track, style, time.k, echelle) / vehicleUnknownHalfPx(echelle)
   const kind = vehicleExplosionKindOf(track.family)
   const fire =
     (kind === 'plasma' ? style.explosionInk.tint.plasma_cool : style.explosionInk.tint.blast) ||
@@ -492,6 +489,10 @@ export function drawVehiclesLayer(
   style: VehicleStyle,
 ): void {
   if (tracks.length === 0 || view.width === 0) return
+  // L'ÉCHELLE DU CADRAGE, LUE UNE FOIS PAR IMAGE : c'est elle qui donne aux véhicules leur
+  // taille RÉELLE quand elle le permet (cf. `model/screenSizes.ts`). Elle ne dépend que de la
+  // vue, jamais du véhicule — la relire par véhicule serait un doublon de travail.
+  const echelle = viewScale(view)
   ctx.save()
   for (const track of tracks) {
     // LE DÉCOR NE SE DESSINE PAS (verdict utilisateur 2026-09-02) : ni sprite, ni losange de
@@ -520,30 +521,32 @@ export function drawVehiclesLayer(
         // lisibilité, seule mesure disponible avant qu'une taille réelle ne soit connue. TOUJOURS
         // MULTIPLIÉ PAR `time.k`, comme la branche sprite juste en dessous — un pixel d'écran
         // déclaré ici n'a de sens qu'à la densité du périphérique (même règle que `replayMarkers`).
-        let edgePx = (VEHICLE_FLOOR_PX / 2) * time.k
+        let edgePx = vehicleEdgeFallbackPx(echelle) * time.k
         const glyph = track.family
           ? vehicleMapElementGlyph(track.family, style.kindOf(track.family))
           : null
         if (!track.family) {
-          drawUnknownVehicleMarker(ctx, c, color, time.k)
-          edgePx = VEHICLE_UNKNOWN_HALF_PX * time.k
+          const demiLosange = vehicleUnknownHalfPx(echelle)
+          drawUnknownVehicleMarker(ctx, c, color, time.k, demiLosange)
+          edgePx = demiLosange * time.k
         } else {
           const size = style.sizeOf(track.family)
           const sprite = size ? style.spriteOf(track.family, color) : null
           if (size && sprite) {
-            const angle = vehicleScreenAngle(vehicleHeadingAt(track, time.frame))
-            const scaleRatio = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx)
+            const angle = vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame))
+            const scaleRatio = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, echelle)
             ctx.globalAlpha = 1
             drawRotatedSprite(ctx, sprite, c.x, c.y, angle, scaleRatio * time.k)
-            edgePx = (vehicleScreenLengthPx(size.naturalHeightPx, size.mmPerPx) / 2) * time.k
+            edgePx = (vehicleScreenLengthPx(size.naturalHeightPx, size.mmPerPx, echelle) / 2) * time.k
           } else if (glyph === 'turret') {
             // ÉLÉMENT DE CARTE SANS ASSET (lot 1.9.9) : son pictogramme dédié, JAMAIS le losange
             // neutre — la décision utilisateur du 2026-09-14 veut ces objets visibles ET
             // reconnaissables. Le jour où un asset est servi, la branche du sprite ci-dessus
             // l'emporte d'elle-même : seule la table d'assets aura changé.
+            const demi = vehicleTurretHalfPx(echelle)
             drawMapElementTurret(ctx, c, color, time.k,
-              vehicleScreenAngle(vehicleHeadingAt(track, time.frame)))
-            edgePx = VEHICLE_TURRET_HALF_PX * time.k
+              vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame)), demi)
+            edgePx = demi * time.k
           }
           // Sinon : image ou manifeste pas encore chargés — rien ne remplace le sprite (même
           // contrat que les vignettes de socle), le nom garde le repli de plancher ci-dessus.

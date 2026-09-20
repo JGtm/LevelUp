@@ -127,12 +127,16 @@ export function drawShotsLayer(
   win: EventWindow,
   style: ShotStyle,
 ): void {
+  // L'ÉCHELLE DU CADRAGE, lue une fois : le montage d'arme d'un tir en véhicule suit la TAILLE
+  // du sprite, qui en dépend depuis le 2026-09-20 (cf. `model/screenSizes.ts`).
+  const scalePxPerM = scaleOf(view)
   for (const s of shots) {
     const age = win.frame - s.frame
     if (age < 0 || age > win.hold) continue
     const c = projectTo(view, s)
     const { origin, angle } = vehicleShotOrigin({
       h: s.h, vehicleShot: s.vehicleShot, center: c, sizeOf: style.vehicleSizeOf, k: style.k,
+      scalePxPerM,
     })
     drawMuzzleFlash(ctx, s.fam, s.tint, {
       x: origin.x,
