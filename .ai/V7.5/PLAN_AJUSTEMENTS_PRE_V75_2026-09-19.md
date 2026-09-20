@@ -111,9 +111,10 @@ grep -rn "frag_range_self\|fragRangeSelf" apps/web/src apps/go-api/internal --in
 ## Clôture
 - [x] Fusion lot 2 et lot 3 dans `wt/ajustements-pre-v75` — sans conflit (56de738db, 34dd0c9be).
 - [x] Gates sur la branche fusionnée (2026-09-20) : tsc 0, vitest 743 fichiers / 7 967 tests verts, `go test ./...` 40 ok / 0 FAIL, `make go-api-lint` 0 issue.
-- [ ] Gate visuel utilisateur (Firefox, pile de dev basculée sur le worktree).
+- [x] Gate visuel utilisateur — validé le 2026-09-20 (« Je valide tu peux merge »).
 - [x] Entrée `.ai/thought_log.md` (2026-09-20).
-- [ ] Fusion dans `feat/v75`, CI verte au niveau job (sur signal après le gate visuel).
+- [x] Fusion dans `feat/v75` : origin/feat/v75 (44 commits) intégré d abord (conflit thought_log seul, gardé des deux côtés, e18aee1c3), gates rejoués verts (tsc 0, vitest 745 / 7 982, openapi-gen -check OK, go test 0 FAIL, lint 0), avance rapide et push a2c58b537..e18aee1c3 ; worktrees matchview / heatmap / explorer-rangee3 supprimés.
+- [x] CI verte au niveau job sur feat/v75 (run 35508684778 : Go Lint, Go Build + Test ubuntu et windows, Frontend, Lease Enforcement, Contract Test OpenAPI, Coverage + Baseline, OpenAPI Lint = success ; E2E Playwright skipped ; Deploy Pre-Check 35508684800 = success). Pile de dev rebasculee sur le principal, tous les worktrees d ajustements supprimes.
 
 ## Découvertes (non traitées ici)
 - `usageI18n.ts` porte un second gabarit « Mesuré sur N des M matchs de Capture du drapeau… »
