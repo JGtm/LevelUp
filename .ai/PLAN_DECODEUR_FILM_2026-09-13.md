@@ -5849,6 +5849,11 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
   `grammar.Rev` monte par l empreinte (`grammar-2026-09-20`, meme rang que 5.2b.1 : meme lot,
   meme jour, aucun backlog de plus). **Le document publie ne bouge d AUCUN octet** : les 8
   fixtures de contrat sont inchangees. La decision de repli produit est au §4.
+  **MAIS LA CAPTURE A UN COUT SUR LE HARNAIS D EQUIVALENCE, ET IL EST MESURE** : `digest.Of`
+  hache les champs exportes OU NON, donc les six champs ajoutes a `componentDirs` font diverger
+  les etapes `positions` (20/20 films) et `vehicles` (9/20) — a COMPTE IDENTIQUE, et sans qu un
+  octet publie ne change. C est ce qui a declenche la regle d arret du gate 2, et la question
+  « garder la capture et re-figer, ou la retirer » est posee au §5.
 
 ---
 
@@ -6327,6 +6332,98 @@ chemin qui donnerait une direction EXACTE (deux vec3 float32) n est jamais empru
 et `vehicle_tracks.go` n est pas touche. `VEHICLE_DEFAULT_HEADING_DEG` cote web garde donc son
 role — il n y avait rien a lui retirer.
 
+
+#### LES GATES DE CORPUS, JOUES LE 2026-09-20 — DEUX BILANS ET UN ARRET
+
+**(1) `replay-corpus-gate --base=65e5c0731`, 17 temoins — 0 PERTE, 64 GAINS, 5 CHANGEMENTS.**
+Code de sortie **1**, et il faut dire POURQUOI : le gate sort en 1 des qu un temoin porte une
+PERTE **ou un CHANGEMENT**. Aucune perte n a ete mesuree ; les cinq changements sont le MEME
+booleen, dans le sens du gain.
+
+| temoin | famille | gains | pertes | chang. | statut |
+|---|---|---|---|---|---|
+| `bcb6d393` | ctf_mono_manche | **16** | 0 | 1 | CHANGEMENT |
+| `fb1a1a72` | ctf_multi_manche | 0 | 0 | 0 | ok |
+| `d9781168` | oddball | 0 | 0 | 0 | ok |
+| `c75f33b8` | assaut_bombe | 0 | 0 | 0 | ok |
+| `bf15f7ab` | slayer | 0 | 0 | 0 | ok |
+| `51ebbc0f` | deux_manches | 0 | 0 | 0 | ok |
+| `084a804d` | vehicules | 0 | 0 | 0 | ok |
+| `0797ce72` | region_index_2_bits | 0 | 0 | 0 | ok |
+| `111fa685` | version_39 | **15** | 0 | 1 | CHANGEMENT |
+| `e5adf7b2` | version_40_build_1_11 | **7** | 0 | 1 | CHANGEMENT |
+| `60ae07c4` | version_37 | 0 | 0 | 0 | ok |
+| `a349fea8` | version_33_sans_identification | 0 | 0 | 0 | ok |
+| `a521164d` | version_33_build_1_4_1 | **19** | 0 | 1 | CHANGEMENT |
+| `11de8353` | version_38_build_1_9_0 | **7** | 0 | 1 | CHANGEMENT |
+| `50247b26` | version_31_sans_identification | 0 | 0 | 0 | ok |
+| `bfecd02b` | vehicules_v41_utilisateur | 0 | 0 | 0 | ok |
+| `4f77afc1` | equipement_origine_utilisateur | 0 | 0 | 0 | ok |
+| **TOTAL** | | **64** | **0** | **5** | schema 63 -> 63 partout |
+
+Les CINQ changements sont une seule et meme ligne : `coverage.equipment.killsRead`
+**`false` -> `true`**. C est la consequence directe de l ouverture de la publication ligne par
+ligne : les references de kill d equipement sont desormais LUES.
+
+Les 64 gains sont TOUS de la famille killsource, nommes par comparaison des deux artefacts cuits
+(`--keep-work`) : `coverage/deathsPaths/{walk,directScan}/{population,matched,published}`,
+`coverage/equipment/killsRead`, `neutralDeaths/*` (`feedMs`, `img`, `kind`, `tinted`, `xuid`) et
+`equipmentEpisodes[].k`. **AUCUN chemin present a la base et absent au HEAD, sur aucun temoin.**
+
+**CE QUI ETAIT ATTENDU EST VERIFIE, UN A UN :**
+
+| attendu | mesure |
+|---|---|
+| gains killsource sur les films a remplacement | 5 temoins, 64 lignes, toutes de cette famille |
+| 0 perte | **0 sur 17** |
+| `a349fea8` 289 = 289 | `ok` 0/0/0 — la lecture par motif y est refusee (12 desaccords), donc rien ne bouge |
+| `grenades`, positions, `vehicles` intacts | **`vehicles`, `grenades`, `tracks` et `shots` BYTE-IDENTIQUES** entre les deux cuissons sur les 9 temoins verifies, les 5 qui changent COMPRIS |
+
+Telemetrie (affichee, jamais comptee) : `factsRev` `killsource-2026-09-18 -> killsource-2026-09-20`
+et `grammarRev` `grammar-2026-09-18.3 -> grammar-2026-09-20` sur les 17.
+
+**(2) `replay-equiv`, 20 films — 20 DIFFERENTS, 0 ECHEC — ET IL DECLENCHE L ARRET.**
+
+| etape divergente | films | compte attendu == obtenu ? | classement |
+|---|---|---|---|
+| `killsource` | 20 / 20 | — | **CONTENU, attendu** (le sujet du lot) |
+| `artifact` | 20 / 20 | non (ex. 1 908 600 -> 1 908 846) | **CONTENU, attendu** (famille killsource + chaine de revision) |
+| `positions` | **20 / 20** | **OUI, 20/20** | **FORME** (voir ci-dessous) |
+| `vehicles` | **9 / 20** | **OUI, 9/9** | **FORME + valeurs captees non publiees** |
+| `killRefs` | 7 / 20 | — | **CONTENU, attendu** |
+| `neutralDeaths` | 3 / 20 | non (0 -> 1, 0 -> 3) | **CONTENU, attendu** |
+| `grenades`, `shots`, `zoneStates`, `objectives` | **0 / 20** | — | **AUCUNE divergence** |
+
+**`positions` EST UNE EMPREINTE DE FORME, ET C EST PROUVE AU CHAMP PRES, PAS ARGUMENTE.**
+`digest.Of` hache les champs exportes OU NON ; `grammar.BipedPosition` embarque `componentDirs`,
+qui gagne six champs au lot 5.2b.2 (`FwdMode`, `HasFwdDir30`, `FwdDir30Raw`, `HasFwdVecs`,
+`FwdVec1`, `FwdVec2`). Leur SEUL ecrivain est `readForwardComponentDynPrec`
+(`offline_aim.go:259`), appele UNIQUEMENT sous `dirsGrammar.fwdUpDynPrec`, lui-meme arme par
+`ScanFilmOptions.DynPrecOrientation` — dont il existe **UN SEUL site d affectation dans tout le
+depot** : `build_vehicles.go:249` (`vehicleScanOptions`). Le nuage BIPEDE, lui, n arme que
+`CaptureDirs` (`build_from_film.go:194`). **Sur le nuage bipede les six champs sont donc
+identiquement nuls, et le contenu ne peut pas avoir change.** Confirme deux fois : le COMPTE est
+identique sur 20/20, et `tracks` — la projection PUBLIEE de ces positions — est byte-identique
+entre les deux cuissons du gate de corpus sur 9/9 temoins.
+
+**`vehicles` : meme forme, PLUS les valeurs reellement captees** — ici `DynPrecOrientation` EST
+arme, donc `FwdMode` / `HasFwdDir30` / `FwdDir30Raw` portent des valeurs. AUCUN calque ne les
+publie : le compte est identique sur 9/9, et le calque `vehicles` du document est byte-identique
+sur les 9 temoins du gate de corpus.
+
+**L ARRET EST RESPECTE.** La consigne dit « tout ecart `vehicles` / `grenades` / positions =
+arret ». `grenades` est vierge ; `positions` et `vehicles` divergent, classes FORME et prouves
+sans changement de contenu — mais la regle d arret ne se contourne pas par une demonstration.
+**Le gate S8 `-deux-passes` N A DONC PAS ETE JOUE**, aucune reference n a ete re-figee, et
+`-update` n a jamais ete lance. Deux issues, au pilote :
+
+- **(A) RE-FIGER les 20 references d equivalence** (geste de pilote, comme a la cloture de 5.1) :
+  les ecarts sont classes, prouves, et aucun ne porte de contenu hors famille killsource ;
+- **(B) RETIRER LA CAPTURE des six champs.** 5.2b.2 est un NEGATIF : rien n est publie, et le
+  seul consommateur de ces champs est l instrument de mesure. Les references `positions` et
+  `vehicles` redeviendraient vertes, et le negatif resterait ecrit ici avec ses chiffres. Le
+  cout : le negatif ne se rejoue plus sans re-poser la capture — et la suite nommee au §4 (D2,
+  la feuille 4 de l etat par defaut) est de toute facon une AUTRE lecture.
 #### GATES JOUES
 
 | date | gate | resultat |
@@ -6339,10 +6436,12 @@ role — il n y avait rien a lui retirer.
 | 2026-09-20 | ratchets 0.A.3, surface de facade, `param_4` par build, taille des fichiers | verts |
 | 2026-09-20 | goldens regeneres par leurs portes | `facts_rev`, `grammar_rev`, `types/shapes`, `golden_minibobine_familles` (EMPREINTE DE FORME : compte 28 004 inchange), 8 fixtures de contrat (chaine de revision seule) |
 
-**RESTENT A JOUER PAR LE PILOTE, A SON SIGNAL** : corpus gate 17 temoins `--base=65e5c0731`,
-`replay-equiv` 20 (ecarts attendus : `killsource` lignes publiables ; AUCUN sur `vehicles`, le
-cap ne changeant pas), S8 `-deux-passes` 3 films. Et le backfill `killsource` du parc, UNE passe,
-apres le lot.
+**JOUES DEPUIS** (les deux bilans ci-dessus) : corpus gate 17 temoins `--base=65e5c0731`
+(0 perte, 64 gains, 5 changements — un seul et meme booleen) et `replay-equiv` 20 films
+(20 differents, 0 echec, tous les ecarts classes). **NON JOUE** : S8 `-deux-passes`, la regle
+d arret ayant ete declenchee par `positions` et `vehicles` — decision (A) ou (B) au pilote.
+**JAMAIS LANCE** : `-update` sur les references d equivalence, et le backfill `killsource` du
+parc (UNE passe, apres le lot, sur signal utilisateur — D6).
 
 ### Montée de schéma 62 -> 63 — LES DEUX RÉAPPARITIONS QUI MANQUAIENT, 2026-09-19
 
