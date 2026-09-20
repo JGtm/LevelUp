@@ -148,6 +148,7 @@ package grammar
 // Slot, generation, horodatage, `MPPVal`, masque, `DefaultStateBits`, position et `AfterBit`
 // sont donc au bit pres les memes : seul le champ `Ammo`, qui etait vide, se remplit.
 //
+// REGENERATION DU 2026-09-20 (lot 5.2b.2, journal au plan) : `bipedPositions`, EMPREINTE DE FORME.
 // # PAS DE SKIP
 //
 // La bobine est VERSIONNEE : son absence est une panne du depot, pas une condition d'execution.

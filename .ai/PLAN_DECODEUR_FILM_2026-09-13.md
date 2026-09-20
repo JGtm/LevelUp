@@ -5784,12 +5784,81 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 
 
 
+### Post-chantier — lot 5.2 (le rendu du rejeu : demandes utilisateur du 2026-09-19)
+
+- [x] **5.2b.1 — LE KILL FEED DE `b1ad85eb` : LE ROSTER DU KILLSOURCE LIT LES REMPLACANTS**
+  (constat 4b du diagnostic, `9769c187d` + `177dc05d6`). **VERIFIE SUR PIECES AVANT DE CODER** :
+  `SELECT publishable, count(*) FROM match_kill_events_latest WHERE match_id LIKE 'b1ad85eb%'`
+  rend `false / 77` — la deduction du diagnostic est confirmee par la base, en lecture seule.
+  **LA RACINE, MESUREE** (instrument `killsource/roster_remplacements_research_test.go`, un
+  decodage par film) : la table de `chunk_00` est ecrite A L OUVERTURE du film et nomme huit
+  sieges (0..7) ; BOT_METADATA tient le 8 ; le kill-feed nomme un NEUVIEME humain, `Claudors`,
+  que rien ne pouvait placer. Ses huit dead-states portaient l indice 10.
+  **LE CORRECTIF EST UNE TROISIEME LECTURE D IDENTITE, PAS UNE DEUXIEME LISTE**
+  (`killsource/index_motif.go`) : les cinq bits qui precedent le motif 64-bit du xuid dans les
+  chunks de replication, par le MEME resolveur que le rejeu (`weaponv3.ResolveXuidToPI`, ce que
+  `replay.ScanPlayerIndices` publie sous le nom `PlayerIndexTable`). « L index c est l index » :
+  une table d identite par film, le lien direct a 100 %, l inference en repli compte. Elle passe
+  APRES la table de `chunk_00`, qui garde la main sur une contradiction (314 accords sur
+  322 sieges, 30 films) ; les quatre issues sont comptees (`MotifPinned`, `MotifAgree`,
+  `MotifContradict`, `MotifDuplicate`).
+  **UN NEGATIF MESURE A IMPOSE UNE PORTE** (`a349fea8`) : sur ce film les VINGT-CINQ xuids
+  rendent l index 0 — le piege documente par `ScanPlayerIndices` (le motif ne vit pas dans un
+  enregistrement de joueur). Le filtre par xuid lachait vingt-quatre lectures sur vingt-cinq,
+  mais la vingt-cinquieme survivait et epinglait du bruit : **289 lignes publiees -> 261**. La
+  regle est donc celle de `ScanPlayerIndices` ELEVEE AU FILM — un seul desaccord, et l epinglage
+  par motif ne pose RIEN sur ce film.
+  **UN SECOND DEFAUT, MESURE AU MEME ENDROIT** : trois bots declares sur le MEME slot ajoutaient
+  trois noms au roster pour un seul indice ; les deux perdants restaient des NOMS LIBRES, donc de
+  la matiere a inference, et refermaient `AffectationUnique` des qu un indice se liberait. Le
+  vainqueur du slot ne change pas (le dernier declare) ; la succession remplace le nom en place
+  et se compte (`Roster.BotsSuccedes`).
+  **LE SECOND FILET** : `OutOfRoster` DEGRADE au lieu d ALERTER
+  (`grammar.KillSourceHealth.Degradations`). Il comptait des lignes que `selectCredible` refuse
+  deja une par une en amont ; l eriger en alerte dure eteignait la publication de toutes les
+  AUTRES morts du match. Le controle positif du BTB reste entier, ses trois criteres verifies un
+  par un.
+  **GATE ATTEINT** : `b1ad85eb` publication ligne par ligne FALSE -> TRUE, hors roster 8 -> 0,
+  63 lignes a source nommee sur 77 ; temoin SANS remplacement `bfecd02b` **identique a la base**.
+  `grammar.Rev` -> `grammar-2026-09-20` (killhealth.go), `facts.Rev` -> `killsource-2026-09-20`
+  (backlog de CORRECTION, a jouer par le pilote sur signal). `SchemaVersion` inchange. Tableaux
+  au §5.
+- [x] **5.2b.2 — L ORIENTATION DES VEHICULES : LA MESURE REFUTE `i2`, ET ELLE NOMME POURQUOI**
+  (constat 1a/1b). **RIEN N EST PUBLIE, `vehicle_tracks.go` N EST PAS TOUCHE.**
+  **CE QUE LA VERIFICATION SUR PIECES A CHANGE AU BRIEF** : le brief prevoyait « un hook
+  d observation dans `grammar` pour `i2` ». Il n en fallait pas pour la direction de 19 bits :
+  le balayage offline la CAPTURE deja (`componentDirs.HasAim` / `AimRaw` sous `CaptureDirs` +
+  `DynPrecOrientation`, armes par `vehicleScanOptions`) et les faits la PERSISTENT depuis le
+  2026-09-18. Ce qui etait jete, ce sont les DEUX AUTRES chemins du composant.
+  **LA VENTILATION DES CHEMINS D `i2`, MESUREE** (`4f77afc1`) : mode 0 (cubemap 19 bits)
+  31 143 records, mode 1 (cubemap 30 bits, chemin « config ») **113 242**, mode 2 (deux vec3
+  float32 bruts) **ZERO**. Sur `a349fea8` l inverse : mode 0 102 552, mode 1 2 840, mode 2 zero.
+  Le chemin EXACT n est donc jamais emprunte ; les deux chemins reels sont captures par ce lot,
+  a largeur INCHANGEE (`lireDeuxVec3Bruts` verifie l invariant de 192 bits, la direction de
+  30 bits est lue la ou elle etait sautee).
+  **LE VERDICT, ET IL EST STRUCTUREL, PAS STATISTIQUE** : la direction que le film ecrit est
+  QUASI VERTICALE sur `4f77afc1` — |z| median **0,960** (19 bits) et **0,981** (30 bits), 77 %
+  et 94 % des echantillons au-dessus de 0,9. C est le vecteur **HAUT** que le composant nomme
+  (`object-forward-and-UP`), pas l avant. Son azimut au sol n est que la direction de la pente,
+  et l ecart au deplacement est alors indiscernable du temoin par permutation. Tableau complet
+  au §5.
+  **LE CRITERE DU BRIEF N EST ATTEINT SUR AUCUN DES DEUX FILMS** (mediane < 15 deg ET temoin
+  ~90 deg) : `i2` RESTE REFUTE comme cap du chassis, pour une raison desormais NOMMEE. La
+  refutation de `document_vehicles.go:148-154` est donc CONFIRMEE, et sa motivation corrigee —
+  ce n etait pas `param_4` ni l oracle, c est que le champ ne porte pas l avant.
+  `grammar.Rev` monte par l empreinte (`grammar-2026-09-20`, meme rang que 5.2b.1 : meme lot,
+  meme jour, aucun backlog de plus). **Le document publie ne bouge d AUCUN octet** : les 8
+  fixtures de contrat sont inchangees. La decision de repli produit est au §4.
+
 ---
 
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-20 | 5.2b | **D1 (5.2b) — LE REPLI PRODUIT POUR LE CAP DU CHASSIS EST UNE DECISION UTILISATEUR, ET ELLE RESTE OUVERTE.** `i2` est REFUTE comme avant du chassis par une mesure qui en nomme la cause (le champ porte le vecteur HAUT). Le cap publie reste donc l atan2 de la VELOCITE, faux en marche arriere, en derapage, en vol et a l arret. | NON TRAITE (regle 7) — c est un ARBITRAGE, pas un defaut de decodage. Candidat ecrit au brief : **la VISEE DU CONDUCTEUR (siege 0)** pour les chassis a arme FIXE (Ghost, Wraith, Banshee), ou elle EST l avant ; elle ne l est pas sur un chassis a tourelle (Warthog, Scorpion), ou le pilote n est pas le tireur. La donnee existe deja (`vehicles[].rides[].aim[]`, `i21` du bipede a bord) et le repli serait du RENDU pur, sans recuisson. A trancher par l utilisateur |
+| 2026-09-20 | 5.2b | **D2 (5.2b) — L AVANT DU CHASSIS N EST PAS DANS `i2`, ET LE FILM NE DIT PAS ENCORE OU IL EST.** Les trois chemins du composant sont desormais lus : le mode 2 (deux vec3 float32 exacts) n est JAMAIS emprunte (0 record sur 250 000, deux films), et les deux chemins reels portent une direction quasi verticale. Le moteur reconstruit donc l avant a partir du HAUT et d autre chose — l etat angulaire (`i3`), l orientation de l etat par defaut (feuille 4 de `ti=40`, quaternion lu depuis 5.1.7-b), ou un composant `vehicle-*` non porte. | NON TRAITE (regle 7). La piste la plus courte est la FEUILLE 4 DE L ETAT PAR DEFAUT, qui est un QUATERNION et que 5.1.7-b a rendue lisible : elle donne une orientation COMPLETE a l image-cle, la ou `i2` ne donne qu une direction par delta. A instruire par un lot d orientation, avec le meme oracle (le deplacement) et le meme temoin par permutation |
+| 2026-09-20 | 5.2b | **D3 (5.2b) — LE CHEMIN DE PUBLICATION D `i2` DANS LE DISPATCH RESTE UN SAUTEUR DE BITS.** `consumeObjectForwardAndUpDynPrec` (dispatch_object.go) jette toujours la valeur ; seul le BALAYAGE OFFLINE la capture. Les deux appellent le meme detenteur de grammaire, donc aucune divergence de largeur n est possible — mais un futur calque qui lirait l orientation depuis la marche delta ne la trouverait pas. | NON TRAITE, et ce n est pas un defaut aujourd hui : aucun calque ne lit l orientation par cette voie. A rouvrir SI et SEULEMENT SI D2 aboutit et que la valeur doit remonter par le dispatch |
 | 2026-09-19 | 5.1.7 | **D4 (5.1.7) — UN OCCUPANT FAUX, NOMME A L OEIL.** Theater (utilisateur, 2026-09-19) : sur `4f77afc1`, le rejeu publie « Yessireezy, siege 1 du vehicule 776/1, de 1:11.8 a 1:35.4 ». Yessireezy **ne monte jamais dans ce vehicule** — a 3:01 il est tue A COTE par un tir de mortier de Wraith, et il reapparait a 3:10. L appariement des sieges a pris un EVENEMENT VOISIN pour un embarquement. | NON TRAITE (regle 7). C est le calque d occupation (`vehicle_occupancy.go`, `decodeFilmVehicleEvents` et le pont morts -> siege), pas la grammaire de `ti=40`. A instruire par un lot d occupation, avec ce cas comme temoin nomme : un film consultable (`4f77afc1` est un match de JGtm), un slot, un instant |
 | 2026-09-19 | 5.1.7 | **D5 (5.1.7) — LE « DESPAWN SANS EXPLOSION » EST UNE FIN DE VIE REELLE QUE LE REJEU NE SAIT PAS NOMMER.** Meme verdict Theater : le Razorback 776/1 de `4f77afc1` n explose pas — il DISPARAIT vers 3:29, sans explosion, apres quelques degats vers 2:26. Le rejeu publie `end = "unknown"` pour cette vie, ce qui est honnete mais incomplet : la fin EXISTE et elle a une nature. | NON TRAITE (regle 7). Candidat `EndKind` **`despawn`**, a cote de `destroyed` / `film_end` / `unknown`. Il demande sa propre grammaire (qu est-ce que le film ECRIT quand un vehicule despawn ?) et une montee de schema : ni l une ni l autre n appartient a ce lot |
 | 2026-09-19 | 5.1.7 | **D6 (5.1.7) — THEATER NE MONTRE QUE LES MATCHS DU COMPTE.** `084a804d`, `a521164d`, `a349fea8`, `111fa685` et `e5adf7b2` sont DEFINITIVEMENT non consultables a l oeil : ils ne sont pas des matchs de JGtm. Cinq des temoins du corpus echappent donc a toute verification visuelle. | NON TRAITE, et ce n est pas un defaut a corriger : c est une CONTRAINTE a respecter. Tout futur temoin dont un verdict doit etre confirme a l oeil **doit etre un match de JGtm** — a verifier AVANT de promettre une verification visuelle, pas apres |
@@ -6181,6 +6250,99 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 | 2026-09-19 | 5.1.5 | **TRANSMIS AU LOT DE RENDU DES VÉHICULES (décision du pilote, forme (b)) — L'AFFICHAGE DU CYCLE DE RÉAPPARITION.** `vehicleCycles` est PUBLIÉ au schéma 63 ; aucun client ne le dessine. Vérifié sur pièces le 2026-09-19 : le rejeu n'a **aucune** infobulle ni carte de véhicule — `ReplayCanvasTips.tsx` n'héberge que celles des poses, des socles, du drapeau et des armes au sol, et `useReplayVehicles.ts` ne porte aucun survol (0 occurrence de `hover`). La surface est donc un lot de RENDU, pas un alignement de libellé. | **ITEM TRANSMIS, PAS UNE DETTE** : il part au lot qui reprend déjà l'orientation, la taille et les tirs des véhicules — un marqueur d'emplacement avec « Réapparition dans ≈ N s », sur le modèle des socles d'arme, ou une infobulle |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Lot 5.2b — LE ROSTER DES REMPLACANTS, ET L ORIENTATION REFUTEE PAR SA CAUSE, 2026-09-20
+
+#### 5.2b.1 — AVANT / APRES, QUATRE FILMS, CARTE DU MATCH (production-equivalent)
+
+L AVANT est mesure sur la base `65e5c0731` elle-meme (les fichiers du lot remis a la base, le
+temps de la mesure, l arbre restaure ensuite) — pas deduit d un fichier de faits cuit a une
+revision anterieure. `b1ad85eb` y reproduit EXACTEMENT le bloc de sante du diagnostic
+(`Candidates 80`, `Published 69`, `OutOfRoster 8`), ce qui date la mesure.
+
+| film | carte | nPlay | hors roster | candidats | publiees | ligne par ligne | sources nommees |
+|---|---|---|---|---|---|---|---|
+| `b1ad85eb` AVANT | Domicile | 9 | **8** | 80 | 69 | **false** (ALERTE) | 56 / 69, 9 etiquettes |
+| `b1ad85eb` APRES | Domicile | **11** | **0** | 89 | **77** | **true** (NOMINAL) | **63 / 77, 10 etiquettes** |
+| `bfecd02b` AVANT | Snowbound | 8 | 0 | 95 | 82 | true | 59 / 82, 6 etiquettes |
+| `bfecd02b` APRES | Snowbound | 8 | 0 | 95 | 82 | true | 59 / 82, 6 etiquettes |
+| `4f77afc1` AVANT | Flood Gulch | 27 | **52** | 304 | 225 | false | 144 / 225, 12 etiquettes |
+| `4f77afc1` APRES | Flood Gulch | **31** | **0** | 373 | **288** | false (bijection) | **190 / 288, 14 etiquettes** |
+| `a349fea8` AVANT | Fragmentation Heavies | 25 | 0 | 321 | 289 | true | 167 / 289, 15 etiquettes |
+| `a349fea8` APRES | Fragmentation Heavies | 25 | 0 | 321 | 289 | true | 167 / 289, 15 etiquettes |
+
+**LE TEMOIN SANS REMPLACEMENT NE BOUGE PAS D UNE LIGNE** (`bfecd02b`), et le motif du xuid y
+CONFIRME les huit sieges de la table (`MotifAgree 8`, zero contradiction, zero desaccord).
+**`4f77afc1` GAGNE 63 LIGNES** et garde sa publication ligne par ligne refusee — par la
+BIJECTION (2 indices inferes pour 2 noms libres), c est-a-dire par le garde-fou qui mesure
+vraiment l ambiguite. **`a349fea8` EST INCHANGE** parce que sa lecture par motif se contredit
+et est refusee en entier (12 desaccords, 25 xuids lus a l index 0).
+
+| film | provenance du roster, APRES |
+|---|---|
+| `b1ad85eb` | table 8 · bot 1 · **motif 1** (`Claudors`, index 10, unanime 22/27 chunks) · infere 1 (`?10`, index 9 : le film se tait) |
+| `bfecd02b` | table 8 · motif 0 epinglage, **8 accords** |
+| `4f77afc1` | table 24 · **motif 3** · 24 accords · **1 contradiction** (comptee, la table garde la main) · infere 2 |
+| `a349fea8` | table REFUSEE (`sans_section`) · motif REFUSE (12 desaccords) · infere 25 |
+
+Les 8 fixtures de contrat : **zero ligne de difference hors la chaine de revision**.
+
+#### 5.2b.2 — L ORIENTATION DES VEHICULES : LE NEGATIF, ET SA CAUSE
+
+Oracle : la DIRECTION DE DEPLACEMENT (velocite `i1`, validee a 1,7-2,1 deg au lot V1a.3), sur les
+echantillons au-dela du seuil de production (`vehicleMinSpeedMPS`). Temoin : l avant d un AUTRE
+chassis. Instrument : `replay/vehicule_orientation_research_test.go`, un film a la fois.
+
+| film | chemin d `i2` | n | mediane | p90 | < 15 deg | temoin (mediane) |
+|---|---|---|---|---|---|---|
+| `4f77afc1` | 19 bits, toute vitesse | 538 | **53,6 deg** | 159,5 | 16,4 % | **93,0 deg** |
+| `4f77afc1` | 19 bits, avance seule | 359 | 34,3 deg | 73,9 | 24,5 % | — |
+| `4f77afc1` | 30 bits, toute vitesse | 35 350 | **104,5 deg** | 172,5 | 4,6 % | **88,7 deg** |
+| `4f77afc1` | 30 bits, avance seule | 14 656 | 55,7 deg | 83,8 | 11,0 % | — |
+| `a349fea8` | 19 bits, toute vitesse | 23 223 | **99,7 deg** | 158,6 | 7,9 % | **103,3 deg** |
+| `a349fea8` | 19 bits, avance seule | 11 081 | 32,0 deg | 81,6 | 16,5 % | — |
+| `a349fea8` | 30 bits, toute vitesse | 541 | 57,6 deg | 159,2 | 36,8 % | 71,4 deg |
+
+**LA CAUSE, ET C EST ELLE QUI FERME LA QUESTION** — la nature du vecteur lu :
+
+| film | chemin | \|z\| mediane | \|z\| p90 | part \|z\| > 0,9 | norme au sol mediane |
+|---|---|---|---|---|---|
+| `4f77afc1` | 19 bits | **0,960** | 0,995 | **77,2 %** | 0,282 |
+| `4f77afc1` | 30 bits | **0,981** | 0,997 | **94,0 %** | — |
+| `a349fea8` | 19 bits | 0,581 | 0,770 | 1,5 % | 0,814 |
+| `a349fea8` | 30 bits | 0,817 | 0,979 | 31,7 % | — |
+
+Le composant s appelle `object-forward-and-UP` et ne transmet qu UNE direction : c est le HAUT.
+Sur `4f77afc1` elle est quasi verticale sur les deux chemins, et son azimut au sol n est que la
+direction de la pente — d ou un ecart au deplacement INDISCERNABLE du temoin (104,5 contre 88,7).
+Sur `a349fea8` la distribution differe, et l ecart y est tout aussi indiscernable du temoin
+(99,7 contre 103,3). **Le critere du brief — mediane < 15 deg ET temoin ~90 deg — n est atteint
+sur aucun film, sur aucun chemin, sur la population qui compte.**
+
+**VENTILATION DES CHEMINS** (elle aussi est un resultat) : `4f77afc1` mode 0 31 143 · mode 1
+113 242 · **mode 2 ZERO** ; `a349fea8` mode 0 102 552 · mode 1 2 840 · **mode 2 ZERO**. Le seul
+chemin qui donnerait une direction EXACTE (deux vec3 float32) n est jamais emprunte.
+
+**AUCUN OCTET PUBLIE NE CHANGE** : les 8 fixtures de contrat sont identiques apres la capture,
+et `vehicle_tracks.go` n est pas touche. `VEHICLE_DEFAULT_HEADING_DEG` cote web garde donc son
+role — il n y avait rien a lui retirer.
+
+#### GATES JOUES
+
+| date | gate | resultat |
+|---|---|---|
+| 2026-09-20 | `gofmt -l ./internal ./cmd` | vide |
+| 2026-09-20 | `go build ./... && go vet ./internal/...` | vert |
+| 2026-09-20 | `go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `killcollector`, `replayview`, `contracttest` | **23 paquets `ok`, 0 echec** |
+| 2026-09-20 | `go test -race -gcflags=all=-d=checkptr=0` sur `grammar` et `killsource` | vert |
+| 2026-09-20 | `golangci-lint run ./internal/games/halo_infinite/film/...` (paquets entiers) | **0 issues** |
+| 2026-09-20 | ratchets 0.A.3, surface de facade, `param_4` par build, taille des fichiers | verts |
+| 2026-09-20 | goldens regeneres par leurs portes | `facts_rev`, `grammar_rev`, `types/shapes`, `golden_minibobine_familles` (EMPREINTE DE FORME : compte 28 004 inchange), 8 fixtures de contrat (chaine de revision seule) |
+
+**RESTENT A JOUER PAR LE PILOTE, A SON SIGNAL** : corpus gate 17 temoins `--base=65e5c0731`,
+`replay-equiv` 20 (ecarts attendus : `killsource` lignes publiables ; AUCUN sur `vehicles`, le
+cap ne changeant pas), S8 `-deux-passes` 3 films. Et le backfill `killsource` du parc, UNE passe,
+apres le lot.
 
 ### Montée de schéma 62 -> 63 — LES DEUX RÉAPPARITIONS QUI MANQUAIENT, 2026-09-19
 

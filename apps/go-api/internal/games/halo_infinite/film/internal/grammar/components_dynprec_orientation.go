@@ -1,5 +1,7 @@
 package grammar
 
+import "math"
+
 // GRAMMAIRE DES COMPOSANTS D'ORIENTATION « DYNAMIC-PRECISION » (i2 / i3 de ti=40).
 //
 // RÉSOLUTION STATIQUE DU DÉSÉRIALISEUR (2026-09-03, Ghidra HTTP, LECTURE SEULE).
@@ -97,6 +99,25 @@ type FwdUpDynPrec struct {
 	DirRaw uint32 // R(19) : même encodage cubemap que l'i2 du bipède
 	Mode   uint8  // 0 = incrémental/absolu, 2 = keep (2 vec3 bruts)
 	Delta  bool   // bit B : charge utile FUN_14076e744 au lieu de FUN_140c5fa84
+	// HasVecs / Vec1 / Vec2 : LE CHEMIN « KEEP » (mode 2), ses DEUX vec3 float32 bruts, LUS
+	// AU LIEU D ÊTRE SAUTÉS (lot 5.2b.2, 2026-09-20).
+	//
+	// AUCUN BIT DE PLUS N EST CONSOMMÉ : `FUN_140c5f938` appelle deux fois `FUN_1406d676c` avec
+	// R9D = 0x60, la largeur totale reste `fwdUpDynPrecMode2Bits` = 192, et le curseur sort
+	// exactement où il sortait. Ce qui change est qu on GARDE ce que ces 192 bits portent.
+	//
+	// POURQUOI ON LE GARDE : c est la seule lecture de ce composant qui donne une direction
+	// EXACTE (deux vec3 float32, sans quantification cubemap), et la mesure du lot 5.2b.2
+	// montre que la direction de 19 bits du chemin mode 0 est QUASI VERTICALE sur `ti=40`
+	// (|z| médian 0,960 sur `4f77afc1`) — c est le vecteur HAUT, pas l avant.
+	HasVecs    bool
+	Vec1, Vec2 [3]float32
+	// HasDir30 / Dir30Raw : LA DIRECTION DE 30 BITS DU CHEMIN « CONFIG » (mode 1), lue au lieu
+	// d être sautée (lot 5.2b.2). Même dépaqueteur cubemap que `DirRaw`, à une AUTRE largeur :
+	// `FUN_142e29bac` appelle `FUN_1406d8288(..., 0x1e)`. C est le chemin DOMINANT de `ti=40`
+	// (113 242 records sur 144 385 sur `4f77afc1`, 78,4 %).
+	HasDir30 bool
+	Dir30Raw uint32
 }
 
 // decodeObjectForwardAndUpDynPrec est le SEUL détenteur de la grammaire d'i2 dyn.-préc. ;
@@ -116,9 +137,9 @@ func decodeObjectForwardAndUpDynPrec(br *Lecteur, param uint32) (FwdUpDynPrec, b
 	}
 	switch {
 	case out.Mode == 2:
-		br.ReadBits(fwdUpDynPrecMode2Bits)
+		out.Vec1, out.Vec2, out.HasVecs = lireDeuxVec3Bruts(br)
 	case out.Mode == 1:
-		consumeFwdUpDynPrecConfig(br)
+		out.Dir30Raw, out.HasDir30 = consumeFwdUpDynPrecConfig(br)
 	case out.Delta:
 		dir, has := decodeFwdUpDynPrecDelta(br)
 		out.DirRaw, out.HasDir = dir, has
@@ -170,11 +191,15 @@ func decodeFwdUpDynPrecDelta(br *Lecteur) (dir uint32, has bool) {
 //	FUN_1406d8678 : math pure, 0 bit             JMP 0x1406d8678 @0x142e29cf3
 //
 // Coût : 31 bits (g == 1) ou 61 bits (g == 0).
-func consumeFwdUpDynPrecConfig(br *Lecteur) {
+func consumeFwdUpDynPrecConfig(br *Lecteur) (dir uint32, has bool) {
 	if !br.ReadBit() { // g
-		br.ReadBits(30) // 0x1e : direction packée
+		// 0x1e : DIRECTION PACKÉE, dépaquetée par `FUN_1406d8288(..., 0x1e)` — le MÊME
+		// dépaqueteur cubemap que les 19 bits des autres chemins, à une largeur de 30 bits.
+		// Elle était SAUTÉE ; elle est LUE depuis le lot 5.2b.2, à largeur inchangée.
+		dir, has = uint32(br.ReadBits(30)), true
 	}
 	br.ReadBits(30) // 0x1e : FUN_1406d84b4, scalaire déquantifié
+	return dir, has
 }
 
 // consumeObjectAngularVelocityDynPrec consomme i3
@@ -195,4 +220,49 @@ func consumeFwdUpDynPrecConfig(br *Lecteur) {
 // qui est le SEUL archétype du registre à porter la variante dyn.-préc.
 func consumeObjectAngularVelocityDynPrec(br *Lecteur) {
 	consumeObjectAngularVelocity(br)
+}
+
+// lireDeuxVec3Bruts lit les DEUX vec3 float32 du chemin « keep » (mode 2) d'i2 dyn.-préc.
+//
+// LA LARGEUR NE CHANGE PAS : 2 x 96 bits, exactement ce que `br.ReadBits(fwdUpDynPrecMode2Bits)`
+// consommait. Ce qui change est qu'on GARDE les octets au lieu de les jeter — `FUN_1406d676c`
+// avec R9D = 0x60 est une COPIE BRUTE de trois float32, donc chaque groupe de 32 bits EST un
+// float32 tel que l'écrivain l'a posé.
+//
+// LE RÉSULTAT EST CONTRÔLÉ, PAS SUPPOSÉ : ces deux vecteurs sont des directions UNITAIRES (avant
+// et haut d'une base orthonormée). Un décodage à la mauvaise convention rendrait des NaN, des
+// infinis ou des normes absurdes ; on exige donc des composantes FINIES et une norme dans
+// [0,5 ; 2] avant de déclarer la lecture valide. Sans ce contrôle, un octet lu à l'envers se
+// publierait comme une orientation.
+func lireDeuxVec3Bruts(br *Lecteur) (v1, v2 [3]float32, ok bool) {
+	avant := br.BitPos()
+	v1 = lireVec3Brut(br)
+	v2 = lireVec3Brut(br)
+	// LA LARGEUR EST UN INVARIANT, PAS UN COMMENTAIRE : six float32 font exactement les
+	// `fwdUpDynPrecMode2Bits` bits que le chemin « keep » consommait quand il les sautait. Un
+	// ecart voudrait dire que le lecteur a bute sur la fin du tampon, et la direction rendue
+	// serait du rembourrage.
+	if br.BitPos()-avant != fwdUpDynPrecMode2Bits {
+		return v1, v2, false
+	}
+	return v1, v2, vec3Unitaire(v1) && vec3Unitaire(v2)
+}
+
+// lireVec3Brut lit trois float32 consécutifs (96 bits) du flux.
+func lireVec3Brut(br *Lecteur) [3]float32 {
+	var v [3]float32
+	for i := range v {
+		v[i] = math.Float32frombits(uint32(br.ReadBits(32)))
+	}
+	return v
+}
+
+// vec3Unitaire : le contrôle de plausibilité d'une direction unitaire lue brute.
+func vec3Unitaire(v [3]float32) bool {
+	n := float64(v[0])*float64(v[0]) + float64(v[1])*float64(v[1]) + float64(v[2])*float64(v[2])
+	if math.IsNaN(n) || math.IsInf(n, 0) {
+		return false
+	}
+	n = math.Sqrt(n)
+	return n >= 0.5 && n <= 2
 }
