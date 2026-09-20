@@ -368,4 +368,16 @@ type VehicleCoverage struct {
 	// porte s est mise a ramasser des tirs a pied. Le reste (`Shots - ShotsVehicleWeapon`) n est
 	// PAS du bruit par construction : un passager tire son propre fusil depuis le vehicule.
 	ShotsVehicleWeapon int `json:"shotsVehicleWeapon"`
+	// LES QUATRE DENOMINATEURS DU CYCLE DE REAPPARITION (schema 63, cf. vehicle_cycles.go).
+	// `vehicleCycles` ne porte que les emplacements dont le cycle est ETABLI : sans ces quatre
+	// compteurs, une liste vide ne dirait pas si le film n a aucun emplacement, si aucun n a
+	// rendu d ecart, ou si les ecarts etaient trop disperses pour etablir quoi que ce soit.
+	//
+	// CycleLocations est le nombre d AMAS de naissance agglomeres, `Cycles` celui des cycles
+	// publies. `CycleGaps` et `CycleMissing` sont les deux moities du denominateur : les ecarts
+	// MESURES, et les occasions perdues faute d une fin datee sur la vie precedente.
+	CycleLocations int `json:"cycleLocations"`
+	Cycles         int `json:"cycles"`
+	CycleGaps      int `json:"cycleGaps"`
+	CycleMissing   int `json:"cycleMissing"`
 }

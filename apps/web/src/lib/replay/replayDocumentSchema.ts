@@ -158,6 +158,7 @@ export const replayDocumentSchema = z.strictObject({
   // aucune (`validateArtifact`, côté Go).
   tracks: z.array(z.custom<Elem<'tracks'>>()).nullable(),
   translocations: calque<Elem<'translocations'>>(),
+  vehicleCycles: calque<Elem<'vehicleCycles'>>(),
   vehicleLabels: table<Valeur<'vehicleLabels'>>(),
   vehicles: calque<Elem<'vehicles'>>(),
   vipCrown: calque<Elem<'vipCrown'>>(),

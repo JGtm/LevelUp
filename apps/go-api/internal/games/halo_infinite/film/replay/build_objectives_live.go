@@ -76,6 +76,12 @@ type FlagInput struct {
 	// d'image-cle portant le marqueur de portage, et l'instant de toutes les images-cles.
 	// L'appelant ne le remplit pas.
 	Marks grammar.CarrierMarkScan
+	// Gauge / GaugeScanned sont LA JAUGE DE RETOUR (`ti=13 i1` tag 3), deposees par
+	// `BuildFromFilm` comme `Marks` — l'appelant ne les remplit pas. `GaugeScanned` VOYAGE AVEC
+	// la liste, et il le faut : une liste vide et un balayage QUI N'A PAS EU LIEU ne disent pas
+	// la meme chose (meme lecon que `ZoneInput.Scanned`).
+	Gauge        []grammar.ManagedPropertyRead
+	GaugeScanned bool
 	// Identity est le pont slot statborg -> xuid PAR MANCHE, DEJA RESOLU par l'appelant.
 	// FACULTATIF : laisse a zero, ce paquet le resout lui-meme par les seuls INSTANTS DE MORT
 	// (cf. [flagIdentityOf]), et le calque reste publiable hors ligne, sans base.
@@ -188,6 +194,12 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 	if cov != nil {
 		cov.ObjectLives = len(scan.Free)
 	}
+	// LA JAUGE DE RETOUR SE POSE APRES L ASSEMBLAGE, ET C EST L ORDRE DE LA PREUVE : le slot de
+	// `ti=13` qui la porte ne se NOMME pas, il se reconnait a la part de ses echantillons qui
+	// tombent dans un lacher — donc les intervalles `dropped` doivent exister avant l appariement
+	// (cf. flag_return_gauge.go).
+	attachFlagReturnGauges(carries, in, matchClock{origin: clock.origin, step: clock.step,
+		frames: clock.frames, deathOffsetMS: reg.DeathOffsetMS()}, cov)
 	attachFlagLayer(doc, carries, cov)
 	attachFlagReturnZone(doc, opt.Labels.FlagReturnZone, carries)
 }
@@ -294,4 +306,17 @@ func logFlagCarriesCoverage(cov *FlagCarriesCoverage) {
 		"simultaneite", cov.Overlaps, "porteursTuesAmbigus", cov.AmbiguousCarrierKills,
 		"retoursAmbigus", cov.AmbiguousReturns, "rentreesParLObjet", cov.HomeByObject,
 		"rentreesAmbigues", cov.AmbiguousHomecomings)
+	// LA JAUGE DE RETOUR porte ses six denominateurs au journal comme elle les porte a
+	// l artefact : ils separent les quatre silences qu un `returnProgress` absent ne distingue
+	// pas (canal non lu, lu sans slot de jauge, slots sans correlation, correlation sans emission
+	// sur l intervalle). `apparies` a zero avec des `slots` non nuls est le cas qu il faut VOIR
+	// arriver : le canal parle, et aucune de ses series ne suit les lachers publies.
+	slog.Info("rejeu : jauge de retour du drapeau",
+		"balaye", cov.GaugeScanned, "slots", cov.GaugeSlots, "lectures", cov.GaugeReads,
+		"apparies", cov.GaugePaired, "lachersAvecJauge", cov.GaugeSpans, "points", cov.GaugePoints)
+	if cov.GaugeScanned && cov.GaugeSlots > 0 && cov.GaugePaired == 0 {
+		slog.Warn("rejeu : jauge de retour LUE mais AUCUNE ne correle a un drapeau — "+
+			"les lachers publies et les series du film ne se recouvrent pas",
+			"slots", cov.GaugeSlots, "lectures", cov.GaugeReads, "portages", cov.Carries)
+	}
 }

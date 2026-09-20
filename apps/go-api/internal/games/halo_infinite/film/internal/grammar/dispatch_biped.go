@@ -2,8 +2,8 @@ package grammar
 
 import "levelup/go-api/internal/games/halo_infinite/film/types"
 
-// dispatch_biped.go — SIXIEME ET SEPTIEME MAILLONS : les composants captes, le bipede, et la
-// fin de la chaine.
+// dispatch_biped.go — LES TROIS DERNIERS MAILLONS : les composants captes, le bipede, l objet
+// gere et l objectif, puis le point de navigation qui ferme la chaine.
 //
 // Deplacement pur depuis `traverse.go` au lot 2.7 ; chaine et exemption de longueur
 // documentees en tete de `dispatch_object.go`.
@@ -71,7 +71,7 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 		consumeBipedLowFrequencyData(br)
 		return variant, nil, true
 	case "biped-malleable-property", "biped-malleable-property-component": // i53 (FUN_140ff6764)
-		consumeBipedMalleableProperty(br)
+		consumeBipedMalleableProperty(br, level)
 		return variant, nil, true
 	case "biped-mobility-action", "biped-mobility-action-component": // i54 (FUN_1408f0264)
 		consumeBipedMobilityAction(br)
@@ -99,9 +99,9 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 	case grappleComponentNameAlt, grappleComponentName: // i59 (FUN_142f02994)
 		// Corps tag==3 (FUN_142f25e90, ancre du grappin) porté le 2026-08-16 : rend
 		// ported=false sur les seules valeurs internes jamais observées — désync propre,
-		// même contrat qu'i57 ci-dessus. param_4 vient de paramForComponent (i59 -> 2,
-		// la queue R(3) est lue — l'ancien global brut valait 0 et la sautait).
-		return variant, nil, consumeBipedSpartanAbilityNonPredictedState(br, paramForComponent(br, name))
+		// même contrat qu i57 ci-dessus. param_4 est le `level` du registre du film (i59 -> 2,
+		// la queue R(3) est lue — l ancien global brut valait 0 et la sautait).
+		return variant, nil, consumeBipedSpartanAbilityNonPredictedState(br, level)
 	case "simulation-state", "simulation-state-component": // i60 (thunk 142f02434 -> FUN_142ED6D88, vérifié live)
 		// GRAMMAIRE COMPLÈTE depuis le 2026-08-17 (lot R7-b) : structure connue (flag +
 		// 2×gate5 + 8×R16 + 2×R2 + R1[R19]+R8) PLUS la queue FUN_14076e494, dont le prédicat
@@ -114,7 +114,7 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 		consumeSimulationStatePlayback(br)
 		return variant, nil, true
 	case "biped-slide", "biped-slide-component": // i62 (FUN_142f02978 -> FUN_142f26ce8)
-		consumeBipedSlide(br)
+		consumeBipedSlide(br, level)
 		return variant, nil, true
 	case "biped-action", "biped-action-component": // i63 (FUN_142f027f4 -> FUN_142f26a20)
 		// Returns ported=false on the value-gated loop1 dispatch (count>0) so the
@@ -125,10 +125,11 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 	}
 }
 
-// consumeManagedAndObjectiveComponent est le DERNIER maillon : objet gere (ti=10/12/13),
-// objectif (ti=11), unite (ti=35 hors bipede) et les arms isoles. Sa branche `default` est
-// celle du `switch` d'origine, mot pour mot : un composant qu'aucun maillon ne reconnait n'est
-// pas porte, et la traversee s'arrete proprement sur lui (DesyncAt).
+// consumeManagedAndObjectiveComponent porte l objet gere (ti=10/13), l objectif (ti=11),
+// l unite (ti=35 hors bipede) et les arms isoles. Sa branche `default` passe la main au maillon
+// du point de navigation (ti=12), qui est desormais le DERNIER de la chaine et qui porte le
+// `default` d origine, mot pour mot : un composant qu aucun maillon ne reconnait n est pas
+// porte, et la traversee s arrete proprement sur lui (DesyncAt).
 //
 // Il ne prend PAS `typeIndex` : aucun de ses arms ne le lit, et il n'a plus de maillon a qui
 // le passer.
@@ -143,9 +144,6 @@ func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32)
 		return variant, nil, true
 	case compManagedObjectRTPC: // ti=10 i26..i29 (FUN_140796d38) — R(32) id [+R(22)], publie
 		consumeManagedObjectRTPC(br)
-		return variant, nil, true
-	case compNavpointRadialProgress: // ti=12 i14 (FUN_140fc8d14) — R(8), publie
-		consumeNavpointRadialProgress(br)
 		return variant, nil, true
 	case compManagedObjectProperty: // ti=13 i1 (FUN_140ce5554 -> FUN_140ce59bc) — variant mode A, publie
 		consumeManagedObjectProperty(br)
@@ -270,8 +268,61 @@ func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32)
 	// CONVERGE PAS sur le binding gap. Gardés comme référence ; câblage en attente d'un chemin
 	// de binding robuste (replay propre depuis keyframe = mur deser default-state, cf handoff L3).
 	default:
+		return consumeNavpointComponent(br, name, level)
+	}
+}
+
+// consumeNavpointComponent porte l ARCHETYPE `managed-navpoint` (ti=12) — le marqueur d objectif
+// tel que le moteur le replique — et il est le DERNIER maillon de la chaine : sa branche
+// `default` est celle du `switch` d origine, mot pour mot.
+//
+// # POURQUOI UN MAILLON A LUI (lot 5.1.1, 2026-09-18)
+//
+// Meme geste qu au lot 3.6.a pour `ti=9`, et pour la meme raison : les deux composants de
+// `ti=12` deja portes (`i0` et `i14`) etaient sur DEUX maillons differents par hasard d ordre de
+// portage, et les deux maillons qui les portaient sont au plafond du ratchet de longueur
+// (`archlint/film_function_length_test.go`) — les douze composants de ce lot n y avaient pas de
+// place. La redistribution est SANS EFFET SUR LES BITS : les etiquettes de `case` d un `switch`
+// sur un nom de composant sont disjointes, donc chaque nom tombe sur la meme branche qu avant,
+// et le garde-rail G1 (`ecs_table_guard_test.go`) confronte la chaine entiere a `ecs_table.tsv`.
+//
+// # LE `param_4` DES CINQ FILTRES, ET POURQUOI IL EST CALCULE ICI
+//
+// Les cinq `*-filter(s)-component` sont les seuls composants de l archetype dont le
+// deserialiseur BRANCHE sur `param_4` : `2 < param_4` pour `i2`, `1 < param_4` pour `i3`..`i6`.
+// La valeur vient du slot `+0x10` de leur descripteur (`paramByComponent`), et le test se fait
+// la ou le nom du composant est connu — c est-a-dire ici, comme pour `i19`/`i20`/`i23` du bipede.
+func consumeNavpointComponent(br *Lecteur, name string, level uint32) (variant uint32, dead *types.DeadState, ported bool) { //nolint:gocyclo // un case par composant du registre
+	variant = noVariant
+	switch name {
+	case compNavpointSubType: // ti=12 i0 (FUN_1410e0cac) — R(32)
+		br.ReadBits(navpointSubTypeBits)
+	case compNavpointFlags: // ti=12 i1 (FUN_141094130) — R(8), lot 5.1.1
+		consumeNavpointFlags(br)
+	case compNavpointDistanceFilters: // ti=12 i2 (FUN_140dbde1c) — bloc de filtres + distances
+		return variant, nil, consumeNavpointVisibilityDistanceFilters(br, level > 2)
+	case compNavpointOffscreenFilters, compNavpointOccludedFilters: // ti=12 i3 et i4 (FUN_140dbdfd8)
+		return variant, nil, consumeNavpointBoolFilters(br, level > 1)
+	case compNavpointVisibilityFilter, compNavpointDockingFilter: // ti=12 i5 et i6 (FUN_140dbe400)
+		return variant, nil, consumeNavpointFilterOnly(br, level > 1)
+	case compNavpointDockingOrder: // ti=12 i7 (FUN_142ed5050) — R(8)
+		consumeNavpointDockingOrder(br)
+	case compNavpointDockingGroupName: // ti=12 i8 (FUN_142ed5028) — R(32)
+		consumeNavpointDockingGroupName(br)
+	case compNavpointFormattedText: // ti=12 i9 (FUN_1410e7b90) — R(8) x [R(32) + sac texte]
+		consumeNavpointFormattedText(br)
+	case compNavpointTimers: // ti=12 i10 (FUN_1410d9040) — 2 x R(7), meme champ que ti=11 i0
+		consumeNavpointTimers(br)
+	case compNavpointManualTimerInitial: // ti=12 i11 (FUN_142ed5194) — R(17), publie
+		consumeNavpointManualTimerInitial(br)
+	case compNavpointManualTimerCurrent: // ti=12 i12 (FUN_142ed512c) — R(17), publie
+		consumeNavpointManualTimerCurrent(br)
+	case compNavpointRadialProgress: // ti=12 i14 (FUN_140fc8d14) — R(8), publie
+		consumeNavpointRadialProgress(br)
+	default:
 		// Un-ported (object position/velocity/angular/region/damage/constraint/parent/
 		// scale/..., unit-actor-control/state/malleable, biped-* tail): stop cleanly.
 		return variant, nil, false
 	}
+	return variant, nil, true
 }

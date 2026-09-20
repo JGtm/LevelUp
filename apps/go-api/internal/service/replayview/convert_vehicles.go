@@ -63,3 +63,16 @@ func toVehicleAim(v replay.VehicleAim) replaydoc.VehicleAim {
 		P: v.P,
 	}
 }
+
+func toVehicleCycle(v replay.VehicleCycle) replaydoc.VehicleCycle {
+	return replaydoc.VehicleCycle{
+		X:       v.X,
+		Y:       v.Y,
+		Family:  v.Family,
+		MedianS: v.MedianS,
+		P10S:    v.P10S,
+		P90S:    v.P90S,
+		Gaps:    v.Gaps,
+		Missing: v.Missing,
+	}
+}

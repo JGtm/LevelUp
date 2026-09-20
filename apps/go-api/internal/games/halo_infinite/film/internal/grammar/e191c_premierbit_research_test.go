@@ -55,12 +55,12 @@ func e191cCompteur(pay []byte, nom string, start int) (uint64, bool) {
 		return kfReadBits(pay, start, 6), true
 	case "object-constraint-component": // R(5) n
 		return kfReadBits(pay, start, 5), true
-	case "object-low-frequency-component": // R(2) tete ; compte a +12 ou +27
+	case compObjectLowFrequency: // R(2) tete ; compte a +12 ou +27
 		if kfReadBits(pay, start, 2) < 2 {
 			return kfReadBits(pay, start+27, 6), true
 		}
 		return kfReadBits(pay, start+12, 6), true
-	case "object-frame-configuration-component": // porte R(1) ; si 1 : R(32) puis R(6)
+	case compObjectFrameConfiguration: // porte R(1) ; si 1 : R(32) puis R(6)
 		if kfReadBits(pay, start, 1) == 1 {
 			return kfReadBits(pay, start+33, 6), true
 		}

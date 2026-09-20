@@ -12,6 +12,17 @@
  * de cet état au profit du clignotement). L'infobulle, elle, la dit EN TOUTES LETTRES, parce
  * qu'une forme seule se lit comme un effet de style.
  *
+ * LA JAUGE DE RETOUR N'EST PAS UN COMPTE À REBOURS, ET LA LIGNE LE DIT COMME TELLE (schéma 63).
+ * Un drapeau au sol rentre chez lui quand une JAUGE se remplit — au taux `1/reset + H(n)/solo`,
+ * série harmonique du nombre de défenseurs — et cette jauge SE VIDE quand plus personne n'est
+ * dans la zone. Afficher « retour dans N s » serait donc un mensonge mesurable : sur le corpus,
+ * deux lâchers de même durée montent à 1,0000 et à 0,3209. La ligne affiche donc le REMPLISSAGE,
+ * en pourcentage, et rien d'autre.
+ *
+ * ELLE NE S'AFFICHE QUE SUR UN DRAPEAU AU SOL, et seulement quand l'artefact porte la jauge :
+ * un artefact antérieur à 63, ou un intervalle que le film n'a pas couvert, n'a pas de ligne —
+ * pas de tiret, qui suggérerait qu'on saurait.
+ *
  * UN ÉTAT INCONNU N'INVENTE PAS DE LIBELLÉ : un artefact plus récent que ce client peut publier
  * un état que la table de texte ne couvre pas — la ligne est alors omise plutôt que remplie d'un
  * identifiant brut ou d'un état voisin.
@@ -59,6 +70,9 @@ export function ReplayFlagTip({ locale, hover, width }: ReplayFlagTipProps) {
         </span>
       )}
       <span className="block text-muted-foreground">{t.flagSinceFmt(sinceMs / 1000)}</span>
+      {now.state === 'dropped' && now.returnProgress !== null && (
+        <span className="block text-muted-foreground">{t.flagReturnFmt(now.returnProgress)}</span>
+      )}
       {now.state === 'carried_open' && (
         <span className="mt-0.5 block text-[0.65rem] text-muted-foreground opacity-80">
           {t.flagOpenNote}

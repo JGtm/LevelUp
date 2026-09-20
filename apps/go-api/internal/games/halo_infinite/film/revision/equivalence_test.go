@@ -88,10 +88,11 @@ func couchesMesurees(t *testing.T) []coucheMesuree {
 		},
 		{
 			nom: "grammar", revisionDuCode: grammar.Rev,
-			racines:    []string{filepath.Join(film, "grammar")},
-			horsCouche: []string{"rev.go", "rev_chronique.go", "rev_chronique_archive.go"},
-			amonts:     []string{profile.Rev, source.Rev},
-			golden:     filepath.Join(film, "grammar", "testdata", "grammar_rev.golden"),
+			racines: []string{filepath.Join(film, "grammar")},
+			horsCouche: []string{"rev.go", "rev_chronique.go", "rev_chronique_archive.go",
+				"rev_chronique_archive_2.go"},
+			amonts: []string{profile.Rev, source.Rev},
+			golden: filepath.Join(film, "grammar", "testdata", "grammar_rev.golden"),
 		},
 		{
 			nom: "facts", revisionDuCode: facts.Rev,
