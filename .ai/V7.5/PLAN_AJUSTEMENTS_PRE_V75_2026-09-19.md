@@ -109,10 +109,11 @@ grep -rn "frag_range_self\|fragRangeSelf" apps/web/src apps/go-api/internal --in
 ```
 
 ## Clôture
-- [ ] Fusion lot 2 et lot 3 dans `wt/ajustements-pre-v75` (conflits i18n résolus à la main).
-- [ ] `make check-types`, `make test-web`, `cd apps/go-api && go test ./...`, `make go-api-lint` sur la branche fusionnée.
+- [x] Fusion lot 2 et lot 3 dans `wt/ajustements-pre-v75` — sans conflit (56de738db, 34dd0c9be).
+- [x] Gates sur la branche fusionnée (2026-09-20) : tsc 0, vitest 743 fichiers / 7 967 tests verts, `go test ./...` 40 ok / 0 FAIL, `make go-api-lint` 0 issue.
 - [ ] Gate visuel utilisateur (Firefox, pile de dev basculée sur le worktree).
-- [ ] Entrée `.ai/thought_log.md`, fusion dans `feat/v75`, CI verte au niveau job.
+- [x] Entrée `.ai/thought_log.md` (2026-09-20).
+- [ ] Fusion dans `feat/v75`, CI verte au niveau job (sur signal après le gate visuel).
 
 ## Découvertes (non traitées ici)
 - `usageI18n.ts` porte un second gabarit « Mesuré sur N des M matchs de Capture du drapeau… »
