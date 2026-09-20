@@ -6,7 +6,7 @@
  * slot (même clé que `VehicleTrack.slot`) — `x`/`y` valent alors la position INTERPOLÉE DU
  * VÉHICULE (centre), pas celle d'un tireur (le bipède ne réplique plus une fois embarqué,
  * `document.go`). Ce module résout ICI, une fois, ce qui NE DÉPEND QUE DU FILM (le véhicule
- * porteur et son cap à l'instant du tir, `vehicleHeadingAt`) et le montage de l'arme
+ * porteur et son cap à l'instant du tir, `vehicleChassisHeadingAt`) et le montage de l'arme
  * (`vehicleWeaponMountOf`, table statique) ; ce qui dépend du SPRITE CHARGÉ (sa taille, donc le
  * décalage écran réel) reste au tracé (`drawShotsLayer`), qui seul connaît `sizeOf` — même
  * découpage précalcul/canevas que le reste du fichier.
@@ -36,7 +36,7 @@ import { fxTintOf, type FxTint } from '../layers/fxInk'
 import { familyOf, type ShotFamily } from '../layers/shotEffects'
 import { heldReading } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { vehicleHeadingAt } from './vehiclesLayer'
+import { vehicleChassisHeadingAt } from './vehiclesAim'
 import { vehicleWeaponMountOf, type VehicleWeaponMount } from './vehicleWeaponMounts'
 import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 
@@ -56,7 +56,12 @@ export interface VehicleShotSource {
   mount: VehicleWeaponMount | null
   /** Famille du véhicule porteur (clé de `sizeOf`/`spriteOf`, cf. `VehicleStyle`). */
   family: string | undefined
-  /** Cap MONDE du véhicule à l'instant du tir (`vehicleHeadingAt`), degrés, convention `Point.h`. */
+  /**
+   * Cap MONDE du véhicule à l'instant du tir — celui auquel le CHÂSSIS EST DESSINÉ
+   * (`vehicleChassisHeadingAt`), degrés, convention `Point.h`. C'est le même que le sprite, et ce
+   * n'est pas un détail : le montage d'arme est une ancre dans le repère LOCAL du sprite, donc un
+   * éclair posé à un autre cap sortirait du châssis qu'il est censé quitter.
+   */
   headingDeg: number
 }
 
@@ -155,5 +160,5 @@ function vehicleShotSourceOf(
   if (!mount && !armeDeVehicule) return null
   const track = doc.vehicles.find((v) => v.slot === vehicleSlot)
   if (!track) return null
-  return { mount, family: track.family, headingDeg: vehicleHeadingAt(track, t) }
+  return { mount, family: track.family, headingDeg: vehicleChassisHeadingAt(track, t) }
 }

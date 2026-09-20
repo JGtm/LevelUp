@@ -239,6 +239,45 @@ export const VEHICLE_HUMAN_FAMILIES: ReadonlySet<string> = new Set([
 ])
 
 /**
+ * FAMILLES_ARME_FIXE — LES CHÂSSIS DONT L'ARME EST SOLIDAIRE DU CORPS, et dont le nez suit donc
+ * ce que le CONDUCTEUR vise.
+ *
+ * LA DÉCISION EST DE L'UTILISATEUR (2026-09-20) : « le châssis s'oriente là où l'ARME pointe ».
+ * Elle tranche un problème que la mesure a fermé dans l'autre sens — le lot 5.2-B a RÉFUTÉ
+ * l'orientation propre du film : le composant candidat de `ti=40` (`i2`) est un vecteur HAUT,
+ * pas un avant (médianes de 54 à 105 degrés contre la vélocité). Le cap du châssis ne viendra
+ * donc pas du film ; il vient de la seule direction MESURÉE que le véhicule porte en propre, la
+ * visée de son conducteur (`rides[].aim`, schéma 31 — justesse 0,2 à 0,5 degré contre la
+ * référence publiée, couverture 35 épisodes attestés sur 35).
+ *
+ * POURQUOI CES NEUF FAMILLES, ET PAS LES AUTRES. Sur un Ghost, une Banshee, un Wraith, une Wasp,
+ * un Chopper, une Shade ou une tourelle montée, l'arme NE TOURNE PAS par rapport au corps :
+ * viser, c'est tourner le véhicule, donc la visée EST l'avant du châssis. Le Mongoose et le
+ * Gungoose n'ont pas d'arme de conducteur mais leur avant suit le conducteur de la même façon.
+ *
+ * TOUTE AUTRE FAMILLE EST À TOURELLE, ET REÇOIT LE REPLI — c'est-à-dire la vélocité, comme
+ * avant : Warthog (et ses variantes Gauss et rockethog), Razorback, Scorpion, Falcon, Pélican,
+ * Phantom, Skiff. Sur ces châssis le tireur n'est pas le pilote et l'arme tourne seule : prêter
+ * la visée au corps le ferait pivoter à chaque balayage de tourelle.
+ *
+ * UNE SEULE TABLE ACTIVE, et c'est la même doctrine que `VEHICLE_PLASMA_FAMILIES` : la liste à
+ * tourelle est ÉCRITE ci-dessus mais n'est pas consultée par le code — deux tables actives
+ * pourraient diverger (une famille absente des deux, par exemple un futur châssis) sans qu'aucun
+ * test ne le voie. Une famille inconnue de ce calque reçoit donc la vélocité, le repli neutre.
+ */
+export const FAMILLES_ARME_FIXE: ReadonlySet<string> = new Set([
+  'ghost',
+  'banshee',
+  'wraith',
+  'wasp',
+  'chopper',
+  'shade',
+  'tourelle_montee',
+  'mongoose',
+  'gungoose',
+])
+
+/**
  * vehicleExplosionKindOf — LA FACTION DE LA DÉFLAGRATION. `undefined`/`''` (châssis non résolu)
  * et toute famille absente de `VEHICLE_PLASMA_FAMILIES` (y compris une famille future, inconnue
  * de ce calque) reçoivent `'normal'` — le repli neutre documenté ci-dessus.

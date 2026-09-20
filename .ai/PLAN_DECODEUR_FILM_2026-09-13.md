@@ -5978,6 +5978,53 @@ PUBLIE une lecture qui existait déjà.
         et un montage de classe `tourelle` reste SANS direction par règle — **100 tirs sur 241**
         de `4f77afc1` sont des tirs de Warthog, donc encore une bouffée ronde, posée au montage.
 
+- [x] **5.2a.6 — Le châssis s'oriente là où l'ARME pointe** (web seul).
+  - [x] **LE FILM NE DONNERA PAS LE CAP, C'EST MESURÉ** : le lot 5.2-B a RÉFUTÉ l'orientation
+        propre du châssis — le composant candidat de `ti=40` (`i2`) est un vecteur HAUT, pas un
+        avant (médianes de **54 à 105 degrés** contre la vélocité). Le châssis était donc dessiné
+        à la direction de sa VÉLOCITÉ, c'est-à-dire « là où le véhicule se déplace » et non « là
+        où il pointe » : un véhicule qui recule, dérape, tourne, vole ou est à l'arrêt n'a pas son
+        nez dans cette direction.
+  - [x] **Décision de l'utilisateur (2026-09-20)** : « le châssis s'oriente là où l'ARME pointe ».
+        La seule direction MESURÉE qu'un véhicule porte en propre est la visée de son conducteur
+        (`rides[].aim`, schéma 31 — justesse 0,2 à 0,5 degré, 35 épisodes attestés sur 35).
+  - [x] `vehicleChassisHeadingAt`, quatre régimes dans l'ordre : *(1)* visée du conducteur —
+        famille à ARME FIXE, un épisode du **siège 0** en vigueur, et une lecture de visée en
+        vigueur dessus ; *(2)* vélocité, comme avant ; *(3)* cap voisin ; *(4)* défaut (nez vers
+        le haut). Les régimes 2 à 4 sont `vehicleHeadingAt` tel quel — la fonction ne fait
+        qu'AJOUTER le premier devant.
+  - [x] `FAMILLES_ARME_FIXE` (une constante nommée, chez les autres tables de familles) : ghost,
+        banshee, wraith, wasp, chopper, shade, tourelle_montee, mongoose, gungoose. Sur ces
+        châssis l'arme NE TOURNE PAS par rapport au corps — viser, c'est tourner le véhicule ; le
+        Mongoose et le Gungoose n'ont pas d'arme de conducteur mais leur avant le suit de même.
+        **Une seule table ACTIVE**, même doctrine que `VEHICLE_PLASMA_FAMILIES` : les neuf
+        familles à TOURELLE (warthog, warthog_gauss, rockethog, razorback, scorpion, falcon,
+        pelican, phantom, skiff) sont écrites en commentaire mais reçoivent le REPLI — deux tables
+        actives pourraient diverger sans qu'aucun test ne le voie.
+  - [x] Le cap du châssis DESSINÉ est aussi celui du tir en véhicule (`shotFx`) : le montage
+        d'arme est une ancre dans le repère LOCAL du sprite, donc un éclair posé à un autre cap
+        sortirait du châssis qu'il est censé quitter.
+  - [~] Le REPLI DU CÔNE de visée (`vehicleOccupantAimAt`) garde la vélocité nue, et c'est
+        délibéré : ce repli est marqué `measured: false`, et lui donner la visée d'un AUTRE
+        occupant ferait passer une mesure d'autrui pour une approximation de soi.
+  - [x] **Mesure, part des échantillons de véhicule par source du cap** :
+
+        | document | échantillons | AVANT (visée / vélocité / voisin / défaut) | APRÈS |
+        |---|---|---|---|
+        | `4f77afc1` | 40 227 | 0,0 % / 79,5 % / 15,8 % / 4,7 % | **21,7 %** / 63,0 % / 12,0 % / 3,3 % |
+        | `5676a9ba` | 20 580 | 0,0 % / 69,0 % / 7,8 % / 23,1 % | **37,1 %** / 49,7 % / 5,3 % / 7,9 % |
+        | `c259789d` | 12 759 | 0,0 % / 83,6 % / 12,7 % / 3,7 % | **9,6 %** / 75,4 % / 11,3 % / 3,7 % |
+
+        Là où les deux existent, l'écart entre la visée et la vélocité vaut **30 / 51 / 21 degrés**
+        en médiane (q75 67 / 76 / 44, q90 120 / 117 / 132) : ce n'est pas un raffinement, c'est la
+        correction d'un cap franchement faux une fois sur deux. Le régime « défaut » (nez vers le
+        haut, aucune mesure) recule de 23,1 % à 7,9 % sur `5676a9ba`.
+  - [x] Tests vitest : ghost occupé -> visée ; ghost vide -> vélocité ; warthog occupé ->
+        vélocité ; lecture absente -> vélocité ; lecture périmée -> vélocité ; visée d'un
+        PASSAGER -> vélocité (seul le siège 0 compte) ; famille inconnue -> vélocité ; aucun cap
+        nulle part -> défaut ; le cône garde son repli ; la table vaut exactement les neuf
+        familles de la décision.
+
 ---
 
 ## 4. Découvertes (consignées, NON traitées — règle 7)
@@ -9623,6 +9670,9 @@ touché dans le worktree.
 | 2026-09-20 | 5.2a.5 | mesure sur 4 documents à véhicules (`4f77afc1`, `5676a9ba`, `c259789d`, `8a485699`) | cap de regard lisible sur les tirs `v` : **1/241, 3/241, 0/47, 4/15** ; épisode d'occupation manquant : **0 sur 241** ; plafond de voix : 14,9 % et 25,7 % des tirs de véhicule refusés, soit le taux GÉNÉRAL ; son résolu **96 à 100 %**, 20 fichiers présents |
 | 2026-09-20 | 5.2a.5 | direction publiée après correctif | **0 % -> 27 %** (`4f77afc1`), **1 % -> 30 %** (`5676a9ba`), **27 % -> 100 %** (`8a485699`) ; 100 % des armes de véhicule sans montage documenté |
 | 2026-09-20 | 5.2a.5 | `make check-types` ; `npm run test` ; eslint | vert ; **7 799 tests** ; 0 erreur |
+| 2026-09-20 | 5.2a.6 | part des échantillons de véhicule par source du cap, 3 documents cuits | visée **0,0 % -> 21,7 %** (`4f77afc1`), **0,0 % -> 37,1 %** (`5676a9ba`), **0,0 % -> 9,6 %** (`c259789d`) ; régime « défaut » 23,1 % -> 7,9 % sur `5676a9ba` |
+| 2026-09-20 | 5.2a.6 | écart visée / vélocité là où les deux existent | médiane **30 / 51 / 21 degrés**, q75 67 / 76 / 44, q90 120 / 117 / 132 — le cap dessiné était franchement faux une fois sur deux |
+| 2026-09-20 | 5.2a.6 | `make check-types` (cache purgé) ; `npm run test` ; eslint | vert ; **7 810 tests** ; 0 erreur |
 | 2026-09-20 | tous | décodage de film | **AUCUN** — mesures sur documents cuits, fixtures régénérées depuis les entrées figées. Gates avec décodage (cuisson Bastion + BTB, `replay-equiv` 20, corpus gate 17) en attente du signal du pilote |
 
 ## 6. Protocole de reprise de session

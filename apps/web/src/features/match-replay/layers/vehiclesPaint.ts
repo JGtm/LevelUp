@@ -25,13 +25,12 @@ import { drawNameLabel, type LabelStyle } from './replayLabels'
 import type { XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { edgeMarkFor, OFFSCREEN_MARGIN_PX, type EdgeMark } from '../model/edgeClamp'
-import { vehicleOccupantAimAt } from '../model/vehiclesAim'
+import { vehicleChassisHeadingAt, vehicleOccupantAimAt } from '../model/vehiclesAim'
 import {
   vehicleActiveRides,
   vehicleColorAt,
   vehicleDestructionFrame,
   vehicleExplosionKindOf,
-  vehicleHeadingAt,
   vehicleIsDecor,
   vehicleMapElementGlyph,
   vehiclePositionAt,
@@ -534,7 +533,7 @@ export function drawVehiclesLayer(
           const size = style.sizeOf(track.family)
           const sprite = size ? style.spriteOf(track.family, color) : null
           if (size && sprite) {
-            const angle = vehicleScreenAngle(vehicleHeadingAt(track, time.frame))
+            const angle = vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame))
             const scaleRatio = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, echelle)
             ctx.globalAlpha = 1
             drawRotatedSprite(ctx, sprite, c.x, c.y, angle, scaleRatio * time.k)
@@ -546,7 +545,7 @@ export function drawVehiclesLayer(
             // l'emporte d'elle-même : seule la table d'assets aura changé.
             const demi = vehicleTurretHalfPx(echelle)
             drawMapElementTurret(ctx, c, color, time.k,
-              vehicleScreenAngle(vehicleHeadingAt(track, time.frame)), demi)
+              vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame)), demi)
             edgePx = demi * time.k
           }
           // Sinon : image ou manifeste pas encore chargés — rien ne remplace le sprite (même
