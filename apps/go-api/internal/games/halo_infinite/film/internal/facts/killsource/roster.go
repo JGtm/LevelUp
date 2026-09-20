@@ -40,6 +40,11 @@ type Roster struct {
 	// UnpinnedBots : bots dont le slot contredit l espace des humains. Non vide = anomalie a
 	// regarder, pas a ignorer.
 	UnpinnedBots []BotEntry
+	// BotsSuccedes : bots declares sur un slot DEJA tenu par un autre bot — une SUCCESSION dans
+	// le meme siege, que le film ecrit et que le roster ne peut pas representer deux fois. Le
+	// dernier declare nomme l indice ; les precedents sont comptes ici, jamais laisses en noms
+	// libres (cf. [roster.pinBots]).
+	BotsSuccedes int
 	// IndexSource : la PROVENANCE de chaque indice, meme longueur qu `IndexToName`. Un artefact
 	// doit pouvoir dire quelle part de lui vient d une LECTURE et quelle part d un REPLI
 	// (doctrine D14 c du chantier, D-10 d ADR 0034).
@@ -56,6 +61,10 @@ const (
 	OriginFilmTable IndexOrigin = "table_film"
 	// OriginBotMeta : BOT_METADATA a epingle ce slot.
 	OriginBotMeta IndexOrigin = "bot_meta"
+	// OriginXUIDMotif : les 5 bits qui precedent le motif du xuid dans un chunk de replication
+	// (`index_motif.go`) — LA LECTURE qui voit les REMPLACANTS, que la table de `chunk_00`
+	// ignore parce qu elle est ecrite a l ouverture du film.
+	OriginXUIDMotif IndexOrigin = "motif_xuid"
 	// OriginInference : la bijection inferee depuis les votes du kill-feed — LE REPLI.
 	OriginInference IndexOrigin = "inference"
 	// OriginNone : aucun nom, ni lu ni infere (trou de remplissage).
@@ -98,6 +107,18 @@ type FilmTablePinning struct {
 	// noms pour un indice se tranchent par les votes, et qu un nom sans kill ni mort n en porte
 	// aucun : le choix etait ARBITRAIRE (revue de jalon M1, lentille L4).
 	FreeNames int
+	// MotifPinned / MotifAgree / MotifContradict / MotifDuplicate : LE LIEN PAR LE MOTIF DU XUID
+	// (lot 5.2b.1, `index_motif.go`), ventile comme la table l est au-dessus. `MotifPinned` est
+	// ce qu il AJOUTE — les indices que ni BOT_METADATA ni la table de `chunk_00` n epinglent,
+	// c est-a-dire les REMPLACANTS ; `MotifAgree` / `MotifContradict` sont le CONTROLE sur les
+	// indices deja epingles (meme nom / autre nom), et une contradiction ne tranche rien : la
+	// table de `chunk_00` garde la main, elle est la plus eprouvee. `MotifDuplicate` : le nom lu
+	// est deja epingle ailleurs.
+	MotifPinned, MotifAgree, MotifContradict, MotifDuplicate int
+	// MotifReadings / MotifDisagreements / MotifAbsent : le COUT de cette lecture. `Readings` =
+	// chunks de replication qui ont livre au moins un index ; `Disagreements` = xuids lus a deux
+	// index differents (non publies) ; `Absent` = xuids dont le motif ne figure dans aucun chunk.
+	MotifReadings, MotifDisagreements, MotifAbsent int
 	// Agree / Contradict / Silent : le CONTROLE des indices epingles par les votes du kill-feed.
 	// `Agree` = les votes designent le meme joueur ; `Contradict` = ils en designent un autre,
 	// strictement plus vote ; `Silent` = aucun vote sur cet indice (le joueur n a ni tue ni est
@@ -151,6 +172,14 @@ type roster struct {
 	// seatPin : les indices epingles par la TABLE DU FILM (sous-ensemble de `pin` ; le reste de
 	// `pin` vient de BOT_METADATA). Sert a nommer la provenance de chaque indice.
 	seatPin map[int]bool
+	// botsSuccedes : bots declares sur un slot DEJA epingle par un autre bot — une succession
+	// dans le meme siege. Compte et publie ([Roster.BotsSuccedes]) : deux bots sur un slot est un
+	// fait du film, pas une anomalie, mais il doit se voir.
+	botsSuccedes int
+	// motifPin : les indices epingles par le MOTIF DU XUID. Meme role que `seatPin` pour la
+	// provenance — les trois ensembles sont disjoints par construction (chacun refuse un indice
+	// deja epingle).
+	motifPin map[int]bool
 	// table : ce que l epinglage par la table a produit, compteurs de controle compris.
 	table FilmTablePinning
 }
@@ -170,20 +199,27 @@ const BotSuffix = " [bot]"
 //  2. LA TABLE DU FILM ensuite — la LECTURE du lien `index <-> gamertag` (lot 1.5). Elle
 //     n ecrase jamais un slot de bot : un indice revendique par les deux est une contradiction
 //     entre deux lectures, comptee (`BotConflict`), jamais tranchee en silence.
-//  3. L INFERENCE en dernier, sur ce qui reste (bijection.go) — le REPLI, compte (`Inferred`).
-func buildRoster(kf *killFeed, bm botMeta, useBots bool, t FilmTable) *roster {
+//  3. LE MOTIF DU XUID ensuite (lot 5.2b.1, `index_motif.go`) — la LECTURE des chunks de
+//     replication, la seule qui voie les REMPLACANTS. Elle passe APRES la table parce qu elle
+//     est la moins eprouvee des deux et qu elle ne doit rien ecraser : sur un indice deja
+//     epingle elle CONTROLE (`MotifAgree` / `MotifContradict`), sur un indice libre elle
+//     EPINGLE (`MotifPinned`).
+//  4. L INFERENCE en dernier, sur ce qui reste (bijection.go) — le REPLI, compte (`Inferred`).
+func buildRoster(kf *killFeed, bm botMeta, useBots bool, t FilmTable, m indexParMotif) *roster {
 	r := &roster{
-		names:   append([]string(nil), kf.names...),
-		pin:     map[int]int{},
-		nPlay:   len(kf.names),
-		nHumans: len(kf.names),
-		bots:    bm,
-		seatPin: map[int]bool{},
+		names:    append([]string(nil), kf.names...),
+		pin:      map[int]int{},
+		nPlay:    len(kf.names),
+		nHumans:  len(kf.names),
+		bots:     bm,
+		seatPin:  map[int]bool{},
+		motifPin: map[int]bool{},
 	}
 	if useBots {
 		r.pinBots(bm)
 	}
 	r.pinFilmSeats(t)
+	r.pinMotifSeats(m)
 	// Les indices libres qui ne recoivent aucun nom (trous entre le dernier humain et un slot
 	// de bot eleve) recoivent un nom de remplissage : le probleme d affectation doit avoir AU
 	// MOINS autant de noms libres que d indices libres, sinon le hongrois n est pas defini.
@@ -193,11 +229,36 @@ func buildRoster(kf *killFeed, bm botMeta, useBots bool, t FilmTable) *roster {
 	return r
 }
 
-// pinBots : l epinglage des slots de bot, inchange depuis 2026-08 (cf. l en-tete du fichier).
+// pinBots : l epinglage des slots de bot (cf. l en-tete du fichier).
+//
+// # PLUSIEURS BOTS SUR UN MEME SLOT : UNE SUCCESSION, PAS DEUX JOUEURS (lot 5.2b.1, 2026-09-20)
+//
+// BOT_METADATA declare parfois DEUX OU TROIS bots sur le MEME slot — une succession dans le
+// temps, le meme siege repris par un autre bot. `b1ad85eb` en porte trois sur le slot 8
+// (`343 Hundy`, `343 PardonMy`, `343 Brew Dog`), et le document de rejeu publie bien trois
+// entrees de roster au meme `filmIndex`.
+//
+// CE QUE LA VERSION D AVANT EN FAISAIT, ET LE DEFAUT QUE CELA CREAIT : chaque bot ajoutait un
+// nom a `names` et ECRASAIT `pin[slot]`, donc le DERNIER nommait le slot et les precedents
+// restaient dans `names` SANS AUCUN INDICE. Ils devenaient des NOMS LIBRES — c est-a-dire de la
+// matiere a inference : le hongrois pouvait poser un nom de bot sur n importe quel indice libre,
+// et `FreeNames` les comptait, ce qui rendait `AffectationUnique` faux. Tant que tous les indices
+// etaient epingles cela ne coutait rien ; des qu un indice se libere — exactement ce que
+// l epinglage des remplacants par le motif du xuid produit — deux noms de bot fantomes
+// suffisaient a fermer la publication ligne par ligne de tout le match.
+//
+// CE QU ELLE FAIT MAINTENANT : le slot garde le MEME vainqueur (le dernier declare, valeur
+// inchangee sur tout le parc), mais la succession REMPLACE le nom en place au lieu d en ajouter
+// un second. Un slot, un indice, un nom — et zero nom libre fabrique.
 func (r *roster) pinBots(bm botMeta) {
 	for _, b := range bm.Bots {
 		if b.Slot < r.nHumans || b.Slot >= 32 {
 			r.unpinned = append(r.unpinned, b)
+			continue
+		}
+		if pos, deja := r.pin[b.Slot]; deja {
+			r.names[pos] = b.Name + BotSuffix
+			r.botsSuccedes++
 			continue
 		}
 		r.names = append(r.names, b.Name+BotSuffix)
@@ -269,11 +330,76 @@ func (r *roster) pinUnSiege(idx int, nom string, posDuNom map[string]int, prises
 	}
 }
 
+// pinMotifSeats : LE MOTIF DU XUID EPINGLE CE QUE LA TABLE N A PAS VU — les remplacants.
+//
+// Il tourne MEME quand la table de `chunk_00` est refusee (film sans registre, build inconnu) :
+// c est alors la seule lecture directe qui reste, et la bijection inferee n y perd rien puisque
+// l inference ne travaille plus que sur les indices encore libres.
+//
+// LES QUATRE ISSUES SONT COMPTEES, et aucune n arbitre en silence : accord (le nom lu est celui
+// deja epingle), contradiction (un AUTRE nom — l epinglage en place gagne, il vient de la
+// lecture la plus eprouvee), doublon (le nom est deja epingle a un autre indice), epinglage.
+func (r *roster) pinMotifSeats(m indexParMotif) {
+	r.table.MotifReadings, r.table.MotifDisagreements = m.lectures, m.desaccords
+	r.table.MotifAbsent = m.absents
+	if len(m.nomParIndex) == 0 {
+		return
+	}
+	posDuNom := make(map[string]int, len(r.names))
+	for i := len(r.names) - 1; i >= 0; i-- {
+		posDuNom[r.names[i]] = i
+	}
+	prises := make(map[int]bool, len(r.pin))
+	for _, p := range r.pin {
+		prises[p] = true
+	}
+	indices := make([]int, 0, len(m.nomParIndex))
+	for idx := range m.nomParIndex {
+		indices = append(indices, idx)
+	}
+	sort.Ints(indices)
+	for _, idx := range indices {
+		r.pinUnMotif(idx, m.nomParIndex[idx], posDuNom, prises)
+	}
+}
+
+// pinUnMotif : un indice lu au motif du xuid. Decoupe de [roster.pinMotifSeats] pour rester sous
+// le plafond de longueur du depot.
+func (r *roster) pinUnMotif(idx int, nom string, posDuNom map[string]int, prises map[int]bool) {
+	if pos, deja := r.pin[idx]; deja {
+		if pos >= 0 && pos < len(r.names) && r.names[pos] == nom {
+			r.table.MotifAgree++
+			return
+		}
+		r.table.MotifContradict++
+		return
+	}
+	pos, connu := posDuNom[nom]
+	if connu && prises[pos] {
+		r.table.MotifDuplicate++
+		return
+	}
+	if !connu {
+		r.names = append(r.names, nom)
+		pos = len(r.names) - 1
+		posDuNom[nom] = pos
+	}
+	r.pin[idx] = pos
+	prises[pos] = true
+	r.motifPin[idx] = true
+	r.table.MotifPinned++
+	if idx+1 > r.nPlay {
+		r.nPlay = idx + 1
+	}
+}
+
 // originOf : la provenance du joueur porte par un indice.
 func (r *roster) originOf(i int) IndexOrigin {
 	switch {
 	case r.seatPin[i]:
 		return OriginFilmTable
+	case r.motifPin[i]:
+		return OriginXUIDMotif
 	case r.isBotIndex(i):
 		return OriginBotMeta
 	case r.nameOf(i) == "?" || strings.HasPrefix(r.nameOf(i), "?"):
@@ -343,7 +469,7 @@ func (r *roster) nomEpingle(i int) (string, bool) {
 // symptome a ete mesure avant d etre corrige (permutation IDENTIQUE, dix lignes devenues deux) —
 // c est ce qui a nomme la cause.
 func (r *roster) isBotIndex(i int) bool {
-	if r.seatPin[i] {
+	if r.seatPin[i] || r.motifPin[i] {
 		return false
 	}
 	_, ok := r.pin[i]
@@ -352,7 +478,8 @@ func (r *roster) isBotIndex(i int) bool {
 
 // public : la vue exportee.
 func (r *roster) public() Roster {
-	out := Roster{Names: append([]string(nil), r.names...), Humans: r.nHumans}
+	out := Roster{Names: append([]string(nil), r.names...), Humans: r.nHumans,
+		BotsSuccedes: r.botsSuccedes}
 	for _, b := range r.bots.Bots {
 		out.Bots = append(out.Bots, BotEntry{Slot: b.Slot, BotID: b.BotID, Name: b.Name})
 	}

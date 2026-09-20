@@ -56,6 +56,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // FilmTableRefusal nomme la cause pour laquelle la table du film n a PAS ete lue. Liste FERMEE :
@@ -94,6 +95,10 @@ type FilmTable struct {
 	InterleavedVacant bool
 	// Refusal : la cause nommee quand la table n a pas ete lue. Vide = lue.
 	Refusal FilmTableRefusal
+	// slots : les enregistrements BRUTS de la table, XUID compris. NON exporte : c est une
+	// entree du decodeur, pas une sortie. Il sert a UNE chose — donner au lecteur de motif
+	// (`index_motif.go`) les xuids que la table nomme, sans lui faire relire `chunk_00`.
+	slots []types.PlayerSlot
 }
 
 // Lue dit si la table a ete lue et porte au moins un siege.
@@ -121,6 +126,7 @@ func readFilmTable(f *film) FilmTable {
 	t := FilmTable{
 		Seats: make(map[int]string, len(slots)), Build: ident.Build,
 		Occupied: rep.Occupied, Vacant: rep.Vacant, InterleavedVacant: rep.InterleavedVacant,
+		slots: slots,
 	}
 	for _, s := range slots {
 		if s.Gamertag == "" {

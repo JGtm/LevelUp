@@ -259,6 +259,9 @@ func blocPublication(res *decfilm.Result) {
 	for _, a := range res.Health.Alerts() {
 		fmt.Printf("     ALERTE : %s\n", a)
 	}
+	for _, d := range res.Health.Degradations() {
+		fmt.Printf("     DEGRADATION : %s\n", d)
+	}
 }
 
 // compte : combien de morts verifient un predicat.

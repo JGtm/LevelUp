@@ -166,7 +166,18 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 			"retombe entierement sur l inference par les votes du kill-feed",
 			"film", c.name, "build", table.Build, "cause", string(table.Refusal))
 	}
-	c.roster = buildRoster(c.feed, loadBotMeta(c.film), c.opts.Bots, table)
+	// PUIS LE MOTIF DU XUID (lot 5.2b.1, index_motif.go) : la table de `chunk_00` est ecrite a
+	// L OUVERTURE du film, donc elle ignore les REMPLACANTS. Les cinq bits qui precedent le motif
+	// du xuid dans les chunks de replication, eux, les portent — c est la lecture que le rejeu
+	// publie sous le nom `PlayerIndexTable`, et c est la MEME table d identite : une seule, pas
+	// une deuxieme liste.
+	motif := lireIndexParMotif(c.film, table.slots, c.feed)
+	if motif.desaccords > 0 || motif.absents > 0 {
+		slog.DebugContext(ctx, "killsource: lien par motif de xuid",
+			"film", c.name, "lectures", motif.lectures, "epingles", len(motif.nomParIndex),
+			"desaccords", motif.desaccords, "absents", motif.absents)
+	}
+	c.roster = buildRoster(c.feed, loadBotMeta(c.film), c.opts.Bots, table, motif)
 	// LE COUPLE (TUEUR, VICTIME) SE LIT AU KILL-EVENT 85 (lot 1.9.3), et il se lit ICI : la
 	// decomposition du kill-feed exige les kill-events et le roster EPINGLE, et la bijection
 	// exige la decomposition. L ordre est donc force, et il est le resultat — resoudre les

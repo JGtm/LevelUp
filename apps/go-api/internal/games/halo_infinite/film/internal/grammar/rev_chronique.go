@@ -287,3 +287,30 @@ package grammar
 // `facts.Rev` suit par VALEUR (elle hache cette constante) et garde son rang
 // `killsource-2026-09-18`, qui est celui de tout le lot 5.1 : golden RE-FIGE, pas monte.
 // `SchemaVersion` reste 62 : aucun octet publie ne change.
+
+// ENTREE `grammar-2026-09-20` (2026-09-20, lot 5.2b.1) : LE HORS-ROSTER DEGRADE, IL N ALERTE
+// PLUS — ET C EST LE SEUL OCTET DE `grammar/` QUE CE LOT TOUCHE.
+//
+// `KillSourceHealth.OutOfRoster` sortait en ALERTE DURE ([KillSourceHealth.Alerts]), et
+// `killsource.Result.LineByLinePublishable` refuse tout film en alerte : UN dead-state a l indice
+// d un participant non compte eteignait donc la publication ligne par ligne du MATCH ENTIER.
+// Mesure sur `b1ad85eb` (2026-09-20) : huit dead-states hors roster, `publishable = FALSE` sur
+// les 77 lignes de `match_kill_events`, et la requete Q21b — qui filtre sur `publishable` — ne
+// rendant plus rien, AUCUNE mort du kill-feed produit ne portait son arme.
+//
+// LE COMPTEUR MESURAIT DES LIGNES DEJA REFUSEES. `walkResult.selectCredible` ecarte tout indice
+// `>= nPlayers` AVANT qu il ne devienne un candidat : une ligne comptee ici n atteint jamais la
+// publication. L alerte punissait donc les AUTRES lignes — celles dont l indice est parfaitement
+// dans le roster. Il passe en DEGRADATION ([KillSourceHealth.Degradations], nouvelle methode) :
+// le verdict sort du domaine mesure, les lignes publient, et le message NOMME ce qui est refuse.
+//
+// AUCUN BIT LU NE CHANGE : `killhealth.go` ne lit pas un octet de film, il juge des compteurs.
+// L empreinte monte parce qu elle hache les OCTETS de la couche (c est ecrit dans son en-tete).
+//
+// LE CONTROLE POSITIF DE DOMAINE RESTE ENTIER : le BTB `4f77afc1` sort toujours, et
+// `TestKillSourceHealthRatioNInclutPasLeHorsRoster` verifie desormais ses trois criteres UN PAR
+// UN (inexpliques 26.0 % > 18.0 %, couverture 76.5 % < 100 %, degradation nommee) — il ne peut
+// plus tenir par le seul hors-roster.
+//
+// `facts.Rev` MONTE (elle hache cette valeur, et le lot change aussi `facts/killsource/`) :
+// `killsource-2026-09-20`. `SchemaVersion` NE MONTE PAS — aucun champ n est ajoute au document.

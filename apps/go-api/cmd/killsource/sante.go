@@ -29,6 +29,9 @@ func afficherSante(r *rapport) error {
 	if len(h.Alerts()) == 0 {
 		fmt.Println("   aucune alerte")
 	}
+	for _, d := range h.Degradations() {
+		fmt.Printf("   DEGRADATION : %s\n", d)
+	}
 	blocDomaine(h)
 	blocVentilation(h)
 	blocVoies(r.result.Stats)
@@ -73,7 +76,8 @@ func blocVentilation(h decfilm.KillSourceHealth) {
 	fmt.Println("     Il se compte sur une AUTRE population que les trois ci-dessus (le filtre de")
 	fmt.Println("     credibilite ecarte ces lignes avant qu elles ne deviennent des candidats), donc")
 	fmt.Println("     il n entre pas dans le taux. Un ratio dont le numerateur deborde du denominateur")
-	fmt.Println("     ne veut rien dire. Non nul = un participant n est pas compte.")
+	fmt.Println("     ne veut rien dire. Non nul = un participant n est pas compte — SES morts sont")
+	fmt.Println("     refusees, les autres publient (lot 5.2b.1 : ce compteur DEGRADE, il n alerte plus).")
 }
 
 // blocVoies : le cout PAR VOIE. A lire comme une VENTILATION DU COUT, jamais comme deux precisions
@@ -172,7 +176,7 @@ func blocCompteurs(h decfilm.KillSourceHealth) {
 func santeDeJSON(res *decfilm.Result) santeJSON {
 	h := res.Health
 	s := santeJSON{
-		Verdict: h.Verdict(), Alertes: h.Alerts(),
+		Verdict: h.Verdict(), Alertes: h.Alerts(), Degradations: h.Degradations(),
 		TauxInexpliques: h.UnexplainedRatio(), TauxCouverture: h.CoverageRatio(),
 		GateParVoie: map[string]gateJSON{
 			"sequentielle": gateDeJSON(res.Stats.Walk),
@@ -189,6 +193,9 @@ func santeDeJSON(res *decfilm.Result) santeJSON {
 	}
 	if s.Alertes == nil {
 		s.Alertes = []string{}
+	}
+	if s.Degradations == nil {
+		s.Degradations = []string{}
 	}
 	for _, p := range h.ExpvarPairs() {
 		s.Compteurs = append(s.Compteurs, compteurJSON{
@@ -214,7 +221,7 @@ func gateDeJSON(p decfilm.PathStats) gateJSON {
 
 // compteurAlerte : lesquels des compteurs publies declenchent une alerte dure.
 func compteurAlerte(nom string) bool {
-	return nom == "killsource_tag_out_of_catalogue_walk" || nom == "killsource_out_of_roster"
+	return nom == "killsource_tag_out_of_catalogue_walk"
 }
 
 // remarqueCompteur : la portee des deux compteurs porteurs, attachee au compteur lui-meme pour
@@ -225,7 +232,8 @@ func remarqueCompteur(nom string) string {
 		return "compteur principal de catalogue perime ; bruit MESURE nul sur 5 films ; AVEUGLE aux " +
 			"identifiants servis par le seul balayage — le plancher de couverture est alors le filet"
 	case "killsource_out_of_roster":
-		return "population distincte des trois compteurs `unexplained_` : ne pas l y additionner"
+		return "population distincte des trois compteurs `unexplained_` : ne pas l y additionner. " +
+			"DEGRADE, n alerte pas (lot 5.2b.1) : ces morts-la sont refusees, les autres publient"
 	case "killsource_tag_out_of_catalogue_scan":
 		return "informe, n alerte pas (rapport signal/hasard 1.10 a 1.72)"
 	default:
