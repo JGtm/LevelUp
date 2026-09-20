@@ -33,6 +33,12 @@ export const LABEL_WIDTH = 130
 export const GRID_TOP = 8
 export const GRID_BOTTOM = 28
 
+/**
+ * Hauteur réservée à la LÉGENDE, sous l'axe (2026-09-19). Elle nomme les deux couleurs de
+ * point — premier frag, première mort — que rien ne nommait.
+ */
+export const LEGEND_HEIGHT = 24
+
 /** Fenêtre temporelle par défaut de l'axe X (secondes). */
 export const DEFAULT_MAX_SEC = 300
 
@@ -157,7 +163,7 @@ export function buildFirstBloodLanes(data: FirstBloodPlayerSeries[]): FirstBlood
 
 /** Hauteur totale du chart pour N lanes (bandes + marges du grid). */
 export function firstBloodLanesHeight(laneCount: number): number {
-  return Math.max(1, laneCount) * LANE_HEIGHT + GRID_TOP + GRID_BOTTOM
+  return Math.max(1, laneCount) * LANE_HEIGHT + GRID_TOP + GRID_BOTTOM + LEGEND_HEIGHT
 }
 
 // ── Formatage ─────────────────────────────────────────────────────────────────

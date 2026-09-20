@@ -1,10 +1,12 @@
-// Package service — timeseries_service_sections.go : LES DEUX SECTIONS MIGRÉES DEPUIS LA
-// SYNTHÈSE le 2026-09-13 — « Portée des engagements » (onglet Résumé) et « Usages
-// d'équipement » (onglet Progression).
+// Package service — timeseries_service_sections.go : LES SECTIONS MIGRÉES DEPUIS LES AUTRES
+// PAGES — « Portée des engagements » (onglet Résumé) et « Usages d'équipement » (onglet
+// Progression) depuis la Synthèse le 2026-09-13, puis « Les formes retenues » (contexte
+// SOLO, onglet Progression) depuis l'Escouade le 2026-09-19.
 //
-// AUCUN CALCUL NEUF ICI, ET C'EST LE POINT. Les deux blocs gardent le producteur de la
-// Synthèse (`buildWeaponRangeSection`, `squadagg.BuildEquipmentUsageBlock`) et le MÊME scope
-// que le reste de la page — les matchs déjà filtrés. Recoder la lecture côté Timeseries
+// AUCUN CALCUL NEUF ICI, ET C'EST LE POINT. Les trois blocs gardent le producteur de leur
+// page d'origine (`buildWeaponRangeSection`, `squadagg.BuildEquipmentUsageBlock`,
+// `squadagg.BuildSquadFormesBlock`) et le MÊME scope que le reste de la page — les matchs
+// déjà filtrés. Recoder la lecture côté Timeseries
 // aurait créé une seconde doctrine de scope, qui aurait divergé au premier correctif.
 //
 // Fichier séparé : timeseries_service.go tient le plafond des 500 lignes du dépôt.
@@ -13,9 +15,11 @@ package service
 import (
 	"context"
 
+	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/squadagg"
 	"levelup/go-api/internal/service/teammates"
 )
 
@@ -42,7 +46,21 @@ func (s *TimeseriesService) WithEquipmentUsage(
 	return s
 }
 
-// attachMigratedSections pose les deux blocs sur la réponse, depuis le scope canonique déjà
+// WithSquadFormes injecte les deux sources du bloc « Les formes retenues » — le MÊME couple
+// que la page Escouade (`teammates.WithSquadFormes`), et pour la même raison : depuis le
+// 2026-09-19 les neuf cartes du CONTEXTE SOLO vivent ici, l'Escouade ne gardant que son
+// contexte escouade. Un second producteur aurait fait deux mesures du même geste.
+//
+// `objectives` nil ⇒ bloc sans cartes d'objectif (dégradation propre, jamais le bloc entier).
+func (s *TimeseriesService) WithSquadFormes(
+	usage port.SquadFormesUsageRepository, objectives port.SquadFormesObjectiveRepository,
+) *TimeseriesService {
+	s.formesUsageRepo = usage
+	s.formesObjectiveRepo = objectives
+	return s
+}
+
+// attachMigratedSections pose les trois blocs sur la réponse, depuis le scope canonique déjà
 // filtré. Best-effort de bout en bout : chaque producteur rend nil plutôt que de casser la page.
 func (s *TimeseriesService) attachMigratedSections(
 	ctx context.Context, resp *domain.TimeseriesPageResponse,
@@ -61,6 +79,43 @@ func (s *TimeseriesService) attachMigratedSections(
 		TitleSlug: s.titleSlug,
 		Locale:    locale,
 	})
+	// « Les formes retenues », contexte SOLO : MÊMES match_id que le bloc d'usage
+	// ci-dessus. `SelectedGamertags` reste vide — cette page n'a pas d'escouade, et les
+	// cartes du contexte escouade ne s'y montent pas.
+	resp.SquadFormes = squadagg.BuildSquadFormesBlock(ctx, squadagg.SquadFormesQuery{
+		Repo:         s.formesUsageRepo,
+		Objectives:   s.formesObjectiveRepo,
+		PlayerXUID:   s.playerXUID,
+		MainGamertag: s.gamertag,
+		Metas:        timeseriesFormesMetas(filteredCanon, locale),
+		RepoRoot:     s.repoRoot,
+		TitleSlug:    s.titleSlug,
+		Locale:       locale,
+	})
+}
+
+// timeseriesFormesMetas nomme chaque match du scope pour le bloc « formes retenues ».
+//
+// L'IDENTITÉ D'AFFICHAGE VIENT DU CANONIQUE DÉJÀ CHARGÉ (même arbitrage que la page
+// Escouade, qui la prend de son historique) : ré-interroger la base aurait fait deux
+// libellés possibles du même match. Un match sans carte ni mode nommés garde son heure —
+// l'écran montre alors l'heure seule, jamais un « inconnu ».
+func timeseriesFormesMetas(rows []canonical.PlayerMatchRow, locale string) []squadformes.MatchMeta {
+	out := make([]squadformes.MatchMeta, 0, len(rows))
+	for _, r := range rows {
+		meta := squadformes.MatchMeta{
+			MatchID:   r.Summary.MatchID,
+			StartTime: r.Summary.StartedAtUTC.UTC().Format("2006-01-02T15:04:05Z"),
+		}
+		if r.Summary.PairMode != nil {
+			meta.ModeLabel = labelPourLocale(r.Summary.PairMode, locale)
+		}
+		if r.Summary.Map != nil {
+			meta.MapLabel = labelPourLocale(r.Summary.Map, locale)
+		}
+		out = append(out, meta)
+	}
+	return out
 }
 
 // timeseriesFriendGamertags résout les amis du joueur (nil = aucun ami déclaré).
@@ -69,4 +124,17 @@ func (s *TimeseriesService) timeseriesFriendGamertags(ctx context.Context) []str
 		return nil
 	}
 	return s.usageFriends(ctx)
+}
+
+// labelPourLocale rend le libellé d'un asset DANS LA LANGUE DE LA REQUÊTE, et retombe sur
+// le libellé par défaut quand la locale n'est pas traduite — jamais un identifiant machine
+// à l'écran.
+func labelPourLocale(ref *canonical.AssetReference, locale string) string {
+	if ref == nil {
+		return ""
+	}
+	if l, ok := ref.Labels[locale]; ok && l != "" {
+		return l
+	}
+	return ref.DefaultLabel
 }

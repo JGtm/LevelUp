@@ -27,12 +27,7 @@ export function getSquadEchangeText(locale: Locale) {
   return {
     sectionTitle: m('squad.echange.section_title'),
     sectionLabel: m('squad.echange.section_label'),
-    axisAvenger: m('squad.echange.axis_avenger'),
-    axisAvenged: m('squad.echange.axis_avenged'),
     definition: (seconds: number) => m('squad.echange.definition', { seconds }),
-    coverage: (measured: number, total: number) =>
-      m('squad.echange.coverage', { measured, total }),
-    coverageHint: m('squad.echange.coverage_hint'),
     narrative: (v: EchangeNarrativeVars) => m('squad.echange.narrative', { ...v }),
     lowSample: m('squad.echange.low_sample'),
     lowSampleHint: (floor: number) => m('squad.echange.low_sample_hint', { floor }),
@@ -86,11 +81,8 @@ export function getSquadEchangeText(locale: Locale) {
     delayFoot: (seconds: number) => m('squad.echange.delay_foot', { seconds }),
 
     // ── « Qui couvre qui » ───────────────────────────────────────────────────
-    matrixFigure: (n: number) => m('squad.echange.matrix_figure', { n }),
     matrixReceived: (n: number) => m('squad.echange.matrix_received', { n }),
-    matrixRampZero: m('squad.echange.matrix_ramp_zero'),
-    matrixRampMax: (n: number) => m('squad.echange.matrix_ramp_max', { n }),
-    matrixFootOrientation: m('squad.echange.matrix_foot_orientation'),
+    matrixHelp: (seconds: number) => m('squad.echange.matrix_help', { seconds }),
 
     // ── « Donné et reçu, par coéquipier » ────────────────────────────────────
     donneRecuTitle: m('squad.echange.donne_recu_title'),
@@ -98,10 +90,8 @@ export function getSquadEchangeText(locale: Locale) {
     donneRecuSay: (v: { joueur: string; recu: number; donne: number }) =>
       m('squad.echange.donne_recu_say', { ...v }),
     donneRecuSayEquilibre: m('squad.echange.donne_recu_say_equilibre'),
-    donneRecuFigure: m('squad.echange.donne_recu_figure'),
     donneRecuGiven: m('squad.echange.donne_recu_given'),
     donneRecuReceived: m('squad.echange.donne_recu_received'),
-    donneRecuFoot: m('squad.echange.donne_recu_foot'),
 
     // ── « Taux d'échange par session » ───────────────────────────────────────
     sessionRateTitle: m('squad.echange.session_rate_title'),
@@ -109,10 +99,13 @@ export function getSquadEchangeText(locale: Locale) {
     sessionRateSay: (v: { bas: string; haut: string; taux: string; n: number }) =>
       m('squad.echange.session_rate_say', { ...v }),
     sessionRateFigure: (seconds: number) => m('squad.echange.session_rate_figure', { seconds }),
-    sessionRateFoot: m('squad.echange.session_rate_foot'),
-    sessionRateEmptyTitle: m('squad.echange.session_rate_empty_title'),
-    sessionRateEmptyDescription: (floor: number) =>
-      m('squad.echange.session_rate_empty_description', { floor }),
+    /** Sous le plancher de tendance : la ou les soirées retenues face à l'habituel. */
+    sessionRateFewSay: (v: { n: number; floor: number }) =>
+      m('squad.echange.session_rate_few_say', { ...v }),
+    sessionRateSelection: m('squad.echange.session_rate_selection'),
+    sessionRateUsual: m('squad.echange.session_rate_usual'),
+    sessionRateUsualSub: (matchs: number) =>
+      m('squad.echange.session_rate_usual_sub', { matchs }),
     sessionRateYAxis: m('squad.echange.session_rate_y_axis'),
   }
 }

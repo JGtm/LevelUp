@@ -3,8 +3,8 @@
  *
  * Ce que ces tests verrouillent :
  *
- *  1. DEUX BANDES NOMMÉES, toi et la cible — c'est ce que le bloc promet ; une légende à un
- *     seul nom laisserait croire qu'on ne regarde qu'un joueur.
+ *  1. LA CIBLE SEULE (décision 7 du plan d'ajustements pré-v7.5, 2026-09-19) : une seule
+ *     bande, et plus aucune légende à deux entrées — le mot « Toi » a disparu du bloc.
  *  2. RIEN D'AUTRE QUE LES BANDES (demande utilisateur du 2026-09-17) : ni couverture
  *     « N frags mesurés sur M », ni liste des rôles écartés par le seuil.
  *  3. AUCUNE MESURE → état vide titré, jamais un graphe à zéro ligne ni une portée inventée.
@@ -52,10 +52,9 @@ const bloc = (weapons: SynthesisWeaponRange['weapons']): SynthesisWeaponRange =>
 
 const BASE: ExplorerEncounterStats = { count_together: 12 }
 
-/** La cible a un rôle de plus (`sniper`) : l'axe est l'union, pas l'intersection. */
+/** Deux rôles mesurés chez la cible : deux lignes sur l'axe. */
 const AVEC_MESURES: ExplorerEncounterStats = {
   ...BASE,
-  frag_range_self: bloc([{ weapon_key: 'precision', kills: side({ median: 22 }) }]),
   frag_range_target: bloc([
     { weapon_key: 'precision', kills: side({ median: 18 }) },
     { weapon_key: 'sniper', kills: side({ median: 45 }) },
@@ -63,13 +62,12 @@ const AVEC_MESURES: ExplorerEncounterStats = {
 }
 
 describe('ExplorerTargetFragRange', () => {
-  it('rend le graphe et nomme les deux bandes : toi et la cible', async () => {
+  it('rend le graphe de la cible, sans légende à deux entrées', async () => {
     renderWithProviders(<ExplorerTargetFragRange encounterStats={AVEC_MESURES} gamertag="Adversaire7" />)
     expect(screen.getByText('Portée des frags')).toBeInTheDocument()
     expect(await screen.findByTestId('echarts-mock')).toBeInTheDocument()
-    const carte = screen.getByTestId('explorer-target-frag-range')
-    expect(carte).toHaveTextContent('Toi')
-    expect(carte).toHaveTextContent('Adversaire7')
+    // La bande « toi » est partie avec sa légende : le bloc ne nomme plus deux joueurs.
+    expect(screen.getByTestId('explorer-target-frag-range')).not.toHaveTextContent('Toi')
   })
 
   it('ne montre QUE les bandes : ni couverture, ni rôles sous le seuil', async () => {
@@ -82,13 +80,17 @@ describe('ExplorerTargetFragRange', () => {
     expect(carte).not.toHaveTextContent('seuil')
   })
 
-  it('un rôle mesuré par un seul joueur n’envoie pas le bloc en état vide', async () => {
-    renderWithProviders(<ExplorerTargetFragRange encounterStats={AVEC_MESURES} gamertag="Adversaire7" />)
+  it('un seul rôle mesuré n’envoie pas le bloc en état vide', async () => {
+    const unSeulRole: ExplorerEncounterStats = {
+      ...BASE,
+      frag_range_target: bloc([{ weapon_key: 'precision', kills: side({ median: 18 }) }]),
+    }
+    renderWithProviders(<ExplorerTargetFragRange encounterStats={unSeulRole} gamertag="Adversaire7" />)
     expect(await screen.findByTestId('echarts-mock')).toBeInTheDocument()
     expect(screen.queryByText('Aucun frag mesuré sur vos matchs communs')).not.toBeInTheDocument()
   })
 
-  it('aucune mesure des deux côtés : état vide titré, pas de graphe', () => {
+  it('aucune mesure chez la cible : état vide titré, pas de graphe', () => {
     renderWithProviders(<ExplorerTargetFragRange encounterStats={BASE} gamertag="Adversaire7" />)
     expect(screen.getByText('Portée des frags')).toBeInTheDocument()
     expect(screen.getByText('Aucun frag mesuré sur vos matchs communs')).toBeInTheDocument()

@@ -13,8 +13,10 @@
  * colonnes (2026-09-17) —
  *   1. Répartition des frags (2/3) | Cadence (1/3)
  *   2. Donuts de taux de victoire (1/3) | Écart de frags cumulé (2/3)
- *   3. Répartition des résultats + Part des assistances (55 %) | Portée des frags (45 %)
- * Dans chaque rangée, la colonne gauche impose la hauteur et le bloc de droite s'étire.
+ *   3. Répartition des résultats | Part des assistances | Portée des frags (trois colonnes
+ *      de même hauteur)
+ * Dans les rangées 1 et 2, la colonne gauche impose la hauteur et le bloc de droite
+ * s'étire ; la rangée 3 a trois colonnes égales qui s'étirent toutes.
  *
  * Cas no-tokens (auth_available=false) :
  *  - Identity locale toujours résolue (indépendante des tokens)
@@ -63,9 +65,6 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
   const matchesPerSeason = profile.matches_per_season ?? []
   const showNoAuthHint = !profile.auth_available && careerStats == null
   const showSample = sampleStats != null && sampleStats.sample_size > 0
-  // Top médailles rendu à côté du donut "Répartition des modes" (ExplorerCombatProfile)
-  // quand un profil de combat existe ; sinon repli ici pour ne jamais les perdre.
-  const hasCombatProfile = (profile.combat_profile?.length ?? 0) > 0
   // Statuts par section live (Lot A3 — fin de la dégradation muette). Champ
   // optionnel côté type (fixtures/tests antérieurs) : undefined → aucun badge
   // (ExplorerLiveStatusBadge est nil-safe).
@@ -135,11 +134,12 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
         </div>
       </div>
 
-      {/* Top médailles : repli ici uniquement si pas de profil de combat (sinon
-          rendu à côté du donut Répartition des modes, cf. ExplorerCombatProfile).
+      {/* Top médailles : SEULE place de ce bloc depuis le 2026-09-19 — il était aussi
+          rendu à côté du donut « Répartition des modes », et les deux s'affichaient
+          ensemble dès que la cible n'avait que des matchs locaux.
           Vide sans raison distincte à afficher : le badge de la section Carrière
           ci-dessus couvre déjà ce cas (même fetch, cf. commentaire showCareerSection). */}
-      {topMedals.length > 0 && !hasCombatProfile && <ExplorerTargetMedals medals={topMedals} />}
+      {topMedals.length > 0 && <ExplorerTargetMedals medals={topMedals} />}
 
       {showNoAuthHint && (
         <div
@@ -193,17 +193,15 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
               réutilisées du hub Relations. Rendue seulement si encounter_stats fourni. */}
           {encounterStats && <ExplorerTargetVersusDonuts encounterStats={encounterStats} />}
 
-          {/* Rangée 3 : bilan V/N/D puis « Part des assistances » empilés (55 %) +
-              « Portée des frags » (45 %). Le ratio est explicite et non une fraction de
-              la grille de 3 : le graphe de portée a besoin de largeur pour ses bâtons,
-              et 1/3 le serrait trop (arbitrage utilisateur du 2026-09-17). Même
-              mécanique de hauteur que la rangée 1 : la colonne gauche décide, le bloc de
-              droite s'étire. */}
-          <div className="grid gap-4 lg:grid-cols-[55fr_45fr]">
-            <div className="flex flex-col gap-4">
-              <ExplorerTargetOutcome sampleStats={sampleStats} />
-              <ExplorerTargetAssists encounterStats={encounterStats} />
-            </div>
+          {/* Rangée 3 : « Répartition des résultats », « Part des assistances » et
+              « Portée des frags », TROIS COLONNES DE MÊME HAUTEUR (retour utilisateur du
+              2026-09-19). Les deux premières étaient empilées dans une colonne de 55 % et
+              la portée s'étirait seule à côté : la rangée montrait trois blocs de trois
+              hauteurs différentes. `items-stretch` égalise les colonnes, et chaque carte
+              porte `h-full` pour remplir la sienne. */}
+          <div className="grid items-stretch gap-4 lg:grid-cols-3">
+            <ExplorerTargetOutcome sampleStats={sampleStats} />
+            <ExplorerTargetAssists encounterStats={encounterStats} />
             <ExplorerTargetFragRange encounterStats={encounterStats} gamertag={gamertag} />
           </div>
         </section>

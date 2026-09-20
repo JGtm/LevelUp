@@ -41,13 +41,21 @@ import type { Locale } from '@/lib/i18n/locale'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, escapeHtml, getEChartsThemeColors, getTooltipBase } from './_utils'
+import {
+  CHART_BG,
+  escapeHtml,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
+  legendEntries,
+} from './_utils'
 import {
   DEFAULT_MAX_SEC,
   GAP_BAR_HEIGHT,
   GRID_BOTTOM,
   GRID_TOP,
   LABEL_WIDTH,
+  LEGEND_HEIGHT,
   POINT_OFFSET,
   buildFirstBloodLanes,
   firstBloodLanesHeight,
@@ -108,6 +116,9 @@ export interface FirstBloodLanesLabels {
   medianEvent: (kind: 'kill' | 'death', v: { time: string; n: number; total: number }) => string
   /** Tooltip de la barre d'avance (écart déjà signé et formaté). */
   gap: (gap: string) => string
+  /** Les deux entrées de la légende : premier frag, première mort. */
+  legendKill: string
+  legendDeath: string
 }
 
 export interface FirstBloodLanesProps {
@@ -124,6 +135,14 @@ export interface FirstBloodLanesProps {
   emptyMessage?: string
   /** Force la locale (défaut : celle du shell). */
   locale?: Locale
+  /**
+   * Hauteur imposée (px). Absente : la hauteur se DÉRIVE du nombre de lanes.
+   *
+   * POURQUOI L'IMPOSER PARFOIS (2026-09-19) : sur une rangée partagée avec « Stats par
+   * minute », la bande dérivée de deux lanes faisait le tiers de la hauteur de sa voisine —
+   * la rangée se lisait bancale. Les lanes se répartissent alors dans la hauteur donnée.
+   */
+  height?: number
 }
 
 export function FirstBloodLanes({
@@ -134,6 +153,7 @@ export function FirstBloodLanes({
   error,
   emptyMessage,
   locale: localeProp,
+  height,
 }: FirstBloodLanesProps) {
   const shellLocale = useAppShellStore((s) => s.locale)
   const locale = localeProp ?? shellLocale
@@ -161,7 +181,7 @@ export function FirstBloodLanes({
       loading={loading}
       error={error}
       emptyMessage={emptyMessage ?? formatMessage(firstBloodManifest, 'first_blood.empty', locale)}
-      height={firstBloodLanesHeight(lanes.length)}
+      height={height ?? firstBloodLanesHeight(lanes.length)}
       buildOption={buildOption}
       // SVG et pas canvas : la colonne de gauche (pseudo, « méd. 50s → 1m04 »,
       // « +14s d'avance ») est l'essentiel de la lecture de ce graphe, et c'est du TEXTE.
@@ -196,6 +216,8 @@ function makeLabels(locale: Locale): FirstBloodLanesLabels {
         total: v.total,
       }),
     gap: (gap) => t('first_blood.tooltip.gap', { gap }),
+    legendKill: t('first_blood.legend.first_kill'),
+    legendDeath: t('first_blood.legend.first_death'),
   }
 }
 
@@ -294,7 +316,20 @@ export function buildFirstBloodLanesOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: GRID_TOP, bottom: GRID_BOTTOM, left: LABEL_WIDTH + 8, right: 16 },
+    // `bottom` élargi de la hauteur de la LÉGENDE (2026-09-19) : elle se pose au ras du
+    // bas, centrée, comme sur tous les autres graphes du dépôt.
+    grid: { top: GRID_TOP, bottom: GRID_BOTTOM + LEGEND_HEIGHT, left: LABEL_WIDTH + 8, right: 16 },
+    // LÉGENDE À DEUX ENTRÉES, sans interrupteur : rien ne disait ce que les deux couleurs
+    // de point désignent — le lecteur devait le deviner des libellés d'axe.
+    legend: {
+      ...getLegendBase(tc),
+      left: 'center',
+      selectedMode: false,
+      data: legendEntries([
+        { name: labels.legendKill, color: killColor },
+        { name: labels.legendDeath, color: deathColor },
+      ]),
+    },
     tooltip: { ...getTooltipBase(tc), trigger: 'item' },
     xAxis: {
       type: 'value',

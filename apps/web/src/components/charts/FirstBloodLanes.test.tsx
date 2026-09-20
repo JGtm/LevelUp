@@ -360,7 +360,14 @@ describe('FirstBloodLanes — états', () => {
 
   it('dimensionne la carte sur le nombre de lanes (54 px par bande)', async () => {
     const { props } = await renderChart()
-    // 2 lanes × 54 + marges du grid (8 + 28) = 144.
-    expect((props.style as { height: number }).height).toBe(144)
+    // 2 lanes × 54 + marges du grid (8 + 28) + la légende (24, 2026-09-19) = 168.
+    expect((props.style as { height: number }).height).toBe(168)
+  })
+
+  // 2026-09-19 : la hauteur est IMPOSABLE — sur une rangée partagée, la bande prend celle
+  // de sa voisine plutôt que la sienne, dérivée du nombre de pistes.
+  it('accepte une hauteur imposée, qui prime sur la hauteur dérivée', async () => {
+    const { props } = await renderChart({ height: 360 })
+    expect((props.style as { height: number }).height).toBe(360)
   })
 })

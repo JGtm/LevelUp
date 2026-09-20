@@ -4,9 +4,9 @@
  * Garde-rail (CLAUDE.md n°6, règle « ≤ 2 copies ») : le lot C1 du plan vague C
  * (`.ai/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md`, décision D1) a désigné
  * `components/charts/Heatmap2DChart.tsx` comme l'UNIQUE wrapper canonique de grille
- * ECharts. La migration des implémentations existantes est le lot C2 — REPORTÉE par
- * le superviseur (décision S6, hors périmètre de la vague C) : ce test n'en fait
- * QUE le garde-rail, pas la migration.
+ * ECharts. La migration des implémentations existantes, longtemps reportée (décision S6),
+ * est FAITE depuis le 2026-09-20 pour toutes les grilles catégorielles : ce test est ce qui
+ * empêche une sixième de réapparaître.
  *
  * Sans lui, une 6e implémentation du couple `type` / `heatmap` ECharts pourrait
  * apparaître sans que personne ne le remarque (leçon du dépôt : une factorisation
@@ -19,16 +19,16 @@
  * le grep de sanity-check du gate de vague le prendrait pour un 6e site et
  * polluerait sa propre vérification.
  *
- * ALLOWLIST datée 2026-09-09, mise à jour le 2026-09-09 (lot 1.5) après la
- * migration de `SynthesisHeatmapChart.tsx` (lot C2 — routée par le wrapper
- * canonique en mode `divergent`, rampe autour de 50 % préservée via
- * `valueRange={[0, 1]}`) — 4 sites restants relevés par grep (recherche du
- * motif `type:` suivi de `heatmap` entre apostrophes, hors Heatmap2DChart.tsx) :
- *   - features/ascension/ActivityCalendarChart.tsx      : décision S6 du
- *     superviseur — migration à porter un par un, hors périmètre de la vague C.
- *   - features/explorer/ExplorerActivityHeatmapChart.tsx : idem (décision S6).
- *   - features/palmares/RelationsMomentsHeatmap.tsx      : idem (décision S6).
- *   - features/squad/charts/squadMapHeatmapChart.ts      : idem (décision S6).
+ * ALLOWLIST datée 2026-09-09, RÉDUITE À UNE ENTRÉE le 2026-09-20 (lot 3 des ajustements
+ * pré-v7.5) : les trois dernières grilles catégorielles sont passées au wrapper canonique
+ * — « Rythme des rencontres » (Relations), « Carte de chaleur d'activité commune »
+ * (Explorer) et « Performance par joueur × carte » (Escouade). Elles rendent désormais le
+ * même graphe que « Activité par jour et heure », qui est le rendu de référence.
+ *
+ * Seule entrée restante :
+ *   - features/ascension/ActivityCalendarChart.tsx : ce n'est PAS une grille catégorielle
+ *     mais un calendrier annuel (52 semaines × 7 jours) à ses propres règles de cellule ;
+ *     sa migration n'était pas au périmètre du lot 3 et reste à décider.
  *
  * Retirer une entrée de cette liste EXACTEMENT quand son fichier est migré vers
  * Heatmap2DChart (plus de littéral `type: 'heatmap'` dedans) — ne jamais agrandir
@@ -40,15 +40,17 @@ import { join, resolve, sep } from 'node:path'
 
 const HEATMAP_TYPE_LITERAL = /type:\s*['"]heatmap['"]/
 
-/** Fichier canonique — seul autorisé à porter le littéral sans figurer dans l'allowlist. */
-const CANONICAL_FILE = 'components/charts/Heatmap2DChart.tsx'
+/** Fichiers canoniques — seuls autorisés à porter le littéral sans figurer dans l'allowlist. */
+const CANONICAL_FILES = [
+  'components/charts/Heatmap2DChart.tsx',
+  // Le builder d'option, coupé du composant le 2026-09-20 (seuil de 500 lignes). C'est le
+  // MEME wrapper, en deux fichiers : le littéral y est chez lui.
+  'components/charts/heatmap2DOption.ts',
+]
 
 /** Allowlist datée 2026-09-09 — voir le en-tête du fichier pour la justification de chaque entrée. */
 const ALLOWLIST_2026_09_09 = [
   'features/ascension/ActivityCalendarChart.tsx',
-  'features/explorer/ExplorerActivityHeatmapChart.tsx',
-  'features/palmares/RelationsMomentsHeatmap.tsx',
-  'features/squad/charts/squadMapHeatmapChart.ts',
 ]
 
 function walk(dir: string): string[] {
@@ -73,7 +75,7 @@ describe('garde-rail heatmapSingleImpl (source unique components/charts/Heatmap2
     const porteurs = files
       .filter((f) => HEATMAP_TYPE_LITERAL.test(readFileSync(f, 'utf8')))
       .map((f) => f.split(sep).join('/').replace(`${srcRoot.split(sep).join('/')}/`, ''))
-      .filter((relPath) => relPath !== CANONICAL_FILE)
+      .filter((relPath) => !CANONICAL_FILES.includes(relPath))
 
     const horsAllowlist = porteurs.filter((relPath) => !ALLOWLIST_2026_09_09.includes(relPath))
 

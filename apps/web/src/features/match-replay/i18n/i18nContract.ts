@@ -25,34 +25,26 @@ export type AmmoHint =
   | { kind: 'full' }
 
 /**
- * LE TABLEAU DES USAGES D'ÉQUIPEMENT de la page match (onglet Chronologie). Il compte, sur tout
- * le match, ce que le rejeu ne montre qu'image par image.
+ * LE TABLEAU DES USAGES D'ÉQUIPEMENT de la page match (onglet « Contrôle »). Il compte, sur
+ * tout le match, ce que le rejeu ne montre qu'image par image.
  *
- * QUATRE RÉSERVES SONT PORTÉES PAR CES TEXTES, et aucune ne doit se perdre :
+ * DEUX RÉSERVES SONT PORTÉES PAR CES TEXTES, et aucune ne doit se perdre. Les deux autres sont
+ * parties le 2026-09-19 avec le groupe de colonnes « états actifs » (décision 6 du plan
+ * d'ajustements pré-v7.5) : celle de l'épisode lui-même (sa source n'est pas établie) et celle
+ * de la cellule « — » des frags sous effet non mesurés. L'épisode de camouflage ou de
+ * surbouclier ne fait plus de colonne à lui : il alimente le côté « utilisé » de la colonne
+ * d'équipement du power-up. `killBadgeHint` porte encore la réserve de l'épisode, pour le badge.
  *
- *  1. `groupActiveHint` — un épisode de camouflage ou de surbouclier est un ÉTAT MESURÉ, pas
- *     un geste : le film dit que l'effet court, il ne dit PAS d'où il vient (bonus ramassé au
- *     socle, ou capacité déclenchée). Compter ces épisodes comme des « utilisations d'objet »
- *     serait affirmer une origine que rien n'établit. LA MÊME PHRASE PORTE DÉSORMAIS LA
- *     RÉSERVE DES COLONNES « FRAGS SOUS <FAMILLE> » (PLAN_RETOURS_UTILISATEUR_2026-08-29
- *     §LOT F.2, DEC-7 révisée) : les bornes de l'épisode sont à la précision de la
- *     retransmission près, et le camo SEUL est sous le seuil de mesure en lecture large
- *     (26,2 % des épisodes avec ≥ 1 frag) — un même groupe, une seule infobulle, parce que les
- *     colonnes de frags sont des SOUS-COLONNES du même état mesuré, pas un calque à part.
- *  2. `coverageReserveFmt` — les gestes que le film mesure sans en nommer l'auteur ni l'origine
+ *  1. `coverageReserveFmt` — les gestes que le film mesure sans en nommer l'auteur ni l'origine
  *     n'entrent dans aucune des deux vues. La réserve NE SE CACHE PAS (décision utilisateur
  *     2026-09-09) : depuis le 2026-09-14 elle tient en UNE phrase, au survol du TITRE de la
  *     carte, le pied de carte ayant été supprimé (aucun texte de pied sous ce bloc).
- *  3. `notMeasured` — le RÉPULSEUR n'a aucun canal d'activation dans le film (neuf canaux
+ *  2. `notMeasured` — le RÉPULSEUR n'a aucun canal d'activation dans le film (neuf canaux
  *     fouillés, négatif mesuré le 2026-09-03). Pas de colonne vide (elle se lirait « zéro
  *     utilisation ») : une phrase qui le dit. LE PROPULSEUR EN EST SORTI le même jour — son
  *     usage est mesuré (schéma 38, `abilityImpulses`) et validé contre un relevé Theater ; il
  *     n'a pas de colonne pour autant, parce que le geste dure une demi-seconde et se lit sur
  *     la CARTE (le dash du pion), pas dans un compte de tableau. La phrase dit les deux.
- *  4. LA CELLULE « — » DES COLONNES DE FRAGS (cf. `equipmentUsageColumns.ts`, `killsCell`) —
- *     un match dont `EquipmentUsageCoverage.killsRead` est faux écrit « — », jamais un zéro :
- *     pas un texte à part, un CARACTÈRE, identique dans les deux langues (même convention que
- *     `lib/formatters` pour toute grandeur non mesurée du dépôt).
  *
  * LES NOMS DE FAMILLE NE SONT PAS ICI, et c'est voulu : ils vivent déjà dans `placementFamily`
  * (règles de rendu) et `padEquipmentFamily` (socles de bonus). Une troisième table de noms
@@ -62,7 +54,7 @@ export interface EquipmentUsageText {
   title: string
   /**
    * LES DEUX VUES EMPILEES DE LA SECTION (2026-09-03). Le tableau a deux niveaux d'en-tete a
-   * ete remplace par un graphe : `viewByPlayer` classe les joueurs geste par geste,
+   * ete remplace par un graphe : `viewByPlayer` classe les joueurs par grandeur,
    * `viewTeamShare` dit quel camp s'est appuye sur quel outil. Deux titres et pas un : les
    * deux vues repondent a deux questions, et une carte sans titre de vue laisserait croire
    * a deux lectures de la meme.
@@ -79,34 +71,6 @@ export interface EquipmentUsageText {
   /** Tractions de grappin : la seule ACTIVATION de capacité que le film mesure et attribue. */
   groupGrapple: string
   groupGrappleHint: string
-  /** États actifs mesurés (camouflage, surbouclier) : nombre d'épisodes et durée cumulée. */
-  groupActive: string
-  groupActiveHint: string
-  /**
-   * LE NOM COURT des deux familles d'état, et pourquoi il ne se prend nulle part ailleurs.
-   *
-   * `equipmentActive` porte bien ces deux familles, mais ce sont des PHRASES d'infobulle de
-   * fiche (« Camouflage actif — le joueur est invisible à l'écran de jeu ») : illisibles en tête
-   * de colonne. `padEquipmentFamily` porte bien deux noms courts, mais ce sont ceux des SOCLES
-   * de bonus — les employer ici nommerait l'ÉTAT par la source que `groupActiveHint` dit
-   * justement ne pas être établie. D'où deux libellés propres, et le typage tient la parité.
-   */
-  activeFamily: Record<'camo' | 'overshield', string>
-  /**
-   * LE DÉTAIL D'UNE CELLULE D'ÉTAT ACTIF, en infobulle (2026-09-13). Les trois colonnes
-   * « (épisodes) / (durée) / frags sous X » ont fusionné en UNE colonne de comptes : la durée
-   * cumulée et les frags qualifient ce compte au survol, ils n'ouvrent plus deux colonnes
-   * d'unités différentes sur la même mesure.
-   */
-  activeCellTipFmt: (uses: number, duration: string, kills: number | null) => string
-  /**
-   * L'EN-TÊTE de la colonne d'un état actif. Le nom de famille SEUL ne suffit pas : la colonne
-   * fusionnée « équipement » nomme déjà le power-up du même nom (« Surbouclier »), et deux
-   * colonnes homonymes côte à côte ne se distinguent plus (la table des socles nomme même le
-   * camouflage « Camouflage actif »). Le qualificatif dit ce que CELLE-CI compte : les
-   * UTILISATIONS de l'effet, pas l'objet qu'on a pris.
-   */
-  activeColumnFmt: (family: string) => string
   /**
    * LA COLONNE FUSIONNÉE « équipement » (E2, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : REMPLACE
    * `groupDeployed`/`groupDropped` — une famille, trois issues empilées (utilisé / gardé sans
@@ -141,7 +105,7 @@ export interface EquipmentUsageText {
    * que `MatchEquipmentUsageSection`, réutilisé tel quel par `MatchViewTabChronology`).
    */
   killBadgeFmt: Record<'camo' | 'overshield', (kills: number) => string>
-  /** Infobulle du badge : LA MÊME réserve que `groupActiveHint` (source non distinguée, bornes
+  /** Infobulle du badge : la réserve de l'état actif (source non distinguée, bornes
    * à la précision de la retransmission, camo seul sous le seuil de mesure en lecture large). */
   killBadgeHint: string
 }
@@ -997,18 +961,6 @@ export interface ReplayText {
    * Le seul écran du dépôt qui NOMME le ramasseur d'un socle — cf. `PadControlText`.
    */
   padControl: PadControlText
-  /**
-   * LE REPLI « GAME CHANGERS » des deux bilans ci-dessus (plan 2026-09-05, décision D3) : les
-   * colonnes hors du vote se masquent derrière « Voir plus (N) », N = colonnes masquées. Les
-   * clés sont PARTAGÉES par les deux sections — même geste, mêmes mots — et vivent ici plutôt
-   * qu'en double dans leurs deux blocs. Elles ne se prennent PAS chez MedalDigest (i18n de
-   * `squad`, autre feature) : le dictionnaire du rejeu ne s'importe pas de là-bas.
-   * `collapsedColumnsHint` (infobulle du bouton) dit la promesse du repli : rien n'est
-   * supprimé, les totaux et les notes comptent toujours tout.
-   */
-  collapsedColumnsShowFmt: (count: number) => string
-  collapsedColumnsHide: string
-  collapsedColumnsHint: string
   /** Pictogramme « munitions pleines » (emplacement jamais écrit) : décision produit 4. */
   ammoFullLabel: string
   ammoDrawnHint: string

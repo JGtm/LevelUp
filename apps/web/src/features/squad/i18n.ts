@@ -175,9 +175,6 @@ export interface SquadText {
     roleBeneficiary: string
     /** Titre de l'axe des valeurs : ce que la hauteur des segments compte. */
     valueAxis: string
-    /** Bandeau de couverture : « mesuré sur N des M matchs ». */
-    coverage: (measured: number, total: number) => string
-    coverageHint: string
     /** Mesuré, mais aucune assistance interne à l'escouade. */
     noPairs: string
     /** Infobulle d'un segment : la PART de la paire dans les assistances mesurées. */
@@ -201,7 +198,6 @@ export interface SquadText {
   heatmap: {
     title: string
     /** Nom de l'axe X de la heatmap joueur x carte. */
-    xAxis: string
     /** Nom de l'axe Y de la heatmap joueur x carte. */
     yAxis: string
     pieceTier1: string
@@ -533,10 +529,6 @@ const FR_TEXT: SquadText = {
     roleAssistant: 'Larbin',
     roleBeneficiary: 'Patron',
     valueAxis: 'Assistances par patron',
-    coverage: (measured, total) =>
-      `Mesuré sur ${measured} des ${total} match${total > 1 ? 's' : ''} de la sélection`,
-    coverageHint:
-      'L\'assistance se lit dans le film du match. Les films expirent côté serveur : les matchs manquants ne pourront plus être mesurés.',
     noPairs: 'Aucune assistance entre membres de l\'escouade sur les matchs mesurés.',
     tooltipShare: (share) => `part ${share}`,
     tooltipAssistantOutdamaged: (n) => `dont ${n} où le larbin a fait plus de dégâts que le patron`,
@@ -551,7 +543,6 @@ const FR_TEXT: SquadText = {
   },
   heatmap: {
     title: 'Performance par joueur × carte',
-    xAxis: 'Carte',
     yAxis: 'Joueur',
     pieceTier1: 'Excellente',
     pieceTier2: 'Bonne',
@@ -887,17 +878,13 @@ const EN_TEXT: SquadText = {
   assists: {
     title: 'Assists within the squad',
     description:
-      'One bar per lackey (who sets up the kill), one segment per boss (who gets the credit), across the selected matches.',
-    roleAssistant: 'Lackey',
+      'One bar per minion (who sets up the kill), one segment per boss (who gets the credit), across the selected matches.',
+    roleAssistant: 'Minion',
     roleBeneficiary: 'Boss',
     valueAxis: 'Assists per boss',
-    coverage: (measured, total) =>
-      `Measured on ${measured} of ${total} selected match${total > 1 ? 'es' : ''}`,
-    coverageHint:
-      'Assists are read from the match film. Films expire server-side: the missing matches can no longer be measured.',
     noPairs: 'No assists between squad members across the measured matches.',
     tooltipShare: (share) => `share ${share}`,
-    tooltipAssistantOutdamaged: (n) => `${n} where the lackey dealt more damage than the boss`,
+    tooltipAssistantOutdamaged: (n) => `${n} where the minion dealt more damage than the boss`,
   },
   timeline: {
     title: 'Squad performance by session',
@@ -909,7 +896,6 @@ const EN_TEXT: SquadText = {
   },
   heatmap: {
     title: 'Performance per player × map',
-    xAxis: 'Map',
     yAxis: 'Player',
     pieceTier1: 'Excellent',
     pieceTier2: 'Good',

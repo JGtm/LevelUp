@@ -15,7 +15,7 @@ const t = USAGE_TEXT.fr
 
 describe('buildPartiesDonutModel — P10/P11', () => {
   it('absent (parties non fournies) : pas de donut, jamais un anneau a zero', () => {
-    expect(buildPartiesDonutModel(undefined, [], 'objets pris dans le lobby', t, 'fr')).toBeNull()
+    expect(buildPartiesDonutModel(undefined, [], t, 'fr')).toBeNull()
   })
 
   it('lobby_total <= 0 : pas de donut', () => {
@@ -26,7 +26,7 @@ describe('buildPartiesDonutModel — P10/P11', () => {
       rest_of_team: 0,
       opponents: 0,
     }
-    expect(buildPartiesDonutModel(parties, [], 'objets pris dans le lobby', t, 'fr')).toBeNull()
+    expect(buildPartiesDonutModel(parties, [], t, 'fr')).toBeNull()
   })
 
   it('solo (aucun ami suivi) : trois parts, un seul sous-total « mon equipe »', () => {
@@ -37,7 +37,7 @@ describe('buildPartiesDonutModel — P10/P11', () => {
       rest_of_team: 32,
       opponents: 48,
     }
-    const model = buildPartiesDonutModel(parties, [], 'objets pris dans le lobby', t, 'fr')!
+    const model = buildPartiesDonutModel(parties, [], t, 'fr')!
     expect(model).not.toBeNull()
     expect(model.series[0].datapoints.map((p) => p.name)).toEqual(['Moi', 'Reste de mon équipe', 'Équipe adverse'])
     expect(model.subtotals).toHaveLength(1)
@@ -45,7 +45,7 @@ describe('buildPartiesDonutModel — P10/P11', () => {
     // (20 + 32) / 100 = 52 %
     expect(model.subtotals[0].value).toBe('52,0 %')
     expect(model.centerValue).toBe('100')
-    expect(model.centerLabel).toBe('objets pris dans le lobby')
+    // Le libellé d'unité au centre a été retiré le 2026-09-19 : le titre de la carte le dit.
   })
 
   it('escouade (amis suivis) : parts par ami, couleurs squad-player-2.., deux sous-totaux', () => {
@@ -64,7 +64,7 @@ describe('buildPartiesDonutModel — P10/P11', () => {
       { xuid: 'f1', gamertag: 'Madina' },
       { xuid: 'f2', gamertag: 'Choco' },
     ]
-    const model = buildPartiesDonutModel(parties, trackedPlayers, 'objets pris dans le lobby', t, 'fr')!
+    const model = buildPartiesDonutModel(parties, trackedPlayers, t, 'fr')!
     expect(model.series[0].datapoints.map((p) => p.name)).toEqual([
       'Moi',
       'Madina',
@@ -96,7 +96,7 @@ describe('buildPartiesDonutModel — P10/P11', () => {
       by_friend: [],
     }
     const trackedPlayers: SessionUsageSquadPlayer[] = [{ xuid: 'f1', gamertag: 'Madina' }]
-    const model = buildPartiesDonutModel(parties, trackedPlayers, 'objets pris dans le lobby', t, 'fr')!
+    const model = buildPartiesDonutModel(parties, trackedPlayers, t, 'fr')!
     expect(model.series[0].datapoints.map((p) => p.name)).toEqual(['Moi', 'Reste de mon équipe', 'Équipe adverse'])
     // Aucun ami avec value>0 : un seul sous-total, comme le cas solo.
     expect(model.subtotals).toHaveLength(1)
@@ -110,7 +110,7 @@ describe('buildPartiesDonutModel — P10/P11', () => {
       rest_of_team: 32,
       opponents: 48,
     }
-    const model = buildPartiesDonutModel(parties, [], 'objets pris dans le lobby', t, 'fr')!
+    const model = buildPartiesDonutModel(parties, [], t, 'fr')!
     expect(model.series[0].datapoints[0].valueLabel).toBe('20')
   })
 })

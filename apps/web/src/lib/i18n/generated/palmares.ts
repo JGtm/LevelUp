@@ -83,7 +83,6 @@ export const palmaresManifest = {
   "palmares.relations.moments.heatmap_by_day": { fr: "Par jour", en: "By day" },
   "palmares.relations.moments.heatmap_by_hour": { fr: "Par heure", en: "By hour" },
   "palmares.relations.moments.heatmap_empty": { fr: "Pas encore assez de rencontres pour dresser une carte horaire.", en: "Not enough encounters yet to build a time-of-day map." },
-  "palmares.relations.moments.heatmap_legend": { fr: "Matchs communs", en: "Shared matches" },
   "palmares.relations.moments.outcome_loss": { fr: "Défaite", en: "Loss" },
   "palmares.relations.moments.outcome_other": { fr: "Nul", en: "Draw" },
   "palmares.relations.moments.outcome_win": { fr: "Victoire", en: "Win" },

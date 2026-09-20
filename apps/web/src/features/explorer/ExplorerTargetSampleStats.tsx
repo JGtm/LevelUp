@@ -258,7 +258,7 @@ export function ExplorerTargetOutcome({ sampleStats }: ExplorerTargetSampleStats
   const t: TFn = (key, values) => formatMessage(explorerManifest, key, appLocale, values)
   if (sampleStats.wins + sampleStats.draws + sampleStats.losses === 0) return null
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card" data-testid="explorer-target-outcome">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card" data-testid="explorer-target-outcome">
       <div className="border-b border-border px-3 py-2 text-sm font-medium">
         {t('explorer.target_profile.results_title')}
       </div>

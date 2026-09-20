@@ -6558,7 +6558,6 @@ export interface components {
             /** Format: int64 */
             enemy_count?: number;
             frag_gap_series?: components["schemas"]["ExplorerFragGapPoint"][] | null;
-            frag_range_self?: components["schemas"]["SynthesisWeaponRange"];
             frag_range_target?: components["schemas"]["SynthesisWeaponRange"];
             /** Format: int64 */
             kills_dealt?: number;
@@ -11763,15 +11762,29 @@ export interface components {
                 [key: string]: components["schemas"]["SquadIntensityMatchRow"][] | null;
             };
         };
-        SquadIsolementPoint: {
+        SquadIsolementMort: {
+            /** Format: int64 */
+            delai_ms?: number;
+            /** Format: double */
+            distance_ratio?: number;
+            gamertag: string;
+            hors_de_vue: boolean;
+            match_id: string;
+            /** Format: int64 */
+            time_ms: number;
+            vengee: boolean;
+            xuid: string;
+        };
+        SquadIsolementRepere: {
             couverture: components["schemas"]["Couverture"];
             gamertag: string;
             /** Format: int64 */
-            morts_examinees: number;
+            mediane_delai_ms?: number;
+            /** Format: double */
+            mediane_distance_ratio?: number;
             /** Format: int64 */
-            morts_isolees: number;
+            nb_morts: number;
             part_isolee: components["schemas"]["Couverture"];
-            session_label: string;
             xuid: string;
         };
         SquadKillMechanicBar: {
@@ -11853,11 +11866,10 @@ export interface components {
             team_mmr_avg: number;
         };
         SquadNuageIsolement: {
+            morts: components["schemas"]["SquadIsolementMort"][] | null;
             /** Format: int64 */
             plancher_echantillon_faible: number;
-            /** Format: int64 */
-            plancher_morts_session: number;
-            points: components["schemas"]["SquadIsolementPoint"][] | null;
+            reperes: components["schemas"]["SquadIsolementRepere"][] | null;
         };
         SquadPageResponse: {
             selected_teammate?: components["schemas"]["SelectedTeammateData"];
@@ -12901,8 +12913,11 @@ export interface components {
             distributions_tab: components["schemas"]["TimeseriesDistributionsTab"];
             equipment_usage?: components["schemas"]["EquipmentUsageBlock"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
+            formes_retenues?: components["schemas"]["SquadFormesBlock"];
             frag_distribution?: components["schemas"]["FragDistribution"];
             intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
+            intensity_rows_lobby?: components["schemas"]["IntensityMatchRow"][] | null;
+            intensity_rows_team?: components["schemas"]["IntensityMatchRow"][] | null;
             intensity_tab: components["schemas"]["TimeseriesIntensityTab"];
             kill_types?: components["schemas"]["TimeseriesKillTypes"];
             map_breakdown: components["schemas"]["MapBreakdownRow"][] | null;

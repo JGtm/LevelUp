@@ -366,18 +366,57 @@ export function donneRecuSeries(
 }
 
 /**
- * Nombre MINIMAL de sessions sous lequel « Taux d'échange par session » n'a rien à
- * montrer. Trois soirées ne font pas une tendance — c'est la même doctrine que le constat
- * du moment : sous le seuil de significativité, on n'affiche pas un graphe, on dit
- * pourquoi.
+ * Nombre MINIMAL de sessions sous lequel « Taux d'échange par session » ne trace pas de
+ * COURBE : deux soirées ne font pas une évolution.
+ *
+ * SOUS CE PLANCHER, LA CARTE NE SE TAIT PLUS (décision 5 du 2026-09-19) : elle rend la ou
+ * les soirées retenues FACE A L'HABITUEL (`comparaisonSessions` ci-dessous). L'ancien état
+ * vide était le cas NOMINAL de la page — filtrer sur une soirée est l'usage courant — et
+ * une carte qui ne dit rien sur son usage principal ne sert à rien.
  */
 export const PLANCHER_SESSIONS_TENDANCE = 3
+
+/** Une ligne de la comparaison « soirée(s) vs habituel ». */
+export interface LigneComparaisonSession {
+  /** Libellé de la soirée, ou celui de la sélection entière faute de soirée nommée. */
+  label: string
+  taux: number
+  echantillonFaible: boolean
+}
+
+/**
+ * comparaisonSessions rend les lignes à opposer à l'habituel sous le plancher de tendance :
+ * une par soirée mesurée, et à défaut UNE SEULE ligne pour la sélection entière (le
+ * périmètre peut porter des matchs sans soirée nommée, ou aucun match mesuré par soirée).
+ *
+ * Aucun taux n'est recalculé : ce sont ceux que le serveur sert déjà.
+ */
+export function comparaisonSessions(
+  echange: SquadEchange,
+  labelSelection: string,
+): LigneComparaisonSession[] {
+  const sessions = echange.taux_par_session ?? []
+  if (sessions.length === 0) {
+    return [
+      {
+        label: labelSelection,
+        taux: echange.couverture.taux,
+        echantillonFaible: echange.couverture.echantillon_faible,
+      },
+    ]
+  }
+  return sessions.map((p) => ({
+    label: libelleCourtSession(p.session_label),
+    taux: p.couverture.taux,
+    echantillonFaible: p.couverture.echantillon_faible,
+  }))
+}
 
 /**
  * tauxSessionSeries projette le taux d'échange par session en une SEULE série, X en
  * catégories (le libellé de session porte déjà la date), Y en POURCENTS.
  *
- * Une seule série, donc pas de légende : le titre la nomme (maquette 4c520da6, bloc 5).
+ * Une seule courbe : le titre la nomme, et aucune légende ne la redouble.
  */
 export function tauxSessionSeries(echange: SquadEchange): ChartSeries<ChartPoint2D>[] {
   const datapoints = (echange.taux_par_session ?? []).map<ChartPoint2D>((p) => ({

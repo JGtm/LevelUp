@@ -5,11 +5,13 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"sort"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
@@ -88,17 +90,36 @@ func buildIntensityRows(
 	playerXUID string,
 	gameplayDurationsMS map[string]int64,
 ) []domain.IntensityMatchRow {
-	// Filtrer les events où le joueur est tueur (frags du joueur uniquement).
+	return buildIntensityRowsPour(events, matches, gameplayDurationsMS,
+		func(_, killer string) bool { return killer == playerXUID })
+}
+
+// tueurDeLEvent rend le xuid du TUEUR d'un event de frag — `KillerXUID` quand il est
+// posé, sinon `XUID` (repli legacy : sur un kill event, l'acteur EST le tueur).
+func tueurDeLEvent(ev canonical.HighlightEvent) string {
+	if ev.KillerXUID != nil {
+		return *ev.KillerXUID
+	}
+	return ev.XUID
+}
+
+// buildIntensityRowsPour est le NOYAU COMMUN des trois courbes d'intensité de la page :
+// le joueur, son ÉQUIPE et le LOBBY ne diffèrent que par la population de tueurs retenue
+// (`garde`). Un second calcul par population aurait fait trois profils d'intensité libres
+// de diverger — le même piège que la page Escouade évite avec `intensityEventFilter`.
+func buildIntensityRowsPour(
+	events []canonical.HighlightEvent,
+	matches []legacymatch.StatsMatchRow,
+	gameplayDurationsMS map[string]int64,
+	garde func(matchID, killerXUID string) bool,
+) []domain.IntensityMatchRow {
 	playerKills := make([]canonical.HighlightEvent, 0, len(events))
 	for _, ev := range events {
-		killer := ""
-		if ev.KillerXUID != nil {
-			killer = *ev.KillerXUID
-		} else {
-			killer = ev.XUID // fallback legacy : XUID = tueur sur kill events
+		if ev.EventType != string(canonical.EventKill) &&
+			ev.EventType != string(canonical.EventFirstKill) {
+			continue
 		}
-		if killer == playerXUID && (ev.EventType == string(canonical.EventKill) ||
-			ev.EventType == string(canonical.EventFirstKill)) {
+		if garde(ev.MatchID, tueurDeLEvent(ev)) {
 			playerKills = append(playerKills, ev)
 		}
 	}
@@ -225,4 +246,50 @@ func statsMatchRowFirstBloodMeta(m legacymatch.StatsMatchRow) domain.FirstBloodM
 		meta.ModeUI = *modeUI
 	}
 	return meta
+}
+
+// attachIntensityOverlays pose les DEUX COURBES DE RÉFÉRENCE du profil d'intensité —
+// l'ÉQUIPE alliée du joueur et le LOBBY entier — à côté de sa courbe à lui
+// (PLAN_AJUSTEMENTS_PRE_V75, item 1.G du 2026-09-19 : la page Escouade les montrait déjà,
+// la page Timeseries ne montrait que le joueur, et une courbe seule ne dit pas si le match
+// était intense en général).
+//
+// LE LOBBY NE COÛTE RIEN : les highlight events du scope couvrent déjà les deux camps
+// (`loadHighlightEvents` ne filtre pas par joueur). L'ÉQUIPE exige de savoir qui était
+// allié PAR MATCH : elle se lit dans `match_participants` via le MÊME port que le bloc
+// « formes retenues », et le MÊME `sessionusage.BuildTeamContext` que le bloc d'usage —
+// jamais une seconde définition de « mon équipe ».
+//
+// DÉGRADATION NOMMÉE : port non câblé (titre sans résumé d'usage) ou lecture en échec ⇒
+// la courbe d'équipe est absente, le reste est servi. Jamais une courbe plate.
+func (s *TimeseriesService) attachIntensityOverlays(
+	ctx context.Context,
+	resp *domain.TimeseriesPageResponse,
+	events []canonical.HighlightEvent,
+	matches []legacymatch.StatsMatchRow,
+	matchIDs []string,
+	gameplayDurationsMS map[string]int64,
+) {
+	resp.IntensityRowsLobby = buildIntensityRowsPour(events, matches, gameplayDurationsMS,
+		func(string, string) bool { return true })
+
+	if s.formesUsageRepo == nil || s.playerXUID == "" || len(matchIDs) == 0 {
+		return
+	}
+	participants, err := s.formesUsageRepo.LoadParticipants(ctx, matchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "timeseries_intensity_equipe_participants_en_echec",
+			"err", err, "matchs", len(matchIDs))
+		return
+	}
+	tc := sessionusage.BuildTeamContext(s.playerXUID, participants)
+	resp.IntensityRowsTeam = buildIntensityRowsPour(events, matches, gameplayDurationsMS,
+		func(matchID, killer string) bool {
+			camp, connu := tc.PlayerTeam[matchID]
+			if !connu {
+				return false
+			}
+			campDuTueur, ok := tc.TeamOf[matchID][killer]
+			return ok && campDuTueur == camp
+		})
 }

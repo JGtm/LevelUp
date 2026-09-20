@@ -47,8 +47,11 @@ import type { UsageBandCell } from './usageRegularityBandModel'
  * les redéfinir (CLAUDE.md n°6).
  */
 export const LABEL_WIDTH = 152
-/** Largeur mini d'une colonne de jauge, et gouttière (alignées sur ValueGrid). */
-export const GAUGE_MIN = 150
+/** Gouttière entre colonnes (alignée sur ValueGrid).
+ *
+ * LA LARGEUR MINI D'UNE COLONNE DE JAUGE A DISPARU le 2026-09-19 : elle forçait la grille
+ * à déborder de sa carte, et le débordement se réglait par un scroll horizontal qui cachait
+ * la moitié des lignes sans le dire. Les rails partent désormais de zéro (`minmax(0, 1fr)`). */
 export const COLUMN_GAP = 14
 
 /**
@@ -57,7 +60,6 @@ export const COLUMN_GAP = 14
  * jauges tiennent dans une demi-largeur au lieu d'être remplacées par une seule.
  */
 const DENSE_LABEL_WIDTH = 104
-const DENSE_GAUGE_MIN = 84
 const DENSE_COLUMN_GAP = 8
 
 /** L'encre du trait de parité — jeton distinct, jamais une teinte de donnée. */
@@ -281,20 +283,20 @@ export function UsageGaugeGrid({
   const allHeaders = [t.gaugeTeamOfLobby, t.gaugePlayerOfTeam, t.gaugePlayerOfLobby]
   const shown = rows[0].gauges.map((_, i) => i)
   const labelWidth = dense ? DENSE_LABEL_WIDTH : LABEL_WIDTH
-  const gaugeMin = dense ? DENSE_GAUGE_MIN : GAUGE_MIN
   const columnGap = dense ? DENSE_COLUMN_GAP : COLUMN_GAP
 
   // Chaque colonne de jauge = DEUX sous-colonnes : le rail (élastique, borné) puis le
   // texte (à la largeur du plus long de la colonne). Ainsi tous les rails d'une colonne
   // sont de même largeur, et l'axe gradué du pied (posé dans la sous-colonne rail
   // seulement) mesure exactement ce qu'il borde.
+  // PLUS DE SCROLL HORIZONTAL (2026-09-19) : les rails partent de ZÉRO et la grille n'a
+  // plus de largeur plancher — elle se répartit dans la carte au lieu de la déborder.
   const gridStyle: CSSProperties = {
-    gridTemplateColumns: `${labelWidth}px repeat(${shown.length}, minmax(${gaugeMin}px, 1fr) max-content)`,
-    minWidth: labelWidth + shown.length * (gaugeMin + columnGap),
+    gridTemplateColumns: `${labelWidth}px repeat(${shown.length}, minmax(0, 1fr) max-content)`,
     columnGap,
   }
   return (
-    <div className="overflow-x-auto">
+    <div className="min-w-0">
       <div className="grid items-center gap-y-[6px]" style={gridStyle}>
         <div aria-hidden="true" />
         {shown.map((gaugeIndex) => (
@@ -380,8 +382,8 @@ export function UsageLobbyTrack({
 }) {
   const total = segments.reduce((a, s) => a + s.count, 0)
   return (
-    <div className="overflow-x-auto">
-      <div style={{ minWidth: dense ? 300 : 420 }}>
+    <div className="min-w-0">
+      <div className="min-w-0">
         <div className={dense ? 'flex h-[16px]' : 'flex h-[22px]'} role="img" aria-label={label}>
           {/* La largeur est portée par l'ITEM du flex, en `calc(%)` — jamais un flexGrow
               sur le contenu d'un Tooltip : le wrapper du Tooltip garde flex-grow 0 et les

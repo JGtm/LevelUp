@@ -103,6 +103,11 @@ type TimeseriesService struct {
 	weaponRangeRepo  port.WeaponRangeRepository
 	sessionUsageRepo port.SessionUsageRepository
 	usageFriends     teammates.FriendGamertagsResolver
+	// formesUsageRepo / formesObjectiveRepo : le bloc « Les formes retenues », contexte
+	// SOLO, migré depuis l'Escouade le 2026-09-19. Optionnels, gated au câblage — cf.
+	// timeseries_service_sections.go.
+	formesUsageRepo     port.SquadFormesUsageRepository
+	formesObjectiveRepo port.SquadFormesObjectiveRepository
 }
 
 // highlightEventsLoader expose la sous-API du HighlightEventsRepo per-player
@@ -340,7 +345,9 @@ func (s *TimeseriesService) GetPage(
 			narrative.ComputeFirstEventsPerMatch(corrected, s.playerXUID, matchIDs),
 			matches,
 		)
-		resp.IntensityRows = buildIntensityRows(corrected, matches, s.playerXUID, timeline.GameplayDurationsMS(timelines))
+		durations := timeline.GameplayDurationsMS(timelines)
+		resp.IntensityRows = buildIntensityRows(corrected, matches, s.playerXUID, durations)
+		s.attachIntensityOverlays(ctx, &resp, corrected, matches, matchIDs, durations)
 	}
 
 	// Portée des engagements (onglet Résumé) + Usages d'équipement (onglet Progression) :

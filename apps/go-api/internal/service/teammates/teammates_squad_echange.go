@@ -31,6 +31,7 @@ import (
 	"context"
 	"log/slog"
 	"sort"
+	"time"
 
 	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/domain"
@@ -142,7 +143,7 @@ func (s *TeammatesService) buildSquadEchange(
 
 	// Nuage « isolement x couverture » (item 7.7) : MEME perimetre filtre (`scope`,
 	// `scopeIDs`) et MEME roster que le reste de la section — decoupes par session.
-	out.NuageIsolement = s.buildSquadIsolementNuage(ctx, scope, scopeRows, xuidsOrdered, gtByXUID, mainXUID)
+	out.NuageIsolement = s.buildSquadIsolementNuage(ctx, scope, xuidsOrdered, gtByXUID, mainXUID)
 
 	slog.InfoContext(ctx, "teammates_echange",
 		"player", mainGamertag, "matchs", out.MatchsTotal, "matchs_mesures", out.MatchsMesures,
@@ -355,7 +356,7 @@ func delaiMedianDesEchanges(lecture domain.TacticalKillEvents, camp func(string,
 
 // tauxParSession decoupe la MEME mesure que `Couverture` par session (soiree).
 //
-// La maille est celle du nuage d'isolement (`sessionsDuScope`, meme fichier voisin) :
+// La maille est la session (`sessionsDuScope`, ci-dessous) :
 // la session est la plus petite maille ou un taux d'echange veut dire quelque chose, et
 // c'est celle dans laquelle on joue. L'ordre est chronologique.
 //
@@ -387,4 +388,40 @@ func tauxParSession(
 		})
 	}
 	return out
+}
+
+// sessionsDuScope groupe les matchs DU PERIMETRE par session, dedupliques par match_id (une
+// ligne de `scopeRows` peut apparaitre plusieurs fois, une par coequipier). Un match sans
+// session (label nil ou vide) n'entre dans AUCUNE session : le taux par session se lit par
+// soiree, pas par match isole. Les labels sont rendus TRIES par l'instant du plus ancien
+// match de la session — ordre stable et independant de l'iteration d'une map.
+func sessionsDuScope(
+	scopeRows []domain.SquadMatchRow, matchesDuScope map[string]struct{},
+) (map[string][]string, []string) {
+	sessions := make(map[string][]string)
+	plusAncien := make(map[string]time.Time)
+	vus := make(map[string]struct{}, len(scopeRows))
+	for _, r := range scopeRows {
+		if _, doublon := vus[r.MatchID]; doublon {
+			continue
+		}
+		vus[r.MatchID] = struct{}{}
+		if _, in := matchesDuScope[r.MatchID]; !in {
+			continue
+		}
+		if r.SessionLabel == nil || *r.SessionLabel == "" {
+			continue
+		}
+		label := *r.SessionLabel
+		sessions[label] = append(sessions[label], r.MatchID)
+		if t, ok := plusAncien[label]; !ok || r.StartTime.Before(t) {
+			plusAncien[label] = r.StartTime
+		}
+	}
+	labels := make([]string, 0, len(sessions))
+	for l := range sessions {
+		labels = append(labels, l)
+	}
+	sort.Slice(labels, func(i, j int) bool { return plusAncien[labels[i]].Before(plusAncien[labels[j]]) })
+	return sessions, labels
 }

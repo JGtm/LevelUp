@@ -7,7 +7,7 @@
  * Deux vues empilées remplacent le tableau à deux niveaux d'en-tête :
  *   1. « Nombre de gestes par joueur » — la grille partagée (`components/charts/ValueGrid`),
  *      une colonne par colonne de mesure, chaque colonne avec SON échelle ;
- *   2. « Part de chaque équipe, geste par geste » — une barre 100 % par FAMILLE de geste.
+ *   2. « Part de chaque équipe » — une barre 100 % par FAMILLE de geste.
  *
  * LA FAMILLE, PAS LA COLONNE, PORTE LA COULEUR. `usageColumnGroups` décide déjà quelles
  * familles la mesure justifie (grappin, états actifs, poses, lâchés, lancers) ; la table des
@@ -51,7 +51,6 @@ import type { EquipmentUsageTally, EquipmentUsageTeam } from './equipmentUsageLo
  */
 export const USAGE_GROUP_TOKENS: Record<UsageGroupKey, SemanticToken> = {
   grapple: 'frag-sidearm', // vert
-  episodes: 'frag-heavy', // violet
   equipment: 'frag-shoulder', // cyan — reprend le jeton de l'ancien `deployed`
 }
 
@@ -93,7 +92,9 @@ export function usageLeaves(groups: UsageColumnGroup[]): UsageLeaf[] {
  * usageGestureCount — le NOMBRE DE GESTES d'une famille dans un compteur.
  *
  * Un épisode d'état actif est UN geste (sa durée et ses frags le décrivent, ils ne s'ajoutent
- * pas à lui). Les frags sous effet actif n'en sont pas un : ce sont des conséquences.
+ * pas à lui). Les frags sous effet actif n'en sont pas un : ce sont des conséquences. Depuis le
+ * 2026-09-19 (décision 6) l'épisode ne se compte QU'UNE FOIS, dans la famille `equipment` du
+ * power-up correspondant : la famille `episodes` a été retirée.
  *
  * LES LANCERS DE GRENADE N'ONT PLUS DE FAMILLE ICI depuis le 2026-09-13 (retrait demandé par
  * l'utilisateur) : ils restent mesurés par `equipmentUsageLogic` et dessinés par le rejeu.
@@ -104,15 +105,11 @@ export function usageGestureCount(tally: EquipmentUsageTally, group: UsageGroupK
   switch (group) {
     case 'grapple':
       return tally.grapplePulls
-    case 'episodes':
-      return Object.values(tally.episodes).reduce((a, e) => a + e.count, 0)
     case 'equipment':
       // FUSION (E2) : les poses déployées, les objets lâchés, LES CONSOMMATIONS DE CHARGE
       // (`spent`, lot 6.4 point 2), ET les activations des deux power-ups (leur côté « utilisé »
-      // vient des épisodes, pas d'une pose — P2). Le compte d'épisode y figure DEUX FOIS au
-      // total du bloc (aussi dans la ligne `episodes`, décision documentée de garder les deux
-      // vues) : ce n'est pas une double mesure, c'est la même mesure lue sous deux questions
-      // différentes.
+      // vient des épisodes, pas d'une pose — P2). Le compte d'épisode n'y figure plus qu'UNE
+      // FOIS depuis le retrait de la famille `episodes` (2026-09-19, décision 6).
       //
       // `spent` NE DOUBLE JAMAIS LE MUR : `deriveKeptFromTaken` (equipmentKeptLogic.ts) exclut
       // explicitement les familles à pièce engendrée (`isFamilyWithSpawnedPiece`) de ce tally —

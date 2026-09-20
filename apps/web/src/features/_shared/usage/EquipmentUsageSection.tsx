@@ -56,27 +56,16 @@ export interface EquipmentUsageSectionProps {
 /**
  * Le bandeau de titre : le libellé PORTEUR DE SON AIDE, rien d'autre.
  *
- * LE COMPTEUR « Matchs mesurés N/M » A QUITTÉ LES QUATRE TITRES le 2026-09-13 (demande
- * utilisateur) : répété quatre fois, il encombrait autant de bandeaux pour une seule
- * information. La couverture s'écrit désormais UNE fois par rangée, en pied de la carte
- * de gauche (`measuredFooter`).
+ * LE COMPTEUR « Matchs mesurés N/M » A QUITTÉ LES QUATRE TITRES le 2026-09-13, puis les
+ * DEUX PIEDS DE RANGÉE le 2026-09-19 (demande utilisateur) : il disait la même chose deux
+ * fois sous les mêmes chiffres. Seule la rangée des NIVEAUX garde le sien — sa couverture
+ * est la sienne, mesurée par une autre passe (`padTiersFooter`).
  */
 function cardTitleWithHint(hint: string) {
   return (label: string) => (
     <HeaderLabelTooltip text={hint} focusable>
       <span>{label}</span>
     </HeaderLabelTooltip>
-  )
-}
-
-/** La couverture de mesure de la rangée, en pied de sa première carte. */
-function measuredFooter(usage: EquipmentUsageBlock, t: UsageText) {
-  return (
-    <div className="border-t border-border px-3 py-2">
-      <p className="text-xs text-muted-foreground">
-        {t.measuredFooterFmt(usage.matches_measured, usage.matches_total)}
-      </p>
-    </div>
   )
 }
 
@@ -146,20 +135,13 @@ interface CardContentProps {
 function EquipmentCards({ usage, mode, t, locale }: CardContentProps) {
   const rows = mode === 'solo' ? familyRows(usage, t) : playerEquipmentRows(usage, t)
   const grid = buildCountsGrid(rows, { t, locale, unit: 'equipment' })
-  const donut = buildPartiesDonutModel(
-    usage.equipment_parties,
-    usage.tracked_players ?? [],
-    t.donutEquipmentCenterLabel,
-    t,
-    locale,
-  )
+  const donut = buildPartiesDonutModel(usage.equipment_parties, usage.tracked_players ?? [], t, locale)
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <SectionCard
         title={t.blockEquipment}
         label={t.blockEquipment}
         titleAdornment={cardTitleWithHint(t.cardHintEquipmentCounts)}
-        footer={measuredFooter(usage, t)}
       >
         <div className="p-3">
           <UsageCountsGrid grid={grid} />
@@ -184,36 +166,35 @@ function EquipmentCards({ usage, mode, t, locale }: CardContentProps) {
 function PadControlCards({ usage, mode, t, locale }: CardContentProps) {
   const rows = playerWeaponRows(usage, t)
   const grid = buildCountsGrid(rows, { t, locale, unit: 'weapon' })
-  const donut = buildPartiesDonutModel(
-    usage.weapon_pad_parties,
-    usage.tracked_players ?? [],
-    t.donutWeaponCenterLabel,
-    t,
-    locale,
-  )
+  const donut = buildPartiesDonutModel(usage.weapon_pad_parties, usage.tracked_players ?? [], t, locale)
+  const donutTitle = mode === 'solo' ? t.viewWeaponPartsSolo : t.viewWeaponPartsSquad
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <SectionCard
         title={t.blockPadControl}
         label={t.blockPadControl}
         titleAdornment={cardTitleWithHint(t.cardHintWeaponCounts)}
-        footer={measuredFooter(usage, t)}
       >
         <div className="p-3">
           <UsageCountsGrid grid={grid} />
         </div>
       </SectionCard>
-      {donut != null && (
-        <SectionCard
-          title={mode === 'solo' ? t.viewWeaponPartsSolo : t.viewWeaponPartsSquad}
-          label={mode === 'solo' ? t.viewWeaponPartsSolo : t.viewWeaponPartsSquad}
-          titleAdornment={cardTitleWithHint(t.cardHintWeaponCounts)}
-        >
-          <div className="p-3">
+      {/* LA CARTE SE REND TOUJOURS (2026-09-19), en PARALLÈLE de l'équipement : sans
+          `weapon_pad_parties` (ou à zéro), elle porte son titre et dit que rien n'est
+          mesuré. Escamotée, elle laissait la rangée bancale et se lisait comme un bug. */}
+      <SectionCard
+        title={donutTitle}
+        label={donutTitle}
+        titleAdornment={cardTitleWithHint(t.cardHintWeaponCounts)}
+      >
+        <div className="p-3">
+          {donut != null ? (
             <UsageEquipmentDonutCard model={donut} />
-          </div>
-        </SectionCard>
-      )}
+          ) : (
+            <p className="text-sm text-muted-foreground">{t.donutPartsEmpty}</p>
+          )}
+        </div>
+      </SectionCard>
     </div>
   )
 }

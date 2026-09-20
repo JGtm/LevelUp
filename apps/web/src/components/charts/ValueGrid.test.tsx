@@ -46,9 +46,14 @@ describe('ValueGrid — ce que l’écran montre', () => {
     expect((barres[1] as HTMLElement).style.width).toBe('32.5%')
   })
 
-  it('défile HORIZONTALEMENT dans son propre conteneur, jamais le corps de page', () => {
+  // 2026-09-19 : la grille NE DÉFILE PLUS. Les colonnes se répartissent dans la largeur
+  // disponible ; un défilement horizontal cachait les dernières colonnes sans le dire.
+  it('ne défile pas : aucune largeur plancher, aucune colonne cachée', () => {
     const vue = render(<ValueGrid model={MODEL} />)
-    expect(vue.container.querySelector('.overflow-x-auto')).toBeTruthy()
+    expect(vue.container.querySelector('.overflow-x-auto')).toBeNull()
+    const grille = vue.container.querySelector('.grid') as HTMLElement
+    expect(grille.style.minWidth).toBe('')
+    expect(grille.style.gridTemplateColumns).toContain('minmax(0, 1fr)')
   })
 
   it('écrit les nombres en chiffres tabulaires', () => {

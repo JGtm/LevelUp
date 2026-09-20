@@ -15,7 +15,9 @@
  *
  * L'INFOBULLE EST AU SURVOL *ET* AU FOCUS CLAVIER : chaque barre est focusable et porte son
  * texte en `aria-label`, donc la valeur reste atteignable sans souris comme au lecteur d'écran.
- * L'ensemble défile HORIZONTALEMENT dans son propre conteneur — jamais le corps de la page.
+ * L'ensemble TIENT DANS SA CARTE : les colonnes se répartissent dans la largeur disponible et
+ * les étiquettes trop longues se tronquent (texte complet en `title`) — plus de défilement
+ * horizontal, qui cachait les dernières colonnes sans le dire (2026-09-19).
  *
  * UNE CELLULE PEUT S'EMPILER (E1, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : `cell.segments`
  * absent rend l'unique aplat d'avant, PIXEL POUR PIXEL (non-régression de la grille des
@@ -39,19 +41,18 @@ const NOT_MEASURED_HATCH: CSSProperties = {
   opacity: 0.3,
 }
 
-/** Largeur PAR DÉFAUT de la colonne des noms, et largeur mini d'une colonne (px). */
+/** Largeur PAR DÉFAUT de la colonne des noms (px). */
 const NAME_WIDTH = 152
-const COLUMN_MIN = 126
 /**
- * Les mêmes largeurs en COLONNE DIVISÉE (`dense`). Une grille rendue à demi-largeur
- * gardait des colonnes de 126 px dont le rail ne faisait que 80 px : les trois
- * graduations s'y chevauchaient et se lisaient « 0,0 %15,0 %30,0 % » (capture du
- * 2026-09-13). En dense la colonne se resserre ET la graduation du milieu tombe —
- * les deux bornes suffisent à lire une échelle.
+ * La même largeur en COLONNE DIVISÉE (`dense`). En dense, la graduation du milieu tombe
+ * aussi — les deux bornes suffisent à lire une échelle rendue à demi-largeur.
+ *
+ * LES LARGEURS MINI DE COLONNE ONT DISPARU le 2026-09-19 : elles forçaient la grille à
+ * déborder de sa carte, et le débordement se réglait par un défilement horizontal qui
+ * cachait les dernières colonnes.
  */
 const DENSE_NAME_WIDTH = 104
-const DENSE_COLUMN_MIN = 104
-/** Gouttière entre colonnes (px) — reprise dans le calcul de largeur mini de la grille. */
+/** Gouttière entre colonnes (px). */
 const COLUMN_GAP = 14
 /** Largeur réservée au nombre écrit à droite de chaque barre, gouttière comprise (px). */
 const VALUE_WIDTH = 38
@@ -97,15 +98,20 @@ export function ValueGrid({
 }: Props) {
   const { rows, columns, cells, separators } = model
   const nameWidth = nameWidthProp ?? (dense ? DENSE_NAME_WIDTH : NAME_WIDTH)
-  const columnMin = dense ? DENSE_COLUMN_MIN : COLUMN_MIN
+  // PLUS DE LARGEUR PLANCHER NI DE DÉFILEMENT HORIZONTAL (2026-09-19). Les colonnes
+  // partaient d'un minimum en pixels et la grille portait la somme de ces minimums en
+  // `minWidth` : au-delà de trois ou quatre colonnes elle débordait de sa carte, et le
+  // débordement se réglait par un `overflow-x-auto` qui CACHAIT les dernières colonnes
+  // sans rien dire. Les colonnes se répartissent désormais dans la largeur disponible
+  // (`minmax(0, 1fr)`), et les étiquettes trop longues se tronquent — elles portent déjà
+  // leur texte complet en `title`.
   const gridStyle = {
-    gridTemplateColumns: `${nameWidth}px repeat(${columns.length}, minmax(${columnMin}px, 1fr))`,
-    minWidth: nameWidth + columns.length * (columnMin + COLUMN_GAP),
+    gridTemplateColumns: `${nameWidth}px repeat(${columns.length}, minmax(0, 1fr))`,
     columnGap: COLUMN_GAP,
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="min-w-0">
       <div className="grid items-center gap-y-[3px]" style={gridStyle}>
         <div className="border-b border-transparent" aria-hidden={!rowHeaderLabel}>
           <span className="text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -117,7 +123,7 @@ export function ValueGrid({
             key={col.key}
             className="mb-1 flex items-baseline gap-1.5 whitespace-nowrap border-b border-border pb-1.5 text-3xs font-semibold uppercase tracking-wider"
           >
-            <span className="truncate">{col.label}</span>
+            <span className="truncate" title={col.label}>{col.label}</span>
             {col.totalText != null && (
               <span className="ml-auto font-medium normal-case tracking-normal text-muted-foreground tabular-nums">
                 {col.totalText}

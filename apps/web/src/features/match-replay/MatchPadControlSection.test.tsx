@@ -225,8 +225,7 @@ describe('MatchPadControlSection — le repli « game changers » (plan 2026-09-
     const vue = afficher()
     expect(vue.getByText('S7 Sniper')).toBeTruthy()
     expect(vue.getByText('BR75')).toBeTruthy()
-    expect(vue.queryByRole('button', { name: /Voir plus/ })).toBeNull()
-    expect(vue.queryByRole('button', { name: t.collapsedColumnsHide })).toBeNull()
+    expect(vue.queryByRole('button', { name: /Voir plus|Replier/ })).toBeNull()
   })
 
   it('le TOTAL ne ment pas : la prise du socle non élu est bien à sa ligne', () => {

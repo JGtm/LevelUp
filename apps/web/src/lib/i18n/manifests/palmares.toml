@@ -482,10 +482,6 @@ en = "Moments and rivalries could not be loaded."
 fr = "Pas encore assez de rencontres pour dresser une carte horaire."
 en = "Not enough encounters yet to build a time-of-day map."
 
-[palmares.relations.moments.heatmap_legend]
-fr = "Matchs communs"
-en = "Shared matches"
-
 # Tooltip d'une cellule du heatmap : joueur / creneau ou jour / nombre de matchs.
 [palmares.relations.moments.tooltip_player]
 fr = "Joueur"

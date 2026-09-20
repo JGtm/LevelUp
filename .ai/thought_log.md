@@ -112409,6 +112409,52 @@ dans `timeseries_service_aggregations.go` ; `WEAPON_KEYS_WITHOUT_RANGE` pis-alle
 principal via `LEVELUP_DATA_ROOT`) pour le gate visuel de l'utilisateur ; fusion dans `feat/v75`
 sur son signal, CI de `feat/v75` = verdict d'autorité.
 
+## [2026-09-20] Ajustements UI pré-v7.5 (retours du 19/09) — Complété côté code, gate visuel utilisateur en attente
+
+**Statut** : Complété sur `wt/ajustements-pre-v75` (worktree dédié, base `feat/v75` @ de7cb7af0),
+trois lots exécutés en parallèle par des exécuteurs Opus sur trois worktrees
+(`wt/ajustements-matchview` 12cd9466e, `wt/ajustements-heatmap` cec988525, lot 1 95e392b89),
+fusionnés sans conflit (56de738db, 34dd0c9be). Plan statué :
+`.ai/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`. Reste : gate visuel de l'utilisateur, puis
+fusion dans `feat/v75` et CI au niveau job.
+
+**Décision technique principale** : le nuage « Pourquoi la vengeance ne vient pas » passe d'un
+point par (joueur, session) à un point PAR MORT (X = distance au coéquipier visible le plus
+proche / portée du radar du match, Y = délai avant vengeance ; bandes « Hors de vue » et
+« Jamais vengée » ; repère médian par joueur conservé) — jointure exacte (match_id,
+victim_xuid, time_ms) entre `MortContexte` et `coordination.Ripostes`. Motif : l'usage nominal
+de la page Escouade est UNE soirée, et à cette maille l'ancien contrat ne rendait qu'un point
+par joueur ; l'artefact 4c520da6 supposait plusieurs soirées accumulées. Même raison pour
+« Taux d'échange par session » : sous 3 soirées, soirée(s) sélectionnée(s) face à l'habituel
+au lieu d'un état vide. Le contexte Solo des « formes retenues » (9 cartes) quitte l'Escouade
+pour Timeseries via le MÊME builder (`squadagg.BuildSquadFormesBlock`) sur le scope solo de la
+page. Vue match : 4e onglet « Contrôle » (équipement, armes, « Occupation du terrain »),
+colonnes « États actifs » retirées (actif = utilisé), repli « Voir plus » supprimé. Une seule
+grille catégorielle (`Heatmap2DChart`, builder `heatmap2DOption.ts`) pour Synthèse, Relations,
+Explorer et Escouade, sans barre de dégradé. Explorer « Portée des frags » : cible seule
+(`FragRangeSelf` supprimé du contrat). Cause réelle du défilement horizontal des grilles
+d'usage : `ValueGrid` (largeur plancher calculée) — corrigé pour tous ses consommateurs.
+
+**Résultats observés** (branche fusionnée) : `go build` 0, `go test ./...` 40 paquets ok /
+0 FAIL, `make go-api-lint` 0 issue, `tsc -b --force` 0, vitest 743 fichiers / 7 967 tests
+verts (17 skips préexistants). Hooks pre-commit (gitleaks, gofmt, go-vet, docs-fr-sync)
+passés sur les trois commits. Investigations préalables (serveur arrêté, `diag_q` + API) :
+au scope complet JGtm+Chocoboflor = 361/451 matchs mesurés, 18 points de nuage (9/joueur),
+57 points de session — les « 3 points » et la courbe vide venaient d'une sélection à une
+soirée, pas d'un trou de données ; `equipment_usage` solo porte bien `weapon_pad_parties`
+(lobby 1 249) et `pad_pickups` non nuls.
+
+**Découvertes consignées, non traitées** : projection d'usage sur 62 matchs / 1 147 (173
+artefacts sur disque, fenêtre arrêtée au 07/09) → `backfill-usage-summary` ajouté dans Notion
+(séquence release) ; `match_pad_pickups_by_tier_latest` vide → `backfill-pad-tiers` (déjà dans
+Notion) ; `usageI18n.ts` porte un second gabarit « Mesuré sur N des M matchs de Capture du
+drapeau » (pied des niveaux d'armes) ; « Portée des frags » Explorer à 1/3 de largeur au lieu
+de 45 % — à juger au gate visuel ; worktree `LevelUp-wt-explorer-rangee3` entièrement fusionné,
+à supprimer ; Notion « Ajustements pré-v7.5 » liste plus large que le .txt, hors périmètre.
+
+**Conclusion / prochaine étape** : pile de dev basculée sur le worktree (`make dev
+LEVELUP_DATA_ROOT=C:/Users/Guillaume/Projects/LevelUp`) pour le gate visuel ; sur signal,
+fusion dans `feat/v75` (CI = verdict d'autorité), suppression des trois worktrees de lot.
 ## [2026-09-19] Citations : « Chasse au rapatrieur » desactivee, visuels « Capture du drapeau » et « Crane intouchable » corriges — Complete (code + docs ; re-seed local et commit en attente du user)
 
 - Demande utilisateur : (1) « Chasse au rapatrieur » (`returner_takedown`) porte a confusion et

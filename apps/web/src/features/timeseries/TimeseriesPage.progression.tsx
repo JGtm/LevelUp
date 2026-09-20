@@ -30,6 +30,7 @@ import {
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
 import { TimeseriesEngagementGapTrend } from './TimeseriesEngagementGapTrend'
 import { EquipmentUsageSection } from '@/features/_shared/usage/EquipmentUsageSection'
+import { FormesRetenuesSection } from '@/features/squad/formes/FormesRetenuesSection'
 import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -51,6 +52,12 @@ export interface TimeseriesProgressionTabProps {
   filterContextHash: string
   explorerMatchRows: ExplorerMatchRow[] | undefined
 }
+
+/**
+ * Hauteur du graphe « Stats par minute » — la voisine de rangée de « Premier frag /
+ * première mort ». Les deux cartes de la première rangée la partagent (2026-09-19).
+ */
+const PER_MINUTE_CHART_HEIGHT = 360
 
 export function TimeseriesProgressionTab({
   data,
@@ -107,15 +114,16 @@ export function TimeseriesProgressionTab({
           minute (droite). Titre et état vide portés par le manifest partagé
           first_blood — même vocabulaire que l'Escouade et les Sessions.
 
-          `items-center` (2026-09-13) : la bande de gauche est courte — deux pistes — là où
-          le graphe de droite occupe toute la hauteur de la rangée. Étirée par le défaut
-          `stretch`, elle se collait en haut avec un grand vide sous elle ; centrée, elle
-          regarde son voisin dans les yeux. */}
-      <div className="grid grid-cols-1 items-center gap-4 lg:grid-cols-2">
+          MÊME HAUTEUR QUE SA VOISINE (2026-09-19) : la bande était dérivée du nombre de
+          pistes — le tiers de la hauteur de « Stats par minute » —, et la rangée se lisait
+          bancale. `items-stretch` + la hauteur de la carte voisine : les pistes se
+          répartissent dans la hauteur donnée, et la légende se pose au ras du bas. */}
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
         <FirstBloodLanes
           data={firstBlood}
           maxSec={firstBloodMaxSec(firstBlood)}
           emptyMessage={emptyMsg}
+          height={PER_MINUTE_CHART_HEIGHT}
         />
 
         <TimeseriesPerMinuteTrend
@@ -252,6 +260,12 @@ export function TimeseriesProgressionTab({
           titre. */}
       <EquipmentUsageSection usage={data.equipment_usage} mode="solo" t={USAGE_TEXT[locale]} locale={locale} />
 
+      {/* « Les formes retenues », CONTEXTE SOLO — les neuf cartes migrées de l'Escouade le
+          2026-09-19 (une page, un contexte). Même bloc de contrat, même composant : le
+          serveur sert `formes_retenues` sur le MÊME scope que les usages d'équipement
+          juste au-dessus. La section se retire d'elle-même quand le bloc est absent. */}
+      <FormesRetenuesSection block={data.formes_retenues} locale={locale} contexte="solo" />
+
       {/* Intensité — profil médian des parts de frags par phase + enveloppe
           P25–P75 (panneau solo pleine largeur). */}
       <TimeseriesIntensityProfile
@@ -268,9 +282,14 @@ export function TimeseriesProgressionTab({
         }
         emptyMessage={emptyMsg}
         rows={data.intensity_rows ?? []}
+        teamRows={data.intensity_rows_team ?? undefined}
+        lobbyRows={data.intensity_rows_lobby ?? undefined}
         medianLabel={t('timeseries.progression.intensity_median')}
         envelopeLabel={t('timeseries.progression.intensity_envelope')}
         refLabel={t('timeseries.progression.intensity_ref')}
+        playerLabel={t('timeseries.progression.intensity_player')}
+        teamLabel={t('timeseries.progression.intensity_team')}
+        lobbyLabel={t('timeseries.progression.intensity_lobby')}
       />
 
       {/* Historique des matchs — tableau Explorer standalone (sans bloc ni titre)

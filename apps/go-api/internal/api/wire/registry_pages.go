@@ -415,6 +415,15 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 	// pour Halo 5 → bloc Available=false avec raison machine). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
 		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb), r.friendGamertagsResolver(pdb.XUID), r.cfg.RepoRoot)
+		// Bloc « Les formes retenues », contexte SOLO (migré de l'Escouade le
+		// 2026-09-19) : MÊME repo d'usage, plus les colonnes d'objectif quand le titre
+		// les publie — deux gates indépendantes, la seconde ne retirant que les cartes
+		// d'objectif. Câblage identique à celui de la page Escouade.
+		var objectives port.SquadFormesObjectiveRepository
+		if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
+			objectives = duckdb.NewObjectiveStatsRepo(pdb)
+		}
+		svc = svc.WithSquadFormes(duckdb.NewSessionUsageRepo(pdb), objectives)
 	}
 	return svc, nil
 }

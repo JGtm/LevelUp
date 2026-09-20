@@ -1,23 +1,29 @@
 /**
- * FormesRetenuesSection.tsx — LA SECTION ENTIÈRE de l'artefact 2ec1b8eb sur
- * l'onglet Synergies : trois blocs, deux contextes par bloc, dix-neuf cartes.
+ * FormesRetenuesSection.tsx — LA SECTION « Les formes retenues » (artefact 2ec1b8eb) :
+ * trois blocs, et les cartes DU SEUL CONTEXTE DEMANDÉ.
  *
- * L'ORDRE EST CELUI DE L'ARTEFACT, et il porte du sens : chaque bloc s'ouvre sur
- * son CONSTAT (ce que la période dit), puis son LEXIQUE (ce que les mots
- * désignent et ce que la mesure ne couvre pas), puis les cartes — d'abord
- * « moi dans mon équipe et dans le lobby », ensuite « mon camp contre le leur ».
- * Les deux contextes ne répondent pas à la même question et ne se mélangent pas.
+ * UNE PAGE = UN CONTEXTE (2026-09-19, PLAN_AJUSTEMENTS_PRE_V75 item 1.E). Les deux
+ * contextes cohabitaient sur l'Escouade, séparés par deux intertitres qui les nommaient :
+ * neuf cartes y parlaient de MOI sur une page qui parle de NOUS.
+ * Le contexte solo vit désormais sur Timeseries (onglet Progression), l'escouade sur la
+ * page Escouade — même bloc de contrat, même modèle de vue, même composant.
  *
- * UNE SEULE COLONNE : chaque forme a besoin de toute la largeur (une bande de
- * vingt matchs, une grille de cinq colonnes graduées). Deux cartes côte à côte
- * les rendraient illisibles.
+ * L'ORDRE DES BLOCS EST CELUI DE L'ARTEFACT : équipement, armes spéciales, objectifs.
+ * Chaque titre de bloc porte son AIDE ⓘ — ce que le bloc mesure et ce qu'il ne mesure pas,
+ * trois phrases au plus. Les pavés de constat et de lexique qui les précédaient ont été
+ * résumés là (décision 9) : un lexique se lit une fois, puis n'est qu'un mur.
  *
- * LE BLOC SE RETIRE DE LUI-MÊME quand la réponse ne le porte pas (titre sans
- * film), et affiche « 0 sur N » quand aucun match du scope n'est mesuré : une
- * couverture nulle est un état légitime, pas une page vide.
+ * UNE SEULE COLONNE : chaque forme a besoin de toute la largeur (une bande de vingt
+ * matchs, une grille de cinq colonnes graduées). Deux cartes côte à côte les rendraient
+ * illisibles.
+ *
+ * LE BLOC SE RETIRE DE LUI-MÊME quand la réponse ne le porte pas (titre sans film), et
+ * affiche « 0 sur N » quand aucun match du scope n'est mesuré : une couverture nulle est un
+ * état légitime, pas une page vide.
  */
 import { useMemo } from 'react'
 
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { SquadFormesBlock } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
@@ -48,55 +54,31 @@ import {
   PadsWeaponGridCard,
 } from './cards/PadCards'
 import { measuredPlayersCount } from './cards/shared'
-import { RichText } from './forms/RichText'
 import { FORMES_TEXT } from './i18n'
 import { average, matchSizes, parityOf } from './model/access'
-import { aggregateAxis } from './model/aggregates'
-import { OBJECTIVE_ROLES, aggregateRole, objectiveFamilies, objectiveMatches } from './model/objectives'
-import { WEAPON_CLASSES, aggregateWeaponClass, namedPickups } from './model/pads'
+import { objectiveFamilies, objectiveMatches } from './model/objectives'
 import { buildFormesViewModel, type FormesViewModel } from './viewModel'
+
+/** Le contexte de lecture : « moi dans mon équipe et dans le lobby », ou « mon camp
+ *  contre le leur ». Une page n'en montre qu'un. */
+export type FormesContexte = 'solo' | 'squad'
 
 export interface FormesRetenuesSectionProps {
   /** Le bloc `formes_retenues` de la réponse — absent : rien ne se rend. */
   block: SquadFormesBlock | null | undefined
   locale: Locale
+  /** Le contexte des cartes montées. */
+  contexte: FormesContexte
   /** Le nom du joueur de la page (`main_player` de la réponse) — voir viewModel. */
   mainPlayerLabel?: string
 }
 
-/** Un intertitre de contexte : un petit titre suivi d'un filet. */
-function ContextTitle({ children }: { children: string }) {
+/** Le titre d'un bloc, avec l'aide ⓘ qui dit ce qu'il mesure. */
+function BlockTitle({ children, aide }: { children: string; aide: string }) {
   return (
-    <h4 className="mt-7 flex items-center gap-2.5 text-3xs font-bold uppercase tracking-widest text-foreground">
+    <h3 className="mt-10 flex items-center gap-1.5 border-b border-border pb-2 text-base font-semibold text-foreground">
       {children}
-      <span className="h-px flex-1 bg-border" aria-hidden="true" />
-    </h4>
-  )
-}
-
-/** Le constat d'un bloc : un paragraphe, avec ses passages en gras. */
-function Constat({ text }: { text: string }) {
-  return (
-    <p className="mt-2.5 max-w-[74ch] text-xs text-muted-foreground">
-      <RichText text={text} />
-    </p>
-  )
-}
-
-/** Le lexique d'un bloc : l'encadré bordé qui dit les mots et les réserves. */
-function Lexique({ text }: { text: string }) {
-  return (
-    <div className="mt-3 max-w-[74ch] border-l-[3px] border-warning bg-card px-3 py-2 text-3xs text-muted-foreground">
-      <RichText text={text} />
-    </div>
-  )
-}
-
-/** Le titre d'un bloc. */
-function BlockTitle({ children }: { children: string }) {
-  return (
-    <h3 className="mt-10 border-b border-border pb-2 text-base font-semibold text-foreground">
-      {children}
+      <InfoTooltip content={aide} />
     </h3>
   )
 }
@@ -144,44 +126,10 @@ function HeaderStrip({ vm }: { vm: FormesViewModel }) {
   )
 }
 
-/** Le constat du bloc 2, alimenté par les mesures de la période. */
-function weaponsConstat(vm: FormesViewModel): string {
-  if (namedPickups(vm.block) === 0) return vm.ct.weaponsConstatEmpty
-  const all = aggregateAxis(vm.block, 'pad_pickups')
-  const heavy = aggregateWeaponClass(vm.block, vm.weapons, WEAPON_CLASSES[0])
-  const precision = aggregateWeaponClass(vm.block, vm.weapons, WEAPON_CLASSES[1])
-  return vm.ct.weaponsConstatFmt({
-    teamShare: vm.fmtPct(all.teamShareOfLobbyPct ?? 0),
-    heavyTeamShare: vm.fmtPct(heavy.teamShareOfLobbyPct ?? 0),
-    precisionTeamShare: vm.fmtPct(precision.teamShareOfLobbyPct ?? 0),
-    myHeavyShare: vm.fmtPct(heavy.myShareOfLobbyPct ?? 0),
-    lobbyParity: vm.fmtPct(all.lobby.parity ?? 0),
-  })
-}
-
-/** Le constat du bloc 3, alimenté par les mesures de la période. */
-function objectivesConstat(vm: FormesViewModel): string {
-  const withObjective = objectiveMatches(vm.block).length
-  if (withObjective === 0) return vm.ct.objectivesConstatEmpty
-  let measured = 0
-  let above = 0
-  for (const role of OBJECTIVE_ROLES) {
-    const agg = aggregateRole(vm.block, role)
-    if (agg.lobby <= 0) continue
-    measured += 1
-    if ((agg.teamShareOfLobbyPct ?? 0) > 50) above += 1
-  }
-  return vm.ct.objectivesConstatFmt({
-    matchesWithObjective: withObjective,
-    matchesTotal: vm.block.matches_total,
-    rolesAboveParity: above,
-    rolesMeasured: measured,
-  })
-}
-
 export function FormesRetenuesSection({
   block,
   locale,
+  contexte,
   mainPlayerLabel,
 }: FormesRetenuesSectionProps) {
   const t = FORMES_TEXT[locale]
@@ -197,67 +145,66 @@ export function FormesRetenuesSection({
   // section se retire, elle n'affiche pas une coquille vide.
   if (vm == null) return null
 
+  const solo = contexte === 'solo'
   const hasObjectives = objectiveMatches(vm.block).length > 0
 
   return (
     <section className="space-y-3" aria-label={t.sectionTitle}>
       <h3 className="text-base font-semibold text-foreground">{t.sectionTitle}</h3>
-      <p className="max-w-[74ch] text-xs text-muted-foreground">
-        <RichText text={t.intro} />
-      </p>
       <HeaderStrip vm={vm} />
 
-      <BlockTitle>{t.blocks.equipment.title}</BlockTitle>
-      <Constat text={t.blocks.equipment.constat} />
-      <Lexique text={t.blocks.equipment.lexique} />
-      <ContextTitle>{t.contexts.solo}</ContextTitle>
+      <BlockTitle aide={t.blocks.equipment.aide}>{t.blocks.equipment.title}</BlockTitle>
       <div className="space-y-4">
-        <EquipmentSharesCard vm={vm} />
-        <EquipmentByMatchCard vm={vm} />
-        <EquipmentSpreadCard vm={vm} />
-      </div>
-      <ContextTitle>{t.contexts.squad}</ContextTitle>
-      <div className="space-y-4">
-        <EquipmentRegularityCard vm={vm} />
-        <EquipmentLobbyTrackCard vm={vm} />
-        <EquipmentSquadGridCard vm={vm} />
-        <EquipmentSquadTrackCard vm={vm} />
-      </div>
-
-      <BlockTitle>{t.blocks.weapons.title}</BlockTitle>
-      <Constat text={weaponsConstat(vm)} />
-      <Lexique text={t.blocks.weapons.lexique} />
-      <ContextTitle>{t.contexts.solo}</ContextTitle>
-      <div className="space-y-4">
-        <PadsGapSoloCard vm={vm} />
-        <PadsShareSoloCard vm={vm} />
-        <PadsWeaponGridCard vm={vm} />
-      </div>
-      <ContextTitle>{t.contexts.squad}</ContextTitle>
-      <div className="space-y-4">
-        <PadsGapSquadCard vm={vm} />
-        <PadsTwoFriezesCard vm={vm} />
-        <PadsSquadByMatchCard vm={vm} />
-        <PadsSquadWeaponGridCard vm={vm} />
+        {solo ? (
+          <>
+            <EquipmentSharesCard vm={vm} />
+            <EquipmentByMatchCard vm={vm} />
+            <EquipmentSpreadCard vm={vm} />
+          </>
+        ) : (
+          <>
+            <EquipmentRegularityCard vm={vm} />
+            <EquipmentLobbyTrackCard vm={vm} />
+            <EquipmentSquadGridCard vm={vm} />
+            <EquipmentSquadTrackCard vm={vm} />
+          </>
+        )}
       </div>
 
-      <BlockTitle>{t.blocks.objectives.title}</BlockTitle>
-      <Constat text={objectivesConstat(vm)} />
-      <Lexique text={t.blocks.objectives.lexique} />
+      <BlockTitle aide={t.blocks.weapons.aide}>{t.blocks.weapons.title}</BlockTitle>
+      <div className="space-y-4">
+        {solo ? (
+          <>
+            <PadsGapSoloCard vm={vm} />
+            <PadsShareSoloCard vm={vm} />
+            <PadsWeaponGridCard vm={vm} />
+          </>
+        ) : (
+          <>
+            <PadsGapSquadCard vm={vm} />
+            <PadsTwoFriezesCard vm={vm} />
+            <PadsSquadByMatchCard vm={vm} />
+            <PadsSquadWeaponGridCard vm={vm} />
+          </>
+        )}
+      </div>
+
+      <BlockTitle aide={t.blocks.objectives.aide}>{t.blocks.objectives.title}</BlockTitle>
       {hasObjectives && (
-        <>
-          <ContextTitle>{t.contexts.solo}</ContextTitle>
-          <div className="space-y-4">
-            <ObjectivesGapRoleCard vm={vm} />
-            <ObjectivesSharesByFamilyCard vm={vm} />
-            <ObjectivesRawGridCard vm={vm} />
-          </div>
-          <ContextTitle>{t.contexts.squad}</ContextTitle>
-          <div className="space-y-4">
-            <ObjectivesGapSquadCard vm={vm} />
-            <ObjectivesLobbyTrackCard vm={vm} />
-          </div>
-        </>
+        <div className="space-y-4">
+          {solo ? (
+            <>
+              <ObjectivesGapRoleCard vm={vm} />
+              <ObjectivesSharesByFamilyCard vm={vm} />
+              <ObjectivesRawGridCard vm={vm} />
+            </>
+          ) : (
+            <>
+              <ObjectivesGapSquadCard vm={vm} />
+              <ObjectivesLobbyTrackCard vm={vm} />
+            </>
+          )}
+        </div>
       )}
     </section>
   )

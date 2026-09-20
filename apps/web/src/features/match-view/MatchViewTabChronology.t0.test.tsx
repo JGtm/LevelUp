@@ -118,12 +118,10 @@ function afficherOnglet(scoreTimelineKind?: string) {
       scoreboard={SCOREBOARD}
       meXUID="me"
       objectiveEvents={undefined}
-      matchPositions={undefined}
       tugOfWar={[]}
       cadence={null}
       scoreTimelineKind={scoreTimelineKind}
       t0Ms={T0_MS}
-      locale="fr"
       t={t}
     />,
   )

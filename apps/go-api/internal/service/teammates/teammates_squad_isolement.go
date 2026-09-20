@@ -1,23 +1,26 @@
-// Package teammates — teammates_squad_isolement.go : LE NUAGE « ISOLEMENT X COUVERTURE »
-// de la section « echange » de la page Escouade (plan tactique, phase 7, item 7.7).
+// Package teammates — teammates_squad_isolement.go : LE NUAGE « POURQUOI LA VENGEANCE NE
+// VIENT PAS » de la section « echange » de la page Escouade (plan tactique, phase 7,
+// item 7.7 ; contrat refondu le 2026-09-19, PLAN_AJUSTEMENTS_PRE_V75 decision 4).
 //
-// ─── DEUX MESURES DEJA CALCULEES, JAMAIS UN TROISIEME ALGO ─────────────────────────────
+// ─── DEUX LECTURES DEJA CALCULEES, JAMAIS UN TROISIEME ALGO ────────────────────────────
 //
 // L'ISOLEMENT vient de `match_death_context` (lot 7C, AU SYNC) : la MEME lecture, le MEME
-// rayon PAR MATCH et le MEME `analysis/coordination.Isolement` que la lecture « isole » de
-// l'onglet Tactique — seule change la population comparee (un joueur x une session, plutot
-// qu'un axe « qui » x une carte). LA COUVERTURE vient de `analysis/coordination.Echanges`,
-// la MEME mesure que la matrice ci-dessus, restreinte au SEUL joueur du point plutot qu'au
-// camp. Ce fichier ne fait QUE decouper ces deux mesures par session et les assembler — la
-// meme discipline que teammates_squad_echange.go ("ce fichier ne calcule aucun taux").
+// rayon PAR MATCH que la lecture « isole » de l'onglet Tactique. LA RIPOSTE vient de
+// `analysis/coordination.Ripostes` — la meme mecanique que « qui echange pour qui », mais
+// SANS BORNE DE FENETRE : le nuage montre la distribution du delai, et une distribution
+// coupee net a 5 s ne dirait pas si les ripostes manquees arrivent a 5,2 s ou a 40 s.
 //
-// ─── POURQUOI LA SESSION ET PAS LE MATCH ────────────────────────────────────────────────
+// Ce fichier ne fait que JOINDRE ces deux lectures sur la cle exacte
+// (match_id, victim_xuid, time_ms) et projeter. Il ne calcule aucun taux : `PartIsolee` et
+// `Couverture` du repere sortent de `coordination.Isolement` et `coordination.Mesurer`.
 //
-// Un point par mort donnerait un axe binaire (vengee ou non), pas un nuage. Un point par
-// match donnerait des taux calcules sur trois morts, qui ne valent que 0, 33, 50 ou 100 % —
-// un damier, pas une dispersion. La session est la plus petite maille ou un taux veut dire
-// quelque chose (maquette echange-escouade.html, carte « Pourquoi la vengeance ne vient
-// pas »).
+// ─── POURQUOI UN POINT PAR MORT ET PLUS PAR SESSION ────────────────────────────────────
+//
+// L'ancien contrat posait un point par (joueur, session). Sur l'usage NOMINAL de la page —
+// une soiree filtree — cela ne rendait qu'un point par joueur : trois points, pas un nuage.
+// Un point par mort avec des axes CONTINUS (distance rapportee au radar x delai avant
+// riposte) rend la dispersion reelle, et le gros point par joueur garde la lecture
+// resumee.
 package teammates
 
 import (
@@ -25,7 +28,6 @@ import (
 	"log/slog"
 	"sort"
 	"strings"
-	"time"
 
 	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/domain"
@@ -35,12 +37,12 @@ import (
 // restreinte au meme perimetre filtre que le reste de la section (`restreindreAuxMatchs`
 // dans buildSquadEchange) : memes matchs, memes joueurs.
 //
-// Absent (nil) : table de rayon non cablee, journal d'isolement en echec, ou aucune session
-// ne franchit `domain.PlancherMortsSessionIsolement` — une OMISSION, jamais un nuage vide.
+// Absent (nil) : table de rayon non cablee, aucun match du perimetre a rayon connu,
+// journal d'isolement en echec, ou aucune mort du roster localisee — une OMISSION, jamais
+// un nuage vide qui se lirait comme une mesure a zero.
 func (s *TeammatesService) buildSquadIsolementNuage(
 	ctx context.Context,
 	scope domain.TacticalKillEvents,
-	scopeRows []domain.SquadMatchRow,
 	xuidsOrdered []string,
 	gtByXUID map[string]string,
 	mainXUID string,
@@ -63,77 +65,164 @@ func (s *TeammatesService) buildSquadIsolementNuage(
 		return nil
 	}
 
-	matchesDuScope := make(map[string]struct{}, len(scope.Univers.Matchs))
-	for _, m := range scope.Univers.Matchs {
-		matchesDuScope[m.MatchID] = struct{}{}
-	}
-	mortsParMatch := make(map[string][]domain.MortContexte, len(ctxLecture.Morts))
+	// Les morts du roster, par joueur, sur les seuls matchs du perimetre A RAYON CONNU :
+	// un match sans rayon ne peut porter aucune abscisse, et une mort sans abscisse ni
+	// bande « hors de vue » n'a nulle part ou se poser.
+	mortsParJoueur := make(map[string][]domain.MortContexte, len(xuidsOrdered))
 	for _, m := range ctxLecture.Morts {
-		if _, in := matchesDuScope[m.MatchID]; !in {
+		if _, ok := rayon[m.MatchID]; !ok {
 			continue
 		}
-		mortsParMatch[m.MatchID] = append(mortsParMatch[m.MatchID], m)
-	}
-
-	sessions, labels := sessionsDuScope(scopeRows, matchesDuScope)
-	if len(sessions) == 0 {
-		return nil
-	}
-
-	points := make([]domain.SquadIsolementPoint, 0, len(xuidsOrdered)*len(labels))
-	for _, xuid := range xuidsOrdered {
-		for _, label := range labels {
-			matchIDs := sessions[label]
-			morts := mortsDuJoueurSurSession(mortsParMatch, xuid, matchIDs)
-			bilanIso := coordination.Isolement(morts, rayon, matchsAvecRayon(matchIDs, rayon))
-			if bilanIso.Couverture.N < domain.PlancherMortsSessionIsolement {
-				continue
-			}
-
-			sessionScope := restreindreAuxMatchs(scope, matchIDs)
-			bilanEch := coordination.Echanges(sessionScope.Events, sessionScope.Univers.Equipes)
-			couv := couvertureDuJoueur(bilanEch.Morts, xuid, matchsMesures(sessionScope))
-
-			points = append(points, domain.SquadIsolementPoint{
-				XUID: xuid, Gamertag: gtByXUID[xuid], SessionLabel: label,
-				MortsExaminees: bilanIso.Examinees, MortsIsolees: len(bilanIso.Isolees),
-				PartIsolee: bilanIso.Couverture, Couverture: couv,
-			})
+		if _, connu := gtByXUID[m.VictimXUID]; !connu {
+			continue
 		}
+		mortsParJoueur[m.VictimXUID] = append(mortsParJoueur[m.VictimXUID], m)
 	}
-	if len(points) == 0 {
+
+	ripostes := indexerRipostes(coordination.Ripostes(scope.Events, scope.Univers.Equipes))
+	bilanEch := coordination.Echanges(scope.Events, scope.Univers.Equipes)
+	mesures := matchsMesures(scope)
+
+	out := &domain.SquadNuageIsolement{
+		Morts:                     []domain.SquadIsolementMort{},
+		Reperes:                   []domain.SquadIsolementRepere{},
+		PlancherEchantillonFaible: coordination.SeuilEchantillonFaible,
+	}
+	for _, xuid := range xuidsOrdered {
+		morts := mortsParJoueur[xuid]
+		if len(morts) == 0 {
+			continue
+		}
+		points := pointsDuJoueur(morts, xuid, gtByXUID[xuid], rayon, ripostes)
+		out.Morts = append(out.Morts, points...)
+
+		bilanIso := coordination.Isolement(
+			mortsAExaminer(morts), rayon, len(rayon))
+		out.Reperes = append(out.Reperes, domain.SquadIsolementRepere{
+			XUID: xuid, Gamertag: gtByXUID[xuid],
+			NbMorts:              len(points),
+			MedianeDistanceRatio: medianeRatio(points),
+			MedianeDelaiMs:       medianeDelai(points),
+			PartIsolee:           bilanIso.Couverture,
+			Couverture:           couvertureDuJoueur(bilanEch.Morts, xuid, mesures),
+		})
+	}
+	if len(out.Morts) == 0 {
 		return nil
 	}
 
 	slog.InfoContext(ctx, "teammates_isolement_nuage",
-		"player", gtByXUID[mainXUID], "points", len(points), "sessions", len(labels),
+		"player", gtByXUID[mainXUID], "morts", len(out.Morts), "reperes", len(out.Reperes),
 		"matchs_sans_rayon", sansRayon)
-	return &domain.SquadNuageIsolement{
-		Points:                    points,
-		PlancherMortsSession:      domain.PlancherMortsSessionIsolement,
-		PlancherEchantillonFaible: coordination.SeuilEchantillonFaible,
-	}
+	return out
 }
 
-// mortsDuJoueurSurSession filtre les morts LOCALISEES du joueur, sur les seuls matchs de la
-// session, et les convertit en `domain.MortAExaminer` — la forme que `coordination.Isolement`
-// consomme.
-func mortsDuJoueurSurSession(
-	mortsParMatch map[string][]domain.MortContexte, xuid string, matchIDs []string,
-) []domain.MortAExaminer {
-	out := make([]domain.MortAExaminer, 0, len(matchIDs))
-	for _, matchID := range matchIDs {
-		for _, m := range mortsParMatch[matchID] {
-			if m.VictimXUID != xuid {
-				continue
-			}
-			out = append(out, domain.MortAExaminer{
-				MatchID: m.MatchID, X: m.X, Y: m.Y,
-				PlusProcheM: m.PlusProcheM, Visibles: m.Visibles, HorsDeVue: m.HorsDeVue,
-			})
+// cleRiposte est la cle EXACTE de jointure entre le contexte de mort et sa riposte : le
+// match, la victime, et l'instant sur l'horloge du match. Aucune tolerance : les deux
+// lectures sortent du MEME artefact de rejeu, sur le meme axe de temps — une jointure
+// approchee apparierait deux morts voisines du meme joueur.
+type cleRiposte struct {
+	matchID string
+	xuid    string
+	timeMs  int64
+}
+
+// indexerRipostes range les morts suivies par leur cle de jointure. Une collision (deux
+// morts du meme joueur au meme instant du meme match) garde la PREMIERE : le journal ne
+// devrait pas en produire, et ecraser inventerait un choix.
+func indexerRipostes(morts []domain.MortSuivie) map[cleRiposte]domain.MortSuivie {
+	out := make(map[cleRiposte]domain.MortSuivie, len(morts))
+	for _, m := range morts {
+		k := cleRiposte{matchID: m.MatchID, xuid: m.VictimeXUID, timeMs: m.TimeMs}
+		if _, deja := out[k]; deja {
+			continue
 		}
+		out[k] = m
 	}
 	return out
+}
+
+// pointsDuJoueur projette les morts d'UN joueur en petits points du nuage.
+//
+// Une mort SANS riposte connue (absente du journal des kills : mort non revendiquee, ou
+// match dont le journal ne porte pas cet instant) n'est PAS vengee et n'a pas de delai —
+// elle va dans la bande haute, jamais a un delai invente.
+func pointsDuJoueur(
+	morts []domain.MortContexte, xuid, gamertag string,
+	rayon map[string]float64, ripostes map[cleRiposte]domain.MortSuivie,
+) []domain.SquadIsolementMort {
+	out := make([]domain.SquadIsolementMort, 0, len(morts))
+	for _, m := range morts {
+		r := rayon[m.MatchID]
+		p := domain.SquadIsolementMort{
+			XUID: xuid, Gamertag: gamertag, MatchID: m.MatchID, TimeMs: m.TimeMs,
+			HorsDeVue: m.PlusProcheM == nil,
+		}
+		if m.PlusProcheM != nil && r > 0 {
+			ratio := *m.PlusProcheM / r
+			p.DistanceRatio = &ratio
+		}
+		if suivie, ok := ripostes[cleRiposte{matchID: m.MatchID, xuid: xuid, timeMs: m.TimeMs}]; ok && suivie.Vengee {
+			delai := suivie.DelaiMs
+			p.Vengee = true
+			p.DelaiMs = &delai
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
+// mortsAExaminer convertit les morts localisees en la forme que `coordination.Isolement`
+// consomme — le taux d'isolement du repere reste calcule par le domaine, jamais ici.
+func mortsAExaminer(morts []domain.MortContexte) []domain.MortAExaminer {
+	out := make([]domain.MortAExaminer, 0, len(morts))
+	for _, m := range morts {
+		out = append(out, domain.MortAExaminer{
+			MatchID: m.MatchID, X: m.X, Y: m.Y,
+			PlusProcheM: m.PlusProcheM, Visibles: m.Visibles, HorsDeVue: m.HorsDeVue,
+		})
+	}
+	return out
+}
+
+// medianeRatio rend la mediane des abscisses PRESENTES (les morts hors de vue n'en ont
+// pas). nil quand aucune mort du joueur n'avait de coequipier visible.
+func medianeRatio(points []domain.SquadIsolementMort) *float64 {
+	v := make([]float64, 0, len(points))
+	for _, p := range points {
+		if p.DistanceRatio != nil {
+			v = append(v, *p.DistanceRatio)
+		}
+	}
+	if len(v) == 0 {
+		return nil
+	}
+	sort.Float64s(v)
+	m := v[len(v)/2]
+	if len(v)%2 == 0 {
+		m = (v[len(v)/2-1] + v[len(v)/2]) / 2
+	}
+	return &m
+}
+
+// medianeDelai rend la mediane du delai des morts VENGEES. nil quand aucune ne l'est : une
+// mediane a zero placerait le repere sur l'axe, ce qui se lirait « vengeance immediate ».
+func medianeDelai(points []domain.SquadIsolementMort) *int64 {
+	v := make([]int64, 0, len(points))
+	for _, p := range points {
+		if p.Vengee && p.DelaiMs != nil {
+			v = append(v, *p.DelaiMs)
+		}
+	}
+	if len(v) == 0 {
+		return nil
+	}
+	sort.Slice(v, func(i, j int) bool { return v[i] < v[j] })
+	m := v[len(v)/2]
+	if len(v)%2 == 0 {
+		m = (v[len(v)/2-1] + v[len(v)/2]) / 2
+	}
+	return &m
 }
 
 // rayonParMatchDuScope resout la portee du radar de chaque match MESURE du perimetre, par sa
@@ -159,18 +248,6 @@ func rayonParMatchDuScope(matchs []domain.TacticalMatch, radar map[string]int) (
 	return out, sans
 }
 
-// matchsAvecRayon compte, parmi les matchs d'UNE session, ceux qui ont un rayon connu — le
-// denominateur `ParMatch` de `coordination.Isolement` pour ce point.
-func matchsAvecRayon(matchIDs []string, rayon map[string]float64) int {
-	n := 0
-	for _, id := range matchIDs {
-		if _, ok := rayon[id]; ok {
-			n++
-		}
-	}
-	return n
-}
-
 // couvertureDuJoueur mesure le taux d'echange des morts d'UN SEUL joueur — la meme mesure
 // que `couvertureDuCamp`, restreinte a une victime plutot qu'a un camp entier.
 func couvertureDuJoueur(morts []domain.MortSuivie, xuid string, matchs int) domain.Couverture {
@@ -185,40 +262,4 @@ func couvertureDuJoueur(morts []domain.MortSuivie, xuid string, matchs int) doma
 		}
 	}
 	return coordination.Mesurer(vengees, vengeables, matchs)
-}
-
-// sessionsDuScope groupe les matchs DU PERIMETRE par session, dedupliques par match_id (une
-// ligne de `scopeRows` peut apparaitre plusieurs fois, une par coequipier). Un match sans
-// session (label nil ou vide) n'entre dans AUCUNE session : le nuage se lit par soiree, pas
-// par match isole. Les labels sont rendus TRIES par l'instant du plus ancien match de la
-// session — ordre stable et independant de l'iteration d'une map.
-func sessionsDuScope(
-	scopeRows []domain.SquadMatchRow, matchesDuScope map[string]struct{},
-) (map[string][]string, []string) {
-	sessions := make(map[string][]string)
-	plusAncien := make(map[string]time.Time)
-	vus := make(map[string]struct{}, len(scopeRows))
-	for _, r := range scopeRows {
-		if _, doublon := vus[r.MatchID]; doublon {
-			continue
-		}
-		vus[r.MatchID] = struct{}{}
-		if _, in := matchesDuScope[r.MatchID]; !in {
-			continue
-		}
-		if r.SessionLabel == nil || *r.SessionLabel == "" {
-			continue
-		}
-		label := *r.SessionLabel
-		sessions[label] = append(sessions[label], r.MatchID)
-		if t, ok := plusAncien[label]; !ok || r.StartTime.Before(t) {
-			plusAncien[label] = r.StartTime
-		}
-	}
-	labels := make([]string, 0, len(sessions))
-	for l := range sessions {
-		labels = append(labels, l)
-	}
-	sort.Slice(labels, func(i, j int) bool { return plusAncien[labels[i]].Before(plusAncien[labels[j]]) })
-	return sessions, labels
 }

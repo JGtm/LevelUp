@@ -129,30 +129,29 @@ describe('SquadSynergiesPage — empty states', () => {
 })
 
 // La description de la section Assistances était traduite (FR et EN) mais jamais montée :
-// ni le titre ni les en-têtes de colonne ne disent ce que le tableau MESURE.
+// ni le titre ni les en-têtes de colonne ne disent ce que le tableau MESURE. Depuis le
+// 2026-09-19 elle vit dans l'INFOBULLE du titre du bloc (décision 9) : elle n'est donc plus
+// dans le DOM au repos, et c'est le TITRE qui doit répondre présent.
 describe('SquadSynergiesPage — section Assistances', () => {
-  it('affiche la description sous le titre quand le bloc est présent', () => {
+  it('monte le bloc titré quand les assistances sont mesurées', () => {
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
       confirmedGamertags: ['A', 'B'],
       pageData: pageWithAssistPairs(),
     })
     renderWithProviders(<SquadSynergiesPage />)
-    expect(screen.getByText('Assistances dans l\'escouade')).toBeInTheDocument()
-    expect(
-      screen.getByText(/^Une barre par larbin/),
-    ).toBeInTheDocument()
+    expect(screen.getAllByText("Assistances dans l'escouade").length).toBeGreaterThan(0)
+    // La phrase de lecture a quitté l'écran pour l'infobulle du titre.
+    expect(screen.queryByText(/^Une barre par larbin/)).toBeNull()
   })
 
-  it('bloc absent : ni titre ni description (aucune section vide)', () => {
+  it('bloc absent : aucun titre, aucune section vide', () => {
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
       confirmedGamertags: ['A', 'B'],
     })
     renderWithProviders(<SquadSynergiesPage />)
-    expect(
-      screen.queryByText(/^Une barre par larbin/),
-    ).toBeNull()
+    expect(screen.queryByText("Assistances dans l'escouade")).toBeNull()
   })
 })
 

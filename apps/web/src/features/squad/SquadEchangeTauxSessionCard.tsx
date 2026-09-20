@@ -9,21 +9,25 @@
  * UNE SEULE SÉRIE, DONC PAS DE LÉGENDE : le titre la nomme. Le DERNIER point est appuyé et
  * étiqueté, les autres non — une valeur sur chaque point ferait d'une courbe un tableau.
  *
- * SOUS LE SEUIL DE SIGNIFICATIVITÉ, ON NE MONTRE PAS UNE COURBE, ON DIT POURQUOI. Deux ou
- * trois soirées ne font pas une évolution : la carte rend alors son état vide nommé, la
- * même doctrine que le « Constat du moment » (qui, lui, ne se rend pas du tout — la
- * différence est qu'une carte de suivi absente se lirait comme une donnée manquante).
+ * SOUS LE PLANCHER DE TENDANCE, ON NE TRACE PAS DE COURBE, MAIS ON NE SE TAIT PLUS
+ * (décision 5 du 2026-09-19) : la ou les soirées retenues se lisent FACE A L'HABITUEL, que
+ * le contrat sert déjà (`echange.habituel`). Filtrer sur une soirée est l'usage NOMINAL de
+ * la page : l'ancien état vide y laissait la carte muette.
  */
 import { useMemo } from 'react'
 
 import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
 import { SectionCard } from '@/components/ui/section-card'
-import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { intlLocale } from '@/lib/formatters'
+import { withLowSampleNote } from '@/lib/formatters/lowSampleNote'
 import type { SquadEchange } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { PLANCHER_SESSIONS_TENDANCE, tauxSessionSeries } from './squadEchange.logic'
+import {
+  comparaisonSessions,
+  PLANCHER_SESSIONS_TENDANCE,
+  tauxSessionSeries,
+} from './squadEchange.logic'
 import { getSquadEchangeText } from './squadEchangeStrings'
 
 export interface SquadEchangeTauxSessionCardProps {
@@ -57,22 +61,41 @@ export function SquadEchangeTauxSessionCard({ echange }: SquadEchangeTauxSession
 
   const dernier = sessions.length > 0 ? sessions[sessions.length - 1] : null
 
-  const footer = (
-    <div className="border-t border-border px-3 py-2">
-      <p className="text-xs text-muted-foreground">{t.sessionRateFoot}</p>
-    </div>
+  const lignes = useMemo(
+    () => comparaisonSessions(echange, t.sessionRateSelection),
+    [echange, t.sessionRateSelection],
   )
 
   const assezDeSessions = sessions.length >= PLANCHER_SESSIONS_TENDANCE
 
   return (
-    <SectionCard title={t.sessionRateTitle} label={t.sessionRateLabel} footer={footer}>
+    <SectionCard title={t.sessionRateTitle} label={t.sessionRateLabel}>
       <div className="space-y-2 px-3 py-2" data-testid="squad-echange-taux-session">
         {!assezDeSessions || !bornes ? (
-          <EmptyStateNotice
-            title={t.sessionRateEmptyTitle}
-            description={t.sessionRateEmptyDescription(PLANCHER_SESSIONS_TENDANCE)}
-          />
+          <div className="space-y-2" data-testid="squad-echange-taux-session-vs-habituel">
+            <p className="border-l-2 border-info pl-3 text-sm text-foreground">
+              {t.sessionRateFewSay({ n: sessions.length, floor: PLANCHER_SESSIONS_TENDANCE })}
+            </p>
+            <dl className="divide-y divide-border rounded border border-border">
+              {lignes.map((l) => (
+                <div key={l.label} className="flex items-baseline justify-between px-3 py-2">
+                  <dt className="text-sm text-foreground">{l.label}</dt>
+                  <dd className="text-sm font-semibold tabular-nums text-foreground">
+                    {withLowSampleNote(pctFmt.format(l.taux), l.echantillonFaible, t.lowSample)}
+                  </dd>
+                </div>
+              ))}
+              <div className="flex items-baseline justify-between bg-muted/40 px-3 py-2">
+                <dt className="text-sm text-muted-foreground">
+                  {t.sessionRateUsual}{' '}
+                  <span className="text-2xs">{t.sessionRateUsualSub(echange.matchs_habituel)}</span>
+                </dt>
+                <dd className="text-sm font-semibold tabular-nums text-muted-foreground">
+                  {pctFmt.format(echange.habituel.taux)}
+                </dd>
+              </div>
+            </dl>
+          </div>
         ) : (
           <>
             <p className="border-l-2 border-info pl-3 text-sm text-foreground">

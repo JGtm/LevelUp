@@ -59,10 +59,10 @@ describe('EquipmentUsageSection', () => {
     const labels = screen.getAllByText(/Mur de protection|Capteur de menaces/)
     expect(labels[0]).toHaveTextContent('Mur de protection')
     expect(labels[1]).toHaveTextContent('Capteur de menaces')
-    // La couverture ne s'ecrit plus dans les bandeaux de titre (2026-09-13) : une seule
-    // ligne de pied par rangee, donc DEUX au total, et aucun "Matchs mesures N/M".
+    // La couverture ne s'ecrit NULLE PART sur ces deux rangees (2026-09-19) : ni dans les
+    // bandeaux de titre (retiree le 2026-09-13), ni en pied de rangee.
     expect(screen.queryByText(t.measuredFmt(8, 8))).not.toBeInTheDocument()
-    expect(screen.getAllByText(t.measuredFooterFmt(8, 8)).length).toBe(2)
+    expect(screen.queryByText(t.measuredFooterFmt(8, 8))).not.toBeInTheDocument()
     // La barre "armes speciales" (pad_pickups) rend "Moi" pour le joueur de la route.
     expect(screen.getByText('Moi')).toBeInTheDocument()
     expect(screen.getByText('12 prises')).toBeInTheDocument()
@@ -88,7 +88,7 @@ describe('EquipmentUsageSection', () => {
     expect(screen.getByText('31 prises')).toBeInTheDocument()
   })
 
-  it('donuts absents quand *_parties ne sont pas fournies (scope sans camp connu)', () => {
+  it('sans *_parties : le donut equipement disparait, la carte des armes speciales RESTE (titree, etat vide)', () => {
     const usage: EquipmentUsageBlock = {
       available: true,
       matches_measured: 3,
@@ -96,11 +96,18 @@ describe('EquipmentUsageSection', () => {
       families: [{ family_key: 'wall', taken: 10, used: 5, kept: 3, dropped: 2 }],
     }
     render(<EquipmentUsageSection usage={usage} mode="solo" t={t} locale="fr" />)
-    // Pas de sous-total "Mon équipe" : le donut ne s'est pas rendu.
+    // Pas de sous-total "Mon équipe" : aucun donut ne s'est rendu.
     expect(screen.queryByText(t.rowMyTeam)).not.toBeInTheDocument()
+    // La carte de part des armes speciales se rend TOUJOURS, avec son titre et son texte
+    // d'absence — escamotee, la rangee se lisait comme un bug (2026-09-19).
+    expect(screen.getAllByText(t.viewWeaponPartsSolo).length).toBeGreaterThan(0)
+    expect(screen.getByText(t.donutPartsEmpty)).toBeInTheDocument()
   })
 })
 
+// `measuredFooterFmt` a QUITTE les rangees equipement et armes speciales le 2026-09-19 ;
+// il sert encore le pied de la rangee des NIVEAUX D'ARMES (`padTiersCoverage`), dont la
+// couverture est propre et vient d'une autre passe. Son accord en nombre reste garde ici.
 describe('couverture de mesure — accord en nombre (finitions 2026-09-13)', () => {
   it('un seul match : « match » au singulier, en FR comme en EN', () => {
     expect(USAGE_TEXT.fr.measuredFooterFmt(1, 1)).toBe('Mesuré sur 1 match sur 1')

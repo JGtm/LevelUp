@@ -166,7 +166,24 @@ export function SquadSynergiesPage() {
         <>
           <SquadEchangeCompteCard echange={echange} />
           <SquadEchangeDelaiCard echange={echange} />
-          <SquadEchangeMatrixCard echange={echange} />
+        </>
+      )}
+      {/* « Qui couvre qui » et « Assistances dans l'escouade » SUR LA MÊME RANGÉE
+          (2026-09-19) : deux lectures du même couple de joueurs, l'une par vengeance,
+          l'autre par assistance — les empiler obligeait à faire défiler entre les deux.
+          `items-stretch` par défaut : les deux cartes ont la même hauteur.
+
+          LES DEUX SE MONTENT INDÉPENDAMMENT : l'échange vient du journal des morts, les
+          assistances du résumé du film. Un titre qui ne nomme pas le tueur garde ses
+          assistances — les lier aurait fait disparaître une mesure qui existe. */}
+      {(echange || assistPairs) && (
+        <div className="grid grid-cols-2 gap-4">
+          {echange && <SquadEchangeMatrixCard echange={echange} />}
+          {assistPairs && <SquadAssistPairsChart block={assistPairs} roster={roster} />}
+        </div>
+      )}
+      {echange && (
+        <>
           {echange.nuage_isolement && (
             <SquadIsolementNuageCard
               nuage={echange.nuage_isolement}
@@ -234,18 +251,6 @@ export function SquadSynergiesPage() {
         )}
       </div>
       <SquadSynergyHistoryTable rows={matchHistory} playerSlug={playerSlug} />
-      {assistPairs && (
-        <section>
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {t.assists.title}
-          </p>
-          {/* La description dit CE QUE MESURE le graphe (« qui prépare les éliminations de
-              qui »), que le titre seul ne dit pas. Même classe que le bandeau de
-              couverture juste en dessous. */}
-          <p className="mb-2 text-xs text-muted-foreground">{t.assists.description}</p>
-          <SquadAssistPairsChart block={assistPairs} roster={roster} />
-        </section>
-      )}
       <SquadMapHeatmapChart
         title={t.heatmap.title}
         emptyMessage={t.empty.noBlockData}
@@ -259,7 +264,6 @@ export function SquadSynergiesPage() {
           tier5: t.heatmap.pieceTier5,
         }}
         noScoreLabel={t.heatmap.noScore}
-        xAxisName={t.heatmap.xAxis}
         yAxisName={t.heatmap.yAxis}
       />
       <SquadSessionTimelineChart
@@ -313,13 +317,16 @@ export function SquadSynergiesPage() {
           (POST /pages/teammates, lot E6.1bis du 2026-09-09) ; la section se retire
           d'elle-même si le champ est absent (titre sans résumé d'usage, scope vide). */}
       <EquipmentUsageSection usage={pageData?.equipment_usage} mode="squad" t={USAGE_TEXT[locale]} locale={locale} />
-      {/* « Les formes retenues » (artefact 2ec1b8eb, lot D2) : les dix-neuf cartes des
-          trois blocs, sur UNE ligne. Aucune requête neuve — lit `pageData.formes_retenues`
-          de la réponse déjà chargée par `useTeammates`. La section se retire d'elle-même
-          quand le bloc est absent (titre sans film, scope vide). */}
+      {/* « Les formes retenues » (artefact 2ec1b8eb, lot D2), CONTEXTE ESCOUADE SEUL
+          (2026-09-19) : les neuf cartes du contexte solo vivent désormais sur Timeseries,
+          onglet Progression — une page, un contexte. Aucune requête neuve : lit
+          `pageData.formes_retenues` de la réponse déjà chargée par `useTeammates`. La
+          section se retire d'elle-même quand le bloc est absent (titre sans film, scope
+          vide). */}
       <FormesRetenuesSection
         block={pageData?.formes_retenues}
         locale={locale}
+        contexte="squad"
         mainPlayerLabel={pageData?.main_player ?? playerSlug}
       />
       {/* MÉDAILLES EN DERNIER (décision utilisateur, 2026-09-13) : c'est un palmarès, pas

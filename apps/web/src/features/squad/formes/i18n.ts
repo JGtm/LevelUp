@@ -21,16 +21,18 @@ import type { WeaponClass } from './model/pads'
 
 export interface FormesBlockText {
   title: string
-  /** Le paragraphe de constat du bloc (gabarit alimenté par les mesures). */
-  constat: string
-  /** L'encadré de lexique : ce que le décodeur prend en charge, les réserves. */
-  lexique: string
+  /**
+   * L'AIDE ⓘ du titre du bloc : ce que le bloc mesure, et ce qu'il ne mesure pas.
+   *
+   * TROIS PHRASES AU PLUS (décision 9 du 2026-09-19). Le constat et le lexique qui
+   * vivaient ici en pavés de texte gris — cinq à huit phrases chacun — ont été résumés :
+   * un lexique se lit une fois, puis n'est plus qu'un mur entre deux formes.
+   */
+  aide: string
 }
 
 export interface FormesText {
   sectionTitle: string
-  /** Le chapeau de la section : ce que les deux lentilles répondent. */
-  intro: string
   /** Les quatre repères du bandeau (ensemble, lobbies, parité, modes). */
   header: {
     scope: string
@@ -44,7 +46,6 @@ export interface FormesText {
     matchesFmt: (n: number) => string
     familiesFmt: (n: number) => string
   }
-  contexts: { solo: string; squad: string }
   blocks: { equipment: FormesBlockText; weapons: FormesBlockText; objectives: FormesBlockText }
   axes: Record<EquipmentAxis, string>
   weaponClasses: Record<WeaponClass, string>
@@ -208,12 +209,6 @@ const EN_COLUMNS: Record<string, string> = {
 export const FORMES_TEXT: Record<Locale, FormesText> = {
   fr: {
     sectionTitle: 'Les formes retenues',
-    intro:
-      "Deux lentilles cohabitent, et elles ne répondent pas à la même question. **Ce que j'ai fait** : " +
-      "des comptes, match par match. **Où je me situe** : des parts, avec l'équipe d'en face pour " +
-      'référence — jamais affichée, toujours comptée. Partout où une part est affichée, ses **deux ' +
-      "dénominateurs** le sont aussi : mon équipe, et le lobby. Les grenades sont sorties des usages " +
-      "d'équipement : ce n'en sont pas.",
     header: {
       scope: 'Ensemble',
       scopeMeasuredFmt: (measured, total) =>
@@ -228,51 +223,21 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       matchesFmt: (n) => (n > 1 ? `${n} matchs` : `${n} match`),
       familiesFmt: (n) => (n > 1 ? `${n} familles` : `${n} famille`),
     },
-    contexts: {
-      solo: 'Contexte Solo — moi dans mon équipe, et dans le lobby',
-      squad: 'Contexte Escouade — mon camp contre le leur',
-    },
     blocks: {
       equipment: {
         title: "Usages d'équipements",
-        constat:
-          '**Les grenades sont sorties du bloc** : ce ne sont pas des équipements. Restent le ' +
-          'camouflage, le surbouclier, le mur de protection, le grappin et les objets lâchés au sol — ' +
-          'les familles que cette session a effectivement mesurées. Attention à l’échelle : ce sont ' +
-          'de **petits volumes**. Une part y bouge de vingt points pour un geste de plus, et les ' +
-          'formes ci-dessous le disent toutes — étendue, compte au-dessus de la parité, numérateur ' +
-          'en infobulle.',
-        lexique:
-          "**Ce que le décodeur prend en charge, au-delà de ce qui s'affiche ici.** Six familles " +
-          'déployables sont nommées — mur de protection, capteur de menaces, faille du translocateur, ' +
-          'écran occultant, traqueur de menaces, champ de réparation — plus le grappin, le camouflage ' +
-          'et le surbouclier (avec durée et frags), les objets lâchés au sol et les socles de bonus ' +
-          'vidés. **Les colonnes sont pilotées par la donnée** : une famille absente de l’écran est ' +
-          "une famille que personne n'a utilisée sur ces matchs. **Deux exceptions** : le " +
-          '**répulseur** — le film montre l’OBJET au sol mais aucun de ses neuf canaux ne date son ' +
-          'ACTIVATION ; et le **propulseur**, dont l’usage est mesuré mais dure une demi-seconde — ' +
-          'il se voit sur la carte du rejeu, pas dans un compteur.',
+        aide:
+          "Les gestes d'équipement lus dans le film : camouflage, surbouclier, mur de protection, grappin et objets lâchés au sol. Les grenades n'en sont pas et restent hors du bloc. Attention à l'échelle : ce sont de petits volumes, et une part y bouge de vingt points pour un geste de plus.",
       },
       weapons: {
         title: 'Contrôle des armes spéciales',
-        constat: '',
-        lexique:
-          '**Un socle**, c’est l’emplacement fixe d’une carte où une arme de puissance réapparaît à ' +
-          'intervalle régulier. **Une prise de socle** est un ramassage sur cet emplacement, lu dans ' +
-          'l’événement natif du film : daté à la milliseconde, il porte son ramasseur. C’est le ' +
-          'vocabulaire déjà employé par le bloc de la vue match (colonne « Prises de socle »). **Le ' +
-          'dénominateur n’est pas le nombre de socles** : c’est le nombre de prises NOMMÉES, quand ' +
-          'les occupations sans ramasseur nommé n’entrent dans aucun camp. La part se lit donc « sur ' +
-          'ce que l’on sait », et cette réserve reste à l’écran.',
+        aide:
+          "Un socle est l'emplacement fixe où une arme de puissance réapparaît ; une prise de socle est un ramassage lu dans l'événement natif du film, daté et nominatif. Le dénominateur n'est pas le nombre de socles mais le nombre de prises NOMMÉES. Les occupations sans ramasseur connu n'entrent donc dans aucun camp.",
       },
       objectives: {
         title: 'Objectifs',
-        constat: '',
-        lexique:
-          '**La table rôle → grandeurs est un savoir du titre**, déclarée en donnée comme les rôles ' +
-          'd’objectif du rejeu, jamais en dur dans un composant. C’est le coût de cette forme, et il ' +
-          'est réel. Les durées (temps en zone, temps de portage) sont en secondes : elles se ' +
-          'comparent à leur propre parité, jamais aux comptes d’actions.',
+        aide:
+          "Les grandeurs de chaque rôle d'objectif viennent de la table du titre, jamais d'un composant. Les durées (temps en zone, temps de portage) sont en secondes : elles se comparent à leur propre parité, jamais aux comptes d'actions.",
       },
     },
     axes: {
@@ -376,11 +341,6 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
   },
   en: {
     sectionTitle: 'The retained forms',
-    intro:
-      'Two lenses live side by side, and they do not answer the same question. **What I did**: ' +
-      'counts, match by match. **Where I stand**: shares, with the other team as the reference — ' +
-      'never displayed, always counted. Wherever a share is shown, **both denominators** are shown ' +
-      'too: my team, and the lobby. Grenades are out of equipment usage: they are not equipment.',
     header: {
       scope: 'Scope',
       scopeMeasuredFmt: (measured, total) => `${measured} of ${total} with a decoded film`,
@@ -394,49 +354,21 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       matchesFmt: (n) => (n > 1 ? `${n} matches` : `${n} match`),
       familiesFmt: (n) => (n > 1 ? `${n} families` : `${n} family`),
     },
-    contexts: {
-      solo: 'Solo context — me in my team, and in the lobby',
-      squad: 'Squad context — my side against theirs',
-    },
     blocks: {
       equipment: {
         title: 'Equipment usage',
-        constat:
-          '**Grenades are out of this block**: they are not equipment. What remains is active ' +
-          'camouflage, overshield, the drop wall, the grappleshot and objects dropped on the ' +
-          'ground — the families this period actually measured. Mind the scale: these are **small ' +
-          'volumes**. A share moves twenty points for one extra action, and every form below says ' +
-          'so — spread, count above parity, numerator in the tooltip.',
-        lexique:
-          '**What the decoder covers, beyond what is shown here.** Six deployable families are ' +
-          'named — drop wall, threat sensor, repulsor beacon, shroud screen, threat seeker, repair ' +
-          'field — plus the grappleshot, camouflage and overshield (with duration and kills), ' +
-          'objects dropped on the ground and emptied power-up pads. **Columns are driven by the ' +
-          'data**: a family missing from the screen is a family nobody used in these matches. **Two ' +
-          'exceptions**: the **repulsor** — the film shows the OBJECT on the ground but none of its ' +
-          'nine channels dates its ACTIVATION; and the **thruster**, whose usage is measured but ' +
-          'lasts half a second — it shows on the replay map, not in a counter.',
+        aide:
+          "Equipment actions read from the film: active camouflage, overshield, drop wall, grappleshot and objects dropped on the ground. Grenades are not equipment and stay out of this block. Mind the scale: these are small volumes, and a share moves twenty points for one extra action.",
       },
       weapons: {
         title: 'Power weapon control',
-        constat: '',
-        lexique:
-          '**A pad** is the fixed spot on a map where a power weapon respawns at a regular ' +
-          'interval. **A pad pickup** is a pickup on that spot, read from the film native event: ' +
-          'dated to the millisecond, it carries its picker. This is the vocabulary already used by ' +
-          'the match view block (“Pad pickups” column). **The denominator is not the number of ' +
-          'pads**: it is the number of NAMED pickups, while occupations without a named picker ' +
-          'belong to no side. The share therefore reads “out of what we know”, and that caveat ' +
-          'stays on screen.',
+        aide:
+          'A pad is the fixed spot where a power weapon respawns; a pad pickup is a pickup on that spot, read from the film native event, dated and named. The denominator is not the number of pads but the number of NAMED pickups. Occupations without a known picker therefore belong to no side.',
       },
       objectives: {
         title: 'Objectives',
-        constat: '',
-        lexique:
-          '**The role → measures table is title knowledge**, declared as data like the replay ' +
-          'objective roles, never hardcoded in a component. That is the cost of this form, and it ' +
-          'is real. Durations (zone time, carrier time) are in seconds: they compare to their own ' +
-          'parity, never to action counts.',
+        aide:
+          'The measures of each objective role come from the title table, never from a component. Durations (zone time, carrier time) are in seconds: they compare to their own parity, never to action counts.',
       },
     },
     axes: {

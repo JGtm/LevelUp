@@ -664,25 +664,9 @@ en = "Who covers whom"
 fr = "Échanges entre membres de l'escouade"
 en = "Trades between squad members"
 
-[squad.echange.axis_avenger]
-fr = "Vengeur"
-en = "Avenger"
-
-[squad.echange.axis_avenged]
-fr = "Vengé"
-en = "Avenged"
-
 [squad.echange.definition]
 fr = "Un échange : un coéquipier abat votre tueur dans les {seconds, number} s qui suivent votre mort."
 en = "A trade: a teammate takes down your killer within {seconds, number} s of your death."
-
-[squad.echange.coverage]
-fr = "Mesuré sur {measured, number} des {total, plural, one {# match} other {# matchs}} de la sélection."
-en = "Measured on {measured, number} of the {total, plural, one {# match} other {# matches}} in the selection."
-
-[squad.echange.coverage_hint]
-fr = "Le journal des morts vient du film du match, et les films expirent côté serveur : ce qui manque ne reviendra pas."
-en = "The death log comes from the match film, and films expire server-side: what is missing will not come back."
 
 [squad.echange.narrative]
 fr = "Sur {matches, plural, one {# match} other {# matchs}}, {brut, number} des {n, plural, one {# mort} other {# morts}} de votre camp ont été vengées dans les {seconds, number} s — soit {rate}."
@@ -789,82 +773,90 @@ en = "Trading deserves your attention: your side trades {delta} less than usual 
 fr = "Sur {n, plural, one {# mort} other {# morts}} de votre camp, {matches, plural, one {# match} other {# matchs}}."
 en = "Based on {n, plural, one {# death} other {# deaths}} on your side, {matches, plural, one {# match} other {# matches}}."
 
-# ─── Nuage isolement x couverture (item 7.7, sous SquadEchange.nuage_isolement) ────────
+# ─── Nuage « Pourquoi la vengeance ne vient pas » (SquadEchange.nuage_isolement) ────────
 #
-# Un point par (joueur, session) : la part de morts isolées (aucun coéquipier visible à
-# portée du radar) contre le taux d'échange de la même session. Vocabulaire arrêté par la
-# maquette echange-escouade.html : les quatre libellés de quadrant sont repris à
-# l'identique (« proche et couvert », « loin, mais on vient », « proche, et pourtant
-# seul », « loin et sans secours »).
+# Contrat refondu le 2026-09-19 (PLAN_AJUSTEMENTS_PRE_V75, décision 4) : UN PETIT POINT PAR
+# MORT, un gros point par joueur. En abscisse la distance au coéquipier visible le plus
+# proche rapportée à la portée du radar du match (1,0 = à la portée) ; en ordonnée le délai
+# avant vengeance. Une mort sans coéquipier visible va dans la bande « hors de vue », une
+# mort jamais vengée dans la bande « jamais vengée ».
 
 [squad.isolement.section_title]
 fr = "Isolement et couverture"
 en = "Isolation and coverage"
 
 [squad.isolement.section_label]
-fr = "Nuage isolement et couverture par session"
-en = "Isolation and coverage cloud by session"
+fr = "Une mort par point, distance au coéquipier contre délai de vengeance"
+en = "One death per dot, distance to teammate versus revenge delay"
 
 [squad.isolement.x_axis]
-fr = "Part de morts hors portée du radar"
-en = "Share of deaths outside radar range"
+fr = "Distance au coéquipier le plus proche (× la portée du radar)"
+en = "Distance to nearest teammate (× radar range)"
 
 [squad.isolement.y_axis]
-fr = "Part de morts vengées"
-en = "Share of avenged deaths"
+fr = "Délai avant vengeance (s)"
+en = "Delay before revenge (s)"
 
-[squad.isolement.definition]
-fr = "Un point par joueur et par session : en abscisse, la part de ses morts sans coéquipier visible à portée du radar ; en ordonnée, la part de ses morts vengées dans les 5 s."
-en = "One point per player and per session: on the X axis, the share of their deaths with no teammate visible within radar range; on the Y axis, the share of their deaths avenged within 5 s."
+[squad.isolement.help]
+fr = "Chaque petit point est une mort : à gauche un coéquipier était tout près, à droite il était hors de portée du radar. Plus le point est haut, plus la vengeance a tardé. Le gros point est la médiane du joueur, sa taille dit combien de morts."
+en = "Each small dot is one death: on the left a teammate was close by, on the right they were beyond radar range. The higher the dot, the longer revenge took. The large dot is the player's median, its size says how many deaths."
 
-[squad.isolement.floor]
-fr = "Planchers : {sessionFloor, number} morts examinées par session pour qu'un point existe, {sampleFloor, number} pour qu'un taux se lise sans réserve."
-en = "Floors: {sessionFloor, number} examined deaths per session for a point to exist, {sampleFloor, number} for a rate to read without reservation."
+[squad.isolement.radar_line]
+fr = "Portée du radar"
+en = "Radar range"
+
+[squad.isolement.band_out_of_sight]
+fr = "Hors de vue"
+en = "Out of sight"
+
+[squad.isolement.band_never]
+fr = "Jamais vengée"
+en = "Never avenged"
 
 [squad.isolement.low_sample]
 fr = "échantillon faible"
 en = "small sample"
 
-[squad.isolement.tooltip]
-fr = "{gamertag} — {session}<br>Isolement : {isoRate} ({isoBrut}/{isoN})<br>Couverture : {covRate} ({covBrut}/{covN})"
-en = "{gamertag} — {session}<br>Isolation: {isoRate} ({isoBrut}/{isoN})<br>Coverage: {covRate} ({covBrut}/{covN})"
+# Infobulles, LIGNE PAR LIGNE : le retour à la ligne HTML est posé par le composant, jamais
+# dans le message — un `<br>` isolé fait échouer le parseur ICU, qui rend alors le gabarit
+# brut à l'écran (constaté le 2026-09-20). « Couverture » se lit ici comme une PROXIMITÉ
+# rapportée à la portée du radar (décision 4), jamais comme un taux.
+[squad.isolement.tooltip_death_coverage]
+fr = "Couverture : coéquipier à {ratio} × la portée du radar"
+en = "Coverage: teammate at {ratio} × radar range"
 
-# Lot C3 (D4) : tooltip du GROS point par joueur (la médiane, toutes sessions confondues) —
-# distinct du tooltip par (joueur, session) ci-dessus, qui n'a pas de session à nommer.
-[squad.isolement.tooltip_median]
-fr = "{gamertag} — médiane ({n, plural, one {# mort examinée} other {# morts examinées}})<br>Isolement : {isoRate}<br>Couverture : {covRate}"
-en = "{gamertag} — median ({n, plural, one {# examined death} other {# examined deaths}})<br>Isolation: {isoRate}<br>Coverage: {covRate}"
+[squad.isolement.tooltip_death_out_of_sight]
+fr = "Couverture : aucun coéquipier en vue"
+en = "Coverage: no teammate in sight"
 
-# Lot C3 : `quadrantDuPoint` rebranché — le tooltip d'un point NOMME désormais le quadrant
-# auquel il appartient (les quatre libellés ci-dessous étaient déjà affichés dans les coins
-# du nuage via `t.quadrant`, mais la fonction de classement par point n'avait aucun appelant).
-[squad.isolement.point_quadrant]
-fr = "Quadrant : {quadrant}"
-en = "Quadrant: {quadrant}"
+[squad.isolement.tooltip_avenged]
+fr = "Vengée en {seconds} s"
+en = "Avenged in {seconds} s"
 
-[squad.isolement.quadrant_proche_couvert]
-fr = "Proche et couvert"
-en = "Close and covered"
+[squad.isolement.tooltip_never]
+fr = "Jamais vengée"
+en = "Never avenged"
 
-[squad.isolement.quadrant_loin_couvert]
-fr = "Loin, mais on vient"
-en = "Far, but backup comes"
+# Infobulle du GROS point par joueur : les deux médianes, le volume, et les deux taux.
+[squad.isolement.tooltip_repere_head]
+fr = "{gamertag} — médiane ({n, plural, one {# mort} other {# morts}})"
+en = "{gamertag} — median ({n, plural, one {# death} other {# deaths}})"
 
-[squad.isolement.quadrant_proche_seul]
-fr = "Proche, et pourtant seul"
-en = "Close, yet alone"
+[squad.isolement.tooltip_repere_iso]
+fr = "Isolement : {isoRate}"
+en = "Isolation: {isoRate}"
 
-[squad.isolement.quadrant_loin_sans_secours]
-fr = "Loin et sans secours"
-en = "Far and without help"
+[squad.isolement.tooltip_repere_cov]
+fr = "Taux d'échange : {covRate}"
+en = "Trade rate: {covRate}"
 
 [squad.isolement.empty_title]
-fr = "Aucun point mesuré"
-en = "No point measured"
+fr = "Aucune mort mesurée"
+en = "No death measured"
 
 [squad.isolement.empty_description]
-fr = "Aucune session de la sélection n'atteint le plancher de 5 morts examinées."
-en = "No session in the selection reaches the 5 examined-deaths floor."
+fr = "Aucune mort de la sélection n'est localisée sur un match dont la portée du radar est connue."
+en = "No death in the selection is located on a match with a known radar range."
 
 # ─── Maquette 4c520da6 : « L'échange », six cartes, fond ET forme ───────────
 #
@@ -944,25 +936,13 @@ en = "Beyond {seconds, number} s the bar is shown but hatched: those avenging ki
 
 # ─── Carte 3 : « Qui couvre qui » ───────────────────────────────────────────
 
-[squad.echange.matrix_figure]
-fr = "Échanges réalisés sur {n, plural, one {# match d'escouade} other {# matchs d'escouade}}"
-en = "Trades performed over {n, plural, one {# squad match} other {# squad matches}}"
-
 [squad.echange.matrix_received]
 fr = "reçu {n, number}"
 en = "received {n, number}"
 
-[squad.echange.matrix_ramp_zero]
-fr = "0"
-en = "0"
-
-[squad.echange.matrix_ramp_max]
-fr = "{n, plural, one {# échange} other {# échanges}}"
-en = "{n, plural, one {# trade} other {# trades}}"
-
-[squad.echange.matrix_foot_orientation]
-fr = "Ligne : celui qui venge. Colonne : celui qui est vengé. Même orientation que « Assistant / Bénéficiaire » du graphe des assistances, juste au-dessus."
-en = "Row: the one who avenges. Column: the one avenged. Same orientation as « Assistant / Beneficiary » in the assists chart just above."
+[squad.echange.matrix_help]
+fr = "Une case dit combien de fois le joueur de la LIGNE a vengé celui de la COLONNE. Un échange : un coéquipier abat votre tueur dans les {seconds, number} s qui suivent votre mort."
+en = "A cell says how many times the ROW player avenged the COLUMN player. A trade: a teammate takes down your killer within {seconds, number} s of your death."
 
 # ─── Carte 5 : « Donné et reçu, par coéquipier » ────────────────────────────
 
@@ -975,16 +955,12 @@ fr = "Échanges donnés et reçus par joueur"
 en = "Trades given and received per player"
 
 [squad.echange.donne_recu_say]
-fr = "Même donnée que la matrice, en plus grossier : {joueur} reçoit {recu, number} et n'en donne que {donne, number}."
-en = "Same data as the matrix, coarser: {joueur} receives {recu, number} and only gives {donne, number}."
+fr = "{joueur} reçoit {recu, number} échanges et n'en donne que {donne, number}."
+en = "{joueur} receives {recu, number} trades and only gives {donne, number}."
 
 [squad.echange.donne_recu_say_equilibre]
-fr = "Même donnée que la matrice, en plus grossier : sur ce périmètre, chacun donne à peu près ce qu'il reçoit."
-en = "Same data as the matrix, coarser: over this scope, everyone gives roughly what they receive."
-
-[squad.echange.donne_recu_figure]
-fr = "Échanges donnés et reçus, par joueur"
-en = "Trades given and received, per player"
+fr = "Sur ce périmètre, chacun donne à peu près ce qu'il reçoit."
+en = "Over this scope, everyone gives roughly what they receive."
 
 [squad.echange.donne_recu_given]
 fr = "Donné"
@@ -993,10 +969,6 @@ en = "Given"
 [squad.echange.donne_recu_received]
 fr = "Reçu"
 en = "Received"
-
-[squad.echange.donne_recu_foot]
-fr = "Doublonne en partie avec la matrice, qui porte la même information en plus fin."
-en = "Partly duplicates the matrix, which carries the same information in finer detail."
 
 # ─── Carte 6 : « Taux d'échange par session » ───────────────────────────────
 
@@ -1016,17 +988,24 @@ en = "Coverage ranges from {bas} to {haut} depending on the evening, for {taux} 
 fr = "Part des morts d'équipe vengées sous {seconds, number} s, par soirée"
 en = "Share of team deaths avenged within {seconds, number} s, per evening"
 
-[squad.echange.session_rate_foot]
-fr = "Une seule série, donc pas de légende : le titre la nomme. Dernier point appuyé et étiqueté, les autres non."
-en = "A single series, hence no legend: the title names it. The last point is emphasised and labelled, the others are not."
+# Sous le plancher de tendance (décision 5 du 2026-09-19) : plus d'état vide — la ou les
+# soirées retenues se lisent FACE A L'HABITUEL, la seule comparaison qui vaille quand il n'y
+# a pas d'évolution à tracer.
+[squad.echange.session_rate_few_say]
+fr = "{n, plural, =0 {La sélection} one {Une soirée} other {# soirées}} face à l'habituel — sous {floor, number} soirées, une courbe ne dirait rien."
+en = "{n, plural, =0 {The selection} one {One evening} other {# evenings}} against usual — below {floor, number} evenings, a curve would say nothing."
 
-[squad.echange.session_rate_empty_title]
-fr = "Pas encore assez de soirées"
-en = "Not enough evenings yet"
+[squad.echange.session_rate_selection]
+fr = "Sélection"
+en = "Selection"
 
-[squad.echange.session_rate_empty_description]
-fr = "Il faut au moins {floor, number} soirées mesurées pour qu'une évolution veuille dire quelque chose."
-en = "At least {floor, number} measured evenings are needed for a trend to mean anything."
+[squad.echange.session_rate_usual]
+fr = "Habituel"
+en = "Usual"
+
+[squad.echange.session_rate_usual_sub]
+fr = "sur {matchs, plural, one {# match} other {# matchs}} de la composition"
+en = "over {matchs, plural, one {# match} other {# matches}} of the composition"
 
 [squad.echange.session_rate_y_axis]
 fr = "Part des morts vengées"
@@ -1043,25 +1022,17 @@ fr = "Les deux vont ensemble, et c'est le résultat le plus exploitable de la pa
 en = "The two go together, and it is the most actionable result on this page: {loin} dies out of radar {loinIso} of the time and is only avenged {loinCouv}; {proche}, at {procheIso} out of radar, is avenged {procheCouv}. You do not avenge what you cannot see. Read point size before rate: it says how many deaths each player actually took."
 
 [squad.isolement.figure]
-fr = "Un petit point par session, un gros point par joueur — la taille dit le nombre de morts"
-en = "One small dot per session, one large dot per player — size says the number of deaths"
+fr = "Un petit point par mort, un gros point par joueur — la taille dit le nombre de morts"
+en = "One small dot per death, one large dot per player — size says the number of deaths"
 
 [squad.isolement.legend_deaths]
 fr = "{n, plural, one {# mort} other {# morts}}"
 en = "{n, plural, one {# death} other {# deaths}}"
 
-[squad.isolement.legend_session]
-fr = "une session"
-en = "one session"
+[squad.isolement.legend_death]
+fr = "une mort"
+en = "one death"
 
 [squad.isolement.legend_low_sample]
 fr = "moins de {floor, number} morts"
 en = "fewer than {floor, number} deaths"
-
-[squad.isolement.foot_radar]
-fr = "Portée du radar : lue par match dans le référentiel des variantes. Ce n'est pas un seuil choisi — au-delà, un coéquipier ne peut pas savoir que vous êtes en difficulté."
-en = "Radar range: read per match from the variant reference table. It is not a chosen threshold — beyond it, a teammate cannot know you are in trouble."
-
-[squad.isolement.foot_denominator]
-fr = "Les deux axes sont des parts de VOS morts : qui meurt peu est jugé sur peu d'événements. D'où : la position dit la NATURE des morts, la taille du point dit COMBIEN, et sous {floor, number} morts le point est cerclé de pointillés. Aucun classement de joueurs n'est tiré de ce nuage."
-en = "Both axes are shares of YOUR deaths: whoever dies little is judged on few events. Hence: position says the NATURE of deaths, point size says HOW MANY, and below {floor, number} deaths the dot is ringed with dashes. No player ranking is drawn from this cloud."

@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import type { SquadIsolementPoint } from '@/lib/api/types'
+import type { SquadIsolementMort, SquadIsolementRepere } from '@/lib/api/types'
 
 import {
-  medianesNuage,
-  pointAttenue,
-  pointMedianJoueur,
-  quadrantDuPoint,
-  tailleMedianeEchelle,
-  TAILLE_SESSION,
+  contrasteIsolement,
+  delaiSecondes,
+  echelleAvecBande,
+  echellesNuage,
+  positionMort,
+  positionRepere,
+  repereAttenue,
+  tailleRepere,
 } from './squadIsolement.logic'
 
 function couverture(brut: number, n: number, echantillonFaible: boolean, matchs = 3) {
@@ -21,163 +23,130 @@ function couverture(brut: number, n: number, echantillonFaible: boolean, matchs 
   }
 }
 
-function point(over: Partial<SquadIsolementPoint> = {}): SquadIsolementPoint {
+function mort(over: Partial<SquadIsolementMort> = {}): SquadIsolementMort {
   return {
     xuid: 'x1',
     gamertag: 'Alice',
-    session_label: 'S1',
-    morts_examinees: 10,
-    morts_isolees: 4,
+    match_id: 'm1',
+    time_ms: 10_000,
+    distance_ratio: 0.6,
+    hors_de_vue: false,
+    vengee: true,
+    delai_ms: 3_000,
+    ...over,
+  } as SquadIsolementMort
+}
+
+function repere(over: Partial<SquadIsolementRepere> = {}): SquadIsolementRepere {
+  return {
+    xuid: 'x1',
+    gamertag: 'Alice',
+    nb_morts: 10,
+    mediane_distance_ratio: 0.8,
+    mediane_delai_ms: 4_000,
     part_isolee: couverture(4, 10, true),
     couverture: couverture(6, 10, true),
     ...over,
-  } as SquadIsolementPoint
+  } as SquadIsolementRepere
 }
 
-describe('medianesNuage', () => {
-  it('rend null sans point', () => {
-    expect(medianesNuage([])).toBeNull()
+describe('echelleAvecBande', () => {
+  it('sans valeur, l’échelle tient sur son minimum et réserve quand même sa bande', () => {
+    const e = echelleAvecBande([], 0.5, 2)
+    expect(e.mesure).toBe(2)
+    expect(e.bandeDebut).toBe(2.5)
+    expect(e.max).toBe(3.5)
+    expect(e.bandeCentre).toBe(3)
   })
 
-  it('médiane impaire : la valeur du milieu', () => {
-    const pts = [
-      point({ part_isolee: couverture(1, 10, true), couverture: couverture(1, 10, true) }),
-      point({ part_isolee: couverture(5, 10, true), couverture: couverture(5, 10, true) }),
-      point({ part_isolee: couverture(9, 10, true), couverture: couverture(9, 10, true) }),
-    ]
-    const med = medianesNuage(pts)
-    expect(med?.isolement).toBeCloseTo(0.5)
-    expect(med?.couverture).toBeCloseTo(0.5)
+  it('arrondit le haut de la zone mesurée au pas supérieur', () => {
+    expect(echelleAvecBande([2.2], 0.5, 2).mesure).toBe(2.5)
+    expect(echelleAvecBande([12.4], 1, 10).mesure).toBe(13)
   })
 
-  it('médiane paire : la moyenne des deux valeurs centrales', () => {
-    const pts = [
-      point({ part_isolee: couverture(2, 10, true), couverture: couverture(2, 10, true) }),
-      point({ part_isolee: couverture(4, 10, true), couverture: couverture(4, 10, true) }),
-    ]
-    const med = medianesNuage(pts)
-    expect(med?.isolement).toBeCloseTo(0.3)
+  it('la bande commence APRÈS la zone mesurée : aucune valeur réelle ne s’y pose', () => {
+    const e = echelleAvecBande([3.1], 0.5, 2)
+    expect(e.bandeDebut).toBeGreaterThan(e.mesure)
+    expect(e.bandeCentre).toBeGreaterThan(e.bandeDebut)
+    expect(e.max).toBeGreaterThanOrEqual(e.bandeCentre)
   })
 })
 
-describe('quadrantDuPoint', () => {
-  const medianes = { isolement: 0.5, couverture: 0.5 }
-
-  it('proche (< médiane) et couvert (>= médiane) -> procheCouvert', () => {
-    const p = point({ part_isolee: couverture(2, 10, true), couverture: couverture(6, 10, true) })
-    expect(quadrantDuPoint(p, medianes)).toBe('procheCouvert')
+describe('delaiSecondes', () => {
+  it('rend le délai en secondes d’une mort vengée', () => {
+    expect(delaiSecondes(mort({ delai_ms: 2_500 }))).toBe(2.5)
   })
 
-  it('loin (>= médiane) et couvert -> loinCouvert', () => {
-    const p = point({ part_isolee: couverture(7, 10, true), couverture: couverture(6, 10, true) })
-    expect(quadrantDuPoint(p, medianes)).toBe('loinCouvert')
-  })
-
-  it('proche et seul (< médiane de couverture) -> procheSeul', () => {
-    const p = point({ part_isolee: couverture(2, 10, true), couverture: couverture(3, 10, true) })
-    expect(quadrantDuPoint(p, medianes)).toBe('procheSeul')
-  })
-
-  it('loin et sans secours -> loinSansSecours', () => {
-    const p = point({ part_isolee: couverture(8, 10, true), couverture: couverture(2, 10, true) })
-    expect(quadrantDuPoint(p, medianes)).toBe('loinSansSecours')
-  })
-
-  it('pile sur les deux médianes -> jamais le quadrant d\'alerte (arbitrage conservateur)', () => {
-    const p = point({ part_isolee: couverture(5, 10, true), couverture: couverture(5, 10, true) })
-    expect(quadrantDuPoint(p, medianes)).not.toBe('loinSansSecours')
+  it('rend null pour une mort jamais vengée — jamais zéro', () => {
+    expect(delaiSecondes(mort({ vengee: false, delai_ms: undefined }))).toBeNull()
   })
 })
 
-describe('pointAttenue', () => {
-  // Depuis le lot C3 (2026-09-09), l'échantillon faible se signale par un
-  // CERCLE POINTILLÉ (SquadIsolementNuageCard), plus par une opacité réduite
-  // — `opaciteDuPoint`/`OPACITE_ATTENUEE`/`OPACITE_PLEINE` sont retirés (plus
-  // aucun appelant, CLAUDE.md règle 7 : zéro code mort).
-  it('échantillon faible -> atténué', () => {
-    const p = point({ part_isolee: couverture(4, 10, true) })
-    expect(pointAttenue(p)).toBe(true)
+describe('positionMort', () => {
+  const echelles = echellesNuage([mort({ distance_ratio: 1.2, delai_ms: 4_000 })])
+
+  it('pose une mort mesurée à ses deux coordonnées réelles', () => {
+    expect(positionMort(mort({ distance_ratio: 1.2, delai_ms: 4_000 }), echelles)).toEqual([1.2, 4])
   })
 
-  it('échantillon suffisant -> non atténué', () => {
-    const p = point({ part_isolee: couverture(12, 40, false) })
-    expect(pointAttenue(p)).toBe(false)
+  it('pose une mort hors de vue dans la bande de distance', () => {
+    const [x] = positionMort(mort({ distance_ratio: undefined, hors_de_vue: true }), echelles)
+    expect(x).toBe(echelles.distance.bandeCentre)
   })
 
-  it("l'atténuation lit part_isolee, pas couverture", () => {
-    const p = point({
-      part_isolee: couverture(12, 40, false),
-      couverture: couverture(2, 5, true),
-    })
-    expect(pointAttenue(p)).toBe(false)
+  it('pose une mort jamais vengée dans la bande de délai', () => {
+    const [, y] = positionMort(mort({ vengee: false, delai_ms: undefined }), echelles)
+    expect(y).toBe(echelles.delai.bandeCentre)
   })
 })
 
-describe('TAILLE_SESSION', () => {
-  // CE QUI A CHANGÉ LE 2026-09-13, et pourquoi ce test a remplacé `tailleDuPoint`.
-  // La taille d'un point de session croissait avec ses morts examinées et plafonnait à
-  // 30 px : sur des données réelles (jusqu'à 118 morts par session) TOUS les points
-  // saturaient, recouvraient les repères par joueur, et l'utilisateur ne voyait plus
-  // qu'une tache. La taille est l'encodage du GROS point ; les sessions disent la
-  // dispersion.
-  it('est une constante — un seul encodage de taille par graphe', () => {
-    expect(TAILLE_SESSION).toBeGreaterThan(0)
-    expect(TAILLE_SESSION).toBeLessThan(12)
-  })
-})
+describe('positionRepere', () => {
+  const echelles = echellesNuage([mort()])
 
-// Lot C3 (D4) : le "gros point" par joueur — médiane de chaque axe (cohérent
-// avec les lignes de repère du nuage, qui médianent déjà), taille au TOTAL
-// des morts examinées.
-describe('pointMedianJoueur', () => {
-  it('rend null sans point', () => {
-    expect(pointMedianJoueur([])).toBeNull()
+  it('pose le repère sur ses deux médianes', () => {
+    expect(positionRepere(repere({ mediane_distance_ratio: 0.9, mediane_delai_ms: 5_000 }), echelles))
+      .toEqual([0.9, 5])
   })
 
-  it('médiane de chaque axe + somme des morts examinées (pas leur médiane)', () => {
-    const pts = [
-      point({ morts_examinees: 10, part_isolee: couverture(1, 10, true), couverture: couverture(1, 10, true) }),
-      point({ morts_examinees: 20, part_isolee: couverture(5, 10, true), couverture: couverture(5, 10, true) }),
-      point({ morts_examinees: 30, part_isolee: couverture(9, 10, true), couverture: couverture(9, 10, true) }),
-    ]
-    const med = pointMedianJoueur(pts)
-    expect(med?.isolement).toBeCloseTo(0.5)
-    expect(med?.couverture).toBeCloseTo(0.5)
-    expect(med?.mortsExaminees).toBe(60)
-  })
-
-  it('un seul point : la médiane EST ce point, le total égale son décompte', () => {
-    const p = point({ morts_examinees: 12, part_isolee: couverture(3, 10, true), couverture: couverture(7, 10, true) })
-    const med = pointMedianJoueur([p])
-    expect(med).toEqual({ isolement: 0.3, couverture: 0.7, mortsExaminees: 12 })
-  })
-})
-
-describe('tailleMedianeEchelle', () => {
-  it('reste toujours PLUS GROS qu un point de session', () => {
-    expect(tailleMedianeEchelle(0, 0, 100)).toBeGreaterThan(TAILLE_SESSION)
-    expect(tailleMedianeEchelle(100, 0, 100)).toBeGreaterThan(TAILLE_SESSION)
-  })
-
-  it('croît avec le total, sur la plage RÉELLE du nuage', () => {
-    // L'échelle est relative : c'est ce qui rend l'écart lisible sur un roster dont les
-    // totaux se comptent en centaines (une échelle absolue y saturait, et les trois
-    // joueurs sortaient au même diamètre).
-    expect(tailleMedianeEchelle(900, 200, 1000)).toBeGreaterThan(
-      tailleMedianeEchelle(300, 200, 1000),
+  it('renvoie le repère dans les bandes quand une médiane manque', () => {
+    const [x, y] = positionRepere(
+      repere({ mediane_distance_ratio: undefined, mediane_delai_ms: undefined }),
+      echelles,
     )
+    expect(x).toBe(echelles.distance.bandeCentre)
+    expect(y).toBe(echelles.delai.bandeCentre)
+  })
+})
+
+describe('tailleRepere', () => {
+  it('projette le volume sur la plage réelle du roster', () => {
+    expect(tailleRepere(10, 10, 50)).toBeLessThan(tailleRepere(50, 10, 50))
   })
 
-  it('borne aux extrêmes : hors plage, la taille ne dépasse jamais les bouts', () => {
-    const bas = tailleMedianeEchelle(0, 10, 100)
-    const haut = tailleMedianeEchelle(1000, 10, 100)
-    expect(bas).toBe(tailleMedianeEchelle(10, 10, 100))
-    expect(haut).toBe(tailleMedianeEchelle(100, 10, 100))
+  it('min === max : taille médiane de la plage, aucun écart à montrer', () => {
+    expect(tailleRepere(30, 30, 30)).toBe(tailleRepere(99, 30, 30))
+  })
+})
+
+describe('repereAttenue', () => {
+  it('suit la réserve d’échantillon du taux d’isolement', () => {
+    expect(repereAttenue(repere({ part_isolee: couverture(4, 10, true) }))).toBe(true)
+    expect(repereAttenue(repere({ part_isolee: couverture(12, 40, false) }))).toBe(false)
+  })
+})
+
+describe('contrasteIsolement', () => {
+  it('rend null sous deux joueurs : une comparaison a besoin de deux termes', () => {
+    expect(contrasteIsolement([])).toBeNull()
+    expect(contrasteIsolement([repere()])).toBeNull()
   })
 
-  it('plage dégénérée (min === max) : la taille médiane, pas un extrême', () => {
-    const t = tailleMedianeEchelle(50, 50, 50)
-    expect(t).toBeGreaterThan(tailleMedianeEchelle(10, 10, 100))
-    expect(t).toBeLessThan(tailleMedianeEchelle(100, 10, 100))
+  it('désigne le plus exposé et le moins exposé', () => {
+    const c = contrasteIsolement([
+      repere({ gamertag: 'Alice', part_isolee: couverture(2, 10, false) }),
+      repere({ gamertag: 'Bob', part_isolee: couverture(8, 10, false) }),
+    ])
+    expect(c?.loin.gamertag).toBe('Bob')
+    expect(c?.proche.gamertag).toBe('Alice')
   })
 })
