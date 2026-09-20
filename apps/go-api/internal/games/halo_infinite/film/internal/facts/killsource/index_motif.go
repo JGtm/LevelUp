@@ -111,7 +111,41 @@ func lireIndexParMotif(f *film, slots []types.PlayerSlot, kf *killFeed) indexPar
 			}
 		}
 	}
+	out.refuserSiElleSeContredit()
 	return out
+}
+
+// refuserSiElleSeContredit : UNE LECTURE QUI SE CONTREDIT N EST PAS UNE LECTURE — le film entier
+// perd cet epinglage, pas seulement les xuids fautifs.
+//
+// # CE QUE LA MESURE DU 2026-09-20 IMPOSE (temoin `a349fea8`, Fragmentation Heavies)
+//
+// Sur ce film, les VINGT-CINQ xuids du kill-feed rendent l index **0**, sur les 49 chunks de
+// replication, sans exception. C est la signature du piege que le chantier voisin a documente et
+// que `replay.ScanPlayerIndices` nomme dans son en-tete : applique la ou le motif ne vit pas dans
+// un enregistrement de joueur, le resolveur rend 0 pour tous. Le champ de cinq bits qui precede
+// le xuid n y est PAS l index du joueur.
+//
+// LE FILTRE PAR XUID NE SUFFIT PAS A S EN PROTEGER, ET C EST MESURE : les collisions lachent
+// vingt-quatre des vingt-cinq lectures, mais la vingt-cinquieme — un xuid lu a un AUTRE index,
+// donc sans collision — survivait et epinglait un indice. Cet unique epinglage de bruit retirait
+// un indice a l inference et deplacait son affectation : **289 lignes publiees avant, 261 apres,
+// 28 lignes perdues** pour un lien qui n existe pas.
+//
+// LA REGLE EST DONC CELLE DE `replay.ScanPlayerIndices`, ELEVEE AU FILM : « ce n est pas un
+// desaccord a arbitrer, c est le signe que la lecture est fausse — et il faut alors ne rien
+// publier plutot que trancher ». Un seul desaccord, une seule collision, et l epinglage par motif
+// ne pose rien sur ce film ; les compteurs, eux, restent publies pour qu on sache POURQUOI.
+//
+// CE QUE CELA COUTE, ET C EST ASSUME : un film dont un seul xuid serait mal lu perd aussi les
+// bons. Le cout inverse est mesure a 28 lignes fausses sur un seul temoin ; celui-ci ne l est
+// pas. Le film ou la lecture est bonne le DIT — `MotifDisagreements = 0` sur `b1ad85eb`,
+// `bfecd02b` et `4f77afc1`, avec 8, 8 et 24 accords contre la table de `chunk_00`.
+func (m *indexParMotif) refuserSiElleSeContredit() {
+	if m.desaccords == 0 {
+		return
+	}
+	m.nomParIndex = map[int]string{}
 }
 
 // retenir : un index ne peut porter qu UN nom. Deux xuids lus au meme index sont une collision

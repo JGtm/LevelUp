@@ -158,3 +158,28 @@ func TestUnHorsRosterNEteintPlusLeMatch(t *testing.T) {
 			got, grammar.VerdictHorsDomaine)
 	}
 }
+
+// TestUneLectureQuiSeContreditNEpinglRien — LE TEMOIN DU NEGATIF MESURE SUR `a349fea8` : le
+// resolveur y rend l index 0 pour les vingt-cinq xuids du film. Les collisions lachent
+// vingt-quatre lectures ; la vingt-cinquieme, lue a un AUTRE index donc sans collision,
+// survivait et epinglait du bruit — 28 lignes publiees perdues.
+//
+// Mutation qui doit le faire rougir : retirer l appel a `refuserSiElleSeContredit`.
+func TestUneLectureQuiSeContreditNEpinglRien(t *testing.T) {
+	m := indexParMotif{nomParIndex: map[int]string{}}
+	m.retenir(0, "A")
+	m.retenir(0, "B") // collision : les deux sont lachees, un desaccord est compte
+	m.retenir(7, "C") // lecture SANS collision : elle survivait au filtre par xuid
+	if len(m.nomParIndex) != 1 {
+		t.Fatalf("temoin sans valeur : %v — la lecture isolee doit survivre au filtre par xuid",
+			m.nomParIndex)
+	}
+	m.refuserSiElleSeContredit()
+	if len(m.nomParIndex) != 0 {
+		t.Errorf("index retenus = %v, attendu aucun : une lecture qui se contredit ne pose rien",
+			m.nomParIndex)
+	}
+	if m.desaccords != 1 {
+		t.Errorf("desaccords = %d, attendu 1 — le refus doit rester EXPLIQUE", m.desaccords)
+	}
+}
