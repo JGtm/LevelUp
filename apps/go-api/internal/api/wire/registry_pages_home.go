@@ -349,7 +349,12 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithPersonalScoreAwardsRepo(duckdb.NewPersonalScoreAwardsRepo(pdb), pdb.XUID).
 		WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb)).
-		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
+		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
+		// Records de distance par arme : câblage INCONDITIONNEL, comme la portée des Séries
+		// temporelles (registry_pages.go) — le repo seul décide qu'un titre n'a pas de
+		// positions par kill (games.ErrCapabilityNotSupported), un `if capability` ici
+		// prendrait la même décision à deux endroits.
+		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}

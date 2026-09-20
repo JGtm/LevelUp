@@ -20,6 +20,7 @@ import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
 import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'
 import { AccentCard, SectionSubtitle } from '@/components/ui/section-primitives'
 import { useSynthesisFragCharts } from './useSynthesisFragCharts'
+import { WeaponRecordsRuler } from './WeaponRecordsRuler'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
 import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
@@ -46,6 +47,7 @@ import type {
   SynthesisQueryRequest,
   SynthesisWeaponKillEntry,
   SynthesisWeaponAccuracyEntry,
+  SynthesisWeaponRecords,
   ObjectiveAggregate,
 } from '@/lib/api/types'
 // EXPERIENCE_TO_CASCADE + setsEqual : source unique partagée avec useLocalFilterBar (H3).
@@ -118,9 +120,10 @@ interface SynthesisOverviewSectionProps {
   weaponAccuracy?: SynthesisWeaponAccuracyEntry[]
   combatProfile?: CombatProfileBlock | null
   objectiveStats?: ObjectiveAggregate | null
+  weaponRecords?: SynthesisWeaponRecords | null
   playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, objectiveStats, playerSlug }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, objectiveStats, weaponRecords, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -158,6 +161,9 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
   const hasWeaponAccuracy = useCapability('weapon_accuracy')
   // KPI objectifs (CTF/Zones/Oddball) : gated capability + data-driven (KPI > 0 seulement).
   const hasObjectiveStats = useCapability('objective_stats')
+  // Records de distance par arme : positions par kill du décodeur de film (Infinite).
+  // Capability-gated + data-driven (le service omet le bloc sans frag mesuré).
+  const hasWeaponRange = useCapability('weapon_range')
 
   // Graphes frags : état survol LIÉ + « Détails des frags » + coach, remontés ici car le
   // sunburst (rangée 1) et le breakdown (rangée 2) sont sur DEUX rangées distinctes.
@@ -466,6 +472,14 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
 
               </div>
 
+              {/* Rangée 3 — la règle des records de distance, pleine largeur sous les frags
+                  (rendu A, PLAN_RECORDS_DISTANCE_2026-09-20.md). */}
+              {hasWeaponRange && weaponRecords && (
+                <div className="mt-4">
+                  <WeaponRecordsRuler records={weaponRecords} playerSlug={playerSlug} />
+                </div>
+              )}
+
             </div>
 
           </div>
@@ -749,6 +763,7 @@ export function SynthesisPage() {
           weaponAccuracy={data.weapon_accuracy}
           combatProfile={data.combat_profile}
           objectiveStats={data.objective_stats}
+          weaponRecords={data.weapon_records}
           playerSlug={playerSlug}
         />
       )}

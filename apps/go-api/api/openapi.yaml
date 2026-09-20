@@ -27276,6 +27276,8 @@ components:
           type:
             - array
             - "null"
+        weapon_records:
+          $ref: '#/components/schemas/SynthesisWeaponRecords'
       required:
         - scope
         - overview
@@ -27404,6 +27406,32 @@ components:
         - total_kills
         - measured_deaths
         - total_deaths
+      type: object
+    SynthesisWeaponRecords:
+      additionalProperties: false
+      properties:
+        excluded:
+          items:
+            $ref: '#/components/schemas/WeaponExcludedFromRecords'
+          type:
+            - array
+            - "null"
+        measured_kills:
+          format: int64
+          type: integer
+        total_kills:
+          format: int64
+          type: integer
+        weapons:
+          items:
+            $ref: '#/components/schemas/WeaponDistanceRecordRow'
+          type:
+            - array
+            - "null"
+      required:
+        - weapons
+        - measured_kills
+        - total_kills
       type: object
     T0FilmCoverage:
       additionalProperties: false
@@ -29842,6 +29870,54 @@ components:
         - dropped
         - swapped
       type: object
+    WeaponDistanceRecordRow:
+      additionalProperties: false
+      properties:
+        class:
+          type: string
+        label:
+          type: string
+        label_en:
+          type: string
+        measured:
+          format: int64
+          type: integer
+        median_m:
+          format: double
+          type: number
+        record:
+          $ref: '#/components/schemas/WeaponRecordFrag'
+        record_m:
+          format: double
+          type: number
+        weapon_key:
+          type: string
+      required:
+        - weapon_key
+        - measured
+        - median_m
+        - record_m
+        - record
+      type: object
+    WeaponExcludedFromRecords:
+      additionalProperties: false
+      properties:
+        class:
+          type: string
+        label:
+          type: string
+        label_en:
+          type: string
+        measured:
+          format: int64
+          type: integer
+        weapon_key:
+          type: string
+      required:
+        - weapon_key
+        - class
+        - measured
+      type: object
     WeaponHighlight:
       additionalProperties: false
       properties:
@@ -29976,6 +30052,25 @@ components:
         - above_pct
         - level_pct
         - below_pct
+      type: object
+    WeaponRecordFrag:
+      additionalProperties: false
+      properties:
+        map_label:
+          type: string
+        map_label_en:
+          type: string
+        match_id:
+          type: string
+        started_at:
+          format: date-time
+          type: string
+        time_ms:
+          format: int64
+          type: integer
+      required:
+        - match_id
+        - time_ms
       type: object
     WeaponTiersInfo:
       additionalProperties: false

@@ -129,6 +129,17 @@ export const synthesisManifest = {
   "synthesis.weapon_range.tile_median_kills_sub": { fr: "{measured, number} frags mesurés sur {total, number}", en: "{measured, number} measured kills out of {total, number}" },
   "synthesis.weapon_range.tile_opening": { fr: "Distance d'entame médiane", en: "Median opening distance" },
   "synthesis.weapon_range.tile_opening_sub": { fr: "1,5 s avant le frag · {measured, number} frags mesurés", en: "1.5 s before the kill · {measured, number} measured kills" },
+  "synthesis.weapon_records.count": { fr: "{weapons, number} armes", en: "{weapons, number} weapons" },
+  "synthesis.weapon_records.coverage_note": { fr: "Ne compte que les frags dont la position du tueur et de la victime est mesurée.", en: "Only kills where both the killer and the victim positions are measured count." },
+  "synthesis.weapon_records.empty_all_excluded": { fr: "Toutes les armes mesurées sont écartées sur cette période : aucun record à tracer.", en: "Every measured weapon is excluded over this period: no record to draw." },
+  "synthesis.weapon_records.excluded": { fr: "Écartés : {list} — une distance n'y a pas de sens.", en: "Excluded: {list} — distance is meaningless there." },
+  "synthesis.weapon_records.excluded_item": { fr: "{label} ({measured, number})", en: "{label} ({measured, number})" },
+  "synthesis.weapon_records.open_replay_label": { fr: "{weapon} : record {record} — ouvrir le rejeu du match à cet instant", en: "{weapon}: record {record} — open the match replay at this moment" },
+  "synthesis.weapon_records.subtitle": { fr: "Frag le plus lointain — un losange par arme, couleur par classe ; survolez pour le match, cliquez pour le rejeu.", en: "Farthest kill — one diamond per weapon, colour by class; hover for the match, click for the replay." },
+  "synthesis.weapon_records.title": { fr: "Records de distance par arme", en: "Distance records by weapon" },
+  "synthesis.weapon_records.tooltip_context": { fr: "médiane {median} · {measured, number} frags mesurés", en: "median {median} · {measured, number} measured kills" },
+  "synthesis.weapon_records.tooltip_open": { fr: "Cliquer : ouvrir le rejeu à cet instant", en: "Click: open the replay at this moment" },
+  "synthesis.weapon_records.tooltip_record": { fr: "frag le plus lointain", en: "farthest kill" },
 } as const
 
 export type SynthesisManifestKey = keyof typeof synthesisManifest
