@@ -240,6 +240,23 @@ function securisationsDeColline(
  * point suivant d'une autre rampe.
  *
  * Une rampe d'un seul point n'en est pas une : le geste cherché est une capture qui DURE.
+ *
+ * LA RAMPE COMMENCE AU PREMIER POINT NON NUL, ET C'EST LA CORRECTION DU 2026-09-20. Le Go ferme
+ * chaque rampe par un point à ZÉRO (`appendGaugeReset`, `zone_states_gauge.go`), et ce zéro est
+ * aussi le premier point de la suite croissante SUIVANTE. Comme la jauge est publiée allégée (un
+ * point par variation >= 0,02 ou par seconde de rampe, RIEN hors rampe), il n'y a ensuite plus
+ * aucun point jusqu'à la vraie poussée : prendre ce zéro pour début, c'est annoncer « une capture
+ * démarre » à l'instant où la PRÉCÉDENTE vient d'aboutir.
+ *
+ * MESURE, 2026-09-20, sur les 8 documents à zones du cache (241 rampes) : médiane d'avance du son
+ * 17,6 s, maximum 173,1 s, 207 rampes sur 241 sonnaient plus de 2 s trop tôt. Témoin `396cfc92`,
+ * zone A : la rampe publiée court de 73 600 à 103 900 ms, le premier point non nul est à
+ * 97 000 ms — 23,4 s d'avance, et 73 600 ms est exactement l'instant où le camp adverse venait de
+ * finir SA capture.
+ *
+ * LA SUITE ÉTANT STRICTEMENT CROISSANTE, au plus UN point peut valoir zéro : le premier. La
+ * correction est donc locale et ne déplace jamais le sommet — `contested`, qui sonne à la FIN de
+ * la rampe, garde son instant et voit seulement le geste correctement borné.
  */
 function rampesDeJauge(g: readonly GaugeLike[]): { debut: number; fin: number }[] {
   const out: { debut: number; fin: number }[] = []
@@ -247,7 +264,7 @@ function rampesDeJauge(g: readonly GaugeLike[]): { debut: number; fin: number }[
   while (i < g.length) {
     let j = i
     while (j + 1 < g.length && g[j + 1].v > g[j].v) j++
-    if (j > i) out.push({ debut: g[i].t, fin: g[j].t })
+    if (j > i) out.push({ debut: g[g[i].v === 0 ? i + 1 : i].t, fin: g[j].t })
     i = j + 1
   }
   return out
@@ -350,17 +367,44 @@ function finDeDomination(zones: readonly ZoneStateLike[], t: number, owner: numb
 }
 
 /**
- * collinesSuivantes rend un son par DÉPLACEMENT de la colline : chaque début d'intervalle
- * `active` sauf le premier de la partie.
+ * collinesSuivantes rend un son par DÉPLACEMENT de la colline : chaque début de PÉRIODE de
+ * colline sauf la première de la partie.
+ *
+ * UNE PÉRIODE N'EST PAS UN INTERVALLE, ET C'EST LA CORRECTION DU 2026-09-20. Le Go découpe une
+ * période de colline en PLUSIEURS intervalles `active` contigus, un par changement de
+ * propriétaire — et il comble même les trous du canal par un intervalle `active` sans camp
+ * (`hillSpansOf`, `zone_states_hill_owners.go`). Sonner chaque intervalle faisait donc entendre
+ * « nouvelle colline » à chaque CHANGEMENT DE MAINS de la même colline, plusieurs fois par
+ * période, alors que le son annonce un DÉPLACEMENT.
+ *
+ * LA PÉRIODE SE RECONSTRUIT PAR CONTIGUÏTÉ, ZONE PAR ZONE : `hillSpansOf` pose `curseur = t1 + 1`
+ * entre deux sous-intervalles d'une même période, donc deux intervalles `active` de la MÊME zone
+ * qui se touchent (`t0 === précédent.t1 + 1`) appartiennent à la même colline. Un saut, ou un
+ * intervalle d'une AUTRE zone, ouvre une période — donc un déplacement.
  */
 function collinesSuivantes(
   zones: readonly ZoneStateLike[],
   doc: ReplayDocumentReady,
 ): ReplaySoundEvent[] {
   const debuts: number[] = []
-  for (const z of zones) for (const s of z.spans) if (s.active) debuts.push(s.t0)
+  for (const z of zones) debuts.push(...debutsDePeriode(z.spans))
   debuts.sort((a, b) => a - b)
   return debuts
     .slice(1)
     .map((t) => soundEvent(frameToMs(t, doc), ZONE_SOUND_STEMS.newZone))
+}
+
+/**
+ * debutsDePeriode rend le début de chaque PÉRIODE de colline d'UNE zone : les intervalles
+ * `active` fondus par contiguïté (cf. `collinesSuivantes`).
+ */
+function debutsDePeriode(spans: readonly SpanLike[]): number[] {
+  const actifs = spans.filter((s) => s.active).sort((a, b) => a.t0 - b.t0)
+  const out: number[] = []
+  let finPrecedente: number | null = null
+  for (const s of actifs) {
+    if (finPrecedente === null || s.t0 !== finPrecedente + 1) out.push(s.t0)
+    finPrecedente = s.t1
+  }
+  return out
 }

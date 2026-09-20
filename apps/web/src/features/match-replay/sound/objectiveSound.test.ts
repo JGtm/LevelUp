@@ -112,6 +112,90 @@ describe('objectiveSoundEvents — les actions posées sur l horloge du rejeu', 
     expect(objectiveSoundEvents(doc)).toEqual([{ ms: 3000, stem: 'objective_flag_returned' }])
   })
 
+  /**
+   * DÉDUPLICATION (2026-09-20) — `zone_captures` est une statistique PAR JOUEUR : tous les
+   * joueurs présents dans la zone à la bascule produisent une entrée au MÊME instant. Trois à
+   * quatre exemplaires du même fichier à la milliseconde près, c'est un battement de phase qui
+   * dénature le geste et consomme 3 à 4 des 8 voix du lecteur.
+   */
+  it('une capture de zone à trois joueurs ne sonne QU UNE fois', () => {
+    const d = testReplayDoc({
+      frameIntervalMs: 100,
+      objectives: [
+        { t: 40, xuid: 'MOI', stat: 'zone_captures', timeMs: 4000 },
+        { t: 40, xuid: 'MATE', stat: 'zone_captures', timeMs: 4000 },
+        { t: 40, xuid: 'MATE2', stat: 'zone_captures', timeMs: 4000 },
+      ],
+    })
+    const s = sideResolverFromScoreboard([
+      { xuid: 'MOI', team_side: 't0', is_me: true },
+      { xuid: 'MATE', team_side: 't0' },
+      { xuid: 'MATE2', team_side: 't0' },
+    ])
+    expect(objectiveSoundEvents(d, s)).toEqual([
+      { ms: 4000, stem: 'objective_zone_captured_team' },
+    ])
+  })
+
+  it('deux CAMPS au même instant restent deux sons : un gain et une perte', () => {
+    const d = testReplayDoc({
+      frameIntervalMs: 100,
+      objectives: [
+        { t: 40, xuid: 'MOI', stat: 'zone_captures', timeMs: 4000 },
+        { t: 40, xuid: 'FOE', stat: 'zone_captures', timeMs: 4000 },
+      ],
+    })
+    const s = sideResolverFromScoreboard([
+      { xuid: 'MOI', team_side: 't0', is_me: true },
+      { xuid: 'FOE', team_side: 't1' },
+    ])
+    expect(objectiveSoundEvents(d, s)).toEqual([
+      { ms: 4000, stem: 'objective_zone_captured_team' },
+      { ms: 4000, stem: 'objective_zone_captured_enemy' },
+    ])
+  })
+
+  it('deux STATISTIQUES au même instant restent deux sons : ce sont deux gestes', () => {
+    const d = testReplayDoc({
+      frameIntervalMs: 100,
+      objectives: [
+        { t: 40, xuid: 'MOI', stat: 'zone_captures', timeMs: 4000 },
+        { t: 40, xuid: 'MOI', stat: 'flag_captures', timeMs: 4000 },
+      ],
+    })
+    const s = sideResolverFromScoreboard([{ xuid: 'MOI', team_side: 't0', is_me: true }])
+    expect(objectiveSoundEvents(d, s)).toHaveLength(2)
+  })
+
+  /**
+   * L'INSTANT EXACT (2026-09-20) — l'action porte `timeMs` sur l'horloge du FILM ; la frame
+   * n'en est que l'arrondi inférieur, ce qui avançait le son de 7 à 98 ms sur `396cfc92`.
+   * La conversion passe par l'horloge de la page (`replayClock`), foyer unique de l'origine.
+   */
+  it('le son suit `timeMs` à la milliseconde, pas la grille de frames', () => {
+    const d = testReplayDoc({
+      frameIntervalMs: 100,
+      originMs: 28_006,
+      objectives: [{ t: 145, xuid: 'MOI', stat: 'zone_captures', timeMs: 42_538 }],
+    })
+    const s = sideResolverFromScoreboard([{ xuid: 'MOI', team_side: 't0', is_me: true }])
+    // 42 538 − 28 006 = 14 532 ms, là où la grille donnait 14 500 (32 ms d avance).
+    expect(objectiveSoundEvents(d, s)).toEqual([
+      { ms: 14_532, stem: 'objective_zone_captured_team' },
+    ])
+  })
+
+  it('sans `originMs` (artefact ancien), la grille de frames reste la seule datation', () => {
+    const d = testReplayDoc({
+      frameIntervalMs: 100,
+      objectives: [{ t: 145, xuid: 'MOI', stat: 'zone_captures', timeMs: 42_538 }],
+    })
+    const s = sideResolverFromScoreboard([{ xuid: 'MOI', team_side: 't0', is_me: true }])
+    expect(objectiveSoundEvents(d, s)).toEqual([
+      { ms: 14_500, stem: 'objective_zone_captured_team' },
+    ])
+  })
+
   it('la catégorie « objectifs » du tiroir les coupe À LA CONSTRUCTION', () => {
     const sansObjectifs = buildSoundTimeline(
       doc,

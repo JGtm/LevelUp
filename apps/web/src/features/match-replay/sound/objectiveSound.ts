@@ -21,6 +21,7 @@
 
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { frameToMs } from '../../../lib/replay/replayLogic'
+import { replayClock } from '../model/replayClock'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 import {
   allyTeamFromScoreboard,
@@ -158,18 +159,45 @@ export function sideResolverFromScoreboard(
 /**
  * objectiveSoundEvents — les actions d'objectif du document, posées sur l'horloge du rejeu.
  *
- * L'HORLOGE NE DEMANDE AUCUN RECALAGE : `ObjectiveAction.T` est déjà l'index de frame, sur le
- * même axe que les tirs et les positions (la soustraction d'`originMs` est faite côté Go, cf.
- * `games/halo_infinite/film/replay/objectives.go`). La conversion est donc la même `frameToMs` que partout.
+ * L'INSTANT EST CELUI QUE LE FILM DATE, À LA MILLISECONDE (corrigé le 2026-09-20). L'action
+ * porte `timeMs` — l'instant exact, sur l'axe du MATCH — en plus de sa frame, qui n'en est que
+ * l'arrondi INFÉRIEUR sur la grille de 100 ms : le son arrivait donc systématiquement en avance,
+ * de 7 à 98 ms sur le témoin `396cfc92`, jamais en retard. La conversion vers l'axe des images
+ * est celle de la page, et elle n'est pas réécrite ici : `replayClock(doc).filmMsOfMatchMs`
+ * (foyer unique de l'origine du film, garde-rail `replayClock.guard.test.ts`). Sans horloge
+ * établie — artefact sans origine publiée —, la frame reste la seule datation.
+ *
+ * UNE ACTION D'OBJECTIF EST UNE STATISTIQUE PAR JOUEUR, ET LE SON N'EN EST PAS UNE — c'est le
+ * second correctif du 2026-09-20. `zone_captures` produit une entrée par joueur PRÉSENT dans la
+ * zone à la bascule : 3 à 4 exemplaires du même fichier déclenchés à la milliseconde près
+ * (mesure sur le cache : 48 entrées pour 29 instants distincts sur `396cfc92`, 38 pour 16 sur
+ * `e60aaf06`). Ce n'est pas « plus fort », c'est un battement de phase qui dénature le geste, et
+ * il consomme 3 à 4 des 8 voix du lecteur (`replayAudio.ts`) — ce qui fait TOMBER les sons
+ * voisins (tirs, kills) au même instant.
+ *
+ * LA CLÉ DE DÉDUPLICATION EST (statistique, instant, camp), et chacun de ses trois termes
+ * compte : deux statistiques différentes au même instant sont deux gestes ; deux camps au même
+ * instant sont deux gestes opposés (un gain et une perte) ; et l'instant, à la milliseconde, ne
+ * fond jamais deux captures réellement distinctes — la plus courte reprise de base du corpus se
+ * compte en secondes. La règle vaut pour TOUTE la famille, pas pour la seule capture de zone :
+ * deux drapeaux marqués à la même milliseconde sonneraient le même battement.
  */
 export function objectiveSoundEvents(
   doc: ReplayDocumentReady,
   sideOfXuid?: (xuid: string) => ObjectiveSide,
 ): ReplaySoundEvent[] {
   const out: ReplaySoundEvent[] = []
+  const vus = new Set<string>()
+  const clock = replayClock(doc)
   for (const a of doc.objectives) {
-    const stem = objectiveSoundStem(a.stat, sideOfXuid?.(a.xuid) ?? 'unknown')
-    if (stem) out.push(soundEvent(frameToMs(a.t, doc), stem))
+    const side = sideOfXuid?.(a.xuid) ?? 'unknown'
+    const stem = objectiveSoundStem(a.stat, side)
+    if (!stem) continue
+    const ms = clock && a.timeMs != null ? clock.filmMsOfMatchMs(a.timeMs) : frameToMs(a.t, doc)
+    const cle = `${a.stat}|${ms}|${side}`
+    if (vus.has(cle)) continue
+    vus.add(cle)
+    out.push(soundEvent(ms, stem))
   }
   return out
 }
