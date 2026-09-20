@@ -30,6 +30,7 @@ import {
   vehicleScreenLengthPx,
   vehicleSpriteScale,
   vehicleVisibleAt,
+  VEHICLE_CADRAGE_BUMP,
   VEHICLE_DEFAULT_HEADING_DEG,
   VEHICLE_FLOOR_PX,
   VEHICLE_HUMAN_FAMILIES,
@@ -37,6 +38,7 @@ import {
   VEHICLE_MAP_ELEMENT_RENDER,
   VEHICLE_PLASMA_FAMILIES,
   VEHICLE_SOFT_CEIL_PX,
+  VEHICLE_UNKNOWN_HALF_PX,
 } from './vehiclesLayer'
 import { CORE_RADIUS, PION_VISIBLE_DIAMETER_PX } from '../layers/replayMarkers'
 
@@ -378,11 +380,33 @@ describe('vehicleScreenLengthPx / vehicleSpriteScale — taille (manifeste facti
   const SCORPION_H_PX = 388
   const MM_PER_PX = 10
 
-  it('le Mongoose (référence de calibration) mesure entre 1,5 et 2 pions de long', () => {
+  /**
+   * LA FOURCHETTE A CHANGÉ LE 2026-09-19, ET C'EST UNE DÉCISION DE L'UTILISATEUR, PAS UNE
+   * RÉGRESSION : « les véhicules sont trop petits, +20 % ». La cible de cadrage passe de 1,75 à
+   * 2,10 pion de long pour le Mongoose (`MONGOOSE_TO_PION_RATIO × VEHICLE_CADRAGE_BUMP`), donc
+   * la fourchette admise passe de [1,5 ; 2] à [1,8 ; 2,4] — les mêmes bornes, grossies du même
+   * facteur. Le test épingle la FOURCHETTE, pas la valeur : il doit échouer si quelqu'un touche
+   * à l'échelle sans toucher à la décision de cadrage.
+   */
+  it('le Mongoose (référence de calibration) mesure entre 1,8 et 2,4 pions de long', () => {
     const pionLengthPx = VEHICLE_FLOOR_PX // = le pion VISIBLE, l’ancre de la règle
     const mongoose = vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX)
-    expect(mongoose).toBeGreaterThanOrEqual(1.5 * pionLengthPx)
-    expect(mongoose).toBeLessThanOrEqual(2 * pionLengthPx)
+    expect(mongoose).toBeGreaterThanOrEqual(1.5 * VEHICLE_CADRAGE_BUMP * pionLengthPx)
+    expect(mongoose).toBeLessThanOrEqual(2 * VEHICLE_CADRAGE_BUMP * pionLengthPx)
+  })
+
+  /**
+   * LE GROSSISSEMENT EST GLOBAL, et c'est l'invariant que la seule fourchette ne porte pas :
+   * les deux GLYPHES de la couche (losange d'un châssis non résolu, pictogramme de tourelle)
+   * sont dérivés de la même constante que les châssis. Sans ce test, un futur ajustement du
+   * cadrage laisserait les glyphes derrière et le calque perdrait ses proportions.
+   */
+  it('le grossissement de cadrage est le MÊME pour les châssis et pour les glyphes', () => {
+    expect(VEHICLE_UNKNOWN_HALF_PX).toBeCloseTo(CORE_RADIUS * VEHICLE_CADRAGE_BUMP, 10)
+    expect(VEHICLE_SOFT_CEIL_PX).toBeCloseTo(
+      4 * 1.75 * VEHICLE_CADRAGE_BUMP * PION_VISIBLE_DIAMETER_PX,
+      10,
+    )
   })
 
   it('proportionnalité ENTRE véhicules : le Scorpion (3,03x la hauteur native) est visiblement plus grand', () => {

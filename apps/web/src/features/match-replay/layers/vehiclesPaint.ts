@@ -40,6 +40,7 @@ import {
   vehicleScreenLengthPx,
   vehicleSpriteScale,
   vehicleVisibleAt,
+  VEHICLE_CADRAGE_BUMP,
   VEHICLE_FLOOR_PX,
   VEHICLE_UNKNOWN_HALF_PX,
 } from '../model/vehiclesLayer'
@@ -188,8 +189,13 @@ function drawUnknownVehicleMarker(ctx: CanvasRenderingContext2D, c: XY, color: s
  * de la carte doit se lire comme un objet du terrain, pas comme un pion de joueur — elle est
  * donc SENSIBLEMENT plus grande que le losange neutre (`VEHICLE_UNKNOWN_HALF_PX`, le noyau d'un
  * pion), sans atteindre la taille d'un châssis conduit.
+ *
+ * LE PLANCHER NE SUIT PAS LE CADRAGE (il vaut le pion visible, une grandeur des PIONS) : le
+ * grossissement du 2026-09-19 est donc appliqué ici explicitement, par la même constante que
+ * les châssis et le losange neutre — une tourelle qui resterait à sa taille passerait pour un
+ * objet plus petit qu'avant à côté d'un véhicule grossi de 20 %.
  */
-const VEHICLE_TURRET_HALF_PX = VEHICLE_FLOOR_PX * 0.75
+const VEHICLE_TURRET_HALF_PX = VEHICLE_FLOOR_PX * 0.75 * VEHICLE_CADRAGE_BUMP
 
 /**
  * drawMapElementTurret — LE PICTOGRAMME DE LA TOURELLE AUTOMATIQUE (lot 1.9.9, décision

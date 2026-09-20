@@ -393,8 +393,26 @@ export function vehiclePositionAt(track: ReplayVehicleTrackReady, frame: number)
  */
 const PION_REFERENCE_PX = PION_VISIBLE_DIAMETER_PX
 
-/** Milieu de la fourchette demandée (1,5-2 pions de long pour le Mongoose). */
-const MONGOOSE_TO_PION_RATIO = 1.75
+/**
+ * VEHICLE_CADRAGE_BUMP — LE GROSSISSEMENT DE CADRAGE demandé par l'utilisateur le 2026-09-19
+ * (« les véhicules sont trop petits, +20 % »). C'est une DÉCISION DE CADRAGE, pas une mesure :
+ * la règle de taille était déjà juste au sens des millimètres-monde (cf. `VEHICLE_PX_PER_MM`),
+ * elle rendait simplement des sprites que l'oeil lit trop petits à côté des pions.
+ *
+ * IL VIT ICI, EN UN SEUL LITTÉRAL, parce que TROIS grandeurs doivent grossir ENSEMBLE, sans
+ * quoi les proportions relatives de la couche se défont : la cible de cadrage du Mongoose
+ * (donc toute l'échelle des châssis et son plafond doux, tous deux dérivés du ratio), le
+ * losange neutre d'un châssis non résolu (`VEHICLE_UNKNOWN_HALF_PX`) et le pictogramme de
+ * tourelle (`VEHICLE_TURRET_HALF_PX`, `vehiclesPaint.ts`). Une révision ultérieure du cadrage
+ * change CE nombre, jamais les trois grandeurs une à une.
+ */
+export const VEHICLE_CADRAGE_BUMP = 1.2
+
+/**
+ * Milieu de la fourchette demandée à l'origine (1,5-2 pions de long pour le Mongoose), grossi
+ * du cadrage du 2026-09-19 : 2,10 pions.
+ */
+const MONGOOSE_TO_PION_RATIO = 1.75 * VEHICLE_CADRAGE_BUMP
 
 /**
  * MONGOOSE_REFERENCE_LENGTH_MM — la longueur RÉELLE (nez-en-haut) du sprite Mongoose :
@@ -458,8 +476,12 @@ export function vehicleSpriteScale(naturalHeightPx: number, mmPerPx: number): nu
   return vehicleScreenLengthPx(naturalHeightPx, mmPerPx) / naturalHeightPx
 }
 
-/** Demi-diagonale du petit losange neutre d'un châssis non résolu — le noyau d'un pion. */
-export const VEHICLE_UNKNOWN_HALF_PX = CORE_RADIUS
+/**
+ * Demi-diagonale du petit losange neutre d'un châssis non résolu — le noyau d'un pion, grossi
+ * du cadrage du 2026-09-19 comme les châssis (`VEHICLE_CADRAGE_BUMP`) : un châssis non résolu
+ * ne doit pas rétrécir relativement à celui qui est dessiné à côté de lui.
+ */
+export const VEHICLE_UNKNOWN_HALF_PX = CORE_RADIUS * VEHICLE_CADRAGE_BUMP
 
 // --- OCCUPATION -------------------------------------------------------------------------------
 
