@@ -5784,12 +5784,186 @@ Une seule montée **63** reste à faire, plus tard, et elle portera `returnProgr
 
 
 
+
+
+---
+
+### Post-chantier — lot 5.2 (le rendu du rejeu : demandes utilisateur du 2026-09-19)
+
+Volet **5.2-A** (ce qui suit) : branche `feat/decfilm-52a`, base `65e5c0731`. Volet **5.2-B**
+(orientation des véhicules, killsource ligne par ligne) : branche séparée, ses propres lignes
+dans cette même section. Toute ligne de 5.2-A est préfixée `5.2a` pour que la fusion des deux
+volets soit mécanique.
+
+**Une seule montée de schéma dans le volet, au point 3 : 63 -> 64.** Aucun octet de
+`film/internal/` n'est touché — aucune des quatre révisions de décodage ne bouge, et la montée
+PUBLIE une lecture qui existait déjà.
+
+- [x] **5.2a.1 — Les sons des bases collent au geste** (`ec75a0cb8`, web seul).
+  - [x] `rampesDeJauge` démarre au **premier point NON NUL**, pas au zéro de fermeture que le Go
+        pose en fin de rampe (`appendGaugeReset`) et qui devient le premier point de la suite
+        croissante suivante. Mesure sur les 8 documents à zones du cache (241 rampes) : médiane
+        d'avance du son **20,1 s -> 0,0 s**, max **173,1 s -> 0 s**, rampes sonnant plus de 2 s
+        trop tôt **207 -> 0**. Témoin `396cfc92` zone A : rampe publiée 73 600 -> 103 900 ms, le
+        son part désormais à **97 000 ms**.
+  - [x] `contested`, qui sonne au SOMMET, garde son instant et voit seulement le geste
+        correctement borné — la correction ne déplace que le début.
+  - [x] `zone_captures` **dédupliquée par (statistique, instant, camp)** avant émission : c'est
+        une statistique PAR JOUEUR, donc 3 à 4 exemplaires du même fichier à la milliseconde
+        près. Mesure : **259 émissions -> 160**, soit exactement les instants distincts par camp
+        (160, mesurés séparément en joignant le camp par le roster).
+  - [x] `newZone` sonne à chaque **DÉPLACEMENT** de colline, plus à chaque changement de mains :
+        le Go découpe une période en sous-intervalles `active` CONTIGUS, un par propriétaire
+        (`hillSpansOf`). Les périodes sont refondues par contiguïté, zone par zone. Mesure sur
+        les 7 documents à colline : **351 émissions -> 18**.
+  - [x] L'instant d'une action d'objectif est celui que le film DATE (`timeMs`, axe du match),
+        converti par `replayClock.filmMsOfMatchMs` — foyer unique de l'origine, garde-rail
+        `replayClock.guard.test.ts` respecté (aucun second lecteur d'`originMs`). La frame en
+        était l'arrondi INFÉRIEUR : le son arrivait de **7 à 98 ms en avance** sur `396cfc92`,
+        jamais en retard.
+  - [~] `zone_secures` reste MUET — aucun stem désigné, et personne ne l'a demandé. Décision
+        produit, consignée au §4.
+  - [x] 10 cas vitest, dont le témoin `396cfc92` recopié du cache.
+
+- [x] **5.2a.2 — La taille des véhicules** (`464345758` puis `952a09013`, web seul).
+  - [!] La première livraison (`464345758`) appliquait le **+20 % aveugle** demandé le
+        2026-09-19 : `MONGOOSE_TO_PION_RATIO` 1,75 -> 2,10, glyphes dérivés de la même constante.
+        **Remplacée le 2026-09-20 sur nouvelle consigne de l'utilisateur** — elle corrigeait le
+        symptôme sans toucher la cause.
+  - [x] **Modèle de taille en ESPACE ÉCRAN** (`952a09013`), dans un seul fichier
+        `model/screenSizes.ts` :
+        `taille = plafond_doux( max( longueur_monde × échelle_px_par_m , minimum_écran[famille] ) )`.
+        Les véhicules étaient dessinés à taille CONSTANTE, sans aucun rapport avec l'échelle de
+        la carte — la même à l'écran sur une carte de 54 m et sur une de 273 m.
+  - [x] Minimums proposés, tous exprimés en PIONS (la seule grandeur que l'utilisateur compare
+        en permanence) : pion **8,80 px INCHANGÉ** (unité de tous les autres) ; véhicule
+        **18,48 px = 2,1 pions** (la valeur validée le 2026-09-19, qui change de RÔLE : plancher,
+        plus taille) ; châssis inconnu **4,40 px** de demi-diagonale = 0,5 pion (était 3,40, le
+        noyau d'un pion sans son liseré) ; tourelle **6,60 px** de demi-côté = 0,75 pion
+        (INCHANGÉ en valeur, devient un minimum) ; plafond doux **61,60 px = 7 pions** INCHANGÉ.
+  - [x] Mesure, conteneur 1 000 px CSS, marge 24, zoom 1, en px de long :
+
+        GRANDE CARTE `4f77afc1` Flood Gulch, 272,8 m -> 3,49 px/m
+          mongoose 15,4 -> 18,5 | ghost 20,3 -> 18,5 | warthog 26,7 -> 18,5 | wraith 37,7 -> 18,5
+          scorpion 46,7 -> 18,5 | pelican 70,2 -> 39,2 | phantom 69,9 -> 37,7 | skiff 63,2 -> 18,6
+          15 familles sur 18 au minimum ; les 3 qui le dépassent gardent leurs proportions EXACTES.
+
+        PETITE CARTE `bfecd02b` Snowbound, 54,2 m -> 17,56 px/m
+          AUCUNE famille au minimum — la taille réelle passe telle quelle, et les véhicules y
+          sont plus gros qu'avant : ghost 20,3 -> 29,7 | mongoose 15,4 -> 22,5 |
+          warthog 26,7 -> 39,0 | wraith 37,7 -> 55,0. Le plafond doux devient utile :
+          pelican 197,1 -> 73,2, scorpion 68,2 -> 64,2.
+
+        LE ZOOM RÉVÈLE, sur Flood Gulch : 3 familles sur 18 à leur taille réelle à 1×, 5 à 1,5×,
+        6 à 2×, **13 à 3×**.
+  - [x] Les pixels sont LOGIQUES : l'échelle se calcule sur `view.width` (largeur du CONTENEUR,
+        px CSS) et la densité `k` est appliquée au TRACÉ — dpr 2 rend la même taille logique.
+  - [x] `vehiclesLayer.test.ts` requalifié (grande carte -> minimum appliqué ; petite carte ->
+        taille réelle inchangée ; proportions conservées au-dessus du seuil ; DPR 2 -> même
+        taille logique ; le zoom fait passer le seuil ; cadrage dégénéré -> le minimum, jamais
+        zéro). `vehicleWeaponMounts.test.ts` suit la nouvelle signature.
+
+- [x] **5.2a.3 — La couleur de la capture, c'est le camp qui pousse** (`70d247ed5`, Go + web,
+      **schéma 63 -> 64**).
+  - [x] `zoneStates[].gaugeRamps[]` : une entrée par RAMPE — les mêmes que celles dont `gauge`
+        est tirée (`findZoneRamps`) — avec ses bornes et, quand elle ABOUTIT, `capturingTeam`.
+        Publié depuis la COUCHE DE PUBLICATION (`zone_states_gauge.go`, `zone_states_owner.go`),
+        **zéro octet de `film/internal/`**.
+  - [x] **Forme retenue : un span de rampe** (type neuf `ZoneGaugeRamp`). La forme ÉCARTÉE est un
+        champ sur `GaugePoint` : c'est un type PARTAGÉ depuis la v63 (la jauge de retour du
+        drapeau l'emploie), un camp de capture de zone n'y a aucun sens, et le répéter coûterait
+        une clé PAR POINT (36 pour la seule rampe témoin de `396cfc92`) pour une valeur constante
+        sur la rampe. 241 entrées pour les 8 documents à zones.
+  - [x] Le camp est celui de l'ISSUE, lu sur le canal de PROPRIÉTÉ de la zone à la frame du
+        sommet ou juste après (`zoneValueAfter`, même fenêtre que le reste du volet). Une rampe
+        qui AVORTE ne le porte pas : le canal y nomme encore le DÉFENSEUR.
+  - [x] Seuil d'aboutissement MESURÉ, pas réglé (241 rampes, 8 documents) : 160 rampes suivies
+        d'une bascule de camp, sommets **0,976 à 0,999** ; les 81 autres n'en produisent aucune,
+        sommets jusqu'à 0,986 — dont DEUX seulement au-dessus de 0,95 (0,983 et 0,986), des
+        RE-SÉCURISATIONS par le camp déjà en place. Hors ces deux cas, le plus haut sommet sans
+        bascule vaut **0,938** : `zoneGaugeRampComplete` (0,95) tombe dans une marge de **0,038**.
+  - [x] Web : `zoneStatesLayer` peint le remplissage à la couleur du camp LU (base neutre ou
+        adverse indifféremment), repli neutre SEULEMENT quand la clé est absente ;
+        `colorOfCapturer` traduit un identifiant d'équipe au lieu de déduire l'adversaire ; le son
+        `capturing` d'une rampe suivie d'un intervalle NEUTRE utilise ce même camp (il se taisait
+        complètement). Aucune inférence géométrique côté client.
+  - [x] Le test `zoneStatesLayer.test.ts` « propriétaire inconnu : la progression est NEUTRE,
+        jamais une couleur devinée » est **RETOURNÉ dans le même commit**, avec sa règle datée :
+        peindre un camp MESURÉ n'est plus deviner. La règle qui survit — clé absente = neutre —
+        est tenue par trois cas neufs.
+  - [x] Chaîne de montée : chronique v64, `structure_test` épinglé à 64, `document_shape.golden`
+        et les 8 goldens d'assemblage régénérés par leur porte, 8 fixtures de contrat renommées
+        `replay_schema_64_*` + manifeste (2 668 136 o, plafond 3 145 728), plafonds de taille
+        (chronique 1762 -> 1825, `structure_test` 1200 -> 1215) et ratchet de surface compagnon
+        (259 -> 260, `replay.ZoneGaugeRamp`) montés avec leur justification datée, OpenAPI
+        régénéré EN DERNIER puis `make generate-types`. `layers` inchangé.
+
+- [x] **5.2a.4 — Plus jamais deux équipes « Cobra »** (`3982db502`, web seul).
+  - [x] `seatLogic.cleDeCamp` réconcilie les DEUX espaces de nommage du camp : celui du FILM
+        (`roster[].team`) et celui de la FEUILLE (`board.team_side`). Sur `b1ad85eb` le film se
+        tait sur deux index de roster sur onze (`coverage.teams.unread = 4`), et le seul de ces
+        deux à occuper un siège est le BOT remplaçant d'un joueur parti : il partait sous `s:t1`
+        quand les humains de sa propre équipe étaient sous `f1` — deux groupes, un seul libellé.
+  - [x] La traduction est MESURÉE par un balayage des sièges que les DEUX sources nomment
+        (`t1 -> 1`, `t0 -> 0` sur ce match) : aucune convention d'ordre codée en dur.
+  - [x] Un côté CONTRADICTOIRE est retiré de la table plutôt qu'arbitré — le repli de feuille
+        reprend la main, mieux vaut deux groupes qu'un mauvais regroupement.
+  - [x] Garde-rail vitest « deux groupes ne peuvent pas porter le même libellé », plus le témoin
+        `b1ad85eb` recopié du document cuit, la traduction qui suit la mesure et non l'ordre, et
+        le côté contradictoire. Aucune recuisson, aucun changement de schéma.
+
+- [x] **5.2a.5 — Les effets de tir des véhicules se VOIENT** (web seul).
+  - [x] **La demande était un MANQUE, pas un retrait** : l'utilisateur en veut et n'en voit pas.
+        Le diagnostic du 2026-09-19 l'avait lue à l'envers (« retrait à faire »), et son
+        « item de lot » proposait de les COUPER. Non appliqué.
+  - [x] **Cause dominante, mesurée sur documents cuits (aucun décodage)** : le cap de REGARD d'un
+        tir vient de la trajectoire du BIPÈDE, or un bipède EMBARQUÉ NE RÉPLIQUE PLUS. Sur les
+        tirs qui portent `v`, le cap est lisible pour **1 sur 241** (`4f77afc1`), **3 sur 241**
+        (`5676a9ba`), **0 sur 47** (`c259789d`), **0 sur 15** (`8a485699`). Sans cap,
+        `drawMuzzleFlash` tombe sur la BOUFFÉE RONDE, sans direction, centrée sur le châssis, et
+        dans la teinte `neutral` (**68 %** de ces tirs sur `4f77afc1` portent une arme absente de
+        `weaponLabels`, donc sans `fx` ni teinte). Un halo gris pâle centré sur un sprite ne se
+        lit pas comme un tir.
+  - [x] **Les hypothèses du diagnostic sont RÉFUTÉES par la mesure**, une par une :
+        *(a)* les tirs avec `v` sont bien dessinés à la position du VÉHICULE (le document publie
+        le centre du châssis) ; *(b)* **0 tir sur 241 sans épisode d'occupation** sur `4f77afc1`
+        — le `shotsNoRide = 2 644` du diagnostic compte des tirs perdus À LA CUISSON, pas des
+        tirs publiés : exiger un épisode ne changerait donc RIEN ; *(c)* le plafond de 8 voix
+        refuse 15,2 % des tirs de `4f77afc1` et 26,3 % de `5676a9ba`, mais il frappe les tirs de
+        véhicule **au même taux que les autres** (14,9 % et 25,7 %) — aucune pénalité propre ;
+        *(d)* le son est résolu pour **96 à 100 %** des tirs de véhicule et les **20 fichiers**
+        de la table existent : la chaîne sonore est complète.
+  - [x] Correctif de RENDU n° 1 : un montage d'arme inconnu ne fait plus perdre la SOURCE. Une
+        arme DE VÉHICULE — absente de `weaponLabels`, le MÊME discriminateur que le son — garde
+        le véhicule et son CAP, qui devient la direction de l'éclair. Une arme DE JOUEUR tirée
+        depuis un siège de passager reste sur son propre cap de regard : le passager vise où il
+        veut. Mesure : direction publiée **0 % -> 27 %** (`4f77afc1`), **1 % -> 30 %**
+        (`5676a9ba`), **27 % -> 100 %** (`8a485699`) ; **100 % des armes de véhicule sans montage
+        documenté** en gagnent une.
+  - [x] Correctif de RENDU n° 2 : la famille `plain` **avec** une direction dessine une bouffée
+        ORIENTÉE au lieu du rond — elle jetait le seul axe qu'on connaissait. Elle n'affirme
+        aucune famille (étirement 1,25 contre 1,7 pour la poudre), et le rond revient dès que la
+        direction manque. La MÊLÉE garde le rond par une branche nommée : un coup de marteau n'a
+        pas d'éclair de bouche.
+  - [!] **Ce qui reste, et c'est de la DONNÉE, pas du rendu** — consigné au §4, non traité :
+        les armes de véhicule n'ont ni `fx` ni `tint` dans `replay_labels.toml` (d'où la teinte
+        neutre) ; trois d'entre elles n'ont aucun montage documenté (Wraith, Gungoose, Falcon) ;
+        et un montage de classe `tourelle` reste SANS direction par règle — **100 tirs sur 241**
+        de `4f77afc1` sont des tirs de Warthog, donc encore une bouffée ronde, posée au montage.
+
 ---
 
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-20 | 5.2a.3 | **D1 (5.2a) — L'ARCHÉTYPE `zones` DU FILM EST LISIBLE ET PERSONNE NE LE LIT.** `ti=23` (`selectable-zone-data-component`, 32 instances) porte un désérialiseur ÉCRIT (`FUN_142ed6cec`) et la table dit de lui qu'il porte « l'identifiant, la POSITION et l'ÉTAT » d'une zone de mode. Son statut est `deser_non_cable`, son `doc_field` est vide et son `product_use` vaut `aucun` : l'état d'une zone se reconstitue aujourd'hui par VOTE de canal sur `ti=13` (jauge tag 3, propriétaire tag 4), avec un contrôle publié (`ownerChecked` / `ownerAgreed`) qui dit lui-même qu'il n'est pas une preuve indépendante. | NON TRAITÉ (règle 7), et **hors périmètre de 5.2-A par construction** : câbler un désérialiseur est un lot de GRAMMAIRE (`film/internal/`), que ce volet s'interdit. Lecture directe possible, lot ultérieur — le gain serait de remplacer le vote par une lecture, donc de fermer `ownerUnpaired` et la circularité partielle du vote |
+| 2026-09-20 | 5.2a.5 | **D2 (5.2a) — LES ARMES DE VÉHICULE N'ONT NI FAMILLE D'EFFET NI TEINTE.** Elles sont absentes de `weaponLabels` (le registre ne porte que les armes de JOUEUR), donc `fx` et `tint` sont vides et l'éclair sort en famille `plain`, teinte `neutral` — `oklch(0.80 0.02 255)`, le gris le plus pâle du thème. Mesure : **165 tirs sur 241** de `4f77afc1`, 70 sur 241 de `5676a9ba`, 15 sur 15 de `8a485699`. | NON TRAITÉ (règle 7) : c'est de la DONNÉE, pas du rendu. Le remède est une entrée par arme de véhicule dans `config/titles/halo_infinite/mappings/replay_labels.toml` avec son `fx` et son `tint` — les dix armes que `vehicleShotSound.ts` nomme déjà sont la liste de départ. Le rendu, lui, sait déjà les dessiner (5.2a.5 leur a rendu leur direction) |
+| 2026-09-20 | 5.2a.5 | **UNE TOURELLE DOCUMENTÉE RESTE SANS DIRECTION, ET C'EST 100 TIRS SUR 241 DE `4f77afc1`.** La règle est juste — la visée d'un tourelleur n'est pas le cap du châssis, et le film ne la publie pas — mais son effet de bord est que l'arme de véhicule LA PLUS TIRÉE du corpus (le Warthog, tag `c7d50912`) garde la bouffée ronde, simplement posée au montage arrière au lieu du centre. | NON TRAITÉ (règle 7). Deux voies, aucune dans ce volet : lire la visée du tourelleur dans le film (grammaire), ou décider en produit qu'un tir de tourelle prend le cap du châssis par défaut (décision utilisateur, pas une mesure) |
+| 2026-09-20 | 5.2a.5 | **LE TAG WARTHOG `c7d50912` NE DÉPARTAGE PAS LAAG / GAUSS / ROQUETTES.** Un tir de LAAG sonne donc aujourd'hui une roquette (`vehicleShotSound.ts:42-47`), et les trois variantes partagent le même montage. Re-constaté à la mesure de 5.2a.5 : ce tag porte à lui seul 100 des 241 tirs de véhicule de `4f77afc1`. | NON TRAITÉ (règle 7) — c'est le même constat que celui déjà écrit dans `vehicleShotSound.ts`, re-daté ici parce que la mesure lui donne son poids. Aucun correctif dans ce volet : départager demande une seconde quantité du film (la variante de châssis, ou un second tag), pas une règle de rendu |
+| 2026-09-20 | 5.2a.1 | **`zone_secures` EST MUET, ET C'EST UNE DÉCISION PRODUIT.** 10 occurrences sur `396cfc92`. Aucun stem n'a été désigné à l'oreille pour cette statistique — `zone_captures` a le sien, pas celle-là. | NON TRAITÉ, et ce n'est pas un défaut : personne ne l'a demandé, et en désigner un à la place de l'utilisateur ferait entendre un son que personne n'a validé (règle du gate sonore). Une ligne dans `OBJECTIVE_SOUND_STEMS` suffira le jour où il sera désigné |
+| 2026-09-20 | 5.2a.1 | **LE TIC DE SCORE EST ANCRÉ SUR LE DÉBUT DE LA DOMINATION, PAS SUR L'HORLOGE DE SCORE DU JEU**, et son plafond dur de 180 tics coupe toute domination continue au-delà de 3 minutes. Relevé en lisant `zoneSound.ts` pour 5.2a.1, non mesuré. | NON TRAITÉ (règle 7, hors périmètre du lot : l'utilisateur n'a rien demandé sur les tics). À instruire avec `scoreTimeline.holdTicks`, qui porte la barre de garde publiée — c'est elle l'horloge de score, et elle est déjà dans le document |
+| 2026-09-20 | 5.2a.1 | **LES SAUTS DE FRISE NE PRÉVIENNENT PAS TOUJOURS LE SON.** `onScrub` (`useReplayPlayback.ts`) ne recale pas le curseur sonore, contrairement à `seekTo` : un saut <= 1 s tire alors tous les événements de l'intervalle EN RAFALE. Relevé en lisant la chaîne sonore, non mesuré. | NON TRAITÉ (règle 7). Correctif attendu d'une ligne (prévenir le curseur depuis `onScrub`), mais il touche la lecture et non les sons de base : il appartient à un lot de transport, avec sa propre mesure |
 | 2026-09-19 | 5.1.7 | **D4 (5.1.7) — UN OCCUPANT FAUX, NOMME A L OEIL.** Theater (utilisateur, 2026-09-19) : sur `4f77afc1`, le rejeu publie « Yessireezy, siege 1 du vehicule 776/1, de 1:11.8 a 1:35.4 ». Yessireezy **ne monte jamais dans ce vehicule** — a 3:01 il est tue A COTE par un tir de mortier de Wraith, et il reapparait a 3:10. L appariement des sieges a pris un EVENEMENT VOISIN pour un embarquement. | NON TRAITE (regle 7). C est le calque d occupation (`vehicle_occupancy.go`, `decodeFilmVehicleEvents` et le pont morts -> siege), pas la grammaire de `ti=40`. A instruire par un lot d occupation, avec ce cas comme temoin nomme : un film consultable (`4f77afc1` est un match de JGtm), un slot, un instant |
 | 2026-09-19 | 5.1.7 | **D5 (5.1.7) — LE « DESPAWN SANS EXPLOSION » EST UNE FIN DE VIE REELLE QUE LE REJEU NE SAIT PAS NOMMER.** Meme verdict Theater : le Razorback 776/1 de `4f77afc1` n explose pas — il DISPARAIT vers 3:29, sans explosion, apres quelques degats vers 2:26. Le rejeu publie `end = "unknown"` pour cette vie, ce qui est honnete mais incomplet : la fin EXISTE et elle a une nature. | NON TRAITE (regle 7). Candidat `EndKind` **`despawn`**, a cote de `destroyed` / `film_end` / `unknown`. Il demande sa propre grammaire (qu est-ce que le film ECRIT quand un vehicule despawn ?) et une montee de schema : ni l une ni l autre n appartient a ce lot |
 | 2026-09-19 | 5.1.7 | **D6 (5.1.7) — THEATER NE MONTRE QUE LES MATCHS DU COMPTE.** `084a804d`, `a521164d`, `a349fea8`, `111fa685` et `e5adf7b2` sont DEFINITIVEMENT non consultables a l oeil : ils ne sont pas des matchs de JGtm. Cinq des temoins du corpus echappent donc a toute verification visuelle. | NON TRAITE, et ce n est pas un defaut a corriger : c est une CONTRAINTE a respecter. Tout futur temoin dont un verdict doit etre confirme a l oeil **doit etre un match de JGtm** — a verifier AVANT de promettre une verification visuelle, pas apres |
@@ -9388,6 +9562,40 @@ mêmes références, seul le code change.
 | 2026-09-18 | 4.1 × 4.2 (fidélité du codec au schéma 62) | `REPLAY_FILM_CACHE=<cache> go test -run GoldenInputsFidelite -v` | **8/8 PASS en 191 s** : au schéma 62, l'artefact est identique à l'octet entre assemblage sur faits frais et assemblage sur faits relus |
 | 2026-09-18 | 4.1 × 4.2 (S8 au schéma 62, 3 films) | `replay-equiv -deux-passes -films 000d5950,11de8353,a349fea8` | **`BILAN S8 : 3 artefact(s) IDENTIQUE(s) a l octet, 0 ARTEFACT DIVERGENT`, RC=0.** Un seul écart réel par film, le même : `killsource`. Durées : `000d5950` 18,49 s → **172 ms** · `11de8353` 55,34 s → **247 ms** · `a349fea8` 2 min 39 → **349 ms**. **`layers` et `coverage.deathsPaths` rejouent donc à l'octet depuis les faits, sans qu'une section ait été ajoutée au fichier** : ils se dérivent de ce qui y voyage déjà |
 | 2026-09-18 | 4.1 (clôture, intégration) | `out=$(go test -tags=integration -p 1 ./... 2>&1); rc=$?` sur la tête `c08faad92`, run UNIQUE et non détaché | **`RC=0`**, code de sortie CAPTURÉ (ni pipe ni commande détachée) : 346 lignes, **190 paquets `ok`**, 154 sans test, **0 `--- FAIL`**. Les paquets du lot : `internal/persist`, `internal/replaybuild`, `internal/sync` (137,6 s), `internal/sync/replayartifacts` (24,8 s), `internal/sync/v2` (13,2 s), `halo_infinite/film/replay`, `archlint`, `domain/title`, `contracttest`, `cmd/replay-equiv`, `cmd/replay-corpus-gate` — tous `ok`. **DEUX RUNS ANTÉRIEURS ÉCARTÉS** : ils tournaient EN PARALLÈLE (constaté par `Win32_Process`), ce que la doctrine du dépôt interdit sur DuckDB — durées fantômes et défaillances masquées. Tués, puis un seul run propre. Le commit de garde `b21b3efbb` (postérieur, un seul fichier de test) : `go test -tags=integration ./cmd/replay-equiv/` `RC=0` |
+
+### Post-chantier — lot 5.2-A (le rendu du rejeu), gates SANS AUCUN DÉCODAGE, 2026-09-20
+
+Branche `feat/decfilm-52a`, base `65e5c0731`. **AUCUN décodage de film, et ce n'est pas un
+report** : toutes les mesures de ce volet viennent des **173 documents déjà cuits** sous
+`data/cache/replays/halo_infinite/` (schéma 62/63), des 18 sprites du manifeste véhicules et des
+8 fixtures d'entrées figées. Les fixtures de contrat et les goldens d'assemblage de la montée 64
+sont régénérés par leur porte, **depuis `testdata/inputs_<short8>.bin.gz`** — zéro octet de film
+n'est lu. Les gates AVEC décodage (cuisson d'un Bastion et d'un BTB, `replay-equiv` 20 films,
+corpus gate 17) restent à jouer au signal du pilote, la machine ne supportant qu'un décodage à
+la fois.
+
+Jonctions `film_chunks` et `film_manifests` posées et intactes, `data/cache/replays` jamais
+touché dans le worktree.
+
+| Date | Item | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-20 | 5.2a.1 | mesure sur les 8 documents à zones du cache (241 rampes) | médiane d'avance du son **20,1 s -> 0,0 s** ; max 173,1 -> 0 ; > 2 s **207 -> 0** ; `zone_captures` **259 -> 160** émissions (= instants distincts par camp) ; `newZone` **351 -> 18** |
+| 2026-09-20 | 5.2a.1 | `make check-types` (cache purgé) ; `npm run test` ; eslint | vert ; **7 780 tests** ; 0 erreur |
+| 2026-09-20 | 5.2a.2 | mesure sur `4f77afc1` (272,8 m, 3,49 px/m) et `bfecd02b` (54,2 m, 17,56 px/m), 18 familles | grande carte : 15/18 au minimum, 3 à leur taille réelle avec proportions exactes ; petite carte : 0/18 au minimum, plafond doux actif sur 4 familles ; zoom 3× : 13/18 à leur taille réelle |
+| 2026-09-20 | 5.2a.2 | `make check-types` ; `npm run test` ; eslint | vert ; **7 790 tests** ; 0 erreur |
+| 2026-09-20 | 5.2a.3 | mesure de séparation du seuil (241 rampes, 8 documents) | 160 rampes avec bascule de camp, sommets 0,976-0,999 ; 81 sans, sommets <= 0,986 dont 2 seulement > 0,95 ; marge **0,038** autour de 0,95 |
+| 2026-09-20 | 5.2a.3 | `gofmt -l ./internal ./cmd` ; `go build ./...` ; `go vet ./...` | sortie vide ; vert ; vert |
+| 2026-09-20 | 5.2a.3 | `go test -count=1` sur `film/replay`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api`, `archlint` | **7 paquets verts** |
+| 2026-09-20 | 5.2a.3 | `golangci-lint run` sur `film/replay/...`, `replaydoc/...`, `replayview/...` (paquets ENTIERS) | **0 issues** |
+| 2026-09-20 | 5.2a.3 | `document_shape.golden` + 8 goldens d'assemblage + 8 fixtures de contrat, régénérés par leur porte | schéma 64, empreinte cuite `09b866553ec8007f` ; jeu de fixtures **2 668 136 o** (plafond 3 145 728), les 8 `replay_schema_63_*` supprimées par `purgerJeuxPerimes` |
+| 2026-09-20 | 5.2a.3 | ratchets montés avec justification datée | taille : chronique **1762 -> 1825**, `structure_test` **1200 -> 1215** ; surface compagnon `replay.*` hors `film/` : **259 -> 260** (re-mesurée à l'entrée sur `65e5c0731` : 259) |
+| 2026-09-20 | 5.2a.3 | `make openapi-gen` puis `make generate-types` (EN DERNIER) | `ZoneGaugeRamp` + `zoneStates[].gaugeRamps` ; +22 lignes d'OpenAPI, +9 de `generated.ts` |
+| 2026-09-20 | 5.2a.3 | `make check-types` ; `npm run test` ; eslint | vert ; **7 787 tests** ; 0 erreur |
+| 2026-09-20 | 5.2a.4 | `make check-types` ; `npm run test` ; eslint | vert ; **7 794 tests** ; 0 erreur |
+| 2026-09-20 | 5.2a.5 | mesure sur 4 documents à véhicules (`4f77afc1`, `5676a9ba`, `c259789d`, `8a485699`) | cap de regard lisible sur les tirs `v` : **1/241, 3/241, 0/47, 4/15** ; épisode d'occupation manquant : **0 sur 241** ; plafond de voix : 14,9 % et 25,7 % des tirs de véhicule refusés, soit le taux GÉNÉRAL ; son résolu **96 à 100 %**, 20 fichiers présents |
+| 2026-09-20 | 5.2a.5 | direction publiée après correctif | **0 % -> 27 %** (`4f77afc1`), **1 % -> 30 %** (`5676a9ba`), **27 % -> 100 %** (`8a485699`) ; 100 % des armes de véhicule sans montage documenté |
+| 2026-09-20 | 5.2a.5 | `make check-types` ; `npm run test` ; eslint | vert ; **7 799 tests** ; 0 erreur |
+| 2026-09-20 | tous | décodage de film | **AUCUN** — mesures sur documents cuits, fixtures régénérées depuis les entrées figées. Gates avec décodage (cuisson Bastion + BTB, `replay-equiv` 20, corpus gate 17) en attente du signal du pilote |
 
 ## 6. Protocole de reprise de session
 

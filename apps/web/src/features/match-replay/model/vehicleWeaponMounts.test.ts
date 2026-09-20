@@ -134,6 +134,18 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
     expect(vehicleShotPlacement(turret, 270, size, 1, ECHELLE).angle).toBeNull()
   })
 
+  /**
+   * MONTAGE INCONNU (2026-09-20) : l'éclair reste au CENTRE — la seule position que le document
+   * donne —, mais il garde la DIRECTION du véhicule. Sans cela, un tir d'arme de véhicule non
+   * documentée (Wraith, Gungoose, Falcon) perdait toute direction et tombait sur la bouffée
+   * ronde, invisible sur un châssis.
+   */
+  it('montage INCONNU : aucun décalage, mais le cap du véhicule donne la direction', () => {
+    const p = vehicleShotPlacement(null, 90, size, 1, ECHELLE)
+    expect(p.offset).toEqual({ x: 0, y: 0 })
+    expect(p.angle).toBeCloseTo((-90 * Math.PI) / 180, 10)
+  })
+
   it('classe fixe : direction = vehicleAimAngle(cap), jamais null', () => {
     const p = vehicleShotPlacement(nose, 33, size, 1, ECHELLE)
     expect(p.angle).not.toBeNull()

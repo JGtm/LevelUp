@@ -48,7 +48,12 @@ import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
  * véhicule, exactement le comportement d'avant ce fichier.
  */
 export interface VehicleShotSource {
-  mount: VehicleWeaponMount
+  /**
+   * Le montage de l'arme sur le châssis, ou `null` quand le tag d'arme n'est pas documenté
+   * (Wraith, Gungoose, Falcon, tourelle posée au sol…). `null` ne fait PLUS perdre la source :
+   * l'éclair reste au CENTRE du véhicule, mais il garde sa DIRECTION (cf. `vehicleShotPlacement`).
+   */
+  mount: VehicleWeaponMount | null
   /** Famille du véhicule porteur (clé de `sizeOf`/`spriteOf`, cf. `VehicleStyle`). */
   family: string | undefined
   /** Cap MONDE du véhicule à l'instant du tir (`vehicleHeadingAt`), degrés, convention `Point.h`. */
@@ -70,7 +75,7 @@ export interface ShotFxEntry {
   tint: FxTint
   /** Germe stable : deux lectures du même instant redonnent la même forme. */
   seed: number
-  /** Tir en véhicule dont l'arme a un montage connu ; `null` sinon (repli sur le centre). */
+  /** Tir d'une ARME DE VÉHICULE ; `null` pour un tir à pied ou une arme de joueur. */
   vehicleShot: VehicleShotSource | null
 }
 
@@ -113,9 +118,29 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
 /**
  * vehicleShotSourceOf — RÉSOUT UNE FOIS ce que le rendu aura besoin de savoir sur un tir en
  * véhicule : le véhicule porteur (par `v`, MÊME clé que `VehicleTrack.slot`), le montage de
- * l'arme (par `w`) et le cap du véhicule à l'instant `t`. `null` dès qu'un maillon manque —
- * pas de véhicule marqué, véhicule introuvable (film incohérent), ou arme sans montage connu —
- * et le tir garde alors sa position de centre déjà publiée par le document.
+ * l'arme (par `w`) quand il est documenté, et le cap du véhicule à l'instant `t`.
+ *
+ * # POURQUOI UN MONTAGE INCONNU NE FAIT PLUS PERDRE LA SOURCE (2026-09-20)
+ *
+ * LE DÉFAUT MESURÉ, et il explique à lui seul le constat utilisateur du 2026-09-19 (« toujours
+ * pas d'effets de tir pour les véhicules »). Le cap de REGARD d'un tir vient de la trajectoire
+ * du BIPÈDE (`heldReading` ci-dessous) — or un bipède EMBARQUÉ NE RÉPLIQUE PLUS. Mesure du
+ * 2026-09-20 sur quatre documents cuits : sur les tirs qui portent `v`, le cap de regard est
+ * lisible pour **1 sur 241** (`4f77afc1`), 3 sur 241 (`5676a9ba`), 0 sur 47 (`c259789d`) et
+ * 0 sur 15 (`8a485699`). Sans cap, `drawMuzzleFlash` tombe sur la BOUFFÉE RONDE — sans
+ * direction, centrée sur le châssis, et dans la teinte `neutral` (68 % de ces tirs portent une
+ * arme absente de `weaponLabels`, donc sans famille ni teinte). Un halo gris pâle centré sur le
+ * sprite ne se lit pas comme un tir : c'est ce que l'utilisateur ne voyait pas.
+ *
+ * CE QUE LE FILM DONNE, LUI, POUR 100 % DE CES TIRS : le CAP DU VÉHICULE. Garder la source même
+ * sans montage rend donc une direction à l'éclair, et `vehicleShotPlacement` la traduit.
+ *
+ * LA GARDE EST LE REGISTRE D'ARMES, et c'est le MÊME discriminateur que le son
+ * (`shotSoundStem` : « leurs identifiants sont ABSENTS de `weaponLabels` »). Une arme DE JOUEUR
+ * tirée depuis un siège de passager reste sur son propre cap de regard, jamais sur celui du
+ * châssis : le passager vise où il veut, et lui prêter la direction du véhicule serait une
+ * invention. Mesure : `c259789d` ne porte QUE des tirs de ce genre (47 sur 47 dans le registre),
+ * et ce chemin ne les touche pas.
  */
 function vehicleShotSourceOf(
   doc: ReplayDocumentReady,
@@ -125,7 +150,9 @@ function vehicleShotSourceOf(
 ): VehicleShotSource | null {
   if (vehicleSlot === undefined) return null
   const mount = vehicleWeaponMountOf(weaponTag)
-  if (!mount) return null
+  // ARME DE VÉHICULE = absente du registre d'armes de joueur (cf. l'en-tête de cette fonction).
+  const armeDeVehicule = weaponTag !== undefined && doc.weaponLabels?.[weaponTag] === undefined
+  if (!mount && !armeDeVehicule) return null
   const track = doc.vehicles.find((v) => v.slot === vehicleSlot)
   if (!track) return null
   return { mount, family: track.family, headingDeg: vehicleHeadingAt(track, t) }
