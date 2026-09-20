@@ -14,13 +14,18 @@
  * auto-ajuster min/max (comportement par défaut des 4 autres consommateurs)
  * décentrerait le neutre.
  *
- * FORME RESTAURÉE LE 2026-09-13 (demande utilisateur) : Lundi en haut, titres
- * sur les deux axes, et échelle de couleur VERTICALE à droite graduée en
- * pourcentage — le rendu d'avant le passage au wrapper. Les trois options
+ * FORME RESTAURÉE LE 2026-09-13 (demande utilisateur) : Lundi en haut et titres
+ * sur les deux axes — le rendu d'avant le passage au wrapper. Les options
  * manquantes ont été AJOUTÉES au wrapper (`yAxisInverse`, `axisNames`,
- * `visualMapOrient`/`Formatter`/`Text`) plutôt que de rouvrir un builder local :
- * elles sont toutes optionnelles, les quatre autres consommateurs du wrapper
- * gardent leur rendu à l'octet près.
+ * `visualMapOrient`) plutôt que de rouvrir un builder local : elles sont toutes
+ * optionnelles, les autres consommateurs du wrapper gardent leur rendu.
+ *
+ * BARRE DE DÉGRADÉ RETIRÉE LE 2026-09-20 (retour utilisateur, lot 3 des ajustements
+ * pré-v7.5) : la réglette verticale redisait ce que chaque case montre déjà, et
+ * l'infobulle donne le taux exact. `visualMapOrient="vertical"` RESTE, parce qu'il
+ * décide aussi des marges du tracé — celles qui logent les titres d'axes. Ce graphe
+ * est le rendu de référence de toutes les grilles du dépôt : la réglette part donc
+ * de partout, pas seulement d'ici.
  *
  * Les points sont donc émis Lundi → Dimanche, dans le sens de la semaine, et
  * c'est `yAxisInverse` qui met Lundi en haut : l'ordre des DONNÉES ne porte plus
@@ -84,9 +89,6 @@ export function SynthesisHeatmapChart({ cells, title, height }: Props) {
     [cells, dowLabelsList],
   )
 
-  // Une graduation de l'échelle : un taux 0..1 rendu en pourcentage entier.
-  const formatVisualMap = useCallback((value: number) => `${(value * 100).toFixed(0)}%`, [])
-
   const formatTooltip = useCallback(
     (point: ChartPointHeatmap) => {
       const count = (point.detail?.count as number | undefined) ?? 0
@@ -107,8 +109,7 @@ export function SynthesisHeatmapChart({ cells, title, height }: Props) {
       yAxisInverse
       axisNames={{ x: txt.hourAxis, y: txt.dayAxis }}
       visualMapOrient="vertical"
-      visualMapFormatter={formatVisualMap}
-      visualMapText={[txt.wins, '']}
+      showVisualMap={false}
       emptyCells="hidden"
     />
   )

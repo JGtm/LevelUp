@@ -35,7 +35,7 @@ export function ExplorerTargetAssists({ encounterStats }: Props) {
   const assists = encounterStats?.assists ?? null
   const volumeMax = encounterStats?.assist_volume_max ?? 0
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card" data-testid="explorer-target-assists">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card" data-testid="explorer-target-assists">
       <div className="border-b border-border px-3 py-2 text-sm font-medium">
         {t('explorer.target_profile.assists_title')}
       </div>

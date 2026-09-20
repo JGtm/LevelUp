@@ -216,16 +216,31 @@ export interface WeaponRangeOptionInput {
    */
   labels: {
     top: string
-    bottom: string
+    /** Nom de la seconde mesure. Inutile en mode `singleBand` : il n'y en a pas de seconde. */
+    bottom?: string
     percentiles: string
     noMeasure: string
     observed?: string
   }
+  /**
+   * UNE SEULE BANDE par ligne, CENTRÉE, et une infobulle à une seule mesure.
+   *
+   * Ajouté le 2026-09-20 pour « Portée des frags » de l'encart cible de l'Explorer, ramené
+   * à la cible seule (décision 7 du plan d'ajustements pré-v7.5). Sans lui, le graphe
+   * gardait la place du second bâton — une demi-bande vide sous chaque ligne — et
+   * l'infobulle annonçait « aucune mesure » pour un joueur qu'on ne montre plus.
+   *
+   * Absent = les deux bandes décalées de part et d'autre du centre, le rendu de tous les
+   * appelants antérieurs.
+   */
+  singleBand?: boolean
 }
 
 /** Les quatre encres du `renderItem`, plus les lignes déjà retournées pour l'axe. */
 interface RangeRenderInput {
   ordered: readonly WeaponRangeLine[]
+  /** Cf. `WeaponRangeOptionInput.singleBand`. */
+  singleBand?: boolean
   topColor: string
   bottomColor: string
   medianColor: string
@@ -242,6 +257,7 @@ interface RangeRenderInput {
  */
 function makeRangeRenderItem({
   ordered,
+  singleBand,
   topColor,
   bottomColor,
   medianColor,
@@ -282,6 +298,12 @@ function makeRangeRenderItem({
         },
         style: { fill: medianColor, stroke: cardColor, lineWidth: 1 },
       })
+    }
+    // Une seule bande : elle occupe le CENTRE de la ligne. La décaler laisserait sous elle
+    // la place d'un bâton qui ne viendra pas.
+    if (singleBand) {
+      push(line.top, topColor, 0)
+      return { type: 'group', children }
     }
     const offset = BAR_HEIGHT / 2 + BAR_GAP / 2
     push(line.top, topColor, -offset)
@@ -336,6 +358,7 @@ export function buildWeaponRangeOption({
   cardColor,
   fmtDistance,
   labels,
+  singleBand,
 }: WeaponRangeOptionInput): EChartsCoreOption {
   // Premier du backend = plus courte portée = EN HAUT : l'axe Y d'ECharts empile du bas
   // vers le haut, donc la liste se lit à l'envers au montage.
@@ -344,6 +367,7 @@ export function buildWeaponRangeOption({
   const axis = getAxisBase(tc)
   const renderItem = makeRangeRenderItem({
     ordered,
+    singleBand,
     topColor,
     bottomColor,
     medianColor,
@@ -362,11 +386,14 @@ export function buildWeaponRangeOption({
         const p = params as { dataIndex?: number }
         const line = p?.dataIndex != null ? ordered[p.dataIndex] : undefined
         if (!line) return ''
-        return [
+        const lignes = [
           `<b>${escapeHtml(line.label)}</b> — ${escapeHtml(labels.percentiles)}`,
           sideLine(labels.top, line.top),
-          sideLine(labels.bottom, line.bottom),
-        ].join('<br/>')
+        ]
+        // Le second côté n'est nommé que s'il existe : en mode `singleBand`, annoncer
+        // « aucune mesure » pour un joueur qu'on ne montre pas serait un faux manque.
+        if (!singleBand) lignes.push(sideLine(labels.bottom ?? '', line.bottom))
+        return lignes.join('<br/>')
       },
     },
     xAxis: {

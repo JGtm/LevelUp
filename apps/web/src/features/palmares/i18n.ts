@@ -128,7 +128,6 @@ export interface PalmaresText {
       toggleHide: string
       unavailable: string
       heatmapEmpty: string
-      heatmapLegend: string
       heatmapByHour: string
       heatmapByDay: string
       tooltipPlayer: string
@@ -348,7 +347,6 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         toggleHide: t(loc, 'palmares.relations.moments.toggle_hide'),
         unavailable: t(loc, 'palmares.relations.moments.unavailable'),
         heatmapEmpty: t(loc, 'palmares.relations.moments.heatmap_empty'),
-        heatmapLegend: t(loc, 'palmares.relations.moments.heatmap_legend'),
         heatmapByHour: t(loc, 'palmares.relations.moments.heatmap_by_hour'),
         heatmapByDay: t(loc, 'palmares.relations.moments.heatmap_by_day'),
         tooltipPlayer: t(loc, 'palmares.relations.moments.tooltip_player'),

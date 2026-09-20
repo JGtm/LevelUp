@@ -674,10 +674,6 @@ en = "Assist share"
 fr = "Portée des frags"
 en = "Frag range"
 
-[explorer.target_profile.frag_range_self]
-fr = "Toi"
-en = "You"
-
 [explorer.target_profile.frag_range_empty]
 fr = "Aucun frag mesuré sur vos matchs communs"
 en = "No measured frag over your shared matches"

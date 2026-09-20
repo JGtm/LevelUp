@@ -13269,8 +13269,6 @@ components:
           type:
             - array
             - "null"
-        frag_range_self:
-          $ref: '#/components/schemas/SynthesisWeaponRange'
         frag_range_target:
           $ref: '#/components/schemas/SynthesisWeaponRange'
         kills_dealt:

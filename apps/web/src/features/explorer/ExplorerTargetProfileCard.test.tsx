@@ -394,10 +394,10 @@ describe('ExplorerTargetProfileCard', () => {
     expect(screen.getByText('Live partiel')).toBeInTheDocument()
   })
 
-  // Disposition de la section « matchs joués ensemble » (2026-09-17) : trois rangées
-  // de 3 colonnes. « Répartition des résultats » a quitté la colonne des frags pour la
-  // 3e rangée, où il surmonte « Part des assistances », avec « Portée des frags » à
-  // leur droite.
+  // Disposition de la section « matchs joués ensemble » : trois rangées de 3 colonnes.
+  // « Répartition des résultats » a quitté la colonne des frags (2026-09-17) pour la
+  // 3e rangée, qui depuis le 2026-09-19 aligne ses trois blocs — résultats, assistances,
+  // portée — en trois colonnes de MÊME HAUTEUR.
   it('dispose la section « matchs joués ensemble » en trois rangées', () => {
     const profile: ExplorerTargetProfile = {
       identity: IDENTITY_FULL,
@@ -421,9 +421,15 @@ describe('ExplorerTargetProfileCard', () => {
     expect(follows(versus, outcome)).toBe(true)
     expect(follows(outcome, assists)).toBe(true)
 
-    // Rangée 3 : résultats et assistances EMPILÉS dans la même colonne, portée à côté.
+    // Rangée 3 : TROIS COLONNES DE MÊME HAUTEUR (2026-09-19) — les trois blocs sont
+    // frères dans la même grille, et chacun remplit sa colonne (`h-full`). Avant, les
+    // deux premiers étaient empilés dans une colonne et la portée s'étirait seule à côté.
     expect(outcome.parentElement).toBe(assists.parentElement)
-    expect(fragRange.parentElement).not.toBe(outcome.parentElement)
+    expect(fragRange.parentElement).toBe(outcome.parentElement)
+    expect(outcome.className).toContain('h-full')
+    expect(assists.className).toContain('h-full')
+    expect(fragRange.className).toContain('h-full')
+    expect(outcome.parentElement?.className).toContain('items-stretch')
 
     // « Répartition des frags » n'a plus le bilan V/N/D sous lui : sa colonne de la
     // rangée 1 ne contient que ce bloc.

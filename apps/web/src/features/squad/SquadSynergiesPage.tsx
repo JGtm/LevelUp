@@ -238,7 +238,6 @@ export function SquadSynergiesPage() {
           tier5: t.heatmap.pieceTier5,
         }}
         noScoreLabel={t.heatmap.noScore}
-        xAxisName={t.heatmap.xAxis}
         yAxisName={t.heatmap.yAxis}
       />
       <SquadSessionTimelineChart

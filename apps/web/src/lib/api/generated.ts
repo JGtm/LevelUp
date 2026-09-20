@@ -6558,7 +6558,6 @@ export interface components {
             /** Format: int64 */
             enemy_count?: number;
             frag_gap_series?: components["schemas"]["ExplorerFragGapPoint"][] | null;
-            frag_range_self?: components["schemas"]["SynthesisWeaponRange"];
             frag_range_target?: components["schemas"]["SynthesisWeaponRange"];
             /** Format: int64 */
             kills_dealt?: number;

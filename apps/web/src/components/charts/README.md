@@ -14,7 +14,7 @@ ADR : `docs/adr/0001-charts-stack-echarts.md`. Live sandbox : `/lab/charts`.
 | 4 | `<HistogramChart>` | Distribution buckets | TimeseriesPage K/D, kills, accuracy, score/min, rolling WR |
 | 5 | `<ScatterChart>` | Multi-series correlation scatter | TimeseriesPage correlations (5 pairs) |
 | 6 | `<DonutChart>` | Pie/donut with semantic slice colors | SessionCompare outcomes |
-| 7 | `<Heatmap2DChart>` | 2D heatmap (sequential or divergent palette) | TimeseriesPage intensity day×hour, Synthesis activity, Squad V2 player×map |
+| 7 | `<Heatmap2DChart>` | Canonical categorical grid (sequential, divergent or frequency ramp; discrete tiers) | Synthesis activity day×hour (reference rendering), Timeseries intensity, Relations encounter rhythm, Explorer shared-activity grid, Squad player×map and exchange matrix |
 | 8 | `<RadarChart>` | N-series 6-axis radar | MatchView participation, Squad V2 radar |
 | 9 | `<OutcomeSequenceTape>` | RLE narrative band of recent outcomes | HomePage, MatchHistoryPage, SquadV2Page |
 | 10 | `<TimeseriesKdaBars>` (page-specific) | Bars K + bars D + line K/D ratio (dual yAxis) | TimeseriesPage summary |
@@ -95,7 +95,11 @@ Single-series pie/donut from `ChartSeries<ChartPointDonut>[]` (`{ name, value }`
 
 ### `<Heatmap2DChart>`
 
-Single-series 2D heatmap from `ChartSeries<ChartPointHeatmap>[]` (`{ x, y, value, detail? }`). Props : `paletteMode: 'sequential' | 'divergent'`, `valueRange?: [min, max]`.
+Single-series 2D grid from `ChartSeries<ChartPointHeatmap>[]` (`{ x, y, value, detail? }`). THE single implementation of a categorical heatmap in this app — guarded by `heatmapSingleImpl.guard.test.ts`, which fails on any `type: 'heatmap'` ECharts series written outside this wrapper and its dated allowlist.
+
+The option builder lives next door in `heatmap2DOption.ts` (the component file was over the 500-line threshold); `Heatmap2DChart.tsx` re-exports `buildHeatmap2DOption` and the types, so importers are unchanged.
+
+Props : `paletteMode: 'sequential' | 'divergent' | 'frequency'`, `valueRange?: [min, max]`, `saturationCap?`, `formatTooltip?`, `cellLabelColor?`, `showCellLabel?`, `showVisualMap?`, `visualMapPieces?` (discrete tiers instead of a continuous ramp), `visualMapOrient/Formatter/Text?`, `yAxisInverse?`, `axisNames?`, `axisTuning?` (x-label rotation/interval/margin, y-name at axis head), `gridOverride?`, `emptyCells?: 'hatched' | 'hidden' | 'blank'`, `legend?` (DOM legend replacing the empty-cell one).
 
 ### `<RadarChart>`
 

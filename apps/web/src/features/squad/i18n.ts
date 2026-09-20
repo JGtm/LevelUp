@@ -198,7 +198,6 @@ export interface SquadText {
   heatmap: {
     title: string
     /** Nom de l'axe X de la heatmap joueur x carte. */
-    xAxis: string
     /** Nom de l'axe Y de la heatmap joueur x carte. */
     yAxis: string
     pieceTier1: string
@@ -544,7 +543,6 @@ const FR_TEXT: SquadText = {
   },
   heatmap: {
     title: 'Performance par joueur × carte',
-    xAxis: 'Carte',
     yAxis: 'Joueur',
     pieceTier1: 'Excellente',
     pieceTier2: 'Bonne',
@@ -898,7 +896,6 @@ const EN_TEXT: SquadText = {
   },
   heatmap: {
     title: 'Performance per player × map',
-    xAxis: 'Map',
     yAxis: 'Player',
     pieceTier1: 'Excellent',
     pieceTier2: 'Good',
