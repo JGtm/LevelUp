@@ -112246,3 +112246,414 @@ sur son signal, CI de `feat/v75` = verdict d'autorité.
   `untouchable_carrier` actives sur leurs PNG `halo_infinite/` ; 99 actives sur 106. Air
   relance detache (gcc sur le PATH), /health 200, les deux PNG servis en image/png
   (5 283 o et 4 360 o). Reste : meme seed en prod au deploiement ; commit au signal.
+
+## [2026-09-20] Positions de force par carte : ouverture du chantier de recherche — En cours (plan écrit, étapes 0 et 1 lancées)
+
+- Demande utilisateur : « power positions » des cartes Halo Infinite — peut-on les définir par
+  un algorithme (nos données ou données de cartes) plutôt qu'à la main ; but produit : un calque
+  par carte, distinct des zones nommées, affiché dans le rejeu, d'office dans la vue de match
+  et sur la page Tactique. Pilotage par la session, exécution par agents Opus.
+- Vérification sur pièces avant de répondre : aucune source du jeu ne déclare une position de
+  force ; aucun jeu de données public (les guides pro sont de la prose ; un site affirme une
+  « télémétrie de 50 000 matchs » sans source). Le dépôt fournit déjà : positions de kills
+  (`kill_positions_latest`, 99,5 % des morts de 951 films au 2026-08-08), trajectoires avec
+  équipe et cap de visée (173 artefacts en cache), grille tactique 0,5 m ancrée monde
+  (`internal/analysis/tactical`), zones nommées avec polygones, navmesh, gabarit complet d'un
+  catalogue de référence par carte (`map_callouts.json` + `cmd/mapcallouts-build`), registre
+  des calques du rejeu (`replayCompose.ts`), bloc « Où ça se joue » de la vue de match et plan
+  de la page Tactique (un seul calque, aucune bascule).
+- Décision technique principale : dériver, jamais deviner. Unité = cellule tactique (pas la
+  zone nommée, qui ne fait que nommer) ; signal empirique d'abord (kills-depuis, morts-dedans,
+  portée, dénivelé, occupation gagnants/perdants, plancher en matchs distincts) ; la géométrie
+  (navmesh, visibilité) n'est ouverte que par un NO-GO ; oracle = positions transcrites des
+  guides pro sur ≥ 4 cartes HCS, seuils de rappel/précision ÉCRITS avant la mesure (0,7 /
+  0,6), témoin négatif obligatoire ; catalogue versionné `map_power_positions.json` à deux
+  espaces de clés ; une résolution Go, deux transports (embarqué au document de rejeu à la
+  requête pour rejeu + vue de match, endpoint par carte pour Tactique) ; token `zone-power`
+  neuf ; capability `map.power_positions` ; pas de calque sans preuve (carte sous plancher =
+  absente). Plan : `.ai/PLAN_POSITIONS_DE_FORCE_2026-09-20.md`, décisions D1-D8.
+- Worktree `LevelUp-wt-power-positions`, branche `wt/power-positions` depuis `feat/v75`
+  (`f2f4f4bdd`). Le worktree n'a pas de `data/` ; le serveur `air` tient la base partagée en
+  RW : lectures via `OpenReadForQuery` seulement, sur le `data/` du dépôt principal.
+- Résultats observés : aucun encore (chantier ouvert).
+- Conclusion / prochaine étape : étape 0 (oracle pro, agent Opus web) et étape 1 (mesure
+  empirique par cellule, agent Opus Go) lancées en parallèle ; étape 2 = verdict GO/NO-GO lu
+  par le pilote et rapporté à l'utilisateur avant toute production.
+
+## [2026-09-20] Positions de force — étape 1 : mesure empirique par cellule, et score figé — Complété (branche `wt/power-positions`)
+
+- Statut : étape 1 du plan `.ai/PLAN_POSITIONS_DE_FORCE_2026-09-20.md` CLOSE, gate 1 passé.
+  Item 0.1 (recensement du corpus) livré au passage, comme le plan le prévoyait. Aucun commit
+  (accord utilisateur requis).
+- Livré : paquet PUR `apps/go-api/internal/analysis/powerpos/` (`doc.go`, `types.go`,
+  `accumulateur.go`, `mediane.go`, `composantes.go`, `enveloppe.go`, `score.go`,
+  `selection.go` + 6 fichiers de test ; aucun fichier > 500 L, aucune fonction > 80 L) et
+  outil `apps/go-api/cmd/mappower-build/` en modes `--recensement` et `--mesure`. Le paquet
+  IMPORTE `analysis/tactical` (grille 0,5 m ancrée monde) au lieu de la redupliquer.
+  Documents : `.ai/V7.5/positions_de_force/recensement_2026-09-20.md`,
+  `MESURE_EMPIRIQUE_2026-09-20.md`, `mesures_2026-09-20/` (12 CSV + 33 PNG + `_rapport.md`).
+- Décision technique principale — LE SCORE NE SE CALCULE PAS SUR LA CELLULE. Le rapport de
+  duel par cellule de 0,5 m (`kills_depuis / engagements`) rend EXACTEMENT la même dispersion
+  sur les douze cartes mesurées, au centième : p10 0,29 / p25 0,38 / p50 0,50 / p75 0,62 /
+  p90 0,71. Douze cartes différentes, une seule courbe : c'est du bruit binomial (médiane de
+  1 à 4 engagements par cellule), pas du terrain. Le score se calcule donc sur un DISQUE DE
+  2 m (49 cellules) ; la cellule reste l'unité d'adressage et de publication (D1).
+  Formule figée (`powerpos.ReglageV1`) :
+  `0,50·avantage + 0,25·intensité + 0,15·hauteur + 0,10·portée`, l'avantage étant le rapport
+  de duel du disque rétréci vers 0,5 (force 40 engagements virtuels), intensité et portée
+  normalisées PAR CARTE. Sélection : ≥ 3 matchs distincts sur la cellule centrale, ≥ 40
+  engagements dans le disque, score ≥ max(p90 de la carte, 0,65), composantes 4-connexes de
+  ≥ 12 cellules, ≤ 8 positions par carte, enveloppe convexe dilatée d'une demi-cellule.
+- ÉCARTÉ, et mesuré : l'occupation par équipe (poids 0). Six cartes sur douze n'ont AUCUNE
+  cellule au plancher de trois matchs de présence ; la médiane de l'écart gagnants-perdants
+  est positive partout (+0,03 à +0,20), donc elle mesure d'abord que les vainqueurs vivent
+  plus longtemps ; à 1-6 artefacts par carte, les plages lues sont le côté de départ des
+  équipes gagnantes de ces matchs-là. Les colonnes restent au CSV et la planche de contrôle
+  reste produite — le signal se réévaluera quand le parc d'artefacts se comptera en centaines.
+- Résultats observés : corpus de 9 110 matchs, 89 cartes recensées, 92 artefacts de rejeu
+  pour tout le titre. Dix cartes HCS au corpus (live fire 80 matchs, recharge 78, streets 75,
+  aquarius 57, forbidden 44, origin 37, lattice 28, solitude 26, fortress 18, empyrean 17) ;
+  Argyle absente. Douze cartes mesurées (les dix HCS + témoins illusion et bazaar). Le score
+  figé rend 0 à 5 positions par carte, de 6 à 31 m² ; fortress et empyrean rendent ZÉRO
+  position (3 % de cellules scorables) — comportement voulu par D8, « pas de calque sans
+  preuve ». Contre-mesure du plancher : sur les positions de KILL le nuage est déjà compact
+  (rayon p99 24,3 → 23,4 m de 1 à 3 matchs), à l'inverse des positions de PASSAGE de
+  `mappos-build` (268 → 19,4 m) — le plancher n'y rogne pas des bras hors de l'arène, il
+  écarte l'anecdote d'un seul match.
+- Découverte la plus lourde (consignée, NON traitée) : les positions de kill de
+  « Live Fire - Ranked » sont décalées et étirées en X par rapport à « Live Fire » (9,88 m
+  entre barycentres, x médian 21,3 contre 8,2 m, x max 36,9 contre 27,3 m, 13 des 30 matchs
+  débordants) alors que les ARTEFACTS DE REJEU des deux variantes s'accordent au décimètre et
+  que les deux partagent un seul fond publié. Défaut de décodage des positions de kill, pas
+  de géométrie. Un contrôle générique de cohérence des variantes est posé dans l'outil
+  (`controle_variantes.go`, seuil 2 m) ; les dix autres cartes à deux variantes tiennent sous
+  2,6 m. Conséquence retenue : les chiffres de Live Fire ne comptent pas comme preuve à
+  l'étape 2. Cinq autres découvertes au plan (mode_category périmée, 2e copie du flood-fill,
+  Argyle hors corpus, lattice sans fond publié, origin/fortress sans zones nommées).
+- Gate 1 : `go build ./...`, `go vet`, `go test ./internal/analysis/powerpos/`,
+  `gofmt -l` vide, `golangci-lint run` 0 issue, `go test ./internal/archlint/
+  ./internal/analysis/tactical/` vert (aucun ratchet cassé).
+- Conclusion / prochaine étape : étape 2, verdict contre l'oracle avec les seuils écrits
+  d'avance (rappel ≥ 0,7, précision ≥ 0,6 sur ≥ 4 cartes) et le témoin négatif. Le score ne
+  se retouche plus : une retouche a posteriori invalide le verdict.
+
+## [2026-09-20] Positions de force — étape 2 : verdict contre l'oracle pro — Complété, VERDICT NO-GO (branche `wt/power-positions`)
+
+- Décision technique principale : le verdict se prononce sur des RECOUVREMENTS DE SURFACE, ce
+  que la passe de mesure ne publiait pas (le CSV porte les cellules, le rapport les centres).
+  Une sortie `positions.json` a donc été ajoutée au mode `--mesure` — sérialisation PURE de
+  `Cible.Positions`, aucun seuil, aucune formule, aucun filtre — et la passe a été regénérée
+  avec la commande exacte de l'étape 1 : positions identiques carte par carte
+  (3/4/4/5/4/2/1/3/4/1/0/0). Le test de recherche `TestVerdictOracle`
+  (`cmd/mappower-build/verdict_*_research_test.go`, tag `research`, 5 fichiers, aucun > 500 L)
+  lit l'oracle, les positions et le catalogue de zones nommées, et n'ouvre AUCUNE base.
+  Recouvrements mesurés par échantillonnage au pas de 0,2 m ancré sur l'origine monde : les
+  zones du catalogue sont concaves, trouées et en plusieurs morceaux, une intersection exacte
+  aurait coûté des centaines de lignes pour la même réponse au seuil de 30 %.
+- Résultats observés : **NO-GO**. Une seule carte sur les quatre exigées tient rappel >= 0,70 ET
+  précision >= 0,60 (bazaar — et elle ne porte qu'UNE zone `forte`). Recharge 0,17 de rappel sur
+  6 zones fortes, aquarius / streets / forbidden 0,00, live fire 0,33 (rapportée, hors preuve :
+  contamination de 9,88 m mesurée à l'étape 1). **Témoin négatif : rappel réel 0,25 en moyenne
+  contre 0,22 au témoin** — l'appariement ne porte quasiment aucun signal. Le témoin lui-même
+  est faible et c'est écrit au document : la liste des zones est triée par nom et le voisin
+  alphabétique est souvent le voisin géographique (`Dried Rat Hole` -> `Dried Rat Tunnel`,
+  `Whirlpool Dam` -> `Whirlpool Ledge`) ; il aurait suffi à interdire un GO, il n'avait pas à le
+  faire. Contre-exemples : **1 piège PUR coloré hors Live Fire** (`recharge__arene__4` tombe
+  dans `Storage`) ; les sept autres marques portent sur des zones que l'oracle décrit à la fois
+  comme position et comme piège (§4 « désaccords entre sources »), comptées à part.
+- Diagnostic, zone par zone, en rejouant le score FIGÉ sur les cellules de chaque zone manquée :
+  sur 13 zones `forte` manquées, **6 « composante trop petite »** (des cellules passent bien le
+  seuil de la carte mais leur plus grand amas 4-connexe fait 2 à 10 cellules pour 12 exigées —
+  Pit 15 cellules/amas de 10, Hydro d'Aquarius 14/10, Top Mid 7/2), **6 « score sous le seuil »**
+  dont deux à moins de 0,01 du p90 de leur carte (Orange Pipes 0,678 contre 0,680, Platform
+  0,661 contre 0,667), **1 « non scorable »** (Overgrown Rat Hole, aucune cellule au plancher).
+  Le signal existe donc partiellement là où on l'attend ; ce sont la taille minimale de
+  composante et le quantile par carte qui l'éteignent. **Aucun seuil n'a été retouché** : une
+  retouche après le verdict l'invalide (protocole du plan).
+- Trois découvertes consignées, non traitées : (7) le « module » d'une carte Forge est celui de
+  son CANEVAS (`fo11_blank` = Solitude ET Empyrean) — la cascade du service s'en sort par
+  accident ; (8) les polygones de zones sont des emprises 2D et les étages se superposent en vue
+  de dessus (une position appariée à `Attic` a `Batteries` pour zone dominante), alors que le
+  catalogue porte `z_bottom`/`z_top` — le nommage de l'étape 3 sera ambigu sur les cartes à
+  étages tant que le Z n'entre pas dans la comparaison ; (9) la précision telle que le plan la
+  définit ne discrimine rien, les 67 lignes `faible` de l'oracle pavant les cartes (4 cartes
+  sur 6 rendent 1,00 de précision avec 0,00 à 0,33 de rappel).
+- Gate 2 : `go vet -tags research ./...` sur tout le module 0 issue ;
+  `MAPPOWER_DATA_ROOT=... go test -tags research ./cmd/mappower-build/ -run Verdict` PASS ;
+  `go build ./...`, `gofmt -l` vide, `go test ./internal/analysis/powerpos/ ./internal/archlint/`
+  verts. Document : `.ai/V7.5/positions_de_force/VERDICT_ORACLE_2026-09-20.md`, verdict en une
+  ligne en tête, 7 sections (tableau par carte, témoin, contre-exemples, faux positifs et faux
+  négatifs nommés, table des positions et de leur zone dominante, diagnostic, synthèse).
+- Conclusion / prochaine étape : le plan ouvre l'étape 2bis (voie géométrique : navmesh,
+  visibilité par lancer de rayons, hauteur relative, nombre d'accès) sur un NO-GO. La décision
+  revient au pilote, qui informe l'utilisateur avant d'ouvrir quoi que ce soit. Aucun commit.
+
+## [2026-09-20] Positions de force — décision après NO-GO : recherche hybride v2 (empirique + géométrie), oracle à densifier — En cours (plan révisé, trois agents lancés)
+
+- Pilote : lecture du verdict (les positions calculées tombent dans les bases et les points de
+  défense : Blue/Yellow Base sur Aquarius, ponts du marché sur Bazaar — le ratio de duel mesure
+  où l'on gagne ses duels, pas où l'on tient la carte) ; questionnaire à l'utilisateur avec
+  quatre options (catalogue depuis l'oracle pro, empirique v2, géométrie, arrêt).
+- Décision utilisateur : poursuivre l'empirique ET la géométrie en combinaison ; vérifier le
+  catalogue pro ; nos joueurs suivis ne sont pas des pros (« à part Nuzzle les autres sont
+  plutôt mauvais ») ; lire la pré-analyse Gemini en bas de la page Notion « Backlog LevelUp »
+  (retrouvée : cinq variables sur le navmesh, H altitude relative, V visibilité sortante par
+  lancer de rayons, E exposition angulaire, R ressources par distance de déplacement, M
+  échappatoire ; score pondéré, grille 50 cm, matrice d'intervisibilité, maxima locaux — la
+  formulation EQS classique, adoptée pour la voie géométrique).
+- Décision technique principale : étape 2bis réécrite en quatre sous-étapes (A oracle v2 par
+  navigateur, B empirique v2 robuste au niveau — pondération par rang du tueur, exposition et
+  couverture ANGULAIRES tirées des positions tueur/victime —, C géométrie H/V/E/R/M sur une
+  carte de calibrage puis les autres, D fusion et verdict v2), décisions D9-D12 : trois angles
+  un seul score, oracle juge jamais entrée, réglage v2 figé sur TROIS cartes de calibrage et
+  jugé sur les autres, précision resserrée aux zones fortes, témoin GÉOGRAPHIQUE (pas
+  alphabétique), `ReglageV1` conservé comme preuve.
+- Chantier voisin lancé sur demande utilisateur : correctif des positions de kills de « Live
+  Fire - Ranked » (worktree `LevelUp-wt-livefire-killpos`, branche `wt/livefire-killpos`), agent
+  dédié, aucune écriture en base de prod, recuisson à jouer par l'utilisateur.
+- Résultats observés : aucun encore pour la v2.
+- Conclusion / prochaine étape : agents 2bis.A, 2bis.B, 2bis.C lancés en parallèle ; 2bis.D
+  après leurs retours ; verdict v2 rapporté à l'utilisateur avant toute production. Aucun commit.
+
+## [2026-09-20] Positions de force - etape 2bis.A : oracle v2 (audit + densification navigateur) - Complete
+
+- Decision technique principale : densifier l oracle v1 par navigateur reel (MCP
+  chrome-devtools) plutot que WebFetch (refuse sur Reddit/YouTube/liquipedia/fandom/x.com en
+  v1). Decouverte de methode : suffixer un fil Reddit par .json rend l API publique en
+  ANGLAIS brut, non traduit par l UI (contourne la traduction FR automatique du navigateur) -
+  bien plus fiable et econome en tokens que take_snapshot sur la page rendue ; utilise pour
+  la quasi-totalite de la collecte (~35 fils lus). YouTube : descriptions/chapitres lisibles
+  via ytInitialData, mais sous-titres confirmes INACCESSIBLES sur pieces (timedtext repond
+  HTTP 200, corps vide) - precise le constat v1 plutot que de le supposer. Liquipedia et
+  halo.fandom.com confirmes bloques meme en navigateur reel (defi Cloudflare / interstitiel
+  qui ne se resout pas apres 8 s d attente). x.com : mur de connexion, pas un blocage anti-bot.
+- Resultats observes : ORACLE_PRO_V2_2026-09-20.md ecrit (methode, audit des 11 rattachements
+  lexicaux de v1 §5.2, reaudit des 4 positions « arme seule », densification carte par carte,
+  table finale, contre-exemples, section hauteur/LOS pour 2bis.C, « ce qu on ratait », limites).
+  28 positions forte (16 en v1 sur pieces - le total 17 affiche en tete de v1 n avait pas ete
+  mis a jour apres la retrogradation pilote de Forbidden Center Bridge en §7, ecart deja
+  present dans v1 -> +12, dont 2 par correction d audit : Bazaar Cafe/Den avaient deja 2
+  sources independantes en v1 mais etaient comptees faible) sur 8 cartes avec au moins 1 forte.
+  Gate du plan (>= 3 fortes sur >= 6 cartes) NON ATTEINT au sens strict : 4 cartes (Recharge 9,
+  Live Fire 3, Streets 3, Bazaar 5). Clause alternative du gate servie pour les 8 autres avec
+  chiffrage : 3 cartes sans AUCUNE zone officielle au depot (Fortress, Origin, Banished
+  Narrows), 3 sous le seuil malgre recherche dediee (Aquarius 2, Forbidden 2, Catalyst 0),
+  3 ou la connaissance pro existe mais ne rattache a aucun nom du catalogue (Lattice - sortie
+  le 5 aout 2026, deja un vocabulaire communautaire vivant et une partie pro 8s documentee,
+  mais 0 zone nommee - Argyle, Interference). 1 contradiction non tranchee signalee au pilote
+  plutot que devinee (Empyrean : v1 dit l epee remplacee par le Heatwave, des fils 2024-2025
+  emploient « sword » activement).
+- Conclusion / prochaine etape : item 2bis.A statue [x] dans le plan, ligne ajoutee au journal
+  d avancement. Le pilote lit et decide : accepter le resultat (4/6) et poursuivre 2bis.B/C/D,
+  ou prescrire une passe Reddit supplementaire ciblee (Aquarius et Forbidden sont les plus
+  proches du seuil de 3 fortes). Aucun fichier de code touche, aucun commit (regle du brief :
+  ne rien committer).
+
+## [2026-09-20] Positions de force — 2bis.B : empirique v2 (rang du tueur, signaux angulaires, ReglageV2 figé) — Complété (branche `wt/power-positions`)
+
+- Reprise d'un agent coupé en plein travail : `angles.go`, `ponderation.go`, `morphologie.go`,
+  l'hystérésis de `selection.go` et `rangs.go` existaient, mais l'outil ne compilait pas
+  (`opts.reglage`, `Cible.Rangs`, `accumuleKills` sans le `killer_xuid`) et rien n'était testé.
+  Relu d'un oeil critique : un défaut corrigé — `construis` prétendait ignorer les cellules
+  ajoutées par la fermeture mais les cherchait dans `parAdresse`, qui contient TOUTES les
+  cellules scorées, donc une cellule de fermeture scorable sous le seuil entrait dans le score
+  moyen (test `TestFermetureNEntrePasDansLesMoyennes`). Le reste est conservé tel quel.
+- Décision technique principale : le rang par match et par joueur n'existe QUE dans
+  `match_csrs_latest` (base partagée, clé `(match_id, xuid)`) ; couverture mesurée 28 % des
+  kills (0 % sur illusion, bazaar, forbidden, fortress, empyrean ; 97 % sur lattice) ; rampe
+  0,5 → 1,5 entre p10 et p90 des 28 937 rangs du TITRE (pas des cartes demandées — sinon le
+  poids d'un kill dépend de `--cartes`), inconnu = 1,0. Signaux angulaires : sommes
+  vectorielles additives, dispersion corrigée du biais 1/n ; sur les trois cartes de
+  calibrage couverture et abri sont ANTICORRÉLÉS (−0,54 / −0,70 / −0,73) — chacun seul mesure
+  l'ouverture ; à poids égaux, il ne reste que l'asymétrie (« voit beaucoup, vu de peu »),
+  indépendante de l'avantage (−0,21 à −0,32). Poids v2 par une règle mécanique « part
+  voulue / étalement mesuré » : 0,26 + 0,26 + 0,21 avantage pondéré + 0,16 hauteur + 0,09
+  intensité + 0,02 portée. Sélection : hystérésis amorce p95 / croissance p90 (le p80 donnait
+  des salles de 150 m²), fermeture r = 1, 8-connexité après fermeture, 10 cellules, plancher
+  0,57. **Figé le 2026-09-20 14:06** sans regarder l'oracle ; assiette de la rampe passée au
+  titre à 14:20 (effet : une 4e position de 12 cellules sur recharge, écrit au document).
+- Résultats observés : 12 cartes, 35 positions (live fire 5, recharge 4, streets 4, aquarius
+  4, illusion 3, bazaar 3, forbidden 2, origin 4, lattice 3, solitude 3, fortress 0,
+  empyrean 0), 5,0 à 58,6 m². V1 rejouée à l'identique (4/4/5 sur les cartes de calibrage).
+  Live Fire mesurée sans « Live Fire - Ranked » (3 854 kills exclus, positions fausses en
+  base). Surprise : en v1 la portée (axe saturé, étalement 0,92) pesait autant que
+  l'avantage (0,17) malgré des poids de 0,10 contre 0,50.
+- Gate : gofmt vide ; `go build ./internal/... ./cmd/mappower-build/` OK (`./...` rouge par
+  `cmd/mapgeo-build` de l'agent 2bis.C, en vol) ; `go vet` avec et sans `-tags research` ;
+  `go test ./internal/analysis/powerpos/` vert (40 tests) ; `golangci-lint` 0 issue ;
+  archlint vert. Documents : `MESURE_EMPIRIQUE_V2_2026-09-20.md`, `mesures_v2_2026-09-20/`.
+  Plan : item 2bis.B `[x]`, découvertes 10-13, journal.
+- Conclusion / prochaine étape : 2bis.D jugera la v2 sur les neuf cartes de validation avec
+  l'oracle v2 et la géométrie de 2bis.C. Aucun commit (demande utilisateur requise).
+
+## [2026-09-20] Positions de force — 2bis.D, première moitié : harnais de verdict v2 et verdict de l'empirique v2 seul — Complété pour cette moitié, VERDICT NO-GO (branche `wt/power-positions`)
+
+- Décision technique principale : un seul harnais de jugement, paramétré par le fichier de
+  positions (`MAPPOWER_POSITIONS`, document par `MAPPOWER_VERDICT_SORTIE`), pour juger à
+  règles égales l'empirique v2, la géométrie et la fusion. Règles écrites avant la mesure
+  (plan D11, oracle v2 §10) : retrouvée = 30 % de la zone ou barycentre dedans ; rappel sur
+  les fortes résolues ; PRÉCISION = touche une forte (même relation), les faibles ne comptent
+  plus ; rappel à part hauteur / lignes de vue contre arme / objectif ; témoin GÉOGRAPHIQUE
+  (zone au centroïde le plus éloigné) ; calibrage Recharge / Aquarius / Streets rapporté non
+  compté ; validation Live Fire (mesurée sans sa variante classée) / Bazaar / Forbidden /
+  Empyrean / Solitude ; 0,50 sur 2 fortes = indéterminé. Le commun du harnais v1 est EXTRAIT,
+  pas dupliqué (lecteur d'oracle à marqueurs, 6 ou 7 colonnes ; remplaçant en fonction ; rappel
+  par prédicat ; lecteur CSV 13 ou 25 colonnes ; index des zones dans le fichier de géométrie).
+  Diagnostic : score et sélection v2 REJOUÉS sur les CSV avec le réglage sérialisé du fichier,
+  fidélité prouvée (mêmes positions, barycentres à 0,75 m) avant toute autopsie.
+- Résultats observés : EMPIRIQUE V2 SEUL = NO-GO, 0 carte de validation sur 4 exigées.
+  bazaar 0,20 / 0,33 ; live fire 0,33 / 0,40 ; forbidden 0,50 / 0,50 et solitude 0,50 / 0,33
+  (indéterminées) ; empyrean 0 position (128 cellules scorables). Calibrage : aquarius 1,00 /
+  0,25 (une seule position de 14 m² dans Hydro sous Top Mid — ambiguïté d'étage), recharge
+  0,44 / 1,00, streets 0,00 / 0,00. Zéro piège pur sur validation (1 sur aquarius : Blue
+  Courtyard). Témoin géographique : rappel moyen 0,37 → 0,06, précision 0,35 → 0,03 — une
+  exception, Live Fire (0,50 > 0,33 : Hallway → Nest, zone que la v2 colore ; Landing Pad à
+  82-93 m, zone décorative). Rappel HV 3/9 contre AO 1/5 sur validation (7/17 et 3/11 sur
+  toutes cartes). v1 → v2 à règles égales : 0 → 0 carte qui tient ; rappel monte sur aquarius,
+  forbidden, solitude, recharge, stagne sur bazaar et live fire, recule sur streets (0,33 → 0) ;
+  pièges purs validation 1 → 0. Couloirs : streets__arene__2 (88 cellules, 58,6 m²) = SALLE
+  (Old Town couverte à 60 %) ; recharge__arene__4 (85) = à cheval Whirlpool Dam 49 % /
+  Elevator 36 %. 18 fortes manquées : 9 « score sous la croissance » (Cafe, Palm Tree, Bridge,
+  Hallway, Platform, Maintenance Bay, Platform/Recharge, Subway Balcony, West Tower), 5
+  « retenue ailleurs » (Market, Den, Hydro, Main Street, Cafe/Streets : une composante touche
+  la zone sans la couvrir), 2 « sans amorce » (Control Room à 0,001 du p95, Orange Pipes),
+  2 « non scorable » (East Tower, Overgrown Rat Hole).
+- Gate : gofmt vide ; go vet avec et sans tag ; go test -run VerdictV2 PASS ; golangci-lint
+  0 issue ; tous fichiers ≤ 500 L (le v1 ramené de 506 à 462 par le déplacement de l'index) ;
+  verdict v1 rejoué octet pour octet identique (découverte 14 : il ne l'était plus depuis 2bis.B).
+  Plan : item 2bis.D annoté « première moitié », journal, découvertes 14-16.
+- Conclusion / prochaine étape : la v2 seule ne retrouve pas ce que les pros tiennent, et le
+  signal manquant est nommé zone par zone. Reste la SECONDE moitié : juger `positions_geo.json`
+  puis la fusion avec la commande de la section 9 du document (harnais prêt). Aucun réglage
+  touché, aucun commit (règle du brief).
+
+## [2026-09-20] Positions de force — 2bis.C : géométrie (inventaire, paquet `geo`, `mapgeo-build`, réglage figé) — Complété (branche `wt/power-positions`)
+
+- Statut : Complété. Reprise d'un agent coupé en vol : `cmd/mapgeo-build/{cibles,redirections,
+  triangles}.go` et `powerpos/geo/{cadre,doc}.go` compilaient (sauf `main`), rien n'était testé ;
+  continués, pas refaits.
+- Décision technique principale : **le sol praticable est DÉRIVÉ du maillage de rendu**, faute
+  de toute autre source — inventaire sur pièces : aucune carte native n'a de `navmesh.blob`
+  (UGC Forge seulement ; dépôt `.ai/re_dump/navmesh` absent du poste), `map_structure` = boîtes
+  de 2 modules, bloc de collision du sbsp non décodé. Chaîne : triangles `rtgo` (chaîne du
+  fond, filtre décor NON appliqué, bornage à la boîte par triangle entier) → voxels 0,25 m
+  (test exact triangle / boîte) → candidats de sol (surfaces montantes au centre de cellule,
+  dédoublonnage 0,25 m, « sous dalle » lu sur les surfaces exactes, hauteur libre 1,5 m dans
+  la sous-colonne du centre, coquille `sddt`) → graphe de déplacement ORIENTÉ (voisinage
+  2 cellules, marche 0,75 / saut 1,6 avec surcoût / chute 5 m, rayon de passage poitrine puis
+  saut, verticale libre) → atteignabilité depuis ancres + socles, élagage des nœuds sans retour
+  vers un objectif → H (6 m), V et E (rayons yeux→yeux, Amanatides-Woo, cibles toutes les
+  2 cellules, 36 secteurs), R (Dijkstra entrant vers arme forte / objectif, portée 20 m), M
+  (Dijkstra sortant vers le premier nœud caché de la majorité des guetteurs, 12 m) →
+  normalisation p5..p95 par carte → score → maxima locaux (3 m) + croissance bornée (4 m).
+- Résultats observés : six cartes en 62 s (Recharge 3,4 s / 974 Mo ; Forbidden 23 s / 26 M
+  triangles) ; 8,8 M rayons = 0,1 s, la voxelisation fait 60-80 % du coût. Recharge : 2 901
+  nœuds, 25/25 ancres, H −1,5..+1,6 m, V p50 0,10, E p50 0,50 ; V et E corrélés 0,82 / 0,85 /
+  0,89 sur Recharge / Aquarius / Streets, H la plus indépendante (|r| ≤ 0,33), M anti-corrélé
+  à V/E (−0,5..−0,7). Réglage figé SANS oracle : 0,30·H + 0,20·V − 0,15·E + 0,20·R + 0,15·M,
+  p90, ≥ 12 nœuds, ≤ 8 → 7/6/5/7/8/8 positions (5–36 m²), toutes en hauteur sur Recharge (la
+  voie empirique retenait les bases). Neuf essais mesurés et écartés sur Recharge (colonne
+  entière, marche seule → 10 composantes, marche diagonale, sous-dalle voxel qui tue les
+  escaliers, passage 1,2 m seul, hauteur 1,9 m, voisinage 1 cellule, composantes non bornées =
+  128 m², pas d'élagage → 74 % de nœuds hors jeu sur Streets). Preuve de la limite
+  structurelle : artefacts de rejeu de Recharge, joueurs à 0,5-1,5 m dans l'escalier de la
+  fosse que des corniches de rendu rejetaient — rendu ≠ collision.
+- Gate : gofmt vide ; vet avec et sans tag ; 14 tests `geo` verts ; test `gamefiles` ciblé
+  PASS (4 s, cible Makefile ajoutée, `testutil.RepoRoot`) ; golangci-lint 0 issue ×2 ;
+  archlint vert ; `go build ./...` vert (découverte 13 levée). Plan : item `[x]`, journal,
+  découvertes 17-21.
+- Conclusion / prochaine étape : `positions_geo.json` (clés du fichier empirique) est prêt
+  pour la seconde moitié de 2bis.D (verdict géométrie puis fusion, commande §9 de
+  `VERDICT_V2`). Aucun réglage ne sera retouché après ce verdict. Aucun commit (règle du brief).
+
+## [2026-09-20] Positions de force — 2bis.D seconde moitié : verdict géométrie seule, fusion cellule par cellule, verdict final — Complété (branche `wt/power-positions`)
+
+- Statut : Complété (item 2bis.D clos, les deux moitiés). Aucun commit (règle du brief).
+- Décision technique principale : la fusion est un réglage NEUF au-dessus des deux réglages
+  figés (`ReglageV2`, `ReglageGeoV1` intacts) — `powerpos/fusion` (pur) : cellule géométrique =
+  maximum de ses étages, normalisation p5..p95 par carte (`geo.Normalise` réutilisé), score
+  `a·geo + b·emp` avec absences EXPLICITES (emp absent, geo absent), sélection v2 réutilisée
+  telle quelle. Alignement des deux grilles vérifié sur pièces (centre = (col + 0,5) × 0,5 des
+  deux côtés, écart 0 sur 2 901 nœuds et toutes les cellules de Recharge) et gardé par le
+  lecteur (`fusion_lecture.go`, refus si un nœud n'est pas au centre de sa cellule). Mode
+  `--fusion` de `mappower-build` SANS base (identités relues dans les deux JSON, score v2
+  rejoué sur le CSV — rejeu prouvé fidèle au verdict v2). Lecteur CSV déplacé du test de
+  recherche vers `csv_lecture.go` (une seule copie). Le SEUL choix fait en regardant l'oracle :
+  le balayage de 112 candidats sur Recharge / Aquarius / Streets (critère écrit d'avance :
+  rappel puis précision puis pièges purs), gagnant figé `ReglageFusionV1` (0,6 / 0,4, absents
+  0,25 / 0, amorce p90, croissance p80, plancher 0,70 sous l'amorce de calibrage la plus basse)
+  avec test qui échoue si le figé n'est pas le gagnant. Harnais : lignée déduite du nom du
+  fichier, verdict STRICT (validation) + ÉLARGI (validation + calibrage, nommé comme tel),
+  quatre lignées côte à côte, planches `*_verdict.png` (positions vert, fortes orange),
+  diagnostic géométrique par zone manquée rejoué sur le CSV par nœud.
+- Résultats observés : **GÉOMÉTRIE SEULE : NO-GO** (strict 1/4 : Bazaar 1,00 / 0,88 ; Live
+  Fire 0,67 / 0,71 avec 1 piège pur Canal ; Forbidden 0,50 / 0,12 ; élargi 1/6 ; témoin 0,68 →
+  0,07 sauf Recharge où il dépasse le réel — 5 fortes sur 9 remplacées par Hydro, 488 m² ; HV
+  10/13, AO 4/11 ; causes : 5 « retenue ailleurs », 3 sous le seuil, 1 sans maximum local, 1
+  trop petite / hors plafond, 0 sol absent). **FUSION : NO-GO** (strict 1/4, élargi 1/6) :
+  Bazaar 1,00 / 1,00 mais par UNE position de 884 cellules / 500 m² (Market 77 %, Tower 99 %,
+  Den 100 %) ; Live Fire 1,00 / 0,25 + 1 piège pur (Canal sous Nest) ; Forbidden 0,50 / 0,25 ;
+  toutes les fortes HV retrouvées, 4 AO manquées (Overgrown Rat Hole, Hydro, Orange Pipes,
+  Pit) ; 17 positions sur 32 > 60 cellules, 8 salles entières. Le balayage a acheté du rappel
+  avec de la surface (critère sans borne de taille, croissance p80 sur un score lisse) — visible
+  sur le calibrage aussi (aires max 90-194 m²), consigné découverte 22, réglage non retouché
+  (D12). Empyrean / Solitude : Forge, module = canevas `fo11_blank`, non cuisables →
+  « empirique seul ». Quatre lignées : v1 0/0, v2 0/0, géo 1/1, fusion 1/1.
+- Gate : `go build ./...` ; `go vet` ± `-tags research` ; `go test ./internal/analysis/powerpos/...`
+  (3 paquets) ; `go test -tags research -run 'VerdictV2|Fusion'` PASS ; `gofmt -l` vide ;
+  `golangci-lint` 0 issue ± tag ; archlint vert ; fichiers ≤ 472 L. Plan : item `[x]`,
+  journal, découvertes 22-27. Documents : `FUSION_2026-09-20.md` (écrit), `VERDICT_GEO` /
+  `VERDICT_FUSION` / `VERDICT_V2` (générés, ce dernier régénéré à chiffres identiques).
+- Conclusion / prochaine étape : aucune des quatre lignées ne passe le critère du plan ; la
+  géométrie retrouve la hauteur et les lignes de vue (13/13 en fusion), pas les lieux d'arme /
+  d'objectif, et la précision (0,12-0,38) est le mur. Décision au pilote : arrêt, catalogue
+  depuis l'oracle, ou un second balayage avec borne de taille dans la sélection ET dans le
+  critère (réglage neuf, nouveau document). Aucun commit.
+
+## [2026-09-20] Positions de force — bilan du pilote après la recherche hybride v2 : NO-GO des quatre lignées, la géométrie retrouve la hauteur, la sélection est le mur — En cours (décision utilisateur demandée)
+
+- Résultats observés, à règles égales (oracle v2, précision sur les zones fortes, témoin
+  géographique) : empirique v1 0 carte, empirique v2 0 carte, géométrie seule 1 carte (Bazaar),
+  fusion 1 carte (Bazaar, mais par des pâtés de 500 m² : artefact de la croissance p80 sans
+  borne de taille). Géométrie seule : rappel 10/13 sur les positions « hauteur / lignes de vue »,
+  4/11 sur « arme / objectif » ; empreintes serrées (5-31 m²) ; précision 0,12-0,88.
+  Empirique : nos matchs ne montrent pas les positions pro (joueurs, corpus, matchs sociaux).
+- Lecture du pilote : (1) la voie empirique seule est CLOSE — deux réglages figés, deux verdicts,
+  même diagnostic ; (2) la géométrie mesure bien ce qu'elle prétend (les positions retenues sont
+  toutes des hauteurs, les planches le montrent) mais rate par nature les positions « arme /
+  objectif », qui sont un savoir de joueur ; (3) la précision est structurellement plafonnée par
+  la finesse de l'oracle (2 fortes sur Forbidden : 4 positions calculées ne peuvent pas dépasser
+  0,5) — le critère 0,6 n'est pas atteignable sur ces cartes quelle que soit la méthode ;
+  (4) la fusion a besoin d'une croissance bornée (rayon, aire max) pour ne pas colorier des
+  salles — c'est un réglage neuf, pas une retouche.
+- Décision technique principale : aucune lignée ne va en production telle quelle. Proposition au
+  user (questionnaire) : géométrie comme MOTEUR de candidats (toutes cartes natives, empreintes
+  serrées) + VALIDATION HUMAINE par carte (l'utilisateur joue ; 6-8 candidats par carte se
+  valident en minutes) + oracle pro comme témoin là où il existe ; le catalogue publie les
+  positions validées avec provenance (`geo+oracle`, `geo+humain`, `oracle`) ; l'empirique
+  reste un chiffre d'appoint. Alternatives : second tour de fusion bornée ; catalogue depuis
+  l'oracle seul ; arrêt.
+- Chantier voisin Live Fire : correctif terminé et prouvé sur copie (écart 9,87 → 0,40 m),
+  commit en attente du user, recuisson prod à jouer par lui serveur arrêté.
+- Conclusion / prochaine étape : réponse utilisateur au questionnaire ; puis soit étape 3
+  (production) sur la lignée retenue avec validation humaine, soit un réglage de fusion neuf.
+
+## [2026-09-20] Positions de force — ARRÊT du chantier (décision utilisateur) ; correctif Live Fire commité — Complété (recherche conservée, rien livré dans l'application)
+
+- Décision utilisateur (questionnaire) : « Arrêter ici » — garder la recherche, ne rien livrer.
+  Et « Oui, commite » pour le correctif Live Fire.
+- Plan `.ai/PLAN_POSITIONS_DE_FORCE_2026-09-20.md` : en-tête CLOS, étapes 3-7 statuées `[!]`
+  (non ouvertes, arrêt utilisateur), tout item statué.
+- Ce qui reste sur `wt/power-positions` (NON commité, en attente de l'accord utilisateur pour
+  un commit de conservation) : plan, `.ai/V7.5/positions_de_force/` (oracle v1/v2, mesures v1/v2,
+  géométrie, fusion, quatre verdicts, planches), `internal/analysis/powerpos{,/geo,/fusion}`,
+  `cmd/mappower-build`, `cmd/mapgeo-build`, harnais `research`. Gates verts à la dernière passe.
+- Correctif Live Fire : commit sur `wt/livefire-killpos` (drapeau `--carte` de
+  `backfill-killsource`, preuve sur copie 9,87 → 0,40 m). Recuisson prod à jouer par
+  l'utilisateur, serveur arrêté : `levelup backfill-killsource --films-only --force --carte "live fire"`
+  (`--dry-run` d'abord). Non fusionné, non poussé.
+- Découverte transverse à garder (au backlog) : le module d'une carte Forge est celui de son
+  CANEVAS (`fo11_blank` = Solitude ET Empyrean) ; les callouts sont des emprises 2D et les
+  étages se superposent (le nommage par zone dominante est ambigu sur Recharge / Streets /
+  Aquarius tant que Z n'entre pas) ; `mode_category` du registre est périmée.
+- Conclusion : chantier clos. Reprise possible par « géométrie + validation humaine ».

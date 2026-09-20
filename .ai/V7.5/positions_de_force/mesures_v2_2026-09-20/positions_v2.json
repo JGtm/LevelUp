@@ -1,0 +1,1890 @@
+{
+  "schema_version": 1,
+  "title_slug": "halo_infinite",
+  "genere_le": "2026-09-20T12:11:09Z",
+  "reglage": {
+    "RayonLissageM": 2,
+    "PlancherMatchs": 3,
+    "MinEngagementsDisque": 40,
+    "ForcePrior": 40,
+    "DeniveleReferenceM": 1.5,
+    "PoidsAvantage": 0.21,
+    "PoidsIntensite": 0.09,
+    "PoidsHauteur": 0.16,
+    "PoidsPortee": 0.02,
+    "PoidsCouverture": 0.26,
+    "PoidsAbri": 0.26,
+    "MinDirections": 20,
+    "UtiliseRangPondere": true,
+    "QuantileSeuil": 0.9,
+    "SeuilScoreMin": 0.57,
+    "TailleMiniComposante": 10,
+    "MaxComposantes": 8,
+    "QuantileAmorce": 0.95,
+    "QuantileCroissance": 0.9,
+    "FermetureRayonCellules": 1,
+    "Connexite8": true
+  },
+  "cartes": [
+    {
+      "carte": "live fire",
+      "axe": "arene",
+      "module": "sgh_interlock",
+      "map_id_dominant": "309253f8-7a75-48ff-83e1-e7fb3db2ac47",
+      "map_ids": [
+        "309253f8-7a75-48ff-83e1-e7fb3db2ac47",
+        "6c01f693-c968-4a71-b157-efc35ffcf71f",
+        "b6aca0c7-8ba7-4066-bf91-693571374c3c"
+      ],
+      "matchs": 52,
+      "cellules_scorables": 1059,
+      "ecart_variantes_m": 0,
+      "positions": [
+        {
+          "id": "live_fire__arene__1",
+          "rang": 1,
+          "polygone": [
+            [
+              3.75,
+              16.25
+            ],
+            [
+              6.75,
+              16.25
+            ],
+            [
+              7.75,
+              17.25
+            ],
+            [
+              7.75,
+              18.75
+            ],
+            [
+              7.25,
+              19.25
+            ],
+            [
+              5.75,
+              19.25
+            ],
+            [
+              3.75,
+              17.25
+            ]
+          ],
+          "score_moyen": 0.6449104498337742,
+          "score_max": 0.6782160395386063,
+          "nb_cellules": 17,
+          "nb_cellules_mesurees": 11,
+          "aire_m2": 9.375,
+          "centre_x": 6.25,
+          "centre_y": 17.795454545454547,
+          "kills": 20,
+          "morts": 19,
+          "matchs": 5
+        },
+        {
+          "id": "live_fire__arene__2",
+          "rang": 2,
+          "polygone": [
+            [
+              10.25,
+              21.25
+            ],
+            [
+              12.75,
+              21.25
+            ],
+            [
+              13.75,
+              22.25
+            ],
+            [
+              13.75,
+              23.25
+            ],
+            [
+              11.75,
+              24.25
+            ],
+            [
+              10.75,
+              24.25
+            ],
+            [
+              10.25,
+              23.75
+            ]
+          ],
+          "score_moyen": 0.6386768148018275,
+          "score_max": 0.6775240348630657,
+          "nb_cellules": 19,
+          "nb_cellules_mesurees": 10,
+          "aire_m2": 8.875,
+          "centre_x": 11.75,
+          "centre_y": 22.5,
+          "kills": 17,
+          "morts": 22,
+          "matchs": 5
+        },
+        {
+          "id": "live_fire__arene__3",
+          "rang": 3,
+          "polygone": [
+            [
+              -5.25,
+              36.25
+            ],
+            [
+              -3.75,
+              34.75
+            ],
+            [
+              -2.75,
+              34.75
+            ],
+            [
+              -1.25,
+              36.25
+            ],
+            [
+              -1.25,
+              37.75
+            ],
+            [
+              -1.75,
+              39.25
+            ],
+            [
+              -2.75,
+              39.25
+            ],
+            [
+              -4.75,
+              38.75
+            ],
+            [
+              -5.25,
+              37.25
+            ]
+          ],
+          "score_moyen": 0.6118075435637135,
+          "score_max": 0.6349883024303438,
+          "nb_cellules": 31,
+          "nb_cellules_mesurees": 20,
+          "aire_m2": 14.25,
+          "centre_x": -3.3,
+          "centre_y": 36.975,
+          "kills": 56,
+          "morts": 41,
+          "matchs": 8
+        },
+        {
+          "id": "live_fire__arene__4",
+          "rang": 4,
+          "polygone": [
+            [
+              -1.25,
+              27.75
+            ],
+            [
+              -0.25,
+              27.75
+            ],
+            [
+              1.75,
+              28.75
+            ],
+            [
+              1.75,
+              30.25
+            ],
+            [
+              -0.25,
+              30.25
+            ],
+            [
+              -1.25,
+              29.25
+            ]
+          ],
+          "score_moyen": 0.6029326863895215,
+          "score_max": 0.633747731921911,
+          "nb_cellules": 10,
+          "nb_cellules_mesurees": 10,
+          "aire_m2": 6,
+          "centre_x": 0.25,
+          "centre_y": 29.2,
+          "kills": 32,
+          "morts": 24,
+          "matchs": 8
+        },
+        {
+          "id": "live_fire__arene__5",
+          "rang": 5,
+          "polygone": [
+            [
+              -7.25,
+              30.25
+            ],
+            [
+              -4.25,
+              30.25
+            ],
+            [
+              -3.75,
+              30.75
+            ],
+            [
+              -3.75,
+              33.25
+            ],
+            [
+              -4.75,
+              33.25
+            ],
+            [
+              -6.25,
+              32.25
+            ],
+            [
+              -7.25,
+              31.25
+            ]
+          ],
+          "score_moyen": 0.5979410992738587,
+          "score_max": 0.6229645726563837,
+          "nb_cellules": 16,
+          "nb_cellules_mesurees": 13,
+          "aire_m2": 8.125,
+          "centre_x": -5.403846153846154,
+          "centre_y": 31.25,
+          "kills": 41,
+          "morts": 31,
+          "matchs": 7
+        }
+      ]
+    },
+    {
+      "carte": "recharge",
+      "axe": "arene",
+      "module": "sgh_blueprint",
+      "map_id_dominant": "336b5174-3579-4fd8-b2f0-922e4a5f7628",
+      "map_ids": [
+        "2b6d2baf-7645-4e16-8a80-c7006f595812",
+        "336b5174-3579-4fd8-b2f0-922e4a5f7628",
+        "8420410b-044d-44d7-80b6-98a766c8c39f"
+      ],
+      "matchs": 78,
+      "cellules_scorables": 1915,
+      "ecart_variantes_m": 2.5533177756331824,
+      "positions": [
+        {
+          "id": "recharge__arene__1",
+          "rang": 1,
+          "polygone": [
+            [
+              25.25,
+              -10.25
+            ],
+            [
+              25.75,
+              -11.25
+            ],
+            [
+              28.75,
+              -11.25
+            ],
+            [
+              28.75,
+              -7.75
+            ],
+            [
+              27.75,
+              -7.25
+            ],
+            [
+              25.75,
+              -7.25
+            ],
+            [
+              25.25,
+              -9.25
+            ]
+          ],
+          "score_moyen": 0.5994169935123367,
+          "score_max": 0.6199810440552607,
+          "nb_cellules": 34,
+          "nb_cellules_mesurees": 27,
+          "aire_m2": 13,
+          "centre_x": 27.175925925925927,
+          "centre_y": -9.398148148148149,
+          "kills": 106,
+          "morts": 108,
+          "matchs": 16
+        },
+        {
+          "id": "recharge__arene__2",
+          "rang": 2,
+          "polygone": [
+            [
+              16.75,
+              -9.75
+            ],
+            [
+              17.25,
+              -11.25
+            ],
+            [
+              18.25,
+              -12.25
+            ],
+            [
+              19.75,
+              -12.25
+            ],
+            [
+              21.75,
+              -11.75
+            ],
+            [
+              22.75,
+              -11.25
+            ],
+            [
+              23.25,
+              -9.75
+            ],
+            [
+              23.25,
+              -8.75
+            ],
+            [
+              22.25,
+              -7.75
+            ],
+            [
+              20.75,
+              -7.25
+            ],
+            [
+              17.75,
+              -7.25
+            ],
+            [
+              16.75,
+              -8.75
+            ]
+          ],
+          "score_moyen": 0.5957732115063299,
+          "score_max": 0.6391749958819447,
+          "nb_cellules": 69,
+          "nb_cellules_mesurees": 58,
+          "aire_m2": 26.875,
+          "centre_x": 20.025862068965516,
+          "centre_y": -9.85344827586207,
+          "kills": 313,
+          "morts": 264,
+          "matchs": 26
+        },
+        {
+          "id": "recharge__arene__3",
+          "rang": 3,
+          "polygone": [
+            [
+              16.75,
+              2.75
+            ],
+            [
+              18.25,
+              2.75
+            ],
+            [
+              19.25,
+              4.75
+            ],
+            [
+              19.25,
+              5.75
+            ],
+            [
+              18.25,
+              6.75
+            ],
+            [
+              17.25,
+              6.75
+            ],
+            [
+              16.75,
+              3.75
+            ]
+          ],
+          "score_moyen": 0.58963472197475,
+          "score_max": 0.610000956208869,
+          "nb_cellules": 12,
+          "nb_cellules_mesurees": 9,
+          "aire_m2": 7.75,
+          "centre_x": 17.916666666666668,
+          "centre_y": 4.805555555555555,
+          "kills": 21,
+          "morts": 21,
+          "matchs": 10
+        },
+        {
+          "id": "recharge__arene__4",
+          "rang": 4,
+          "polygone": [
+            [
+              -1.25,
+              -1.75
+            ],
+            [
+              -0.75,
+              -4.25
+            ],
+            [
+              0.25,
+              -4.25
+            ],
+            [
+              3.25,
+              -3.25
+            ],
+            [
+              4.25,
+              -2.75
+            ],
+            [
+              4.75,
+              -2.25
+            ],
+            [
+              5.75,
+              -0.25
+            ],
+            [
+              6.25,
+              1.25
+            ],
+            [
+              6.25,
+              2.75
+            ],
+            [
+              0.25,
+              2.75
+            ],
+            [
+              -0.75,
+              2.25
+            ],
+            [
+              -1.25,
+              -0.75
+            ]
+          ],
+          "score_moyen": 0.58556288086432,
+          "score_max": 0.6046896798587937,
+          "nb_cellules": 85,
+          "nb_cellules_mesurees": 56,
+          "aire_m2": 41.625,
+          "centre_x": 2.1607142857142856,
+          "centre_y": -0.4642857142857143,
+          "kills": 182,
+          "morts": 178,
+          "matchs": 16
+        }
+      ]
+    },
+    {
+      "carte": "streets",
+      "axe": "arene",
+      "module": "sgh_streets",
+      "map_id_dominant": "f0a1760f-0d4a-4bcc-ac7a-e8f9aee331dc",
+      "map_ids": [
+        "9c7b0b0f-e933-4c2d-9d4a-3e4500d0de99",
+        "e23ea388-9bcb-4180-a0dc-fbe987751b9e",
+        "f0a1760f-0d4a-4bcc-ac7a-e8f9aee331dc"
+      ],
+      "matchs": 75,
+      "cellules_scorables": 1842,
+      "ecart_variantes_m": 0.17426715070263105,
+      "positions": [
+        {
+          "id": "streets__arene__1",
+          "rang": 1,
+          "polygone": [
+            [
+              -0.25,
+              6.25
+            ],
+            [
+              0.25,
+              5.25
+            ],
+            [
+              1.25,
+              5.25
+            ],
+            [
+              1.75,
+              5.75
+            ],
+            [
+              2.25,
+              7.25
+            ],
+            [
+              2.25,
+              8.75
+            ],
+            [
+              0.75,
+              10.25
+            ],
+            [
+              -0.25,
+              10.25
+            ]
+          ],
+          "score_moyen": 0.5872539472832119,
+          "score_max": 0.5997996551354162,
+          "nb_cellules": 22,
+          "nb_cellules_mesurees": 18,
+          "aire_m2": 10.375,
+          "centre_x": 0.8055555555555556,
+          "centre_y": 7.611111111111111,
+          "kills": 63,
+          "morts": 52,
+          "matchs": 12
+        },
+        {
+          "id": "streets__arene__2",
+          "rang": 2,
+          "polygone": [
+            [
+              5.25,
+              -1.75
+            ],
+            [
+              8.25,
+              -4.75
+            ],
+            [
+              12.25,
+              -6.75
+            ],
+            [
+              13.25,
+              -6.75
+            ],
+            [
+              13.75,
+              -6.25
+            ],
+            [
+              13.75,
+              -3.25
+            ],
+            [
+              13.25,
+              1.75
+            ],
+            [
+              12.25,
+              3.25
+            ],
+            [
+              11.25,
+              3.25
+            ],
+            [
+              5.25,
+              0.25
+            ]
+          ],
+          "score_moyen": 0.5861811470836842,
+          "score_max": 0.6148692731321685,
+          "nb_cellules": 88,
+          "nb_cellules_mesurees": 72,
+          "aire_m2": 58.625,
+          "centre_x": 10.666666666666666,
+          "centre_y": -2.0694444444444446,
+          "kills": 275,
+          "morts": 236,
+          "matchs": 17
+        },
+        {
+          "id": "streets__arene__3",
+          "rang": 3,
+          "polygone": [
+            [
+              6.25,
+              10.25
+            ],
+            [
+              8.75,
+              5.75
+            ],
+            [
+              9.75,
+              5.75
+            ],
+            [
+              12.25,
+              6.75
+            ],
+            [
+              12.25,
+              7.75
+            ],
+            [
+              9.25,
+              13.25
+            ],
+            [
+              7.75,
+              13.25
+            ],
+            [
+              6.25,
+              11.25
+            ]
+          ],
+          "score_moyen": 0.5859175195222008,
+          "score_max": 0.6092890848536346,
+          "nb_cellules": 49,
+          "nb_cellules_mesurees": 45,
+          "aire_m2": 28.375,
+          "centre_x": 9.083333333333334,
+          "centre_y": 9.161111111111111,
+          "kills": 200,
+          "morts": 194,
+          "matchs": 17
+        },
+        {
+          "id": "streets__arene__4",
+          "rang": 4,
+          "polygone": [
+            [
+              -10.25,
+              6.75
+            ],
+            [
+              -9.25,
+              6.75
+            ],
+            [
+              -8.25,
+              7.25
+            ],
+            [
+              -7.75,
+              7.75
+            ],
+            [
+              -7.75,
+              8.75
+            ],
+            [
+              -8.25,
+              9.25
+            ],
+            [
+              -10.25,
+              9.25
+            ]
+          ],
+          "score_moyen": 0.5826860057883683,
+          "score_max": 0.5968865965511211,
+          "nb_cellules": 11,
+          "nb_cellules_mesurees": 10,
+          "aire_m2": 5.5,
+          "centre_x": -9.15,
+          "centre_y": 8.2,
+          "kills": 33,
+          "morts": 18,
+          "matchs": 7
+        }
+      ]
+    },
+    {
+      "carte": "aquarius",
+      "axe": "arene",
+      "module": "ctf_aquarius",
+      "map_id_dominant": "33c0766c-ef15-48f8-b298-34aba5bff3b4",
+      "map_ids": [
+        "33c0766c-ef15-48f8-b298-34aba5bff3b4",
+        "667072ae-ba00-4414-adda-8203e8c49295",
+        "c395f3ac-4614-45f9-a83a-56f69e8ae962"
+      ],
+      "matchs": 57,
+      "cellules_scorables": 1456,
+      "ecart_variantes_m": 1.1017150569962262,
+      "positions": [
+        {
+          "id": "aquarius__arene__1",
+          "rang": 1,
+          "polygone": [
+            [
+              -1.75,
+              -10.25
+            ],
+            [
+              -1.25,
+              -11.25
+            ],
+            [
+              1.25,
+              -11.25
+            ],
+            [
+              1.75,
+              -10.75
+            ],
+            [
+              1.75,
+              -8.25
+            ],
+            [
+              0.25,
+              -6.75
+            ],
+            [
+              -1.75,
+              -6.75
+            ]
+          ],
+          "score_moyen": 0.6108340993160045,
+          "score_max": 0.6673560335325643,
+          "nb_cellules": 36,
+          "nb_cellules_mesurees": 31,
+          "aire_m2": 14.25,
+          "centre_x": -0.13709677419354838,
+          "centre_y": -9.153225806451612,
+          "kills": 91,
+          "morts": 98,
+          "matchs": 10
+        },
+        {
+          "id": "aquarius__arene__2",
+          "rang": 2,
+          "polygone": [
+            [
+              2.25,
+              -4.75
+            ],
+            [
+              3.75,
+              -4.75
+            ],
+            [
+              6.25,
+              -3.25
+            ],
+            [
+              6.25,
+              -2.25
+            ],
+            [
+              5.25,
+              -1.75
+            ],
+            [
+              4.25,
+              -1.75
+            ],
+            [
+              2.25,
+              -3.25
+            ]
+          ],
+          "score_moyen": 0.6096242081933942,
+          "score_max": 0.6265827818512167,
+          "nb_cellules": 11,
+          "nb_cellules_mesurees": 10,
+          "aire_m2": 8.375,
+          "centre_x": 3.95,
+          "centre_y": -3.35,
+          "kills": 25,
+          "morts": 15,
+          "matchs": 6
+        },
+        {
+          "id": "aquarius__arene__3",
+          "rang": 3,
+          "polygone": [
+            [
+              10.75,
+              -9.75
+            ],
+            [
+              11.25,
+              -10.75
+            ],
+            [
+              12.25,
+              -10.75
+            ],
+            [
+              14.25,
+              -8.75
+            ],
+            [
+              14.25,
+              -7.75
+            ],
+            [
+              13.25,
+              -6.75
+            ],
+            [
+              11.75,
+              -6.75
+            ],
+            [
+              10.75,
+              -8.25
+            ]
+          ],
+          "score_moyen": 0.6065914334384932,
+          "score_max": 0.6295184091556447,
+          "nb_cellules": 20,
+          "nb_cellules_mesurees": 15,
+          "aire_m2": 10.5,
+          "centre_x": 12.416666666666666,
+          "centre_y": -8.583333333333334,
+          "kills": 51,
+          "morts": 34,
+          "matchs": 11
+        },
+        {
+          "id": "aquarius__arene__4",
+          "rang": 4,
+          "polygone": [
+            [
+              -10.75,
+              -10.75
+            ],
+            [
+              -9.25,
+              -12.25
+            ],
+            [
+              -8.25,
+              -12.25
+            ],
+            [
+              -7.75,
+              -11.75
+            ],
+            [
+              -7.75,
+              -10.25
+            ],
+            [
+              -8.25,
+              -9.25
+            ],
+            [
+              -10.25,
+              -9.25
+            ],
+            [
+              -10.75,
+              -9.75
+            ]
+          ],
+          "score_moyen": 0.6005319634436227,
+          "score_max": 0.6138904552386268,
+          "nb_cellules": 14,
+          "nb_cellules_mesurees": 14,
+          "aire_m2": 7.375,
+          "centre_x": -9.107142857142858,
+          "centre_y": -10.535714285714286,
+          "kills": 55,
+          "morts": 46,
+          "matchs": 12
+        }
+      ]
+    },
+    {
+      "carte": "illusion",
+      "axe": "arene",
+      "module": "ctf_illusion",
+      "map_id_dominant": "9e821f5e-042f-407c-97f3-de165b1cdb26",
+      "map_ids": [
+        "9e821f5e-042f-407c-97f3-de165b1cdb26"
+      ],
+      "matchs": 55,
+      "cellules_scorables": 1181,
+      "ecart_variantes_m": 0,
+      "positions": [
+        {
+          "id": "illusion__arene__1",
+          "rang": 1,
+          "polygone": [
+            [
+              6.25,
+              -5.75
+            ],
+            [
+              6.75,
+              -7.25
+            ],
+            [
+              7.25,
+              -7.75
+            ],
+            [
+              8.75,
+              -7.75
+            ],
+            [
+              10.25,
+              -6.75
+            ],
+            [
+              10.75,
+              -6.25
+            ],
+            [
+              10.75,
+              -2.75
+            ],
+            [
+              10.25,
+              -2.25
+            ],
+            [
+              9.25,
+              -1.75
+            ],
+            [
+              8.25,
+              -1.75
+            ],
+            [
+              6.25,
+              -4.75
+            ]
+          ],
+          "score_moyen": 0.6533379418267306,
+          "score_max": 0.7715976055630087,
+          "nb_cellules": 40,
+          "nb_cellules_mesurees": 25,
+          "aire_m2": 21.25,
+          "centre_x": 8.61,
+          "centre_y": -5.43,
+          "kills": 85,
+          "morts": 51,
+          "matchs": 9
+        },
+        {
+          "id": "illusion__arene__2",
+          "rang": 2,
+          "polygone": [
+            [
+              -2.25,
+              -20.75
+            ],
+            [
+              -0.25,
+              -22.75
+            ],
+            [
+              0.75,
+              -22.75
+            ],
+            [
+              1.75,
+              -21.75
+            ],
+            [
+              2.25,
+              -20.75
+            ],
+            [
+              2.25,
+              -19.75
+            ],
+            [
+              1.25,
+              -18.25
+            ],
+            [
+              -0.25,
+              -18.25
+            ],
+            [
+              -2.25,
+              -19.75
+            ]
+          ],
+          "score_moyen": 0.6462864448390055,
+          "score_max": 0.6817278566783799,
+          "nb_cellules": 30,
+          "nb_cellules_mesurees": 29,
+          "aire_m2": 14.75,
+          "centre_x": 0.12931034482758622,
+          "centre_y": -20.474137931034484,
+          "kills": 81,
+          "morts": 50,
+          "matchs": 7
+        },
+        {
+          "id": "illusion__arene__3",
+          "rang": 3,
+          "polygone": [
+            [
+              -8.75,
+              3.25
+            ],
+            [
+              -8.25,
+              1.75
+            ],
+            [
+              -7.75,
+              1.25
+            ],
+            [
+              -6.25,
+              1.25
+            ],
+            [
+              -5.75,
+              1.75
+            ],
+            [
+              -5.75,
+              2.75
+            ],
+            [
+              -6.25,
+              3.25
+            ],
+            [
+              -7.75,
+              4.25
+            ],
+            [
+              -8.75,
+              4.25
+            ]
+          ],
+          "score_moyen": 0.6397738301935022,
+          "score_max": 0.6608213632985988,
+          "nb_cellules": 11,
+          "nb_cellules_mesurees": 9,
+          "aire_m2": 6.75,
+          "centre_x": -7.194444444444445,
+          "centre_y": 2.4722222222222223,
+          "kills": 16,
+          "morts": 24,
+          "matchs": 7
+        }
+      ]
+    },
+    {
+      "carte": "bazaar",
+      "axe": "arene",
+      "module": "ctf_bazaar",
+      "map_id_dominant": "298d5036-cd43-47b3-a4bd-31e127566593",
+      "map_ids": [
+        "298d5036-cd43-47b3-a4bd-31e127566593",
+        "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702"
+      ],
+      "matchs": 52,
+      "cellules_scorables": 1052,
+      "ecart_variantes_m": 0,
+      "positions": [
+        {
+          "id": "bazaar__arene__1",
+          "rang": 1,
+          "polygone": [
+            [
+              10.25,
+              -10.75
+            ],
+            [
+              11.25,
+              -13.25
+            ],
+            [
+              12.25,
+              -13.25
+            ],
+            [
+              13.25,
+              -12.75
+            ],
+            [
+              13.75,
+              -12.25
+            ],
+            [
+              13.75,
+              -10.75
+            ],
+            [
+              11.25,
+              -8.75
+            ],
+            [
+              10.25,
+              -8.75
+            ]
+          ],
+          "score_moyen": 0.6269414419581382,
+          "score_max": 0.6584099022343434,
+          "nb_cellules": 19,
+          "nb_cellules_mesurees": 17,
+          "aire_m2": 11.375,
+          "centre_x": 11.985294117647058,
+          "centre_y": -11.191176470588236,
+          "kills": 38,
+          "morts": 28,
+          "matchs": 5
+        },
+        {
+          "id": "bazaar__arene__2",
+          "rang": 2,
+          "polygone": [
+            [
+              0.75,
+              -12.75
+            ],
+            [
+              2.75,
+              -13.25
+            ],
+            [
+              3.75,
+              -13.25
+            ],
+            [
+              5.75,
+              -9.25
+            ],
+            [
+              5.75,
+              -7.75
+            ],
+            [
+              4.75,
+              -7.75
+            ],
+            [
+              3.75,
+              -8.25
+            ],
+            [
+              1.75,
+              -9.75
+            ],
+            [
+              0.75,
+              -11.75
+            ]
+          ],
+          "score_moyen": 0.6233805101543692,
+          "score_max": 0.6484009080372569,
+          "nb_cellules": 26,
+          "nb_cellules_mesurees": 17,
+          "aire_m2": 17.25,
+          "centre_x": 3.2794117647058822,
+          "centre_y": -10.75,
+          "kills": 44,
+          "morts": 33,
+          "matchs": 8
+        },
+        {
+          "id": "bazaar__arene__3",
+          "rang": 3,
+          "polygone": [
+            [
+              5.25,
+              -0.25
+            ],
+            [
+              5.75,
+              -0.75
+            ],
+            [
+              6.75,
+              -0.75
+            ],
+            [
+              11.25,
+              3.75
+            ],
+            [
+              11.25,
+              4.75
+            ],
+            [
+              10.25,
+              5.75
+            ],
+            [
+              7.75,
+              6.25
+            ],
+            [
+              6.75,
+              6.25
+            ],
+            [
+              6.25,
+              5.75
+            ],
+            [
+              5.25,
+              0.75
+            ]
+          ],
+          "score_moyen": 0.6096530537376289,
+          "score_max": 0.6312023734028651,
+          "nb_cellules": 30,
+          "nb_cellules_mesurees": 25,
+          "aire_m2": 27,
+          "centre_x": 7.65,
+          "centre_y": 3.05,
+          "kills": 67,
+          "morts": 96,
+          "matchs": 12
+        }
+      ]
+    },
+    {
+      "carte": "forbidden",
+      "axe": "arene",
+      "module": "ctf_forbidden",
+      "map_id_dominant": "5c215079-c34d-4d25-b86a-435e35edf188",
+      "map_ids": [
+        "5c215079-c34d-4d25-b86a-435e35edf188",
+        "87c03bfd-2db3-4a5b-bbf9-d5369c5894d1"
+      ],
+      "matchs": 44,
+      "cellules_scorables": 741,
+      "ecart_variantes_m": 0,
+      "positions": [
+        {
+          "id": "forbidden__arene__1",
+          "rang": 1,
+          "polygone": [
+            [
+              -8.25,
+              13.75
+            ],
+            [
+              -7.25,
+              13.75
+            ],
+            [
+              -6.25,
+              17.25
+            ],
+            [
+              -6.25,
+              18.25
+            ],
+            [
+              -7.25,
+              18.25
+            ],
+            [
+              -8.25,
+              17.75
+            ]
+          ],
+          "score_moyen": 0.6216228709421033,
+          "score_max": 0.6527102505667467,
+          "nb_cellules": 11,
+          "nb_cellules_mesurees": 7,
+          "aire_m2": 7,
+          "centre_x": -7.535714285714286,
+          "centre_y": 16.107142857142858,
+          "kills": 19,
+          "morts": 11,
+          "matchs": 4
+        },
+        {
+          "id": "forbidden__arene__2",
+          "rang": 2,
+          "polygone": [
+            [
+              -15.75,
+              0.75
+            ],
+            [
+              -15.25,
+              -0.75
+            ],
+            [
+              -14.25,
+              -1.25
+            ],
+            [
+              -13.25,
+              -1.25
+            ],
+            [
+              -12.25,
+              -0.75
+            ],
+            [
+              -11.25,
+              0.25
+            ],
+            [
+              -10.75,
+              4.25
+            ],
+            [
+              -10.75,
+              5.25
+            ],
+            [
+              -12.25,
+              6.75
+            ],
+            [
+              -13.75,
+              6.75
+            ],
+            [
+              -15.75,
+              1.75
+            ]
+          ],
+          "score_moyen": 0.6111439237232269,
+          "score_max": 0.6505874830355707,
+          "nb_cellules": 53,
+          "nb_cellules_mesurees": 38,
+          "aire_m2": 30,
+          "centre_x": -12.947368421052632,
+          "centre_y": 2.236842105263158,
+          "kills": 103,
+          "morts": 116,
+          "matchs": 11
+        }
+      ]
+    },
+    {
+      "carte": "origin",
+      "axe": "arene",
+      "module": "fo08_wetland",
+      "map_id_dominant": "46a8319c-2c63-46ee-9382-788906dcb049",
+      "map_ids": [
+        "46a8319c-2c63-46ee-9382-788906dcb049",
+        "b302eb62-da9a-480b-a409-3c89df8c1a04"
+      ],
+      "matchs": 37,
+      "cellules_scorables": 759,
+      "ecart_variantes_m": 1.0365359678025476,
+      "positions": [
+        {
+          "id": "origin__arene__1",
+          "rang": 1,
+          "polygone": [
+            [
+              -2.75,
+              -11.25
+            ],
+            [
+              2.25,
+              -12.25
+            ],
+            [
+              3.25,
+              -12.25
+            ],
+            [
+              3.25,
+              -10.25
+            ],
+            [
+              0.75,
+              -7.25
+            ],
+            [
+              -0.25,
+              -7.25
+            ],
+            [
+              -1.75,
+              -8.75
+            ],
+            [
+              -2.75,
+              -10.25
+            ]
+          ],
+          "score_moyen": 0.6333645935545873,
+          "score_max": 0.6723952993624653,
+          "nb_cellules": 33,
+          "nb_cellules_mesurees": 21,
+          "aire_m2": 20.375,
+          "centre_x": 0.011904761904761904,
+          "centre_y": -9.869047619047619,
+          "kills": 46,
+          "morts": 51,
+          "matchs": 6
+        },
+        {
+          "id": "origin__arene__2",
+          "rang": 2,
+          "polygone": [
+            [
+              1.25,
+              4.75
+            ],
+            [
+              1.75,
+              4.25
+            ],
+            [
+              4.25,
+              4.25
+            ],
+            [
+              4.25,
+              5.25
+            ],
+            [
+              3.25,
+              6.25
+            ],
+            [
+              1.25,
+              6.25
+            ]
+          ],
+          "score_moyen": 0.6230099869181698,
+          "score_max": 0.6537319198073915,
+          "nb_cellules": 11,
+          "nb_cellules_mesurees": 10,
+          "aire_m2": 5.375,
+          "centre_x": 2.65,
+          "centre_y": 5.15,
+          "kills": 37,
+          "morts": 26,
+          "matchs": 8
+        },
+        {
+          "id": "origin__arene__3",
+          "rang": 3,
+          "polygone": [
+            [
+              -7.25,
+              3.25
+            ],
+            [
+              -5.25,
+              3.25
+            ],
+            [
+              -4.75,
+              4.75
+            ],
+            [
+              -4.75,
+              5.75
+            ],
+            [
+              -7.25,
+              5.75
+            ]
+          ],
+          "score_moyen": 0.6196184372823308,
+          "score_max": 0.6490581488618982,
+          "nb_cellules": 13,
+          "nb_cellules_mesurees": 10,
+          "aire_m2": 5.875,
+          "centre_x": -6.15,
+          "centre_y": 4.55,
+          "kills": 31,
+          "morts": 25,
+          "matchs": 8
+        },
+        {
+          "id": "origin__arene__4",
+          "rang": 4,
+          "polygone": [
+            [
+              -3.75,
+              4.75
+            ],
+            [
+              -2.75,
+              3.75
+            ],
+            [
+              -1.75,
+              3.75
+            ],
+            [
+              -0.75,
+              4.75
+            ],
+            [
+              -0.75,
+              5.75
+            ],
+            [
+              -1.75,
+              6.75
+            ],
+            [
+              -2.75,
+              6.75
+            ],
+            [
+              -3.75,
+              6.25
+            ]
+          ],
+          "score_moyen": 0.6117690977785419,
+          "score_max": 0.6265595151580747,
+          "nb_cellules": 12,
+          "nb_cellules_mesurees": 11,
+          "aire_m2": 7.25,
+          "centre_x": -2.340909090909091,
+          "centre_y": 5.431818181818182,
+          "kills": 56,
+          "morts": 34,
+          "matchs": 15
+        }
+      ]
+    },
+    {
+      "carte": "lattice",
+      "axe": "arene",
+      "module": "fo13_frost",
+      "map_id_dominant": "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48",
+      "map_ids": [
+        "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48"
+      ],
+      "matchs": 28,
+      "cellules_scorables": 933,
+      "ecart_variantes_m": 0,
+      "positions": [
+        {
+          "id": "lattice__arene__1",
+          "rang": 1,
+          "polygone": [
+            [
+              -64.25,
+              -24.75
+            ],
+            [
+              -62.25,
+              -24.75
+            ],
+            [
+              -60.75,
+              -23.25
+            ],
+            [
+              -60.75,
+              -22.25
+            ],
+            [
+              -61.25,
+              -20.75
+            ],
+            [
+              -63.25,
+              -20.75
+            ],
+            [
+              -63.75,
+              -21.25
+            ],
+            [
+              -64.25,
+              -22.75
+            ]
+          ],
+          "score_moyen": 0.6290552388381804,
+          "score_max": 0.6636965952166982,
+          "nb_cellules": 26,
+          "nb_cellules_mesurees": 23,
+          "aire_m2": 11.75,
+          "centre_x": -62.66304347826087,
+          "centre_y": -22.706521739130434,
+          "kills": 72,
+          "morts": 56,
+          "matchs": 12
+        },
+        {
+          "id": "lattice__arene__2",
+          "rang": 2,
+          "polygone": [
+            [
+              -67.25,
+              -37.75
+            ],
+            [
+              -65.75,
+              -37.75
+            ],
+            [
+              -64.25,
+              -36.75
+            ],
+            [
+              -64.25,
+              -35.75
+            ],
+            [
+              -65.25,
+              -34.75
+            ],
+            [
+              -66.25,
+              -34.75
+            ],
+            [
+              -67.25,
+              -35.75
+            ]
+          ],
+          "score_moyen": 0.6101176426248603,
+          "score_max": 0.6185834580862012,
+          "nb_cellules": 12,
+          "nb_cellules_mesurees": 10,
+          "aire_m2": 7.25,
+          "centre_x": -65.85,
+          "centre_y": -36.25,
+          "kills": 32,
+          "morts": 26,
+          "matchs": 7
+        },
+        {
+          "id": "lattice__arene__3",
+          "rang": 3,
+          "polygone": [
+            [
+              -53.25,
+              -44.25
+            ],
+            [
+              -50.75,
+              -44.25
+            ],
+            [
+              -49.25,
+              -42.75
+            ],
+            [
+              -49.25,
+              -41.25
+            ],
+            [
+              -51.25,
+              -40.25
+            ],
+            [
+              -52.75,
+              -40.25
+            ],
+            [
+              -53.25,
+              -43.25
+            ]
+          ],
+          "score_moyen": 0.6091013639684751,
+          "score_max": 0.6563087470766584,
+          "nb_cellules": 23,
+          "nb_cellules_mesurees": 17,
+          "aire_m2": 13.125,
+          "centre_x": -51.36764705882353,
+          "centre_y": -42.220588235294116,
+          "kills": 51,
+          "morts": 45,
+          "matchs": 14
+        }
+      ]
+    },
+    {
+      "carte": "solitude",
+      "axe": "arene",
+      "module": "fo11_blank",
+      "map_id_dominant": "4a5e5612-2b2e-4375-a0b3-9335a68815f3",
+      "map_ids": [
+        "4a5e5612-2b2e-4375-a0b3-9335a68815f3",
+        "f1cc3b4e-471c-4ec5-b855-1db7d9e6ce42"
+      ],
+      "matchs": 26,
+      "cellules_scorables": 614,
+      "ecart_variantes_m": 0.8587788717683449,
+      "positions": [
+        {
+          "id": "solitude__arene__1",
+          "rang": 1,
+          "polygone": [
+            [
+              -12.25,
+              -11.75
+            ],
+            [
+              -11.25,
+              -12.25
+            ],
+            [
+              -8.75,
+              -12.25
+            ],
+            [
+              -8.75,
+              -10.75
+            ],
+            [
+              -12.25,
+              -10.75
+            ]
+          ],
+          "score_moyen": 0.6943852737013642,
+          "score_max": 0.7473986244413299,
+          "nb_cellules": 10,
+          "nb_cellules_mesurees": 7,
+          "aire_m2": 5,
+          "centre_x": -10.25,
+          "centre_y": -11.392857142857142,
+          "kills": 18,
+          "morts": 11,
+          "matchs": 4
+        },
+        {
+          "id": "solitude__arene__2",
+          "rang": 2,
+          "polygone": [
+            [
+              -2.75,
+              -23.25
+            ],
+            [
+              1.25,
+              -23.25
+            ],
+            [
+              1.75,
+              -22.75
+            ],
+            [
+              1.75,
+              -21.25
+            ],
+            [
+              1.25,
+              -20.75
+            ],
+            [
+              -1.25,
+              -20.75
+            ],
+            [
+              -2.25,
+              -21.25
+            ],
+            [
+              -2.75,
+              -22.25
+            ]
+          ],
+          "score_moyen": 0.651877315890759,
+          "score_max": 0.6866076086295256,
+          "nb_cellules": 22,
+          "nb_cellules_mesurees": 19,
+          "aire_m2": 10.25,
+          "centre_x": -0.19736842105263158,
+          "centre_y": -21.986842105263158,
+          "kills": 71,
+          "morts": 46,
+          "matchs": 8
+        },
+        {
+          "id": "solitude__arene__3",
+          "rang": 3,
+          "polygone": [
+            [
+              -15.25,
+              -7.25
+            ],
+            [
+              -12.75,
+              -10.25
+            ],
+            [
+              -11.75,
+              -10.25
+            ],
+            [
+              -11.25,
+              -9.75
+            ],
+            [
+              -11.25,
+              -8.75
+            ],
+            [
+              -11.75,
+              -7.25
+            ],
+            [
+              -13.25,
+              -6.25
+            ],
+            [
+              -15.25,
+              -6.25
+            ]
+          ],
+          "score_moyen": 0.6138257351886979,
+          "score_max": 0.6412960994178346,
+          "nb_cellules": 15,
+          "nb_cellules_mesurees": 13,
+          "aire_m2": 10.5,
+          "centre_x": -12.903846153846153,
+          "centre_y": -8.096153846153847,
+          "kills": 28,
+          "morts": 30,
+          "matchs": 5
+        }
+      ]
+    },
+    {
+      "carte": "fortress",
+      "axe": "arene",
+      "module": "fo09_academy",
+      "map_id_dominant": "a54808fb-9bf5-432a-a3c3-f76cbea944c1",
+      "map_ids": [
+        "0d1c9255-d912-416c-befc-5f3e5e176df2",
+        "a54808fb-9bf5-432a-a3c3-f76cbea944c1"
+      ],
+      "matchs": 18,
+      "cellules_scorables": 102,
+      "ecart_variantes_m": 0,
+      "positions": null
+    },
+    {
+      "carte": "empyrean",
+      "axe": "arene",
+      "module": "fo11_blank",
+      "map_id_dominant": "d035fc3e-f298-4c14-9487-465be2e1dc1f",
+      "map_ids": [
+        "70dd38c5-2eb7-4db3-8901-0dfca292ff18",
+        "d035fc3e-f298-4c14-9487-465be2e1dc1f"
+      ],
+      "matchs": 17,
+      "cellules_scorables": 128,
+      "ecart_variantes_m": 0,
+      "positions": null
+    }
+  ]
+}
