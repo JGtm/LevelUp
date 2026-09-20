@@ -57,8 +57,7 @@ interface CapturedOption {
     max: number
     inRange: { color: string[] }
     orient?: string
-    formatter?: (v: number) => string
-    text?: [string, string]
+    show?: boolean
   }
   xAxis: { data: string[]; name?: string }
   yAxis: { data: string[]; name?: string; inverse?: boolean }
@@ -93,17 +92,18 @@ describe('SynthesisHeatmapChart — migration Heatmap2DChart (lot C2)', () => {
     expect(option.yAxis.inverse).toBe(true)
   })
 
-  // Les trois autres traits du rendu restauré : les deux axes portent leur titre, et
-  // l'échelle de couleur est VERTICALE, graduée en pourcentage.
-  it('les deux axes sont titrés et l’échelle de couleur est verticale, en pourcentage', async () => {
+  // Les deux axes portent leur titre. La BARRE DE DÉGRADÉ, elle, est partie le 2026-09-20
+  // (retour utilisateur, lot 3 des ajustements pré-v7.5) : elle redisait ce que chaque case
+  // montre, et l'infobulle donne le taux exact. L'orientation verticale RESTE déclarée —
+  // c'est elle qui décide des marges du tracé, celles qui logent les titres d'axes.
+  it('les deux axes sont titrés, et aucune barre de dégradé n’est rendue', async () => {
     renderWithProviders(<SynthesisHeatmapChart cells={[cell({ dow: 0, hour: 0, count: 1, win_rate: 1 })]} />)
     await screen.findByTestId('synthesis-heatmap-stub')
     const option = captured[captured.length - 1].option as CapturedOption
     expect(option.xAxis.name).toBe('Heure')
     expect(option.yAxis.name).toBe('Jour')
     expect(option.visualMap.orient).toBe('vertical')
-    expect(option.visualMap.formatter?.(0.5)).toBe('50%')
-    expect(option.visualMap.text?.[0]).toBe('Victoires')
+    expect(option.visualMap.show).toBe(false)
   })
 
   it('l’axe des heures couvre 00h à 23h, dans l’ordre', async () => {

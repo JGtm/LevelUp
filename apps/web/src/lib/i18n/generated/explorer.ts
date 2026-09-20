@@ -221,7 +221,6 @@ export const explorerManifest = {
   "explorer.target_profile.frag_range_no_measure": { fr: "aucune mesure", en: "no measurement" },
   "explorer.target_profile.frag_range_observed": { fr: "observé", en: "observed" },
   "explorer.target_profile.frag_range_percentiles": { fr: "10e centile · médiane · 90e centile", en: "10th percentile · median · 90th percentile" },
-  "explorer.target_profile.frag_range_self": { fr: "Toi", en: "You" },
   "explorer.target_profile.frag_range_title": { fr: "Portée des frags", en: "Frag range" },
   "explorer.target_profile.identity_unknown_description": { fr: "Emblème et rang carrière indisponibles pour ce joueur — ses stats sont affichées ci-dessous.", en: "Emblem and career rank unavailable for this player — their stats are shown below." },
   "explorer.target_profile.identity_unknown_title": { fr: "Identité Spartan non disponible", en: "Spartan identity not available" },

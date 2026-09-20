@@ -19,10 +19,9 @@ import type { ChartPointDonut } from '@/components/charts/DonutChart'
 import type { SemanticToken } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import type { ExplorerLiveSectionStatus, ExplorerTargetRecentMatch, MedalDigestItem } from '@/lib/api/types'
+import type { ExplorerLiveSectionStatus, ExplorerTargetRecentMatch } from '@/lib/api/types'
 import { CombatFdaChart } from './CombatFdaChart'
 import { CombatScorePlacementChart } from './CombatScorePlacementChart'
-import { ExplorerTargetMedals } from './ExplorerTargetMedals'
 import { ExplorerLiveStatusBadge } from './ExplorerLiveStatusBadge'
 import type { Locale } from '@/lib/i18n/locale'
 
@@ -33,11 +32,6 @@ export interface ExplorerCombatProfileProps {
   localMatches: ExplorerTargetRecentMatch[]
   locale: string
   t: (key: ExplorerManifestKey) => string
-  /** Top médailles lifetime de la cible (source "En direct") — à droite du donut modes. */
-  topMedals?: MedalDigestItem[]
-  /** Top médailles agrégées sur `localMatches` (source "Local") — même bloc, mêmes
-   *  libellés/images, mais calculées sur l'échantillon local et non sur la carrière. */
-  topMedalsLocal?: MedalDigestItem[]
   /** Statut de la source LIVE (Lot A3) — badge discret dans l'en-tête quand
    *  != "ok" (explique pourquoi le tab "En direct" est vide/désactivé). */
   combatLiveStatus?: ExplorerLiveSectionStatus | null
@@ -56,8 +50,6 @@ export function ExplorerCombatProfile({
   localMatches,
   locale,
   t,
-  topMedals = [],
-  topMedalsLocal = [],
   combatLiveStatus,
 }: ExplorerCombatProfileProps) {
   const hasLive = liveMatches.length > 0
@@ -66,10 +58,6 @@ export function ExplorerCombatProfile({
   // le live est vide (pas d'auth), on démarre sur le local pour montrer quelque chose.
   const [source, setSource] = useState<'live' | 'local'>(hasLive ? 'live' : 'local')
   const matches = source === 'live' ? liveMatches : localMatches
-  // Les médailles suivent le toggle : "En direct" = lifetime (service record),
-  // "Local" = agrégat sur exactement les matchs de `localMatches`. Bloc masqué si
-  // la source retenue n'en a aucune (cf. rendu conditionnel plus bas).
-  const medals = source === 'live' ? topMedals : topMedalsLocal
 
   const { data: fieldMappings } = useFieldMappings()
   const fld = (key: string, fallback: string) =>
@@ -272,17 +260,17 @@ export function ExplorerCombatProfile({
           componentOrder={[spreeLabel, perfectLabel]}
         />
 
-        {/* G5 — Donut répartition des modes (gauche, sans légende) + Top médailles (droite) */}
-        <div className="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-2">
-          <DonutChart
-            title={t('explorer.combat.modes_title')}
-            series={modeSeries}
-            showPercent
-            showLegend={false}
-            height={CHART_HEIGHT}
-          />
-          {medals.length > 0 && <ExplorerTargetMedals medals={medals} />}
-        </div>
+        {/* G5 — Donut répartition des modes. « Top médailles » n'est PLUS rendu ici
+            (retour utilisateur du 2026-09-19) : le même bloc vivait déjà dans l'encart du
+            joueur cible, et les deux s'affichaient ensemble dès que la cible n'avait que
+            des matchs locaux. Une seule place, celle de l'encart. */}
+        <DonutChart
+          title={t('explorer.combat.modes_title')}
+          series={modeSeries}
+          showPercent
+          showLegend={false}
+          height={CHART_HEIGHT}
+        />
       </div>
       )}
     </section>

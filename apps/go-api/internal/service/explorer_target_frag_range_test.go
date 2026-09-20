@@ -81,8 +81,10 @@ func serviceAvecPortee(repo *fakeWeaponRangeRepo, parts *domain.ParticipantStats
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-// TestEnrichEncounterFragRange : les deux bandes sont publiées, bornées aux matchs communs
-// et à leur joueur, avec les rôles du registre comme clés de ligne.
+// TestEnrichEncounterFragRange : la bande de la CIBLE est publiée, bornée aux matchs
+// communs et à son joueur, avec les rôles du registre comme clés de ligne. Depuis la
+// décision 7 du plan d'ajustements pré-v7.5 (2026-09-19) le côté du joueur courant n'est
+// plus publié : une seule lecture part au repo.
 func TestEnrichEncounterFragRange(t *testing.T) {
 	t.Parallel()
 	repo := &fakeWeaponRangeRepo{
@@ -101,43 +103,38 @@ func TestEnrichEncounterFragRange(t *testing.T) {
 
 	svc.enrichEncounterFragRange(context.Background(), stats, "target-x", []string{"m1", "m2"}, sample)
 
-	if stats.FragRangeSelf == nil || stats.FragRangeTarget == nil {
-		t.Fatalf("les deux bandes attendues, got self=%v cible=%v", stats.FragRangeSelf, stats.FragRangeTarget)
+	if stats.FragRangeTarget == nil {
+		t.Fatal("bande de la cible attendue")
 	}
 	// La clé de ligne est le RÔLE, jamais la clé d'arme (le front résout frags.role.*).
-	if got := stats.FragRangeSelf.Weapons[0].WeaponKey; got != "precision" {
-		t.Errorf("clé de ligne self = %q, want \"precision\"", got)
-	}
 	if got := stats.FragRangeTarget.Weapons[0].WeaponKey; got != "sniper" {
 		t.Errorf("clé de ligne cible = %q, want \"sniper\"", got)
 	}
 	// Aucun libellé écrit côté Go (D8).
-	if stats.FragRangeSelf.Weapons[0].Label != "" || stats.FragRangeSelf.Weapons[0].LabelEN != "" {
+	if stats.FragRangeTarget.Weapons[0].Label != "" || stats.FragRangeTarget.Weapons[0].LabelEN != "" {
 		t.Errorf("libellés attendus vides, got %q / %q",
-			stats.FragRangeSelf.Weapons[0].Label, stats.FragRangeSelf.Weapons[0].LabelEN)
+			stats.FragRangeTarget.Weapons[0].Label, stats.FragRangeTarget.Weapons[0].LabelEN)
 	}
 	// Dénominateurs de couverture : ceux du scope, pas la carrière.
-	if stats.FragRangeSelf.TotalKills != 40 || stats.FragRangeTarget.TotalKills != 33 {
-		t.Errorf("totaux = self %d / cible %d, want 40 / 33",
-			stats.FragRangeSelf.TotalKills, stats.FragRangeTarget.TotalKills)
+	if stats.FragRangeTarget.TotalKills != 33 {
+		t.Errorf("total cible = %d, want 33", stats.FragRangeTarget.TotalKills)
 	}
-	// Bornage : deux lectures, chacune sur les matchs communs et UN joueur.
-	if len(repo.vus) != 2 {
-		t.Fatalf("%d lectures, want 2", len(repo.vus))
+	// Bornage : UNE seule lecture — celle de la cible — sur les matchs communs et un joueur.
+	if len(repo.vus) != 1 {
+		t.Fatalf("%d lectures, want 1 (le côté du joueur courant n'est plus lu)", len(repo.vus))
 	}
-	for i, f := range repo.vus {
-		if len(f.MatchIDs) != 2 || len(f.XUIDs) != 1 {
-			t.Errorf("lecture %d mal bornée : matchs=%v xuids=%v", i, f.MatchIDs, f.XUIDs)
-		}
-		if err := f.Validate(); err != nil {
-			t.Errorf("lecture %d refusée par le port : %v", i, err)
-		}
+	f := repo.vus[0]
+	if len(f.MatchIDs) != 2 || len(f.XUIDs) != 1 || f.XUIDs[0] != "target-x" {
+		t.Errorf("lecture mal bornée : matchs=%v xuids=%v", f.MatchIDs, f.XUIDs)
+	}
+	if err := f.Validate(); err != nil {
+		t.Errorf("lecture refusée par le port : %v", err)
 	}
 }
 
-// TestEnrichEncounterFragRange_UnSeulCote : un joueur sans frag mesuré laisse SA bande
-// absente ; l'autre reste publiée. Les deux ne tombent pas ensemble.
-func TestEnrichEncounterFragRange_UnSeulCote(t *testing.T) {
+// TestEnrichEncounterFragRange_CibleSansMesure : la cible n'a aucun frag mesuré → aucune
+// bande, et surtout pas celle du joueur courant en remplacement.
+func TestEnrichEncounterFragRange_CibleSansMesure(t *testing.T) {
 	t.Parallel()
 	repo := &fakeWeaponRangeRepo{
 		parXUID: map[string][]analysis.MeasuredKill{"self": mesures("hinf_br75", 10, 12)},
@@ -148,9 +145,6 @@ func TestEnrichEncounterFragRange_UnSeulCote(t *testing.T) {
 
 	svc.enrichEncounterFragRange(context.Background(), stats, "target-x", []string{"m1"}, nil)
 
-	if stats.FragRangeSelf == nil {
-		t.Error("bande du joueur courant attendue")
-	}
 	if stats.FragRangeTarget != nil {
 		t.Errorf("bande cible attendue absente (aucun frag mesuré), got %+v", stats.FragRangeTarget)
 	}
@@ -182,9 +176,8 @@ func TestEnrichEncounterFragRange_Degradations(t *testing.T) {
 			svc := serviceAvecPortee(tc.repo, &domain.ParticipantStatsAggregate{Kills: 40})
 			stats := &domain.ExplorerEncounterStats{CountTogether: 1}
 			svc.enrichEncounterFragRange(context.Background(), stats, tc.target, tc.matchIDs, nil)
-			if stats.FragRangeSelf != nil || stats.FragRangeTarget != nil {
-				t.Errorf("bandes attendues absentes, got self=%v cible=%v",
-					stats.FragRangeSelf, stats.FragRangeTarget)
+			if stats.FragRangeTarget != nil {
+				t.Errorf("bande attendue absente, got cible=%v", stats.FragRangeTarget)
 			}
 		})
 	}
@@ -193,7 +186,7 @@ func TestEnrichEncounterFragRange_Degradations(t *testing.T) {
 	sansRepo := NewExplorerService(&mockExplorerRepo{}, "self")
 	stats := &domain.ExplorerEncounterStats{CountTogether: 1}
 	sansRepo.enrichEncounterFragRange(context.Background(), stats, "target-x", []string{"m1"}, nil)
-	if stats.FragRangeSelf != nil || stats.FragRangeTarget != nil {
+	if stats.FragRangeTarget != nil {
 		t.Error("no-op attendu sans repo")
 	}
 	// stats nil : no-op, et pas de panique.
@@ -201,26 +194,25 @@ func TestEnrichEncounterFragRange_Degradations(t *testing.T) {
 		enrichEncounterFragRange(context.Background(), nil, "target-x", []string{"m1"}, nil)
 }
 
-// TestEnrichEncounterFragRange_TotauxIllisibles : la lecture des totaux du joueur courant
-// échoue → sa bande est QUAND MÊME publiée, couverture à zéro. Le bloc ne rend que les
+// TestEnrichEncounterFragRange_SansAgregatDeCible : l'encart n'a pas calculé les totaux de
+// la cible → la bande est QUAND MÊME publiée, couverture à zéro. Le bloc ne rend que les
 // bandes ; perdre la portée parce qu'un dénominateur manque serait disproportionné.
-func TestEnrichEncounterFragRange_TotauxIllisibles(t *testing.T) {
+func TestEnrichEncounterFragRange_SansAgregatDeCible(t *testing.T) {
 	t.Parallel()
 	repo := &fakeWeaponRangeRepo{
-		parXUID: map[string][]analysis.MeasuredKill{"self": mesures("hinf_br75", 10, 12)},
+		parXUID: map[string][]analysis.MeasuredKill{"target-x": mesures("hinf_br75", 10, 12)},
 		dims:    map[string]port.WeaponDimensions{"hinf_br75": {Role: "precision"}},
 	}
-	svc := NewExplorerService(&mockExplorerRepo{participantsErr: errors.New("db")}, "self").
-		WithWeaponRangeRepo(repo)
+	svc := serviceAvecPortee(repo, nil)
 	stats := &domain.ExplorerEncounterStats{CountTogether: 2}
 
 	svc.enrichEncounterFragRange(context.Background(), stats, "target-x", []string{"m1"}, nil)
 
-	if stats.FragRangeSelf == nil {
-		t.Fatal("bande du joueur courant attendue malgré les totaux illisibles")
+	if stats.FragRangeTarget == nil {
+		t.Fatal("bande de la cible attendue malgré l'absence d'agrégat")
 	}
-	if stats.FragRangeSelf.TotalKills != 0 {
-		t.Errorf("TotalKills = %d, want 0 (couverture inconnue, jamais inventée)", stats.FragRangeSelf.TotalKills)
+	if stats.FragRangeTarget.TotalKills != 0 {
+		t.Errorf("TotalKills = %d, want 0 (couverture inconnue, jamais inventée)", stats.FragRangeTarget.TotalKills)
 	}
 }
 

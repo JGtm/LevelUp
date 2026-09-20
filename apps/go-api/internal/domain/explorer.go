@@ -76,20 +76,21 @@ type ExplorerEncounterStats struct {
 	// ensemble : l'écran affiche « — », JAMAIS « 0 assistance ». Même agrégat que la
 	// carte Binôme du hub Relations.
 	Assists *RelationAssists `json:"assists,omitempty"`
-	// FragRangeSelf / FragRangeTarget = la PORTÉE DES FRAGS par rôle d'arme, sur les matchs
-	// joués ensemble : le joueur courant et la cible. Même agrégat et même grain que le bloc
-	// « Où ils fraguent » du Face-à-face (service/weapon_range_by_role.go) — une ligne par
-	// rôle, bâton du 10e au 90e centile, losange sur la médiane.
+	// FragRangeTarget = la PORTÉE DES FRAGS de la CIBLE par rôle d'arme, sur les matchs joués
+	// ensemble. Même agrégat et même grain que le bloc « Où ils fraguent » du Face-à-face
+	// (service/weapon_range_by_role.go) — une ligne par rôle, bâton du 10e au 90e centile,
+	// losange sur la médiane.
 	//
-	// Les deux sont indépendants : un joueur sans frag mesuré sur ces matchs laisse SA bande
-	// absente, l'autre reste publiée. Nil des deux côtés = titre sans positions par kill,
-	// aucun film décodé sur les matchs communs, ou lecture en échec — le front rend alors un
-	// état vide titré, jamais une portée fabriquée.
+	// LA CIBLE SEULE (décision 7 du plan d'ajustements pré-v7.5, 2026-09-19). Le côté du
+	// joueur courant était publié et superposé sur la même bande ; l'écran ne montre plus
+	// que l'adversaire, et un champ que personne ne lit ne se sert pas « au cas où ».
+	//
+	// Nil = titre sans positions par kill, aucun film décodé sur les matchs communs, ou
+	// lecture en échec — le front rend alors un état vide titré, jamais une portée fabriquée.
 	//
 	// `weapon_key` porte une clé de RÔLE (`precision`, `automatic`, ...) et non une clé
 	// d'arme ; `label`/`label_en` restent vides, le front résolvant le libellé depuis son
 	// manifeste (aucun libellé FR/EN écrit en Go).
-	FragRangeSelf   *SynthesisWeaponRange `json:"frag_range_self,omitempty"`
 	FragRangeTarget *SynthesisWeaponRange `json:"frag_range_target,omitempty"`
 	// AssistVolumeMax = plus gros volume d'un sens (reçues ou données) parmi TOUTES les
 	// relations mesurées du joueur : borne de l'échelle logarithmique des barres papillon.
