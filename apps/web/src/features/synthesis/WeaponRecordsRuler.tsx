@@ -120,9 +120,9 @@ export function WeaponRecordsRuler({ records, playerSlug }: WeaponRecordsRulerPr
     }
   }
 
-  const count = t('synthesis.weapon_records.count', {
-    weapons: weapons.length, measured: records.measured_kills, total: records.total_kills,
-  })
+  // Le bandeau ne porte que le nombre d'armes : la mention « N frags mesurés sur M » a été
+  // retirée à la demande de l'utilisateur (2026-09-20) ; la couverture reste dans le (i).
+  const count = t('synthesis.weapon_records.count', { weapons: weapons.length })
   const excludedList = (records.excluded ?? [])
     .map((w) => t('synthesis.weapon_records.excluded_item', { label: resolveRecordLabel(w, locale), measured: w.measured }))
     .join(' · ')

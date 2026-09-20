@@ -61,7 +61,10 @@ describe('WeaponRecordsRuler', () => {
     expect(within(ruler).getByText('52,7 m')).toBeInTheDocument()
     expect(within(ruler).getByText('96,4 m')).toBeInTheDocument()
     expect(within(ruler).getAllByTestId('weapon-record-item')).toHaveLength(2)
-    expect(flat(screen.getByRole('heading', { level: 3 }).textContent)).toContain('2 armes · 324 frags mesurés sur 400')
+    const heading = flat(screen.getByRole('heading', { level: 3 }).textContent)
+    expect(heading).toContain('2 armes')
+    // La mention « N frags mesurés sur M » est retirée du bandeau (demande du 2026-09-20).
+    expect(heading).not.toContain('frags mesurés')
   })
 
   it('pose la légende des classes présentes en pied, centrée', () => {

@@ -16,6 +16,10 @@ donc ce qui est écarté reste NOMMÉ (D9) sans peser sous le graphe.
 vitest synthèse 6 fichiers / 62 tests verts (deux tests neufs : répartition des deux côtés,
 information dans le (i)).
 
+**Complément (même jour)** : le bandeau ne porte plus que « N armes » — la mention « N frags
+mesurés sur M » est retirée à la demande de l'utilisateur ; la couverture reste dans le (i).
+Gates rejoués : ESLint, typecheck à froid, vitest synthèse + i18n (13 fichiers, 121 tests).
+
 **Prochaine étape** : aucune ; fusion dans `feat/v75` à la main de l'utilisateur.
 
 ## [2026-09-20] Synthèse : records de distance de frag par arme — maquette de cinq rendus (conseil, aucun code) — Complété (branche `feat/v75`, fichier `.ai/` seul)

@@ -570,8 +570,8 @@ fr = "Records de distance par arme"
 en = "Distance records by weapon"
 
 [synthesis.weapon_records.count]
-fr = "{weapons, number} armes · {measured, number} frags mesurés sur {total, number}"
-en = "{weapons, number} weapons · {measured, number} measured kills out of {total, number}"
+fr = "{weapons, number} armes"
+en = "{weapons, number} weapons"
 
 [synthesis.weapon_records.subtitle]
 fr = "Frag le plus lointain — un losange par arme, couleur par classe ; survolez pour le match, cliquez pour le rejeu."

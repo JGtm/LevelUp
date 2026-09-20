@@ -129,7 +129,7 @@ export const synthesisManifest = {
   "synthesis.weapon_range.tile_median_kills_sub": { fr: "{measured, number} frags mesurés sur {total, number}", en: "{measured, number} measured kills out of {total, number}" },
   "synthesis.weapon_range.tile_opening": { fr: "Distance d'entame médiane", en: "Median opening distance" },
   "synthesis.weapon_range.tile_opening_sub": { fr: "1,5 s avant le frag · {measured, number} frags mesurés", en: "1.5 s before the kill · {measured, number} measured kills" },
-  "synthesis.weapon_records.count": { fr: "{weapons, number} armes · {measured, number} frags mesurés sur {total, number}", en: "{weapons, number} weapons · {measured, number} measured kills out of {total, number}" },
+  "synthesis.weapon_records.count": { fr: "{weapons, number} armes", en: "{weapons, number} weapons" },
   "synthesis.weapon_records.coverage_note": { fr: "Ne compte que les frags dont la position du tueur et de la victime est mesurée.", en: "Only kills where both the killer and the victim positions are measured count." },
   "synthesis.weapon_records.empty_all_excluded": { fr: "Toutes les armes mesurées sont écartées sur cette période : aucun record à tracer.", en: "Every measured weapon is excluded over this period: no record to draw." },
   "synthesis.weapon_records.excluded": { fr: "Écartés : {list} — une distance n'y a pas de sens.", en: "Excluded: {list} — distance is meaningless there." },

@@ -93,3 +93,5 @@ rendus ». Contrat d'exécution : skill `plan-execution`.
   l'instant du frag ; thèmes clair et sombre. Commit en attente de l'utilisateur.
 - 2026-09-20 : retouche utilisateur après capture — libellés répartis des deux côtés de
   l axe (`staggerLabelsTwoSided`), note sous le graphe déplacée dans le (i) du titre.
+- 2026-09-20 : bandeau réduit au nombre d armes — la mention « N frags mesurés sur M » retirée
+  à la demande de l utilisateur (la couverture reste dans le (i) du titre).
