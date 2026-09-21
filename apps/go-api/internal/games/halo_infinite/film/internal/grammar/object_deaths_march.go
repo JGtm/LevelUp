@@ -104,6 +104,10 @@ func marchHasEvents(pay []byte) bool { return kfBitAt(pay, 1) != 0 }
 
 // marchSignature123 : un delta du slot de signature décode-t-il en `s`, finit-il exactement
 // `marchSignatureBits` plus loin, avec un composant unique ?
+//
+// C EST UN ESSAI, ET IL EST DECLARE COMME TEL PAR SES TROIS APPELANTS (cf.
+// [Observation.neutraliserEtatsDeMouvement]) : `TryDeltaAt` traverse l entite pour de vrai, donc
+// les deserialiseurs publient — a une position de bit que le localisateur va probablement jeter.
 func marchSignature123(pay []byte, s int, w *World, cfg FrameConfig) bool {
 	rec, end, ok := TryDeltaAt(pay, s, w, cfg)
 	return ok && rec.Slot == marchSignatureSlot && end == s+marchSignatureBits &&
@@ -113,6 +117,7 @@ func marchSignature123(pay []byte, s int, w *World, cfg FrameConfig) bool {
 // marchLocateStrict rend la première position `s >= 2`, précédée d'un bit nul, qui porte la
 // signature stricte ; -1 si aucune.
 func marchLocateStrict(pay []byte, w *World, cfg FrameConfig) int {
+	defer cfg.Obs.neutraliserEtatsDeMouvement()() // essais d offset : aucune lecture publiee
 	nb := len(pay) * 8
 	for s := 2; s+marchSignatureBits < nb; s++ {
 		if kfBitAt(pay, s-1) != 0 {
@@ -128,6 +133,7 @@ func marchLocateStrict(pay []byte, w *World, cfg FrameConfig) int {
 // marchLocateFallback reprend la même condition à LARGEUR LIBRE. Il n'est essayé qu'après
 // l'échec de la signature stricte : les paquets déjà localisés ne bougent pas d'un bit.
 func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
+	defer cfg.Obs.neutraliserEtatsDeMouvement()() // essais d offset : aucune lecture publiee
 	nb := len(pay) * 8
 	for s := 2; s+16 < nb; s++ {
 		if kfBitAt(pay, s-1) != 0 {
@@ -149,6 +155,7 @@ func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 // désigne des positions où le slot de signature porte une AUTRE génération, et la marche y
 // meurt aussitôt (mesure : 3 morts perdues sur un film, dont un double kill).
 func marchLocate(pay []byte, w *World, cfg FrameConfig) int {
+	defer cfg.Obs.neutraliserEtatsDeMouvement()() // son propre TryDeltaAt de controle est un essai
 	if s := marchLocateStrict(pay, w, cfg); s >= 0 {
 		if rec, _, ok := TryDeltaAt(pay, s, w, cfg); ok &&
 			w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {

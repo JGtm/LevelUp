@@ -73,11 +73,11 @@ func TestMouvement57Phase(t *testing.T) {
 			}
 			recs, _ := DecodeFrameViews(pay, w, cfg, 3, debut)
 			for _, r := range recs {
-				if r.TypeIndex != BipedTypeIndex {
-					continue
-				}
 				for _, c := range r.Trace.Comps {
 					parNom[c.Name]++
+					if r.TypeIndex == BipedTypeIndex {
+						parNom["ti35:"+c.Name]++
+					}
 				}
 			}
 		}
@@ -85,7 +85,8 @@ func TestMouvement57Phase(t *testing.T) {
 	for _, n := range []string{"unit-crouch-component", "biped-posture-physics-component",
 		"biped-slide-component", "object-translational-velocity-dynamic-precision-component",
 		"unit-control-component", "biped-mobility-action-component"} {
-		t.Logf("  %-56s : COMPS %6d", n, parNom[n])
+		t.Logf("  %-56s : COMPS tous archetypes %6d · dont ti=35 %6d", n, parNom[n],
+			parNom["ti35:"+n])
 	}
 	keys := make([]string, 0, len(compte))
 	for k := range compte {

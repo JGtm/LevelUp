@@ -2641,7 +2641,11 @@ divergentes sur 57** — `movementStates` (4 469 -> 4 671 lectures), `movementSt
 > `movementStates` ne bouge pas ; `replay-equiv` installe les largeurs de la carte du match et le
 > sien bouge. Les deux mesures sont vraies, elles ne decrivent pas le meme decodage.
 
-### 5.7.4 LA DECISION DE VALEUR, ET POURQUOI LE LOT S ARRETE ICI
+### 5.7.4 (PERIME PAR LE § 5.7.4 CI-DESSOUS) LA DECISION DE VALEUR TELLE QU ELLE A ETE POSEE
+
+> Le pilote a tranche le 2026-09-21 : l issue 1 (filtrer la porte) N EST PAS un choix de valeur,
+> c est une correction. Ce paragraphe garde ses CHIFFRES, qui restent la mesure du defaut ; sa
+> conclusion (« trois issues, le choix appartient a l utilisateur ») est PERIMEE.
 
 **LE CALQUE `stances[]` DU SCHEMA 65 REPOSE SUR LA PORTE POLLUEE.** `movement_states.go` emploie
 exactement la meme marche que l instrument de 5.7 — `marchLocateStrict` puis `DecodeFrameViews`
@@ -2667,6 +2671,173 @@ d instrument. Trois issues, et le choix appartient a l utilisateur :
 l union d `i55` demande une population, et la population retenue est de 52 lectures sur un film.
 Tant que la decision (1) n est pas prise, aucune mesure de saut ne sera autre chose qu une mesure
 d essais.
+
+
+### 5.7.4 LA PORTE EST CORRIGEE A LA SOURCE — ET LE DEPOT AVAIT DEJA LA DOCTRINE, LE NOM, ET LE MECANISME
+
+> Arbitrage du pilote, 2026-09-21 : « publier depuis une porte qui tire sur des alignements jetes
+> est un defaut de CORRECTION, pas un choix de valeur ». Le § 5.7.4 qui precede est donc
+> PERIME dans sa conclusion (« trois issues, le choix appartient a l utilisateur ») et conserve
+> pour ses chiffres. L issue retenue est la premiere : filtrer a la source.
+
+#### 5.7.4.a LE DEFAUT ETAIT UNE OMISSION D INSCRIPTION, PAS UNE FRONTIERE MANQUANTE
+
+La recherche du § 5.7.2.c nommait deux chemins speculatifs. La relecture du depot en dit plus, et
+mieux : **le mecanisme existait deja, sous son nom, avec sa doctrine ecrite**.
+
+```go
+// observateur.go, depuis le lot 2.2
+// POURQUOI CES DEUX-LA, ET POURQUOI TEMPORAIREMENT. Les chemins d INFERENCE essaient une lecture
+// sur des bits qu ils abandonneront peut-etre ; UNE LECTURE SPECULATIVE N EST PAS UNE LECTURE
+func (o *Observation) neutraliserCaptures() func() { ... PosCaptureHook, UnitRefHook = nil, nil }
+```
+
+Cinq chemins speculatifs la declarent depuis 2026-08 : `repairUnportedComponent`,
+`inferUnboundArchetype`, `inferChainArchetype`, `validatedResync`, et les deux essais de
+`frame_harvest.go`. **La porte des etats de mouvement, posee au lot 5.3.4, ne s y etait jamais
+inscrite** — et le LOCALISATEUR de paquet (`marchLocateStrict` et ses deux voisines) ne declarait
+RIEN, alors qu il traverse l entite pour de vrai a chaque offset essaye.
+
+C est donc une omission a deux endroits, et elle explique tout — y compris pourquoi les positions
+ne bougeaient pas : `PosCaptureHook` etait inscrit, la porte des etats non.
+
+#### 5.7.4.b LA CORRECTION, ET POURQUOI ELLE EST DANS LA MARCHE
+
+`neutraliserEtatsDeMouvement` est **la porte unique**. Les deux neutralisations existantes
+l appellent ; les trois localisateurs l appellent directement. Il n y a AUCUN filtre aval et
+aucune logique par calque — un filtre par calque devrait redecouvrir, apres coup, quel alignement
+la marche a retenu, c est-a-dire refaire le travail de la marche et diverger d elle des qu elle
+change. Ici c est la marche elle-meme qui dit « cette lecture est un essai », et elle seule le
+sait.
+
+Ce qui n est PAS eteint, et c est assume : `MobilityActionHook`, la porte HISTORIQUE d `i54`
+(celle qui ne porte pas le slot). Elle alimente les balayages de capacite, dont les sorties sont
+figees par leurs propres references ; l inscrire deplacerait ces calques sans qu aucune mesure ne
+l ait demande. Consigne au § 4 du plan (D5 (5.7)).
+
+#### 5.7.4.c LA PORTE REND EXACTEMENT CE QUE LES RECORDS RETENUS DECLARENT — CONTROLE SUR DEUX FILMS
+
+Confrontation, lecture par lecture, au compte des `Trace.Comps` des records RENDUS par
+`DecodeFrameViews` (clef = le NOM de registre, tous archetypes confondus) :
+
+| composant | `bfecd02b` porte / declare | `4f77afc1` porte / declare |
+|---|---|---|
+| `unit-crouch-component` (`i29`) | **76 / 76** | **236 / 236** |
+| `biped-posture-physics-component` (`i55`) | **52 / 52** | **287 / 287** |
+| `biped-slide-component` (`i62`) | **56 / 56** | **230 / 230** |
+| `biped-mobility-action-component` (`i54`) | **321 / 321** | **1 033 / 1 033** |
+| `unit-control-component` (`i18`) | **117 / 117** | **515 / 515** |
+| `object-translational-velocity-*` (`i1`) | **79 471 / 79 471** | **220 844 / 220 844** |
+
+**ZERO lecture fantome, sur les douze mesures.** Et la reconciliation ferme des deux cotes :
+`bfecd02b` 76 + 56 + 321 = **453** = 400 retenues + 53 ecartees ; `4f77afc1`
+236 + 230 + 1 033 = **1 499** = 1 430 + 68 + 1 doublon.
+
+#### 5.7.4.d LE BALAYAGE DE PRODUCTION, AVANT ET APRES
+
+`ScanMovementStates` appele directement (la fonction de production, sous les largeurs d axe de la
+carte du match) :
+
+| | `bfecd02b` avant | apres | `4f77afc1` avant | apres |
+|---|---|---|---|---|
+| records `ti=35` | 97 345 | 97 345 | 321 335 | 321 335 |
+| desyncs | 6 | 6 | 56 | 56 |
+| **lectures retenues** | **7 463** | **400** | **112 592** | **1 430** |
+| ecartees (slot non lie) | 7 940 | **53** | 44 123 | **68** |
+| doublons | 2 399 | **0** | 47 670 | **1** |
+| accroupi | 2 340 (474 posees) | **52 (6)** | 33 977 (10 459) | **191 (76)** |
+| glissade | 2 303 (341) | **47 (2)** | 35 195 (10 603) | **222 (82)** |
+| action de mobilite | 2 820 (731) | **301 (262)** | 43 420 (13 039) | **1 017 (837)** |
+| vies portant une lecture | 95 / 96 / 98 | **24 / 26 / 29** | 273 / 277 / 275 | **41 / 38 / 73** |
+
+Facteur global : **x 18,7** sur `bfecd02b`, **x 78,7** sur `4f77afc1`. Les DOUBLONS, qui etaient
+2 399 et 47 670, tombent a 0 et 1 : c etait la signature du defaut — le meme (slot, genre,
+instant) publie par plusieurs essais.
+
+Ecarts entre transitions consecutives d une meme vie, medianes : accroupi 1,001 -> **2,185 s**,
+glissade 1,452 -> **1,885 s**, mobilite 0,817 -> **0,017 s** (`bfecd02b`). La mobilite passe a UN
+TICK, ce qui est la forme attendue d une amorce d action ; les cadences « autour de la seconde »
+d avant etaient celles du localisateur, pas du jeu.
+
+#### 5.7.4.e CE QUI NE BOUGE PAS, PROUVE AU DOCUMENT ET A L ETAPE
+
+**A L ETAPE** — `replay-equiv -films bcb6d393`, SANS `-update` : **3 etapes divergentes sur 57**.
+`movementStates` (compte 4 469 -> **726**), `movementStates.stats`, `artifact` (1 912 592 ->
+1 910 083 o). **Les 54 autres sont IDENTIQUES a l octet** : `positions`, `killsource`, les tirs,
+les pistes, les objectifs, l inventaire, l equipement, les sons, les vehicules.
+
+**AU DOCUMENT** — diff des JSON decompresses des fixtures de contrat, apres re-figeage des
+ENTREES par leur porte :
+
+| film | `stances[]` | `reads` | `dropped` | `byKind` |
+|---|---|---|---|---|
+| `bcb6d393` | 69 -> **18** | 4 469 -> 726 | 5 460 -> 139 | 26/38/5 -> 1/15/2 |
+| `000d5950` | 95 -> **49** | 7 004 -> 1 873 | 4 643 -> 128 | 17/66/12 -> 0/49/0 |
+| `e5adf7b2` | 945 -> **51** | 31 141 -> 721 | 16 646 -> 37 | 297/361/287 -> 5/44/2 |
+| `fb1a1a72` | 89 -> **8** | 8 974 -> 306 | 4 852 -> 92 | 33/38/18 -> 0/8/0 |
+
+**AUCUNE AUTRE CLE DU DOCUMENT NE BOUGE** sur les quatre films controles : seuls `stances`,
+`coverage.stances`, `layers` et `coverage.decoder` (les deux dernieres etant les chaines de
+revision). Les `tracks`, les `shots`, le kill-feed, les zones : identiques a l octet.
+
+**POURQUOI LES FIXTURES N AVAIENT PAS BOUGE AU PREMIER RE-FIGEAGE, ET CE QUE CELA CORRIGE**
+(remplace D2 (5.7), qui parlait a tort de « largeurs par defaut ») : le constructeur de fixtures
+de contrat n ouvre AUCUN film — il rejoue les fixtures d ENTREES figees (`inputs_<film>.bin.gz`,
+codec `REPLAYINPUTS24`) via `chargerGoldenBuild`. Un changement de decodeur ne les traverse donc
+que si l on re-fige les entrees PAR LEUR PORTE (`GoldenBuildsRegenerate` avec
+`REPLAY_FILM_CACHE`, plus `GoldenInputsRegenerate` pour `000d5950`), ce qui re-decode les huit
+films. C est fait, et cela fait entrer d un coup les deux corrections du lot : la grammaire d
+`i55` (5.7.3, d ou les `records` qui bougent de quelques unites) et la porte (5.7.4, d ou
+`stances[]`).
+
+#### 5.7.4.f CE QUE LES SEIZE INTERVALLES DE `bcb6d393` DISENT, ET CE QU IL FAUT EN LIRE
+
+Une couverture partielle est un RESULTAT, et `StanceCoverage` le dit par ses propres compteurs.
+Sur `bcb6d393`, 726 lectures retenues donnent 18 intervalles sur 12 vies ; sur deux films
+l accroupi tombe a ZERO intervalle. Ce n est pas « personne ne s accroupit » : un intervalle
+demande une lecture POSEE **et** une lecture LEVEE dans la meme vie publiee, et sur `bfecd02b` il
+n y a que **6 lectures posees** d accroupi sur 52. Le film transmet ces composants tres
+rarement dans les records que la marche retient — et c est maintenant un fait mesure au lieu d un
+chiffre gonfle par les essais.
+
+#### 5.7.4.g LES DEUX ORACLES REPOSES SUR LA POPULATION PROPRE
+
+**SPRINT — UN SEUL MODE, SUR LES DEUX FILMS.** Vitesse au sol des records retenus, casiers de
+0,5 m/s :
+
+| | `bfecd02b` (55 044 lectures, 37 vies) | `4f77afc1` (169 981 lectures, 143 vies) |
+|---|---|---|
+| mediane | **2,263 m/s** | **2,280 m/s** |
+| p90 / p99 | 2,878 / 3,510 | 2,879 / 7,109 |
+| au-dela de 4 m/s | 41 (**0,07 %**) | 3 508 (**2,06 %**) |
+| **modes locaux** | **1** — 2,5-3,0 m/s (17 916) | **1** — 2,5-3,0 m/s (59 011) |
+| rapport p95/mediane par vie | 1,04 a **1,47** | 1,01 a **5,22** |
+
+La queue de `4f77afc1` (BTB 24 joueurs) n est PAS une seconde bosse : c est un PLATEAU quasi plat
+de 4 a 12,5 m/s (150 a 390 lectures par casier sur 24 casiers). Un sprint ferait une bosse ; un
+parc de vehicules fait un plateau. Le negatif du 5.3.5 tient donc sur la population propre, et il
+tient mieux : **un seul mode local sur chacun des deux films**.
+
+**SAUT — TOUJOURS PAS DE TAG.** Les quatre tags d `i55`, sur les lectures retenues liees au
+bipede : `bfecd02b` 20 lectures (18/1/0/1), `4f77afc1` 47 lectures (24/9/5/9). Contre-preuve :
+sur 4 869 puis 16 362 montees franches de vz, **3 puis 5** sont precedees d une lecture d `i55` de
+la meme vie dans les deux ticks — **99,9 % et 100,0 % ne le sont pas**. Aucun tag ne predit, et
+les denominateurs (9 lectures au mieux par tag) disent pourquoi le contraire ne serait pas
+mesurable.
+
+#### 5.7.4.h REVISIONS ET GARDE-RAILS
+
+`grammar.Rev` -> `grammar-2026-09-21.4`, `facts.Rev` -> `killsource-2026-09-21.4`, chroniques
+ecrites ; `replay.SchemaVersion` **INCHANGEE a 65** — la FORME ne change pas, le CONTENU oui.
+Re-figeage : golden de grammaire, golden des faits, golden des formes de types, 7 fixtures
+d entrees + celle de `000d5950`, 7 goldens d assemblage, 8 fixtures de contrat + manifeste.
+
+**DEUX GARDE-RAILS, parce que le defaut garde est une OMISSION** (et une omission ne casse rien :
+elle publie davantage, et « davantage » ressemble a « mieux ») :
+`etats_mouvement_porte_guard_test.go` epingle (a) que les TROIS neutralisations eteignent la porte
+et la restaurent a l identique, cas `nil` compris, et (b) sur la SOURCE, que les trois
+localisateurs appellent `neutraliserEtatsDeMouvement()()` — avec, dans le message d echec, le
+chiffre que l omission coutait.
 
 ### 5.7.5 CE QUI N EST PAS PUBLIE, ET POURQUOI
 

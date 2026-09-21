@@ -453,3 +453,23 @@ package facts
 //
 // `SchemaVersion` NE MONTE PAS : aucun champ neuf au document. Le CONTENU CUIT change, lui, et
 // ce sont les fixtures de contrat et `backfill-replay` qui en repondent.
+
+// ENTREE `killsource-2026-09-21.4` (2026-09-21, lot 5.7.4) : LA REVISION MONTE DERRIERE UNE
+// CORRECTION DE PUBLICATION DE LA COUCHE GRAMMAIRE, ET LE KILL-FEED N EST PAS CONCERNE.
+//
+// AUCUN OCTET DE `facts/` N EST TOUCHE. `grammar.Rev` passe a `grammar-2026-09-21.4` : la porte
+// des etats de mouvement s inscrit dans la neutralisation des lectures speculatives, qu elle
+// avait oubliee au lot 5.3.6 — elle publiait les essais d alignement de la marche, dans un
+// rapport de 14 a 152 pour un (chronique de `grammar`, entree du meme jour). Cette constante
+// hache la VALEUR de la revision de grammaire : elle monte.
+//
+// CE QUE CE BACKLOG RAPPORTERAIT POUR LE KILL-FEED : RIEN, et c est prouve cette fois-ci plutot
+// qu argumente. Le correctif n eteint qu UN crochet, `EtatMouvementHook` ; `PosCaptureHook` et
+// `UnitRefHook` etaient DEJA inscrits dans la neutralisation depuis le lot 2.2, donc aucune
+// position, aucune vitesse, aucune reference d unite ne change. `replay-equiv` sur `bcb6d393`
+// le mesure : 3 etapes deplacees sur 57 — `movementStates`, `movementStates.stats` et
+// `artifact` —, et `killsource` en fait partie des 54 IDENTIQUES a l octet.
+//
+// `SchemaVersion` NE MONTE PAS : la FORME du document ne change pas. Son CONTENU change
+// (`stances[]` perd les intervalles qu il tenait d essais jetes), et c est `backfill-replay` qui
+// en repond.
