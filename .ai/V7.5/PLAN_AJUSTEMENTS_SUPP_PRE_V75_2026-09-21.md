@@ -35,6 +35,7 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - D12 Titres Escouade : « Assistances croisees », « Delai de vengeance », « Frags non venges »,
   « Assistances par coequipier », « Part de mon camp », « Detail des prises d'armes speciales ».
 - D16 Alignement comparaison : rangees partagees ; placeholder « Sans equivalent dans cette session ».
+- D17 (2026-09-21, apres maquette) : Explorer « Part des assistances » = 1.A et « Repartition des resultats » = 2.A, TOUS DEUX A L HORIZONTALE. Sujets 3, 4, 5 : pas encore tranches.
 
 ## Lots
 
