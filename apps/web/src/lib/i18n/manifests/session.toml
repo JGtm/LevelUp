@@ -485,6 +485,10 @@ en = "Previous session"
 fr = "Session suivante"
 en = "Next session"
 
+[session.detail.compare_no_counterpart]
+fr = "Sans équivalent dans cette session"
+en = "No counterpart in this session"
+
 [session.detail.drawer_no_compare]
 fr = "Aucune session à comparer pour le moment."
 en = "No session to compare for now."
