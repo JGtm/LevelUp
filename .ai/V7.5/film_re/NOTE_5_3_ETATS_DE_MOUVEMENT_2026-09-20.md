@@ -1611,6 +1611,156 @@ apparait a l identique quand la bascule est abaissee (meme sha obtenu), donc il 
 
 ---
 
+## 2 quaterdecies. L ECRIVAIN DE LA TRAME (5.3.3-b) — LA TRAME A TROIS BOUCLES, ET LE DEPOT LE SAVAIT DEJA
+
+> Point (b) du lot 5.3.3, 2026-09-21. Question posee : quels CHEMINS DE RECORD
+> `DecodeFrameRecords` ne modelise-t-il pas, et qu est-ce que le CODE designe comme cause des
+> 12 316 rejets au premier record ? Reponse : aucun chemin ne manque au decodeur de records —
+> c est le PAQUET qui a trois boucles, et l instrument de 5.3.2 n en lisait qu une.
+
+### 2quat-d.1 LE FRAME-PROCESSEUR, LU EN ENTIER (`FUN_142987460`)
+
+```
+DAT_144706104 = R(1)                                   // le drapeau de configuration
+pour vue dans 0..2 :                                   // TROIS vues, dans l ordre
+    vtable[0x60](vue, 0xa00 - total, sortie + total*0xc0, &n)      // HORS BANDE : aucun bit lu
+    vtable[0x40](vue, etat, LECTEUR, 0xa00 - total, sortie + total*0xc0, &n)   // FUN_1406cd128
+    total += n
+pour vue dans 0..2 : pour chaque record de la plage de la vue : vtable[0x48](vue, record)  // APPLIQUER
+FUN_1406d07b0(sortie, total, 0)
+```
+
+**QUATRE FAITS, ET CHACUN DIT QUELQUE CHOSE.**
+
+1. **UN SEUL bit d amorce dans cette fonction** — le drapeau de configuration
+   (`DAT_144706104`). Le SECOND bit de l amorce de 2 bits du port n est pas ici, et il n avait
+   pas a y etre : c est le BIT DE CONTINUATION de la liste d evenements, deja modelise dans
+   `grammar/event_list.go` (`[1 bit config][( 1 [R(7) type] ... )* 0][trame de records]`). Le
+   « second bit non localise dans le desassemblage » du § DefaultPacketPreambleBits est donc
+   localise : c est le bit que l instrument lui-meme teste en `pay[0]&0x40`.
+2. **LA BOUCLE DE RECORDS EST APPELEE TROIS FOIS SUR LE MEME LECTEUR.** Chaque vue a sa propre
+   fin de trame (son record de type 0). `DecodeFrameRecords` rend la main au PREMIER type 0 :
+   il lit la vue 0, et rien de plus.
+3. **`vtable[0x60]` PRODUIT DES RECORDS SANS LIRE UN BIT** (aucun lecteur en parametre) : une
+   passe HORS BANDE, depuis l etat local de la vue. Ces records existent dans la trame appliquee
+   et ne sont dans AUCUN flux — un decodeur hors ligne ne peut pas les voir, et n a pas a les
+   chercher.
+4. **CAPACITE 0xa00 (2 560) records pour les trois vues**, et un abandon propre par
+   `FUN_1406cd3a8` quand elle est atteinte (`if ((capacite <= deja_lus) && (type != 0))`). Ce
+   n est pas un chemin de flux : c est la borne du tampon de l appelant.
+
+### 2quat-d.2 LA BOUCLE ELLE-MEME (`FUN_1406cd128`), ET SES DEUX BRANCHES
+
+L en-tete est confirme une troisieme fois, et a l identique du port : prefixe de type
+`R(1) -> DELTA` sinon `R(2) in {0,1,2,3}` ; puis l id par la categorie **7**
+(`low = R(ceilLog2(DAT_1451f990c)) + DAT_1451f9908`, `tag = R(2)` en bits 30-31).
+
+**IL Y A DEUX BOUCLES DANS LA FONCTION**, selon le global `DAT_14474cd78` :
+
+| | `== 0` | `!= 0` |
+|---|---|---|
+| lecture de l id | `FUN_1406d3140(_, lecteur, 7, &id)` | la MEME chose, EN LIGNE (memes `DAT_1451f9908/990c`) |
+| type 1 (NEW) | `[R(8) garde] FUN_141f86704` | `FUN_1406cbaa0(type, id, ...)` |
+| type 2 (DEL) | `[R(8) garde] R(32)` | idem |
+| type 3 (DELTA) | garde puis `FUN_141f86b58` | idem |
+| sortie | record RANGE dans le tableau (pas de 0xc0) | applique, rien de range |
+
+Les deux lisent la MEME grammaire de bits. Le port en melange les deux moities (le stockage de
+la premiere, le dispatch de la seconde) — sans consequence de flux.
+
+**LA GARDE DU DELTA, CHEZ L ECRIVAIN** : `entree = table_de_la_vue + (id & 0x3fffffff) * 0xa0` ;
+le record n est decode QUE si `*(uint *)(entree + 8) == id` (l eid ENTIER, generation comprise)
+ET `*(short *)(entree + 2) == type`. Sinon la fonction rend 2 et **la boucle s ARRETE** — le jeu
+abandonne le paquet, exactement comme `DecodeFrameRecords`. La table est celle de LA VUE
+(`vue + 0x38`), pas un monde global.
+
+**L ECRIVAIN D UNE REFERENCE D ENTITE** (`FUN_1406d2464`, categorie 0) confirme la symetrie de
+l id : `W(1)` de presence, puis `W(largeur) = (id & 0x3fffffff) - base` — **la base est
+SOUSTRAITE a l ecriture** et ajoutee a la lecture, comme le port le fait —, puis `W(2)` du tag.
+Et le meme `DAT_144706104` y choisit entre la table et le global : **le bit d amorce n est pas un
+bit mort, il SELECTIONNE la table de largeurs d id.** Il vaut 1 sur 100 % du corpus.
+
+### 2quat-d.3 LA CAUSE DES REJETS, DESIGNEE PAR LE CODE — ET ELLE ETAIT DANS L INSTRUMENT
+
+`DecodeFrameRecords` est le port FIDELE de `FUN_1406cd128` : **une** vue. Le port fidele de
+`FUN_142987460` existe DEJA dans le depot, et depuis l origine : **`grammar.DecodeFrameViews`**
+(`frame_harvest.go`), dont l en-tete dit mot pour mot « The offline decoder previously read only
+ONE loop from bit 0 — potentially missing views 1..N ». Sa valeur de PRODUCTION est **HUIT** vues
+(`killsource.Options.Views = 8`, `grammar.marchViews = 8`). Et les 16,9 % de paquets a liste
+pleine ont eux aussi leur porte dans le depot : `marchLocateStrict` localise le debut de la trame
+par la SIGNATURE du premier record (un delta du slot 123, long de 35 bits, a composant unique —
+candidat unique et vrai sur 690 paquets sur 690).
+
+**LA MARCHE DE REFERENCE DE 5.3.2 N UTILISE NI L UN NI L AUTRE** : un `DecodeFrameRecords` par
+paquet, depuis le bit 2, et un monde lie par les seules images-cles. Elle lisait donc une vue sur
+trois et jetait un paquet sur six.
+
+**LA MESURE LE DIT EN TROIS CHIFFRES** (`bfecd02b`, `mouvement_5_3_3b_vues_research_test.go`) :
+
+| constat | mesure |
+|---|---|
+| paquets delta du film | **31 232** |
+| a liste VIDE (lus par la reference) | 25 958 (83,1 %) |
+| a liste PLEINE (**jetes** par la reference) | **5 274 (16,9 %)** |
+| paquets « sains » gardant **>= 24 bits NON LUS** apres la fin de la vue 0 | **9 006 sur 10 191 (88,4 %)** |
+| poursuite de la lecture apres cette fin | **4 869 fins propres (54,1 %)**, 9 992 records de plus |
+
+**ET LES SLOTS REJETES NE SONT PAS DU BRUIT** — c est le point que la passation laissait ouvert.
+Sur 4 474 slots distincts pour 12 441 rejets : seuls **47,1 % ne sont vus qu UNE fois**, **24,0 %
+apparaissent dans un record NEW** et **23,2 % dans un record sain** ; le plus rejete est le slot
+**123** — la signature du premier record du jeu — **365 fois**. Un identifiant lu dans du bruit
+uniforme sur 2^13 slots ne revient pas 365 fois. Ce sont de vraies entites qu un monde lie par
+les seules images-cles n a jamais liees.
+
+### 2quat-d.4 CE QUE LA MARCHE DU JEU RAPPORTE, MESURE
+
+Meme film, meme monde, meme profil ; `DecodeFrameViews` + `marchLocateStrict` sur les paquets a
+liste pleine :
+
+| | reference 5.3.2 (1 vue, liste vide seule) | 3 vues (ce que le CODE dit) | 8 vues (valeur du depot) | 16 vues |
+|---|---|---|---|---|
+| records lus | 28 185 | 117 753 | **124 828** | 125 010 |
+| records `ti=35` | 11 228 | **31 530** | 30 279 | 30 281 |
+| etalon `i0` | 62,5 % | 65,2 % | 63,3 % | 63,3 % |
+| etalon `i1` | 55,6 % | 59,7 % | 57,4 % | 57,4 % |
+| **etalon `i21`** | 64,2 % | **67,3 %** | 67,2 % | 67,2 % |
+| etalon `i25` | 94,6 % | **93,4 %** | 92,6 % | 92,6 % |
+| **`i29` accroupi lu** | 14 | 89 | **110** | 110 |
+| **`i62` glissade lue** | 14 | 89 | **119** | 119 |
+| paquets a liste pleine localises | 0 | 4 147 (78,6 %) | 4 006 (76,0 %) | 4 006 (76,0 %) |
+
+**L ORACLE DE CONTENU EST CONSERVE** (`i21` 67 %, `i25` 93 %) et l acces aux etats de mouvement
+est multiplie par **6 a 8,5**. `ti=35` passe de 11 228 a **31 530**.
+
+**8 ET 16 SONT INDISCERNABLES** : la marche sature avant la huitieme vue. **3 rend le meilleur
+etalon** (`i25` 93,4 % contre 92,6 ; `ti=35` 31 530 contre 30 279) — et 3 est ce que le
+frame-processor deroule. La valeur 8 lit 7 000 records de plus pour un etalon legerement plus
+sale : elle depasse la trame. **Consigne pour la suite : la mesure canonique se fait a TROIS
+vues, 8 reste comme controle de sensibilite.**
+
+### 2quat-d.5 CE QUI N EST PAS CORRIGE, ET POURQUOI
+
+**Aucun octet de production n est touche par ce point.** `frame_records.go` n avait pas d ecart a
+combler : il porte `FUN_1406cd128` fidelement, et le porteur de `FUN_142987460` existait deja a
+cote de lui. La lecon est celle du point (10) de la passation, appliquee a la lettre : **quand
+une mesure contredit le depot, c est l instrument qu on suspecte en premier.**
+
+**DECOUVERTES, CONSIGNEES AU § 6, NON TRAITEES** :
+
+- **`marchViews = 8` contre TROIS vues chez le frame-processor.** Le depot lit au-dela de la
+  trame. Mesure ci-dessus : 8 rapporte 7 000 records de plus et degrade `i25` de 0,8 point.
+  Reduire la constante a 3 est un lot de production (elle porte les empreintes gelees de
+  `killsource` et de la marche des morts d objet).
+- **Les 24,0 % de paquets a liste pleine que la signature ne localise PAS** (1 268 sur 5 274).
+  La porte existe, son taux est de 76 a 79 % ; le complement demande la grammaire de charge des
+  types d evenement — c est le lot d evenements deja consigne.
+- **La table d entites est celle de LA VUE** (`vue + 0x38`, pas de 0xa0). Le decodeur hors ligne
+  tient UN monde pour les trois. C est une approximation assumee tant que les trois vues
+  partagent l espace de slots observe ; un lot qui voudrait la lever devra mesurer si un meme
+  slot porte deux archetypes selon la vue.
+
+---
+
 ## 3. LE NEGATIF, MESURE DEUX FOIS
 
 **(a) Sur l'archetype.** Les 64 composants de `ti=35` (`ecs_table.tsv`) : aucun nom ne contient
