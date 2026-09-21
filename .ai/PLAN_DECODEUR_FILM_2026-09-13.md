@@ -7771,6 +7771,119 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
         `soundSeek` avec l instant d arrivee et JAMAIS `soundTick` ; chaque evenement du glisse
         repose le curseur (aucun ecart ne s accumule) ; et `seekToFrame` n appelle PAS `soundSeek`.
 
+### Post-chantier — lot 5.11 (le declencheur du saut, film temoin), branche `feat/decfilm-61`, base `677117b82`
+
+Demande de l utilisateur du 2026-09-21 : il a fait enregistrer un film ou UN SEUL joueur est
+actif et n a fait QUE sauter, une fois, autour de la dixieme seconde
+(`dad793c7-0894-49c7-91ed-75c2c1074dad`). C est un ORACLE CONTROLE, et le dispositif qu il rend
+possible est celui qu un film de match interdit : **tout champ replique qui bascule a cet instant
+et nulle part ailleurs est le declencheur du saut**. Instruments :
+`grammar/mouvement_5_11_{temoin,fenetre,bascule,partiels}_research_test.go` (tous sous
+`//go:build research`).
+
+**CE QUE LE LOT A TROUVE, ET CE N EST PAS UN DECLENCHEUR : IL N Y EN A PAS.** L ensemble des
+champs candidats est VIDE sur le film temoin, et la generalisation sur deux films de match le
+confirme : aucun composant du bipede n est enrichi dans une fenetre de saut. Les six candidats
+que le lot 5.7.5 avait scores a 11-14 % sont EXCLUS par la mesure. Ce que le film porte du saut
+est `i0` (position), `i1` (vitesse) et `i25` (tick de commande) — c est-a-dire exactement le
+canal dont `jumpDerived` est tire. Et l ecrivain dit POURQUOI, positivement (case 5.11.3).
+
+- [x] **5.11.1 — LE FILM TEMOIN EST UN ORACLE PARFAIT, ET L INSTANT EST CONFIRME AU CENTIEME.**
+  Registre : build `HI_1_13_0` (buildID 269225, changelist 8844991), format 27, 50 blocs, match du
+  2026-09-09T18:01:03Z. **ROSTER : UN SEUL joueur** — `Neutral`, xuid 2535421281042913, 31 slots
+  vacants. 10 774 paquets dont 5 370 deltas, etendue 89,849 s.
+  **LE BIPEDE (slot 512) NE PRODUIT QUE 75 RECORDS SUR TOUT LE FILM** : creation a t=2,851 s,
+  quatre deltas jusqu a 2,915 s, **un record isole a 16,146 s** (`i42 biped-desired-weapon-set` +
+  `i45 weapon-state-type-info` = la remise de l arme, donc le DEBUT DU MATCH), puis **une rafale
+  unique de 69 records de 26,036 s a 27,191 s**. 26,036 − 16,146 = **9,89 s apres le debut du
+  match** : c est le saut annonce « a 10 secondes », et il n y en a pas d autre.
+  La marche du jeu (trois vues, largeurs de carte installees) laisse **6,3 bits non lus par
+  paquet** : elle est COMPLETE, le film ne cache rien.
+  TRAJECTOIRE : vz au decollage **+3,037 m/s**, maximum **+3,446 m/s** a 26,053 s, decroissance
+  strictement lineaire, apex a 26,590 s, descente symetrique a −2,923 m/s, contact a 27,191 s ;
+  **duree de montee a vz >= 0,5 m/s = 0,470 s** (reference 5.9.4 : 0,467 s) ; **hauteur integree
+  = 0,8649 m** (constante `types.SpartanJumpHeightM` = 0,85 m, ecart 1,8 %) ; **vitesse au sol
+  0,000 m/s sur toute la duree du vol** — il n a fait que sauter, verticalement.
+  **LA CARTE DE CE FILM N EST PAS IDENTIFIABLE, et c est dit** : la signature d `i0`
+  (`DetectI0LayoutOf`) rend « 1 frontiere sur 68 paires » — non concluante, parce qu un seul
+  bipede ne fournit pas d echantillons ; le balayage des 79 entrees du catalogue x 6 largeurs d id
+  ne departage RIEN (toutes rendent le meme compte). Les mesures ci-dessus portent donc sur le
+  canal de VITESSE, qui ne depend pas de la carte ; `Z(t)` lu dans `i0` sous la carte substitut
+  `corpo` ne rend que 0,105 m d amplitude, soit un quantum d axe vertical faux d un facteur 8,2 —
+  ecrit ici pour que personne ne cite ce Z.
+- [x] **5.11.2 — LA BASCULE : L ENSEMBLE DES CANDIDATS EST VIDE, ET LES SIX CANDIDATS DU 5.7.5
+  SONT EXCLUS.** `TestMouvement511Bascule` croise CHAQUE champ replique du film (tout archetype,
+  tout composant, tout slot) contre la fenetre du saut [24,146 ; 29,146] s.
+
+  | famille | compte |
+  |---|---:|
+  | champs dont TOUS les instants sont DANS la fenetre | **0** |
+  | champs presents dedans ET dehors | 6 : `ti=2 i5`/`i12` (minuteurs), `ti=4 i0` (`high-frequency`, compteur de tick par paquet), et du bipede `i0` 69/70 · `i1` 69/73 · `i25 unit-command-tick` 69/72 |
+  | evenements de tete dans la fenetre | **0** (le film en porte 25 : types 9, 15, 76, 82 — aucun entre 18,164 s et 46,215 s) |
+
+  Et sur TOUT le film : `i54`, `i59`, `i60`, `i62`, **`i63`** n apparaissent qu UNE fois, dans le
+  record de creation a 2,851 s ; **`i55` et `i57` n apparaissent JAMAIS**. La fenetre temoin (sans
+  saut) ne porte aucun record de bipede du tout : le bipede est muet 23 s durant.
+  **GENERALISATION SUR `bfecd02b`** (match reel, 8 joueurs, etalon tenu : 97 345 records `ti=35`,
+  6 desyncs, `i21` 65,3 %), 199 sauts derives, 8 171 records de bipede dans une fenetre
+  `[t0 − 250 ms ; t1]` contre 89 174 hors :
+
+  | composant | dedans | part | hors | part | facteur |
+  |---|---:|---:|---:|---:|---:|
+  | `i0` position | 8 167 | 99,95 % | 75 099 | 84,22 % | 1,19 |
+  | `i1` vitesse | 7 943 | 97,21 % | 67 545 | 75,75 % | 1,28 |
+  | `i25` command-tick | 8 169 | 99,98 % | 86 392 | 96,88 % | 1,03 |
+  | `i28` camo | 126 | 1,54 % | 602 | 0,68 % | 2,28 |
+  | `i57` ability | 96 | 1,17 % | 529 | 0,59 % | 1,98 |
+  | `i59` non-predicted | 96 | 1,17 % | 531 | 0,60 % | 1,97 |
+  | **`i63` biped-action** | **0** | 0,00 % | 74 | 0,08 % | **0,00** |
+  | `i55` posture-physics | **0** | 0,00 % | 52 | 0,06 % | 0,00 |
+  | `i62` slide / `i29` crouch / `i60` sim-state / `i18` unit-control | **0** chacun | 0,00 % | 56 / 60 / 57 / 101 | — | 0,00 |
+
+  **`i63 biped-action-component`, le candidat n 1, est declare 74 fois sur le film et ZERO fois
+  dans une fenetre de saut.** Aucun composant n atteint un facteur qui ressemble a un
+  declencheur ; les 11-14 % du 5.7.5 etaient du bruit, et les voici mesures a facteur 2 sur une
+  fenetre plus large.
+  **LECON DE METHODE, ecrite parce qu elle vaut pour le prochain lot** : la PRESENCE d un
+  composant se lit dans le MASQUE du record, independamment de son PORT. Instruire la grammaire
+  d un composant partiel ne fera jamais apparaitre un record la ou le masque n en declare aucun —
+  donc aucun port de `i57`/`i59`/`i60`/`i63` ne pouvait repondre a la question du saut.
+- [x] **5.11.3 — L ECRIVAIN : LA CHAINE DE L ETAT AERIEN EST COMPLETE, ET LE DEPOT LA DECRIVAIT
+  FAUX.** Le lot 5.9.2 s arretait sur « une INTERROGATION DU MONDE DE COLLISION
+  (`FUN_140d988c8(<position>, idx)`) ... reste a lire si cette interrogation a une entree
+  repliquee autre que la position de l objet ». Lue (Ghidra, lecture seule), ce n est pas une
+  requete geometrique :
+
+  ```
+  FUN_140d988c8(p1, handle)
+    -> FUN_1408b44a8(handle) : FUN_140477618(&handle, 2) resout l objet en genre 2,
+                               puis FUN_1408b44dc(obj) doit rendre 1 ; sinon sortie
+    -> FUN_140e24414(p1, handle) : lVar1 = FUN_1408b460c(handle, 2)
+                                   return (*(uint*)(lVar1 + 0x308) >> 0x12) & 1   <- BIT 18
+  ```
+
+  C est **un drapeau lu sur l objet CONTACTE** (bit 18 de `obj+0x308`), et `0x308` n est dans
+  AUCUN des offsets qu un deserialiseur de `ti=35` ecrit (liste mesuree au 5.7.1 : `0x4dc`,
+  `0x544`/`0x548`/`0x726`, `0x7e8`/`0x7ec`, `0xaa8`, `0x11f8`/`0x1295`/`0x1296`, `0x129c`,
+  `0x12b4`, `0x12e4`, `0x1324`). **LA CHAINE EST DONC COMPLETE ET POSITIVE** : position repliquee
+  (`i0`) -> liste de contacts du controleur de personnage (`FUN_1408b2f90`) -> drapeau statique
+  bit 18 de `obj+0x308` du contact -> compteur de ticks sans contact `u+0x89b`
+  (`FUN_1408b19cc`) -> `IsAirborne`. Aucune entree repliquee autre que la position : **le film n a
+  pas a porter l etat aerien, le jeu le recalcule — exactement comme notre decodeur.** C est la
+  raison, chez l ecrivain, de l ensemble vide de la case 5.11.2.
+- [x] **5.11.4 — VERIFICATION SUR `bfecd02b` ET `4f77afc1`** : le tableau dedans/dehors de la case
+  5.11.2 EST cette verification (elle a ete faite sur les deux films, porte propre, population
+  des records RENDUS, etalon de contenu publie avant toute conclusion). `4f77afc1` : 322 889
+  records `ti=35`, 55 desyncs, `i21` 69,7 %. Aucun candidat sur aucun des deux.
+- [!] **5.11.5 — LE PORT DE `jump` LU N EST PAS LIVRE, PARCE QU IL N EST PAS PROUVE.** « Ce qui
+  n est pas prouve n est pas publie » : il n existe pas de champ replique du saut, donc pas de
+  genre `jump` LU, donc AUCUNE montee de schema de ce lot. `jumpDerived` reste le seul genre du
+  saut, et il est desormais JUSTIFIE et non plus provisoire — ce que le commit de la case
+  5.11.3 ecrit dans l en-tete de `movement_states_jump.go`, a la place de la phrase « le jour ou
+  le champ replique sera nomme, un genre `jump` LU remplacera celui-ci ».
+
+---
+
 ### Post-chantier — lot 5.9 (chaines du sprint et du saut), branche `feat/decfilm-57`, base `c3f01dd4b`
 
 Suite du 5.7, sur passation. Le lot remonte les CHAINES DE DONNEES du sprint et du saut depuis
