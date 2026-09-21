@@ -25,7 +25,7 @@
 #
 #   LEVELUP_UPDATE_TYPES_SHAPES=1 go test ./internal/games/halo_infinite/film/types/ \
 #     -run TestFormesDesTypesEgalentLeGolden -update-types-shapes
-revisions	source=source-2026-09-16.2	grammar=grammar-2026-09-20	facts=killsource-2026-09-20
+revisions	source=source-2026-09-16.2	grammar=grammar-2026-09-20.2	facts=killsource-2026-09-20
 
 ## ChunkMeta (source)
 Index	int	-
