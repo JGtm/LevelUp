@@ -172,12 +172,12 @@ surface `film/replay` 260 -> 263 justifie.
 - D22-6/7 Appui recu : Sessions en jauges + bande ; Timeseries en un seul graphe comme D22-3.
 - Reserves : R1 a servir (team_size par match) ; R2 levee ; R3 a servir (lecteur portee tous joueurs).
 
-### Lot N1 — Go : taille d equipe + blocs Coordination (worktree `LevelUp-wt-ajsup-n1`)
-- [ ] R1 : `TeamSize` (+ `PlayerTeam`) par match sur `SessionUsageMatchPoint`, depuis `TeamContext`
-- [ ] Bloc coordination de session : par match, morts de camp, ripostees (5 s), mes ripostes, mes morts ripostees ; appuis recus (mes frags appuyes / mes frags ; appuis du camp / recus par moi)
-- [ ] Bloc coordination de timeseries : les memes, groupes par soiree (sessions), avec couverture
-- [ ] Bloc riposte de match view : par mort, (victime, vengeur, delai, camp) ; comptes par joueur
-- [ ] openapi + generate-types ; tests analysis/service/repo
+### Lot N1 — Go : taille d equipe + blocs Coordination (worktree `LevelUp-wt-ajsup-n1`) — FUSIONNE e30fe0ce7 (conflit session_page.go resolu : les deux blocs ; openapi et types regeneres)
+- [x] R1 : `TeamSize` (+ `PlayerTeam`) par match sur `SessionUsageMatchPoint`, depuis `TeamContext`
+- [x] Bloc coordination de session : par match, morts de camp, ripostees (5 s), mes ripostes, mes morts ripostees ; appuis recus (mes frags appuyes / mes frags ; appuis du camp / recus par moi)
+- [x] Bloc coordination de timeseries : les memes, groupes par soiree (sessions), avec couverture
+- [x] Bloc riposte de match view : par mort, (victime, vengeur, delai, camp) ; comptes par joueur
+- [x] openapi + generate-types ; tests analysis/service/repo
 
 ### Lot N2 — Go : portee tous joueurs par match (worktree `LevelUp-wt-ajsup-n2`) — FUSIONNE 084685dba
 - [x] Filtre AllPlayers + lecteur sans filtre xuid ; medianes par (match, joueur) + mediane du lobby (sur les frags) + measured
@@ -185,4 +185,15 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] openapi + generate-types ; tests
 - [!] `TeamID` non servi : la lecture de portee ne rend que killer_xuid ; les deux scopes ne publient que le camp du joueur
 
-### Lots web (apres N1/N2) : O Sessions, P Match view, Q Timeseries, R Escouade
+### Lot O — Sessions : Riposte, Appui recu, Portee relative (worktree `LevelUp-wt-ajsup-o`)
+- [ ] Section Coordination de la colonne de session : carte Riposte (jauges + bande), carte Appui recu (jauges + bande)
+- [ ] Carte Portee : un baton par match (ecart au lobby), bandes de role, mediane de session, classes en infobulle
+
+### Lot P — Match view : Riposte par joueur (worktree `LevelUp-wt-ajsup-p`)
+- [ ] Bloc Riposte : deux graphes par joueur (camp A, camp B) cote a cote, comptes
+
+### Lot Q — Timeseries : Riposte et Appui en un seul graphe chacun (worktree `LevelUp-wt-ajsup-q`)
+- [ ] Frise du lot J rendue reutilisable ; deux series de batons par soiree sur un axe %, un repere d habituel par serie
+
+### Lot R — Escouade : nuage des roles de portee (worktree `LevelUp-wt-ajsup-r`)
+- [ ] Nuage, bande des roles en repli, phrases de lecteur retirees (D22-verbosite)
