@@ -65,6 +65,14 @@ export interface ChartCardProps<T = unknown> {
    */
   fluid?: boolean
   /**
+   * Quand true, la carte ne pose NI bordure NI fond : le graphe est nu et c'est le
+   * conteneur parent (une SectionCard, en general) qui porte le chrome. Ajoute le
+   * 2026-09-21 : un ChartCard monte DANS une SectionCard produisait un double cadre
+   * (bordure + bg-card imbriques) sur l'Escouade, les donuts d'usage et les six
+   * cartes de l'echange. Le bandeau de titre n'est pas concerne (rarement passe).
+   */
+  frameless?: boolean
+  /**
    * Builder de l'option ECharts. Appele a chaque rendu avec les series
    * courantes (ne pas y faire de side-effect).
    */
@@ -119,6 +127,7 @@ export function ChartCard<T = unknown>({
   emptyMessage = 'Aucune donnée à afficher',
   height = 320,
   fluid = false,
+  frameless = false,
   buildOption,
   className = '',
   children,
@@ -148,9 +157,10 @@ export function ChartCard<T = unknown>({
   // (24px = padding p-3 top+bottom, border-box). ECharts reçoit height:100%
   // qui se résout en pixels via la hauteur flex définie. Pas de ResizeObserver
   // → pas de boucle de rétroaction.
+  const chrome = frameless ? '' : 'rounded-lg border border-border bg-card'
   const outerCls = fluid
-    ? `relative flex h-full flex-col rounded-lg border border-border bg-card ${className}`
-    : `relative rounded-lg border border-border bg-card ${className}`
+    ? `relative flex h-full flex-col ${chrome} ${className}`
+    : `relative ${chrome} ${className}`
 
   const contentStyle = fluid
     ? { minHeight: height + 24 } // +24 = p-3 padding (border-box)
