@@ -25,9 +25,11 @@ package types
 //
 // LE SAUT, LUI, RESTE UNE DERIVATION, et son nom le dit. Ce que le 5.3.5 refusait — « publier un
 // SEUIL comme une DONNEE » — est evite par une constante qui n est pas un seuil d instrument mais
-// un FAIT DE JEU : `SpartanJumpHeightM`, un pic etroit mesure sur deux films. La chaine du
-// declencheur reste NON TROUVEE (lot 5.9.2, `FUN_140d988c8`) ; le jour ou elle le sera, un genre
-// `jump` LU remplacera le derive.
+// un FAIT DE JEU : `SpartanJumpHeightM`, un pic etroit mesure sur TROIS films. Et la chaine du
+// declencheur n est plus « non trouvee » : le lot 5.11 la FERME (`FUN_140d988c8` lit le bit 18 de
+// `obj+0x308` du contact, pas un champ du flux) et mesure sur un film temoin controle qu AUCUN
+// champ replique ne bascule au saut hors `i0`, `i1` et `i25`. Il n y aura pas de genre `jump` LU :
+// il n y a rien a lire. Details dans l en-tete de `grammar/movement_states_jump.go`.
 
 // Les genres d etat de mouvement. Ce sont les valeurs publiees telles quelles au document
 // (`stances[].kind`) : une etiquette STABLE, jamais un index de composant.
@@ -81,6 +83,13 @@ const (
 // valeur sur DEUX films — `bfecd02b` (snowbound) pic x 10,7 au-dessus de ses voisins, montee
 // 0,467 s ; `4f77afc1` (flood gulch) pic x 3,9, montee 0,466 s. C est un fait de jeu (tous les
 // Spartans sautent la meme hauteur), donc une constante et non un reglage.
+//
+// TROISIEME MESURE, SUR UN SAUT UNIQUE ET CONTROLE (lot 5.11.1, 2026-09-21) : le film
+// `dad793c7` porte UN joueur qui n a fait QUE sauter, une fois. Son unique episode donne
+// vz maximale +3,446 m/s, montee a vz >= 0,5 m/s de **0,470 s**, hauteur integree
+// **0,8649 m** — 1,8 % de cette constante — et une vitesse au sol de 0,000 m/s sur tout le vol.
+// C est la mesure la plus propre du depot : une seule vie, une seule action, aucun autre
+// mouvement dans le film.
 const SpartanJumpHeightM = 0.85
 
 // SpartanJumpHeightTol est la demi-largeur de la fenetre d acceptation, en fraction de

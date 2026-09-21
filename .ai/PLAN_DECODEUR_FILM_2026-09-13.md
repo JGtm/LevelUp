@@ -8379,6 +8379,9 @@ fin de vie « despawn » que le rejeu ne sait pas nommer.
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-21 | 5.11.0-a | **D1 (5.11) — LA REFERENCE D EQUIVALENCE EST PERIMEE DEPUIS LA FUSION DU LOT 5.10, ET ELLE REND QUATRE ECARTS QUI NE SONT A PERSONNE.** `replay-equiv -films bcb6d393` SANS `-update`, joue au HEAD de fusion `f8c3e8e7a` AVANT tout changement de ce lot : ECART sur `vehicles`, `movementStates` (attendu 4 469, obtenu **1 363**), `movementStates.stats` et `artifact`. Le plus gros — un facteur 3,3 sur le compte des transitions de mouvement — est donc anterieur a ce lot. | **NON TRAITE** — le re-figeage des references d equivalence est un geste du PILOTE, a la fin du chantier, et il est deja au programme (meme nature que D15 (5.3), qui portait sur `positions`). Consigne ici pour que l ecart ne soit impute ni a 5.10 ni a 5.11 : la seule difference que le correctif 5.11.0-a introduit est `movementStates` **1 363 -> 1 364**, un GAIN d une transition |
+| 2026-09-21 | 5.11.0 | **D2 (5.11) — `i60 simulation-state` EST DECLARE `partiel` DANS `ecs_table.tsv` ALORS QUE LA MESURE LE DIT COMPLET.** Relecture a `StartBit` sur les records RENDUS : **58 declarations sur `bfecd02b` et 326 sur `4f77afc1`, ZERO rendue non portee, ZERO fois composant fautif** sur les deux films. Son `ported` est le drapeau `SimStateComplet`, qui suit la carte depuis le 5.3.3-a — donc vrai des qu une carte est installee, ce qui est le cas de toute marche de production. | **NON TRAITE** (regle 7 : le lot porte sur le saut). Le passage a `porte` demande de decider ce que devient le drapeau quand AUCUNE carte n est installee (`ScanFilm*`), et c est un lot `ti=35` a part entiere. Le cout actuel du statut faux est nul en bits et non nul en lecture : il fait croire qu il reste une grammaire a trouver |
+| 2026-09-21 | 5.11.1 | **D3 (5.11) — LA CARTE D UN FILM A UN SEUL BIPEDE N EST PAS IDENTIFIABLE, ET AUCUN INSTRUMENT NE LE DIT.** `DetectI0LayoutOf` rend « profil i0 non concluant : 1 frontiere sur 68 paires » sur `dad793c7` — un seul bipede ne fournit pas assez d echantillons — et le balayage des 79 entrees du catalogue x 6 largeurs d id ne departage RIEN (toutes rendent le meme compte de records). Le catalogue est indexe par NOM DE MATCH, qui vient de la base, et le lot n a pas de base. | **NON TRAITE** — le lot a travaille sur le canal de VITESSE, qui ne depend pas de la carte, et l a ecrit partout ou il publie un chiffre. Mais tout lot futur qui ouvrira un film hors corpus sans nom de match se heurtera au meme mur : **une carte substitut donne des positions FAUSSES SANS ERREUR** (ici un facteur 8,2 sur l axe vertical), et rien ne le signale |
 | 2026-09-21 | 5.10.4 | **D4 (5.10) — CE QU IL FAUDRAIT POUR ROUVRIR `despawn`.** Les trois canaux sont mesures et ECARTES : `i14 object-dissolver` (`FUN_140dd9f9c`) 3 lectures sur `ti=40`, aucune sur le temoin ; le record de SUPPRESSION `recDel` (`FUN_1406cd128`, branche `iVar18 == 2`, R(32) jete PAR LE JEU) = recyclage du slot, +127 a +418 s apres le dernier recensement, 5 vies sur 254 ; le RECENSEMENT borne la disparition ([3:20.2, 3:40.2] pour `776/1`) mais c est deja ce que `end = "unknown"` publie. | NON TRAITE, et la reouverture a ses conditions : (a) un canal qui DATE le retrait — le candidat restant est le CONSOMMATEUR du record de suppression cote jeu (qui appelle `FUN_1406cd128` et ce qu il fait de l entite) , a lire dans Ghidra ; (b) OU une mesure de la couverture de la marche sur les paquets a liste pleine NON localises (69,9 % localises sur `4f77afc1`), qui dirait si les suppressions manquantes y sont ; (c) a defaut, un `end` qui publierait la BORNE de recensement au lieu de la taire — c est une decision de forme, pas une lecture |
 | 2026-09-21 | 5.10.5 | **D3 (5.10) — LE TYPE 82 NE NOMME PAS SON JOUEUR SUR `bfecd02b` : LES TROIS REFERENCES D EN-TETE SONT ABSENTES 578 FOIS SUR 578.** Leur bit de porte vaut 0 partout (controle independant : l instrument du lot 1 rend `ref0 presente 0/225`), alors que la charge, elle, est parfaitement alignee (21 valeurs de champ A, aucun selecteur a largeur runtime). Le masque de 32 drapeaux est donc note SANS pont de slot, et il reste au niveau du temoin decale. | NON TRAITE — ET C EST UNE DONNEE, PAS UN ECHEC : type 82 SANS references d en-tete sur `bfecd02b`, donc le masque n est pas attribuable a un slot par ce chemin ; A RE-TENTER PAR LE CONSOMMATEUR DU MASQUE (Ghidra) AU LOT SUIVANT. Le maillon a une adresse : le lecteur de domaines `0x142ef7f6c` du descripteur `PlayerGameEventSmall`. Deux suites possibles — (a) mesurer la presence des refs sur d AUTRES films (celles du lot 1 etaient relevees sur `000d5950`, `01e1f945`, `00502e52`), (b) chercher l emetteur ailleurs que dans les refs d en-tete (le sac de texte porte des index de participant sur 4 % des evenements) |
 | 2026-09-21 | 5.10.2 | **D1 (5.10) — LES DEUX EPISODES DU RAZORBACK `776/1` SONT SANS SUPPORT DANS LE FILM, ET UN TROISIEME OCCUPANT EST NOMME.** Le document publie `Dafar8423` (frames 251-563) et `Yessireezy` (943-1336) ; la seule montee a bord ECRITE dans ce vehicule est celle du slot **524** (vie sans xuid) a **1:54.5**, siege 1. Le verdict Theater de l utilisateur (2026-09-19) condamnait deja le second. | NON TRAITE (regle 7 : le lot porte sur le SIEGE). Le remede demande de construire les episodes sur `i10` — 48 montees nommees contre 86 episodes publies : c est un arbitrage de couverture ET une valeur neuve de `rides[].src`, donc une decision utilisateur |
@@ -8832,6 +8835,44 @@ fin de vie « despawn » que le rejeu ne sait pas nommer.
 | 2026-09-21 | 5.3.2 | **D9 (5.3) — LE DOMAINE MESURÉ DES CHAMPS D'`i54` CONTREDIT L'HYPOTHÈSE DE L'ÉCRIVAIN.** L'identifiant optionnel de 10 bits n'est transmis **0 fois sur 2 245 initiations** (il reste à sa sentinelle), et `+0x9c` ne prend que **deux** valeurs, 0 et 2, jamais 1 ni 3. L'hypothèse « Sprint / Thruster / Clamber / Slide sur 2 bits » du § 2.8 est donc réfutée par les valeurs. Seul `+0x98` (R(7)) se comporte en discriminant, et son domaine varie d'un film à l'autre (3 valeurs sur `bfecd02b`, 8 sur `4f77afc1`). | **NON TRAITÉE** : nommer les classes demande de croiser `+0x98` avec la carte et le geste vu dans Theater — c'est un lot en soi, et il a besoin de l'attribution vie -> joueur que 5.3.2 n'a pas faite |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Post-chantier — lot 5.11 (le declencheur du saut, film temoin), 2026-09-21
+
+Branche `feat/decfilm-61`, worktree `LevelUp-wt-decfilm-61`, base `677117b82`, fusion de
+l integration 5.10 (`e3e8d7340`, schema 67) en `f8c3e8e7a` — SANS CONFLIT.
+
+| commit | ce qu il apporte |
+|---|---|
+| `6be606e70` | 5.11.1 a 5.11.4 : le film temoin, la bascule, l ecrivain. **Zero octet de production** (trois instruments sous `//go:build research`) |
+| `f8c3e8e7a` | fusion de l integration 5.10 : schema **67**, `rides[].src`, codec `REPLAYINPUTS25`, `grammar`/`killsource-2026-09-21.7` |
+| `6f85cd0e2` | **5.11.0-a — PORT** : le compte du second tour d `i63` lu dans le flux, le `ported bool` mort retire, `i63` -> `porte`. `grammar`/`killsource-2026-09-21.8` |
+| (ce commit) | 5.11.3 — la doc de production corrigee : la chaine de l etat aerien est FERMEE, le derive est justifie, troisieme mesure datee de `H`. Godoc seule, revision INCHANGEE |
+
+**GATES SANS DECODAGE, a chaque commit** : `gofmt -l ./internal ./cmd` (vide) · `go build ./...`
+(ok) · `go vet ./...` et `go vet -tags=research ./internal/games/halo_infinite/film/...` (ok) ·
+`go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`,
+`contracttest`, `api` (**0 echec**) · `golangci-lint run ./internal/games/halo_infinite/film/...`
+(**0 issues**) · `go test -race` sur `grammar` (**ok, 388 s**) · `npx vitest run
+src/features/match-replay` (**3 014 tests, 0 echec**) apres re-figeage des 8 fixtures de contrat.
+
+**RATCHETS** : `keyframe_closure.golden` (0.A.3) **INCHANGE, aucune ligne en baisse** ·
+`TestG1TableSuitLeCode` (table ECS contre le code) vert apres le passage d `i63` a `porte` ·
+`TestTailleDesFichiersDuFilmNeCroitPas` vert apres la rotation de `rev_chronique.go` (511 -> 462,
+archive_2 443 -> 500) · `TestLongueurDesFonctionsDuFilmNeCroitPas` vert apres recompactage du cas
+d `i63` dans `consumeCaptureAndBipedComponent` (plafond fige a 112) · `shapes.golden` et les 8
+fixtures de contrat refiges (2 770 812 o / 3 145 728).
+
+**GATE AVEC DECODAGE** : `replay-equiv -films bcb6d393` SANS `-update`, joue **DEUX FOIS** — au
+HEAD de fusion `f8c3e8e7a` puis avec le correctif 5.11.0-a. Les **4 ecarts sont PRE-EXISTANTS**
+(D1 (5.11)) et la seule difference imputable au lot est `movementStates` **1 363 -> 1 364**.
+Aucune perte. `replay-corpus-gate` NON JOUE (interdit par le brief : aucune base DuckDB).
+
+**ORACLE DE CONTENU, publie avant chaque conclusion** : `bfecd02b` 97 343 records `ti=35`,
+6 desyncs, `i0` 85,5 / `i1` 77,5 / `i21` 65,3 / `i25` 97,1 % · `4f77afc1` 322 889 records,
+55 desyncs, `i21` 69,7 % · `dad793c7` 75 records, **0 desync**, `i21` 1,3 % (le joueur ne bouge
+pas la camera — c est l oracle, pas un defaut).
+
+**RIEN N EST POUSSE.** Arbre propre.
 
 ### Post-chantier — lot 5.10.6 (la lecture primaire, schema 67), gates AVEC DECODAGE, 2026-09-21
 

@@ -10,12 +10,31 @@ package grammar
 // et reconnait l episode a sa HAUTEUR. Confondre les deux dans un seul `kind` ferait passer un
 // calcul pour une lecture.
 //
-// LA CHAINE DU DECLENCHEUR N EST PAS ABANDONNEE POUR AUTANT. Le lot 5.9.2 l a remontee de la
-// condition d animation `IsAirborne` jusqu au compteur de ticks sans contact `u+0x89b`, dont le
-// seul ecrivain (`FUN_1408b19cc`) n est appele que par la resolution de contact du controleur de
-// personnage (`FUN_1408b2f90`) : la chaine est NON TROUVEE a cette adresse, pas refutee. Le jour
-// ou le champ replique sera nomme, un genre `jump` LU remplacera celui-ci, avec sa propre montee
-// de revision. C est la decision de l utilisateur du 2026-09-21.
+// ET CE DERIVE EST LE CANAL DU FILM, PAS UN CONTOURNEMENT — MESURE LE 2026-09-21 (lot 5.11).
+//
+// Le lot 5.9.4 ecrivait ici « la chaine est NON TROUVEE a cette adresse, pas refutee. Le jour ou
+// le champ replique sera nomme, un genre `jump` LU remplacera celui-ci ». LES DEUX BOUTS DE CETTE
+// PHRASE SONT DESORMAIS TRANCHES, et dans le sens du derive :
+//
+//	LA CHAINE EST FERMEE, POSITIVEMENT. `FUN_140d988c8` — que le 5.9.2 decrivait comme « une
+//	  interrogation du monde de collision » dont il restait a lire si elle avait une entree
+//	  repliquee — n en est pas une : elle resout un HANDLE (`FUN_1408b44a8` -> `FUN_140477618`,
+//	  genre 2) et rend le BIT 18 de `obj+0x308` de l objet CONTACTE (`FUN_140e24414` ->
+//	  `FUN_1408b460c`). Or `0x308` n est dans AUCUN des offsets qu un deserialiseur de `ti=35`
+//	  ecrit (liste mesuree au 5.7.1). L etat aerien se calcule donc de la POSITION REPLIQUEE et
+//	  de proprietes statiques d objet : position (`i0`) -> liste de contacts du controleur de
+//	  personnage (`FUN_1408b2f90`) -> bit 18 de `obj+0x308` -> compteur de ticks sans contact
+//	  `u+0x89b` (`FUN_1408b19cc`) -> `IsAirborne`. Le jeu le DERIVE lui aussi.
+//	IL N Y A PAS DE CHAMP A NOMMER, ET C EST MESURE SUR UN ORACLE CONTROLE. Le film
+//	  `dad793c7` ne porte qu UN joueur, qui n a fait QU UN saut : dans la fenetre de ce saut,
+//	  ZERO champ replique du film basculent hors `i0`, `i1` et `i25 unit-command-tick`, et
+//	  ZERO evenement de tete. Generalisation sur `bfecd02b` (8 171 records de bipede en fenetre
+//	  de saut contre 89 174 hors) : `i63 biped-action`, `i55 biped-posture-physics`,
+//	  `i62 biped-slide`, `i29 unit-crouch`, `i60 simulation-state` et `i18 unit-control` sont
+//	  declares ZERO fois dedans ; `i57` et `i59` a facteur 2, le bruit deja mesure au 5.7.5.
+//
+// Un genre `jump` LU ne remplacera donc PAS celui-ci : il n y a rien a lire. Ce qui reste ouvert
+// est la seule chose que la mesure laisse ouverte — la PRECISION de la derivation, pas sa nature.
 //
 // # LA METHODE EST CELLE DE L ORACLE PHYSIQUE, TELLE QUELLE
 //
