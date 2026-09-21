@@ -80,10 +80,39 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - [ ] Ordre des tiers D2 dans `weaponTier.ts` / MatchPadControlSection ; « geste » -> « usages »
 
 ### Lot E — Empaleur (worktree `LevelUp-wt-ajsup-e`)
-- [ ] Diagnostic sur b1ad85eb : pourquoi Skewer = base ; cause prouvee sur pieces
-- [ ] Correctif Go + jumeau TS + tests ; aucun reclassement heuristique
+- [x] Diagnostic sur b1ad85eb : pourquoi Skewer = base ; cause prouvee sur pieces
+- [x] Correctif Go + jumeau TS + tests ; aucun reclassement heuristique
+
+**Journal du lot E (2026-09-21).** Cause prouvee : le canal `loadouts` n'est PAS publie au
+spawn mais sur une grille d'images-cles GLOBALE — sur `b1ad85eb`, 25 instants d'emission
+(t = 12, 212, 412 … 5014, un toutes les 200 frames = 20 s) pour 73 vies, l'ecart entre le debut
+d'une vie et sa premiere emission allant de 0 a 192 frames (19,2 s ; mediane 60). Cinq vies sur
+73 (6,85 %, au-dessus de `BaseShareMin = 0,05`) avaient donc leur premiere emission APRES avoir
+ramasse un Empaleur ; trois sont attestees par un evenement de prise date (slots 547, 563, 595),
+les deux autres par la chaine des objets au sol (slots 573 et 594, vies non nommees, qui LACHENT
+un Empaleur a leur mort). Correctif : une emission qui SUIT une prise d'arme de la meme vie
+n'est plus lue comme un equipement de depart, et la vie quitte alors numerateur ET denominateur.
+Les prises sont l'union de trois canaux (`pickups` nature arme, `weaponChanges` taken/swapped,
+`groundWeapons.picker`), filtree de la dotation de reapparition (prise datee du debut de la vie).
+Effet mesure : b1ad85eb 47 vies retenues, Empaleur 4,25 % -> plus « base » (verifie par le code
+Go sur l'artefact reel : `base` avant, hors-base apres ; MA40 et Sidekick restent base) ; parc de
+92 artefacts, 6 385 vies retenues sur 7 844, 34 matchs changent d'ensemble d'armes de base.
+`BaseShareMin` CONSERVE (justification datee dans le code) : apres correctif la queue plafonne a
+4,94 % et la plus faible vraie arme de base tient 5,06 %. Ratchet de surface `film/replay`
+260 -> 263 (trois natures de prise nommees), justifie et date dans le test.
 
 ### Lot F — maquette (fichier `.ai/V7.5/MAQUETTE_RENDUS_AJSUP_2026-09-21.html`)
 - [ ] 5 sujets x 3 propositions, jetons de l'app, clair/sombre
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+
+- **Lot E — la table `match_pad_tiers` porte encore l'ancienne regle.** La vue Match recalcule
+  les niveaux A LA REQUETE depuis l'artefact : elle est corrigee des le deploiement. Les pages
+  d'AGREGAT (Sessions, Escouade, Timeseries) lisent la projection persistee, ecrite avec
+  l'ancienne regle : 34 des 92 matchs rangés y portent un ensemble d'armes de base faux. Le
+  rattrapage existe deja (`levelup backfill-pad-tiers`, il rejoue EXACTEMENT
+  `ProjeterNiveauxDArmes` sur les artefacts deja ranges, sans recuisson) — A DEMANDER a
+  l'utilisateur, non lance.
+- **Lot E — neuf vies de `b1ad85eb` ne sont pas nommees** (`index_hors_table`), dont les deux
+  qu'aucun canal de prise ne couvre (slots 573 et 594). Sans nom, leurs prises de socle ne sont
+  de toute facon attribuees a personne ; c'est ce qui laisse une queue residuelle sous le seuil.

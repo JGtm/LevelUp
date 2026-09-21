@@ -143,9 +143,9 @@ func ProjeterNiveauxDArmes(
 	}
 	// LA TRADUCTION VERS LE PAQUET PUR SE FAIT ICI, et c'est la frontiere d'ADR 0012 :
 	// `internal/analysis/weapontier` ne connait aucun format de film, c'est la couche du titre
-	// qui lui donne ses trois listes elementaires.
+	// qui lui donne ses quatre listes elementaires.
 	m := weapontier.NewMatch(soclesPour(doc.WeaponPads), emplacementsPour(cross),
-		departsPour(doc.Loadouts), randomStarts)
+		departsPour(doc.Loadouts), prisesPour(doc), randomStarts)
 	out := persist.PadTiersBatch{
 		MatchID:      matchID,
 		PadsTotal:    len(doc.WeaponPads),
@@ -527,7 +527,7 @@ func emplacementsPour(cross *replay.MapWeaponPads) []weapontier.Spot {
 func departsPour(loadouts []replay.Loadout) []weapontier.Spawn {
 	out := make([]weapontier.Spawn, len(loadouts))
 	for i := range loadouts {
-		out[i] = weapontier.Spawn{Slot: loadouts[i].Slot, Weapons: loadouts[i].W}
+		out[i] = weapontier.Spawn{Slot: loadouts[i].Slot, T: loadouts[i].T, Weapons: loadouts[i].W}
 	}
 	return out
 }

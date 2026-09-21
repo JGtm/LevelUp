@@ -37,9 +37,9 @@ func vies(depart int, w []string, apres []string) []Spawn {
 	var out []Spawn
 	for i := 0; i < depart; i++ {
 		slot := uint32(512 + i)
-		out = append(out, Spawn{Slot: slot, Weapons: w})
+		out = append(out, Spawn{Slot: slot, T: 0, Weapons: w})
 		if apres != nil {
-			out = append(out, Spawn{Slot: slot, Weapons: apres})
+			out = append(out, Spawn{Slot: slot, T: 100, Weapons: apres})
 		}
 	}
 	return out
@@ -47,7 +47,7 @@ func vies(depart int, w []string, apres []string) []Spawn {
 
 func TestTierOf_LesQuatreNiveaux(t *testing.T) {
 	pads, cross := temoin()
-	m := NewMatch(pads, cross, vies(20, []string{ar, pistol}, []string{sniper, pistol}), false)
+	m := NewMatch(pads, cross, vies(20, []string{ar, pistol}, []string{sniper, pistol}), nil, false)
 
 	cas := []struct {
 		nom  string
@@ -74,7 +74,7 @@ func TestTierOf_LesQuatreNiveaux(t *testing.T) {
 // non classé et visible ; il ne tombe JAMAIS dans « terrain » par défaut.
 func TestTierOf_NonClasseQuandRienNeConfirme(t *testing.T) {
 	pads, _ := temoin()
-	m := NewMatch(pads, nil, vies(20, []string{ar, pistol}, nil), false)
+	m := NewMatch(pads, nil, vies(20, []string{ar, pistol}, nil), nil, false)
 	if got := m.TierOf(1, sniper); got != TierUnclassified {
 		t.Errorf("sans référence de carte : niveau = %q, attendu %q", got, TierUnclassified)
 	}
@@ -88,7 +88,7 @@ func TestTierOf_NonClasseQuandRienNeConfirme(t *testing.T) {
 func TestTierOf_BasePrimeSurLEmplacement(t *testing.T) {
 	pads := []Pad{{Weapon: ar}}
 	cross := []Spot{{Pad: 0, Family: "rack"}}
-	m := NewMatch(pads, cross, vies(20, []string{ar, pistol}, nil), false)
+	m := NewMatch(pads, cross, vies(20, []string{ar, pistol}, nil), nil, false)
 	if got := m.TierOf(0, ar); got != TierBase {
 		t.Errorf("arme de départ sur râtelier : niveau = %q, attendu %q", got, TierBase)
 	}
@@ -100,7 +100,7 @@ func TestBaseWeapons_SeulePremiereEmission(t *testing.T) {
 	cross := []Spot{{Pad: 0, Family: "power"}}
 	// Les vingt vies démarrent AR+Sidekick puis ramassent toutes le sniper : s'il comptait,
 	// le sniper serait « base » et le niveau « puissance » disparaîtrait du match.
-	m := NewMatch(pads, cross, vies(20, []string{ar, pistol}, []string{sniper, pistol}), false)
+	m := NewMatch(pads, cross, vies(20, []string{ar, pistol}, []string{sniper, pistol}), nil, false)
 	if got := m.TierOf(0, sniper); got != TierPower {
 		t.Errorf("arme ramassée en cours de vie : niveau = %q, attendu %q", got, TierPower)
 	}
@@ -113,7 +113,7 @@ func TestBaseWeapons_SeuilDeQueue(t *testing.T) {
 	l := vies(40, []string{ar, pistol}, nil)
 	// Une seule vie sur 41 démarre sniper en main : 2,4 %, sous BaseShareMin.
 	l = append(l, Spawn{Slot: 999, Weapons: []string{sniper, pistol}})
-	m := NewMatch(pads, cross, l, false)
+	m := NewMatch(pads, cross, l, nil, false)
 	if got := m.TierOf(0, sniper); got != TierPower {
 		t.Errorf("arme de la queue : niveau = %q, attendu %q", got, TierPower)
 	}
@@ -121,8 +121,67 @@ func TestBaseWeapons_SeuilDeQueue(t *testing.T) {
 	for i := 0; i < 11; i++ {
 		l = append(l, Spawn{Slot: uint32(900 + i), Weapons: []string{sniper, pistol}})
 	}
-	if got := NewMatch(pads, cross, l, false).TierOf(0, sniper); got != TierBase {
+	if got := NewMatch(pads, cross, l, nil, false).TierOf(0, sniper); got != TierBase {
 		t.Errorf("arme de départ franche : niveau = %q, attendu %q", got, TierBase)
+	}
+}
+
+// TestBaseWeapons_EmissionApresUnePrise — LE CAS `b1ad85eb` (constat utilisateur 2026-09-21),
+// reduit a sa mecanique.
+//
+// CE QUE LE MATCH TEMOIN DISAIT. Loadout de depart classique et EGAL pour tous (MA40 +
+// Sidekick), et pourtant l'Empaleur y etait classe « arme de base ». Cause mesuree : le canal
+// `loadouts` est publie sur une grille d'images-cles GLOBALE (t = 12, 212, 412 … toutes les 200
+// frames = 20 s), pas au spawn ; cinq vies sur 73 avaient donc leur PREMIERE emission APRES
+// avoir ramasse un Empaleur — 6,85 % des vies, au-dessus des 5 % de [BaseShareMin].
+//
+// LA FIXTURE EST CELLE-LA, PAS LE FILM : quarante vies propres, cinq vies dont l'emission suit
+// une prise. Sans le correctif, la cinquieme arme passe a 11,1 % et promeut l'Empaleur.
+func TestBaseWeapons_EmissionApresUnePrise(t *testing.T) {
+	const skewer = "0x0D20C469"
+	pads := []Pad{{Weapon: skewer}}
+	cross := []Spot{{Pad: 0, Family: "power"}}
+	l := vies(40, []string{ar, pistol}, nil)
+	var prises []Take
+	for i := 0; i < 5; i++ {
+		slot := uint32(900 + i)
+		// La vie commence a 0, prend l'Empaleur a 60, et la grille ne publie qu'a 200.
+		prises = append(prises, Take{Slot: slot, T: 60})
+		l = append(l, Spawn{Slot: slot, T: 200, Weapons: []string{skewer, pistol}})
+	}
+	sansCorrectif := NewMatch(pads, cross, l, nil, false)
+	if got := sansCorrectif.TierOf(0, skewer); got != TierBase {
+		t.Fatalf("temoin de la cause : sans les prises, l'Empaleur devrait etre %q, obtenu %q",
+			TierBase, got)
+	}
+	m := NewMatch(pads, cross, l, prises, false)
+	if got := m.TierOf(0, skewer); got != TierPower {
+		t.Errorf("emission posterieure a une prise : niveau = %q, attendu %q", got, TierPower)
+	}
+	if m.lives != 40 {
+		t.Errorf("les vies ecartees quittent AUSSI le denominateur : lives = %d, attendu 40", m.lives)
+	}
+	if !m.baseWeapons[ar] || !m.baseWeapons[pistol] {
+		t.Error("les vraies armes de depart doivent survivre au filtre")
+	}
+}
+
+// TestBaseWeapons_PriseApresLEmission — le filtre ne mord QUE dans un sens : une prise
+// POSTERIEURE a l'emission ne disqualifie rien, sinon toute vie un peu active serait ecartee.
+func TestBaseWeapons_PriseApresLEmission(t *testing.T) {
+	pads := []Pad{{Weapon: sniper}}
+	cross := []Spot{{Pad: 0, Family: "power"}}
+	l := vies(20, []string{ar, pistol}, nil)
+	var prises []Take
+	for i := 0; i < 20; i++ {
+		prises = append(prises, Take{Slot: uint32(512 + i), T: 300})
+	}
+	m := NewMatch(pads, cross, l, prises, false)
+	if m.lives != 20 {
+		t.Fatalf("aucune vie ne devait etre ecartee : lives = %d", m.lives)
+	}
+	if !m.baseWeapons[ar] {
+		t.Error("le MA40 reste une arme de depart")
 	}
 }
 
@@ -130,7 +189,7 @@ func TestBaseWeapons_SeuilDeQueue(t *testing.T) {
 func TestTierOf_DepartsAleatoires(t *testing.T) {
 	pads, cross := temoin()
 	// En Fiesta l'AR est bien distribué au départ, mais le niveau ne doit pas exister.
-	m := NewMatch(pads, cross, vies(20, []string{ar, pistol}, nil), true)
+	m := NewMatch(pads, cross, vies(20, []string{ar, pistol}, nil), nil, true)
 	if !m.randomStarts {
 		t.Fatal("RandomStarts devrait être vrai")
 	}
@@ -165,7 +224,7 @@ func TestCrossCheck_UnSeulSens(t *testing.T) {
 	roles := map[string]string{hydra: "power", sniper: "sniper", ar: "automatic", pistol: "sidearm"}
 	roleOf := func(w string) string { return roles[w] }
 
-	m := NewMatch(pads, cross, nil, false)
+	m := NewMatch(pads, cross, nil, nil, false)
 	c := m.RunCrossCheck(pads, roleOf)
 	// L'Hydra (rôle `power`) sur râtelier NE COMPTE PAS : c'est le cas nominal à 10,5 %.
 	if c.LightOnPower != 0 {
@@ -194,7 +253,7 @@ func TestCrossCheck_UnSeulSens(t *testing.T) {
 func TestCrossCheck_ShotgunNestPasLeger(t *testing.T) {
 	pads := []Pad{{Weapon: "0xSHOT"}}
 	cross := []Spot{{Pad: 0, Family: "power"}}
-	m := NewMatch(pads, cross, nil, false)
+	m := NewMatch(pads, cross, nil, nil, false)
 	c := m.RunCrossCheck(pads, func(string) string { return "shotgun" })
 	if c.LightOnPower != 0 || c.Alert() {
 		t.Errorf("le fusil à pompe ne doit pas alerter : %+v", c)
