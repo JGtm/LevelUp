@@ -112612,3 +112612,14 @@ refait ; sujet 3 ; papillon du hub Relations ; libelle « Laches : famille » ; 
 nettes » reduite a son titre ; etiquettes sur rayures en `text-foreground`) ; backfill des
 niveaux quand la base est libre ; passe visuelle sur donnees reelles ; retrait des worktrees
 (jonctions d'abord, remove SANS --force) ; fusion dans `feat/v75` au signal.
+
+**Complement du 2026-09-21 (soir)** : verdicts utilisateur pris et livres — 1.A et 2.A a l'horizontale
+(lot H), 4.A colonnes empilees par socle avec trait et titres de groupe dans le graphe (lot I), 5.A
+pistes horizontales par famille (lot K), section « echange » de l'Escouade refaite en variante A de
+`MAQUETTE_ECHANGE_ESCOUADE_2026-09-21.html` sous les noms « Coordination » / « Riposte » / « Appui »
+avec balayage du vocabulaire dans l'app et garde-rail (lot J ; la statistique de jeu « assistances »
+reste « assistances ») ; medianes du nuage dessinees par taille decroissante. Suites G (helper titre
++ infobulle, lacher par famille, doubles cadres, departage des tiers). Backfill des niveaux d'armes
+EXECUTE en local apres la fin du backfill killsource de l'autre session : 92 matchs ecrits, 0 echec,
+9 s (a rejouer en prod au deploiement — prevenir). CI verte au niveau job sur la branche a l'etat
+d'avant I/J/K ; nouvelle CI a lire apres le push. Passe visuelle sur donnees reelles : a faire.

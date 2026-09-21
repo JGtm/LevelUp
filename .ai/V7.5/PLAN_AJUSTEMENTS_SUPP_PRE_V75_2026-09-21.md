@@ -117,17 +117,19 @@ surface `film/replay` 260 -> 263 justifie.
 ### Lot I — Match view, controle des armes en 4.A (worktree `LevelUp-wt-ajsup-i`) — FUSIONNE 1e93ea6ee
 - [x] Colonnes empilees par socle, groupes separes par un trait, noms centres en haut dans le graphique, base repliee (D18)
 
-### Lot J — Escouade, section Coordination en variante A + vocabulaire Riposte / Appui partout (worktree `LevelUp-wt-ajsup-j`)
-- [ ] Carte « Riposte » : phrase de lecteur, chiffre d appel face a l habituel, frise batons + tendance par soiree (volumes dessous), histogramme des delais et matrice « Qui riposte pour qui » en replis
-- [ ] Carte « Appui » : le bloc des assistances de l escouade, renomme, phrase de lecteur
-- [ ] Nuage intact, place apres Riposte, phrase d introduction reecrite
-- [ ] Blocs Constat, Compte, Donne/recu, Taux par session supprimes (0 code mort)
-- [ ] Vocabulaire : Riposte / Appui / Coordination applique dans toute l app (Escouade, Match view, Tactique, Timeseries, Synthese, Accueil, i18n FR+EN)
+### Lot J — Escouade, section Coordination en variante A + vocabulaire Riposte / Appui partout (worktree `LevelUp-wt-ajsup-j`) — FUSIONNE bd8f290c3
+- [x] Carte « Riposte » : phrase de lecteur, chiffre d appel face a l habituel, frise batons + tendance par soiree (volumes dessous), histogramme des delais et matrice « Qui riposte pour qui » en replis
+- [x] Carte « Appui » : le bloc des assistances de l escouade, renomme, phrase de lecteur
+- [x] Nuage intact, place apres Riposte, phrase d introduction reecrite
+- [x] Blocs Constat, Compte, Donne/recu, Taux par session supprimes (0 code mort)
+- [x] Vocabulaire : Riposte / Appui / Coordination applique dans toute l app (Escouade, Match view, Tactique, Timeseries, Synthese, Accueil, i18n FR+EN)
+- [x] Nuage : medianes dessinees par taille decroissante (petites au premier plan)
 
 ### Lot K — Match view, part de chaque equipe en 5.A (worktree `LevelUp-wt-ajsup-k`) — FUSIONNE 6c2391972
 - [x] Barres horizontales par famille, echelle commune, deux camps, comptes ecrits, total (D20)
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- J : `squad.toml` 998 L (dette) ; anglicismes FR dans `coaching_tips.toml` (revenge push, trader, aim assist) ; chaines de la statistique de jeu « assistances » laissees (liste dans le rapport du lot) ; `colorDistance.guard.test.ts` flake en suite complete (vert seul).
 - I : `BarStackedChart.tsx` a 497 L brutes ; bande de trace des titres de groupe estimee (10-97 %), fragile si un appelant nomme ses axes avec des groupes ; deux chemins d encre (DOM color-mix / canvas opacite) sans garde-rail.
 - K : une famille peut avoir une colonne de zeros dans la grille et aucune piste a droite (famille sans usage = ligne absente) -> verdict visuel.
 - H : `AssistExchangeSummary` (papillon log) reste sur le hub Relations (`RelationAssistsCards.tsx:45`) -> verdict utilisateur ; `assist_volume_max` n a plus de lecteur Explorer ; `ExplorerTargetSampleStats.tsx` a 399 L.
