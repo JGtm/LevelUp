@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <meta charset="utf-8">
-<title>Cinq rendus a rejouer — trois propositions chacun (D11 / D13 / D14 / D15)</title>
+<title>Cinq rendus a rejouer — trois propositions chacun, deux pour le sujet 4 (D11 / D13 / D14 / D15)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -90,11 +90,11 @@
     <span class="toolbar"><button id="theme">Theme clair / sombre</button></span>
   </div>
 
-  <h1>Cinq rendus a rejouer — trois propositions chacun</h1>
+  <h1>Cinq rendus a rejouer — trois propositions chacun, deux pour le sujet 4</h1>
   <p class="lede">
     Decisions <b>D11 / D13 / D14 / D15</b> du plan <code>PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md</code> :
     cinq blocs dont la FORME ne convient pas. Pour chacun, le rendu <b>d'aujourd'hui reproduit d'apres le
-    code</b>, puis <b>trois propositions</b>. Aucun code applicatif n'est ecrit avant le verdict.
+    code</b>, puis <b>trois propositions</b> (deux pour le sujet 4). Aucun code applicatif n'est ecrit avant le verdict.
   </p>
   <p class="lede" style="margin-top:8px">
     <b>Deux interdits poses par l'utilisateur, tenus partout ici.</b> Rien de circulaire : pas de donut, pas de
@@ -347,45 +347,31 @@
       </p>
     </div>
 
-    <div class="grid3">
+    <div class="grid2">
       <div class="section-card">
-        <h4>4.A &middot; Frise par socle <span class="count"><span class="chip reco">recommande</span></span></h4>
-        <div class="chart"><svg id="p4a" viewBox="0 0 340 300" role="img" aria-label="Proposition 4.A — frise des prises par socle"></svg></div>
+        <h4>4.A &middot; Colonnes empilees par socle <span class="count"><span class="chip reco">recommande</span></span></h4>
+        <div class="chart"><svg id="p4a" viewBox="0 0 520 320" role="img" aria-label="Proposition 4.A — colonnes empilees par socle"></svg></div>
         <ul class="says">
-          <li>Une ligne par socle, l'axe est le <b>temps du match</b> : un jeton par prise, colore par camp, l'initiale du joueur dedans. En fond, les fenetres <b>hachurees</b> ou le socle etait vide (cycle de reapparition propre a chaque socle).</li>
-          <li>Ca repond a la question que ni un rail ni une colonne ne savent poser : <b>quand</b>, et <b>qui apres qui</b>. Deux jetons de camps opposes colles, c'est un socle dispute ; une file de jetons d'une seule couleur, c'est un socle tenu.</li>
-          <li>Le blanc se lit aussi : un socle qui reapparait sans que personne n'y aille est une ressource laissee au sol, invisible dans tout comptage.</li>
+          <li>Une colonne par socle, <b>hauteur = les prises reelles</b> sur une echelle commune, empilee par joueur : couleur du camp, opacite par joueur. Deux blocs sous bandeau, <b>PUISSANCE</b> puis <b>TERRAIN</b>, chacun avec son sous-total ; la base reste repliee.</li>
+          <li>Un socle pris 12 fois domine visuellement un socle pris 4 fois — le fait exact que le rail 100 % efface aujourd'hui.</li>
+          <li>Le bandeau de groupe porte le sous-total : « la puissance a change de mains 24 fois, le terrain 19 » se lit sans additionner les colonnes.</li>
         </ul>
         <dl class="cost">
-          <dt>Cout</dt><dd><b>Neuf, moyen</b> : une frise SVG a 6-8 lignes ; aucun composant du catalogue ne fait le temps-par-categorie.</dd>
-          <dt>Donnees</dt><dd>Deja la : <code>weaponPads[].pickups</code> (instant + joueur) et <code>weaponPads[].respawn</code> dans l'artefact de rejeu.</dd>
+          <dt>Cout</dt><dd><b>Reutilisable</b> : <code>&lt;BarStackedChart&gt;</code> vertical, une serie par joueur, deux groupes.</dd>
+          <dt>A ecrire</dt><dd>Rien de neuf : <code>padControlChart</code> produit deja les segments par joueur et l'eclaircissement par camp ; seul le denominateur change.</dd>
         </dl>
       </div>
       <div class="section-card">
-        <h4>4.B &middot; Carte des socles <span class="count">le controle dans l'espace</span></h4>
-        <div class="chart"><svg id="p4b" viewBox="0 0 340 300" role="img" aria-label="Proposition 4.B — carte des socles"></svg></div>
+        <h4>4.B &middot; Briques par socle <span class="count">une brique = une prise</span></h4>
+        <div class="chart"><svg id="p4b" viewBox="0 0 520 320" role="img" aria-label="Proposition 4.B — briques par socle"></svg></div>
         <ul class="says">
-          <li>Le plan de la carte en fond, chaque socle a sa <b>vraie place</b> : un disque dont l'<b>aire</b> vaut les prises, <b>coupe en deux secteurs</b> — ma part et la leur.</li>
-          <li>Le fait devient geographique : « ils ont pris tout ce qui est de leur cote et la moitie du milieu » se voit d'un coup d'oeil, alors qu'aucune liste de socles ne le dira jamais.</li>
-          <li>Se lit a cote de la mini-carte « Occupation du terrain » deja presente dans la Match view : meme plan, meme orientation.</li>
-          <li><b>Ce n'est pas un camembert</b> : le disque est une marque posee sur un plan, sa taille dit le volume, et il n'a que deux parts — mon camp et eux. Aucune part a comparer par l'angle.</li>
+          <li>Meme structure — deux groupes sous bandeau, un sous-total, base repliee —, mais la colonne est faite de <b>briques comptables</b> : une brique = une prise, empilee de bas en haut, couleur du camp et opacite du joueur, l'auteur en infobulle.</li>
+          <li>On <b>compte</b> au lieu d'estimer une hauteur : « Moi, cinq fois le sniper » se verifie a l'oeil, et les prises sans nom deviennent des briques grises au sommet au lieu d'une mention en petit.</li>
+          <li>La rupture de couleur dans la pile dit dans quel ordre le socle a change de camp, ce qu'un segment lisse ne montre pas.</li>
         </ul>
         <dl class="cost">
-          <dt>Cout</dt><dd><b>Neuf, moyen</b> : fond et projection repris de <code>MatchPositionsHeatmap</code>, marques a dessiner (disque + secteur).</dd>
-          <dt>Reserve</dt><dd>Sans <code>weaponPads[].pos</code> pour une carte, la section retombe sur une autre forme : prevoir la degradation.</dd>
-        </dl>
-      </div>
-      <div class="section-card">
-        <h4>4.C &middot; Tableau de marques <span class="count">une pastille par prise</span></h4>
-        <div class="chart"><svg id="p4c" viewBox="0 0 340 300" role="img" aria-label="Proposition 4.C — tableau de marques"></svg></div>
-        <ul class="says">
-          <li>Lignes = les 8 joueurs groupes par camp, colonnes = les socles par niveau ; dans la case, <b>une pastille par prise</b> au lieu d'un chiffre.</li>
-          <li>La matiere remplace le nombre : un joueur qui a rafle un socle fait une case dense, et les cases vides dessinent les socles que personne de ce camp n'a touches.</li>
-          <li>Totaux par ligne a droite (le profil du joueur) et par colonne en pied (le socle) : les deux lectures sans changer de figure.</li>
-        </ul>
-        <dl class="cost">
-          <dt>Cout</dt><dd><b>Faible</b> : structure <code>&lt;ValueGrid&gt;</code> telle quelle, seul le contenu de la case change (pastilles au lieu du chiffre).</dd>
-          <dt>Reserve</dt><dd>Au-dela de ~8 prises dans une case, les pastilles se tassent : plafonner et ecrire le compte.</dd>
+          <dt>Cout</dt><dd><b>Neuf, petit</b> : le <code>&lt;BrickWall&gt;</code> de la proposition 1.B, empile en colonne et colore par camp.</dd>
+          <dt>Risque</dt><dd>Ne tient que sur des volumes de match (moins de ~20 prises par socle) ; au-dela, retomber sur 4.A.</dd>
         </dl>
       </div>
     </div>
@@ -465,7 +451,7 @@
   <!-- =========================================================== RECAP -->
   <section class="block" id="reco">
     <header>
-      <h2>Recapitulatif — les quinze propositions</h2>
+      <h2>Recapitulatif — les quatorze propositions</h2>
       <p>Une recommandation par sujet. Les deux autres ne sont pas des repoussoirs : elles repondent a une
          question differente, et le choix appartient a l'utilisateur.</p>
     </header>
@@ -486,10 +472,9 @@
       <tr><td>3.B</td><td>Aire d'ecart ancree a l'habituel + colonnes fantomes de volume</td><td>Timeseries</td></tr>
       <tr><td>3.C</td><td>Colonnes repris / non repris, le taux ecrit au-dessus</td><td>BarStackedChart</td></tr>
 
-      <tr><td rowspan="3"><b>4. Controle des armes speciales</b></td>
-          <td><b>4.A</b> <span class="chip reco">reco</span></td><td>Frise par socle : axe = temps du match, un jeton par prise, fond hachure = socle vide</td><td>Neuf, moyen</td></tr>
-      <tr><td>4.B</td><td>Carte des socles : disque a l'endroit du socle, aire = prises, coupe en deux par camp</td><td>Neuf, moyen (fond de carte existant)</td></tr>
-      <tr><td>4.C</td><td>Tableau de marques : joueurs x socles, une pastille par prise, totaux en marge</td><td>ValueGrid, case a repeindre</td></tr>
+      <tr><td rowspan="2"><b>4. Controle des armes speciales</b></td>
+          <td><b>4.A</b> <span class="chip reco">reco</span></td><td>Colonnes verticales empilees par socle, hauteur = prises reelles, blocs puissance / terrain</td><td>BarStackedChart</td></tr>
+      <tr><td>4.B</td><td>Briques par socle, une brique = une prise, memes groupes et sous-totaux</td><td>BrickWall (neuf, petit)</td></tr>
 
       <tr><td rowspan="3"><b>5. Part de chaque equipe</b><br><span style="font-weight:400">(la grille par joueur est inchangee)</span></td>
           <td><b>5.A</b> <span class="chip reco">reco</span></td><td>Barres horizontales par famille, longueur = usages reels, segment mon camp / eux</td><td>BarStackedChart horizontal</td></tr>
@@ -1011,160 +996,60 @@
     M.hbars('now-4', { x0: 180, y0: 6, w: 700, bh: 24, norm: true, unit: 'prises', rows: rows });
     txt('Tous les rails font la meme longueur : « Empaleur, 4 prises » occupe autant que « Fusil de precision, 12 ».', 0, 296, 'start', 'muted', s);
   })();
-  /* --- Frise : prises datees + cycle de reapparition propre a chaque socle */
-  var INI = { 'Moi': 'M', 'Madina97294': 'D', 'Kaelin': 'K', 'Vorn': 'V', 'Sarko': 'S', 'Tuva': 'T', 'Ryn': 'R', 'Odal': 'O' };
-  function camp(n) { return ALLIES.indexOf(n) >= 0 ? ALLY : ENEMY; }
-  var DUREE = 720;
-  function mmss(t) { var m = Math.floor(t / 60), r = t % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
-  var FRISE = [
-    { n: 'Fusil de precision', s: 'Precision', tier: 0, cycle: 55, pk: [[30, 'Moi'], [90, 'Sarko'], [150, 'Moi'], [212, 'Madina97294'], [275, 'Tuva'], [338, 'Moi'], [400, 'Sarko'], [462, 'Moi'], [525, 'Vorn'], [588, 'Tuva'], [650, 'Sarko'], [712, 'Moi']] },
-    { n: 'Epee a energie', s: 'Epee', tier: 0, cycle: 90, pk: [[55, 'Kaelin'], [150, 'Ryn'], [250, 'Kaelin'], [350, 'Odal'], [450, 'Ryn'], [560, 'Vorn'], [665, 'Kaelin']] },
-    { n: 'Lance-roquettes', s: 'Roquettes', tier: 0, cycle: 120, pk: [[70, 'Madina97294'], [200, 'Sarko'], [330, 'Moi'], [470, 'Tuva'], [610, 'Madina97294']] },
-    { n: 'Fusil de combat', s: 'Combat', tier: 1, cycle: 45, pk: [[40, 'Moi'], [120, 'Sarko'], [200, 'Madina97294'], [280, 'Kaelin'], [360, 'Moi'], [440, 'Odal'], [520, 'Sarko'], [600, 'Madina97294'], [680, 'Ryn']] },
-    { n: 'Hydra', s: 'Hydra', tier: 1, cycle: 60, pk: [[60, 'Vorn'], [175, 'Tuva'], [290, 'Vorn'], [410, 'Odal'], [525, 'Tuva'], [650, 'Madina97294']] },
-    { n: 'Empaleur', s: 'Empaleur', tier: 1, cycle: 15.5, pk: [[95, 'Kaelin'], [240, 'Sarko'], [430, 'Kaelin'], [600, 'Ryn']] }
-  ];
 
-  /* --- 4.A : frise par socle ------------------------------------------- */
+  /* --- 4.A : colonnes empilees par socle, deux groupes ----------------- */
   (function () {
-    var s = S('p4a'), X0 = 62, W = 258, R = 7;
-    var X = function (t) { return X0 + t / DUREE * W; };
-    var defs = el('defs', {}, s);
-    var pat = el('pattern', { id: 'hach4a', width: 6, height: 6, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, defs);
-    el('line', { x1: 0, y1: 0, x2: 0, y2: 6, stroke: 'var(--muted-foreground)', 'stroke-width': 1.4, 'stroke-opacity': .35 }, pat);
-    txt('un jeton = une prise · fond hachure = socle vide (reapparition en cours)', 0, 10, 'start', 'muted', s);
-    [0, 180, 360, 540, 720].forEach(function (t) {
-      el('line', { x1: X(t), y1: 24, x2: X(t), y2: 224, class: 'grid' }, s);
-      txt(mmss(t), X(t), 20, 'middle', 'muted num', s);
+    var s = S('p4a');
+    txt('hauteur = prises nommees · une seule echelle pour tous les socles', 0, 14, 'start', 'muted', s);
+    el('rect', { x: 50, y: 24, width: 218, height: 18, rx: 3, fill: 'var(--muted)' }, s);
+    txt('PUISSANCE · 24 prises', 58, 38, 'start', 'muted', s);
+    el('rect', { x: 272, y: 24, width: 218, height: 18, rx: 3, fill: 'var(--muted)' }, s);
+    txt('TERRAIN · 19 prises', 280, 38, 'start', 'muted', s);
+    M.vcols('p4a', {
+      x0: 50, y0: 56, w: 440, h: 186, max: 12, cw: 54, unit: 'prises',
+      ticks: [0, 4, 8, 12],
+      cols: SOCLES.map(function (so) { return { label: so.s, sub: so.unnamed ? '+' + so.unnamed + ' sans nom' : '', parts: parts(so) }; })
     });
-    var y = 32;
-    [['PUISSANCE', 0], ['TERRAIN', 1]].forEach(function (g) {
-      txt(g[0], 0, y + 9, 'start', 'muted', s);
-      y += 14;
-      FRISE.filter(function (f) { return f.tier === g[1]; }).forEach(function (f) {
-        txt(f.s, X0 - 5, y + 15, 'end', null, s);
-        el('rect', { x: X0, y: y + 2, width: W, height: 18, rx: 3, fill: 'var(--muted)', 'fill-opacity': .6 }, s);
-        f.pk.forEach(function (p) {
-          var x1 = X(p[0]), x2 = X(Math.min(DUREE, p[0] + f.cycle));
-          el('rect', { x: x1, y: y + 2, width: Math.max(1.2, x2 - x1), height: 18, fill: 'url(#hach4a)' }, s);
-        });
-        el('rect', { x: X0, y: y + 2, width: W, height: 18, rx: 3, fill: 'none', stroke: 'var(--border)' }, s);
-        f.pk.forEach(function (p) {
-          var gg = el('g', {}, s);
-          var c = el('circle', { cx: X(p[0]), cy: y + 11, r: R, fill: camp(p[1]), 'fill-opacity': .95, stroke: 'var(--card)', 'stroke-width': 1.6 }, gg);
-          c.setAttribute('class', 'mark');
-          txt(INI[p[1]], X(p[0]), y + 14.5, 'middle', 'inbar', gg);
-          hover(gg, '<b>' + f.n + '</b><br>' + p[1] + ' &middot; ' + mmss(p[0]) + '<br><span class="m">reapparition ' + f.cycle + ' s</span>');
-        });
-        txt(String(f.pk.length), X0 + W + 5, y + 15, 'start', 'muted num', s);
-        y += 24;
-      });
-      y += 6;
-    });
-    txt('BASE (repliee) — 2 socles, 19 prises', 0, 232, 'start', 'muted', s);
-    M.legend('p4a', 0, 254, [{ label: 'mon camp', color: ALLY }, { label: 'camp adverse', color: ENEMY }], 112);
-    el('rect', { x: 224, y: 246, width: 11, height: 9, rx: 2, fill: 'url(#hach4a)', stroke: 'var(--border)' }, s);
-    txt('socle vide', 239, 254, 'start', 'muted', s);
-    txt('Initiales — mon camp : M Moi · D Madina97294 · K Kaelin · V Vorn', 0, 272, 'start', 'muted', s);
-    txt('Camp adverse : S Sarko · T Tuva · R Ryn · O Odal', 0, 286, 'start', 'muted', s);
+    M.legend('p4a', 50, 300, [
+      { label: 'Moi', color: ALLY, op: OP[0] }, { label: 'Madina97294', color: ALLY, op: OP[1] },
+      { label: 'Kaelin', color: ALLY, op: OP[2] }, { label: 'Vorn', color: ALLY, op: OP[3] }
+    ], 112);
+    M.legend('p4a', 50, 316, [
+      { label: 'Sarko', color: ENEMY, op: OP[0] }, { label: 'Tuva', color: ENEMY, op: OP[1] },
+      { label: 'Ryn', color: ENEMY, op: OP[2] }, { label: 'Odal', color: ENEMY, op: OP[3] }
+    ], 112);
+    txt('BASE (repliee) — 2 socles, 19 prises', 0, 286, 'start', 'muted', s);
   })();
 
-  /* --- 4.B : carte des socles ------------------------------------------ */
+  /* --- 4.B : briques par socle ----------------------------------------- */
   (function () {
-    var s = S('p4b'), MX = 6, MY = 20, MW = 328, MH = 212;
-    txt('aire du disque = prises · le disque est coupe en deux : ma part / la leur', 0, 10, 'start', 'muted', s);
-    el('rect', { x: MX, y: MY, width: MW, height: MH, rx: 4, fill: 'var(--muted)', 'fill-opacity': .6, stroke: 'var(--border)' }, s);
-    [[26, 32, 76, 30], [232, 30, 78, 32], [40, 178, 74, 32], [226, 180, 82, 30],
-     [140, 104, 70, 44], [18, 100, 34, 56], [292, 98, 34, 58]].forEach(function (b) {
-      el('rect', { x: b[0], y: b[1], width: b[2], height: b[3], rx: 3, fill: 'var(--border)', 'fill-opacity': .75 }, s);
-    });
-    [[48, 42], [262, 40], [58, 190], [252, 192]].forEach(function (p) {
-      el('rect', { x: p[0], y: p[1], width: 9, height: 9, rx: 2, fill: 'var(--muted-foreground)', 'fill-opacity': .5 }, s);
-    });
-    txt('leur base', MX + 8, MY + 16, 'start', 'muted', s);
-    txt('ma base', MX + MW - 8, MY + MH - 8, 'end', 'muted', s);
-    var PADS = [
-      { s: 'Precision', n: 'Fusil de precision', x: 168, y: 62, a: 7, e: 5 },
-      { s: 'Empaleur', n: 'Empaleur', x: 268, y: 68, a: 2, e: 2 },
-      { s: 'Roquettes', n: 'Lance-roquettes', x: 62, y: 118, a: 3, e: 2 },
-      { s: 'Combat', n: 'Fusil de combat', x: 262, y: 138, a: 5, e: 4 },
-      { s: 'Hydra', n: 'Hydra', x: 104, y: 196, a: 3, e: 3 },
-      { s: 'Epee', n: 'Epee a energie', x: 176, y: 188, a: 4, e: 3 }
-    ];
-    PADS.forEach(function (p) {
-      var tot = p.a + p.e, r = 6.4 * Math.sqrt(tot), gg = el('g', {}, s);
-      var base = el('circle', { cx: p.x, cy: p.y, r: r, fill: ALLY, 'fill-opacity': .9, stroke: 'var(--card)', 'stroke-width': 2 }, gg);
-      base.setAttribute('class', 'mark');
-      var frac = p.e / tot, a0 = -Math.PI / 2, a1 = a0 + 2 * Math.PI * frac;
-      if (frac > 0) {
-        var x1 = p.x + r * Math.cos(a0), y1 = p.y + r * Math.sin(a0);
-        var x2 = p.x + r * Math.cos(a1), y2 = p.y + r * Math.sin(a1);
-        el('path', {
-          d: 'M ' + p.x + ' ' + p.y + ' L ' + x1.toFixed(1) + ' ' + y1.toFixed(1) +
-             ' A ' + r.toFixed(1) + ' ' + r.toFixed(1) + ' 0 ' + (frac > .5 ? 1 : 0) + ' 1 ' + x2.toFixed(1) + ' ' + y2.toFixed(1) + ' Z',
-          fill: ENEMY, 'fill-opacity': .9
-        }, gg);
-      }
-      txt(String(tot), p.x, p.y + 4, 'middle', 'inbar', gg);
-      txt(p.s, p.x, p.y + r + 11, 'middle', 'muted', gg);
-      hover(gg, '<b>' + p.n + '</b><br>' + tot + ' prises<br><span class="m">mon camp ' + p.a + ' &middot; eux ' + p.e + '</span>');
-    });
-    M.legend('p4b', 0, 254, [{ label: 'mon camp', color: ALLY }, { label: 'camp adverse', color: ENEMY }], 112);
-    el('rect', { x: 224, y: 246, width: 9, height: 9, rx: 2, fill: 'var(--muted-foreground)', 'fill-opacity': .5 }, s);
-    txt('socle de base (replie)', 239, 254, 'start', 'muted', s);
-    txt('Plan schematique — positions issues de weaponPads[].pos.', 0, 274, 'start', 'muted', s);
-  })();
-
-  /* --- 4.C : tableau de marques ---------------------------------------- */
-  (function () {
-    var s = S('p4c'), X0 = 76, CW = 36, CH = 26, Y0 = 46;
-    txt('une pastille = une prise', 0, 10, 'start', 'muted', s);
-    var VALS = [
-      ['Moi', [5, 0, 1, 2, 0, 0], ALLY, OP[0]],
-      ['Madina97294', [1, 0, 2, 2, 1, 0], ALLY, OP[1]],
-      ['Kaelin', [0, 3, 0, 1, 0, 2], ALLY, OP[2]],
-      ['Vorn', [1, 1, 0, 0, 2, 0], ALLY, OP[3]],
-      ['Sarko', [3, 0, 1, 2, 0, 1], ENEMY, OP[0]],
-      ['Tuva', [2, 0, 1, 0, 2, 0], ENEMY, OP[1]],
-      ['Ryn', [0, 2, 0, 1, 0, 1], ENEMY, OP[2]],
-      ['Odal', [0, 1, 0, 1, 1, 0], ENEMY, OP[3]]
-    ];
-    var COLS = SOCLES.map(function (so) { return { s: so.s, n: so.n }; });
-    txt('PUISSANCE', X0, 24, 'start', 'muted', s);
-    txt('TERRAIN', X0 + CW * 3, 24, 'start', 'muted', s);
-    el('line', { x1: X0 + CW * 3, y1: 30, x2: X0 + CW * 3, y2: Y0 + 8 * CH + 4, stroke: 'var(--border)' }, s);
-    COLS.forEach(function (c, j) { txt(c.s.slice(0, 5), X0 + CW * j + CW / 2, Y0 - 6, 'middle', 'muted', s); });
-    txt('total', X0 + CW * 6 + 16, Y0 - 6, 'middle', 'muted', s);
-    VALS.forEach(function (rw, i) {
-      var y = Y0 + i * CH;
-      txt(rw[0], X0 - 8, y + CH / 2 + 4, 'end', null, s);
-      var tot = 0;
-      rw[1].forEach(function (v, j) {
-        tot += v;
-        var x = X0 + CW * j;
-        el('rect', { x: x + 1, y: y + 1, width: CW - 2, height: CH - 2, rx: 2, fill: v ? 'var(--muted)' : 'none', 'fill-opacity': .55, stroke: 'var(--border)' }, s);
-        if (!v) { txt('·', x + CW / 2, y + CH / 2 + 4, 'middle', 'muted', s); return; }
-        var gg = el('g', {}, s), per = 3, lignes = Math.ceil(v / per);
-        for (var k = 0; k < v; k++) {
-          var li = Math.floor(k / per), co = k % per, dans = Math.min(per, v - li * per);
-          var cx = x + CW / 2 + (co - (dans - 1) / 2) * 10;
-          var cy = y + CH / 2 + (li - (lignes - 1) / 2) * 10;
-          var pa = el('circle', { cx: cx, cy: cy, r: 4.2, fill: rw[2], 'fill-opacity': rw[3], stroke: 'var(--card)', 'stroke-width': 1.2 }, gg);
-          pa.setAttribute('class', 'mark');
-        }
-        hover(gg, '<b>' + rw[0] + ' &middot; ' + COLS[j].n + '</b><br>' + v + ' prises');
+    var s = S('p4b'), X0 = 58, BW = 46, BH = 10, BG = 2, YB = 250, SLOT = 72;
+    txt('une brique = une prise · empilee de bas en haut, grise si l’auteur est inconnu', 0, 14, 'start', 'muted', s);
+    el('rect', { x: 50, y: 24, width: 218, height: 18, rx: 3, fill: 'var(--muted)' }, s);
+    txt('PUISSANCE · 24 prises', 58, 38, 'start', 'muted', s);
+    el('rect', { x: 272, y: 24, width: 218, height: 18, rx: 3, fill: 'var(--muted)' }, s);
+    txt('TERRAIN · 19 prises', 280, 38, 'start', 'muted', s);
+    el('line', { x1: 44, y1: YB, x2: 496, y2: YB, class: 'axis' }, s);
+    SOCLES.forEach(function (so, j) {
+      var x = X0 + j * SLOT, k = 0, tot = so.tot + so.unnamed;
+      var groups = parts(so).map(function (p) {
+        return { n: p.v, color: p.color, op: p.op, label: so.n + ' · ' + p.label, note: p.v + ' prises sur ' + tot };
       });
-      txt(String(tot), X0 + CW * 6 + 16, y + CH / 2 + 4, 'middle', 'num', s);
-      if (i === 3) el('line', { x1: X0 - 70, y1: y + CH, x2: X0 + CW * 6 + 30, y2: y + CH, stroke: 'var(--muted-foreground)', 'stroke-width': 1.4 }, s);
+      if (so.unnamed) groups.push({ n: so.unnamed, color: 'var(--muted-foreground)', op: .35, label: so.n + ' · auteur inconnu', note: so.unnamed + ' prises sur ' + tot });
+      M.bricks('p4b', x, YB, groups, BW, BH, BG, 1);
+      txt(String(tot), x + BW / 2, YB - tot * (BH + BG) - 6, 'middle', 'num', s);
+      txt(so.s, x + BW / 2, YB + 15, 'middle', null, s);
+      k++;
     });
-    var yb = Y0 + 8 * CH + 16;
-    txt('total socle', X0 - 8, yb, 'end', 'muted', s);
-    COLS.forEach(function (c, j) {
-      var t = 0; VALS.forEach(function (rw) { t += rw[1][j]; });
-      txt(String(t), X0 + CW * j + CW / 2, yb, 'middle', 'muted num', s);
-    });
-    txt('43', X0 + CW * 6 + 16, yb, 'middle', 'muted num', s);
-    txt('Filet entre les camps. Base : 2 socles, 19 prises — replie.', 0, yb + 20, 'start', 'muted', s);
+    M.legend('p4b', 50, 300, [
+      { label: 'Moi', color: ALLY, op: OP[0] }, { label: 'Madina97294', color: ALLY, op: OP[1] },
+      { label: 'Kaelin', color: ALLY, op: OP[2] }, { label: 'Vorn', color: ALLY, op: OP[3] }
+    ], 112);
+    M.legend('p4b', 50, 316, [
+      { label: 'camp adverse', color: ENEMY, op: OP[0] },
+      { label: 'auteur inconnu', color: 'var(--muted-foreground)', op: .35 }
+    ], 112);
+    txt('BASE (repliee) — 2 socles, 19 prises', 0, 286, 'start', 'muted', s);
   })();
 })();
 </script>
