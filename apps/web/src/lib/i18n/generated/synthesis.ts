@@ -135,7 +135,6 @@ export const synthesisManifest = {
   "synthesis.weapon_records.excluded": { fr: "Écartés : {list} — une distance n'y a pas de sens.", en: "Excluded: {list} — distance is meaningless there." },
   "synthesis.weapon_records.excluded_item": { fr: "{label} ({measured, number})", en: "{label} ({measured, number})" },
   "synthesis.weapon_records.open_replay_label": { fr: "{weapon} : record {record} — ouvrir le rejeu du match à cet instant", en: "{weapon}: record {record} — open the match replay at this moment" },
-  "synthesis.weapon_records.subtitle": { fr: "Frag le plus lointain — un losange par arme, couleur par classe ; survolez pour le match, cliquez pour le rejeu.", en: "Farthest kill — one diamond per weapon, colour by class; hover for the match, click for the replay." },
   "synthesis.weapon_records.title": { fr: "Records de distance par arme", en: "Distance records by weapon" },
   "synthesis.weapon_records.tooltip_context": { fr: "médiane {median} · {measured, number} frags mesurés", en: "median {median} · {measured, number} measured kills" },
   "synthesis.weapon_records.tooltip_open": { fr: "Cliquer : ouvrir le rejeu à cet instant", en: "Click: open the replay at this moment" },

@@ -346,6 +346,9 @@ export function TimeseriesIntensityProfile({
       refLabel,
       axisLabels: intensityAxisLabels(locale),
       overlays,
+      // Panneau unique : « Joueur » est déjà une entrée de légende, le titre de
+      // panneau le répétait (retour utilisateur du 2026-09-21).
+      showPanelTitles: false,
     })
     // Pas de manche exploitable (aucun frag) → le builder omet `series` : vide.
     return (opt as { series?: unknown }).series ? opt : null

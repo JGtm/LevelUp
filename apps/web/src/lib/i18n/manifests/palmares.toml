@@ -423,14 +423,6 @@ en = "{count} seen this week"
 fr = "Derniers matchs"
 en = "Recent matches"
 
-[palmares.relations.core.show_others]
-fr = "voir les {count} autres"
-en = "show {count} more"
-
-[palmares.relations.core.collapse]
-fr = "réduire"
-en = "collapse"
-
 # ─── Relations - Donut de taux de victoire (hero cards) ────────────────────
 # Légende à droite du donut : victoires / défaites de la relation + repère de la
 # moyenne perso historique. Delta signé au centre (unité « pts »).

@@ -136,7 +136,7 @@ describe('ExplorerTargetProfileCard', () => {
     expect(screen.getByTestId('explorer-target-season-matches')).toBeInTheDocument()
   })
 
-  it('rend les sections enrichies (time-played, top médailles, CSR saison)', () => {
+  it('rend les sections enrichies (time-played, CSR saison) sans le bloc top médailles', () => {
     const profile: ExplorerTargetProfile = {
       identity: IDENTITY_FULL,
       career_stats: { ...CAREER_FULL, time_played_seconds: 90000 }, // 25h = 1j 1h
@@ -171,9 +171,10 @@ describe('ExplorerTargetProfileCard', () => {
     // Time played : KPI rendu (90000s = 1j 1h)
     expect(screen.getByTestId('explorer-target-time-played')).toBeInTheDocument()
     expect(screen.getByText('1j 1h')).toBeInTheDocument()
-    // Top médailles : section + médaille
-    expect(screen.getByTestId('explorer-target-medals')).toBeInTheDocument()
-    expect(screen.getByText('Double frag')).toBeInTheDocument()
+    // Top médailles : le bloc NE vit PLUS dans l'encart cible (2026-09-21) — il est
+    // rendu dans « Profil de combat », où il suit le switch En direct / Local.
+    expect(screen.queryByTestId('explorer-target-medals')).toBeNull()
+    expect(screen.queryByText('Double frag')).toBeNull()
     // CSR saison : section + playlist + tier (traduit FR, locale défaut = fr)
     expect(screen.getByTestId('explorer-target-season-csr')).toBeInTheDocument()
     expect(screen.getByText('Ranked Arena')).toBeInTheDocument()

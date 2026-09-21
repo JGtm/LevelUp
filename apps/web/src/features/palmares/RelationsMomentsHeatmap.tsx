@@ -56,6 +56,15 @@ interface Props {
 // l'axe Y — au-delà, la heatmap devient illisible (choix produit 2026-07-18).
 const MAX_HEATMAP_ROWS = 12
 
+// Hauteur du tracé : les cases étaient écrasées (retour utilisateur du 2026-09-21).
+// Elle se CALCULE désormais sur le nombre de rangées réellement affichées, au lieu
+// des 320 px fixes qui se partageaient entre 1 et 12 relations : CHROME_HEIGHT_PX
+// couvre le titre, les libellés et les titres d'axes, et chaque rangée reçoit
+// ROW_HEIGHT_PX = 32 px, soit 1,6 x les 20 px qu'elle obtenait à plein effectif
+// ((320 - 80) / 12). Le liseré des cases reste celui, partagé, de heatmap2DOption.
+const CHROME_HEIGHT_PX = 80
+const ROW_HEIGHT_PX = 32
+
 /**
  * formatHeatmapTooltip — contenu du tooltip d'une cellule, en trois lignes
  * étiquetées (joueur / créneau ou jour / matchs communs) au lieu de l'ancien
@@ -136,6 +145,8 @@ export function RelationsMomentsHeatmap({
   height,
 }: Props) {
   const points = useMemo(() => buildBucketPoints(cells, bucketLabels), [cells, bucketLabels])
+  // Rangées effectivement tracées (relations retenues, cap MAX_HEATMAP_ROWS inclus).
+  const rowCount = useMemo(() => new Set(points.map((pt) => pt.y)).size, [points])
   const series: ChartSeries<ChartPointHeatmap>[] =
     points.length > 0 ? [{ key: 'heatmap', datapoints: points }] : []
 
@@ -162,7 +173,7 @@ export function RelationsMomentsHeatmap({
       title={title}
       series={series}
       emptyMessage={emptyMessage}
-      height={height ?? 320}
+      height={height ?? CHROME_HEIGHT_PX + Math.max(rowCount, 1) * ROW_HEIGHT_PX}
       paletteMode="frequency"
       // La réglette est masquée, mais son ORIENTATION décide aussi des marges du tracé :
       // celles de la verticale logent les titres d'axes, que l'horizontale écraserait.

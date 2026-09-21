@@ -138,6 +138,13 @@ export interface IntensityProfileOpts {
    * Timeseries, qui montent le même builder en solo, n'héritent de rien.
    */
   overlays?: IntensityOverlay[]
+  /**
+   * Titres au-dessus des panneaux. Vrai par défaut (Escouade : un panneau par
+   * joueur, le titre EST le gamertag). Faux pour un montage à panneau unique dont
+   * le libellé est déjà porté par la légende — le « Joueur » écrit deux fois sur le
+   * bloc « Intensité » de Timeseries (retour utilisateur du 2026-09-21).
+   */
+  showPanelTitles?: boolean
 }
 
 /** Panneau retenu (au moins une manche exploitable) + son profil agrégé. */
@@ -416,7 +423,8 @@ export function buildSquadIntensityProfileOption(opts: IntensityProfileOpts): EC
     max: yMax,
     axisLabel: { ...axis.axisLabel, formatter: (v: number) => asPct(v) },
   }))
-  const titles = grids.map((g, gi) => ({
+  const showTitles = opts.showPanelTitles !== false
+  const titles = !showTitles ? [] : grids.map((g, gi) => ({
     text: resolved[gi].label,
     left: `${g.centerX}%`,
     top: `${g.titleTop}%`,

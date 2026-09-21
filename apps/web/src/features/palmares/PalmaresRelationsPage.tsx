@@ -8,7 +8,7 @@
  * enrichi (binôme / bête noire / noyau dur), segmented control + toggle « jamais affrontés »,
  * tableau paginé (langage MatchEncountersTable) et section Moments & Rivalités.
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { kdaNetColor } from '@/lib/colors/outcomePalette'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
@@ -320,8 +320,6 @@ function HeroRelationCard({
 
 // Fenêtre « vus cette semaine » (7 jours) pour la carte résumé du noyau dur.
 const CORE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
-// Mini-classement : nombre de fidèles affichés avant le bouton « voir les autres ».
-const CORE_RANKING_PREVIEW = 3
 
 // countSeenThisWeek — fidèles vus il y a moins de 7 jours (last_seen_at). Helper
 // hors composant : la règle react-hooks/purity n'interdit l'appel impur Date.now()
@@ -341,7 +339,8 @@ function countSeenThisWeek(rows: RelationInsight[]): number {
  *  - donut du WR moyen ensemble + repère de la moyenne perso historique (#1)
  *  - vus cette semaine (#3, si > 0)
  *  - sparkline « Derniers matchs » joués à côté d'un fidèle (#8, si recentForm fourni)
- *  - mini-tableau (sans en-têtes) des fidèles classés par WR, dépliable (#7)
+ *  - mini-tableau (sans en-têtes) des fidèles classés par WR, TOUS affichés (le repli
+ *    « voir les X autres » a été retiré le 2026-09-21 — retour utilisateur)
  * recentForm vient de l'overview backend (optionnel) : rendu seulement quand la
  * donnée est présente, sinon la carte reste complète sans trou.
  */
@@ -367,7 +366,6 @@ function CoreSummaryCard({
   /** Borne de l'échelle des barres d'assistances (commune à la page). */
   assistVolumeMax: number
 }) {
-  const [expanded, setExpanded] = useState(false)
   const count = coreRows.length
   const wrs = coreRows
     .map((r) => r.teammate_win_rate)
@@ -386,8 +384,6 @@ function CoreSummaryCard({
       }),
     [coreRows],
   )
-  const visibleRanked = expanded ? ranked : ranked.slice(0, CORE_RANKING_PREVIEW)
-  const hiddenCount = ranked.length - CORE_RANKING_PREVIEW
   const form = (recentForm ?? []).filter((o): o is string => typeof o === 'string')
 
   return (
@@ -420,23 +416,13 @@ function CoreSummaryCard({
         {/* sparkline des derniers matchs joués à côté d'un fidèle (#8, backend) */}
         <SparklineSection label={labels.core.recentForm} outcomes={form} />
 
-        {/* aperçu classé des fidèles (WR desc, tiebreak volume) avec
-            expand/collapse ; chaque rangée porte le papillon des assistances
-            échangées (option A8, RelationAssistsCards). Pas d'en-têtes : le
-            classement EST le contenu affiché (exception I16). */}
+        {/* classement des fidèles (WR desc, tiebreak volume) : TOUTES les rangées,
+            sans repli (retour utilisateur du 2026-09-21). Chaque rangée porte le
+            papillon des assistances échangées (option A8, RelationAssistsCards). Pas
+            d'en-têtes : le classement EST le contenu affiché (exception I16). */}
         {ranked.length > 0 && (
           <div className="mt-3 border-t border-border pt-3">
-            <CoreRankingList rows={visibleRanked} volumeMax={assistVolumeMax} labels={labels} locale={locale} onPlayerClick={onPlayerClick} />
-            {hiddenCount > 0 && (
-              <button
-                type="button"
-                className="mt-2 text-xs font-semibold text-info hover:underline"
-                onClick={() => setExpanded((v) => !v)}
-                aria-expanded={expanded}
-              >
-                {expanded ? labels.core.collapse : labels.core.showOthers(hiddenCount.toLocaleString(locale))}
-              </button>
-            )}
+            <CoreRankingList rows={ranked} volumeMax={assistVolumeMax} labels={labels} locale={locale} onPlayerClick={onPlayerClick} />
           </div>
         )}
       </div>
