@@ -314,6 +314,15 @@ func rampeDeJauge(n, t0 int, top float64) []zoneSample {
 // camps : les deux camps mesures du canal.
 func camps() map[uint64]bool { return map[uint64]bool{0: true, 1: true} }
 
+// rampsCtxTemoin : le contexte de publication des rampes, sans compteur de repli.
+//
+// LES CAS DE CE FICHIER PASSENT `capt = nil` : ils decrivent le chemin de REPLI (aucun canal
+// POUSSEUR elu pour la zone), qui est exactement le comportement du schema 64. Le chemin de
+// LECTURE — celui que le lot 5.6 a mesure — a ses propres cas dans
+// `zone_states_capturer_test.go`, et l un d'eux RETOURNE `TestRampeAvorteeNeNommePersonne`
+// ci-dessous : avec un canal elu, une rampe avortee NOMME son pousseur.
+func rampsCtxTemoin() zoneRampsCtx { return zoneRampsCtx{teams: camps(), win: 20} }
+
 // TestRampeAboutieNommeLeCampDeLIssue : une rampe qui atteint le plein publie le camp que le
 // canal de propriete porte apres son sommet — y compris quand c'est une RE-SECURISATION (le
 // canal ne change pas de valeur, et pourtant elle nomme bien le pousseur).
@@ -324,7 +333,7 @@ func TestRampeAboutieNommeLeCampDeLIssue(t *testing.T) {
 		t.Fatalf("%d rampe(s) decoupee(s), attendu 1", len(ramps))
 	}
 	owner := []zoneSample{{t: 50, v: zoneNeutralOwner}, {t: 110, v: 1}}
-	out := zoneGaugeRampsOf(ramps, owner, camps(), 20)
+	out := zoneGaugeRampsOf(ramps, owner, nil, rampsCtxTemoin())
 	if len(out) != 1 || out[0].CapturingTeam == nil || *out[0].CapturingTeam != 1 {
 		t.Fatalf("camp publie = %v, attendu 1 : la rampe aboutit et le canal nomme le camp 1", out)
 	}
@@ -334,13 +343,15 @@ func TestRampeAboutieNommeLeCampDeLIssue(t *testing.T) {
 	}
 }
 
-// TestRampeAvorteeNeNommePersonne : sous le seuil d'aboutissement, la cle est ABSENTE meme quand
-// le canal de propriete porte un camp parfaitement lisible — c'est le DEFENSEUR.
+// TestRampeAvorteeNeNommePersonne : SANS CANAL POUSSEUR ELU, sous le seuil d'aboutissement, la
+// cle est ABSENTE meme quand le canal de propriete porte un camp parfaitement lisible — c'est le
+// DEFENSEUR. C'est le chemin de repli ; avec un canal elu, le lot 5.6 nomme le pousseur (cf.
+// `TestRampeAvorteeNommeSonPousseurQuandLeCanalEstElu`).
 func TestRampeAvorteeNeNommePersonne(t *testing.T) {
 	gauge := rampeDeJauge(10, 100, 0.80)
 	ramps := findZoneRamps(7, gauge)
 	owner := []zoneSample{{t: 50, v: 0}, {t: 110, v: 0}}
-	out := zoneGaugeRampsOf(ramps, owner, camps(), 20)
+	out := zoneGaugeRampsOf(ramps, owner, nil, rampsCtxTemoin())
 	if len(out) != 1 {
 		t.Fatalf("%d span(s) publie(s), attendu 1 : une rampe avortee se publie quand meme, SANS camp", len(out))
 	}
@@ -364,7 +375,7 @@ func TestRampeSansCampLisibleResteMuette(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			out := zoneGaugeRampsOf(ramps, c.owner, camps(), 20)
+			out := zoneGaugeRampsOf(ramps, c.owner, nil, rampsCtxTemoin())
 			if len(out) != 1 || out[0].CapturingTeam != nil {
 				t.Fatalf("camp publie sur %q : %v", c.nom, out)
 			}
@@ -377,7 +388,7 @@ func TestRampeSansCampLisibleResteMuette(t *testing.T) {
 func TestRampesPublieesSontCellesDeLaSerie(t *testing.T) {
 	gauge := append(rampeDeJauge(10, 100, 0.99), rampeDeJauge(10, 300, 0.60)...)
 	ramps := findZoneRamps(7, gauge)
-	out := zoneGaugeRampsOf(ramps, []zoneSample{{t: 110, v: 1}}, camps(), 20)
+	out := zoneGaugeRampsOf(ramps, []zoneSample{{t: 110, v: 1}}, nil, rampsCtxTemoin())
 	if len(out) != len(ramps) {
 		t.Fatalf("%d span(s) pour %d rampe(s) : les deux decoupages ont divergé", len(out), len(ramps))
 	}
@@ -392,7 +403,7 @@ func TestRampesPublieesSontCellesDeLaSerie(t *testing.T) {
 // TestAucuneRampeAucunSpan : sans rampe, le champ est nil — jamais un tableau vide, qui
 // s'afficherait dans le JSON et se lirait « mesure, rien trouve » au lieu de « pas de jauge ».
 func TestAucuneRampeAucunSpan(t *testing.T) {
-	if out := zoneGaugeRampsOf(nil, nil, camps(), 20); out != nil {
+	if out := zoneGaugeRampsOf(nil, nil, nil, rampsCtxTemoin()); out != nil {
 		t.Fatalf("spans publies sans rampe : %v", out)
 	}
 }

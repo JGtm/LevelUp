@@ -116,8 +116,9 @@ export function useZoneStates(
     () => ({
       colorOfOwner: (team: number) =>
         allyTeamID === null ? null : teamColorOf(team === allyTeamID),
-      // Le camp QUI POUSSE LA JAUGE est désormais LU dans le document (schéma 64,
-      // `gaugeRamps[].capturingTeam`) et non plus déduit du propriétaire : cette encre n'est
+      // Le camp QUI POUSSE LA JAUGE est désormais LU dans le document (schéma 64 pour la
+      // forme, lot 5.6 pour la lecture dans le film — rampes avortées comprises) et non plus
+      // déduit du propriétaire : cette encre n'est
       // que la traduction d'un identifiant d'équipe, la MÊME règle que `colorOfOwner`. Les deux
       // restent deux entrées du style parce qu'elles répondent à deux questions distinctes
       // (« qui tient » / « qui pousse ») et que le calque les pose à deux endroits.

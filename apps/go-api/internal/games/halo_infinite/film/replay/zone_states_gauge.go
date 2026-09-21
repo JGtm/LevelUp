@@ -38,6 +38,8 @@ package replay
 import (
 	"math"
 	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 const (
@@ -177,15 +179,14 @@ func pushGaugePoint(out []GaugePoint, p GaugePoint) []GaugePoint {
 const zoneGaugeRampComplete = 0.95
 
 // zoneGaugeRampsOf rend les rampes PUBLIEES d'une zone : les memes que celles dont la serie de
-// jauge est tiree (`findZoneRamps`), chacune portant le camp qui la pousse quand elle aboutit.
+// jauge est tiree (`findZoneRamps`), chacune portant le camp qui la pousse.
 //
-// LE CAMP N'EST PAS DEDUIT, IL EST LU : c'est la valeur du canal de PROPRIETE de la zone a la
-// frame du sommet ou juste apres, dans la meme fenetre d'appariement que partout ailleurs dans
-// ce volet (`zoneValueAfter`). Une rampe qui AVORTE ne le porte pas — le canal y nomme encore le
-// defenseur, et le publier ferait peindre le remplissage a la couleur de celui qui SUBIT la
-// capture, exactement le defaut que ce champ repare.
-func zoneGaugeRampsOf(ramps []zoneRamp, owner []zoneSample, teams map[uint64]bool,
-	win int,
+// LE CAMP EST LU DANS LE FILM, ET PLUS DEDUIT DE L'ISSUE (lot 5.6) : le film porte un second
+// canal `tag 4` par zone — le POUSSEUR —, dont la valeur pendant la rampe nomme le camp qui la
+// mene, qu'elle aboutisse ou non. Son election et sa mesure vivent dans
+// `zone_states_capturer.go`. La deduction du schema 64 survit en REPLI NOMME pour les zones ou
+// aucun canal n'est elu : sans elle, ces zones perdraient le camp qu'elles publient deja.
+func zoneGaugeRampsOf(ramps []zoneRamp, owner, capt []zoneSample, c zoneRampsCtx,
 ) []ZoneGaugeRamp {
 	if len(ramps) == 0 {
 		return nil
@@ -194,29 +195,32 @@ func zoneGaugeRampsOf(ramps []zoneRamp, owner []zoneSample, teams map[uint64]boo
 	for _, r := range ramps {
 		out = append(out, ZoneGaugeRamp{
 			T0: r.t0, T1: r.tPeak,
-			CapturingTeam: rampCapturingTeam(r, owner, teams, win),
+			CapturingTeam: rampCapturingTeam(r, owner, capt, c),
 		})
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].T0 < out[j].T0 })
 	return out
 }
 
-// rampCapturingTeam rend le camp qui a pousse la rampe, ou nil quand rien ne le mesure : rampe
-// avortee, canal muet dans la fenetre, ou valeur qui n'est pas un camp du roster (neutre
-// compris — « personne » ne capture rien).
-func rampCapturingTeam(r zoneRamp, owner []zoneSample, teams map[uint64]bool, win int) *int {
-	if gaugeProgressOf(r.top) < zoneGaugeRampComplete {
-		return nil
+// zoneRampsCtx porte ce dont la publication des rampes a besoin (regle des 5 parametres).
+type zoneRampsCtx struct {
+	teams map[uint64]bool
+	win   int
+	fb    *fallback.Compteur
+}
+
+// rampCapturingTeam rend le camp qui pousse la rampe : LU d'abord, deduit ensuite.
+//
+// L'ORDRE EST LE POINT (`OrdreApresLecture`) : le canal pousseur elu a le dernier mot, MEME
+// quand il nomme le neutre — « le film dit que personne ne pousse » est une reponse, et la
+// deduire par-dessus publierait un camp que le film contredit. Le repli ne s'exerce donc que
+// la ou la LECTURE N'A PAS EU LIEU : aucun canal elu pour cette zone, ou canal muet sur cette
+// rampe.
+func rampCapturingTeam(r zoneRamp, owner, capt []zoneSample, c zoneRampsCtx) *int {
+	if team, lu := zoneRampCapturerRead(capt, r, c.teams); lu {
+		return team
 	}
-	v, ok := zoneValueAfter(owner, r.tPeak, win)
-	if !ok {
-		return nil
-	}
-	team, known := zoneOwnerTeam(v, teams)
-	if !known {
-		return nil
-	}
-	return team
+	return zoneRampCapturerDeduit(r, owner, c.teams, c.win, c.fb)
 }
 
 // rampWindowsOf traduit des rampes en fenetres de jauge.

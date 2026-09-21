@@ -106,8 +106,9 @@ export type ReplayObjectiveObjectReady = Filled<ReplayObjectiveObjectLife, 'pts'
  * lisait comme une jauge, et c'est ce que le schéma 18 corrige (décision du plan, lot C-ter).
  *
  * `gaugeRamps` (schéma 64) SE COMBLE À VIDE POUR LA MÊME RAISON, et la lecture est la même à un
- * cran de plus : une rampe sans `capturingTeam` est une rampe dont le pousseur n'est PAS mesuré,
- * et le rendu y repeint au neutre — exactement ce qu'il fait quand le tableau est vide.
+ * cran de plus : une rampe sans `capturingTeam` est une rampe dont le pousseur n'est PAS nommé
+ * par le film — le neutre, ou aucun canal pousseur élu sur cette zone —, et le rendu y repeint au
+ * neutre, exactement ce qu'il fait quand le tableau est vide.
  */
 export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans' | 'gauge' | 'gaugeRamps'>
 /**

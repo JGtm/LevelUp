@@ -6844,10 +6844,77 @@ au brief etait l archetype `zones` `ti=23`, `deser_non_cable`, dont la table ECS
         de `7344d24f` — le depot documente deja l emission aberrante sous zero de ce film ; le
         critere est passe a une MAJORITE de 80 %.
 
+- [x] **5.6.3 - LE PORT : `capturingTeam` EST UNE LECTURE, LA DEDUCTION SURVIT EN REPLI NOMME.**
+  Publication SEULE (`film/replay`) : **zero octet de grammaire**, zero octet de codec de faits,
+  **AUCUNE montee de schema** (la forme `gaugeRamps[].capturingTeam` existe depuis la 64) et
+  aucune montee de revision - `grammar.Rev` et `facts.Rev` ne bougent pas, la substance decodee
+  n a pas change.
+  - [x] `zone_states_capturer.go` (NEUF) : `zoneCampLike`, `electZoneCapturer`,
+        `zoneValueDuringRamp`, `zoneRampCapturerRead`, `zoneRampCapturerDeduit`. L election est
+        PAR SIGNAL, jamais par arithmetique de slot (le triplet est regulier sur les deux films
+        mesures, mais un numero de slot est un ordre d allocation du moteur - c est deja ce que
+        `zoneLetterRanks` en dit).
+  - [x] `zoneSeries.ownerChained` : la serie `tag 4` reduite aux lectures CHAINEES, ou les
+        candidats se cherchent. Les intervalles de propriete continuent de lire la serie
+        COMPLETE - les deux consommateurs n ont pas le meme besoin.
+  - [x] `rampCapturingTeam` : **LU d abord, deduit ensuite** (`OrdreApresLecture`). Le canal elu
+        a le dernier mot MEME quand il nomme le neutre : « personne ne pousse » est une reponse,
+        et la deduire par-dessus publierait un camp que le film contredit.
+  - [x] **ECART ASSUME AVEC LE BRIEF, ET IL VIENT D UNE MESURE** : le brief demandait de
+        SUPPRIMER la deduction. Elle reste, sous
+        `repli_zone_camp_de_capture_deduit_de_l_issue` (registre + constante + site + compteur
+        branche). Raison : l election exige deux rampes abouties concordantes, et une zone peu
+        disputee n en a pas assez - la retirer ferait PERDRE des camps aujourd hui publies.
+        **Un repli qui fait perdre est un repli qu on garde, nomme et compte** (D14). Sa cible
+        de retrait et son critere (`0 declenchement sur le parc`) sont au registre.
+  - [x] **VERIFICATION SUR PIECE DU CODE LIVRE** (`replay/zone_56_election_research_test.go`,
+        `electZoneCapturer` joue sur un vrai film, sans cuisson ni base) : l election est
+        **UNIVOQUE** - une seule paire (reference, elu) sort par jauge, exactement le triplet
+        mesure :
+
+        | film | jauge | reference | POUSSEUR elu | rampes | camp LU | camp par REPLI |
+        |---|---:|---:|---|---:|---:|---:|
+        | 396cfc92 | 1603 | 1601 | 1602 | 12 | **12** | 0 |
+        | 396cfc92 | 1608 | 1606 | 1607 | 18 | **18** | 0 |
+        | 396cfc92 | 1613 | 1611 | 1612 |  9 |  **9** | 0 |
+        | 7344d24f | 1532 | 1530 | 1531 | 18 | **18** | 0 |
+        | 7344d24f | 1537 | 1535 | 1536 | 18 | **17** | 1 |
+        | 7344d24f | 1542 | 1540 | 1541 | 14 | **14** | 0 |
+
+        `396cfc92` : **39 rampes sur 39 portent un camp LU, 0 repli** - le depot en publiait 29.
+  - [x] **BOUT EN BOUT, PAR LA CUISSON** : `replay-equiv --films=<un film>` sans `-update`, un
+        film a la fois. Le journal de repli confirme la mesure au declenchement pres -
+        `7344d24f` : `repli_zone_camp_de_capture_deduit_de_l_issue declenchements=1` (exactement
+        la rampe que l instrument annonce) ; `696a9d7c` : **aucun declenchement**. Trois films a
+        zones, replis 0 / 1 / 0.
+  - [x] **11 cas neufs** (`zone_states_capturer_test.go`), dont le cas RETOURNE :
+        `TestRampeAvorteeNommeSonPousseurQuandLeCanalEstElu` - avec un canal elu, une rampe
+        avortee nomme son pousseur, et ce n est plus deviner puisque c est lu. Les cas de
+        `zone_states_gauge_test.go` sont conserves et re-documentes : ils decrivent desormais le
+        chemin de REPLI (`capt = nil`), ou le comportement du schema 64 survit a l identique.
+        Les portes tenues : le proprietaire ne s elit pas lui-meme, un seul accord ne suffit pas,
+        un seul desaccord disqualifie, une valeur hors plage d equipe disqualifie, la serie NON
+        chainee n est jamais lue, l election est deterministe.
+  - [x] **DEUX DEPLACEMENTS PURS imposes par le ratchet de taille** (500 lignes), zero ligne
+        changee : `zoneLetterRanks` + `zoneLetterMax` sortent de `zone_states_owner.go`
+        (504 lignes) vers `zone_states_lettres.go` ; le point 3 de l instrument sort de
+        `zone_56_camp_research_test.go` (547 lignes) vers `zone_56_election_research_test.go`.
+  - [x] **WEB : AUCUN CHANGEMENT DE CODE**, `capturingTeamAt` lisait deja la cle sans regarder
+        si la rampe aboutit - les rampes avortees se colorent donc sans rien toucher. Seules les
+        DOCS qui decrivaient l ancien defaut sont corrigees (anti-pattern « doc inversee », 5
+        sites : `zoneStatesLayer.ts` x2, `useZoneStates.ts`, `replayReadyTypes.ts`,
+        `api/types.ts`) plus les deux cotes Go (`document_zones.go`, `replaydoc/objectives.go`).
+  - [x] **LA RECUISSON DU PARC EST UN GESTE DE PILOTE, ET RIEN NE LA DECLENCHE TOUT SEUL** :
+        sans montee de schema ni de revision, `Digest.UpToDate` ne marque aucun artefact perime.
+        Les valeurs de `capturingTeam` changent pourtant. **A trancher a la fusion** (D1 du 5.6).
+
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-21 | 5.6.3 | **D1 (5.6) - LE PARC NE SE MARQUE PAS PERIME, ET LES VALEURS CHANGENT.** Le lot change la VALEUR de `zoneStates[].gaugeRamps[].capturingTeam` sans monter ni le schema (la forme existe depuis la 64) ni aucune des cinq revisions de couche (la substance decodee, `ZoneReads`, n a pas bouge - la regle d attribution de `layers.go` dit d attribuer un calque a la couche qui DECODE, pas a celle qui publie). `Digest.UpToDate` ne marquera donc aucun artefact du parc a recuire, et les artefacts deja cuits garderont les anciennes valeurs. | NON TRAITE, **et c est une decision de PILOTE, pas de lot** : soit une recuisson explicite du parc a la fusion, soit une revision de PUBLICATION (`publication-<SchemaVersion>` existe deja comme valeur legale de calque, mais rien ne la hache aujourd hui). La seconde voie est le vrai manque : il n existe aucun mecanisme pour dater un changement de la couche de publication a schema constant, et ce lot est le premier a en avoir besoin |
+| 2026-09-21 | 5.6.2 | **D2 (5.6) - LA COLONNE `meaning_fr` DE `ecs_table.tsv` EST FAUSSE SUR `ti=23`, AVEC UNE CONFIANCE `haute`.** Elle annonce « une ZONE de mode : son identifiant, sa POSITION, son etat » et un `exploitable_fr` qui promet « la reponse a quelle base est tenue par qui, a quel instant ». L ecrivain dit : nom, position, handle de PARTICIPANT - la selection de zone de reapparition. Aucune trace d etat. | NON TRAITE (regle 7 : corriger la table change l empreinte de `grammar`). **A corriger dans le prochain lot qui touche la grammaire** : `meaning_fr` -> « une zone SELECTIONNABLE de reapparition : son nom, sa position, le participant associe », `exploitable_fr` -> le negatif mesure (0 slot recense sur deux films a zones). Le `status` `deser_non_cable` reste juste, et le bloquant de `ti=23` au ratchet 0.A.3 ne doit PAS etre leve : porter un archetype que le film n instancie jamais serait du code mort |
+| 2026-09-21 | 5.6.2 | **D3 (5.6) - LE HARNAIS D EQUIVALENCE EST PERIME A LA TETE DE L INTEGRATION.** `replay-equiv --films=7344d24f` sans `-update` rend **57 etapes produites contre 55 figees**, avec `filmFactsRejoue` et `artifact` « produites en trop » : la comparaison est faite par INDEX, donc un pas insere decale tout ce qui suit et treize etapes sortent « differentes » sans l etre. Constat fait en jouant le gate de bout en bout du lot 5.6. | NON TRAITE : le re-figeage est un geste de pilote, a la fin (brief). **Mais le constat vaut au-dela du re-figeage** : un harnais qui compare par index rend un rapport ILLISIBLE des qu un pas apparait, alors que comparer par NOM d etape isolerait le vrai ecart. Pour le lot qui touchera `cmd/replay-equiv` |
 | 2026-09-21 | 5.5.2 | **D1 (5.5) — LE CHAMP `seat` D UN EPISODE D OCCUPATION NE DEPARTAGE PAS LES OCCUPANTS.** Sur les 100 tirs de tourelle de `4f77afc1`, la ventilation des episodes qui couvrent l instant du tir trouve **153 occurrences de `seat = 0`** (donc PLUSIEURS episodes revendiquent le siege du conducteur sur le MEME vehicule a la MEME image) et **16 episodes a siege MUET** — mais **jamais** de siege 1 ni 2, alors que le tourelleur d un Warthog est un passager. L episode DU TIREUR (apparie par slot) se declare lui aussi `seat = 0` dans 84 cas sur 100. | NON TRAITE (regle 7) — **le port de 5.5.3 ne s appuie pas dessus**, il apparie par SLOT, qui est exact a 100 % (241 / 241). C est un defaut de la CUISSON (`document_vehicles.go`, attribution du siege a un episode), a instruire par un lot serveur : l oracle est ecrit ici (deux episodes ne peuvent pas partager un siege au meme instant), et deux consommateurs s y fient deja — `vehicleDriverAt` (teinte du vehicule, ordre des noms) et `vehicleActiveRides` (tri d affichage) |
 | 2026-09-21 | 5.5.3 | **D2 (5.5) — UNE ARME DE JOUEUR TIREE D UN SIEGE DE PASSAGER RESTE SANS DIRECTION, ET LE REMEDE EST DESORMAIS A PORTEE.** `vehicleShotSourceOf` ecarte ces tirs par decision du lot 5.2a.5 (« le passager vise ou il veut ») et les laisse sur leur propre cap de REGARD — or un bipede embarque ne replique plus sa trajectoire, donc ce cap est lisible pour 1 tir sur 241. Mesure de la population : **76 tirs sur 241** de `4f77afc1` (241 tirs de vehicule, 165 traites par le rendu). | NON TRAITE (regle 7 : le lot porte sur la TOURELLE). Mais le negatif de 5.2a.5 tombe : la visee de l episode du tireur EST son propre regard, pas celui d autrui — l objection qui gelait ce cas (« faire passer une mesure d autrui pour une approximation de soi ») ne s y applique pas. `vehicleShooterAimAt` existe et rend deja la valeur ; le lot qui voudra le faire n a qu a etendre la porte de `vehicleShotSourceOf`, avec sa propre mesure |
 | 2026-09-21 | 5.5.2 | **D3 (5.5) — LES DOCUMENTS DU CACHE LOCAL SONT AU SCHEMA 62, LA TETE EST AU 65.** Les artefacts de `data/cache/replays/halo_infinite` datent du 2026-09-18 (republication de cloture du chantier) et portent `schemaVersion: 62` ; les mesures avant/apres de 5.5.2 et 5.5.3 sont donc prises sur cette forme. Sans consequence pour ce lot : `vehicles[].rides[].{slot,seat,aim}` et `shots[].{slot,v,w,t}` existent depuis le schema 31 et n ont pas bouge depuis. | NON TRAITE, et **dit ici pour que les chiffres soient rejouables** : une recuisson des temoins donnerait des comptes de tirs legerement differents (le brief de lancement citait « 74 / 286 », une forme plus recente). Le VERDICT, lui, ne depend pas du compte : 0 tir de tourelle oriente avant, 95 sur 100 apres |
@@ -7365,6 +7432,19 @@ et `facts.Rev` sont donc inchangés, et les 8 fixtures de contrat aussi.
 
 | Date | Point | Gate | Résultat |
 |---|---|---|---|
+| 2026-09-21 | 5.6.1 | recensement des images-cles, 5 archetypes, 2 films (`ZONE56_TI`) | `ti=23` **0 slot** sur `396cfc92` (27 images-cles) et `f75e7053` (24) ; etalon de la MEME marche : `ti=13` **26** / `ti=20` **56** / `ti=22` **1** / `ti=24` **0** |
+| 2026-09-21 | 5.6.2 | correlation tous couples ordonnes, lectures CHAINEES, `396cfc92` | 3 zones : **30 abouties / 30 accords / 0 desaccord**, **9 avortees nommees sur 9** ; 39 rampes couvertes sur 39 |
+| 2026-09-21 | 5.6.2 | idem, `7344d24f` | 3 zones : **39 abouties / 39 accords / 0 desaccord**, **10 avortees nommees sur 10** |
+| 2026-09-21 | 5.6.2 | idem, `f75e7053` (KOTH) | **0 rampe de jauge**, **1 seul canal a valeurs de camp** (le proprietaire) : le film ne dit pas qui prend la colline |
+| 2026-09-21 | 5.6.2 | A/B carte installee / auto-detectee sur `396cfc92` | **identique** : 26 slots, 9 464 records, 8 561 lectures, 47 rampes, memes elus - `ti=13` ne porte aucune position |
+| 2026-09-21 | 5.6.3 | `electZoneCapturer` sur film (`zone_56_election_research_test.go`) | election **UNIVOQUE** : une paire par jauge, le triplet mesure ; `396cfc92` **39/39 lus, 0 repli** ; `7344d24f` 49/50 lus, 1 repli |
+| 2026-09-21 | 5.6.3 | `replay-equiv --films=7344d24f` puis `--films=696a9d7c`, sans `-update`, un film a la fois | cuissons `ok` (31,0 s / 30,1 s, pic 0,30 / 0,28 Gio) ; replis **1** puis **0**, conformes a l instrument. Harnais PERIME a la tete (57 etapes contre 55) : re-figeage au pilote, D3 |
+| 2026-09-21 | 5.6.3 | `gofmt -l ./internal ./cmd` ; `go build ./...` ; `go vet ./...` ; `go vet -tags=research ./internal/games/halo_infinite/film/...` | sortie vide ; vert ; vert ; vert |
+| 2026-09-21 | 5.6.3 | `go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api` | **vert** (deux ratchets de taille attrapes en route, corriges par deplacement pur) |
+| 2026-09-21 | 5.6.3 | `go test -count=1 -race ./internal/games/halo_infinite/film/replay/` | vert, 240 s |
+| 2026-09-21 | 5.6.3 | `golangci-lint run ./internal/games/halo_infinite/film/... ./internal/domain/replaydoc/...` (paquets ENTIERS) | **0 issues** |
+| 2026-09-21 | 5.6.3 | `make check-types` ; `npm run test` ; eslint sur les 4 fichiers web touches | vert ; **7 813 tests** ; 0 erreur |
+| 2026-09-21 | 5.6.3 | golden d empreinte de `facts` refige, **`facts.Rev` INCHANGEE et c est explicite** | seuls le registre de replis et la constante de nom ont bouge sous `facts/` : la sortie de la couche ne peut pas changer |
 | 2026-09-20 | 5.3.1 | périmètre (`git status`) | **7 chemins**, tous du lot : le plan, la note 5.3, `archlint/film_layers_deps_test.go`, deux fichiers de `research/reapparition/`, deux paquets neufs de `research/` |
 | 2026-09-20 | 5.3.1 | calibration de la chaîne du descripteur (`cmd_mouvement`) | **6 témoins sur 6**, et les 5 cibles résolues sans un échec ; les 5 écrivains concordent À L'OCTET avec ceux que le décodeur porte (`142ed42a8`, `142f02978`, `1408f0264`, `142f0293c`, `14076d45c`) |
 | 2026-09-20 | 5.3.1 | négatif du vocabulaire (`cmd_mouvement -vocabulaire`) | univers des noms de composant balayé ; « sprint » **71 chaînes / 0 composant**, « jump » **94 / 0**, « clamber » **34 / 0**, « airborne » **68 / 0**, « vault » **14 / 0**, « mantle » **0 / 0** ; « crouch » 66 / **1**, « slide » 60 / **1**, « posture » 14 / **1**, « mobility » 10 / **1** |
