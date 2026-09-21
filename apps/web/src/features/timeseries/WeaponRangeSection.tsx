@@ -56,11 +56,10 @@ import { useRangeFormats, type RangeFormats, type Translate } from './weaponRang
 /**
  * Les deux graphes vivent DANS la carte de section : leur propre `ChartCard` ne doit poser
  * aucun chrome, sinon on lit un cadre dans un cadre (retour utilisateur 2026-09-09 : « le
- * bloc du graphe contient un bloc qui contient le graphe »). `border-none` et non `border-0`
- * — la première règle porte sur le STYLE de bordure et gagne quel que soit l'ordre
- * d'émission des utilitaires de largeur.
+ * bloc du graphe contient un bloc qui contient le graphe »). La neutralisation par classes
+ * locales est remplacée le 2026-09-21 par la prop `frameless` de `ChartCard` — le chrome
+ * n'est plus posé puis annulé, il n'est pas posé.
  */
-const NESTED_CHART_CHROME = 'rounded-none border-none bg-transparent shadow-none'
 
 /**
  * Encres de la section — un seul endroit, partagé par les graphes et les deux légendes.
@@ -340,7 +339,7 @@ function RangeChartBody({
       series={series}
       buildOption={buildOption}
       height={height}
-      className={NESTED_CHART_CHROME}
+      frameless
       legend={<ChartLegend items={legendItems} ariaLabel={legendLabel} />}
     />
   )

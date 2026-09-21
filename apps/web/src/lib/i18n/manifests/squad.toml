@@ -657,12 +657,12 @@ en = "Impact"
 # cartes de chaleur (garde anti-anglicismes, lot C.4).
 
 [squad.echange.section_title]
-fr = "Qui couvre qui"
-en = "Who covers whom"
+fr = "Assistances croisées"
+en = "Cross assists"
 
 [squad.echange.section_label]
-fr = "Échanges entre membres de l'escouade"
-en = "Trades between squad members"
+fr = "Assistances croisées entre membres de l'escouade"
+en = "Cross assists between squad members"
 
 [squad.echange.definition]
 fr = "Un échange : un coéquipier abat votre tueur dans les {seconds, number} s qui suivent votre mort."
@@ -703,8 +703,8 @@ en = "{avenger} avenged {avenged} {n, plural, one {# time} other {# times}} ({pe
 # ─── Distribution du délai (onglet Dynamique) ───────────────────────────────
 
 [squad.echange.delay_title]
-fr = "Combien, et à quelle vitesse"
-en = "How many, and how fast"
+fr = "Délai de vengeance"
+en = "Revenge delay"
 
 [squad.echange.delay_label]
 fr = "Distribution du délai d'échange"
@@ -947,8 +947,8 @@ en = "A cell says how many times the ROW player avenged the COLUMN player. A tra
 # ─── Carte 5 : « Donné et reçu, par coéquipier » ────────────────────────────
 
 [squad.echange.donne_recu_title]
-fr = "Donné et reçu, par coéquipier"
-en = "Given and received, per teammate"
+fr = "Assistances par coéquipier"
+en = "Assists per teammate"
 
 [squad.echange.donne_recu_label]
 fr = "Échanges donnés et reçus par joueur"
@@ -1014,8 +1014,8 @@ en = "Share of avenged deaths"
 # ─── Carte 4 : « Pourquoi la vengeance ne vient pas » (nuage) ───────────────
 
 [squad.isolement.card_title]
-fr = "Pourquoi la vengeance ne vient pas"
-en = "Why revenge does not come"
+fr = "Frags non vengés"
+en = "Unavenged kills"
 
 [squad.isolement.say]
 fr = "Les deux vont ensemble, et c'est le résultat le plus exploitable de la page : {loin} meurt hors radar {loinIso} du temps et n'est vengé que {loinCouv} ; {proche}, à {procheIso} hors radar, est vengé {procheCouv}. On ne venge pas ce qu'on ne voit pas. Lisez la taille des points avant le taux : elle dit combien de morts chacun a réellement subies."

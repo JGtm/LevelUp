@@ -128,6 +128,7 @@ export function SquadAssistPairsChart({ block, roster }: SquadAssistPairsChartPr
           categoryAxisName={labels.roleAssistant}
           valueAxisName={labels.valueAxis}
           tooltipRoles={tooltipRoles}
+          frameless
         />
       </div>
     </SectionCard>

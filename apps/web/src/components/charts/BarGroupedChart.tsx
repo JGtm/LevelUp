@@ -31,6 +31,8 @@ export interface BarGroupedChartProps {
   error?: Error | null
   emptyMessage?: string
   height?: number
+  /** Propage a ChartCard : le graphe est rendu nu, sans bordure ni fond (voir ChartCard.frameless). */
+  frameless?: boolean
   componentColors?: Record<string, SemanticToken>
   componentOrder?: string[]
   /**
@@ -47,6 +49,7 @@ export function BarGroupedChart({
   error,
   emptyMessage,
   height,
+  frameless,
   componentColors,
   componentOrder,
   showValues,
@@ -65,6 +68,7 @@ export function BarGroupedChart({
       error={error}
       emptyMessage={emptyMessage}
       height={height}
+      frameless={frameless}
       buildOption={buildOption}
     />
   )

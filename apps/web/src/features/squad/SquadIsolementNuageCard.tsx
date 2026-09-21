@@ -31,7 +31,7 @@ import {
   legendEntries,
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { InfoTooltip, TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { intlLocale } from '@/lib/formatters'
@@ -133,7 +133,7 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
       titleAdornment={(label) => (
         <span className="flex items-center gap-1.5">
           {label}
-          <InfoTooltip content={t.help} />
+          <InfoTooltip content={<TooltipParagraphs items={[t.help, t.figure]} />} />
         </span>
       )}
     >
@@ -155,8 +155,7 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
                 })}
               </p>
             )}
-            <p className="text-xs text-muted-foreground">{t.figure}</p>
-            <ChartCard series={series} buildOption={buildOption} height={380} />
+            <ChartCard series={series} buildOption={buildOption} height={380} frameless />
             {/* LÉGENDE DE TAILLE, en DOM : ECharts n'en a pas pour un encodage de taille.
                 Elle porte les VRAIES valeurs extrêmes du roster — un encodage qu'on ne
                 nomme pas ne se lit pas. */}

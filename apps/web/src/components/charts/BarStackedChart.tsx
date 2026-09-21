@@ -47,6 +47,8 @@ export interface BarStackedChartProps {
   error?: Error | null
   emptyMessage?: string
   height?: number
+  /** Propage a ChartCard : le graphe est rendu nu, sans bordure ni fond (voir ChartCard.frameless). */
+  frameless?: boolean
   /** Vertical (default) ou horizontal (categories sur Y). */
   orientation?: 'vertical' | 'horizontal'
   /**
@@ -104,6 +106,7 @@ export function BarStackedChart({
   error,
   emptyMessage,
   height,
+  frameless,
   orientation = 'vertical',
   componentColors,
   componentOrder,
@@ -148,6 +151,7 @@ export function BarStackedChart({
       error={error}
       emptyMessage={emptyMessage}
       height={height}
+      frameless={frameless}
       buildOption={buildOption}
     />
   )

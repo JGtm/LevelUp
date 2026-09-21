@@ -22,7 +22,7 @@
 import { useMemo } from 'react'
 
 import { HistogramChart, type ChartPointHistogram } from '@/components/charts/HistogramChart'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { InfoTooltip, TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { SquadEchange } from '@/lib/api/types'
@@ -79,17 +79,18 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
       : t.delayBin(top.debut_ms / 1000, top.fin_ms / 1000)
   }, [buckets, t])
 
+  // UNE SEULE INFOBULLE PAR CARTE (2026-09-21) : la définition, la fenêtre, ce que la figure
+  // dénombre, et la note de pied sur les barres hachurées. Ces trois derniers textes vivaient
+  // dans le corps et le pied — du gris entre la phrase et le graphe, relu à chaque visite.
   const help = (
-    <span className="space-y-1.5">
-      <span className="block">{t.definition(secondes)}</span>
-      <span className="block">{t.delayWindow(secondes)}</span>
-    </span>
-  )
-
-  const footer = (
-    <div className="border-t border-border px-3 py-2">
-      <p className="text-xs text-muted-foreground">{t.delayFoot(secondes)}</p>
-    </div>
+    <TooltipParagraphs
+      items={[
+        t.definition(secondes),
+        t.delayWindow(secondes),
+        t.delayFigure(resume.total, echange.couverture.n),
+        t.delayFoot(secondes),
+      ]}
+    />
   )
 
   return (
@@ -102,7 +103,6 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
           <InfoTooltip content={help} />
         </span>
       )}
-      footer={footer}
     >
       <div className="space-y-2 px-3 py-2" data-testid="squad-echange-delai">
         {resume.total === 0 ? (
@@ -118,9 +118,6 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
                 pic,
               })}
             </p>
-            <p className="text-xs text-muted-foreground">
-              {t.delayFigure(resume.total, echange.couverture.n)}
-            </p>
             <HistogramChart
               series={series}
               xAxisLabel={t.delayXAxis}
@@ -129,6 +126,7 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
               binHatched={binHatched}
               showValues
               windowMark={windowMark}
+              frameless
             />
           </>
         )}

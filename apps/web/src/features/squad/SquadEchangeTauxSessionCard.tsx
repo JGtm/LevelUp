@@ -17,6 +17,7 @@
 import { useMemo } from 'react'
 
 import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { intlLocale } from '@/lib/formatters'
 import { withLowSampleNote } from '@/lib/formatters/lowSampleNote'
@@ -69,7 +70,18 @@ export function SquadEchangeTauxSessionCard({ echange }: SquadEchangeTauxSession
   const assezDeSessions = sessions.length >= PLANCHER_SESSIONS_TENDANCE
 
   return (
-    <SectionCard title={t.sessionRateTitle} label={t.sessionRateLabel}>
+    <SectionCard
+      title={t.sessionRateTitle}
+      label={t.sessionRateLabel}
+      // Ce que la courbe dénombre est passé en infobulle ⓘ du titre (2026-09-21) : c'est de
+      // la méthode, elle ne se relit pas à chaque visite au-dessus du graphe.
+      titleAdornment={(label) => (
+        <span className="flex items-center gap-1.5">
+          {label}
+          <InfoTooltip content={t.sessionRateFigure(secondes)} />
+        </span>
+      )}
+    >
       <div className="space-y-2 px-3 py-2" data-testid="squad-echange-taux-session">
         {!assezDeSessions || !bornes ? (
           <div className="space-y-2" data-testid="squad-echange-taux-session-vs-habituel">
@@ -106,7 +118,6 @@ export function SquadEchangeTauxSessionCard({ echange }: SquadEchangeTauxSession
                 n: sessions.length,
               })}
             </p>
-            <p className="text-xs text-muted-foreground">{t.sessionRateFigure(secondes)}</p>
             <TimeseriesLineChart
               series={series}
               xAxisType="category"
@@ -117,6 +128,7 @@ export function SquadEchangeTauxSessionCard({ echange }: SquadEchangeTauxSession
               yAxisLabelFormatter="{value} %"
               xAxisLabelRotate={-30}
               lastPointLabel={dernier ? pctFmt.format(dernier.couverture.taux) : undefined}
+              frameless
             />
           </>
         )}
