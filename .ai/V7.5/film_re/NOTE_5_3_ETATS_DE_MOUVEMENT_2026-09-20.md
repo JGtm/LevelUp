@@ -1113,6 +1113,80 @@ categorie**, et `varwidth.go` dit explicitement que cette base **n est pas porte
 changer « se juge au gate de decodage ». Une base fausse decale TOUS les identifiants — c est
 exactement le symptome mesure : des slots qui n existent pas.
 
+## 2 decies. `IDBase` — LA TABLE DU JEU, LUE EN ENTIER, ET UN NEGATIF QUI FERME LA PISTE
+
+> Troisieme hypothese du cadrage, instruite chez l ecrivain. **Negatif : le port etait deja
+> exact. Aucun octet de production touche.** Et la lecture rend au passage une table complete
+> que le depot n avait pas, plus une validation croisee du zoom.
+
+### 2dec.1 L ECRIVAIN DE LA TABLE, LU EN ENTIER
+
+`FUN_1406d3140` lit sa base et sa plage dans une table indexee par categorie :
+
+```c
+uVar7 = DAT_144706100;                            // plage par defaut
+if (DAT_144706104 != '\0') {
+    uVar8 = (&DAT_1451f98d0)[param_3 * 2];        // BASE de la categorie
+    uVar7 = (&DAT_1451f98d4)[param_3 * 2];        // PLAGE de la categorie
+}
+```
+
+Et `FUN_140d10bb0` REMPLIT cette table, categorie par categorie (`piVar2` = la plage,
+`piVar2[-1]` = la base, boucle `iVar3` de 0 a 8) :
+
+| categorie | BASE | PLAGE | largeur `bitLen(plage)` |
+|---|---|---|---|
+| 0 | `0x200` | `0x1DFF` | 13 |
+| 1 | `0x200` | `0x1DFF` | 13 |
+| 2 | `0x200` | `0x100` | 8 |
+| 3 | **`0x300`** | `0x100` | 8 |
+| 4 | `0x200` | `0x200` | 9 |
+| 5 | **`0x400`** | `0x100` | 8 |
+| 6 | `0` | `0x200` | 9 |
+| **7** | **`0`** | **`0x1FFF`** | **13** |
+| 8 | `0` | `0x1FFF` | 13 |
+
+Les PLAGES concordent exactement avec `varWidthRange` du depot. **Les BASES, que `varwidth.go`
+declarait explicitement NON PORTEES, sont desormais lues** — et elles valent bien 0x200 / 0x300
+/ 0x400, mais **pas pour toutes les categories** : les categories 6, 7 et 8 ont une base NULLE.
+
+### 2dec.2 LE NEGATIF : LE PORT ETAIT DEJA EXACT
+
+`readRecordID` porte la categorie **7**. Sa base est **0**, sa largeur **13**. Or
+`DefaultFrameConfig()` rend deja `IDLowBits: 13, IDBase: 0`.
+
+**LES DEUX VALEURS DU PORT SONT CELLES DE L ECRIVAIN.** Il n y a rien a corriger, aucune mesure
+a refaire, aucun gate a jouer : changer `IDBase` reviendrait a s ecarter de l ecrivain. La piste
+est FERMEE, et c est un negatif ecrit, pas un abandon.
+
+**TROIS HYPOTHESES SONT DESORMAIS ELIMINEES** pour les 12 316 rejets : l amorcage du monde
+(§ 2 octies), la largeur d ID (§ 2 nonies), la base d ID (ici). Toutes trois par l ecrivain ou
+par la mesure, aucune par lassitude.
+
+### 2dec.3 VALIDATION CROISEE GRATUITE : LA BASE DU ZOOM ETAIT UNE MESURE, ELLE EST MAINTENANT UNE GRAMMAIRE
+
+`zoom_events.go` porte `zoomSlotBase = 512`, obtenue par FORCE BRUTE : « base 512 : 63 index
+sur 64 tombent sur un slot bipede reellement vu dans le film (98 %) ; bases 0, 256, 768, 1024 :
+0 sur 64 ». La premiere reference d `unit_zoom` est de **domaine 4**.
+
+**Et la categorie 4 de la table du jeu a pour base `0x200` = 512.**
+
+La constante que sept campagnes avaient cherchee empiriquement est donc la base de sa categorie,
+lue chez l ecrivain. Ce n est pas une coincidence a 1 chance sur 4 : c est la confirmation que
+le « domaine » d une reference d evenement EST la categorie de `FUN_1406d3140`, et que la table
+ci-dessus vaut pour les references d evenements comme pour les identifiants de record.
+
+**CE QUE CELA OUVRE, ET QUI N EST PAS DE CE LOT** : les domaines 7 et 8 d `unit_zoom` ont une
+base de 0 et une largeur de 13 ; les domaines 3 et 5, des bases 0x300 et 0x400. Un lot
+d evenements pourrait porter ces bases au lieu de les mesurer.
+
+### 2dec.4 SUITE, DITE COMME CONVENU
+
+La cause des 12 316 rejets reste ouverte, et les trois suspects nommes sont tombes. **Je passe
+donc a `ti=35 i60`, `i59`, `i57` sur la population SAINE actuelle** (11 150 records de bipede,
+etalon `i21` a 64,3 %), en le disant : ces trois composants gardent l acces a `i29`, `i18`,
+`i54`, `i55` et `i62`, et ils sont mesures fautifs 38, 19 et 12 fois.
+
 ---
 
 ## 3. LE NEGATIF, MESURE DEUX FOIS
