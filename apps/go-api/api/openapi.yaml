@@ -29288,16 +29288,13 @@ components:
         rides:
           format: int64
           type: integer
-        ridesFromEvent:
-          format: int64
-          type: integer
-        ridesFromGap:
-          format: int64
-          type: integer
-        ridesMixed:
-          format: int64
-          type: integer
         ridesNamed:
+          format: int64
+          type: integer
+        ridesProximity:
+          format: int64
+          type: integer
+        ridesRead:
           format: int64
           type: integer
         ridesWithAim:
@@ -29369,9 +29366,8 @@ components:
         - rides
         - vehiclesRidden
         - ridesNamed
-        - ridesFromEvent
-        - ridesMixed
-        - ridesFromGap
+        - ridesRead
+        - ridesProximity
         - ridesWithSeat
         - aimReads
         - ridesWithAim

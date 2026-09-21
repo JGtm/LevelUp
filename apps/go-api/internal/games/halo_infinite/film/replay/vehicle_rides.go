@@ -97,15 +97,22 @@ const (
 	vehicleNearestSampleUS = uint64(1_000_000)
 )
 
-// Provenance des bornes d un episode. Identifiants STABLES du document.
+// Provenance d un episode. Identifiants STABLES du document.
+//
+// DEUX VALEURS DEPUIS LE SCHEMA 67, ET ELLES DISENT LA SOURCE, PLUS LA PRECISION DES BORNES
+// (arbitrage du pilote, 2026-09-21). Les trois valeurs precedentes — `event`, `mixed`, `gap` —
+// ventilaient les bornes d un episode HEURISTIQUE ; cette ventilation vit desormais au journal
+// de cuisson (`vehicleRideStats`), parce que la question que le client se pose a change : ce
+// n est plus « a quelle milliseconde pres ? » mais « le film l a-t-il ECRIT, ou l a-t-on
+// DEDUIT ? ».
 const (
-	// VehicleRideSrcEvent : les DEUX bornes sont datees par un evenement de la liste (a la
-	// milliseconde).
-	VehicleRideSrcEvent = "event"
-	// VehicleRideSrcMixed : une borne par evenement, l autre par le trou de position.
-	VehicleRideSrcMixed = "mixed"
-	// VehicleRideSrcGap : les deux bornes viennent du trou de position (aucun evenement apparie).
-	VehicleRideSrcGap = "gap"
+	// VehicleRideSrcFilm : le film ECRIT cette montee a bord (`object-parent-state`, i10). Le
+	// siege vient de la meme lecture.
+	VehicleRideSrcFilm = "film"
+	// VehicleRideSrcProximity : REPLI NOMME — l episode vient du trou de position de l occupant
+	// (et, quand ils existent, des evenements d embarquement / de sortie qui en datent les
+	// bornes). Il n est publie que si AUCUNE lecture de la meme vie ne le contredit.
+	VehicleRideSrcProximity = "proximity"
 )
 
 // vehicleRideInputs porte ce que l assemblage des episodes consomme. Une structure plutot que
@@ -184,80 +191,13 @@ type vehicleRideStats struct {
 	// journalise a cote des autres : un calque qui publierait des episodes sans jamais lire un
 	// siege dirait que le canal `i10` n est plus traverse.
 	sieges int
-}
-
-// buildVehicleRides rend les episodes d occupation par vie de vehicule, et le bilan de leur
-// rattachement. PUR.
-//
-// DEUX SOURCES, DANS CET ORDRE (lot V6). La machine d etats par OCCUPANT
-// (`vehicle_rides_events.go`) passe d abord : ses bornes sont des EVENEMENTS de la liste, dates a
-// la milliseconde et valides (occupant en bande 100 %). Le TROU du flux de position ne sert plus
-// qu en REPLI, pour les episodes qu aucun evenement n atteste — aux memes portes qu avant.
-func buildVehicleRides(
-	in vehicleRideInputs,
-) (map[types.EquipmentLifeKey][]VehicleRide, vehicleRideStats) {
-	var st vehicleRideStats
-	if in.clock.step == 0 || len(in.lives) == 0 {
-		return nil, st
-	}
-	boards, exits := vehicleEventsByOccupant(in.events)
-	bySlot := vehiclePositionsBySlot(in.bipeds)
-	out := map[types.EquipmentLifeKey][]VehicleRide{}
-	var kept []vehicleEpisode
-	for _, ep := range vehicleEventEpisodes(boards, exits, bySlot) {
-		st.episodes++
-		if ep.vehValid {
-			st.nommes++
-		}
-		key, r, resolved, ok := vehicleRideFromEpisode(ep, bySlot, in)
-		if !ok {
-			st.perdus++
-			continue
-		}
-		switch resolved.resolvedBy {
-		case vehicleResolvedByEvent:
-			st.parEvenement++
-		case vehicleResolvedByEventNearest:
-			st.parEvenementProche++
-		default:
-			st.parGeometrie++
-		}
-		out[key] = append(out[key], r)
-		kept = append(kept, resolved)
-	}
-	for _, g := range vehicleGaps(in.bipeds) {
-		// SEULS LES EPISODES PUBLIES ferment la porte du repli. Un episode d evenement dont le
-		// vehicule n a pas pu etre resolu ne doit RIEN supprimer : sinon la machine d etats
-		// retirerait un episode que le trou, lui, savait rattacher (mesure du 2026-09-03 :
-		// 12 -> 11 sur `0d76e8f1` avec la regle naive).
-		if vehicleEpisodeCovers(kept, g) {
-			continue
-		}
-		vs, ok := vehicleNearestTo(g.last, in.vehBySlot)
-		if !ok {
-			continue
-		}
-		key, ok := vehicleLifeAt(in.lives, vs, g.startUS)
-		if !ok {
-			continue
-		}
-		out[key] = append(out[key], vehicleRideOf(g, boards[g.slot], exits[g.slot], in))
-		st.repli++
-	}
-	// LE SIEGE SE POSE ICI, ET EN UN SEUL ENDROIT : les deux voies de construction (evenements
-	// et trou de position) produisent des episodes de la MEME forme, et le siege se lit sur le
-	// couple (occupant, vehicule) une fois l episode rattache a sa vie (lot 5.10).
-	st.sieges = assignVehicleSeats(out, in.occupancy, in.clock)
-	for k := range out {
-		v := out[k]
-		sort.SliceStable(v, func(i, j int) bool {
-			if v[i].T0 != v[j].T0 {
-				return v[i].T0 < v[j].T0
-			}
-			return v[i].Slot < v[j].Slot
-		})
-	}
-	return out, st
+	// LA LECTURE, ET CE QU ELLE ECARTE (lot 5.10, schema 67). `film` porte le bilan des episodes
+	// LUS ; `ecartes` compte les episodes d heuristique qu une lecture CONTREDIT, et il est le
+	// prix de la primaute : sans lui, la disparition d un episode faux et celle d un episode vrai
+	// se confondraient dans le meme silence.
+	film                      vehicleFilmTally
+	ecartes                   int
+	bornes2, bornes1, bornes0 int
 }
 
 // vehicleRideOf assemble UN episode : les bornes du trou, affinees par les evenements quand ils
@@ -265,20 +205,16 @@ func buildVehicleRides(
 func vehicleRideOf(
 	g vehicleGap, boards, exits []types.VehicleEvent, in vehicleRideInputs,
 ) VehicleRide {
-	r := VehicleRide{Slot: g.slot, Src: VehicleRideSrcGap}
+	r := VehicleRide{Slot: g.slot, Src: VehicleRideSrcProximity}
 	startUS, endUS := g.startUS, g.endUS
-	fromEvent := 0
+	// LES EVENEMENTS AFFINENT LES BORNES, ILS NE CHANGENT PLUS LA PROVENANCE (schema 67) : un
+	// episode de cette voie est un REPLI, qu une sortie le date a la milliseconde ou non. Le
+	// COMPTE de ses bornes datees vit au journal (`vehicleRideBorders`).
 	if ev, ok := vehicleEventNear(boards, g.startUS); ok {
-		startUS, fromEvent = ev.TimestampUS, fromEvent+1
+		startUS = ev.TimestampUS
 	}
 	if ev, ok := vehicleEventNear(exits, g.endUS); ok {
-		endUS, fromEvent = ev.TimestampUS, fromEvent+1
-	}
-	switch fromEvent {
-	case 2:
-		r.Src = VehicleRideSrcEvent
-	case 1:
-		r.Src = VehicleRideSrcMixed
+		endUS = ev.TimestampUS
 	}
 	r.T0 = in.clock.frame(startUS)
 	r.T1 = in.clock.frame(endUS)
@@ -298,6 +234,33 @@ func vehicleRideOf(
 	// que le contrat prevoit explicitement (l episode reste publie, son occupant est inconnu).
 	r.XUID = in.reg.XUIDAt(g.slot, startUS)
 	return r
+}
+
+// vehicleTallyBorders range un episode de repli par PRECISION de ses bornes. Cette ventilation
+// ne se publie plus (le champ `src` dit desormais la SOURCE) : elle vit au journal, ou elle garde
+// son role de temoin — si `bornes2` tombait a zero, c est que la liste d evenements n est plus
+// lue.
+func vehicleTallyBorders(st *vehicleRideStats, borders int) {
+	switch borders {
+	case 2:
+		st.bornes2++
+	case 1:
+		st.bornes1++
+	default:
+		st.bornes0++
+	}
+}
+
+// vehicleRideBorders compte les bornes qu un evenement date sur un episode de TROU.
+func vehicleRideBorders(g vehicleGap, boards, exits []types.VehicleEvent) int {
+	var n int
+	if _, ok := vehicleEventNear(boards, g.startUS); ok {
+		n++
+	}
+	if _, ok := vehicleEventNear(exits, g.endUS); ok {
+		n++
+	}
+	return n
 }
 
 // vehicleGaps releve les interruptions >= vehicleGapMinMS du flux de position de chaque bipede.

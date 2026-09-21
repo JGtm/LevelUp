@@ -1931,3 +1931,44 @@ package replay
 //	               telemetrie — le client peint avec. Les artefacts deja cuits restent servis
 //	               tels quels, la cle absente jusqu'a leur prochaine cuisson, et le repli neutre
 //	               du client est exactement celui d'aujourd'hui.
+
+// v67 (2026-09-21, post-chantier lot 5.10, arbitrage utilisateur) : L OCCUPATION D UN VEHICULE
+// EST LUE — LA PROXIMITE N EST PLUS QU UN REPLI, ET ELLE LE DIT.
+//
+//	`rides[].src`  DEUX VALEURS A LA PLACE DE TROIS, et elles ne disent plus la meme chose.
+//	               `film` = le film ECRIT cette montee a bord (`object-parent-state`, `i10`,
+//	               ecrivain `FUN_140c1e4d0`) ; `proximity` = REPLI, l episode vient du trou de
+//	               position de l occupant. Les anciennes valeurs `event` / `mixed` / `gap`
+//	               ventilaient la PRECISION DES BORNES d un episode heuristique ; cette
+//	               ventilation descend au journal de cuisson (`vehicleRideStats`), parce que la
+//	               question du lecteur a change : ce n est plus « a quelle milliseconde pres ? »
+//	               mais « est-ce lu, ou deduit ? ».
+//
+//	`rides[].seat` MEME FORME, AUTRE SOURCE (deja en place au lot 5.10.3) : le siege vient du
+//	               champ de six bits de la queue d `i10` (+0x3a0), plus du champ `R(6)` de
+//	               l evenement, que la mesure D1 (5.5) avait refute — 153 occurrences de
+//	               `seat = 0` pour 100 tirs de tourelle, jamais de siege 1 ni 2.
+//
+//	`coverage.`    DEUX COMPTEURS A LA PLACE DE TROIS : `ridesRead` et `ridesProximity`
+//	`vehicles`     remplacent `ridesFromEvent` / `ridesMixed` / `ridesFromGap`. Leur somme vaut
+//	               toujours `rides`, et ils disent au lecteur du document ce qui est LU et ce
+//	               qui est DEDUIT — la seule ventilation qui porte une decision.
+//
+// LA PRIMAUTE DE LA LECTURE, ET SON PRIX. Un episode de proximite n est publie que s il ne
+// CONTREDIT aucune lecture de la MEME vie de vehicule : ni chevauchement de fenetre, ni occupant
+// absent des occupants que le film a nommes pour cette vie. Une vie dont le film n a RIEN lu
+// n est jamais contredite — l absence de lecture n est pas une absence d occupant. Le prix est
+// ecrit et compte au journal : une vie dont le film n a lu QU UN siege perd les episodes
+// heuristiques de ses autres sieges.
+//
+// CE QUE CETTE REGLE CORRIGE, ET C EST UN VERDICT DE L UTILISATEUR (Theater, 2026-09-19) : le
+// Razorback `776/1` de `4f77afc1` publiait deux episodes — `Dafar8423` et `Yessireezy` — quand
+// le film n y ecrit qu UNE montee a bord, celle du slot `524` (siege 1, a 1:54.5 temps film).
+// Yessireezy ne monte jamais dans ce vehicule ; il est tue A COTE a 3:01 par un tir de mortier.
+// Les deux episodes sont desormais ECARTES par la lecture.
+//
+//	AUCUNE AUTRE   les revisions de DECODAGE ne bougent pas dans cette montee (`grammar` et
+//	DIFFERENCE     `facts` ont monte au commit precedent du lot, avec la lecture d `i10`).
+//	               `layers` est inchange — l occupation reste dans le calque des vehicules. La
+//	               fin de vie `despawn` N EST PAS publiee : la mesure du lot 5.10.4 a refute ses
+//	               trois canaux, et `end` garde ses trois valeurs.

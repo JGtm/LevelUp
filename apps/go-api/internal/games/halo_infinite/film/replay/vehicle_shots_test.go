@@ -20,7 +20,7 @@ func vsClock() replayClock {
 func vsDoc(rides []VehicleRide, samples []VehicleSample) *ReplayDocument {
 	seat := 0
 	if len(rides) == 0 {
-		rides = []VehicleRide{{T0: 10, T1: 40, Slot: 10, Seat: &seat, Src: VehicleRideSrcGap}}
+		rides = []VehicleRide{{T0: 10, T1: 40, Slot: 10, Seat: &seat, Src: VehicleRideSrcProximity}}
 	}
 	return &ReplayDocument{
 		Tracks:   []Track{{Slot: 10}},
@@ -105,7 +105,7 @@ func TestTirAmbiguDeuxVehicules(t *testing.T) {
 	doc.Vehicles = append(doc.Vehicles, VehicleTrack{
 		Slot: 800, Gen: 1, T1Max: 90,
 		Samples: []VehicleSample{{T: 10, X: 50, Y: 50}},
-		Rides:   []VehicleRide{{T0: 10, T1: 40, Slot: 10, Seat: &seat, Src: VehicleRideSrcGap}},
+		Rides:   []VehicleRide{{T0: 10, T1: 40, Slot: 10, Seat: &seat, Src: VehicleRideSrcProximity}},
 	})
 	attachVehicleShots(doc, []orphanShot{vsOrphan(20, 0)}, vsOwn(), vsClock())
 	if len(doc.Shots) != 0 {

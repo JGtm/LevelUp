@@ -111,9 +111,8 @@ type VehicleCoverage struct {
 	Rides              int            `json:"rides"`
 	VehiclesRidden     int            `json:"vehiclesRidden"`
 	RidesNamed         int            `json:"ridesNamed"`
-	RidesFromEvent     int            `json:"ridesFromEvent"`
-	RidesMixed         int            `json:"ridesMixed"`
-	RidesFromGap       int            `json:"ridesFromGap"`
+	RidesRead          int            `json:"ridesRead"`
+	RidesProximity     int            `json:"ridesProximity"`
 	RidesWithSeat      int            `json:"ridesWithSeat"`
 	AimReads           int            `json:"aimReads"`
 	RidesWithAim       int            `json:"ridesWithAim"`

@@ -323,11 +323,12 @@ type VehicleCoverage struct {
 	Rides          int `json:"rides"`
 	VehiclesRidden int `json:"vehiclesRidden"`
 	RidesNamed     int `json:"ridesNamed"`
-	// RidesFromEvent / RidesMixed / RidesFromGap ventilent les episodes par PRECISION de leurs
-	// bornes (cf. `VehicleRide.Src`). Somme == Rides.
-	RidesFromEvent int `json:"ridesFromEvent"`
-	RidesMixed     int `json:"ridesMixed"`
-	RidesFromGap   int `json:"ridesFromGap"`
+	// RidesRead / RidesProximity ventilent les episodes par SOURCE (cf. `VehicleRide.Src`).
+	// Somme == Rides. `RidesRead` compte ce que le film ECRIT (`object-parent-state`),
+	// `RidesProximity` le REPLI par trou de position — et c est la seule paire qui dise au
+	// lecteur du document ce qui est lu et ce qui est deduit.
+	RidesRead      int `json:"ridesRead"`
+	RidesProximity int `json:"ridesProximity"`
 	// RidesWithSeat : episodes dont le siege a ete LU DANS LE FILM (`object-parent-state`).
 	RidesWithSeat int `json:"ridesWithSeat"`
 	// AimReads / RidesWithAim / AimSamples / AimRideFrames sont LA COUVERTURE DE LA VISEE

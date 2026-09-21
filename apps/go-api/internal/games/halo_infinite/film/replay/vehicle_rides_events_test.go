@@ -318,7 +318,7 @@ func TestVehicleRideFromEpisodeAnchors(t *testing.T) {
 			if gotKey != key {
 				t.Fatalf("vie = %+v, attendue %+v", gotKey, key)
 			}
-			if r.XUID != "42" || r.Src != VehicleRideSrcEvent {
+			if r.XUID != "42" || r.Src != VehicleRideSrcProximity {
 				t.Fatalf("episode publie = %+v (xuid/src inattendus)", r)
 			}
 		})
@@ -349,8 +349,8 @@ func TestVehicleRideTerminalSilenceClosesAtLifeEnd(t *testing.T) {
 	if r.T0 != 20 || r.T1 != 200 {
 		t.Fatalf("bornes publiees = [%d..%d], attendues [20..200]", r.T0, r.T1)
 	}
-	if r.Src != VehicleRideSrcMixed {
-		t.Fatalf("provenance = %q, attendue %q", r.Src, VehicleRideSrcMixed)
+	if r.Src != VehicleRideSrcProximity {
+		t.Fatalf("provenance = %q, attendue %q", r.Src, VehicleRideSrcProximity)
 	}
 }
 

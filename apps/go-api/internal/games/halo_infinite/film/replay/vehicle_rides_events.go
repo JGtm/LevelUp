@@ -254,7 +254,7 @@ func vehicleRideFromEpisode(
 			ep.endUS = ep.reappearUS
 		}
 	}
-	r := VehicleRide{Slot: ep.slot, Src: vehicleRideSrcOf(ep.borders)}
+	r := VehicleRide{Slot: ep.slot, Src: VehicleRideSrcProximity}
 	r.T0, r.T1 = in.clock.frame(ep.startUS), in.clock.frame(ep.endUS)
 	if r.T1 < r.T0 {
 		r.T1 = r.T0
@@ -378,18 +378,6 @@ func vehicleLifeFromGeometry(
 	}
 	a1, ok1 := vehicleAnchorAt(pts, ep.endUS, true)
 	return vehicleLifeForAnchor(a1, ok1, ep.endUS, in)
-}
-
-// vehicleRideSrcOf traduit le nombre de bornes datees par un evenement en provenance publiee.
-func vehicleRideSrcOf(borders int) string {
-	switch {
-	case borders >= 2:
-		return VehicleRideSrcEvent
-	case borders == 1:
-		return VehicleRideSrcMixed
-	default:
-		return VehicleRideSrcGap
-	}
 }
 
 // vehicleAnchorAt rend l echantillon d ancrage : le dernier AVANT `atUS` (after=false) ou le

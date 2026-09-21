@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 3397 frames · intervalle 100 ms · duree 339700 ms
-schema 66 · titre halo_infinite
+schema 67 · titre halo_infinite
 version majeure du film : 33
 origine de la frame 0 sur l horloge du fil : 27811 ms
 coup d envoi date par le film : 45311 ms · 125/128 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 17500 ms
@@ -59,11 +59,11 @@ vies : 130/130 portent une equipe du film
 repartition des vies par designateur : 0 x55 · 1 x75
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-1220 rattache(s) / 1476 disponible(s) = 82.7 %
-rejets : slot introuvable=256 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+1219 rattache(s) / 1476 disponible(s) = 82.6 %
+rejets : slot introuvable=257 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 1476 = 1476 (equilibre : true)
 verdict : nominal
-1220 tir(s) publie(s) · 855 avec un cap de visee lisible · 1220 avec une arme nommee
+1219 tir(s) publie(s) · 853 avec un cap de visee lisible · 1219 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 100 rattache(s) / 105 disponible(s) = 95.2 %

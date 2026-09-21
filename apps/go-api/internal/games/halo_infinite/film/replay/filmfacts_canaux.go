@@ -286,6 +286,7 @@ func encodeVehicleScan(w *gwriter, s VehicleScan) {
 	encodeVehicleEvents(w, s.Events)
 	encodeVehicleAims(w, s.Aims)
 	encodeMortsDObjet(w, s.Deaths, s.DeathStats)
+	encodeVehicleOccupancy(w, s.Occupancy)
 }
 
 func decodeVehicleScan(r *greader, lay profile.I0Layout, world profile.Vec3Range) VehicleScan {
@@ -297,7 +298,51 @@ func decodeVehicleScan(r *greader, lay profile.I0Layout, world profile.Vec3Range
 	s.Events = decodeVehicleEvents(r)
 	s.Aims = decodeVehicleAims(r)
 	s.Deaths, s.DeathStats = decodeMortsDObjet(r)
+	s.Occupancy = decodeVehicleOccupancy(r)
 	return s
+}
+
+// encodeVehicleOccupancy / decodeVehicleOccupancy : les montees a bord LUES (`i10`), source
+// primaire des episodes d occupation depuis le schema 67.
+//
+// LE TEMOIN DE SIEGE VOYAGE AVEC SA VALEUR (`HasSeat`), pour la meme raison que les temoins des
+// evenements : un siege relu a zero sans son temoin nommerait le CONDUCTEUR la ou le film n a
+// rien ecrit. La generation du parent voyage aussi — elle ne sert pas au rattachement (la
+// fenetre de la vie s en charge) mais elle est ce que le film ECRIT, et un fixture qui la
+// perdrait ne pourrait plus servir de temoin a un lot futur.
+func encodeVehicleOccupancy(w *gwriter, occ []types.VehicleOccupancy) {
+	w.u(uint64(len(occ)))
+	var lastTS uint64
+	for _, o := range occ {
+		w.u(o.TimestampUS - lastTS)
+		lastTS = o.TimestampUS
+		w.u(uint64(o.Slot))
+		w.u(uint64(o.Gen))
+		w.bool8(o.Attached)
+		w.u(uint64(o.ParentSlot))
+		w.u(uint64(o.ParentGen))
+		w.bool8(o.HasSeat)
+		w.u(uint64(o.Seat))
+	}
+}
+
+func decodeVehicleOccupancy(r *greader) []types.VehicleOccupancy {
+	n := int(r.u())
+	out := make([]types.VehicleOccupancy, 0, n)
+	var lastTS uint64
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		o := types.VehicleOccupancy{TimestampUS: lastTS}
+		o.Slot = uint32(r.u())
+		o.Gen = uint32(r.u())
+		o.Attached = r.bool8()
+		o.ParentSlot = uint32(r.u())
+		o.ParentGen = uint32(r.u())
+		o.HasSeat = r.bool8()
+		o.Seat = uint32(r.u())
+		out = append(out, o)
+	}
+	return out
 }
 
 // encodeVehicleEvents / decodeVehicleEvents : les embarquements et les sorties.

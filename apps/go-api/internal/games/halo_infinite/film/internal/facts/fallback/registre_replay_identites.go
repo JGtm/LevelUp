@@ -195,18 +195,23 @@ var registreReplayIdentites = []Repli{
 		Mecanisme: "aucun evenement d'embarquement ou de sortie n'explique le trou : l'episode est reconstruit du TROU de position (>= 3 s) et du vehicule le plus proche sous 1,5 m en plan",
 		Condition: CondFilmMuet,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "vehicle_rides.go",
-			Ancre:   "st.repli++",
-		}},
+		// DEUX SITES DEPUIS LE LOT 5.10 : le compteur est DECLARE avec les autres statistiques
+		// d assemblage (`vehicle_rides.go`) et INCREMENTE a l etape qui pose le repli
+		// (`vehicle_rides_build.go`, sortie du meme fichier par deplacement pur).
+		Sites: []Site{
+			{Fichier: pkgReplay + "vehicle_rides.go", Ancre: "repli int"},
+			{Fichier: pkgReplay + "vehicle_rides_build.go", Ancre: "b.st.repli++"},
+		},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "lot 2.2 (M2, les lecteurs recoivent le profil : cablage des compteurs) puis le chantier vehicules — le lot 1.9.10 (2026-09-16) a lu la fin de vie au dead-state SANS convertir l episode d occupation par trou de position (cible reecrite a sa fusion)",
-		// Ce repli-ci porte DÉJÀ son nom (`st.repli`) et son compte (`episodesDeRepli` au
-		// journal, `VehicleRideSrcGap` dans le document) : il entre au registre pour que sa
-		// condition de retrait se lise au même endroit que les autres.
-		CritereRetrait:  "0 episode de provenance `gap` sur les 8 builds une fois les evenements d'embarquement complets",
+		// Ce repli-ci porte DÉJÀ son nom (`st.repli`) et son compte — et DEPUIS LE SCHEMA 67 il
+		// le porte jusqu'au document : `rides[].src = "proximity"` et `coverage.vehicles.
+		// ridesProximity` disent, par épisode et en total, ce qui est DÉDUIT plutôt que LU. Le
+		// lot 5.10 a aussi posé sa borne : un épisode de repli n'est publié que si aucune
+		// lecture d'`object-parent-state` de la même vie ne le contredit.
+		CritereRetrait:  "0 episode de provenance `proximity` sur les 8 builds une fois les montees a bord lues sur tous les sieges",
 		CompteurBranche: false,
-		CibleComptage:   "lot 2.2 (M2) : le compte EXISTE deja sous `vehicleRideStats.repli` et `VehicleRideSrcGap`, son entree dans `coverage.fallbacks` viendra avec le cablage general des compteurs",
+		CibleComptage:   "PUBLIE depuis le schema 67 (`coverage.vehicles.ridesProximity`) ; son entree dans `coverage.fallbacks` viendra avec le cablage general des compteurs",
 	},
 	{
 		Nom:       "repli_chassis_vehicule_marqueur_neutre",
