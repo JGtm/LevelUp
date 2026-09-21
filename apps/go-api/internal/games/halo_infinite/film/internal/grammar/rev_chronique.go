@@ -314,3 +314,31 @@ package grammar
 //
 // `facts.Rev` MONTE (elle hache cette valeur, et le lot change aussi `facts/killsource/`) :
 // `killsource-2026-09-20`. `SchemaVersion` NE MONTE PAS — aucun champ n est ajoute au document.
+
+// ENTREE `grammar-2026-09-20.2` (2026-09-20, lot 5.4.1) : L ANGLE DE ROULIS D `i2` N EST PLUS
+// JETE — LA MOITIE MANQUANTE DE L AVANT DU CHASSIS.
+//
+// AUCUN BIT N EST LU AUTREMENT : `decodeObjectForwardAndUp` et le chemin « config » du mode 1
+// consomment EXACTEMENT les memes largeurs qu avant (R(1)[+R(19)]+R(8) et R(1)[+R(30)]+R(30)).
+// Ce qui change est ce qui est RENDU : le scalaire de queue, que le depot sautait, est l ANGLE
+// que `FUN_1406d8678` combine a la direction pour construire le SECOND vecteur du composant.
+// La direction ecrite est le vecteur HAUT (negatif mesure du lot 5.2b.2, |z| median 0,96 a
+// 0,98) ; l AVANT est la perpendiculaire reconstruite. Cf. `orientation_frame.go`.
+//
+// POURQUOI LA REVISION MONTE ALORS QUE LA GRAMMAIRE D OCTETS EST INCHANGEE : la SORTIE de la
+// couche change. `HasAim` / `AimRaw` etaient muets sur le chemin du mode 1 (la direction de
+// 30 bits etait sautee) ; ils sont desormais poses, et le codec des faits les porte. Sur un film
+// dont `i2` prend le mode 1 — le chemin DOMINANT des builds recents — les faits changent donc
+// d octets. `AimVector` suit la largeur du mode au lieu de 19 bits en dur, sans quoi une
+// direction de 30 bits se decoderait en vecteur arbitraire.
+//
+// `SchemaVersion` NE MONTE PAS : aucun champ neuf au document — `vehicles[].samples[].h` garde sa
+// forme, seule sa SOURCE change.
+//
+// LA PREUVE A TENU, ET LE PORT EST POSE DANS CE MEME RANG (lot 5.4.3, 2026-09-21). Deux films,
+// oracle du deplacement et temoin par permutation : `4f77afc1` mode 1, 35 350 echantillons,
+// mediane **11,0 deg** contre un temoin a **88,8** ; `a349fea8` mode 1, mediane 23,4 (7,7 sur la
+// population qui AVANCE), temoin 81,5. Le mode 0 est REFUTE (`a349fea8` : mediane 95,5 contre un
+// temoin a 94,5, indiscernable — et sa direction lue n y est meme pas verticale, |z| median 0,585
+// contre 0,979 pour le mode 1). Le cap publie sort donc du film sur le mode 1 et sur lui seul ;
+// partout ailleurs la velocite reste la source, en repli nomme et compte.

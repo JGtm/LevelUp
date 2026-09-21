@@ -165,19 +165,27 @@ var registreReplayIdentites = []Repli{
 	// 295, 20 artefacts du parc. Elles sont désormais publiées `end = "film_end"`, qui est une
 	// lecture et non une inférence. D14 (d) appliqué : le repli sort du registre avec son code.
 	{
-		Nom:       "repli_cap_vehicule_vitesse_insuffisante",
-		Fait:      "le cap publie d'un vehicule",
-		Mecanisme: "vitesse sous vehicleMinSpeedMPS (5 m/s) : aucun cap n'est rendu et le dernier connu est reporte par l'appelant",
+		Nom:  "repli_cap_vehicule_vitesse_insuffisante",
+		Fait: "le cap publie d'un vehicule",
+		// LE REPLI A CHANGE DE RANG le 2026-09-21 (lot 5.4.3) : il n'est plus la source PRINCIPALE
+		// du cap, il est le SECOND recours. Le film ECRIT l'avant du chassis — la perpendiculaire
+		// reconstruite du couple (vecteur haut, angle de roulis) d'`i2` — et le cap en sort sur le
+		// mode dont la reconstruction est prouvee. La deduction par la velocite ne sert plus que
+		// la ou ce mode est absent : chemin « delta » (aucun angle absolu ecrit) et mode 0, REFUTE
+		// par la mesure sur `a349fea8` (mediane 95,5 deg contre un temoin a 94,5).
+		Mecanisme: "le film ne rend pas de cap sur ce chemin (mode non publie ou roulis relatif) : le cap est DEDUIT de la velocite i1, et sous vehicleMinSpeedMPS (5 m/s) le dernier connu est reporte par l'appelant",
 		Condition: CondFilmMuet,
-		Ordre:     OrdreSansLecture,
+		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgReplay + "vehicle_tracks.go",
-			Ancre:   "if speed < vehicleMinSpeedMPS {",
+			Fichier: pkgReplay + "vehicle_heading.go",
+			Ancre:   "return vehicleVelocityHeadingOf(p)",
 		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "aucune tant que le negatif tient (i2 REFUTE, i21 ABSENT de ti=40) ; le COMPTE des reports est ce qui manque",
-		// Négatif mesuré, table (C11) de l'audit : le repli est légitime, son silence ne l'est pas.
-		CritereRetrait:  "reports comptes dans VehicleCoverage ; retrait si un troisieme canal de cap est etabli",
+		DatePose: dateAudit0E,
+		// LE NEGATIF QUI TENAIT ICI EST TOMBE : « i2 REFUTE » datait du lot 5.2b.2, qui avait
+		// mesure le vecteur HAUT en croyant mesurer l'avant. La cible de retrait est donc
+		// desormais REELLE et datee, et le compte qui manquait existe.
+		CibleRetrait:    "le mode 0 d'i2 rendu publiable (sa direction lue n'est pas verticale sur les vieux builds : |z| median 0,585 contre 0,979 — a instruire avant tout elargissement), ou la reconstruction du chemin delta par registre d'etat par entite",
+		CritereRetrait:  "part de `capParVelocite` nulle au journal `rejeu : source du cap des vehicules` sur le parc",
 		CompteurBranche: false,
 		CibleComptage:   comptageFamille19,
 	},

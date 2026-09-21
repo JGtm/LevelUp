@@ -6203,10 +6203,117 @@ méthode du lot 3.7 (§ 7) répond chez l'ÉCRIVAIN, avant tout film.
 
 ---
 
+### Post-chantier — lot 5.4 (l avant du chassis), branche `feat/decfilm-54`, base `6e86db356`
+
+Suite de D2 (5.2b). Le cap publie `vehicles[].samples[].h` est l atan2 de la VELOCITE, donc faux
+en marche arriere, en derapage, en vol et a l arret ; 5.2a.6 y substitue la visee du conducteur
+sur les seuls chassis a arme FIXE. Le lot cherche l avant REEL, lu dans le film.
+
+- [x] **5.4.1 — L ECRIVAIN : L AVANT N EST PAS ECRIT, IL EST RECONSTRUIT — ET LA MOITIE QUI
+  MANQUAIT EST UN ANGLE QUE LE DEPOT JETAIT.** **LA PREMISSE DU BRIEF EST REFUTEE, ET LA REPONSE
+  EST MEILLEURE QUE CE QU IL VISAIT.** La feuille 4 de l etat par defaut de `ti=40` n est PAS un
+  quaternion : `FUN_14076e494` y lit une POSITION absolue (trois axes aux largeurs de la carte),
+  et c est `FUN_140c1e79c` qui y porte l orientation. Surtout, l orientation du chassis ne vit pas
+  d abord la : elle vit dans `i2`, a la cadence des DELTAS.
+  **CE QUE `object-forward-and-up` ECRIT VRAIMENT** (relu au decompile, Ghidra lecture seule,
+  2026-09-20) : le composant ne porte PAS deux vecteurs. Il porte UNE direction unitaire (cubemap)
+  et UN ANGLE, et le moteur fabrique le second vecteur. `FUN_140c5f7ec` ecrit deux vec3 —
+  `base+0x18` = la PERPENDICULAIRE construite, `base+0x24` = la direction LUE — et
+  `FUN_140c5f9c8` (0 bit) fait le pont : direction = `FUN_1406d8b98(face, iu, iv, 0x13)` ou, porte
+  posee, `DAT_143b8f860` ; angle = `raw * DAT_143cd891c - DAT_143cd8918 + DAT_143cd97a0` ; puis
+  `FUN_1406d8678(&dir, theta, out)`.
+  **LES CONSTANTES, RELUES DANS LE BINAIRE** (`/read_memory`) : `DAT_143cd891c = 0x3cc90fdb =
+  pi/128` (le pas de 8 bits sur un tour), `DAT_143cd8918 = +pi`, `DAT_143cd97a0 = pi/256` (le
+  demi-pas), `DAT_143cd84ec = -1,0`, les deux axes de base `PTR_DAT_14474c2f8 -> (1,0,0)` et
+  `PTR_DAT_14474c2e0 -> (0,1,0)`, et `DAT_143b8f860 = (0, 0, 1)`. L angle est donc exactement
+  `dequantMidpoint(raw, n, -pi, +pi)` : la convention du MILIEU D INTERVALLE n est plus
+  « retenue » pour ce champ, elle est MESUREE.
+  **LE DEFAUT VAUT (0,0,1), ET C EST LA PREUVE STRUCTURELLE.** Quand la porte de direction est
+  posee, le moteur prend `(0, 0, 1)`. Un AVANT par defaut vertical n aurait aucun sens ; un HAUT
+  par defaut vertical est l objet a plat. La direction ecrite est donc le vecteur HAUT — ce que
+  5.2b.2 avait mesure (|z| median 0,960 a 0,981) sans pouvoir le nommer autrement que par la
+  statistique. L AVANT est la perpendiculaire.
+  **LA CADENCE, ET C EST LE POINT PRODUIT** : le couple (direction, angle) est ecrit par `i2` a
+  CHAQUE delta, a deux largeurs selon le mode — mode 0 : R(1)[+R(19)] + R(8) ; mode 1 (chemin
+  « config », DOMINANT sur les builds recents, 113 242 records sur 144 385 pour `4f77afc1`) :
+  R(1)[+R(30)] + R(30). Le mode 2 n est JAMAIS emprunte (0 record sur 250 000, deux films, mesure
+  5.2b.2). AUCUNE interpolation d image-cle n est donc necessaire : `h` garde sa forme.
+  **LE SEUL CHEMIN QUI RESTE HORS D ATTEINTE** est le sous-chemin « delta » du mode 0
+  (`FUN_14076e744`, bit B pose) : sa queue `R(1)[+R(4)]` est un INCREMENT sur l etat precedent,
+  pas un angle absolu. Il exige un suivi d etat par entite ; il est compte et non reconstruit.
+  **CE QUI EST LIVRE** : `orientation_frame.go` (port de `FUN_1406d8678` — choix de l axe de base
+  le moins aligne, produit vectoriel a l ordre de l executable, Rodrigues, court-circuit a +-pi),
+  `RollAngleFromRaw`, `FwdUpDynPrec.Haut()` / `.Avant()`, `BipedPosition.ChassisForwardVector()`,
+  et la capture du roulis dans le balayage offline. QUATRE INVARIANTS FIGES, sans film :
+  perpendicularite et unitarite (le predicat `FUN_140501798` lui-meme), egalite du dequant avec
+  les trois constantes relues, regle de selection de l axe de base, et **la propriete qui rend la
+  mesure lisible : un chassis A PLAT (haut = (0,0,1)) a pour cap au sol l ANGLE LUI-MEME**
+  (`(cos theta, sin theta, 0)`, exact). C est la raison pour laquelle 5.2b.2 ne pouvait rien
+  trouver : il mesurait l azimut du HAUT — indetermine a plat — et jetait l angle, qui EST le cap.
+  **`AimVector` SUIT DESORMAIS LA LARGEUR DU MODE** (19 ou 30) : a 19 bits en dur, une direction
+  de 30 bits se decodait en vecteur arbitraire.
+  **REVISIONS** : `grammar.Rev` MONTE (`grammar-2026-09-20.2`) — aucun bit n est lu autrement,
+  mais la SORTIE de la couche change (`HasAim`/`AimRaw` etaient muets sur le mode 1). `facts.Rev`
+  NE MONTE PAS, golden RE-FIGE : la couche des faits ne lit `i2` nulle part (grep a vide), sa
+  sortie ne peut pas changer, et une montee gratuite mettrait tout `match_kill_events` en backlog.
+  `SchemaVersion` reste 64. Les 8 fixtures de contrat sont regenerees et leur SEUL ecart est la
+  chaine `grammarRev` — nombre de lignes identique, aucun octet publie ne bouge.
+- [x] **5.4.2 — LA PREUVE SUR FILM : ELLE TIENT, ET ELLE TIENT PAR MODE** (voie libre du pilote,
+  2026-09-21 ; un film a la fois, tag `research`, AUCUNE base DuckDB ouverte — l instrument ne lit
+  que les chunks et le catalogue de bornes). Oracle : la direction du DEPLACEMENT sur les
+  echantillons qui avancent nettement. Temoin : l avant d un AUTRE echantillon (attendu ~90 deg).
+
+  | film | population | n | mediane | p90 | < 15 deg | temoin |
+  |---|---|---:|---:|---:|---:|---:|
+  | `4f77afc1` | TOUS MODES, vitesse >= 5 m/s | 35 888 | **11,2** | 67,5 | 57,9 % | **91,5** |
+  | `4f77afc1` | TOUS MODES, AVANCE | 33 455 | **10,0** | 46,6 | 62,1 % | — |
+  | `4f77afc1` | **mode 1** (dir 30, roulis 30) | 35 350 | **11,0** | 64,8 | 58,4 % | **88,8** |
+  | `4f77afc1` | mode 0 (dir 19, roulis 8) | 538 | 50,8 | 146,0 | 24,0 % | 85,7 |
+  | `a349fea8` | TOUS MODES, vitesse >= 5 m/s | 24 331 | 94,8 | 160,6 | 6,8 % | 94,3 |
+  | `a349fea8` | **mode 1** | 877 | **23,4** (7,7 en AVANCE) | 146,8 | 35,5 % | **81,5** |
+  | `a349fea8` | mode 0 | 23 454 | **95,5** | 160,9 | 5,7 % | **94,5** |
+
+  **LE MODE 1 EST PROUVE** : critere du brief atteint sur `4f77afc1` (mediane 11,0 < 15, temoin
+  88,8 ~ 90) et tenu sur `a349fea8` malgre un echantillon 40 fois plus petit.
+  **LE MODE 0 EST REFUTE, ET LA VERTICALITE DIT POURQUOI** : sur `a349fea8` sa mediane (95,5) est
+  INDISCERNABLE de son temoin (94,5), et le |z| de la direction lue y vaut **0,585** contre
+  **0,979** sur `4f77afc1` — sur les vieux builds ce chemin ne rend meme pas le vecteur HAUT
+  (0,577 = 1/racine(3), la signature d un COIN de face cubemap, donc d une lecture desalignee).
+  C est une dette de grammaire PAR BUILD, pas un defaut de la reconstruction. D5 (5.4).
+  **LE REGIME LENT ET LA MARCHE ARRIERE, qui sont le motif meme du lot** : sur `4f77afc1`, 3,1 %
+  des echantillons rapides ont le nez a l OPPOSE de leur vitesse (mediane **154,1 deg**) — le cap
+  y tenait donc faux ; sur `a349fea8`, 21,5 % (mediane 159,5). Et a l arret le cap du film est
+  POSE : il bouge de **0,29 deg** d un echantillon au suivant (0,37 sur `a349fea8`), contre 0,57 /
+  0,87 en mouvement. La velocite, elle, ne dit rien sous 5 m/s.
+- [x] **5.4.3 — LE PORT : `h` EST LE CAP DU FILM, LA VELOCITE EST LE REPLI.**
+  `vehicleHeadingOf` (extrait dans `replay/vehicle_heading.go`) essaie d abord l avant LU
+  ([vehicleFilmHeadingOf], mode prouve uniquement), puis retombe sur la velocite et son seuil.
+  Le roulis, le mode et le drapeau « a plat » voyagent dans le codec des faits
+  (`encodeDirectionsDePosition`, bit 7 du second octet de drapeaux + un octet de mode + le
+  quantum) : sans cela le rejeu DEPUIS LES FAITS aurait publie un autre cap que le decodage.
+  **AUCUNE MONTEE DE SCHEMA** (`SchemaVersion` reste 64) : `h` garde sa forme, seule sa SOURCE
+  change, et la cadence delta d `i2` rend toute interpolation inutile.
+  **CE QUE LE PORT DONNE, MESURE SUR `084a804d`** (temoin vehicule, BTB Heavies CTF) :
+  `source du cap des vehicules` = 109 478 echantillons, **capDuFilm 70 315 (64,2 %)**,
+  capParVelocite 9 884 (9,0 %), sansCap 29 279, `roulisLuMaisModeNonPublie` 9 506 (le mode 0
+  refute, correctement ECARTE et COMPTE).
+  **AUCUN REPLI N EST DEVENU MUET** : l entree `repli_cap_vehicule_vitesse_insuffisante` du
+  registre est REECRITE (son ancre a suivi le code, son mecanisme dit qu elle est desormais le
+  SECOND recours), sa cible de retrait devient reelle — le negatif « i2 REFUTE » qui la gelait est
+  tombe — et son critere est mesurable au journal. Le commentaire inverse de `vehicleMinSpeedMPS`
+  est corrige DANS LE MEME COMMIT.
+  **5.2a.6 (visee du conducteur) N EST PAS TOUCHE** : c est du rendu web, hors perimetre de ce
+  lot, et l arbitrage de son retrait appartient a l utilisateur (§4).
+
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-20 | 5.4.1 | **D1 (5.4) — LE BIPEDE ECRIT LUI AUSSI SON ANGLE DE ROULIS, ET `ti=35` LE JETTE ENCORE.** `decodeObjectForwardAndUp` sert `i2` du BIPEDE comme celui des vehicules : la meme queue `R(8)` y est lue. Le cap du bipede pourrait donc se reconstruire de la meme facon, la ou il sort aujourd hui d `i21` (la VISEE, qui n est pas l orientation du CORPS). | NON TRAITE (regle 7) — `ti=35` appartient au lot 5.3, et le brief de 5.4 l interdit explicitement. La valeur est desormais RENDUE par le detenteur de grammaire : un lot `ti=35` n aura qu a la capturer |
+| 2026-09-20 | 5.4.1 | **D2 (5.4) — LE SOUS-CHEMIN « DELTA » DU MODE 0 D `i2` EXIGE UN SUIVI D ETAT PAR ENTITE.** `FUN_14076e744` (bit B pose) ne reconstruit pas un etat absolu : ses quartets et sa queue `R(1)[+R(4)]` sont des INCREMENTS appliques a l etat precedent du composant (`FUN_140c5f8a8` recoit `*param_4`, la valeur d avant). Hors ligne, sans registre par entite, ni la direction ni l angle n y sont absolus. | NON TRAITE. Compte, pas reconstruit (`HasRoll` faux). A rouvrir SI la mesure de 5.4.2 montre que cette population pese : le remede est un registre (slot -> face/iu/iv/angle) dans le balayage, pas une grammaire neuve |
+| 2026-09-20 | 5.4.1 | **D3 (5.4) — `AimVector` DECODAIT A 19 BITS EN DUR, ET C ETAIT UNE FAUTE LATENTE.** La largeur de la direction d `i2` suit le MODE (19 ou 30) ; la constante `aimDirBits` etait appliquee quel que soit le chemin. Elle n a jamais mordu parce que le mode 1 ne posait pas `HasDir` — la direction de 30 bits etait sautee depuis le retrait de la capture de 5.2b.2. Des que ce lot la pose, la faute devient reelle : un code de 30 bits lu a 19 rend une face et un vecteur arbitraires. | **TRAITEE DANS LE PERIMETRE** (c est le meme champ, le meme lecteur) : `AimVector` prend `FwdUpDirBits(p.FwdMode)`. Consignee parce qu elle dit ce que coute une largeur ecrite en dur a cote d une grammaire qui en a deux |
+| 2026-09-20 | 5.4.2 | **D4 (5.4) — LA FEUILLE 4 LUE SUR MINI-BOBINES NE RESSEMBLE PAS A UNE ORIENTATION DE CHASSIS.** 63 records `ti=40` d image-cle a porte `bVar14` posee, sur quatre bobines : |z| median **0,577** (= 1/racine(3), un COIN de face cubemap) et 52 caps sur 63 dans un seul secteur de 30 deg. Soit la population est degeneree (vehicules au spawn, extraits minuscules), soit la feuille 4 porte autre chose que l orientation vive — son nom de port, `consumeVehicleMediaFrame`, et son voisinage (`consumeSimulationState`, i60) suggerent un instantane de simulation. | NON TRAITE, et **sans consequence pour ce lot** : la feuille 4 est un chemin d IMAGE-CLE, rare (41 % des records) et non retenu — l orientation publiable vient d `i2`, a la cadence des deltas. A rouvrir seulement si un besoin d orientation A L IMAGE-CLE apparait |
+| 2026-09-21 | 5.4.2 | **D5 (5.4) — LE MODE 0 D `i2` EST REFUTE SUR LES VIEUX BUILDS, ET SA DIRECTION N Y EST MEME PAS LE HAUT.** Sur `a349fea8`, le chemin de 19 bits rend une mediane d ecart au deplacement de **95,5 deg** contre un temoin par permutation a **94,5** : indiscernable du hasard. La cause est en amont de la reconstruction — le |z| de la direction lue y vaut **0,585** (mediane), contre **0,979** pour le mode 1 sur `4f77afc1`. Or 0,577 = 1/racine(3) est la signature d un COIN de face cubemap, celle qu on obtient quand le code lu n est pas celui qu on croit. Le meme 0,577 sort de la feuille 4 sur mini-bobines (D4). Le chemin est donc lu a la mauvaise largeur, au mauvais endroit, ou sous un `param_4` faux SUR CES BUILDS — `4f77afc1` (mode 0, n = 538) donne 50,8 deg, mauvais aussi mais sur un echantillon trop petit pour trancher. | NON TRAITE (regle 7). **Sans consequence pour le produit** : le port ne publie QUE le mode 1, et le mode 0 retombe sur la velocite, comme avant le lot — le compteur `roulisLuMaisModeNonPublie` du journal dit exactement combien d echantillons attendent ce correctif (9 506 sur 109 478 pour `084a804d`). A instruire par un lot de grammaire par build, avec le |z| comme oracle immediat : il se mesure sans oracle externe |
 | 2026-09-20 | 5.2a.3 | **LE CORPUS TÉMOIN N AVAIT AUCUN FILM À ZONES, ET LE GATE NE POUVAIT DONC PAS VOIR LE CALQUE.** Mesure du 2026-09-20 sur les dix-sept artefacts de tête du corpus gate : `zoneStates` valait **0 sur les 17** — le manifeste ne portait ni Bastion ni Roi de la colline. Tout lot touchant les zones y sortait « 0 perte / 0 changement » sans avoir exercé une seule rampe. Le même trou valait pour le harnais d équivalence, à un moindre degré : DEUX films à zones sur vingt (`7344d24f`, `696a9d7c`), et ce sont exactement les deux dont l artefact grossit. | **TRAITÉE LE 2026-09-20** (décision du pilote : ~1 min de gate, gain permanent). Deux témoins ajoutés à `config/replay_corpus.toml`, un par RÉGIME du calque — les deux chemins du Go sont disjoints : `396cfc92` (`strongholds_zones`, Illusion) pour les ZONES SIMULTANÉES, où la jauge est la vraie rampe (3 zones, 1 298 points de jauge, **39 rampes dont 29 portent `capturingTeam`**, 0 intervalle actif) ; `f75e7053` (`koth_collines`, Solitude - Ranked) pour la COLLINE UNIQUE, où la jauge n existe pas (3 zones, **0 point de jauge**, **72 intervalles `active`**). Gate ciblé rejoué : **2/2 `ok`, 0 perte, 0 changement, schéma 63 -> 64**, 7 gains sur le Bastion (les feuilles de `gaugeRamps`) et 1 sur la colline. Le corpus passe de 17 à **19 témoins**, +55 s |
 | 2026-09-20 | 5.2a.3 | **D1 (5.2a) — L'ARCHÉTYPE `zones` DU FILM EST LISIBLE ET PERSONNE NE LE LIT.** `ti=23` (`selectable-zone-data-component`, 32 instances) porte un désérialiseur ÉCRIT (`FUN_142ed6cec`) et la table dit de lui qu'il porte « l'identifiant, la POSITION et l'ÉTAT » d'une zone de mode. Son statut est `deser_non_cable`, son `doc_field` est vide et son `product_use` vaut `aucun` : l'état d'une zone se reconstitue aujourd'hui par VOTE de canal sur `ti=13` (jauge tag 3, propriétaire tag 4), avec un contrôle publié (`ownerChecked` / `ownerAgreed`) qui dit lui-même qu'il n'est pas une preuve indépendante. | NON TRAITÉ (règle 7), et **hors périmètre de 5.2-A par construction** : câbler un désérialiseur est un lot de GRAMMAIRE (`film/internal/`), que ce volet s'interdit. Lecture directe possible, lot ultérieur — le gain serait de remplacer le vote par une lecture, donc de fermer `ownerUnpaired` et la circularité partielle du vote |
 | 2026-09-20 | 5.2a.5 | **D2 (5.2a) — LES ARMES DE VÉHICULE N'ONT NI FAMILLE D'EFFET NI TEINTE.** Elles sont absentes de `weaponLabels` (le registre ne porte que les armes de JOUEUR), donc `fx` et `tint` sont vides et l'éclair sort en famille `plain`, teinte `neutral` — `oklch(0.80 0.02 255)`, le gris le plus pâle du thème. Mesure : **165 tirs sur 241** de `4f77afc1`, 70 sur 241 de `5676a9ba`, 15 sur 15 de `8a485699`. | NON TRAITÉ (règle 7) : c'est de la DONNÉE, pas du rendu. Le remède est une entrée par arme de véhicule dans `config/titles/halo_infinite/mappings/replay_labels.toml` avec son `fx` et son `tint` — les dix armes que `vehicleShotSound.ts` nomme déjà sont la liste de départ. Le rendu, lui, sait déjà les dessiner (5.2a.5 leur a rendu leur direction) |
@@ -10522,3 +10629,34 @@ Les lectures de film ont toutes été faites **UN FILM À LA FOIS**, par test ci
 | 2026-09-18 | 5.1.6 | `bcb6d393` puis `fb1a1a72`, voie delta de `ti=13` | 884 échantillons de tag 3 ; **100,0 %** dans un lâcher de leur drapeau sur les trois jauges ; oracle binaire **13/13** contre **0/14** |
 | 2026-09-18 | 5.1.1 à 5.1.6 | `golangci-lint run --new-from-rev=83a562ea1` | **0 issues** à chaque commit |
 | 2026-09-18 | tous | décodage de corpus | **AUCUN**, et ce n'est pas un report : rien de publié ne bouge (voir l'en-tête de cette section) |
+
+### Post-chantier — lot 5.4 (l avant du chassis), gates SANS AUCUN DECODAGE, 2026-09-20
+
+| Date | Lot | Gate | Resultat |
+|---|---|---|---|
+| 2026-09-20 | 5.4.1 | `gofmt -l` sur `film/` ; `go vet ./internal/games/halo_infinite/film/...` | vide ; vert |
+| 2026-09-20 | 5.4.1 | `go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api` | **vert, 0 FAIL** apres regeneration des goldens |
+| 2026-09-20 | 5.4.1 | `go test -race -gcflags=all=-d=checkptr=0` sur `grammar` | vert, **388,1 s** |
+| 2026-09-20 | 5.4.1 | `golangci-lint run ./internal/games/halo_infinite/film/...` (paquets entiers) | **0 issues** |
+| 2026-09-20 | 5.4.1 | ratchet de taille (`TestTailleDesFichiersDuFilmNeCroitPas`) | rouge a 501 L sur `offline_aim.go`, **traite par extraction** (les deux accesseurs d orientation passent a `orientation_frame.go`) : 478 L / 140 L, vert |
+| 2026-09-20 | 5.4.1 | invariants de la reconstruction, sans film (`orientation_frame_test.go`) | **4 tests verts** : perpendicularite et unitarite (le predicat `FUN_140501798`), dequant egal aux trois constantes relues, regle de l axe de base, et **cap a plat == angle** sur les 256 quanta |
+| 2026-09-20 | 5.4.1 | les 8 fixtures de contrat, diff | **SEUL ecart : la chaine `grammarRev`**, nombre de lignes identique sur les huit (p. ex. 255 341 = 255 341) — aucun octet publie ne bouge |
+| 2026-09-20 | 5.4.1 | `facts.Rev` | **NON montee**, golden RE-FIGE : `grep` a vide, la couche des faits ne lit `i2` nulle part ; une montee gratuite mettrait `match_kill_events` en backlog |
+| 2026-09-20 | 5.4.2 | mini-bobines, nuage `ti=40` (`TestAvantChassisMiniBobines`, tag `research`) | **0 position sur les 7 bobines** (bande d images-cles non vide sur 5) : les extraits ne portent pas de delta `ti=40`, la preuve par le deplacement y est IMPOSSIBLE |
+| 2026-09-20 | 5.4.2 | mini-bobines, feuille 4 en valeur (`TestAvantFeuille4MiniBobines`) | 63 records, 7 a plat, \|z\| median **0,577**, caps effondres sur un secteur — non concluant, consigne en D4 (5.4) |
+| 2026-09-20 | 5.4.2 | decodage de corpus | **AUCUN** — arret demande au pilote, la voie libre n est pas accordee |
+
+### Post-chantier — lot 5.4, gates AVEC DECODAGE (voie libre du pilote), 2026-09-21
+
+| Date | Lot | Gate | Resultat |
+|---|---|---|---|
+| 2026-09-21 | 5.4.2 | `4f77afc1` puis `a349fea8`, UN a la fois, tag `research`, aucune base ouverte | tableaux par mode a la case 5.4.2 — **mode 1 PROUVE** (mediane 11,0 deg, temoin 88,8), **mode 0 REFUTE** (95,5 contre 94,5) |
+| 2026-09-21 | 5.4.3 | `go test -count=1` sur les sept paquets cibles | **vert, 0 FAIL** |
+| 2026-09-21 | 5.4.3 | `go test -race -gcflags=all=-d=checkptr=0` sur `grammar` et `replay` | vert |
+| 2026-09-21 | 5.4.3 | `golangci-lint run ./internal/games/halo_infinite/film/...` | **0 issues** |
+| 2026-09-21 | 5.4.3 | ratchet de taille | rouge deux fois, **traite par extraction deux fois** : `vehicle_heading.go` sort de `vehicle_tracks.go` (462 L / 120 L), la feuille 4 sort de l instrument (427 L / 118 L) |
+| 2026-09-21 | 5.4.3 | registre des replis (`TestToutSiteDuRegistreExiste`, `TestRegistreEstStructurellementValide`) | l ancre de `repli_cap_vehicule_vitesse_insuffisante` avait suivi le code : entree REECRITE (second recours, cible de retrait reelle, critere au journal), vert |
+| 2026-09-21 | 5.4.3 | `replay-equiv --films=084a804d` (temoin VEHICULE, faits commis, sans DuckDB) | **0 PERTE** : 3 etapes sur 55 divergent, et les comptes sont IDENTIQUES des deux cotes — `positions` 330 769 = 330 769, `vehicles` 1 = 1 ; seul `artifact` grossit, 9 345 550 -> 9 361 388 octets (+15 838), ce qui est le GAIN (des caps la ou il n y en avait pas) |
+| 2026-09-21 | 5.4.3 | `replay-equiv --deux-passes --films=084a804d` (S8 : decodage contre rejeu DEPUIS LES FAITS) | **artefact IDENTIQUE A L OCTET** — c est le gate qui prouve que le codec des faits porte le roulis sans le perdre ; sans lui, le rejeu depuis les faits aurait publie un autre cap que le decodage |
+| 2026-09-21 | 5.4.3 | source du cap sur `084a804d` | 109 478 echantillons : **capDuFilm 70 315 (64,2 %)**, capParVelocite 9 884, sansCap 29 279, `roulisLuMaisModeNonPublie` 9 506 |
+| 2026-09-21 | 5.4.3 | `replay-corpus-gate --temoins=bfecd02b --base=6e86db356` | **NON JOUE — BLOQUE** : le gate exporte les faits par `levelup replay-facts-export`, qui ouvre `shared_matches_v2.duckdb` en lecture ; la base est tenue EN ECRITURE par le backfill (PID 37052). Echec PROPRE (exit 4, trois essais bornes, aucune ecriture). A rejouer par le pilote des que la base est rendue. Le temoin vehicule `084a804d` a ete couvert autrement (deux lignes ci-dessus), sans DuckDB |

@@ -69,14 +69,25 @@ func dynPrecOrientationGrammar() dirsGrammar {
 
 // componentDirs porte les directions capturées dans un record biped.
 type componentDirs struct {
-	HasAim   bool   // i2 présent ET direction présente (gate==0)
-	AimRaw   uint32 // R(19) brut du forward (cubemap)
-	HasVel   bool   // i1 présent, chemin dynamic-precision avec direction
-	VelRaw   uint32 // R(19) brut de la direction de vélocité
-	VelScale uint32 // R(10) magnitude quantifiée
-	HasYaw   bool   // i21 unit-desired-aiming-vector présent
-	YawRaw   uint32 // R(12) : cap de VISÉE quantifié sur le tour complet
-	PitchRaw uint32 // R(11) : élévation de visée quantifiée
+	HasAim bool   // i2 présent ET direction présente (gate==0)
+	AimRaw uint32 // direction cubemap brute — le vecteur HAUT, à la largeur du mode
+	// LES TROIS CHAMPS DE L AVANT DU CHASSIS (lot 5.4). `AimRaw` seul ne dit PAS où pointe le
+	// nez : la direction écrite est le HAUT (|z| médian 0,96 à 0,98, mesure du lot 5.2b.2), et
+	// l AVANT est la perpendiculaire que le moteur reconstruit à partir d elle ET d un ANGLE
+	// DE ROULIS, jusqu ici lu puis jeté. Cf. [ForwardFromUpRoll] et [FwdUpDynPrec.Avant].
+	HasRoll bool   // le chemin écrit un roulis ABSOLU (faux sur le chemin « delta »)
+	RollRaw uint32 // angle de roulis quantifié dans [-pi, +pi], à la largeur du mode
+	FwdMode uint8  // mode d i2 : 0 -> (dir 19, roulis 8) ; 1 -> (dir 30, roulis 30)
+	// AimDefault : la porte de direction est posée, le HAUT vaut `(0, 0, 1)` — chassis à plat.
+	// Sans ce drapeau, l absence de direction se lirait comme une absence d orientation, alors
+	// que c est le cas le PLUS informatif : à plat, le cap au sol EST l angle de roulis.
+	AimDefault bool
+	HasVel     bool   // i1 présent, chemin dynamic-precision avec direction
+	VelRaw     uint32 // R(19) brut de la direction de vélocité
+	VelScale   uint32 // R(10) magnitude quantifiée
+	HasYaw     bool   // i21 unit-desired-aiming-vector présent
+	YawRaw     uint32 // R(12) : cap de VISÉE quantifié sur le tour complet
+	PitchRaw   uint32 // R(11) : élévation de visée quantifiée
 	// QUEUE D'i21 — les trois drapeaux et le SECOND vecteur, jusqu'ici lus puis jetés.
 	// Ils sont capturés sous la même option CaptureDirs, dans le même record : cf.
 	// readAimingVectorComponent pour la grammaire et pour ce que le moteur en fait.
@@ -179,13 +190,8 @@ func aimPitchDegFromRaw(pitch uint32) float32 {
 	return float32(360*(float64(pitch)+0.5)/(1<<aimPitchBits) - 180)
 }
 
-// AimVector renvoie le cap unitaire décodé (cubemap 19 bits) et sa validité.
-func (p BipedPosition) AimVector() ([3]float32, bool) {
-	if !p.HasAim {
-		return [3]float32{}, false
-	}
-	return DecodeAimVectorChecked(p.AimRaw, aimDirBits)
-}
+// AimVector et ChassisForwardVector vivent dans `orientation_frame.go`, avec la reconstruction
+// de l avant qu elles appellent.
 
 // VelocityVector renvoie la vélocité (direction cubemap × magnitude log/exp) et sa validité.
 func (p BipedPosition) VelocityVector() ([3]float32, bool) {
@@ -391,6 +397,8 @@ func readForwardComponentDynPrec(br *Lecteur, at, total int, out *componentDirs,
 		out.HasAim = true
 		out.AimRaw = v.DirRaw
 	}
+	out.HasRoll, out.RollRaw = v.HasRoll, v.RollRaw
+	out.FwdMode, out.AimDefault = v.Mode, v.DirDefault
 	return br.BitPos(), true
 }
 

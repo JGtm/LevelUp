@@ -20,6 +20,17 @@ const (
 	gdAimFlag1 byte = 1 << 4
 	gdAimFlag2 byte = 1 << 5
 	gdMaskOver byte = 1 << 6
+	// gdHasRoll : L ANGLE DE ROULIS d `i2`, la moitie manquante de l AVANT du chassis (lot 5.4).
+	// Pose, il est suivi d un octet de mode (bit 0..1 = le mode, bit 2 = direction par defaut)
+	// puis du quantum d angle. Les BIPEDES ne le posent jamais — leur balayage ne capture pas
+	// les directions — donc cet octet et ce qui le suit ne coutent qu aux vehicules.
+	gdHasRoll byte = 1 << 7
+)
+
+// Les deux bits de l octet de mode qui suit `gdHasRoll`.
+const (
+	gdModeMask   byte = 0x03
+	gdAimDefault byte = 1 << 2
 )
 
 // encodeDirectionsDePosition / decodeDirectionsDePosition : LES TREIZE CHAMPS DE DIRECTION QUE LE
@@ -56,13 +67,21 @@ func encodeDirectionsDePosition(w *gwriter, p grammar.BipedPosition) {
 	}{
 		{p.HasAim, gdHasAim}, {p.HasVel, gdHasVel}, {p.HasAimB, gdHasAimB},
 		{p.AimFlag0, gdAimFlag0}, {p.AimFlag1, gdAimFlag1}, {p.AimFlag2, gdAimFlag2},
-		{p.MaskOver, gdMaskOver},
+		{p.MaskOver, gdMaskOver}, {p.HasRoll, gdHasRoll},
 	} {
 		if c.pose {
 			fd |= c.bit
 		}
 	}
 	w.byte8(fd)
+	if fd&gdHasRoll != 0 {
+		m := p.FwdMode & gdModeMask
+		if p.AimDefault {
+			m |= gdAimDefault
+		}
+		w.byte8(m)
+		w.u(uint64(p.RollRaw))
+	}
 	if fd&gdHasAim != 0 {
 		w.u(uint64(p.AimRaw))
 	}
@@ -81,6 +100,11 @@ func decodeDirectionsDePosition(r *greader, p *grammar.BipedPosition) {
 	p.HasAim, p.HasVel, p.HasAimB = fd&gdHasAim != 0, fd&gdHasVel != 0, fd&gdHasAimB != 0
 	p.AimFlag0, p.AimFlag1 = fd&gdAimFlag0 != 0, fd&gdAimFlag1 != 0
 	p.AimFlag2, p.MaskOver = fd&gdAimFlag2 != 0, fd&gdMaskOver != 0
+	if p.HasRoll = fd&gdHasRoll != 0; p.HasRoll {
+		m := r.byte8()
+		p.FwdMode, p.AimDefault = m&gdModeMask, m&gdAimDefault != 0
+		p.RollRaw = uint32(r.u())
+	}
 	if p.HasAim {
 		p.AimRaw = uint32(r.u())
 	}
