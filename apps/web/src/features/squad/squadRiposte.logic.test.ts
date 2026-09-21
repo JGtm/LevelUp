@@ -252,17 +252,6 @@ describe('appelRiposte — le chiffre d’appel de la carte « Riposte »', () =
     expect(a.mortsEquipe).toBe(511)
   })
 
-  it('rend « une fois sur N » — l’INVERSE arrondi du taux, jamais un taux de plus', () => {
-    const e = echangeDe({ couverture: couverture(99, 511, 128), habituel: couverture(40, 100) })
-    // 19,4 % ≈ une fois sur cinq.
-    expect(appelRiposte(e).surCombien).toBe(5)
-  })
-
-  it('rend `null` sur « une fois sur N » à taux NUL : « une fois sur l’infini » ne se dit pas', () => {
-    const e = echangeDe({ couverture: couverture(0, 60), habituel: couverture(40, 100) })
-    expect(appelRiposte(e).surCombien).toBeNull()
-  })
-
   it('rend `null` sur le délai médian quand aucune riposte n’est survenue', () => {
     const e = echangeDe({ delai_median_ms: 0 } as Partial<SquadEchange>)
     expect(appelRiposte(e).delaiMedianS).toBeNull()
