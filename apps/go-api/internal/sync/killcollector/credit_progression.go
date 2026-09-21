@@ -28,7 +28,8 @@ import "time"
 // pasDeProgressionCredit : une ligne de progression tous les 500 matchs examines.
 //
 // A ~10 ms par match, c est une ligne toutes les ~5 s sur une passe de 9 144 matchs — assez pour
-// voir le debit, assez peu pour ne pas noyer le journal (19 lignes au total).
+// voir le debit, assez peu pour ne pas noyer le journal (18 lignes, le dernier match n en etant
+// jamais un — c est le bilan qui l annonce).
 const pasDeProgressionCredit = 500
 
 // doitJournaliserProgression : ce match est-il un jalon ?

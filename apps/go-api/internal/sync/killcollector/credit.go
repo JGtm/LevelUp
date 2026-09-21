@@ -359,6 +359,39 @@ type CreditSummary struct {
 	ElapsedTime time.Duration
 }
 
+// examines : les matchs deja passes, quel que soit leur sort. `Written` + `Enriched` +
+// `NoEvents` + `Errors` — la somme est ecrite A UN SEUL ENDROIT parce que la progression et le
+// bilan la calculent tous les deux, et qu une copie qui oublierait un compteur ferait mentir un
+// ETA sans rien casser d autre.
+func (s CreditSummary) examines() int {
+	return s.Written + s.Enriched + s.NoEvents + s.Errors
+}
+
+// comptabiliser : la passe d UN match et son imputation aux compteurs.
+//
+// EXTRAITE DE [CreditCollector.CollectMatches] le 2026-09-21 : le cas d erreur y sortait par un
+// `continue` qui sautait AUSSI la journalisation de progression placee en fin de boucle. Ici
+// l erreur rend la main normalement — la boucle appelante garde un seul chemin de sortie, donc
+// un seul endroit ou la progression peut se journaliser.
+func (c *CreditCollector) comptabiliser(ctx context.Context, id string, sum *CreditSummary) {
+	outcome, deaths, err := c.CollectMatch(ctx, id)
+	if err != nil {
+		sum.Errors++
+		slog.ErrorContext(ctx, "killsource credit: match en echec", "match_id", id, "err", err)
+		return
+	}
+	switch outcome {
+	case CreditWritten:
+		sum.Written++
+		sum.Deaths += deaths
+	case CreditEnriched:
+		sum.Enriched++
+		sum.Deaths += deaths
+	case CreditNoEvents:
+		sum.NoEvents++
+	}
+}
+
 // CollectMatches : la passe de masse. Une erreur sur UN match ne l arrete pas — elle est comptee
 // et journalisee ; seul l arret de l appelant interrompt, et il rend la synthese de ce qui a ete
 // fait.
@@ -368,29 +401,18 @@ func (c *CreditCollector) CollectMatches(ctx context.Context, matchIDs []string)
 	for _, id := range matchIDs {
 		if ctx.Err() != nil {
 			slog.InfoContext(ctx, "killsource credit: passe interrompue par l appelant",
-				"traites", sum.Written+sum.Enriched+sum.NoEvents+sum.Errors, "total", sum.Total)
+				"traites", sum.examines(), "total", sum.Total)
 			break
 		}
-		outcome, deaths, err := c.CollectMatch(ctx, id)
-		if err != nil {
-			sum.Errors++
-			slog.ErrorContext(ctx, "killsource credit: match en echec", "match_id", id, "err", err)
-			continue
-		}
-		switch outcome {
-		case CreditWritten:
-			sum.Written++
-			sum.Deaths += deaths
-		case CreditEnriched:
-			sum.Enriched++
-			sum.Deaths += deaths
-		case CreditNoEvents:
-			sum.NoEvents++
-		}
+		c.comptabiliser(ctx, id, &sum)
 
-		// LA PROGRESSION (lot 5.12). Elle se journalise ICI, apres la comptabilisation, pour
-		// que la ligne annonce l etat REEL des compteurs et pas celui d avant le match.
-		if examines := sum.Written + sum.Enriched + sum.NoEvents + sum.Errors; doitJournaliserProgression(examines, sum.Total) {
+		// LA PROGRESSION (lot 5.12). Elle se journalise ICI, apres la comptabilisation, pour que
+		// la ligne annonce l etat REEL des compteurs et pas celui d avant le match — et elle est
+		// HORS de la comptabilisation, donc jouee AUSSI quand le match a echoue. Une premiere
+		// version la sautait par le `continue` du cas d erreur (revue adversariale du
+		// 2026-09-21) : le jalon tombant sur un match en echec etait perdu, et une passe dont
+		// tous les matchs echouent n aurait journalise aucune progression.
+		if examines := sum.examines(); doitJournaliserProgression(examines, sum.Total) {
 			ecoule := time.Since(start)
 			slog.InfoContext(ctx, "killsource: credit — progression",
 				"examines", examines, "total", sum.Total,
@@ -406,7 +428,7 @@ func (c *CreditCollector) CollectMatches(ctx context.Context, matchIDs []string)
 	// `examines` en plus — la passe credit a des matchs sans evenement, que la passe des films
 	// n a pas. Deux bilans qui se lisent cote a cote dans le meme journal.
 	slog.InfoContext(ctx, "killsource: credit — passe terminee",
-		"total", sum.Total, "examines", sum.Written+sum.Enriched+sum.NoEvents+sum.Errors,
+		"total", sum.Total, "examines", sum.examines(),
 		"ecrits", sum.Written, "enrichis_par_un_film", sum.Enriched,
 		"morts", sum.Deaths, "sans_evenement", sum.NoEvents,
 		"erreurs", sum.Errors, "duration", sum.ElapsedTime)

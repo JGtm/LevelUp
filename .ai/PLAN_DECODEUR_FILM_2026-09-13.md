@@ -8246,7 +8246,12 @@ des bases DuckDB temporaires peuplees synthetiquement par les VRAIES migrations.
   passe des films (meme prefixe, memes clefs `total` / `ecrits` / `erreurs` / `duration`, plus
   `examines`). **CADENCEMENT PAR COMPTEUR, PAS PAR HORLOGE** — c est ce qui le rend testable par
   une table de valeurs : `credit_progression_test.go` (10 cas de cadencement, le compte de lignes
-  d une passe entiere, 6 cas d ETA), sans une seconde d attente. L ETA est lineaire et le fichier
+  d une passe entiere, 6 cas d ETA), sans une seconde d attente. **CORRIGE APRES LA REVUE
+  ADVERSARIALE** : la ligne etait sautee par le `continue` du cas d erreur alors que le compteur
+  d examines compte les erreurs — une passe dont tous les matchs echouent serait restee muette ;
+  la comptabilisation sort dans `comptabiliser`, la somme dans `CreditSummary.examines()`, et
+  `TestProgressionJournaliseeMemeQuandLesMatchsEchouent` exige les deux jalons d une passe de
+  1 200 matchs tous en echec. L ETA est lineaire et le fichier
   dit pourquoi c est honnete ici (un match credit coute ~10 ms, independamment du match).
 - [~] `--dry-run` affiche deja le compte (`credit-seul : %d matchs a examiner`,
   `cmd_backfill_killsource.go`) et n ecrit rien — verifie sur pieces, inchange.
@@ -8740,6 +8745,8 @@ mesure sur des DuckDB temporaires peuplees par les VRAIES migrations (`migration
 | 2026-09-21 | tous | **`go test -tags=integration -p 1 -count=1 ./internal/persist/... ./internal/sync/... ./internal/migration/...`** | **EXIT=0** — 13 paquets `ok`, aucun FAIL |
 | 2026-09-21 | tous | ratchets anti-ART et identite : `no_art_patterns`, `append_only_state_guard`, `no_raw_rating_reads` (ADR 0030 D-4), `no_raw_kill_scope_literal`, `no_mojibake` | verts, **aucune allowlist touchee**. `no_raw_kill_scope_literal` a d abord ete ROUGE sur les deux bancs (litteraux `'marche'` / `'scan'` dans les fixtures) : corrige a la source (les bancs lient `persist.FilmReadPaths`), jamais allowliste |
 | 2026-09-21 | tous | `golangci-lint run ./internal/persist/... ./internal/sync/... ./internal/migration/...` (paquets entiers) | 37 issues, **toutes preexistantes** (baseline) — **zero** sur les cinq fichiers du lot |
+| 2026-09-21 | tous | **revue adversariale en contexte frais, lentille L1 (anti-ART)**, sur `e3e8d7340..dcdcc7fcc` | **0 P0, 0 P1, 2 P2 recevables**, 16 conditions verifiees qui tiennent. Le relecteur a ferme sur pieces la question de l instantane : la passe credit ne peut PAS servir un nom perime (la jambe `kv` de la vue est un `MAX(gamertag) GROUP BY xuid` et ce que la passe reinsere est deja ce `MAX` ; `xuid_aliases.xuid` est PK et les deux autres jambes sont des `GROUP BY`, donc la vue rend au plus UNE ligne par xuid) |
+| 2026-09-21 | tous | **les deux P2 corriges dans le lot** (ils portaient sur l item 5.12.3, donc dans le perimetre) | (1) la progression etait sautee par le `continue` du cas d erreur alors que le compteur d examines compte les erreurs -> `comptabiliser` extraite, un seul chemin de sortie, et `CreditSummary.examines()` centralise la somme ; **test de non-regression** `TestProgressionJournaliseeMemeQuandLesMatchsEchouent` (table source retiree, 1 200 matchs tous en echec, **2 jalons exiges** — zero avant le correctif) ; (2) un commentaire annoncait « 19 lignes » la ou le test et le plan disent **18** — corrige, le code fait foi |
 
 
 ### Post-chantier — lot 5.10.6 (la lecture primaire, schema 67), gates AVEC DECODAGE, 2026-09-21

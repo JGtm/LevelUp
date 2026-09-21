@@ -25,9 +25,11 @@
 package killcollector
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -286,4 +288,45 @@ func matchsDuBanc() []string {
 		ids = append(ids, fmt.Sprintf("credit-%05d", i))
 	}
 	return ids
+}
+
+// TestProgressionJournaliseeMemeQuandLesMatchsEchouent — LE JALON N EST PAS SAUTE PAR UNE ERREUR.
+//
+// Constat de la revue adversariale du 2026-09-21 : la journalisation de progression etait placee
+// APRES un `continue` qui traitait le cas d erreur, alors que le compteur de matchs examines,
+// lui, comptait les erreurs. Un jalon tombant sur un match en echec etait donc perdu, et une
+// passe dont TOUS les matchs echouent ne journalisait aucune progression — exactement le silence
+// que le lot supprime.
+//
+// Le test fabrique la panne la plus franche (la table source retiree) et exige les jalons.
+func TestProgressionJournaliseeMemeQuandLesMatchsEchouent(t *testing.T) {
+	db := openSharedTestDB(t)
+	if _, err := db.Exec(`DROP TABLE highlight_events`); err != nil {
+		t.Fatalf("retrait de la table source: %v", err)
+	}
+
+	var journal bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&journal, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	// 1 200 matchs : deux jalons attendus (500 et 1 000), tous les deux sur des matchs en echec.
+	ids := make([]string, 0, 1200)
+	for i := 0; i < 1200; i++ {
+		ids = append(ids, fmt.Sprintf("echec-%05d", i))
+	}
+	sum := NewCreditCollector(db, sharedWriter(db)).CollectMatches(context.Background(), ids)
+	if sum.Errors != len(ids) {
+		t.Fatalf("CollectMatches: %d erreurs, attendu %d (la panne doit toucher tous les matchs)",
+			sum.Errors, len(ids))
+	}
+
+	jalons := strings.Count(journal.String(), "killsource: credit — progression")
+	if jalons != 2 {
+		t.Errorf("%d ligne(s) de progression, attendu 2 (matchs 500 et 1 000) — une passe qui "+
+			"echoue reste muette", jalons)
+	}
+	if !strings.Contains(journal.String(), "killsource: credit — passe terminee") {
+		t.Error("bilan final absent du journal")
+	}
 }
