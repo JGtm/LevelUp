@@ -6,15 +6,19 @@
  * RÉUTILISE `UsageGauge` de `UsageForms.tsx` À L'IDENTIQUE (rail, pile des trois issues,
  * repères de taux, texte) — seul le sens de `valuePct` change (`usageCountsModel.ts`
  * calcule une longueur relative au maximum de l'axe, jamais une part d'équipe) ; aucune
- * seconde définition de la cellule (CLAUDE.md n°6).
+ * seconde définition de la cellule (CLAUDE.md n°6). Même chose pour le DÉPLIABLE de lignes
+ * (D2, les armes de base) : `UsageCollapseToggle` est le bouton des deux grilles.
  *
  * DOM ET CSS, PAS ECHARTS — même choix que `ValueGrid`/`UsageForms` : un problème de
  * MISE EN PAGE (alignement de rails), sans zoom ni animation.
+ *
+ * PAS DE LÉGENDE DE TEXTURE ICI, et ce n'est pas un oubli : cette grille n'a QU'UN
+ * dénominateur, donc aucune hachure à expliquer (`UsageGauge` y rend toujours l'aplat).
  */
-import { Fragment } from 'react'
+import { Fragment, useId, useState } from 'react'
 
-import { COLUMN_GAP, LABEL_WIDTH, UsageGauge } from './UsageForms'
-import type { UsageCountsGridModel } from './usageCountsModel'
+import { COLUMN_GAP, LABEL_WIDTH, UsageCollapseToggle, UsageGauge } from './UsageForms'
+import type { UsageCountsGridModel, UsageCountsRowModel } from './usageCountsModel'
 
 /** L'axe gradué 0 · milieu · max+unité d'une grille en comptes. */
 function CountsAxis({ axisMaxText }: { axisMaxText: string }) {
@@ -26,8 +30,35 @@ function CountsAxis({ axisMaxText }: { axisMaxText: string }) {
   )
 }
 
-export function UsageCountsGrid({ grid }: { grid: UsageCountsGridModel }) {
-  if (grid.rows.length === 0) return null
+function CountsRows({ rows }: { rows: UsageCountsRowModel[] }) {
+  return (
+    <>
+      {rows.map((row) => (
+        <Fragment key={row.key}>
+          <div className="overflow-hidden whitespace-nowrap text-xs" title={row.hint ?? row.label}>
+            <span className="truncate">{row.label}</span>
+          </div>
+          <UsageGauge gauge={row.gauge} />
+        </Fragment>
+      ))}
+    </>
+  )
+}
+
+export function UsageCountsGrid({
+  grid,
+  collapsedRows,
+  collapsedLabel,
+}: {
+  grid: UsageCountsGridModel
+  /** Lignes repliées derrière un bouton, FERMÉ par défaut (D2 : les armes de base). */
+  collapsedRows?: UsageCountsRowModel[]
+  collapsedLabel?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const groupId = useId()
+  const collapsed = collapsedRows ?? []
+  if (grid.rows.length === 0 && collapsed.length === 0) return null
 
   // PLUS DE SCROLL HORIZONTAL (2026-09-19) : la colonne de jauge part de ZÉRO
   // (`minmax(0, 1fr)`) et la grille n'a plus de largeur plancher — elle se répartit dans
@@ -40,18 +71,19 @@ export function UsageCountsGrid({ grid }: { grid: UsageCountsGridModel }) {
 
   return (
     <div className="min-w-0">
-      <div className="grid items-center gap-y-[6px]" style={gridStyle}>
-        {grid.rows.map((row) => (
-          <Fragment key={row.key}>
-            <div
-              className="overflow-hidden whitespace-nowrap text-xs"
-              title={row.hint ?? row.label}
-            >
-              <span className="truncate">{row.label}</span>
-            </div>
-            <UsageGauge gauge={row.gauge} />
-          </Fragment>
-        ))}
+      <div className="grid items-center gap-y-[6px]" style={gridStyle} id={groupId}>
+        <CountsRows rows={grid.rows} />
+        {collapsed.length > 0 && collapsedLabel != null && (
+          <>
+            <UsageCollapseToggle
+              label={collapsedLabel}
+              open={open}
+              onToggle={() => setOpen((v) => !v)}
+              controls={groupId}
+            />
+            {open && <CountsRows rows={collapsed} />}
+          </>
+        )}
         <div aria-hidden="true" />
         <CountsAxis axisMaxText={grid.axisMaxText} />
         <div aria-hidden="true" />

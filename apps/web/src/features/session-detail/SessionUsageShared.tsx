@@ -10,10 +10,9 @@
  *
  * Aucun calcul propre ici : tout vient de `@/features/_shared/usage/`.
  */
-import { useMemo, type ReactNode } from 'react'
+import { useMemo } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility'
-import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import type { SessionUsageBlock, SessionUsageMetric } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
@@ -22,34 +21,6 @@ import { usagePlayerInk, type UsageGridInks } from '@/features/_shared/usage/usa
 import type { UsageText } from '@/features/_shared/usage/usageI18n'
 import { USAGE_METRIC_TOKENS, metricKind, metricLabel } from '@/features/_shared/usage/usageMetricKinds'
 import { teamOfLobbyParityPct } from '@/features/_shared/usage/usageParity'
-
-/**
- * Le bandeau de titre d'une carte : le libellé PORTEUR DE SON AIDE, puis, quand elle
- * est passée, la couverture « Matchs mesurés N/M ».
- *
- * L'AIDE EST SUR LE LIBELLÉ, PAS SUR UNE ICÔNE ⓘ : convention du dépôt depuis V73-L2
- * 2.4c (`lib/table/columnMeta`), et c'est elle qui rend le pied de carte inutile —
- * lecture des barres, trait de parité, cases de régularité et réserves de mesure y sont
- * réunies au lieu d'occuper trois paragraphes sous les graphes (D5).
- *
- * LA COUVERTURE NE SE TRIPLE PAS (2026-09-13) : les trois cartes d'équipement portent
- * le même « Matchs mesurés N/M », qui n'est écrit que sur la PREMIÈRE — les suivantes
- * passent `measured` à `null` et gardent leur seule aide.
- */
-export function cardTitleAdornment(measured: string | null, hint: string) {
-  return (label: string): ReactNode => (
-    <span className="flex items-baseline gap-2">
-      <HeaderLabelTooltip text={hint} focusable>
-        <span>{label}</span>
-      </HeaderLabelTooltip>
-      {measured != null && (
-        <span className="text-3xs font-medium normal-case text-muted-foreground tabular-nums">
-          {measured}
-        </span>
-      )}
-    </span>
-  )
-}
 
 /** Les encres partagées des grilles : colonnes par famille/rôle, lignes par joueur. */
 export function useGridInks(): UsageGridInks {
@@ -108,14 +79,17 @@ export function metricGaugeRows(
 }
 
 /**
- * La légende de comptage d'une bande : les matchs au-dessus de la parité D'ÉQUIPE.
+ * Le comptage d'une bande : les matchs au-dessus de la parité D'ÉQUIPE, NU.
  *
  * SEULEMENT L'ÉQUIPE, et c'est la même parité que celle qui TEINTE les cases
  * (`buildRegularityBand` compare à `team_parity_pct`). Le compte « lobby » qui suivait
- * était vrai mais orphelin : aucune case de la bande ne le représentait, et il doublait
- * la longueur d'une légende posée à droite de chaque ligne (D5).
+ * était vrai mais orphelin : aucune case de la bande ne le représentait (D5).
+ *
+ * LA PHRASE A DISPARU le 2026-09-21 (retour utilisateur) : « 3/8 au-dessus de la parité »
+ * s'écrivait à droite de CHAQUE ligne. Ce que la phrase disait vit maintenant dans
+ * `UsageBandLegend`, posée UNE fois sous les bandes ; il ne reste ici que « 3/8 ».
  */
 export function bandAboveCaption(m: SessionUsageMetric, measured: number, t: UsageText): string {
-  if (m.matches_above_team_parity == null) return t.bandAboveFmt(t.notMeasured)
-  return t.bandAboveFmt(`${m.matches_above_team_parity}/${measured}`)
+  if (m.matches_above_team_parity == null) return t.notMeasured
+  return `${m.matches_above_team_parity}/${measured}`
 }

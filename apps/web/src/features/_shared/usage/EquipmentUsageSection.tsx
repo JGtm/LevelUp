@@ -18,28 +18,35 @@
  *     familles confondues) — la barre armes spéciales, elle, est TOUJOURS construite
  *     depuis `usage.players` sur les deux pages : il n'existe aucune ventilation des
  *     prises de socle par famille d'arme (Go, `internal/domain/equipment_usage.go`).
- *     Sur Solo, `players` ne porte que le joueur de la route (+ les amis globalement
- *     configurés qui apparaissent dans le scope, cf. `ResolveScopeFriends`) — la barre
- *     y compte donc peu de lignes, mais ce n'est jamais zéro tant qu'il y a un
- *     ramassage mesuré.
  *
- * LA DONNÉE ARRIVE DANS LA RÉPONSE EXISTANTE (aucune query neuve) : `equipment_usage`
- * sur `SynthesisPageResponse` et (à terme — cf. lib/api/types.ts) `TeammatesPageResponse`.
+ * TROIS AJUSTEMENTS DU 2026-09-21 (lot A2) :
+ *   - UNE SEULE AIDE PAR CARTE, VISIBLE : l'aide d'en-tête (invisible, sur le libellé), les
+ *     notes sous la grille et le pied de couverture fusionnent dans l'infobulle (i) du
+ *     titre (`usageCardTitle`). Trois mécanismes disaient la même méthode à trois endroits ;
+ *   - LE CORPS DES CARTES À GRILLE EST CENTRÉ VERTICALEMENT (`flex-1 justify-center`) : une
+ *     carte étirée par sa voisine plus haute laissait sa grille collée en haut ;
+ *   - AUCUN BLOC D'UNE RANGÉE NE SE MASQUE (D8) : vide, il reste affiché et NOMME sa cause
+ *     (`UsageEmptyNotice`) — escamoté, il laisse la rangée bancale et se lit comme un bug.
  *
  * Aucun calcul de part ici : `usageCountsModel.ts` (barres) et
- * `usageEquipmentPartiesModel.ts` (donuts) le font. Ce fichier n'assemble que les deux
- * ensembles de lignes depuis `EquipmentUsageBlock` et pose le chrome des cartes.
+ * `usageEquipmentPartiesModel.ts` (donuts) le font.
  */
 import { SectionCard } from '@/components/ui/section-card'
-import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import type { EquipmentUsageBlock, EquipmentUsagePlayerLine, SessionUsageSquadPlayer } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { UsageCountsGrid } from './UsageCountsGrid'
+import { UsageEmptyNotice } from './UsageEmptyNotice'
 import { UsageEquipmentDonutCard } from './UsageEquipmentDonutCard'
 import { usageAvailability } from './usageAvailability'
-import { buildCountsGrid, type UsageCountsRowInput } from './usageCountsModel'
-import { buildPadTierRows, padTiersCoverage, padTiersNotes } from './usagePadTiersModel'
+import { usageCardTitle } from './usageCardTitle'
+import { buildCountsGrid, type UsageCountsRowInput, type UsageCountsRowModel } from './usageCountsModel'
+import {
+  buildPadTierRows,
+  isCollapsedTierRowKey,
+  padTiersCoverage,
+  padTiersNotes,
+} from './usagePadTiersModel'
 import { buildPartiesDonutModel } from './usageEquipmentPartiesModel'
 import { equipmentFamilyLabel, type UsageText } from './usageI18n'
 
@@ -53,20 +60,9 @@ export interface EquipmentUsageSectionProps {
   locale: Locale
 }
 
-/**
- * Le bandeau de titre : le libellé PORTEUR DE SON AIDE, rien d'autre.
- *
- * LE COMPTEUR « Matchs mesurés N/M » A QUITTÉ LES QUATRE TITRES le 2026-09-13, puis les
- * DEUX PIEDS DE RANGÉE le 2026-09-19 (demande utilisateur) : il disait la même chose deux
- * fois sous les mêmes chiffres. Seule la rangée des NIVEAUX garde le sien — sa couverture
- * est la sienne, mesurée par une autre passe (`padTiersFooter`).
- */
-function cardTitleWithHint(hint: string) {
-  return (label: string) => (
-    <HeaderLabelTooltip text={hint} focusable>
-      <span>{label}</span>
-    </HeaderLabelTooltip>
-  )
+/** Le corps d'une carte à grille : centré verticalement quand la voisine l'étire. */
+function CardBody({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-1 flex-col justify-center p-3">{children}</div>
 }
 
 /** Le libellé d'un sujet (moi ou un coéquipier suivi) — « Moi » pour le joueur de la
@@ -124,6 +120,11 @@ function playerWeaponRows(usage: EquipmentUsageBlock, t: UsageText): UsageCounts
   }))
 }
 
+/** Une barre entièrement à zéro n'est pas une mesure : elle vaut une grille vide (D8). */
+function hasMeasure(rows: UsageCountsRowInput[]): boolean {
+  return rows.some((r) => r.taken > 0)
+}
+
 interface CardContentProps {
   usage: EquipmentUsageBlock
   mode: 'solo' | 'squad'
@@ -136,28 +137,35 @@ function EquipmentCards({ usage, mode, t, locale }: CardContentProps) {
   const rows = mode === 'solo' ? familyRows(usage, t) : playerEquipmentRows(usage, t)
   const grid = buildCountsGrid(rows, { t, locale, unit: 'equipment' })
   const donut = buildPartiesDonutModel(usage.equipment_parties, usage.tracked_players ?? [], t, locale)
+  const donutTitle = mode === 'solo' ? t.viewEquipmentPartsSolo : t.viewEquipmentPartsSquad
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <SectionCard
         title={t.blockEquipment}
         label={t.blockEquipment}
-        titleAdornment={cardTitleWithHint(t.cardHintEquipmentCounts)}
+        titleAdornment={usageCardTitle(t.cardHintEquipmentCounts)}
       >
-        <div className="p-3">
-          <UsageCountsGrid grid={grid} />
-        </div>
+        <CardBody>
+          {hasMeasure(rows) ? (
+            <UsageCountsGrid grid={grid} />
+          ) : (
+            <UsageEmptyNotice reason="no-film" t={t} />
+          )}
+        </CardBody>
       </SectionCard>
-      {donut != null && (
-        <SectionCard
-          title={mode === 'solo' ? t.viewEquipmentPartsSolo : t.viewEquipmentPartsSquad}
-          label={mode === 'solo' ? t.viewEquipmentPartsSolo : t.viewEquipmentPartsSquad}
-          titleAdornment={cardTitleWithHint(t.cardHintEquipmentCounts)}
-        >
-          <div className="p-3">
+      <SectionCard
+        title={donutTitle}
+        label={donutTitle}
+        titleAdornment={usageCardTitle(t.cardHintEquipmentCounts)}
+      >
+        <CardBody>
+          {donut != null ? (
             <UsageEquipmentDonutCard model={donut} />
-          </div>
-        </SectionCard>
-      )}
+          ) : (
+            <UsageEmptyNotice reason="no-film" t={t} />
+          )}
+        </CardBody>
+      </SectionCard>
     </div>
   )
 }
@@ -168,16 +176,17 @@ function PadControlCards({ usage, mode, t, locale }: CardContentProps) {
   const grid = buildCountsGrid(rows, { t, locale, unit: 'weapon' })
   const donut = buildPartiesDonutModel(usage.weapon_pad_parties, usage.tracked_players ?? [], t, locale)
   const donutTitle = mode === 'solo' ? t.viewWeaponPartsSolo : t.viewWeaponPartsSquad
+  // ZÉRO SOCLE SUR UNE MESURE FAITE, ce n'est pas « aucun film » : c'est un mode qui
+  // n'allume aucun socle (Super Fiesta). Deux causes, deux phrases (D8).
+  const empty = <UsageEmptyNotice reason="no-pads" t={t} />
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <SectionCard
         title={t.blockPadControl}
         label={t.blockPadControl}
-        titleAdornment={cardTitleWithHint(t.cardHintWeaponCounts)}
+        titleAdornment={usageCardTitle(t.cardHintWeaponCounts)}
       >
-        <div className="p-3">
-          <UsageCountsGrid grid={grid} />
-        </div>
+        <CardBody>{hasMeasure(rows) ? <UsageCountsGrid grid={grid} /> : empty}</CardBody>
       </SectionCard>
       {/* LA CARTE SE REND TOUJOURS (2026-09-19), en PARALLÈLE de l'équipement : sans
           `weapon_pad_parties` (ou à zéro), elle porte son titre et dit que rien n'est
@@ -185,66 +194,75 @@ function PadControlCards({ usage, mode, t, locale }: CardContentProps) {
       <SectionCard
         title={donutTitle}
         label={donutTitle}
-        titleAdornment={cardTitleWithHint(t.cardHintWeaponCounts)}
+        titleAdornment={usageCardTitle(t.cardHintWeaponCounts)}
       >
-        <div className="p-3">
-          {donut != null ? (
-            <UsageEquipmentDonutCard model={donut} />
-          ) : (
-            <p className="text-sm text-muted-foreground">{t.donutPartsEmpty}</p>
-          )}
-        </div>
+        <CardBody>{donut != null ? <UsageEquipmentDonutCard model={donut} /> : empty}</CardBody>
       </SectionCard>
     </div>
   )
 }
 
 /**
- * La rangée « niveaux d'armes » : les MEMES prises, rangées par niveau — armes de base, de
- * terrain, de puissance. Une ligne par niveau, le détail par arme au survol.
+ * La rangée « niveaux d'armes » : les MÊMES prises, rangées par niveau — puissance, terrain,
+ * puis les armes de base DANS UN DÉPLIABLE FERMÉ (D2). Le détail par arme au survol.
  *
- * RANGEE ABSENTE PLUTOT QUE VIDE : sans bloc `pad_tiers` (aucun match du scope n'a été projeté
+ * RANGÉE ABSENTE PLUTÔT QUE VIDE : sans bloc `pad_tiers` (aucun match du scope n'a été projeté
  * par la passe des niveaux), rien ne se rend. « Pas encore mesuré » ne se dessine pas comme
- * « aucune prise ».
+ * « aucune prise » — et c'est une SECTION entière, pas un bloc d'une rangée (D8).
  *
  * PAS DE DONUT ICI, et ce n'est pas un oubli : la question « quelle part du lobby était pour
- * moi » est DEJA celle de la rangée au-dessus, sur les mêmes prises. Un second donut ne dirait
- * rien de plus.
+ * moi » est DÉJÀ celle de la rangée au-dessus, sur les mêmes prises.
  */
 function PadTierCards({ usage, t, locale }: CardContentProps) {
   const rows = buildPadTierRows(usage.pad_tiers, t)
-  if (rows.length === 0) return null
-  // `sort: false` : l'ordre des niveaux est ECRIT (base, terrain, puissance...), jamais le
+  if (usage.pad_tiers == null) return null
+  // `sort: false` : l'ordre des niveaux est ÉCRIT (puissance, terrain, base), jamais le
   // volume — un classement dont l'ordre bouge d'une session à l'autre ne se compare pas.
   const grid = buildCountsGrid(rows, { t, locale, unit: 'weapon', sort: false })
-  const notes = padTiersNotes(usage.pad_tiers, t)
+  // Les lignes repliées sortent de la grille CONSTRUITE, jamais d'un second appel : l'axe
+  // des comptes doit rester le même pour les lignes visibles et les lignes dépliées.
+  const visible: UsageCountsRowModel[] = []
+  const collapsed: UsageCountsRowModel[] = []
+  for (const row of grid.rows) (isCollapsedTierRowKey(row.key) ? collapsed : visible).push(row)
+  const baseCount = collapsed.length
   return (
     <SectionCard
       title={t.blockPadTiers}
       label={t.blockPadTiers}
-      titleAdornment={cardTitleWithHint(t.cardHintPadTiers)}
-      footer={padTiersFooter(usage, t)}
+      titleAdornment={usageCardTitle(
+        t.cardHintPadTiers,
+        ...padTiersNotes(usage.pad_tiers, t),
+        padTiersCoverage(usage.pad_tiers, t),
+      )}
     >
-      <div className="p-3">
-        <UsageCountsGrid grid={grid} />
-        {notes.map((note) => (
-          <p key={note} className="pt-2 text-3xs text-muted-foreground">
-            {note}
-          </p>
-        ))}
-      </div>
+      <CardBody>
+        {rows.length > 0 ? (
+          <UsageCountsGrid
+            grid={{ ...grid, rows: visible }}
+            collapsedRows={collapsed}
+            collapsedLabel={baseCount > 0 ? t.padTierBaseToggleFmt(baseCount) : undefined}
+          />
+        ) : (
+          <UsageEmptyNotice reason="no-pads" t={t} />
+        )}
+      </CardBody>
     </SectionCard>
   )
 }
 
 export function EquipmentUsageSection({ usage, mode, t, locale }: EquipmentUsageSectionProps) {
-  const availability = usageAvailability(usage, t)
+  const availability = usageAvailability(usage)
   if (availability.kind === 'hidden' || usage == null) return null
   if (availability.kind === 'empty') {
     return (
       <>
         <SectionCard title={t.blockUnavailableTitle} label={t.blockUnavailableTitle}>
-          <p className="px-3 pb-3 pt-3 text-sm text-muted-foreground">{availability.message}</p>
+          <CardBody>
+            <UsageEmptyNotice
+              reason={usage.available ? 'no-film' : 'load-failed'}
+              t={t}
+            />
+          </CardBody>
         </SectionCard>
         {/* LA RANGÉE DES NIVEAUX A SA PROPRE DISPONIBILITÉ (revue du 2026-09-14). Elle vient
             d'une AUTRE passe, sur d'autres matchs : un résumé d'usage vide ne prouve rien de
@@ -259,16 +277,5 @@ export function EquipmentUsageSection({ usage, mode, t, locale }: EquipmentUsage
       <PadControlCards usage={usage} mode={mode} t={t} locale={locale} />
       <PadTierCards usage={usage} mode={mode} t={t} locale={locale} />
     </>
-  )
-}
-
-/** La couverture de la rangée des niveaux — LA SIENNE, jamais celle du résumé d'usage. */
-function padTiersFooter(usage: EquipmentUsageBlock, t: UsageText) {
-  const texte = padTiersCoverage(usage.pad_tiers, t)
-  if (texte == null) return undefined
-  return (
-    <div className="border-t border-border px-3 py-2">
-      <p className="text-xs text-muted-foreground">{texte}</p>
-    </div>
   )
 }

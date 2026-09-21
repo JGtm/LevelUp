@@ -2,15 +2,17 @@
  * SessionUsageFlagGrabsNet.test.tsx — LES PRISES NETTES DE DRAPEAU dans la carte
  * « Objectifs » de la page Sessions.
  *
- * Ce que ces cas fixent, et pourquoi chacun compte :
+ * LA VUE NE PORTE PLUS QUE SON TITRE depuis le 2026-09-21 (D1, décision utilisateur). Ses
+ * cinq paragraphes — l'écart brut/net, la fenêtre de jonglage repliée, les ouvertures lues
+ * par le film, la couverture en matchs de Capture du drapeau et le périmètre d'équipe — ont
+ * été retirés : cinq phrases de méthode pour deux chiffres, sous une carte qui portait déjà
+ * trois vues. La grandeur est dite par la jauge du rôle « prendre », qui reste.
  *
- *   - L'ÉCART BRUT/NET EST AFFICHÉ. C'est lui qui justifie la grandeur : sans le compteur
- *     officiel à côté, « 12 prises nettes » ressemble à un compteur de plus.
- *   - LA RÈGLE EST ÉCRITE. Une grandeur qui replie du jonglage sans dire dans quelle fenêtre
- *     n'est pas vérifiable par le lecteur.
- *   - LA COUVERTURE EST ÉCRITE. Les matchs sans film décodé ne comptent pour aucune prise, et
- *     l'écran doit le dire au lieu de laisser croire à un total complet.
- *   - DEUX FENÊTRES DANS LE SCOPE ⇒ AUCUNE N'EST ANNONCÉE (le serveur publie alors zéro).
+ * Ce que ces cas fixent désormais :
+ *   - LE TITRE DE VUE RESTE, et il reste CONDITIONNÉ À UNE MESURE : un intertitre seul, sans
+ *     rien dessous ET sans prise lue, serait un bloc mort ;
+ *   - AUCUNE des cinq phrases retirées ne revient (ratchet anti-résurrection : elles ont
+ *     été retirées du dictionnaire, ces cas le vérifient à l'écran).
  */
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -54,43 +56,24 @@ function usageAvec(net: SessionFlagGrabsNetBlock | undefined): SessionUsageBlock
 }
 
 describe('SessionUsageSection — prises nettes de drapeau', () => {
-  it("affiche les prises nettes, le compteur officiel, la règle et la couverture", () => {
+  it('garde le titre de vue quand le film a lu des prises', () => {
     render(<SessionUsageSection usage={usageAvec(NET)} meLabel="moi" />)
     expect(screen.getByRole('region', { name: 'Prises nettes de drapeau' })).toBeInTheDocument()
-    // L'écart net / brut DU FILM : 12 nettes pour 21 ramassages lus.
-    expect(screen.getByText(/8 prises nettes sur les 12 de ton équipe/)).toBeInTheDocument()
-    expect(screen.getByText(/le film lit 21 ramassages pour ce camp/)).toBeInTheDocument()
-    // La règle, avec sa fenêtre.
-    expect(screen.getByText(/jonglage replié \(fenêtre 1,5 s\)/i)).toBeInTheDocument()
-    // LE DÉNOMINATEUR DU BRUT : les ouvertures lues par l'oracle du film.
-    expect(
-      screen.getByText(/le film a lu 40 ouvertures de portage, dont 33 attribuées/i),
-    ).toBeInTheDocument()
-    // La couverture : 3 des 5 matchs DE CAPTURE DU DRAPEAU (pas « à objectif »).
-    expect(
-      screen.getByText(/mesuré sur 3 des 5 matchs de capture du drapeau/i),
-    ).toBeInTheDocument()
   })
 
-  it("dit le périmètre réduit quand des matchs mesurés n'ont pas de camp connu", () => {
-    render(
-      <SessionUsageSection usage={usageAvec({ ...NET, matches_team_known: 2 })} meLabel="moi" />,
-    )
-    expect(
-      screen.getByText(/la comparaison avec ton camp porte sur 2 de ces 3 matchs/i),
-    ).toBeInTheDocument()
-  })
-
-  it("ne dit rien du périmètre d'équipe quand tous les matchs mesurés ont un camp", () => {
+  it("n'écrit AUCUNE des cinq phrases explicatives retirées (D1)", () => {
     render(<SessionUsageSection usage={usageAvec(NET)} meLabel="moi" />)
+    expect(screen.queryByText(/prises nettes sur les/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/jonglage replié/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/ouvertures de portage/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/matchs de capture du drapeau/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/la comparaison avec ton camp porte sur/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/ta part :/i)).not.toBeInTheDocument()
   })
 
-  it("n'annonce AUCUNE fenêtre quand le scope en mêle plusieurs (le serveur publie 0)", () => {
-    render(<SessionUsageSection usage={usageAvec({ ...NET, window_seconds: 0 })} meLabel="moi" />)
-    expect(screen.queryByText(/jonglage replié/i)).not.toBeInTheDocument()
-    // Le reste tient : les totaux et la couverture restent lisibles.
-    expect(screen.getByText(/mesuré sur 3 des 5 matchs de capture du drapeau/i)).toBeInTheDocument()
+  it('la jauge du rôle « prendre » reste, elle : c’est elle qui dit la grandeur', () => {
+    render(<SessionUsageSection usage={usageAvec(NET)} meLabel="moi" />)
+    expect(screen.getByText('Prendre')).toBeInTheDocument()
   })
 
   it('ne rend RIEN quand aucune prise n’a été lue sur le scope', () => {

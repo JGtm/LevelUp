@@ -69,6 +69,12 @@ export interface DonutChartProps {
    * volume total, où la légende ne doit plus dire qu'une couleur.
    */
   arcLabelKind?: 'percent' | 'value'
+  /**
+   * Ni bordure ni fond : le donut est nu et c'est le conteneur parent (une SectionCard)
+   * qui porte le chrome. Propagé tel quel à `ChartCard` (prop ajoutée le 2026-09-21) — un
+   * donut monté DANS une SectionCard produisait un double cadre.
+   */
+  frameless?: boolean
 }
 
 export function DonutChart({
@@ -88,6 +94,7 @@ export function DonutChart({
   centerValue,
   centerLabel,
   arcLabelKind,
+  frameless,
 }: DonutChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointDonut>[]) =>

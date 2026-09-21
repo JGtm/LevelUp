@@ -31,15 +31,34 @@ import { buildGaugeRow, type UsageGaugeRowModel } from './usageGaugeModel'
 import type { UsageText } from './usageI18n'
 
 /**
- * L'ORDRE DE LECTURE DES NIVEAUX, écrit — le même que `domain.PadTierOrder` côté Go.
+ * L'ORDRE DE LECTURE DES NIVEAUX, écrit — LE PLUS LOURD EN TÊTE (D2, 2026-09-21).
  *
  * Il n'est PAS trié par volume, et c'est délibéré : un classement dont l'ordre change d'une
  * session à l'autre ne se compare pas d'un écran au suivant. C'est aussi pourquoi l'appelant
- * passe `sort: false` à `buildCountsGrid`.
+ * passe `sort: false` à `buildCountsGrid`. Il ne suit plus `domain.PadTierOrder` côté Go :
+ * celui-ci est l'ordre du CONTRAT, celui-ci est l'ordre de LECTURE — la puissance d'abord,
+ * la base en dernier (et repliée : `USAGE_PAD_TIER_COLLAPSED`).
+ *
+ * DEUX NIVEAUX DU CONTRAT N'ONT PLUS DE LIGNE (décision utilisateur du 2026-09-21) :
+ *   - `bonus` : les socles de camouflage et de surbouclier sont des ÉQUIPEMENTS, déjà
+ *     comptés — pris, utilisé, gardé, lâché — par les familles `equipment_powerup_camo` et
+ *     `equipment_powerup_overshield` du bloc « Usages d'équipement »
+ *     (`internal/domain/equipmentusage/families.go`, périmètre du bilan). Les ranger AUSSI
+ *     parmi les armes spéciales les comptait deux fois dans deux vocabulaires ;
+ *   - `non_classe` : une ligne « emplacement non identifié » n'est pas un niveau de
+ *     contrôle. Son COMPTE passe dans l'infobulle du titre (`padTierUnclassifiedCount`).
  */
-export const USAGE_PAD_TIER_ORDER = ['base', 'terrain', 'puissance', 'bonus', 'non_classe'] as const
+export const USAGE_PAD_TIER_ORDER = ['puissance', 'terrain', 'base'] as const
+
+/** Les niveaux REPLIÉS derrière un dépliable fermé par défaut (D2) : les armes de base. */
+export const USAGE_PAD_TIER_COLLAPSED: readonly UsagePadTier[] = ['base']
 
 export type UsagePadTier = (typeof USAGE_PAD_TIER_ORDER)[number]
+
+/** La clé de niveau que porte une ligne de grille (comptes : `base` ; jauges : `tier-base`). */
+export function isCollapsedTierRowKey(key: string): boolean {
+  return USAGE_PAD_TIER_COLLAPSED.some((tier) => key === tier || key === `tier-${tier}`)
+}
 
 /** Une ligne de niveau du contrat, telle que le serveur la sert. */
 type PadTierLine = NonNullable<SessionUsagePadTiersBlock['tiers']>[number]
@@ -118,7 +137,28 @@ export function padTiersNotes(
   if (block.matches_random_starts > 0) {
     notes.push(t.padTierRandomStartsFmt(block.matches_random_starts))
   }
+  // LE COMPTE NON CLASSÉ, ex-ligne de grille (D2) : une réserve de mesure se dit avec les
+  // autres réserves, pas au milieu des niveaux de contrôle.
+  const nonClasse = padTierUnclassifiedCount(block)
+  if (nonClasse > 0) notes.push(t.padTierUnclassifiedFmt(nonClasse))
   return notes
+}
+
+/**
+ * padTierUnclassifiedCount — LES PRISES DONT L'EMPLACEMENT N'EST PAS IDENTIFIÉ.
+ *
+ * ELLES N'ONT PLUS DE LIGNE (D2, 2026-09-21) : « Emplacement non identifié » se lisait comme
+ * un quatrième niveau de contrôle, entre les armes de terrain et les armes de puissance, alors
+ * que c'est une RÉSERVE DE MESURE. Le compte, lui, ne se perd pas — il part dans l'infobulle
+ * du titre de la carte, avec les autres réserves.
+ *
+ * Rend 0 quand le bloc ne publie pas ce niveau : rien à signaler, rien à écrire.
+ */
+export function padTierUnclassifiedCount(
+  block: SessionUsagePadTiersBlock | null | undefined,
+): number {
+  const ligne = (block?.tiers ?? []).find((tier) => tier.tier === 'non_classe')
+  return ligne?.player_total ?? 0
 }
 
 /**
