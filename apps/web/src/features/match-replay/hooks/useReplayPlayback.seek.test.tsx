@@ -60,6 +60,7 @@ function monter(frame: number, extra: { playWindow?: ReplayWindowBounds | null; 
   frameRef.current = frame
   const draw = vi.fn()
   const soundTick = vi.fn()
+  const soundSeek = vi.fn()
   // Défaut par DÉSTRUCTURATION, pas `??` : un `playWindow: null` explicite (« pas de fenêtre »)
   // ne doit PAS retomber sur FENETRE — seul `undefined` (absence de la clé) le doit.
   const { playWindow = FENETRE, openAtFrame } = extra
@@ -74,14 +75,57 @@ function monter(frame: number, extra: { playWindow?: ReplayWindowBounds | null; 
         frameRef,
         draw,
         soundTick,
+        soundSeek,
         openAtFrame: props.openAtFrame,
         onEnded: vi.fn(),
         onTransportGesture: vi.fn(),
       }),
     { initialProps: { playWindow, openAtFrame } },
   )
-  return { ...view, frameRef, draw, soundTick }
+  return { ...view, frameRef, draw, soundTick, soundSeek }
 }
+
+/**
+ * LOT 5.8.7 — LE GLISSÉ DE LA FRISE PRÉVIENT LE SON, ET IL LE PRÉVIENT COMME UN DÉPLACEMENT.
+ *
+ * Il ne touchait pas au curseur sonore : le battement suivant voyait un écart dont la seule
+ * amplitude décidait — sous la seconde, tout ce que le glissé avait enjambé partait EN RAFALE ;
+ * au-delà, un recalage silencieux. Deux comportements pour un même geste, dont un mur de bruit.
+ */
+describe('useReplayPlayback — `onScrub`, le glissé de la frise', () => {
+  /** L'événement de champ tel que la frise l'émet. */
+  function glisser(frame: number) {
+    return { currentTarget: { value: String(frame) } } as unknown as Parameters<
+      ReturnType<typeof monter>['result']['current']['onScrub']
+    >[0]
+  }
+
+  it('pose le curseur SONORE à l instant d arrivée, par le chemin du DÉPLACEMENT', () => {
+    const { result, soundTick, soundSeek } = monter(20)
+    soundTick.mockClear()
+    soundSeek.mockClear()
+    act(() => {
+      result.current.onScrub(glisser(33))
+    })
+    // 33 images au pas du document témoin (16,67 ms) : 550 ms. C'est `soundSeek` qui reçoit
+    // l'instant, JAMAIS `soundTick`
+    // — un glissé n'est pas une lecture, et rien de ce qu'il enjambe ne doit partir.
+    expect(soundSeek).toHaveBeenCalledTimes(1)
+    expect(soundSeek).toHaveBeenCalledWith(550)
+    expect(soundTick).not.toHaveBeenCalled()
+  })
+
+  it('chaque événement du glissé repose le curseur : aucun écart ne s accumule', () => {
+    const { result, soundSeek } = monter(20)
+    soundSeek.mockClear()
+    act(() => {
+      result.current.onScrub(glisser(21))
+      result.current.onScrub(glisser(24))
+      result.current.onScrub(glisser(30))
+    })
+    expect(soundSeek.mock.calls.map((c) => c[0])).toEqual([350, 400, 500])
+  })
+})
 
 describe('useReplayPlayback — `seekToFrame`, le saut vers un instant nommé', () => {
   it('pose le curseur à l’image demandée SANS mettre en pause', () => {
@@ -105,6 +149,17 @@ describe('useReplayPlayback — `seekToFrame`, le saut vers un instant nommé', 
     })
     expect(draw).toHaveBeenCalledTimes(1)
     expect(soundTick).toHaveBeenCalledTimes(1)
+  })
+
+  it('c est bien le BATTEMENT qu il sert, pas le déplacement (lot 5.8.7)', () => {
+    // Un saut vers un repère ou un pas d'image est une LECTURE qui atterrit : entendre ce qui
+    // se joue à l'arrivée est ce qu'on attend. Seul le GLISSÉ passe par `soundSeek`.
+    const { result, soundSeek } = monter(20)
+    soundSeek.mockClear()
+    act(() => {
+      result.current.seekToFrame(33)
+    })
+    expect(soundSeek).not.toHaveBeenCalled()
   })
 
   it('reste borné à la fenêtre, aux deux extrémités', () => {

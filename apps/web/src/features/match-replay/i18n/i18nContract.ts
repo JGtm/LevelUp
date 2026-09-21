@@ -642,6 +642,31 @@ export interface ReplayText {
   padRespawnMeasuredFmt: (seconds: number) => string
   padRespawnExpectedFmt: (seconds: number) => string
   /**
+   * L'INFOBULLE D'UN EMPLACEMENT DE NAISSANCE DE VEHICULE (schema 63, lot 5.8).
+   *
+   * QUATRE CLES POUR TROIS LIGNES, et le compte a rebours n'en fait pas partie : il est celui
+   * des socles (`padRespawnMeasuredFmt` / `padRespawnExpectedFmt`), parce que c'est la MEME
+   * question et la meme reserve. Un cinquieme libelle aurait fait dire deux fois la meme phrase
+   * a deux endroits, avec deux traductions a tenir en phase.
+   *
+   * `vehicleCycleTitle` est le repli de NOM : la famille dominante est publiee en clair quand la
+   * table des chassis en nomme une (`vehicleLabels[famille]`), et ce titre generique sert quand
+   * l'emplacement n'a que son cycle. Jamais le nom d'une famille voisine.
+   *
+   * `vehicleCycleFmt` dit la mediane ET les deciles d'un coup : ce sont deux chiffres de la meme
+   * mesure, et les separer en deux lignes ferait lire l'intervalle comme une seconde grandeur.
+   * `vehicleCycleGapsFmt` dit sur COMBIEN de cycles la mesure repose — c'est la reserve, et elle
+   * a sa place ici (une infobulle est le lieu des lectures d'analyse), pas sur la carte.
+   *
+   * `vehicleCycleOccupied` repond a la seule question que le survol d'un emplacement OCCUPE
+   * pose : « pourquoi aucun compte ». Parce qu'un vehicule s'y trouve, et que l'horloge du jeu
+   * ne repart qu'a sa destruction.
+   */
+  vehicleCycleTitle: string
+  vehicleCycleFmt: (medianS: number, p10S: number, p90S: number) => string
+  vehicleCycleGapsFmt: (gaps: number) => string
+  vehicleCycleOccupied: string
+  /**
    * Carte de chaleur : le calque, ce qu'il mesure, et sa légende. JAMAIS « heatmap » à
    * l'écran (règle FR sans anglicismes) — « carte de chaleur » partout.
    */

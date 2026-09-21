@@ -214,6 +214,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnMeasuredFmt: (seconds) => `Réapparition dans ${Math.ceil(seconds)} s`,
     padRespawnExpectedFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,
+    vehicleCycleTitle: 'Emplacement de véhicule',
+    vehicleCycleFmt: (medianS, p10S, p90S) =>
+      `Cycle ≈ ${Math.round(medianS)} s (${Math.round(p10S)} à ${Math.round(p90S)})`,
+    vehicleCycleGapsFmt: (gaps) => `Mesuré sur ${gaps} cycle${gaps > 1 ? 's' : ''}`,
+    vehicleCycleOccupied: 'Véhicule présent',
     layerHeatmap: 'Carte de chaleur',
     layerHeatmapHint:
       "Où le match s'est joué, sur tout le match. Une cellule jamais atteinte reste vide : « froid » veut dire peu fréquenté, l'absence de couleur veut dire jamais vu.",
@@ -654,6 +659,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnMeasuredFmt: (seconds) => `Respawn in ${Math.ceil(seconds)} s`,
     padRespawnExpectedFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s`,
+    vehicleCycleTitle: 'Vehicle spawn point',
+    vehicleCycleFmt: (medianS, p10S, p90S) =>
+      `Cycle ≈ ${Math.round(medianS)} s (${Math.round(p10S)} to ${Math.round(p90S)})`,
+    vehicleCycleGapsFmt: (gaps) => `Measured over ${gaps} cycle${gaps > 1 ? 's' : ''}`,
+    vehicleCycleOccupied: 'Vehicle present',
     layerHeatmap: 'Heat map',
     layerHeatmapHint:
       'Where the match was played, over the whole match. A cell never reached stays empty: "cold" means seldom visited, no colour at all means never seen.',

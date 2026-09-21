@@ -7042,6 +7042,315 @@ au brief etait l archetype `zones` `ti=23`, `deser_non_cable`, dont la table ECS
         sans montee de schema ni de revision, `Digest.UpToDate` ne marque aucun artefact perime.
         Les valeurs de `capturingTeam` changent pourtant. **A trancher a la fusion** (D1 du 5.6).
 
+### Post-chantier — lot 5.8 (details du rendu), branche `feat/decfilm-58`, base `7af38c44d`
+
+Decouvertes RETENUES par l utilisateur le 2026-09-20 (« je les retiens toutes »). WEB ET
+CONFIGURATION SEULS : aucun octet de `film/internal/`, aucune montee de schema, aucun decodage,
+aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (§4 des lots
+5.2a/5.2b), 5.4 (§4), 5.5 (§4 D1-D2) et le diagnostic du 2026-09-19 (constats 1d, 2d).
+
+- [x] **5.8.1 — LE CYCLE DE REAPPARITION DES VEHICULES SE VOIT SUR LA CARTE** (web seul).
+  - [x] Le document publie `vehicleCycles[]` (schema 63) depuis le lot 5.1 et **AUCUN rendu ne
+        le lisait** : verifie sur pieces avant de coder (grep `vehicleCycles` sur `apps/web` : la
+        normalisation le comble, `replayContract.test.ts` le declare, zero calque le lit).
+  - [x] **LE MODELE EST CELUI DES SOCLES D ARME, ET LA REUTILISATION EST REELLE, PAS ALLEGUEE.**
+        L ordre des deux sources du compte a rebours (la naissance suivante VUE DANS LE FILM
+        d abord — le rejeu connait la suite —, la mediane du cycle ensuite) sort de
+        `weaponPadTime.padRespawnAt` vers un foyer partage `model/respawnCountdown.ts`, et
+        `padRespawnAt` l APPELLE desormais (CLAUDE.md n° 6 : deux copies de cet ordre auraient
+        diverge sans qu aucun ecran ne le montre, un chiffre plausible restant plausible). Le
+        compte a rebours DESSINE est lui aussi partage : `drawCountdown` est exportee par
+        `weaponPadsLayer.ts` — meme police, meme ecart, meme contour pour deux marques que le
+        lecteur voit cote a cote.
+  - [x] **« OCCUPE » VEUT DIRE « UNE VIE NEE ICI EST ENCORE EN VIGUEUR »**, pas « un vehicule se
+        trouve au-dessus du point » : l horloge du jeu repart a la DESTRUCTION (mesure de l item
+        2.4, reprise par `vehicle_cycles.go`). Un Warthog parti a l autre bout de la carte n a
+        donc PAS libere son emplacement — et de fait aucun vehicule n y renaitra tant qu il
+        roule. Le predicat d occupation est `vehicleVisibleAt`, CELUI DU CALQUE : ce qui est
+        dessine et ce qui occupe un lieu doivent dire la meme chose, sans quoi un marqueur
+        paraitrait sous un sprite.
+  - [x] **LA FIN DOIT ETRE DATEE ET DESTRUCTRICE**, exactement comme cote Go : `film_end` n est
+        pas une mort, `unknown` n est pas datee. Predire depuis elles reviendrait a mesurer le
+        recensement des images-cles (l erreur que `V2_SPAWNS_COOLDOWNS` avait nommee).
+  - [x] **L APPARIEMENT EMPLACEMENT -> VIES SE REFAIT COTE CLIENT, ET IL EST GARDE** : le
+        document publie l amas (son barycentre) et les vies (leur naissance), jamais le lien.
+        `VEHICLE_CYCLE_CLUSTER_M` recopie la maille du producteur (2,0 m) et un test la RELIT
+        dans `vehicle_cycles.go` — deux mailles apparieraient des vies a des emplacements
+        voisins, et le decalage serait invisible a l ecran.
+  - [x] Rendu : `layers/vehicleCyclesLayer.ts` (losange `traceDiamond` — le vocabulaire du depot
+        pour « un objet de la carte, pas un joueur » —, demi-diagonale 3,4 px, opacite 0,35 du
+        registre « absence prouvee », compte a rebours au sommet). Peint DANS le geste du calque
+        des vehicules (`useReplayVehicles`), donc sous la MEME bascule : un marqueur de
+        reapparition de vehicule sans son calque serait un calque sans interrupteur. `layers` du
+        canvas et `LAYER_ORDER` inchanges (ratchet `sceneBinding.guard.test.ts` respecte, id
+        rendu en tete de l objet).
+  - [x] Survol : `vehicleCycleIndexAt` rend un RANG (les vies sont appariees une fois par
+        document dans un tableau parallele), infobulle `ui/ReplayVehicleCycleTip.tsx` en TROIS
+        lignes — famille nommee par le document (titre generique en repli, jamais le nom d un
+        voisin), compte a rebours OU « Vehicule present », puis la reserve (mediane, deciles,
+        nombre de cycles mesures). Cinquieme calque survolable : UNE ligne dans `hoverHandlers`
+        et une prop dans `ReplayCanvasTips`, comme leur en-tete le promettait.
+  - [x] Libelles FR **et** EN : `vehicleCycleTitle`, `vehicleCycleFmt`, `vehicleCycleGapsFmt`,
+        `vehicleCycleOccupied` (4 cles). Le compte a rebours REUTILISE `padRespawnMeasuredFmt` /
+        `padRespawnExpectedFmt` — meme question, meme reserve (« ≈ ») : un cinquieme libelle
+        aurait fait dire deux fois la meme phrase avec deux traductions a tenir en phase.
+        Couleurs : `neutralInk` + `markInk` du canvas, aucun token resolu dans le calque.
+  - [x] 25 cas vitest neufs (`vehicleCycleTime.test.ts` 11, `vehicleCyclesLayer.test.ts` 10,
+        `ReplayVehicleCycleTip.test.tsx` 4) dont les trois du brief : cycle etabli -> losange +
+        compte, cycle non etabli -> rien, vehicule present -> AUCUNE marque.
+  - [!] **AUCUNE MESURE SUR DOCUMENT CUIT N EST POSSIBLE, ET C EST MESURE** : les 92 artefacts de
+        `data/cache/replays/halo_infinite` sont au **schema 62** (D3 du lot 5.5) et **0 d entre
+        eux ne porte `vehicleCycles`** (balayage du 2026-09-21). Le rendu est donc prouve par ses
+        tests seuls jusqu a la prochaine recuisson du parc. §4, D1 (5.8).
+- [x] **5.8.2 — LES ARMES DE VEHICULE ONT UN STYLE D ECLAIR ET UNE TEINTE** (web seul).
+  - [!] **LA TABLE N EST PAS DANS `replay_labels.toml`, ET LE BRIEF EST REFUTE SUR PIECES.**
+        `[shot_effects]` / `[shot_tints]` sont keyees par `weapon_key` et le SEUL chemin qui les
+        porte au client est `weaponLabels`, compose a la requete par
+        `service/replay_weapon_labels.go` pour les seules armes que le REGISTRE CANONIQUE nomme
+        (`FamilyOfWeaponID` -> `cat.Keys[family]`). Une arme de vehicule n y a pas de famille :
+        rien ne l y ferait entrer sans un champ de document neuf, donc **sans une montee de
+        schema que le lot s interdit**.
+  - [!] **ET LA FAIRE ENTRER DANS `weaponLabels` CASSERAIT DEUX REGLES MESUREES** : la presence
+        d une cle dans `weaponLabels` EST le discriminateur « arme de vehicule » de
+        `shotFx.vehicleShotSourceOf` (5.2a.5) **et** la garde du repli sonore de
+        `replaySound.shotSoundStem` (lot sons de tir, 2026-09-04). Publier ces armes cote serveur
+        rendrait donc **muets** les tirs de vehicule et leur **reprendrait la direction** que
+        5.2a.5 vient de leur donner. Le lot tranche : table CLIENT, au meme endroit et sous la
+        meme forme que sa jumelle sonore. §4, D3 (5.8).
+  - [x] `model/vehicleShotFx.ts` : **11 entrees**, meme cle et meme gabarit `vehicleWeapTag` que
+        la table des sons et celle des montages. Deux styles nommes une fois — `PLASMA`
+        (`fx: plasma`, `tint: plasma_cool`) pour Ghost, Banshee M1, Banshee M2 et Wraith ;
+        `BALISTIQUE` (`fx: ballistic`, `tint: kinetic`) pour Warthog, Scorpion, Wasp M1, Wasp M2,
+        Chopper, Gungoose et la tourelle du Falcon — c est le partage du brief. Aucune couleur :
+        la teinte NOMME une nature, la couleur reste un token du theme (`fxInk`).
+  - [x] **SECONDE JOINTURE DANS `buildShotFx`, DANS L ORDRE DU SON** : le registre des armes de
+        JOUEUR d abord, la table des armes DE VEHICULE ensuite (`label ? null :
+        vehicleShotStyleOf(s.w)`). Une arme de joueur tiree d un siege garde donc son style.
+  - [x] **MESURE AVANT / APRES, sur documents cuits (lecture seule, aucun decodage)** — part des
+        tirs de vehicule qui recoivent un style :
+
+        | document | tirs `v` | par le REGISTRE (arme de joueur) | par la table VEHICULE | sans style |
+        |---|---:|---:|---:|---:|
+        | `4f77afc1` | 241 | 76 | **0 -> 164 (68,0 %)** | 1 |
+        | `5676a9ba` | 241 | 171 | **0 -> 61 (25,3 %)** | 9 |
+        | `8a485699` | 15 | 0 | **0 -> 15 (100 %)** | 0 |
+        | `c259789d` | 47 | 47 | 0 (aucune arme de vehicule) | 0 |
+
+        Les **68,0 %** de `4f77afc1` sont EXACTEMENT la population que 5.2a.5 avait mesuree sans
+        style (« 68 % de ces tirs portent une arme absente de `weaponLabels` ») : le trou est
+        ferme, au tir pres.
+  - [x] Le SHADE reste dehors, et il ne peut pas entrer : aucun rapport de RE ne documente son
+        tag `weap` (meme trou que pour son montage et son son). Pas de tag = pas d entree.
+  - [x] Garde-rail `vehicleShotFx.guard.test.ts` (5 cas) : les **10** armes qui SONNENT ont un
+        style, tout tag a MONTAGE documente en a un, aucune famille ni teinte hors des deux
+        listes fermees, aucun style de MELEE (`buildShotFx` ecarte cette famille — un style de
+        melee rendrait le tir invisible), et un tag inconnu ne prend jamais le style d une
+        voisine. Plus 3 cas de comportement dans `shotFx.test.ts`.
+  - [!] **UN TAG D ARME DE VEHICULE NON DOCUMENTE EST APPARU A LA MESURE** : `0x850902EF00000000`
+        (9 tirs sur `5676a9ba`). §4, D4 (5.8).
+- [x] **5.8.3 — LES TROIS MONTAGES D ARME MANQUANTS, MESURES SUR LE SPRITE** (web seul).
+  - [x] **LEUR TAG ETAIT DEJA CONNU, C EST LEUR POSITION QUI MANQUAIT** : les trois servent le SON
+        depuis le 2026-09-04 (`121b4009` Wraith, `0042678e` Gungoose, `00015cd3` tourelle LMG du
+        Falcon). Depuis 5.2a.5 un montage inconnu ne fait plus perdre la SOURCE, mais l eclair
+        part du CENTRE du chassis — pour le Wraith, un metre et demi derriere la bouche de son
+        mortier.
+  - [x] **LA MESURE EST CELLE DU SPRITE, ET C EST LE BON REPERE** : `vehicleShotPlacement` lit
+        `ax`/`ay` en fractions des dimensions PLEINES de l image (origine au centre, nez en haut),
+        donc mesurer sur l image revient a mesurer sur ce que le lecteur voit — aucune conversion
+        a croire. Detection sur l ENCRE du trait (luminance < 110) : l alpha est plein sur toute
+        la silhouette, il ne dit rien des organes internes.
+  - [x] **LES TROIS MESURES, chiffre par chiffre** :
+
+        | arme | sprite | organe mesure | ancre |
+        |---|---|---|---|
+        | Wraith, mortier a plasma | `wraith.png` 304x313, centre 152,0/156,5 | fut = paire de traits a x = 148 et 155 (axe x ~ 151,5), de y ~ 96 a ~ 135 ; anneau de tourelle mesure a y ~ 138..182 | BOUCHE : `ax 0`, `ay (95-156,5)/313 = -0,196` -> **-0,2** |
+        | Gungoose, canons jumeles | `gungoose.png` 78x128, centre 39,0/64,0 | deux amas separes par un vide en x [36..41] : futs a x ~ 34 et ~ 43,5, de y ~ 13 a ~ 36 | fut DROIT : `ax (43,5-39)/78 = +0,058` -> **+0,06**, `ay (13-64)/128 = -0,398` -> **-0,4** |
+        | Falcon, LMG de porte | `falcon.png` 430x390, centre 215,0/195,0 | caissons fermes par l encre a y = 236 (x 170..194 et 230..256), jusqu a y ~ 255 | poste DROIT : `ax (242-215)/430 = +0,063` -> **+0,06**, `ay (245-195)/390 = +0,128` -> **+0,13** |
+
+  - [x] **LA CLASSE NE SE MESURE PAS, ELLE EST DEJA DECIDEE** : `FAMILLES_ARME_FIXE` (5.2a.6,
+        decision utilisateur du 2026-09-20) range le Wraith et le Gungoose parmi les chassis a
+        arme FIXE et le Falcon parmi ceux a TOURELLE. Leur donner une autre classe ici ferait dire
+        deux choses au depot sur la meme famille. La LMG du Falcon prend donc la visee MESUREE de
+        son tireur depuis 5.5.3.
+  - [x] **MESURE AVANT / APRES SUR TOUT LE PARC CUIT** (92 artefacts, lecture seule) — tirs de
+        vehicule dont le montage est documente :
+
+        | document | tirs `v` | AVANT | APRES |
+        |---|---:|---:|---:|
+        | `4f77afc1` | 241 | 100 | **164** |
+        | `5676a9ba` | 241 | 0 | **61** |
+        | `0a44c6cc` | 30 | 0 | **22** |
+        | `8a485699` | 15 | 4 | **15** |
+        | `1cd3848a` / `fccc61cd` | 2 / 1 | 0 / 0 | **2 / 1** |
+        | **TOUT LE PARC** | **609** | **104 (17,1 %)** | **265 (43,5 %)** |
+
+  - [x] **LE SHADE RESTE DEHORS, ET POUR UNE AUTRE RAISON** : c est son TAG qui manque, pas sa
+        position. Pas de tag = pas d entree, jamais un tag voisin reemploye en devinant.
+  - [x] **DOC INVERSEE CORRIGEE DANS LE MEME COMMIT** (anti-pattern du diagnostic de revue) :
+        l en-tete de `vehicleWeaponMounts.ts` affirmait « AUCUN pour le Gungoose, le Shade ou la
+        tourelle LMG », `vehicleWeaponMountOf` et `shotFx.VehicleShotSource.mount` citaient les
+        trois comme exemples d absence. Les quatre sites disent desormais ce que le code fait.
+  - [x] **UN TEMOIN DE TEST A CHANGE, ET IL EST MEILLEUR** : le cas « arme de vehicule sans
+        montage » de `shotFx.test.ts` employait le mortier du Wraith. Il emploie desormais
+        `850902ef` — un tag REELLEMENT OBSERVE dans un document cuit (9 tirs sur `5676a9ba`,
+        §4 D4) qu aucun rapport ne documente : le cas n est plus une hypothese.
+  - [x] 2 cas vitest neufs (classe des trois, sens de l ancre et axe du mortier) et la garde
+        « toutes les ancres tiennent dans [-0,5 ; +0,5] » etendue de 8 a **11** tags.
+- [x] **5.8.4 — LE TAG WARTHOG SE DEPARTAGE PAR LA FAMILLE DU CHASSIS** (web seul).
+  - [x] **LE DEFAUT, ET LA MESURE QUI LE CHIFFRE** : le `weap` unique `c7d50912` couvre LAAG,
+        Gauss et roquettes, et la seule reconstruction validee est celle des ROQUETTES — elle
+        sonnait donc pour les trois (« assume et ecrit plutot que muet », en-tete du 2026-09-04).
+        Balayage des 92 artefacts cuits : les **105 tirs** qui portent ce tag viennent **TOUS d un
+        chassis `warthog`** (100 avec vehicule publie, 5 sans), **zero `rockethog`, zero
+        `warthog_gauss`**. Le seul son de Warthog jamais joue etait donc **FAUX dans 100 % des cas
+        mesures**, et le « plutot que muet » ne preservait aucun cas juste.
+  - [x] **LE DEPARTAGE N ATTEND AUCUN RAPPORT DE RE** : le document publie la famille du chassis
+        du vehicule tireur (`vehicles[].family`) et un tir en vehicule porte le slot de son
+        porteur (`Shot.v`). `VEHICLE_SHOT_SOUND_BY_CHASSIS` (tag -> famille -> stem) prend la main
+        sur les tags AMBIGUS ; les 9 tags sans ambiguite restent dans
+        `VEHICLE_SHOT_SOUND_STEMS`. **Les deux tables sont DISJOINTES** — un tag dans les deux
+        serait la divergence garantie, un tag = une seule regle de resolution.
+  - [x] `shotSoundStem` prend le TIR entier au lieu de son seul identifiant d arme : la famille du
+        porteur ne s atteint que par `Shot.v`. Elle n est cherchee QUE pour un tir en vehicule (un
+        tir a pied n a pas de porteur, et balayer les vehicules pour lui serait un travail inutile
+        a chaque tir du match).
+  - [!] **CE QUE LE LOT REND AUDIBLE, ET IL FAUT LE DIRE : 100 TIRS PASSENT DE LA ROQUETTE AU
+        SILENCE sur `4f77afc1`**, le seul film du parc qui porte ce tag. Aucune reconstruction de
+        LAAG ni de Gauss n existe, et leur preter le tir de roquette — ou la LMG du Falcon, qui
+        est pourtant une mitrailleuse UNSC — serait « le son d une voisine », ce que
+        `vehicleShotSound.ts` s interdit en toutes lettres pour le Wasp M2. **Le remede est une
+        reconstruction de LAAG, pas un stem emprunte.** §4, D5 (5.8).
+  - [x] **UN TAG AMBIGU SANS FAMILLE LUE SE TAIT**, il ne retombe pas sur un stem par defaut :
+        c est le cas des 5 tirs du parc dont le vehicule n est pas publie. Deviner leur variante
+        ferait exactement le bruit que ce lot retire.
+  - [x] 6 cas vitest de comportement (`replaySound.test.ts`) : rockethog -> roquette, warthog ->
+        silence, warthog_gauss -> silence, porteur non publie -> silence, tag SANS ambiguite
+        insensible a la famille (le Ghost sonne meme sans porteur lu), et le REGISTRE qui garde la
+        main sur une arme de joueur tiree d un siege. Plus 1 cas de garde-rail d assets (le
+        Rockethog cable, le LAAG et le Gauss absents, le tag hors de la table des tags simples).
+  - [x] **LES DEUX GARDE-RAILS SUIVENT LA SCISSION, dans le meme commit** : celui des assets
+        parcourt desormais les stems des DEUX tables (et verifie que le compte reste 10 — un stem
+        cable dans la seconde et oublie jouerait un seul fichier `_1`), celui du style du lot
+        5.8.2 prend l union des DEUX jeux de tags.
+- [x] **5.8.5 — UN TIR D ARME DE JOUEUR DEPUIS UN SIEGE PREND LA VISEE DE SON TIREUR** (web seul).
+  - [x] **LE NEGATIF QUI L ECARTAIT EST TOMBE, ET C EST 5.5.2 QUI L A FAIT TOMBER.** 5.2a.5
+        laissait ces tirs sur leur propre cap de REGARD : la regle etait juste (« le passager vise
+        ou il veut ») mais ce cap vient de la trajectoire du BIPEDE, qui ne replique plus une fois
+        embarque — lisible pour **1 tir sur 241**. 5.5.2 a etabli que la visee de l episode du
+        TIREUR, appariee par SLOT, est son PROPRE regard et non celui d autrui ; l objection qui
+        gelait ce cas ne s y applique donc pas. **Regle de l utilisateur, 2026-09-21** : « pour un
+        occupant NON conducteur, l orientation de la tourelle ou de son arme passager est sa
+        VISEE, son regard classique comme a pied ».
+  - [x] **LA REGLE DE 5.2a.5 SURVIT ENTIERE, ET C EST LE POINT DELICAT** : cette arme ne prend
+        JAMAIS le cap du chassis. `VehicleShotSource.arme` (`'vehicule' | 'joueur'`) porte le
+        discriminateur — le registre d armes, le MEME que celui du son — et
+        `vehicleSansMontageAngle` en tire deux branches nommees : arme de VEHICULE sans montage ->
+        cap du chassis (inchange, c est le Shade) ; arme de JOUEUR -> visee du tireur, ou RIEN.
+  - [x] **SANS LECTURE DE VISEE, LA SOURCE N EST MEME PAS CREEE** : le tir retombe alors sur son
+        propre regard (`h`), exactement comme avant le lot. Le lot ne peut donc RIEN retirer — il
+        n ajoute que la ou une visee est lue.
+  - [x] **MESURE AVANT / APRES, MEME POPULATION ET MEME CODE** (`tourelleVisee.mesure.test.ts`,
+        porte `TOURELLE_MESURE`, documents CUITS, aucun decodage ; l AVANT s obtient en forcant
+        `shooterHeadingDeg` a `null` dans la chaine de rendu REELLE) :
+
+        | document | population de tirs de vehicule | avec direction AVANT | APRES | dont tirs de TOURELLE |
+        |---|---:|---:|---:|---|
+        | `4f77afc1` | **165 -> 241** | 65 (27,0 %) | **236 (97,9 %)** | 95 / 100 (inchange) |
+        | `8a485699` | 15 | 15 (100 %) | 15 (100 %) | aucun |
+        | `0a44c6cc` | 30 | 30 (100 %) | 30 (100 %) | aucun |
+
+        **LES 76 TIRS DE D2 (5.5) SONT TOUS PASSES** : la population du rendu monte de 165 a 241
+        (241 - 165 = 76, le compte exact de la decouverte) et **236 des 241 portent une
+        direction**. Les 5 qui restent sont les 5 tirs de tourelle sans visee en vigueur — pas un
+        tir d arme de joueur ne manque. Les deux derniers documents sont les temoins de
+        NON-REGRESSION : pas un tir n y change de direction.
+  - [x] 6 cas vitest : sans montage, arme de VEHICULE -> cap du chassis ; arme de JOUEUR avec
+        visee -> la visee ; arme de JOUEUR sans visee -> `null` ET aucun decalage ; arme de joueur
+        d un siege avec visee -> source gardee, `arme: 'joueur'`, montage nul, style du REGISTRE ;
+        sans visee -> source non creee ; une arme de vehicule se declare `arme: 'vehicule'`.
+- [x] **5.8.6 — LES SONS DES BASES : LE TIC DE SCORE** (web seul ; les deux autres restes etaient
+      DEJA traites, et c est verifie sur pieces).
+  - [x] **(a1) L INSTANT DU TIC VIENT DE L HORLOGE DE SCORE DU JEU.** Il etait ancre sur le DEBUT
+        de la domination et battait la seconde. `scoreTimeline.teams[].total` est l ESCALIER
+        cumulatif du score d un camp (`{t: frame, v}`) : un tic sonne desormais a chaque MARCHE de
+        ce camp pendant qu il domine. **Un tic de score qui ne tombe pas sur un point est un tic
+        qui mentait** — le jeu ne marque pas toutes les secondes, et la cadence depend de la
+        variante. Le repli synthetique reste pour les documents que le calque ne couvre pas ; une
+        serie PRESENTE mais sans marche dans la fenetre est une REPONSE (silence), pas un repli.
+  - [x] **(a2) LE PLAFOND DUR NE TRONQUE PLUS.** La boucle s arretait au 180e tic : au-dela de
+        trois minutes de domination continue, le son se TAISAIT jusqu a la fin de l intervalle —
+        precisement quand la domination devient l information la plus utile. Le 180 reste, mais
+        comme BUDGET d evenements dont la CADENCE se deduit (`cadenceDerivee` : periode =
+        max(1 s, duree / budget)). Sous trois minutes, la periode vaut exactement la seconde
+        demandee par l utilisateur et le rendu est INCHANGE ; au-dela, les tics s espacent au lieu
+        de s arreter.
+  - [x] **MESURE SUR LE PARC CUIT** (instrument `zoneTics.mesure.test.ts`, porte `ZONE_MESURE`,
+        documents CUITS, aucun decodage ; les intervalles viennent de `zoneDominationIntervals`,
+        LA FONCTION DE PRODUCTION exportee pour l instrument — pas une seconde implementation) :
+
+        | document | intervalles de domination | duree totale | la plus longue | tics REPLI | tics HORLOGE |
+        |---|---:|---:|---:|---:|---:|
+        | `32d9a94f` | 5 | 140 s | 71 s | 143 | **130** |
+        | `396cfc92` | 7 | 61 s | 27 s | 66 | **58** |
+        | `572e236b` | 3 | 16 s | 10 s | 19 | **16** |
+        | `81c02726` | 5 | 54 s | 18 s | 57 | **50** |
+        | `8514a85f` | 2 | 9 s | 7 s | 10 | **5** |
+        | `b471ddef` | 4 | 68 s | 45 s | 70 | **54** |
+        | `e60aaf06` | 3 | 44 s | 17 s | 46 | **38** |
+        | **TOTAL** | **29** | **392 s** | **71 s** | **411** | **351** |
+
+  - [!] **LE PLAFOND NE MORDAIT SUR AUCUN DOCUMENT DU PARC, ET IL FAUT LE DIRE** : la plus longue
+        domination mesuree vaut **71 s**, tres loin des 180 s du plafond — **0 intervalle sur 29**
+        le depassait, donc **0 s de domination sans tic**. Le correctif (a2) ferme un defaut
+        LATENT, pas un defaut observe ; ce qui change reellement a l oreille, c est l ANCRE (a1) :
+        **411 tics synthetiques -> 351 tics sur des points reels**, et sur `8514a85f` la moitie
+        des tics ne tombait sur aucun point (10 -> 5). §4, D6 (5.8).
+  - [~] **(b) LA RAMPE SUIVIE D UN INTERVALLE NEUTRE : DEJA TRAITEE PAR 5.2a.3**, verifie sur
+        pieces avant de coder — `zoneSoundEvents` lit `campDeLaRampe(z.gaugeRamps, r.fin) ??
+        arrivee`, donc le son `capturing` prend le camp MESURE de la rampe quand l intervalle qui
+        s ouvre est neutre. Le commentaire du code le dit deja en toutes lettres (« le son se
+        taisait alors completement »). **`newZone`, lui, n a AUCUN camp par decision** (la colline
+        n appartient a personne quand elle se deplace) : il n y avait rien a lui donner.
+  - [~] **(c) `zone_secures` RESTE MUET**, et c est deja tenu par un test : `objectiveSound.test
+        .ts` assure `objectiveSoundStem('zone_secures', 'ally') === undefined`. Decision produit,
+        aucun changement — l inventaire de `objectiveSound.ts` la porte deja (« aucun son
+        designe »).
+  - [x] 7 cas vitest neufs sur le tic : les instants viennent des marches, le premier point a zero
+        n est pas une marche, un point HORS domination ne sonne pas, une serie sans marche dans la
+        fenetre ne sonne RIEN (aucun repli), un calque qui ne couvre pas le camp laisse le repli
+        repondre, une domination plus longue que le budget ETIRE ses tics (le dernier atteint la
+        fin, contre 179 s avant), et sous le budget la periode reste EXACTEMENT la seconde.
+- [x] **5.8.7 — LE GLISSE DE LA FRISE PREVIENT LE SON, ET COMME UN DEPLACEMENT** (web seul).
+  - [x] **LE DEFAUT, VERIFIE SUR PIECES** : `onScrub` posait la frame et le remplissage, dessinait
+        en pause, et ne touchait PAS au curseur sonore — reste a l instant d AVANT le geste. Le
+        battement suivant (reprise de lecture) voyait alors un ecart dont **la seule amplitude
+        decidait** : sous `SOUND_RESYNC_JUMP_MS` (1 s), tout ce que le glisse avait enjambe partait
+        EN RAFALE ; au-dela, un recalage silencieux. Deux comportements pour un meme geste, dont un
+        mur de bruit — et un glisse emet des dizaines d evenements de champ.
+  - [x] **UNE COMMANDE DE DEPLACEMENT, DISTINCTE DU BATTEMENT** : `useReplaySound.seek(ms)` leve le
+        drapeau de recalage puis bat une fois. **IL REUTILISE LE MEME DRAPEAU QUE L ACTIVATION ET
+        LE CHANGEMENT DE PISTE** (`resyncRef`), et c est ce qui le rend sur : ce chemin « pose le
+        curseur sans rien jouer » existe depuis le premier jour et il est deja le seul a savoir
+        aussi reconcilier les MOTEURS (`engine.sync` passe avant la garde). Une seconde ecriture du
+        curseur aurait oublie les moteurs.
+  - [x] `onScrub` appelle `soundSeek`, jamais `soundTick` : un deplacement pose le curseur sans
+        rien jouer, **quelle que soit son amplitude** — on n a pas ecoute ce qu on a enjambe.
+  - [x] **`seekTo` GARDE SON `soundTick`, A DESSEIN, et le lot ne l aligne PAS dessus** : un pas
+        d image (`stepFrames`) ou un saut vers un repere est une LECTURE qui atterrit, et entendre
+        ce qui se joue a l arrivee est ce qu on attend. Le brief disait « aligne `onScrub` sur
+        `seekTo` » ; la clause qui compte est sa parenthese (« recalage silencieux, aucune
+        rafale »), et `seekTo` ne la tient pas sous la seconde. Aligner `onScrub` sur la LETTRE
+        aurait donc reconduit la rafale sur les petits sauts. §4, D7 (5.8).
+  - [x] **MESURE DE LA PORTEE** (`node -e`, documents cuits, lecture seule) — combien de sons un
+        glisse d une seconde pouvait tirer d un coup, en ne comptant que les TIRS (le gros de la
+        piste) : **21** sur `4f77afc1` (2 408 tirs), **26** sur `5676a9ba` (3 006), **32** sur
+        `396cfc92` (1 634). Le plafond de 8 voix du lecteur en avalait la moitie, mais la piste
+        portait leur poids et la seconde qui suit le geste etait un mur.
+  - [x] 5 cas vitest : `seek` ne joue RIEN sur un saut de 150 ms (et le kill ne revient pas
+        ensuite) ; le TEMOIN `tick` sur le meme saut joue bien le kill ; `onScrub` appelle
+        `soundSeek` avec l instant d arrivee et JAMAIS `soundTick` ; chaque evenement du glisse
+        repose le curseur (aucun ecart ne s accumule) ; et `seekToFrame` n appelle PAS `soundSeek`.
+
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
@@ -7050,6 +7359,13 @@ au brief etait l archetype `zones` `ti=23`, `deser_non_cable`, dont la table ECS
 | 2026-09-21 | 5.7.3 | **D2 (5.7) — LES DEUX CHEMINS DE CUISSON N INSTALLENT PAS LES MEMES LARGEURS D AXE, ET LEUR `movementStates` DIVERGE.** Le constructeur de fixtures de contrat porte les largeurs PAR DEFAUT (`coverage.stances.mapWidths = [13, 13, 14]`, l entree `cliffhanger`) sur les huit films : son `movementStates` ne bouge pas d un octet apres le port d `i55`. `replay-equiv`, qui installe les largeurs de la carte du match, voit ce meme balayage passer de 4 469 a 4 671 lectures sur `bfecd02b`. | NON TRAITE (regle 7). **Consigne parce que les deux mesures sont vraies et ne decrivent pas le meme decodage** : un gate qui compare les fixtures ne verra jamais un changement qui ne se manifeste que sous les largeurs reelles. Pour le lot qui touchera le constructeur de fixtures : soit il installe les largeurs comme `replay` le fait, soit il l ECRIT dans la couverture |
 | 2026-09-21 | 5.7.1 | **D3 (5.7) — LES ETIQUETTES 4, 5 ET 6 D `i59` SONT DESORMAIS PORTABLES AVEC DES FEUILLES QUE LE DEPOT A DEJA.** La relecture integrale de `FUN_142f25e90` donne leur grammaire : 4 et 5 = deux mots a -1 + `FUN_1408f0ac4(cat. 5)` + UN `FUN_142f26e9c` + `FUN_14076e494(..., 0x10)` + `FUN_14076dc04` + une queue de **9 bits** ; 6 = `FUN_1407f08bc(p+0x1e)` + un test DU FLUX (`*(short*)(p+0x1e) == -1`) + `FUN_1408f0ac4` (cat. 5 puis 0) + DEUX `FUN_142f26e9c` + `R(1)` + `FUN_14076dc04`, **sans** queue de 9 bits. Les quatre feuilles existent (`consume1408f0ac4`, `consumeSimStateHandleTail`, `consumeAbilityAnchorVec`, `R(24)`). | NON TRAITE, **et la decision du 5.3.3-c tient** : le manque coute 0,12 % des records du bipede (3 sur 97 345 apres le port d `i55`), et porter une etiquette de plus demande de DEPLACER la porte `FUN_1407f08bc` dans le `switch`, ce qui bougerait le curseur sur les corps qui publient aujourd hui `grappleLines[]`. Le perimetre reste fige par `i59_etiquette_loi_test.go` ; ce qui change, c est qu il n y a plus de largeur inconnue a trouver |
 | 2026-09-21 | 5.7.1 | **D4 (5.7) — `PlayerGameEventSmall` PORTE UN MASQUE DE 32 DRAPEAUX, LU BIT A BIT.** La « seconde lecture non relevee » de la note du 5.3.2 ter est `FUN_14080ae28` : 32 x `R(1)` empaquetes un a un dans un `u32`. Grammaire complete du type 82 : `FUN_14080b30c` [0 bit] + `R(32)` + `R(8)` + `FUN_14080b1b8(ev+0x10)` + `FUN_14080b034(ev+0x78)` + le masque ; les deux largeurs du milieu ne sont PAS relevees. 578 occurrences en tete de paquet sur `bfecd02b`. | NON TRAITE : le canal d evenements est hors du perimetre du lot (l enum `kind`), et deux feuilles manquent. **Mais c est le candidat vivant le plus prometteur pour le saut** — un champ de 32 drapeaux par joueur et par instant, sur le canal dont `zoom_events.go` prouve deja le pont vers le slot (reference de domaine 4 + 512). Pour le lot d evenements deja consigne (D11 du 5.3) |
+| 2026-09-21 | 5.8.7 | **D7 (5.8) — `seekTo` PORTE LA MEME RAFALE QUE `onScrub` SOUS LA SECONDE, ET LE LOT NE LA CORRIGE PAS.** Le battement (`tick`) ne recale en silence qu au-dela de `SOUND_RESYNC_JUMP_MS` (1 s) : un `seekBy` ou un `stepFrames` de moins d une seconde tire donc tout l intervalle. Mesure de ce que cela peut peser : jusqu a **32 tirs dans une fenetre de 1 s** sur `396cfc92`. | NON TRAITE, **et c est un arbitrage de PRODUIT, pas un oubli** : un pas d image qui joue le son de l image ou l on atterrit est ce qu on attend d un pas d image ; un saut de 5 s vers un repere, moins clairement. La regle juste est probablement « un pas d image joue, un saut ne joue pas », c est-a-dire un seuil en IMAGES et non en millisecondes — mais c est une decision d ecoute, et elle appartient a l utilisateur. `soundSeek` est deja cable : la basculer tiendra en une ligne |
+| 2026-09-21 | 5.8.6 | **D6 (5.8) — LE PLAFOND DE 180 TICS NE MORDAIT SUR AUCUN DOCUMENT DU PARC : LA PLUS LONGUE DOMINATION MESUREE VAUT 71 SECONDES.** Instrument `zoneTics.mesure.test.ts` sur les 7 documents a zones simultanees : **29 intervalles de domination**, 392 s au total, la plus longue 71 s — **0 sur 29** depassait les 180 s, donc 0 s de domination sans tic. Le diagnostic du 2026-09-19 presentait ce plafond comme un defaut effectif (« au-dela de 3 min de domination continue, plus aucun tic ») ; il est LATENT. | **TRAITEE QUAND MEME DANS LE PERIMETRE** (le budget etire la cadence au lieu de tronquer : le correctif est plus petit que la garde qu il remplace). **Consignee parce qu elle dit ou est la vraie valeur du lot** : c est l ANCRE qui changeait le rendu (411 tics synthetiques -> 351 tics sur des points reels, et 10 -> 5 sur `8514a85f`), pas le plafond. Un lot qui voudrait mesurer une domination longue doit aller chercher un film de Bastion tres desequilibre — le parc n en porte aucun |
+| 2026-09-21 | 5.8.4 | **D5 (5.8) — LE LAAG ET LE GAUSS DU WARTHOG N ONT AUCUN SON, ET LE DEPARTAGE LES REND MUETS : 100 TIRS DE `4f77afc1` PASSENT DE LA ROQUETTE AU SILENCE.** Mesure : les 105 tirs du tag `c7d50912` du parc viennent tous d un chassis `warthog`, zero `rockethog`, zero `warthog_gauss` — le son joue etait faux dans 100 % des cas, mais le corriger ne rend pas un son juste, il rend le silence. | NON TRAITE, **et c est une decision de PRODUIT, pas de lot** : le remede est une RECONSTRUCTION Wwise du LAAG (et du Gauss), au meme regime que les dix deja validees — deux prises, regle des armes (1,2 s), 48 kHz/16 bits/stereo, -16 LUFS. Emprunter un stem voisin (la LMG du Falcon est une mitrailleuse UNSC) est refuse par la doctrine du fichier. Si l utilisateur prefere le faux son au silence, le retour arriere tient en une ligne : ajouter `warthog` et `warthog_gauss` a la sous-table du tag |
+| 2026-09-21 | 5.8.2 | **D3 (5.8) — LE MANIFESTE DU TITRE NE PEUT PAS PORTER LE STYLE D UNE ARME DE VEHICULE, ET PUBLIER CES ARMES CASSERAIT DEUX REGLES MESUREES.** `[shot_effects]` / `[shot_tints]` sont keyees par `weapon_key`, et leur seul chemin vers le client est `weaponLabels`, compose a la requete pour les armes que le registre canonique nomme. Surtout : la PRESENCE d une cle dans `weaponLabels` est le discriminateur « arme de vehicule » de `vehicleShotSourceOf` (5.2a.5) ET la garde du repli sonore de `shotSoundStem` (2026-09-04) — y publier une arme de vehicule la rendrait MUETTE et lui reprendrait sa direction. | **TRAITEE AUTREMENT DANS LE PERIMETRE** : table CLIENT `model/vehicleShotFx.ts`, jumelle exacte de `sound/vehicleShotSound.ts`. **Consignee parce qu elle nomme un manque de FRONTIERE** : le rejeu a desormais TROIS tables client keyees par tag `weap` (montage, son, style) la ou la doctrine du depot veut les tables de titre dans le TOML. Le lot qui voudra les y ramener doit d abord se donner un canal de document qui ne soit pas `weaponLabels` — par exemple une table `vehicleWeaponLabels` posee a la requete, qui est une montee de schema |
+| 2026-09-21 | 5.8.2 | **D4 (5.8) — UN TAG D ARME DE VEHICULE QUE AUCUN RAPPORT DE RE NE DOCUMENTE EST OBSERVE DANS UN DOCUMENT CUIT** : `0x850902EF00000000` (weap `850902ef`), **9 tirs sur `5676a9ba`**, absent des trois tables client (montage, son, style) et de `weaponLabels`. Vu aussi, et c est un autre cas : `0xC33B0948592CF3E9` (1 tir sur `4f77afc1`) dont la moitie basse n est PAS nulle — donc une arme de JOUEUR a variante, absente de `weaponLabels`, pas une arme de vehicule. | NON TRAITE (regle 7 : sans tag documente, toute entree serait une devinette). **L oracle est gratuit et il est ecrit ici** : un recensement des `shots[].w` de gabarit `0x........00000000` absents des trois tables, sur le parc cuit, rend la liste des armes de vehicule qu il reste a documenter. A joindre au recensement de tags que D5 (5.5) demande deja |
+| 2026-09-21 | 5.8.1 | **D1 (5.8) — LE PARC LOCAL NE PORTE AUCUN `vehicleCycles`, DONC AUCUN RENDU DE CYCLE N EST MESURABLE SUR PIECES.** Balayage des 92 artefacts de `data/cache/replays/halo_infinite` : **schema 62 partout** (D3 du 5.5) et **0 document** avec la cle `vehicleCycles` (schema 63). Le marqueur, son compte a rebours et son infobulle sont donc livres avec leurs tests et SANS mesure de population — ni « combien d emplacements par film », ni « combien de temps un marqueur reste visible ». | NON TRAITE (le brief interdit tout decodage). **La mesure se prend gratuitement a la premiere recuisson du parc** : les trois chiffres a relever sont `coverage.vehicles.cycleLocations` / `cycleGaps` / `cycleMissing`, deja publies, et le compte de `vehicleCycles` par film. A joindre au geste de recuisson que D1 (5.6) demande deja au pilote |
+| 2026-09-21 | 5.8.1 | **D2 (5.8) — DOC INVERSEE : `ReplayDocumentReady.vehicles` AFFIRME QUE `end` VAUT TOUJOURS `unknown`.** Le commentaire de `replayReadyTypes.ts` (« `end` vaut toujours `unknown` — jamais une destruction ») date d avant le lot 5.1 : depuis que les cinq feuilles de `ti=40` sont posees, `end` vaut `destroyed` avec un `tEnd` date sur 11 vies de `4f77afc1` et 14 de `a349fea8`, et TOUT le cycle de reapparition repose la-dessus (`vehicleDatedEnd`, Go comme web). | NON TRAITE (regle 7 : le lot porte sur le RENDU, et `replayReadyTypes.ts` est un fichier que le lot 5.7 peut toucher en parallele). **A corriger par le prochain lot qui touche ce fichier** — c est l anti-pattern « doc inversee » du diagnostic de revue, et il porte sur le champ exact dont un lecteur a besoin pour comprendre pourquoi un compte a rebours existe |
 | 2026-09-21 | 5.6.3 | **D1 (5.6) - LE PARC NE SE MARQUE PAS PERIME, ET LES VALEURS CHANGENT.** Le lot change la VALEUR de `zoneStates[].gaugeRamps[].capturingTeam` sans monter ni le schema (la forme existe depuis la 64) ni aucune des cinq revisions de couche (la substance decodee, `ZoneReads`, n a pas bouge - la regle d attribution de `layers.go` dit d attribuer un calque a la couche qui DECODE, pas a celle qui publie). `Digest.UpToDate` ne marquera donc aucun artefact du parc a recuire, et les artefacts deja cuits garderont les anciennes valeurs. | NON TRAITE, **et c est une decision de PILOTE, pas de lot** : soit une recuisson explicite du parc a la fusion, soit une revision de PUBLICATION (`publication-<SchemaVersion>` existe deja comme valeur legale de calque, mais rien ne la hache aujourd hui). La seconde voie est le vrai manque : il n existe aucun mecanisme pour dater un changement de la couche de publication a schema constant, et ce lot est le premier a en avoir besoin |
 | 2026-09-21 | 5.6.2 | **D2 (5.6) - LA COLONNE `meaning_fr` DE `ecs_table.tsv` EST FAUSSE SUR `ti=23`, AVEC UNE CONFIANCE `haute`.** Elle annonce « une ZONE de mode : son identifiant, sa POSITION, son etat » et un `exploitable_fr` qui promet « la reponse a quelle base est tenue par qui, a quel instant ». L ecrivain dit : nom, position, handle de PARTICIPANT - la selection de zone de reapparition. Aucune trace d etat. | NON TRAITE (regle 7 : corriger la table change l empreinte de `grammar`). **A corriger dans le prochain lot qui touche la grammaire** : `meaning_fr` -> « une zone SELECTIONNABLE de reapparition : son nom, sa position, le participant associe », `exploitable_fr` -> le negatif mesure (0 slot recense sur deux films a zones). Le `status` `deser_non_cable` reste juste, et le bloquant de `ti=23` au ratchet 0.A.3 ne doit PAS etre leve : porter un archetype que le film n instancie jamais serait du code mort |
 | 2026-09-21 | 5.6.2 | **D3 (5.6) - LE HARNAIS D EQUIVALENCE EST PERIME A LA TETE DE L INTEGRATION.** `replay-equiv --films=7344d24f` sans `-update` rend **57 etapes produites contre 55 figees**, avec `filmFactsRejoue` et `artifact` « produites en trop » : la comparaison est faite par INDEX, donc un pas insere decale tout ce qui suit et treize etapes sortent « differentes » sans l etre. Constat fait en jouant le gate de bout en bout du lot 5.6. | NON TRAITE : le re-figeage est un geste de pilote, a la fin (brief). **Mais le constat vaut au-dela du re-figeage** : un harnais qui compare par index rend un rapport ILLISIBLE des qu un pas apparait, alors que comparer par NOM d etape isolerait le vrai ecart. Pour le lot qui touchera `cmd/replay-equiv` |
@@ -7523,6 +7839,98 @@ Le re-figeage des references et le corpus des 19 restent le geste du pilote (bri
 | etalon `i0` · `i1` · `i21` · `i25` | 85,5 · 77,5 · 65,2 · 97,0 % | **85,5 · 77,5 · 65,3 · 97,1 %** |
 
 **PAS DE THOUGHT LOG, PAS DE PUSH** (brief). Arbre propre a la cloture.
+### Post-chantier — lot 5.8 (details du rendu), gates SANS AUCUN DECODAGE, 2026-09-21
+
+Branche `feat/decfilm-58`, base `7af38c44d`. **WEB ET CONFIGURATION SEULS** : aucun octet de
+`film/internal/`, aucune montee de schema, aucun decodage, **aucune base DuckDB ouverte**. Un
+commit par item, gates rejoues a CHAQUE item.
+
+**5.8.1 (le cycle de reapparition des vehicules)** — `make check-types` apres purge de
+`apps/web/node_modules/.tmp` (vert ; le piege du `tsBuildInfo` chaud est le faux vert nomme par
+`delivery-checklist` §2) · `make test-web` : **725 fichiers, 7 838 tests verts, 2 fichiers et
+18 cas skippes** (7 813 a la cloture de 5.5, soit **+25 cas neufs**) · `npx eslint` sur les
+14 fichiers touches : **0 erreur**, 2 avertissements PRE-EXISTANTS et non lies
+(`useReplayVehicles.isEmbarkedAt` memoization du compilateur React, `ReplayCanvas` `zoneInk.outline`)
+· `npx knip` : **aucun export mort**, seules les 4 indications de configuration de la tete.
+**AUCUN GATE GO** : le lot ne touche pas une ligne de Go.
+
+**5.8.2 (le style d eclair des armes de vehicule)** — `make check-types` apres purge (vert) ·
+`make test-web` : **726 fichiers, 7 846 tests verts** (**+8** cas) · `npx eslint` sur les
+4 fichiers touches : **0 erreur, 0 avertissement** · `npx knip` : aucun export mort.
+**TOUJOURS AUCUN GATE GO, ET C EST LE RESULTAT DU POINT D ARRET** : le brief prevoyait
+`replay_labels.toml` (donc `go test ./internal/games/halo_infinite/... ./internal/replaybuild/`
+et golangci sur les paquets entiers) ; la verification sur pieces a montre qu aucun chemin ne
+porte cette table au client sans montee de schema, et qu y publier les armes de vehicule
+casserait le son ET la direction (§4, D3). Le TOML n a pas bouge d un octet.
+**MESURE SUR DOCUMENTS CUITS** (`node -e`, lecture seule, aucun decodage, aucune base) :
+tableau avant/apres au point 5.8.2 du §3 — `4f77afc1` **0 -> 164 tirs styles sur 241 (68,0 %)**,
+exactement la population que 5.2a.5 avait mesuree sans style.
+
+**5.8.3 (les trois montages mesures sur le sprite)** — `make check-types` apres purge (vert) ·
+`make test-web` : **726 fichiers, 7 848 tests verts** (**+2** cas) · `npx eslint` sur les
+4 fichiers touches : **0 erreur, 0 avertissement**. Aucun octet Go, aucun gate Go.
+**MESURE DE SPRITE** (`PIL`, lecture seule des PNG de `static/vehicles-assets/`) : profils
+d encre par bande, puis relevé colonne par colonne des organes — chiffres au point 5.8.3 du §3.
+**MESURE SUR LE PARC CUIT** (`node -e`, lecture seule, aucun decodage) : tirs de vehicule a
+montage documente **104 -> 265 sur 609** (17,1 % -> 43,5 %), six documents concernes.
+
+**5.8.4 (le departage du Warthog par la famille du chassis)** — `make check-types` apres purge
+(vert) · `make test-web` : **726 fichiers, 7 855 tests verts** (**+7** cas) · `npx eslint` sur les
+5 fichiers touches : **0 erreur, 0 avertissement** · `npx knip` : aucun export mort. Aucun octet
+Go, aucun fichier de son ajoute ni retire.
+**MESURE SUR LE PARC CUIT** (`node -e`, lecture seule) : les **105 tirs** du tag `c7d50912`
+viennent tous d un chassis `warthog` (100 avec vehicule publie, 5 sans), **0 `rockethog`,
+0 `warthog_gauss`** — un seul film du parc porte ce tag (`4f77afc1`). Consequence audible
+consignee en §4 D5 : **100 tirs passent de la roquette au silence**.
+
+**5.8.5 (la visee du tireur pour une arme de joueur tiree d un siege)** — `make check-types` apres
+purge (vert) · `make test-web` : **726 fichiers, 7 861 tests verts** (**+6** cas) · `npx eslint`
+sur les 4 fichiers touches : **0 erreur, 0 avertissement** · `npx knip` : aucun export mort.
+Aucun octet Go.
+**MESURE AVANT / APRES PAR L INSTRUMENT DEJA TESTE DU LOT 5.5** (`TOURELLE_MESURE=1 npx vitest run
+src/features/match-replay/model/tourelleVisee.mesure.test.ts`, documents CUITS, lecture seule,
+aucune base) : sur `4f77afc1` la population du rendu passe de **165 a 241** tirs de vehicule et
+**236 (97,9 %)** portent une direction, contre 65 (27,0 %) en forcant l AVANT dans la chaine
+reelle. Les 76 tirs de D2 (5.5) sont TOUS passes ; les 5 manquants sont les 5 tirs de tourelle
+sans visee en vigueur. Temoins de non-regression `8a485699` et `0a44c6cc` : 100 % avant comme
+apres, pas un tir ne change de direction. Tableau au point 5.8.5 du §3.
+
+**5.8.6 (le tic de score des bases)** — `make check-types` apres purge (vert) · `make test-web` :
+**726 fichiers, 7 868 tests verts, 3 fichiers skippes** (**+7** cas ; le 3e skip est l instrument
+de mesure, ferme par sa porte) · `npx eslint` sur les 3 fichiers touches : **0 erreur,
+0 avertissement** · `npx knip` : aucun export mort (`zoneDominationIntervals` est consommee par
+l instrument). Aucun octet Go.
+**MESURE SUR LE PARC CUIT** (`ZONE_MESURE=1 npx vitest run
+src/features/match-replay/sound/zoneTics.mesure.test.ts`, lecture seule, aucune base) : tableau au
+point 5.8.6 du §3 — **29 intervalles de domination sur 7 documents, 411 tics synthetiques -> 351
+tics sur des points reels**, et **0 intervalle sur 29** depassait le plafond de 180 tics (la plus
+longue domination vaut 71 s : le correctif du plafond ferme un defaut LATENT, §4 D6).
+**DEUX ITEMS STATUES `[~]` APRES VERIFICATION SUR PIECES** : la rampe suivie d un intervalle NEUTRE
+etait deja traitee par 5.2a.3 (`campDeLaRampe(...) ?? arrivee`), et le silence de `zone_secures`
+est deja tenu par `objectiveSound.test.ts`. Aucune ligne ecrite pour l un ni pour l autre.
+
+**5.8.7 (le glisse de la frise previent le son)** — `make check-types` apres purge (vert) ·
+`make test-web` : **726 fichiers, 7 873 tests verts** (**+5** cas) · `npx eslint` sur les
+9 fichiers touches : **0 erreur, 6 avertissements TOUS PRE-EXISTANTS** — verifie en lintant la
+version de BASE de `useReplaySound.ts` (`git show 7af38c44d:...`), qui rend les **memes 5**
+avertissements `engine` ; le 6e (`zoneInk.outline` dans `ReplayCanvas`) est lui aussi d avant le
+lot · `npx knip` : aucun export mort. Aucun octet Go.
+**MESURE DE LA PORTEE** (`node -e`, documents cuits, lecture seule) : nombre maximal de TIRS dans
+une fenetre de 1 s — **21** (`4f77afc1`), **26** (`5676a9ba`), **32** (`396cfc92`). C est l ordre
+de grandeur de la rafale qu un glisse d une seconde pouvait tirer.
+**UN ARBITRAGE LAISSE A L UTILISATEUR** : `seekTo` garde son battement, donc la meme rafale reste
+possible sur un `seekBy`/`stepFrames` de moins d une seconde (§4, D7) — la regle juste est
+probablement un seuil en IMAGES, et c est une decision d ecoute.
+
+**UN ROUGE ATTRAPE PAR UN RATCHET, ET IL AVAIT RAISON** : le retour du hook des vehicules avait
+ete reecrit sur plusieurs lignes, ce que `sceneBinding.guard.test.ts` refuse — il exige
+`return { id: '<calque>',` EN TETE, seule forme qui rende impossible de peindre un geste sous
+l identite d un autre calque. Retour a une seule ligne, ratchet vert, aucune allowlist touchee.
+
+**MESURE IMPOSSIBLE, ET ELLE EST CONSIGNEE** : balayage des 92 artefacts de
+`data/cache/replays/halo_infinite` (lecture seule, `node -e`, aucun decodage) — **schema 62
+partout**, **0 document porteur de `vehicleCycles`**. Le rendu est prouve par ses tests seuls ;
+§4 D1 (5.8) dit quels trois compteurs relever a la prochaine recuisson du parc.
 
 ### Post-chantier — lot 5.3, points 5.3.5 et 5.3.6, 2026-09-21 (suite : la loi de `i1`, puis le port)
 

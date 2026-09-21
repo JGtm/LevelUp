@@ -78,6 +78,7 @@ function mount(
   soundTick = vi.fn(),
   onEnded = vi.fn(),
   onTransportGesture = vi.fn(),
+  soundSeek = vi.fn(),
 ) {
   const view = renderHook(() =>
     useReplayPlayback({
@@ -89,11 +90,12 @@ function mount(
       frameRef,
       draw,
       soundTick,
+      soundSeek,
       onEnded,
       onTransportGesture,
     }),
   )
-  return { ...view, draw, soundTick, onEnded, onTransportGesture }
+  return { ...view, draw, soundTick, soundSeek, onEnded, onTransportGesture }
 }
 
 /**
@@ -581,6 +583,7 @@ describe('useReplayPlayback — le remplissage de la frise suit le curseur', () 
           frameRef,
           draw,
           soundTick: vi.fn(),
+          soundSeek: vi.fn(),
           onEnded: vi.fn(),
           onTransportGesture: vi.fn(),
         }),
@@ -608,6 +611,7 @@ describe('useReplayPlayback — le remplissage de la frise suit le curseur', () 
           frameRef,
           draw: vi.fn(),
           soundTick: vi.fn(),
+          soundSeek: vi.fn(),
           onEnded: vi.fn(),
           onTransportGesture: vi.fn(),
         }),

@@ -141,6 +141,35 @@ describe('useReplaySound — activation', () => {
     act(() => result.current.tick(2_150)) // rien de neuf : rien ne rejoue
     expect(ctx.sources).toHaveLength(1)
   })
+
+  /**
+   * LOT 5.8.7 — UN DÉPLACEMENT NE DÉVERSE PAS CE QU'IL ENJAMBE, QUELLE QUE SOIT SON AMPLITUDE.
+   *
+   * `tick` ne recale en silence qu'au-delà de `SOUND_RESYNC_JUMP_MS` (1 s) : servi après un
+   * glissé de frise, un saut SOUS la seconde tirait tout l'intervalle en rafale. `seek` est le
+   * chemin des déplacements, et il pose le curseur sans rien jouer.
+   */
+  it('un DÉPLACEMENT (seek) ne joue rien, même sous la seconde de recalage', async () => {
+    const { result } = mount()
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    act(() => result.current.tick(1_900)) // curseur posé juste avant le kill
+    // 150 ms de saut : bien SOUS le seuil de recalage, donc `tick` aurait joué le kill ici.
+    act(() => result.current.seek(2_050))
+    expect(ctx.sources).toHaveLength(0)
+    // ET IL NE REVIENT PAS PLUS TARD : le curseur est posé APRÈS lui, pas avant.
+    act(() => result.current.tick(2_150))
+    expect(ctx.sources).toHaveLength(0)
+  })
+
+  it('le TÉMOIN : le même saut par `tick` joue bien le kill (c est la lecture)', async () => {
+    const { result } = mount()
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    act(() => result.current.tick(1_900))
+    act(() => result.current.tick(2_050))
+    expect(ctx.sources).toHaveLength(1)
+  })
 })
 
 describe('useReplaySound — silences voulus', () => {

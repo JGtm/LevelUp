@@ -37,11 +37,28 @@
  *  - toute arme de véhicule dont le tag `weap` n'est pas documenté (Shade...) : la clé
  *    n'existe pas, la table ne répond pas, même règle que les montages.
  *
- * RÉSERVE ÉCRITE SUR LE WARTHOG : le seul tag `weap` retrouvé (c7d50912) ne départage pas
- * LAAG / Gauss / roquettes (`vehicleWeaponMounts.ts`, témoin V3F §4). La seule reconstruction
- * validée est celle des ROQUETTES (Rockethog) : c'est elle qui sonne, et un tir de LAAG
- * embarqué sonnerait aujourd'hui une roquette. Assumé et écrit plutôt que muet — le jour où
- * un rapport départage les trois, cette entrée se scinde.
+ * # LE WARTHOG SE DÉPARTAGE PAR LA FAMILLE DE SON CHÂSSIS (lot 5.8.4, 2026-09-21)
+ *
+ * Le seul tag `weap` retrouvé (`c7d50912`) ne départage pas LAAG / Gauss / roquettes
+ * (`vehicleWeaponMounts.ts`, témoin V3F §4), et la seule reconstruction validée est celle des
+ * ROQUETTES. Jusqu'à ce lot, elle sonnait pour les trois : « assumé et écrit plutôt que muet ».
+ *
+ * CE QUE LA MESURE DIT DE CE CHOIX, ET IL NE TIENT PAS : sur les 92 artefacts cuits du parc
+ * local, les **105 tirs** qui portent ce tag viennent TOUS d'un châssis `warthog` — 100 avec un
+ * véhicule publié, 5 sans. **Zéro `rockethog`, zéro `warthog_gauss`.** Le seul son de Warthog
+ * jamais joué était donc FAUX dans 100 % des cas mesurés, et le « plutôt que muet » ne
+ * préservait aucun cas juste.
+ *
+ * LE DÉPARTAGE N'A PAS BESOIN D'UN RAPPORT DE RE : le document PUBLIE la famille du châssis du
+ * véhicule tireur (`vehicles[].family` : `warthog`, `warthog_gauss`, `rockethog`), et un tir en
+ * véhicule porte le slot de son porteur (`Shot.v`). L'entrée se scinde donc, comme l'en-tête le
+ * prévoyait — par la FAMILLE et non par le tag.
+ *
+ * ET LES DEUX AUTRES SE TAISENT, PARCE QUE C'EST LA RÈGLE DU CHANTIER : aucune reconstruction de
+ * LAAG ni de Gauss n'existe. Leur prêter le tir de roquette (ou la LMG du Falcon, qui est
+ * pourtant une mitrailleuse UNSC) serait « le son d'une voisine » — ce que ce fichier s'interdit
+ * en toutes lettres pour le Wasp M2. Le silence propre est dit, pas caché ; le remède est une
+ * reconstruction de LAAG, pas un stem emprunté.
  *
  * LES TIRS DE VÉHICULE SONT DES BRUITAGES COMME LES AUTRES ARMES : catégorie `weapon` du
  * tiroir (ils entrent dans la piste par la boucle des tirs de `buildSoundTimeline`), plafond
@@ -65,12 +82,37 @@ export const VEHICLE_SHOT_SOUND_STEMS: ReadonlyMap<string, string> = new Map([
   [vehicleWeapTag('121b4009'), 'vehicle_shot_wraith_1'], // Wraith — mortier à plasma.
   [vehicleWeapTag('b40e9618'), 'vehicle_shot_chopper_1'], // Chopper — canons jumeaux avant.
   [vehicleWeapTag('00015cfa'), 'vehicle_shot_scorpion_1'], // Scorpion — canon principal.
-  [vehicleWeapTag('c7d50912'), 'vehicle_shot_warthog_rocket_1'], // Warthog — roquettes (réserve : tag non départagé).
+  // LE WARTHOG N'EST PAS ICI : son tag est AMBIGU et se résout par la famille du châssis
+  // (`VEHICLE_SHOT_SOUND_BY_CHASSIS`). Une entrée dans les DEUX tables serait la divergence
+  // garantie — un tag, une seule règle de résolution.
   [vehicleWeapTag('11725dc4'), 'vehicle_shot_wasp_1'], // Wasp M1 — autocanon de menton.
   // Wasp M2 (d3c407ed, missiles) : pas de reconstruction — silence, cf. en-tête.
   [vehicleWeapTag('0042678e'), 'vehicle_shot_gungoose_1'], // Gungoose — mitrailleuses avant.
   [vehicleWeapTag('00015cd3'), 'vehicle_shot_falcon_lmg_1'], // Falcon — tourelle LMG.
 ])
+
+/**
+ * VEHICLE_SHOT_SOUND_BY_CHASSIS — LES TAGS AMBIGUS : `Shot.w` -> (famille du châssis -> stem).
+ *
+ * UN SEUL TAG Y FIGURE AUJOURD'HUI, et c'est le Warthog (cf. l'en-tête). La table est néanmoins
+ * une TABLE et non un cas particulier : le départage par famille de châssis est une RÈGLE (un
+ * même `weap` monté sur plusieurs variantes de châssis), et le prochain tag ambigu s'y ajoutera
+ * en une ligne plutôt qu'en une seconde branche.
+ *
+ * UNE FAMILLE ABSENTE DE LA SOUS-TABLE SE TAIT. C'est le cas du `warthog` (LAAG) et du
+ * `warthog_gauss` : aucune reconstruction ne les couvre, et emprunter celle des roquettes est
+ * exactement ce que la mesure du lot 5.8.4 a disqualifié.
+ */
+export const VEHICLE_SHOT_SOUND_BY_CHASSIS: ReadonlyMap<string, ReadonlyMap<string, string>> =
+  new Map([
+    [
+      vehicleWeapTag('c7d50912'),
+      new Map([
+        // La seule prise validée : le Rockethog. Le LAAG et le Gauss se taisent (cf. l'en-tête).
+        ['rockethog', 'vehicle_shot_warthog_rocket_1'],
+      ]),
+    ],
+  ])
 
 /**
  * VEHICLE_SHOT_SOUND_VARIANTS — les deux prises de chaque arme, fusionnées dans
@@ -98,8 +140,24 @@ export const VEHICLE_SHOT_SOUND_VARIANTS: Readonly<Record<string, readonly strin
 
 /**
  * vehicleShotSoundStem — le stem d'un tir dont `weaponLabels` ne répond pas, ou undefined.
+ *
  * Appelé par `shotSoundStem` (replaySound.ts) en SECOND : une arme de joueur garde sa table.
+ *
+ * `chassisFamily` est la famille du véhicule TIREUR (`vehicles[].family` du porteur désigné par
+ * `Shot.v`), ou `undefined` quand le document ne publie pas ce véhicule. Elle ne sert QU'AUX TAGS
+ * AMBIGUS — un tag qui désigne une seule arme n'a rien à départager, et lui faire dépendre son
+ * son d'un châssis le rendrait muet le jour où une nouvelle variante apparaît.
+ *
+ * LES DEUX TABLES SONT DISJOINTES ET L'AMBIGUË PASSE D'ABORD : un tag ambigu SANS famille lue se
+ * tait, il ne retombe pas sur un stem par défaut. C'est le cas des 5 tirs de Warthog du parc dont
+ * le véhicule n'est pas publié — deviner leur variante ferait exactement le bruit que ce lot
+ * retire.
  */
-export function vehicleShotSoundStem(weaponID: string): string | undefined {
+export function vehicleShotSoundStem(
+  weaponID: string,
+  chassisFamily: string | undefined,
+): string | undefined {
+  const parChassis = VEHICLE_SHOT_SOUND_BY_CHASSIS.get(weaponID)
+  if (parChassis) return chassisFamily ? parChassis.get(chassisFamily) : undefined
   return VEHICLE_SHOT_SOUND_STEMS.get(weaponID)
 }
