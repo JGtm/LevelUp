@@ -39,6 +39,7 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - D18 (2026-09-21) : Match view « Controle des armes speciales » = 4.A, colonnes verticales empilees par socle, hauteur = prises reelles, echelle commune ; groupes PUISSANCE / TERRAIN separes par un trait vertical discret, nom du groupe + sous-total CENTRE EN HAUT DANS LE GRAPHIQUE entre l axe Y et le trait (pas de bandeau) ; base repliee.
 - D19 (2026-09-21) : section « echange » de l Escouade = variante A de la maquette MAQUETTE_ECHANGE_ESCOUADE ; vocabulaire tactique : vengeance -> « Riposte », assistance -> « Appui », A APPLIQUER PARTOUT dans l app ; nom de la section : « Coordination » (valide), « taux d echange » -> « taux de riposte ».
 - D20 (2026-09-21) : Match view « Part de chaque equipe » = 5.A : barres horizontales epaisses PAR FAMILLE (memes familles et meme ordre que la grille « Usages par joueur », inchangee), longueur = usages reels sur une echelle commune, segment mon camp / eux avec comptes ecrits, total en bout de ligne.
+- D21 (2026-09-21, soir) : sections transverses — Riposte sur Sessions (jauges a parite, normalisation par mort de camp), Match view (par camp + par joueur, comptes pas taux) et Timeseries (frise) ; Portee des engagements sur Sessions (p10-p90 par classe vs habituel, reserve echantillon) et Escouade (angle narratif : roles de portee / records / duos — a choisir) ; Balance des degats cumulee sur Timeseries (front seul, lot L) ; Appui cote recu sur Sessions et Timeseries. Reserves a verifier sur pieces : taille d equipe par match ; appuis des coequipiers non suivis dans assist_pairs.
 
 ## Lots
 
@@ -127,6 +128,12 @@ surface `film/replay` 260 -> 263 justifie.
 
 ### Lot K — Match view, part de chaque equipe en 5.A (worktree `LevelUp-wt-ajsup-k`) — FUSIONNE 6c2391972
 - [x] Barres horizontales par famille, echelle commune, deux camps, comptes ecrits, total (D20)
+
+### Lot L — Timeseries, balance des degats cumulee (worktree `LevelUp-wt-ajsup-l`)
+- [ ] Aire divergente ancree a zero, meme grammaire que l Escouade, front seul
+
+### Lot M — maquette sections transverses : Riposte, Portee, Appui (worktree `LevelUp-wt-ajsup-m`)
+- [ ] Fichier `.ai/V7.5/MAQUETTE_TRANSVERSES_RIPOSTE_PORTEE_APPUI_2026-09-21.html` + verification des deux reserves de donnees
 
 ## Decouvertes (hors perimetre, ne pas traiter)
 - J : `squad.toml` 998 L (dette) ; anglicismes FR dans `coaching_tips.toml` (revenge push, trader, aim assist) ; chaines de la statistique de jeu « assistances » laissees (liste dans le rapport du lot) ; `colorDistance.guard.test.ts` flake en suite complete (vert seul).
