@@ -33,8 +33,23 @@
  */
 import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
 
-/** Les niveaux, dans l'ORDRE DE LECTURE du bloc. */
-export const PAD_TIER_ORDER = ['base', 'ground', 'power', 'powerup', 'unclassified'] as const
+/**
+ * Les niveaux, dans l'ORDRE DE LECTURE du bloc.
+ *
+ * PUISSANCE EN TÊTE DEPUIS LE 2026-09-21 (décision utilisateur, amendant D2) : puissance,
+ * puis terrain, puis base dans un dépliable fermé. Ce qui décide un match ouvre le bloc ;
+ * reprendre son fusil d'assaut ferme la marche.
+ *
+ * `powerup` ET `unclassified` FERMENT LA LISTE ET NE SE RENDENT PLUS (même décision, cf.
+ * `MatchPadControlSection`) : un socle de BONUS est un ÉQUIPEMENT, il se lit dans « Usages
+ * d'équipement » (`EPISODE_FAMILIES`, `equipmentUsageLogic.ts`) et n'a rien à faire dans le
+ * contrôle des ARMES ; « non identifié » est une absence de mesure, pas un niveau de jeu. Le
+ * CLASSEMENT (`padTierOf`) est inchangé — seul l'affichage retire ces deux groupes.
+ *
+ * L'ordre sert aussi à DÉPARTAGER une arme vue à deux niveaux (`tierOfWeaponOf`) : à compte
+ * égal, elle se lit désormais au niveau le plus disputé, ce qui est la même règle de lecture.
+ */
+export const PAD_TIER_ORDER = ['power', 'ground', 'base', 'powerup', 'unclassified'] as const
 
 export type PadTier = (typeof PAD_TIER_ORDER)[number]
 

@@ -51,15 +51,15 @@
  * Aucun calcul ici : tout vient de `padControlLogic` (les mesures) et `padControlChart` (la
  * projection).
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { ChartLegend } from '@/components/charts/ChartLegend'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { Tooltip } from '@/components/ui/tooltip'
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
-import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayText } from './i18n/i18nContract'
@@ -127,14 +127,41 @@ export function MatchPadControlSection({
   // Double porte : pas d'artefact, ou aucune prise attribuée -> rien du tout.
   if (!control?.hasData || !bars) return null
 
+  // Ce que le bloc ne montre PLUS : les prises d'un socle qu'aucun emplacement de carte ne
+  // confirme. Compté sur les LIGNES affichées, comme les sous-totaux de niveau.
+  // NIVEAUX NON ÉTABLIS = TOUT EST « non classé » : le compte n'aurait alors aucun sens (il
+  // vaudrait le match entier) et `tiersUnmeasuredNote` le dit déjà. Il ne se calcule donc que
+  // lorsque la carte est dans la référence.
+  const unclassified = control.tiersMeasured
+    ? bars.rows
+        .filter((row) => (control.tierOfWeapon[row.weapon] ?? 'unclassified') === 'unclassified')
+        .reduce((sum, row) => sum + row.total, 0)
+    : 0
+
   return (
     <SectionCard
       title={t.padControl.title}
       label={t.padControl.title}
       titleAdornment={(label) => (
-        <HeaderLabelTooltip text={t.padControl.titleHint} focusable>
+        // UNE SEULE INFOBULLE (i) SUR LE TITRE, 2026-09-21 (lot D). Elle a remplacé le
+        // `HeaderLabelTooltip` invisible du libellé ET les deux notes qui s'écrivaient
+        // au-dessus du graphe (niveaux non établis, départs aléatoires) : trois réserves sur
+        // la même carte, à trois endroits, dont une seule se voyait.
+        <span className="flex items-center gap-1.5">
           <span>{label}</span>
-        </HeaderLabelTooltip>
+          <InfoTooltip
+            content={
+              <div className="space-y-2">
+                <p>{t.padControl.titleHint}</p>
+                {!control.tiersMeasured && <p>{t.padControl.tiersUnmeasuredNote}</p>}
+                {control.randomStarts && <p>{t.padControl.randomStartsNote}</p>}
+                {/* LE GROUPE « NON IDENTIFIÉ » NE SE REND PLUS (D2) : son compte se dit ICI,
+                    et nulle part ailleurs. */}
+                {unclassified > 0 && <p>{t.padControl.unclassifiedHintFmt(unclassified)}</p>}
+              </div>
+            }
+          />
+        </span>
       )}
     >
       <PadControlBody bars={bars} control={control} allyOf={allyOf} t={t} />
@@ -162,12 +189,6 @@ function PadControlBody({
     <div className="px-3 pb-3 pt-3">
       {bars.rows.length > 0 && (
         <>
-          {!control.tiersMeasured && (
-            <p className="pb-3 text-3xs text-muted-foreground">{t.padControl.tiersUnmeasuredNote}</p>
-          )}
-          {control.randomStarts && (
-            <p className="pb-3 text-3xs text-muted-foreground">{t.padControl.randomStartsNote}</p>
-          )}
           <PadControlBars model={bars} control={control} t={t} />
           <ChartLegend
             className="pt-3"
@@ -221,32 +242,80 @@ function PadControlBars({
     // répartissent la largeur disponible et le nom d'arme se tronque (son `title` garde le nom
     // entier), plutôt que de pousser le rail hors du cadre.
     <div className="min-w-0">
-      {groupes.map((groupe) => (
-        <section key={groupe.tier} className="mb-1">
-          {/* L'INTERTITRE N'APPARAÎT QUE SI LES NIVEAUX SONT ÉTABLIS : sans référence de
-              carte, un unique bandeau « Emplacement non identifié » au-dessus de tout le
-              bloc ferait lire une absence de mesure comme un résultat de mesure. La note
-              au-dessus du graphe le dit déjà, en toutes lettres. */}
-          {control.tiersMeasured && (
-            <h4 className="mb-2 flex items-baseline gap-2 border-b pb-1 text-3xs uppercase tracking-wide text-muted-foreground">
-              <span>{t.padControl.tierLabels[groupe.tier]}</span>
-              <span className="tabular-nums normal-case tracking-normal">
-                {t.padControl.tierSubtotalFmt(groupe.total)}
-              </span>
-            </h4>
-          )}
-          {groupe.rows.map((row) => (
-            <PadWeaponRow key={row.weapon} row={row} t={t} />
-          ))}
-        </section>
-      ))}
+      {groupes.map((groupe) =>
+        // LES ARMES DE BASE SONT DANS UN DÉPLIABLE FERMÉ (2026-09-21, D2) : elles ferment la
+        // marche et ne s'ouvrent qu'à la demande — reprendre son fusil d'assaut n'est pas
+        // contrôler la carte, et leurs lignes noyaient les socles décisifs.
+        groupe.tier === 'base' ? (
+          <PadTierFold key={groupe.tier} groupe={groupe} t={t} />
+        ) : (
+          <section key={groupe.tier} className="mb-1">
+            {/* L'INTERTITRE N'APPARAÎT QUE SI LES NIVEAUX SONT ÉTABLIS : sans référence de
+                carte, un unique bandeau au-dessus de tout le bloc ferait lire une absence de
+                mesure comme un résultat de mesure. L'infobulle du titre le dit déjà. */}
+            {control.tiersMeasured && (
+              <PadTierHeading
+                label={t.padControl.tierLabels[groupe.tier]}
+                subtotal={t.padControl.tierSubtotalFmt(groupe.total)}
+              />
+            )}
+            {groupe.rows.map((row) => (
+              <PadWeaponRow key={row.weapon} row={row} t={t} />
+            ))}
+          </section>
+        ),
+      )}
     </div>
   )
 }
 
+/** L'intertitre d'un niveau : son nom et son sous-total, sur le même filet. */
+function PadTierHeading({ label, subtotal }: { label: string; subtotal: string }) {
+  return (
+    <h4 className="mb-2 flex items-baseline gap-2 border-b pb-1 text-3xs uppercase tracking-wide text-muted-foreground">
+      <span>{label}</span>
+      <span className="tabular-nums normal-case tracking-normal">{subtotal}</span>
+    </h4>
+  )
+}
+
 /**
- * groupRowsByTier range les lignes par niveau, dans l'ORDRE ÉCRIT `PAD_TIER_ORDER` (base,
- * terrain, puissance, bonus, non classé) et SANS toucher à l'ordre interne : celui-ci reste
+ * PadTierFold — le niveau « base », derrière un bouton fermé par défaut.
+ *
+ * Le COMPTE EST DANS LE LIBELLÉ (`baseToggleFmt`) : un dépliable qui ne dit pas ce qu'il cache
+ * ne s'ouvre jamais. Il s'affiche même quand les niveaux ne sont pas établis — dans ce cas
+ * aucune ligne n'est classée « base » et le groupe n'existe pas, la question ne se pose pas.
+ */
+function PadTierFold({
+  groupe,
+  t,
+}: {
+  groupe: { tier: PadTier; rows: PadBarRow[]; total: number }
+  t: ReplayText
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <section className="mb-1">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="mb-2 flex w-full items-baseline gap-2 border-b pb-1 text-3xs uppercase tracking-wide text-muted-foreground hover:text-foreground"
+      >
+        <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+        <span>{t.padControl.baseToggleFmt(groupe.rows.length)}</span>
+        <span className="tabular-nums normal-case tracking-normal">
+          {t.padControl.tierSubtotalFmt(groupe.total)}
+        </span>
+      </button>
+      {open && groupe.rows.map((row) => <PadWeaponRow key={row.weapon} row={row} t={t} />)}
+    </section>
+  )
+}
+
+/**
+ * groupRowsByTier range les lignes par niveau, dans l'ORDRE ÉCRIT `PAD_TIER_ORDER`
+ * (puissance, bonus, terrain, base) et SANS toucher à l'ordre interne : celui-ci reste
  * celui de `padControlLogic` — les socles décisifs d'abord, puis du plus disputé au moins
  * disputé. Un niveau sans ligne n'a pas d'intertitre : une section vide ne dit rien.
  *
@@ -254,15 +323,34 @@ function PadControlBars({
  * coïncident que si aucune arme ne s'est trouvée à deux niveaux dans le match (0,17 % des
  * prises mesurées). C'est le total des lignes affichées qui doit s'additionner sous les yeux du
  * lecteur, sinon les chiffres de l'écran ne se recomposent pas.
+ *
+ * DEUX NIVEAUX NE SONT PLUS RENDUS (2026-09-21, décision utilisateur). « NON CLASSÉ » : une
+ * ligne « emplacement non identifié » faisait lire une absence de mesure comme un niveau de
+ * jeu — son compte passe dans l'infobulle (i) du titre, il ne disparaît pas. « BONUS » : un
+ * socle de camouflage ou de surbouclier est un ÉQUIPEMENT, pas une arme ; il est DÉJÀ compté
+ * par « Usages d'équipement » (`equipmentUsageLogic.ts`, `EPISODE_FAMILIES` ligne 71, épisodes
+ * agrégés ligne 339, versés au côté « utilisé » de la colonne du power-up — cf.
+ * `equipmentUsageColumns.ts` lignes 124-128). Rien n'est perdu, la mesure change de carte.
  */
 function groupRowsByTier(
   rows: readonly PadBarRow[],
   control: PadControl,
 ): { tier: PadTier; rows: PadBarRow[]; total: number }[] {
-  return PAD_TIER_ORDER.map((tier) => {
-    const lignes = rows.filter((row) => (control.tierOfWeapon[row.weapon] ?? 'unclassified') === tier)
-    return { tier, rows: lignes, total: lignes.reduce((sum, row) => sum + row.total, 0) }
-  }).filter((groupe) => groupe.rows.length > 0)
+  // « NON CLASSÉ » SURVIT AU SEUL CAS OÙ IL N'EST PAS UN VERDICT : carte hors référence, où
+  // AUCUNE ligne n'a de niveau. Le retirer là viderait le bloc entier d'un match pourtant
+  // mesuré. Les intertitres ne s'écrivent alors pas (cf. `PadControlBars`), donc le lecteur ne
+  // voit pas non plus le mot « non identifié ».
+  return PAD_TIER_ORDER.filter(
+    (tier) =>
+      tier !== 'powerup' && (tier !== 'unclassified' || !control.tiersMeasured),
+  )
+    .map((tier) => {
+      const lignes = rows.filter(
+        (row) => (control.tierOfWeapon[row.weapon] ?? 'unclassified') === tier,
+      )
+      return { tier, rows: lignes, total: lignes.reduce((sum, row) => sum + row.total, 0) }
+    })
+    .filter((groupe) => groupe.rows.length > 0)
 }
 
 /** Hauteur de la barre : assez haute pour que le compte s'y lise en `text-xs` (retour 13/09). */
