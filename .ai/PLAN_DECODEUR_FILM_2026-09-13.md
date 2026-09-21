@@ -6197,6 +6197,207 @@ méthode du lot 3.7 (§ 7) répond chez l'ÉCRIVAIN, avant tout film.
 - [!] **5.3.3.2 — LE CADRAGE : `bpkCalibre` DIT 9, L'ÉCRIVAIN DIT 13, ET C'EST L'ÉCRIVAIN QUI A RAISON** (2026-09-21, `bfecd02b`). Calibration jouée : `IDLowBits` **9 -> 97,5 %** de trames exactes contre **13 (défaut) -> 5,1 %** ; témoins de décalage +1/+2/+3 à 0,0/0,1/0,0 % (**le cadrage au bit 2 est juste**). **MAIS LA MESURE DE CONTENU REFUSE 9** : trames saines 40,5 % -> **97,0 %**, rejets 12 316 -> **405**, et **records `ti=35` 11 150 -> 1**, étalon `i21` 64,3 % -> **0,0 %**. L'étalon a REFUSÉ de publier — la garde du § 2 quinquies a fait son travail : un correctif adopté sur le seul taux de trames aurait rendu **tous les gates verts en détruisant le décodage des joueurs**. **ARBITRAGE PAR L'ÉCRIVAIN, DÉJÀ DANS LE DÉPÔT** : `readRecordID` porte `FUN_1406d3140(_,_,7,_)`, catégorie **7** ; `varwidth.go` écrit que « `W` ne vaut 13 que pour les catégories 0, 1, **7** et 8 » (`varWidthRange(7)` = `0x1FFF`, `bitLen` = 13). **La largeur est 13, et elle vient de l'écrivain** — ni constante « qui marche », ni ligne de profil. **POURQUOI `bpkCalibre` REND 9** : son critère est la FERMETURE (« consomme le payload à moins d'un octet »), qu'une largeur trop petite satisfait de façon dégénérée — profondeur **1,02 record/paquet** là où un delta 60 Hz en porte des dizaines. **Leçon transverse : un oracle de fermeture ne prouve pas une largeur ; il lui faut un oracle de CONTENU.** **CONSÉQUENCE** : l'étape (2) « corriger le cadrage » **n'a pas d'objet**, rien à changer dans `frame_records.go`, aucun octet de production touché. **La cause des 12 316 rejets reste ouverte**, avec deux hypothèses définitivement éliminées (amorçage du monde, largeur d'ID). À instruire ensuite : le PRÉAMBULE, et surtout **`IDBase`** — `FUN_1406d3140` rend `(queue << 30) | (base + valeur)` avec une base 0x200/0x300/0x400 **selon la catégorie**, et `varwidth.go` dit que cette base **n'est pas portée** et que la changer « se juge au gate de décodage » : une base fausse décale TOUS les identifiants, ce qui est exactement le symptôme mesuré (des slots qui n'existent pas).
 - [!] **5.3.3.3 — `IDBase` : LA TABLE DU JEU LUE EN ENTIER, ET UN NÉGATIF QUI FERME LA PISTE** (2026-09-21). `FUN_1406d3140` lit base et plage dans une table indexée par catégorie (`DAT_1451f98d0[cat*2]` = base, `+4` = plage, sous la garde `DAT_144706104`), et **`FUN_140d10bb0` la remplit** : cat 0/1 base `0x200` plage `0x1DFF` · cat 2 base `0x200` plage `0x100` · cat 3 base **`0x300`** · cat 4 base `0x200` plage `0x200` · cat 5 base **`0x400`** · cat 6 base **0** plage `0x200` · **cat 7 base 0, plage `0x1FFF`, largeur 13** · cat 8 base 0. Les PLAGES concordent exactement avec `varWidthRange` ; **les BASES, que `varwidth.go` déclarait NON PORTÉES, sont désormais lues**. **NÉGATIF** : `readRecordID` porte la catégorie 7, dont la base est **0** et la largeur **13** — et `DefaultFrameConfig()` rend déjà `IDLowBits: 13, IDBase: 0`. **Les deux valeurs du port sont celles de l'écrivain : rien à corriger, aucun octet de production, aucun gate à jouer.** **TROIS HYPOTHÈSES ÉLIMINÉES** pour les 12 316 rejets : amorçage du monde, largeur d'ID, base d'ID. **VALIDATION CROISÉE GRATUITE** : `zoom_events.go` portait `zoomSlotBase = 512` obtenue par FORCE BRUTE (63/64 contre 0/64 pour les autres bases) sur une référence de **domaine 4** — or **la catégorie 4 a pour base `0x200` = 512**. Le « domaine » d'une référence d'événement EST donc la catégorie de `FUN_1406d3140`, et la table vaut pour les événements comme pour les records : un lot d'événements pourrait PORTER ces bases au lieu de les mesurer (domaines 3 et 5 : `0x300`/`0x400` ; 7 et 8 : base 0, largeur 13). **SUITE** : passage à `ti=35 i60`/`i59`/`i57` sur la population SAINE actuelle (11 150 records, étalon `i21` 64,3 %), comme convenu.
 - [!] **5.3.3.4 — LE PRÉAMBULE NE DISTINGUE RIEN (4e négatif), ET `i60` A UN PRÉDICAT ENTIÈREMENT LISIBLE** (2026-09-21, `bfecd02b`). **(a) PRÉAMBULE, mesure sans hypothèse** : octet de tête et taille, 10 512 sains contre 12 316 rejetés — **`0xA0` écrase les deux populations (98,34 % contre 99,79 %)**, et la seule valeur exclusive (`0x80`, 139) est propre aux SAINS. Les tailles ne séparent pas (les rejetés sont juste un peu plus gros, ce qui s'explique : plus de records, plus d'occasions de casser). **Piste fermée. Quatre hypothèses éliminées** : amorçage du monde, largeur d'ID, base d'ID, préambule. **(b) `ti=35 i60 simulation-state`, écrivain `FUN_142ED6D88`** : la queue conditionnelle que `ecs_table` disait dépendre d'un « prédicat sur les vecteurs décodés » est `FUN_140501798`, **un test d'ORTHONORMALITÉ à 10⁻³** sur les deux vec3 déjà décodés : `|‖v1‖²−1| < 0,001` et `|‖v2‖²−1| < 0,001` et `|v1·v2| < 0,001`, chacun testé fini. Constantes relues dans l'image, aucune devinée : `DAT_143cd8370` = **0.0f**, `DAT_143cd8374` = **1.0f** (la même qu'au § 2.1), `DAT_143cd8380` = **`0x7FFFFFFF`** (masque de valeur absolue), `DAT_143cd84bc` = **0.001f**. **DÉCISIF** : le prédicat porte sur des valeurs DÉJÀ DÉCODÉES DU FLUX, pas sur un octet d'état RAM — il est donc **entièrement calculable**, et `i60` peut devenir bit-exact (contrairement à `i57`, dont `ecs_table` dit que l'étiquette 3 est « gardée par des octets d'état RUNTIME : désync PROPRE »). **CHEMIN DE PORT ÉCRIT** : décoder les deux vec3 (déjà lus par le corps), évaluer `orthonormes`, lire la queue `FUN_14076e494(..., 0x10)` seulement si le prédicat tient. **Aucun octet de production touché à ce stade** : le portage est le commit suivant.
+
+#### Passation 5.3.3 — REPRISE PAR UN EXECUTANT FRAIS (2026-09-21)
+
+> Le pilote sortant est à ~770 k jetons. Cette passation est la SOURCE DE VÉRITÉ de la
+> reprise : dix points, dont **six pièges qui ont chacun coûté une mesure fausse**. La copie
+> intégrale vit en tête de `.ai/V7.5/film_re/NOTE_5_3_ETATS_DE_MOUVEMENT_2026-09-20.md`.
+
+## PASSATION 5.3.3 — A LIRE EN ENTIER AVANT DE TOUCHER UN OCTET (2026-09-21)
+
+> Ecrite a la main du pilote sortant, a ~770 k jetons. Dix points. Le lot est un lot de
+> GRAMMAIRE, et sa methode a ete CORRIGEE EN ROUTE : cinq hypotheses ont ete refutees, quatre
+> par la mesure, une par l ecrivain. **Ne les refais pas** — le point 6 les nomme.
+
+### (1) L ETAT EXACT
+
+Branche `feat/decfilm-53`, worktree `LevelUp-wt-decfilm-53`, base du lot `6e86db356`, fusion
+`a289e9c1a` du lot 5.4 (`5fd6f02c3`, `grammar-2026-09-20.2`). Arbre propre. Rien pousse.
+
+| sha | ce qu il apporte |
+|---|---|
+| `6901752f9` `d0e3f42c1` `97f14743d` | 5.3.1 : l ecrivain des etats, D1 mesuree sur mini-bobines |
+| `40213547e` `76cd4f714` | 5.3.1 bis/ter : canal d evenements, `i56`, l enum, l objection tranchee |
+| `7fccdecb8` `9a4962173` `3e81a2a20` `6405237fe` | 5.3.2 : preuve sur film, conclusion de cadence RETIREE, etalon Rosette, hypothese du pilote confirmee |
+| `834527f99` `2cea5cb56` | 5.3.3.0 : liste des fautifs corrigee, journal de fusion |
+| `9d94dc8b3` `613849532` `4fe52d984` `552db474b` | 5.3.3.1 a .4 : quatre negatifs (monde, largeur d ID, base d ID, preambule) |
+| `2a018adf1` | 5.3.3.5 : `i60`, gate TENU en mesure |
+
+**CE QUI EST PORTE** : rien de neuf. **AUCUN OCTET DE PRODUCTION N A ETE TOUCHE DE TOUT LE
+LOT.** Tous les fichiers Go ajoutes sont des `_test.go` sous `//go:build research`, plus le
+paquet `film/research/mouvement/` (hors couche, declare dans `archlint`).
+
+**CE QUI N EST PAS PORTE, ET C EST LE TRAVAIL** : le point (2).
+
+### (2) LE CHANGEMENT DE PRODUCTION A FAIRE — `SimStateComplet`
+
+`i60 simulation-state` est **deja porte integralement**, queue comprise (lot R7-b, 2026-08-17).
+Ce qui le fait desyncer est un DRAPEAU :
+`internal/games/halo_infinite/film/internal/grammar/profil_balayage.go:136`
+(`SimStateComplet bool`, defaut `false`), rendu tel quel comme `ported` par
+`dispatch_biped.go:112`.
+
+Son **critere de bascule est ECRIT** dans son commentaire : « que le chemin absolu d `i0` tire
+ses trois largeurs de la CARTE du match ».
+
+**LE CHANGEMENT JUSTE** : lier le drapeau a la PRESENCE des largeurs de carte, dans
+`ResolveProfile` (`internal/games/halo_infinite/film/internal/grammar/profile.go:40`,
+signature `ResolveProfile(film *source.Film, entry *profile.MapQuantEntry) profile.Profile`) —
+vrai quand `entry != nil`, faux sinon.
+
+**NE PAS basculer le defaut GLOBAL** : `NewFilmContext` (auto-detecte, sans carte) sert les
+enveloppes `ScanFilm*(dir)`, ou les largeurs d axe ne viennent PAS de la carte. Un defaut
+global casserait ces appelants — c est exactement ce que le critere interdit.
+
+**GATES DE CE COMMIT** : `grammar.Rev` monte par l EMPREINTE (racine `film/internal/grammar/`)
+avec son entree de CHRONIQUE (`rev_chronique.go`, la derniere est `grammar-2026-09-20.2`, donc
+`.3`) ; ratchet 0.A.3 (`keyframe_closure.golden`) sans ligne en BAISSE ; `replay-equiv
+--films=4f77afc1` SANS `-update`, **0 perte hors artifact** ; et l ORACLE DE CONTENU :
+**records `ti=35` >= 11 228 et `i21` ~ 64 %** (mesures ci-dessous).
+
+**MESURE DEJA FAITE, a reproduire** (carte `snowbound`, drapeau leve sur le profil de la
+marche) : trames saines 40,5 % -> **40,6 %** · records `ti=35` 11 150 -> **11 228** · `i21`
+64,3 % -> **64,2 %** · desyncs reelles 3 130 -> **3 087** · **fautif `i60` 38 -> 0** · `i29` lu
+7 -> **14** · `i62` lu 6 -> **14**.
+
+### (3) LA LECTURE GHIDRA A FAIRE — LE SERIALISEUR DE TRAME DELTA
+
+**Point de depart** : les APPELANTS de `FUN_1406d3140` en categorie **7** dans la boucle
+d ECRITURE (le pendant de `readRecordID`). Ghidra est joignable en lecture seule sur
+`127.0.0.1:8089` (`/decompile_function?address=0x...`, `/get_xrefs_to`, `/read_memory`) ;
+`HaloInfinite.exe` est analyse, 311 103 fonctions.
+
+**CE QU ON CHERCHE** : les CHEMINS DE RECORD que `DecodeFrameRecords` ne modelise pas. Le
+decodeur connait `recNew`, `recDel`, `recDelta` et `recEnd` ; **12 316 paquets sur 25 958
+echouent des leur PREMIER record**, avec un slot qui n existe pas (4 568 slots distincts, dont
+**0,6 %** seulement vus dans un record sain — ce sont des identifiants lus dans du bruit).
+
+**LES QUATRE NEGATIFS DEJA ACQUIS — NE PAS LES REFAIRE** : ce n est ni l amorcage du monde, ni
+la largeur d ID (13, categorie 7, confirmee chez l ecrivain), ni la base d ID (0 pour la
+categorie 7), ni le preambule (`0xA0` ecrase les deux populations, 98,34 % contre 99,79 %).
+
+### (4) `i59` ET `i57` — CE QUE L ECRIVAIN DIT DEJA
+
+`ecs_table.tsv` (`internal/grammar/testdata/`) les declare `partiel`, et donne la raison :
+
+- **`i57 biped-spartan-ability`** (`FUN_142f02810`) : `R(2)` etiquette ; etiquette 1 -> `R(2)` +
+  `R(24)` reference ; **etiquette 3 -> `FUN_142f262d4`, gardee par des octets d etat RUNTIME**.
+  Une desync PROPRE y est la bonne reponse, et elle doit rester ECRITE.
+- **`i59 biped-spartan-ability-non-predicted-state`** (`FUN_142f02994`) : etiquette + corps ;
+  etiquette 3 = evenement de grappin PAR PAIRES a 0,150 s, position absolue quantifiee aux
+  largeurs de la CARTE, queue `R(3)` sous `param_4 = 2`. `ported=false` sur `Zero3 != 0` ou
+  `Inner` hors `{1,2}`.
+
+**METHODE** : une seule lecture d ecrivain par composant, but ecrit avant. Chercher **jusqu ou
+l ecrivain rend le composant calculable DEPUIS LE FLUX** ; ce qui depend d un octet RUNTIME
+reste une desync propre, et cela se dit dans la note plutot que de se contourner.
+
+Mesures actuelles (bfecd02b, sans le drapeau) : `i59` fautif **19** fois, `i57` **12** fois.
+
+### (5) LA MESURE FINALE DES ETATS
+
+Instrument : `grammar/mouvement_5_3_2d_*` (quatre fichiers, voir point 7).
+
+```bash
+export GOCACHE=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-53/.gocache
+export PATH=/c/msys64/ucrt64/bin:$PATH CGO_ENABLED=1
+cd apps/go-api
+MOUV532D_FILM=<...>/data/cache/film_chunks/bfecd02b \
+MOUV532D_CARTE=snowbound \
+MOUV532D_BORNES='C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-decfilm-53\data\titles\halo_infinite\reference\map_quant_bounds.json' \
+MOUV532D_SIMSTATE=1 \
+  go test -tags=research -count=1 -v -timeout 60m \
+    -run '^TestMouvement532Trame$' ./internal/games/halo_infinite/film/internal/grammar/
+```
+
+`MOUV532D_IDLOW` existe aussi (rejouer la calibration de largeur d ID ; **ne pas s en servir
+pour corriger quoi que ce soit**, cf. point 6).
+
+**A RENDRE** : trames saines · desyncs par composant · **cadence de `i29` par slot
+(records/s)** · intervalles d accroupi par slot (progression > 0,5) · `i62` glissade lue
+(compte + intervalles) · `i54` datee (instants) · `i18` et `i55` ventiles · et **les 5 instants
+par etat en TEMPS DE BARRE THEATER** (accroupi, glissade, action de mobilite, montee/saut), sur
+`bfecd02b`.
+
+**L ORACLE DE CONTENU EST OBLIGATOIRE A CHAQUE PASSE** : `i21` doit rester autour de 64 % et
+les records `ti=35` au-dessus de 11 228. L instrument REFUSE deja de publier une cadence si
+`i21` tombe sous 50 % — **ne desactive pas cette garde**, elle a deja evite une catastrophe
+(point 6).
+
+### (6) LES PIEGES RENCONTRES — CHACUN A COUTE UNE MESURE FAUSSE
+
+1. **`DesyncAt = 0` est une SENTINELLE, pas un index.** Sur le chemin delta,
+   `DecodeFrameRecords` pose `EntityTrace{DesyncAt: 0}` **sans jamais poser `TypeIndex`** quand
+   le test de generation echoue. Lu naivement, cela donne « archetype 0, composant 0 » : j ai
+   publie « `ti=0 i0` est le verrou, 13 463 echecs » — **c etait faux**. Discriminant :
+   `len(Trace.Comps) == 0`.
+2. **Le monde ne doit pas etre remis a neuf par chunk** — les liaisons slot -> archetype des
+   chunks precedents sont perdues (37,7 % -> 40,5 % de trames saines une fois corrige).
+3. **`bpkCalibre` mesure une FERMETURE, pas une largeur.** Il rend `IDLowBits = 9` a 97,5 % de
+   trames exactes ; a cette largeur les records `ti=35` tombent de **11 150 a 1**. Une largeur
+   trop petite satisfait la fermeture de facon degeneree (profondeur 1,02 record/paquet). **Un
+   oracle de fermeture ne prouve jamais une largeur : il lui faut un oracle de CONTENU.**
+4. **`poserBasculeDInstrument` ecrit dans `profilDInstrument`**, le profil du HARNAIS — que les
+   marches qui tiennent leur profil du contexte de film n utilisent PAS. Le drapeau se pose sur
+   `cfg.Profil.Grammaire`.
+5. **Le ratchet de taille (500 lignes) a refuse l instrument DEUX fois.** La reponse est la
+   scission par DEPLACEMENT PUR ; `plafondsParFichier` est datee et fermee, **ne pas y ajouter
+   de ligne**.
+6. **Les heredocs bash echouent sur du contenu a accents et backticks** dans cet environnement :
+   passer par un fichier `.py` ecrit a part, ou par l outil d ecriture.
+
+### (7) LES INSTRUMENTS, ET CE QUE CHACUN FAIT
+
+| fichier | role |
+|---|---|
+| `grammar/mouvement_5_3_2_research_test.go` + `_tableaux_` | la lecture delta par chercheur d ancres, et ses tableaux (5.3.2) |
+| `grammar/mouvement_5_3_2b_research_test.go` | porteurs par image, oracle d accroupissement, vitesse en m/s (`DecodeVelocityMagnitude`, loi log/exp 0,03-350) |
+| `grammar/mouvement_5_3_2c_evenements_research_test.go` | recensement des types d evenements en tete (`PacketHeadEventType`) + etalonnage du lecteur de masque |
+| `grammar/mouvement_5_3_2d_trame_research_test.go` | **LA MARCHE DE REFERENCE** : `DecodeFrameRecords`, carte, drapeau, etalon `i21` |
+| `grammar/mouvement_5_3_2d_couverture_research_test.go` | rejets : slots inconnus contre generations avancees |
+| `grammar/mouvement_5_3_2d_preambule_research_test.go` | octet de tete et taille, rejetes contre sains |
+| `grammar/mouvement_i55_d1_research_test.go` | D1 sur les sept mini-bobines |
+| `film/research/mouvement/` + `cmd_mouvement` | la chaine du descripteur sur l exe (cibles, vocabulaire) |
+
+### (8) HORS PERIMETRE — CONSIGNE AU §4, NE PAS TRAITER
+
+- **Les bases par categorie pour les EVENEMENTS** : la table de `FUN_140d10bb0` vaut aussi pour
+  les references d evenements (`zoomSlotBase = 512` = la base de la categorie 4, validation
+  croisee du § 2decies). Un lot d evenements pourrait PORTER ces bases au lieu de les mesurer.
+- **`D5` mode 0 du vehicule** (lot 5.4), **D2** (conventions de `deser_addr` dans
+  `ecs_table.tsv`), **D4** (les deux numerotations de types d evenement), **D6** (`i49` : la
+  table dit 3 bits, l ecrivain en lit 2 ou 4), **D8** (`scanRecordDirs` ne modelise que six
+  composants), **D9** (le domaine mesure des champs d `i54`).
+- **Le PORT des etats dans le document** (schema 65, web) : il se decide APRES la mesure finale,
+  et pas avant.
+
+### (9) L ENVIRONNEMENT
+
+Worktree `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-53`, branche
+`feat/decfilm-53`. `export GOCACHE=<worktree>/.gocache`, `PATH=/c/msys64/ucrt64/bin:$PATH`,
+`CGO_ENABLED=1`, `GOLANGCI_LINT_CACHE=<worktree>/.golangci-cache`.
+
+**AUCUNE BASE DuckDB tant que le backfill tourne** — demander au pilote avant tout
+`replay-facts-export`. **UN FILM A LA FOIS.** Films autorises a ce jour : `bfecd02b`
+(Snowbound, carte `snowbound`) et `4f77afc1` (Flood Gulch). Jonctions `film_chunks` et
+`film_manifests` posees (1 598 entrees), **jamais retirees**, jamais de `git worktree remove`.
+Corpus gate complet, `replay-equiv` sur 20 films et re-figeage : **par le pilote, a la fin**.
+
+Gates sans decodage a chaque commit : `gofmt -l ./internal ./cmd` · `go build ./...` ·
+`go vet ./...` et `go vet -tags=research ./internal/games/halo_infinite/film/...` ·
+`go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`,
+`replayview`, `contracttest`, `api` · `golangci-lint run ./internal/games/halo_infinite/film/...`.
+
+### (10) LE FORMAT DU COMPTE RENDU
+
+Court, par composant, avec **les tableaux chiffres** et leurs DENOMINATEURS. Dire ce qui est
+mesure, ce qui est refute, et ce qui n est pas fait. **Un negatif s ecrit** ; une hypothese
+abandonnee se nomme. **Arret sur toute perte.** Et quand une mesure contredit le depot, c est
+l instrument qu on suspecte en premier — c est la lecon de `zoom_events.go` (« sept campagnes
+ont conclu "aucun evenement de zoom" a cause d un decalage d UN bit ») et celle de ce lot.
+
+
 - [ ] **5.3.3 — le port** (CONDITIONNEL : seulement si 5.3.2 prouve). Intervalles d'état par
   joueur dans le document (`players[].stances[]`), couche d'analyse sur les faits, **montée de
   schéma 64 -> 65** avec la checklist complète (chronique, `structure_test`,

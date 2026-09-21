@@ -12,6 +12,202 @@
 
 ---
 
+## PASSATION 5.3.3 — A LIRE EN ENTIER AVANT DE TOUCHER UN OCTET (2026-09-21)
+
+> Ecrite a la main du pilote sortant, a ~770 k jetons. Dix points. Le lot est un lot de
+> GRAMMAIRE, et sa methode a ete CORRIGEE EN ROUTE : cinq hypotheses ont ete refutees, quatre
+> par la mesure, une par l ecrivain. **Ne les refais pas** — le point 6 les nomme.
+
+### (1) L ETAT EXACT
+
+Branche `feat/decfilm-53`, worktree `LevelUp-wt-decfilm-53`, base du lot `6e86db356`, fusion
+`a289e9c1a` du lot 5.4 (`5fd6f02c3`, `grammar-2026-09-20.2`). Arbre propre. Rien pousse.
+
+| sha | ce qu il apporte |
+|---|---|
+| `6901752f9` `d0e3f42c1` `97f14743d` | 5.3.1 : l ecrivain des etats, D1 mesuree sur mini-bobines |
+| `40213547e` `76cd4f714` | 5.3.1 bis/ter : canal d evenements, `i56`, l enum, l objection tranchee |
+| `7fccdecb8` `9a4962173` `3e81a2a20` `6405237fe` | 5.3.2 : preuve sur film, conclusion de cadence RETIREE, etalon Rosette, hypothese du pilote confirmee |
+| `834527f99` `2cea5cb56` | 5.3.3.0 : liste des fautifs corrigee, journal de fusion |
+| `9d94dc8b3` `613849532` `4fe52d984` `552db474b` | 5.3.3.1 a .4 : quatre negatifs (monde, largeur d ID, base d ID, preambule) |
+| `2a018adf1` | 5.3.3.5 : `i60`, gate TENU en mesure |
+
+**CE QUI EST PORTE** : rien de neuf. **AUCUN OCTET DE PRODUCTION N A ETE TOUCHE DE TOUT LE
+LOT.** Tous les fichiers Go ajoutes sont des `_test.go` sous `//go:build research`, plus le
+paquet `film/research/mouvement/` (hors couche, declare dans `archlint`).
+
+**CE QUI N EST PAS PORTE, ET C EST LE TRAVAIL** : le point (2).
+
+### (2) LE CHANGEMENT DE PRODUCTION A FAIRE — `SimStateComplet`
+
+`i60 simulation-state` est **deja porte integralement**, queue comprise (lot R7-b, 2026-08-17).
+Ce qui le fait desyncer est un DRAPEAU :
+`internal/games/halo_infinite/film/internal/grammar/profil_balayage.go:136`
+(`SimStateComplet bool`, defaut `false`), rendu tel quel comme `ported` par
+`dispatch_biped.go:112`.
+
+Son **critere de bascule est ECRIT** dans son commentaire : « que le chemin absolu d `i0` tire
+ses trois largeurs de la CARTE du match ».
+
+**LE CHANGEMENT JUSTE** : lier le drapeau a la PRESENCE des largeurs de carte, dans
+`ResolveProfile` (`internal/games/halo_infinite/film/internal/grammar/profile.go:40`,
+signature `ResolveProfile(film *source.Film, entry *profile.MapQuantEntry) profile.Profile`) —
+vrai quand `entry != nil`, faux sinon.
+
+**NE PAS basculer le defaut GLOBAL** : `NewFilmContext` (auto-detecte, sans carte) sert les
+enveloppes `ScanFilm*(dir)`, ou les largeurs d axe ne viennent PAS de la carte. Un defaut
+global casserait ces appelants — c est exactement ce que le critere interdit.
+
+**GATES DE CE COMMIT** : `grammar.Rev` monte par l EMPREINTE (racine `film/internal/grammar/`)
+avec son entree de CHRONIQUE (`rev_chronique.go`, la derniere est `grammar-2026-09-20.2`, donc
+`.3`) ; ratchet 0.A.3 (`keyframe_closure.golden`) sans ligne en BAISSE ; `replay-equiv
+--films=4f77afc1` SANS `-update`, **0 perte hors artifact** ; et l ORACLE DE CONTENU :
+**records `ti=35` >= 11 228 et `i21` ~ 64 %** (mesures ci-dessous).
+
+**MESURE DEJA FAITE, a reproduire** (carte `snowbound`, drapeau leve sur le profil de la
+marche) : trames saines 40,5 % -> **40,6 %** · records `ti=35` 11 150 -> **11 228** · `i21`
+64,3 % -> **64,2 %** · desyncs reelles 3 130 -> **3 087** · **fautif `i60` 38 -> 0** · `i29` lu
+7 -> **14** · `i62` lu 6 -> **14**.
+
+### (3) LA LECTURE GHIDRA A FAIRE — LE SERIALISEUR DE TRAME DELTA
+
+**Point de depart** : les APPELANTS de `FUN_1406d3140` en categorie **7** dans la boucle
+d ECRITURE (le pendant de `readRecordID`). Ghidra est joignable en lecture seule sur
+`127.0.0.1:8089` (`/decompile_function?address=0x...`, `/get_xrefs_to`, `/read_memory`) ;
+`HaloInfinite.exe` est analyse, 311 103 fonctions.
+
+**CE QU ON CHERCHE** : les CHEMINS DE RECORD que `DecodeFrameRecords` ne modelise pas. Le
+decodeur connait `recNew`, `recDel`, `recDelta` et `recEnd` ; **12 316 paquets sur 25 958
+echouent des leur PREMIER record**, avec un slot qui n existe pas (4 568 slots distincts, dont
+**0,6 %** seulement vus dans un record sain — ce sont des identifiants lus dans du bruit).
+
+**LES QUATRE NEGATIFS DEJA ACQUIS — NE PAS LES REFAIRE** : ce n est ni l amorcage du monde, ni
+la largeur d ID (13, categorie 7, confirmee chez l ecrivain), ni la base d ID (0 pour la
+categorie 7), ni le preambule (`0xA0` ecrase les deux populations, 98,34 % contre 99,79 %).
+
+### (4) `i59` ET `i57` — CE QUE L ECRIVAIN DIT DEJA
+
+`ecs_table.tsv` (`internal/grammar/testdata/`) les declare `partiel`, et donne la raison :
+
+- **`i57 biped-spartan-ability`** (`FUN_142f02810`) : `R(2)` etiquette ; etiquette 1 -> `R(2)` +
+  `R(24)` reference ; **etiquette 3 -> `FUN_142f262d4`, gardee par des octets d etat RUNTIME**.
+  Une desync PROPRE y est la bonne reponse, et elle doit rester ECRITE.
+- **`i59 biped-spartan-ability-non-predicted-state`** (`FUN_142f02994`) : etiquette + corps ;
+  etiquette 3 = evenement de grappin PAR PAIRES a 0,150 s, position absolue quantifiee aux
+  largeurs de la CARTE, queue `R(3)` sous `param_4 = 2`. `ported=false` sur `Zero3 != 0` ou
+  `Inner` hors `{1,2}`.
+
+**METHODE** : une seule lecture d ecrivain par composant, but ecrit avant. Chercher **jusqu ou
+l ecrivain rend le composant calculable DEPUIS LE FLUX** ; ce qui depend d un octet RUNTIME
+reste une desync propre, et cela se dit dans la note plutot que de se contourner.
+
+Mesures actuelles (bfecd02b, sans le drapeau) : `i59` fautif **19** fois, `i57` **12** fois.
+
+### (5) LA MESURE FINALE DES ETATS
+
+Instrument : `grammar/mouvement_5_3_2d_*` (quatre fichiers, voir point 7).
+
+```bash
+export GOCACHE=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-53/.gocache
+export PATH=/c/msys64/ucrt64/bin:$PATH CGO_ENABLED=1
+cd apps/go-api
+MOUV532D_FILM=<...>/data/cache/film_chunks/bfecd02b \
+MOUV532D_CARTE=snowbound \
+MOUV532D_BORNES='C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-decfilm-53\data\titles\halo_infinite\reference\map_quant_bounds.json' \
+MOUV532D_SIMSTATE=1 \
+  go test -tags=research -count=1 -v -timeout 60m \
+    -run '^TestMouvement532Trame$' ./internal/games/halo_infinite/film/internal/grammar/
+```
+
+`MOUV532D_IDLOW` existe aussi (rejouer la calibration de largeur d ID ; **ne pas s en servir
+pour corriger quoi que ce soit**, cf. point 6).
+
+**A RENDRE** : trames saines · desyncs par composant · **cadence de `i29` par slot
+(records/s)** · intervalles d accroupi par slot (progression > 0,5) · `i62` glissade lue
+(compte + intervalles) · `i54` datee (instants) · `i18` et `i55` ventiles · et **les 5 instants
+par etat en TEMPS DE BARRE THEATER** (accroupi, glissade, action de mobilite, montee/saut), sur
+`bfecd02b`.
+
+**L ORACLE DE CONTENU EST OBLIGATOIRE A CHAQUE PASSE** : `i21` doit rester autour de 64 % et
+les records `ti=35` au-dessus de 11 228. L instrument REFUSE deja de publier une cadence si
+`i21` tombe sous 50 % — **ne desactive pas cette garde**, elle a deja evite une catastrophe
+(point 6).
+
+### (6) LES PIEGES RENCONTRES — CHACUN A COUTE UNE MESURE FAUSSE
+
+1. **`DesyncAt = 0` est une SENTINELLE, pas un index.** Sur le chemin delta,
+   `DecodeFrameRecords` pose `EntityTrace{DesyncAt: 0}` **sans jamais poser `TypeIndex`** quand
+   le test de generation echoue. Lu naivement, cela donne « archetype 0, composant 0 » : j ai
+   publie « `ti=0 i0` est le verrou, 13 463 echecs » — **c etait faux**. Discriminant :
+   `len(Trace.Comps) == 0`.
+2. **Le monde ne doit pas etre remis a neuf par chunk** — les liaisons slot -> archetype des
+   chunks precedents sont perdues (37,7 % -> 40,5 % de trames saines une fois corrige).
+3. **`bpkCalibre` mesure une FERMETURE, pas une largeur.** Il rend `IDLowBits = 9` a 97,5 % de
+   trames exactes ; a cette largeur les records `ti=35` tombent de **11 150 a 1**. Une largeur
+   trop petite satisfait la fermeture de facon degeneree (profondeur 1,02 record/paquet). **Un
+   oracle de fermeture ne prouve jamais une largeur : il lui faut un oracle de CONTENU.**
+4. **`poserBasculeDInstrument` ecrit dans `profilDInstrument`**, le profil du HARNAIS — que les
+   marches qui tiennent leur profil du contexte de film n utilisent PAS. Le drapeau se pose sur
+   `cfg.Profil.Grammaire`.
+5. **Le ratchet de taille (500 lignes) a refuse l instrument DEUX fois.** La reponse est la
+   scission par DEPLACEMENT PUR ; `plafondsParFichier` est datee et fermee, **ne pas y ajouter
+   de ligne**.
+6. **Les heredocs bash echouent sur du contenu a accents et backticks** dans cet environnement :
+   passer par un fichier `.py` ecrit a part, ou par l outil d ecriture.
+
+### (7) LES INSTRUMENTS, ET CE QUE CHACUN FAIT
+
+| fichier | role |
+|---|---|
+| `grammar/mouvement_5_3_2_research_test.go` + `_tableaux_` | la lecture delta par chercheur d ancres, et ses tableaux (5.3.2) |
+| `grammar/mouvement_5_3_2b_research_test.go` | porteurs par image, oracle d accroupissement, vitesse en m/s (`DecodeVelocityMagnitude`, loi log/exp 0,03-350) |
+| `grammar/mouvement_5_3_2c_evenements_research_test.go` | recensement des types d evenements en tete (`PacketHeadEventType`) + etalonnage du lecteur de masque |
+| `grammar/mouvement_5_3_2d_trame_research_test.go` | **LA MARCHE DE REFERENCE** : `DecodeFrameRecords`, carte, drapeau, etalon `i21` |
+| `grammar/mouvement_5_3_2d_couverture_research_test.go` | rejets : slots inconnus contre generations avancees |
+| `grammar/mouvement_5_3_2d_preambule_research_test.go` | octet de tete et taille, rejetes contre sains |
+| `grammar/mouvement_i55_d1_research_test.go` | D1 sur les sept mini-bobines |
+| `film/research/mouvement/` + `cmd_mouvement` | la chaine du descripteur sur l exe (cibles, vocabulaire) |
+
+### (8) HORS PERIMETRE — CONSIGNE AU §4, NE PAS TRAITER
+
+- **Les bases par categorie pour les EVENEMENTS** : la table de `FUN_140d10bb0` vaut aussi pour
+  les references d evenements (`zoomSlotBase = 512` = la base de la categorie 4, validation
+  croisee du § 2decies). Un lot d evenements pourrait PORTER ces bases au lieu de les mesurer.
+- **`D5` mode 0 du vehicule** (lot 5.4), **D2** (conventions de `deser_addr` dans
+  `ecs_table.tsv`), **D4** (les deux numerotations de types d evenement), **D6** (`i49` : la
+  table dit 3 bits, l ecrivain en lit 2 ou 4), **D8** (`scanRecordDirs` ne modelise que six
+  composants), **D9** (le domaine mesure des champs d `i54`).
+- **Le PORT des etats dans le document** (schema 65, web) : il se decide APRES la mesure finale,
+  et pas avant.
+
+### (9) L ENVIRONNEMENT
+
+Worktree `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-53`, branche
+`feat/decfilm-53`. `export GOCACHE=<worktree>/.gocache`, `PATH=/c/msys64/ucrt64/bin:$PATH`,
+`CGO_ENABLED=1`, `GOLANGCI_LINT_CACHE=<worktree>/.golangci-cache`.
+
+**AUCUNE BASE DuckDB tant que le backfill tourne** — demander au pilote avant tout
+`replay-facts-export`. **UN FILM A LA FOIS.** Films autorises a ce jour : `bfecd02b`
+(Snowbound, carte `snowbound`) et `4f77afc1` (Flood Gulch). Jonctions `film_chunks` et
+`film_manifests` posees (1 598 entrees), **jamais retirees**, jamais de `git worktree remove`.
+Corpus gate complet, `replay-equiv` sur 20 films et re-figeage : **par le pilote, a la fin**.
+
+Gates sans decodage a chaque commit : `gofmt -l ./internal ./cmd` · `go build ./...` ·
+`go vet ./...` et `go vet -tags=research ./internal/games/halo_infinite/film/...` ·
+`go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`,
+`replayview`, `contracttest`, `api` · `golangci-lint run ./internal/games/halo_infinite/film/...`.
+
+### (10) LE FORMAT DU COMPTE RENDU
+
+Court, par composant, avec **les tableaux chiffres** et leurs DENOMINATEURS. Dire ce qui est
+mesure, ce qui est refute, et ce qui n est pas fait. **Un negatif s ecrit** ; une hypothese
+abandonnee se nomme. **Arret sur toute perte.** Et quand une mesure contredit le depot, c est
+l instrument qu on suspecte en premier — c est la lecon de `zoom_events.go` (« sept campagnes
+ont conclu "aucun evenement de zoom" a cause d un decalage d UN bit ») et celle de ce lot.
+
+
+---
+
 ## 0. LA REPONSE COURTE, TELLE QUE L'ECRIVAIN LA DONNE
 
 | Geste | Le film l'ecrit-il ? | Ou | Forme |
