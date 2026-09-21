@@ -1033,6 +1033,86 @@ Le seul octet modifie est dans un `_test.go` sous tag `research` (`BindFull` -> 
 plus la mesure de couverture). `grammar.Rev`, `facts.Rev`, le ratchet 0.A.3 et les fixtures
 sont inchanges par construction. Gates sans decodage verts.
 
+## 2 nonies. LE CADRAGE : `bpkCalibre` DIT 9, L ECRIVAIN DIT 13 — ET C EST L ECRIVAIN QUI A RAISON
+
+> Etape (1) du cadrage. La calibration a ete jouee, puis ARBITREE par l ecrivain, et
+> l arbitrage a evite un correctif qui aurait detruit le decodage des bipedes en rendant tous
+> les gates verts.
+
+### 2non.1 LA CALIBRATION DU DEPOT, SUR `bfecd02b`
+
+`TestBipedPickupCalibration` (`bpkCalibre`), balayage d `IDLowBits` sur les paquets a liste
+vide, 3 000 paquets :
+
+| `IDLowBits` | trames EXACTES | profondeur (record/paquet) |
+|---|---|---|
+| **9** | **97,5 %** | **1,02** |
+| 10 | 5,3 % | 1,46 |
+| 11 | 85,2 % | 1,04 |
+| 12 | 11,2 % | 2,08 |
+| **13 (defaut)** | **5,1 %** | 1,63 |
+| 14 | 8,2 % | 1,28 |
+| 15 | 28,3 % | 1,05 |
+| 16 | 17,2 % | 1,15 |
+
+Temoins de decalage au cadrage retenu : +0 bit **79,0 %**, +1 **0,0 %**, +2 **0,1 %**, +3
+**0,0 %**. **Le cadrage au bit 2 est donc juste** — ce n est pas la position de la trame qui est
+en cause.
+
+### 2non.2 CE QUE `IDLowBits = 9` FAIT VRAIMENT, MESURE
+
+| | defaut 13 | calibre 9 |
+|---|---|---|
+| trames decodees sans erreur | 10 512 (40,5 %) | **25 182 (97,0 %)** |
+| rejets de generation | 12 316 | **405** |
+| desyncs reelles | 3 130 | **371** |
+| **records `ti=35`** | **11 150** | **1** |
+| etalon `i21` | 64,3 % | **0,0 %** |
+
+**97 % de trames « saines » et UN SEUL record de bipede.** L etalon `i21` a REFUSE de publier —
+la garde posee au paragraphe 2 quinquies a fait exactement son travail. Un correctif adopte sur
+le seul taux de trames aurait rendu tous les gates verts en detruisant le decodage des joueurs.
+
+### 2non.3 L ARBITRAGE : L ECRIVAIN, ET IL EST DEJA DANS LE DEPOT
+
+`readRecordID` porte `FUN_1406d3140(_, _, 7, _)` — **categorie 7** de la table de plages du jeu.
+Et `varwidth.go` ecrit, apres relecture de `FUN_140d10bb0` :
+
+> « `W` ne vaut 13 que pour les categories 0, 1, **7** et 8 — celles dont la plage derive de
+> `DAT_144706100` (0x1FFF, et `bitLen(0x1DFF) == bitLen(0x1FFF) == 13`). »
+
+`varWidthRange(7)` retombe sur `varWidthDefaultRange = 0x1FFF`, donc `varWidthBits(7) = 13`.
+**LA LARGEUR D ID BAS EST 13, ET ELLE VIENT DE L ECRIVAIN.** Ce n est ni une constante « qui
+marche » ni une ligne de profil : c est une categorie de la table du jeu.
+
+### 2non.4 POURQUOI `bpkCalibre` REND 9, ET CE QUE CELA APPREND DE L ORACLE
+
+Son critere d exactitude est « la trame consomme le payload a moins d un octet pres ». **Une
+largeur TROP PETITE le satisfait de facon degeneree** : la profondeur tombe a **1,02
+record/paquet** — un record par paquet, la ou un paquet delta a 60 Hz en porte plusieurs
+dizaines. La trame « ferme » parce qu elle lit un seul gros record et s arrete, pas parce
+qu elle est juste.
+
+**LECON, ET ELLE VAUT POUR TOUT LE CHANTIER** : un oracle de FERMETURE ne prouve pas une
+largeur ; il lui faut un oracle de CONTENU (ici : le compte de records par paquet, et la
+presence d `i21`). `bpkCalibre` reste valide pour ce qu il fait — departager des cadrages a
+largeur EGALE — mais il ne peut pas arbitrer une largeur.
+
+### 2non.5 CONSEQUENCE POUR L ETAPE (2)
+
+**IL N Y A RIEN A CORRIGER DANS `frame_records.go`.** La largeur d ID y est deja celle de
+l ecrivain. L etape (2) telle qu elle etait prevue — « corriger le cadrage » — **n a pas
+d objet**, et aucun octet de production n a ete touche.
+
+**LA CAUSE DES 12 316 REJETS RESTE DONC OUVERTE**, et deux hypotheses sont eliminees pour de
+bon : ce n est pas l amorcage du monde (paragraphe 2 octies), ce n est pas la largeur d ID.
+Ce qui reste a instruire, dans l ordre : le PREAMBULE (les 2 bits valent-ils 2 bits pour TOUS
+les paquets a liste vide ?), et surtout **`IDBase`** — `FUN_1406d3140` rend
+`(queue << 30) | (base + valeur)` avec une base de 0x200 / 0x300 / 0x400 **selon la
+categorie**, et `varwidth.go` dit explicitement que cette base **n est pas portee** et que la
+changer « se juge au gate de decodage ». Une base fausse decale TOUS les identifiants — c est
+exactement le symptome mesure : des slots qui n existent pas.
+
 ---
 
 ## 3. LE NEGATIF, MESURE DEUX FOIS
