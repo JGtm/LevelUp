@@ -19,6 +19,7 @@ import { isFullHistoryScope } from '@/lib/baseline'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
 import type { ChartPointHistogram } from '@/components/charts/HistogramChart'
+import { shortSessionLabel } from '@/components/charts/sessionBarsTrendChart'
 
 /**
  * Plancher d'échantillon : 30 morts d'équipe (plan tactique §1, décision produit
@@ -323,13 +324,9 @@ export function moyenneGlissante(valeurs: number[], fenetre: number): number[] {
 /**
  * libelleCourtSession réduit un libellé de session à sa DATE.
  *
- * Le libellé complet (« 13/10/2025 22:27–22:46 (3) ») porte la plage horaire et le nombre
- * de matchs : posé sur quarante graduations d'axe, il se chevauche et devient illisible.
- * L'axe dit QUAND — la soirée —, pas le détail, qui reste dans l'infobulle du point.
- *
- * Un libellé sans espace est rendu tel quel : on ne coupe jamais à l'aveugle.
+ * La règle vit désormais avec la frise partagée
+ * (`components/charts/sessionBarsTrendChart.ts`) : les Séries temporelles raccourcissent
+ * les mêmes libellés sur le même axe — deux copies de la coupe finiraient par diverger.
+ * Cet export garde le nom de l'Escouade.
  */
-export function libelleCourtSession(label: string): string {
-  const espace = label.indexOf(' ')
-  return espace > 0 ? label.slice(0, espace) : label
-}
+export const libelleCourtSession = shortSessionLabel

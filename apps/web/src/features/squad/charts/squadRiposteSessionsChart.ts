@@ -1,38 +1,30 @@
 /**
- * squadRiposteSessionsChart — la FRISE de la riposte, soirée par soirée (carte « Riposte »
+ * squadRiposteSessionsChart — la frise de la riposte, soirée par soirée (carte « Riposte »
  * de la section Coordination, D19 du 2026-09-21).
  *
- * GRAMMAIRE REPRISE DE `squadSessionTimelineChart.ts`, que l'utilisateur a désignée comme
- * référence : bâtons à 18 px, courbe pleine 2 px NON lissée par-dessus, légende nommant
- * chaque série, axes en 10 px gris.
+ * CE MODULE N'EST PLUS QU'UN ADAPTATEUR (2026-09-22, lot Q). La grammaire de la frise —
+ * bâtons 18 px, courbe pleine non lissée, repère d'habituel tireté, rang de volumes sous
+ * l'axe — a été HISSÉE dans `components/charts/sessionBarsTrendChart.ts` parce que les
+ * Séries temporelles en demandent deux instances de plus (Riposte, Appui reçu) : la règle
+ * des deux copies interdit de la recopier. Ici ne reste que la TRADUCTION de la matière de
+ * l'Escouade (`FriseRiposte`) en séries génériques, et les deux choix qui lui appartiennent :
  *
- * TROIS ÉCARTS ASSUMÉS À LA RÉFÉRENCE :
- *
- *   1. UN SEUL AXE Y. La référence en a deux (perf et MMR) ; ici tout est en points de
- *      pourcentage — taux de la soirée, tendance, habituel —, donc un seul suffit, et deux
- *      seraient une faute de lecture.
- *   2. LA COULEUR DU BÂTON PORTE UN VERDICT, jamais l'identité d'une soirée : au-dessus de
+ *   1. LA COULEUR DU BÂTON PORTE UN VERDICT, jamais l'identité d'une soirée : au-dessus de
  *      l'habituel (`success`) ou en dessous (`warning`). Les deux verdicts sont DEUX SÉRIES
- *      EMPILÉES à trous — c'est ce qui leur donne une entrée de légende chacun, là qu'une
+ *      EMPILÉES À TROUS — c'est ce qui leur donne une entrée de légende chacun, là qu'une
  *      colorisation par `itemStyle` n'aurait nommée nulle part.
- *   3. LE VOLUME DE CHAQUE SOIRÉE (morts mesurées) est un SECOND RANG D'ÉTIQUETTES sous
+ *   2. LE VOLUME DE CHAQUE SOIRÉE (morts mesurées) est un second rang d'étiquettes sous
  *      l'axe des dates, pas un second graphe : c'est le dénominateur, il n'a pas d'échelle
  *      propre. La courbe que cette frise remplace n'en montrait aucun — une soirée à
  *      3 morts mesurées s'y lisait comme une soirée à 80.
- *
- * Le repère de l'habituel est une `markLine` TIRETÉE posée sur la première série : une
- * valeur de comparaison n'est pas une mesure de la période, elle ne peut pas être un bâton.
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken } from '@/lib/accessibility'
+import { seriesColor } from '@/components/charts/_utils'
 import {
-  CHART_BG,
-  getAxisBase,
-  getEChartsThemeColors,
-  getLegendBase,
-  getTooltipBase,
-  seriesColor,
-} from '@/components/charts/_utils'
+  buildSessionBarsTrendOption,
+  type SessionBarsSeriesSpec,
+} from '@/components/charts/sessionBarsTrendChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { FriseRiposte } from '../squadRiposte.logic'
 
@@ -49,10 +41,6 @@ export interface SquadRiposteSessionsOpts {
   volumeTooltip: (n: number) => string
 }
 
-function round1(v: number): number {
-  return parseFloat(v.toFixed(1))
-}
-
 /**
  * buildSquadRiposteSessionsOption — l'option ECharts complète de la frise.
  *
@@ -64,103 +52,40 @@ export function buildSquadRiposteSessionsOption(
   opts: SquadRiposteSessionsOpts,
 ): EChartsCoreOption {
   const frise = series[0]?.datapoints[0]
-  if (!frise || frise.soirees.length === 0) return { backgroundColor: CHART_BG }
+  if (!frise || frise.soirees.length === 0) return buildSessionBarsTrendOption({ labels: [], series: [], yAxisLabel: opts.yAxisLabel })
 
-  const tc = getEChartsThemeColors()
-  const axis = getAxisBase(tc)
   const above = resolveToken('success')
   const below = resolveToken('warning')
-
-  const labels = frise.soirees.map((s) => s.label)
-  const volumes = frise.soirees.map((s) => String(s.morts))
   // Deux séries à TROUS, empilées : chaque soirée n'alimente que celle de son verdict.
-  const dataAbove = frise.soirees.map((s) => (s.auDessus ? round1(s.tauxPct) : null))
-  const dataBelow = frise.soirees.map((s) => (s.auDessus ? null : round1(s.tauxPct)))
-  const dataTrend = frise.tendancePct.map(round1)
-  const parLabel = new Map(frise.soirees.map((s) => [s.label, s.morts]))
+  const specs: SessionBarsSeriesSpec[] = [
+    {
+      name: opts.aboveLabel,
+      color: above,
+      stack: 'soiree',
+      valuesPct: frise.soirees.map((s) => (s.auDessus ? s.tauxPct : null)),
+      usual: { valuePct: frise.habituelPct, label: opts.usualLabel },
+      trend: {
+        valuesPct: frise.tendancePct,
+        label: opts.trendLabel,
+        color: seriesColor(2),
+      },
+    },
+    {
+      name: opts.belowLabel,
+      color: below,
+      stack: 'soiree',
+      valuesPct: frise.soirees.map((s) => (s.auDessus ? null : s.tauxPct)),
+    },
+  ]
 
-  const barBase = {
-    type: 'bar',
-    stack: 'soiree',
-    barMaxWidth: 18,
-    itemStyle: { borderRadius: [3, 3, 0, 0] },
-  }
-
-  return {
-    backgroundColor: CHART_BG,
-    grid: { top: 36, bottom: 64, left: 8, right: 24, containLabel: true },
-    tooltip: {
-      ...getTooltipBase(tc),
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      // Le DÉNOMINATEUR rejoint chaque infobulle : un taux sans son volume se lit faux.
-      formatter: (params: unknown) => {
-        const rows = Array.isArray(params) ? (params as { axisValue: string; marker: string; seriesName: string; value: number | null }[]) : []
-        if (rows.length === 0) return ''
-        const titre = rows[0].axisValue
-        const lignes = rows
-          .filter((r) => r.value != null)
-          .map((r) => `${r.marker}${r.seriesName} : ${r.value} %`)
-        lignes.push(opts.volumeTooltip(parLabel.get(titre) ?? 0))
-        return [titre, ...lignes].join('<br/>')
-      },
+  return buildSessionBarsTrendOption({
+    labels: frise.soirees.map((s) => s.label),
+    series: specs,
+    yAxisLabel: opts.yAxisLabel,
+    volumeAxis: {
+      label: opts.volumeAxisLabel,
+      values: frise.soirees.map((s) => String(s.morts)),
     },
-    legend: {
-      ...getLegendBase(tc),
-      data: [opts.aboveLabel, opts.belowLabel, opts.trendLabel],
-    },
-    xAxis: [
-      { ...axis, type: 'category', data: labels },
-      {
-        // Le rang des volumes : un axe de catégories SANS ligne ni graduation, posé sous
-        // le premier. Il ne porte aucune série — seulement ses étiquettes.
-        type: 'category',
-        data: volumes,
-        position: 'bottom',
-        offset: 22,
-        axisLine: { show: false },
-        axisTick: { show: false },
-        splitLine: { show: false },
-        name: opts.volumeAxisLabel,
-        nameLocation: 'end',
-        nameGap: 8,
-        nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
-        axisLabel: { color: tc.axisLabel, fontSize: 10 },
-      },
-    ],
-    yAxis: {
-      ...axis,
-      type: 'value',
-      min: 0,
-      name: opts.yAxisLabel,
-      nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
-      axisLabel: { ...axis.axisLabel, formatter: '{value} %' },
-    },
-    series: [
-      {
-        ...barBase,
-        name: opts.aboveLabel,
-        data: dataAbove,
-        color: above,
-        markLine: {
-          silent: true,
-          symbol: 'none',
-          lineStyle: { type: 'dashed', color: tc.axisLabel, width: 1 },
-          label: { formatter: opts.usualLabel, color: tc.axisLabel, fontSize: 10, position: 'insideEndTop' },
-          data: [{ yAxis: round1(frise.habituelPct) }],
-        },
-      },
-      { ...barBase, name: opts.belowLabel, data: dataBelow, color: below },
-      {
-        name: opts.trendLabel,
-        type: 'line',
-        data: dataTrend,
-        smooth: false,
-        lineStyle: { width: 2, color: seriesColor(2) },
-        itemStyle: { color: seriesColor(2) },
-        symbol: 'circle',
-        symbolSize: 6,
-      },
-    ],
-  }
+    tooltipLines: (i) => [opts.volumeTooltip(frise.soirees[i]?.morts ?? 0)],
+  })
 }
