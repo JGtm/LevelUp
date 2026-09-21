@@ -190,8 +190,8 @@ surface `film/replay` 260 -> 263 justifie.
 - [ ] Section Coordination de la colonne de session : carte Riposte (jauges + bande), carte Appui recu (jauges + bande)
 - [ ] Carte Portee : un baton par match (ecart au lobby), bandes de role, mediane de session, classes en infobulle
 
-### Lot P — Match view : Riposte par joueur (worktree `LevelUp-wt-ajsup-p`)
-- [ ] Bloc Riposte : deux graphes par joueur (camp A, camp B) cote a cote, comptes
+### Lot P — Match view : Riposte par joueur (worktree `LevelUp-wt-ajsup-p`) — FUSIONNE ff9444413
+- [x] Bloc Riposte : deux graphes par joueur (camp A, camp B) cote a cote, comptes
 
 ### Lot Q — Timeseries : Riposte et Appui en un seul graphe chacun (worktree `LevelUp-wt-ajsup-q`)
 - [ ] Frise du lot J rendue reutilisable ; deux series de batons par soiree sur un axe %, un repere d habituel par serie
