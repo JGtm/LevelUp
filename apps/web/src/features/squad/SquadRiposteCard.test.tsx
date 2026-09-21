@@ -1,9 +1,8 @@
 /**
  * La carte « Riposte » — le récit que six blocs racontaient chacun leur tour.
  *
- * Ce que ces tests cadenassent (D19, 2026-09-21) :
- *   - la PHRASE DE LECTEUR est TOUJOURS rendue (l'ancien « Constat » se taisait sous 5
- *     points d'écart, faisant disparaître la seule carte en français) ;
+ * Ce que ces tests cadenassent (D19, 2026-09-21 ; D22-verbosité, 2026-09-21) :
+ *   - AUCUNE phrase de lecteur : l'explication vit dans l'infobulle (i) du titre ;
  *   - le chiffre d'appel dit le taux ET le délai, cohérents avec la couverture servie ;
  *   - l'écart se TAIT sur tout l'historique (tautologie, pas mesure) ;
  *   - une SEULE soirée rend UN SEUL bâton — plus aucun repli en liste ;
@@ -45,13 +44,10 @@ function avecSoirees(taux: number[]): SquadEchange {
 }
 
 describe('SquadRiposteCard', () => {
-  it('rend TOUJOURS la phrase de lecteur, chiffrée', () => {
+  it('ne rend AUCUNE phrase de lecteur (D22-verbosité) — le chiffre d’appel reste', () => {
     renderWithProviders(<SquadRiposteCard echange={avecSoirees([0.3, 0.1])} />)
-    const phrase = screen.getByTestId('squad-riposte-phrase').textContent ?? ''
-    // 19,4 % ≈ une fois sur cinq, délai médian 2,4 s.
-    expect(phrase).toMatch(/une fois sur 5/i)
-    expect(phrase).toContain('2,4')
-    expect(phrase).toMatch(/5 secondes/)
+    expect(screen.queryByTestId('squad-riposte-phrase')).toBeNull()
+    expect(screen.getByTestId('squad-riposte-taux')).toBeTruthy()
   })
 
   it('le chiffre d’appel et son écart sont cohérents avec la couverture servie', () => {
@@ -68,8 +64,8 @@ describe('SquadRiposteCard', () => {
     const plein = echangeDe({ matchs_total: 60, matchs_habituel: 60 })
     renderWithProviders(<SquadRiposteCard echange={plein} />)
     expect(screen.queryByTestId('squad-riposte-ecart')).toBeNull()
-    // La phrase, elle, reste : le fait ne dépend pas de l'écart.
-    expect(screen.getByTestId('squad-riposte-phrase')).toBeTruthy()
+    // Le taux, lui, reste : il ne dépend pas de l'écart.
+    expect(screen.getByTestId('squad-riposte-taux')).toBeTruthy()
   })
 
   it('UNE SEULE SOIRÉE rend un graphe, jamais une liste de définitions', () => {
@@ -87,13 +83,13 @@ describe('SquadRiposteCard', () => {
     }
   })
 
-  it('PARITÉ FR/EN : les deux langues rendent une phrase, et deux phrases différentes', () => {
+  it('PARITÉ FR/EN : les deux langues rendent deux libellés de chiffre d’appel distincts', () => {
     const { unmount } = renderWithProviders(<SquadRiposteCard echange={avecSoirees([0.3])} />)
-    const fr = screen.getByTestId('squad-riposte-phrase').textContent ?? ''
+    const fr = screen.getByTestId('squad-riposte-ecart').textContent ?? ''
     unmount()
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<SquadRiposteCard echange={avecSoirees([0.3])} />)
-    const en = screen.getByTestId('squad-riposte-phrase').textContent ?? ''
+    const en = screen.getByTestId('squad-riposte-ecart').textContent ?? ''
     expect(fr.length).toBeGreaterThan(0)
     expect(en).not.toBe(fr)
     expect(en.includes('squad.riposte.')).toBe(false)
