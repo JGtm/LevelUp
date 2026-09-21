@@ -2558,6 +2558,15 @@ tag 3 -> 1. Un denominateur de UN n est pas une mesure. **Le candidat de l ecriv
 d etat physique, dont l une des voies est l etat aerien) reste donc NON TRANCHE — pour une raison
 mesuree, et pas pour un manque d essai.**
 
+**ET LES CINQ INSTANTS PAR ETAT EN TEMPS DE BARRE THEATER NE SONT PAS LIVRES, DELIBEREMENT.** Le
+brief les demande pour le sprint, le saut et l escalade. Aucun des trois n est etabli : le sprint
+est refute chez l ecrivain, l escalade n est pas nommee, et le saut n a pas de tag. Sortir cinq
+instants d un tag qu on ne sait pas nommer donnerait a un horodatage l autorite d une preuve —
+c est exactement la faute que le § 2 quinquies du 5.3 a evitee en refusant de publier une liste
+vide comme un progres. Les instants des TROIS etats DEJA nommes (accroupi, glissade, action de
+mobilite) sont livres depuis le 5.3.4, et ils sont a re-lire sous la decision du § 5.7.4 : leur
+population aussi vient de la porte polluee.
+
 ### 5.7.3 LE PORT DE GRAMMAIRE — LES QUATRE CHARGES D `i55` (D1 FERMEE)
 
 Ce que le depot lisait : `R(2)` et rien de plus. Ce que l ecrivain lit, largeur par largeur —

@@ -6594,6 +6594,11 @@ depasse l enum `kind` que le brief autorise a bouger.
   `i54` **321** / 39 · `i1` 75 488 / 80. Des 52 lectures d `i55`, 30 sur slot lie et **20** avec
   une vitesse tenue (tag 0 -> 15, tag 1 -> 1, tag 2 -> 3, tag 3 -> 1). **LE SAUT RESTE NON
   TRANCHE POUR UNE RAISON MESUREE** : un denominateur de un n est pas une mesure.
+  **[!] LES CINQ INSTANTS PAR ETAT EN TEMPS DE BARRE THEATER NE SONT PAS LIVRES, ET C EST
+  DELIBERE** : le brief les demande pour le sprint, le saut et l escalade — le sprint est refute,
+  l escalade n est pas nommee, le saut n a pas de tag. Sortir cinq instants d un tag qu on ne sait
+  pas nommer donnerait a un horodatage l autorite d une preuve. Les instants des trois etats deja
+  nommes sont livres depuis le 5.3.4, et ils sont a relire sous la decision de la case 5.7.4.
   Cinq instruments neufs, tous `_test.go` sous `//go:build research` ; **aucun octet de production
   touche a ce point**.
 - [x] **5.7.3 — LE PORT DE GRAMMAIRE : LES QUATRE CHARGES D `i55` (D1 FERMEE), `grammar-2026-09-21.3`.**
