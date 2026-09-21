@@ -359,3 +359,50 @@ func TestComputeUsage_VentilationsSoclesEtBonus(t *testing.T) {
 		t.Errorf("cadence camo = %v, attendu 1.5 par match", out.PowerupPickups[0].PerMatch)
 	}
 }
+
+// TestComputeUsage_EffectifDeCampParMatch — RÉSERVE R1 (2026-09-21).
+//
+// La jauge « ma part face à 1/n » de la session a besoin de n PAR MATCH : la session de
+// test mêle un 2v2 et un 3v2, et la moyenne de session (TeamSizeAvg = 2,5) ne donne la
+// parité juste d'aucun des deux. Le camp voyage avec l'effectif — sans lui, un web qui
+// cherche « mon camp » sur la case devrait le redemander.
+func TestComputeUsage_EffectifDeCampParMatch(t *testing.T) {
+	out := ComputeUsage(sessionDeTest())
+	m := findMetric(t, out.Metrics, MetricPadPickups)
+
+	attendus := map[string]int{"m1": 2, "m2": 3}
+	if len(m.PerMatch) != 2 {
+		t.Fatalf("%d cases, attendu 2 (le match non mesuré n'en a pas)", len(m.PerMatch))
+	}
+	for _, p := range m.PerMatch {
+		if p.TeamSize == nil || *p.TeamSize != attendus[p.MatchID] {
+			t.Errorf("%s : team_size = %v, attendu %d", p.MatchID, p.TeamSize, attendus[p.MatchID])
+		}
+		if p.PlayerTeam == nil || *p.PlayerTeam != 0 {
+			t.Errorf("%s : player_team = %v, attendu 0", p.MatchID, p.PlayerTeam)
+		}
+	}
+}
+
+// TestComputeUsage_FFASansEffectifDeCamp — CAMP INCONNU = ABSENT, JAMAIS UN 1 INVENTÉ.
+//
+// Un 1 de repli donnerait une parité de 100 % : le joueur serait « au-dessus de son tour »
+// sur tous les matchs sans camp, ce que la bande de régularité peindrait comme une
+// performance. Le 0 de `MatchInput.TeamSize` ne sort pas davantage — il dirait « camp
+// vide » là où la mesure dit « pas de camp ».
+func TestComputeUsage_FFASansEffectifDeCamp(t *testing.T) {
+	out := ComputeUsage(Input{
+		PlayerXUID: "P",
+		Matches: []MatchInput{{
+			MatchID: "ffa", Measured: true, DurationSeconds: 600, LobbySize: 8,
+			Players: []PlayerRow{{MatchID: "ffa", XUID: "P", PadPickups: 2}},
+		}},
+	})
+	m := findMetric(t, out.Metrics, MetricPadPickups)
+	if len(m.PerMatch) != 1 {
+		t.Fatalf("%d cases, attendu 1", len(m.PerMatch))
+	}
+	if p := m.PerMatch[0]; p.TeamSize != nil || p.PlayerTeam != nil {
+		t.Fatalf("team_size = %v, player_team = %v, attendu nil et nil en FFA", p.TeamSize, p.PlayerTeam)
+	}
+}

@@ -337,7 +337,7 @@ func computeMetric(playerXUID, key string, measured []MatchInput) domain.Session
 		p, t, l := matchSums(playerXUID, key, m)
 		out.PlayerTotal += float64(p)
 		out.LobbyTotal += float64(l)
-		point := domain.SessionUsageMatchPoint{MatchID: m.MatchID}
+		point := newMatchPoint(m)
 		point.PlayerShareOfLobbyPct = sharePct(float64(p), float64(l))
 		if m.PlayerTeam != nil {
 			teamKnown = true

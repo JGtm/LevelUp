@@ -4,6 +4,8 @@ package sessionusage
 // dérivé de match_participants (S1 ne duplique pas l'effectif, à dessein — §3
 // du handoff). Consommé par l'assemblage des deux blocs (usage et objectifs).
 
+import "levelup/go-api/internal/domain"
+
 // TeamContext — par match du scope : le camp du joueur suivi, le camp de chaque
 // participant, et les effectifs présents à la fin.
 type TeamContext struct {
@@ -52,4 +54,28 @@ func BuildTeamContext(playerXUID string, participants []ParticipantRow) TeamCont
 		}
 	}
 	return tc
+}
+
+// newMatchPoint ouvre la case de bande d'UN match en y posant son EFFECTIF DE CAMP
+// (réserve R1, 2026-09-21) : le numéro de camp du joueur et le nombre de joueurs de ce
+// camp présents à la fin.
+//
+// LES DEUX SONT NIL ENSEMBLE, ET SEULEMENT QUAND LE CAMP EST INCONNU. `MatchInput.TeamSize`
+// vaut 0 dans ce cas (BuildTeamContext ne compte un coéquipier que si le camp du joueur est
+// connu) : publier ce 0 dirait « camp vide », et publier un 1 de repli donnerait une parité
+// de 100 % qui classerait le joueur au-dessus de son tour sur tous les matchs sans camp.
+// C'est la même règle que les parts d'équipe de la même ligne — un match FFA n'a pas de
+// part d'équipe, il n'a pas non plus d'effectif de camp.
+func newMatchPoint(m *MatchInput) domain.SessionUsageMatchPoint {
+	point := domain.SessionUsageMatchPoint{MatchID: m.MatchID}
+	if m.PlayerTeam == nil {
+		return point
+	}
+	team := *m.PlayerTeam
+	point.PlayerTeam = &team
+	if m.TeamSize > 0 {
+		size := m.TeamSize
+		point.TeamSize = &size
+	}
+	return point
 }

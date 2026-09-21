@@ -87,6 +87,18 @@ type SessionUsageMatchPoint struct {
 	PlayerShareOfTeamPct  *float64 `json:"player_share_of_team_pct,omitempty"`
 	PlayerShareOfLobbyPct *float64 `json:"player_share_of_lobby_pct,omitempty"`
 	TeamShareOfLobbyPct   *float64 `json:"team_share_of_lobby_pct,omitempty"`
+	// TeamSize / PlayerTeam — L'EFFECTIF DE MON CAMP ET SON NUMÉRO, PAR MATCH
+	// (réserve R1 du 2026-09-21). Sans eux, la jauge « ma part face à 1/n » de la
+	// session n'a pas de parité juste : TeamSizeAvg est une MOYENNE de session, et
+	// une soirée qui mêle 4v4 et BTB y perd la parité de chaque match.
+	//
+	// ABSENTS = CAMP INCONNU (FFA, participant manquant), jamais un 1 inventé : une
+	// parité de 100 % fabriquée classerait le joueur au-dessus de son tour sur tous
+	// les matchs sans camp. Même source que les parts d'équipe de la même ligne
+	// (sessionusage.TeamContext) — l'un est nil exactement quand les autres le sont.
+	// L'effectif compte les joueurs PRÉSENTS À LA FIN, bots inclus.
+	TeamSize   *int `json:"team_size,omitempty"`
+	PlayerTeam *int `json:"player_team,omitempty"`
 }
 
 // SessionUsageOutcomes — LES TROIS ISSUES d'un objet d'équipement pris, portées
