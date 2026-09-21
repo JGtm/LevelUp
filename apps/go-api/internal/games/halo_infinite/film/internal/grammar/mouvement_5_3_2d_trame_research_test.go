@@ -46,6 +46,12 @@ import (
 type m532dStat struct {
 	paquets, trames, records int
 	tmin, tmax               uint64
+	// preambule : la distribution de l octet de TETE et de la TAILLE des paquets, separee par
+	// sort du paquet. SANS HYPOTHESE : on ne cherche pas un drapeau precis, on regarde si les
+	// deux populations sont distinguables. Si elles ne le sont pas, la piste du preambule se
+	// ferme ; si une valeur est propre aux rejetes, elle se lit ensuite chez l ecrivain.
+	teteSains, teteRejetes, teteDesync map[byte]int
+	tailleSains, tailleRejetes         map[int]int
 }
 
 // m532dEchec est UN record sur lequel la marche a desynchronise : son masque et l index du
@@ -79,6 +85,7 @@ func TestMouvement532Trame(t *testing.T) {
 	if len(ech) == 0 {
 		t.Fatalf("aucun record ti=35 : l instrument ne mesure rien")
 	}
+	m532dPreambule(t, st)
 	m532dHistoEchecs(t, ech, echecs, reg)
 	if !m532dEtalon(t, ech) {
 		return
@@ -287,7 +294,10 @@ func m532dLire(t *testing.T, dir string) ([]m532Ech, []m532dEchec, m532dStat, *R
 	}
 	var ech []m532Ech
 	var echecs []m532dEchec
-	var st m532dStat
+	st := m532dStat{
+		teteSains: map[byte]int{}, teteRejetes: map[byte]int{}, teteDesync: map[byte]int{},
+		tailleSains: map[int]int{}, tailleRejetes: map[int]int{},
+	}
 	// LE MONDE PERSISTE D UN CHUNK A L AUTRE, et c est une correction : un `World` remis a neuf
 	// a chaque chunk perd les liaisons slot -> archetype posees par les chunks precedents, et
 	// `DecodeFrameRecords` rejette alors le delta sur son test de generation SANS lire un seul
@@ -317,7 +327,19 @@ func m532dLire(t *testing.T, dir string) ([]m532Ech, []m532dEchec, m532dStat, *R
 			}
 			br := LecteurSur(pay)
 			recs, errD := DecodeFrameRecords(br, w, cfg)
+			taille := len(pay) / 64 // classes de 64 octets
 			if errD != nil {
+				rejet := false
+				if n := len(recs); n > 0 {
+					l := recs[n-1]
+					rejet = l.TypeIndex == 0 && l.DesyncAt == 0 && len(l.Trace.Comps) == 0
+				}
+				if rejet {
+					st.teteRejetes[pay[0]]++
+					st.tailleRejetes[taille]++
+				} else {
+					st.teteDesync[pay[0]]++
+				}
 				// LES RECORDS PARTIELS SONT RENDUS AVEC L ERREUR : le dernier porte le masque et
 				// l index du composant sur lequel la marche s est arretee. C est la matiere de
 				// l histogramme des echecs.
@@ -328,6 +350,8 @@ func m532dLire(t *testing.T, dir string) ([]m532Ech, []m532dEchec, m532dStat, *R
 				}
 				continue
 			}
+			st.teteSains[pay[0]]++
+			st.tailleSains[taille]++
 			st.trames++
 			st.records += len(recs)
 			for _, r := range recs {

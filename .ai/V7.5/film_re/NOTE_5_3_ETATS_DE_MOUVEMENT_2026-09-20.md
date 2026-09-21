@@ -1187,6 +1187,75 @@ donc a `ti=35 i60`, `i59`, `i57` sur la population SAINE actuelle** (11 150 reco
 etalon `i21` a 64,3 %), en le disant : ces trois composants gardent l acces a `i29`, `i18`,
 `i54`, `i55` et `i62`, et ils sont mesures fautifs 38, 19 et 12 fois.
 
+## 2 undecies. LE PREAMBULE NE DISTINGUE RIEN — ET `ti=35 i60` A UN PREDICAT ENTIEREMENT LISIBLE
+
+### 2und.1 LE PREAMBULE : QUATRIEME HYPOTHESE, QUATRIEME NEGATIF
+
+Mesure sans hypothese sur `bfecd02b` : la distribution de l octet de TETE et de la TAILLE des
+paquets, **10 512 sains contre 12 316 rejetes**.
+
+| octet de tete | sains | rejetes |
+|---|---|---|
+| `0x80` | 139 (1,32 %) | **0** |
+| `0x88` | 1 | 1 |
+| `0x89` | 28 (0,27 %) | 20 (0,16 %) |
+| `0x8A` | 7 | 5 |
+| **`0xA0`** | **10 337 (98,34 %)** | **12 290 (99,79 %)** |
+
+**AUCUNE valeur n est propre aux rejetes.** `0xA0` ecrase les deux populations ; la seule
+valeur exclusive (`0x80`, 139 paquets) est propre aux SAINS. Les tailles ne separent pas
+davantage : les rejetes sont seulement un peu plus GROS (129 paquets de moins de 64 octets
+contre 1 964 chez les sains), ce qui s explique sans hypothese — un gros paquet porte plus de
+records, donc plus d occasions de casser.
+
+**LA PISTE DU PREAMBULE EST FERMEE.** Quatre hypotheses eliminees pour les 12 316 rejets :
+amorcage du monde, largeur d ID, base d ID, preambule. Aucune par lassitude.
+
+### 2und.2 `ti=35 i60 simulation-state` — L ECRIVAIN, ET LA QUEUE N EST PAS UN MYSTERE
+
+`ecs_table.tsv` le declare `partiel` : « structure connue ; **la queue depend d un predicat sur
+les vecteurs decodes** ». Lecture de `FUN_142ED6D88` :
+
+```c
+FUN_140c1e79c(param_2);                               // (R1[R19] + R8)
+cVar1 = FUN_140501798(param_1 + 0xb, param_1 + 0xe);  // LE PREDICAT
+if (cVar1 != '\0') {
+    FUN_14076e494(param_2, param_1 + 0x11, 0x10, 0, 0, 0);   // la QUEUE : position, axe 16 bits
+    ...
+}
+```
+
+**LE PREDICAT, LU EN ENTIER** (`FUN_140501798`), sur les deux vec3 deja decodes :
+
+```
+orthonormes(v1, v2) :=
+      | ‖v1‖² − 1.0 | < 0.001   et fini
+  et  | ‖v2‖² − 1.0 | < 0.001   et fini
+  et  | v1·v2 − 0.0 | < 0.001   et fini
+```
+
+Constantes relues dans l image, aucune devinee :
+
+| adresse | valeur | role |
+|---|---|---|
+| `DAT_143cd8370` | **0.0f** | le produit scalaire vise |
+| `DAT_143cd8374` | **1.0f** | la norme visee (la meme constante qu au § 2.1) |
+| `DAT_143cd8380` | **`0x7FFFFFFF`** | masque de valeur absolue |
+| `DAT_143cd84bc` | **0.001f** | l epsilon |
+
+C est un **test d orthonormalite a 10⁻³** : la queue n est lue que si les deux vecteurs forment
+une base orthonormee valide.
+
+**CE QUE CELA CHANGE, ET C EST DECISIF** : le predicat porte sur des valeurs **DEJA DECODEES DU
+FLUX**, pas sur un octet d etat RAM. Il est donc **entierement calculable par le decodeur**, et
+`i60` peut devenir bit-exact — contrairement a `i57`, dont `ecs_table` dit que son etiquette 3
+est « gardee par des octets d etat RUNTIME : desync PROPRE ».
+
+**CHEMIN DE PORT, ECRIT** : decoder les deux vec3 (ils le sont deja : `4 x R(16)` puis
+`4 x R(16)` du corps), evaluer `orthonormes`, et ne lire la queue `FUN_14076e494(..., 0x10)`
+que si le predicat tient. Aucune constante « qui marche » : les quatre valeurs viennent de
+l image.
+
 ---
 
 ## 3. LE NEGATIF, MESURE DEUX FOIS
