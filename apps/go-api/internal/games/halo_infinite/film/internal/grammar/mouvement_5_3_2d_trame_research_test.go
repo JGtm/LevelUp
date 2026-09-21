@@ -39,6 +39,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -274,7 +275,28 @@ func m532dLire(t *testing.T, dir string) ([]m532Ech, []m532dEchec, m532dStat, *R
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}
+	// LA CARTE DU MATCH, ET POURQUOI ELLE EST NECESSAIRE ICI. `SimStateComplet` (le drapeau qui
+	// declare `i60` entierement decode) porte un critere de bascule ECRIT : « que le chemin
+	// absolu d i0 tire ses trois largeurs de la CARTE du match ». Un contexte ouvert sans carte
+	// ne remplit donc pas ce critere, et `i60` desynchronise par CONCEPTION, pas par lacune de
+	// grammaire. `MOUV532D_CARTE` donne la carte ; `MOUV532D_SIMSTATE=1` leve le drapeau.
 	fc := NewFilmContext(film)
+	if nom := os.Getenv("MOUV532D_CARTE"); nom != "" {
+		chemin := os.Getenv("MOUV532D_BORNES")
+		if chemin == "" {
+			t.Fatalf("MOUV532D_BORNES attendu avec MOUV532D_CARTE : chemin du catalogue de bornes")
+		}
+		cat, errC := profile.LoadMapQuantCatalog(chemin)
+		if errC != nil {
+			t.Fatalf("catalogue de bornes : %v", errC)
+		}
+		entry, errE := cat.Lookup(nom)
+		if errE != nil {
+			t.Fatalf("carte %q : %v", nom, errE)
+		}
+		fc = NewFilmContextForMap(film, &entry, nil)
+		t.Logf("CARTE : %s (axes %v)", nom, entry.AxisWidths)
+	}
 	reg, err := fc.Registry()
 	if err != nil {
 		t.Fatalf("registre : %v", err)
@@ -283,6 +305,14 @@ func m532dLire(t *testing.T, dir string) ([]m532Ech, []m532dEchec, m532dStat, *R
 		defer restore()
 	}
 	cfg := fc.CadreDeBalayage()
+	// LE DRAPEAU SE POSE SUR LE PROFIL QUE `cfg` PORTE, pas sur celui du harnais :
+	// `poserBasculeDInstrument` ecrit dans `profilDInstrument`, que cette marche n utilise
+	// pas (elle recoit son profil du contexte de film). Premiere tentative faite ainsi :
+	// elle n a rien deplace, et c etait un defaut de branchement, pas un resultat.
+	if os.Getenv("MOUV532D_SIMSTATE") == "1" {
+		cfg.Profil.Grammaire.SimStateComplet = true
+		t.Logf("DRAPEAU : SimStateComplet leve sur le profil de la marche")
+	}
 	// LA LARGEUR D ID BAS EST UNE VALEUR DE RUNTIME, PAS UNE CONSTANTE DU FORMAT
 	// (`FrameConfig.IDLowBits` le dit : « le defaut 13 n est pas une constante du format »).
 	// `bpkCalibre` la mesure par film : sur `bfecd02b` elle vaut 9 (97,5 % de trames exactes)

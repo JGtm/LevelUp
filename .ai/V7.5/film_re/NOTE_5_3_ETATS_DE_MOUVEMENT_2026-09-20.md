@@ -1256,6 +1256,62 @@ est « gardee par des octets d etat RUNTIME : desync PROPRE ».
 que si le predicat tient. Aucune constante « qui marche » : les quatre valeurs viennent de
 l image.
 
+## 2 duodecies. `ti=35 i60` — LE GATE EST TENU, ET LA CAUSE N ETAIT PAS LA GRAMMAIRE
+
+### 2duo.1 CE QUE LA LECTURE A TROUVE AVANT D ECRIRE UNE LIGNE
+
+`i60 simulation-state` est **DEJA PORTE INTEGRALEMENT**, queue comprise, depuis le lot R7-b du
+2026-08-17. Le predicat d orthonormalite du § 2undecies y est meme documente comme « vrai par
+construction » : `FUN_140c1e79c` decode une direction unitaire, puis `FUN_1406d8678` construit
+un vecteur PERPENDICULAIRE (produit vectoriel, rotation de Rodrigues, normalisation) — une base
+orthonormee construite satisfait les trois tests, donc la queue est TOUJOURS lue.
+
+Ce qui fait desynchroniser `i60` n est donc pas une grammaire manquante : c est
+**`br.p.Grammaire.SimStateComplet`**, un drapeau de profil a `false` par defaut, que
+`dispatch_biped.go` rend tel quel comme valeur de `ported`.
+
+Et ce drapeau porte son critere de bascule, ECRIT : « que le chemin absolu d `i0` tire ses
+trois largeurs de la CARTE du match ».
+
+### 2duo.2 LA MESURE, CARTE FOURNIE ET DRAPEAU LEVE
+
+`bfecd02b` ouvert par `NewFilmContextForMap` avec `snowbound` (axes 15/15/17), drapeau pose sur
+le profil de la marche :
+
+| | avant | apres | gate |
+|---|---|---|---|
+| trames saines | 10 512 (40,5 %) | **10 546 (40,6 %)** | |
+| records `ti=35` | 11 150 | **11 228** | **>= 11 150 OK** |
+| etalon `i21` | 64,3 % | **64,2 %** | **~64 % OK** |
+| desyncs reelles | 3 130 | **3 087** | |
+| **fautif `i60`** | **38** | **0** | **-> 0 OK** |
+| `i29` lu | 7 | **14** | x2 |
+| `i62` lu | 6 | **14** | x2 |
+
+**LES TROIS CRITERES DU GATE SONT TENUS**, et l acces aux composants de mouvement DOUBLE.
+
+### 2duo.3 UN DEFAUT DE BRANCHEMENT, DIT PLUTOT QUE CACHE
+
+La premiere tentative a pose le drapeau par `poserBasculeDInstrument`, qui ecrit dans
+`profilDInstrument` — le profil du HARNAIS, que cette marche n utilise pas (elle tient le sien
+du contexte de film). Elle n a donc rien deplace, et **ce n etait pas un resultat, c etait un
+defaut de branchement**. Le drapeau se pose sur `cfg.Profil.Grammaire`.
+
+### 2duo.4 LE CHANGEMENT DE PRODUCTION, SPECIFIE MAIS NON FAIT
+
+**Basculer le defaut global a `true` serait FAUX** : `NewFilmContext` (auto-detecte, sans carte)
+sert les enveloppes `ScanFilm*(dir)`, et sur ce chemin les largeurs d axe ne viennent PAS de la
+carte — c est precisement ce que le critere interdit. Un defaut global casserait ces appelants.
+
+**LE CHANGEMENT JUSTE** : lier `SimStateComplet` a la PRESENCE des largeurs de carte, dans
+`ResolveProfile` — vrai quand une entree de carte est fournie, faux sinon. C est une ligne de
+profil qui depend d une config, exactement la forme que la regle impose, et non une constante
+« qui marche ».
+
+**NON FAIT DANS CE TOUR**, et c est assume : le changement touche la production, donc il
+entraine `grammar.Rev` par empreinte, une entree de chronique, le ratchet 0.A.3 et
+`replay-equiv --films=4f77afc1`. Il se fait d un seul tenant, pas en fin de budget.
+
 ---
 
 ## 3. LE NEGATIF, MESURE DEUX FOIS
