@@ -34,13 +34,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { heatmapRampTokens } from '@/components/charts/heatmapColors'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { Button } from '@/components/ui/button'
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchPlayerPosition } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
+import { useReplayDrag } from '@/features/match-replay/hooks/useReplayDrag'
+import { useReplayWheelZoom } from '@/features/match-replay/hooks/useReplayWheelZoom'
+import { useReplayZoom } from '@/features/match-replay/hooks/useReplayZoom'
+import { ReplayZoomControl } from '@/features/match-replay/ui/ReplayZoomControl'
+import type { ReplayBounds } from '@/lib/api/types'
 import { drawTacticalHeatmap, heatRamp } from '@/lib/replay/heatPaint'
+import { visibleBounds } from '@/lib/replay/replayLogic'
 import { useReplayMapBackground, useReplayMapImage } from '@/lib/replay/queries'
 
 import { buildPositionsGrid, hasTeamSplit, mapFrame } from './_positionsHeat'
@@ -53,7 +60,16 @@ import { buildPositionsGrid, hasTeamSplit, mapFrame } from './_positionsHeat'
  * qui se réduit pour la tenir, jamais le rapport du monde (un plan étiré désalignerait le
  * calque de chaleur de son fond).
  */
-const PLAN_MAX_HEIGHT_REM = 18
+const PLAN_MAX_HEIGHT_REM = 21.6
+
+/**
+ * PART DE LA LARGEUR DISPONIBLE que le plan peut prendre. Les deux plafonds ont été
+ * AGRANDIS DE 20 % le 2026-09-21 (lot D du plan d'ajustements supplémentaires pré-v7.5,
+ * « agrandir un peu l'occupation du terrain ») : 18 rem -> 21,6 rem et 60 % -> 72 %. Le
+ * rapport entre les deux est inchangé, donc la forme du cadre l'est aussi — seul son
+ * gabarit grandit.
+ */
+const PLAN_MAX_WIDTH_PCT = 72
 
 type TeamFilter = 'all' | 0 | 1
 
@@ -116,6 +132,57 @@ export function MatchPositionsHeatmap({
     return heatRamp(heatmapRampTokens('intensity').map(resolveToken))
   }, [paletteVersion])
 
+  // LA SCÈNE DU CADRAGE EST LE CADRE DU FOND, en unités monde : c'est le seul repère où le
+  // calque et son image coïncident (cf. `MapFrame`). Y croît vers le HAUT — `originY` est le
+  // coin haut-gauche, donc la borne haute.
+  const scene: ReplayBounds = useMemo(
+    () =>
+      frame
+        ? {
+            minX: frame.originX,
+            maxX: frame.originX + frame.widthM,
+            minY: frame.originY - frame.heightM,
+            maxY: frame.originY,
+            minZ: 0,
+            maxZ: 0,
+          }
+        : { minX: 0, maxX: 1, minY: 0, maxY: 1, minZ: 0, maxZ: 0 },
+    [frame],
+  )
+
+  // LA TAILLE DE LA TOILE EST UN ÉTAT, et pas une lecture faite dans l'effet de tracé : le
+  // glisser et la molette ont besoin du facteur pixels/mètre AU RENDU pour convertir un
+  // mouvement de pointeur en déplacement monde.
+  const [size, setSize] = useState({ width: 0, height: 0 })
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const lire = () => setSize({ width: canvas.clientWidth, height: canvas.clientHeight })
+    lire()
+    // Le patron du dépôt (`carousel.tsx`, `combat-yield-display.tsx`) : l'observateur est
+    // optionnel — jsdom ne le fournit pas, et une mesure unique suffit alors.
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(lire)
+    ro.observe(canvas)
+    return () => ro.disconnect()
+  }, [frame])
+
+  // LES TROIS GESTES DU REJEU 2D, TELS QUELS — `useReplayZoom` (paliers + centre reborné),
+  // `useReplayDrag` (pixels -> monde) et `useReplayWheelZoom` (molette ancrée sur le curseur).
+  // Aucun n'a été modifié : ils ne connaissent qu'une scène, un cadrage et une toile, jamais le
+  // rejeu lui-même. Le plan hérite donc du même comportement, aux mêmes paliers.
+  const zoom = useReplayZoom(scene)
+  const bounds = useMemo(
+    () => visibleBounds(scene, zoom.level, zoom.center.x, zoom.center.y),
+    [scene, zoom.level, zoom.center],
+  )
+  const view = useMemo(
+    () => ({ bounds, width: size.width, height: size.height, pad: 0 }),
+    [bounds, size],
+  )
+  const drag = useReplayDrag(zoom, view)
+  useReplayWheelZoom(canvasRef, zoom, view)
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !grid || !frame || !image) return
@@ -127,17 +194,36 @@ export function MatchPositionsHeatmap({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, width, height)
-    // LE FOND ET LE CALQUE PARTAGENT LE MÊME CADRE : l'image est peinte sur toute la toile, et
-    // l'échelle du calque est celle de cette image — `scale` px par mètre monde. C'est la
-    // condition pour qu'une cellule tombe sur le couloir qu'elle décrit.
-    ctx.drawImage(image, 0, 0, width, height)
+    // LE FOND ET LE CALQUE PARTAGENT LE MÊME CADRE, ET C'EST LA FENÊTRE VISIBLE. À 1x elle vaut
+    // la scène et l'on retrouve exactement le tracé d'avant le zoom ; au-delà, l'image est
+    // découpée à la source (la portion monde visible, convertie en pixels d'image) et le calque
+    // reçoit la MÊME origine et la MÊME échelle. Les deux ne peuvent donc pas se désaligner.
+    const k = width / Math.max(bounds.maxX - bounds.minX, 1e-6)
+    const pxParM = image.width / Math.max(frame.widthM, 1e-6)
+    ctx.drawImage(
+      image,
+      (bounds.minX - frame.originX) * pxParM,
+      (frame.originY - bounds.maxY) * pxParM,
+      (bounds.maxX - bounds.minX) * pxParM,
+      (bounds.maxY - bounds.minY) * pxParM,
+      0,
+      0,
+      width,
+      height,
+    )
     drawTacticalHeatmap(
       ctx,
       grid,
-      { topLeftWorld: { x: 0, y: 0 }, scale: width / frame.widthM },
+      {
+        topLeftWorld: {
+          x: (frame.originX - bounds.minX) * k,
+          y: (bounds.maxY - frame.originY) * k,
+        },
+        scale: k,
+      },
       { ramp, k: 1 },
     )
-  }, [grid, frame, image, ramp])
+  }, [grid, frame, image, ramp, bounds])
 
   // Portes 1 à 3 : rien à montrer, et rien à promettre.
   if (all.length === 0 || !frame || !grid) return null
@@ -146,14 +232,15 @@ export function MatchPositionsHeatmap({
     <SectionCard
       title={t.title}
       label={t.title}
-      footer={
-        <div className="border-t border-border px-3 pb-2 pt-2 text-[11px] text-muted-foreground">
-          <p>{t.narrative}</p>
-        </div>
-      }
       titleAdornment={(label) => (
         <span className="flex items-center justify-between gap-2">
-          <span>{label}</span>
+          {/* LA MENTION SOUS LA LÉGENDE EST PASSÉE DANS L'INFOBULLE DU TITRE le 2026-09-21
+              (lot D) : elle dit comment lire le plan, pas ce que le match a produit — sa place
+              est au survol du (i), pas en pied de carte. */}
+          <span className="flex items-center gap-1.5">
+            <span>{label}</span>
+            <InfoTooltip content={<p>{t.narrative}</p>} />
+          </span>
           {teamSplit && (
             <span className="flex gap-1">
               <TeamButton active={teamFilter === 'all'} onClick={() => setTeamFilter('all')}>
@@ -177,15 +264,24 @@ export function MatchPositionsHeatmap({
           className="relative mx-auto w-full overflow-hidden rounded-md bg-muted"
           style={{
             aspectRatio: `${frame.widthM} / ${frame.heightM}`,
-            maxWidth: `min(60%, calc(${PLAN_MAX_HEIGHT_REM}rem * ${frame.widthM} / ${frame.heightM}))`,
+            maxWidth: `min(${PLAN_MAX_WIDTH_PCT}%, calc(${PLAN_MAX_HEIGHT_REM}rem * ${frame.widthM} / ${frame.heightM}))`,
           }}
           data-testid="match-positions-frame"
         >
           <canvas
             ref={canvasRef}
-            className="absolute inset-0 h-full w-full"
+            className={`absolute inset-0 h-full w-full touch-none${
+              zoom.canPan ? (drag.dragging ? ' cursor-grabbing' : ' cursor-grab') : ''
+            }`}
+            onPointerDown={drag.onPointerDown}
+            onPointerMove={drag.onPointerMove}
+            onPointerUp={drag.onPointerUp}
+            onPointerCancel={drag.onPointerUp}
             data-testid="match-positions-canvas"
           />
+          {/* LA COMMANDE DE CADRAGE EST CELLE DU REJEU (+ / − / croix / retour), en
+              surimpression dans l'angle bas-droit : aucune place prise dans la mise en page. */}
+          <ReplayZoomControl zoom={zoom} locale={locale} />
         </div>
       </div>
     </SectionCard>
