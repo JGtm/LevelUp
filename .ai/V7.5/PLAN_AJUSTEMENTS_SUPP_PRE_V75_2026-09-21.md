@@ -129,8 +129,8 @@ surface `film/replay` 260 -> 263 justifie.
 ### Lot K — Match view, part de chaque equipe en 5.A (worktree `LevelUp-wt-ajsup-k`) — FUSIONNE 6c2391972
 - [x] Barres horizontales par famille, echelle commune, deux camps, comptes ecrits, total (D20)
 
-### Lot L — Timeseries, balance des degats cumulee (worktree `LevelUp-wt-ajsup-l`)
-- [ ] Aire divergente ancree a zero, meme grammaire que l Escouade, front seul
+### Lot L — Timeseries, balance des degats cumulee (worktree `LevelUp-wt-ajsup-l`) — FUSIONNE 0da57c5b1
+- [x] Aire divergente ancree a zero, meme grammaire que l Escouade, front seul
 
 ### Lot M — maquette sections transverses : Riposte, Portee, Appui (worktree `LevelUp-wt-ajsup-m`)
 - [ ] Fichier `.ai/V7.5/MAQUETTE_TRANSVERSES_RIPOSTE_PORTEE_APPUI_2026-09-21.html` + verification des deux reserves de donnees
