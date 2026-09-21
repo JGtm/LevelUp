@@ -7846,11 +7846,38 @@ tient : « le passage par la grammaire et Ghidra EST la methode ».
   archive etant exactement a 500 lignes ; `fichiersDeChroniqueGrammar` l enregistre ·
   `decodeInferLoop` ramene sous son plafond par DEPLACEMENT PUR (`corpsDeRecordNeuf`,
   `rejetDeVue`) · `SchemaVersion` 67 INCHANGEE.
-- [ ] **5.11.7-c — LE PIED RELU SOUS LA GRAMMAIRE PAR VUE : NON FAIT.** La fermeture des paquets
-  prouve la DECOUPE du pied (3 + 16 + 16 bits) mais ne nomme pas encore le contenu des deux
-  en-tetes de rejet, ni ce que valent les bits 27 et 30 qui basculent au decollage. C est le pas
-  suivant, et il est desormais outille : la marche rend le curseur, et les deux en-tetes sont des
-  `(prefixe, idLow, tag)` complets.
+- [x] **5.11.7-c — LE PIED RELU SOUS LA GRAMMAIRE PAR VUE : LE « CANDIDAT » DU 5.11.6 EST NOMME,
+  ET EN ETANT NOMME IL EST DEMENTI COMME DRAPEAU.** Instrument
+  `mouvement_5_11_7_entetes_research_test.go` : les 32 bits se decoupent en DEUX en-tetes
+  `[prefixe 1][idLow 13][tag 2]`, et la question « que sont les bits 27 et 30 » recoit une reponse
+  de CHAMP, pas de bit :
+
+  | bit du mot | champ |
+  |---|---|
+  | 0 / 1..13 / 14..15 | vue 2 : prefixe / `idLow` / tag de generation |
+  | 16 / 17..29 / 30..31 | vue 3 : prefixe / `idLow` / tag de generation |
+  | **bit 27** | **un bit d `idLow` de la VUE 3** — slot **7136 -> 7140** au decollage |
+  | **bit 30** | **le premier bit du TAG DE GENERATION de la VUE 3** — **0 -> 2** au decollage |
+
+  Les deux en-tetes portent un prefixe `1` = DELTA. Recensement sur `dad793c7` (5 216 paquets a
+  pied complet) : vue 2 = `slot 26 tag 3` x5 199 (5 valeurs distinctes), vue 3 =
+  `slot 7136 tag 0` x5 198 (8 distinctes). **18 paquets seulement quittent le couple dominant, et
+  TROIS d entre eux portent un record de bipede : les deux du spawn (2,865 / 2,882 s) et LE
+  DECOLLAGE (26,036 s).**
+  **CONTROLE DE LA DECOUPE** (`mouvement_5_11_7_slots_research_test.go`, monde amorce par les
+  images-cles, 187 slots lies) : les slots de la VUE 2 sont **LIES** — 26 et 19, tous deux `ti=6`
+  statborg — donc c est un VRAI en-tete de record et la decoupe est confirmee. Les slots de la
+  VUE 3 (7136, 7140, 3968, 4161, 2194, 8191) ne sont JAMAIS lies, ce qui n est pas une refutation
+  mais la LIMITE EXACTE de la transcription : le monde hors ligne attribue toutes les liaisons
+  d image-cle a la vue 0 (case 5.11.7-b), donc il ne modelise AUCUNE entite de vue 3.
+  **ET LE MEME MOT SUR `bfecd02b` NE PORTE PAS DE SIGNAL DE SAUT** : sur 17 562 paquets a pied
+  complet, les en-tetes prennent **2 778** et **2 947** valeurs DISTINCTES. Ce ne sont donc pas
+  des drapeaux — ce sont des references d entite qui changent a presque chaque trame, et aucune
+  bascule binaire ne peut y etre appariee aux 199 sauts derives.
+  **CE QUI RESTE, ET C EST UNE PISTE ET NON UN CHAMP** : au decollage, la vue 3 nomme une ENTITE
+  DIFFERENTE (slot 7140, generation 2, au lieu de 7136 generation 0). Nommer cette entite demande
+  de ventiler les images-cles PAR VUE — le pas structurel suivant. Aucun port : ce qui n est pas
+  prouve n est pas publie.
 
 ---
 
