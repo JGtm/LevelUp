@@ -720,6 +720,89 @@ etait fausse.
 **A LIRE AVANT**, sur demande de l'utilisateur : `RE_EXE_GHIDRA_FINDINGS.md`,
 `PLAN_FILM_ECS_DECODER.md`, et le `thought_log` des 2026-06-03/04/05 (archive Q2).
 
+## 2 quinquies. LE VRAI DECODEUR DE TRAME, ET L ETALON QUI TRANCHE (2026-09-21)
+
+### 2quin.1 LA MESURE PAR `DecodeFrameRecords`
+
+Troisieme instrument (`mouvement_5_3_2d`), sur le decodeur de trame du depot : preambule de
+paquet, puis les records **dans l ordre**, contre un `World` amorce par les images-cles du
+chunk. Domaine : les paquets a liste d evenements VIDE (`pay[0]&0x40 == 0`), soit **25 958 des
+31 232 paquets delta** de `bfecd02b`.
+
+| | valeur |
+|---|---|
+| paquets cadres | 25 958 |
+| trames decodees **sans erreur** | **9 786 (37,7 %)** |
+| records de trame | 24 940, dont **10 060 de `ti=35`** |
+| etalon | `i0` 62,5 % · `i1` 55,5 % · **`i21` 64,5 %** · **`i25` 95,2 %** |
+| `i18` / `i29` / `i54` / `i55` / `i62` | **4 · 1 · 8 · 3 · 1** (soit 0,0 % a 0,1 %) |
+| intervalles d accroupi | **0** sur 37 slots |
+
+**DEUX DECODEURS INDEPENDANTS CONVERGENT.** Le chercheur d ancres (162 444 records) et le
+decodeur de trame (10 060 records de `ti=35`) donnent la meme reponse : dans la trame de
+composants des paquets delta, l accroupissement n est pas la.
+
+**ET LA MESURE PORTE SA PROPRE RESERVE** : 37,7 % de trames decodees sans erreur, ce n est pas
+un cadrage sain. Prise seule, elle ne suffirait pas.
+
+### 2quin.2 L ETALON QUI TRANCHE — ET IL N EST NI L UN NI L AUTRE DE MES INSTRUMENTS
+
+Le depot porte une VERITE TERRAIN, obtenue par capture live (Cheat Engine) et consignee dans
+`components_position_i0.go` :
+
+> « sur les **15 529 records du masque `{i0,i1,i21,i25}`** dont l oracle de POSITION Rosette
+> donne la longueur vraie (**113 bits**), la seule largeur de `i0` pour laquelle les desers
+> PORTES de `i1` et de `i21` consomment exactement leurs largeurs vraies (**31 et 25 bits**)
+> est **47 bits** : `i1` tombe juste sur 100,0 % des records et `i21` sur 100,0 %. »
+
+Et `unit_weaponstate.go` : « l oracle de position Rosette donne **unit-command-tick = 10 bits
+constants** ».
+
+**LE RECORD BIPEDE DELTA DOMINANT EST DONC `{i0, i1, i21, i25}` — 47 + 31 + 25 + 10 = 113 bits.
+Position, velocite, visee, tick de commande. L ACCROUPISSEMENT N Y EST PAS.**
+
+Ce n est pas mon instrument qui le dit : c est une capture live du jeu, sur 15 529 records, et
+mes deux lecteurs independants retrouvent exactement ce masque (`i0` 100 %, `i25` 100 %, `i1`
+90,3 %, `i21` 62,4 % au chercheur d ancres).
+
+### 2quin.3 CE QUE CELA VEUT DIRE, ET CE QUE CELA NE VEUT PAS DIRE
+
+**CE QUE CELA VEUT DIRE** : la phrase « per-tick biped state (health, shield, velocity,
+**crouch**, position, aim, ammo) » de `RECAP_STATS_EXPLOITABLES` et du handoff decrit le
+VOCABULAIRE de l archetype bipede — ce que le film PEUT porter — et non ce que le record delta
+porte a chaque tick. Le record delta dominant porte quatre composants, pas sept.
+
+**CE QUE CELA NE VEUT PAS DIRE** : que le film ignore l accroupissement a l instant.
+L utilisateur a raison sur le fond — Theater le rejoue — et le depot montre DEJA ou un etat par
+instant se loge quand il n est pas dans la trame : **le canal d evenements**. `unit_zoom` en est
+la preuve vivante (~400 000 occurrences, pont vers le slot par domaine 4 + 512, valide contre
+Theater 6/6). L accroupissement par instant est donc a chercher **la**, pas dans les masques.
+
+### 2quin.4 `PlayerGameEventSmall` — LE CANDIDAT, ET CE QUE SON ECRIVAIN DIT
+
+578 occurrences en tete sur `bfecd02b` (11,0 % des paquets a evenement), deuxieme type le plus
+frequent apres le tir. Son lecteur (`vtable+0x68` = `FUN_14080add8`) :
+
+```c
+FUN_14080b30c(param_3);              // initialisation, 0 bit
+*(undefined4 *)(param_3 + 0xa0) = 0; // remise a zero d un champ
+FUN_14080ae70(param_3, param_4);     // R(32) -> param_3[0]
+FUN_14080ae28(param_4);              // une seconde lecture
+```
+
+La charge commence donc par **un mot de 32 bits**, suivi d une seconde lecture non encore
+relevee. **Aucun sous-type n est nomme a ce stade** : le nommer demande de relever
+`FUN_14080ae28` et de ventiler le mot sur le film. C est la prochaine mesure, et elle n est pas
+faite ici.
+
+### 2quin.5 LES CINQ INSTANTS, ET POURQUOI ILS NE SONT PAS RE-CALCULES
+
+Les instants d accroupi du § 2ter.7 viennent des images-cles, et ils restent valides pour ce
+qu ils sont : les seuls instants d accroupissement que le depot sait dater aujourd hui. Le
+decodeur de trame n en produit **aucun** (0 intervalle sur 37 slots), et il serait malhonnete de
+publier une liste vide comme un progres. Des instants d accroupi A LA CADENCE DU JEU viendront
+du canal d evenements, quand il sera lu.
+
 ---
 
 ## 3. LE NEGATIF, MESURE DEUX FOIS
