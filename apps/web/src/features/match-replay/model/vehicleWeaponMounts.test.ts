@@ -56,15 +56,42 @@ describe('vehicleWeaponMountOf — la table et son repli', () => {
     expect(vehicleWeaponMountOf(shotW('00015cfa'))?.classe).toBe('tourelle')
   })
 
-  it('Gungoose, Shade, tourelle LMG : aucun tag weap documenté, donc repli centre', () => {
-    // Zéro occurrence de leur famille dans V3F_TIRS_COVENANT — pas de tag à indexer, pas
-    // d'entrée fabriquée. Les tags jpt de labels.tsv qu'une version antérieure de ce fichier
-    // utilisait par erreur (mauvais espace d'identifiants) ne sont plus dans la table.
+  it('le Shade reste sans montage : c est son TAG qui manque, pas sa position', () => {
+    // Zéro occurrence de sa famille dans V3F_TIRS_COVENANT — pas de tag à indexer, pas d'entrée
+    // fabriquée. Les tags jpt de labels.tsv qu'une version antérieure de ce fichier utilisait par
+    // erreur (mauvais espace d'identifiants) ne sont plus dans la table.
     expect(vehicleWeaponMountOf('099377af')).toBeNull() // Shade (jpt, PAS un tag weap de Shot.w).
   })
 
+  /**
+   * LOT 5.8.3 — LES TROIS MONTAGES MESURÉS SUR LE SPRITE. Leur TAG était connu depuis le lot des
+   * sons (2026-09-04) ; c'est leur POSITION qui manquait, et l'éclair partait donc du centre du
+   * châssis — pour le Wraith, un mètre et demi derrière la bouche de son mortier.
+   */
+  it('Wraith, Gungoose, Falcon : montage présent, et la CLASSE suit FAMILLES_ARME_FIXE (5.2a.6)', () => {
+    const wraith = vehicleWeaponMountOf(shotW('121b4009'))
+    const gungoose = vehicleWeaponMountOf(shotW('0042678e'))
+    const falcon = vehicleWeaponMountOf(shotW('00015cd3'))
+    // Le Wraith et le Gungoose sont des châssis à arme FIXE (viser, c'est tourner le véhicule) ;
+    // la mitrailleuse de PORTE du Falcon est servie par un passager, donc une tourelle.
+    expect(wraith?.classe).toBe('fixe')
+    expect(gungoose?.classe).toBe('fixe')
+    expect(falcon?.classe).toBe('tourelle')
+  })
+
+  it('les trois ancres neuves sont AVANT ou ARRIÈRE selon ce que le sprite montre', () => {
+    // Le mortier du Wraith et les canons du Gungoose sont à l'AVANT (ay < 0, le nez est en haut) ;
+    // les postes latéraux du Falcon sont EN ARRIÈRE du poste de pilotage (ay > 0).
+    expect(vehicleWeaponMountOf(shotW('121b4009'))?.ay).toBeLessThan(0)
+    expect(vehicleWeaponMountOf(shotW('0042678e'))?.ay).toBeLessThan(0)
+    expect(vehicleWeaponMountOf(shotW('00015cd3'))?.ay).toBeGreaterThan(0)
+    // Le mortier du Wraith est SUR L'AXE : son fût est centré à un demi-pixel de l'axe du châssis.
+    expect(vehicleWeaponMountOf(shotW('121b4009'))?.ax).toBe(0)
+  })
+
   it('toutes les ancres de la table tiennent dans [-0,5 ; +0,5]', () => {
-    const weaps = ['c7d50912', '00015435', '0000aa68', '0000aa69', '11725dc4', 'd3c407ed', 'b40e9618', '00015cfa']
+    const weaps = ['c7d50912', '00015435', '0000aa68', '0000aa69', '11725dc4', 'd3c407ed',
+      'b40e9618', '00015cfa', '121b4009', '0042678e', '00015cd3']
     for (const weap of weaps) {
       const m = vehicleWeaponMountOf(shotW(weap))
       expect(m).not.toBeNull()
@@ -179,8 +206,9 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
   /**
    * MONTAGE INCONNU (2026-09-20) : l'éclair reste au CENTRE — la seule position que le document
    * donne —, mais il garde la DIRECTION du véhicule. Sans cela, un tir d'arme de véhicule non
-   * documentée (Wraith, Gungoose, Falcon) perdait toute direction et tombait sur la bouffée
-   * ronde, invisible sur un châssis.
+   * documentée perdait toute direction et tombait sur la bouffée ronde, invisible sur un
+   * châssis. Le Wraith, le Gungoose et le Falcon sont mesurés depuis le lot 5.8.3 ; le cas
+   * reste vivant pour le Shade, dont le tag `weap` n'est pas documenté.
    */
   it('montage INCONNU : aucun décalage, mais le cap du véhicule donne la direction', () => {
     const p = vehicleShotPlacement(null, CAPS(90), size, 1, ECHELLE)

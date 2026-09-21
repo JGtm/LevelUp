@@ -51,7 +51,8 @@ import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 export interface VehicleShotSource {
   /**
    * Le montage de l'arme sur le châssis, ou `null` quand le tag d'arme n'est pas documenté
-   * (Wraith, Gungoose, Falcon, tourelle posée au sol…). `null` ne fait PLUS perdre la source :
+   * (le Shade, dont le tag `weap` manque — le Wraith, le Gungoose et le Falcon sont mesurés depuis
+   * le lot 5.8.3). `null` ne fait PLUS perdre la source :
    * l'éclair reste au CENTRE du véhicule, mais il garde sa DIRECTION (cf. `vehicleShotPlacement`).
    */
   mount: VehicleWeaponMount | null

@@ -7014,7 +7014,54 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
         voisine. Plus 3 cas de comportement dans `shotFx.test.ts`.
   - [!] **UN TAG D ARME DE VEHICULE NON DOCUMENTE EST APPARU A LA MESURE** : `0x850902EF00000000`
         (9 tirs sur `5676a9ba`). §4, D4 (5.8).
-- [ ] **5.8.3 — LES TROIS MONTAGES D ARME NON DOCUMENTES** (Wraith, Gungoose, Falcon).
+- [x] **5.8.3 — LES TROIS MONTAGES D ARME MANQUANTS, MESURES SUR LE SPRITE** (web seul).
+  - [x] **LEUR TAG ETAIT DEJA CONNU, C EST LEUR POSITION QUI MANQUAIT** : les trois servent le SON
+        depuis le 2026-09-04 (`121b4009` Wraith, `0042678e` Gungoose, `00015cd3` tourelle LMG du
+        Falcon). Depuis 5.2a.5 un montage inconnu ne fait plus perdre la SOURCE, mais l eclair
+        part du CENTRE du chassis — pour le Wraith, un metre et demi derriere la bouche de son
+        mortier.
+  - [x] **LA MESURE EST CELLE DU SPRITE, ET C EST LE BON REPERE** : `vehicleShotPlacement` lit
+        `ax`/`ay` en fractions des dimensions PLEINES de l image (origine au centre, nez en haut),
+        donc mesurer sur l image revient a mesurer sur ce que le lecteur voit — aucune conversion
+        a croire. Detection sur l ENCRE du trait (luminance < 110) : l alpha est plein sur toute
+        la silhouette, il ne dit rien des organes internes.
+  - [x] **LES TROIS MESURES, chiffre par chiffre** :
+
+        | arme | sprite | organe mesure | ancre |
+        |---|---|---|---|
+        | Wraith, mortier a plasma | `wraith.png` 304x313, centre 152,0/156,5 | fut = paire de traits a x = 148 et 155 (axe x ~ 151,5), de y ~ 96 a ~ 135 ; anneau de tourelle mesure a y ~ 138..182 | BOUCHE : `ax 0`, `ay (95-156,5)/313 = -0,196` -> **-0,2** |
+        | Gungoose, canons jumeles | `gungoose.png` 78x128, centre 39,0/64,0 | deux amas separes par un vide en x [36..41] : futs a x ~ 34 et ~ 43,5, de y ~ 13 a ~ 36 | fut DROIT : `ax (43,5-39)/78 = +0,058` -> **+0,06**, `ay (13-64)/128 = -0,398` -> **-0,4** |
+        | Falcon, LMG de porte | `falcon.png` 430x390, centre 215,0/195,0 | caissons fermes par l encre a y = 236 (x 170..194 et 230..256), jusqu a y ~ 255 | poste DROIT : `ax (242-215)/430 = +0,063` -> **+0,06**, `ay (245-195)/390 = +0,128` -> **+0,13** |
+
+  - [x] **LA CLASSE NE SE MESURE PAS, ELLE EST DEJA DECIDEE** : `FAMILLES_ARME_FIXE` (5.2a.6,
+        decision utilisateur du 2026-09-20) range le Wraith et le Gungoose parmi les chassis a
+        arme FIXE et le Falcon parmi ceux a TOURELLE. Leur donner une autre classe ici ferait dire
+        deux choses au depot sur la meme famille. La LMG du Falcon prend donc la visee MESUREE de
+        son tireur depuis 5.5.3.
+  - [x] **MESURE AVANT / APRES SUR TOUT LE PARC CUIT** (92 artefacts, lecture seule) — tirs de
+        vehicule dont le montage est documente :
+
+        | document | tirs `v` | AVANT | APRES |
+        |---|---:|---:|---:|
+        | `4f77afc1` | 241 | 100 | **164** |
+        | `5676a9ba` | 241 | 0 | **61** |
+        | `0a44c6cc` | 30 | 0 | **22** |
+        | `8a485699` | 15 | 4 | **15** |
+        | `1cd3848a` / `fccc61cd` | 2 / 1 | 0 / 0 | **2 / 1** |
+        | **TOUT LE PARC** | **609** | **104 (17,1 %)** | **265 (43,5 %)** |
+
+  - [x] **LE SHADE RESTE DEHORS, ET POUR UNE AUTRE RAISON** : c est son TAG qui manque, pas sa
+        position. Pas de tag = pas d entree, jamais un tag voisin reemploye en devinant.
+  - [x] **DOC INVERSEE CORRIGEE DANS LE MEME COMMIT** (anti-pattern du diagnostic de revue) :
+        l en-tete de `vehicleWeaponMounts.ts` affirmait « AUCUN pour le Gungoose, le Shade ou la
+        tourelle LMG », `vehicleWeaponMountOf` et `shotFx.VehicleShotSource.mount` citaient les
+        trois comme exemples d absence. Les quatre sites disent desormais ce que le code fait.
+  - [x] **UN TEMOIN DE TEST A CHANGE, ET IL EST MEILLEUR** : le cas « arme de vehicule sans
+        montage » de `shotFx.test.ts` employait le mortier du Wraith. Il emploie desormais
+        `850902ef` — un tag REELLEMENT OBSERVE dans un document cuit (9 tirs sur `5676a9ba`,
+        §4 D4) qu aucun rapport ne documente : le cas n est plus une hypothese.
+  - [x] 2 cas vitest neufs (classe des trois, sens de l ancre et axe du mortier) et la garde
+        « toutes les ancres tiennent dans [-0,5 ; +0,5] » etendue de 8 a **11** tags.
 - [ ] **5.8.4 — LE TAG WARTHOG SE DEPARTAGE PAR LA FAMILLE DU CHASSIS** (LAAG / Gauss / roquettes).
 - [ ] **5.8.5 — UN TIR D ARME DE JOUEUR DEPUIS UN SIEGE PASSAGER PREND LA VISEE DE SON TIREUR**
       (D2 du lot 5.5).
@@ -7488,6 +7535,14 @@ casserait le son ET la direction (§4, D3). Le TOML n a pas bouge d un octet.
 **MESURE SUR DOCUMENTS CUITS** (`node -e`, lecture seule, aucun decodage, aucune base) :
 tableau avant/apres au point 5.8.2 du §3 — `4f77afc1` **0 -> 164 tirs styles sur 241 (68,0 %)**,
 exactement la population que 5.2a.5 avait mesuree sans style.
+
+**5.8.3 (les trois montages mesures sur le sprite)** — `make check-types` apres purge (vert) ·
+`make test-web` : **726 fichiers, 7 848 tests verts** (**+2** cas) · `npx eslint` sur les
+4 fichiers touches : **0 erreur, 0 avertissement**. Aucun octet Go, aucun gate Go.
+**MESURE DE SPRITE** (`PIL`, lecture seule des PNG de `static/vehicles-assets/`) : profils
+d encre par bande, puis relevé colonne par colonne des organes — chiffres au point 5.8.3 du §3.
+**MESURE SUR LE PARC CUIT** (`node -e`, lecture seule, aucun decodage) : tirs de vehicule a
+montage documente **104 -> 265 sur 609** (17,1 % -> 43,5 %), six documents concernes.
 
 **UN ROUGE ATTRAPE PAR UN RATCHET, ET IL AVAIT RAISON** : le retour du hook des vehicules avait
 ete reecrit sur plusieurs lignes, ce que `sceneBinding.guard.test.ts` refuse — il exige

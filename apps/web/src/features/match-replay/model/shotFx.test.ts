@@ -154,10 +154,15 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
 
   /**
    * LE CORRECTIF DU 2026-09-20. Une arme DE VÉHICULE dont le tag n'est pas dans la table des
-   * montages (Wraith, Gungoose, Falcon, tourelle posée…) perdait TOUTE la source : plus de
-   * véhicule, plus de cap — et comme le bipède embarqué ne réplique plus, l'éclair tombait sur
-   * la bouffée ronde sans direction. Mesuré : le cap de regard est lisible pour 1 tir de
-   * véhicule sur 241 (`4f77afc1`). La source est désormais gardée, sans montage.
+   * montages perdait TOUTE la source : plus de véhicule, plus de cap — et comme le bipède
+   * embarqué ne réplique plus, l'éclair tombait sur la bouffée ronde sans direction. Mesuré : le
+   * cap de regard est lisible pour 1 tir de véhicule sur 241 (`4f77afc1`). La source est désormais
+   * gardée, sans montage.
+   *
+   * LE TÉMOIN A CHANGÉ AU LOT 5.8.3, et il est MEILLEUR : c'était le mortier du Wraith
+   * (`121b4009`), qui a désormais un montage mesuré. C'est maintenant `850902ef` — un tag d'arme
+   * de véhicule RÉELLEMENT OBSERVÉ dans un document cuit (9 tirs sur `5676a9ba`, §4 D4 du lot 5.8)
+   * qu'aucun rapport de RE ne documente. Le cas de test n'est donc plus une hypothèse.
    */
   it('arme DE VÉHICULE sans montage documenté : la source est gardée, montage null', () => {
     const d = doc({
@@ -168,9 +173,7 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
           rides: [],
         },
       ],
-      // `121b4009` = le mortier du Wraith : il SONNE (table de `vehicleShotSound`) mais n'a
-      // aucun montage documenté, et il est absent de `weaponLabels` comme toute arme de véhicule.
-      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: '0x121B400900000000', v: 700 }],
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: '0x850902EF00000000', v: 700 }],
     })
     const fx = buildShotFx(d, 50)
     expect(fx[0].vehicleShot).not.toBeNull()
