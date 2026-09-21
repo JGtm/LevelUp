@@ -121,11 +121,15 @@ function afficher(locale: 'fr' | 'en' = 'fr') {
 }
 
 /**
- * survolerTitre — ouvre (ou tente d'ouvrir) l'infobulle du TITRE de la carte, seul endroit où
- * la réserve de couverture se dit depuis le 2026-09-14. Sans réserve, rien ne s'ouvre.
+ * survolerTitre — ouvre (ou tente d'ouvrir) l'infobulle du TITRE d'une carte, seul endroit où
+ * la réserve de couverture se dit depuis le 2026-09-14. Sans réserve, aucune icône (i) n'est
+ * posée et rien ne s'ouvre. Depuis le 2026-09-21 (lot D) les DEUX cartes la portent : on
+ * survole la première, la réserve vaut pour les deux vues.
  */
-function survolerTitre(vue: ReturnType<typeof afficher>, titre = t.equipmentUsage.title) {
-  fireEvent.mouseEnter(vue.getByText(titre).parentElement as Element)
+function survolerTitre(vue: ReturnType<typeof afficher>) {
+  const icones = vue.queryAllByRole('button', { name: /informations|more info/i })
+  if (icones.length === 0) return
+  fireEvent.mouseEnter(icones[0])
 }
 
 describe('MatchEquipmentUsageSection — la double porte', () => {
@@ -149,10 +153,12 @@ describe('MatchEquipmentUsageSection — la double porte', () => {
 })
 
 describe('MatchEquipmentUsageSection — les deux vues', () => {
-  it('rend la carte et ses deux vues, chacune nommée', () => {
+  // DEUX CARTES SUR LA MÊME RANGÉE depuis le 2026-09-21 (lot D) : « Usages par joueur » et
+  // « Part de chaque équipe » ont chacune sa `SectionCard`, il n'y a plus de carte englobante.
+  it('rend DEUX cartes, chacune nommée par sa vue', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    expect(vue.getByRole('region', { name: t.equipmentUsage.title })).toBeTruthy()
+    expect(vue.queryByRole('region', { name: t.equipmentUsage.title })).toBeNull()
     expect(vue.getByRole('region', { name: t.equipmentUsage.viewByPlayer })).toBeTruthy()
     expect(vue.getByRole('region', { name: t.equipmentUsage.viewTeamShare })).toBeTruthy()
   })
@@ -353,12 +359,12 @@ describe('MatchEquipmentUsageSection — tout est affiché (retrait du repli, 20
 })
 
 describe('MatchEquipmentUsageSection — parité FR/EN', () => {
-  it('EN : titre, vues et familles passent en anglais', () => {
+  it('EN : les deux titres de carte et les familles passent en anglais', () => {
     poserArtefact(TEMOIN)
     const vue = afficher('en')
     const en = REPLAY_TEXT.en
-    expect(vue.getByRole('region', { name: en.equipmentUsage.title })).toBeTruthy()
     expect(vue.getByRole('region', { name: en.equipmentUsage.viewByPlayer })).toBeTruthy()
+    expect(vue.getByRole('region', { name: en.equipmentUsage.viewTeamShare })).toBeTruthy()
     expect(vue.getAllByText(en.equipmentUsage.groupEquipment).length).toBeGreaterThan(0)
     expect(vue.getByText(en.placementFamily.sensor)).toBeTruthy()
     // Le power-up prend son nom EN, pas la clé FR.

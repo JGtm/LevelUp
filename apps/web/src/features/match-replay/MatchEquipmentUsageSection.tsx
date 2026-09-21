@@ -18,7 +18,12 @@
  * les trois issues d'une pile : Utilisé / Gardé / Lâché.
  * PLUS DE REPLI « VOIR PLUS » (même jour) : tout ce que la donnée justifie s'affiche.
  *
- *   1. « Nombre de gestes par joueur » — la grille partagée `components/charts/ValueGrid` :
+ * DEUX CARTES SUR LA MÊME RANGÉE depuis le 2026-09-21 (lot D du plan d'ajustements
+ * supplémentaires pré-v7.5) : les deux vues ci-dessous ont chacune sa `SectionCard`, côte à
+ * côte en `lg:grid-cols-2`. Leurs rendus internes n'ont PAS bougé — une maquette est en cours
+ * pour leur forme, et ce lot ne touche que le chrome.
+ *
+ *   1. « Usages par joueur » — la grille partagée `components/charts/ValueGrid` :
  *      lignes = joueurs dans l'ordre du roster, camp par camp, filet entre les deux camps ;
  *      colonnes = grandeurs, CHACUNE AVEC SON ÉCHELLE (un mur se compare à un mur) ;
  *   2. « Part de chaque équipe » — une barre 100 % par famille de geste, le
@@ -57,10 +62,11 @@
  * Aucun calcul ici : tout vient de `equipmentUsageLogic` (les mesures),
  * `equipmentUsageColumns` (les colonnes et leurs noms) et `equipmentUsageChart` (la projection).
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 
 import { ChartLegend } from '@/components/charts/ChartLegend'
 import { ValueGrid } from '@/components/charts/ValueGrid'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { Tooltip } from '@/components/ui/tooltip'
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
@@ -74,11 +80,7 @@ import {
   usageGroupColor,
   type UsageShareRow,
 } from './model/equipmentUsageChart'
-import {
-  uniqueUsageGroups,
-  usageColumnGroups,
-  type UsageColumnGroup,
-} from './model/equipmentUsageColumns'
+import { uniqueUsageGroups, usageColumnGroups } from './model/equipmentUsageColumns'
 import { buildEquipmentUsage, tallyTotal, type EquipmentUsage } from './model/equipmentUsageLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayText } from './i18n/i18nContract'
@@ -153,23 +155,57 @@ export function MatchEquipmentUsageSection({
   // Double porte : pas d'artefact, ou rien de mesuré -> rien du tout.
   if (!usage?.hasData) return null
 
+  // DEUX CARTES SUR LA MÊME RANGÉE depuis le 2026-09-21 (lot D) : « par joueur » et « part de
+  // chaque équipe » répondaient à deux questions dans une seule carte, l'une sous l'autre, et
+  // la page s'allongeait d'autant. Les RENDUS INTERNES sont inchangés (une maquette est en
+  // cours pour leur forme) : seul le chrome se dédouble. La RÉSERVE est sur les deux titres —
+  // elle vaut pour les deux vues, et une carte qui ne la porterait pas mentirait par omission.
+  const reserveTip =
+    reserve > 0 ? <InfoTooltip content={<p>{u.coverageReserveFmt(reserve)}</p>} /> : null
+
   return (
-    <SectionCard
-      title={t.equipmentUsage.title}
-      label={t.equipmentUsage.title}
-      titleAdornment={(label) => (
-        // LA RÉSERVE EST AU SURVOL DU TITRE, et nulle part ailleurs : sans réserve à dire,
-        // `HeaderLabelTooltip` rend le libellé nu (aucun nœud superflu).
-        <HeaderLabelTooltip
-          text={reserve > 0 ? u.coverageReserveFmt(reserve) : undefined}
-          focusable
+    <div className="grid gap-4 lg:grid-cols-2">
+      {groups.length > 0 && (
+        <SectionCard
+          title={u.viewByPlayer}
+          label={u.viewByPlayer}
+          titleAdornment={(label) => <CardTitle label={label} tip={reserveTip} />}
         >
-          <span>{label}</span>
-        </HeaderLabelTooltip>
+          <div className="px-3 pb-3 pt-3">
+            <ValueGrid model={grid} />
+            <ChartLegend
+              className="pt-2"
+              items={familles.map((g) => ({
+                key: g.key,
+                label: g.label,
+                color: usageGroupColor(g.key),
+              }))}
+            />
+          </div>
+        </SectionCard>
       )}
-    >
-      <UsageViews grid={grid} groups={groups} familles={familles} shares={shares} t={t} />
-    </SectionCard>
+      {shares.length > 0 && (
+        <SectionCard
+          title={u.viewTeamShare}
+          label={u.viewTeamShare}
+          titleAdornment={(label) => <CardTitle label={label} tip={reserveTip} />}
+        >
+          <div className="px-3 pb-3 pt-3">
+            <UsageTeamShares rows={shares} t={t} />
+          </div>
+        </SectionCard>
+      )}
+    </div>
+  )
+}
+
+/** Le titre d'une des deux cartes, avec son infobulle de réserve quand il y en a une. */
+function CardTitle({ label, tip }: { label: string; tip: ReactNode }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span>{label}</span>
+      {tip}
+    </span>
   )
 }
 
@@ -184,60 +220,6 @@ function useUsageGroups(usage: EquipmentUsage | null, t: ReplayText) {
   const groups = useMemo(() => (usage ? usageColumnGroups(usage, t) : []), [usage, t])
   const familles = useMemo(() => uniqueUsageGroups(groups), [groups])
   return { groups, familles }
-}
-
-/**
- * UsageViews — le corps de la carte : les deux vues empilées, chacune gardée par son contenu.
- *
- * Aucune grandeur mesurée : les deux vues n'ont rien à dessiner et la carte entière est déjà
- * fermée en amont par la double porte du composant.
- */
-function UsageViews({
-  grid,
-  groups,
-  familles,
-  shares,
-  t,
-}: {
-  grid: ReturnType<typeof buildUsageGrid>
-  groups: UsageColumnGroup[]
-  familles: UsageColumnGroup[]
-  shares: UsageShareRow[]
-  t: ReplayText
-}) {
-  return (
-    <div className="space-y-5 px-3 pb-3 pt-3">
-      {groups.length > 0 && (
-        <section aria-label={t.equipmentUsage.viewByPlayer}>
-          <ViewTitle>{t.equipmentUsage.viewByPlayer}</ViewTitle>
-          <ValueGrid model={grid} />
-          <ChartLegend
-            className="pt-2"
-            items={familles.map((g) => ({
-              key: g.key,
-              label: g.label,
-              color: usageGroupColor(g.key),
-            }))}
-          />
-        </section>
-      )}
-      {shares.length > 0 && (
-        <section aria-label={t.equipmentUsage.viewTeamShare}>
-          <ViewTitle>{t.equipmentUsage.viewTeamShare}</ViewTitle>
-          <UsageTeamShares rows={shares} t={t} />
-        </section>
-      )}
-    </div>
-  )
-}
-
-/** Le titre d'une vue à l'intérieur de la carte : les deux vues répondent à deux questions. */
-function ViewTitle({ children }: { children: string }) {
-  return (
-    <h4 className="mb-2 text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
-      {children}
-    </h4>
-  )
 }
 
 /**
