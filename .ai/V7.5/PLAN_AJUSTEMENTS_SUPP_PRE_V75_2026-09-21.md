@@ -101,17 +101,19 @@ surface `film/replay` 260 -> 263 justifie.
 ### Lot F — maquette (fichier `.ai/V7.5/MAQUETTE_RENDUS_AJSUP_2026-09-21.html`) — FUSIONNE bed1a2600
 - [x] 5 sujets x 3 propositions, jetons de l'app, clair/sombre
 
-### Lot G — suites A1/D (worktree `LevelUp-wt-ajsup-g`)
-- [ ] Helper canonique titre + infobulle (i) + garde-rail ; copies migrees hors `_shared/usage` et `session-detail`
-- [ ] `DroppedByFamily` expose dans le bloc formes (Go + openapi + types) ; colonne par famille lachee dans « Usages d equipement par match »
-- [ ] Doubles cadres restants : compare/CompareWeaponsRange, match-view/MatchKillDistanceSection, tactical/TacticalCoordinationCard
-- [ ] Ordre d affichage des tiers decouple de l ordre de departage (`tierOfWeaponOf`)
+### Lot G — suites A1/D (worktree `LevelUp-wt-ajsup-g`) — FUSIONNE 9c9d7d337
+- [x] Helper canonique titre + infobulle (i) + garde-rail ; copies migrees hors `_shared/usage` et `session-detail`
+- [x] `DroppedByFamily` expose dans le bloc formes (Go + openapi + types) ; colonne par famille lachee dans « Usages d equipement par match »
+- [x] Doubles cadres restants : compare/CompareWeaponsRange, match-view/MatchKillDistanceSection, tactical/TacticalCoordinationCard
+- [x] Ordre d affichage des tiers decouple de l ordre de departage (`tierOfWeaponOf`)
 
 ### Lot H — Explorer, rendus 1.A et 2.A horizontaux (worktree `LevelUp-wt-ajsup-h`)
 - [ ] Part des assistances : deux barres epaisses horizontales, echelle lineaire commune, tranches empilees avec comptes, trait de parite
 - [ ] Repartition des resultats : une barre epaisse horizontale empilee (compte + part ecrits), taux en chiffre d appel, bande des resultats
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- G : `explorer/ExplorerTargetFragRange.tsx:118` reecrit le chrome de SectionCard a la main ; alias courts de `deployedFamilyLabel` (`usageI18n.ts:507`) ne matchent aucune cle ; le hook go-vet de lefthook tourne sans CGO (60 lignes de bruit par commit).
+- G : libelle des colonnes de lacher = « Laches : Surbouclier » (forme neutre, genres mixtes des familles) -> verdict utilisateur.
 - E : la table persistee `match_pad_tiers` porte encore l ancienne regle (34 matchs sur 92 avec un ensemble de base faux dans les agregats Sessions/Escouade/Timeseries ; la Match view recalcule a la requete). Rattrapage existant `levelup backfill-pad-tiers` (rejoue `ProjeterNiveauxDArmes` sans recuisson) — DECISION utilisateur 2026-09-21 : OUI, a lancer en local A LA FIN du chantier (apres fusion de G et H) ; prevenir avant de le lancer en prod.
 - E : neuf vies de b1ad85eb non nommees (`index_hors_table`), dont 573 et 594 : leurs prises ne sont attribuees a personne (queue residuelle sous le seuil).
 - A2 : la vue « Prises nettes de drapeau » ne contient plus que son titre (D1 applique a la lettre) -> verdict utilisateur.
