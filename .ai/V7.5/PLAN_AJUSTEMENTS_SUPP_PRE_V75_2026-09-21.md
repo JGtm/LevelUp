@@ -74,11 +74,11 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - [x] Synthese : sous-titre « Frag le plus lointain… » retire
 - [x] Intensite : sous-titre et titre de panneau « Joueur » retires
 
-### Lot D — Match view (worktree `LevelUp-wt-ajsup-d`)
-- [ ] Occupation du terrain : +20 %, zoom et deplacement (hooks du rejeu 2D)
-- [ ] Notes sous legende -> InfoTooltip (i)
-- [ ] Usages d'equipement : deux cartes sur la meme rangee (rendu inchange, attend D15)
-- [ ] Ordre des tiers D2 dans `weaponTier.ts` / MatchPadControlSection ; « geste » -> « usages »
+### Lot D — Match view (worktree `LevelUp-wt-ajsup-d`) — FUSIONNE a9733a985
+- [x] Occupation du terrain : +20 %, zoom et deplacement (hooks du rejeu 2D)
+- [x] Notes sous legende -> InfoTooltip (i)
+- [x] Usages d'equipement : deux cartes sur la meme rangee (rendu inchange, attend D15)
+- [x] Ordre des tiers D2 dans `weaponTier.ts` / MatchPadControlSection ; « geste » -> « usages »
 
 ### Lot E — Empaleur (worktree `LevelUp-wt-ajsup-e`)
 - [ ] Diagnostic sur b1ad85eb : pourquoi Skewer = base ; cause prouvee sur pieces
@@ -88,6 +88,7 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - [x] 5 sujets x 3 propositions, jetons de l'app, clair/sombre
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- D : `PAD_TIER_ORDER` sert aussi au departage de `tierOfWeaponOf` (`padControlLogic.ts:236`) : ordre d affichage et ordre de departage a decoupler (lot G).
 - A1 : double cadre aussi dans `compare/CompareWeaponsRange.tsx`, `match-view/MatchKillDistanceSection.tsx`, `tactical/TacticalCoordinationCard.tsx`.
 - A1 : motif titleAdornment + InfoTooltip recopie dans ~8 fichiers -> helper canonique + garde-rail (lot G du chantier).
 - A1 : `DroppedByFamily` existe en amont (`film/replay/usage_summary.go:99`, `analysis/sessionusage`) mais s arrete a `analysis/squadformes/formes.go:229` (scalaire `Dropped`) : exposer la ventilation rendrait la colonne par famille (lot G).
