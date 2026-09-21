@@ -121,6 +121,15 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'match-view=>match-replay/MatchPadControlSection',
   'match-view=>match-replay/i18n/i18n',
   'match-view=>match-replay/model/equipmentUsageLogic',
+  //  - hooks de zoom / deplacement et leur controle (2026-09-21, ajustements pre-v7.5) :
+  //    « Occupation du terrain » se zoome et se deplace avec EXACTEMENT les hooks du rejeu
+  //    2D (contrat : une ReplayBounds, un CanvasView, une toile). Les recopier serait la
+  //    troisieme copie du geste de zoom ; les descendre dans `lib/` emmenerait le modele
+  //    de scene du rejeu. Dependance durable, meme raison que les sections ci-dessus.
+  'match-view=>match-replay/hooks/useReplayZoom',
+  'match-view=>match-replay/hooks/useReplayDrag',
+  'match-view=>match-replay/hooks/useReplayWheelZoom',
+  'match-view=>match-replay/ui/ReplayZoomControl',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history
