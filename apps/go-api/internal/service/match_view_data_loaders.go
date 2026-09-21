@@ -421,6 +421,11 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// le tueur. Posées ici pour la même raison que FragDistribution — hors de
 	// buildCombatTabFull, dont la signature est déjà à la limite de paramètres.
 	combat.AssistPairs = buildAssistPairs(ctx, d.assistPairs, d.assistScope, d.scoreboard)
+	// La riposte se lit sur les MÊMES paires killer→victim que le chart antagoniste, plus
+	// le camp du scoreboard : aucune requête de plus. Sur les paires BRUTES, pas sur
+	// `kvPairsFeed` : un délai entre deux morts est invariant par décalage T0, et la copie
+	// corrigée est réservée à la décoration du feed.
+	combat.Riposte = buildMatchRiposte(d.kvPairs, d.scoreboard)
 	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
 	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
 	// → map vide (section "Local" inactive sauf pour `is_me`).

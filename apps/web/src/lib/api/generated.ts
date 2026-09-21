@@ -5808,6 +5808,80 @@ export interface components {
             /** Format: int64 */
             psa_processed: number;
         };
+        CoordinationAppui: {
+            ma_part_des_appuis: components["schemas"]["Couverture"];
+            on_me_prepare: components["schemas"]["Couverture"];
+            /** Format: double */
+            parity_pct?: number;
+        };
+        CoordinationBlock: {
+            appui: components["schemas"]["CoordinationAppui"];
+            available: boolean;
+            /** Format: int64 */
+            fenetre_ms: number;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            per_match?: components["schemas"]["CoordinationMatchPoint"][] | null;
+            riposte: components["schemas"]["CoordinationRiposte"];
+            sessions?: components["schemas"]["CoordinationSessionPoint"][] | null;
+            unavailable_reason?: string;
+        };
+        CoordinationMatchPoint: {
+            /** Format: double */
+            assist_share_of_team_pct?: number;
+            /** Format: double */
+            assisted_share_pct?: number;
+            /** Format: int64 */
+            assists_to_me: number;
+            /** Format: double */
+            covered_share_pct?: number;
+            match_id: string;
+            /** Format: int64 */
+            my_assisted_kills: number;
+            /** Format: int64 */
+            my_deaths: number;
+            /** Format: int64 */
+            my_deaths_avenged: number;
+            /** Format: int64 */
+            my_measured_kills: number;
+            /** Format: int64 */
+            my_ripostes: number;
+            /** Format: double */
+            parity_pct?: number;
+            /** Format: double */
+            riposte_share_pct?: number;
+            /** Format: int64 */
+            team_assists: number;
+            /** Format: int64 */
+            team_deaths: number;
+            /** Format: int64 */
+            team_deaths_avenged: number;
+            /** Format: int64 */
+            team_size?: number;
+        };
+        CoordinationRiposte: {
+            /** Format: int64 */
+            delai_median_ms?: number;
+            je_riposte: components["schemas"]["Couverture"];
+            je_suis_couvert: components["schemas"]["Couverture"];
+            /** Format: double */
+            parity_pct?: number;
+            /** Format: int64 */
+            team_deaths: number;
+            /** Format: int64 */
+            team_deaths_avenged: number;
+        };
+        CoordinationSessionPoint: {
+            appui: components["schemas"]["CoordinationAppui"];
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            riposte: components["schemas"]["CoordinationRiposte"];
+            session_label: string;
+        };
         CorrelationDataPair: {
             metric_x_key: string;
             metric_y_key: string;
@@ -8155,6 +8229,7 @@ export interface components {
             kill_distance_by_weapon?: components["schemas"]["MatchKillDistancePlayer"][] | null;
             killer_victim?: components["schemas"]["MatchKillerVictimPair"][] | null;
             nemesis_duels: components["schemas"]["MatchNemesisRow"][] | null;
+            riposte?: components["schemas"]["MatchRiposteBlock"];
             tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
             weapon_kills: components["schemas"]["MatchWeaponKill"][] | null;
         };
@@ -8612,6 +8687,39 @@ export interface components {
         MatchPrivacyWarning: {
             level: string;
             message?: string;
+        };
+        MatchRiposteBlock: {
+            deaths: components["schemas"]["MatchRiposteDeath"][] | null;
+            /** Format: int64 */
+            fenetre_ms: number;
+            /** Format: int64 */
+            measured_deaths: number;
+            players: components["schemas"]["MatchRiposteePlayer"][] | null;
+        };
+        MatchRiposteDeath: {
+            avenged: boolean;
+            avenger_gamertag?: string;
+            avenger_xuid?: string;
+            /** Format: int64 */
+            delai_ms?: number;
+            killer_xuid?: string;
+            /** Format: int64 */
+            time_ms: number;
+            vengeable: boolean;
+            victim_gamertag?: string;
+            /** Format: int64 */
+            victim_team_id?: number;
+            victim_xuid?: string;
+        };
+        MatchRiposteePlayer: {
+            /** Format: int64 */
+            deaths_avenged: number;
+            gamertag?: string;
+            /** Format: int64 */
+            ripostes: number;
+            /** Format: int64 */
+            team_id?: number;
+            xuid?: string;
         };
         MatchRosterRow: {
             /** Format: int64 */
@@ -11116,6 +11224,7 @@ export interface components {
             compare_metrics: components["schemas"]["SessionCompareMetricRow"][] | null;
             compare_session?: components["schemas"]["SessionCompareEntry"];
             compare_usage?: components["schemas"]["SessionUsageBlock"];
+            coordination?: components["schemas"]["CoordinationBlock"];
             current_session: components["schemas"]["SessionCompareEntry"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
@@ -11162,8 +11271,12 @@ export interface components {
             player_share_of_lobby_pct?: number;
             /** Format: double */
             player_share_of_team_pct?: number;
+            /** Format: int64 */
+            player_team?: number;
             /** Format: double */
             team_share_of_lobby_pct?: number;
+            /** Format: int64 */
+            team_size?: number;
         };
         SessionUsageMetric: {
             key: string;
@@ -12912,6 +13025,7 @@ export interface components {
         };
         TimeseriesPageResponse: {
             briefing_kpis?: components["schemas"]["KPIStats"];
+            coordination?: components["schemas"]["CoordinationBlock"];
             cumul_tab: components["schemas"]["TimeseriesCumulTab"];
             distributions_tab: components["schemas"]["TimeseriesDistributionsTab"];
             equipment_usage?: components["schemas"]["EquipmentUsageBlock"];
