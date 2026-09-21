@@ -38,6 +38,7 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - D17 (2026-09-21, apres maquette) : Explorer « Part des assistances » = 1.A et « Repartition des resultats » = 2.A, TOUS DEUX A L HORIZONTALE. Sujets 3, 4, 5 : pas encore tranches.
 - D18 (2026-09-21) : Match view « Controle des armes speciales » = 4.A, colonnes verticales empilees par socle, hauteur = prises reelles, echelle commune ; groupes PUISSANCE / TERRAIN separes par un trait vertical discret, nom du groupe + sous-total CENTRE EN HAUT DANS LE GRAPHIQUE entre l axe Y et le trait (pas de bandeau) ; base repliee.
 - D19 (2026-09-21) : section « echange » de l Escouade = variante A de la maquette MAQUETTE_ECHANGE_ESCOUADE ; vocabulaire tactique : vengeance -> « Riposte », assistance -> « Appui », A APPLIQUER PARTOUT dans l app ; nom de la section : « Coordination » (valide), « taux d echange » -> « taux de riposte ».
+- D20 (2026-09-21) : Match view « Part de chaque equipe » = 5.A : barres horizontales epaisses PAR FAMILLE (memes familles et meme ordre que la grille « Usages par joueur », inchangee), longueur = usages reels sur une echelle commune, segment mon camp / eux avec comptes ecrits, total en bout de ligne.
 
 ## Lots
 
@@ -122,6 +123,9 @@ surface `film/replay` 260 -> 263 justifie.
 - [ ] Nuage intact, place apres Riposte, phrase d introduction reecrite
 - [ ] Blocs Constat, Compte, Donne/recu, Taux par session supprimes (0 code mort)
 - [ ] Vocabulaire : Riposte / Appui / Coordination applique dans toute l app (Escouade, Match view, Tactique, Timeseries, Synthese, Accueil, i18n FR+EN)
+
+### Lot K — Match view, part de chaque equipe en 5.A (worktree `LevelUp-wt-ajsup-k`)
+- [ ] Barres horizontales par famille, echelle commune, deux camps, comptes ecrits, total (D20)
 
 ## Decouvertes (hors perimetre, ne pas traiter)
 - H : `AssistExchangeSummary` (papillon log) reste sur le hub Relations (`RelationAssistsCards.tsx:45`) -> verdict utilisateur ; `assist_volume_max` n a plus de lecteur Explorer ; `ExplorerTargetSampleStats.tsx` a 399 L.
