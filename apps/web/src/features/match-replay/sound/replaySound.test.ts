@@ -15,6 +15,7 @@ import {
   buildSoundTimeline,
   killSound,
   killSourceSpriteStem,
+  shotSoundStem,
   SOUND_VARIANTS,
   type ReplaySoundEvent,
   type SoundCategoryFilter,
@@ -601,6 +602,76 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
       { weapon: false, grenade: false, melee: false, equipment: false, objective: false },
     )
     expect(tl).toEqual([])
+  })
+})
+
+/**
+ * LOT 5.8.4 — LE TAG DU WARTHOG SE DÉPARTAGE PAR LA FAMILLE DE SON CHÂSSIS.
+ *
+ * Le `weap` unique `c7d50912` couvre LAAG, Gauss et roquettes, et la seule reconstruction validée
+ * est celle des roquettes : elle sonnait donc pour les trois. MESURE DU PARC CUIT : les 105 tirs
+ * qui portent ce tag viennent TOUS d'un châssis `warthog` (100 avec véhicule publié, 5 sans),
+ * zéro `rockethog`, zéro `warthog_gauss` — le seul son de Warthog jamais joué était FAUX dans
+ * 100 % des cas mesurés. Le document, lui, publie la famille du porteur : le départage n'attend
+ * aucun rapport de RE.
+ */
+describe('shotSoundStem — le départage du Warthog par la famille du châssis', () => {
+  const HOG = '0xC7D5091200000000'
+
+  /** Un document portant UN véhicule de la famille donnée au slot 700. */
+  function docAvecHog(family: string | undefined) {
+    return testReplayDoc({
+      frameIntervalMs: 100,
+      vehicles: [
+        { slot: 700, gen: 1, t0: 0, t1: 50, t1max: 50, end: 'unknown', family, samples: [], rides: [] },
+      ],
+      shots: [{ slot: 1, t: 0, x: 0, y: 0, w: HOG, v: 700 }],
+    })
+  }
+
+  it('rockethog : la roquette sonne — c est la seule reconstruction validée', () => {
+    const doc = docAvecHog('rockethog')
+    expect(shotSoundStem(doc, doc.shots[0])).toBe('vehicle_shot_warthog_rocket_1')
+  })
+
+  it('warthog (LAAG) : SILENCE — aucune reconstruction, et pas le son d une voisine', () => {
+    const doc = docAvecHog('warthog')
+    expect(shotSoundStem(doc, doc.shots[0])).toBeUndefined()
+  })
+
+  it('warthog_gauss : SILENCE, pour la même raison', () => {
+    const doc = docAvecHog('warthog_gauss')
+    expect(shotSoundStem(doc, doc.shots[0])).toBeUndefined()
+  })
+
+  it('véhicule porteur NON publié : silence — la variante ne se devine pas', () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      vehicles: [],
+      shots: [{ slot: 1, t: 0, x: 0, y: 0, w: HOG, v: 700 }],
+    })
+    expect(shotSoundStem(doc, doc.shots[0])).toBeUndefined()
+  })
+
+  it('un tag SANS ambiguïté ne dépend d aucune famille : le Ghost sonne même sans porteur lu', () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      vehicles: [],
+      shots: [{ slot: 1, t: 0, x: 0, y: 0, w: '0x0001543500000000', v: 700 }],
+    })
+    expect(shotSoundStem(doc, doc.shots[0])).toBe('vehicle_shot_ghost_1')
+  })
+
+  it('le REGISTRE garde la main : une arme de joueur tirée d un siège sonne son arme', () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      vehicles: [
+        { slot: 700, gen: 1, t0: 0, t1: 50, t1max: 50, end: 'unknown', family: 'warthog', samples: [], rides: [] },
+      ],
+      shots: [{ slot: 1, t: 0, x: 0, y: 0, w: '0x2B1824D5', v: 700 }],
+      weaponLabels: { '0x2B1824D5': { en: 'BR75', fr: 'BR75', fx: 'ballistic', key: 'hinf_br75' } },
+    })
+    expect(shotSoundStem(doc, doc.shots[0])).toBe('hinf_br75')
   })
 })
 

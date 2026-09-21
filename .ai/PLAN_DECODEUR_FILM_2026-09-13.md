@@ -7062,7 +7062,42 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
         §4 D4) qu aucun rapport ne documente : le cas n est plus une hypothese.
   - [x] 2 cas vitest neufs (classe des trois, sens de l ancre et axe du mortier) et la garde
         « toutes les ancres tiennent dans [-0,5 ; +0,5] » etendue de 8 a **11** tags.
-- [ ] **5.8.4 — LE TAG WARTHOG SE DEPARTAGE PAR LA FAMILLE DU CHASSIS** (LAAG / Gauss / roquettes).
+- [x] **5.8.4 — LE TAG WARTHOG SE DEPARTAGE PAR LA FAMILLE DU CHASSIS** (web seul).
+  - [x] **LE DEFAUT, ET LA MESURE QUI LE CHIFFRE** : le `weap` unique `c7d50912` couvre LAAG,
+        Gauss et roquettes, et la seule reconstruction validee est celle des ROQUETTES — elle
+        sonnait donc pour les trois (« assume et ecrit plutot que muet », en-tete du 2026-09-04).
+        Balayage des 92 artefacts cuits : les **105 tirs** qui portent ce tag viennent **TOUS d un
+        chassis `warthog`** (100 avec vehicule publie, 5 sans), **zero `rockethog`, zero
+        `warthog_gauss`**. Le seul son de Warthog jamais joue etait donc **FAUX dans 100 % des cas
+        mesures**, et le « plutot que muet » ne preservait aucun cas juste.
+  - [x] **LE DEPARTAGE N ATTEND AUCUN RAPPORT DE RE** : le document publie la famille du chassis
+        du vehicule tireur (`vehicles[].family`) et un tir en vehicule porte le slot de son
+        porteur (`Shot.v`). `VEHICLE_SHOT_SOUND_BY_CHASSIS` (tag -> famille -> stem) prend la main
+        sur les tags AMBIGUS ; les 9 tags sans ambiguite restent dans
+        `VEHICLE_SHOT_SOUND_STEMS`. **Les deux tables sont DISJOINTES** — un tag dans les deux
+        serait la divergence garantie, un tag = une seule regle de resolution.
+  - [x] `shotSoundStem` prend le TIR entier au lieu de son seul identifiant d arme : la famille du
+        porteur ne s atteint que par `Shot.v`. Elle n est cherchee QUE pour un tir en vehicule (un
+        tir a pied n a pas de porteur, et balayer les vehicules pour lui serait un travail inutile
+        a chaque tir du match).
+  - [!] **CE QUE LE LOT REND AUDIBLE, ET IL FAUT LE DIRE : 100 TIRS PASSENT DE LA ROQUETTE AU
+        SILENCE sur `4f77afc1`**, le seul film du parc qui porte ce tag. Aucune reconstruction de
+        LAAG ni de Gauss n existe, et leur preter le tir de roquette — ou la LMG du Falcon, qui
+        est pourtant une mitrailleuse UNSC — serait « le son d une voisine », ce que
+        `vehicleShotSound.ts` s interdit en toutes lettres pour le Wasp M2. **Le remede est une
+        reconstruction de LAAG, pas un stem emprunte.** §4, D5 (5.8).
+  - [x] **UN TAG AMBIGU SANS FAMILLE LUE SE TAIT**, il ne retombe pas sur un stem par defaut :
+        c est le cas des 5 tirs du parc dont le vehicule n est pas publie. Deviner leur variante
+        ferait exactement le bruit que ce lot retire.
+  - [x] 6 cas vitest de comportement (`replaySound.test.ts`) : rockethog -> roquette, warthog ->
+        silence, warthog_gauss -> silence, porteur non publie -> silence, tag SANS ambiguite
+        insensible a la famille (le Ghost sonne meme sans porteur lu), et le REGISTRE qui garde la
+        main sur une arme de joueur tiree d un siege. Plus 1 cas de garde-rail d assets (le
+        Rockethog cable, le LAAG et le Gauss absents, le tag hors de la table des tags simples).
+  - [x] **LES DEUX GARDE-RAILS SUIVENT LA SCISSION, dans le meme commit** : celui des assets
+        parcourt desormais les stems des DEUX tables (et verifie que le compte reste 10 — un stem
+        cable dans la seconde et oublie jouerait un seul fichier `_1`), celui du style du lot
+        5.8.2 prend l union des DEUX jeux de tags.
 - [ ] **5.8.5 — UN TIR D ARME DE JOUEUR DEPUIS UN SIEGE PASSAGER PREND LA VISEE DE SON TIREUR**
       (D2 du lot 5.5).
 - [ ] **5.8.6 — LES SONS DES BASES : LE TIC DE SCORE, ET LA RAMPE SUIVIE D UN INTERVALLE NEUTRE**
@@ -7074,6 +7109,7 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-21 | 5.8.4 | **D5 (5.8) — LE LAAG ET LE GAUSS DU WARTHOG N ONT AUCUN SON, ET LE DEPARTAGE LES REND MUETS : 100 TIRS DE `4f77afc1` PASSENT DE LA ROQUETTE AU SILENCE.** Mesure : les 105 tirs du tag `c7d50912` du parc viennent tous d un chassis `warthog`, zero `rockethog`, zero `warthog_gauss` — le son joue etait faux dans 100 % des cas, mais le corriger ne rend pas un son juste, il rend le silence. | NON TRAITE, **et c est une decision de PRODUIT, pas de lot** : le remede est une RECONSTRUCTION Wwise du LAAG (et du Gauss), au meme regime que les dix deja validees — deux prises, regle des armes (1,2 s), 48 kHz/16 bits/stereo, -16 LUFS. Emprunter un stem voisin (la LMG du Falcon est une mitrailleuse UNSC) est refuse par la doctrine du fichier. Si l utilisateur prefere le faux son au silence, le retour arriere tient en une ligne : ajouter `warthog` et `warthog_gauss` a la sous-table du tag |
 | 2026-09-21 | 5.8.2 | **D3 (5.8) — LE MANIFESTE DU TITRE NE PEUT PAS PORTER LE STYLE D UNE ARME DE VEHICULE, ET PUBLIER CES ARMES CASSERAIT DEUX REGLES MESUREES.** `[shot_effects]` / `[shot_tints]` sont keyees par `weapon_key`, et leur seul chemin vers le client est `weaponLabels`, compose a la requete pour les armes que le registre canonique nomme. Surtout : la PRESENCE d une cle dans `weaponLabels` est le discriminateur « arme de vehicule » de `vehicleShotSourceOf` (5.2a.5) ET la garde du repli sonore de `shotSoundStem` (2026-09-04) — y publier une arme de vehicule la rendrait MUETTE et lui reprendrait sa direction. | **TRAITEE AUTREMENT DANS LE PERIMETRE** : table CLIENT `model/vehicleShotFx.ts`, jumelle exacte de `sound/vehicleShotSound.ts`. **Consignee parce qu elle nomme un manque de FRONTIERE** : le rejeu a desormais TROIS tables client keyees par tag `weap` (montage, son, style) la ou la doctrine du depot veut les tables de titre dans le TOML. Le lot qui voudra les y ramener doit d abord se donner un canal de document qui ne soit pas `weaponLabels` — par exemple une table `vehicleWeaponLabels` posee a la requete, qui est une montee de schema |
 | 2026-09-21 | 5.8.2 | **D4 (5.8) — UN TAG D ARME DE VEHICULE QUE AUCUN RAPPORT DE RE NE DOCUMENTE EST OBSERVE DANS UN DOCUMENT CUIT** : `0x850902EF00000000` (weap `850902ef`), **9 tirs sur `5676a9ba`**, absent des trois tables client (montage, son, style) et de `weaponLabels`. Vu aussi, et c est un autre cas : `0xC33B0948592CF3E9` (1 tir sur `4f77afc1`) dont la moitie basse n est PAS nulle — donc une arme de JOUEUR a variante, absente de `weaponLabels`, pas une arme de vehicule. | NON TRAITE (regle 7 : sans tag documente, toute entree serait une devinette). **L oracle est gratuit et il est ecrit ici** : un recensement des `shots[].w` de gabarit `0x........00000000` absents des trois tables, sur le parc cuit, rend la liste des armes de vehicule qu il reste a documenter. A joindre au recensement de tags que D5 (5.5) demande deja |
 | 2026-09-21 | 5.8.1 | **D1 (5.8) — LE PARC LOCAL NE PORTE AUCUN `vehicleCycles`, DONC AUCUN RENDU DE CYCLE N EST MESURABLE SUR PIECES.** Balayage des 92 artefacts de `data/cache/replays/halo_infinite` : **schema 62 partout** (D3 du 5.5) et **0 document** avec la cle `vehicleCycles` (schema 63). Le marqueur, son compte a rebours et son infobulle sont donc livres avec leurs tests et SANS mesure de population — ni « combien d emplacements par film », ni « combien de temps un marqueur reste visible ». | NON TRAITE (le brief interdit tout decodage). **La mesure se prend gratuitement a la premiere recuisson du parc** : les trois chiffres a relever sont `coverage.vehicles.cycleLocations` / `cycleGaps` / `cycleMissing`, deja publies, et le compte de `vehicleCycles` par film. A joindre au geste de recuisson que D1 (5.6) demande deja au pilote |
@@ -7543,6 +7579,15 @@ exactement la population que 5.2a.5 avait mesuree sans style.
 d encre par bande, puis relevé colonne par colonne des organes — chiffres au point 5.8.3 du §3.
 **MESURE SUR LE PARC CUIT** (`node -e`, lecture seule, aucun decodage) : tirs de vehicule a
 montage documente **104 -> 265 sur 609** (17,1 % -> 43,5 %), six documents concernes.
+
+**5.8.4 (le departage du Warthog par la famille du chassis)** — `make check-types` apres purge
+(vert) · `make test-web` : **726 fichiers, 7 855 tests verts** (**+7** cas) · `npx eslint` sur les
+5 fichiers touches : **0 erreur, 0 avertissement** · `npx knip` : aucun export mort. Aucun octet
+Go, aucun fichier de son ajoute ni retire.
+**MESURE SUR LE PARC CUIT** (`node -e`, lecture seule) : les **105 tirs** du tag `c7d50912`
+viennent tous d un chassis `warthog` (100 avec vehicule publie, 5 sans), **0 `rockethog`,
+0 `warthog_gauss`** — un seul film du parc porte ce tag (`4f77afc1`). Consequence audible
+consignee en §4 D5 : **100 tirs passent de la roquette au silence**.
 
 **UN ROUGE ATTRAPE PAR UN RATCHET, ET IL AVAIT RAISON** : le retour du hook des vehicules avait
 ete reecrit sur plusieurs lignes, ce que `sceneBinding.guard.test.ts` refuse — il exige

@@ -20,9 +20,22 @@ import { describe, expect, it } from 'vitest'
 
 import { fxTintOf } from '../layers/fxInk'
 import { familyOf } from '../layers/shotEffects'
-import { VEHICLE_SHOT_SOUND_STEMS } from '../sound/vehicleShotSound'
+import {
+  VEHICLE_SHOT_SOUND_BY_CHASSIS,
+  VEHICLE_SHOT_SOUND_STEMS,
+} from '../sound/vehicleShotSound'
 import { vehicleShotStyleOf } from './vehicleShotFx'
 import { vehicleWeaponMountOf, vehicleWeapTag } from './vehicleWeaponMounts'
+
+/**
+ * LES TAGS QUI SONNENT, DANS LES DEUX TABLES SONORES (lot 5.8.4) : celle des tags sans ambiguïté
+ * et celle des tags qui se départagent par la famille du châssis. Un tag passe de l'une à l'autre
+ * sans cesser de sonner — le compte, lui, ne doit pas bouger.
+ */
+const TAGS_QUI_SONNENT = [
+  ...VEHICLE_SHOT_SOUND_STEMS.keys(),
+  ...VEHICLE_SHOT_SOUND_BY_CHASSIS.keys(),
+]
 
 /**
  * Les tags de la table des MONTAGES, relus par leur seule porte publique : la table elle-même
@@ -41,8 +54,8 @@ const TAGS_MONTES = [
 
 describe('garde-rail : le style d’éclair des armes de véhicule', () => {
   it('les 10 armes qui SONNENT ont toutes un style', () => {
-    expect(VEHICLE_SHOT_SOUND_STEMS.size, 'la table sonore a changé de taille').toBe(10)
-    for (const tag of VEHICLE_SHOT_SOUND_STEMS.keys()) {
+    expect(TAGS_QUI_SONNENT.length, 'les tables sonores ont changé de taille').toBe(10)
+    for (const tag of TAGS_QUI_SONNENT) {
       expect(vehicleShotStyleOf(tag), `aucun style pour ${tag}`).not.toBeNull()
     }
   })
@@ -55,7 +68,7 @@ describe('garde-rail : le style d’éclair des armes de véhicule', () => {
   })
 
   it('aucun style ne nomme une famille ni une teinte hors des deux listes fermées', () => {
-    for (const tag of VEHICLE_SHOT_SOUND_STEMS.keys()) {
+    for (const tag of TAGS_QUI_SONNENT) {
       const style = vehicleShotStyleOf(tag)
       expect(style, tag).not.toBeNull()
       if (!style) continue
@@ -67,7 +80,7 @@ describe('garde-rail : le style d’éclair des armes de véhicule', () => {
   })
 
   it('aucun style n’est la MÊLÉE : un canon de véhicule a un éclair de bouche', () => {
-    for (const tag of VEHICLE_SHOT_SOUND_STEMS.keys()) {
+    for (const tag of TAGS_QUI_SONNENT) {
       // `buildShotFx` ÉCARTE la famille `melee` : un style de mêlée rendrait le tir invisible.
       expect(vehicleShotStyleOf(tag)?.fx, tag).not.toBe('melee')
     }
