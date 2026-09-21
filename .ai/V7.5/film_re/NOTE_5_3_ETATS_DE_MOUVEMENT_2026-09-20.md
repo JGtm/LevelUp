@@ -839,6 +839,11 @@ un changement d etat, sont precisement ceux qui cassent.
 
 ### 2sex.2 LE COMPOSANT FAUTIF, NOMME, PAR ARCHETYPE
 
+> **CE TABLEAU EST FAUX ET REMPLACE PAR LE § 2 SEPTIES (2026-09-21).** Les 13 463 « `ti=0 i0` »
+> etaient des REJETS DE GENERATION, pas des composants fautifs : sur le chemin delta,
+> `DesyncAt = 0` est une sentinelle de rejet et `TypeIndex` n y est jamais pose. La
+> sur-representation du § 2sex.1, elle, tient et se renforce.
+
 | archetype | echecs | composant fautif dominant |
 |---|---|---|
 | **`ti=0`** (game-engine) | **13 686** (84,6 %) | **`i0` : 13 463** — le verrou principal |
@@ -881,6 +886,92 @@ Le resultat de (1) les deprioritise : il n y a plus de mystere sur l endroit ou 
 l accroupissement par instant, donc plus besoin de l ecrivain du masque pour le trouver, ni du
 canal d evenements comme piste de remplacement. Ce qui reste est un travail de largeurs, et il
 commence par `ti=0 i0`.
+
+## 2 septies. CORRECTION DU § 2 SEXIES — `ti=0 i0` N ETAIT PAS LE VERROU, ET VOICI LA VRAIE LISTE
+
+> Ouverture du lot de grammaire 5.3.3. Premiere action : re-verifier le classement des echecs
+> AVANT de toucher une largeur. Elle a trouve une erreur de lecture, et la liste change.
+
+### 2sept.1 L ERREUR, ET SA CAUSE EXACTE
+
+Le § 2sexies donnait `ti=0 i0 game-engine-team-mapping` a **13 463 echecs**, « le verrou
+principal ». **C EST FAUX.** Sur le chemin delta, `DecodeFrameRecords` pose, quand le test de
+generation echoue :
+
+```go
+rec.Trace = EntityTrace{DesyncAt: 0, EndBit: br.BitPos()}
+rec.DesyncAt = 0
+break   // aucun composant n est lu, et rec.TypeIndex n est JAMAIS pose
+```
+
+`DesyncAt = 0` y est une **SENTINELLE de rejet**, pas un index de composant ; et `TypeIndex`
+reste a sa valeur nulle, c est-a-dire **0**. Mon histogramme lisait donc « archetype 0,
+composant 0 » la ou le decodeur disait « je n ai meme pas regarde ce record ».
+
+**LE DISCRIMINANT QUI MANQUAIT** : un rejet de generation ne franchit AUCUN composant
+(`len(Trace.Comps) == 0`). Avec ce test, la ventilation se separe proprement.
+
+### 2sept.2 LA VENTILATION CORRIGEE, ET LA CORRECTION DE HARNAIS QU ELLE A ENTRAINEE
+
+Seconde erreur trouvee dans la foulee : le monde (`World`) etait remis a neuf **a chaque
+chunk**, donc les liaisons slot -> archetype posees par les chunks precedents etaient perdues.
+Le monde persiste desormais sur tout le film.
+
+| | avant correction | apres |
+|---|---|---|
+| trames decodees sans erreur | 9 786 (37,7 %) | **10 512 (40,5 %)** |
+| records `ti=35` | 10 060 | **11 150** |
+| **rejets de GENERATION** (monde, pas grammaire) | 13 463 | **12 316** |
+| **desynchronisations REELLES de grammaire** | 2 709 | **3 130** |
+
+### 2sept.3 LA VRAIE LISTE DES COMPOSANTS FAUTIFS, PAR RENDEMENT
+
+| archetype | echecs reels | composant fautif dominant |
+|---|---|---|
+| `ti=2` (game-engine) | 442 | **`i15 managed-engine-timers-component` : 331** |
+| `ti=5` (joueur) | 429 | **`i22 player-aim-assist-component` : 371** |
+| `ti=10` (managed-object) | 354 | **`i5 managed-object-navpoint-component` : 228** |
+| `ti=0` | 265 | (disperse) |
+| `ti=18` | 145 | — |
+| **`ti=35` (bipede)** | **69** | **`i60 simulation-state` : 38 · `i59` : 19 · `i57` : 12** |
+
+**`game-engine-team-mapping` n apparait plus.** Les trois `partiel` du bipede, eux, tiennent :
+ce sont bien `i57`, `i59` et `i60` qui gardent l acces aux composants de mouvement.
+
+### 2sept.4 CE QUI NE BOUGE PAS : LA SUR-REPRESENTATION
+
+Elle se RENFORCE apres correction, ce qui est le meilleur signe qu elle est reelle :
+
+| composant | part des ECHECS `ti=35` | part des SAINS | facteur |
+|---|---|---|---|
+| `i18 unit-control` | **15,94 %** | 0,13 % | **x 123** |
+| `i29 unit-crouch` | **15,94 %** | 0,13 % | **x 123** |
+| `i55 biped-posture-physics` | **24,64 %** | 0,13 % | **x 190** |
+
+La conclusion du § 2sexies tient donc **entierement sur ce point** : l accroupissement par
+instant est dans la trame, dans les records riches, et les records riches echouent. Seule la
+LISTE DES COMPOSANTS A CORRIGER etait fausse.
+
+### 2sept.5 CE QUI RESTE LE PREMIER OBSTACLE, ET CE N EST PAS UNE GRAMMAIRE
+
+**12 316 rejets de generation contre 3 130 desynchronisations reelles** : les quatre cinquiemes
+des trames perdues le sont parce que le monde ne connait pas encore la liaison slot ->
+archetype, pas parce qu une largeur est fausse. Le monde s amorce aux images-cles ET aux
+records NEW des deltas — mais un record NEW n est lie que si sa marche est PROPRE, et une trame
+qui casse tot n en lie aucun. C est un amorcage circulaire.
+
+**AUCUNE LARGEUR N A ETE TOUCHEE.** Corriger une grammaire avant d avoir leve cet amorcage
+reviendrait a mesurer le gain sur une population de trames que le monde mutile encore.
+
+### 2sept.6 L ORDRE DE TRAVAIL QUE CETTE MESURE IMPOSE
+
+1. **L AMORCAGE DU MONDE** — 12 316 trames, quatre fois le total des desyncs de grammaire.
+   Question a instruire : d ou la production tire-t-elle ses liaisons (les `world_dump` que
+   `frame_records.go` mentionne), et peut-on les charger avant la premiere trame ?
+2. `ti=2 i15 managed-engine-timers` (331), `ti=5 i22 player-aim-assist` (371),
+   `ti=10 i5 managed-object-navpoint` (228).
+3. `ti=35 i60`, `i59`, `i57` (69 au total) — les gardiens des composants de mouvement, et la
+   cible finale du lot 5.3.
 
 ---
 

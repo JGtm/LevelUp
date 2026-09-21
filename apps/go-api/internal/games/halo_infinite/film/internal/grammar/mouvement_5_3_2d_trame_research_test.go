@@ -56,6 +56,11 @@ type m532dEchec struct {
 	ti     uint32
 	masque uint64
 	fautif int
+	// composants : le nombre de composants que la marche a franchis. ZERO avec `fautif == 0`
+	// et `ti == 0` est la signature d un REJET DE GENERATION, pas d une desynchronisation de
+	// grammaire : `DecodeFrameRecords` pose alors `EntityTrace{DesyncAt: 0}` SANS toucher
+	// `TypeIndex`. Confondre les deux fait passer un defaut de monde pour un composant fautif.
+	composants int
 }
 
 // TestMouvement532Trame — LA VENTILATION ETALONNEE.
@@ -64,7 +69,7 @@ func TestMouvement532Trame(t *testing.T) {
 	if dir == "" {
 		t.Skip("MOUV532D_FILM absent : chemin du repertoire de chunks du film attendu")
 	}
-	ech, echecs, st := m532dLire(t, dir)
+	ech, echecs, st, reg := m532dLire(t, dir)
 	t.Logf("FILM %s", dir)
 	t.Logf("  paquets delta a liste VIDE : %d cadres, %d trames decodees sans erreur (%.1f %%)",
 		st.paquets, st.trames, m532Pct(st.trames, st.paquets))
@@ -73,7 +78,7 @@ func TestMouvement532Trame(t *testing.T) {
 	if len(ech) == 0 {
 		t.Fatalf("aucun record ti=35 : l instrument ne mesure rien")
 	}
-	m532dHistoEchecs(t, ech, echecs)
+	m532dHistoEchecs(t, ech, echecs, reg)
 	if !m532dEtalon(t, ech) {
 		return
 	}
@@ -255,7 +260,7 @@ func m532dPublierIntervalles(t *testing.T, inters []m532dInter, nbSlots int, st 
 // m532dLire decode le film par `DecodeFrameRecords`, chunk par chunk.
 //
 //nolint:gocyclo // instrument de recherche : une seule marche, lisible de haut en bas
-func m532dLire(t *testing.T, dir string) ([]m532Ech, []m532dEchec, m532dStat) {
+func m532dLire(t *testing.T, dir string) ([]m532Ech, []m532dEchec, m532dStat, *Registry) {
 	t.Helper()
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -273,12 +278,18 @@ func m532dLire(t *testing.T, dir string) ([]m532Ech, []m532dEchec, m532dStat) {
 	var ech []m532Ech
 	var echecs []m532dEchec
 	var st m532dStat
+	// LE MONDE PERSISTE D UN CHUNK A L AUTRE, et c est une correction : un `World` remis a neuf
+	// a chaque chunk perd les liaisons slot -> archetype posees par les chunks precedents, et
+	// `DecodeFrameRecords` rejette alors le delta sur son test de generation SANS lire un seul
+	// composant. Mesure avant correction : 13 463 rejets de generation contre 2 709
+	// desynchronisations reelles — 83 % des echecs venaient du harnais, pas de la grammaire.
+	w := NewWorld(reg)
 	for _, c := range fc.ChunkNumbers() {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
-		w := m532dMonde(reg, data, pks)
+		m532dLierMonde(w, data, pks)
 		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta || pk.Size < 1 {
 				continue
@@ -303,7 +314,7 @@ func m532dLire(t *testing.T, dir string) ([]m532Ech, []m532dEchec, m532dStat) {
 				if n := len(recs); n > 0 {
 					last := recs[n-1]
 					echecs = append(echecs, m532dEchec{ti: last.TypeIndex, masque: last.Trace.Mask,
-						fautif: last.DesyncAt})
+						fautif: last.DesyncAt, composants: len(last.Trace.Comps)})
 				}
 				continue
 			}
@@ -317,13 +328,13 @@ func m532dLire(t *testing.T, dir string) ([]m532Ech, []m532dEchec, m532dStat) {
 			}
 		}
 	}
-	return ech, echecs, st
+	return ech, echecs, st, reg
 }
 
-// m532dMonde amorce le monde du chunk par ses images-cles : sans lui, le decodeur de trame ne
-// sait pas quel archetype porte un slot, et chaque record delta est illisible.
-func m532dMonde(reg *Registry, data []byte, pks []FilmPacket) *World {
-	w := NewWorld(reg)
+// m532dLierMonde ajoute au monde les liaisons portees par les images-cles d un chunk. Sans
+// elles, le decodeur de trame ne sait pas quel archetype porte un slot, et chaque record delta
+// est rejete avant toute lecture.
+func m532dLierMonde(w *World, data []byte, pks []FilmPacket) {
 	for _, pk := range pks {
 		if pk.Type != PacketTypeKeyframe {
 			continue
@@ -332,7 +343,6 @@ func m532dMonde(reg *Registry, data []byte, pks []FilmPacket) *World {
 			w.BindFull(uint32((r.Gen<<30)|r.Slot), uint32(r.TI)) //nolint:gosec // valeurs de registre
 		}
 	}
-	return w
 }
 
 // m532dEch relit les champs suivis aux positions que la trame publie.
@@ -363,7 +373,7 @@ func m532dEch(pay []byte, r FrameRecord, ts uint64) m532Ech {
 // LA COMPARAISON EST UN RAPPORT, PAS UN COMPTE : la part des masques portant `i29` parmi les
 // records EN ECHEC, contre cette meme part parmi les records SAINS. Un compte seul ne dirait
 // rien, les deux populations n ayant pas la meme taille.
-func m532dHistoEchecs(t *testing.T, sains []m532Ech, echecs []m532dEchec) {
+func m532dHistoEchecs(t *testing.T, sains []m532Ech, echecs []m532dEchec, reg *Registry) {
 	t.Helper()
 	suivis := []struct {
 		nom string
@@ -377,12 +387,23 @@ func m532dHistoEchecs(t *testing.T, sains []m532Ech, echecs []m532dEchec) {
 	}
 	var ech35 []m532dEchec
 	parTI := map[uint32]int{}
+	rejets := 0
+	var reels []m532dEchec
 	for _, e := range echecs {
+		// LA DISCRIMINATION QUI MANQUAIT : un rejet de generation n est pas un composant fautif.
+		if e.ti == 0 && e.fautif == 0 && e.composants == 0 {
+			rejets++
+			continue
+		}
+		reels = append(reels, e)
 		parTI[e.ti]++
 		if e.ti == BipedTypeIndex {
 			ech35 = append(ech35, e)
 		}
 	}
+	t.Logf("ECHECS, VENTILES PAR NATURE : %d rejets de GENERATION (monde incomplet, aucun "+
+		"composant lu) · %d desynchronisations REELLES de grammaire", rejets, len(reels))
+	echecs = reels
 	t.Logf("ECHECS : %d records desynchronises, dont %d de ti=35 (%.1f %%)",
 		len(echecs), len(ech35), m532Pct(len(ech35), len(echecs)))
 	tis := make([]int, 0, len(parTI))
@@ -421,7 +442,7 @@ func m532dHistoEchecs(t *testing.T, sains []m532Ech, echecs []m532dEchec) {
 			if j >= 5 {
 				break
 			}
-			pp = append(pp, fmt.Sprintf("i%d:%d", k, f[k]))
+			pp = append(pp, fmt.Sprintf("%s:%d", nomComposantBloquant(reg, ti, k), f[k]))
 		}
 		t.Logf("      ti=%-2d fautifs : %s", ti, strings.Join(pp, " "))
 	}
@@ -443,7 +464,7 @@ func m532dHistoEchecs(t *testing.T, sains []m532Ech, echecs []m532dEchec) {
 		if i >= 8 {
 			break
 		}
-		parts = append(parts, fmt.Sprintf("i%d:%d", k, fautifs[k]))
+		parts = append(parts, fmt.Sprintf("%s:%d", nomComposantBloquant(reg, BipedTypeIndex, k), fautifs[k]))
 	}
 	t.Logf("    COMPOSANT FAUTIF sur ti=35 (les 8 premiers) : %s", strings.Join(parts, " "))
 	t.Logf("    SUR-REPRESENTATION DES MASQUES (part parmi les ECHECS ti=35 contre part parmi les SAINS) :")
