@@ -134,17 +134,6 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
           <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
           <>
-            {/* PHRASE D'INTRODUCTION, TOUJOURS RENDUE (D19, 2026-09-21). Elle opposait les
-                deux extrêmes d'isolement du roster — une comparaison chiffrée qui exigeait
-                deux joueurs et disparaissait donc en solo, au moment même où le nuage
-                devient le seul bloc de la section. Elle dit maintenant CE QU'ON LIT, dans le
-                registre des deux autres cartes de la section. */}
-            <p
-              className="border-l-2 border-info pl-3 text-sm text-foreground"
-              data-testid="squad-isolement-phrase"
-            >
-              {t.say}
-            </p>
             <ChartCard series={series} buildOption={buildOption} height={380} frameless />
             {/* LÉGENDE DE TAILLE, en DOM : ECharts n'en a pas pour un encodage de taille.
                 Elle porte les VRAIES valeurs extrêmes du roster — un encodage qu'on ne

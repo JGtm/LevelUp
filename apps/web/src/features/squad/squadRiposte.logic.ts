@@ -85,11 +85,6 @@ export interface AppelRiposte {
   ripostes: number
   sansReponse: number
   mortsEquipe: number
-  /**
-   * « Une fois sur N » de la phrase de lecteur — l'inverse ARRONDI du taux. `null` quand
-   * le taux est nul : « une fois sur l'infini » ne se dit pas, la phrase change alors.
-   */
-  surCombien: number | null
   /** Réserve d'échantillon faible du périmètre (jamais un masquage : une mention). */
   echantillonFaible: boolean
 }
@@ -114,7 +109,6 @@ export function appelRiposte(echange: SquadEchange): AppelRiposte {
     ripostes,
     sansReponse: Math.max(0, mortsEquipe - ripostes),
     mortsEquipe,
-    surCombien: echange.couverture.taux > 0 ? Math.round(1 / echange.couverture.taux) : null,
     echantillonFaible: echange.couverture.echantillon_faible,
   }
 }

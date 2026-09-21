@@ -33,13 +33,6 @@ export function getSquadRiposteText(locale: Locale) {
     lowSampleHint: (floor: number) => m('squad.riposte.low_sample_hint', { floor }),
     emptyTitle: m('squad.riposte.empty_title'),
 
-    // ── La phrase de lecteur ─────────────────────────────────────────────────
-    sayFact: (v: { seconds: number; surCombien: number; delai: string }) =>
-      m('squad.riposte.say_fact', { ...v }),
-    sayFactNever: (seconds: number) => m('squad.riposte.say_fact_never', { seconds }),
-    sayBelow: m('squad.riposte.say_below'),
-    sayAbove: m('squad.riposte.say_above'),
-
     // ── Le chiffre d'appel ───────────────────────────────────────────────────
     appelLabel: (n: number) => m('squad.riposte.appel_label', { n }),
     appelUnit: m('squad.riposte.appel_unit'),

@@ -720,21 +720,9 @@ en = "{auteur} riposted for {pour} {n, plural, one {# time} other {# times}} ({p
 # construction, et l'annoncer ferait croire à une mesure là où il n'y a qu'une
 # tautologie).
 
-[squad.riposte.say_fact]
-fr = "Quand un des nôtres tombe, on abat son tueur dans les {seconds, number} secondes une fois sur {surCombien, number} — et quand on le fait, on met {delai} s."
-en = "When one of us falls, we take their killer down within {seconds, number} seconds one time in {surCombien, number} — and when we do, it takes us {delai} s."
 
-[squad.riposte.say_fact_never]
-fr = "Quand un des nôtres tombe, son tueur n'est jamais abattu dans les {seconds, number} secondes qui suivent sur cette sélection."
-en = "When one of us falls, their killer is never taken down within the next {seconds, number} seconds in this selection."
 
-[squad.riposte.say_below]
-fr = "Ce mois-ci on riposte un peu moins qu'à l'ordinaire."
-en = "Lately we riposte a little less than usual."
 
-[squad.riposte.say_above]
-fr = "Ce mois-ci on riposte un peu plus qu'à l'ordinaire."
-en = "Lately we riposte a little more than usual."
 
 # ─── Le chiffre d'appel ─────────────────────────────────────────────────────
 
@@ -977,9 +965,6 @@ en = "A cell says how many times the ROW player riposted for the COLUMN player. 
 fr = "Frags non ripostés"
 en = "Unriposted kills"
 
-[squad.isolement.say]
-fr = "Quand on meurt loin des autres, la riposte ne vient pas. Chaque point est une mort : à droite, personne n'était à portée de radar ; en haut, personne n'est venu."
-en = "When we die far from the others, the riposte does not come. Each dot is one death: on the right, nobody was within radar range; at the top, nobody came."
 
 [squad.isolement.figure]
 fr = "Un petit point par mort, un gros point par joueur — la taille dit le nombre de morts"

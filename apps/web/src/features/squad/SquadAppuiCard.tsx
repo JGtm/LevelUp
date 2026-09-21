@@ -23,8 +23,10 @@
  * RENOMMÉE « APPUI » (D19, 2026-09-21) ET SEULE À GARDER LE MOT « ASSISTANCE ». Elle
  * s'intitulait « Assistances dans l'escouade » alors que DEUX autres cartes de la même
  * section s'intitulaient aussi « Assistances » en comptant, elles, des ripostes : le mot
- * désignait deux choses opposées à quelques centimètres. Elle gagne aussi une PHRASE DE
- * LECTEUR au-dessus du graphe, comme la carte « Riposte » — sa forme, elle, ne bouge pas.
+ * désignait deux choses opposées à quelques centimètres. Sa forme, elle, ne bouge pas.
+ *
+ * PLUS DE PHRASE DE LECTEUR (D22-verbosité, LOI du 2026-09-21) : graphe et légende
+ * seulement, l'explication tient dans l'infobulle (i) du titre.
  */
 import { useMemo } from 'react'
 
@@ -42,7 +44,6 @@ import {
   assistCle,
   assistPairsSeries,
   assistPartParCouple,
-  appuiDominant,
   assistVoleesParCouple,
 } from './squadAssistPairs.logic'
 
@@ -76,9 +77,6 @@ export function SquadAppuiCard({ block, roster }: SquadAppuiCardProps) {
   const beneficiaires = useMemo(() => assistBeneficiaires(pairs, roster), [pairs, roster])
   const volees = useMemo(() => assistVoleesParCouple(pairs), [pairs])
   const parts = useMemo(() => assistPartParCouple(block), [block])
-  // La phrase de lecteur : qui prépare le plus de terrain, et pour qui. `null` quand rien
-  // n'est mesuré — on ne désigne personne au hasard sur un total nul.
-  const dominant = useMemo(() => appuiDominant(block), [block])
 
   // Couleurs par joueur : le premier du roster est le joueur principal (pastille
   // `squad-player-1`), les suivants prennent les tokens coéquipiers dans l'ordre.
@@ -121,18 +119,6 @@ export function SquadAppuiCard({ block, roster }: SquadAppuiCardProps) {
       titleAdornment={titleWithInfo(labels.description)}
     >
       <div className="space-y-2 px-3 py-2" data-testid="squad-appui">
-        {dominant && (
-          <p
-            className="border-l-2 border-info pl-3 text-sm text-foreground"
-            data-testid="squad-appui-phrase"
-          >
-            {labels.say({
-              joueur: dominant.joueur,
-              part: pctFmt.format(dominant.part),
-              beneficiaire: dominant.beneficiaire,
-            })}
-          </p>
-        )}
         <BarStackedChart
           series={series}
           height={320}
