@@ -82,8 +82,16 @@ const ecsProbeBytes = 512
 // par le flux — le masque de filtres pour les cinq premiers, le compte d'entrees pour `i9` — et
 // leur colonne `bits_typ` porte donc « variable », qui reste HORS du controle. Le compte des
 // gardees ne bouge pas pour cette raison, et pas parce qu'elles auraient ete oubliees.
+// MOUVEMENT DU 2026-09-21 (lot 5.7) : 121/66 -> 120/67. `ti=35 i55
+// biped-posture-physics-component` a CHANGE DE CATEGORIE : il ne lisait que son tag de 2 bits —
+// une largeur fixe — parce que son repartiteur `FUN_141fd997c` etait glose « resolution d etat,
+// 0 bit lu ». L ecrivain dit l inverse : c est le repartiteur d une union discriminee dont les
+// quatre charges lisent de 15 a plus de cent bits, chacune derriere une porte du flux. Une fois
+// portees (`components_biped_posture.go`), sa largeur n est plus un entier : sa colonne
+// `bits_typ` porte « variable », qui reste HORS des deux comptes. Le compte des GARDEES ne monte
+// donc pas — `i55` quitte le controle au lieu d y changer de colonne.
 const (
-	ecsLargeursFixes   = 121
+	ecsLargeursFixes   = 120
 	ecsLargeursGardees = 66
 )
 

@@ -50,9 +50,6 @@ func consumeDevicePosition(br *Lecteur) { br.Skip(15) }
 // FUN_1407ee764, porte ci-dessous.
 func consumeGameEngineCampaignTimer(br *Lecteur) { br.Skip(37) }
 
-// consumeBipedPosturePhysics (ti35 i55) — deser FUN_142f0293c -> FUN_142f1f630 : R(2) puis
-// FUN_141fd997c (resolution d'etat, 0 bit lu).
-// LE TAG EST PUBLIE DEPUIS LE LOT 5.3.4 (2026-09-21) — deux bits, la meme consommation.
-func consumeBipedPosturePhysics(br *Lecteur) {
-	br.publishEtatMouvement(EtatPosture, br.ReadBits(2))
-}
+// (consumeBipedPosturePhysics — ti35 i55 — A DEMENAGE dans `components_biped_posture.go` au
+// lot 5.7 : la glose « FUN_141fd997c : resolution d'etat, 0 bit lu » etait FAUSSE, c'est le
+// repartiteur d'une union discriminee dont les quatre charges lisent de 15 a plus de cent bits.)

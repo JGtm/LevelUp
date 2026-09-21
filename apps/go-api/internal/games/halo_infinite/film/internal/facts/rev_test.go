@@ -54,6 +54,10 @@ const (
 	cheminGoldenFactsRev = "testdata/facts_rev.golden"
 	// fichierPorteurDeRevisionFacts : le fichier qui PORTE la revision, exclu du hachage.
 	fichierPorteurDeRevisionFacts = "rev.go"
+	// fichierPorteurDeChroniqueFacts : la chronique a QUITTE `rev.go` le 2026-09-21 (lot 5.7,
+	// deplacement pur) — le fichier passait les 500 lignes du ratchet de taille. La constante,
+	// elle, reste dans `rev.go` : deux fichiers, deux roles, comme dans la couche `grammar`.
+	fichierPorteurDeChroniqueFacts = "rev_chronique.go"
 	// prefixeRevisionFacts : le prefixe de la serie. C est `killsource` et PAS `facts` : la
 	// serie est reprise sans renumerotation (V15 (16)), et les lignes deja en base portent ces
 	// valeurs-la dans `decoder_rev`. Renommer la serie les rendrait toutes candidates au
@@ -117,7 +121,7 @@ func TestFactsRevSuitLesFaits(t *testing.T) {
 		regenererGoldenFactsRev(t, empreinte)
 		return
 	}
-	c, err := revision.LireChronique(prefixeRevisionFacts, []string{fichierPorteurDeRevisionFacts},
+	c, err := revision.LireChronique(prefixeRevisionFacts, []string{fichierPorteurDeRevisionFacts, fichierPorteurDeChroniqueFacts},
 		cheminGoldenFactsRev)
 	if err != nil {
 		t.Fatalf("chronique de `facts` : %v", err)
@@ -157,7 +161,7 @@ func regenererGoldenFactsRev(t *testing.T, empreinte string) {
 // chronique s y etait arretee a `.12` pendant que la constante valait `.14`, et rien ne
 // rougissait — les deux changements de comportement intermediaires n avaient aucune entree.
 func TestChroniqueDesFaitsCouvreLaRevisionCourante(t *testing.T) {
-	c, err := revision.LireChronique(prefixeRevisionFacts, []string{fichierPorteurDeRevisionFacts},
+	c, err := revision.LireChronique(prefixeRevisionFacts, []string{fichierPorteurDeRevisionFacts, fichierPorteurDeChroniqueFacts},
 		cheminGoldenFactsRev)
 	if err != nil {
 		t.Fatalf("chronique de `facts` : %v", err)

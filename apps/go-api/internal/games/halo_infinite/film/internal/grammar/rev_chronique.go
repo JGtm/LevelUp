@@ -408,3 +408,36 @@ package grammar
 // `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.2`.
 // `replay.SchemaVersion` MONTE a 65 — le document porte un calque neuf —, et le codec des faits
 // passe a `REPLAYINPUTS24` pour que les lectures voyagent avec les fixtures d entrees.
+
+// ENTREE `grammar-2026-09-21.3` (2026-09-21, lot 5.7) : `ti=35 i55` N ETAIT PAS UNE LARGEUR DE
+// DEUX BITS — SES QUATRE CHARGES SONT PORTEES.
+//
+// CE QUI A CHANGE, ET POURQUOI C EST UNE CORRECTION ET NON UN AJOUT. `consumeBipedPosturePhysics`
+// lisait `R(2)` et s arretait, sur la foi d une glose qui disait de son repartiteur
+// `FUN_141fd997c` « resolution d etat, 0 bit lu ». L ecrivain, relu a l octet, dit l inverse :
+// `FUN_141fd997c` est LE REPARTITEUR D UNE UNION DISCRIMINEE — il pose un octet de genre
+// (`dst+0x2c` = 1, 2, 3 pour les tags 1, 2, 3 ; le tag 0 prend une quatrieme voie) et appelle un
+// lecteur de charge DIFFERENT par tag, de quinze a plus de cent bits. C est la decouverte D1 du
+// lot 5.3, dont le cout n etait pas une desync mais une TRONCATURE : `i55` est le 56e des 64
+// composants du bipede, donc les bits non lus decalent `i56` a `i63` et la boucle de la vue
+// s arrete au record suivant.
+//
+// LES LARGEURS VIENNENT DE L ECRIVAIN, PAS D UN ESSAI. Les feuilles etaient toutes portees
+// ailleurs dans la couche sauf `FUN_14080bd28` (un handle court `R(15)`, masque `& 0x7fff`) ; la
+// largeur de `FUN_14076dc04` est lue au DESASSEMBLAGE de ses trois sites d appel
+// (`142f263e5`, `142f2658b`, `1431c357d` : `R9D = 0x13`), jamais devinee.
+//
+// MESURE, `bfecd02b`, marche du jeu a trois vues, largeurs de carte installees. L ORACLE DE
+// CONTENU TIENT et c est lui qui autorise le commit : etalon `i0` 85,5 % (inchange) · `i1`
+// 77,5 % (inchange) · `i21` 65,2 -> 65,3 % · `i25` 97,0 -> 97,1 %. Records `ti=35` 97 447 ->
+// 97 345 (-0,10 %), desyncs 3 -> 6 (`i59` 5, `i57` 1). LE COMPTE NE MONTE PAS, et c est dit :
+// les essais d alignement de l inference de chaine (`deltaBodyTrial`) dependent de la largeur
+// d `i55`, donc la corriger redistribue quelques alignements gagnants. L ECART EST DE UN POUR
+// MILLE ET L ETALON NE BOUGE PAS : la correction est neutre en couverture, et juste en
+// grammaire.
+//
+// `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.3`.
+// `replay.SchemaVersion` NE MONTE PAS : aucun champ neuf. Mais LE CONTENU CUIT CHANGE — les
+// records du bipede ne ferment plus aux memes bits —, donc les fixtures de contrat et les
+// goldens d assemblage se refigent, et `replay-equiv` deplace les etapes qui dependent du
+// decodage.
