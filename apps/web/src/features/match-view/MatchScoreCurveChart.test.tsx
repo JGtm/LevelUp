@@ -8,6 +8,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { MATCH_VIEW_TEXT } from './i18n'
 import { MatchScoreCurveChart } from './MatchScoreCurveChart'
@@ -86,6 +87,18 @@ function afficher(locale: 'fr' | 'en' = 'fr') {
   )
 }
 
+
+/**
+ * L'AIDE DU TITRE, ouverte. La mention de source et la réserve de troncature sont passées dans
+ * l'infobulle (i) du titre le 2026-09-21 (lot D) : elles ne sont plus dans le document au
+ * repos, elles s'ouvrent au survol.
+ */
+async function aideDuTitre(view: ReturnType<typeof render>): Promise<string> {
+  const user = userEvent.setup()
+  await user.hover(view.getByRole('button', { name: /informations/i }))
+  return view.getByRole('tooltip').textContent ?? ''
+}
+
 describe('MatchScoreCurveChart — quand la carte apparaît', () => {
   it('ne rend RIEN sans artefact : 404 = pas de film, pas de cadre vide', () => {
     poserArtefact(null)
@@ -116,7 +129,7 @@ describe('MatchScoreCurveChart — quand la carte apparaît', () => {
     poserArtefact({})
     const view = afficher()
     expect(view.getByText(t.scoreCurveTitle)).toBeTruthy()
-    expect(view.getByText(new RegExp(t.scoreCurveSource.slice(0, 30)))).toBeTruthy()
+    expect(await aideDuTitre(view)).toMatch(new RegExp(t.scoreCurveSource.slice(0, 30)))
     await waitFor(() => expect(view.getByTestId('echarts-stub')).toBeTruthy())
   })
 })
@@ -212,14 +225,16 @@ describe('MatchScoreCurveChart — ce que l’option ECharts contient', () => {
 })
 
 describe('MatchScoreCurveChart — ce que la carte DIT de sa mesure', () => {
-  it('signale une lecture TRONQUÉE : une courbe incomplète qui a l’air complète est pire', () => {
+  it('signale une lecture TRONQUÉE : une courbe incomplète qui a l’air complète est pire', async () => {
     poserArtefact({ coverage: { score: { truncated: true, modeSupported: true } } } as never)
-    expect(afficher().getByText(new RegExp(t.scoreCurveTruncated.slice(0, 30)))).toBeTruthy()
+    expect(await aideDuTitre(afficher())).toMatch(new RegExp(t.scoreCurveTruncated.slice(0, 30)))
   })
 
-  it('ne dit rien de tel quand la lecture est complète', () => {
+  it('ne dit rien de tel quand la lecture est complète', async () => {
     poserArtefact({})
-    expect(afficher().queryByText(new RegExp(t.scoreCurveTruncated.slice(0, 30)))).toBeNull()
+    expect(await aideDuTitre(afficher())).not.toMatch(
+      new RegExp(t.scoreCurveTruncated.slice(0, 30)),
+    )
   })
 
   it('EN : titre et note passent en anglais', () => {
