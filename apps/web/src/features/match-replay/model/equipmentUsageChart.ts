@@ -7,7 +7,9 @@
  * Deux vues empilées remplacent le tableau à deux niveaux d'en-tête :
  *   1. « Nombre de gestes par joueur » — la grille partagée (`components/charts/ValueGrid`),
  *      une colonne par colonne de mesure, chaque colonne avec SON échelle ;
- *   2. « Part de chaque équipe » — une barre 100 % par FAMILLE de geste.
+ *   2. « Part de chaque équipe » — depuis le 2026-09-21 (D20, proposition 5.A), une barre
+ *      ÉPAISSE par famille, toutes sur LA MÊME échelle d'usages (et non plus une barre 100 %
+ *      par groupe de colonnes, qui donnait deux barres de même longueur pour 24 et 38 gestes).
  *
  * LA FAMILLE, PAS LA COLONNE, PORTE LA COULEUR. `usageColumnGroups` décide déjà quelles
  * familles la mesure justifie (grappin, états actifs, poses, lâchés, lancers) ; la table des
@@ -24,10 +26,11 @@
  * défaut et deux teintes confondues sur Okabe-Ito. Ici la couleur ne dit rien d'ordinal — elle
  * ne fait qu'identifier une famille — donc la gamme est un vocabulaire, pas un jugement.
  *
- * LA PART D'ÉQUIPE SE COMPTE EN GESTES, PAS EN COLONNES. Une famille peut porter plusieurs
- * colonnes d'unités différentes (les états actifs en comptent trois : épisodes, durée, frags) :
- * les additionner n'aurait aucun sens. La vue 2 compte donc le NOMBRE DE GESTES de la famille —
- * la même grandeur que `tallyTotal`, ventilée famille par famille.
+ * LA VUE 2 LIT LA MÊME MESURE QUE LA CELLULE DE LA GRILLE : la `value()` de la colonne,
+ * appliquée au compteur d'un CAMP au lieu de celui d'un joueur. `usageGestureCount`, qui
+ * recomptait les gestes d'un GROUPE entier pour l'ancien découpage, est mort avec lui (lot K,
+ * 2026-09-21) : un second calcul du même nombre finit toujours par diverger de celui que la
+ * grille écrit juste à côté (CLAUDE.md n°6).
  *
  * Pur : aucun React, aucun hex, aucune langue — les libellés et les encres d'équipe arrivent
  * par l'appelant.
@@ -36,9 +39,8 @@ import type { ValueGridModel, ValueGridRow } from '@/components/charts/valueGrid
 import { buildValueGrid } from '@/components/charts/valueGridModel'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 
-import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
 import type { UsageColumn, UsageColumnGroup, UsageGroupKey } from './equipmentUsageColumns'
-import type { EquipmentUsageTally, EquipmentUsageTeam } from './equipmentUsageLogic'
+import type { EquipmentUsageTeam } from './equipmentUsageLogic'
 
 /**
  * L'ENCRE DE CHAQUE FAMILLE DE GESTE. Indexée par famille, jamais par rang (cf. en-tête).
@@ -86,45 +88,6 @@ export interface UsageLeaf {
 /** usageLeaves aplatit les groupes en colonnes, chacune gardant sa famille. */
 export function usageLeaves(groups: UsageColumnGroup[]): UsageLeaf[] {
   return groups.flatMap((g) => g.columns.map((column) => ({ column, group: g.key })))
-}
-
-/**
- * usageGestureCount — le NOMBRE DE GESTES d'une famille dans un compteur.
- *
- * Un épisode d'état actif est UN geste (sa durée et ses frags le décrivent, ils ne s'ajoutent
- * pas à lui). Les frags sous effet actif n'en sont pas un : ce sont des conséquences. Depuis le
- * 2026-09-19 (décision 6) l'épisode ne se compte QU'UNE FOIS, dans la famille `equipment` du
- * power-up correspondant : la famille `episodes` a été retirée.
- *
- * LES LANCERS DE GRENADE N'ONT PLUS DE FAMILLE ICI depuis le 2026-09-13 (retrait demandé par
- * l'utilisateur) : ils restent mesurés par `equipmentUsageLogic` et dessinés par le rejeu.
- */
-export function usageGestureCount(tally: EquipmentUsageTally, group: UsageGroupKey): number {
-  const sum = (m: Record<string, number> | Record<number, number>): number =>
-    Object.values(m).reduce((a: number, b: number) => a + b, 0)
-  switch (group) {
-    case 'grapple':
-      return tally.grapplePulls
-    case 'equipment':
-      // FUSION (E2) : les poses déployées, les objets lâchés, LES CONSOMMATIONS DE CHARGE
-      // (`spent`, lot 6.4 point 2), ET les activations des deux power-ups (leur côté « utilisé »
-      // vient des épisodes, pas d'une pose — P2). Le compte d'épisode n'y figure plus qu'UNE
-      // FOIS depuis le retrait de la famille `episodes` (2026-09-19, décision 6).
-      //
-      // `spent` NE DOUBLE JAMAIS LE MUR : `deriveKeptFromTaken` (equipmentKeptLogic.ts) exclut
-      // explicitement les familles à pièce engendrée (`isFamilyWithSpawnedPiece`) de ce tally —
-      // le mur reste lu sur SES poses, jamais sur ses consommations. Sans `spent`, une famille
-      // dont le SEUL geste mesuré est une consommation (un capteur pris puis vidé, ni posé ni
-      // lâché) restait invisible de cette vue alors que `tallyTotal` (equipmentUsageLogic.ts)
-      // la comptait déjà.
-      return (
-        sum(tally.deployed) +
-        sum(tally.dropped) +
-        sum(tally.spent) +
-        (tally.episodes[EQUIP_FAMILY_CAMO]?.count ?? 0) +
-        (tally.episodes[EQUIP_FAMILY_OVERSHIELD]?.count ?? 0)
-      )
-  }
 }
 
 /** Ce que l'appelant doit fournir pour habiller un camp : son nom et son encre. */
@@ -181,57 +144,114 @@ export function buildUsageGrid(input: UsageGridInput): ValueGridModel {
   })
 }
 
-/** Un camp dans une barre de part : son nom, son encre, son compte et son pourcentage. */
-export interface UsageShareSegment {
+/** Un camp dans la barre d'une famille : son nom, son encre, son compte et ses deux parts. */
+export interface UsageFamilyBarSegment {
   side: string | null
   label: string
   accent: string
   count: number
+  /** Part du camp DANS SA FAMILLE (0..100, arrondi) — l'infobulle, jamais la longueur. */
   percent: number
+  /** Longueur du segment, en % de la BORNE COMMUNE à toutes les lignes (0..100). */
+  widthPct: number
 }
 
-/** Une famille de geste et la part de chaque camp dedans. */
-export interface UsageShareRow {
-  key: UsageGroupKey
+/** Une famille de geste et la barre de ses deux camps. */
+export interface UsageFamilyBarRow {
+  key: string
   label: string
   /** La réserve de mesure de la famille (`UsageColumnGroup.hint`), portée par son nom. */
   hint: string
-  color: string
   total: number
-  segments: UsageShareSegment[]
+  segments: UsageFamilyBarSegment[]
+}
+
+/** Un camp en légende de la vue 2 : dans l'ordre des segments, mon camp d'abord. */
+export interface UsageFamilyBarTeam {
+  side: string | null
+  label: string
+  accent: string
 }
 
 /**
- * buildUsageShares — la vue 2. Une ligne par famille MESURÉE ; une famille dont aucun camp n'a
- * fait le moindre geste n'a pas de ligne (une barre vide n'est pas une part).
- *
- * Le pourcentage est arrondi à l'entier pour l'affichage ; le COMPTE BRUT l'accompagne toujours,
- * c'est lui qui fait foi — deux segments à 50 % ne disent pas s'ils valent 1 ou 40.
+ * Les barres de la vue 2. LA BORNE COMMUNE N'EST PAS PUBLIÉE : elle est déjà DÉPENSÉE dans le
+ * `widthPct` de chaque segment — la republier donnerait à l'appelant de quoi refaire la
+ * division, donc de quoi la refaire autrement.
  */
-export function buildUsageShares(
-  input: { teams: EquipmentUsageTeam[]; groups: UsageColumnGroup[] } & UsageTeamVisual,
-): UsageShareRow[] {
-  const rows: UsageShareRow[] = []
-  for (const group of input.groups) {
-    const counts = input.teams.map((team) => usageGestureCount(team.total, group.key))
-    const total = counts.reduce((a, b) => a + b, 0)
-    if (total === 0) continue
-    rows.push({
-      key: group.key,
-      label: group.label,
-      hint: group.hint,
-      color: usageGroupColor(group.key),
+export interface UsageFamilyBars {
+  rows: UsageFamilyBarRow[]
+  /** La légende des camps, dans l'ORDRE DES SEGMENTS — sans quoi elle se lit à l'envers. */
+  legend: UsageFamilyBarTeam[]
+}
+
+/** Ce que `buildUsageFamilyBars` demande en plus de l'habillage des camps. */
+export interface UsageFamilyBarsInput extends UsageTeamVisual {
+  teams: EquipmentUsageTeam[]
+  groups: UsageColumnGroup[]
+  /** Le camp du joueur de la page : son segment ouvre chaque barre. `null` = ordre du film. */
+  allySide: string | null
+}
+
+/**
+ * orderedTeams — MON CAMP D'ABORD (D20, 2026-09-21). Le segment de gauche est toujours le
+ * mien : une barre qui changerait de main d'une famille à l'autre ne se compare pas d'un
+ * coup d'œil. Sans camp connu (aucun `is_me` au tableau des scores), l'ordre du film reste.
+ */
+function orderedTeams(teams: EquipmentUsageTeam[], allySide: string | null): EquipmentUsageTeam[] {
+  if (allySide == null) return teams
+  return [...teams].sort((a, b) => Number(b.side === allySide) - Number(a.side === allySide))
+}
+
+/**
+ * buildUsageFamilyBars — la vue 2 depuis le 2026-09-21 (D20, proposition 5.A de la maquette).
+ *
+ * UNE BARRE PAR FAMILLE, PAS PAR GROUPE, ET SUR UNE SEULE ÉCHELLE. La vue rendait jusque-là
+ * une barre 100 % par GROUPE de colonnes : deux barres de même longueur, l'une valant 24
+ * gestes et l'autre 38, dont la seconde mêlait murs, capteurs, propulseurs, surbouclier et
+ * camouflage — aucune des colonnes de la grille voisine ne s'y retrouvait. Les lignes sont
+ * maintenant LES COLONNES DE LA GRILLE (`usageLeaves`), même liste et même ordre, et leur
+ * longueur est le nombre de gestes RÉEL rapporté à la borne commune : la barre du grappin
+ * (24) fait quatre fois celle du capteur (6).
+ *
+ * LA FAMILLE PORTE SA PROPRE MESURE : le compte d'un camp est la `value()` de la colonne sur
+ * le compteur du camp — la même plume que la cellule de la grille, jamais un second calcul
+ * (CLAUDE.md n°6). Une famille dont aucun camp n'a fait le moindre geste n'a pas de ligne.
+ *
+ * Le pourcentage reste calculé (infobulle) ; le COMPTE BRUT fait foi et s'écrit dans le
+ * segment quand il tient.
+ */
+export function buildUsageFamilyBars(input: UsageFamilyBarsInput): UsageFamilyBars {
+  const teams = orderedTeams(input.teams, input.allySide)
+  const mesures = usageLeaves(input.groups)
+    .map((leaf) => {
+      const counts = teams.map((team) => leaf.column.value(team.total) ?? 0)
+      return { leaf, counts, total: counts.reduce((a, b) => a + b, 0) }
+    })
+    .filter((m) => m.total > 0)
+  const bound = Math.max(1, ...mesures.map((m) => m.total))
+  return {
+    legend: teams.map((team) => ({
+      side: team.side,
+      label: input.teamLabel(team.side),
+      accent: input.teamAccent(team.side),
+    })),
+    rows: mesures.map(({ leaf, counts, total }) => ({
+      // LA MÊME CLÉ QUE LA COLONNE DE LA GRILLE (`buildUsageGrid`) : les deux vues nomment la
+      // même liste, elles doivent la nommer pareil.
+      key: `${leaf.group}.${leaf.column.key}`,
+      label: leaf.column.label,
+      hint: input.groups.find((g) => g.key === leaf.group)?.hint ?? '',
       total,
-      segments: input.teams
+      segments: teams
         .map((team, i) => ({
           side: team.side,
           label: input.teamLabel(team.side),
           accent: input.teamAccent(team.side),
           count: counts[i],
           percent: Math.round((counts[i] / total) * 100),
+          widthPct: (counts[i] / bound) * 100,
         }))
         .filter((s) => s.count > 0),
-    })
+    })),
   }
-  return rows
 }

@@ -23,7 +23,7 @@ import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated
 import type { Locale } from '@/lib/i18n/locale'
 import type { ExplorerCommonMatchRow } from '@/lib/api/types'
 
-import { ExplorerStackedTrack, type StackedTrackSegment } from './ExplorerStackedTrack'
+import { StackedTrack, type StackedTrackSegment } from '@/components/charts/StackedTrack'
 
 /** Hauteur de la bande des résultats — plus basse que le défaut (100) : la carte est
  *  empilée avec « Part des assistances » dans une colonne du `lg:grid-cols-3`. */
@@ -102,7 +102,7 @@ export function ExplorerOutcomeBreakdown({
           </span>
         </div>
       )}
-      <ExplorerStackedTrack
+      <StackedTrack
         segments={segments}
         ariaLabel={kinds.map((k) => `${fmt(counts[k])} ${t(OUTCOME_LABEL_KEY[k])}`).join(' · ')}
         testId="explorer-outcome-track"

@@ -26,8 +26,10 @@
  *   1. « Usages par joueur » — la grille partagée `components/charts/ValueGrid` :
  *      lignes = joueurs dans l'ordre du roster, camp par camp, filet entre les deux camps ;
  *      colonnes = grandeurs, CHACUNE AVEC SON ÉCHELLE (un mur se compare à un mur) ;
- *   2. « Part de chaque équipe » — une barre 100 % par famille de geste, le
- *      compte brut ET le pourcentage écrits dans le segment.
+ *   2. « Part de chaque équipe » — depuis le 2026-09-21 (D20, proposition 5.A de la maquette),
+ *      une PISTE ÉPAISSE par famille, LES MÊMES familles et le même ordre que les colonnes
+ *      ci-dessus, toutes sur une seule échelle d'usages : segment gauche mon camp, droit le
+ *      leur, compte écrit dedans, total en bout de ligne, pourcentage en infobulle.
  * Les colonnes restent DÉCIDÉES PAR LA DONNÉE (`usageColumnGroups`) : aucune liste en dur.
  *
  * ELLE VIT DANS `match-replay/` ET NON DANS `match-view/`, à la différence de la courbe de score
@@ -54,8 +56,9 @@
  *     de bonus vidés se lisent dans le bloc « Contrôle des armes spéciales », juste en dessous
  *     dans l'onglet « Contrôle » ;
  *
- * COULEURS. Les familles de geste prennent la table d'encres de `equipmentUsageChart` (jetons
- * sémantiques, jamais un hex) ; les camps prennent `teamTokenCssVar` — les jetons `team-ally` /
+ * COULEURS. Dans la grille, les familles de geste prennent la table d'encres de
+ * `equipmentUsageChart` (jetons sémantiques, jamais un hex) ; dans la vue des parts la couleur
+ * dit LE CAMP et rien d'autre. Les camps prennent `teamTokenCssVar` — les jetons `team-ally` /
  * `team-enemy` que les réglages d'accessibilité surchargent, et NON la cascade d'identité de
  * `teamColor.ts` (cf. l'en-tête de `match-view/teamSeriesColor.ts` pour la frontière).
  *
@@ -68,17 +71,19 @@ import { ChartLegend } from '@/components/charts/ChartLegend'
 import { ValueGrid } from '@/components/charts/ValueGrid'
 import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
-import { Tooltip } from '@/components/ui/tooltip'
+
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 
+import { StackedTrack, type StackedTrackSegment } from '@/components/charts/StackedTrack'
+
 import {
+  buildUsageFamilyBars,
   buildUsageGrid,
-  buildUsageShares,
   usageGroupColor,
-  type UsageShareRow,
+  type UsageFamilyBars,
 } from './model/equipmentUsageChart'
 import { uniqueUsageGroups, usageColumnGroups } from './model/equipmentUsageColumns'
 import { buildEquipmentUsage, tallyTotal, type EquipmentUsage } from './model/equipmentUsageLogic'
@@ -147,9 +152,16 @@ export function MatchEquipmentUsageSection({
       }),
     [usage, groups, meRow, teamLabel, teamAccent, t],
   )
-  const shares = useMemo(
-    () => buildUsageShares({ teams: usage?.byTeam ?? [], groups: familles, teamLabel, teamAccent }),
-    [usage, familles, teamLabel, teamAccent],
+  const barres = useMemo(
+    () =>
+      buildUsageFamilyBars({
+        teams: usage?.byTeam ?? [],
+        groups,
+        allySide: meSide,
+        teamLabel,
+        teamAccent,
+      }),
+    [usage, groups, meSide, teamLabel, teamAccent],
   )
 
   // Double porte : pas d'artefact, ou rien de mesuré -> rien du tout.
@@ -184,14 +196,14 @@ export function MatchEquipmentUsageSection({
           </div>
         </SectionCard>
       )}
-      {shares.length > 0 && (
+      {barres.rows.length > 0 && (
         <SectionCard
           title={u.viewTeamShare}
           label={u.viewTeamShare}
           titleAdornment={titreDeCarte}
         >
           <div className="px-3 pb-3 pt-3">
-            <UsageTeamShares rows={shares} t={t} />
+            <UsageFamilyTracks model={barres} t={t} />
           </div>
         </SectionCard>
       )}
@@ -203,8 +215,9 @@ export function MatchEquipmentUsageSection({
  * useUsageGroups — les colonnes réellement rendues : TOUTES celles que la donnée justifie,
  * dans l'ordre écrit de `usageColumnGroups` (plus de repli depuis le 2026-09-19).
  *
- * `familles` sert la légende et la vue 2, qui raisonnent PAR FAMILLE DE GESTE : un groupe n'y a
- * qu'une occurrence (cf. `uniqueUsageGroups`).
+ * `familles` sert LA SEULE LÉGENDE DE LA GRILLE depuis le 2026-09-21 (lot K) : elle raisonne
+ * par FAMILLE DE GESTE, une occurrence par groupe (cf. `uniqueUsageGroups`). La vue 2, elle,
+ * est passée aux COLONNES (`groups`) — c'est tout l'objet de la proposition 5.A.
  */
 function useUsageGroups(usage: EquipmentUsage | null, t: ReplayText) {
   const groups = useMemo(() => (usage ? usageColumnGroups(usage, t) : []), [usage, t])
@@ -213,78 +226,67 @@ function useUsageGroups(usage: EquipmentUsage | null, t: ReplayText) {
 }
 
 /**
- * UsageTeamShares — la vue 2 : une barre 100 % par famille de geste, un segment par camp.
+ * UsageFamilyTracks — la vue 2 depuis le 2026-09-21 (D20, proposition 5.A de la maquette).
  *
- * LE COMPTE BRUT ET LE POURCENTAGE SONT ÉCRITS DANS LE SEGMENT (demande utilisateur du
- * 2026-09-03) : une part sans son compte laisse croire qu'un 4-1 et un 40-10 racontent la même
- * partie. À gauche, le nom de la famille, son total, et sa pastille — la même encre que la
- * colonne correspondante de la vue 1.
+ * UNE PISTE ÉPAISSE PAR FAMILLE, TOUTES SUR LA MÊME ÉCHELLE. Jusqu'ici la vue rendait une
+ * barre 100 % par GROUPE de colonnes : « Grappin » et « Équipement » faisaient la même
+ * longueur en valant 24 et 38 gestes, et la seconde mêlait murs, capteurs, propulseurs,
+ * surbouclier et camouflage — le lecteur qui venait de lire « quatre murs » dans la grille de
+ * gauche ne retrouvait AUCUNE de ses colonnes à droite. Les lignes sont maintenant les
+ * colonnes de la grille, même liste et même ordre, et leur longueur est le nombre de gestes
+ * rapporté à la borne commune (le plus gros total) : le volume et le rapport de force se
+ * lisent dans la MÊME marque, sans pourcentage à traduire.
+ *
+ * LE COMPTE EST ÉCRIT DANS LE SEGMENT quand il tient, le total en bout de ligne, et le
+ * POURCENTAGE de la famille reste en infobulle — il ne se lit plus dans la longueur, qui dit
+ * désormais le volume (cf. `shareTipFmt`).
+ *
+ * La piste est `components/charts/StackedTrack`, celle de l'encart cible : la part de la
+ * borne qu'aucun camp n'emploie reste en fond neutre, et c'est elle qui donne l'échelle à
+ * l'œil. Aucune pastille de famille ici — l'encre de famille est celle de la GRILLE, et sur
+ * cette vue la couleur dit le CAMP (jetons `team-ally` / `team-enemy`, `teamTokenCssVar`).
  */
-function UsageTeamShares({ rows, t }: { rows: UsageShareRow[]; t: ReplayText }) {
+function UsageFamilyTracks({ model, t }: { model: UsageFamilyBars; t: ReplayText }) {
+  const u = t.equipmentUsage
   return (
-    // PLUS DE DÉFILEMENT HORIZONTAL (2026-09-19, lot 2) : la vue tenait derrière un
-    // `overflow-x-auto` et une largeur plancher de 420 px, donc une barre de défilement sous la
-    // carte dès qu'elle était à l'étroit. Les deux colonnes (nom de famille, rail) se
-    // répartissent maintenant la largeur disponible, et le nom se tronque plutôt que de pousser
-    // le rail hors du cadre (`min-w-0` autorise la grille à passer sous la taille du contenu).
-    <div className="min-w-0">
-      <div className="space-y-2.5">
-        {rows.map((row) => {
-          const segTotal = row.segments.reduce((a, s) => a + s.count, 0)
-          return (
-          <div
-            key={row.key}
-            className="grid grid-cols-[minmax(0,158px)_minmax(0,1fr)] items-center gap-3.5"
-          >
-            <div className="flex items-center justify-end gap-2 text-xs">
-              <HeaderLabelTooltip text={row.hint} focusable>
-                <span className="truncate text-right">{row.label}</span>
-              </HeaderLabelTooltip>
-              <span className="text-muted-foreground tabular-nums">{row.total}</span>
-              <span
-                className="h-2.5 w-2.5 flex-none"
-                style={{ backgroundColor: row.color }}
-                aria-hidden="true"
-              />
-            </div>
-            <div className="flex h-[22px]">
-              {/* La largeur est portée par l'ITEM du flex, en `calc(%)` — jamais un flexGrow
-                  sur le contenu d'un Tooltip : son wrapper garde flex-grow 0 et les segments
-                  se dimensionneraient à leur texte, pas à leurs comptes (revue adversariale
-                  2026-09-05 ; pattern : MatchPadControlSection). Et comme là-bas, le libellé
-                  ne s'écrit que si le segment est assez large pour le porter — l'infobulle
-                  garde toujours la valeur exacte. */}
-              {row.segments.map((seg) => {
-                const tip = t.equipmentUsage.shareTipFmt(seg.label, row.label, seg.count, row.total)
-                const fraction = segTotal > 0 ? seg.count / segTotal : 0
-                // `text-white` : le libellé est posé SUR l'aplat du camp, quelle que soit la
-                // palette réglée — ce n'est pas une couleur sémantique mais le contraste d'un
-                // texte dans un aplat (même usage que `MatchNemesisCards`).
-                return (
-                  <div
-                    key={seg.side ?? 'sans-equipe'}
-                    className="mr-[2px] h-full last:mr-0"
-                    style={{ width: `calc(${fraction * 100}% - 2px)` }}
-                  >
-                    <Tooltip content={tip} className="h-full w-full">
-                      <div
-                        className="flex h-full w-full items-center justify-center overflow-hidden whitespace-nowrap px-1 text-3xs font-semibold text-white"
-                        style={{ backgroundColor: seg.accent }}
-                        tabIndex={0}
-                        role="img"
-                        aria-label={tip}
-                      >
-                        {fraction >= 0.11 ? `${seg.count} · ${seg.percent} %` : ''}
-                      </div>
-                    </Tooltip>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-          )
-        })}
-      </div>
+    <div className="min-w-0 space-y-2">
+      {model.rows.map((row) => (
+        <div
+          key={row.key}
+          className="grid grid-cols-[minmax(0,140px)_minmax(0,1fr)_auto] items-center gap-3"
+          data-testid={`usage-ligne-${row.key}`}
+        >
+          <HeaderLabelTooltip text={row.hint} focusable>
+            <span className="block truncate text-right text-xs">{row.label}</span>
+          </HeaderLabelTooltip>
+          <StackedTrack
+            segments={row.segments.map<StackedTrackSegment>((seg) => {
+              // La MÊME phrase au survol et pour le lecteur d'écran : le segment ne porte que
+              // son compte quand il est large, l'exacte mesure se dit ici.
+              const tip = u.shareTipFmt(seg.label, row.label, seg.count, row.total, seg.percent)
+              return {
+                key: seg.side ?? 'sans-equipe',
+                widthPct: seg.widthPct,
+                color: seg.accent,
+                label: String(seg.count),
+                tooltip: tip,
+                ariaLabel: tip,
+              }
+            })}
+            ariaLabel={row.label}
+            testId={`usage-famille-${row.key}`}
+          />
+          <span className="text-2xs tabular-nums text-muted-foreground">{row.total}</span>
+        </div>
+      ))}
+      <ChartLegend
+        className="pt-1"
+        items={model.legend.map((team) => ({
+          key: team.side ?? 'sans-equipe',
+          label: team.label,
+          color: team.accent,
+        }))}
+      />
     </div>
   )
 }
