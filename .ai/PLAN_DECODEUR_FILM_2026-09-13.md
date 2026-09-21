@@ -7134,8 +7134,58 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
         visee -> la visee ; arme de JOUEUR sans visee -> `null` ET aucun decalage ; arme de joueur
         d un siege avec visee -> source gardee, `arme: 'joueur'`, montage nul, style du REGISTRE ;
         sans visee -> source non creee ; une arme de vehicule se declare `arme: 'vehicule'`.
-- [ ] **5.8.6 — LES SONS DES BASES : LE TIC DE SCORE, ET LA RAMPE SUIVIE D UN INTERVALLE NEUTRE**
-      (restes de 5.2a.1).
+- [x] **5.8.6 — LES SONS DES BASES : LE TIC DE SCORE** (web seul ; les deux autres restes etaient
+      DEJA traites, et c est verifie sur pieces).
+  - [x] **(a1) L INSTANT DU TIC VIENT DE L HORLOGE DE SCORE DU JEU.** Il etait ancre sur le DEBUT
+        de la domination et battait la seconde. `scoreTimeline.teams[].total` est l ESCALIER
+        cumulatif du score d un camp (`{t: frame, v}`) : un tic sonne desormais a chaque MARCHE de
+        ce camp pendant qu il domine. **Un tic de score qui ne tombe pas sur un point est un tic
+        qui mentait** — le jeu ne marque pas toutes les secondes, et la cadence depend de la
+        variante. Le repli synthetique reste pour les documents que le calque ne couvre pas ; une
+        serie PRESENTE mais sans marche dans la fenetre est une REPONSE (silence), pas un repli.
+  - [x] **(a2) LE PLAFOND DUR NE TRONQUE PLUS.** La boucle s arretait au 180e tic : au-dela de
+        trois minutes de domination continue, le son se TAISAIT jusqu a la fin de l intervalle —
+        precisement quand la domination devient l information la plus utile. Le 180 reste, mais
+        comme BUDGET d evenements dont la CADENCE se deduit (`cadenceDerivee` : periode =
+        max(1 s, duree / budget)). Sous trois minutes, la periode vaut exactement la seconde
+        demandee par l utilisateur et le rendu est INCHANGE ; au-dela, les tics s espacent au lieu
+        de s arreter.
+  - [x] **MESURE SUR LE PARC CUIT** (instrument `zoneTics.mesure.test.ts`, porte `ZONE_MESURE`,
+        documents CUITS, aucun decodage ; les intervalles viennent de `zoneDominationIntervals`,
+        LA FONCTION DE PRODUCTION exportee pour l instrument — pas une seconde implementation) :
+
+        | document | intervalles de domination | duree totale | la plus longue | tics REPLI | tics HORLOGE |
+        |---|---:|---:|---:|---:|---:|
+        | `32d9a94f` | 5 | 140 s | 71 s | 143 | **130** |
+        | `396cfc92` | 7 | 61 s | 27 s | 66 | **58** |
+        | `572e236b` | 3 | 16 s | 10 s | 19 | **16** |
+        | `81c02726` | 5 | 54 s | 18 s | 57 | **50** |
+        | `8514a85f` | 2 | 9 s | 7 s | 10 | **5** |
+        | `b471ddef` | 4 | 68 s | 45 s | 70 | **54** |
+        | `e60aaf06` | 3 | 44 s | 17 s | 46 | **38** |
+        | **TOTAL** | **29** | **392 s** | **71 s** | **411** | **351** |
+
+  - [!] **LE PLAFOND NE MORDAIT SUR AUCUN DOCUMENT DU PARC, ET IL FAUT LE DIRE** : la plus longue
+        domination mesuree vaut **71 s**, tres loin des 180 s du plafond — **0 intervalle sur 29**
+        le depassait, donc **0 s de domination sans tic**. Le correctif (a2) ferme un defaut
+        LATENT, pas un defaut observe ; ce qui change reellement a l oreille, c est l ANCRE (a1) :
+        **411 tics synthetiques -> 351 tics sur des points reels**, et sur `8514a85f` la moitie
+        des tics ne tombait sur aucun point (10 -> 5). §4, D6 (5.8).
+  - [~] **(b) LA RAMPE SUIVIE D UN INTERVALLE NEUTRE : DEJA TRAITEE PAR 5.2a.3**, verifie sur
+        pieces avant de coder — `zoneSoundEvents` lit `campDeLaRampe(z.gaugeRamps, r.fin) ??
+        arrivee`, donc le son `capturing` prend le camp MESURE de la rampe quand l intervalle qui
+        s ouvre est neutre. Le commentaire du code le dit deja en toutes lettres (« le son se
+        taisait alors completement »). **`newZone`, lui, n a AUCUN camp par decision** (la colline
+        n appartient a personne quand elle se deplace) : il n y avait rien a lui donner.
+  - [~] **(c) `zone_secures` RESTE MUET**, et c est deja tenu par un test : `objectiveSound.test
+        .ts` assure `objectiveSoundStem('zone_secures', 'ally') === undefined`. Decision produit,
+        aucun changement — l inventaire de `objectiveSound.ts` la porte deja (« aucun son
+        designe »).
+  - [x] 7 cas vitest neufs sur le tic : les instants viennent des marches, le premier point a zero
+        n est pas une marche, un point HORS domination ne sonne pas, une serie sans marche dans la
+        fenetre ne sonne RIEN (aucun repli), un calque qui ne couvre pas le camp laisse le repli
+        repondre, une domination plus longue que le budget ETIRE ses tics (le dernier atteint la
+        fin, contre 179 s avant), et sous le budget la periode reste EXACTEMENT la seconde.
 - [ ] **5.8.7 — UN SAUT DANS LA FRISE RECALE LE SON AU LIEU DE LE TIRER EN RAFALE**
       (`onScrub` aligne sur `seekTo`).
 
@@ -7143,6 +7193,7 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-21 | 5.8.6 | **D6 (5.8) — LE PLAFOND DE 180 TICS NE MORDAIT SUR AUCUN DOCUMENT DU PARC : LA PLUS LONGUE DOMINATION MESUREE VAUT 71 SECONDES.** Instrument `zoneTics.mesure.test.ts` sur les 7 documents a zones simultanees : **29 intervalles de domination**, 392 s au total, la plus longue 71 s — **0 sur 29** depassait les 180 s, donc 0 s de domination sans tic. Le diagnostic du 2026-09-19 presentait ce plafond comme un defaut effectif (« au-dela de 3 min de domination continue, plus aucun tic ») ; il est LATENT. | **TRAITEE QUAND MEME DANS LE PERIMETRE** (le budget etire la cadence au lieu de tronquer : le correctif est plus petit que la garde qu il remplace). **Consignee parce qu elle dit ou est la vraie valeur du lot** : c est l ANCRE qui changeait le rendu (411 tics synthetiques -> 351 tics sur des points reels, et 10 -> 5 sur `8514a85f`), pas le plafond. Un lot qui voudrait mesurer une domination longue doit aller chercher un film de Bastion tres desequilibre — le parc n en porte aucun |
 | 2026-09-21 | 5.8.4 | **D5 (5.8) — LE LAAG ET LE GAUSS DU WARTHOG N ONT AUCUN SON, ET LE DEPARTAGE LES REND MUETS : 100 TIRS DE `4f77afc1` PASSENT DE LA ROQUETTE AU SILENCE.** Mesure : les 105 tirs du tag `c7d50912` du parc viennent tous d un chassis `warthog`, zero `rockethog`, zero `warthog_gauss` — le son joue etait faux dans 100 % des cas, mais le corriger ne rend pas un son juste, il rend le silence. | NON TRAITE, **et c est une decision de PRODUIT, pas de lot** : le remede est une RECONSTRUCTION Wwise du LAAG (et du Gauss), au meme regime que les dix deja validees — deux prises, regle des armes (1,2 s), 48 kHz/16 bits/stereo, -16 LUFS. Emprunter un stem voisin (la LMG du Falcon est une mitrailleuse UNSC) est refuse par la doctrine du fichier. Si l utilisateur prefere le faux son au silence, le retour arriere tient en une ligne : ajouter `warthog` et `warthog_gauss` a la sous-table du tag |
 | 2026-09-21 | 5.8.2 | **D3 (5.8) — LE MANIFESTE DU TITRE NE PEUT PAS PORTER LE STYLE D UNE ARME DE VEHICULE, ET PUBLIER CES ARMES CASSERAIT DEUX REGLES MESUREES.** `[shot_effects]` / `[shot_tints]` sont keyees par `weapon_key`, et leur seul chemin vers le client est `weaponLabels`, compose a la requete pour les armes que le registre canonique nomme. Surtout : la PRESENCE d une cle dans `weaponLabels` est le discriminateur « arme de vehicule » de `vehicleShotSourceOf` (5.2a.5) ET la garde du repli sonore de `shotSoundStem` (2026-09-04) — y publier une arme de vehicule la rendrait MUETTE et lui reprendrait sa direction. | **TRAITEE AUTREMENT DANS LE PERIMETRE** : table CLIENT `model/vehicleShotFx.ts`, jumelle exacte de `sound/vehicleShotSound.ts`. **Consignee parce qu elle nomme un manque de FRONTIERE** : le rejeu a desormais TROIS tables client keyees par tag `weap` (montage, son, style) la ou la doctrine du depot veut les tables de titre dans le TOML. Le lot qui voudra les y ramener doit d abord se donner un canal de document qui ne soit pas `weaponLabels` — par exemple une table `vehicleWeaponLabels` posee a la requete, qui est une montee de schema |
 | 2026-09-21 | 5.8.2 | **D4 (5.8) — UN TAG D ARME DE VEHICULE QUE AUCUN RAPPORT DE RE NE DOCUMENTE EST OBSERVE DANS UN DOCUMENT CUIT** : `0x850902EF00000000` (weap `850902ef`), **9 tirs sur `5676a9ba`**, absent des trois tables client (montage, son, style) et de `weaponLabels`. Vu aussi, et c est un autre cas : `0xC33B0948592CF3E9` (1 tir sur `4f77afc1`) dont la moitie basse n est PAS nulle — donc une arme de JOUEUR a variante, absente de `weaponLabels`, pas une arme de vehicule. | NON TRAITE (regle 7 : sans tag documente, toute entree serait une devinette). **L oracle est gratuit et il est ecrit ici** : un recensement des `shots[].w` de gabarit `0x........00000000` absents des trois tables, sur le parc cuit, rend la liste des armes de vehicule qu il reste a documenter. A joindre au recensement de tags que D5 (5.5) demande deja |
@@ -7634,6 +7685,20 @@ aucune base) : sur `4f77afc1` la population du rendu passe de **165 a 241** tirs
 reelle. Les 76 tirs de D2 (5.5) sont TOUS passes ; les 5 manquants sont les 5 tirs de tourelle
 sans visee en vigueur. Temoins de non-regression `8a485699` et `0a44c6cc` : 100 % avant comme
 apres, pas un tir ne change de direction. Tableau au point 5.8.5 du §3.
+
+**5.8.6 (le tic de score des bases)** — `make check-types` apres purge (vert) · `make test-web` :
+**726 fichiers, 7 868 tests verts, 3 fichiers skippes** (**+7** cas ; le 3e skip est l instrument
+de mesure, ferme par sa porte) · `npx eslint` sur les 3 fichiers touches : **0 erreur,
+0 avertissement** · `npx knip` : aucun export mort (`zoneDominationIntervals` est consommee par
+l instrument). Aucun octet Go.
+**MESURE SUR LE PARC CUIT** (`ZONE_MESURE=1 npx vitest run
+src/features/match-replay/sound/zoneTics.mesure.test.ts`, lecture seule, aucune base) : tableau au
+point 5.8.6 du §3 — **29 intervalles de domination sur 7 documents, 411 tics synthetiques -> 351
+tics sur des points reels**, et **0 intervalle sur 29** depassait le plafond de 180 tics (la plus
+longue domination vaut 71 s : le correctif du plafond ferme un defaut LATENT, §4 D6).
+**DEUX ITEMS STATUES `[~]` APRES VERIFICATION SUR PIECES** : la rampe suivie d un intervalle NEUTRE
+etait deja traitee par 5.2a.3 (`campDeLaRampe(...) ?? arrivee`), et le silence de `zone_secures`
+est deja tenu par `objectiveSound.test.ts`. Aucune ligne ecrite pour l un ni pour l autre.
 
 **UN ROUGE ATTRAPE PAR UN RATCHET, ET IL AVAIT RAISON** : le retour du hook des vehicules avait
 ete reecrit sur plusieurs lignes, ce que `sceneBinding.guard.test.ts` refuse — il exige
