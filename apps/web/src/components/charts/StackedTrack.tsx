@@ -1,12 +1,19 @@
 /**
- * ExplorerStackedTrack — LA piste épaisse horizontale de l'encart cible : une barre de
- * 32 px segmentée, chaque segment portant son écriture quand il a la place de la tenir,
- * et toujours son infobulle.
+ * StackedTrack — LA piste épaisse horizontale : une barre de 32 px segmentée, chaque segment
+ * portant son écriture quand il a la place de la tenir, et toujours son infobulle.
  *
- * Deux blocs la posent (maquette du 2026-09-21, propositions 1.A et 2.A transposées à
- * l'horizontale) : « Part des assistances » (une piste par sens, échelle linéaire commune)
- * et « Répartition des résultats » (une piste empilée V/N/D). D'où le composant partagé
- * plutôt que deux balisages jumeaux.
+ * HISSÉE DANS `components/charts/` LE 2026-09-21 (lot K du plan d'ajustements supplémentaires
+ * pré-v7.5). Elle est née la veille dans `features/explorer/` sous le nom
+ * `ExplorerStackedTrack` pour deux blocs de l'encart cible (« Part des assistances »,
+ * « Répartition des résultats ») ; la vue « Part de chaque équipe » de la page match (5.A) est
+ * la troisième posée dessus, et une feature n'importe pas d'une autre
+ * (`tools/lint-cross-feature-imports.mjs`). Le composant ne connaît ni assistance, ni équipe,
+ * ni famille d'équipement : il reçoit des largeurs déjà calculées et des textes déjà écrits.
+ *
+ * LA PISTE N'EST PAS FORCÉMENT PLEINE. Les segments somment à 100 % pour une répartition
+ * (V/N/D), et à moins que cela quand l'appelant les mesure sur une ÉCHELLE COMMUNE à plusieurs
+ * pistes (5.A : la borne est le plus gros total, pas le total de la ligne) — le fond `bg-muted`
+ * qui reste est alors la part de l'échelle non employée, et c'est exactement ce qui se lit.
  *
  * Rendu DOM/CSS, pas ECharts : le wrapper `BarStackedChart` ne porte ni étiquette DANS le
  * segment, ni trait de parité, ni épaisseur de barre imposée, et son rendu canvas
@@ -27,9 +34,15 @@ export interface StackedTrackSegment {
   /** Écriture posée dans le segment s'il pèse assez ; sinon reprise en légende. */
   label: string
   tooltip: string
+  /**
+   * Nom accessible du segment (`role="img"`), et le focus clavier qui va avec. ABSENT = le
+   * segment n'est qu'une forme, son texte se lit au survol — le cas des pistes de l'encart
+   * cible, dont la légende voisine porte déjà les valeurs.
+   */
+  ariaLabel?: string
 }
 
-export function ExplorerStackedTrack({
+export function StackedTrack({
   segments,
   ariaLabel,
   parityPct,
@@ -67,6 +80,9 @@ export function ExplorerStackedTrack({
               className="flex h-full w-full cursor-help items-center justify-center overflow-hidden whitespace-nowrap px-1 text-2xs font-semibold text-white"
               style={{ backgroundColor: seg.color }}
               data-testid={`${testId}-${seg.key}`}
+              role={seg.ariaLabel ? 'img' : undefined}
+              aria-label={seg.ariaLabel}
+              tabIndex={seg.ariaLabel ? 0 : undefined}
             >
               {seg.widthPct >= LABEL_MIN_FRACTION_PCT ? seg.label : ''}
             </div>

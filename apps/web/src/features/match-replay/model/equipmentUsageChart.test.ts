@@ -4,8 +4,8 @@
  * CE QU'ILS PROTÈGENT :
  *   1. LA COULEUR SUIT LA FAMILLE, JAMAIS SON RANG. Une famille absente d'un match ne doit pas
  *      repeindre les autres — c'est ce qui rend deux matchs comparables à l'œil.
- *   2. LA PART D'ÉQUIPE SE COMPTE EN GESTES : une famille peut porter plusieurs colonnes
- *      d'unités différentes (épisodes, durée, frags), et les additionner n'aurait aucun sens.
+ *   2. LA VUE DES PARTS SUIT LA GRILLE : une ligne par COLONNE, même liste et même ordre, et
+ *      toutes les lignes sur UNE échelle commune bornée par le plus gros total (D20, 5.A).
  *   3. UNE FAMILLE QU'AUCUN CAMP N'A EMPLOYÉE N'A PAS DE LIGNE : une barre vide n'est pas une
  *      part.
  *   4. L'ORDRE DES LIGNES DE LA GRILLE est celui des camps puis du roster — un joueur se lit en
@@ -16,8 +16,7 @@ import { describe, expect, it } from 'vitest'
 import {
   USAGE_GROUP_TOKENS,
   buildUsageGrid,
-  buildUsageShares,
-  usageGestureCount,
+  buildUsageFamilyBars,
   usageGroupColor,
   usageLeaves,
 } from './equipmentUsageChart'
@@ -131,32 +130,6 @@ describe('l’encre d’une famille de geste', () => {
   })
 })
 
-describe('usageGestureCount — la part se compte en GESTES', () => {
-  it('somme les familles déployées et lâchées de la colonne équipement fusionnée (E2)', () => {
-    expect(usageGestureCount(tally({ deployed: { wall: 2, sensor: 1 } }), 'equipment')).toBe(3)
-    expect(usageGestureCount(tally({ dropped: { wall: 1 } }), 'equipment')).toBe(1)
-    expect(usageGestureCount(ALPHA, 'grapple')).toBe(2)
-  })
-
-  it('ajoute les activations des deux power-ups (leur « utilisé » vient des épisodes, pas d’une pose)', () => {
-    const t = tally({ episodes: { camo: { count: 2, ms: 1000, kills: 0 } }, deployed: { wall: 1 } })
-    expect(usageGestureCount(t, 'equipment')).toBe(3)
-  })
-
-  it('ajoute les CONSOMMATIONS DE CHARGE (`spent`) — lot 6.4 point 2 : une famille dont le seul '
-    + 'geste est une consommation (capteur pris puis vidé, jamais posé ni lâché) ne doit pas '
-    + 'rester invisible de la barre « part de chaque équipe »', () => {
-    expect(usageGestureCount(tally({ spent: { sensor: 2 } }), 'equipment')).toBe(2)
-  })
-
-  it('ne double-compte jamais le MUR : `spent` ne porte jamais sa famille (elle se lit sur ses '
-    + 'poses, `deployed`), donc l’additionner est sans risque pour lui', () => {
-    // deployed:2 (panneaux) + spent:5 (une autre famille, jamais `wall`) = 7, pas 2+5 de mur en double.
-    const t = tally({ deployed: { wall: 2 }, spent: { sensor: 5 } })
-    expect(usageGestureCount(t, 'equipment')).toBe(7)
-  })
-})
-
 describe('buildUsageGrid — la grille par joueur', () => {
   const grille = () =>
     buildUsageGrid({
@@ -194,34 +167,65 @@ describe('buildUsageGrid — la grille par joueur', () => {
   })
 })
 
-describe('buildUsageShares — la part de chaque équipe', () => {
-  it('somme les gestes du CAMP, et écrit compte brut et pourcentage', () => {
-    const lignes = buildUsageShares({ teams: TEAMS, groups: GROUPS, ...VISUAL })
-    const grappin = lignes.find((l) => l.key === 'grapple')!
+describe('buildUsageFamilyBars — la part de chaque équipe (5.A, 2026-09-21)', () => {
+  const barres = (allySide: string | null = 't0') =>
+    buildUsageFamilyBars({ teams: TEAMS, groups: GROUPS, allySide, ...VISUAL })
+  /** La clé d'une ligne = celle de la colonne de la grille : groupe puis colonne. */
+  const cle = (group: string, column: string) => `${group}.${column}`
+  const ligne = (group: string, column: string) =>
+    barres().rows.find((r) => r.key === cle(group, column))!
+
+  it('rend UNE ligne par colonne de la grille, dans le MÊME ordre — pas une par groupe', () => {
+    expect(barres().rows.map((r) => r.key)).toEqual([
+      cle('grapple', 'pulls'),
+      cle('equipment', 'camo.count'),
+      cle('equipment', 'wall'),
+    ])
+    expect(barres().rows.map((r) => r.label)).toEqual(['Grappin', 'Camouflage', 'Mur de protection'])
+  })
+
+  it('met toutes les lignes sur UNE échelle commune, bornée par le plus gros total', () => {
+    const grappin = ligne('grapple', 'pulls')
     expect(grappin.total).toBe(4)
+    // 3 tractions sur une borne de 10 : la piste est remplie à 30 %, pas à 75 %.
+    expect(grappin.segments.map((s) => s.widthPct)).toEqual([30, 10])
+    expect(ligne('equipment', 'wall').segments[0].widthPct).toBe(100)
+  })
+
+  it('garde le pourcentage DE LA FAMILLE, pour l’infobulle et elle seule', () => {
+    const grappin = ligne('grapple', 'pulls')
     expect(grappin.segments.map((s) => [s.label, s.count, s.percent])).toEqual([
       ['Équipe t0', 3, 75],
       ['Équipe t1', 1, 25],
     ])
   })
 
+  it('ouvre chaque barre par MON camp, quel que soit l’ordre du film', () => {
+    expect(barres('t1').rows[0].segments.map((s) => s.side)).toEqual(['t1', 't0'])
+    expect(barres('t1').legend.map((l) => l.side)).toEqual(['t1', 't0'])
+    // Sans camp connu, l'ordre du film reste — aucune des deux encres n'est « la mienne ».
+    expect(barres(null).rows[0].segments.map((s) => s.side)).toEqual(['t0', 't1'])
+  })
+
   it('n’écrit aucun segment pour un camp qui n’a rien fait de cette famille', () => {
-    const lignes = buildUsageShares({ teams: TEAMS, groups: GROUPS, ...VISUAL })
-    // 10 poses de mur + 1 activation de power-up (l'épisode camo du camp t0, cf. `usageGestureCount`).
-    expect(lignes.find((l) => l.key === 'equipment')!.segments.map((s) => s.count)).toEqual([11])
+    expect(ligne('equipment', 'wall').segments.map((s) => s.count)).toEqual([10])
   })
 
   it('ne rend aucune ligne pour une famille qu’aucun camp n’a employée', () => {
-    const lignes = buildUsageShares({
+    // `camo.kills` n'est pas mesurée (value -> null) : elle n'a pas de ligne, et une piste
+    // vide n'apparaît jamais.
+    expect(barres().rows.some((r) => r.key === cle('equipment', 'camo.kills'))).toBe(false)
+    const vide = buildUsageFamilyBars({
       teams: TEAMS.map((team) => ({ ...team, total: tally() })),
       groups: GROUPS,
+      allySide: 't0',
       ...VISUAL,
     })
-    expect(lignes).toEqual([])
+    expect(vide.rows).toEqual([])
   })
 
-  it('porte la réserve de mesure de la famille, pour que son nom puisse la dire', () => {
-    const lignes = buildUsageShares({ teams: TEAMS, groups: GROUPS, ...VISUAL })
-    expect(lignes.find((l) => l.key === 'equipment')!.hint).toBe('réserve équipement')
+  it('porte la réserve de mesure du GROUPE sur chacune de ses lignes', () => {
+    expect(ligne('equipment', 'wall').hint).toBe('réserve équipement')
+    expect(barres().rows[0].hint).toBe('réserve grappin')
   })
 })

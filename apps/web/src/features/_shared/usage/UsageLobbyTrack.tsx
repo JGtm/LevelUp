@@ -71,7 +71,7 @@ export function UsageLobbyTrack({
               <Tooltip content={seg.tooltip} className="h-full w-full">
                 {/* `text-white` : le libellé est posé SUR l'aplat du segment, quelle que soit
                     la palette réglée — le contraste d'un texte dans un aplat, pas une couleur
-                    sémantique (même usage que UsageTeamShares, vue match). L'étiquette est
+                    sémantique (même usage que `components/charts/StackedTrack`). L'étiquette est
                     au-dessus du calque de texture (`relative`), jamais sous lui. */}
                 <div
                   className="relative flex h-full w-full items-center justify-center overflow-hidden whitespace-nowrap bg-muted px-1 text-3xs font-semibold text-white"

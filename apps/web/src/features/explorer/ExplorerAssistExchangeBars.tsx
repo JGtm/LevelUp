@@ -33,7 +33,7 @@ import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated
 import type { Locale } from '@/lib/i18n/locale'
 import type { AssistTiers, RelationAssists } from '@/lib/api/types'
 
-import { ExplorerStackedTrack, type StackedTrackSegment } from './ExplorerStackedTrack'
+import { StackedTrack, type StackedTrackSegment } from '@/components/charts/StackedTrack'
 
 const TIER_LABEL_KEY: Record<AssistTier, ExplorerManifestKey> = {
   low: 'explorer.target_profile.assists_tier_low',
@@ -127,7 +127,7 @@ function AssistDirectionRow({
           {tail}
         </span>
       </div>
-      <ExplorerStackedTrack
+      <StackedTrack
         segments={segments}
         ariaLabel={`${head} — ${tail}`}
         parityPct={parityPct}

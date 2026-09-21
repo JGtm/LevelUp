@@ -369,8 +369,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       viewByPlayer: 'Usages par joueur',
       viewTeamShare: "Part de chaque équipe",
       gridTipFmt: (player, column, value) => `${player} — ${column} : ${value}`,
-      shareTipFmt: (team, family, count, total) =>
-        `${team} — ${family} : ${count} sur ${total}`,
+      shareTipFmt: (team, family, count, total, percent) =>
+        `${team} — ${family} : ${count} sur ${total} (${percent} %)`,
       groupGrapple: 'Grappin',
       groupGrappleHint:
         "Tractions de grappin lues dans le film — la seule activation de capacité que la mesure sait attribuer à un joueur. Un tir sans accroche n'est pas une traction : il est compté à part et n'entre pas dans cette colonne.",
@@ -804,7 +804,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       viewByPlayer: 'Usage by player',
       viewTeamShare: "Each team's share",
       gridTipFmt: (player, column, value) => `${player} — ${column}: ${value}`,
-      shareTipFmt: (team, family, count, total) => `${team} — ${family}: ${count} of ${total}`,
+      shareTipFmt: (team, family, count, total, percent) =>
+        `${team} — ${family}: ${count} of ${total} (${percent}%)`,
       groupGrapple: 'Grappleshot',
       groupGrappleHint:
         'Grapple pulls read from the film — the only ability activation the measurement can attribute to a player. A shot with no anchor is not a pull: it is counted separately and never enters this column.',

@@ -64,10 +64,19 @@ export interface EquipmentUsageText {
   /** Infobulle d'une barre de la grille : joueur, grandeur, valeur DEJA ecrite. */
   gridTipFmt: (player: string, column: string, value: string) => string
   /**
-   * Infobulle d'un segment de part d'equipe. Le COMPTE BRUT y figure avec son total, jamais
-   * le seul pourcentage : deux segments a 50 % ne disent pas s'ils valent 1 ou 40.
+   * Infobulle d'un segment de la vue « Part de chaque equipe ». Le COMPTE BRUT y figure avec
+   * son total, jamais le seul pourcentage : deux segments a 50 % ne disent pas s'ils valent 1
+   * ou 40. LE POURCENTAGE Y EST ENTRE LE 2026-09-21 (D20, proposition 5.A) : la longueur du
+   * segment dit desormais le VOLUME sur une echelle commune, plus la part — la part se lit
+   * donc ici, et nulle part ailleurs.
    */
-  shareTipFmt: (team: string, family: string, count: number, total: number) => string
+  shareTipFmt: (
+    team: string,
+    family: string,
+    count: number,
+    total: number,
+    percent: number,
+  ) => string
   /** Tractions de grappin : la seule ACTIVATION de capacité que le film mesure et attribue. */
   groupGrapple: string
   groupGrappleHint: string
