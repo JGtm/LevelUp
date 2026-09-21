@@ -67,12 +67,12 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 ### Lot B — comparaison Sessions alignee (worktree `LevelUp-wt-ajsup-b`)
 - [ ] Rangees partagees gauche/droite, placeholder D16
 
-### Lot C — Explorer, Relations, Synthese, Timeseries intensite (worktree `LevelUp-wt-ajsup-c`)
-- [ ] Top medailles : dans Profil de combat, suit le switch En direct / Local ; retire de la carte cible
-- [ ] Noyau dur : plus de repli, tout affiche
-- [ ] Rythme des rencontres : cellules plus hautes (hauteur locale, liseret partage intact)
-- [ ] Synthese : sous-titre « Frag le plus lointain… » retire
-- [ ] Intensite : sous-titre et titre de panneau « Joueur » retires
+### Lot C — Explorer, Relations, Synthese, Timeseries intensite (worktree `LevelUp-wt-ajsup-c`) — FUSIONNE 95065fee3
+- [x] Top medailles : dans Profil de combat, suit le switch En direct / Local ; retire de la carte cible
+- [x] Noyau dur : plus de repli, tout affiche
+- [x] Rythme des rencontres : cellules plus hautes (hauteur locale, liseret partage intact)
+- [x] Synthese : sous-titre « Frag le plus lointain… » retire
+- [x] Intensite : sous-titre et titre de panneau « Joueur » retires
 
 ### Lot D — Match view (worktree `LevelUp-wt-ajsup-d`)
 - [ ] Occupation du terrain : +20 %, zoom et deplacement (hooks du rejeu 2D)
