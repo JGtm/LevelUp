@@ -62,12 +62,31 @@ var (
 	// le nombre de morts mesurees et le nombre de morts sans distance. AUCUN QUOTIENT n'y
 	// figure : que des metres et des entiers. Le seul taux de ce paquet reste celui de
 	// `Mesurer`, et le taux d'isolement continue de sortir sous `domain.BilanIsolement`.
+	// `domain.CoordinationBlock` ET `domain.CoordinationEntree` AJOUTES LE 2026-09-21 (lot
+	// N1, sections transverses Riposte / Appui des pages Sessions et Series temporelles,
+	// decisions D22). JUSTIFICATION, type par type :
+	//   - `CoordinationEntree` est une ENTREE, pas un resultat : `Restreindre` la rend pour
+	//     decouper un scope sur une soiree. Elle ne porte que des identites, des comptes
+	//     entiers, des instants et une table d'equipes — aucun quotient, donc rien qu'un
+	//     lecteur puisse prendre pour une mesure.
+	//   - `CoordinationBlock` est le resultat de `Bloc`. Il porte QUATRE taux, et les quatre
+	//     sont des `domain.Couverture` (JeSuisCouvert, JeRiposte, OnMePrepare,
+	//     MaPartDesAppuis) : la regle de forme du paquet est tenue A L'INTERIEUR du type,
+	//     pas contournee par lui. Ses autres champs sont des comptes bruts, un delai median
+	//     en millisecondes, et des POURCENTAGES DE PART PAR MATCH (les cases de la bande de
+	//     regularite) — ces derniers ne sont pas des taux de paquet mais les valeurs d'une
+	//     serie a peindre, chacune accompagnee de son numerateur ET de son denominateur sur
+	//     la meme ligne, et nil quand ce denominateur est vide. Un lecteur ne peut donc pas
+	//     lire une part sans voir sur quoi elle porte, ce qui est exactement ce que
+	//     `Couverture` garantit au niveau du scope.
 	typesQualifiesAutorises = map[string]bool{
-		"domain.Couverture":       true,
-		"domain.BilanEchanges":    true,
-		"domain.MortSuivie":       true,
-		"domain.BilanIsolement":   true,
-		"domain.TaCoordDistances": true,
+		"domain.CoordinationBlock":  true,
+		"domain.CoordinationEntree": true,
+		"domain.Couverture":         true,
+		"domain.BilanEchanges":      true,
+		"domain.MortSuivie":         true,
+		"domain.BilanIsolement":     true,
+		"domain.TaCoordDistances":   true,
 	}
 )
 
