@@ -8057,6 +8057,63 @@ aucune mesure empirique de grammaire, un commit par trou.
   absence** : l objet a nommer n existe pas.
 
 
+- [!] **5.13.2 — LE MANTLING : LA QUEUE D `i54` EST LA CHARGE UTILE D UN MESSAGE RESEAU NOMME,
+  ET LES QUATRE VALEURS N ONT AUCUNE ETIQUETTE DANS LE BINAIRE. PAS DE PORT, PAS DE SCHEMA 68.**
+
+  **CE QUE LE LOT A NOMME, ET C EST UN SITE DE PLUS, INDEPENDANT.** La queue d `i54`
+  (`FUN_1407ea38c` en ecriture, `FUN_1408f02c8` en lecture, bloc = `etat + 0x11f8`) est la CHARGE
+  UTILE d un message reseau :
+
+  | maillon | adresse | ce qu il dit |
+  |---|---|---|
+  | nom du type de message | `143c97470` | `initiate_mobility_action` (thunk de nom `1411685a0`, vtable `143d0a000`..`143d0a118`) |
+  | trace du message | `143e0c500` | `"biped-initiate-mobility-action: relevance = %5.3f"`, pertinence par `FUN_142e30074` |
+  | ECRITURE du message | `FUN_1407ebc58` | `R(1) = bloc[0x9d]` **puis** `FUN_1407ea38c(bloc, writer)` — la MEME queue |
+  | LECTURE du message | `FUN_142ef8f04` | `bloc[0x9d] = R(1)` ; `bloc[0x9e] = 0` ; `FUN_1408f02c8(bloc, reader)` |
+
+  **CONSEQUENCE POSITIVE** : la garde `bloc[0x9d]` est NOMMEE — c est le bit de presence du
+  message lui-meme. Dans le composant `i54` elle vaut `etat + 0x1295`, c est-a-dire `flag1` lu
+  deux lignes plus haut par le meme deserialiseur (`components_biped_ability.go` le disait deja) ;
+  dans le message elle est lue comme un `R(1)` explicite. La lecture du depot est donc confirmee
+  par un SECOND site, ecrit independamment. Et les trois vec3 de la queue sont les parametres
+  geometriques d un message d AMORCE d action de mobilite — l ancre du geste.
+
+  **CE QUI RESTE NON TRAITE, ET POURQUOI.** Les quatre valeurs de `bloc + 0x9c`
+  (= `etat + 0x1294`, le `R(2)`) sont un champ de ce message, et **le binaire ne porte aucune
+  etiquette pour elles** :
+
+  - `search_strings` sur `mobility` / `Mobility` / `MobilityAction` rend **10 chaines** en tout
+    (`button_action_mobility`, `armor_input_mobility`, `armor_input_mobility_vehicle`, `Mobility`,
+    `mobility`, `ImageSet_EquipmentMobility`, `EquipmentMobility`, `initiate_mobility_action`,
+    `biped-mobility-action-component`, la trace ci-dessus) — **aucune n est une etiquette de
+    valeur**.
+  - `CharacterPhysicsMode*` n a que **4 chaines** (`Clambering`, `Melee`, `GroundDatum`,
+    `GroundDatum::SupportingObjectData`) et designe un AUTRE champ : le predicat
+    `SpartanAbilityIsClambering` passe par `FUN_142c66808` -> `FUN_1406b8244(datum) == 2`, et
+    `FUN_1406b8244` lit le mode dans l objet de PHYSIQUE du personnage
+    (`*(u32)(obj + 0x2dc + *(u16)(obj + 0x2de))`), pas dans ce bloc.
+  - la recherche d instructions sur `0x1294` rend **34 sites sur tout le binaire**, et **aucun
+    dans la chaine de mobilite** : 17 sont des `MOV word ptr [RDI + 0x1294], BP` de la famille
+    `141c*` (constructeurs d une autre classe — la collision d offset annoncee au piege 6 de la
+    passation), les autres des `CMP dword ... -0x1` et des flottants. Le code vivant adresse le
+    champ PAR LE POINTEUR DE BLOC (`+0x9c`), donc l offset absolu ne le trouve pas.
+  - les quatre slots de la vtable du message hors des deux serialiseurs (`142ef58f8`,
+    `142f0203c`, `142f05308`, `142c46770`) **ne sont pas des fonctions definies** dans le projet
+    Ghidra courant (`/decompile_function` : « No function found »), et la famille `142ef*`
+    restante (`FUN_142ef7794`, `FUN_142efaa34`, `FUN_142ef8828`) ne touche pas `+0x9c`.
+
+  **DONC : les quatre valeurs restent non nommees, `stances[].kind` `mobility` NE DEVIENT PAS
+  `clamber`, ET LE LOT NE MONTE PAS DE SCHEMA.** C est exactement la porte que la passation 5.11
+  posait au point (4). Publier un libelle « Escalade » sur un champ dont le lot ne sait pas que
+  la valeur 1 est une escalade serait une invention, pas une lecture.
+
+  **LA SUITE, NOMMEE.** Le maillon restant est l APPLIQUEUR du message : la fonction qui, sur le
+  personnage, consomme `bloc + 0x9c` pour choisir le mode de physique. Elle se cherche par les
+  quatre slots ci-dessus, qu il faut d abord faire definir dans le projet Ghidra (ils sont dans
+  des regions non analysees), ou par le site d EMISSION du message (le constructeur de la classe,
+  dont aucune xref de donnee n existe sur la base de vtable `143d0a000`).
+
+
 ### Post-chantier — lot 5.11.7 (LES TROIS TABLES D ENTITES PAR VUE), branche `feat/decfilm-63`
 
 Suite directe du 5.11.6, qui avait NOMME le trou sans le refermer. Le recadrage de l utilisateur

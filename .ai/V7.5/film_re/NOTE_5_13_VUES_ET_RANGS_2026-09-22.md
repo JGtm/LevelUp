@@ -88,3 +88,36 @@ fermeture complete des paquets : les 13 records DEL fantomes de `dad793c7` et se
 debordements viennent tous de la grammaire du gestionnaire appliquee a ces deux flux. C est un lot
 a soi seul (trois handlers a mesurer pour `FUN_1406cf548`, un pour `FUN_14076a1c4`), consigne au
 §4 du plan.
+
+## 6. Le mantling : la queue d `i54` est la charge utile d un message reseau nomme (lot 5.13.2)
+
+La queue d `i54` (`FUN_1407ea38c` en ecriture, `FUN_1408f02c8` en lecture, bloc = `etat + 0x11f8`)
+est la CHARGE UTILE du message reseau `initiate_mobility_action` :
+
+| maillon | adresse | ce qu il dit |
+|---|---|---|
+| nom du type | `143c97470` | `initiate_mobility_action` (thunk `1411685a0`, vtable `143d0a000`..`143d0a118`) |
+| trace | `143e0c500` | `"biped-initiate-mobility-action: relevance = %5.3f"`, pertinence `FUN_142e30074` |
+| ECRITURE | `FUN_1407ebc58` | `R(1) = bloc[0x9d]` puis `FUN_1407ea38c(bloc, writer)` |
+| LECTURE | `FUN_142ef8f04` | `bloc[0x9d] = R(1)` ; `bloc[0x9e] = 0` ; `FUN_1408f02c8(bloc, reader)` |
+
+**La garde `bloc[0x9d]` est donc NOMMEE : c est le bit de presence du message.** Dans le composant
+`i54` elle vaut `etat + 0x1295` = `flag1`, lu deux lignes plus haut par le meme deserialiseur —
+la lecture du depot est confirmee par un second site, ecrit independamment. Les trois vec3 de la
+queue sont les parametres geometriques d un message d AMORCE d action de mobilite.
+
+**Les quatre valeurs de `bloc + 0x9c` (= `etat + 0x1294`) ne sont PAS nommees, et le binaire ne
+porte aucune etiquette pour elles** : `search_strings` sur `mobility` / `Mobility` /
+`MobilityAction` rend 10 chaines, aucune d etiquette de valeur ; `CharacterPhysicsMode*` n en a
+que 4 et designe un AUTRE champ (le predicat `SpartanAbilityIsClambering` passe par
+`FUN_142c66808` -> `FUN_1406b8244(datum) == 2`, qui lit le mode dans l objet de physique du
+personnage a `obj + 0x2dc + *(u16)(obj + 0x2de)`) ; la recherche d instructions sur `0x1294` rend
+34 sites sur tout le binaire et AUCUN dans la chaine de mobilite (17 sont des
+`MOV word ptr [RDI + 0x1294], BP` de la famille `141c*`, collision d offset annoncee au piege 6
+de la passation) — le code vivant adresse le champ par le POINTEUR DE BLOC (`+0x9c`).
+
+Les quatre slots de la vtable du message hors serialiseurs (`142ef58f8`, `142f0203c`,
+`142f05308`, `142c46770`) ne sont pas des fonctions DEFINIES dans le projet Ghidra courant.
+
+**Consequence tenue** : `stances[].kind` `mobility` ne devient pas `clamber`, et le lot ne monte
+pas de schema. Le maillon restant est l APPLIQUEUR du message sur le personnage.
