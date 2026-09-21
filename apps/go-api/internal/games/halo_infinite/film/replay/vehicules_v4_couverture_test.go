@@ -216,5 +216,5 @@ func v4MesureProduction(t *testing.T, ctx v4Ctx) {
 	t.Logf("V4-COUV %s PRODUCTION — vies=%d publiees=%d episodes=%d nommes=%d avecSiege=%d"+
 		" ambigus=%d (evenement=%d mixte=%d trou=%d)",
 		ctx.film.ID, cov.Lives, len(tracks), cov.Rides, cov.RidesNamed, cov.RidesWithSeat,
-		cov.Ambiguous, cov.RidesFromEvent, cov.RidesMixed, cov.RidesFromGap)
+		cov.Ambiguous, cov.RidesRead, cov.RidesProximity, 0)
 }

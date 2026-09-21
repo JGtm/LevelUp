@@ -120,6 +120,11 @@ type KeyframeWalkRec struct {
 	// Mask est le masque de presence lu par le corps, Gate la porte qui le precede.
 	Mask uint64
 	Gate bool
+	// Comps sont les composants traverses, avec leur position de bit et, pour ceux de
+	// `captureNames`, leur VALEUR. La traversee les calcule de toute facon ; les jeter obligeait
+	// tout lecteur d ETAT (l occupation d un vehicule a l instant d une image-cle, lot 5.10) a
+	// re-marcher la table pour son propre compte.
+	Comps []CompResult
 	// DesyncAt est l'index du premier composant present non porte, ou -1.
 	DesyncAt int
 }
@@ -182,7 +187,7 @@ func walkOneKeyframeRecord(pay []byte, reg *Registry, pos int, h KeyframeHeader,
 	tr := TraverseEntity(br, reg, 0)
 	rec := KeyframeWalkRec{
 		KeyframeHeader: h, BitStart: pos, BitEnd: tr.EndBit,
-		Mask: tr.Mask, Gate: tr.Gate, DesyncAt: tr.DesyncAt,
+		Mask: tr.Mask, Gate: tr.Gate, Comps: tr.Comps, DesyncAt: tr.DesyncAt,
 	}
 	if tr.DesyncAt >= 0 {
 		return rec, KeyframeStopDesync, true

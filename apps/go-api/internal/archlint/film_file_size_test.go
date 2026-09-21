@@ -125,7 +125,14 @@ var plafondsParFichier = map[string]int{
 	// hauteur). Elle porte aussi le controle du GRAPPIN qui valide la lecture de l index, et la
 	// raison mesuree pour laquelle la vitesse du sprint ne peut pas trancher. UNE SEULE MONTEE
 	// DE SCHEMA POUR LE LOT, donc une seule entree, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1933,
+	// SCHEMA 66 -> 67 (2026-09-21, post-chantier lot 5.10) : 1933 -> 1974, l entree de chronique
+	// v67. Elle porte le changement de SENS de `rides[].src` (deux valeurs, `film` et
+	// `proximity`, la ou trois disaient la precision des bornes), la regle de PRIMAUTE de la
+	// lecture sur le repli et son prix, les deux compteurs de couverture qui remplacent les
+	// trois anciens, et le verdict Theater qui a nomme le defaut (le Razorback `776/1`). UNE
+	// SEULE MONTEE DE SCHEMA POUR LE LOT, donc une seule entree, dans le commit qui monte
+	// `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1974,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -170,7 +177,12 @@ var plafondsParFichier = map[string]int{
 	// (les deux genres neufs, LU et DERIVE, et ce qui valide la lecture de l index de fente) :
 	// 1221 -> 1237.
 	// Exception ecrite, meme commit que `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1237,
+	// SCHEMA 66 -> 67 (2026-09-21, post-chantier lot 5.10) : 1237 -> 1250, la justification que
+	// `TestStructureIsOptionalInDocument` exige avant d accepter la montee — la lecture devient
+	// la source primaire de l occupation, la proximite un repli qui lui cede, et `despawn` est
+	// REFUSEE apres mesure de ses trois canaux. Exception ecrite, meme commit que
+	// `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1250,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

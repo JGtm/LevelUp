@@ -77,6 +77,11 @@ type VehicleScan struct {
 	// `i11`. C est ce qui DATE la fin de vie d un vehicule (lot 1.9.10) ; sans elles, la fin
 	// n est plus qu une borne de recensement.
 	Deaths []types.ObjectDeath
+	// Occupancy sont les lectures d `object-parent-state` de la bande BIPEDE : les montees a bord
+	// que le film ECRIT, avec leur SIEGE (lot 5.10). Elles sortent de la MEME marche que les
+	// morts — aucune lecture de film supplementaire. Absentes : les episodes sortent sans siege,
+	// jamais avec un siege suppose.
+	Occupancy []types.VehicleOccupancy
 	// DeathStats porte les denominateurs de cette lecture (cadre retenu, paquets localises,
 	// records par archetype, controle de masque). ILS VOYAGENT AVEC LA LISTE : une liste vide
 	// sans eux serait indistinguable d un film ou aucun vehicule ne meurt.
@@ -121,17 +126,19 @@ func decodeFilmVehicleScan(
 	out := VehicleScan{Scanned: true, Keyframes: kf, Creations: cre, Stats: st, Positions: pos}
 	out.Events = decodeFilmVehicleEvents(fc, matchID)
 	out.Aims = decodeFilmOccupantAims(fc, matchID)
-	out.Deaths, out.DeathStats = decodeFilmVehicleDeaths(fc, matchID)
+	out.Deaths, out.Occupancy, out.DeathStats = decodeFilmVehicleDeaths(fc, matchID)
 	slog.Info("vehicules : balayage ti=40",
 		"slots", st.Slots, "ancres", st.Anchors, "creationsAcceptees", st.Accepted,
 		"imagesCles", len(kf.TimesUS), "viesRecensees", len(kf.SeenUS),
 		"echantillons", len(pos), "evenements", len(out.Events), "viseesSansPosition", len(out.Aims),
-		"mortsEcrites", len(out.Deaths))
+		"mortsEcrites", len(out.Deaths), "lecturesDOccupation", len(out.Occupancy))
 	return out
 }
 
 // decodeFilmVehicleDeaths lit les MORTS ECRITES des vehicules — la SIXIEME lecture du calque,
-// et la seule qui passe par la MARCHE plutot que par une ancre.
+// et la seule qui passe par la MARCHE plutot que par une ancre. ELLE REND AUSSI LES LECTURES
+// D OCCUPATION (lot 5.10) : le film les ecrit sur les MEMES records, la marche les traverse de
+// toute facon, et les lire ailleurs couterait une seconde marche du film entier.
 //
 // ADDITIVE ET NON FATALE, meme doctrine que les evenements et les visees : son absence rend les
 // fins de vie a la seule borne de recensement (`end = "unknown"`), jamais une destruction
@@ -143,24 +150,24 @@ func decodeFilmVehicleScan(
 // l aurait perdu (2 a 5 morts par film chez le bipede, mesure V13 gate G1a).
 func decodeFilmVehicleDeaths(
 	fc *grammar.FilmContext, matchID string,
-) ([]types.ObjectDeath, grammar.ObjectDeathStats) {
-	all, st, err := grammar.ScanObjectDeaths(fc)
+) ([]types.ObjectDeath, []types.VehicleOccupancy, grammar.ObjectDeathStats) {
+	facts, err := grammar.ScanMarchFacts(fc)
 	if err != nil {
 		slog.Warn("vehicules : morts ecrites illisibles — fins de vie bornees par le seul"+
 			" recensement", "err", err, "match_id", matchID)
-		return nil, st
+		return nil, nil, facts.Stats
 	}
-	out := make([]types.ObjectDeath, 0, len(all))
-	for _, d := range all {
+	out := make([]types.ObjectDeath, 0, len(facts.Deaths))
+	for _, d := range facts.Deaths {
 		if d.TypeIndex == uint32(grammar.VehicleTypeIndex) {
 			out = append(out, d)
 		}
 	}
-	logVehicleDeathReads(matchID, len(all), len(out), st)
+	logVehicleDeathReads(matchID, len(facts.Deaths), len(out), facts.Stats)
 	if len(out) == 0 {
-		return nil, st
+		return nil, facts.Occupancy, facts.Stats
 	}
-	return out, st
+	return out, facts.Occupancy, facts.Stats
 }
 
 // logVehicleDeathReads dit CE QUE LA MARCHE A VU, et c est le denominateur sans lequel « 20 morts
@@ -292,7 +299,7 @@ func logVehicleRideResolution(st vehicleRideStats) {
 		"episodesEvenement", st.episodes, "nommesParLEvenement", st.nommes,
 		"resolusParEvenement", st.parEvenement, "resolusParVieLaPlusProche", st.parEvenementProche,
 		"resolusParGeometrie", st.parGeometrie, "nonRattaches", st.perdus,
-		"episodesDeRepli", st.repli)
+		"episodesDeRepli", st.repli, "siegesLusDansLeFilm", st.sieges)
 	if st.episodes > 0 && st.nommes == 0 {
 		slog.Warn("rejeu : AUCUN episode d occupation nomme par son evenement de sortie — la"+
 			" reference de vehicule (domaine 1, ref 1) n est plus lue, le calque retombe sur la"+

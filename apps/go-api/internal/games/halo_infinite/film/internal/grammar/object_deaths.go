@@ -96,23 +96,44 @@ func ScanFilmObjectDeaths(dir string) ([]types.ObjectDeath, ObjectDeathStats, er
 	return ScanObjectDeaths(contexteDeBobine(film))
 }
 
-// ScanObjectDeaths marche les paquets delta d'un film DÉJÀ CHARGÉ et rend toutes les morts
-// écrites, TOUS archétypes confondus, triées par instant puis par slot.
+// MarchFacts porte ce qu'UNE marche du film rend. Les deux faits voyagent ensemble parce
+// qu'ils sont lus dans LA MÊME passe, record par record : les séparer en deux entrées
+// publiques ferait marcher le film DEUX FOIS pour la même cuisson.
+type MarchFacts struct {
+	// Deaths sont les morts écrites (`object-dead-state`), tous archétypes confondus.
+	Deaths []types.ObjectDeath
+	// Occupancy sont les lectures d'`object-parent-state` de la bande BIPÈDE : les montées à
+	// bord et leur siège (lot 5.10, cf. `vehicle_occupancy_march.go`).
+	Occupancy []types.VehicleOccupancy
+	// Stats porte les dénominateurs de la marche.
+	Stats ObjectDeathStats
+}
+
+// ScanObjectDeaths rend les seules MORTS de [ScanMarchFacts] — la forme qu'attendent les
+// instruments qui ne s'intéressent qu'à elles.
+func ScanObjectDeaths(fc *FilmContext) ([]types.ObjectDeath, ObjectDeathStats, error) {
+	f, err := ScanMarchFacts(fc)
+	return f.Deaths, f.Stats, err
+}
+
+// ScanMarchFacts marche les paquets delta d'un film DÉJÀ CHARGÉ et rend toutes les morts
+// écrites, TOUS archétypes confondus, triées par instant puis par slot, ET les lectures
+// d'occupation de la bande bipède.
 //
 // AUCUN FILTRE DE BANDE — et c'est un acquis de la mesure : la marche range par ARCHÉTYPE
 // (`FrameRecord.TypeIndex`), jamais par bande de slots dérivée des images-clés. Le filtre de
 // bande aurait perdu 2 à 5 morts de bipède par film, le film liant aussi des entités par
 // records NEW en cours de flux.
-func ScanObjectDeaths(fc *FilmContext) ([]types.ObjectDeath, ObjectDeathStats, error) {
+func ScanMarchFacts(fc *FilmContext) (MarchFacts, error) {
 	st := newObjectDeathStats()
 	reg, err := fc.Registry()
 	if err != nil {
-		return nil, st, err
+		return MarchFacts{Stats: st}, err
 	}
 	kfs, deltas := marchPacketsOf(fc)
 	st.Keyframes, st.Deltas = len(kfs), len(deltas)
 	if len(deltas) == 0 {
-		return nil, st, nil
+		return MarchFacts{Stats: st}, nil
 	}
 	cfg, parDefaut, meilleur, dauphin := calibrateFrameConfig(reg, kfs, deltas, fc.CadreDeBalayage())
 	st.Config, st.CadreParDefaut = cfg, parDefaut
@@ -134,7 +155,9 @@ func ScanObjectDeaths(fc *FilmContext) ([]types.ObjectDeath, ObjectDeathStats, e
 		st.Packets++
 		h.harvest(marchRecordsOf(d.payload, w, cfg, start), d.timestampUS)
 	}
-	return dedupObjectDeaths(h.out), st, nil
+	return MarchFacts{
+		Deaths: dedupObjectDeaths(h.out), Occupancy: dedupOccupancy(h.rides), Stats: st,
+	}, nil
 }
 
 // marchPacketsOf relève les images-clés décodées et les paquets delta du film, TRIÉS par
@@ -172,6 +195,9 @@ type objectDeathHarvest struct {
 	idx map[uint32]int
 	st  *ObjectDeathStats
 	out []types.ObjectDeath
+	// rides porte les lectures d'`object-parent-state` de la bande bipède (lot 5.10) : la même
+	// passe les traverse, et la couche de capture en rend déjà la valeur.
+	rides []types.VehicleOccupancy
 }
 
 // deadStateIndex rend l'index du composant dead-state dans l'archétype `ti`, résolu PAR LE NOM
@@ -199,6 +225,9 @@ func (h *objectDeathHarvest) harvest(recs []FrameRecord, atUS uint64) {
 	for i := range recs {
 		r := &recs[i]
 		h.note(r)
+		if o, ok := occupancyFromRecord(r, atUS); ok {
+			h.rides = append(h.rides, o)
+		}
 		if r.Trace.Dead == nil || !r.Trace.Dead.Mort {
 			continue
 		}

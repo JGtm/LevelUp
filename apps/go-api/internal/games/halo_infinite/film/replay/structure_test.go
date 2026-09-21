@@ -1230,8 +1230,21 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   l'avait déjà mesuré (lot 5.3.5 : un seul mode dans la distribution au sol).
 	//   MONTENT AUSSI : `grammar.Rev` et `facts.Rev` — la couche rend des transitions de plus.
 	//   Détail : `document_chronicle.go`.
-	if SchemaVersion != 66 {
-		t.Fatalf("SchemaVersion = %d, attendu 66 : incrémenter exige une raison écrite ci-dessus "+
+	// - v67 (post-chantier lot 5.10, 2026-09-21, arbitrage utilisateur) : L'OCCUPATION D'UN
+	//   VÉHICULE EST LUE. `rides[].src` passe de trois valeurs à DEUX — `film` (le film ÉCRIT la
+	//   montée à bord, `object-parent-state` i10) et `proximity` (REPLI par le trou de position)
+	//   — et `coverage.vehicles` échange `ridesFromEvent`/`ridesMixed`/`ridesFromGap` contre
+	//   `ridesRead`/`ridesProximity` : la FORME change, et le SENS du champ aussi. La question
+	//   du lecteur n'est plus « à quelle milliseconde près ? » mais « est-ce lu, ou déduit ? ».
+	//   LA LECTURE PRIME : un épisode de proximité n'est publié que s'il ne contredit aucune
+	//   lecture de la même vie (ni chevauchement, ni occupant que le film n'a pas nommé pour
+	//   cette vie). C'est ce qui fait disparaître l'occupant FAUX du Razorback `776/1` de
+	//   `4f77afc1`, nommé par le verdict Theater de l'utilisateur du 2026-09-19.
+	//   CE QUI NE MONTE PAS : les révisions de décodage (elles ont monté au commit précédent du
+	//   lot, avec la lecture d'`i10`), `layers`, et la fin de vie `despawn` — REFUSÉE, ses trois
+	//   canaux ayant été mesurés et écartés (lot 5.10.4). Détail : `document_chronicle.go`.
+	if SchemaVersion != 67 {
+		t.Fatalf("SchemaVersion = %d, attendu 67 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

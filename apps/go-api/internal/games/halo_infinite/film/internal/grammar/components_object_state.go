@@ -128,14 +128,25 @@ func publishObjectParentState(br *Lecteur, st *ObjectParentState) {
 	br.obs.ObjectParentStateHook(*st)
 }
 
-// consumeObjectParentState (i10) mirrors FUN_140c1e4d0. recordStateParam == param_4
+// consumeObjectParentState (i10) consomme le composant sans rendre sa valeur : le dispatch
+// historique. La lecture elle-même vit dans [decodeObjectParentState].
+func consumeObjectParentState(br *Lecteur, recordStateParam uint32, typeIndex uint32) {
+	_ = decodeObjectParentState(br, recordStateParam, typeIndex)
+}
+
+// decodeObjectParentState (i10) mirrors FUN_140c1e4d0. recordStateParam == param_4
 // (actor/weapon-set count); typeIndex == *(param_3+0x30). The trailing read is gated
 // by (typeIndex==0x23 biped) AND recordStateParam.
 //
 // Les affectations vers `st` ne changent AUCUN bit lu : l'ordre et la largeur des
 // lectures sont ceux d'avant la sonde, seules les valeurs jetées sont désormais gardées.
-func consumeObjectParentState(br *Lecteur, recordStateParam uint32, typeIndex uint32) {
-	st := ObjectParentState{TypeIndex: typeIndex, Param: recordStateParam, StartBit: br.BitPos()}
+//
+// LE RÉSULTAT EST NOMMÉ parce que la sonde s'exécute en `defer` : elle pose `EndBit` APRÈS
+// le corps, et un retour par copie rendrait une lecture sans sa borne de fin.
+func decodeObjectParentState(br *Lecteur, recordStateParam uint32, typeIndex uint32) (
+	st ObjectParentState,
+) {
+	st = ObjectParentState{TypeIndex: typeIndex, Param: recordStateParam, StartBit: br.BitPos()}
 	defer publishObjectParentState(br, &st)
 	gate := br.ReadBit()
 	st.Attached = gate
@@ -174,14 +185,15 @@ func consumeObjectParentState(br *Lecteur, recordStateParam uint32, typeIndex ui
 	st.TailBit = br.ReadBit()
 	if recordStateParam > 2 {
 		if typeIndex != 0x23 {
-			return
+			return st
 		}
 		if signBit {
 			st.HasTail3, st.Tail3 = true, uint32(br.ReadBits(3))
-			return
+			return st
 		}
 	}
 	st.HasTail3, st.Tail3 = true, uint32(br.ReadBits(3)) // FUN_140c1e31c R(3)
+	return st
 }
 
 // consumeObjectScale (i12) mirrors FUN_1407dc6e4 (widths 15/15/12).
@@ -259,13 +271,31 @@ func consumeObjectMaximumVitalities(br *Lecteur) {
 // CE QUI RESTE A TENTER, SI LA QUESTION REVIENT : i14 dans les paquets DELTA, pas dans le record
 // de creation. Le film ne date la disparition d'aucun objet pose (acquis du 2026-08-17) et le
 // calque publie un INTERVALLE `[t1, t1max]` ; c'est toujours la meilleure reponse disponible.
-func consumeObjectDissolver(br *Lecteur) {
+func consumeObjectDissolver(br *Lecteur) { _ = decodeObjectDissolver(br) }
+
+// ObjectDissolver est UNE lecture d'i14, telle que [decodeObjectDissolver] la fait. Les champs
+// sont BRUTS : `Etat` est la valeur R(4) du jeu (13 = le NEUTRE, cf. objectDissolverEtatNeutre),
+// `DureeQ` le quantum R(12) déquantifié dans [0, 10] par le jeu, `Drapeau` le R(1) de queue.
+// Le bloc de 96 bits qui les précède n'est PAS rendu : il n'est pas interprété, et le garder
+// coûterait trois mots par record sans qu'aucun appelant ne sache les lire.
+type ObjectDissolver struct {
+	Etat    uint32
+	Corps   bool
+	DureeQ  uint32
+	Drapeau bool
+}
+
+// decodeObjectDissolver lit i14 et rend sa valeur. MÊMES BITS que le dispatch historique.
+func decodeObjectDissolver(br *Lecteur) ObjectDissolver {
 	v := br.ReadBits(uint(bitLen(objectDissolverEtatMax))) // R(4)
+	out := ObjectDissolver{Etat: uint32(v)}                //nolint:gosec // R(4) tient dans uint32
 	if v != objectDissolverEtatNeutre {
-		br.ReadBits(objectDissolverCorpsBits) // R(96) bruts -> [dst+0x3ac]
-		br.ReadBits(objectDissolverDureeBits) // R(12) dequantifie dans [0, 10] -> [dst+0x3b8]
-		br.ReadBit()                          // drapeau -> [dst+0x3bc]
+		out.Corps = true
+		br.ReadBits(objectDissolverCorpsBits)                      // R(96) bruts -> [dst+0x3ac]
+		out.DureeQ = uint32(br.ReadBits(objectDissolverDureeBits)) //nolint:gosec // R(12)
+		out.Drapeau = br.ReadBit()                                 // drapeau -> [dst+0x3bc]
 	}
+	return out
 }
 
 // Les seuils d'`object-dissolver-component`, nommes parce qu'ils sont lus DEUX fois — ici et

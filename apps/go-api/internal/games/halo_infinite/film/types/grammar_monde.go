@@ -67,6 +67,37 @@ type ObjectDeath struct {
 	TailDesync bool
 }
 
+// VehicleOccupancy est UNE lecture du composant `object-parent-state` (`i10`) sur un record de
+// BIPÈDE : le film dit que cette unité vient d'être ATTACHÉE à une autre entité, ou qu'elle ne
+// l'est plus. C'est le canal d'EMBARQUEMENT du film, relu chez l'écrivain (`FUN_140c1e4d0`) le
+// 2026-09-21 — lot 5.10.
+//
+// CE QU'ELLE EST : une TRANSITION, pas un état. Le chemin delta ne porte que ce qui CHANGE :
+// une lecture attachée est une montée à bord, la lecture suivante sur le même occupant (branche
+// libre, ou un autre parent) la ferme. Sur `4f77afc1`, `i10` n'est déclaré que sur 0,1 % des
+// records `ti=35`.
+//
+// CE QU'ELLE N'EST PAS : une source exhaustive d'épisodes. Sur le même film, 48 lectures
+// attachées nomment un véhicule quand le document publie 86 épisodes d'occupation — le calque
+// des épisodes reste construit par le trou de position et les événements, et cette lecture-ci
+// donne le SIÈGE, qui, lui, n'était pas lisible autrement (D1 du lot 5.5).
+type VehicleOccupancy struct {
+	// TimestampUS est l'instant du PAQUET qui porte la lecture, sur l'horloge du film.
+	TimestampUS uint64
+	// Slot / Gen identifient la VIE de l'OCCUPANT (le bipède), Attached sa branche.
+	Slot, Gen uint32
+	Attached  bool
+	// ParentSlot / ParentGen identifient le PARENT (`Quant16` + la base 0x200 de sa catégorie,
+	// mesurée : elle fait atterrir 57,8 % des lectures sur un slot `ti=40`, contre 4,8 % pour
+	// 0x300 et 1,2 % pour 0). Nuls sur la branche libre.
+	ParentSlot, ParentGen uint32
+	// HasSeat / Seat : le champ de SIX bits de la queue du composant (+0x3a0, sentinelle
+	// 0xffff quand son bit de signe est à 0). Mesuré sur les parents véhicule de `4f77afc1` :
+	// 42 lectures sur 43 dans {0, 1, 2} — conducteur, passager, tourelleur.
+	HasSeat bool
+	Seat    uint32
+}
+
 // NavpointRadialRead est UNE lecture de `managed-navpoint-radial-progress` (ti=12 i14), datee
 // sur l'horloge du MANIFESTE (la meme que `objectives.StatRecords`, donc que les
 // explosions du statborg).
