@@ -147,6 +147,20 @@ func harvestNextBoundClean(buf []byte, pos int, w *World, cfg FrameConfig) bool 
 // from all views are concatenated. Uses chain inference per view when `Grammaire.InferenceChaine` is on.
 // Returns the records and the number of views that decoded before a desync stopped it.
 func DecodeFrameViews(buf []byte, w *World, cfg FrameConfig, nViews int, skipLeadBits int) ([]FrameRecord, int) {
+	recs, vues, _ := DecodeFrameViewsCurseur(buf, w, cfg, nViews, skipLeadBits)
+	return recs, vues
+}
+
+// DecodeFrameViewsCurseur est [DecodeFrameViews] qui rend EN PLUS le CURSEUR DE BITS final du
+// lecteur — la position ou la marche s est arretee dans le payload.
+//
+// ELLE EXISTE POUR LE GATE DU LOT 5.11.6, et ce gate est `bits non lus par paquet = le bourrage
+// d octet, et rien d autre`. Tant que le curseur n etait pas observable, un decodeur pouvait
+// lire 57 bits AU-DELA de la fin du paquet sans que rien ne rougisse : c est exactement ce qui se
+// passait avant la garde d eid de la vue (`frame_infer.go`), et aucun compteur du depot ne le
+// voyait. Le nombre de records ne suffit pas a fermer une trame ; seul le curseur le fait.
+func DecodeFrameViewsCurseur(buf []byte, w *World, cfg FrameConfig, nViews int,
+	skipLeadBits int) ([]FrameRecord, int, int) {
 	br := LecteurSur(buf)
 	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(skipLeadBits)
@@ -161,14 +175,14 @@ func DecodeFrameViews(buf []byte, w *World, cfg FrameConfig, nViews int, skipLea
 		recs, _, hitEnd := decodeInferLoop(br, buf, w, cfg)
 		all = append(all, recs...)
 		if !hitEnd {
-			return all, viewsDone // desynced inside this view — cannot trust the boundary
+			return all, viewsDone, br.BitPos() // desync : la frontiere n est pas sure
 		}
 		viewsDone++
 		if br.BitPos() == start { // no progress (immediate end) — stop
 			break
 		}
 	}
-	return all, viewsDone
+	return all, viewsDone, br.BitPos()
 }
 
 // DecodeFrameResync decodes a FRAME like DecodeFrameRecords but, on ANY desync (an

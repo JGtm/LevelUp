@@ -7771,6 +7771,116 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
         `soundSeek` avec l instant d arrivee et JAMAIS `soundTick` ; chaque evenement du glisse
         repose le curseur (aucun ecart ne s accumule) ; et `seekToFrame` n appelle PAS `soundSeek`.
 
+### Post-chantier — lot 5.11.6 (LA FIN DE TRAME), branche `feat/decfilm-63`, base `eb8300e06`
+
+**LA CASE 5.11 EST ROUVERTE SUR ORDRE DE L UTILISATEUR** : « un saut est un saut, je ne me
+contenterai pas d un derive », puis, en recadrage : « investiguer les points de grammaire
+manquante, qui est la base de toute la retro-ingenierie ; le passage par la grammaire et Ghidra
+EST la methode ». Le lot 5.11 avait conclu trop vite, ET SUR UNE MESURE FAUSSE — c est le premier
+resultat de ce lot.
+
+- [x] **5.11.6-a — LA « QUEUE DE 6,3 BITS NON LUS » DU LOT 5.11 ETAIT UN ARTEFACT D INSTRUMENT,
+  ET LA VERITE EST L INVERSE : LA MARCHE LIT 57 BITS DE TROP.**
+  L instrument du 5.11 calculait `len(pay)*8 - EndBit` et ne sommait QUE LES RESTES POSITIFS
+  (`if reste > 0`). Il a donc publie « 6,3 bits non lus par paquet, la marche est complete, le
+  film ne cache rien » alors que la mesure juste dit :
+
+  | population | largeur de queue | part |
+  |---|---|---:|
+  | `dad793c7`, fenetre du saut (71 paquets) | **−55 bits** | 94,4 % |
+  | `dad793c7`, hors fenetre (5 294 paquets) | **−57 bits** | 95,7 % |
+
+  **LECON DE METHODE, et elle vaut au-dela de ce lot** : un compteur qui jette les valeurs
+  negatives ne mesure pas une fermeture, il la MAQUILLE. Le depot n avait AUCUN gate sur le
+  curseur de bits — seulement des comptes de records — et un decodeur peut rendre le bon nombre
+  de records en lisant 57 bits au-dela de la fin du paquet. C est ce que ce lot ferme :
+  [DecodeFrameViewsCurseur] rend desormais le curseur final, et `TestMouvement5116Gate` en fait
+  un gate (`bits non lus par paquet` dans `[0 ; 7]`, le bourrage d octet).
+- [x] **5.11.6-b — LE CADRAGE DES PAQUETS EST SAIN, DONC LE DEBORDEMENT EST UNE GRAMMAIRE
+  MANQUANTE.** Ecart entre la fin d un paquet et le debut du suivant : **16 octets, constant**
+  (l en-tete), sur les 10 772 intervalles des six chunks ; **0 octet de reste** en fin de chaque
+  chunk. `FilmPacket.Size` est donc juste et il n existe aucune zone que `Payload` exclurait.
+- [x] **5.11.6-c — L ECRIVAIN NOMME LE TROU : LA GARDE D EID DE LA VUE.**
+  `FUN_142987460` (le frame-processeur) n ecrit RIEN apres les trois vues — `FUN_1406d07b0` ne
+  recoit pas le lecteur. Le pied est donc ecrit DANS la boucle de records, `FUN_1406cd128`,
+  appelee une fois par vue (`vtable[0x40]`) :
+
+  ```
+  cVar3 = *(char*)(param_1+0x12)         // mode ; != 0 -> la boucle sort au premier tour
+  cVar1 = FUN_14076cea8()                // drapeau runtime (= HasExtraFields) ; R(32) par tour
+  boucle {
+    [si cVar1] R(32)
+    prefixe = R(1) ; si 0 -> type = R(2) // type 0 = FIN DE LISTE -> break
+    FUN_1406d3140(0, reader, 7, &eid)    // idLow(13) + tag(2) = 15 bits
+    si type == 3 (DELTA) :
+        lVar11 = (eid & 0x3fffffff) * 0xa0
+        si (vue[0x38][lVar11+8] == eid && vue[0x38][lVar11+2] == (short)type)
+              FUN_141f86b58(...)          // le corps
+        sinon uVar14 = 2                  // REJET
+        si uVar14 != 0 -> break           // LA VUE S ARRETE, sans lire un bit de corps
+  }
+  ```
+
+  **Une vue qui n a rien a rendre ecrit, et lit, exactement `1 + idLow + 2` = 16 bits.** Le pied
+  de trame mesure donc 32 bits — les en-tetes de rejet des vues 2 et 3 — et le decodage du mot
+  dominant le confirme AU BIT :
+
+  | | prefixe | `idLow` (13 b) | tag (2 b) |
+  |---|---|---|---|
+  | vue 2 | `1` | `0000000011010` = **26** | `11` |
+  | vue 3 | `1` | `1101111100000` = 7 136 | `00` |
+
+  **Le slot 26 est EXACTEMENT celui du record fantome `ti=6` que la marche fabriquait.** Le
+  defaut est nomme : `decodeInferLoop` — la boucle que `DecodeFrameViews` emprunte, donc toutes
+  les marches du chantier — ne porte PAS la garde d eid, la ou `DecodeFrameRecords` la porte
+  depuis le lot 2.3 (`GenerationMatches`). Sur un slot non lie elle appelle l inference
+  d archetype au lieu de s arreter, « trouve » un archetype pour l en-tete de la vue SUIVANTE, et
+  decode un corps qui n existe pas.
+- [!] **5.11.6-d — LE TROU N EST PAS REFERME, ET LES DEUX TRANSCRIPTIONS ESSAYEES PERDENT.**
+  Le monde hors ligne n a QU UNE table slot -> archetype, la ou le jeu en a TROIS
+  (`param_1 + 0x228` = trois objets de vue, chacun avec sa table `vue + 0x38`). Les deux
+  transcriptions possibles ont ete portees, mesurees, et RETIREES :
+
+  | transcription | effet mesure |
+  |---|---|
+  | `GenerationMatches` posee dans `decodeInferLoop`, mode strict leve | **−12 248 records `ti=35`** sur `bfecd02b` (97 343 -> 85 095) et le debordement PERSISTE : la liaison du slot fautif vient d une image-cle (`BindWildcard`, `GenAny`) qui neutralise le test |
+  | rejet d un corps qui DEPASSE la fin du payload | `replay-equiv -films bcb6d393` : `movementStates` **1 364 -> 1 254**, une PERTE de 110 transitions |
+
+  **CE QU IL FAUT EST NOMME** : les trois tables d entites PAR VUE. Une entite appartient a UNE
+  vue et une seule ; tant que le monde hors ligne n en a qu une, aucune transcription ne distingue
+  « eid etranger a CETTE vue » de « slot pas encore lie ». C est le prochain pas, et il est
+  structurel. La note complete vit en tete de `frame_infer.go`.
+- [x] **5.11.6-e — CE QUE LE PIED PORTE, ET C EST L ORACLE QUE L UTILISATEUR DEMANDAIT.**
+  Recensement du mot de pied sur les 5 221 paquets de `dad793c7` qui en portent un complet :
+
+  | mot de pied | occurrences | ou |
+  |---|---:|---|
+  | `10000000011010111110111110000000` (dominant) | **5 197 (99,54 %)** | partout |
+  | `10000000011010111110111110010010` | **1** | **t = 26,036 s — LE DECOLLAGE** (`bit 27 : 0 -> 1`, `bit 30 : 0 -> 1`) |
+  | 9 autres mots, 11 a 16 bits de difference | 23 | paquets a liste d evenements (creation du bipede, remise d arme, fins de manche) — **0 bipede** |
+
+  **UN SEUL paquet du film porte le mot dominant MODIFIE, et c est celui du decollage ; c est
+  aussi le seul paquet a mot non dominant qui contient un record de bipede.** Au sens exact de
+  l oracle du film temoin — un champ qui bascule a l instant du saut et nulle part ailleurs — ce
+  mot EST un candidat, et le premier que le chantier ait produit. **IL N EST PAS NOMME** : sa
+  lecture depend de la grammaire des tables par vue (case 5.11.6-d). Rien n est publie tant que
+  la grammaire ne le lit pas.
+- [x] **5.11.6-f — LES PAQUETS NON LOCALISES, RECENSES.** `dad793c7` : **5 paquets sur 5 370**
+  (0,09 %) dont la liste d evenements de tete n est pas cadree, **aucun dans la fenetre du saut**
+  (ils tombent a 0,245 s, 12,625 s, 14,877 s, 76,264 s, 77,281 s). `bfecd02b` : 1 924 sur 29 308
+  (6,6 %). Sur `dad793c7` la grammaire manquante hors debordement pese **21 paquets / 30 649
+  bits** — tous a liste d evenements. C est le trou (2) du recadrage, et il reste entier.
+
+CE QUI EST PORTE PAR CE COMMIT : `DecodeFrameViewsCurseur` (l accesseur de curseur, sans lequel
+le gate n existe pas) et la note de `frame_infer.go`. **AUCUN BIT N EST LU AUTREMENT** — oracle de
+contenu identique sur les deux films (`bfecd02b` 97 343 records `ti=35`, 6 desyncs, `i0` 85,5 /
+`i1` 77,5 / `i21` 65,3 / `i25` 97,1 % ; `dad793c7` 75 records, 0 desync) et `replay-equiv
+-films bcb6d393` rend le MEME sha de `movementStates` qu avant le lot. `grammar.Rev` reste
+`grammar-2026-09-21.8`, golden refige A REVISION EGALE (godoc + accesseur, meme geste qu au
+5.3.3-c).
+
+---
+
 ### Post-chantier — lot 5.11 (le declencheur du saut, film temoin), branche `feat/decfilm-61`, base `677117b82`
 
 Demande de l utilisateur du 2026-09-21 : il a fait enregistrer un film ou UN SEUL joueur est

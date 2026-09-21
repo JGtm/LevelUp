@@ -22,6 +22,60 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 	return out, inferred
 }
 
+// --- LE PIED DE TRAME ET LA GARDE D EID DE LA VUE — TROU DE GRAMMAIRE NOMME, NON REFERME
+// --- (lot 5.11.6, 2026-09-21). A LIRE AVANT DE TOUCHER CETTE BOUCLE.
+//
+// # CE QUE L ECRIVAIN FAIT, ET QUE CE PAQUET NE FAIT PAS
+//
+// `FUN_1406cd128` est LA boucle de records, et le frame-processeur `FUN_142987460` l appelle
+// UNE FOIS PAR VUE (trois vues, `vtable[0x40]` ; `FUN_142987460` n ecrit RIEN apres elles —
+// `FUN_1406d07b0` ne recoit pas le lecteur). Sur un record de type DELTA la boucle ne decode un
+// corps QUE si l eid appartient a la table de CETTE vue :
+//
+//	lVar11 = (eid & 0x3fffffff) * 0xa0
+//	if (vue[0x38][lVar11 + 8] == eid && vue[0x38][lVar11 + 2] == (short)type)
+//	      FUN_141f86b58(...)   // le corps
+//	else  uVar14 = 2           // REJET
+//	if (uVar14 != 0) break     // LA VUE S ARRETE, sans avoir lu un seul bit de corps
+//
+// Une vue qui n a rien a rendre ecrit donc, et lit donc, exactement `1 + idLow + 2` bits : un
+// prefixe, un `idLow`, un tag de generation. C EST LA GRAMMAIRE DU PIED DE TRAME.
+//
+// # CE QUE LE TROU COUTE, MESURE SUR `dad793c7` (lot 5.11.6)
+//
+// Ce paquet-ci ne porte PAS la garde — `DecodeFrameRecords` la porte depuis le lot 2.3
+// (`frame_records.go`, `GenerationMatches`), cette boucle NON, et c est elle que
+// `DecodeFrameViews` emprunte, donc toutes les marches du chantier. Sur un slot non lie elle
+// appelle l inference d archetype au lieu de s arreter : l inference « trouve » un archetype
+// pour l en-tete de la vue SUIVANTE et decode un corps qui n existe pas. Le dernier record rendu
+// de chaque paquet de `dad793c7` etait ainsi un `ti=6` a masque vide, FABRIQUE a partir de zeros
+// lus AU-DELA de la fin du payload.
+//
+//	la marche consomme 57 bits de PLUS que le paquet n en porte, sur 95,7 % des paquets
+//	le pied vaut un mot de 32 bits, CONSTANT sur 5 197 des 5 221 paquets (99,54 %)
+//	les 24 paquets qui s en ecartent sont les 23 paquets a liste d evenements... et le paquet
+//	  du DECOLLAGE du saut, seul du film a porter le mot dominant modifie de deux bits
+//
+// # POURQUOI LA GARDE N EST PAS PORTEE ICI, ET CE QU IL FAUDRAIT POUR LA PORTER
+//
+// Le monde hors ligne ne porte PAS les trois tables de vues du jeu : `World` est une seule table
+// slot -> archetype, reconstruite du film, et l inference d archetype existe pour rattraper les
+// liaisons que les images-cles eparses ne donnent pas (lot 5.3.3-b). Deux transcriptions ont ete
+// ESSAYEES ET MESUREES, et les deux perdent :
+//
+//	`GenerationMatches` pose ici comme dans `DecodeFrameRecords` : l A/B du mode strict coute
+//	  12 248 records `ti=35` sur `bfecd02b` (97 343 -> 85 095) et ne referme pas le debordement,
+//	  parce que la liaison du slot fautif vient d une image-cle (`BindWildcard`, `GenAny`) qui
+//	  neutralise le test.
+//	le rejet d un corps qui DEPASSE la fin du payload : `replay-equiv -films bcb6d393` rend
+//	  `movementStates` 1 364 -> 1 254, une PERTE de 110 transitions.
+//
+// CE QU IL FAUT EST LE MODELE MANQUANT, ET IL EST NOMME : les TROIS TABLES D ENTITES PAR VUE
+// (`param_1 + 0x228` donne trois objets de vue, chacun avec sa table `vue + 0x38`). Une entite
+// appartient a UNE vue et une seule ; tant que le monde hors ligne n a qu une table, aucune
+// transcription de la garde ne distingue « eid etranger a cette vue » de « slot non encore lie ».
+// Le gate du trou est `TestMouvement5116Gate` : bits non lus par paquet dans [0 ; 7].
+// --- fin de la note ---------------------------------------------------------------------------
 // decodeInferLoop is the core of DecodeFrameInfer operating on a SUPPLIED Lecteur,
 // so several replication "views" of one packet (frame-processor FUN_142987460 = a
 // leading config bit then 3 view record-loops) can be decoded in sequence sharing one
