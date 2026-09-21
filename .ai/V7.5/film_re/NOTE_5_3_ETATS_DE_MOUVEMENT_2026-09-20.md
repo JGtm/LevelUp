@@ -767,6 +767,12 @@ mes deux lecteurs independants retrouvent exactement ce masque (`i0` 100 %, `i25
 
 ### 2quin.3 CE QUE CELA VEUT DIRE, ET CE QUE CELA NE VEUT PAS DIRE
 
+> **AMENDE LE 2026-09-21 PAR LE § 2 SEXIES.** Le record delta DOMINANT porte bien quatre
+> composants (l oracle Rosette reste vrai), mais le record RARE en porte plus — et c est lui
+> qui porte l accroupissement. La conclusion « l accroupissement n est pas dans la trame » est
+> RETIREE : il y est, derriere les largeurs fausses de `ti=0 i0` et des trois `partiel` du
+> bipede.
+
 **CE QUE CELA VEUT DIRE** : la phrase « per-tick biped state (health, shield, velocity,
 **crouch**, position, aim, ammo) » de `RECAP_STATS_EXPLOITABLES` et du handoff decrit le
 VOCABULAIRE de l archetype bipede — ce que le film PEUT porter — et non ce que le record delta
@@ -802,6 +808,79 @@ qu ils sont : les seuls instants d accroupissement que le depot sait dater aujou
 decodeur de trame n en produit **aucun** (0 intervalle sur 37 slots), et il serait malhonnete de
 publier une liste vide comme un progres. Des instants d accroupi A LA CADENCE DU JEU viendront
 du canal d evenements, quand il sera lu.
+
+## 2 sexies. L HYPOTHESE DU PILOTE EST CONFIRMEE : L ACCROUPI PAR INSTANT EST DANS LA TRAME, DERRIERE UNE LARGEUR FAUSSE
+
+> Mesure du 2026-09-21 sur `bfecd02b`, toujours par `DecodeFrameRecords`. Le pilote a pose la
+> bonne question : **un delta ne porte `i29` QUE quand l accroupi CHANGE**, donc ces records
+> sont rares — et si ce sont AUSSI ceux qui echouent, l accroupi est bien la.
+
+### 2sex.1 LA POPULATION EN ECHEC, ET CE QU ELLE PORTE
+
+**16 172 records desynchronises**, dont seulement **44 de `ti=35`** (0,3 %). La comparaison qui
+decide n est pas un compte mais un RAPPORT — la part des masques portant chaque composant parmi
+les records EN ECHEC, contre cette meme part parmi les records SAINS :
+
+| composant | part des ECHECS `ti=35` | part des SAINS | facteur |
+|---|---|---|---|
+| `i18 unit-control` | **18,18 %** (8) | 0,05 % (5) | **x 364** |
+| `i29 unit-crouch` | **9,09 %** (4) | 0,04 % (4) | **x 227** |
+| `i54 biped-mobility-action` | **22,73 %** (10) | 0,10 % (10) | **x 227** |
+| `i55 biped-posture-physics` | **13,64 %** (6) | 0,07 % (7) | **x 195** |
+| `i62 biped-slide` | **18,18 %** (8) | 0,03 % (3) | **x 606** |
+
+**LES CINQ COMPOSANTS DE MOUVEMENT SONT SUR-REPRESENTES D UN FACTEUR 200 A 600 DANS LES
+ECHECS.** Le « `i29` a 0,0 % » des mesures precedentes etait donc une mesure de la population
+SAINE — et la population saine est, par construction, la population PAUVRE : les records
+`{i0,i1,i21,i25}` de 113 bits que l oracle Rosette decrit. Les records RICHES, ceux qui portent
+un changement d etat, sont precisement ceux qui cassent.
+
+**L hypothese du pilote est confirmee : l accroupissement par instant EST dans la trame.**
+
+### 2sex.2 LE COMPOSANT FAUTIF, NOMME, PAR ARCHETYPE
+
+| archetype | echecs | composant fautif dominant |
+|---|---|---|
+| **`ti=0`** (game-engine) | **13 686** (84,6 %) | **`i0` : 13 463** — le verrou principal |
+| `ti=2` | 424 | `i15` : 328 |
+| `ti=5` | 422 | `i22` : 367 |
+| `ti=10` | 315 | — |
+| **`ti=35`** (bipede) | **44** | **`i59` : 18 · `i60` : 16 · `i57` : 10** |
+
+Cote bipede, les trois fautifs sont exactement les trois composants que `ecs_table.tsv` declare
+**`partiel`** : `i57 biped-spartan-ability`, `i59 biped-spartan-ability-non-predicted-state`,
+`i60 simulation-state`. Un record qui porte l accroupissement porte aussi ces composants-la, et
+la marche casse sur eux — pas sur `i29`.
+
+**LA CHAINE CAUSALE, ECRITE** : `ti=0 i0` casse dans 13 463 paquets → le reste du paquet n est
+jamais atteint → les records bipedes RICHES, qui viennent apres dans la trame, sont perdus →
+`i29` parait absent. Ce n est pas le film qui se tait, c est la marche qui n arrive pas jusqu a
+lui.
+
+### 2sex.3 CE QUE CELA FAIT DU LOT
+
+**L accroupissement par instant n est PAS un item de recherche : c est un ITEM DE GRAMMAIRE**,
+et sa liste de travaux est nommee, dans l ordre du rendement :
+
+1. **`ti=0 i0`** — 13 463 echecs a lui seul, 83 % de tous les echecs du film. Tant qu il n est
+   pas bit-exact, aucune trame riche ne se lit.
+2. **`ti=35 i57`, `i59`, `i60`** — les trois `partiel` du bipede, 44 echecs sur ce film, mais ce
+   sont eux qui gardent l acces a `i29`, `i18`, `i54`, `i55` et `i62`.
+3. `ti=2 i15` (328) et `ti=5 i22` (367), secondaires.
+
+**CE QUI EST DONC RETIRE** : la conclusion du § 2quin.3 selon laquelle « le record delta
+dominant porte quatre composants, donc l accroupissement n y est pas ». Le record DOMINANT en
+porte quatre — l oracle Rosette reste vrai — mais le record RARE en porte plus, et c est lui qui
+compte pour l accroupissement. Les deux enonces ne se contredisent pas ; le second manquait.
+
+### 2sex.4 CE QUI N A PAS ETE FAIT, ET POURQUOI
+
+Le pilote demandait aussi (2) l ecrivain du masque delta — comment le jeu decide d inclure `i29`
+— et (3) la ventilation du `R(32)` de `PlayerGameEventSmall`. **Ni l un ni l autre n est fait.**
+Le resultat de (1) les deprioritise : il n y a plus de mystere sur l endroit ou vit
+l accroupissement par instant, donc plus besoin de l ecrivain du masque pour le trouver, ni du
+canal d evenements comme piste de remplacement. Ce qui reste est un travail de largeurs, et il
+commence par `ti=0 i0`.
 
 ---
 
