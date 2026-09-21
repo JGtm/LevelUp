@@ -40,7 +40,7 @@ import { useSessionT } from './_shared'
 import { SessionParamPills } from './SessionParamPills'
 import { SessionColumnBody } from './SessionColumnBody'
 import { mergeSessionSectionKeys, sessionSectionKeys } from './_sections'
-import { computeCompareScale, type CompareScale } from './_compareScale'
+import { computeCompareScale, rangeDeltaDomain, type CompareScale } from './_compareScale'
 
 export function SessionDetailPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -127,13 +127,18 @@ export function SessionDetailPage() {
   const hp = useEffectiveHpToKill()
   const compareScale = useMemo<CompareScale | undefined>(() => {
     if (!enableCompare || !data?.compare_session) return undefined
-    return computeCompareScale(
-      data.matches ?? [],
-      data.current_session,
-      data.compare_matches ?? [],
-      data.compare_session ?? null,
-      hp,
-    )
+    return {
+      ...computeCompareScale(
+        data.matches ?? [],
+        data.current_session,
+        data.compare_matches ?? [],
+        data.compare_session ?? null,
+        hp,
+      ),
+      // L'axe Y de la portée se calcule sur les BLOCS, pas sur les matchs : composé ici
+      // plutôt que passé à `computeCompareScale` (cf. son en-tête, seuil de paramètres).
+      rangeDelta: rangeDeltaDomain(data.range_profiles, data.compare_range_profiles),
+    }
   }, [enableCompare, data, hp])
 
   // Bouton « Voir les synergies » (V72-09) — deep-link vers /squad scopé sur la
@@ -251,8 +256,18 @@ export function SessionDetailPage() {
   // meme hauteur et la meme ligne de titre. Aucune mesure JS — la grille suffit.
   const rowKeys = drawerOpen
     ? mergeSessionSectionKeys(
-        sessionSectionKeys({ hasUsage: data.usage != null }),
-        sessionSectionKeys({ hasUsage: data.compare_usage != null }),
+        sessionSectionKeys({
+          hasUsage: data.usage != null,
+          hasCoordination: data.coordination != null,
+          hasRange: data.range_profiles != null,
+        }),
+        sessionSectionKeys({
+          hasUsage: data.compare_usage != null,
+          // Aucun `compare_coordination` au contrat : la colonne comparée n'a pas la
+          // section, la rangée partagée y pose son placeholder.
+          hasCoordination: false,
+          hasRange: data.compare_range_profiles != null,
+        }),
       )
     : null
   // 1 rangee d'en-tete L3 + 1 rangee par section : les deux colonnes s'y accrochent.
@@ -373,6 +388,8 @@ export function SessionDetailPage() {
               intensityRows={data.intensity_rows ?? []}
               firstBlood={data.first_blood ?? []}
               usage={data.usage}
+              coordination={data.coordination}
+              rangeProfiles={data.range_profiles}
             />
           </>
         ) : (
@@ -470,6 +487,7 @@ export function SessionDetailPage() {
                   intensityRows={data.compare_intensity_rows ?? []}
                   firstBlood={data.compare_first_blood ?? []}
                   usage={data.compare_usage}
+                  rangeProfiles={data.compare_range_profiles}
                 />
               ) : isCompareLoading ? (
                 <div className="flex items-center justify-center py-12">

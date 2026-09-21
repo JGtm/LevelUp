@@ -2250,6 +2250,17 @@ export interface SessionPageRequest {
 
 export type SessionPageResponse = components['schemas']['SessionPageResponse']
 
+// ─── Vague 3 (D22) : sections transverses Riposte / Appui / Portée ────────────────────
+// Contrat Go : internal/domain/coordination.go et internal/domain/match_range.go, servis
+// DANS la réponse de page existante (aucune requête de plus). `Couverture` est le même
+// type que côté Tactique (taux + brut + par match + N + drapeau d'échantillon faible) :
+// une seule définition, deux alias de lecture.
+export type CoordinationBlock = components['schemas']['CoordinationBlock']
+export type CoordinationMatchPoint = components['schemas']['CoordinationMatchPoint']
+export type Couverture = components['schemas']['Couverture']
+// `MatchRangeBlock` / `MatchRangeProfile` / `MatchRangePlayer` (lot N2) sont déjà alias plus
+// haut, posés par le lot R pour l'Escouade : la page Sessions les lit tels quels.
+
 // ─── Chantier session-usage (S3) : bloc « usages d'équipement, socles et objectifs » ──
 // Contrat Go : internal/domain/session_usage.go — TOUT axe est NORMALISÉ (parts %,
 // cadences /10 min) ; les totaux bruts ne sont que des dénominateurs d'honnêteté.

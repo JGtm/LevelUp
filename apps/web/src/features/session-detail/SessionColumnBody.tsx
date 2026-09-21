@@ -12,8 +12,10 @@
 import { Fragment, type ReactNode } from 'react'
 
 import type {
+  CoordinationBlock,
   FirstBloodPlayerSeriesDTO,
   IntensityMatchRow,
+  MatchRangeBlock,
   SessionCompareEntry,
   SessionDetailMatchRow,
   SessionUsageBlock,
@@ -22,7 +24,9 @@ import type {
 import type { CompareScale } from './_compareScale'
 import { SESSION_SECTION_ORDER, type SessionSectionKey } from './_sections'
 import { useSessionChartSections } from './_chartSections'
+import { SessionCoordinationSection } from './SessionCoordinationSection'
 import { SessionMatchesTable } from './SessionMatchesTable'
+import { SessionRangeCard } from './SessionRangeCard'
 import { SessionSummaryCard } from './SessionSummaryCard'
 import { SessionUsageSection } from './SessionUsageSection'
 import { useSessionT } from './_shared'
@@ -49,6 +53,17 @@ interface Props {
    */
   usage?: SessionUsageBlock
   /**
+   * Bloc « Coordination » (riposte + appui reçu, lot N1) — servi pour la SEULE colonne
+   * principale : le contrat n'a pas de `compare_coordination`, la colonne comparée rend
+   * donc le placeholder D16 sur cette rangée.
+   */
+  coordination?: CoordinationBlock
+  /**
+   * Profils de PORTÉE par match (lot N2) — `range_profiles` à gauche,
+   * `compare_range_profiles` à droite : les deux colonnes ont leur carte.
+   */
+  rangeProfiles?: MatchRangeBlock
+  /**
    * Mode COMPARAISON (D16) : rangées partagées avec la colonne sœur. La page passe
    * l'union ordonnée des clés des deux colonnes ; chaque clé rend ici soit la section,
    * soit le placeholder « Sans équivalent dans cette session ». Absent → pile simple
@@ -60,7 +75,16 @@ interface Props {
 /** Sections de la colonne, indexees par cle stable (`_sections.ts`). */
 function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKey, ReactNode>> {
   const t = useSessionT()
-  const { entry, matches, playerSlug, compact, participationSide = 'right', usage } = props
+  const {
+    entry,
+    matches,
+    playerSlug,
+    compact,
+    participationSide = 'right',
+    usage,
+    coordination,
+    rangeProfiles,
+  } = props
 
   const chartSections = useSessionChartSections({
     entry,
@@ -82,6 +106,28 @@ function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKe
     // indisponible / sans film ; absent du payload → la section n'existe pas.
     ...(usage
       ? { usage: <SessionUsageSection usage={usage} meLabel={playerSlug} compact={compact} /> }
+      : {}),
+    // Sections transverses de la vague 3 (D22) : la Coordination (deux cartes en rangée)
+    // puis la Portée (une carte). Deux clés distinctes, parce que la comparaison ne sert
+    // que la seconde — cf. l'en-tête de `SessionRangeCard`.
+    ...(coordination
+      ? {
+          coordination: (
+            <SessionCoordinationSection coordination={coordination} compact={compact} />
+          ),
+        }
+      : {}),
+    ...(rangeProfiles
+      ? {
+          range: (
+            <SessionRangeCard
+              block={rangeProfiles}
+              meLabel={playerSlug}
+              compact={compact}
+              yDomain={props.scale?.rangeDelta}
+            />
+          ),
+        }
       : {}),
     // Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau).
     matches: (
