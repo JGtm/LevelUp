@@ -52,7 +52,7 @@ package facts
 // PRODUCTION, reserve au pilote SUR SIGNAL UTILISATEUR (decision D6 du plan), JAMAIS automatique.
 //
 
-const Rev = "killsource-2026-09-21.9"
+const Rev = "killsource-2026-09-22.2"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/facts_rev.golden` porte le couple (revision, empreinte) avec son historique, et

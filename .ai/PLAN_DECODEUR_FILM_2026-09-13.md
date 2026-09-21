@@ -7979,6 +7979,353 @@ lot en est la demonstration la plus chere du chantier : la conclusion du 5.11 te
 
 ---
 
+### Post-chantier — lot 5.13 (vue 3, mantling, corps partiels), branche `feat/decfilm-63`
+
+Sur passation 5.11. METHODE : l ecrivain d abord (Ghidra lecture seule), les dumps comme oracle,
+aucune mesure empirique de grammaire, un commit par trou.
+
+- [x] **5.13.1 — LES DEUX BITS DE TETE D UN IDENTIFIANT D IMAGE-CLE SONT LE RANG DE LA VUE, ET LA
+  « VUE 3 » N EST PAS UNE TABLE D ENTITES MAIS UNE AUTRE CLASSE DE VUE.**
+
+  **(a) LE MAILLON, SUR L INSTRUCTION.** L encodeur de la liste de REFERENCE d une vue
+  (`FUN_142f2e174`, slot `+0x10` de la vtable de vue `0x1436a87e0`,
+  `replication_entity_manager_view.cpp`) ecrit par entite UN mot de 32 bits :
+
+  ```
+  *mot = *(int *)(vue + 8) << 0x1e | *mot & <masque> | slot & 0x1fff | <genre>
+  FUN_140bbd808(mot, priorite)      // *mot = *mot & 0xff801fff | (priorite & 0x3ff) << 0xd
+  ```
+
+  soit `[rang:2 @30][genre:2 @23][priorite:10 @13][slot:13 @0]` — c est exactement l `id:32` de
+  l en-tete `[id:32][field:26][ti:6]` que `keyframe_world.go` lit. Les deux bits de tete viennent
+  de `vue + 8`, PAS de l entite : `142f2e2ec MOV ECX, dword ptr [RDI + 0x8]` puis
+  `142f2e304 SHL ECX, 0x1e` (`RDI` = `param_1` = la vue ; memes registres que `vue+0x38`,
+  `vue+0x58`, `vue+0x14`), sur les trois sites de genre (`142f2e304`, `142f2e38a`, `142f2e440`).
+  **Et `vue + 8` EST LE RANG DE LA VUE** : le registraire `FUN_1409c9860(conteneur, rang, vue)`
+  l y ecrit, `*(int *)(param_3 + 1) = param_2`, en rangeant la vue dans le tableau que
+  `FUN_142987460` parcourt (`FUN_141f855b4` l appelle pour les rangs 0, 1, 2). Le journal RE du
+  lot G (2026-08-27) nommait ce champ `gen` sans avoir decompile l instruction.
+
+  **(b) MESURE — L IMAGE-CLE EST MONO-RANG.** `TestImageCle513Vues` (instrument neuf) :
+
+  | film | paquets d image-cle | records par paquet | rangs distincts |
+  |---|---:|---|---|
+  | `dad793c7` | 5 | 123 a 186 | **{1}** |
+  | `bfecd02b` | 60 | 424 a 482 | **{1}** |
+
+  Et la vue que la marche parcourt en PREMIER est celle qui rend les records
+  (`TestVues513EspaceDeNoms`) : `dad793c7` 5 628 records, tag 1 sur **5 628 / 5 628** ;
+  `bfecd02b` **157 250 / 157 554** (99,81 %). « Toutes les liaisons d image-cle vont en vue 0 »
+  n etait donc PAS une limite du portage — c est ce que le film porte.
+
+  **(c) PORT.** `World.BindImageCle(ns, slot, ti)` remplace `BindWildcard` dans les deux binders
+  d image-cle (`movement_states.go`, `m533bLierMonde`) : le rang est LU (`vueDeLEspaceDeNoms` :
+  premier rang rencontre -> la vue de la marche, tout autre rang -> vue INCONNUE, qui ne rejette
+  rien) au lieu d etre attribue d office a 0. AVANT / APRES, a l identique sur les deux temoins :
+  `dad793c7` 99,50 % de paquets fermes, 75 records `ti=35`, `i21` 1,3 % ; `bfecd02b` 114 458
+  records `ti=35`, 5 desynchronises, `i21` 65,2 %. `grammar-2026-09-22` /
+  `killsource-2026-09-22` (montee PRUDENTIELLE : sur un film a deux rangs la lecture change, en
+  rendant PLUS de records) ; 8 fixtures de contrat re-figees (schema 67 inchange, 72 a 74 octets
+  d ecart chacune = les chaines de revision) ; `SchemaVersion` 67 inchangee.
+
+  **(d) REFUTE, AVEC SES CHIFFRES.** Les deux bits de tete d un identifiant de FLUX DELTA ne sont
+  PAS le meme champ : `FUN_142f30610` ecrit l eid que la table de la vue porte
+  (`*(uint *)(slot * 0xa0 + 8 + vue[0x38])`), pose par `FUN_1408f1730` a
+  `*(byte *)(datum + 1) << 0x1e | slot` — un champ du DATUM, par entite. Confondre les deux dans
+  la garde de vue (comparer les eids COMPLETS) coute **21 records `ti=35`** sur `bfecd02b`
+  (114 458 -> 114 437). La garde compare donc le slot, et `World.VuePossede` le dit sur place.
+
+  **(e) « L ENTITE 7140 GENERATION 2 DE LA VUE 3 » N EST PAS UNE ENTITE.** `FUN_142987460` appelle
+  `vtable[0x40]` sur ses trois vues, et les trois vtables (lues par `/read_memory`) n ont PAS la
+  meme fonction a ce slot :
+
+  | vtable | `+0x40` | grammaire de la boucle de records |
+  |---|---|---|
+  | `0x1436a8700` | `FUN_14076a1c4` | si `vue[0x11]` : **zero bit** ; sinon boucle `R(1)` (0 = fin) puis UN corps (`FUN_14080a9d4`) — **et elle rend TOUJOURS zero record** (`*param_6 = 0`) |
+  | `0x1436a87e0` | `FUN_1406cd128` | le GESTIONNAIRE D ENTITES : `[R(32) film]`, `prefixe R(1)`, `si 0 -> type R(2)`, `idLow + tag 2`, corps selon le type. **La seule grammaire que la marche porte** |
+  | `0x1436a8770` | `FUN_1406cf548` | `[prologue FUN_142f2539c si drapeau]` puis boucle `R(1)` (0 = fin), `kind R(2)`, trois handlers (`FUN_1406d0388` / `FUN_142f29b38` / `FUN_142f29e54`), `kind == 3` = zero bit |
+
+  Les deux « en-tetes de record rejetes » du pied de trame (lot 5.11.7) ne sont donc pas des
+  en-tetes du gestionnaire d entites : ce sont les flux des DEUX AUTRES classes de vue, lus avec
+  la grammaire du gestionnaire. `slot 7136 tag 0` et `slot 7140 tag 2` ne designent AUCUNE
+  entite — ce sont `R(1)` + `kind R(2)` + du corps d une autre grammaire, decoupes en
+  `[prefixe][idLow][tag]`, et les bits 27 / 30 qui basculaient au decollage sont des bits DE CE
+  CORPS. Controle sur le film : les vues de rang 1 et 2 ne rendent que **13 records** sur
+  `dad793c7`, TOUS de type DEL (slots 0, 260, 261, 262) — jamais un NEW, donc jamais un
+  archetype ; et le slot 7140 n apparait dans AUCUN record d image-cle (elles s arretent au slot
+  1 345). **La piste « nommer l entite de la vue 3 » est donc fermee par la grammaire, pas par une
+  absence** : l objet a nommer n existe pas.
+
+
+- [!] **5.13.2 — LE MANTLING : LA QUEUE D `i54` EST LA CHARGE UTILE D UN MESSAGE RESEAU NOMME,
+  ET LES QUATRE VALEURS N ONT AUCUNE ETIQUETTE DANS LE BINAIRE. PAS DE PORT, PAS DE SCHEMA 68.**
+
+  **CE QUE LE LOT A NOMME, ET C EST UN SITE DE PLUS, INDEPENDANT.** La queue d `i54`
+  (`FUN_1407ea38c` en ecriture, `FUN_1408f02c8` en lecture, bloc = `etat + 0x11f8`) est la CHARGE
+  UTILE d un message reseau :
+
+  | maillon | adresse | ce qu il dit |
+  |---|---|---|
+  | nom du type de message | `143c97470` | `initiate_mobility_action` (thunk de nom `1411685a0`, vtable `143d0a000`..`143d0a118`) |
+  | trace du message | `143e0c500` | `"biped-initiate-mobility-action: relevance = %5.3f"`, pertinence par `FUN_142e30074` |
+  | ECRITURE du message | `FUN_1407ebc58` | `R(1) = bloc[0x9d]` **puis** `FUN_1407ea38c(bloc, writer)` — la MEME queue |
+  | LECTURE du message | `FUN_142ef8f04` | `bloc[0x9d] = R(1)` ; `bloc[0x9e] = 0` ; `FUN_1408f02c8(bloc, reader)` |
+
+  **CONSEQUENCE POSITIVE** : la garde `bloc[0x9d]` est NOMMEE — c est le bit de presence du
+  message lui-meme. Dans le composant `i54` elle vaut `etat + 0x1295`, c est-a-dire `flag1` lu
+  deux lignes plus haut par le meme deserialiseur (`components_biped_ability.go` le disait deja) ;
+  dans le message elle est lue comme un `R(1)` explicite. La lecture du depot est donc confirmee
+  par un SECOND site, ecrit independamment. Et les trois vec3 de la queue sont les parametres
+  geometriques d un message d AMORCE d action de mobilite — l ancre du geste.
+
+  **CE QUI RESTE NON TRAITE, ET POURQUOI.** Les quatre valeurs de `bloc + 0x9c`
+  (= `etat + 0x1294`, le `R(2)`) sont un champ de ce message, et **le binaire ne porte aucune
+  etiquette pour elles** :
+
+  - `search_strings` sur `mobility` / `Mobility` / `MobilityAction` rend **10 chaines** en tout
+    (`button_action_mobility`, `armor_input_mobility`, `armor_input_mobility_vehicle`, `Mobility`,
+    `mobility`, `ImageSet_EquipmentMobility`, `EquipmentMobility`, `initiate_mobility_action`,
+    `biped-mobility-action-component`, la trace ci-dessus) — **aucune n est une etiquette de
+    valeur**.
+  - `CharacterPhysicsMode*` n a que **4 chaines** (`Clambering`, `Melee`, `GroundDatum`,
+    `GroundDatum::SupportingObjectData`) et designe un AUTRE champ : le predicat
+    `SpartanAbilityIsClambering` passe par `FUN_142c66808` -> `FUN_1406b8244(datum) == 2`, et
+    `FUN_1406b8244` lit le mode dans l objet de PHYSIQUE du personnage
+    (`*(u32)(obj + 0x2dc + *(u16)(obj + 0x2de))`), pas dans ce bloc.
+  - la recherche d instructions sur `0x1294` rend **34 sites sur tout le binaire**, et **aucun
+    dans la chaine de mobilite** : 17 sont des `MOV word ptr [RDI + 0x1294], BP` de la famille
+    `141c*` (constructeurs d une autre classe — la collision d offset annoncee au piege 6 de la
+    passation), les autres des `CMP dword ... -0x1` et des flottants. Le code vivant adresse le
+    champ PAR LE POINTEUR DE BLOC (`+0x9c`), donc l offset absolu ne le trouve pas.
+  - les quatre slots de la vtable du message hors des deux serialiseurs (`142ef58f8`,
+    `142f0203c`, `142f05308`, `142c46770`) **ne sont pas des fonctions definies** dans le projet
+    Ghidra courant (`/decompile_function` : « No function found »), et la famille `142ef*`
+    restante (`FUN_142ef7794`, `FUN_142efaa34`, `FUN_142ef8828`) ne touche pas `+0x9c`.
+
+  **DONC : les quatre valeurs restent non nommees, `stances[].kind` `mobility` NE DEVIENT PAS
+  `clamber`, ET LE LOT NE MONTE PAS DE SCHEMA.** C est exactement la porte que la passation 5.11
+  posait au point (4). Publier un libelle « Escalade » sur un champ dont le lot ne sait pas que
+  la valeur 1 est une escalade serait une invention, pas une lecture.
+
+  **LA SUITE, NOMMEE.** Le maillon restant est l APPLIQUEUR du message : la fonction qui, sur le
+  personnage, consomme `bloc + 0x9c` pour choisir le mode de physique. Elle se cherche par les
+  quatre slots ci-dessus, qu il faut d abord faire definir dans le projet Ghidra (ils sont dans
+  des regions non analysees), ou par le site d EMISSION du message (le constructeur de la classe,
+  dont aucune xref de donnee n existe sur la base de vtable `143d0a000`).
+
+
+- [x] **5.13.3 — LES CORPS PARTIELS DU BIPEDE : `i57` PORTE EN ENTIER (l octet d etat runtime n en
+  est pas un), le dispatcheur a SIX ETIQUETTES d `i59` LU chez l ecrivain, `i60` tranche.**
+
+  **(a) `i57` — LE MAILLON, ET IL EST DANS L INITIALISEUR.** La branche `tag == 3`
+  (`FUN_142f262d4`) etait la seule largeur indeterminee du composant, au motif que son corps est
+  garde par `dst[2] & 1` et `dst[2] & 0x10`, « des octets d ETAT RUNTIME invisibles du flux ». Le
+  desassemblage dit le contraire : `FUN_142f262d4` appelle `FUN_140f03dfc(dst)` en PREMIERE
+  instruction —
+
+  ```
+  142f262ec  MOV  R15B, R8B      ; param_3
+  142f262ef  MOV  RBX, RDX       ; le lecteur
+  142f262f2  MOV  RDI, RCX       ; dst   (RCX vaut encore dst)
+  142f262f5  CALL 0x140f03dfc    ; FUN_140f03dfc(dst)
+  ```
+
+  — et cet initialiseur ecrit `*(undefined2 *)(param_1 + 2) = 0`, c est-a-dire `dst[2] = 0` ET
+  `dst[3] = 0`. **La porte `(dst[2] & 1) == 0` est donc TOUJOURS ouverte quand elle est testee, et
+  la branche gardee par `dst[2] & 0x10` est INATTEIGNABLE.** Le corps vaut :
+
+  ```
+  FUN_140f03dfc(dst)                      0 bit — et il met dst[2] a zero
+  a = R(1)                 -> dst[0]
+  si a != 0 : R(6)         (FUN_14297ea84 ; largeur lue sur `if (0x40 - iVar1 < 6)`)
+  t = R(1)                 -> dst[1]
+  si t != 0 : FUN_14076e494(br, dst+0x18, 0x10, 0, param_3, 0)   = la queue handle d i60
+  ```
+
+  C EST LA MEME LECON QU `i54`, ou `bloc[0x9d]` est `flag1` lu deux lignes plus haut par le meme
+  deserialiseur : quand une porte porte sur un champ de la structure de SORTIE, l initialiseur
+  compte. `consumeBipedSpartanAbility` ne peut plus rendre `false` ; le dispatcheur rend `true`
+  sans condition ; `ecs_table.tsv` passe `i57` a **`porte`** (le ratchet G1 derive le statut du
+  code, il ne le croit pas sur parole).
+
+  AVANT / APRES, records RENDUS (`TestMouvement511Partiels`) :
+
+  | mesure | avant | apres |
+  |---|---:|---:|
+  | `i57` non portees · `bfecd02b` (651 declarations) | 1 | **0** |
+  | `i57` non portees · `4f77afc1` (2 531 declarations) | 44 | **0** |
+  | desyncs `ti=35` · `bfecd02b` | 5 | **4** |
+  | records `ti=35` · `bfecd02b` | 114 458 | 114 458 |
+  | etalon `i21` · `bfecd02b` | 65,2 % | 65,2 % |
+  | `dad793c7` paquets fermes · records `ti=35` | 99,50 % · 75 | 99,50 % · 75 |
+
+  **ET LA SORTIE DES FAITS CHANGE, VISIBLEMENT** : le golden de la mini-bobine `killsource`
+  deplace UNE ligne de kill de la voie `scan` a la voie `marche` (marche 6 -> 7, scan 3 -> 2),
+  avec le MEME verdict et `DESACCORD` toujours a 0 — la marche va plus loin, elle ne decide pas
+  autrement. `grammar-2026-09-22.2` / `killsource-2026-09-22.2` ; 8 fixtures de contrat et
+  `shapes.golden` re-figes ; `SchemaVersion` 67 inchangee.
+
+  **(b) `i59` — LE DISPATCHEUR A SIX ETIQUETTES EST LU, ET IL NE RESTE QU UNE LARGEUR.**
+  `FUN_142f25e90` decompilee en entier : `FUN_142f21c0c` lit `R(3)` et range `brut + 1`, puis
+
+  ```
+  etiq == 0 : FUN_140f03e58(dst) ; 0 bit        (inatteignable : brut + 1 >= 1)
+  PREFIXE COMMUN : FUN_142f26e40(br, a, b, p4) = FUN_1408f0ac4(a, br, 1)
+                                                 puis FUN_142f04664(b, br, *(int*)(a+4) != -1, p4)
+                   puis FUN_14297ea84 = R(6)
+  etiq == 1 : FUN_1407f08bc
+  etiq == 2 : FUN_1408f0ac4(cat 5) + FUN_1407f08bc
+  etiq == 3 : FUN_1408f0ac4(cat 0) + FUN_1408f0ac4(cat 5) + 3 x FUN_142f26e9c + R(24) + R(9)
+  etiq 4/5  : FUN_1408f0ac4(cat 5) + 1 x FUN_142f26e9c + FUN_14076e494(0x10) + R(24) + R(9)
+  etiq == 6 : FUN_1407f08bc ; si SA PORTE valait 0 -> FUN_1408f0ac4(cat 5) ; FUN_1408f0ac4(cat 0)
+              + 2 x FUN_142f26e9c + R(1) + R(24)
+  etiq > 6  : 0 bit
+  ```
+
+  et `FUN_142f04664(dst, br, flag, p4)` : si `flag == 0` -> `FUN_14076e494(br, dst, 0x10, 0, p4, 0)`
+  (la POSITION ABSOLUE aux largeurs de la carte) ; sinon `R(2)` + `FUN_140c1e924` +
+  `R(1) [+ R(16)]`.
+
+  **CE QUE CELA EXPLIQUE, ET C EST UNE CONFIRMATION DU PORT EXISTANT** : les « trois bits de
+  drapeaux a 000 sur 202 des 210 records » que le lot du grappin avait MESURES sont exactement la
+  porte du handle de `FUN_1408f0ac4(cat 1)`, celle de pleine precision et celle du bloc quantifie
+  de `FUN_14076e494` ; et le `R(7)` mesure plus la porte `gate8` sont `R(6)` plus les portes des
+  `FUN_1408f0ac4` de l etiquette. Les deux formes observees se recollent au bit :
+  etiquette 2 (`R(6)` + cat 5 ferme + `FUN_1407f08bc` ouvert = 16 bits) = le `R(7)` + `gate8`
+  ouvert du port ; etiquette 3 (`R(6)` + deux portes fermees = 8 bits) = le `R(7)` + `gate8`
+  ferme.
+
+  **TROIS LARGEURS SONT FERMEES PAR CE LOT** : `FUN_1407f08bc` = `R(1)` ; si 1 -> `R(8)` (par
+  `FUN_1407f08f8`, `if (0x40 - iVar1 < 8)`) · `FUN_14297ea84` = `R(6)` · `FUN_1408f0ac4`
+  categories 0 et 5 = `R(1)` ; si 1 -> `R(13|9) + R(2)` / `R(8) + R(2)` — la table `varwidth`
+  du lot 1.9.1 bis les donne, la note de `components_biped_anchor.go` qui les disait manquantes
+  etait PERIMEE.
+
+  **IL EN RESTE UNE, ET UNE SEULE : `FUN_140c1e924`** dans la branche `flag != 0` de
+  `FUN_142f04664`. Elle appelle `FUN_140c1e9d4(br, dst, tableau)` — trois champs de `w` bits — ou
+  `w` vient d une table indexee par un octet (`&DAT_143b8c6f0 + param_3 * 0x18`) que le
+  desassemblage ne resout pas au site d appel (`FUN_142f04664` recoit `param_3` / `param_4` par
+  registre). **NON TRAITE `[!]`** : porter les etiquettes 1, 4, 5, 6 exige de reecrire le prefixe
+  commun, et ce prefixe ne peut pas etre bit-exact tant que cette largeur manque. Reecrire le
+  prefixe sur la branche `flag == 0` seule AURAIT change la consommation des etiquettes 2 et 3,
+  dont la fermeture est PROUVEE (`TestI59AnchorWalkProof`, ecarts min=p10=p50=p90=0) : on ne
+  casse pas une fermeture prouvee pour gagner 4 records sur 654. Cout mesure du manque :
+  **4 records non portes sur 654** (`bfecd02b`), **21 sur 2 599** (`4f77afc1`).
+
+  **(c) `i60` — TRANCHE, ET LE STATUT RESTE `partiel` POUR UNE RAISON ECRITE.** Le composant est
+  COMPLET EN MESURE : **0 record non porte** sur 29 declarations (`bfecd02b`) et sur 16
+  (`4f77afc1`). Sa grammaire est resolue depuis le lot R7-b (queue comprise, le predicat de garde
+  est vrai par construction) et la SOURCE de ses largeurs d axe depuis le lot 5.3.3-a
+  (`grammaireSousCarte` : `SimStateComplet` SUIT la carte du match). **LA DECISION QUE LA
+  PASSATION DEMANDAIT** — « ce que devient `SimStateComplet` quand AUCUNE carte n est
+  installee » — est prise : **il reste FAUX**, parce que le critere ecrit est « que le chemin
+  absolu d `i0` tire ses trois largeurs de la CARTE du match », et que les enveloppes `ScanFilm*`
+  n en ont pas. Le dispatcheur rend donc `br.p.Grammaire.SimStateComplet`, et le ratchet G1, qui
+  DERIVE le statut du code, impose `partiel`. Passer la table a `porte` exigerait de rendre
+  `true` sans condition, c est-a-dire de faire lire la queue a des largeurs qui ne sont celles
+  d AUCUNE carte. Ce qui est corrige, c est la NOTE de la table, qui decrivait encore un blocage
+  disparu (« la queue tirerait ses largeurs d un uniforme 14 ») — anti-patron « doc inversee ».
+
+- [x] **5.13.4 — LA FENETRE DU SAUT DE `dad793c7`, RELUE AVEC TOUTE LA GRAMMAIRE DU LOT. CE QUI
+  S Y ECRIT, EN CLAIR : TROIS CANAUX, ET RIEN D AUTRE.**
+
+  Marche a trois vues, garde de table de vue, `BindImageCle`, `i57` porte, `i60` sous carte.
+  Instrument `TestMouvement511Fenetre` sur tout le film (`MOUV511_T0=0 MOUV511_T1=99999`).
+
+  **LE PARC ENTIER DES RECORDS DE BIPEDE DU FILM — 75 records, et leur forme :**
+
+  | instant | type | composants | corps |
+  |---|---|---:|---:|
+  | 2,851 s | NEW | **34** | 2 478 bits |
+  | 2,865 s | DELTA | 4 (i0, i1, i25, i56) | 69 bits |
+  | 2,882 s | DELTA | 1 (i26) | 22 bits |
+  | 2,898 s · 2,915 s | DELTA | 2 (i1, i25) | 12 bits |
+  | 16,146 s | DELTA | 2 | 16 bits |
+  | **26,036 s a 27,191 s — 69 records** | DELTA | **3 (i0, i1, i25)** | **95 bits, a l identique** |
+
+  **LA FENETRE DU SAUT EST DONC UN FLUX A TROIS CANAUX, DE LARGEUR CONSTANTE**, et les trois
+  decoupent les 95 bits toujours aux memes offsets :
+
+  | composant | largeur | offset dans le corps |
+  |---|---:|---:|
+  | `i0 object-position-dynamic-precision` | 54 | +0 |
+  | `i1 object-translational-velocity-dynamic-precision` | 31 | +54 |
+  | `i25 unit-command-tick` | 10 | +85 |
+
+  Les quatre valeurs publiees d `i1` (mode, porte, direction empaquetee, mot d echelle), sur les
+  18 premiers records de la fenetre : mode **0** et porte **0** partout, direction empaquetee
+  **217 832 CONSTANTE** sur les 69 records, et le mot d echelle **242, 259, 249, 240, 232, 225,
+  219, 212, 205, 199, 187, 176, 162, 158, 152, 148, 144, 138** — un maximum au deuxieme record
+  puis une decroissance monotone. Publie tel quel, sans interpretation : la carte de ce film
+  n est pas identifiable (piege 7 de la passation, facteur 8,2 sur l axe vertical), donc les
+  positions d `i0` ne sont pas des coordonnees monde, et seul le canal de VITESSE est
+  card-independant.
+
+  **AUCUN CHAMP DE SAUT N APPARAIT, ET LA GRAMMAIRE DU LOT N Y CHANGE RIEN — POUR UNE RAISON
+  STRUCTURELLE, PAS PAR ABSENCE DE PORT** (piege 4 de la passation : la presence d un composant
+  se lit dans le MASQUE). Sur tout `dad793c7` :
+
+  | composant instruit par ce lot | declarations dans le film | ou |
+  |---|---:|---|
+  | `i54 biped-mobility-action` | **1** | le record NEW de 2,851 s |
+  | `i59 biped-spartan-ability-non-predicted-state` | **1** | le record NEW de 2,851 s |
+  | `i60 simulation-state` | **1** | le record NEW de 2,851 s |
+  | `i57 biped-spartan-ability` | **0** | nulle part |
+
+  Aucun des quatre n est declare une seule fois entre 26,0 s et la fin du film. Instruire leur
+  grammaire ne pouvait donc pas faire apparaitre un record la ou le masque n en declare aucun, et
+  c est ce que la relecture confirme.
+
+  **ET LE PIED DU PAQUET DE CETTE FENETRE EST NOMME** (item 5.13.1 (e)) : ses 32 bits ne sont pas
+  deux en-tetes d entite mais les flux des DEUX AUTRES CLASSES DE VUE, lus avec la grammaire du
+  gestionnaire d entites. Les bits 27 et 30 qui basculaient au decollage sont des bits de corps
+  d une autre grammaire — il n y a pas d entite 7140 a nommer.
+
+  **CONSEQUENCE SUR LA PUBLICATION, ET C EST LA DECISION DE CLOTURE DU LOT** : rien de neuf n est
+  publiable. Le champ de saut n existe pas dans cette fenetre (le masque le dit), les quatre
+  valeurs du mantling ne sont pas nommees (item 5.13.2), et `i57` / `i60` ne changent que des
+  LARGEURS LUES, pas la forme du document. **LE LOT NE MONTE DONC PAS DE SCHEMA : `SchemaVersion`
+  reste a 67.** La montee 67 -> 68 etait decidee « pour ce que le lot publie » ; le lot ne publie
+  rien, donc elle n a pas lieu — pas de `stances[].kind` `clamber`, pas de `jump` lu, pas de
+  chronique v68, pas de fixtures `replay_schema_68_*`.
+
+#### §4 du lot 5.13 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.13)** | **LES TROIS VUES DE `FUN_142987460` SONT TROIS CLASSES, ET LA MARCHE HORS LIGNE APPLIQUE A TOUTES LES TROIS LA GRAMMAIRE D UNE SEULE.** `vtable[0x40]` vaut `FUN_14076a1c4` (`0x1436a8700`), `FUN_1406cd128` (`0x1436a87e0`, le gestionnaire d entites) et `FUN_1406cf548` (`0x1436a8770`). Porter les deux autres boucles est LA ROUTE VERS 100 % DE PAQUETS FERMES : les 13 records DEL fantomes de `dad793c7` et ses 18 debordements viennent tous de la grammaire du gestionnaire appliquee a ces deux flux. | un lot a soi seul : trois handlers a mesurer pour `FUN_1406cf548` (`FUN_1406d0388`, `FUN_142f29b38`, `FUN_142f29e54`), un pour `FUN_14076a1c4` (`FUN_14080a9d4`), plus le prologue `FUN_142f2539c` |
+| **D2 (5.13)** | **LE MAILLON QUI RESTE POUR NOMMER LES QUATRE VALEURS DU MANTLING EST L APPLIQUEUR DU MESSAGE `initiate_mobility_action` SUR LE PERSONNAGE**, et quatre slots de sa vtable (`142ef58f8`, `142f0203c`, `142f05308`, `142c46770`) NE SONT PAS DES FONCTIONS DEFINIES dans le projet Ghidra courant. | le prochain lot de mantling : faire definir ces quatre regions dans Ghidra, ou remonter par le site d EMISSION du message (aucune xref de donnee sur la base de vtable `143d0a000`) |
+| **D3 (5.13)** | **UNE SEULE LARGEUR SEPARE `i59` DE SES SIX ETIQUETTES : `FUN_140c1e924`**, dont les trois champs tirent leur `w` d une table indexee par un octet (`&DAT_143b8c6f0 + param_3 * 0x18`) que le desassemblage ne resout pas au site d appel de `FUN_142f04664`. | le lot qui rouvre `i59` : resoudre cet index, puis reecrire le prefixe commun ET reverifier `TestI59AnchorWalkProof` (ecarts 0) dans le meme commit |
+| **D4 (5.13)** | **LA NOTE DE `components_biped_anchor.go` DISAIT MANQUANTES DES LARGEURS QUE LE DEPOT PORTE DEPUIS LE LOT 1.9.1 bis** (`FUN_1408f0ac4` categories 0 et 5, par la table `varwidth`). Corrige dans la table ECS par ce lot ; le commentaire Go, lui, est hors de la frontiere de fichiers de 5.13.3. | le prochain lot qui touche `components_biped_anchor.go` |
+| **D5 (5.13)** | **LE JOURNAL RE (`WALK_PORT_NOTES.md`, lot G du 2026-08-27) NOMME `gen` LES DEUX BITS DE TETE DE LA LISTE DE REFERENCE**, alors que `FUN_142f2e174` les prend dans `vue + 8`, le RANG de la vue ecrit par `FUN_1409c9860`. Le depot est corrige (`world.go`, chronique, note 5.13) ; le journal RE ne l est pas — il est hors de la frontiere de fichiers du lot. | le prochain lot qui edite `.ai/V7.5/killweapon/WALK_PORT_NOTES.md` |
+| **D6 (5.13)** | **LE BIPEDE DE `dad793c7` N EST REPLIQUE EN CONTINU QU A PARTIR DE 26,036 s** : un NEW a 2,851 s, cinq deltas epars jusqu a 16,146 s, puis 69 deltas identiques de 26,036 s a 27,191 s. L instant que le lot 5.11.7 appelle « le decollage » est donc AUSSI le premier record du flux continu, et rien dans ce lot ne separe les deux lectures. | le lot qui reprendra le saut : choisir un film temoin dont le bipede est replique en continu AVANT et APRES le saut, sinon la fenetre ne peut pas distinguer « le saut commence » de « la replication commence » |
+
+#### §5 du lot 5.13 — ETAT DE CLOTURE
+
+| case | statut | ce qui est livre |
+|---|---|---|
+| 5.13.1 | `[x]` | les deux bits de tete d un identifiant d image-cle sont le RANG DE LA VUE (`vue + 8`, `FUN_1409c9860`) ; l image-cle est MONO-RANG sur les deux temoins ; `World.BindImageCle` LIT le rang ; « l entite 7140 generation 2 de la vue 3 » n est pas une entite (trois classes de vue, trois grammaires) |
+| 5.13.2 | `[!]` | la queue d `i54` est la charge utile du message `initiate_mobility_action` ; la garde `bloc[0x9d]` est NOMMEE ; les quatre valeurs de `bloc + 0x9c` n ont AUCUNE etiquette dans le binaire -> pas de `clamber`, pas de montee de schema |
+| 5.13.3 | `[x]` `i57` et `i60` · `[!]` `i59` | `i57` porte en entier (l initialiseur met la porte a zero) : non portees 1 -> 0 et 44 -> 0 ; le dispatcheur a six etiquettes d `i59` lu chez l ecrivain, une seule largeur manque ; `i60` tranche (`SimStateComplet` reste faux sans carte, la note perimee de la table corrigee) |
+| 5.13.4 | `[x]` | la fenetre relue : trois canaux (`i0` 54 · `i1` 31 · `i25` 10), 95 bits a l identique sur 69 records ; `i54`/`i59`/`i60` declares UNE fois dans le film, `i57` zero fois ; aucun champ de saut |
+| schema | **67, INCHANGEE** | le lot ne publie rien de neuf : la montee 67 -> 68 etait decidee « pour ce que le lot publie », et le lot ne publie rien |
+
+Revisions : `grammar-2026-09-22.2` / `killsource-2026-09-22.2`. Gates par commit : `gofmt`,
+`go build`, `go vet` (+`research`), `go test -count=1` sur `halo_infinite/...`, `archlint`,
+`replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api`, `golangci-lint` (0 issue),
+`go test -race` sur `grammar` (337 s, vert), `npx vitest run src/features/match-replay`
+(3 014 tests verts). Corpus 19, re-figeage et CI : au pilote.
+
+**GATE AVEC DECODAGE — `replay-equiv --films=bcb6d393` SANS `-update`, ET SES DIVERGENCES SONT
+CELLES QUI ETAIENT ATTENDUES.** 6 etapes sur 57 s ecartent de la reference, et la reference est
+PERIMEE depuis la fusion 5.10 (report D1 (5.11) de la passation : le re-figeage est un geste du
+pilote). Les six : `killsource`, `grappleReads.stats`, `vehicles`, `movementStates`,
+`movementStates.stats`, `artifact`. **Le chiffre qui tranche est `movementStates` : 1 489 obtenus
+contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 5.11.7 a mesuree
+(1 364 -> 1 489) avant d ecrire sa passation.** Ce lot-ci ne la deplace donc pas d un record :
+les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
+pic 0,19 Gio, un film a la fois.
+
 ### Post-chantier — lot 5.11.7 (LES TROIS TABLES D ENTITES PAR VUE), branche `feat/decfilm-63`
 
 Suite directe du 5.11.6, qui avait NOMME le trou sans le refermer. Le recadrage de l utilisateur

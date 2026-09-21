@@ -423,3 +423,73 @@ package grammar
 // `killsource`) : les lignes de kill deja en base deviennent candidates au backlog de
 // redecodage, qui part sur SIGNAL UTILISATEUR (D6).
 // `replay.SchemaVersion` NE MONTE PAS : la FORME du document ne change pas.
+
+// ENTREE `grammar-2026-09-22` (2026-09-22, lot 5.13.1) : LA VUE D UNE LIAISON D IMAGE-CLE SE LIT
+// AU LIEU DE S ATTRIBUER — LES DEUX BITS DE TETE SONT LE RANG DE LA VUE.
+//
+// CE QUE L ECRIVAIN DIT. La liste de reference qu un paquet d image-cle transporte est celle
+// d UNE vue : son ecrivain `FUN_142f2e174` est le slot `+0x10` de la vtable de VUE
+// `0x1436a87e0`, il ne parcourt que la table de SA vue, et il met les deux bits de tete de
+// chaque identifiant a `vue + 8` (`142f2e2ec MOV ECX, dword ptr [RDI + 0x8]` puis
+// `142f2e304 SHL ECX, 0x1e`, et de meme sur ses deux autres sites de genre). Et `vue + 8` est le
+// RANG de la vue : c est le registraire `FUN_1409c9860(conteneur, rang, vue)` qui l ecrit,
+// `*(int *)(param_3 + 1) = param_2`. Ce champ n est donc NI une generation NI un identifiant
+// d entite — le journal RE du lot G (2026-08-27) le nommait `gen` sans avoir decompile
+// l instruction.
+//
+// CE QUE LE DEPOT EN FAISAIT. `keyframe_world.go` lisait ce champ (`KeyframeRec.Gen`) et les
+// deux binders d image-cle le JETAIENT : `BindWildcard(slot, ti)` posait `FullID = slot`,
+// `GenAny`, et `Vue = 0` D OFFICE. [World.BindImageCle] le lit : le PREMIER rang rencontre est
+// celui de la vue que la marche parcourt en premier ; un second rang irait en vue INCONNUE, qui
+// ne rejette rien, au lieu d etre attribue d office au rang 0.
+//
+// MESURE. `TestImageCle513Vues` : UN SEUL rang par paquet d image-cle, et il vaut 1 sur les
+// 5 paquets de `dad793c7` (123 a 186 records) comme sur les 60 de `bfecd02b` (424 a 482).
+// `TestVues513EspaceDeNoms` : la vue parcourue en PREMIER rend 5 628 records sur `dad793c7`,
+// tous de tag 1 (5 628 sur 5 628), et 157 250 sur 157 554 (99,81 %) sur `bfecd02b`.
+// Les deux films temoins ne montrent donc qu un rang, et LA SORTIE NE BOUGE PAS :
+// `dad793c7` 99,50 % de paquets fermes, 75 records `ti=35` ; `bfecd02b` 114 458 records `ti=35`,
+// 5 desynchronises, etalon `i21` 65,2 % — a l identique. LA REVISION MONTE QUAND MEME parce que
+// la lecture PEUT changer : sur un film dont l image-cle declarerait deux rangs, les liaisons du
+// second passent en vue inconnue, et la marche y rend alors PLUS de records, pas moins.
+//
+// CE QUI EST REFUTE, ET C EST UNE MESURE. Les deux bits de tete d un identifiant de FLUX DELTA
+// ne sont PAS le meme champ : `FUN_142f30610` ecrit l eid que la table de la vue porte
+// (`*(uint *)(slot * 0xa0 + 8 + vue[0x38])`), pose par `FUN_1408f1730` a
+// `*(byte *)(datum + 1) << 0x1e | slot` — un champ du DATUM, par entite. Confondre les deux dans
+// la garde de vue (exiger l egalite des eids complets) coute 21 records `ti=35` sur `bfecd02b`
+// (114 458 -> 114 437) : la garde compare donc le SLOT, et [World.VuePossede] le dit sur place.
+//
+// `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-22`. La
+// sortie des faits ne change pas sur les films temoins — seule la valeur hachee bouge.
+// `replay.SchemaVersion` NE MONTE PAS : la FORME du document ne change pas.
+
+// ENTREE `grammar-2026-09-22.2` (2026-09-22, lot 5.13.3) : `i57` EST PORTE EN ENTIER — L OCTET
+// D ETAT RUNTIME QUI L EN EMPECHAIT N EN ETAIT PAS UN.
+//
+// La branche `tag == 3` d `i57 biped-spartan-ability` (`FUN_142f262d4`) etait la seule largeur
+// indeterminee du composant, au motif que son corps est garde par `dst[2] & 1` et `dst[2] & 0x10`,
+// « des octets d ETAT RUNTIME invisibles du flux ». Le desassemblage dit le contraire :
+// `FUN_142f262d4` appelle `FUN_140f03dfc(dst)` en PREMIERE instruction — `142f262f2 MOV RDI, RCX`
+// puis `142f262f5 CALL 140f03dfc`, RCX vaut encore `dst` — et cet initialiseur ecrit
+// `*(undefined2 *)(param_1 + 2) = 0`. La porte `dst[2] & 1` est donc TOUJOURS fermee quand elle
+// est testee, et la branche gardee par `dst[2] & 0x10` est inatteignable.
+//
+// Le corps se lit donc en entier : `R(1)` ; si 1 -> `R(6)` (`FUN_14297ea84`, largeur lue sur
+// `if (0x40 - iVar1 < 6)`) ; puis `R(1)` ; si 1 -> la queue handle `FUN_14076e494`, le meme
+// lecteur qu `i60`. `consumeBipedSpartanAbility` ne peut plus rendre `false`, et le dispatcheur
+// rend `true` sans condition.
+//
+// C EST LA MEME LECON QU `i54` (`bloc[0x9d]` y est `flag1`, lu deux lignes plus haut par le meme
+// deserialiseur) : quand une porte porte sur un champ de la structure de SORTIE, l initialiseur
+// compte.
+//
+// MESURE, records RENDUS (instrument `TestMouvement511Partiels`) :
+//
+//	i57 non portees   bfecd02b : 1 -> 0 sur 651 declarations · 4f77afc1 : 44 -> 0 sur 2 531
+//	desyncs `ti=35`   bfecd02b : 5 -> 4 · records `ti=35` 114 458 -> 114 458, etalon `i21` 65,2 %
+//
+// `facts.Rev` MONTE, et LA SORTIE DES FAITS CHANGE REELLEMENT : le golden de la mini-bobine
+// deplace une ligne de kill de la voie `scan` a la voie `marche` (marche 6 -> 7, scan 3 -> 2),
+// avec le MEME verdict et `DESACCORD` toujours a 0 — la marche va simplement plus loin.
+// `replay.SchemaVersion` NE MONTE PAS : la FORME du document ne change pas.
