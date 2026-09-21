@@ -636,7 +636,8 @@ export function ReplayCanvas({
   // dans useReplayPlayback : le canvas garde le DESSIN, le hook porte le TEMPS.
   const playback = useReplayPlayback({
     doc, playWindow, baseFps, speed: multiplier, renderWidth, frameRef, draw, openAtFrame,
-    soundTick: sound.tick, onEnded: sound.endMatch, onTransportGesture: sound.wake, onPlayingChange: sound.setTransportPlaying,
+    soundTick: sound.tick, soundSeek: sound.seek,
+    onEnded: sound.endMatch, onTransportGesture: sound.wake, onPlayingChange: sound.setTransportPlaying,
   })
   // LA FRISE ET SON CLAVIER (planche 2a) vivent dans useReplayTimeline — treizième extraction
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.

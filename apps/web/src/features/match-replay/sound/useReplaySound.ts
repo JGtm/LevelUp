@@ -147,6 +147,17 @@ export interface ReplaySound {
   /** À appeler à chaque pas d'animation avec l'instant courant du rejeu, en ms. */
   tick: (ms: number) => void
   /**
+   * seek — UN DÉPLACEMENT, PAS UNE LECTURE : le curseur se POSE à cet instant sans rien jouer.
+   *
+   * POURQUOI C'EST UNE COMMANDE À PART (lot 5.8.7). `tick` est le battement de la LECTURE : il
+   * tire tout ce qui tombe entre l'instant précédent et celui-ci, et ne recale en silence qu'au
+   * -delà de `SOUND_RESYNC_JUMP_MS`. Servi après un GLISSÉ de frise, il fait donc l'une de deux
+   * choses fausses : une rafale (saut sous la seconde) ou un recalage qui dépend de l'amplitude
+   * du geste. Un déplacement n'a pas d'amplitude qui compte — on n'a pas écouté ce qu'on a
+   * enjambé, quelle que soit sa durée.
+   */
+  seek: (ms: number) => void
+  /**
    * LA LECTURE VIENT DE S'ARRÊTER OU DE REPARTIR. Les sons d'événement n'en ont pas besoin
    * (sans battement, rien ne part) — les MOTEURS de véhicules, si : une boucle en vol ne
    * s'éteint pas toute seule, la pause doit la couper (rampe de 20 ms, décision n° 6).
@@ -532,6 +543,22 @@ export function useReplaySound(
     }
   }, [tuning, engine.stop, engine.sync])
 
+  /**
+   * seek — LE CHEMIN DES DÉPLACEMENTS : il lève le drapeau de recalage puis bat une fois.
+   *
+   * IL RÉUTILISE LE MÊME DRAPEAU QUE L'ACTIVATION ET LE CHANGEMENT DE PISTE (`resyncRef`), et
+   * c'est ce qui le rend sûr : ce chemin « pose le curseur sans rien jouer » existe depuis le
+   * premier jour et il est déjà le seul à savoir aussi réconcilier les MOTEURS (`engine.sync`
+   * passe avant la garde). Une seconde écriture du curseur, ici, aurait oublié les moteurs.
+   */
+  const seek = useCallback(
+    (ms: number) => {
+      resyncRef.current = true
+      tick(ms)
+    },
+    [tick],
+  )
+
   // LA CONCLUSION. Elle ne passe PAS par le curseur : elle n'a pas d'instant sur la piste, et
   // le curseur existe pour ne pas rejouer ce qu'on a enjambé — une question qui n'a pas de sens
   // pour un événement qui n'arrive qu'au bout. C'est l'appelant qui garantit l'unicité (la
@@ -589,6 +616,7 @@ export function useReplaySound(
     categories,
     toggleCategory,
     tick,
+    seek,
     setTransportPlaying,
     endMatch: playEndMatch,
     recordingTrack,

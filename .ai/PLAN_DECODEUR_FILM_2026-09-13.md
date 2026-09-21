@@ -7186,13 +7186,42 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
         fenetre ne sonne RIEN (aucun repli), un calque qui ne couvre pas le camp laisse le repli
         repondre, une domination plus longue que le budget ETIRE ses tics (le dernier atteint la
         fin, contre 179 s avant), et sous le budget la periode reste EXACTEMENT la seconde.
-- [ ] **5.8.7 — UN SAUT DANS LA FRISE RECALE LE SON AU LIEU DE LE TIRER EN RAFALE**
-      (`onScrub` aligne sur `seekTo`).
+- [x] **5.8.7 — LE GLISSE DE LA FRISE PREVIENT LE SON, ET COMME UN DEPLACEMENT** (web seul).
+  - [x] **LE DEFAUT, VERIFIE SUR PIECES** : `onScrub` posait la frame et le remplissage, dessinait
+        en pause, et ne touchait PAS au curseur sonore — reste a l instant d AVANT le geste. Le
+        battement suivant (reprise de lecture) voyait alors un ecart dont **la seule amplitude
+        decidait** : sous `SOUND_RESYNC_JUMP_MS` (1 s), tout ce que le glisse avait enjambe partait
+        EN RAFALE ; au-dela, un recalage silencieux. Deux comportements pour un meme geste, dont un
+        mur de bruit — et un glisse emet des dizaines d evenements de champ.
+  - [x] **UNE COMMANDE DE DEPLACEMENT, DISTINCTE DU BATTEMENT** : `useReplaySound.seek(ms)` leve le
+        drapeau de recalage puis bat une fois. **IL REUTILISE LE MEME DRAPEAU QUE L ACTIVATION ET
+        LE CHANGEMENT DE PISTE** (`resyncRef`), et c est ce qui le rend sur : ce chemin « pose le
+        curseur sans rien jouer » existe depuis le premier jour et il est deja le seul a savoir
+        aussi reconcilier les MOTEURS (`engine.sync` passe avant la garde). Une seconde ecriture du
+        curseur aurait oublie les moteurs.
+  - [x] `onScrub` appelle `soundSeek`, jamais `soundTick` : un deplacement pose le curseur sans
+        rien jouer, **quelle que soit son amplitude** — on n a pas ecoute ce qu on a enjambe.
+  - [x] **`seekTo` GARDE SON `soundTick`, A DESSEIN, et le lot ne l aligne PAS dessus** : un pas
+        d image (`stepFrames`) ou un saut vers un repere est une LECTURE qui atterrit, et entendre
+        ce qui se joue a l arrivee est ce qu on attend. Le brief disait « aligne `onScrub` sur
+        `seekTo` » ; la clause qui compte est sa parenthese (« recalage silencieux, aucune
+        rafale »), et `seekTo` ne la tient pas sous la seconde. Aligner `onScrub` sur la LETTRE
+        aurait donc reconduit la rafale sur les petits sauts. §4, D7 (5.8).
+  - [x] **MESURE DE LA PORTEE** (`node -e`, documents cuits, lecture seule) — combien de sons un
+        glisse d une seconde pouvait tirer d un coup, en ne comptant que les TIRS (le gros de la
+        piste) : **21** sur `4f77afc1` (2 408 tirs), **26** sur `5676a9ba` (3 006), **32** sur
+        `396cfc92` (1 634). Le plafond de 8 voix du lecteur en avalait la moitie, mais la piste
+        portait leur poids et la seconde qui suit le geste etait un mur.
+  - [x] 5 cas vitest : `seek` ne joue RIEN sur un saut de 150 ms (et le kill ne revient pas
+        ensuite) ; le TEMOIN `tick` sur le meme saut joue bien le kill ; `onScrub` appelle
+        `soundSeek` avec l instant d arrivee et JAMAIS `soundTick` ; chaque evenement du glisse
+        repose le curseur (aucun ecart ne s accumule) ; et `seekToFrame` n appelle PAS `soundSeek`.
 
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-21 | 5.8.7 | **D7 (5.8) — `seekTo` PORTE LA MEME RAFALE QUE `onScrub` SOUS LA SECONDE, ET LE LOT NE LA CORRIGE PAS.** Le battement (`tick`) ne recale en silence qu au-dela de `SOUND_RESYNC_JUMP_MS` (1 s) : un `seekBy` ou un `stepFrames` de moins d une seconde tire donc tout l intervalle. Mesure de ce que cela peut peser : jusqu a **32 tirs dans une fenetre de 1 s** sur `396cfc92`. | NON TRAITE, **et c est un arbitrage de PRODUIT, pas un oubli** : un pas d image qui joue le son de l image ou l on atterrit est ce qu on attend d un pas d image ; un saut de 5 s vers un repere, moins clairement. La regle juste est probablement « un pas d image joue, un saut ne joue pas », c est-a-dire un seuil en IMAGES et non en millisecondes — mais c est une decision d ecoute, et elle appartient a l utilisateur. `soundSeek` est deja cable : la basculer tiendra en une ligne |
 | 2026-09-21 | 5.8.6 | **D6 (5.8) — LE PLAFOND DE 180 TICS NE MORDAIT SUR AUCUN DOCUMENT DU PARC : LA PLUS LONGUE DOMINATION MESUREE VAUT 71 SECONDES.** Instrument `zoneTics.mesure.test.ts` sur les 7 documents a zones simultanees : **29 intervalles de domination**, 392 s au total, la plus longue 71 s — **0 sur 29** depassait les 180 s, donc 0 s de domination sans tic. Le diagnostic du 2026-09-19 presentait ce plafond comme un defaut effectif (« au-dela de 3 min de domination continue, plus aucun tic ») ; il est LATENT. | **TRAITEE QUAND MEME DANS LE PERIMETRE** (le budget etire la cadence au lieu de tronquer : le correctif est plus petit que la garde qu il remplace). **Consignee parce qu elle dit ou est la vraie valeur du lot** : c est l ANCRE qui changeait le rendu (411 tics synthetiques -> 351 tics sur des points reels, et 10 -> 5 sur `8514a85f`), pas le plafond. Un lot qui voudrait mesurer une domination longue doit aller chercher un film de Bastion tres desequilibre — le parc n en porte aucun |
 | 2026-09-21 | 5.8.4 | **D5 (5.8) — LE LAAG ET LE GAUSS DU WARTHOG N ONT AUCUN SON, ET LE DEPARTAGE LES REND MUETS : 100 TIRS DE `4f77afc1` PASSENT DE LA ROQUETTE AU SILENCE.** Mesure : les 105 tirs du tag `c7d50912` du parc viennent tous d un chassis `warthog`, zero `rockethog`, zero `warthog_gauss` — le son joue etait faux dans 100 % des cas, mais le corriger ne rend pas un son juste, il rend le silence. | NON TRAITE, **et c est une decision de PRODUIT, pas de lot** : le remede est une RECONSTRUCTION Wwise du LAAG (et du Gauss), au meme regime que les dix deja validees — deux prises, regle des armes (1,2 s), 48 kHz/16 bits/stereo, -16 LUFS. Emprunter un stem voisin (la LMG du Falcon est une mitrailleuse UNSC) est refuse par la doctrine du fichier. Si l utilisateur prefere le faux son au silence, le retour arriere tient en une ligne : ajouter `warthog` et `warthog_gauss` a la sous-table du tag |
 | 2026-09-21 | 5.8.2 | **D3 (5.8) — LE MANIFESTE DU TITRE NE PEUT PAS PORTER LE STYLE D UNE ARME DE VEHICULE, ET PUBLIER CES ARMES CASSERAIT DEUX REGLES MESUREES.** `[shot_effects]` / `[shot_tints]` sont keyees par `weapon_key`, et leur seul chemin vers le client est `weaponLabels`, compose a la requete pour les armes que le registre canonique nomme. Surtout : la PRESENCE d une cle dans `weaponLabels` est le discriminateur « arme de vehicule » de `vehicleShotSourceOf` (5.2a.5) ET la garde du repli sonore de `shotSoundStem` (2026-09-04) — y publier une arme de vehicule la rendrait MUETTE et lui reprendrait sa direction. | **TRAITEE AUTREMENT DANS LE PERIMETRE** : table CLIENT `model/vehicleShotFx.ts`, jumelle exacte de `sound/vehicleShotSound.ts`. **Consignee parce qu elle nomme un manque de FRONTIERE** : le rejeu a desormais TROIS tables client keyees par tag `weap` (montage, son, style) la ou la doctrine du depot veut les tables de titre dans le TOML. Le lot qui voudra les y ramener doit d abord se donner un canal de document qui ne soit pas `weaponLabels` — par exemple une table `vehicleWeaponLabels` posee a la requete, qui est une montee de schema |
@@ -7699,6 +7728,19 @@ longue domination vaut 71 s : le correctif du plafond ferme un defaut LATENT, §
 **DEUX ITEMS STATUES `[~]` APRES VERIFICATION SUR PIECES** : la rampe suivie d un intervalle NEUTRE
 etait deja traitee par 5.2a.3 (`campDeLaRampe(...) ?? arrivee`), et le silence de `zone_secures`
 est deja tenu par `objectiveSound.test.ts`. Aucune ligne ecrite pour l un ni pour l autre.
+
+**5.8.7 (le glisse de la frise previent le son)** — `make check-types` apres purge (vert) ·
+`make test-web` : **726 fichiers, 7 873 tests verts** (**+5** cas) · `npx eslint` sur les
+9 fichiers touches : **0 erreur, 6 avertissements TOUS PRE-EXISTANTS** — verifie en lintant la
+version de BASE de `useReplaySound.ts` (`git show 7af38c44d:...`), qui rend les **memes 5**
+avertissements `engine` ; le 6e (`zoneInk.outline` dans `ReplayCanvas`) est lui aussi d avant le
+lot · `npx knip` : aucun export mort. Aucun octet Go.
+**MESURE DE LA PORTEE** (`node -e`, documents cuits, lecture seule) : nombre maximal de TIRS dans
+une fenetre de 1 s — **21** (`4f77afc1`), **26** (`5676a9ba`), **32** (`396cfc92`). C est l ordre
+de grandeur de la rafale qu un glisse d une seconde pouvait tirer.
+**UN ARBITRAGE LAISSE A L UTILISATEUR** : `seekTo` garde son battement, donc la meme rafale reste
+possible sur un `seekBy`/`stepFrames` de moins d une seconde (§4, D7) — la regle juste est
+probablement un seuil en IMAGES, et c est une decision d ecoute.
 
 **UN ROUGE ATTRAPE PAR UN RATCHET, ET IL AVAIT RAISON** : le retour du hook des vehicules avait
 ete reecrit sur plusieurs lignes, ce que `sceneBinding.guard.test.ts` refuse — il exige
