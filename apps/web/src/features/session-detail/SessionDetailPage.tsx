@@ -12,9 +12,11 @@
  * démonter le layout pendant le fetch compare (sinon la transition ne joue pas).
  *
  * Comparaison "côte à côte" : la session active (gauche) et la session comparée
- * (drawer, droite) affichent la MÊME pile de graphes (`SessionChartStack`), alignée.
- * Le profil de participation s'affiche en miroir (axe à droite à gauche / à gauche à
- * droite) pour un effet papillon symétrique.
+ * (drawer, droite) affichent les MEMES sections (`SessionColumnBody`), et depuis le
+ * 2026-09-21 (D16) dans des RANGEES PARTAGEES : les deux colonnes sont des subgrids de
+ * rangees de la grille racine, une rangee par cle de section (union des deux colonnes).
+ * Un cote sans la section rend un placeholder « Sans equivalent dans cette session ».
+ * Le profil de participation reste en miroir (axe a droite a gauche / a gauche a droite).
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearch, useRouter } from '@tanstack/react-router'
@@ -37,6 +39,7 @@ import { useSessionDetailPage } from './queries'
 import { useSessionT } from './_shared'
 import { SessionParamPills } from './SessionParamPills'
 import { SessionColumnBody } from './SessionColumnBody'
+import { mergeSessionSectionKeys, sessionSectionKeys } from './_sections'
 import { computeCompareScale, type CompareScale } from './_compareScale'
 
 export function SessionDetailPage() {
@@ -240,6 +243,21 @@ export function SessionDetailPage() {
   // precedente) : on affiche un spinner dans le panneau pendant qu'il glisse.
   const isCompareLoading = drawerOpen && !data.compare_session && isFetching
 
+  // D16 — RANGEES PARTAGEES. En comparaison, les deux colonnes ne sont plus deux piles
+  // independantes : on calcule l'union ordonnee de leurs sections et chaque colonne rend
+  // cette meme liste (sa section, ou le placeholder « Sans equivalent dans cette
+  // session »). Les colonnes sont alors des `grid-rows: subgrid` de la grille racine :
+  // la i-eme section de gauche et celle de droite partagent LA MEME rangee, donc la
+  // meme hauteur et la meme ligne de titre. Aucune mesure JS — la grille suffit.
+  const rowKeys = drawerOpen
+    ? mergeSessionSectionKeys(
+        sessionSectionKeys({ hasUsage: data.usage != null }),
+        sessionSectionKeys({ hasUsage: data.compare_usage != null }),
+      )
+    : null
+  // 1 rangee d'en-tete L3 + 1 rangee par section : les deux colonnes s'y accrochent.
+  const gridRowsStyle = rowKeys ? { gridTemplateRows: `repeat(${rowKeys.length + 1}, auto)` } : undefined
+
   return (
     // Layout en grille a deux colonnes anime via `grid-template-columns` : la
     // 2e colonne passe de 0fr a 1fr, ce qui fait glisser le panneau compare ET
@@ -247,6 +265,7 @@ export function SessionDetailPage() {
     // conteneur reste monte en permanence pour que la transition CSS se declenche.
     <div
       ref={rootRef}
+      style={gridRowsStyle}
       className={`xl:grid xl:transition-[grid-template-columns] xl:duration-300 xl:ease-out ${
         drawerOpen
           ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
@@ -254,7 +273,11 @@ export function SessionDetailPage() {
       }`}
     >
       {/* Colonne principale */}
-      <div className={`min-w-0 space-y-6 p-6 ${drawerOpen ? 'xl:border-r' : ''}`}>
+      <div
+        className={`min-w-0 space-y-6 p-6 ${
+          drawerOpen ? 'xl:row-span-full xl:grid xl:grid-rows-subgrid xl:gap-6 xl:space-y-0 xl:border-r' : ''
+        }`}
+      >
         {hasSessions ? (
           <>
             {/* En-tete session "L3" : sticky sous la NavL2 (top = hauteur NavL2 mesurée),
@@ -345,6 +368,7 @@ export function SessionDetailPage() {
               matches={sessionMatches}
               playerSlug={playerSlug}
               compact={drawerOpen}
+              rowKeys={rowKeys ?? undefined}
               scale={compareScale}
               intensityRows={data.intensity_rows ?? []}
               firstBlood={data.first_blood ?? []}
@@ -368,12 +392,16 @@ export function SessionDetailPage() {
           de scroll, et laisse overflow-y visible pour que le sticky resolve bien sur `<main>`.
           Sur mobile (< xl) la colonne se place sous la colonne principale. */}
       <div
-        className={`overflow-x-clip ${drawerOpen ? '' : 'hidden xl:block'}`}
+        className={`overflow-x-clip ${
+          drawerOpen ? 'xl:row-span-full xl:grid xl:grid-rows-subgrid' : 'hidden xl:block'
+        }`}
         aria-hidden={!drawerOpen}
       >
         <div
           className={`flex flex-col space-y-6 border-t p-6 transition-opacity duration-300 xl:border-l xl:border-t-0 ${
-            drawerOpen ? 'opacity-100' : 'opacity-0'
+            drawerOpen
+              ? 'opacity-100 xl:row-span-full xl:grid xl:grid-rows-subgrid xl:gap-6 xl:space-y-0'
+              : 'opacity-0'
           }`}
         >
           {(drawerOpen || data.compare_session) && (
@@ -436,6 +464,7 @@ export function SessionDetailPage() {
                   matches={data.compare_matches ?? []}
                   playerSlug={playerSlug}
                   compact
+                  rowKeys={rowKeys ?? undefined}
                   participationSide="left"
                   scale={compareScale}
                   intensityRows={data.compare_intensity_rows ?? []}

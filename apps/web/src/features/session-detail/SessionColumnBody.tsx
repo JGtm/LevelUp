@@ -9,6 +9,8 @@
  * En mode `compact` (colonne divisée, drawer ouvert) : KPI abrégés + tableau compact —
  * exactement la "vue compacte" de la colonne principale.
  */
+import { Fragment, type ReactNode } from 'react'
+
 import type {
   FirstBloodPlayerSeriesDTO,
   IntensityMatchRow,
@@ -18,7 +20,8 @@ import type {
 } from '@/lib/api/types'
 
 import type { CompareScale } from './_compareScale'
-import { SessionChartStack } from './SessionChartStack'
+import { SESSION_SECTION_ORDER, type SessionSectionKey } from './_sections'
+import { useSessionChartSections } from './_chartSections'
 import { SessionMatchesTable } from './SessionMatchesTable'
 import { SessionSummaryCard } from './SessionSummaryCard'
 import { SessionUsageSection } from './SessionUsageSection'
@@ -42,46 +45,46 @@ interface Props {
    * Bloc « usages d'équipement, armes spéciales et objectifs » — servi pour LES DEUX
    * sessions depuis le 2026-09-09 (D8) : la colonne principale reçoit `usage`, le
    * drawer `compare_usage`. Absent du payload (vieux serveur, session sans match) →
-   * le composant ne rend rien, pas de bloc fantôme.
+   * la section n'existe pas de ce côté.
    */
   usage?: SessionUsageBlock
+  /**
+   * Mode COMPARAISON (D16) : rangées partagées avec la colonne sœur. La page passe
+   * l'union ordonnée des clés des deux colonnes ; chaque clé rend ici soit la section,
+   * soit le placeholder « Sans équivalent dans cette session ». Absent → pile simple
+   * (vue pleine page), rendu strictement identique à avant.
+   */
+  rowKeys?: readonly SessionSectionKey[]
 }
 
-export function SessionColumnBody({
-  entry,
-  matches,
-  playerSlug,
-  compact,
-  participationSide = 'right',
-  scale,
-  intensityRows,
-  firstBlood,
-  usage,
-}: Props) {
+/** Sections de la colonne, indexees par cle stable (`_sections.ts`). */
+function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKey, ReactNode>> {
   const t = useSessionT()
+  const { entry, matches, playerSlug, compact, participationSide = 'right', usage } = props
 
-  return (
-    <>
-      <SessionSummaryCard entry={entry} compact={compact} />
+  const chartSections = useSessionChartSections({
+    entry,
+    matches,
+    compact,
+    participationSide,
+    participationColor: 'compare-a',
+    scale: props.scale,
+    intensityRows: props.intensityRows,
+    firstBlood: props.firstBlood,
+  })
 
-      <SessionChartStack
-        entry={entry}
-        matches={matches}
-        compact={compact}
-        participationSide={participationSide}
-        participationColor="compare-a"
-        scale={scale}
-        intensityRows={intensityRows}
-        firstBlood={firstBlood}
-      />
-
-      {/* Blocs « usages d'équipement, armes spéciales et objectifs ». `compact` suit la
-          colonne : drawer ouvert = version compacte DES DEUX CÔTÉS, sinon les deux
-          colonnes ne se compareraient pas. Le composant gère lui-même ses états
-          indisponible / sans film ; absent du payload → rien. */}
-      <SessionUsageSection usage={usage} meLabel={playerSlug} compact={compact} />
-
-      {/* Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau). */}
+  return {
+    summary: <SessionSummaryCard entry={entry} compact={compact} />,
+    ...chartSections,
+    // Blocs « usages d'équipement, armes spéciales et objectifs ». `compact` suit la
+    // colonne : drawer ouvert = version compacte DES DEUX CÔTÉS, sinon les deux
+    // colonnes ne se compareraient pas. Le composant gère lui-même ses états
+    // indisponible / sans film ; absent du payload → la section n'existe pas.
+    ...(usage
+      ? { usage: <SessionUsageSection usage={usage} meLabel={playerSlug} compact={compact} /> }
+      : {}),
+    // Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau).
+    matches: (
       <div className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">{t('session.detail.matches_card')}</h2>
         <SessionMatchesTable
@@ -91,6 +94,58 @@ export function SessionColumnBody({
           withFriends={entry?.with_friends ?? false}
         />
       </div>
+    ),
+  }
+}
+
+/**
+ * Placeholder D16 — la colonne soeur porte une section que celle-ci n'a pas. On garde
+ * la rangee (les blocs suivants restent alignes) avec un cadre vide explicite.
+ */
+function SessionSectionPlaceholder() {
+  const t = useSessionT()
+  return (
+    <div
+      className="flex h-full min-h-24 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-6 text-center"
+      data-testid="session-section-placeholder"
+    >
+      <span aria-hidden="true" className="text-lg text-muted-foreground">
+        —
+      </span>
+      <p className="text-sm text-muted-foreground">{t('session.detail.compare_no_counterpart')}</p>
+    </div>
+  )
+}
+
+export function SessionColumnBody(props: Props) {
+  const sections = useSessionColumnSections(props)
+  const { rowKeys } = props
+
+  // Vue pleine page : pile simple, dans l'ordre canonique.
+  if (!rowKeys) {
+    return (
+      <>
+        {SESSION_SECTION_ORDER.filter((key) => key in sections).map((key) => (
+          <Fragment key={key}>{sections[key]}</Fragment>
+        ))}
+      </>
+    )
+  }
+
+  // Vue comparaison : une rangee de grille par cle — la colonne soeur emet les MEMES
+  // cles dans le MEME ordre, donc la i-eme section de gauche et celle de droite
+  // partagent la rangee (donc la hauteur, donc la ligne de titre).
+  return (
+    <>
+      {rowKeys.map((key) => (
+        <div
+          key={key}
+          data-session-section={key}
+          className="min-w-0 [&>*:only-child]:h-full"
+        >
+          {key in sections ? sections[key] : <SessionSectionPlaceholder />}
+        </div>
+      ))}
     </>
   )
 }

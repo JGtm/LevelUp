@@ -1,14 +1,20 @@
 /**
- * SessionChartStack — pile de graphes analytiques d'UNE session.
+ * _chartSections — graphes analytiques d'UNE session, exposés SECTION PAR SECTION.
  *
  * Rendu identique en vue principale (session active) et dans le drawer (session
  * comparée) → comparaison "côte à côte" : on lit la session A à gauche et la session B
  * à droite, mêmes graphes alignés. Pas de graphe combiné A/B.
  *
+ * Chaque entrée du record renvoyé est UNE section, indexée par une clé stable de
+ * `_sections.ts` : la page peut ainsi composer des rangées partagées gauche/droite
+ * (D16) sans connaître le contenu des cartes.
+ *
  * - `compact` : colonne divisée (drawer ouvert) — donuts en % interne, sunburst frags empilé.
  * - `participationSide` / `participationColor` : l'axe du profil de participation est à
  *   DROITE + couleur A en vue single, à GAUCHE + couleur B dans le drawer → effet miroir.
  */
+import type { ReactNode } from 'react'
+
 import type { SemanticToken } from '@/lib/accessibility'
 import type {
   FirstBloodPlayerSeriesDTO,
@@ -23,6 +29,7 @@ import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
 import { firstBloodMaxSec, toFirstBloodSeries } from '@/features/_shared/firstBlood'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { CompareScale } from './_compareScale'
+import type { SessionSectionKey } from './_sections'
 import { useSessionT } from './_shared'
 import { SessionOutcomeDonut } from './SessionOutcomeDonut'
 import { SessionKillsDonut } from './SessionKillsDonut'
@@ -62,7 +69,7 @@ interface Props {
   firstBlood?: FirstBloodPlayerSeriesDTO[]
 }
 
-export function SessionChartStack({
+export function useSessionChartSections({
   entry,
   matches,
   compact = false,
@@ -214,42 +221,53 @@ export function SessionChartStack({
     />
   )
 
-  return (
-    <>
+  // Chaque entree = UNE section de la colonne (cle stable de `_sections.ts`). Les
+  // regroupements deux-colonnes historiques (donuts, radars, ...) restent des sections
+  // uniques : le rendu pleine page est strictement identique a avant.
+  const sections: Partial<Record<SessionSectionKey, ReactNode>> = {
+    outcomes_kills: (
       <div className="grid gap-6 xl:grid-cols-2">
         {outcomeDonut}
         {killsDonut}
       </div>
+    ),
+    mode_placement: (
       <div className="grid gap-6 xl:grid-cols-2">
         {modeBreakdown}
         {placementBreakdown}
       </div>
+    ),
+    fda_radars: (
       <div className="grid gap-6 xl:grid-cols-2">
         {fdaRadar}
         {fragsRadar}
       </div>
+    ),
+    netscore_fda: (
       <div className="grid gap-6 xl:grid-cols-2">
         {netScore}
         {fdaBars}
       </div>
-      {fdaGap}
-      {netLives}
-      {intensity}
-      {firstBlood}
-      {participation}
-      {mmr ? (
-        <div className="grid gap-6 xl:grid-cols-2">
-          {mmr}
-          {ocdr}
-        </div>
-      ) : (
-        ocdr
-      )}
-      {perf}
-      {engagement}
-      {damage}
-      {frags}
-      {careerXp}
-    </>
-  )
+    ),
+    fda_gap: fdaGap,
+    net_lives: netLives,
+    intensity,
+    first_blood: firstBlood,
+    participation,
+    mmr_ocdr: mmr ? (
+      <div className="grid gap-6 xl:grid-cols-2">
+        {mmr}
+        {ocdr}
+      </div>
+    ) : (
+      ocdr
+    ),
+    perf,
+    engagement,
+    damage,
+    frags,
+    career_xp: careerXp,
+  }
+
+  return sections
 }
