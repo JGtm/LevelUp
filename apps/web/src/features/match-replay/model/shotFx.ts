@@ -37,6 +37,7 @@ import { familyOf, type ShotFamily } from '../layers/shotEffects'
 import { heldReading } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { vehicleChassisHeadingAt, vehicleShooterAimAt } from './vehiclesAim'
+import { vehicleShotStyleOf } from './vehicleShotFx'
 import { vehicleWeaponMountOf, type VehicleWeaponMount } from './vehicleWeaponMounts'
 import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 
@@ -109,7 +110,12 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
   const out: ShotFxEntry[] = []
   for (const s of doc.shots) {
     const label = s.w ? doc.weaponLabels?.[s.w] : undefined
-    const fam = familyOf(label?.fx)
+    // DEUX JOINTURES, DANS CET ORDRE — la MÊME que celle du son (`shotSoundStem`) : le registre
+    // des armes de JOUEUR d'abord, puis la table des armes DE VÉHICULE (lot 5.8.2). Sans la
+    // seconde, 68 % des tirs de véhicule de `4f77afc1` tombaient sur la famille `plain` et la
+    // teinte `neutral` — un halo gris pâle centré sur un sprite, qui ne se lit pas comme un tir.
+    const style = label ? null : vehicleShotStyleOf(s.w)
+    const fam = familyOf(label?.fx ?? style?.fx)
     if (fam === 'melee') continue
     const track = lifeOfSlotAt(bySlot, s.slot, s.t)
     const read = track ? heldReading(track.points, s.t, (p) => p.h, aimHoldFrames) : null
@@ -119,7 +125,7 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
       y: s.y,
       h: read ? read.value : null,
       fam,
-      tint: fxTintOf(label?.tint),
+      tint: fxTintOf(label?.tint ?? style?.tint),
       seed: s.t + s.slot,
       vehicleShot: vehicleShotSourceOf(doc, s, s.t),
     })

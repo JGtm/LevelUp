@@ -6968,7 +6968,52 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
         `data/cache/replays/halo_infinite` sont au **schema 62** (D3 du lot 5.5) et **0 d entre
         eux ne porte `vehicleCycles`** (balayage du 2026-09-21). Le rendu est donc prouve par ses
         tests seuls jusqu a la prochaine recuisson du parc. §4, D1 (5.8).
-- [ ] **5.8.2 — LES ARMES DE VEHICULE ONT UN STYLE D ECLAIR ET UNE TEINTE** (`replay_labels.toml`).
+- [x] **5.8.2 — LES ARMES DE VEHICULE ONT UN STYLE D ECLAIR ET UNE TEINTE** (web seul).
+  - [!] **LA TABLE N EST PAS DANS `replay_labels.toml`, ET LE BRIEF EST REFUTE SUR PIECES.**
+        `[shot_effects]` / `[shot_tints]` sont keyees par `weapon_key` et le SEUL chemin qui les
+        porte au client est `weaponLabels`, compose a la requete par
+        `service/replay_weapon_labels.go` pour les seules armes que le REGISTRE CANONIQUE nomme
+        (`FamilyOfWeaponID` -> `cat.Keys[family]`). Une arme de vehicule n y a pas de famille :
+        rien ne l y ferait entrer sans un champ de document neuf, donc **sans une montee de
+        schema que le lot s interdit**.
+  - [!] **ET LA FAIRE ENTRER DANS `weaponLabels` CASSERAIT DEUX REGLES MESUREES** : la presence
+        d une cle dans `weaponLabels` EST le discriminateur « arme de vehicule » de
+        `shotFx.vehicleShotSourceOf` (5.2a.5) **et** la garde du repli sonore de
+        `replaySound.shotSoundStem` (lot sons de tir, 2026-09-04). Publier ces armes cote serveur
+        rendrait donc **muets** les tirs de vehicule et leur **reprendrait la direction** que
+        5.2a.5 vient de leur donner. Le lot tranche : table CLIENT, au meme endroit et sous la
+        meme forme que sa jumelle sonore. §4, D3 (5.8).
+  - [x] `model/vehicleShotFx.ts` : **11 entrees**, meme cle et meme gabarit `vehicleWeapTag` que
+        la table des sons et celle des montages. Deux styles nommes une fois — `PLASMA`
+        (`fx: plasma`, `tint: plasma_cool`) pour Ghost, Banshee M1, Banshee M2 et Wraith ;
+        `BALISTIQUE` (`fx: ballistic`, `tint: kinetic`) pour Warthog, Scorpion, Wasp M1, Wasp M2,
+        Chopper, Gungoose et la tourelle du Falcon — c est le partage du brief. Aucune couleur :
+        la teinte NOMME une nature, la couleur reste un token du theme (`fxInk`).
+  - [x] **SECONDE JOINTURE DANS `buildShotFx`, DANS L ORDRE DU SON** : le registre des armes de
+        JOUEUR d abord, la table des armes DE VEHICULE ensuite (`label ? null :
+        vehicleShotStyleOf(s.w)`). Une arme de joueur tiree d un siege garde donc son style.
+  - [x] **MESURE AVANT / APRES, sur documents cuits (lecture seule, aucun decodage)** — part des
+        tirs de vehicule qui recoivent un style :
+
+        | document | tirs `v` | par le REGISTRE (arme de joueur) | par la table VEHICULE | sans style |
+        |---|---:|---:|---:|---:|
+        | `4f77afc1` | 241 | 76 | **0 -> 164 (68,0 %)** | 1 |
+        | `5676a9ba` | 241 | 171 | **0 -> 61 (25,3 %)** | 9 |
+        | `8a485699` | 15 | 0 | **0 -> 15 (100 %)** | 0 |
+        | `c259789d` | 47 | 47 | 0 (aucune arme de vehicule) | 0 |
+
+        Les **68,0 %** de `4f77afc1` sont EXACTEMENT la population que 5.2a.5 avait mesuree sans
+        style (« 68 % de ces tirs portent une arme absente de `weaponLabels` ») : le trou est
+        ferme, au tir pres.
+  - [x] Le SHADE reste dehors, et il ne peut pas entrer : aucun rapport de RE ne documente son
+        tag `weap` (meme trou que pour son montage et son son). Pas de tag = pas d entree.
+  - [x] Garde-rail `vehicleShotFx.guard.test.ts` (5 cas) : les **10** armes qui SONNENT ont un
+        style, tout tag a MONTAGE documente en a un, aucune famille ni teinte hors des deux
+        listes fermees, aucun style de MELEE (`buildShotFx` ecarte cette famille — un style de
+        melee rendrait le tir invisible), et un tag inconnu ne prend jamais le style d une
+        voisine. Plus 3 cas de comportement dans `shotFx.test.ts`.
+  - [!] **UN TAG D ARME DE VEHICULE NON DOCUMENTE EST APPARU A LA MESURE** : `0x850902EF00000000`
+        (9 tirs sur `5676a9ba`). §4, D4 (5.8).
 - [ ] **5.8.3 — LES TROIS MONTAGES D ARME NON DOCUMENTES** (Wraith, Gungoose, Falcon).
 - [ ] **5.8.4 — LE TAG WARTHOG SE DEPARTAGE PAR LA FAMILLE DU CHASSIS** (LAAG / Gauss / roquettes).
 - [ ] **5.8.5 — UN TIR D ARME DE JOUEUR DEPUIS UN SIEGE PASSAGER PREND LA VISEE DE SON TIREUR**
@@ -6982,6 +7027,8 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-21 | 5.8.2 | **D3 (5.8) — LE MANIFESTE DU TITRE NE PEUT PAS PORTER LE STYLE D UNE ARME DE VEHICULE, ET PUBLIER CES ARMES CASSERAIT DEUX REGLES MESUREES.** `[shot_effects]` / `[shot_tints]` sont keyees par `weapon_key`, et leur seul chemin vers le client est `weaponLabels`, compose a la requete pour les armes que le registre canonique nomme. Surtout : la PRESENCE d une cle dans `weaponLabels` est le discriminateur « arme de vehicule » de `vehicleShotSourceOf` (5.2a.5) ET la garde du repli sonore de `shotSoundStem` (2026-09-04) — y publier une arme de vehicule la rendrait MUETTE et lui reprendrait sa direction. | **TRAITEE AUTREMENT DANS LE PERIMETRE** : table CLIENT `model/vehicleShotFx.ts`, jumelle exacte de `sound/vehicleShotSound.ts`. **Consignee parce qu elle nomme un manque de FRONTIERE** : le rejeu a desormais TROIS tables client keyees par tag `weap` (montage, son, style) la ou la doctrine du depot veut les tables de titre dans le TOML. Le lot qui voudra les y ramener doit d abord se donner un canal de document qui ne soit pas `weaponLabels` — par exemple une table `vehicleWeaponLabels` posee a la requete, qui est une montee de schema |
+| 2026-09-21 | 5.8.2 | **D4 (5.8) — UN TAG D ARME DE VEHICULE QUE AUCUN RAPPORT DE RE NE DOCUMENTE EST OBSERVE DANS UN DOCUMENT CUIT** : `0x850902EF00000000` (weap `850902ef`), **9 tirs sur `5676a9ba`**, absent des trois tables client (montage, son, style) et de `weaponLabels`. Vu aussi, et c est un autre cas : `0xC33B0948592CF3E9` (1 tir sur `4f77afc1`) dont la moitie basse n est PAS nulle — donc une arme de JOUEUR a variante, absente de `weaponLabels`, pas une arme de vehicule. | NON TRAITE (regle 7 : sans tag documente, toute entree serait une devinette). **L oracle est gratuit et il est ecrit ici** : un recensement des `shots[].w` de gabarit `0x........00000000` absents des trois tables, sur le parc cuit, rend la liste des armes de vehicule qu il reste a documenter. A joindre au recensement de tags que D5 (5.5) demande deja |
 | 2026-09-21 | 5.8.1 | **D1 (5.8) — LE PARC LOCAL NE PORTE AUCUN `vehicleCycles`, DONC AUCUN RENDU DE CYCLE N EST MESURABLE SUR PIECES.** Balayage des 92 artefacts de `data/cache/replays/halo_infinite` : **schema 62 partout** (D3 du 5.5) et **0 document** avec la cle `vehicleCycles` (schema 63). Le marqueur, son compte a rebours et son infobulle sont donc livres avec leurs tests et SANS mesure de population — ni « combien d emplacements par film », ni « combien de temps un marqueur reste visible ». | NON TRAITE (le brief interdit tout decodage). **La mesure se prend gratuitement a la premiere recuisson du parc** : les trois chiffres a relever sont `coverage.vehicles.cycleLocations` / `cycleGaps` / `cycleMissing`, deja publies, et le compte de `vehicleCycles` par film. A joindre au geste de recuisson que D1 (5.6) demande deja au pilote |
 | 2026-09-21 | 5.8.1 | **D2 (5.8) — DOC INVERSEE : `ReplayDocumentReady.vehicles` AFFIRME QUE `end` VAUT TOUJOURS `unknown`.** Le commentaire de `replayReadyTypes.ts` (« `end` vaut toujours `unknown` — jamais une destruction ») date d avant le lot 5.1 : depuis que les cinq feuilles de `ti=40` sont posees, `end` vaut `destroyed` avec un `tEnd` date sur 11 vies de `4f77afc1` et 14 de `a349fea8`, et TOUT le cycle de reapparition repose la-dessus (`vehicleDatedEnd`, Go comme web). | NON TRAITE (regle 7 : le lot porte sur le RENDU, et `replayReadyTypes.ts` est un fichier que le lot 5.7 peut toucher en parallele). **A corriger par le prochain lot qui touche ce fichier** — c est l anti-pattern « doc inversee » du diagnostic de revue, et il porte sur le champ exact dont un lecteur a besoin pour comprendre pourquoi un compte a rebours existe |
 | 2026-09-21 | 5.6.3 | **D1 (5.6) - LE PARC NE SE MARQUE PAS PERIME, ET LES VALEURS CHANGENT.** Le lot change la VALEUR de `zoneStates[].gaugeRamps[].capturingTeam` sans monter ni le schema (la forme existe depuis la 64) ni aucune des cinq revisions de couche (la substance decodee, `ZoneReads`, n a pas bouge - la regle d attribution de `layers.go` dit d attribuer un calque a la couche qui DECODE, pas a celle qui publie). `Digest.UpToDate` ne marquera donc aucun artefact du parc a recuire, et les artefacts deja cuits garderont les anciennes valeurs. | NON TRAITE, **et c est une decision de PILOTE, pas de lot** : soit une recuisson explicite du parc a la fusion, soit une revision de PUBLICATION (`publication-<SchemaVersion>` existe deja comme valeur legale de calque, mais rien ne la hache aujourd hui). La seconde voie est le vrai manque : il n existe aucun mecanisme pour dater un changement de la couche de publication a schema constant, et ce lot est le premier a en avoir besoin |
@@ -7429,6 +7476,18 @@ commit par item, gates rejoues a CHAQUE item.
 (`useReplayVehicles.isEmbarkedAt` memoization du compilateur React, `ReplayCanvas` `zoneInk.outline`)
 · `npx knip` : **aucun export mort**, seules les 4 indications de configuration de la tete.
 **AUCUN GATE GO** : le lot ne touche pas une ligne de Go.
+
+**5.8.2 (le style d eclair des armes de vehicule)** — `make check-types` apres purge (vert) ·
+`make test-web` : **726 fichiers, 7 846 tests verts** (**+8** cas) · `npx eslint` sur les
+4 fichiers touches : **0 erreur, 0 avertissement** · `npx knip` : aucun export mort.
+**TOUJOURS AUCUN GATE GO, ET C EST LE RESULTAT DU POINT D ARRET** : le brief prevoyait
+`replay_labels.toml` (donc `go test ./internal/games/halo_infinite/... ./internal/replaybuild/`
+et golangci sur les paquets entiers) ; la verification sur pieces a montre qu aucun chemin ne
+porte cette table au client sans montee de schema, et qu y publier les armes de vehicule
+casserait le son ET la direction (§4, D3). Le TOML n a pas bouge d un octet.
+**MESURE SUR DOCUMENTS CUITS** (`node -e`, lecture seule, aucun decodage, aucune base) :
+tableau avant/apres au point 5.8.2 du §3 — `4f77afc1` **0 -> 164 tirs styles sur 241 (68,0 %)**,
+exactement la population que 5.2a.5 avait mesuree sans style.
 
 **UN ROUGE ATTRAPE PAR UN RATCHET, ET IL AVAIT RAISON** : le retour du hook des vehicules avait
 ete reecrit sur plusieurs lignes, ce que `sceneBinding.guard.test.ts` refuse — il exige

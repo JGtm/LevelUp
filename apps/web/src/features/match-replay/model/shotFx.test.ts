@@ -192,4 +192,33 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
     })
     expect(buildShotFx(d, 50)[0].vehicleShot).toBeNull()
   })
+
+  /**
+   * LOT 5.8.2 — LA SECONDE JOINTURE DE STYLE. Sans elle, une arme de véhicule tombait sur la
+   * famille `plain` et la teinte `neutral` (68 % des tirs de véhicule de `4f77afc1`) : un halo
+   * gris pâle centré sur un sprite, qui ne se lit pas comme un tir.
+   */
+  it('une arme DE VÉHICULE prend la famille et la teinte de sa propre table', () => {
+    const d = doc({ shots: [{ slot: 1, t: 10, x: 0, y: 0, w: GHOST_WEAP_TAG }] })
+    const fx = buildShotFx(d, 50)[0]
+    expect(fx.fam).toBe('plasma')
+    expect(fx.tint).toBe('plasma_cool')
+  })
+
+  it('le REGISTRE garde la main : une arme de joueur ne prend jamais le style d’un véhicule', () => {
+    const d = doc({
+      weaponLabels: { '0xBR': { en: 'BR75', fr: 'BR75', fx: 'ballistic', tint: 'kinetic' } },
+      shots: [{ slot: 1, t: 10, x: 0, y: 0, w: '0xBR' }],
+    })
+    const fx = buildShotFx(d, 50)[0]
+    expect(fx.fam).toBe('ballistic')
+    expect(fx.tint).toBe('kinetic')
+  })
+
+  it('une arme de véhicule NON documentée garde le rendu neutre, jamais celui d’une voisine', () => {
+    const d = doc({ shots: [{ slot: 1, t: 10, x: 0, y: 0, w: '0xDEADBEEF00000000' }] })
+    const fx = buildShotFx(d, 50)[0]
+    expect(fx.fam).toBe('plain')
+    expect(fx.tint).toBe('neutral')
+  })
 })
