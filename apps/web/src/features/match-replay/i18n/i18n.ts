@@ -136,7 +136,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Trait orienté du tueur vers la victime, à l'instant de l'élimination. Allumé par défaut.",
     layerPlacements: 'Équipements posés',
     layerPlacementsHint:
-      "Les objets qu'un joueur a DÉPLOYÉS en cours de vie : mur de protection, capteur de menaces, traqueur de menaces, balise du translocateur quantique, champ de réparation. La BALISE est le point de retour que pose le translocateur quantique — ce n'est pas le marquage d'un ennemi, que le jeu appelle « ping ». Le champ de réparation porte une croix qui respire : elle dit que l'objet soigne, elle ne compte rien — le film ne publie aucune cadence de soin, et son cercle pointillé garde la réserve sur sa portée. Ce que la mesure classe autrement ne se dessine pas — près de neuf poses sur dix sont en réalité l'équipement et les grenades qu'un joueur lâche en mourant, et ce n'est pas un geste. Le film ne dit pas quand un équipement disparaît : chaque famille se tient donc à sa durée officielle quand le jeu en publie une — 15 s pour le capteur, une dizaine de secondes pour le mur — et les autres poses restent affichées jusqu'à la fin du rejeu. L'arc du mur est orienté par le regard du poseur ; quand la pose ne porte pas ce cap (un peu plus d'une fois sur huit), il suit la dernière direction de déplacement du poseur, et à défaut sa dernière visée connue — un arc déduit se trace alors en pointillé. Le capteur balaie sa portée toutes les 1,8 s — chiffres officiels du jeu, le film n'en porte aucun — et marque brièvement les adversaires du poseur qui s'y trouvent au passage de l'onde ; le traqueur, lui, n'émet qu'une seule impulsion.",
+      "Les objets qu'un joueur a DÉPLOYÉS en cours de vie : mur de protection, capteur de menaces, traqueur de menaces, balise du translocateur quantique, champ de réparation. La BALISE est le point de retour que pose le translocateur quantique — ce n'est pas le marquage d'un ennemi, que le jeu appelle « ping ». Le champ de réparation porte une croix qui respire : elle dit que l'objet soigne, elle ne compte rien — le film ne publie aucune cadence de soin, et son cercle pointillé garde la réserve sur sa portée. Ce que la mesure classe autrement ne se dessine pas — près de neuf poses sur dix sont en réalité l'équipement et les grenades qu'un joueur lâche en mourant, et ce n'est pas un usage. Le film ne dit pas quand un équipement disparaît : chaque famille se tient donc à sa durée officielle quand le jeu en publie une — 15 s pour le capteur, une dizaine de secondes pour le mur — et les autres poses restent affichées jusqu'à la fin du rejeu. L'arc du mur est orienté par le regard du poseur ; quand la pose ne porte pas ce cap (un peu plus d'une fois sur huit), il suit la dernière direction de déplacement du poseur, et à défaut sa dernière visée connue — un arc déduit se trace alors en pointillé. Le capteur balaie sa portée toutes les 1,8 s — chiffres officiels du jeu, le film n'en porte aucun — et marque brièvement les adversaires du poseur qui s'y trouvent au passage de l'onde ; le traqueur, lui, n'émet qu'une seule impulsion.",
     layerPlacementsDropped: 'Objets lâchés au sol',
     layerPlacementsDroppedHint:
       "Les objets de PUISSANCE qu'un joueur laisse au sol en mourant : power-ups (surbouclier, camouflage) et équipements déployables (mur de protection, capteur, traqueur, balise, champ de réparation). Ils sont RAMASSABLES — savoir qu'ils traînent change la lecture de l'échange suivant. Un anneau pointillé et atténué, jamais la forme de l'objet actif : au sol, l'objet n'exerce ni portée ni effet. Les grenades et les capacités lâchées restent hors carte : elles représentent près de neuf poses sur dix et ne diraient rien du terrain. Allumé par défaut.",
@@ -366,7 +366,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     equipmentUsage: {
       title: "Usages d'équipement",
-      viewByPlayer: 'Nombre de gestes par joueur',
+      viewByPlayer: 'Usages par joueur',
       viewTeamShare: "Part de chaque équipe",
       gridTipFmt: (player, column, value) => `${player} — ${column} : ${value}`,
       shareTipFmt: (team, family, count, total) =>
@@ -382,7 +382,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       outcomeDroppedFmt: (count) => `Lâché en mourant : ${count}`,
       outcomeTotalTakenFmt: (count) => `${count} objet${count > 1 ? 's' : ''} pris`,
       coverageReserveFmt: (count) =>
-        `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} ${count > 1 ? 'restent' : 'reste'} hors des deux vues : le film n'en nomme ni l'auteur ni l'origine.`,
+        `${count} usage${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} ${count > 1 ? 'restent' : 'reste'} hors des deux vues : le film n'en nomme ni l'auteur ni l'origine.`,
       killBadgeFmt: {
         camo: (kills) => `${kills} frags sous camouflage`,
         overshield: (kills) => `${kills} frags sous surbouclier`,
@@ -405,6 +405,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         unclassified: 'Emplacement non identifié',
       },
       tierSubtotalFmt: (count) => `${count} prise${count > 1 ? 's' : ''}`,
+      baseToggleFmt: (count) => `Armes de base (${count})`,
+      unclassifiedHintFmt: (count) =>
+        `${count} prise${count > 1 ? 's' : ''} sur un emplacement non identifié.`,
       randomStartsNote:
         "Départs aléatoires : ce mode distribue les équipements de début de vie au hasard, il n'y a donc pas d'arme de base à distinguer.",
       tiersUnmeasuredNote:
@@ -798,7 +801,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     equipmentUsage: {
       title: 'Equipment usage',
-      viewByPlayer: 'Gesture count by player',
+      viewByPlayer: 'Usage by player',
       viewTeamShare: "Each team's share",
       gridTipFmt: (player, column, value) => `${player} — ${column}: ${value}`,
       shareTipFmt: (team, family, count, total) => `${team} — ${family}: ${count} of ${total}`,
@@ -813,7 +816,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       outcomeDroppedFmt: (count) => `Dropped on death: ${count}`,
       outcomeTotalTakenFmt: (count) => `${count} object${count > 1 ? 's' : ''} taken`,
       coverageReserveFmt: (count) =>
-        `${count} measured gesture${count > 1 ? 's' : ''} ${count > 1 ? 'stay' : 'stays'} outside both views: the film names neither their author nor their origin.`,
+        `${count} measured usage${count > 1 ? 's' : ''} ${count > 1 ? 'stay' : 'stays'} outside both views: the film names neither their author nor their origin.`,
       killBadgeFmt: {
         camo: (kills) => `${kills} kills under camo`,
         overshield: (kills) => `${kills} kills under overshield`,
@@ -836,6 +839,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         unclassified: 'Unidentified spot',
       },
       tierSubtotalFmt: (count) => `${count} pickup${count > 1 ? 's' : ''}`,
+      baseToggleFmt: (count) => `Base weapons (${count})`,
+      unclassifiedHintFmt: (count) =>
+        `${count} pickup${count > 1 ? 's' : ''} from an unidentified spot.`,
       randomStartsNote:
         'Random starts: this mode hands out spawn loadouts at random, so there is no starting weapon to single out.',
       tiersUnmeasuredNote:
