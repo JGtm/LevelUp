@@ -7979,6 +7979,84 @@ lot en est la demonstration la plus chere du chantier : la conclusion du 5.11 te
 
 ---
 
+### Post-chantier — lot 5.13 (vue 3, mantling, corps partiels), branche `feat/decfilm-63`
+
+Sur passation 5.11. METHODE : l ecrivain d abord (Ghidra lecture seule), les dumps comme oracle,
+aucune mesure empirique de grammaire, un commit par trou.
+
+- [x] **5.13.1 — LES DEUX BITS DE TETE D UN IDENTIFIANT D IMAGE-CLE SONT LE RANG DE LA VUE, ET LA
+  « VUE 3 » N EST PAS UNE TABLE D ENTITES MAIS UNE AUTRE CLASSE DE VUE.**
+
+  **(a) LE MAILLON, SUR L INSTRUCTION.** L encodeur de la liste de REFERENCE d une vue
+  (`FUN_142f2e174`, slot `+0x10` de la vtable de vue `0x1436a87e0`,
+  `replication_entity_manager_view.cpp`) ecrit par entite UN mot de 32 bits :
+
+  ```
+  *mot = *(int *)(vue + 8) << 0x1e | *mot & <masque> | slot & 0x1fff | <genre>
+  FUN_140bbd808(mot, priorite)      // *mot = *mot & 0xff801fff | (priorite & 0x3ff) << 0xd
+  ```
+
+  soit `[rang:2 @30][genre:2 @23][priorite:10 @13][slot:13 @0]` — c est exactement l `id:32` de
+  l en-tete `[id:32][field:26][ti:6]` que `keyframe_world.go` lit. Les deux bits de tete viennent
+  de `vue + 8`, PAS de l entite : `142f2e2ec MOV ECX, dword ptr [RDI + 0x8]` puis
+  `142f2e304 SHL ECX, 0x1e` (`RDI` = `param_1` = la vue ; memes registres que `vue+0x38`,
+  `vue+0x58`, `vue+0x14`), sur les trois sites de genre (`142f2e304`, `142f2e38a`, `142f2e440`).
+  **Et `vue + 8` EST LE RANG DE LA VUE** : le registraire `FUN_1409c9860(conteneur, rang, vue)`
+  l y ecrit, `*(int *)(param_3 + 1) = param_2`, en rangeant la vue dans le tableau que
+  `FUN_142987460` parcourt (`FUN_141f855b4` l appelle pour les rangs 0, 1, 2). Le journal RE du
+  lot G (2026-08-27) nommait ce champ `gen` sans avoir decompile l instruction.
+
+  **(b) MESURE — L IMAGE-CLE EST MONO-RANG.** `TestImageCle513Vues` (instrument neuf) :
+
+  | film | paquets d image-cle | records par paquet | rangs distincts |
+  |---|---:|---|---|
+  | `dad793c7` | 5 | 123 a 186 | **{1}** |
+  | `bfecd02b` | 60 | 424 a 482 | **{1}** |
+
+  Et la vue que la marche parcourt en PREMIER est celle qui rend les records
+  (`TestVues513EspaceDeNoms`) : `dad793c7` 5 628 records, tag 1 sur **5 628 / 5 628** ;
+  `bfecd02b` **157 250 / 157 554** (99,81 %). « Toutes les liaisons d image-cle vont en vue 0 »
+  n etait donc PAS une limite du portage — c est ce que le film porte.
+
+  **(c) PORT.** `World.BindImageCle(ns, slot, ti)` remplace `BindWildcard` dans les deux binders
+  d image-cle (`movement_states.go`, `m533bLierMonde`) : le rang est LU (`vueDeLEspaceDeNoms` :
+  premier rang rencontre -> la vue de la marche, tout autre rang -> vue INCONNUE, qui ne rejette
+  rien) au lieu d etre attribue d office a 0. AVANT / APRES, a l identique sur les deux temoins :
+  `dad793c7` 99,50 % de paquets fermes, 75 records `ti=35`, `i21` 1,3 % ; `bfecd02b` 114 458
+  records `ti=35`, 5 desynchronises, `i21` 65,2 %. `grammar-2026-09-22` /
+  `killsource-2026-09-22` (montee PRUDENTIELLE : sur un film a deux rangs la lecture change, en
+  rendant PLUS de records) ; 8 fixtures de contrat re-figees (schema 67 inchange, 72 a 74 octets
+  d ecart chacune = les chaines de revision) ; `SchemaVersion` 67 inchangee.
+
+  **(d) REFUTE, AVEC SES CHIFFRES.** Les deux bits de tete d un identifiant de FLUX DELTA ne sont
+  PAS le meme champ : `FUN_142f30610` ecrit l eid que la table de la vue porte
+  (`*(uint *)(slot * 0xa0 + 8 + vue[0x38])`), pose par `FUN_1408f1730` a
+  `*(byte *)(datum + 1) << 0x1e | slot` — un champ du DATUM, par entite. Confondre les deux dans
+  la garde de vue (comparer les eids COMPLETS) coute **21 records `ti=35`** sur `bfecd02b`
+  (114 458 -> 114 437). La garde compare donc le slot, et `World.VuePossede` le dit sur place.
+
+  **(e) « L ENTITE 7140 GENERATION 2 DE LA VUE 3 » N EST PAS UNE ENTITE.** `FUN_142987460` appelle
+  `vtable[0x40]` sur ses trois vues, et les trois vtables (lues par `/read_memory`) n ont PAS la
+  meme fonction a ce slot :
+
+  | vtable | `+0x40` | grammaire de la boucle de records |
+  |---|---|---|
+  | `0x1436a8700` | `FUN_14076a1c4` | si `vue[0x11]` : **zero bit** ; sinon boucle `R(1)` (0 = fin) puis UN corps (`FUN_14080a9d4`) — **et elle rend TOUJOURS zero record** (`*param_6 = 0`) |
+  | `0x1436a87e0` | `FUN_1406cd128` | le GESTIONNAIRE D ENTITES : `[R(32) film]`, `prefixe R(1)`, `si 0 -> type R(2)`, `idLow + tag 2`, corps selon le type. **La seule grammaire que la marche porte** |
+  | `0x1436a8770` | `FUN_1406cf548` | `[prologue FUN_142f2539c si drapeau]` puis boucle `R(1)` (0 = fin), `kind R(2)`, trois handlers (`FUN_1406d0388` / `FUN_142f29b38` / `FUN_142f29e54`), `kind == 3` = zero bit |
+
+  Les deux « en-tetes de record rejetes » du pied de trame (lot 5.11.7) ne sont donc pas des
+  en-tetes du gestionnaire d entites : ce sont les flux des DEUX AUTRES classes de vue, lus avec
+  la grammaire du gestionnaire. `slot 7136 tag 0` et `slot 7140 tag 2` ne designent AUCUNE
+  entite — ce sont `R(1)` + `kind R(2)` + du corps d une autre grammaire, decoupes en
+  `[prefixe][idLow][tag]`, et les bits 27 / 30 qui basculaient au decollage sont des bits DE CE
+  CORPS. Controle sur le film : les vues de rang 1 et 2 ne rendent que **13 records** sur
+  `dad793c7`, TOUS de type DEL (slots 0, 260, 261, 262) — jamais un NEW, donc jamais un
+  archetype ; et le slot 7140 n apparait dans AUCUN record d image-cle (elles s arretent au slot
+  1 345). **La piste « nommer l entite de la vue 3 » est donc fermee par la grammaire, pas par une
+  absence** : l objet a nommer n existe pas.
+
+
 ### Post-chantier — lot 5.11.7 (LES TROIS TABLES D ENTITES PAR VUE), branche `feat/decfilm-63`
 
 Suite directe du 5.11.6, qui avait NOMME le trou sans le refermer. Le recadrage de l utilisateur

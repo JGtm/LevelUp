@@ -133,7 +133,8 @@ func m533bLierMonde(w *World, data []byte, pks []FilmPacket) {
 			continue
 		}
 		for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
-			w.BindWildcard(uint32(r.Slot), uint32(r.TI)) //nolint:gosec // valeurs de registre
+			//nolint:gosec // slot, TI et Gen viennent du walker d image-cle, bornes par construction
+			w.BindImageCle(uint32(r.Gen), uint32(r.Slot), uint32(r.TI))
 		}
 	}
 }

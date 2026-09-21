@@ -30,7 +30,14 @@ type World struct {
 	// qu une table ; cette variable, plus [slotState.Vue], en tiennent lieu — chaque liaison
 	// retient DANS QUELLE VUE elle a ete posee, et [World.VuePossede] rend la garde.
 	vueCourante int8
+	// nsImageCle : le RANG DE VUE que les images-cles de ce film declarent, ou
+	// `nsImageCleInconnu` avant la premiere liaison d image-cle. Voir
+	// [World.vueDeLEspaceDeNoms].
+	nsImageCle int8
 }
+
+// nsImageCleInconnu : la valeur de [World.nsImageCle] avant toute liaison d image-cle.
+const nsImageCleInconnu int8 = -1
 
 type slotState struct {
 	TypeIndex uint32
@@ -61,7 +68,7 @@ const vueInconnue int8 = -1
 
 // NewWorld creates an empty World bound to a parsed archetype registry.
 func NewWorld(reg *Registry) *World {
-	return &World{Reg: reg, slots: map[uint32]slotState{}}
+	return &World{Reg: reg, slots: map[uint32]slotState{}, nsImageCle: nsImageCleInconnu}
 }
 
 // PoserVueCourante annonce au monde la vue de replication que la marche parcourt.
@@ -72,6 +79,11 @@ func (w *World) PoserVueCourante(v int) { w.vueCourante = int8(v) } //nolint:gos
 // C EST LA TRANSCRIPTION DE `vue[0x38][slot].eid == eid` (FUN_1406cd128), avec la seule
 // difference que le monde hors ligne ne peut pas TOUJOURS attribuer une vue : une liaison venue
 // d une image-cle n en porte pas. Ces liaisons-la passent, comme les generations inconnues.
+//
+// ELLE NE COMPARE PAS L EID COMPLET, ET C EST MESURE (lot 5.13.1). Le comparer — exiger que les
+// deux bits de tete du delta valent ceux que la liaison porte — coute 21 records `ti=35` sur
+// `bfecd02b` (114 458 -> 114 437), parce que les deux bits de tete du flux DELTA et ceux de
+// l image-cle NE SONT PAS LE MEME CHAMP : voir [World.BindImageCle].
 func (w *World) VuePossede(slot uint32) bool {
 	s, ok := w.slots[slot&0x3fffffff]
 	// UN SLOT NON LIE N EST POSSEDE PAR AUCUNE VUE, et c est l ecrivain qui le dit : le vecteur
@@ -119,6 +131,82 @@ func (w *World) BindWildcard(slot, typeIndex uint32) {
 	w.slots[slot&0x3fffffff] = slotState{
 		TypeIndex: typeIndex, FullID: slot & 0x3fffffff, GenAny: true, Vue: 0,
 	}
+}
+
+// vueDeLImageCle : LE RANG DE VUE que porte une liaison d image-cle dans la marche hors ligne.
+//
+// # LES DEUX BITS DE TETE D UN IDENTIFIANT D IMAGE-CLE SONT LE RANG DE LA VUE
+//
+// La liste de reference qu un paquet d image-cle transporte est celle d UNE vue : son ecrivain
+// `FUN_142f2e174` est un slot de la vtable de VUE (`0x1436a87e0` + 0x10), il ne parcourt que la
+// table de SA vue (`vue+0x38` a `vue+0x40`, bitmap `vue+0x58`), et il met les DEUX BITS DE TETE
+// de chaque identifiant a `vue + 8` — `142f2e2ec MOV ECX, dword ptr [RDI + 0x8]` puis
+// `142f2e304 SHL ECX, 0x1e`, et de meme sur ses deux autres sites de genre.
+//
+// ET `vue + 8` EST LE RANG DE LA VUE : c est le registraire `FUN_1409c9860(conteneur, rang, vue)`
+// qui l ecrit, `*(int *)(param_3 + 1) = param_2`, au moment ou il range la vue dans le tableau
+// que `FUN_142987460` parcourt. Ce n est donc NI une generation NI un identifiant d entite.
+//
+// MESURE (`TestImageCle513Vues`) : UN SEUL rang par paquet d image-cle, et il vaut 1 sur les
+// 5 paquets de `dad793c7` (123 a 186 records) comme sur les 60 paquets de `bfecd02b` (424 a 482
+// records). Le rang 1 est celui ou `FUN_141f855b4` enregistre la vue du GESTIONNAIRE D ENTITES
+// (`0x1436a87e0`) — la seule des trois classes de vue dont la boucle de records est
+// `FUN_1406cd128`, c est-a-dire la seule grammaire que la marche hors ligne porte.
+//
+// CORRESPONDANCE AVEC LE RANG DE LA MARCHE HORS LIGNE : la vue que la marche parcourt en PREMIER
+// est celle qui rend les records — sur `dad793c7` ses 5 628 records, 5 628 sur 5 628 ; sur
+// `bfecd02b`, 157 250 sur 157 554 (`TestVues513EspaceDeNoms`). C est donc la vue du gestionnaire
+// d entites, celle que l image-cle enumere. Le port ne recopie PAS le numero 1 : il retient le
+// PREMIER rang rencontre (cf. [World.vueDeLEspaceDeNoms]), parce que le decalage entre la
+// numerotation du jeu et l ordre du tableau parcouru n est pas etabli.
+//
+// « Toutes les liaisons d image-cle vont en vue 0 » n est donc pas une limite du portage : c est
+// ce que le film porte, et l image-cle le DIT au lieu qu on le suppose.
+const vueDeLImageCle int8 = 0
+
+// BindImageCle enregistre la liaison portee par un record de la table d IMAGE-CLE : elle LIT la
+// vue dans les deux bits de tete de l identifiant, la ou `BindWildcard` les jetait.
+//
+// LES DEUX BITS DE TETE D UNE IMAGE-CLE ET CEUX D UN FLUX DELTA NE SONT PAS LE MEME CHAMP, et
+// c est la lecon du lot 5.13.1 (le journal RE du lot G les nommait tous deux `gen`) :
+//
+//	image-cle   : `vue + 8`, le RANG de la vue (`FUN_142f2e174` / `FUN_1409c9860`) ;
+//	flux delta  : l eid que la table de la vue porte (`FUN_142f30610` :
+//	              `*(uint *)(slot * 0xa0 + 8 + vue[0x38])`), pose par `FUN_1408f1730` a
+//	              `*(byte *)(datum + 1) << 0x1e | slot` — un champ du DATUM, par entite.
+//
+// D ou la forme de cette liaison : la VUE est connue, la GENERATION reste INCONNUE (`GenAny`).
+// Confondre les deux — exiger que les deux bits de tete d un delta valent ceux de l image-cle —
+// coute 21 records `ti=35` sur `bfecd02b` (114 458 -> 114 437) : mesure du lot, cf.
+// [World.VuePossede].
+//
+// `ns` est le rang lu (`KeyframeRec.Gen`), et il SERT : il nomme la vue.
+func (w *World) BindImageCle(ns, slot, typeIndex uint32) {
+	w.slots[slot&0x3fffffff] = slotState{
+		TypeIndex: typeIndex, FullID: slot & 0x3fffffff, GenAny: true,
+		Vue: w.vueDeLEspaceDeNoms(ns),
+	}
+}
+
+// vueDeLEspaceDeNoms rend le RANG DE VUE de la marche hors ligne que nomme un rang d image-cle.
+//
+// Le film enregistre UNE vue — celle du gestionnaire d entites — et la marche la parcourt en
+// premier : le PREMIER rang rencontre est le sien, donc `vueDeLImageCle`. Un second rang serait
+// une vue que rien ne situe dans l ordre de la marche ; sa liaison passe alors en vue INCONNUE,
+// qui ne rejette rien, plutot que d etre attribuee d office a la vue de rang 0 comme
+// `BindWildcard` le faisait. Sur les films temoins ce second cas ne se presente pas (un seul rang
+// par image-cle), et c est pour cela que ce port ne deplace aucune mesure : il remplace une
+// attribution d office par une LECTURE.
+func (w *World) vueDeLEspaceDeNoms(ns uint32) int8 {
+	rang := int8(ns & 3) //nolint:gosec // ns & 3 tient dans int8
+	if w.nsImageCle == nsImageCleInconnu {
+		w.nsImageCle = rang
+		return vueDeLImageCle
+	}
+	if w.nsImageCle == rang {
+		return vueDeLImageCle
+	}
+	return vueInconnue
 }
 
 // BindSoft registers an INFERRED slot -> archetype binding (chain inference). Soft

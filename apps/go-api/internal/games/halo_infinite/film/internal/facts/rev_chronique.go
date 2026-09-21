@@ -307,3 +307,19 @@ package facts
 // redecodage du parc reste un geste de PRODUCTION, reserve au pilote SUR SIGNAL UTILISATEUR
 // (decision D6 du plan), JAMAIS automatique. `SchemaVersion` ne monte pas : la forme du document
 // ne change pas.
+
+// ENTREE `killsource-2026-09-22` (2026-09-22, lot 5.13.1) : LA REVISION MONTE DERRIERE LA
+// LECTURE DE LA VUE D UNE LIAISON D IMAGE-CLE, ET LA SORTIE NE BOUGE PAS SUR LES TEMOINS.
+//
+// AUCUN OCTET DE `facts/` N EST TOUCHE. `grammar.Rev` passe a `grammar-2026-09-22` : les deux
+// bits de tete d un identifiant d image-cle sont le RANG DE LA VUE (`vue + 8`, ecrit par le
+// registraire `FUN_1409c9860`), et [grammar.World.BindImageCle] les LIT au lieu de les jeter
+// comme `BindWildcard` le faisait. Sur les deux films temoins l image-cle ne declare QU UN rang,
+// donc la sortie est identique au bit : `dad793c7` 99,50 % de paquets fermes et 75 records
+// `ti=35` ; `bfecd02b` 114 458 records `ti=35`, 5 desynchronises, etalon `i21` 65,2 %.
+//
+// LA MONTEE EST DONC PRUDENTIELLE, ET ELLE EST DITE : sur un film dont l image-cle declarerait
+// DEUX rangs, les liaisons du second passent en vue inconnue et la marche y rend PLUS de records.
+// Les lignes de kill deja en base deviennent candidates au backlog de redecodage — geste de
+// PRODUCTION, pilote, SUR SIGNAL UTILISATEUR (D6), jamais automatique. `SchemaVersion` ne monte
+// pas : la forme du document ne change pas.

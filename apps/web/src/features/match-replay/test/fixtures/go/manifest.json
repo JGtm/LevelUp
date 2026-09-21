@@ -6,7 +6,7 @@
    "film": "000d5950",
    "build": "HI_1_13_0",
    "schemaVersion": 67,
-   "bytes": 412704,
+   "bytes": 412700,
    "pointsStride": 1
   },
   {
@@ -22,7 +22,7 @@
    "film": "60ae07c4",
    "build": "HI_1_8_0",
    "schemaVersion": 67,
-   "bytes": 229432,
+   "bytes": 229428,
    "pointsStride": 5
   },
   {
@@ -30,7 +30,7 @@
    "film": "11de8353",
    "build": "HI_1_9_0",
    "schemaVersion": 67,
-   "bytes": 452695,
+   "bytes": 452691,
    "pointsStride": 5
   },
   {
@@ -38,7 +38,7 @@
    "film": "111fa685",
    "build": "HI_1_10_0",
    "schemaVersion": 67,
-   "bytes": 444244,
+   "bytes": 444243,
    "pointsStride": 5
   },
   {
@@ -46,7 +46,7 @@
    "film": "e5adf7b2",
    "build": "HI_1_11_0",
    "schemaVersion": 67,
-   "bytes": 565033,
+   "bytes": 565029,
    "pointsStride": 5
   },
   {
@@ -54,7 +54,7 @@
    "film": "bcb6d393",
    "build": "HI_1_12_0",
    "schemaVersion": 67,
-   "bytes": 87727,
+   "bytes": 87725,
    "pointsStride": 5
   },
   {
@@ -62,7 +62,7 @@
    "film": "fb1a1a72",
    "build": "HI_1_13_0",
    "schemaVersion": 67,
-   "bytes": 215291,
+   "bytes": 215290,
    "pointsStride": 5
   }
  ]
