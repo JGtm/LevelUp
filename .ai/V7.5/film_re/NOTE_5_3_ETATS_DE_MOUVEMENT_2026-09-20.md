@@ -4,7 +4,8 @@
 > `6e86db356`. Question de l'utilisateur (2026-09-19) : « on a les evenements de joueurs comme
 > les slide, crouch, sprint et saut ? ».
 >
-> **ETAT : points 1 (L'ECRIVAIN) et 2 (LA PREUVE SUR FILM) FAITS.** L'ecrivain aux § 1 a 2.9,
+> **ETAT : point 1 (L'ECRIVAIN) FAIT. Point 2 (PREUVE SUR FILM) EN COURS — sa conclusion de
+> cadence a ete RETIREE le 2026-09-21 (§ 2 quater), l'instrument n'etant pas etalonne.** L'ecrivain aux § 1 a 2.9,
 > D1 sur mini-bobines au § 2.4 bis, **la mesure sur `bfecd02b` et `4f77afc1` au § 2 ter**.
 > Le port (5.3.3) N'EST PAS LANCE : il attend le retour du pilote. Aucune base DuckDB n'a ete
 > ouverte a aucun moment ; les films ont ete lus UN A LA FOIS.
@@ -460,6 +461,12 @@ n'est nommable avant.
 
 ### 2ter.1 LE FAIT STRUCTURANT : DEUX CANAUX, DEUX CADENCES
 
+> **CONCLUSION RETIREE LE 2026-09-21 — VOIR LE § 2 QUATER.** Les chiffres de ce paragraphe
+> restent (ils ont ete mesures), mais leur LECTURE — « les etats ne voyagent qu'a
+> l'image-cle » — est FAUSSE : le depot documente en trois endroits un etat bipede PAR TICK
+> dans les deltas de type 0, accroupissement compris. Le « 0,0 % » ci-dessous est un defaut
+> d'instrument, et le § 2quater.5 nomme le suspect.
+
 La marche de production ne lit pas les composants de mouvement sur le chemin delta — et ce
 n'est pas un choix, c'est une limite : `scanRecordDirs` ne modelise que `i1`, `i2`, `i3`, `i4`,
 `i5` et `i21`, et s'arrete au premier composant hors de cette liste (**D8**). L'instrument
@@ -617,6 +624,101 @@ que le prochain instrument les referait :
 
 Dans les deux cas, c'est la mesure separee du MASQUE — le denominateur — qui a revele l'ecart.
 Un instrument qui ne publie que ses trouvailles ne peut pas se corriger lui-meme.
+
+## 2 quater. CORRECTION DE CAP (2026-09-21) — LA CONCLUSION « IMAGE-CLE SEULEMENT » EST RETIREE
+
+> L'utilisateur, qui fait autorite sur le film, a corrige : ces etats sont connus A L'INSTANT
+> PRECIS, « on sait a la milliseconde ce que le joueur fait, on sait meme quand il zoome ». Il a
+> raison, et le depot le documentait deja en trois endroits. **La conclusion du § 2ter.1 est
+> RETIREE.** Ce paragraphe dit ce qui la remplace, et ce qui reste a faire.
+
+### 2quater.1 CE QUE LE DEPOT DISAIT DEJA, ET QUE LE § 2 TER A CONTREDIT
+
+| source | ce qu'elle dit |
+|---|---|
+| `RECAP_STATS_EXPLOITABLES.md` § TIER 3 | « ETAT BIPED PAR FRAME (sante, bouclier, velocite, **CROUCH**, position, aim, munitions) — source : **deltas type-0 (~60 fps)** + snapshots keyframe type-2 (~18-20 s) » |
+| `HANDOFF_FILM_EXTRACTION_EXTERNAL_DEV.md` l. 29 | « **per-tick** biped state (health, shield, velocity, **crouch**, position, aim, ammo) » |
+| `RECETTE_DECODAGE_FILM_CHUNKS.md` | la table des deserialiseurs : `i18 unit-control FUN_141017084`, `i29 unit-crouch FUN_142ed42a8`, `i21 aiming FUN_14076df7c` |
+
+**L'accroupissement est par tick dans les deltas de type 0.** Le « `i29` a 0,0 % des records
+delta » du § 2ter.1 est donc un **DEFAUT D'INSTRUMENT**, pas un fait du film, et il est retire.
+
+### 2quater.2 LE MODELE D'UN ETAT PAR INSTANT QUI EXISTE DEJA : LE ZOOM
+
+`zoom_events.go` lit l'etat de lunette **a l'instant**, et il le fait dans la LISTE
+D'EVENEMENTS en tete des paquets delta — pas dans la trame de composants :
+
+```
+[1 bit config] [ ( 1 [R(7) type] [3 references gardees] [charge] )* 0 ] [trame de records]
+```
+
+`unit_zoom` (type 21) : ~400 000 occurrences sur 1 367 films ; charge `R(2)` = le palier de
+lunette + 1 ; pont vers le joueur par la premiere reference (domaine 4) **+ 512 = le slot du
+bipede** (63 index sur 64 tombent sur un slot reel, contre 0 sur 64 pour toute autre base) ;
+valide contre Theater (6 entrees en lunette sur 6, a moins de 1,2 s).
+
+**ET SA LECON, QUI EST EXACTEMENT LA MIENNE** : « Sept campagnes de mesure ont conclu "aucun
+evenement de zoom dans la bobine" parce qu'elles lisaient le type a `payload[0] & 0x7F` — elles
+ignoraient le bit de configuration et decalaient donc TOUT d'un bit. » **Quand une mesure rend
+zero, le suspect numero un est l'instrument.**
+
+### 2quater.3 CE QUE LE RECENSEMENT DES EVENEMENTS DONNE SUR `bfecd02b` — MESURE ETALONNEE
+
+Par `PacketHeadEventType`, la porte du depot (jamais une arithmetique refaite a la main) :
+**31 232 paquets delta, 5 274 portent un evenement en tete (16,9 %), 20 types distincts.**
+
+| type | nom | en tete | part |
+|---|---|---|---|
+| 36 | `action_weapon_fire` | 2 611 | 49,5 % |
+| 82 | `PlayerGameEventSmall` | 578 | 11,0 % |
+| 15 | `Script` | 378 | 7,2 % |
+| **21** | **`unit_zoom`** | **320** | **6,1 %** |
+| 0 | `damage_aftermath` | 277 | 5,3 % |
+| 38 | `weapon_reload` | 229 | 4,3 % |
+| 9 | `biped_pickup` | 142 | 2,7 % |
+| 39 | `biped_throw_initiate` | 76 | 1,4 % |
+
+**Le temoin passe** : `unit_zoom` est bien la, 320 fois, sur ce film. Le canal des instants est
+vivant et lisible. Les types 42, 43, 72 et 78 sont a **0 en tete** — et c'est un PLANCHER, pas
+un negatif : ce scanner ne lit que le PREMIER evenement de chaque liste.
+
+**`PlayerGameEventSmall` (type 82, 578 occurrences) est le candidat a instruire** : un
+evenement de joueur generique, frequent, dont la charge n'est pas portee.
+
+### 2quater.4 L'ETALONNAGE N'A PAS PU SE FAIRE PAR LA PORTE DE PRODUCTION — MESURE A CONSIGNER
+
+Le balayage bipede de production rend **ZERO record** sur `bfecd02b`, `DropSaturated` a vrai
+comme a faux, profil MPP du build installe ou non, alors que la marche directe en lit 162 444
+avec la meme bande de slots et le meme decoupage d'`i0`. `ScanBipedPositions` a donc une
+condition d'entree que ce film ne remplit pas — vraisemblablement les bornes de carte, que
+`QuantaOnly` dispense de FOURNIR mais dont le filtre de saturation depend encore.
+
+Deux controles ont malgre tout ete faits :
+
+1. **Le filtre `RequireTag1` n'est PAS la cause.** Sans lui : 162 487 records au lieu de
+   162 444, et `i29` passe de 0 a **1**. Le crible d'ancre n'ecarte donc pas la population
+   cherchee.
+2. **Le gradient du masque est coherent** — `i0` 100 %, `i25` 100 %, `i1` 90,3 %, `i21` 62,4 %,
+   `i5` 32,2 % — et le dispatch de production est alle AU BOUT de 162 482 records sur 162 487.
+
+### 2quater.5 CE QUI RESTE, ET C'EST PRECIS
+
+**LE SUSPECT NOMME** : `walkDeltaBipedPayload` est un **CHERCHEUR D'ANCRES** — il balaie le
+payload bit a bit et retient ce qui RESSEMBLE a un en-tete de bipede. Ce n'est pas le decodeur
+de trame. Le depot en a un vrai : **`DecodeFrameRecords` (`frame_records.go`)**, qui consomme
+le preambule du paquet puis lit les records DANS L'ORDRE. `event_list.go` precise sa limite :
+il saute la liste d'evenements, donc il fonctionne sur les paquets a liste vide (octet de tete
+`0x80..0xBF`) et rate ceux qui portent un evenement — soit, sur `bfecd02b`, **83,1 % des
+paquets** (25 958 sur 31 232).
+
+**LA PROCHAINE MESURE, ET ELLE N'EST PAS FAITE ICI** : re-ventiler `ti=35` avec
+`DecodeFrameRecords` sur ces 83,1 % de paquets, etalonner sur `i21`/`i0`/`i1`, puis rendre pour
+`i29` la cadence reelle et les intervalles d'accroupissement par slot. **Aucune conclusion de
+cadence ne doit etre tiree avant cet etalonnage** — celle du § 2ter.1 ne l'a pas ete, et elle
+etait fausse.
+
+**A LIRE AVANT**, sur demande de l'utilisateur : `RE_EXE_GHIDRA_FINDINGS.md`,
+`PLAN_FILM_ECS_DECODER.md`, et le `thought_log` des 2026-06-03/04/05 (archive Q2).
 
 ---
 
