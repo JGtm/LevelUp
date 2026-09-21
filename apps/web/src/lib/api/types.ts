@@ -1947,7 +1947,27 @@ export interface MatchCombatTab {
    * position mesurée — dégradation propre, jamais d'erreur.
    */
   kill_distance_by_weapon?: MatchKillDistancePlayer[]
+  /**
+   * Bloc « Riposte » (D22-2, 2026-09-21) : par mort le couple (victime, vengeur, délai) et
+   * le camp de la victime, par joueur ses deux comptes. ABSENT quand le match n'a aucune
+   * ligne de journal — l'UI nomme alors l'état, elle ne disparaît pas.
+   */
+  riposte?: MatchRiposteBlock
 }
+
+/**
+ * Bloc « Riposte » de l'onglet Combat. Ré-export DIRECT du contrat (tableaux nullables
+ * compris : huma sérialise ainsi toute tranche Go). `measured_deaths` est le nombre de
+ * morts lues au journal — le DÉNOMINATEUR du pied de carte, jamais un dénominateur de taux
+ * (D21 : sur un match, des comptes).
+ */
+export type MatchRiposteBlock = components['schemas']['MatchRiposteBlock']
+
+/** Une mort du match et sa riposte (vengeur + délai) quand elle a eu lieu dans la fenêtre. */
+export type MatchRiposteDeath = components['schemas']['MatchRiposteDeath']
+
+/** Les deux comptes d'un joueur : ses morts vengées (SUBI) et ses ripostes (PORTÉ). */
+export type MatchRiposteePlayer = components['schemas']['MatchRiposteePlayer']
 
 /** MV2 : rôle narratif attribué (1 entrée par joueur × rôle). */
 export type MatchViewImpactRole = components['schemas']['MatchViewImpactRole']

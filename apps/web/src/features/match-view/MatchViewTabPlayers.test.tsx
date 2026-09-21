@@ -46,6 +46,8 @@ function afficher(assistPairs: MatchAssistPairs | undefined) {
       nemesis={[]}
       killerVictim={[]}
       assistPairs={assistPairs}
+      // La riposte a ses propres tests : ici elle est absente, et sa porte 1 ne rend rien.
+      riposte={undefined}
       highlightEvents={[]}
       citations={[]}
       encounters={[]}

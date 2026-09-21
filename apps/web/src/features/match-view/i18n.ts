@@ -213,6 +213,26 @@ export interface MatchViewText {
   // Titres d'axes et infobulle.
   assistRoleAssistant: string
   assistRoleBeneficiary: string
+  // ─── Bloc « Riposte » (D22-2) ───────────────────────────────────────────────────────
+  // Des COMPTES, jamais un taux (D21). Aucune phrase de lecteur sur la carte
+  // (D22-verbosité) : l'explication tient dans l'infobulle ⓘ du titre, en trois phrases.
+  riposteTitle: string
+  riposteInfo: string
+  /** Les deux côtés de l'axe, et la légende qui les nomme en entier. */
+  riposteSideAvenged: string
+  riposteSideDid: string
+  riposteLegendAvenged: string
+  riposteLegendDid: string
+  /** Couples nommés de l'infobulle d'une barre (`s` = délai en secondes, déjà formaté). */
+  riposteAvengedByFmt: (name: string, s: string) => string
+  riposteAvengedForFmt: (name: string, s: string) => string
+  riposteMoreFmt: (n: number) => string
+  /** Pied de carte : les morts vengées sur les morts lues au journal. */
+  riposteFooterFmt: (avenged: number, measured: number) => string
+  /** Le film est là mais aucune mort n'y est lisible ligne à ligne. */
+  riposteNotUsable: string
+  /** Mesuré : personne n'a riposté. */
+  riposteNoData: string
   assistValueAxis: string
   // Sections des onglets Chronologie et Joueurs (titres type-1 du catalogue
   // d'harmonisation)
@@ -493,6 +513,20 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     assistAvgShareNote: (pct) => `part moyenne ${pct} %`,
     assistRoleAssistant: 'Larbin',
     assistRoleBeneficiary: 'Patron',
+    riposteTitle: 'Riposte',
+    riposteInfo:
+      'Une riposte, c’est la mort d’un joueur reprise par son camp sur son tueur dans les secondes qui suivent. Ce sont des comptes exhaustifs du match, jamais un taux. Ils demandent le journal des morts du film : sans film décodé, aucun ordre des morts.',
+    riposteSideAvenged: 'a été riposté',
+    riposteSideDid: 'a riposté',
+    riposteLegendAvenged: 'ses morts vengées par son camp',
+    riposteLegendDid: 'les ripostes qu’il a portées',
+    riposteAvengedByFmt: (name, s) => `vengée par ${name}, ${s} s`,
+    riposteAvengedForFmt: (name, s) => `a vengé ${name}, ${s} s`,
+    riposteMoreFmt: (n) => `+${n}`,
+    riposteFooterFmt: (avenged, measured) =>
+      `${avenged} mort${avenged > 1 ? 's' : ''} vengée${avenged > 1 ? 's' : ''} sur ${measured} mesurée${measured > 1 ? 's' : ''}`,
+    riposteNotUsable: 'Riposte non disponible pour ce match (aucune mort lisible ligne à ligne).',
+    riposteNoData: 'Aucune riposte sur ce match.',
     assistValueAxis: 'Assistances par patron',
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
@@ -814,6 +848,20 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     assistAvgShareNote: (pct) => `avg share ${pct}%`,
     assistRoleAssistant: 'Lackey',
     assistRoleBeneficiary: 'Boss',
+    riposteTitle: 'Payback',
+    riposteInfo:
+      'A payback is a player’s death taken back by their team on the killer within the following seconds. These are exhaustive counts for the match, never a rate. They require the film’s death log: without a decoded film there is no ordering of deaths.',
+    riposteSideAvenged: 'was avenged',
+    riposteSideDid: 'avenged',
+    riposteLegendAvenged: 'their deaths avenged by their team',
+    riposteLegendDid: 'the paybacks they made',
+    riposteAvengedByFmt: (name, s) => `avenged by ${name}, ${s} s`,
+    riposteAvengedForFmt: (name, s) => `avenged ${name}, ${s} s`,
+    riposteMoreFmt: (n) => `+${n}`,
+    riposteFooterFmt: (avenged, measured) =>
+      `${avenged} death${avenged > 1 ? 's' : ''} avenged out of ${measured} measured`,
+    riposteNotUsable: 'Payback unavailable for this match (no death readable line by line).',
+    riposteNoData: 'No payback in this match.',
     assistValueAxis: 'Assists per boss',
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',

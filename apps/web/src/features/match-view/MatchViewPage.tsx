@@ -444,6 +444,7 @@ export function MatchViewPage() {
             nemesis={nemesis}
             killerVictim={killerVictim}
             assistPairs={assistPairs}
+            riposte={combat_tab.riposte}
             highlightEvents={highlightEvents}
             citations={summary_tab.citations ?? []}
             encounters={team_tab.encounters ?? []}
