@@ -124,10 +124,11 @@ surface `film/replay` 260 -> 263 justifie.
 - [ ] Blocs Constat, Compte, Donne/recu, Taux par session supprimes (0 code mort)
 - [ ] Vocabulaire : Riposte / Appui / Coordination applique dans toute l app (Escouade, Match view, Tactique, Timeseries, Synthese, Accueil, i18n FR+EN)
 
-### Lot K — Match view, part de chaque equipe en 5.A (worktree `LevelUp-wt-ajsup-k`)
-- [ ] Barres horizontales par famille, echelle commune, deux camps, comptes ecrits, total (D20)
+### Lot K — Match view, part de chaque equipe en 5.A (worktree `LevelUp-wt-ajsup-k`) — FUSIONNE 6c2391972
+- [x] Barres horizontales par famille, echelle commune, deux camps, comptes ecrits, total (D20)
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- K : une famille peut avoir une colonne de zeros dans la grille et aucune piste a droite (famille sans usage = ligne absente) -> verdict visuel.
 - H : `AssistExchangeSummary` (papillon log) reste sur le hub Relations (`RelationAssistsCards.tsx:45`) -> verdict utilisateur ; `assist_volume_max` n a plus de lecteur Explorer ; `ExplorerTargetSampleStats.tsx` a 399 L.
 - G : `explorer/ExplorerTargetFragRange.tsx:118` reecrit le chrome de SectionCard a la main ; alias courts de `deployedFamilyLabel` (`usageI18n.ts:507`) ne matchent aucune cle ; le hook go-vet de lefthook tourne sans CGO (60 lignes de bruit par commit).
 - G : libelle des colonnes de lacher = « Laches : Surbouclier » (forme neutre, genres mixtes des familles) -> verdict utilisateur.
