@@ -7771,6 +7771,77 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
         `soundSeek` avec l instant d arrivee et JAMAIS `soundTick` ; chaque evenement du glisse
         repose le curseur (aucun ecart ne s accumule) ; et `seekToFrame` n appelle PAS `soundSeek`.
 
+### Post-chantier — lot 5.9 (chaines du sprint et du saut), branche `feat/decfilm-57`, base `c3f01dd4b`
+
+Suite du 5.7, sur passation. Le lot remonte les CHAINES DE DONNEES du sprint et du saut depuis
+le CONSOMMATEUR (condition d animation, accesseur d etat) jusqu au champ du film, puis mesure et
+porte ce qui tient. Recherche : `.ai/V7.5/film_re/NOTE_5_9_CHAINES_SPRINT_SAUT_2026-09-21.md`.
+
+Decision de l utilisateur du 2026-09-21, en plus du brief : **le SAUT peut etre publie DERIVE de
+la physique du film**, a condition qu il soit identifie COMME DERIVE (genre propre, constante
+nommee avec sa mesure datee, compteur de couverture, libelle « Saut (derive) », chronique qui le
+dit) ; **le SPRINT n a PAS d autorisation de derive** (le plateau de vitesse n est pas net) ; et
+le port derive n attend pas la chaine du declencheur mais ne la remplace pas.
+
+- [x] **5.9.1 — LE SPRINT : LA CHAINE EST COMPLETE.** Recherche seule, aucun octet de
+      production.
+  - [x] **L ECRIVAIN DU BIT 45 EST TROUVE, ET LES QUINZE ASSIGNATEURS N ETAIENT PAS LA BONNE
+        PISTE.** La requete juste n est pas « qui assigne le mot `obj+0x8b8` » (un `OR` de
+        lecture-modification-ecriture dont le masque arrive par registre y echappe) mais « qui
+        MATERIALISE `1<<45` » : **30** sites de l image chargent l immediat `0x200000000000`,
+        **un seul** le combine par `OR` avec `[x+0x8b8]` — `FUN_1431a2474`, absente de la liste
+        de la passation. Les deux fonctions « a commencer par » ont ete lues quand meme :
+        `FUN_1409aac4c` ne touche que les bits 37 et 15, `FUN_140775a24` que les bits 2, 3, 7 et
+        8 (elle TESTE le bit 45 a `140775e09` sans jamais le poser).
+  - [x] **LA CHAINE, DIX MAILLONS, DU GRAPHE D ANIMATION AU FILM** (table complete dans la
+        note) : `transition_conditions_is_sprinting_tlg` -> `SpartanAbilityIsSprinting`
+        (`1436f7170`) -> `FUN_142a0c70c` (`(obj+0x8b8 >> 0x2d) & 1`) -> **`FUN_1431a2474`**
+        (`1431a263a` efface / `1431a2646` pose / `1431a2658` range) sous la condition
+        `*(float*)(this+0x5c) > DAT_143cd8370` -> la fraction rampee par `FUN_1431a2c94` ->
+        la classe `'sasp'` (`FUN_140583a94(this+8, 0x73617370)`, type reflechi
+        **`Sprint::SynchronizedTimePointFloatInstance`** `143e2b358`) -> son activation par
+        `FUN_1406c9b1c` (bit `0x2000000` du masque) -> `FUN_14319db80` -> **`ti=35 i57`**.
+  - [x] **L ETIQUETTE D `i57` EST L INDEX DE LA FENTE DE CAPACITE ACTIVE** (`-1` = aucune,
+        `0..2` = la fente). `FUN_14319db80` s en sert comme INDEX dans `capacites+0x1c[0..2]` et
+        desactive/active a la transition ; `FUN_142f268c4` pose `bloc+3 = R(2) - 1`. Deux
+        corroborations de la cardinalite 3 : `FUN_140f8f300` boucle `uVar6 < 3` sur la meme
+        table, et `i56` lit un masque `R(3)` (un bit par fente). **Cela ferme le report ouvert
+        du registre « `i57` : quelle valeur signifie actif ? » : ce n est pas un booleen.**
+  - [x] **L OCTET RUNTIME DE L ETIQUETTE 3, RELU** : la garde de `FUN_142f262d4` est
+        `biped+0x1302`, et la recherche d instructions sur `+0x1302` rend **ZERO** site — l
+        octet passe par l API du bloc (`FUN_140f03db8` / `FUN_140f03dfc`). Maillon **non trouve
+        a `FUN_140f03db8`**.
+  - [!] **QUELLE FENTE PORTE LE SPRINT** reste ouvert : la table `capacites+0x1c[i]` porte des
+        index de definition resolus au chargement du match, donc la reponse est MESURABLE (5.9.3)
+        et pas lisible dans l image.
+- [x] **5.9.2 — LE SAUT ET L ETAT AERIEN.** Recherche seule, aucun octet de production.
+  - [x] **LA CHAINE DEPUIS `IsAirborne`** : chaine `143757660` (`FUN_140dd208c`) ->
+        `FUN_142c66744` -> **`FUN_140769cb4`** : aerien = `*(char*)(u+0x89b) != 0` OU
+        `(*(u16*)(u+0x898) & 0x1000) != 0`.
+  - [x] **`+0x89b` N A QU UN ECRIVAIN, ET C EST UN COMPTEUR** : `FUN_1408b19cc` l incremente
+        (borne `0xff`) et le remet a 0 des qu un contact apparait dans la liste `param_2+0xb10` ;
+        elle range `+0x89c` (ticks aeriens a l atterrissage), incremente `+0x89f` (ticks au sol)
+        et efface le bit 12 de `+0x898`. Ses SEULS appelants sont `FUN_1408b2f90` a `1408b321b`
+        et `1408b32fd` — la resolution de contact du controleur de personnage. Chaine **non
+        trouvee a `FUN_1408b2f90`** : reste a lire l origine de son manifeste de contacts.
+  - [x] **UNE VALEUR NOMMEE PAR LE JEU** : `IsClambering` -> `FUN_142c66808` :
+        `FUN_1406b8244(idx) == 2`, et la chaine `CharacterPhysicsModeClambering` (`143df73d0`)
+        nomme cette valeur 2 du mode de physique de personnage
+        (`*(u32*)(u + 0x2dc + *(u16*)(u+0x2de))`). Le meme mode est teste aux valeurs 6 et 9 par
+        l applicateur de posture.
+  - [x] **`c_biped_airborne_state` : l enregistrement `FUN_1432226c0` NE PORTE AUCUN NOM DE
+        CHAMP** et ses seules references croisees sont les siennes. Instanciation **non trouvee
+        a `FUN_1432226c0`**.
+  - [x] **CE QUE `i55` APPLIQUE N EST PAS UNE POSTURE, CE SONT QUATRE EVENEMENTS D OBJET.**
+        `FUN_1406c9b1c` applique `biped+0x12b4` par `FUN_142f23b20` -> `FUN_141fd9b88(genre)` :
+        genre 0 -> `FUN_142f23a04` (evenement `0xd` ou `FUN_142f28400`, ou le drapeau `0x2b`),
+        genre 1 -> `FUN_142f238d4` (`0x1d` / `0x1c`), genre 2 -> `FUN_142f23978` (`0x2b`),
+        genre 3 -> `0xc` ; tous postes par `FUN_14080b870`. **C est pourquoi aucune chaine ne
+        s attache a l octet de genre** : il choisit un CANAL D EVENEMENT, pas un etat.
+- [ ] **5.9.3 — MESURE DE VERIFICATION** (un film a la fois, porte propre, population retenue).
+- [ ] **5.9.4 — PORT.** Le saut DERIVE, et lui seul.
+
+
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
