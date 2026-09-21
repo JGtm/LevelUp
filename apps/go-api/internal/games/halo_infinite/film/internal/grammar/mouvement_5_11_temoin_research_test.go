@@ -187,6 +187,12 @@ func m511Balayer(fc *FilmContext, nChunks, idLow int) (*m511Marche, error) {
 	m := &m511Marche{etalon: map[int]int{}, fautifs: map[int]int{}, parTI: map[uint32]int{},
 		desyncTI: map[uint32]int{}, parPaquet: map[int]int{}}
 	cfg := fc.CadreDeBalayage()
+	if os.Getenv("MOUV511_VUES") != "" {
+		bal := fc.ProfilDeBalayage()
+		bal.Grammaire.TablesParVue = true
+		fc.PoserProfilDeBalayage(bal)
+		cfg = fc.CadreDeBalayage()
+	}
 	if idLow > 0 {
 		cfg.IDLowBits = idLow
 	}

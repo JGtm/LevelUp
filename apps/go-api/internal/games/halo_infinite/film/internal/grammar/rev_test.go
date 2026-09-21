@@ -89,10 +89,10 @@ var fichiersHorsGrammaire = map[string]bool{
 	"rev_chronique_archive_2.go": true,
 }
 
-// fichiersDeChroniqueGrammar : les deux fichiers qui portent les ENTREES, dans l ordre
+// fichiersDeChroniqueGrammar : les fichiers qui portent les ENTREES, dans l ordre
 // chronologique — l archive d abord, la suite vivante ensuite.
 var fichiersDeChroniqueGrammar = []string{"rev_chronique_archive.go", "rev_chronique_archive_2.go",
-	"rev_chronique.go"}
+	"rev_chronique_archive_3.go", "rev_chronique.go"}
 
 // porteGrammarRev / messagesGrammarRev : ce que la couche declare au mecanisme central.
 func porteGrammarRev() revision.Porte { return revision.Porte{Nom: "grammar-rev"} }

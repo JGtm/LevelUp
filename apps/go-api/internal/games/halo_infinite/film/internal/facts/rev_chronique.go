@@ -294,3 +294,16 @@ package facts
 // meme jour). C est une VRAIE largeur qui change — `i63` consomme 196 bits a masque nul et
 // 196 + 3 x popcount au-dela — donc la montee n est pas un faux positif d empreinte.
 // `SchemaVersion` ne monte pas : la forme du document ne change pas.
+
+// ENTREE `killsource-2026-09-21.9` (2026-09-21, lot 5.11.7) : LA REVISION MONTE DERRIERE LA
+// GARDE DE TABLE DE VUE, ET CETTE FOIS LA SORTIE DES FAITS CHANGE.
+//
+// AUCUN OCTET DE `facts/` N EST TOUCHE, mais `grammar.Rev` passe a `grammar-2026-09-21.9` et le
+// changement n est PAS un faux positif d empreinte : la marche cesse de lire au-dela de la fin
+// des paquets, rend 17 115 records `ti=35` de plus sur `bfecd02b`, et `replay-equiv -films
+// bcb6d393` deplace le digest de l etape `killsource` (chronique de `grammar`, meme jour).
+//
+// LES LIGNES DE KILL DEJA EN BASE DEVIENNENT DONC CANDIDATES AU BACKLOG DE REDECODAGE. Le
+// redecodage du parc reste un geste de PRODUCTION, reserve au pilote SUR SIGNAL UTILISATEUR
+// (decision D6 du plan), JAMAIS automatique. `SchemaVersion` ne monte pas : la forme du document
+// ne change pas.
