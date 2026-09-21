@@ -114,8 +114,8 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] Part des assistances : deux barres epaisses horizontales, echelle lineaire commune, tranches empilees avec comptes, trait de parite
 - [x] Repartition des resultats : une barre epaisse horizontale empilee (compte + part ecrits), taux en chiffre d appel, bande des resultats
 
-### Lot I — Match view, controle des armes en 4.A (worktree `LevelUp-wt-ajsup-i`)
-- [ ] Colonnes empilees par socle, groupes separes par un trait, noms centres en haut dans le graphique, base repliee (D18)
+### Lot I — Match view, controle des armes en 4.A (worktree `LevelUp-wt-ajsup-i`) — FUSIONNE 1e93ea6ee
+- [x] Colonnes empilees par socle, groupes separes par un trait, noms centres en haut dans le graphique, base repliee (D18)
 
 ### Lot J — Escouade, section Coordination en variante A + vocabulaire Riposte / Appui partout (worktree `LevelUp-wt-ajsup-j`)
 - [ ] Carte « Riposte » : phrase de lecteur, chiffre d appel face a l habituel, frise batons + tendance par soiree (volumes dessous), histogramme des delais et matrice « Qui riposte pour qui » en replis
@@ -128,6 +128,7 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] Barres horizontales par famille, echelle commune, deux camps, comptes ecrits, total (D20)
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- I : `BarStackedChart.tsx` a 497 L brutes ; bande de trace des titres de groupe estimee (10-97 %), fragile si un appelant nomme ses axes avec des groupes ; deux chemins d encre (DOM color-mix / canvas opacite) sans garde-rail.
 - K : une famille peut avoir une colonne de zeros dans la grille et aucune piste a droite (famille sans usage = ligne absente) -> verdict visuel.
 - H : `AssistExchangeSummary` (papillon log) reste sur le hub Relations (`RelationAssistsCards.tsx:45`) -> verdict utilisateur ; `assist_volume_max` n a plus de lecteur Explorer ; `ExplorerTargetSampleStats.tsx` a 399 L.
 - G : `explorer/ExplorerTargetFragRange.tsx:118` reecrit le chrome de SectionCard a la main ; alias courts de `deployedFamilyLabel` (`usageI18n.ts:507`) ne matchent aucune cle ; le hook go-vet de lefthook tourne sans CGO (60 lignes de bruit par commit).
