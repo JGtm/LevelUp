@@ -8226,6 +8226,96 @@ aucune mesure empirique de grammaire, un commit par trou.
   d AUCUNE carte. Ce qui est corrige, c est la NOTE de la table, qui decrivait encore un blocage
   disparu (« la queue tirerait ses largeurs d un uniforme 14 ») — anti-patron « doc inversee ».
 
+- [x] **5.13.4 — LA FENETRE DU SAUT DE `dad793c7`, RELUE AVEC TOUTE LA GRAMMAIRE DU LOT. CE QUI
+  S Y ECRIT, EN CLAIR : TROIS CANAUX, ET RIEN D AUTRE.**
+
+  Marche a trois vues, garde de table de vue, `BindImageCle`, `i57` porte, `i60` sous carte.
+  Instrument `TestMouvement511Fenetre` sur tout le film (`MOUV511_T0=0 MOUV511_T1=99999`).
+
+  **LE PARC ENTIER DES RECORDS DE BIPEDE DU FILM — 75 records, et leur forme :**
+
+  | instant | type | composants | corps |
+  |---|---|---:|---:|
+  | 2,851 s | NEW | **34** | 2 478 bits |
+  | 2,865 s | DELTA | 4 (i0, i1, i25, i56) | 69 bits |
+  | 2,882 s | DELTA | 1 (i26) | 22 bits |
+  | 2,898 s · 2,915 s | DELTA | 2 (i1, i25) | 12 bits |
+  | 16,146 s | DELTA | 2 | 16 bits |
+  | **26,036 s a 27,191 s — 69 records** | DELTA | **3 (i0, i1, i25)** | **95 bits, a l identique** |
+
+  **LA FENETRE DU SAUT EST DONC UN FLUX A TROIS CANAUX, DE LARGEUR CONSTANTE**, et les trois
+  decoupent les 95 bits toujours aux memes offsets :
+
+  | composant | largeur | offset dans le corps |
+  |---|---:|---:|
+  | `i0 object-position-dynamic-precision` | 54 | +0 |
+  | `i1 object-translational-velocity-dynamic-precision` | 31 | +54 |
+  | `i25 unit-command-tick` | 10 | +85 |
+
+  Les quatre valeurs publiees d `i1` (mode, porte, direction empaquetee, mot d echelle), sur les
+  18 premiers records de la fenetre : mode **0** et porte **0** partout, direction empaquetee
+  **217 832 CONSTANTE** sur les 69 records, et le mot d echelle **242, 259, 249, 240, 232, 225,
+  219, 212, 205, 199, 187, 176, 162, 158, 152, 148, 144, 138** — un maximum au deuxieme record
+  puis une decroissance monotone. Publie tel quel, sans interpretation : la carte de ce film
+  n est pas identifiable (piege 7 de la passation, facteur 8,2 sur l axe vertical), donc les
+  positions d `i0` ne sont pas des coordonnees monde, et seul le canal de VITESSE est
+  card-independant.
+
+  **AUCUN CHAMP DE SAUT N APPARAIT, ET LA GRAMMAIRE DU LOT N Y CHANGE RIEN — POUR UNE RAISON
+  STRUCTURELLE, PAS PAR ABSENCE DE PORT** (piege 4 de la passation : la presence d un composant
+  se lit dans le MASQUE). Sur tout `dad793c7` :
+
+  | composant instruit par ce lot | declarations dans le film | ou |
+  |---|---:|---|
+  | `i54 biped-mobility-action` | **1** | le record NEW de 2,851 s |
+  | `i59 biped-spartan-ability-non-predicted-state` | **1** | le record NEW de 2,851 s |
+  | `i60 simulation-state` | **1** | le record NEW de 2,851 s |
+  | `i57 biped-spartan-ability` | **0** | nulle part |
+
+  Aucun des quatre n est declare une seule fois entre 26,0 s et la fin du film. Instruire leur
+  grammaire ne pouvait donc pas faire apparaitre un record la ou le masque n en declare aucun, et
+  c est ce que la relecture confirme.
+
+  **ET LE PIED DU PAQUET DE CETTE FENETRE EST NOMME** (item 5.13.1 (e)) : ses 32 bits ne sont pas
+  deux en-tetes d entite mais les flux des DEUX AUTRES CLASSES DE VUE, lus avec la grammaire du
+  gestionnaire d entites. Les bits 27 et 30 qui basculaient au decollage sont des bits de corps
+  d une autre grammaire — il n y a pas d entite 7140 a nommer.
+
+  **CONSEQUENCE SUR LA PUBLICATION, ET C EST LA DECISION DE CLOTURE DU LOT** : rien de neuf n est
+  publiable. Le champ de saut n existe pas dans cette fenetre (le masque le dit), les quatre
+  valeurs du mantling ne sont pas nommees (item 5.13.2), et `i57` / `i60` ne changent que des
+  LARGEURS LUES, pas la forme du document. **LE LOT NE MONTE DONC PAS DE SCHEMA : `SchemaVersion`
+  reste a 67.** La montee 67 -> 68 etait decidee « pour ce que le lot publie » ; le lot ne publie
+  rien, donc elle n a pas lieu — pas de `stances[].kind` `clamber`, pas de `jump` lu, pas de
+  chronique v68, pas de fixtures `replay_schema_68_*`.
+
+#### §4 du lot 5.13 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.13)** | **LES TROIS VUES DE `FUN_142987460` SONT TROIS CLASSES, ET LA MARCHE HORS LIGNE APPLIQUE A TOUTES LES TROIS LA GRAMMAIRE D UNE SEULE.** `vtable[0x40]` vaut `FUN_14076a1c4` (`0x1436a8700`), `FUN_1406cd128` (`0x1436a87e0`, le gestionnaire d entites) et `FUN_1406cf548` (`0x1436a8770`). Porter les deux autres boucles est LA ROUTE VERS 100 % DE PAQUETS FERMES : les 13 records DEL fantomes de `dad793c7` et ses 18 debordements viennent tous de la grammaire du gestionnaire appliquee a ces deux flux. | un lot a soi seul : trois handlers a mesurer pour `FUN_1406cf548` (`FUN_1406d0388`, `FUN_142f29b38`, `FUN_142f29e54`), un pour `FUN_14076a1c4` (`FUN_14080a9d4`), plus le prologue `FUN_142f2539c` |
+| **D2 (5.13)** | **LE MAILLON QUI RESTE POUR NOMMER LES QUATRE VALEURS DU MANTLING EST L APPLIQUEUR DU MESSAGE `initiate_mobility_action` SUR LE PERSONNAGE**, et quatre slots de sa vtable (`142ef58f8`, `142f0203c`, `142f05308`, `142c46770`) NE SONT PAS DES FONCTIONS DEFINIES dans le projet Ghidra courant. | le prochain lot de mantling : faire definir ces quatre regions dans Ghidra, ou remonter par le site d EMISSION du message (aucune xref de donnee sur la base de vtable `143d0a000`) |
+| **D3 (5.13)** | **UNE SEULE LARGEUR SEPARE `i59` DE SES SIX ETIQUETTES : `FUN_140c1e924`**, dont les trois champs tirent leur `w` d une table indexee par un octet (`&DAT_143b8c6f0 + param_3 * 0x18`) que le desassemblage ne resout pas au site d appel de `FUN_142f04664`. | le lot qui rouvre `i59` : resoudre cet index, puis reecrire le prefixe commun ET reverifier `TestI59AnchorWalkProof` (ecarts 0) dans le meme commit |
+| **D4 (5.13)** | **LA NOTE DE `components_biped_anchor.go` DISAIT MANQUANTES DES LARGEURS QUE LE DEPOT PORTE DEPUIS LE LOT 1.9.1 bis** (`FUN_1408f0ac4` categories 0 et 5, par la table `varwidth`). Corrige dans la table ECS par ce lot ; le commentaire Go, lui, est hors de la frontiere de fichiers de 5.13.3. | le prochain lot qui touche `components_biped_anchor.go` |
+| **D5 (5.13)** | **LE JOURNAL RE (`WALK_PORT_NOTES.md`, lot G du 2026-08-27) NOMME `gen` LES DEUX BITS DE TETE DE LA LISTE DE REFERENCE**, alors que `FUN_142f2e174` les prend dans `vue + 8`, le RANG de la vue ecrit par `FUN_1409c9860`. Le depot est corrige (`world.go`, chronique, note 5.13) ; le journal RE ne l est pas — il est hors de la frontiere de fichiers du lot. | le prochain lot qui edite `.ai/V7.5/killweapon/WALK_PORT_NOTES.md` |
+| **D6 (5.13)** | **LE BIPEDE DE `dad793c7` N EST REPLIQUE EN CONTINU QU A PARTIR DE 26,036 s** : un NEW a 2,851 s, cinq deltas epars jusqu a 16,146 s, puis 69 deltas identiques de 26,036 s a 27,191 s. L instant que le lot 5.11.7 appelle « le decollage » est donc AUSSI le premier record du flux continu, et rien dans ce lot ne separe les deux lectures. | le lot qui reprendra le saut : choisir un film temoin dont le bipede est replique en continu AVANT et APRES le saut, sinon la fenetre ne peut pas distinguer « le saut commence » de « la replication commence » |
+
+#### §5 du lot 5.13 — ETAT DE CLOTURE
+
+| case | statut | ce qui est livre |
+|---|---|---|
+| 5.13.1 | `[x]` | les deux bits de tete d un identifiant d image-cle sont le RANG DE LA VUE (`vue + 8`, `FUN_1409c9860`) ; l image-cle est MONO-RANG sur les deux temoins ; `World.BindImageCle` LIT le rang ; « l entite 7140 generation 2 de la vue 3 » n est pas une entite (trois classes de vue, trois grammaires) |
+| 5.13.2 | `[!]` | la queue d `i54` est la charge utile du message `initiate_mobility_action` ; la garde `bloc[0x9d]` est NOMMEE ; les quatre valeurs de `bloc + 0x9c` n ont AUCUNE etiquette dans le binaire -> pas de `clamber`, pas de montee de schema |
+| 5.13.3 | `[x]` `i57` et `i60` · `[!]` `i59` | `i57` porte en entier (l initialiseur met la porte a zero) : non portees 1 -> 0 et 44 -> 0 ; le dispatcheur a six etiquettes d `i59` lu chez l ecrivain, une seule largeur manque ; `i60` tranche (`SimStateComplet` reste faux sans carte, la note perimee de la table corrigee) |
+| 5.13.4 | `[x]` | la fenetre relue : trois canaux (`i0` 54 · `i1` 31 · `i25` 10), 95 bits a l identique sur 69 records ; `i54`/`i59`/`i60` declares UNE fois dans le film, `i57` zero fois ; aucun champ de saut |
+| schema | **67, INCHANGEE** | le lot ne publie rien de neuf : la montee 67 -> 68 etait decidee « pour ce que le lot publie », et le lot ne publie rien |
+
+Revisions : `grammar-2026-09-22.2` / `killsource-2026-09-22.2`. Gates par commit : `gofmt`,
+`go build`, `go vet` (+`research`), `go test -count=1` sur `halo_infinite/...`, `archlint`,
+`replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api`, `golangci-lint` (0 issue),
+`go test -race` sur `grammar` (337 s, vert), `npx vitest run src/features/match-replay`
+(3 014 tests verts). Corpus 19, re-figeage et CI : au pilote.
+
 ### Post-chantier — lot 5.11.7 (LES TROIS TABLES D ENTITES PAR VUE), branche `feat/decfilm-63`
 
 Suite directe du 5.11.6, qui avait NOMME le trou sans le refermer. Le recadrage de l utilisateur

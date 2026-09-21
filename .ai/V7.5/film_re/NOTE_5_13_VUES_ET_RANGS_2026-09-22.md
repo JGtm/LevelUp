@@ -186,3 +186,44 @@ critere ecrit est que le chemin absolu d `i0` tire ses trois largeurs de la CART
 dispatcheur rend donc `br.p.Grammaire.SimStateComplet`, et le ratchet G1 — qui DERIVE le statut
 de la table du code — impose `partiel`. Ce qui est corrige, c est la note de la table, qui
 decrivait un blocage disparu.
+
+## 8. La fenetre du saut de `dad793c7`, relue avec toute la grammaire (lot 5.13.4)
+
+Marche a trois vues, garde de table de vue, `BindImageCle`, `i57` porte, `i60` sous carte.
+Instrument `TestMouvement511Fenetre` sur tout le film.
+
+**LE PARC ENTIER DES RECORDS DE BIPEDE — 75 records :**
+
+| instant | type | composants | corps |
+|---|---|---:|---:|
+| 2,851 s | NEW | **34** | 2 478 bits |
+| 2,865 s | DELTA | 4 (i0, i1, i25, i56) | 69 bits |
+| 2,882 s | DELTA | 1 (i26) | 22 bits |
+| 2,898 s · 2,915 s | DELTA | 2 (i1, i25) | 12 bits |
+| 16,146 s | DELTA | 2 | 16 bits |
+| **26,036 s a 27,191 s — 69 records** | DELTA | **3 (i0, i1, i25)** | **95 bits, a l identique** |
+
+Les trois canaux decoupent toujours les 95 bits aux memes offsets : `i0` 54 bits a +0, `i1`
+31 bits a +54, `i25` 10 bits a +85.
+
+Les quatre valeurs publiees d `i1` sur les 18 premiers records de la fenetre : mode **0**, porte
+**0**, direction empaquetee **217 832 CONSTANTE** sur les 69 records, mot d echelle **242, 259,
+249, 240, 232, 225, 219, 212, 205, 199, 187, 176, 162, 158, 152, 148, 144, 138** — maximum au
+deuxieme record, puis decroissance monotone. Publie tel quel : la carte de ce film n est pas
+identifiable (piege 7 de la passation), donc les positions d `i0` ne sont pas des coordonnees
+monde et seul le canal de vitesse est card-independant.
+
+**AUCUN CHAMP DE SAUT N APPARAIT, ET LA GRAMMAIRE DU LOT N Y CHANGE RIEN — RAISON STRUCTURELLE.**
+Sur tout `dad793c7` : `i54` declare **1** fois (le NEW de 2,851 s), `i59` **1** fois (idem),
+`i60` **1** fois (idem), `i57` **0** fois. Aucun des quatre entre 26,0 s et la fin. La presence
+d un composant se lit dans le MASQUE, jamais dans son port.
+
+**Consequence de cloture** : le lot ne publie rien de neuf — pas de champ de saut (le masque le
+dit), pas de nom pour les quatre valeurs du mantling, et `i57` / `i60` ne changent que des
+largeurs LUES. **`SchemaVersion` reste a 67** : la montee 67 -> 68 etait decidee « pour ce que le
+lot publie », et le lot ne publie rien.
+
+**A savoir pour la suite** : le bipede de `dad793c7` n est replique EN CONTINU qu a partir de
+26,036 s. L instant que le lot 5.11.7 appelle « le decollage » est donc AUSSI le premier record
+du flux continu, et rien ici ne separe les deux lectures. Le lot qui reprendra le saut doit
+choisir un film temoin dont le bipede est replique en continu AVANT et APRES.
