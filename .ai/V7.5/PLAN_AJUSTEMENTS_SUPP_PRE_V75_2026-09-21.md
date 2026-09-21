@@ -132,10 +132,11 @@ surface `film/replay` 260 -> 263 justifie.
 ### Lot L — Timeseries, balance des degats cumulee (worktree `LevelUp-wt-ajsup-l`) — FUSIONNE 0da57c5b1
 - [x] Aire divergente ancree a zero, meme grammaire que l Escouade, front seul
 
-### Lot M — maquette sections transverses : Riposte, Portee, Appui (worktree `LevelUp-wt-ajsup-m`)
-- [ ] Fichier `.ai/V7.5/MAQUETTE_TRANSVERSES_RIPOSTE_PORTEE_APPUI_2026-09-21.html` + verification des deux reserves de donnees
+### Lot M — maquette sections transverses : Riposte, Portee, Appui (worktree `LevelUp-wt-ajsup-m`) — FUSIONNE d97899530
+- [x] Fichier `.ai/V7.5/MAQUETTE_TRANSVERSES_RIPOSTE_PORTEE_APPUI_2026-09-21.html` + verification des deux reserves de donnees
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- M : R1 = `team_size` par match NON servi a Sessions (`SessionUsageMatchPoint`) alors que `sessionusage.TeamContext.TeamSize` le calcule ; R2 levee (appuis attribues a tous les joueurs du film) ; R3 = distance de frag mesuree pour tous mais lecteur multi-matchs contraint a un joueur (`port/weapon_range.go:51`).
 - J : `squad.toml` 998 L (dette) ; anglicismes FR dans `coaching_tips.toml` (revenge push, trader, aim assist) ; chaines de la statistique de jeu « assistances » laissees (liste dans le rapport du lot) ; `colorDistance.guard.test.ts` flake en suite complete (vert seul).
 - I : `BarStackedChart.tsx` a 497 L brutes ; bande de trace des titres de groupe estimee (10-97 %), fragile si un appelant nomme ses axes avec des groupes ; deux chemins d encre (DOM color-mix / canvas opacite) sans garde-rail.
 - K : une famille peut avoir une colonne de zeros dans la grille et aucune piste a droite (famille sans usage = ligne absente) -> verdict visuel.
