@@ -9,12 +9,13 @@
  * l'aide de lecture, les notes de mesure et la couverture de la carte.
  *
  * Source unique des DEUX appelants (`session-detail/SessionUsageShared.tsx` et
- * `EquipmentUsageSection.tsx`) — CLAUDE.md n°6 : deux bandeaux recopiés re-divergent, c'est
- * exactement ce qui était arrivé au premier.
+ * `EquipmentUsageSection.tsx`) — CLAUDE.md n°6. Le rendu lui-même est délégué au helper
+ * transverse `titleWithInfo` (réconciliation des lots A2 et G, 2026-09-21) : ce module ne
+ * fait que mettre en paragraphes.
  */
 import type { ReactNode } from 'react'
 
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 
 /**
  * Rend l'habillage de titre attendu par `SectionCard.titleAdornment` : le libellé, puis
@@ -25,21 +26,13 @@ export function usageCardTitle(
   ...paragraphs: (string | null | undefined)[]
 ): (label: string) => ReactNode {
   const kept = paragraphs.filter((p): p is string => typeof p === 'string' && p.length > 0)
-  return (label: string): ReactNode => (
-    <span className="flex items-center gap-1.5">
-      <span>{label}</span>
-      {kept.length > 0 && (
-        <InfoTooltip
-          iconClass="w-3.5 h-3.5"
-          content={
-            <div className="space-y-2">
-              {kept.map((p) => (
-                <p key={p}>{p}</p>
-              ))}
-            </div>
-          }
-        />
-      )}
-    </span>
-  )
+  const content =
+    kept.length > 0 ? (
+      <div className="space-y-2">
+        {kept.map((p) => (
+          <p key={p}>{p}</p>
+        ))}
+      </div>
+    ) : null
+  return titleWithInfo(content, { iconClass: 'w-3.5 h-3.5' })
 }
