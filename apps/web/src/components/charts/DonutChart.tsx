@@ -37,8 +37,6 @@ export interface DonutChartProps {
   error?: Error | null
   emptyMessage?: string
   height?: number
-  /** Propage a ChartCard : le graphe est rendu nu, sans bordure ni fond (voir ChartCard.frameless). */
-  frameless?: boolean
   /** Map slice.name → SemanticToken pour coloration sémantique. */
   sliceColors?: Record<string, SemanticToken>
   /** Largeur intérieure du donut (default '50%'). 0% = pie plein. */
@@ -84,7 +82,6 @@ export function DonutChart({
   error,
   emptyMessage,
   height,
-  frameless,
   sliceColors,
   innerRadius,
   outerRadius,
