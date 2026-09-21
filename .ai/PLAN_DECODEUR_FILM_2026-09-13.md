@@ -8803,6 +8803,92 @@ fin de vie « despawn » que le rejeu ne sait pas nommer.
   l assemblage sort dans `vehicle_rides_build.go` (trois etapes nommees, une par source) ;
   `buildVehicleRides` repassait 80 lignes -> une structure d assemblage et trois methodes.
 
+### Post-chantier — lot 5.12 (passe de credit du backfill : quadratique et muette), 2026-09-21
+
+Branche `feat/decfilm-62`, base `e3e8d7340`. **AUCUNE base de production ouverte** (le backfill la
+tient, le serveur est arrete), **aucun film lu** (pas de jonction de cache) : tout se mesure sur
+des bases DuckDB temporaires peuplees synthetiquement par les VRAIES migrations. `SchemaVersion`,
+`grammar.Rev` et `facts.Rev` sont INCHANGES — aucun octet de `film/internal/`.
+
+- [x] **5.12.1 — LA MESURE DU DEFAUT, ET ELLE REFUTE L HYPOTHESE DU BRIEF.** Deux bancs
+  d integration, tag `integration`, DuckDB temporaire migre par `migration.RunForDB` :
+  `internal/persist/kill_events_film_pass_cost_integration_test.go` (2 000 matchs x 3 passes x
+  30 morts = **180 000 lignes** de `match_kill_events`) et
+  `internal/sync/killcollector/credit_cost_integration_test.go` (les memes 180 000 lignes +
+  **50 000** `killer_victim_pairs` + 20 matchs de `highlight_events`).
+  **L HYPOTHESE MISE EN CAUSE ETAIT `persist.FilmPassForMatch` sur la vue
+  `match_kill_events_latest` (fenetre `QUALIFY` sur toute la table append-only). ELLE EST FAUSSE,
+  PLAN A L APPUI** : DuckDB POUSSE le predicat jusqu au `SEQ_SCAN`, SOUS la fenetre —
+
+        SEQ_SCAN match_kill_events  Filters: match_id='match-00001'
+          -> WINDOW FIRST_VALUE(decode_pass) OVER (PARTITION BY match_id ...)
+            -> FILTER decode_pass = #6 AND read_path IN ('marche','scan')
+
+  **3,9 ms par appel** sur 180 000 lignes (200 appels chronometres), soit ~40 s pour les
+  9 144 matchs du registre. Ce n est pas la cause des 22 heures.
+  **LA CAUSE EST MESUREE, ET C EST LA JOINTURE D IDENTITE PAR MATCH** (`evenementsDuMatch`,
+  `LEFT JOIN v_gamertag_lookup`). Decomposition des lectures d un match, meme banc :
+
+        | lecture par match                                  | AVANT    | APRES   |
+        |---|---:|---:|
+        | evenements du match (jointure `v_gamertag_lookup`)  | **77,2 ms** | 0,62 ms |
+        | preseance — `COUNT(*)` sur `..._latest`             | 1,4 ms   | 0,78 ms |
+        | enrichissement — `persist.FilmPassForMatch`         | 1,7 ms   | 1,16 ms |
+        | passe d un match, ecriture incluse (`CollectMatch`) | **108,1 ms** | 7,6 a 20,8 ms |
+
+  `v_gamertag_lookup` agrege `match_participants` GROUP BY, DEUX balayages fenetres de
+  `match_kill_events_latest` et deux de `killer_victim_pairs`, en FULL OUTER JOIN. Le filtre du
+  lecteur porte sur `highlight_events.match_id` : il ne pousse RIEN dans la vue, qui est
+  materialisee ENTIEREMENT **une fois par match**. Cout total = (nombre de matchs) x (toute la
+  base) — la quadratique, et elle grossit de ~160 000 lignes a chaque backfill.
+
+- [x] **5.12.2 — LE CORRECTIF : LA VUE CANONIQUE EST LUE UNE FOIS PAR PASSE, PAS UNE FOIS PAR
+  MATCH.** `internal/sync/killcollector/credit_annuaire.go` : l annuaire `xuid -> gamertag` est
+  charge au premier match de la passe depuis **la meme vue** `v_gamertag_lookup` (402 xuids en
+  ~50 ms sur le banc, 16 996 en production), journalise (`xuids`, `duration`), et `evenementsDuMatch`
+  n a plus de jointure. **AUCUN NOM NE CHANGE** : la source reste la vue canonique (doctrine
+  d identite ADR 0035 intacte), le repli « pas de nom » reste la chaine vide et le repli sur le
+  xuid reste chez `analysis.ComputeKillerVictimPairs` — non duplique. L instantane est coherent
+  parce que les seuls noms que la passe ajoute sont ceux qu elle vient de lire dans l annuaire (ou
+  le xuid-comme-nom, que la jointure aurait relu a l identique). **UN COLLECTEUR = UNE PASSE**,
+  ecrit dans l en-tete du fichier ; la seule construction de production en cree un par passe.
+  Resultat : **108,1 ms -> 7,6 ms** par match ecrit, dont **1,32 ms de lectures** (garde-fou
+  `TestPasseCredit_BudgetDesLecturesParMatch`, budget 10 ms).
+- [!] **Les trois options de correctif du brief (vue parametree / macro `..._latest_for(match_id)`,
+  reecriture de la vue, index) NE SONT PAS RETENUES, et la raison est une mesure, pas un
+  arbitrage** : DuckDB pousse DEJA `match_id = ?` sous la fenetre (plan colle en 5.12.1), donc une
+  macro qui filtrerait « avant le QUALIFY » produirait le MEME plan pour un objet de catalogue de
+  plus et une seconde copie du calcul de `damage_pct_residual`. La vue `_latest` generale et les
+  lecteurs par match restent inchanges.
+- [~] **Garde-rails ADR 0030 / 0026 : rien a etendre, et c est verifie.** Le lot n introduit
+  AUCUNE forme neuve de lecture : `match_kill_events_latest` est toujours lue par la vue (jamais la
+  table brute), les ecritures restent les INSERT purs de `persist.KillSourcePersister`, et aucune
+  allowlist n est touchee (`internal/platform/duckdb/no_raw_rating_reads_test.go`,
+  `internal/sync/no_art_patterns_test.go`, `internal/sync/append_only_state_guard_test.go` :
+  verts, inchanges).
+
+- [x] **5.12.3 — LA PASSE CREDIT DIT OU ELLE EN EST.** `credit_progression.go` : une ligne
+  `killsource: credit — progression` tous les **500** matchs examines (matchs examines / total /
+  ecrits / enrichis / sans evenement / erreurs / morts / ecoule / **ETA lineaire**), soit
+  18 lignes pour 9 144 matchs, et un bilan `killsource: credit — passe terminee` au format de la
+  passe des films (meme prefixe, memes clefs `total` / `ecrits` / `erreurs` / `duration`, plus
+  `examines`). **CADENCEMENT PAR COMPTEUR, PAS PAR HORLOGE** — c est ce qui le rend testable par
+  une table de valeurs : `credit_progression_test.go` (10 cas de cadencement, le compte de lignes
+  d une passe entiere, 6 cas d ETA), sans une seconde d attente. **CORRIGE APRES LA REVUE
+  ADVERSARIALE** : la ligne etait sautee par le `continue` du cas d erreur alors que le compteur
+  d examines compte les erreurs — une passe dont tous les matchs echouent serait restee muette ;
+  la comptabilisation sort dans `comptabiliser`, la somme dans `CreditSummary.examines()`, et
+  `TestProgressionJournaliseeMemeQuandLesMatchsEchouent` exige les deux jalons d une passe de
+  1 200 matchs tous en echec. L ETA est lineaire et le fichier
+  dit pourquoi c est honnete ici (un match credit coute ~10 ms, independamment du match).
+- [~] `--dry-run` affiche deja le compte (`credit-seul : %d matchs a examiner`,
+  `cmd_backfill_killsource.go`) et n ecrit rien — verifie sur pieces, inchange.
+
+- [x] **5.12.4 — LA MEME FORME AILLEURS : RECENSEE, NON CORRIGEE (regle 7).** Quatre sites, tous
+  consignes au § 4 avec leur cout estime — dont `SharedRoster.gamertagsForMatch`, qui joint
+  `v_gamertag_lookup` par match dans la passe des FILMS (meme defaut, masque par les ~9,5 s de
+  decodage que chaque film coute).
+
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
@@ -8811,6 +8897,10 @@ fin de vie « despawn » que le rejeu ne sait pas nommer.
 | 2026-09-21 | 5.11.0-a | **D1 (5.11) — LA REFERENCE D EQUIVALENCE EST PERIMEE DEPUIS LA FUSION DU LOT 5.10, ET ELLE REND QUATRE ECARTS QUI NE SONT A PERSONNE.** `replay-equiv -films bcb6d393` SANS `-update`, joue au HEAD de fusion `f8c3e8e7a` AVANT tout changement de ce lot : ECART sur `vehicles`, `movementStates` (attendu 4 469, obtenu **1 363**), `movementStates.stats` et `artifact`. Le plus gros — un facteur 3,3 sur le compte des transitions de mouvement — est donc anterieur a ce lot. | **NON TRAITE** — le re-figeage des references d equivalence est un geste du PILOTE, a la fin du chantier, et il est deja au programme (meme nature que D15 (5.3), qui portait sur `positions`). Consigne ici pour que l ecart ne soit impute ni a 5.10 ni a 5.11 : la seule difference que le correctif 5.11.0-a introduit est `movementStates` **1 363 -> 1 364**, un GAIN d une transition |
 | 2026-09-21 | 5.11.0 | **D2 (5.11) — `i60 simulation-state` EST DECLARE `partiel` DANS `ecs_table.tsv` ALORS QUE LA MESURE LE DIT COMPLET.** Relecture a `StartBit` sur les records RENDUS : **58 declarations sur `bfecd02b` et 326 sur `4f77afc1`, ZERO rendue non portee, ZERO fois composant fautif** sur les deux films. Son `ported` est le drapeau `SimStateComplet`, qui suit la carte depuis le 5.3.3-a — donc vrai des qu une carte est installee, ce qui est le cas de toute marche de production. | **NON TRAITE** (regle 7 : le lot porte sur le saut). Le passage a `porte` demande de decider ce que devient le drapeau quand AUCUNE carte n est installee (`ScanFilm*`), et c est un lot `ti=35` a part entiere. Le cout actuel du statut faux est nul en bits et non nul en lecture : il fait croire qu il reste une grammaire a trouver |
 | 2026-09-21 | 5.11.1 | **D3 (5.11) — LA CARTE D UN FILM A UN SEUL BIPEDE N EST PAS IDENTIFIABLE, ET AUCUN INSTRUMENT NE LE DIT.** `DetectI0LayoutOf` rend « profil i0 non concluant : 1 frontiere sur 68 paires » sur `dad793c7` — un seul bipede ne fournit pas assez d echantillons — et le balayage des 79 entrees du catalogue x 6 largeurs d id ne departage RIEN (toutes rendent le meme compte de records). Le catalogue est indexe par NOM DE MATCH, qui vient de la base, et le lot n a pas de base. | **NON TRAITE** — le lot a travaille sur le canal de VITESSE, qui ne depend pas de la carte, et l a ecrit partout ou il publie un chiffre. Mais tout lot futur qui ouvrira un film hors corpus sans nom de match se heurtera au meme mur : **une carte substitut donne des positions FAUSSES SANS ERREUR** (ici un facteur 8,2 sur l axe vertical), et rien ne le signale |
+| 2026-09-21 | 5.12.4 | **D1 (5.12) — `SharedRoster.gamertagsForMatch` JOINT `v_gamertag_lookup` PAR MATCH, DANS LA PASSE DES FILMS.** `internal/sync/killcollector/roster.go:107` (`JOIN v_gamertag_lookup g ON g.xuid = mp.xuid WHERE mp.match_id = ?`) : exactement le defaut corrige en 5.12.2, sur l autre producteur. `IdentitiesForMatch` est appelee UNE FOIS PAR MATCH par `collect` (film) et par le chemin live. Cout mesure de la forme sur le banc de 180 000 lignes : **55 a 77 ms par match** (et des secondes sur la base de production, qui porte plusieurs millions de lignes). | NON TRAITE (regle 7 : le lot porte sur la passe CREDIT). Le remede est le meme annuaire, et il est **moins urgent parce qu il est masque** : un film coute ~9,5 s de decodage (1 598 films en 4 h 14), la jointure y pese ~10 %. A prendre avec le lot qui reprendra le roster — l annuaire de `credit_annuaire.go` est deja la piece a partager, et un `killcollector.Identities` existe deja (`identities.go`) |
+| 2026-09-21 | 5.12.4 | **D2 (5.12) — LA SONDE DE PRESEANCE ET LA RELECTURE DE L ENRICHISSEMENT SONT DEUX BALAYAGES POUR UNE SEULE QUESTION.** `covertParUnFilm` (`COUNT(*)` sur `match_kill_events_latest`, **0,78 ms**) precede `persist.FilmPassForMatch` (**1,16 ms**) : la sonde etait justifiee comme « bien moins chere que la lecture des lignes », ce que la mesure ne confirme pas — elle coute les deux tiers de la lecture qu elle evite, et sur les ~30 % de matchs porteurs d un film elle est payee EN PLUS. Fusionner les deux (la relecture repond deja « y a-t-il un enrichissement ») economiserait ~0,8 ms par match, soit ~7 s sur 9 144 matchs. | NON TRAITE, et **le gain ne justifie pas le risque** : les deux appels encadrent la regle de PRESEANCE (inversee le 2026-08-03, au prix de 25 697 morts la premiere fois) et la toucher pour 7 secondes serait un mauvais echange. A reprendre seulement si un lot rouvre la preseance pour une autre raison |
+| 2026-09-21 | 5.12.4 | **D3 (5.12) — L ECRITURE EST DESORMAIS LE COUT DOMINANT D UN MATCH CREDIT, ET ELLE EST TRES VARIABLE.** Une fois les lectures a 1,32 ms, un `CollectMatch` entier coute **7,6 a 20,8 ms** sur le banc — et jusqu a **75 ms** quand la machine est chargee (mesure sous `go test -p 1` sur tout le paquet). Une transaction par match sur une table append-only : le commit domine, pas le SQL. C est LINEAIRE en nombre de matchs (pas quadratique), donc 9 144 matchs = 1 a 3 minutes, mais c est ce qui reste a prendre si la passe doit descendre plus bas. | NON TRAITE. C est aussi la raison pour laquelle le garde-fou de cout porte sur les LECTURES et pas sur `CollectMatch` entier (un budget sur l ecriture serait instable en CI, ou si large qu il laisserait repasser le defaut) ; un lot d ecriture groupee (`BatchBuilder` par lots de N matchs) est la piste, sous ADR 0019/0030 |
+| 2026-09-21 | 5.12.4 | **D4 (5.12) — LA SELECTION DU BACKFILL PORTE TROIS SOUS-REQUETES CORRELEES SUR DES VUES `_latest` FENETREES.** `cmd/levelup/cmd_backfill_killsource_selection.go:90` (`matchsAJour`) : `NOT EXISTS (kill_positions_latest)`, `EXISTS (match_lives_latest)`, `NOT EXISTS (match_participants)` correles sur `e.match_id`. Elle tourne **une seule fois par passe** (pas par match), donc elle n est pas dans la quadratique — mais c est la meme forme, sur trois vues append-only qui grossissent, et elle n est pas mesuree. | NON TRAITE (non mesure, et hors du chemin de la quadratique). A mesurer le jour ou le demarrage de la commande devient lent : c est un `EXPLAIN ANALYZE` a poser, pas un correctif a deviner |
 | 2026-09-21 | 5.10.4 | **D4 (5.10) — CE QU IL FAUDRAIT POUR ROUVRIR `despawn`.** Les trois canaux sont mesures et ECARTES : `i14 object-dissolver` (`FUN_140dd9f9c`) 3 lectures sur `ti=40`, aucune sur le temoin ; le record de SUPPRESSION `recDel` (`FUN_1406cd128`, branche `iVar18 == 2`, R(32) jete PAR LE JEU) = recyclage du slot, +127 a +418 s apres le dernier recensement, 5 vies sur 254 ; le RECENSEMENT borne la disparition ([3:20.2, 3:40.2] pour `776/1`) mais c est deja ce que `end = "unknown"` publie. | NON TRAITE, et la reouverture a ses conditions : (a) un canal qui DATE le retrait — le candidat restant est le CONSOMMATEUR du record de suppression cote jeu (qui appelle `FUN_1406cd128` et ce qu il fait de l entite) , a lire dans Ghidra ; (b) OU une mesure de la couverture de la marche sur les paquets a liste pleine NON localises (69,9 % localises sur `4f77afc1`), qui dirait si les suppressions manquantes y sont ; (c) a defaut, un `end` qui publierait la BORNE de recensement au lieu de la taire — c est une decision de forme, pas une lecture |
 | 2026-09-21 | 5.10.5 | **D3 (5.10) — LE TYPE 82 NE NOMME PAS SON JOUEUR SUR `bfecd02b` : LES TROIS REFERENCES D EN-TETE SONT ABSENTES 578 FOIS SUR 578.** Leur bit de porte vaut 0 partout (controle independant : l instrument du lot 1 rend `ref0 presente 0/225`), alors que la charge, elle, est parfaitement alignee (21 valeurs de champ A, aucun selecteur a largeur runtime). Le masque de 32 drapeaux est donc note SANS pont de slot, et il reste au niveau du temoin decale. | NON TRAITE — ET C EST UNE DONNEE, PAS UN ECHEC : type 82 SANS references d en-tete sur `bfecd02b`, donc le masque n est pas attribuable a un slot par ce chemin ; A RE-TENTER PAR LE CONSOMMATEUR DU MASQUE (Ghidra) AU LOT SUIVANT. Le maillon a une adresse : le lecteur de domaines `0x142ef7f6c` du descripteur `PlayerGameEventSmall`. Deux suites possibles — (a) mesurer la presence des refs sur d AUTRES films (celles du lot 1 etaient relevees sur `000d5950`, `01e1f945`, `00502e52`), (b) chercher l emetteur ailleurs que dans les refs d en-tete (le sac de texte porte des index de participant sur 4 % des evenements) |
 | 2026-09-21 | 5.10.2 | **D1 (5.10) — LES DEUX EPISODES DU RAZORBACK `776/1` SONT SANS SUPPORT DANS LE FILM, ET UN TROISIEME OCCUPANT EST NOMME.** Le document publie `Dafar8423` (frames 251-563) et `Yessireezy` (943-1336) ; la seule montee a bord ECRITE dans ce vehicule est celle du slot **524** (vie sans xuid) a **1:54.5**, siege 1. Le verdict Theater de l utilisateur (2026-09-19) condamnait deja le second. | NON TRAITE (regle 7 : le lot porte sur le SIEGE). Le remede demande de construire les episodes sur `i10` — 48 montees nommees contre 86 episodes publies : c est un arbitrage de couverture ET une valeur neuve de `rides[].src`, donc une decision utilisateur |
@@ -9302,6 +9392,31 @@ Aucune perte. `replay-corpus-gate` NON JOUE (interdit par le brief : aucune base
 pas la camera — c est l oracle, pas un defaut).
 
 **RIEN N EST POUSSE.** Arbre propre.
+### Post-chantier — lot 5.12 (passe de credit du backfill), gates SANS AUCUN DECODAGE, 2026-09-21
+
+Branche `feat/decfilm-62`, base `e3e8d7340`. **AUCUNE base de production ouverte** (le backfill la
+tient, le serveur est arrete), **aucun film lu** (pas de jonction de cache, aucun octet de
+`film/internal/`) : `SchemaVersion` **67**, `grammar.Rev` et `facts.Rev` **inchangees**. Tout se
+mesure sur des DuckDB temporaires peuplees par les VRAIES migrations (`migration.RunForDB`).
+
+| Date | Lot | Gate | Resultat |
+|---|---|---|---|
+| 2026-09-21 | 5.12.1 | plan DuckDB de la lecture de production `persist.FilmPassForMatch` (banc 180 000 lignes) | `SEQ_SCAN match_kill_events` **`Filters: match_id='match-00001'`** -> `WINDOW FIRST_VALUE(decode_pass) OVER (PARTITION BY match_id ...)` -> `FILTER decode_pass = #6 AND read_path IN (...)`. **Le predicat EST pousse sous la fenetre** : l hypothese du brief est refutee sur piece |
+| 2026-09-21 | 5.12.1 | cout de `FilmPassForMatch`, 200 appels chronometres sur 180 000 lignes | **3,9 ms par appel** (~40 s pour 9 144 matchs) — pas la cause des 22 heures |
+| 2026-09-21 | 5.12.1 | decomposition des lectures d un match (banc 180 000 lignes + 50 000 couples) | **jointure `v_gamertag_lookup` 77,2 ms** contre 0,9 ms sans (facteur **84**) ; preseance 1,4 ms ; enrichissement 1,7 ms ; `CollectMatch` entier **108,1 ms** |
+| 2026-09-21 | 5.12.2 | meme decomposition APRES l annuaire de passe | evenements **0,62 ms** ; preseance 0,78 ms ; enrichissement 1,16 ms ; annuaire **une fois** 44 a 62 ms pour 402 xuids ; `CollectMatch` entier **7,6 ms** |
+| 2026-09-21 | 5.12.2 | garde-fou de cout `TestPasseCredit_BudgetDesLecturesParMatch` | **1,32 ms de lectures par match**, budget 10 ms — vert. Le budget porte sur les LECTURES : l ecriture varie de 7,6 a 75 ms selon la charge machine (D3 du § 4) |
+| 2026-09-21 | 5.12.2 | reproduction du defaut exigee par le banc (`facteurDeDefautAttendu >= 5`) | vert : 45,7 ms contre 0,62 ms, facteur **73** |
+| 2026-09-21 | 5.12.2 | non-regression fonctionnelle de la passe (memes sorties) | `TestPasseCredit_BudgetDesLecturesParMatch` joue `CollectMatches` sur les 20 matchs du banc : **20 ecrits / 60 morts / 0 erreur** ; `credit_test.go` (preseance, trois etats de l assistant, couverture, roster) **vert, inchange** |
+| 2026-09-21 | 5.12.3 | cadencement par compteur, `credit_progression_test.go` (sans horloge) | vert : 10 cas de cadencement, **18 lignes** pour une passe de 9 144 matchs, 6 cas d ETA |
+| 2026-09-21 | tous | `gofmt -l` sur `internal/persist/` et `internal/sync/killcollector/` ; `go build ./...` ; `go vet` (dont `-tags=integration`) | vide ; vert ; vert |
+| 2026-09-21 | tous | `go test -count=1 ./internal/persist/... ./internal/sync/... ./internal/migration/... ./cmd/levelup/...` | **EXIT=0**, aucun FAIL |
+| 2026-09-21 | tous | **`go test -tags=integration -p 1 -count=1 ./internal/persist/... ./internal/sync/... ./internal/migration/...`** | **EXIT=0** — 13 paquets `ok`, aucun FAIL |
+| 2026-09-21 | tous | ratchets anti-ART et identite : `no_art_patterns`, `append_only_state_guard`, `no_raw_rating_reads` (ADR 0030 D-4), `no_raw_kill_scope_literal`, `no_mojibake` | verts, **aucune allowlist touchee**. `no_raw_kill_scope_literal` a d abord ete ROUGE sur les deux bancs (litteraux `'marche'` / `'scan'` dans les fixtures) : corrige a la source (les bancs lient `persist.FilmReadPaths`), jamais allowliste |
+| 2026-09-21 | tous | `golangci-lint run ./internal/persist/... ./internal/sync/... ./internal/migration/...` (paquets entiers) | 37 issues, **toutes preexistantes** (baseline) — **zero** sur les cinq fichiers du lot |
+| 2026-09-21 | tous | **revue adversariale en contexte frais, lentille L1 (anti-ART)**, sur `e3e8d7340..dcdcc7fcc` | **0 P0, 0 P1, 2 P2 recevables**, 16 conditions verifiees qui tiennent. Le relecteur a ferme sur pieces la question de l instantane : la passe credit ne peut PAS servir un nom perime (la jambe `kv` de la vue est un `MAX(gamertag) GROUP BY xuid` et ce que la passe reinsere est deja ce `MAX` ; `xuid_aliases.xuid` est PK et les deux autres jambes sont des `GROUP BY`, donc la vue rend au plus UNE ligne par xuid) |
+| 2026-09-21 | tous | **les deux P2 corriges dans le lot** (ils portaient sur l item 5.12.3, donc dans le perimetre) | (1) la progression etait sautee par le `continue` du cas d erreur alors que le compteur d examines compte les erreurs -> `comptabiliser` extraite, un seul chemin de sortie, et `CreditSummary.examines()` centralise la somme ; **test de non-regression** `TestProgressionJournaliseeMemeQuandLesMatchsEchouent` (table source retiree, 1 200 matchs tous en echec, **2 jalons exiges** — zero avant le correctif) ; (2) un commentaire annoncait « 19 lignes » la ou le test et le plan disent **18** — corrige, le code fait foi |
+
 
 ### Post-chantier — lot 5.10.6 (la lecture primaire, schema 67), gates AVEC DECODAGE, 2026-09-21
 
