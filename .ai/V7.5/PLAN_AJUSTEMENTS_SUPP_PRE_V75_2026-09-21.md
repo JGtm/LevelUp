@@ -112,7 +112,7 @@ surface `film/replay` 260 -> 263 justifie.
 - [ ] Repartition des resultats : une barre epaisse horizontale empilee (compte + part ecrits), taux en chiffre d appel, bande des resultats
 
 ## Decouvertes (hors perimetre, ne pas traiter)
-- E : la table persistee `match_pad_tiers` porte encore l ancienne regle (34 matchs sur 92 avec un ensemble de base faux dans les agregats Sessions/Escouade/Timeseries ; la Match view recalcule a la requete). Rattrapage existant `levelup backfill-pad-tiers` (rejoue `ProjeterNiveauxDArmes` sans recuisson) — A DEMANDER, non lance ; meme question en prod au deploiement.
+- E : la table persistee `match_pad_tiers` porte encore l ancienne regle (34 matchs sur 92 avec un ensemble de base faux dans les agregats Sessions/Escouade/Timeseries ; la Match view recalcule a la requete). Rattrapage existant `levelup backfill-pad-tiers` (rejoue `ProjeterNiveauxDArmes` sans recuisson) — DECISION utilisateur 2026-09-21 : OUI, a lancer en local A LA FIN du chantier (apres fusion de G et H) ; prevenir avant de le lancer en prod.
 - E : neuf vies de b1ad85eb non nommees (`index_hors_table`), dont 573 et 594 : leurs prises ne sont attribuees a personne (queue residuelle sous le seuil).
 - A2 : la vue « Prises nettes de drapeau » ne contient plus que son titre (D1 applique a la lettre) -> verdict utilisateur.
 - A2 : `usage.powerup_pickups` servi par Go et plus lu par le web ; `usageI18n.ts` 562 L (dette reduite, non resorbee) ; `equipRift` cle morte.
