@@ -8316,6 +8316,16 @@ Revisions : `grammar-2026-09-22.2` / `killsource-2026-09-22.2`. Gates par commit
 `go test -race` sur `grammar` (337 s, vert), `npx vitest run src/features/match-replay`
 (3 014 tests verts). Corpus 19, re-figeage et CI : au pilote.
 
+**GATE AVEC DECODAGE — `replay-equiv --films=bcb6d393` SANS `-update`, ET SES DIVERGENCES SONT
+CELLES QUI ETAIENT ATTENDUES.** 6 etapes sur 57 s ecartent de la reference, et la reference est
+PERIMEE depuis la fusion 5.10 (report D1 (5.11) de la passation : le re-figeage est un geste du
+pilote). Les six : `killsource`, `grappleReads.stats`, `vehicles`, `movementStates`,
+`movementStates.stats`, `artifact`. **Le chiffre qui tranche est `movementStates` : 1 489 obtenus
+contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 5.11.7 a mesuree
+(1 364 -> 1 489) avant d ecrire sa passation.** Ce lot-ci ne la deplace donc pas d un record :
+les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
+pic 0,19 Gio, un film a la fois.
+
 ### Post-chantier — lot 5.11.7 (LES TROIS TABLES D ENTITES PAR VUE), branche `feat/decfilm-63`
 
 Suite directe du 5.11.6, qui avait NOMME le trou sans le refermer. Le recadrage de l utilisateur
