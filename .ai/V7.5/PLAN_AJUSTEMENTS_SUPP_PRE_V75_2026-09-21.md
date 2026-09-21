@@ -12,8 +12,9 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - D1 « Prises nettes de drapeau » (Sessions) : retirer EXACTEMENT le texte cite (de « Prises nettes
   de drapeau » a « attribuees a un joueur ») ; le pilote lit : les phrases explicatives du bloc.
   Le titre de vue et la jauge du role « prendre » restent.
-- D2 Tiers d'armes, partout : puissance en tete, puis bonus (camouflage, surbouclier — socles de
-  bonus, game-changers), puis terrain, puis un depliable ferme par defaut avec base. La ligne
+- D2 Tiers d'armes, partout : puissance en tete, puis terrain, puis un depliable ferme par defaut
+  avec base. Les socles de BONUS (camouflage, surbouclier) sont des EQUIPEMENTS (decision du
+  2026-09-21) : ils quittent la section armes, deja comptes dans « Usages d'equipement ». La ligne
   « non identifie » disparait des grilles (son compte passe dans l'infobulle (i) du titre).
 - D3 Empaleur : ERREUR de classement constatee sur b1ad85eb (depart a loadout classique et egal
   pour tous) — corriger la cause AVANT tout reclassement.
