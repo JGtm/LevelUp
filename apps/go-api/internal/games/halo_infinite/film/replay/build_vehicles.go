@@ -271,6 +271,7 @@ func attachVehicles(
 	doc.VehicleCycles = buildVehicleCycles(tracks, clock.step, &cov)
 	doc.Coverage.Vehicles = &cov
 	logVehicleCoverage(&cov)
+	logVehicleHeadingSource(scan.Positions)
 	logVehicleRideResolution(st)
 }
 

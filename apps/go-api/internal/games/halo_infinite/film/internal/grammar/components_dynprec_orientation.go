@@ -112,6 +112,22 @@ type FwdUpDynPrec struct {
 	DirDefault bool
 }
 
+// FwdUpModeConfig est le mode 1, le chemin « config » (`FUN_142e29bac`) : direction sur 30 bits,
+// roulis sur 30 bits.
+//
+// C EST LE SEUL MODE DONT L AVANT RECONSTRUIT EST PROUVE (lot 5.4.2, deux films, oracle du
+// deplacement et temoin par permutation) :
+//
+//	`4f77afc1` mode 1, 35 350 echantillons : mediane 11,0 deg, temoin 88,8
+//	`a349fea8` mode 1,    877 echantillons : mediane 23,4 deg (7,7 en AVANCE), temoin 81,5
+//
+// Le mode 0 est REFUTE sur `a349fea8` (mediane 95,5 contre un temoin a 94,5 : indiscernable) et
+// faible sur `4f77afc1` (50,8 sur 538 echantillons). Sa direction lue n y est pas verticale —
+// |z| median 0,585 contre 0,979 pour le mode 1 — donc ce n est meme pas le vecteur HAUT qui en
+// sort. La publication du cap s appuie sur CE mode et sur lui seul ; ailleurs, la velocite reste
+// la source. Cf. D5 (5.4).
+const FwdUpModeConfig uint8 = 1
+
 // FwdUpDirBits / FwdUpRollBits rendent les largeurs de la direction et du roulis pour un mode.
 // Elles vivent ici, avec la grammaire qui les impose, pour qu aucun lecteur ne les redevine.
 func FwdUpDirBits(mode uint8) uint {

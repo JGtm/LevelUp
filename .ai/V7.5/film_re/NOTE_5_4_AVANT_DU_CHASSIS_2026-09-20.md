@@ -148,3 +148,81 @@ La preuve demande donc un film du cache — `4f77afc1` (build recent, mode 1 dom
 desormais `HasAim`/`AimRaw`). `facts.Rev` ne monte PAS — la couche des faits ne lit `i2` nulle
 part. `SchemaVersion` reste 64, et le seul ecart des huit fixtures de contrat est la chaine
 `grammarRev`.
+
+---
+
+# SUITE — LA PREUVE ET LE PORT (2026-09-21, voie libre du pilote)
+
+## 7. LA PREUVE, PAR MODE ET PAR FILM
+
+Oracle : la direction du DEPLACEMENT, sur les echantillons qui avancent nettement (>= 5 m/s).
+Temoin : l avant d un AUTRE echantillon, decale de la moitie de la population (~90 deg attendus).
+Un film a la fois, tag `research`, AUCUNE base DuckDB ouverte.
+
+| film | population | n | mediane | p90 | < 15 deg | temoin |
+|---|---|---:|---:|---:|---:|---:|
+| `4f77afc1` | TOUS MODES | 35 888 | **11,2** | 67,5 | 57,9 % | **91,5** |
+| `4f77afc1` | TOUS MODES, AVANCE | 33 455 | **10,0** | 46,6 | 62,1 % | — |
+| `4f77afc1` | **mode 1** | 35 350 | **11,0** | 64,8 | 58,4 % | **88,8** |
+| `4f77afc1` | mode 0 | 538 | 50,8 | 146,0 | 24,0 % | 85,7 |
+| `a349fea8` | TOUS MODES | 24 331 | 94,8 | 160,6 | 6,8 % | 94,3 |
+| `a349fea8` | **mode 1** | 877 | **23,4** | 146,8 | 35,5 % | **81,5** |
+| `a349fea8` | mode 0 | 23 454 | **95,5** | 160,9 | 5,7 % | **94,5** |
+
+Le critere du brief — mediane < 15 deg ET temoin ~90 — est ATTEINT par le mode 1 sur `4f77afc1`,
+et tenu sur `a349fea8` (7,7 deg de mediane sur la population qui AVANCE) malgre un echantillon
+quarante fois plus petit. Il n est atteint par le mode 0 sur AUCUN des deux.
+
+## 8. LE REGIME QUI MOTIVAIT LE LOT
+
+C est la que le gain se voit, et il ne se voit pas dans une mediane :
+
+| | `4f77afc1` | `a349fea8` |
+|---|---:|---:|
+| echantillons rapides dont le nez est a l OPPOSE du mouvement (> 135 deg) | **3,1 %** | **21,5 %** |
+| ... et leur ecart median | 154,1 deg | 159,5 deg |
+| |delta| median du cap entre echantillons consecutifs, A L ARRET | **0,29 deg** | 0,37 deg |
+| ... en mouvement | 0,57 deg | 0,87 deg |
+
+La marche arriere etait publiee a 180 deg de la verite. A l arret, le cap du film est POSE — la
+velocite, elle, ne rend rien sous le seuil et l appelant reportait le dernier cap mobile.
+
+## 9. POURQUOI LE MODE 0 EST ECARTE DE LA PUBLICATION
+
+Sa mediane est indiscernable de son temoin (95,5 contre 94,5 sur `a349fea8`), et la cause est en
+AMONT de la reconstruction : le |z| de la direction qu il rend vaut **0,585**, contre **0,979**
+pour le mode 1. Ce n est donc meme pas le vecteur HAUT qui en sort. Or 0,577 = 1/racine(3) est la
+signature d un COIN de face cubemap — ce qu on obtient quand le code lu n est pas celui qu on
+croit. Le meme 0,577 sort de la feuille 4 sur mini-bobines (§5).
+
+Conclusion : dette de grammaire PAR BUILD sur ce chemin, consignee en D5 (5.4), NON traitee. Elle
+a un oracle immediat, qui ne demande aucun deplacement : le |z|.
+
+## 10. LE PORT
+
+`vehicleHeadingOf` (extrait dans `replay/vehicle_heading.go`) prend d abord l avant LU — sur le
+mode prouve uniquement — puis retombe sur la velocite et son seuil. Le roulis, le mode et le
+drapeau « a plat » voyagent dans le codec des faits (bit 7 du second octet de drapeaux, puis un
+octet de mode et le quantum) : sans eux, le rejeu DEPUIS LES FAITS aurait publie un autre cap que
+le decodage. `SchemaVersion` reste **64** — `h` garde sa forme, seule sa SOURCE change.
+
+MESURE SUR `084a804d` (temoin vehicule, BTB Heavies CTF, 109 478 echantillons) :
+
+| source du cap | n | part |
+|---|---:|---:|
+| **lu dans le film** | **70 315** | **64,2 %** |
+| deduit de la velocite (repli) | 9 884 | 9,0 % |
+| aucun (le dernier connu est reporte) | 29 279 | 26,7 % |
+| dont roulis lu mais mode NON publie (mode 0) | 9 506 | 8,7 % |
+
+DEUX GATES DE DECODAGE, SANS DUCKDB :
+
+- `replay-equiv --films=084a804d` : **0 PERTE**. Trois etapes sur 55 divergent, a comptes
+  IDENTIQUES (`positions` 330 769 = 330 769, `vehicles` 1 = 1) ; seul `artifact` grossit,
+  9 345 550 -> 9 361 388 octets (+15 838) — c est le GAIN, des caps la ou il n y en avait pas.
+- `replay-equiv --deux-passes --films=084a804d` : **artefact IDENTIQUE A L OCTET** entre le
+  decodage et le rejeu depuis les faits. C est le gate qui prouve le round-trip du codec.
+
+`replay-corpus-gate --temoins=bfecd02b` n a PAS pu etre joue : il exporte les faits par
+`levelup replay-facts-export`, qui ouvre la base partagee, tenue EN ECRITURE par le backfill.
+Echec propre (exit 4, aucune ecriture) ; a rejouer par le pilote quand la base est rendue.

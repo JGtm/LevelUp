@@ -332,6 +332,13 @@ package grammar
 // d octets. `AimVector` suit la largeur du mode au lieu de 19 bits en dur, sans quoi une
 // direction de 30 bits se decoderait en vecteur arbitraire.
 //
-// `SchemaVersion` NE MONTE PAS : aucun champ neuf au document, et `vehicles[].samples[].h` reste
-// l atan2 de la velocite. La publication de l avant est un lot SEPARE (5.4.3), et elle ne sera
-// posee que si la preuve sur film tient.
+// `SchemaVersion` NE MONTE PAS : aucun champ neuf au document — `vehicles[].samples[].h` garde sa
+// forme, seule sa SOURCE change.
+//
+// LA PREUVE A TENU, ET LE PORT EST POSE DANS CE MEME RANG (lot 5.4.3, 2026-09-21). Deux films,
+// oracle du deplacement et temoin par permutation : `4f77afc1` mode 1, 35 350 echantillons,
+// mediane **11,0 deg** contre un temoin a **88,8** ; `a349fea8` mode 1, mediane 23,4 (7,7 sur la
+// population qui AVANCE), temoin 81,5. Le mode 0 est REFUTE (`a349fea8` : mediane 95,5 contre un
+// temoin a 94,5, indiscernable — et sa direction lue n y est meme pas verticale, |z| median 0,585
+// contre 0,979 pour le mode 1). Le cap publie sort donc du film sur le mode 1 et sur lui seul ;
+// partout ailleurs la velocite reste la source, en repli nomme et compte.

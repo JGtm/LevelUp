@@ -22,7 +22,6 @@ package replay
 // composant `object-dead-state` la DATE. Ce fichier ne fait que poser la fenetre et appeler.
 
 import (
-	"math"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -76,17 +75,6 @@ const vehicleRelayRadiusM = 0.5
 // la surface de faux positifs. Elle est nommee pour que le jour ou un film la demande, le
 // changement soit une decision datee et pas un chiffre glisse dans une condition.
 const vehicleRelayMarginFrames = 0
-
-// vehicleMinSpeedMPS est la vitesse au-dela de laquelle la direction de la velocite `i1` vaut un
-// CAP. C est le seuil de l oracle V1a.3 (rapport `V1A_RAPPORT_2026-08-31.md` § 3.1), sous lequel
-// la mesure a valide `i1` : ecart median au deplacement de 1,7 a 2,1 deg sur quatre films
-// (R = 0,992 a 0,997), contre 51 a 88 deg pour le temoin par melange deterministe.
-//
-// SOUS CE SEUIL, AUCUN CAP N EST CALCULE : la direction d un vecteur quasi nul est du bruit. Le
-// cap du dernier echantillon mobile est alors REPORTE — un vehicule a l arret garde le cap sous
-// lequel il s est arrete, ce qui est la decision de cadrage du plan (et la seule honnete : `i2`
-// est REFUTE et `i21` est ABSENT de `ti=40`, cf. V1_CONDUCTEUR_VISEE_2026-09-01).
-const vehicleMinSpeedMPS = 5.0
 
 // vehicleLife est une vie de vehicule telle que le recensement la borne, decoupee de sa voisine
 // du meme slot.
@@ -435,25 +423,6 @@ func vehicleSamplesOf(
 		out = append(out, s)
 	}
 	return out, lastSeen
-}
-
-// vehicleHeadingOf rend le CAP en degres [0,360[ d un echantillon, quand sa velocite `i1` depasse
-// le seuil de l oracle. Meme origine et meme sens que `atan2(Y, X)` des positions dequantifiees,
-// donc la MEME convention que `Point.H` — le client n a qu une regle d orientation a connaitre.
-func vehicleHeadingOf(p grammar.BipedPosition) (float32, bool) {
-	v, ok := p.VelocityVector()
-	if !ok {
-		return 0, false
-	}
-	speed := math.Hypot(float64(v[0]), float64(v[1]))
-	if speed < vehicleMinSpeedMPS {
-		return 0, false
-	}
-	deg := math.Atan2(float64(v[1]), float64(v[0])) * 180 / math.Pi
-	if deg < 0 {
-		deg += 360
-	}
-	return float32(deg), true
 }
 
 // sortVehicleTracks fige l ordre publie : par instant d apparition, puis par vie. Un ordre stable
