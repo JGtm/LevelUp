@@ -6167,17 +6167,28 @@ méthode du lot 3.7 (§ 7) répond chez l'ÉCRIVAIN, avant tout film.
   trouvé (`i29`, `i54` et sa transformation d'ancrage, `i55`, `i62`, `i63`). L'utilisateur a
   raison sur le fond ; la correction porte sur le mécanisme, et elle est écrite au § 2.9 de la
   note.
-- [ ] **5.3.2 — la preuve sur film** (EN ATTENTE DE LA VOIE LIBRE DU PILOTE). Un film à la fois,
-  test ciblé sous tag `research`, sur `bfecd02b` (Snowbound, Team Slayer, match de JGtm) puis
-  `4f77afc1` : ventilation de `i29`/`i54`/`i55`/`i62` par joueur et par instant, intervalles
-  d'état reconstruits, cohérence avec la vitesse au sol (`i1`) et la composante verticale.
-  **La ventilation de l'ENUM d'action d'`i54` (`+0x9c`, `+0x08`) par joueur s'ajoute au tableau**
-  (5.3.1 bis (d)).
-  **S'y ajoute la ventilation BIT A BIT du mot de 32 bits d'`i18 unit-control +0x544`** contre
-  la composante verticale d'`i1` : un bit de saut s'allume une image avant que `vz` ne devienne
-  positif (5.3.1 ter, D7). C'est la mesure la moins chère du lot.
-  Livrable pour l'œil de l'utilisateur : 5 instants par état sur `bfecd02b` (temps de barre
-  Theater = temps film). Tranche aussi D1 (5.3) ci-dessous.
+- [x] **5.3.2 — la preuve sur film** (voie libre du pilote, 2026-09-21). `bfecd02b` puis
+  `4f77afc1`, UN A LA FOIS, aucune base DuckDB, aucun artefact. **541 105 records bipèdes delta
+  et 1 202 records d'image-clé marchés par la boucle de composants de PRODUCTION.** Cinq
+  résultats. (1) **DEUX CANAUX, DEUX CADENCES** : `i18`, `i29` et `i55` sont à **0,0 %** des
+  records delta et **~99 %** des records d'image-clé — les états sont échantillonnés tous les
+  ~18 s, pas par image ; seule l'action de mobilité `i54` voyage en delta (0,3 % / 0,5 %).
+  (2) **D1 TRANCHÉE** : `i55` absent du delta, présent sur 205/207 et 983/995 images-clés, tags
+  NON NULS **32,7 %** et **25,7 %** (les mini-bobines disaient 23,5 %) — réelle, documentée, et
+  inoffensive tant que la marche s'arrête à `i60` (bloquant sur 171/207 et 859/995).
+  (3) **LA GLISSADE EST INACCESSIBLE** : `i62` lu 0 fois, parce qu'il est DERRIÈRE `i60` —
+  porter `i60 simulation-state-component` est le pré-requis chiffré, pas une impasse.
+  (4) **D7 RÉFUTÉE** : les 32 bits d'`i18 +0x544` sont TOUS allumés entre 7,2 % et 20,6 %, aucun
+  bit mort, aucun dominant, aucun ne prédit la montée mieux que ses voisins — c'est un mot
+  opaque à forte entropie, pas un champ de boutons. **Il ne reste aucun candidat de forme
+  « entrée » sur le bipède.** (5) **L'ORACLE DE VITESSE RÉFUTE LE SPRINT pour `i54`** : magnitude
+  médiane **125** contre **211** debout (`bfecd02b`), **130** contre **217** (`4f77afc1`) —
+  l'action de mobilité se produit PLUS LENTEMENT que la marche, profil d'un geste où l'on
+  ralentit (escalade), pas d'un sprint. L'identifiant de 10 bits n'est transmis **0 fois sur
+  2 245** et `+0x9c` ne prend que **deux** valeurs : l'hypothèse « énuméré à quatre actions »
+  est réfutée (D9). **Le sprint par la vitesse reste NON TRANCHÉ** (distribution resserrée,
+  aucune seconde bosse) et c'est dit comme tel. Cinq instants par état en temps de barre Theater
+  livrés au § 2ter.7 de la note.
 - [ ] **5.3.3 — le port** (CONDITIONNEL : seulement si 5.3.2 prouve). Intervalles d'état par
   joueur dans le document (`players[].stances[]`), couche d'analyse sur les faits, **montée de
   schéma 64 -> 65** avec la checklist complète (chronique, `structure_test`,
@@ -6599,6 +6610,8 @@ méthode du lot 3.7 (§ 7) répond chez l'ÉCRIVAIN, avant tout film.
 | 2026-09-20 | 5.3.1 bis | **D5 (5.3) — LE CATALOGUE D'AOÛT RANGE `i56` SOUS « SPRINT », ET C'EST FAUX.** `biped-spartan-ability-energy` est la jauge des trois emplacements de charge de la capacité d'armure (`R(3)` masque + `R(7)` par charge armée, défaut `0x7F` = pleine), donc de l'ÉQUIPEMENT — le sprint de Halo Infinite ne coûte aucune énergie. Deux documents propagent l'erreur : `RECAP_STATS_EXPLOITABLES.md:229` et `HANDOFF_FILM_EXTRACTION_EXTERNAL_DEV.md:595`. | **NON TRAITÉE** : corriger deux documents est hors périmètre du lot ; `NOTE_5_3_ETATS_DE_MOUVEMENT_2026-09-20.md` § 2.6 fait foi en attendant |
 | 2026-09-20 | 5.3.1 ter | **D6 (5.3) — `ecs_table.tsv` DONNE A `i49 biped-control-context` « 3 bits (5 valeurs) » ; L'ÉCRIVAIN EN LIT 2 OU 4.** `FUN_14107166c` calcule sa largeur depuis `DAT_145121140` (le réglage de pleine précision du processus) : `w = 4` s'il vaut 1, `w = 2` sinon, puis `R(1)`. Le port du dépôt est juste ; c'est la TABLE qui ment — et la valeur « 5 valeurs » avait fait naître une hypothèse (les cinq états Havok) que la lecture de l'écrivain a tuée. | **NON TRAITÉE (règle 7)** : une ligne de table, à corriger par le lot qui reprendra `ecs_table.tsv` avec son garde-rail (voir D2) |
 | 2026-09-20 | 5.3.1 ter | **D7 (5.3) — UN MOT DE 32 BITS OPTIONNEL, DÉJÀ DÉCODÉ ET JETÉ, N'A AUCUN SENS ÉTABLI.** `i18 unit-control +0x544` : `R(1)` puis `R(32)`, défaut 0 — le seul champ de tout l'archetype bipède ayant la forme d'un champ de bits de commande, et l'écrivain ne le nomme pas (`FUN_14080d69c` est la feuille générique « porte + valeur » ; aucune étiquette dans le pool des chaînes). `consumeUnitControl` le consomme et l'abandonne. | **NON TRAITÉE ICI, mais c'est un item de 5.3.2** : sa ventilation bit à bit contre la composante verticale d'`i1` est la mesure la moins chère du lot et elle tranche la question du saut |
+| 2026-09-21 | 5.3.2 | **D8 (5.3) — LE BALAYAGE BIPÈDE DE PRODUCTION NE LIT QUE SIX COMPOSANTS.** `scanRecordDirs` modélise `i1`, `i2`, `i3`, `i4`, `i5`, `i21` et s'arrête au premier autre (« composant non modélisé -> curseur non fiable »). Tout ce qui est au-delà d'`i21` — donc TOUS les composants de mouvement — n'est JAMAIS lu sur le chemin delta en production. Ce n'est pas un défaut (ce balayage ne cherche que positions et directions), mais 5.3.3 devra faire marcher la boucle COMPLÈTE sur les records delta. 5.3.2 a prouvé que c'est faisable : **100 % de marches complètes sur 541 105 records**. | **NON TRAITÉE (règle 7)** : c'est le premier item de chiffrage de 5.3.3, et son coût en temps de décodage doit être mesuré avant d'être promis |
+| 2026-09-21 | 5.3.2 | **D9 (5.3) — LE DOMAINE MESURÉ DES CHAMPS D'`i54` CONTREDIT L'HYPOTHÈSE DE L'ÉCRIVAIN.** L'identifiant optionnel de 10 bits n'est transmis **0 fois sur 2 245 initiations** (il reste à sa sentinelle), et `+0x9c` ne prend que **deux** valeurs, 0 et 2, jamais 1 ni 3. L'hypothèse « Sprint / Thruster / Clamber / Slide sur 2 bits » du § 2.8 est donc réfutée par les valeurs. Seul `+0x98` (R(7)) se comporte en discriminant, et son domaine varie d'un film à l'autre (3 valeurs sur `bfecd02b`, 8 sur `4f77afc1`). | **NON TRAITÉE** : nommer les classes demande de croiser `+0x98` avec la carte et le geste vu dans Theater — c'est un lot en soi, et il a besoin de l'attribution vie -> joueur que 5.3.2 n'a pas faite |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -6630,6 +6643,9 @@ et `facts.Rev` sont donc inchangés, et les 8 fixtures de contrat aussi.
 | 2026-09-20 | 5.3.1 (D1) | `go test -tags=research -run TestMouvementI55D1` sur les 7 mini-bobines | **1 364 records `ti=35` bornés · `i55` franchi 895 · tags t0=685 t1=79 t2=52 t3=79 (23,5 % non nuls)** ; écart à l'uniforme **1 270** ; fermetures **6/1 364, dont 0 après `i55`**. `i29`/`i54`/`i55` présents sur les mêmes 895 records, `i62` sur **0**. Aucun film du cache, aucune base — les mini-bobines ne portent que registre + 12 images-clés + pied |
 | 2026-09-20 | 5.3.1 ter | lecture des écrivains `i18`/`i19`/`i25`/`i49`/`i55` (Ghidra en lecture seule, aucun film) | `i18` = `R(1)` ; `R(5)`->`+0x548` et `R(1)+R(6)`->`+0x726` (index bornés à `0x20`, sentinelle `0xFFFF`, hors plage = échec) ; `R(1)+R(32)`->**`+0x544`, défaut 0**. `i49` = `R(2 ou 4)` + `R(1)` (et non « 3 bits »). Énuméré Havok lu dans l'image à `0x1437d6870` : **cinq états au moins**, donc PAS le tag de 2 bits d'`i55`. Graphe d'animation : transitions gardées par `is_sprinting` / `is_airborne` — des CONDITIONS D'ÉTAT |
 | 2026-09-20 | 5.3.1 bis | vérification sur pièces (documents + exe, Ghidra en lecture seule) | `FUN_142ef8f04` (événement 43) appelle **`FUN_1408f02c8`**, le corps d'`i54` ; **xrefs = 2 appelants exactement**. R5/R7 : type 43 **ABSENT du film** (0 tête / 325 160 paquets ; 0 pour 16,3 attendues en liste entière). Table des 123 types : **seuls `ai_jump` (78) et `AILand` (72)** au vocabulaire du saut, tous deux AI. `i56` = `R(3)` + `R(7)` x popcount, trois charges, défaut `0x7F`. **Aucun film lu, aucune base ouverte** |
+| 2026-09-21 | 5.3.2 | `go test -tags=research -run TestMouvement532` sur `bfecd02b` puis `4f77afc1`, UN A LA FOIS | **162 444 + 378 661 records delta, 207 + 995 d'image-clé.** `i18`/`i29`/`i55` : 0,0 % en delta, ~99 % en image-clé. `i54` : 453 et 1 792 initiations (9 et 63 slots). `i55` tags non nuls **32,7 %** et **25,7 %**. `i62` : **0** (derrière le bloquant `i60`, 171/207 et 859/995). Mot de 32 bits : **32/32 bits allumés**, 7,2-20,6 %, aucun dominant. Vitesse médiane 125 vs 211 et 130 vs 217. **Aucune base DuckDB ouverte, aucun artefact, aucun corpus** |
+| 2026-09-21 | 5.3.2 | ratchet de taille (`TestTailleDesFichiersDuFilmNeCroitPas`) | **A REFUSÉ l'instrument à 826 lignes** (seuil 500). Scindé par DÉPLACEMENT PUR en `mouvement_5_3_2_research_test.go` (la lecture, 416 l.) et `mouvement_5_3_2_tableaux_research_test.go` (les tableaux, 424 l.) ; la table `plafondsParFichier` n'a PAS été touchée |
+| 2026-09-21 | 5.3.2 | `gofmt` · `go build` · `go vet` (dont `-tags=research`) · les 7 paquets de test · `golangci-lint run ./…/film/...` | sortie vide · `BUILD_OK` · `VET_OK` + `VET_RESEARCH_OK` · **code de sortie 0** · **0 issues** |
 | 2026-09-20 | 5.3.1 | corpus gate, `replay-equiv`, re-figeage | **AUCUN, et ce n'est pas un report** : rien de publié ne bouge, et la contrainte de machine l'interdit (voir l'en-tête). Le pilote les joue à la fin de la série (décision utilisateur du 2026-09-20) |
 
 ### Lot 5.2b — LE ROSTER DES REMPLACANTS, ET L ORIENTATION REFUTEE PAR SA CAUSE, 2026-09-20

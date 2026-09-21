@@ -4,9 +4,10 @@
 > `6e86db356`. Question de l'utilisateur (2026-09-19) : « on a les evenements de joueurs comme
 > les slide, crouch, sprint et saut ? ».
 >
-> **ETAT : point 1 (L'ECRIVAIN) FAIT ; D1 MESUREE sur les sept mini-bobines (§ 2.4 bis).
-> Point 2 (preuve sur film entier) EN ATTENTE DE VOIE LIBRE** — un backfill tient le parc ;
-> aucun film du cache n'a ete lu, aucune base ouverte.
+> **ETAT : points 1 (L'ECRIVAIN) et 2 (LA PREUVE SUR FILM) FAITS.** L'ecrivain aux § 1 a 2.9,
+> D1 sur mini-bobines au § 2.4 bis, **la mesure sur `bfecd02b` et `4f77afc1` au § 2 ter**.
+> Le port (5.3.3) N'EST PAS LANCE : il attend le retour du pilote. Aucune base DuckDB n'a ete
+> ouverte a aucun moment ; les films ont ete lus UN A LA FOIS.
 
 ---
 
@@ -14,8 +15,8 @@
 
 | Geste | Le film l'ecrit-il ? | Ou | Forme |
 |---|---|---|---|
-| **Accroupi** | **OUI, directement** | `ti=35 i29 unit-crouch-component` | ETAT par image : booleen + fraction 0..1 |
-| **Glissade** | **OUI, directement** | `ti=35 i62 biped-slide-component` | ETAT par image : booleen + direction/intensite + 2 fractions 0..1 + un octet |
+| **Accroupi** | **OUI** | `ti=35 i29` | booleen + fraction 0..1. **MESURE : uniquement a l'IMAGE-CLE** (99 % des records d'image-cle, 0 % des records delta) — donc un etat tous les ~18 s, pas par image (§ 2ter.1) |
+| **Glissade** | **GRAMMAIRE ACQUISE, DONNEE INACCESSIBLE** | `ti=35 i62` | booleen + direction/intensite + 2 fractions. **MESURE : lue 0 fois sur les deux films** — `i62` est DERRIERE le bloquant `i60 simulation-state-component`. Porter `i60` est le pre-requis chiffre (§ 2ter.3) |
 | **Sprint** | **OUI, mais sans son nom** | `ti=35 i54 biped-mobility-action-component` — l'ACTION DE MOBILITE, dont le corps est PARTAGE avec l'evenement de fil 43 `initiate_mobility_action` (§ 2.7) | EVENEMENT date : flag1 = « une action est transmise », puis un identifiant et une transformation. **Quelle** action reste a nommer (§ 2.8) ; repli mesurable par la vitesse `i1` |
 | **Saut** | **PAS SOUS SON NOM — ni composant, ni evenement de joueur** | negatif mesure (§ 2.7) : seuls `ai_jump` (78) et `AILand` (72), prefixes AI. **Candidats vivants** : le mot de 32 bits optionnel d'`i18 unit-control +0x544` (§ 2.9.1, deja decode et jete), `i55` (§ 2.4), `i63`, et la composante verticale d'`i1` | Theater rejoue l'animation depuis un ETAT REPLIQUE, pas depuis les entrees (§ 2.9.4). Le bit de saut, s'il existe, est dans le mot de 32 bits — **mesurable en 5.3.2, non nommable avant** |
 
@@ -451,6 +452,172 @@ candidat de forme « entree » — le mot de 32 bits d'`i18 +0x544` — et trois
 (`i55`, `i63`, la composante verticale d'`i1`). Tous sont mesurables a la voie libre, aucun
 n'est nommable avant.
 
+## 2 ter. LA PREUVE SUR FILM (5.3.2) — DEUX FILMS, UN A LA FOIS, AUCUNE BASE OUVERTE
+
+> Voie libre du pilote le 2026-09-21. `bfecd02b` (Snowbound, Team Slayer) puis `4f77afc1`
+> (Flood Gulch). Instrument : `grammar/mouvement_5_3_2*_research_test.go`, tag `research`.
+> Aucune base DuckDB, aucun artefact, aucun corpus.
+
+### 2ter.1 LE FAIT STRUCTURANT : DEUX CANAUX, DEUX CADENCES
+
+La marche de production ne lit pas les composants de mouvement sur le chemin delta — et ce
+n'est pas un choix, c'est une limite : `scanRecordDirs` ne modelise que `i1`, `i2`, `i3`, `i4`,
+`i5` et `i21`, et s'arrete au premier composant hors de cette liste (**D8**). L'instrument
+rejoue donc la VRAIE boucle de composants (`traverseComponentLoopFrom`) sur les records delta,
+et la meme sur les records d'image-cle.
+
+| | `bfecd02b` delta | `bfecd02b` image-cle | `4f77afc1` delta | `4f77afc1` image-cle |
+|---|---|---|---|---|
+| records `ti=35` | **162 444** (90 slots) | **207** | **378 661** (253 slots) | **995** |
+| `i1` vitesse | 90,1 % | 24,2 % | 86,3 % | 26,4 % |
+| `i18` unit-control | **0,0 %** | **99,0 %** | **0,0 %** | **98,8 %** |
+| `i29` unit-crouch | **0,0 %** | **99,0 %** | **0,0 %** | **98,8 %** |
+| `i54` mobility-action | **0,3 %** (464) | 99,0 % | **0,5 %** (1 867) | 98,8 % |
+| `i55` posture-physics | **0,0 %** | **99,0 %** | **0,0 %** | **98,8 %** |
+| `i62` biped-slide | 0,0 % (2 au masque) | 0,0 % | 0,0 % (2 au masque) | 0,0 % |
+
+**CE QUE CELA CHANGE POUR LE PRODUIT.** L'accroupissement, la posture et le mot de controle
+sont **echantillonnes a l'image-cle**, soit une fois toutes les ~18 s par bipede — pas par
+image. Des « intervalles d'etat par joueur » a la cadence de l'image sont donc **impossibles**
+pour ces champs : ce que le film permet, c'est un ETAT AU MOMENT DE L'IMAGE-CLE. Seule
+l'action de mobilite est datee finement, parce qu'elle voyage en delta.
+
+### 2ter.2 D1 TRANCHEE SUR FILM — ET SANS CONSEQUENCE MESURABLE
+
+| | chemin delta | image-cle | tags | NON NULS |
+|---|---|---|---|---|
+| `bfecd02b` | `i55` sur **0** des 162 444 records | 205/207 | 0:138 1:15 2:23 3:29 | **67 (32,7 %)** |
+| `4f77afc1` | `i55` sur **0** des 378 661 records | 983/995 | 0:730 1:70 2:89 3:94 | **253 (25,7 %)** |
+
+Les deux films confirment la mesure des mini-bobines (23,5 %) : **le `Skip(2)` saute bien, une
+fois sur quatre, une charge que le jeu lit** — et il ne le fait QUE sur le chemin d'image-cle,
+jamais en delta.
+
+**ET POURTANT RIEN NE CASSE, POUR UNE RAISON MESUREE** : la marche d'image-cle du bipede
+s'arrete de toute facon avant d'avoir quoi que ce soit a verifier. Les bloquants, comptes :
+
+```
+bfecd02b : i60 simulation-state-component 171 · i57 biped-spartan-ability 18 · i59 …-non-predicted-state 17   (marche complete 1/207)
+4f77afc1 : i60 simulation-state-component 859 · i59 …-non-predicted-state 68 · i57 biped-spartan-ability 58   (marche complete 10/995)
+```
+
+Aucun oracle de fermeture ne s'exerce au-dela d'`i55`. **D1 est donc reelle, documentee, et
+inoffensive tant que la marche s'arrete a `i60`** — elle deviendra bloquante le jour ou `i60`
+sera porte. C'est une dette datee, pas un incident.
+
+### 2ter.3 LA GLISSADE EST INACCESSIBLE — ET C'EST UN PRE-REQUIS CHIFFRE, PAS UNE IMPASSE
+
+`i62 biped-slide` est lu **0 fois** sur les deux films. La raison est mesuree, et ce n'est PAS
+que le film n'en parle pas : **`i62` est DERRIERE le bloquant**. `i60` arrete la marche, et
+`i62` vient apres. Sur le chemin delta, `i62` n'apparait au masque que 2 fois par film.
+
+**Pour publier la glissade, il faut d'abord porter `i60 simulation-state-component`** (et,
+accessoirement, `i57` et `i59`). Le cout est chiffre : 171 + 859 records bloques sur les deux
+films. Tant que ce n'est pas fait, la glissade n'est pas publiable — et dire « le film ne la
+porte pas » serait faux.
+
+### 2ter.4 LE MOT DE 32 BITS N'EST PAS UN CHAMP DE BOUTONS — D7 EST REFUTEE
+
+`i18 +0x544` ne voyage qu'a l'image-cle : **35 records sur 205** (`bfecd02b`) et **180 sur
+983** (`4f77afc1`). Ventilation bit a bit, chaque bit contre la composante verticale de la
+vitesse au record suivant du meme slot :
+
+| film | bits allumes | frequence par bit | montee qui suit | plancher |
+|---|---|---|---|---|
+| `bfecd02b` | **32 / 32** | 2,9 % a 14,3 % | 25 % a 100 % (n <= 5) | 5,8 % |
+| `4f77afc1` | **32 / 32** | 7,2 % a 20,6 % | 21 % a 62 % | 8,9 % |
+
+**AUCUN BIT MORT, AUCUN BIT DOMINANT.** Un champ de bits de commande aurait la signature
+inverse : la plupart des bits jamais allumes (le jeu n'a pas 32 actions), et un ou deux bits
+tres frequents (avancer, tirer). Ici les 32 bits sont allumes dans la meme fourchette etroite
+et aucun ne predit la montee mieux que ses voisins. **C'est la signature d'un mot OPAQUE a
+forte entropie** — jeton, horodatage, hachage — pas d'un champ de boutons.
+
+**D7 est donc REFUTEE, et avec elle la derniere piste « entree repliquee » du saut.** Il ne
+reste aucun candidat de forme « bouton » sur l'archetype bipede. Le § 2.9.4 tenait : Theater
+rejoue un ETAT, pas des entrees.
+
+> Reserve ecrite : la cadence d'image-cle (~18 s) rend de toute facon impossible d'apparier un
+> bit a un saut, qui dure environ une seconde. Meme si un bit de saut existait dans ce mot, ce
+> canal ne permettrait pas de le dater. Le negatif ci-dessus ne repose pas sur cette reserve —
+> il repose sur l'absence de bit mort — mais elle le double.
+
+### 2ter.5 L'ACTION DE MOBILITE, MESUREE — ET L'ORACLE DE VITESSE QUI REFUTE LE SPRINT
+
+| | `bfecd02b` | `4f77afc1` |
+|---|---|---|
+| initiations (`flag1`) | **453** sur 9 slots | **1 792** sur 63 slots |
+| `flag2` | 0 | 3 |
+| identifiant 10 bits present | **0** | **0** |
+| `+0x9c` R(2) | 0:342 · **2:111** | 0:1 623 · **2:169** |
+| `+0x98` R(7) | 0:342 · 1:74 · 3:37 | 0:1 535 · 1:73 · 3:56 · 5:53 · 8:21 · 10:18 · 13:19 · 15:17 |
+
+**TROIS RESULTATS NETS.**
+
+1. **L'identifiant de 10 bits n'est JAMAIS transmis** — 0 fois sur 2 245 initiations. Le champ
+   `+0x08` reste a sa sentinelle : **il ne porte pas l'identite de l'action**, contrairement a
+   ce que le § 2.8 donnait pour le candidat le plus probable. Rayé.
+2. **`+0x9c` ne prend que DEUX valeurs, 0 et 2** — jamais 1 ni 3. Ce n'est donc pas un enumere
+   a quatre actions ; c'est un drapeau a deux etats loge dans deux bits. L'hypothese
+   « Sprint / Thruster / Clamber / Slide sur 2 bits » (§ 2.8) est **refutee par les valeurs**.
+3. **`+0x98` porte 3 valeurs sur un film et 8 sur l'autre**, avec 0 tres dominant (75 % et
+   86 %). C'est le seul champ qui se comporte comme un discriminant d'action — et son domaine
+   depend du film, donc du contenu de la partie.
+
+**L'ORACLE DE VITESSE REFUTE LE SPRINT.** La magnitude quantifiee (monotone en vitesse) au
+moment de l'initiation, contre les records ordinaires :
+
+| classe | `bfecd02b` p10 / median / p90 | `4f77afc1` p10 / median / p90 |
+|---|---|---|
+| action de mobilite | 55 / **125** / 164 (n = 449) | 94 / **130** / 189 (n = 1 725) |
+| debout | 136 / **211** / 245 (n = 145 875) | 129 / **217** / 250 (n = 324 920) |
+
+**L'action de mobilite se produit PLUS LENTEMENT que la marche ordinaire, sur les deux films.**
+Un sprint irait plus vite. Ces initiations ne sont donc pas des sprints : le profil est celui
+d'un geste ou l'on RALENTIT — s'agripper a un rebord (escalade), ou amorcer une poussee.
+**C'est la premiere mesure du lot qui dit ce que `i54` n'est PAS, et elle est franche.**
+
+### 2ter.6 LE SPRINT — NON TRANCHE, ET DIT COMME TEL
+
+La distribution de la magnitude debout est **resserree** (p10 136, mediane 211, p90 245 sur
+`bfecd02b`) : **aucune seconde bosse** ne s'y detache. Le sprint ne se lit donc pas comme une
+classe separee de cette seule distribution. Deux raisons possibles, non departagees ici : la
+quantification (log/exp) ecrase le haut de la plage, ou la vitesse de sprint n'est pas assez
+distante de la marche pour se voir sans dequantification. **Conclusion : non tranche.** Ce qui
+le trancherait : dequantifier la magnitude en m/s et comparer aux vitesses connues du jeu.
+
+### 2ter.7 LES CINQ INSTANTS PAR ETAT, POUR L'OEIL DE L'UTILISATEUR
+
+Sur `bfecd02b` (Snowbound, Team Slayer), en **TEMPS DE BARRE THEATER** = temps film depuis le
+debut, `mm:ss`. Le `slot` est l'entite, c'est-a-dire UNE VIE — l'attribution vie -> joueur est
+le travail de l'index de `replaybuild` et n'est PAS faite ici (le document n'a pas ete cuit :
+aucune base ouverte). Les instants sont espaces d'au moins dix secondes pour ne pas donner cinq
+fois le meme geste.
+
+| etat | 5 instants (temps de barre Theater) |
+|---|---|
+| **ACCROUPI** | `02:40` (slot 518) · `03:00` (542) · `03:40` (547) · `04:20` (552) · `04:40` (559) |
+| **GLISSADE** | **AUCUN** — inaccessible, voir § 2ter.3 |
+| **ACTION DE MOBILITE** | `00:39` (516) · `01:00` (513) · `01:20` (518) · `01:37` (523) · `01:48` (515) |
+| **MONTEE (candidat saut, `dirZ > 0,60`)** | `00:19` (512) · `00:36` (518) · `00:46` (517) · `00:57` (515) · `01:08` (521) |
+
+> Les instants « accroupi » viennent des images-cles (cadence ~18 s) ; les « action de
+> mobilite » et les « montee » viennent du chemin delta, donc de l'image exacte.
+
+### 2ter.8 CE QUE L'INSTRUMENT A APPRIS SUR LUI-MEME
+
+Deux defauts de harnais ont ete trouves par des ECARTS DE COMPTE, et ils sont consignes parce
+que le prochain instrument les referait :
+
+1. **`traverseComponentLoopFrom` ne pose pas `EndBit`** — c'est `TraverseEntity` qui le fait
+   apres elle. Sans cette ligne, la fin du DERNIER composant d'un record vaut 0 et ce composant
+   n'est jamais lu : `i54`, plus haut index de 459 records, etait vu **5 fois au lieu de 487**.
+2. **Le registre d'un film peut nommer un composant SANS le suffixe `-component`** (le dispatch
+   accepte les deux orthographes). Comparer au seul nom long fait manquer des composants.
+
+Dans les deux cas, c'est la mesure separee du MASQUE — le denominateur — qui a revele l'ecart.
+Un instrument qui ne publie que ses trouvailles ne peut pas se corriger lui-meme.
+
 ---
 
 ## 3. LE NEGATIF, MESURE DEUX FOIS
@@ -582,3 +749,22 @@ go test -tags=research -count=1 -v -run TestMouvementI55D1 \
   d'un champ de bits de commande. `consumeUnitControl` le consomme par `consumeOpt32` et
   l'abandonne. **NON TRAITEE ICI, mais c'est un item de 5.3.2** : sa ventilation bit a bit est la
   mesure la moins chere du lot, et elle tranche la question du saut.
+  **REFUTEE LE 2026-09-21 (§ 2ter.4)** : les 32 bits sont TOUS allumes, dans une fourchette
+  etroite (7,2 a 20,6 % sur `4f77afc1`), et aucun ne predit la montee mieux que ses voisins. Un
+  champ de boutons aurait des bits MORTS et un ou deux bits dominants. C'est un mot opaque a
+  forte entropie. **Il ne reste aucun candidat de forme « entree » sur le bipede.**
+- **D8 (5.3)** — **LE BALAYAGE BIPEDE DE PRODUCTION NE LIT QUE SIX COMPOSANTS, ET S'ARRETE AU
+  PREMIER AUTRE.** `scanRecordDirs` (`offline_aim.go`) modelise `i1`, `i2`, `i3`, `i4`, `i5` et
+  `i21`, puis rend la main (« composant non modelise -> curseur non fiable »). Tout ce qui est
+  au-dela d'`i21` — donc TOUS les composants de mouvement — n'est JAMAIS lu sur le chemin delta
+  en production. Ce n'est pas un defaut : ce balayage ne cherche que les positions et les
+  directions. Mais cela veut dire qu'un port qui voudrait publier l'action de mobilite devra
+  faire marcher la boucle COMPLETE sur les records delta, ce que 5.3.2 a prouve faisable
+  (100 % de marches completes sur 541 105 records). **NON TRAITEE** : c'est le premier item de
+  chiffrage de 5.3.3.
+- **D9 (5.3)** — **`i54` PORTE DEUX CHAMPS DONT LE DOMAINE MESURE CONTREDIT L'HYPOTHESE DE
+  L'ECRIVAIN.** L'identifiant de 10 bits n'est transmis **0 fois sur 2 245 initiations**, et
+  `+0x9c` ne prend que **deux** valeurs (0 et 2), jamais 1 ni 3. L'hypothese « enumere a quatre
+  actions » du § 2.8 est refutee par les valeurs ; seul `+0x98` se comporte en discriminant, et
+  son domaine varie d'un film a l'autre (3 valeurs contre 8). **NON TRAITEE** : nommer les
+  classes demande de croiser `+0x98` avec la carte et le geste, ce qui est un lot en soi.
