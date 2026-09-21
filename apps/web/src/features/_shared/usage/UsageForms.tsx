@@ -70,15 +70,24 @@ function clampPct(v: number): number {
 // ─── Écart à la parité ───────────────────────────────────────────────────────────
 
 /**
- * L'INDEX DE LA JAUGE RAPPORTÉE À MON ÉQUIPE (« ma part dans mon équipe », 2e de
- * `buildGaugeRow`). Les deux autres colonnes rapportent la mesure AU LOBBY : elles portent
- * la hachure (cf. `LOBBY_HATCH`).
+ * UsageGaugeColumn — UNE COLONNE de la grille de jauges : son en-tête et son dénominateur.
  *
- * LES TROIS COLONNES SONT TOUJOURS RENDUES depuis le 2026-09-13 (demande utilisateur) : le
- * repli qui n'en montrait qu'une a été retiré, ici comme dans le drawer de comparaison — une
- * colonne cachée est une colonne qu'on ne lit jamais.
+ * L'INDEX EN DUR A DISPARU le 2026-09-21 (lot O) : la colonne « ma part dans mon équipe »
+ * était reconnue par sa POSITION (constante `TEAM_GAUGE_INDEX = 1`), ce qui interdisait
+ * toute grille à deux colonnes sans hachure. La grille lit désormais une table de colonnes,
+ * dont le défaut reproduit exactement les trois historiques.
+ *
+ * LES TROIS COLONNES PAR DÉFAUT SONT TOUJOURS RENDUES (demande utilisateur du 2026-09-13) :
+ * le repli qui n'en montrait qu'une a été retiré, ici comme dans le drawer de comparaison —
+ * une colonne cachée est une colonne qu'on ne lit jamais.
  */
-const TEAM_GAUGE_INDEX = 1
+export type UsageGaugeDenominator = 'team' | 'lobby'
+
+export interface UsageGaugeColumn {
+  header: string
+  /** `team` = aplat ; `lobby` = aplat + hachure neutre (cf. `LOBBY_HATCH`). */
+  denominator: UsageGaugeDenominator
+}
 
 /**
  * UsageOutcomeStack — LE REMPLISSAGE DE LA TRANCHE (P1, P6, étape E4) : la pile utilisé →
@@ -247,11 +256,14 @@ function GaugeRows({
   rows,
   shown,
   startsGrid,
+  denominators,
 }: {
   rows: UsageGaugeRowModel[]
   shown: number[]
   /** Vrai quand ces lignes ouvrent la grille : un total n'y porte pas de filet de séparation. */
   startsGrid: boolean
+  /** Le dénominateur de CHAQUE colonne, indexé comme `shown` (cf. `UsageGaugeColumn`). */
+  denominators: readonly UsageGaugeDenominator[]
 }) {
   return (
     <>
@@ -274,7 +286,7 @@ function GaugeRows({
             <UsageGauge
               key={row.gauges[gaugeIndex].key}
               gauge={row.gauges[gaugeIndex]}
-              denominator={gaugeIndex === TEAM_GAUGE_INDEX ? 'team' : 'lobby'}
+              denominator={denominators[gaugeIndex] ?? 'lobby'}
             />
           ))}
         </Fragment>
@@ -298,6 +310,7 @@ export function UsageGaugeGrid({
   dense = false,
   collapsedRows,
   collapsedLabel,
+  columns,
 }: {
   rows: UsageGaugeRowModel[]
   t: UsageText
@@ -306,13 +319,29 @@ export function UsageGaugeGrid({
   /** Lignes repliées derrière un bouton, fermé par défaut (D2). */
   collapsedRows?: UsageGaugeRowModel[]
   collapsedLabel?: string
+  /**
+   * LES COLONNES, quand ce ne sont PAS les trois dénominateurs du bloc « usages »
+   * (ajout du lot O, 2026-09-21). Les cartes Riposte / Appui reçu de la session portent
+   * DEUX jauges dont aucune n'est rapportée au lobby : leurs en-têtes ne sont pas ceux
+   * de `t`, et la hachure « lobby » n'a rien à y dire. Absent = les trois colonnes
+   * historiques, rendu strictement inchangé (une seconde grille recopiée aurait
+   * divergé au premier ajustement — CLAUDE.md n°6).
+   */
+  columns?: readonly UsageGaugeColumn[]
 }) {
   const [open, setOpen] = useState(false)
   const groupId = useId()
   const collapsed = collapsedRows ?? []
   if (rows.length === 0 && collapsed.length === 0) return null
 
-  const allHeaders = [t.gaugeTeamOfLobby, t.gaugePlayerOfTeam, t.gaugePlayerOfLobby]
+  const defaultColumns: UsageGaugeColumn[] = [
+    { header: t.gaugeTeamOfLobby, denominator: 'lobby' },
+    { header: t.gaugePlayerOfTeam, denominator: 'team' },
+    { header: t.gaugePlayerOfLobby, denominator: 'lobby' },
+  ]
+  const spec = columns ?? defaultColumns
+  const allHeaders = spec.map((c) => c.header)
+  const denominators = spec.map((c) => c.denominator)
   const gaugeCount = (rows[0] ?? collapsed[0]).gauges.length
   const shown = Array.from({ length: gaugeCount }, (_, i) => i)
   const labelWidth = dense ? DENSE_LABEL_WIDTH : LABEL_WIDTH
@@ -345,7 +374,7 @@ export function UsageGaugeGrid({
             <span title={allHeaders[gaugeIndex]}>{allHeaders[gaugeIndex]}</span>
           </div>
         ))}
-        <GaugeRows rows={rows} shown={shown} startsGrid />
+        <GaugeRows rows={rows} shown={shown} startsGrid denominators={denominators} />
         {hasCollapsed && (
           <>
             <UsageCollapseToggle
@@ -354,7 +383,14 @@ export function UsageGaugeGrid({
               onToggle={() => setOpen((v) => !v)}
               controls={groupId}
             />
-            {open && <GaugeRows rows={collapsed} shown={shown} startsGrid={false} />}
+            {open && (
+              <GaugeRows
+                rows={collapsed}
+                shown={shown}
+                startsGrid={false}
+                denominators={denominators}
+              />
+            )}
           </>
         )}
         <div aria-hidden="true" />
@@ -365,7 +401,9 @@ export function UsageGaugeGrid({
           </Fragment>
         ))}
       </div>
-      <UsageHatchLegend t={t} variant="gauge" />
+      {/* La légende de texture n'a de sens que si une colonne PORTE la hachure : les
+          grilles à dénominateurs propres (Riposte, Appui reçu) n'en ont aucune. */}
+      {denominators.includes('lobby') && <UsageHatchLegend t={t} variant="gauge" />}
     </div>
   )
 }
