@@ -112572,3 +112572,43 @@ fusion dans `feat/v75` (CI = verdict d'autorité), suppression des trois worktre
   `untouchable_carrier` actives sur leurs PNG `halo_infinite/` ; 99 actives sur 106. Air
   relance detache (gcc sur le PATH), /health 200, les deux PNG servis en image/png
   (5 283 o et 4 360 o). Reste : meme seed en prod au deploiement ; commit au signal.
+
+## [2026-09-21] Ajustements supplementaires pre-v7.5 (deuxieme vague) — En cours (branche `feat/ajustements-supp-v75`, 9 lots Opus fusionnes, CI a lire, passe visuelle et backfill en attente)
+
+**Demande** : `Ajustements-supp-prev75.txt` (7 pages, ~45 items) + 17 arbitrages utilisateur
+consignes dans `.ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md`. Base : `origin/feat/v75`
+(28b93cca5, lot 5.2) — le checkout local etait en retard de 23 commits.
+
+**Decision technique principale** : un prealable transverse avant les lots (prop `frameless`
+de `ChartCard`, cause unique des doubles cadres), puis huit lots Opus en parallele, un worktree
+chacun (`LevelUp-wt-ajsup-*`, jonctions node_modules), fusion par le pilote avec relecture sur
+pieces et statut par item dans le plan. Decisions notables : les socles de bonus (camouflage,
+surbouclier) sont des EQUIPEMENTS et quittent la section des armes ; « non identifie » n'a
+plus de ligne ; « geste » -> « usages » ; « Bastion » -> « Bases » ; titres de l'Escouade
+neutralises ; comparaison de sessions en rangees partagees (subgrid) avec placeholder « Sans
+equivalent dans cette session » ; etats vides avec cause nommee ; maquette de 5 sujets x 3
+propositions (artefact publie), verdicts 1.A et 2.A A L'HORIZONTALE (livres, lot H), sujet 4 a
+refaire (formes trop proches du rail actuel), sujet 5 : seul « Part de chaque equipe » change.
+
+**Empaleur (lot E)** : cause prouvee sur b1ad85eb — le canal `loadouts` est publie sur une grille
+d'images-cles globale de 20 s, pas au spawn ; 5 vies sur 73 avaient ramasse l'Empaleur avant leur
+premiere emission (6,85 % > seuil 5 %). Correctif grammatical : une emission qui suit une prise
+de la meme vie n'est plus un depart (Go + jumeau TS, tests). 34 matchs du corpus changent
+d'ensemble de base, dans le bon sens. `BaseShareMin` conserve (queue 4,94 % / plus faible vraie
+base 5,06 %). La projection persistee `match_pad_tiers` reste a rejouer (`levelup
+backfill-pad-tiers --force`, decision utilisateur : OUI en local a la fin, prevenir pour la prod).
+
+**Resultats observes** : typecheck 0 erreur ; vitest complet 8 075 tests verts apres deux
+correctifs de fusion (prop `frameless` dupliquee dans `DonutChart`, reserve echantillon faible
+via `withLowSampleNote`) ; test de parite Go/web des niveaux amende (allowlist datee bonus et
+non identifie) ; tests Go des paquets touches verts ; lint couleurs et champs propres ; eslint
+26 warnings tous hors des fichiers du chantier. Aucune capture par les executeurs (pas de
+serveur API). Le passage a blanc du backfill a echoue : la base partagee est tenue en RW par
+`levelup_backfill.exe backfill-killsource` (PID 37052, autre session, lance le 20/09 18:48) —
+attendre sa fin, ne pas le tuer.
+
+**Prochaine etape** : CI de la branche ; verdicts utilisateur (sujet 5 : A/B/C-droite ; sujet 4
+refait ; sujet 3 ; papillon du hub Relations ; libelle « Laches : famille » ; vue « Prises
+nettes » reduite a son titre ; etiquettes sur rayures en `text-foreground`) ; backfill des
+niveaux quand la base est libre ; passe visuelle sur donnees reelles ; retrait des worktrees
+(jonctions d'abord, remove SANS --force) ; fusion dans `feat/v75` au signal.
