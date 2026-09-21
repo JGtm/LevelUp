@@ -22,6 +22,14 @@ package grammar
 type World struct {
 	Reg   *Registry
 	slots map[uint32]slotState
+	// vueCourante : l index de la VUE de replication en cours de marche (0, 1 ou 2).
+	//
+	// LE JEU A TROIS TABLES D ENTITES, UNE PAR VUE, ET UNE ENTITE N APPARTIENT QU A UNE
+	// (`FUN_142987460` : `param_1 + 0x228` donne trois objets de vue, et `FUN_1406cd128` teste
+	// `vue[0x38][slot].eid == eid` avant de lire un corps de delta). Le monde hors ligne n a
+	// qu une table ; cette variable, plus [slotState.Vue], en tiennent lieu — chaque liaison
+	// retient DANS QUELLE VUE elle a ete posee, et [World.VuePossede] rend la garde.
+	vueCourante int8
 }
 
 type slotState struct {
@@ -42,11 +50,35 @@ type slotState struct {
 	// ce qui purge déjà la position d'un slot recyclé — pas de garde de génération séparée.
 	Pos      [3]float32
 	PosValid bool
+	// Vue : l index de la vue de replication qui possede cette entite, ou -1 quand il est
+	// INCONNU (liaison posee par une image-cle : le keyframe ne dit pas la vue). Une vue
+	// inconnue ne rejette rien, exactement comme [slotState.GenAny] pour la generation.
+	Vue int8
 }
+
+// vueInconnue : la valeur de [slotState.Vue] quand aucune vue n a pu etre attribuee.
+const vueInconnue int8 = -1
 
 // NewWorld creates an empty World bound to a parsed archetype registry.
 func NewWorld(reg *Registry) *World {
 	return &World{Reg: reg, slots: map[uint32]slotState{}}
+}
+
+// PoserVueCourante annonce au monde la vue de replication que la marche parcourt.
+func (w *World) PoserVueCourante(v int) { w.vueCourante = int8(v) } //nolint:gosec // v vaut 0..2
+
+// VuePossede rend la garde de TABLE DE VUE : la vue en cours possede-t-elle ce slot ?
+//
+// C EST LA TRANSCRIPTION DE `vue[0x38][slot].eid == eid` (FUN_1406cd128), avec la seule
+// difference que le monde hors ligne ne peut pas TOUJOURS attribuer une vue : une liaison venue
+// d une image-cle n en porte pas. Ces liaisons-la passent, comme les generations inconnues.
+func (w *World) VuePossede(slot uint32) bool {
+	s, ok := w.slots[slot&0x3fffffff]
+	// UN SLOT NON LIE N EST POSSEDE PAR AUCUNE VUE, et c est l ecrivain qui le dit : le vecteur
+	// de la vue est construit entree par entree (`FUN_1408f15c8`), une entree jamais posee porte
+	// `eid = 0`, donc `entry.eid != eid` et la vue s arrete. C est ce qui remplace l inference
+	// d archetype sur ce chemin — elle fabriquait un corps la ou le jeu ne lit rien.
+	return ok && (s.Vue == vueInconnue || s.Vue == w.vueCourante)
 }
 
 // BindFull registers (or rebinds) the entity created by a NEW record: slot -> archetype.
@@ -54,7 +86,7 @@ func NewWorld(reg *Registry) *World {
 // l'eid entier avant de lire le corps d'un delta (FUN_1406caad8 -> `return 3`), donc la generation
 // est une contrainte de validite gratuite. Elle n'est appliquee que si SetStrictGeneration(true).
 func (w *World) BindFull(id, typeIndex uint32) {
-	w.slots[id&0x3fffffff] = slotState{TypeIndex: typeIndex, FullID: id}
+	w.slots[id&0x3fffffff] = slotState{TypeIndex: typeIndex, FullID: id, Vue: w.vueCourante}
 }
 
 // strictGeneration exige que l'eid COMPLET d'un delta (tag de generation inclus) corresponde a
@@ -85,7 +117,7 @@ func (w *World) GenerationMatches(id uint32, strict bool) bool {
 // neutralise pour ce slot, l'eid complet ne pouvant pas etre devine.
 func (w *World) BindWildcard(slot, typeIndex uint32) {
 	w.slots[slot&0x3fffffff] = slotState{
-		TypeIndex: typeIndex, FullID: slot & 0x3fffffff, GenAny: true,
+		TypeIndex: typeIndex, FullID: slot & 0x3fffffff, GenAny: true, Vue: 0,
 	}
 }
 
@@ -93,7 +125,9 @@ func (w *World) BindWildcard(slot, typeIndex uint32) {
 // bindings decode subsequent deltas like hard ones, but are NOT confirmation anchors
 // for further inference (a soft anchor could self-confirm a wrong chain).
 func (w *World) BindSoft(id, typeIndex uint32) {
-	w.slots[id&0x3fffffff] = slotState{TypeIndex: typeIndex, FullID: id, Soft: true}
+	w.slots[id&0x3fffffff] = slotState{
+		TypeIndex: typeIndex, FullID: id, Soft: true, Vue: w.vueCourante,
+	}
 }
 
 // HardBound reports whether slot carries a NON-inferred binding (world dump or clean

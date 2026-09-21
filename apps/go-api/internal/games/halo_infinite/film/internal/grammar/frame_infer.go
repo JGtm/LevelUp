@@ -76,6 +76,44 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 // transcription de la garde ne distingue « eid etranger a cette vue » de « slot non encore lie ».
 // Le gate du trou est `TestMouvement5116Gate` : bits non lus par paquet dans [0 ; 7].
 // --- fin de la note ---------------------------------------------------------------------------
+// rejetDeVue transcrit la GARDE DE TABLE DE VUE (note ci-dessus) : un delta dont le slot
+// n appartient pas a la vue en cours n est pas un record de cette vue. L appelant remet le
+// curseur a la fin de l EN-TETE et clot la vue — l en-tete, lui, EST ecrit, et c est ce que la
+// vue suivante lira comme son propre en-tete de rejet.
+func rejetDeVue(typ int, slot uint32, w *World, cfg FrameConfig) bool {
+	return typ == recDelta && cfg.Profil.Grammaire.TablesParVue && !w.VuePossede(slot)
+}
+
+// corpsDeRecordNeuf traverse le corps d un record NEW, tente la reparation de chaine, et LIE
+// l entite a la vue en cours. Rend `true` quand le record a DESYNCHRONISE (l appelant cale).
+//
+// SORTIE DE `decodeInferLoop` PAR DEPLACEMENT PUR (lot 5.11.7) : la boucle avait atteint son
+// plafond de longueur en recevant la garde de vue, et `plafondsParFichier` est datee et fermee.
+// Aucune ligne de logique n a change.
+func corpsDeRecordNeuf(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
+	rec *FrameRecord) (desync bool) {
+	bodyStart := br.BitPos()
+	rec.Trace = TraverseEntity(br, w.Reg, cfg.NewDefaultStateBits)
+	rec.TypeIndex, rec.DesyncAt = rec.Trace.TypeIndex, rec.Trace.DesyncAt
+	repaired := false
+	if rec.DesyncAt != -1 && cfg.Profil.Grammaire.InferenceChaine && inferRepair {
+		if t, end, ok := repairUnportedComponent(
+			buf, bodyStart, recNew, rec.Slot, rec.Trace, w, cfg); ok {
+			rec.Trace, rec.TypeIndex, rec.DesyncAt, repaired = t, t.TypeIndex, -1, true
+			br.SetBitPos(end)
+		}
+	}
+	switch {
+	case rec.DesyncAt != -1:
+		return true
+	case repaired:
+		w.BindSoft(rec.ID, rec.TypeIndex)
+	default:
+		w.BindFull(rec.ID, rec.TypeIndex)
+	}
+	return false
+}
+
 // decodeInferLoop is the core of DecodeFrameInfer operating on a SUPPLIED Lecteur,
 // so several replication "views" of one packet (frame-processor FUN_142987460 = a
 // leading config bit then 3 view record-loops) can be decoded in sequence sharing one
@@ -123,29 +161,19 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 		}
 		id := readRecordID(br, cfg.IDLowBits, cfg.IDBase)
 		slot := id & 0x3fffffff
+		finEntete := br.BitPos()
 		rec := FrameRecord{Type: typ, ID: id, Slot: slot, DesyncAt: -1}
+		if rejetDeVue(typ, slot, w, cfg) {
+			br.SetBitPos(finEntete)
+			return out, inferred, true
+		}
 		switch typ {
 		case recNew:
-			bodyStart := br.BitPos()
-			rec.Trace = TraverseEntity(br, w.Reg, cfg.NewDefaultStateBits)
-			rec.TypeIndex, rec.DesyncAt = rec.Trace.TypeIndex, rec.Trace.DesyncAt
-			repaired := false
-			if rec.DesyncAt != -1 && cfg.Profil.Grammaire.InferenceChaine && inferRepair {
-				if t, end, ok := repairUnportedComponent(buf, bodyStart, recNew, slot, rec.Trace, w, cfg); ok {
-					rec.Trace, rec.TypeIndex, rec.DesyncAt, repaired = t, t.TypeIndex, -1, true
-					br.SetBitPos(end)
-				}
-			}
-			switch {
-			case rec.DesyncAt != -1:
+			if corpsDeRecordNeuf(br, buf, w, cfg, &rec) {
 				if stall(startPos, rec) {
 					return out, inferred, false
 				}
 				continue
-			case repaired:
-				w.BindSoft(id, rec.TypeIndex)
-			default:
-				w.BindFull(id, rec.TypeIndex)
 			}
 		case recDel:
 			br.Skip(32)

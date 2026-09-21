@@ -36,99 +36,6 @@ package grammar
 // geste ordinaire que l en-tete des archives annonce, pas un incident. Ce qui suit est la suite
 // VIVANTE, a partir du premier rang du 2026-09-18.
 //
-// ENTREE `grammar-2026-09-18.2` (2026-09-18, lot 5.1.7-a) : `grammar-2026-09-18` -> `.2` (le
-// premier lot du jour s ecrit sans suffixe, les suivants a partir de `.2`).
-// `param_4` NE SE DEVINE PLUS : IL SE LIT DANS LE REGISTRE DU FILM.
-//
-// `param_4` est la propriete que le descripteur d un composant rend a `FUN_14076cb60` avant que
-// son deserialiseur ne tourne, et huit desers du depot en font une LARGEUR (`i2`, `i10`, `i19`,
-// `i20`, `i23`, `i53`, `i59`, `i62`, les cinq filtres de `ti=12` et `flock-destination`). Il
-// venait de DEUX endroits : une table par nom de composant (`paramByComponent`, vingt entrees
-// mesurees a la capture live) et, pour tout ce que la table ne listait pas, LE BALAYAGE DE
-// `killsource.calibrateRSP` — 0 a 5, la valeur qui maximisait la croissance des slots sur les
-// records de BIPEDE, que `replaybuild` passait ensuite a la cuisson du rejeu.
-//
-// IL EST LE `level` DU REGISTRE, celui que l entree de composant porte en `entree + 0x100` et que
-// `FUN_142e2c690` passe au deserialiseur — c est-a-dire `Archetype.Level(i)`, que le traverseur
-// descendait DEJA jusqu a `consumeByName` sous le nom `level` sans que personne s en serve. Trois
-// sources independantes le disent et concordent : les vingt entrees de la table valent toutes le
-// `level` de leur ligne d `ecs_table.tsv` (capture live, 464 010 mesures sur `ti=35`) ; les cinq
-// filtres de `ti=12` que le lot 5.1.1 a LUS au slot `+0x10` du descripteur (3 pour `i2`, 2 pour
-// `i3..i6`) sont exactement leurs `level` ; et aucun nom de composant ne porte deux `level`
-// differents sur les 48 lignes concernees — ce qu une propriete de descripteur doit avoir.
-//
-// CE QUI CHANGE DE COMPORTEMENT, ET OU. Trois desers n avaient AUCUNE entree et prenaient donc la
-// valeur balayee : `i10 object-parent-state` (vrai `level` 3, et c est le composant qui precede
-// immediatement le dead-state de `ti=40`), `i19 unit-actor-control` (2), `i20 unit-actor-state`
-// (4). Sur `4f77afc1` et `a349fea8` le balayage retenait 4, qui se comporte comme 3 / 2 / 4 pour
-// les seuls tests que ces desers font (`< 2`, `> 1`, `> 2`, `>= 4`) : la faute etait LATENTE, et
-// un film dont le balayage aurait retenu 0 ou 1 aurait lu les trois a la mauvaise largeur.
-//
-// CE QUI DISPARAIT. `paramForComponent`, `Lecteur.recordStateParam`, les champs `ParamEtat` /
-// `ParamEtatImpose` du profil de balayage et leur poseur, `FilmContext.PoserParamEtat`,
-// `killsource.calibrateRSP` avec `monotonicScore`, `RSP`, `RSPRatio`, `rspMax` et `rspStride`, et
-// le `PoserParamEtat(0)` de `ProfilDeDepart`. Le repli nomme `repli_parametre_etat_record_infere`
-// est RETIRE du registre : sa cible etait ecrite d avance — « lot qui trouvera la source LUE de
-// `param_4` (registre ECS par composant, ou table du build) » — et son critere — « la valeur
-// vient d une lecture ; le balayage devient oracle comme celui des largeurs, ou disparait » — est
-// tenu par la disparition.
-//
-// CE QUI RESTE DE LA TABLE : un RATCHET. Elle garde un seul appelant, `offline_aim.go`, qui
-// compose sa grammaire sans registre donc sans `Archetype.Level` ;
-// `TestParamByComponentEgaleLeNiveauDuRegistre` confronte chaque entree au `level` d
-// `ecs_table.tsv` et rougit aussi si un composant y porte deux niveaux — ce qui ferait tomber le
-// raisonnement de ce lot.
-// REMPLACE LE 2026-09-18 par `TestParam4TableEgaleLExecutable` et `TestParam4RegistreParBuild`
-// (`param4_par_build_ratchet_test.go`) : le premier garde-rail confrontait UN SEUL registre et ne
-// pouvait pas voir que `param_4` varie d un build a l autre. L entree ci-dessus reste ce qu elle
-// etait le jour ou elle a ete ecrite.
-//
-// `facts.Rev` NE MONTE PAS. Elle vaut `killsource-2026-09-18` depuis le lot 5.1.1, qui est le
-// rang de TOUT le lot 5.1 : ce volet le partage et RE-FIGE son golden. Aucune source de `facts/`
-// n est touchee au sens des faits publies — `killsource/calibrate.go` et `decode.go` perdent une
-// grandeur qu ils ne decidaient plus.
-//
-// `SchemaVersion` reste 62 : aucun champ neuf n est publie.
-//
-// ENTREE `grammar-2026-09-18.3` (2026-09-18, lot 5.1.7-b) : `.2` -> `.3`.
-// L ETAT PAR DEFAUT DE `ti=40` EST LU, ET SA BOUCLE DE COMPOSANTS TOURNE ENFIN.
-//
-// `consumeKeyframeDefaultState` ne consomme que si l archetype est dans `defaultStateDeserByTI`.
-// `ti=40` n y etait pas — par la regle de `default_state_arch.go` (« un archetype dont UNE largeur
-// de feuille n est pas etablie statiquement n est PAS inscrit »), sa feuille 4 portant la mention
-// « config-dependante ». Le jeu ecrivait donc 79 bits au minimum (`FUN_1410A5A74`), le lecteur en
-// consommait ZERO, le `R(32) n2` se lisait 79 bits trop tot et rendait une valeur `<= 0` :
-// `consumeFullStateDefaultBlock` rendait faux et LA BOUCLE DE COMPOSANTS N ETAIT JAMAIS LANCEE.
-// C est ce que le golden 0.A.3 disait sans qu on le lise : `ti=40` a 0 ferme sur 777, colonne
-// « bloquant » VIDE sur un archetype de 48 composants dont 16 non portes.
-//
-// LA MENTION ETAIT PERIMEE. Les deux globaux qu elle nommait — l index `DAT_144632be0`
-// (`FUN_14076e524`) et les trois largeurs per-axe `DAT_1445cc9e0` (`FUN_140cc5128`) — entrent par
-// le CATALOGUE DE LA CARTE depuis le lot 3.4.1, et les deux fonctions de la feuille sont portees
-// depuis le lot R7-b : `FUN_14076e494` par `consumeSimStateHandleTail`, `FUN_140c1e79c` par
-// `consume140c1e79c`. La feuille se LIT, a la largeur de la carte du match, comme le chemin
-// world-object. `vehicleMediaFrameBits` disparait avec le modele qu il portait.
-//
-// LA MESURE, ET SON TEMOIN NEGATIF (`4f77afc1`, 1 140 records `ti=40` d image-cle) : la porte
-// `bVar14` vaut 1 sur **470 records (41,2 %)** — elle n est pas negligeable, et la question ne
-// pouvait pas se trancher en la supposant nominale. Feuille LUE, les deux populations butent au
-// MEME rang sans exception : `bVar14 == 0` 661/661 a `i30`, `bVar14 == 1` 470/470 a `i30`. Feuille
-// modelisee ABSENTE, les 470 rendent `DesyncAt == -1` — la boucle ne tourne pas. C est l oracle
-// qui etablit la feuille, et il est binaire.
-//
-// CE QUI CHANGE, ET CE QUI NE CHANGE PAS. Le bloquant de `ti=40` passe de « (aucun) » a
-// `i30 vehicle-auto-turret-triggers-component` : la fermeture ne monte pas — elle ne le peut pas
-// tant que les seize `vehicle-*` ne sont pas portes — mais le golden cesse de mentir sur cet
-// archetype. Ratchet 0.A.3 : 0 ligne en baisse. **Le document publie ne bouge d AUCUN octet** :
-// mesure sur `4f77afc1`, `recensees=256 publiees=97`, `finDatee=3` avant comme apres. Le calque
-// des vehicules passe par des balayages ANCRES (`ScanWorldObjectKeyframes`,
-// `ScanVehicleCreationsForBand`), pas par la marche d etat complet — l hypothese qui attribuait
-// `97/256` a ce defaut est REFUTEE par la mesure, et la cause de `97/256` reste a instruire.
-//
-// `facts.Rev` suit par VALEUR (elle hache cette constante) et garde son rang
-// `killsource-2026-09-18`, qui est celui de tout le lot 5.1 : golden RE-FIGE, pas monte.
-// `SchemaVersion` reste 62 : aucun octet publie ne change.
-
 // ENTREE `grammar-2026-09-20` (2026-09-20, lot 5.2b.1) : LE HORS-ROSTER DEGRADE, IL N ALERTE
 // PLUS — ET C EST LE SEUL OCTET DE `grammar/` QUE CE LOT TOUCHE.
 //
@@ -459,4 +366,60 @@ package grammar
 // `components_biped_action_loop2_test.go` (fenetre de 73 bits, cout en bits du tour).
 //
 // `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.8`.
+// `replay.SchemaVersion` NE MONTE PAS : la FORME du document ne change pas.
+
+// ENTREE `grammar-2026-09-21.9` (2026-09-21, lot 5.11.7) : LES TROIS TABLES D ENTITES PAR VUE,
+// ET LA MARCHE CESSE DE LIRE AU-DELA DE LA FIN DES PAQUETS.
+//
+// CE QUI CHANGE DANS LA COUCHE : `decodeInferLoop` — la boucle que `DecodeFrameViews` emprunte,
+// donc toutes les marches du chantier — porte la GARDE DE TABLE DE VUE (`rejetDeVue`). Un delta
+// dont le slot n appartient pas a la vue en cours n est plus un record a DEVINER : la vue s
+// arrete sur son en-tete (`1 + idLow + 2` bits), sans lire un bit de corps.
+//
+// L ECRIVAIN, RELU EN LECTURE SEULE (image base 140000000). `FUN_142987460` appelle
+// `FUN_1406cd128` UNE FOIS PAR VUE (`param_1 + 0x228` = trois objets de vue) et n ecrit RIEN
+// apres elles. Dans la boucle, un DELTA n ouvre son corps que si la table DE CETTE VUE le
+// reconnait :
+//
+//	lVar11 = (eid & 0x3fffffff) * 0xa0
+//	if (vue[0x38][lVar11 + 8] == eid && vue[0x38][lVar11 + 2] == (short)type)
+//	      FUN_141f86b58(...)   // le corps
+//	else  uVar14 = 2 ; break   // LA VUE S ARRETE
+//
+// La table est un VECTEUR INDEXE PAR SLOT, agrandi a la demande (`FUN_1411b3c84`, capacite
+// 0x1fff) et construit entree par entree (`FUN_1408f15c8`) : `(fin - debut) / 0xa0` en donne le
+// cardinal. Une entree jamais posee porte donc `eid = 0`, et un slot inconnu de la vue est
+// rejete au meme titre qu un slot d une autre vue.
+//
+// LA TRANSCRIPTION HORS LIGNE : [slotState.Vue] retient la vue ou la liaison a ete posee,
+// [World.PoserVueCourante] annonce la vue marchee, [World.VuePossede] rend la garde. Les
+// liaisons d IMAGE-CLE sont attribuees a la VUE 0 — c est la seule attribution que le film
+// permette, et c est elle que la fermeture des paquets confirme (ci-dessous).
+//
+// MESURE, AVANT -> APRES, SUR DEUX FILMS :
+//
+//	dad793c7 paquets FERMES au curseur (reste 0..7)   0 %      -> 99,50 %  (5 068 a reste 0)
+//	dad793c7 records FANTOMES `ti=6` slot 26          5 202    -> 0
+//	dad793c7 records `ti=0` desynchronises            15       -> 0
+//	dad793c7 records `ti=35`                          75       -> 75
+//	bfecd02b records `ti=35`                          97 343   -> 114 458   (+17 115)
+//	bfecd02b desyncs `ti=35`                          6        -> 5
+//	bfecd02b etalon `i21`                             65,3 %   -> 65,2 %
+//	bfecd02b paquets non localises                    1 924    -> 1 189
+//	bcb6d393 `movementStates` (replay-equiv)          1 364    -> 1 489    (+125)
+//
+// Avant ce lot la marche consommait 57 bits DE PLUS que le paquet n en porte sur 95,7 % des
+// paquets de `dad793c7`, et fabriquait un record `ti=6` a partir de zeros lus au-dela de la fin.
+// Le gate est desormais mesurable : `DecodeFrameViewsCurseur` rend le curseur, et
+// `TestMouvement5116Gate` exige un reste dans `[0 ; 7]` — le bourrage d octet, et rien d autre.
+//
+// CE QUE LA GARDE SUPERSEDE, ET C EST DIT : l inference d archetype sur slot non lie
+// (lot 5.3.3-b) ne s applique plus par defaut, parce que l ecrivain ne devine pas. Le mecanisme
+// reste joignable (`InferenceChaine`), et `frame_chain_infer_test.go` le met dans l etat ou il
+// travaille (`withChain` abaisse `TablesParVue`).
+//
+// `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.9`, et
+// cette fois la sortie des faits CHANGE REELLEMENT (`replay-equiv` deplace le digest de l etape
+// `killsource`) : les lignes de kill deja en base deviennent candidates au backlog de
+// redecodage, qui part sur SIGNAL UTILISATEUR (D6).
 // `replay.SchemaVersion` NE MONTE PAS : la FORME du document ne change pas.

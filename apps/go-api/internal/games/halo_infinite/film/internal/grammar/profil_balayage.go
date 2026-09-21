@@ -209,6 +209,15 @@ type GrammaireBalayage struct {
 	// levait jusqu au lot 2.3 pour tout le PROCESSUS, donc aussi pour la cuisson du rejeu qui
 	// suivait. Ce fait est desormais porte par le profil, comme les largeurs calibrees.
 	GenerationStricte bool
+	// TablesParVue applique la GARDE DE TABLE DE VUE dans la boucle d inference : un delta dont
+	// le slot appartient a une AUTRE vue n est pas un record, et la vue s arrete sur son en-tete
+	// (`1 + idLow + 2` bits) sans lire un bit de corps — exactement `FUN_1406cd128` quand
+	// `vue[0x38][slot].eid != eid` pose `uVar14 = 2` et sort de la boucle.
+	//
+	// C EST LE PIED DE TRAME, et sans elle la marche lit au-dela de la fin du paquet : mesure du
+	// lot 5.11.6 sur `dad793c7`, 57 bits de trop sur 95,7 % des paquets, et un record FANTOME
+	// (`ti=6` slot 26) fabrique a partir de zeros. Defaut : cf. le journal du lot 5.11.7.
+	TablesParVue bool
 	// LargeursBouchon donne une largeur PROVISOIRE a un composant dont le deserialiseur n est
 	// pas encore porte, pour que la traversee continue au-dela (recherche de la largeur d une
 	// queue manquante par chainage de records). Vide par defaut : un composant non porte
@@ -222,6 +231,7 @@ func grammaireDuProfil() GrammaireBalayage {
 		DeserEtatParArchetype: true,
 		CorpsActionMobilite:   true,
 		CorpsAncrageCapacite:  true,
+		TablesParVue:          true,
 	}
 }
 

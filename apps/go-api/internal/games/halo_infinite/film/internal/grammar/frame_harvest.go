@@ -168,6 +168,7 @@ func DecodeFrameViewsCurseur(buf []byte, w *World, cfg FrameConfig, nViews int,
 	var all []FrameRecord
 	viewsDone := 0
 	for v := 0; v < nViews && br.BitPos() < frameLen-3; v++ {
+		w.PoserVueCourante(v) // la table de vue que la garde interrogera (lot 5.11.7)
 		start := br.BitPos()
 		// Chain inference per view so view 0 decodes past transients to its END marker
 		// (else it desyncs and views 1/2 are never reached). hitEnd = reached a clean
