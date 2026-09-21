@@ -81,9 +81,22 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - [x] Usages d'equipement : deux cartes sur la meme rangee (rendu inchange, attend D15)
 - [x] Ordre des tiers D2 dans `weaponTier.ts` / MatchPadControlSection ; « geste » -> « usages »
 
-### Lot E — Empaleur (worktree `LevelUp-wt-ajsup-e`)
-- [ ] Diagnostic sur b1ad85eb : pourquoi Skewer = base ; cause prouvee sur pieces
-- [ ] Correctif Go + jumeau TS + tests ; aucun reclassement heuristique
+### Lot E — Empaleur (worktree `LevelUp-wt-ajsup-e`) — FUSIONNE d9be16612
+- [x] Diagnostic sur b1ad85eb : pourquoi Skewer = base ; cause prouvee sur pieces
+- [x] Correctif Go + jumeau TS + tests ; aucun reclassement heuristique
+
+**Journal du lot E (2026-09-21).** Cause prouvee : le canal `loadouts` n est PAS publie au spawn
+mais sur une grille d images-cles GLOBALE (b1ad85eb : 25 instants d emission, un toutes les 200
+frames = 20 s, pour 73 vies ; ecart debut de vie -> premiere emission de 0 a 192 frames, mediane
+60). Cinq vies sur 73 (6,85 %, au-dessus de `BaseShareMin = 0,05`) avaient leur premiere emission
+APRES avoir ramasse un Empaleur (slots 547, 563, 595 par evenement de prise date ; 573, 594 par la
+chaine des objets au sol). Correctif : une emission qui SUIT une prise d arme de la meme vie n est
+plus lue comme equipement de depart, la vie quitte numerateur ET denominateur. Prises = union de
+`pickups` (arme), `weaponChanges` (taken/swapped), `groundWeapons.picker`, filtree de la dotation
+de reapparition. Effet : b1ad85eb 47 vies retenues, Empaleur 4,25 % -> hors base (MA40, Sidekick
+restent base) ; corpus 92 artefacts, 34 matchs changent d ensemble de base, dans le bon sens.
+`BaseShareMin` conserve (queue residuelle 4,94 %, plus faible vraie base 5,06 %). Ratchet de
+surface `film/replay` 260 -> 263 justifie.
 
 ### Lot F — maquette (fichier `.ai/V7.5/MAQUETTE_RENDUS_AJSUP_2026-09-21.html`) — FUSIONNE bed1a2600
 - [x] 5 sujets x 3 propositions, jetons de l'app, clair/sombre
@@ -99,6 +112,8 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - [ ] Repartition des resultats : une barre epaisse horizontale empilee (compte + part ecrits), taux en chiffre d appel, bande des resultats
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- E : la table persistee `match_pad_tiers` porte encore l ancienne regle (34 matchs sur 92 avec un ensemble de base faux dans les agregats Sessions/Escouade/Timeseries ; la Match view recalcule a la requete). Rattrapage existant `levelup backfill-pad-tiers` (rejoue `ProjeterNiveauxDArmes` sans recuisson) — A DEMANDER, non lance ; meme question en prod au deploiement.
+- E : neuf vies de b1ad85eb non nommees (`index_hors_table`), dont 573 et 594 : leurs prises ne sont attribuees a personne (queue residuelle sous le seuil).
 - A2 : la vue « Prises nettes de drapeau » ne contient plus que son titre (D1 applique a la lettre) -> verdict utilisateur.
 - A2 : `usage.powerup_pickups` servi par Go et plus lu par le web ; `usageI18n.ts` 562 L (dette reduite, non resorbee) ; `equipRift` cle morte.
 - A2 : `usageCardTitle.tsx` = un second helper titre + infobulle, a reconcilier avec celui du lot G.

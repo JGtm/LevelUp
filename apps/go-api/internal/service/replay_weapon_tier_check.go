@@ -51,7 +51,7 @@ func (s *replayService) checkWeaponTierJoin(ctx context.Context, matchID string,
 	for _, s := range doc.MapWeaponPads.Pads {
 		emplacements = append(emplacements, weapontier.Spot{Pad: s.Pad, Family: s.Family})
 	}
-	m := weapontier.NewMatch(socles, emplacements, nil, false)
+	m := weapontier.NewMatch(socles, emplacements, nil, nil, false)
 	c := m.RunCrossCheck(socles, roleOf)
 	if !c.Alert() {
 		return

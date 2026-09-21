@@ -172,7 +172,26 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           etant deja cite par le meme convertisseur.
 //	                                           RE-MESURE A L ENTREE du lot : 259 sur `65e5c0731`,
 //	                                           260 apres.
-const plafondSurfaceReplay = 260 // 2026-09-20 — base 65e5c0731 + montee 64 (replay.ZoneGaugeRamp)
+//	263  ajsup-E (2026-09-21)                  le correctif des ARMES DE BASE (constat utilisateur
+//	                                           sur `b1ad85eb` : l Empaleur classe « arme de base »
+//	                                           alors que le loadout de depart est egal pour tous).
+//	                                           La cause est que le canal `loadouts` est publie sur
+//	                                           une grille d images-cles GLOBALE, jamais au spawn :
+//	                                           le convertisseur doit donc ECARTER une emission qui
+//	                                           suit une prise d arme de la meme vie, et il nomme
+//	                                           pour cela les natures de prise du film —
+//	                                           `replay.PickupWeapon`, `replay.WeaponTaken`,
+//	                                           `replay.WeaponSwapped`. TROIS symboles neufs, tous
+//	                                           dans le seul `sync/replayartifacts/padtiers_prises.go` ;
+//	                                           les canaux eux-memes (`Pickup`, `WeaponChange`,
+//	                                           `GroundWeapon`, `Track`) n en ajoutent AUCUN, ils
+//	                                           sont lus par champ sur `ReplayDocument`, deja cite.
+//	                                           Les comparer a des litteraux aurait evite la montee
+//	                                           en recreant le vocabulaire du film hors du film :
+//	                                           c est exactement ce que la frontiere interdit.
+//	                                           RE-MESURE A L ENTREE du lot : 260 sur `1840d0cbc`,
+//	                                           263 apres.
+const plafondSurfaceReplay = 263 // 2026-09-21 — base 1840d0cbc + prises d arme (3 natures citees)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

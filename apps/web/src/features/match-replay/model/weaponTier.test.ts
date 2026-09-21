@@ -7,6 +7,8 @@
  *   - « base » se lit sur la PREMIÈRE émission de chaque slot — le canal ré-émet en cours de
  *     vie, et tout prendre ferait d'une arme de puissance une arme de base ;
  *   - la queue d'équipements de départ (5,6 % mesurés) ne promeut rien : seuil `BASE_SHARE_MIN` ;
+ *   - une émission qui SUIT une prise d'arme de la même vie n'est pas un départ (la grille
+ *     d'images-clés est globale, pas alignée sur le spawn — cas `b1ad85eb` du 2026-09-21) ;
  *   - un mode à départs ALÉATOIRES ne publie aucun niveau « base », les deux autres restent.
  *
  * Ce fichier est le jumeau de `internal/analysis/weapontier/weapontier_test.go` : mêmes cas,
@@ -129,6 +131,95 @@ describe('les armes de départ', () => {
       loadouts: [...vies(40, [AR, PISTOLET]), ...enPlus],
     } as Partial<ReplayDocument>)
     expect(padTierOf(buildPadTierMatch(doc), 1, SNIPER)).toBe('base')
+  })
+
+  /**
+   * LE CAS `b1ad85eb` (constat utilisateur du 2026-09-21), réduit à sa mécanique.
+   *
+   * Loadout de départ classique et ÉGAL pour tous, et pourtant l'Empaleur y était classé
+   * « arme de base ». Cause mesurée : le canal `loadouts` est publié sur une grille
+   * d'images-clés GLOBALE (t = 12, 212, 412 … toutes les 200 frames = 20 s), pas au spawn ;
+   * cinq vies sur 73 avaient donc leur première émission APRÈS avoir ramassé un Empaleur —
+   * 6,85 % des vies, au-dessus des 5 % du seuil.
+   */
+  it('écarte une émission POSTÉRIEURE à une prise d’arme de la même vie', () => {
+    const prises = Array.from({ length: 5 }, (_, i) => ({
+      t: 60,
+      slot: 900 + i,
+      w: '9d6aaed2',
+      kind: 'weapon',
+      class: 0,
+    }))
+    const emissions = Array.from({ length: 5 }, (_, i) => ({
+      t: 200,
+      slot: 900 + i,
+      w: [SNIPER, PISTOLET],
+    }))
+    const pistes = Array.from({ length: 5 }, (_, i) => ({
+      slot: 900 + i,
+      team: 0,
+      points: [{ t: 0, x: 0, y: 0 }],
+    }))
+    const commun = {
+      loadouts: [...vies(40, [AR, PISTOLET]), ...emissions],
+      tracks: pistes,
+    } as Partial<ReplayDocument>
+    // Témoin de la cause : sans les prises, les 5 vies pèsent 11,1 % et promeuvent le sniper.
+    expect(padTierOf(buildPadTierMatch(temoin(commun)), 1, SNIPER)).toBe('base')
+    const corrige = buildPadTierMatch(
+      temoin({ ...commun, pickups: prises } as Partial<ReplayDocument>),
+    )
+    expect(padTierOf(corrige, 1, SNIPER)).toBe('power')
+    // Les vies écartées quittent AUSSI le dénominateur : le silence n'est pas un zéro.
+    expect(corrige.lives).toBe(40)
+  })
+
+  it('ne mord que dans un sens : une prise POSTÉRIEURE à l’émission ne disqualifie rien', () => {
+    const prises = Array.from({ length: 20 }, (_, i) => ({
+      t: 300,
+      slot: 512 + i,
+      w: '9d6aaed2',
+      kind: 'weapon',
+      class: 0,
+    }))
+    const m = buildPadTierMatch(
+      temoin({
+        loadouts: vies(20, [AR, PISTOLET]),
+        pickups: prises,
+        tracks: Array.from({ length: 20 }, (_, i) => ({
+          slot: 512 + i,
+          team: 0,
+          points: [{ t: 0, x: 0, y: 0 }],
+        })),
+      } as Partial<ReplayDocument>),
+    )
+    expect(m.lives).toBe(20)
+    expect(padTierOf(m, 3, AR)).toBe('base')
+  })
+
+  it('ne prend pas la DOTATION DE RÉAPPARITION pour une prise', () => {
+    // `pickups` date la remise en main des armes de départ au début de la vie : huit prises à
+    // t = 0 pour les huit premières vies de b1ad85eb. Sans le filtre du début de vie, les vies
+    // les plus propres seraient les premières écartées.
+    const m = buildPadTierMatch(
+      temoin({
+        loadouts: vies(20, [AR, PISTOLET]),
+        pickups: Array.from({ length: 20 }, (_, i) => ({
+          t: 0,
+          slot: 512 + i,
+          w: '48c19d2d',
+          kind: 'weapon',
+          class: 0,
+        })),
+        tracks: Array.from({ length: 20 }, (_, i) => ({
+          slot: 512 + i,
+          team: 0,
+          points: [{ t: 0, x: 0, y: 0 }],
+        })),
+      } as Partial<ReplayDocument>),
+    )
+    expect(m.lives).toBe(20)
+    expect(padTierOf(m, 3, AR)).toBe('base')
   })
 })
 
