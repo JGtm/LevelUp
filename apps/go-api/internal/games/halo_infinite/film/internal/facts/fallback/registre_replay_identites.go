@@ -379,6 +379,28 @@ var registreReplayIdentites = []Repli{
 		CibleComptage:   comptageFamille19,
 	},
 	{
+		Nom:       "repli_zone_camp_de_capture_deduit_de_l_issue",
+		Fait:      "quel CAMP pousse la jauge d'une zone, rampe par rampe",
+		Mecanisme: "aucun canal POUSSEUR n'a ete elu pour cette zone : le camp est DEDUIT de l'issue — le proprietaire juste apres le sommet d'une rampe ABOUTIE. Une rampe avortee reste alors sans camp",
+		// NI `film_muet` NI `lecture_non_portee`, ET LE DIRE EST LE POINT. Le lot 5.6 a MESURE
+		// que le film porte ce fait (un second canal `ti=13 tag 4` par zone : 69 rampes
+		// abouties sur deux films, 69 accords, 0 desaccord) et que le decodeur le LIT deja.
+		// Ce qui manque quand ce repli se declenche, c'est l'ELECTION du canal — elle exige au
+		// moins deux rampes abouties concordantes, et une zone tres peu disputee n'en a pas
+		// assez. Le classer `film_muet` enverrait chercher la correction dans la grammaire,
+		// ou il n'y a rien a faire.
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_capturer.go",
+			Ancre:   "fb.Declenche(fallback.NomZoneCampDeCaptureDeduitDeLIssue)",
+		}},
+		DatePose:        "2026-09-21",
+		CibleRetrait:    "un critere d'election qui n'exige pas deux rampes abouties — par exemple l'election du POUSSEUR une fois pour le film (les trois zones d'une carte partagent la meme structure de blocs) au lieu d'une election par zone",
+		CritereRetrait:  "0 declenchement sur les films a zones du parc",
+		CompteurBranche: true,
+	},
+	{
 		Nom:       "repli_colline_votes_periode_entiere",
 		Fait:      "ou se trouve la colline designee d'une periode",
 		Mecanisme: "aucune rampe de capture dans la periode : les votes sont repris sur TOUTE la periode, rampes comprises ou non",

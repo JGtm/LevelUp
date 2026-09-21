@@ -123,7 +123,16 @@ type zoneSeries struct {
 	// son 5e slot de designation s'en aller. Mais le chainage de `ti=13` plafonne encore a
 	// 77 % : la contamination n'est pas eteinte, seulement reduite.
 	desig map[uint32][]zoneSample
-	slots int
+	// ownerChained : la MEME serie que `owner` (tag 4), reduite aux lectures dont le record
+	// CHAINE. C est la serie ou le POUSSEUR d une rampe se cherche (lot 5.6,
+	// zone_states_capturer.go) : sans ce filtre, la contamination d ancrage fait porter des
+	// `u32` hors plage d equipe a un canal de camp, et il n est meme plus candidat.
+	//
+	// UNE SECONDE CARTE PLUTOT QU UN FILTRE AU SITE : les intervalles de propriete lisent la
+	// serie COMPLETE (mesure du lot C-ter : le filtre coute ~3 % de lectures reelles), et les
+	// deux consommateurs n ont donc pas le meme besoin.
+	ownerChained map[uint32][]zoneSample
+	slots        int
 }
 
 // buildZoneStates rend l'etat des zones et sa couverture. Rend (nil, nil) quand l'appelant n'a
@@ -180,7 +189,8 @@ func buildZoneStates(in ZoneInput, c zoneCtx) ([]ZoneState, *ZonesCoverage) {
 // phase 2a). Les retenir ferait entrer du bruit dans les series.
 func zoneSeriesOf(reads []grammar.ManagedPropertyRead, c zoneCtx) zoneSeries {
 	out := zoneSeries{gauge: map[uint32][]zoneSample{}, owner: map[uint32][]zoneSample{},
-		keys: map[uint32]uint32{}, desig: map[uint32][]zoneSample{}}
+		keys: map[uint32]uint32{}, desig: map[uint32][]zoneSample{},
+		ownerChained: map[uint32][]zoneSample{}}
 	// L'ensemble des slots QUI PARLENT. Ce sont les slots de l'archetype 13, PAS les slots de
 	// vie publies du rejeu : deux espaces distincts, qui n'ont ni la meme origine ni le meme
 	// sens — d'ou l'ensemble local plutot qu'un appel au helper des pistes publiees.
@@ -199,6 +209,10 @@ func zoneSeriesOf(reads []grammar.ManagedPropertyRead, c zoneCtx) zoneSeries {
 			out.gauge[r.Slot] = append(out.gauge[r.Slot], zoneSample{t: t, v: r.Value})
 		case grammar.ManagedPropertyTagU32:
 			out.owner[r.Slot] = append(out.owner[r.Slot], zoneSample{t: t, v: r.Value})
+			if r.Chained {
+				out.ownerChained[r.Slot] = append(out.ownerChained[r.Slot],
+					zoneSample{t: t, v: r.Value})
+			}
 		case grammar.ManagedPropertyTagStringID:
 			out.keys[r.Slot] = uint32(r.Value)
 			if r.Chained {
@@ -207,7 +221,7 @@ func zoneSeriesOf(reads []grammar.ManagedPropertyRead, c zoneCtx) zoneSeries {
 		}
 	}
 	out.slots = len(seen)
-	for _, m := range []map[uint32][]zoneSample{out.gauge, out.owner, out.desig} {
+	for _, m := range []map[uint32][]zoneSample{out.gauge, out.owner, out.desig, out.ownerChained} {
 		for s := range m {
 			ss := m[s]
 			sort.SliceStable(ss, func(i, j int) bool { return ss[i].t < ss[j].t })

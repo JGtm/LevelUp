@@ -193,9 +193,13 @@ export function zoneCatalogMatches(catalog: number | null | undefined, served: n
  * couleur, ce qui se lirait comme un changement de capteur.
  *
  * `null` DANS TROIS CAS, ET AUCUN N'EST UNE ERREUR : aucune rampe ne couvre la frame (la jauge
- * est au repos), la rampe qui la couvre a AVORTÉ (le document ne nomme alors personne — le canal
- * de propriété y porte encore le défenseur), ou l'artefact est antérieur au schéma 64. Le rendu
- * repeint au neutre dans les trois.
+ * est au repos), la rampe qui la couvre ne nomme personne (le film y dit le NEUTRE, ou la zone
+ * n'a pas de canal pousseur élu et la rampe a avorté), ou l'artefact est antérieur au schéma 64.
+ * Le rendu repeint au neutre dans les trois.
+ *
+ * UNE RAMPE AVORTÉE PEUT DÉSORMAIS PORTER UN CAMP, et c'est le gain du lot 5.6 côté serveur : le
+ * camp n'est plus déduit de l'issue, il est LU sur le canal pousseur de la zone. Le rendu n'a
+ * rien à changer pour l'afficher — il lisait déjà la clé.
  */
 export function capturingTeamAt(
   ramps: readonly ReplayZoneGaugeRamp[],
@@ -232,14 +236,15 @@ export interface ZoneStateStyle {
    * Le rendu déduisait le capteur du propriétaire courant — « le camp d'en face » —, ce qui ne
    * vaut qu'à deux camps ET seulement sur une zone TENUE : sur une base NEUTRE la déduction
    * n'existe pas, et le remplissage s'y peignait au neutre pendant qu'une équipe poussait. Le
-   * document publie désormais le camp, MESURÉ à l'issue de la rampe
-   * (`zoneStates[].gaugeRamps[].capturingTeam`), et cette encre n'est plus que la traduction
-   * d'un identifiant d'équipe en couleur — la même que `colorOfOwner`.
+   * document publie désormais le camp (`zoneStates[].gaugeRamps[].capturingTeam`), et cette
+   * encre n'est plus que la traduction d'un identifiant d'équipe en couleur — la même que
+   * `colorOfOwner`. Depuis le lot 5.6, ce camp est LU dans le film (le canal pousseur de la
+   * zone) et non plus déduit de l'issue : les rampes AVORTÉES en portent un aussi.
    *
-   * CLÉ ABSENTE = NEUTRE, sans exception : une rampe qui avorte n'apprend rien sur son pousseur
-   * (le canal y nomme encore le défenseur), et un artefact de schéma <= 63 n'en porte aucune.
-   * Aucune inférence géométrique ne vient la remplacer — ce serait exactement l'invention que le
-   * dépôt s'interdit ailleurs.
+   * CLÉ ABSENTE = NEUTRE, sans exception : le film peut nommer le neutre (« personne ne
+   * pousse »), une zone peut n'avoir aucun canal pousseur élu, et un artefact de schéma <= 63
+   * n'en porte aucune. Aucune inférence géométrique ne vient la remplacer — ce serait exactement
+   * l'invention que le dépôt s'interdit ailleurs.
    */
   colorOfCapturer: (team: number) => string | null
   /** Encre neutre : zone que personne ne tient, et arc de jauge sans camp connu. */

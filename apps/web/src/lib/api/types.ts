@@ -2942,10 +2942,11 @@ export type ReplayZoneState = components['schemas']['ZoneState']
 export type ReplayZoneSpan = components['schemas']['ZoneSpan']
 export type ReplayGaugePoint = components['schemas']['GaugePoint']
 // UNE RAMPE DE LA JAUGE DE CAPTURE (schéma 64) : ses bornes, et `capturingTeam` — LE CAMP QUI LA
-// POUSSE — quand elle ABOUTIT. La clé est ABSENTE quand la rampe avorte, et c'est une mesure :
-// le canal de propriété y nomme encore le DÉFENSEUR. Le rendu repeint alors au neutre, et il
-// n'infère JAMAIS le capteur d'une autre source (ni « le camp d'en face du propriétaire », qui
-// n'existe pas sur une base neutre, ni les joueurs présents dans le volume de la zone).
+// POUSSE, abouti ou non. Le serveur le LIT dans le film depuis le lot 5.6 (le canal pousseur de
+// la zone) au lieu de le déduire de l'issue. La clé est ABSENTE quand le film nomme le NEUTRE,
+// ou quand rien ne le mesure. Le rendu repeint alors au neutre, et il n'infère JAMAIS le capteur
+// d'une autre source (ni « le camp d'en face du propriétaire », qui n'existe pas sur une base
+// neutre, ni les joueurs présents dans le volume de la zone).
 //
 // `t0`/`t1` SITUENT la rampe, ils ne datent pas le geste : `t0` est le début de la suite non
 // décroissante, donc le retour à zéro qui ferme la rampe précédente. La poussée commence au
