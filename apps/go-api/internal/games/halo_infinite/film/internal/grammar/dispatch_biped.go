@@ -116,10 +116,9 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 	case "biped-slide", "biped-slide-component": // i62 (FUN_142f02978 -> FUN_142f26ce8)
 		consumeBipedSlide(br, level)
 		return variant, nil, true
-	case "biped-action", "biped-action-component": // i63 (FUN_142f027f4 -> FUN_142f26a20)
-		// Returns ported=false on the value-gated loop1 dispatch (count>0) so the
-		// traversal desyncs cleanly instead of mis-aligning. Common case: 196 bits.
-		return variant, nil, consumeBipedAction(br)
+	case "biped-action", "biped-action-component": // i63, PORTE EN ENTIER (lot 5.11.0-a)
+		consumeBipedAction(br) // FUN_142f027f4 -> FUN_142f26a20 ; 196 bits a masque nul
+		return variant, nil, true
 	default:
 		return consumeManagedAndObjectiveComponent(br, name, level)
 	}

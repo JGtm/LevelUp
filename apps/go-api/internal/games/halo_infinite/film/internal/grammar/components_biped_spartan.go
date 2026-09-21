@@ -1,5 +1,7 @@
 package grammar
 
+import "math/bits"
+
 // components_biped_spartan.go — LES COMPOSANTS D APTITUDE SPARTIATE ET D ACTION DU BIPEDE :
 // i59 (etat non predit, avec l ancre du grappin), i61 (rejeu d etat de simulation), i62
 // (glissade), i63 (action) et i57 (aptitude spartiate).
@@ -153,36 +155,63 @@ func consumeBipedSlide(br *Lecteur, recordStateParam uint32) {
 //   the delta-biped path (i0..i62 are bit-exact). Decompile + disasm both verified.
 // ---------------------------------------------------------------------------
 
-// bipedActionLoop1Count / bipedActionLoop2Count are the two runtime counts of i63's
-// loops, NEITHER of which is read from the bitstream:
+// LES DEUX COMPTES DE BOUCLE D `i63`, ET LE SECOND VIENT DU FLUX (lot 5.11.0, 2026-09-21).
 //
-//	loop1 count = R(4) read from the stream — so it IS recoverable; we read it.
-//	loop2 count = FUN_1409fe718(state, 0x49) = POPCOUNT of a 73-bit RAM bitmask on the
-//	              component's own runtime state (param_1 = state, NOT the bitreader).
-//	              It cannot be recovered from the delta bits. Default 0 (common case);
-//	              a calibration harness may override it to sweep alternatives.
+//	loop1 : R(4) lu dans le flux.
+//	loop2 : `FUN_1409fe718(etat, 0x49)` = POPCOUNT des 73 PREMIERS BITS DU MASQUE `etat[0..0xb]`
+//	        - et ce masque est EXACTEMENT le bloc de 3 x R(32) que la tete du composant vient de
+//	        lire dans le flux. Le compte est donc RECUPERABLE, sans un bit de plus.
 //
-// CAVEAT: loop1's body has a VALUE-GATED dispatch (FUN_141fd4814) that reads a variable
-// number of bits depending on the R(5) tag value — see consumeBipedActionLoop1Item. It
-// is ported only for tag values whose sub-deser is itself ported; an unknown/heavy tag
-// desyncs (rare: loop1 count is 0 for a biped that is not mid weapon-set transition).
-// Le reglage public `SetBipedActionLoop2Count` a ete supprime le 2026-09-05 (lot E, item E.2) :
-// aucun appelant. Le compte reste 0, le cas commun mesure.
-// PROVENANCE : compte du second tour d i63, MESURE a 0 sur le corpus — c est le cas commun, et
-// il n est pas recuperable du flux (popcount RAM de FUN_1409fe718, 0 bit de flux). Constante
-// depuis le 2026-09-06 (lot E, item E.8).
-const bipedActionLoop2Count = 0
+// LE DEPOT DISAIT LE CONTRAIRE, ET C ETAIT UNE DOC INVERSEE. Le commentaire d origine posait
+// « POPCOUNT of a 73-bit RAM bitmask on the component's own runtime state ... It cannot be
+// recovered from the delta bits », et la constante `bipedActionLoop2Count = 0` en decoulait. La
+// lecture de l ecrivain (2026-09-21) tranche : `FUN_142f21b10(reader, reader, param_3)` ECRIT
+// ses trois `R(32)` dans `*param_3` (`for (p = base; p != base+3; p++) { ... *p = R(32); }`), et
+// le site d appel de tete passe `param_3 = param_1`, c est-a-dire la base d etat que
+// `FUN_1409fe718(param_1, 0x49)` popcompte ensuite. Le masque N EST PAS un etat de RAM : c est
+// le premier champ du composant. La sauvegarde `etat[0xc..0x17] <- etat[0x0..0xb]` du prologue le
+// confirme - on garde l ANCIEN masque avant d ecraser par le nouveau.
+//
+// LARGEUR DE LA FENETRE, RELUE AU BIT : `FUN_1409fe718(p, 0x49)` fait
+// `lVar5 = ((0x49 + 0x1f) >> 5) - 1 = 2`, popcompte `p[0]` et `p[1]` en entier, puis
+// `p[2] & (0xffffffff >> (0x20 - (0x49 & 0x1f)))` = `p[2] & 0x1ff` - les NEUF bits de poids
+// faible du troisieme mot. 32 + 32 + 9 = 73.
+//
+// CAVEAT loop1, INCHANGE : son corps a un dispatch PAR VALEUR (`FUN_141fd4814`) dont la largeur
+// depend du tag `R(5)` - cf. consumeBipedActionLoop1Item. Les six tags 0..5 sont portes et tout
+// tag >= 6 consomme zero bit (verite EXE 2026-06-13), donc le dispatch est complet.
+//
+// D OU LA DISPARITION DU `ported bool` DE CETTE FAMILLE (regle 7 : zero code mort). Les trois
+// fonctions le remontaient jusqu au dispatch, mais `consumeBipedActionTag` rendait `true` sur
+// TOUTES ses branches depuis le retrait des corps 6..11 inventes (lot C, 2026-08-01) : la branche
+// `return false` etait INATTEIGNABLE, et le statut `partiel` d `i63` dans `ecs_table.tsv` ne
+// tenait plus qu a la constante du second tour. Les deux tombent ensemble.
 
-// consumeBipedActionSubBlock mirrors FUN_142f21b10's deterministic prologue/epilogue:
-// a `for (p = base; p != base+3; p++)` loop that reads R(0x20)=R(32) on EACH of its 3
-// iterations (the `+0x20` width is the literal at every refill site; the loop bound is
-// base+3 uint words). NO gate, NO runtime count: 3*32 = 96 bits, unconditional.
-// CONFIRMED bit-exact from the FUN_142f21b10 disasm (3 dwords) and both call sites in
-// FUN_142f26a20 (start @142f26a56, tail-call end @142f26cd7).
-func consumeBipedActionSubBlock(br *Lecteur) {
-	br.ReadBits(32) // word[0]  FUN_142f21b10 inner R(0x20)
-	br.ReadBits(32) // word[1]
-	br.ReadBits(32) // word[2]
+// bipedActionMaskTailBits : les bits UTILES du troisieme mot du masque d `i63`, soit
+// `0x49 - 64 = 9` - le masque vaut 0x49 = 73 bits sur trois mots de 32.
+const bipedActionMaskTailBits = 9
+
+// consumeBipedActionSubBlock mirrors FUN_142f21b10: a `for (p = base; p != base+3; p++)` loop
+// that reads R(0x20)=R(32) on EACH of its 3 iterations AND STORES IT (`*param_3 = uVar7`). NO
+// gate, NO runtime count: 3*32 = 96 bits, unconditional. CONFIRMED bit-exact from the
+// FUN_142f21b10 decompile (3 dwords) and both call sites in FUN_142f26a20 (start @142f26a56,
+// tail-call end @142f26cd7).
+//
+// ELLE REND DESORMAIS SES TROIS MOTS : le bloc de tete EST le masque dont le second tour tire
+// son compte, et les jeter etait la cause de la sous-lecture d `i63`.
+func consumeBipedActionSubBlock(br *Lecteur) [3]uint64 {
+	var mots [3]uint64
+	for i := range mots {
+		mots[i] = br.ReadBits(32) // FUN_142f21b10 inner R(0x20), stocke dans *param_3
+	}
+	return mots
+}
+
+// bipedActionLoop2Count rend le compte du second tour d `i63` : le popcount des 73 premiers bits
+// du masque de tete, exactement comme `FUN_1409fe718(etat, 0x49)`.
+func bipedActionLoop2Count(mots [3]uint64) int {
+	n := bits.OnesCount64(mots[0]) + bits.OnesCount64(mots[1])
+	return n + bits.OnesCount64(mots[2]&((1<<bipedActionMaskTailBits)-1))
 }
 
 // consumeBipedActionLoop1Item mirrors one iteration of i63's first loop body:
@@ -208,10 +237,10 @@ func consumeBipedActionSubBlock(br *Lecteur) {
 //	tag5 FUN_1431a2f10 = FUN_14080dec4[R(32)] + FUN_1407f08bc[R1+optR8] + R(16) + R(8)
 //
 // tag >= 6 hits FUN_142ef01c4 (error path, 0 bits) — treat as unported.
-func consumeBipedActionLoop1Item(br *Lecteur) (ported bool) {
+func consumeBipedActionLoop1Item(br *Lecteur) {
 	br.ReadBits(7)        // inline R(7)
 	tag := br.ReadBits(5) // FUN_142ef1734 inline R(5) = tag (0..11)
-	return consumeBipedActionTag(br, tag)
+	consumeBipedActionTag(br, tag)
 }
 
 // (L INSTRUMENTATION i63 — `biDebug`, `biCurSeq`, `BiBadSeqs`, `BiOkSeqs` et leurs quatre
@@ -236,7 +265,7 @@ func consume1431a3a50(br *Lecteur) { br.ReadBits(15) }
 // exposait a re-cabler une lecture connue fausse.)
 
 // consumeBipedActionTag dispatches FUN_141fd4814(tag) — see consumeBipedActionLoop1Item.
-func consumeBipedActionTag(br *Lecteur, tag uint64) (ported bool) {
+func consumeBipedActionTag(br *Lecteur, tag uint64) {
 	switch tag {
 	case 0: // FUN_1408f0ac4(...,0) + FUN_1407f08bc
 		consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
@@ -270,36 +299,36 @@ func consumeBipedActionTag(br *Lecteur, tag uint64) (ported bool) {
 		// Le dispatch ne gere QUE 0..5 ; les corps 6..11 inventes par l'ancien port etaient
 		// faux (sur-lecture). Tag>=6 consomme zero bit et continue.
 	}
-	return true
 }
 
 // consumeBipedAction mirrors FUN_142f26a20 (verified against its decompile AND disasm).
-// Returns ported=false if it hits the value-gated loop1 dispatch (count>0) so the
-// traversal desyncs cleanly instead of mis-aligning.
 //
-//	FUN_142f21b10(start)                     -> R(32)x3 = 96 bits  (consumeBipedActionSubBlock)
+//	etat[0xc..0x17] <- etat[0x0..0xb]        (sauvegarde de l ancien masque, 0 bit)
+//	FUN_142f21b10(reader, reader, etat)      -> R(32)x3 = 96 bits, STOCKES = LE MASQUE
 //	count1 = R(4)                            (inline, +4 @142f26a5b..)
-//	loop count1x { consumeBipedActionLoop1Item }   (value-gated; common count1==0)
-//	count2 = FUN_1409fe718(state,0x49)       (RAM popcount, 0 stream bits; bipedActionLoop2Count)
+//	loop count1x { consumeBipedActionLoop1Item }   (dispatch par valeur, tags 0..5 portes)
+//	count2 = FUN_1409fe718(etat,0x49)        = popcount des 73 premiers bits DU MASQUE ci-dessus
 //	loop count2x { R(1) gate ; if gate: FUN_14076e304 = R(2) }
 //	FUN_142f21b10(end)                       -> R(32)x3 = 96 bits
 //
-// Common case (count1==0, count2==0): 96 + 4 + 96 = 196 bits. CONFIRMED bit-exact.
-func consumeBipedAction(br *Lecteur) (ported bool) {
-	consumeBipedActionSubBlock(br) // FUN_142f21b10 start: 96 bits
-	count1 := int(br.ReadBits(4))  // inline R(4)
+// Cas commun (masque nul, count1==0) : 96 + 4 + 96 = 196 bits. CONFIRMED bit-exact.
+//
+// LE SECOND TOUR RELIT SON COMPTE A CHAQUE ITERATION chez l ecrivain (`iVar8 =
+// FUN_1409fe718(param_1,0x49)` en queue de boucle), et le corps n ecrit que dans
+// `etat + 0xe8 + i` - donc le masque ne bouge pas et le compte est CONSTANT. La boucle Go le
+// calcule une fois.
+func consumeBipedAction(br *Lecteur) {
+	masque := consumeBipedActionSubBlock(br) // FUN_142f21b10 start: 96 bits = le masque
+	count1 := int(br.ReadBits(4))            // inline R(4)
 	for i := 0; i < count1; i++ {
-		if !consumeBipedActionLoop1Item(br) {
-			return false // value-gated dispatch unported; desync cleanly
-		}
+		consumeBipedActionLoop1Item(br)
 	}
-	for i := 0; i < bipedActionLoop2Count; i++ { // FUN_1409fe718 count (RAM, not stream)
+	for i, n := 0, bipedActionLoop2Count(masque); i < n; i++ {
 		if br.ReadBit() { // FUN_1406cf008 = R(1) gate
 			br.ReadBits(2) // FUN_14076e304 = R(2)
 		}
 	}
 	consumeBipedActionSubBlock(br) // FUN_142f21b10 end (tail-call): 96 bits
-	return true
 }
 
 // ---------------------------------------------------------------------------
