@@ -64,8 +64,8 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - [ ] Etats vides D8 sur les blocs d'usage
 - [ ] « Bastion(s) » -> « Bases » dans `usageI18n.ts`
 
-### Lot B — comparaison Sessions alignee (worktree `LevelUp-wt-ajsup-b`)
-- [ ] Rangees partagees gauche/droite, placeholder D16
+### Lot B — comparaison Sessions alignee (worktree `LevelUp-wt-ajsup-b`) — FUSIONNE 0fb899baa
+- [x] Rangees partagees gauche/droite, placeholder D16
 
 ### Lot C — Explorer, Relations, Synthese, Timeseries intensite (worktree `LevelUp-wt-ajsup-c`) — FUSIONNE 95065fee3
 - [x] Top medailles : dans Profil de combat, suit le switch En direct / Local ; retire de la carte cible
