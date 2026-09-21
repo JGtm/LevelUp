@@ -1,12 +1,12 @@
 /**
- * SquadIsolementNuageCard — « Pourquoi la vengeance ne vient pas » (onglet Synergies).
+ * SquadIsolementNuageCard — « Frags non ripostés » (section Coordination).
  *
  * UN PETIT POINT PAR MORT, UN GROS POINT PAR JOUEUR (contrat refondu le 2026-09-19,
  * PLAN_AJUSTEMENTS_PRE_V75 décision 4). En abscisse la distance au coéquipier visible le
  * plus proche RAPPORTÉE à la portée du radar du match (1,0 = à la portée, repère vertical
- * tracé) ; en ordonnée le délai avant vengeance, en secondes. Deux bandes nommées portent
+ * tracé) ; en ordonnée le délai avant la riposte, en secondes. Deux bandes nommées portent
  * ce qui n'a pas de valeur : « hors de vue » à droite (aucun coéquipier visible), « jamais
- * vengée » en haut. Le gros point d'un joueur est la médiane de ses deux axes, sa taille
+ * ripostée » en haut. Le gros point d'un joueur est la médiane de ses deux axes, sa taille
  * dit combien de morts.
  *
  * PAS LE WRAPPER `<ScatterChart>` GÉNÉRIQUE : ce nuage a besoin d'un encodage PAR POINT
@@ -47,12 +47,12 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { getSquadPlayerColors } from './colors'
 import {
-  contrasteIsolement,
   delaiSecondes,
   echellesNuage,
   OPACITE_MORT,
   positionMort,
   positionRepere,
+  ordreDessinReperes,
   repereAttenue,
   REPERE_PORTEE_RADAR,
   TAILLE_MORT,
@@ -108,10 +108,6 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
   const mortsMin = volumes.length > 0 ? Math.min(...volumes) : 0
   const mortsMax = volumes.length > 0 ? Math.max(...volumes) : 0
 
-  // La phrase du haut compare les DEUX EXTRÊMES d'isolement du roster : le plus exposé et
-  // le moins exposé. Sur un seul joueur, il n'y a rien à opposer.
-  const contraste = useMemo(() => contrasteIsolement(reperes), [reperes])
-
   const buildOption = useMemo(
     () => (s: ChartSeries<SquadIsolementMort>[]) =>
       buildNuageOption(s, {
@@ -138,19 +134,17 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
           <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
           <>
-            {/* La ligne narrative vit AU-DESSUS du graphe, jamais en dessous. */}
-            {contraste && (
-              <p className="border-l-2 border-info pl-3 text-sm text-foreground">
-                {t.say({
-                  loin: contraste.loin.gamertag,
-                  loinIso: pctFmt.format(contraste.loin.isolement),
-                  loinCouv: pctFmt.format(contraste.loin.couverture),
-                  proche: contraste.proche.gamertag,
-                  procheIso: pctFmt.format(contraste.proche.isolement),
-                  procheCouv: pctFmt.format(contraste.proche.couverture),
-                })}
-              </p>
-            )}
+            {/* PHRASE D'INTRODUCTION, TOUJOURS RENDUE (D19, 2026-09-21). Elle opposait les
+                deux extrêmes d'isolement du roster — une comparaison chiffrée qui exigeait
+                deux joueurs et disparaissait donc en solo, au moment même où le nuage
+                devient le seul bloc de la section. Elle dit maintenant CE QU'ON LIT, dans le
+                registre des deux autres cartes de la section. */}
+            <p
+              className="border-l-2 border-info pl-3 text-sm text-foreground"
+              data-testid="squad-isolement-phrase"
+            >
+              {t.say}
+            </p>
             <ChartCard series={series} buildOption={buildOption} height={380} frameless />
             {/* LÉGENDE DE TAILLE, en DOM : ECharts n'en a pas pour un encodage de taille.
                 Elle porte les VRAIES valeurs extrêmes du roster — un encodage qu'on ne
@@ -257,7 +251,13 @@ function buildNuageOption(
   const axis = getAxisBase(tc)
   const warningColor = resolveToken('warning')
 
-  const echartsSeries = series.flatMap((s, idx) => {
+  // DEUX PASSES, ET C'EST L'ORDRE DE DESSIN QUI L'IMPOSE (retour utilisateur du
+  // 2026-09-21). Les repères médians sont émis APRÈS tous les nuages de morts, et entre eux
+  // par TAILLE DÉCROISSANTE (`ordreDessinReperes`) : ECharts dessine la dernière série
+  // au-dessus, donc le plus petit repère finit au premier plan au lieu d'être recouvert par
+  // celui d'un coéquipier plus exposé.
+  const reperesSeries: Record<string, unknown>[] = []
+  const nuageSeries = series.flatMap((s, idx) => {
     const gamertag = (s.meta as { gamertag?: string } | undefined)?.gamertag ?? s.key
     const color = playerColors[gamertag] ?? resolveToken('info')
     const data: EchartMortDatum[] = s.datapoints.map((m) => ({
@@ -342,8 +342,19 @@ function buildNuageOption(
           ],
         }
       : null
-    return repereSerie ? [serie, repereSerie] : [serie]
+    if (repereSerie) reperesSeries.push(repereSerie)
+    return [serie]
   })
+  // Le tri se fait sur la MESURE (`nb_morts`), pas sur le diamètre calculé : c'est la
+  // grandeur que `tailleRepere` traduit, et elle est monotone.
+  const reperesTries = ordreDessinReperes(
+    reperesSeries.map((r) => (r.data as EchartRepereDatum[])[0].repereRaw),
+  )
+  const parXuid = new Map(reperesSeries.map((r) => [(r.data as EchartRepereDatum[])[0].repereRaw.xuid, r]))
+  const echartsSeries = [
+    ...nuageSeries,
+    ...reperesTries.map((r) => parXuid.get(r.xuid)).filter((r) => r != null),
+  ]
 
   return {
     backgroundColor: CHART_BG,
@@ -418,7 +429,7 @@ function formatTooltip(
   const m = data.raw
   if (!m) return ''
   const delai = delaiSecondes(m)
-  const delay = delai == null ? t.tooltipNever : t.tooltipAvenged(numFmt.format(delai))
+  const delay = delai == null ? t.tooltipNever : t.tooltipRiposted(numFmt.format(delai))
   const couverture =
     m.distance_ratio == null
       ? t.tooltipDeathOutOfSight

@@ -29,21 +29,14 @@ export function getSquadIsolementText(locale: Locale) {
      *  proximité du radar. Le retour à la ligne HTML est posé par le composant. */
     tooltipDeathCoverage: (ratio: string) => m('squad.isolement.tooltip_death_coverage', { ratio }),
     tooltipDeathOutOfSight: m('squad.isolement.tooltip_death_out_of_sight'),
-    tooltipAvenged: (seconds: string) => m('squad.isolement.tooltip_avenged', { seconds }),
+    tooltipRiposted: (seconds: string) => m('squad.isolement.tooltip_riposted', { seconds }),
     tooltipNever: m('squad.isolement.tooltip_never'),
     tooltipRepereHead: (v: { gamertag: string; n: number }) =>
       m('squad.isolement.tooltip_repere_head', { ...v }),
     tooltipRepereIso: (isoRate: string) => m('squad.isolement.tooltip_repere_iso', { isoRate }),
     tooltipRepereCov: (covRate: string) => m('squad.isolement.tooltip_repere_cov', { covRate }),
     cardTitle: m('squad.isolement.card_title'),
-    say: (v: {
-      loin: string
-      loinIso: string
-      loinCouv: string
-      proche: string
-      procheIso: string
-      procheCouv: string
-    }) => m('squad.isolement.say', { ...v }),
+    say: m('squad.isolement.say'),
     figure: m('squad.isolement.figure'),
     legendDeaths: (n: number) => m('squad.isolement.legend_deaths', { n }),
     legendDeath: m('squad.isolement.legend_death'),

@@ -140,7 +140,7 @@ describe('SquadSynergiesPage — section Assistances', () => {
       pageData: pageWithAssistPairs(),
     })
     renderWithProviders(<SquadSynergiesPage />)
-    expect(screen.getAllByText("Assistances dans l'escouade").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Appui").length).toBeGreaterThan(0)
     // La phrase de lecture a quitté l'écran pour l'infobulle du titre.
     expect(screen.queryByText(/^Une barre par larbin/)).toBeNull()
   })

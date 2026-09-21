@@ -2,83 +2,27 @@ import { describe, it, expect } from 'vitest'
 
 import type { SquadEchange } from '@/lib/api/types'
 
-import { couverture, echangeDe } from './squadEchange.fixtures'
+import { couverture, echangeDe } from './squadRiposte.fixtures'
 import {
-  ECART_BADGE_VENGEANCES,
-  ECART_CONSTAT_POINTS,
+  ECART_BADGE_RIPOSTES,
+  FENETRE_TENDANCE,
+  appelRiposte,
+  friseRiposte,
+  moyenneGlissante,
   PLANCHER_MORTS,
-  constatDuMoment,
   couvertureParJoueur,
   delaisSeries,
-  ecartEchange,
+  ecartRiposte,
   extremesCouverture,
   matriceSeries,
   matriceVide,
   resumeDelais,
-  trendEcart,
-} from './squadEchange.logic'
+} from './squadRiposte.logic'
 
-// Le DÉCOR vit dans `squadEchange.fixtures` : ce fichier en avait une COPIE, déjà
+// Le DÉCOR vit dans `squadRiposte.fixtures` : ce fichier en avait une COPIE, déjà
 // divergente (12 matchs par défaut ici, autre valeur là-bas), ce qui rendait deux
 // tests du même invariant incomparables. Correction W7 (revue du 2026-09-06).
 
-// ─── LE CONSTAT DU MOMENT : DEUX SEUILS, TOUS LES DEUX NÉCESSAIRES ────────────────
-
-describe('constatDuMoment — la règle de seuil du plan (§1, 2026-09-06)', () => {
-  it('N’EST PAS rendu sous le plancher de morts, même avec un écart énorme', () => {
-    // 29 morts, 50 points d'écart : la carte reste absente. Sous le plancher,
-    // l'écart n'est pas un signal, c'est un tirage.
-    const e = echangeDe({
-      couverture: couverture(20, PLANCHER_MORTS - 1),
-      habituel: couverture(4, 40),
-    })
-    expect(constatDuMoment(e)).toBeNull()
-  })
-
-  it('N’EST PAS rendu sous le seuil d’écart, même avec un gros échantillon', () => {
-    // 400 morts mesurées, 4 points d'écart : rien à dire.
-    const e = echangeDe({
-      couverture: couverture(176, 400), // 44,0 %
-      habituel: couverture(160, 400), // 40,0 %
-    })
-    expect(constatDuMoment(e)).toBeNull()
-  })
-
-  it('EST rendu EXACTEMENT au plancher (30 morts) et à l’écart minimal (5 points)', () => {
-    const e = echangeDe({
-      couverture: couverture(15, PLANCHER_MORTS), // 50,0 %
-      habituel: couverture(45, 100), // 45,0 %
-    })
-    const cap = constatDuMoment(e)
-    expect(cap).not.toBeNull()
-    expect(cap?.ecartPoints).toBe(ECART_CONSTAT_POINTS)
-    expect(cap?.ton).toBe('consolide')
-    expect(cap?.morts).toBe(PLANCHER_MORTS)
-  })
-
-  it('parle d’ATTENTION quand l’écart est négatif, jamais d’alerte', () => {
-    const e = echangeDe({
-      couverture: couverture(12, 40), // 30,0 %
-      habituel: couverture(40, 100), // 40,0 %
-    })
-    const cap = constatDuMoment(e)
-    expect(cap?.ton).toBe('attention')
-    expect(cap?.ecartPoints).toBe(-10)
-  })
-
-  it('N’EST PAS rendu sans référence mesurée (un écart contre zéro n’est pas un écart)', () => {
-    const e = echangeDe({
-      couverture: couverture(20, 40),
-      habituel: couverture(0, 0),
-    })
-    expect(constatDuMoment(e)).toBeNull()
-  })
-
-  it('N’EST PAS rendu quand la section est absente du contrat', () => {
-    expect(constatDuMoment(null)).toBeNull()
-    expect(constatDuMoment(undefined)).toBeNull()
-  })
-})
 
 // ─── ANTI-BIAIS : 8 MORTS À 100 % NE CLASSE PERSONNE ──────────────────────────
 
@@ -95,10 +39,6 @@ describe('anti-biais — un petit échantillon ne classe personne', () => {
 
   it('le serveur pose le drapeau « échantillon faible » à 8 morts', () => {
     expect(petit.couverture.echantillon_faible).toBe(true)
-  })
-
-  it('aucun constat du moment, malgré 100 % contre 30 % (60 points d’écart)', () => {
-    expect(constatDuMoment(petit)).toBeNull()
   })
 
   it('aucun badge « le plus / le moins couvert » : rien ne classe qui que ce soit', () => {
@@ -127,22 +67,22 @@ describe('extremesCouverture — badges « le plus / le moins couvert »', () =>
     })
   }
 
-  it('rien sous l’écart minimal : 2 vengeances d’écart ne désignent personne', () => {
+  it('rien sous l’écart minimal : 2 ripostes d’écart ne désignent personne', () => {
     expect(extremesCouverture(avecVengeances(5, 4, 3))).toBeNull()
   })
 
   it('les deux badges EXACTEMENT à l’écart minimal', () => {
-    const ex = extremesCouverture(avecVengeances(5, 4, 5 - ECART_BADGE_VENGEANCES))
+    const ex = extremesCouverture(avecVengeances(5, 4, 5 - ECART_BADGE_RIPOSTES))
     expect(ex).not.toBeNull()
     expect(ex?.plusCouvert.gamertag).toBe('Moi')
     expect(ex?.moinsCouvert.gamertag).toBe('Autre')
   })
 
-  it('compte les vengeances REÇUES (la colonne du vengé), pas les vengeances rendues', () => {
+  it('compte les ripostes REÇUES (la colonne), pas les ripostes rendues', () => {
     // Moi venge beaucoup (2 lignes) mais n'est vengé qu'une fois.
     const parJoueur = couvertureParJoueur(avecVengeances(1, 9, 9))
-    expect(parJoueur.find((j) => j.gamertag === 'Moi')?.vengeances).toBe(1)
-    expect(parJoueur.find((j) => j.gamertag === 'Ami')?.vengeances).toBe(9)
+    expect(parJoueur.find((j) => j.gamertag === 'Moi')?.ripostes).toBe(1)
+    expect(parJoueur.find((j) => j.gamertag === 'Ami')?.ripostes).toBe(9)
   })
 
   it('pose les badges EXACTEMENT au plancher d’échantillon (30 morts)', () => {
@@ -188,7 +128,7 @@ describe('matriceSeries — orientation, complétude, et AXES', () => {
   // Le décor partagé : roster [Alice, Bob], une seule case (Bob venge Alice).
   const e = echangeDe()
 
-  it('LIGNE = vengeur (y), COLONNE = vengé (x) — l’orientation de SquadAssistPairsTable', () => {
+  it('LIGNE = celui qui riposte (y), COLONNE = celui pour qui (x)', () => {
     const dp = matriceSeries(e)[0].datapoints
     const case42 = dp.find((d) => d.y === 'Bob' && d.x === 'Alice')
     expect(case42?.value).toBe(6)
@@ -231,7 +171,7 @@ describe('matriceSeries — orientation, complétude, et AXES', () => {
     expect(dp.find((d) => d.y === 'Alice' && d.x === 'Bob')?.value).toBe(0)
   })
 
-  it('matriceVide dit qu’il n’y a aucune vengeance interne à montrer', () => {
+  it('matriceVide dit qu’il n’y a aucune riposte interne à montrer', () => {
     expect(matriceVide(echangeDe({ cellules: [] }))).toBe(true)
     expect(matriceVide(e)).toBe(false)
   })
@@ -277,22 +217,11 @@ describe('délais — les deux barres hors fenêtre sont montrées et jamais com
   })
 })
 
-// ─── LA FLÈCHE ────────────────────────────────────────────────────────────────
 
-describe('trendEcart', () => {
-  it('rend une flèche explicite pour le zéro (une flèche absente = pas de mesure)', () => {
-    expect(trendEcart(7)).toBe('above')
-    expect(trendEcart(-7)).toBe('below')
-    expect(trendEcart(0)).toBe('near')
-  })
-})
-
-// ─── L'ÉCART À L'HABITUEL (correction W3) ─────────────────────────────────────
-
-describe('ecartEchange', () => {
+describe('ecartRiposte', () => {
   it('rend l’écart signé et son arrondi en points', () => {
     const e = echangeDe({ couverture: couverture(27, 45), habituel: couverture(40, 100) })
-    const r = ecartEchange(e)
+    const r = ecartRiposte(e)
     expect(r.ecartPoints).toBe(20) // 60,0 % − 40,0 %
     expect(r.ecart).toBeCloseTo(0.2, 6)
     expect(r.pleinHistorique).toBe(false)
@@ -302,11 +231,102 @@ describe('ecartEchange', () => {
     // Inverser le signe de la soustraction fait tomber ce test — c'est ce qui était
     // impossible tant que le calcul vivait inliné dans le composant.
     const e = echangeDe({ couverture: couverture(9, 45), habituel: couverture(40, 100) })
-    expect(ecartEchange(e).ecartPoints).toBe(-20)
+    expect(ecartRiposte(e).ecartPoints).toBe(-20)
   })
 
   it('signale le plein historique : périmètre == référence', () => {
     const e = echangeDe({ matchs_total: 60, matchs_habituel: 60 })
-    expect(ecartEchange(e).pleinHistorique).toBe(true)
+    expect(ecartRiposte(e).pleinHistorique).toBe(true)
+  })
+})
+
+// ─── LE CHIFFRE D'APPEL (D19) ─────────────────────────────────────────────────
+
+describe('appelRiposte — le chiffre d’appel de la carte « Riposte »', () => {
+  it('ne réinvente aucun quotient : taux et brut viennent du serveur', () => {
+    const e = echangeDe({ couverture: couverture(99, 511, 128), habituel: couverture(40, 100) })
+    const a = appelRiposte(e)
+    expect(a.taux).toBeCloseTo(99 / 511, 6)
+    expect(a.ripostes).toBe(99)
+    expect(a.sansReponse).toBe(511 - 99)
+    expect(a.mortsEquipe).toBe(511)
+  })
+
+  it('rend « une fois sur N » — l’INVERSE arrondi du taux, jamais un taux de plus', () => {
+    const e = echangeDe({ couverture: couverture(99, 511, 128), habituel: couverture(40, 100) })
+    // 19,4 % ≈ une fois sur cinq.
+    expect(appelRiposte(e).surCombien).toBe(5)
+  })
+
+  it('rend `null` sur « une fois sur N » à taux NUL : « une fois sur l’infini » ne se dit pas', () => {
+    const e = echangeDe({ couverture: couverture(0, 60), habituel: couverture(40, 100) })
+    expect(appelRiposte(e).surCombien).toBeNull()
+  })
+
+  it('rend `null` sur le délai médian quand aucune riposte n’est survenue', () => {
+    const e = echangeDe({ delai_median_ms: 0 } as Partial<SquadEchange>)
+    expect(appelRiposte(e).delaiMedianS).toBeNull()
+  })
+
+  it('signale le PLEIN HISTORIQUE : l’écart s’y tait (tautologie, pas mesure)', () => {
+    const e = echangeDe({ matchs_total: 60, matchs_habituel: 60 })
+    expect(appelRiposte(e).pleinHistorique).toBe(true)
+  })
+})
+
+// ─── LA FRISE : UNE SOIRÉE = UN BÂTON, PLUS AUCUN REPLI EN LISTE ──────────────
+
+describe('friseRiposte — la frise soirée par soirée', () => {
+  const avecSessions = (taux: number[], morts = 50) =>
+    echangeDe({
+      habituel: couverture(20, 100),
+      taux_par_session: taux.map((t, i) => ({
+        session_label: `1${i}/09 22:00–23:00 (4)`,
+        matchs_mesures: 4,
+        couverture: { taux: t, brut: Math.round(t * morts), par_match: 1, n: morts, echantillon_faible: morts < 30 },
+      })),
+    } as Partial<SquadEchange>)
+
+  it('UNE SEULE SOIRÉE rend UN SEUL BÂTON — il n’y a plus de plancher de tendance', () => {
+    const f = friseRiposte(avecSessions([0.3]))
+    expect(f.soirees).toHaveLength(1)
+    expect(f.soirees[0].tauxPct).toBeCloseTo(30, 6)
+  })
+
+  it('réduit le libellé de soirée à sa DATE (un axe ne porte pas la plage horaire)', () => {
+    expect(friseRiposte(avecSessions([0.3])).soirees[0].label).toBe('10/09')
+  })
+
+  it('porte le VOLUME de chaque soirée — le dénominateur que la courbe ne montrait pas', () => {
+    expect(friseRiposte(avecSessions([0.3, 0.1], 84)).soirees.map((s) => s.morts)).toEqual([84, 84])
+  })
+
+  it('la couleur porte un VERDICT : au-dessus ou en dessous de l’habituel (20 %)', () => {
+    const f = friseRiposte(avecSessions([0.3, 0.1, 0.2]))
+    expect(f.soirees.map((s) => s.auDessus)).toEqual([true, false, true])
+  })
+
+  it('rend l’habituel en POURCENTS, sur le même axe que les bâtons', () => {
+    expect(friseRiposte(avecSessions([0.3])).habituelPct).toBeCloseTo(20, 6)
+  })
+
+  it('rend une tendance de MÊME LONGUEUR que les soirées : aucun trou d’amorce', () => {
+    const f = friseRiposte(avecSessions([0.3, 0.1, 0.2, 0.4]))
+    expect(f.tendancePct).toHaveLength(4)
+    expect(f.tendancePct.every((v) => Number.isFinite(v))).toBe(true)
+  })
+
+  it('rend une frise VIDE (et non une liste) sans soirée mesurée', () => {
+    expect(friseRiposte(echangeDe()).soirees).toEqual([])
+  })
+})
+
+describe('moyenneGlissante', () => {
+  it('moyenne les `fenetre` dernières valeurs, et s’arrête au début de la série', () => {
+    expect(moyenneGlissante([10, 20, 30, 40], FENETRE_TENDANCE)).toEqual([10, 15, 20, 30])
+  })
+
+  it('rend une liste vide sur une série vide', () => {
+    expect(moyenneGlissante([], FENETRE_TENDANCE)).toEqual([])
   })
 })

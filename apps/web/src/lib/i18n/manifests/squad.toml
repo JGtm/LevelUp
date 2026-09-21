@@ -649,157 +649,213 @@ en = "Objective"
 fr = "Impact"
 en = "Impact"
 
-# ─── L'ECHANGE (plan tactique 2026-09-06, phase 3) ──────────────────────────
+# ─── LA RIPOSTE (section « Coordination » de l'Escouade, D19 du 2026-09-21) ──
 #
-# Un ECHANGE est une mort vengee : un coequipier abat le tueur dans les 5 s.
-# Vocabulaire FR arrete : « echange », « vengeance », « riposte ». Jamais
-# « trade ». Aucune chaine FR de ce chantier ne contient le mot anglais des
-# cartes de chaleur (garde anti-anglicismes, lot C.4).
+# Une RIPOSTE est une mort de notre camp dont le tueur est abattu par un coéquipier
+# dans les 5 s. Vocabulaire FR arrêté (D19) : « riposte », « riposter », « taux de
+# riposte ». Jamais « échange », jamais « vengeance », jamais « trade ». L'autre
+# notion de la section est l'APPUI (qui prépare les frags de qui) — et elle seule
+# garde le mot « assistance », parce qu'elle compte des assistances.
 
-[squad.echange.section_title]
-fr = "Assistances croisées"
-en = "Cross assists"
+[squad.riposte.coordination_title]
+fr = "Coordination"
+en = "Coordination"
 
-[squad.echange.section_label]
-fr = "Assistances croisées entre membres de l'escouade"
-en = "Cross assists between squad members"
+[squad.riposte.coordination_help_riposte]
+fr = "La riposte : quand un des nôtres tombe, son tueur est-il abattu par un coéquipier dans les {seconds, number} s qui suivent ?"
+en = "Riposte: when one of us falls, is their killer taken down by a teammate within the next {seconds, number} s?"
 
-[squad.echange.definition]
-fr = "Un échange : un coéquipier abat votre tueur dans les {seconds, number} s qui suivent votre mort."
-en = "A trade: a teammate takes down your killer within {seconds, number} s of your death."
+[squad.riposte.coordination_help_appui]
+fr = "L'appui : qui prépare les frags de qui — une assistance n'a ni fenêtre de temps ni mort de notre camp, c'est une autre mesure."
+en = "Support: who sets up whose kills — an assist has neither a time window nor a death on our side; it is a different measure."
 
-[squad.echange.narrative]
-fr = "Sur {matches, plural, one {# match} other {# matchs}}, {brut, number} des {n, plural, one {# mort} other {# morts}} de votre camp ont été vengées dans les {seconds, number} s — soit {rate}."
-en = "Over {matches, plural, one {# match} other {# matches}}, {brut, number} of your side's {n, plural, one {# death} other {# deaths}} were avenged within {seconds, number} s — that is {rate}."
+[squad.riposte.title]
+fr = "Riposte"
+en = "Riposte"
 
-[squad.echange.low_sample]
+[squad.riposte.label]
+fr = "La riposte après une mort de notre camp"
+en = "Riposte after a death on our side"
+
+[squad.riposte.definition]
+fr = "Une riposte : un coéquipier abat votre tueur dans les {seconds, number} s qui suivent votre mort."
+en = "A riposte: a teammate takes down your killer within {seconds, number} s of your death."
+
+[squad.riposte.help_usual]
+fr = "L'habituel est le même taux sur tout l'historique de la composition. Quand le filtre couvre déjà tout l'historique, l'écart vaut zéro par construction et n'est pas affiché."
+en = "Usual is the same rate over the composition's whole history. When the filter already covers the whole history, the deviation is zero by construction and is not displayed."
+
+[squad.riposte.low_sample]
 fr = "échantillon faible"
 en = "small sample"
 
-[squad.echange.low_sample_hint]
+[squad.riposte.low_sample_hint]
 fr = "Moins de {floor, number} morts mesurées : la valeur existe, elle ne classe personne."
 en = "Fewer than {floor, number} measured deaths: the value exists, it ranks no one."
 
-[squad.echange.badge_most_covered]
+[squad.riposte.badge_most_covered]
 fr = "Le plus couvert : {player}"
 en = "Most covered: {player}"
 
-[squad.echange.badge_least_covered]
+[squad.riposte.badge_least_covered]
 fr = "Le moins couvert : {player}"
 en = "Least covered: {player}"
 
-[squad.echange.no_pairs]
-fr = "Aucune vengeance entre membres de l'escouade sur cette sélection."
-en = "No avenging kill between squad members in this selection."
+[squad.riposte.no_pairs]
+fr = "Aucune riposte entre membres de l'escouade sur cette sélection."
+en = "No riposte between squad members in this selection."
 
-[squad.echange.empty_title]
-fr = "Aucun échange mesuré"
-en = "No trade measured"
+[squad.riposte.empty_title]
+fr = "Aucune riposte mesurée"
+en = "No riposte measured"
 
-[squad.echange.matrix_tooltip]
-fr = "{avenger} a vengé {avenged} {n, plural, one {# fois} other {# fois}} ({perMatch} par match)."
-en = "{avenger} avenged {avenged} {n, plural, one {# time} other {# times}} ({perMatch} per match)."
+[squad.riposte.matrix_tooltip]
+fr = "{auteur} a riposté pour {pour} {n, plural, one {# fois} other {# fois}} ({perMatch} par match)."
+en = "{auteur} riposted for {pour} {n, plural, one {# time} other {# times}} ({perMatch} per match)."
 
-# ─── Distribution du délai (onglet Dynamique) ───────────────────────────────
-
-[squad.echange.delay_title]
-fr = "Délai de vengeance"
-en = "Revenge delay"
-
-[squad.echange.delay_label]
-fr = "Distribution du délai d'échange"
-en = "Trade delay distribution"
-
-[squad.echange.delay_narrative_empty]
-fr = "Aucune riposte mesurée sur la sélection."
-en = "No counter-kill measured in this selection."
-
-[squad.echange.delay_x_axis]
-fr = "Délai avant la riposte"
-en = "Delay before the counter-kill"
-
-[squad.echange.delay_y_axis]
-fr = "Morts vengées"
-en = "Avenged deaths"
-
-[squad.echange.delay_bin]
-fr = "{start, number}-{end, number} s"
-en = "{start, number}-{end, number} s"
-
-[squad.echange.delay_bin_open]
-fr = "au-delà de {start, number} s"
-en = "beyond {start, number} s"
-
-[squad.echange.delay_out_of_window_suffix]
-fr = "hors fenêtre"
-en = "outside window"
-
-[squad.echange.delay_window]
-fr = "Fenêtre d'échange : {seconds, number} s — les deux dernières barres sont hors fenêtre, montrées mais jamais comptées."
-en = "Trade window: {seconds, number} s — the last two bars are outside the window, shown but never counted."
-
-# ─── KPI du bandeau ─────────────────────────────────────────────────────────
-
-[squad.echange.kpi_label]
-fr = "Taux d'échange"
-en = "Trade rate"
-
-[squad.echange.kpi_vs_usual]
-fr = "{delta} vs habituel"
-en = "{delta} vs usual"
-
-# ─── Constat du moment ──────────────────────────────────────────────────────
+# ─── La phrase de lecteur, TOUJOURS rendue ──────────────────────────────────
 #
-# « CONSTAT », et surtout PAS « Cap » (décision utilisateur du 2026-09-06). La page
-# Escouade porte déjà un « Cap d'escouade » (SquadFocusStrip), qui regarde DEVANT — les
-# objectifs de la composition —, et l'onglet Entraînement un « Cap du moment »
-# (CoachFocusCard, profile.coach.title). Trois « Cap » à quelques centimètres, dont deux
-# prospectifs et un rétrospectif, se marchaient dessus. Cette carte-ci ne propose aucune
-# direction : elle CONSTATE ce que disent les matchs affichés.
+# Elle est faite de deux morceaux : le fait (toujours), puis l'écart à l'habituel —
+# qui SE TAIT quand le périmètre couvre tout l'historique (l'écart y est nul par
+# construction, et l'annoncer ferait croire à une mesure là où il n'y a qu'une
+# tautologie).
 
-[squad.echange.constat_title]
-fr = "Constat du moment"
-en = "Current reading"
+[squad.riposte.say_fact]
+fr = "Quand un des nôtres tombe, on abat son tueur dans les {seconds, number} secondes une fois sur {surCombien, number} — et quand on le fait, on met {delai} s."
+en = "When one of us falls, we take their killer down within {seconds, number} seconds one time in {surCombien, number} — and when we do, it takes us {delai} s."
 
-[squad.echange.constat_consolidate]
-fr = "Vous consolidez : votre camp échange {delta} de plus que d'habitude ({rate} contre {usual})."
-en = "You are consolidating: your side trades {delta} more than usual ({rate} vs {usual})."
+[squad.riposte.say_fact_never]
+fr = "Quand un des nôtres tombe, son tueur n'est jamais abattu dans les {seconds, number} secondes qui suivent sur cette sélection."
+en = "When one of us falls, their killer is never taken down within the next {seconds, number} seconds in this selection."
 
-[squad.echange.constat_attention]
-fr = "L'échange mérite votre attention : votre camp échange {delta} de moins que d'habitude ({rate} contre {usual})."
-en = "Trading deserves your attention: your side trades {delta} less than usual ({rate} vs {usual})."
+[squad.riposte.say_below]
+fr = "Ce mois-ci on riposte un peu moins qu'à l'ordinaire."
+en = "Lately we riposte a little less than usual."
 
-[squad.echange.constat_basis]
-fr = "Sur {n, plural, one {# mort} other {# morts}} de votre camp, {matches, plural, one {# match} other {# matchs}}."
-en = "Based on {n, plural, one {# death} other {# deaths}} on your side, {matches, plural, one {# match} other {# matches}}."
+[squad.riposte.say_above]
+fr = "Ce mois-ci on riposte un peu plus qu'à l'ordinaire."
+en = "Lately we riposte a little more than usual."
 
-# ─── Nuage « Pourquoi la vengeance ne vient pas » (SquadEchange.nuage_isolement) ────────
+# ─── Le chiffre d'appel ─────────────────────────────────────────────────────
+
+[squad.riposte.appel_label]
+fr = "Sur {n, plural, one {# mort des nôtres} other {# morts des nôtres}}"
+en = "Out of {n, plural, one {# death on our side} other {# deaths on our side}}"
+
+[squad.riposte.appel_unit]
+fr = "ripostées"
+en = "riposted"
+
+[squad.riposte.appel_below]
+fr = "{delta} sous l'habituel ({usual})"
+en = "{delta} below usual ({usual})"
+
+[squad.riposte.appel_above]
+fr = "{delta} au-dessus de l'habituel ({usual})"
+en = "{delta} above usual ({usual})"
+
+[squad.riposte.delai_label]
+fr = "Et quand on riposte"
+en = "And when we riposte"
+
+[squad.riposte.delai_value]
+fr = "{seconds} s"
+en = "{seconds} s"
+
+[squad.riposte.delai_unit]
+fr = "de délai médian"
+en = "median delay"
+
+[squad.riposte.delai_sub]
+fr = "{ripostes, plural, one {# riposte} other {# ripostes}}, {sans, plural, one {# mort sans réponse} other {# morts sans réponse}}"
+en = "{ripostes, plural, one {# riposte} other {# ripostes}}, {sans, plural, one {# unanswered death} other {# unanswered deaths}}"
+
+[squad.riposte.no_value]
+fr = "—"
+en = "—"
+
+# ─── La frise, soirée par soirée ────────────────────────────────────────────
+#
+# Grammaire reprise de « Performance d'escouade par session »
+# (`charts/squadSessionTimelineChart.ts`) : bâtons à 18 px, courbe pleine 2 px non
+# lissée, légende systématique, axes en 10 px gris. UN SEUL AXE Y : tout est en
+# points de pourcentage, deux axes seraient une faute de lecture. Le volume de
+# chaque soirée (morts mesurées) est un RANG D'ÉTIQUETTES sous l'axe, pas un second
+# graphe — c'est le dénominateur, il n'a pas d'échelle propre.
+
+[squad.riposte.frise_title]
+fr = "Soirée par soirée — part des nôtres ripostée dans les {seconds, number} s"
+en = "Evening by evening — share of our deaths riposted within {seconds, number} s"
+
+[squad.riposte.frise_above]
+fr = "soirée au-dessus de l'habituel"
+en = "evening above usual"
+
+[squad.riposte.frise_below]
+fr = "en dessous"
+en = "below"
+
+[squad.riposte.frise_trend]
+fr = "tendance sur {n, number} soirées"
+en = "trend over {n, number} evenings"
+
+[squad.riposte.frise_usual]
+fr = "habituel {rate}"
+en = "usual {rate}"
+
+[squad.riposte.frise_y_axis]
+fr = "Part des morts ripostées"
+en = "Share of riposted deaths"
+
+[squad.riposte.frise_volume]
+fr = "{n, plural, one {# mort mesurée} other {# morts mesurées}}"
+en = "{n, plural, one {# measured death} other {# measured deaths}}"
+
+[squad.riposte.frise_volume_axis]
+fr = "morts mesurées"
+en = "measured deaths"
+
+[squad.riposte.frise_empty]
+fr = "Aucune soirée mesurée sur cette sélection."
+en = "No measured evening in this selection."
+
+# ─── Les deux replis, fermés par défaut ─────────────────────────────────────
+
+[squad.riposte.fold_delay]
+fr = "Combien de temps on met"
+en = "How long we take"
+
+[squad.riposte.fold_matrix]
+fr = "Qui riposte pour qui"
+en = "Who ripostes for whom"
+
+# ─── Nuage « Pourquoi la riposte ne vient pas » (SquadEchange.nuage_isolement) ────────
 #
 # Contrat refondu le 2026-09-19 (PLAN_AJUSTEMENTS_PRE_V75, décision 4) : UN PETIT POINT PAR
 # MORT, un gros point par joueur. En abscisse la distance au coéquipier visible le plus
 # proche rapportée à la portée du radar du match (1,0 = à la portée) ; en ordonnée le délai
-# avant vengeance. Une mort sans coéquipier visible va dans la bande « hors de vue », une
-# mort jamais vengée dans la bande « jamais vengée ».
+# avant la riposte. Une mort sans coéquipier visible va dans la bande « hors de vue », une
+# mort jamais ripostée dans la bande « jamais ripostée ».
 
 [squad.isolement.section_title]
 fr = "Isolement et couverture"
 en = "Isolation and coverage"
 
 [squad.isolement.section_label]
-fr = "Une mort par point, distance au coéquipier contre délai de vengeance"
-en = "One death per dot, distance to teammate versus revenge delay"
+fr = "Une mort par point, distance au coéquipier contre délai de riposte"
+en = "One death per dot, distance to teammate versus riposte delay"
 
 [squad.isolement.x_axis]
 fr = "Distance au coéquipier le plus proche (× la portée du radar)"
 en = "Distance to nearest teammate (× radar range)"
 
 [squad.isolement.y_axis]
-fr = "Délai avant vengeance (s)"
-en = "Delay before revenge (s)"
+fr = "Délai avant la riposte (s)"
+en = "Delay before the riposte (s)"
 
 [squad.isolement.help]
-fr = "Chaque petit point est une mort : à gauche un coéquipier était tout près, à droite il était hors de portée du radar. Plus le point est haut, plus la vengeance a tardé. Le gros point est la médiane du joueur, sa taille dit combien de morts."
-en = "Each small dot is one death: on the left a teammate was close by, on the right they were beyond radar range. The higher the dot, the longer revenge took. The large dot is the player's median, its size says how many deaths."
+fr = "Chaque petit point est une mort : à gauche un coéquipier était tout près, à droite il était hors de portée du radar. Plus le point est haut, plus la riposte a tardé. Le gros point est la médiane du joueur, sa taille dit combien de morts."
+en = "Each small dot is one death: on the left a teammate was close by, on the right they were beyond radar range. The higher the dot, the longer the riposte took. The large dot is the player's median, its size says how many deaths."
 
 [squad.isolement.radar_line]
 fr = "Portée du radar"
@@ -810,8 +866,8 @@ fr = "Hors de vue"
 en = "Out of sight"
 
 [squad.isolement.band_never]
-fr = "Jamais vengée"
-en = "Never avenged"
+fr = "Jamais ripostée"
+en = "Never riposted"
 
 [squad.isolement.low_sample]
 fr = "échantillon faible"
@@ -829,13 +885,13 @@ en = "Coverage: teammate at {ratio} × radar range"
 fr = "Couverture : aucun coéquipier en vue"
 en = "Coverage: no teammate in sight"
 
-[squad.isolement.tooltip_avenged]
-fr = "Vengée en {seconds} s"
-en = "Avenged in {seconds} s"
+[squad.isolement.tooltip_riposted]
+fr = "Ripostée en {seconds} s"
+en = "Riposted in {seconds} s"
 
 [squad.isolement.tooltip_never]
-fr = "Jamais vengée"
-en = "Never avenged"
+fr = "Jamais ripostée"
+en = "Never riposted"
 
 # Infobulle du GROS point par joueur : les deux médianes, le volume, et les deux taux.
 [squad.isolement.tooltip_repere_head]
@@ -847,8 +903,8 @@ fr = "Isolement : {isoRate}"
 en = "Isolation: {isoRate}"
 
 [squad.isolement.tooltip_repere_cov]
-fr = "Taux d'échange : {covRate}"
-en = "Trade rate: {covRate}"
+fr = "Taux de riposte : {covRate}"
+en = "Riposte rate: {covRate}"
 
 [squad.isolement.empty_title]
 fr = "Aucune mort mesurée"
@@ -858,168 +914,72 @@ en = "No death measured"
 fr = "Aucune mort de la sélection n'est localisée sur un match dont la portée du radar est connue."
 en = "No death in the selection is located on a match with a known radar range."
 
-# ─── Maquette 4c520da6 : « L'échange », six cartes, fond ET forme ───────────
-#
-# Chaque carte porte son titre, son paragraphe « ce qu'elle a trouvé » (le « say »,
-# alimenté par les VRAIES données), sa figure, et sa note de pied. Les chiffres de
-# la maquette ne sont JAMAIS repris : ce sont des gabarits.
+# ─── Replis de la carte « Riposte » ─────────────────────────────────────────
+# ─── Repli « Combien de temps on met » (histogramme des délais) ─────────────
 
-[squad.echange.compte_title]
-fr = "Le compte"
-en = "The count"
+[squad.riposte.delay_x_axis]
+fr = "Délai avant la riposte"
+en = "Delay before the riposte"
 
-[squad.echange.compte_label]
-fr = "Le compte de l'échange"
-en = "The trade count"
+[squad.riposte.delay_y_axis]
+fr = "Morts ripostées"
+en = "Riposted deaths"
 
-[squad.echange.compte_say]
-fr = "Un taux seul ne dit rien, et un taux seul est même trompeur : il se calcule sur les morts de votre camp. Il ne va donc jamais sans le compte brut et une quantité par match, qui elles ne dépendent pas de combien vous mourez."
-en = "A rate alone says nothing, and a rate alone is even misleading: it is computed on your side's deaths. It therefore never goes without the raw count and a per-match quantity, which do not depend on how much you die."
+[squad.riposte.delay_bin]
+fr = "{start, number}-{end, number} s"
+en = "{start, number}-{end, number} s"
 
-[squad.echange.compte_foot]
-fr = "Même règle d'écart que le bandeau de briefing de l'Explorateur : quand le filtre couvre tout l'historique, l'écart vaut zéro par construction et n'est pas affiché."
-en = "Same deviation rule as the Explorer briefing banner: when the filter covers the whole history, the deviation is zero by construction and is not displayed."
+[squad.riposte.delay_bin_open]
+fr = "au-delà de {start, number} s"
+en = "beyond {start, number} s"
 
-[squad.echange.kpi_rate_sub]
-fr = "des morts d'équipe, sous {seconds, number} s"
-en = "of team deaths, within {seconds, number} s"
+[squad.riposte.delay_out_of_window_suffix]
+fr = "hors fenêtre"
+en = "outside window"
 
-[squad.echange.kpi_delay_label]
-fr = "Délai médian"
-en = "Median delay"
+[squad.riposte.delay_window]
+fr = "Fenêtre de riposte : {seconds, number} s — les deux dernières barres sont hors fenêtre, montrées mais jamais comptées."
+en = "Riposte window: {seconds, number} s — the last two bars are outside the window, shown but never counted."
 
-[squad.echange.kpi_delay_sub]
-fr = "quand l'échange a lieu"
-en = "when the trade happens"
+[squad.riposte.delay_narrative_empty]
+fr = "Aucune riposte mesurée sur la sélection."
+en = "No riposte measured in this selection."
 
-[squad.echange.kpi_delay_value]
-fr = "{seconds} s"
-en = "{seconds} s"
+[squad.riposte.delay_say]
+fr = "Notre riposte est rapide mais rare : sur {morts, number} morts d'équipe, {dedans, number} sont ripostées dans la fenêtre et {dehors, number} arrivent trop tard. Le pic est à {pic} — rien à gagner en réactivité, tout à gagner en volume."
+en = "Our riposte is fast but rare: out of {morts, number} team deaths, {dedans, number} are riposted inside the window and {dehors, number} arrive too late. The peak sits at {pic} — nothing to gain in reactivity, everything to gain in volume."
 
-[squad.echange.kpi_unanswered_label]
-fr = "Morts sans réponse"
-en = "Unanswered deaths"
+[squad.riposte.delay_figure]
+fr = "Délai des {n, plural, one {# riposte survenue} other {# ripostes survenues}} — sur {morts, number} morts d'équipe"
+en = "Delay of the {n, plural, one {# riposte} other {# ripostes}} that happened — out of {morts, number} team deaths"
 
-[squad.echange.kpi_unanswered_sub]
-fr = "sur {n, plural, one {# mort d'équipe} other {# morts d'équipe}}"
-en = "out of {n, plural, one {# team death} other {# team deaths}}"
-
-[squad.echange.kpi_unanswered_rate_label]
-fr = "Sans réponse par match"
-en = "Unanswered per match"
-
-[squad.echange.kpi_unanswered_rate_sub]
-fr = "indépendant du nombre de morts"
-en = "independent of how much you die"
-
-[squad.echange.kpi_no_value]
-fr = "—"
-en = "—"
-
-# ─── Carte 2 : « Combien, et à quelle vitesse » ─────────────────────────────
-
-[squad.echange.delay_say]
-fr = "Votre vengeance est rapide mais rare : sur {morts, number} morts d'équipe, {dedans, number} sont vengées dans la fenêtre et {dehors, number} arrivent trop tard. Le pic est à {pic} — rien à gagner en réactivité, tout à gagner en volume."
-en = "Your revenge is fast but rare: out of {morts, number} team deaths, {dedans, number} are avenged inside the window and {dehors, number} arrive too late. The peak sits at {pic} — nothing to gain in reactivity, everything to gain in volume."
-
-[squad.echange.delay_figure]
-fr = "Délai des {n, plural, one {# vengeance survenue} other {# vengeances survenues}} — sur {morts, number} morts d'équipe"
-en = "Delay of the {n, plural, one {# avenging kill} other {# avenging kills}} that happened — out of {morts, number} team deaths"
-
-[squad.echange.delay_window_mark]
+[squad.riposte.delay_window_mark]
 fr = "fenêtre {seconds, number} s"
 en = "{seconds, number} s window"
 
-[squad.echange.delay_foot]
-fr = "Au-delà de {seconds, number} s, la barre est montrée mais hachurée : ces vengeances ne comptent dans aucun taux. Montrer la fenêtre plutôt que la couper rend le seuil discutable."
-en = "Beyond {seconds, number} s the bar is shown but hatched: those avenging kills count in no rate. Showing the window rather than cutting it makes the threshold arguable."
+[squad.riposte.delay_foot]
+fr = "Au-delà de {seconds, number} s, la barre est montrée mais hachurée : ces ripostes ne comptent dans aucun taux. Montrer la fenêtre plutôt que la couper rend le seuil discutable."
+en = "Beyond {seconds, number} s the bar is shown but hatched: those ripostes count in no rate. Showing the window rather than cutting it makes the threshold arguable."
 
-# ─── Carte 3 : « Qui couvre qui » ───────────────────────────────────────────
+# ─── Repli « Qui riposte pour qui » (matrice) ───────────────────────────────
 
-[squad.echange.matrix_received]
+[squad.riposte.matrix_received]
 fr = "reçu {n, number}"
 en = "received {n, number}"
 
-[squad.echange.matrix_help]
-fr = "Une case dit combien de fois le joueur de la LIGNE a vengé celui de la COLONNE. Un échange : un coéquipier abat votre tueur dans les {seconds, number} s qui suivent votre mort."
-en = "A cell says how many times the ROW player avenged the COLUMN player. A trade: a teammate takes down your killer within {seconds, number} s of your death."
+[squad.riposte.matrix_help]
+fr = "Une case dit combien de fois le joueur de la LIGNE a riposté pour celui de la COLONNE. Une riposte : un coéquipier abat votre tueur dans les {seconds, number} s qui suivent votre mort."
+en = "A cell says how many times the ROW player riposted for the COLUMN player. A riposte: a teammate takes down your killer within {seconds, number} s of your death."
 
-# ─── Carte 5 : « Donné et reçu, par coéquipier » ────────────────────────────
-
-[squad.echange.donne_recu_title]
-fr = "Assistances par coéquipier"
-en = "Assists per teammate"
-
-[squad.echange.donne_recu_label]
-fr = "Échanges donnés et reçus par joueur"
-en = "Trades given and received per player"
-
-[squad.echange.donne_recu_say]
-fr = "{joueur} reçoit {recu, number} échanges et n'en donne que {donne, number}."
-en = "{joueur} receives {recu, number} trades and only gives {donne, number}."
-
-[squad.echange.donne_recu_say_equilibre]
-fr = "Sur ce périmètre, chacun donne à peu près ce qu'il reçoit."
-en = "Over this scope, everyone gives roughly what they receive."
-
-[squad.echange.donne_recu_given]
-fr = "Donné"
-en = "Given"
-
-[squad.echange.donne_recu_received]
-fr = "Reçu"
-en = "Received"
-
-# ─── Carte 6 : « Taux d'échange par session » ───────────────────────────────
-
-[squad.echange.session_rate_title]
-fr = "Taux d'échange par session"
-en = "Trade rate per session"
-
-[squad.echange.session_rate_label]
-fr = "Taux d'échange par soirée"
-en = "Trade rate per evening"
-
-[squad.echange.session_rate_say]
-fr = "La couverture va de {bas} à {haut} selon les soirées, pour {taux} sur l'ensemble — sur {n, plural, one {# soirée mesurée} other {# soirées mesurées}}."
-en = "Coverage ranges from {bas} to {haut} depending on the evening, for {taux} overall — over {n, plural, one {# measured evening} other {# measured evenings}}."
-
-[squad.echange.session_rate_figure]
-fr = "Part des morts d'équipe vengées sous {seconds, number} s, par soirée"
-en = "Share of team deaths avenged within {seconds, number} s, per evening"
-
-# Sous le plancher de tendance (décision 5 du 2026-09-19) : plus d'état vide — la ou les
-# soirées retenues se lisent FACE A L'HABITUEL, la seule comparaison qui vaille quand il n'y
-# a pas d'évolution à tracer.
-[squad.echange.session_rate_few_say]
-fr = "{n, plural, =0 {La sélection} one {Une soirée} other {# soirées}} face à l'habituel — sous {floor, number} soirées, une courbe ne dirait rien."
-en = "{n, plural, =0 {The selection} one {One evening} other {# evenings}} against usual — below {floor, number} evenings, a curve would say nothing."
-
-[squad.echange.session_rate_selection]
-fr = "Sélection"
-en = "Selection"
-
-[squad.echange.session_rate_usual]
-fr = "Habituel"
-en = "Usual"
-
-[squad.echange.session_rate_usual_sub]
-fr = "sur {matchs, plural, one {# match} other {# matchs}} de la composition"
-en = "over {matchs, plural, one {# match} other {# matches}} of the composition"
-
-[squad.echange.session_rate_y_axis]
-fr = "Part des morts vengées"
-en = "Share of avenged deaths"
-
-# ─── Carte 4 : « Pourquoi la vengeance ne vient pas » (nuage) ───────────────
+# ─── Le nuage « Pourquoi la riposte ne vient pas » ───────────────────────────
 
 [squad.isolement.card_title]
-fr = "Frags non vengés"
-en = "Unavenged kills"
+fr = "Frags non ripostés"
+en = "Unriposted kills"
 
 [squad.isolement.say]
-fr = "Les deux vont ensemble, et c'est le résultat le plus exploitable de la page : {loin} meurt hors radar {loinIso} du temps et n'est vengé que {loinCouv} ; {proche}, à {procheIso} hors radar, est vengé {procheCouv}. On ne venge pas ce qu'on ne voit pas. Lisez la taille des points avant le taux : elle dit combien de morts chacun a réellement subies."
-en = "The two go together, and it is the most actionable result on this page: {loin} dies out of radar {loinIso} of the time and is only avenged {loinCouv}; {proche}, at {procheIso} out of radar, is avenged {procheCouv}. You do not avenge what you cannot see. Read point size before rate: it says how many deaths each player actually took."
+fr = "Quand on meurt loin des autres, la riposte ne vient pas. Chaque point est une mort : à droite, personne n'était à portée de radar ; en haut, personne n'est venu."
+en = "When we die far from the others, the riposte does not come. Each dot is one death: on the right, nobody was within radar range; at the top, nobody came."
 
 [squad.isolement.figure]
 fr = "Un petit point par mort, un gros point par joueur — la taille dit le nombre de morts"

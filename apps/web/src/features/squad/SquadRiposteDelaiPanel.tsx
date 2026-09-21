@@ -1,20 +1,22 @@
 /**
- * SquadEchangeDelaiCard — « Combien, et à quelle vitesse » (onglet Synergies).
+ * SquadRiposteDelaiPanel — repli « Combien de temps on met » de la carte « Riposte ».
  *
- * COMBIEN DE TEMPS met votre camp à venger une mort. Les cinq premières barres couvrent la
- * fenêtre d'échange (0-1 … 4-5 s, la borne de 5 s comprise) ; les deux dernières sont HORS
+ * COMBIEN DE TEMPS met notre camp à riposter. Les cinq premières barres couvrent la
+ * fenêtre de riposte (0-1 … 4-5 s, la borne de 5 s comprise) ; les deux dernières sont HORS
  * FENÊTRE : elles sont MONTRÉES, HACHURÉES, et n'entrent dans AUCUN taux.
  *
  * POURQUOI LES MONTRER. Une distribution qui s'arrêterait net à 5 s ne dirait pas si la
- * fenêtre coupe une population dense ou du vide — « 19 % de morts vengées » se lit très
+ * fenêtre coupe une population dense ou du vide — « 19 % de morts ripostées » se lit très
  * différemment selon que les ripostes manquées arrivent à 5,2 s ou à 40 s.
  *
  * TROIS INDICES POUR LA MÊME CHOSE, et c'est voulu : la HACHURE sur la barre, le REPÈRE
  * vertical tireté « fenêtre N s » posé sur la borne, et le MOT (« hors fenêtre » en
  * étiquette d'axe, la note de pied). Un seuil qui décide d'un taux ne peut pas se deviner.
  *
- * DÉPLACÉE DE « DYNAMIQUE » VERS « SYNERGIES » le 2026-09-13 (maquette 4c520da6) : elle est
- * la deuxième carte du récit de l'échange — d'abord le compte, puis la vitesse, puis qui.
+ * CE N'EST PLUS UNE CARTE (D19, 2026-09-21) : c'était une SectionCard autonome, la
+ * troisième de huit à énoncer la même mesure. Elle est devenue le DÉTAIL du chiffre
+ * « 2,4 s de délai médian », replié sous la carte « Riposte » — une SectionCard dans une
+ * SectionCard n'existe pas, ce composant ne pose donc plus aucun chrome.
  *
  * Les intervalles sont PRÉ-BINNÉS par le serveur (ADR 0010) : ce composant ne choisit
  * aucune borne.
@@ -22,23 +24,20 @@
 import { useMemo } from 'react'
 
 import { HistogramChart, type ChartPointHistogram } from '@/components/charts/HistogramChart'
-import { TooltipParagraphs } from '@/components/ui/info-tooltip'
-import { titleWithInfo } from '@/components/ui/title-with-info'
-import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { SquadEchange } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { delaisSeries, resumeDelais } from './squadEchange.logic'
-import { getSquadEchangeText } from './squadEchangeStrings'
+import { delaisSeries, resumeDelais } from './squadRiposte.logic'
+import { getSquadRiposteText } from './squadRiposteStrings'
 
-export interface SquadEchangeDelaiCardProps {
+export interface SquadRiposteDelaiPanelProps {
   echange: SquadEchange
 }
 
-export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
+export function SquadRiposteDelaiPanel({ echange }: SquadRiposteDelaiPanelProps) {
   const locale = useAppShellStore((s) => s.locale)
-  const t = getSquadEchangeText(locale)
+  const t = getSquadRiposteText(locale)
 
   const secondes = echange.fenetre_ms / 1000
   const series = useMemo(() => delaisSeries(echange), [echange])
@@ -80,53 +79,35 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
       : t.delayBin(top.debut_ms / 1000, top.fin_ms / 1000)
   }, [buckets, t])
 
-  // UNE SEULE INFOBULLE PAR CARTE (2026-09-21) : la définition, la fenêtre, ce que la figure
-  // dénombre, et la note de pied sur les barres hachurées. Ces trois derniers textes vivaient
-  // dans le corps et le pied — du gris entre la phrase et le graphe, relu à chaque visite.
-  const help = (
-    <TooltipParagraphs
-      items={[
-        t.definition(secondes),
-        t.delayWindow(secondes),
-        t.delayFigure(resume.total, echange.couverture.n),
-        t.delayFoot(secondes),
-      ]}
-    />
-  )
+  if (resume.total === 0) {
+    return <EmptyStateNotice title={t.emptyTitle} description={t.delayNarrativeEmpty} />
+  }
 
   return (
-    <SectionCard
-      title={t.delayTitle}
-      label={t.delayLabel}
-      titleAdornment={titleWithInfo(help)}
-    >
-      <div className="space-y-2 px-3 py-2" data-testid="squad-echange-delai">
-        {resume.total === 0 ? (
-          <EmptyStateNotice title={t.emptyTitle} description={t.delayNarrativeEmpty} />
-        ) : (
-          <>
-            {/* La ligne narrative vit AU-DESSUS du graphe, jamais en dessous. */}
-            <p className="border-l-2 border-info pl-3 text-sm text-foreground">
-              {t.delaySay({
-                morts: echange.couverture.n,
-                dedans: resume.dansLaFenetre,
-                dehors: resume.horsFenetre,
-                pic,
-              })}
-            </p>
-            <HistogramChart
-              series={series}
-              xAxisLabel={t.delayXAxis}
-              yAxisLabel={t.delayYAxis}
-              formatBin={formatBin}
-              binHatched={binHatched}
-              showValues
-              windowMark={windowMark}
-              frameless
-            />
-          </>
-        )}
-      </div>
-    </SectionCard>
+    <div className="space-y-2" data-testid="squad-riposte-delai">
+      {/* La ligne narrative vit AU-DESSUS du graphe, jamais en dessous. */}
+      <p className="border-l-2 border-info pl-3 text-sm text-foreground">
+        {t.delaySay({
+          morts: echange.couverture.n,
+          dedans: resume.dansLaFenetre,
+          dehors: resume.horsFenetre,
+          pic,
+        })}
+      </p>
+      <HistogramChart
+        series={series}
+        xAxisLabel={t.delayXAxis}
+        yAxisLabel={t.delayYAxis}
+        formatBin={formatBin}
+        binHatched={binHatched}
+        showValues
+        windowMark={windowMark}
+        frameless
+      />
+      <p className="text-2xs text-muted-foreground">
+        {t.delayFigure(resume.total, echange.couverture.n)} · {t.delayWindow(secondes)}{' '}
+        {t.delayFoot(secondes)}
+      </p>
+    </div>
   )
 }

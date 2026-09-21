@@ -76,7 +76,7 @@ export function getTacticalText(locale: Locale) {
     ],
     kpiMatchsRetained: m('tactical.kpi.matches_retained'),
     kpiCoverage: m('tactical.kpi.coverage'),
-    kpiTrade: m('tactical.kpi.trade'),
+    kpiRiposte: m('tactical.kpi.riposte'),
     kpiIsolation: m('tactical.kpi.isolation'),
     kpiSecondary: (brut: number, n: number) => m('tactical.kpi.secondary', { brut, n }),
     // Réserve d'échantillon des tuiles KPI « Échange » / « Isolement » : même clé
@@ -91,7 +91,7 @@ export function getTacticalText(locale: Locale) {
     kpiMatchsRetainedSecondary: (n: number) => m('tactical.kpi.matches_retained_secondary', { n }),
     kpiCoverageReplay: m('tactical.kpi.coverage_replay'),
     kpiCoverageShared: m('tactical.kpi.coverage_shared'),
-    kpiTradeWindow: (secondes: number) => m('tactical.kpi.trade_window', { secondes }),
+    kpiRiposteWindow: (secondes: number) => m('tactical.kpi.riposte_window', { secondes }),
     kpiIsolationRadius: (rayon: string) => m('tactical.kpi.isolation_radius', { rayon }),
     kpiLowerIsBetter: m('tactical.kpi.lower_is_better'),
     planTitle: m('tactical.plan.title'),

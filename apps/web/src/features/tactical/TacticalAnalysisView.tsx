@@ -266,7 +266,7 @@ function buildKpiCards(
   if (data.echange) {
     cards.push({
       id: 'tactical-trade',
-      label: t.kpiTrade,
+      label: t.kpiRiposte,
       primary: pct.format(data.echange.taux),
       // LA FENÊTRE EST PUBLIÉE PAR LE SERVEUR, jamais recopiée ici : elle divergerait du
       // calcul au premier ajustement. Absente (réponse d'une version antérieure), on
@@ -274,7 +274,7 @@ function buildKpiCards(
       // valeur manquante.
       secondary: withLowSampleNote(
         data.coordination && data.coordination.fenetre_echange_secondes > 0
-          ? t.kpiTradeWindow(data.coordination.fenetre_echange_secondes)
+          ? t.kpiRiposteWindow(data.coordination.fenetre_echange_secondes)
           : t.kpiSecondary(data.echange.brut, data.echange.n),
         data.echange.echantillon_faible,
         t.lowSample,

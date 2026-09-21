@@ -1,5 +1,5 @@
 /**
- * Le NUAGE « Pourquoi la vengeance ne vient pas » — ce qu'il montre et ce qu'il tait.
+ * Le NUAGE « Pourquoi la riposte ne vient pas » — ce qu'il montre et ce qu'il tait.
  *
  * Ce que ces tests cadenassent : un état vide n'est jamais un nuage à zéro point ; un petit
  * point par MORT et un gros point par JOUEUR ; les deux bandes nommées portent les valeurs
@@ -124,11 +124,11 @@ describe('SquadIsolementNuageCard', () => {
     const { unmount } = renderWithProviders(
       <SquadIsolementNuageCard nuage={nuageDe()} joueurs={joueurs} />,
     )
-    const fr = screen.getByText('Frags non vengés').textContent ?? ''
+    const fr = screen.getByText('Frags non ripostés').textContent ?? ''
     unmount()
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<SquadIsolementNuageCard nuage={nuageDe()} joueurs={joueurs} />)
-    const en = screen.getByText('Unavenged kills').textContent ?? ''
+    const en = screen.getByText('Unriposted kills').textContent ?? ''
     expect(fr.length).toBeGreaterThan(0)
     expect(en.length).toBeGreaterThan(0)
     expect(en).not.toBe(fr)
@@ -212,7 +212,7 @@ describe('SquadIsolementNuageCard', () => {
     const html = option.tooltip.formatter({ data: option.series[0].data[0] })
     expect(html).toContain('Couverture')
     expect(html).toContain('portée du radar')
-    expect(html).toContain('Vengée en')
+    expect(html).toContain('Ripostée en')
   })
 
   it('l’infobulle d’une mort hors de vue ne cite aucune distance', async () => {
@@ -232,7 +232,7 @@ describe('SquadIsolementNuageCard', () => {
     }>()
     const html = option.tooltip.formatter({ data: option.series[0].data[0] })
     expect(html).toContain('aucun coéquipier en vue')
-    expect(html).toContain('Jamais vengée')
+    expect(html).toContain('Jamais ripostée')
   })
 
   it('la réserve « échantillon faible » se lit dans l’infobulle du repère, pas seulement dans sa bordure', async () => {
@@ -253,7 +253,7 @@ describe('SquadIsolementNuageCard', () => {
     const repereDatum = option.series.find((s) => 'repereRaw' in s.data[0])?.data[0]
     const html = option.tooltip.formatter({ data: repereDatum })
     expect(html).toContain('échantillon faible')
-    expect(html).toContain("Taux d'échange")
+    expect(html).toContain("Taux de riposte")
   })
 
   it('échantillon suffisant : le repère est plein, aucune bordure pointillée', async () => {
