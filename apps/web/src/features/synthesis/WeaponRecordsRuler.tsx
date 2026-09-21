@@ -158,7 +158,6 @@ export function WeaponRecordsRuler({ records, playerSlug }: WeaponRecordsRulerPr
         </>
       }
     >
-      <p className="px-3 pt-2 text-xs text-muted-foreground">{t('synthesis.weapon_records.subtitle')}</p>
       <div ref={hostRef} className="relative px-3 pb-2 pt-1" onMouseLeave={() => setHover(null)}>
         {layout.items.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground" data-testid="weapon-records-empty">

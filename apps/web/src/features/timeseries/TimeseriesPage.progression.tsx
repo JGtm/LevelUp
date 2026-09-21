@@ -270,15 +270,10 @@ export function TimeseriesProgressionTab({
           P25–P75 (panneau solo pleine largeur). */}
       <TimeseriesIntensityProfile
         title={
-          <div className="flex flex-col gap-0.5">
-            <span className="flex items-center gap-1.5">
-              {t('timeseries.progression.intensity_title')}
-              <InfoTooltip content={intensityTooltipText(locale)} />
-            </span>
-            <span className="text-xs font-normal text-muted-foreground">
-              {t('timeseries.progression.intensity_subtitle')}
-            </span>
-          </div>
+          <span className="flex items-center gap-1.5">
+            {t('timeseries.progression.intensity_title')}
+            <InfoTooltip content={intensityTooltipText(locale)} />
+          </span>
         }
         emptyMessage={emptyMsg}
         rows={data.intensity_rows ?? []}

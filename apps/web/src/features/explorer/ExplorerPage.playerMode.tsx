@@ -172,6 +172,8 @@ export function ExplorerPlayerMode({
               localMatches={playerQuery.data.target_profile.combat_profile_local ?? []}
               locale={locale}
               t={t}
+              topMedals={playerQuery.data.target_profile.top_medals ?? []}
+              topMedalsLocal={playerQuery.data.target_profile.top_medals_local ?? []}
               combatLiveStatus={playerQuery.data.target_profile.live_status?.combat_live}
             />
           ) : null}

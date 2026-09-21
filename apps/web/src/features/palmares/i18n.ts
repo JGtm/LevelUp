@@ -111,8 +111,6 @@ export interface PalmaresText {
       liftTooltip: string
       seenThisWeek: (count: string) => string
       recentForm: string
-      showOthers: (count: string) => string
-      collapse: string
     }
     donut: {
       wins: string
@@ -329,9 +327,6 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         seenThisWeek: (count: string) =>
           formatMessage(palmaresManifest, 'palmares.relations.core.seen_this_week', loc, { count }),
         recentForm: t(loc, 'palmares.relations.core.recent_form'),
-        showOthers: (count: string) =>
-          formatMessage(palmaresManifest, 'palmares.relations.core.show_others', loc, { count }),
-        collapse: t(loc, 'palmares.relations.core.collapse'),
       },
       donut: {
         wins: t(loc, 'palmares.relations.donut.wins'),

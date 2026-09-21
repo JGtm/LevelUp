@@ -84,7 +84,6 @@ export const timeseriesManifest = {
   "timeseries.progression.intensity_median": { fr: "Médiane", en: "Median" },
   "timeseries.progression.intensity_player": { fr: "Joueur", en: "Player" },
   "timeseries.progression.intensity_ref": { fr: "10 %", en: "10%" },
-  "timeseries.progression.intensity_subtitle": { fr: "Répartition des frags par phase de match", en: "Frag distribution across match phases" },
   "timeseries.progression.intensity_team": { fr: "Équipe", en: "Team" },
   "timeseries.progression.intensity_title": { fr: "Intensité", en: "Intensity" },
   "timeseries.progression.kill_type_other": { fr: "Autres", en: "Other" },

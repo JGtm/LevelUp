@@ -9,6 +9,9 @@
  *  - ExplorerTargetCareerStats (si career_stats dispo)
  *  - ExplorerTargetSampleStats (si sample_stats dispo et sample_size > 0)
  *
+ * « Top médailles » ne vit PAS ici : depuis le 2026-09-21 le bloc est rendu dans
+ * « Profil de combat » (ExplorerCombatProfile), où il suit le switch En direct / Local.
+ *
  * Section « Sur N matchs joués ensemble » : rangée de KPI puis TROIS rangées de 3
  * colonnes (2026-09-17) —
  *   1. Répartition des frags (2/3) | Cadence (1/3)
@@ -35,7 +38,6 @@ import { ExplorerTargetCadence } from './ExplorerTargetCadence'
 import { ExplorerTargetVersusDonuts } from './ExplorerTargetVersusDonuts'
 import { ExplorerTargetAssists } from './ExplorerTargetAssists'
 import { ExplorerTargetFragRange } from './ExplorerTargetFragRange'
-import { ExplorerTargetMedals } from './ExplorerTargetMedals'
 import { ExplorerTargetSeasonCSR } from './ExplorerTargetSeasonCSR'
 import { ExplorerTargetSeasonMatches } from './ExplorerTargetSeasonMatches'
 import { ExplorerLiveStatusBadge } from './ExplorerLiveStatusBadge'
@@ -60,7 +62,6 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
   const identity = profile.identity ?? null
   const careerStats = profile.career_stats ?? null
   const sampleStats = profile.sample_stats ?? null
-  const topMedals = profile.top_medals ?? []
   const seasonCSRs = profile.season_csrs ?? []
   const matchesPerSeason = profile.matches_per_season ?? []
   const showNoAuthHint = !profile.auth_available && careerStats == null
@@ -134,12 +135,6 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
         </div>
       </div>
 
-      {/* Top médailles : SEULE place de ce bloc depuis le 2026-09-19 — il était aussi
-          rendu à côté du donut « Répartition des modes », et les deux s'affichaient
-          ensemble dès que la cible n'avait que des matchs locaux.
-          Vide sans raison distincte à afficher : le badge de la section Carrière
-          ci-dessus couvre déjà ce cas (même fetch, cf. commentaire showCareerSection). */}
-      {topMedals.length > 0 && <ExplorerTargetMedals medals={topMedals} />}
 
       {showNoAuthHint && (
         <div

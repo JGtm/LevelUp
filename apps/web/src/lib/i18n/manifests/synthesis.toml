@@ -573,10 +573,6 @@ en = "Distance records by weapon"
 fr = "{weapons, number} armes"
 en = "{weapons, number} weapons"
 
-[synthesis.weapon_records.subtitle]
-fr = "Frag le plus lointain — un losange par arme, couleur par classe ; survolez pour le match, cliquez pour le rejeu."
-en = "Farthest kill — one diamond per weapon, colour by class; hover for the match, click for the replay."
-
 [synthesis.weapon_records.tooltip_record]
 fr = "frag le plus lointain"
 en = "farthest kill"

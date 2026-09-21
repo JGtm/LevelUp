@@ -612,10 +612,6 @@ en = "1 life"
 fr = "Intensité"
 en = "Intensity"
 
-[timeseries.progression.intensity_subtitle]
-fr = "Répartition des frags par phase de match"
-en = "Frag distribution across match phases"
-
 # Aide du profil « Intensite » : centralisee le 2026-09-09 dans
 # `common.charts.intensity_tooltip` (elle vivait en trois copies divergentes).
 
