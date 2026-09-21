@@ -94,3 +94,32 @@ export function assistShareSegments(tiers: AssistTiers, frags: number): AssistSe
 export function assistSortValue(a: RelationAssists | null | undefined): number | undefined {
   return a ? a.given.total + a.received.total : undefined
 }
+
+// ─── Échelle LINÉAIRE commune aux deux sens (encart cible Explorer) ──────────
+//
+// L'Explorer n'affiche qu'UNE paire : la borne y est le plus gros des DEUX totaux de
+// cette paire, sur une échelle linéaire — la longueur est alors la donnée, pas son
+// logarithme (63 contre 48 se voit). `assist_volume_max` et `assistVolumeLengthPct`
+// restent l'échelle du hub Relations, où plusieurs paires se comparent entre elles.
+
+/** Borne linéaire commune aux deux sens : le plus gros des deux totaux ; 0 si vide. */
+export function assistPairBound(a: RelationAssists): number {
+  return Math.max(a.received.total, a.given.total)
+}
+
+/** Segments d'une barre à l'échelle linéaire commune (0..100 % de la piste). */
+export function assistLinearSegments(tiers: AssistTiers, bound: number): AssistSegment[] {
+  if (!(bound > 0)) return []
+  return splitByTier(tiers, Math.min(100, (tiers.total / bound) * 100))
+}
+
+/**
+ * Position (0..100 % de la piste) du trait de PARITÉ : la moitié du total des deux
+ * sens — l'endroit où les deux barres se rejoindraient si l'échange était équilibré.
+ * null quand la borne est nulle ou que le trait sortirait de la piste.
+ */
+export function assistParityPct(a: RelationAssists, bound: number): number | null {
+  if (!(bound > 0)) return null
+  const pct = ((a.received.total + a.given.total) / 2 / bound) * 100
+  return pct > 0 && pct <= 100 ? pct : null
+}
