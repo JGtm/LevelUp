@@ -2255,9 +2255,8 @@ export type SessionPageResponse = components['schemas']['SessionPageResponse']
 // DANS la réponse de page existante (aucune requête de plus). `Couverture` est le même
 // type que côté Tactique (taux + brut + par match + N + drapeau d'échantillon faible) :
 // une seule définition, deux alias de lecture.
-export type CoordinationBlock = components['schemas']['CoordinationBlock']
-export type CoordinationMatchPoint = components['schemas']['CoordinationMatchPoint']
-export type Couverture = components['schemas']['Couverture']
+// Les alias `CoordinationBlock` / `CoordinationMatchPoint` / `Couverture` sont poses en fin de
+// fichier (bloc du lot Q, partage par Sessions et Timeseries).
 // `MatchRangeBlock` / `MatchRangeProfile` / `MatchRangePlayer` (lot N2) sont déjà alias plus
 // haut, posés par le lot R pour l'Escouade : la page Sessions les lit tels quels.
 

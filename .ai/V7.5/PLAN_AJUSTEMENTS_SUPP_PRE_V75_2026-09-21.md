@@ -136,6 +136,8 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] Fichier `.ai/V7.5/MAQUETTE_TRANSVERSES_RIPOSTE_PORTEE_APPUI_2026-09-21.html` + verification des deux reserves de donnees
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- O : pas de `compare_coordination` au contrat -> la rangee Coordination affiche le placeholder cote compare ; `MatchRangeBlock` sans ventilation par classe d arme ; `UsageGaugeGrid` refactore (table de colonnes) ; « Je suis couvert » sans repere d habituel (non servi).
+- Q : aucune tendance tracee sur Riposte / Appui de Timeseries (D22-3 = batons + reperes ; la frise partagee la supporte) ; `Couverture` a deux alias (`TacticalCouverture`) ; collision de casse Windows `xChart.ts` / `XChart.tsx`.
 - R : `lib/api/types.ts` est ecrit a la main et ne suit pas `generated.ts` (range_profiles manquait) : les champs de N1 sont a ajouter par les lots web ; `lib/i18n/generated/squad.ts` versionne sans gate de fraicheur.
 - M : R1 = `team_size` par match NON servi a Sessions (`SessionUsageMatchPoint`) alors que `sessionusage.TeamContext.TeamSize` le calcule ; R2 levee (appuis attribues a tous les joueurs du film) ; R3 = distance de frag mesuree pour tous mais lecteur multi-matchs contraint a un joueur (`port/weapon_range.go:51`).
 - J : `squad.toml` 998 L (dette) ; anglicismes FR dans `coaching_tips.toml` (revenge push, trader, aim assist) ; chaines de la statistique de jeu « assistances » laissees (liste dans le rapport du lot) ; `colorDistance.guard.test.ts` flake en suite complete (vert seul).
@@ -186,15 +188,15 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] openapi + generate-types ; tests
 - [!] `TeamID` non servi : la lecture de portee ne rend que killer_xuid ; les deux scopes ne publient que le camp du joueur
 
-### Lot O — Sessions : Riposte, Appui recu, Portee relative (worktree `LevelUp-wt-ajsup-o`)
-- [ ] Section Coordination de la colonne de session : carte Riposte (jauges + bande), carte Appui recu (jauges + bande)
-- [ ] Carte Portee : un baton par match (ecart au lobby), bandes de role, mediane de session, classes en infobulle
+### Lot O — Sessions : Riposte, Appui recu, Portee relative (worktree `LevelUp-wt-ajsup-o`) — FUSIONNE 6ee617080
+- [x] Section Coordination de la colonne de session : carte Riposte (jauges + bande), carte Appui recu (jauges + bande)
+- [x] Carte Portee : un baton par match (ecart au lobby), bandes de role, mediane de session, classes en infobulle
 
 ### Lot P — Match view : Riposte par joueur (worktree `LevelUp-wt-ajsup-p`) — FUSIONNE ff9444413
 - [x] Bloc Riposte : deux graphes par joueur (camp A, camp B) cote a cote, comptes
 
-### Lot Q — Timeseries : Riposte et Appui en un seul graphe chacun (worktree `LevelUp-wt-ajsup-q`)
-- [ ] Frise du lot J rendue reutilisable ; deux series de batons par soiree sur un axe %, un repere d habituel par serie
+### Lot Q — Timeseries : Riposte et Appui en un seul graphe chacun (worktree `LevelUp-wt-ajsup-q`) — FUSIONNE fe6b1b5b6
+- [x] Frise du lot J rendue reutilisable ; deux series de batons par soiree sur un axe %, un repere d habituel par serie
 
 ### Lot R — Escouade : nuage des roles de portee (worktree `LevelUp-wt-ajsup-r`) — FUSIONNE 1cfe28635
 - [x] Nuage, bande des roles en repli, phrases de lecteur retirees (D22-verbosite)
