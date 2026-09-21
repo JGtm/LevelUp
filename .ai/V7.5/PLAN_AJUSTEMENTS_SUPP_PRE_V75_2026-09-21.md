@@ -153,3 +153,35 @@ surface `film/replay` 260 -> 263 justifie.
 - A1 : motif titleAdornment + InfoTooltip recopie dans ~8 fichiers -> helper canonique + garde-rail (lot G du chantier).
 - A1 : `DroppedByFamily` existe en amont (`film/replay/usage_summary.go:99`, `analysis/sessionusage`) mais s arrete a `analysis/squadformes/formes.go:229` (scalaire `Dropped`) : exposer la ventilation rendrait la colonne par famille (lot G).
 - A1 : etiquettes sur rayures en `text-foreground` (pas blanc) car la hachure adverse laisse voir le fond de carte -> verdict visuel utilisateur.
+
+## Vague 3 — sections transverses implementees (decisions D22, 2026-09-21 soir)
+
+- D22-verbosite (LOI) : graphes et legendes seulement ; l explication dans l infobulle (i), concise, 3
+  phrases max ; etiquettes factuelles, neutres, tactiques ; AUCUNE phrase de lecteur (celles des cartes
+  Riposte / Appui de l Escouade sont retirees, le chiffre d appel reste).
+- D22-1 Riposte / Sessions : jauges a parite (« je suis couvert », « je riposte » vs 1/n) + bande.
+- D22-2 Riposte / Match view : PAS de tuiles par camp ; deux graphes par joueur (camp A, camp B) cote a
+  cote dans le meme bloc, comptes.
+- D22-3 Riposte / Timeseries : UN SEUL graphe, deux series de batons (par soiree) sur un axe en %, un
+  repere d habituel par serie.
+- D22-4 Portee / Sessions : normalisee comme l Escouade = ecart a la mediane du lobby du match ; un baton
+  par match de la session, bandes de role en fond, mediane de session marquee, classes d arme en infobulle.
+- D22-5 Portee / Escouade : nuage (forme 1), axe X = un match par position du plus ancien au plus recent,
+  etiquettes « #N · carte » comme les autres graphes de la page ; points creux sous 5 frags ; role sur
+  fenetre glissante de 5 matchs ; bande des roles en repli.
+- D22-6/7 Appui recu : Sessions en jauges + bande ; Timeseries en un seul graphe comme D22-3.
+- Reserves : R1 a servir (team_size par match) ; R2 levee ; R3 a servir (lecteur portee tous joueurs).
+
+### Lot N1 — Go : taille d equipe + blocs Coordination (worktree `LevelUp-wt-ajsup-n1`)
+- [ ] R1 : `TeamSize` (+ `PlayerTeam`) par match sur `SessionUsageMatchPoint`, depuis `TeamContext`
+- [ ] Bloc coordination de session : par match, morts de camp, ripostees (5 s), mes ripostes, mes morts ripostees ; appuis recus (mes frags appuyes / mes frags ; appuis du camp / recus par moi)
+- [ ] Bloc coordination de timeseries : les memes, groupes par soiree (sessions), avec couverture
+- [ ] Bloc riposte de match view : par mort, (victime, vengeur, delai, camp) ; comptes par joueur
+- [ ] openapi + generate-types ; tests analysis/service/repo
+
+### Lot N2 — Go : portee tous joueurs par match (worktree `LevelUp-wt-ajsup-n2`)
+- [ ] Filtre AllPlayers + lecteur sans filtre xuid ; medianes par (match, joueur) + mediane du lobby (sur les frags) + measured
+- [ ] Servi a l Escouade (page synergies) et a Sessions (matchs de la session, joueur consulte + lobby)
+- [ ] openapi + generate-types ; tests
+
+### Lots web (apres N1/N2) : O Sessions, P Match view, Q Timeseries, R Escouade
