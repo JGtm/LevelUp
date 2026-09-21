@@ -3365,3 +3365,15 @@ export type TacticalContribution = components['schemas']['TacticalContribution']
 // dessine ce qu'il reçoit, il ne re-bucket rien.
 export type TacticalCoordination = components['schemas']['TacticalCoordination']
 export type TacticalBinDistance = components['schemas']['TacticalBinDistance']
+
+// Le bloc COORDINATION du lot N1 (riposte + appui reçu), servi tel quel par Sessions, la
+// match view et les Séries temporelles. Alias stricts du contrat généré : un renommage
+// côté Go casse `tsc` ici plutôt que de se découvrir à l'exécution. `Couverture` porte
+// déjà l'alias `TacticalCouverture` plus haut — ce second nom est celui du bloc, et le
+// rapatrier ici évite de faire lire « tactique » à un appelant de Coordination.
+export type CoordinationBlock = components['schemas']['CoordinationBlock']
+export type CoordinationRiposte = components['schemas']['CoordinationRiposte']
+export type CoordinationAppui = components['schemas']['CoordinationAppui']
+export type CoordinationSessionPoint = components['schemas']['CoordinationSessionPoint']
+export type CoordinationMatchPoint = components['schemas']['CoordinationMatchPoint']
+export type Couverture = components['schemas']['Couverture']

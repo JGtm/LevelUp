@@ -716,3 +716,83 @@ en = "Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed i
 [timeseries.progression.net_lives_empty]
 fr = "Aucun match ne porte les dégâts infligés et subis."
 en = "No match carries both damage dealt and damage taken."
+
+# Coordination dans le temps (lot Q, D22-3 et D22-6/7 du 2026-09-21) — deux cartes, un
+# seul graphe chacune : deux séries de bâtons par soirée sur un axe en %, un repère
+# d'habituel par série. D22-verbosité : AUCUNE phrase de lecteur, l'explication tient
+# dans l'infobulle ⓘ du titre, trois phrases au plus.
+[timeseries.progression.coord_riposte_title]
+fr = "Riposte"
+en = "Riposte"
+
+[timeseries.progression.coord_riposte_tooltip]
+fr = "Une riposte est une mort de ton camp dont le tueur est abattu par un coéquipier dans les {seconds} s. « Je suis couvert » rapporte tes morts ripostées à tes morts ; « je riposte » rapporte tes ripostes à toutes les morts de ton camp, face à la part équitable 1/n. Une soirée sous le plancher d'échantillon est rendue en bâton creux."
+en = "A riposte is a death on your team whose killer is taken down by a teammate within {seconds}s. \"I am covered\" divides your avenged deaths by your deaths; \"I riposte\" divides your ripostes by every team death, against the 1/n fair share. A session below the sample floor is drawn as a hollow bar."
+
+[timeseries.progression.coord_appui_title]
+fr = "Appui reçu"
+en = "Support received"
+
+[timeseries.progression.coord_appui_tooltip]
+fr = "Un appui est une assistance reçue sur l'un de tes frags — ni fenêtre de temps, ni mort de ton camp. « On me prépare » rapporte tes frags appuyés à tes frags ; « ma part des appuis » rapporte les assistances qui te reviennent à toutes celles de ton camp, face à la part équitable 1/n. Une soirée sous le plancher d'échantillon est rendue en bâton creux."
+en = "Support is an assist received on one of your kills — no time window, no team death involved. \"Set up for me\" divides your assisted kills by your kills; \"my share of support\" divides the assists coming to you by every team assist, against the 1/n fair share. A session below the sample floor is drawn as a hollow bar."
+
+[timeseries.progression.coord_covered]
+fr = "Je suis couvert"
+en = "I am covered"
+
+[timeseries.progression.coord_i_riposte]
+fr = "Je riposte"
+en = "I riposte"
+
+[timeseries.progression.coord_prepared]
+fr = "On me prépare"
+en = "Set up for me"
+
+[timeseries.progression.coord_my_share]
+fr = "Ma part des appuis"
+en = "My share of support"
+
+[timeseries.progression.coord_usual]
+fr = "habituel {rate}"
+en = "usual {rate}"
+
+[timeseries.progression.coord_parity]
+fr = "parité {rate}"
+en = "fair share {rate}"
+
+[timeseries.progression.coord_y_axis]
+fr = "Part de la soirée"
+en = "Session share"
+
+[timeseries.progression.coord_vol_my_deaths]
+fr = "mes morts : {n}"
+en = "my deaths: {n}"
+
+[timeseries.progression.coord_vol_team_deaths]
+fr = "morts de mon camp : {n}"
+en = "team deaths: {n}"
+
+[timeseries.progression.coord_vol_my_kills]
+fr = "mes frags : {n}"
+en = "my kills: {n}"
+
+[timeseries.progression.coord_vol_team_assists]
+fr = "appuis de mon camp : {n}"
+en = "team assists: {n}"
+
+[timeseries.progression.coord_delay]
+fr = "Délai médian"
+en = "Median delay"
+
+[timeseries.progression.coord_coverage]
+fr = "{measured} matchs mesurés sur {total}"
+en = "{measured} of {total} matches measured"
+
+[timeseries.progression.coord_empty]
+fr = "Aucune soirée mesurée sur ce périmètre."
+en = "No session measured on this scope."
+
+[timeseries.progression.coord_unavailable]
+fr = "Coordination indisponible sur ce périmètre."
+en = "Coordination unavailable on this scope."

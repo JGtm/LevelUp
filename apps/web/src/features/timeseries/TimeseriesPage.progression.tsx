@@ -33,6 +33,7 @@ import {
   TimeseriesNetLivesTrend,
   type TimeseriesNetLivesLabels,
 } from './TimeseriesNetLivesTrend'
+import { TimeseriesCoordinationSection } from './TimeseriesCoordinationSection'
 import { EquipmentUsageSection } from '@/features/_shared/usage/EquipmentUsageSection'
 import { FormesRetenuesSection } from '@/features/squad/formes/FormesRetenuesSection'
 import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
@@ -261,6 +262,14 @@ export function TimeseriesProgressionTab({
         avgUnit={t('timeseries.progression.net_lives_average_unit')}
         emptyMessage={t('timeseries.progression.net_lives_empty')}
       />
+
+      {/* Coordination dans le temps — « Riposte » | « Appui reçu » sur une rangée (lot Q,
+          D22-3 et D22-6/7). Un seul graphe par carte : deux séries de bâtons par soirée
+          sur le même axe en %, un repère d'habituel par série. Aucune requête neuve — le
+          bloc arrive avec cette réponse de page. La rangée se retire entièrement quand le
+          titre ne sert pas de bloc de coordination ; elle est CONSERVÉE, cartes vides
+          nommées, quand le bloc est servi mais indisponible sur le périmètre (D8). */}
+      <TimeseriesCoordinationSection block={data.coordination} locale={locale} />
 
       {/* Engagement. EngagementTimeseriesSection rend déjà sa propre ChartCard avec titre
           interne, donc pas de wrapper supplémentaire (sinon double titre). Gaté sur
