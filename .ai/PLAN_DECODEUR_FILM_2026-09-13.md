@@ -6687,22 +6687,74 @@ depasse l enum `kind` que le brief autorise a bouger.
   casse rien : elle publie davantage.
   **AUCUN PORT DE SPRINT NI DE SAUT** : rien n est prouve, et la case 5.7.5 dit ce que
   l utilisateur a corrige de la methode.
-- [ ] **5.7.5 — LA CHAINE DE DONNEES, DU CONSOMMATEUR VERS LE FILM** (instruit par l utilisateur,
-  2026-09-21, et sa correction de methode FAIT AUTORITE) : « le Theater sait quand un joueur se met
-  a courir rien qu en lisant le film ; il ne refait pas le match en live, ca rendrait impossible la
-  lecture d un match ancien ; tout est enregistre dans le film ». **« Le bit 45 n est ecrit par
-  aucun deserialiseur de `ti=35` » NE PEUT DONC PAS ETRE LA FIN DE L HISTOIRE** : le bit est POSE a
-  partir d une donnee repliquee, par une autre voie. Et deux ORACLES PHYSIQUES exacts sont donnes :
-  « tous les Spartans sautent la meme hauteur (petite variable) et courent a la meme vitesse ; on a
-  la velocite et la position en Z ». Programme, dans l ordre : (A) etiqueter les SAUTS par la
-  hauteur (episodes Z montant puis redescendant, pic etroit a H, +/- 10 %) ; (B) etiqueter les
-  SPRINTS par les PLATEAUX de vitesse au sol lissee (deux plateaux attendus, Vm et Vs) ;
-  (C) chercher le CHAMP REPLIQUE qui coincide tick par tick avec ces deux verites terrain
-  (chaque bit du mot 32 b d `i18`, les etiquettes d `i57` et d `i59`, les tags d `i55`, le masque
-  de 32 drapeaux de `PlayerGameEventSmall`, la porte d `i54`), score en precision et rappel ;
-  (D) puis SEULEMENT, Ghidra confirme la chaine consommateur -> memoire -> ecrivain ->
-  deserialiseur pour le candidat nomme. **Aucune conclusion negative** : un candidat absent est
-  « non trouve, voici les scores », et une chaine qui se perd est « non trouve a `<adresse>` ».
+- [x] **5.7.5 — LES DEUX ORACLES PHYSIQUES, LES SCORES, ET LA CHAINE DE DONNEES : LE SAUT A UNE
+  HAUTEUR (H = 0,85 m SUR DEUX FILMS), LA CHAINE DE L ACCROUPI EST COMPLETE, CELLE DU SPRINT SE
+  PERD AU PRODUCTEUR — ET L ADRESSE EST ECRITE.** Deux corrections de l utilisateur, qui font
+  autorite : « le Theater sait quand un joueur se met a courir rien qu en lisant le film » (donc
+  le negatif du 5.7.1 n est pas une fin d histoire), et « tous les Spartans sautent la meme
+  hauteur et courent a la meme vitesse ; on a la velocite et la position en Z » (donc une VERITE
+  TERRAIN avant tout candidat).
+  **(A) LE SAUT A UNE HAUTEUR, ET C EST LA MEME.** Episodes aeriens par integration de la `vz`
+  TENUE : `bfecd02b` 841 episodes / 45 vies, `4f77afc1` 4 464 / 182. **H = 0,85 m sur LES DEUX**,
+  avec un pic **123 contre 15 et 8** (x 10,7) et **653 contre 244 et 94** (x 3,9) ; **136 et 830**
+  episodes a +/- 10 % de H (55,5 % et 47,7 % des episodes >= 0,3 m) ; **duree mediane 0,467 et
+  0,466 s**. Le casier [0,0-0,1[ (453 et 1 577) est le pas de quantification de `vz` integre sur
+  un tick, pas des sauts — le seuil de 0,3 m qui l ecarte est LU dans la mesure. **ET C EST UNE
+  CALIBRATION D UNITE GRATUITE** : le 5.3.5 validait `DecodeVelocityMagnitude` par la DISPERSION
+  sans jamais valider son ECHELLE ; une hauteur de saut de 0,85 m identique sur deux films est une
+  grandeur absolue du jeu.
+  **(B) LE SPRINT A DEUX PLATEAUX REPRODUCTIBLES, MAIS LA SEPARATION N EST PAS FRANCHE.**
+  Histogramme des plateaux (>= 0,5 s a 5 % pres) pondere par la duree : **Vm = 2,12 m/s** et
+  **Vs = 2,88 m/s**, **rapport 1,35**, aux MEMES valeurs sur les deux films (2,88 tient 42,3 % et
+  44,6 % du temps de plateau). Mais entre 1,75 et 3,00 la duree monte de facon CONTINUE
+  (165 · 257 · 190 · 505 · 962 s sur `4f77afc1`) : une masse dominante avec une epaule, pas deux
+  modes disjoints. **Lequel des deux est le sprint n est PAS etabli par la vitesse seule** — 2,88
+  peut etre la marche avant et 2,12 le deplacement lateral, le sprint etant alors le relief a
+  3,25-3,75 m/s (13 s sur 2 158, 0,6 %). Les deux lectures restent ouvertes.
+  **(C) AUCUN CANDIDAT NOMME, ET LE PLAFOND EST STRUCTUREL.** 43 candidats notes sur `bfecd02b`
+  (1 886 instants) et 54 sur `4f77afc1` (9 310) — les 32 bits du mot d `i18` et sa porte, les
+  etiquettes d `i57`, le tag et l interne d `i59`, les quatre tags d `i55`, les deux drapeaux d
+  `i54`, l accroupi d `i29` — relus A LEUR `StartBit` sur les records retenus pour avoir slot ET
+  instant. Meilleurs scores : `i57.etiquette=-1` et `i59.tag=0` a **11,3-13,8 % de precision** et
+  **20,7-39,6 % de rappel**. Aucun n atteint 90 % dans les deux sens, sur aucune des six
+  notations. **ET LE RECENSEMENT DE DENSITE DIT POURQUOI** : sur les 97 345 records retenus, CINQ
+  composants seulement sont denses — `unit-command-tick` **97,14 %**, `object-position`
+  **85,54 %**, `object-translational-velocity` **77,55 %**, `unit-desired-aiming-vector`
+  **65,29 %**, `object-shield-vitality` **36,31 %** ; tout le reste est sous 0,8 % (`i57` 0,64 %,
+  `i54` 0,33 %, `i18` 0,10 %, `i29` 0,06 %, `i55` 0,05 %). **Le record delta du bipede porte cinq
+  choses**, et un etat connu a chaque instant ne peut pas vivre dans un champ transmis 0,05 % du
+  temps. C est la reproduction INDEPENDANTE de l oracle Rosette du § 2 quinquies (15 529 records,
+  113 bits, `{i0,i1,i21,i25}`), par le decodeur seul, avec le bouclier en plus.
+  **(D) LA CHAINE, MAILLON PAR MAILLON.** **ACCROUPI : COMPLETE, et elle valide la methode** —
+  `FUN_142ed42a8` ecrit `etat+0x7e8` (booleen) et `etat+0x7ec` (fraction) ; `FUN_1406c9b1c`
+  appelle `FUN_140a10970(_, objet, etat, masque)` qui, **sous le bit 29 du masque de changement
+  (= l index du composant)**, passe le booleen a `FUN_140c60e1c` et la fraction a
+  `FUN_1408b2230`. Cinq maillons, aucun trou : `i29` EST la source.
+  **SPRINT : NON TROUVE, ET VOICI OU.** Consommateur : `transition_conditions_is_sprinting_tlg` /
+  `SpartanAbilityIsSprinting` @`1436f7170` -> `FUN_142a0c70c` -> `(*(u64*)(obj+0x8b8) >> 0x2d) & 1`
+  (14 sites de TEST releves). Quatre mecanismes cherches : ecriture partielle a l octet (**0
+  reference a `[x+0x8bd]`**, quand `0x8bc` en a 89) ; `BTS`/`BTR` immediat (**26 sur ce mot, aux
+  rangs 8 a 0x1e, aucun a 0x2d**) ; masque calcule (**aucun des 17 assignateurs du mot entier ne
+  charge `1<<45`** ; aucun `BTS`/`BTC` a rang registre ni `SHLX` sur cet offset) ; copie de
+  structure (**les seules copies de 16 octets a `0x8b8` sont les constructeurs de copie du widget
+  d interface `TwoToneMeterQuad`**, `FUN_141576070`/`FUN_1415761e0`, objet 0x918, vtable
+  `PTR_FUN_143849e88`, enregistre par `FUN_1400eed50` — collision d offset entre deux classes, pas
+  une copie d unite). Et le maillon decisif est controle : **aucun des NEUF applicateurs de la
+  chaine d etat replique ne touche `obj+0x8b8`** (`FUN_140a10970`, `FUN_140c85028`,
+  `FUN_1406c72e8`, `FUN_140a10c54`, `FUN_140a10b64`, `FUN_140a10a7c`, `FUN_1404d4c28`,
+  `FUN_140a10998`, `FUN_1406ca5f0`) ; le seul contact de `FUN_1406c9b1c` est le **bit 54**, source
+  = un champ de l objet VIVANT (`FUN_140719698(obj)+0x120`/`+0x121`). **VOIE NON EXPLOREE, NOMMEE**
+  : l un des 17 assignateurs du mot entier, depuis un registre dont la provenance n a pas ete
+  remontee — commencer par `FUN_1409aac4c` et `FUN_140775a24`, qui posent le mot ET testent un de
+  ses bits. **AERIEN : meme point d arret** ; `c_biped_airborne_state` est une structure LOCALE
+  (table reflechie `FUN_1432226c0`) qu aucun applicateur n alimente depuis un champ replique.
+  **RIEN N EST PORTE, ET LA RAISON EST ECRITE.** Le sprint n a ni source repliquee nommee ni
+  signature de vitesse franche. Le saut a une signature physique excellente mais se lit par un
+  SEUIL sur une integrale : l etiqueter publierait un seuil comme une donnee. Ce qu il faudrait
+  pour porter le saut est ecrit au § 5.7.5.e de la note — remonter le producteur (un maillon par
+  lecture), ou valider le seuil contre un autre signal du film.
+  **Aucun octet de production touche par ce point** : deux instruments neufs sous
+  `//go:build research`, plus les documents.
 
 ---
 
@@ -7417,7 +7469,7 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
 | 2026-09-21 | 5.7.4 | **D5 (5.7) — `MobilityActionHook`, LA PORTE HISTORIQUE D `i54`, RESTE VIVANTE PENDANT LES ESSAIS D ALIGNEMENT.** Le correctif de la porte des etats de mouvement n eteint que `EtatMouvementHook`. La porte historique d `i54` (celle qui ne porte pas le slot) n est inscrite dans AUCUNE neutralisation : elle publie donc encore les essais, et les balayages de capacite qui la lisent (`ScanAbilityImpulses` et ses voisins) en heritent. Ordre de grandeur du bruit, mesure sur le meme composant par l autre porte : **x 14** avant correction. | NON TRAITE (regle 7, et le brief exige que SEULES les etapes `movementStates` bougent). **L inscrire est une ligne**, mais cela deplacerait les references figees des calques de capacite sans qu aucune mesure ne l ait demande : pour le lot qui voudra auditer ces calques, l oracle est ecrit ici — comparer les lectures publiees au compte des `Trace.Comps` des records rendus, comme le § 5.7.4.c |
-| 2026-09-21 | 5.7.1 | **D6 (5.7) — LE DRAPEAU DE SPRINT EST LE BIT 45 DE `obj+0x8b8`, ET AUCUN DESERIALISEUR DE `ti=35` N ECRIT CE MOT.** `SpartanAbilityIsSprinting` (`FUN_142a0c70c`) rend `(*(u64*)(obj + 0x8b8) >> 0x2d) & 1`. Negatifs mesures sur l image : 0 reference a `[x+0x8bd]` (l octet du bit 45), aucun `BTS`/`BTR` au rang `0x2d` sur ce mot (il y en a 26, aux rangs 8 a 0x1e), aucune des 16 fonctions qui assignent le mot ENTIER ne charge `1 << 45`, et les offsets d objet ecrits par les deserialiseurs du bipede sont 0x4dc, 0x544/0x548/0x726, 0x7e8/0x7ec, 0xaa8, 0x11f8/0x1295/0x1296, 0x129c, 0x12b4, 0x12e4, 0x1324 — jamais 0x8b8. | **NON TRAITE, ET SURTOUT : CE N EST PAS UNE CONCLUSION.** L utilisateur a corrige la methode le meme jour, et il fait autorite : « le Theater sait quand un joueur se met a courir rien qu en lisant le film ; il ne refait pas le match en live ; tout est enregistre dans le film ». Le bit est donc POSE a partir d une donnee repliquee, par une voie que ce lot n a pas suivie — une lecture d ecrivain ne remonte pas un FLUX DE DONNEES. La chaine consommateur -> memoire -> ecrivain -> deserialiseur est le programme de la case 5.7.5 ; l hypothese a instruire est que l ecriture passe par un masque CALCULE (`shl`/`or` a rang variable), par un ecrivain partiel a l octet, ou par une COPIE de structure depuis l unite de rejeu |
+| 2026-09-21 | 5.7.1 | **D6 (5.7) — LE DRAPEAU DE SPRINT EST LE BIT 45 DE `obj+0x8b8`, ET AUCUN DESERIALISEUR DE `ti=35` N ECRIT CE MOT.** `SpartanAbilityIsSprinting` (`FUN_142a0c70c`) rend `(*(u64*)(obj + 0x8b8) >> 0x2d) & 1`. Negatifs mesures sur l image : 0 reference a `[x+0x8bd]` (l octet du bit 45), aucun `BTS`/`BTR` au rang `0x2d` sur ce mot (il y en a 26, aux rangs 8 a 0x1e), aucune des 16 fonctions qui assignent le mot ENTIER ne charge `1 << 45`, et les offsets d objet ecrits par les deserialiseurs du bipede sont 0x4dc, 0x544/0x548/0x726, 0x7e8/0x7ec, 0xaa8, 0x11f8/0x1295/0x1296, 0x129c, 0x12b4, 0x12e4, 0x1324 — jamais 0x8b8. | **NON TRAITE, ET SURTOUT : CE N EST PAS UNE CONCLUSION.** L utilisateur a corrige la methode le meme jour, et il fait autorite : « le Theater sait quand un joueur se met a courir rien qu en lisant le film ; il ne refait pas le match en live ; tout est enregistre dans le film ». Le bit est donc POSE a partir d une donnee repliquee, par une voie que ce lot n a pas suivie — une lecture d ecrivain ne remonte pas un FLUX DE DONNEES. La chaine consommateur -> memoire -> ecrivain -> deserialiseur est INSTRUITE a la case 5.7.5, qui rend la chaine complete pour l accroupi et nomme l endroit exact ou celle du sprint se perd (les 17 assignateurs du mot entier ; les quatre autres mecanismes sont ecartes avec leurs chiffres). L hypothese qui restait etait que l ecriture passe par un masque CALCULE (`shl`/`or` a rang variable), par un ecrivain partiel a l octet, ou par une COPIE de structure depuis l unite de rejeu |
 | 2026-09-21 | 5.7.2 | **D1 (5.7) — LA PORTE DE PUBLICATION DES ETATS DE MOUVEMENT PUBLIE LES ESSAIS D ALIGNEMENT DE LA MARCHE, ET `stances[]` AU SCHEMA 65 EN HERITE.** La porte tire depuis `traverseComponentLoop`, et deux chemins l appellent sur des alignements CANDIDATS qu ils jettent : `marchLocateStrict` (essais d offset) et `deltaBodyTrial` (inference de chaine, un essai par archetype du registre sous budget). Confrontation sur `bfecd02b` des lectures publiees au compte des composants que les records RENDUS declarent : `i1` x 1,27 · `i54` x 14 · `i62` x 72 · `i18` x 72 · `i55` x 73 · `i29` x 152. Population RETENUE, relue a `StartBit` avec **0 ecart de largeur sur 75 977 relectures** : `i29` **60** lectures, `i62` **56**, `i55` **52**, `i54` **321** — la ou le 5.3.6 publie 2 490, 2 487 et 2 964. | **NON TRAITE, ET C EST LA DECISION DE VALEUR SUR LAQUELLE LE LOT 5.7 S ARRETE** (case 5.7.4). Trois issues : filtrer la porte aux records retenus (la sortie juste — elle divise les comptes de `stances[]` par ~40 et change intervalles, couverture et contenu cuit, donc bien au-dela de l enum `kind`), retirer `stances[]`, ou le garder en le disant a la couverture. Le choix appartient a l utilisateur. **ET IL BLOQUE LA QUESTION DU SAUT** : nommer l une des quatre voies de l union d `i55` demande une population, et la population retenue est de 52 lectures sur un film |
 | 2026-09-21 | 5.7.4 | **D2 (5.7), CORRIGEE LE MEME JOUR — LE CONSTRUCTEUR DE FIXTURES DE CONTRAT N OUVRE AUCUN FILM : IL REJOUE LES FIXTURES D ENTREES FIGEES.** La premiere redaction de cette decouverte disait « il porte les largeurs d axe PAR DEFAUT » et en concluait a deux decodages differents. C est FAUX : `chargerGoldenBuild` lit `inputs_<film>.bin.gz` (codec `REPLAYINPUTS24`) et assemble depuis ces octets — aucun film n est decode. Un changement de decodeur ne traverse donc les fixtures de contrat QUE si l on re-fige les ENTREES par leur porte (`GoldenBuildsRegenerate` avec `REPLAY_FILM_CACHE`, plus `GoldenInputsRegenerate` pour `000d5950`). | **TRAITEE** : les entrees sont refigees au lot 5.7.4, ce qui fait entrer d un coup la grammaire d `i55` et la porte de speculation. **Ce qui RESTE consigne est la lecon de methode** : un gate qui compare les fixtures de contrat ne voit AUCUN changement de decodeur tant que les entrees n ont pas ete refigees — deux portes en serie, et la premiere est facile a oublier. A dire dans tout contrat d executant qui touche le decodeur |
 | 2026-09-21 | 5.7.1 | **D3 (5.7) — LES ETIQUETTES 4, 5 ET 6 D `i59` SONT DESORMAIS PORTABLES AVEC DES FEUILLES QUE LE DEPOT A DEJA.** La relecture integrale de `FUN_142f25e90` donne leur grammaire : 4 et 5 = deux mots a -1 + `FUN_1408f0ac4(cat. 5)` + UN `FUN_142f26e9c` + `FUN_14076e494(..., 0x10)` + `FUN_14076dc04` + une queue de **9 bits** ; 6 = `FUN_1407f08bc(p+0x1e)` + un test DU FLUX (`*(short*)(p+0x1e) == -1`) + `FUN_1408f0ac4` (cat. 5 puis 0) + DEUX `FUN_142f26e9c` + `R(1)` + `FUN_14076dc04`, **sans** queue de 9 bits. Les quatre feuilles existent (`consume1408f0ac4`, `consumeSimStateHandleTail`, `consumeAbilityAnchorVec`, `R(24)`). | NON TRAITE, **et la decision du 5.3.3-c tient** : le manque coute 0,12 % des records du bipede (3 sur 97 345 apres le port d `i55`), et porter une etiquette de plus demande de DEPLACER la porte `FUN_1407f08bc` dans le `switch`, ce qui bougerait le curseur sur les corps qui publient aujourd hui `grappleLines[]`. Le perimetre reste fige par `i59_etiquette_loi_test.go` ; ce qui change, c est qu il n y a plus de largeur inconnue a trouver |
@@ -7912,6 +7964,16 @@ sur 57** (`movementStates` 4 469 -> 726, `movementStates.stats`, `artifact`), **
 carte de `4f77afc1` est `flood gulch`, pas `cliffhanger` : sous la mauvaise carte la marche ne rend
 que 22 713 records `ti=35` contre **321 335**, avec 55 desyncs contre 56. A dire dans tout contrat
 d executant : la carte se lit dans le manifeste du film, jamais par defaut.
+
+**GATES DU POINT 5.7.5** (documents et recherche seuls, AUCUN octet de production) : `gofmt`
+vide · `go build ./...` · `go vet -tags=research ./internal/games/halo_infinite/film/...` vide ·
+`go test -count=1` sur les 7 paquets **tout vert** · `golangci-lint run ./internal/games/
+halo_infinite/film/...` **0 issues**. Aucune revision, aucun golden, aucune fixture : la couche
+`grammar` n est pas touchee (deux `_test.go` sous `//go:build research`).
+**DEUX FILMS, UN A LA FOIS** : `bfecd02b` (snowbound) et `4f77afc1` (flood gulch), aucune base.
+**GHIDRA EN LECTURE SEULE**, un maillon par lecture : 11 lectures ciblees au total (l accesseur de
+sprint, l applicateur d etat, les neuf applicateurs controles d un coup, la copie de structure, le
+widget qui l explique, les deux applicateurs de l accroupi).
 
 **PAS DE THOUGHT LOG, PAS DE PUSH** (brief). Arbre propre a la cloture.
 ### Post-chantier — lot 5.8 (details du rendu), gates SANS AUCUN DECODAGE, 2026-09-21
