@@ -4,10 +4,15 @@
  * CE TEST EXISTE POUR UNE RAISON PRÉCISE : le lot a été demandé parce que ce qui
  * avait été livré ne portait PAS les cartes de l'artefact. Le test vérifie donc la LISTE —
  * les dix-neuf titres, répartis entre le contexte SOLO (neuf cartes, page Timeseries) et
- * le contexte ESCOUADE (dix cartes, page Escouade) depuis le 2026-09-19 — les trois blocs,
- * et les textes qui n'ont pas le droit de disparaître (réserve des occupations sans nom).
+ * le contexte ESCOUADE (dix cartes, page Escouade) depuis le 2026-09-19 — et les trois
+ * blocs.
+ *
+ * MIS À JOUR LE 2026-09-21 (lot A1) : le titre de section et le bandeau de couverture sont
+ * retirés (D5), la réserve des occupations sans nom quitte la carte des frises (D9 du plan
+ * précédent, arbitrage du 2026-09-21), les phrases de portée passent dans l'infobulle ⓘ du
+ * titre de chaque carte (D5/point 5), et un bloc sans objet se masque INTERTITRE COMPRIS.
  */
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { FormesRetenuesSection } from './FormesRetenuesSection'
@@ -78,17 +83,19 @@ describe('FormesRetenuesSection', () => {
     }
   })
 
-  it('garde la réserve des occupations sans ramasseur nommé (contexte escouade)', () => {
+  // LA RÉSERVE QUITTE LA CARTE DES FRISES (arbitrage utilisateur 2026-09-21) : elle vivait
+  // sous la piste, en gris. Ce que la barre porte vraiment est désormais dit par la note de
+  // méthode de la carte, dans son infobulle ⓘ.
+  it('ne pose plus la réserve des occupations sans nom sous les frises', () => {
     const { container } = render(
       <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="squad" />,
     )
     const text = container.textContent ?? ''
-    // La réserve : 5 occupations sans ramasseur, 9 prises nommées sur 14.
-    expect(text).toContain('5 occupations de socle')
-    expect(text).toContain('9 prises sur 14')
+    expect(text).not.toContain('5 occupations de socle')
+    expect(text).not.toContain('9 prises sur 14')
   })
 
-  it('nomme les cinq gestes d’équipement, et JAMAIS les grenades', () => {
+  it('nomme les cinq usages d’équipement, et JAMAIS les grenades', () => {
     const { container } = render(
       <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
     )
@@ -97,9 +104,15 @@ describe('FormesRetenuesSection', () => {
     expect(text).not.toContain('Grenades lancées')
   })
 
-  it('affiche la couverture « mesurés sur total » du bandeau', () => {
-    render(<FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />)
-    expect(screen.getByText(fr.header.scopeMeasuredFmt(2, 3))).toBeInTheDocument()
+  // D5 (2026-09-21) : ni titre de section, ni bandeau de quatre tuiles. Le nom de la
+  // section ne vit plus que dans l'ARIA — trois intertitres se suivaient à l'écran.
+  it('ne rend NI titre de section NI bandeau de couverture', () => {
+    const { container } = render(
+      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
+    )
+    expect(screen.getByLabelText(fr.sectionTitle)).toBeInTheDocument()
+    expect(container.textContent ?? '').not.toContain(fr.sectionTitle)
+    expect(screen.queryByText(/Lobbies observ/)).not.toBeInTheDocument()
   })
 
   it('se retire quand le bloc est absent ou indisponible', () => {
@@ -137,8 +150,13 @@ describe('FormesRetenuesSection', () => {
     // Une ligne par match mesuré affiché, jamais une par match du scope.
     const grip = screen.getByLabelText(frCards.cards.padsSquadByMatch.title)
     expect(grip.querySelectorAll('[role="img"][aria-label*="Prises de socle"]').length).toBe(0)
-    expect(grip.textContent).toContain('Affichés : les 20 derniers matchs à film décodé')
-    expect(grip.textContent).toContain('matchs sans film décodé sont hors de cette forme')
+    // LA PORTÉE SE DIT DANS L'INFOBULLE ⓘ DU TITRE, plus sous la forme (2026-09-21) :
+    // hors survol, la phrase n'est nulle part dans le corps de la carte.
+    expect(grip.textContent).not.toContain('Affichés : les 20 derniers matchs à film décodé')
+    fireEvent.mouseEnter(within(grip).getByRole('button', { name: /info/i }))
+    const aide = screen.getByRole('tooltip').textContent ?? ''
+    expect(aide).toContain('Affichés : les 20 derniers matchs à film décodé')
+    expect(aide).toContain('matchs sans film décodé sont hors de cette forme')
     // Le match sans film n'a plus de ligne du tout.
     expect(grip.textContent).not.toContain(fr.common.noFilm)
   })
@@ -151,12 +169,25 @@ describe('FormesRetenuesSection', () => {
     ).toBeGreaterThan(0)
   })
 
-  it('retire les cartes d’objectif quand aucun match n’en porte', () => {
+  // D8 (2026-09-21) : une section SANS OBJET se masque, intertitre compris. L'intertitre
+  // « Objectifs » restait seul au bas de la page, annonçant un bloc qui n'arrivait jamais.
+  it('masque le bloc d’objectif ENTIER — intertitre compris — quand aucun match n’en porte', () => {
     const block = formesFixture()
     block.matches = (block.matches ?? []).map((m) => ({ ...m, objective: undefined }))
     render(<FormesRetenuesSection block={block} locale="fr" contexte="solo" />)
-    // Le bloc garde son titre et son aide — les cartes, elles, partent.
-    expect(screen.getByText(fr.blocks.objectives.title)).toBeInTheDocument()
+    expect(screen.queryByText(fr.blocks.objectives.title)).not.toBeInTheDocument()
     expect(screen.queryByText(frCards.cards.objectivesGapRole.title)).not.toBeInTheDocument()
+  })
+
+  // D8 : un bloc sans donnée reste affiché et NOMME SA CAUSE.
+  it('un bloc sans film décodé garde son intertitre et nomme la cause', () => {
+    const block = formesFixture()
+    block.matches = (block.matches ?? []).map((m) => ({ ...m, measured: false }))
+    block.matches_measured = 0
+    render(<FormesRetenuesSection block={block} locale="fr" contexte="squad" />)
+    expect(screen.getByText(fr.blocks.equipment.title)).toBeInTheDocument()
+    expect(screen.getByText(fr.blocks.weapons.title)).toBeInTheDocument()
+    expect(screen.getAllByTestId('formes-block-empty').length).toBe(2)
+    expect(screen.getAllByText(fr.empty.noFilm).length).toBe(2)
   })
 })

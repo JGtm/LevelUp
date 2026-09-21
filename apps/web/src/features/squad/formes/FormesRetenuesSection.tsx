@@ -17,9 +17,17 @@
  * matchs, une grille de cinq colonnes graduées). Deux cartes côte à côte les rendraient
  * illisibles.
  *
- * LE BLOC SE RETIRE DE LUI-MÊME quand la réponse ne le porte pas (titre sans film), et
- * affiche « 0 sur N » quand aucun match du scope n'est mesuré : une couverture nulle est un
- * état légitime, pas une page vide.
+ * LE BLOC SE RETIRE DE LUI-MÊME quand la réponse ne le porte pas (titre sans film).
+ *
+ * PLUS DE TITRE DE SECTION NI DE BANDEAU DE COUVERTURE (décision D5 du 2026-09-21) : trois
+ * intertitres se suivaient — « Les formes retenues », puis quatre tuiles de repères, puis le
+ * vrai intertitre du premier bloc. Le nom de la section reste celui de l'ARIA ; les repères
+ * du bandeau se relisent dans les formes elles-mêmes.
+ *
+ * UN BLOC SANS DONNÉE NOMME SA CAUSE (décision D8) : il reste affiché et dit POURQUOI il est
+ * vide — aucun film décodé, aucun usage dans les modes retenus, aucun socle. Une section
+ * entière sans objet (aucun match à objectif) se masque, intertitre compris : un intertitre
+ * orphelin annonce un bloc qui n'arrive jamais.
  */
 import { useMemo } from 'react'
 
@@ -53,10 +61,10 @@ import {
   PadsTwoFriezesCard,
   PadsWeaponGridCard,
 } from './cards/PadCards'
-import { measuredPlayersCount } from './cards/shared'
 import { FORMES_TEXT } from './i18n'
-import { average, matchSizes, parityOf } from './model/access'
-import { objectiveFamilies, objectiveMatches } from './model/objectives'
+import { EQUIPMENT_AXES, axisValue, lobbyOf } from './model/access'
+import { objectiveMatches } from './model/objectives'
+import { namedPickups, unnamedOccupations } from './model/pads'
 import { buildFormesViewModel, type FormesViewModel } from './viewModel'
 
 /** Le contexte de lecture : « moi dans mon équipe et dans le lobby », ou « mon camp
@@ -83,46 +91,41 @@ function BlockTitle({ children, aide }: { children: string; aide: string }) {
   )
 }
 
-/** Une tuile du bandeau : une clé, une valeur, une précision. */
-function HeaderTile({ label, value, hint }: { label: string; value: string; hint: string }) {
-  return (
-    <div className="bg-card px-2.5 py-2">
-      <div className="text-3xs uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="text-sm font-semibold tabular-nums text-foreground">{value}</div>
-      <div className="text-3xs text-muted-foreground">{hint}</div>
-    </div>
+/**
+ * LA CAUSE D'UN BLOC VIDE, DÉDUITE DES COMPTES (décision D8). Aucun match mesuré : le film
+ * manque. Des matchs mesurés mais aucune mesure sur l'axe : les modes retenus ne portent pas
+ * la chose. Rien de déductible : le message générique — jamais un écran muet.
+ */
+function equipmentCause(vm: FormesViewModel): string | null {
+  if (vm.measured.length === 0) return vm.t.empty.noFilm
+  // Un match mesuré SANS AUCUN joueur de lobby n'est pas « zéro usage » : c'est une réponse
+  // qu'on ne sait pas lire. On ne lui invente pas de cause, on le dit.
+  const places = vm.measured.reduce((a, m) => a + lobbyOf(m).length, 0)
+  if (places === 0) return vm.t.empty.generic
+  const total = vm.measured.reduce(
+    (acc, m) =>
+      acc +
+      lobbyOf(m).reduce((a, p) => a + EQUIPMENT_AXES.reduce((x, k) => x + axisValue(p, k), 0), 0),
+    0,
   )
+  return total > 0 ? null : vm.t.empty.noEquipment
 }
 
-/** Les quatre repères de couverture, calculés sur la période affichée. */
-function HeaderStrip({ vm }: { vm: FormesViewModel }) {
-  const { t, block } = vm
-  const teamParity = parityOf(average(vm.measured.map((m) => matchSizes(m).team)) ?? 0)
-  const lobbyParity = parityOf(average(vm.measured.map((m) => matchSizes(m).lobby)) ?? 0)
-  const families = objectiveFamilies(block).length
+function padsCause(vm: FormesViewModel): string | null {
+  if (vm.measured.length === 0) return vm.t.empty.noFilm
+  if (namedPickups(vm.block) > 0) return null
+  return unnamedOccupations(vm.block) > 0 ? vm.t.empty.padsUnnamedOnly : vm.t.empty.noPads
+}
+
+/** Le message d'un bloc vide, à la place de ses cartes. */
+function BlockEmpty({ message }: { message: string }) {
   return (
-    <div className="mt-4 grid gap-px border border-border bg-border [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
-      <HeaderTile
-        label={t.header.scope}
-        value={t.header.matchesFmt(block.matches_total)}
-        hint={t.header.scopeMeasuredFmt(block.matches_measured, block.matches_total)}
-      />
-      <HeaderTile
-        label={t.header.lobbies}
-        value={String(measuredPlayersCount(vm))}
-        hint={t.header.lobbiesPlacesFmt(measuredPlayersCount(vm), vm.squad.length)}
-      />
-      <HeaderTile
-        label={t.header.parity}
-        value={`${vm.fmtPct(teamParity ?? 0)} / ${vm.fmtPct(lobbyParity ?? 0)}`}
-        hint={t.header.parityHint}
-      />
-      <HeaderTile
-        label={t.header.modes}
-        value={t.header.familiesFmt(families)}
-        hint={t.header.modesHint}
-      />
-    </div>
+    <p
+      className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground"
+      data-testid="formes-block-empty"
+    >
+      {message}
+    </p>
   )
 }
 
@@ -147,64 +150,74 @@ export function FormesRetenuesSection({
 
   const solo = contexte === 'solo'
   const hasObjectives = objectiveMatches(vm.block).length > 0
+  const equipmentEmpty = equipmentCause(vm)
+  const padsEmpty = padsCause(vm)
 
   return (
     <section className="space-y-3" aria-label={t.sectionTitle}>
-      <h3 className="text-base font-semibold text-foreground">{t.sectionTitle}</h3>
-      <HeaderStrip vm={vm} />
-
       <BlockTitle aide={t.blocks.equipment.aide}>{t.blocks.equipment.title}</BlockTitle>
-      <div className="space-y-4">
-        {solo ? (
-          <>
-            <EquipmentSharesCard vm={vm} />
-            <EquipmentByMatchCard vm={vm} />
-            <EquipmentSpreadCard vm={vm} />
-          </>
-        ) : (
-          <>
-            <EquipmentRegularityCard vm={vm} />
-            <EquipmentLobbyTrackCard vm={vm} />
-            <EquipmentSquadGridCard vm={vm} />
-            <EquipmentSquadTrackCard vm={vm} />
-          </>
-        )}
-      </div>
-
-      <BlockTitle aide={t.blocks.weapons.aide}>{t.blocks.weapons.title}</BlockTitle>
-      <div className="space-y-4">
-        {solo ? (
-          <>
-            <PadsGapSoloCard vm={vm} />
-            <PadsShareSoloCard vm={vm} />
-            <PadsWeaponGridCard vm={vm} />
-          </>
-        ) : (
-          <>
-            <PadsGapSquadCard vm={vm} />
-            <PadsTwoFriezesCard vm={vm} />
-            <PadsSquadByMatchCard vm={vm} />
-            <PadsSquadWeaponGridCard vm={vm} />
-          </>
-        )}
-      </div>
-
-      <BlockTitle aide={t.blocks.objectives.aide}>{t.blocks.objectives.title}</BlockTitle>
-      {hasObjectives && (
+      {equipmentEmpty != null ? (
+        <BlockEmpty message={equipmentEmpty} />
+      ) : (
         <div className="space-y-4">
           {solo ? (
             <>
-              <ObjectivesGapRoleCard vm={vm} />
-              <ObjectivesSharesByFamilyCard vm={vm} />
-              <ObjectivesRawGridCard vm={vm} />
+              <EquipmentSharesCard vm={vm} />
+              <EquipmentByMatchCard vm={vm} />
+              <EquipmentSpreadCard vm={vm} />
             </>
           ) : (
             <>
-              <ObjectivesGapSquadCard vm={vm} />
-              <ObjectivesLobbyTrackCard vm={vm} />
+              <EquipmentRegularityCard vm={vm} />
+              <EquipmentLobbyTrackCard vm={vm} />
+              <EquipmentSquadGridCard vm={vm} />
+              <EquipmentSquadTrackCard vm={vm} />
             </>
           )}
         </div>
+      )}
+
+      <BlockTitle aide={t.blocks.weapons.aide}>{t.blocks.weapons.title}</BlockTitle>
+      {padsEmpty != null ? (
+        <BlockEmpty message={padsEmpty} />
+      ) : (
+        <div className="space-y-4">
+          {solo ? (
+            <>
+              <PadsGapSoloCard vm={vm} />
+              <PadsShareSoloCard vm={vm} />
+              <PadsWeaponGridCard vm={vm} />
+            </>
+          ) : (
+            <>
+              <PadsGapSquadCard vm={vm} />
+              <PadsTwoFriezesCard vm={vm} />
+              <PadsSquadByMatchCard vm={vm} />
+              <PadsSquadWeaponGridCard vm={vm} />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* AUCUN MATCH À OBJECTIF = AUCUNE SECTION : l'intertitre partait avec (D8). */}
+      {hasObjectives && (
+        <>
+          <BlockTitle aide={t.blocks.objectives.aide}>{t.blocks.objectives.title}</BlockTitle>
+          <div className="space-y-4">
+            {solo ? (
+              <>
+                <ObjectivesGapRoleCard vm={vm} />
+                <ObjectivesSharesByFamilyCard vm={vm} />
+                <ObjectivesRawGridCard vm={vm} />
+              </>
+            ) : (
+              <>
+                <ObjectivesGapSquadCard vm={vm} />
+                <ObjectivesLobbyTrackCard vm={vm} />
+              </>
+            )}
+          </div>
+        </>
       )}
     </section>
   )

@@ -10,7 +10,7 @@
  * AUCUNE CADENCE PAR MINUTE : les comptes se lisent PAR MATCH (décision
  * utilisateur du 2026-09-13).
  */
-import { FormesCaption, FormesCard } from '../FormesCard'
+import { FormesCard } from '../FormesCard'
 import { MINUS_INK, PLUS_INK, SPREAD_INK, TEAM_REST_INK, axisInk } from '../colors'
 import { BandeForm, type BandeRow } from '../forms/BandeForm'
 import { BatonMinMaxForm } from '../forms/BatonMinMaxForm'
@@ -92,6 +92,18 @@ export function EquipmentSharesCard({ vm }: { vm: FormesViewModel }) {
   )
 }
 
+/**
+ * LES AXES DE LA CADENCE PAR MATCH — SANS « Objets lâchés au sol » (décision D9 du
+ * 2026-09-21). La colonne existait, mais le bloc `formes_retenues` ne sert qu'un COMPTE
+ * global de lâchers (`SquadFormesLobbyPlayer.Dropped`, un entier) : la ventilation par
+ * famille existe en amont dans le film (`replay.PlayerUsage.DroppedByFamily`) et s'arrête à
+ * `analysis/squadformes/formes.go`. Une colonne qui mélange un mur, un grappin et un capteur
+ * lâchés à la mort ne se compare à rien — tant que la famille n'est pas servie, la colonne
+ * ne se tient pas. Les autres formes du bloc gardent l'axe : elles le lisent comme un
+ * volume, pas comme une colonne de comparaison.
+ */
+const BY_MATCH_AXES = EQUIPMENT_AXES.filter((axis) => axis !== 'dropped')
+
 /** Carte 2 — « Cadence de gestes, match par match » (grille, une ligne par match). */
 export function EquipmentByMatchCard({ vm }: { vm: FormesViewModel }) {
   const { t, ct } = vm
@@ -104,7 +116,7 @@ export function EquipmentByMatchCard({ vm }: { vm: FormesViewModel }) {
     sublabel: vm.matchMap(m),
     accent: vm.squad[0]?.ink,
   }))
-  const columns: GrilleColumn[] = EQUIPMENT_AXES.map((axis) => ({
+  const columns: GrilleColumn[] = BY_MATCH_AXES.map((axis) => ({
     key: axis,
     label: t.axes[axis],
     total: t.common.totalFmt(vm.fmtCount(playerTotal(vm.block, vm.mainXuid, axis))),
@@ -114,7 +126,8 @@ export function EquipmentByMatchCard({ vm }: { vm: FormesViewModel }) {
     <FormesCard
       title={ct.cards.equipmentByMatch.title}
       note={ct.cards.equipmentByMatch.note}
-      legend={EQUIPMENT_AXES.map((axis) => ({ label: t.axes[axis], ink: axisInk(axis) }))}
+      help={[t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)]}
+      legend={BY_MATCH_AXES.map((axis) => ({ label: t.axes[axis], ink: axisInk(axis) }))}
     >
       <GrilleForm
         rows={rows}
@@ -130,9 +143,6 @@ export function EquipmentByMatchCard({ vm }: { vm: FormesViewModel }) {
         axisTitle={t.common.gesturesPerMatchAxis}
         nameWidth={MATCH_NAME_WIDTH}
       />
-      <FormesCaption>
-        {t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)}
-      </FormesCaption>
     </FormesCard>
   )
 }
@@ -201,6 +211,7 @@ export function EquipmentRegularityCard({ vm }: { vm: FormesViewModel }) {
     <FormesCard
       title={ct.cards.equipmentRegularity.title}
       note={ct.cards.equipmentRegularity.note}
+      help={[t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)]}
       legend={[
         { label: t.common.moreThanOpponent, ink: PLUS_INK },
         { label: t.common.less, ink: MINUS_INK },
@@ -213,9 +224,6 @@ export function EquipmentRegularityCard({ vm }: { vm: FormesViewModel }) {
         parity={50}
         axisTitle={t.common.matchesAxis}
       />
-      <FormesCaption>
-        {t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)}
-      </FormesCaption>
     </FormesCard>
   )
 }
