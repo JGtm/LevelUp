@@ -9,13 +9,13 @@
  *
  * QUATRE ÉTAGES, ET UN SEUL RÉCIT :
  *
- *   1. une PHRASE DE LECTEUR, toujours rendue (l'ancien « Constat du moment » se taisait
- *      sous 5 points d'écart — un seuil qui faisait disparaître la seule carte qui parlait
- *      français) ; sa dernière proposition, l'écart à l'habituel, SE TAIT quand le filtre
- *      couvre déjà tout l'historique : l'écart y est nul par tautologie ;
- *   2. le CHIFFRE D'APPEL face à l'habituel, et le délai médian à côté ;
- *   3. la FRISE soirée par soirée (bâtons + tendance + repère d'habituel + volumes) ;
- *   4. deux REPLIS fermés par défaut — le détail du délai, puis le détail par couple.
+ *   1. le CHIFFRE D'APPEL face à l'habituel, et le délai médian à côté ;
+ *   2. la FRISE soirée par soirée (bâtons + tendance + repère d'habituel + volumes) ;
+ *   3. deux REPLIS fermés par défaut — le détail du délai, puis le détail par couple.
+ *
+ * PLUS DE PHRASE DE LECTEUR (D22-verbosité, LOI du 2026-09-21) : graphes et légendes
+ * seulement, l'explication tient dans l'infobulle (i) du titre, en trois phrases au plus.
+ * Le chiffre d'appel, la frise et les replis, eux, ne bougent pas.
  *
  * LES CHIFFRES DE LA MAQUETTE NE SONT JAMAIS REPRIS : tout vient de `appelRiposte`.
  */
@@ -87,7 +87,6 @@ export function SquadRiposteCard({ echange }: SquadRiposteCardProps) {
       titleAdornment={titleWithInfo(aide, { testId: 'squad-riposte-low-sample' })}
     >
       <div className="space-y-3 px-3 py-2" data-testid="squad-riposte">
-        <PhraseDeLecteur appel={appel} secondes={secondes} secFmt={secFmt} t={t} />
         <ChiffreDAppel appel={appel} pctFmt={pctFmt} secFmt={secFmt} t={t} />
         {frise.soirees.length > 0 ? (
           <SquadRiposteSessionsChart
@@ -128,50 +127,6 @@ export function SquadRiposteCard({ echange }: SquadRiposteCardProps) {
 
 type Appel = ReturnType<typeof appelRiposte>
 type Texte = ReturnType<typeof getSquadRiposteText>
-
-/**
- * PhraseDeLecteur — le fait, puis l'écart à l'ordinaire.
- *
- * TOUJOURS RENDUE, et c'est le changement de fond : l'ancienne carte « Constat du moment »
- * ne s'affichait qu'au-dessus de 30 morts ET 5 points d'écart, si bien que la seule carte
- * en français disparaissait le plus souvent. Seule la DERNIÈRE PROPOSITION est
- * conditionnelle — elle se tait quand l'écart est une tautologie (filtre = tout
- * l'historique) ou quand il est nul.
- */
-function PhraseDeLecteur({
-  appel,
-  secondes,
-  secFmt,
-  t,
-}: {
-  appel: Appel
-  secondes: number
-  secFmt: Intl.NumberFormat
-  t: Texte
-}) {
-  const fait =
-    appel.surCombien != null && appel.delaiMedianS != null
-      ? t.sayFact({
-          seconds: secondes,
-          surCombien: appel.surCombien,
-          delai: secFmt.format(appel.delaiMedianS),
-        })
-      : t.sayFactNever(secondes)
-  const ecart =
-    appel.pleinHistorique || appel.ecartPoints === 0
-      ? null
-      : appel.ecartPoints < 0
-        ? t.sayBelow
-        : t.sayAbove
-  return (
-    <p
-      className="border-l-2 border-info pl-3 text-sm text-foreground"
-      data-testid="squad-riposte-phrase"
-    >
-      {ecart ? `${fait} ${ecart}` : fait}
-    </p>
-  )
-}
 
 /**
  * ChiffreDAppel — « 19,4 % ripostées » face à l'habituel, et « 2,4 s de délai médian ».

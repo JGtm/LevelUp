@@ -36,7 +36,6 @@ export function getSquadIsolementText(locale: Locale) {
     tooltipRepereIso: (isoRate: string) => m('squad.isolement.tooltip_repere_iso', { isoRate }),
     tooltipRepereCov: (covRate: string) => m('squad.isolement.tooltip_repere_cov', { covRate }),
     cardTitle: m('squad.isolement.card_title'),
-    say: m('squad.isolement.say'),
     figure: m('squad.isolement.figure'),
     legendDeaths: (n: number) => m('squad.isolement.legend_deaths', { n }),
     legendDeath: m('squad.isolement.legend_death'),
