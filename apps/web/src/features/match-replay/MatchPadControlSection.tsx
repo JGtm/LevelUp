@@ -1,5 +1,5 @@
 /**
- * MatchPadControlSection — LE CONTRÔLE DES ARMES SPÉCIALES D'UN MATCH, une arme par ligne.
+ * MatchPadControlSection — LE CONTRÔLE DES ARMES SPÉCIALES D'UN MATCH, une colonne par socle.
  *
  * CE QUE LA PAGE NE SAVAIT PAS DIRE, ET CE QUE LE BILAN D'ÉQUIPEMENT REFUSAIT DE DIRE. La
  * section voisine (`MatchEquipmentUsageSection`) compte les socles VIDÉS, au niveau du match et
@@ -8,14 +8,15 @@
  * ramasseur socle par socle, et c'est la stat de domination tactique demandée — qui a tenu le
  * fusil de précision, qui a raflé l'épée.
  *
- * LA FORME EST UN GRAPHE, PLUS UN TABLEAU (2026-09-03, retours utilisateur). UNE ARME, UNE
- * BARRE (2026-09-13) : le nom du socle à gauche avec son total, puis un rail unique valant
- * 100 % des occupations NOMMÉES de ce socle, découpé en un segment par joueur — le camp du
- * joueur de la page d'abord, l'adverse ensuite, séparés par un filet. Le graphe empilait
- * jusqu'ici un bâton PAR CAMP, d'où le constat de l'utilisateur : « pourquoi "Contrôle des
- * armes spéciales" a plusieurs épaisseurs de barres ? [...] Les étiquettes dans les barres sont
- * illisibles, masquées par la hauteur de la barre qui est insuffisante. » La barre fait
- * maintenant 24 px et le compte s'y écrit dès 6 % du rail.
+ * LA FORME EST UN GRAPHE, PLUS UN TABLEAU (2026-09-03, retours utilisateur). UNE COLONNE PAR
+ * SOCLE (2026-09-21, décision D18, proposition 4.A de la maquette) : la hauteur d'une colonne
+ * est le nombre de prises NOMMÉES de ce socle, sur une ÉCHELLE COMMUNE à tous les socles, et
+ * la colonne est empilée par joueur — couleur du camp, éclaircissement par joueur. Le rail
+ * 100 % qui précédait donnait à tous les socles la MÊME longueur : un socle pris 3 fois
+ * occupait autant de largeur qu'un socle pris 12, et le total, écrit en petit à gauche, était
+ * la seule chose qui détrompait. Les groupes de niveau ne sont plus des bandeaux : un TRAIT
+ * VERTICAL discret sépare la puissance du terrain, et le nom de chaque groupe avec son
+ * sous-total s'écrit DANS le graphe, centré en haut de sa moitié.
  *
  * DÉPLIÉ, ET IL N'Y A PLUS DE REPLI (2026-09-13). La décision D3 du 2026-09-05 (replié par
  * défaut, seuls les socles « game changers » en avant) est RÉVOQUÉE par l'utilisateur :
@@ -38,40 +39,41 @@
  *
  * CE QUE L'ÉCRAN DIT DE SA PROPRE MESURE, et il doit le dire : le graphe ne montre QUE les
  * occupations dont l'événement natif nomme le ramasseur. Les autres sont réelles — celles d'un
- * socle affiché sont annotées à DROITE de sa ligne (« + N sans nom »), jamais versées à un camp.
+ * socle affiché sont annotées SOUS sa colonne (« + N sans nom »), jamais versées à un camp.
  * LA NOTE DE PIED QUI LES VENTILAIT PAR CAUSE A ÉTÉ RETIRÉE le 2026-09-13 (« virer le texte
- * "34 prises attribuées sur 65 occupations…" ») : l'annotation de ligne reste le seul endroit
+ * "34 prises attribuées sur 65 occupations…" ») : l'annotation de colonne reste le seul endroit
  * où l'écran avoue ce qu'il ne montre pas, et elle est à l'aplomb du socle concerné.
  *
- * COULEURS. Les camps prennent `teamTokenCssVar` — les jetons `team-ally` / `team-enemy` que les
- * réglages d'accessibilité surchargent, et NON la cascade d'identité de `teamColor.ts` (cf.
- * l'en-tête de `match-view/teamSeriesColor.ts`). Les joueurs d'un camp s'en distinguent par un
- * éclaircissement, calculé par `padControlChart`.
+ * COULEURS. Les camps prennent les jetons `team-ally` / `team-enemy` que les réglages
+ * d'accessibilité surchargent, et NON la cascade d'identité de `teamColor.ts` (cf. l'en-tête de
+ * `match-view/teamSeriesColor.ts`). Les joueurs d'un camp s'en distinguent par un
+ * éclaircissement calculé par `padControlChart` — rendu en `color-mix` dans la légende DOM, en
+ * OPACITÉ dans le canvas, qui n'accepte ni variable CSS ni `color-mix`.
  *
- * Aucun calcul ici : tout vient de `padControlLogic` (les mesures) et `padControlChart` (la
- * projection).
+ * Aucun calcul ici : tout vient de `padControlLogic` (les mesures), `padControlChart` (la
+ * projection) et `padControlColumns` (le pivot en colonnes).
  */
 import { useCallback, useMemo, useState } from 'react'
 
+import { BarStackedChart } from '@/components/charts/BarStackedChart'
 import { ChartLegend } from '@/components/charts/ChartLegend'
+import { getEChartsThemeColors } from '@/components/charts/_utils'
 import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
-import { Tooltip } from '@/components/ui/tooltip'
-import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
+import { teamSeriesColor, teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
+import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayText } from './i18n/i18nContract'
 import { buildPadControlBars, type PadBarModel, type PadBarRow } from './model/padControlChart'
+import { buildPadColumns, type PadColumnGroupInput } from './model/padControlColumns'
 import { buildPadControl, type PadControl } from './model/padControlLogic'
 import { PAD_TIER_ORDER, type PadTier } from './model/weaponTier'
 import { useMatchReplay } from '../../lib/replay/queries'
 import { padNameFor } from './layers/useReplayWeaponPads'
-
-/** Largeur de la colonne des noms d'arme, et de l'annotation de droite (px). */
-const NAME_WIDTH = 148
-const NOTE_WIDTH = 78
 
 interface Props {
   playerSlug: string
@@ -163,7 +165,8 @@ export function MatchPadControlSection({
 }
 
 /**
- * PadControlBody — le corps de la carte : le graphe et sa légende, gardés par leur contenu.
+ * PadControlBody — le corps de la carte : le graphe des socles décisifs, sa légende, et le
+ * dépliable des armes de base.
  *
  * Extrait du composant le 2026-09-05 (plafond de taille de fonction du dépôt).
  */
@@ -178,139 +181,122 @@ function PadControlBody({
   allyOf: (side: string | null) => boolean | null
   t: ReplayText
 }) {
+  const groupes = groupRowsByTier(bars.rows, control)
+  const base = groupes.find((groupe) => groupe.tier === 'base')
+  // LES ARMES DE BASE FERMENT LA MARCHE, DANS UN DÉPLIABLE FERMÉ (D2) : reprendre son fusil
+  // d'assaut n'est pas contrôler la carte, et leurs colonnes écraseraient l'échelle commune
+  // des socles décisifs — une base prise trente fois contre un sniper pris quatre.
+  const decisifs = groupes.filter((groupe) => groupe.tier !== 'base')
   return (
     <div className="px-3 pb-3 pt-3">
-      {bars.rows.length > 0 && (
-        <>
-          <PadControlBars model={bars} control={control} t={t} />
-          <ChartLegend
-            className="pt-3"
-            items={bars.teams.map((team) => ({
-              key: team.side ?? 'sans-equipe',
-              label: team.label,
-              color: teamTokenCssVar(allyOf(team.side)),
-            }))}
-          />
-        </>
-      )}
+      <PadColumnsChart
+        // LE TITRE DE GROUPE NE S'ÉCRIT QUE SI LES NIVEAUX SONT ÉTABLIS : sans référence de
+        // carte, tout est « non classé » et un titre ferait lire une absence de mesure comme
+        // un résultat de mesure. L'infobulle du titre le dit déjà.
+        groups={decisifs.map((groupe) => ({
+          label: control.tiersMeasured
+            ? `${t.padControl.tierShortLabels[groupe.tier]} · ${t.padControl.tierSubtotalFmt(groupe.total)}`
+            : '',
+          rows: groupe.rows,
+        }))}
+        allyOf={allyOf}
+        t={t}
+        emptyMessage={t.padControl.chartEmpty}
+        legendLabel={t.padControl.title}
+      />
+      {base && <PadTierFold groupe={base} allyOf={allyOf} t={t} />}
     </div>
   )
 }
 
-/**
- * La grille du graphe : nom d'arme + total | barre | annotation.
- *
- * LES TROIS PISTES SONT EN `minmax(0, …)` DEPUIS LE 2026-09-19 (lot 2, retrait du défilement
- * horizontal) : une piste de largeur fixe refuse de passer sous la taille de son contenu et
- * pousse le rail hors du cadre. Avec le plancher à zéro, le nom d'arme se tronque (son `title`
- * garde le nom entier) et la barre garde sa part de la largeur disponible.
- */
-const ROW_GRID = {
-  gridTemplateColumns: `minmax(0, ${NAME_WIDTH}px) minmax(0, 1fr) minmax(0, ${NOTE_WIDTH}px)`,
-  gap: 12,
-}
+/** Hauteur du graphe : assez haute pour que les comptes tiennent dans les segments. */
+const CHART_HEIGHT = 300
 
 /**
- * PadControlBars — les lignes d'arme.
+ * PadColumnsChart — UNE COLONNE PAR SOCLE, hauteur = ses prises nommées, échelle commune.
  *
- * PLUS D'AXE DE PRISES : chaque rail vaut 100 % des occupations nommées de SON socle, et le
- * dénominateur de la ligne s'écrit à côté du nom de l'arme. Un axe partagé n'aurait plus rien
- * à graduer.
+ * LES ENCRES DU CANVAS SE RÉSOLVENT ICI, et pas dans `padControlChart` : ECharts peint un
+ * bitmap et n'accepte ni `var(--token)` ni `color-mix()`. Le camp donne la couleur
+ * (`teamSeriesColor`, donc les jetons `team-ally` / `team-enemy` de la palette réglée), le rang
+ * du joueur dans son camp donne l'OPACITÉ — l'équivalent canvas de l'éclaircissement
+ * `color-mix` que la légende DOM, elle, garde tel quel. Les deux se re-résolvent au changement
+ * de thème comme de palette.
  */
-function PadControlBars({
-  model,
-  control,
+function PadColumnsChart({
+  groups,
+  allyOf,
   t,
+  emptyMessage,
+  legendLabel,
 }: {
-  model: PadBarModel
-  control: PadControl
+  groups: PadColumnGroupInput[]
+  allyOf: (side: string | null) => boolean | null
   t: ReplayText
+  emptyMessage: string
+  legendLabel: string
 }) {
-  const groupes = groupRowsByTier(model.rows, control)
-  return (
-    // PLUS DE DÉFILEMENT HORIZONTAL (2026-09-19, lot 2) : le graphe tenait derrière un
-    // `overflow-x-auto` et une largeur plancher de 560 px, donc une barre de défilement sous la
-    // carte dès qu'il était à l'étroit. Depuis que ce bloc voisine « Usages d'équipement » dans
-    // l'onglet « Contrôle », il suit le MÊME modèle : les trois colonnes de la ligne se
-    // répartissent la largeur disponible et le nom d'arme se tronque (son `title` garde le nom
-    // entier), plutôt que de pousser le rail hors du cadre.
-    <div className="min-w-0">
-      {groupes.map((groupe) =>
-        // LES ARMES DE BASE SONT DANS UN DÉPLIABLE FERMÉ (2026-09-21, D2) : elles ferment la
-        // marche et ne s'ouvrent qu'à la demande — reprendre son fusil d'assaut n'est pas
-        // contrôler la carte, et leurs lignes noyaient les socles décisifs.
-        groupe.tier === 'base' ? (
-          <PadTierFold key={groupe.tier} groupe={groupe} t={t} />
-        ) : (
-          <section key={groupe.tier} className="mb-1">
-            {/* L'INTERTITRE N'APPARAÎT QUE SI LES NIVEAUX SONT ÉTABLIS : sans référence de
-                carte, un unique bandeau au-dessus de tout le bloc ferait lire une absence de
-                mesure comme un résultat de mesure. L'infobulle du titre le dit déjà. */}
-            {control.tiersMeasured && (
-              <PadTierHeading
-                label={t.padControl.tierLabels[groupe.tier]}
-                subtotal={t.padControl.tierSubtotalFmt(groupe.total)}
-              />
-            )}
-            {groupe.rows.map((row) => (
-              <PadWeaponRow key={row.weapon} row={row} t={t} />
-            ))}
-          </section>
-        ),
-      )}
-    </div>
+  const themeVersion = useThemeVersion()
+  const paletteVersion = useColorPaletteVersion()
+  const model = useMemo(
+    () => buildPadColumns({ groups, unnamedFmt: t.padControl.unnamedFmt }),
+    [groups, t],
   )
-}
+  const encres = useMemo(() => {
+    void themeVersion
+    void paletteVersion
+    const tc = getEChartsThemeColors()
+    const couleurs: Record<string, string> = {}
+    const opacites: Record<string, number> = {}
+    for (const joueur of model.players) {
+      couleurs[joueur.key] = teamSeriesColor(allyOf(joueur.side), tc)
+      opacites[joueur.key] = joueur.tint / 100
+    }
+    return { couleurs, opacites }
+  }, [model, allyOf, themeVersion, paletteVersion])
+  const note = useCallback((categorie: string) => model.notes[categorie], [model])
 
-/** L'intertitre d'un niveau : son nom et son sous-total, sur le même filet. */
-function PadTierHeading({ label, subtotal }: { label: string; subtotal: string }) {
   return (
-    <h4 className="mb-2 flex items-baseline gap-2 border-b pb-1 text-3xs uppercase tracking-wide text-muted-foreground">
-      <span>{label}</span>
-      <span className="tabular-nums normal-case tracking-normal">{subtotal}</span>
-    </h4>
-  )
-}
-
-/**
- * PadTierFold — le niveau « base », derrière un bouton fermé par défaut.
- *
- * Le COMPTE EST DANS LE LIBELLÉ (`baseToggleFmt`) : un dépliable qui ne dit pas ce qu'il cache
- * ne s'ouvre jamais. Il s'affiche même quand les niveaux ne sont pas établis — dans ce cas
- * aucune ligne n'est classée « base » et le groupe n'existe pas, la question ne se pose pas.
- */
-function PadTierFold({
-  groupe,
-  t,
-}: {
-  groupe: { tier: PadTier; rows: PadBarRow[]; total: number }
-  t: ReplayText
-}) {
-  const [open, setOpen] = useState(false)
-  return (
-    <section className="mb-1">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="mb-2 flex w-full items-baseline gap-2 border-b pb-1 text-3xs uppercase tracking-wide text-muted-foreground hover:text-foreground"
-      >
-        <span aria-hidden="true">{open ? '▾' : '▸'}</span>
-        <span>{t.padControl.baseToggleFmt(groupe.rows.length)}</span>
-        <span className="tabular-nums normal-case tracking-normal">
-          {t.padControl.tierSubtotalFmt(groupe.total)}
-        </span>
-      </button>
-      {open && groupe.rows.map((row) => <PadWeaponRow key={row.weapon} row={row} t={t} />)}
-    </section>
+    <>
+      <BarStackedChart
+        frameless
+        height={CHART_HEIGHT}
+        emptyMessage={emptyMessage}
+        series={
+          model.datapoints.length > 0
+            ? [{ key: 'pad-control', datapoints: model.datapoints }]
+            : []
+        }
+        componentOrder={model.componentOrder}
+        componentHexColors={encres.couleurs}
+        componentOpacity={encres.opacites}
+        categoryGroups={model.groups}
+        valueLabels={{ segments: true, totals: model.totals }}
+        categoryNote={note}
+        // Un joueur n'a pris qu'une poignée de socles : sans ce filtre, l'infobulle d'une
+        // colonne listerait les huit joueurs du lobby dont six à zéro.
+        tooltipHideZero
+        // UNE SEULE LÉGENDE, celle du DOM (ci-dessous) : elle porte l'éclaircissement exact
+        // des segments, que la légende ECharts ne saurait pas reproduire.
+        showLegend={false}
+      />
+      <ChartLegend
+        className="pt-2"
+        ariaLabel={legendLabel}
+        items={model.players.map((joueur) => ({
+          key: joueur.key,
+          label: joueur.key,
+          color: joueur.cssColor,
+        }))}
+      />
+    </>
   )
 }
 
 /**
  * groupRowsByTier range les lignes par niveau, dans l'ORDRE ÉCRIT `PAD_TIER_ORDER`
- * (puissance, bonus, terrain, base) et SANS toucher à l'ordre interne : celui-ci reste
- * celui de `padControlLogic` — les socles décisifs d'abord, puis du plus disputé au moins
- * disputé. Un niveau sans ligne n'a pas d'intertitre : une section vide ne dit rien.
+ * (puissance, terrain, base) et SANS toucher à l'ordre interne : celui-ci reste celui de
+ * `padControlLogic` — les socles décisifs d'abord, puis du plus disputé au moins disputé. Un
+ * niveau sans ligne n'existe pas : un groupe vide ne se sépare de rien.
  *
  * LE SOUS-TOTAL AFFICHÉ EST CELUI DES LIGNES DU GROUPE, pas `control.tierTotals` : les deux ne
  * coïncident que si aucune arme ne s'est trouvée à deux niveaux dans le match (0,17 % des
@@ -331,11 +317,10 @@ function groupRowsByTier(
 ): { tier: PadTier; rows: PadBarRow[]; total: number }[] {
   // « NON CLASSÉ » SURVIT AU SEUL CAS OÙ IL N'EST PAS UN VERDICT : carte hors référence, où
   // AUCUNE ligne n'a de niveau. Le retirer là viderait le bloc entier d'un match pourtant
-  // mesuré. Les intertitres ne s'écrivent alors pas (cf. `PadControlBars`), donc le lecteur ne
-  // voit pas non plus le mot « non identifié ».
+  // mesuré. Les titres de groupe ne s'écrivent alors pas (cf. `PadControlBody`), donc le
+  // lecteur ne voit pas non plus le mot « non identifié ».
   return PAD_TIER_ORDER.filter(
-    (tier) =>
-      tier !== 'powerup' && (tier !== 'unclassified' || !control.tiersMeasured),
+    (tier) => tier !== 'powerup' && (tier !== 'unclassified' || !control.tiersMeasured),
   )
     .map((tier) => {
       const lignes = rows.filter(
@@ -346,55 +331,51 @@ function groupRowsByTier(
     .filter((groupe) => groupe.rows.length > 0)
 }
 
-/** Hauteur de la barre : assez haute pour que le compte s'y lise en `text-xs` (retour 13/09). */
-const BAR_HEIGHT = 24
-
-/** Sous cette part du rail, le chiffre se ferait rogner : l'infobulle garde la valeur. */
-const LABEL_MIN_FRACTION = 0.06
-
-/** Une arme : son nom, son total, sa barre unique, et ce qui n'a pas de ramasseur nommé. */
-function PadWeaponRow({ row, t }: { row: PadBarRow; t: ReplayText }) {
+/**
+ * PadTierFold — le niveau « base », derrière un bouton fermé par défaut.
+ *
+ * Le COMPTE EST DANS LE LIBELLÉ (`baseToggleFmt`) : un dépliable qui ne dit pas ce qu'il cache
+ * ne s'ouvre jamais. Il s'affiche même quand les niveaux ne sont pas établis — dans ce cas
+ * aucune ligne n'est classée « base » et le groupe n'existe pas, la question ne se pose pas.
+ *
+ * OUVERT, IL REND LE MÊME GRAPHE (2026-09-21, D18) : colonnes empilées par socle, une échelle
+ * qui n'est QUE la sienne — les armes de base se comparent entre elles, pas aux socles de
+ * puissance, sinon l'échelle commune de ces derniers serait écrasée.
+ */
+function PadTierFold({
+  groupe,
+  allyOf,
+  t,
+}: {
+  groupe: { tier: PadTier; rows: PadBarRow[]; total: number }
+  allyOf: (side: string | null) => boolean | null
+  t: ReplayText
+}) {
+  const [open, setOpen] = useState(false)
+  const groups = useMemo(() => [{ label: '', rows: groupe.rows }], [groupe.rows])
   return (
-    <div className="mb-2 grid items-center" style={ROW_GRID}>
-      <div className="flex items-center justify-end gap-2 text-xs">
-        <span className="truncate" title={row.label}>
-          {row.label}
+    <section className="mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="mb-2 flex w-full items-baseline gap-2 border-b pb-1 text-3xs uppercase tracking-wide text-muted-foreground hover:text-foreground"
+      >
+        <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+        <span>{t.padControl.baseToggleFmt(groupe.rows.length)}</span>
+        <span className="tabular-nums normal-case tracking-normal">
+          {t.padControl.tierSubtotalFmt(groupe.total)}
         </span>
-        <span className="tabular-nums text-muted-foreground">{row.total}</span>
-      </div>
-      <div className="flex overflow-hidden bg-muted" style={{ height: BAR_HEIGHT }}>
-        {row.segments.map((seg) => {
-          const tip = t.padControl.barTipFmt(seg.name, seg.sideLabel, row.label, seg.count)
-          return (
-            // La largeur est portée par l'ITEM du flex, en `calc(%)`. Le retrait de 2 px ouvre
-            // la saignée entre deux joueurs ; le FILET (bordure gauche) marque, lui, le passage
-            // d'un camp à l'autre — une barre unique doit dire où finit un camp.
-            // `text-white` : libellé posé SUR l'aplat du camp, quelle que soit la palette
-            // réglée — un contraste de texte dans un aplat, pas une couleur sémantique.
-            <div
-              key={seg.xuid}
-              className={`mr-[2px] h-full last:mr-0${seg.startsSide ? ' border-l-2 border-card' : ''}`}
-              style={{ width: `calc(${seg.fraction * 100}% - 2px)` }}
-            >
-              <Tooltip content={tip} className="h-full w-full">
-                <div
-                  className="flex h-full w-full items-center justify-center overflow-hidden whitespace-nowrap text-xs font-semibold text-white"
-                  style={{ backgroundColor: seg.color }}
-                  tabIndex={0}
-                  role="img"
-                  aria-label={tip}
-                >
-                  {seg.fraction >= LABEL_MIN_FRACTION ? seg.count : ''}
-                </div>
-              </Tooltip>
-            </div>
-          )
-        })}
-      </div>
-      <div className="text-3xs text-muted-foreground tabular-nums">
-        {row.unnamed > 0 ? t.padControl.unnamedFmt(row.unnamed) : ''}
-      </div>
-    </div>
+      </button>
+      {open && (
+        <PadColumnsChart
+          groups={groups}
+          allyOf={allyOf}
+          t={t}
+          emptyMessage={t.padControl.chartEmpty}
+          legendLabel={t.padControl.tierLabels.base}
+        />
+      )}
+    </section>
   )
 }
-

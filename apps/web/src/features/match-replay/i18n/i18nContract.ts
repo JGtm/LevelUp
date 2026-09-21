@@ -155,6 +155,19 @@ export interface PadControlText {
   tierLabels: Record<PadTier, string>
   /** Le sous-total d'un niveau, écrit à côté de son intertitre. */
   tierSubtotalFmt: (count: number) => string
+  /**
+   * LE TITRE COURT D'UN NIVEAU (2026-09-21, D18). Il s'écrit DANS le graphe, centré au-dessus
+   * de son groupe de colonnes et suivi de son sous-total (« Puissance · 24 prises ») : à cette
+   * place, « Armes de puissance » répéterait le mot « armes » que le titre de la carte porte
+   * déjà, et mangerait la largeur du groupe.
+   */
+  tierShortLabels: Record<PadTier, string>
+  /**
+   * AUCUNE COLONNE À DESSINER : le match n'a vu prendre aucun socle de puissance ni de terrain
+   * (les armes de base, elles, restent dans leur dépliable). La carte reste affichée et nomme
+   * la cause — politique D8 des états vides.
+   */
+  chartEmpty: string
   /** Mode à équipements de départ aléatoires (Fiesta) : le niveau « base » n'est pas publié. */
   randomStartsNote: string
   /** Aucun emplacement de la carte n'a confirmé de socle : les niveaux ne sont pas établis. */
