@@ -408,3 +408,84 @@ package grammar
 // `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.2`.
 // `replay.SchemaVersion` MONTE a 65 — le document porte un calque neuf —, et le codec des faits
 // passe a `REPLAYINPUTS24` pour que les lectures voyagent avec les fixtures d entrees.
+
+// ENTREE `grammar-2026-09-21.3` (2026-09-21, lot 5.7) : `ti=35 i55` N ETAIT PAS UNE LARGEUR DE
+// DEUX BITS — SES QUATRE CHARGES SONT PORTEES.
+//
+// CE QUI A CHANGE, ET POURQUOI C EST UNE CORRECTION ET NON UN AJOUT. `consumeBipedPosturePhysics`
+// lisait `R(2)` et s arretait, sur la foi d une glose qui disait de son repartiteur
+// `FUN_141fd997c` « resolution d etat, 0 bit lu ». L ecrivain, relu a l octet, dit l inverse :
+// `FUN_141fd997c` est LE REPARTITEUR D UNE UNION DISCRIMINEE — il pose un octet de genre
+// (`dst+0x2c` = 1, 2, 3 pour les tags 1, 2, 3 ; le tag 0 prend une quatrieme voie) et appelle un
+// lecteur de charge DIFFERENT par tag, de quinze a plus de cent bits. C est la decouverte D1 du
+// lot 5.3, dont le cout n etait pas une desync mais une TRONCATURE : `i55` est le 56e des 64
+// composants du bipede, donc les bits non lus decalent `i56` a `i63` et la boucle de la vue
+// s arrete au record suivant.
+//
+// LES LARGEURS VIENNENT DE L ECRIVAIN, PAS D UN ESSAI. Les feuilles etaient toutes portees
+// ailleurs dans la couche sauf `FUN_14080bd28` (un handle court `R(15)`, masque `& 0x7fff`) ; la
+// largeur de `FUN_14076dc04` est lue au DESASSEMBLAGE de ses trois sites d appel
+// (`142f263e5`, `142f2658b`, `1431c357d` : `R9D = 0x13`), jamais devinee.
+//
+// MESURE, `bfecd02b`, marche du jeu a trois vues, largeurs de carte installees. L ORACLE DE
+// CONTENU TIENT et c est lui qui autorise le commit : etalon `i0` 85,5 % (inchange) · `i1`
+// 77,5 % (inchange) · `i21` 65,2 -> 65,3 % · `i25` 97,0 -> 97,1 %. Records `ti=35` 97 447 ->
+// 97 345 (-0,10 %), desyncs 3 -> 6 (`i59` 5, `i57` 1). LE COMPTE NE MONTE PAS, et c est dit :
+// les essais d alignement de l inference de chaine (`deltaBodyTrial`) dependent de la largeur
+// d `i55`, donc la corriger redistribue quelques alignements gagnants. L ECART EST DE UN POUR
+// MILLE ET L ETALON NE BOUGE PAS : la correction est neutre en couverture, et juste en
+// grammaire.
+//
+// `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.3`.
+// `replay.SchemaVersion` NE MONTE PAS : aucun champ neuf. Mais LE CONTENU CUIT CHANGE — les
+// records du bipede ne ferment plus aux memes bits —, donc les fixtures de contrat et les
+// goldens d assemblage se refigent, et `replay-equiv` deplace les etapes qui dependent du
+// decodage.
+
+// ENTREE `grammar-2026-09-21.4` (2026-09-21, lot 5.7.4) : LA PORTE DES ETATS DE MOUVEMENT
+// S INSCRIT DANS LA NEUTRALISATION DES LECTURES SPECULATIVES — ELLE PUBLIAIT LES ESSAIS.
+//
+// AUCUN BIT N EST LU AUTREMENT : pas une largeur, pas un cadre, pas un ordre de composants. Ce
+// qui change est CE QUI SORT de la couche, et il change beaucoup.
+//
+// LE DEFAUT. `traverseComponentLoop` est appelee par DEUX familles de chemins : la marche
+// retenue, et les chemins SPECULATIFS qui essaient une lecture sur des bits qu ils
+// abandonneront. Depuis le lot 2.2 ces derniers declarent leur speculation en eteignant les
+// crochets de capture (`neutraliserCaptures`, `neutraliserCapturePosition` — « une lecture
+// speculative n est pas une lecture »). La porte des etats de mouvement, posee au lot 5.3.4,
+// NE S Y ETAIT JAMAIS INSCRITE. Et le LOCALISATEUR de paquet (`marchLocateStrict` et ses deux
+// voisines) ne declarait rien du tout, alors qu il traverse l entite pour de vrai a chaque
+// offset essaye.
+//
+// LA CORRECTION, A LA SOURCE ET EN UN SEUL POINT : `neutraliserEtatsDeMouvement` est la porte
+// unique ; les deux neutralisations existantes l appellent, et les trois localisateurs
+// l appellent directement. Aucun filtre aval, aucune logique par calque — c est la MARCHE qui
+// dit « cette lecture est un essai », et elle seule le sait.
+//
+// CE QUE CELA VAUT, MESURE PAR LE BALAYAGE DE PRODUCTION LUI-MEME (`ScanMovementStates`, sous
+// les largeurs d axe de la carte du match) :
+//
+//	                          | bfecd02b            | 4f77afc1
+//	lectures retenues         | 7 463 ->     400    | 112 592 ->   1 430
+//	ecartees (slot non lie)   | 7 940 ->      53    |  44 123 ->      68
+//	doublons                  | 2 399 ->       0    |  47 670 ->       1
+//	accroupi / glissade /     | 2 340 / 2 303 /     |  33 977 / 35 195 /
+//	  action de mobilite      | 2 820               |  43 420
+//	  ->                      |    52 /    47 / 301 |     191 /    222 / 1 017
+//
+// ET LE CONTROLE QUI TRANCHE : la porte rend desormais EXACTEMENT ce que les records retenus
+// declarent. Confrontation lecture par lecture au compte des `Trace.Comps` des records rendus,
+// sur les deux films : `i29` 76 = 76, `i55` 52 = 52, `i62` 56 = 56, `i54` 321 = 321, `i18`
+// 117 = 117, `i1` 79 471 = 79 471 (`bfecd02b`) ; 236 / 287 / 230 / 1 033 / 515 / 220 844
+// (`4f77afc1`). ZERO lecture fantome. Et la reconciliation ferme : 76 + 56 + 321 = 453 = 400
+// retenues + 53 ecartees.
+//
+// CE QUI NE BOUGE PAS, ET C EST PROUVE : les positions et les vitesses publiees. Elles passent
+// par `PosCaptureHook`, DEJA inscrit dans la neutralisation depuis le lot 2.2 — `replay-equiv`
+// sur `bcb6d393` ne deplace que `movementStates`, `movementStates.stats` et `artifact`, les 54
+// autres etapes sont identiques a l octet.
+//
+// `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.4`.
+// `replay.SchemaVersion` NE MONTE PAS : la FORME ne change pas, le CONTENU oui — `stances[]`
+// perd les intervalles qu il tenait d essais jetes, et `coverage.stances` le dit par ses propres
+// compteurs. C est `backfill-replay` qui re-cuit.

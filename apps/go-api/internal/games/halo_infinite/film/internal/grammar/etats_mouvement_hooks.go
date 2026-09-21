@@ -60,8 +60,21 @@ const (
 	//   [4] la premiere fraction (R(8)) ; [5] la seconde, lue seulement si `param_4 >= 1`
 	//       (0 sinon) ; [6] la troisieme (R(8), en ligne).
 	EtatGlissade
-	// EtatPosture : `ti=35 i55 biped-posture-physics-component` (FUN_142f02918). Valeur unique :
-	//   [0] le tag de posture (R(2)), qui ouvre les quatre charges de ses quatre lecteurs.
+	// EtatPosture : `ti=35 i55 biped-posture-physics-component` (FUN_142f0293c ->
+	// FUN_142f1f630). Valeurs, TOUJOURS six — l UNION d etat physique du bipede, dont les
+	// quatre charges sont portees depuis le lot 5.7 (`components_biped_posture.go`) :
+	//   [0] le TAG de l union (R(2)) : le repartiteur `FUN_141fd997c` pose un octet de genre
+	//       1, 2 ou 3 pour les tags 1, 2, 3, et prend une quatrieme voie pour le tag 0 ;
+	//   [1] la PORTE de tete de la branche (1 = la charge lourde est presente) ;
+	//   [2] le SOUS-GENRE : le second discriminant du tag 0 (0..3) ou le premier champ court
+	//       du tag 1 (0 = charge absente) ; zero sur les tags 2 et 3 ;
+	//   [3] le HANDLE court R(15) (tags 0 sous-genres 1/2/3, 1 charge presente, 2 et 3) ;
+	//   [4] la DIRECTION empaquetee R(19), presente avec la queue quantifiee ;
+	//   [5] le MOT de 32 bits : l identifiant de l objet porteur du tag 2 (brut ou resolu par
+	//       reference d entite), la queue du tag 0 sous-genres 2/3, le champ du tag 3.
+	// LA CORRESPONDANCE TAG -> CLASSE N EST PAS ETABLIE : l image ne porte que trois classes
+	// d etat de bipede (`c_biped_ground_state`, `c_biped_airborne_state`,
+	// `c_biped_vehicle_state`) et aucune chaine n est attachee a l octet de genre.
 	EtatPosture
 	// EtatControleUnite : la TETE d `i18 unit-control-component` (FUN_14080d69c). Valeurs,
 	// TOUJOURS quatre :
