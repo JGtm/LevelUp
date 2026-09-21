@@ -11,7 +11,8 @@
  */
 import type { ReactNode } from 'react'
 
-import { InfoTooltip, TooltipParagraphs } from '@/components/ui/info-tooltip'
+import { TooltipParagraphs } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 
 import { ENEMY_HATCH, PARITY_INK, UNMEASURED_HATCH } from './colors'
@@ -84,15 +85,8 @@ export function FormesCard({ title, children, legend, note, help }: FormesCardPr
       label={title}
       titleAdornment={
         aide.length > 0
-          ? (label) => (
-              <span className="flex items-center gap-1.5">
-                {label}
-                <InfoTooltip
-                  content={
-                    <TooltipParagraphs items={aide.map((text) => <RichText key={text} text={text} />)} />
-                  }
-                />
-              </span>
+          ? titleWithInfo(
+              <TooltipParagraphs items={aide.map((text) => <RichText key={text} text={text} />)} />,
             )
           : undefined
       }

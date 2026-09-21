@@ -120,6 +120,13 @@ export interface FormesText {
     gapAxis: string
     padShareAxis: string
     matchesAxis: string
+    /**
+     * L'en-tête d'une colonne de LÂCHERS par famille (D9, 2026-09-21). Forme NEUTRE
+     * (« Lâchés : Surbouclier »), et c'est délibéré : les noms de famille du manifeste
+     * ont les deux genres (« Balise de translocation », « Capteur »), un participe
+     * accordé au masculin s'y tromperait une fois sur deux.
+     */
+    droppedFamilyFmt: (family: string) => string
     totalFmt: (n: string) => string
     valueTipFmt: (row: string, column: string, value: string) => string
     /** La règle des prises nettes, en toutes lettres, sous la valeur. */
@@ -326,6 +333,7 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       gapAxis: 'écart à la parité, en points de pourcentage',
       padShareAxis: 'part des occupations du socle — une échelle par joueur',
       matchesAxis: 'les matchs de la période, dans l’ordre',
+      droppedFamilyFmt: (family) => `Lâchés : ${family}`,
       totalFmt: (n) => `${n} au total`,
       valueTipFmt: (row, column, value) => `${row} — ${column} : ${value}`,
       juggleFoldedFmt: (seconds) =>
@@ -459,6 +467,7 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       gapAxis: 'gap to parity, in percentage points',
       padShareAxis: 'share of pad occupations — one scale per player',
       matchesAxis: 'the matches of the period, in order',
+      droppedFamilyFmt: (family) => `Dropped: ${family}`,
       totalFmt: (n) => `${n} in total`,
       valueTipFmt: (row, column, value) => `${row} — ${column}: ${value}`,
       juggleFoldedFmt: (seconds) =>

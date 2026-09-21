@@ -104,6 +104,15 @@ type SquadFormesLobbyPlayer struct {
 	Wall       int `json:"wall"`
 	Grapple    int `json:"grapple"`
 	Dropped    int `json:"dropped"`
+	// DroppedByFamily : la MÊME grandeur que Dropped, ventilée par clé de
+	// FAMILLE d'équipement (le vocabulaire des poses, cf. sessionusage). La
+	// somme des valeurs vaut Dropped — l'invariant est tenu en amont par le
+	// décodeur (`film/replay/usage_summary.go`). Publiée depuis le 2026-09-21
+	// (lot G, D9) pour que la grille rende UNE COLONNE PAR FAMILLE LÂCHÉE au
+	// lieu d'un total muet ; Dropped reste, aucun lecteur n'est cassé. Vide =
+	// ligne écrite par une passe antérieure à la ventilation — grandeur
+	// ABSENTE, jamais nulle.
+	DroppedByFamily map[string]int `json:"dropped_by_family,omitempty"`
 	// PadPickups : prises de socle d'arme nommées à ce joueur.
 	PadPickups int `json:"pad_pickups"`
 	// PadsByWeapon : la même grandeur ventilée par clé de famille d'arme (la

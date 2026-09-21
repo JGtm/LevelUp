@@ -11628,6 +11628,9 @@ export interface components {
             camo: number;
             /** Format: int64 */
             dropped: number;
+            dropped_by_family?: {
+                [key: string]: number;
+            };
             gamertag?: string;
             /** Format: int64 */
             grapple: number;

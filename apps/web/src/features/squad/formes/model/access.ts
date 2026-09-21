@@ -80,6 +80,39 @@ export function playerAxisValue(match: SquadFormesMatch, xuid: string, axis: Sha
   return row ? axisValue(row, axis) : 0
 }
 
+/**
+ * LES LÂCHERS, VENTILÉS PAR FAMILLE D'ÉQUIPEMENT (`dropped_by_family`, servi depuis le
+ * 2026-09-21). La somme des valeurs vaut `dropped` — l'invariant est tenu par le décodeur ;
+ * ces deux fonctions ne recomposent rien, elles LISENT.
+ *
+ * Une ligne écrite avant la ventilation porte la carte vide : la famille est alors ABSENTE
+ * (aucune colonne), jamais à zéro — un zéro se lirait « rien lâché de cette famille ».
+ */
+export function playerDroppedFamily(
+  match: SquadFormesMatch,
+  xuid: string,
+  family: string,
+): number {
+  return playerRow(match, xuid)?.dropped_by_family?.[family] ?? 0
+}
+
+/**
+ * Les familles RÉELLEMENT lâchées par le joueur sur les matchs donnés, triées par volume
+ * décroissant puis par clé (deux relectures rendent les mêmes colonnes dans le même ordre).
+ */
+export function droppedFamiliesOf(matches: SquadFormesMatch[], xuid: string): string[] {
+  const totaux = new Map<string, number>()
+  for (const match of matches) {
+    const row = playerRow(match, xuid)
+    for (const [family, n] of Object.entries(row?.dropped_by_family ?? {})) {
+      if (n > 0) totaux.set(family, (totaux.get(family) ?? 0) + n)
+    }
+  }
+  return [...totaux.entries()]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .map(([family]) => family)
+}
+
 /** Le joueur appartient-il au camp du joueur de la page ? */
 export function isMySide(match: SquadFormesMatch, player: SquadFormesLobbyPlayer): boolean {
   return match.player_team != null && player.team_id === match.player_team

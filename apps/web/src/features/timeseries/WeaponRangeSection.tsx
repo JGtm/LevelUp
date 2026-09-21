@@ -27,7 +27,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { ChartLegend, type ChartLegendItem } from '@/components/charts/ChartLegend'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken, tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import type { SynthesisWeaponRange } from '@/lib/api/types'
@@ -194,16 +194,14 @@ function elevationLegendItems(t: Translate): ChartLegendItem[] {
  * Le détail de lecture (« bâton du 10e au 90e centile, losange sur la médiane ») s'écrivait
  * SOUS le titre de carte, sur une ligne de sous-titre à lui : un titre pour la carte, un
  * second titre pour le même graphe. Depuis le 2026-09-13 les deux graphes ont chacun leur
- * carte, et l'aide vit dans le bandeau — même gabarit que `cardTitleAdornment` du bloc
- * « Usages d'équipement ».
+ * carte, et l'aide vit dans le bandeau.
+ *
+ * DEPUIS LE 2026-09-21 ce n'est plus qu'un RÉGLAGE de l'helper canonique
+ * `components/ui/title-with-info` (taille d'icône ⓘ de cette page) : le gabarit lui-même
+ * ne se réécrit plus ici.
  */
 function titleWithHelp(help: string) {
-  return (label: string) => (
-    <span className="flex items-center gap-1.5">
-      {label}
-      <InfoTooltip content={help} iconClass="w-3.5 h-3.5" />
-    </span>
-  )
+  return titleWithInfo(help, { iconClass: 'w-3.5 h-3.5' })
 }
 
 // ─── Pied de carte : le tableau dépliable ─────────────────────────────────────

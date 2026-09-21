@@ -233,6 +233,15 @@ func fillFromMatchInput(
 			t := team
 			row.TeamID = &t
 		}
+		// La ventilation des LÂCHERS suit la même règle que celle des prises de
+		// socle : recopiée telle quelle, jamais reconstruite, et absente plutôt
+		// que nulle quand la passe qui a écrit la ligne ne la portait pas.
+		if len(p.DroppedByFamily) > 0 {
+			row.DroppedByFamily = make(map[string]int, len(p.DroppedByFamily))
+			for fam, v := range p.DroppedByFamily {
+				row.DroppedByFamily[fam] = v
+			}
+		}
 		if len(p.PadPickupsByFamily) > 0 {
 			row.PadsByWeapon = make(map[string]int, len(p.PadPickupsByFamily))
 			for fam, v := range p.PadPickupsByFamily {

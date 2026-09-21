@@ -134,7 +134,7 @@ export function ExplorerTargetFragRange({ encounterStats, gamertag }: Props) {
             series={series}
             buildOption={buildOption}
             height={weaponRangeChartHeight(lines.length)}
-            className="rounded-none border-none bg-transparent shadow-none"
+            frameless
           />
         </div>
       )}

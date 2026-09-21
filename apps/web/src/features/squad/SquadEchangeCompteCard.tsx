@@ -19,7 +19,7 @@
 import { useMemo } from 'react'
 
 import { KPIStrip, type KPICardData } from '@/components/layout/KPIStrip'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { formatSignedPoints } from '@/lib/baseline'
 import { intlLocale } from '@/lib/formatters'
@@ -114,12 +114,7 @@ export function SquadEchangeCompteCard({ echange }: SquadEchangeCompteCardProps)
       label={t.compteLabel}
       // Le pied de carte passe en infobulle ⓘ du titre (2026-09-21) : c'est de la méthode,
       // elle n'a pas à occuper une bande grise sous les chiffres à chaque visite.
-      titleAdornment={(label) => (
-        <span className="flex items-center gap-1.5">
-          {label}
-          <InfoTooltip content={t.compteFoot} />
-        </span>
-      )}
+      titleAdornment={titleWithInfo(t.compteFoot)}
     >
       <div className="space-y-3 px-3 py-3" data-testid="squad-echange-compte">
         {/* La ligne narrative vit AU-DESSUS des chiffres, jamais en dessous. */}

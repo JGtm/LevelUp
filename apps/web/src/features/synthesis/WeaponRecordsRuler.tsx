@@ -27,7 +27,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 
 import { ChartLegend, type ChartLegendItem } from '@/components/charts/ChartLegend'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { FRAG_CLASS_ORDER, fragClassCssVar } from '@/lib/accessibility/scales/fragClass'
 import type { SynthesisWeaponRecords, WeaponDistanceRecordRow } from '@/lib/api/types'
@@ -139,15 +139,13 @@ export function WeaponRecordsRuler({ records, playerSlug }: WeaponRecordsRulerPr
     <SectionCard
       title={t('synthesis.weapon_records.title')}
       label={t('synthesis.weapon_records.title')}
-      titleAdornment={(label) => (
-        <span className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5">
-            {label}
-            <InfoTooltip content={help} iconClass="w-3.5 h-3.5" />
-          </span>
+      titleAdornment={titleWithInfo(help, {
+        iconClass: 'w-3.5 h-3.5',
+        align: 'baseline',
+        trailing: (
           <span className="text-xs font-normal tabular-nums text-muted-foreground">{count}</span>
-        </span>
-      )}
+        ),
+      })}
       footer={
         <>
           {legend.length > 0 && (

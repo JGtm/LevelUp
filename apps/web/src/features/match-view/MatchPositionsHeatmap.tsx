@@ -34,7 +34,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { heatmapRampTokens } from '@/components/charts/heatmapColors'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { Button } from '@/components/ui/button'
 import { resolveToken } from '@/lib/accessibility/resolveToken'
@@ -232,30 +232,24 @@ export function MatchPositionsHeatmap({
     <SectionCard
       title={t.title}
       label={t.title}
-      titleAdornment={(label) => (
-        <span className="flex items-center justify-between gap-2">
-          {/* LA MENTION SOUS LA LÉGENDE EST PASSÉE DANS L'INFOBULLE DU TITRE le 2026-09-21
-              (lot D) : elle dit comment lire le plan, pas ce que le match a produit — sa place
-              est au survol du (i), pas en pied de carte. */}
-          <span className="flex items-center gap-1.5">
-            <span>{label}</span>
-            <InfoTooltip content={<p>{t.narrative}</p>} />
+      /* LA MENTION SOUS LA LÉGENDE EST PASSÉE DANS L'INFOBULLE DU TITRE le 2026-09-21
+         (lot D) : elle dit comment lire le plan, pas ce que le match a produit — sa place
+         est au survol du (i), pas en pied de carte. */
+      titleAdornment={titleWithInfo(<p>{t.narrative}</p>, {
+        trailing: teamSplit ? (
+          <span className="flex gap-1">
+            <TeamButton active={teamFilter === 'all'} onClick={() => setTeamFilter('all')}>
+              {t.teamAll}
+            </TeamButton>
+            <TeamButton active={teamFilter === 0} onClick={() => setTeamFilter(0)}>
+              {t.team0}
+            </TeamButton>
+            <TeamButton active={teamFilter === 1} onClick={() => setTeamFilter(1)}>
+              {t.team1}
+            </TeamButton>
           </span>
-          {teamSplit && (
-            <span className="flex gap-1">
-              <TeamButton active={teamFilter === 'all'} onClick={() => setTeamFilter('all')}>
-                {t.teamAll}
-              </TeamButton>
-              <TeamButton active={teamFilter === 0} onClick={() => setTeamFilter(0)}>
-                {t.team0}
-              </TeamButton>
-              <TeamButton active={teamFilter === 1} onClick={() => setTeamFilter(1)}>
-                {t.team1}
-              </TeamButton>
-            </span>
-          )}
-        </span>
-      )}
+        ) : null,
+      })}
     >
       <div className="p-3">
         {/* Le cadre prend le RAPPORT DU MONDE (bornes du fond), jamais un 16:9 : le calque et
