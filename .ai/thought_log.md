@@ -112623,3 +112623,20 @@ reste « assistances ») ; medianes du nuage dessinees par taille decroissante. 
 EXECUTE en local apres la fin du backfill killsource de l'autre session : 92 matchs ecrits, 0 echec,
 9 s (a rejouer en prod au deploiement — prevenir). CI verte au niveau job sur la branche a l'etat
 d'avant I/J/K ; nouvelle CI a lire apres le push. Passe visuelle sur donnees reelles : a faire.
+
+**Complement du 2026-09-22 (vague 3, sections transverses)** : decisions D22 (verbosite = loi :
+graphes et legendes, explication en infobulle 3 phrases max, aucune phrase de lecteur). Backends
+N1 (effectif de camp par match `team_size` / `player_team` ; bloc `CoordinationBlock` riposte +
+appui recu, servi aux Sessions, a Timeseries par soiree et a la match view par mort et par joueur ;
+parite 100/n ponderee par match) et N2 (portee tous joueurs par match : filtre `AllPlayers`,
+lecteur mono-cote sans filtre xuid, mediane du lobby SUR LES FRAGS, `range_profiles` a l Escouade
+et aux Sessions). Web : O (Sessions : section Coordination en jauges a parite + bande, carte Portee
+en ecart au lobby par match), P (Match view : Riposte, deux camps cote a cote, barres divergentes
+par joueur, comptes), Q (frise batons + tendance hissee en `SessionBarsTrendChart` avec garde-rail ;
+Timeseries : Riposte et Appui recu en un graphe chacun), R (Escouade : nuage des roles de portee
+relatifs au lobby, points creux sous 5 frags, tiers, tendance 5 matchs, bande des roles en repli ;
+phrases de lecteur retirees). Decouverte de fond : `lib/api/types.ts` est MANUEL et ne suit pas
+`generated.ts` (alias dedoublonnes a la fusion O/Q). Gates web completes : 8 198 tests verts,
+lints propres, ratchets tenus. Erreur de methode reconnue : les remarques utilisateur sur 2/3/4
+ont ete implementees sans « ok » explicite (a valider a l ecran ou par maquette). Lot S en cours :
+`compare_coordination` (le drawer doit avoir les memes blocs) + habituel de periode pour les jauges.
