@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest'
 import type { SquadIsolementMort, SquadIsolementRepere } from '@/lib/api/types'
 
 import {
-  contrasteIsolement,
   delaiSecondes,
   echelleAvecBande,
   echellesNuage,
   positionMort,
   positionRepere,
+  ordreDessinReperes,
   repereAttenue,
   tailleRepere,
 } from './squadIsolement.logic'
@@ -135,18 +135,32 @@ describe('repereAttenue', () => {
   })
 })
 
-describe('contrasteIsolement', () => {
-  it('rend null sous deux joueurs : une comparaison a besoin de deux termes', () => {
-    expect(contrasteIsolement([])).toBeNull()
-    expect(contrasteIsolement([repere()])).toBeNull()
+// ─── ORDRE DE DESSIN DES REPÈRES (retour utilisateur du 2026-09-21) ──────────
+
+describe('ordreDessinReperes', () => {
+  it('trie par TAILLE DÉCROISSANTE : le plus petit repère finit au premier plan', () => {
+    // ECharts dessine la dernière série au-dessus. Le plus GROS part donc en premier —
+    // sans quoi il recouvrait entièrement le repère d'un coéquipier moins exposé.
+    const tries = ordreDessinReperes([
+      repere({ gamertag: 'Petit', nb_morts: 5 }),
+      repere({ gamertag: 'Gros', nb_morts: 90 }),
+      repere({ gamertag: 'Moyen', nb_morts: 40 }),
+    ])
+    expect(tries.map((r) => r.gamertag)).toEqual(['Gros', 'Moyen', 'Petit'])
+    expect(tries.map((r) => r.nb_morts)).toEqual([90, 40, 5])
   })
 
-  it('désigne le plus exposé et le moins exposé', () => {
-    const c = contrasteIsolement([
-      repere({ gamertag: 'Alice', part_isolee: couverture(2, 10, false) }),
-      repere({ gamertag: 'Bob', part_isolee: couverture(8, 10, false) }),
+  it('conserve l’ordre du roster à volume ÉGAL (tri stable)', () => {
+    const tries = ordreDessinReperes([
+      repere({ gamertag: 'Alice', nb_morts: 12 }),
+      repere({ gamertag: 'Bob', nb_morts: 12 }),
     ])
-    expect(c?.loin.gamertag).toBe('Bob')
-    expect(c?.proche.gamertag).toBe('Alice')
+    expect(tries.map((r) => r.gamertag)).toEqual(['Alice', 'Bob'])
+  })
+
+  it('ne mute pas la liste d’entrée', () => {
+    const entree = [repere({ gamertag: 'A', nb_morts: 1 }), repere({ gamertag: 'B', nb_morts: 9 })]
+    ordreDessinReperes(entree)
+    expect(entree.map((r) => r.gamertag)).toEqual(['A', 'B'])
   })
 })

@@ -173,9 +173,9 @@ en = "Retained matches"
 fr = "Couverture"
 en = "Coverage"
 
-[tactical.kpi.trade]
-fr = "Échange après ma mort"
-en = "Trade after my death"
+[tactical.kpi.riposte]
+fr = "Riposte après ma mort"
+en = "Riposte after my death"
 
 [tactical.kpi.isolation]
 fr = "Morts en isolement"
@@ -449,7 +449,7 @@ en = "baked replays"
 fr = "base partagée"
 en = "shared database"
 
-[tactical.kpi.trade_window]
+[tactical.kpi.riposte_window]
 fr = "sous {secondes} s"
 en = "within {secondes} s"
 
@@ -499,8 +499,8 @@ fr = "Seuil d'isolement"
 en = "Isolation threshold"
 
 [tactical.coordination.note_rules]
-fr = "Échange : un équipier tue mon tueur dans les {secondes} s. Isolement : plus proche équipier au-delà de {rayon}."
-en = "Trade: a teammate kills my killer within {secondes} s. Isolation: nearest teammate beyond {rayon}."
+fr = "Riposte : un équipier tue mon tueur dans les {secondes} s. Isolement : plus proche équipier au-delà de {rayon}."
+en = "Riposte: a teammate kills my killer within {secondes} s. Isolation: nearest teammate beyond {rayon}."
 
 [tactical.coordination.note_coverage]
 fr = "Lecture sur {retenus} matchs mesurés sur {filtres} — les positions viennent du journal des morts, jamais d'une estimation."

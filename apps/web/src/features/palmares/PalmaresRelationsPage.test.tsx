@@ -222,8 +222,8 @@ describe('PalmaresRelationsPage', () => {
     // Un papillon pour le fidèle mesuré, « — » pour l'autre, légende sous les barres.
     expect(core.querySelectorAll('[data-testid="assist-butterfly"]').length).toBe(1)
     expect(core).toHaveTextContent('—')
-    expect(core).toHaveTextContent('◀ te sert')
-    expect(core).toHaveTextContent('tu le sers ▶')
+    expect(core).toHaveTextContent('◀ t’appuie')
+    expect(core).toHaveTextContent('tu l’appuies ▶')
   })
 
   it('toggle « coéquipiers » : défaut masqué + bascule du libellé', async () => {

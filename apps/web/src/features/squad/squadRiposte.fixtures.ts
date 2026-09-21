@@ -5,7 +5,7 @@
  */
 import type { SquadEchange } from '@/lib/api/types'
 
-import { PLANCHER_MORTS } from './squadEchange.logic'
+import { PLANCHER_MORTS } from './squadRiposte.logic'
 
 export function couverture(brut: number, n: number, matchs = 12) {
   return {

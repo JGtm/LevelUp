@@ -9,7 +9,7 @@ import { useMemo } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { InfoTooltip, TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
@@ -24,13 +24,9 @@ import { WinRateVsHistoryBulletChart } from './WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from './MapPerfVsHistoryChart'
 import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
 import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
-import { SquadAssistPairsChart } from './SquadAssistPairsChart'
-import { SquadEchangeConstatCard } from './SquadEchangeConstatCard'
-import { SquadEchangeCompteCard } from './SquadEchangeCompteCard'
-import { SquadEchangeDelaiCard } from './SquadEchangeDelaiCard'
-import { SquadEchangeDonneRecuCard } from './SquadEchangeDonneRecuCard'
-import { SquadEchangeMatrixCard } from './SquadEchangeMatrixCard'
-import { SquadEchangeTauxSessionCard } from './SquadEchangeTauxSessionCard'
+import { SquadAppuiCard } from './SquadAppuiCard'
+import { SquadRiposteCard } from './SquadRiposteCard'
+import { getSquadRiposteText } from './squadRiposteStrings'
 import { SquadIsolementNuageCard } from './SquadIsolementNuageCard'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
@@ -47,6 +43,7 @@ export function SquadSynergiesPage() {
   const { data: mappings } = useFieldMappings()
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
+  const tRiposte = getSquadRiposteText(locale)
   // FDA attendu natif (Infinite déclare `expected_stats`, Halo 5 non) → gate
   // PARENT du card « Écart cumulé au FDA attendu » : pas de colonne vide dans la
   // rangée 1 de SquadFragSection (le card conserve son self-gate en profondeur).
@@ -60,7 +57,7 @@ export function SquadSynergiesPage() {
   // Ordre / couleurs / libellés de résultat — MÉMOÏSÉS et déclarés AVANT les
   // retours anticipés (règle des hooks). Sans mémo, un simple rendu de la page
   // (changement de contexte, refetch qui rend la même donnée) fabriquait des
-  // props neuves pour SquadFragSection, SquadAssistPairsChart et
+  // props neuves pour SquadFragSection, SquadAppuiCard et
   // OutcomeSequenceTape : les `useMemo` de ces graphes se re-déclenchaient, la
   // ChartCard rebâtissait son option ECharts (dont les `formatter`, comparés par
   // référence par echarts-for-react) et l'animation d'entrée REJOUAIT sans
@@ -87,7 +84,7 @@ export function SquadSynergiesPage() {
     [mainPlayerKey, confirmedGamertags, fragClasses, performanceSeries],
   )
   // Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers. Le
-  // graphe des assistances s'en sert pour l'ordre des barres ET pour les couleurs par
+  // graphe d appui s'en sert pour l'ordre des barres ET pour les couleurs par
   // joueur — mêmes teintes que partout ailleurs sur la page.
   const roster = useMemo(
     () => [mainPlayerKey, ...confirmedGamertags],
@@ -144,55 +141,47 @@ export function SquadSynergiesPage() {
   // film). Le bloc n'est alors pas monté du tout, plutôt que d'afficher un cadre vide
   // qui laisserait croire à une escouade sans entraide.
   const assistPairs = pageData?.assist_pairs
-  // L'ECHANGE (mort vengee dans les 5 s) : comme assist_pairs, son absence est un
+  // LA RIPOSTE (mort de notre camp dont le tueur tombe dans les 5 s) : comme assist_pairs, son absence est un
   // ETAT (titre qui ne nomme pas le tueur de chaque mort, ou aucun match mesure) et
   // non un zero. Les blocs ne sont alors pas montes du tout.
   const echange = pageData?.echange
 
   return (
     <div className="space-y-4">
-      {/* « Constat du moment » EN TÊTE, AU-DESSUS du « Compte » : c'est le titre narratif
-          du récit de l'échange (le « Cap du moment » de la maquette 4c520da6), pas un
-          doublon d'une des six cartes. Il se rend de lui-même sous ses deux seuils
-          (30 morts d'équipe ET 5 points d'écart) : rien à passer ici, et rien du tout à
-          l'écran quand il n'a rien à dire. */}
-      <SquadEchangeConstatCard echange={echange} />
-      {/* L'ÉCHANGE, SIX CARTES, DANS L'ORDRE DE LECTURE DE LA MAQUETTE 4c520da6 :
-          combien (Le compte) → à quelle vitesse → qui couvre qui → pourquoi la vengeance
-          ne vient pas → donné/reçu → l'évolution par soirée. Les deux premières comptent,
-          la troisième dit qui, la quatrième explique — et c'est elle qui donne quelque
-          chose à corriger. */}
-      {echange && (
-        <>
-          <SquadEchangeCompteCard echange={echange} />
-          <SquadEchangeDelaiCard echange={echange} />
-        </>
-      )}
-      {/* « Qui couvre qui » et « Assistances dans l'escouade » SUR LA MÊME RANGÉE
-          (2026-09-19) : deux lectures du même couple de joueurs, l'une par vengeance,
-          l'autre par assistance — les empiler obligeait à faire défiler entre les deux.
-          `items-stretch` par défaut : les deux cartes ont la même hauteur.
+      {/* SECTION « COORDINATION » (D19, 2026-09-21) — DEUX NOTIONS, TROIS CARTES.
+          Elle en montait HUIT, dont sept portaient la même notion sous quatre noms
+          différents (échange, vengeance, assistance croisée, riposte). La riposte vit
+          désormais dans une seule carte-récit, l'appui dans la sienne, et le nuage — que
+          l'utilisateur garde tel quel — vient APRÈS la riposte parce qu'il répond à la
+          question qu'elle laisse ouverte : « pourquoi tant de morts sans réponse ? ».
 
-          LES DEUX SE MONTENT INDÉPENDAMMENT : l'échange vient du journal des morts, les
-          assistances du résumé du film. Un titre qui ne nomme pas le tueur garde ses
-          assistances — les lier aurait fait disparaître une mesure qui existe. */}
+          LES TROIS SE MONTENT INDÉPENDAMMENT : la riposte vient du journal des morts,
+          l'appui du résumé du film. Un titre qui ne nomme pas le tueur de chaque mort
+          garde son appui — les lier aurait fait disparaître une mesure qui existe. */}
       {(echange || assistPairs) && (
-        <div className="grid grid-cols-2 gap-4">
-          {echange && <SquadEchangeMatrixCard echange={echange} />}
-          {assistPairs && <SquadAssistPairsChart block={assistPairs} roster={roster} />}
-        </div>
-      )}
-      {echange && (
-        <>
-          {echange.nuage_isolement && (
+        <section className="space-y-4" aria-label={tRiposte.coordinationTitle}>
+          <h3 className="flex items-center gap-1.5 text-base font-semibold text-foreground">
+            {tRiposte.coordinationTitle}
+            <InfoTooltip
+              content={
+                <TooltipParagraphs
+                  items={[
+                    tRiposte.coordinationHelpRiposte((echange?.fenetre_ms ?? 5000) / 1000),
+                    tRiposte.coordinationHelpAppui,
+                  ]}
+                />
+              }
+            />
+          </h3>
+          {echange && <SquadRiposteCard echange={echange} />}
+          {assistPairs && <SquadAppuiCard block={assistPairs} roster={roster} />}
+          {echange?.nuage_isolement && (
             <SquadIsolementNuageCard
               nuage={echange.nuage_isolement}
               joueurs={echange.joueurs ?? []}
             />
           )}
-          <SquadEchangeDonneRecuCard echange={echange} />
-          <SquadEchangeTauxSessionCard echange={echange} />
-        </>
+        </section>
       )}
       {/* Graphes toujours montés : ChartCard affiche son état vide (titre +
           message) au lieu de faire disparaître le bloc quand mapBreakdown

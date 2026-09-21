@@ -117,7 +117,7 @@ export function TacticalCoordinationCard({
             <dl className="flex flex-col">
               {echange && (
                 <Ligne
-                  label={t.kpiTrade}
+                  label={t.kpiRiposte}
                   value={pct.format(echange.taux)}
                   testid="tactical-coordination-trade"
                 />

@@ -875,12 +875,12 @@ en = "The {count, plural, one {# result} other {# results}}, oldest to newest"
 # ─── « Part des assistances » — deux barres horizontales à échelle linéaire commune,
 # bornées par le plus gros des deux totaux (plus d'échelle log ni d'assist_volume_max).
 [explorer.target_profile.assists_head_received]
-fr = "Il me sert"
-en = "They serve me"
+fr = "Il m’appuie"
+en = "They support me"
 
 [explorer.target_profile.assists_head_given]
-fr = "Je le sers"
-en = "I serve them"
+fr = "Je l’appuie"
+en = "I support them"
 
 [explorer.target_profile.assists_tier_low]
 fr = "Coup de pouce (moins de 25 % des dégâts)"

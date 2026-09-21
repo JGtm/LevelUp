@@ -124,25 +124,19 @@ export function repereAttenue(repere: SquadIsolementRepere): boolean {
   return repere.part_isolee.echantillon_faible
 }
 
-/** Le joueur le PLUS et le MOINS exposé hors radar — les deux bouts de la phrase du haut. */
-export interface ContrasteIsolement {
-  loin: { gamertag: string; isolement: number; couverture: number }
-  proche: { gamertag: string; isolement: number; couverture: number }
-}
-
 /**
- * contrasteIsolement désigne les deux extrêmes d'isolement du roster.
+ * ordreDessinReperes trie les repères médians par TAILLE DÉCROISSANTE — c'est-à-dire par
+ * nombre de morts décroissant, la grandeur qui décide du diamètre (`tailleRepere`).
  *
- * `null` sous deux joueurs : une phrase qui compare a besoin de deux termes, et un roster
- * d'un seul joueur n'oppose rien.
+ * POURQUOI CET ORDRE, et pas celui du roster (retour utilisateur du 2026-09-21) : ECharts
+ * dessine les séries dans l'ordre du tableau `series`, la dernière AU-DESSUS. Les repères
+ * étant émis dans l'ordre du roster, un gros point pouvait recouvrir entièrement le petit
+ * point d'un autre joueur — le joueur au plus petit échantillon DISPARAISSAIT de la figure,
+ * sans que rien ne le signale. En posant le plus gros EN PREMIER et le plus petit EN
+ * DERNIER, le petit reste au premier plan et se lit toujours.
+ *
+ * Tri STABLE (`sort` l'est depuis ES2019) : à volume égal, l'ordre du roster est conservé.
  */
-export function contrasteIsolement(reperes: SquadIsolementRepere[]): ContrasteIsolement | null {
-  if (reperes.length < 2) return null
-  const trie = [...reperes].sort((a, b) => b.part_isolee.taux - a.part_isolee.taux)
-  const bout = (r: SquadIsolementRepere) => ({
-    gamertag: r.gamertag,
-    isolement: r.part_isolee.taux,
-    couverture: r.couverture.taux,
-  })
-  return { loin: bout(trie[0]), proche: bout(trie[trie.length - 1]) }
+export function ordreDessinReperes(reperes: SquadIsolementRepere[]): SquadIsolementRepere[] {
+  return [...reperes].sort((a, b) => b.nb_morts - a.nb_morts)
 }

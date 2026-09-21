@@ -1,5 +1,5 @@
 /**
- * SquadAssistPairsChart — « Assistances dans l'escouade » (page Synergies).
+ * SquadAppuiCard — « Appui », la deuxième carte de la section Coordination.
  *
  * BARRES HORIZONTALES EMPILÉES, une par ASSISTANT — le LARBIN —, segments = les
  * BÉNÉFICIAIRES qu'il a servis — les PATRONS (vocabulaire de l'écran, décision utilisateur
@@ -19,6 +19,12 @@
  * STYLE DE BLOC CANONIQUE (`SectionCard`) ET LECTURE EN INFOBULLE ⓘ (2026-09-19) : le bloc
  * se rend comme les autres de la page, et la phrase qui dit ce qu'on lit vit dans l'aide du
  * titre — plus de bandeau de couverture ni de description en texte gris.
+ *
+ * RENOMMÉE « APPUI » (D19, 2026-09-21) ET SEULE À GARDER LE MOT « ASSISTANCE ». Elle
+ * s'intitulait « Assistances dans l'escouade » alors que DEUX autres cartes de la même
+ * section s'intitulaient aussi « Assistances » en comptant, elles, des ripostes : le mot
+ * désignait deux choses opposées à quelques centimètres. Elle gagne aussi une PHRASE DE
+ * LECTEUR au-dessus du graphe, comme la carte « Riposte » — sa forme, elle, ne bouge pas.
  */
 import { useMemo } from 'react'
 
@@ -36,16 +42,17 @@ import {
   assistCle,
   assistPairsSeries,
   assistPartParCouple,
+  appuiDominant,
   assistVoleesParCouple,
 } from './squadAssistPairs.logic'
 
-export interface SquadAssistPairsChartProps {
+export interface SquadAppuiCardProps {
   block: SquadAssistPairs
   /** Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers. */
   roster: string[]
 }
 
-export function SquadAssistPairsChart({ block, roster }: SquadAssistPairsChartProps) {
+export function SquadAppuiCard({ block, roster }: SquadAppuiCardProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
   const labels = t.assists
@@ -69,6 +76,9 @@ export function SquadAssistPairsChart({ block, roster }: SquadAssistPairsChartPr
   const beneficiaires = useMemo(() => assistBeneficiaires(pairs, roster), [pairs, roster])
   const volees = useMemo(() => assistVoleesParCouple(pairs), [pairs])
   const parts = useMemo(() => assistPartParCouple(block), [block])
+  // La phrase de lecteur : qui prépare le plus de terrain, et pour qui. `null` quand rien
+  // n'est mesuré — on ne désigne personne au hasard sur un total nul.
+  const dominant = useMemo(() => appuiDominant(block), [block])
 
   // Couleurs par joueur : le premier du roster est le joueur principal (pastille
   // `squad-player-1`), les suivants prennent les tokens coéquipiers dans l'ordre.
@@ -110,7 +120,19 @@ export function SquadAssistPairsChart({ block, roster }: SquadAssistPairsChartPr
       title={labels.title}
       titleAdornment={titleWithInfo(labels.description)}
     >
-      <div className="px-3 py-2" data-testid="squad-assist-pairs-chart">
+      <div className="space-y-2 px-3 py-2" data-testid="squad-appui">
+        {dominant && (
+          <p
+            className="border-l-2 border-info pl-3 text-sm text-foreground"
+            data-testid="squad-appui-phrase"
+          >
+            {labels.say({
+              joueur: dominant.joueur,
+              part: pctFmt.format(dominant.part),
+              beneficiaire: dominant.beneficiaire,
+            })}
+          </p>
+        )}
         <BarStackedChart
           series={series}
           height={320}

@@ -165,9 +165,11 @@ export interface SquadText {
     enemyMmrTooltip: string
     deltaMmrTooltip: string
   }
-  /** Graphe « Assistances » (larbin -> patron), page Synergies. */
+  /** Graphe « Appui » (larbin -> patron), page Synergies. */
   assists: {
     title: string
+    /** Phrase de lecteur au-dessus du graphe : qui prépare le plus de terrain, et pour qui. */
+    say: (v: { joueur: string; part: string; beneficiaire: string }) => string
     description: string
     /** Rôle de la BARRE : celui qui a assisté (le larbin). Titre d'axe et infobulle. */
     roleAssistant: string
@@ -523,7 +525,9 @@ const FR_TEXT: SquadText = {
     deltaMmrTooltip: 'Écart de MMR entre l\'équipe et l\'équipe adverse.',
   },
   assists: {
-    title: 'Assistances dans l\'escouade',
+    title: 'Appui',
+    say: ({ joueur, part, beneficiaire }) =>
+      `Sur les frags de l'escouade, ${joueur} prépare le plus de terrain : ${part} des appuis viennent de lui, et c'est ${beneficiaire} qui en profite le plus.`,
     description:
       'Une barre par larbin (celui qui prépare le frag), un segment par patron (celui qui l\'encaisse), sur les matchs de la sélection.',
     roleAssistant: 'Larbin',
@@ -876,7 +880,9 @@ const EN_TEXT: SquadText = {
     deltaMmrTooltip: 'MMR gap between the team and the enemy team.',
   },
   assists: {
-    title: 'Assists within the squad',
+    title: 'Support',
+    say: ({ joueur, part, beneficiaire }) =>
+      `Across the squad's kills, ${joueur} sets up the most ground: ${part} of the support comes from them, and ${beneficiaire} benefits the most.`,
     description:
       'One bar per minion (who sets up the kill), one segment per boss (who gets the credit), across the selected matches.',
     roleAssistant: 'Minion',
