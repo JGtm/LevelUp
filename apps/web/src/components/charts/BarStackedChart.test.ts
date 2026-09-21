@@ -245,3 +245,102 @@ describe('buildBarStackedOption', () => {
     expect(html).not.toContain('<i>P</i>')
   })
 })
+
+/**
+ * LES COLONNES GROUPÉES (2026-09-21, D18 — contrôle des armes spéciales). Cinq options
+ * ajoutées, toutes par défaut inertes : sans elles l'option est exactement celle d'avant.
+ */
+describe('buildBarStackedOption — groupes, étiquettes de valeur, opacité', () => {
+  const series: ChartSeries<ChartPointStacked>[] = [
+    {
+      key: 'pads',
+      datapoints: [
+        { category: 'Sniper', components: { Alpha: 5, Charlie: 3 } },
+        { category: 'Épée', components: { Alpha: 0, Charlie: 2 } },
+        { category: 'Hydra', components: { Alpha: 1, Charlie: 0 } },
+      ],
+    },
+  ]
+  const groupes = [
+    { label: 'Puissance · 10 prises', span: 2 },
+    { label: 'Terrain · 1 prise', span: 1 },
+  ]
+
+  it('par défaut : ni graphic, ni markLine, ni étiquette, légende présente', () => {
+    const opt = buildBarStackedOption(series) as {
+      graphic?: unknown
+      legend: { data?: string[]; show?: boolean }
+      series: { markLine?: unknown; label?: unknown }[]
+    }
+    expect(opt.graphic).toBeUndefined()
+    expect(opt.legend.data).toEqual(['Alpha', 'Charlie'])
+    expect(opt.series[0].markLine).toBeUndefined()
+    expect(opt.series[0].label).toBeUndefined()
+  })
+
+  it('categoryGroups : UN seul trait, porté par la PREMIÈRE série, et deux titres', () => {
+    const opt = buildBarStackedOption(series, { categoryGroups: groupes }) as {
+      graphic: { children: { style: { text: string } }[] }
+      series: { markLine?: { data: { xAxis: number }[] } }[]
+    }
+    expect(opt.series[0].markLine?.data).toEqual([{ xAxis: 1.5 }])
+    expect(opt.series[1].markLine).toBeUndefined()
+    expect(opt.graphic.children.map((c) => c.style.text)).toEqual([
+      'Puissance · 10 prises',
+      'Terrain · 1 prise',
+    ])
+  })
+
+  it('showLegend false : la légende ECharts disparaît (une seule légende, celle du DOM)', () => {
+    const opt = buildBarStackedOption(series, { showLegend: false }) as {
+      legend: { show?: boolean }
+    }
+    expect(opt.legend.show).toBe(false)
+  })
+
+  it('valueLabels.segments : le compte DANS le segment, jamais un zéro, sans chevauchement', () => {
+    const opt = buildBarStackedOption(series, { valueLabels: { segments: true } }) as {
+      series: {
+        label?: { show: boolean; position: string; formatter: (p: { value: number }) => string }
+        labelLayout?: { hideOverlap: boolean }
+      }[]
+    }
+    expect(opt.series[0].label?.position).toBe('inside')
+    expect(opt.series[0].labelLayout?.hideOverlap).toBe(true)
+    expect(opt.series[0].label?.formatter({ value: 5 })).toBe('5')
+    expect(opt.series[0].label?.formatter({ value: 0 })).toBe('')
+  })
+
+  it('valueLabels.totals : une série muette de hauteur nulle écrit le total au sommet', () => {
+    const opt = buildBarStackedOption(series, { valueLabels: { totals: [8, 2, 1] } }) as {
+      series: {
+        name: string
+        silent?: boolean
+        data: number[]
+        label?: { formatter: (p: { dataIndex: number }) => string }
+      }[]
+    }
+    const totaux = opt.series[opt.series.length - 1]
+    expect(totaux.silent).toBe(true)
+    expect(totaux.data).toEqual([0, 0, 0])
+    expect(totaux.label?.formatter({ dataIndex: 0 })).toBe('8')
+    expect(totaux.label?.formatter({ dataIndex: 2 })).toBe('1')
+  })
+
+  it('categoryNote : seconde ligne sous l’étiquette, et la catégorie reste nue sans note', () => {
+    const opt = buildBarStackedOption(series, {
+      categoryNote: (c) => (c === 'Sniper' ? '+ 4 sans nom' : undefined),
+    }) as { xAxis: { axisLabel: { formatter: (v: string) => string } } }
+    expect(opt.xAxis.axisLabel.formatter('Sniper')).toBe('Sniper\n{note|+ 4 sans nom}')
+    expect(opt.xAxis.axisLabel.formatter('Hydra')).toBe('Hydra')
+  })
+
+  it('componentOpacity : l’opacité par sous-clé, opaque par défaut', () => {
+    const opt = buildBarStackedOption(series, { componentOpacity: { Charlie: 0.6 } }) as {
+      series: { name: string; itemStyle: { opacity: number } }[]
+    }
+    const par = Object.fromEntries(opt.series.map((s) => [s.name, s.itemStyle.opacity]))
+    expect(par.Alpha).toBe(1)
+    expect(par.Charlie).toBe(0.6)
+  })
+})

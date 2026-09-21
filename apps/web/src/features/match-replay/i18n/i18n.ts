@@ -405,6 +405,14 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         unclassified: 'Emplacement non identifié',
       },
       tierSubtotalFmt: (count) => `${count} prise${count > 1 ? 's' : ''}`,
+      tierShortLabels: {
+        base: 'Base',
+        ground: 'Terrain',
+        power: 'Puissance',
+        powerup: 'Bonus',
+        unclassified: 'Non identifié',
+      },
+      chartEmpty: "Aucun socle d'arme de puissance ou de terrain n'a été pris dans ce match.",
       baseToggleFmt: (count) => `Armes de base (${count})`,
       unclassifiedHintFmt: (count) =>
         `${count} prise${count > 1 ? 's' : ''} sur un emplacement non identifié.`,
@@ -839,6 +847,14 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         unclassified: 'Unidentified spot',
       },
       tierSubtotalFmt: (count) => `${count} pickup${count > 1 ? 's' : ''}`,
+      tierShortLabels: {
+        base: 'Base',
+        ground: 'Map',
+        power: 'Power',
+        powerup: 'Power-ups',
+        unclassified: 'Unidentified',
+      },
+      chartEmpty: 'No power or map weapon pad was taken in this match.',
       baseToggleFmt: (count) => `Base weapons (${count})`,
       unclassifiedHintFmt: (count) =>
         `${count} pickup${count > 1 ? 's' : ''} from an unidentified spot.`,

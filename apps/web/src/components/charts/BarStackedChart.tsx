@@ -21,6 +21,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
+import { groupSeparatorMarkLine, groupTitleGraphic, type CategoryGroup } from './barStackedGroups'
 import { ChartCard, type ChartSeries } from './ChartCard'
 import {
   CHART_BG,
@@ -30,6 +31,7 @@ import {
   getLegendBase,
   getTooltipBase,
   seriesColor,
+  type EChartsThemeColors,
 } from './_utils'
 
 /** Distance (px) entre les étiquettes d'un axe et son titre, quand il en a un. */
@@ -97,6 +99,35 @@ export interface BarStackedChartProps {
    * formateur personnalisé, comme `tooltipComponentNote`.
    */
   tooltipRoles?: { category: string; component: string }
+  /**
+   * Légende ECharts (au-dessus du graphe). `false` la retire : l'appelant en pose une en DOM
+   * sous le graphe (`ChartLegend`), et deux légendes pour les mêmes séries se contrediraient
+   * dès qu'un réglage d'accessibilité change les encres. Défaut `true` — le rendu de tous les
+   * appelants antérieurs.
+   */
+  showLegend?: boolean
+  /**
+   * GROUPES DE COLONNES (vertical seulement) : un trait vertical discret à chaque frontière et
+   * le titre de chaque groupe centré en haut du graphe. Voir `barStackedGroups.ts` pour les
+   * deux mécanismes et leurs limites. Somme des `span` = nombre de catégories.
+   */
+  categoryGroups?: readonly CategoryGroup[]
+  /**
+   * ÉTIQUETTES DE VALEUR. `segments` écrit le compte DANS chaque segment (les étiquettes qui
+   * ne tiennent pas sont retirées par le moteur, jamais rognées) ; `totals` écrit le total de
+   * chaque colonne à son SOMMET — une valeur par catégorie, dans l'ordre des catégories.
+   */
+  valueLabels?: { segments?: boolean; totals?: readonly number[] }
+  /**
+   * Seconde ligne sous l'étiquette d'une catégorie (« + N sans nom »). Rendue en gris, elle
+   * reste hors de la catégorie elle-même : l'infobulle garde le nom nu.
+   */
+  categoryNote?: (category: string) => string | undefined
+  /**
+   * Opacité par sous-clé — la façon canvas de distinguer deux joueurs d'un MÊME camp sans
+   * introduire une couleur qui ne serait pas celle du camp. Défaut : opaque.
+   */
+  componentOpacity?: Record<string, number>
 }
 
 export function BarStackedChart({
@@ -116,6 +147,11 @@ export function BarStackedChart({
   categoryAxisName,
   valueAxisName,
   tooltipRoles,
+  showLegend,
+  categoryGroups,
+  valueLabels,
+  categoryNote,
+  componentOpacity,
 }: BarStackedChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointStacked>[]) =>
@@ -129,6 +165,11 @@ export function BarStackedChart({
         categoryAxisName,
         valueAxisName,
         tooltipRoles,
+        showLegend,
+        categoryGroups,
+        valueLabels,
+        categoryNote,
+        componentOpacity,
       }),
     [
       orientation,
@@ -140,6 +181,11 @@ export function BarStackedChart({
       categoryAxisName,
       valueAxisName,
       tooltipRoles,
+      showLegend,
+      categoryGroups,
+      valueLabels,
+      categoryNote,
+      componentOpacity,
     ],
   )
 
@@ -167,6 +213,11 @@ interface BuildOpts {
   categoryAxisName?: string
   valueAxisName?: string
   tooltipRoles?: { category: string; component: string }
+  showLegend?: boolean
+  categoryGroups?: readonly CategoryGroup[]
+  valueLabels?: { segments?: boolean; totals?: readonly number[] }
+  categoryNote?: (category: string) => string | undefined
+  componentOpacity?: Record<string, number>
 }
 
 interface TooltipParam {
@@ -179,42 +230,16 @@ interface TooltipParam {
 }
 
 /**
- * Pure builder — exporté pour tester l'option ECharts sans monter le React tree.
+ * Les series empilees : une par sous-cle, plus la serie muette des totaux quand l'appelant en
+ * demande. EXTRAIT DE `buildBarStackedOption` LE 2026-09-21 (lot I), meme raison que les axes.
  */
-// eslint-disable-next-line react-refresh/only-export-components
-export function buildBarStackedOption(
-  series: ChartSeries<ChartPointStacked>[],
-  opts: BuildOpts = {},
-): EChartsCoreOption {
-  const {
-    orientation = 'vertical',
-    componentColors,
-    componentOrder,
-    tooltipHideZero = false,
-    componentHexColors,
-    tooltipComponentNote,
-    categoryAxisName,
-    valueAxisName,
-    tooltipRoles,
-  } = opts
-  if (series.length === 0) {
-    return { backgroundColor: CHART_BG }
-  }
-  // 1 série attendue (le wrapper agit sur la première).
-  const main = series[0]
-  const dps = main.datapoints
-
-  const categories = dps.map((d) => d.category)
-
-  // Collecter l'ordre des composants (preserve l'ordre componentOrder si fourni).
-  const componentSet = new Set<string>()
-  for (const dp of dps) {
-    for (const k of Object.keys(dp.components)) componentSet.add(k)
-  }
-  const components = componentOrder
-    ? componentOrder.filter((c) => componentSet.has(c))
-    : Array.from(componentSet)
-
+function buildStackedSeries(
+  dps: ChartPointStacked[],
+  components: string[],
+  tc: EChartsThemeColors,
+  opts: BuildOpts,
+) {
+  const { componentColors, componentHexColors, componentOpacity, valueLabels, categoryGroups } = opts
   // 1 ECharts series par component (toutes empilées sur le même stack).
   // Priorité de résolution couleur :
   //  1. componentHexColors[comp] (hex pré-résolu — option la plus sûre)
@@ -222,6 +247,9 @@ export function buildBarStackedOption(
   //     seriesColor si la CSS var n'est pas chargée — sinon ECharts utilise
   //     son palette interne qui commence par du bleu).
   //  3. seriesColor(idx) — palette chart-series cyclée.
+  const separator = categoryGroups ? groupSeparatorMarkLine(categoryGroups, tc.axisLine) : undefined
+  const totalsSeries = buildTotalsSeries(valueLabels?.totals, tc.text)
+
   const echartsSeries = components.map((comp, idx) => {
     const explicitHex = componentHexColors?.[comp]
     let color: string
@@ -237,12 +265,44 @@ export function buildBarStackedOption(
       type: 'bar' as const,
       stack: 'total',
       barMaxWidth: 24,
-      itemStyle: { color, borderRadius: 2 },
+      itemStyle: { color, borderRadius: 2, opacity: componentOpacity?.[comp] ?? 1 },
+      // Le compte DANS le segment, et retire par le moteur quand il n'y tient pas
+      // (`hideOverlap`) : une etiquette rognee ment, une etiquette absente se lit dans
+      // l'infobulle. Les zeros ne s'ecrivent jamais.
+      ...(valueLabels?.segments
+        ? {
+            label: {
+              show: true,
+              position: 'inside' as const,
+              color: tc.text,
+              fontSize: 10,
+              formatter: (p: { value?: number | null }) => (p.value ? String(p.value) : ''),
+            },
+            labelLayout: { hideOverlap: true },
+          }
+        : {}),
+      // Le trait des frontieres de groupe se pose sur UNE serie (la premiere) : une
+      // `markLine` par serie empilee dessinerait le meme trait N fois.
+      ...(idx === 0 && separator ? { markLine: separator } : {}),
       data: dps.map((d) => d.components[comp] ?? 0),
     }
   })
+  if (totalsSeries) echartsSeries.push(totalsSeries as unknown as (typeof echartsSeries)[number])
+  return echartsSeries
+}
 
-  const tc = getEChartsThemeColors()
+/**
+ * Les deux axes d'une barre empilee : celui des categories (avec sa note de seconde ligne, si
+ * l'appelant en pose une) et celui des valeurs, ranges selon l'orientation.
+ *
+ * EXTRAIT DE `buildBarStackedOption` LE 2026-09-21 (lot I), meme raison que l'infobulle.
+ */
+function buildStackedAxes(
+  tc: EChartsThemeColors,
+  categories: string[],
+  opts: Pick<BuildOpts, 'orientation' | 'categoryAxisName' | 'valueAxisName' | 'categoryNote'>,
+) {
+  const { orientation = 'vertical', categoryAxisName, valueAxisName, categoryNote } = opts
   const axis = getAxisBase(tc)
   // Titre d'axe AU MILIEU, à distance des graduations (même choix que
   // Heatmap2DChart.axisNameOpts) : la seule position qui ne chevauche ni la première ni la
@@ -261,11 +321,42 @@ export function buildBarStackedOption(
     ...axis,
     type: 'category' as const,
     data: categories,
+    ...(categoryNote
+      ? {
+          axisLabel: {
+            ...axis.axisLabel,
+            interval: 0,
+            // La note est une SECONDE LIGNE, en gris : elle dit ce que la colonne ne montre
+            // pas (« + N sans nom ») sans entrer dans la categorie, donc sans polluer
+            // l'infobulle ni l'identite de la barre.
+            formatter: (value: string) => {
+              const note = categoryNote(value)
+              return note ? [value, `{note|${note}}`].join('\n') : value
+            },
+            rich: { note: { color: tc.axisLabel, fontSize: 9, padding: [2, 0, 0, 0] } },
+          },
+        }
+      : {}),
     ...axisName(categoryAxisName),
   }
-  const xAxis = orientation === 'horizontal' ? valueAxis : categoryAxis
-  const yAxis = orientation === 'horizontal' ? categoryAxis : valueAxis
+  return orientation === 'horizontal'
+    ? { xAxis: valueAxis, yAxis: categoryAxis }
+    : { xAxis: categoryAxis, yAxis: valueAxis }
+}
 
+/**
+ * L'infobulle d'une barre empilee. Formateur personnalise des que l'appelant demande le
+ * masquage des zeros, une note par segment OU des roles nommes ; sans aucun des trois on laisse
+ * le formateur natif d'ECharts — c'est le comportement de tous les appelants anterieurs.
+ *
+ * EXTRAIT DE `buildBarStackedOption` LE 2026-09-21 (lot I) : la fonction passait le plafond de
+ * taille du depot en accueillant les groupes de colonnes.
+ */
+function buildStackedTooltip(
+  tc: EChartsThemeColors,
+  opts: Pick<BuildOpts, 'tooltipHideZero' | 'tooltipComponentNote' | 'tooltipRoles'>,
+) {
+  const { tooltipHideZero = false, tooltipComponentNote, tooltipRoles } = opts
   const tooltipBase = {
     ...getTooltipBase(tc),
     trigger: 'axis' as const,
@@ -274,9 +365,8 @@ export function buildBarStackedOption(
   // Formateur personnalisé dès que l'appelant demande le masquage des zéros, une note
   // par segment OU des rôles nommés. Sans aucun des trois on laisse le formateur natif
   // d'ECharts — c'est le comportement de tous les appelants antérieurs.
-  const tooltip =
-    tooltipHideZero || tooltipComponentNote || tooltipRoles
-      ? {
+  return tooltipHideZero || tooltipComponentNote || tooltipRoles
+    ? {
           ...tooltipBase,
           formatter: (raw: unknown) => {
             const params = (Array.isArray(raw) ? raw : [raw]) as TooltipParam[]
@@ -298,7 +388,64 @@ export function buildBarStackedOption(
             return `<div style="margin-bottom:4px;font-weight:600">${escapeHtml(title)}</div>${lines.join('<br/>')}`
           },
         }
-      : tooltipBase
+    : tooltipBase
+}
+
+/**
+ * Pure builder — exporté pour tester l'option ECharts sans monter le React tree.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildBarStackedOption(
+  series: ChartSeries<ChartPointStacked>[],
+  opts: BuildOpts = {},
+): EChartsCoreOption {
+  const {
+    orientation = 'vertical',
+    componentOrder,
+    tooltipHideZero = false,
+    tooltipComponentNote,
+    categoryAxisName,
+    valueAxisName,
+    tooltipRoles,
+    showLegend = true,
+    categoryGroups,
+    categoryNote,
+  } = opts
+  if (series.length === 0) {
+    return { backgroundColor: CHART_BG }
+  }
+  // 1 série attendue (le wrapper agit sur la première).
+  const main = series[0]
+  const dps = main.datapoints
+
+  const categories = dps.map((d) => d.category)
+
+  // Collecter l'ordre des composants (preserve l'ordre componentOrder si fourni).
+  const componentSet = new Set<string>()
+  for (const dp of dps) {
+    for (const k of Object.keys(dp.components)) componentSet.add(k)
+  }
+  const components = componentOrder
+    ? componentOrder.filter((c) => componentSet.has(c))
+    : Array.from(componentSet)
+
+  const tc = getEChartsThemeColors()
+  const echartsSeries = buildStackedSeries(dps, components, tc, opts)
+
+  const { xAxis, yAxis } = buildStackedAxes(tc, categories, {
+    orientation,
+    categoryAxisName,
+    valueAxisName,
+    categoryNote,
+  })
+
+  const tooltip = buildStackedTooltip(tc, {
+    tooltipHideZero,
+    tooltipComponentNote,
+    tooltipRoles,
+  })
+
+  const groupTitles = categoryGroups ? groupTitleGraphic(categoryGroups, tc.axisLabel) : undefined
 
   return {
     backgroundColor: CHART_BG,
@@ -312,9 +459,39 @@ export function buildBarStackedOption(
       containLabel: true,
     },
     tooltip,
-    legend: { ...getLegendBase(tc), data: components },
+    legend: showLegend ? { ...getLegendBase(tc), data: components } : { show: false },
+    ...(groupTitles ? { graphic: groupTitles } : {}),
     xAxis,
     yAxis,
     series: echartsSeries,
   }
 }
+
+/**
+ * La serie des TOTAUX : une barre de hauteur nulle empilee au sommet, dont la seule raison
+ * d'etre est son etiquette. C'est le seul moyen, sur une pile ECharts, d'ecrire la somme de la
+ * colonne a son sommet — aucune serie ne la connait, et un `graphic` ne saurait pas ou la poser.
+ * Muette au survol (valeur 0, filtree par `tooltipHideZero`).
+ */
+function buildTotalsSeries(totals: readonly number[] | undefined, color: string) {
+  if (!totals || totals.length === 0) return undefined
+  return {
+    name: TOTALS_SERIES_NAME,
+    type: 'bar' as const,
+    stack: 'total',
+    silent: true,
+    itemStyle: { color: 'transparent', opacity: 0 },
+    label: {
+      show: true,
+      position: 'top' as const,
+      color,
+      fontSize: 10,
+      fontWeight: 600 as const,
+      formatter: (p: { dataIndex: number }) => String(totals[p.dataIndex] ?? ''),
+    },
+    data: totals.map(() => 0),
+  }
+}
+
+/** Nom reserve de la serie des totaux — jamais une sous-cle de donnees. */
+export const TOTALS_SERIES_NAME = '__totals__'
