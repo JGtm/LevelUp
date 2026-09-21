@@ -179,9 +179,10 @@ surface `film/replay` 260 -> 263 justifie.
 - [ ] Bloc riposte de match view : par mort, (victime, vengeur, delai, camp) ; comptes par joueur
 - [ ] openapi + generate-types ; tests analysis/service/repo
 
-### Lot N2 — Go : portee tous joueurs par match (worktree `LevelUp-wt-ajsup-n2`)
-- [ ] Filtre AllPlayers + lecteur sans filtre xuid ; medianes par (match, joueur) + mediane du lobby (sur les frags) + measured
-- [ ] Servi a l Escouade (page synergies) et a Sessions (matchs de la session, joueur consulte + lobby)
-- [ ] openapi + generate-types ; tests
+### Lot N2 — Go : portee tous joueurs par match (worktree `LevelUp-wt-ajsup-n2`) — FUSIONNE 084685dba
+- [x] Filtre AllPlayers + lecteur sans filtre xuid ; medianes par (match, joueur) + mediane du lobby (sur les frags) + measured
+- [x] Servi a l Escouade (page synergies) et a Sessions (matchs de la session, joueur consulte + lobby)
+- [x] openapi + generate-types ; tests
+- [!] `TeamID` non servi : la lecture de portee ne rend que killer_xuid ; les deux scopes ne publient que le camp du joueur
 
 ### Lots web (apres N1/N2) : O Sessions, P Match view, Q Timeseries, R Escouade
