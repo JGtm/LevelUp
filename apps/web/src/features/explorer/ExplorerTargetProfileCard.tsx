@@ -30,7 +30,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import type { ExplorerEncounterStats, ExplorerTargetProfile } from '@/lib/api/types'
+import type { ExplorerCommonMatchRow, ExplorerEncounterStats, ExplorerTargetProfile } from '@/lib/api/types'
 import { ExplorerTargetIdentityBanner } from './ExplorerTargetIdentityBanner'
 import { ExplorerTargetCareerStats } from './ExplorerTargetCareerStats'
 import { ExplorerTargetSampleStats, ExplorerTargetSampleKpis, ExplorerTargetOutcome } from './ExplorerTargetSampleStats'
@@ -49,9 +49,12 @@ interface ExplorerTargetProfileCardProps {
    *  alimente les donuts + la courbe rendus en fin de section « matchs joués
    *  ensemble ». Optionnel : sans lui, cette dernière rangée n'est pas rendue. */
   encounterStats?: ExplorerEncounterStats | null
+  /** Matchs communs (récent→ancien) : l'ORDRE des résultats de la bande de « Répartition
+   *  des résultats ». Absent → la carte rend la barre et le taux sans la bande. */
+  commonMatches?: ExplorerCommonMatchRow[] | null
 }
 
-export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }: ExplorerTargetProfileCardProps) {
+export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats, commonMatches }: ExplorerTargetProfileCardProps) {
   const appLocale = useAppShellStore((s) => s.locale)
   // Classements CSR = surface "ranked" : masquée pour un titre sans rang
   // (fail-open mono-titre, NO-OP halo_infinite qui déclare 'ranked').
@@ -195,7 +198,7 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
               hauteurs différentes. `items-stretch` égalise les colonnes, et chaque carte
               porte `h-full` pour remplir la sienne. */}
           <div className="grid items-stretch gap-4 lg:grid-cols-3">
-            <ExplorerTargetOutcome sampleStats={sampleStats} />
+            <ExplorerTargetOutcome sampleStats={sampleStats} commonMatches={commonMatches} />
             <ExplorerTargetAssists encounterStats={encounterStats} />
             <ExplorerTargetFragRange encounterStats={encounterStats} gamertag={gamertag} />
           </div>

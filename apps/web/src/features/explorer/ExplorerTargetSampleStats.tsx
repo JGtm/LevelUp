@@ -18,8 +18,8 @@
  */
 import { useState } from 'react'
 
-import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { FragSunburst, FragClassLegend } from '@/components/charts/FragSunburst'
+import { ExplorerOutcomeBreakdown } from './ExplorerOutcomeBreakdown'
 import { fragClassColor } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
@@ -28,7 +28,7 @@ import { intlLocale } from '@/lib/formatters'
 import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import type { ExplorerTargetSampleStats, ExplorerWeaponKill, FragDistribution, SynthesisWeaponKillEntry } from '@/lib/api/types'
+import type { ExplorerCommonMatchRow, ExplorerTargetSampleStats, ExplorerWeaponKill, FragDistribution, SynthesisWeaponKillEntry } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 /** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
@@ -243,18 +243,26 @@ function WeaponsTop({ weapons, locale, t }: { weapons: ExplorerWeaponKill[]; loc
 }
 
 /**
- * ExplorerTargetOutcome — bilan V/N/D des matchs communs (OutcomeBar + légende), rendu
- * en HAUT de la colonne gauche de la 3e rangée, au-dessus de « Part des assistances »
- * (depuis le 2026-09-17 ; il occupait auparavant le bas de la colonne des frags).
- * nil si aucun résultat exploitable.
+ * ExplorerTargetOutcome — bilan V/N/D des matchs communs, rendu en HAUT de la colonne
+ * gauche de la 3e rangée, au-dessus de « Part des assistances ». nil si aucun résultat
+ * exploitable.
+ *
+ * Contenu : rendu 2.A horizontal (ExplorerOutcomeBreakdown) — piste épaisse empilée,
+ * taux en chiffre d'appel, bande des résultats. Ce composant ne garde que le chrome de
+ * carte et sa place dans la rangée.
  *
  * Pas de `h-full` : empilé avec « Part des assistances », chaque bloc garde la hauteur de
  * son contenu. C'est leur SOMME qui fixe la hauteur de la rangée — deux `h-full` dans un
  * même flex-col à hauteur définie se disputeraient 100 % chacun et rogneraient le contenu.
  */
-export function ExplorerTargetOutcome({ sampleStats }: ExplorerTargetSampleStatsProps) {
+export function ExplorerTargetOutcome({
+  sampleStats,
+  commonMatches,
+}: ExplorerTargetSampleStatsProps & {
+  /** Matchs communs servis par l'API (récent→ancien) : l'ORDRE des résultats de la bande. */
+  commonMatches?: ExplorerCommonMatchRow[] | null
+}) {
   const appLocale = useAppShellStore((s) => s.locale)
-  const locale = intlLocale(appLocale)
   const t: TFn = (key, values) => formatMessage(explorerManifest, key, appLocale, values)
   if (sampleStats.wins + sampleStats.draws + sampleStats.losses === 0) return null
   return (
@@ -263,7 +271,14 @@ export function ExplorerTargetOutcome({ sampleStats }: ExplorerTargetSampleStats
         {t('explorer.target_profile.results_title')}
       </div>
       <div className="p-3">
-        <OutcomeLegend sampleStats={sampleStats} locale={locale} t={t} />
+        <ExplorerOutcomeBreakdown
+          wins={sampleStats.wins}
+          draws={sampleStats.draws}
+          losses={sampleStats.losses}
+          winRate={sampleStats.win_rate}
+          commonMatches={commonMatches}
+          locale={appLocale}
+        />
       </div>
     </div>
   )
@@ -359,35 +374,6 @@ function YieldTile({
         </div>
       </div>
     </div>
-  )
-}
-
-// ─── OutcomeBar légendée (V / N / D + taux) ──────────────────────────────────
-
-function OutcomeLegend({ sampleStats, locale, t }: { sampleStats: ExplorerTargetSampleStats; locale: string; t: TFn }) {
-  const { wins, draws, losses, win_rate: winRate } = sampleStats
-  if (wins + draws + losses === 0) return null
-  return (
-    <div className="flex flex-col gap-1.5">
-      <OutcomeBar wins={wins} draws={draws} losses={losses} />
-      <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-muted-foreground">
-        <OutcomeLegendItem token="outcome-win" label={t('explorer.target_profile.outcome_wins')} value={fmtInt(wins, locale)} />
-        <OutcomeLegendItem token="outcome-draw" label={t('explorer.target_profile.outcome_draws')} value={fmtInt(draws, locale)} />
-        <OutcomeLegendItem token="outcome-loss" label={t('explorer.target_profile.outcome_losses')} value={fmtInt(losses, locale)} />
-        {winRate != null && (
-          <li className="ml-auto font-semibold text-foreground">{fmtPctRatio(winRate, locale)}</li>
-        )}
-      </ul>
-    </div>
-  )
-}
-
-function OutcomeLegendItem({ token, label, value }: { token: SemanticToken; label: string; value: string }) {
-  return (
-    <li className="flex items-center gap-1">
-      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tokenCssVar(token) }} aria-hidden="true" />
-      <span>{value} {label}</span>
-    </li>
   )
 }
 

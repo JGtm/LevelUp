@@ -155,6 +155,7 @@ export function ExplorerPlayerMode({
               profile={playerQuery.data.target_profile}
               gamertag={playerQuery.data.target_gamertag || targetGamertag}
               encounterStats={playerQuery.data.encounter_stats}
+              commonMatches={playerQuery.data.common_matches}
             />
           )}
 

@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest'
 import type { RelationAssists } from '@/lib/api/types'
 
 import {
+  assistLinearSegments,
+  assistPairBound,
+  assistParityPct,
   assistSegments,
   assistShare,
   assistShareSegments,
@@ -82,5 +85,37 @@ describe('assistExchange', () => {
   it('trie sur les assistances échangées, non mesuré en undefined', () => {
     expect(assistSortValue(assists())).toBe(30)
     expect(assistSortValue(undefined)).toBeUndefined()
+  })
+})
+
+describe('assistExchange — échelle linéaire commune (encart cible Explorer)', () => {
+  it('borne = le plus gros des deux totaux de la paire', () => {
+    expect(assistPairBound(assists())).toBe(20)
+    expect(assistPairBound(assists({ given: { total: 55, low: 55, mid: 0, high: 0 } }))).toBe(55)
+  })
+
+  it('le sens majoritaire remplit sa piste, l’autre en prend sa proportion exacte', () => {
+    const a = assists()
+    const bound = assistPairBound(a)
+    const sum = (segs: { widthPct: number }[]) => segs.reduce((t, x) => t + x.widthPct, 0)
+    expect(sum(assistLinearSegments(a.received, bound))).toBeCloseTo(100)
+    // 10 contre une borne de 20 : la MOITIÉ de la piste, pas son logarithme.
+    expect(sum(assistLinearSegments(a.given, bound))).toBeCloseTo(50)
+  })
+
+  it('découpe la piste par tranche, les tranches vides exclues', () => {
+    const segs = assistLinearSegments(assists().given, 20)
+    expect(segs.map((s) => s.tier)).toEqual(['mid', 'high'])
+    expect(segs.map((s) => s.count)).toEqual([4, 6])
+  })
+
+  it('parité = moitié du total des deux sens, rapportée à la borne', () => {
+    // (20 + 10) / 2 = 15 sur 20 → 75 %.
+    expect(assistParityPct(assists(), 20)).toBeCloseTo(75)
+    expect(assistParityPct(assists(), 0)).toBeNull()
+  })
+
+  it('rien à dessiner sans borne', () => {
+    expect(assistLinearSegments(assists().received, 0)).toEqual([])
   })
 })
