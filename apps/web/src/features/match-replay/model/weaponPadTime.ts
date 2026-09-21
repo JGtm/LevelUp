@@ -21,6 +21,7 @@
  * Aucune ligne de ce fichier ne le lit.
  */
 import type { ReplayWeaponPadReady } from '../../../lib/replay/replayNormalize'
+import { respawnAt, type Respawn } from './respawnCountdown'
 
 /**
  * L'état d'un socle à un instant : plein (présence prouvée), incertain (le film ne dit rien),
@@ -82,10 +83,7 @@ export function padStateAt(pad: ReplayWeaponPadReady, frame: number): PadState {
  * moyenne, qui peut tomber à côté). Le calque n'en fait rien — un socle vide reste un socle
  * vide — mais l'infobulle le dit, et c'est là que la réserve doit se lire.
  */
-export interface PadRespawn {
-  seconds: number
-  measured: boolean
-}
+export type PadRespawn = Respawn
 
 /**
  * padRespawnAt — les secondes restantes avant la réapparition, et leur provenance, ou null.
@@ -110,15 +108,20 @@ export function padRespawnAt(
   frame: number,
   frameMs: number,
 ): PadRespawn | null {
-  if (!(frameMs > 0) || padStateAt(pad, frame) !== 'empty') return null
+  if (padStateAt(pad, frame) !== 'empty') return null
   const i = padOccupancyIndexAt(pad, frame)
   if (i < 0) return null
+  // LA RÈGLE ELLE-MÊME VIT DANS `respawnCountdown.ts` DEPUIS LE LOT 5.8 : les emplacements de
+  // naissance de véhicule (schéma 63) posent la MÊME question au document, et deux copies de
+  // l'ordre des sources auraient divergé sans qu'aucun écran ne le montre (CLAUDE.md n°6). Ce
+  // qui reste ici est ce que ce fichier seul sait dire : ce qu'« occupé » veut dire pour un
+  // socle, et de quels champs viennent les trois nombres.
+  //
   // `next.t0 > frame` PAR CONSTRUCTION (l'occupation courante est la dernière dont l'apparition
-  // a eu lieu) : le compte mesuré est toujours positif, il n'y a aucune garde à écrire ici.
-  const next = pad.presence[i + 1]
-  if (next) return { seconds: ((next.t0 - frame) * frameMs) / 1000, measured: true }
-  const cycle = pad.cycle
-  if (!cycle || !(cycle.medianS > 0)) return null
-  const left = cycle.medianS - ((frame - pad.presence[i].tHigh) * frameMs) / 1000
-  return left > 0 ? { seconds: left, measured: false } : null
+  // a eu lieu) : le compte mesuré est toujours positif.
+  return respawnAt(frame, frameMs, {
+    nextSpawn: pad.presence[i + 1]?.t0 ?? null,
+    emptySince: pad.presence[i].tHigh,
+    medianS: pad.cycle?.medianS,
+  })
 }

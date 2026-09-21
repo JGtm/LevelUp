@@ -6908,10 +6908,82 @@ au brief etait l archetype `zones` `ti=23`, `deser_non_cable`, dont la table ECS
         sans montee de schema ni de revision, `Digest.UpToDate` ne marque aucun artefact perime.
         Les valeurs de `capturingTeam` changent pourtant. **A trancher a la fusion** (D1 du 5.6).
 
+### Post-chantier — lot 5.8 (details du rendu), branche `feat/decfilm-58`, base `7af38c44d`
+
+Decouvertes RETENUES par l utilisateur le 2026-09-20 (« je les retiens toutes »). WEB ET
+CONFIGURATION SEULS : aucun octet de `film/internal/`, aucune montee de schema, aucun decodage,
+aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (§4 des lots
+5.2a/5.2b), 5.4 (§4), 5.5 (§4 D1-D2) et le diagnostic du 2026-09-19 (constats 1d, 2d).
+
+- [x] **5.8.1 — LE CYCLE DE REAPPARITION DES VEHICULES SE VOIT SUR LA CARTE** (web seul).
+  - [x] Le document publie `vehicleCycles[]` (schema 63) depuis le lot 5.1 et **AUCUN rendu ne
+        le lisait** : verifie sur pieces avant de coder (grep `vehicleCycles` sur `apps/web` : la
+        normalisation le comble, `replayContract.test.ts` le declare, zero calque le lit).
+  - [x] **LE MODELE EST CELUI DES SOCLES D ARME, ET LA REUTILISATION EST REELLE, PAS ALLEGUEE.**
+        L ordre des deux sources du compte a rebours (la naissance suivante VUE DANS LE FILM
+        d abord — le rejeu connait la suite —, la mediane du cycle ensuite) sort de
+        `weaponPadTime.padRespawnAt` vers un foyer partage `model/respawnCountdown.ts`, et
+        `padRespawnAt` l APPELLE desormais (CLAUDE.md n° 6 : deux copies de cet ordre auraient
+        diverge sans qu aucun ecran ne le montre, un chiffre plausible restant plausible). Le
+        compte a rebours DESSINE est lui aussi partage : `drawCountdown` est exportee par
+        `weaponPadsLayer.ts` — meme police, meme ecart, meme contour pour deux marques que le
+        lecteur voit cote a cote.
+  - [x] **« OCCUPE » VEUT DIRE « UNE VIE NEE ICI EST ENCORE EN VIGUEUR »**, pas « un vehicule se
+        trouve au-dessus du point » : l horloge du jeu repart a la DESTRUCTION (mesure de l item
+        2.4, reprise par `vehicle_cycles.go`). Un Warthog parti a l autre bout de la carte n a
+        donc PAS libere son emplacement — et de fait aucun vehicule n y renaitra tant qu il
+        roule. Le predicat d occupation est `vehicleVisibleAt`, CELUI DU CALQUE : ce qui est
+        dessine et ce qui occupe un lieu doivent dire la meme chose, sans quoi un marqueur
+        paraitrait sous un sprite.
+  - [x] **LA FIN DOIT ETRE DATEE ET DESTRUCTRICE**, exactement comme cote Go : `film_end` n est
+        pas une mort, `unknown` n est pas datee. Predire depuis elles reviendrait a mesurer le
+        recensement des images-cles (l erreur que `V2_SPAWNS_COOLDOWNS` avait nommee).
+  - [x] **L APPARIEMENT EMPLACEMENT -> VIES SE REFAIT COTE CLIENT, ET IL EST GARDE** : le
+        document publie l amas (son barycentre) et les vies (leur naissance), jamais le lien.
+        `VEHICLE_CYCLE_CLUSTER_M` recopie la maille du producteur (2,0 m) et un test la RELIT
+        dans `vehicle_cycles.go` — deux mailles apparieraient des vies a des emplacements
+        voisins, et le decalage serait invisible a l ecran.
+  - [x] Rendu : `layers/vehicleCyclesLayer.ts` (losange `traceDiamond` — le vocabulaire du depot
+        pour « un objet de la carte, pas un joueur » —, demi-diagonale 3,4 px, opacite 0,35 du
+        registre « absence prouvee », compte a rebours au sommet). Peint DANS le geste du calque
+        des vehicules (`useReplayVehicles`), donc sous la MEME bascule : un marqueur de
+        reapparition de vehicule sans son calque serait un calque sans interrupteur. `layers` du
+        canvas et `LAYER_ORDER` inchanges (ratchet `sceneBinding.guard.test.ts` respecte, id
+        rendu en tete de l objet).
+  - [x] Survol : `vehicleCycleIndexAt` rend un RANG (les vies sont appariees une fois par
+        document dans un tableau parallele), infobulle `ui/ReplayVehicleCycleTip.tsx` en TROIS
+        lignes — famille nommee par le document (titre generique en repli, jamais le nom d un
+        voisin), compte a rebours OU « Vehicule present », puis la reserve (mediane, deciles,
+        nombre de cycles mesures). Cinquieme calque survolable : UNE ligne dans `hoverHandlers`
+        et une prop dans `ReplayCanvasTips`, comme leur en-tete le promettait.
+  - [x] Libelles FR **et** EN : `vehicleCycleTitle`, `vehicleCycleFmt`, `vehicleCycleGapsFmt`,
+        `vehicleCycleOccupied` (4 cles). Le compte a rebours REUTILISE `padRespawnMeasuredFmt` /
+        `padRespawnExpectedFmt` — meme question, meme reserve (« ≈ ») : un cinquieme libelle
+        aurait fait dire deux fois la meme phrase avec deux traductions a tenir en phase.
+        Couleurs : `neutralInk` + `markInk` du canvas, aucun token resolu dans le calque.
+  - [x] 25 cas vitest neufs (`vehicleCycleTime.test.ts` 11, `vehicleCyclesLayer.test.ts` 10,
+        `ReplayVehicleCycleTip.test.tsx` 4) dont les trois du brief : cycle etabli -> losange +
+        compte, cycle non etabli -> rien, vehicule present -> AUCUNE marque.
+  - [!] **AUCUNE MESURE SUR DOCUMENT CUIT N EST POSSIBLE, ET C EST MESURE** : les 92 artefacts de
+        `data/cache/replays/halo_infinite` sont au **schema 62** (D3 du lot 5.5) et **0 d entre
+        eux ne porte `vehicleCycles`** (balayage du 2026-09-21). Le rendu est donc prouve par ses
+        tests seuls jusqu a la prochaine recuisson du parc. §4, D1 (5.8).
+- [ ] **5.8.2 — LES ARMES DE VEHICULE ONT UN STYLE D ECLAIR ET UNE TEINTE** (`replay_labels.toml`).
+- [ ] **5.8.3 — LES TROIS MONTAGES D ARME NON DOCUMENTES** (Wraith, Gungoose, Falcon).
+- [ ] **5.8.4 — LE TAG WARTHOG SE DEPARTAGE PAR LA FAMILLE DU CHASSIS** (LAAG / Gauss / roquettes).
+- [ ] **5.8.5 — UN TIR D ARME DE JOUEUR DEPUIS UN SIEGE PASSAGER PREND LA VISEE DE SON TIREUR**
+      (D2 du lot 5.5).
+- [ ] **5.8.6 — LES SONS DES BASES : LE TIC DE SCORE, ET LA RAMPE SUIVIE D UN INTERVALLE NEUTRE**
+      (restes de 5.2a.1).
+- [ ] **5.8.7 — UN SAUT DANS LA FRISE RECALE LE SON AU LIEU DE LE TIRER EN RAFALE**
+      (`onScrub` aligne sur `seekTo`).
+
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-21 | 5.8.1 | **D1 (5.8) — LE PARC LOCAL NE PORTE AUCUN `vehicleCycles`, DONC AUCUN RENDU DE CYCLE N EST MESURABLE SUR PIECES.** Balayage des 92 artefacts de `data/cache/replays/halo_infinite` : **schema 62 partout** (D3 du 5.5) et **0 document** avec la cle `vehicleCycles` (schema 63). Le marqueur, son compte a rebours et son infobulle sont donc livres avec leurs tests et SANS mesure de population — ni « combien d emplacements par film », ni « combien de temps un marqueur reste visible ». | NON TRAITE (le brief interdit tout decodage). **La mesure se prend gratuitement a la premiere recuisson du parc** : les trois chiffres a relever sont `coverage.vehicles.cycleLocations` / `cycleGaps` / `cycleMissing`, deja publies, et le compte de `vehicleCycles` par film. A joindre au geste de recuisson que D1 (5.6) demande deja au pilote |
+| 2026-09-21 | 5.8.1 | **D2 (5.8) — DOC INVERSEE : `ReplayDocumentReady.vehicles` AFFIRME QUE `end` VAUT TOUJOURS `unknown`.** Le commentaire de `replayReadyTypes.ts` (« `end` vaut toujours `unknown` — jamais une destruction ») date d avant le lot 5.1 : depuis que les cinq feuilles de `ti=40` sont posees, `end` vaut `destroyed` avec un `tEnd` date sur 11 vies de `4f77afc1` et 14 de `a349fea8`, et TOUT le cycle de reapparition repose la-dessus (`vehicleDatedEnd`, Go comme web). | NON TRAITE (regle 7 : le lot porte sur le RENDU, et `replayReadyTypes.ts` est un fichier que le lot 5.7 peut toucher en parallele). **A corriger par le prochain lot qui touche ce fichier** — c est l anti-pattern « doc inversee » du diagnostic de revue, et il porte sur le champ exact dont un lecteur a besoin pour comprendre pourquoi un compte a rebours existe |
 | 2026-09-21 | 5.6.3 | **D1 (5.6) - LE PARC NE SE MARQUE PAS PERIME, ET LES VALEURS CHANGENT.** Le lot change la VALEUR de `zoneStates[].gaugeRamps[].capturingTeam` sans monter ni le schema (la forme existe depuis la 64) ni aucune des cinq revisions de couche (la substance decodee, `ZoneReads`, n a pas bouge - la regle d attribution de `layers.go` dit d attribuer un calque a la couche qui DECODE, pas a celle qui publie). `Digest.UpToDate` ne marquera donc aucun artefact du parc a recuire, et les artefacts deja cuits garderont les anciennes valeurs. | NON TRAITE, **et c est une decision de PILOTE, pas de lot** : soit une recuisson explicite du parc a la fusion, soit une revision de PUBLICATION (`publication-<SchemaVersion>` existe deja comme valeur legale de calque, mais rien ne la hache aujourd hui). La seconde voie est le vrai manque : il n existe aucun mecanisme pour dater un changement de la couche de publication a schema constant, et ce lot est le premier a en avoir besoin |
 | 2026-09-21 | 5.6.2 | **D2 (5.6) - LA COLONNE `meaning_fr` DE `ecs_table.tsv` EST FAUSSE SUR `ti=23`, AVEC UNE CONFIANCE `haute`.** Elle annonce « une ZONE de mode : son identifiant, sa POSITION, son etat » et un `exploitable_fr` qui promet « la reponse a quelle base est tenue par qui, a quel instant ». L ecrivain dit : nom, position, handle de PARTICIPANT - la selection de zone de reapparition. Aucune trace d etat. | NON TRAITE (regle 7 : corriger la table change l empreinte de `grammar`). **A corriger dans le prochain lot qui touche la grammaire** : `meaning_fr` -> « une zone SELECTIONNABLE de reapparition : son nom, sa position, le participant associe », `exploitable_fr` -> le negatif mesure (0 slot recense sur deux films a zones). Le `status` `deser_non_cable` reste juste, et le bloquant de `ti=23` au ratchet 0.A.3 ne doit PAS etre leve : porter un archetype que le film n instancie jamais serait du code mort |
 | 2026-09-21 | 5.6.2 | **D3 (5.6) - LE HARNAIS D EQUIVALENCE EST PERIME A LA TETE DE L INTEGRATION.** `replay-equiv --films=7344d24f` sans `-update` rend **57 etapes produites contre 55 figees**, avec `filmFactsRejoue` et `artifact` « produites en trop » : la comparaison est faite par INDEX, donc un pas insere decale tout ce qui suit et treize etapes sortent « differentes » sans l etre. Constat fait en jouant le gate de bout en bout du lot 5.6. | NON TRAITE : le re-figeage est un geste de pilote, a la fin (brief). **Mais le constat vaut au-dela du re-figeage** : un harnais qui compare par index rend un rapport ILLISIBLE des qu un pas apparait, alors que comparer par NOM d etape isolerait le vrai ecart. Pour le lot qui touchera `cmd/replay-equiv` |
@@ -7342,6 +7414,31 @@ au brief etait l archetype `zones` `ti=23`, `deser_non_cable`, dont la table ECS
 | 2026-09-21 | 5.3.2 | **D9 (5.3) — LE DOMAINE MESURÉ DES CHAMPS D'`i54` CONTREDIT L'HYPOTHÈSE DE L'ÉCRIVAIN.** L'identifiant optionnel de 10 bits n'est transmis **0 fois sur 2 245 initiations** (il reste à sa sentinelle), et `+0x9c` ne prend que **deux** valeurs, 0 et 2, jamais 1 ni 3. L'hypothèse « Sprint / Thruster / Clamber / Slide sur 2 bits » du § 2.8 est donc réfutée par les valeurs. Seul `+0x98` (R(7)) se comporte en discriminant, et son domaine varie d'un film à l'autre (3 valeurs sur `bfecd02b`, 8 sur `4f77afc1`). | **NON TRAITÉE** : nommer les classes demande de croiser `+0x98` avec la carte et le geste vu dans Theater — c'est un lot en soi, et il a besoin de l'attribution vie -> joueur que 5.3.2 n'a pas faite |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Post-chantier — lot 5.8 (details du rendu), gates SANS AUCUN DECODAGE, 2026-09-21
+
+Branche `feat/decfilm-58`, base `7af38c44d`. **WEB ET CONFIGURATION SEULS** : aucun octet de
+`film/internal/`, aucune montee de schema, aucun decodage, **aucune base DuckDB ouverte**. Un
+commit par item, gates rejoues a CHAQUE item.
+
+**5.8.1 (le cycle de reapparition des vehicules)** — `make check-types` apres purge de
+`apps/web/node_modules/.tmp` (vert ; le piege du `tsBuildInfo` chaud est le faux vert nomme par
+`delivery-checklist` §2) · `make test-web` : **725 fichiers, 7 838 tests verts, 2 fichiers et
+18 cas skippes** (7 813 a la cloture de 5.5, soit **+25 cas neufs**) · `npx eslint` sur les
+14 fichiers touches : **0 erreur**, 2 avertissements PRE-EXISTANTS et non lies
+(`useReplayVehicles.isEmbarkedAt` memoization du compilateur React, `ReplayCanvas` `zoneInk.outline`)
+· `npx knip` : **aucun export mort**, seules les 4 indications de configuration de la tete.
+**AUCUN GATE GO** : le lot ne touche pas une ligne de Go.
+
+**UN ROUGE ATTRAPE PAR UN RATCHET, ET IL AVAIT RAISON** : le retour du hook des vehicules avait
+ete reecrit sur plusieurs lignes, ce que `sceneBinding.guard.test.ts` refuse — il exige
+`return { id: '<calque>',` EN TETE, seule forme qui rende impossible de peindre un geste sous
+l identite d un autre calque. Retour a une seule ligne, ratchet vert, aucune allowlist touchee.
+
+**MESURE IMPOSSIBLE, ET ELLE EST CONSIGNEE** : balayage des 92 artefacts de
+`data/cache/replays/halo_infinite` (lecture seule, `node -e`, aucun decodage) — **schema 62
+partout**, **0 document porteur de `vehicleCycles`**. Le rendu est prouve par ses tests seuls ;
+§4 D1 (5.8) dit quels trois compteurs relever a la prochaine recuisson du parc.
 
 ### Post-chantier — lot 5.3, points 5.3.5 et 5.3.6, 2026-09-21 (suite : la loi de `i1`, puis le port)
 
