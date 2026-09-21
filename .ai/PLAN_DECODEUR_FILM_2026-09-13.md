@@ -6613,6 +6613,83 @@ sur les seuls chassis a arme FIXE. Le lot cherche l avant REEL, lu dans le film.
   **5.2a.6 (visee du conducteur) N EST PAS TOUCHE** : c est du rendu web, hors perimetre de ce
   lot, et l arbitrage de son retrait appartient a l utilisateur (§4).
 
+### Post-chantier — lot 5.5 (la visee du tourelleur), branche `feat/decfilm-55`, base `15627a4ce`
+
+Decouverte RETENUE par l utilisateur le 2026-09-20. Apres 5.2a.5 / 5.2a.6 / 5.4, un tir de
+TOURELLE reste SANS direction (`vehicleWeaponMounts.classe === 'tourelle'` -> `angle = null`,
+bouffee ronde) : le chassis s oriente sur l avant lu dans le film, mais la tourelle, elle, tourne
+independamment du corps et personne ne sait ou elle pointe. Deux voies etaient ouvertes : lire
+`ti=40 i41`/`i42` (`vehicle-seats-override-pitch`/`-yaw`, DECLARES et NON PORTES, `deser_addr`
+VIDE) ou se rabattre sur la visee `i21` du BIPEDE assis au siege de tourelle, que le document
+publie deja (`vehicles[].rides[].aim`, schema 31).
+
+- [x] **5.5.1 — L ECRIVAIN, PUIS LE MASQUE : `i41`/`i42` SONT UNE API DE SCRIPT, ET LE FILM NE LES
+  DECLARE JAMAIS.** Deux lectures, deux resultats concordants, aucun octet de production touche.
+  **(a) L ECRIVAIN — la grammaire est bit-exacte, et elle est PLUS PETITE que la question.**
+  Chaine du descripteur (`film/research/reapparition`, **calibration 6/6 temoins**) puis
+  decompilation Ghidra en LECTURE SEULE :
+
+        ti=40 i41  vehicle-seats-override-pitch  ecrivain FUN_142f04a4c  (113 octets)
+        ti=40 i42  vehicle-seats-override-yaw     ecrivain FUN_142f04ac0  (113 octets)
+
+  Les deux corps sont IDENTIQUES a l offset pres : `FUN_1406d84b4(flux, flux, DAT_143cd8920,
+  DAT_143cd8918, 8, 1, 1)` DEUX FOIS, sans porte, sans boucle, sans index de siege — soit
+  `2 x R(8)` dequantifie sur `[-pi, +pi]` = **16 bits par composant**. Les deux bornes sont RELUES
+  dans l image (`/read_memory`) : `DAT_143cd8918 = 0x40490fdb = +pi`, `DAT_143cd8920 =
+  0xc0490fdb = -pi` — les memes constantes que l angle de roulis du lot 5.4.
+  **LE PLURIEL « seats » NE CORRESPOND A AUCUNE BOUCLE** : le composant ecrit DEUX flottants, pas
+  N sieges. Cible de deserialisation `*(param_3+0x10) + 0x8ac`/`0x8b0` (i41) et `0x8b4`/`0x8b8`
+  (i42) ; compagnon de serialisation `FUN_142f08cf0` / `FUN_142f08d24` (source `param_3+0x30`,
+  memes offsets).
+  **(b) D OU VIENT LA VALEUR, ET C EST LA REPONSE.** Le producteur de replication
+  (`FUN_142f0cca0`) recopie `objet+0xbf0`/`0xbf4` -> `0x8ac`/`0x8b0` et `objet+0xbf8`/`0xbfc` ->
+  `0x8b4`/`0x8b8` sous un seuil de VARIATION. Et les quatre flottants de jeu ne sont ecrits que
+  par deux SETTERS a deux arguments : `FUN_143183ea0(objet, a, b)` (marque le composant `0x29` =
+  41 sale) et `FUN_143183ef0(objet, a, b)` (`0x2a` = 42), tous deux appeles depuis une API de
+  SCRIPT — `FUN_1431acd00(unite, float, float)` valide ses deux arguments un par un, les
+  multiplie par `DAT_143cd86c4` (degres -> radians) et les pose sur l unite du joueur courant.
+  **Une paire d angles posee en DEGRES par un script n est pas une rotation de tourelle par
+  tick : c est un OVERRIDE de contrainte de visee de siege.**
+  **(c) LE MASQUE TRANCHE, SANS PORTER UNE SEULE GRAMMAIRE.** Le masque de composants voyage en
+  TETE du record, avant toute charge : il se lit sans desyncer sur un composant non porte
+  (`BipedPosition.MaskBits`, deja capture sous `CaptureDirs`). Ventilation sur la bande `ti=40`,
+  largeurs d axe de la CARTE installees (`NewFilmContextForMap` +
+  `PoserLargeursObjetDuMondeDepuisDecoupage`, piege 5.3) :
+
+        | film                        | records ti=40 | i41 | i42 | i30 | i31 | i40 | i21 |
+        |---|---:|---:|---:|---:|---:|---:|---:|
+        | `4f77afc1` (Flood Gulch)    | 144 385 | **0** | **0** | 0 | 0 | 0 | **0** |
+        | `084a804d` (Fortitude Heavies) | 109 478 | **0** | **0** | 0 | 0 | 0 | **0** |
+
+  **LE ZERO N EST PAS UN PLAFOND D INSTRUMENT** : le meme recensement voit des index a UN SEUL
+  record (`i58` 1, `i59` 1, `i60` 1, `i8` 1, `i18` 1) et `MaskOver` vaut 0 partout — aucun index
+  ne deborde des 64 bits. Ce que le vehicule replique VRAIMENT, sur les deux films : `i0`
+  position 100 %, `i25` tick de commande ~100 %, `i1` velocite ~99 %, `i3` velocite angulaire
+  ~97 %, `i2` avant/haut ~96 %, `i34` physique de type 13-15 %, `i4` vitalite ~4 %, `i37`
+  minuteur EMP 1-3 %.
+  **QUATRE NEGATIFS D UN COUP, et ils ferment la voie « grammaire »** : `i41`, `i42`,
+  `i31 vehicle-auto-turret-aiming-vector` (la tourelle AUTOMATIQUE) et `i21` DU VEHICULE (l unite
+  vehicule ne replique aucun vecteur de visee en propre). **LE FILM NE PORTE PAS LA ROTATION DE
+  LA TOURELLE.** Population : 253 863 records, deux cartes, deux modes, dont un BTB Heavies qui
+  porte les Scorpions.
+  **CE QUI EST LIVRE** : deux instruments sous `//go:build research`
+  (`tourelle_55_ecrivain_research_test.go`, `tourelle_55_masque_research_test.go`) et les DEUX
+  LIGNES DE LA TABLE ECS renseignees (`deser_addr`, `grammar`, `meaning_fr`, `exploitable_fr`,
+  `confidence`, `notes`) avec la consigne **NE PAS PORTER**. `bits_typ` reste VIDE a dessein : la
+  colonne entiere entre dans le controle `ecs_widths_guard`, qui execute le deser de production —
+  il n y en a pas. Aucun octet de `film/internal/` hors testdata, `grammar.Rev` INCHANGEE,
+  `SchemaVersion` inchange.
+- [ ] **5.5.2 — LA PREUVE : la visee `i21` DU TOURELLEUR est-elle la direction du tir ?** Le
+  negatif de 5.5.1 ferme la voie grammaire ; reste la seule direction MESUREE qu un tir de
+  tourelle puisse porter, la visee du bipede assis au siege de tourelle, que le document publie
+  deja (`vehicles[].rides[].aim`, un episode par occupant, `seat` connu). A mesurer sur document
+  cuit, sans decodage : COUVERTURE (part des tirs de tourelle qui trouvent un occupant de siege
+  != 0 avec une lecture de visee en vigueur) et UTILITE (ecart entre cette visee et le cap du
+  chassis — un tir part la ou la TOURELLE pointe, pas la ou le nez pointe).
+- [ ] **5.5.3 — LE PORT** : si la visee du tourelleur fait foi, PAS de champ neuf ni de montee de
+  schema — le rendu web emploie la visee du siege de tourelle pour orienter la tourelle dessinee
+  ET le tir (`shotFx.ts` direction quand le tir porte `v` et un montage de classe `tourelle`).
+
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
