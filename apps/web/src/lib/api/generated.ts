@@ -8613,6 +8613,34 @@ export interface components {
             level: string;
             message?: string;
         };
+        MatchRangeBlock: {
+            /** Format: int64 */
+            kills_measured: number;
+            /** Format: int64 */
+            kills_total: number;
+            profiles: components["schemas"]["MatchRangeProfile"][] | null;
+        };
+        MatchRangePlayer: {
+            gamertag?: string;
+            /** Format: double */
+            lobby_delta_m: number;
+            /** Format: int64 */
+            measured: number;
+            /** Format: double */
+            median_m: number;
+            xuid: string;
+        };
+        MatchRangeProfile: {
+            /** Format: int64 */
+            lobby_measured: number;
+            /** Format: double */
+            lobby_median_m: number;
+            map_name?: string;
+            match_id: string;
+            /** Format: date-time */
+            played_at: string;
+            players: components["schemas"]["MatchRangePlayer"][] | null;
+        };
         MatchRosterRow: {
             /** Format: int64 */
             assists?: number;
@@ -11114,6 +11142,7 @@ export interface components {
             compare_intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
             compare_matches: components["schemas"]["SessionDetailMatchRow"][] | null;
             compare_metrics: components["schemas"]["SessionCompareMetricRow"][] | null;
+            compare_range_profiles?: components["schemas"]["MatchRangeBlock"];
             compare_session?: components["schemas"]["SessionCompareEntry"];
             compare_usage?: components["schemas"]["SessionUsageBlock"];
             current_session: components["schemas"]["SessionCompareEntry"];
@@ -11122,6 +11151,7 @@ export interface components {
             matches: components["schemas"]["SessionDetailMatchRow"][] | null;
             next_session_label?: string;
             previous_session_label?: string;
+            range_profiles?: components["schemas"]["MatchRangeBlock"];
             suggested_compare?: components["schemas"]["SessionCompareSuggestion"];
             usage?: components["schemas"]["SessionUsageBlock"];
         };
@@ -12717,6 +12747,7 @@ export interface components {
             performance_series?: {
                 [key: string]: components["schemas"]["SquadPerformanceSeriesPoint"][] | null;
             };
+            range_profiles?: components["schemas"]["MatchRangeBlock"];
             session_labels: components["schemas"]["SessionLabelsList"];
             session_timeline?: components["schemas"]["SquadSessionPoint"][] | null;
             synergy_radar?: components["schemas"]["SquadSynergyRadarSeries"][] | null;

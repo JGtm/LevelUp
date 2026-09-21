@@ -18,8 +18,8 @@
 //
 // # AUCUN SEUIL DE PUBLICATION ICI
 //
-// `WeaponRangeMinMeasured` (8) protège un bâton p10->p90, dont les bornes retombent sur les
-// extrêmes sous cet effectif. Ici on publie une MÉDIANE et son effectif : le client décide
+// `WeaponRangeMinMeasured` protège un bâton p10->p90, dont les bornes retombent sur les
+// extrêmes sous son effectif. Ici on publie une MÉDIANE et son effectif : le client décide
 // de creuser le point sous 5 frags (D22-5) ou de le tracer plein. Poser le seuil ici lui
 // retirerait la donnée dont il a besoin pour le dire.
 package analysis

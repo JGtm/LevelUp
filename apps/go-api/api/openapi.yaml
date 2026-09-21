@@ -18204,6 +18204,77 @@ components:
       required:
         - level
       type: object
+    MatchRangeBlock:
+      additionalProperties: false
+      properties:
+        kills_measured:
+          format: int64
+          type: integer
+        kills_total:
+          format: int64
+          type: integer
+        profiles:
+          items:
+            $ref: '#/components/schemas/MatchRangeProfile'
+          type:
+            - array
+            - "null"
+      required:
+        - profiles
+        - kills_measured
+        - kills_total
+      type: object
+    MatchRangePlayer:
+      additionalProperties: false
+      properties:
+        gamertag:
+          type: string
+        lobby_delta_m:
+          format: double
+          type: number
+        measured:
+          format: int64
+          type: integer
+        median_m:
+          format: double
+          type: number
+        xuid:
+          type: string
+      required:
+        - xuid
+        - median_m
+        - lobby_delta_m
+        - measured
+      type: object
+    MatchRangeProfile:
+      additionalProperties: false
+      properties:
+        lobby_measured:
+          format: int64
+          type: integer
+        lobby_median_m:
+          format: double
+          type: number
+        map_name:
+          type: string
+        match_id:
+          type: string
+        played_at:
+          format: date-time
+          type: string
+        players:
+          items:
+            $ref: '#/components/schemas/MatchRangePlayer'
+          type:
+            - array
+            - "null"
+      required:
+        - match_id
+        - played_at
+        - players
+        - lobby_median_m
+        - lobby_measured
+      type: object
     MatchRosterRow:
       additionalProperties: false
       properties:
@@ -24228,6 +24299,8 @@ components:
           type:
             - array
             - "null"
+        compare_range_profiles:
+          $ref: '#/components/schemas/MatchRangeBlock'
         compare_session:
           $ref: '#/components/schemas/SessionCompareEntry'
         compare_usage:
@@ -24256,6 +24329,8 @@ components:
           type: string
         previous_session_label:
           type: string
+        range_profiles:
+          $ref: '#/components/schemas/MatchRangeBlock'
         suggested_compare:
           $ref: '#/components/schemas/SessionCompareSuggestion'
         usage:
@@ -28176,6 +28251,8 @@ components:
               - array
               - "null"
           type: object
+        range_profiles:
+          $ref: '#/components/schemas/MatchRangeBlock'
         session_labels:
           $ref: '#/components/schemas/SessionLabelsList'
         session_timeline:
