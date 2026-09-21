@@ -166,8 +166,25 @@ export interface VehicleMountSpriteSize {
 export interface VehicleShotPlacement {
   /** À ajouter au centre déjà projeté du véhicule (`project(world, view)`). */
   offset: XY
-  /** Angle canevas de la décharge, ou `null` (tourelle : visée du tourelleur inconnue). */
+  /** Angle canevas de la décharge, ou `null` (tourelle dont le tireur n'a aucune visée lue). */
   angle: number | null
+}
+
+/**
+ * VehicleShotCaps — LES DEUX CAPS D'UN TIR EN VÉHICULE, et ils ne servent pas à la même chose.
+ *
+ * `chassisDeg` est le cap auquel le SPRITE EST DESSINÉ (`vehicleChassisHeadingAt`) : le montage
+ * est une ancre dans le repère LOCAL du sprite, donc c'est lui, et lui seul, qui place l'éclair.
+ *
+ * `tireurDeg` est la visée MESURÉE de celui qui a tiré (`vehicleShooterAimAt`, apparié par SLOT),
+ * ou `null` quand aucune lecture n'est en vigueur. Il ne sert qu'à ORIENTER la décharge d'une
+ * TOURELLE — là où le châssis ne dit rien, parce que la tourelle tourne indépendamment du corps.
+ * Les deux restent distincts à dessein : confondre le placement et la direction sortirait l'éclair
+ * du châssis qu'il est censé quitter.
+ */
+export interface VehicleShotCaps {
+  chassisDeg: number
+  tireurDeg: number | null
 }
 
 /**
@@ -187,26 +204,40 @@ export interface VehicleShotPlacement {
  */
 export function vehicleShotPlacement(
   mount: VehicleWeaponMount | null,
-  headingDeg: number,
+  caps: VehicleShotCaps,
   size: VehicleMountSpriteSize,
   k: number,
   scalePxPerM: number,
 ): VehicleShotPlacement {
   // MONTAGE INCONNU : aucun décalage — l'éclair reste au CENTRE du châssis, la seule position
   // que le document donne —, mais la DIRECTION du véhicule lui revient (cf. `vehicleShotOrigin`).
-  if (!mount) return { offset: { x: 0, y: 0 }, angle: vehicleAimAngle(headingDeg) }
+  if (!mount) return { offset: { x: 0, y: 0 }, angle: vehicleAimAngle(caps.chassisDeg) }
   const scale = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, scalePxPerM) * k
   const localX = mount.ax * size.naturalWidthPx
   const localY = mount.ay * size.naturalHeightPx
-  const screenAngle = vehicleScreenAngle(headingDeg)
+  const screenAngle = vehicleScreenAngle(caps.chassisDeg)
   const cosA = Math.cos(screenAngle)
   const sinA = Math.sin(screenAngle)
   const offset: XY = {
     x: (localX * cosA - localY * sinA) * scale,
     y: (localX * sinA + localY * cosA) * scale,
   }
-  const angle = mount.classe === 'tourelle' ? null : vehicleAimAngle(headingDeg)
-  return { offset, angle }
+  return { offset, angle: vehicleMountAngle(mount, caps) }
+}
+
+/**
+ * vehicleMountAngle — LA DIRECTION D'UNE DÉCHARGE, montage par montage. UN SEUL FOYER pour les
+ * deux appelants (`vehicleShotPlacement` avec le sprite, `vehicleShotOrigin` sans) : la règle y
+ * était écrite DEUX FOIS, et c'est exactement ce qui la ferait re-diverger (CLAUDE.md n° 6).
+ *
+ *   - `fixe` : le cap du CHÂSSIS, inchangé — sur ces familles l'arme ne tourne pas par rapport au
+ *     corps, et depuis 5.2a.6 ce cap EST déjà la visée du conducteur (écart mesuré 0,0 degré).
+ *   - `tourelle` : la visée MESURÉE du tireur quand elle est en vigueur (lot 5.5), sinon `null` —
+ *     le repli d'avant, la bouffée ronde, parce qu'une tourelle ne pointe pas là où le nez pointe.
+ */
+function vehicleMountAngle(mount: VehicleWeaponMount, caps: VehicleShotCaps): number | null {
+  if (mount.classe !== 'tourelle') return vehicleAimAngle(caps.chassisDeg)
+  return caps.tireurDeg === null ? null : vehicleAimAngle(caps.tireurDeg)
 }
 
 /**
@@ -233,6 +264,8 @@ export function vehicleShotOrigin(args: {
     mount: VehicleWeaponMount | null
     family: string | undefined
     headingDeg: number
+    /** Visée MESURÉE du tireur (lot 5.5), `null` si aucune lecture en vigueur. */
+    shooterHeadingDeg: number | null
   } | null
   center: XY
   sizeOf: ((family: string) => VehicleMountSpriteSize | null) | undefined
@@ -242,14 +275,15 @@ export function vehicleShotOrigin(args: {
 }): { origin: XY; angle: number | null } {
   const { h, vehicleShot, center, sizeOf, k } = args
   if (!vehicleShot) return { origin: center, angle: h === null ? null : (-h * Math.PI) / 180 }
-  const { mount, family, headingDeg } = vehicleShot
+  const { mount, family, headingDeg, shooterHeadingDeg } = vehicleShot
+  const caps: VehicleShotCaps = { chassisDeg: headingDeg, tireurDeg: shooterHeadingDeg }
   const size = family ? sizeOf?.(family) : null
-  // LA DIRECTION SANS LE SPRITE : une TOURELLE dont on connaît le montage ne dit rien de la
-  // visée de son tourelleur et reste sans direction ; tout le reste — montage fixe, ou montage
-  // INCONNU (2026-09-20) — prend le cap du véhicule.
+  // LA DIRECTION SANS LE SPRITE : même règle qu'avec lui (`vehicleMountAngle`), seul le DÉCALAGE
+  // manque — il exige la taille réelle et ne s'invente pas. Un montage INCONNU (2026-09-20) prend
+  // le cap du véhicule ; une TOURELLE prend la visée de son tireur (lot 5.5) ou rien.
   if (!size) {
-    return { origin: center, angle: mount?.classe === 'tourelle' ? null : vehicleAimAngle(headingDeg) }
+    return { origin: center, angle: mount ? vehicleMountAngle(mount, caps) : vehicleAimAngle(headingDeg) }
   }
-  const { offset, angle } = vehicleShotPlacement(mount, headingDeg, size, k, args.scalePxPerM)
+  const { offset, angle } = vehicleShotPlacement(mount, caps, size, k, args.scalePxPerM)
   return { origin: { x: center.x + offset.x, y: center.y + offset.y }, angle }
 }
