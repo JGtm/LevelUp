@@ -171,6 +171,14 @@ type Observation struct {
 	// ou l'un d'eux en gagnerait une.
 	ProbeHook func(ti uint32, comp ProbeComponent, values []uint64)
 
+	// (depuis `etats_mouvement_hooks.go`)
+	// EtatMouvementHook, si non nil, recoit les valeurs des QUATRE composants d etat de
+	// mouvement du bipede — i29 accroupi, i62 glissade, i55 posture, la tete d i18. La FORME de
+	// la tranche est documentee par composant dans `etats_mouvement_hooks.go` ; elle est FIXE
+	// par composant, les champs absents valant zero derriere leur porte. Aucun bit n est lu
+	// autrement : ces quatre deserialiseurs lisaient deja ces champs et les jetaient.
+	EtatMouvementHook func(comp EtatMouvementComposant, slot uint32, values []uint64)
+
 	// (depuis `default_state.go`)
 	// MppHook, si non nil, reçoit chaque lecture d'un champ du bloc. `present` est faux quand la
 	// porte s'est fermée sans transmettre de valeur — une porte fermée n'est pas une valeur nulle.

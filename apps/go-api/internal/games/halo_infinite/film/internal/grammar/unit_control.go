@@ -14,13 +14,20 @@ package grammar
 
 // consumeUnitControl: R(1) g1; if g1 { R(5); R(1) f; if f R(6) }; then R(1) g2;
 // if g2 R(32). (Tail FUN_14080d69c runs in both branches.)
+// LA TETE EST PUBLIEE DEPUIS LE LOT 5.3.4 (2026-09-21) — porte, premier index, porte du second,
+// second index. La consommation de bits est INCHANGEE ; le mot de 32 bits de queue reste publie
+// par `UnitRefHook`, sa porte d origine.
 func consumeUnitControl(br *Lecteur) {
-	if br.ReadBit() { // FUN_1406cf008 gate
-		br.ReadBits(5) // field1 (validity-checked <=0x20)
-		if br.ReadBit() {
-			br.ReadBits(6) // field2 (validity-checked <=0x20)
+	var f1, has2, f2 uint64
+	porte := br.ReadBit() // FUN_1406cf008 gate
+	if porte {
+		f1 = br.ReadBits(5) // field1 (validity-checked <=0x20)
+		if b := br.ReadBit(); b {
+			has2 = 1
+			f2 = br.ReadBits(6) // field2 (validity-checked <=0x20)
 		}
 	}
+	br.publishEtatMouvement(EtatControleUnite, bit2u(porte), f1, has2, f2)
 	consumeOpt32(br) // tail FUN_14080d69c
 }
 

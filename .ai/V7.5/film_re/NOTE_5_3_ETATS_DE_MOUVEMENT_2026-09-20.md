@@ -1878,6 +1878,139 @@ dans le `switch`, avec un temoin sur les corps qui aboutissent aujourd hui.
 
 ---
 
+## 2 sexdecies. LA MESURE FINALE DES ETATS (5.3.4) — DEUX FILMS, ET UN NEGATIF QUI TIENT
+
+> Point (d) du lot 5.3, 2026-09-21. La marche est celle du JEU (trois vues, paquets a liste
+> pleine localises) ; les valeurs viennent des portes de publication posees par ce point.
+
+### 2sex-d.1 CE QUE CE POINT A DU PORTER AVANT DE MESURER
+
+Cinq deserialiseurs LISAIENT leurs champs et les JETAIENT. Ce point leur donne une porte de
+publication, et rien d autre — `etats_mouvement_hooks.go`, un hook, une enumeration stable, un
+publieur, sur l idiome de `components_probe.go` :
+
+| composant | ce qui est publie | bits lus |
+|---|---|---|
+| `i29 unit-crouch` | le booleen d accroupissement, le quantum de PROGRESSION R(10) | inchanges |
+| `i62 biped-slide` | la porte, le bloc quantifie (direction R(19), magnitude R(10)), trois fractions R(8) | inchanges |
+| `i55 biped-posture-physics` | le tag de posture R(2) | inchanges |
+| `i18 unit-control` (tete) | la porte, le premier index R(5), la porte du second, le second R(6) | inchanges |
+| `i1 object-translational-velocity` | le mode, la porte, la direction R(19), le mot d echelle R(10) | inchanges |
+
+**LE SLOT VOYAGE AVEC LA VALEUR**, et c est ce qui rend la mesure PAR VIE possible : le publieur
+est une methode du LECTEUR, qui porte le slot de capture pose par la boucle de records. Sans lui
+une « cadence par slot » ne serait qu un total.
+
+`grammar.Rev` ne monte pas : elle reste `grammar-2026-09-21`, la revision de ce lot — aucun bit
+n est lu autrement et la production n attache aucun observateur. Le golden d empreinte est
+refige a revision egale. Le litteral `unit-control-component`, passe a quatre copies, est
+centralise en `compUnitControl` (regle 6).
+
+### 2sex-d.2 LES DEUX FILMS, TABLEAU PAR TABLEAU
+
+| | `bfecd02b` (Snowbound, 8 joueurs) | `4f77afc1` (Flood Gulch, 24 joueurs) |
+|---|---|---|
+| paquets lus · dont a liste pleine localises | 30 105 · 4 147 | 30 175 · 12 117 |
+| vues franchies | 18 983 | 16 326 |
+| records `ti=35` · desynchronises | 31 530 · **38 (0,12 %)** | 23 026 · **57 (0,25 %)** |
+| composant fautif | `i59` 25 · `i57` 13 | `i59` 42 · `i57` 15 |
+| duree couverte | 521,9 s | 1 203,7 s |
+| **`i29` accroupi** : lectures · slots | **848 · 69** | **23 704 · 187** |
+| dont booleen POSE | 179 (21,1 %) | 7 120 (30,0 %) |
+| dont progression > 0,5 | 196 (23,1 %) | 7 416 (31,3 %) |
+| cadence du slot le plus actif | 0,268 rec/s (slot 537) | 1,971 rec/s (slot 659) |
+| intervalles (progression > 0,5) | mediane **14,65 s** · p90 89,5 · max 163,6 | mediane **6,77 s** · p90 43,9 · max 230,5 |
+| **`i62` glissade** : lectures · porte ouverte | **787 · 155 (19,7 %)** | **21 011 · 6 151 (29,3 %)** |
+| intervalles de glissade | mediane **30,31 s** · p90 102,9 · max 155,5 | mediane **9,04 s** · p90 50,7 · max 278,0 |
+| **`i54` action de mobilite** : lectures · amorce posee | 4 451 · 1 079 (24,2 %) | 43 798 · 12 391 (28,3 %) |
+| **`i55` posture** : lectures · tags | 4 286 · 0:2 795 1:540 2:524 3:427 | 33 558 · 0:17 388 1:5 817 2:5 601 3:4 752 |
+| **`i18` tete** : lectures · porte posee | 6 804 · 1 964 (28,9 %) | — |
+| **`i1` vitesse** : lectures · dequantifiees | 10 239 · 3 291 | 59 942 · 16 787 |
+
+**CE QUE CES CHIFFRES DISENT, ET C EST LE FOND DU LOT** : l accroupi et la glissade sont LUS, par
+vie et a la milliseconde, sur les deux films. Les quatre tags de `i55` se distribuent comme une
+machine d etat (un tag dominant a 52 % et trois autres a 13-17 %), et la meme forme se retrouve
+sur les deux films — ce n est pas du bruit. Et `i54` porte son drapeau d amorce sur ~une lecture
+sur quatre, sur les deux films.
+
+**LA POPULATION DEPEND DU MODE, ET FORTEMENT** : un BTB a 24 joueurs rend **28 fois** plus de
+lectures d accroupi qu une arene a 8 (23 704 contre 848), et des intervalles deux fois plus
+courts. Une mesure faite sur un seul film d arene sous-estime donc massivement la matiere
+disponible.
+
+### 2sex-d.3 LES CINQ INSTANTS PAR ETAT, EN TEMPS DE BARRE THEATER
+
+Temps film depuis le premier paquet delta lu, `mm:ss`, un instant par episode (deux lectures a
+moins de deux secondes sur le meme slot ne comptent qu une fois).
+
+**`bfecd02b`** (Snowbound — le match de JGtm ; roster lu DANS le film : Tataaannn, JGtm,
+Chocoboflor, Draconewt, MEK1906, Madina97294, SHN Lups99, indahoopty8751) :
+
+| etat | cinq instants |
+|---|---|
+| **ACCROUPI** | 02:21 (slot 531) · 02:40 (slot 537) · 02:53 (slot 1112) · 02:54 (slot 907) · 03:30 (slot 531) |
+| **GLISSADE** | 00:56 (slot 907) · 01:14 (slot 907) · 01:23 (slot 907) · 02:54 (slot 907) · 02:57 (slot 1173) |
+| **ACTION DE MOBILITE** | 00:00 · 00:12 · 00:35 · 00:38 · 00:40 |
+| **MONTEE (candidat saut)** | 01:57 (slot 7807) · 02:00 (slot 530) · 02:15 (slot 531) · 02:57 (slot 1173) · 03:00 (slot 541) |
+
+**`4f77afc1`** (Flood Gulch, BTB 24 joueurs) :
+
+| etat | cinq instants |
+|---|---|
+| **ACCROUPI** | 01:56 (slot 521) · 01:56 (slot 530) · 02:05 (slot 521) · 02:12 (slot 521) · 02:13 (slot 5165) |
+| **GLISSADE** | 01:55 (slot 521) · 01:56 (slot 530) · 01:59 (slot 527) · 02:05 (slot 521) · 02:08 (slot 535) |
+| **ACTION DE MOBILITE** | 01:48 · 01:50 · 01:53 · 01:55 · 01:57 |
+| **MONTEE (candidat saut)** | 01:51 (slot 527) · 01:55 (slot 530) · 01:58 (slot 527) · 02:03 (slot 521) · 02:21 (slot 521) |
+
+**LES INSTANTS SONT NOMMES PAR SLOT, PAS PAR JOUEUR, ET C EST DIT** : le roster sort du film sans
+aucune base (`ReadPlayerTable` sur le `chunk_00`), mais le JOIN slot -> joueur demande le registre
+d identite (record de creation de bipede -> joueur), qui vit dans `killsource` et dans la cuisson
+du rejeu. Le faire ici aurait voulu dire recopier ce registre dans un instrument.
+
+**`i54` N A PAS DE SLOT** : son hook (`MobilityActionHook`, anterieur a ce lot) ne porte que ses
+deux drapeaux. Ses instants sont donc dates et non attribues. Un lot qui voudrait l attribuer
+n a qu a le faire passer par la porte de ce lot.
+
+### 2sex-d.4 LE NEGATIF : L ORACLE DE VITESSE N EST PAS UTILISABLE, ET LE SPRINT RESTE NON TRANCHE
+
+**MESURE, SUR LES DEUX FILMS** — vitesse au sol des records de BIPEDE, `DecodeVelocity` sur le
+chemin quantifie :
+
+| | `bfecd02b` | `4f77afc1` |
+|---|---|---|
+| lectures dequantifiees | 3 291 | 16 787 |
+| mediane | 13,31 m/s | 7,89 m/s |
+| p90 · max | 149,0 · 343,2 m/s | 139,1 · 346,9 m/s |
+| part a **>= 11 m/s** | **1 728 / 3 291 (52,5 %)** | **7 699 / 16 787 (45,9 %)** |
+
+**C EST IMPOSSIBLE POUR UN SPARTAN**, qui marche a ~4,5 m/s et sprinte a ~7. Un Spartan sur deux
+a plus de 11 m/s, et le maximum est celui d une balle (la loi du dequantificateur porte jusqu a
+350 m/s). **L ORACLE EST DONC REFUTE, PAS LE SPRINT** : soit la loi log/exp ne s applique pas a
+cette largeur sur le chemin delta, soit la lecture reste attribuee a tort. **LE SPRINT RESTE NON
+TRANCHE**, comme au § 2ter.6, et il le reste pour une raison MESUREE et non par defaut
+d instrument.
+
+**LA MEME PRUDENCE VAUT POUR LES « MONTEES »** : 28 a 32 % des lectures dequantifiees portent une
+composante verticale > 2 m/s, avec des valeurs jusqu a 178 m/s. Le CANDIDAT SAUT est donc lu,
+mais son seuil est un seuil d INSTRUMENT, et la meme incertitude de dequantification le porte.
+Les instants de montee ci-dessus sont a lire comme des candidats, pas comme des sauts etablis.
+
+### 2sex-d.5 UNE DECOUVERTE DE HARNAIS, CONSIGNEE
+
+**`decodeInferLoop` NE POSE PAS LE SLOT DE CAPTURE.** `decodeDelta` appelle
+`poserSlotDeCapture` ; la boucle d inference que `DecodeFrameViews` emploie ne le fait PAS pour un
+record NEW. Une valeur publiee depuis un record NEW herite donc du slot du record PRECEDENT, ou
+de zero au premier record du paquet. Mesure de l effet : sans filtre, le slot 0 portait a lui
+seul 3 035 des 7 947 lectures d accroupi de `bfecd02b`, et la vitesse « du bipede » montait a
+343 m/s parce qu elle venait de projectiles.
+
+**L INSTRUMENT S EN PROTEGE PAR UN FILTRE** (« ne garder que les lectures d un slot LIE au
+bipede »), qui ecarte 7 099 lectures d `i29`, 3 036 d `i62` et 19 886 d `i1` sur `bfecd02b`.
+**LA CORRECTION DE FOND EST UN LOT DE PRODUCTION** : elle touche l attribution des ECHANTILLONS
+DE POSITION du meme chemin, donc une sortie publiee. Consignee au § 6.
+
+---
+
 ## 3. LE NEGATIF, MESURE DEUX FOIS
 
 **(a) Sur l'archetype.** Les 64 composants de `ti=35` (`ecs_table.tsv`) : aucun nom ne contient
@@ -2026,3 +2159,30 @@ go test -tags=research -count=1 -v -run TestMouvementI55D1 \
   actions » du § 2.8 est refutee par les valeurs ; seul `+0x98` se comporte en discriminant, et
   son domaine varie d'un film a l'autre (3 valeurs contre 8). **NON TRAITEE** : nommer les
   classes demande de croiser `+0x98` avec la carte et le geste, ce qui est un lot en soi.
+
+- **D10 (5.3) — `marchViews = 8` CONTRE TROIS VUES CHEZ LE FRAME-PROCESSEUR.** `FUN_142987460`
+  deroule exactement trois boucles ; le depot en deroule huit. Mesure : 8 vues rapportent 7 000
+  records de plus mais degradent l etalon `i25` de 0,8 point et rendent 1 251 records `ti=35` de
+  MOINS ; 16 vues est indiscernable de 8. **NON TRAITEE** : reduire la constante est un lot de
+  production (empreintes gelees de `killsource` et de la marche des morts d objet).
+- **D11 (5.3) — 24 % DES PAQUETS A LISTE PLEINE NE SE LOCALISENT PAS.** `marchLocateStrict` en
+  localise 76 a 79 % ; le complement demande la grammaire de charge des types d evenement.
+  **NON TRAITEE** — c est le lot d evenements deja consigne.
+- **D12 (5.3) — LA TABLE D ENTITES EST CELLE DE LA VUE.** La garde du delta lit
+  `vue + 0x38 + slot*0xa0` ; le port tient UN monde pour les trois vues. **NON TRAITEE** :
+  approximation assumee, a lever seulement apres avoir mesure si un meme slot porte deux
+  archetypes selon la vue.
+- **D13 (5.3) — `decodeInferLoop` NE POSE PAS LE SLOT DE CAPTURE.** Une valeur publiee depuis un
+  record NEW herite du slot du record precedent, ou de zero au premier record du paquet. Sans
+  filtre, le slot 0 portait 3 035 des 7 947 lectures d `i29` de `bfecd02b`. **NON TRAITEE** :
+  c est un lot de PRODUCTION, le meme chemin attribuant les echantillons de position.
+- **D14 (5.3) — L ORACLE DE VITESSE EST REFUTE, ET AVEC LUI LA MESURE DU SPRINT.** Un bipede sur
+  deux a plus de 11 m/s et le maximum est 347 m/s. **NON TRAITEE**, et le SPRINT reste NON
+  TRANCHE pour une raison mesuree ; le remede est un oracle verifie contre les positions
+  successives d une meme vie.
+- **D15 (5.3) — L ETAPE `positions` DE L EQUIVALENCE A DERIVE SUR `bcb6d393` AVANT CE LOT.** Meme
+  sha avec la bascule de 5.3.3-a abaissee : l ecart vient de la base `5fd6f02c3`. **NON TRAITEE**
+  — le re-figeage est un geste du pilote.
+- **PORTER LES QUATRE ETIQUETTES ECRITES D `i59` (1, 4, 5, 6) ET LES DEUX SANS CHARGE (bruts 6
+  et 7).** Pre-requis dans l ordre au § 2quindecies.5. **NON TRAITEE** : 0,12 % des records de
+  bipede, contre un risque sur `grappleLines[]`.
