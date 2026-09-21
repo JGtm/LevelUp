@@ -107,11 +107,12 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] Doubles cadres restants : compare/CompareWeaponsRange, match-view/MatchKillDistanceSection, tactical/TacticalCoordinationCard
 - [x] Ordre d affichage des tiers decouple de l ordre de departage (`tierOfWeaponOf`)
 
-### Lot H — Explorer, rendus 1.A et 2.A horizontaux (worktree `LevelUp-wt-ajsup-h`)
-- [ ] Part des assistances : deux barres epaisses horizontales, echelle lineaire commune, tranches empilees avec comptes, trait de parite
-- [ ] Repartition des resultats : une barre epaisse horizontale empilee (compte + part ecrits), taux en chiffre d appel, bande des resultats
+### Lot H — Explorer, rendus 1.A et 2.A horizontaux (worktree `LevelUp-wt-ajsup-h`) — FUSIONNE 1176357a6
+- [x] Part des assistances : deux barres epaisses horizontales, echelle lineaire commune, tranches empilees avec comptes, trait de parite
+- [x] Repartition des resultats : une barre epaisse horizontale empilee (compte + part ecrits), taux en chiffre d appel, bande des resultats
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- H : `AssistExchangeSummary` (papillon log) reste sur le hub Relations (`RelationAssistsCards.tsx:45`) -> verdict utilisateur ; `assist_volume_max` n a plus de lecteur Explorer ; `ExplorerTargetSampleStats.tsx` a 399 L.
 - G : `explorer/ExplorerTargetFragRange.tsx:118` reecrit le chrome de SectionCard a la main ; alias courts de `deployedFamilyLabel` (`usageI18n.ts:507`) ne matchent aucune cle ; le hook go-vet de lefthook tourne sans CGO (60 lignes de bruit par commit).
 - G : libelle des colonnes de lacher = « Laches : Surbouclier » (forme neutre, genres mixtes des familles) -> verdict utilisateur.
 - E : la table persistee `match_pad_tiers` porte encore l ancienne regle (34 matchs sur 92 avec un ensemble de base faux dans les agregats Sessions/Escouade/Timeseries ; la Match view recalcule a la requete). Rattrapage existant `levelup backfill-pad-tiers` (rejoue `ProjeterNiveauxDArmes` sans recuisson) — DECISION utilisateur 2026-09-21 : OUI, a lancer en local A LA FIN du chantier (apres fusion de G et H) ; prevenir avant de le lancer en prod.
