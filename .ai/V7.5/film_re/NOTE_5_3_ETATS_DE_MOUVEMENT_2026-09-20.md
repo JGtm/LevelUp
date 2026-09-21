@@ -973,6 +973,66 @@ reviendrait a mesurer le gain sur une population de trames que le monde mutile e
 3. `ti=35 i60`, `i59`, `i57` (69 au total) — les gardiens des composants de mouvement, et la
    cible finale du lot 5.3.
 
+## 2 octies. ETAPE (1) — L AMORCAGE DU MONDE N EST PAS LA CAUSE, ET C EST MESURE
+
+> Lot de grammaire, etape (1). Deux corrections tentees, et une mesure qui les refute toutes
+> les deux. **Aucune largeur touchee, aucune perte.**
+
+### 2oct.1 LES DEUX CORRECTIONS TENTEES
+
+1. **Le monde persiste sur tout le film** (deja fait au 5.3.3.0) : 37,7 % -> 40,5 % de trames
+   saines.
+2. **Liaison par SLOT, generation neutralisee** : `BindWildcard` au lieu de `BindFull` pour
+   chaque entite d image-cle — la porte que `world.go` prevoit pour « une liaison slot ->
+   archetype dont la GENERATION est INCONNUE ». C est exactement la forme demandee (« la
+   liaison ne doit pas dependre d une marche propre »).
+
+**RESULTAT : AUCUN CHANGEMENT. Pas un chiffre ne bouge.** 25 958 paquets cadres, 10 512 trames
+saines (40,5 %), 12 316 rejets, 3 130 desyncs reelles, memes fautifs, meme etalon.
+
+### 2oct.2 CE QUE LA MESURE DE COUVERTURE DIT, ET POURQUOI ELLE TRANCHE
+
+Si la generation etait en cause, les slots rejetes seraient les memes que ceux vus dans les
+records sains. Mesure :
+
+| | valeur |
+|---|---|
+| slots DISTINCTS rejetes | **4 568** |
+| dont vus AUSSI dans un record sain | **28 (0,6 %)** |
+| slots les plus rejetes | 137 (102), 1041 (82), 2616 (63), 3933 (58), 5268 (54) — **tous inconnus** |
+
+**99,4 % des slots rejetes n apparaissent JAMAIS dans un record sain.** Ce ne sont donc ni des
+generations qui avancent, ni des entites que l amorcage aurait oubliees : **4 568 slots
+distincts, etales de 137 a 5 268, c est plus d entites que n en porte un match.** Ce sont des
+identifiants LUS DANS DU BRUIT.
+
+### 2oct.3 LA CONCLUSION, ET ELLE DEPLACE LE PROBLEME
+
+`DecodeFrameRecords` rend la main au PREMIER record en echec. Les 12 316 rejets sont donc
+12 316 paquets dont le **PREMIER** record echoue deja son test de generation — avec un slot qui
+n existe pas. **Le cadrage de ces paquets est faux des le premier bit de trame**, et tout ce
+qui suit est du bruit.
+
+**L amorcage du monde n est donc PAS la cause, et la cible « rejets < 1 000 » n est pas
+atteignable par lui.** Le vrai sujet est le CADRAGE : pourquoi, sur 60 % des paquets a liste
+d evenements vide, la trame ne commence-t-elle pas ou le preambule le dit ?
+
+Pistes que la mesure designe, aucune instruite ici :
+
+- le preambule vaut `DefaultPacketPreambleBits = 2` pour tous ces paquets ; `event_list.go`
+  dit que ces 2 bits sont `[config][continuation=0]` — le filtre `pay[0]&0x40 == 0` teste bien
+  le bit de continuation, mais rien ne garantit que le preambule soit de 2 bits pour TOUS ;
+- `bpkCalibre` (`biped_pickup_research_test.go`) BALAYE deja `IDLowBits` sur les paquets a
+  liste vide pour trouver la largeur qui maximise le taux de trames exactes : **le depot a
+  donc deja un instrument de calibration de cadrage**, et il faudrait le rejouer sur ce film
+  avant toute grammaire.
+
+### 2oct.4 AUCUNE PERTE, ET RIEN N EST TOUCHE
+
+Le seul octet modifie est dans un `_test.go` sous tag `research` (`BindFull` -> `BindWildcard`,
+plus la mesure de couverture). `grammar.Rev`, `facts.Rev`, le ratchet 0.A.3 et les fixtures
+sont inchanges par construction. Gates sans decodage verts.
+
 ---
 
 ## 3. LE NEGATIF, MESURE DEUX FOIS

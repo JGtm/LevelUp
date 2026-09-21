@@ -18,15 +18,14 @@ package grammar
 //
 // # LA LIMITE, ECRITE
 //
-// `DecodeFrameRecords` saute la liste d evenements : il ne cadre donc que les paquets dont la
-// liste est VIDE (bit de continuation a 0, soit `pay[0]&0x40 == 0`). Sur `bfecd02b` c est
-// 83,1 % des paquets. Les 16,9 % restants portent un evenement et ne sont PAS ventiles ici.
+// `DecodeFrameRecords` saute la liste d evenements : il ne cadre que les paquets dont la liste
+// est VIDE (`pay[0]&0x40 == 0`), soit 83,1 % des paquets de `bfecd02b`. Les 16,9 % restants
+// portent un evenement et ne sont PAS ventiles ici.
 //
 // # L ETALON, ET IL EST EXIGE AVANT TOUTE CONCLUSION
 //
-// `i21 unit-desired-aiming-vector` doit etre vu sur une large part des records : le depot le
-// dit lu par image. S il ne l est pas, l instrument est faux et le rapport le DIT au lieu de
-// publier une cadence.
+// `i21 unit-desired-aiming-vector` doit etre vu sur une large part des records (le depot le dit
+// lu par image). Sinon l instrument est faux, et le rapport le DIT au lieu de publier un chiffre.
 //
 //	MOUV532D_FILM=<repertoire de chunks> \
 //	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
@@ -61,6 +60,7 @@ type m532dEchec struct {
 	// grammaire : `DecodeFrameRecords` pose alors `EntityTrace{DesyncAt: 0}` SANS toucher
 	// `TypeIndex`. Confondre les deux fait passer un defaut de monde pour un composant fautif.
 	composants int
+	slot       uint32
 }
 
 // TestMouvement532Trame — LA VENTILATION ETALONNEE.
@@ -314,7 +314,7 @@ func m532dLire(t *testing.T, dir string) ([]m532Ech, []m532dEchec, m532dStat, *R
 				if n := len(recs); n > 0 {
 					last := recs[n-1]
 					echecs = append(echecs, m532dEchec{ti: last.TypeIndex, masque: last.Trace.Mask,
-						fautif: last.DesyncAt, composants: len(last.Trace.Comps)})
+						fautif: last.DesyncAt, composants: len(last.Trace.Comps), slot: last.Slot})
 				}
 				continue
 			}
@@ -340,7 +340,10 @@ func m532dLierMonde(w *World, data []byte, pks []FilmPacket) {
 			continue
 		}
 		for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
-			w.BindFull(uint32((r.Gen<<30)|r.Slot), uint32(r.TI)) //nolint:gosec // valeurs de registre
+			// LIAISON PAR SLOT, GENERATION NEUTRALISEE (`world.go` prevoit `BindWildcard` pour
+			// « une liaison dont la GENERATION est INCONNUE »). MESURE : ne deplace AUCUN
+			// chiffre — la cause des rejets est ailleurs (note 5.3, § 2 octies).
+			w.BindWildcard(uint32(r.Slot), uint32(r.TI)) //nolint:gosec // valeurs de registre
 		}
 	}
 }
@@ -403,6 +406,7 @@ func m532dHistoEchecs(t *testing.T, sains []m532Ech, echecs []m532dEchec, reg *R
 	}
 	t.Logf("ECHECS, VENTILES PAR NATURE : %d rejets de GENERATION (monde incomplet, aucun "+
 		"composant lu) · %d desynchronisations REELLES de grammaire", rejets, len(reels))
+	m532dCouvertureMonde(t, echecs, sains)
 	echecs = reels
 	t.Logf("ECHECS : %d records desynchronises, dont %d de ti=35 (%.1f %%)",
 		len(echecs), len(ech35), m532Pct(len(ech35), len(echecs)))
