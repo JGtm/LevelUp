@@ -114,7 +114,11 @@ var plafondsParFichier = map[string]int{
 	// v64 (`zoneStates[].gaugeRamps` et son `capturingTeam`, le seuil d aboutissement mesure, la
 	// forme ECARTEE — un champ sur `GaugePoint`, type partage avec la jauge de retour du drapeau —
 	// et l archetype `zones` ti=23 qui reste non cable).
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1825,
+	// SCHEMA 64 -> 65 (2026-09-21, post-chantier lot 5.3.6) : 1825 -> 1863, l entree de chronique
+	// v65 (`stances[]`, ses trois genres, la marche qui les lit, et les DEUX negatifs mesures qui
+	// expliquent pourquoi le sprint et le saut n y sont pas). Exception ecrite, dans le commit qui
+	// monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1863,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -151,7 +155,10 @@ var plafondsParFichier = map[string]int{
 	// qui monte `SchemaVersion`.
 	// SCHEMA 63 -> 64 (2026-09-20, lot 5.2-A) : 1200 -> 1215, la justification que
 	// `TestStructureIsOptionalInDocument` exige avant d accepter la montee.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1215,
+	// SCHEMA 64 -> 65 (2026-09-21, post-chantier lot 5.3.6) : 1215 -> 1221, la justification que
+	// `TestStructureIsOptionalInDocument` exige avant d accepter la montee. Exception ecrite,
+	// meme commit que `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1221,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

@@ -172,6 +172,22 @@ func (a *assemblage) poserEpisodesDEquipement() {
 	// Les FRAGS SOUS EFFET ACTIF : jointure des episodes avec les kills resolus par
 	// l'appelant (cf. equipment_episode_kills.go). AVANT la couverture, qui publie
 	// killsRead a cote des compteurs.
+	// LES ETATS DE MOUVEMENT (schema 65) : le MEME pliage d intervalles que les episodes
+	// ci-dessus — memes fenetres de vie, meme cloture a la mort — sur les transitions lues
+	// d `i29`, `i62` et `i54`. Rien de devine : le SPRINT est refute et le SAUT n est pas
+	// prouve (cf. `document_stances.go`).
+	a.doc.Stances, a.stanceCov = buildStances(stanceInputs{
+		reads: a.opt.MovementStates, stats: a.opt.MovementStateStats,
+		origin: a.origin, step: a.step, tracks: a.doc.Tracks,
+		closedByDeath: a.clotureesParMort,
+	})
+	slog.Info("rejeu : etats de mouvement",
+		"balaye", a.stanceCov.Scanned, "absent", a.stanceCov.Absent,
+		"records", a.stanceCov.Records, "desyncs", a.stanceCov.Desyncs,
+		"lectures", a.stanceCov.Reads, "intervalles", a.stanceCov.Intervals,
+		"parGenre", a.stanceCov.ByKind, "vies", a.stanceCov.Lives,
+		"viesPubliees", a.stanceCov.TracksTotal, "ecartees", a.stanceCov.Dropped,
+		"largeursCarte", a.stanceCov.MapWidths)
 	a.killsRead = attachAllEquipmentKills(a.doc.EquipmentEpisodes, a.opt.Kills, occupantParFrame(a.reg, replayClock{origin: a.origin, step: a.step, fb: a.opt.Fallbacks}), a.doc.OriginMs, a.interval)
 }
 
@@ -188,6 +204,8 @@ func (a *assemblage) composerLaCouverture() {
 	// CE QUE LE FILM DIT DES EQUIPES, et ce que la base en pense (lot 1.7) : mesure faite
 	// ci-dessus, posee ici.
 	a.doc.Coverage.Teams = &a.teamCov
+	// LES ETATS DE MOUVEMENT (schema 65) : mesure faite au pliage des pistes, posee ici.
+	a.doc.Coverage.Stances = &a.stanceCov
 	// CE QUE LA POSE DES SIEGES A LU ET APPARIE (lot 1.9.14) : mesure faite ci-dessus, posee ici.
 	a.doc.Coverage.Seats = &a.siegeCov
 	// La version du film est une DIMENSION du décodage : elle voyage avec l'artefact plutôt que

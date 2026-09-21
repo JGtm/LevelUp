@@ -106,6 +106,8 @@ var formesFigees = []typeDeContrat{
 	{"grammar", types.InventoryDelta{}},
 	{"grammar", types.InventoryDeltaAmmo{}},
 	{"grammar", types.KeyframeLoadout{}},
+	{"grammar", types.MovementStateRead{}},
+	{"grammar", types.MovementStateStats{}},
 	{"grammar", types.NavpointRadialRead{}},
 	{"grammar", types.ObjectDeath{}},
 	{"grammar", types.PlayerSlot{}},

@@ -45,7 +45,7 @@ package replay
 // donc aux deux : le retrait de ces notes-ci a fait disparaitre la seule description de la v51,
 // restauree a la chronique le meme jour. Une entree de chronique se pose DANS LE COMMIT qui
 // monte la version, jamais apres.
-const SchemaVersion = 64
+const SchemaVersion = 65
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -163,6 +163,20 @@ type ReplayDocument struct {
 	// seulement sont mesurées — les autres équipements restent sans état plutôt que
 	// devinés. Absent si aucune vie publiée ne porte d'épisode.
 	EquipmentEpisodes []EquipmentEpisode `json:"equipmentEpisodes,omitempty"`
+	// Stances est l'ETAT DE MOUVEMENT du Spartan, en intervalles datés par vie (schéma 65,
+	// cf. document_stances.go) : `crouch` (accroupi, `i29`), `slide` (glissade, `i62`) et
+	// `mobility` (action de mobilité, `i54`).
+	//
+	// TROIS GENRES SEULEMENT, PARCE QUE TROIS SEULEMENT SONT LUS. Le SPRINT est RÉFUTÉ comme
+	// observable par la vitesse (la loi de déquantification d'`i1` est exacte — écrivain relu,
+	// constantes relues — et la distribution au sol n'a qu'un seul mode, à 2-3 m/s sur deux
+	// films) ; le SAUT est LU mais PAS PROUVÉ (sa segmentation repose sur deux seuils
+	// d'instrument, et la signature ne tient pas d'un film à l'autre). Publier l'un des deux
+	// publierait un seuil comme une donnée. Chiffres : note 5.3, § 2septdecies.
+	//
+	// ABSENT si aucune vie publiée ne porte d'intervalle — `coverage.stances` dit alors si le
+	// balayage a tourné (`scanned`) et si le film déclare les composants (`absent`).
+	Stances []Stance `json:"stances,omitempty"`
 	// GrappleLines est la liste des TRACTIONS de grappin (cf. grapple_lines.go) : la
 	// fenêtre datée [t0, t1] — du tir à l'ARRIVÉE mesurée sur la trajectoire — et le point
 	// d'accroche en coordonnées monde. La position du joueur pendant la fenêtre est celle

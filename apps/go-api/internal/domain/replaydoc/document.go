@@ -32,6 +32,7 @@ type ReplayDocument struct {
 	GrenadeReads        []GrenadeRead           `json:"grenadeReads,omitempty"`
 	AbilityLabels       map[string]Label        `json:"abilityLabels,omitempty"`
 	EquipmentEpisodes   []EquipmentEpisode      `json:"equipmentEpisodes,omitempty"`
+	Stances             []Stance                `json:"stances,omitempty"`
 	GrappleLines        []GrappleLine           `json:"grappleLines,omitempty"`
 	EquipmentPlacements []EquipmentPlacement    `json:"equipmentPlacements,omitempty"`
 	WeaponChanges       []WeaponChange          `json:"weaponChanges,omitempty"`

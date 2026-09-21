@@ -169,6 +169,7 @@ export type ReplayDocumentReady = Omit<
   | 'equipmentChanges'
   | 'equipmentEpisodes'
   | 'equipmentPlacements'
+  | 'stances'
   | 'flagCarries'
   | 'geometry'
   | 'grappleLines'
@@ -282,6 +283,14 @@ export type ReplayDocumentReady = Omit<
   equipmentChanges: NonNullable<ReplayDocument['equipmentChanges']>
   equipmentEpisodes: NonNullable<ReplayDocument['equipmentEpisodes']>
   equipmentPlacements: NonNullable<ReplayDocument['equipmentPlacements']>
+  /**
+   * LES ÉTATS DE MOUVEMENT DU SPARTAN (schéma 65) : un intervalle par (vie, genre) sur l'axe de
+   * frames — `crouch` (accroupi), `slide` (glissade), `mobility` (action de mobilité). Vide =
+   * artefact antérieur au schéma 65, ou film dont aucune vie publiée ne porte de transition ;
+   * `coverage.stances` distingue les deux. TROIS GENRES SEULEMENT, et c'est mesuré : le sprint
+   * est réfuté comme observable par la vitesse, le saut est lu mais pas prouvé (lot 5.3.5).
+   */
+  stances: NonNullable<ReplayDocument['stances']>
   flagCarries: ReplayFlagCarryReady[]
   /**
    * LES ARMES AU SOL individuelles (schéma 27) : une entrée par objet qui a BOUGÉ, avec sa

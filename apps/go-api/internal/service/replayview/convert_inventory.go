@@ -99,6 +99,11 @@ func toEquipmentEpisode(v replay.EquipmentEpisode) replaydoc.EquipmentEpisode {
 	}
 }
 
+// toStance convertit UN intervalle d'état de mouvement (schéma 65).
+func toStance(v replay.Stance) replaydoc.Stance {
+	return replaydoc.Stance{Slot: v.Slot, Kind: v.Kind, T0: v.T0, T1: v.T1}
+}
+
 func toEquipmentPlacement(v replay.EquipmentPlacement) replaydoc.EquipmentPlacement {
 	return replaydoc.EquipmentPlacement{
 		T0:       v.T0,

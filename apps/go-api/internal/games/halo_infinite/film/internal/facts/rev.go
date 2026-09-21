@@ -461,7 +461,21 @@ package facts
 //
 // `SchemaVersion` NE MONTE PAS : aucun champ neuf au document, et aucun octet cuit ne change.
 
-const Rev = "killsource-2026-09-21"
+// ENTREE `killsource-2026-09-21.2` (2026-09-21, lot 5.3.6) : LA REVISION MONTE DERRIERE UN
+// BALAYAGE NEUF DE LA COUCHE GRAMMAIRE.
+//
+// AUCUN OCTET DE `facts/` N EST TOUCHE. `grammar.Rev` passe a `grammar-2026-09-21.2` : la couche
+// rend une valeur de plus — les ETATS DE MOUVEMENT du Spartan (accroupi, glissade, action de
+// mobilite), publies en `stances[]` au schema 65. Cette constante hache la VALEUR de la revision
+// de grammaire : elle monte, et les lignes de `match_kill_events` anterieures deviennent
+// candidates au backlog de redecodage (D6, SUR SIGNAL UTILISATEUR, jamais automatiquement).
+//
+// CE QUE CE BACKLOG RAPPORTERAIT POUR LE KILL-FEED : rien de neuf. Le calque des etats est
+// ADDITIF — un balayage de plus, sur un canal que le kill-feed ne lit pas. C est le CONTENU CUIT
+// qui change (`SchemaVersion` 64 -> 65), et c est `backfill-replay` qui le re-cuit, pas ce
+// backlog-ci.
+
+const Rev = "killsource-2026-09-21.2"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/facts_rev.golden` porte le couple (revision, empreinte) avec son historique, et

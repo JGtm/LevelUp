@@ -2151,6 +2151,121 @@ un repli compte). Report au § 6.
 
 ---
 
+## 2 duodevicies. LE PORT AU DOCUMENT (5.3.6) — `stances[]`, SCHEMA 65, ET TROIS GENRES SEULEMENT
+
+> Point (2) de la reprise du 2026-09-21, sur DECISION UTILISATEUR. Le calque est livre ; le sprint
+> et le saut n y sont pas, et c est une mesure (§ 2septdecies).
+
+### 2duodev.1 LA FORME PUBLIEE
+
+`stances[]` — UN INTERVALLE PAR (VIE, GENRE) : `{slot, kind, t0, t1}`, sur le meme axe que
+`Point.T`. Trois genres, et ce sont les seuls que le film ECRIT :
+
+| genre | composant | ce qui est lu |
+|---|---|---|
+| `crouch` | `ti=35 i29 unit-crouch-component` | le booleen d accroupissement (+ la progression R(10), lue et gardee dans la lecture) |
+| `slide` | `ti=35 i62 biped-slide-component` | la porte de tete du composant |
+| `mobility` | `ti=35 i54 biped-mobility-action-component` | le drapeau d amorce |
+
+**PAS DE `players[].stances[]`, ET C EST DELIBERE** : le document n a pas de `players[]` — chaque
+calque par vie est un tableau RACINE keye par slot (`equipmentEpisodes`, `grappleLines`,
+`groundWeapons`...). La granularite demandee (par vie/slot) est celle-la ; s en ecarter aurait
+cree une seconde forme pour la meme chose.
+
+`coverage.stances` publie les denominateurs : `scanned`, `absent`, `records`, `desyncs`, `reads`,
+`intervals`, `byKind`, `lives`, `tracksTotal`, `dropped`, `eventPacketsUnlocated`, `mapWidths`.
+
+### 2duodev.2 LE CHEMIN COMPLET, ET LE CHOIX DE MARCHE QUI LE REND POSSIBLE
+
+```
+grammar.ScanMovementStates   (movement_states.go, marche du FRAME-PROCESSEUR, 3 vues)
+    -> types.MovementStateRead[]           (les TRANSITIONS, datees, par vie)
+    -> FilmInputs.MovementStates           (l etage de balayage, etape `movementStates`)
+    -> codec des faits REPLAYINPUTS24      (les fixtures d entrees les portent)
+    -> Options.MovementStates              (applyTo)
+    -> replay.buildStances                 (document_stances.go, le PLIEUR d `episodeAccum`)
+    -> doc.Stances + doc.Coverage.Stances   (schema 65)
+    -> replaydoc.Stance / StanceCoverage    (jumeaux stocke/servi + parite)
+    -> zod + ReplayDocumentReady            (frontiere web)
+    -> fiche du joueur                      (un mot, FR/EN)
+```
+
+**LE BALAYAGE N EMPLOIE PAS LA MARCHE DES AUTRES CANAUX DE CAPACITE, ET C EST MESURE.** Celle-la
+(`walkDeltaBipedRecords`) est un CHERCHEUR D ANCRES : la sonde de production la joue sur
+`bfecd02b` et elle annonce `i29` **ZERO** fois et `i62` **UNE** fois sur **162 444** records —
+exactement le defaut que le lot 5.3.2 avait constate, parce qu elle ne retient que la population
+pauvre `{i0,i1,i21,i25}`. La marche du frame-processeur (`DecodeFrameViews`, trois vues) en rend
+**97 447** records `ti=35` dont **3** desynchronises.
+
+**LE PLIEUR D INTERVALLES N EST PAS RECOPIE** (regle 6) : `episodeAccum` d
+`equipment_episodes.go` est employe TEL QUEL — memes fenetres de vie, meme cloture a la mort,
+meme bornage — et sa sortie convertie. Une seconde machine a etats aurait diverge de la premiere.
+
+### 2duodev.3 CE QUE LE BALAYAGE DE PRODUCTION MESURE (`bfecd02b`, Snowbound)
+
+| | mesure |
+|---|---|
+| records `ti=35` · desynchronises | **97 447 · 3** |
+| lectures RETENUES | **7 941** — `crouch` 2 490 (495 posees, 19,9 %) · `mobility` 2 964 (758, 25,6 %) · `slide` 2 487 (386, 15,5 %) |
+| slots distincts | **101** |
+| paquets decodes | 29 308, dont 5 274 a liste d evenements (3 350 localises, **1 924 non localises**) |
+| lectures ECARTEES (slot non lie au bipede) | 7 849 |
+| doublons dedupliques (re-parcours du chemin d inference) | 2 563 |
+| largeurs d axe employees | **[15 15 17]** — celles de la carte, publiees dans la couverture |
+
+**LES DEUX COMPTEURS D ECART SONT PUBLIES, ET C EST LE POINT** : `dropped` (7 849) dit le prix de
+l attribution partielle du chemin d inference (D13), `eventPacketsUnlocated` (1 924) la part du
+film que la signature ne localise pas. Sans eux, « 7 941 lectures » ne se jugerait pas.
+
+### 2duodev.4 LA CHECKLIST DE MONTEE DE SCHEMA, ITEM PAR ITEM
+
+| item | etat |
+|---|---|
+| `SchemaVersion` 64 -> 65 | fait |
+| chronique `document_chronicle.go` v65 | fait (ce qui monte, ce qui ne monte pas, les deux negatifs) |
+| `structure_test.go` : la raison ecrite + la garde | fait |
+| `document_shape.golden` | refige (empreinte `9f8aa1d5`, schema 65) |
+| jumeaux `replaydoc` / `replayview` + parite | faits (`Stance`, `StanceCoverage`, deux convertisseurs ; `byKind` RECOPIEE) |
+| plafonds justifies | `document_chronicle.go` 1825 -> 1863 et `structure_test.go` 1215 -> 1221 (exception ECRITE, meme commit que `SchemaVersion`) ; `film_scan.go` 504 -> 472 par DEPLACEMENT PUR (`film_scan_mouvement.go`) |
+| surface citee hors decodeur | 260 -> **262** avec sa justification datee (`replay.Stance`, `replay.StanceCoverage`) |
+| `layers` | un calque `stances` sous `grammar.Rev` |
+| codec des faits | `REPLAYINPUTS23` -> **`REPLAYINPUTS24`**, chronique v24 ; 8 fixtures d entrees refigees PAR LEUR PORTE (re-decodage des 8 films) |
+| goldens d assemblage | 8 refiges |
+| fixtures de contrat | 8 renommees `replay_schema_65_*` + manifeste ; les 8 de la v64 supprimees ; 2 717 376 o sur un plafond de 3 145 728 |
+| formes de `film/types` | `MovementStateRead` et `MovementStateStats` inscrites dans `formesFigees`, golden refige |
+| contrat | `wantReplayDocumentFields` 60 -> **61** + son entree de chronique ; `stances` decrit des DEUX cotes |
+| zod web + frontiere | `replayDocumentSchema`, `replayNormalize`, `replayReadyTypes`, et les deux listes de tableaux nullables (`stances`, `coverage.stances.mapWidths`) |
+| OpenAPI **EN DERNIER** + `make generate-types` | faits, dans cet ordre |
+| web MINIMAL | un mot sur la ligne du nom de la fiche, FR/EN, `text-muted-foreground` (token semantique) |
+
+**LE LIBELLE DE `mobility` EST « ACTION », PAS « ESCALADE »** : le film transmet qu une action de
+mobilite est AMORCEE, il ne dit pas LAQUELLE — l enum a trois candidats et le domaine mesure de
+ses champs contredit l hypothese a quatre valeurs (§ 2.8 et D9). Nommer « Escalade » aurait ete
+choisir a la place de la mesure. FR/EN : `Accroupi`/`Crouched`, `Glissade`/`Slide`,
+`Action`/`Action`.
+
+### 2duodev.5 LE GATE DE DECODAGE, ET CE QU IL A DIT
+
+`replay-equiv -films bcb6d393`, cache de faits vide a chaque passe. **Avant re-figeage** : ECART
+sur 13 etapes sur 57 — et la lecture est nette :
+
+- **2 etapes NEUVES** (`movementStates`, `movementStates.stats`), inserees entre `bombReads` et
+  `grenades` ;
+- **9 etapes DECALEES D UN RANG** : chacune lit les valeurs attendues de sa voisine precedente
+  (`grenades` obtient le sha de `movementStates`, `projectiles` celui de
+  `movementStates.stats`...). Decalage POSITIONNEL pur, pas une regression ;
+- `positions` : l ecart **PRE-EXISTANT** (D15), au sha IDENTIQUE a celui mesure au lot 5.3.3-a
+  bascule abaissee ;
+- `killsource` : le sha du profil calibre, deja constate au lot 5.3.3-a ;
+- `artifact` : **attendu** — le document monte au schema 65.
+
+**APRES RE-FIGEAGE de ce seul film** : `1 identique, 0 different`, et la passe suivante le
+confirme (`identique`). Le re-figeage des **19 autres** films reste le geste du pilote a la fin
+du chantier — leur reference est structurellement perimee par les deux etapes neuves, pas par une
+regression.
+
+---
+
 ## 3. LE NEGATIF, MESURE DEUX FOIS
 
 **(a) Sur l'archetype.** Les 64 composants de `ti=35` (`ecs_table.tsv`) : aucun nom ne contient

@@ -96,6 +96,15 @@ type Options struct {
 	// indistinguable d'un film ou personne ne s'est servi de son propulseur.
 	AbilityImpulses     []types.AbilityImpulse
 	AbilityImpulseStats types.AbilityImpulseStats
+	// MovementStates / MovementStateStats : les ETATS DE MOUVEMENT a l'instant — accroupi
+	// (i29), glissade (i62), action de mobilite (i54). Entree de DONNEES, comme les impulsions.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent `Absent` (le film
+	// ne declare aucun des trois composants), `Scanned` (le balayage a tourne) et `MapWidths`
+	// (le triplet de largeurs employe — le pre-requis le plus facile a oublier). Une liste vide
+	// sans eux serait indistinguable d'un film ou personne ne s'accroupit.
+	MovementStates     []types.MovementStateRead
+	MovementStateStats types.MovementStateStats
 	// AbilityCharges / AbilityChargeStats : les CHARGES RESTANTES lues sur les emplacements
 	// ARMES du composant i56 (cf. filmdec/ability_charges.go). Entree de DONNEES, comme
 	// AbilityImpulses — meme canal d'identite (i48), autre grandeur.

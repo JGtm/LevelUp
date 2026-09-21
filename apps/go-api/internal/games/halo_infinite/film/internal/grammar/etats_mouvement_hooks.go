@@ -81,8 +81,16 @@ const (
 	// candidat du SAUT, et la norme de ses deux composantes horizontales la vitesse au sol —
 	// celle ou un sprint ferait une seconde bosse.
 	EtatVitesse
+	// EtatMobilite : `ti=35 i54 biped-mobility-action-component` (FUN_1408f0264). Valeurs,
+	// TOUJOURS deux :
+	//   [0] le drapeau d AMORCE (R(1)) — « une action est transmise a cet instant » ;
+	//   [1] le second drapeau (R(1)).
+	// LE HOOK HISTORIQUE (`MobilityActionHook`) RESTE, et il publie les memes deux drapeaux :
+	// ses appelants (le balayage des capacites) n ont pas besoin du slot. Cette porte-ci
+	// l ajoute, et c est la seule raison de son existence — un intervalle par VIE l exige.
+	EtatMobilite
 	// EtatMouvementCount est le nombre de composants publies.
-	EtatMouvementCount = 5
+	EtatMouvementCount = 6
 )
 
 // String rend l etiquette de registre du composant d etat.
@@ -98,6 +106,8 @@ func (c EtatMouvementComposant) String() string {
 		return compUnitControl
 	case EtatVitesse:
 		return "object-translational-velocity-component"
+	case EtatMobilite:
+		return "biped-mobility-action-component"
 	}
 	return fmt.Sprintf("etat de mouvement inconnu (%d)", int(c))
 }

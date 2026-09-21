@@ -172,7 +172,18 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           etant deja cite par le meme convertisseur.
 //	                                           RE-MESURE A L ENTREE du lot : 259 sur `65e5c0731`,
 //	                                           260 apres.
-const plafondSurfaceReplay = 260 // 2026-09-20 — base 65e5c0731 + montee 64 (replay.ZoneGaugeRamp)
+//	262  5.3.6   (2026-09-21)                  la montee de schema 65 : `replay.Stance` et
+//	                                           `replay.StanceCoverage`, l intervalle d etat de
+//	                                           mouvement et sa couverture, cites par les deux
+//	                                           convertisseurs jumeaux
+//	                                           `service/replayview/convert_inventory.go` et
+//	                                           `convert_coverage.go`. DEUX symboles neufs — le
+//	                                           champ `Stances` du document et celui de `Coverage`
+//	                                           n en ajoutent aucun, `replay.ReplayDocument` et
+//	                                           `replay.Coverage` etant deja cites.
+//	                                           RE-MESURE A L ENTREE du lot : 260 sur `0fc6a3349`,
+//	                                           262 apres.
+const plafondSurfaceReplay = 262 // 2026-09-21 — base 0fc6a3349 + montee 65 (replay.Stance, replay.StanceCoverage)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

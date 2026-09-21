@@ -386,3 +386,25 @@ package grammar
 // `killsource-2026-09-21`. Le backlog de redecodage reste un geste de production sur signal
 // utilisateur (D6), et cette entree-ci dit ce qu il rapporterait : rien sur le kill-feed.
 // `SchemaVersion` NE MONTE PAS : aucun champ neuf, et aucun octet cuit ne change.
+
+// ENTREE `grammar-2026-09-21.2` (2026-09-21, lot 5.3.6) : UN BALAYAGE NEUF — LES ETATS DE
+// MOUVEMENT SORTENT DE LA COUCHE.
+//
+// AUCUN BIT N EST LU AUTREMENT, mais la couche RESPIRE une valeur de plus :
+// `ScanMovementStates` (`movement_states.go`) rend les TRANSITIONS d etat du Spartan — accroupi
+// `i29`, glissade `i62`, action de mobilite `i54` — par vie et par instant. Le document les
+// publie en intervalles (`stances[]`, schema 65), donc la SORTIE de la couche change et la
+// revision monte par valeur, pas seulement par empreinte.
+//
+// LA MARCHE EST CELLE DU FRAME-PROCESSEUR, ET C EST UNE DECISION MESUREE : la marche par
+// chercheur d ancres des autres balayages de capacite annonce `i29` ZERO fois sur 162 444
+// records de `bfecd02b`. `DecodeFrameViews` sur TROIS vues (ce que `FUN_142987460` deroule), les
+// paquets a liste d evenements localises par `marchLocateStrict`, en rend 97 447 records `ti=35`
+// dont 3 desynchronises et 7 941 lectures retenues.
+//
+// `i54` GAGNE UNE SECONDE PORTE DE PUBLICATION : son hook historique ne porte pas le slot, et un
+// intervalle par VIE l exige. Les deux publient les MEMES deux drapeaux.
+//
+// `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.2`.
+// `replay.SchemaVersion` MONTE a 65 — le document porte un calque neuf —, et le codec des faits
+// passe a `REPLAYINPUTS24` pour que les lectures voyagent avec les fixtures d entrees.

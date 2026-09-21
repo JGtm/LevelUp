@@ -11630,6 +11630,8 @@ components:
           $ref: '#/components/schemas/LayerCoverage'
         skullCarries:
           $ref: '#/components/schemas/SkullCarriesCoverage'
+        stances:
+          $ref: '#/components/schemas/StanceCoverage'
         t0Film:
           $ref: '#/components/schemas/T0FilmCoverage'
         teams:
@@ -22606,6 +22608,12 @@ components:
           type:
             - array
             - "null"
+        stances:
+          items:
+            $ref: '#/components/schemas/Stance'
+          type:
+            - array
+            - "null"
         structure:
           items:
             $ref: '#/components/schemas/Surface'
@@ -26446,6 +26454,82 @@ components:
       required:
         - players
         - bars
+      type: object
+    Stance:
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+      required:
+        - slot
+        - kind
+        - t0
+        - t1
+      type: object
+    StanceCoverage:
+      additionalProperties: false
+      properties:
+        absent:
+          type: boolean
+        byKind:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+        desyncs:
+          format: int64
+          type: integer
+        dropped:
+          format: int64
+          type: integer
+        eventPacketsUnlocated:
+          format: int64
+          type: integer
+        intervals:
+          format: int64
+          type: integer
+        lives:
+          format: int64
+          type: integer
+        mapWidths:
+          items:
+            format: int64
+            minimum: 0
+            type: integer
+          maxItems: 3
+          minItems: 3
+          type:
+            - array
+            - "null"
+        reads:
+          format: int64
+          type: integer
+        records:
+          format: int64
+          type: integer
+        scanned:
+          type: boolean
+        tracksTotal:
+          format: int64
+          type: integer
+      required:
+        - scanned
+        - records
+        - desyncs
+        - reads
+        - intervals
+        - lives
+        - tracksTotal
       type: object
     StartCampaignRequest:
       additionalProperties: false

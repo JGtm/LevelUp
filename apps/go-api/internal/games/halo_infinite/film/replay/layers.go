@@ -158,6 +158,7 @@ var couchesDesCalques = map[string]string{
 	"objectiveObjects":    grammar.Rev, // build_objective_objects.go <- FilmInputs.Pads.Weapons SEUL : son en-tete mesure « aucune lecture de film ajoutee », ni statborg ni morts
 	"vehicles":            grammar.Rev, // build_vehicles.go <- FilmInputs.Vehicles
 	"vehicleCycles":       grammar.Rev, // vehicle_cycles.go <- `doc.Vehicles` SEUL : une couche d ANALYSE sur les vies deja publiees, donc la MEME revision que le calque dont elle derive
+	"stances":             grammar.Rev, // document_stances.go <- FilmInputs.MovementStates (i29/i62/i54, lot 5.3.6)
 	"zoneStates":          grammar.Rev, // build_zones.go <- FilmInputs.ZoneReads (le catalogue de zones vient de l appelant, il ne decode rien)
 
 	// --- LES FAITS (`facts.Rev`, orthographiee `killsource-...`) : les calques dont les lignes

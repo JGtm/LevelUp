@@ -6453,8 +6453,55 @@ ont conclu "aucun evenement de zoom" a cause d un decalage d UN bit ») et celle
   est REFUTE** — un bipede sur deux a plus de 11 m/s et le max est 347 m/s, donc le SPRINT reste
   NON TRANCHE pour une raison mesuree. `grammar.Rev` inchangee, golden refige a revision egale ;
   litteral `unit-control-component` centralise (`compUnitControl`, regle 6).
-- [ ] **5.3.3 — le port** (CONDITIONNEL : seulement si 5.3.2 prouve ; **LA MATIERE EST PROUVEE ET
-  MESUREE PAR 5.3.4 — LA DECISION D OUVRIR CE PORT APPARTIENT A L UTILISATEUR**). Intervalles d'état par
+- [x] **5.3.5 — LA LOI DE `i1` ETAIT EXACTE, ET L INSTRUMENT LISAIT LA CARTE D A COTE**
+  (2026-09-21, `0fc6a3349`). Ecrivain relu (`FUN_14076d45c` -> `FUN_14076d4d0` -> `FUN_14076d528`
+  -> `FUN_14076d6dc`) et constantes relues dans le binaire (`0.03`, `350.0`, `1.0`, `0.5`) :
+  `DecodeVelocityMagnitude` transcrit la loi TERME POUR TERME, l ordre direction-puis-scalaire est
+  le bon, la polarite de la porte l est aussi. **LA CAUSE ETAIT AILLEURS** : les LARGEURS D AXE DE
+  LA CARTE n etaient pas installees sur le contexte (l installateur de `replay` est un geste
+  SEPARE de `NewFilmContextForMap`), donc `i0` lisait ses axes aux largeurs de `cliffhanger` sur
+  un film de `snowbound` — cinq bits de trop par record. Effet : records `ti=35` 31 530 ->
+  **97 447**, desyncs 38 -> **3** (et `i57` ZERO), etalon `i0` 63,3 -> **85,5 %**, lectures `i1`
+  x18,5. **ORACLE INDEPENDANT** (deplacement de la meme vie / vitesse decodee, aucune unite
+  supposee) : dispersion p90/p10 **1,7** sur `bfecd02b` et **2,3** sur `4f77afc1`, MEME facteur
+  d unite (0,240 et 0,236) — la vitesse est lue juste. **SPRINT REFUTE** comme observable par la
+  vitesse : mediane 2,26 et 2,27 m/s, UN SEUL mode a 2-3 m/s (61,3 % et 56,1 %), 0,08 % au-dela
+  de 4 m/s. **SAUT NON PROUVE** : pic median sous 1 m/s, et a pic >= 3 m/s la duree mediane vaut
+  0,632 s sur un film contre 1,567 s sur l autre — la signature ne tient pas. Zero octet de
+  production.
+- [x] **5.3.6 — LE PORT AU DOCUMENT : `stances[]`, SCHEMA 65** (2026-09-21, sur DECISION
+  UTILISATEUR). Un intervalle par (vie, genre) — `{slot, kind, t0, t1}` — pour `crouch` (`i29`),
+  `slide` (`i62`) et `mobility` (`i54`). **PAS DE `players[]` DANS LE DOCUMENT** : tous les calques
+  par vie sont des tableaux RACINE keyes par slot, et la granularite demandee est celle-la.
+  **LE BALAYAGE EMPLOIE LA MARCHE DU FRAME-PROCESSEUR** (`DecodeFrameViews`, TROIS vues) et non
+  celle des autres canaux de capacite : la sonde de production mesure que celle-la annonce `i29`
+  **zero** fois sur 162 444 records (chercheur d ancres). **LE PLIEUR N EST PAS RECOPIE** :
+  `episodeAccum` d `equipment_episodes.go`, employe tel quel (regle 6).
+  MESURE (`bfecd02b`) : 97 447 records `ti=35` dont 3 desynchronises, **7 941 lectures** sur
+  **101 slots** — crouch 2 490 (495 posees), mobility 2 964 (758), slide 2 487 (386) ; 7 849
+  lectures ecartees (slot non lie) et 1 924 paquets a evenements non localises, **tous deux
+  publies a la couverture**.
+  **SPRINT ET SAUT N Y SONT PAS** (5.3.5) : publier l un des deux publierait un seuil comme une
+  donnee. Le libelle de `mobility` est « Action » / « Action », pas « Escalade » — le film dit
+  qu une action est amorcee, pas laquelle (D9).
+  CHECKLIST TENUE : chronique v65 · `structure_test` (raison + garde) · `document_shape.golden` ·
+  jumeaux `replaydoc`/`replayview` + parite · plafonds justifies (chronique 1825 -> 1863,
+  structure_test 1215 -> 1221, exception ECRITE ; `film_scan.go` 504 -> 472 par deplacement pur) ·
+  surface citee 260 -> 262 datee · calque `layers.stances` · codec des faits `REPLAYINPUTS23` ->
+  **`REPLAYINPUTS24`** avec les 8 fixtures d entrees refigees PAR LEUR PORTE (re-decodage des
+  8 films) · 8 goldens d assemblage · 8 fixtures de contrat `replay_schema_65_*` + manifeste
+  (2 717 376 o / 3 145 728) · formes de `film/types` figees · contrat 60 -> **61** champs ·
+  zod + frontiere web (dont `coverage.stances.mapWidths`) · **OpenAPI EN DERNIER** puis
+  `make generate-types` · web MINIMAL (un mot sur la fiche, FR/EN, token semantique).
+  GATE : `replay-equiv -films bcb6d393` — avant re-figeage, 13 ecarts dont **2 etapes neuves**,
+  **9 decalages POSITIONNELS d un rang**, `positions` (ecart PRE-EXISTANT D15, sha identique),
+  `killsource` (profil calibre, deja constate) et `artifact` (**attendu**, schema 65) ; apres
+  re-figeage de ce seul film, **1 identique** et la passe suivante le confirme. Le re-figeage des
+  19 autres reste le geste du pilote.
+- [ ] **5.3.3 — le port** (**FAIT PAR 5.3.6** ci-dessus : `stances[]` au schema 65, avec la
+  checklist complete. Cette case reste ouverte pour la seule part que 5.3.6 n a PAS prise : une
+  couche d ANALYSE sur les faits — aucune n a ete demandee, et le calque se lit directement).
+  Intervalles d'état par
   joueur dans le document (`players[].stances[]`), couche d'analyse sur les faits, **montée de
   schéma 64 -> 65** avec la checklist complète (chronique, `structure_test`,
   `document_shape.golden`, plafonds justifiés, jumeaux `replaydoc`/`replayview` + parité, zod
@@ -6992,6 +7039,33 @@ sur les seuls chassis a arme FIXE. Le lot cherche l avant REEL, lu dans le film.
 | 2026-09-21 | 5.3.2 | **D9 (5.3) — LE DOMAINE MESURÉ DES CHAMPS D'`i54` CONTREDIT L'HYPOTHÈSE DE L'ÉCRIVAIN.** L'identifiant optionnel de 10 bits n'est transmis **0 fois sur 2 245 initiations** (il reste à sa sentinelle), et `+0x9c` ne prend que **deux** valeurs, 0 et 2, jamais 1 ni 3. L'hypothèse « Sprint / Thruster / Clamber / Slide sur 2 bits » du § 2.8 est donc réfutée par les valeurs. Seul `+0x98` (R(7)) se comporte en discriminant, et son domaine varie d'un film à l'autre (3 valeurs sur `bfecd02b`, 8 sur `4f77afc1`). | **NON TRAITÉE** : nommer les classes demande de croiser `+0x98` avec la carte et le geste vu dans Theater — c'est un lot en soi, et il a besoin de l'attribution vie -> joueur que 5.3.2 n'a pas faite |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Post-chantier — lot 5.3, points 5.3.5 et 5.3.6, 2026-09-21 (suite : la loi de `i1`, puis le port)
+
+Meme branche, meme worktree, **aucune base DuckDB**, un film a la fois. **DEUX COMMITS** :
+`0fc6a3349` (5.3.5) et le present (5.3.6).
+
+**GATES SANS DECODAGE** : `gofmt` (vide) · `go build ./...` · `go vet ./...` et
+`go vet -tags=research ./internal/games/halo_infinite/film/...` · `go test -count=1` sur
+`halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api`
+(**tous ok**) · `golangci-lint run ./internal/games/halo_infinite/film/...` (**0 issues** ; une
+violation `prealloc` corrigee, pas exemptee) · web : `tsc -b --force` (vert), `eslint` (vide),
+`vitest` sur `match-replay` + `lib/replay` (**206 fichiers, 3 227 tests**).
+
+**GATE DE DECODAGE** : `replay-equiv -films bcb6d393`, cache de faits VIDE a chaque passe — la
+lecture des 13 ecarts est au § 2duodevicies de la note. Apres re-figeage de ce seul film :
+`1 identique`, confirme par une seconde passe.
+
+**REGENERATIONS, TOUTES PAR LEUR PORTE** : 8 fixtures d entrees (re-decodage des 8 films,
+`REPLAY_FILM_CACHE` puis `REPLAY_FILM_DIR`), 8 goldens d assemblage, 8 fixtures de contrat +
+manifeste (renommees `replay_schema_65_*`, les 8 de la v64 supprimees), `document_shape.golden`,
+`types/shapes.golden`, les deux goldens de revision, `openapi.yaml` (EN DERNIER) puis
+`generated.ts`.
+
+**RATCHETS** : deux plafonds de taille montes sous l exception ECRITE (chronique et
+`structure_test`, dans le commit qui monte `SchemaVersion`) ; un fichier scinde par DEPLACEMENT
+PUR (`film_scan.go` 504 -> 472) ; la surface citee hors decodeur 260 -> 262 avec sa justification
+datee. Aucun garde-rail affaibli.
 
 ### Post-chantier — lot 5.3, points 5.3.3-a a 5.3.4, 2026-09-21 (executant frais, reprise sur passation)
 
