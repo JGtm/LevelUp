@@ -108,6 +108,12 @@ type TimeseriesService struct {
 	// timeseries_service_sections.go.
 	formesUsageRepo     port.SquadFormesUsageRepository
 	formesObjectiveRepo port.SquadFormesObjectiveRepository
+	// coordTactical / coordAppuis / coordCaps : le bloc « Coordination » (riposte +
+	// appui reçu) par SOIRÉE, lot N1. Optionnels, gated au câblage — cf.
+	// timeseries_service_sections.go.
+	coordTactical port.TacticalRepository
+	coordAppuis   port.CoordinationRepository
+	coordCaps     games.CapabilityMap
 }
 
 // highlightEventsLoader expose la sous-API du HighlightEventsRepo per-player

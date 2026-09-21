@@ -155,4 +155,15 @@ type SessionPageResponse struct {
 	// quand aucun match de la session ne porte de frag mesuré.
 	RangeProfiles        *MatchRangeBlock `json:"range_profiles,omitempty"`
 	CompareRangeProfiles *MatchRangeBlock `json:"compare_range_profiles,omitempty"`
+	// Coordination : le bloc « Riposte » et « Appui reçu » de la session (lot N1,
+	// décisions D22) — les morts de mon camp ripostées dans les 5 s, ma part des
+	// ripostes, mes frags préparés, ma part des appuis distribués dans mon camp, plus
+	// une case par match pour la bande de régularité.
+	//
+	// À CÔTÉ DU BLOC D'USAGE, ET SERVI PAR LE MÊME APPEL : c'est une section de plus de
+	// la colonne de session, pas un endpoint. Même contrat de dégradation que `Usage` :
+	// nil si la session n'a aucun match, Available=false avec raison machine si le titre
+	// ne nomme pas le tueur de chaque mort ou si la lecture échoue. MÊME producteur que
+	// le bloc de la page Séries temporelles (service/coordination_block.go).
+	Coordination *CoordinationBlock `json:"coordination,omitempty"`
 }

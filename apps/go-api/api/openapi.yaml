@@ -11614,6 +11614,169 @@ components:
         - psa_processed
         - aliases_upserted
       type: object
+    CoordinationAppui:
+      additionalProperties: false
+      properties:
+        ma_part_des_appuis:
+          $ref: '#/components/schemas/Couverture'
+        on_me_prepare:
+          $ref: '#/components/schemas/Couverture'
+        parity_pct:
+          format: double
+          type: number
+      required:
+        - on_me_prepare
+        - ma_part_des_appuis
+      type: object
+    CoordinationBlock:
+      additionalProperties: false
+      properties:
+        appui:
+          $ref: '#/components/schemas/CoordinationAppui'
+        available:
+          type: boolean
+        fenetre_ms:
+          format: int64
+          type: integer
+        matches_measured:
+          format: int64
+          type: integer
+        matches_total:
+          format: int64
+          type: integer
+        per_match:
+          items:
+            $ref: '#/components/schemas/CoordinationMatchPoint'
+          type:
+            - array
+            - "null"
+        riposte:
+          $ref: '#/components/schemas/CoordinationRiposte'
+        sessions:
+          items:
+            $ref: '#/components/schemas/CoordinationSessionPoint'
+          type:
+            - array
+            - "null"
+        unavailable_reason:
+          type: string
+      required:
+        - available
+        - fenetre_ms
+        - matches_measured
+        - matches_total
+        - riposte
+        - appui
+      type: object
+    CoordinationMatchPoint:
+      additionalProperties: false
+      properties:
+        assist_share_of_team_pct:
+          format: double
+          type: number
+        assisted_share_pct:
+          format: double
+          type: number
+        assists_to_me:
+          format: int64
+          type: integer
+        covered_share_pct:
+          format: double
+          type: number
+        match_id:
+          type: string
+        my_assisted_kills:
+          format: int64
+          type: integer
+        my_deaths:
+          format: int64
+          type: integer
+        my_deaths_avenged:
+          format: int64
+          type: integer
+        my_measured_kills:
+          format: int64
+          type: integer
+        my_ripostes:
+          format: int64
+          type: integer
+        parity_pct:
+          format: double
+          type: number
+        riposte_share_pct:
+          format: double
+          type: number
+        team_assists:
+          format: int64
+          type: integer
+        team_deaths:
+          format: int64
+          type: integer
+        team_deaths_avenged:
+          format: int64
+          type: integer
+        team_size:
+          format: int64
+          type: integer
+      required:
+        - match_id
+        - team_deaths
+        - team_deaths_avenged
+        - my_deaths
+        - my_deaths_avenged
+        - my_ripostes
+        - my_measured_kills
+        - my_assisted_kills
+        - team_assists
+        - assists_to_me
+      type: object
+    CoordinationRiposte:
+      additionalProperties: false
+      properties:
+        delai_median_ms:
+          format: int64
+          type: integer
+        je_riposte:
+          $ref: '#/components/schemas/Couverture'
+        je_suis_couvert:
+          $ref: '#/components/schemas/Couverture'
+        parity_pct:
+          format: double
+          type: number
+        team_deaths:
+          format: int64
+          type: integer
+        team_deaths_avenged:
+          format: int64
+          type: integer
+      required:
+        - je_suis_couvert
+        - je_riposte
+        - team_deaths
+        - team_deaths_avenged
+      type: object
+    CoordinationSessionPoint:
+      additionalProperties: false
+      properties:
+        appui:
+          $ref: '#/components/schemas/CoordinationAppui'
+        matches_measured:
+          format: int64
+          type: integer
+        matches_total:
+          format: int64
+          type: integer
+        riposte:
+          $ref: '#/components/schemas/CoordinationRiposte'
+        session_label:
+          type: string
+      required:
+        - session_label
+        - matches_measured
+        - matches_total
+        - riposte
+        - appui
+      type: object
     CorrelationDataPair:
       additionalProperties: false
       properties:
@@ -17064,6 +17227,8 @@ components:
           type:
             - array
             - "null"
+        riposte:
+          $ref: '#/components/schemas/MatchRiposteBlock'
         tug_of_war:
           items:
             $ref: '#/components/schemas/MatchTugOfWarBin'
@@ -18274,6 +18439,84 @@ components:
         - players
         - lobby_median_m
         - lobby_measured
+      type: object
+    MatchRiposteBlock:
+      additionalProperties: false
+      properties:
+        deaths:
+          items:
+            $ref: '#/components/schemas/MatchRiposteDeath'
+          type:
+            - array
+            - "null"
+        fenetre_ms:
+          format: int64
+          type: integer
+        measured_deaths:
+          format: int64
+          type: integer
+        players:
+          items:
+            $ref: '#/components/schemas/MatchRiposteePlayer'
+          type:
+            - array
+            - "null"
+      required:
+        - fenetre_ms
+        - measured_deaths
+        - deaths
+        - players
+      type: object
+    MatchRiposteDeath:
+      additionalProperties: false
+      properties:
+        avenged:
+          type: boolean
+        avenger_gamertag:
+          type: string
+        avenger_xuid:
+          type: string
+        delai_ms:
+          format: int64
+          type: integer
+        killer_xuid:
+          type: string
+        time_ms:
+          format: int64
+          type: integer
+        vengeable:
+          type: boolean
+        victim_gamertag:
+          type: string
+        victim_team_id:
+          format: int64
+          type: integer
+        victim_xuid:
+          type: string
+      required:
+        - time_ms
+        - avenged
+        - vengeable
+      type: object
+    MatchRiposteePlayer:
+      additionalProperties: false
+      properties:
+        deaths_avenged:
+          format: int64
+          type: integer
+        gamertag:
+          type: string
+        ripostes:
+          format: int64
+          type: integer
+        team_id:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - deaths_avenged
+        - ripostes
       type: object
     MatchRosterRow:
       additionalProperties: false
@@ -24305,6 +24548,8 @@ components:
           $ref: '#/components/schemas/SessionCompareEntry'
         compare_usage:
           $ref: '#/components/schemas/SessionUsageBlock'
+        coordination:
+          $ref: '#/components/schemas/CoordinationBlock'
         current_session:
           $ref: '#/components/schemas/SessionCompareEntry'
         first_blood:
@@ -24430,9 +24675,15 @@ components:
         player_share_of_team_pct:
           format: double
           type: number
+        player_team:
+          format: int64
+          type: integer
         team_share_of_lobby_pct:
           format: double
           type: number
+        team_size:
+          format: int64
+          type: integer
       required:
         - match_id
       type: object
@@ -28777,6 +29028,8 @@ components:
       properties:
         briefing_kpis:
           $ref: '#/components/schemas/KPIStats'
+        coordination:
+          $ref: '#/components/schemas/CoordinationBlock'
         cumul_tab:
           $ref: '#/components/schemas/TimeseriesCumulTab'
         distributions_tab:
