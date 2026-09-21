@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>La section « echange » de l'Escouade — etat des lieux et trois decoupages</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Jetons de l'app (apps/web/src/styles/globals.css + lib/accessibility/palettes/default.ts),
+     repris a l'identique de MAQUETTE_SECTIONS_TRANSVERSES_2026-09-21.html. Rien d'invente.
+     Palette categorielle validee : node scripts/validate_palette.js
+     "#3B82F6,#F59E0B,#10B981,#818CF8,#D97706" --mode light  ->  ALL CHECKS PASS
+     (WARN de contraste vs surface : leve par etiquettes directes + legende sur chaque graphe). */
+  :root {
+    --background: oklch(0.985 0.004 255); --foreground: oklch(0.255 0.02 255);
+    --card: oklch(0.995 0.002 255); --border: oklch(0.9 0.01 255); --muted: oklch(0.96 0.008 255);
+    --muted-foreground: oklch(0.52 0.015 255); --popover: oklch(0.995 0.002 255);
+    --info: #3B82F6; --success: #10B981; --warning: #F59E0B; --destructive: #EF4444;
+    --outcome-win: #10B981; --outcome-loss: #EF4444;
+    --stat-kills: #059669; --stat-deaths: #F43F5E;
+    --compare-a: #818CF8; --compare-b: #D97706;
+    --chart-series-1: #93C5FD; --chart-series-2: #6366F1; --chart-series-3: #4F46E5; --chart-series-4: #4338CA;
+    --radius: 0.5rem;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0);
+  } }
+  :root[data-theme="dark"] {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0);
+  }
+  body { margin:0; background:var(--background); color:var(--foreground); font-family:'Roboto',system-ui,sans-serif; font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1180px; margin:0 auto; padding:24px 20px 80px; }
+  .crumb { font-size:12px; color:var(--muted-foreground); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .toolbar { margin-left:auto; display:flex; gap:8px; }
+  button { font:inherit; font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--card); color:var(--foreground); cursor:pointer; }
+  h1 { font-size:21px; margin:16px 0 6px; }
+  p.lede { margin:0; font-size:13px; color:var(--muted-foreground); max-width:88ch; }
+  section.block { display:flex; flex-direction:column; gap:12px; margin-top:40px; scroll-margin-top:12px; }
+  section.block > header h2 { margin:0; font-size:17px; font-weight:600; border-bottom:1px solid var(--border); padding-bottom:6px; }
+  section.block > header p { margin:6px 0 0; font-size:12.5px; color:var(--muted-foreground); max-width:92ch; }
+  h3.sub { margin:20px 0 0; font-size:14px; font-weight:600; }
+  .chip { display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:1px 9px; font-size:10.5px; letter-spacing:.03em; text-transform:uppercase; border:1px solid var(--border); color:var(--muted-foreground); white-space:nowrap; }
+  .chip.on { border-color:var(--success); color:var(--success); }
+  .chip.new { border-color:var(--info); color:var(--info); border-style:dashed; }
+  .chip.kill { border-color:var(--destructive); color:var(--destructive); }
+  .chip.warn { border-color:var(--warning); color:var(--warning); }
+  .chip.keep { border-color:var(--compare-a); color:var(--compare-a); }
+  .section-card { display:flex; flex-direction:column; border-radius:var(--radius); border:1px solid var(--border); background:var(--card); min-width:0; }
+  .section-card.bad { border-color:var(--destructive); }
+  .section-card.star { border-color:var(--info); }
+  .section-card > h4 { margin:0; border-bottom:1px solid var(--border); padding:8px 12px; font-size:13.5px; font-weight:500; display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .section-card > h4 .count { font-size:11px; font-weight:400; color:var(--muted-foreground); font-variant-numeric:tabular-nums; }
+  .chart { width:100%; padding:10px 12px 4px; box-sizing:border-box; }
+  .chart svg { display:block; width:100%; height:auto; overflow:visible; font-family:inherit; }
+  .note { padding:6px 12px 10px; font-size:11.5px; color:var(--muted-foreground); margin:0; }
+  .note b { font-weight:500; color:var(--foreground); }
+  .say { margin:10px 12px 2px; border-left:2px solid var(--info); padding-left:10px; font-size:12.5px; color:var(--foreground); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; align-items:start; }
+  @media (max-width:860px){ .grid2, .grid3 { grid-template-columns:1fr; } }
+  svg text { fill:var(--foreground); font-size:11px; }
+  svg text.muted { fill:var(--muted-foreground); font-size:10px; }
+  svg text.num { font-variant-numeric:tabular-nums; }
+  svg text.big { font-size:27px; font-weight:700; font-variant-numeric:tabular-nums; }
+  svg .grid { stroke:var(--border); stroke-width:1; }
+  svg .axis { stroke:var(--muted-foreground); stroke-width:1.2; }
+  table.cmp { border-collapse:collapse; font-size:12px; width:100%; margin-top:4px; }
+  table.cmp th, table.cmp td { text-align:left; padding:7px 9px; border-bottom:1px solid var(--border); vertical-align:top; }
+  table.cmp th { font-weight:600; color:var(--muted-foreground); font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  table.cmp td.s { white-space:nowrap; }
+  ul.tight { margin:6px 0 0; padding-left:18px; font-size:12.5px; color:var(--muted-foreground); }
+  ul.tight li { margin:4px 0; } ul.tight b { color:var(--foreground); font-weight:500; }
+  .cost { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:11.5px; color:var(--muted-foreground); padding:8px 12px 12px; border-top:1px dashed var(--border); margin-top:2px; }
+  .cost dt { font-weight:500; color:var(--foreground); white-space:nowrap; }
+  .cost dd { margin:0; }
+  nav.toc { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  nav.toc a { font-size:12px; text-decoration:none; color:var(--muted-foreground); border:1px solid var(--border); border-radius:999px; padding:3px 11px; }
+  nav.toc a:hover { color:var(--foreground); border-color:var(--info); }
+  blockquote.verdict { margin:14px 0 0; border-left:3px solid var(--warning); padding:2px 0 2px 14px; font-size:13px; color:var(--foreground); max-width:92ch; }
+  details { border-top:1px dashed var(--border); margin-top:6px; }
+  details > summary { cursor:pointer; padding:7px 12px; font-size:12px; color:var(--muted-foreground); }
+  details > summary:hover { color:var(--foreground); }
+  details .inner { padding:0 12px 10px; }
+  code { font-size:11.5px; background:var(--muted); padding:1px 4px; border-radius:3px; }
+</style>
+
+<div class="page">
+  <div class="crumb">
+    <span>LevelUp</span><span style="opacity:.5">/</span><span>V7.5</span><span style="opacity:.5">/</span>
+    <span>Escouade &rsaquo; Synergies &rsaquo; l'echange</span>
+    <span class="chip">Maquette 2026-09-21</span><span class="chip">Rien d'implemente</span>
+    <span class="toolbar"><button id="theme">Theme clair / sombre</button></span>
+  </div>
+
+  <h1>La section « echange » de l'Escouade, refaite</h1>
+  <p class="lede">
+    Etat des lieux releve dans le code au 2026-09-21 (worktree <code>feat/ajsup-f</code>), puis
+    <b>trois decoupages narratifs</b> de la section — pas trois habillages d'un meme bloc. Les chiffres
+    des dessins sont des valeurs de demonstration ; les <b>formes, titres et phrases</b> sont ceux du code,
+    ou ceux que je propose, ecrits tels qu'ils s'afficheraient a l'ecran.
+  </p>
+
+  <blockquote class="verdict">
+    « Je comprends rien a ces notions d'echange telles qu'elles sont presentees. C'est confus, des fois ca
+    parle de vengeance et j'ai 5 blocs/graphes pour une ou deux notions. J'aime bien le scatter mais le reste
+    c'est niveau 0 en creativite et narration. Si on veut comparer des taux sur plusieurs sessions on fait
+    comme le graphe "Performance d'escouade par session" : des batons avec des courbes pour la tendance. On
+    fait pas un genre de tableau avec juste une ligne et un chiffre. »
+    <span style="display:block;margin-top:6px;font-size:11.5px;color:var(--muted-foreground)">Verdict utilisateur, 2026-09-21. Les trois griefs sont verifies sur pieces ci-dessous. Les trois sont fondes.</span>
+  </blockquote>
+
+  <nav class="toc">
+    <a href="#aujourdhui">1. Aujourd'hui — les 8 blocs</a>
+    <a href="#diagnostic">2. Diagnostic</a>
+    <a href="#grammaire">3. La grammaire de reference</a>
+    <a href="#a">A. Deux recits</a>
+    <a href="#b">B. La frise et la loupe</a>
+    <a href="#c">C. Le tableau de bord</a>
+    <a href="#verdict">Ma preferee</a>
+  </nav>
+
+  <!-- ==================================================== 1. AUJOURD'HUI -->
+  <section class="block" id="aujourdhui">
+    <header>
+      <h2>1. Aujourd'hui — ce qui est reellement monte, dans l'ordre</h2>
+      <p>
+        Ordre de montage releve dans <code>SquadSynergiesPage.tsx</code> (l. 159-195). Huit blocs se
+        succedent avant meme les graphes « toujours montes » de la page. Chacun est reproduit ci-dessous
+        dans sa forme actuelle, avec son titre actuel, et la notion qu'il porte en une phrase.
+      </p>
+    </header>
+
+    <h3 class="sub">Les definitions, telles qu'elles sont ecrites dans le Go</h3>
+    <div class="section-card">
+      <div class="chart" style="padding-bottom:0">
+        <table class="cmp">
+          <tr><th>Terme</th><th>Definition exacte</th><th>Source</th></tr>
+          <tr><td class="s"><b>Echange</b></td><td>Une mort de votre camp dont le tueur est abattu par un coequipier de la victime <b>dans les 5 000 ms</b>. Un tueur qui abat deux coequipiers puis tombe dans la fenetre venge <b>les deux</b> morts.</td><td class="s"><code>coordination/trade.go:15, 25</code></td></tr>
+          <tr><td class="s"><b>Riposte</b></td><td>La meme poursuite <b>sans aucune borne de temps</b>. « Ce n'est donc PAS une mesure d'echange » : une riposte a 40 s n'est pas une vengeance. Ne sert qu'a dessiner la distribution.</td><td class="s"><code>coordination/riposte.go:6-27</code></td></tr>
+          <tr><td class="s"><b>Fenetre</b></td><td><code>FenetreEchangeMs = 5000</code>. Unique, non parametrable a l'ecran.</td><td class="s"><code>coordination/trade.go:15</code></td></tr>
+          <tr><td class="s"><b>Taux d'echange</b></td><td>Morts vengees / morts d'equipe. Ne sort jamais en <code>float64</code> nu : toujours dans <code>domain.Couverture</code> avec le compte brut et le drapeau d'echantillon faible (&lt; 30 morts).</td><td class="s"><code>coordination/doc.go:14-16</code>, <code>measure.go:12</code></td></tr>
+          <tr><td class="s"><b>Habituel</b></td><td>Le meme taux sur <b>tout l'historique</b> du perimetre. L'ecart se tait quand le filtre couvre deja tout l'historique (tautologie).</td><td class="s"><code>SquadEchangeCompteCard.tsx:10-13</code></td></tr>
+          <tr><td class="s"><b>Isolement</b></td><td>Trois sorties exclusives : <b>accompagnee</b> (un coequipier visible a portee du radar), <b>isolee</b> (aucun visible a portee, mais quelqu'un pouvait venir), <b>equipe a terre</b> (personne ne pouvait venir — ecartee du denominateur et comptee a part).</td><td class="s"><code>coordination/isolation.go:12-23</code></td></tr>
+          <tr><td class="s"><b>Donne / recu</b></td><td>Somme de la <b>ligne</b> (vengeances donnees) et de la <b>colonne</b> (vengeances recues) de la matrice. <b>Aucune mesure nouvelle</b> : derive des cellules deja chargees.</td><td class="s"><code>SquadEchangeDonneRecuCard.tsx:5-7</code></td></tr>
+        </table>
+      </div>
+      <p class="note" style="border-top:1px solid var(--border);margin-top:10px;padding-top:8px">
+        <b>Premier constat, et il n'est pas mince : « assistance » n'apparait nulle part dans ces definitions.</b>
+        Tout ce que le paquet <code>coordination</code> mesure, c'est la vengeance. Or deux cartes s'intitulent
+        « Assistances » (voir blocs 4 et 7). Le mot de l'ecran et le mot du code ne designent pas la meme chose.
+      </p>
+    </div>
+
+    <h3 class="sub">Bloc 1 &mdash; <code>SquadEchangeConstatCard</code></h3>
+    <div class="grid2">
+      <div class="section-card">
+        <h4>Constat du moment <span class="count">phrase seule, pas de graphe</span></h4>
+        <div class="chart">
+          <svg viewBox="0 0 520 96" role="img" aria-label="Constat du moment, tel qu'il s'affiche">
+            <rect x="1" y="1" width="518" height="94" rx="6" fill="var(--card)" stroke="var(--border)"/>
+            <rect x="16" y="20" width="3" height="56" fill="var(--info)"/>
+            <text x="30" y="36" style="font-size:12.5px">L'echange merite votre attention : votre camp echange</text>
+            <text x="30" y="54" style="font-size:12.5px">2,7 pts de moins que d'habitude (19,4 % contre 22,1 %).</text>
+            <text x="30" y="72" class="muted">Sur 511 morts de votre camp, 128 matchs.</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>La notion.</b> « En ce moment, on se venge un peu moins bien que d'habitude. »<br>
+          Conditionnelle : non rendue sous 30 morts d'equipe <b>ou</b> sous 5 points d'ecart. Aucun etat vide.
+        </p>
+      </div>
+      <div class="section-card">
+        <h4>Ce qui coince</h4>
+        <p class="note" style="padding-top:10px">
+          Rien en soi — c'est la seule carte qui parle francais. Mais elle enonce un <b>taux et un ecart</b>
+          que la carte suivante, collee dessous, re-enonce integralement en chiffres. Le lecteur lit deux fois
+          « 19,4 % contre 22,1 % » a dix centimetres d'intervalle, une fois en prose, une fois en tuile.
+        </p>
+      </div>
+    </div>
+
+    <h3 class="sub">Bloc 2 &mdash; <code>SquadEchangeCompteCard</code></h3>
+    <div class="section-card">
+      <h4>Le compte <span class="count">KPIStrip, 4 tuiles</span></h4>
+      <p class="say">Un taux seul ne dit rien, et un taux seul est meme trompeur : il se calcule sur les morts de votre camp. Il ne va donc jamais sans le compte brut et une quantite par match, qui elles ne dependent pas de combien vous mourez.</p>
+      <div class="chart">
+        <svg viewBox="0 0 520 96" role="img" aria-label="Le compte, quatre tuiles de KPI">
+          <g>
+            <rect x="0" y="6" width="124" height="84" rx="6" fill="var(--card)" stroke="var(--border)"/>
+            <text x="12" y="24" class="muted">TAUX D'ECHANGE</text>
+            <text x="12" y="52" class="big" fill="var(--foreground)">19,4 %</text>
+            <text x="12" y="68" class="muted">des morts, sous 5 s</text>
+            <text x="12" y="82" class="muted" fill="var(--destructive)">-2,7 pts vs habituel</text>
+          </g>
+          <g>
+            <rect x="132" y="6" width="124" height="84" rx="6" fill="var(--card)" stroke="var(--border)"/>
+            <text x="144" y="24" class="muted">DELAI MEDIAN</text>
+            <text x="144" y="52" class="big">2,4 s</text>
+            <text x="144" y="68" class="muted">quand l'echange a lieu</text>
+          </g>
+          <g>
+            <rect x="264" y="6" width="124" height="84" rx="6" fill="var(--card)" stroke="var(--border)"/>
+            <text x="276" y="24" class="muted">MORTS SANS REPONSE</text>
+            <text x="276" y="52" class="big">412</text>
+            <text x="276" y="68" class="muted">sur 511 morts d'equipe</text>
+          </g>
+          <g>
+            <rect x="396" y="6" width="124" height="84" rx="6" fill="var(--card)" stroke="var(--border)"/>
+            <text x="408" y="24" class="muted">SANS REPONSE / MATCH</text>
+            <text x="408" y="52" class="big">3,21</text>
+            <text x="408" y="68" class="muted">independant des morts</text>
+          </g>
+        </svg>
+      </div>
+      <p class="note">
+        <b>La notion.</b> « Voila, en quatre chiffres, combien de fois on venge et a quelle vitesse. »<br>
+        Les quatre grandeurs sont <b>trois lectures de la meme mesure</b> : 19,4 % = 99 / 511, et 412 = 511 - 99.
+        Seul le delai median apporte une grandeur reellement distincte.
+      </p>
+    </div>
+
+    <h3 class="sub">Bloc 3 &mdash; <code>SquadEchangeDelaiCard</code></h3>
+    <div class="grid2">
+      <div class="section-card">
+        <h4>Delai de vengeance <span class="count">HistogramChart, 7 barres</span></h4>
+        <div class="chart">
+          <svg viewBox="0 0 520 210" role="img" aria-label="Distribution du delai de vengeance">
+            <defs>
+              <pattern id="hatch-now" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="6" height="6" fill="var(--muted)"/>
+                <line x1="0" y1="0" x2="0" y2="6" stroke="var(--muted-foreground)" stroke-width="2"/>
+              </pattern>
+            </defs>
+            <line class="grid" x1="44" y1="20" x2="500" y2="20"/><text x="38" y="24" text-anchor="end" class="muted num">40</text>
+            <line class="grid" x1="44" y1="65" x2="500" y2="65"/><text x="38" y="69" text-anchor="end" class="muted num">30</text>
+            <line class="grid" x1="44" y1="110" x2="500" y2="110"/><text x="38" y="114" text-anchor="end" class="muted num">20</text>
+            <line class="grid" x1="44" y1="155" x2="500" y2="155"/><text x="38" y="159" text-anchor="end" class="muted num">10</text>
+            <line class="axis" x1="44" y1="175" x2="500" y2="175"/>
+            <rect x="56" y="38"  width="48" height="137" rx="4" fill="var(--info)"/><text x="80" y="32" text-anchor="middle" class="num">31</text>
+            <rect x="112" y="65" width="48" height="110" rx="4" fill="var(--info)"/><text x="136" y="59" text-anchor="middle" class="num">25</text>
+            <rect x="168" y="101" width="48" height="74" rx="4" fill="var(--info)"/><text x="192" y="95" text-anchor="middle" class="num">17</text>
+            <rect x="224" y="128" width="48" height="47" rx="4" fill="var(--info)"/><text x="248" y="122" text-anchor="middle" class="num">11</text>
+            <rect x="280" y="152" width="48" height="23" rx="4" fill="var(--info)"/><text x="304" y="146" text-anchor="middle" class="num">5</text>
+            <rect x="344" y="92"  width="48" height="83" rx="4" fill="url(#hatch-now)" stroke="var(--muted-foreground)"/><text x="368" y="86" text-anchor="middle" class="num muted">19</text>
+            <rect x="400" y="47"  width="48" height="128" rx="4" fill="url(#hatch-now)" stroke="var(--muted-foreground)"/><text x="424" y="41" text-anchor="middle" class="num muted">29</text>
+            <line x1="336" y1="14" x2="336" y2="182" stroke="var(--warning)" stroke-width="1.5" stroke-dasharray="5 3"/>
+            <text x="332" y="12" text-anchor="end" fill="var(--warning)" style="font-size:10px">fenetre 5 s</text>
+            <text x="80" y="190" text-anchor="middle" class="muted">0-1 s</text>
+            <text x="136" y="190" text-anchor="middle" class="muted">1-2 s</text>
+            <text x="192" y="190" text-anchor="middle" class="muted">2-3 s</text>
+            <text x="248" y="190" text-anchor="middle" class="muted">3-4 s</text>
+            <text x="304" y="190" text-anchor="middle" class="muted">4-5 s</text>
+            <text x="368" y="190" text-anchor="middle" class="muted">5-10 s</text>
+            <text x="424" y="190" text-anchor="middle" class="muted">&gt; 10 s</text>
+            <text x="396" y="204" text-anchor="middle" class="muted" fill="var(--muted-foreground)">hors fenetre — jamais comptees</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>La notion.</b> « Quand on venge, on venge vite ; et voila combien de ripostes arrivent juste trop tard. »<br>
+          Forme juste, et la seule du lot qui apporte un fait que le reste ne dit pas.
+        </p>
+      </div>
+      <div class="section-card">
+        <h4>Ce qui coince</h4>
+        <p class="note" style="padding-top:10px">
+          Le titre dit « Delai de vengeance ». Le bloc 2, juste au-dessus, a deja affiche « Delai median 2,4 s ».
+          Le bloc 4, juste en dessous, s'intitule « Assistances croisees » et compte, lui aussi, des vengeances.
+          <b>Le vocabulaire change a chaque carte sans que la mesure change.</b> C'est exactement le
+          « des fois ca parle de vengeance » du verdict : ce n'est pas une impression, c'est une incoherence
+          lexicale entre <code>squad.toml</code> et <code>coordination/</code>.
+        </p>
+      </div>
+    </div>
+
+    <h3 class="sub">Bloc 4 &mdash; <code>SquadEchangeMatrixCard</code></h3>
+    <div class="grid2">
+      <div class="section-card bad">
+        <h4>Assistances croisees <span class="count">Heatmap2DChart, N x N</span></h4>
+        <div class="chart">
+          <svg viewBox="0 0 520 200" role="img" aria-label="Matrice qui venge qui">
+            <text x="96" y="14" text-anchor="middle" class="muted">JGtm</text>
+            <text x="184" y="14" text-anchor="middle" class="muted">Kaelor</text>
+            <text x="272" y="14" text-anchor="middle" class="muted">Vhyss</text>
+            <text x="360" y="14" text-anchor="middle" class="muted">Orn</text>
+            <text x="52" y="46" text-anchor="end" class="muted">JGtm</text>
+            <text x="52" y="90" text-anchor="end" class="muted">Kaelor</text>
+            <text x="52" y="134" text-anchor="end" class="muted">Vhyss</text>
+            <text x="52" y="178" text-anchor="end" class="muted">Orn</text>
+            <rect x="58" y="22" width="76" height="36" rx="3" fill="none" stroke="var(--border)" stroke-dasharray="3 3"/>
+            <rect x="146" y="22" width="76" height="36" rx="3" fill="#6366F1" opacity="0.85"/><text x="184" y="45" text-anchor="middle" class="num" fill="#fff">41</text>
+            <rect x="234" y="22" width="76" height="36" rx="3" fill="#6366F1" opacity="0.55"/><text x="272" y="45" text-anchor="middle" class="num">27</text>
+            <rect x="322" y="22" width="76" height="36" rx="3" fill="#6366F1" opacity="0.38"/><text x="360" y="45" text-anchor="middle" class="num">19</text>
+            <rect x="58" y="66" width="76" height="36" rx="3" fill="#6366F1" opacity="0.95"/><text x="96" y="89" text-anchor="middle" class="num" fill="#fff">46</text>
+            <rect x="146" y="66" width="76" height="36" rx="3" fill="none" stroke="var(--border)" stroke-dasharray="3 3"/>
+            <rect x="234" y="66" width="76" height="36" rx="3" fill="#6366F1" opacity="0.46"/><text x="272" y="89" text-anchor="middle" class="num">23</text>
+            <rect x="322" y="66" width="76" height="36" rx="3" fill="#6366F1" opacity="0.30"/><text x="360" y="89" text-anchor="middle" class="num">15</text>
+            <rect x="58" y="110" width="76" height="36" rx="3" fill="#6366F1" opacity="0.62"/><text x="96" y="133" text-anchor="middle" class="num">30</text>
+            <rect x="146" y="110" width="76" height="36" rx="3" fill="#6366F1" opacity="0.50"/><text x="184" y="133" text-anchor="middle" class="num">25</text>
+            <rect x="234" y="110" width="76" height="36" rx="3" fill="none" stroke="var(--border)" stroke-dasharray="3 3"/>
+            <rect x="322" y="110" width="76" height="36" rx="3" fill="#6366F1" opacity="0.26"/><text x="360" y="133" text-anchor="middle" class="num">13</text>
+            <rect x="58" y="154" width="76" height="36" rx="3" fill="#6366F1" opacity="0.40"/><text x="96" y="177" text-anchor="middle" class="num">20</text>
+            <rect x="146" y="154" width="76" height="36" rx="3" fill="#6366F1" opacity="0.34"/><text x="184" y="177" text-anchor="middle" class="num">17</text>
+            <rect x="234" y="154" width="76" height="36" rx="3" fill="#6366F1" opacity="0.22"/><text x="272" y="177" text-anchor="middle" class="num">11</text>
+            <rect x="322" y="154" width="76" height="36" rx="3" fill="none" stroke="var(--border)" stroke-dasharray="3 3"/>
+            <text x="440" y="46" class="muted">ligne = qui venge</text>
+            <text x="440" y="62" class="muted">colonne = qui est venge</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>La notion.</b> « Qui venge qui, couple par couple. »<br>
+          <b>Le titre ment.</b> Il dit « Assistances croisees » ; l'infobulle du meme composant dit
+          « {avenger} a venge {avenged} N fois » (<code>squad.toml</code>, <code>echange.matrix_tooltip</code>).
+          Ce sont des vengeances, pas des assistances.
+        </p>
+      </div>
+      <div class="section-card">
+        <h4>Bloc 5 &mdash; <code>SquadAssistPairsChart</code> <span class="count">BarStackedChart horizontal</span></h4>
+        <div class="chart">
+          <svg viewBox="0 0 520 168" role="img" aria-label="Assistances dans l'escouade, barres empilees">
+            <text x="52" y="30" text-anchor="end" class="muted">JGtm</text>
+            <rect x="58" y="16" width="118" height="20" rx="3" fill="#6366F1"/><rect x="178" y="16" width="86" height="20" rx="3" fill="#93C5FD"/><rect x="266" y="16" width="52" height="20" rx="3" fill="#4338CA"/>
+            <text x="52" y="66" text-anchor="end" class="muted">Kaelor</text>
+            <rect x="58" y="52" width="96" height="20" rx="3" fill="#818CF8"/><rect x="156" y="52" width="74" height="20" rx="3" fill="#93C5FD"/><rect x="232" y="52" width="40" height="20" rx="3" fill="#4338CA"/>
+            <text x="52" y="102" text-anchor="end" class="muted">Vhyss</text>
+            <rect x="58" y="88" width="80" height="20" rx="3" fill="#818CF8"/><rect x="140" y="88" width="58" height="20" rx="3" fill="#6366F1"/><rect x="200" y="88" width="34" height="20" rx="3" fill="#4338CA"/>
+            <text x="52" y="138" text-anchor="end" class="muted">Orn</text>
+            <rect x="58" y="124" width="62" height="20" rx="3" fill="#818CF8"/><rect x="122" y="124" width="44" height="20" rx="3" fill="#6366F1"/><rect x="168" y="124" width="30" height="20" rx="3" fill="#93C5FD"/>
+            <line class="axis" x1="58" y1="150" x2="500" y2="150"/>
+            <text x="58" y="164" class="muted">Assistances donnees (larbin en ligne, patron en segment)</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>La notion.</b> « Qui prepare les frags de qui. »<br>
+          <b>C'est la seule vraie deuxieme notion de la section.</b> Une assistance est un degat porte a une
+          cible qu'un autre acheve ; elle n'a aucun rapport avec la fenetre de 5 s ni avec une mort de votre camp.
+          Elle est ici noyee au milieu de six cartes de vengeance, entre une matrice et un nuage.
+        </p>
+      </div>
+    </div>
+
+    <h3 class="sub">Bloc 6 &mdash; <code>SquadIsolementNuageCard</code> <span class="chip keep" style="margin-left:6px">a garder tel quel</span></h3>
+    <div class="section-card star">
+      <h4>Isolement et couverture <span class="count">ChartCard + buildOption custom (pas le wrapper ScatterChart)</span></h4>
+      <div class="chart">
+        <svg viewBox="0 0 520 250" role="img" aria-label="Nuage isolement contre delai de vengeance">
+          <rect x="430" y="18" width="70" height="186" fill="var(--muted)" opacity="0.5"/>
+          <text x="465" y="34" text-anchor="middle" class="muted">Hors de vue</text>
+          <rect x="52" y="18" width="378" height="26" fill="var(--muted)" opacity="0.5"/>
+          <text x="60" y="35" class="muted">Jamais vengee</text>
+          <line class="axis" x1="52" y1="204" x2="500" y2="204"/>
+          <line class="axis" x1="52" y1="18" x2="52" y2="204"/>
+          <line x1="242" y1="18" x2="242" y2="204" stroke="var(--warning)" stroke-width="1.5" stroke-dasharray="5 3"/>
+          <text x="246" y="200" fill="var(--warning)" style="font-size:10px">portee du radar</text>
+          <g fill="#6366F1" opacity="0.4">
+            <circle cx="88" cy="176" r="3"/><circle cx="104" cy="150" r="3"/><circle cx="122" cy="186" r="3"/><circle cx="140" cy="128" r="3"/>
+            <circle cx="158" cy="166" r="3"/><circle cx="172" cy="112" r="3"/><circle cx="190" cy="180" r="3"/><circle cx="206" cy="142" r="3"/>
+            <circle cx="96" cy="120" r="3"/><circle cx="132" cy="160" r="3"/><circle cx="180" cy="96" r="3"/><circle cx="214" cy="170" r="3"/>
+          </g>
+          <g fill="#F59E0B" opacity="0.4">
+            <circle cx="268" cy="132" r="3"/><circle cx="292" cy="90" r="3"/><circle cx="310" cy="158" r="3"/><circle cx="334" cy="106" r="3"/>
+            <circle cx="356" cy="140" r="3"/><circle cx="378" cy="78" r="3"/><circle cx="398" cy="122" r="3"/><circle cx="286" cy="30" r="3"/>
+            <circle cx="344" cy="30" r="3"/><circle cx="410" cy="30" r="3"/>
+          </g>
+          <g fill="#10B981" opacity="0.4">
+            <circle cx="452" cy="88" r="3"/><circle cx="468" cy="134" r="3"/><circle cx="480" cy="64" r="3"/><circle cx="458" cy="160" r="3"/><circle cx="472" cy="30" r="3"/>
+          </g>
+          <circle cx="150" cy="150" r="13" fill="#6366F1" stroke="var(--card)" stroke-width="2"/>
+          <circle cx="330" cy="118" r="10" fill="#F59E0B" stroke="var(--card)" stroke-width="2"/>
+          <circle cx="466" cy="104" r="8" fill="#10B981" stroke="var(--card)" stroke-width="2"/>
+          <text x="150" y="134" text-anchor="middle" style="font-size:10px">JGtm</text>
+          <text x="330" y="104" text-anchor="middle" style="font-size:10px">Kaelor</text>
+          <text x="466" y="92" text-anchor="middle" style="font-size:10px">Vhyss</text>
+          <text x="46" y="200" text-anchor="end" class="muted num">0</text>
+          <text x="46" y="60" text-anchor="end" class="muted num">10</text>
+          <text x="20" y="120" text-anchor="middle" class="muted" transform="rotate(-90 20 120)">Delai avant vengeance (s)</text>
+          <text x="276" y="228" text-anchor="middle" class="muted">Distance au coequipier le plus proche (x la portee du radar)</text>
+          <text x="52" y="244" class="muted">Un petit point = une mort · un gros point = la mediane d'un joueur, sa taille dit combien de morts</text>
+        </svg>
+      </div>
+      <p class="note">
+        <b>La notion.</b> « Quand je meurs loin de tout le monde, personne ne peut me venger. »<br>
+        <b>La seule carte de la section qui explique un pourquoi au lieu d'enoncer un combien.</b> C'est celle
+        que l'utilisateur garde, et elle merite la place que les six autres lui prennent. Aucune des trois
+        propositions ci-dessous n'y touche : ni sa forme, ni ses bandes, ni son encodage par point.
+      </p>
+    </div>
+
+    <h3 class="sub">Bloc 7 &mdash; <code>SquadEchangeDonneRecuCard</code></h3>
+    <div class="grid2">
+      <div class="section-card bad">
+        <h4>Assistances par coequipier <span class="count">BarGroupedChart, 2 series</span></h4>
+        <p class="say">Vhyss recoit 75 echanges et n'en donne que 55.</p>
+        <div class="chart">
+          <svg viewBox="0 0 520 178" role="img" aria-label="Donne et recu par joueur, barres groupees">
+            <line class="grid" x1="52" y1="28" x2="500" y2="28"/><text x="46" y="32" text-anchor="end" class="muted num">100</text>
+            <line class="grid" x1="52" y1="76" x2="500" y2="76"/><text x="46" y="80" text-anchor="end" class="muted num">50</text>
+            <line class="axis" x1="52" y1="124" x2="500" y2="124"/>
+            <rect x="72"  y="38"  width="30" height="86" rx="4" fill="#818CF8"/><rect x="106" y="47"  width="30" height="77" rx="4" fill="#D97706"/>
+            <rect x="184" y="44"  width="30" height="80" rx="4" fill="#818CF8"/><rect x="218" y="43"  width="30" height="81" rx="4" fill="#D97706"/>
+            <rect x="296" y="71"  width="30" height="53" rx="4" fill="#818CF8"/><rect x="330" y="52"  width="30" height="72" rx="4" fill="#D97706"/>
+            <rect x="408" y="86"  width="30" height="38" rx="4" fill="#818CF8"/><rect x="442" y="80"  width="30" height="44" rx="4" fill="#D97706"/>
+            <text x="104" y="140" text-anchor="middle" class="muted">JGtm</text>
+            <text x="216" y="140" text-anchor="middle" class="muted">Kaelor</text>
+            <text x="328" y="140" text-anchor="middle" class="muted">Vhyss</text>
+            <text x="440" y="140" text-anchor="middle" class="muted">Orn</text>
+            <rect x="180" y="158" width="11" height="9" rx="2" fill="#818CF8"/><text x="196" y="167" class="muted">Donne</text>
+            <rect x="250" y="158" width="11" height="9" rx="2" fill="#D97706"/><text x="266" y="167" class="muted">Recu</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>La notion.</b> « Chacun venge-t-il autant qu'il est venge ? »<br>
+          <b>Aucune donnee nouvelle</b> : le composant lui-meme le dit en tete de fichier, « la meme donnee
+          que la matrice, en plus grossier » — somme des lignes et des colonnes du bloc 4, deja a l'ecran
+          trois cartes plus haut. Et le titre dit encore « Assistances » pour des vengeances.
+        </p>
+      </div>
+      <div class="section-card bad">
+        <h4>Bloc 8 &mdash; <code>SquadEchangeTauxSessionCard</code> <span class="count">le grief central</span></h4>
+        <p class="note" style="padding-bottom:0">
+          <b>Ce que la carte rend depend d'une condition, et le cas nominal est le mauvais.</b>
+          <code>assezDeSessions = sessions.length &gt;= 3</code> (<code>PLANCHER_SESSIONS_TENDANCE</code>,
+          <code>squadEchange.logic.ts:377</code>). Au-dessus : une courbe. <b>En dessous : une liste de
+          definitions</b> — une ligne par session, un libelle a gauche, un pourcentage a droite, plus une
+          ligne grisee « habituel » (l. 81-105).
+        </p>
+        <div class="chart">
+          <svg viewBox="0 0 520 168" role="img" aria-label="Le repli sous trois sessions, tel qu'il s'affiche">
+            <text x="0" y="12" class="muted" fill="var(--destructive)">SI &lt; 3 SESSIONS — ET FILTRER SUR UNE SOIREE EST L'USAGE NOMINAL DE LA PAGE</text>
+            <rect x="0" y="22" width="518" height="20" fill="none"/>
+            <rect x="0" y="22" width="3" height="20" fill="var(--info)"/>
+            <text x="12" y="36" style="font-size:12.5px">1 soiree mesuree sur cette selection : trop peu pour une tendance.</text>
+            <rect x="0" y="52" width="518" height="88" rx="5" fill="none" stroke="var(--border)"/>
+            <line x1="0" y1="82" x2="518" y2="82" stroke="var(--border)"/>
+            <line x1="0" y1="112" x2="518" y2="112" stroke="var(--border)"/>
+            <text x="14" y="72">Soiree du 20/09</text><text x="504" y="72" text-anchor="end" class="num" style="font-weight:600">17,2 %</text>
+            <rect x="1" y="113" width="516" height="26" fill="var(--muted)" opacity="0.5"/>
+            <text x="14" y="131" class="muted">Habituel <tspan style="font-size:9px">(128 matchs)</tspan></text>
+            <text x="504" y="131" text-anchor="end" class="num muted" style="font-weight:600">22,1 %</text>
+            <text x="0" y="160" class="muted" fill="var(--destructive)">C'est le « tableau avec juste une ligne et un chiffre ». Il n'est pas un accident : c'est le rendu par defaut de la page filtree.</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>La notion.</b> « Est-ce qu'on se venge mieux certains soirs ? »<br>
+          Au-dessus du plancher, la carte trace bien un <code>TimeseriesLineChart</code> — mais une
+          <b>courbe nue sans les volumes</b> : rien ne distingue une soiree a 3 morts mesurees d'une soiree
+          a 80. <b>L'utilisateur a raison deux fois</b> : sur le repli (c'est litteralement une liste), et sur
+          la forme du cas nominal (une courbe la ou la page voisine met des batons plus une tendance).
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================================================== 2. DIAGNOSTIC -->
+  <section class="block" id="diagnostic">
+    <header>
+      <h2>2. Diagnostic — deux notions, huit blocs</h2>
+      <p>
+        Le compte du verdict (« 5 blocs/graphes pour une ou deux notions ») est en dessous de la realite :
+        il y a <b>huit blocs pour deux notions</b>, et sept d'entre eux portent la meme.
+      </p>
+    </header>
+    <table class="cmp">
+      <tr><th>Notion</th><th>Blocs</th><th>Ce que chacun ajoute vraiment</th></tr>
+      <tr>
+        <td class="s"><b>1. La riposte apres une mort</b><br><span class="muted" style="font-size:11px">« un des notres tombe : est-ce qu'on le venge, et en combien de temps ? »</span></td>
+        <td class="s"><b>7 blocs</b><br>1 Constat<br>2 Le compte<br>3 Delai<br>4 Matrice<br>6 Nuage<br>7 Donne/recu<br>8 Taux par session</td>
+        <td>
+          <ul class="tight" style="margin:0">
+            <li><b>Le taux global</b> est enonce <b>trois fois</b> : en prose (1), en tuile (2), en ligne d'habituel (8).</li>
+            <li><b>Le delai</b> est enonce <b>deux fois</b> : mediane en tuile (2), distribution complete (3).</li>
+            <li><b>Le detail par joueur</b> est enonce <b>deux fois</b> : matrice (4) et ses sommes de lignes/colonnes (7) — le second le reconnait dans son propre en-tete de fichier.</li>
+            <li><b>Faits reellement uniques : trois.</b> La distribution (3), le couple qui venge qui (4), et le pourquoi (6).</li>
+          </ul>
+        </td>
+      </tr>
+      <tr>
+        <td class="s"><b>2. L'assistance au frag</b><br><span class="muted" style="font-size:11px">« qui prepare les frags de qui ? »</span></td>
+        <td class="s"><b>1 bloc</b><br>5 Assistances dans l'escouade</td>
+        <td>Une notion entierement distincte (aucune fenetre, aucune mort de votre camp), <b>enterree au milieu de sept cartes de vengeance</b> et disputant son nom a deux d'entre elles.</td>
+      </tr>
+    </table>
+    <div class="section-card" style="margin-top:12px">
+      <h4>La cause de la confusion, nommee</h4>
+      <div class="chart" style="padding-bottom:12px">
+        <ul class="tight" style="margin:0">
+          <li><b>Un fait, quatre mots.</b> Le meme evenement s'appelle « echange » (Go et bloc 8), « vengeance »
+            (blocs 3, 4 en infobulle, 6) et « assistance croisee » (titres des blocs 4 et 7). Le lecteur croit
+            lire quatre mesures et en lit une. <b>Un seul mot doit survivre, et ce doit etre celui du joueur :
+            venger.</b></li>
+          <li><b>Le mot « assistance » designe deux choses opposees</b> — une vengeance (blocs 4 et 7) et une
+            vraie assistance au frag (bloc 5) — <b>sur le meme ecran, a quelques centimetres.</b></li>
+          <li><b>Aucune hierarchie.</b> Huit <code>SectionCard</code> de meme poids visuel se suivent. Rien ne dit
+            laquelle est le titre et laquelle est la note de bas de page.</li>
+          <li><b>La comparaison entre soirees, le seul endroit ou une forme riche s'imposait, est la plus
+            pauvre</b> — et se degrade en liste au cas le plus frequent.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================================================== 3. GRAMMAIRE -->
+  <section class="block" id="grammaire">
+    <header>
+      <h2>3. La grammaire de reference — « Performance d'escouade par session »</h2>
+      <p>
+        Relevee dans <code>features/squad/charts/squadSessionTimelineChart.ts</code>. C'est la forme que
+        l'utilisateur designe. Les trois decoupages l'adoptent pour toute comparaison entre soirees.
+      </p>
+    </header>
+    <div class="grid2">
+      <div class="section-card">
+        <h4>Ce que fait le graphe existant</h4>
+        <div class="chart" style="padding-bottom:12px">
+          <ul class="tight" style="margin:0">
+            <li><b>Batons</b> (<code>type: 'bar'</code>, <code>barMaxWidth: 18</code>, l. 89-92) : une barre par session, colorees <b>par palier de performance</b> (<code>perfSessionScale</code>, seuils 75/60/45/30, l. 7 et 48) — la couleur porte un verdict, pas une identite.</li>
+            <li><b>Une courbe pleine</b> par-dessus (<code>type: 'line'</code>, <code>smooth: false</code>, <code>lineStyle.width: 2</code>, l. 97-103) : le taux de victoire, sur <b>le meme axe</b>.</li>
+            <li><b>Une courbe pointillee</b> (<code>type: 'dotted'</code>, l. 110-116) sur un second axe : le MMR.</li>
+            <li><b>Legende</b> nommant chaque serie, axes nommes en 10 px gris (<code>tc.axisLabel</code>).</li>
+          </ul>
+        </div>
+      </div>
+      <div class="section-card">
+        <h4>Ce que j'en reprends — et l'ecart que j'assume</h4>
+        <div class="chart" style="padding-bottom:12px">
+          <ul class="tight" style="margin:0">
+            <li><b>Repris :</b> batons a 18 px, coins arrondis, courbe pleine 2 px non lissee, legende systematique, axes 10 px gris, etiquette de valeur sur le dernier point seulement.</li>
+            <li><b>Repris :</b> la couleur du baton porte un <b>verdict</b> (au-dessus / au-dessous de l'habituel), jamais l'identite d'une soiree.</li>
+            <li><b>Ecart assume :</b> <b>un seul axe Y.</b> Le graphe de reference en a deux (perf et MMR). Ici, tout est en points de pourcentage — taux de la soiree, tendance, habituel — donc un seul axe suffit, et deux seraient une faute de lecture.</li>
+            <li><b>Ajout :</b> le <b>volume</b> de chaque soiree (morts mesurees) en hauteur de baton fantome ou en infobulle. La courbe actuelle n'a aucun denominateur visible.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================================================== A -->
+  <section class="block" id="a">
+    <header>
+      <h2>A. Deux recits &mdash; « Se venger » et « Se servir » <span class="chip new" style="vertical-align:middle">ma preferee</span></h2>
+      <p>
+        Le decoupage suit les <b>deux notions</b>, une carte chacune, plus le nuage garde entier.
+        Chaque carte-recit = <b>une phrase de lecteur</b>, <b>un chiffre d'appel face a l'habituel</b>,
+        <b>un graphe principal</b>, et le detail en repli. <b>8 cartes &rarr; 3.</b>
+      </p>
+    </header>
+
+    <div class="section-card star">
+      <h4>Carte 1 &mdash; Se venger <span class="count">phrase + chiffre d'appel + frise des soirees + 2 replis</span></h4>
+      <p class="say">Quand un des notres tombe, on abat son tueur dans les 5 secondes <b>une fois sur cinq</b> — et quand on le fait, on met 2,4 s. Ce mois-ci on venge un peu moins qu'a l'ordinaire.</p>
+      <div class="chart">
+        <svg viewBox="0 0 520 300" role="img" aria-label="Carte Se venger : chiffre d'appel et frise des soirees">
+          <g>
+            <text x="0" y="14" class="muted">SUR 511 MORTS DES NOTRES</text>
+            <text x="0" y="52" class="big" fill="var(--foreground)">19,4 %</text>
+            <text x="108" y="52" style="font-size:13px">vengees</text>
+            <text x="0" y="72" fill="var(--destructive)" style="font-size:12px">2,7 pts sous l'habituel (22,1 %)</text>
+            <text x="300" y="14" class="muted">ET QUAND ON VENGE</text>
+            <text x="300" y="52" class="big">2,4 s</text>
+            <text x="372" y="52" style="font-size:13px">de delai median</text>
+            <text x="300" y="72" class="muted">99 vengeances, 412 morts sans reponse</text>
+          </g>
+          <line x1="0" y1="88" x2="520" y2="88" stroke="var(--border)"/>
+          <text x="0" y="108" class="muted">SOIREE PAR SOIREE — part des notres vengee dans les 5 s</text>
+          <line class="grid" x1="44" y1="130" x2="500" y2="130"/><text x="38" y="134" text-anchor="end" class="muted num">30 %</text>
+          <line class="grid" x1="44" y1="178" x2="500" y2="178"/><text x="38" y="182" text-anchor="end" class="muted num">20 %</text>
+          <line class="grid" x1="44" y1="226" x2="500" y2="226"/><text x="38" y="230" text-anchor="end" class="muted num">10 %</text>
+          <line class="axis" x1="44" y1="262" x2="500" y2="262"/>
+          <line x1="44" y1="168" x2="500" y2="168" stroke="var(--warning)" stroke-width="1.5" stroke-dasharray="5 3"/>
+          <text x="500" y="163" text-anchor="end" fill="var(--warning)" style="font-size:10px">habituel 22,1 %</text>
+          <rect x="74"  y="143" width="30" height="119" rx="4" fill="#10B981"/>
+          <rect x="146" y="180" width="30" height="82"  rx="4" fill="#F59E0B"/>
+          <rect x="218" y="161" width="30" height="101" rx="4" fill="#10B981"/>
+          <rect x="290" y="188" width="30" height="74"  rx="4" fill="#F59E0B"/>
+          <rect x="362" y="166" width="30" height="96"  rx="4" fill="#F59E0B"/>
+          <rect x="434" y="150" width="30" height="112" rx="4" fill="#10B981"/>
+          <polyline points="89,155 161,172 233,168 305,180 377,176 449,164" fill="none" stroke="#3B82F6" stroke-width="2"/>
+          <g fill="#3B82F6"><circle cx="89" cy="155" r="4"/><circle cx="161" cy="172" r="4"/><circle cx="233" cy="168" r="4"/><circle cx="305" cy="180" r="4"/><circle cx="377" cy="176" r="4"/><circle cx="449" cy="164" r="5" stroke="var(--card)" stroke-width="2"/></g>
+          <text x="449" y="152" text-anchor="middle" class="num" style="font-size:11px;font-weight:600">23,4 %</text>
+          <text x="89"  y="276" text-anchor="middle" class="muted">12/09</text>
+          <text x="161" y="276" text-anchor="middle" class="muted">14/09</text>
+          <text x="233" y="276" text-anchor="middle" class="muted">15/09</text>
+          <text x="305" y="276" text-anchor="middle" class="muted">17/09</text>
+          <text x="377" y="276" text-anchor="middle" class="muted">19/09</text>
+          <text x="449" y="276" text-anchor="middle" class="muted">20/09</text>
+          <rect x="44" y="288" width="11" height="9" rx="2" fill="#10B981"/><text x="60" y="297" class="muted">soiree au-dessus de l'habituel</text>
+          <rect x="216" y="288" width="11" height="9" rx="2" fill="#F59E0B"/><text x="232" y="297" class="muted">en dessous</text>
+          <rect x="316" y="292" width="20" height="2" fill="#3B82F6"/><circle cx="326" cy="293" r="3" fill="#3B82F6"/><text x="344" y="297" class="muted">tendance sur 3 soirees</text>
+        </svg>
+      </div>
+      <details>
+        <summary>Combien de temps on met, exactement (7 barres, dont 2 hors fenetre)</summary>
+        <div class="inner"><p class="note" style="padding:0">L'histogramme du bloc 3, <b>inchange</b> : hachures hors fenetre, repere « fenetre 5 s », phrase « Votre vengeance est rapide mais rare ». Il devient le detail du chiffre « 2,4 s » au lieu d'etre une carte concurrente.</p></div>
+      </details>
+      <details>
+        <summary>Qui venge qui (matrice 4 x 4)</summary>
+        <div class="inner"><p class="note" style="padding:0">La heatmap du bloc 4, <b>inchangee sauf son titre</b> : « Qui venge qui » remplace « Assistances croisees ». Sa ligne « recu N » sous l'axe absorbe entierement le bloc 7.</p></div>
+      </details>
+      <div class="cost">
+        <dt>Absorbe</dt><dd>blocs 1, 2, 3, 4, 7, 8 &rarr; une carte.</dd>
+        <dt>Supprime</dt><dd><b>Bloc 7 (donne/recu)</b> : son propre en-tete dit qu'il ne porte aucune mesure nouvelle ; la ligne « recu N » deja presente sous la matrice suffit. <b>Bloc 1 (Constat)</b> : sa phrase devient la phrase de lecteur de la carte, qui elle est toujours rendue — le seuil « 5 points d'ecart » disparait avec lui, un ecart de 2 pts se lit sur la frise.</dd>
+        <dt>Cout</dt><dd><b>Neuf : le graphe de la frise</b> (batons + tendance + repere d'habituel) — pas de wrapper existant ne combine les trois ; se batit comme <code>squadSessionTimelineChart.ts</code>, dont il reprend la structure d'option. <b>Reutilise :</b> <code>SectionCard</code>, <code>HistogramChart</code>, <code>Heatmap2DChart</code>, <code>ChartCard</code>. Pas un octet de Go : <code>taux_par_session</code> sert deja le taux ET le volume par soiree.</dd>
+        <dt>Le repli a 1 soiree</dt><dd>N'existe plus. Une soiree = <b>un baton</b>, lu face a la regle d'habituel. Un baton unique est deja un graphe ; une ligne de tableau n'en est pas un.</dd>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:12px">
+      <div class="section-card star">
+        <h4>Carte 2 &mdash; Se servir <span class="count">le bloc 5, renomme et rendu a lui-meme</span></h4>
+        <p class="say">Sur les frags de l'escouade, <b>Kaelor prepare le plus de terrain</b> : 41 % des assistances de l'equipe viennent de lui, et c'est JGtm qui en profite le plus.</p>
+        <div class="chart">
+          <svg viewBox="0 0 520 170" role="img" aria-label="Carte Se servir : assistances empilees par assistant">
+            <text x="52" y="30" text-anchor="end" class="muted">Kaelor</text>
+            <rect x="58" y="16" width="130" height="20" rx="3" fill="#6366F1"/><rect x="190" y="16" width="92" height="20" rx="3" fill="#93C5FD"/><rect x="284" y="16" width="56" height="20" rx="3" fill="#4338CA"/>
+            <text x="348" y="30" class="num muted">41 %</text>
+            <text x="52" y="66" text-anchor="end" class="muted">JGtm</text>
+            <rect x="58" y="52" width="102" height="20" rx="3" fill="#818CF8"/><rect x="162" y="52" width="70" height="20" rx="3" fill="#93C5FD"/><rect x="234" y="52" width="38" height="20" rx="3" fill="#4338CA"/>
+            <text x="280" y="66" class="num muted">27 %</text>
+            <text x="52" y="102" text-anchor="end" class="muted">Vhyss</text>
+            <rect x="58" y="88" width="78" height="20" rx="3" fill="#818CF8"/><rect x="138" y="88" width="52" height="20" rx="3" fill="#6366F1"/><rect x="192" y="88" width="30" height="20" rx="3" fill="#4338CA"/>
+            <text x="230" y="102" class="num muted">20 %</text>
+            <text x="52" y="138" text-anchor="end" class="muted">Orn</text>
+            <rect x="58" y="124" width="52" height="20" rx="3" fill="#818CF8"/><rect x="112" y="124" width="34" height="20" rx="3" fill="#6366F1"/><rect x="148" y="124" width="22" height="20" rx="3" fill="#93C5FD"/>
+            <text x="178" y="138" class="num muted">12 %</text>
+            <line class="axis" x1="58" y1="150" x2="500" y2="150"/>
+            <text x="58" y="166" class="muted">Ligne = qui assiste · segment = qui en profite · couleur = le beneficiaire (meme teinte partout sur la page)</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>Inchangee dans sa forme</b> (<code>BarStackedChart</code>, couleurs par joueur, infobulle compte + part).
+          Deux changements : elle <b>quitte le voisinage de la matrice</b>, et elle <b>recupere le mot
+          « assistance » en exclusivite</b>. Une phrase de lecteur est ajoutee au-dessus, comme sur la carte 1.
+        </p>
+      </div>
+      <div class="section-card star">
+        <h4>Carte 3 &mdash; Le nuage <span class="count">strictement intact</span></h4>
+        <p class="note" style="padding-top:10px">
+          <code>SquadIsolementNuageCard</code> <b>tel quel</b>, a une seule chose pres : sa place. Il vient
+          <b>apres</b> la carte « Se venger » et repond a la question qu'elle laisse ouverte —
+          « pourquoi 412 morts sans reponse ? ».
+        </p>
+        <p class="note">
+          Sa phrase d'introduction est reecrite dans le registre des deux autres : « Quand on meurt loin des
+          autres, la vengeance ne vient pas. Chaque point est une mort : a droite, personne n'etait a portee
+          de radar ; en haut, personne n'est venu. »
+        </p>
+        <div class="cost">
+          <dt>Cout</dt><dd>Nul sur le graphe. Une chaine i18n FR/EN reecrite.</dd>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================================================== B -->
+  <section class="block" id="b">
+    <header>
+      <h2>B. La frise et la loupe &mdash; une seule entree, la periode</h2>
+      <p>
+        Le decoupage suit le <b>temps</b>, pas les notions. Une frise unique en tete de section porte toute la
+        periode ; le nuage dessous devient la <b>loupe</b> de la soiree qu'on y clique. <b>8 cartes &rarr; 2 (+1).</b>
+      </p>
+    </header>
+    <div class="section-card">
+      <h4>Carte 1 &mdash; La frise de la periode <span class="count">batons + 2 tendances, un seul axe</span></h4>
+      <p class="say">Six soirees. <b>On venge entre 15,6 % et 24,8 %</b> des notres selon le soir — l'ecart entre le meilleur et le pire soir est plus grand que notre retard sur l'habituel. Cliquez une soiree pour voir pourquoi.</p>
+      <div class="chart">
+        <svg viewBox="0 0 520 268" role="img" aria-label="Frise de la periode : taux par soiree et volume">
+          <text x="0" y="12" class="muted">PART DES NOTRES VENGEE DANS LES 5 S — UNE BARRE PAR SOIREE</text>
+          <line class="grid" x1="44" y1="36" x2="500" y2="36"/><text x="38" y="40" text-anchor="end" class="muted num">30 %</text>
+          <line class="grid" x1="44" y1="86" x2="500" y2="86"/><text x="38" y="90" text-anchor="end" class="muted num">20 %</text>
+          <line class="grid" x1="44" y1="136" x2="500" y2="136"/><text x="38" y="140" text-anchor="end" class="muted num">10 %</text>
+          <line class="axis" x1="44" y1="176" x2="500" y2="176"/>
+          <line x1="44" y1="76" x2="500" y2="76" stroke="var(--warning)" stroke-width="1.5" stroke-dasharray="5 3"/>
+          <text x="500" y="71" text-anchor="end" fill="var(--warning)" style="font-size:10px">habituel 22,1 %</text>
+          <rect x="72"  y="52" width="34" height="124" rx="4" fill="#10B981"/><text x="89" y="47" text-anchor="middle" class="num muted">24,8</text>
+          <rect x="144" y="90" width="34" height="86"  rx="4" fill="#F59E0B"/><text x="161" y="85" text-anchor="middle" class="num muted">17,2</text>
+          <rect x="216" y="71" width="34" height="105" rx="4" fill="#F59E0B"/><text x="233" y="66" text-anchor="middle" class="num muted">21,0</text>
+          <rect x="288" y="98" width="34" height="78"  rx="4" fill="#F59E0B"/><text x="305" y="93" text-anchor="middle" class="num muted">15,6</text>
+          <rect x="360" y="77" width="34" height="99"  rx="4" fill="#F59E0B"/><text x="377" y="72" text-anchor="middle" class="num muted">19,9</text>
+          <rect x="432" y="59" width="34" height="117" rx="4" fill="#10B981" stroke="var(--foreground)" stroke-width="2"/><text x="449" y="54" text-anchor="middle" class="num" style="font-weight:600">23,4</text>
+          <polyline points="89,66 161,90 233,84 305,96 377,90 449,72" fill="none" stroke="#3B82F6" stroke-width="2"/>
+          <g fill="#3B82F6"><circle cx="89" cy="66" r="4"/><circle cx="161" cy="90" r="4"/><circle cx="233" cy="84" r="4"/><circle cx="305" cy="96" r="4"/><circle cx="377" cy="90" r="4"/><circle cx="449" cy="72" r="5" stroke="var(--card)" stroke-width="2"/></g>
+          <polyline points="89,120 161,128 233,124 305,134 377,126 449,118" fill="none" stroke="#818CF8" stroke-width="2" stroke-dasharray="4 3"/>
+          <text x="0" y="200" class="muted">MORTS DES NOTRES MESUREES CE SOIR-LA — le denominateur, que la courbe actuelle ne montre pas</text>
+          <rect x="72"  y="210" width="34" height="22" rx="3" fill="var(--muted)" stroke="var(--border)"/><text x="89" y="225" text-anchor="middle" class="num muted">84</text>
+          <rect x="144" y="210" width="34" height="22" rx="3" fill="var(--muted)" stroke="var(--border)"/><text x="161" y="225" text-anchor="middle" class="num muted">61</text>
+          <rect x="216" y="210" width="34" height="22" rx="3" fill="var(--muted)" stroke="var(--border)"/><text x="233" y="225" text-anchor="middle" class="num muted">92</text>
+          <rect x="288" y="210" width="34" height="22" rx="3" fill="var(--muted)" stroke="var(--border)"/><text x="305" y="225" text-anchor="middle" class="num muted">45</text>
+          <rect x="360" y="210" width="34" height="22" rx="3" fill="var(--muted)" stroke="var(--border)"/><text x="377" y="225" text-anchor="middle" class="num muted">108</text>
+          <rect x="432" y="210" width="34" height="22" rx="3" fill="var(--muted)" stroke="var(--border)"/><text x="449" y="225" text-anchor="middle" class="num muted">121</text>
+          <text x="89"  y="192" text-anchor="middle" class="muted">12/09</text>
+          <text x="161" y="192" text-anchor="middle" class="muted">14/09</text>
+          <text x="233" y="192" text-anchor="middle" class="muted">15/09</text>
+          <text x="305" y="192" text-anchor="middle" class="muted">17/09</text>
+          <text x="377" y="192" text-anchor="middle" class="muted">19/09</text>
+          <text x="449" y="192" text-anchor="middle" class="muted" style="font-weight:600;fill:var(--foreground)">20/09</text>
+          <rect x="44" y="248" width="11" height="9" rx="2" fill="#10B981"/><text x="60" y="257" class="muted">au-dessus de l'habituel</text>
+          <rect x="186" y="248" width="11" height="9" rx="2" fill="#F59E0B"/><text x="202" y="257" class="muted">en dessous</text>
+          <rect x="280" y="252" width="20" height="2" fill="#3B82F6"/><text x="306" y="257" class="muted">tendance du taux</text>
+          <rect x="396" y="252" width="20" height="2" fill="#818CF8"/><text x="422" y="257" class="muted">delai median (s)</text>
+        </svg>
+      </div>
+      <p class="note">
+        <b>Deux tendances sur un seul axe, et c'est deliberement le meme axe.</b> Le delai median (2 a 4 s) et
+        le taux (15 a 25 %) tiennent tous deux dans l'echelle 0-30 : les superposer ne coute pas un second axe
+        Y — qu'on ne peut pas lire sans se tromper. La bande basse des <b>volumes</b> est un rang d'etiquettes,
+        pas un second graphe : c'est le denominateur, et il n'a pas d'echelle propre.
+      </p>
+      <div class="cost">
+        <dt>Absorbe</dt><dd>blocs 1, 2, 3 (en repli), 8.</dd>
+        <dt>Supprime</dt><dd><b>Blocs 4 et 7</b> (matrice et donne/recu) : dans un decoupage temporel, l'axe « par joueur » n'a plus de place — il part en repli d'une seule table ou disparait. <b>C'est le prix de ce decoupage, et il est reel</b> : « qui venge qui » est un fait que la frise ne peut pas porter.</dd>
+        <dt>Cout</dt><dd>Neuf : la frise (comme en A) <b>plus</b> la selection d'une soiree et sa propagation au nuage — un etat de page, pas un composant. <b>Reutilise :</b> <code>ScatterChart</code> custom du bloc 6 tel quel.</dd>
+      </div>
+    </div>
+    <div class="section-card" style="margin-top:12px">
+      <h4>Carte 2 &mdash; La loupe : le nuage, filtre sur la soiree cliquee</h4>
+      <p class="say">Soiree du 20/09 : on a venge 23,4 % des notres, mieux que d'habitude. Les 93 morts sans reponse se lisent ici — <b>a droite du repere, personne n'etait a portee.</b></p>
+      <p class="note">
+        Le nuage du bloc 6, <b>forme inchangee</b>, avec un seul ajout : son titre porte la soiree selectionnee, et
+        un bouton « toute la periode » revient a l'etat non filtre. Le scatter <b>gagne un role narratif</b> — il
+        repond a la barre qu'on vient de cliquer.
+      </p>
+    </div>
+  </section>
+
+  <!-- ==================================================== C -->
+  <section class="block" id="c">
+    <header>
+      <h2>C. Le tableau de bord d'equipe &mdash; une ligne epaisse par coequipier</h2>
+      <p>
+        Le decoupage suit les <b>gens</b>. Pour chaque coequipier, une ligne epaisse dit d'un coup
+        « combien il te venge / combien tu le venges », en barres horizontales a echelle lineaire.
+        La frise des soirees ferme la section. <b>8 cartes &rarr; 3.</b>
+      </p>
+    </header>
+    <div class="section-card">
+      <h4>Carte 1 &mdash; Qui couvre qui, en clair <span class="count">barres horizontales divergentes, une ligne par joueur</span></h4>
+      <p class="say"><b>Vhyss est le plus couvert et le moins couvrant</b> : les autres le vengent 75 fois, il leur rend 55. Orn est le seul a l'equilibre.</p>
+      <div class="chart">
+        <svg viewBox="0 0 520 250" role="img" aria-label="Barres divergentes vengeances donnees et recues par joueur">
+          <text x="140" y="14" text-anchor="end" class="muted">&#8592; IL NOUS VENGE</text>
+          <text x="400" y="14" text-anchor="end" class="muted">NOUS LE VENGEONS &#8594;</text>
+          <line x1="260" y1="22" x2="260" y2="216" stroke="var(--muted-foreground)" stroke-width="1.2"/>
+          <text x="56" y="44" class="muted">JGtm</text>
+          <rect x="140" y="30" width="118" height="26" rx="4" fill="#818CF8"/><text x="134" y="48" text-anchor="end" class="num">86</text>
+          <rect x="262" y="30" width="106" height="26" rx="4" fill="#D97706"/><text x="374" y="48" class="num">77</text>
+          <text x="56" y="90" class="muted">Kaelor</text>
+          <rect x="150" y="76" width="108" height="26" rx="4" fill="#818CF8"/><text x="144" y="94" text-anchor="end" class="num">80</text>
+          <rect x="262" y="76" width="112" height="26" rx="4" fill="#D97706"/><text x="380" y="94" class="num">81</text>
+          <text x="56" y="136" class="muted">Vhyss</text>
+          <rect x="184" y="122" width="74" height="26" rx="4" fill="#818CF8"/><text x="178" y="140" text-anchor="end" class="num">55</text>
+          <rect x="262" y="122" width="102" height="26" rx="4" fill="#D97706"/><text x="370" y="140" class="num">75</text>
+          <rect x="366" y="122" width="1" height="26" fill="none"/>
+          <text x="388" y="140" fill="var(--warning)" style="font-size:11px">+20</text>
+          <text x="56" y="182" class="muted">Orn</text>
+          <rect x="204" y="168" width="54" height="26" rx="4" fill="#818CF8"/><text x="198" y="186" text-anchor="end" class="num">39</text>
+          <rect x="262" y="168" width="58" height="26" rx="4" fill="#D97706"/><text x="326" y="186" class="num">43</text>
+          <text x="260" y="232" text-anchor="middle" class="muted">0</text>
+          <rect x="140" y="240" width="11" height="9" rx="2" fill="#818CF8"/><text x="156" y="249" class="muted">vengeances qu'il donne</text>
+          <rect x="300" y="240" width="11" height="9" rx="2" fill="#D97706"/><text x="316" y="249" class="muted">vengeances qu'il recoit</text>
+        </svg>
+      </div>
+      <p class="note">
+        <b>Remplace a la fois la matrice (4) et le donne/recu (7)</b> par une forme unique. Rien n'est perdu
+        du bloc 7 (ce sont ses deux grandeurs exactes) ; le <b>detail couple-par-couple</b> de la matrice part
+        en repli, sous forme de la meme heatmap, inchangee. L'echelle est <b>lineaire et partagee</b> entre les
+        deux cotes : un ecart de 20 se voit comme un ecart de 20, ce qu'une rampe de couleur ne permet jamais.
+      </p>
+      <details>
+        <summary>Le detail couple par couple (matrice 4 x 4)</summary>
+        <div class="inner"><p class="note" style="padding:0">La <code>Heatmap2DChart</code> du bloc 4, telle quelle, titre corrige en « Qui venge qui ».</p></div>
+      </details>
+      <div class="cost">
+        <dt>Absorbe</dt><dd>blocs 4 et 7 en une carte ; blocs 1 et 2 en phrase + chiffres de la carte 3.</dd>
+        <dt>Supprime</dt><dd>Le <b>donne/recu en barres groupees</b> (bloc 7) : meme donnee, forme plus faible — deux barres cote a cote ne montrent pas un desequilibre, deux barres opposees si.</dd>
+        <dt>Cout</dt><dd><b>Neuf : les barres divergentes par joueur.</b> Aucun wrapper du depot n'ancre deux series de part et d'autre d'un zero categoriel (<code>BarGroupedChart</code> ne le fait pas). Proche en esprit de l'aire divergente de la balance des degats, mais en categoriel.</dd>
+      </div>
+    </div>
+    <div class="grid2" style="margin-top:12px">
+      <div class="section-card">
+        <h4>Carte 2 &mdash; Le nuage <span class="count">intact</span></h4>
+        <p class="note" style="padding-top:10px">Comme en A et en B : <code>SquadIsolementNuageCard</code> non touche. Il est le seul endroit ou l'axe « par joueur » de la carte 1 rencontre une explication.</p>
+      </div>
+      <div class="section-card">
+        <h4>Carte 3 &mdash; La frise des soirees <span class="count">identique a A / B</span></h4>
+        <p class="note" style="padding-top:10px">Meme graphe batons + tendance + regle d'habituel, en <b>fin</b> de section cette fois : le decoupage part des gens et finit par le temps. Elle porte ici la phrase de lecteur et le chiffre d'appel (19,4 % / 2,4 s).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================================================== VERDICT -->
+  <section class="block" id="verdict">
+    <header>
+      <h2>Comparaison et preference</h2>
+    </header>
+    <table class="cmp">
+      <tr><th>&nbsp;</th><th>A &mdash; Deux recits</th><th>B &mdash; Frise et loupe</th><th>C &mdash; Tableau de bord</th></tr>
+      <tr><td class="s"><b>Cartes</b></td><td class="s">8 &rarr; <b>3</b></td><td class="s">8 &rarr; <b>2</b></td><td class="s">8 &rarr; <b>3</b></td></tr>
+      <tr><td class="s"><b>Entree du recit</b></td><td>Les deux notions, nommees et separees</td><td>Le temps</td><td>Les gens</td></tr>
+      <tr><td class="s"><b>Faits perdus</b></td><td><b>Aucun</b> (tout passe en repli)</td><td><b>Qui venge qui</b> — la matrice n'a plus de place</td><td>Aucun</td></tr>
+      <tr><td class="s"><b>Le scatter</b></td><td>Carte a part, apres la vengeance</td><td>Devient la loupe d'une soiree — <b>le role le plus fort des trois</b></td><td>Carte a part</td></tr>
+      <tr><td class="s"><b>Composants neufs</b></td><td class="s"><b>1</b> (la frise)</td><td class="s"><b>1</b> + un etat de selection</td><td class="s"><b>2</b> (la frise + les barres divergentes)</td></tr>
+      <tr><td class="s"><b>Regle le « assistance = deux choses »</b></td><td><b>Oui, frontalement</b> : une carte par notion, un mot par notion</td><td>Partiellement (les cartes fautives disparaissent, mais l'assistance aussi)</td><td>Oui</td></tr>
+    </table>
+    <div class="section-card star" style="margin-top:14px">
+      <h4>Ma preferee &mdash; <b>A, « Deux recits »</b></h4>
+      <div class="chart" style="padding-bottom:12px">
+        <ul class="tight" style="margin:0">
+          <li><b>Elle traite la cause, pas le symptome.</b> Le desordre vient de ce que deux notions se partagent
+            huit cartes et se disputent un mot. A donne une carte a chacune et tranche le vocabulaire :
+            <b>venger</b> d'un cote, <b>assister</b> de l'autre. B fait disparaitre la deuxieme notion au lieu
+            de la clarifier.</li>
+          <li><b>Elle ne perd aucun fait.</b> Les trois faits reellement uniques (distribution, qui venge qui,
+            pourquoi) survivent — deux en repli, un en carte. B sacrifie la matrice ; c'est defendable, mais
+            c'est une perte seche.</li>
+          <li><b>Un seul composant neuf</b>, et c'est celui que l'utilisateur a lui-meme designe : des batons
+            par soiree avec une tendance, sur le modele de « Performance d'escouade par session ».</li>
+          <li><b>Le repli en liste disparait par construction</b>, et pas par une rustine : une soiree unique
+            est un baton lu face a la regle d'habituel. Il n'y a plus de branche <code>if (sessions &lt; 3)</code>
+            qui change la nature de ce qu'on voit.</li>
+          <li><b>A emprunter a B</b> : le clic sur un baton de la frise qui filtre le nuage. Ce n'est pas la
+            structure de A, mais c'est un ajout compatible, et c'est la meilleure idee de B.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="lede" style="margin-top:16px">
+      <b>Rien n'est implemente.</b> Ce document est une maquette ; aucune de ces formes n'existe dans le code.
+      Les trois decoupages sont exclusifs l'un de l'autre sur la carte principale, mais partagent le meme
+      graphe de frise — quel que soit le choix, ce composant est a ecrire.
+    </p>
+  </section>
+</div>
+
+<script>
+  (function () {
+    var b = document.getElementById('theme');
+    b.addEventListener('click', function () {
+      var r = document.documentElement;
+      var cur = r.getAttribute('data-theme');
+      if (!cur) {
+        cur = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      r.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+    });
+  })();
+</script>
+</html>
