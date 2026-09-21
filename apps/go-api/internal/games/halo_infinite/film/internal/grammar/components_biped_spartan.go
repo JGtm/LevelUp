@@ -346,9 +346,15 @@ func consumeBipedSpartanAbility(br *Lecteur) bool {
 //	a = R(1) (FUN_1406cf008)  -> dst[0]
 //	si a != 0 :
 //	    FUN_14297ea84(br) = R(6)
-//	    si (dst[2] & 1) != 0 : b = R(1) ; branche gardee par (dst[2] & 0x10) ;
-//	                           FUN_142f04664(dst+4, br, b, param_3)
-//	    -> dst[2] est un octet d'ETAT RUNTIME : NON derivable du flux. Desync propre.
+//	    si (dst[2] & 1) == 0 : rien de plus, on saute a la queue
+//	    sinon : c = R(1), puis TROIS CAS, ET EUX SEULS (relecture du 2026-09-21, lot 5.3.3-c) :
+//	        c == 0                      -> FUN_142f04664(dst+4, br, 0, param_3)
+//	        c == 1 et (dst[2] & 0x10)   -> FUN_1406d3140 (un id d'entite) PUIS FUN_142f04664
+//	        c == 1 et !(dst[2] & 0x10)  -> FUN_1406d3140 SEUL, puis saut a la queue
+//	    -> dst[2] est un octet d'ETAT RUNTIME, et il n'est ECRIT PAR AUCUNE lecture de cette
+//	       fonction (seuls dst[0] et dst[1] le sont) : il n'est donc PAS derivable du flux, ni
+//	       ici ni chez l'ecrivain. Desync propre, et c'est definitif tant qu'aucune autre
+//	       composante ne replique cet octet.
 //	t = R(1)  -> dst[1]
 //	si t != 0 : FUN_14076e494(br, dst+0x18, 0x10, 0, param_3, 0)   = la MEME queue qu'i60
 //

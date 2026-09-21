@@ -70,6 +70,24 @@ const (
 
 // anchorInnerLight / anchorInnerHeavy : les deux seules valeurs internes observées en
 // nombre (fire / accroche).
+//
+// CE SONT DES VALEURS BRUTES, ET L ECRIVAIN COMPTE AUTREMENT (lecture du 2026-09-21, lot
+// 5.3.3-c). `FUN_142f21c0c` lit TROIS bits et range `brut + 1` ; `FUN_142f25e90` dispatche sur
+// la valeur RANGEE, de 1 à 6, et rend la main sans lire un bit de plus au-delà de 6. Donc :
+//
+//	anchorInnerLight = brut 1  ->  ETIQUETTE 2 de l'écrivain
+//	anchorInnerHeavy = brut 2  ->  ETIQUETTE 3 de l'écrivain
+//
+// et l'écrivain a SIX étiquettes (1 à 6), dont ce port en modélise DEUX. Sa branche
+// `étiquette == 0` est INATTEIGNABLE (`brut + 1 >= 1`) : du code mort du point de vue du flux.
+// Les bruts 6 et 7 (étiquettes 7 et 8) ne portent AUCUNE charge propre.
+//
+// COÛT MESURÉ DU MANQUE, avant d'en porter une de plus : 38 records `ti=35` désynchronisés sur
+// 31 530 (0,12 %), dont 25 sur `i59` et 13 sur `i57` (film `bfecd02b`, marche à trois vues).
+// Périmètre figé par `i59_etiquette_loi_test.go` ; ce qui manque pour porter la suite est la
+// largeur bit-exacte de `FUN_142f26e40`, de `FUN_1408f0ac4` (catégories 0 et 5) et de
+// `FUN_1407f08bc` — et le fait que ce port lit sa porte AVANT le `switch` là où l'écrivain la
+// lit DANS ses étiquettes 1 et 2.
 const (
 	anchorInnerLight = 1
 	anchorInnerHeavy = 2

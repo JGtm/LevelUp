@@ -1761,6 +1761,123 @@ une mesure contredit le depot, c est l instrument qu on suspecte en premier.**
 
 ---
 
+## 2 quindecies. `i59` ET `i57` (5.3.3-c) — L ETIQUETTE VAUT `brut + 1`, ET LA DESYNC D `i57` EST DEFINITIVE
+
+> Point (c) du lot 5.3.3, 2026-09-21. Une lecture d ecrivain par composant, but ecrit avant.
+
+### 2quin-d.1 `i59` — LA LOI DE L ETIQUETTE, LUE A L OCTET
+
+**BUT DE LA LECTURE** : le port du corps `tag==3` rend `ported=false` sur `Inner` hors {1,2}. Que
+dit l ecrivain de cette valeur interne, et combien de branches a-t-il vraiment ?
+
+`FUN_142f21c0c` — le lecteur d etiquette appele en tete de `FUN_142f25e90` — fait EXACTEMENT
+ceci :
+
+```
+*(reader + 0x2c) += 3                   // le compteur de bits avance de TROIS, et de trois seulement
+*param_3 = (octet de tete >> 5) + 1     // la valeur RANGEE est brut + 1
+```
+
+`FUN_142f25e90` dispatche ensuite sur la valeur RANGEE :
+
+| valeur rangee | brut | ce que l ecrivain lit apres l en-tete commun |
+|---|---|---|
+| **0** | — | **INATTEIGNABLE** (`brut + 1 >= 1`) : branche morte du point de vue du flux |
+| 1 | 0 | quatre mots a -1 ; `FUN_1407f08bc(p+0x76)` ; retour |
+| 2 | 1 | deux mots a -1 ; `FUN_1408f0ac4(p+2, categorie 5)` ; `FUN_1407f08bc(p+0x76)` ; retour |
+| 3 | 2 | `FUN_1408f0ac4(p, categorie 0)` ; `FUN_1408f0ac4(p+2, cat. 5)` ; **trois** `FUN_142f26e9c` ; `FUN_14076dc04(0x18)` ; une queue courte |
+| 4 et 5 | 3, 4 | deux mots a -1 ; `FUN_1408f0ac4(cat. 5)` ; **un** `FUN_142f26e9c` ; ... |
+| 6 | 5 | `FUN_1407f08bc(p+0x1e)` ; **porte LUE DANS LE FLUX** (`*(short*)(p+0x1e) == -1`) -> `FUN_1408f0ac4(cat. 5)` ou rien ; `FUN_1408f0ac4(cat. 0)` ; **deux** `FUN_142f26e9c` ; `R(1)` ; `FUN_14076dc04` ; retour |
+| 7 et 8 | 6, 7 | **RIEN** : l ecrivain sort du `switch` par son `return` |
+
+En-tete commun a toutes les valeurs non nulles, avant le `switch` :
+`FUN_142f26e40(p+0x14, p+0x16, param_4)` puis `FUN_14297ea84`.
+
+**TROIS CORRECTIONS DU DEPOT, ET ELLES SONT PORTEES DANS LA GODOC** :
+
+1. **`AbilityNonPredictedState.Inner` porte le BRUT**, pas l etiquette. Les deux constantes du
+   port (`anchorInnerLight = 1`, `anchorInnerHeavy = 2`) designent donc les etiquettes **2 et 3**
+   de l ecrivain. Le depot les lisait comme « les etiquettes 1 et 2 ».
+2. **L ecrivain a SIX etiquettes (1 a 6), le port en modelise DEUX.** Le « `Inner` hors {1,2} »
+   n est donc pas une forme inconnue : ce sont quatre branches ECRITES et non portees, plus deux
+   valeurs (bruts 6 et 7) **qui ne portent aucune charge propre**.
+3. **La porte `FUN_1407f08bc` est LUE AU MAUVAIS ENDROIT** par le port : il la lit AVANT son
+   `switch`, la ou l ecrivain la lit DANS ses etiquettes 1 et 2. C est sans effet sur les deux
+   branches portees, et c est le premier obstacle a en porter une troisieme.
+
+### 2quin-d.2 `i57` — LA DESYNC EST DEFINITIVE, ET MAINTENANT BORNEE EXACTEMENT
+
+**BUT DE LA LECTURE** : la branche `tag==3` rend `ported=false` des son premier bit a 1. Le
+depot dit « gardee par des octets d etat RUNTIME ». Lesquels, et sont-ils vraiment hors du flux ?
+
+`FUN_142f262d4`, lu en entier, rend TROIS cas et eux seuls :
+
+```
+a = R(1) -> dst[0]
+si a != 0 :
+    FUN_14297ea84                              // R(6)
+    si (dst[2] & 1) == 0 : saut a la queue
+    sinon : c = R(1), puis
+        c == 0                      -> FUN_142f04664(dst+4, br, 0, param_3)
+        c == 1 et (dst[2] & 0x10)   -> FUN_1406d3140 (un id d entite) PUIS FUN_142f04664
+        c == 1 et !(dst[2] & 0x10)  -> FUN_1406d3140 SEUL, puis saut a la queue
+t = R(1) -> dst[1]
+si t != 0 : FUN_14076e494(dst+0x18, 0x10, 0, param_3, 0)      // la MEME queue qu i60
+```
+
+**LE VERDICT EST NEGATIF, ET IL EST DEFINITIF** : `dst[2]` n est ECRIT PAR AUCUNE lecture de
+cette fonction — seuls `dst[0]` et `dst[1]` le sont. Il n est donc derivable ni du flux, ni de
+l ecrivain, qui gate sur le MEME octet. Tant qu aucun autre composant ne replique cet octet, la
+desync propre EST la bonne reponse, et c est desormais ecrit avec sa raison exacte plutot qu en
+gros.
+
+### 2quin-d.3 LE COUT DU MANQUE, MESURE — ET IL DECIDE
+
+Marche a TROIS vues, paquets a liste pleine localises, `bfecd02b` :
+
+| | mesure |
+|---|---|
+| records `ti=35` | **31 530** |
+| dont desynchronises | **38 (0,12 %)** |
+| composant fautif | **`i59` 25 · `i57` 13** |
+| tags externes d `i59` | 0:2 675 · 1:529 · 2:484 · **3:359** |
+| corps `tag==3` parcourus | 359, dont **21 complets (5,8 %)** |
+| tags d `i57` | 0:2 848 · 2:543 · 1:522 · **3:416** |
+
+**DECISION, ET ELLE EST ASSUMEE : ON NE PORTE PAS PLUS LOIN DANS CE LOT.** Le manque coute
+**0,12 %** des records de bipede. Le porter exige d etablir bit-exactement `FUN_142f26e40`,
+`FUN_1408f0ac4` (categories 0 ET 5) et `FUN_1407f08bc` — trois largeurs qu aucune lecture n a
+encore rendues — et de DEPLACER la porte du port, ce qui bougerait le curseur sur les corps qui
+aboutissent aujourd hui : ceux-la publient `grappleLines[]` au document (schema 8). Un gain de
+0,12 % contre un risque sur une sortie publiee, c est un lot en soi, pas une fin de lot.
+
+**CE QUI EST LIVRE A LA PLACE** : la loi et le perimetre, FIGES. `i59_etiquette_loi_test.go`
+epingle (a) la loi `brut + 1`, (b) l inatteignabilite de l etiquette 0, (c) pour les HUIT valeurs
+brutes, la consommation de bits du port et son verdict de portage. Les six valeurs non modelisees
+y sont figees comme NON PORTEES : un lot qui en portera une devra mettre le tableau a jour
+DELIBEREMENT.
+
+### 2quin-d.4 REVISIONS
+
+**`grammar.Rev` NE MONTE PAS** — elle reste `grammar-2026-09-21`, la revision de CE lot. Le
+changement est de la GODOC seule (deux blocs de commentaire) plus un fichier de test : aucun bit
+n est lu autrement, aucune sortie ne peut changer. L empreinte, elle, hache les OCTETS de la
+couche : le golden est donc refige AVEC LA MEME REVISION, ce que sa porte prevoit explicitement.
+`facts.Rev` hache la VALEUR de la revision : elle ne bouge pas. Aucune fixture de contrat a
+refiger.
+
+### 2quin-d.5 REPORT, CONSIGNE AU § 6
+
+**PORTER LES QUATRE ETIQUETTES ECRITES D `i59` (1, 4, 5, 6) ET LES DEUX VALEURS SANS CHARGE
+(bruts 6 et 7).** Pre-requis, dans l ordre : (1) la largeur de `FUN_142f26e40` et de
+`FUN_14297ea84` ; (2) celle de `FUN_1408f0ac4` en categories 0 et 5 (la table des domaines
+d `event_list.go` donne 13 bits pour la categorie 0 et 8 pour la 5 — a confirmer chez
+l ecrivain, plus le tag de 2 bits) ; (3) celle de `FUN_1407f08bc` (le port lit porte + R(8), et
+l etiquette 6 en relit la valeur comme un SHORT teste a -1) ; (4) le deplacement de la porte
+dans le `switch`, avec un temoin sur les corps qui aboutissent aujourd hui.
+
+---
+
 ## 3. LE NEGATIF, MESURE DEUX FOIS
 
 **(a) Sur l'archetype.** Les 64 composants de `ti=35` (`ecs_table.tsv`) : aucun nom ne contient
