@@ -686,3 +686,33 @@ en = "Kills vs Deaths"
 [timeseries.distributions.mmr_title]
 fr = "MMR équipe vs MMR adverse"
 en = "Team MMR vs Enemy MMR"
+
+# Balance des dégâts cumulée (lot L, 2026-09-21) — même grandeur et même grammaire que
+# `session.detail.chart_net_lives_title` : dégâts nets ÷ PV-pour-tuer, exprimés en vies.
+[timeseries.progression.net_lives_title]
+fr = "Balance des dégâts cumulée"
+en = "Cumulative damage balance"
+
+[timeseries.progression.net_lives_series]
+fr = "Balance cumulée"
+en = "Cumulative balance"
+
+[timeseries.progression.net_lives_match]
+fr = "Balance du match"
+en = "Match balance"
+
+[timeseries.progression.net_lives_average_caption]
+fr = "Avantage net par match"
+en = "Net advantage per match"
+
+[timeseries.progression.net_lives_average_unit]
+fr = "vies/match"
+en = "lives/match"
+
+[timeseries.progression.net_lives_tooltip]
+fr = "Balance des dégâts = (dégâts infligés − dégâts subis) ÷ {{HP}} PV, exprimée en vies, cumulée match après match. Positif = la balance porte l'équipe ; négatif = elle coûte plus qu'elle ne rapporte. Un match sans dégâts reste sur l'axe et reporte la dernière valeur cumulée."
+en = "Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed in lives, accumulated match after match. Positive = the balance carries the team; negative = it costs more than it brings. A match without damage stays on the axis and carries the last cumulative value forward."
+
+[timeseries.progression.net_lives_empty]
+fr = "Aucun match ne porte les dégâts infligés et subis."
+en = "No match carries both damage dealt and damage taken."
