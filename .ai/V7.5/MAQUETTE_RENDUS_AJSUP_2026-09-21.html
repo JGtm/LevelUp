@@ -115,7 +115,7 @@
     <a href="#s2">2. Repartition des resultats</a>
     <a href="#s3">3. Taux d'echange par session</a>
     <a href="#s4">4. Controle des armes speciales</a>
-    <a href="#s5">5. Usages d'equipement</a>
+    <a href="#s5">5. Part de chaque equipe</a>
     <a href="#reco">Recapitulatif</a>
   </nav>
 
@@ -394,97 +394,71 @@
   <!-- =========================================================== 5 EQUIPEMENT -->
   <section class="block" id="s5">
     <header>
-      <h2>5. Match view &middot; « Usages d'equipement » — deux blocs qui doivent se lire ensemble <span class="chip">D15</span></h2>
+      <h2>5. Match view &middot; « Part de chaque equipe » (usages d'equipement) <span class="chip">D15</span></h2>
       <p>
-        <code>features/match-replay/MatchEquipmentUsageSection.tsx</code> porte deux vues :
+        <code>features/match-replay/MatchEquipmentUsageSection.tsx</code> porte deux vues. Celle de gauche,
         <b>« Nombre d'usages par joueur »</b> — la grille <code>&lt;ValueGrid&gt;</code>, une colonne par
-        <b>famille</b> (Grappin, Surbouclier, Camouflage, Mur, Capteur, Propulseur), chaque colonne avec SON
-        echelle —, et <b>« Part de chaque equipe »</b> — une barre 100 % DOM par <b>groupe</b>
-        (Grappin / Equipement). Le constat de l'utilisateur est exact et c'est le vrai sujet :
-        <b>les deux vues ne parlent pas des memes categories.</b> On lit six familles a gauche et deux groupes a
-        droite ; aucune ligne de la premiere ne se retrouve dans la seconde. Les trois propositions sont donc des
-        <b>paires</b> : memes categories, meme ordre, memes encres des deux cotes.
+        <b>famille</b> (Grappin, Mur, Surbouclier, Camouflage, Capteur, Propulseur) — <b>ne change pas</b> :
+        elle n'est dessinee ci-dessous qu'une fois, dans « Aujourd'hui », pour memoire. Le sujet est
+        <b>uniquement le bloc de droite</b>, « Part de chaque equipe » : aujourd'hui une barre 100 % par
+        <b>groupe</b> (Grappin / Equipement). Deux defauts : la barre est <b>normalisee</b> (le grappin a
+        24 usages et le capteur 6 occupent la meme longueur), et elle parle de <b>groupes</b> quand la grille de
+        gauche parle de <b>familles</b>. Les trois propositions gardent un seul point commun avec la grille —
+        <b>les memes six familles, dans le meme ordre</b> — et sont toutes <b>horizontales</b>.
       </p>
     </header>
 
     <div class="section-card now">
-      <h4>Aujourd'hui <span class="count">a gauche 6 familles, a droite 2 groupes — deux vocabulaires</span></h4>
+      <h4>Aujourd'hui <span class="count">a gauche la grille <b>inchangee</b> — a droite le bloc a refaire</span></h4>
       <div class="chart"><svg id="now-5" viewBox="0 0 1060 250" role="img" aria-label="Usages d'equipement aujourd'hui"></svg></div>
       <p class="note">
-        Les deux vues sont justes separement. Ensemble, elles ne se repondent pas : le lecteur qui voit
-        « Madina97294 a pose 6 murs » a gauche cherche a droite la part de son camp <b>sur les murs</b>, et
-        trouve une barre « Equipement » qui melange murs, capteurs, propulseurs et bonus. Le grappin, lui, a sa
-        barre — parce qu'il est un groupe a lui seul, pas parce que c'est la bonne maille.
+        <b>Le bloc de gauche n'est pas en cause et reste tel quel.</b> A droite, le lecteur qui vient de voir
+        « Madina97294 a pose 4 murs » cherche la part de son camp <b>sur les murs</b> et trouve une barre
+        « Equipement » qui melange murs, capteurs, propulseurs, surbouclier et camouflage ; et les deux barres
+        font la meme longueur alors qu'elles valent 24 et 38 usages.
       </p>
     </div>
 
-    <h3 class="sub">Paire A &middot; Grille par joueur + colonnes par famille <span class="chip reco">recommande</span></h3>
-    <div class="grid2">
+    <div class="grid3">
       <div class="section-card">
-        <h4>A-gauche &middot; Usages par joueur <span class="count">ValueGrid, une colonne par famille</span></h4>
-        <div class="chart"><svg id="p5a1" viewBox="0 0 520 260" role="img" aria-label="Paire A gauche"></svg></div>
+        <h4>5.A &middot; Barres par famille, longueur vraie <span class="count"><span class="chip reco">recommande</span></span></h4>
+        <div class="chart"><svg id="p5a" viewBox="0 0 340 260" role="img" aria-label="Proposition 5.A"></svg></div>
+        <ul class="says">
+          <li>Une barre epaisse de 24 px par famille, <b>une seule echelle d'usages</b> pour les six : la barre du grappin (24) fait quatre fois celle du capteur (6). Le segment gauche est mon camp, le droit le leur, les deux comptes ecrits dedans.</li>
+          <li>Le volume et le rapport de force se lisent <b>dans la meme marque</b>, sans pourcentage a traduire ; le pourcentage reste en infobulle pour qui le veut.</li>
+          <li>Meme liste, meme ordre, meme hauteur de ligne que la grille de gauche : les deux blocs se lisent l'un sous l'autre sans retraduire.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Reutilisable</b> : <code>&lt;BarStackedChart&gt;</code> horizontal, deux series (mon camp / eux).</dd>
+          <dt>A ecrire</dt><dd>Agreger <code>usage.byTeam</code> par <b>famille</b> et non par groupe ; <code>usageColumnGroups</code> donne deja la liste et l'ordre.</dd>
+        </dl>
       </div>
       <div class="section-card">
-        <h4>A-droite &middot; Part de chaque equipe, PAR FAMILLE <span class="count">colonnes empilees, hauteur = usages</span></h4>
-        <div class="chart"><svg id="p5a2" viewBox="0 0 520 260" role="img" aria-label="Paire A droite"></svg></div>
-      </div>
-    </div>
-    <div class="section-card">
-      <ul class="says" style="padding-top:10px">
-        <li><b>Memes six familles, meme ordre, memes encres</b> : la colonne « Mur » de gauche est exactement la colonne « Mur » de droite. Le regard passe de l'une a l'autre sans retraduire.</li>
-        <li>A droite la hauteur est le <b>volume reel</b>, pas 100 % : le grappin (24 usages) domine le capteur (6), ce que la barre 100 % actuelle masque completement.</li>
-        <li>Lecture combinee immediate : « mon camp fait 64 % des murs, et c'est Madina97294 qui les pose ».</li>
-      </ul>
-      <dl class="cost">
-        <dt>Cout</dt><dd><b>Reutilisable des deux cotes</b> : <code>&lt;ValueGrid&gt;</code> (deja en place) + <code>&lt;BarStackedChart&gt;</code> vertical.</dd>
-        <dt>A ecrire</dt><dd>Cote droit : agreger <code>usage.byTeam</code> par <b>famille</b> et non par groupe. <code>usageColumnGroups</code> donne deja la liste des familles.</dd>
-      </dl>
-    </div>
-
-    <h3 class="sub">Paire B &middot; Colonnes par joueur + face-a-face des camps</h3>
-    <div class="grid2">
-      <div class="section-card">
-        <h4>B-gauche &middot; Une colonne par famille, empilee par joueur <span class="count">le detail nominatif</span></h4>
-        <div class="chart"><svg id="p5b1" viewBox="0 0 520 260" role="img" aria-label="Paire B gauche"></svg></div>
+        <h4>5.B &middot; Face-a-face ancre au centre <span class="count">qui mene, famille par famille</span></h4>
+        <div class="chart"><svg id="p5b" viewBox="0 0 340 260" role="img" aria-label="Proposition 5.B"></svg></div>
+        <ul class="says">
+          <li>Zero au centre, mon camp a gauche, eux a droite : ce que l'oeil lit d'abord, c'est <b>de quel cote la figure penche</b>, famille par famille, et l'ecart est ecrit en bout de ligne.</li>
+          <li>Les familles ou personne ne mene (camouflage 3 contre 4) se voient a l'equilibre de la ligne, pas a un calcul de parts.</li>
+          <li>C'est la grammaire deja employee par « Total d'objectif par equipe » dans la meme page : une forme de plus, zero vocabulaire de plus.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Reutilisable</b> : le face-a-face de <code>MatchObjectivesSection</code> est ecrit et se generalise a une liste de familles.</dd>
+          <dt>Reserve</dt><dd>Le volume total d'une famille n'est plus une longueur unique : le garder ecrit en bout de ligne (fait ici).</dd>
+        </dl>
       </div>
       <div class="section-card">
-        <h4>B-droite &middot; Avantage par famille <span class="count">zero au centre, longueur = l'ecart</span></h4>
-        <div class="chart"><svg id="p5b2" viewBox="0 0 520 260" role="img" aria-label="Paire B droite"></svg></div>
+        <h4>5.C &middot; Briques par famille <span class="count">une brique = un usage</span></h4>
+        <div class="chart"><svg id="p5c" viewBox="0 0 340 260" role="img" aria-label="Proposition 5.C"></svg></div>
+        <ul class="says">
+          <li>Chaque usage est une brique, les miennes puis les leurs sur la meme ligne : la longueur est encore le volume, mais <b>en unites comptables</b> — on peut compter « 14 contre 10 » a l'oeil.</li>
+          <li>Sur des volumes de match (5 a 25 usages), la matiere dit mieux qu'une barre lisse qu'il s'agit de <b>gestes</b>, pas d'un pourcentage ; chaque brique porte son auteur et son instant en infobulle.</li>
+          <li>La rupture de couleur au milieu de la ligne est le rapport de force : plus elle est a droite, plus la famille est a nous.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Neuf, petit</b> : le <code>&lt;BrickWall&gt;</code> de la proposition 1.B, colore par camp au lieu du joueur.</dd>
+          <dt>Risque</dt><dd>Ne tient que sur des volumes de match : en Escouade ou en Sessions (des centaines d'usages), retomber sur 5.A.</dd>
+        </dl>
       </div>
-    </div>
-    <div class="section-card">
-      <ul class="says" style="padding-top:10px">
-        <li>A gauche, une seule figure remplace la grille : la colonne d'une famille porte le volume ET, en segments, qui l'a produit. Plus compacte que la grille a 8 lignes.</li>
-        <li>A droite, la <b>meme liste de familles</b> rendue en face-a-face ancre au centre : la longueur est l'AVANTAGE en usages, pas la valeur — la grammaire deja employee par « Total d'objectif par equipe ».</li>
-        <li>La paire repond a deux questions distinctes sans jamais changer de maille : « qui, chez nous » et « eux ou nous ».</li>
-      </ul>
-      <dl class="cost">
-        <dt>Cout</dt><dd><b>Reutilisable</b> : <code>&lt;BarStackedChart&gt;</code> a gauche ; a droite, le face-a-face de <code>MatchObjectivesSection</code> est deja ecrit et se generalise.</dd>
-        <dt>Reserve</dt><dd>A gauche, huit segments dans une colonne de 24 usages : les petits contributeurs passent sous l'etiquette, l'infobulle reste obligatoire.</dd>
-      </dl>
-    </div>
-
-    <h3 class="sub">Paire C &middot; Murs nominatifs + classement partage</h3>
-    <div class="grid2">
-      <div class="section-card">
-        <h4>C-gauche &middot; Mur d'usages par famille <span class="count">une brique = un usage, coloree par joueur</span></h4>
-        <div class="chart"><svg id="p5c1" viewBox="0 0 520 260" role="img" aria-label="Paire C gauche"></svg></div>
-      </div>
-      <div class="section-card">
-        <h4>C-droite &middot; Classement des familles <span class="count">le meme ordre, camp par camp</span></h4>
-        <div class="chart"><svg id="p5c2" viewBox="0 0 520 260" role="img" aria-label="Paire C droite"></svg></div>
-      </div>
-    </div>
-    <div class="section-card">
-      <ul class="says" style="padding-top:10px">
-        <li>Les deux blocs partagent <b>l'ordre de tri</b> — familles par volume decroissant — et pas seulement la liste : la premiere ligne de gauche est la premiere barre de droite.</li>
-        <li>A gauche, chaque usage est une brique nommee : sur des volumes de match (5 a 25), c'est la forme la plus litterale, et la plus survolable (l'instant du geste en infobulle).</li>
-        <li>A droite, le meme classement en barres epaisses camp contre camp donne le verdict d'equipe sans changer de vocabulaire.</li>
-      </ul>
-      <dl class="cost">
-        <dt>Cout</dt><dd>A gauche <b>neuf</b> (le <code>&lt;BrickWall&gt;</code> de 1.B, recoloriable par joueur) ; a droite <b>reutilisable</b> (<code>&lt;BarGroupedChart&gt;</code> horizontal).</dd>
-        <dt>Risque</dt><dd>Le mur ne tient que sur des volumes de match. En Escouade ou en Sessions (des centaines d'usages) il ne se transpose pas — la paire A, si.</dd>
-      </dl>
     </div>
   </section>
 
@@ -517,10 +491,10 @@
       <tr><td>4.B</td><td>Carte des socles : disque a l'endroit du socle, aire = prises, coupe en deux par camp</td><td>Neuf, moyen (fond de carte existant)</td></tr>
       <tr><td>4.C</td><td>Tableau de marques : joueurs x socles, une pastille par prise, totaux en marge</td><td>ValueGrid, case a repeindre</td></tr>
 
-      <tr><td rowspan="3"><b>5. Usages d'equipement (paires)</b></td>
-          <td><b>A</b> <span class="chip reco">reco</span></td><td>Grille joueurs x familles &nbsp;+&nbsp; colonnes empilees par camp, PAR FAMILLE</td><td>ValueGrid + BarStackedChart</td></tr>
-      <tr><td>B</td><td>Colonnes par famille empilees par joueur &nbsp;+&nbsp; face-a-face des camps</td><td>BarStacked + face-a-face existant</td></tr>
-      <tr><td>C</td><td>Murs nominatifs &nbsp;+&nbsp; classement partage camp contre camp</td><td>BrickWall (neuf) + BarGrouped</td></tr>
+      <tr><td rowspan="3"><b>5. Part de chaque equipe</b><br><span style="font-weight:400">(la grille par joueur est inchangee)</span></td>
+          <td><b>5.A</b> <span class="chip reco">reco</span></td><td>Barres horizontales par famille, longueur = usages reels, segment mon camp / eux</td><td>BarStackedChart horizontal</td></tr>
+      <tr><td>5.B</td><td>Face-a-face ancre au centre par famille, l'ecart ecrit en bout de ligne</td><td>Face-a-face existant</td></tr>
+      <tr><td>5.C</td><td>Briques par famille, une brique = un usage, colorees par camp</td><td>BrickWall (neuf, petit)</td></tr>
     </table>
     <p class="note" style="padding-left:0">
       <b>Le fil commun</b> : remplacer un denominateur local (100 % par rail, une echelle log, un pourcentage
@@ -1196,19 +1170,19 @@
 </script>
 
 <script>
-/* ============ SUJET 5 — Match view, usages d'equipement ================ */
+/* ============ SUJET 5 — Match view, part de chaque equipe ============== */
 (function () {
   'use strict';
   var M = window.MQ, el = M.el, txt = M.txt, hover = M.hover, S = M.S;
   var ALLY = 'var(--team-ally)', ENEMY = 'var(--team-enemy)', OP = [1, .78, .58, .42];
   var ALLIES = ['Moi', 'Madina97294', 'Kaelin', 'Vorn'], ENNEMIS = ['Sarko', 'Tuva', 'Ryn', 'Odal'];
-  /* Familles rangees par volume decroissant — le MEME ordre dans les deux blocs d'une paire. */
+  /* Familles rangees par volume decroissant — le MEME ordre que la grille de gauche, inchangee. */
   var FAM = ['Grappin', 'Mur', 'Surbouclier', 'Camouflage', 'Capteur', 'Propulseur'];
   var TOT = [24, 11, 9, 7, 6, 5];
   var CAMP = [[14, 10], [7, 4], [5, 4], [3, 4], [4, 2], [3, 2]];
   var ENCRE = ['var(--chart-series-3)', 'var(--chart-series-2)', 'var(--chart-series-1)',
                'var(--compare-a)', 'var(--compare-b)', 'var(--chart-series-4)'];
-  /* Lignes = joueurs, colonnes = familles. */
+  /* Lignes = joueurs, colonnes = familles (bloc de gauche, inchange). */
   var PAR_JOUEUR = [
     ['Moi', [5, 1, 2, 0, 1, 1]],
     ['Madina97294', [3, 4, 1, 0, 2, 0]],
@@ -1219,20 +1193,19 @@
     ['Ryn', [3, 0, 1, 1, 1, 0]],
     ['Odal', [2, 1, 1, 1, 0, 1]]
   ];
-  function opJ(i) { return OP[i % 4]; }
-  function colJ(i) { return i < 4 ? ALLY : ENEMY; }
+  function pct(v, t) { return Math.round(v / t * 100) + ' %'; }
 
-  /* --- Aujourd'hui : six familles a gauche, DEUX groupes a droite ------ */
+  /* --- Aujourd'hui : la grille (inchangee) et la barre 100 % par GROUPE - */
   (function () {
     var s = S('now-5');
-    txt('« Nombre d’usages par joueur » — ValueGrid, une colonne par FAMILLE', 0, 14, 'start', null, s);
+    txt('« Nombre d’usages par joueur » — ValueGrid par FAMILLE (INCHANGE, pour memoire)', 0, 14, 'start', null, s);
     M.grille('now-5', {
       x0: 110, y0: 46, cw: 52, ch: 22, unit: 'usages',
       cols: FAM.map(function (f) { return f.slice(0, 6); }),
       max: TOT, colColor: ENCRE,
       rows: PAR_JOUEUR.map(function (r, i) { return { label: r[0], vals: r[1], rule: i === 3 }; })
     });
-    txt('« Part de chaque equipe » — une barre 100 % par GROUPE', 560, 14, 'start', null, s);
+    txt('« Part de chaque equipe » — une barre 100 % par GROUPE (LE BLOC A REFAIRE)', 560, 14, 'start', null, s);
     [['Grappin', 24, 14, 10], ['Equipement', 38, 22, 16]].forEach(function (g, i) {
       var y = 52 + i * 56, W = 420;
       txt(g[0], 560, y - 6, 'start', null, s);
@@ -1245,107 +1218,88 @@
       txt(g[2] + ' · ' + Math.round(g[2] / g[1] * 100) + ' %', 568, y + 17, 'start', 'inbar', s);
       txt(g[3] + ' · ' + Math.round(g[3] / g[1] * 100) + ' %', 972, y + 17, 'end', 'inbar', s);
     });
-    txt('Le groupe « Equipement » melange murs, capteurs, propulseurs, surbouclier et camouflage :', 560, 196, 'start', 'muted', s);
-    txt('aucune des six colonnes de gauche ne s’y retrouve. Le grappin a sa barre parce qu’il est', 560, 212, 'start', 'muted', s);
-    txt('un groupe a lui seul, pas parce que c’est la bonne maille.', 560, 228, 'start', 'muted', s);
+    txt('Deux defauts : les deux barres font la meme longueur alors qu’elles valent 24 et 38 usages,', 560, 196, 'start', 'muted', s);
+    txt('et « Equipement » melange murs, capteurs, propulseurs, surbouclier et camouflage — aucune', 560, 212, 'start', 'muted', s);
+    txt('des six colonnes de gauche ne s’y retrouve.', 560, 228, 'start', 'muted', s);
   })();
 
-  /* --- Paire A : grille + colonnes par famille ------------------------- */
+  /* --- 5.A : barres horizontales par famille, longueur vraie ----------- */
   (function () {
-    var s = S('p5a1');
-    txt('lignes = joueurs (filet entre les camps) · colonnes = familles', 0, 14, 'start', 'muted', s);
-    M.grille('p5a1', {
-      x0: 110, y0: 48, cw: 62, ch: 24, unit: 'usages',
-      cols: FAM.map(function (f) { return f.slice(0, 7); }),
-      max: TOT, colColor: ENCRE,
-      rows: PAR_JOUEUR.map(function (r, i) { return { label: r[0], vals: r[1], rule: i === 3 }; })
+    var s = S('p5a'), X0 = 86, W = 214, MAX = 24, BH = 22;
+    txt('une seule echelle d’usages pour les six familles', 0, 12, 'start', 'muted', s);
+    [0, 8, 16, 24].forEach(function (t) {
+      var x = X0 + t / MAX * W;
+      el('line', { x1: x, y1: 26, x2: x, y2: 224, class: 'grid' }, s);
+      txt(String(t), x, 22, 'middle', 'muted num', s);
     });
-    txt('total', 102, 48 + 8 * 24 + 18, 'end', 'muted', s);
-    TOT.forEach(function (t, j) { txt(String(t), 110 + 62 * j + 31, 48 + 8 * 24 + 18, 'middle', 'muted num', s); });
-  })();
-
-  (function () {
-    var s = S('p5a2');
-    txt('hauteur = usages reels · segments = les deux camps', 0, 14, 'start', 'muted', s);
-    M.vcols('p5a2', {
-      x0: 44, y0: 34, w: 450, h: 150, max: 24, cw: 50, unit: 'usages',
-      ticks: [0, 8, 16, 24],
-      cols: FAM.map(function (f, j) {
-        return { label: f.slice(0, 7), parts: [
-          { label: 'camp adverse', v: CAMP[j][1], color: ENEMY, note: Math.round(CAMP[j][1] / TOT[j] * 100) + ' % de la famille' },
-          { label: 'mon camp', v: CAMP[j][0], color: ALLY, note: Math.round(CAMP[j][0] / TOT[j] * 100) + ' % de la famille' }
-        ] };
-      })
-    });
-    M.legend('p5a2', 44, 240, [
-      { label: 'mon camp', color: ALLY }, { label: 'camp adverse', color: ENEMY }
-    ], 130);
-    txt('Meme ordre, memes familles, memes encres que le bloc de gauche.', 44, 256, 'start', 'muted', s);
-  })();
-
-  /* --- Paire B : colonnes par joueur + face-a-face --------------------- */
-  (function () {
-    var s = S('p5b1');
-    txt('une colonne par famille, un segment par joueur', 0, 14, 'start', 'muted', s);
-    M.vcols('p5b1', {
-      x0: 44, y0: 34, w: 450, h: 150, max: 24, cw: 50, unit: 'usages',
-      ticks: [0, 8, 16, 24],
-      cols: FAM.map(function (f, j) {
-        return { label: f.slice(0, 7), parts: PAR_JOUEUR.map(function (r, i) {
-          return { label: r[0], v: r[1][j], color: colJ(i), op: opJ(i) };
-        }).filter(function (p) { return p.v > 0; }) };
-      })
-    });
-    M.legend('p5b1', 44, 240, ALLIES.map(function (n, i) { return { label: n, color: ALLY, op: OP[i] }; }), 112);
-    M.legend('p5b1', 44, 256, ENNEMIS.map(function (n, i) { return { label: n, color: ENEMY, op: OP[i] }; }), 112);
-  })();
-
-  (function () {
-    var s = S('p5b2');
-    txt('zero au centre · la longueur est l’avantage en usages', 0, 14, 'start', 'muted', s);
-    txt('mon camp', 130, 32, 'middle', 'muted', s);
-    txt('eux', 380, 32, 'middle', 'muted', s);
-    M.facing('p5b2', {
-      x0: 110, y0: 44, w: 330, bh: 24, gap: 10, max: 14, unit: 'usages',
-      rows: FAM.map(function (f, j) { return { label: f, left: CAMP[j][0], right: CAMP[j][1] }; })
-    });
-    txt('ecart', 448, 36, 'start', 'muted', s);
-    txt('Les memes six familles, dans le meme ordre qu’a gauche.', 0, 250, 'start', 'muted', s);
-  })();
-
-  /* --- Paire C : murs nominatifs + classement partage ------------------ */
-  (function () {
-    var s = S('p5c1');
-    txt('une brique = un usage, coloree par joueur', 0, 14, 'start', 'muted', s);
     FAM.forEach(function (f, j) {
-      var y = 46 + j * 32;
-      txt(f, 108, y + 12, 'end', null, s);
-      var groups = PAR_JOUEUR.map(function (r, i) {
-        return { n: r[1][j], color: colJ(i), op: opJ(i), label: r[0] + ' · ' + f, note: r[1][j] + ' usages sur ' + TOT[j] + ' dans la famille' };
-      }).filter(function (g) { return g.n > 0; });
-      M.bricks('p5c1', 118, y + 18, groups, 12, 16, 3, 40);
-      txt(String(TOT[j]), 500, y + 12, 'end', 'muted num', s);
-    });
-    txt('Trie par volume decroissant — le meme ordre qu’a droite.', 0, 250, 'start', 'muted', s);
-  })();
-
-  (function () {
-    var s = S('p5c2');
-    txt('meme classement, camp contre camp', 0, 14, 'start', 'muted', s);
-    var X0 = 110, W = 330, MAX = 14;
-    FAM.forEach(function (f, j) {
-      var y = 40 + j * 32;
-      txt(f, X0 - 8, y + 14, 'end', null, s);
-      [[CAMP[j][0], ALLY, 'mon camp'], [CAMP[j][1], ENEMY, 'eux']].forEach(function (b, k) {
-        var w = b[0] / MAX * W;
-        var r = el('rect', { x: X0, y: y + k * 13, width: Math.max(4, w - 2), height: 12, rx: 2, fill: b[1] }, s);
-        hover(r, '<b>' + f + ' — ' + b[2] + '</b><br>' + b[0] + ' usages');
+      var y = 34 + j * 32, x = X0;
+      txt(f, X0 - 8, y + BH / 2 + 4, 'end', null, s);
+      [[CAMP[j][0], ALLY, 'mon camp'], [CAMP[j][1], ENEMY, 'camp adverse']].forEach(function (p) {
+        var w = p[0] / MAX * W;
+        var r = el('rect', { x: x + 1, y: y, width: Math.max(4, w - 2), height: BH, rx: 2, fill: p[1] }, s);
+        r.setAttribute('class', 'mark');
+        var gg = el('g', {}, s); gg.appendChild(r);
+        hover(gg, '<b>' + f + ' — ' + p[2] + '</b><br>' + p[0] + ' usages<br><span class="m">' + pct(p[0], TOT[j]) + ' de la famille</span>');
+        if (w >= 18) txt(String(p[0]), x + w / 2, y + BH / 2 + 4, 'middle', 'inbar', s);
+        x += w;
       });
-      txt(CAMP[j][0] + ' / ' + CAMP[j][1], X0 + W + 8, y + 14, 'start', 'num', s);
+      txt(String(TOT[j]), x + 5, y + BH / 2 + 4, 'start', 'muted num', s);
     });
-    M.legend('p5c2', X0, 240, [
-      { label: 'mon camp', color: ALLY }, { label: 'camp adverse', color: ENEMY }
-    ], 130);
+    M.legend('p5a', 0, 242, [{ label: 'mon camp', color: ALLY }, { label: 'camp adverse', color: ENEMY }], 118);
+    txt('total', 246, 242, 'start', 'muted', s);
+    txt('Memes six familles et meme ordre que la grille de gauche.', 0, 256, 'start', 'muted', s);
+  })();
+
+  /* --- 5.B : face-a-face ancre au centre ------------------------------- */
+  (function () {
+    var s = S('p5b'), X0 = 74, W = 196, MAX = 14, BH = 20, GAP = 12, CX = X0 + W / 2;
+    txt('zero au centre · de quel cote penche la famille', 0, 12, 'start', 'muted', s);
+    txt('mon camp', CX - 8, 28, 'end', 'muted', s);
+    txt('eux', CX + 8, 28, 'start', 'muted', s);
+    el('line', { x1: CX, y1: 32, x2: CX, y2: 34 + 6 * (BH + GAP) - GAP, class: 'axis' }, s);
+    FAM.forEach(function (f, j) {
+      var y = 36 + j * (BH + GAP), a = CAMP[j][0], b = CAMP[j][1];
+      var wa = a / MAX * (W / 2), wb = b / MAX * (W / 2);
+      txt(f, X0 - 8, y + BH / 2 + 4, 'end', null, s);
+      var ra = el('rect', { x: CX - wa, y: y, width: Math.max(3, wa - 2), height: BH, rx: 2, fill: ALLY }, s);
+      var rb = el('rect', { x: CX + 2, y: y, width: Math.max(3, wb - 2), height: BH, rx: 2, fill: ENEMY }, s);
+      ra.setAttribute('class', 'mark'); rb.setAttribute('class', 'mark');
+      hover(ra, '<b>' + f + ' — mon camp</b><br>' + a + ' usages<br><span class="m">' + pct(a, TOT[j]) + ' de la famille</span>');
+      hover(rb, '<b>' + f + ' — eux</b><br>' + b + ' usages<br><span class="m">' + pct(b, TOT[j]) + ' de la famille</span>');
+      if (wa > 20) txt(String(a), CX - wa + 5, y + BH / 2 + 4, 'start', 'inbar', s);
+      if (wb > 20) txt(String(b), CX + wb - 5, y + BH / 2 + 4, 'end', 'inbar', s);
+      txt(a >= b ? '+' + (a - b) : '−' + (b - a), X0 + W + 8, y + BH / 2 + 4, 'start', 'num', s);
+    });
+    txt('ecart', X0 + W + 8, 28, 'start', 'muted', s);
+    M.legend('p5b', 0, 242, [{ label: 'mon camp', color: ALLY }, { label: 'camp adverse', color: ENEMY }], 118);
+    txt('L’ecart est un compte d’usages, pas un pourcentage.', 0, 256, 'start', 'muted', s);
+  })();
+
+  /* --- 5.C : briques par famille, une brique = un usage ---------------- */
+  (function () {
+    var s = S('p5c'), X0 = 62, BW = 7, BG = 2, BH = 16;
+    txt('une brique = un usage · les miennes, puis les leurs', 0, 12, 'start', 'muted', s);
+    FAM.forEach(function (f, j) {
+      var y = 34 + j * 28, k = 0;
+      txt(f, 0, y + BH / 2 + 4, 'start', null, s);
+      var auteurs = [];
+      PAR_JOUEUR.forEach(function (r, i) { for (var q = 0; q < r[1][j]; q++) auteurs.push([r[0], i < 4]); });
+      auteurs.sort(function (a, b) { return (b[1] ? 1 : 0) - (a[1] ? 1 : 0); });
+      auteurs.forEach(function (a, i) {
+        var mien = a[1];
+        var x = X0 + k * (BW + BG) + (mien ? 0 : 6);
+        var r = el('rect', { x: x, y: y, width: BW, height: BH, rx: 2, fill: mien ? ALLY : ENEMY, 'fill-opacity': .92 }, s);
+        r.setAttribute('class', 'mark');
+        var gg = el('g', {}, s); gg.appendChild(r);
+        hover(gg, '<b>' + f + '</b><br>' + a[0] + ' &middot; ' + (mien ? 'mon camp' : 'camp adverse') + '<br><span class="m">usage ' + (i + 1) + ' sur ' + TOT[j] + ' dans la famille</span>');
+        k++;
+      });
+      txt(CAMP[j][0] + ' / ' + CAMP[j][1], X0 + TOT[j] * (BW + BG) + 12, y + BH / 2 + 4, 'start', 'muted num', s);
+    });
+    M.legend('p5c', 0, 230, [{ label: 'mon camp', color: ALLY }, { label: 'camp adverse', color: ENEMY }], 118);
+    txt('Le total de la famille est ecrit devant la ligne, le partage derriere.', 0, 248, 'start', 'muted', s);
+    txt('Plus la rupture de couleur est a droite, plus la famille est a nous.', 0, 262, 'start', 'muted', s);
   })();
 })();
 </script>
