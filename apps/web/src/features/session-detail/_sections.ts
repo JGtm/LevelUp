@@ -56,9 +56,9 @@ export const SESSION_SECTION_ORDER: readonly SessionSectionKey[] = [
 
 export interface SessionSectionInput {
   /**
-   * Bloc `coordination` (lot N1) servi pour CETTE colonne. Le contrat ne sert PAS de
-   * miroir `compare_coordination` : la colonne comparée rend donc toujours le placeholder
-   * D16 sur cette rangée — c'est une absence de donnée, pas un oubli de câblage.
+   * Bloc `coordination` / `compare_coordination` (lots N1 et S) servi pour CETTE colonne.
+   * Les deux colonnes portent la section quand les deux sessions ont un bloc ; le
+   * placeholder D16 ne reste que pour une session réellement sans coordination.
    */
   hasCoordination: boolean
   /** Bloc `range_profiles` / `compare_range_profiles` (lot N2) servi pour cette colonne. */

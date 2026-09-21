@@ -53,9 +53,9 @@ interface Props {
    */
   usage?: SessionUsageBlock
   /**
-   * Bloc « Coordination » (riposte + appui reçu, lot N1) — servi pour la SEULE colonne
-   * principale : le contrat n'a pas de `compare_coordination`, la colonne comparée rend
-   * donc le placeholder D16 sur cette rangée.
+   * Bloc « Coordination » (riposte + appui reçu, lot N1) — `coordination` à gauche,
+   * `compare_coordination` à droite (lot S) : les deux colonnes ont leurs cartes, avec
+   * leurs propres données. Absent du payload → la section n'existe pas de ce côté.
    */
   coordination?: CoordinationBlock
   /**
@@ -108,8 +108,8 @@ function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKe
       ? { usage: <SessionUsageSection usage={usage} meLabel={playerSlug} compact={compact} /> }
       : {}),
     // Sections transverses de la vague 3 (D22) : la Coordination (deux cartes en rangée)
-    // puis la Portée (une carte). Deux clés distinctes, parce que la comparaison ne sert
-    // que la seconde — cf. l'en-tête de `SessionRangeCard`.
+    // puis la Portée (une carte). Deux clés distinctes : ce sont deux rangées partagées,
+    // et la comparaison sert désormais les deux (lot S).
     ...(coordination
       ? {
           coordination: (

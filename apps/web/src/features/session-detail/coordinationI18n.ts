@@ -46,6 +46,12 @@ export interface CoordinationText {
   bandTipUnmeasured: (index: number) => string
   /** Infobulle d'un rail de jauge : valeur puis comptes bruts. */
   gaugeTipFmt: (valeur: string, brut: number, n: number) => string
+  /**
+   * L'infobulle d'un rail QUI PORTE LE REPÈRE D'HABITUEL : l'infobulle de base, puis le
+   * taux de la période de référence. C'est le seul endroit où le repère est NOMMÉ — le
+   * trait, lui, se rend comme celui de la parité (D22-verbosité : rien sous la forme).
+   */
+  gaugeTipUsualFmt: (tip: string, habituel: string) => string
   /** Le compte nu à droite d'une bande : « 5/8 ». */
   bandCountFmt: (audessus: number, total: number) => string
 
@@ -97,6 +103,7 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     bandTipFmt: (i, part, parite) => `Match #${i} · ${part} (parité ${parite})`,
     bandTipUnmeasured: (i) => `Match #${i} · non mesuré`,
     gaugeTipFmt: (v, brut, n) => `${v} · ${brut} sur ${n}`,
+    gaugeTipUsualFmt: (tip, habituel) => `${tip} · habituel ${habituel}`,
     bandCountFmt: (a, t) => `${a}/${t}`,
 
     cardRange: 'Portée des engagements',
@@ -142,6 +149,7 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     bandTipFmt: (i, part, parite) => `Match #${i} · ${part} (parity ${parite})`,
     bandTipUnmeasured: (i) => `Match #${i} · not measured`,
     gaugeTipFmt: (v, brut, n) => `${v} · ${brut} of ${n}`,
+    gaugeTipUsualFmt: (tip, habituel) => `${tip} · usual ${habituel}`,
     bandCountFmt: (a, t) => `${a}/${t}`,
 
     cardRange: 'Engagement range',

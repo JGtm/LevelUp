@@ -27,7 +27,12 @@ import type { CoordinationBlock, MatchRangeBlock } from '@/lib/api/types'
 import { SessionCoordinationSection } from './SessionCoordinationSection'
 import { buildSessionRangeOption } from './charts/sessionRangeChart'
 import { COORDINATION_TEXT } from './coordinationI18n'
-import { bandCaption, buildRiposteBand } from './coordinationModel'
+import {
+  bandCaption,
+  buildAppuiGaugeRows,
+  buildRiposteBand,
+  buildRiposteGaugeRows,
+} from './coordinationModel'
 import { batonsPortee, medianeSession, seuilsSession } from './sessionRange.logic'
 
 const t = COORDINATION_TEXT.fr
@@ -118,6 +123,36 @@ describe('Section Coordination (D22-1 / D22-6)', () => {
     expect(screen.getByText(t.cardRiposte)).toBeInTheDocument()
     expect(screen.getByText(t.cardAppui)).toBeInTheDocument()
     expect(container.querySelectorAll('[data-usage-empty]')).toHaveLength(2)
+  })
+})
+
+describe('Repère d’habituel des jauges sans parité (lot S)', () => {
+  it('pose l’habituel de la période sur « je suis couvert » et « on me prépare »', () => {
+    const bloc: CoordinationBlock = {
+      ...BLOC,
+      riposte: { ...BLOC.riposte, habituel_pct: 55 },
+      appui: { ...BLOC.appui, habituel_pct: 38 },
+    }
+    const [riposte] = buildRiposteGaugeRows(bloc, t, 'fr')
+    const [appui] = buildAppuiGaugeRows(bloc, t, 'fr')
+
+    // Le trait des deux jauges sans parité EST l'habituel...
+    expect(riposte.gauges[0].parityPct).toBe(55)
+    expect(appui.gauges[0].parityPct).toBe(38)
+    // ...et l'infobulle le NOMME, faute de quoi il se lirait comme une parité.
+    expect(riposte.gauges[0].tooltip).toContain('habituel')
+    expect(appui.gauges[0].tooltip).toContain('habituel')
+    // La jauge voisine garde SA parité, et son infobulle ne parle pas d'habituel.
+    expect(riposte.gauges[1].parityPct).toBe(25)
+    expect(riposte.gauges[1].tooltip).not.toContain('habituel')
+  })
+
+  it('n’invente aucun repère quand le contrat ne sert pas d’habituel', () => {
+    const [riposte] = buildRiposteGaugeRows(BLOC, t, 'fr')
+    const [appui] = buildAppuiGaugeRows(BLOC, t, 'fr')
+    expect(riposte.gauges[0].parityPct).toBeNull()
+    expect(appui.gauges[0].parityPct).toBeNull()
+    expect(riposte.gauges[0].tooltip).not.toContain('habituel')
   })
 })
 

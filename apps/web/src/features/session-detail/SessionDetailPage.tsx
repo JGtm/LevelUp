@@ -263,9 +263,7 @@ export function SessionDetailPage() {
         }),
         sessionSectionKeys({
           hasUsage: data.compare_usage != null,
-          // Aucun `compare_coordination` au contrat : la colonne comparée n'a pas la
-          // section, la rangée partagée y pose son placeholder.
-          hasCoordination: false,
+          hasCoordination: data.compare_coordination != null,
           hasRange: data.compare_range_profiles != null,
         }),
       )
@@ -487,6 +485,7 @@ export function SessionDetailPage() {
                   intensityRows={data.compare_intensity_rows ?? []}
                   firstBlood={data.compare_first_blood ?? []}
                   usage={data.compare_usage}
+                  coordination={data.compare_coordination}
                   rangeProfiles={data.compare_range_profiles}
                 />
               ) : isCompareLoading ? (

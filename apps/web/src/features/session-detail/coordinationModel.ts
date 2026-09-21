@@ -33,15 +33,26 @@ const BAND_EPSILON_PT = 1
 /**
  * Une jauge de couverture : sa valeur, son repère, ses textes.
  *
- * `repere` est le TRAIT DE PARITÉ de la jauge (`parityPct`). Il vaut `null` pour « je suis
- * couvert » et « on me prépare » : leur habituel (la même mesure sur la période de
- * référence) n'est PAS servi par `CoordinationBlock` — une jauge sans repère vaut mieux
- * qu'un repère inventé.
+ * `repere` est LE TRAIT de la jauge (`parityPct`), et il dit DEUX choses selon la grandeur :
+ * la PARITÉ 1/n pour « je riposte » et « ma part des appuis », l'HABITUEL (la même mesure
+ * sur la période de référence, `habituel_pct`, lot S) pour « je suis couvert » et « on me
+ * prépare », qui ne se comparent à aucune part équitable. Le trait est le même ; ce qui
+ * change est ce que l'infobulle en dit — `usuel` nomme le repère quand c'est un habituel.
+ *
+ * `null` reste possible des deux côtés (scope FFA, référence tautologique ou non mesurée) :
+ * une jauge sans repère vaut mieux qu'un repère inventé.
  */
+interface Repere {
+  /** Position du trait sur le rail, en points de pourcentage. `null` = pas de trait. */
+  pct: number | null
+  /** Ce trait est un HABITUEL (et non la parité) : l'infobulle le nomme. */
+  usuel?: boolean
+}
+
 function gaugeFromCouverture(
   key: string,
   couverture: Couverture | null | undefined,
-  repere: number | null,
+  repere: Repere,
   t: CoordinationText,
   locale: Locale,
 ): UsageGaugeModel {
@@ -49,17 +60,20 @@ function gaugeFromCouverture(
   const mesure = couverture != null && couverture.n > 0
   const valuePct = mesure ? couverture.taux * 100 : null
   const valueText = formatUsagePct(valuePct, locale)
-  const tooltip = mesure
+  let tooltip = mesure
     ? withLowSampleNote(
         t.gaugeTipFmt(valueText, couverture.brut, couverture.n),
         couverture.echantillon_faible,
         t.lowSample,
       )
     : valueText
+  if (repere.usuel === true && repere.pct != null) {
+    tooltip = t.gaugeTipUsualFmt(tooltip, formatUsagePct(repere.pct, locale))
+  }
   return {
     key,
     valuePct,
-    parityPct: repere,
+    parityPct: repere.pct,
     valueText: mesure
       ? withLowSampleNote(valueText, couverture.echantillon_faible, t.lowSample)
       : valueText,
@@ -77,14 +91,16 @@ export function buildRiposteGaugeRows(
   locale: Locale,
 ): UsageGaugeRowModel[] {
   const parity = block.riposte.parity_pct ?? null
+  const usual = block.riposte.habituel_pct ?? null
   return [
     {
       key: 'riposte',
       label: t.cardRiposte,
       gauges: [
-        // « Je suis couvert » : pas d'habituel servi par le contrat → aucun repère.
-        gaugeFromCouverture('covered', block.riposte.je_suis_couvert, null, t, locale),
-        gaugeFromCouverture('mine', block.riposte.je_riposte, parity, t, locale),
+        // « Je suis couvert » ne se compare à aucune parité : son repère est l'HABITUEL
+        // de la période de référence, quand le contrat le sert (lot S).
+        gaugeFromCouverture('covered', block.riposte.je_suis_couvert, { pct: usual, usuel: true }, t, locale),
+        gaugeFromCouverture('mine', block.riposte.je_riposte, { pct: parity }, t, locale),
       ],
     },
   ]
@@ -97,13 +113,15 @@ export function buildAppuiGaugeRows(
   locale: Locale,
 ): UsageGaugeRowModel[] {
   const parity = block.appui.parity_pct ?? null
+  const usual = block.appui.habituel_pct ?? null
   return [
     {
       key: 'appui',
       label: t.cardAppui,
       gauges: [
-        gaugeFromCouverture('prepared', block.appui.on_me_prepare, null, t, locale),
-        gaugeFromCouverture('share', block.appui.ma_part_des_appuis, parity, t, locale),
+        // « On me prépare » : même règle que « je suis couvert » — le repère est l'habituel.
+        gaugeFromCouverture('prepared', block.appui.on_me_prepare, { pct: usual, usuel: true }, t, locale),
+        gaugeFromCouverture('share', block.appui.ma_part_des_appuis, { pct: parity }, t, locale),
       ],
     },
   ]
