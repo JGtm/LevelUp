@@ -72,6 +72,15 @@ type SessionPageService struct {
 	// TITRE et nommer les familles de socle du bloc usage (session_page_usage_labels.go).
 	// Vide → les familles gardent leur clé, ce qui est un rendu valide, pas une panne.
 	repoRoot string
+	// coordTactical / coordAppuis / coordCaps (optionnels) : bloc « Coordination »
+	// (riposte + appui recu) de la session, lot N1. Le journal des morts vient du MEME
+	// lecteur que l'onglet Tactique et la page Escouade ; les appuis de leur lecteur
+	// dedie. Cables gated par la capability du journal des morts (jamais slug==) ;
+	// tactical nil -> bloc Available=false avec raison machine.
+	// Cf. service/coordination_block.go.
+	coordTactical port.TacticalRepository
+	coordAppuis   port.CoordinationRepository
+	coordCaps     games.CapabilityMap
 }
 
 // NewSessionPageService crée un SessionPageService.

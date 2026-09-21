@@ -14,9 +14,14 @@ package service
 
 import (
 	"context"
+	"log/slog"
+	"sort"
+	"time"
 
+	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
@@ -60,6 +65,17 @@ func (s *TimeseriesService) WithSquadFormes(
 	return s
 }
 
+// WithTimeseriesCoordination injecte les deux lecteurs du bloc « Coordination » et les
+// capabilities du titre — les MÊMES que la page Sessions, pour le MÊME producteur.
+func (s *TimeseriesService) WithTimeseriesCoordination(
+	tactical port.TacticalRepository, appuis port.CoordinationRepository, caps games.CapabilityMap,
+) *TimeseriesService {
+	s.coordTactical = tactical
+	s.coordAppuis = appuis
+	s.coordCaps = caps
+	return s
+}
+
 // attachMigratedSections pose les trois blocs sur la réponse, depuis le scope canonique déjà
 // filtré. Best-effort de bout en bout : chaque producteur rend nil plutôt que de casser la page.
 func (s *TimeseriesService) attachMigratedSections(
@@ -92,6 +108,81 @@ func (s *TimeseriesService) attachMigratedSections(
 		TitleSlug:    s.titleSlug,
 		Locale:       locale,
 	})
+	s.attachCoordination(ctx, resp, filteredCanon)
+}
+
+// attachCoordination pose le bloc « Coordination » de la page, groupé PAR SOIRÉE.
+//
+// L'EFFECTIF DE CAMP VIENT DU MÊME `sessionusage.BuildTeamContext` que le bloc d'usage et
+// que la courbe d'intensité d'équipe : une seconde définition de « mon équipe » aurait
+// affiché deux effectifs pour le même match (réserve R1).
+//
+// DÉGRADATION NOMMÉE : port des participants non câblé ou lecture en échec ⇒ le bloc est
+// servi SANS parité (les deux grandeurs restent justes, seule la référence 1/n manque),
+// jamais une parité inventée.
+func (s *TimeseriesService) attachCoordination(
+	ctx context.Context, resp *domain.TimeseriesPageResponse, filteredCanon []canonical.PlayerMatchRow,
+) {
+	matchIDs := synthesisMatchIDs(filteredCanon)
+	if len(matchIDs) == 0 {
+		return
+	}
+	resp.Coordination = buildCoordinationBlock(ctx, coordinationQuery{
+		Tactical:   s.coordTactical,
+		Appuis:     s.coordAppuis,
+		Caps:       s.coordCaps,
+		PlayerXUID: s.playerXUID,
+		MatchIDs:   matchIDs,
+		TeamSize:   s.coordinationTeamSizes(ctx, matchIDs),
+		Soirees:    soireesDesRows(filteredCanon),
+	})
+}
+
+// coordinationTeamSizes rend l'effectif de mon camp par match, ou nil (pas de parité).
+func (s *TimeseriesService) coordinationTeamSizes(ctx context.Context, matchIDs []string) map[string]int {
+	if s.formesUsageRepo == nil || s.playerXUID == "" {
+		return nil
+	}
+	participants, err := s.formesUsageRepo.LoadParticipants(ctx, matchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "timeseries_coordination_participants_en_echec",
+			"err", err, "matchs", len(matchIDs))
+		return nil
+	}
+	return sessionusage.BuildTeamContext(s.playerXUID, participants).TeamSize
+}
+
+// soireesDesRows groupe les matchs du scope par SOIRÉE, dans l'ordre chronologique du
+// premier match de chaque soirée.
+//
+// UN MATCH SANS SESSION N'ENTRE DANS AUCUNE SOIRÉE : la frise se lit par soirée, pas par
+// match isolé — la même règle que la frise d'échange de l'Escouade. Les libellés sont
+// rendus TRIÉS par l'instant du plus ancien match : l'ordre d'itération d'une map n'est
+// pas un ordre, et une frise temporelle dont les bâtons changent de place à chaque appel
+// ne se lit pas.
+func soireesDesRows(rows []canonical.PlayerMatchRow) []coordinationSoiree {
+	parLabel := map[string][]string{}
+	plusAncien := map[string]time.Time{}
+	for _, r := range rows {
+		if r.Enrichment.SessionLabel == nil || *r.Enrichment.SessionLabel == "" {
+			continue
+		}
+		label := *r.Enrichment.SessionLabel
+		parLabel[label] = append(parLabel[label], r.Summary.MatchID)
+		if t, ok := plusAncien[label]; !ok || r.Summary.StartedAtUTC.Before(t) {
+			plusAncien[label] = r.Summary.StartedAtUTC
+		}
+	}
+	labels := make([]string, 0, len(parLabel))
+	for l := range parLabel {
+		labels = append(labels, l)
+	}
+	sort.Slice(labels, func(i, j int) bool { return plusAncien[labels[i]].Before(plusAncien[labels[j]]) })
+	out := make([]coordinationSoiree, 0, len(labels))
+	for _, l := range labels {
+		out = append(out, coordinationSoiree{Label: l, MatchIDs: parLabel[l]})
+	}
+	return out
 }
 
 // timeseriesFormesMetas nomme chaque match du scope pour le bloc « formes retenues ».

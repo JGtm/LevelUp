@@ -343,6 +343,15 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
 		svc = svc.WithSessionUsage(duckdb.NewSessionUsageRepo(pdb), pdb.XUID, r.friendGamertagsResolver(pdb.XUID), r.cfg.RepoRoot)
 	}
+	// Bloc « Coordination » (riposte + appui reçu) de la session, lot N1 : gated par la
+	// capability du JOURNAL DES MORTS — celle qui dit que le titre nomme le tueur de
+	// chaque mort — et non par film.usage_summary, qui gate l'usage d'équipement. Deux
+	// sujets, deux gates : un titre peut nommer ses tueurs sans publier de résumé
+	// d'usage. Capability fermée ⇒ bloc Available=false avec raison machine.
+	if games.JournalDesMortsFiable(r.capabilitiesForPDB(pdb)) {
+		svc = svc.WithSessionCoordination(duckdb.NewTacticalRepo(pdb),
+			duckdb.NewCoordinationRepo(pdb), r.capabilitiesForPDB(pdb))
+	}
 	if pdb.Metadata != nil {
 		// Placement X/Y dans la colonne Rang : résolveur season_id → seuil CSR (5/10),
 		// même source que l'Explorer/match-history. Fallback 5 si absent.
@@ -424,6 +433,12 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 			objectives = duckdb.NewObjectiveStatsRepo(pdb)
 		}
 		svc = svc.WithSquadFormes(duckdb.NewSessionUsageRepo(pdb), objectives)
+	}
+	// Bloc « Coordination » PAR SOIRÉE : MÊMES lecteurs et MÊME gate que la page
+	// Sessions — un seul producteur pour les deux mailles (service/coordination_block.go).
+	if games.JournalDesMortsFiable(r.capabilitiesForPDB(pdb)) {
+		svc = svc.WithTimeseriesCoordination(duckdb.NewTacticalRepo(pdb),
+			duckdb.NewCoordinationRepo(pdb), r.capabilitiesForPDB(pdb))
 	}
 	return svc, nil
 }

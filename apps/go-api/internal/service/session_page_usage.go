@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/teammates"
@@ -59,6 +60,18 @@ func (s *SessionPageService) WithSessionUsage(
 	return s
 }
 
+// WithSessionCoordination injecte les deux lecteurs du bloc « Coordination » et les
+// capabilities du titre. Le bloc partage son producteur avec la page Series temporelles :
+// deux constructeurs auraient donne deux definitions de « morts de mon camp ».
+func (s *SessionPageService) WithSessionCoordination(
+	tactical port.TacticalRepository, appuis port.CoordinationRepository, caps games.CapabilityMap,
+) *SessionPageService {
+	s.coordTactical = tactical
+	s.coordAppuis = appuis
+	s.coordCaps = caps
+	return s
+}
+
 // attachSessionUsage attache le bloc usage de la session COURANTE et, en mode
 // comparaison, celui de la session COMPARÉE — MIROIR d'attachSessionEventBlocks, qui
 // sert déjà ses deux blocs event-based aux deux sessions.
@@ -75,25 +88,44 @@ func (s *SessionPageService) attachSessionUsage(
 	ctx context.Context, resp *domain.SessionPageResponse,
 	matches, compareMatches []legacymatch.StatsMatchRow, matchContext, locale string,
 ) {
-	resp.Usage = s.buildSessionUsage(ctx, matches, matchContext, locale)
+	var teamSize map[string]int
+	resp.Usage, teamSize = s.buildSessionUsage(ctx, matches, matchContext, locale)
 	if len(compareMatches) > 0 {
-		resp.CompareUsage = s.buildSessionUsage(ctx, compareMatches, matchContext, locale)
+		resp.CompareUsage, _ = s.buildSessionUsage(ctx, compareMatches, matchContext, locale)
 	}
+	// Bloc « Coordination » de la session COURANTE (lot N1). Il n'a pas de pendant
+	// comparé : le drawer de comparaison ne porte pas la section, et publier un bloc
+	// que rien ne rend serait du code mort servi à chaque requête.
+	//
+	// L'EFFECTIF DE CAMP VIENT DU BLOC D'USAGE, pas d'un second calcul : c'est le
+	// `TeamContext` déjà construit ci-dessus (réserve R1). Bloc d'usage indisponible ⇒
+	// carte vide ⇒ le bloc de coordination n'a pas de parité, et le dit.
+	resp.Coordination = buildCoordinationBlock(ctx, coordinationQuery{
+		Tactical:   s.coordTactical,
+		Appuis:     s.coordAppuis,
+		Caps:       s.coordCaps,
+		PlayerXUID: s.usageXUID,
+		MatchIDs:   matchIDsFromStatsRows(matches),
+		TeamSize:   teamSize,
+	})
 }
 
 // buildSessionUsage calcule le bloc usage d'UNE session. Best-effort : une erreur de
 // lecture est loggée PUIS dégradée en Available=false (raison machine) — jamais d'échec
 // de la page. Session sans match ⇒ nil.
+// Il rend AUSSI l'effectif de mon camp par match (`TeamContext.TeamSize`), que le bloc de
+// coordination consomme pour sa parité 1/n — le recalculer là-bas en aurait donné une
+// seconde définition (réserve R1).
 func (s *SessionPageService) buildSessionUsage(
 	ctx context.Context, matches []legacymatch.StatsMatchRow, matchContext, locale string,
-) *domain.SessionUsageBlock {
+) (*domain.SessionUsageBlock, map[string]int) {
 	if len(matches) == 0 {
-		return nil
+		return nil, nil
 	}
 	if s.sessionUsageRepo == nil || s.usageXUID == "" {
 		return &domain.SessionUsageBlock{
 			UnavailableReason: domain.SessionUsageUnsupported, MatchesTotal: len(matches),
-		}
+		}, nil
 	}
 	ids := matchIDsFromStatsRows(matches)
 	films, filmsErr := s.sessionUsageRepo.LoadUsageFilms(ctx, ids)
@@ -105,7 +137,7 @@ func (s *SessionPageService) buildSessionUsage(
 				"match_count", len(ids))
 			return &domain.SessionUsageBlock{
 				UnavailableReason: domain.SessionUsageLoadFailed, MatchesTotal: len(matches),
-			}
+			}, nil
 		}
 	}
 
@@ -130,7 +162,7 @@ func (s *SessionPageService) buildSessionUsage(
 	s.attachPadTiers(ctx, &block, ids, tc)
 	s.resolvePadFamilyLabels(ctx, &block, locale)
 	s.resolvePadTierWeaponLabels(ctx, &block, locale)
-	return &block
+	return &block, tc.TeamSize
 }
 
 // attachSessionObjectives renseigne le sous-bloc objectifs (lecture seule de

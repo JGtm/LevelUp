@@ -330,6 +330,18 @@ type TimeseriesPageResponse struct {
 	// lecture en échec — jamais une section vide. Gated côté front par la capability
 	// produit `weapon_range`. Cf. service/synthesis_weapon_range.go.
 	WeaponRange *SynthesisWeaponRange `json:"weapon_range,omitempty"`
+	// Coordination : le bloc « Riposte » et « Appui reçu » DANS LE TEMPS (lot N1,
+	// décisions D22) — les mêmes grandeurs que la page Sessions, groupées PAR SOIRÉE
+	// (`sessions`), sur le MÊME scope filtré que le reste de la page.
+	//
+	// LA SOIRÉE, PAS LE MATCH : le dénominateur de « je suis couvert », ce sont mes morts
+	// (8 à 14 par match en arène) — une part sur 9 morts bouge de 11 points quand une
+	// seule mort change de côté, et la frise par match dessinerait le bruit. C'est déjà la
+	// maille de la frise d'échange de l'Escouade.
+	//
+	// MÊME producteur que la page Sessions (service/coordination_block.go), même contrat
+	// de dégradation : nil sans match, Available=false avec raison machine sinon.
+	Coordination *CoordinationBlock `json:"coordination,omitempty"`
 	// EquipmentUsage : bloc « servi ou gâché » de l'équipement en variante COMPTES, sur le
 	// scope filtré. Section déplacée de la Synthèse vers l'onglet Progression le 2026-09-13 ;
 	// même producteur (squadagg.BuildEquipmentUsageBlock) et même scope. nil quand le scope
