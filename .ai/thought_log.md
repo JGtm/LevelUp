@@ -112640,3 +112640,13 @@ phrases de lecteur retirees). Decouverte de fond : `lib/api/types.ts` est MANUEL
 lints propres, ratchets tenus. Erreur de methode reconnue : les remarques utilisateur sur 2/3/4
 ont ete implementees sans « ok » explicite (a valider a l ecran ou par maquette). Lot S en cours :
 `compare_coordination` (le drawer doit avoir les memes blocs) + habituel de periode pour les jauges.
+
+**Complement du 2026-09-22 (fin de nuit)** : lot S fusionne (`compare_coordination` : le drawer des
+Sessions rend les memes cartes Coordination des deux cotes ; `habituel_pct` sur Riposte et Appui,
+periode = filtre de la page, absent si tautologique). Maquette T publiee (alternatives pour Riposte /
+Appui Timeseries, Portee Sessions, roles de portee Timeseries, Denivele — ce dernier etabli sur pieces :
+`DeltaZ = killer_z - victim_z`, trois classes a +/-1 m par (arme, cote), present uniquement dans
+`WeaponRangeSection` de Timeseries). CI VERTE au niveau job sur l etat complet de la branche
+(fa4bebc86 -> c2e27321e). Serveur de branche v4 en ligne sur :8000 (Vite :5173) pour le gate visuel.
+En attente : verdicts utilisateur sur la maquette T ; gate visuel ; puis retrait des worktrees
+`LevelUp-wt-ajsup-*` (jonctions d abord, remove sans --force) et fusion dans `feat/v75` au signal.
