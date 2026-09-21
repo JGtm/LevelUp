@@ -36,6 +36,8 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
   « Assistances par coequipier », « Part de mon camp », « Detail des prises d'armes speciales ».
 - D16 Alignement comparaison : rangees partagees ; placeholder « Sans equivalent dans cette session ».
 - D17 (2026-09-21, apres maquette) : Explorer « Part des assistances » = 1.A et « Repartition des resultats » = 2.A, TOUS DEUX A L HORIZONTALE. Sujets 3, 4, 5 : pas encore tranches.
+- D18 (2026-09-21) : Match view « Controle des armes speciales » = 4.A, colonnes verticales empilees par socle, hauteur = prises reelles, echelle commune ; groupes PUISSANCE / TERRAIN separes par un trait vertical discret, nom du groupe + sous-total CENTRE EN HAUT DANS LE GRAPHIQUE entre l axe Y et le trait (pas de bandeau) ; base repliee.
+- D19 (2026-09-21) : section « echange » de l Escouade = variante A de la maquette MAQUETTE_ECHANGE_ESCOUADE ; vocabulaire tactique : vengeance -> « Riposte », assistance -> « Appui », A APPLIQUER PARTOUT dans l app ; nom de la section : en attente (recommandation « Coordination », « taux de riposte »).
 
 ## Lots
 
@@ -110,6 +112,9 @@ surface `film/replay` 260 -> 263 justifie.
 ### Lot H — Explorer, rendus 1.A et 2.A horizontaux (worktree `LevelUp-wt-ajsup-h`) — FUSIONNE 1176357a6
 - [x] Part des assistances : deux barres epaisses horizontales, echelle lineaire commune, tranches empilees avec comptes, trait de parite
 - [x] Repartition des resultats : une barre epaisse horizontale empilee (compte + part ecrits), taux en chiffre d appel, bande des resultats
+
+### Lot I — Match view, controle des armes en 4.A (worktree `LevelUp-wt-ajsup-i`)
+- [ ] Colonnes empilees par socle, groupes separes par un trait, noms centres en haut dans le graphique, base repliee (D18)
 
 ## Decouvertes (hors perimetre, ne pas traiter)
 - H : `AssistExchangeSummary` (papillon log) reste sur le hub Relations (`RelationAssistsCards.tsx:45`) -> verdict utilisateur ; `assist_volume_max` n a plus de lecteur Explorer ; `ExplorerTargetSampleStats.tsx` a 399 L.
