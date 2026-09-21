@@ -31,7 +31,8 @@ import {
   legendEntries,
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
-import { InfoTooltip, TooltipParagraphs } from '@/components/ui/info-tooltip'
+import { TooltipParagraphs } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { intlLocale } from '@/lib/formatters'
@@ -130,12 +131,7 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
     <SectionCard
       title={t.cardTitle}
       label={t.sectionLabel}
-      titleAdornment={(label) => (
-        <span className="flex items-center gap-1.5">
-          {label}
-          <InfoTooltip content={<TooltipParagraphs items={[t.help, t.figure]} />} />
-        </span>
-      )}
+      titleAdornment={titleWithInfo(<TooltipParagraphs items={[t.help, t.figure]} />)}
     >
       <div className="space-y-2 px-3 py-2" data-testid="squad-isolement-nuage">
         {vide ? (

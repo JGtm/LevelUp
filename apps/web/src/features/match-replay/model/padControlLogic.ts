@@ -42,7 +42,7 @@ import { displayPlayerName } from '@/lib/players/displayName'
 import { isGameChangerFamily, isGameChangerWeaponKey } from './gameChangers'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { buildPlayers, groupByTeam, playerName, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
-import { buildPadTierMatch, padTierOf, PAD_TIER_ORDER, type PadTier } from './weaponTier'
+import { buildPadTierMatch, padTierOf, PAD_TIER_TIEBREAK, type PadTier } from './weaponTier'
 import { padEquipmentFamilyOf } from './weaponPadFamilies'
 
 /** Les prises comptées, sans identité — la ligne d'un joueur comme le total d'un camp. */
@@ -126,7 +126,8 @@ export interface PadControl {
    * UNE arme sur 59 matchs et 2 881 prises (0,17 %), et le conflit était `terrain` contre
    * `non classé`, jamais `terrain` contre `puissance`. La ligne du bloc reste donc une ligne
    * par arme, et son niveau est celui qui porte le plus de prises ; à égalité, l'ordre écrit
-   * `PAD_TIER_ORDER` départage, pour que deux relectures donnent le même bloc.
+   * `PAD_TIER_TIEBREAK` départage, pour que deux relectures donnent le même bloc (ordre
+   * PROPRE au départage depuis le 2026-09-21 : il ne suit pas l'ordre d'affichage).
    *
    * IL N'Y A PAS DE SOUS-TOTAUX PAR NIVEAU ICI, ET C'EST VOULU (revue du 2026-09-14). Le bloc
    * en publiait, personne ne les lisait, et l'écran additionnait ses propres lignes : deux
@@ -227,13 +228,13 @@ export function buildPadControl(
   }
 }
 
-/** Le niveau retenu pour chaque arme : le plus servi, `PAD_TIER_ORDER` départageant. */
+/** Le niveau retenu pour chaque arme : le plus servi, `PAD_TIER_TIEBREAK` départageant. */
 function tierOfWeaponOf(picks: ReadonlyMap<string, Map<PadTier, number>>): Record<string, PadTier> {
   const out: Record<string, PadTier> = {}
   for (const [weapon, parNiveau] of picks) {
     let meilleur: PadTier = 'unclassified'
     let n = -1
-    for (const tier of PAD_TIER_ORDER) {
+    for (const tier of PAD_TIER_TIEBREAK) {
       const c = parNiveau.get(tier) ?? 0
       if (c > n) {
         meilleur = tier

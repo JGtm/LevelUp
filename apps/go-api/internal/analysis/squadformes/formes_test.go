@@ -51,7 +51,8 @@ func fixture() Input {
 					{MatchID: "m2", XUID: "moi", CamoEpisodes: 2, GrapplePulls: 1, PadPickups: 2,
 						DeployedByFamily:   map[string]int{"wall": 3, "sensor": 9},
 						PadPickupsByFamily: map[string]int{"71ab0a2c": 2}},
-					{MatchID: "m2", XUID: "cop", OvershieldEpisodes: 1, DroppedObjects: 4},
+					{MatchID: "m2", XUID: "cop", OvershieldEpisodes: 1, DroppedObjects: 4,
+						DroppedByFamily: map[string]int{"wall": 3, "sensor": 1}},
 					{MatchID: "m2", XUID: "adv", PadPickups: 5,
 						PadPickupsByFamily: map[string]int{"0a1992bc": 5}},
 				}},
@@ -341,5 +342,43 @@ func TestBuild_MatchsAObjectifSeulSontPublies(t *testing.T) {
 	}
 	if got.MatchesMeasured != 1 || got.MatchesTotal != 3 {
 		t.Fatalf("compteurs attendus 1/3, obtenu %d/%d", got.MatchesMeasured, got.MatchesTotal)
+	}
+}
+
+// La VENTILATION DES LÂCHERS descend telle quelle jusqu'au bloc (D9, lot G du
+// 2026-09-21). Elle existait depuis le décodeur et s'arrêtait ici, sur le seul
+// scalaire `Dropped` : une colonne d'écran qui mélange un mur, un capteur et un
+// grappin lâchés à la mort ne se compare à rien.
+func TestBuild_LachersVentilesParFamille(t *testing.T) {
+	m := matchOf(Build(fixture()), "m2")
+	if m == nil {
+		t.Fatal("le match mesuré doit être publié")
+	}
+	var cop *domain.SquadFormesLobbyPlayer
+	for i := range m.Lobby {
+		if m.Lobby[i].XUID == "cop" {
+			cop = &m.Lobby[i]
+		}
+	}
+	if cop == nil {
+		t.Fatal("la ligne de lobby de cop doit exister")
+	}
+	// Le TOTAL reste publié : aucun lecteur de `dropped` n'est cassé.
+	if cop.Dropped != 4 {
+		t.Fatalf("total des lâchers attendu 4, obtenu %d", cop.Dropped)
+	}
+	if got := cop.DroppedByFamily["wall"]; got != 3 {
+		t.Fatalf("lâchers de mur attendus 3, obtenu %d", got)
+	}
+	if got := cop.DroppedByFamily["sensor"]; got != 1 {
+		t.Fatalf("lâchers de capteur attendus 1, obtenu %d", got)
+	}
+	// ABSENTE PLUTÔT QUE NULLE : un joueur sans ventilation (ligne écrite avant
+	// la colonne) ne porte pas une carte de zéros.
+	for i := range m.Lobby {
+		if m.Lobby[i].XUID == "moi" && m.Lobby[i].DroppedByFamily != nil {
+			t.Fatalf("sans lâcher mesuré, la ventilation doit être absente, obtenu %+v",
+				m.Lobby[i].DroppedByFamily)
+		}
 	}
 }

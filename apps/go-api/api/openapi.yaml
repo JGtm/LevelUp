@@ -25518,6 +25518,11 @@ components:
         dropped:
           format: int64
           type: integer
+        dropped_by_family:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
         gamertag:
           type: string
         grapple:

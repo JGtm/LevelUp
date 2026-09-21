@@ -23,7 +23,7 @@
 import { useMemo } from 'react'
 
 import { BarStackedChart } from '@/components/charts/BarStackedChart'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { intlLocale } from '@/lib/formatters'
 import type { SquadAssistPairs } from '@/lib/api/types'
@@ -108,12 +108,7 @@ export function SquadAssistPairsChart({ block, roster }: SquadAssistPairsChartPr
   return (
     <SectionCard
       title={labels.title}
-      titleAdornment={(label) => (
-        <span className="flex items-center gap-1.5">
-          {label}
-          <InfoTooltip content={labels.description} />
-        </span>
-      )}
+      titleAdornment={titleWithInfo(labels.description)}
     >
       <div className="px-3 py-2" data-testid="squad-assist-pairs-chart">
         <BarStackedChart

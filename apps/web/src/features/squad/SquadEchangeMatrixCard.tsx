@@ -37,7 +37,8 @@ import { useMemo } from 'react'
 import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
 import { getEChartsThemeColors } from '@/components/charts/_utils'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
-import { InfoTooltip, TooltipParagraphs } from '@/components/ui/info-tooltip'
+import { TooltipParagraphs } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenVar } from '@/lib/accessibility'
@@ -138,12 +139,7 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
     <SectionCard
       title={t.sectionTitle}
       label={t.sectionLabel}
-      titleAdornment={(label) => (
-        <span className="flex items-center gap-1.5" data-testid="squad-echange-low-sample">
-          {label}
-          <InfoTooltip content={aide} />
-        </span>
-      )}
+      titleAdornment={titleWithInfo(aide, { testId: 'squad-echange-low-sample' })}
     >
       <div className="space-y-2 px-3 py-2" data-testid="squad-echange-matrix">
         <p

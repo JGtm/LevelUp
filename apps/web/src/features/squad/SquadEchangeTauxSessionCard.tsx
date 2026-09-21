@@ -17,7 +17,7 @@
 import { useMemo } from 'react'
 
 import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { intlLocale } from '@/lib/formatters'
 import { withLowSampleNote } from '@/lib/formatters/lowSampleNote'
@@ -75,12 +75,7 @@ export function SquadEchangeTauxSessionCard({ echange }: SquadEchangeTauxSession
       label={t.sessionRateLabel}
       // Ce que la courbe dénombre est passé en infobulle ⓘ du titre (2026-09-21) : c'est de
       // la méthode, elle ne se relit pas à chaque visite au-dessus du graphe.
-      titleAdornment={(label) => (
-        <span className="flex items-center gap-1.5">
-          {label}
-          <InfoTooltip content={t.sessionRateFigure(secondes)} />
-        </span>
-      )}
+      titleAdornment={titleWithInfo(t.sessionRateFigure(secondes))}
     >
       <div className="space-y-2 px-3 py-2" data-testid="squad-echange-taux-session">
         {!assezDeSessions || !bornes ? (

@@ -54,7 +54,7 @@
 import { useCallback, useMemo, useState } from 'react'
 
 import { ChartLegend } from '@/components/charts/ChartLegend'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { Tooltip } from '@/components/ui/tooltip'
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
@@ -142,26 +142,19 @@ export function MatchPadControlSection({
     <SectionCard
       title={t.padControl.title}
       label={t.padControl.title}
-      titleAdornment={(label) => (
-        // UNE SEULE INFOBULLE (i) SUR LE TITRE, 2026-09-21 (lot D). Elle a remplacé le
-        // `HeaderLabelTooltip` invisible du libellé ET les deux notes qui s'écrivaient
-        // au-dessus du graphe (niveaux non établis, départs aléatoires) : trois réserves sur
-        // la même carte, à trois endroits, dont une seule se voyait.
-        <span className="flex items-center gap-1.5">
-          <span>{label}</span>
-          <InfoTooltip
-            content={
-              <div className="space-y-2">
-                <p>{t.padControl.titleHint}</p>
-                {!control.tiersMeasured && <p>{t.padControl.tiersUnmeasuredNote}</p>}
-                {control.randomStarts && <p>{t.padControl.randomStartsNote}</p>}
-                {/* LE GROUPE « NON IDENTIFIÉ » NE SE REND PLUS (D2) : son compte se dit ICI,
-                    et nulle part ailleurs. */}
-                {unclassified > 0 && <p>{t.padControl.unclassifiedHintFmt(unclassified)}</p>}
-              </div>
-            }
-          />
-        </span>
+      // UNE SEULE INFOBULLE (i) SUR LE TITRE, 2026-09-21 (lot D). Elle a remplacé le
+      // `HeaderLabelTooltip` invisible du libellé ET les deux notes qui s'écrivaient
+      // au-dessus du graphe (niveaux non établis, départs aléatoires) : trois réserves sur
+      // la même carte, à trois endroits, dont une seule se voyait.
+      titleAdornment={titleWithInfo(
+        <div className="space-y-2">
+          <p>{t.padControl.titleHint}</p>
+          {!control.tiersMeasured && <p>{t.padControl.tiersUnmeasuredNote}</p>}
+          {control.randomStarts && <p>{t.padControl.randomStartsNote}</p>}
+          {/* LE GROUPE « NON IDENTIFIÉ » NE SE REND PLUS (D2) : son compte se dit ICI,
+              et nulle part ailleurs. */}
+          {unclassified > 0 && <p>{t.padControl.unclassifiedHintFmt(unclassified)}</p>}
+        </div>,
       )}
     >
       <PadControlBody bars={bars} control={control} allyOf={allyOf} t={t} />

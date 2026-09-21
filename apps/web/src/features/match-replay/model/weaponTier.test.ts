@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocument } from '@/lib/api/types'
 
-import { buildPadTierMatch, padTierOf } from './weaponTier'
+import { buildPadTierMatch, padTierOf, PAD_TIER_ORDER, PAD_TIER_TIEBREAK } from './weaponTier'
 import { testReplayDoc } from '../test/testDoc'
 
 const AR = '0x48C19D2D'
@@ -243,5 +243,28 @@ describe('les modes à départs aléatoires', () => {
     expect(padTierOf(m, 1, SNIPER)).toBe('power')
     // Les vies restent comptées : l'écran doit pouvoir dire sur quoi il s'appuie.
     expect(m.lives).toBe(20)
+  })
+})
+
+/**
+ * Non-régression du DÉCOUPLAGE affichage / départage (2026-09-21, lot G).
+ *
+ * Le lot D a inversé `PAD_TIER_ORDER` pour la mise en page (puissance en tête) ; la même
+ * constante départageait `tierOfWeaponOf`, et le classement a bougé sans décision. Ce test
+ * fige les deux ordres SÉPARÉMENT : si l'un est réécrit sur l'autre, il casse.
+ */
+describe('weaponTier — l’ordre d’affichage et l’ordre de départage sont deux choses', () => {
+  it('l’affichage ouvre sur « puissance » (décision utilisateur du 2026-09-21)', () => {
+    expect([...PAD_TIER_ORDER]).toEqual(['power', 'ground', 'base', 'powerup', 'unclassified'])
+  })
+
+  it('le départage garde l’ordre d’avant a9733a985 : base d’abord', () => {
+    expect([...PAD_TIER_TIEBREAK]).toEqual(['base', 'ground', 'power', 'powerup', 'unclassified'])
+  })
+
+  it('les deux ordres ne sont PAS la même liste', () => {
+    expect([...PAD_TIER_TIEBREAK]).not.toEqual([...PAD_TIER_ORDER])
+    // Mêmes niveaux des deux côtés : un découplage n'est pas une divergence de domaine.
+    expect([...PAD_TIER_TIEBREAK].sort()).toEqual([...PAD_TIER_ORDER].sort())
   })
 })

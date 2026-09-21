@@ -151,6 +151,7 @@ export function TacticalCoordinationCard({
                 }
                 binHatched={(point) => seuilBas !== null && point.binStart < seuilBas}
                 thresholds={seuils}
+                frameless
               />
             )}
             <div className="flex flex-col gap-1 border-t border-border pt-2 text-2xs text-muted-foreground">

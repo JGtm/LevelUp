@@ -142,7 +142,7 @@ function RangeChart({
           series={series}
           buildOption={buildOption}
           height={weaponRangeChartHeight(lines.length)}
-          className="rounded-none border-none bg-transparent shadow-none"
+          frameless
           legend={<ChartLegend items={legend} ariaLabel={title} />}
         />
       )}

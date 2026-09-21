@@ -62,11 +62,11 @@
  * Aucun calcul ici : tout vient de `equipmentUsageLogic` (les mesures),
  * `equipmentUsageColumns` (les colonnes et leurs noms) et `equipmentUsageChart` (la projection).
  */
-import { useCallback, useMemo, type ReactNode } from 'react'
+import { useCallback, useMemo } from 'react'
 
 import { ChartLegend } from '@/components/charts/ChartLegend'
 import { ValueGrid } from '@/components/charts/ValueGrid'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { Tooltip } from '@/components/ui/tooltip'
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
@@ -160,8 +160,8 @@ export function MatchEquipmentUsageSection({
   // la page s'allongeait d'autant. Les RENDUS INTERNES sont inchangés (une maquette est en
   // cours pour leur forme) : seul le chrome se dédouble. La RÉSERVE est sur les deux titres —
   // elle vaut pour les deux vues, et une carte qui ne la porterait pas mentirait par omission.
-  const reserveTip =
-    reserve > 0 ? <InfoTooltip content={<p>{u.coverageReserveFmt(reserve)}</p>} /> : null
+  const reserveTip = reserve > 0 ? <p>{u.coverageReserveFmt(reserve)}</p> : null
+  const titreDeCarte = titleWithInfo(reserveTip)
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -169,7 +169,7 @@ export function MatchEquipmentUsageSection({
         <SectionCard
           title={u.viewByPlayer}
           label={u.viewByPlayer}
-          titleAdornment={(label) => <CardTitle label={label} tip={reserveTip} />}
+          titleAdornment={titreDeCarte}
         >
           <div className="px-3 pb-3 pt-3">
             <ValueGrid model={grid} />
@@ -188,7 +188,7 @@ export function MatchEquipmentUsageSection({
         <SectionCard
           title={u.viewTeamShare}
           label={u.viewTeamShare}
-          titleAdornment={(label) => <CardTitle label={label} tip={reserveTip} />}
+          titleAdornment={titreDeCarte}
         >
           <div className="px-3 pb-3 pt-3">
             <UsageTeamShares rows={shares} t={t} />
@@ -196,16 +196,6 @@ export function MatchEquipmentUsageSection({
         </SectionCard>
       )}
     </div>
-  )
-}
-
-/** Le titre d'une des deux cartes, avec son infobulle de réserve quand il y en a une. */
-function CardTitle({ label, tip }: { label: string; tip: ReactNode }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span>{label}</span>
-      {tip}
-    </span>
   )
 }
 

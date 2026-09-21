@@ -22,7 +22,8 @@
 import { useMemo } from 'react'
 
 import { HistogramChart, type ChartPointHistogram } from '@/components/charts/HistogramChart'
-import { InfoTooltip, TooltipParagraphs } from '@/components/ui/info-tooltip'
+import { TooltipParagraphs } from '@/components/ui/info-tooltip'
+import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { SquadEchange } from '@/lib/api/types'
@@ -97,12 +98,7 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
     <SectionCard
       title={t.delayTitle}
       label={t.delayLabel}
-      titleAdornment={(label) => (
-        <span className="flex items-center gap-1.5">
-          {label}
-          <InfoTooltip content={help} />
-        </span>
-      )}
+      titleAdornment={titleWithInfo(help)}
     >
       <div className="space-y-2 px-3 py-2" data-testid="squad-echange-delai">
         {resume.total === 0 ? (

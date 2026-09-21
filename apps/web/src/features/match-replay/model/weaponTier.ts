@@ -47,12 +47,33 @@ import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
  * contrôle des ARMES ; « non identifié » est une absence de mesure, pas un niveau de jeu. Le
  * CLASSEMENT (`padTierOf`) est inchangé — seul l'affichage retire ces deux groupes.
  *
- * L'ordre sert aussi à DÉPARTAGER une arme vue à deux niveaux (`tierOfWeaponOf`) : à compte
- * égal, elle se lit désormais au niveau le plus disputé, ce qui est la même règle de lecture.
+ * IL NE DÉPARTAGE PLUS RIEN : voir `PAD_TIER_TIEBREAK` ci-dessous.
  */
 export const PAD_TIER_ORDER = ['power', 'ground', 'base', 'powerup', 'unclassified'] as const
 
 export type PadTier = (typeof PAD_TIER_ORDER)[number]
+
+/**
+ * ORDRE DE DÉPARTAGE d'une arme vue à deux niveaux dans le même match (`tierOfWeaponOf`) —
+ * DISTINCT de l'ordre d'affichage, et c'est tout l'objet de cette constante.
+ *
+ * DÉCOUPLAGE DU 2026-09-21 (lot G), sur découverte du lot D. Les deux usages lisaient
+ * `PAD_TIER_ORDER` : inverser l'ordre de LECTURE du bloc (base → puissance en tête, commit
+ * a9733a985) a donc silencieusement inversé le DÉPARTAGE d'un conflit à compte égal, sans
+ * qu'aucune décision produit ne le demande. Un ordre d'écran est un choix de mise en page ;
+ * un ordre de départage est une règle de classement — ils n'ont pas à bouger ensemble.
+ *
+ * La valeur ci-dessous RESTAURE le départage d'avant a9733a985 (`base, ground, power,
+ * powerup, unclassified`). Le conflit est rare et mesuré : UNE arme sur 59 matchs et 2 881
+ * prises (0,17 %), `terrain` contre `non classé` (cf. `padControlLogic.ts`).
+ */
+export const PAD_TIER_TIEBREAK: readonly PadTier[] = [
+  'base',
+  'ground',
+  'power',
+  'powerup',
+  'unclassified',
+]
 
 /**
  * Part minimale des vies du match qu'une arme doit occuper AU DÉPART pour être tenue pour une
