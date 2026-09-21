@@ -51,7 +51,7 @@ func usageAvecPrises(t *testing.T, index *mockObjectiveIndexAvecPrises) *domain.
 	t.Helper()
 	var resp domain.SessionPageResponse
 	serviceAvecPrises(index).attachSessionUsage(
-		context.Background(), &resp, usageTestMatches(), nil, domain.MatchContextSolo, "fr")
+		context.Background(), &resp, sessionBlocksScope{Matches: usageTestMatches(), MatchContext: domain.MatchContextSolo, Locale: "fr"})
 	if resp.Usage == nil || resp.Usage.Objectives == nil {
 		t.Fatalf("bloc objectifs absent : %+v", resp.Usage)
 	}
@@ -141,7 +141,7 @@ func TestAttachFlagGrabsNet_MontageSansLoaderResteSilencieux(t *testing.T) {
 	// mockObjectiveIndexWithRoles n'implémente PAS flagGrabsNetLoader.
 	svc.objectiveIndex = &mockObjectiveIndexWithRoles{roleRows: rolesCTFDeuxMatchs()}
 	var resp domain.SessionPageResponse
-	svc.attachSessionUsage(context.Background(), &resp, usageTestMatches(), nil, domain.MatchContextSolo, "fr")
+	svc.attachSessionUsage(context.Background(), &resp, sessionBlocksScope{Matches: usageTestMatches(), MatchContext: domain.MatchContextSolo, Locale: "fr"})
 	if resp.Usage == nil || resp.Usage.Objectives == nil {
 		t.Fatal("bloc objectifs absent")
 	}

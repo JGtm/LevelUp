@@ -301,12 +301,15 @@ func (s *SessionPageService) GetPage(
 	// des placements — best-effort, dégrade gracieusement si le repo ne le fournit pas.
 	s.attachLobbySizes(ctx, resp.Matches, resp.CompareMatches)
 
-	// Bloc « usages d'équipement, armes spéciales et objectifs » — session courante ET
-	// session comparée (D8), best-effort, cf. session_page_usage.go. Réutilise
-	// compareMatchesForEvents : le même sous-ensemble que les blocs event-based, donc
-	// les deux colonnes du drawer parlent bien des mêmes matchs.
-	s.attachSessionUsage(ctx, &resp, currentMatches, compareMatchesForEvents,
-		req.Filters.MatchContext, req.Locale)
+	// Blocs « usages » et « Coordination » — session courante ET session comparée (D8),
+	// best-effort, cf. session_page_usage.go et session_page_coordination.go.
+	// compareMatchesForEvents : le même sous-ensemble que les blocs event-based, donc les
+	// deux colonnes du drawer parlent bien des mêmes matchs. `filtered` est la PÉRIODE DE
+	// RÉFÉRENCE du repère d'habituel (celle du filtre de la page, toutes sessions).
+	s.attachSessionUsage(ctx, &resp, sessionBlocksScope{
+		Matches: currentMatches, CompareMatches: compareMatchesForEvents,
+		ReferenceMatches: filtered, MatchContext: req.Filters.MatchContext, Locale: req.Locale,
+	})
 
 	// Bloc « portée des engagements » (D22-4) : même périmètre de matchs que les deux
 	// blocs ci-dessus, best-effort, cf. session_page_range.go.

@@ -5809,6 +5809,8 @@ export interface components {
             psa_processed: number;
         };
         CoordinationAppui: {
+            /** Format: double */
+            habituel_pct?: number;
             ma_part_des_appuis: components["schemas"]["Couverture"];
             on_me_prepare: components["schemas"]["Couverture"];
             /** Format: double */
@@ -5864,6 +5866,8 @@ export interface components {
         CoordinationRiposte: {
             /** Format: int64 */
             delai_median_ms?: number;
+            /** Format: double */
+            habituel_pct?: number;
             je_riposte: components["schemas"]["Couverture"];
             je_suis_couvert: components["schemas"]["Couverture"];
             /** Format: double */
@@ -11245,6 +11249,7 @@ export interface components {
         /** @description SessionPageResponse — session courante, matchs détaillés, suggestion et éventuelle comparaison */
         SessionPageResponse: {
             available_sessions: string[] | null;
+            compare_coordination?: components["schemas"]["CoordinationBlock"];
             compare_enabled: boolean;
             compare_first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             compare_intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;

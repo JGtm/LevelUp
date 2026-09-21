@@ -18,7 +18,6 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/teammates"
@@ -60,18 +59,6 @@ func (s *SessionPageService) WithSessionUsage(
 	return s
 }
 
-// WithSessionCoordination injecte les deux lecteurs du bloc « Coordination » et les
-// capabilities du titre. Le bloc partage son producteur avec la page Series temporelles :
-// deux constructeurs auraient donne deux definitions de « morts de mon camp ».
-func (s *SessionPageService) WithSessionCoordination(
-	tactical port.TacticalRepository, appuis port.CoordinationRepository, caps games.CapabilityMap,
-) *SessionPageService {
-	s.coordTactical = tactical
-	s.coordAppuis = appuis
-	s.coordCaps = caps
-	return s
-}
-
 // attachSessionUsage attache le bloc usage de la session COURANTE et, en mode
 // comparaison, celui de la session COMPARÉE — MIROIR d'attachSessionEventBlocks, qui
 // sert déjà ses deux blocs event-based aux deux sessions.
@@ -84,30 +71,21 @@ func (s *SessionPageService) WithSessionCoordination(
 //
 // `compareMatches` vide (drawer fermé) ⇒ CompareUsage reste nil, et rien ne se rend à
 // droite : l'absence dit tout, aucun drapeau n'est nécessaire.
+//
+// IL ATTACHE AUSSI LE BLOC « COORDINATION » (les deux sessions, lot S) — pas par commodité :
+// l'EFFECTIF DE CAMP par match (`TeamContext.TeamSize`) naît ici, et le bloc de coordination
+// en a besoin pour sa parité 1/n. Le recalculer ailleurs en aurait donné une seconde
+// définition (réserve R1) ; le faire voyager par la réponse en aurait fait un champ public
+// que rien ne lit.
 func (s *SessionPageService) attachSessionUsage(
-	ctx context.Context, resp *domain.SessionPageResponse,
-	matches, compareMatches []legacymatch.StatsMatchRow, matchContext, locale string,
+	ctx context.Context, resp *domain.SessionPageResponse, sc sessionBlocksScope,
 ) {
-	var teamSize map[string]int
-	resp.Usage, teamSize = s.buildSessionUsage(ctx, matches, matchContext, locale)
-	if len(compareMatches) > 0 {
-		resp.CompareUsage, _ = s.buildSessionUsage(ctx, compareMatches, matchContext, locale)
+	var teamSize, compareTeamSize map[string]int
+	resp.Usage, teamSize = s.buildSessionUsage(ctx, sc.Matches, sc.MatchContext, sc.Locale)
+	if len(sc.CompareMatches) > 0 {
+		resp.CompareUsage, compareTeamSize = s.buildSessionUsage(ctx, sc.CompareMatches, sc.MatchContext, sc.Locale)
 	}
-	// Bloc « Coordination » de la session COURANTE (lot N1). Il n'a pas de pendant
-	// comparé : le drawer de comparaison ne porte pas la section, et publier un bloc
-	// que rien ne rend serait du code mort servi à chaque requête.
-	//
-	// L'EFFECTIF DE CAMP VIENT DU BLOC D'USAGE, pas d'un second calcul : c'est le
-	// `TeamContext` déjà construit ci-dessus (réserve R1). Bloc d'usage indisponible ⇒
-	// carte vide ⇒ le bloc de coordination n'a pas de parité, et le dit.
-	resp.Coordination = buildCoordinationBlock(ctx, coordinationQuery{
-		Tactical:   s.coordTactical,
-		Appuis:     s.coordAppuis,
-		Caps:       s.coordCaps,
-		PlayerXUID: s.usageXUID,
-		MatchIDs:   matchIDsFromStatsRows(matches),
-		TeamSize:   teamSize,
-	})
+	s.attachSessionCoordination(ctx, resp, sc, teamSize, compareTeamSize)
 }
 
 // buildSessionUsage calcule le bloc usage d'UNE session. Best-effort : une erreur de

@@ -11617,6 +11617,9 @@ components:
     CoordinationAppui:
       additionalProperties: false
       properties:
+        habituel_pct:
+          format: double
+          type: number
         ma_part_des_appuis:
           $ref: '#/components/schemas/Couverture'
         on_me_prepare:
@@ -11736,6 +11739,9 @@ components:
         delai_median_ms:
           format: int64
           type: integer
+        habituel_pct:
+          format: double
+          type: number
         je_riposte:
           $ref: '#/components/schemas/Couverture'
         je_suis_couvert:
@@ -24516,6 +24522,8 @@ components:
           type:
             - array
             - "null"
+        compare_coordination:
+          $ref: '#/components/schemas/CoordinationBlock'
         compare_enabled:
           type: boolean
         compare_first_blood:
