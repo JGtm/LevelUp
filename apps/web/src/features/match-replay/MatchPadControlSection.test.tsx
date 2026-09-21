@@ -17,7 +17,7 @@
  * Le calcul est éprouvé chez `padControlLogic.test.ts` ; ici on éprouve le RENDU.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
@@ -105,6 +105,16 @@ function afficher(locale: 'fr' | 'en' = 'fr') {
       locale={locale}
     />,
   )
+}
+
+/**
+ * L'AIDE DU TITRE, ouverte. Depuis le 2026-09-21 (lot D) une SEULE infobulle (i) porte la
+ * provenance de l'attribution ET les deux réserves qui s'écrivaient au-dessus du graphe
+ * (niveaux non établis, départs aléatoires), plus le compte des prises non classées.
+ */
+function aideDuTitre(vue: ReturnType<typeof afficher>): string {
+  fireEvent.mouseEnter(vue.getByRole('button', { name: /informations|more info/i }))
+  return screen.getByRole('tooltip').textContent ?? ''
 }
 
 describe('MatchPadControlSection — la double porte', () => {
@@ -311,7 +321,15 @@ describe('MatchPadControlSection — les niveaux d’armes', () => {
       } as unknown as Partial<ReplayDocument>),
     )
     const vue = afficher('fr')
-    expect(vue.getByText(t.padControl.tierLabels.base)).toBeTruthy()
+    // LE NIVEAU « BASE » EST UN DÉPLIABLE FERMÉ depuis le 2026-09-21 (D2) : son bouton porte le
+    // compte, et ses lignes ne sont pas dans le document tant qu'il n'est pas ouvert.
+    const bouton = vue.getByRole('button', { name: /Armes de base/ })
+    expect(bouton.textContent).toContain(t.padControl.baseToggleFmt(1))
+    expect(bouton.getAttribute('aria-expanded')).toBe('false')
+    expect(vue.queryByText('MA40 AR')).toBeNull()
+    fireEvent.click(bouton)
+    expect(bouton.getAttribute('aria-expanded')).toBe('true')
+    expect(vue.getByText('MA40 AR')).toBeTruthy()
     // L'AR quitte le râtelier pour la base ; il n'y a plus de groupe « terrain ».
     expect(vue.queryByText(t.padControl.tierLabels.ground)).toBeNull()
   })
@@ -326,7 +344,7 @@ describe('MatchPadControlSection — les niveaux d’armes', () => {
       } as unknown as Partial<ReplayDocument>),
     )
     const vue = afficher('fr')
-    expect(vue.getByText(t.padControl.randomStartsNote)).toBeTruthy()
+    expect(aideDuTitre(vue)).toContain(t.padControl.randomStartsNote)
     expect(vue.queryByText(t.padControl.tierLabels.base)).toBeNull()
     // Les deux autres niveaux restent lisibles.
     expect(vue.getByText(t.padControl.tierLabels.ground)).toBeTruthy()
@@ -336,7 +354,7 @@ describe('MatchPadControlSection — les niveaux d’armes', () => {
   it('dit « niveaux non établis » quand la carte n’est pas dans la référence, et n’écrit AUCUN intertitre', () => {
     poserArtefact(temoinNiveaux({ mapWeaponPads: undefined } as unknown as Partial<ReplayDocument>))
     const vue = afficher('fr')
-    expect(vue.getByText(t.padControl.tiersUnmeasuredNote)).toBeTruthy()
+    expect(aideDuTitre(vue)).toContain(t.padControl.tiersUnmeasuredNote)
     // Surtout pas un bandeau « Emplacement non identifié » au-dessus de tout le bloc : une
     // absence de mesure n'est pas un résultat de mesure.
     expect(vue.queryByText(t.padControl.tierLabels.unclassified)).toBeNull()
@@ -348,8 +366,50 @@ describe('MatchPadControlSection — les niveaux d’armes', () => {
   it('n’écrit aucune de ces notes quand la carte est connue et le mode régulier', () => {
     poserArtefact(temoinNiveaux())
     const vue = afficher('fr')
-    expect(vue.queryByText(t.padControl.tiersUnmeasuredNote)).toBeNull()
-    expect(vue.queryByText(t.padControl.randomStartsNote)).toBeNull()
+    const aide = aideDuTitre(vue)
+    expect(aide).not.toContain(t.padControl.tiersUnmeasuredNote)
+    expect(aide).not.toContain(t.padControl.randomStartsNote)
+  })
+
+  // 2026-09-21, décision utilisateur amendant D2 : un socle de BONUS est un équipement, il se
+  // lit dans « Usages d'équipement » et n'a rien à faire dans le contrôle des ARMES.
+  it('ne rend PAS le niveau des socles de bonus', () => {
+    poserArtefact(
+      temoinNiveaux({
+        weaponPads: [
+          { weapon: SNIPER, x: 0, y: 0, spawns: [], presence: [] },
+          { weapon: 'powerup_overshield', x: 1, y: 1, spawns: [], presence: [] },
+        ],
+        mapWeaponPads: {
+          catalogN: 4,
+          pads: [
+            { x: 0, y: 0, pad: 0, family: 'power' },
+            { x: 1, y: 1, pad: 1, family: 'powerup' },
+          ],
+        },
+        padPickups: [
+          { pad: 0, t: 10, tLow: 5, tHigh: 15, xuid: 'a1' },
+          { pad: 1, t: 40, tLow: 35, tHigh: 45, xuid: 'b1' },
+        ],
+      } as unknown as Partial<ReplayDocument>),
+    )
+    const vue = afficher('fr')
+    expect(vue.queryByText(t.padControl.tierLabels.powerup)).toBeNull()
+    expect(vue.getByText(t.padControl.tierLabels.power)).toBeTruthy()
+  })
+
+  // 2026-09-21 (D2) : la ligne « non identifié » disparaît de la grille QUAND les niveaux sont
+  // établis — c'est alors un verdict, et son compte passe dans l'infobulle du titre.
+  it('retire le groupe « non identifié » de la grille et en dit le compte dans l’aide', () => {
+    poserArtefact(
+      temoinNiveaux({
+        mapWeaponPads: { catalogN: 4, pads: [{ x: 0, y: 0, pad: 0, family: 'power' }] },
+      } as unknown as Partial<ReplayDocument>),
+    )
+    const vue = afficher('fr')
+    expect(vue.queryByText(t.padControl.tierLabels.unclassified)).toBeNull()
+    expect(vue.queryByText('MA40 AR')).toBeNull()
+    expect(aideDuTitre(vue)).toContain(t.padControl.unclassifiedHintFmt(1))
   })
 
   it('publie les intertitres en anglais aussi', () => {

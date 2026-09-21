@@ -26,6 +26,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { useCallback, useMemo } from 'react'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import {
   CHART_BG,
   escapeHtml,
@@ -129,17 +130,27 @@ export function MatchScoreCurveChart({
 
   return (
     <ChartCard
-      title={t.scoreCurveTitle}
+      title={
+        <span className="flex items-center gap-1.5">
+          {t.scoreCurveTitle}
+          {/* LA MENTION DE SOURCE EST PASSÉE DANS L'INFOBULLE DU TITRE le 2026-09-21 (lot D
+              du plan d'ajustements supplémentaires) : une carte de match ne porte plus de
+              texte sous sa légende. */}
+          <InfoTooltip
+            content={
+              <p>
+                {t.scoreCurveSource}
+                {data?.coverage?.score?.truncated ? ` ${t.scoreCurveTruncated}` : ''}
+              </p>
+            }
+          />
+        </span>
+      }
       series={[{ key: 'match_view.score_curve', datapoints: curve.series }]}
       height={260}
       buildOption={buildOption}
       emptyMessage={t.combatNoData}
-    >
-      <p className="px-3 pb-2 text-[11px] text-muted-foreground">
-        {t.scoreCurveSource}
-        {data?.coverage?.score?.truncated ? ` ${t.scoreCurveTruncated}` : ''}
-      </p>
-    </ChartCard>
+    />
   )
 }
 

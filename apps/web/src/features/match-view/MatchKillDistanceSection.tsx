@@ -31,6 +31,7 @@ import { useCallback, useMemo } from 'react'
 
 import { ChartCard } from '@/components/charts/ChartCard'
 import { ChartLegend } from '@/components/charts/ChartLegend'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken } from '@/lib/accessibility'
 import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
@@ -130,13 +131,15 @@ export function MatchKillDistanceSection({
     <SectionCard
       title={t.killDistanceTitle}
       label={t.killDistanceTitle}
-      footer={
-        rows.length === 0 ? undefined : (
-          <p className="px-3 pb-2 pt-1 text-[11px] text-muted-foreground">
-            {t.killDistanceReserve}
-          </p>
-        )
-      }
+      titleAdornment={(label) => (
+        <span className="flex items-center gap-1.5">
+          <span>{label}</span>
+          {/* LA RÉSERVE EST PASSÉE DANS L'INFOBULLE DU TITRE le 2026-09-21 (lot D) : elle dit
+              ce que la mesure ne couvre pas, pas ce que le match a produit. Sans ligne à
+              mesurer, il n'y a rien à réserver — l'icône disparaît avec le graphe. */}
+          {rows.length > 0 && <InfoTooltip content={<p>{t.killDistanceReserve}</p>} />}
+        </span>
+      )}
     >
       {rows.length === 0 ? (
         <p className="px-3 pb-3 pt-2 text-xs text-muted-foreground">{t.killDistanceEmpty}</p>

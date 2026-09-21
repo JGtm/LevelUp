@@ -8,7 +8,7 @@
  * ECharts est mocké (jsdom).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import { api } from '@/lib/api/client'
@@ -107,8 +107,11 @@ describe('MatchKillDistanceSection', () => {
     // La légende nomme les joueurs : c'est là que le gamertag tronqué sur l'axe se relit.
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Bob')).toBeInTheDocument()
-    // La réserve de couverture reste au pied : le bâton ne prétend pas à l'exhaustivité.
-    expect(screen.getByText(/couverture partielle/)).toBeInTheDocument()
+    // La réserve de couverture est passée dans l'infobulle (i) du titre le 2026-09-21 (lot D) :
+    // elle n'est plus dans le document au repos, elle s'ouvre au survol.
+    expect(screen.queryByText(/couverture partielle/)).toBeNull()
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /informations/i }))
+    expect(screen.getByRole('tooltip').textContent).toMatch(/couverture partielle/)
   })
 
   it('replie sur le xuid quand le joueur est absent du scoreboard', async () => {

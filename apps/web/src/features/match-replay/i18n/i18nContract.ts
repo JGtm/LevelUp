@@ -150,6 +150,19 @@ export interface PadControlText {
   randomStartsNote: string
   /** Aucun emplacement de la carte n'a confirmé de socle : les niveaux ne sont pas établis. */
   tiersUnmeasuredNote: string
+  /**
+   * LE BOUTON DU DÉPLIABLE DES ARMES DE BASE (2026-09-21, décision D2). Le niveau « base »
+   * passe en dernier et FERMÉ : reprendre son fusil d'assaut n'est pas contrôler la carte, et
+   * ses lignes noyaient les socles décisifs en tête de bloc. Le compte est dans le libellé —
+   * un dépliable qui ne dit pas ce qu'il cache ne s'ouvre jamais.
+   */
+  baseToggleFmt: (count: number) => string
+  /**
+   * LES PRISES SUR EMPLACEMENT NON IDENTIFIÉ, DANS L'INFOBULLE DU TITRE (2026-09-21, D2). Le
+   * groupe ne se rend plus : une ligne « non identifié » dans la grille faisait lire une
+   * absence de mesure comme un niveau de jeu. Le compte, lui, ne disparaît pas.
+   */
+  unclassifiedHintFmt: (count: number) => string
 }
 
 export interface ReplayText {

@@ -7,6 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import type { MatchPlayerPosition } from '@/lib/api/types'
 
@@ -47,13 +48,32 @@ beforeEach(() => {
 })
 
 describe('MatchPositionsHeatmap', () => {
-  it('rend la carte et son narratif quand le match a un fond et des positions', () => {
+  it('rend la carte quand le match a un fond et des positions', () => {
     render(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
     expect(screen.getByText('Occupation du terrain')).toBeTruthy()
-    expect(screen.getByText(/plus c’est chaud/)).toBeTruthy()
     expect(screen.getByTestId('match-positions-canvas')).toBeTruthy()
+  })
+
+  // 2026-09-21 (lot D) : la mention sous la légende est passée dans l'infobulle (i) du titre.
+  // Elle n'est donc plus dans le document au repos — elle s'ouvre au survol.
+  it('dit comment lire le plan dans l’infobulle du titre, et non en pied de carte', async () => {
+    const user = userEvent.setup()
+    render(
+      <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
+    )
+    expect(screen.queryByText(/plus c’est chaud/)).toBeNull()
+    await user.hover(screen.getByRole('button', { name: /informations/i }))
+    expect(screen.getByRole('tooltip').textContent).toMatch(/plus c’est chaud/)
+  })
+
+  // 2026-09-21 (lot D) : le plan se zoome et se déplace, avec la commande du rejeu 2D.
+  it('pose la commande de cadrage du rejeu sur le plan', () => {
+    render(
+      <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
+    )
+    expect(screen.getByRole('group', { name: /zoom|cadrage/i })).toBeTruthy()
   })
 
   it('ne publie AUCUNE note de méthode en pied (retrait du 2026-09-19)', () => {
@@ -65,14 +85,15 @@ describe('MatchPositionsHeatmap', () => {
     expect(screen.queryByText(/Grille de|regroupement spatial/)).toBeNull()
   })
 
-  it('borne la HAUTEUR du plan : la largeur du cadre ne dépasse jamais 60 % de la carte', () => {
+  it('borne la HAUTEUR du plan : la largeur du cadre ne dépasse jamais 72 % de la carte', () => {
     render(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
     // Le cadre gardait le rapport du monde sur TOUTE la largeur de la carte : un plan carré
     // y faisait un pavé aussi haut que large (lot 2, « hauteur réduite d'au moins 40 % »).
     const cadre = screen.getByTestId('match-positions-frame')
-    expect(cadre.getAttribute('style')).toContain('min(60%')
+    // Les deux plafonds ont grandi de 20 % le 2026-09-21 (lot D) : 60 % -> 72 %, 18 -> 21,6 rem.
+    expect(cadre.getAttribute('style')).toContain('min(72%')
   })
 
   it('propose le filtre par camp quand au moins une position porte un camp', () => {
