@@ -69,7 +69,7 @@ function CoordinationCard({
   compact,
 }: {
   title: string
-  info: ReactNode
+  info: (label: string) => ReactNode
   /** Le CHIFFRE D'APPEL, seul texte autorisé sous le titre (D22) — absent = rien. */
   callout: string | null
   rows: UsageGaugeRowModel[]
@@ -81,7 +81,7 @@ function CoordinationCard({
 }) {
   const usageT = USAGE_TEXT[useAppShellStore((s) => s.locale)]
   return (
-    <SectionCard title={title} label={title} titleAdornment={info as (label: string) => ReactNode}>
+    <SectionCard title={title} label={title} titleAdornment={info}>
       <div className="space-y-4 px-3 pb-3 pt-3">
         {callout != null && (
           <p className="text-sm tabular-nums text-foreground" data-coordination-callout="">

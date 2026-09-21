@@ -18,6 +18,8 @@ export type SessionSectionKey =
   | 'net_lives'
   | 'intensity'
   | 'first_blood'
+  | 'coordination'
+  | 'range'
   | 'participation'
   | 'mmr_ocdr'
   | 'perf'
@@ -39,6 +41,8 @@ export const SESSION_SECTION_ORDER: readonly SessionSectionKey[] = [
   'net_lives',
   'intensity',
   'first_blood',
+  'coordination',
+  'range',
   'participation',
   'mmr_ocdr',
   'perf',
@@ -52,6 +56,14 @@ export const SESSION_SECTION_ORDER: readonly SessionSectionKey[] = [
 
 export interface SessionSectionInput {
   /**
+   * Bloc `coordination` (lot N1) servi pour CETTE colonne. Le contrat ne sert PAS de
+   * miroir `compare_coordination` : la colonne comparée rend donc toujours le placeholder
+   * D16 sur cette rangée — c'est une absence de donnée, pas un oubli de câblage.
+   */
+  hasCoordination: boolean
+  /** Bloc `range_profiles` / `compare_range_profiles` (lot N2) servi pour cette colonne. */
+  hasRange: boolean
+  /**
    * Bloc « usages d'equipement, armes speciales et objectifs » servi par le payload
    * pour CETTE colonne. Absent (vieux serveur, session sans film decode) → la section
    * n'existe pas de ce cote ; en comparaison l'autre colonne rend un placeholder.
@@ -60,8 +72,17 @@ export interface SessionSectionInput {
 }
 
 /** Cles effectivement presentes pour une colonne, dans l'ordre canonique. */
-export function sessionSectionKeys({ hasUsage }: SessionSectionInput): SessionSectionKey[] {
-  return SESSION_SECTION_ORDER.filter((key) => (key === 'usage' ? hasUsage : true))
+export function sessionSectionKeys({
+  hasUsage,
+  hasCoordination,
+  hasRange,
+}: SessionSectionInput): SessionSectionKey[] {
+  const present: Record<string, boolean> = {
+    usage: hasUsage,
+    coordination: hasCoordination,
+    range: hasRange,
+  }
+  return SESSION_SECTION_ORDER.filter((key) => present[key] ?? true)
 }
 
 /**
