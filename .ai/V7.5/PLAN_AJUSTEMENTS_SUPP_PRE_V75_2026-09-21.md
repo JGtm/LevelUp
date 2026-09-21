@@ -88,6 +88,16 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 ### Lot F — maquette (fichier `.ai/V7.5/MAQUETTE_RENDUS_AJSUP_2026-09-21.html`) — FUSIONNE bed1a2600
 - [x] 5 sujets x 3 propositions, jetons de l'app, clair/sombre
 
+### Lot G — suites A1/D (worktree `LevelUp-wt-ajsup-g`)
+- [ ] Helper canonique titre + infobulle (i) + garde-rail ; copies migrees hors `_shared/usage` et `session-detail`
+- [ ] `DroppedByFamily` expose dans le bloc formes (Go + openapi + types) ; colonne par famille lachee dans « Usages d equipement par match »
+- [ ] Doubles cadres restants : compare/CompareWeaponsRange, match-view/MatchKillDistanceSection, tactical/TacticalCoordinationCard
+- [ ] Ordre d affichage des tiers decouple de l ordre de departage (`tierOfWeaponOf`)
+
+### Lot H — Explorer, rendus 1.A et 2.A horizontaux (worktree `LevelUp-wt-ajsup-h`)
+- [ ] Part des assistances : deux barres epaisses horizontales, echelle lineaire commune, tranches empilees avec comptes, trait de parite
+- [ ] Repartition des resultats : une barre epaisse horizontale empilee (compte + part ecrits), taux en chiffre d appel, bande des resultats
+
 ## Decouvertes (hors perimetre, ne pas traiter)
 - A2 : la vue « Prises nettes de drapeau » ne contient plus que son titre (D1 applique a la lettre) -> verdict utilisateur.
 - A2 : `usage.powerup_pickups` servi par Go et plus lu par le web ; `usageI18n.ts` 562 L (dette reduite, non resorbee) ; `equipRift` cle morte.
