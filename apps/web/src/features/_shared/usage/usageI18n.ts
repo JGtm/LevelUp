@@ -38,13 +38,23 @@ export interface UsageText {
    */
   blockPadTiers: string
   cardHintPadTiers: string
-  padTierLabels: Record<'base' | 'terrain' | 'puissance' | 'bonus' | 'non_classe', string>
+  /**
+   * LES TROIS NIVEAUX RENDUS (D2 amendee, 2026-09-21). `bonus` et `non_classe` ont quitte
+   * cette table avec leurs lignes : les socles de BONUS sont des equipements (camouflage et
+   * surbouclier sont deja comptes en `equipment_powerup_*` dans « Usages d'equipement »), et
+   * les prises sans emplacement identifie passent en infobulle (`padTierUnclassifiedFmt`).
+   */
+  padTierLabels: Record<'base' | 'terrain' | 'puissance', string>
   /** Matchs mesurés dont le film n'a publié AUCUN socle (le mode n'en allume aucun). */
   padTierNoPadsFmt: (n: number) => string
   /** Matchs à socles dont la carte n'est pas dans la référence : niveaux non établis. */
   padTierUnmeasuredFmt: (n: number) => string
   /** Matchs à départs aléatoires : pas d'arme de base à distinguer. */
   padTierRandomStartsFmt: (n: number) => string
+  /** Le dépliable des armes de base, fermé par défaut (D2) : « Armes de base (N) ». */
+  padTierBaseToggleFmt: (n: number) => string
+  /** Les prises dont l'emplacement n'a pas été identifié — en INFOBULLE, plus en ligne (D2). */
+  padTierUnclassifiedFmt: (n: number) => string
   blockObjectives: string
   /** Titre de la carte unique d'état vide (bloc indisponible ou sans film). */
   blockUnavailableTitle: string
@@ -60,8 +70,6 @@ export interface UsageText {
   cardHintCadences: string
   cardHintShares: string
   cardHintRegularity: string
-  /** « Matchs mesurés N/M » — TOUJOURS visible (couverture des films partielle). */
-  measuredFmt: (measured: number, total: number) => string
   /** La même couverture, en PIED de carte et en phrase (2026-09-13, demande
    *  utilisateur) : le bandeau des quatre cartes d'équipement ne porte plus de compteur,
    *  la couverture s'écrit UNE fois par rangée sous la carte de gauche.
@@ -75,7 +83,15 @@ export interface UsageText {
    *  MASQUE le bloc au lieu de l'annoncer (un titre sans decodeur de film n'aura jamais
    *  de resume d'usage — la carte etait un bloc mort). Cf. usageAvailability. */
   unavailableLoadFailed: string
-  unavailableNoMeasured: string
+  /**
+   * LES ÉTATS VIDES D'UN BLOC DANS UNE RANGÉE (D8, 2026-09-21) : le bloc RESTE affiché et
+   * NOMME sa cause — une rangée amputée d'une carte se lit comme un bug. `unavailableLoadFailed`
+   * et `emptyNoFilm` couvrent les deux causes déjà connues ; les deux suivantes distinguent
+   * « le film est lu, mais ce mode n'allume rien » (Super Fiesta) de « rien n'est mesuré ».
+   */
+  emptyNoFilm: string
+  emptyNoPads: string
+  emptyNoObjectives: string
   /** Titres des vues à l'intérieur des cartes. */
   viewCadences: string
   viewShares: string
@@ -84,16 +100,15 @@ export interface UsageText {
   viewRoles: string
   viewFamilies: string
   viewSquadRoles: string
-  /** Les prises NETTES de drapeau : titre de la vue, et sa phrase de lecture. */
+  /**
+   * Les prises NETTES de drapeau : le TITRE DE LA VUE, et lui seul.
+   *
+   * SES SIX PHRASES EXPLICATIVES SONT PARTIES le 2026-09-21 (D1) : l'écart brut/net, la
+   * fenêtre de jonglage, les ouvertures lues, la couverture et le périmètre d'équipe
+   * faisaient cinq paragraphes de méthode sous deux chiffres. La jauge du rôle « prendre »
+   * dit la grandeur ; le reste n'est plus écrit.
+   */
   viewFlagGrabsNet: string
-  flagGrabsNetFmt: (net: string, team: string, raw: string) => string
-  flagGrabsNetRuleFmt: (seconds: string) => string
-  flagGrabsNetScopeFmt: (measured: number, total: number) => string
-  flagGrabsNetShareFmt: (pct: string) => string
-  /** Ce que le film a LU : ses ouvertures de portage, et ce qu'il a su attribuer. */
-  flagGrabsNetOpeningsFmt: (attributed: string, openings: string) => string
-  /** Le périmètre réduit de la comparaison d'équipe (matchs à camp connu). */
-  flagGrabsNetTeamScopeFmt: (known: number, measured: number) => string
   /** Intitulés des trois colonnes de jauge (§7 : les trois dénominateurs). */
   gaugeTeamOfLobby: string
   gaugePlayerOfTeam: string
@@ -104,8 +119,24 @@ export interface UsageText {
   /** Segments de la piste du lobby. */
   segTeamRest: string
   segEnemy: string
-  /** Bande de régularité : le comptage écrit à droite des cases. */
-  bandAboveFmt: (team: string) => string
+  /**
+   * LA LÉGENDE DE LA TEXTURE (D7, 2026-09-21) : plein = rapporté à mon équipe, hachuré =
+   * rapporté au lobby ; sur les pistes, la hachure neutre désigne les adversaires. Elle
+   * est POSÉE SOUS CHAQUE FORME qui porte la texture, au lieu d'être une phrase de
+   * l'infobulle d'en-tête que personne n'ouvrait.
+   */
+  hatchLegendSolid: string
+  hatchLegendLobby: string
+  hatchLegendEnemy: string
+  /**
+   * LA LÉGENDE DE LA BANDE DE RÉGULARITÉ (2026-09-21) : les quatre encres, écrites UNE
+   * fois sous les bandes. « X/X au-dessus de la parité » était répété à droite de chaque
+   * ligne ; il ne reste que le compte « X/X », l'explication vit ici.
+   */
+  bandLegendAbove: string
+  bandLegendNear: string
+  bandLegendBelow: string
+  bandLegendUnmeasured: string
   bandTipFmt: (index: number, share: string, parity: string) => string
   bandTipUnmeasured: (index: number) => string
   /** Textes d'honnêteté (comptes bruts en INFOBULLE, jamais dans une cellule — D2). */
@@ -114,11 +145,6 @@ export interface UsageText {
   gaugeTipFmt: (metric: string, gauge: string, share: string, raw: string) => string
   trackTipFmt: (who: string, count: string, pct: string) => string
   notMeasured: string
-  /** Notes de pied du bloc armes spéciales — les seuls CHIFFRES qui restent au pied. */
-  padUnnamedFmt: (count: number) => string
-  powerupLine: string
-  powerupDetailFmt: (label: string, count: number) => string
-  padCadenceFmt: (player: string, team: string, lobby: string) => string
   /** Libellés des grandeurs (clés du contrat). */
   metricCamo: string
   metricOvershield: string
@@ -157,9 +183,6 @@ export interface UsageText {
   gaugeReferenceTipFmt: (base: string, teammates: string, opponents: string) => string
   /** Famille d'arme non nommée par le catalogue du titre : la clé reste à l'écran. */
   padFamilyFmt: (key: string) => string
-  powerupCamo: string
-  powerupOvershield: string
-  powerupOtherFmt: (key: string) => string
   /** Rôles d'objectif (vocabulaire imposé : prendre / défendre / tenir). */
   roleTake: string
   roleDefend: string
@@ -200,9 +223,6 @@ export interface UsageText {
   donutMe: string
   /** Sous-total « moi + mes amis » — absent quand aucun ami suivi n'est présent. */
   donutSquadSubtotal: string
-  /** La carte de part du lobby se rend toujours : ce texte tient lieu de donut quand la
-   *  répartition n'est pas mesurée. */
-  donutPartsEmpty: string
 }
 
 export const USAGE_TEXT: Record<Locale, UsageText> = {
@@ -216,8 +236,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
       base: 'Armes de base',
       terrain: 'Armes de terrain',
       puissance: 'Armes de puissance',
-      bonus: 'Socles de bonus',
-      non_classe: 'Emplacement non identifié',
     },
     padTierNoPadsFmt: (n) =>
       `Sur ${n} match${n > 1 ? 's' : ''}, le mode n'allume aucun socle : il n'y a rien à classer.`,
@@ -225,23 +243,26 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
       `Sur ${n} match${n > 1 ? 's' : ''}, les emplacements de la carte ne sont pas dans la référence : le niveau n'a pas pu être établi.`,
     padTierRandomStartsFmt: (n) =>
       `Sur ${n} match${n > 1 ? 's' : ''}, les équipements de début de vie sont tirés au sort : pas d'arme de base à distinguer.`,
+    padTierBaseToggleFmt: (n) => `Armes de base (${n})`,
+    padTierUnclassifiedFmt: (n) => `${n} prises sur un emplacement non identifié.`,
     blockObjectives: 'Objectifs par rôle et par famille',
     blockUnavailableTitle: "Usages d'équipement, armes spéciales et objectifs",
     cardHintCadences:
       "Chaque valeur est un nombre PAR MATCH MESURÉ : le total de la ligne divisé par le nombre de matchs mesurés de la session. Camouflage et surbouclier comptés ici sont les épisodes ACTIFS, mesurés par le film ; les bonus ramassés au sol, eux, restent anonymes et sont comptés dans « Contrôle des armes spéciales » — les deux ne s'additionnent jamais.",
     cardHintShares:
-      "Chaque barre est ta part du total de ton équipe sur la session ; le trait vertical marque la parité, la part d'un joueur moyen (100 divisé par l'effectif). Les deux colonnes rapportées au lobby sont hachurées, celle rapportée à ton équipe est pleine.",
+      "Chaque barre est ta part du total de ton équipe sur la session ; le trait vertical marque la parité, la part d'un joueur moyen (100 divisé par l'effectif).",
     cardHintRegularity:
       "Une case par match mesuré, dans l'ordre de la session : au-dessus, à hauteur ou en dessous de la parité d'équipe de ce match-là.",
     cardHintPadControl:
-      "Chaque barre est ta part du total de ton équipe sur la session ; le trait vertical marque la parité, la part d'un joueur moyen (100 divisé par l'effectif). Chaque ramassage vient de l'événement daté du film et porte son ramasseur : un ramassage que la mesure ne sait pas attribuer n'est compté pour personne, jamais deviné. Les bonus (camouflage, surbouclier) ne sont attribuables à personne par nature : ils sont comptés à part, et jamais additionnés aux épisodes actifs du bloc « Usages d'équipement ».",
+      "Chaque barre est ta part du total de ton équipe sur la session ; le trait vertical marque la parité, la part d'un joueur moyen (100 divisé par l'effectif). Chaque ramassage vient de l'événement daté du film et porte son ramasseur : un ramassage que la mesure ne sait pas attribuer n'est compté pour personne, jamais deviné.",
     cardHintObjectives:
       "Chaque barre est ta part du total de ton équipe sur la session ; le trait vertical marque la parité, la part d'un joueur moyen (100 divisé par l'effectif). Ce bloc se mesure hors film : il couvre plus de matchs que les deux autres. Le rôle « Tenir » se mesure en durée — ses totaux sont en minutes:secondes, ses parts restent des pourcentages.",
-    measuredFmt: (m, t) => `Matchs mesurés ${m}/${t}`,
     measuredFooterFmt: (m, t) => `Mesuré sur ${m} match${m > 1 ? 's' : ''} sur ${t}`,
     objectivesScopeFmt: (n, t) => `Matchs avec objectifs ${n}/${t}`,
     unavailableLoadFailed: "La lecture du résumé d'usage a échoué.",
-    unavailableNoMeasured: "Aucun match de cette session n'a de film mesuré.",
+    emptyNoFilm: "Aucun film décodé sur cette sélection.",
+    emptyNoPads: "Aucun socle d'arme dans les modes de cette sélection.",
+    emptyNoObjectives: "Aucun objectif dans les modes de cette sélection.",
     viewCadences: 'Cadences par match',
     viewShares: 'Parts et parités',
     viewRegularity: 'Régularité match par match',
@@ -250,22 +271,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     viewFamilies: "Ma part d'équipe, par famille de mode",
     viewSquadRoles: "Part d'équipe par joueur et par rôle",
     viewFlagGrabsNet: 'Prises nettes de drapeau',
-    flagGrabsNetFmt: (net, team, raw) =>
-      `${net} prises nettes sur les ${team} de ton équipe — le film lit ${raw} ramassages pour ` +
-      `ce camp, jonglage compris.`,
-    flagGrabsNetRuleFmt: (seconds) =>
-      `Jonglage replié (fenêtre ${seconds} s) : une reprise du même drapeau par le même joueur ` +
-      `dans ce délai compte pour une seule prise.`,
-    flagGrabsNetScopeFmt: (measured, total) =>
-      `Mesuré sur ${measured} des ${total} matchs de Capture du drapeau de la session : les ` +
-      `autres n'ont pas de film décodé, et ne comptent pour aucune prise.`,
-    flagGrabsNetShareFmt: (pct) => `Ta part : ${pct}.`,
-    flagGrabsNetOpeningsFmt: (attributed, openings) =>
-      `Sur ces matchs, le film a lu ${openings} ouvertures de portage, dont ${attributed} ` +
-      `attribuées à un joueur.`,
-    flagGrabsNetTeamScopeFmt: (known, measured) =>
-      `La comparaison avec ton camp porte sur ${known} de ces ${measured} matchs : les autres ` +
-      `n'ont pas de camp connu.`,
     gaugeTeamOfLobby: 'Mon équipe dans le lobby',
     gaugePlayerOfTeam: 'Ma part dans mon équipe',
     gaugePlayerOfLobby: 'Ma part dans le lobby',
@@ -273,7 +278,13 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     rowLobby: 'Lobby',
     segTeamRest: 'Reste de mon équipe',
     segEnemy: 'Équipe adverse',
-    bandAboveFmt: (team) => `${team} au-dessus de la parité`,
+    hatchLegendSolid: "Plein : rapporté à mon équipe",
+    hatchLegendLobby: 'Hachuré : rapporté au lobby',
+    hatchLegendEnemy: 'Hachure neutre : les adversaires',
+    bandLegendAbove: 'Au-dessus de la parité',
+    bandLegendNear: 'Au niveau de la parité',
+    bandLegendBelow: 'Sous la parité',
+    bandLegendUnmeasured: 'Non mesuré',
     bandTipFmt: (i, share, parity) =>
       `Match ${i} — part d'équipe ${share} (parité de session ${parity})`,
     bandTipUnmeasured: (i) => `Match ${i} — part non mesurée`,
@@ -282,10 +293,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     gaugeTipFmt: (metric, gauge, share, raw) => `${metric} — ${gauge} : ${share} (${raw})`,
     trackTipFmt: (who, count, pct) => `${who} : ${count} ramassages (${pct})`,
     notMeasured: '—',
-    padUnnamedFmt: (n) => `${n} ramassages sans joueur identifié — jamais attribués.`,
-    powerupLine: 'Bonus ramassés (joueur non identifié)',
-    powerupDetailFmt: (label, count) => `${label} ${count}`,
-    padCadenceFmt: (p, t, l) => `Ramassages par match — moi ${p} · mon équipe ${t} · lobby ${l}`,
     metricCamo: 'Camouflage',
     metricOvershield: 'Surbouclier',
     metricWall: 'Mur de protection',
@@ -307,16 +314,13 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     gaugeReferenceTipFmt: (base, teammates, opponents) =>
       `${base} (reste de mon équipe ${teammates} utilisé · eux ${opponents} utilisé)`,
     padFamilyFmt: (key) => `Arme ${key}`,
-    powerupCamo: 'Camouflage',
-    powerupOvershield: 'Surbouclier',
-    powerupOtherFmt: (key) => `Bonus ${key}`,
     roleTake: 'Prendre',
     roleDefend: 'Défendre',
     roleHold: 'Tenir',
     roleUnknownFmt: (key) => `Rôle ${key}`,
     familyCtf: 'Drapeau',
     familyKoth: 'Colline du roi',
-    familyStrongholds: 'Bastions',
+    familyStrongholds: 'Bases',
     familyOddball: 'Crâne',
     familyStockpile: 'Stockage',
     familyExtraction: 'Extraction',
@@ -336,7 +340,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     countsTipFmt: (label, value) => `${label} — ${value}`,
     donutMe: 'Moi',
     donutSquadSubtotal: 'Mon escouade',
-    donutPartsEmpty: "Aucune répartition mesurée sur cette période.",
   },
   en: {
     blockEquipment: 'Equipment usage',
@@ -348,8 +351,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
       base: 'Starting weapons',
       terrain: 'Map weapons',
       puissance: 'Power weapons',
-      bonus: 'Power-up pads',
-      non_classe: 'Unidentified spot',
     },
     padTierNoPadsFmt: (n) =>
       `In ${n} match${n > 1 ? 'es' : ''}, the mode lights no pad at all: there is nothing to sort.`,
@@ -357,23 +358,26 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
       `In ${n} match${n > 1 ? 'es' : ''}, the map's weapon spots are not in the reference: the level could not be established.`,
     padTierRandomStartsFmt: (n) =>
       `In ${n} match${n > 1 ? 'es' : ''}, spawn loadouts are handed out at random: there is no starting weapon to single out.`,
+    padTierBaseToggleFmt: (n) => `Base weapons (${n})`,
+    padTierUnclassifiedFmt: (n) => `${n} pickups on an unidentified spot.`,
     blockObjectives: 'Objectives by role and family',
     blockUnavailableTitle: 'Equipment, power weapons and objectives',
     cardHintCadences:
       'Each value is a count PER MEASURED MATCH: the row total divided by the number of measured matches in the session. Camouflage and overshield counted here are the ACTIVE episodes measured by the film; power-ups picked up off the ground stay anonymous and are counted in "Power weapon control" — the two are never added together.',
     cardHintShares:
-      'Each bar is your share of your team total over the session; the vertical mark is parity, the share of an average player (100 divided by headcount). The two columns measured against the lobby are hatched, the one measured against your team is solid.',
+      'Each bar is your share of your team total over the session; the vertical mark is parity, the share of an average player (100 divided by headcount).',
     cardHintRegularity:
       "One square per measured match, in session order: above, at, or below that match's team parity.",
     cardHintPadControl:
-      'Each bar is your share of your team total over the session; the vertical mark is parity, the share of an average player (100 divided by headcount). Every pickup comes from the timed film event and carries its picker: a pickup the measurement cannot attribute is counted for nobody, never guessed. Power-ups (camouflage, overshield) are attributable to nobody by nature: they are counted separately, and never added to the active episodes of the "Equipment usage" block.',
+      'Each bar is your share of your team total over the session; the vertical mark is parity, the share of an average player (100 divided by headcount). Every pickup comes from the timed film event and carries its picker: a pickup the measurement cannot attribute is counted for nobody, never guessed.',
     cardHintObjectives:
       'Each bar is your share of your team total over the session; the vertical mark is parity, the share of an average player (100 divided by headcount). This block is measured outside the film: it covers more matches than the other two. The "Hold" role is measured in duration — its totals are minutes:seconds, its shares remain percentages.',
-    measuredFmt: (m, t) => `Measured matches ${m}/${t}`,
     measuredFooterFmt: (m, t) => `Measured on ${m} match${m === 1 ? '' : 'es'} out of ${t}`,
     objectivesScopeFmt: (n, t) => `Matches with objectives ${n}/${t}`,
     unavailableLoadFailed: 'Loading the usage summary failed.',
-    unavailableNoMeasured: 'No match of this session has a measured film.',
+    emptyNoFilm: 'No decoded film in this selection.',
+    emptyNoPads: 'No weapon pad in the modes of this selection.',
+    emptyNoObjectives: 'No objective in the modes of this selection.',
     viewCadences: 'Rate per match',
     viewShares: 'Shares and parity',
     viewRegularity: 'Match-by-match consistency',
@@ -382,22 +386,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     viewFamilies: 'My team share, by mode family',
     viewSquadRoles: 'Team share by player and role',
     viewFlagGrabsNet: 'Net flag grabs',
-    flagGrabsNetFmt: (net, team, raw) =>
-      `${net} net grabs out of your team's ${team} — the film reads ${raw} pickups for that ` +
-      `side, juggling included.`,
-    flagGrabsNetRuleFmt: (seconds) =>
-      `Juggling folded (${seconds}s window): the same player re-grabbing the same flag within ` +
-      `that delay counts as a single grab.`,
-    flagGrabsNetScopeFmt: (measured, total) =>
-      `Measured on ${measured} of the session's ${total} Capture the Flag matches: the others ` +
-      `have no decoded film, and count towards no grab.`,
-    flagGrabsNetShareFmt: (pct) => `Your share: ${pct}.`,
-    flagGrabsNetOpeningsFmt: (attributed, openings) =>
-      `Across those matches the film read ${openings} carry openings, ${attributed} of which ` +
-      `were attributed to a player.`,
-    flagGrabsNetTeamScopeFmt: (known, measured) =>
-      `The comparison with your side covers ${known} of those ${measured} matches: the others ` +
-      `have no known side.`,
     gaugeTeamOfLobby: 'My team in the lobby',
     gaugePlayerOfTeam: 'My share of my team',
     gaugePlayerOfLobby: 'My share of the lobby',
@@ -405,7 +393,13 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     rowLobby: 'Lobby',
     segTeamRest: 'Rest of my team',
     segEnemy: 'Opposing team',
-    bandAboveFmt: (team) => `${team} above parity`,
+    hatchLegendSolid: 'Solid: measured against my team',
+    hatchLegendLobby: 'Hatched: measured against the lobby',
+    hatchLegendEnemy: 'Neutral hatch: the opponents',
+    bandLegendAbove: 'Above parity',
+    bandLegendNear: 'At parity',
+    bandLegendBelow: 'Below parity',
+    bandLegendUnmeasured: 'Not measured',
     bandTipFmt: (i, share, parity) =>
       `Match ${i} — team share ${share} (session parity ${parity})`,
     bandTipUnmeasured: (i) => `Match ${i} — share not measured`,
@@ -414,10 +408,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     gaugeTipFmt: (metric, gauge, share, raw) => `${metric} — ${gauge}: ${share} (${raw})`,
     trackTipFmt: (who, count, pct) => `${who}: ${count} pickups (${pct})`,
     notMeasured: '—',
-    padUnnamedFmt: (n) => `${n} pickups with no identified player — never attributed.`,
-    powerupLine: 'Power-ups picked up (player not identified)',
-    powerupDetailFmt: (label, count) => `${label} ${count}`,
-    padCadenceFmt: (p, t, l) => `Pickups per match — me ${p} · my team ${t} · lobby ${l}`,
     metricCamo: 'Camouflage',
     metricOvershield: 'Overshield',
     metricWall: 'Drop wall',
@@ -439,9 +429,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     gaugeReferenceTipFmt: (base, teammates, opponents) =>
       `${base} (rest of my team ${teammates} used · them ${opponents} used)`,
     padFamilyFmt: (key) => `Weapon ${key}`,
-    powerupCamo: 'Camouflage',
-    powerupOvershield: 'Overshield',
-    powerupOtherFmt: (key) => `Power-up ${key}`,
     roleTake: 'Take',
     roleDefend: 'Defend',
     roleHold: 'Hold',
@@ -468,7 +455,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     countsTipFmt: (label, value) => `${label} — ${value}`,
     donutMe: 'Me',
     donutSquadSubtotal: 'My squad',
-    donutPartsEmpty: 'No breakdown measured over this period.',
   },
 }
 
@@ -574,14 +560,3 @@ export function familyLabel(key: string, t: UsageText): string {
   }
 }
 
-/** Le libellé d'un socle de bonus (nom canonique `powerup_*`). */
-export function powerupLabel(key: string, t: UsageText): string {
-  switch (key) {
-    case 'powerup_camo':
-      return t.powerupCamo
-    case 'powerup_overshield':
-      return t.powerupOvershield
-    default:
-      return t.powerupOtherFmt(key)
-  }
-}

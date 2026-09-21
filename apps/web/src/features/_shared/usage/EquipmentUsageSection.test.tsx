@@ -4,7 +4,7 @@
  * 'squad'), PLAN_EQUIPEMENT_GACHIS_2026-09-09, étapes E5.8-E5.10/E6.2-E6.4.
  */
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 
 import type { EquipmentUsageBlock } from '@/lib/api/types'
 
@@ -12,6 +12,18 @@ import { EquipmentUsageSection } from './EquipmentUsageSection'
 import { USAGE_TEXT } from './usageI18n'
 
 const t = USAGE_TEXT.fr
+
+/**
+ * Ouvre l'infobulle (i) du titre d'une carte. Depuis le 2026-09-21, aide de lecture, notes
+ * de mesure et couverture y vivent ensemble : fermée, aucune de ces phrases n'est dans le
+ * DOM — c'est exactement ce que l'ajustement voulait.
+ */
+function ouvrirAideDe(container: HTMLElement, titre: string) {
+  const section = container.querySelector(`section[aria-label="${titre}"]`)
+  const bouton = section?.querySelector('h3 button')
+  if (bouton == null) throw new Error(`aucune infobulle (i) sur la carte « ${titre} »`)
+  fireEvent.click(bouton)
+}
 
 describe('EquipmentUsageSection', () => {
   it('bloc absent : rien ne se rend (jamais un graphe fantôme)', () => {
@@ -60,8 +72,8 @@ describe('EquipmentUsageSection', () => {
     expect(labels[0]).toHaveTextContent('Mur de protection')
     expect(labels[1]).toHaveTextContent('Capteur de menaces')
     // La couverture ne s'ecrit NULLE PART sur ces deux rangees (2026-09-19) : ni dans les
-    // bandeaux de titre (retiree le 2026-09-13), ni en pied de rangee.
-    expect(screen.queryByText(t.measuredFmt(8, 8))).not.toBeInTheDocument()
+    // bandeaux de titre (retiree le 2026-09-13), ni en pied de rangee. `measuredFmt` a
+    // disparu du dictionnaire le 2026-09-21 : plus aucune carte ne l'ecrit.
     expect(screen.queryByText(t.measuredFooterFmt(8, 8))).not.toBeInTheDocument()
     // La barre "armes speciales" (pad_pickups) rend "Moi" pour le joueur de la route.
     expect(screen.getByText('Moi')).toBeInTheDocument()
@@ -101,7 +113,9 @@ describe('EquipmentUsageSection', () => {
     // La carte de part des armes speciales se rend TOUJOURS, avec son titre et son texte
     // d'absence — escamotee, la rangee se lisait comme un bug (2026-09-19).
     expect(screen.getAllByText(t.viewWeaponPartsSolo).length).toBeGreaterThan(0)
-    expect(screen.getByText(t.donutPartsEmpty)).toBeInTheDocument()
+    // D8 (2026-09-21) : le bloc NOMME sa cause. Des films lus sans aucun socle, ce n'est
+    // pas « aucun film » — c'est un mode qui n'allume aucun socle.
+    expect(screen.getAllByText(t.emptyNoPads).length).toBeGreaterThan(0)
   })
 })
 
@@ -174,15 +188,41 @@ describe('EquipmentUsageSection — les niveaux d’armes', () => {
     expect(screen.getByText(t.blockPadTiers)).toBeInTheDocument()
     const terrain = screen.getByText(t.padTierLabels.terrain)
     const puissance = screen.getByText(t.padTierLabels.puissance)
-    // Le terrain PRÉCÈDE la puissance, bien qu'il pèse moins lourd (2 contre 5) : l'ordre des
-    // niveaux est écrit, jamais le volume.
-    expect(terrain.compareDocumentPosition(puissance)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    // La puissance PRÉCÈDE le terrain depuis le 2026-09-21 (D2) : l'ordre est celui de la
+    // LECTURE — le plus lourd en tête —, jamais le volume mesuré de la session.
+    expect(puissance.compareDocumentPosition(terrain)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     // Un niveau que le bloc ne publie pas n'a pas de ligne à zéro.
     expect(screen.queryByText(t.padTierLabels.base)).not.toBeInTheDocument()
   })
 
-  it('écrit les notes de mesure, et seulement celles qui ont quelque chose à dire', () => {
-    render(<EquipmentUsageSection usage={blocAvecNiveaux(niveaux)} mode="solo" t={t} locale="fr" />)
+  /**
+   * LES ARMES DE BASE SONT REPLIÉES, FERMÉES PAR DÉFAUT (D2, 2026-09-21) : elles pèsent
+   * l'essentiel du volume et écrasaient les deux niveaux qui disent le contrôle.
+   */
+  it('replie les armes de base derrière un dépliable fermé, déployable', () => {
+    const avecBase = {
+      ...niveaux,
+      tiers: [
+        ...(niveaux.tiers ?? []),
+        { tier: 'base', player_total: 30, lobby_total: 90, weapons: [] },
+      ],
+    } as unknown as NonNullable<EquipmentUsageBlock['pad_tiers']>
+    render(<EquipmentUsageSection usage={blocAvecNiveaux(avecBase)} mode="solo" t={t} locale="fr" />)
+    const bouton = screen.getByRole('button', { name: t.padTierBaseToggleFmt(1) })
+    expect(bouton).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText(t.padTierLabels.base)).not.toBeInTheDocument()
+    fireEvent.click(bouton)
+    expect(bouton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText(t.padTierLabels.base)).toBeInTheDocument()
+  })
+
+  it('porte les notes de mesure dans l’infobulle du titre, pas sous la grille', () => {
+    const { container } = render(
+      <EquipmentUsageSection usage={blocAvecNiveaux(niveaux)} mode="solo" t={t} locale="fr" />,
+    )
+    // UNE SEULE AIDE PAR CARTE, VISIBLE (2026-09-21) : fermée, aucune note dans le DOM.
+    expect(screen.queryByText(t.padTierNoPadsFmt(1))).not.toBeInTheDocument()
+    ouvrirAideDe(container, t.blockPadTiers)
     // 4 matchs mesurés, 3 avec socles : un match sans socle.
     expect(screen.getByText(t.padTierNoPadsFmt(1))).toBeInTheDocument()
     // 3 avec socles, 3 à niveaux établis : aucune carte hors référence, donc aucune note.

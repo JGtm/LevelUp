@@ -14,13 +14,25 @@
  *   - 0 match mesuré (le titre publie, pas ici)   → carte d'état vide « aucun film ».
  */
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 
 import type { SessionUsageBlock } from '@/lib/api/types'
 
 import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
 
 import { SessionUsageSection } from './SessionUsageSection'
+
+/**
+ * Ouvre l'infobulle (i) du titre d'une carte. Depuis le 2026-09-21, aide de lecture, notes
+ * de mesure et couverture y vivent ensemble : fermée, aucune de ces phrases n'est dans le
+ * DOM — c'est exactement ce que l'ajustement voulait.
+ */
+function ouvrirAideDe(container: HTMLElement, titre: string) {
+  const section = container.querySelector(`section[aria-label="${titre}"]`)
+  const bouton = section?.querySelector('h3 button')
+  if (bouton == null) throw new Error(`aucune infobulle (i) sur la carte « ${titre} »`)
+  fireEvent.click(bouton)
+}
 
 const BASE: SessionUsageBlock = { available: true, matches_measured: 4, matches_total: 6 }
 
@@ -49,12 +61,12 @@ describe('SessionUsageSection — porte de donnée (le titre publie)', () => {
         meLabel="moi"
       />,
     )
-    expect(screen.getByText(/La lecture du résumé d'usage a échoué/)).toBeInTheDocument()
+    expect(screen.getByText(USAGE_TEXT.fr.unavailableLoadFailed)).toBeInTheDocument()
   })
 
-  it('aucun match mesuré : la carte le dit, avec le dénominateur', () => {
+  it('aucun match mesuré : la carte NOMME sa cause (D8, 2026-09-21)', () => {
     render(<SessionUsageSection usage={{ ...BASE, matches_measured: 0 }} meLabel="moi" />)
-    expect(screen.getByText(/Aucun match de cette session n'a de film mesuré/)).toBeInTheDocument()
+    expect(screen.getByText(USAGE_TEXT.fr.emptyNoFilm)).toBeInTheDocument()
   })
 })
 
@@ -94,7 +106,9 @@ describe('SessionUsageSection — version compacte du drawer', () => {
     render(<SessionUsageSection usage={MEASURED} meLabel="moi" compact />)
     expect(screen.getByLabelText(USAGE_TEXT.fr.viewRegularity)).toBeInTheDocument()
     expect(screen.getAllByLabelText(USAGE_TEXT.fr.viewLobbyTrack).length).toBeGreaterThan(0)
-    expect(screen.getAllByLabelText(USAGE_TEXT.fr.viewShares).length).toBeGreaterThan(0)
+    // Les parts des armes spéciales ont LEUR carte depuis le 2026-09-21 (D6) : le titre
+    // « Parts et parités » est celui des cartes d'ÉQUIPEMENT, absentes de ce témoin.
+    expect(screen.getAllByLabelText(USAGE_TEXT.fr.blockPadControl).length).toBeGreaterThan(0)
   })
 })
 
@@ -191,17 +205,24 @@ describe('SessionUsageSection — les niveaux d’armes', () => {
     expect(screen.queryByText(t.blockPadTiers)).not.toBeInTheDocument()
   })
 
-  it('avec des niveaux : une ligne par niveau, dans l’ordre écrit', () => {
+  it('avec des niveaux : la puissance en tête, la base repliée derrière son dépliable', () => {
     render(<SessionUsageSection usage={avecNiveaux(niveaux)} meLabel="moi" />)
     expect(screen.getByText(t.blockPadTiers)).toBeInTheDocument()
-    const base = screen.getByText(t.padTierLabels.base)
-    const puissance = screen.getByText(t.padTierLabels.puissance)
-    // La base PRÉCÈDE la puissance bien qu'elle pèse moins lourd : l'ordre est écrit.
-    expect(base.compareDocumentPosition(puissance)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(screen.getByText(t.padTierLabels.puissance)).toBeInTheDocument()
+    // LES ARMES DE BASE SONT REPLIÉES, FERMÉES PAR DÉFAUT (D2, 2026-09-21) : elles pèsent
+    // l'essentiel du volume et écrasaient le niveau qui dit le contrôle.
+    expect(screen.queryByText(t.padTierLabels.base)).not.toBeInTheDocument()
+    const bouton = screen.getByRole('button', { name: t.padTierBaseToggleFmt(1) })
+    expect(bouton).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(bouton)
+    expect(screen.getByText(t.padTierLabels.base)).toBeInTheDocument()
   })
 
-  it('dit les cartes hors référence, et se tait sur ce qui va bien', () => {
-    render(<SessionUsageSection usage={avecNiveaux(niveaux)} meLabel="moi" />)
+  it('dit les cartes hors référence dans l’infobulle du titre, et se tait sur ce qui va bien', () => {
+    const { container } = render(<SessionUsageSection usage={avecNiveaux(niveaux)} meLabel="moi" />)
+    // UNE SEULE AIDE PAR CARTE, VISIBLE (2026-09-21) : fermée, aucune note dans le DOM.
+    expect(screen.queryByText(t.padTierUnmeasuredFmt(2))).not.toBeInTheDocument()
+    ouvrirAideDe(container, t.blockPadTiers)
     // 4 matchs à socles, 2 à niveaux établis : deux cartes hors référence.
     expect(screen.getByText(t.padTierUnmeasuredFmt(2))).toBeInTheDocument()
     // Aucun match sans socle, aucun départ aléatoire : pas de note.

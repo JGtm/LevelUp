@@ -20,7 +20,9 @@ import {
   USAGE_PAD_TIER_ORDER,
   buildPadTierGaugeRows,
   buildPadTierRows,
+  isCollapsedTierRowKey,
   padTierLabel,
+  padTierUnclassifiedCount,
   padTiersNotes,
 } from './usagePadTiersModel'
 
@@ -66,17 +68,48 @@ const paritesNulles = {
 }
 
 describe('buildPadTierRows', () => {
-  it('range dans l’ordre ÉCRIT, pas par volume', () => {
+  it('range dans l’ordre ÉCRIT (puissance d’abord), pas par volume', () => {
     const rows = buildPadTierRows(temoin(), t)
-    expect(rows.map((r) => r.key)).toEqual(['base', 'terrain', 'puissance'])
-    // La puissance pèse 9 contre 2 pour la base : un tri par volume l'aurait mise en tête.
-    expect(USAGE_PAD_TIER_ORDER.indexOf('base')).toBeLessThan(USAGE_PAD_TIER_ORDER.indexOf('puissance'))
+    expect(rows.map((r) => r.key)).toEqual(['puissance', 'terrain', 'base'])
+    // L'ordre est celui de la LECTURE depuis le 2026-09-21 (D2) : le plus lourd en tête,
+    // la base en dernier — et repliée derrière un dépliable chez l'appelant.
+    expect(USAGE_PAD_TIER_ORDER.indexOf('puissance')).toBeLessThan(
+      USAGE_PAD_TIER_ORDER.indexOf('base'),
+    )
+    expect(isCollapsedTierRowKey('base')).toBe(true)
+    expect(isCollapsedTierRowKey('tier-base')).toBe(true)
+    expect(isCollapsedTierRowKey('puissance')).toBe(false)
   })
 
   it('ne fabrique AUCUNE ligne pour un niveau que le serveur ne publie pas', () => {
     const rows = buildPadTierRows(temoin(), t)
     expect(rows.find((r) => r.key === 'non_classe')).toBeUndefined()
     expect(rows.find((r) => r.key === 'bonus')).toBeUndefined()
+  })
+
+  /**
+   * D2 amendée (décision utilisateur du 2026-09-21) : `bonus` et `non_classe` n'ont plus de
+   * ligne MÊME SERVIS. Les socles de bonus sont des équipements (déjà comptés par
+   * `equipment_powerup_*`) ; les prises sans emplacement identifié sont une réserve de
+   * mesure, dont le compte part dans l'infobulle du titre.
+   */
+  it('n’affiche NI les socles de bonus NI les prises non classées, même servis', () => {
+    const bloc = temoin({
+      tiers: [
+        ...(temoin().tiers ?? []),
+        { tier: 'bonus', player_total: 7, lobby_total: 12, weapons: [] },
+        { tier: 'non_classe', player_total: 3, lobby_total: 5, weapons: [] },
+      ],
+    } as Partial<SessionUsagePadTiersBlock>)
+    expect(buildPadTierRows(bloc, t).map((r) => r.key)).toEqual(['puissance', 'terrain', 'base'])
+    expect(buildPadTierGaugeRows(bloc, paritesNulles).map((r) => r.key)).toEqual([
+      'tier-puissance',
+      'tier-terrain',
+      'tier-base',
+    ])
+    // Le compte non classé n'est pas perdu : il rejoint les notes de mesure (infobulle).
+    expect(padTierUnclassifiedCount(bloc)).toBe(3)
+    expect(padTiersNotes(bloc, t)).toContain(t.padTierUnclassifiedFmt(3))
   })
 
   it('rend une liste vide sans bloc, et sans niveau', () => {
@@ -133,7 +166,7 @@ describe('buildPadTierGaugeRows', () => {
 })
 
 describe('padTierLabel', () => {
-  it('nomme les cinq niveaux du contrat', () => {
+  it('nomme les trois niveaux rendus', () => {
     for (const tier of USAGE_PAD_TIER_ORDER) {
       expect(padTierLabel(tier, t)).not.toBe(tier)
     }

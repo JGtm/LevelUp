@@ -1,7 +1,7 @@
 /**
  * usageAvailability.ts — LA DISPONIBILITÉ du bloc « usages d'équipement, armes spéciales et
  * objectifs » : la distinction entre les DEUX raisons de ne rien avoir (règle des deux portes,
- * 2026-09-05, registre L4).
+ * 2026-09-05, registre L4) — et, depuis le 2026-09-21, LE VOCABULAIRE DES ÉTATS VIDES (D8).
  *
  * Extrait de `session-detail/usageLogic.ts` le 2026-09-09 (étape E5.1bis, scission de taille —
  * CLAUDE.md n°5) au moment du déménagement du bloc vers `features/_shared/usage/` (étape E5.1).
@@ -11,6 +11,11 @@
  * `available` / `unavailable_reason` / `matches_measured` — la même règle des deux
  * portes s'applique aux deux, donc le même helper, typé structurellement plutôt que
  * dupliqué (CLAUDE.md n°6).
+ *
+ * LA PORTE REND UNE CAUSE, PLUS UNE PHRASE (2026-09-21) : la phrase se choisit à l'affichage
+ * (`usageEmptyMessage`), parce que les appelants ont désormais DEUX causes de plus à dire que
+ * la porte ne connaît pas — une sélection sans socle (Super Fiesta) et une sélection sans
+ * objectif ne sont pas des indisponibilités du bloc.
  */
 import type { UsageText } from './usageI18n'
 
@@ -21,10 +26,37 @@ export interface UsageAvailabilityLike {
   matches_measured: number
 }
 
+/**
+ * LES QUATRE CAUSES D'UN BLOC VIDE (D8) — elles ne se corrigent pas de la même façon, donc
+ * elles ne s'écrivent pas de la même façon :
+ *
+ *   - `no-film`       : des matchs, aucun film décodé (la mesure n'a pas eu lieu) ;
+ *   - `no-pads`       : des films lus, mais le mode n'allume aucun socle (Super Fiesta) ;
+ *   - `no-objectives` : des films lus, mais aucun mode à objectif dans la sélection ;
+ *   - `load-failed`   : la lecture a échoué — transitoire, donc il faut le dire.
+ *
+ * « Aucune donnée » ne distingue aucun de ces quatre cas, et c'est précisément la phrase
+ * qu'il a fallu remplacer.
+ */
+export type UsageEmptyReason = 'no-film' | 'no-pads' | 'no-objectives' | 'load-failed'
+
+export function usageEmptyMessage(reason: UsageEmptyReason, t: UsageText): string {
+  switch (reason) {
+    case 'no-film':
+      return t.emptyNoFilm
+    case 'no-pads':
+      return t.emptyNoPads
+    case 'no-objectives':
+      return t.emptyNoObjectives
+    case 'load-failed':
+      return t.unavailableLoadFailed
+  }
+}
+
 export type UsageAvailability =
   | { kind: 'ok' }
   | { kind: 'hidden' }
-  | { kind: 'empty'; message: string }
+  | { kind: 'empty'; reason: UsageEmptyReason }
 
 /**
  * usageAvailability — l'état du bloc, et la distinction entre les DEUX raisons de ne
@@ -40,15 +72,12 @@ export type UsageAvailability =
  *   - aucun match mesuré → état vide « aucun film » (les objectifs, au scope indépendant
  *     des films, restent affichables par l'appelant).
  */
-export function usageAvailability(
-  usage: UsageAvailabilityLike | null | undefined,
-  t: UsageText,
-): UsageAvailability {
+export function usageAvailability(usage: UsageAvailabilityLike | null | undefined): UsageAvailability {
   if (usage == null) return { kind: 'hidden' }
   if (!usage.available) {
     if (usage.unavailable_reason === 'unsupported') return { kind: 'hidden' }
-    return { kind: 'empty', message: t.unavailableLoadFailed }
+    return { kind: 'empty', reason: 'load-failed' }
   }
-  if (usage.matches_measured <= 0) return { kind: 'empty', message: t.unavailableNoMeasured }
+  if (usage.matches_measured <= 0) return { kind: 'empty', reason: 'no-film' }
   return { kind: 'ok' }
 }

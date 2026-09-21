@@ -6,7 +6,7 @@
  * CLAUDE.md n°5) au moment du déménagement du bloc vers `features/_shared/usage/` (étape E5.1).
  *
  * Les libellés de rôle, de famille de mode et de bonus vivent avec le dictionnaire
- * (`usageI18n.ts` : roleLabel, familyLabel, powerupLabel) — ce fichier ne garde que
+ * (`usageI18n.ts` : roleLabel, familyLabel) — ce fichier ne garde que
  * l'ordre canonique, dont le tri a besoin.
  */
 import type { SessionObjectiveRoleMetric } from '@/lib/api/types'

@@ -29,6 +29,9 @@ export function UsageEquipmentDonutCard({ model }: { model: UsageDonutModel | nu
           height={188}
           centerValue={model.centerValue}
           arcLabelKind="value"
+          // La SectionCard porte déjà le cadre : sans ceci, l'anneau s'entourait d'une
+          // seconde bordure et d'un second fond (prop ajoutée à ChartCard en b8166c9bf).
+          frameless
         />
       </div>
       <div className="flex min-w-[190px] flex-col gap-1.5 text-xs">
