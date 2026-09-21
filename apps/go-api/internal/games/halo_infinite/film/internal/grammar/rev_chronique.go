@@ -463,3 +463,33 @@ package grammar
 // `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-22`. La
 // sortie des faits ne change pas sur les films temoins — seule la valeur hachee bouge.
 // `replay.SchemaVersion` NE MONTE PAS : la FORME du document ne change pas.
+
+// ENTREE `grammar-2026-09-22.2` (2026-09-22, lot 5.13.3) : `i57` EST PORTE EN ENTIER — L OCTET
+// D ETAT RUNTIME QUI L EN EMPECHAIT N EN ETAIT PAS UN.
+//
+// La branche `tag == 3` d `i57 biped-spartan-ability` (`FUN_142f262d4`) etait la seule largeur
+// indeterminee du composant, au motif que son corps est garde par `dst[2] & 1` et `dst[2] & 0x10`,
+// « des octets d ETAT RUNTIME invisibles du flux ». Le desassemblage dit le contraire :
+// `FUN_142f262d4` appelle `FUN_140f03dfc(dst)` en PREMIERE instruction — `142f262f2 MOV RDI, RCX`
+// puis `142f262f5 CALL 140f03dfc`, RCX vaut encore `dst` — et cet initialiseur ecrit
+// `*(undefined2 *)(param_1 + 2) = 0`. La porte `dst[2] & 1` est donc TOUJOURS fermee quand elle
+// est testee, et la branche gardee par `dst[2] & 0x10` est inatteignable.
+//
+// Le corps se lit donc en entier : `R(1)` ; si 1 -> `R(6)` (`FUN_14297ea84`, largeur lue sur
+// `if (0x40 - iVar1 < 6)`) ; puis `R(1)` ; si 1 -> la queue handle `FUN_14076e494`, le meme
+// lecteur qu `i60`. `consumeBipedSpartanAbility` ne peut plus rendre `false`, et le dispatcheur
+// rend `true` sans condition.
+//
+// C EST LA MEME LECON QU `i54` (`bloc[0x9d]` y est `flag1`, lu deux lignes plus haut par le meme
+// deserialiseur) : quand une porte porte sur un champ de la structure de SORTIE, l initialiseur
+// compte.
+//
+// MESURE, records RENDUS (instrument `TestMouvement511Partiels`) :
+//
+//	i57 non portees   bfecd02b : 1 -> 0 sur 651 declarations · 4f77afc1 : 44 -> 0 sur 2 531
+//	desyncs `ti=35`   bfecd02b : 5 -> 4 · records `ti=35` 114 458 -> 114 458, etalon `i21` 65,2 %
+//
+// `facts.Rev` MONTE, et LA SORTIE DES FAITS CHANGE REELLEMENT : le golden de la mini-bobine
+// deplace une ligne de kill de la voie `scan` a la voie `marche` (marche 6 -> 7, scan 3 -> 2),
+// avec le MEME verdict et `DESACCORD` toujours a 0 — la marche va simplement plus loin.
+// `replay.SchemaVersion` NE MONTE PAS : la FORME du document ne change pas.

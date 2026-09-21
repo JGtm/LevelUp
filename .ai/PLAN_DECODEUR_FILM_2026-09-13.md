@@ -8114,6 +8114,118 @@ aucune mesure empirique de grammaire, un commit par trou.
   dont aucune xref de donnee n existe sur la base de vtable `143d0a000`).
 
 
+- [x] **5.13.3 — LES CORPS PARTIELS DU BIPEDE : `i57` PORTE EN ENTIER (l octet d etat runtime n en
+  est pas un), le dispatcheur a SIX ETIQUETTES d `i59` LU chez l ecrivain, `i60` tranche.**
+
+  **(a) `i57` — LE MAILLON, ET IL EST DANS L INITIALISEUR.** La branche `tag == 3`
+  (`FUN_142f262d4`) etait la seule largeur indeterminee du composant, au motif que son corps est
+  garde par `dst[2] & 1` et `dst[2] & 0x10`, « des octets d ETAT RUNTIME invisibles du flux ». Le
+  desassemblage dit le contraire : `FUN_142f262d4` appelle `FUN_140f03dfc(dst)` en PREMIERE
+  instruction —
+
+  ```
+  142f262ec  MOV  R15B, R8B      ; param_3
+  142f262ef  MOV  RBX, RDX       ; le lecteur
+  142f262f2  MOV  RDI, RCX       ; dst   (RCX vaut encore dst)
+  142f262f5  CALL 0x140f03dfc    ; FUN_140f03dfc(dst)
+  ```
+
+  — et cet initialiseur ecrit `*(undefined2 *)(param_1 + 2) = 0`, c est-a-dire `dst[2] = 0` ET
+  `dst[3] = 0`. **La porte `(dst[2] & 1) == 0` est donc TOUJOURS ouverte quand elle est testee, et
+  la branche gardee par `dst[2] & 0x10` est INATTEIGNABLE.** Le corps vaut :
+
+  ```
+  FUN_140f03dfc(dst)                      0 bit — et il met dst[2] a zero
+  a = R(1)                 -> dst[0]
+  si a != 0 : R(6)         (FUN_14297ea84 ; largeur lue sur `if (0x40 - iVar1 < 6)`)
+  t = R(1)                 -> dst[1]
+  si t != 0 : FUN_14076e494(br, dst+0x18, 0x10, 0, param_3, 0)   = la queue handle d i60
+  ```
+
+  C EST LA MEME LECON QU `i54`, ou `bloc[0x9d]` est `flag1` lu deux lignes plus haut par le meme
+  deserialiseur : quand une porte porte sur un champ de la structure de SORTIE, l initialiseur
+  compte. `consumeBipedSpartanAbility` ne peut plus rendre `false` ; le dispatcheur rend `true`
+  sans condition ; `ecs_table.tsv` passe `i57` a **`porte`** (le ratchet G1 derive le statut du
+  code, il ne le croit pas sur parole).
+
+  AVANT / APRES, records RENDUS (`TestMouvement511Partiels`) :
+
+  | mesure | avant | apres |
+  |---|---:|---:|
+  | `i57` non portees · `bfecd02b` (651 declarations) | 1 | **0** |
+  | `i57` non portees · `4f77afc1` (2 531 declarations) | 44 | **0** |
+  | desyncs `ti=35` · `bfecd02b` | 5 | **4** |
+  | records `ti=35` · `bfecd02b` | 114 458 | 114 458 |
+  | etalon `i21` · `bfecd02b` | 65,2 % | 65,2 % |
+  | `dad793c7` paquets fermes · records `ti=35` | 99,50 % · 75 | 99,50 % · 75 |
+
+  **ET LA SORTIE DES FAITS CHANGE, VISIBLEMENT** : le golden de la mini-bobine `killsource`
+  deplace UNE ligne de kill de la voie `scan` a la voie `marche` (marche 6 -> 7, scan 3 -> 2),
+  avec le MEME verdict et `DESACCORD` toujours a 0 — la marche va plus loin, elle ne decide pas
+  autrement. `grammar-2026-09-22.2` / `killsource-2026-09-22.2` ; 8 fixtures de contrat et
+  `shapes.golden` re-figes ; `SchemaVersion` 67 inchangee.
+
+  **(b) `i59` — LE DISPATCHEUR A SIX ETIQUETTES EST LU, ET IL NE RESTE QU UNE LARGEUR.**
+  `FUN_142f25e90` decompilee en entier : `FUN_142f21c0c` lit `R(3)` et range `brut + 1`, puis
+
+  ```
+  etiq == 0 : FUN_140f03e58(dst) ; 0 bit        (inatteignable : brut + 1 >= 1)
+  PREFIXE COMMUN : FUN_142f26e40(br, a, b, p4) = FUN_1408f0ac4(a, br, 1)
+                                                 puis FUN_142f04664(b, br, *(int*)(a+4) != -1, p4)
+                   puis FUN_14297ea84 = R(6)
+  etiq == 1 : FUN_1407f08bc
+  etiq == 2 : FUN_1408f0ac4(cat 5) + FUN_1407f08bc
+  etiq == 3 : FUN_1408f0ac4(cat 0) + FUN_1408f0ac4(cat 5) + 3 x FUN_142f26e9c + R(24) + R(9)
+  etiq 4/5  : FUN_1408f0ac4(cat 5) + 1 x FUN_142f26e9c + FUN_14076e494(0x10) + R(24) + R(9)
+  etiq == 6 : FUN_1407f08bc ; si SA PORTE valait 0 -> FUN_1408f0ac4(cat 5) ; FUN_1408f0ac4(cat 0)
+              + 2 x FUN_142f26e9c + R(1) + R(24)
+  etiq > 6  : 0 bit
+  ```
+
+  et `FUN_142f04664(dst, br, flag, p4)` : si `flag == 0` -> `FUN_14076e494(br, dst, 0x10, 0, p4, 0)`
+  (la POSITION ABSOLUE aux largeurs de la carte) ; sinon `R(2)` + `FUN_140c1e924` +
+  `R(1) [+ R(16)]`.
+
+  **CE QUE CELA EXPLIQUE, ET C EST UNE CONFIRMATION DU PORT EXISTANT** : les « trois bits de
+  drapeaux a 000 sur 202 des 210 records » que le lot du grappin avait MESURES sont exactement la
+  porte du handle de `FUN_1408f0ac4(cat 1)`, celle de pleine precision et celle du bloc quantifie
+  de `FUN_14076e494` ; et le `R(7)` mesure plus la porte `gate8` sont `R(6)` plus les portes des
+  `FUN_1408f0ac4` de l etiquette. Les deux formes observees se recollent au bit :
+  etiquette 2 (`R(6)` + cat 5 ferme + `FUN_1407f08bc` ouvert = 16 bits) = le `R(7)` + `gate8`
+  ouvert du port ; etiquette 3 (`R(6)` + deux portes fermees = 8 bits) = le `R(7)` + `gate8`
+  ferme.
+
+  **TROIS LARGEURS SONT FERMEES PAR CE LOT** : `FUN_1407f08bc` = `R(1)` ; si 1 -> `R(8)` (par
+  `FUN_1407f08f8`, `if (0x40 - iVar1 < 8)`) · `FUN_14297ea84` = `R(6)` · `FUN_1408f0ac4`
+  categories 0 et 5 = `R(1)` ; si 1 -> `R(13|9) + R(2)` / `R(8) + R(2)` — la table `varwidth`
+  du lot 1.9.1 bis les donne, la note de `components_biped_anchor.go` qui les disait manquantes
+  etait PERIMEE.
+
+  **IL EN RESTE UNE, ET UNE SEULE : `FUN_140c1e924`** dans la branche `flag != 0` de
+  `FUN_142f04664`. Elle appelle `FUN_140c1e9d4(br, dst, tableau)` — trois champs de `w` bits — ou
+  `w` vient d une table indexee par un octet (`&DAT_143b8c6f0 + param_3 * 0x18`) que le
+  desassemblage ne resout pas au site d appel (`FUN_142f04664` recoit `param_3` / `param_4` par
+  registre). **NON TRAITE `[!]`** : porter les etiquettes 1, 4, 5, 6 exige de reecrire le prefixe
+  commun, et ce prefixe ne peut pas etre bit-exact tant que cette largeur manque. Reecrire le
+  prefixe sur la branche `flag == 0` seule AURAIT change la consommation des etiquettes 2 et 3,
+  dont la fermeture est PROUVEE (`TestI59AnchorWalkProof`, ecarts min=p10=p50=p90=0) : on ne
+  casse pas une fermeture prouvee pour gagner 4 records sur 654. Cout mesure du manque :
+  **4 records non portes sur 654** (`bfecd02b`), **21 sur 2 599** (`4f77afc1`).
+
+  **(c) `i60` — TRANCHE, ET LE STATUT RESTE `partiel` POUR UNE RAISON ECRITE.** Le composant est
+  COMPLET EN MESURE : **0 record non porte** sur 29 declarations (`bfecd02b`) et sur 16
+  (`4f77afc1`). Sa grammaire est resolue depuis le lot R7-b (queue comprise, le predicat de garde
+  est vrai par construction) et la SOURCE de ses largeurs d axe depuis le lot 5.3.3-a
+  (`grammaireSousCarte` : `SimStateComplet` SUIT la carte du match). **LA DECISION QUE LA
+  PASSATION DEMANDAIT** — « ce que devient `SimStateComplet` quand AUCUNE carte n est
+  installee » — est prise : **il reste FAUX**, parce que le critere ecrit est « que le chemin
+  absolu d `i0` tire ses trois largeurs de la CARTE du match », et que les enveloppes `ScanFilm*`
+  n en ont pas. Le dispatcheur rend donc `br.p.Grammaire.SimStateComplet`, et le ratchet G1, qui
+  DERIVE le statut du code, impose `partiel`. Passer la table a `porte` exigerait de rendre
+  `true` sans condition, c est-a-dire de faire lire la queue a des largeurs qui ne sont celles
+  d AUCUNE carte. Ce qui est corrige, c est la NOTE de la table, qui decrivait encore un blocage
+  disparu (« la queue tirerait ses largeurs d un uniforme 14 ») — anti-patron « doc inversee ».
+
 ### Post-chantier — lot 5.11.7 (LES TROIS TABLES D ENTITES PAR VUE), branche `feat/decfilm-63`
 
 Suite directe du 5.11.6, qui avait NOMME le trou sans le refermer. Le recadrage de l utilisateur

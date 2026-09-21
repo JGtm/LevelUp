@@ -351,12 +351,13 @@ func consumeBipedAction(br *Lecteur) {
 //	  - si etat[3] == 2 (v == 3) : FUN_142f262d4 — corps gate sur des OCTETS D'ETAT RUNTIME
 //	    (p[2] & 1, p[2] & 0x10) : largeur NON determinable depuis le flux seul.
 //
-// Largeurs : v=0 -> 2 | v=1 -> 28 | v=2 -> 2 | v=3 -> inconnue (desync propre).
+// Largeurs : v=0 -> 2 | v=1 -> 28 | v=2 -> 2 | v=3 -> 2 + le corps de `consumeSpartanAbilityTag3`
+// (2 a 10 bits, plus la queue handle) — PORTE DEPUIS LE LOT 5.13.3, cf. cette fonction.
 //
 // LA BRANCHE v==1 N'EST PLUS JETÉE (2026-08-16, plan PLAN_ETAT_ACTIF_EQUIPEMENT phase C) :
 // le R(2) interne et le R(24) partent vers br.obs.SpartanAbilityHook, le parcours de bits est
 // INCHANGÉ (cf. ability_state_hooks.go).
-func consumeBipedSpartanAbility(br *Lecteur) bool {
+func consumeBipedSpartanAbility(br *Lecteur) {
 	tag := br.ReadBits(2)
 	// LA PORTE QUI PORTE LE SLOT (lot 5.9.5) : `SpartanAbilityHook` ne le porte pas, et un
 	// intervalle PAR VIE l exige. Meme raison que la porte d `i54` a cote de
@@ -369,48 +370,54 @@ func consumeBipedSpartanAbility(br *Lecteur) bool {
 		if br.obs != nil && br.obs.SpartanAbilityHook != nil {
 			br.obs.SpartanAbilityHook(tag, sub, ref, true)
 		}
-		return true
+		return
 	case 3:
-		ok := consumeSpartanAbilityTag3(br)
-		if br.obs != nil && br.obs.SpartanAbilityHook != nil {
-			br.obs.SpartanAbilityHook(tag, 0, 0, false)
-		}
-		return ok
+		consumeSpartanAbilityTag3(br)
 	}
 	if br.obs != nil && br.obs.SpartanAbilityHook != nil {
 		br.obs.SpartanAbilityHook(tag, 0, 0, false)
 	}
-	return true
 }
 
-// consumeSpartanAbilityTag3 porte la branche `tag == 3` d'i57 (FUN_142f262d4), PARTIELLEMENT
-// et en le disant : le corps a une porte sur un OCTET D'ETAT RUNTIME, invisible du flux.
+// consumeSpartanAbilityTag3 porte la branche `tag == 3` d'i57 (`FUN_142f262d4`), ENTIEREMENT
+// depuis le lot 5.13.3 — et l « octet d etat runtime » qui l en empechait N EN EST PAS UN.
 //
-//	FUN_140f03dfc()                        0 bit (init)
+//	FUN_140f03dfc(dst)                     0 bit — ET IL MET `dst[2]` A ZERO
 //	a = R(1) (FUN_1406cf008)  -> dst[0]
 //	si a != 0 :
-//	    FUN_14297ea84(br) = R(6)
-//	    si (dst[2] & 1) == 0 : rien de plus, on saute a la queue
-//	    sinon : c = R(1), puis TROIS CAS, ET EUX SEULS (relecture du 2026-09-21, lot 5.3.3-c) :
-//	        c == 0                      -> FUN_142f04664(dst+4, br, 0, param_3)
-//	        c == 1 et (dst[2] & 0x10)   -> FUN_1406d3140 (un id d'entite) PUIS FUN_142f04664
-//	        c == 1 et !(dst[2] & 0x10)  -> FUN_1406d3140 SEUL, puis saut a la queue
-//	    -> dst[2] est un octet d'ETAT RUNTIME, et il n'est ECRIT PAR AUCUNE lecture de cette
-//	       fonction (seuls dst[0] et dst[1] le sont) : il n'est donc PAS derivable du flux, ni
-//	       ici ni chez l'ecrivain. Desync propre, et c'est definitif tant qu'aucune autre
-//	       composante ne replique cet octet.
+//	    FUN_14297ea84(br) = R(6)           (`if (0x40 - iVar1 < 6)` : largeur 6, lue sur pieces)
+//	    si (dst[2] & 1) == 0 -> saut a la queue    <- TOUJOURS VRAI, cf. ci-dessous
+//	    sinon : c = R(1), puis trois cas selon `dst[2] & 0x10` (FUN_142f04664, FUN_1406d3140)
 //	t = R(1)  -> dst[1]
-//	si t != 0 : FUN_14076e494(br, dst+0x18, 0x10, 0, param_3, 0)   = la MEME queue qu'i60
+//	si t != 0 : FUN_14076e494(br, dst+0x18, 0x10, 0, param_3, 0)   = la MEME queue qu i60
 //
-// La branche `a == 0` est donc ENTIEREMENT portable, et c'est elle qu'on porte : R(1) nul,
-// puis la porte de queue et, si elle est ouverte, le lecteur absolu de `consumeSimStateHandleTail`.
-// La branche `a != 0` rend false — desync propre plutot qu'une largeur devinee.
-func consumeSpartanAbilityTag3(br *Lecteur) bool {
-	if br.ReadBit() { // a != 0 : FUN_14297ea84 + porte sur octet d'etat runtime
-		return false
+// LE MAILLON DU LOT 5.13.3, SUR LE DESASSEMBLAGE. `FUN_140f03dfc` est appelee en PREMIER par
+// `FUN_142f262d4`, et sur `dst` LUI-MEME — le prologue ne touche pas `RCX` entre la reception du
+// parametre et l appel :
+//
+//	142f262ec  MOV  R15B, R8B        ; param_3
+//	142f262ef  MOV  RBX, RDX         ; le lecteur
+//	142f262f2  MOV  RDI, RCX         ; dst  (RCX reste dst)
+//	142f262f5  CALL 0x140f03dfc      ; <- FUN_140f03dfc(dst)
+//
+// Et `FUN_140f03dfc` ecrit `*(undefined2 *)(param_1 + 2) = 0`, c est-a-dire **`dst[2] = 0` et
+// `dst[3] = 0`**. La porte `(dst[2] & 1) == 0` est donc TOUJOURS OUVERTE au moment ou elle est
+// testee, et la branche gardee par `dst[2] & 0x10` est INATTEIGNABLE. Le corps est entierement
+// determine par le flux.
+//
+// C EST LA MEME LECON QU `i54` : « le corps est gate par un octet d etat RUNTIME non lisible
+// dans le flux » etait faux la aussi (`bloc[0x9d]` y est `flag1`, lu deux lignes plus haut par le
+// meme deserialiseur). Quand une porte porte sur un champ de la structure de SORTIE, il faut
+// chercher qui l a ecrit AVANT — l initialiseur compte.
+//
+// AVANT / APRES (lot 5.13.3) : cette branche rendait `false` (desync propre) ; elle rend
+// desormais `true` et lit ses bits. Cout mesure du manque, avant le port : 13 records `ti=35`
+// desynchronises sur `i57` (film `bfecd02b`, cf. `components_biped_anchor.go`).
+func consumeSpartanAbilityTag3(br *Lecteur) {
+	if br.ReadBit() { // a -> dst[0]
+		br.ReadBits(6) // FUN_14297ea84 = R(6) ; la porte `dst[2] & 1` est FERMEE par l init
 	}
 	if br.ReadBit() { // t : porte de la queue handle
-		consumeSimStateHandleTail(br) // FUN_14076e494, meme lecteur qu'i60
+		consumeSimStateHandleTail(br) // FUN_14076e494, meme lecteur qu i60
 	}
-	return true
 }

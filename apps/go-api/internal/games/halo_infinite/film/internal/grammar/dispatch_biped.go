@@ -92,10 +92,10 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 		consumeFlockFleeing(br)
 		return variant, nil, true
 	case abilityPredictedName: // i57 (FUN_142f02810 -> FUN_142f268c4)
-		// Rend ported=false sur la seule branche non determinable (tag brut == 3 ->
-		// FUN_142f262d4, gate par des octets d'etat runtime) : desync propre plutot que
-		// desalignement silencieux.
-		return variant, nil, consumeBipedSpartanAbility(br)
+		// PORTE EN ENTIER DEPUIS LE LOT 5.13.3 : l « octet d etat runtime » qui gardait la
+		// branche `tag == 3` n en est pas un (cf. `consumeSpartanAbilityTag3`).
+		consumeBipedSpartanAbility(br)
+		return variant, nil, true
 	case grappleComponentNameAlt, grappleComponentName: // i59 (FUN_142f02994)
 		// Corps tag==3 (FUN_142f25e90, ancre du grappin) porté le 2026-08-16 : rend
 		// ported=false sur les seules valeurs internes jamais observées — désync propre,

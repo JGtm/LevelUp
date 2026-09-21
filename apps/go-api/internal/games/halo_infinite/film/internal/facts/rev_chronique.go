@@ -323,3 +323,16 @@ package facts
 // Les lignes de kill deja en base deviennent candidates au backlog de redecodage — geste de
 // PRODUCTION, pilote, SUR SIGNAL UTILISATEUR (D6), jamais automatique. `SchemaVersion` ne monte
 // pas : la forme du document ne change pas.
+
+// ENTREE `killsource-2026-09-22.2` (2026-09-22, lot 5.13.3) : `i57` PORTE EN ENTIER, ET LA
+// SORTIE DES FAITS CHANGE.
+//
+// AUCUN OCTET DE `facts/` N EST TOUCHE, mais `grammar.Rev` passe a `grammar-2026-09-22.2` : la
+// branche `tag == 3` d `i57` est desormais lue au lieu de desynchroniser (chronique de
+// `grammar`, meme jour). Le golden de la mini-bobine le MONTRE : une ligne de kill passe de la
+// voie `scan` a la voie `marche` (marche 6 -> 7, scan 3 -> 2), avec le meme verdict et
+// `DESACCORD` toujours a 0 — la marche va plus loin, elle ne decide pas autrement.
+//
+// Les lignes de kill deja en base deviennent candidates au backlog de redecodage — geste de
+// PRODUCTION, pilote, SUR SIGNAL UTILISATEUR (D6), jamais automatique. `SchemaVersion` ne monte
+// pas : la forme du document ne change pas.

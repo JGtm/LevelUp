@@ -121,3 +121,68 @@ Les quatre slots de la vtable du message hors serialiseurs (`142ef58f8`, `142f02
 
 **Consequence tenue** : `stances[].kind` `mobility` ne devient pas `clamber`, et le lot ne monte
 pas de schema. Le maillon restant est l APPLIQUEUR du message sur le personnage.
+
+## 7. Les corps partiels du bipede (lot 5.13.3)
+
+### 7.1 `i57` est porte en entier — l « octet d etat runtime » n en est pas un
+
+`FUN_142f262d4` (branche `tag == 3` d `i57`) appelle `FUN_140f03dfc(dst)` en PREMIERE
+instruction — `142f262f2 MOV RDI, RCX` puis `142f262f5 CALL 140f03dfc`, RCX vaut encore `dst` —
+et cet initialiseur ecrit `*(undefined2 *)(param_1 + 2) = 0`. La porte `(dst[2] & 1) == 0` est
+donc TOUJOURS ouverte quand elle est testee, et la branche gardee par `dst[2] & 0x10` est
+INATTEIGNABLE. Le corps :
+
+```
+FUN_140f03dfc(dst)                      0 bit — et il met dst[2] a zero
+a = R(1)                 -> dst[0]
+si a != 0 : R(6)         (FUN_14297ea84, largeur lue sur `if (0x40 - iVar1 < 6)`)
+t = R(1)                 -> dst[1]
+si t != 0 : FUN_14076e494(br, dst+0x18, 0x10, 0, param_3, 0)   = la queue handle d i60
+```
+
+Meme lecon qu `i54` (`bloc[0x9d]` y est `flag1`, lu deux lignes plus haut). Mesure, records
+RENDUS : `i57` non portees 1 -> 0 sur 651 declarations (`bfecd02b`) et 44 -> 0 sur 2 531
+(`4f77afc1`) ; desyncs `ti=35` 5 -> 4 ; records `ti=35` et etalon `i21` inchanges. Le golden de
+la mini-bobine `killsource` deplace UNE ligne de kill de `scan` a `marche` (marche 6 -> 7,
+scan 3 -> 2), meme verdict, `DESACCORD` toujours 0.
+
+### 7.2 `i59` : le dispatcheur a six etiquettes, et la seule largeur qui reste
+
+`FUN_142f25e90` : `FUN_142f21c0c` lit `R(3)` et range `brut + 1` ; prefixe commun
+`FUN_142f26e40` = `FUN_1408f0ac4(cat 1)` puis `FUN_142f04664(..., *(int*)(a+4) != -1, ...)`,
+puis `FUN_14297ea84` = `R(6)` ; puis, par etiquette :
+
+| etiquette | corps |
+|---|---|
+| 1 | `FUN_1407f08bc` |
+| 2 | `FUN_1408f0ac4(cat 5)` + `FUN_1407f08bc` |
+| 3 | `FUN_1408f0ac4(cat 0)` + `(cat 5)` + 3 x `FUN_142f26e9c` + `R(24)` + `R(9)` |
+| 4 et 5 | `FUN_1408f0ac4(cat 5)` + 1 x `FUN_142f26e9c` + `FUN_14076e494(0x10)` + `R(24)` + `R(9)` |
+| 6 | `FUN_1407f08bc` ; si SA porte valait 0 -> `(cat 5)` ; `(cat 0)` + 2 x `FUN_142f26e9c` + `R(1)` + `R(24)` |
+| > 6 | zero bit |
+
+`FUN_142f04664(dst, br, flag, p4)` : `flag == 0` -> `FUN_14076e494(br, dst, 0x10, 0, p4, 0)` (la
+position absolue aux largeurs de la carte) ; sinon `R(2)` + `FUN_140c1e924` + `R(1) [+ R(16)]`.
+
+**Cela CONFIRME le port mesure du grappin** : les « trois bits de drapeaux a 000 » sont la porte
+du handle `cat 1`, celle de pleine precision et celle du bloc quantifie ; le `R(7)` plus `gate8`
+sont `R(6)` plus les portes des `FUN_1408f0ac4` de l etiquette, et les deux formes observees se
+recollent au bit (16 bits pour l etiquette 2, 8 pour l etiquette 3).
+
+Largeurs fermees par ce lot : `FUN_1407f08bc` = `R(1)` ; si 1 -> `R(8)` (`FUN_1407f08f8`) ·
+`FUN_14297ea84` = `R(6)` · `FUN_1408f0ac4` categories 0 et 5 (table `varwidth`, lot 1.9.1 bis).
+**Il reste UNE largeur : `FUN_140c1e924`**, dont les trois champs tirent leur `w` d une table
+indexee par un octet (`&DAT_143b8c6f0 + param_3 * 0x18`) que le desassemblage ne resout pas au
+site d appel. Porter les etiquettes 1, 4, 5, 6 exige de reecrire le prefixe commun, et le
+reecrire casserait la fermeture PROUVEE des etiquettes 2 et 3 (`TestI59AnchorWalkProof`, ecarts
+0) pour 4 records sur 654 : NON TRAITE, et la raison est celle-la.
+
+### 7.3 `i60` : complet en mesure, statut `partiel` par decision
+
+0 record non porte sur 29 declarations (`bfecd02b`) et sur 16 (`4f77afc1`). La grammaire est
+resolue (R7-b) et la source des largeurs d axe l est (5.3.3-a, `grammaireSousCarte`). La decision
+que la passation demandait est prise : `SimStateComplet` reste FAUX sans carte, parce que le
+critere ecrit est que le chemin absolu d `i0` tire ses trois largeurs de la CARTE du match. Le
+dispatcheur rend donc `br.p.Grammaire.SimStateComplet`, et le ratchet G1 — qui DERIVE le statut
+de la table du code — impose `partiel`. Ce qui est corrige, c est la note de la table, qui
+decrivait un blocage disparu.
