@@ -147,4 +147,12 @@ type SessionPageResponse struct {
 	// absence, et non un drapeau, qui dit au client de ne rien rendre à droite.
 	Usage        *SessionUsageBlock `json:"usage,omitempty"`
 	CompareUsage *SessionUsageBlock `json:"compare_usage,omitempty"`
+	// RangeProfiles / CompareRangeProfiles : bloc « portée des engagements » (D22-4) —
+	// un profil par match de la session, portant la médiane de portée du joueur consulté
+	// et celle du LOBBY ENTIER du match, qui en est le référentiel. MIROIR d'Usage /
+	// CompareUsage : les deux colonnes du drawer parlent des mêmes matchs. Nil (jamais un
+	// bloc vide) quand le titre n'a pas de décodeur de film, quand la lecture échoue ou
+	// quand aucun match de la session ne porte de frag mesuré.
+	RangeProfiles        *MatchRangeBlock `json:"range_profiles,omitempty"`
+	CompareRangeProfiles *MatchRangeBlock `json:"compare_range_profiles,omitempty"`
 }

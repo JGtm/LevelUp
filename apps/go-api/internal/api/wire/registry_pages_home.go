@@ -231,7 +231,12 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		WithEchange(duckdb.NewTacticalRepo(pdb), r.capabilitiesForPDB(pdb)).
 		// Nuage « isolement x couverture » de la section Echange (item 7.7) : MÊME
 		// table de portée de radar que l'onglet Tactique (radarRangeFor).
-		WithRadarRange(r.radarRangeFor(pdb))
+		WithRadarRange(r.radarRangeFor(pdb)).
+		// « Rôles de portée » (D22-5) : MÊME repo et MÊME classificateur que la Synthèse
+		// et la page Sessions. Câblage INCONDITIONNEL — le repo rend
+		// games.ErrCapabilityNotSupported pour un titre sans positions par kill et le
+		// service omet le bloc. Jamais une comparaison de slug.
+		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))
 	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
 	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
 	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.

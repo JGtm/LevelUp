@@ -105,6 +105,10 @@ type TeammatesService struct {
 	formesUsageRepo     port.SquadFormesUsageRepository
 	formesObjectiveRepo port.SquadFormesObjectiveRepository
 	repoRoot            string
+	// matchRangeRepo (optionnel) : le lecteur de portee de frag de TOUT le lobby, par
+	// match (lot N2, D22-5). Sans lui, pas de referentiel : le bloc « roles de portee »
+	// est omis. Cf. teammates_squad_range.go.
+	matchRangeRepo port.MatchRangeRepository
 }
 
 // NewTeammatesService crée un TeammatesService.
@@ -373,6 +377,7 @@ func (s *TeammatesService) GetPage(
 	var firstBlood []domain.FirstBloodPlayerSeries
 	var assistPairs *domain.SquadAssistPairs
 	var echange *domain.SquadEchange
+	var rangeProfiles *domain.MatchRangeBlock
 	var medalDigest []domain.MedalDigestEntry
 	if len(allSquadRows) > 0 {
 		// Résout map/playlist/mode FR sur les rows (mode via la cascade
@@ -418,6 +423,10 @@ func (s *TeammatesService) GetPage(
 		// est toujours un sous-ensemble. Même mécanique que buildBriefingBaseline.
 		echange = s.buildSquadEchange(
 			ctx, allSquadRows, allSquadRowsForTimeline, s.gamertag, playerXUID, teammates)
+		// Roles de portee (D22-5) : MEME cadrage de perimetre et de roster que
+		// l'echange ci-dessus, sur les seuls matchs filtres — la tendance se lit sur ce
+		// que la page affiche, jamais sur un historique que le filtre a ecarte.
+		rangeProfiles = s.buildSquadRange(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		medalDigest = s.buildMedalDigest(ctx, allSquadRows, s.gamertag, playerXUID, teammates, req.Locale)
 	}
 
@@ -510,6 +519,7 @@ func (s *TeammatesService) GetPage(
 		FirstBlood:          firstBlood,
 		AssistPairs:         assistPairs,
 		Echange:             echange,
+		RangeProfiles:       rangeProfiles,
 		Header:              header,
 		MainPlayer:          s.gamertag,
 		MedalDigest:         medalDigest,

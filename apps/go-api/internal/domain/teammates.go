@@ -576,6 +576,12 @@ type TeammatesPageResponse struct {
 	// (games.JournalDesMortsFiable) ou quand aucun match de la selection ne porte de
 	// journal des morts — une OMISSION, jamais des zeros.
 	Echange *SquadEchange `json:"echange,omitempty"`
+	// RangeProfiles alimente les « rôles de portée » de la page Escouade (D22-5) : un
+	// profil par match du périmètre filtré, portant la médiane de portée de chaque joueur
+	// du roster ET celle du LOBBY ENTIER du match, qui en est le référentiel — sans quoi
+	// la courbe ne raconterait que la playlist de la soirée. Nil quand le titre n'a pas de
+	// décodeur de film ou quand aucun match du périmètre ne porte de frag mesuré.
+	RangeProfiles *MatchRangeBlock `json:"range_profiles,omitempty"`
 	// FirstBlood alimente le chart « Premier frag / première mort » (lanes) de
 	// l'onglet Dynamique : une série PAR JOUEUR de l'escouade, valeurs par match
 	// (aucun bucketing serveur). Vide si aucune donnée highlight_events.

@@ -164,12 +164,17 @@ func buildWeaponRangeQuery(
 		args = append(args, id)
 	}
 
-	// Projection sur WeaponKillFilters : le helper de filtre xuid est unique dans le
-	// paquet (résolution gamertag -> xuid via xuid_aliases identique), on ne le recopie pas.
-	appendXUIDFilter(&sb, &args, column, port.WeaponKillFilters{
-		Gamertag: f.Gamertag,
-		XUIDs:    f.XUIDs,
-	})
+	// AllPlayers : AUCUNE clause de joueur. Le scan reste borné par les match_id (les deux
+	// clauses ci-dessus) — c'est exactement la portée de `KillDistanceRepo.LoadMatch`, qui
+	// lit déjà un match entier sans filtre xuid. Voir port.WeaponRangeFilters.AllPlayers.
+	if !f.AllPlayers {
+		// Projection sur WeaponKillFilters : le helper de filtre xuid est unique dans le
+		// paquet (résolution gamertag -> xuid via xuid_aliases identique), on ne le recopie pas.
+		appendXUIDFilter(&sb, &args, column, port.WeaponKillFilters{
+			Gamertag: f.Gamertag,
+			XUIDs:    f.XUIDs,
+		})
+	}
 
 	return measuredKillsQuery(table, fragScope, sb.String()), args
 }
