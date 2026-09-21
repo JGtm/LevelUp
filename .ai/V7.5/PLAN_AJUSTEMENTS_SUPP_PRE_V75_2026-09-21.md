@@ -200,3 +200,8 @@ surface `film/replay` 260 -> 263 justifie.
 
 ### Lot R — Escouade : nuage des roles de portee (worktree `LevelUp-wt-ajsup-r`) — FUSIONNE 1cfe28635
 - [x] Nuage, bande des roles en repli, phrases de lecteur retirees (D22-verbosite)
+
+### Lot S — Go + web : Coordination de la session comparee + habituel de periode (worktree `LevelUp-wt-ajsup-s`)
+- [ ] `SessionPageResponse.compare_coordination` (miroir de `coordination`, meme producteur) ; le drawer rend les memes cartes des deux cotes (plus de placeholder sur la rangee Coordination)
+- [ ] Repere d habituel de « Je suis couvert » et « On me prepare » : taux sur la periode de reference (meme reference que l habituel des usages de la session), servi dans `CoordinationBlock` (ex. `riposte.habituel_pct`, `appui.habituel_pct`) et lu par la carte
+- Note de methode (2026-09-22) : les remarques utilisateur sur les points 2/3/4 avaient ete implementees sans « ok » explicite ; a valider a l ecran ou par maquette (3, 4).
