@@ -7884,6 +7884,93 @@ canal dont `jumpDerived` est tire. Et l ecrivain dit POURQUOI, positivement (cas
 
 ---
 
+#### 5.11.0 — les quatre composants PARTIELS du bipede (ordre change par l utilisateur)
+
+Instruction de l utilisateur du 2026-09-21, APRES la mesure des cases 5.11.1 et 5.11.2 :
+« pourquoi pas attaquer ces trous de grammaire en premier ». **LA MESURE DIT QUE CELA NE PEUT PAS
+REPONDRE A LA QUESTION DU SAUT**, et c est ecrit avant d agir : la PRESENCE d un composant se lit
+dans le MASQUE du record, independamment de son PORT — instruire une grammaire ne fera jamais
+apparaitre un record la ou le masque n en declare aucun, et `i63`/`i55`/`i62`/`i29`/`i60`/`i18`
+sont declares ZERO fois dans les 8 171 records de bipede des fenetres de saut de `bfecd02b`. Le
+lot le fait quand meme, pour la valeur PROPRE de ces quatre composants.
+
+Population de reference, records RENDUS, porte propre (instrument
+`grammar/mouvement_5_11_partiels_research_test.go`, relecture a `StartBit` — meme idiome que le
+5.7 « retenus », et pour la meme raison) :
+
+| composant | `bfecd02b` decl. / non portees / fautif | `4f77afc1` | `dad793c7` |
+|---|---|---|---|
+| `i57 biped-spartan-ability` | 625 / 1 / 1 | 2 952 / 44 / 44 | 0 / 0 / 0 |
+| `i59 ability-non-predicted-state` | 627 / 5 / 5 | 2 923 / 11 / 11 | 1 / 0 / 0 |
+| `i60 simulation-state` | 58 / **0** / **0** | 326 / **0** / **0** | 1 / 0 / 0 |
+| `i63 biped-action` | 73 / **0** / **0** | 299 / **0** / **0** | 1 / 0 / 0 |
+
+- [x] **5.11.0-a — `i63` : LE COMPTE DU SECOND TOUR EST DANS LE FLUX, LE DEPOT LE CROYAIT EN RAM,
+  ET LA BRANCHE DE DESYNC ETAIT MORTE.** (2026-09-21, `grammar-2026-09-21.8` /
+  `killsource-2026-09-21.8`, schema 67 INCHANGE.)
+  L ECRIVAIN, RELU EN LECTURE SEULE : `FUN_142f26a20` sauve `etat[0xc..0x17] <- etat[0x0..0xb]`
+  (0 bit), puis `FUN_142f21b10(reader, reader, etat)` lit `3 x R(32)` **et les STOCKE**
+  (`for (p = base; p != base+3; p++) { ... *p = R(32); }`, donc dans `etat[0..0xb]`), puis
+  `count1 = R(4)`, puis son premier tour, puis
+  `count2 = FUN_1409fe718(etat, 0x49)` = **le popcount des 73 premiers bits DU BLOC CI-DESSUS**
+  (`((0x49 + 0x1f) >> 5) - 1 = 2` mots entiers + `p[2] & 0x1ff`, soit 32 + 32 + 9), puis
+  `count2 x { R(1) gate (FUN_1406cf008) ; R(2) si pose (FUN_14076e304) }`, puis la queue de
+  `3 x R(32)`. **Le masque n est pas un etat de RAM : c est le PREMIER CHAMP du composant**, et le
+  port le lisait deja — il le JETAIT. La constante `bipedActionLoop2Count = 0` et son commentaire
+  (« POPCOUNT of a 73-bit RAM bitmask ... It cannot be recovered from the delta bits ») etaient une
+  DOC INVERSEE ; les deux tombent.
+  **SECOND DEFAUT, TROUVE EN CHEMIN** : le `ported bool` de la famille `consumeBipedAction` /
+  `consumeBipedActionLoop1Item` / `consumeBipedActionTag` etait DU CODE MORT. Depuis le retrait des
+  corps 6..11 inventes (lot C, 2026-08-01) `consumeBipedActionTag` rend `true` sur toutes ses
+  branches : la branche `return false` du dispatch etait INATTEIGNABLE. Retiree (regle 7), d ou le
+  statut `porte` d `i63` dans `ecs_table.tsv` — le garde-rail `TestG1TableSuitLeCode` le derive du
+  code et refusait l ancien couple.
+  **MESURE, ET ELLE EST AMBIGUE — elle est ecrite telle quelle.** Masque de tete NUL sur la seule
+  declaration d `i63` du film temoin `dad793c7` (un bipede, zero desync), sur 54 des 73 de
+  `bfecd02b`, et sur 37 des 299 de `4f77afc1` — ou les 262 autres forment une cloche centree sur
+  31 bits poses sur 73, le profil de bits ALEATOIRES et non d un masque d actions. La nullite
+  CORRELE avec l etalon du film (`bfecd02b` 77,4 % de masques nuls sur ses deltas pour `i0` a
+  85,5 % ; `4f77afc1` 12,7 % pour `i0` a 72,6 %) : les masques denses sont des `StartBit` deja
+  decales EN AMONT, que `i63` — dernier et plus large composant — ABSORBAIT en silence.
+  A/B sur la MEME base (fusion `f8c3e8e7a`), `bfecd02b` : records `ti=35` **97 345 -> 97 343**
+  (perte de 2, 0,002 %), desyncs **6 -> 6**, etalon `i0` 85,5 / `i1` 77,5 / `i21` 65,3 / `i25`
+  97,1 % inchange. **DECISION ASSUMEE : la grammaire prime** — l ecrivain est sans ambiguite, et
+  garder une constante que la lecture refute serait un « compatibility guard forever ». La perte
+  de 2 ne vient pas de cette largeur mais de la derive amont qu elle cesse de masquer.
+  **GATE AVEC DECODAGE, ET IL DIT UN GAIN** : `replay-equiv -films bcb6d393` SANS `-update`, joue
+  DEUX FOIS — au HEAD de fusion puis avec le correctif. Les **4 ecarts sont PRE-EXISTANTS**
+  (`vehicles`, `movementStates`, `movementStates.stats`, `artifact` : la reference d equivalence a
+  ete figee avant la fusion du lot 5.10, cf. D15 (5.3)), et la SEULE difference imputable au
+  correctif est `movementStates` **1 363 -> 1 364** : une transition de PLUS, aucune perte.
+  CHECKLIST TENUE : garde-rail `components_biped_action_loop2_test.go` (fenetre de 73 bits, dont
+  le cas « les 23 bits de poids fort du troisieme mot ne comptent pas », et le cout en bits du
+  tour) · `ecs_table.tsv` ligne 752 `partiel` -> **`porte`**, grammaire et notes reecrites ·
+  ratchet 0.A.3 `keyframe_closure.golden` **INCHANGE** (aucune ligne en baisse) · `grammar.Rev`
+  `.7 -> .8` par l empreinte + entree de chronique · `facts.Rev` `.7 -> .8` + entree de chronique ·
+  `shapes.golden` refige (il porte les revisions) · 8 fixtures de contrat refigees (2 770 812 o /
+  3 145 728) · rotation de `rev_chronique.go` (511 lignes) : l entree `grammar-2026-09-18` versee
+  dans `rev_chronique_archive_2.go` par DEPLACEMENT PUR · `dispatch_biped.go` recompacte pour
+  rester sous le plafond de fonction fige a 112 lignes.
+  **PIEGE 6 DE LA PASSATION 5.7, REDIT ICI** : les 8 fixtures de contrat REJOUENT des entrees
+  figees (`inputs_<film>.bin.gz`, codec `REPLAYINPUTS25`). Ce correctif de largeur NE LES TRAVERSE
+  PAS : leur seul ecart est la chaine de revision. Le re-figeage des entrees par leur porte reste
+  le geste du pilote.
+- [!] **5.11.0-b a 5.11.0-d — `i57`, `i59`, `i60` : NON TRAITES, et la justification est
+  chiffree.** `i60 simulation-state` : la mesure ci-dessus le dit **DEJA COMPLET** — 58 et 326
+  declarations, **zero** rendue non portee, **zero** fois composant fautif sur les deux films ;
+  son statut `partiel` dans `ecs_table.tsv` ne decrit plus le code depuis le 5.3.3-a
+  (`SimStateComplet` suit la carte), et son passage a `porte` demande de rouvrir le drapeau — hors
+  du perimetre d un lot qui porte sur le saut. `i57` et `i59` : le lot 5.3.3-c a DECIDE de
+  s arreter (`FUN_142f262d4` rend trois cas et `dst[2]` n est ecrit par aucune lecture de la
+  fonction ; la garde `biped+0x1302` a ZERO site d instruction, elle passe par
+  `FUN_140f03db8`/`FUN_140f03dfc`), cout mesure ici a 1 et 5 records sur 97 343 pour `bfecd02b` et
+  44 et 11 sur 322 889 pour `4f77afc1` — soit au plus 0,017 %. **A REPRENDRE PAR UN LOT DEDIE** :
+  l instruction de l utilisateur demandait de RESOUDRE l octet runtime de l etiquette 3 d `i57`,
+  et c est une lecture d ecrivain a part entiere (le maillon est nomme, l adresse est ecrite), pas
+  une case de ce lot.
+
+---
+
 ### Post-chantier — lot 5.9 (chaines du sprint et du saut), branche `feat/decfilm-57`, base `c3f01dd4b`
 
 Suite du 5.7, sur passation. Le lot remonte les CHAINES DE DONNEES du sprint et du saut depuis

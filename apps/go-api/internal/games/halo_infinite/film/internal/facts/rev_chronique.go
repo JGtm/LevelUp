@@ -284,3 +284,13 @@ package facts
 // PARCOURS DE BITS des deux composants est inchange, et le garde-rail de la couche de capture
 // l exige. `SchemaVersion` ne monte pas : la forme du document ne change pas, `seat` change de
 // SOURCE.
+
+// ENTREE `killsource-2026-09-21.8` (2026-09-21, lot 5.11.0-a) : LA REVISION MONTE DERRIERE UNE
+// LARGEUR D `i63`, ET LE KILL-FEED N EST PAS CONCERNE.
+//
+// AUCUN OCTET DE `facts/` N EST TOUCHE. `grammar.Rev` passe a `grammar-2026-09-21.8` : le compte
+// du second tour d `i63 biped-action-component` se lit desormais dans le masque de tete du
+// composant, la ou une constante le tenait a zero sur une doc inversee (chronique de `grammar`,
+// meme jour). C est une VRAIE largeur qui change — `i63` consomme 196 bits a masque nul et
+// 196 + 3 x popcount au-dela — donc la montee n est pas un faux positif d empreinte.
+// `SchemaVersion` ne monte pas : la forme du document ne change pas.

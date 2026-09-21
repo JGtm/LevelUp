@@ -36,55 +36,6 @@ package grammar
 // geste ordinaire que l en-tete des archives annonce, pas un incident. Ce qui suit est la suite
 // VIVANTE, a partir du premier rang du 2026-09-18.
 //
-// ENTREE `grammar-2026-09-18` (2026-09-18, lot 5.1.1) : `.42` -> le premier rang du 18.
-// LE POINT DE NAVIGATION (`ti=12`) EST LU DE `i1` AU MINUTEUR MANUEL.
-//
-// DOUZE LECTEURS NEUFS, RELEVES CHEZ LE DESERIALISEUR `+0x40` de chaque descripteur et recoupes
-// par son serialiseur `+0x28` (`NOTE_3_6_TI12_GRAMMAIRES_A_2026-09-17`, § 5 a § 16) :
-//
-//	i1        `flags`, `FUN_141094130` : `R(8)`. C ETAIT LE BLOQUANT NOMME de l archetype.
-//	i2..i6    les cinq `*-filter(s)`, qui partagent le bloc `FUN_140dbe400` — masque `R(4)`,
-//	          drapeau `R(v ? 1 : 32)`, puis par filtre present un tag `R(4)` et sa charge (quinze
-//	          tags, note § 3). `i2` y ajoute deux distances `R(16)` et deux par filtre ; `i3`/`i4`
-//	          un `R(1)` et un par filtre ; les trois ferment sur `K` ordres de `v ? 3 : 2` bits.
-//	i7/i8     `docking-order` `R(8)` (`FUN_142ed5050`), `docking-group-name` `R(32)`.
-//	i9        `formatted-text`, `FUN_1410e7b90` : `R(8)` de compte, puis par entree un `R(32)`
-//	          SUIVI DU SAC TEXTE DE `ti=11 i2` — reutilise, jamais recopie.
-//	i10       `timers`, `FUN_1410d9040` : `2 x R(7)`, valeur - 1. MEME CHAMP que `ti=11 i0`, donc
-//	          meme lecteur.
-//	i11/i12   `manual-timer-initial-duration` / `-current-duration`, `FUN_142ed5194` et
-//	          `FUN_142ed512c` : `R(17)` sur [-0,025 ; 6553,5752], soit un pas de 50 ms EXACT. CE
-//	          SONT LES DEUX QUE LE LOT VISE — duree totale et temps restant du compte a rebours
-//	          qu un objectif affiche. Le bassin du moteur, lui, ne le porte pas : `ti=11 i0` vaut
-//	          « aucun minuteur » sur 446 records sur 446 (NOTE_3_7_REAPPARITION § 6 bis.3).
-//
-// UNE ENTREE DE TABLE, ET ELLE N EST PAS COSMETIQUE : `paramByComponent` pose `param_4 = 3` pour
-// `i2` et `= 2` pour `i3`..`i6`. La valeur est LUE, pas ajustee — le slot `+0x10` du descripteur
-// rend une constante (`MOV EAX,0x3 ; RET` a `0x14117e0e0`, `MOV EAX,0x2 ; RET` a `0x141179610`),
-// et la meme chaine rend 3/3 sur trois composants `ti=35` dont la table porte deja la valeur de
-// capture live. Avec le defaut 1, le drapeau ferait 32 bits au lieu d un et l ordre 2 au lieu de
-// 3 : la marche se desynchroniserait des le premier filtre.
-//
-// AUCUNE ENTREE DE PROFIL. La seule largeur de RUNTIME du lot est celle de la reference d entite
-// du domaine 0 (tags 6, 12, 13, 14) : `refDomWidth` et `readRecordID` sont appeles, pas recodes.
-//
-// LES CINQ FILTRES SONT `partiel`, PAS `porte` : un tag hors [0, 14] tombe chez le jeu sur
-// `FUN_1411c8f80`, qui ne revient pas. Le lecteur rend `ported = false` — arret propre — plutot
-// que de deviner une largeur. Un film sain n en porte pas.
-//
-// CE QUE LA MESURE DIT. Ratchet 0.A.3 : le bloquant de `ti=12` avance de `i1` a
-// `i13 managed-navpoint-top-progress` sur les SEPT bobines. 0 ligne monte, 0 descend, aucun total
-// ne bouge — et c etait prevu : la FERMETURE de `ti=12` demande encore `i13` a `i27`, quinze
-// composants. Le bloquant qui avance de douze rangs EST la mesure du lot ; les largeurs sont
-// tenues par `components_navpoint_test.go`, via `consumeByName` (donc le cablage avec).
-//
-// `facts.Rev` MONTE — mecaniquement, parce qu elle hache la VALEUR de cette constante, et non
-// parce qu un fait change (`film/facts/` n est pas touche). Les lignes de kill en base deviennent
-// candidates au backlog de redecodage, sur SIGNAL UTILISATEUR (D6). C EST L UNIQUE MONTEE DE
-// `facts.Rev` DU LOT 5.1 : les volets suivants partagent ce rang.
-//
-// `SchemaVersion` reste 62 : aucun champ neuf n est publie (canal d observation seul).
-//
 // ENTREE `grammar-2026-09-18.2` (2026-09-18, lot 5.1.7-a) : `grammar-2026-09-18` -> `.2` (le
 // premier lot du jour s ecrit sans suffixe, les suivants a partir de `.2`).
 // `param_4` NE SE DEVINE PLUS : IL SE LIT DANS LE REGISTRE DU FILM.
@@ -468,3 +419,44 @@ package grammar
 // `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.7`.
 // `replay.SchemaVersion` NE MONTE PAS : la FORME du document ne change pas — `vehicles[].rides[]`
 // garde ses champs, et `seat` change de SOURCE, pas de type.
+
+// ENTREE `grammar-2026-09-21.8` (2026-09-21, lot 5.11.0-a) : LE COMPTE DU SECOND TOUR D `i63`
+// EST DANS LE FLUX, ET LA COUCHE LE CROYAIT EN RAM.
+//
+// CE QUI CHANGE DANS LA COUCHE, ET C EST UNE LARGEUR : `consumeBipedAction`
+// (`i63 biped-action-component`, `FUN_142f027f4` -> `FUN_142f26a20`) lisait son bloc de tete de
+// 3 x R(32) et le JETAIT, puis sautait son second tour sur une constante
+// `bipedActionLoop2Count = 0`. Le commentaire qui la justifiait etait une DOC INVERSEE :
+// « POPCOUNT of a 73-bit RAM bitmask on the component's own runtime state ... It cannot be
+// recovered from the delta bits ».
+//
+// L ECRIVAIN, RELU EN LECTURE SEULE (image base 140000000) : `FUN_142f21b10(reader, _, param_3)`
+// boucle `for (p = base; p != base+3; p++)` et ECRIT chaque `R(32)` dans `*param_3` ; le site
+// d appel de tete de `FUN_142f26a20` passe `param_3 = param_1`, c est-a-dire la base d etat que
+// `count2 = FUN_1409fe718(param_1, 0x49)` popcompte ensuite. Le masque N EST PAS un etat de RAM :
+// c est le PREMIER CHAMP du composant. Le prologue le confirme — il sauve
+// `etat[0xc..0x17] <- etat[0x0..0xb]` avant de laisser le flux ecraser les douze octets.
+// FENETRE DU POPCOUNT, relue au bit : `((0x49 + 0x1f) >> 5) - 1 = 2` mots entiers, puis
+// `p[2] & (0xffffffff >> (0x20 - (0x49 & 0x1f)))` = `p[2] & 0x1ff` — NEUF bits du troisieme mot.
+// 32 + 32 + 9 = 73. Corps du tour : `FUN_1406cf008` = R(1), puis `FUN_14076e304` = R(2) si pose
+// (les deux relus).
+//
+// MESURE, ET ELLE EST AMBIGUE — elle est ecrite telle quelle plutot que resumee. Masque de tete
+// NUL sur la seule declaration d `i63` du film temoin `dad793c7` (un bipede, zero desync), sur 54
+// des 73 de `bfecd02b`, et sur 37 des 299 de `4f77afc1` — ou les 262 autres forment une cloche
+// centree sur 31 bits poses sur 73, c est-a-dire le profil de bits ALEATOIRES et non d un masque
+// d actions. La nullite CORRELE avec l etalon du film (`bfecd02b` 77,4 % de masques nuls sur ses
+// deltas pour `i0` a 85,5 % ; `4f77afc1` 12,7 % pour `i0` a 72,6 %) : les masques denses sont des
+// `StartBit` deja decales EN AMONT, que `i63` — dernier et plus large composant — ABSORBAIT en
+// silence. Effet net sur l oracle de contenu de `bfecd02b`, mesure A/B sur la meme base :
+// records `ti=35` 97 345 -> **97 343** (perte de 2, 0,002 %), desyncs 6 -> 6, etalon `i0` 85,5 /
+// `i1` 77,5 / `i21` 65,3 / `i25` 97,1 % inchange.
+//
+// DECISION ASSUMEE : LA GRAMMAIRE PRIME. L ecrivain est sans ambiguite, et garder une constante
+// que la lecture refute serait un « compatibility guard forever ». La perte de 2 records est
+// consignee au plan (case 5.11.0-a) ; elle ne vient pas de cette largeur mais de la derive amont
+// que cette largeur cesse de masquer. Garde-rail :
+// `components_biped_action_loop2_test.go` (fenetre de 73 bits, cout en bits du tour).
+//
+// `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.8`.
+// `replay.SchemaVersion` NE MONTE PAS : la FORME du document ne change pas.
