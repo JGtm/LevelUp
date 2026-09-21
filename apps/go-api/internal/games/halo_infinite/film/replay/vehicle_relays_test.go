@@ -131,7 +131,7 @@ func TestFusionVagueMultiple(t *testing.T) {
 func TestFusionRecolleLesEpisodes(t *testing.T) {
 	a := vrTrack(785, "0000254b", 100, 200, 300, 5, 5)
 	b := vrTrack(791, "0000254b", 250, 400, 500, 5, 5)
-	b.Rides = []VehicleRide{{T0: 260, T1: 380, Slot: 42, Src: VehicleRideSrcGap}}
+	b.Rides = []VehicleRide{{T0: 260, T1: 380, Slot: 42, Src: VehicleRideSrcProximity}}
 	out, merged := mergeVehicleRelays([]VehicleTrack{a, b})
 	if merged != 1 {
 		t.Fatalf("fusions = %d, attendu 1", merged)

@@ -313,11 +313,7 @@ func v8Desaccord(
 	pts := bySlot[ep.slot]
 	a0, h0 := vehicleAnchorAt(pts, ep.startUS, false)
 	a1, h1 := vehicleAnchorAt(pts, ep.endUS, true)
-	siege := "nil"
-	if ep.seat != nil {
-		siege = fmt.Sprintf("%d", *ep.seat)
-	}
-	t.Logf("  DESACCORD occupant %d siege %s [%d..%d us]", ep.slot, siege, ep.startUS, ep.endUS)
+	t.Logf("  DESACCORD occupant %d [%d..%d us]", ep.slot, ep.startUS, ep.endUS)
 	t.Logf("     EVENEMENT -> %s", v8Vie(ev, in, spawns))
 	t.Logf("     GEOMETRIE -> %s", v8Vie(geo, in, spawns))
 	t.Logf("     ancre de DEBUT : evenement %s · geometrie %s",

@@ -25,7 +25,7 @@
 #
 #   LEVELUP_UPDATE_TYPES_SHAPES=1 go test ./internal/games/halo_infinite/film/types/ \
 #     -run TestFormesDesTypesEgalentLeGolden -update-types-shapes
-revisions	source=source-2026-09-16.2	grammar=grammar-2026-09-21.6	facts=killsource-2026-09-21.6
+revisions	source=source-2026-09-16.2	grammar=grammar-2026-09-21.7	facts=killsource-2026-09-21.7
 
 ## ChunkMeta (source)
 Index	int	-
@@ -376,6 +376,16 @@ VehicleSlotValid	bool	-
 VehicleGen	uint32	-
 Seat	uint32	-
 SeatValid	bool	-
+
+## VehicleOccupancy (grammar)
+TimestampUS	uint64	-
+Slot	uint32	-
+Gen	uint32	-
+Attached	bool	-
+ParentSlot	uint32	-
+ParentGen	uint32	-
+HasSeat	bool	-
+Seat	uint32	-
 
 ## ApparStats (facts/killsource)
 Identite	int	-

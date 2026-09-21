@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 66
-empreinte-stockee 8c32e4b7b2b749b8
-empreinte-servie 8c32e4b7b2b749b8
-empreinte-cuite 591a9d1b7c3af97c
+schema 67
+empreinte-stockee 0030535963711419
+empreinte-servie 0030535963711419
+empreinte-cuite 8fa3e3de3052db39
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -914,10 +914,9 @@ VehicleCoverage
   NoPosition json:"noPosition" int
   Published json:"published" int
   Rides json:"rides" int
-  RidesFromEvent json:"ridesFromEvent" int
-  RidesFromGap json:"ridesFromGap" int
-  RidesMixed json:"ridesMixed" int
   RidesNamed json:"ridesNamed" int
+  RidesProximity json:"ridesProximity" int
+  RidesRead json:"ridesRead" int
   RidesWithAim json:"ridesWithAim" int
   RidesWithSeat json:"ridesWithSeat" int
   Samples json:"samples" int

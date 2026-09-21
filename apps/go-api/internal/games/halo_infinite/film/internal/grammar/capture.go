@@ -22,6 +22,8 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 var captureNames = []string{
 	compObjectBodyVitality,
 	compObjectShieldVitality,
+	compObjectParentState,
+	compObjectDissolver,
 	"player-respawn-timer-component",
 	"game-engine-round-timer-component",
 }
@@ -36,6 +38,10 @@ func consumeByNameCapturing(br *Lecteur, name string, typeIndex, level uint32) (
 		return noVariant, nil, decodeObjectBodyVitality(br), true
 	case compObjectShieldVitality: // i5
 		return noVariant, nil, decodeObjectShieldVitality(br), true
+	case compObjectParentState: // i10 — LE PARENT ET SON SIÈGE (lot 5.10)
+		return noVariant, nil, decodeObjectParentState(br, level, typeIndex), true
+	case compObjectDissolver: // i14 — LA DISSOLUTION (lot 5.10)
+		return noVariant, nil, decodeObjectDissolver(br), true
 	case "player-respawn-timer-component": // ti=5 i1
 		return noVariant, nil, decodePlayerRespawnTimer(br), true
 	case "game-engine-round-timer-component": // ti=0 i5
@@ -54,6 +60,18 @@ func (c CompResult) BodyOf() (BodyVitality, bool) {
 // ShieldOf rend la vitalité i5 capturée par un composant, si c'en est une.
 func (c CompResult) ShieldOf() (ShieldVitality, bool) {
 	v, ok := c.Payload.(ShieldVitality)
+	return v, ok
+}
+
+// ParentOf rend l'état de parenté i10 capturé, si c'en est un.
+func (c CompResult) ParentOf() (ObjectParentState, bool) {
+	v, ok := c.Payload.(ObjectParentState)
+	return v, ok
+}
+
+// DissolverOf rend la dissolution i14 capturée, si c'en est une.
+func (c CompResult) DissolverOf() (ObjectDissolver, bool) {
+	v, ok := c.Payload.(ObjectDissolver)
 	return v, ok
 }
 

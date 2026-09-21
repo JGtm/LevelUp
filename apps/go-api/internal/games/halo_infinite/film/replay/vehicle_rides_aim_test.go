@@ -136,7 +136,7 @@ func TestClampVehicleRideAimSuitSonEpisode(t *testing.T) {
 // un cap qui s arrondit a 0 sort en 360 (le meme angle), une elevation a plat est OMISE (son
 // absence VEUT DIRE « a plat », cf. `Point.P`).
 func TestVehicleRideAimSerialisation(t *testing.T) {
-	r := VehicleRide{T0: 1, T1: 9, Slot: 7, Src: VehicleRideSrcEvent, Aim: []VehicleAim{
+	r := VehicleRide{T0: 1, T1: 9, Slot: 7, Src: VehicleRideSrcProximity, Aim: []VehicleAim{
 		{T: 1, H: 360, P: -12.3},
 		{T: 2, H: 91.5},
 	}}
@@ -144,16 +144,16 @@ func TestVehicleRideAimSerialisation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("serialisation : %v", err)
 	}
-	veut := `{"t0":1,"t1":9,"slot":7,"src":"event","aim":[{"t":1,"h":360,"p":-12.3},{"t":2,"h":91.5}]}`
+	veut := `{"t0":1,"t1":9,"slot":7,"src":"proximity","aim":[{"t":1,"h":360,"p":-12.3},{"t":2,"h":91.5}]}`
 	if string(blob) != veut {
 		t.Fatalf("JSON = %s\nattendu = %s", blob, veut)
 	}
 	// SANS SERIE, LE CHAMP DISPARAIT : un artefact sans visee ne porte pas un tableau vide.
-	blob, err = json.Marshal(VehicleRide{T0: 1, T1: 9, Slot: 7, Src: VehicleRideSrcGap})
+	blob, err = json.Marshal(VehicleRide{T0: 1, T1: 9, Slot: 7, Src: VehicleRideSrcProximity})
 	if err != nil {
 		t.Fatalf("serialisation sans visee : %v", err)
 	}
-	if string(blob) != `{"t0":1,"t1":9,"slot":7,"src":"gap"}` {
+	if string(blob) != `{"t0":1,"t1":9,"slot":7,"src":"proximity"}` {
 		t.Fatalf("JSON sans visee = %s — le champ `aim` doit etre omis", blob)
 	}
 }
@@ -164,8 +164,8 @@ func TestVehicleRideAimSerialisation(t *testing.T) {
 func TestTallyVehicleRidesCompteLaVisee(t *testing.T) {
 	cov := VehicleCoverage{UnknownChassis: map[string]int{}}
 	tallyVehicleRides([]VehicleRide{
-		{T0: 0, T1: 9, Slot: 7, Src: VehicleRideSrcEvent, Aim: []VehicleAim{{T: 0, H: 10}, {T: 3, H: 20}}},
-		{T0: 20, T1: 24, Slot: 8, Src: VehicleRideSrcGap},
+		{T0: 0, T1: 9, Slot: 7, Src: VehicleRideSrcProximity, Aim: []VehicleAim{{T: 0, H: 10}, {T: 3, H: 20}}},
+		{T0: 20, T1: 24, Slot: 8, Src: VehicleRideSrcProximity},
 	}, &cov)
 	if cov.RidesWithAim != 1 {
 		t.Errorf("episodes avec visee = %d, attendu 1", cov.RidesWithAim)

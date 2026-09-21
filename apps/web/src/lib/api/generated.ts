@@ -13165,13 +13165,11 @@ export interface components {
             /** Format: int64 */
             rides: number;
             /** Format: int64 */
-            ridesFromEvent: number;
-            /** Format: int64 */
-            ridesFromGap: number;
-            /** Format: int64 */
-            ridesMixed: number;
-            /** Format: int64 */
             ridesNamed: number;
+            /** Format: int64 */
+            ridesProximity: number;
+            /** Format: int64 */
+            ridesRead: number;
             /** Format: int64 */
             ridesWithAim: number;
             /** Format: int64 */

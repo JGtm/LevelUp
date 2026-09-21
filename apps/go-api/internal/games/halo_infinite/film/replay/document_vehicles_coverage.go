@@ -72,13 +72,10 @@ func tallyVehicleRides(rides []VehicleRide, cov *VehicleCoverage) {
 			cov.RidesWithAim++
 			cov.AimSamples += len(r.Aim)
 		}
-		switch r.Src {
-		case VehicleRideSrcEvent:
-			cov.RidesFromEvent++
-		case VehicleRideSrcMixed:
-			cov.RidesMixed++
-		default:
-			cov.RidesFromGap++
+		if r.Src == VehicleRideSrcFilm {
+			cov.RidesRead++
+		} else {
+			cov.RidesProximity++
 		}
 		// Les episodes d une vie sont TRIES par T0 : un chevauchement se voit sur le voisin.
 		if i > 0 && r.T0 <= rides[i-1].T1 {
@@ -105,8 +102,8 @@ func logVehicleCoverage(c *VehicleCoverage) {
 		"echantillons", c.Samples, "avecCap", c.WithHeading)
 	slog.Info("rejeu : occupation des vehicules",
 		"episodes", c.Rides, "vehiculesOccupes", c.VehiclesRidden, "occupantsNommes", c.RidesNamed,
-		"bornesParEvenement", c.RidesFromEvent, "bornesMixtes", c.RidesMixed,
-		"bornesParTrou", c.RidesFromGap, "avecSiege", c.RidesWithSeat, "ambigus", c.Ambiguous,
+		"lus", c.RidesRead, "parProximite", c.RidesProximity,
+		"avecSiege", c.RidesWithSeat, "ambigus", c.Ambiguous,
 		"lecturesDeViseeBrutes", c.AimReads, "episodesAvecVisee", c.RidesWithAim,
 		"pointsDeVisee", c.AimSamples, "framesDEpisode", c.AimRideFrames)
 	// LE CYCLE DE REAPPARITION porte ses deux moities de denominateur au journal comme il les

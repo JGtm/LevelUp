@@ -193,10 +193,17 @@ type VehicleRide struct {
 	// tienne la promesse ci-dessus, elle passe par le XUID (`colorByXuidResolver`) et non plus par
 	// le pont slot -> joueur, qui est MUET pendant l episode puisque le bipede ne replique plus.
 	XUID string `json:"xuid,omitempty"`
-	// Seat est le siege lu dans l evenement (`R(6)`), 0 = conducteur. POINTEUR : le siege 0 est
-	// la valeur la PLUS frequente et la plus utile du champ (93,8 % des sorties, 21 des
-	// 22 embarquements mesures), et `omitempty` sur un entier l effacerait exactement comme une
-	// absence de lecture. Nil = aucun evenement apparie, ou charge trop courte.
+	// Seat est le siege de cet occupant, LU DANS LE FILM au composant `object-parent-state`
+	// (`i10`, champ de six bits en +0x3a0) : 0 = conducteur, 1 = passager, 2 = tourelleur sur la
+	// famille Warthog. POINTEUR : le siege 0 est la valeur la plus frequente et la plus utile du
+	// champ, et `omitempty` sur un entier l effacerait exactement comme une absence de lecture.
+	// Nil = aucune montee a bord ECRITE ne couvre cet episode (lot 5.10 : le canal est une
+	// transition du chemin delta, il ne couvre pas tous les episodes).
+	//
+	// IL NE VIENT PLUS DU CHAMP `R(6)` DE L EVENEMENT, et c est une correction : la mesure D1 du
+	// lot 5.5 a trouve 153 occurrences de `seat = 0` pour 100 tirs de tourelle de `4f77afc1`,
+	// JAMAIS de siege 1 ni 2, et plusieurs episodes revendiquant le siege du conducteur sur le
+	// MEME vehicule a la MEME image. Ce champ-la ne departageait pas les occupants.
 	Seat *int `json:"seat,omitempty"`
 	// Src dit D OU viennent les bornes : `event` (les deux datees a la milliseconde par la liste
 	// d evenements), `mixed` (une des deux), `gap` (aucune — le seul trou de position, borne a la
@@ -316,12 +323,13 @@ type VehicleCoverage struct {
 	Rides          int `json:"rides"`
 	VehiclesRidden int `json:"vehiclesRidden"`
 	RidesNamed     int `json:"ridesNamed"`
-	// RidesFromEvent / RidesMixed / RidesFromGap ventilent les episodes par PRECISION de leurs
-	// bornes (cf. `VehicleRide.Src`). Somme == Rides.
-	RidesFromEvent int `json:"ridesFromEvent"`
-	RidesMixed     int `json:"ridesMixed"`
-	RidesFromGap   int `json:"ridesFromGap"`
-	// RidesWithSeat : episodes dont le siege a ete lu dans un evenement.
+	// RidesRead / RidesProximity ventilent les episodes par SOURCE (cf. `VehicleRide.Src`).
+	// Somme == Rides. `RidesRead` compte ce que le film ECRIT (`object-parent-state`),
+	// `RidesProximity` le REPLI par trou de position — et c est la seule paire qui dise au
+	// lecteur du document ce qui est lu et ce qui est deduit.
+	RidesRead      int `json:"ridesRead"`
+	RidesProximity int `json:"ridesProximity"`
+	// RidesWithSeat : episodes dont le siege a ete LU DANS LE FILM (`object-parent-state`).
 	RidesWithSeat int `json:"ridesWithSeat"`
 	// AimReads / RidesWithAim / AimSamples / AimRideFrames sont LA COUVERTURE DE LA VISEE
 	// D OCCUPANT (schema 31), et les quatre sont necessaires parce qu ils distinguent quatre

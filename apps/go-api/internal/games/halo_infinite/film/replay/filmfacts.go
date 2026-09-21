@@ -219,7 +219,7 @@ import (
 // INCHANGE a l octet, donc les huit fixtures `testdata/inputs_<short8>.bin.gz` restent valides et
 // aucun film n a a etre redecode pour les regenerer. C est [SchemaDesFaits] qui porte le
 // changement (2 -> 3) : lui dit ce que les SECTIONS portent, la magie ce que le BLOB porte.
-const filmFactsMagic = "REPLAYINPUTS24\n"
+const filmFactsMagic = "REPLAYINPUTS25\n"
 
 // ---------------------------------------------------------------------------
 // LES CHAMPS SERIALISES, PAR TYPE — ce sont ceux que l assemblage consomme :
