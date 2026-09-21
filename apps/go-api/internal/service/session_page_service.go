@@ -68,6 +68,12 @@ type SessionPageService struct {
 	sessionUsageRepo port.SessionUsageRepository
 	usageXUID        string
 	usageFriends     teammates.FriendGamertagsResolver
+	// matchRangeRepo / matchRangeXUID (optionnels) : le bloc « portée des engagements »
+	// de la session (lot N2, D22-4). Le repo lit les frags mesurés de TOUT le lobby de
+	// chaque match — le référentiel sans lequel une médiane de portée n'est pas lisible.
+	// nil / xuid vide → bloc omis (dégradation gracieuse). Cf. session_page_range.go.
+	matchRangeRepo port.MatchRangeRepository
+	matchRangeXUID string
 	// repoRoot (optionnel) : racine du dépôt, pour charger le catalogue d'armes du
 	// TITRE et nommer les familles de socle du bloc usage (session_page_usage_labels.go).
 	// Vide → les familles gardent leur clé, ce qui est un rendu valide, pas une panne.
@@ -292,6 +298,10 @@ func (s *SessionPageService) GetPage(
 	// les deux colonnes du drawer parlent bien des mêmes matchs.
 	s.attachSessionUsage(ctx, &resp, currentMatches, compareMatchesForEvents,
 		req.Filters.MatchContext, req.Locale)
+
+	// Bloc « portée des engagements » (D22-4) : même périmètre de matchs que les deux
+	// blocs ci-dessus, best-effort, cf. session_page_range.go.
+	s.attachSessionRange(ctx, &resp, currentMatches, compareMatchesForEvents)
 
 	slog.InfoContext(ctx, "session page generated",
 		"resolved_session", currentLabel,

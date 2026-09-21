@@ -330,7 +330,13 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb)).
 		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
-		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID)
+		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID).
+		// Bloc « portée des engagements » (D22-4) : câblage INCONDITIONNEL, MÊME repo et
+		// MÊME classificateur que la Synthèse et la Timeseries. Le repo est le seul à
+		// savoir si ce titre a des positions par kill — il rend
+		// games.ErrCapabilityNotSupported et le service omet le bloc ; un `if capability`
+		// ici prendrait la même décision à deux endroits qui divergeraient.
+		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID)
 	// Axe « Objectifs » par opportunité (profil de participation Session) : gated par
 	// la capability match.objective.stats (Infinite ; absente pour Halo 5 → axe
 	// retiré). Jamais slug==.

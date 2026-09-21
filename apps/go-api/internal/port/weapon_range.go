@@ -27,8 +27,9 @@ import (
 // WeaponRangeFilters paramètre la lecture des frags mesurés.
 //
 // Garde-fou identique à WeaponAccuracyFilters : la requête balaie une table PARTAGÉE (tous
-// les joueurs, tous les matchs). Sans MatchIDs ni (Gamertag/XUIDs), ce serait un scan
-// complet — rejeté par Validate().
+// les joueurs, tous les matchs). Sans MatchIDs, ce serait un scan complet — rejeté par
+// Validate(). MatchIDs présent, il faut EN PLUS soit un désignant de joueur, soit
+// AllPlayers (cf. ce champ).
 type WeaponRangeFilters struct {
 	// MatchIDs borne la lecture aux matchs du scope (déjà filtré par période côté service).
 	MatchIDs []string
@@ -39,6 +40,19 @@ type WeaponRangeFilters struct {
 
 	// XUIDs désigne le ou les joueurs par xuid (alternative à Gamertag).
 	XUIDs []string
+
+	// AllPlayers lit les frags de TOUS LES JOUEURS des matchs du scope, sans désignant.
+	//
+	// POURQUOI LA GARDE ANTI-SCAN TIENT QUAND MÊME. Ce qu'elle interdit, c'est un balayage
+	// NON BORNÉ de la table partagée ; elle ne protège pas un joueur en particulier. Quand
+	// `MatchIDs` borne la lecture, le coût est celui de ces matchs-là — le même que la
+	// lecture d'un match entier que la Match view fait déjà (KillDistanceRepo.LoadMatch,
+	// aucun filtre xuid). Sans `MatchIDs`, `Validate()` refuse comme avant.
+	//
+	// À QUOI ÇA SERT : la portée d'un joueur ne se lit que RELATIVEMENT à son lobby (la
+	// médiane du lobby d'un BTB vaut le double de celle d'une arène). Le référentiel exige
+	// donc les frags des huit ou seize joueurs, camp adverse compris.
+	AllPlayers bool
 }
 
 // ErrWeaponRangeFiltersTooBroad est retournée par Validate() quand les filtres laisseraient
@@ -52,7 +66,9 @@ func (f WeaponRangeFilters) Validate() error {
 	if len(f.MatchIDs) == 0 {
 		return ErrWeaponRangeFiltersTooBroad
 	}
-	if f.Gamertag == "" && len(f.XUIDs) == 0 {
+	// AllPlayers remplace le désignant de joueur : le scan reste borné par MatchIDs,
+	// qui vient d'être exigé ci-dessus.
+	if !f.AllPlayers && f.Gamertag == "" && len(f.XUIDs) == 0 {
 		return ErrWeaponRangeFiltersTooBroad
 	}
 	return nil
