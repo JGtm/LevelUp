@@ -1,0 +1,1262 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Cinq rendus a rejouer — trois propositions chacun (D11 / D13 / D14 / D15)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Jetons de l'app (apps/web/src/styles/globals.css + lib/accessibility/palettes/default.ts),
+     repris a l'identique, jamais inventes. */
+  :root {
+    --background: oklch(0.985 0.004 255); --foreground: oklch(0.255 0.02 255);
+    --card: oklch(0.995 0.002 255); --border: oklch(0.9 0.01 255); --muted: oklch(0.96 0.008 255);
+    --muted-foreground: oklch(0.52 0.015 255); --popover: oklch(0.995 0.002 255);
+    --info: #3B82F6; --success: #10B981; --warning: #F59E0B;
+    --outcome-win: #10B981; --outcome-loss: #EF4444; --outcome-draw: #3B82F6; --outcome-dnf: #8B5CF6;
+    --stat-kills: #059669; --stat-deaths: #F43F5E;
+    --assist-received: #A16207; --assist-given: #7C3AED;
+    --team-ally: #3B82F6; --team-enemy: #EF4444;
+    --divergent-pos: #22C55E; --divergent-neg: #EF4444; --divergent-neutral: #60A5FA;
+    --compare-a: #818CF8; --compare-b: #D97706;
+    --chart-series-1: #93C5FD; --chart-series-2: #6366F1; --chart-series-3: #4F46E5; --chart-series-4: #4338CA;
+    --radius: 0.5rem;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0);
+  } }
+  :root[data-theme="dark"] {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0);
+  }
+  body { margin:0; background:var(--background); color:var(--foreground); font-family:'Roboto',system-ui,sans-serif; font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1180px; margin:0 auto; padding:24px 20px 80px; }
+  .crumb { font-size:12px; color:var(--muted-foreground); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .toolbar { margin-left:auto; display:flex; gap:8px; }
+  button { font:inherit; font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--card); color:var(--foreground); cursor:pointer; }
+  h1 { font-size:21px; margin:16px 0 6px; }
+  p.lede { margin:0; font-size:13px; color:var(--muted-foreground); max-width:88ch; }
+  section.block { display:flex; flex-direction:column; gap:12px; margin-top:38px; scroll-margin-top:12px; }
+  section.block > header h2 { margin:0; font-size:17px; font-weight:600; border-bottom:1px solid var(--border); padding-bottom:6px; }
+  section.block > header p { margin:6px 0 0; font-size:12.5px; color:var(--muted-foreground); max-width:96ch; }
+  h3.sub { margin:18px 0 0; font-size:14px; font-weight:600; }
+  .chip { display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:1px 9px; font-size:10.5px; letter-spacing:.03em; text-transform:uppercase; border:1px solid var(--border); color:var(--muted-foreground); white-space:nowrap; }
+  .chip.on { border-color:var(--success); color:var(--success); }
+  .chip.new { border-color:var(--info); color:var(--info); border-style:dashed; }
+  .chip.reco { border-color:var(--warning); color:var(--warning); }
+  .section-card { display:flex; flex-direction:column; border-radius:var(--radius); border:1px solid var(--border); background:var(--card); min-width:0; }
+  .section-card.now { border-style:dashed; }
+  .section-card > h4 { margin:0; border-bottom:1px solid var(--border); padding:8px 12px; font-size:13.5px; font-weight:500; display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .section-card > h4 .count { font-size:11px; font-weight:400; color:var(--muted-foreground); font-variant-numeric:tabular-nums; }
+  .chart { width:100%; padding:10px 12px 4px; box-sizing:border-box; }
+  .chart svg { display:block; width:100%; height:auto; overflow:visible; font-family:inherit; }
+  .note { padding:6px 12px 10px; font-size:11.5px; color:var(--muted-foreground); margin:0; }
+  .note b { font-weight:500; color:var(--foreground); }
+  ul.says { margin:0 0 6px; padding:0 12px 0 28px; font-size:12px; color:var(--muted-foreground); }
+  ul.says li { margin:3px 0; }
+  ul.says b { color:var(--foreground); font-weight:500; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  @media (max-width:980px){ .grid2, .grid3 { grid-template-columns:1fr; } }
+  svg text { fill:var(--foreground); font-size:11px; }
+  svg text.muted { fill:var(--muted-foreground); font-size:10px; }
+  svg text.num { font-variant-numeric:tabular-nums; }
+  svg text.inbar { fill:#ffffff; font-size:10px; font-weight:500; font-variant-numeric:tabular-nums; }
+  svg .grid { stroke:var(--border); stroke-width:1; }
+  svg .axis { stroke:var(--muted-foreground); stroke-width:1.2; }
+  svg .hit { cursor:pointer; }
+  svg .hit:hover .mark { stroke:var(--foreground); stroke-width:2; }
+  #tip { position:fixed; z-index:10; pointer-events:none; display:none; background:var(--popover); border:1px solid var(--border); border-radius:6px; padding:8px 10px; font-size:11px; box-shadow:0 4px 14px rgba(0,0,0,.35); max-width:300px; line-height:1.4; }
+  #tip b { font-weight:600; } #tip .m { color:var(--muted-foreground); }
+  .cost { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:11.5px; color:var(--muted-foreground); padding:8px 12px 12px; border-top:1px dashed var(--border); margin-top:auto; }
+  .cost dt { font-weight:500; color:var(--foreground); white-space:nowrap; }
+  .cost dd { margin:0; }
+  nav.toc { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  nav.toc a { font-size:12px; text-decoration:none; color:var(--muted-foreground); border:1px solid var(--border); border-radius:999px; padding:3px 11px; }
+  nav.toc a:hover { color:var(--foreground); border-color:var(--info); }
+  table.cmp { border-collapse:collapse; font-size:12px; width:100%; margin-top:4px; }
+  table.cmp th, table.cmp td { text-align:left; padding:7px 9px; border-bottom:1px solid var(--border); vertical-align:top; }
+  table.cmp th { font-weight:600; color:var(--muted-foreground); font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  code { font-size:11.5px; }
+</style>
+
+<div class="page">
+  <div class="crumb">
+    <span>LevelUp</span><span style="opacity:.5">/</span><span>V7.5</span><span style="opacity:.5">/</span>
+    <span>Maquette 2026-09-21 &middot; lot F</span>
+    <span class="chip">Explorer</span><span class="chip">Escouade</span><span class="chip">Match view</span>
+    <span class="toolbar"><button id="theme">Theme clair / sombre</button></span>
+  </div>
+
+  <h1>Cinq rendus a rejouer — trois propositions chacun</h1>
+  <p class="lede">
+    Decisions <b>D11 / D13 / D14 / D15</b> du plan <code>PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md</code> :
+    cinq blocs dont la FORME ne convient pas. Pour chacun, le rendu <b>d'aujourd'hui reproduit d'apres le
+    code</b>, puis <b>trois propositions</b>. Aucun code applicatif n'est ecrit avant le verdict.
+  </p>
+  <p class="lede" style="margin-top:8px">
+    <b>Deux interdits poses par l'utilisateur, tenus partout ici.</b> Rien de circulaire : pas de donut, pas de
+    camembert, pas de sunburst, pas de radar. Rien de plat et mince : pas de barre unique de 6 px, pas de
+    papillon fin, pas de courbe seule sur un fond vide. Toute forme proposee a de la <b>hauteur</b> et de la
+    <b>matiere</b> — une colonne epaisse, un mur de briques, une aire pleine, une grille de cases.
+  </p>
+  <p class="lede" style="margin-top:8px">
+    Les couleurs sont les <b>jetons de l'app</b>, recopies de <code>globals.css</code> et de
+    <code>lib/accessibility/palettes/default.ts</code> : aucune teinte inventee. Les chiffres sont
+    <b>plausibles</b> (Halo Infinite, 4v4 et BTB) et ne viennent d'aucune base — c'est une maquette. Chaque
+    proposition dit ce qu'elle <b>raconte de mieux</b> et son <b>cout</b> (composant du catalogue
+    <code>components/charts/</code> reutilisable, ou neuf).
+  </p>
+
+  <nav class="toc">
+    <a href="#s1">1. Part des assistances</a>
+    <a href="#s2">2. Repartition des resultats</a>
+    <a href="#s3">3. Taux d'echange par session</a>
+    <a href="#s4">4. Controle des armes speciales</a>
+    <a href="#s5">5. Usages d'equipement</a>
+    <a href="#reco">Recapitulatif</a>
+  </nav>
+
+  <!-- =========================================================== 1 ASSISTANCES -->
+  <section class="block" id="s1">
+    <header>
+      <h2>1. Explorer &middot; « Part des assistances » <span class="chip">D11</span></h2>
+      <p>
+        <code>features/explorer/ExplorerTargetAssists.tsx</code> &rarr;
+        <code>_shared/assists/AssistExchangeSummary</code>. Donnee : sur les matchs joues DANS LA MEME EQUIPE
+        dont le film est decode, les assistances qu'il m'a servies et celles que je lui ai servies, chacune
+        decoupee en trois tranches (coup de pouce &lt; 25 % des degats, travail partage 25-50 %, frag prepare
+        &gt; 50 %). L'echelle est <b>logarithmique</b> et bornee par <code>assist_volume_max</code>, le plus gros
+        volume d'un sens parmi TOUTES les relations du joueur.
+      </p>
+    </header>
+
+    <div class="section-card now">
+      <h4>Aujourd'hui <span class="count">AssistExchangeSummary — deux tetes, barre papillon 18 px, total &middot; part</span></h4>
+      <div class="chart"><svg id="now-1" viewBox="0 0 1060 130" role="img" aria-label="Part des assistances aujourd'hui"></svg></div>
+      <p class="note">
+        Le defaut est double. <b>L'echelle log</b> ecrase l'ecart : 63 contre 48 se ressemblent a l'oeil alors
+        que c'est 31 % de plus, et la borne etant le plus gros volume de TOUTES les relations, une paire
+        ordinaire remplit un tiers de sa demi-barre. <b>La barre fait 18 px</b> et porte trois tranches de chaque
+        cote : les tranches n'ont pas la place d'etre lues, et rien n'y est etiquete. La part exacte n'existe
+        qu'en texte sous la figure — <b>la figure elle-meme ne la porte pas</b>.
+      </p>
+    </div>
+
+    <div class="grid3">
+      <div class="section-card">
+        <h4>1.A &middot; Deux colonnes affrontees <span class="count"><span class="chip reco">recommande</span></span></h4>
+        <div class="chart"><svg id="p1a" viewBox="0 0 340 296" role="img" aria-label="Proposition 1.A"></svg></div>
+        <ul class="says">
+          <li>Deux colonnes de 62 px, <b>echelle lineaire commune</b>, segmentees par tranche, compte ecrit dans le segment.</li>
+          <li>L'ecart 63/48 se voit enfin : la hauteur EST la donnee, plus son logarithme.</li>
+          <li>Les tranches deviennent lisibles — « il me prepare des frags, je lui donne des coups de pouce » ; le trait de <b>parite</b> traverse les deux colonnes et rend le verdict.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Reutilisable</b> : <code>&lt;BarStackedChart&gt;</code> vertical, 2 categories x 3 series.</dd>
+          <dt>A ecrire</dt><dd>La borne d'echelle passe du volume log au <b>max des deux sens</b> — l'API sert deja les totaux et les tranches.</dd>
+        </dl>
+      </div>
+      <div class="section-card">
+        <h4>1.B &middot; Mur de briques <span class="count">une brique = 3 assistances</span></h4>
+        <div class="chart"><svg id="p1b" viewBox="0 0 340 296" role="img" aria-label="Proposition 1.B"></svg></div>
+        <ul class="says">
+          <li>Deux murs, une brique par tranche de 3 assistances, teintee par tranche : la <b>surface</b> est le volume, le compte de briques est verifiable a l'oeil.</li>
+          <li>Un petit echantillon n'y ment pas : 5 briques restent 5 briques, la ou une barre remplie a 8 % ne dit rien.</li>
+          <li>La forme dit « c'est un compte », jamais « c'est un taux » — le reproche exact fait au papillon.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Neuf</b>, petit : un <code>&lt;BrickWall&gt;</code> en DOM pur (grille CSS), sans ECharts.</dd>
+          <dt>Risque</dt><dd>Au-dela de ~120 assistances le mur monte : plafonner la brique a 5 unites, ecrit sous la figure.</dd>
+        </dl>
+      </div>
+      <div class="section-card">
+        <h4>1.C &middot; Aire double au fil des matchs <span class="count">le meme total, mais date</span></h4>
+        <div class="chart"><svg id="p1c" viewBox="0 0 340 296" role="img" aria-label="Proposition 1.C"></svg></div>
+        <ul class="says">
+          <li>Deux aires pleines ancrees au meme axe : au-dessus ce qu'il me sert, en dessous ce que je lui sers, match par match.</li>
+          <li>Repond a une question que le total ne pose meme pas : l'echange est-il <b>regulier</b> ou porte par deux matchs ?</li>
+          <li>Un binome recent se distingue d'un binome ancien ; le desequilibre se lit en surface, pas en chiffres compares.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Reutilisable</b> : <code>&lt;TimeseriesLineChart&gt;</code> (aires, axe categoriel).</dd>
+          <dt>A ecrire</dt><dd><b>Cout reel cote Go</b> : <code>RelationAssists</code> est un cumul — il faudrait le servir par match. Le plus cher des trois.</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================== 2 RESULTATS -->
+  <section class="block" id="s2">
+    <header>
+      <h2>2. Explorer &middot; « Repartition des resultats » <span class="chip">D11</span></h2>
+      <p>
+        <code>ExplorerTargetSampleStats.tsx</code> &rarr; <code>ExplorerTargetOutcome</code> :
+        <code>&lt;OutcomeBar&gt;</code> (une barre <b>de 6 px</b>, <code>h-1.5</code>) puis une legende
+        V / N / D et le taux de victoire pousse a droite. Donnee : 8 victoires, 1 nul, 5 defaites sur 14 matchs
+        joues ensemble, taux 57,1 %. Le composant <code>&lt;OutcomeSequenceTape&gt;</code> (bande RLE des
+        derniers resultats) existe deja au catalogue et sert trois pages.
+      </p>
+    </header>
+
+    <div class="section-card now">
+      <h4>Aujourd'hui <span class="count">OutcomeBar 6 px + legende V/N/D + taux</span></h4>
+      <div class="chart"><svg id="now-2" viewBox="0 0 1060 92" role="img" aria-label="Repartition des resultats aujourd'hui"></svg></div>
+      <p class="note">
+        La barre est <b>la plus fine de l'app</b> et porte pourtant trois grandeurs. Le nul, a 7 %, y est un
+        trait de 4 px qu'on ne voit pas. Le compte n'est pas dans la figure mais dans la legende, et le taux de
+        victoire — <b>la seule chose que l'on vient chercher</b> — est un petit texte gris pousse a droite.
+      </p>
+    </div>
+
+    <div class="grid3">
+      <div class="section-card">
+        <h4>2.A &middot; Colonne epaisse + bande des matchs <span class="count"><span class="chip reco">recommande</span></span></h4>
+        <div class="chart"><svg id="p2a" viewBox="0 0 340 296" role="img" aria-label="Proposition 2.A"></svg></div>
+        <ul class="says">
+          <li>Une colonne empilee de 72 px — compte ET part ecrits dans chaque segment —, le taux en chiffre d'appel a cote, la <b>bande des resultats</b> deja en service dessous.</li>
+          <li>Le nul cesse d'etre invisible : un segment de 72 x 14 px porte son « 1 ».</li>
+          <li>La bande ajoute l'ordre : « les trois dernieres sont des defaites » n'etait nulle part.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Reutilisable x2</b> : <code>&lt;BarStackedChart&gt;</code> + <code>&lt;OutcomeSequenceTape&gt;</code>, tous deux au catalogue.</dd>
+          <dt>A ecrire</dt><dd>Rien cote Go : <code>common_matches</code> porte deja l'ordre des resultats.</dd>
+        </dl>
+      </div>
+      <div class="section-card">
+        <h4>2.B &middot; Mur des 14 matchs <span class="count">une case = un match</span></h4>
+        <div class="chart"><svg id="p2b" viewBox="0 0 340 296" role="img" aria-label="Proposition 2.B"></svg></div>
+        <ul class="says">
+          <li>Une case de 30 px par match, en ordre chronologique, teintee par resultat ; le taux en grand au-dessus. La grille <b>compte et ordonne</b> d'un seul geste.</li>
+          <li>Sur un petit echantillon — le cas NOMINAL d'un adversaire croise — un mur de 14 cases est plus honnete qu'un pourcentage.</li>
+          <li>Chaque case est survolable (date, carte, score) : une part de barre ne l'est pas.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Reutilisable</b> : <code>&lt;Heatmap2DChart&gt;</code> en paliers discrets, ou le <code>&lt;BrickWall&gt;</code> de 1.B.</dd>
+          <dt>Risque</dt><dd>Au-dela de ~60 matchs communs la grille sature : basculer sur 2.A passe un seuil.</dd>
+        </dl>
+      </div>
+      <div class="section-card">
+        <h4>2.C &middot; Escalier du bilan cumule <span class="count">+1 par victoire, -1 par defaite</span></h4>
+        <div class="chart"><svg id="p2c" viewBox="0 0 340 296" role="img" aria-label="Proposition 2.C"></svg></div>
+        <ul class="says">
+          <li>Une aire pleine ancree a zero : le bilan monte a chaque victoire, descend a chaque defaite, reste plat sur un nul. La valeur finale est le bilan de la relation.</li>
+          <li>Dit ce qu'aucun taux ne dit : <b>quand</b> ca s'est joue — ici les cinq premiers matchs se neutralisent et tout le bilan se fait apres.</li>
+          <li>Meme grammaire que la « Balance des degats cumulee » deja en service : une aire divergente ancree a zero.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Reutilisable</b> : <code>&lt;TimeseriesLineChart&gt;</code> en aire, palier <code>step</code>.</dd>
+          <dt>Reserve</dt><dd>Perd le compte exact des nuls (un palier plat) — a garder en legende, ou a apparier avec 2.A.</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================== 3 TAUX SESSION -->
+  <section class="block" id="s3">
+    <header>
+      <h2>3. Escouade &middot; « Taux d'echange par session » <span class="chip">D13</span></h2>
+      <p>
+        <code>features/squad/SquadEchangeTauxSessionCard.tsx</code> : <code>&lt;TimeseriesLineChart&gt;</code>,
+        un point par session, axe categoriel, axe des ordonnees en %, une seule serie donc pas de legende,
+        DERNIER point etiquete. Donnee : neuf soirees, un taux de reprise entre 33,9 % et 61,5 %, un nombre de
+        frags par soiree entre 29 et 96, et un <b>habituel</b> a 48,3 % que le contrat sert deja
+        (<code>echange.habituel</code>).
+      </p>
+    </header>
+
+    <div class="section-card now">
+      <h4>Aujourd'hui <span class="count">TimeseriesLineChart, une serie, dernier point etiquete</span></h4>
+      <div class="chart"><svg id="now-3" viewBox="0 0 1060 200" role="img" aria-label="Taux d'echange par session aujourd'hui"></svg></div>
+      <p class="note">
+        La courbe est juste mais <b>maigre</b> : un trait de 2 px sur un fond vide, sans reference. Surtout, elle
+        traite a egalite une soiree de <b>96 frags</b> et une soiree de <b>29</b> — le pic a 61,5 % et le creux a
+        33,9 % pesent pareil alors que l'un est trois fois mieux mesure que l'autre. L'habituel, que le contrat
+        sert, n'est pas dessine : rien ne dit si une soiree est bonne.
+      </p>
+    </div>
+
+    <div class="grid3">
+      <div class="section-card">
+        <h4>3.A &middot; Colonnes a largeur proportionnelle <span class="count"><span class="chip reco">recommande</span></span></h4>
+        <div class="chart"><svg id="p3a" viewBox="0 0 340 300" role="img" aria-label="Proposition 3.A"></svg></div>
+        <ul class="says">
+          <li>Hauteur = le taux, <b>largeur = le nombre de frags de la soiree</b>. Une soiree mal mesuree est une colonne etroite : elle ne crie plus aussi fort qu'une grosse.</li>
+          <li>Le trait d'<b>habituel</b> traverse la figure : chaque soiree se lit au-dessus ou en dessous, sans calcul.</li>
+          <li>La surface totale des colonnes est, a l'oeil, le volume de la periode — deux grandeurs dans une forme, sans deuxieme axe.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Neuf</b>, moyen : ECharts <code>custom</code> ou rails DOM. Aucun wrapper du catalogue ne fait la largeur variable.</dd>
+          <dt>A ecrire</dt><dd>Rien cote Go : <code>taux_par_session[].couverture</code> porte deja numerateur et denominateur.</dd>
+        </dl>
+      </div>
+      <div class="section-card">
+        <h4>3.B &middot; Aire d'ecart a l'habituel <span class="count">ancree a 48,3 %, pas a zero</span></h4>
+        <div class="chart"><svg id="p3b" viewBox="0 0 340 300" role="img" aria-label="Proposition 3.B"></svg></div>
+        <ul class="says">
+          <li>L'axe n'est plus zero mais l'<b>habituel</b> : la surface verte est ce qu'on a gagne, la rouge ce qu'on a perdu.</li>
+          <li>Les colonnes fantomes en fond portent le volume de frags : on voit tout de suite qu'un ecart negatif est adosse a 29 frags.</li>
+          <li>Meme grammaire que la balance des degats cumulee, deja en service ailleurs : une aire signee sur une reference.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Reutilisable</b> : <code>&lt;TimeseriesLineChart&gt;</code> (aire + <code>markLine</code>) ; fond en deuxieme serie de barres.</dd>
+          <dt>Reserve</dt><dd>La valeur absolue du taux s'efface au profit de l'ecart : la garder en infobulle et en etiquette du dernier point.</dd>
+        </dl>
+      </div>
+      <div class="section-card">
+        <h4>3.C &middot; Colonnes repris / non repris <span class="count">le taux comme proportion, pas comme %</span></h4>
+        <div class="chart"><svg id="p3c" viewBox="0 0 340 300" role="img" aria-label="Proposition 3.C"></svg></div>
+        <ul class="says">
+          <li>La colonne vaut les frags de la soiree ; sa part basse est celle qui a ete <b>reprise dans la fenetre</b>, sa part haute non. Le taux est ecrit au-dessus.</li>
+          <li>Rien n'est normalise : le volume et la proportion se lisent ensemble, et la soiree a 29 frags est visiblement courte.</li>
+          <li>C'est la forme la plus proche de la mesure elle-meme — une fraction, montree comme une fraction.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Reutilisable</b> : <code>&lt;BarStackedChart&gt;</code>, 2 series. La moins chere des trois.</dd>
+          <dt>Reserve</dt><dd>Le taux n'est plus une hauteur : la tendance d'une soiree a l'autre se lit moins bien qu'en 3.A.</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================== 4 ARMES -->
+  <section class="block" id="s4">
+    <header>
+      <h2>4. Match view &middot; « Controle des armes speciales » <span class="chip">D14</span></h2>
+      <p>
+        <code>features/match-replay/MatchPadControlSection.tsx</code> : un socle par ligne, nom a gauche avec son
+        total, puis un rail DOM de 24 px valant <b>100 % des occupations NOMMEES</b> de ce socle, decoupe en un
+        segment par joueur — mon camp d'abord, l'adverse ensuite, un filet entre les deux ; les lignes sont
+        groupees par niveau d'arme avec un sous-total, legende des joueurs en bas. Le nouvel ordre decide (D2)
+        est <b>puissance, terrain, puis base repliee</b> : les <b>socles de bonus</b> (camouflage, surbouclier)
+        sont des <b>equipements</b> et ne figurent plus dans cette section — ils se lisent au §5. Aucune
+        proposition ci-dessous n'en dessine.
+      </p>
+    </header>
+
+    <div class="section-card now">
+      <h4>Aujourd'hui <span class="count">un rail 100 % par socle, groupe par niveau</span></h4>
+      <div class="chart"><svg id="now-4" viewBox="0 0 1060 300" role="img" aria-label="Controle des armes speciales aujourd'hui"></svg></div>
+      <p class="note">
+        Le defaut tient en une phrase : <b>tous les rails font la meme longueur</b>. Un socle a 3 prises occupe
+        autant de largeur qu'un socle a 12, et l'oeil, qui lit des longueurs, conclut a tort qu'ils comptent
+        pareil. Le total est ecrit a gauche, en petit, et c'est la seule chose qui detrompe. Avec 8 joueurs sur
+        un rail, la plupart des segments tombent sous les 6 % ou le compte s'ecrit, et restent muets.
+      </p>
+    </div>
+
+    <div class="grid3">
+      <div class="section-card">
+        <h4>4.A &middot; Colonnes de prises, groupees par niveau <span class="count"><span class="chip reco">recommande</span></span></h4>
+        <div class="chart"><svg id="p4a" viewBox="0 0 340 320" role="img" aria-label="Proposition 4.A"></svg></div>
+        <ul class="says">
+          <li>Une colonne de 40 px par socle, <b>hauteur = les prises reelles</b>, empilee par joueur et coloree par camp ; les niveaux sont des blocs separes, puissance en tete, terrain ensuite, base repliee.</li>
+          <li>Un socle decisif pris 12 fois domine visuellement un socle pris 3 fois : c'est le fait que le rendu actuel efface.</li>
+          <li>La hauteur commune a tous les socles rend enfin comparables « qui a rafle l'epee » et « qui a tenu le sniper ».</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Reutilisable</b> : <code>&lt;BarStackedChart&gt;</code> vertical, une serie par joueur, groupes par niveau.</dd>
+          <dt>A ecrire</dt><dd>Rien de nouveau : <code>padControlChart</code> produit deja les segments par joueur et l'eclaircissement par camp.</dd>
+        </dl>
+      </div>
+      <div class="section-card">
+        <h4>4.B &middot; Grille joueurs x socles <span class="count">ValueGrid, une echelle par colonne</span></h4>
+        <div class="chart"><svg id="p4b" viewBox="0 0 340 320" role="img" aria-label="Proposition 4.B"></svg></div>
+        <ul class="says">
+          <li>Lignes = les 8 joueurs dans l'ordre du roster, filet entre les camps ; colonnes = les socles ranges par niveau. La case porte le compte, sa teinte la part du socle.</li>
+          <li>Deux lectures dans une figure : par <b>ligne</b> le profil d'un joueur (« Moi prend tout le sniper et rien d'autre »), par <b>colonne</b> qui controle un socle.</li>
+          <li>C'est exactement la grille deja servie par le bilan d'equipement voisin : les deux sections se mettent a parler la meme langue.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Reutilisable tel quel</b> : <code>&lt;ValueGrid&gt;</code> (<code>components/charts/ValueGrid.tsx</code>).</dd>
+          <dt>Reserve</dt><dd>Le total par socle n'est plus une longueur : le garder en ligne de pied, comme la grille le fait deja.</dd>
+        </dl>
+      </div>
+      <div class="section-card">
+        <h4>4.C &middot; Rails horizontaux a longueur vraie <span class="count">le rendu actuel, denormalise</span></h4>
+        <div class="chart"><svg id="p4c" viewBox="0 0 340 320" role="img" aria-label="Proposition 4.C"></svg></div>
+        <ul class="says">
+          <li>On garde l'horizontale et l'ordre par niveau, mais <b>la longueur devient le compte</b> : un seul axe de prises pour tous les socles, rails epaissis a 28 px.</li>
+          <li>Le changement le plus petit qui corrige le defaut principal, et celui qui preserve les noms de socle longs (« Lance-roquettes ») sans les tronquer.</li>
+          <li>Le sous-total de niveau devient une barre de fond derriere son groupe : le niveau se compare au niveau.</li>
+        </ul>
+        <dl class="cost">
+          <dt>Cout</dt><dd><b>Reutilisable</b> : le meme composant DOM, avec un denominateur global au lieu d'un denominateur par ligne.</dd>
+          <dt>Risque</dt><dd>Sur un match a un seul socle chaud, les autres rails deviennent des moignons : plancher de largeur a 4 px par segment non nul.</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================== 5 EQUIPEMENT -->
+  <section class="block" id="s5">
+    <header>
+      <h2>5. Match view &middot; « Usages d'equipement » — deux blocs qui doivent se lire ensemble <span class="chip">D15</span></h2>
+      <p>
+        <code>features/match-replay/MatchEquipmentUsageSection.tsx</code> porte deux vues :
+        <b>« Nombre d'usages par joueur »</b> — la grille <code>&lt;ValueGrid&gt;</code>, une colonne par
+        <b>famille</b> (Grappin, Surbouclier, Camouflage, Mur, Capteur, Propulseur), chaque colonne avec SON
+        echelle —, et <b>« Part de chaque equipe »</b> — une barre 100 % DOM par <b>groupe</b>
+        (Grappin / Equipement). Le constat de l'utilisateur est exact et c'est le vrai sujet :
+        <b>les deux vues ne parlent pas des memes categories.</b> On lit six familles a gauche et deux groupes a
+        droite ; aucune ligne de la premiere ne se retrouve dans la seconde. Les trois propositions sont donc des
+        <b>paires</b> : memes categories, meme ordre, memes encres des deux cotes.
+      </p>
+    </header>
+
+    <div class="section-card now">
+      <h4>Aujourd'hui <span class="count">a gauche 6 familles, a droite 2 groupes — deux vocabulaires</span></h4>
+      <div class="chart"><svg id="now-5" viewBox="0 0 1060 250" role="img" aria-label="Usages d'equipement aujourd'hui"></svg></div>
+      <p class="note">
+        Les deux vues sont justes separement. Ensemble, elles ne se repondent pas : le lecteur qui voit
+        « Madina97294 a pose 6 murs » a gauche cherche a droite la part de son camp <b>sur les murs</b>, et
+        trouve une barre « Equipement » qui melange murs, capteurs, propulseurs et bonus. Le grappin, lui, a sa
+        barre — parce qu'il est un groupe a lui seul, pas parce que c'est la bonne maille.
+      </p>
+    </div>
+
+    <h3 class="sub">Paire A &middot; Grille par joueur + colonnes par famille <span class="chip reco">recommande</span></h3>
+    <div class="grid2">
+      <div class="section-card">
+        <h4>A-gauche &middot; Usages par joueur <span class="count">ValueGrid, une colonne par famille</span></h4>
+        <div class="chart"><svg id="p5a1" viewBox="0 0 520 260" role="img" aria-label="Paire A gauche"></svg></div>
+      </div>
+      <div class="section-card">
+        <h4>A-droite &middot; Part de chaque equipe, PAR FAMILLE <span class="count">colonnes empilees, hauteur = usages</span></h4>
+        <div class="chart"><svg id="p5a2" viewBox="0 0 520 260" role="img" aria-label="Paire A droite"></svg></div>
+      </div>
+    </div>
+    <div class="section-card">
+      <ul class="says" style="padding-top:10px">
+        <li><b>Memes six familles, meme ordre, memes encres</b> : la colonne « Mur » de gauche est exactement la colonne « Mur » de droite. Le regard passe de l'une a l'autre sans retraduire.</li>
+        <li>A droite la hauteur est le <b>volume reel</b>, pas 100 % : le grappin (24 usages) domine le capteur (6), ce que la barre 100 % actuelle masque completement.</li>
+        <li>Lecture combinee immediate : « mon camp fait 64 % des murs, et c'est Madina97294 qui les pose ».</li>
+      </ul>
+      <dl class="cost">
+        <dt>Cout</dt><dd><b>Reutilisable des deux cotes</b> : <code>&lt;ValueGrid&gt;</code> (deja en place) + <code>&lt;BarStackedChart&gt;</code> vertical.</dd>
+        <dt>A ecrire</dt><dd>Cote droit : agreger <code>usage.byTeam</code> par <b>famille</b> et non par groupe. <code>usageColumnGroups</code> donne deja la liste des familles.</dd>
+      </dl>
+    </div>
+
+    <h3 class="sub">Paire B &middot; Colonnes par joueur + face-a-face des camps</h3>
+    <div class="grid2">
+      <div class="section-card">
+        <h4>B-gauche &middot; Une colonne par famille, empilee par joueur <span class="count">le detail nominatif</span></h4>
+        <div class="chart"><svg id="p5b1" viewBox="0 0 520 260" role="img" aria-label="Paire B gauche"></svg></div>
+      </div>
+      <div class="section-card">
+        <h4>B-droite &middot; Avantage par famille <span class="count">zero au centre, longueur = l'ecart</span></h4>
+        <div class="chart"><svg id="p5b2" viewBox="0 0 520 260" role="img" aria-label="Paire B droite"></svg></div>
+      </div>
+    </div>
+    <div class="section-card">
+      <ul class="says" style="padding-top:10px">
+        <li>A gauche, une seule figure remplace la grille : la colonne d'une famille porte le volume ET, en segments, qui l'a produit. Plus compacte que la grille a 8 lignes.</li>
+        <li>A droite, la <b>meme liste de familles</b> rendue en face-a-face ancre au centre : la longueur est l'AVANTAGE en usages, pas la valeur — la grammaire deja employee par « Total d'objectif par equipe ».</li>
+        <li>La paire repond a deux questions distinctes sans jamais changer de maille : « qui, chez nous » et « eux ou nous ».</li>
+      </ul>
+      <dl class="cost">
+        <dt>Cout</dt><dd><b>Reutilisable</b> : <code>&lt;BarStackedChart&gt;</code> a gauche ; a droite, le face-a-face de <code>MatchObjectivesSection</code> est deja ecrit et se generalise.</dd>
+        <dt>Reserve</dt><dd>A gauche, huit segments dans une colonne de 24 usages : les petits contributeurs passent sous l'etiquette, l'infobulle reste obligatoire.</dd>
+      </dl>
+    </div>
+
+    <h3 class="sub">Paire C &middot; Murs nominatifs + classement partage</h3>
+    <div class="grid2">
+      <div class="section-card">
+        <h4>C-gauche &middot; Mur d'usages par famille <span class="count">une brique = un usage, coloree par joueur</span></h4>
+        <div class="chart"><svg id="p5c1" viewBox="0 0 520 260" role="img" aria-label="Paire C gauche"></svg></div>
+      </div>
+      <div class="section-card">
+        <h4>C-droite &middot; Classement des familles <span class="count">le meme ordre, camp par camp</span></h4>
+        <div class="chart"><svg id="p5c2" viewBox="0 0 520 260" role="img" aria-label="Paire C droite"></svg></div>
+      </div>
+    </div>
+    <div class="section-card">
+      <ul class="says" style="padding-top:10px">
+        <li>Les deux blocs partagent <b>l'ordre de tri</b> — familles par volume decroissant — et pas seulement la liste : la premiere ligne de gauche est la premiere barre de droite.</li>
+        <li>A gauche, chaque usage est une brique nommee : sur des volumes de match (5 a 25), c'est la forme la plus litterale, et la plus survolable (l'instant du geste en infobulle).</li>
+        <li>A droite, le meme classement en barres epaisses camp contre camp donne le verdict d'equipe sans changer de vocabulaire.</li>
+      </ul>
+      <dl class="cost">
+        <dt>Cout</dt><dd>A gauche <b>neuf</b> (le <code>&lt;BrickWall&gt;</code> de 1.B, recoloriable par joueur) ; a droite <b>reutilisable</b> (<code>&lt;BarGroupedChart&gt;</code> horizontal).</dd>
+        <dt>Risque</dt><dd>Le mur ne tient que sur des volumes de match. En Escouade ou en Sessions (des centaines d'usages) il ne se transpose pas — la paire A, si.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- =========================================================== RECAP -->
+  <section class="block" id="reco">
+    <header>
+      <h2>Recapitulatif — les quinze propositions</h2>
+      <p>Une recommandation par sujet. Les deux autres ne sont pas des repoussoirs : elles repondent a une
+         question differente, et le choix appartient a l'utilisateur.</p>
+    </header>
+    <table class="cmp">
+      <tr><th>Sujet</th><th>Proposition</th><th>Forme</th><th>Cout</th></tr>
+      <tr><td rowspan="3"><b>1. Part des assistances</b></td>
+          <td><b>1.A</b> <span class="chip reco">reco</span></td><td>Deux colonnes affrontees, echelle lineaire, tranches empilees, trait de parite</td><td>BarStackedChart</td></tr>
+      <tr><td>1.B</td><td>Mur de briques (1 brique = 3 assistances), deux murs</td><td>Neuf, petit</td></tr>
+      <tr><td>1.C</td><td>Aire double par match (recu au-dessus, donne en dessous)</td><td>Timeseries + <b>travail Go</b></td></tr>
+
+      <tr><td rowspan="3"><b>2. Repartition des resultats</b></td>
+          <td><b>2.A</b> <span class="chip reco">reco</span></td><td>Colonne empilee 72 px + taux en chiffre d'appel + bande des resultats</td><td>BarStacked + OutcomeSequenceTape</td></tr>
+      <tr><td>2.B</td><td>Mur des N matchs, une case par match, ordre chronologique</td><td>Heatmap2D ou BrickWall</td></tr>
+      <tr><td>2.C</td><td>Escalier du bilan cumule, aire ancree a zero</td><td>Timeseries (aire step)</td></tr>
+
+      <tr><td rowspan="3"><b>3. Taux d'echange par session</b></td>
+          <td><b>3.A</b> <span class="chip reco">reco</span></td><td>Colonnes, hauteur = taux, <b>largeur = frags</b>, trait d'habituel</td><td>Neuf, moyen</td></tr>
+      <tr><td>3.B</td><td>Aire d'ecart ancree a l'habituel + colonnes fantomes de volume</td><td>Timeseries</td></tr>
+      <tr><td>3.C</td><td>Colonnes repris / non repris, le taux ecrit au-dessus</td><td>BarStackedChart</td></tr>
+
+      <tr><td rowspan="3"><b>4. Controle des armes speciales</b></td>
+          <td><b>4.A</b> <span class="chip reco">reco</span></td><td>Colonnes de prises par socle, empilees par joueur, blocs par niveau</td><td>BarStackedChart</td></tr>
+      <tr><td>4.B</td><td>Grille joueurs x socles, teinte = part, compte ecrit</td><td>ValueGrid tel quel</td></tr>
+      <tr><td>4.C</td><td>Rails horizontaux a longueur vraie (un seul axe de prises)</td><td>Le composant actuel, denormalise</td></tr>
+
+      <tr><td rowspan="3"><b>5. Usages d'equipement (paires)</b></td>
+          <td><b>A</b> <span class="chip reco">reco</span></td><td>Grille joueurs x familles &nbsp;+&nbsp; colonnes empilees par camp, PAR FAMILLE</td><td>ValueGrid + BarStackedChart</td></tr>
+      <tr><td>B</td><td>Colonnes par famille empilees par joueur &nbsp;+&nbsp; face-a-face des camps</td><td>BarStacked + face-a-face existant</td></tr>
+      <tr><td>C</td><td>Murs nominatifs &nbsp;+&nbsp; classement partage camp contre camp</td><td>BrickWall (neuf) + BarGrouped</td></tr>
+    </table>
+    <p class="note" style="padding-left:0">
+      <b>Le fil commun des cinq recommandations</b> : remplacer un denominateur local (100 % par rail, une
+      echelle log, un pourcentage sans volume) par une <b>hauteur comparable</b> d'une categorie a l'autre. Les
+      cinq defauts releves par l'utilisateur sont le meme defaut.
+    </p>
+  </section>
+</div>
+
+<div id="tip"></div>
+
+<script>
+(function () {
+  'use strict';
+  var NS = 'http://www.w3.org/2000/svg';
+  var tip = document.getElementById('tip');
+  document.getElementById('theme').onclick = function () {
+    var r = document.documentElement, cur = r.getAttribute('data-theme');
+    var dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    r.setAttribute('data-theme', dark ? 'light' : 'dark');
+  };
+  function el(n, a, p) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; }
+  function txt(s, x, y, a, cls, p) { var t = el('text', { x: x, y: y, 'text-anchor': a || 'start' }, p); if (cls) t.setAttribute('class', cls); t.textContent = s; return t; }
+  function hover(node, html) {
+    node.classList.add('hit');
+    node.addEventListener('mousemove', function (e) { tip.innerHTML = html; tip.style.display = 'block'; tip.style.left = Math.min(e.clientX + 14, innerWidth - 310) + 'px'; tip.style.top = (e.clientY + 16) + 'px'; });
+    node.addEventListener('mouseleave', function () { tip.style.display = 'none'; });
+  }
+  function S(id) { return document.getElementById(id); }
+
+  /* Colonnes verticales empilees. Largeur propre par colonne possible (col.cw). */
+  function vcols(id, c) {
+    var s = S(id); if (!s) return;
+    var n = c.cols.length, slot = c.w / n;
+    var Y = function (v) { return c.y0 + c.h - (v / c.max) * c.h; };
+    (c.ticks || []).forEach(function (t) {
+      el('line', { x1: c.x0, y1: Y(t), x2: c.x0 + c.w, y2: Y(t), class: 'grid' }, s);
+      txt(c.fmt ? c.fmt(t) : String(t), c.x0 - 6, Y(t) + 4, 'end', 'muted num', s);
+    });
+    el('line', { x1: c.x0, y1: c.y0 + c.h, x2: c.x0 + c.w, y2: c.y0 + c.h, class: 'axis' }, s);
+    c.cols.forEach(function (col, i) {
+      var cw = col.cw || c.cw, x = c.x0 + slot * i + (slot - cw) / 2, y = c.y0 + c.h, tot = 0;
+      col.parts.forEach(function (p) { tot += p.v; });
+      col.parts.forEach(function (p) {
+        var bh = (p.v / c.max) * c.h; if (bh <= 0) return;
+        y -= bh;
+        var r = el('rect', { x: x, y: y + 1, width: cw, height: Math.max(1, bh - 2), fill: p.color, 'fill-opacity': p.op === undefined ? 1 : p.op, rx: 2 }, s);
+        r.setAttribute('class', 'mark');
+        var g = el('g', {}, s); g.appendChild(r);
+        hover(g, '<b>' + col.label + ' &middot; ' + p.label + '</b><br>' + p.v + ' ' + (c.unit || '') + (p.note ? '<br><span class="m">' + p.note + '</span>' : ''));
+        if (bh >= 15 && cw >= 30) txt(String(p.v), x + cw / 2, y + bh / 2 + 4, 'middle', 'inbar', s);
+      });
+      txt(col.topLabel !== undefined ? col.topLabel : String(tot), x + cw / 2, y - 6, 'middle', 'num', s);
+      txt(col.label, x + cw / 2, c.y0 + c.h + 15, 'middle', null, s);
+      if (col.sub) txt(col.sub, x + cw / 2, c.y0 + c.h + 28, 'middle', 'muted num', s);
+    });
+    if (c.parity !== undefined) {
+      var py = Y(c.parity);
+      el('line', { x1: c.x0 - 4, y1: py, x2: c.x0 + c.w + 4, y2: py, stroke: 'var(--warning)', 'stroke-width': 1.5, 'stroke-dasharray': '4 3' }, s);
+      txt(c.parityLabel, c.x0 + c.w + 6, py + 4, 'start', 'muted', s);
+    }
+  }
+
+  /* Mur de briques : une brique par unite, rangees remplies de bas en haut. */
+  function bricks(id, x0, yBase, groups, cw, ch, gap, perRow) {
+    var s = S(id); if (!s) return;
+    var k = 0;
+    groups.forEach(function (g) {
+      for (var i = 0; i < g.n; i++) {
+        var row = Math.floor(k / perRow), col = k % perRow;
+        var x = x0 + col * (cw + gap), y = yBase - (row + 1) * (ch + gap);
+        var r = el('rect', { x: x, y: y, width: cw, height: ch, rx: 2, fill: g.color, 'fill-opacity': g.op === undefined ? 1 : g.op }, s);
+        r.setAttribute('class', 'mark');
+        var gg = el('g', {}, s); gg.appendChild(r);
+        hover(gg, '<b>' + g.label + '</b>' + (g.note ? '<br><span class="m">' + g.note + '</span>' : ''));
+        k++;
+      }
+    });
+  }
+
+  /* Grille de valeurs : lignes x colonnes, teinte = part de SA colonne. */
+  function grille(id, c) {
+    var s = S(id); if (!s) return;
+    c.cols.forEach(function (cl, j) { txt(cl, c.x0 + c.cw * j + c.cw / 2, c.y0 - 6, 'middle', 'muted', s); });
+    c.rows.forEach(function (rw, i) {
+      var y = c.y0 + i * c.ch;
+      txt(rw.label, c.x0 - 8, y + c.ch / 2 + 4, 'end', null, s);
+      rw.vals.forEach(function (v, j) {
+        var max = c.max[j] || 1, x = c.x0 + c.cw * j;
+        var r = el('rect', { x: x + 1, y: y + 1, width: c.cw - 2, height: c.ch - 2, rx: 2, fill: v ? c.colColor[j] : 'var(--muted)', 'fill-opacity': v ? (0.18 + 0.72 * (v / max)) : 1, stroke: 'var(--border)' }, s);
+        var g = el('g', {}, s); g.appendChild(r);
+        hover(g, '<b>' + rw.label + ' &middot; ' + c.cols[j] + '</b><br>' + v + ' ' + (c.unit || ''));
+        txt(v ? String(v) : '·', x + c.cw / 2, y + c.ch / 2 + 4, 'middle', 'num', s);
+      });
+      if (rw.rule) el('line', { x1: c.x0 - 78, y1: y + c.ch, x2: c.x0 + c.cw * c.cols.length, y2: y + c.ch, stroke: 'var(--muted-foreground)', 'stroke-width': 1.4 }, s);
+    });
+  }
+
+  /* Barres horizontales empilees. norm=true -> chaque rail vaut 100 % (rendu actuel). */
+  function hbars(id, c) {
+    var s = S(id); if (!s) return;
+    c.rows.forEach(function (rw, i) {
+      var y = c.y0 + rw.y, x = c.x0;
+      if (rw.head) { txt(rw.head, 2, y + c.bh / 2 + 4, 'start', 'muted', s); if (rw.headRight) txt(rw.headRight, c.x0 + c.w, y + c.bh / 2 + 4, 'end', 'muted num', s); return; }
+      txt(rw.label, c.x0 - 8, y + c.bh / 2 + 4, 'end', null, s);
+      var tot = 0; rw.parts.forEach(function (p) { tot += p.v; });
+      var denom = c.norm ? tot : c.max;
+      rw.parts.forEach(function (p) {
+        var bw = (p.v / denom) * c.w; if (bw <= 0) return;
+        var r = el('rect', { x: x + 1, y: y, width: Math.max(4, bw - 2), height: c.bh, rx: 2, fill: p.color, 'fill-opacity': p.op === undefined ? 1 : p.op }, s);
+        r.setAttribute('class', 'mark');
+        var g = el('g', {}, s); g.appendChild(r);
+        hover(g, '<b>' + rw.label + ' &middot; ' + p.label + '</b><br>' + p.v + ' ' + (c.unit || ''));
+        if (bw >= 20) txt(String(p.v), x + bw / 2, y + c.bh / 2 + 4, 'middle', 'inbar', s);
+        x += bw;
+      });
+      if (rw.note) txt(rw.note, c.x0 + c.w + 8, y + c.bh / 2 + 4, 'start', 'muted num', s);
+    });
+  }
+
+  /* Face-a-face ancre au centre. */
+  function facing(id, c) {
+    var s = S(id); if (!s) return;
+    var cx = c.x0 + c.w / 2;
+    el('line', { x1: cx, y1: c.y0 - 8, x2: cx, y2: c.y0 + c.rows.length * (c.bh + c.gap), stroke: 'var(--muted-foreground)', 'stroke-width': 1.4 }, s);
+    c.rows.forEach(function (rw, i) {
+      var y = c.y0 + i * (c.bh + c.gap);
+      var wl = (rw.left / c.max) * (c.w / 2), wr = (rw.right / c.max) * (c.w / 2);
+      var a = el('rect', { x: cx - wl, y: y, width: Math.max(2, wl - 2), height: c.bh, rx: 2, fill: 'var(--team-ally)' }, s);
+      var b = el('rect', { x: cx + 2, y: y, width: Math.max(2, wr - 2), height: c.bh, rx: 2, fill: 'var(--team-enemy)' }, s);
+      hover(a, '<b>' + rw.label + ' — mon camp</b><br>' + rw.left + ' ' + (c.unit || ''));
+      hover(b, '<b>' + rw.label + ' — eux</b><br>' + rw.right + ' ' + (c.unit || ''));
+      if (wl > 22) txt(String(rw.left), cx - wl + 6, y + c.bh / 2 + 4, 'start', 'inbar', s);
+      if (wr > 22) txt(String(rw.right), cx + wr - 6, y + c.bh / 2 + 4, 'end', 'inbar', s);
+      txt(rw.label, c.x0 - 8, y + c.bh / 2 + 4, 'end', null, s);
+      txt(rw.left >= rw.right ? '+' + (rw.left - rw.right) : '-' + (rw.right - rw.left), c.x0 + c.w + 8, y + c.bh / 2 + 4, 'start', 'num', s);
+    });
+  }
+
+  function legend(id, x0, y0, items, step) {
+    var s = S(id); if (!s) return;
+    items.forEach(function (it, i) {
+      var x = x0 + (i % (it.perRow || 99)) * step, y = y0;
+      el('rect', { x: x, y: y - 8, width: 11, height: 9, rx: 2, fill: it.color, 'fill-opacity': it.op === undefined ? 1 : it.op }, s);
+      txt(it.label, x + 15, y, 'start', 'muted', s);
+    });
+  }
+
+  window.MQ = { el: el, txt: txt, hover: hover, S: S, vcols: vcols, bricks: bricks, grille: grille, hbars: hbars, facing: facing, legend: legend };
+})();
+</script>
+
+<script>
+/* ============ SUJETS 1 et 2 — Explorer ================================= */
+(function () {
+  'use strict';
+  var M = window.MQ, el = M.el, txt = M.txt, hover = M.hover, S = M.S;
+  function big(s, str, x, y, color) {
+    var t = txt(str, x, y, 'start', 'num', s);
+    t.setAttribute('style', 'font-size:30px;font-weight:700;' + (color ? 'fill:' + color : ''));
+    return t;
+  }
+
+  /* Donnees de maquette — 14 matchs joues ensemble avec « Madina97294 ». */
+  var RECU = [29, 22, 12], DONNE = [24, 17, 7];   /* coup de pouce / travail partage / frag prepare */
+  var TOT_R = 63, TOT_D = 48, VOLMAX = 96;
+  var TIERS = ['coup de pouce', 'travail partage', 'frag prepare'];
+  var OUT = ['V', 'V', 'D', 'V', 'D', 'D', 'V', 'V', 'N', 'V', 'D', 'V', 'D', 'V'];
+  var OUTCOL = { V: 'var(--outcome-win)', N: 'var(--outcome-draw)', D: 'var(--outcome-loss)' };
+  var OUTNOM = { V: 'victoire', N: 'nul', D: 'defaite' };
+  var CARTES = ['Aquarius', 'Live Fire', 'Streets', 'Recharge', 'Bazaar', 'Catalyst', 'Live Fire',
+                'Aquarius', 'Streets', 'Recharge', 'Catalyst', 'Bazaar', 'Aquarius', 'Live Fire'];
+
+  /* --- Aujourd'hui : barre papillon 18 px, echelle log ------------------ */
+  (function () {
+    var s = S('now-1'), CX = 530, HALF = 500, Y = 42, H = 18;
+    txt("Il m'a assiste", 0, 20, 'start', 'muted', s);
+    txt("Je l'ai assiste", 1060, 20, 'end', 'muted', s);
+    var lg = function (v) { return Math.log(1 + v) / Math.log(1 + VOLMAX); };
+    el('rect', { x: CX - 1, y: Y - 2, width: 2, height: H + 4, fill: 'var(--foreground)', 'fill-opacity': .6 }, s);
+    var lenR = lg(TOT_R) * HALF, x = CX - 2;
+    RECU.forEach(function (v, i) {
+      var w = lenR * v / TOT_R;
+      var r = el('rect', { x: x - w, y: Y, width: w - 1, height: H, fill: 'var(--assist-received)', 'fill-opacity': 1 - i * 0.26 }, s);
+      hover(r, '<b>' + v + ' frags assistes</b><br><span class="m">' + TIERS[i] + '</span>');
+      x -= w;
+    });
+    var lenD = lg(TOT_D) * HALF; x = CX + 2;
+    DONNE.forEach(function (v, i) {
+      var w = lenD * v / TOT_D;
+      var r = el('rect', { x: x, y: Y, width: w - 1, height: H, fill: 'var(--assist-given)', 'fill-opacity': 1 - i * 0.26 }, s);
+      hover(r, '<b>' + v + ' frags assistes</b><br><span class="m">' + TIERS[i] + '</span>');
+      x += w;
+    });
+    var a = txt('63 · 57 %', 0, 80, 'start', 'num', s); a.setAttribute('style', 'fill:var(--assist-received)');
+    var b = txt('43 % · 48', 1060, 80, 'end', 'num', s); b.setAttribute('style', 'fill:var(--assist-given)');
+    txt('Echelle logarithmique bornee a 96 — le plus gros volume d’un sens parmi TOUTES les relations du joueur.', 0, 106, 'start', 'muted', s);
+    txt('63 et 48 rendent 473 px et 443 px : 31 % d’ecart reduits a 7 % de longueur.', 0, 122, 'start', 'muted', s);
+  })();
+
+  /* --- Aujourd'hui : OutcomeBar 6 px ----------------------------------- */
+  (function () {
+    var s = S('now-2'), W = 1060, T = 14, x = 0;
+    [['V', 8], ['N', 1], ['D', 5]].forEach(function (p) {
+      var w = W * p[1] / T;
+      el('rect', { x: x, y: 22, width: w - 2, height: 6, rx: 3, fill: OUTCOL[p[0]] }, s);
+      x += w;
+    });
+    txt('h-1.5 = 6 px de haut', 0, 14, 'start', 'muted', s);
+    [['V', 8, 'victoires'], ['N', 1, 'nuls'], ['D', 5, 'defaites']].forEach(function (p, i) {
+      el('circle', { cx: 4 + i * 110, cy: 50, r: 4, fill: OUTCOL[p[0]] }, s);
+      txt(p[1] + ' ' + p[2], 14 + i * 110, 54, 'start', 'muted', s);
+    });
+    txt('57,1 %', 1060, 54, 'end', 'num', s);
+    txt('Le nul vaut 7 % de la largeur : un trait de 4 px sur 6 px de haut.', 0, 82, 'start', 'muted', s);
+  })();
+
+  /* --- 1.A : deux colonnes affrontees ---------------------------------- */
+  (function () {
+    var s = S('p1a');
+    txt('14 matchs joues dans la meme equipe', 0, 12, 'start', 'muted', s);
+    var mk = function (arr, color) {
+      return arr.map(function (v, i) {
+        return { label: TIERS[i], v: v, color: color, op: 1 - i * 0.26, note: TIERS[i] };
+      });
+    };
+    M.vcols('p1a', {
+      x0: 44, y0: 30, w: 250, h: 190, max: 70, cw: 62, unit: 'assistances',
+      ticks: [0, 20, 40, 60],
+      parity: 55.5, parityLabel: 'parite',
+      cols: [
+        { label: 'Il me sert', sub: '57 %', parts: mk(RECU, 'var(--assist-received)') },
+        { label: 'Je le sers', sub: '43 %', parts: mk(DONNE, 'var(--assist-given)') }
+      ]
+    });
+    M.legend('p1a', 0, 276, [
+      { label: 'coup de pouce (< 25 % des degats)', color: 'var(--assist-received)' }
+    ], 0);
+    M.legend('p1a', 0, 290, [
+      { label: 'travail partage', color: 'var(--assist-received)', op: .74 },
+      { label: 'frag prepare', color: 'var(--assist-received)', op: .48 }
+    ], 150);
+  })();
+
+  /* --- 1.B : mur de briques -------------------------------------------- */
+  (function () {
+    var s = S('p1b');
+    txt('1 brique = 3 assistances', 0, 12, 'start', 'muted', s);
+    var walls = [[RECU, 'var(--assist-received)', 20, 'Il me sert'], [DONNE, 'var(--assist-given)', 190, 'Je le sers']];
+    walls.forEach(function (w) {
+      var groups = w[0].map(function (v, i) {
+        return { n: Math.round(v / 3), color: w[1], op: 1 - i * 0.26, label: TIERS[i], note: v + ' assistances' };
+      });
+      M.bricks('p1b', w[2], 240, groups, 20, 13, 4, 5);
+      var tot = w[0][0] + w[0][1] + w[0][2];
+      txt(w[3], w[2], 258, 'start', null, s);
+      txt(tot + ' assistances', w[2], 274, 'start', 'muted num', s);
+    });
+    txt('21 briques', 20, 292, 'start', 'muted', s);
+    txt('16 briques', 190, 292, 'start', 'muted', s);
+  })();
+
+  /* --- 1.C : aire double au fil des matchs ------------------------------ */
+  (function () {
+    var s = S('p1c'), X0 = 34, W = 290, MID = 150, SC = 14;
+    var recu = [4, 6, 3, 7, 5, 2, 6, 4, 5, 3, 6, 4, 5, 3];
+    var donne = [3, 2, 5, 4, 3, 4, 2, 5, 3, 4, 3, 4, 3, 3];
+    txt('assistances par match', 0, 12, 'start', 'muted', s);
+    var X = function (i) { return X0 + W * i / (recu.length - 1); };
+    var area = function (vals, sign, color) {
+      var d = 'M' + X0 + ',' + MID;
+      vals.forEach(function (v, i) { d += ' L' + X(i) + ',' + (MID - sign * v * SC); });
+      d += ' L' + (X0 + W) + ',' + MID + ' Z';
+      el('path', { d: d, fill: color, 'fill-opacity': .45 }, s);
+      var l = 'M' + X(0) + ',' + (MID - sign * vals[0] * SC);
+      vals.forEach(function (v, i) { if (i) l += ' L' + X(i) + ',' + (MID - sign * v * SC); });
+      el('path', { d: l, fill: 'none', stroke: color, 'stroke-width': 2 }, s);
+      vals.forEach(function (v, i) {
+        var c = el('circle', { cx: X(i), cy: MID - sign * v * SC, r: 9, fill: 'transparent' }, s);
+        hover(c, '<b>Match ' + (i + 1) + ' · ' + CARTES[i] + '</b><br>' + v + ' assistances');
+      });
+    };
+    area(recu, 1, 'var(--assist-received)');
+    area(donne, -1, 'var(--assist-given)');
+    el('line', { x1: X0, y1: MID, x2: X0 + W, y2: MID, stroke: 'var(--muted-foreground)', 'stroke-width': 1.2 }, s);
+    txt('63', 0, 40, 'start', 'num', s); txt('recu', 0, 54, 'start', 'muted', s);
+    txt('48', 0, 250, 'start', 'num', s); txt('donne', 0, 264, 'start', 'muted', s);
+    txt('match 1', X0, 286, 'start', 'muted', s);
+    txt('match 14', X0 + W, 286, 'end', 'muted', s);
+  })();
+
+  /* --- 2.A : colonne epaisse + bande ----------------------------------- */
+  (function () {
+    var s = S('p2a');
+    txt('14 matchs joues ensemble', 0, 12, 'start', 'muted', s);
+    M.vcols('p2a', {
+      x0: 30, y0: 30, w: 120, h: 180, max: 14, cw: 72, unit: 'matchs',
+      ticks: [0, 7, 14],
+      cols: [{ label: 'Bilan', topLabel: '14', parts: [
+        { label: 'defaites', v: 5, color: 'var(--outcome-loss)', note: '36 %' },
+        { label: 'nuls', v: 1, color: 'var(--outcome-draw)', note: '7 %' },
+        { label: 'victoires', v: 8, color: 'var(--outcome-win)', note: '57 %' }
+      ] }]
+    });
+    big(s, '57,1 %', 170, 100, 'var(--outcome-win)');
+    txt('de victoires', 170, 120, 'start', 'muted', s);
+    txt('8 V · 1 N · 5 D', 170, 140, 'start', 'num', s);
+    txt('Les 14 resultats, du plus ancien au plus recent', 0, 244, 'start', 'muted', s);
+    OUT.forEach(function (o, i) {
+      var r = el('rect', { x: i * 22, y: 252, width: 19, height: 26, rx: 3, fill: OUTCOL[o] }, s);
+      hover(r, '<b>Match ' + (i + 1) + ' · ' + CARTES[i] + '</b><br>' + OUTNOM[o]);
+      txt(o, i * 22 + 9.5, 270, 'middle', 'inbar', s);
+    });
+  })();
+
+  /* --- 2.B : mur des 14 matchs ----------------------------------------- */
+  (function () {
+    var s = S('p2b');
+    big(s, '57,1 %', 0, 34, 'var(--outcome-win)');
+    txt('8 victoires sur 14 matchs communs', 0, 54, 'start', 'muted', s);
+    OUT.forEach(function (o, i) {
+      var x = (i % 5) * 38, y = 72 + Math.floor(i / 5) * 38;
+      var r = el('rect', { x: x, y: y, width: 34, height: 34, rx: 4, fill: OUTCOL[o] }, s);
+      r.setAttribute('class', 'mark');
+      var g = el('g', {}, s); g.appendChild(r);
+      hover(g, '<b>Match ' + (i + 1) + ' · ' + CARTES[i] + '</b><br>' + OUTNOM[o] + '<br><span class="m">le plus ancien en haut a gauche</span>');
+      txt(String(i + 1), x + 17, y + 22, 'middle', 'inbar', s);
+    });
+    M.legend('p2b', 210, 92, [{ label: 'victoire', color: 'var(--outcome-win)' }], 0);
+    M.legend('p2b', 210, 112, [{ label: 'nul', color: 'var(--outcome-draw)' }], 0);
+    M.legend('p2b', 210, 132, [{ label: 'defaite', color: 'var(--outcome-loss)' }], 0);
+    txt('Chaque case porte sa date,', 210, 166, 'start', 'muted', s);
+    txt('sa carte et son score', 210, 180, 'start', 'muted', s);
+    txt('en infobulle.', 210, 194, 'start', 'muted', s);
+  })();
+
+  /* --- 2.C : escalier du bilan cumule ---------------------------------- */
+  (function () {
+    var s = S('p2c'), X0 = 34, W = 280, Y0 = 40, H = 190;
+    var cum = [], acc = 0;
+    OUT.forEach(function (o) { acc += o === 'V' ? 1 : (o === 'D' ? -1 : 0); cum.push(acc); });
+    var lo = -2, hi = 4;
+    var Y = function (v) { return Y0 + H - (v - lo) / (hi - lo) * H; };
+    var X = function (i) { return X0 + W * i / OUT.length; };
+    txt('bilan cumule : +1 par victoire, -1 par defaite', 0, 12, 'start', 'muted', s);
+    var z = Y(0), dPos = 'M' + X0 + ',' + z, dNeg = 'M' + X0 + ',' + z;
+    cum.forEach(function (v, i) {
+      var y = Y(v);
+      dPos += ' L' + X(i) + ',' + Math.min(y, z) + ' L' + X(i + 1) + ',' + Math.min(y, z);
+      dNeg += ' L' + X(i) + ',' + Math.max(y, z) + ' L' + X(i + 1) + ',' + Math.max(y, z);
+    });
+    dPos += ' L' + X(OUT.length) + ',' + z + ' Z'; dNeg += ' L' + X(OUT.length) + ',' + z + ' Z';
+    el('path', { d: dNeg, fill: 'var(--outcome-loss)', 'fill-opacity': .30 }, s);
+    el('path', { d: dPos, fill: 'var(--outcome-win)', 'fill-opacity': .32 }, s);
+    var line = 'M' + X0 + ',' + z;
+    cum.forEach(function (v, i) { line += ' L' + X(i) + ',' + Y(v) + ' L' + X(i + 1) + ',' + Y(v); });
+    el('path', { d: line, fill: 'none', stroke: 'var(--chart-series-3)', 'stroke-width': 2.5 }, s);
+    el('line', { x1: X0, y1: z, x2: X0 + W, y2: z, stroke: 'var(--muted-foreground)', 'stroke-width': 1.2, 'stroke-dasharray': '4 3' }, s);
+    [4, 2, 0, -2].forEach(function (t) { txt((t > 0 ? '+' : '') + t, X0 - 8, Y(t) + 4, 'end', 'muted num', s); });
+    cum.forEach(function (v, i) {
+      var c = el('circle', { cx: (X(i) + X(i + 1)) / 2, cy: Y(v), r: 9, fill: 'transparent' }, s);
+      hover(c, '<b>Match ' + (i + 1) + ' · ' + CARTES[i] + '</b><br>' + OUTNOM[OUT[i]] + '<br><span class="m">bilan ' + (v >= 0 ? '+' : '') + v + '</span>');
+    });
+    big(s, '+3', X0 + W - 30, Y0 - 8, 'var(--outcome-win)');
+    txt('bilan final', X0 + W, Y0 + 8, 'end', 'muted', s);
+    txt('match 1', X0, Y0 + H + 18, 'start', 'muted', s);
+    txt('match 14', X0 + W, Y0 + H + 18, 'end', 'muted', s);
+    txt('Les cinq premiers matchs sont a l’equilibre : tout se joue apres.', 0, 288, 'start', 'muted', s);
+  })();
+})();
+</script>
+
+<script>
+/* ============ SUJET 3 — Escouade, taux d'echange par session =========== */
+(function () {
+  'use strict';
+  var M = window.MQ, el = M.el, txt = M.txt, hover = M.hover, S = M.S;
+  var TAUX = [41.2, 52.0, 38.4, 61.5, 47.8, 55.1, 33.9, 58.7, 49.6];
+  var FRAGS = [62, 84, 41, 96, 73, 58, 29, 88, 67];
+  var REPRIS = [26, 44, 16, 59, 35, 32, 10, 52, 33];
+  var JOURS = ['12/08', '15/08', '19/08', '24/08', '27/08', '31/08', '04/09', '09/09', '14/09'];
+  var HAB = 48.3;
+  var pc = function (v) { return String(v.toFixed(1)).replace('.', ',') + ' %'; };
+
+  /* --- Aujourd'hui : une courbe, un dernier point etiquete ------------- */
+  (function () {
+    var s = S('now-3'), X0 = 60, Y0 = 20, W = 930, H = 130;
+    var Y = function (v) { return Y0 + H - (v - 25) / 45 * H; };
+    var X = function (i) { return X0 + W * i / (TAUX.length - 1); };
+    [25, 35, 45, 55, 65].forEach(function (t) {
+      el('line', { x1: X0, y1: Y(t), x2: X0 + W, y2: Y(t), class: 'grid' }, s);
+      txt(t + ' %', X0 - 8, Y(t) + 4, 'end', 'muted num', s);
+    });
+    var d = '';
+    TAUX.forEach(function (v, i) { d += (i ? ' L' : 'M') + X(i) + ',' + Y(v); });
+    el('path', { d: d, fill: 'none', stroke: 'var(--chart-series-3)', 'stroke-width': 2 }, s);
+    TAUX.forEach(function (v, i) {
+      var c = el('circle', { cx: X(i), cy: Y(v), r: i === TAUX.length - 1 ? 6 : 4, fill: 'var(--chart-series-3)' }, s);
+      hover(c, '<b>Soiree du ' + JOURS[i] + '</b><br>' + pc(v) + '<br><span class="m">' + FRAGS[i] + ' frags mesures</span>');
+      txt(JOURS[i], X(i), Y0 + H + 18, 'middle', 'muted', s);
+    });
+    txt(pc(TAUX[8]), X(8), Y(TAUX[8]) - 12, 'middle', 'num', s);
+    txt('Taux de reprise (%)', 0, 12, 'start', 'muted', s);
+    txt('La soiree du 04/09 (33,9 %) ne porte que 29 frags ; celle du 24/08 (61,5 %) en porte 96. Le trait les traite a egalite.', 0, 192, 'start', 'muted', s);
+  })();
+
+  /* --- 3.A : colonnes a largeur proportionnelle ------------------------ */
+  (function () {
+    var s = S('p3a');
+    txt('hauteur = taux · largeur = frags de la soiree', 0, 12, 'start', 'muted', s);
+    M.vcols('p3a', {
+      x0: 40, y0: 30, w: 262, h: 190, max: 70, cw: 20, unit: '%',
+      ticks: [0, 20, 40, 60], fmt: function (t) { return t + ' %'; },
+      parity: HAB, parityLabel: 'habituel',
+      cols: TAUX.map(function (v, i) {
+        return {
+          label: '', sub: JOURS[i].slice(0, 2), cw: 5 + FRAGS[i] / 96 * 20, topLabel: '',
+          parts: [{ label: 'taux de reprise', v: v, color: v >= HAB ? 'var(--divergent-pos)' : 'var(--divergent-neg)', note: FRAGS[i] + ' frags mesures — ' + JOURS[i] }]
+        };
+      })
+    });
+    txt('La plus etroite : 29 frags. La plus large : 96.', 0, 292, 'start', 'muted', s);
+  })();
+
+  /* --- 3.B : aire d'ecart a l'habituel --------------------------------- */
+  (function () {
+    var s = S('p3b'), X0 = 40, W = 262, Y0 = 30, H = 190;
+    var Y = function (v) { return Y0 + H - (v - 25) / 45 * H; };
+    var X = function (i) { return X0 + W * (i + 0.5) / TAUX.length; };
+    txt('ecart a l’habituel · fond = volume de frags', 0, 12, 'start', 'muted', s);
+    FRAGS.forEach(function (f, i) {
+      var h = f / 96 * H, w = W / TAUX.length - 6;
+      var r = el('rect', { x: X(i) - w / 2, y: Y0 + H - h, width: w, height: h, rx: 2, fill: 'var(--muted)' }, s);
+      hover(r, '<b>Soiree du ' + JOURS[i] + '</b><br>' + f + ' frags mesures');
+    });
+    var z = Y(HAB);
+    var dPos = 'M' + X(0) + ',' + z, dNeg = 'M' + X(0) + ',' + z;
+    TAUX.forEach(function (v, i) { dPos += ' L' + X(i) + ',' + Math.min(Y(v), z); dNeg += ' L' + X(i) + ',' + Math.max(Y(v), z); });
+    dPos += ' L' + X(8) + ',' + z + ' Z'; dNeg += ' L' + X(8) + ',' + z + ' Z';
+    el('path', { d: dNeg, fill: 'var(--divergent-neg)', 'fill-opacity': .32 }, s);
+    el('path', { d: dPos, fill: 'var(--divergent-pos)', 'fill-opacity': .34 }, s);
+    var d = '';
+    TAUX.forEach(function (v, i) { d += (i ? ' L' : 'M') + X(i) + ',' + Y(v); });
+    el('path', { d: d, fill: 'none', stroke: 'var(--chart-series-3)', 'stroke-width': 2.5 }, s);
+    el('line', { x1: X0, y1: z, x2: X0 + W, y2: z, stroke: 'var(--warning)', 'stroke-width': 1.5, 'stroke-dasharray': '4 3' }, s);
+    txt('habituel 48,3 %', X0 + W, z - 6, 'end', 'muted', s);
+    [25, 40, 55, 70].forEach(function (t) { txt(t + ' %', X0 - 6, Y(t) + 4, 'end', 'muted num', s); });
+    TAUX.forEach(function (v, i) {
+      var c = el('circle', { cx: X(i), cy: Y(v), r: 8, fill: 'transparent' }, s);
+      hover(c, '<b>Soiree du ' + JOURS[i] + '</b><br>' + pc(v) + '<br><span class="m">ecart ' + (v >= HAB ? '+' : '') + (v - HAB).toFixed(1).replace('.', ',') + ' pt · ' + FRAGS[i] + ' frags</span>');
+      if (i % 2 === 0) txt(JOURS[i].slice(0, 2), X(i), Y0 + H + 16, 'middle', 'muted', s);
+    });
+    txt('Trois soirees au-dessus de l’habituel, dont les deux mieux mesurees.', 0, 292, 'start', 'muted', s);
+  })();
+
+  /* --- 3.C : colonnes repris / non repris ------------------------------ */
+  (function () {
+    var s = S('p3c');
+    txt('hauteur = frags de la soiree · part basse = repris dans la fenetre', 0, 12, 'start', 'muted', s);
+    M.vcols('p3c', {
+      x0: 40, y0: 42, w: 262, h: 180, max: 96, cw: 20, unit: 'frags',
+      ticks: [0, 48, 96],
+      cols: TAUX.map(function (v, i) {
+        return {
+          label: '', sub: JOURS[i].slice(0, 2), topLabel: Math.round(v) + ' %',
+          parts: [
+            { label: 'repris', v: REPRIS[i], color: 'var(--divergent-pos)', note: pc(v) + ' de la soiree du ' + JOURS[i] },
+            { label: 'non repris', v: FRAGS[i] - REPRIS[i], color: 'var(--muted-foreground)', op: .35, note: 'aucune reprise dans la fenetre' }
+          ]
+        };
+      })
+    });
+    M.legend('p3c', 40, 288, [
+      { label: 'repris dans la fenetre', color: 'var(--divergent-pos)' },
+      { label: 'non repris', color: 'var(--muted-foreground)', op: .35 }
+    ], 160);
+  })();
+})();
+</script>
+
+<script>
+/* ============ SUJET 4 — Match view, controle des armes speciales ======= */
+(function () {
+  'use strict';
+  var M = window.MQ, el = M.el, txt = M.txt, hover = M.hover, S = M.S;
+  var ALLY = 'var(--team-ally)', ENEMY = 'var(--team-enemy)', OP = [1, .78, .58, .42];
+  var ALLIES = ['Moi', 'Madina97294', 'Kaelin', 'Vorn'], ENNEMIS = ['Sarko', 'Tuva', 'Ryn', 'Odal'];
+  function seg(nom, v) {
+    var i = ALLIES.indexOf(nom);
+    if (i >= 0) return { label: nom, v: v, color: ALLY, op: OP[i] };
+    var j = ENNEMIS.indexOf(nom);
+    return { label: nom, v: v, color: ENEMY, op: OP[j] };
+  }
+  var SOCLES = [
+    { n: 'Fusil de precision', s: 'Precision', tier: 0, tot: 12, unnamed: 4, seg: [['Moi', 5], ['Madina97294', 1], ['Vorn', 1], ['Sarko', 3], ['Tuva', 2]] },
+    { n: 'Epee a energie', s: 'Epee', tier: 0, tot: 7, unnamed: 2, seg: [['Kaelin', 3], ['Vorn', 1], ['Ryn', 2], ['Odal', 1]] },
+    { n: 'Lance-roquettes', s: 'Roquettes', tier: 0, tot: 5, unnamed: 1, seg: [['Moi', 1], ['Madina97294', 2], ['Sarko', 1], ['Tuva', 1]] },
+    { n: 'Fusil de combat', s: 'Combat', tier: 1, tot: 9, unnamed: 3, seg: [['Moi', 2], ['Madina97294', 2], ['Kaelin', 1], ['Sarko', 2], ['Ryn', 1], ['Odal', 1]] },
+    { n: 'Hydra', s: 'Hydra', tier: 1, tot: 6, unnamed: 2, seg: [['Madina97294', 1], ['Vorn', 2], ['Tuva', 2], ['Odal', 1]] },
+    { n: 'Empaleur', s: 'Empaleur', tier: 1, tot: 4, unnamed: 0, seg: [['Kaelin', 2], ['Sarko', 1], ['Ryn', 1]] }
+  ];
+  var parts = function (so) { return so.seg.map(function (p) { return seg(p[0], p[1]); }); };
+
+  /* --- Aujourd'hui : un rail 100 % par socle --------------------------- */
+  (function () {
+    var s = S('now-4');
+    var rows = [];
+    rows.push({ head: 'PUISSANCE', headRight: '24 prises', y: 0 });
+    SOCLES.slice(0, 3).forEach(function (so, i) { rows.push({ label: so.n + '  (' + so.tot + ')', parts: parts(so), y: 24 + i * 32, note: so.unnamed ? '+ ' + so.unnamed + ' sans nom' : '' }); });
+    rows.push({ head: 'TERRAIN', headRight: '19 prises', y: 130 });
+    SOCLES.slice(3).forEach(function (so, i) { rows.push({ label: so.n + '  (' + so.tot + ')', parts: parts(so), y: 154 + i * 32, note: so.unnamed ? '+ ' + so.unnamed + ' sans nom' : '' }); });
+    rows.push({ head: 'BASE (repliee) — 2 socles, 19 prises', y: 256 });
+    M.hbars('now-4', { x0: 180, y0: 6, w: 700, bh: 24, norm: true, unit: 'prises', rows: rows });
+    txt('Tous les rails font la meme longueur : « Empaleur, 4 prises » occupe autant que « Fusil de precision, 12 ».', 0, 296, 'start', 'muted', s);
+  })();
+
+  /* --- 4.A : colonnes de prises ---------------------------------------- */
+  (function () {
+    var s = S('p4a');
+    txt('hauteur = prises nommees · une echelle pour tous les socles', 0, 12, 'start', 'muted', s);
+    el('rect', { x: 36, y: 20, width: 132, height: 16, rx: 3, fill: 'var(--muted)' }, s);
+    txt('PUISSANCE · 24', 42, 38, 'start', 'muted', s);
+    el('rect', { x: 174, y: 20, width: 132, height: 16, rx: 3, fill: 'var(--muted)' }, s);
+    txt('TERRAIN · 19', 180, 38, 'start', 'muted', s);
+    M.vcols('p4a', {
+      x0: 36, y0: 54, w: 270, h: 170, max: 12, cw: 34, unit: 'prises',
+      ticks: [0, 4, 8, 12],
+      cols: SOCLES.map(function (so) { return { label: so.s, sub: so.unnamed ? '+' + so.unnamed : '', parts: parts(so) }; })
+    });
+    M.legend('p4a', 0, 268, [
+      { label: 'Moi', color: ALLY, op: OP[0] }, { label: 'Madina97294', color: ALLY, op: OP[1] },
+      { label: 'Kaelin', color: ALLY, op: OP[2] }
+    ], 110);
+    M.legend('p4a', 0, 284, [
+      { label: 'Vorn', color: ALLY, op: OP[3] }, { label: 'camp adverse', color: ENEMY, op: OP[0] },
+      { label: '+N = sans nom', color: 'var(--muted)', op: 1 }
+    ], 110);
+    txt('Base : 2 socles, 19 prises — replie', 0, 306, 'start', 'muted', s);
+  })();
+
+  /* --- 4.B : grille joueurs x socles ----------------------------------- */
+  (function () {
+    var s = S('p4b');
+    txt('la case porte le compte, sa teinte la part du socle', 0, 12, 'start', 'muted', s);
+    var VALS = [
+      ['Moi', [5, 0, 1, 2, 0, 0], ALLY],
+      ['Madina97294', [1, 0, 2, 2, 1, 0], ALLY],
+      ['Kaelin', [0, 3, 0, 1, 0, 2], ALLY],
+      ['Vorn', [1, 1, 0, 0, 2, 0], ALLY],
+      ['Sarko', [3, 0, 1, 2, 0, 1], ENEMY],
+      ['Tuva', [2, 0, 1, 0, 2, 0], ENEMY],
+      ['Ryn', [0, 2, 0, 1, 0, 1], ENEMY],
+      ['Odal', [0, 1, 0, 1, 1, 0], ENEMY]
+    ];
+    M.grille('p4b', {
+      x0: 92, y0: 44, cw: 40, ch: 26, unit: 'prises',
+      cols: SOCLES.map(function (so) { return so.s.slice(0, 5); }),
+      max: SOCLES.map(function (so) { return so.tot; }),
+      colColor: VALS.map(function () { return 0; }).slice(0, 6).map(function (_, j) { return j < 3 ? 'var(--chart-series-3)' : 'var(--chart-series-1)'; }),
+      rows: VALS.map(function (r, i) { return { label: r[0], vals: r[1], rule: i === 3 }; })
+    });
+    txt('PUISSANCE', 92, 30, 'start', 'muted', s);
+    txt('TERRAIN', 212, 30, 'start', 'muted', s);
+    txt('total', 92 - 8, 44 + 8 * 26 + 18, 'end', 'muted', s);
+    SOCLES.forEach(function (so, j) { txt(String(so.tot), 92 + 40 * j + 20, 44 + 8 * 26 + 18, 'middle', 'muted num', s); });
+    txt('Filet entre les deux camps. Base : 2 socles, 19 prises — replie.', 0, 300, 'start', 'muted', s);
+  })();
+
+  /* --- 4.C : rails a longueur vraie ------------------------------------ */
+  (function () {
+    var s = S('p4c');
+    txt('un seul axe de prises pour tous les socles', 0, 12, 'start', 'muted', s);
+    var rows = [];
+    rows.push({ head: 'PUISSANCE · 24', y: 0 });
+    SOCLES.slice(0, 3).forEach(function (so, i) { rows.push({ label: so.s, parts: parts(so), y: 22 + i * 36, note: so.unnamed ? '+' + so.unnamed : '' }); });
+    rows.push({ head: 'TERRAIN · 19', y: 132 });
+    SOCLES.slice(3).forEach(function (so, i) { rows.push({ label: so.s, parts: parts(so), y: 154 + i * 36, note: so.unnamed ? '+' + so.unnamed : '' }); });
+    rows.push({ head: 'BASE (repliee) · 19', y: 244 });
+    M.hbars('p4c', { x0: 76, y0: 16, w: 200, bh: 28, max: 12, unit: 'prises', rows: rows });
+    el('line', { x1: 76, y1: 288, x2: 276, y2: 288, class: 'axis' }, s);
+    [0, 4, 8, 12].forEach(function (t) { txt(String(t), 76 + t / 12 * 200, 302, 'middle', 'muted num', s); });
+  })();
+})();
+</script>
+
+<script>
+/* ============ SUJET 5 — Match view, usages d'equipement ================ */
+(function () {
+  'use strict';
+  var M = window.MQ, el = M.el, txt = M.txt, hover = M.hover, S = M.S;
+  var ALLY = 'var(--team-ally)', ENEMY = 'var(--team-enemy)', OP = [1, .78, .58, .42];
+  var ALLIES = ['Moi', 'Madina97294', 'Kaelin', 'Vorn'], ENNEMIS = ['Sarko', 'Tuva', 'Ryn', 'Odal'];
+  /* Familles rangees par volume decroissant — le MEME ordre dans les deux blocs d'une paire. */
+  var FAM = ['Grappin', 'Mur', 'Surbouclier', 'Camouflage', 'Capteur', 'Propulseur'];
+  var TOT = [24, 11, 9, 7, 6, 5];
+  var CAMP = [[14, 10], [7, 4], [5, 4], [3, 4], [4, 2], [3, 2]];
+  var ENCRE = ['var(--chart-series-3)', 'var(--chart-series-2)', 'var(--chart-series-1)',
+               'var(--compare-a)', 'var(--compare-b)', 'var(--chart-series-4)'];
+  /* Lignes = joueurs, colonnes = familles. */
+  var PAR_JOUEUR = [
+    ['Moi', [5, 1, 2, 0, 1, 1]],
+    ['Madina97294', [3, 4, 1, 0, 2, 0]],
+    ['Kaelin', [4, 1, 1, 2, 0, 1]],
+    ['Vorn', [2, 1, 1, 1, 1, 1]],
+    ['Sarko', [3, 1, 1, 2, 0, 1]],
+    ['Tuva', [2, 2, 1, 0, 1, 0]],
+    ['Ryn', [3, 0, 1, 1, 1, 0]],
+    ['Odal', [2, 1, 1, 1, 0, 1]]
+  ];
+  function opJ(i) { return OP[i % 4]; }
+  function colJ(i) { return i < 4 ? ALLY : ENEMY; }
+
+  /* --- Aujourd'hui : six familles a gauche, DEUX groupes a droite ------ */
+  (function () {
+    var s = S('now-5');
+    txt('« Nombre d’usages par joueur » — ValueGrid, une colonne par FAMILLE', 0, 14, 'start', null, s);
+    M.grille('now-5', {
+      x0: 110, y0: 46, cw: 52, ch: 22, unit: 'usages',
+      cols: FAM.map(function (f) { return f.slice(0, 6); }),
+      max: TOT, colColor: ENCRE,
+      rows: PAR_JOUEUR.map(function (r, i) { return { label: r[0], vals: r[1], rule: i === 3 }; })
+    });
+    txt('« Part de chaque equipe » — une barre 100 % par GROUPE', 560, 14, 'start', null, s);
+    [['Grappin', 24, 14, 10], ['Equipement', 38, 22, 16]].forEach(function (g, i) {
+      var y = 52 + i * 56, W = 420;
+      txt(g[0], 560, y - 6, 'start', null, s);
+      txt(g[1] + ' usages', 980, y - 6, 'end', 'muted num', s);
+      var wa = W * g[2] / g[1];
+      var a = el('rect', { x: 560, y: y, width: wa - 2, height: 26, rx: 2, fill: ALLY }, s);
+      var b = el('rect', { x: 560 + wa, y: y, width: W - wa - 2, height: 26, rx: 2, fill: ENEMY }, s);
+      hover(a, '<b>' + g[0] + ' — mon camp</b><br>' + g[2] + ' usages');
+      hover(b, '<b>' + g[0] + ' — eux</b><br>' + g[3] + ' usages');
+      txt(g[2] + ' · ' + Math.round(g[2] / g[1] * 100) + ' %', 568, y + 17, 'start', 'inbar', s);
+      txt(g[3] + ' · ' + Math.round(g[3] / g[1] * 100) + ' %', 972, y + 17, 'end', 'inbar', s);
+    });
+    txt('Le groupe « Equipement » melange murs, capteurs, propulseurs, surbouclier et camouflage :', 560, 196, 'start', 'muted', s);
+    txt('aucune des six colonnes de gauche ne s’y retrouve. Le grappin a sa barre parce qu’il est', 560, 212, 'start', 'muted', s);
+    txt('un groupe a lui seul, pas parce que c’est la bonne maille.', 560, 228, 'start', 'muted', s);
+  })();
+
+  /* --- Paire A : grille + colonnes par famille ------------------------- */
+  (function () {
+    var s = S('p5a1');
+    txt('lignes = joueurs (filet entre les camps) · colonnes = familles', 0, 14, 'start', 'muted', s);
+    M.grille('p5a1', {
+      x0: 110, y0: 48, cw: 62, ch: 24, unit: 'usages',
+      cols: FAM.map(function (f) { return f.slice(0, 7); }),
+      max: TOT, colColor: ENCRE,
+      rows: PAR_JOUEUR.map(function (r, i) { return { label: r[0], vals: r[1], rule: i === 3 }; })
+    });
+    txt('total', 102, 48 + 8 * 24 + 18, 'end', 'muted', s);
+    TOT.forEach(function (t, j) { txt(String(t), 110 + 62 * j + 31, 48 + 8 * 24 + 18, 'middle', 'muted num', s); });
+  })();
+
+  (function () {
+    var s = S('p5a2');
+    txt('hauteur = usages reels · segments = les deux camps', 0, 14, 'start', 'muted', s);
+    M.vcols('p5a2', {
+      x0: 44, y0: 34, w: 450, h: 150, max: 24, cw: 50, unit: 'usages',
+      ticks: [0, 8, 16, 24],
+      cols: FAM.map(function (f, j) {
+        return { label: f.slice(0, 7), parts: [
+          { label: 'camp adverse', v: CAMP[j][1], color: ENEMY, note: Math.round(CAMP[j][1] / TOT[j] * 100) + ' % de la famille' },
+          { label: 'mon camp', v: CAMP[j][0], color: ALLY, note: Math.round(CAMP[j][0] / TOT[j] * 100) + ' % de la famille' }
+        ] };
+      })
+    });
+    M.legend('p5a2', 44, 240, [
+      { label: 'mon camp', color: ALLY }, { label: 'camp adverse', color: ENEMY }
+    ], 130);
+    txt('Meme ordre, memes familles, memes encres que le bloc de gauche.', 44, 256, 'start', 'muted', s);
+  })();
+
+  /* --- Paire B : colonnes par joueur + face-a-face --------------------- */
+  (function () {
+    var s = S('p5b1');
+    txt('une colonne par famille, un segment par joueur', 0, 14, 'start', 'muted', s);
+    M.vcols('p5b1', {
+      x0: 44, y0: 34, w: 450, h: 150, max: 24, cw: 50, unit: 'usages',
+      ticks: [0, 8, 16, 24],
+      cols: FAM.map(function (f, j) {
+        return { label: f.slice(0, 7), parts: PAR_JOUEUR.map(function (r, i) {
+          return { label: r[0], v: r[1][j], color: colJ(i), op: opJ(i) };
+        }).filter(function (p) { return p.v > 0; }) };
+      })
+    });
+    M.legend('p5b1', 44, 240, ALLIES.map(function (n, i) { return { label: n, color: ALLY, op: OP[i] }; }), 112);
+    M.legend('p5b1', 44, 256, ENNEMIS.map(function (n, i) { return { label: n, color: ENEMY, op: OP[i] }; }), 112);
+  })();
+
+  (function () {
+    var s = S('p5b2');
+    txt('zero au centre · la longueur est l’avantage en usages', 0, 14, 'start', 'muted', s);
+    txt('mon camp', 130, 32, 'middle', 'muted', s);
+    txt('eux', 380, 32, 'middle', 'muted', s);
+    M.facing('p5b2', {
+      x0: 110, y0: 44, w: 330, bh: 24, gap: 10, max: 14, unit: 'usages',
+      rows: FAM.map(function (f, j) { return { label: f, left: CAMP[j][0], right: CAMP[j][1] }; })
+    });
+    txt('ecart', 448, 36, 'start', 'muted', s);
+    txt('Les memes six familles, dans le meme ordre qu’a gauche.', 0, 250, 'start', 'muted', s);
+  })();
+
+  /* --- Paire C : murs nominatifs + classement partage ------------------ */
+  (function () {
+    var s = S('p5c1');
+    txt('une brique = un usage, coloree par joueur', 0, 14, 'start', 'muted', s);
+    FAM.forEach(function (f, j) {
+      var y = 46 + j * 32;
+      txt(f, 108, y + 12, 'end', null, s);
+      var groups = PAR_JOUEUR.map(function (r, i) {
+        return { n: r[1][j], color: colJ(i), op: opJ(i), label: r[0] + ' · ' + f, note: r[1][j] + ' usages sur ' + TOT[j] + ' dans la famille' };
+      }).filter(function (g) { return g.n > 0; });
+      M.bricks('p5c1', 118, y + 18, groups, 12, 16, 3, 40);
+      txt(String(TOT[j]), 500, y + 12, 'end', 'muted num', s);
+    });
+    txt('Trie par volume decroissant — le meme ordre qu’a droite.', 0, 250, 'start', 'muted', s);
+  })();
+
+  (function () {
+    var s = S('p5c2');
+    txt('meme classement, camp contre camp', 0, 14, 'start', 'muted', s);
+    var X0 = 110, W = 330, MAX = 14;
+    FAM.forEach(function (f, j) {
+      var y = 40 + j * 32;
+      txt(f, X0 - 8, y + 14, 'end', null, s);
+      [[CAMP[j][0], ALLY, 'mon camp'], [CAMP[j][1], ENEMY, 'eux']].forEach(function (b, k) {
+        var w = b[0] / MAX * W;
+        var r = el('rect', { x: X0, y: y + k * 13, width: Math.max(4, w - 2), height: 12, rx: 2, fill: b[1] }, s);
+        hover(r, '<b>' + f + ' — ' + b[2] + '</b><br>' + b[0] + ' usages');
+      });
+      txt(CAMP[j][0] + ' / ' + CAMP[j][1], X0 + W + 8, y + 14, 'start', 'num', s);
+    });
+    M.legend('p5c2', X0, 240, [
+      { label: 'mon camp', color: ALLY }, { label: 'camp adverse', color: ENEMY }
+    ], 130);
+  })();
+})();
+</script>
+</html>
